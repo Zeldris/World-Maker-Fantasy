@@ -1,0 +1,111 @@
+import type { Character, World } from '../types'
+
+export const worlds: World[] = [
+  {
+    id: 'helek-sirik',
+    name: 'Helek Sirik',
+    tagline: '"Origen Azul" — pueblos que se creen en lo correcto, en guerra por una verdad que nadie tiene completa.',
+    synopsis:
+      'Dos continentes, Vaelira y Berig, separados por un estrecho envuelto en niebla. Tras generaciones de paz vigilada, la Isla Cambiante que ambos sellaron ha desaparecido, y en su lugar ha surgido algo que ninguno de los dos bandos comprende. La guerra entre la Alianza de la Rama Blanca y la Concordia de Hierro ya ha empezado — y nadie sabe todavía que lo peor no viene del otro continente, sino de lo que ha despertado en el norte.',
+    tone: 'Épico y trágico: pueblos que se creen en lo correcto libran una guerra sobre una verdad que nadie tiene completa, en un mundo tan pequeño que cada muerte deja cicatriz.',
+    lethality: 'media',
+    factions: ['Alianza de la Rama Blanca', 'Concordia de Hierro', 'Reino oculto Kalisar', 'Clanes orcos de las Llanuras del Viento Rojo'],
+    cover: 'helek-sirik',
+    theme: {
+      accent300: '#a8d8f0',
+      accent400: '#7bc4e8',
+      accent500: '#4aa8d8',
+      accent600: '#3488b8',
+      accent2300: '#b0bec8',
+      accent2400: '#8a9aa8',
+      accent2500: '#6b7d8c',
+      accent2600: '#52626f',
+    },
+  },
+]
+
+export const pregeneratedCharacters: Character[] = [
+  {
+    id: 'char-gorhorn',
+    name: 'Gorhorn',
+    archetype: 'Guerrero superviviente del clan Maktor (Orco)',
+    origin: 'Único superviviente de un clan orco de escasa relevancia, aniquilado como carne de cañón por el mando Goirntes en una de las primeras escaramuzas de la Concordia de Hierro.',
+    motivation: 'Que la muerte de su clan signifique algo, y restaurar el nombre de los Maktor — aunque eso implique romper el juramento que lo ata a un bando que ya no respeta.',
+    attributes: { fuerza: 18, destreza: 9, sigilo: 5, voluntad: 12, carisma: 8, arcano: 8 },
+    isPregenerated: true,
+    portraitInitial: 'G',
+  },
+  {
+    id: 'char-sael',
+    name: 'Sael Vhorn',
+    archetype: 'Tallador de cristal (Kelife)',
+    origin: 'Hijo de talladores de una casa Kelife menor; vio venir la ruina de su propio taller a través de una grieta que nadie más pudo ver, y nadie le creyó a tiempo.',
+    motivation: 'Entender lo que de verdad puede hacer con su don de leer tensiones antes de que se rompan, ahora que ya no tiene taller al que volver.',
+    attributes: { fuerza: 6, destreza: 12, sigilo: 11, voluntad: 15, carisma: 7, arcano: 9 },
+    isPregenerated: true,
+    portraitInitial: 'S',
+  },
+  {
+    id: 'char-dessa',
+    name: 'Dessa Kaltrenn',
+    archetype: 'Desertora de la guardia (Goirntes)',
+    origin: 'Soldado rasa de Berig que escoltaba el sello de contención de la Isla Cambiante la noche en que la facción radical lo rompió por su cuenta.',
+    motivation: 'Encontrar una forma de exponer la verdad que vio esa noche sin que el propio orden que juró proteger la destruya primero.',
+    attributes: { fuerza: 13, destreza: 12, sigilo: 6, voluntad: 15, carisma: 9, arcano: 5 },
+    isPregenerated: true,
+    portraitInitial: 'D',
+  },
+  {
+    id: 'char-ithren',
+    name: 'Ithren Vosk',
+    archetype: 'Espía de la Costa del Azabache (Kalisar)',
+    origin: 'Criado desde niño para el espionaje, al servicio de un reino oculto y minoritario que no puede permitirse que nadie se niegue.',
+    motivation: 'Conseguir que alguien crea la verdad que descubrió infiltrado en Berig — aunque nadie quiera escuchar a un Kalisar.',
+    attributes: { fuerza: 7, destreza: 15, sigilo: 17, voluntad: 9, carisma: 8, arcano: 4 },
+    isPregenerated: true,
+    portraitInitial: 'I',
+  },
+  {
+    id: 'char-amonir',
+    name: 'Amonir Thess',
+    archetype: 'Agricultor sin tierra (Jusaly)',
+    origin: 'Su aldea y los campos que su familia cultivó durante generaciones fueron arrasados por la magia salvaje liberada tras la ruptura de la Isla Cambiante.',
+    motivation: 'Encontrar algo, alguien o algún conocimiento capaz de revertir lo que le hicieron a su tierra.',
+    attributes: { fuerza: 11, destreza: 8, sigilo: 6, voluntad: 16, carisma: 7, arcano: 12 },
+    isPregenerated: true,
+    portraitInitial: 'A',
+  },
+  {
+    id: 'char-yerin',
+    name: 'Yerin Slaad',
+    archetype: 'Mensajero silencioso (Nabieus)',
+    origin: 'Entregaba correspondencia sellada entre facciones Goirntes menores sin hacer preguntas — hasta que una de esas cartas resultó ser mucho más de lo que parecía.',
+    motivation: 'Averiguar si fue cómplice sin saberlo del sabotaje que desató la guerra.',
+    attributes: { fuerza: 6, destreza: 11, sigilo: 17, voluntad: 14, carisma: 6, arcano: 6 },
+    isPregenerated: true,
+    portraitInitial: 'Y',
+  },
+  {
+    id: 'char-riko',
+    name: 'Riko',
+    archetype: 'Cazador de la Manada Rota (Faerus)',
+    origin: 'Volvió de una cacería larga para encontrar su territorio arrasado por la misma oleada de magia salvaje que corrompió tierras al otro lado del mundo. Su manada, dispersa o muerta.',
+    motivation: 'Seguir cualquier rastro, olor o señal que lo lleve de vuelta a los suyos, vivos o no.',
+    attributes: { fuerza: 12, destreza: 16, sigilo: 13, voluntad: 9, carisma: 5, arcano: 5 },
+    isPregenerated: true,
+    portraitInitial: 'R',
+  },
+  {
+    id: 'char-cassia',
+    name: 'Cassia Von-Thair',
+    archetype: 'Archivista censurada (Ilvenar)',
+    origin: 'Aprendiz de archivista enviada a documentar los daños de la ruptura; al tocar el sello roto, percibió la huella de una tercera presencia que no era ni de Vaelira ni de Berig.',
+    motivation: 'Sacar a la luz un informe que ninguno de los dos bandos quiso firmar.',
+    attributes: { fuerza: 5, destreza: 9, sigilo: 8, voluntad: 16, carisma: 10, arcano: 12 },
+    isPregenerated: true,
+    portraitInitial: 'C',
+  },
+]
+
+// Las partidas guardadas, sus logs y los hechos de mundo ya no viven aquí — son datos reales
+// en Postgres (Save/WorldState/LogEntry), servidos por el backend (ver src/lib/api.ts).
