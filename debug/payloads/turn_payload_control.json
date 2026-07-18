@@ -1,0 +1,10 @@
+{
+  "action": "Gorhorn examina sus alrededores al anochecer.",
+  "characterSummary": "Gorhorn, guerrero orco, único superviviente del clan Maktor, aniquilado como carne de cañón por el mando Goirntes en la Concordia de Hierro. Viaja solo por las Llanuras del Viento Rojo buscando una forma de que la muerte de su clan signifique algo.",
+  "attributes": { "fuerza": 18, "destreza": 9, "sigilo": 5, "voluntad": 12, "carisma": 8, "arcano": 8 },
+  "worldFacts": [
+    "No hay luna convencional: un cinturón de micro-cristales atmosféricos da un brillo perlado durante la noche.",
+    "Gorhorn está solo, sin campamento ni aliados cerca.",
+    "La Concordia de Hierro sigue reclutando contingentes orcos para el frente contra Vaelira."
+  ]
+}

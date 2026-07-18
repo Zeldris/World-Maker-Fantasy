@@ -1,0 +1,11 @@
+{
+  "worldSlug": "helek-sirik",
+  "characterName": "Gorhorn",
+  "characterArchetype": "Guerrero superviviente del clan Maktor (Orco)",
+  "characterOrigin": "Único superviviente de un clan orco aniquilado como carne de cañón por el mando Goirntes.",
+  "characterMotivation": "Que la muerte de su clan signifique algo, y restaurar el nombre de los Maktor.",
+  "attributes": { "fuerza": 18, "destreza": 9, "sigilo": 5, "voluntad": 12, "carisma": 8, "arcano": 8 },
+  "portraitInitial": "G",
+  "introCharacterText": "Gorhorn llega a las tierras de Helek Sirik. Que la muerte de su clan signifique algo. Todo lo que ocurra a partir de ahora empieza aquí.",
+  "introWorldText": "El mundo de Helek Sirik sigue su curso, ajeno por ahora a la llegada de un nuevo actor en la historia."
+}
