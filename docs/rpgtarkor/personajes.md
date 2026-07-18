@@ -1,0 +1,104 @@
+# Helek Sirik — Personajes del Presente
+
+[← Volver al índice del mundo](../07-mundo-helek-sirik.md)
+
+*Los 8 personajes pregenerados, sus atributos jugables, los conceptos de Magia/Poder de Semilla, y ganchos de aventura concretos para las partidas de test de Gorhorn.*
+
+---
+
+*Nota de escala: tras la catastrófica Guerra de la Isla Cambiante, las poblaciones de ambos continentes quedaron reducidas a mínimos históricos. Hoy, la civilización más numerosa de Helek Sirik no supera los **6.000 miembros**. Es un mundo pequeño, frágil e íntimo: cada pérdida se nota, cada figura relevante es conocida por su nombre en su territorio. Y con la amenaza en el norte, es hora de que la aventura comience.*
+
+Ninguno de los ocho se conoce entre sí al comienzo de la historia. Parten de puntos distintos del mapa, de vidas humildes, sin poder ni recursos, y cada uno tiene su propio motivo para acabar saliendo de su vida conocida. Sus caminos aún no se han cruzado.
+
+### 1. KELIFE — Sael Vhorn
+- **Personalidad**: observador, prudente hasta el exceso, incómodo con la atención; su piel lo delata constantemente, así que ha aprendido a esconder las manos y a hablar poco.
+- **Facultades**: su piel cristalina cambia con la edad y el estado emocional. Posee la capacidad de **leer tensiones estructurales** en materiales y cristales (detecta grietas y fallos antes de que ocurran).
+- **Historia**: hijo de talladores de cristal de una casa Kelife menor. Durante la ruptura de la contención, una esquirla cargada de magia salvaje llegó al taller familiar. Sael vio una grieta invisible para los demás: el augurio de que la casa noble que los contrataba planeaba huir con el dinero del gremio para financiar la guerra. Nadie le creyó. Cuando ocurrió, el taller quebró, pero Sael comprendió que su don era real y que no podía quedarse quieto.
+
+### 2. GOIRNTES — Dessa Kaltrenn
+- **Personalidad**: disciplinada hasta lo rígido, incapaz de tolerar la injusticia procedimental aunque la orden se lo exija; su frialdad es una coraza aprendida.
+- **Facultades**: percibe el "orden" de las cosas de forma casi física. El caos, las mentiras o una jerarquía rota le causan incomodidad tangible que canaliza en un instinto táctico agudo: detecta al instante el punto débil de una formación, plan o argumento.
+- **Historia**: soldado rasa de la guardia menor de Berig. Fue una de las encargadas de escoltar el sello de contención hasta la isla la noche en que la facción radical lo rompió. Vio que no hubo sabotaje de Vaelira, sino una traición interna. Denunciarlo por canales oficiales significaba morir; callarlo la destrozaba por dentro. Desertó esa misma noche.
+
+### 3. KALISAR — Ithren Vosk
+- **Personalidad**: amable casi hasta lo desconcertante; profundamente cansado de que su pueblo deba disculparse constantemente por su reputación de asesinos.
+- **Facultades**: agilidad y sigilo extraordinarios, resistencia natural a ser detectado en sombra. Piel que absorbe la luz. Sufre con la luz directa (quemazón, visión distorsionada), lo que limita sus acciones diurnas.
+- **Historia**: criado para el espionaje debido a la extrema vulnerabilidad de su reino. Su primera misión real tras la alianza fue infiltrarse en un puesto Goirntes para investigar la ruptura. Lo que descubrió contradice la versión de su propio bando, y ahora carga con una verdad que nadie quiere escuchar de boca de un Kalisar.
+
+### 4. JUSALY — Amonir Thess
+- **Personalidad**: paciente, mide el tiempo en estaciones. Perder su tierra lo ha roto por dentro de una forma que aún no logra comprender.
+- **Facultades**: vínculo vegetal; puede acelerar la curación de heridas usando cataplasmas vivas y "escucha" el estado de la tierra como un pulso. Longevidad muy superior a la media.
+- **Historia**: agricultor en Vaelira. Su aldea fue arrasada por la magia salvaje liberada tras la ruptura de la isla, que corrompió la tierra de sus ancestros. Sin hogar ni cultivos, viaja buscando una forma o conocimiento capaz de revertir la corrupción de la tierra.
+
+### 5. ORCOS — Gorhorn (del clan Maktor)
+*Personaje elegido por la autora para sus propios tests de juego — por eso tiene más desarrollo que el resto (intencionado, no un desequilibrio a corregir). Ver [areas.md](areas.md#los-clanes-orcos) para el detalle de su clan y cultura.*
+
+- **Personalidad**: orgulloso pero no arrogante — su honor es la única moneda que le queda y lo cuida como si fuera oro. Pese a su apariencia tosca es un ser inteligente, quizás el orco macho que más se acerca a la inteligencia de las hembras. Justo pero bárbaro: siempre se inclina por la solución más justa, con una personalidad "afable" sorprendente para un orco. Pero como todo orco, la paciencia no es su punto fuerte, y cuando la pierde se puede ver al "verdadero orco" que hay en él. Esta personalidad tan extraña para un orco viene de sus viajes en la infancia y de su adaptabilidad para aprender y entender aquello que le rodea (perspicaz).
+- **Facultades**: fuerza física colosal, instinto de combate devastador a corta distancia y alta resistencia al dolor. Posee una comunión especial con la naturaleza que le permite, con esfuerzo, domar a las criaturas más poderosas de su territorio.
+- **Historia**: nació en las llanuras de arena roja. Su madre murió al darle a luz y su padre murió poco después, al retar al antiguo jefe del Clan Serhu en un combate individual por el honor de su tribu. A los 7 años (los orcos alcanzan la madurez a los 10 años y suelen llegar a los 40-50, sobre todo las hembras, algunas de las cuales han llegado a los 64) partió a explorar el continente y sirvió como trabajador para las diferentes razas, casi como un esclavo. A los 14 años, como es costumbre, volvió a su tierra y fue entrenado como guerrero por su clan durante 4 años — donde por fin fue feliz y tratado con respeto. A los 18 años fue enviado a la Concordia de Hierro como contingente obligatorio. Su clan fue aniquilado en las escaramuzas fronterizas al ser usado como carne de cañón por el mando Goirntes. Sobrevivió a duras penas y ahora lucha de forma independiente para que la muerte de su clan no sea en vano y para restaurar el nombre de los Maktor.
+- **Aspecto**: los colores propios de los orcos del desierto. Mide 1,98m (la gran mayoría de orcos miden 2,10m de media), corpulento, colmillos medios — uno de ellos lleva una pequeña prótesis de hielo sílice para mantener la punta del colmillo fija al resto (perdió el diente mientras trabajaba en las minas de hielo sílice para los orcos de esa tribu durante 3 meses, cuando otro orco se encaprichó de él e intentó amedrentarlo; Gorhorn, que nunca hablaba y pocas veces se expresaba, estalló en cólera y se enzarzó en una pelea con el orco adulto que le doblaba en tamaño). El material de hielo sílice lo consiguió haciendo amistad con otro orco de la tribu de Cristal Helado (Hagar), con quien entabló amistad durante esos 3 meses. Pelo negro con tonos grises que terminan en pequeñas trenzas con apliques azules y matices blancos (hielo sílice). Perilla que se divide en el mentón en 2 trenzas algo tupidas, con enganches de hueso (vértebras modificadas) a modo de abalorio y sujeción. En la espalda tiene 3 cicatrices amplias de los latigazos de cuando era joven y realizaba trabajos forzados.
+- **Inventario inicial**: un hacha de guerra rota que usa como maza, un cuchillo de hielo sílice y raciones para 5 días. Pecho descubierto con un arnés de cuero, pantalones de piel con pequeños detalles de pelo de cornamenta; por encima, una capa de piel de gargantúa con plumas de sombras de Kroj (decorativas), atada a modo de falda que usa en zonas frías durante los largos viajes para cubrirse de las inclemencias del tiempo. Atado con cuerdas en la espalda lleva un tótem de madera de ciénaga que representa al Clan Maktor — el artefacto que los Maktor conservaban de sus ancestros y predecesores, el objeto más importante para Gorhorn.
+
+### 6. NABIEUS — Yerin Slaad
+- **Personalidad**: observador silencioso, casi invisible. Pasar desapercibido ha sido su único método de supervivencia.
+- **Facultades**: movimiento absolutamente insonoro; puede permanecer inmóvil sin ser detectado. Identifica mentiras e intenciones en los silencios de una conversación.
+- **Historia**: mensajero de bajo rango que entregaba correspondencia sellada sin hacer preguntas. Una de las cartas que entregó una semana antes de la ruptura contenía, sin saberlo él entonces, las instrucciones para el sabotaje de la facción radical. La culpa de haber sido el cómplice involuntario de la guerra lo atormenta.
+
+### 7. FAERUS — Riko (de la Manada Rota)
+- **Personalidad**: instintivo y con mentalidad de manada (proteger a los suyos), a pesar de haberlo perdido todo.
+- **Facultades**: cambio de postura fluido de bípeda (manipulación de herramientas) a cuadrúpeda (velocidad extrema y sigilo). Sentidos hiperdesarrollados e inteligencia sobresaliente bajo una apariencia salvaje.
+- **Historia**: cazador de las fronteras de Berig. Regresó para encontrar su territorio devastado por la magia salvaje. Sin saber si los supervivientes huyeron o murieron, viaja buscando cualquier rastro u olor que lo guíe de vuelta a su gente.
+
+### 8. ILVENAR — Cassia Von-Thair
+- **Personalidad**: obsesivamente curiosa; su neutralidad natural la hace sentir ajena en cualquier bando, incluido el suyo.
+- **Facultades**: psicometría táctil (al tocar un objeto o lugar, percibe fragmentos sensoriales de su pasado). Memoria perfecta; su piel de pergamino registra físicamente lo que experimenta.
+- **Historia**: aprendiz de archivista. Enviada a documentar los restos de la ruptura en una comisión conjunta de paz. Al tocar el sello roto, vio la huella de una tercera presencia que no era ni de Vaelira ni de Berig. Al intentar reportarlo, su informe fue censurado por ambos bandos para no entorpecer la narrativa de guerra.
+
+## Poderes más allá de la magia (añadido 2026-07-17, Claude)
+
+Dos conceptos nuevos que estaban implícitos en las facultades raciales pero sin nombre ni número — necesarios para que la tabla ampliada de más abajo signifique algo en vez de ser solo cabeceras vacías:
+
+- **Magia** (distinta de `Arcano`): mientras que `Arcano` es específicamente el poder salvaje nacido de Tarkor —el único que hoy tira dados en el motor de juego, casi exclusivo de orcos y vida mutada—, **Magia** mide la afinidad narrativa de un personaje con las otras 5 escuelas del contrato de mundo (`elementos/oscura/purificadora/naturaleza/dominio`). Cada raza "diseñada" hereda un sabor de magia del dominio de su Semilla creadora: Kelife/Liania → *dominio* (materia), Kalisar/Sezix → *oscura*, Jusaly → *naturaleza*, Ilvenar/Berd → *dominio* (información), Nabieus/Kroj → *oscura*. Por ahora es solo color narrativo para el Narrador, no una tirada propia (ver pendiente técnico en el [índice del mundo, § 10](../07-mundo-helek-sirik.md)).
+- **Poder de Semilla**: fuerza de la conexión innata de una raza con la Semilla que la creó — es, en números, lo que ya describía en prosa cada "Facultad" racial (leer tensiones, psicometría, sigilo absoluto...). Un Poder de Semilla alto no es "más magia", es más cercanía con el dominio original de esa Semilla, para bien o para mal. Los Orcos son la excepción: no tienen una Semilla diseñadora propia (nacieron del Estallido de Tarkor, caótico por definición), así que su Poder de Semilla es más bajo y errático que el de las razas diseñadas, aunque su comunión con la naturaleza salvaje cuenta como una expresión de ello.
+- **Inteligencia** y **Moral** se separan de Voluntad/Carisma a propósito: Voluntad es determinación activa (aguantar, insistir, resistir presión externa), Moral es entereza pasiva ante el horror, la pérdida o el miedo (no quebrarse por dentro); Inteligencia es agudeza mental pura (memoria, resolución de problemas), distinta de Carisma (persuasión social).
+- Las 4 **Resistencias** son capacidad de aguantar cada tipo de daño/exposición — más relevantes para partidas donde el entorno (frío de Cristal Helado, calor de las Llanuras) o los efectos mágicos/de Semilla sean un obstáculo real, no solo decorado.
+
+## Atributos jugables (añadido 2026-07-17, ampliado y rellenado 2026-07-17)
+
+Presupuesto de creación ~60 puntos (decisión de producto 3, [02-decisiones.md](../02-decisiones.md)) para las 6 estadísticas **jugables** (Fuerza–Arcano, rango 4–18) — estas son elección real del jugador y las únicas que el motor de dados usa hoy. **Gorhorn es el personaje de pruebas** — se prioriza que esté listo primero; el resto se añade para tener los 8 completos, pero el mundo se irá ampliando con lo que surja jugando partidas de test, no todo tiene que estar cerrado ya.
+
+> **Nota sobre las 9 columnas nuevas:** a diferencia de las 6 jugables, Inteligencia/Magia/Poder de semilla/Moral/Resistencias son **rasgos raciales y narrativos**, no puntos que el jugador reparte — por eso no están sujetos al presupuesto de 60 y sus valores (propuesta de Claude, ajustable) reflejan directamente lo que ya cuenta la biografía de cada uno. El motor de juego sigue sin usarlos todavía (ver pendiente técnico en el [índice del mundo, § 10](../07-mundo-helek-sirik.md)) — quedan documentados para cuando se decida construir esa capa.
+
+| Personaje | Fuerza | Destreza | Sigilo | Voluntad | Carisma | Arcano | Inteligencia | Magia | Poder de semilla | Moral | Resistencia física | Resistencia mágica | Resistencia semilla | Resistencia al frío | Resistencia al calor | Total (jugables) |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| **Gorhorn** (Orcos) | 18 | 9 | 5 | 12 | 8 | 8 | 10 | 3 | 11 | 15 | 16 | 7 | 4 | 6 | 14 | 60 |
+| Sael Vhorn (Kelife) | 6 | 12 | 11 | 15 | 7 | 9 | 13 | 6 | 12 | 8 | 6 | 9 | 10 | 8 | 8 | 60 |
+| Dessa Kaltrenn (Goirntes) | 13 | 12 | 6 | 15 | 9 | 5 | 11 | 3 | 10 | 9 | 12 | 6 | 9 | 7 | 7 | 60 |
+| Ithren Vosk (Kalisar) | 7 | 15 | 17 | 9 | 8 | 4 | 9 | 5 | 13 | 10 | 6 | 8 | 11 | 8 | 7 | 60 |
+| Amonir Thess (Jusaly) | 11 | 8 | 6 | 16 | 7 | 12 | 8 | 8 | 12 | 11 | 9 | 9 | 11 | 6 | 9 | 60 |
+| Yerin Slaad (Nabieus) | 6 | 11 | 17 | 14 | 6 | 6 | 10 | 4 | 12 | 8 | 6 | 8 | 10 | 8 | 7 | 60 |
+| Riko (Faerus) | 12 | 16 | 13 | 9 | 5 | 5 | 12 | 3 | 10 | 9 | 11 | 6 | 8 | 7 | 7 | 60 |
+| Cassia Von-Thair (Ilvenar) | 5 | 9 | 8 | 16 | 10 | 12 | 14 | 7 | 13 | 9 | 5 | 10 | 12 | 7 | 7 | 60 |
+
+Razonamiento breve (jugables): Gorhorn (fuerza colosal, resistencia al dolor/comunión) → fuerza y voluntad altas; Sael (percepción de tensiones, cauteloso) → voluntad y arcano altos, carisma bajo; Dessa (soldado, instinto táctico) → fuerza/voluntad altas, sigilo bajo; Ithren (espía) → sigilo/destreza muy altos; Amonir (vínculo vegetal, paciencia) → voluntad/arcano altos, destreza baja; Yerin (sigilo absoluto, percibe mentiras) → sigilo/voluntad altos; Riko (cazador, sentidos) → destreza/sigilo altos; Cassia (psicometría, memoria) → voluntad/arcano altos, fuerza baja.
+
+Razonamiento breve (nuevas): Poder de Semilla más alto en las razas con vínculo directo a su Semilla (Cassia/Ithren/Sael/Yerin, todas con facultades muy específicas de su Semilla) y más bajo/errático en Gorhorn (sin Semilla propia); Resistencia física más alta en los físicamente duros (Gorhorn, Dessa, Riko) y más baja en los frágiles/cerebrales (Cassia, Sael, Ithren, Yerin); Moral más alta en quien ya perdió todo y sigue en pie (Gorhorn) y más baja en quien carga con culpa o vergüenza activa (Yerin, Sael); Magia más alta donde el vínculo de Semilla es más "activo" narrativamente (Amonir/naturaleza, Cassia/dominio) y casi nula en Gorhorn y Dessa, cuyos poderes no son de tipo mágico.
+
+*(Valores de partida, no cerrados para siempre — se pueden ajustar jugando. Las 9 columnas nuevas son propuesta de Claude a partir de las biografías ya existentes — revisar y tocar sin problema.)*
+
+## Ganchos de aventura — Llanuras del Viento Rojo (Gorhorn)
+
+Material concreto para el Narrador y el generador de alrededores (`/entorno`) mientras Gorhorn viaja solo. Pensados para encajar con hechos ya establecidos (sin luna convencional, brillo perlado nocturno; Concordia de Hierro reclutando; Gorhorn sin campamento ni aliados):
+
+1. **Rezagados de la Concordia**: una patrulla pequeña de Goirntes o de otro clan orco alistado, buscando desertores o rezagados del frente — Gorhorn encaja en ambas categorías a ojos de cualquiera que no conozca su historia.
+2. **Restos de una carrera de Corredores de Cauce**: un grupo de jóvenes de algún clan (Serhu, probablemente) cazando en una prueba de valor ritual — posible primer contacto de Gorhorn con orcos vivos desde la aniquilación de los Maktor.
+3. **Nido de Espina del Viento**: peligro ambiental puro, sin intención — pone a prueba sigilo/percepción antes que fuerza.
+4. **Un Maktor superviviente inesperado**: rumor o indicio (un tótem roto, una marca de clan) de que Gorhorn no es el único superviviente — gancho de largo recorrido, no algo para resolver en una sola partida de test.
+5. **Tormenta de arena magnética**: fenómeno ya establecido en la geografía — puede usarse como obstáculo de viaje puro (orientación, resistencia) sin necesidad de introducir ningún personaje nuevo.
+6. **Un Kort'ikar en apuros**: encuentro con un jefe de guerra de otro clan (posiblemente Serhu) en una situación comprometida — abre la puerta a que Gorhorn decida ayudar, negociar o pasar de largo, con consecuencias reales para su reputación entre los clanes.
+
+*(Lista abierta — pensada para dar variedad a las respuestas del generador de alrededores, no como guion fijo. Ampliar con lo que surja jugando, tal y como se decidió desde el principio.)*
+
+---
+
+**Ver también:** [Génesis y Formación](genesis.md) · [Áreas y geografía](areas.md) · [Historia y presente](historia.md) · [Razas](razas.md) · [NPCs](npcs.md)
