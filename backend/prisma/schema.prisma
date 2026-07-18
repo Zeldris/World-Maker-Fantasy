@@ -1,0 +1,350 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  // Pooler de transacciones de Supabase (puerto 6543, IPv4) — la usa la app en tiempo de ejecución.
+  // No usamos la conexión directa (db.xxxxx.supabase.co): esa solo tiene IPv6 en el tier
+  // gratuito y no era alcanzable desde esta red.
+  url       = env("DATABASE_URL")
+  // Pooler de sesión (puerto 5432, IPv4) — el que necesitan las migraciones de Prisma.
+  directUrl = env("DIRECT_URL")
+  // NOTA: la extensión `vector` se habilitó a mano con `prisma db execute` (ver decisión RAG,
+  // 2026-07-17), no vía `extensions = [...]` aquí — Supabase ya trae varias extensiones propias
+  // preinstaladas (pgcrypto, uuid-ossp, pg_stat_statements, supabase_vault) que Prisma no gestiona;
+  // declarar `extensions` activa el preview feature postgresqlExtensions y hace que Prisma detecte
+  // esas extensiones ajenas como "drift" y pida resetear la base de datos entera. Mejor no declararla.
+}
+
+enum Lethality {
+  BAJA
+  MEDIA
+  ALTA
+}
+
+enum LogChannel {
+  CHARACTER
+  WORLD
+}
+
+/// Decisión de producto 2 (02-decisiones.md): sin login real por ahora,
+/// pero la tabla existe desde ya para no remodelar `Save` cuando se añada auth de verdad.
+model User {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+
+  saves Save[]
+}
+
+/// Plantilla de mundo del catálogo (distinta de la instancia jugada — ver WorldState).
+model World {
+  id         String    @id @default(cuid())
+  slug       String    @unique
+  name       String
+  tagline    String
+  synopsis   String
+  tone       String
+  lethality  Lethality
+  factions   String[]
+  /// Tema de color por mundo (accent300-600, accent2 300-600) — mismo shape que WorldTheme en el frontend.
+  theme      Json
+  createdAt  DateTime  @default(now())
+
+  pregeneratedCharacters PregeneratedCharacter[]
+  saves                  Save[]
+  loreChunks             LoreChunk[]
+}
+
+/// Personajes preseleccionables asociados a un mundo (plantilla, no instancia jugada).
+model PregeneratedCharacter {
+  id              String @id @default(cuid())
+  worldId         String
+  world           World  @relation(fields: [worldId], references: [id], onDelete: Cascade)
+  name            String
+  archetype       String
+  origin          String
+  motivation      String
+  /// AttributeBlock: { fuerza, destreza, sigilo, voluntad, carisma, arcano }
+  attributes      Json
+  portraitInitial String
+}
+
+/// Una partida: mundo elegido + personaje (copia editable, no referencia viva a la plantilla) + su WorldState.
+model Save {
+  id                       String    @id @default(cuid())
+  userId                   String
+  user                     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  worldId                  String
+  world                    World     @relation(fields: [worldId], references: [id])
+  pregeneratedCharacterId  String?
+
+  characterName       String
+  characterArchetype  String
+  characterOrigin     String
+  characterMotivation String
+  /// AttributeBlock, copiado al crear la partida (independiente de la plantilla a partir de aquí)
+  attributes          Json
+  portraitInitial     String
+
+  /// Niveles/XP (docs/10-niveles-xp-reino.md, reversión 2026-07-18 de la decisión de mecánicas 4).
+  level                  Int @default(1)
+  xp                     Int @default(0)
+  pendingAttributePoints Int @default(0)
+
+  /// Nombre del reino/dominio si el jugador lo bautiza — null = aún sin reino (docs/10 § 5.1).
+  kingdomName String?
+
+  /// Profesión adoptada del catálogo curado (docs/09-panel-personaje.md § 2) — contexto
+  /// narrativo, sin bonificadores mecánicos (misma filosofía que el inventario, decisión 5).
+  profession String?
+
+  createdAt    DateTime @default(now())
+  lastPlayedAt DateTime @default(now())
+
+  worldState       WorldState?
+  logEntries       LogEntry[]
+  characterTransit CharacterTransit?
+  sessionSummaries SessionSummary[]
+  inventoryItems   InventoryItem[]
+  companions       Companion[]
+  territories      Territory[]
+  buildings        Building[]
+  subjects         Subject[]
+  savedActions     SavedAction[]
+
+  @@index([userId])
+}
+
+/// La fuente de verdad de una partida — no es prosa, son hechos estructurados.
+/// Se lee/escribe en cada llamada al Narrador/Cronista para que nunca se contradigan (ver 01-analisis-producto.md § 4).
+model WorldState {
+  id      String @id @default(cuid())
+  saveId  String @unique
+  save    Save   @relation(fields: [saveId], references: [id], onDelete: Cascade)
+
+  fictionalDateLabel String   @default("Día 1, mañana")
+  /// Hechos establecidos, p. ej. ["el puente está destruido", "el jugador tiene la carta comprometedora"]
+  facts               Json    @default("[]")
+  /// Eventos pendientes de la agenda del mundo (facciones, NPCs) que el Cronista puede hacer "vencer"
+  agenda              Json    @default("[]")
+  factionsStatus      Json    @default("{}")
+
+  /// Decisión de producto 4 (revisada): el reloj avanza mientras el backend está corriendo y se pausa si no —
+  /// este campo es el último momento real en que el worker tocó este mundo, para calcular el siguiente tick.
+  lastTickedAt DateTime @default(now())
+
+  updatedAt DateTime @updatedAt
+}
+
+/// Entrada de log append-only. `roll` solo presente en entradas del canal CHARACTER que resuelven una tirada.
+model LogEntry {
+  id             String     @id @default(cuid())
+  saveId         String
+  save           Save       @relation(fields: [saveId], references: [id], onDelete: Cascade)
+  channel        LogChannel
+  text           String
+  /// RollInfo: { attribute, value, difficulty, result, success } — null si la entrada no es una tirada
+  roll           Json?
+  isPlayerAction Boolean    @default(false)
+  timeLabel      String
+  /// XP ganada en esta entrada, si alguna (docs/10-niveles-xp-reino.md § 6) — permite mostrar
+  /// "+50 XP" en el Diario y auditar el nivel sumando el log.
+  xpDelta        Int?
+  createdAt      DateTime   @default(now())
+
+  @@index([saveId, createdAt])
+}
+
+/// Personaje "ocupado/en tránsito" durante una acción larga (viajar, descansar varios días...).
+/// Como mucho una fila activa por partida — el personaje solo puede estar haciendo una cosa larga a la vez.
+model CharacterTransit {
+  id          String   @id @default(cuid())
+  saveId      String   @unique
+  save        Save     @relation(fields: [saveId], references: [id], onDelete: Cascade)
+  activity    String
+  busyUntil   DateTime
+  zoneContext Json?
+  createdAt   DateTime @default(now())
+}
+
+/// Objeto que el personaje lleva encima o ha conseguido. Deliberadamente sin stats/bonificadores
+/// (decisión de mecánicas 6, 06-decisiones-mecanicas.md): es contexto para el Narrador, no una
+/// pieza de un sistema de itemización con números propios.
+model InventoryItem {
+  id          String   @id @default(cuid())
+  saveId      String
+  save        Save     @relation(fields: [saveId], references: [id], onDelete: Cascade)
+  name        String
+  description String
+  /// De dónde salió (botín, inicial, regalo de un NPC...) — contexto narrativo, no categoría mecánica.
+  origin      String?
+  createdAt   DateTime @default(now())
+
+  @@index([saveId])
+}
+
+/// Aliado, súbdito o acompañante del personaje. Igual que InventoryItem: estado narrativo
+/// persistido para que el Narrador no lo olvide entre turnos, sin capa mecánica propia todavía.
+model Companion {
+  id        String   @id @default(cuid())
+  saveId    String
+  save      Save     @relation(fields: [saveId], references: [id], onDelete: Cascade)
+  name      String
+  /// p. ej. "aliado", "súbdito", "compañero de viaje" — libre, no un enum cerrado todavía.
+  role      String
+  notes     String
+  createdAt DateTime @default(now())
+
+  @@index([saveId])
+}
+
+enum LoreChunkType {
+  FAUNA
+  FLORA
+  NPC
+  CLAN
+  REGION
+  LOOT
+  CULTURA
+  PERSONAJE
+  CONTRATO
+  /// Gancho de aventura — material concreto para que el Narrador/entorno introduzcan un
+  /// suceso o encuentro, no un hecho fijo del mundo (docs/rpgtarkor/personajes.md § Ganchos).
+  GANCHO
+}
+
+/// Fragmento de lore indexado para recuperación semántica (RAG, decisión 2026-07-17: en vez de
+/// que el frontend mande una lista fija de "hechos del mundo" o que un humano los cure a mano por
+/// región, el backend embebe la acción del jugador + el resumen del personaje y recupera los
+/// fragmentos más relevantes de esta tabla — así el tamaño del contexto que se manda a Ollama no
+/// crece con el tamaño total del lore, solo con lo relevante a la situación actual.
+/// Fuente de verdad editorial: sigue siendo `docs/rpgtarkor/*.md` (para humanos); estos fragmentos
+/// se curan a partir de ahí y se reindexan con `npm run reindex-lore` cada vez que el lore cambia.
+model LoreChunk {
+  id        String        @id @default(cuid())
+  worldId   String
+  world     World         @relation(fields: [worldId], references: [id], onDelete: Cascade)
+  type      LoreChunkType
+  title     String
+  text      String
+  /// Palabras clave sueltas (raza, región, clan...) — no se usan para filtrar la búsqueda semántica,
+  /// solo como metadato de depuración/trazabilidad hacia el .md de origen.
+  tags      String[]
+  sourceDoc String
+  /// nomic-embed-text produce vectores de 768 dimensiones. Tipo no soportado nativamente por
+  /// Prisma Client — se escribe/lee con SQL crudo ($executeRaw/$queryRaw) en lib/embeddings.ts.
+  embedding Unsupported("vector(768)")?
+  createdAt DateTime      @default(now())
+
+  @@index([worldId])
+}
+
+/// Habilidad guardada: un prompt reutilizable que el jugador puede lanzar directo al chat.
+/// El cupo lo da el nivel (docs/10-niveles-xp-reino.md § 4.3): 3 + floor(nivel/2).
+model SavedAction {
+  id          String   @id @default(cuid())
+  saveId      String
+  save        Save     @relation(fields: [saveId], references: [id], onDelete: Cascade)
+  name        String
+  promptText  String
+  /// Un emoji — icono del botón en el panel de Habilidades.
+  icon        String   @default("✨")
+  /// Texto corto para el tooltip al pasar el ratón — qué hace la habilidad, de cara al jugador.
+  description String   @default("")
+  /// Habilidades "de serie" (creadas al iniciar la partida, ej. las de Gorhorn) no cuentan
+  /// contra el cupo por nivel (habilidadSlotsForLevel) — ese cupo es solo para las que el
+  /// jugador va creando él mismo. Ver docs/10-niveles-xp-reino.md § 4.3.
+  isStarting  Boolean  @default(false)
+  /// Libre, no enum cerrado (misma razón que Companion.role): "combate", "exploracion",
+  /// "social" son las sugeridas en la UI, pero no hay lista cerrada de categorías posibles.
+  /// Como en cualquier RPG: la barra de fuera de combate no es la misma que la de dentro.
+  category    String   @default("general")
+  createdAt   DateTime @default(now())
+
+  @@index([saveId])
+}
+
+enum TerritoryControl {
+  RECLAMADO
+  DISPUTADO
+  CONSOLIDADO
+  PERDIDO
+}
+
+/// Zona/territorio bajo control (o reclamación) del personaje (docs/10-niveles-xp-reino.md § 5.2).
+model Territory {
+  id          String           @id @default(cuid())
+  saveId      String
+  save        Save             @relation(fields: [saveId], references: [id], onDelete: Cascade)
+  name        String
+  /// Nombre de región del lore (docs/rpgtarkor/areas.md) — string libre, no FK: el lore vive en .md
+  region      String?
+  description String
+  control     TerritoryControl @default(RECLAMADO)
+  /// Población anónima estimada — los súbditos SIN nombre son un número, no filas (ver Subject)
+  population  Int              @default(0)
+  acquiredAt  DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  buildings Building[]
+  subjects  Subject[]
+
+  @@index([saveId])
+}
+
+enum BuildingStatus {
+  EN_CONSTRUCCION
+  ACTIVO
+  DANADO
+  ABANDONADO
+}
+
+/// Edificio/estructura construida o tomada por el personaje (docs/10-niveles-xp-reino.md § 5.2).
+model Building {
+  id          String         @id @default(cuid())
+  saveId      String
+  save        Save           @relation(fields: [saveId], references: [id], onDelete: Cascade)
+  /// Opcional: un refugio levantado en mitad del viaje no pertenece a ningún territorio
+  territoryId String?
+  territory   Territory?     @relation(fields: [territoryId], references: [id], onDelete: SetNull)
+  name        String
+  /// Tipo libre ("refugio", "granja", "taller", "muralla", "monumento"...) — no enum cerrado,
+  /// misma razón que Companion.role: no sabemos aún qué construirán los jugadores
+  kind        String
+  status      BuildingStatus @default(EN_CONSTRUCCION)
+  description String
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  @@index([saveId])
+}
+
+/// Súbdito CON NOMBRE — alguien que sigue/sirve al personaje ligado a su reino, no a su persona
+/// (eso es Companion). Ver docs/10-niveles-xp-reino.md § 5.2/§ 5.3.
+model Subject {
+  id          String     @id @default(cuid())
+  saveId      String
+  save        Save       @relation(fields: [saveId], references: [id], onDelete: Cascade)
+  territoryId String?
+  territory   Territory? @relation(fields: [territoryId], references: [id], onDelete: SetNull)
+  name        String
+  /// "capataz", "guerrera", "consejera", "granjero"... — libre
+  role        String
+  notes       String
+  createdAt   DateTime   @default(now())
+
+  @@index([saveId])
+}
+
+/// Resúmenes por capítulos — memoria de partida para no perder coherencia en partidas largas (riesgo 1 del análisis).
+model SessionSummary {
+  id             String   @id @default(cuid())
+  saveId         String
+  save           Save     @relation(fields: [saveId], references: [id], onDelete: Cascade)
+  chapterNumber  Int
+  summary        String
+  createdAt      DateTime @default(now())
+
+  @@index([saveId, chapterNumber])
+}
