@@ -1,0 +1,8 @@
+# backend/ y frontend/ tienen su propio .gitignore (node_modules, dist, .env).
+# Este cubre solo lo que podría aparecer a nivel raíz.
+.DS_Store
+Thumbs.db
+
+# Configuración local de Claude Code (permisos de sesión, locks) — específica de esta máquina,
+# no del proyecto.
+.claude/
