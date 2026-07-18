@@ -1,0 +1,284 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", system-ui, "Segoe UI", Roboto, sans-serif;
+  --font-serif: "Cinzel", Georgia, serif;
+
+  /* Madera — escala neutra base de toda la app (fondos, bordes, texto) */
+  --color-wood-950: #1b130c;
+  --color-wood-900: #241a10;
+  --color-wood-800: #332415;
+  --color-wood-700: #46311d;
+  --color-wood-600: #5c4126;
+  --color-wood-500: #7a5934;
+  --color-wood-400: #a3814f;
+  --color-wood-300: #c9a877;
+  --color-wood-200: #e3cba8;
+  --color-wood-100: #f1e4d0;
+
+  /* Hierro — clavos, remaches y bordes profundos */
+  --color-iron-900: #0e0b08;
+  --color-iron-800: #171310;
+  --color-iron-700: #221c16;
+
+  /* Acento tematizable por mundo — por defecto, el tema de Helek Sirik (cristal azul, "Origen Azul") */
+  --color-accent-300: #a8d8f0;
+  --color-accent-400: #7bc4e8;
+  --color-accent-500: #4aa8d8;
+  --color-accent-600: #3488b8;
+
+  /* Acento secundario tematizable por mundo — por defecto, Helek Sirik (hierro-acero de Berig) */
+  --color-accent2-300: #b0bec8;
+  --color-accent2-400: #8a9aa8;
+  --color-accent2-500: #6b7d8c;
+  --color-accent2-600: #52626f;
+
+  /* Fijos, no tematizables: estado de éxito/fallo, y el modo multijugador (fuera de cualquier mundo) */
+  --color-moss-400: #8fae6a;
+  --color-moss-500: #6f9450;
+  --color-moss-600: #587a3c;
+}
+
+html {
+  color-scheme: dark;
+}
+
+body {
+  margin: 0;
+  background: var(--color-wood-950);
+  color: var(--color-wood-100);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+#root {
+  min-height: 100svh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Tablones anchos para grandes superficies de fondo: costura oscura + veta de luz por tabla.
+   Un paso más oscuro que .plank-panel a propósito — así los paneles "flotan" sobre la pared. */
+.wood-grain {
+  background-image:
+    repeating-linear-gradient(
+      1deg,
+      rgba(0, 0, 0, 0.4) 0px,
+      rgba(0, 0, 0, 0.4) 2px,
+      rgba(255, 255, 255, 0.03) 2px,
+      rgba(255, 255, 255, 0.03) 3px,
+      transparent 3px,
+      transparent 96px
+    ),
+    linear-gradient(160deg, var(--color-wood-900), var(--color-wood-950) 70%);
+}
+
+/* Panel tipo "tablón": borde de hierro + costuras de tabla + esquinas con clavo */
+.plank-panel {
+  position: relative;
+  background-image:
+    repeating-linear-gradient(
+      1deg,
+      rgba(0, 0, 0, 0.35) 0px,
+      rgba(0, 0, 0, 0.35) 2px,
+      rgba(255, 255, 255, 0.04) 2px,
+      rgba(255, 255, 255, 0.04) 3px,
+      transparent 3px,
+      transparent 34px
+    ),
+    linear-gradient(155deg, var(--color-wood-800), var(--color-wood-900) 65%);
+  border: 1px solid var(--color-iron-700);
+  box-shadow:
+    inset 0 0 0 1px rgba(0, 0, 0, 0.35),
+    0 8px 24px -12px rgba(0, 0, 0, 0.7);
+}
+
+/* Banda de hierro — el "chrome" de mando (header, barra inferior): metal oscuro que
+   enmarca la madera del contenido, en vez de más madera plana */
+.iron-band {
+  background-image:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.04), transparent 45%),
+    linear-gradient(175deg, var(--color-iron-700), var(--color-iron-800) 60%, var(--color-iron-900));
+}
+
+/* Línea de luz de cristal — la firma del mundo activo (acento tematizable), usada como
+   separador fino entre el mando de hierro y el contenido de madera */
+.accent-hairline {
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    color-mix(in srgb, var(--color-accent-400) 70%, transparent) 50%,
+    transparent
+  );
+}
+.accent2-hairline {
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    color-mix(in srgb, var(--color-accent2-400) 60%, transparent) 50%,
+    transparent
+  );
+}
+
+/* Gema de cristal — marcador de identidad de cada canal (rombo con brillo propio) */
+.gem {
+  width: 9px;
+  height: 9px;
+  flex: none;
+  transform: rotate(45deg);
+  border-radius: 2px;
+  background: linear-gradient(135deg, var(--color-accent-300), var(--color-accent-600));
+  box-shadow: 0 0 8px color-mix(in srgb, var(--color-accent-500) 55%, transparent);
+}
+.gem2 {
+  width: 9px;
+  height: 9px;
+  flex: none;
+  transform: rotate(45deg);
+  border-radius: 2px;
+  background: linear-gradient(135deg, var(--color-accent2-300), var(--color-accent2-600));
+  box-shadow: 0 0 6px color-mix(in srgb, var(--color-accent2-500) 45%, transparent);
+}
+
+.rivet {
+  position: absolute;
+  width: 9px;
+  height: 9px;
+  border-radius: 999px;
+  background: radial-gradient(circle at 32% 30%, #4a443c 0%, var(--color-iron-800) 45%, var(--color-iron-900) 100%);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.06),
+    0 1px 2px rgba(0, 0, 0, 0.6);
+}
+.rivet-tl {
+  top: 8px;
+  left: 8px;
+}
+.rivet-tr {
+  top: 8px;
+  right: 8px;
+}
+.rivet-bl {
+  bottom: 8px;
+  left: 8px;
+}
+.rivet-br {
+  bottom: 8px;
+  right: 8px;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-wood-600);
+  border-radius: 999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-wood-500);
+}
+
+@keyframes pulse-soft {
+  0%,
+  100% {
+    opacity: 0.4;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+.animate-pulse-soft {
+  animation: pulse-soft 1.4s ease-in-out infinite;
+}
+
+/* Tarjeta "sellada" — estado seleccionado de tarjetas de mundo/personaje: en vez de un
+   outline plano, el borde y los remaches se encienden con el cristal del mundo */
+.card-selected {
+  border-color: color-mix(in srgb, var(--color-accent-500) 70%, var(--color-iron-700));
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--color-accent-500) 30%, transparent),
+    0 0 26px -8px color-mix(in srgb, var(--color-accent-500) 50%, transparent),
+    0 8px 24px -12px rgba(0, 0, 0, 0.7);
+}
+.card-selected .rivet {
+  background: radial-gradient(
+    circle at 32% 30%,
+    var(--color-accent-300) 0%,
+    var(--color-accent-500) 45%,
+    var(--color-accent-600) 100%
+  );
+  box-shadow: 0 0 6px color-mix(in srgb, var(--color-accent-500) 70%, transparent);
+}
+
+/* Entrada nueva en un log — aparece con presencia tras la espera larga */
+@keyframes entry-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.animate-entry-in {
+  animation: entry-in 0.45s ease-out both;
+}
+
+/* Panel deslizante inferior: overlay + subida con freno físico */
+@keyframes overlay-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+.animate-overlay-in {
+  animation: overlay-in 0.25s ease-out both;
+}
+@keyframes drawer-up {
+  from {
+    opacity: 0;
+    transform: translateY(28px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.animate-drawer-up {
+  animation: drawer-up 0.32s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* Barrido de luz lento sobre la tarjeta "pensando" — algo se mueve aunque tarde minutos */
+@keyframes sheen-sweep {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(100%);
+  }
+}
+.thinking-sheen {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(100deg, transparent 30%, rgba(255, 255, 255, 0.05) 50%, transparent 70%);
+  animation: sheen-sweep 3s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-entry-in,
+  .animate-overlay-in,
+  .animate-drawer-up,
+  .thinking-sheen {
+    animation: none;
+  }
+}
