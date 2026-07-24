@@ -6,9 +6,10 @@ export interface Profession {
 
 // Catálogo curado a partir de docs/rpgtarkor/areas.md y personajes.md — centrado en lo que
 // tendría sentido para un orco de las Llanuras del Viento Rojo (el continente/región de Gorhorn,
-// el único personaje probado). Contenido narrativo, sin bonificadores mecánicos (misma
-// filosofía que el inventario, docs/06-decisiones-mecanicas.md decisión 5) — ejercer una
-// profesión da contexto al Narrador, no un número fijo a una tirada.
+// el único personaje probado). `id` es también el `oficio` que referencian las recetas de
+// crafting.ts/construction.ts (sesión de diseño 2026-07-23, ProfessionProgress en el backend):
+// ejercerla sigue dando contexto narrativo, pero además el oficio ahora sube de nivel de verdad
+// craftereando/construyendo con él (backend/src/services/professionProgress.ts).
 export const professions: Profession[] = [
   {
     id: 'cazador',
@@ -31,7 +32,8 @@ export const professions: Profession[] = [
   {
     id: 'sanador',
     name: 'Sanador de hierbas de las Llanuras',
-    description: 'Conoce las hierbas y ungüentos que se dan en terreno árido — no magia, remedios de verdad aprendidos por necesidad.',
+    description:
+      'Conoce la Salvia del Polvo y otras hierbas que crecen en terreno árido — no magia, remedios de verdad para cortar hemorragias y limpiar heridas, aprendidos por necesidad.',
   },
   {
     id: 'rastreador',
@@ -44,5 +46,17 @@ export const professions: Profession[] = [
     name: 'Mercader de paso',
     description:
       'Comercia en El Cruce de las Cenizas y otros puntos de paso, moviéndose entre el territorio orco y las patrullas de la Concordia de Hierro sin pertenecer del todo a ninguno.',
+  },
+  {
+    id: 'carpintero',
+    name: 'Carpintero de campamento',
+    description:
+      'Trabaja madera de matorral de cuerno y de los Trepadores Ocaso de la Ciénaga — chozas, atalayas y armazones, todo lo que un clan sin ciudad fija necesita construir con lo que hay a mano.',
+  },
+  {
+    id: 'curtidor',
+    name: 'Curtidor de pieles',
+    description:
+      'Cura y trabaja las pieles de la caza — de Corredor de Cauce a gargantúa — para ropa, arneses y correas. Oficio silencioso, imprescindible en cualquier campamento orco.',
   },
 ]

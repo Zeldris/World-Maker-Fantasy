@@ -1,6 +1,17 @@
 import type { Character } from '../types'
 import { AttributeBars } from './AttributeBars'
 import { PanelRivets } from './Rivet'
+import { attributeLabels } from '../lib/dice'
+
+// Icono de arquetipo (roadmap de rediseño visual, Fable 2026-07-20, Nivel 1) — agnóstico de lore,
+// es organización de información, no identidad de mundo: combate/guardia primero, luego oficios
+// de conocimiento/cristal, el resto cae en el icono neutro de protección.
+function archetypeIcon(archetype: string): string {
+  const lower = archetype.toLowerCase()
+  if (/guerrer|combat|espía|espia|cazador|guardia/.test(lower)) return '⚔️'
+  if (/cristal|tallador|arcano|archivista|mag/.test(lower)) return '💎'
+  return '🛡️'
+}
 
 export function CharacterCard({
   character,
@@ -33,12 +44,14 @@ export function CharacterCard({
           <h3 className={`font-serif text-base tracking-wide ${selected ? 'text-accent-300' : 'text-wood-100'}`}>
             {character.name}
           </h3>
-          <p className="text-xs text-wood-400">{character.archetype}</p>
+          <p className="text-xs text-wood-400">
+            {archetypeIcon(character.archetype)} {character.archetype}
+          </p>
         </div>
       </div>
       <p className="text-sm leading-relaxed text-wood-300">{character.origin}</p>
       <p className="text-xs italic text-wood-400">"{character.motivation}"</p>
-      <AttributeBars attributes={character.attributes} />
+      <AttributeBars attributes={character.attributes} labels={attributeLabels} />
     </button>
   )
 }

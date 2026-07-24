@@ -2,18 +2,34 @@
 export type Attribute = 'fuerza' | 'destreza' | 'sigilo' | 'voluntad' | 'carisma' | 'arcano'
 export type AttributeBlock = Record<Attribute, number>
 
+/// Grados de éxito (docs/08-acciones-por-tiempo.md § 5, roadmap 2026-07-19 — pendiente desde el
+/// diseño original, nunca implementado): misma tirada de siempre, lectura en tres zonas en vez de
+/// binaria — no añade ninguna llamada nueva, es leer distinto el mismo número.
+export type GradoExito = 'claro' | 'con_coste' | 'fallo'
+
 export interface RollResult {
   attribute: Attribute
   value: number
   roll: number
   result: number
   difficulty: number
+  /// true para 'claro' y 'con_coste' (la acción se completa en ambos) — se mantiene por
+  /// compatibilidad con todo el código que ya solo mira éxito/fallo (XP, materialización de
+  /// loot/despiece/producción...); gradoExito es la lectura más rica, solo para narrar.
   success: boolean
+  gradoExito: GradoExito
+}
+
+export function gradoExitoFor(result: number, difficulty: number): GradoExito {
+  if (result >= difficulty + 5) return 'claro'
+  if (result >= difficulty) return 'con_coste'
+  return 'fallo'
 }
 
 export function rollCheck(attributes: AttributeBlock, attribute: Attribute, difficulty: number): RollResult {
   const value = attributes[attribute]
   const roll = Math.floor(Math.random() * 20) + 1
   const result = roll + Math.floor(value / 2)
-  return { attribute, value, roll, result, difficulty, success: result >= difficulty }
+  const gradoExito = gradoExitoFor(result, difficulty)
+  return { attribute, value, roll, result, difficulty, success: gradoExito !== 'fallo', gradoExito }
 }

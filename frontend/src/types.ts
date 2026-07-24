@@ -2,6 +2,41 @@ export type Attribute = 'fuerza' | 'destreza' | 'sigilo' | 'voluntad' | 'carisma
 
 export type AttributeBlock = Record<Attribute, number>
 
+/// Atributos secundarios de PJ (sesión de diseño 2026-07-23) — nunca alimentan una tirada
+/// (dice.ts), solo comprobaciones de umbral (requisitos de objetos/construcciones/oficios).
+export type SecondaryAttribute =
+  | 'inteligencia'
+  | 'magia'
+  | 'poderSemilla'
+  | 'moral'
+  | 'resistenciaFisica'
+  | 'resistenciaMagica'
+  | 'resistenciaSemilla'
+  | 'resistenciaFrio'
+  | 'resistenciaCalor'
+
+export type SecondaryAttributeBlock = Record<SecondaryAttribute, number>
+
+/// Nivel de oficio (sesión de diseño 2026-07-23) — eje independiente del nivel de personaje, uno
+/// por profesión practicada alguna vez (`professionId` es el `id` de data/professions.ts).
+export interface ProfessionProgressInfo {
+  professionId: string
+  nivel: number
+  xp: number
+}
+
+/// Economía de Reino (sesión de diseño 2026-07-23) — null hasta que se funda el primer Territory.
+export interface KingdomStatsInfo {
+  poblacion: number
+  felicidad: number
+  comida: number
+  bebida: number
+  riqueza: number
+  soldados: number
+  trabajadores: number
+  visitantes: number
+}
+
 export interface WorldTheme {
   accent300: string
   accent400: string
@@ -41,9 +76,26 @@ export type LogChannel = 'character' | 'world'
 export interface RollInfo {
   attribute: Attribute
   value: number
+  /// Dado 1d20 en crudo (el backend ya lo manda dentro de este mismo objeto) — desglose real en
+  /// RollBadge.tsx: 2026-07-24, "25 Destreza Éxito" no decía si fue un buen dado o buena estadística.
+  roll: number
   difficulty: number
   result: number
   success: boolean
+  /// Grados de éxito (2026-07-19) — opcional porque tiradas persistidas antes de este cambio no
+  /// lo tienen; el badge cae de vuelta a solo éxito/fallo en ese caso.
+  gradoExito?: 'claro' | 'con_coste' | 'fallo'
+}
+
+/// Banner de elemento citado bajo la narración (petición explícita de la usuaria, 2026-07-24) —
+/// forma mínima y autocontenida a propósito (nunca importa `EnciclopediaLinkTarget`/`DetailTarget`
+/// de components/DetailModal.tsx: crearía un import circular, ya que ese módulo importa tipos de
+/// aquí). `name` es la clave real: al hacer clic se vuelve a resolver el target completo contra el
+/// índice de la Enciclopedia por nombre, en vez de guardar aquí una copia que podría desincronizarse.
+export interface MentionedEntityBanner {
+  name: string
+  icon: string
+  imageUrl: string
 }
 
 export interface LogEntry {
@@ -55,13 +107,55 @@ export interface LogEntry {
   isPlayerAction?: boolean
   createdAt: string
   xpDelta?: number
+  /// Marca la entrada de "sube a nivel N" (roadmap de animaciones 2026-07-20) para que LogPanel
+  /// le dé su propio marco/gema/barrido en vez de tratarla como una narración más.
+  isLevelUp?: boolean
+  /// Imagen del elemento más relevante citado en esta narración (banner real de la Enciclopedia),
+  /// si había alguno con imagen subida y no se enseñó hace poco — ver lib/mentionedEntityBanner.ts.
+  /// Resuelto en cliente: o bien recién calculado en esta misma sesión, o bien reconstruido a
+  /// partir de `entityBannerType`/`entityBannerSlug` (lo que sí viene persistido del backend) en
+  /// cuanto la Enciclopedia termina de cargar tras un `syncFromSave`.
+  entityBanner?: MentionedEntityBanner
+  /// Referencia persistida (rework 2026-07-24) de qué entidad se mostró como banner — puesta por
+  /// GET /saves/:id para las entradas ya guardadas; nunca se usa directamente para pintar, solo
+  /// para reconstruir `entityBanner` al cargar (ver GameView.tsx).
+  entityBannerType?: string
+  entityBannerSlug?: string
 }
+
+export type EquipSlot =
+  | 'CASCO'
+  | 'ABALORIO'
+  | 'CAMISA'
+  | 'ARMADURA_SUPERIOR'
+  | 'GUANTES'
+  | 'ARMADURA_INFERIOR'
+  | 'ACCESORIO'
+  | 'BOTAS'
+  | 'ARMA_PRINCIPAL'
+  | 'ARMA_SECUNDARIA'
+  | 'ANILLO_1'
+  | 'ANILLO_2'
+  | 'CINTURON'
 
 export interface InventoryItemInfo {
   id: string
   name: string
   description: string
   origin?: string
+  slot: EquipSlot | null
+  statBonusAttribute: Attribute | null
+  statBonusAmount: number | null
+  /// Sesión de diseño 2026-07-23: slug de ItemCatalog de origen (null en objetos narrativos
+  /// sueltos), nivel de rareza/dificultad (1-5, 1 = común), y mínimos de atributo para equiparlo
+  /// — el backend ya rechaza el PATCH de equipar si no se cumplen (ver lib/api.ts, setItemSlot).
+  catalogSlug?: string | null
+  tier?: number
+  requisitos?: Partial<Record<Attribute | SecondaryAttribute, number>>
+  /// Imagen real de la Enciclopedia para este objeto (petición explícita de la usuaria,
+  /// 2026-07-24: "las imágenes no salen" al ver un objeto desde Inventario/Equipo) — solo
+  /// presente si `catalogSlug` existe y hay un banner subido de verdad (ver imageAssets.ts).
+  imageUrls?: { thumbnail: string | null; banner: string | null }
 }
 
 export interface CompanionInfo {
@@ -100,6 +194,25 @@ export interface SubjectInfo {
   notes: string
 }
 
+export interface SessionSummaryInfo {
+  chapterNumber: number
+  summary: string
+}
+
+export type QuestStatus = 'ACTIVA' | 'COMPLETADA' | 'FALLIDA'
+
+export interface QuestInfo {
+  id: string
+  title: string
+  description: string
+  status: QuestStatus
+  /// Slug de la Location donde marcar el objetivo en el mapa (punto 3 del diseño de Gistera Koh,
+  /// 2026-07-23) — resuelto en el backend desde `targetLocationId` o, si la misión apunta a un
+  /// NPC en vez de a un sitio, desde su `homeLocationSlug`. Null si no hay objetivo geográfico
+  /// conocido todavía.
+  targetLocationSlug: string | null
+}
+
 export type SavedActionCategory = 'combate' | 'general'
 
 export interface SavedActionInfo {
@@ -112,11 +225,53 @@ export interface SavedActionInfo {
   category: SavedActionCategory
 }
 
-/// Un "adjunto" combinable en el composer — una habilidad o un objeto de inventario que el
-/// jugador ha marcado, mostrado como chip no editable junto al texto libre.
-export type ComposerAttachment =
-  | { type: 'ability'; ability: SavedActionInfo }
-  | { type: 'item'; item: InventoryItemInfo }
+export type CondicionFisica = 'ILESO' | 'HERIDO' | 'GRAVE' | 'INCAPACITADO' | 'MUERTO'
+export type Dificultad = 'NOVATO' | 'MEDIO' | 'AVANZADO'
+
+export interface DiscoveryItem {
+  itemCatalogSlug: string
+  name: string
+  cantidad: number
+}
+
+export interface NpcInSceneInfo {
+  slug: string
+  name: string
+  // Estado real de NpcState al empezar este combate (2026-07-19) — evita que el popup asuma
+  // siempre ILESO/sin saquear para un NPC que ya venía herido o saqueado de un encuentro anterior.
+  condicionFisica: CondicionFisica
+  saqueado: boolean
+}
+
+/// Un enlace de objeto/habilidad estilo World of Warcraft, insertado dentro del propio texto
+/// libre del composer (no como adjunto aparte): chip no editable con icono + nombre, tooltip con
+/// la descripción al pasar el ratón. Ver ChatComposer.tsx.
+export interface ComposerChip {
+  icon: string
+  label: string
+  description?: string
+  /// Texto real que se manda al backend al serializar (ver ChatComposer.tsx) — por defecto, si no
+  /// se da, se usa `label`. Necesario para habilidades: el chip muestra el nombre corto ("Furia de
+  /// Maktor"), pero lo que debe leer el modelo es el `promptText` completo de la acción, no el
+  /// nombre (bug real encontrado 2026-07-21: sin esto, usar cualquier habilidad mandaba solo su
+  /// nombre entre comillas, sin ninguna descripción de la acción física).
+  value?: string
+}
+
+export interface CurrentLocationInfo {
+  id: string
+  slug: string
+  name: string
+  region: string
+  description: string
+}
+
+export interface DestinationInfo {
+  locationId: string
+  slug: string
+  name: string
+  minutos: number
+}
 
 export interface ProgressionResult {
   xpDelta: number

@@ -1,12 +1,13 @@
 import { env } from '../config/env.js';
-import { ollamaQueue } from './ollamaQueue.js';
+import { embedQueue } from './ollamaQueue.js';
 
 /// Cliente para /api/embed de Ollama (RAG del lore, ver LoreChunk en schema.prisma).
-/// nomic-embed-text produce vectores de 768 dimensiones. Pasa por la misma cola que las
-/// generaciones normales — es un modelo aparte y no queremos que compita en RAM con el
-/// modelo grande a mitad de un turno.
+/// nomic-embed-text produce vectores de 768 dimensiones, responde en ~1-2s. Cola PROPIA
+/// (embedQueue, roadmap de velocidad 2026-07-19) separada de classify/narrate — es un modelo
+/// pequeño que no compite de verdad por RAM, y compartir la cola de concurrencia-1 solo
+/// serializaba el RAG detrás de generaciones de 30-220s sin necesidad.
 export async function embed(text: string): Promise<number[]> {
-  return ollamaQueue.enqueue(async () => {
+  return embedQueue.enqueue(async () => {
     // 30s: embeber nunca ha tardado más de ~2s en pruebas reales — un timeout corto aquí
     // detecta rápido si Ollama se ha quedado colgado antes de perder tiempo en clasificar/narrar.
     const controller = new AbortController();

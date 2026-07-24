@@ -19,9 +19,11 @@ export function WorldCard({
   return (
     <button
       onClick={onSelect}
+      // Cielo de Cristal en el fondo (roadmap de rediseño visual, Fable 2026-07-20, Nivel 2) —
+      // solo Helek Sirik: es el Origen Azul de SU cielo, no una textura de mundo genérico.
       className={`plank-panel group relative flex flex-col gap-4 rounded-xl p-6 text-left transition-[filter,box-shadow,border-color] ${
-        selected ? 'card-selected' : 'hover:border-accent-600/40 hover:brightness-110'
-      }`}
+        world.id === 'helek-sirik' ? 'crystal-sky' : ''
+      } ${selected ? 'card-selected' : 'hover:border-accent-600/40 hover:brightness-110'}`}
     >
       <PanelRivets />
       <div className="flex items-start justify-between gap-4">
@@ -31,7 +33,10 @@ export function WorldCard({
           </h3>
           <p className="mt-1 text-sm text-accent-400">{world.tagline}</p>
         </div>
-        <span className="whitespace-nowrap rounded-full border border-iron-700 bg-iron-800/70 px-3 py-1 text-xs text-wood-300">
+        {/* Registro "ley" (roadmap de rediseño visual, Fable 2026-07-20, Nivel 2, extendido más
+            allá de las cabeceras de sección) — mismo tratamiento que el selector de dificultad en
+            CharacterSaves.tsx: la letalidad es una clasificación del sistema, no identidad personal. */}
+        <span className="whitespace-nowrap rounded-full border border-iron-700 bg-iron-800/70 px-3 py-1 text-2xs font-semibold uppercase tracking-[0.14em] text-wood-300">
           {lethalityLabel[world.lethality]}
         </span>
       </div>

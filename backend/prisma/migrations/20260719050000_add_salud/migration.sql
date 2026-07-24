@@ -1,0 +1,3 @@
+-- AlterTable
+ALTER TABLE "Save" ADD COLUMN     "salud" INTEGER NOT NULL DEFAULT 100;
+

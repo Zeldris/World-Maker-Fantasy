@@ -1,0 +1,233 @@
+/// Razas y personajes jugables de Berig (2026-07-22, auditoría de lore vs Enciclopedia —
+/// "incluye de momento solo todo lo que sea de Berig"): contenido estático igual que
+/// classAbilities.ts/startingAbilities.ts — no hay tabla propia en Prisma, es lore de mundo, no
+/// de partida. Vive en el backend (y no solo en el frontend, como al principio) para que
+/// loreContextFor() pueda generarles prompts de imagen igual que a NPCs/objetos/fauna — la fuente
+/// de verdad editorial sigue siendo docs/rpgtarkor/razas.md y personajes.md.
+/// Las otras 4 razas (Kelife/Kalisar/Jusaly/Ilvenar) y los otros 4 personajes (Sael/Ithren/Amonir/
+/// Cassia), todos de Vaelira, quedan fuera hasta que el juego llegue allí.
+
+/// Variante regional de una raza (2026-07-22, petición explícita: "al pulsar orcos aun pudiese
+/// elegir el tipo según la región" — el color de piel Y la estructura corporal orca cambian por
+/// clan/clima, lo bastante distinto como para merecer su propia imagen de referencia, no una sola
+/// genérica para los tres). `slug` propio (no comparte el de la raza) para que tenga su propia
+/// entrada de ImagePrompt/imagen subida — mismo entityType 'raza', slug distinto.
+export interface RazaVariante {
+  slug: string;
+  name: string;
+  /// Etiqueta corta para el selector de variante en la UI ("Llanuras" en vez del nombre completo).
+  shortLabel: string;
+  rasgoFisico: string;
+  description: string;
+}
+
+export interface RazaInfo {
+  slug: string;
+  name: string;
+  icon: string;
+  rasgoFisico: string;
+  rasgoCaracter: string;
+  description: string;
+  /// Presente solo en razas con diferenciación regional marcada (hoy: Orcos). El resto se
+  /// consulta y se ilustra como una sola entrada, sin selector de variante.
+  variantes?: RazaVariante[];
+}
+
+export const BERIG_RAZAS: RazaInfo[] = [
+  {
+    slug: 'goirntes',
+    name: 'Goirntes — Los del Orden',
+    icon: '⚖️',
+    rasgoFisico:
+      'Piel casi mineral y quitinosa, gris y tensa sobre huesos angulosos — se endurece y deja ver un tenue brillo metálico cuando se concentran o se esfuerzan. Ojos de un negro obsidiana frío.',
+    rasgoCaracter: 'Fríos, calculadores; el orden y la ley ante todo — el desorden les produce una incomodidad física real.',
+    description:
+      'En la Meseta del Orden cada Goirnte nace hacia una casta de función y cada objeto tiene un lugar asignado — herencia directa de Goirme. Trabajan la Hierba del Hierro y presumen, con razón, de la mejor metalurgia de Helek Sirik. Su tabú cotidiano es lo inacabado: dejar una tarea a medias o un juramento sin cumplir es casi obsceno. Para la mayoría, la guerra de la Concordia de Hierro es un procedimiento más — órdenes que bajan, se cumplen y se archivan; la facción radical la dirige, la moderada intenta frenarla desde dentro. Elige una variante regional abajo para ver cómo cambia el cuerpo Goirnte según su cercanía a la frontera norte.',
+    // Variantes regionales (2026-07-22, petición explícita): los Goirntes de la frontera norte, ya
+    // cerca del Margen Silencioso, se adaptaron físicamente al terreno de selva y desarrollaron un
+    // oficio distinto (madera en vez de mineral) — mismo patrón que Orcos/Nabieus/Faerus.
+    variantes: [
+      {
+        slug: 'goirntes-meseta',
+        name: 'Goirntes de la Meseta del Orden',
+        shortLabel: 'Meseta del Orden',
+        rasgoFisico:
+          'Piel casi mineral y quitinosa, gris y tensa sobre huesos angulosos — se endurece y deja ver un tenue brillo metálico cuando se concentran o se esfuerzan. Ojos de un negro obsidiana frío.',
+        description:
+          'La población base, en el corazón de la Meseta — se dedican casi en exclusiva a la forja y transformación de minerales, la mejor metalurgia de Helek Sirik.',
+      },
+      {
+        slug: 'goirntes-frontera-norte',
+        name: 'Goirntes de la Frontera Norte',
+        shortLabel: 'Frontera Norte',
+        rasgoFisico:
+          'Piel de un tono bastante más claro que el resto de los suyos, complexión menos corpulenta y mucho más ágil — adaptados a moverse entre la espesura del Margen Silencioso, en la frontera norte de la Meseta.',
+        description:
+          'Artesanos de la forja con conocimiento real de maderas distintas, al contrario que sus parientes del sur, dedicados casi en exclusiva a los minerales y su transformación — su cercanía al Margen Silencioso les da acceso a maderas que en el resto de la Meseta apenas se ven.',
+      },
+    ],
+  },
+  {
+    slug: 'orcos',
+    name: 'Orcos — Hijos del Estallido',
+    icon: '🪓',
+    rasgoFisico:
+      'Rasgos tribales; corpulentos, hembras más inteligentes y fuertes, machos más fieros. El cuerpo entero se adapta al clima de cada clan, no solo el color de piel: los Maktor y Serhu de las Llanuras tienen piel beige/arcilla y complexión de músculo largo hecha para el calor y la carrera; los Helsig de Cristal Helado, piel pálida azulada, cuerpo más recio y compacto con más grasa para retener calor; los Goshg de la Ciénaga Troncal, piel verde musgo veteada de rojo pálido y pies/manos anchos que no se hunden en el barro.',
+    rasgoCaracter: "Orgullo, fuerza, honor. Clanes regidos por la Terk'ikar (Jefa) y el Kort'ikar (Jefe de Guerra).",
+    description:
+      'Nacidos de la magia salvaje de Tarkor, sin Semilla creadora propia. El día a día orco es pastoreo, caza y camino: seguir a los Corredores de Cauce, recolectar Raíz de Fuego con cuidado, migrar cuando la Terk\'ikar pacta con una Gargantúa de Ceniza el transporte del clan entero. Las hembras gobiernan la vida y los machos la guerra — costumbre, no ley. A los recién nacidos se les susurra: "la ira te hizo, que el honor te sostenga". Dos tabúes prácticos: interrumpir un duelo de honor ya aceptado, y tocar el tótem de un clan ajeno sin permiso. Los clanes están divididos ante la guerra — el Clan Maktor, usado como carne de cañón hasta la aniquilación, es el precio más caro que ya se ha pagado. Elige una variante regional abajo para ver cómo cambia el cuerpo orco de clan a clan.',
+    variantes: [
+      {
+        slug: 'orcos-llanuras',
+        name: 'Orcos de las Llanuras del Viento Rojo (Clanes Maktor y Serhu)',
+        shortLabel: 'Llanuras',
+        rasgoFisico:
+          'Piel en tonos beige y arcilla, curtida por el sol y el viento constante de la estepa — se oscurece más con la edad y la intemperie.',
+        description:
+          'Complexión corpulenta pero de músculo largo y estilizado, hecha para aguantar carreras bajo el calor del día — perseguir a los Corredores de Cauce en sus cacerías rituales lo exige. Menos grasa corporal que sus primos del norte, para disipar calor, no para retenerlo.',
+      },
+      {
+        slug: 'orcos-cristal-helado',
+        name: 'Orcos de Cristal Helado (Clan Helsig)',
+        shortLabel: 'Cristal Helado',
+        rasgoFisico: 'Piel pálida, con un matiz azulado o gris oscuro bajo la superficie.',
+        description:
+          'Cuerpo más recio y compacto que el de la estepa — extremidades más cortas en proporción al tronco y una capa de grasa notablemente más gruesa, hechos para retener el calor en vez de perderlo. Manos y dedos gruesos, curtidos por el frío constante de las minas de hielo sílice.',
+      },
+      {
+        slug: 'orcos-cienaga-troncal',
+        name: 'Orcos de la Ciénaga Troncal (Clan Goshg)',
+        shortLabel: 'Ciénaga Troncal',
+        rasgoFisico:
+          'Piel de un verde musgo intenso veteado de rojo pálido, camuflaje natural entre el follaje oscuro y el barro de la ciénaga.',
+        description:
+          'Pies y manos anchos que reparten mejor el peso sobre el barro sin hundirse, y una piel notablemente resistente a la humedad constante — donde otro pueblo sufriría llagas y pudrición, un Goshg apenas lo nota.',
+      },
+    ],
+  },
+  {
+    slug: 'nabieus',
+    name: 'Nabieus — Los que silencian',
+    icon: '🌑',
+    rasgoFisico: 'Cuerpos delgados, piel gris que no refleja luz, casi sin voz audible.',
+    rasgoCaracter: 'Inquietantes por su ausencia, sigilo absoluto.',
+    description:
+      'En la mitad oriental del Margen Silencioso, donde hasta el sonido se apaga de forma antinatural, los silencios tienen sintaxis: hay pausas que afirman, niegan o advierten. Su voz casi inaudible obliga a acercarse, y esa cercanía forzada es para ellos la medida de la confianza; levantar la voz es su tabú — gritar es violencia, se grite lo que se grite. Perseguidos durante el Yugo de Hierro por "operar en la sombra sin autorización del orden", fueron el corazón de la Purga Silenciosa. Integrados en la Concordia de Hierro por presión, sirven hoy como mensajeros, correos y ojos desde El Refugio sin Nombre, su enclave más estable, con presencia dispersa hasta el borde de Ciénaga Troncal. Elige una variante regional abajo para ver cómo cambia el cuerpo Nabieus según dónde se críen.',
+    // Variantes regionales (2026-07-22, petición explícita: los Nabieus criados en el borde de
+    // Ciénaga Troncal desarrollan mutaciones reales, no solo un matiz de color — mismo patrón que
+    // las variantes de Orcos, cada una con su propia imagen independiente.
+    variantes: [
+      {
+        slug: 'nabieus-margen',
+        name: 'Nabieus del Margen Silencioso',
+        shortLabel: 'Margen Silencioso',
+        rasgoFisico: 'Cuerpos delgados, piel gris apagada que no refleja ni absorbe la luz, casi sin voz audible.',
+        description:
+          'La población base, la más numerosa — dispersa por la mitad oriental del Margen Silencioso, mensajeros, correos y ojos de la Concordia de Hierro desde El Refugio sin Nombre.',
+      },
+      {
+        slug: 'nabieus-cienaga-troncal',
+        name: 'Nabieus de la Ciénaga Troncal',
+        shortLabel: 'Ciénaga Troncal',
+        rasgoFisico:
+          'Piel marcada por manchas de un verde oscuro — una mutación real que solo se da en quienes se crían junto a la Ciénaga Troncal — y extremidades notablemente más largas que el resto de los suyos, una adaptación real para cruzar a pie lagunas y aguas altas sin hundirse; postura algo encorvada al caminar, un aspecto notablemente más salvaje que el resto de los suyos.',
+        description:
+          'Generaciones criadas en el borde de la Ciénaga Troncal, lejos del corazón discreto del Margen Silencioso, han cambiado tanto el cuerpo —brazos y piernas alargados para vadear la ciénaga sin problema— como el temperamento: más volcados en la caza y en trabajar la madera de los Trepadores Ocaso que en el sigilo y los mensajes que definen al resto de su gente.',
+      },
+    ],
+  },
+  {
+    slug: 'faerus',
+    name: 'Faerus — Los furiosos',
+    icon: '🐾',
+    rasgoFisico: 'Piel de hojas finas, cuerpo fibroso y resistente, postura de 2 a 4 patas.',
+    rasgoCaracter: 'Instintivos y bestiales, pero sumamente inteligentes; cazadores.',
+    description:
+      'Ocupan la mayor parte de la mitad occidental del Margen Silencioso, con pequeños puestos avanzados más allá de la frontera oeste, ya en las Llanuras del Viento Rojo. La manada es la única institución Faerus: se caza junto, se come junto —la primera pieza de cada caza se comparte siempre— y se muere junto; abandonar a un herido de la manada es el tabú que no se perdona. Su olfato lee estados de ánimo: un Faerus sabe si tienes miedo antes que tú. Bajo la apariencia bestial hay una inteligencia fría y observadora. Sin ciudades ni escritura, su único punto de encuentro es El Claro de la Manada — un lugar, no una construcción. No pertenecen a ninguna alianza — nadie los invitó y ellos no habrían ido; la magia salvaje liberada tras la ruptura ya devastó territorios de manada, y esa es la única parte del conflicto que de verdad les concierne. Elige una variante regional abajo para ver cómo cambia el pelaje Faerus según dónde vive la manada.',
+    // Variantes regionales (2026-07-22, petición explícita): las manadas que empujaron sus puestos
+    // avanzados hacia el norte, dentro de las Llanuras del Viento Rojo, desarrollaron un pelaje
+    // distinto por el calor — mismo patrón que las variantes de Orcos/Nabieus.
+    variantes: [
+      {
+        slug: 'faerus-margen',
+        name: 'Faerus del Margen Silencioso',
+        shortLabel: 'Margen Silencioso',
+        rasgoFisico: 'Pelaje denso y tupido en tonos de corteza y musgo, propio del clima húmedo del Margen Silencioso.',
+        description: 'La manada base, la más numerosa — vive en el corazón de la selva y los pantanos donde nació la especie.',
+      },
+      {
+        slug: 'faerus-frontera-norte',
+        name: 'Faerus de la Frontera Norte',
+        shortLabel: 'Frontera Norte',
+        rasgoFisico:
+          'Pelaje mucho más corto que el del resto de la especie, adaptado al calor seco de las Llanuras — tonos rojizos y verdosos, con el rojo dominando con claridad sobre el verde.',
+        description:
+          'Manadas que empujaron sus puestos avanzados más allá de la frontera norte, ya dentro de las Llanuras del Viento Rojo — generaciones de calor y polvo rojo de la estepa han moldeado su pelaje de forma bien distinta al resto de los suyos.',
+      },
+    ],
+  },
+];
+
+export interface PersonajeInfo {
+  slug: string;
+  name: string;
+  raza: string;
+  icon: string;
+  personalidad: string;
+  facultades: string;
+  historia: string;
+  voz: string;
+}
+
+export const BERIG_PERSONAJES: PersonajeInfo[] = [
+  {
+    slug: 'gorhorn',
+    name: 'Gorhorn',
+    raza: 'Orcos, Clan Maktor',
+    icon: '🪓',
+    personalidad:
+      'Orgulloso pero no arrogante — su honor es la única moneda que le queda. Pese a su apariencia tosca es inteligente, quizás el orco macho que más se acerca a la inteligencia de las hembras. Justo pero bárbaro, con una personalidad afable sorprendente para un orco — aunque la paciencia no es su punto fuerte, y cuando la pierde se ve al "verdadero orco" que hay en él.',
+    facultades:
+      'Fuerza física colosal, instinto de combate devastador a corta distancia y alta resistencia al dolor. Comunión especial con la naturaleza que le permite, con esfuerzo, domar a las criaturas más poderosas de su territorio.',
+    historia:
+      'Nació en las llanuras de arena roja. Su madre murió al darle a luz; su padre murió poco después, retando al antiguo jefe del Clan Serhu por el honor de su tribu. A los 7 años partió a explorar el continente y sirvió como trabajador para otras razas, casi como un esclavo. A los 14 volvió a su tierra y fue entrenado como guerrero durante 4 años — por fin feliz y tratado con respeto. A los 18 fue enviado a la Concordia de Hierro como contingente obligatorio; su clan fue aniquilado en las escaramuzas fronterizas, usado como carne de cañón. Sobrevivió a duras penas y ahora lucha de forma independiente para que esa muerte no sea en vano y para restaurar el nombre de los Maktor.',
+    voz: 'Habla poco, en frases cortas y directas — su honor se demuestra con hechos, no con palabras. Cuando pierde la paciencia, el silencio se rompe de golpe.',
+  },
+  {
+    slug: 'dessa-kaltrenn',
+    name: 'Dessa Kaltrenn',
+    raza: 'Goirntes',
+    icon: '⚖️',
+    personalidad:
+      'Disciplinada hasta lo rígido, incapaz de tolerar la injusticia procedimental aunque la orden se lo exija; su frialdad es una coraza aprendida.',
+    facultades:
+      'Percibe el "orden" de las cosas de forma casi física. El caos, las mentiras o una jerarquía rota le causan incomodidad tangible que canaliza en un instinto táctico agudo: detecta al instante el punto débil de una formación, plan o argumento.',
+    historia:
+      'Soldado rasa de la guardia menor de Berig. Fue una de las encargadas de escoltar el sello de contención hasta la isla la noche en que la facción radical lo rompió. Vio que no hubo sabotaje de Vaelira, sino una traición interna. Denunciarlo por canales oficiales significaba morir; callarlo la destrozaba por dentro. Desertó esa misma noche.',
+    voz: 'Habla en enumeraciones y órdenes ("primero... después... y solo entonces..."), y se corrige a media frase cuando se oye a sí misma sonar "a la guardia". Miente mal: en vez de mentir, cambia de tema con brusquedad.',
+  },
+  {
+    slug: 'yerin-slaad',
+    name: 'Yerin Slaad',
+    raza: 'Nabieus',
+    icon: '🌑',
+    personalidad: 'Observador silencioso, casi invisible. Pasar desapercibido ha sido su único método de supervivencia.',
+    facultades:
+      'Movimiento absolutamente insonoro; puede permanecer inmóvil sin ser detectado. Identifica mentiras e intenciones en los silencios de una conversación.',
+    historia:
+      'Mensajero de bajo rango que entregaba correspondencia sellada sin hacer preguntas. Una de las cartas que entregó una semana antes de la ruptura contenía, sin saberlo él entonces, las instrucciones para el sabotaje de la facción radical. La culpa de haber sido el cómplice involuntario de la guerra lo atormenta.',
+    voz: 'Voz apenas audible que obliga al interlocutor a inclinarse hacia él; usa las palabras justas y ni una más, y responde muchas preguntas con silencios.',
+  },
+  {
+    slug: 'riko',
+    name: 'Riko',
+    raza: 'Faerus, de la Manada Rota',
+    icon: '🐾',
+    personalidad: 'Instintivo y con mentalidad de manada (proteger a los suyos), a pesar de haberlo perdido todo.',
+    facultades:
+      'Cambio de postura fluido de bípeda (manipulación de herramientas) a cuadrúpeda (velocidad extrema y sigilo). Sentidos hiperdesarrollados e inteligencia sobresaliente bajo una apariencia salvaje.',
+    historia:
+      'Cazador de las fronteras de Berig. Regresó para encontrar su territorio devastado por la magia salvaje. Sin saber si los supervivientes huyeron o murieron, viaja buscando cualquier rastro u olor que lo guíe de vuelta a su gente.',
+    voz: 'Frases cortas, en presente, sin adornos ("Huele mal. Nos vamos."); describe a las personas por su olor antes que por su aspecto ("hueles a miedo y a hierro"). Cuando piensa, emite un gruñido bajo casi inaudible.',
+  },
+];

@@ -1,18 +1,32 @@
+import type { AbilityEffect } from '@prisma/client';
+import type { Attribute } from './dice.js';
+
 export interface StartingAbility {
   name: string;
   icon: string;
   description: string;
   promptText: string;
   category: 'combate' | 'general';
+  /// Mecánica real de habilidades de clase (checklist 2026-07-21/22, puntos 1-2) — solo relevante
+  /// para category:'combate'. Gana sobre la heurística de palabra clave de npcScene.ts
+  /// (tabulatedAttackAttribute) cuando el turno manda el savedActionId de esta habilidad.
+  effect?: AbilityEffect;
+  preferredAttribute?: Attribute;
 }
 
 /// Kit de habilidades "de serie" de Gorhorn — no cuentan contra el cupo por nivel
 /// (docs/10-niveles-xp-reino.md § 4.3), son lo que el personaje ya sabía hacer antes de
-/// empezar la partida. Las 6 primeras las diseñó un pase de Fable calibrado para el
+/// empezar la partida. Las 2 de combate las diseñó un pase de Fable calibrado para el
 /// clasificador (evitan nombrar atributo/dificultad, pero cargan léxico que empuja hacia el
-/// atributo correcto). Las 2 últimas son acciones genéricas de utilidad (no "ataques") a
-/// petición explícita de la usuaria — cosas como volver al campamento o buscar provisiones,
-/// coherente con que Tarkor resuelve cualquier tipo de acción, no solo combate.
+/// atributo correcto).
+///
+/// Las generales (2026-07-21, segunda revisión a petición explícita de la usuaria): la primera
+/// versión mezclaba utilidades genéricas ("Buscar provisiones") con acciones puntuales de un solo
+/// resultado y sabor muy específico (domar una bestia, romper una roca, discurso con el tótem) —
+/// la usuaria señaló que esas últimas "no siguen el concepto de general" (una de ellas, domar
+/// bestias, ni siquiera es utilidad: es una acción de combate/captura disfrazada). Sustituidas por
+/// utilidades de verdad genéricas, usables en cualquier situación: viajar, descansar donde sea
+/// (sin necesitar volver a un sitio conocido) y saquear/despiezar lo que tengas delante.
 const GORHORN_STARTING_ABILITIES: StartingAbility[] = [
   {
     name: 'Furia de Maktor',
@@ -21,6 +35,8 @@ const GORHORN_STARTING_ABILITIES: StartingAbility[] = [
     promptText:
       'Suelto un rugido de guerra y cargo contra mi enemigo, descargando mi hacha rota como una maza con toda la potencia de mis músculos.',
     category: 'combate',
+    effect: 'ATAQUE',
+    preferredAttribute: 'fuerza',
   },
   {
     name: 'Piel de Guerra',
@@ -28,41 +44,13 @@ const GORHORN_STARTING_ABILITIES: StartingAbility[] = [
     description: 'El dolor no manda sobre un Maktor: Gorhorn aguanta heridas, frío y agotamiento sin ceder terreno.',
     promptText: 'Aprieto los dientes y aguanto el dolor y el cansancio sin retroceder ni un paso, negándome a caer.',
     category: 'combate',
-  },
-  {
-    name: 'Rompemontañas',
-    icon: '🪨',
-    description: 'Cuando algo bloquea el camino, Gorhorn no busca rodeo: lo mueve, lo levanta o lo parte.',
-    promptText: 'Agarro el obstáculo con ambas manos, clavo los pies en el suelo y empujo con todos mis músculos para moverlo, levantarlo o partirlo.',
-    category: 'general',
-  },
-  {
-    name: 'Mirada del Domador',
-    icon: '🐺',
-    description: 'La comunión de Gorhorn con las bestias de las Llanuras: someterlas sin violencia, espíritu contra espíritu.',
-    promptText: 'Me planto ante la bestia sin mostrar miedo, sostengo su mirada y le impongo mi espíritu hasta que agache la cabeza y me acepte.',
-    category: 'general',
-  },
-  {
-    name: 'Instinto del Viento Rojo',
-    icon: '🐾',
-    description: 'Lee el terreno como le enseñaron las llanuras: huellas, olores y señales que delatan lo que pasó aquí.',
-    promptText:
-      'Me detengo, respiro hondo y concentro todos mis sentidos en el terreno: huellas, olores en el viento, ramas quebradas, cualquier rastro que delate qué ha pasado aquí.',
-    category: 'general',
-  },
-  {
-    name: 'La Palabra del Tótem',
-    icon: '🗿',
-    description: 'Alza el tótem del Clan Maktor y habla desde el honor, buscando respeto y acuerdo antes que sangre.',
-    promptText:
-      'Alzo el tótem de mi clan, hablo con voz firme y apelo al honor para ganarme el respeto de quienes me escuchan y convencerlos de mis palabras.',
-    category: 'general',
+    effect: 'AGUANTE',
+    preferredAttribute: 'voluntad',
   },
   {
     name: 'Buscar provisiones',
     icon: '🌿',
-    description: 'Busca comida, agua o cualquier recurso útil en los alrededores.',
+    description: 'Busca comida, agua o cualquier recurso útil en los alrededores — el resultado puede ser cualquier cosa aprovechable de la zona.',
     promptText: 'Recorro la zona con atención, buscando comida, agua o cualquier recurso que me pueda servir.',
     category: 'general',
   },
@@ -71,6 +59,27 @@ const GORHORN_STARTING_ABILITIES: StartingAbility[] = [
     icon: '🏕️',
     description: 'Deja lo que está haciendo y regresa a un lugar seguro que ya conoce para descansar.',
     promptText: 'Dejo lo que estoy haciendo y vuelvo a un lugar seguro que ya conozco para descansar.',
+    category: 'general',
+  },
+  {
+    name: 'Viajar',
+    icon: '🧭',
+    description: 'Emprende camino hacia un destino conocido — completa el nombre del lugar justo después de insertarla en el mensaje.',
+    promptText: 'Me pongo en marcha hacia ',
+    category: 'general',
+  },
+  {
+    name: 'Descansar',
+    icon: '🔥',
+    description: 'Se detiene donde esté, monta un vivac breve y descansa para recuperar fuerzas — sin necesitar volver a un lugar conocido.',
+    promptText: 'Me detengo aquí mismo, monto un vivac breve y descanso para recuperar fuerzas antes de seguir.',
+    category: 'general',
+  },
+  {
+    name: 'Saquear',
+    icon: '🏺',
+    description: 'Registra el cuerpo que tenga delante en busca de todo lo aprovechable — un enemigo derrotado o una presa cazada.',
+    promptText: 'Registro y saqueo el cuerpo que tengo delante, sea un enemigo derrotado o una presa cazada, en busca de todo lo que pueda aprovechar.',
     category: 'general',
   },
 ];

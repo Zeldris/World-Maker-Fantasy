@@ -12,10 +12,15 @@
     "prisma:migrate": "prisma migrate dev",
     "prisma:studio": "prisma studio",
     "test:turn": "tsx src/scripts/test-turn.ts",
-    "reindex-lore": "tsx src/scripts/reindex-lore.ts"
+    "reindex-lore": "tsx src/scripts/reindex-lore.ts",
+    "seed-catalog": "tsx src/scripts/seed-catalog.ts",
+    "seed-image-prompts": "tsx src/scripts/seedImagePrompts.ts",
+    "export-image-prompts": "tsx src/scripts/exportImagePrompts.ts",
+    "test": "vitest run"
   },
   "dependencies": {
     "@fastify/cors": "^10.0.1",
+    "@fastify/static": "^10.1.0",
     "@prisma/client": "^6.1.0",
     "dotenv": "^17.4.2",
     "fastify": "^5.2.0",
@@ -25,6 +30,7 @@
     "@types/node": "^22.10.2",
     "prisma": "^6.1.0",
     "tsx": "^4.19.2",
-    "typescript": "^5.7.2"
+    "typescript": "^5.7.2",
+    "vitest": "^4.1.10"
   }
 }

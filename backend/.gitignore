@@ -2,3 +2,13 @@ node_modules/
 dist/
 .env
 *.tsbuildinfo
+
+# Log del proceso de dev arrancado directamente (npm run dev) — artefacto local, no fuente.
+dev-server.log
+
+# Exportaciones derivadas de la BD (npm run export-image-prompts) — regenerables, no son fuente.
+output/
+
+# Carpeta de pruebas/candidatas de imagen de la usuaria (2026-07-23) — staging personal antes de
+# elegir qué sube de verdad a uploads/images/, nunca se sube al repo.
+uploads/opciones/

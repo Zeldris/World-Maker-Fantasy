@@ -19,7 +19,12 @@ const RELEVANCE_THRESHOLD = 0.75;
 /// mundo puede crecer sin que los turnos se vuelvan más lentos.
 /// Bajado de 6 a 4 (2026-07-17): con 6 fragmentos, narrar pasaba de ~30-140s a 170-220s+ (y dos
 /// veces se colgó del todo) — el prefill de un prompt ~3x más largo cuesta caro en esta CPU.
-export async function retrieveLore(query: string, worldId: string, topK = 4): Promise<RetrievedLore[]> {
+export async function retrieveLore(
+  query: string,
+  worldId: string,
+  topK = 4,
+  excludeTags: string[] = [],
+): Promise<RetrievedLore[]> {
   const vector = embed(query);
   const queryLiteral = toVectorLiteral(await vector);
 
@@ -27,6 +32,7 @@ export async function retrieveLore(query: string, worldId: string, topK = 4): Pr
     SELECT title, text, embedding <=> ${queryLiteral}::vector AS distance
     FROM "LoreChunk"
     WHERE "worldId" = ${worldId}
+      AND NOT (tags && ${excludeTags}::text[])
     ORDER BY embedding <=> ${queryLiteral}::vector
     LIMIT ${topK}
   `;

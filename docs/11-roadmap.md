@@ -1,10 +1,20 @@
 # Roadmap — Tarkor (auditoría, 2026-07-18)
 
+**Actualización (2026-07-19): roadmap consolidado más reciente vive en memoria, no en este archivo.** Tras esta auditoría se hicieron 5 pasadas más con Fable (calibración de combate, NpcState/Salud, mecánicas de juego orientadas a "ponérselo fácil a la IA", y velocidad/latencia), fusionadas en un único orden de prioridad — ver la memoria `project-tarkor-roadmap-final` (o preguntar a Claude por "el roadmap final consolidado"). Alcance fijado ese día: **centrarse en 1h de partida jugable con exploración y combate; Reino/gobierno queda pausado.** Todo lo de abajo sigue siendo historial correcto de lo cerrado hasta el 2026-07-18.
+
 **Estado:** documento vivo. Nace de una auditoría de solo lectura sobre todo el proyecto (código, esquema, docs, git) tras cerrar la primera gran tanda de mecánicas (niveles/XP, Reino, acciones por tiempo, habilidades). Se actualiza según se cierren o aparezcan puntos.
+
+**Redirección importante (2026-07-18, misma sesión, después de escrito este documento):** la usuaria pidió explícitamente **no** ampliar el lore de los otros 7 personajes/Vaelira por ahora ("olvídalos, que no salgan en el juego todavía") — el § 0 de abajo queda en pausa. En su lugar se abrió una línea de trabajo mucho más grande, centrada solo en el mundo de Gorhorn: **[12-mundo-estructurado.md](12-mundo-estructurado.md)** (posición real por grafo, NPCs con stats fijos, fauna/flora → recursos, armería con loot determinista), **[13-escala-del-mundo.md](13-escala-del-mundo.md)** (dimensiones reales en km, solo referencia editorial) y **[14-combate-y-muerte.md](14-combate-y-muerte.md)** (condición física, combate por turnos en popup, revelado progresivo, sistema de muerte/descanso con la Entidad Desconocida).
+
+**Actualización (2026-07-18, sesión posterior): `docs/12` implementado y verificado en vivo** — ver su § 7 para el detalle completo. `docs/13` sigue siendo solo referencia editorial (no bloquea nada de código).
+
+**Actualización (2026-07-18, misma sesión, continuación): `docs/14-combate-y-muerte.md` también implementado** — ver su § 6. Condición física, combate en popup, revelado progresivo y muerte/respawn con la Entidad Desconocida, verificados en profundidad: el flujo de muerte/respawn (game over y respawn con aviso) se verificó de verdad replicando el bloque de `turnResolution.ts` contra la DB real (sin depender de que Ollama devuelva "MUERTO"), y el flujo de combate (`enCombate`, escalado de condición física) se verificó con turnos reales — un primer intento chocó con el cuelgue intermitente ya conocido del motor de gramática de Ollama (no relacionado con estos cambios), un reintento idéntico funcionó perfectamente. Con esto, **las tres líneas de trabajo grandes abiertas la sesión anterior (`docs/12`, `docs/13`, `docs/14`) quedan cerradas**.
+
+**Actualización (2026-07-18, misma sesión, continuación): secciones 2 y 3 de este roadmap también cerradas.** Agenda del mundo (decisión: no se construye, superseded por `/entorno`), Misiones (`Quest` implementado y verificado), `SessionSummary`/capítulos automáticos (implementado y verificado) y tests automatizados (51 tests con vitest) — todos hechos. Solo quedan abiertos: validar `reino_events` jugando de verdad, benchmark de `llama3.2` como Cronista, y las 12 preguntas de Multijugador (pausadas a propósito).
 
 ---
 
-## 0. Fijo en el roadmap: ampliar el lore
+## 0. Pausado: ampliar el lore de los otros 7 personajes
 
 Confirmado por auditoría (`backend/src/scripts/loreChunks.ts`, 41 fragmentos totales): el corpus está muy desequilibrado hacia Gorhorn.
 
@@ -15,25 +25,27 @@ Es coherente con que Gorhorn es el único personaje jugado hasta ahora, pero en 
 
 ---
 
-## 1. Rápidos y de bajo riesgo (hacer ya)
+## 1. Rápidos y de bajo riesgo — **todos hechos** (2026-07-18)
 
-1. **Borrar código muerto**: `generateCharacterResponse` y `generateWorldEvent` en `frontend/src/lib/simulateAI.ts` (con su `worldEventPool`) — restos del simulador previo a conectar Ollama de verdad. Nada las usa. Solo `playerActionEntry` sigue viva.
-2. **`.gitignore` en la raíz** — hoy no existe (solo hay uno dentro de `backend/` y otro dentro de `frontend/`). Importante antes del primer commit para no trackear `debug/` (los volcados de depuración) ni artefactos sueltos.
-3. **Primer commit** — el repositorio tiene `.git` pero **cero commits** ("On branch main — No commits yet"). Todo el trabajo de este proyecto no tiene ningún punto de recuperación. Merece decidir contigo cuándo hacerlo (¿un commit grande de "estado actual" o trocearlo en varios commits temáticos?).
-4. **Prompt de `classifyAction` — arreglar `banda`/`duracionEstimadaMinutos`**: causa raíz ya identificada. El prompt (`backend/src/services/narrador.ts`) da ejemplos por *tipo de actividad* pero nunca instruye a leer expresiones explícitas de duración en el texto del jugador ("varios días", "toda la noche"), no exige coherencia entre `banda` y `duracionEstimadaMinutos`, y no tiene ningún ejemplo few-shot completo — frágil para el modelo pequeño que lo resuelve. Arreglo concreto: añadir 2-3 ejemplos completos entrada→salida y una regla explícita de "si el jugador menciona una duración, tiene prioridad sobre tu estimación por tipo de acción".
+1. ~~Borrar código muerto~~ — hecho, `generateCharacterResponse`/`generateWorldEvent`/`worldEventPool` eliminados de `simulateAI.ts`.
+2. ~~`.gitignore` en la raíz~~ — hecho.
+3. ~~Primer commit~~ — hecho: 18 commits (v0.1→v0.8), subidos a `origin/main`.
+4. ~~Prompt de `classifyAction`~~ — hecho: añadidos ejemplos few-shot completos y regla de prioridad de duración explícita. **Sigue sin validarse en juego real** que esto haya arreglado la fiabilidad de `banda` — pendiente de confirmar jugando.
+
+**Nuevo hallazgo de una partida real jugada (no estaba en la auditoría original):** los ganchos de `/entorno` se apilan sin resolver si la jugadora no responde a tiempo — cada tick de 5 min lanza uno nuevo sin comprobar si el anterior sigue sin respuesta. Arreglo aislado, no depende de `docs/12`: no inyectar un evento nuevo en el log de personaje si el último sigue sin contestar.
 
 ## 2. Mecánicas pendientes de cerrar
 
-5. **Condición física** — decidida desde hace tiempo (`ileso→herido→grave→incapacitado→muerto`, decisión de mecánicas 3) pero **nunca añadida al schema**. `Save` no tiene ningún campo de salud hoy. Sigue siendo pendiente real, no solo documentación desfasada.
-6. **`WorldState.agenda` nunca se resuelve** — se inicializa vacío y ahí se queda; el worker (`worldTick.ts`) solo resuelve `CharacterTransit`, no agenda de facciones/NPCs. Es un TODO explícito en el propio código (línea 17-18).
-7. **Misiones** — la única pestaña placeholder que queda de las 9 del panel de personaje. Necesita un modelo `Quest` nuevo.
+5. ~~**Condición física**~~ — **hecho** (2026-07-18): implementada junto con el resto de [14-combate-y-muerte.md](14-combate-y-muerte.md) (combate, muerte, descanso).
+6. ~~**`WorldState.agenda` nunca se resuelve**~~ — **decisión tomada (2026-07-18)**: no se construye. El panel "El mundo" (`entorno.ts`) ya cubre esa necesidad con ambientación periódica + evento probabilístico (25%), y nada ha escrito nunca en `agenda`. Construir un resolutor para una cola sin productor no aporta nada — el campo queda reservado sin uso hasta que exista contenido real de agenda que justificarlo (ver comentario ampliado en `worldTick.ts`).
+7. ~~**Misiones**~~ — **hecho** (2026-07-18): modelo `Quest` nuevo (mismo patrón que Reino — `newQuest`/`questProgress` en `narrador.ts`, materializado en `turnResolution.ts`), `MisionesPanel.tsx` en el frontend. Verificado en vivo (crear + consultar).
 8. **Validar `reino_events` con Ollama de verdad** — pendiente 8 del diseño de niveles/Reino (`docs/10-niveles-xp-reino.md`): confirmar jugando si el modelo local devuelve `newTerritory`/`newBuilding`/`newSubject` con fiabilidad razonable, o si hace falta el plan B (crear filas de Reino a mano).
 
 ## 3. Higiene técnica, sin prisa
 
-9. **`PregeneratedCharacter` sin usar** — la tabla existe en el schema pero nunca se siembra ni se lee desde el backend; los 8 personajes viven solo en `frontend/src/data/mock.ts`. Funciona así, pero es una asimetría rara (una tabla entera del schema sin ningún uso real). Decidir si se sembraría alguna vez o si se debería quitar del schema.
-10. **`SessionSummary` sin usar** — el modelo de "resumen por capítulos" (memoria a largo plazo para partidas largas) existe en el schema pero nunca se crea. Se mencionó en el diseño de XP como fuente del hito `capitulo` automático, pero esa pieza no está conectada todavía.
-11. **Cero tests automatizados** — confirmado, no hay ningún `*.test.ts` ni test runner instalado, solo scripts manuales de terminal (`test-turn.ts`, `test-retrieval.ts`, `test-worldtick.ts`). Para un proyecto de este tamaño no es urgente, pero `backend/src/services/progression.ts` y `worldFacts.ts` (funciones puras, sin IA) serían los candidatos más baratos y de más valor si en algún momento se quiere empezar.
+9. **`PregeneratedCharacter` sin usar** — **decisión tomada (2026-07-18, preguntado a la usuaria): se deja como está.** No se usa hoy, pero tampoco molesta; si el juego se amplía a los otros 7 personajes ya está listo sin otra migración.
+10. ~~**`SessionSummary` sin usar**~~ — **hecho** (2026-07-18): `backend/src/services/chapterSummary.ts` — cada 15 acciones del jugador el backend (no el modelo) resume el capítulo con el Cronista y dispara el hito `capitulo` determinista (500 XP). Verificado en vivo con 15 acciones reales sembradas: resumen coherente y anclado, y confirmado que no se dispara dos veces sin acciones nuevas. `DiarioPanel.tsx` muestra los capítulos.
+11. ~~**Cero tests automatizados**~~ — **hecho** (2026-07-18): `vitest` instalado, 51 tests sobre los servicios puros (`progression.ts`, `worldFacts.ts`, `travel.ts`, `death.ts`, `chapterSummary.ts`) — incluye una regresión explícita del bug real de "voy hacia" encontrado en la verificación de `docs/12`. `npm test` en `backend/`.
 12. Benchmark pendiente de `llama3.2:latest` (3B) como Cronista/fallback — nunca medido explícitamente.
 
 ## 4. Pausado a propósito (no tocar todavía)

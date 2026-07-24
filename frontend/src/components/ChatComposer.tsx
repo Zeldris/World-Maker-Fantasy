@@ -1,113 +1,203 @@
-import { useRef, type KeyboardEvent } from 'react'
-import type { ComposerAttachment } from '../types'
+import { forwardRef, useEffect, useImperativeHandle, useRef, useState, type KeyboardEvent } from 'react'
+import type { ComposerChip } from '../types'
+
+export interface ChatComposerHandle {
+  insertChip: (chip: ComposerChip) => void
+  clear: () => void
+}
 
 interface ChatComposerProps {
-  value: string
-  onChange: (value: string) => void
-  onSubmit: () => void
+  onChange?: (text: string) => void
+  onSubmit: (text: string) => void
   disabled?: boolean
-  suggestions?: string[]
-  attachments?: ComposerAttachment[]
-  onRemoveAttachment?: (index: number) => void
 }
 
-function attachmentLabel(attachment: ComposerAttachment): { icon: string; name: string } {
-  return attachment.type === 'ability'
-    ? { icon: attachment.ability.icon, name: attachment.ability.name }
-    : { icon: '🎒', name: attachment.item.name }
+// Dos datasets separados a propósito: `chipLabel` marca "esto es un chip" y sirve de display;
+// `chipValue` es el texto real que se manda al backend — para una habilidad son cosas distintas
+// (nombre corto vs. promptText completo, ver ComposerChip en types.ts).
+const CHIP_MARKER_KEY = 'chipLabel'
+const CHIP_VALUE_KEY = 'chipValue'
+// Espacio en blanco insertado tras cada chip para separarlo visualmente del texto siguiente sin
+// que el navegador lo colapse (a diferencia de un espacio normal, que sí puede perderse en los
+// bordes de un nodo contenteditable).
+const CHIP_SPACER = ' '
+
+function buildChipNode(chip: ComposerChip): HTMLSpanElement {
+  const span = document.createElement('span')
+  span.contentEditable = 'false'
+  span.dataset[CHIP_MARKER_KEY] = chip.label
+  span.dataset[CHIP_VALUE_KEY] = chip.value ?? chip.label
+  span.className =
+    'chip-inline relative inline-flex items-center gap-1 rounded-full border border-accent-600/60 bg-accent-500/10 px-2 py-0.5 align-baseline text-xs text-accent-300'
+
+  const iconSpan = document.createElement('span')
+  iconSpan.textContent = chip.icon
+  const nameSpan = document.createElement('span')
+  nameSpan.className = 'font-medium'
+  nameSpan.textContent = chip.label
+  span.append(iconSpan, nameSpan)
+
+  if (chip.description) {
+    const tooltip = document.createElement('span')
+    tooltip.className = 'chip-tooltip'
+    tooltip.textContent = chip.description
+    span.appendChild(tooltip)
+  }
+  return span
 }
 
-export function ChatComposer({
-  value,
-  onChange,
-  onSubmit,
-  disabled,
-  suggestions,
-  attachments = [],
-  onRemoveAttachment,
-}: ChatComposerProps) {
-  const textareaRef = useRef<HTMLTextAreaElement>(null)
-  const canSubmit = (value.trim().length > 0 || attachments.length > 0) && !disabled
+// Serializa el contenido mixto (texto libre + chips) a un único string plano: cada chip aporta su
+// `value` (no su `label` visible) entre comillas — para una habilidad es el promptText completo de
+// la acción, no solo su nombre corto (bug real 2026-07-21, ver comentario de ComposerChip.value).
+function serialize(root: HTMLElement): string {
+  let text = ''
+  for (const node of Array.from(root.childNodes)) {
+    if (node.nodeType === Node.TEXT_NODE) {
+      text += node.textContent ?? ''
+    } else if (node instanceof HTMLElement && node.tagName === 'BR') {
+      text += '\n'
+    } else if (node instanceof HTMLElement && node.dataset[CHIP_VALUE_KEY] !== undefined) {
+      text += `'${node.dataset[CHIP_VALUE_KEY]}'`
+    } else {
+      text += node.textContent ?? ''
+    }
+  }
+  return text.replace(/ /g, ' ')
+}
 
-  function handleKeyDown(e: KeyboardEvent<HTMLTextAreaElement>) {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault()
-      if (canSubmit) onSubmit()
+export const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(function ChatComposer(
+  { onChange, onSubmit, disabled },
+  ref,
+) {
+  const editorRef = useRef<HTMLDivElement>(null)
+  const savedRangeRef = useRef<Range | null>(null)
+  const [hasContent, setHasContent] = useState(false)
+  const canSubmit = hasContent && !disabled
+
+  // "El arma se desenfunda" (roadmap de animaciones, item 11): pop sutil solo en el instante en
+  // que Actuar pasa de deshabilitado a disponible, nunca en el resto de renders.
+  const [justEnabled, setJustEnabled] = useState(false)
+  const wasSubmittableRef = useRef(canSubmit)
+  useEffect(() => {
+    if (!wasSubmittableRef.current && canSubmit) {
+      setJustEnabled(true)
+      const timer = setTimeout(() => setJustEnabled(false), 250)
+      wasSubmittableRef.current = canSubmit
+      return () => clearTimeout(timer)
+    }
+    wasSubmittableRef.current = canSubmit
+  }, [canSubmit])
+
+  function saveSelection() {
+    const el = editorRef.current
+    const sel = window.getSelection()
+    if (!el || !sel || sel.rangeCount === 0) return
+    const range = sel.getRangeAt(0)
+    if (el.contains(range.startContainer)) {
+      savedRangeRef.current = range.cloneRange()
     }
   }
 
-  function autoGrow() {
-    const el = textareaRef.current
+  function handleInput() {
+    const el = editorRef.current
     if (!el) return
-    el.style.height = 'auto'
-    el.style.height = `${Math.min(el.scrollHeight, 160)}px`
+    // Limpia el <br> huérfano que algunos navegadores dejan tras borrar todo el contenido, para
+    // que el placeholder (CSS :empty) vuelva a mostrarse.
+    if (el.textContent === '' && el.childNodes.length > 0) {
+      el.innerHTML = ''
+    }
+    const text = serialize(el)
+    setHasContent(text.trim().length > 0)
+    onChange?.(text)
   }
+
+  function handleKeyDown(e: KeyboardEvent<HTMLDivElement>) {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault()
+      triggerSubmit()
+    }
+  }
+
+  function triggerSubmit() {
+    const el = editorRef.current
+    if (!el || disabled) return
+    const text = serialize(el).trim()
+    if (!text) return
+    onSubmit(text)
+  }
+
+  useImperativeHandle(ref, () => ({
+    insertChip(chip: ComposerChip) {
+      const el = editorRef.current
+      if (!el) return
+      el.focus()
+      const sel = window.getSelection()
+      let range: Range
+      if (savedRangeRef.current && el.contains(savedRangeRef.current.startContainer)) {
+        range = savedRangeRef.current
+      } else {
+        range = document.createRange()
+        range.selectNodeContents(el)
+        range.collapse(false)
+      }
+      sel?.removeAllRanges()
+      sel?.addRange(range)
+
+      const chipNode = buildChipNode(chip)
+      range.deleteContents()
+      range.insertNode(chipNode)
+      const spacer = document.createTextNode(CHIP_SPACER)
+      chipNode.after(spacer)
+
+      const newRange = document.createRange()
+      newRange.setStartAfter(spacer)
+      newRange.collapse(true)
+      sel?.removeAllRanges()
+      sel?.addRange(newRange)
+      savedRangeRef.current = newRange.cloneRange()
+
+      handleInput()
+    },
+    clear() {
+      const el = editorRef.current
+      if (!el) return
+      el.innerHTML = ''
+      savedRangeRef.current = null
+      handleInput()
+    },
+  }))
 
   return (
     <div className="border-t border-iron-800 bg-wood-950/90 px-4 pb-3 pt-3.5">
-      {suggestions && suggestions.length > 0 && (
-        <div className="mb-3 flex flex-wrap gap-2">
-          {suggestions.map((s) => (
-            <button
-              key={s}
-              onClick={() => onChange(s)}
-              className="rounded-full border border-iron-700 bg-wood-900/70 px-3 py-1.5 text-xs text-wood-300 transition-colors hover:border-accent-600/60 hover:bg-accent-500/10 hover:text-accent-300"
-            >
-              {s}
-            </button>
-          ))}
-        </div>
-      )}
       <div className="plank-panel relative flex flex-col gap-2 rounded-xl px-4 py-3 transition-shadow focus-within:shadow-[inset_0_0_0_1px_rgba(0,0,0,0.35),0_0_0_1px_var(--color-accent-500),0_0_20px_-6px_var(--color-accent-500)]">
-        {attachments.length > 0 && (
-          <div className="flex flex-wrap gap-1.5">
-            {attachments.map((attachment, index) => {
-              const { icon, name } = attachmentLabel(attachment)
-              return (
-                <span
-                  key={`${attachment.type}-${index}`}
-                  className="inline-flex items-center gap-1.5 rounded-full border border-accent-600/60 bg-accent-500/10 py-1 pl-2.5 pr-1.5 text-xs text-accent-300"
-                >
-                  <span>{icon}</span>
-                  <span className="font-medium">{name}</span>
-                  <button
-                    onClick={() => onRemoveAttachment?.(index)}
-                    aria-label={`Quitar ${name}`}
-                    className="rounded-full px-1 text-accent-400 transition-colors hover:bg-accent-500/20 hover:text-accent-200"
-                  >
-                    ✕
-                  </button>
-                </span>
-              )
-            })}
-          </div>
-        )}
         <div className="flex items-end gap-3">
-          <textarea
-            ref={textareaRef}
-            value={value}
-            onChange={(e) => {
-              onChange(e.target.value)
-              autoGrow()
-            }}
+          <div
+            ref={editorRef}
+            contentEditable={!disabled}
+            onInput={handleInput}
             onKeyDown={handleKeyDown}
-            placeholder={attachments.length > 0 ? 'Añade contexto (opcional)...' : '¿Qué hace tu personaje?'}
-            rows={1}
-            disabled={disabled}
-            className="max-h-40 flex-1 resize-none bg-transparent text-sm text-wood-100 placeholder-wood-500 outline-none disabled:opacity-50"
+            onKeyUp={saveSelection}
+            onMouseUp={saveSelection}
+            onBlur={saveSelection}
+            data-placeholder="¿Qué hace tu personaje?"
+            className={`composer-editable max-h-40 flex-1 overflow-y-auto whitespace-pre-wrap break-words bg-transparent text-sm text-wood-100 outline-none ${
+              disabled ? 'opacity-50' : ''
+            }`}
           />
           <button
-            onClick={onSubmit}
+            onClick={triggerSubmit}
             disabled={!canSubmit}
-            className="shrink-0 rounded-lg border border-accent-600 bg-gradient-to-b from-accent-400 to-accent-600 px-3.5 py-2 text-xs font-bold uppercase tracking-wide text-wood-950 shadow-[inset_0_1px_0_rgba(255,255,255,0.3),0_2px_10px_-3px_var(--color-accent-500)] transition-all hover:from-accent-300 hover:to-accent-500 disabled:cursor-not-allowed disabled:border-iron-700 disabled:from-wood-700 disabled:to-wood-700 disabled:text-wood-500 disabled:shadow-none"
+            className={`tactile shrink-0 rounded-lg border border-accent-600 bg-gradient-to-b from-accent-400 to-accent-600 px-3.5 py-2 text-xs font-bold uppercase tracking-wide text-wood-950 shadow-[inset_0_1px_0_rgba(255,255,255,0.3),0_2px_10px_-3px_var(--color-accent-500)] transition-all hover:from-accent-300 hover:to-accent-500 disabled:cursor-not-allowed disabled:border-iron-700 disabled:from-wood-700 disabled:to-wood-700 disabled:text-wood-500 disabled:shadow-none ${
+              justEnabled ? 'animate-pop-subtle' : ''
+            }`}
           >
             Actuar
           </button>
         </div>
       </div>
-      <p className="mt-2 text-center text-[11px] text-wood-600">
-        Enter para enviar · Shift+Enter para salto de línea
+      <p className="mt-2 text-center text-2xs text-wood-400">
+        Enter para enviar · Shift+Enter para salto de línea · haz clic en una habilidad/objeto para insertarlo aquí
       </p>
     </div>
   )
-}
+})

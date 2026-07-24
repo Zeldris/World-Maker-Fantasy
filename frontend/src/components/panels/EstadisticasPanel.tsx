@@ -1,17 +1,20 @@
-import type { Attribute, AttributeBlock } from '../../types'
+import type { Attribute, AttributeBlock, SecondaryAttributeBlock } from '../../types'
 import { AttributeBars } from '../AttributeBars'
 import { attributeLabels } from '../../lib/dice'
+import { secondaryAttributeLabels } from '../../lib/secondaryAttributes'
 import { MAX_LEVEL, xpProgress } from '../../lib/progression'
+import { PanelSection } from '../PanelSection'
 
 interface EstadisticasPanelProps {
   attributes: AttributeBlock
+  secondaryAttributes: SecondaryAttributeBlock
   level: number
   xp: number
   pendingAttributePoints: number
   onSpendPoint: (attribute: Attribute) => void
 }
 
-export function EstadisticasPanel({ attributes, level, xp, pendingAttributePoints, onSpendPoint }: EstadisticasPanelProps) {
+export function EstadisticasPanel({ attributes, secondaryAttributes, level, xp, pendingAttributePoints, onSpendPoint }: EstadisticasPanelProps) {
   const progress = xpProgress(level, xp)
   const percent = progress.span > 0 ? Math.min(100, (progress.current / progress.span) * 100) : 100
 
@@ -22,7 +25,7 @@ export function EstadisticasPanel({ attributes, level, xp, pendingAttributePoint
           <p className="flex items-center gap-2 font-serif text-sm tracking-wide text-wood-100">
             <span className="gem" /> Nivel {level}
           </p>
-          <p className="font-mono text-xs text-wood-400">
+          <p className="font-mono tabular-nums text-xs text-wood-400">
             {level >= MAX_LEVEL ? `${xp} XP (máximo)` : `${progress.current} / ${progress.span} XP`}
           </p>
         </div>
@@ -55,19 +58,17 @@ export function EstadisticasPanel({ attributes, level, xp, pendingAttributePoint
         </div>
       )}
 
-      <div>
-        <div className="mb-3 flex items-center gap-3">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-wood-400">Atributos jugables</p>
-          <span className="h-px flex-1 bg-iron-700" />
-        </div>
-        <AttributeBars attributes={attributes} />
-      </div>
+      <PanelSection title="Atributos jugables">
+        <AttributeBars attributes={attributes} labels={attributeLabels} />
+      </PanelSection>
 
-      <div className="rounded-lg border border-dashed border-iron-700 bg-wood-950/40 px-4 py-3 text-xs leading-relaxed text-wood-500">
-        Inteligencia, Magia, Poder de Semilla, Moral y las 4 Resistencias están documentadas
-        (ver <span className="text-wood-400">docs/rpgtarkor/personajes.md</span>) pero el motor
-        de juego todavía no las usa — solo los 6 atributos de arriba mueven las tiradas por ahora.
-      </div>
+      <PanelSection title="Atributos secundarios">
+        <AttributeBars attributes={secondaryAttributes} labels={secondaryAttributeLabels} />
+        <p className="mt-2.5 text-2xs italic text-wood-500">
+          Nunca mueven una tirada — solo deciden si cumples los requisitos para craftear, equipar
+          o construir algo (ver la Enciclopedia).
+        </p>
+      </PanelSection>
     </div>
   )
 }

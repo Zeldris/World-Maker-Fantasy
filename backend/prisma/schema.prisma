@@ -23,6 +23,24 @@ enum Lethality {
   ALTA
 }
 
+/// docs/14-combate-y-muerte.md § 1. INCAPACITADO != MUERTO: incapacitado es "fuera de la acción
+/// actual" (inconsciente, inmovilizado) pero recuperable sin la Entidad; MUERTO dispara § 4.
+enum CondicionFisica {
+  ILESO
+  HERIDO
+  GRAVE
+  INCAPACITADO
+  MUERTO
+}
+
+/// docs/14-combate-y-muerte.md § 4.2 — elegida al crear la partida, determina el límite de
+/// muertes antes del fin de partida real (ver limiteMuertes() en services/death.ts).
+enum Dificultad {
+  NOVATO
+  MEDIO
+  AVANZADO
+}
+
 enum LogChannel {
   CHARACTER
   WORLD
@@ -54,6 +72,11 @@ model World {
   pregeneratedCharacters PregeneratedCharacter[]
   saves                  Save[]
   loreChunks             LoreChunk[]
+  locations              Location[]
+  npcs                   Npc[]
+  itemCatalog            ItemCatalog[]
+  harvestYields          HarvestYield[]
+  imagePrompts           ImagePrompt[]
 }
 
 /// Personajes preseleccionables asociados a un mundo (plantilla, no instancia jugada).
@@ -85,6 +108,12 @@ model Save {
   characterMotivation String
   /// AttributeBlock, copiado al crear la partida (independiente de la plantilla a partir de aquí)
   attributes          Json
+  /// SecondaryAttributeBlock (sesión de diseño 2026-07-23) — Inteligencia/Magia/Poder de Semilla/
+  /// Moral/4 Resistencias, ya existían como columnas narrativas en personajes.md pero el motor no
+  /// las usaba. Nunca se pasan a rollCheck (dice.ts) — solo alimentan comprobaciones de UMBRAL
+  /// (requisitos de objetos/construcciones), nunca una tirada nueva. Default "{}" para no romper
+  /// partidas ya creadas antes de esta migración; el código trata las claves ausentes como 0.
+  secondaryAttributes Json      @default("{}")
   portraitInitial     String
 
   /// Niveles/XP (docs/10-niveles-xp-reino.md, reversión 2026-07-18 de la decisión de mecánicas 4).
@@ -102,6 +131,58 @@ model Save {
   createdAt    DateTime @default(now())
   lastPlayedAt DateTime @default(now())
 
+  /// Ubicación actual en el grafo (null = partidas antiguas sin posición todavía; se
+  /// rellena con la ubicación inicial al migrar). Durante un viaje NO cambia: sigue
+  /// siendo el origen hasta que worldTick resuelve el CharacterTransit — "dónde estoy"
+  /// nunca es ambiguo, y "hacia dónde voy" vive en el tránsito.
+  currentLocationId String?
+  currentLocation   Location? @relation("CurrentLocation", fields: [currentLocationId], references: [id])
+  locationVisits    LocationVisit[]
+
+  /// Condición física (docs/14-combate-y-muerte.md § 1, decisión de mecánicas 3 nunca
+  /// implementada hasta ahora). La narración de combate es la vía principal para cambiarla;
+  /// descansar/curar la vía principal para mejorarla — el modelo nunca la baja fuera de combate.
+  condicionFisica CondicionFisica @default(ILESO)
+  /// Salud/PV visible (0-100), instrucción explícita de la usuaria 2026-07-19 — v1 conservador:
+  /// se DERIVA de `condicionFisica` (ILESO=100, HERIDO=75, GRAVE=50, INCAPACITADO=25, MUERTO=0,
+  /// ver saludForCondicion en death.ts), no cambia el motor de combate ya calibrado, solo lo
+  /// expone como número/barra en vez de solo una etiqueta. Sin daño variable todavía (v2).
+  salud           Int             @default(100)
+
+  /// Último `Location` de kind refugio/asentamiento donde se descansó con éxito — punto de
+  /// reaparición al morir (§ 4.1). Null = todavía no ha descansado en un sitio válido; el
+  /// flujo de muerte cae entonces al `Location` inicial del personaje, nunca deja al jugador
+  /// sin dónde aparecer.
+  lastRestLocationId String?
+  lastRestLocation   Location? @relation("LastRestLocation", fields: [lastRestLocationId], references: [id])
+
+  /// Nº de veces que ha muerto esta partida — determina cuándo se dispara el fin de partida
+  /// según `dificultad` (§ 4.2). No se resetea salvo por `/saves/:id/restart`.
+  deathCount Int @default(0)
+  /// Elegida al crear la partida (§ 4.2): determina el límite de muertes antes del fin de
+  /// partida real. NOVATO = sin límite; MEDIO = 4; AVANZADO = 2.
+  dificultad Dificultad @default(MEDIO)
+  /// No nulo = partida cerrada por muerte definitiva (§ 4.4): bloquea `/turn/classify` (409,
+  /// mismo patrón que CharacterTransit) hasta que se reinicia. No es lo mismo que borrar.
+  endedAt DateTime?
+  /// No nulo = la jugadora salió de la vista de juego con un tránsito en curso (roadmap
+  /// 2026-07-20, petición explícita: "quiero que la partida se pause si salgo de ella"). Mientras
+  /// esté puesto, `resolveDueTransits` (worldTick.ts) se salta esta partida aunque su
+  /// `CharacterTransit.busyUntil` ya haya vencido — al volver (`POST /saves/:id/resume`),
+  /// `busyUntil` se alarga exactamente lo que ha durado la pausa, así que ni se pierde tiempo de
+  /// espera ni se resuelve de golpe por haber estado fuera. Nulo = partida activa (comportamiento
+  /// de siempre).
+  pausedAt DateTime?
+
+  /// Slugs de Npc en combate detectado por el último turno resuelto (bug real, 2026-07-23,
+  /// "revisar partida" — este campo transitorio SOLO viajaba en la respuesta directa de
+  /// `/turn/narrate`, nunca se guardaba: si el turno tardaba tanto que el sondeo de reconexión
+  /// del cliente tenía que recuperar la partida vía `GET /saves/:id`, el combate se calculaba
+  /// bien en el backend pero se perdía en la recuperación — el jugador nunca veía el botón de
+  /// "Combatir"). Se sobrescribe en cada turno (vacío si no hay combate ese turno), para que
+  /// `GET /saves/:id` pueda reconstruir el mismo aviso de combate tras cualquier resincronización.
+  pendingCombatNpcSlugs Json @default("[]")
+
   worldState       WorldState?
   logEntries       LogEntry[]
   characterTransit CharacterTransit?
@@ -112,8 +193,108 @@ model Save {
   buildings        Building[]
   subjects         Subject[]
   savedActions     SavedAction[]
+  quests           Quest[]
+  npcStates        NpcState[]
+  professionProgress ProfessionProgress[]
+  kingdomStats     KingdomStats?
+  discoveredEntities DiscoveredEntity[]
 
   @@index([userId])
+}
+
+/// Ubicación conocida del mundo (catálogo, no estado de partida). Se siembra desde
+/// backend/src/scripts/worldCatalog.ts (mismo patrón que loreChunks.ts + reindex-lore):
+/// la fuente de verdad editorial sigue siendo docs/rpgtarkor/areas.md.
+model Location {
+  id          String   @id @default(cuid())
+  worldId     String
+  world       World    @relation(fields: [worldId], references: [id], onDelete: Cascade)
+  /// Clave estable para seeds, aliases y referencias cruzadas ("hondonada-del-eco")
+  slug        String
+  name        String
+  /// Nombre de región del lore — string libre, no FK (misma razón que Territory.region:
+  /// el lore vive en .md)
+  region      String
+  /// Tipo libre ("refugio", "hito", "punto de agua", "cruce", "ruinas", "asentamiento") —
+  /// no enum cerrado, misma razón que Companion.role
+  kind        String
+  /// Descripción de LLEGADA: lo que se inyecta al Narrador cuando el personaje llega aquí
+  /// o está aquí — redactada con vocabulario de jugador (lección RAG 2026-07-18)
+  description String
+  /// Nombres con los que un jugador se refiere de verdad al sitio ("los pilares", "el pozo") —
+  /// para que el matcher DETERMINISTA de destinos resuelva sin pasar por el modelo
+  aliases     String[]
+  createdAt   DateTime @default(now())
+
+  linksFrom LocationLink[] @relation("linkFrom")
+  linksTo   LocationLink[] @relation("linkTo")
+  visits    LocationVisit[]
+  saves         Save[] @relation("CurrentLocation")
+  restingSaves  Save[] @relation("LastRestLocation")
+
+  @@unique([worldId, slug])
+}
+
+/// Ruta directa entre dos ubicaciones. Se guarda UNA fila por pareja y el grafo se trata
+/// como bidireccional (ir y volver cuestan lo mismo en v1 — si algún día una ruta es
+/// asimétrica, se añade la fila inversa con otro coste y gana la específica).
+model LocationLink {
+  id     String   @id @default(cuid())
+  fromId String
+  from   Location @relation("linkFrom", fields: [fromId], references: [id], onDelete: Cascade)
+  toId   String
+  to     Location @relation("linkTo", fields: [toId], references: [id], onDelete: Cascade)
+
+  /// Minutos de viaje BASE (a pie, sin modificador). Es exactamente el `base` de la fórmula
+  /// YA existente en timedActions.ts — minutos = base / (1 + destreza/20). No se toca la
+  /// fórmula: solo se le da un `base` determinista sacado del grafo en vez de la estimación
+  /// libre del clasificador.
+  minutosBase Int
+  /// Terreno libre ("llanura abierta", "arcilla agrietada", "senda de pastoreo") — color
+  /// concreto para narrar el trayecto sin inventar
+  terreno     String
+  /// Riesgo conocido de la ruta ("nidos de Espina del Viento", "paso de patrullas de la
+  /// Concordia") — material para el Narrador; null = sin riesgo señalado
+  riesgo      String?
+
+  @@unique([fromId, toId])
+}
+
+/// Primera visita de una partida a una ubicación — habilita el hito "descubrimiento"
+/// (50 XP, tabla de docs/10 § 3.2) de forma DETERMINISTA: lo emite el backend al llegar
+/// por primera vez, sin que el modelo tenga que proponerlo.
+model LocationVisit {
+  id             String   @id @default(cuid())
+  saveId         String
+  save           Save     @relation(fields: [saveId], references: [id], onDelete: Cascade)
+  locationId     String
+  location       Location @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  firstVisitedAt DateTime @default(now())
+
+  @@unique([saveId, locationId])
+}
+
+/// Enciclopedia progresiva (sesión de diseño 2026-07-23, petición explícita de la usuaria a
+/// partir de la "niebla de guerra" del mapa: "en vez de tener todo descubierto desde el inicio...
+/// solo se verá una vez la AI lo mencione por primera vez en la narración, o sean objetos que ya
+/// tenemos"). Una fila = esta partida ya conoce esta entidad — NPC/fauna/objeto mencionado en
+/// narración o `new_facts` (o, para objetos, presente en el inventario), detectado en
+/// `services/discovery.ts` tras persistir cada turno. Lugares NO usan esta tabla: se gatean con
+/// `LocationVisit` (ya existía, visita física real). Razas/clases/personajes/atributos/
+/// construcciones quedan siempre visibles a propósito — son "cómo funciona el juego", no lore
+/// narrativo que se descubre jugando.
+model DiscoveredEntity {
+  id           String   @id @default(cuid())
+  saveId       String
+  save         Save     @relation(fields: [saveId], references: [id], onDelete: Cascade)
+  /// 'npc' | 'fauna' | 'item' — mismo vocabulario que ImagePromptEntityType, pero sin los tipos
+  /// siempre-visibles de arriba.
+  entityType   String
+  entitySlug   String
+  discoveredAt DateTime @default(now())
+
+  @@unique([saveId, entityType, entitySlug])
+  @@index([saveId])
 }
 
 /// La fuente de verdad de una partida — no es prosa, son hechos estructurados.
@@ -124,15 +305,18 @@ model WorldState {
   save    Save   @relation(fields: [saveId], references: [id], onDelete: Cascade)
 
   fictionalDateLabel String   @default("Día 1, mañana")
+  /// Minutos ficticios totales transcurridos desde Día 1, 00:00 (480 = 08:00, el mismo origen que
+  /// ya asumía `fictionalDateLabel` como placeholder). Avanza en narrateAndPersistTurn() según los
+  /// minutos reales que cuesta cada turno (computeDuration/travel.minutos) — nunca lo decide el
+  /// modelo. `fictionalDateLabel` se regenera a partir de este número cada vez que avanza, para no
+  /// tener que tocar los muchos sitios que ya lo leen como string. Año todavía sin implementar
+  /// (pendiente de que el flujo día/hora se demuestre estable jugando).
+  fictionalMinutes    Int     @default(480)
   /// Hechos establecidos, p. ej. ["el puente está destruido", "el jugador tiene la carta comprometedora"]
   facts               Json    @default("[]")
   /// Eventos pendientes de la agenda del mundo (facciones, NPCs) que el Cronista puede hacer "vencer"
   agenda              Json    @default("[]")
   factionsStatus      Json    @default("{}")
-
-  /// Decisión de producto 4 (revisada): el reloj avanza mientras el backend está corriendo y se pausa si no —
-  /// este campo es el último momento real en que el worker tocó este mundo, para calcular el siguiente tick.
-  lastTickedAt DateTime @default(now())
 
   updatedAt DateTime @updatedAt
 }
@@ -151,9 +335,25 @@ model LogEntry {
   /// XP ganada en esta entrada, si alguna (docs/10-niveles-xp-reino.md § 6) — permite mostrar
   /// "+50 XP" en el Diario y auditar el nivel sumando el log.
   xpDelta        Int?
+  /// Minuto de ficción real en el momento de crear esta entrada (WorldState.fictionalMinutes,
+  /// petición explícita de la usuaria, 2026-07-24: "el log de personaje solo muestre 24h del
+  /// mundo... el diario clasificado por días") — antes solo existía `timeLabel` (texto ya
+  /// formateado, "Día 3, 14:20"), sin número real que permita filtrar por ventana de tiempo de
+  /// juego ni agrupar por día sin parsear el string. `@default(0)` es solo para filas anteriores
+  /// a esta migración (se leerán como "Día 1"), nunca se usa para filas nuevas.
+  fictionalMinutes Int      @default(0)
+  /// Qué entidad de la Enciclopedia se mostró como banner bajo esta narración (rework 2026-07-24,
+  /// "las imágenes que se muestran en la narración deben persistir de alguna forma") — el frontend
+  /// ya decide cuál mostrar (mentionedEntityBanner.ts, con su propia deduplicación); esto solo
+  /// guarda esa decisión para que sobreviva a una recarga dentro de la ventana de 24h. Se resuelve
+  /// la imagen real en cada lectura (nunca se guarda la URL), igual que el resto de imágenes de la
+  /// Enciclopedia — así una imagen subida más tarde para la misma entidad también se ve aquí.
+  entityBannerType String?
+  entityBannerSlug String?
   createdAt      DateTime   @default(now())
 
   @@index([saveId, createdAt])
+  @@index([saveId, fictionalMinutes])
 }
 
 /// Personaje "ocupado/en tránsito" durante una acción larga (viajar, descansar varios días...).
@@ -168,18 +368,58 @@ model CharacterTransit {
   createdAt   DateTime @default(now())
 }
 
-/// Objeto que el personaje lleva encima o ha conseguido. Deliberadamente sin stats/bonificadores
-/// (decisión de mecánicas 6, 06-decisiones-mecanicas.md): es contexto para el Narrador, no una
-/// pieza de un sistema de itemización con números propios.
+/// Los 13 huecos de equipo fijos que pidió la usuaria — puramente organizativo/narrativo, sin
+/// bonificadores propios (mismo espíritu que el resto de InventoryItem). Como máximo un objeto
+/// por hueco y por partida (@@unique en InventoryItem más abajo); Postgres trata cada NULL como
+/// distinto, así que varios objetos sin equipar (slot = null) conviven sin problema.
+enum EquipSlot {
+  CASCO
+  ABALORIO
+  CAMISA
+  ARMADURA_SUPERIOR
+  GUANTES
+  ARMADURA_INFERIOR
+  ACCESORIO
+  BOTAS
+  ARMA_PRINCIPAL
+  ARMA_SECUNDARIA
+  ANILLO_1
+  ANILLO_2
+  CINTURON
+}
+
+/// Objeto que el personaje lleva encima o ha conseguido. Origen/descripción siguen siendo puro
+/// contexto narrativo (decisión de mecánicas 6), pero desde 2026-07-19 (instrucción explícita de
+/// la usuaria, reabriendo esa decisión — Gorhorn es guerrero primero, sin nada mágico todavía)
+/// un objeto puede llevar un bonificador mecánico real a uno de los 6 atributos jugables,
+/// aplicado solo mientras está EQUIPADO (ver effectiveAttributes en services/equipment.ts).
 model InventoryItem {
-  id          String   @id @default(cuid())
+  id          String     @id @default(cuid())
   saveId      String
-  save        Save     @relation(fields: [saveId], references: [id], onDelete: Cascade)
+  save        Save       @relation(fields: [saveId], references: [id], onDelete: Cascade)
   name        String
   description String
   /// De dónde salió (botín, inicial, regalo de un NPC...) — contexto narrativo, no categoría mecánica.
   origin      String?
-  createdAt   DateTime @default(now())
+  /// Hueco de equipo asignado (null = en la mochila, sin equipar). La jugadora lo asigna a mano
+  /// desde el panel "Equipo" — el modelo nunca lo decide.
+  slot        EquipSlot?
+  /// Bonificador mecánico real (solo cuenta mientras `slot` no es null) — uno de los 6 atributos
+  /// jugables ('fuerza'|'destreza'|'sigilo'|'voluntad'|'carisma'|'arcano'), nunca mágico por
+  /// ahora (arcano incluido en la lista pero sin usarlo todavía en objetos reales — Gorhorn es
+  /// guerrero, sin nada mágico hasta que se decida introducirlo). Ambos null = objeto puramente
+  /// narrativo, como antes.
+  statBonusAttribute String?
+  statBonusAmount     Int?
+  /// Slug de ItemCatalog de origen (sesión de diseño 2026-07-23) — no es FK real (mismo criterio
+  /// laxo que Quest.targetItemName): un objeto narrativo suelto (newItem del modelo) nunca tiene
+  /// uno. Se rellena cuando se sabe el origen (saqueo/despiece/crafteo, ver turnResolution.ts) —
+  /// permite mirar ItemCatalog.requisitos al equipar sin comparar por nombre (frágil, el nombre
+  /// final puede personalizarse en el saqueo/crafteo).
+  catalogSlug String?
+  createdAt   DateTime   @default(now())
+
+  @@unique([saveId, slot])
 
   @@index([saveId])
 }
@@ -241,6 +481,53 @@ model LoreChunk {
 }
 
 /// Habilidad guardada: un prompt reutilizable que el jugador puede lanzar directo al chat.
+/// Efecto mecánico de una habilidad de COMBATE (roadmap habilidades de clase, checklist
+/// 2026-07-21/22 puntos 1-2) — enum cerrado en vez de leer la intención por regex sobre el
+/// `promptText` (mismo error ya pagado con matchNpcAliases/erratas): el motor necesita un switch
+/// determinista para decidir REMATE/ATURDIMIENTO/INTIMIDACION/AGUANTE, no adivinarlo del texto.
+enum AbilityEffect {
+  ATAQUE
+  ATURDIMIENTO
+  REMATE
+  INTIMIDACION
+  AGUANTE
+}
+
+/// Nivel de oficio (sesión de diseño 2026-07-23) — eje independiente del nivel de personaje, uno
+/// por profesión practicada alguna vez (professionProgress.ts). `professionId` es el id de
+/// professions.ts (frontend), no FK real — mismo criterio laxo que Save.profession. Sube al
+/// craftear/construir con éxito una receta que declara ese `oficio` (crafting.ts/construction.ts);
+/// su nivel alivia SOLO los requisitos de recetas de ese mismo oficio (requisitos.ts).
+model ProfessionProgress {
+  id           String   @id @default(cuid())
+  saveId       String
+  save         Save     @relation(fields: [saveId], references: [id], onDelete: Cascade)
+  professionId String
+  nivel        Int      @default(1)
+  xp           Int      @default(0)
+  updatedAt    DateTime @updatedAt
+
+  @@unique([saveId, professionId])
+}
+
+/// Economía de Reino (sesión de diseño 2026-07-23, kingdomTick.ts) — 1:1 con Save, se crea al
+/// fundar el primer Territory (turnResolution.ts) — "el vacío es un estado válido"
+/// (docs/10-niveles-xp-reino.md § 5.1): sin fila, no hay reino todavía, nada que tiquear.
+model KingdomStats {
+  id           String   @id @default(cuid())
+  saveId       String   @unique
+  save         Save     @relation(fields: [saveId], references: [id], onDelete: Cascade)
+  poblacion    Int      @default(0)
+  felicidad    Int      @default(50)
+  comida       Int      @default(0)
+  bebida       Int      @default(0)
+  riqueza      Int      @default(0)
+  soldados     Int      @default(0)
+  trabajadores Int      @default(0)
+  visitantes   Int      @default(0)
+  updatedAt    DateTime @updatedAt
+}
+
 /// El cupo lo da el nivel (docs/10-niveles-xp-reino.md § 4.3): 3 + floor(nivel/2).
 model SavedAction {
   id          String   @id @default(cuid())
@@ -260,7 +547,58 @@ model SavedAction {
   /// "social" son las sugeridas en la UI, pero no hay lista cerrada de categorías posibles.
   /// Como en cualquier RPG: la barra de fuera de combate no es la misma que la de dentro.
   category    String   @default("general")
+  /// Solo relevante para category:'combate' (nunca en habilidades creadas a mano por la
+  /// jugadora — esas siguen siendo 'general', ver POST /saves/:id/abilities). Null en partidas
+  /// ya en curso hasta que se reinicien o suba de nivel de nuevo (mismo patrón aditivo/nullable
+  /// que el resto del proyecto).
+  effect             AbilityEffect?
+  /// Atributo con el que se resuelve la tirada de esta habilidad — gana sobre la heurística de
+  /// palabra clave de npcScene.ts (tabulatedAttackAttribute) cuando el turno manda `savedActionId`.
+  preferredAttribute String?
   createdAt   DateTime @default(now())
+
+  @@index([saveId])
+}
+
+enum QuestStatus {
+  ACTIVA
+  COMPLETADA
+  FALLIDA
+}
+
+/// Misión/objetivo narrativo (docs/09-panel-personaje.md § pestaña "Misiones", única pestaña
+/// pendiente desde el diseño original). Mismo patrón que Territory/Building/Subject: el modelo
+/// propone (newQuest/questProgress en narrador.ts), el backend valida y materializa — sin
+/// bonificadores mecánicos propios, coherente con la decisión de mecánicas 6.
+model Quest {
+  id          String      @id @default(cuid())
+  saveId      String
+  save        Save        @relation(fields: [saveId], references: [id], onDelete: Cascade)
+  title       String
+  description String
+  status      QuestStatus @default(ACTIVA)
+  /// Condición de cierre detectable por el backend (roadmap 2026-07-19, mecánicas): si esta
+  /// misión se detecta como "derrotar a X" al crearse (match contra los NPCs del mundo, mismo
+  /// matcher de npcScene.ts), aquí queda el id del Npc objetivo — sin FK real a propósito (mismo
+  /// patrón laxo que CharacterTransit.zoneContext), porque un Npc de catálogo no pertenece a
+  /// ninguna partida. En cuanto su NpcState pase a INCAPACITADO/MUERTO en ESTA partida, el
+  /// backend cierra la misión solo, sin depender de que el modelo repita el título EXACTO en
+  /// "questProgress".
+  targetNpcId String?
+  /// Mismo patrón que `targetNpcId` (roadmap 2026-07-20, P1 de Fable): si el título/descripción
+  /// menciona una Location conocida del mundo (mismo `matchDestination` que usa `travel.ts` para
+  /// resolver destinos), aquí queda su id — cierra sola la misión "llegar a Y" en cuanto se
+  /// registra una `LocationVisit` nueva a este destino, sin que el modelo tenga que acertar el
+  /// título EXACTO vía "questProgress".
+  targetLocationId String?
+  /// Mismo patrón: si el título/descripción menciona un objeto del catálogo (`ItemCatalog`), aquí
+  /// queda su nombre (no id — se compara contra `InventoryItem.name`, que no siempre coincide con
+  /// una fila de catálogo exacta: botín/despiece/crafteo pueden personalizar el nombre). Cierra
+  /// sola la misión "conseguir Z" en cuanto se materializa un `InventoryItem` cuyo nombre lo
+  /// menciona (loot, despiece, crafteo o "newItem" de la narración).
+  targetItemName String?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
 
   @@index([saveId])
 }
@@ -337,6 +675,160 @@ model Subject {
   @@index([saveId])
 }
 
+enum NpcKind {
+  PRINCIPAL // individuo con nombre propio: stats y equipo FIJOS, nunca los inventa el modelo
+  PLANTILLA // arquetipo instanciable ("guerrero orco rezagado"): statline canónica + rango de nivel
+}
+
+/// NPC del catálogo de mundo (no estado de partida — qué ha hecho un NPC en UNA partida
+/// sigue viviendo en WorldState.facts, igual que hasta ahora). Sembrado desde
+/// worldCatalog.ts; la prosa larga vive en docs/rpgtarkor/npcs.md y en lore chunks SIN números.
+model Npc {
+  id      String  @id @default(cuid())
+  worldId String
+  world   World   @relation(fields: [worldId], references: [id], onDelete: Cascade)
+  kind    NpcKind
+  slug    String
+  name    String
+  /// Formas reales de referirse a él/ella ("torgash", "el jefe de guerra serhu", "la terk'ikar")
+  /// — para la detección determinista de "NPC en escena" (§ 2.5)
+  aliases String[]
+  /// Clan o facción, libre ("Clan Serhu", "Concordia de Hierro") — null para independientes
+  faction String?
+  /// Rol corto ("Kort'ikar del Clan Serhu", "soldado de patrulla") — libre
+  role    String
+  /// Nivel en la MISMA escala de docs/10-niveles-xp-reino.md. Para PRINCIPAL es fijo; para
+  /// PLANTILLA es el nivel canónico (levelMax acota el rango típico). Hoy el motor no hace
+  /// tiradas opuestas: este nivel sirve para que el clasificador calibre la dificultad y el
+  /// Narrador el tono (§ 2.5), no para un sistema de combate simétrico.
+  level    Int
+  levelMax Int?
+  /// AttributeBlock { fuerza, destreza, sigilo, voluntad, carisma, arcano }, rango 4-18 —
+  /// mismo shape que Save.attributes para poder reutilizar tipos y validaciones
+  attributes Json
+  /// Biografía/descripción corta + personalidad: el resumen que se inyecta en el prompt.
+  /// La versión larga y los ganchos viven en los .md y en lore chunks.
+  bio         String
+  personality String
+  /// Dónde se le encuentra normalmente — slug de Location, string (no FK: una plantilla
+  /// puede aparecer "en cualquier ruta"), null = itinerante
+  homeLocationSlug String?
+
+  items     NpcItem[]
+  npcStates NpcState[]
+
+  @@unique([worldId, slug])
+}
+
+/// Estado de un NPC EN UNA PARTIDA CONCRETA (roadmap 2026-07-19 "roadmap 3", hallazgo de Fable):
+/// antes no existía — cada escena leía siempre el Npc estático (nivel/atributos de catálogo), así
+/// que "Torgash resucita" cada vez que aparece en escena, y el saqueo en combate se podía repetir
+/// pulsando "Registrar" tantas veces como se quisiera. Determinista, sin IA — el modelo nunca
+/// decide si un NPC está derrotado ni si ya se le saqueó.
+model NpcState {
+  id              String          @id @default(cuid())
+  saveId          String
+  save            Save            @relation(fields: [saveId], references: [id], onDelete: Cascade)
+  npcId           String
+  npc             Npc             @relation(fields: [npcId], references: [id], onDelete: Cascade)
+  /// Ámbito del estado (roadmap 2026-07-20, bug real P0): un Npc `PLANTILLA` es una única fila
+  /// de catálogo compartida por TODAS sus apariciones en el mundo ("rezagado", "corredor de
+  /// cauce"...) — sin esto, derrotar/saquear UNA aparición marcaba la plantilla entera como
+  /// derrotada para siempre en la partida, rompiendo el combate contra la misma clase de NPC una
+  /// segunda vez y reabriendo el farmeo infinito (el despiece exige presa previa, pero la presa
+  /// nunca volvía a "no estar ya derrotada"). Para `PRINCIPAL` siempre "" (una sola fila global,
+  /// mismo comportamiento que antes de este cambio — Torgash sigue siendo el mismo Torgash en
+  /// cualquier escena). Para `PLANTILLA`, el `Location.id` donde ocurre ESTE encuentro concreto
+  /// ("itinerante" si no hay ubicación resuelta en el turno) — así cada aparición nueva en un
+  /// sitio distinto empieza fresca, sin memoria de otras plantillas del mismo arquetipo.
+  scope           String          @default("")
+  condicionFisica CondicionFisica @default(ILESO)
+  /// true = ya se copió su loadout al inventario del jugador; bloquea "Registrar" de nuevo
+  /// sobre el mismo NPC hasta que la partida se reinicie.
+  saqueado        Boolean         @default(false)
+  updatedAt       DateTime        @updatedAt
+
+  @@unique([saveId, npcId, scope])
+}
+
+/// Catálogo cerrado de objetos del mundo (armas, herramientas, materiales, consumibles,
+/// documentos, objetos de valor narrativo). Sin bonificadores ni stats (decisión de
+/// mecánicas 6): description es contexto para el Narrador. Sembrado desde worldCatalog.ts.
+model ItemCatalog {
+  id          String  @id @default(cuid())
+  worldId     String
+  world       World   @relation(fields: [worldId], references: [id], onDelete: Cascade)
+  slug        String
+  name        String
+  /// Categoría libre ("arma", "herramienta", "ropa", "material", "consumible",
+  /// "medicinal", "documento", "valor") — organiza el catálogo, no es mecánica
+  category    String
+  description String
+  /// Bonificador mecánico real al equipar (2026-07-19, mismo mecanismo que InventoryItem) — hoy
+  /// solo asignado a las armas (categoría "arma"); el resto del catálogo sigue siendo puramente
+  /// narrativo. Se copia a InventoryItem.statBonus* al materializarse por saqueo/despiece.
+  statBonusAttribute String?
+  statBonusAmount    Int?
+  /// Medidas físicas aproximadas en texto libre (2026-07-22, "para los objetos sus medidas y su
+  /// lugar de origen... que eso se refleje en los prompts") — p.ej. "hoja de 45 cm, mango de 15
+  /// cm". Texto libre porque la forma de medir varía demasiado entre categorías (arma, ropa,
+  /// consumible...) para forzar un único campo numérico.
+  dimensiones String?
+  /// Lugar/pueblo/región de origen o fabricación, cuando aporta algo al lore (p.ej. "manufactura
+  /// goirnte, Meseta del Orden"). Null en objetos sin origen especial (p.ej. un cuchillo genérico).
+  lugarOrigen String?
+  /// Nivel de rareza/dificultad (1-5, sesión de diseño 2026-07-23) — "Craftable", mismo concepto
+  /// que ConstructionRecipe.tier (construction.ts). Default 1 = objeto común, sin requisito real.
+  tier        Int      @default(1)
+  /// Requisitos mínimos de atributo del PJ para EQUIPAR este objeto (Partial<Record<Attribute |
+  /// SecondaryAttribute, number>>, ver requisitos.ts) — comprobación de UMBRAL pura en
+  /// PATCH /saves/:id/inventario/:itemId, nunca una tirada. Null = sin requisito.
+  requisitos  Json?
+  createdAt   DateTime @default(now())
+
+  npcItems NpcItem[]
+  yields   HarvestYield[]
+
+  @@unique([worldId, slug])
+}
+
+/// Lo que un NPC lleva encima — la ÚNICA fuente de loot al derrotarlo/registrarlo/comerciar.
+model NpcItem {
+  id       String      @id @default(cuid())
+  npcId    String
+  npc      Npc         @relation(fields: [npcId], references: [id], onDelete: Cascade)
+  itemId   String
+  item     ItemCatalog @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  cantidad Int         @default(1)
+  /// Personalización de ESTA pieza ("con la marca del Clan Serhu grabada", "mellada") —
+  /// el mismo objeto de catálogo puede ser genérico en un NPC y significativo en otro
+  notas    String?
+
+  @@unique([npcId, itemId])
+}
+
+/// Qué recurso concreto da cada especie/planta al despiezarla o recolectarla — catálogo de
+/// mundo. El "loot" de la naturaleza sigue la misma regla que el de los NPCs: es una lista
+/// fija que se lee, nunca una tirada ni una invención del modelo. Las especies NO tienen
+/// tabla propia: su prosa vive en areas.md/lore chunks; aquí solo la clave textual estable.
+model HarvestYield {
+  id         String      @id @default(cuid())
+  worldId    String
+  world      World       @relation(fields: [worldId], references: [id], onDelete: Cascade)
+  /// Clave de la especie ("corredor-de-cauce", "salvia-del-polvo") — string, no FK
+  sourceSlug String
+  sourceName String
+  itemId     String
+  item       ItemCatalog @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  /// Cantidad FIJA por pieza/planta — la variación ya la puso la tirada de caza previa
+  cantidad   Int         @default(1)
+  /// Condición narrativa o de tirada ("cuchillo de deshuello", "extracción cuidadosa:
+  /// destreza 15", "solo cadáver ya muerto") — null = sin condición
+  condicion  String?
+
+  @@index([worldId, sourceSlug])
+}
+
 /// Resúmenes por capítulos — memoria de partida para no perder coherencia en partidas largas (riesgo 1 del análisis).
 model SessionSummary {
   id             String   @id @default(cuid())
@@ -347,4 +839,36 @@ model SessionSummary {
   createdAt      DateTime @default(now())
 
   @@index([saveId, chapterNumber])
+}
+
+/// Prompt de generación de imagen (en inglés, listo para pegar en cualquier generador externo)
+/// para una entrada del catálogo del mundo — roadmap de API de imágenes (2026-07-21/22, checklist
+/// punto 7). Primera pasada: solo TEXTO del prompt, sin renderizar nada todavía (decisión
+/// explícita de la usuaria) — tabla genérica por (worldId, entityType, entitySlug, sizeProfile) en
+/// vez de una columna por modelo (Npc/ItemCatalog/etc.) porque fauna/flora no tiene tabla propia
+/// (vive como sourceSlug/sourceName repetido en HarvestYield) y las habilidades de clase son
+/// contenido estático en código (classAbilities.ts/startingAbilities.ts, sin fila de BD) — una
+/// tabla aparte cubre los cuatro tipos sin tocar cada modelo.
+model ImagePrompt {
+  id         String   @id @default(cuid())
+  worldId    String
+  world      World    @relation(fields: [worldId], references: [id], onDelete: Cascade)
+  /// 'npc' | 'item' | 'fauna' | 'ability' — qué catálogo referencia entitySlug
+  entityType String
+  /// slug real (Npc.slug/ItemCatalog.slug/HarvestYield.sourceSlug) o nombre slugificado
+  /// (habilidades, que no tienen slug propio en código)
+  entitySlug String
+  /// 'thumbnail' (miniatura cuadrada de EntryCard, cuadrícula de la Enciclopedia) | 'banner'
+  /// (MediaSlot ancho de DetailModal, ~3:1 — medido en la UI real, no una talla inventada). Cada
+  /// perfil tiene su propia instrucción de encuadre en imagePromptGenerator.ts y se genera/cachea
+  /// por separado (petición explícita de la usuaria, 2026-07-22: "1 a 1", nunca las dos de golpe).
+  sizeProfile String
+  prompt     String
+  /// Qué proveedor lo generó ("cerebras:gpt-oss-120b", "ollama:qwen2.5:1.5b-instruct"...) — para
+  /// poder distinguir calidad si hace falta regenerar solo lo que cayó al fallback local.
+  provider   String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([worldId, entityType, entitySlug, sizeProfile])
 }

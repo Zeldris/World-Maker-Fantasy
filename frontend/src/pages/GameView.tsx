@@ -2,69 +2,120 @@ import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useSession } from '../context/SessionContext'
 import { LogPanel } from '../components/LogPanel'
-import { ChatComposer } from '../components/ChatComposer'
-import { BottomBar, type PanelId } from '../components/BottomBar'
+import { ChatComposer, type ChatComposerHandle } from '../components/ChatComposer'
+import { SideNav } from '../components/SideNav'
+import { characterTabs, worldTabs, type PanelId } from '../components/NavTabs'
 import { PanelDrawer } from '../components/PanelDrawer'
 import { EstadisticasPanel } from '../components/panels/EstadisticasPanel'
 import { MapaPanel } from '../components/panels/MapaPanel'
 import { DiarioPanel } from '../components/panels/DiarioPanel'
 import { InventarioPanel } from '../components/panels/InventarioPanel'
+import { EnciclopediaPanel } from '../components/panels/EnciclopediaPanel'
+import { EquipoPanel, SLOT_LABEL } from '../components/panels/EquipoPanel'
+import { DetailModal, type DetailTarget } from '../components/DetailModal'
+import { useEnciclopedia } from '../hooks/useEnciclopedia'
+import type { EnciclopediaLinkTarget } from '../lib/enciclopediaIndex'
+import { EnciclopediaLinkProvider } from '../context/EnciclopediaLinkContext'
 import { CompanerosPanel } from '../components/panels/CompanerosPanel'
 import { ReinoPanel } from '../components/panels/ReinoPanel'
+import { MisionesPanel } from '../components/panels/MisionesPanel'
 import { HabilidadesPanel } from '../components/panels/HabilidadesPanel'
 import { ProfesionesPanel } from '../components/panels/ProfesionesPanel'
-import { PlaceholderPanel } from '../components/panels/PlaceholderPanel'
 import { playerActionEntry } from '../lib/simulateAI'
+import { DiscoveryReveal } from '../components/DiscoveryReveal'
+import { CombatComposer, type CombatNpcDisplay } from '../components/CombatComposer'
+import { HealthBar } from '../components/HealthBar'
 import {
   requestTurnClassify,
   requestTurnNarrate,
   requestSurroundings,
+  requestFlee,
   createSave,
   getSave,
+  pauseSave,
+  resumeSave,
+  cancelTransit,
   spendAttributePoint,
   createSavedAction,
   deleteSavedAction,
+  updateSavedAction,
   setProfession,
+  setItemSlot,
+  setLogEntryBanner,
+  resolveImageUrl,
   type BusyError,
+  type EndedGameError,
   type SaveDetail,
+  type ClassifyResponse,
 } from '../lib/api'
 import { characterWaitingFlavor, worldWaitingFlavor, useRotatingFlavor } from '../lib/waitingFlavor'
+import { pickMentionedEntityBanner, mentionedEntityKey, resolveEntityBannerFromRef } from '../lib/mentionedEntityBanner'
 import type {
   Attribute,
   AttributeBlock,
   BuildingInfo,
   CompanionInfo,
-  ComposerAttachment,
+  CondicionFisica,
+  CurrentLocationInfo,
+  DestinationInfo,
+  Dificultad,
+  DiscoveryItem,
+  EquipSlot,
   InventoryItemInfo,
+  KingdomStatsInfo,
   LogEntry,
+  MentionedEntityBanner,
+  NpcInSceneInfo,
+  ProfessionProgressInfo,
+  ProgressionResult,
+  QuestInfo,
   SavedActionCategory,
   SavedActionInfo,
+  SecondaryAttributeBlock,
+  SessionSummaryInfo,
   SubjectInfo,
   TerritoryInfo,
 } from '../types'
 
 function isBusyError(err: unknown): err is BusyError {
-  return typeof err === 'object' && err !== null && (err as { status?: number }).status === 409
+  return typeof err === 'object' && err !== null && (err as { status?: number }).status === 409 && !('ended' in err)
 }
 
-/// Combina los adjuntos del composer (habilidades/objetos marcados) con el texto libre en una
-/// única acción — las habilidades aportan su prompt calibrado, los objetos una mención simple.
-function buildActionText(attachments: ComposerAttachment[], freeText: string): string {
-  const parts = attachments.map((a) => (a.type === 'ability' ? a.ability.promptText : `Uso mi ${a.item.name}.`))
-  return [...parts, freeText.trim()].filter(Boolean).join(' ')
+function isEndedGameError(err: unknown): err is EndedGameError {
+  return typeof err === 'object' && err !== null && (err as { ended?: boolean }).ended === true
 }
 
-const actionSuggestions = [
-  'Examino mis alrededores con cuidado',
-  'Busco un lugar seguro para descansar',
-  'Intento escuchar lo que dicen a lo lejos',
-  'Reviso mi equipo y mis heridas',
-]
+/// Cuenta atrás de una acción larga en curso (roadmap 2026-07-20, hallazgo real jugando: sin
+/// esto, "vuelve en un rato" no decía nada — ni cuánto quedaba ni cuándo mirar). `busyUntil` ya
+/// llega como ISO string; se compara contra un reloj que se actualiza cada segundo (barato, es
+/// solo aritmética de fechas, el sondeo real que sí llama al backend sigue siendo el de 30s ya
+/// existente). Nunca negativo: si el tick de fondo tarda en confirmar la resolución, se queda en
+/// "resolviendo..." en vez de enseñar un contador en números rojos.
+function formatCountdown(busyUntilIso: string, nowMs: number): string {
+  const remainingMs = new Date(busyUntilIso).getTime() - nowMs
+  if (remainingMs <= 0) return 'resolviendo...'
+  const totalMinutes = Math.ceil(remainingMs / 60_000)
+  if (totalMinutes < 60) return `~${totalMinutes} min`
+  const horas = Math.floor(totalMinutes / 60)
+  const minutos = totalMinutes % 60
+  return minutos === 0 ? `~${horas}h` : `~${horas}h ${minutos}min`
+}
+
+/// Combina los adjuntos del composer con el texto libre en una única acción (docs/14-combate-y-muerte.md
+/// § 3: "composición verbo + objetivo"). Una habilidad (verbo) emparejada con un NPC o un hallazgo
+/// (objetivo) en la misma tanda se combina como "{promptText} '{nombre del objetivo}'." — los
+/// prompts de habilidad ya están en primera persona con el enemigo implícito ("mi enemigo"), así
+/// que añadir el nombre entre comillas al final desambigua el objetivo sin reescribir cada prompt.
+/// Un hallazgo sin habilidad asociada se recoge con cantidad explícita; un objeto de inventario
+/// mantiene la mención simple de siempre.
+// Espejo de limiteMuertes() en backend/src/services/death.ts — NOVATO no tiene límite, así que
+// no aparece aquí (el indicador de muerte permanente solo se muestra para MEDIO/AVANZADO).
+const LIMITE_MUERTES: Record<Exclude<Dificultad, 'NOVATO'>, number> = { MEDIO: 4, AVANZADO: 2 }
 
 export function GameView() {
   const { id } = useParams()
   const navigate = useNavigate()
-  const { selectedWorld, selectedCharacter } = useSession()
+  const { selectedWorld, selectedCharacter, selectedDificultad } = useSession()
 
   const [saveId, setSaveId] = useState<string | null>(null)
   const [worldIdSlug, setWorldIdSlug] = useState<string | null>(null)
@@ -72,6 +123,7 @@ export function GameView() {
   const [characterName, setCharacterName] = useState<string | null>(null)
   const [characterMotivation, setCharacterMotivation] = useState<string | null>(null)
   const [characterAttributes, setCharacterAttributes] = useState<AttributeBlock | null>(null)
+  const [secondaryAttributes, setSecondaryAttributes] = useState<SecondaryAttributeBlock | null>(null)
   const [characterLog, setCharacterLog] = useState<LogEntry[]>([])
   const [worldLog, setWorldLog] = useState<LogEntry[]>([])
   const [inventory, setInventory] = useState<InventoryItemInfo[]>([])
@@ -83,19 +135,244 @@ export function GameView() {
   const [territories, setTerritories] = useState<TerritoryInfo[]>([])
   const [buildings, setBuildings] = useState<BuildingInfo[]>([])
   const [subjects, setSubjects] = useState<SubjectInfo[]>([])
+  const [factionsStatus, setFactionsStatus] = useState<Record<string, number>>({})
+  const [kingdomStats, setKingdomStats] = useState<KingdomStatsInfo | null>(null)
+  const [professionProgress, setProfessionProgress] = useState<ProfessionProgressInfo[]>([])
+  const [deathCount, setDeathCount] = useState(0)
+  const [dificultad, setDificultad] = useState<Dificultad>('NOVATO')
   const [savedActions, setSavedActions] = useState<SavedActionInfo[]>([])
   const [combatSlots, setCombatSlots] = useState(3)
   const [profession, setProfessionState] = useState<string | null>(null)
   const [fictionalDate, setFictionalDate] = useState('Día 1, mañana')
+  const [currentLocation, setCurrentLocation] = useState<CurrentLocationInfo | null>(null)
+  const [destinations, setDestinations] = useState<DestinationInfo[]>([])
   const [input, setInput] = useState('')
-  const [attachments, setAttachments] = useState<ComposerAttachment[]>([])
+  const composerRef = useRef<ChatComposerHandle>(null)
   const [characterThinking, setCharacterThinking] = useState(false)
   const [worldThinking, setWorldThinking] = useState(false)
   const [timedThinkingText, setTimedThinkingText] = useState<string | null>(null)
+  // Streaming (roadmap de velocidad, 2026-07-20, punto 13): la narración crece en vivo mientras
+  // el Narrador la genera, en vez de aparecer entera al final — null mientras dura el prefill
+  // (el modelo todavía no ha emitido ningún token de "narration") o si no hay turno en curso.
+  const [streamingNarration, setStreamingNarration] = useState<string | null>(null)
   const [busyUntil, setBusyUntil] = useState<string | null>(null)
   const [busyActivity, setBusyActivity] = useState<string | null>(null)
+  const [cancelingTransit, setCancelingTransit] = useState(false)
+  const [nowTick, setNowTick] = useState(() => Date.now())
   const [activePanel, setActivePanel] = useState<PanelId | null>(null)
+  const [detailTarget, setDetailTarget] = useState<DetailTarget | null>(null)
+  // Solo se usa para el detalle de la Enciclopedia (kind: 'info') — guarda el callback concreto
+  // de "insertar este elemento" para esa entrada, ver handleEnciclopediaDetail.
+  const [detailInsertHandler, setDetailInsertHandler] = useState<(() => void) | null>(null)
+  // Texto clicable en narración/diario/descripciones (2026-07-22, petición explícita) — un solo
+  // índice construido una vez, reutilizado por LogPanel/DiarioPanel/DetailModal. Clicar una
+  // mención simplemente reemplaza `detailTarget` (mismo estado de siempre), no abre nada nuevo.
+  const enciclopediaIndex = useEnciclopedia(worldIdSlug)
+  // Banner de elemento citado bajo la narración (petición explícita de la usuaria, 2026-07-24):
+  // ventana de "no repetir" de las últimas 4 narraciones, en memoria de esta sesión — no hace
+  // falta persistirlo, un cambio de partida/recarga simplemente empieza la ventana de cero.
+  //
+  // Bug real jugando en vivo (2026-07-24, "sigue sin salir la imagen"): la primera versión
+  // guardaba solo una lista de las últimas 6 claves MOSTRADAS y la recortaba con `.slice(-6)` —
+  // es decir, expiraba una entrada solo cuando aparecían 6 entidades DISTINTAS nuevas después de
+  // ella. Con solo 2-3 candidatas reales con imagen subida en esta zona del juego (Gistera Koh,
+  // Orco Enfurecido...), en cuanto cada una se mostraba una vez quedaban ambas bloqueadas para
+  // siempre — nunca hay una tercera/cuarta/etc. distinta que las empuje fuera de la ventana. Ahora
+  // la expiración es por Nº DE NARRACIONES transcurridas (turnCounter), no por cuántas entidades
+  // distintas se han enseñado — así una NPC protagonista puede volver a aparecer pasadas unas
+  // pocas narraciones aunque no haya ninguna otra entidad nueva de por medio.
+  // `enciclopediaIndexRef` (mismo patrón que `characterThinkingRef`/`fictionalDateRef` más abajo):
+  // `tickSurroundings` vive dentro de un efecto con `[saveId]` como única dependencia, así que su
+  // clausura se crea una sola vez — sin el ref, se quedaría leyendo para siempre el índice vacío
+  // del primer render, de antes de que `useEnciclopedia` terminara de cargar los datos reales.
+  const RECENTLY_SHOWN_TURN_WINDOW = 4
+  const recentlyShownEntitiesRef = useRef<Map<string, number>>(new Map())
+  const entityBannerTurnRef = useRef(0)
+  const enciclopediaIndexRef = useRef(enciclopediaIndex)
+  useEffect(() => {
+    enciclopediaIndexRef.current = enciclopediaIndex
+  }, [enciclopediaIndex])
+  // Reconstruye `entityBanner` para las entradas ya persistidas (rework 2026-07-24) en cuanto la
+  // Enciclopedia termina de cargar — `syncFromSave` (al entrar/recargar) las rellena con
+  // `entityBannerType`/`entityBannerSlug` (la referencia que sí sobrevive en BD), pero necesita el
+  // índice de la Enciclopedia ya construido para resolver la imagen real; como ese fetch es
+  // asíncrono y separado, este efecto corre en cuanto está listo, no en el momento de la carga.
+  useEffect(() => {
+    if (!enciclopediaIndex.bySlugKey.size) return
+    const resolve = (entry: LogEntry): LogEntry => {
+      if (entry.entityBanner || !entry.entityBannerType || !entry.entityBannerSlug) return entry
+      const resolved = resolveEntityBannerFromRef(entry.entityBannerType, entry.entityBannerSlug, enciclopediaIndex)
+      if (!resolved) return entry
+      // Bug real jugando en vivo (2026-07-24, "las imágenes al recargar no se ven" — icono de
+      // imagen rota): `resolveEntityBannerFromRef` devuelve la ruta relativa tal cual (igual que
+      // `pickMentionedEntityBanner` con `bannerUrl`), quien llama es quien la convierte en URL
+      // completa con `resolveImageUrl` (mismo patrón que `buildEntityBanner`) — faltaba aquí.
+      const imageUrl = resolveImageUrl(resolved.imageUrl)
+      if (!imageUrl) return entry
+      return { ...entry, entityBanner: { ...resolved, imageUrl } }
+    }
+    setCharacterLog((prev) => prev.map(resolve))
+    setWorldLog((prev) => prev.map(resolve))
+  }, [enciclopediaIndex])
+  // `logEntryId` (rework 2026-07-24, persistencia de banners): el id REAL de la fila LogEntry ya
+  // creada en el backend para esta narración — antes se usaba un id inventado (`c-${Date.now()}`)
+  // que no correspondía a nada en BD, así que no había forma de guardarle luego qué entidad se
+  // mostró. Si se pasa, y hay match, se dispara un PATCH de fondo (fire-and-forget: un fallo aquí
+  // solo significa que la imagen no sobrevive a una recarga, nada más grave).
+  function buildEntityBanner(text: string, logEntryId?: string): MentionedEntityBanner | undefined {
+    // Cualquier fallo aquí es puramente cosmético (una imagen de más o de menos) — nunca debe
+    // impedir que la narración en sí se guarde/muestre. Aislado en try/catch tras un bug real
+    // sospechado de un remount/HMR dejando `recentlyShownEntitiesRef` con una forma antigua.
+    try {
+      const currentTurn = ++entityBannerTurnRef.current
+      const recentlyShown = new Set(
+        Array.from(recentlyShownEntitiesRef.current.entries())
+          .filter(([, shownAtTurn]) => currentTurn - shownAtTurn < RECENTLY_SHOWN_TURN_WINDOW)
+          .map(([key]) => key),
+      )
+      const match = pickMentionedEntityBanner(text, enciclopediaIndexRef.current, recentlyShown)
+      if (!match) return undefined
+      const imageUrl = resolveImageUrl(match.bannerUrl)
+      if (!imageUrl) return undefined
+      recentlyShownEntitiesRef.current.set(mentionedEntityKey(match.target), currentTurn)
+      if (logEntryId && saveId && match.target.entityType && match.target.entitySlug) {
+        setLogEntryBanner(saveId, logEntryId, match.target.entityType, match.target.entitySlug).catch(() => {})
+      }
+      return { name: match.target.name, icon: match.target.icon, imageUrl }
+    } catch (err) {
+      console.error('buildEntityBanner failed', err)
+      return undefined
+    }
+  }
   const [notFound, setNotFound] = useState(false)
+  const [discoveries, setDiscoveries] = useState<DiscoveryItem[]>([])
+  const [condicionFisica, setCondicionFisica] = useState<CondicionFisica>('ILESO')
+  const [endedAt, setEndedAt] = useState<string | null>(null)
+  const [combateIniciado, setCombateIniciado] = useState<{ npcs: NpcInSceneInfo[] } | null>(null)
+  const [combatOpen, setCombatOpen] = useState(false)
+  const [fleeingPreCombat, setFleeingPreCombat] = useState(false)
+  // Rework de combate in-place (2026-07-24): antes este estado (condición heurística por NPC,
+  // saqueado) vivía dentro de CombatModal.tsx, remontado limpio cada vez que el popup se abría.
+  // Ahora que no hay popup (el composer normal se sustituye por CombatComposer en el mismo sitio),
+  // este estado vive aquí y se inicializa a mano en `openCombat()` cada vez que arranca una pelea.
+  const CONDICION_ORDER: Exclude<CondicionFisica, 'MUERTO'>[] = ['ILESO', 'HERIDO', 'GRAVE', 'INCAPACITADO']
+  const [combatNpcStates, setCombatNpcStates] = useState<CombatNpcDisplay[]>([])
+  const [combatBusy, setCombatBusy] = useState(false)
+  const [combatEnded, setCombatEnded] = useState(false)
+  const combatNpcsDisplay: CombatNpcDisplay[] = (combateIniciado?.npcs ?? []).map((n) => {
+    const state = combatNpcStates.find((s) => s.slug === n.slug)
+    return (
+      state ?? {
+        slug: n.slug,
+        name: n.name,
+        condicion: n.condicionFisica === 'MUERTO' ? 'INCAPACITADO' : n.condicionFisica,
+        yaSaqueado: n.saqueado,
+      }
+    )
+  })
+  // Tabs que no tienen sentido en pleno combate (petición explícita, 2026-07-24) — Estadísticas,
+  // Equipo, Habilidades y Enciclopedia se dejan libres a propósito ("no fuerces nada, ya lo
+  // gestionaremos con un tutorial futuro"): solo se restringe lo que de verdad no se puede hacer
+  // en mitad de una pelea (viajar, gestionar el Reino, leer el diario...).
+  const COMBAT_DISABLED_CHARACTER_TABS: PanelId[] = ['inventario', 'profesiones']
+  const COMBAT_DISABLED_WORLD_TABS: PanelId[] = ['mapa', 'diario', 'misiones', 'companeros', 'reino']
+
+  function openCombat() {
+    if (!combateIniciado) return
+    setCombatNpcStates(
+      combateIniciado.npcs.map((n) => ({
+        slug: n.slug,
+        name: n.name,
+        condicion: n.condicionFisica === 'MUERTO' ? 'INCAPACITADO' : n.condicionFisica,
+        yaSaqueado: n.saqueado,
+      })),
+    )
+    setCombatEnded(false)
+    if (activePanel && (COMBAT_DISABLED_CHARACTER_TABS.includes(activePanel) || COMBAT_DISABLED_WORLD_TABS.includes(activePanel))) {
+      setActivePanel(null)
+    }
+    setCombatOpen(true)
+  }
+
+  function downgradeCombatNpc(slug: string) {
+    setCombatNpcStates((prev) =>
+      prev.map((n) => {
+        if (n.slug !== slug) return n
+        const idx = CONDICION_ORDER.indexOf(n.condicion)
+        return { ...n, condicion: CONDICION_ORDER[Math.min(idx + 1, CONDICION_ORDER.length - 1)] }
+      }),
+    )
+  }
+
+  async function submitCombatAction(action: string, opts: { targetSlug?: string; savedActionId?: string }) {
+    if (!action.trim() || combatBusy || combatEnded || !saveId) return
+    setCombatBusy(true)
+    try {
+      const classifyResult = await requestTurnClassify({ saveId, action, enCombate: true, savedActionId: opts.savedActionId })
+      const { classification, roll } = classifyResult
+      const { narration, progression, condicionFisica, finDePartida, newInventoryItems, logEntryId } = await requestTurnNarrate({
+        saveId,
+        action,
+        classification,
+        roll,
+        enCombate: true,
+        savedActionId: opts.savedActionId,
+      })
+      if (opts.targetSlug && roll?.success) downgradeCombatNpc(opts.targetSlug)
+      handleCombatTurnResolved({ narration: narration.narration, progression, condicionFisica, finDePartida, newInventoryItems, logEntryId })
+      if (finDePartida || condicionFisica === 'MUERTO') setCombatEnded(true)
+    } catch {
+      setCharacterLog((prev) => [
+        ...prev,
+        {
+          id: `combat-err-${Date.now()}`,
+          channel: 'character',
+          text: 'No se pudo resolver este turno de combate.',
+          timeLabel: fictionalDate,
+          createdAt: new Date().toISOString(),
+        },
+      ])
+    } finally {
+      setCombatBusy(false)
+    }
+  }
+
+  function handleCombatHuir() {
+    // Fire-and-forget + cierre inmediato (mismo comportamiento que tenía CombatModal.handleHuir):
+    // no se espera el resultado narrativo para volver al modo normal.
+    submitCombatAction('Intento huir de este combate, alejándome como pueda.', {})
+    setCombatOpen(false)
+    setCombateIniciado(null)
+  }
+
+  function handleCombatRegistrar(npc: CombatNpcDisplay) {
+    setCombatNpcStates((prev) => prev.map((n) => (n.slug === npc.slug ? { ...n, yaSaqueado: true } : n)))
+    submitCombatAction(`Registro el cuerpo de ${npc.name}.`, {})
+  }
+  const [quests, setQuests] = useState<QuestInfo[]>([])
+  const [chapters, setChapters] = useState<SessionSummaryInfo[]>([])
+
+  // Pop del botón "Nivel X" solo en una subida real, nunca al cargar la partida (roadmap de
+  // animaciones 2026-07-20, item 7) — mismo patrón que HealthBar: comparar contra un ref, no
+  // animar en el primer render.
+  const [levelPop, setLevelPop] = useState(0)
+  const prevLevelRef = useRef(level)
+  useEffect(() => {
+    if (prevLevelRef.current !== level) {
+      setLevelPop((p) => p + 1)
+      prevLevelRef.current = level
+    }
+  }, [level])
+
+  // Mismo patrón que el pop de nivel — el chip de muertes solo destella cuando sube de verdad.
+  const [deathPop, setDeathPop] = useState(0)
+  const prevDeathCountRef = useRef(deathCount)
+  useEffect(() => {
+    if (prevDeathCountRef.current !== deathCount) {
+      setDeathPop((p) => p + 1)
+      prevDeathCountRef.current = deathCount
+    }
+  }, [deathCount])
 
   const characterFlavor = useRotatingFlavor(characterThinking, characterWaitingFlavor)
   const worldFlavor = useRotatingFlavor(worldThinking, worldWaitingFlavor)
@@ -104,12 +381,42 @@ export function GameView() {
   // (ver más abajo) — necesita leer el valor más reciente de estos, no el de cuando arrancó.
   const characterThinkingRef = useRef(characterThinking)
   const fictionalDateRef = useRef(fictionalDate)
+  // Bug real encontrado auditando la partida de Gorhorn (2026-07-23, "revisar partida" — petición
+  // explícita de la usuaria: "la AI del narrador esta generando un prompt fuera de responder a
+  // que yo le ponga... nos esta haciendo mas bien que mal"): el sondeo de ambientación cada 5 min
+  // ya evitaba solaparse con un turno en curso o un gancho sin responder, pero no con un combate
+  // pendiente/abierto — un evento ambiental ("¿Qué haces?" con el mismo NPC ya atacando) llegó a
+  // dispararse en mitad de un intercambio de golpes real, muy confuso. `combateIniciado` (no solo
+  // `combatOpen`) cubre también la ventana entre "se marcó el combate" y "el jugador pulsa
+  // Combatir", que es tan real como el propio popup abierto.
+  const combatActiveRef = useRef(false)
   useEffect(() => {
     characterThinkingRef.current = characterThinking
   }, [characterThinking])
   useEffect(() => {
+    combatActiveRef.current = !!combateIniciado
+  }, [combateIniciado])
+  useEffect(() => {
     fictionalDateRef.current = fictionalDate
   }, [fictionalDate])
+
+  // Solapar classify con el tecleo (roadmap de velocidad, 2026-07-19): tras ~1,5s sin tocar el
+  // composer, se lanza ya la clasificación en segundo plano con `preview:true` — no persiste nada
+  // (backend, ver classifyCache.ts), solo precalienta la caché del servidor con este texto exacto.
+  // Si el jugador envía lo mismo antes de que caduque, el envío real (más abajo) se beneficia solo
+  // con que el backend encuentre la caché — el frontend no necesita rastrear ni reutilizar la
+  // respuesta cruda del preview (evita el riesgo de perder "discoveries"/"transit" del envío real).
+  useEffect(() => {
+    const action = input.trim()
+    const composerDisabled = characterThinking || !!busyUntil || !!endedAt || (!!combateIniciado && !combatOpen)
+    if (!action || !saveId || composerDisabled) return
+
+    const timer = setTimeout(() => {
+      requestTurnClassify({ saveId, action, preview: true }).catch(() => {})
+    }, 1500)
+
+    return () => clearTimeout(timer)
+  }, [input, saveId, characterThinking, busyUntil, endedAt, combateIniciado, combatOpen])
 
   // Vuelca un SaveDetail completo en el estado local — usado al cargar la partida y al
   // resincronizar tras resolverse una acción por tiempo en diferido (CharacterTransit).
@@ -117,6 +424,7 @@ export function GameView() {
     setCharacterName(save.characterName)
     setCharacterMotivation(save.characterMotivation)
     setCharacterAttributes(save.attributes)
+    setSecondaryAttributes(save.secondaryAttributes)
     setFictionalDate(save.fictionalDateLabel)
     setCharacterLog(save.characterLog)
     setWorldLog(save.worldLog)
@@ -129,11 +437,40 @@ export function GameView() {
     setTerritories(save.territories)
     setBuildings(save.buildings)
     setSubjects(save.subjects)
+    setFactionsStatus(save.factionsStatus)
+    setKingdomStats(save.kingdomStats)
+    setProfessionProgress(save.professionProgress)
     setBusyUntil(save.transit?.busyUntil ?? null)
     setBusyActivity(save.transit?.activity ?? null)
     setSavedActions(save.savedActions)
     setCombatSlots(save.habilidadSlots)
     setProfessionState(save.profession)
+    setCurrentLocation(save.currentLocation)
+    setDestinations(save.destinations)
+    setCondicionFisica(save.condicionFisica)
+    setDeathCount(save.deathCount)
+    setDificultad(save.dificultad)
+    setEndedAt(save.endedAt)
+    setQuests(save.quests)
+    setChapters(save.chapters)
+    // Bug real (2026-07-23, "revisar partida"): antes `combateIniciado` solo se fijaba con la
+    // respuesta directa de `/turn/narrate` — cualquier resincronización (sondeo de reconexión,
+    // recarga de página) perdía el aviso de combate aunque el backend lo hubiera calculado bien.
+    if (save.combateIniciado && save.combateIniciado.npcs.length > 0) setCombateIniciado(save.combateIniciado)
+  }
+
+  async function handleCancelTransit() {
+    if (!saveId || cancelingTransit) return
+    setCancelingTransit(true)
+    try {
+      await cancelTransit(saveId)
+      const save = await getSave(saveId)
+      syncFromSave(save)
+    } catch {
+      // Si falla (p. ej. ya se resolvió justo antes), el sondeo de 30s ya en marcha lo reflejará.
+    } finally {
+      setCancelingTransit(false)
+    }
   }
 
   async function handleAdoptProfession(name: string) {
@@ -168,18 +505,171 @@ export function GameView() {
     }
   }
 
+  async function handleUpdateHabilidad(habilidadId: string, params: { name: string; promptText: string; icon: string; description: string }) {
+    if (!saveId) return
+    const updated = await updateSavedAction(saveId, habilidadId, params)
+    setSavedActions((prev) => prev.map((a) => (a.id === habilidadId ? updated : a)))
+  }
+
+  function handleItemDetail(item: InventoryItemInfo) {
+    setDetailTarget({ kind: 'item', item })
+    setDetailInsertHandler(null)
+  }
+
+  function handleAbilityDetail(ability: SavedActionInfo) {
+    setDetailTarget({ kind: 'ability', ability })
+    setDetailInsertHandler(null)
+  }
+
+  function handleSlotClick(slot: EquipSlot, equipped: InventoryItemInfo | undefined) {
+    if (equipped) {
+      handleItemDetail(equipped)
+    } else {
+      setDetailTarget({ slotLabel: SLOT_LABEL[slot], kind: 'slotPicker', slot, options: inventory.filter((i) => !i.slot) })
+      setDetailInsertHandler(null)
+    }
+  }
+
+  function handleEnciclopediaInsert(chip: { icon: string; label: string; description?: string }) {
+    composerRef.current?.insertChip(chip)
+    setActivePanel(null)
+  }
+
+  function handleEnciclopediaDetail(target: DetailTarget, onInsertForTarget?: () => void) {
+    setDetailTarget(target)
+    setDetailInsertHandler(() => onInsertForTarget ?? null)
+  }
+
+  // Texto clicable en narración/diario/descripciones (2026-07-22): clic normal navega a la ficha
+  // (se limpia el insert handler que hubiera de antes, p.ej. si se navega a otra ficha desde
+  // dentro del propio modal); Shift+clic inserta directo sin navegar, ver handleEntityQuickInsert.
+  function handleEntityDetailNavigate(target: DetailTarget) {
+    setDetailTarget(target)
+    setDetailInsertHandler(null)
+  }
+
+  // Shift+clic izquierdo (petición explícita, 2026-07-22) sobre CUALQUIER enlace a la Enciclopedia
+  // — no solo las tarjetas del panel, también las menciones clicables dentro de narración/diario/
+  // descripciones (EnciclopediaLinkedText) — inserta el chip directo en el composer sin abrir nada.
+  function handleEntityQuickInsert(target: EnciclopediaLinkTarget) {
+    composerRef.current?.insertChip({ icon: target.icon, label: target.name, description: target.description })
+  }
+
   function handleAttachAbility(ability: SavedActionInfo) {
-    setAttachments((prev) => (prev.some((a) => a.type === 'ability' && a.ability.id === ability.id) ? prev : [...prev, { type: 'ability', ability }]))
+    composerRef.current?.insertChip({ icon: ability.icon, label: ability.name, description: ability.description, value: ability.promptText })
     setActivePanel(null)
   }
 
   function handleAttachItem(item: InventoryItemInfo) {
-    setAttachments((prev) => (prev.some((a) => a.type === 'item' && a.item.id === item.id) ? prev : [...prev, { type: 'item', item }]))
+    composerRef.current?.insertChip({ icon: '🎒', label: item.name, description: item.description })
     setActivePanel(null)
   }
 
-  function handleRemoveAttachment(index: number) {
-    setAttachments((prev) => prev.filter((_, i) => i !== index))
+  async function handleEquipItem(item: InventoryItemInfo, slot: EquipSlot) {
+    const previous = inventory
+    // Solo puede haber un objeto por hueco — el que ya lo ocupara vuelve a la mochila, igual que
+    // hace el backend en la misma transacción.
+    setInventory((prev) =>
+      prev.map((i) => {
+        if (i.id === item.id) return { ...i, slot }
+        if (i.slot === slot) return { ...i, slot: null }
+        return i
+      }),
+    )
+    try {
+      if (saveId) await setItemSlot(saveId, item.id, slot)
+    } catch (err) {
+      setInventory(previous)
+      // Re-lanzado a propósito (sesión de diseño 2026-07-23): el equipar puede fallar de verdad
+      // ahora (requisitos de atributo no cumplidos) — DetailModal espera esta promesa y muestra
+      // el mensaje en vez de que el objeto "se desequipe solo" en silencio.
+      throw err
+    }
+  }
+
+  async function handleUnequipItem(item: InventoryItemInfo) {
+    const previous = inventory
+    setInventory((prev) => prev.map((i) => (i.id === item.id ? { ...i, slot: null } : i)))
+    try {
+      if (saveId) await setItemSlot(saveId, item.id, null)
+    } catch (err) {
+      setInventory(previous)
+      throw err
+    }
+  }
+
+  function handleAttachDiscovery(discovery: DiscoveryItem) {
+    composerRef.current?.insertChip({ icon: '✨', label: discovery.name })
+  }
+
+  function handleCombatTurnResolved(params: {
+    narration: string
+    progression: ProgressionResult
+    condicionFisica: CondicionFisica
+    finDePartida: boolean
+    newInventoryItems: InventoryItemInfo[]
+    logEntryId: string
+  }) {
+    // `buildEntityBanner` se calcula FUERA del updater (bug real, 2026-07-24, "sigue sin salir la
+    // imagen" pese a candidatos válidos): StrictMode invoca dos veces en dev cualquier función
+    // pasada a `setState`, y `buildEntityBanner` muta `recentlyShownEntitiesRef` como efecto
+    // secundario — la primera invocación (de prueba, descartada) marcaba la entidad como "ya
+    // mostrada", así que la segunda (la que React realmente usa) la encontraba deduplicada y
+    // devolvía `undefined` siempre. Calcularlo una sola vez, antes de `setCharacterLog`, evita la
+    // doble ejecución por completo.
+    const entityBanner = buildEntityBanner(params.narration, params.logEntryId)
+    setCharacterLog((prev) => [
+      ...prev,
+      {
+        id: params.logEntryId,
+        channel: 'character',
+        text: params.narration,
+        timeLabel: fictionalDate,
+        createdAt: new Date().toISOString(),
+        entityBanner,
+      },
+    ])
+    if (params.newInventoryItems.length > 0) {
+      setInventory((prev) => [...prev, ...params.newInventoryItems])
+    }
+    setXp(params.progression.newXp)
+    if (params.progression.leveledUp) {
+      setLevel(params.progression.newLevel)
+      setPendingAttributePoints((prev) => prev + params.progression.attributePointsGained)
+    }
+    setCondicionFisica(params.condicionFisica)
+    if (params.finDePartida) {
+      setEndedAt(new Date().toISOString())
+      setCombatOpen(false)
+      setCombateIniciado(null)
+    }
+  }
+
+  // Huir ANTES de entrar al combate (petición explícita de la usuaria, 2026-07-24): botón junto al
+  // aviso de "⚔️ Combatir" — una sola tirada determinista en el backend (sin IA, ver
+  // `/saves/:id/combat/flee`), así que no hay hueco de tiempo en el que una recarga pueda revivir
+  // un combate del que ya se huyó (el bug real de carrera que sí tiene el "Huir" de dentro del
+  // popup, que pasa por classify+narrate). Si falla, se abre el popup normal para pelear de verdad.
+  async function handleFleeAttempt() {
+    if (!saveId || fleeingPreCombat) return
+    setFleeingPreCombat(true)
+    try {
+      const { escaped, text } = await requestFlee(saveId)
+      setCharacterLog((prev) => [
+        ...prev,
+        { id: `flee-${Date.now()}`, channel: 'character', text, timeLabel: fictionalDate, createdAt: new Date().toISOString() },
+      ])
+      if (escaped) {
+        setCombateIniciado(null)
+      } else {
+        openCombat()
+      }
+    } catch {
+      // Si falla la llamada en sí (no la tirada), se deja el aviso de "Combatir" tal cual —
+      // la jugadora puede reintentar huir o entrar al combate normalmente.
+    } finally {
+      setFleeingPreCombat(false)
+    }
   }
 
   useEffect(() => {
@@ -201,6 +691,7 @@ export function GameView() {
           portraitInitial: selectedCharacter.portraitInitial,
           introCharacterText,
           introWorldText,
+          dificultad: selectedDificultad,
         })
         if (!cancelled) navigate(`/solitario/partida/${newId}`, { replace: true })
       } catch {
@@ -232,19 +723,51 @@ export function GameView() {
     }
   }, [id])
 
-  async function handleSubmit() {
-    const action = buildActionText(attachments, input)
-    if (!action || !saveId || busyUntil) return
+  // Pausar/reanudar la partida de verdad al salir (roadmap 2026-07-20: "quiero que la partida se
+  // pause si salgo de ella"). `resume` al entrar/recuperar `saveId`; `pause` tanto al desmontar
+  // (navegar a otra vista dentro de la SPA) como en `beforeunload` (cerrar la pestaña o recargar,
+  // el único momento en que el desmontaje de React no está garantizado).
+  useEffect(() => {
+    if (!saveId) return
+    resumeSave(saveId).catch(() => {})
+
+    const handleBeforeUnload = () => pauseSave(saveId)
+    window.addEventListener('beforeunload', handleBeforeUnload)
+
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload)
+      pauseSave(saveId)
+    }
+  }, [saveId])
+
+  async function handleSubmit(action: string) {
+    if (!action || !saveId || busyUntil || endedAt) return
+    composerRef.current?.clear()
     setInput('')
-    setAttachments([])
+    setDiscoveries([])
+    // Bug real (2026-07-23, "al cambiar de pestaña el narrador da error de localhost"): el stream
+    // de /turn/narrate no tiene AbortController ni timeout — si el navegador corta la conexión de
+    // fondo (típico al cambiar de pestaña con una narración larga en curso), `reader.read()` falla
+    // en el cliente, pero el backend NUNCA se entera: `narrateAndPersistTurn` sigue corriendo y
+    // persiste el turno igual. El error de "conexión" de más abajo comprobaba solo eso, nunca si
+    // el turno había terminado de verdad en el backend — se guarda la longitud de ANTES para
+    // poder distinguir "se cortó pero terminó bien" de "de verdad no llegó a nada".
+    const logLengthBeforeThisTurn = characterLog.length
 
     setCharacterLog((prev) => [...prev, playerActionEntry(action, fictionalDate)])
     setCharacterThinking(true)
     setTimedThinkingText(null)
+    setStreamingNarration(null)
 
     try {
-      const classifyResult = await requestTurnClassify({ saveId, action })
-      const { classification, roll } = classifyResult
+      // El prefetch de arriba (preview:true) ya precalentó la caché del backend con este mismo
+      // texto si no cambió desde entonces — esta llamada sigue siendo la real (persiste log/
+      // transit/discoveries como siempre), pero el propio backend se salta Ollama/tabla si
+      // encuentra la caché, sin que el frontend tenga que decidir nada ni arriesgar quedarse sin
+      // "discoveries"/"transit" por reutilizar la respuesta cruda del preview.
+      const classifyResult: ClassifyResponse = await requestTurnClassify({ saveId, action })
+      const { classification, roll, travel } = classifyResult
+      setDiscoveries(classifyResult.discoveries ?? [])
 
       if (classifyResult.transit) {
         // Banda extendida/larga: el backend ya lo resolvió en diferido (acción + texto de
@@ -261,22 +784,61 @@ export function GameView() {
         setTimedThinkingText(`${action} — unos ${duracionMinutos} min de juego${produccion ? ` (${produccion})` : ''}...`)
       }
 
-      const { narration, progression } = await requestTurnNarrate({ saveId, action, classification, roll })
+      const {
+        narration,
+        progression,
+        condicionFisica: newCondicion,
+        combateIniciado: combate,
+        finDePartida,
+        newInventoryItems,
+        logEntryId,
+      } = await requestTurnNarrate(
+        { saveId, action, classification, roll, travel },
+        {
+          onChunk: (delta) => setStreamingNarration((prev) => (prev ?? '') + delta),
+          onReset: () => setStreamingNarration(null),
+        },
+      )
+      setStreamingNarration(null)
+      setCondicionFisica(newCondicion)
+      if (newInventoryItems.length > 0) {
+        setInventory((prev) => [...prev, ...newInventoryItems])
+      }
+      if (combate && combate.npcs.length > 0) setCombateIniciado(combate)
+      if (finDePartida) setEndedAt(new Date().toISOString())
 
+      if (travel) {
+        // Un viaje resuelto síncronamente (banda corta) ya cambió currentLocationId en el
+        // backend — resincronizamos posición/destinos en vez de reconstruirlo a mano aquí.
+        getSave(saveId)
+          .then((save) => {
+            setCurrentLocation(save.currentLocation)
+            setDestinations(save.destinations)
+          })
+          .catch(() => {})
+      }
+
+      // Calculado fuera del updater (ver comentario igual en handleCombatTurnResolved) — evita que
+      // la doble invocación de StrictMode en dev deduplique la entidad contra sí misma.
+      const entityBanner = buildEntityBanner(narration.narration, logEntryId)
       setCharacterLog((prev) => [
         ...prev,
         {
-          id: `c-${Date.now()}`,
+          id: logEntryId,
           channel: 'character',
           text: narration.narration,
           timeLabel: fictionalDate,
           roll,
           createdAt: new Date().toISOString(),
           xpDelta: progression.xpDelta > 0 ? progression.xpDelta : undefined,
+          entityBanner,
         },
       ])
       if (narration.newItem) {
-        setInventory((prev) => [...prev, { id: `item-${Date.now()}`, ...narration.newItem! }])
+        setInventory((prev) => [
+          ...prev,
+          { id: `item-${Date.now()}`, slot: null, statBonusAttribute: null, statBonusAmount: null, ...narration.newItem! },
+        ])
       }
       if (narration.newCompanion) {
         setCompanions((prev) => [...prev, { id: `companion-${Date.now()}`, ...narration.newCompanion! }])
@@ -297,29 +859,82 @@ export function GameView() {
             text: `${characterName} sube a nivel ${progression.newLevel}.${attributeNote}`,
             timeLabel: fictionalDate,
             createdAt: new Date().toISOString(),
+            isLevelUp: true,
           },
         ])
       }
     } catch (err) {
-      if (isBusyError(err)) {
+      if (isEndedGameError(err)) {
+        setEndedAt(err.endedAt)
+        setCharacterLog((prev) => prev.slice(0, -1))
+      } else if (isBusyError(err)) {
         setBusyUntil(err.busyUntil)
         setBusyActivity(err.activity)
         setCharacterLog((prev) => prev.slice(0, -1))
       } else {
-        setCharacterLog((prev) => [
-          ...prev,
-          {
-            id: `err-${Date.now()}`,
-            channel: 'character',
-            text: 'No se pudo contactar con el Narrador. ¿Está el backend corriendo en localhost:3001?',
-            timeLabel: fictionalDate,
-            createdAt: new Date().toISOString(),
-          },
-        ])
+        // Sondeo de reconexión (2026-07-23): antes se comprobaba una sola vez y ya se avisaba de
+        // "puede que tengas que reintentarla" — pero el backend sigue narrando en segundo plano
+        // bastante después de que el stream del cliente se corte (cola de Ollama, rotación cloud),
+        // así que un solo intento inmediato disparaba el aviso demasiado pronto. Sondea cada 10s
+        // mientras el composer sigue bloqueado (characterThinking se queda a true hasta el
+        // finally), mostrando un indicador discreto en vez del aviso de error.
+        //
+        // Bug real encontrado auditando la partida de Gorhorn (2026-07-23, "revisar partida" —
+        // "una cosa que pasa mucho y me obliga a recargar"): el tope original (~2 min) se quedaba
+        // corto frente al peor caso REAL de la cascada de reintentos de `narrateAction`
+        // (narrador.ts): intento 1 (180s) + intento 2 (240s) + intento 3 (90s) = 510s solo en
+        // narrar, más hasta 120s si además hay una réplica de diálogo (`generateNpcReply`) — hasta
+        // ~10-11 minutos en el peor caso real en este hardware CPU-only. Con un tope de 2 min, el
+        // aviso de "puede que tengas que reintentarla" saltaba con el turno TODAVÍA en curso.
+        const POLL_INTERVAL_MS = 10_000
+        const MAX_POLL_ATTEMPTS = 72
+        setTimedThinkingText('Esperando confirmación del narrador...')
+        let resolved = false
+        let lastSuccessfulSave: Awaited<ReturnType<typeof getSave>> | null = null
+        for (let attempt = 0; attempt < MAX_POLL_ATTEMPTS && !resolved; attempt++) {
+          if (attempt > 0) await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL_MS))
+          try {
+            const save = await getSave(saveId)
+            lastSuccessfulSave = save
+            if (save.characterLog.length > logLengthBeforeThisTurn + 1) {
+              syncFromSave(save)
+              resolved = true
+            }
+          } catch {
+            // Se reintenta en el siguiente sondeo — no se distingue de "aún no ha terminado".
+          }
+        }
+        if (!resolved) {
+          if (lastSuccessfulSave) {
+            syncFromSave(lastSuccessfulSave)
+            setCharacterLog((prev) => [
+              ...prev,
+              {
+                id: `err-${Date.now()}`,
+                channel: 'character',
+                text: 'La acción quedó registrada, pero la narración sigue sin completarse tras esperar — puede que tengas que reintentarla.',
+                timeLabel: fictionalDate,
+                createdAt: new Date().toISOString(),
+              },
+            ])
+          } else {
+            setCharacterLog((prev) => [
+              ...prev,
+              {
+                id: `err-${Date.now()}`,
+                channel: 'character',
+                text: 'No se pudo contactar con el Narrador. ¿Está el backend corriendo en localhost:3001?',
+                timeLabel: fictionalDate,
+                createdAt: new Date().toISOString(),
+              },
+            ])
+          }
+        }
       }
     } finally {
       setCharacterThinking(false)
       setTimedThinkingText(null)
+      setStreamingNarration(null)
     }
   }
 
@@ -334,9 +949,9 @@ export function GameView() {
     }
   }
 
-  // Panel "El mundo" v1: ambientación del entorno inmediato cada 5 minutos reales, con
-  // posibilidad de que surja un evento (decidido por el backend, no por el frontend) que
-  // además se refleja en el log del personaje invitando a reaccionar.
+  // Panel "El mundo" v1: ambientación del entorno inmediato cada 10 minutos reales (subido de 5,
+  // petición explícita de la usuaria, 2026-07-23), puramente descriptiva — nunca toca el chat de
+  // personaje ni propone eventos (ver comentario de `tickSurroundings` más abajo).
   useEffect(() => {
     if (!saveId) return
 
@@ -347,31 +962,22 @@ export function GameView() {
       // No competir con un turno de jugador ya en curso — el backend solo procesa una
       // llamada a Ollama a la vez, y amontonar peticiones fue lo que causó fallos reales
       // en pruebas (una narración forzada a cortarse por falta de margen). Se reintenta
-      // en el siguiente tick de 5 minutos.
-      if (inFlight || characterThinkingRef.current) return
+      // en el siguiente tick. Tampoco durante un combate pendiente/abierto (`combatActiveRef`,
+      // bug real 2026-07-23): un evento ambiental reintroduciendo al mismo NPC que ya está
+      // atacando es puro ruido confuso en mitad de una pelea.
+      if (inFlight || characterThinkingRef.current || combatActiveRef.current) return
       inFlight = true
       setWorldThinking(true)
       try {
         const timeLabel = fictionalDateRef.current
-        const { description, event } = await requestSurroundings({ saveId: saveId! })
+        // Puramente descriptivo (petición explícita de la usuaria, 2026-07-23: "el sondeo
+        // ambiental solo tiene que lanzarse en el chat de mundo... no tiene que preguntar que
+        // hace, solo exponer que hay a tu alrededor") — ya nunca toca el chat de PERSONAJE.
+        const { description, logEntryId } = await requestSurroundings({ saveId: saveId! })
         if (cancelled) return
         const nowIso = new Date().toISOString()
-        setWorldLog((prev) => [
-          ...prev,
-          { id: `w-${Date.now()}`, channel: 'world', text: description, timeLabel, createdAt: nowIso },
-        ])
-        if (event) {
-          setCharacterLog((prev) => [
-            ...prev,
-            {
-              id: `c-event-${Date.now()}`,
-              channel: 'character',
-              text: `${event} ¿Qué haces?`,
-              timeLabel,
-              createdAt: nowIso,
-            },
-          ])
-        }
+        const entityBanner = buildEntityBanner(description, logEntryId)
+        setWorldLog((prev) => [...prev, { id: logEntryId, channel: 'world', text: description, timeLabel, createdAt: nowIso, entityBanner }])
       } catch {
         // Ambientación fallida no bloquea la partida — se reintenta en el siguiente tick.
       } finally {
@@ -380,7 +986,7 @@ export function GameView() {
       }
     }
 
-    const interval = setInterval(tickSurroundings, 5 * 60_000)
+    const interval = setInterval(tickSurroundings, 10 * 60_000)
     return () => {
       cancelled = true
       clearInterval(interval)
@@ -410,6 +1016,14 @@ export function GameView() {
     }
   }, [saveId, busyUntil])
 
+  // Reloj de la cuenta atrás (roadmap 2026-07-20): solo aritmética local, ningún request — el
+  // sondeo real que confirma la resolución sigue siendo el de 30s de arriba.
+  useEffect(() => {
+    if (!busyUntil) return
+    const tick = setInterval(() => setNowTick(Date.now()), 1_000)
+    return () => clearInterval(tick)
+  }, [busyUntil])
+
   if (notFound || (!saveId && id !== 'nueva')) {
     return (
       <div className="flex flex-1 flex-col items-center justify-center gap-4 px-6 text-center">
@@ -421,7 +1035,7 @@ export function GameView() {
     )
   }
 
-  if (!saveId || !worldName || !characterName || !characterAttributes) {
+  if (!saveId || !worldName || !characterName || !characterAttributes || !secondaryAttributes) {
     return (
       <div className="flex flex-1 flex-col items-center justify-center gap-3 px-6 text-center">
         <span className="gem animate-pulse-soft" />
@@ -434,20 +1048,51 @@ export function GameView() {
     mapa: 'Mapa',
     estadisticas: 'Estadísticas',
     inventario: 'Inventario',
+    equipo: 'Equipo',
     diario: 'Diario',
     misiones: 'Misiones',
     companeros: 'Compañeros',
     reino: 'Reino',
     habilidades: 'Habilidades',
     profesiones: 'Profesiones',
+    enciclopedia: 'Enciclopedia',
+  }
+  // Roadmap de diseño CSS (Fable, 2026-07-20, Nivel 3): el marco del cajón sigue la misma
+  // partición que ya usan characterTabs/worldTabs (riel izquierdo "Tu personaje" vs derecho "El
+  // mundo") — Diario se deja en 'accent' por defecto porque mezcla ambos canales por diseño
+  // (ver DiarioPanel, gem/gem2 por entrada) y no encaja limpiamente en ninguno de los dos.
+  const panelAccent: Record<PanelId, 'accent' | 'accent2'> = {
+    estadisticas: 'accent',
+    inventario: 'accent',
+    equipo: 'accent',
+    habilidades: 'accent',
+    profesiones: 'accent',
+    mapa: 'accent2',
+    diario: 'accent',
+    misiones: 'accent2',
+    companeros: 'accent2',
+    reino: 'accent2',
+    enciclopedia: 'accent2',
   }
 
   return (
+    <EnciclopediaLinkProvider
+      value={{ enciclopediaIndex, onEntityDetail: handleEntityDetailNavigate, onEntityQuickInsert: handleEntityQuickInsert }}
+    >
     <div className="relative flex min-h-0 flex-1 flex-col">
       <header className="iron-band relative flex items-center justify-between px-5 pb-3 pt-2.5">
         <div>
           <button
-            onClick={() => navigate(`/solitario/mundo/${worldIdSlug}/personaje/${saveId}`)}
+            onClick={() =>
+              // Bug real (2026-07-24, "al darle a salir de la partida, que me lleve a las
+              // partidas no a seleccionar mundo"): CharacterSaves resuelve el personaje por id
+              // contra `pregeneratedCharacters` o `selectedCharacter` (SessionContext, en memoria,
+              // se pierde al recargar) — tras recargar GameView directamente, ninguna de las dos
+              // vías resuelve nada (aquí nunca se manda un id de personaje real, sino `saveId`),
+              // así que caía al aviso de "elige mundo y personaje". `characterName` va por query,
+              // como respaldo que CharacterSaves ya puede usar sin depender de esa sesión en memoria.
+              navigate(`/solitario/mundo/${worldIdSlug}/personaje/${saveId}?characterName=${encodeURIComponent(characterName ?? '')}`)
+            }
             className="text-xs text-wood-500 transition-colors hover:text-accent-300"
           >
             ← Salir a tus partidas
@@ -464,14 +1109,34 @@ export function GameView() {
             title={pendingAttributePoints > 0 ? `${pendingAttributePoints} puntos de atributo por repartir` : 'Nivel'}
             className="relative flex items-center gap-1.5 rounded-md border border-iron-700 bg-wood-950/60 px-2.5 py-1 font-serif text-xs tracking-wide text-wood-300 transition-colors hover:border-accent-600/60 hover:text-accent-300"
           >
-            <span className="gem" />
-            Nivel {level}
+            <span key={levelPop} className={`inline-flex items-center gap-1.5 ${levelPop > 0 ? 'animate-pop-once' : ''}`}>
+              <span className="gem" />
+              Nivel {level}
+            </span>
             {pendingAttributePoints > 0 && (
-              <span className="ml-1 rounded-full bg-accent-500 px-1.5 text-[10px] font-bold text-wood-950">
+              <span className="ml-1 rounded-full bg-accent-500 px-1.5 text-2xs font-bold text-wood-950">
                 +{pendingAttributePoints}
               </span>
             )}
           </button>
+          <HealthBar condicionFisica={condicionFisica} />
+          {dificultad !== 'NOVATO' && (
+            // Indicador de muerte permanente (2026-07-19, auditoría de frontend): docs/14 § 4.2
+            // ya tiene un límite real de muertes por dificultad, pero el jugador no tenía ninguna
+            // señal en pantalla de cuántas le quedan hasta el fin de partida definitivo.
+            <span
+              key={deathPop}
+              title={`Muerte permanente a la ${LIMITE_MUERTES[dificultad]}ª muerte (dificultad ${dificultad.toLowerCase()})`}
+              className={`relative rounded-md border border-iron-700 bg-wood-950/60 px-2.5 py-1 font-serif text-xs tracking-wide text-wood-300 ${
+                deathPop > 0 ? 'animate-pop-once' : ''
+              }`}
+            >
+              {deathPop > 0 && (
+                <span aria-hidden="true" className="animate-edge-flash-red pointer-events-none absolute inset-0 rounded-md border border-danger-500" />
+              )}
+              💀 {deathCount}/{LIMITE_MUERTES[dificultad]}
+            </span>
+          )}
           <span className="rounded-md border border-iron-700 bg-wood-950/60 px-2.5 py-1 font-serif text-xs tracking-wide text-wood-300">
             {fictionalDate}
           </span>
@@ -479,60 +1144,161 @@ export function GameView() {
         <div className="accent-hairline absolute inset-x-0 bottom-0" />
       </header>
 
-      <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 overflow-hidden p-4 lg:grid-cols-2">
-        <LogPanel
-          title="Tu personaje"
-          subtitle="Lo que haces, dices y percibes"
-          entries={characterLog}
-          accent="accent"
-          isThinking={characterThinking}
-          thinkingText={timedThinkingText ?? characterFlavor}
-          emptyHint="Aquí aparecerá lo que le ocurra a tu personaje."
+      <div className="flex min-h-0 flex-1 gap-2 overflow-hidden p-2">
+        <SideNav
+          tabs={characterTabs}
+          active={activePanel}
+          align="left"
+          dimmed={!!activePanel}
+          disabledIds={combatOpen ? COMBAT_DISABLED_CHARACTER_TABS : undefined}
+          onSelect={(id) => setActivePanel((prev) => (prev === id ? null : id))}
         />
-        <LogPanel
-          title="El mundo"
-          subtitle="Lo que ocurre más allá de tu personaje"
-          entries={worldLog}
-          accent="accent2"
-          isThinking={worldThinking}
-          thinkingText={worldFlavor}
-          emptyHint="El mundo todavía no ha mostrado sus cartas."
+        <div className="grid min-h-0 flex-1 grid-cols-1 gap-2 overflow-hidden lg:grid-cols-2">
+          <LogPanel
+            title="Tu personaje"
+            subtitle="Lo que haces, dices y percibes"
+            entries={characterLog}
+            accent="accent"
+            isThinking={characterThinking}
+            thinkingText={streamingNarration ?? timedThinkingText ?? characterFlavor}
+            streaming={!!streamingNarration}
+            emptyHint="Aquí aparecerá lo que le ocurra a tu personaje."
+          />
+          <LogPanel
+            title="El mundo"
+            subtitle="Lo que ocurre más allá de tu personaje"
+            entries={worldLog}
+            accent="accent2"
+            isThinking={worldThinking}
+            thinkingText={worldFlavor}
+            emptyHint="El mundo todavía no ha mostrado sus cartas."
+          />
+        </div>
+        <SideNav
+          tabs={worldTabs}
+          active={activePanel}
+          align="right"
+          dimmed={!!activePanel}
+          disabledIds={combatOpen ? COMBAT_DISABLED_WORLD_TABS : undefined}
+          onSelect={(id) => setActivePanel((prev) => (prev === id ? null : id))}
         />
       </div>
 
       {busyUntil && (
-        <div className="border-t border-iron-800 bg-wood-950/90 px-4 py-2 text-center text-xs text-wood-400">
-          <span className="gem mr-1.5 align-middle" /> Ocupado{busyActivity ? ` con "${busyActivity}"` : ''} — vuelve en un
-          rato, se resolverá solo.
+        <div className="flex flex-wrap items-center justify-center gap-2 border-t border-iron-800 bg-wood-950/90 px-4 py-2 text-center text-xs text-wood-400">
+          <span>
+            <span className="gem mr-1.5 align-middle" /> Ocupado{busyActivity ? ` con "${busyActivity}"` : ''} — vuelve en{' '}
+            <span className="font-mono font-semibold text-accent-300">{formatCountdown(busyUntil, nowTick)}</span> (sobre las{' '}
+            {new Date(busyUntil).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}), se resolverá solo.
+          </span>
+          <button
+            onClick={handleCancelTransit}
+            disabled={cancelingTransit}
+            className="tactile rounded-lg border border-iron-700 bg-wood-950/60 px-2.5 py-1 text-2xs text-wood-300 transition-colors hover:border-red-700/60 hover:text-red-400 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {cancelingTransit ? 'Cancelando...' : 'Cancelar acción'}
+          </button>
         </div>
       )}
-      <ChatComposer
-        value={input}
-        onChange={setInput}
-        onSubmit={handleSubmit}
-        disabled={characterThinking || !!busyUntil}
-        suggestions={actionSuggestions}
-        attachments={attachments}
-        onRemoveAttachment={handleRemoveAttachment}
-      />
 
-      <BottomBar active={activePanel} onSelect={(id) => setActivePanel((prev) => (prev === id ? null : id))} />
+      {discoveries.length > 0 && !endedAt && (
+        <div className="border-t border-iron-800 bg-wood-950/90 px-4">
+          <DiscoveryReveal discoveries={discoveries} onAttach={handleAttachDiscovery} />
+        </div>
+      )}
+
+      {combateIniciado && !combatOpen && !endedAt && (
+        <div className="flex items-center justify-center gap-2 border-t border-iron-800 bg-wood-950/90 px-4 py-2 text-center">
+          <button
+            onClick={openCombat}
+            disabled={fleeingPreCombat}
+            className="animate-alert-pulse rounded-lg border border-red-700 bg-danger-500/10 px-3 py-1.5 text-xs font-bold uppercase tracking-wide text-danger-400 shadow-[0_0_14px_-4px_color-mix(in_srgb,var(--color-danger-500)_70%,transparent)] transition-colors hover:bg-danger-500/20 disabled:opacity-50"
+          >
+            ⚔️ Combatir
+          </button>
+          <button
+            onClick={handleFleeAttempt}
+            disabled={fleeingPreCombat}
+            className="tactile rounded-lg border border-iron-700 bg-wood-950/50 px-3 py-1.5 text-xs font-bold uppercase tracking-wide text-wood-300 transition-colors hover:border-accent-600/60 hover:text-accent-300 disabled:opacity-50"
+          >
+            {fleeingPreCombat ? 'Huyendo...' : '🏃 Huir'}
+          </button>
+        </div>
+      )}
+
+      {endedAt ? (
+        <div className="animate-entry-in-slow border-t border-iron-800 bg-wood-950/90 px-4 py-5 text-center">
+          <div className="animate-line-extend mx-auto mb-3 h-px w-24 origin-center bg-red-800" />
+          <p className="text-sm text-danger-400">
+            {characterName} ya no puede seguir — esta partida ha terminado. Puedes reiniciarla desde
+            "Sus partidas".
+          </p>
+        </div>
+      ) : combatOpen && combateIniciado ? (
+        // Rework 2026-07-24: sustituye al ChatComposer normal en el mismo sitio, en vez de un
+        // popup aparte — el log de arriba (LogPanel "Tu personaje") no cambia, ya recibe la
+        // narración de combate vía handleCombatTurnResolved con chips/banner/roll incluidos.
+        <CombatComposer
+          npcs={combatNpcsDisplay}
+          combatAbilities={savedActions.filter((a) => a.category === 'combate')}
+          combatItems={inventory.filter((i) => !i.slot)}
+          busy={combatBusy}
+          ended={combatEnded}
+          onSubmit={submitCombatAction}
+          onHuir={handleCombatHuir}
+          onRegistrar={handleCombatRegistrar}
+          onContinue={() => {
+            setCombatOpen(false)
+            setCombateIniciado(null)
+          }}
+        />
+      ) : (
+        <ChatComposer
+          ref={composerRef}
+          onChange={setInput}
+          onSubmit={handleSubmit}
+          disabled={characterThinking || !!busyUntil || (!!combateIniciado && !combatOpen)}
+        />
+      )}
+
+      {detailTarget && (
+        <DetailModal
+          target={detailTarget}
+          onClose={() => {
+            setDetailTarget(null)
+            setDetailInsertHandler(null)
+          }}
+          onUnequip={handleUnequipItem}
+          onEquip={handleEquipItem}
+          onSaveAbility={handleUpdateHabilidad}
+          onDeleteAbility={handleDeleteHabilidad}
+          onInsert={detailInsertHandler ?? undefined}
+          worldSlug={worldIdSlug}
+        />
+      )}
 
       {activePanel && (
-        <PanelDrawer title={panelTitles[activePanel]} onClose={() => setActivePanel(null)}>
+        <PanelDrawer title={panelTitles[activePanel]} accent={panelAccent[activePanel]} onClose={() => setActivePanel(null)}>
           {activePanel === 'estadisticas' && (
             <EstadisticasPanel
               attributes={characterAttributes}
+              secondaryAttributes={secondaryAttributes}
               level={level}
               xp={xp}
               pendingAttributePoints={pendingAttributePoints}
               onSpendPoint={handleSpendAttributePoint}
             />
           )}
-          {activePanel === 'mapa' && <MapaPanel />}
-          {activePanel === 'diario' && <DiarioPanel characterLog={characterLog} worldLog={worldLog} />}
-          {activePanel === 'inventario' && <InventarioPanel items={inventory} onUse={handleAttachItem} />}
+          {activePanel === 'mapa' && (
+            <MapaPanel worldSlug={worldIdSlug} currentLocation={currentLocation} destinations={destinations} inventory={inventory} quests={quests} />
+          )}
+          {activePanel === 'diario' && saveId && <DiarioPanel saveId={saveId} chapters={chapters} />}
+          {activePanel === 'inventario' && (
+            <InventarioPanel items={inventory} onUse={handleAttachItem} onDetail={handleItemDetail} />
+          )}
+          {activePanel === 'equipo' && <EquipoPanel items={inventory} onSlotClick={handleSlotClick} />}
           {activePanel === 'companeros' && <CompanerosPanel companions={companions} />}
+          {activePanel === 'misiones' && <MisionesPanel quests={quests} />}
           {activePanel === 'reino' && (
             <ReinoPanel
               kingdomName={kingdomName}
@@ -540,7 +1306,12 @@ export function GameView() {
               territories={territories}
               buildings={buildings}
               subjects={subjects}
+              factionsStatus={factionsStatus}
+              kingdomStats={kingdomStats}
             />
+          )}
+          {activePanel === 'enciclopedia' && (
+            <EnciclopediaPanel worldSlug={worldIdSlug} saveId={saveId} onInsert={handleEnciclopediaInsert} onDetail={handleEnciclopediaDetail} />
           )}
           {activePanel === 'habilidades' && (
             <HabilidadesPanel
@@ -548,24 +1319,15 @@ export function GameView() {
               combatSlots={combatSlots}
               onUse={handleAttachAbility}
               onCreate={handleCreateHabilidad}
-              onDelete={handleDeleteHabilidad}
+              onDetail={handleAbilityDetail}
             />
           )}
           {activePanel === 'profesiones' && (
-            <ProfesionesPanel currentProfession={profession} onAdopt={handleAdoptProfession} />
+            <ProfesionesPanel currentProfession={profession} onAdopt={handleAdoptProfession} progress={professionProgress} />
           )}
-          {![
-            'estadisticas',
-            'mapa',
-            'diario',
-            'inventario',
-            'companeros',
-            'reino',
-            'habilidades',
-            'profesiones',
-          ].includes(activePanel) && <PlaceholderPanel id={activePanel} />}
         </PanelDrawer>
       )}
     </div>
+    </EnciclopediaLinkProvider>
   )
 }

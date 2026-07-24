@@ -1,11 +1,14 @@
 import type { CompanionInfo } from '../../types'
+import { PanelEmptyState } from '../PanelEmptyState'
 
 export function CompanerosPanel({ companions }: { companions: CompanionInfo[] }) {
   if (companions.length === 0) {
     return (
-      <p className="py-8 text-center text-sm text-wood-500 italic">
-        Vas solo por ahora. Los aliados o súbditos que ganes durante la partida aparecerán aquí.
-      </p>
+      <PanelEmptyState
+        icon="🤝"
+        title="Vas solo por ahora"
+        hint="Los aliados o súbditos que ganes durante la partida aparecerán aquí."
+      />
     )
   }
 

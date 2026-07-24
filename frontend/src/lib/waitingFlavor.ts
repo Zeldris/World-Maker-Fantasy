@@ -12,6 +12,13 @@ export const characterWaitingFlavor: string[] = [
   'Un silencio pesado se extiende por la estepa infinita.',
   'Algo se mueve entre las dunas, demasiado lejos para distinguirlo.',
   'El sudor le pega la piel al arnés de cuero.',
+  'Un Corretolva cruza corriendo entre la hierba rojiza, más asustado que peligroso.',
+  'El filo mellado del hacha rota pesa en su mano, familiar como una segunda piel.',
+  'Un zumbido lejano — quizás solo el viento entre las rocas, quizás no.',
+  'Gorhorn pasa un pulgar sobre la cicatriz del colmillo perdido, sin darse cuenta.',
+  'El olor a Salvia del Polvo flota cerca, amargo y conocido.',
+  'Una Espina del Viento se entierra bajo la arena a unos pasos, invisible.',
+  'El horizonte tiembla con el calor, borrando la línea entre tierra y cielo.',
 ]
 
 export const worldWaitingFlavor: string[] = [
@@ -20,6 +27,11 @@ export const worldWaitingFlavor: string[] = [
   'Las tormentas de arena magnética se gestan lejos, en el horizonte.',
   'La niebla del Estrecho sigue cubriendo el mar entre continentes.',
   'Otros clanes, otras vidas, avanzan sin saber de esta historia.',
+  'En el Campamento Serhu, alguien aviva un fuego que Gorhorn no ve.',
+  'Una Gargantúa de Ceniza migra despacio, indiferente a las fronteras de los orcos.',
+  'La Concordia de Hierro sigue moviendo patrullas por caminos que no son estos.',
+  'En algún taller de la Cicatriz de Cristal, una casa Kelife trama su siguiente jugada.',
+  'El muro de obsidiana del norte sigue en pie, guardando lo que nadie ha visto todavía.',
 ]
 
 /// Rota entre las frases mientras `active` es true; se detiene y limpia al desactivarse.

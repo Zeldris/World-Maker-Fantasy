@@ -14,7 +14,7 @@ export function Home() {
   }, [])
 
   return (
-    <div className="flex flex-1 flex-col items-center justify-center gap-10 px-6 py-16">
+    <div className="crystal-sky flex flex-1 flex-col items-center justify-center gap-10 px-6 py-16">
       <div className="flex flex-col items-center text-center">
         <div className="mb-3 flex w-56 items-center gap-3 sm:w-72">
           <span className="accent-hairline flex-1" />
@@ -67,7 +67,7 @@ export function Home() {
       {lastSave && (
         <button
           onClick={() => navigate(`/solitario/partida/${lastSave.id}`)}
-          className="group flex items-center gap-2.5 rounded-full border border-iron-700 bg-wood-900/60 px-4 py-2 text-sm text-wood-300 transition-colors hover:border-accent-600/60 hover:bg-accent-500/10 hover:text-accent-300"
+          className="animate-entry-in group flex items-center gap-2.5 rounded-full border border-iron-700 bg-wood-900/60 px-4 py-2 text-sm text-wood-300 transition-colors hover:border-accent-600/60 hover:bg-accent-500/10 hover:text-accent-300"
         >
           <span className="gem" />
           Continuar como {lastSave.characterName} — {lastSave.worldName} ({lastSave.fictionalDate})

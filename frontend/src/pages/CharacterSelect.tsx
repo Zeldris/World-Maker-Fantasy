@@ -104,13 +104,10 @@ export function CharacterSelect() {
 
       {tab === 'pregen' ? (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          {pregeneratedCharacters.map((c) => (
-            <CharacterCard
-              key={c.id}
-              character={c}
-              selected={selectedCharacter?.id === c.id}
-              onSelect={() => setSelectedCharacter(c)}
-            />
+          {pregeneratedCharacters.map((c, i) => (
+            <div key={c.id} className="animate-entry-in" style={{ animationDelay: `${i * 60}ms` }}>
+              <CharacterCard character={c} selected={selectedCharacter?.id === c.id} onSelect={() => setSelectedCharacter(c)} />
+            </div>
           ))}
         </div>
       ) : (
@@ -148,7 +145,7 @@ export function CharacterSelect() {
 
           <div>
             <div className="mb-3 flex items-center justify-between gap-3">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-wood-400">Atributos</p>
+              <p className="text-2xs font-semibold uppercase tracking-[0.14em] text-wood-400">Atributos</p>
               <span className="h-px flex-1 bg-iron-700" />
               <p
                 className={`rounded-full border px-2.5 py-0.5 font-mono text-xs ${

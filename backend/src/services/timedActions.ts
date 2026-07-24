@@ -1,9 +1,38 @@
 import type { AttributeBlock } from './dice.js';
 import type { Banda } from './narrador.js';
+import { normalizeText } from './travel.js';
+
+export interface Produccion {
+  itemName: string;
+  cantidad: number;
+}
 
 export interface DurationResult {
   minutos: number;
-  produccion?: string;
+  /// Roadmap 2026-07-19: antes esto era solo texto para el mensaje de "estará ocupado..." y
+  /// nunca se materializaba de verdad en el inventario — estructurado ahora para que
+  /// narrateAndPersistTurn pueda crear el InventoryItem real al resolver el turno.
+  produccion?: Produccion;
+}
+
+const REST_REGEX = /descans|dormir|acampar|recuperar/;
+
+/// docs/14-combate-y-muerte.md § 4.1: mismo detector que ya usa computeDuration para calcular
+/// duración — se reutiliza para decidir si una acción de descanso puede fijar `lastRestLocationId`.
+export function detectsRestIntent(action: string): boolean {
+  return REST_REGEX.test(action.toLowerCase());
+}
+
+/// Roadmap 2026-07-20 (Fable, control de acciones): red de seguridad determinista sobre el
+/// NÚMERO que devuelve el Cronista, no solo sobre la etiqueta `banda` (ese clamp ya existía en
+/// turn.ts vía bandaForMinutos). Hallazgo real jugando: "Explorar la zona en busca de..." se
+/// clasificó como banda "larga"/4320 min (3 días) sin que el jugador mencionara ninguna
+/// duración — mismo criterio que ya usa el prompt de classifyAction para decidir cuándo la
+/// duración explícita del jugador manda sobre la estimación por tipo de actividad.
+const EXPLICIT_DURATION_REGEX = /\d+\s*(dia|dias|semana|semanas|hora|horas)|varios? dias?|unos? dias?|toda la noche|una semana/;
+
+export function mentionsExplicitDuration(action: string): boolean {
+  return EXPLICIT_DURATION_REGEX.test(normalizeText(action));
 }
 
 /// Fórmulas deterministas de duración/producción (docs/08-acciones-por-tiempo.md § 4) — el
@@ -15,10 +44,28 @@ export function computeDuration(action: string, banda: Banda, attributes: Attrib
 
   const lower = action.toLowerCase();
 
+  // Mismo patrón/fórmula que la leña genérica (worldCatalog.ts: "la cantidad real la calcula la
+  // fórmula de leña ya existente") — solo cambia el nombre del ítem. Se comprueba ANTES que la
+  // leña genérica porque una acción real ("recojo leña del matorral de cuerno") puede mencionar
+  // ambas palabras a la vez.
+  if (/matorral.*cuerno|cuerno.*matorral/.test(lower)) {
+    const maderaPorMinuto = 1 + Math.floor(attributes.fuerza / 4);
+    const minutos = duracionEstimadaMinutos > 0 ? duracionEstimadaMinutos : 15;
+    return { minutos, produccion: { itemName: 'Leña de matorral de cuerno', cantidad: maderaPorMinuto * minutos } };
+  }
+
+  // worldCatalog.ts: "1 por hora de recolección" — a diferencia de la leña, no escala con
+  // atributos, es una tasa fija por tiempo dedicado.
+  if (/espiga.*roj|grano.*espiga/.test(lower)) {
+    const minutos = duracionEstimadaMinutos > 0 ? duracionEstimadaMinutos : 60;
+    const cantidad = Math.max(1, Math.round(minutos / 60));
+    return { minutos, produccion: { itemName: 'Grano de espiga roja', cantidad } };
+  }
+
   if (/le[ñn]a|le[ñn]ador/.test(lower)) {
     const maderaPorMinuto = 1 + Math.floor(attributes.fuerza / 4);
     const minutos = duracionEstimadaMinutos > 0 ? duracionEstimadaMinutos : 15;
-    return { minutos, produccion: `${maderaPorMinuto * minutos} unidades de leña` };
+    return { minutos, produccion: { itemName: 'Leña', cantidad: maderaPorMinuto * minutos } };
   }
 
   if (/viaj|camin|desplaz|ruta|tramo/.test(lower)) {
@@ -27,7 +74,7 @@ export function computeDuration(action: string, banda: Banda, attributes: Attrib
     return { minutos };
   }
 
-  if (/descans|dormir|acampar|recuperar/.test(lower)) {
+  if (REST_REGEX.test(lower)) {
     const minutos = duracionEstimadaMinutos > 0 ? duracionEstimadaMinutos : banda === 'extendida' ? 240 : 480;
     return { minutos };
   }

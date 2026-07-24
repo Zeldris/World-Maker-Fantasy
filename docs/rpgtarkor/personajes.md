@@ -14,21 +14,41 @@ Ninguno de los ocho se conoce entre sí al comienzo de la historia. Parten de pu
 - **Personalidad**: observador, prudente hasta el exceso, incómodo con la atención; su piel lo delata constantemente, así que ha aprendido a esconder las manos y a hablar poco.
 - **Facultades**: su piel cristalina cambia con la edad y el estado emocional. Posee la capacidad de **leer tensiones estructurales** en materiales y cristales (detecta grietas y fallos antes de que ocurran).
 - **Historia**: hijo de talladores de cristal de una casa Kelife menor. Durante la ruptura de la contención, una esquirla cargada de magia salvaje llegó al taller familiar. Sael vio una grieta invisible para los demás: el augurio de que la casa noble que los contrataba planeaba huir con el dinero del gremio para financiar la guerra. Nadie le creyó. Cuando ocurrió, el taller quebró, pero Sael comprendió que su don era real y que no podía quedarse quieto.
+- **Voz** *(para el Narrador)*: frases cortas y precisas, como quien talla; nunca miente de frente —su piel lo delataría— así que omite, matiza o calla. Cuando algo le importa de verdad, mete las manos bajo la capa.
+- **Ganchos de aventura**:
+  1. *Los restos del gremio*: antiguos compañeros del taller quebrado lo buscan — unos para pedirle que use su don, otros para reprocharle no haber insistido más con su augurio. Reencuentro incómodo con consecuencias en ambas direcciones.
+  2. *Una oferta envenenada*: agentes de una gran casa Kelife (ver Lady Ilsevar Kron en [npcs.md](npcs.md)) han oído hablar de alguien que "lee grietas" y quieren contratarlo para inspeccionar un yacimiento en disputa — trabajar para la clase de casa que arruinó a su familia, o rechazar a quien no acepta un no.
+  3. *La grieta que no debería estar ahí*: Sael percibe en un prisma de la Cicatriz una tensión estructural que no se comporta como cristal natural — el rastro de la magia salvaje liberada tras la ruptura, avanzando donde nadie más puede verla todavía.
 
 ### 2. GOIRNTES — Dessa Kaltrenn
 - **Personalidad**: disciplinada hasta lo rígido, incapaz de tolerar la injusticia procedimental aunque la orden se lo exija; su frialdad es una coraza aprendida.
 - **Facultades**: percibe el "orden" de las cosas de forma casi física. El caos, las mentiras o una jerarquía rota le causan incomodidad tangible que canaliza en un instinto táctico agudo: detecta al instante el punto débil de una formación, plan o argumento.
 - **Historia**: soldado rasa de la guardia menor de Berig. Fue una de las encargadas de escoltar el sello de contención hasta la isla la noche en que la facción radical lo rompió. Vio que no hubo sabotaje de Vaelira, sino una traición interna. Denunciarlo por canales oficiales significaba morir; callarlo la destrozaba por dentro. Desertó esa misma noche.
+- **Voz** *(para el Narrador)*: habla en enumeraciones y órdenes ("primero... después... y solo entonces..."), y se corrige a media frase cuando se oye a sí misma sonar "a la guardia". Miente mal: en vez de mentir, cambia de tema con brusquedad.
+- **Ganchos de aventura**:
+  1. *Nombre en lista*: las patrullas de la Concordia llevan su descripción como desertora — cada puesto fronterizo, cada control de camino en Berig es una trampa potencial, y alguien de su antigua unidad podría reconocerla.
+  2. *El hombre que puede corroborarla*: corre el rumor de que un exmiembro de la facción radical vive escondido y consumido por la culpa (ver Kael Dorn en [npcs.md](npcs.md)) — encontrarlo antes de que lo silencien es la única forma de que su palabra de desertora valga algo.
+  3. *La oferta de la sargento*: su antigua superior de la guardia menor la localiza en persona, sin patrulla — le ofrece volver, callar lo que vio y cerrar el expediente. No es una emboscada: es peor, es sincera.
 
 ### 3. KALISAR — Ithren Vosk
 - **Personalidad**: amable casi hasta lo desconcertante; profundamente cansado de que su pueblo deba disculparse constantemente por su reputación de asesinos.
 - **Facultades**: agilidad y sigilo extraordinarios, resistencia natural a ser detectado en sombra. Piel que absorbe la luz. Sufre con la luz directa (quemazón, visión distorsionada), lo que limita sus acciones diurnas.
 - **Historia**: criado para el espionaje debido a la extrema vulnerabilidad de su reino. Su primera misión real tras la alianza fue infiltrarse en un puesto Goirntes para investigar la ruptura. Lo que descubrió contradice la versión de su propio bando, y ahora carga con una verdad que nadie quiere escuchar de boca de un Kalisar.
+- **Voz** *(para el Narrador)*: desarma por lo amable — se disculpa por adelantado ("no temas, no es lo que parece") y gasta un humor seco sobre su propia reputación ("sí, sí, el asesino de las sombras; ¿me pasas el pan?"). La calidez es genuina, pero también su mejor herramienta.
+- **Ganchos de aventura**:
+  1. *La verdad sin mensajero*: necesita hacer llegar lo que descubrió a alguien de la Rama Blanca con peso suficiente para actuar — pero ¿quién cree a un Kalisar que contradice a su propio bando, y quién no lo usaría como arma política en la guerra interna de las casas?
+  2. *Viaje a plena luz*: un plazo lo obliga a moverse de día por terreno abierto — cada tramo entre sombra y sombra es una tirada contra su propio cuerpo, y cualquiera que lo vea cubrirse así sabrá exactamente qué es.
+  3. *La llamada del reino oculto*: sus superiores Kalisar le ordenan volver a la Costa del Azabache y callar lo que sabe — el reino no puede permitirse enemistarse con la Rama Blanca justo ahora que por fin los aceptan. Obedecer a los suyos o servir a la verdad: para un Kalisar, la elección más antigua del mundo.
 
 ### 4. JUSALY — Amonir Thess
 - **Personalidad**: paciente, mide el tiempo en estaciones. Perder su tierra lo ha roto por dentro de una forma que aún no logra comprender.
 - **Facultades**: vínculo vegetal; puede acelerar la curación de heridas usando cataplasmas vivas y "escucha" el estado de la tierra como un pulso. Longevidad muy superior a la media.
 - **Historia**: agricultor en Vaelira. Su aldea fue arrasada por la magia salvaje liberada tras la ruptura de la isla, que corrompió la tierra de sus ancestros. Sin hogar ni cultivos, viaja buscando una forma o conocimiento capaz de revertir la corrupción de la tierra.
+- **Voz** *(para el Narrador)*: habla despacio y en metáforas de cultivo ("eso aún está verde", "hay que dejar que esa herida haga raíz"); nunca tiene prisa, lo que exaspera a casi todo el mundo. Antes de una decisión importante, se agacha y toca la tierra.
+- **Ganchos de aventura**:
+  1. *Las notas de la sanadora*: se dice que una sanadora que atiende refugiados Jusaly ha detectado patrones en cómo la magia salvaje altera los cuerpos (ver Meva Ist en [npcs.md](npcs.md)) — si la corrupción de los cuerpos y la de la tierra siguen el mismo patrón, sus notas serían la primera pista real de Amonir.
+  2. *Savia oscura*: en un bosquecillo de Árboles de Hebra Dorada, la savia ha empezado a salir turbia — si la corrupción alcanza a los árboles sagrados, los Jusaly perderán sus cataplasmas en plena guerra. Nadie quiere creerlo todavía; Amonir puede "escucharlo" en la tierra.
+  3. *Los que quedaron*: rumor de que algunos vecinos de su aldea sobrevivieron y malviven como refugiados en territorio Kelife — encontrarlos significa cargar con ellos, y decidir si se les puede guiar de vuelta a una tierra que quizá no vuelva a dar fruto.
 
 ### 5. ORCOS — Gorhorn (del clan Maktor)
 *Personaje elegido por la autora para sus propios tests de juego — por eso tiene más desarrollo que el resto (intencionado, no un desequilibrio a corregir). Ver [areas.md](areas.md#los-clanes-orcos) para el detalle de su clan y cultura.*
@@ -43,16 +63,31 @@ Ninguno de los ocho se conoce entre sí al comienzo de la historia. Parten de pu
 - **Personalidad**: observador silencioso, casi invisible. Pasar desapercibido ha sido su único método de supervivencia.
 - **Facultades**: movimiento absolutamente insonoro; puede permanecer inmóvil sin ser detectado. Identifica mentiras e intenciones en los silencios de una conversación.
 - **Historia**: mensajero de bajo rango que entregaba correspondencia sellada sin hacer preguntas. Una de las cartas que entregó una semana antes de la ruptura contenía, sin saberlo él entonces, las instrucciones para el sabotaje de la facción radical. La culpa de haber sido el cómplice involuntario de la guerra lo atormenta.
+- **Voz** *(para el Narrador)*: voz apenas audible que obliga al interlocutor a inclinarse hacia él; usa las palabras justas y ni una más, y responde muchas preguntas con silencios — que para otro Nabieus significan cosas concretas (ver la "gramática del silencio" en [razas.md](razas.md)).
+- **Ganchos de aventura**:
+  1. *El cabo suelto*: su nombre figura en los registros de entrega de la carta del sabotaje. Tarde o temprano, alguien de la facción radical repasará esos registros — y un mensajero que sabe demasiado es un cabo que conviene cortar.
+  2. *El precio de lo que sabe*: Sella Marn (ver [npcs.md](npcs.md)), traficante de información sin lealtades a la que Yerin conoce, le ofrece comprar lo que recuerda de aquella entrega — dejando caer que, si él no vende, otros pagarán por saber que existe.
+  3. *Un encargo limpio*: alguien busca contratar al "mensajero que nunca pregunta" para una entrega sellada y bien pagada. La vieja regla de su oficio es no abrir, no leer, no preguntar — y Yerin ya sabe lo que cuesta cumplirla.
 
 ### 7. FAERUS — Riko (de la Manada Rota)
 - **Personalidad**: instintivo y con mentalidad de manada (proteger a los suyos), a pesar de haberlo perdido todo.
 - **Facultades**: cambio de postura fluido de bípeda (manipulación de herramientas) a cuadrúpeda (velocidad extrema y sigilo). Sentidos hiperdesarrollados e inteligencia sobresaliente bajo una apariencia salvaje.
 - **Historia**: cazador de las fronteras de Berig. Regresó para encontrar su territorio devastado por la magia salvaje. Sin saber si los supervivientes huyeron o murieron, viaja buscando cualquier rastro u olor que lo guíe de vuelta a su gente.
+- **Voz** *(para el Narrador)*: frases cortas, en presente, sin adornos ("Huele mal. Nos vamos."); describe a las personas por su olor antes que por su aspecto ("hueles a miedo y a hierro"). Cuando piensa, emite un gruñido bajo casi inaudible.
+- **Ganchos de aventura**:
+  1. *Rastro en el mercado*: el olor inconfundible de su manada en un puesto de comercio fronterizo — pieles Faerus vendidas como trofeo, o supervivientes que comerciaron para sobrevivir. Averiguar cuál de las dos cosas duele en ambos casos.
+  2. *La culpa de las bestias*: la magia salvaje que devastó su territorio dejó criaturas mutadas que ahora atacan los límites del Margen Silencioso — y las patrullas Goirntes, que no distinguen, culpan a los Faerus. Riko puede rastrear el origen real... o dejar que su pueblo cargue con ello.
+  3. *Una manada ajena*: una manada Faerus intacta le ofrece lo impensable — adopción. Dejar de buscar y aceptar una familia nueva, o rechazar la única oferta que un Faerus sin manada puede esperar y seguir un rastro cada día más frío.
 
 ### 8. ILVENAR — Cassia Von-Thair
 - **Personalidad**: obsesivamente curiosa; su neutralidad natural la hace sentir ajena en cualquier bando, incluido el suyo.
 - **Facultades**: psicometría táctil (al tocar un objeto o lugar, percibe fragmentos sensoriales de su pasado). Memoria perfecta; su piel de pergamino registra físicamente lo que experimenta.
 - **Historia**: aprendiz de archivista. Enviada a documentar los restos de la ruptura en una comisión conjunta de paz. Al tocar el sello roto, vio la huella de una tercera presencia que no era ni de Vaelira ni de Berig. Al intentar reportarlo, su informe fue censurado por ambos bandos para no entorpecer la narrativa de guerra.
+- **Voz** *(para el Narrador)*: precisión obsesiva con fechas, nombres y cifras — corrige los datos ajenos sin poder evitarlo, incluso en mal momento. Pide permiso antes de tocar cualquier cosa, porque para ella tocar es leer (cortesía Ilvenar; ver [razas.md](razas.md)).
+- **Ganchos de aventura**:
+  1. *El informe que no pueden quemar*: censuraron el documento, pero su piel de pergamino registró lo que percibió al tocar el sello — Cassia es la copia. Necesita encontrar a alguien con autoridad dispuesto a "leerla" formalmente... empezando quizá por Perel Vantha (ver [npcs.md](npcs.md)), la compañera que decidió callar.
+  2. *La tercera huella*: si la presencia que percibió tocó el sello, tocó más cosas. La Concordia guarda restos del asalto fallido a la isla como pruebas de guerra — llegar hasta uno solo de esos objetos le bastaría para confirmar (o refutar) lo que vio.
+  3. *La neutralidad en subasta*: los archivistas Ilvenar se están dividiendo entre servir como cronistas de guerra o negarse, y ambos bandos han comprendido lo que vale una psicometría "oficial" para su propaganda — a Cassia le llegan dos ofertas a la vez, y rechazar ambas también tiene precio.
 
 ## Poderes más allá de la magia (añadido 2026-07-17, Claude)
 

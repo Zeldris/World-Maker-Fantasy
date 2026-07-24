@@ -1,7 +1,9 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { LogEntry } from '../types'
 import { RollBadge } from './RollBadge'
 import { PanelRivets } from './Rivet'
+import { EnciclopediaLinkedText } from './EnciclopediaLinkedText'
+import { useEnciclopediaLink } from '../context/EnciclopediaLinkContext'
 
 interface LogPanelProps {
   title: string
@@ -10,6 +12,10 @@ interface LogPanelProps {
   accent: 'accent' | 'accent2'
   isThinking?: boolean
   thinkingText?: string
+  /// Streaming (roadmap de velocidad, 2026-07-20, punto 13): true cuando `thinkingText` es la
+  /// narración real creciendo palabra a palabra, no una frase de espera rotando — cambia cómo se
+  /// renderiza (sin key-remount por cada carácter nuevo, que si no repetiría el fade-in en bucle).
+  streaming?: boolean
   emptyHint: string
 }
 
@@ -24,6 +30,7 @@ const accentClasses = {
     thinkingLabel: 'text-accent-300/90',
     thinkingDot: 'bg-accent-400',
     thinkingRail: 'El Narrador escribe',
+    tollGradient: 'bg-[linear-gradient(90deg,transparent,var(--color-accent-300),transparent)]',
   },
   accent2: {
     gem: 'gem2',
@@ -31,80 +38,143 @@ const accentClasses = {
     hairline: 'accent2-hairline',
     playerBubble: 'border-accent2-600/40 bg-accent2-500/10',
     playerLabel: 'text-accent2-400',
-    thinkingCard: 'border-accent2-600/40 bg-accent2-500/5',
+    // Asimetría estática (roadmap de rediseño visual, Fable 2026-07-20, Nivel 1): "Tu personaje"
+    // piensa con tono cálido denso (accent, sin textura); "El mundo" piensa con Hierro Grabado
+    // añadido, reforzando que el mundo sigue su curso frío mientras esperas.
+    thinkingCard: 'border-accent2-600/40 bg-accent2-500/5 iron-etched corner-bracket',
     thinkingLabel: 'text-accent2-300/90',
     thinkingDot: 'bg-accent2-400',
     thinkingRail: 'El mundo se mueve',
+    tollGradient: 'bg-[linear-gradient(90deg,transparent,var(--color-accent2-300),transparent)]',
   },
 }
 
-export function LogPanel({ title, subtitle, entries, accent, isThinking, thinkingText, emptyHint }: LogPanelProps) {
+export function LogPanel({ title, subtitle, entries, accent, isThinking, thinkingText, streaming, emptyHint }: LogPanelProps) {
+  const { enciclopediaIndex, onEntityDetail, onEntityQuickInsert } = useEnciclopediaLink()
   const scrollRef = useRef<HTMLDivElement>(null)
   const classes = accentClasses[accent]
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' })
-  }, [entries.length, isThinking])
+    // thinkingText en la dependencia (roadmap de velocidad, 2026-07-20): con streaming, la
+    // tarjeta "pensando" crece de tamaño en vivo — sin esto, el scroll no la sigue mientras narra.
+    // Los chunks llegan cada ~200-300ms en este hardware (3-4,5 tok/s medido), no cada frame.
+  }, [entries.length, isThinking, thinkingText])
+
+  // Campanada silenciosa: un barrido único del hairline al pasar isThinking true→false —
+  // anuncia que la respuesta llegó, sin sonido ni bucle (roadmap de animaciones 2026-07-20).
+  const [tollTick, setTollTick] = useState(0)
+  const wasThinkingRef = useRef(isThinking)
+  useEffect(() => {
+    if (wasThinkingRef.current && !isThinking) setTollTick((t) => t + 1)
+    wasThinkingRef.current = isThinking
+  }, [isThinking])
 
   return (
     <section className="plank-panel relative flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl">
       <PanelRivets />
       <header className="relative flex items-center gap-2.5 px-4 py-3">
-        <span className={classes.gem} />
+        <span className={isThinking ? `${classes.gem} animate-gem-breathe` : classes.gem} />
         <div className="min-w-0">
           <h2 className={`font-serif text-sm tracking-wide ${classes.heading}`}>{title}</h2>
-          <p className="text-[11px] text-wood-400">{subtitle}</p>
+          <p className="text-2xs text-wood-400">{subtitle}</p>
         </div>
-        <div className={`absolute inset-x-0 bottom-0 ${classes.hairline}`} />
+        <div className={`absolute inset-x-0 bottom-0 overflow-hidden ${classes.hairline}`}>
+          {tollTick > 0 && (
+            <span key={tollTick} aria-hidden="true" className={`animate-hairline-toll absolute inset-0 ${classes.tollGradient}`} />
+          )}
+        </div>
       </header>
       <div ref={scrollRef} className="flex-1 space-y-3 overflow-y-auto px-4 py-4">
         {entries.length === 0 && !isThinking && (
           <p className="pt-2 text-sm text-wood-500 italic">{emptyHint}</p>
         )}
-        {entries.map((entry) => (
-          <div
-            key={entry.id}
-            className={
-              entry.isPlayerAction
-                ? `animate-entry-in rounded-lg border border-l-2 px-3.5 py-2.5 text-sm text-wood-100 ${classes.playerBubble}`
-                : 'animate-entry-in text-sm leading-relaxed text-wood-200'
-            }
-          >
-            {entry.isPlayerAction && (
-              <p className={`mb-1 text-[10px] font-semibold uppercase tracking-[0.14em] ${classes.playerLabel}`}>
-                Tu acción
-              </p>
-            )}
-            <p>{entry.text}</p>
-            {entry.roll && <RollBadge roll={entry.roll} />}
-            <div className="mt-1.5 flex items-center gap-2">
-              <p className="text-[10px] tracking-wide text-wood-500">{entry.timeLabel}</p>
-              {!!entry.xpDelta && (
-                <span className="rounded-full border border-accent-600/50 bg-accent-500/10 px-1.5 py-0.5 font-mono text-[10px] text-accent-300">
-                  +{entry.xpDelta} XP
-                </span>
-              )}
+        {entries.map((entry) =>
+          entry.isLevelUp ? (
+            <div
+              key={entry.id}
+              className="animate-entry-in relative overflow-hidden rounded-lg border border-accent-500/60 bg-accent-500/10 px-3.5 py-2.5 text-sm text-wood-100"
+            >
+              <span
+                aria-hidden="true"
+                className="animate-sheen-sweep-once pointer-events-none absolute inset-0 bg-[linear-gradient(100deg,transparent_30%,rgba(255,255,255,0.14)_50%,transparent_70%)]"
+              />
+              <div className="relative flex items-center gap-2">
+                <span className={`${classes.gem} animate-stamp-in`} />
+                <p className="font-serif font-semibold text-accent-300">{entry.text}</p>
+              </div>
+              <p className="relative mt-1.5 text-2xs tracking-wide text-wood-400">{entry.timeLabel}</p>
             </div>
-          </div>
-        ))}
+          ) : (
+            <div
+              key={entry.id}
+              className={
+                entry.isPlayerAction
+                  ? `animate-entry-in rounded-lg border border-l-2 px-3.5 py-2.5 text-sm text-wood-100 ${classes.playerBubble}`
+                  : 'animate-entry-in text-sm leading-relaxed text-wood-200'
+              }
+            >
+              {entry.isPlayerAction && (
+                <p className={`mb-1 text-2xs font-semibold uppercase tracking-[0.14em] ${classes.playerLabel}`}>
+                  Tu acción
+                </p>
+              )}
+              <p>
+                <EnciclopediaLinkedText
+                  text={entry.text}
+                  index={enciclopediaIndex}
+                  onDetail={(t) => onEntityDetail?.(t)}
+                  onQuickInsert={(t) => onEntityQuickInsert?.(t)}
+                />
+              </p>
+              {entry.roll && <RollBadge roll={entry.roll} />}
+              {entry.entityBanner && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const target = enciclopediaIndex.entries.get(entry.entityBanner!.name.toLowerCase())
+                    if (target) onEntityDetail?.(target)
+                  }}
+                  className="tactile group mt-2 block w-full overflow-hidden rounded-lg border border-iron-700 bg-wood-950/40 text-left transition-colors hover:border-accent-600/60"
+                >
+                  <img src={entry.entityBanner.imageUrl} alt="" className="aspect-[2.5/1] w-full object-cover" />
+                  <p className="flex items-center gap-1.5 px-2.5 py-1.5 text-2xs text-wood-300 group-hover:text-accent-300">
+                    <span aria-hidden="true">{entry.entityBanner.icon}</span>
+                    <span className="font-medium">{entry.entityBanner.name}</span>
+                  </p>
+                </button>
+              )}
+              <div className="mt-1.5 flex items-center gap-2">
+                <p className="text-2xs tracking-wide text-wood-400">{entry.timeLabel}</p>
+                {!!entry.xpDelta && (
+                  <span className="rounded-full border border-accent-600/50 bg-accent-500/10 px-1.5 py-0.5 font-mono text-2xs text-accent-300">
+                    +{entry.xpDelta} XP
+                  </span>
+                )}
+              </div>
+            </div>
+          ),
+        )}
         {isThinking && (
           <div className={`relative overflow-hidden rounded-lg border border-dashed px-3.5 py-3 ${classes.thinkingCard}`}>
             <div className="thinking-sheen" />
             <div className="flex items-center gap-2.5">
-              <div className="flex items-center gap-1.5">
-                <span className={`h-1.5 w-1.5 animate-pulse-soft rounded-full ${classes.thinkingDot}`} />
-                <span className={`h-1.5 w-1.5 animate-pulse-soft rounded-full ${classes.thinkingDot} [animation-delay:0.2s]`} />
-                <span className={`h-1.5 w-1.5 animate-pulse-soft rounded-full ${classes.thinkingDot} [animation-delay:0.4s]`} />
-              </div>
-              <p className={`text-[10px] font-semibold uppercase tracking-[0.14em] ${classes.thinkingLabel}`}>
+              {/* Los 3 puntos parpadeantes se retiran (roadmap de animaciones 2026-07-20): la
+                  gema del header ya respira mientras se piensa — dos bucles a la vez (ella +
+                  thinking-sheen) es el tope de presupuesto en este hardware, no tres. */}
+              <span className={`h-1.5 w-1.5 rounded-full ${classes.thinkingDot}`} />
+              <p className={`text-2xs font-semibold uppercase tracking-[0.14em] ${classes.thinkingLabel}`}>
                 {classes.thinkingRail}
               </p>
             </div>
-            {thinkingText && (
-              <p key={thinkingText} className="animate-entry-in mt-2 text-xs italic leading-relaxed text-wood-300">
-                {thinkingText}
-              </p>
-            )}
+            {thinkingText &&
+              (streaming ? (
+                <p className="mt-2 text-xs leading-relaxed text-wood-200">{thinkingText}</p>
+              ) : (
+                <p key={thinkingText} className="animate-entry-in mt-2 text-xs italic leading-relaxed text-wood-300">
+                  {thinkingText}
+                </p>
+              ))}
           </div>
         )}
       </div>

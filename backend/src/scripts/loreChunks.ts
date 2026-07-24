@@ -117,7 +117,7 @@ export const loreChunks: LoreChunkInput[] = [
   {
     type: 'FAUNA',
     title: 'Fauna de Vaelira',
-    text: 'Susurradores de Cristal: insectoides del tamaño de un gato que emiten un zumbido armónico calmante. Acechadores de la Bruma: grandes felinos semitranslúcidos que cazan por calor y miedo, el mayor peligro entre ciudades Kelife y bosques Jusaly.',
+    text: 'Susurradores de Cristal: insectoides pequeños que emiten un zumbido armónico calmante. Acechadores de la Bruma: grandes depredadores de pelaje semitranslúcido que cazan por calor y miedo, el mayor peligro entre ciudades Kelife y bosques Jusaly.',
     tags: ['fauna', 'vaelira'],
     sourceDoc: 'areas.md',
   },
@@ -131,7 +131,7 @@ export const loreChunks: LoreChunkInput[] = [
   {
     type: 'FAUNA',
     title: 'Fauna de Berig y las Llanuras del Viento Rojo',
-    text: 'Gargantúas de Ceniza: reptiles gigantes que las Terk\'ikar guían en migraciones estacionales. Las Sombras de Kroj: aves rapaces del Margen Silencioso que imitan voces para atraer viajeros a trampas. Cornantes: alimento principal en la Ciénaga Troncal. Corredores de Cauce: manadas veloces de seis patas en las Llanuras del Viento Rojo, cazadas en carreras rituales de valor. Espina del Viento: escorpiones venenosos enterrados en la arena roja que atacan durante las tormentas de arena magnética — el peligro cotidiano de viajar solo por las Llanuras.',
+    text: 'Gargantúas de Ceniza: reptiles gigantes que las Terk\'ikar guían en migraciones estacionales. Las Sombras de Kroj: criaturas voladoras nocturnas del Margen Silencioso que imitan voces para atraer viajeros a trampas. Cornantes: alimento principal en la Ciénaga Troncal. Corredores de Cauce: manadas veloces de seis patas en las Llanuras del Viento Rojo, cazadas en carreras rituales de valor. Espina del Viento: criaturas venenosas enterradas en la arena roja que atacan durante las tormentas de arena magnética — el peligro cotidiano de viajar solo por las Llanuras.',
     tags: ['fauna', 'llanuras', 'espina-del-viento', 'corredores-de-cauce', 'gargantuas-de-ceniza'],
     sourceDoc: 'areas.md',
   },
@@ -331,5 +331,72 @@ export const loreChunks: LoreChunkInput[] = [
     text: 'Gorhorn puede encontrarse con un jefe de guerra (Kort\'ikar) de otro clan orco, posiblemente del Clan Serhu, en una situación comprometida — herido, emboscado, o en desventaja. Decidir ayudarlo, negociar con él, o pasar de largo tiene consecuencias reales para la reputación de Gorhorn entre los clanes orcos.',
     tags: ['gancho', 'kortikar', 'clan-serhu', 'reputacion'],
     sourceDoc: 'personajes.md',
+  },
+
+  // --- docs/12-mundo-estructurado.md: contenido nuevo (Torgash concretado, Ulkha, Hagar
+  // ampliado, Campamento Serhu, 4 especies nuevas) — SIN números: los stats y el equipo llegan
+  // siempre por Npc/NpcItem (vía determinista), nunca por RAG, para que nunca puedan desincronizarse.
+  {
+    type: 'NPC',
+    title: "Kort'ikar Torgash, del Clan Serhu",
+    text: 'Torgash es el Kort\'ikar (Jefe de Guerra) del Clan Serhu, vecino y rival histórico del extinto Clan Maktor de Gorhorn. Veterano de las escaramuzas fronterizas, ascendió al puesto cuando su predecesor murió en el frente — el mismo predecesor al que el padre de Gorhorn retó y perdió la vida, en un duelo de honor que Torgash recuerda y respeta. Busca, en silencio y contra la costumbre, unificar a los clanes orcos para retirarlos de la guerra de la Concordia de Hierro: los Serhu vieron de cerca lo que la Concordia hizo con los Maktor y no quieren ser los siguientes. Es grave, económico con las palabras, y pragmático hasta rozar la herejía cultural — prefiere pactar a duelar. Detesta a la Concordia en silencio. Se le encuentra en el Campamento del Clan Serhu, o en ruta si algo lo saca de allí.',
+    tags: ['torgash', 'kortikar', 'clan-serhu', 'npc-principal'],
+    sourceDoc: 'npcs.md',
+  },
+  {
+    type: 'NPC',
+    title: "Terk'ikar Ulkha, del Clan Serhu",
+    text: 'Ulkha es la Terk\'ikar (Jefa) del Clan Serhu — gobierna el asentamiento, el pastoreo y las migraciones. Fue ella quien decidió no acoger a los supervivientes del Clan Maktor tras su aniquilación: no por crueldad, sino por cálculo de supervivencia — acogerlos habría puesto una diana sobre su propio clan, con la Concordia todavía buscando rezagados. Que Gorhorn siga vivo la enfrenta de nuevo a esa decisión. Es fría en el cálculo y cálida en el trato, en ese orden; comulga con las Gargantúas de Ceniza durante las migraciones, como es costumbre entre las Terk\'ikar. Se le encuentra en el Campamento del Clan Serhu.',
+    tags: ['ulkha', 'terkikar', 'clan-serhu', 'npc-principal'],
+    sourceDoc: 'npcs.md',
+  },
+  {
+    type: 'NPC',
+    title: 'Hagar, del Clan Helsig (amigo de Gorhorn)',
+    text: 'Hagar es un orco del Clan Helsig, de Cristal Helado, minero de hielo sílice. Gorhorn trabajó tres meses codo con codo con él en las minas y forjaron una amistad real — Hagar es leal, ruidoso y de risa fácil, el opuesto exacto del Gorhorn callado de aquellos años, y por eso encajaron. Vive lejos de las Llanuras del Viento Rojo, en Cristal Helado, pero sigue siendo el vínculo personal vivo de Gorhorn: un mensaje, un viaje o un rumor pueden traerlo de vuelta a la historia en cualquier momento.',
+    tags: ['hagar', 'clan-helsig', 'gorhorn', 'npc-principal'],
+    sourceDoc: 'npcs.md',
+  },
+  {
+    type: 'REGION',
+    title: 'Campamento del Clan Serhu (Llanuras del Viento Rojo)',
+    text: 'Asentamiento del Clan Serhu, situado cerca del Pozo de Cauce Viejo del que dependen para el agua permanente — un clan que pastorea y caza necesita esa fuente, y explica por qué el Pozo es punto de encuentro entre clanes "para bien o para mal". Hogar de la Terk\'ikar Ulkha y el Kort\'ikar Torgash. Sus vigías vigilan la senda de acceso desde lejos: quien se acerca, se acerca visto.',
+    tags: ['campamento-serhu', 'clan-serhu', 'punto-de-interes', 'torgash', 'ulkha'],
+    sourceDoc: 'areas.md',
+  },
+  {
+    type: 'FAUNA',
+    title: 'Corretolvas (Llanuras del Viento Rojo)',
+    text: 'Criaturas corredoras incapaces de volar, de tamaño pequeño, que se mueven en bandadas entre la hierba rojiza de la llanura. Se cazan con trampa sencilla o lanza corta — son la caza menor más accesible de la región, buena fuente de carne fresca sin necesidad de perseguir presas grandes o peligrosas.',
+    tags: ['corretolvas', 'fauna', 'llanuras', 'caza-menor'],
+    sourceDoc: 'areas.md',
+  },
+  {
+    type: 'FLORA',
+    title: 'Salvia del Polvo (Llanuras del Viento Rojo)',
+    text: 'Mata baja de hojas grises y aroma amargo que crece en hondonadas y zonas de sombra de las Llanuras. Machacada, corta hemorragias y limpia heridas — cualquier orco de las Llanuras la reconoce desde niño, no hace falta ser sanador para identificarla y usarla en un apuro.',
+    tags: ['salvia-del-polvo', 'flora', 'medicinal', 'llanuras'],
+    sourceDoc: 'areas.md',
+  },
+  {
+    type: 'FLORA',
+    title: 'Espiga Roja (Llanuras del Viento Rojo)',
+    text: 'Cereal silvestre de la estepa, del mismo color que la tierra rojiza que lo rodea. Su grano es comestible tostado, y también sirve como forraje. Recolectarlo lleva su tiempo — cuanto más rato se dedique a la espiga, más grano se junta.',
+    tags: ['espiga-roja', 'flora', 'alimento', 'llanuras'],
+    sourceDoc: 'areas.md',
+  },
+  {
+    type: 'FLORA',
+    title: 'Matorral de Cuerno (Llanuras del Viento Rojo)',
+    text: 'Arbusto de madera densa y retorcida que arde lento y caliente — la única leña real de la llanura abierta de las Llanuras del Viento Rojo. Cortarlo es la fuente de leña de la región, útil para cualquiera que necesite fuego para pasar la noche o cocinar.',
+    tags: ['matorral-de-cuerno', 'flora', 'leña', 'llanuras'],
+    sourceDoc: 'areas.md',
+  },
+  {
+    type: 'GANCHO',
+    title: 'Acercarse al Campamento del Clan Serhu',
+    text: 'El Campamento del Clan Serhu se ve venir desde lejos por sus propios vigías — nadie llega sin ser visto primero. Presentarse abiertamente, intentar acercarse sin ser notado, o esperar a ver quién sale a su encuentro son formas muy distintas de empezar el contacto con Torgash o Ulkha, con consecuencias distintas para cómo lo reciben.',
+    tags: ['gancho', 'campamento-serhu', 'clan-serhu', 'torgash', 'ulkha'],
+    sourceDoc: 'areas.md',
   },
 ];

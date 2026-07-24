@@ -1,0 +1,1 @@
+ALTER TABLE "Save" ADD COLUMN "pendingCombatNpcSlugs" JSONB NOT NULL DEFAULT '[]';

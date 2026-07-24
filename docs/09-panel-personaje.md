@@ -26,17 +26,19 @@ Al tocar un icono, un panel sube desde abajo (o se abre en modal en pantallas gr
 
 ## 2. Las pestañas, una por una
 
-| Pestaña | Qué muestra | Fuente de datos | ¿Necesita persistencia real primero? |
+**Estado a 2026-07-18: las 9 pestañas están construidas, incluida Misiones.** Tabla original (diseño) conservada por historial; el estado real de cada una está en la última columna.
+
+| Pestaña | Qué muestra | Fuente de datos | Estado |
 |---|---|---|---|
-| **Mapa** | Regiones conocidas de Helek Sirik, dónde está el personaje ahora, puntos de interés visitados. | Estático al principio (a partir de `docs/rpgtarkor/areas.md`), luego cruzado con la posición real del personaje. | Parcial — el mapa en sí puede ser estático ya; marcar "dónde estoy" necesita una posición real guardada (ver § 4). |
-| **Inventario** | Objetos que lleva el personaje. | `InventoryItem` (ya existe en el schema, sin usar). | Sí — hoy no hay ninguna fila real, todo vive en texto. |
-| **Estadísticas** | Los 6 atributos jugables (ya existe `AttributeBars`) + las 9 columnas ampliadas (Inteligencia, Magia, Poder de Semilla, Moral, Resistencias) que documentamos hoy, aunque el motor no las use aún. | `Character.attributes` (frontend) — se puede mostrar ya, hoy mismo, sin persistencia nueva. | No — esta es la más fácil de construir ya. |
-| **Diario** | Registro completo y permanente de lo que le ha pasado al personaje (no solo lo que cabe en pantalla). | `LogEntry` (ya existe en el schema, sin usar — `/turn` es stateless hoy). | Sí. |
-| **Misiones** | Objetivos activos/completados del personaje. | **Modelo nuevo** — no existe todavía. Propuesta: `Quest` (título, descripción, estado, origen — ligada a un NPC o a un gancho de aventura). | Sí, y además necesita el modelo nuevo. |
-| **Compañeros** | Aliados/súbditos que viajan con el personaje. | `Companion` (ya existe en el schema, sin usar). | Sí. |
-| **Reino** | Súbditos, edificios, zonas conquistadas. | **Modelo nuevo** — no existe todavía (`Building`, `Territory`...). | Sí, y es la pestaña con más trabajo de diseño pendiente (ver § 5). |
-| **Habilidades** | "Prompts" guardados y reutilizables como acciones rápidas, más los que el jugador cree y guarde. | **Modelo nuevo** — propuesta: `SavedAction` (nombre, texto del prompt, personaje). | Sí, y tiene un conflicto de diseño (ver § 3). |
-| **Profesiones** | Catálogo cerrado de profesiones predefinidas (herrero, cazador, sanador...) que el personaje puede ejercer. | **Contenido nuevo** — catálogo curado por nosotros (parecido a cómo curamos el lore hoy), más una relación personaje↔profesión. | Sí. |
+| **Mapa** | Regiones de Berig, punto actual, puntos de interés. | `frontend/src/data/map.ts` (estático) + `InteractiveMap.tsx` (SVG clicable). Posición real por `Location`/`currentLocationId` diseñada en `docs/12`, no implementada aún — hoy "aquí ahora" sigue fijo a las Llanuras. | **Hecho** (posición dinámica real, pendiente de `docs/12`). |
+| **Inventario** | Objetos que lleva el personaje, clicables para adjuntar a una acción. | `InventoryItem`, poblado por `newItem` del Narrador (sin catálogo cerrado todavía — ver `docs/12` § 4 para loot determinista). | **Hecho.** |
+| **Estadísticas** | 6 atributos + nivel/XP + reparto de puntos ASI. | `Save.attributes`/`level`/`xp`. | **Hecho.** |
+| **Diario** | Registro cronológico completo (personaje + mundo mezclados). | `LogEntry`. | **Hecho.** |
+| **Misiones** | Objetivos activos/completados/fallidos. | `Quest`, poblado por `newQuest`/`questProgress` del Narrador (mismo patrón que Reino). | **Hecho** (2026-07-18). |
+| **Compañeros** | Aliados que viajan con el personaje, poblados por `newCompanion` del Narrador. | `Companion`. | **Hecho.** |
+| **Reino** | Súbditos, edificios, territorios — estado vacío tratado como narrativo, no bloqueado (la usuaria priorizó construirlo ya, contra la recomendación original de § 5). | `Territory`/`Building`/`Subject`. | **Hecho.** |
+| **Habilidades** | Rejilla de iconos con pestañas Combate/Generales; clicar adjunta al chat (no envía directo). | `SavedAction` (+ `icon`/`description`/`isStarting`/`category`) — resuelto el conflicto de § 3 por la vía (B), niveles reabiertos. | **Hecho**, con kit inicial de 8 habilidades para Gorhorn (`backend/src/services/startingAbilities.ts`). |
+| **Profesiones** | Catálogo curado de 6 profesiones ligadas a la cultura orca de las Llanuras. | `frontend/src/data/professions.ts` (estático) + `Save.profession`. | **Hecho.** |
 
 ## 3. Conflicto resuelto: "nivel del personaje"
 

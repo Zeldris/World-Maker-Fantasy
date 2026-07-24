@@ -1,8 +1,21 @@
+/* Cinzel nunca se cargaba de verdad — --font-serif solo tenía el nombre, sin @font-face ni link,
+   así que caía en silencio a Georgia salvo que la tuvieras instalada en el sistema. */
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&display=swap');
 @import "tailwindcss";
 
 @theme {
   --font-sans: "Inter", system-ui, "Segoe UI", Roboto, sans-serif;
   --font-serif: "Cinzel", Georgia, serif;
+  /* Roadmap de diseño CSS (Fable, 2026-07-20): antes caía en el monoespaciado por defecto de
+     Tailwind sin declararlo — ya era la fuente de facto para todo dato con peso mecánico
+     (tiradas, XP, atributos, salud), esto solo lo hace explícito. */
+  --font-mono: "Cascadia Code", "SF Mono", ui-monospace, monospace;
+
+  /* Roadmap de diseño CSS (Fable, 2026-07-20): sustituye los text-[9px]/[10px]/[11px] sueltos
+     que convivían sin escala — un único paso de 11px para timestamps, badges, cabeceras de
+     sección y etiquetas de slot. */
+  --text-2xs: 0.6875rem;
+  --text-2xs--line-height: 1rem;
 
   /* Madera — escala neutra base de toda la app (fondos, bordes, texto) */
   --color-wood-950: #1b130c;
@@ -37,7 +50,28 @@
   --color-moss-400: #8fae6a;
   --color-moss-500: #6f9450;
   --color-moss-600: #587a3c;
+
+  /* Roadmap de diseño CSS (Fable, 2026-07-20): danger/coste tokenizados igual que moss (estado
+     fijo, no tematizable) — mismos valores que los rojos y ámbares de Tailwind ya usados en
+     RollBadge/HealthBar/CombatModal/GameView, ahora con una sola fuente de verdad. Los tonos más
+     oscuros (rojo 700..950, estructurales: bordes/gradientes profundos) se quedan como clases de
+     Tailwind sueltas, mismo criterio que iron-900/800/700 frente a accent-300..600. */
+  --color-danger-400: #f87171;
+  --color-danger-500: #ef4444;
+  --color-danger-600: #dc2626;
+  --color-cost-400: #fbbf24;
+  --color-cost-500: #f59e0b;
+  --color-cost-600: #d97706;
 }
+
+/* Escala de radio de esquina (roadmap de diseño CSS, Fable 2026-07-20) — ya vigente en la
+   práctica en toda la app, documentada aquí en vez de cambiada:
+     rounded-full  → píldoras/badges (chips de estado, StatBadge, contador de huecos)
+     rounded-md    → botones y chips pequeños (Equipar/Quitar, chips de habilidad)
+     rounded-lg    → tarjetas de contenido (fila de inventario, tarjeta de misión/territorio)
+     rounded-xl    → contenedores de nivel superior (.plank-panel, PanelDrawer, WorldCard/
+                     CharacterCard, CombatModal)
+     rounded-t-2xl → solo el borde superior del cajón deslizante (PanelDrawer) */
 
 html {
   color-scheme: dark;
@@ -73,6 +107,29 @@ body {
     linear-gradient(160deg, var(--color-wood-900), var(--color-wood-950) 70%);
 }
 
+/* Polvo del Camino (roadmap de rediseño visual, Fable 2026-07-20, Nivel 2) — reinterpretación de
+   `wood` sin color nuevo: vetas diagonales de viento a mayor escala que `.wood-grain` (estepa de
+   tierra rojiza y arcillosa, areas.md). Usado en el riel izquierdo de `SideNav` ("tu equipo"),
+   frente al `.iron-band` grabado del riel derecho ("el mundo"). */
+/* Revolución visual (2026-07-20, noche): la v1 mezclaba el rojo como veta decorativa al 10%,
+   invisible en la práctica — resultaba madera lisa pese al nombre "Polvo Rojo". Ahora el rojo
+   vive en el propio degradado base (danger-600, el mismo rojo de combate que ya existe en la
+   app, no un hex nuevo). Provisional: esto se sustituirá por fondos generados de verdad cuando
+   exista la API de prompts de imagen — este CSS es el escalón intermedio hasta entonces. */
+.dust-road {
+  background-image:
+    repeating-linear-gradient(
+      18deg,
+      rgba(0, 0, 0, 0.32) 0px,
+      rgba(0, 0, 0, 0.32) 3px,
+      rgba(255, 200, 170, 0.06) 3px,
+      rgba(255, 200, 170, 0.06) 5px,
+      transparent 5px,
+      transparent 140px
+    ),
+    linear-gradient(155deg, color-mix(in srgb, var(--color-danger-600) 24%, var(--color-wood-700)), color-mix(in srgb, var(--color-danger-600) 11%, var(--color-wood-900)) 70%);
+}
+
 /* Panel tipo "tablón": borde de hierro + costuras de tabla + esquinas con clavo */
 .plank-panel {
   position: relative;
@@ -94,11 +151,16 @@ body {
 }
 
 /* Banda de hierro — el "chrome" de mando (header, barra inferior): metal oscuro que
-   enmarca la madera del contenido, en vez de más madera plana */
+   enmarca la madera del contenido, en vez de más madera plana.
+   Roadmap de rediseño visual (Fable 2026-07-20, Nivel 2): Hierro Grabado/Ley generalizado aquí
+   (retícula de líneas rectas a 8%, mismo motivo que `.iron-etched`/`LogPanel`) — opacidad baja
+   a propósito, revisada para no comprometer la legibilidad del texto que va encima. */
 .iron-band {
   background-image:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.04), transparent 45%),
-    linear-gradient(175deg, var(--color-iron-700), var(--color-iron-800) 60%, var(--color-iron-900));
+    repeating-linear-gradient(0deg, color-mix(in srgb, var(--color-accent2-300) 26%, transparent) 0px, transparent 1.5px, transparent 16px),
+    repeating-linear-gradient(90deg, color-mix(in srgb, var(--color-accent2-300) 26%, transparent) 0px, transparent 1.5px, transparent 16px),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.05), transparent 45%),
+    linear-gradient(175deg, var(--color-iron-700), var(--color-iron-800) 55%, var(--color-iron-900));
 }
 
 /* Línea de luz de cristal — la firma del mundo activo (acento tematizable), usada como
@@ -142,6 +204,65 @@ body {
   box-shadow: 0 0 6px color-mix(in srgb, var(--color-accent2-500) 45%, transparent);
 }
 
+/* Cielo de Cristal (roadmap de rediseño visual, Fable 2026-07-20, Nivel 1): lavado disperso y
+   ESTÁTICO de micro-cristales (posiciones fijas, nunca aleatorio ni animado) — cero hexes nuevos,
+   deriva de --color-accent-300/400 vía color-mix. Canon: genesis.md Era 0, cinturón de
+   micro-cristales que da brillo perlado nocturno — algo que ningún bando posee. */
+.crystal-sky {
+  background-image:
+    radial-gradient(1.5px 1.5px at 6% 20%, color-mix(in srgb, var(--color-accent-300) 90%, transparent), transparent 100%),
+    radial-gradient(1px 1px at 12% 55%, color-mix(in srgb, var(--color-accent-400) 70%, transparent), transparent 100%),
+    radial-gradient(2px 2px at 18% 12%, var(--color-accent-300), transparent 100%),
+    radial-gradient(1px 1px at 26% 68%, color-mix(in srgb, var(--color-accent-400) 60%, transparent), transparent 100%),
+    radial-gradient(1.5px 1.5px at 33% 30%, color-mix(in srgb, var(--color-accent-300) 85%, transparent), transparent 100%),
+    radial-gradient(1px 1px at 41% 8%, color-mix(in srgb, var(--color-accent-400) 50%, transparent), transparent 100%),
+    radial-gradient(2px 2px at 48% 48%, var(--color-accent-300), transparent 100%),
+    radial-gradient(1px 1px at 55% 22%, color-mix(in srgb, var(--color-accent-400) 65%, transparent), transparent 100%),
+    radial-gradient(1.5px 1.5px at 63% 62%, color-mix(in srgb, var(--color-accent-300) 80%, transparent), transparent 100%),
+    radial-gradient(1px 1px at 71% 15%, color-mix(in srgb, var(--color-accent-400) 55%, transparent), transparent 100%),
+    radial-gradient(2px 2px at 78% 40%, var(--color-accent-300), transparent 100%),
+    radial-gradient(1px 1px at 85% 65%, color-mix(in srgb, var(--color-accent-400) 60%, transparent), transparent 100%),
+    radial-gradient(1.5px 1.5px at 92% 25%, color-mix(in srgb, var(--color-accent-300) 90%, transparent), transparent 100%),
+    radial-gradient(1px 1px at 97% 50%, color-mix(in srgb, var(--color-accent-400) 50%, transparent), transparent 100%),
+    linear-gradient(180deg, #0d2230 0%, color-mix(in srgb, var(--color-accent-600) 34%, var(--color-iron-900)) 50%, var(--color-iron-900) 100%);
+  background-repeat: no-repeat;
+}
+
+/* Hierro Grabado/Ley (roadmap de rediseño visual, Fable 2026-07-20, Nivel 1): retícula de líneas
+   rectas grabadas a baja opacidad, ángulos rectos — textura sobre accent2, no recoloreo. Canon:
+   areas.md Meseta del Orden ("simetría antinatural"), genesis.md Era 1. */
+.iron-etched {
+  background-image:
+    repeating-linear-gradient(0deg, color-mix(in srgb, var(--color-accent2-300) 26%, transparent) 0px, transparent 1.5px, transparent 16px),
+    repeating-linear-gradient(90deg, color-mix(in srgb, var(--color-accent2-300) 26%, transparent) 0px, transparent 1.5px, transparent 16px);
+}
+
+/* Esquinas en escuadra — cartela de obelisco goirnte, para paneles ligados a "el mundo"/la ley
+   (frente a los .rivet redondos de "tu personaje"). Ángulos rectos a propósito (Goirme). */
+.corner-bracket {
+  position: relative;
+}
+.corner-bracket::before,
+.corner-bracket::after {
+  content: '';
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  border-color: color-mix(in srgb, var(--color-accent2-300) 55%, transparent);
+  border-style: solid;
+  pointer-events: none;
+}
+.corner-bracket::before {
+  top: 6px;
+  left: 6px;
+  border-width: 1.5px 0 0 1.5px;
+}
+.corner-bracket::after {
+  bottom: 6px;
+  right: 6px;
+  border-width: 0 1.5px 1.5px 0;
+}
+
 .rivet {
   position: absolute;
   width: 9px;
@@ -167,6 +288,94 @@ body {
 .rivet-br {
   bottom: 8px;
   right: 8px;
+}
+
+/* Tacto "hierro que cede" — todo lo pulsable se hunde un poco al tocarlo, como una palanca real.
+   Solo transform (coste casi nulo) y solo se ejecuta al interactuar, nunca en reposo. */
+.tactile {
+  transition: transform 75ms ease-out;
+}
+.tactile:active {
+  transform: translateY(1px) scale(0.98);
+}
+
+/* Composer enriquecido (enlaces de objeto/habilidad estilo WoW, insertados dentro del propio
+   texto libre): placeholder vía :empty ya que un <div contenteditable> no soporta el atributo
+   nativo placeholder de <textarea>. */
+.composer-editable:empty:before {
+  content: attr(data-placeholder);
+  color: var(--color-wood-500);
+  pointer-events: none;
+}
+
+/* Chip inline de objeto/habilidad: mismo lenguaje visual que el resto de chips de la app, pero
+   vive DENTRO del texto en vez de en una fila aparte encima del textarea. */
+.chip-inline {
+  cursor: default;
+}
+.chip-tooltip {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%) translateY(4px);
+  min-width: 160px;
+  max-width: 240px;
+  padding: 0.5rem 0.625rem;
+  border: 1px solid var(--color-iron-700);
+  border-radius: 0.5rem;
+  background: var(--color-wood-950);
+  box-shadow: 0 8px 20px -6px rgba(0, 0, 0, 0.7);
+  color: var(--color-wood-200);
+  font-size: 0.7rem;
+  font-weight: 400;
+  line-height: 1.35;
+  white-space: normal;
+  text-align: left;
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    opacity 120ms ease-out,
+    transform 120ms ease-out;
+  pointer-events: none;
+  z-index: 30;
+}
+.chip-inline:hover .chip-tooltip {
+  opacity: 1;
+  visibility: visible;
+  transform: translateX(-50%) translateY(0);
+}
+
+/* Tooltip de TooltipAnchor.tsx: portal a document.body (ver comentario del componente) — el
+   montaje/desmontaje ya lo controla React (hover/focus del ancla), aquí solo hace falta la
+   posición fija + una entrada suave, sin selector :hover (ya no es descendiente del ancla en el
+   DOM real, un portal rompe esa relación). */
+.tooltip-portal {
+  position: fixed;
+  transform: translate(-50%, calc(-100% - 6px));
+  min-width: 160px;
+  max-width: 240px;
+  padding: 0.5rem 0.625rem;
+  border: 1px solid var(--color-iron-700);
+  border-radius: 0.5rem;
+  background: var(--color-wood-950);
+  box-shadow: 0 8px 20px -6px rgba(0, 0, 0, 0.7);
+  color: var(--color-wood-200);
+  font-size: 0.7rem;
+  font-weight: 400;
+  line-height: 1.35;
+  white-space: normal;
+  text-align: center;
+  pointer-events: none;
+  z-index: 9999;
+  animation: tooltip-portal-in 120ms ease-out both;
+}
+@keyframes tooltip-portal-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 ::-webkit-scrollbar {
@@ -195,6 +404,10 @@ body {
 }
 .animate-pulse-soft {
   animation: pulse-soft 1.4s ease-in-out infinite;
+}
+/* Misma respiración, más lenta — la herida grave "late" en vez de parpadear */
+.animate-pulse-slow {
+  animation: pulse-soft 2.5s ease-in-out infinite;
 }
 
 /* Tarjeta "sellada" — estado seleccionado de tarjetas de mundo/personaje: en vez de un
@@ -229,6 +442,10 @@ body {
 }
 .animate-entry-in {
   animation: entry-in 0.45s ease-out both;
+}
+/* Misma entrada, mucho más lenta — el fin de partida no llega de golpe, pesa */
+.animate-entry-in-slow {
+  animation: entry-in 1.1s ease-out both;
 }
 
 /* Panel deslizante inferior: overlay + subida con freno físico */
@@ -274,11 +491,240 @@ body {
   animation: sheen-sweep 3s linear infinite;
 }
 
+/* Sello que cae con overshoot — resolución de un grado de éxito claro/con coste */
+@keyframes stamp-in {
+  0% {
+    opacity: 0;
+    transform: scale(1.25);
+  }
+  60% {
+    opacity: 1;
+    transform: scale(0.97);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+.animate-stamp-in {
+  animation: stamp-in 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) 0.15s both;
+}
+
+/* Sacudida seca — un fallo no cae, rebota en seco */
+@keyframes shake-no {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-4px);
+  }
+  50% {
+    transform: translateX(3px);
+  }
+  75% {
+    transform: translateX(-2px);
+  }
+}
+.animate-shake-no {
+  animation: shake-no 0.3s ease-out 0.15s both;
+}
+
+/* Parpadeo único de borde — el color lo pone el border-* del propio elemento en el markup, aquí
+   solo se anima opacity (nunca box-shadow). Reutilizado por RollBadge (ámbar), EquipoPanel
+   (acento, al equipar) y el chip de muertes (rojo, al subir). */
+@keyframes edge-flash {
+  0%,
+  100% {
+    opacity: 0;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+.animate-edge-flash-amber {
+  animation: edge-flash 0.5s ease-out 0.45s both;
+}
+.animate-edge-flash-accent {
+  animation: edge-flash 0.5s ease-out both;
+}
+.animate-edge-flash-red {
+  animation: edge-flash 0.5s ease-out both;
+}
+
+/* Pop genérico con overshoot — hallazgos, botón de nivel, iconos que reaccionan a un cambio */
+@keyframes pop-once {
+  0% {
+    opacity: 0.6;
+    transform: scale(0.85);
+  }
+  60% {
+    opacity: 1;
+    transform: scale(1.12);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+.animate-pop-once {
+  animation: pop-once 0.28s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+/* Sello retrasado 0,2s — StatBadge al equipar: primero encaja el objeto, luego "suena" el bonus */
+.animate-stamp-in-equip {
+  animation: stamp-in 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) 0.2s both;
+}
+
+/* Barrido de luz de una sola pasada — subida de nivel, no el ambiental en bucle de thinking-sheen */
+.animate-sheen-sweep-once {
+  animation: sheen-sweep 1s ease-out both;
+}
+
+/* El popup de combate entra con un golpe seco, no un fundido suave */
+@keyframes combat-enter {
+  0% {
+    opacity: 0;
+    transform: scale(1.04);
+  }
+  60% {
+    opacity: 1;
+    transform: scale(0.99);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+.animate-combat-enter {
+  animation: combat-enter 0.25s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* Aviso de combate: parpadea un número de veces limitado (tope 6) y luego queda quieto y
+   encendido — "la amenaza no grita, espera" (roadmap de animaciones, item 13). Sin fill-mode:
+   al terminar las iteraciones vuelve sola a su opacidad normal (1), en vez de quedar apagada. */
+@keyframes alert-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.55;
+  }
+}
+.animate-alert-pulse {
+  animation: alert-pulse 1.3s ease-in-out 6;
+}
+
+/* Pop sutil — el arma se desenfunda: Actuar deja de estar deshabilitado */
+@keyframes pop-subtle {
+  0% {
+    transform: scale(0.94);
+  }
+  60% {
+    transform: scale(1.05);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+.animate-pop-subtle {
+  animation: pop-subtle 0.22s ease-out both;
+}
+
+/* Línea que se extiende desde el centro — cierre de partida: lenta y solemne, sin bucle */
+@keyframes line-extend {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+.animate-line-extend {
+  animation: line-extend 1.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* La gema respira mientras el Narrador piensa — sustituye al sheen/puntos en el header del log */
+@keyframes gem-breathe {
+  0%,
+  100% {
+    transform: rotate(45deg) scale(1);
+    opacity: 0.85;
+  }
+  50% {
+    transform: rotate(45deg) scale(1.2);
+    opacity: 1;
+  }
+}
+.animate-gem-breathe {
+  animation: gem-breathe 1.8s ease-in-out infinite;
+}
+
+/* Overlay de golpe/mejora sobre la barra de vida — remonta con key={condicionFisica} */
+@keyframes hit-flash-red {
+  from {
+    opacity: 0.55;
+  }
+  to {
+    opacity: 0;
+  }
+}
+.animate-hit-flash-red {
+  animation: hit-flash-red 0.7s ease-out both;
+}
+@keyframes hit-flash-moss {
+  from {
+    opacity: 0.5;
+  }
+  to {
+    opacity: 0;
+  }
+}
+.animate-hit-flash-moss {
+  animation: hit-flash-moss 1.2s ease-out both;
+}
+
+/* Campanada silenciosa — un barrido único recorre el hairline al llegar la respuesta */
+@keyframes hairline-toll {
+  from {
+    transform: translateX(-100%);
+    opacity: 0;
+  }
+  15% {
+    opacity: 1;
+  }
+  to {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+}
+.animate-hairline-toll {
+  animation: hairline-toll 0.9s ease-out both;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .animate-entry-in,
+  .animate-entry-in-slow,
   .animate-overlay-in,
   .animate-drawer-up,
-  .thinking-sheen {
+  .thinking-sheen,
+  .animate-pulse-soft,
+  .animate-pulse-slow,
+  .animate-stamp-in,
+  .animate-shake-no,
+  .animate-edge-flash-amber,
+  .animate-edge-flash-accent,
+  .animate-edge-flash-red,
+  .animate-pop-once,
+  .animate-stamp-in-equip,
+  .animate-sheen-sweep-once,
+  .animate-combat-enter,
+  .animate-line-extend,
+  .animate-alert-pulse,
+  .animate-pop-subtle,
+  .animate-gem-breathe,
+  .animate-hit-flash-red,
+  .animate-hit-flash-moss,
+  .animate-hairline-toll,
+  .tooltip-portal {
     animation: none;
   }
 }

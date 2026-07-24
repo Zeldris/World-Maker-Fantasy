@@ -24,14 +24,14 @@ export function WorldSelect() {
       </div>
 
       <div className="flex flex-col gap-4">
-        {worlds.map((world) => (
-          <WorldCard
-            key={world.id}
-            world={world}
-            selected={selectedWorld?.id === world.id}
-            onSelect={() => setSelectedWorld(world)}
-          />
+        {worlds.map((world, i) => (
+          <div key={world.id} className="animate-entry-in" style={{ animationDelay: `${i * 60}ms` }}>
+            <WorldCard world={world} selected={selectedWorld?.id === world.id} onSelect={() => setSelectedWorld(world)} />
+          </div>
         ))}
+        <div className="rounded-xl border border-dashed border-iron-700 bg-wood-950/40 px-5 py-10 text-center text-sm text-wood-500">
+          Más mundos por llegar.
+        </div>
       </div>
 
       <div className="flex justify-end">

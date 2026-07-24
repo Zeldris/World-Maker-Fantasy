@@ -1,33 +1,64 @@
 import type { InventoryItemInfo } from '../../types'
+import { attributeLabels } from '../../lib/dice'
+import { PanelEmptyState } from '../PanelEmptyState'
+import { IconCard } from '../IconCard'
 
 interface InventarioPanelProps {
   items: InventoryItemInfo[]
   onUse: (item: InventoryItemInfo) => void
+  onDetail: (item: InventoryItemInfo) => void
 }
 
-export function InventarioPanel({ items, onUse }: InventarioPanelProps) {
+export function InventarioPanel({ items, onUse, onDetail }: InventarioPanelProps) {
   if (items.length === 0) {
     return (
-      <p className="py-8 text-center text-sm text-wood-500 italic">
-        Todavía no llevas ningún objeto. Lo que consigas o fabriques durante la partida aparecerá aquí.
-      </p>
+      <PanelEmptyState
+        icon="🎒"
+        title="La mochila está vacía"
+        hint="Lo que consigas o fabriques durante la partida aparecerá aquí."
+      />
     )
   }
 
+  // Equipados primero (petición explícita) — dentro de cada grupo se conserva el orden de llegada.
+  const sorted = [...items].sort((a, b) => Number(!!b.slot) - Number(!!a.slot))
+
   return (
-    <div className="flex flex-col gap-2">
-      {items.map((item) => (
-        <button
+    <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+      {sorted.map((item) => (
+        <IconCard
           key={item.id}
-          onClick={() => onUse(item)}
-          title="Añadir al mensaje"
-          className="w-full rounded-lg border border-iron-700 bg-wood-950/40 px-3.5 py-2.5 text-left transition-colors hover:border-accent-600/60 hover:bg-accent-500/10"
-        >
-          <p className="flex items-center gap-2 font-medium text-wood-100">
-            <span>🎒</span> {item.name}
-          </p>
-          <p className="mt-1 text-xs leading-relaxed text-wood-400">{item.description}</p>
-        </button>
+          icon={item.slot ? '⚔️' : '🎒'}
+          name={item.name}
+          tooltip={item.description}
+          onUse={() => onUse(item)}
+          onDetail={() => onDetail(item)}
+          badge={
+            item.slot && (
+              <span
+                aria-hidden="true"
+                className="pointer-events-none absolute -left-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full border border-moss-600 bg-wood-950 text-2xs font-bold leading-none text-moss-400"
+              >
+                E
+              </span>
+            )
+          }
+          extra={
+            <>
+              {!!item.statBonusAttribute && !!item.statBonusAmount && (
+                <span className="rounded-full border border-accent-600/50 bg-accent-500/10 px-1.5 py-0.5 font-mono text-2xs text-accent-300">
+                  +{item.statBonusAmount} {attributeLabels[item.statBonusAttribute]}
+                </span>
+              )}
+              {/* Tier > 1 (sesión de diseño 2026-07-23) — tier 1 es común, no se resalta. */}
+              {!!item.tier && item.tier > 1 && (
+                <span className="rounded-full border border-accent2-600/50 bg-accent2-500/10 px-1.5 py-0.5 font-mono text-2xs text-accent2-300">
+                  Nivel {item.tier}
+                </span>
+              )}
+            </>
+          }
+        />
       ))}
     </div>
   )

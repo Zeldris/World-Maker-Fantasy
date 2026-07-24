@@ -1,0 +1,3 @@
+ALTER TABLE "ItemCatalog" ADD COLUMN "tier" INTEGER NOT NULL DEFAULT 1;
+ALTER TABLE "ItemCatalog" ADD COLUMN "requisitos" JSONB;
+ALTER TABLE "InventoryItem" ADD COLUMN "catalogSlug" TEXT;

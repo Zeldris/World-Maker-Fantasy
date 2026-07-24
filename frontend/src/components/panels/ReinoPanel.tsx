@@ -1,5 +1,6 @@
-import type { ReactNode } from 'react'
-import type { BuildingInfo, SubjectInfo, TerritoryInfo } from '../../types'
+import type { BuildingInfo, KingdomStatsInfo, SubjectInfo, TerritoryInfo } from '../../types'
+import { PanelEmptyState } from '../PanelEmptyState'
+import { PanelSection } from '../PanelSection'
 
 interface ReinoPanelProps {
   kingdomName: string | null
@@ -7,6 +8,23 @@ interface ReinoPanelProps {
   territories: TerritoryInfo[]
   buildings: BuildingInfo[]
   subjects: SubjectInfo[]
+  // Reputación de facción (2026-07-19) — hoy solo baja (derrotar a un NPC de una facción conocida
+  // resta 1), sin lado positivo todavía; se muestra igual aquí porque es la relación del
+  // personaje con el mundo, más cerca de "Reino" que de ningún otro panel existente.
+  factionsStatus: Record<string, number>
+  /// Economía de Reino (sesión de diseño 2026-07-23) — null hasta fundar el primer Territory.
+  kingdomStats: KingdomStatsInfo | null
+}
+
+const KINGDOM_STAT_LABEL: Record<keyof KingdomStatsInfo, string> = {
+  poblacion: 'Población',
+  felicidad: 'Felicidad',
+  comida: 'Comida',
+  bebida: 'Bebida',
+  riqueza: 'Riqueza',
+  soldados: 'Soldados',
+  trabajadores: 'Trabajadores',
+  visitantes: 'Visitantes',
 }
 
 const controlLabel: Record<TerritoryInfo['control'], string> = {
@@ -23,86 +41,102 @@ const buildingStatusLabel: Record<BuildingInfo['status'], string> = {
   ABANDONADO: 'Abandonado',
 }
 
-function Section({ title, children }: { title: string; children: ReactNode }) {
-  return (
-    <div>
-      <div className="mb-3 flex items-center gap-3">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-wood-400">{title}</p>
-        <span className="h-px flex-1 bg-iron-700" />
-      </div>
-      {children}
-    </div>
-  )
-}
-
-export function ReinoPanel({ kingdomName, characterMotivation, territories, buildings, subjects }: ReinoPanelProps) {
+export function ReinoPanel({ kingdomName, characterMotivation, territories, buildings, subjects, factionsStatus, kingdomStats }: ReinoPanelProps) {
   const isEmpty = territories.length === 0 && buildings.length === 0 && subjects.length === 0
+  const factionEntries = Object.entries(factionsStatus)
 
-  if (isEmpty) {
+  if (isEmpty && factionEntries.length === 0) {
     return (
-      <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-iron-700 bg-wood-950/40 px-6 py-10 text-center">
-        <span className="flex h-10 w-10 items-center justify-center rounded-full border border-iron-700 bg-iron-800 shadow-[inset_0_1px_3px_rgba(0,0,0,0.5)]">
-          🏰
-        </span>
-        <p className="font-serif text-sm tracking-wide text-wood-300">Todavía no gobierna a nadie</p>
-        <p className="max-w-sm text-xs leading-relaxed text-wood-500">
-          {characterMotivation
-            ? characterMotivation
-            : 'Ni tierra, ni súbditos, ni edificios propios — todavía. Lo que consiga a lo largo de la partida aparecerá aquí.'}
-        </p>
-      </div>
+      <PanelEmptyState
+        icon="🏰"
+        title="Todavía no gobierna a nadie"
+        hint={
+          characterMotivation ??
+          'Ni tierra, ni súbditos, ni edificios propios — todavía. Lo que consiga a lo largo de la partida aparecerá aquí.'
+        }
+      />
     )
   }
 
   return (
     <div className="flex flex-col gap-5">
       {kingdomName && (
-        <p className="font-serif text-lg tracking-wide text-accent-300">{kingdomName}</p>
+        <p className="font-serif text-lg tracking-wide text-accent2-300">{kingdomName}</p>
+      )}
+
+      {kingdomStats && (
+        <PanelSection title="Economía">
+          <div className="grid grid-cols-2 gap-x-4 gap-y-2 sm:grid-cols-4">
+            {(Object.keys(KINGDOM_STAT_LABEL) as Array<keyof KingdomStatsInfo>).map((key) => (
+              <div key={key} className="rounded-lg border border-iron-700 bg-wood-950/40 px-2.5 py-2 text-center">
+                <p className="text-2xs uppercase tracking-wide text-wood-500">{KINGDOM_STAT_LABEL[key]}</p>
+                <p className="font-mono text-sm tabular-nums text-accent2-300">{kingdomStats[key]}</p>
+              </div>
+            ))}
+          </div>
+        </PanelSection>
+      )}
+
+      {factionEntries.length > 0 && (
+        <PanelSection title="Reputación de facción">
+          <div className="flex flex-wrap gap-2">
+            {factionEntries.map(([faction, score]) => (
+              <span
+                key={faction}
+                className={`rounded-full border px-2.5 py-1 text-xs ${
+                  score < 0 ? 'border-red-700/60 bg-red-500/10 text-red-400' : 'border-iron-700 bg-wood-950/40 text-wood-300'
+                }`}
+              >
+                {faction}: {score > 0 ? `+${score}` : score}
+              </span>
+            ))}
+          </div>
+        </PanelSection>
       )}
 
       {territories.length > 0 && (
-        <Section title="Territorios">
+        <PanelSection title="Territorios">
           <div className="flex flex-col gap-2">
             {territories.map((t) => (
               <div key={t.id} className="rounded-lg border border-iron-700 bg-wood-950/40 px-3.5 py-2.5">
                 <p className="flex items-center justify-between font-medium text-wood-100">
                   {t.name}
-                  <span className="rounded-full border border-iron-700 px-2 py-0.5 text-[10px] uppercase tracking-wide text-wood-400">
+                  <span className="rounded-full border border-iron-700 px-2 py-0.5 text-2xs uppercase tracking-wide text-wood-400">
                     {controlLabel[t.control]}
                   </span>
                 </p>
-                {t.region && <p className="mt-0.5 text-[11px] text-wood-500">{t.region}</p>}
+                {t.region && <p className="mt-0.5 text-2xs text-wood-500">{t.region}</p>}
                 <p className="mt-1 text-xs leading-relaxed text-wood-400">{t.description}</p>
                 {t.population > 0 && (
-                  <p className="mt-1 text-[11px] text-wood-500">Población: {t.population}</p>
+                  <p className="mt-1 text-2xs text-wood-500">Población: {t.population}</p>
                 )}
               </div>
             ))}
           </div>
-        </Section>
+        </PanelSection>
       )}
 
       {buildings.length > 0 && (
-        <Section title="Edificios">
+        <PanelSection title="Edificios">
           <div className="flex flex-col gap-2">
             {buildings.map((b) => (
               <div key={b.id} className="rounded-lg border border-iron-700 bg-wood-950/40 px-3.5 py-2.5">
                 <p className="flex items-center justify-between font-medium text-wood-100">
                   {b.name}
-                  <span className="rounded-full border border-iron-700 px-2 py-0.5 text-[10px] uppercase tracking-wide text-wood-400">
+                  <span className="rounded-full border border-iron-700 px-2 py-0.5 text-2xs uppercase tracking-wide text-wood-400">
                     {buildingStatusLabel[b.status]}
                   </span>
                 </p>
-                <p className="mt-0.5 text-[11px] text-wood-500">{b.kind}</p>
+                <p className="mt-0.5 text-2xs text-wood-500">{b.kind}</p>
                 <p className="mt-1 text-xs leading-relaxed text-wood-400">{b.description}</p>
               </div>
             ))}
           </div>
-        </Section>
+        </PanelSection>
       )}
 
       {subjects.length > 0 && (
-        <Section title="Súbditos">
+        <PanelSection title="Súbditos">
           <div className="flex flex-col gap-2">
             {subjects.map((s) => (
               <div key={s.id} className="rounded-lg border border-iron-700 bg-wood-950/40 px-3.5 py-2.5">
@@ -113,7 +147,7 @@ export function ReinoPanel({ kingdomName, characterMotivation, territories, buil
               </div>
             ))}
           </div>
-        </Section>
+        </PanelSection>
       )}
     </div>
   )

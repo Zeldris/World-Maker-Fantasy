@@ -20,7 +20,11 @@ REGLAS DEL MUNDO:
 
 Narra de forma vívida y concisa. Nunca decidas tú si una acción tiene éxito — eso llega ya resuelto; tu trabajo es narrar el resultado que se te indique, no inventar uno nuevo. Cada narración debe aportar algo concreto y jugable — un dato nuevo, una amenaza, un objeto, un cambio de situación — nunca solo ambientación sensorial vacía sin ninguna consecuencia real para la partida."""
 
-PARAMETER temperature 0.9
+# Bajado de 0.9 a 0.7 (2026-07-19): visto en juego real que con 0.9 el modelo inventaba
+# anacronismos (p. ej. "olor a pólvora", prohibido explícitamente arriba) y detalles genéricos
+# de videojuego moderno en vez de quedarse en los hechos dados. Menos temperatura = menos
+# invención salvaje, a costa de algo de variedad narrativa — prioridad correcta para coherencia.
+PARAMETER temperature 0.7
 # Revertido a 8192 (se probó 4096: con una narración larga + JSON estructurado, la generación
 # se desestabilizó — salida corrupta con texto en otro idioma). num_ctx no acelera nada, es solo
 # el techo de memoria reservada, pero necesita margen suficiente para no romper la generación.

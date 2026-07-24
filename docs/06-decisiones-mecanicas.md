@@ -68,10 +68,12 @@ Documento vivo, igual que [02-decisiones.md](02-decisiones.md) y [04-decisiones-
 
 ## Pendientes
 
-1. **Añadir el campo de condición física** al modelo `Save` (o a una entidad de estado de personaje propia) — hoy no existe explícitamente en `schema.prisma`, hace falta una migración.
-2. **Construir el servicio de tiradas** en el backend (`src/services/dice.ts`) con la fórmula de la decisión 1.
-3. **Construir la orquestación de turno** (clasificación → tirada → narración, decisión 2) como servicio/ruta del backend.
-4. **Diseñar los prompts concretos** del Narrador para clasificación y para narración (system prompt real del `Modelfile`) usando ya el contrato de mundo cerrado de [07-mundo-helek-sirik.md](07-mundo-helek-sirik.md).
+*(Actualizado 2026-07-18 — los ítems 2-4 originales ya estaban hechos y no se habían tachado; desfase de documentación detectado en la auditoría de `docs/11-roadmap.md`.)*
+
+1. **Añadir el campo de condición física** — sigue pendiente de verdad (no existe en `schema.prisma` todavía), pero ya **diseñado por completo** en [14-combate-y-muerte.md](14-combate-y-muerte.md) § 1 (enum `ILESO→HERIDO→GRAVE→INCAPACITADO→MUERTO` en `Save`), junto con el sistema de combate/muerte/descanso que lo consume. Implementar ese documento entero, no solo el campo suelto.
+2. ~~Construir el servicio de tiradas~~ — hecho, `backend/src/services/dice.ts`.
+3. ~~Construir la orquestación de turno~~ — hecho, `backend/src/routes/turn.ts` + `backend/src/services/turnResolution.ts` (clasificar → tirar → narrar, dividido en `/turn/classify` + `/turn/narrate` desde `docs/08-acciones-por-tiempo.md`).
+4. ~~Diseñar los prompts del Narrador~~ — hecho, `backend/src/services/narrador.ts` + `backend/Modelfile`.
 5. **Benchmark real** de latencia por turno con las dos llamadas al modelo (decisión 2), para confirmar que es jugable en este hardware.
 6. ~~Asignar atributos numéricos~~ — **hecho**, ver [rpgtarkor/personajes.md](rpgtarkor/personajes.md).
 7. **Sustituir el mundo y personajes placeholder** ("Valdreth" + Kaelen/Sylas/Ithraë/Mirren) en `frontend/src/data/mock.ts` por Helek Sirik y sus 8 personajes.
