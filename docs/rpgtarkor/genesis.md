@@ -90,7 +90,7 @@ Vivirlo desde dentro fue distinto para cada pueblo, pero las primeras generacion
 ### El Estallido
 Cuando Tarkor regresa transformado, la magia entra en el mundo **sin control ni diseño**. A diferencia de la creación deliberada de Madre y sus Semillas, se derrama de forma caótica sobre Helek Sirik. De esa erupción salvaje nacen los **Orcos** (y muchas otras razas) que, a diferencia de las razas "nohade", se multiplican y expanden con una facilidad que ninguna Semilla fiel había previsto.
 
-Los primeros orcos no despertaron en un mundo hecho a su medida: despertaron en mitad de una erupción, sin Semilla que los guiara ni terreno preparado para recibirlos. Ninguna raza recuerda con claridad su propio origen, pero los orcos son los únicos que saben del suyo de oídas y de nadie: no hubo mentora, no hubo primer designio. De ahí que la frase de cuna que las Terk'ikar aún dicen a los recién nacidos —*"la ira te hizo, que el honor te sostenga"* (ver [areas.md](areas.md#los-clanes-orcos))— sea, literalmente, cierta.
+Los primeros orcos no despertaron en un mundo hecho a su medida: despertaron en mitad de una erupción, sin Semilla que los guiara ni terreno preparado para recibirlos. Ninguna raza recuerda con claridad su propio origen, pero los orcos son los únicos que saben del suyo de oídas y de nadie: no hubo mentora, no hubo primer designio. De ahí que la frase de cuna que las Terk'ikar aún dicen a los recién nacidos —*"Con ira nos quemaron, con honor nos rebelamos, y aún así nadie domó nuestros caminos"* (ver [areas.md](areas.md#los-clanes-orcos))— sea, literalmente, cierta.
 
 Entre las Semillas fieles el Estallido se vivió como la primera herida del mundo. Goirme lo consideró —lo considera aún— un desorden que debió corregirse de raíz; esa postura sobrevive hoy, incontables generaciones después, en la facción radical Goirntes que ve la magia salvaje como una amenaza existencial para el "orden verdadero" (ver [historia.md](historia.md)). Y queda, deliberadamente abierta, una pregunta incómoda: Madre contempló el Estallido y no lo detuvo. Las Semillas fieles esperaron la orden de contenerlo; nunca llegó. Si fue miedo, culpa hacia el hijo perdido, o parte de un plan que solo ella conoce —el mismo "plan" del que hablan los sucesos del presente (ver [historia.md](historia.md))—, no se ha revelado.
 
@@ -98,4 +98,4 @@ Entre las Semillas fieles el Estallido se vivió como la primera herida del mund
 
 ---
 
-**Ver también:** [Áreas y geografía](areas.md) · [Historia y presente](historia.md) · [Razas](razas.md) · [Personajes](personajes.md) · [NPCs](npcs.md)
+**Ver también:** [Áreas y geografía](areas.md) · [Historia y presente](historia.md) · [Razas](razas.md) · [Flora y fauna](flora-fauna.md) · [Items](items.md) · [Personajes](personajes.md) · [NPCs](npcs.md)

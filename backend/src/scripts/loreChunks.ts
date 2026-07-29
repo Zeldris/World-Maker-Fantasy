@@ -166,7 +166,7 @@ export const loreChunks: LoreChunkInput[] = [
   {
     type: 'CULTURA',
     title: 'Tarkor en la cultura orca',
-    text: 'Los orcos no adoran a Tarkor como dios ni lo temen como demonio — lo tratan como a un ancestro incómodo. Casi ningún orco conoce su arco completo. Corre de generación en generación una frase de cuna: "la ira te hizo, que el honor te sostenga" — recuerda que su origen es caos sin diseño, y que lo que los distingue es lo que cada uno decide hacer con esa ira.',
+    text: 'Los orcos no adoran a Tarkor como dios ni lo temen como demonio — lo tratan como a un ancestro incómodo. Casi ningún orco conoce su arco completo. Corre de generación en generación una frase de cuna: "Con ira nos quemaron, con honor nos rebelamos, y aún así nadie domó nuestros caminos" — recuerda que su origen es caos sin diseño, y que lo que los distingue es lo que cada uno decide hacer con esa ira.',
     tags: ['tarkor', 'cultura-orca', 'frase-de-cuna'],
     sourceDoc: 'areas.md',
   },

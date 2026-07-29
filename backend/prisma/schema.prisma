@@ -1,5 +1,6 @@
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
+  previewFeatures = ["relationJoins"]
 }
 
 datasource db {
@@ -77,6 +78,7 @@ model World {
   itemCatalog            ItemCatalog[]
   harvestYields          HarvestYield[]
   imagePrompts           ImagePrompt[]
+  worldPopulations       WorldPopulation[]
 }
 
 /// Personajes preseleccionables asociados a un mundo (plantilla, no instancia jugada).
@@ -182,6 +184,15 @@ model Save {
   /// "Combatir"). Se sobrescribe en cada turno (vacío si no hay combate ese turno), para que
   /// `GET /saves/:id` pueda reconstruir el mismo aviso de combate tras cualquier resincronización.
   pendingCombatNpcSlugs Json @default("[]")
+
+  /// Rediseño del turno de combate (2026-07-28, petición explícita: "se tiran dados y se ve
+  /// quien ataca primero... el otro entra en un turno de defensa"). Cuando la iniciativa de un
+  /// intercambio favorece al NPC, aquí se guarda su ataque YA decidido (oculto al frontend) —
+  /// qué habilidad/atributo usa y contra qué NPC — a la espera de que el jugador elija su
+  /// defensa a ciegas en su próxima sumisión. Null = le toca atacar al jugador (caso normal de
+  /// siempre). Se limpia dentro de la misma transacción que resuelve ese intercambio — nunca
+  /// sobrevive más de un turno sin resolverse.
+  pendingNpcAttack Json?
 
   worldState       WorldState?
   logEntries       LogEntry[]
@@ -350,6 +361,12 @@ model LogEntry {
   /// Enciclopedia — así una imagen subida más tarde para la misma entidad también se ve aquí.
   entityBannerType String?
   entityBannerSlug String?
+  /// Rediseño de la vista de combate (2026-07-28): marca si esta entrada se generó durante un
+  /// turno de combate (`enCombate: true` en turnResolution.ts) — el frontend la pinta con fondo
+  /// rojo en el log de "Tu personaje". No se puede inferir esto de forma fiable a partir de otros
+  /// campos ya existentes (`roll` también aparece en tiradas fuera de combate), así que necesita
+  /// su propia columna para sobrevivir a una recarga de partida.
+  combate        Boolean    @default(false)
   createdAt      DateTime   @default(now())
 
   @@index([saveId, createdAt])
@@ -493,6 +510,37 @@ enum AbilityEffect {
   AGUANTE
 }
 
+/// Categorización mecánica de objetos (2026-07-29, petición explícita: "separar los items por
+/// categorías... recursos... materiales... equipables... consumibles"). Bucket amplio y estable
+/// — `ItemCatalog.category` (String, sin cambios) sigue existiendo como subtipo FINO dentro de
+/// cada tipo (p.ej. tipo=RECURSO, category='piel'/'madera'/'piedra'/'mena'; tipo=EQUIPABLE,
+/// category='arma'/'herramienta'/'ropa', igual que siempre).
+enum ItemTipo {
+  /// Se obtiene directo de la naturaleza (caza/tala/minería/extracción) — nunca se fabrica.
+  RECURSO
+  /// Sale de un proceso de crafteo/profesión (ver CraftingRecipe) — nunca se encuentra suelto.
+  MATERIAL
+  EQUIPABLE
+  CONSUMIBLE
+  /// Documentos, objetos de valor/trueque — sin mecánica de combate/equipo/consumo.
+  NARRATIVO
+}
+
+/// Qué acción/verbo exige `harvest.ts` para dar este recurso concreto (2026-07-29, petición
+/// explícita: "para conseguir estos recursos debes cazar... o talar... o picar... a veces al
+/// explorar la zona me saca recursos que no tiene sentido obtener directamente"). `discovery.ts`
+/// (revelado al explorar genérico) solo sortea `PASIVO` — el resto exige nombrar la fuente y usar
+/// el verbo correspondiente (`CAZA` además sigue exigiendo presa ya derrotada, ver harvest.ts).
+enum MetodoObtencion {
+  /// De verdad ambiental (hierba/piedra ya suelta) — el único que puede salir en "Explorar la zona".
+  PASIVO
+  CAZA
+  TALA
+  MINERIA
+  /// Recolección deliberada de algo delicado (raíces, venenos) — verbo propio, pero no caza/tala/mina.
+  EXTRACCION
+}
+
 /// Nivel de oficio (sesión de diseño 2026-07-23) — eje independiente del nivel de personaje, uno
 /// por profesión practicada alguna vez (professionProgress.ts). `professionId` es el id de
 /// professions.ts (frontend), no FK real — mismo criterio laxo que Save.profession. Sube al
@@ -597,6 +645,19 @@ model Quest {
   /// sola la misión "conseguir Z" en cuanto se materializa un `InventoryItem` cuyo nombre lo
   /// menciona (loot, despiece, crafteo o "newItem" de la narración).
   targetItemName String?
+  /// Frase corta y accionable de qué hay que hacer (2026-07-25, petición explícita: "Objetivo"
+  /// separado de `description`, que es texto narrativo/de trasfondo) — se muestra en el panel de
+  /// Misiones. Nullable: las misiones ya existentes antes de este campo no tienen uno todavía.
+  objetivo String?
+  /// Recompensa estática de la misión (petición explícita, 2026-07-25) — nunca decidida por el
+  /// modelo, siempre fijada a mano al crear la misión (mismo criterio que loot de NpcItem: la
+  /// única fuente de verdad es lo que el propio código define, nunca una invención libre). null =
+  /// sin recompensa de XP definida todavía.
+  rewardXp Int?
+  /// Nombres de objetos ya definidos como recompensa (solo texto para mostrar en el panel — la
+  /// entrega real de esos objetos concretos sigue pasando por el mecanismo de loot/crafteo normal
+  /// que ya exista; este campo no crea InventoryItem por sí solo, ver comentario de rewardXp).
+  rewardItems String[] @default([])
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
 
@@ -680,6 +741,25 @@ enum NpcKind {
   PLANTILLA // arquetipo instanciable ("guerrero orco rezagado"): statline canónica + rango de nivel
 }
 
+/// Disposición hacia el combate (2026-07-29, "si me encuentro un NPC 'Agresivo' me va a ser
+/// imposible no acabar peleando"): hoy `shouldForceCombat` (turnResolution.ts) solo mira el VERBO
+/// del jugador — un Aullador Rojo y un Corredor de Cauce reaccionan exactamente igual a "me
+/// acerco y saludo".
+///
+/// Valor de CATÁLOGO fijo (orden de menos a más hostil, usado también como índice en
+/// reputation.ts) — NO es lo que decide el motor en combate: la reputación de facción
+/// (WorldState.factionsStatus) lo desplaza en caliente hacia un extremo u otro para calcular el
+/// "temperamento efectivo" de esa partida concreta (effectiveTemperamento en reputation.ts). Un
+/// NPC con `faction: null` (fauna, independientes) no tiene de qué reputación desplazarse —
+/// se queda siempre en este valor de catálogo tal cual.
+enum Temperamento {
+  AMIGABLE // reputación excelente con su facción — nunca inicia combate, el más receptivo
+  INOFENSIVO // nunca inicia combate — protegido de la red de seguridad de shouldForceCombat
+  CAUTELOSO // depende de la acción del jugador — comportamiento actual, sin cambios
+  AGRESIVO // casi cualquier interacción deriva en combate — fuerza combate en shouldForceCombat
+  ENEMIGO // reputación pésima — fuerza combate igual que AGRESIVO; casi irrecuperable (ver reputation.ts)
+}
+
 /// NPC del catálogo de mundo (no estado de partida — qué ha hecho un NPC en UNA partida
 /// sigue viviendo en WorldState.facts, igual que hasta ahora). Sembrado desde
 /// worldCatalog.ts; la prosa larga vive en docs/rpgtarkor/npcs.md y en lore chunks SIN números.
@@ -713,6 +793,53 @@ model Npc {
   /// Dónde se le encuentra normalmente — slug de Location, string (no FK: una plantilla
   /// puede aparecer "en cualquier ruta"), null = itinerante
   homeLocationSlug String?
+  /// Rediseño de la vista de combate (2026-07-28, petición explícita: "usa habilidades de la
+  /// enciclopedia... si vas a añadir nuevas reflejalas con el resto de habilidades bajo su
+  /// clase") — las habilidades que se ven en la ficha de un NPC NO son un campo suelto por NPC
+  /// (esa fue la primera iteración, descartada): salen de los mismos catálogos que ya sirve la
+  /// Enciclopedia (`classAbilities.ts`, `berigLore.ts`/`BERIG_RAZAS`), enganchados aquí solo por
+  /// referencia (`raza`/`clase`).
+  ///
+  /// - `raza`: slug de `BERIG_RAZAS` (goirntes/orcos/nabieus/faerus) — solo humanoides. Un NPC
+  ///   humanoide tiene como mucho 1 habilidad racial, la de `BERIG_RAZAS[raza].habilidadRacial`
+  ///   (compartida por toda su raza, no duplicada por fila).
+  /// - `clase`: 'Guerrero' | 'Cazador' (mismo `Clase` de classAbilities.ts) — solo "seres
+  ///   inteligentes que pueden portar equipo". Sus habilidades salen de
+  ///   `classAbilityUnlocksForClase(clase)` filtradas por `level`.
+  ///
+  /// Nota: se descartó a propósito una tercera taxonomía de "habilidades de profesión" en la
+  /// ficha de combate — resultó ser un concepto distinto (recetas de crafteo tipo "Crear cuchillo
+  /// de hielo sílice" que se desbloquean subiendo de nivel de oficio, categoría 'general' del
+  /// panel de Habilidades, no 'combate'), aplazado a otra sesión. `Npc` no necesita ningún campo
+  /// para eso.
+  raza  String?
+  clase String?
+  /// Fauna/monstruos (sin `raza` — cada fila de fauna en worldCatalog.ts YA es una especie
+  /// entera, no un individuo, así que su racial vive aquí en vez de en un catálogo aparte):
+  /// hasta 6 habilidades raciales propias, `{ icon, name, description, categoria:
+  /// 'ataque'|'defensa'|'utilidad' }` (2 de cada). Vacío en NPCs humanoides (su racial sale de
+  /// `raza` en vez de este campo).
+  habilidadesRaciales Json @default("[]")
+  /// Frase corta del ataque natural (solo fauna, sin arma en su `loadout`) — alimenta el
+  /// "Ataque base" calculado (baseAttack.ts) cuando no hay arma que describir. Null en NPCs
+  /// humanoides (su Ataque base describe el arma de su `loadout` en su lugar).
+  ataqueNatural String?
+  /// Disposición al combate, ver enum `Temperamento`. Default CAUTELOSO = comportamiento actual
+  /// (depende del verbo del jugador), así que sembrar sin asignar esto explícitamente no cambia
+  /// nada del comportamiento existente.
+  temperamento Temperamento @default(CAUTELOSO)
+  /// Capacidades de interacción (2026-07-29, "no siempre puedes domesticar a un animal de la misma
+  /// raza... quiero que sea dinámico"): % (0-100) de que ESTA especie/individuo tenga la capacidad
+  /// en absoluto, no un booleano fijo — un Aullador Rojo hambriento no siempre es domesticable.
+  /// Deliberadamente solo datos de catálogo por ahora: la resolución real (tirada única por
+  /// instancia de partida, persistida en NpcState, con el mismo rollCheck de dice.ts) se monta
+  /// cuando exista una mecánica real de comerciar/reclutar/domesticar/capturar/cortejar que la
+  /// consuma — hasta entonces sería estado sin ningún caller.
+  comerciablePct   Int @default(0)
+  reclutablePct    Int @default(0)
+  domesticablePct  Int @default(0)
+  capturablePct    Int @default(0)
+  cortejablePct    Int @default(0)
 
   items     NpcItem[]
   npcStates NpcState[]
@@ -763,6 +890,9 @@ model ItemCatalog {
   /// Categoría libre ("arma", "herramienta", "ropa", "material", "consumible",
   /// "medicinal", "documento", "valor") — organiza el catálogo, no es mecánica
   category    String
+  /// Categorización mecánica real (2026-07-29) — ver comentario del enum ItemTipo. `category`
+  /// (arriba) sigue siendo el subtipo fino DENTRO de este tipo, no se sustituye.
+  tipo        ItemTipo
   description String
   /// Bonificador mecánico real al equipar (2026-07-19, mismo mecanismo que InventoryItem) — hoy
   /// solo asignado a las armas (categoría "arma"); el resto del catálogo sigue siendo puramente
@@ -825,8 +955,59 @@ model HarvestYield {
   /// Condición narrativa o de tirada ("cuchillo de deshuello", "extracción cuidadosa:
   /// destreza 15", "solo cadáver ya muerto") — null = sin condición
   condicion  String?
+  /// Qué verbo/acción exige harvest.ts para dar este recurso (2026-07-29) — ver comentario del
+  /// enum MetodoObtencion. Invariante: todas las filas de un mismo sourceSlug comparten método
+  /// (validado en seed-catalog.ts).
+  metodoObtencion MetodoObtencion
 
   @@index([worldId, sourceSlug])
+}
+
+/// Control de vida del mundo (2026-07-29, petición explícita: "establecer la población para
+/// limitar e ir haciendo un control de la vida en el mundo") — nunca visible para la jugadora,
+/// puro control interno. Base para zonas de aparición por probabilidad, extinción, sobrepoblación
+/// y migraciones futuras (esta sesión solo sienta los datos, la simulación dinámica es aparte).
+enum PopulationTargetType {
+  RAZA
+  FAUNA
+}
+
+/// Dos ejes DELIBERADAMENTE separados (decisión de diseño explícita de la usuaria, 2026-07-29):
+/// `poblacion`/`poblacionMax` es la salud demográfica (sube/baja por nacimientos, muertes,
+/// extinción, sobrepoblación — un único número global, nunca partido por región). `distribucion`
+/// es dónde está repartida AHORA MISMO esa misma población (pesos relativos por región, no un
+/// conteo fijo) — migrar no resta de un cubo y suma a otro, solo desplaza estos pesos, dejando
+/// intacto el número global. Los 3 clanes orcos (Llanuras/Cristal Helado/Ciénaga) son 3 filas
+/// realmente separadas a propósito (confirmado por la usuaria: son sub-razas ya adaptadas a su
+/// región, biología distinta entre ellas — no fluyen entre sí salvo guerra o evento de mundo muy
+/// concreto), cada una con su propia `distribucion` de un solo peso 100%.
+model WorldPopulation {
+  id      String @id @default(cuid())
+  worldId String
+  world   World  @relation(fields: [worldId], references: [id], onDelete: Cascade)
+
+  targetType PopulationTargetType
+  /// Slug de raza (berigLore.ts) o de fauna (Npc.slug) — string suelto, mismo criterio laxo que
+  /// professionId en ProfessionProgress, sin FK real (razas no son fila de BD). Los 3 clanes
+  /// orcos usan slugs propios (`orcos-llanuras`/`orcos-cristal-helado`/`orcos-cienaga`), no
+  /// `orcos` a secas, precisamente porque son 3 filas distintas.
+  targetSlug String
+  /// Etiqueta legible para logs/debug — nunca la ve la jugadora, esto es control interno puro.
+  label String
+
+  poblacion    Int
+  /// Techo de referencia para cálculos futuros de crecimiento/sobrepoblación — no es un límite
+  /// duro hoy, solo el punto contra el que comparar `poblacion`.
+  poblacionMax Int
+
+  /// Pesos relativos por región ({ "Llanuras del Viento Rojo": 0.7, "Cristal Helado": 0.3, ... },
+  /// suman ~1.0) — de aquí saldrá la probabilidad de aparición por zona cuando exista esa
+  /// mecánica. Migrar un día solo reescribe este Json, nunca `poblacion`.
+  distribucion Json
+
+  updatedAt DateTime @updatedAt
+
+  @@unique([worldId, targetType, targetSlug])
 }
 
 /// Resúmenes por capítulos — memoria de partida para no perder coherencia en partidas largas (riesgo 1 del análisis).

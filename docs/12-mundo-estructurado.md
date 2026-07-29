@@ -386,7 +386,7 @@ El Matorral de Cuerno además **legitima retroactivamente** la fórmula de corta
 /// Qué recurso concreto da cada especie/planta al despiezarla o recolectarla — catálogo de
 /// mundo. El "loot" de la naturaleza sigue la misma regla que el de los NPCs: es una lista
 /// fija que se lee, nunca una tirada ni una invención del modelo. Las especies NO tienen
-/// tabla propia: su prosa vive en areas.md/lore chunks; aquí solo la clave textual estable.
+/// tabla propia: su prosa vive en flora-fauna.md/lore chunks; aquí solo la clave textual estable.
 model HarvestYield {
   id         String      @id @default(cuid())
   worldId    String
@@ -474,7 +474,7 @@ model NpcItem {
 
 ### 4.3 Catálogo v1 (~30 objetos)
 
-Todo lo que ya existe en `areas.md` § Armamento y loot + el inventario inicial de Gorhorn + los recursos del § 3. Nada fuera de la región y su comercio natural.
+Todo lo que ya existe en `rpgtarkor/items.md` § Armamento y loot + el inventario inicial de Gorhorn + los recursos del § 3. Nada fuera de la región y su comercio natural.
 
 | slug | Nombre | Cat. | Nota |
 |---|---|---|---|

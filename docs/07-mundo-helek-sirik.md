@@ -15,9 +15,11 @@ El contenido completo del mundo vive repartido en `docs/rpgtarkor/` — este arc
 | Archivo | Contenido |
 |---|---|
 | [rpgtarkor/genesis.md](rpgtarkor/genesis.md) | Era 0 (Madre, las 13 Semillas, la Entidad Desconocida, el arco de Tarkor) y Era 1 (La Formación, El Estallido). |
-| [rpgtarkor/areas.md](rpgtarkor/areas.md) | Geografía global, idiomas, los continentes Vaelira y Berig con sus regiones/flora/fauna, y los clanes orcos. |
+| [rpgtarkor/areas.md](rpgtarkor/areas.md) | Geografía global, idiomas, los continentes Vaelira y Berig con sus regiones, distribución de razas, clanes orcos y puntos de interés. |
 | [rpgtarkor/historia.md](rpgtarkor/historia.md) | Era 3 (Los Ciclos) y Era 4 (El Presente: Paz Templada, el Detonante, las Alianzas, El Giro) — el momento en el que arranca cualquier partida. |
 | [rpgtarkor/razas.md](rpgtarkor/razas.md) | Tabla resumen de las 8 razas jugables. |
+| [rpgtarkor/flora-fauna.md](rpgtarkor/flora-fauna.md) | Flora y fauna de ambos continentes, por región. |
+| [rpgtarkor/items.md](rpgtarkor/items.md) | Armamento, loot y objetos de trasfondo por región. |
 | [rpgtarkor/personajes.md](rpgtarkor/personajes.md) | Los 8 personajes pregenerados, atributos jugables, conceptos de Magia/Poder de Semilla, y ganchos de aventura para las partidas de Gorhorn. |
 | [rpgtarkor/npcs.md](rpgtarkor/npcs.md) | Los 10 NPCs de apoyo. |
 
@@ -46,6 +48,7 @@ Estos son los valores confirmados que necesita el `World` de la base de datos y 
 - **Ampliación 2026-07-17**: arco de Tarkor mucho más desarrollado (su desarrollo tardío, el encuentro con la luz morada, la voz que crece dentro de él); dos regiones nuevas en Berig (Cristal Helado con el Clan Helsig, Ciénaga Troncal con el Clan Goshg) con su propia flora/fauna; historia, aspecto físico e inventario inicial de Gorhorn mucho más detallados.
 - **Ampliación 2026-07-17 (segunda pasada, Claude)**: cultura de liderazgo orco (Terk'ikar mayoritariamente hembra / Kort'ikar mayoritariamente macho — indicación de la autora), los 4 clanes orcos detallados con su relación con Gorhorn, flora/fauna propia de las Llanuras del Viento Rojo (le faltaba respecto a las otras regiones orcas), una nota breve de cómo los orcos ven a Tarkor culturalmente (sin traerlo al presente narrativo), definición de "Magia" (5 escuelas) y "Poder de Semilla" como conceptos, tabla de atributos rellenada por completo, y una lista de ganchos de aventura concretos para las partidas de test de Gorhorn.
 - **Reorganización 2026-07-17 (tercera pasada)**: el documento se dividió en `docs/rpgtarkor/` (genesis.md, areas.md, historia.md, razas.md, personajes.md, npcs.md) — este archivo queda como índice + contrato + pendientes.
+- **Reorganización 2026-07-28 (cuarta pasada)**: `areas.md` tenía mezcladas geografía, flora/fauna y armamento/loot en un mismo archivo. Se extrajeron a `rpgtarkor/flora-fauna.md` (flora y fauna de ambos continentes) y `rpgtarkor/items.md` (armamento y loot), dejando `areas.md` centrado solo en geografía, razas por región, clanes orcos y puntos de interés. Contenido sin cambios, solo reubicado — cada categoría del mundo (génesis, historia, razas, áreas, flora y fauna, items, personajes, NPCs) tiene ahora su propio archivo.
 
 ### Pendientes de diseño abiertos
 - **Mapa de estadísticas ampliado — relleno como propuesta, pendiente de tu revisión**: las 9 columnas nuevas (Inteligencia, Magia, Poder de semilla, Moral, 4 Resistencias) ya tienen valores para los 8 personajes en [rpgtarkor/personajes.md](rpgtarkor/personajes.md), derivados de sus biografías existentes. Son una propuesta de Claude, no un cierre — ajústalos con confianza si algo no encaja. El motor de juego (dados, clasificación de acciones) sigue usando solo Fuerza/Destreza/Sigilo/Voluntad/Carisma/Arcano; estas 9 quedan documentadas para cuando se decida construir esa capa, no son jugables todavía.

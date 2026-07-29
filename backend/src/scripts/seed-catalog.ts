@@ -2,6 +2,8 @@ import 'dotenv/config';
 import { Prisma } from '@prisma/client';
 import { prisma } from '../lib/prisma.js';
 import { locations, locationLinks, npcs, fauna, items, harvestYields } from './worldCatalog.js';
+import { assertValidCategory } from '../services/itemTaxonomy.js';
+import { worldPopulations } from './worldPopulation.js';
 
 /// Siembra el catálogo de mundo estructurado (docs/12-mundo-estructurado.md): ubicaciones,
 /// rutas, NPCs, armería y recursos cosechables de las Llanuras del Viento Rojo. Idempotente
@@ -45,11 +47,15 @@ async function main() {
   console.log(`  Objetos de catálogo (${items.length})...`);
   const itemIdBySlug = new Map<string, string>();
   for (const item of items) {
+    // Categorización mecánica (2026-07-29) — falla rápido ante un typo de categoría o una
+    // combinación tipo/categoría que no tiene sentido, antes de escribir nada en BD.
+    assertValidCategory(item.tipo, item.category, item.slug);
     const row = await prisma.itemCatalog.upsert({
       where: { worldId_slug: { worldId, slug: item.slug } },
       update: {
         name: item.name,
         category: item.category,
+        tipo: item.tipo,
         description: item.description,
         statBonusAttribute: item.statBonusAttribute ?? null,
         statBonusAmount: item.statBonusAmount ?? null,
@@ -69,7 +75,11 @@ async function main() {
   const allNpcs = [...npcs, ...fauna];
   console.log(`  NPCs (${allNpcs.length})...`);
   for (const npc of allNpcs) {
-    const { loadout, ...npcData } = npc;
+    const { loadout, habilidadesRaciales, ...npcData } = npc;
+    // Rediseño de la vista de combate (2026-07-28): `habilidadesRaciales` se castea a mano — un
+    // array de una interfaz con propiedades nombradas (sin índice de firma `string`) no satisface
+    // el `InputJsonValue` de Prisma por estructura, aunque el dato en sí sea JSON válido.
+    const habilidadesRacialesJson = (habilidadesRaciales ?? []) as unknown as Prisma.InputJsonValue;
     const row = await prisma.npc.upsert({
       where: { worldId_slug: { worldId, slug: npc.slug } },
       update: {
@@ -84,8 +94,18 @@ async function main() {
         bio: npcData.bio,
         personality: npcData.personality,
         homeLocationSlug: npcData.homeLocationSlug,
+        raza: npcData.raza,
+        clase: npcData.clase,
+        ataqueNatural: npcData.ataqueNatural,
+        habilidadesRaciales: habilidadesRacialesJson,
+        temperamento: npcData.temperamento,
+        comerciablePct: npcData.comerciablePct,
+        reclutablePct: npcData.reclutablePct,
+        domesticablePct: npcData.domesticablePct,
+        capturablePct: npcData.capturablePct,
+        cortejablePct: npcData.cortejablePct,
       },
-      create: { worldId, ...npcData },
+      create: { worldId, ...npcData, habilidadesRaciales: habilidadesRacialesJson },
     });
 
     for (const entry of loadout) {
@@ -100,6 +120,20 @@ async function main() {
   }
 
   console.log(`  Recursos cosechables (${harvestYields.length})...`);
+  // Invariante (2026-07-29): todas las filas de un mismo sourceSlug deben exigir el mismo verbo
+  // — harvest.ts asume esto (mira solo la primera fila para decidir qué regex aplicar). Falla
+  // rápido aquí en vez de dejar un dato inconsistente silencioso.
+  const metodoBySource = new Map<string, string>();
+  for (const yieldRow of harvestYields) {
+    const previo = metodoBySource.get(yieldRow.sourceSlug);
+    if (previo && previo !== yieldRow.metodoObtencion) {
+      throw new Error(
+        `HarvestYield "${yieldRow.sourceSlug}" tiene metodoObtencion inconsistente entre filas: "${previo}" vs "${yieldRow.metodoObtencion}"`,
+      );
+    }
+    metodoBySource.set(yieldRow.sourceSlug, yieldRow.metodoObtencion);
+  }
+
   // Sin @@unique compuesto propio en HarvestYield (varias filas comparten sourceSlug) —
   // se borra y recrea todo lo del mundo, igual de simple que reindex-lore con este tamaño.
   await prisma.harvestYield.deleteMany({ where: { worldId } });
@@ -111,9 +145,31 @@ async function main() {
         worldId,
         sourceSlug: yieldRow.sourceSlug,
         sourceName: yieldRow.sourceName,
+        metodoObtencion: yieldRow.metodoObtencion,
         itemId,
         cantidad: yieldRow.cantidad,
         condicion: yieldRow.condicion,
+      },
+    });
+  }
+
+  console.log(`  Población del mundo (${worldPopulations.length})...`);
+  // Upsert real (no borrar+recrear como HarvestYield): `poblacion` es mutable de cara al futuro
+  // (nacimientos/muertes/migraciones simuladas más adelante) — un reseed nunca debería resetear
+  // el valor actual a la semilla si ya se ha ido moviendo, solo crear lo que falte. `update: {}`
+  // vacío a propósito: ya existente, no se toca.
+  for (const pop of worldPopulations) {
+    await prisma.worldPopulation.upsert({
+      where: { worldId_targetType_targetSlug: { worldId, targetType: pop.targetType, targetSlug: pop.targetSlug } },
+      update: {},
+      create: {
+        worldId,
+        targetType: pop.targetType,
+        targetSlug: pop.targetSlug,
+        label: pop.label,
+        poblacion: pop.poblacion,
+        poblacionMax: pop.poblacionMax,
+        distribucion: pop.distribucion,
       },
     });
   }

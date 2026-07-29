@@ -6,6 +6,7 @@
 
 import type { Attribute } from '../services/dice.js';
 import type { Requisitos } from '../services/requisitos.js';
+import type { ItemTipo, MetodoObtencion } from '@prisma/client';
 
 export interface LocationInput {
   slug: string;
@@ -23,7 +24,7 @@ export const locations: LocationInput[] = [
     region: 'Las Llanuras del Viento Rojo',
     kind: 'refugio',
     description:
-      'Una depresión profunda en la tierra rojiza, con paredes de arcilla endurecida que cortan el viento y amortiguan el sonido — la voz rebota dentro, de ahí el nombre. Refugio real contra el viento y las tormentas de arena magnética, buen lugar para acampar, descansar o pasar la noche. Único riesgo: al estar hundida, no se ve quién se acerca por arriba hasta que es tarde.',
+      'Una depresión profunda en la tierra rojiza, con paredes de arcilla endurecida que cortan el viento y amortiguan el sonido — la voz rebota dentro, de ahí el nombre. Varias bocas de cueva se abren en las paredes, a distintas alturas. Refugio real contra el viento y las tormentas de arena magnética, buen lugar para acampar, descansar o pasar la noche. Único riesgo: al estar hundida, no se ve quién se acerca por arriba hasta que es tarde.',
     aliases: ['hondonada', 'hondonada del eco', 'el eco', 'la hondonada'],
   },
   {
@@ -32,7 +33,7 @@ export const locations: LocationInput[] = [
     region: 'Las Llanuras del Viento Rojo',
     kind: 'hito',
     description:
-      'Tres columnas erosionadas de lo que en tiempos remotos fue una formación rocosa mucho más alta — visibles desde casi cualquier punto de la llanura, el punto de referencia que usa cualquiera para orientarse aquí. Su sombra da algo de resguardo del sol a mediodía, pero es terreno abierto y no defendible.',
+      'Tres columnas erosionadas de lo que en tiempos remotos fue una formación rocosa mucho más alta, unidas entre sí por puentes colgantes y con pequeños estandartes clavados en lo alto de cada una — visibles desde casi cualquier punto de la llanura, el punto de referencia que usa cualquiera para orientarse aquí. Su sombra da algo de resguardo del sol a mediodía, pero es terreno abierto y no defendible.',
     aliases: ['pilares', 'los pilares', 'pilares rotos'],
   },
   {
@@ -68,7 +69,7 @@ export const locations: LocationInput[] = [
     region: 'Las Llanuras del Viento Rojo',
     kind: 'asentamiento',
     description:
-      'El asentamiento del Clan Serhu, cerca del Pozo de Cauce Viejo del que dependen para el agua — hogar de la Terk\'ikar Ulkha y el Kort\'ikar Torgash. Se llega visto desde lejos por los vigías del clan.',
+      'El asentamiento del Clan Serhu, cerca del Pozo de Cauce Viejo del que dependen para el agua — empalizada de estacas afiladas rodeando chozas de techo cónico, con vigías apostados en las torres de la entrada. Hogar de la Terk\'ikar Ulkha y el Kort\'ikar Torgash. Se llega visto desde lejos por los vigías del clan.',
     aliases: ['campamento serhu', 'campamento del clan serhu', 'los serhu', 'el campamento', 'clan serhu'],
   },
 
@@ -188,9 +189,10 @@ export const locations: LocationInput[] = [
   // referencia para la Enciclopedia, no destinos alcanzables todavía). Escala deliberadamente
   // modesta fuera de la Meseta del Orden (docs/13-escala-del-mundo.md: Berig entero apenas
   // 8.000-10.000 almas) — Cristal Helado y Ciénaga Troncal son campamento/poblado, no ciudad.
-  // Los Faerus NO tienen capital de verdad (razas.md: "sin ciudades, sin escritura") — su entrada
-  // es un lugar de encuentro estacional, no una construcción, coherente con "la manada es la
-  // única institución Faerus".
+  // Los Faerus SÍ tienen dos poblados reales, Hashma y Kegi (decisión de la usuaria, auditoría
+  // 2026-07-28, corrigiendo la vieja nota "sin ciudades, sin escritura" de razas.md) — ver más
+  // abajo. El Claro de la Manada sigue existiendo aparte, como tercer punto de encuentro sin
+  // construcción, no como sustituto de una capital que ya tienen.
   {
     slug: 'baluarte-de-goirme',
     name: 'El Baluarte de Goirme',
@@ -228,12 +230,30 @@ export const locations: LocationInput[] = [
     aliases: ['refugio sin nombre', 'el refugio', 'enclave nabieus'],
   },
   {
+    slug: 'hashma',
+    name: 'Hashma',
+    region: 'El Margen Silencioso',
+    kind: 'asentamiento',
+    description:
+      'Poblado principal de los Faerus de la selva, en la mitad occidental del Margen Silencioso, cerca de la costa — colgado sobre los árboles, hogar del clan Feg Tusha. Nombre en lengua común: Selviterna. Fuera del núcleo jugable actual.',
+    aliases: ['hashma', 'selviterna', 'poblado faerus', 'feg tusha'],
+  },
+  {
+    slug: 'kegi',
+    name: 'Kegi',
+    region: 'El Margen Silencioso',
+    kind: 'asentamiento',
+    description:
+      'El otro poblado Faerus, más pequeño que Hashma, en la frontera occidental del Margen Silencioso con las Llanuras del Viento Rojo — habitado por los Faerus de las llanuras, que han desarrollado comercio y una frágil amistad con los clanes orcos vecinos; más "sociables" y de artesanía más desarrollada que sus parientes de la selva. Fuera del núcleo jugable actual.',
+    aliases: ['kegi', 'poblado faerus de las llanuras'],
+  },
+  {
     slug: 'claro-de-la-manada',
     name: 'El Claro de la Manada',
     region: 'El Margen Silencioso',
     kind: 'pasto estacional',
     description:
-      'Un claro amplio en la mitad occidental del Margen Silencioso donde las manadas Faerus se juntan para cazar y compartir la primera pieza — no hay ciudad ni escritura Faerus, así que esto es lo más parecido a una capital que tienen: un lugar, no una construcción. Algunas manadas mantienen pequeños puestos avanzados más allá de la frontera oeste, ya en las Llanuras del Viento Rojo. Fuera del núcleo jugable actual.',
+      'Un claro amplio en la mitad occidental del Margen Silencioso donde las manadas Faerus que no viven en Hashma o Kegi se juntan para cazar y compartir la primera pieza — un lugar de encuentro, no una construcción. Algunas manadas mantienen pequeños puestos avanzados más allá de la frontera oeste, ya en las Llanuras del Viento Rojo. Fuera del núcleo jugable actual.',
     aliases: ['claro de la manada', 'el claro', 'territorio faerus'],
   },
 ];
@@ -378,6 +398,18 @@ export const locationLinks: LocationLinkInput[] = [
 
 export type NpcKindInput = 'PRINCIPAL' | 'PLANTILLA';
 
+export interface NpcHabilidadRacial {
+  icon: string;
+  name: string;
+  description: string;
+  categoria: 'ataque' | 'defensa' | 'utilidad';
+  /// Rediseño del turno de combate (2026-07-28) — mismo campo que `HabilidadRacial`
+  /// (berigLore.ts) y las habilidades de clase: "tipo" para la rueda de debilidades y atributo
+  /// con el que se tira, elegido por lo que la habilidad representa (garras=destreza,
+  /// mordisco pesado=fuerza, sigilo/acecho=sigilo...), nunca uniforme por especie.
+  preferredAttribute: Attribute;
+}
+
 export interface NpcInput {
   slug: string;
   name: string;
@@ -393,6 +425,28 @@ export interface NpcInput {
   homeLocationSlug?: string;
   /// slug de ItemCatalog -> { cantidad, notas }
   loadout: { itemSlug: string; cantidad?: number; notas?: string }[];
+  /// Rediseño de la vista de combate (2026-07-28) — solo humanoides ("seres inteligentes que
+  /// pueden portar equipo"): `raza` referencia un slug de `BERIG_RAZAS` (berigLore.ts), `clase`
+  /// uno de `Clase` (classAbilities.ts). Ninguno de los dos es obligatorio — un NPC social/no
+  /// combatiente (mercader, peregrino...) puede no tener `clase`, y un NPC de apoyo fuera del
+  /// grafo de las Llanuras puede no tener ninguno de los dos.
+  raza?: string;
+  clase?: string;
+  /// Solo fauna (sin `raza`/`clase`: no son "seres inteligentes que portan equipo") — frase corta
+  /// de su ataque natural (alimenta baseAttack.ts) y hasta 6 habilidades raciales propias,
+  /// categorizadas (2 ataque, 2 defensa, 2 utilidad como máximo orientativo, no un mínimo fijo).
+  ataqueNatural?: string;
+  habilidadesRaciales?: NpcHabilidadRacial[];
+  /// Disposición al combate (schema.prisma § Temperamento) — default 'CAUTELOSO' (comportamiento
+  /// actual dependiente del verbo del jugador) si no se especifica.
+  temperamento?: 'AGRESIVO' | 'CAUTELOSO' | 'INOFENSIVO';
+  /// % (0-100) de que esta especie/individuo tenga la capacidad en absoluto — no un booleano fijo,
+  /// ver comentario de estos campos en schema.prisma. Default 0 si no se especifica.
+  comerciablePct?: number;
+  reclutablePct?: number;
+  domesticablePct?: number;
+  capturablePct?: number;
+  cortejablePct?: number;
 }
 
 /// Fauna cazable (roadmap 2026-07-19, prioridad 1: "despiece exige presa previa"): antes el
@@ -415,9 +469,17 @@ export const fauna: NpcInput[] = [
     level: 1,
     levelMax: 2,
     attributes: { fuerza: 10, destreza: 15, sigilo: 9, voluntad: 6, carisma: 3, arcano: 2 },
-    bio: 'Bestia veloz de seis patas y piel rojiza que se camufla en el polvo de la llanura, se desplaza en manadas siguiendo las corrientes subterráneas. Los clanes orcos la cazan en carreras rituales.',
+    bio: 'Bestia veloz de seis patas y piel rojiza que se camufla en el polvo de la llanura — hocico alargado con grandes bigotes y ojos oscuros y redondos, orejas pequeñas y pegadas al cráneo, una hilera de placas óseas superpuestas recorriéndole el lomo hasta una cola larga y afilada en la punta. Se desplaza en manadas siguiendo las corrientes subterráneas. Los clanes orcos la cazan en carreras rituales.',
     personality: 'Huidiza, rápida a la primera señal de peligro — no busca el enfrentamiento.',
     loadout: [],
+    ataqueNatural: 'Embiste con la cabeza y las placas óseas del lomo, más para abrirse paso que para herir de verdad.',
+    temperamento: 'INOFENSIVO',
+    domesticablePct: 55,
+    capturablePct: 60,
+    habilidadesRaciales: [
+      { icon: '🏃', name: 'Fuga en Manada', description: 'Al primer sobresalto, toda la manada corre a la vez en direcciones distintas — casi imposible acorralar a uno solo.', categoria: 'utilidad', preferredAttribute: 'destreza' },
+      { icon: '🦴', name: 'Placas del Lomo', description: 'La hilera de placas óseas del lomo amortigua un golpe que a otra bestia la habría derribado.', categoria: 'defensa', preferredAttribute: 'fuerza' },
+    ],
   },
   {
     slug: 'gargantua-de-ceniza',
@@ -432,6 +494,15 @@ export const fauna: NpcInput[] = [
     bio: 'Bestia grande y pesada, de piel gris ceniza curtida bajo una coraza natural de placas óseas gruesas y blanquecinas que se solapan como escamas — costillas visibles bajo la piel cuando respira hondo, andar lento y pisadas que tiemblan en el suelo. Solo se caza de adulta con lanzas de hueso, en cacerías serias, no en un enfrentamiento casual.',
     personality: 'Territorial y peligrosa si se la acorrala, pero no busca presas activamente.',
     loadout: [],
+    ataqueNatural: 'Embiste con todo su peso, aplastando lo que se interponga en su camino.',
+    temperamento: 'CAUTELOSO',
+    domesticablePct: 5,
+    capturablePct: 10,
+    habilidadesRaciales: [
+      { icon: '🦴', name: 'Coraza de Placas', description: 'Las gruesas placas óseas que le cubren el lomo absorben buena parte de cualquier golpe directo.', categoria: 'defensa', preferredAttribute: 'fuerza' },
+      { icon: '💥', name: 'Embestida Sísmica', description: 'Carga con todo su peso y puede derribar a quien no logre apartarse a tiempo.', categoria: 'ataque', preferredAttribute: 'fuerza' },
+      { icon: '🐾', name: 'Paso Pesado', description: 'El suelo tiembla bajo sus pisadas — imposible acercarse a ella sin que lo note.', categoria: 'utilidad', preferredAttribute: 'voluntad' },
+    ],
   },
   {
     slug: 'corretolvas',
@@ -446,6 +517,13 @@ export const fauna: NpcInput[] = [
     bio: 'Criatura corredora incapaz de volar, cuerpo alargado que se desplaza casi paralelo al suelo — plumaje rojizo veteado de gris polvoriento, cresta escamosa negra rematada en plumas rojas, patas largas y nervudas con garras negras afiladas, ojos ámbar pequeños y brillantes, pico largo y curvo para escarbar el suelo. Se mueve en bandadas entre la hierba rojiza — caza menor, se cobra con trampa o lanza corta.',
     personality: 'Nerviosa, huye en bandada al primer sobresalto.',
     loadout: [],
+    ataqueNatural: 'Picotea y araña con sus garras negras, más por pánico que por intención real de herir.',
+    temperamento: 'INOFENSIVO',
+    domesticablePct: 40,
+    capturablePct: 70,
+    habilidadesRaciales: [
+      { icon: '🐦', name: 'Vuelo en Bandada', description: 'Toda la bandada se dispersa a la vez en cuanto una nota peligro — difícil acertar un solo golpe limpio.', categoria: 'utilidad', preferredAttribute: 'destreza' },
+    ],
   },
   {
     slug: 'aullador-rojo',
@@ -457,9 +535,18 @@ export const fauna: NpcInput[] = [
     level: 2,
     levelMax: 3,
     attributes: { fuerza: 11, destreza: 13, sigilo: 12, voluntad: 8, carisma: 3, arcano: 2 },
-    bio: 'Criatura flaca de cuatro patas, pelaje rojizo rasposo, mechones de pelo negro en los tobillos y patas desproporcionadamente largas — el pelaje enredado con parches de arena fosilizada que brillan como vetas minerales rojas. Colmillos amarillentos de tamaño exagerado, costillas marcadas bajo la piel tensa, y una cola negra tupida que arrastra borrando sus propias huellas. Sigue a las manadas de Corredores en migración, cobrándose a los rezagados. Caza en jaurías de 4-6; un aullador solo nunca ataca a un orco adulto — una jauría con hambre, sí.',
+    bio: 'Criatura flaca de cuatro patas, pelaje rojizo rasposo, mechones de pelo negro en los tobillos y patas desproporcionadamente largas — el pelaje enredado con parches de arena fosilizada que brillan como vetas minerales rojas, y una hilera de púas oscuras erizadas a lo largo del lomo. Colmillos curvos y amarillentos de tamaño exagerado, costillas marcadas bajo la piel tensa, y una cola negra tupida que arrastra borrando sus propias huellas. Sigue a las manadas de Corredores en migración, cobrándose a los rezagados. Caza en jaurías de 4-6; un aullador solo nunca ataca a un orco adulto — una jauría con hambre, sí.',
     personality: 'Paciente, cobarde en solitario y osado en grupo; rodea antes de atacar.',
     loadout: [],
+    ataqueNatural: 'Clava sus colmillos curvos y amarillentos, exagerados para su tamaño.',
+    temperamento: 'CAUTELOSO',
+    domesticablePct: 20,
+    capturablePct: 35,
+    habilidadesRaciales: [
+      { icon: '🐺', name: 'Mordisco de Jauría', description: 'Cuanto más cerca hay otros aulladores, con más fuerza y confianza muerde.', categoria: 'ataque', preferredAttribute: 'fuerza' },
+      { icon: '🔄', name: 'Acoso en Jauría', description: 'Rodea a su presa entre varios antes de decidirse a atacar, cerrando toda vía de escape.', categoria: 'utilidad', preferredAttribute: 'destreza' },
+      { icon: '🐾', name: 'Instinto Cobarde', description: 'En cuanto se queda solo, se retira a toda velocidad — casi imposible rematarlo en la huida.', categoria: 'defensa', preferredAttribute: 'destreza' },
+    ],
   },
   {
     slug: 'murgol',
@@ -479,9 +566,16 @@ export const fauna: NpcInput[] = [
     level: 1,
     levelMax: 1,
     attributes: { fuerza: 9, destreza: 6, sigilo: 3, voluntad: 5, carisma: 2, arcano: 2 },
-    bio: 'Criatura lanuda y voluminosa de cuatro patas, pelaje gris ceniza con matices rojizos y polvo rojo siempre enredado en la lana — cuernos largos y rectos que se enroscan en la punta como arietes, boca de dientes planos y cuadrados, ojos negros con un destello amarillento. El ganado de los clanes de las Llanuras: lana, leche y carne. Los del Clan Serhu llevan una muesca en la oreja — un múrgol con muesca de clan es propiedad, cazarlo es robo a ojos Serhu.',
+    bio: 'Criatura lanuda y voluminosa de cuatro patas, pelaje gris ceniza con matices rojizos y polvo rojo siempre enredado en la lana espesa que le cae sobre los ojos — cornamenta ramificada, gruesa y ampliamente extendida a los lados de la cabeza, boca de dientes planos y cuadrados, ojos negros con un destello amarillento. El ganado de los clanes de las Llanuras: lana, leche y carne. Los del Clan Serhu llevan una muesca en la oreja — un múrgol con muesca de clan es propiedad, cazarlo es robo a ojos Serhu.',
     personality: 'Dócil, gregario, se espanta con las tormentas.',
     loadout: [],
+    ataqueNatural: 'Topetazo torpe con su cornamenta ramificada, casi siempre sin intención real de dañar.',
+    temperamento: 'INOFENSIVO',
+    domesticablePct: 90,
+    capturablePct: 80,
+    habilidadesRaciales: [
+      { icon: '🧶', name: 'Lana Espesa', description: 'La gruesa capa de lana enredada de polvo amortigua cualquier golpe menor antes de que llegue a la piel.', categoria: 'defensa', preferredAttribute: 'fuerza' },
+    ],
   },
   {
     slug: 'cruzavientos',
@@ -496,6 +590,13 @@ export const fauna: NpcInput[] = [
     bio: 'Planeadora grande de alas rígidas que cabalga los frentes de viento. Vuela alto y en círculos con buen tiempo; cuando cruza baja y en línea recta, los pastores saben que viene tormenta de arena magnética. Anida en lo alto de los Pilares Rotos. Cazarla es dificilísimo salvo en nido o con trampa cebada.',
     personality: 'Esquiva, jamás se posa cerca de nada que se mueva.',
     loadout: [],
+    ataqueNatural: 'Picotazo rápido en pleno vuelo, casi nunca se acerca lo suficiente para golpear de verdad.',
+    temperamento: 'INOFENSIVO',
+    domesticablePct: 15,
+    capturablePct: 20,
+    habilidadesRaciales: [
+      { icon: '🌬️', name: 'Vuelo Errático', description: 'Cabalga los frentes de viento con giros bruscos e impredecibles — muy difícil de alcanzar a distancia.', categoria: 'utilidad', preferredAttribute: 'destreza' },
+    ],
   },
   {
     slug: 'rondador-de-brasas',
@@ -507,9 +608,18 @@ export const fauna: NpcInput[] = [
     level: 3,
     levelMax: 4,
     attributes: { fuerza: 14, destreza: 11, sigilo: 14, voluntad: 9, carisma: 2, arcano: 3 },
-    bio: 'Carroñero-cazador nocturno de complexión robusta y pelaje ceniciento, mandíbula pesada y lomo encorvado. No teme al fuego: lo busca — ha aprendido que donde hay brasas hay carne, cazada o dormida. Ronda el borde de la luz durante horas antes de decidirse. Solitario; ver dos juntos es señal de un cadáver grande cerca.',
+    bio: 'Carroñero-cazador nocturno de complexión robusta y pelaje ceniciento, mandíbula pesada y lomo encorvado con una hilera de púas óseas asomando entre el pelo — ojos que brillan en un dorado intenso en la oscuridad, visibles antes que el resto del cuerpo. No teme al fuego: lo busca — ha aprendido que donde hay brasas hay carne, cazada o dormida. Ronda el borde de la luz durante horas antes de decidirse. Solitario; ver dos juntos es señal de un cadáver grande cerca.',
     personality: 'Paciente y silencioso; se retira ante un grupo despierto, ataca a lo aislado o dormido.',
     loadout: [],
+    ataqueNatural: 'Cierra su pesada mandíbula de un mordisco certero, tras horas acechando en la sombra.',
+    temperamento: 'CAUTELOSO',
+    domesticablePct: 10,
+    capturablePct: 25,
+    habilidadesRaciales: [
+      { icon: '🌒', name: 'Acecho Nocturno', description: 'Ronda el borde de la luz sin ser visto — el primer golpe contra un objetivo que no lo ha notado cae con fuerza extra.', categoria: 'ataque', preferredAttribute: 'sigilo' },
+      { icon: '🩸', name: 'Mordisco de Carroñero', description: 'Sabe reconocer a la presa ya debilitada o aislada — se ceba contra quien menos puede defenderse.', categoria: 'ataque', preferredAttribute: 'fuerza' },
+      { icon: '🌑', name: 'Retirada Silenciosa', description: 'En cuanto un grupo despierta y se organiza, se retira sin dejar rastro ni ser detectado.', categoria: 'defensa', preferredAttribute: 'sigilo' },
+    ],
   },
   {
     slug: 'salamandra-de-escoria',
@@ -521,10 +631,19 @@ export const fauna: NpcInput[] = [
     level: 3,
     levelMax: 4,
     attributes: { fuerza: 13, destreza: 9, sigilo: 7, voluntad: 8, carisma: 2, arcano: 4 },
-    bio: 'Reptil de complexión robusta y baja, escamas como escoria volcánica que retienen calor — tocarla quema. Come Raíz de Fuego sin inmutarse. Su territorio real es El Filo de las Brasas, en el borde volcánico del núcleo (checklist 2026-07-21/22, ampliación del núcleo) — antes solo aparecía como avanzadilla rara más al sur, ahora se la encuentra donde de verdad vive.',
+    bio: 'Reptil de complexión robusta y baja, hocico alargado y dientes afilados siempre visibles, y una hilera de protuberancias rocosas en el lomo que arden con vetas de lava y desprenden humo — escamas como escoria volcánica que retienen calor, tocarla quema. Come Raíz de Fuego sin inmutarse. Su territorio real es El Filo de las Brasas, en el borde volcánico del núcleo (checklist 2026-07-21/22, ampliación del núcleo) — antes solo aparecía como avanzadilla rara más al sur, ahora se la encuentra donde de verdad vive.',
     personality: 'Lenta y territorial; avisa hinchando la garganta con un silbido de vapor antes de cargar.',
     homeLocationSlug: 'filo-de-las-brasas',
     loadout: [],
+    ataqueNatural: 'Muerde y golpea de refilón con sus escamas al rojo vivo — quema con solo tocar.',
+    temperamento: 'CAUTELOSO',
+    domesticablePct: 15,
+    capturablePct: 20,
+    habilidadesRaciales: [
+      { icon: '🔥', name: 'Piel Ardiente', description: 'Sus escamas retienen el calor de la lava — golpearla de cerca, cuerpo a cuerpo, también quema.', categoria: 'ataque', preferredAttribute: 'fuerza' },
+      { icon: '🌋', name: 'Escamas de Escoria', description: 'La coraza de escoria volcánica resiste el calor y buena parte del daño físico directo.', categoria: 'defensa', preferredAttribute: 'fuerza' },
+      { icon: '💨', name: 'Silbido de Vapor', description: 'Hincha la garganta y silba con fuerza antes de cargar — el aviso basta para hacer dudar a cualquiera.', categoria: 'utilidad', preferredAttribute: 'carisma' },
+    ],
   },
   {
     slug: 'buitre-cenizo',
@@ -539,9 +658,17 @@ export const fauna: NpcInput[] = [
     // Bio ajustada (checklist 2026-07-21/22, ronda de imágenes) al primer prompt de imagen que la
     // usuaria generó de verdad y validó — más fiera de aspecto que un buitre real, aunque su papel
     // en el mundo (carroñero, señal ambiental, nivel 1) no cambia.
-    bio: 'Buitre de plumaje negro cuervo, revuelto y salvaje, con la piel bajo el plumaje de un gris ceniza brillante sobre escamas pardas — más fiera de aspecto que cualquier buitre real. El pico entreabierto deja ver pequeños dientes afilados, y sus ojos brillan de un gris ceniciento sólido con destellos blancos. Siempre en círculos sobre lo que muere en la llanura. Los orcos los leen como los Goirntes leen mapas: dónde caen los buitres, algo ha caído antes.',
+    bio: 'Buitre de plumaje negro intenso, revuelto y salvaje, con la piel bajo el plumaje de un gris ceniza brillante sobre escamas pardas — de aspecto mucho más fiero de lo esperado. El pico entreabierto deja ver pequeños dientes afilados, y sus ojos brillan de un gris ceniciento sólido con destellos blancos. Envergadura enorme y desproporcionada para su cuerpo, garras afiladas y curvas colgando de las patas al planear. Siempre en círculos sobre lo que muere en la llanura. Los orcos los leen como los Goirntes leen mapas: dónde caen los buitres, algo ha caído antes.',
     personality: 'Cobarde con lo vivo, atrevidísima con lo muerto.',
     loadout: [],
+    ataqueNatural: 'Picotea y araña con sus garras curvas, torpe y dudosa mientras su presa todavía respira.',
+    temperamento: 'INOFENSIVO',
+    domesticablePct: 25,
+    capturablePct: 50,
+    habilidadesRaciales: [
+      { icon: '👁️', name: 'Ojo de Carroñero', description: 'Detecta heridos y cadáveres desde muy lejos, trazando círculos en el cielo mucho antes de bajar.', categoria: 'utilidad', preferredAttribute: 'voluntad' },
+      { icon: '🦅', name: 'Vuelo Alto', description: 'Rara vez baja lo suficiente como para que algo en tierra pueda alcanzarla de verdad.', categoria: 'defensa', preferredAttribute: 'destreza' },
+    ],
   },
 ];
 
@@ -558,6 +685,12 @@ export const npcs: NpcInput[] = [
     bio: 'Orco del Clan Serhu, de las Llanuras del Viento Rojo — piel en los tonos beige y arcilla propios de los orcos del desierto, corpulento incluso para los suyos, colmillos intactos de quien ha sobrevivido más duelos que la mayoría. Pelo negro ya veteado de gris, recogido en trenzas cortas con cuentas de hueso que marcan sus años de guerra. Veterano de las escaramuzas fronterizas; ascendió a Kort\'ikar cuando su predecesor murió en el frente. Busca unificar los clanes para retirar a su pueblo de la guerra de la Concordia. El padre de Gorhorn murió retando al Kort\'ikar Serhu de entonces, predecesor de Torgash — Torgash lo recuerda y respeta cómo murió.',
     personality: 'Grave, económico con las palabras, pragmático hasta rozar la herejía cultural (prefiere pactar a duelar). Detesta a la Concordia en silencio.',
     homeLocationSlug: 'campamento-serhu',
+    raza: 'orcos',
+    clase: 'Guerrero',
+    temperamento: 'CAUTELOSO',
+    comerciablePct: 20,
+    reclutablePct: 15,
+    capturablePct: 10,
     loadout: [
       { itemSlug: 'hacha-guerra-orca', notas: 'Con la marca del Clan Serhu grabada en la cabeza' },
       { itemSlug: 'lanza-hueso-gargantua' },
@@ -579,6 +712,11 @@ export const npcs: NpcInput[] = [
     bio: 'Orca del Clan Serhu, de las Llanuras del Viento Rojo — piel beige curtida por décadas de sol y viento, cabello gris casi blanco recogido en un moño alto sujeto con agujas de hueso de gargantúa. Menuda para una orca, su autoridad no se apoya en el físico sino en la voz baja y la mirada que no parpadea. Jefa del Clan Serhu; gobierna asentamiento, pastoreo y migraciones. Decidió no acoger supervivientes Maktor tras la aniquilación — por cálculo de supervivencia, no crueldad: acogerlos habría puesto una diana sobre su clan. Un Gorhorn vivo la enfrenta a esa decisión.',
     personality: 'Fría en el cálculo y cálida en el trato, en ese orden. Comulga con las Gargantúas en las migraciones.',
     homeLocationSlug: 'campamento-serhu',
+    raza: 'orcos',
+    temperamento: 'CAUTELOSO',
+    comerciablePct: 25,
+    reclutablePct: 10,
+    capturablePct: 10,
     loadout: [
       { itemSlug: 'cuchillo-deshuello' },
       { itemSlug: 'manojo-salvia-polvo', cantidad: 3 },
@@ -600,6 +738,11 @@ export const npcs: NpcInput[] = [
     attributes: { fuerza: 15, destreza: 8, sigilo: 5, voluntad: 12, carisma: 11, arcano: 9 },
     bio: 'Orco del Clan Helsig, de las tribus orcas de Cristal Helado — piel de un pálido azulado propio de los orcos de zonas nevadas, curtida por el viento de la montaña más que por el sol. Manos gruesas y llenas de callos de picar hielo sílice, cara ancha y siempre a punto de reírse, el contrapunto exacto del Gorhorn callado que conoció en las minas. Amigo de Gorhorn del Clan Helsig, de las minas de hielo sílice en Cristal Helado. Vive fuera del grafo v1 (Cristal Helado), pero es el vínculo personal vivo de Gorhorn — si la partida lo trae, no debe improvisársele números.',
     personality: 'Leal, ruidoso, de risa fácil — el opuesto exacto del Gorhorn callado de las minas, por eso encajaron.',
+    raza: 'orcos',
+    temperamento: 'INOFENSIVO',
+    comerciablePct: 30,
+    reclutablePct: 60,
+    cortejablePct: 20,
     loadout: [
       { itemSlug: 'pico-minero' },
       { itemSlug: 'cuchillo-hielo-silice' },
@@ -620,6 +763,12 @@ export const npcs: NpcInput[] = [
     attributes: { fuerza: 14, destreza: 9, sigilo: 7, voluntad: 11, carisma: 7, arcano: 6 },
     bio: 'Orco corpulento de piel beige y parda, curtida como la propia estepa de las Llanuras — cualquier pintura o marca de clan que llevara se ha desdibujado bajo meses de polvo y mala vida. Guerrero sin clan visible, separado de los suyos por la guerra o la desgracia — arquetipo instanciable, no un individuo con historia propia.',
     personality: 'Desconfiado, a la defensiva, impredecible según cómo se le aborde.',
+    raza: 'orcos',
+    clase: 'Guerrero',
+    temperamento: 'CAUTELOSO',
+    comerciablePct: 10,
+    reclutablePct: 15,
+    capturablePct: 20,
     loadout: [
       { itemSlug: 'maza-orca', notas: 'Mellada' },
       { itemSlug: 'amuleto-hueso' },
@@ -654,9 +803,13 @@ export const npcs: NpcInput[] = [
     role: "Guerrero Serhu deshonrado, persigue a Gistera Koh tras un duelo de honor rechazado",
     level: 2,
     attributes: { fuerza: 13, destreza: 10, sigilo: 5, voluntad: 8, carisma: 2, arcano: 2 },
-    bio: "Orco del Clan Serhu, piel beige agrietada, sin pintura de clan visible — se la arrancó él mismo, en el mismo arranque de furia que lo trajo hasta aquí. Retó a Gistera Koh a un duelo de honor hace semanas; ella se negó a pelear y huyó en vez de aceptarlo. Para el clan, negarse y huir es deshonra — de ella. Para él, verla huir en vez de enfrentarlo lo rompió de otra forma: humillado en público, dejó de hablar con nadie y salió tras ella sin que ningún Kort'ikar se lo ordenara. Duerme y merodea en la Hondonada del Eco, donde el terreno hundido le permite ver llegar a cualquiera antes de que lo vean a él. Entre sus cosas lleva un mapa de las rutas y campamentos de la región, marcado a mano — lo único suyo que aún tiene sentido.",
+    bio: "Orco del Clan Serhu, calvo y de complexión corpulenta, piel beige agrietada, sin pintura de clan visible — se la arrancó él mismo, en el mismo arranque de furia que lo trajo hasta aquí. Retó a Gistera Koh a un duelo de honor hace semanas; ella se negó a pelear y huyó en vez de aceptarlo. Para el clan, negarse y huir es deshonra — de ella. Para él, verla huir en vez de enfrentarlo lo rompió de otra forma: humillado en público, dejó de hablar con nadie y salió tras ella sin que ningún Kort'ikar se lo ordenara. Duerme y merodea en la Hondonada del Eco, donde el terreno hundido le permite ver llegar a cualquiera antes de que lo vean a él. Entre sus cosas lleva un mapa de las rutas y campamentos de la región, marcado a mano — lo único suyo que aún tiene sentido.",
     personality: 'Errático y violento con cualquiera, obsesivo con ella — ataca al primer contacto sin intentar hablar.',
     homeLocationSlug: 'hondonada-del-eco',
+    raza: 'orcos',
+    clase: 'Guerrero',
+    temperamento: 'AGRESIVO',
+    capturablePct: 15,
     loadout: [
       { itemSlug: 'maza-orca', notas: 'Astillada, con sangre seca' },
       { itemSlug: 'amuleto-hueso' },
@@ -680,6 +833,13 @@ export const npcs: NpcInput[] = [
     bio: "Orca del Clan Serhu, piel beige y arcilla curtida por el sol de la estepa, trenzas deshechas de días corriendo sin parar. Retada a un duelo de honor por un guerrero de su propio clan, se negó a pelear y huyó — a ojos Serhu, deshonra suficiente para expulsarla. No fue cobardía: vio en sus ojos algo que ya no reconocía, y prefirió vivir señalada antes que enfrentarse a un hombre que ya no estaba del todo cuerdo. Lleva días delante de él, cada vez más cerca. Rápida de lengua y más rápida de ojo — lee a la gente antes de que hablen, y no ha sobrevivido esto solo corriendo.",
     personality: 'Aguda y pragmática, mide cada palabra antes de gastarla — no tiene tiempo ni margen para el orgullo que se permiten los guerreros con clan.',
     homeLocationSlug: 'hondonada-del-eco',
+    raza: 'orcos',
+    clase: 'Cazador',
+    temperamento: 'INOFENSIVO',
+    comerciablePct: 15,
+    reclutablePct: 55,
+    capturablePct: 5,
+    cortejablePct: 25,
     loadout: [
       { itemSlug: 'cuchillo-corto' },
       { itemSlug: 'racion-viaje', cantidad: 1 },
@@ -699,6 +859,13 @@ export const npcs: NpcInput[] = [
     bio: 'Orco u orca joven del Clan Serhu, todavía sin el volumen ni las cicatrices de un guerrero veterano — piel beige y parda como el resto del clan, colmillos aún cortos, marca de clan tatuada y reciente en el antebrazo. Sale a cazar o vigilar los alrededores del campamento.',
     personality: 'Curioso, algo fanfarrón, todavía sin la reserva de los guerreros veteranos.',
     homeLocationSlug: 'campamento-serhu',
+    raza: 'orcos',
+    clase: 'Cazador',
+    temperamento: 'CAUTELOSO',
+    comerciablePct: 20,
+    reclutablePct: 25,
+    capturablePct: 20,
+    cortejablePct: 15,
     loadout: [
       { itemSlug: 'lanza-corta-caza' },
       { itemSlug: 'cuerda-tendon' },
@@ -723,6 +890,12 @@ export const npcs: NpcInput[] = [
     attributes: { fuerza: 12, destreza: 10, sigilo: 6, voluntad: 13, carisma: 8, arcano: 4 },
     bio: 'Goirnte de la Meseta del Orden — piel gris, fría al tacto, que se tensa visiblemente cuando se concentra, rasgo propio de su pueblo. Uniformado con la disciplina que exige su casta de nacimiento. Soldado raso de una patrulla de la Concordia de Hierro que vigila la frontera de las Llanuras. Una patrulla tipo son 3 soldados + 1 oficial.',
     personality: 'Disciplinado, sigue órdenes sin cuestionar demasiado.',
+    raza: 'goirntes',
+    clase: 'Guerrero',
+    temperamento: 'CAUTELOSO',
+    comerciablePct: 5,
+    reclutablePct: 5,
+    capturablePct: 30,
     loadout: [
       { itemSlug: 'espada-corta-goirntes' },
       { itemSlug: 'cota-ligera-goirntes' },
@@ -749,6 +922,12 @@ export const npcs: NpcInput[] = [
     attributes: { fuerza: 12, destreza: 10, sigilo: 6, voluntad: 15, carisma: 12, arcano: 4 },
     bio: 'Goirnte de la Meseta del Orden — misma piel gris y fría al tacto que el resto de los suyos, aunque en un oficial se nota menos tensa: ha aprendido a controlar hasta ese reflejo. Porte rígido, uniforme sin una arruga fuera de sitio. Oficial al mando de una patrulla de la Concordia de Hierro. Lleva correspondencia sellada y el sello que acredita (o incrimina) su misión.',
     personality: 'Frío, calculador, más peligroso en el trato que en el combate directo.',
+    raza: 'goirntes',
+    clase: 'Guerrero',
+    temperamento: 'CAUTELOSO',
+    comerciablePct: 30,
+    reclutablePct: 10,
+    capturablePct: 25,
     loadout: [
       { itemSlug: 'espada-corta-goirntes' },
       { itemSlug: 'cota-ligera-goirntes' },
@@ -780,6 +959,12 @@ export const npcs: NpcInput[] = [
     attributes: { fuerza: 8, destreza: 7, sigilo: 6, voluntad: 13, carisma: 10, arcano: 4 },
     bio: 'Orco de un clan cualquiera de las Llanuras, piel en el tono beige o pardo propio de esas tribus, cuerpo delgado y marcado más por el camino que por la guerra. Lleva una tira de tela oscura anudada al brazo, señal de luto que cualquier clan reconoce. Sin prisa ni destino más allá de Los Túmulos del Honor — lleva algo que dejar en la tumba de alguien que murió con honor. No busca compañía ni pelea; si se le trata con respeto, agradece la charla en el camino.',
     personality: 'Callado y ensimismado, cortés si se le habla primero; el duelo, no el miedo, es lo que le hace evitar el contacto.',
+    raza: 'orcos',
+    temperamento: 'INOFENSIVO',
+    comerciablePct: 10,
+    reclutablePct: 5,
+    capturablePct: 5,
+    cortejablePct: 10,
     loadout: [
       { itemSlug: 'racion-viaje', cantidad: 1 },
       { itemSlug: 'odre-agua' },
@@ -798,6 +983,12 @@ export const npcs: NpcInput[] = [
     attributes: { fuerza: 7, destreza: 9, sigilo: 8, voluntad: 10, carisma: 14, arcano: 4 },
     bio: 'Orco sin clan — hace años cambió la lanza por la balanza de trueque, algo que pocos orcos entienden y menos aún respetan —, piel curtida por soles de media docena de regiones distintas, más delgado que un guerrero de su edad. Comerciante itinerante que cruza las rutas de la región con mercancía de trueque.',
     personality: 'Locuaz, siempre calculando el precio de todo, evita el conflicto directo.',
+    raza: 'orcos',
+    temperamento: 'INOFENSIVO',
+    comerciablePct: 90,
+    reclutablePct: 10,
+    capturablePct: 15,
+    cortejablePct: 5,
     loadout: [
       { itemSlug: 'cuchillo-corto' },
       { itemSlug: 'sal-trueque', cantidad: 2 },
@@ -827,6 +1018,11 @@ export const npcs: NpcInput[] = [
     attributes: { fuerza: 11, destreza: 8, sigilo: 6, voluntad: 16, carisma: 13, arcano: 3 },
     bio: 'Goirnte de la Meseta del Orden — piel gris severa, tensa incluso en reposo, curtida por años de mando. Ejecuta órdenes radicales en público, pero en privado sospecha que la versión oficial es mentira, y busca con discreción —sin poder confiar en sus propios canales— testigos de la noche de la ruptura del sello.',
     personality: 'Habla poco y en tono bajo; cuanto más tranquilo suena, más peligroso es el momento. Jamás repite una orden.',
+    raza: 'goirntes',
+    temperamento: 'CAUTELOSO',
+    comerciablePct: 10,
+    reclutablePct: 5,
+    capturablePct: 10,
     loadout: [],
   },
   {
@@ -840,6 +1036,11 @@ export const npcs: NpcInput[] = [
     attributes: { fuerza: 8, destreza: 9, sigilo: 10, voluntad: 8, carisma: 6, arcano: 4 },
     bio: 'Goirnte de la Meseta del Orden — piel gris apagada, más floja y menos tensa de lo normal en los suyos, como si hubiera dejado de concentrarse en nada desde hace tiempo. Exmiembro de la facción radical que ayudó a romper el sello. Vive escondido y consumido por la culpa — es la única prueba viviente de la traición interna, lo que lo convierte en el hombre más buscado de Berig por dos motivos opuestos: los radicales quieren silenciarlo; quienes sospechan la verdad lo necesitan vivo.',
     personality: 'Habla en círculos y nunca termina las frases que rozan "esa noche"; sobresalta con los ruidos de metal.',
+    raza: 'goirntes',
+    temperamento: 'INOFENSIVO',
+    comerciablePct: 15,
+    reclutablePct: 35,
+    capturablePct: 40,
     loadout: [],
   },
   {
@@ -853,6 +1054,12 @@ export const npcs: NpcInput[] = [
     attributes: { fuerza: 5, destreza: 10, sigilo: 15, voluntad: 10, carisma: 12, arcano: 4 },
     bio: 'Nabieus del Margen Silencioso — piel gris apagada que no refleja ni absorbe la luz, cuerpo delgado y casi sin peso, como el resto de los suyos. Compra y vende información a ambas alianzas por igual, sin lealtades — ha olido que lo que Yerin Slaad recuerda de cierta entrega vale más que todo su inventario.',
     personality: 'Habla más alto que cualquier otro Nabieus — deliberadamente, un gesto casi obsceno entre los suyos que usa para incomodar y marcar distancia con su propio pueblo.',
+    raza: 'nabieus',
+    temperamento: 'CAUTELOSO',
+    comerciablePct: 85,
+    reclutablePct: 20,
+    capturablePct: 15,
+    cortejablePct: 10,
     loadout: [],
   },
   {
@@ -866,6 +1073,11 @@ export const npcs: NpcInput[] = [
     attributes: { fuerza: 6, destreza: 7, sigilo: 5, voluntad: 15, carisma: 14, arcano: 3 },
     bio: 'Goirnte de la Meseta del Orden — piel gris que se nota tensarse incluso al hablar de leyes, señal de una mente que nunca deja de calcular el orden de las cosas. Intenta frenar a la facción radical desde la política interna, pero la ley le exige pruebas presentadas "en orden" de la traición del sello que nadie puede presentarle todavía por canal legítimo.',
     personality: 'Cita de memoria las leyes de los obeliscos, artículo y línea; jamás improvisa un argumento que no pueda sostener por escrito.',
+    raza: 'goirntes',
+    temperamento: 'CAUTELOSO',
+    comerciablePct: 10,
+    reclutablePct: 20,
+    capturablePct: 10,
     loadout: [],
   },
 ];
@@ -874,6 +1086,9 @@ export interface ItemCatalogInput {
   slug: string;
   name: string;
   category: string;
+  /// Categorización mecánica (2026-07-29) — ver itemTaxonomy.ts. `category` (arriba) sigue
+  /// siendo el subtipo fino DENTRO de este tipo.
+  tipo: ItemTipo;
   description: string;
   /// Bonificador real al equipar (2026-07-19) — armas (uno de los 6 atributos jugables) y, desde
   /// el slot de defensa, armaduras reales ('defensa', resta a la dificultad de contraataque en
@@ -899,6 +1114,7 @@ export const items: ItemCatalogInput[] = [
     slug: 'hacha-guerra-orca',
     name: 'Hacha de guerra orca',
     category: 'arma',
+    tipo: 'EQUIPABLE',
     description: 'Hacha pesada de cabeza de hierro ennegrecido y mango de madera envuelto en tiras de cuero — el arma orca por excelencia.',
     statBonusAttribute: 'fuerza',
     statBonusAmount: 2,
@@ -913,6 +1129,7 @@ export const items: ItemCatalogInput[] = [
     slug: 'maza-orca',
     name: 'Maza orca',
     category: 'arma',
+    tipo: 'EQUIPABLE',
     description: 'Maza de cabeza nudosa de hueso reforzado con remaches de hierro, mango corto envuelto en cuero — tosca, pesada, hecha para aplastar, no para el filo.',
     statBonusAttribute: 'fuerza',
     statBonusAmount: 2,
@@ -923,7 +1140,8 @@ export const items: ItemCatalogInput[] = [
     slug: 'cuchillo-hielo-silice',
     name: 'Cuchillo de hielo sílice',
     category: 'arma',
-    description: 'Hoja de hielo sílice de un blanco azulado translúcido, dura como el pedernal y fría al tacto incluso lejos de la montaña — filo mineral, comercio con los Helsig.',
+    tipo: 'EQUIPABLE',
+    description: 'Hoja de hielo sílice de un blanco azulado translúcido, extremadamente dura y fría al tacto incluso lejos de la montaña, con la empuñadura de hueso tallada con marcas rúnicas — filo mineral, comercio con los Helsig.',
     statBonusAttribute: 'sigilo',
     statBonusAmount: 1,
     dimensiones: 'Hoja de 18 cm, empuñadura de 10 cm.',
@@ -933,6 +1151,7 @@ export const items: ItemCatalogInput[] = [
     slug: 'cuchillo-deshuello',
     name: 'Cuchillo de deshuello de hielo sílice',
     category: 'herramienta',
+    tipo: 'EQUIPABLE',
     description: 'Hoja corta y curva de hielo sílice, más gruesa que un cuchillo normal para no quebrarse contra piel dura — para pieles duras, canon de Cristal Helado.',
     dimensiones: 'Hoja curva de 14 cm, notablemente más gruesa que un cuchillo estándar.',
     lugarOrigen: 'Clan Helsig, Cristal Helado.',
@@ -941,6 +1160,7 @@ export const items: ItemCatalogInput[] = [
     slug: 'lanza-hueso-gargantua',
     name: 'Lanza de hueso de gargantúa',
     category: 'arma',
+    tipo: 'EQUIPABLE',
     description: 'Asta larga rematada en una punta de hueso de gargantúa pulido hasta sacarle filo, blanco amarillento veteado — usada en cacerías rituales y duelos de honor.',
     statBonusAttribute: 'fuerza',
     statBonusAmount: 1,
@@ -955,6 +1175,7 @@ export const items: ItemCatalogInput[] = [
     slug: 'lanza-corta-caza',
     name: 'Lanza corta de caza',
     category: 'arma',
+    tipo: 'EQUIPABLE',
     description: 'Asta corta y ligera de madera clara con punta de hueso afilado, del tamaño justo para manejarla con una mano — la de los jóvenes cazadores.',
     statBonusAttribute: 'destreza',
     statBonusAmount: 1,
@@ -965,6 +1186,7 @@ export const items: ItemCatalogInput[] = [
     slug: 'espada-corta-goirntes',
     name: 'Espada corta goirntes',
     category: 'arma',
+    tipo: 'EQUIPABLE',
     description: 'Hoja recta de aleación gris pulida, más ligera y mejor equilibrada que cualquier arma orca — manufactura goirnte, refinada hasta en el filo.',
     statBonusAttribute: 'destreza',
     statBonusAmount: 1,
@@ -975,6 +1197,7 @@ export const items: ItemCatalogInput[] = [
     slug: 'cuchillo-corto',
     name: 'Cuchillo corto',
     category: 'arma',
+    tipo: 'EQUIPABLE',
     description: 'Hoja corta de hierro sin adornos, mango de madera desgastada — común, sin origen especial.',
     statBonusAttribute: 'sigilo',
     statBonusAmount: 1,
@@ -984,6 +1207,7 @@ export const items: ItemCatalogInput[] = [
     slug: 'pico-minero',
     name: 'Pico de minero',
     category: 'herramienta',
+    tipo: 'EQUIPABLE',
     description: 'Pico de cabeza de hierro pesado y mango largo de madera, punta desgastada de golpear roca y hielo — herramienta de minería de hielo sílice.',
     dimensiones: 'Cabeza de 25 cm, mango de 90 cm.',
     lugarOrigen: 'Cristal Helado.',
@@ -992,6 +1216,7 @@ export const items: ItemCatalogInput[] = [
     slug: 'cuerda-tendon',
     name: 'Cuerda de tendón',
     category: 'herramienta',
+    tipo: 'EQUIPABLE',
     description: 'Cuerda trenzada de tendón seco, resistente y algo rígida al tacto — hecha de tendón de Corredor de Cauce.',
     dimensiones: 'Rollo de 8 metros, 4 mm de grosor.',
   },
@@ -999,6 +1224,7 @@ export const items: ItemCatalogInput[] = [
     slug: 'odre-agua',
     name: 'Odre de agua',
     category: 'herramienta',
+    tipo: 'EQUIPABLE',
     description: 'Odre de cuero curtido cosido a mano, correa larga para llevar al hombro — imprescindible en la estepa.',
     dimensiones: 'Capacidad de 2 litros, correa de 70 cm.',
   },
@@ -1006,6 +1232,7 @@ export const items: ItemCatalogInput[] = [
     slug: 'piedras-chispa',
     name: 'Piedras de chispa',
     category: 'herramienta',
+    tipo: 'EQUIPABLE',
     description: 'Un par de piedras oscuras y ásperas al tacto, bordes desgastados de tanto entrechocarlas — para encender fuego sin Raíz de Fuego.',
     dimensiones: 'Par de piedras de unos 5 cm cada una.',
   },
@@ -1013,6 +1240,7 @@ export const items: ItemCatalogInput[] = [
     slug: 'arnes-cuero',
     name: 'Arnés de cuero',
     category: 'ropa',
+    tipo: 'EQUIPABLE',
     description: 'Arnés de cuero curtido, correas cruzadas al pecho, remaches de hueso.',
     statBonusAttribute: 'defensa',
     statBonusAmount: 1,
@@ -1022,6 +1250,7 @@ export const items: ItemCatalogInput[] = [
     slug: 'cota-ligera-goirntes',
     name: 'Cota de aleación ligera goirntes',
     category: 'ropa',
+    tipo: 'EQUIPABLE',
     description: 'Cota de anillas finas de un gris metálico apagado, sorprendentemente ligera — de Hierba del Hierro procesada.',
     statBonusAttribute: 'defensa',
     statBonusAmount: 2,
@@ -1037,6 +1266,7 @@ export const items: ItemCatalogInput[] = [
     slug: 'capa-piel-gargantua',
     name: 'Capa de piel de gargantúa',
     category: 'ropa',
+    tipo: 'EQUIPABLE',
     description: 'Capa gruesa de piel gris ceniza de gargantúa, pesada y cálida, con pequeñas placas óseas todavía cosidas al cuero.',
     dimensiones: 'Capa de 140 cm de largo.',
     lugarOrigen: 'Llanuras del Viento Rojo.',
@@ -1044,7 +1274,8 @@ export const items: ItemCatalogInput[] = [
   {
     slug: 'piel-corredor',
     name: 'Piel de Corredor de Cauce',
-    category: 'material',
+    category: 'piel',
+    tipo: 'RECURSO',
     description: 'Piel rojiza de Corredor de Cauce, fina y flexible, curtida para aguantar el calor de la llanura.',
     dimensiones: 'Pieza de aproximadamente 100x60 cm.',
     lugarOrigen: 'Llanuras del Viento Rojo.',
@@ -1052,7 +1283,8 @@ export const items: ItemCatalogInput[] = [
   {
     slug: 'piel-gargantua',
     name: 'Piel de gargantúa',
-    category: 'material',
+    category: 'piel',
+    tipo: 'RECURSO',
     description: 'Piel gruesa de un gris ceniciento, curtida en placas rígidas — solo de cacería ritual o cadáver ya muerto.',
     dimensiones: 'Placa de aproximadamente 150x100 cm.',
     lugarOrigen: 'Llanuras del Viento Rojo.',
@@ -1060,7 +1292,8 @@ export const items: ItemCatalogInput[] = [
   {
     slug: 'placa-osea-gargantua',
     name: 'Placa ósea de gargantúa',
-    category: 'material',
+    category: 'hueso',
+    tipo: 'RECURSO',
     description: 'Placa ósea blanquecina y gruesa, curva como una costilla — usada en construcción o armadura pesada.',
     dimensiones: 'Placa curva de 40x25 cm.',
     lugarOrigen: 'Llanuras del Viento Rojo.',
@@ -1068,7 +1301,8 @@ export const items: ItemCatalogInput[] = [
   {
     slug: 'hueso-largo-gargantua',
     name: 'Hueso largo de gargantúa',
-    category: 'material',
+    category: 'hueso',
+    tipo: 'RECURSO',
     description: 'Hueso largo y macizo de un blanco amarillento, pesado en la mano — materia prima de lanzas.',
     dimensiones: 'Hueso de 90 cm de largo.',
     lugarOrigen: 'Llanuras del Viento Rojo.',
@@ -1076,21 +1310,24 @@ export const items: ItemCatalogInput[] = [
   {
     slug: 'hueso-ligero',
     name: 'Hueso ligero',
-    category: 'material',
+    category: 'hueso',
+    tipo: 'RECURSO',
     description: 'Hueso pequeño y liviano, fácil de tallar — para abalorios, agujas, mangos.',
     dimensiones: 'Fragmentos de 5 a 15 cm.',
   },
   {
     slug: 'caparazon-espina',
     name: 'Caparazón de Espina del Viento',
-    category: 'material',
+    category: 'quitina',
+    tipo: 'RECURSO',
     description: 'Placa de quitina oscura y brillante, dura como el cuerno, del caparazón de una Espina del Viento.',
     dimensiones: 'Placa de 30x20 cm.',
   },
   {
     slug: 'esquirla-hielo-silice',
     name: 'Esquirla de hielo sílice',
-    category: 'material',
+    category: 'piedra',
+    tipo: 'RECURSO',
     description: 'Esquirla translúcida de un blanco azulado, fría al tacto y con un filo natural — para tallar filos y prótesis.',
     dimensiones: 'Esquirla de 10 a 20 cm.',
     lugarOrigen: 'Cristal Helado.',
@@ -1098,15 +1335,43 @@ export const items: ItemCatalogInput[] = [
   {
     slug: 'lena-matorral-cuerno',
     name: 'Leña de matorral de cuerno',
-    category: 'material',
+    category: 'madera',
+    tipo: 'RECURSO',
     description: 'Trozos de madera oscura y retorcida, corteza agrietada — arde lento y caliente. Producto de la fórmula de leña ya existente.',
     dimensiones: 'Trozos de 20 a 40 cm.',
   },
-  { slug: 'piedra', name: 'Piedra', category: 'material', description: 'Bloques y cascotes de roca erosionada — sirven para levantar muros, cimientos o un campamento.', dimensiones: 'Bloques de 20 a 30 cm.' },
+  { slug: 'piedra', name: 'Piedra', category: 'piedra',
+    tipo: 'RECURSO', description: 'Bloques y cascotes de roca erosionada — sirven para levantar muros, cimientos o un campamento.', dimensiones: 'Bloques de 20 a 30 cm.' },
+  {
+    slug: 'mena-de-hierro',
+    name: 'Mena de hierro',
+    category: 'mena',
+    tipo: 'RECURSO',
+    description: 'Roca oscura veteada de óxido rojizo, pesada para su tamaño — hierro sin refinar, todavía sin ninguna utilidad hasta pasar por la fragua.',
+    dimensiones: 'Fragmentos de 10 a 20 cm.',
+    lugarOrigen: 'Los Pilares Rotos, Llanuras del Viento Rojo.',
+  },
+  {
+    slug: 'lingote-de-hierro',
+    name: 'Lingote de hierro',
+    category: 'metal',
+    tipo: 'MATERIAL',
+    description: 'Metal fundido y colado en un molde sencillo — ya listo para forjar en la fragua del campamento.',
+    dimensiones: 'Lingote de 20x5x5 cm.',
+  },
+  {
+    slug: 'bloque-piedra-tallada',
+    name: 'Bloque de piedra tallada',
+    category: 'bloque',
+    tipo: 'MATERIAL',
+    description: 'Bloque de piedra desbastado a golpes de maza y cincel hasta dejarlo plano por al menos dos caras — ya no es solo cascote, sirve para levantar un muro de verdad.',
+    dimensiones: 'Bloque de 30x20x15 cm.',
+  },
   {
     slug: 'racion-viaje',
     name: 'Ración de viaje',
     category: 'consumible',
+    tipo: 'CONSUMIBLE',
     description: 'Bulto envuelto en tela basta con lo justo para aguantar el camino — unidad estándar de raciones, "para N días".',
     dimensiones: 'Bulto de 15x10 cm por ración.',
   },
@@ -1114,6 +1379,7 @@ export const items: ItemCatalogInput[] = [
     slug: 'racion-goirntes',
     name: 'Ración goirntes',
     category: 'consumible',
+    tipo: 'CONSUMIBLE',
     description: 'Bloque compacto de comida prensada envuelto en papel encerado — más compacta y mejor conservada que la de campaña orca.',
     dimensiones: 'Bloque de 12x8 cm.',
     lugarOrigen: 'Meseta del Orden.',
@@ -1122,14 +1388,17 @@ export const items: ItemCatalogInput[] = [
     slug: 'racion-carne',
     name: 'Ración de carne fresca',
     category: 'consumible',
+    tipo: 'CONSUMIBLE',
     description: 'Trozos de carne fresca de caza, todavía con algo de sangre — se estropea en días.',
     dimensiones: 'Trozos de 300 a 500 g.',
   },
-  { slug: 'racion-carne-ahumada', name: 'Ración de carne ahumada', category: 'consumible', description: 'Ahumada sobre fuego — a diferencia de la carne fresca, aguanta mucho más antes de estropearse.', dimensiones: 'Trozos de 300 a 500 g.' },
+  { slug: 'racion-carne-ahumada', name: 'Ración de carne ahumada', category: 'consumible',
+    tipo: 'CONSUMIBLE', description: 'Ahumada sobre fuego — a diferencia de la carne fresca, aguanta mucho más antes de estropearse.', dimensiones: 'Trozos de 300 a 500 g.' },
   {
     slug: 'grano-espiga-roja',
     name: 'Grano de espiga roja',
     category: 'consumible',
+    tipo: 'CONSUMIBLE',
     description: 'Puñado de grano rojo ocre de Espiga Roja — tostado o crudo, como forraje.',
     dimensiones: 'Puñado de 100 a 200 g.',
     lugarOrigen: 'Llanuras del Viento Rojo.',
@@ -1138,6 +1407,7 @@ export const items: ItemCatalogInput[] = [
     slug: 'sal-trueque',
     name: 'Sal de trueque',
     category: 'valor',
+    tipo: 'NARRATIVO',
     description: 'Bloques de sal gris comprimida, ásperos al tacto — la moneda de facto de la estepa.',
     dimensiones: 'Bloques de 8x5 cm.',
   },
@@ -1145,6 +1415,7 @@ export const items: ItemCatalogInput[] = [
     slug: 'manojo-salvia-polvo',
     name: 'Manojo de salvia del polvo',
     category: 'medicinal',
+    tipo: 'CONSUMIBLE',
     description: 'Manojo de hojas grises secas de Salvia del Polvo, atadas con un cordel — machacadas, cortan hemorragias y limpian heridas.',
     dimensiones: 'Manojo de 15 cm.',
     lugarOrigen: 'Llanuras del Viento Rojo.',
@@ -1153,6 +1424,7 @@ export const items: ItemCatalogInput[] = [
     slug: 'veneno-espina',
     name: 'Aguijón con veneno de Espina del Viento',
     category: 'medicinal',
+    tipo: 'CONSUMIBLE',
     description: 'Aguijón oscuro extraído con cuidado, todavía con una gota espesa de veneno en la punta — altera la percepción del dolor.',
     dimensiones: 'Aguijón de 6 cm.',
   },
@@ -1160,6 +1432,7 @@ export const items: ItemCatalogInput[] = [
     slug: 'raiz-de-fuego',
     name: 'Raíz de fuego',
     category: 'consumible',
+    tipo: 'CONSUMIBLE',
     description: 'Tallo nudoso y oscuro de Raíz de Fuego, caliente al tacto incluso recién cortado — iniciador de fuego, potencialmente explosivo.',
     dimensiones: 'Tallo de unos 20 cm.',
   },
@@ -1167,6 +1440,7 @@ export const items: ItemCatalogInput[] = [
     slug: 'correspondencia-concordia',
     name: 'Correspondencia sellada de la Concordia',
     category: 'documento',
+    tipo: 'NARRATIVO',
     description: 'Rollo de pergamino sellado con cera y el emblema de la Concordia — puede saber demasiado.',
     dimensiones: 'Rollo de 20 cm.',
     lugarOrigen: 'Concordia de Hierro.',
@@ -1175,6 +1449,7 @@ export const items: ItemCatalogInput[] = [
     slug: 'sello-patrulla-concordia',
     name: 'Sello de patrulla de la Concordia',
     category: 'documento',
+    tipo: 'NARRATIVO',
     description: 'Disco de aleación grabado con el emblema de una patrulla — acredita, o incrimina, a quien lo lleva.',
     dimensiones: 'Disco de 4 cm de diámetro.',
     lugarOrigen: 'Concordia de Hierro.',
@@ -1183,6 +1458,7 @@ export const items: ItemCatalogInput[] = [
     slug: 'amuleto-hueso',
     name: 'Amuleto de hueso',
     category: 'valor',
+    tipo: 'NARRATIVO',
     description: 'Cordel de cuero con vértebras o colmillos tallados de una presa importante, colgados como cuentas.',
     dimensiones: 'Cordel de 40 cm con piezas de 2 a 3 cm.',
   },
@@ -1190,6 +1466,7 @@ export const items: ItemCatalogInput[] = [
     slug: 'abalorios',
     name: 'Abalorios variados',
     category: 'valor',
+    tipo: 'NARRATIVO',
     description: 'Puñado de cuentas de hueso, piedra pulida y vidrio volcánico ensartadas en cordel — trueque menor.',
     dimensiones: 'Cuentas de 1 cm en cordel de 30 cm.',
   },
@@ -1197,6 +1474,7 @@ export const items: ItemCatalogInput[] = [
     slug: 'marca-de-clan',
     name: 'Marca de clan',
     category: 'valor',
+    tipo: 'NARRATIVO',
     description: 'Colgante o tira de cuero con el símbolo tallado de un clan — cuál exactamente se especifica en las notas.',
     dimensiones: 'Colgante de 5 cm.',
   },
@@ -1204,6 +1482,7 @@ export const items: ItemCatalogInput[] = [
     slug: 'totem-clan-roto',
     name: 'Tótem de clan roto',
     category: 'valor',
+    tipo: 'NARRATIVO',
     description: 'Fragmento de madera de ciénaga tallada, roto por la mitad, con restos de un símbolo de clan irreconocible — gancho de un posible superviviente Maktor.',
     dimensiones: 'Fragmento de 15 cm.',
     lugarOrigen: 'Ciénaga Troncal.',
@@ -1214,12 +1493,14 @@ export const items: ItemCatalogInput[] = [
     // que el equipo inicial de Gorhorn (startingInventory.ts), ahora sí enlazado por catalogSlug.
     name: 'Tótem Maktor',
     category: 'valor',
-    description: 'Tótem de madera oscura de ciénaga, tallado con la marca del Clan Maktor — único, el de Gorhorn.',
+    tipo: 'NARRATIVO',
+    description: 'Tótem de madera oscura de ciénaga, con un rostro tallado en el centro y plumas y cuentas colgando de cordones de cuero a los lados, ceñido en ambos extremos por bandas de metal envejecido — tallado con la marca del Clan Maktor, único, el de Gorhorn.',
   },
   {
     slug: 'plumas-rojizas',
     name: 'Puñado de plumas rojizas',
-    category: 'material',
+    category: 'pluma',
+    tipo: 'RECURSO',
     description: 'Puñado de plumas cortas de un rojo apagado, de Corretolvas — uso decorativo o trueque menor.',
     dimensiones: 'Plumas de 8 a 10 cm.',
   },
@@ -1233,6 +1514,7 @@ export const items: ItemCatalogInput[] = [
     slug: 'yelmo-patrulla-goirntes',
     name: 'Yelmo de patrulla goirntes',
     category: 'ropa',
+    tipo: 'EQUIPABLE',
     description: 'Casco abierto de aleación ligera, sello de la Concordia en la frente.',
     statBonusAttribute: 'defensa',
     statBonusAmount: 1,
@@ -1243,6 +1525,7 @@ export const items: ItemCatalogInput[] = [
     slug: 'capucha-piel-corredor',
     name: 'Capucha de piel de corredor',
     category: 'ropa',
+    tipo: 'EQUIPABLE',
     description: 'Capucha de piel rojiza de Corredor de Cauce, ajustada a la cabeza — protege del sol y de la arena magnética.',
     dimensiones: 'Ajustada a cabeza y cuello.',
     lugarOrigen: 'Llanuras del Viento Rojo.',
@@ -1253,6 +1536,7 @@ export const items: ItemCatalogInput[] = [
     slug: 'guantes-piel-corredor',
     name: 'Guantes de piel de corredor',
     category: 'ropa',
+    tipo: 'EQUIPABLE',
     description: 'Agarre firme para lanza y cuchillo.',
     statBonusAttribute: 'destreza',
     statBonusAmount: 1,
@@ -1263,6 +1547,7 @@ export const items: ItemCatalogInput[] = [
     slug: 'manoplas-goirntes',
     name: 'Manoplas de aleación goirntes',
     category: 'ropa',
+    tipo: 'EQUIPABLE',
     description: 'Manoplas de aleación gris articuladas en los nudillos — pieza de saqueo poco común, solo la lleva un oficial.',
     statBonusAttribute: 'defensa',
     statBonusAmount: 1,
@@ -1271,11 +1556,13 @@ export const items: ItemCatalogInput[] = [
   },
 
   // Botas
-  { slug: 'botas-de-estepa', name: 'Botas de estepa', category: 'ropa', description: 'Cuero y suela de piel de corredor, gastadas.', dimensiones: 'Caña hasta el tobillo.', lugarOrigen: 'Llanuras del Viento Rojo.' },
+  { slug: 'botas-de-estepa', name: 'Botas de estepa', category: 'ropa',
+    tipo: 'EQUIPABLE', description: 'Cuero y suela de piel de corredor, gastadas.', dimensiones: 'Caña hasta el tobillo.', lugarOrigen: 'Llanuras del Viento Rojo.' },
   {
     slug: 'botas-marcha-goirntes',
     name: 'Botas de marcha goirntes',
     category: 'ropa',
+    tipo: 'EQUIPABLE',
     description: 'Suela claveteada de aleación, equipamiento estándar de patrulla.',
     statBonusAttribute: 'destreza',
     statBonusAmount: 1,
@@ -1288,23 +1575,28 @@ export const items: ItemCatalogInput[] = [
     slug: 'cinturon-de-trofeos',
     name: 'Cinturón de trofeos de hueso',
     category: 'ropa',
+    tipo: 'EQUIPABLE',
     description: 'Colmillos y garras cosidos al cuero — entre orcos, respeto a la vista.',
     statBonusAttribute: 'carisma',
     statBonusAmount: 1,
     dimensiones: 'Cinturón de 90 a 110 cm.',
     lugarOrigen: 'Llanuras del Viento Rojo.',
   },
-  { slug: 'talabarte-goirntes', name: 'Talabarte de cuero goirntes', category: 'ropa', description: 'Correaje de oficial, hebilla con el sello de la Concordia.', dimensiones: 'Correaje ajustable al torso.', lugarOrigen: 'Concordia de Hierro, Meseta del Orden.' },
+  { slug: 'talabarte-goirntes', name: 'Talabarte de cuero goirntes', category: 'ropa',
+    tipo: 'EQUIPABLE', description: 'Correaje de oficial, hebilla con el sello de la Concordia.', dimensiones: 'Correaje ajustable al torso.', lugarOrigen: 'Concordia de Hierro, Meseta del Orden.' },
 
   // Accesorio
-  { slug: 'bandolera-de-caza', name: 'Bandolera de caza', category: 'ropa', description: 'Lazadas de tendón para cuchillo, trampas y piezas menores.', dimensiones: 'Banda cruzada de 100 cm.', lugarOrigen: 'Llanuras del Viento Rojo.' },
-  { slug: 'manta-campana-goirntes', name: 'Manta de campaña goirntes', category: 'ropa', description: 'Lana encerada, enrollada al hombro.', dimensiones: 'Manta enrollada de 150x90 cm.', lugarOrigen: 'Meseta del Orden.' },
+  { slug: 'bandolera-de-caza', name: 'Bandolera de caza', category: 'ropa',
+    tipo: 'EQUIPABLE', description: 'Lazadas de tendón para cuchillo, trampas y piezas menores.', dimensiones: 'Banda cruzada de 100 cm.', lugarOrigen: 'Llanuras del Viento Rojo.' },
+  { slug: 'manta-campana-goirntes', name: 'Manta de campaña goirntes', category: 'ropa',
+    tipo: 'EQUIPABLE', description: 'Lana encerada, enrollada al hombro.', dimensiones: 'Manta enrollada de 150x90 cm.', lugarOrigen: 'Meseta del Orden.' },
 
   // Anillos
   {
     slug: 'anillo-vertebra-corredor',
     name: 'Anillo de vértebra de corredor',
     category: 'ropa',
+    tipo: 'EQUIPABLE',
     description: 'Anillo tallado de una sola vértebra de Corredor de Cauce, pulida hasta sacarle brillo — recuerdo de una presa.',
     statBonusAttribute: 'voluntad',
     statBonusAmount: 1,
@@ -1315,6 +1607,7 @@ export const items: ItemCatalogInput[] = [
     slug: 'sello-anular-concordia',
     name: 'Anillo de sello de la Concordia',
     category: 'ropa',
+    tipo: 'EQUIPABLE',
     description: 'Anillo de aleación gris con el sello de la Concordia grabado — acredita, o incrimina, a quien lo lleva.',
     dimensiones: 'Anillo de 2 cm de diámetro.',
     lugarOrigen: 'Concordia de Hierro.',
@@ -1325,6 +1618,7 @@ export const items: ItemCatalogInput[] = [
     slug: 'peto-placas-gargantua',
     name: 'Peto de placas óseas de gargantúa',
     category: 'ropa',
+    tipo: 'EQUIPABLE',
     description: 'Peto de placas óseas blanquecinas de gargantúa cosidas sobre cuero grueso — armadura pesada, las placas solo salen de cacería ritual o cadáver ya viejo.',
     statBonusAttribute: 'defensa',
     statBonusAmount: 2,
@@ -1339,19 +1633,22 @@ export const items: ItemCatalogInput[] = [
     slug: 'perneras-cuero-goirntes',
     name: 'Perneras de cuero goirntes',
     category: 'ropa',
+    tipo: 'EQUIPABLE',
     description: 'Perneras de cuero reforzado gris — completa el uniforme de patrulla junto a la cota ligera.',
     statBonusAttribute: 'defensa',
     statBonusAmount: 1,
     dimensiones: 'Cubren de la cadera al tobillo.',
     lugarOrigen: 'Meseta del Orden.',
   },
-  { slug: 'faldar-piel-gargantua', name: 'Faldar de piel de gargantúa', category: 'ropa', description: 'Faldar de piel gris ceniza de gargantúa, con pequeñas placas óseas todavía cosidas al cuero — abrigo, no defensa.', dimensiones: 'Faldar de 55 cm de largo.', lugarOrigen: 'Llanuras del Viento Rojo.' },
+  { slug: 'faldar-piel-gargantua', name: 'Faldar de piel de gargantúa', category: 'ropa',
+    tipo: 'EQUIPABLE', description: 'Faldar de piel gris ceniza de gargantúa, con pequeñas placas óseas todavía cosidas al cuero — abrigo, no defensa.', dimensiones: 'Faldar de 55 cm de largo.', lugarOrigen: 'Llanuras del Viento Rojo.' },
 
   // Armas nuevas
   {
     slug: 'hacha-de-mano-orca',
     name: 'Hacha de mano orca',
     category: 'arma',
+    tipo: 'EQUIPABLE',
     description: 'Hacha pequeña de cabeza de hierro y mango corto — versión ligera de una mano, para la mano secundaria.',
     statBonusAttribute: 'fuerza',
     statBonusAmount: 1,
@@ -1362,6 +1659,7 @@ export const items: ItemCatalogInput[] = [
     slug: 'pica-de-patrulla-goirntes',
     name: 'Pica de patrulla goirntes',
     category: 'arma',
+    tipo: 'EQUIPABLE',
     description: 'Asta larga rematada en punta de aleación gris — arma de formación estándar en una patrulla fronteriza.',
     statBonusAttribute: 'fuerza',
     statBonusAmount: 1,
@@ -1372,6 +1670,7 @@ export const items: ItemCatalogInput[] = [
     slug: 'daga-aleacion-goirntes',
     name: 'Daga de aleación goirntes',
     category: 'arma',
+    tipo: 'EQUIPABLE',
     description: 'Hoja corta de aleación gris pulida, empuñadura ajustada — manufactura refinada goirntes.',
     statBonusAttribute: 'sigilo',
     statBonusAmount: 1,
@@ -1382,6 +1681,7 @@ export const items: ItemCatalogInput[] = [
     slug: 'garrote-matorral-cuerno',
     name: 'Garrote de matorral de cuerno',
     category: 'arma',
+    tipo: 'EQUIPABLE',
     description: 'Madera densa y retorcida, tallada a mano — la primera arma para quien no tiene ninguna.',
     statBonusAttribute: 'fuerza',
     statBonusAmount: 1,
@@ -1393,6 +1693,7 @@ export const items: ItemCatalogInput[] = [
     slug: 'trampa-de-lazo',
     name: 'Trampa de lazo de tendón',
     category: 'herramienta',
+    tipo: 'EQUIPABLE',
     description: 'Lazo trenzado de tendón anclado a una estaca de madera — para cazar sin necesidad de perseguir.',
     dimensiones: 'Lazo de 1 metro, estaca de 30 cm.',
   },
@@ -1400,6 +1701,7 @@ export const items: ItemCatalogInput[] = [
     slug: 'kit-costura-hueso',
     name: 'Kit de costura de hueso',
     category: 'herramienta',
+    tipo: 'EQUIPABLE',
     description: 'Agujas de hueso fino y cordel enrollado en un retal de cuero — reparar ropa y pieles en ruta.',
     dimensiones: 'Estuche de 15x8 cm.',
   },
@@ -1407,6 +1709,7 @@ export const items: ItemCatalogInput[] = [
     slug: 'piedra-de-afilar',
     name: 'Piedra de afilar',
     category: 'herramienta',
+    tipo: 'EQUIPABLE',
     description: 'Piedra plana y áspera, gastada por un lado de tanto uso — mantiene el filo de un arma.',
     dimensiones: 'Piedra de 10x4 cm.',
   },
@@ -1414,6 +1717,7 @@ export const items: ItemCatalogInput[] = [
     slug: 'antorcha-de-resina',
     name: 'Antorcha de resina de ciénaga',
     category: 'herramienta',
+    tipo: 'EQUIPABLE',
     description: 'Antorcha de madera envuelta en resina oscura de ciénaga — arde incluso con lluvia, comercio Llanuras-Ciénaga.',
     dimensiones: 'Antorcha de 45 cm.',
     lugarOrigen: 'Comercio Llanuras-Ciénaga Troncal.',
@@ -1421,16 +1725,19 @@ export const items: ItemCatalogInput[] = [
   {
     slug: 'resina-trepador-ocaso',
     name: 'Bloque de resina de Trepador Ocaso',
-    category: 'material',
+    category: 'resina',
+    tipo: 'RECURSO',
     description: 'Bloque de resina ambarina y pegajosa — sella e impermeabiliza.',
     dimensiones: 'Bloque de 10x10 cm.',
     lugarOrigen: 'Margen Silencioso.',
   },
-  { slug: 'cataplasma-salvia', name: 'Cataplasma de salvia del polvo', category: 'medicinal', description: 'Pasta verde grisácea de hojas machacadas de Salvia del Polvo — forma preparada de la salvia, corta hemorragias y limpia heridas.', dimensiones: 'Emplasto de 10x10 cm.', lugarOrigen: 'Llanuras del Viento Rojo.' },
+  { slug: 'cataplasma-salvia', name: 'Cataplasma de salvia del polvo', category: 'medicinal',
+    tipo: 'CONSUMIBLE', description: 'Pasta verde grisácea de hojas machacadas de Salvia del Polvo — forma preparada de la salvia, corta hemorragias y limpia heridas.', dimensiones: 'Emplasto de 10x10 cm.', lugarOrigen: 'Llanuras del Viento Rojo.' },
   {
     slug: 'aguardiente-goirntes',
     name: 'Petaca de aguardiente goirntes',
     category: 'consumible',
+    tipo: 'CONSUMIBLE',
     description: 'Petaca de metal con licor claro y fuerte — ración líquida de campaña, limpia heridas o da valor.',
     dimensiones: 'Petaca de 15 cm, 250 ml.',
     lugarOrigen: 'Meseta del Orden.',
@@ -1439,6 +1746,7 @@ export const items: ItemCatalogInput[] = [
     slug: 'mapa-de-patrullas',
     name: 'Croquis de rutas de patrulla',
     category: 'documento',
+    tipo: 'NARRATIVO',
     description: 'Croquis a mano alzada sobre cuero fino, rutas marcadas con tinta desvaída — saber por dónde no pasar.',
     dimensiones: 'Croquis en cuero de 25x20 cm.',
     lugarOrigen: 'Concordia de Hierro.',
@@ -1451,35 +1759,43 @@ export const items: ItemCatalogInput[] = [
     slug: 'mapa-de-las-llanuras',
     name: 'Mapa de las Llanuras',
     category: 'documento',
+    tipo: 'NARRATIVO',
     description: 'Piel curtida con las rutas, campamentos y pozos de las Llanuras del Viento Rojo marcados a mano por generaciones de clanes — suficiente para orientarse por el territorio sin perderse.',
     dimensiones: 'Piel curtida de 40x30 cm, enrollada.',
     lugarOrigen: 'Llanuras del Viento Rojo.',
   },
-  { slug: 'diario-de-soldado', name: 'Diario de un soldado goirntes', category: 'documento', description: 'Cuaderno de tapas de cuero gastado, letra apretada — un nombre, una familia en la Meseta, humaniza el saqueo.', dimensiones: 'Cuaderno de 15x10 cm.', lugarOrigen: 'Meseta del Orden.' },
-  { slug: 'silbato-hueso-caza', name: 'Silbato de hueso de caza', category: 'valor', description: 'Pequeño silbato tallado en hueso pulido — señales de caza Serhu.', dimensiones: 'Silbato de 5 cm.', lugarOrigen: 'Clan Serhu, Llanuras del Viento Rojo.' },
-  { slug: 'pluma-sombra-kroj', name: 'Pluma de Sombra de Kroj', category: 'valor', description: 'Pluma larga de un negro casi azulado que absorbe la luz — objeto de trueque con el Margen Silencioso.', dimensiones: 'Pluma de 25 cm.', lugarOrigen: 'Margen Silencioso.' },
+  { slug: 'diario-de-soldado', name: 'Diario de un soldado goirntes', category: 'documento',
+    tipo: 'NARRATIVO', description: 'Cuaderno de tapas de cuero gastado, letra apretada — un nombre, una familia en la Meseta, humaniza el saqueo.', dimensiones: 'Cuaderno de 15x10 cm.', lugarOrigen: 'Meseta del Orden.' },
+  { slug: 'silbato-hueso-caza', name: 'Silbato de hueso de caza', category: 'valor',
+    tipo: 'NARRATIVO', description: 'Pequeño silbato tallado en hueso pulido — señales de caza Serhu.', dimensiones: 'Silbato de 5 cm.', lugarOrigen: 'Clan Serhu, Llanuras del Viento Rojo.' },
+  { slug: 'pluma-sombra-kroj', name: 'Pluma de Sombra de Kroj', category: 'valor',
+    tipo: 'NARRATIVO', description: 'Pluma larga de un negro casi azulado que absorbe la luz — objeto de trueque con el Margen Silencioso.', dimensiones: 'Pluma de 25 cm.', lugarOrigen: 'Margen Silencioso.' },
 
   // --- Materiales de fauna/flora nueva (roadmap 2026-07-20, propuesta de Fable, ver memoria
   // project_tarkor_propuesta_fauna_flora.md) ---
   {
     slug: 'colmillo-aullador',
     name: 'Colmillo de Aullador Rojo',
-    category: 'material',
+    category: 'hueso',
+    tipo: 'RECURSO',
     description: 'Colmillo curvo y afilado de Aullador Rojo — pieza clásica de los amuletos de hueso orcos.',
     dimensiones: 'Colmillo de 6 cm.',
   },
   {
     slug: 'lana-murgol',
     name: 'Lana de múrgol',
-    category: 'material',
+    category: 'piel',
+    tipo: 'RECURSO',
     description: 'Mechones de lana parda enredada de múrgol — fieltro para ropa y mantas.',
     dimensiones: 'Mechones de 10 a 20 cm.',
   },
-  { slug: 'pluma-timonera', name: 'Pluma timonera de Cruzavientos', category: 'valor', description: 'Pluma larga y rígida de Cruzavientos, punta gris acerado — adorno y trueque, los Serhu las montan en lanzas y trenzas.', dimensiones: 'Pluma de 30 cm.' },
+  { slug: 'pluma-timonera', name: 'Pluma timonera de Cruzavientos', category: 'valor',
+    tipo: 'NARRATIVO', description: 'Pluma larga y rígida de Cruzavientos, punta gris acerado — adorno y trueque, los Serhu las montan en lanzas y trenzas.', dimensiones: 'Pluma de 30 cm.' },
   {
     slug: 'piel-rondador',
     name: 'Piel de Rondador de Brasas',
-    category: 'material',
+    category: 'piel',
+    tipo: 'RECURSO',
     description: 'Piel gruesa de un gris ceniciento, pelaje espeso propio de cazador nocturno — buena capa.',
     dimensiones: 'Pieza de aproximadamente 80x50 cm.',
   },
@@ -1487,22 +1803,30 @@ export const items: ItemCatalogInput[] = [
     slug: 'garra-rondador',
     name: 'Garra de Rondador de Brasas',
     category: 'valor',
+    tipo: 'NARRATIVO',
     description: 'Garra curva y negra de Rondador de Brasas — trofeo de amuleto de primer orden.',
     dimensiones: 'Garra de 8 cm.',
   },
-  { slug: 'glandula-ignea', name: 'Glándula ígnea de salamandra', category: 'consumible', description: 'Bolsa membranosa de un rojo anaranjado, caliente al tacto — iniciador de fuego potente, pariente animal de la Raíz de Fuego.', dimensiones: 'Bolsa de 6 cm.' },
+  { slug: 'glandula-ignea', name: 'Glándula ígnea de salamandra', category: 'consumible',
+    tipo: 'CONSUMIBLE', description: 'Bolsa membranosa de un rojo anaranjado, caliente al tacto — iniciador de fuego potente, pariente animal de la Raíz de Fuego.', dimensiones: 'Bolsa de 6 cm.' },
   {
     slug: 'piel-salamandra',
     name: 'Piel de Salamandra de Escoria',
-    category: 'material',
+    category: 'piel',
+    tipo: 'RECURSO',
     description: 'Piel escamosa de un gris ceniciento, resistente al fuego — cuero ignífugo.',
     dimensiones: 'Pieza de aproximadamente 90x60 cm.',
   },
-  { slug: 'aguja-de-cardo', name: 'Aguja de Cardo Brújula', category: 'herramienta', description: 'Aguja imantada natural: colgada de un hilo señala siempre el mismo rumbo, incluso en plena tormenta.', dimensiones: 'Aguja de 4 cm, colgada de un hilo de 20 cm.' },
-  { slug: 'liquen-humedo', name: 'Liquen húmedo del cauce', category: 'consumible', description: 'Masticado calma la sed; donde crece, cavar un par de codos da agua.', dimensiones: 'Puñado de unos 10 cm.' },
-  { slug: 'bulbo-cauce', name: 'Bulbo del Cauce', category: 'consumible', description: 'Tubérculo fibroso: comida y un trago de agua en uno.', dimensiones: 'Tubérculo de 8 cm.' },
-  { slug: 'petalos-flor-ceniza', name: 'Pétalos de Flor de Ceniza', category: 'medicinal', description: 'Infusión que adormece el dolor y deja dormir a un herido.', dimensiones: 'Puñado de pétalos de 3 a 4 cm.' },
-  { slug: 'arena-magnetica', name: 'Saquito de arena imán', category: 'valor', description: 'Limaduras que dejan las tormentas — los herreros goirntes pagan bien por un saquito.', dimensiones: 'Saquito de 10x8 cm.' },
+  { slug: 'aguja-de-cardo', name: 'Aguja de Cardo Brújula', category: 'herramienta',
+    tipo: 'EQUIPABLE', description: 'Aguja imantada natural: colgada de un hilo señala siempre el mismo rumbo, incluso en plena tormenta.', dimensiones: 'Aguja de 4 cm, colgada de un hilo de 20 cm.' },
+  { slug: 'liquen-humedo', name: 'Liquen húmedo del cauce', category: 'consumible',
+    tipo: 'CONSUMIBLE', description: 'Masticado calma la sed; donde crece, cavar un par de codos da agua.', dimensiones: 'Puñado de unos 10 cm.' },
+  { slug: 'bulbo-cauce', name: 'Bulbo del Cauce', category: 'consumible',
+    tipo: 'CONSUMIBLE', description: 'Tubérculo fibroso: comida y un trago de agua en uno.', dimensiones: 'Tubérculo de 8 cm.' },
+  { slug: 'petalos-flor-ceniza', name: 'Pétalos de Flor de Ceniza', category: 'medicinal',
+    tipo: 'CONSUMIBLE', description: 'Infusión que adormece el dolor y deja dormir a un herido.', dimensiones: 'Puñado de pétalos de 3 a 4 cm.' },
+  { slug: 'arena-magnetica', name: 'Saquito de arena imán', category: 'valor',
+    tipo: 'NARRATIVO', description: 'Limaduras que dejan las tormentas — los herreros goirntes pagan bien por un saquito.', dimensiones: 'Saquito de 10x8 cm.' },
 
   // Equipo inicial de Gorhorn (petición explícita de la usuaria, 2026-07-24: "el hacha de guerra
   // y el tótem que llevo equipado no están en la enciclopedia", luego "los pantalones de piel
@@ -1516,13 +1840,15 @@ export const items: ItemCatalogInput[] = [
     slug: 'pantalones-piel',
     name: 'Pantalones de piel',
     category: 'ropa',
+    tipo: 'EQUIPABLE',
     description: 'Piel con pequeños detalles de pelo de cornamenta.',
   },
   {
     slug: 'hacha-guerra-maktor-rota',
     name: 'Hacha de guerra rota',
     category: 'arma',
-    description: 'El hacha de guerra de su clan, partida por la mitad — la usa como una maza pesada.',
+    tipo: 'EQUIPABLE',
+    description: 'El hacha de guerra de su clan, con la cabeza de metal mellada y partida por la mitad, el astil envuelto en varias vueltas de tiras de cuero — la usa como una maza pesada.',
     statBonusAttribute: 'fuerza',
     statBonusAmount: 2,
     dimensiones: 'Astil de 75 cm, cabeza de hierro partida por la mitad.',
@@ -1533,6 +1859,7 @@ export const items: ItemCatalogInput[] = [
     slug: 'hacha-guerra-maktor-restaurada',
     name: 'Hacha de guerra Maktor restaurada',
     category: 'arma',
+    tipo: 'EQUIPABLE',
     description: 'El hacha rota del clan, reforjada — la cabeza reasentada y el filo devuelto. Lo único del Clan Maktor que ha vuelto a estar entero.',
     statBonusAttribute: 'fuerza',
     statBonusAmount: 3,
@@ -1547,19 +1874,30 @@ export const items: ItemCatalogInput[] = [
   // project_tarkor_roadmap_objetos_2.md) — cierra 7 huecos reales del catálogo: Restos de Maktor
   // y Túmulos del Honor sin objeto propio, rareza cósmica del Origen Azul, comercio goirntes
   // ampliado, y dos formas preparadas más (mismo patrón que cataplasma-salvia).
-  { slug: 'juguete-hueso-maktor', name: 'Juguete de hueso tallado', category: 'valor', description: 'Una figurita infantil tallada en hueso, medio enterrada entre los cimientos quemados — de algún niño del Clan Maktor que no llegó a crecer.', dimensiones: 'Figurita de 6 cm.', lugarOrigen: 'Ciénaga Troncal, Clan Maktor.' },
-  { slug: 'brazalete-trenzado-maktor', name: 'Brazalete trenzado del Clan Maktor', category: 'valor', description: 'Tiras de cuero trenzado con cuentas de hueso, el trenzado propio del clan.', dimensiones: 'Brazalete de 18 cm.', lugarOrigen: 'Clan Maktor.' },
-  { slug: 'tablilla-quemada-maktor', name: 'Tablilla quemada', category: 'documento', description: 'Fragmento de una tablilla de arcilla cocida, ennegrecida por el fuego que arrasó el asentamiento — lo que queda de la escritura apenas se distingue.', dimensiones: 'Fragmento de 12x8 cm.', lugarOrigen: 'Clan Maktor.' },
-  { slug: 'panuelo-luto-serhu', name: 'Pañuelo de luto Serhu', category: 'valor', description: 'Tela oscura anudada a la piedra de un túmulo — luto Serhu por alguien que murió con honor.', dimensiones: 'Tela de 30x30 cm.', lugarOrigen: 'Clan Serhu.' },
-  { slug: 'hueso-marcado-primer-caceria', name: 'Hueso marcado de primera cacería', category: 'valor', description: 'Hueso con muescas rituales — ofrenda dejada por quien cobró su primera pieza en nombre de quien yace en el túmulo.', dimensiones: 'Hueso de 15 cm.', lugarOrigen: 'Llanuras del Viento Rojo.' },
-  { slug: 'esquirla-celeste-caida', name: 'Esquirla celeste caída', category: 'valor', description: 'Fragmento diminuto y frío al tacto, caído del cielo durante una tormenta — nadie en las Llanuras sabe explicar de dónde viene el Origen Azul, solo que a veces deja esto atrás.', dimensiones: 'Fragmento de 2 cm.' },
-  { slug: 'lingote-aleacion-goirntes', name: 'Lingote de aleación goirntes', category: 'valor', description: 'Metal refinado de la Meseta del Orden, moldeado en lingote — bien de comercio serio, no baratija.', dimensiones: 'Lingote de 20x5x5 cm.', lugarOrigen: 'Meseta del Orden.' },
-  { slug: 'cuna-hielo-silice-sin-tallar', name: 'Cuña de hielo sílice sin tallar', category: 'material', description: 'Bloque en bruto de hielo sílice de las minas de Cristal Helado, todavía sin tallar por manos Helsig — solo tiene sentido de verdad si se abre Cristal Helado.', dimensiones: 'Bloque en bruto de 15x10 cm.', lugarOrigen: 'Cristal Helado.' },
-  { slug: 'cataplasma-flor-ceniza', name: 'Cataplasma de Flor de Ceniza', category: 'medicinal', description: 'Forma preparada de los pétalos de Flor de Ceniza — adormece el dolor y ayuda a dormir a un herido, más suave que la cataplasma de salvia.', dimensiones: 'Emplasto de 8x8 cm.' },
-  { slug: 'agua-hervida-liquen', name: 'Agua hervida de liquen', category: 'consumible', description: 'Liquen húmedo del cauce hervido sobre fuego — más segura de beber que masticarlo en crudo.', dimensiones: 'Cantimplora de 500 ml.' },
+  { slug: 'juguete-hueso-maktor', name: 'Juguete de hueso tallado', category: 'valor',
+    tipo: 'NARRATIVO', description: 'Una figurita infantil tallada en hueso, medio enterrada entre los cimientos quemados — de algún niño del Clan Maktor que no llegó a crecer.', dimensiones: 'Figurita de 6 cm.', lugarOrigen: 'Ciénaga Troncal, Clan Maktor.' },
+  { slug: 'brazalete-trenzado-maktor', name: 'Brazalete trenzado del Clan Maktor', category: 'valor',
+    tipo: 'NARRATIVO', description: 'Tiras de cuero trenzado con cuentas de hueso, el trenzado propio del clan.', dimensiones: 'Brazalete de 18 cm.', lugarOrigen: 'Clan Maktor.' },
+  { slug: 'tablilla-quemada-maktor', name: 'Tablilla quemada', category: 'documento',
+    tipo: 'NARRATIVO', description: 'Fragmento de una tablilla de arcilla cocida, ennegrecida por el fuego que arrasó el asentamiento — lo que queda de la escritura apenas se distingue.', dimensiones: 'Fragmento de 12x8 cm.', lugarOrigen: 'Clan Maktor.' },
+  { slug: 'panuelo-luto-serhu', name: 'Pañuelo de luto Serhu', category: 'valor',
+    tipo: 'NARRATIVO', description: 'Tela oscura anudada a la piedra de un túmulo — luto Serhu por alguien que murió con honor.', dimensiones: 'Tela de 30x30 cm.', lugarOrigen: 'Clan Serhu.' },
+  { slug: 'hueso-marcado-primer-caceria', name: 'Hueso marcado de primera cacería', category: 'valor',
+    tipo: 'NARRATIVO', description: 'Hueso con muescas rituales — ofrenda dejada por quien cobró su primera pieza en nombre de quien yace en el túmulo.', dimensiones: 'Hueso de 15 cm.', lugarOrigen: 'Llanuras del Viento Rojo.' },
+  { slug: 'esquirla-celeste-caida', name: 'Esquirla celeste caída', category: 'valor',
+    tipo: 'NARRATIVO', description: 'Fragmento diminuto y frío al tacto, caído del cielo durante una tormenta — nadie en las Llanuras sabe explicar de dónde viene el Origen Azul, solo que a veces deja esto atrás.', dimensiones: 'Fragmento de 2 cm.' },
+  { slug: 'lingote-aleacion-goirntes', name: 'Lingote de aleación goirntes', category: 'metal',
+    tipo: 'MATERIAL', description: 'Metal refinado de la Meseta del Orden, moldeado en lingote — bien de comercio serio, no baratija.', dimensiones: 'Lingote de 20x5x5 cm.', lugarOrigen: 'Meseta del Orden.' },
+  { slug: 'cuna-hielo-silice-sin-tallar', name: 'Cuña de hielo sílice sin tallar', category: 'piedra',
+    tipo: 'RECURSO', description: 'Bloque en bruto de hielo sílice de las minas de Cristal Helado, todavía sin tallar por manos Helsig — solo tiene sentido de verdad si se abre Cristal Helado.', dimensiones: 'Bloque en bruto de 15x10 cm.', lugarOrigen: 'Cristal Helado.' },
+  { slug: 'cataplasma-flor-ceniza', name: 'Cataplasma de Flor de Ceniza', category: 'medicinal',
+    tipo: 'CONSUMIBLE', description: 'Forma preparada de los pétalos de Flor de Ceniza — adormece el dolor y ayuda a dormir a un herido, más suave que la cataplasma de salvia.', dimensiones: 'Emplasto de 8x8 cm.' },
+  { slug: 'agua-hervida-liquen', name: 'Agua hervida de liquen', category: 'consumible',
+    tipo: 'CONSUMIBLE', description: 'Liquen húmedo del cauce hervido sobre fuego — más segura de beber que masticarlo en crudo.', dimensiones: 'Cantimplora de 500 ml.' },
 
   // Crafteo Tier 2, ronda 2 de objetos (roadmap 2026-07-20)
-  { slug: 'contraveneno-salvia-ceniza', name: 'Contraveneno de salvia y ceniza', category: 'medicinal', description: 'Pasta oscura de olor amargo, mezcla preparada de salvia del polvo y pétalos de Flor de Ceniza — neutraliza el veneno de Espina del Viento.', dimensiones: 'Pasta de 50 g.' },
+  { slug: 'contraveneno-salvia-ceniza', name: 'Contraveneno de salvia y ceniza', category: 'medicinal',
+    tipo: 'CONSUMIBLE', description: 'Pasta oscura de olor amargo, mezcla preparada de salvia del polvo y pétalos de Flor de Ceniza — neutraliza el veneno de Espina del Viento.', dimensiones: 'Pasta de 50 g.' },
 
   // --- Materia prima de otras regiones de Berig (2026-07-22, "incluye de momento solo todo lo
   // que sea de Berig") — Hierba del Hierro en bruto no tenía item propio, solo su forma ya
@@ -1567,7 +1905,8 @@ export const items: ItemCatalogInput[] = [
   {
     slug: 'hierba-del-hierro',
     name: 'Hierba del Hierro',
-    category: 'material',
+    category: 'hierba',
+    tipo: 'RECURSO',
     description: 'Hojas grisáceas extremadamente duras y ricas en minerales — materia prima de las aleaciones goirntes, sin procesar todavía.',
     dimensiones: 'Hojas de 20 a 30 cm.',
     lugarOrigen: 'Meseta del Orden.',
@@ -1577,20 +1916,29 @@ export const items: ItemCatalogInput[] = [
 export interface HarvestYieldInput {
   sourceSlug: string;
   sourceName: string;
+  /// Qué verbo exige harvest.ts para esta fuente (2026-07-29) — ver itemTaxonomy.ts. Invariante:
+  /// todas las entradas de un mismo sourceSlug deben compartir el mismo método (validado en
+  /// seed-catalog.ts).
+  metodoObtencion: MetodoObtencion;
   itemSlug: string;
   cantidad: number;
   condicion?: string;
 }
 
 export const harvestYields: HarvestYieldInput[] = [
-  { sourceSlug: 'corredor-de-cauce', sourceName: 'Corredor de Cauce', itemSlug: 'piel-corredor', cantidad: 1, condicion: 'cuchillo (deshuello)' },
-  { sourceSlug: 'corredor-de-cauce', sourceName: 'Corredor de Cauce', itemSlug: 'racion-carne', cantidad: 4 },
-  { sourceSlug: 'corredor-de-cauce', sourceName: 'Corredor de Cauce', itemSlug: 'cuerda-tendon', cantidad: 2, condicion: 'cuchillo' },
-  { sourceSlug: 'corredor-de-cauce', sourceName: 'Corredor de Cauce', itemSlug: 'hueso-ligero', cantidad: 6 },
+  { sourceSlug: 'corredor-de-cauce', sourceName: 'Corredor de Cauce',
+    metodoObtencion: 'CAZA', itemSlug: 'piel-corredor', cantidad: 1, condicion: 'cuchillo (deshuello)' },
+  { sourceSlug: 'corredor-de-cauce', sourceName: 'Corredor de Cauce',
+    metodoObtencion: 'CAZA', itemSlug: 'racion-carne', cantidad: 4 },
+  { sourceSlug: 'corredor-de-cauce', sourceName: 'Corredor de Cauce',
+    metodoObtencion: 'CAZA', itemSlug: 'cuerda-tendon', cantidad: 2, condicion: 'cuchillo' },
+  { sourceSlug: 'corredor-de-cauce', sourceName: 'Corredor de Cauce',
+    metodoObtencion: 'CAZA', itemSlug: 'hueso-ligero', cantidad: 6 },
 
   {
     sourceSlug: 'gargantua-de-ceniza',
     sourceName: 'Gargantúa de Ceniza',
+    metodoObtencion: 'CAZA',
     itemSlug: 'placa-osea-gargantua',
     cantidad: 2,
     condicion: 'SOLO cadáver ya muerto o cacería ritual de clan — nunca loot casual',
@@ -1598,6 +1946,7 @@ export const harvestYields: HarvestYieldInput[] = [
   {
     sourceSlug: 'gargantua-de-ceniza',
     sourceName: 'Gargantúa de Ceniza',
+    metodoObtencion: 'CAZA',
     itemSlug: 'hueso-largo-gargantua',
     cantidad: 1,
     condicion: 'SOLO cadáver ya muerto o cacería ritual de clan — nunca loot casual',
@@ -1605,6 +1954,7 @@ export const harvestYields: HarvestYieldInput[] = [
   {
     sourceSlug: 'gargantua-de-ceniza',
     sourceName: 'Gargantúa de Ceniza',
+    metodoObtencion: 'CAZA',
     itemSlug: 'piel-gargantua',
     cantidad: 1,
     condicion: 'SOLO cadáver ya muerto o cacería ritual de clan — nunca loot casual',
@@ -1613,26 +1963,32 @@ export const harvestYields: HarvestYieldInput[] = [
   {
     sourceSlug: 'espina-del-viento',
     sourceName: 'Espina del Viento',
+    metodoObtencion: 'CAZA',
     itemSlug: 'veneno-espina',
     cantidad: 1,
     condicion: 'extracción cuidadosa (destreza, Media 15 — falla = veneno perdido, no herida automática)',
   },
-  { sourceSlug: 'espina-del-viento', sourceName: 'Espina del Viento', itemSlug: 'caparazon-espina', cantidad: 1 },
+  { sourceSlug: 'espina-del-viento', sourceName: 'Espina del Viento',
+    metodoObtencion: 'CAZA', itemSlug: 'caparazon-espina', cantidad: 1 },
 
   {
     sourceSlug: 'raiz-de-fuego',
     sourceName: 'Raíz de Fuego',
+    metodoObtencion: 'EXTRACCION',
     itemSlug: 'raiz-de-fuego',
     cantidad: 1,
     condicion: 'extracción con cuidado (destreza, Media 15 — falla = se inflama)',
   },
 
-  { sourceSlug: 'corretolvas', sourceName: 'Corretolvas', itemSlug: 'racion-carne', cantidad: 1 },
-  { sourceSlug: 'corretolvas', sourceName: 'Corretolvas', itemSlug: 'plumas-rojizas', cantidad: 1 },
+  { sourceSlug: 'corretolvas', sourceName: 'Corretolvas',
+    metodoObtencion: 'CAZA', itemSlug: 'racion-carne', cantidad: 1 },
+  { sourceSlug: 'corretolvas', sourceName: 'Corretolvas',
+    metodoObtencion: 'CAZA', itemSlug: 'plumas-rojizas', cantidad: 1 },
 
   {
     sourceSlug: 'salvia-del-polvo',
     sourceName: 'Salvia del Polvo',
+    metodoObtencion: 'EXTRACCION',
     itemSlug: 'manojo-salvia-polvo',
     cantidad: 1,
     condicion: 'reconocerla (los orcos de las Llanuras la conocen de niños — para Gorhorn no requiere tirada)',
@@ -1641,6 +1997,7 @@ export const harvestYields: HarvestYieldInput[] = [
   {
     sourceSlug: 'espiga-roja',
     sourceName: 'Espiga Roja',
+    metodoObtencion: 'EXTRACCION',
     itemSlug: 'grano-espiga-roja',
     cantidad: 1,
     condicion: '1 por hora de recolección — fórmula determinista en timedActions.ts, patrón leña',
@@ -1649,6 +2006,7 @@ export const harvestYields: HarvestYieldInput[] = [
   {
     sourceSlug: 'matorral-de-cuerno',
     sourceName: 'Matorral de Cuerno',
+    metodoObtencion: 'TALA',
     itemSlug: 'lena-matorral-cuerno',
     cantidad: 1,
     condicion: 'la cantidad real la calcula la fórmula de leña ya existente en timedActions.ts',
@@ -1660,36 +2018,59 @@ export const harvestYields: HarvestYieldInput[] = [
   {
     sourceSlug: 'roca-pilares-rotos',
     sourceName: 'Roca de Los Pilares Rotos',
+    metodoObtencion: 'MINERIA',
     itemSlug: 'piedra',
     cantidad: 3,
     condicion: 'formación rocosa erosionada — buena cantera improvisada, 3 piedras por recolección',
   },
+  // Receta de refinado nueva (2026-07-29, petición explícita: "convertir una mena de mineral en
+  // un lingote") — misma formación rocosa que ya da piedra, con una veta de hierro real dentro.
+  {
+    sourceSlug: 'veta-hierro-pilares-rotos',
+    sourceName: 'Veta de hierro de Los Pilares Rotos',
+    metodoObtencion: 'MINERIA',
+    itemSlug: 'mena-de-hierro',
+    cantidad: 2,
+    condicion: 'requiere pico de minero — vetas visibles entre las grietas de la roca erosionada',
+  },
 
   // --- Fauna/flora nueva (roadmap 2026-07-20, propuesta de Fable) ---
-  { sourceSlug: 'aullador-rojo', sourceName: 'Aullador Rojo', itemSlug: 'racion-carne', cantidad: 2, condicion: 'carne dura de depredador — mejor cocinada' },
-  { sourceSlug: 'aullador-rojo', sourceName: 'Aullador Rojo', itemSlug: 'hueso-ligero', cantidad: 3 },
-  { sourceSlug: 'aullador-rojo', sourceName: 'Aullador Rojo', itemSlug: 'colmillo-aullador', cantidad: 2, condicion: 'cuchillo' },
+  { sourceSlug: 'aullador-rojo', sourceName: 'Aullador Rojo',
+    metodoObtencion: 'CAZA', itemSlug: 'racion-carne', cantidad: 2, condicion: 'carne dura de depredador — mejor cocinada' },
+  { sourceSlug: 'aullador-rojo', sourceName: 'Aullador Rojo',
+    metodoObtencion: 'CAZA', itemSlug: 'hueso-ligero', cantidad: 3 },
+  { sourceSlug: 'aullador-rojo', sourceName: 'Aullador Rojo',
+    metodoObtencion: 'CAZA', itemSlug: 'colmillo-aullador', cantidad: 2, condicion: 'cuchillo' },
 
-  { sourceSlug: 'murgol', sourceName: 'Múrgol', itemSlug: 'racion-carne', cantidad: 3 },
-  { sourceSlug: 'murgol', sourceName: 'Múrgol', itemSlug: 'lana-murgol', cantidad: 1, condicion: 'cuchillo' },
-  { sourceSlug: 'murgol', sourceName: 'Múrgol', itemSlug: 'hueso-ligero', cantidad: 4 },
+  { sourceSlug: 'murgol', sourceName: 'Múrgol',
+    metodoObtencion: 'CAZA', itemSlug: 'racion-carne', cantidad: 3 },
+  { sourceSlug: 'murgol', sourceName: 'Múrgol',
+    metodoObtencion: 'CAZA', itemSlug: 'lana-murgol', cantidad: 1, condicion: 'cuchillo' },
+  { sourceSlug: 'murgol', sourceName: 'Múrgol',
+    metodoObtencion: 'CAZA', itemSlug: 'hueso-ligero', cantidad: 4 },
 
-  { sourceSlug: 'cruzavientos', sourceName: 'Cruzavientos', itemSlug: 'racion-carne', cantidad: 2 },
-  { sourceSlug: 'cruzavientos', sourceName: 'Cruzavientos', itemSlug: 'pluma-timonera', cantidad: 2 },
+  { sourceSlug: 'cruzavientos', sourceName: 'Cruzavientos',
+    metodoObtencion: 'CAZA', itemSlug: 'racion-carne', cantidad: 2 },
+  { sourceSlug: 'cruzavientos', sourceName: 'Cruzavientos',
+    metodoObtencion: 'CAZA', itemSlug: 'pluma-timonera', cantidad: 2 },
 
   {
     sourceSlug: 'rondador-de-brasas',
     sourceName: 'Rondador de Brasas',
+    metodoObtencion: 'CAZA',
     itemSlug: 'piel-rondador',
     cantidad: 1,
     condicion: 'cuchillo de deshuello',
   },
-  { sourceSlug: 'rondador-de-brasas', sourceName: 'Rondador de Brasas', itemSlug: 'garra-rondador', cantidad: 2 },
-  { sourceSlug: 'rondador-de-brasas', sourceName: 'Rondador de Brasas', itemSlug: 'racion-carne', cantidad: 3, condicion: 'carne fuerte — mejor ahumada' },
+  { sourceSlug: 'rondador-de-brasas', sourceName: 'Rondador de Brasas',
+    metodoObtencion: 'CAZA', itemSlug: 'garra-rondador', cantidad: 2 },
+  { sourceSlug: 'rondador-de-brasas', sourceName: 'Rondador de Brasas',
+    metodoObtencion: 'CAZA', itemSlug: 'racion-carne', cantidad: 3, condicion: 'carne fuerte — mejor ahumada' },
 
   {
     sourceSlug: 'salamandra-de-escoria',
     sourceName: 'Salamandra de Escoria',
+    metodoObtencion: 'CAZA',
     itemSlug: 'glandula-ignea',
     cantidad: 1,
     condicion: 'extracción con cuidado (destreza, Media 15 — falla = se inflama)',
@@ -1697,18 +2078,23 @@ export const harvestYields: HarvestYieldInput[] = [
   {
     sourceSlug: 'salamandra-de-escoria',
     sourceName: 'Salamandra de Escoria',
+    metodoObtencion: 'CAZA',
     itemSlug: 'piel-salamandra',
     cantidad: 1,
     condicion: 'cuchillo de deshuello',
   },
-  { sourceSlug: 'salamandra-de-escoria', sourceName: 'Salamandra de Escoria', itemSlug: 'racion-carne', cantidad: 2 },
+  { sourceSlug: 'salamandra-de-escoria', sourceName: 'Salamandra de Escoria',
+    metodoObtencion: 'CAZA', itemSlug: 'racion-carne', cantidad: 2 },
 
-  { sourceSlug: 'buitre-cenizo', sourceName: 'Buitre Cenizo', itemSlug: 'racion-carne', cantidad: 1, condicion: 'carne de carroñero — mala fama, solo con hambre real' },
-  { sourceSlug: 'buitre-cenizo', sourceName: 'Buitre Cenizo', itemSlug: 'hueso-ligero', cantidad: 2 },
+  { sourceSlug: 'buitre-cenizo', sourceName: 'Buitre Cenizo',
+    metodoObtencion: 'CAZA', itemSlug: 'racion-carne', cantidad: 1, condicion: 'carne de carroñero — mala fama, solo con hambre real' },
+  { sourceSlug: 'buitre-cenizo', sourceName: 'Buitre Cenizo',
+    metodoObtencion: 'CAZA', itemSlug: 'hueso-ligero', cantidad: 2 },
 
   {
     sourceSlug: 'cardo-brujula',
     sourceName: 'Cardo Brújula',
+    metodoObtencion: 'EXTRACCION',
     itemSlug: 'aguja-de-cardo',
     cantidad: 1,
     condicion: 'cortarlo sin quebrar la fibra central (destreza, Media 15 — falla = fibra rota, inservible)',
@@ -1716,6 +2102,7 @@ export const harvestYields: HarvestYieldInput[] = [
   {
     sourceSlug: 'liquen-del-cauce',
     sourceName: 'Liquen del Cauce',
+    metodoObtencion: 'EXTRACCION',
     itemSlug: 'liquen-humedo',
     cantidad: 1,
     condicion: 'reconocerlo (los pastores de las Llanuras lo conocen — para Gorhorn no requiere tirada)',
@@ -1723,6 +2110,7 @@ export const harvestYields: HarvestYieldInput[] = [
   {
     sourceSlug: 'bulbo-del-cauce',
     sourceName: 'Bulbo del Cauce',
+    metodoObtencion: 'EXTRACCION',
     itemSlug: 'bulbo-cauce',
     cantidad: 1,
     condicion: '1 por hora de recolección — fórmula determinista en timedActions.ts, patrón leña',
@@ -1730,6 +2118,7 @@ export const harvestYields: HarvestYieldInput[] = [
   {
     sourceSlug: 'flor-de-ceniza',
     sourceName: 'Flor de Ceniza',
+    metodoObtencion: 'EXTRACCION',
     itemSlug: 'petalos-flor-ceniza',
     cantidad: 1,
     condicion: 'solo en suelo de ceniza — borde norte del núcleo y zona volcánica',
@@ -1737,22 +2126,29 @@ export const harvestYields: HarvestYieldInput[] = [
   {
     sourceSlug: 'arena-iman',
     sourceName: 'Arena Imán',
+    metodoObtencion: 'EXTRACCION',
     itemSlug: 'arena-magnetica',
     cantidad: 1,
     condicion: 'solo tras una tormenta de arena magnética reciente',
   },
 
   // --- Tier 0, ronda 2 de objetos (roadmap 2026-07-20) ---
-  { sourceSlug: 'restos-personales-maktor', sourceName: 'Restos personales de Maktor', itemSlug: 'juguete-hueso-maktor', cantidad: 1 },
-  { sourceSlug: 'restos-personales-maktor', sourceName: 'Restos personales de Maktor', itemSlug: 'brazalete-trenzado-maktor', cantidad: 1 },
-  { sourceSlug: 'restos-personales-maktor', sourceName: 'Restos personales de Maktor', itemSlug: 'tablilla-quemada-maktor', cantidad: 1 },
+  { sourceSlug: 'restos-personales-maktor', sourceName: 'Restos personales de Maktor',
+    metodoObtencion: 'EXTRACCION', itemSlug: 'juguete-hueso-maktor', cantidad: 1 },
+  { sourceSlug: 'restos-personales-maktor', sourceName: 'Restos personales de Maktor',
+    metodoObtencion: 'EXTRACCION', itemSlug: 'brazalete-trenzado-maktor', cantidad: 1 },
+  { sourceSlug: 'restos-personales-maktor', sourceName: 'Restos personales de Maktor',
+    metodoObtencion: 'EXTRACCION', itemSlug: 'tablilla-quemada-maktor', cantidad: 1 },
 
-  { sourceSlug: 'ofrendas-tumulos-honor', sourceName: 'Ofrendas de los Túmulos del Honor', itemSlug: 'panuelo-luto-serhu', cantidad: 1 },
-  { sourceSlug: 'ofrendas-tumulos-honor', sourceName: 'Ofrendas de los Túmulos del Honor', itemSlug: 'hueso-marcado-primer-caceria', cantidad: 1 },
+  { sourceSlug: 'ofrendas-tumulos-honor', sourceName: 'Ofrendas de los Túmulos del Honor',
+    metodoObtencion: 'EXTRACCION', itemSlug: 'panuelo-luto-serhu', cantidad: 1 },
+  { sourceSlug: 'ofrendas-tumulos-honor', sourceName: 'Ofrendas de los Túmulos del Honor',
+    metodoObtencion: 'EXTRACCION', itemSlug: 'hueso-marcado-primer-caceria', cantidad: 1 },
 
   {
     sourceSlug: 'arena-iman',
     sourceName: 'Arena Imán',
+    metodoObtencion: 'EXTRACCION',
     itemSlug: 'esquirla-celeste-caida',
     cantidad: 1,
     condicion: 'extremadamente rara — tratar como añadido narrativo ocasional tras una tormenta fuerte, nunca drop garantizado',
@@ -1760,6 +2156,7 @@ export const harvestYields: HarvestYieldInput[] = [
   {
     sourceSlug: 'liquen-del-cauce',
     sourceName: 'Liquen del Cauce',
+    metodoObtencion: 'EXTRACCION',
     itemSlug: 'agua-hervida-liquen',
     cantidad: 1,
     condicion: 'requiere hervirlo sobre fuego ya encendido — no se obtiene masticándolo en crudo',
@@ -1771,6 +2168,7 @@ export const harvestYields: HarvestYieldInput[] = [
   {
     sourceSlug: 'hielo-silice',
     sourceName: 'Hielo Sílice',
+    metodoObtencion: 'MINERIA',
     itemSlug: 'cuna-hielo-silice-sin-tallar',
     cantidad: 1,
     condicion: 'Solo en Cristal Helado — fuera del núcleo jugable actual',
@@ -1778,6 +2176,7 @@ export const harvestYields: HarvestYieldInput[] = [
   {
     sourceSlug: 'hierba-del-hierro',
     sourceName: 'Hierba del Hierro',
+    metodoObtencion: 'EXTRACCION',
     itemSlug: 'hierba-del-hierro',
     cantidad: 1,
     condicion: 'Solo en la Meseta del Orden — fuera del núcleo jugable actual',
@@ -1785,6 +2184,7 @@ export const harvestYields: HarvestYieldInput[] = [
   {
     sourceSlug: 'trepador-ocaso',
     sourceName: 'Trepador Ocaso',
+    metodoObtencion: 'EXTRACCION',
     itemSlug: 'resina-trepador-ocaso',
     cantidad: 1,
     condicion: 'Solo en Ciénaga Troncal — fuera del núcleo jugable actual',
@@ -1792,6 +2192,7 @@ export const harvestYields: HarvestYieldInput[] = [
   {
     sourceSlug: 'cornante',
     sourceName: 'Cornante',
+    metodoObtencion: 'CAZA',
     itemSlug: 'racion-carne',
     cantidad: 3,
     condicion: 'Solo en Ciénaga Troncal, cacería de grupo — fuera del núcleo jugable actual',
@@ -1799,6 +2200,7 @@ export const harvestYields: HarvestYieldInput[] = [
   {
     sourceSlug: 'sombra-de-kroj',
     sourceName: 'Sombra de Kroj',
+    metodoObtencion: 'CAZA',
     itemSlug: 'pluma-sombra-kroj',
     cantidad: 1,
     condicion: 'Solo en El Margen Silencioso — fuera del núcleo jugable actual',
@@ -1817,6 +2219,10 @@ export const harvestSourceAliases: Record<string, string[]> = {
   'espiga-roja': ['espiga roja', 'espiga'],
   'matorral-de-cuerno': ['matorral de cuerno', 'matorral', 'leña'],
   'roca-pilares-rotos': ['roca', 'rocas', 'piedra', 'piedras', 'canto rodado', 'pedrusco', 'pilares rotos'],
+  // Alias distintos a propósito de 'roca-pilares-rotos' de arriba (2026-07-29) — "mena"/"veta" no
+  // deben coincidir nunca con "piedra"/"roca" genéricas, para que picar piedra suelta y minar la
+  // veta de hierro sean intenciones claramente distintas del jugador.
+  'veta-hierro-pilares-rotos': ['veta de hierro', 'veta', 'mena de hierro', 'mena'],
   // Fauna nueva (mismos aliases que los del Npc correspondiente, ver array `fauna` arriba)
   'aullador-rojo': ['aullador', 'aulladores', 'aullador rojo', 'aulladores rojos', 'perro salvaje', 'jauria', 'jauría'],
   // 'ganado'/'res' quitados (ver comentario junto al Npc de Múrgol más arriba): mismo tipo de
@@ -1863,6 +2269,34 @@ export const harvestSourceAliases: Record<string, string[]> = {
 /// flora/mineral a declarar explícitamente "no soy fauna".
 export const harvestSourcesThatAreFaunaWithoutNpc = new Set(['espina-del-viento', 'cornante', 'sombra-de-kroj']);
 
+/// Zona de origen explícita por fuente (2026-07-29, colapsables de fauna/flora por zona en la
+/// Enciclopedia) — confirmado por la usuaria: todas estas pertenecen a Llanuras del Viento Rojo.
+/// Necesario aparte del `homeLocationSlug` del Npc (muchas fauna cazable no tiene uno fijo —
+/// itinerante por la llanura, sin un solo punto de "casa") y del `lugarOrigen` del objeto que dan
+/// (varias comparten un mismo objeto genérico entre especies, ej. "Ración de carne fresca", que
+/// no puede llevar una región fija sin mentir sobre las demás fuentes que también lo dan).
+export const harvestSourceRegion: Record<string, string> = {
+  corretolvas: 'Llanuras del Viento Rojo',
+  'aullador-rojo': 'Llanuras del Viento Rojo',
+  murgol: 'Llanuras del Viento Rojo',
+  cruzavientos: 'Llanuras del Viento Rojo',
+  'rondador-de-brasas': 'Llanuras del Viento Rojo',
+  'buitre-cenizo': 'Llanuras del Viento Rojo',
+  'espina-del-viento': 'Llanuras del Viento Rojo',
+  // Corregido (2026-07-29, auditoría al asignar población): su propia descripción dice "se
+  // hunden en el barro de la ciénaga" — no encaja con Llanuras pese a la instrucción general.
+  cornante: 'Ciénaga Troncal',
+  'raiz-de-fuego': 'Llanuras del Viento Rojo',
+  'matorral-de-cuerno': 'Llanuras del Viento Rojo',
+  'roca-pilares-rotos': 'Llanuras del Viento Rojo',
+  'cardo-brujula': 'Llanuras del Viento Rojo',
+  'liquen-del-cauce': 'Llanuras del Viento Rojo',
+  'bulbo-del-cauce': 'Llanuras del Viento Rojo',
+  'flor-de-ceniza': 'Llanuras del Viento Rojo',
+  'arena-iman': 'Llanuras del Viento Rojo',
+  'ofrendas-tumulos-honor': 'Llanuras del Viento Rojo',
+};
+
 export const harvestSourceDescriptions: Record<string, string> = {
   'espina-del-viento':
     'Criatura del desierto de apenas un metro de altura, caparazón quitinoso de un rojizo oxidado que imita las dunas rojas que lo rodean — pequeñas protuberancias en el caparazón parecen cristales de arena roja calcificada. La cola segmentada se arquea alta, rematada en un saco de veneno translúcido y pulsante con forma de punta de flecha. Se entierra a medias en la arena fina, invisible hasta que ataca, casi siempre durante una tormenta de arena magnética — entre los surcos de arena cercanos a veces se ven ejemplares más pequeños construyendo sus propios nidos.',
@@ -1876,6 +2310,8 @@ export const harvestSourceDescriptions: Record<string, string> = {
     'Arbusto bajo de madera oscura y retorcida en espirales como cuernos entrelazados, corteza agrietada y reseca — la única leña de verdad en la llanura abierta.',
   'roca-pilares-rotos':
     'Bloques y cascotes de roca rojiza erosionada por el viento, desprendidos de la base de Los Pilares Rotos — superficie áspera, veteada de ocre y gris.',
+  'veta-hierro-pilares-rotos':
+    'Vetas oscuras de óxido rojizo visibles entre las grietas de la roca erosionada de Los Pilares Rotos — hay que picar de verdad para sacar la mena, no basta con recoger cascotes sueltos.',
   'cardo-brujula':
     'Cardo espinoso de tallo rígido y flor cerrada de un gris metálico apagado, con una única fibra central imantada que, colgada de un hilo, siempre señala el mismo rumbo.',
   'liquen-del-cauce':
