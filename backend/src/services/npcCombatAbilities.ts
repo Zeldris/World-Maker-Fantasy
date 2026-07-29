@@ -45,7 +45,10 @@ export function npcCombatAbilitiesFor(npc: NpcForCombatAbilities, weaponNames: s
 
   if (npc.raza) {
     const raza = BERIG_RAZAS.find((r) => r.slug === npc.raza);
-    if (raza) abilities.push({ name: raza.habilidadRacial.name, attribute: raza.habilidadRacial.preferredAttribute, effect: null });
+    if (raza) {
+      abilities.push({ name: raza.habilidadesRaciales.ataque.name, attribute: raza.habilidadesRaciales.ataque.preferredAttribute, effect: null });
+      abilities.push({ name: raza.habilidadesRaciales.defensa.name, attribute: raza.habilidadesRaciales.defensa.preferredAttribute, effect: null });
+    }
   }
 
   for (const racial of npc.habilidadesRaciales) {

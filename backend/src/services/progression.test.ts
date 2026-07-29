@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { levelForXp, habilidadSlotsForLevel, xpForRollSuccess, xpForHitos, applyXp } from './progression.js';
+import { levelForXp, maxCombatAbilitiesFor, xpForRollSuccess, xpForHitos, applyXp } from './progression.js';
 
 describe('levelForXp', () => {
   it('nivel 1 con 0 XP', () => {
@@ -14,13 +14,13 @@ describe('levelForXp', () => {
   });
 });
 
-describe('habilidadSlotsForLevel', () => {
-  it('3 huecos en nivel 1', () => {
-    expect(habilidadSlotsForLevel(1)).toBe(3);
+describe('maxCombatAbilitiesFor', () => {
+  it('8 huecos por debajo del nivel de arma avanzada (2 raciales + 2 de arma + 4 de clase)', () => {
+    expect(maxCombatAbilitiesFor(1)).toBe(8);
+    expect(maxCombatAbilitiesFor(19)).toBe(8);
   });
-  it('crece con floor(nivel/2)', () => {
-    expect(habilidadSlotsForLevel(4)).toBe(5);
-    expect(habilidadSlotsForLevel(5)).toBe(5);
+  it('10 huecos al cruzar el nivel de arma avanzada (2 raciales + 4 de arma + 4 de clase)', () => {
+    expect(maxCombatAbilitiesFor(20)).toBe(10);
   });
 });
 

@@ -2,7 +2,7 @@ import { describe, it, expect, vi, afterEach } from 'vitest';
 import { resolveExchange, rollInitiative, type ExchangeParticipant } from './combatExchange.js';
 import type { AttributeBlock } from './dice.js';
 
-const BASE_ATTRIBUTES: AttributeBlock = { fuerza: 10, destreza: 10, sigilo: 10, voluntad: 10, carisma: 10, arcano: 10 };
+const BASE_ATTRIBUTES: AttributeBlock = { fuerza: 10, destreza: 10, constitucion: 10, inteligencia: 10, voluntad: 10, carisma: 10, arcano: 10 };
 
 // d20 = floor(r*20)+1 — valores de Math.random() que producen cada roll usado en los tests.
 const R_FOR_ROLL_5 = 0.2; // floor(0.2*20)+1 = 5
@@ -21,8 +21,8 @@ describe('resolveExchange', () => {
   // Mismo atributo en los dos lados (multiplicador de tipo = 1, sin ventaja) para aislar la
   // tabla de resultados cruzados del efecto de la rueda de debilidades — esa se cubre aparte
   // en attributeWheel.test.ts, ya integrada aquí en el último bloque de tests.
-  const atacanteBase: ExchangeParticipant = { attributes: BASE_ATTRIBUTES, attribute: 'fuerza', difficulty: 15 };
-  const defensorBase: ExchangeParticipant = { attributes: BASE_ATTRIBUTES, attribute: 'fuerza', difficulty: 15 };
+  const atacanteBase: ExchangeParticipant = { attributes: BASE_ATTRIBUTES, attribute: 'fuerza', difficulty: 15, condicionFisica: 'ILESO' };
+  const defensorBase: ExchangeParticipant = { attributes: BASE_ATTRIBUTES, attribute: 'fuerza', difficulty: 15, condicionFisica: 'ILESO' };
 
   it('atacante falla + defensor claro → el defensor contragolpea', () => {
     mockRolls(R_FOR_ROLL_5, R_FOR_ROLL_20);
@@ -74,28 +74,39 @@ describe('resolveExchange', () => {
 
   it('aplica el multiplicador de la rueda de debilidades al valor efectivo de cada lado', () => {
     mockRolls(R_FOR_ROLL_10, R_FOR_ROLL_10);
-    const atacante: ExchangeParticipant = { attributes: BASE_ATTRIBUTES, attribute: 'destreza', difficulty: 15 };
-    const defensor: ExchangeParticipant = { attributes: BASE_ATTRIBUTES, attribute: 'fuerza', difficulty: 15 };
+    const atacante: ExchangeParticipant = { attributes: BASE_ATTRIBUTES, attribute: 'destreza', difficulty: 15, condicionFisica: 'ILESO' };
+    const defensor: ExchangeParticipant = { attributes: BASE_ATTRIBUTES, attribute: 'fuerza', difficulty: 15, condicionFisica: 'ILESO' };
     const result = resolveExchange(atacante, defensor);
     // Destreza contra Fuerza: el atacante tiene ventaja de tipo (×1.5), el defensor la desventaja.
     expect(result.atacante.valorEfectivo).toBeGreaterThan(result.atacante.value);
     expect(result.defensor.valorEfectivo).toBeLessThan(result.defensor.value);
+  });
+
+  it('un participante HERIDO/GRAVE tira con un valor efectivo menor que uno ILESO (malus por condición)', () => {
+    mockRolls(R_FOR_ROLL_10, R_FOR_ROLL_10);
+    const ileso: ExchangeParticipant = { attributes: BASE_ATTRIBUTES, attribute: 'fuerza', difficulty: 15, condicionFisica: 'ILESO' };
+    const herido: ExchangeParticipant = { attributes: BASE_ATTRIBUTES, attribute: 'fuerza', difficulty: 15, condicionFisica: 'HERIDO' };
+    const grave: ExchangeParticipant = { attributes: BASE_ATTRIBUTES, attribute: 'fuerza', difficulty: 15, condicionFisica: 'GRAVE' };
+    const resultHerido = resolveExchange(herido, ileso);
+    const resultGrave = resolveExchange(grave, ileso);
+    expect(resultHerido.atacante.valorEfectivo).toBeLessThan(BASE_ATTRIBUTES.fuerza);
+    expect(resultGrave.atacante.valorEfectivo).toBeLessThan(resultHerido.atacante.valorEfectivo);
   });
 });
 
 describe('rollInitiative', () => {
   it('gana quien saque el resultado más alto en la tirada de destreza', () => {
     mockRolls(R_FOR_ROLL_20, R_FOR_ROLL_5);
-    expect(rollInitiative(BASE_ATTRIBUTES, BASE_ATTRIBUTES)).toBe('jugador');
+    expect(rollInitiative(BASE_ATTRIBUTES, BASE_ATTRIBUTES)).toEqual({ ganador: 'jugador', jugadorTirada: 25, npcTirada: 10 });
   });
 
   it('el NPC puede ganar la iniciativa', () => {
     mockRolls(R_FOR_ROLL_5, R_FOR_ROLL_20);
-    expect(rollInitiative(BASE_ATTRIBUTES, BASE_ATTRIBUTES)).toBe('npc');
+    expect(rollInitiative(BASE_ATTRIBUTES, BASE_ATTRIBUTES)).toEqual({ ganador: 'npc', jugadorTirada: 10, npcTirada: 25 });
   });
 
   it('un empate favorece al jugador (nunca deja la iniciativa sin decidir)', () => {
     mockRolls(R_FOR_ROLL_10, R_FOR_ROLL_10);
-    expect(rollInitiative(BASE_ATTRIBUTES, BASE_ATTRIBUTES)).toBe('jugador');
+    expect(rollInitiative(BASE_ATTRIBUTES, BASE_ATTRIBUTES)).toEqual({ ganador: 'jugador', jugadorTirada: 15, npcTirada: 15 });
   });
 });

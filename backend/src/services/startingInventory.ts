@@ -37,7 +37,7 @@ const GORHORN_STARTING_INVENTORY: StartingInventoryItem[] = [
     description: 'Filo mineral tallado, no forjado — comercio con el Clan Helsig, regalo de Hagar.',
     origin: 'inicial',
     slot: 'ARMA_SECUNDARIA',
-    statBonusAttribute: 'sigilo',
+    statBonusAttribute: 'destreza',
     statBonusAmount: 1,
     catalogSlug: 'cuchillo-hielo-silice',
   },
@@ -82,6 +82,14 @@ const GORHORN_STARTING_INVENTORY: StartingInventoryItem[] = [
     // vez de depender de que el nombre coincida letra a letra (por eso `entityDiscovery.ts` nunca
     // lo había reconocido).
     catalogSlug: 'racion-viaje',
+  },
+  {
+    name: 'Cataplasma de salvia del polvo',
+    description: 'Pasta verde grisácea de hojas machacadas de Salvia del Polvo — corta hemorragias y limpia heridas.',
+    origin: 'inicial',
+    // Petición explícita (2026-07-29, "para las pruebas") — objeto médico real (curaHasta: HERIDO
+    // en ItemCatalog), para poder probar las reglas de curación sin tener que craftearlo primero.
+    catalogSlug: 'cataplasma-salvia',
   },
 ];
 

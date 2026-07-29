@@ -1,5 +1,15 @@
 /// Fórmula de tirada — decisión de mecánicas 1 (docs/06-decisiones-mecanicas.md).
-export type Attribute = 'fuerza' | 'destreza' | 'sigilo' | 'voluntad' | 'carisma' | 'arcano'
+///
+/// Rediseño de atributos (2026-07-29, "sigue baldurs gate 3 y D&D para próximas referencias, que
+/// son juegos que coinciden más con lo que estamos creando" — el motor de Tarkor ya usa dados y
+/// tablas de XP de D&D 5e, así que su set de habilidades es la referencia que de verdad encaja,
+/// no GW2/WoW): los 6 clásicos de D&D (Fuerza/Destreza/Constitución/Inteligencia/Sabiduría/
+/// Carisma), con Voluntad en vez de "Sabiduría" (mismo concepto, nombre que ya usaba el
+/// proyecto) + Arcano aparte — en el lore propio de Tarkor la magia "nace del origen salvaje e
+/// incontrolado de la Semilla... nunca fue diseñada ni domesticada por nadie", no es lo mismo que
+/// Inteligencia (memoria/lógica) como en D&D puro. Sigilo baja a SecondaryAttribute (no es un
+/// atributo primario ni en D&D — ahí es una habilidad bajo Destreza).
+export type Attribute = 'fuerza' | 'destreza' | 'constitucion' | 'inteligencia' | 'voluntad' | 'carisma' | 'arcano'
 export type AttributeBlock = Record<Attribute, number>
 
 /// Grados de éxito (docs/08-acciones-por-tiempo.md § 5, roadmap 2026-07-19 — pendiente desde el

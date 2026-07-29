@@ -8,18 +8,18 @@ describe('typeMultiplierFor', () => {
     expect(typeMultiplierFor('fuerza', 'destreza', 'ataque')).toBeCloseTo(1 / 1.5);
   });
 
-  it('fuerza le gana a arcano (cierra el ciclo del anillo, distancia 1 en sentido inverso)', () => {
-    expect(typeMultiplierFor('fuerza', 'arcano', 'ataque')).toBe(1.5);
-    expect(typeMultiplierFor('arcano', 'fuerza', 'ataque')).toBeCloseTo(1 / 1.5);
+  it('fuerza le gana a carisma (cierra el ciclo del anillo, distancia 1 en sentido inverso)', () => {
+    expect(typeMultiplierFor('fuerza', 'carisma', 'ataque')).toBe(1.5);
+    expect(typeMultiplierFor('carisma', 'fuerza', 'ataque')).toBeCloseTo(1 / 1.5);
   });
 
-  it('sin relación en el extremo opuesto del anillo (distancia 3) — multiplicador neutro', () => {
-    expect(typeMultiplierFor('fuerza', 'voluntad', 'ataque')).toBe(1);
-    expect(typeMultiplierFor('voluntad', 'fuerza', 'ataque')).toBe(1);
+  it('sin relación en el extremo del anillo (distancia 3, anillo de 7 impar — dos por lado) — multiplicador neutro', () => {
+    expect(typeMultiplierFor('fuerza', 'arcano', 'ataque')).toBe(1);
+    expect(typeMultiplierFor('arcano', 'fuerza', 'ataque')).toBe(1);
   });
 
   it('mismo atributo — siempre neutro, nunca se compite consigo mismo', () => {
-    expect(typeMultiplierFor('sigilo', 'sigilo', 'defensa')).toBe(1);
+    expect(typeMultiplierFor('constitucion', 'constitucion', 'defensa')).toBe(1);
   });
 
   it('los dos árboles (ataque/defensa) son independientes pero comparten la misma topología', () => {
@@ -38,8 +38,10 @@ describe('typeMultiplierFor', () => {
   });
 
   it('cada atributo tiene exactamente un contrario directo (distancia 1) y uno al que gana', () => {
-    // Con 6 atributos en el anillo, cada uno debería tener multiplicador 1.5 con exactamente
-    // otros dos (a quien le gana y quien le gana a él), 1.15 con otros dos, y 1 con el restante.
+    // Con 7 atributos en el anillo (impar, sin antípoda exacta), cada uno tiene multiplicador 1.5
+    // con otros dos (a quien le gana y quien le gana a él), 1.15 con otros dos, y 1 (neutro) con
+    // los 2 restantes — a diferencia de un anillo par, aquí no hay un único "opuesto", los dos de
+    // distancia máxima (3) caen ambos en neutro.
     for (const a of ATTRIBUTE_RING) {
       const multipliers = ATTRIBUTE_RING.filter((b) => b !== a).map((b) => typeMultiplierFor(a, b, 'ataque'));
       const strong = multipliers.filter((m) => m === 1.5 || Math.abs(m - 1 / 1.5) < 1e-9);
@@ -47,7 +49,7 @@ describe('typeMultiplierFor', () => {
       const neutral = multipliers.filter((m) => m === 1);
       expect(strong.length).toBe(2);
       expect(mild.length).toBe(2);
-      expect(neutral.length).toBe(1);
+      expect(neutral.length).toBe(2);
     }
   });
 });
@@ -64,8 +66,8 @@ describe('effectiveAttributeValue', () => {
 });
 
 describe('ATTRIBUTE_RING', () => {
-  it('tiene los 6 atributos jugables, cada uno una sola vez', () => {
-    const expected: Attribute[] = ['fuerza', 'destreza', 'sigilo', 'voluntad', 'carisma', 'arcano'];
+  it('tiene los 7 atributos jugables, cada uno una sola vez', () => {
+    const expected: Attribute[] = ['fuerza', 'destreza', 'constitucion', 'inteligencia', 'voluntad', 'carisma', 'arcano']
     expect(new Set(ATTRIBUTE_RING)).toEqual(new Set(expected));
     expect(ATTRIBUTE_RING.length).toBe(expected.length);
   });

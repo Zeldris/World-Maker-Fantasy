@@ -7,12 +7,15 @@ import type { Attribute } from './dice.js';
 /// anillo, sin rediseñar la topología entera.
 ///
 /// Orden y por qué (Destreza > Fuerza vino dado por la usuaria, el resto sigue la misma lógica
-/// de "qué le gana a qué" en Tarkor): la agilidad esquiva la fuerza bruta; el sigilo sortea a
-/// quien confía en sus reflejos; la voluntad no se deja sorprender ni intimidar por el sigilo;
-/// el carisma quiebra la resistencia de voluntad; lo arcano anula la persuasión; y la fuerza
-/// bruta interrumpe lo arcano (cerrar distancia antes de que el conjuro se complete) — cierra
-/// el ciclo de vuelta a Fuerza.
-export const ATTRIBUTE_RING: Attribute[] = ['fuerza', 'destreza', 'sigilo', 'voluntad', 'carisma', 'arcano'];
+/// de "qué le gana a qué" en Tarkor). Rediseño de atributos (2026-07-29, referencia BG3/D&D, de 6
+/// a 7 nodos — Sigilo/Carisma salieron, entraron Constitución/Inteligencia): la agilidad esquiva
+/// la fuerza bruta; una lectura fría (Inteligencia) anticipa el movimiento antes de que ocurra,
+/// venciendo la pura velocidad; lo arcano sortea la inteligencia (la magia salvaje no sigue una
+/// lógica que se pueda anticipar); la constitución aguanta el desgaste arcano con pura resistencia
+/// física; la voluntad quiebra a quien solo aguanta físicamente sin determinación; el carisma
+/// quiebra la voluntad ajena; y la fuerza bruta no se deja intimidar, interrumpiendo el carisma
+/// cerrando distancia — cierra el ciclo de vuelta a Fuerza.
+export const ATTRIBUTE_RING: Attribute[] = ['fuerza', 'destreza', 'inteligencia', 'arcano', 'constitucion', 'voluntad', 'carisma'];
 
 /// Distancia dirigida en el anillo desde `a` hasta `b`, en pasos hacia adelante (1..ring.length-1
 /// para atributos distintos, 0 si son el mismo). Ejemplo con el anillo de arriba:
@@ -37,7 +40,7 @@ function ringDistance(a: Attribute, b: Attribute): number {
 /// Dos árboles independientes (petición explícita: "lo complicado va a ser hacer dos árboles de
 /// debilidades, las debilidades en ataque y las debilidades en defensa") — misma topología de
 /// anillo para los dos (una sola rueda que aprender), pero magnitudes tuneables por separado.
-/// Índice = distancia en el anillo (1, 2, o 3 — el máximo posible con 6 atributos). Sin entrada
+/// Índice = distancia en el anillo (1, 2, o 3 — el máximo posible con 7 atributos). Sin entrada
 /// para distancia 0 (mismo atributo, sin ventaja) ni para más allá del máximo.
 export type CombatTree = 'ataque' | 'defensa';
 

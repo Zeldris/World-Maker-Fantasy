@@ -1,6 +1,6 @@
 import type { AttributeBlock, Attribute } from './dice.js';
 
-const ATTRIBUTES: Attribute[] = ['fuerza', 'destreza', 'sigilo', 'voluntad', 'carisma', 'arcano'];
+const ATTRIBUTES: Attribute[] = ['fuerza', 'destreza', 'constitucion', 'inteligencia', 'voluntad', 'carisma', 'arcano'];
 
 function isAttribute(value: string): value is Attribute {
   return (ATTRIBUTES as string[]).includes(value);

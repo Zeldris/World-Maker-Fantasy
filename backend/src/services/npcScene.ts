@@ -1,7 +1,7 @@
 import { prisma } from '../lib/prisma.js';
-import { normalizeText, levenshtein } from './travel.js';
-import type { NpcKind, CondicionFisica, Temperamento } from '@prisma/client';
-import type { Attribute } from './dice.js';
+import { normalizeText, fuzzyMatchCandidates, fuzzyMatchesAnyStem } from './travel.js';
+import type { NpcKind, CondicionFisica, Temperamento, WeaponCategory } from '@prisma/client';
+import type { Attribute, AttributeBlock } from './dice.js';
 
 /// Detección determinista de "NPC en escena" (docs/12-mundo-estructurado.md § 2.5) — sin llamada
 /// extra a Ollama: se busca Npc.aliases (normalizados) en el texto de la acción y en los hechos
@@ -23,6 +23,10 @@ export interface NpcItemInScene {
   /// NPC (baseAttack.ts, mismo criterio que ya usa world.ts para la Enciclopedia): solo los
   /// ítems `category === 'arma'` cuentan como arma equipable en su loadout.
   category: string;
+  /// Sistema de habilidades de arma (2026-07-29) — categoría real del arma (ver WeaponCategory en
+  /// schema.prisma), decide qué habilidad de ataque/defensa genera este objeto. Null en objetos
+  /// que no son arma/escudo.
+  tipoArma: WeaponCategory | null;
 }
 
 /// Habilidad racial de fauna, tal cual vive en `Npc.habilidadesRaciales` (worldCatalog.ts) — ver
@@ -52,7 +56,7 @@ export interface NpcInScene {
   /// base/habilidades de este NPC (combatExchange.ts/npcCombatAbilities.ts). `raza`/`clase`
   /// null si no aplica (fauna no tiene `clase`; NPCs sociales pueden no tener ninguno de los
   /// dos); `ataqueNatural`/`habilidadesRaciales` solo poblados en fauna.
-  attributes: { fuerza: number; destreza: number; sigilo: number; voluntad: number; carisma: number; arcano: number };
+  attributes: AttributeBlock;
   raza: string | null;
   clase: string | null;
   ataqueNatural: string | null;
@@ -84,7 +88,7 @@ interface NpcWithAliases {
 /// palabras de 5+ letras (evita falsos positivos en palabras cortas y comunes).
 export function matchNpcAliases(text: string, npcs: NpcWithAliases[]): string[] {
   const normalized = normalizeText(text);
-  const haystackWords = normalized.split(/\s+/).filter((w) => w.length >= 5);
+  const haystackWords = fuzzyMatchCandidates(normalized);
   const matched: string[] = [];
   for (const npc of npcs) {
     const hit = npc.aliases.some((alias) => {
@@ -102,7 +106,7 @@ export function matchNpcAliases(text: string, npcs: NpcWithAliases[]): string[] 
       // "rezagado" — ya cubierto también como alias suelto en el catálogo), nunca a una palabra
       // sacada de en medio de una frase más larga.
       if (normalizedAlias.includes(' ') || normalizedAlias.length < 5) return false;
-      return haystackWords.some((hw) => levenshtein(hw, normalizedAlias) <= 2);
+      return fuzzyMatchesAnyStem(normalizedAlias, haystackWords);
     });
     if (hit) matched.push(npc.id);
   }
@@ -165,6 +169,7 @@ export async function detectNpcsInScene(params: {
         statBonusAmount: i.item.statBonusAmount,
         catalogSlug: i.item.slug,
         category: i.item.category,
+        tipoArma: i.item.tipoArma,
       })),
       attributes: npc.attributes as NpcInScene['attributes'],
       raza: npc.raza,
@@ -229,6 +234,13 @@ const ATTACK_INTENT_REGEX = /atac|cargo contra|golpe|asalt|hachazo|apunal|dispar
 // "atac" (4) y la frase "cargo contra" se quedan con la coincidencia exacta del regex.
 const ATTACK_INTENT_STEMS = ['asalt', 'golpe', 'hachazo', 'apunal', 'dispar', 'arremet', 'hiere', 'hiero'];
 
+// Auditoría 2026-07-29 (tras el bug real de "ataque"~"saque" en turnResolution.ts § LOOT_INTENT):
+// "hierro" está a distancia 1-2 de "hiero"/"hiere" — un material/nombre de habilidad normal
+// ("Puño de Hierro", armadura de hierro...) disparaba intención de ataque sin que el jugador
+// atacara de verdad, en sitios donde detectsAttackIntent decide combate/hostilidad fuera de una
+// habilidad ya resuelta (narrador.ts § hostileEngagement, turnResolution.ts sin NPC en escena).
+const ATTACK_FUZZY_EXCLUSIONS = new Set(['hierro']);
+
 export function detectsAttackIntent(action: string): boolean {
   const normalized = normalizeText(action);
   const match = normalized.match(ATTACK_INTENT_REGEX);
@@ -238,14 +250,12 @@ export function detectsAttackIntent(action: string): boolean {
   // que la palabra ya había salido negada. Si hay coincidencia exacta, decide ella sola (nunca cae
   // a la tolerancia a erratas por detrás) — evita el doble camino que dejaba un hueco.
   if (match && match.index !== undefined) return !isNegatedMatch(normalized, match.index);
-  const words = normalized.split(/\s+/).filter((w) => w.length >= 5);
-  return ATTACK_INTENT_STEMS.some((stem) =>
-    words.some((w) => {
-      if (levenshtein(w, stem) > 2) return false;
-      const wordIndex = normalized.indexOf(w);
-      return wordIndex === -1 || !isNegatedMatch(normalized, wordIndex);
-    }),
-  );
+  const words = fuzzyMatchCandidates(normalized).filter((w) => !ATTACK_FUZZY_EXCLUSIONS.has(w));
+  return words.some((w) => {
+    if (!fuzzyMatchesAnyStem(w, ATTACK_INTENT_STEMS)) return false;
+    const wordIndex = normalized.indexOf(w);
+    return wordIndex === -1 || !isNegatedMatch(normalized, wordIndex);
+  });
 }
 
 /// Red de seguridad de `combateIniciado` reforzada (bug real jugando, 2026-07-22): "Busco a X en
@@ -341,8 +351,9 @@ export function detectsDialogueIntent(action: string): boolean {
 /// forzar sigilo/destreza mencionándolo explícitamente en la acción.
 export function tabulatedAttackAttribute(action: string): Attribute {
   const normalized = normalizeText(action);
-  if (/sigilo|escond|sorpresa|emboscad|espalda|furtiv/.test(normalized)) return 'sigilo';
-  if (/esquiv|agilidad|flecha|arco|disparo/.test(normalized)) return 'destreza';
+  // Rediseño de atributos (2026-07-29): sigilo bajó a secundario — una emboscada/ataque furtivo
+  // sigue siendo agilidad/reflejos aplicados con sigilo, no un atributo de tirada aparte.
+  if (/sigilo|escond|sorpresa|emboscad|espalda|furtiv|esquiv|agilidad|flecha|arco|disparo/.test(normalized)) return 'destreza';
   return 'fuerza';
 }
 

@@ -18,10 +18,13 @@ import {
   pickAmbientEncounterCandidate,
   type NpcInScene,
 } from './npcScene.js';
-import { resolveExchange, rollInitiative, exchangeContextBlock, type PendingNpcAttack } from './combatExchange.js';
+import { resolveExchange, rollInitiative, exchangeContextBlock, type PendingNpcAttack, type InitiativeResult } from './combatExchange.js';
 import { npcCombatAbilitiesFor, chooseNpcAbility } from './npcCombatAbilities.js';
 import { detectHarvest, harvestBlockFor } from './harvest.js';
-import { detectItemReference, missingItemBlockFor } from './itemReference.js';
+import { detectItemReference, detectMedicalItemUse, detectEnergyItemUse, missingItemBlockFor } from './itemReference.js';
+import { energiaMaxFor, nextEnergia } from './energy.js';
+import { weaponAbilitiesFor, WEAPON_ABILITY_LEVEL_AVANZADA, type EquippedWeaponSlot } from './weaponAbilities.js';
+import { syncDynamicCombatAbilities } from './dynamicAbilities.js';
 import {
   CRAFTING_RECIPES,
   detectsCraftIntent,
@@ -34,7 +37,15 @@ import { shortfallLabel } from './requisitos.js';
 import { classAbilityUnlocksFor } from './classAbilities.js';
 import { protectedFactsFor } from './protectedFacts.js';
 import { lintRegionMismatch } from './narrationLint.js';
-import { destinationsFrom, normalizeText, levenshtein, initialLocationSlugFor, matchDestination, type TravelResolution } from './travel.js';
+import {
+  destinationsFrom,
+  normalizeText,
+  fuzzyMatchCandidates,
+  findFuzzyStemMatch,
+  initialLocationSlugFor,
+  matchDestination,
+  type TravelResolution,
+} from './travel.js';
 import { detectsRestIntent, type Produccion } from './timedActions.js';
 import { claimChapterIfDue, scheduleChapterSummaryGeneration } from './chapterSummary.js';
 import { recordEntityDiscoveries } from './entityDiscovery.js';
@@ -49,6 +60,7 @@ import {
   worseCondicion,
   saludForCondicion,
   saludBandFor,
+  healCeilingFor,
 } from './death.js';
 import { continentForRegion, oppositeContinent } from '../lib/continent.js';
 import { advanceFictionalMinutes, formatFictionalDate } from './worldClock.js';
@@ -67,11 +79,30 @@ const LOOT_INTENT_REGEX = /registr|saque|desped|coj|robo|compr|qued/;
 // tolerancia a erratas; "coj"/"robo"/"qued" (≤4 letras) se quedan solo con el regex exacto.
 const LOOT_INTENT_STEMS = ['registr', 'saque', 'desped', 'compr'];
 
+// Bug real (2026-07-29, jugando en vivo — "hice yo el daño al enemigo pero el daño lo recibí yo"):
+// la tolerancia a erratas de abajo (distancia Levenshtein ≤2) confunde palabras normales y muy
+// comunes con los stems de saqueo — "ataque"/"atacar"/"ataco" con "saque", "desde"/"después"/
+// "despido" con "desped", "coger" con "compr". Cualquier turno de combate que usara alguna de
+// estas (literal en varias habilidades de arma/raciales, ver weaponAbilities.ts/berigLore.ts, o
+// simplemente frecuente en cualquier narración) se clasificaba como saqueo — eso fuerza
+// `combateActivo` a false en turnResolution.ts: el intercambio real nunca se resolvía y el
+// jugador podía acabar herido solo por la propuesta libre del narrador, sin ningún golpe mecánico
+// real detrás. Reducir la tolerancia global a distancia 1 rompería el test ya existente de erratas
+// reales ("saqeo" a distancia 2 de "saque") — se excluyen por nombre en vez de eso, mismo criterio
+// que el resto de listas curadas del proyecto (nunca un regex/tolerancia genérica sin acotar).
+// La familia "atac-" (atacar/ataque/ataco/atacando/atacas/atacamos/atacan...) se excluye por
+// prefijo, ya que cubre muchas conjugaciones; el resto son colisiones sueltas sin prefijo común.
+// "comer"/"comió" (2026-07-29, auditoría tras el bug de "ataque"): colisionan con "compr" —
+// justo la palabra que usaría cualquier acción de comer un consumible para recuperar energía
+// (energy.ts/itemReference.ts § detectEnergyItemUse), encontrada auditando el resto de listas de
+// tolerancia a erratas del proyecto en busca de la misma clase de bug.
+const LOOT_FUZZY_EXCLUSIONS = new Set(['desde', 'despues', 'despido', 'coger', 'cogido', 'comer', 'comio']);
+
 export function detectsLootIntent(action: string): boolean {
   const normalized = normalizeText(action);
   if (LOOT_INTENT_REGEX.test(normalized)) return true;
-  const words = normalized.split(/\s+/).filter((w) => w.length >= 5);
-  return LOOT_INTENT_STEMS.some((stem) => words.some((w) => levenshtein(w, stem) <= 2));
+  const words = fuzzyMatchCandidates(normalized).filter((w) => !/^ata/.test(w));
+  return !!findFuzzyStemMatch(words, LOOT_INTENT_STEMS, LOOT_FUZZY_EXCLUSIONS);
 }
 
 // Bug real (auditoría 2026-07-28): race entre worldTick.ts resolviendo un CharacterTransit vencido
@@ -116,6 +147,9 @@ interface NarrateAndPersistParams {
   /// narrativa) — se le dice al modelo explícitamente en combate para que nunca confunda el arma
   /// del jugador con la del enemigo.
   equippedWeapons: string[];
+  /// Sistema de habilidades por arma/raza (2026-07-29) — slug de BERIG_RAZAS (berigLore.ts) o
+  /// null (personaje sin raza asignada, partidas previas a este campo).
+  raza: string | null;
   currentLocationId: string | null;
   /// Presente cuando /turn/classify resolvió un viaje por el grafo de ubicaciones (docs/12 § 1.4)
   /// — el mismo objeto viaja tal cual desde classify (síncrono) o desde CharacterTransit.zoneContext
@@ -134,6 +168,9 @@ interface NarrateAndPersistParams {
   produccion?: Produccion;
   /// docs/14-combate-y-muerte.md § 1, § 4.
   condicionFisica: CondicionFisica;
+  /// Sistema de fatiga (2026-07-29) — valor ACTUAL de energía antes de este turno; el tope real
+  /// se deriva de `attributes.constitucion` (energy.ts § energiaMaxFor), nunca viaja aquí.
+  energia: number;
   dificultad: Dificultad;
   deathCount: number;
   lastRestLocationId: string | null;
@@ -186,11 +223,24 @@ export interface NarrateAndPersistResult {
   narration: NarrationResult;
   progression: ProgressionResult;
   condicionFisica: CondicionFisica;
+  /// Sistema de fatiga (2026-07-29) — energía real tras este turno y su tope actual (deriva de
+  /// Constitución, ver energy.ts § energiaMaxFor), para que el frontend pinte la barra sin tener
+  /// que recalcularlo por su cuenta.
+  energia: number;
+  energiaMax: number;
   /// Enriquecido con nombres y estado real (el modelo solo propone slugs, § 2.5) para que el
   /// frontend pueda mostrar el popup de combate ya sincronizado con `NpcState`, sin una consulta
   /// adicional ni asumir que todo NPC arranca ILESO/sin saquear.
   combateIniciado?: { npcs: { slug: string; name: string; condicionFisica: CondicionFisica; saqueado: boolean }[] } | null;
   finDePartida: boolean;
+  /// Bug real (2026-07-29, "si muero no hace lo que fijamos que haría" en combate): cuando la
+  /// muerte es sobrevivible (no dispara fin de partida), `condicionFisica` de abajo ya vuelve
+  /// resuelta a ILESO (el respawn ya ocurrió en esta misma transacción, § 4.3 de
+  /// docs/14-combate-y-muerte.md) — el frontend nunca podía distinguir "moriste y reapareciste
+  /// este turno" de "no pasó nada", así que el combate en curso nunca se cerraba tras una muerte
+  /// no definitiva (seguía el mismo combate como si el jugador no hubiera muerto). true siempre
+  /// que este turno propuso MUERTO, sobreviva o no a `finDePartida`.
+  justDied: boolean;
   /// Roadmap 2026-07-19 (bug real de UI encontrado en auditoría de frontend): loot/despiece/
   /// producción se materializaban de verdad en la DB, pero `/turn/narrate` nunca devolvía esos
   /// objetos — el inventario en pantalla se quedaba desactualizado hasta recargar la partida.
@@ -226,6 +276,17 @@ export interface NarrateAndPersistResult {
   /// siguiente sumisión, en vez del modo de ataque normal. Nunca revela CUÁL habilidad eligió el
   /// NPC (eso vive solo en `Save.pendingNpcAttack`, oculto) — solo que le toca defenderse.
   esperandoDefensaJugador: boolean;
+  /// Bug real (2026-07-29, "no sé qué ataques usa el enemigo... es poco claro el combate"): la
+  /// narración libre del modelo no garantizaba mencionar qué habilidad usó el NPC — este campo
+  /// da al frontend el nombre real, ya resuelto, de la habilidad de ataque/defensa que el NPC
+  /// acaba de usar en el intercambio de ESTE turno. null si no hubo intercambio de combate.
+  npcAbilityUsed: { npcName: string; abilityName: string; rol: 'ataque' | 'defensa' } | null;
+  /// Rediseño del turno de combate (2026-07-29, "quiero que sea más claro cuando es turno de
+  /// ataque... indicándome qué salió en los dados para saber por qué ataco primero") — tirada real
+  /// de iniciativa que decidió quién actúa en el PRÓXIMO intercambio, calculada al resolver ESTE
+  /// turno. null si la iniciativa se forzó sin dados (aturdimiento/intimidación) o si no hubo
+  /// intercambio de combate este turno.
+  nextInitiativeRoll: InitiativeResult | null;
 }
 
 async function resolveInitialLocationId(
@@ -259,6 +320,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     secondaryAttributes,
     defensa,
     equippedWeapons,
+    raza,
     currentLocationId,
     travel,
     minutosDeEsteTurno,
@@ -280,13 +342,14 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   // ms) frente a los 30-220s que domina la generación del modelo — vale la pena por ser gratis y
   // sin riesgo, no porque vaya a notarse en la duración total del turno.
   const regionLocationId = travel ? travel.toLocationId : currentLocationId;
-  const [abilityEffect, regionLocation, npcsInScene, harvestMatch, faunaSources, factionsStatus] = await Promise.all([
-    // Efecto de la habilidad de clase pulsada (checklist 2026-07-21/22, puntos 1-2) — null si el
-    // jugador escribió la acción a mano (sin savedActionId) o si esa SavedAction no tiene efecto
-    // asignado (habilidades generales, o partidas en curso creadas antes de esta migración).
+  const [selectedAbilityData, regionLocation, npcsInScene, harvestMatch, faunaSources, factionsStatus] = await Promise.all([
+    // Efecto y coste de energía de la habilidad pulsada (checklist 2026-07-21/22, puntos 1-2;
+    // coste de energía 2026-07-29) — null/0 si el jugador escribió la acción a mano (sin
+    // savedActionId) o si esa SavedAction no tiene efecto asignado (habilidades generales, o
+    // partidas en curso creadas antes de esta migración).
     savedActionId
-      ? prisma.savedAction.findUnique({ where: { id: savedActionId }, select: { effect: true } }).then((r) => (r?.effect ?? null) as AbilityEffect | null)
-      : Promise.resolve<AbilityEffect | null>(null),
+      ? prisma.savedAction.findUnique({ where: { id: savedActionId }, select: { effect: true, energyCost: true } })
+      : Promise.resolve<{ effect: AbilityEffect | null; energyCost: number } | null>(null),
     regionLocationId ? prisma.location.findUnique({ where: { id: regionLocationId }, select: { region: true, name: true } }) : Promise.resolve(null),
     // Auditoría de rendimiento 2026-07-28 ("rascar segundos"): si el caller (turn.ts) ya trae el
     // resultado de /turn/classify para esta misma acción, se reutiliza tal cual en vez de repetir
@@ -304,6 +367,11 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     // shouldForceCombat (ver reputation.ts § effectiveTemperamento).
     prisma.worldState.findUnique({ where: { saveId }, select: { factionsStatus: true } }).then((r) => (r?.factionsStatus as Record<string, number> | null) ?? {}),
   ]);
+  const abilityEffect = selectedAbilityData?.effect ?? null;
+  // Coste de energía de la habilidad pulsada (2026-07-29, sistema de fatiga) — 0 si la acción no
+  // usa ninguna SavedAction con coste (ataque a mano, Defenderse/Esquivar genéricas, habilidades
+  // 'general', o partidas anteriores a este campo).
+  const abilityEnergyCost = selectedAbilityData?.energyCost ?? 0;
   const faunaSlugs = new Set(faunaSources.map((y) => y.sourceSlug));
 
   // Excluye lore del continente contrario al de la ubicación actual — mismo bug de contaminación
@@ -423,12 +491,26 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   // marcar "Éxito" junto a una narración que describía un fallo total). El lado del jugador en
   // el intercambio (`combatExchangeRoll`) pasa a ser la única fuente de verdad para los dos.
   let combatExchangeRoll: RollResult | null = null;
+  // Nombre real de la habilidad de ataque/defensa que usó el NPC en el intercambio de este turno
+  // (2026-07-29, ver NarrateAndPersistResult.npcAbilityUsed) — se rellena en cada una de las dos
+  // ramas de abajo, siempre que haya intercambio.
+  let npcAbilityUsed: { npcName: string; abilityName: string; rol: 'ataque' | 'defensa' } | null = null;
+  // Tirada real de iniciativa que decide QUIÉN actúa en el próximo intercambio (2026-07-29, "quiero
+  // que sea más claro cuando es turno de ataque... indicándome qué salió en los dados") — null
+  // cuando la iniciativa se fuerza sin dados (aturdimiento/intimidación del turno anterior, ver
+  // más abajo) o cuando no hubo intercambio este turno.
+  let nextInitiativeRoll: InitiativeResult | null = null;
+  // Sistema de fatiga (2026-07-29) — hoisted fuera del bloque de abajo: hace falta después, al
+  // calcular la energía de este turno, sepa o no haber intercambio real de combate.
+  let exchangeHappened = false;
+  // "Si te defiendes recuperas un poco más [de energía] que si atacas normal" — qué ROL tuvo el
+  // jugador en el intercambio de este turno, para elegir el ritmo de regeneración (energy.ts).
+  let jugadorEstaDefendiendo = false;
 
   if (combateActivo && npcParaIntercambio) {
     npcAttackTarget = npcParaIntercambio;
     const npcWeaponNames = npcParaIntercambio.items.filter((i) => i.category === 'arma').map((i) => i.name);
     const npcAbilities = npcCombatAbilitiesFor(npcParaIntercambio, npcWeaponNames);
-    let exchangeHappened = false;
 
     if (pendingNpcAttack && pendingNpcStillHere && !classification.requiereTirada) {
       // Salvaguarda (auditoría 2026-07-28): sin una tirada real decidida por el clasificador
@@ -446,20 +528,27 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
           attributes: npcParaIntercambio.attributes,
           attribute: pendingNpcAttack.attribute,
           difficulty: difficultyHintFor(params.currentLevel, npcParaIntercambio.level).dificultad,
+          condicionFisica: npcParaIntercambio.condicionFisica,
         },
         {
           attributes,
           attribute: classification.atributo,
           difficulty: contraataqueDifficultyFor(npcParaIntercambio.level, params.currentLevel, defensa),
+          condicionFisica: params.condicionFisica,
         },
       );
+      // `golpes_mutuos` (2026-07-29, bug real de partida: solo se dañaba al lado "defensor" de
+      // esta llamada, nunca al NPC pese a que la propia narración dice "AMBOS acaban acusando
+      // algo") — hiere a los dos lados, no solo al jugador.
       jugadorRecibeGolpe = exchange.resultado === 'golpe_pleno' || exchange.resultado === 'golpe_normal' || exchange.resultado === 'golpes_mutuos';
       jugadorGolpeEfecto = pendingNpcAttack.effect;
-      npcAttackHits = exchange.resultado === 'defensor_contragolpea';
+      npcAttackHits = exchange.resultado === 'defensor_contragolpea' || exchange.resultado === 'golpes_mutuos';
       npcTargetNewCondicion = npcAttackHits ? oneStepWorseThan(npcParaIntercambio.condicionFisica) : null;
-      exchangeNarrationBlock = exchangeContextBlock(exchange, npcParaIntercambio.name, characterName);
+      exchangeNarrationBlock = `${npcParaIntercambio.name} ataca con "${pendingNpcAttack.abilityName}". ${exchangeContextBlock(exchange, npcParaIntercambio.name, characterName)}`;
       combatExchangeRoll = exchange.defensor;
+      npcAbilityUsed = { npcName: npcParaIntercambio.name, abilityName: pendingNpcAttack.abilityName, rol: 'ataque' };
       exchangeHappened = true;
+      jugadorEstaDefendiendo = true;
     } else {
       // CASO ATAQUE: el jugador tiene la iniciativa — el NPC decide su defensa ahora mismo,
       // oculta, nunca se le enseña al jugador qué eligió.
@@ -469,19 +558,24 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
           attributes,
           attribute: classification.atributo,
           difficulty: difficultyHintFor(npcParaIntercambio.level, params.currentLevel).dificultad,
+          condicionFisica: params.condicionFisica,
         },
         {
           attributes: npcParaIntercambio.attributes,
           attribute: npcDefensa.attribute,
           difficulty: contraataqueDifficultyFor(params.currentLevel, npcParaIntercambio.level, 0),
+          condicionFisica: npcParaIntercambio.condicionFisica,
         },
       );
+      // `golpes_mutuos` hiere también al jugador, no solo al NPC — mismo criterio que en el CASO
+      // DEFENSA de arriba.
       npcAttackHits = exchange.resultado === 'golpe_pleno' || exchange.resultado === 'golpe_normal' || exchange.resultado === 'golpes_mutuos';
       npcTargetNewCondicion = npcAttackHits ? nextCondicionForAttack(abilityEffect, npcParaIntercambio.condicionFisica) : null;
-      jugadorRecibeGolpe = exchange.resultado === 'defensor_contragolpea';
+      jugadorRecibeGolpe = exchange.resultado === 'defensor_contragolpea' || exchange.resultado === 'golpes_mutuos';
       jugadorGolpeEfecto = null;
-      exchangeNarrationBlock = exchangeContextBlock(exchange, characterName, npcParaIntercambio.name);
+      exchangeNarrationBlock = `${npcParaIntercambio.name} se defiende con "${npcDefensa.name}". ${exchangeContextBlock(exchange, characterName, npcParaIntercambio.name)}`;
       combatExchangeRoll = exchange.atacante;
+      npcAbilityUsed = { npcName: npcParaIntercambio.name, abilityName: npcDefensa.name, rol: 'defensa' };
       exchangeHappened = true;
     }
 
@@ -492,11 +586,15 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
       // sin necesidad de tirar dados para decidirlo.
       const jugadorAturdioAlNpc = !pendingNpcStillHere && npcAttackHits && (abilityEffect === 'ATURDIMIENTO' || abilityEffect === 'INTIMIDACION');
       const npcAturdioAlJugador = !!pendingNpcStillHere && jugadorRecibeGolpe && (jugadorGolpeEfecto === 'ATURDIMIENTO' || jugadorGolpeEfecto === 'INTIMIDACION');
-      const iniciativaSiguiente = jugadorAturdioAlNpc
-        ? 'jugador'
-        : npcAturdioAlJugador
-          ? 'npc'
-          : rollInitiative(attributes, npcParaIntercambio.attributes);
+      let iniciativaSiguiente: 'jugador' | 'npc';
+      if (jugadorAturdioAlNpc) {
+        iniciativaSiguiente = 'jugador';
+      } else if (npcAturdioAlJugador) {
+        iniciativaSiguiente = 'npc';
+      } else {
+        nextInitiativeRoll = rollInitiative(attributes, npcParaIntercambio.attributes);
+        iniciativaSiguiente = nextInitiativeRoll.ganador;
+      }
 
       if (iniciativaSiguiente === 'npc') {
         const npcAtaque = chooseNpcAbility(npcAbilities, 'ataque');
@@ -631,7 +729,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   const [activeQuests, companions, inventoryRows, professionProgressRows] = await Promise.all([
     prisma.quest.findMany({ where: { saveId, status: 'ACTIVA' } }),
     prisma.companion.findMany({ where: { saveId } }),
-    prisma.inventoryItem.findMany({ where: { saveId }, select: { id: true, name: true, catalogSlug: true } }),
+    prisma.inventoryItem.findMany({ where: { saveId }, select: { id: true, name: true, catalogSlug: true, slot: true } }),
     prisma.professionProgress.findMany({ where: { saveId } }),
   ]);
   const inventoryNames = inventoryRows.map((i) => i.name);
@@ -643,9 +741,35 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   // la tuvieran.
   const inventoryCatalogSlugs = [...new Set(inventoryRows.map((i) => i.catalogSlug).filter((s): s is string => Boolean(s)))];
   const inventoryCatalogRows = inventoryCatalogSlugs.length
-    ? await prisma.itemCatalog.findMany({ where: { worldId, slug: { in: inventoryCatalogSlugs } }, select: { slug: true, tipo: true, category: true } })
+    ? await prisma.itemCatalog.findMany({
+        where: { worldId, slug: { in: inventoryCatalogSlugs } },
+        select: { slug: true, tipo: true, category: true, curaHasta: true, tipoArma: true, curaEnergia: true },
+      })
     : [];
-  const catalogBySlug = new Map(inventoryCatalogRows.map((c) => [c.slug, { tipo: c.tipo, category: c.category }]));
+  const catalogBySlug = new Map(
+    inventoryCatalogRows.map((c) => [
+      c.slug,
+      { tipo: c.tipo, category: c.category, curaHasta: c.curaHasta, tipoArma: c.tipoArma, curaEnergia: c.curaEnergia },
+    ]),
+  );
+  // Sistema de habilidades de arma (2026-07-29) — huecos ARMA_PRINCIPAL/ARMA_SECUNDARIA
+  // equipados ahora mismo, con su categoría real (null = sin arma o sin categoría asignada).
+  const equippedWeaponSlotsForAbilities: EquippedWeaponSlot[] = inventoryRows
+    .filter((i) => i.slot === 'ARMA_PRINCIPAL' || i.slot === 'ARMA_SECUNDARIA')
+    .map((i) => ({ slot: i.slot!, tipoArma: (i.catalogSlug ? catalogBySlug.get(i.catalogSlug)?.tipoArma : null) ?? null }));
+  // Reglas de curación (2026-07-29, "si usas material médico sí puedes curarte a Ileso"): objetos
+  // médicos QUE de verdad llevas encima ahora mismo, con su tope de curación real del catálogo —
+  // detectMedicalItemUse (itemReference.ts) decide determinista si esta acción usa alguno.
+  const medicalItemsInInventory = inventoryRows
+    .map((i) => ({ name: i.name, curaHasta: i.catalogSlug ? (catalogBySlug.get(i.catalogSlug)?.curaHasta ?? null) : null }))
+    .filter((i): i is { name: string; curaHasta: CondicionFisica } => i.curaHasta !== null);
+  const medicalCuraHasta = detectMedicalItemUse(action, medicalItemsInInventory);
+  // Sistema de fatiga (2026-07-29, "los consumibles se pueden usar también para recuperar... la
+  // energía") — mismo patrón que medicalItemsInInventory/detectMedicalItemUse de arriba.
+  const energyItemsInInventory = inventoryRows
+    .map((i) => ({ name: i.name, curaEnergia: i.catalogSlug ? (catalogBySlug.get(i.catalogSlug)?.curaEnergia ?? null) : null }))
+    .filter((i): i is { name: string; curaEnergia: number } => i.curaEnergia !== null);
+  const energyItemRestoreAmount = detectEnergyItemUse(action, energyItemsInInventory);
   // Alivio de requisitos por oficio (sesión de diseño 2026-07-23) — el nivel de UN oficio SOLO
   // relaja los requisitos de recetas de ESE oficio, nunca la tirada general (ver requisitos.ts).
   const oficioNivelById = new Map(professionProgressRows.map((p) => [p.professionId, p.nivel]));
@@ -919,16 +1043,48 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     narration.condicionFisica,
     jugadorRecibeGolpe ? nextCondicionForAttack(jugadorGolpeEfecto, params.condicionFisica) : null,
   );
-  const proposedCondicion = nextCondicionFisica(params.condicionFisica, condicionPropuestaCombinada, !!enCombate);
-  const restSucceeds =
-    !travel && currentLocationRecord && detectsRestIntent(action) && (!roll || roll.success) && isValidRestLocationKind(currentLocationRecord.kind);
+  const restSucceeds = !!(
+    !travel &&
+    currentLocationRecord &&
+    detectsRestIntent(action) &&
+    (!roll || roll.success) &&
+    isValidRestLocationKind(currentLocationRecord.kind)
+  );
+  // Reglas de curación (2026-07-29): sin descanso válido ni objeto médico, el techo es la propia
+  // condición actual — ninguna mejora "porque sí" pasa (ver healCeilingFor/death.ts).
+  const healCeiling = healCeilingFor(params.condicionFisica, restSucceeds, medicalCuraHasta);
+  const proposedCondicion = nextCondicionFisica(params.condicionFisica, condicionPropuestaCombinada, !!enCombate, healCeiling);
+
+  // Sistema de fatiga (2026-07-29) — gasto/regen de energía de este turno, siempre determinista
+  // (ver energy.ts § nextEnergia): coste de la habilidad pulsada, regen según rol si el coste fue
+  // 0, descanso válido restaura al tope, objeto consumido suma su restauración.
+  const energiaMax = energiaMaxFor(attributes.constitucion);
+  const nuevaEnergia = nextEnergia({
+    current: params.energia,
+    max: energiaMax,
+    abilityEnergyCost,
+    exchangeHappened,
+    wasDefending: jugadorEstaDefendiendo,
+    restSucceeds,
+    itemRestoreAmount: energyItemRestoreAmount,
+  });
 
   // Reloj ficticio (worldClock.ts): avanza siempre, aunque este turno no traiga hechos nuevos —
   // antes "fictionalDateLabel" era un placeholder fijo que nunca se tocaba.
   const nuevoFictionalMinutes = advanceFictionalMinutes(fictionalMinutesActuales, minutosDeEsteTurno);
   const nuevaFictionalDateLabel = formatFictionalDate(nuevoFictionalMinutes);
 
-  const { progression, condicionFisica, finDePartida, newInventoryItems, logEntryId, newQuestObjetivos } = await prisma.$transaction(async (tx) => {
+  const {
+    progression,
+    condicionFisica,
+    energia,
+    energiaMax: energiaMaxResult,
+    finDePartida,
+    justDied,
+    newInventoryItems,
+    logEntryId,
+    newQuestObjetivos,
+  } = await prisma.$transaction(async (tx) => {
     // Ver TransitCancelledError arriba: si esta resolución viene de worldTick.ts, intenta borrar
     // el CharacterTransit YA, al principio de la transacción — si otra transacción (el cancelar
     // del jugador) ya lo borró primero, `count` es 0 y se aborta todo sin aplicar ningún efecto.
@@ -1520,6 +1676,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
               isStarting: true,
               effect: ability.effect ?? null,
               preferredAttribute: ability.preferredAttribute ?? null,
+              energyCost: ability.energyCost ?? 0,
             },
           });
           await tx.logEntry.create({
@@ -1534,6 +1691,14 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
           });
         }
       }
+
+      // Habilidades de arma "avanzada" (2026-07-29) — se desbloquean al cruzar el nivel máximo
+      // (WEAPON_ABILITY_LEVEL_AVANZADA), sumándose a la básica sin reemplazarla. Resincroniza
+      // TODAS las dinámicas (racial + arma) por simplicidad — mismo resultado que dejaría el
+      // endpoint de equipar, solo que aquí dispara por nivel en vez de por cambio de equipo.
+      if (params.currentLevel < WEAPON_ABILITY_LEVEL_AVANZADA && result.newLevel >= WEAPON_ABILITY_LEVEL_AVANZADA) {
+        await syncDynamicCombatAbilities(tx, saveId, raza, result.newLevel, equippedWeaponSlotsForAbilities);
+      }
     }
 
     // Condición física, descanso y muerte (docs/14 § 1, § 4) — en este orden: primero se fija
@@ -1545,6 +1710,9 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     let finalDeathCount = params.deathCount;
     let finalEndedAt: Date | undefined;
     let finDePartidaResult = false;
+    // Sistema de fatiga: un respawn sobrevivible reaparece con la energía llena, mismo criterio
+    // que la condición física vuelve a ILESO.
+    let finalEnergia = nuevaEnergia;
 
     if (restSucceeds && currentLocationRecord) {
       finalLastRestLocationId = currentLocationRecord.id;
@@ -1573,6 +1741,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
         });
         finalCondicion = 'ILESO';
         finalCurrentLocationId = respawnLocationId;
+        finalEnergia = energiaMax;
       }
     }
 
@@ -1586,6 +1755,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
         currentLocationId: finalCurrentLocationId,
         condicionFisica: finalCondicion,
         salud: saludForCondicion(finalCondicion),
+        energia: finalEnergia,
         lastRestLocationId: finalLastRestLocationId,
         deathCount: finalDeathCount,
         endedAt: finalEndedAt,
@@ -1599,7 +1769,10 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     return {
       progression: result,
       condicionFisica: finalCondicion,
+      energia: finalEnergia,
+      energiaMax,
       finDePartida: finDePartidaResult,
+      justDied: proposedCondicion === 'MUERTO',
       newInventoryItems,
       logEntryId: mainLogEntry.id,
       newQuestObjetivos,
@@ -1678,7 +1851,19 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     : agresivoSlugsInScene.length > 0
       ? agresivoSlugsInScene
       : npcsInScene.map((n) => n.slug);
-  const combatSlugs = combatSlugsFromModel.length > 0 ? combatSlugsFromModel : shouldForceCombat ? forcedCombatSlugs : [];
+  const baseCombatSlugs = combatSlugsFromModel.length > 0 ? combatSlugsFromModel : shouldForceCombat ? forcedCombatSlugs : [];
+  // Bug real (2026-07-29, jugando en vivo — "sigo sin hacerle daño al enemigo" con `enCombate`
+  // ya activo): mientras el combate ya está abierto, `shouldForceCombat` exige `!enCombate`
+  // (nunca se cumple) — así que `combatSlugs` dependía SOLO de que el modelo volviera a listar el
+  // slug del NPC en su propia `combateIniciado.npcSlugs` cada turno, algo que no garantiza en
+  // absoluto (campo narrativo, no determinista). Si esta acción resolvió un intercambio mecánico
+  // de verdad (resolveExchange), el NPC de ese intercambio SIEMPRE se incluye aquí — así
+  // `combateIniciado` (y con él la condición física fresca del NPC) llega al frontend en CADA
+  // turno donde de verdad pasó algo, no solo cuando el modelo se acuerda de repetir el slug.
+  const combatSlugs =
+    exchangeHappened && npcAttackTarget && !baseCombatSlugs.includes(npcAttackTarget.slug)
+      ? [...baseCombatSlugs, npcAttackTarget.slug]
+      : baseCombatSlugs;
 
   // Persistido (bug real, 2026-07-23, "revisar partida" — tercera vuelta sobre este mismo tema):
   // `combateIniciado` viajaba SOLO en la respuesta directa de este turno — si el turno tardaba
@@ -1766,11 +1951,16 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     narration,
     progression,
     condicionFisica,
+    energia,
+    energiaMax: energiaMaxResult,
     combateIniciado,
     finDePartida,
+    justDied,
     newInventoryItems,
     logEntryId,
     quests,
     esperandoDefensaJugador: !!nuevoPendingNpcAttack,
+    npcAbilityUsed,
+    nextInitiativeRoll,
   };
 }

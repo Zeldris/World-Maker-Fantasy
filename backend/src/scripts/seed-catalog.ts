@@ -66,6 +66,9 @@ async function main() {
         lugarOrigen: item.lugarOrigen ?? null,
         tier: item.tier ?? 1,
         requisitos: item.requisitos ?? Prisma.JsonNull,
+        curaHasta: item.curaHasta ?? null,
+        tipoArma: item.tipoArma ?? null,
+        curaEnergia: item.curaEnergia ?? null,
       },
       create: { worldId, ...item },
     });

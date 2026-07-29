@@ -1,12 +1,12 @@
 import { ollamaGenerate, ollamaGenerateStream } from '../lib/ollama.js';
 import { extractStreamingNarration } from './narrationStream.js';
 import { env } from '../config/env.js';
-import { normalizeText, levenshtein } from './travel.js';
+import { normalizeText, fuzzyMatchCandidates, findFuzzyStemMatch } from './travel.js';
 import { detectsAttackIntent, detectsHostileSearchIntent } from './npcScene.js';
 import type { Attribute, RollResult } from './dice.js';
 import type { CondicionFisica } from '@prisma/client';
 
-const ATTRIBUTES: Attribute[] = ['fuerza', 'destreza', 'sigilo', 'voluntad', 'carisma', 'arcano'];
+const ATTRIBUTES: Attribute[] = ['fuerza', 'destreza', 'constitucion', 'inteligencia', 'voluntad', 'carisma', 'arcano'];
 
 export type Banda = 'instantanea' | 'corta' | 'extendida' | 'larga';
 
@@ -145,8 +145,7 @@ const REINO_INTENT_STEMS = ['reclam', 'territorio', 'construy', 'edificio', 'cua
 export function reinoIntentDetected(action: string): boolean {
   const normalized = normalizeText(action);
   if (REINO_INTENT_REGEX.test(normalized)) return true;
-  const words = normalized.split(/\s+/).filter((w) => w.length >= 5);
-  return REINO_INTENT_STEMS.some((stem) => words.some((w) => levenshtein(w, stem) <= 2));
+  return !!findFuzzyStemMatch(fuzzyMatchCandidates(normalized), REINO_INTENT_STEMS);
 }
 
 /// Paso 1 del turno (decisión de mecánicas 2, docs/06-decisiones-mecanicas.md): decide si la

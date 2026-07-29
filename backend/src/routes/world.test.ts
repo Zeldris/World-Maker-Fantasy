@@ -79,7 +79,6 @@ describe('GET /world/:slug/enciclopedia', () => {
     expect(body.classes).toEqual(
       expect.arrayContaining([expect.objectContaining({ name: 'Guerrero' }), expect.objectContaining({ name: 'Cazador' })]),
     );
-    expect(body.startingAbilities.length).toBeGreaterThan(0);
     expect(body.constructionRecipes.length).toBeGreaterThan(0);
   });
 

@@ -4,9 +4,9 @@
 /// mismo contenido en forma de filas deterministas. Idempotente vía upsert por @@unique —
 /// correr de nuevo con `npm run seed-catalog` cuando cambie el contenido.
 
-import type { Attribute } from '../services/dice.js';
+import type { Attribute, AttributeBlock } from '../services/dice.js';
 import type { Requisitos } from '../services/requisitos.js';
-import type { ItemTipo, MetodoObtencion } from '@prisma/client';
+import type { ItemTipo, MetodoObtencion, WeaponCategory } from '@prisma/client';
 
 export interface LocationInput {
   slug: string;
@@ -406,7 +406,7 @@ export interface NpcHabilidadRacial {
   /// Rediseño del turno de combate (2026-07-28) — mismo campo que `HabilidadRacial`
   /// (berigLore.ts) y las habilidades de clase: "tipo" para la rueda de debilidades y atributo
   /// con el que se tira, elegido por lo que la habilidad representa (garras=destreza,
-  /// mordisco pesado=fuerza, sigilo/acecho=sigilo...), nunca uniforme por especie.
+  /// mordisco pesado=fuerza, acecho sigiloso=destreza...), nunca uniforme por especie.
   preferredAttribute: Attribute;
 }
 
@@ -419,7 +419,7 @@ export interface NpcInput {
   role: string;
   level: number;
   levelMax?: number;
-  attributes: { fuerza: number; destreza: number; sigilo: number; voluntad: number; carisma: number; arcano: number };
+  attributes: AttributeBlock;
   bio: string;
   personality: string;
   homeLocationSlug?: string;
@@ -468,7 +468,7 @@ export const fauna: NpcInput[] = [
     role: 'Bestia de seis patas de las Llanuras del Viento Rojo',
     level: 1,
     levelMax: 2,
-    attributes: { fuerza: 10, destreza: 15, sigilo: 9, voluntad: 6, carisma: 3, arcano: 2 },
+    attributes: { fuerza: 10, destreza: 15, constitucion: 8, inteligencia: 4, voluntad: 6, carisma: 3, arcano: 2 },
     bio: 'Bestia veloz de seis patas y piel rojiza que se camufla en el polvo de la llanura — hocico alargado con grandes bigotes y ojos oscuros y redondos, orejas pequeñas y pegadas al cráneo, una hilera de placas óseas superpuestas recorriéndole el lomo hasta una cola larga y afilada en la punta. Se desplaza en manadas siguiendo las corrientes subterráneas. Los clanes orcos la cazan en carreras rituales.',
     personality: 'Huidiza, rápida a la primera señal de peligro — no busca el enfrentamiento.',
     loadout: [],
@@ -490,7 +490,7 @@ export const fauna: NpcInput[] = [
     role: 'Bestia grande cazada con lanzas de hueso',
     level: 4,
     levelMax: 5,
-    attributes: { fuerza: 17, destreza: 8, sigilo: 4, voluntad: 8, carisma: 2, arcano: 2 },
+    attributes: { fuerza: 17, destreza: 8, constitucion: 16, inteligencia: 3, voluntad: 8, carisma: 2, arcano: 2 },
     bio: 'Bestia grande y pesada, de piel gris ceniza curtida bajo una coraza natural de placas óseas gruesas y blanquecinas que se solapan como escamas — costillas visibles bajo la piel cuando respira hondo, andar lento y pisadas que tiemblan en el suelo. Solo se caza de adulta con lanzas de hueso, en cacerías serias, no en un enfrentamiento casual.',
     personality: 'Territorial y peligrosa si se la acorrala, pero no busca presas activamente.',
     loadout: [],
@@ -513,7 +513,7 @@ export const fauna: NpcInput[] = [
     role: 'Ave corredora de caza menor',
     level: 1,
     levelMax: 1,
-    attributes: { fuerza: 5, destreza: 14, sigilo: 10, voluntad: 5, carisma: 2, arcano: 2 },
+    attributes: { fuerza: 5, destreza: 14, constitucion: 5, inteligencia: 3, voluntad: 5, carisma: 2, arcano: 2 },
     bio: 'Criatura corredora incapaz de volar, cuerpo alargado que se desplaza casi paralelo al suelo — plumaje rojizo veteado de gris polvoriento, cresta escamosa negra rematada en plumas rojas, patas largas y nervudas con garras negras afiladas, ojos ámbar pequeños y brillantes, pico largo y curvo para escarbar el suelo. Se mueve en bandadas entre la hierba rojiza — caza menor, se cobra con trampa o lanza corta.',
     personality: 'Nerviosa, huye en bandada al primer sobresalto.',
     loadout: [],
@@ -534,7 +534,7 @@ export const fauna: NpcInput[] = [
     role: 'Depredador de jauría que sigue a los Corredores en migración',
     level: 2,
     levelMax: 3,
-    attributes: { fuerza: 11, destreza: 13, sigilo: 12, voluntad: 8, carisma: 3, arcano: 2 },
+    attributes: { fuerza: 11, destreza: 13, constitucion: 9, inteligencia: 7, voluntad: 8, carisma: 3, arcano: 2 },
     bio: 'Criatura flaca de cuatro patas, pelaje rojizo rasposo, mechones de pelo negro en los tobillos y patas desproporcionadamente largas — el pelaje enredado con parches de arena fosilizada que brillan como vetas minerales rojas, y una hilera de púas oscuras erizadas a lo largo del lomo. Colmillos curvos y amarillentos de tamaño exagerado, costillas marcadas bajo la piel tensa, y una cola negra tupida que arrastra borrando sus propias huellas. Sigue a las manadas de Corredores en migración, cobrándose a los rezagados. Caza en jaurías de 4-6; un aullador solo nunca ataca a un orco adulto — una jauría con hambre, sí.',
     personality: 'Paciente, cobarde en solitario y osado en grupo; rodea antes de atacar.',
     loadout: [],
@@ -565,7 +565,7 @@ export const fauna: NpcInput[] = [
     role: 'Ganado de los clanes de las Llanuras',
     level: 1,
     levelMax: 1,
-    attributes: { fuerza: 9, destreza: 6, sigilo: 3, voluntad: 5, carisma: 2, arcano: 2 },
+    attributes: { fuerza: 9, destreza: 6, constitucion: 10, inteligencia: 2, voluntad: 5, carisma: 2, arcano: 2 },
     bio: 'Criatura lanuda y voluminosa de cuatro patas, pelaje gris ceniza con matices rojizos y polvo rojo siempre enredado en la lana espesa que le cae sobre los ojos — cornamenta ramificada, gruesa y ampliamente extendida a los lados de la cabeza, boca de dientes planos y cuadrados, ojos negros con un destello amarillento. El ganado de los clanes de las Llanuras: lana, leche y carne. Los del Clan Serhu llevan una muesca en la oreja — un múrgol con muesca de clan es propiedad, cazarlo es robo a ojos Serhu.',
     personality: 'Dócil, gregario, se espanta con las tormentas.',
     loadout: [],
@@ -586,7 +586,7 @@ export const fauna: NpcInput[] = [
     role: 'Ave planeadora que anida en Los Pilares Rotos',
     level: 2,
     levelMax: 2,
-    attributes: { fuerza: 7, destreza: 16, sigilo: 8, voluntad: 7, carisma: 2, arcano: 2 },
+    attributes: { fuerza: 7, destreza: 16, constitucion: 6, inteligencia: 4, voluntad: 7, carisma: 2, arcano: 2 },
     bio: 'Planeadora grande de alas rígidas que cabalga los frentes de viento. Vuela alto y en círculos con buen tiempo; cuando cruza baja y en línea recta, los pastores saben que viene tormenta de arena magnética. Anida en lo alto de los Pilares Rotos. Cazarla es dificilísimo salvo en nido o con trampa cebada.',
     personality: 'Esquiva, jamás se posa cerca de nada que se mueva.',
     loadout: [],
@@ -607,7 +607,7 @@ export const fauna: NpcInput[] = [
     role: 'Carroñero-cazador nocturno que ronda el fuego de los campamentos',
     level: 3,
     levelMax: 4,
-    attributes: { fuerza: 14, destreza: 11, sigilo: 14, voluntad: 9, carisma: 2, arcano: 3 },
+    attributes: { fuerza: 14, destreza: 11, constitucion: 11, inteligencia: 8, voluntad: 9, carisma: 2, arcano: 3 },
     bio: 'Carroñero-cazador nocturno de complexión robusta y pelaje ceniciento, mandíbula pesada y lomo encorvado con una hilera de púas óseas asomando entre el pelo — ojos que brillan en un dorado intenso en la oscuridad, visibles antes que el resto del cuerpo. No teme al fuego: lo busca — ha aprendido que donde hay brasas hay carne, cazada o dormida. Ronda el borde de la luz durante horas antes de decidirse. Solitario; ver dos juntos es señal de un cadáver grande cerca.',
     personality: 'Paciente y silencioso; se retira ante un grupo despierto, ataca a lo aislado o dormido.',
     loadout: [],
@@ -616,9 +616,9 @@ export const fauna: NpcInput[] = [
     domesticablePct: 10,
     capturablePct: 25,
     habilidadesRaciales: [
-      { icon: '🌒', name: 'Acecho Nocturno', description: 'Ronda el borde de la luz sin ser visto — el primer golpe contra un objetivo que no lo ha notado cae con fuerza extra.', categoria: 'ataque', preferredAttribute: 'sigilo' },
+      { icon: '🌒', name: 'Acecho Nocturno', description: 'Ronda el borde de la luz sin ser visto — el primer golpe contra un objetivo que no lo ha notado cae con fuerza extra.', categoria: 'ataque', preferredAttribute: 'destreza' },
       { icon: '🩸', name: 'Mordisco de Carroñero', description: 'Sabe reconocer a la presa ya debilitada o aislada — se ceba contra quien menos puede defenderse.', categoria: 'ataque', preferredAttribute: 'fuerza' },
-      { icon: '🌑', name: 'Retirada Silenciosa', description: 'En cuanto un grupo despierta y se organiza, se retira sin dejar rastro ni ser detectado.', categoria: 'defensa', preferredAttribute: 'sigilo' },
+      { icon: '🌑', name: 'Retirada Silenciosa', description: 'En cuanto un grupo despierta y se organiza, se retira sin dejar rastro ni ser detectado.', categoria: 'defensa', preferredAttribute: 'destreza' },
     ],
   },
   {
@@ -630,7 +630,7 @@ export const fauna: NpcInput[] = [
     role: 'Reptil de escamas volcánicas, avanzadilla rara del borde norte',
     level: 3,
     levelMax: 4,
-    attributes: { fuerza: 13, destreza: 9, sigilo: 7, voluntad: 8, carisma: 2, arcano: 4 },
+    attributes: { fuerza: 13, destreza: 9, constitucion: 13, inteligencia: 5, voluntad: 8, carisma: 2, arcano: 4 },
     bio: 'Reptil de complexión robusta y baja, hocico alargado y dientes afilados siempre visibles, y una hilera de protuberancias rocosas en el lomo que arden con vetas de lava y desprenden humo — escamas como escoria volcánica que retienen calor, tocarla quema. Come Raíz de Fuego sin inmutarse. Su territorio real es El Filo de las Brasas, en el borde volcánico del núcleo (checklist 2026-07-21/22, ampliación del núcleo) — antes solo aparecía como avanzadilla rara más al sur, ahora se la encuentra donde de verdad vive.',
     personality: 'Lenta y territorial; avisa hinchando la garganta con un silbido de vapor antes de cargar.',
     homeLocationSlug: 'filo-de-las-brasas',
@@ -654,7 +654,7 @@ export const fauna: NpcInput[] = [
     role: 'Carroñero de caza menor y señal ambiental',
     level: 1,
     levelMax: 1,
-    attributes: { fuerza: 6, destreza: 12, sigilo: 6, voluntad: 4, carisma: 2, arcano: 2 },
+    attributes: { fuerza: 6, destreza: 12, constitucion: 6, inteligencia: 6, voluntad: 4, carisma: 2, arcano: 2 },
     // Bio ajustada (checklist 2026-07-21/22, ronda de imágenes) al primer prompt de imagen que la
     // usuaria generó de verdad y validó — más fiera de aspecto que un buitre real, aunque su papel
     // en el mundo (carroñero, señal ambiental, nivel 1) no cambia.
@@ -681,7 +681,7 @@ export const npcs: NpcInput[] = [
     faction: 'Clan Serhu',
     role: "Kort'ikar del Clan Serhu",
     level: 5,
-    attributes: { fuerza: 16, destreza: 9, sigilo: 5, voluntad: 15, carisma: 12, arcano: 5 },
+    attributes: { fuerza: 16, destreza: 9, constitucion: 14, inteligencia: 12, voluntad: 15, carisma: 12, arcano: 5 },
     bio: 'Orco del Clan Serhu, de las Llanuras del Viento Rojo — piel en los tonos beige y arcilla propios de los orcos del desierto, corpulento incluso para los suyos, colmillos intactos de quien ha sobrevivido más duelos que la mayoría. Pelo negro ya veteado de gris, recogido en trenzas cortas con cuentas de hueso que marcan sus años de guerra. Veterano de las escaramuzas fronterizas; ascendió a Kort\'ikar cuando su predecesor murió en el frente. Busca unificar los clanes para retirar a su pueblo de la guerra de la Concordia. El padre de Gorhorn murió retando al Kort\'ikar Serhu de entonces, predecesor de Torgash — Torgash lo recuerda y respeta cómo murió.',
     personality: 'Grave, económico con las palabras, pragmático hasta rozar la herejía cultural (prefiere pactar a duelar). Detesta a la Concordia en silencio.',
     homeLocationSlug: 'campamento-serhu',
@@ -708,7 +708,7 @@ export const npcs: NpcInput[] = [
     faction: 'Clan Serhu',
     role: "Terk'ikar del Clan Serhu",
     level: 6,
-    attributes: { fuerza: 9, destreza: 8, sigilo: 6, voluntad: 16, carisma: 15, arcano: 8 },
+    attributes: { fuerza: 9, destreza: 8, constitucion: 9, inteligencia: 14, voluntad: 16, carisma: 15, arcano: 8 },
     bio: 'Orca del Clan Serhu, de las Llanuras del Viento Rojo — piel beige curtida por décadas de sol y viento, cabello gris casi blanco recogido en un moño alto sujeto con agujas de hueso de gargantúa. Menuda para una orca, su autoridad no se apoya en el físico sino en la voz baja y la mirada que no parpadea. Jefa del Clan Serhu; gobierna asentamiento, pastoreo y migraciones. Decidió no acoger supervivientes Maktor tras la aniquilación — por cálculo de supervivencia, no crueldad: acogerlos habría puesto una diana sobre su clan. Un Gorhorn vivo la enfrenta a esa decisión.',
     personality: 'Fría en el cálculo y cálida en el trato, en ese orden. Comulga con las Gargantúas en las migraciones.',
     homeLocationSlug: 'campamento-serhu',
@@ -735,7 +735,7 @@ export const npcs: NpcInput[] = [
     faction: 'Clan Helsig',
     role: 'Minero de hielo sílice, amigo de infancia de Gorhorn',
     level: 2,
-    attributes: { fuerza: 15, destreza: 8, sigilo: 5, voluntad: 12, carisma: 11, arcano: 9 },
+    attributes: { fuerza: 15, destreza: 8, constitucion: 13, inteligencia: 8, voluntad: 12, carisma: 11, arcano: 9 },
     bio: 'Orco del Clan Helsig, de las tribus orcas de Cristal Helado — piel de un pálido azulado propio de los orcos de zonas nevadas, curtida por el viento de la montaña más que por el sol. Manos gruesas y llenas de callos de picar hielo sílice, cara ancha y siempre a punto de reírse, el contrapunto exacto del Gorhorn callado que conoció en las minas. Amigo de Gorhorn del Clan Helsig, de las minas de hielo sílice en Cristal Helado. Vive fuera del grafo v1 (Cristal Helado), pero es el vínculo personal vivo de Gorhorn — si la partida lo trae, no debe improvisársele números.',
     personality: 'Leal, ruidoso, de risa fácil — el opuesto exacto del Gorhorn callado de las minas, por eso encajaron.',
     raza: 'orcos',
@@ -760,7 +760,7 @@ export const npcs: NpcInput[] = [
     role: 'Guerrero sin clan, separado de los suyos',
     level: 2,
     levelMax: 3,
-    attributes: { fuerza: 14, destreza: 9, sigilo: 7, voluntad: 11, carisma: 7, arcano: 6 },
+    attributes: { fuerza: 14, destreza: 9, constitucion: 11, inteligencia: 7, voluntad: 11, carisma: 7, arcano: 6 },
     bio: 'Orco corpulento de piel beige y parda, curtida como la propia estepa de las Llanuras — cualquier pintura o marca de clan que llevara se ha desdibujado bajo meses de polvo y mala vida. Guerrero sin clan visible, separado de los suyos por la guerra o la desgracia — arquetipo instanciable, no un individuo con historia propia.',
     personality: 'Desconfiado, a la defensiva, impredecible según cómo se le aborde.',
     raza: 'orcos',
@@ -801,8 +801,12 @@ export const npcs: NpcInput[] = [
     aliases: ['orco enfurecido', 'el enfurecido', 'orco loco', 'orco de la hondonada'],
     faction: null,
     role: "Guerrero Serhu deshonrado, persigue a Gistera Koh tras un duelo de honor rechazado",
-    level: 2,
-    attributes: { fuerza: 13, destreza: 10, sigilo: 5, voluntad: 8, carisma: 2, arcano: 2 },
+    // Rebalanceo (2026-07-29, "el Orco Enfurecido... debería ser relativamente fácil ganar... no
+    // tan complicado como es ahora" — es el primer combate real del juego): bajado de nivel 2 a
+    // nivel 1 (mismo nivel que el personaje recién creado, la banda de dificultad más favorable) y
+    // fuerza/voluntad ligeramente reducidas frente a la versión original.
+    level: 1,
+    attributes: { fuerza: 11, destreza: 10, constitucion: 9, inteligencia: 4, voluntad: 7, carisma: 2, arcano: 2 },
     bio: "Orco del Clan Serhu, calvo y de complexión corpulenta, piel beige agrietada, sin pintura de clan visible — se la arrancó él mismo, en el mismo arranque de furia que lo trajo hasta aquí. Retó a Gistera Koh a un duelo de honor hace semanas; ella se negó a pelear y huyó en vez de aceptarlo. Para el clan, negarse y huir es deshonra — de ella. Para él, verla huir en vez de enfrentarlo lo rompió de otra forma: humillado en público, dejó de hablar con nadie y salió tras ella sin que ningún Kort'ikar se lo ordenara. Duerme y merodea en la Hondonada del Eco, donde el terreno hundido le permite ver llegar a cualquiera antes de que lo vean a él. Entre sus cosas lleva un mapa de las rutas y campamentos de la región, marcado a mano — lo único suyo que aún tiene sentido.",
     personality: 'Errático y violento con cualquiera, obsesivo con ella — ataca al primer contacto sin intentar hablar.',
     homeLocationSlug: 'hondonada-del-eco',
@@ -829,7 +833,7 @@ export const npcs: NpcInput[] = [
     faction: null,
     role: 'Guerrera expulsada del Clan Serhu, huye del Orco Enfurecido',
     level: 2,
-    attributes: { fuerza: 10, destreza: 13, sigilo: 9, voluntad: 11, carisma: 12, arcano: 2 },
+    attributes: { fuerza: 10, destreza: 13, constitucion: 8, inteligencia: 11, voluntad: 11, carisma: 12, arcano: 2 },
     bio: "Orca del Clan Serhu, piel beige y arcilla curtida por el sol de la estepa, trenzas deshechas de días corriendo sin parar. Retada a un duelo de honor por un guerrero de su propio clan, se negó a pelear y huyó — a ojos Serhu, deshonra suficiente para expulsarla. No fue cobardía: vio en sus ojos algo que ya no reconocía, y prefirió vivir señalada antes que enfrentarse a un hombre que ya no estaba del todo cuerdo. Lleva días delante de él, cada vez más cerca. Rápida de lengua y más rápida de ojo — lee a la gente antes de que hablen, y no ha sobrevivido esto solo corriendo.",
     personality: 'Aguda y pragmática, mide cada palabra antes de gastarla — no tiene tiempo ni margen para el orgullo que se permiten los guerreros con clan.',
     homeLocationSlug: 'hondonada-del-eco',
@@ -855,7 +859,7 @@ export const npcs: NpcInput[] = [
     role: 'Joven cazador/a en formación del Clan Serhu',
     level: 1,
     levelMax: 2,
-    attributes: { fuerza: 11, destreza: 12, sigilo: 10, voluntad: 9, carisma: 8, arcano: 4 },
+    attributes: { fuerza: 11, destreza: 12, constitucion: 9, inteligencia: 7, voluntad: 9, carisma: 8, arcano: 4 },
     bio: 'Orco u orca joven del Clan Serhu, todavía sin el volumen ni las cicatrices de un guerrero veterano — piel beige y parda como el resto del clan, colmillos aún cortos, marca de clan tatuada y reciente en el antebrazo. Sale a cazar o vigilar los alrededores del campamento.',
     personality: 'Curioso, algo fanfarrón, todavía sin la reserva de los guerreros veteranos.',
     homeLocationSlug: 'campamento-serhu',
@@ -887,7 +891,7 @@ export const npcs: NpcInput[] = [
     role: 'Soldado de patrulla fronteriza',
     level: 2,
     levelMax: 3,
-    attributes: { fuerza: 12, destreza: 10, sigilo: 6, voluntad: 13, carisma: 8, arcano: 4 },
+    attributes: { fuerza: 12, destreza: 10, constitucion: 11, inteligencia: 7, voluntad: 13, carisma: 8, arcano: 4 },
     bio: 'Goirnte de la Meseta del Orden — piel gris, fría al tacto, que se tensa visiblemente cuando se concentra, rasgo propio de su pueblo. Uniformado con la disciplina que exige su casta de nacimiento. Soldado raso de una patrulla de la Concordia de Hierro que vigila la frontera de las Llanuras. Una patrulla tipo son 3 soldados + 1 oficial.',
     personality: 'Disciplinado, sigue órdenes sin cuestionar demasiado.',
     raza: 'goirntes',
@@ -919,7 +923,7 @@ export const npcs: NpcInput[] = [
     role: 'Oficial al mando de una patrulla',
     level: 4,
     levelMax: 5,
-    attributes: { fuerza: 12, destreza: 10, sigilo: 6, voluntad: 15, carisma: 12, arcano: 4 },
+    attributes: { fuerza: 12, destreza: 10, constitucion: 9, inteligencia: 13, voluntad: 15, carisma: 12, arcano: 4 },
     bio: 'Goirnte de la Meseta del Orden — misma piel gris y fría al tacto que el resto de los suyos, aunque en un oficial se nota menos tensa: ha aprendido a controlar hasta ese reflejo. Porte rígido, uniforme sin una arruga fuera de sitio. Oficial al mando de una patrulla de la Concordia de Hierro. Lleva correspondencia sellada y el sello que acredita (o incrimina) su misión.',
     personality: 'Frío, calculador, más peligroso en el trato que en el combate directo.',
     raza: 'goirntes',
@@ -956,7 +960,7 @@ export const npcs: NpcInput[] = [
     role: 'Orco en duelo, viaja a honrar a un caído en Los Túmulos del Honor',
     level: 1,
     levelMax: 1,
-    attributes: { fuerza: 8, destreza: 7, sigilo: 6, voluntad: 13, carisma: 10, arcano: 4 },
+    attributes: { fuerza: 8, destreza: 7, constitucion: 7, inteligencia: 8, voluntad: 13, carisma: 10, arcano: 4 },
     bio: 'Orco de un clan cualquiera de las Llanuras, piel en el tono beige o pardo propio de esas tribus, cuerpo delgado y marcado más por el camino que por la guerra. Lleva una tira de tela oscura anudada al brazo, señal de luto que cualquier clan reconoce. Sin prisa ni destino más allá de Los Túmulos del Honor — lleva algo que dejar en la tumba de alguien que murió con honor. No busca compañía ni pelea; si se le trata con respeto, agradece la charla en el camino.',
     personality: 'Callado y ensimismado, cortés si se le habla primero; el duelo, no el miedo, es lo que le hace evitar el contacto.',
     raza: 'orcos',
@@ -980,7 +984,7 @@ export const npcs: NpcInput[] = [
     role: 'Comerciante itinerante',
     level: 1,
     levelMax: 1,
-    attributes: { fuerza: 7, destreza: 9, sigilo: 8, voluntad: 10, carisma: 14, arcano: 4 },
+    attributes: { fuerza: 7, destreza: 9, constitucion: 6, inteligencia: 11, voluntad: 10, carisma: 14, arcano: 4 },
     bio: 'Orco sin clan — hace años cambió la lanza por la balanza de trueque, algo que pocos orcos entienden y menos aún respetan —, piel curtida por soles de media docena de regiones distintas, más delgado que un guerrero de su edad. Comerciante itinerante que cruza las rutas de la región con mercancía de trueque.',
     personality: 'Locuaz, siempre calculando el precio de todo, evita el conflicto directo.',
     raza: 'orcos',
@@ -1015,7 +1019,7 @@ export const npcs: NpcInput[] = [
     faction: 'Concordia de Hierro',
     role: 'Mando militar de la Concordia de Hierro',
     level: 6,
-    attributes: { fuerza: 11, destreza: 8, sigilo: 6, voluntad: 16, carisma: 13, arcano: 3 },
+    attributes: { fuerza: 11, destreza: 8, constitucion: 10, inteligencia: 15, voluntad: 16, carisma: 13, arcano: 3 },
     bio: 'Goirnte de la Meseta del Orden — piel gris severa, tensa incluso en reposo, curtida por años de mando. Ejecuta órdenes radicales en público, pero en privado sospecha que la versión oficial es mentira, y busca con discreción —sin poder confiar en sus propios canales— testigos de la noche de la ruptura del sello.',
     personality: 'Habla poco y en tono bajo; cuanto más tranquilo suena, más peligroso es el momento. Jamás repite una orden.',
     raza: 'goirntes',
@@ -1033,7 +1037,7 @@ export const npcs: NpcInput[] = [
     faction: null,
     role: 'Exmiembro de la facción radical Goirnte, fugitivo',
     level: 3,
-    attributes: { fuerza: 8, destreza: 9, sigilo: 10, voluntad: 8, carisma: 6, arcano: 4 },
+    attributes: { fuerza: 8, destreza: 9, constitucion: 6, inteligencia: 8, voluntad: 8, carisma: 6, arcano: 4 },
     bio: 'Goirnte de la Meseta del Orden — piel gris apagada, más floja y menos tensa de lo normal en los suyos, como si hubiera dejado de concentrarse en nada desde hace tiempo. Exmiembro de la facción radical que ayudó a romper el sello. Vive escondido y consumido por la culpa — es la única prueba viviente de la traición interna, lo que lo convierte en el hombre más buscado de Berig por dos motivos opuestos: los radicales quieren silenciarlo; quienes sospechan la verdad lo necesitan vivo.',
     personality: 'Habla en círculos y nunca termina las frases que rozan "esa noche"; sobresalta con los ruidos de metal.',
     raza: 'goirntes',
@@ -1051,7 +1055,7 @@ export const npcs: NpcInput[] = [
     faction: null,
     role: 'Traficante de información independiente',
     level: 3,
-    attributes: { fuerza: 5, destreza: 10, sigilo: 15, voluntad: 10, carisma: 12, arcano: 4 },
+    attributes: { fuerza: 5, destreza: 10, constitucion: 5, inteligencia: 15, voluntad: 10, carisma: 12, arcano: 4 },
     bio: 'Nabieus del Margen Silencioso — piel gris apagada que no refleja ni absorbe la luz, cuerpo delgado y casi sin peso, como el resto de los suyos. Compra y vende información a ambas alianzas por igual, sin lealtades — ha olido que lo que Yerin Slaad recuerda de cierta entrega vale más que todo su inventario.',
     personality: 'Habla más alto que cualquier otro Nabieus — deliberadamente, un gesto casi obsceno entre los suyos que usa para incomodar y marcar distancia con su propio pueblo.',
     raza: 'nabieus',
@@ -1070,7 +1074,7 @@ export const npcs: NpcInput[] = [
     faction: 'Concordia de Hierro (facción moderada)',
     role: 'Archimagistrada de la facción moderada Goirnte',
     level: 5,
-    attributes: { fuerza: 6, destreza: 7, sigilo: 5, voluntad: 15, carisma: 14, arcano: 3 },
+    attributes: { fuerza: 6, destreza: 7, constitucion: 6, inteligencia: 15, voluntad: 15, carisma: 14, arcano: 3 },
     bio: 'Goirnte de la Meseta del Orden — piel gris que se nota tensarse incluso al hablar de leyes, señal de una mente que nunca deja de calcular el orden de las cosas. Intenta frenar a la facción radical desde la política interna, pero la ley le exige pruebas presentadas "en orden" de la traición del sello que nadie puede presentarle todavía por canal legítimo.',
     personality: 'Cita de memoria las leyes de los obeliscos, artículo y línea; jamás improvisa un argumento que no pueda sostener por escrito.',
     raza: 'goirntes',
@@ -1107,6 +1111,16 @@ export interface ItemCatalogInput {
   /// una tirada. Omitidos = tier 1 (común), sin requisito.
   tier?: number;
   requisitos?: Requisitos;
+  /// Tope real de curación al usar este objeto (2026-07-29) — solo con sentido en objetos
+  /// `category: 'medicinal'` que de verdad traten heridas (no antídotos/sedantes). Omitido = no
+  /// cura condición física. Ver comentario del campo homónimo en schema.prisma.
+  curaHasta?: 'HERIDO' | 'ILESO';
+  /// Categoría de arma (2026-07-29, sistema de habilidades por arma) — decide qué atributo usa
+  /// la habilidad de ataque/defensa que este objeto genera al equiparlo. Solo en `category: 'arma'`.
+  tipoArma?: WeaponCategory;
+  /// Cantidad de energía que restaura al usarlo (2026-07-29, sistema de fatiga) — mismo criterio
+  /// que `curaHasta` pero numérico. Omitido = no restaura energía.
+  curaEnergia?: number;
 }
 
 export const items: ItemCatalogInput[] = [
@@ -1124,6 +1138,7 @@ export const items: ItemCatalogInput[] = [
     // orco adulto puede blandirla.
     tier: 1,
     requisitos: { fuerza: 8 },
+    tipoArma: 'HACHA',
   },
   {
     slug: 'maza-orca',
@@ -1135,6 +1150,7 @@ export const items: ItemCatalogInput[] = [
     statBonusAmount: 2,
     dimensiones: 'Mango de 55 cm, cabeza nudosa de 15 cm de diámetro.',
     lugarOrigen: 'Manufactura orca.',
+    tipoArma: 'MAZA',
   },
   {
     slug: 'cuchillo-hielo-silice',
@@ -1142,10 +1158,11 @@ export const items: ItemCatalogInput[] = [
     category: 'arma',
     tipo: 'EQUIPABLE',
     description: 'Hoja de hielo sílice de un blanco azulado translúcido, extremadamente dura y fría al tacto incluso lejos de la montaña, con la empuñadura de hueso tallada con marcas rúnicas — filo mineral, comercio con los Helsig.',
-    statBonusAttribute: 'sigilo',
+    statBonusAttribute: 'destreza',
     statBonusAmount: 1,
     dimensiones: 'Hoja de 18 cm, empuñadura de 10 cm.',
     lugarOrigen: 'Clan Helsig, minas de Cristal Helado.',
+    tipoArma: 'CUCHILLO',
   },
   {
     slug: 'cuchillo-deshuello',
@@ -1170,6 +1187,7 @@ export const items: ItemCatalogInput[] = [
     // fuerza que un arma común para manejarla con la distancia y el respeto que exige un duelo.
     tier: 2,
     requisitos: { fuerza: 10 },
+    tipoArma: 'LANZA',
   },
   {
     slug: 'lanza-corta-caza',
@@ -1181,6 +1199,7 @@ export const items: ItemCatalogInput[] = [
     statBonusAmount: 1,
     dimensiones: 'Asta de 120 cm, punta de hueso de 15 cm.',
     lugarOrigen: 'Llanuras del Viento Rojo.',
+    tipoArma: 'LANZA',
   },
   {
     slug: 'espada-corta-goirntes',
@@ -1192,6 +1211,7 @@ export const items: ItemCatalogInput[] = [
     statBonusAmount: 1,
     dimensiones: 'Hoja recta de 55 cm, empuñadura de 12 cm.',
     lugarOrigen: 'Manufactura goirnte, Meseta del Orden.',
+    tipoArma: 'ESPADA',
   },
   {
     slug: 'cuchillo-corto',
@@ -1199,9 +1219,10 @@ export const items: ItemCatalogInput[] = [
     category: 'arma',
     tipo: 'EQUIPABLE',
     description: 'Hoja corta de hierro sin adornos, mango de madera desgastada — común, sin origen especial.',
-    statBonusAttribute: 'sigilo',
+    statBonusAttribute: 'destreza',
     statBonusAmount: 1,
     dimensiones: 'Hoja de 15 cm, mango de 10 cm.',
+    tipoArma: 'CUCHILLO',
   },
   {
     slug: 'pico-minero',
@@ -1374,6 +1395,11 @@ export const items: ItemCatalogInput[] = [
     tipo: 'CONSUMIBLE',
     description: 'Bulto envuelto en tela basta con lo justo para aguantar el camino — unidad estándar de raciones, "para N días".',
     dimensiones: 'Bulto de 15x10 cm por ración.',
+    // Sistema de fatiga (2026-07-29, bug real encontrado jugando en vivo): es el consumible real
+    // del kit inicial de Gorhorn (ver startingInventory.ts) — sin esto, "comer para recuperar
+    // energía" era inalcanzable para una partida nueva, porque su único objeto de comida no
+    // restauraba nada (solo lo hacía `racion-carne-ahumada`, que él nunca lleva encima).
+    curaEnergia: 20,
   },
   {
     slug: 'racion-goirntes',
@@ -1393,7 +1419,8 @@ export const items: ItemCatalogInput[] = [
     dimensiones: 'Trozos de 300 a 500 g.',
   },
   { slug: 'racion-carne-ahumada', name: 'Ración de carne ahumada', category: 'consumible',
-    tipo: 'CONSUMIBLE', description: 'Ahumada sobre fuego — a diferencia de la carne fresca, aguanta mucho más antes de estropearse.', dimensiones: 'Trozos de 300 a 500 g.' },
+    tipo: 'CONSUMIBLE', description: 'Ahumada sobre fuego — a diferencia de la carne fresca, aguanta mucho más antes de estropearse.', dimensiones: 'Trozos de 300 a 500 g.',
+    curaEnergia: 30 },
   {
     slug: 'grano-espiga-roja',
     name: 'Grano de espiga roja',
@@ -1654,6 +1681,7 @@ export const items: ItemCatalogInput[] = [
     statBonusAmount: 1,
     dimensiones: 'Mango de 35 cm, cabeza de 12 cm.',
     lugarOrigen: 'Manufactura orca.',
+    tipoArma: 'HACHA',
   },
   {
     slug: 'pica-de-patrulla-goirntes',
@@ -1665,6 +1693,7 @@ export const items: ItemCatalogInput[] = [
     statBonusAmount: 1,
     dimensiones: 'Asta de 210 cm.',
     lugarOrigen: 'Concordia de Hierro, Meseta del Orden.',
+    tipoArma: 'PICA',
   },
   {
     slug: 'daga-aleacion-goirntes',
@@ -1672,10 +1701,11 @@ export const items: ItemCatalogInput[] = [
     category: 'arma',
     tipo: 'EQUIPABLE',
     description: 'Hoja corta de aleación gris pulida, empuñadura ajustada — manufactura refinada goirntes.',
-    statBonusAttribute: 'sigilo',
+    statBonusAttribute: 'destreza',
     statBonusAmount: 1,
     dimensiones: 'Hoja de 20 cm.',
     lugarOrigen: 'Manufactura goirnte, Meseta del Orden.',
+    tipoArma: 'DAGA',
   },
   {
     slug: 'garrote-matorral-cuerno',
@@ -1685,6 +1715,7 @@ export const items: ItemCatalogInput[] = [
     description: 'Madera densa y retorcida, tallada a mano — la primera arma para quien no tiene ninguna.',
     statBonusAttribute: 'fuerza',
     statBonusAmount: 1,
+    tipoArma: 'GARROTE',
     dimensiones: 'Palo de 60 cm.',
   },
 
@@ -1732,7 +1763,7 @@ export const items: ItemCatalogInput[] = [
     lugarOrigen: 'Margen Silencioso.',
   },
   { slug: 'cataplasma-salvia', name: 'Cataplasma de salvia del polvo', category: 'medicinal',
-    tipo: 'CONSUMIBLE', description: 'Pasta verde grisácea de hojas machacadas de Salvia del Polvo — forma preparada de la salvia, corta hemorragias y limpia heridas.', dimensiones: 'Emplasto de 10x10 cm.', lugarOrigen: 'Llanuras del Viento Rojo.' },
+    tipo: 'CONSUMIBLE', description: 'Pasta verde grisácea de hojas machacadas de Salvia del Polvo — forma preparada de la salvia, corta hemorragias y limpia heridas.', dimensiones: 'Emplasto de 10x10 cm.', lugarOrigen: 'Llanuras del Viento Rojo.', curaHasta: 'HERIDO' },
   {
     slug: 'aguardiente-goirntes',
     name: 'Petaca de aguardiente goirntes',
@@ -1853,6 +1884,7 @@ export const items: ItemCatalogInput[] = [
     statBonusAmount: 2,
     dimensiones: 'Astil de 75 cm, cabeza de hierro partida por la mitad.',
     lugarOrigen: 'Clan Maktor, Llanuras del Viento Rojo.',
+    tipoArma: 'HACHA',
   },
   // Crafteo v1: reparar el hacha rota de Gorhorn (roadmap 2026-07-20)
   {
@@ -1868,6 +1900,7 @@ export const items: ItemCatalogInput[] = [
     // Mismo requisito que la receta de crafteo homónima (crafting.ts, axeRepair).
     tier: 3,
     requisitos: { fuerza: 12 },
+    tipoArma: 'HACHA',
   },
 
   // --- Tier 0, ronda 2 de objetos (roadmap 2026-07-20, ver memoria

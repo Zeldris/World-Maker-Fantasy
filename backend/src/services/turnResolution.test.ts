@@ -13,4 +13,15 @@ describe('detectsLootIntent', () => {
   it('no dispara con una acción sin ninguna intención de saqueo', () => {
     expect(detectsLootIntent('Miro con cuidado el horizonte.')).toBe(false);
   });
+
+  it('no confunde "ataque"/"atacar"/"ataco" con el stem "saque" (bug real 2026-07-29, jugando en vivo: forzaba lootMode y desactivaba el combate real en un turno de ataque)', () => {
+    expect(detectsLootIntent("Lanzo un ataque rápido y calculado con mi filo, buscando precisión antes que fuerza 'Orco enfurecido'.")).toBe(false);
+    expect(detectsLootIntent('Ataco desde un silencio que no debería esconder a nadie.')).toBe(false);
+    expect(detectsLootIntent('Mi olfato lee el miedo de mi enemigo — ataco en el instante exacto en que flaquea.')).toBe(false);
+  });
+
+  it('no confunde "comer"/"comió" con el stem "compr" (auditoría 2026-07-29 tras el bug de "ataque": justo la palabra que usaría comer un consumible para recuperar energía)', () => {
+    expect(detectsLootIntent('Quiero comer mi ración de carne ahumada para recuperar fuerzas.')).toBe(false);
+    expect(detectsLootIntent('Ya comió la ración de carne ahumada antes de seguir camino.')).toBe(false);
+  });
 });

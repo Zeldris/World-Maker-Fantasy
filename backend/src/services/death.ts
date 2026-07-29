@@ -6,18 +6,53 @@ import type { CondicionFisica, Dificultad, AbilityEffect } from '@prisma/client'
 
 const CONDICION_ORDER: CondicionFisica[] = ['ILESO', 'HERIDO', 'GRAVE', 'INCAPACITADO', 'MUERTO'];
 
-/// Aplica la propuesta de condición física del Narrador con las reglas de § 1: una mejora
-/// siempre se acepta; fuera de combate el modelo nunca puede empeorarla; en combate puede
-/// empeorar como mucho un escalón por turno (nunca "de ILESO a MUERTO" de golpe).
+/// Malus mecánico por condición física en combate (2026-07-29, "cómo es posible que alguien
+/// incapacitado reaccione igual" — hasta ahora `condicionFisica` no afectaba ninguna tirada, solo
+/// paraba a quien ya había caído). Se resta al valor CRUDO del atributo antes del multiplicador
+/// de tipo (combatExchange.ts), para cualquiera de los dos lados y cualquier rol (atacar o
+/// defender) — HERIDO se nota poco, GRAVE cuesta de verdad. INCAPACITADO/MUERTO no tiran (ya
+/// paran de actuar antes de llegar aquí), el valor es irrelevante pero se define por completitud.
+const CONDICION_MALUS: Record<CondicionFisica, number> = {
+  ILESO: 0,
+  HERIDO: 2,
+  GRAVE: 5,
+  INCAPACITADO: 0,
+  MUERTO: 0,
+};
+
+export function condicionMalus(condicion: CondicionFisica): number {
+  return CONDICION_MALUS[condicion];
+}
+
+/// Techo real de mejora este turno (2026-07-29, reglas de curación: "si descansas o comes solo
+/// puedes volver a Herido... si usas material médico sí puedes curarte a Ileso... si sales de un
+/// combate Incapacitado, tendrás que usar objetos específicos"). Sin causa real (ni descanso
+/// válido ni objeto médico), no hay mejora posible — cierra el hueco de que el modelo mejorara la
+/// condición "porque sí" narrativamente, sin que nada en el turno lo justificara.
+export function healCeilingFor(current: CondicionFisica, restSucceeds: boolean, medicalCuraHasta: CondicionFisica | null): CondicionFisica {
+  if (medicalCuraHasta) return medicalCuraHasta; // el objeto manda, rompe el tope incluso desde INCAPACITADO
+  if (restSucceeds && current !== 'INCAPACITADO' && current !== 'MUERTO') return 'HERIDO';
+  return current; // sin causa real (ni descanso ni objeto), no se permite ninguna mejora
+}
+
+/// Aplica la propuesta de condición física del Narrador con las reglas de § 1: empeorar fuera de
+/// combate nunca se acepta; en combate empeora como mucho un escalón por turno (nunca "de ILESO a
+/// MUERTO" de golpe). Mejorar (2026-07-29) ya no se acepta sin más — se topa en `healCeiling`
+/// (ver healCeilingFor arriba), así que sin descanso válido ni objeto médico la condición se queda
+/// igual por mucho que el modelo narre una mejora sin causa real.
 export function nextCondicionFisica(
   current: CondicionFisica,
   proposed: CondicionFisica | null | undefined,
   enCombate: boolean,
+  healCeiling: CondicionFisica,
 ): CondicionFisica {
   if (!proposed) return current;
   const currentIdx = CONDICION_ORDER.indexOf(current);
   const proposedIdx = CONDICION_ORDER.indexOf(proposed);
-  if (proposedIdx <= currentIdx) return proposed; // mejora o igual, se acepta tal cual
+  if (proposedIdx <= currentIdx) {
+    const ceilingIdx = CONDICION_ORDER.indexOf(healCeiling);
+    return CONDICION_ORDER[Math.max(proposedIdx, ceilingIdx)];
+  }
   if (!enCombate) return current; // fuera de combate, el modelo nunca la empeora
   const maxIdx = Math.min(currentIdx + 1, CONDICION_ORDER.length - 1);
   return CONDICION_ORDER[Math.min(proposedIdx, maxIdx)];

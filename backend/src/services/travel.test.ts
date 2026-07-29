@@ -9,6 +9,9 @@ import {
   minutosConDestreza,
   bandaForMinutos,
   initialLocationSlugFor,
+  fuzzyMatchCandidates,
+  fuzzyMatchesAnyStem,
+  findFuzzyStemMatch,
   type LocationNode,
   type LinkEdge,
 } from './travel.js';
@@ -17,6 +20,29 @@ describe('normalizeText', () => {
   it('quita tildes y pasa a minúsculas', () => {
     expect(normalizeText('El Pozo de Cauce Viejo')).toBe('el pozo de cauce viejo');
     expect(normalizeText('Acción')).toBe('accion');
+  });
+});
+
+describe('fuzzyMatchCandidates + fuzzyMatchesAnyStem + findFuzzyStemMatch (deuda técnica 2026-07-30, primitiva compartida por todos los detectores de intención por tolerancia a erratas del proyecto)', () => {
+  it('fuzzyMatchCandidates descarta palabras de menos de 5 letras', () => {
+    expect(fuzzyMatchCandidates('voy a por el oro')).toEqual([]);
+    expect(fuzzyMatchCandidates('registro el cuerpo del enemigo caido')).toEqual(['registro', 'cuerpo', 'enemigo', 'caido']);
+  });
+
+  it('fuzzyMatchesAnyStem tolera distancia 2 pero no más', () => {
+    expect(fuzzyMatchesAnyStem('saqeo', ['saque'])).toBe(true); // distancia 2
+    expect(fuzzyMatchesAnyStem('ataque', ['saque'])).toBe(true); // el propio bug real que motivó esto
+    expect(fuzzyMatchesAnyStem('horizonte', ['saque'])).toBe(false);
+  });
+
+  it('findFuzzyStemMatch respeta las exclusiones (bug real 2026-07-29: "ataque"/"desde"/"comer" confundidos con stems de saqueo)', () => {
+    const words = fuzzyMatchCandidates('lanzo un ataque rapido');
+    expect(findFuzzyStemMatch(words, ['saque'])).toBe('ataque'); // sin exclusión, colisiona
+    expect(findFuzzyStemMatch(words, ['saque'], new Set(['ataque']))).toBeNull(); // con exclusión, no
+  });
+
+  it('findFuzzyStemMatch devuelve null sin ninguna coincidencia', () => {
+    expect(findFuzzyStemMatch(['horizonte', 'paisaje'], ['saque', 'registr'])).toBeNull();
   });
 });
 
@@ -95,11 +121,11 @@ describe('edgeBetween', () => {
 
 describe('minutosConDestreza', () => {
   it('reduce el tiempo con más destreza (fórmula base/(1+destreza/20))', () => {
-    expect(minutosConDestreza(150, { fuerza: 10, destreza: 0, sigilo: 10, voluntad: 10, carisma: 10, arcano: 10 })).toBe(150);
-    expect(minutosConDestreza(150, { fuerza: 10, destreza: 9, sigilo: 10, voluntad: 10, carisma: 10, arcano: 10 })).toBe(103);
+    expect(minutosConDestreza(150, { fuerza: 10, destreza: 0, constitucion: 10, inteligencia: 10, voluntad: 10, carisma: 10, arcano: 10 })).toBe(150);
+    expect(minutosConDestreza(150, { fuerza: 10, destreza: 9, constitucion: 10, inteligencia: 10, voluntad: 10, carisma: 10, arcano: 10 })).toBe(103);
   });
   it('nunca baja de 1 minuto', () => {
-    expect(minutosConDestreza(1, { fuerza: 10, destreza: 100, sigilo: 10, voluntad: 10, carisma: 10, arcano: 10 })).toBe(1);
+    expect(minutosConDestreza(1, { fuerza: 10, destreza: 100, constitucion: 10, inteligencia: 10, voluntad: 10, carisma: 10, arcano: 10 })).toBe(1);
   });
 });
 

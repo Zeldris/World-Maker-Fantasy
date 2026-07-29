@@ -1,5 +1,14 @@
 import { describe, it, expect } from 'vitest';
-import { limiteMuertes, resolveDeathOutcome, whisperText, nextCondicionFisica, nextCondicionForAttack, isValidRestLocationKind } from './death.js';
+import {
+  limiteMuertes,
+  resolveDeathOutcome,
+  whisperText,
+  nextCondicionFisica,
+  nextCondicionForAttack,
+  isValidRestLocationKind,
+  healCeilingFor,
+  condicionMalus,
+} from './death.js';
 
 describe('limiteMuertes', () => {
   it('NOVATO no tiene límite', () => {
@@ -45,21 +54,53 @@ describe('whisperText', () => {
 
 describe('nextCondicionFisica', () => {
   it('fuera de combate nunca empeora, aunque el modelo lo proponga', () => {
-    expect(nextCondicionFisica('ILESO', 'HERIDO', false)).toBe('ILESO');
+    expect(nextCondicionFisica('ILESO', 'HERIDO', false, 'ILESO')).toBe('ILESO');
   });
-  it('fuera de combate una mejora (curarse) siempre se acepta', () => {
-    expect(nextCondicionFisica('GRAVE', 'ILESO', false)).toBe('ILESO');
+  it('sin causa real (healCeiling = current), una mejora propuesta sin más NO se acepta (2026-07-29)', () => {
+    expect(nextCondicionFisica('GRAVE', 'ILESO', false, 'GRAVE')).toBe('GRAVE');
+  });
+  it('con descanso válido (healCeiling = HERIDO), la mejora se topa en HERIDO aunque el modelo proponga ILESO', () => {
+    expect(nextCondicionFisica('GRAVE', 'ILESO', false, 'HERIDO')).toBe('HERIDO');
+  });
+  it('con objeto médico (healCeiling = el curaHasta del objeto), la mejora puede llegar a ILESO', () => {
+    expect(nextCondicionFisica('INCAPACITADO', 'ILESO', false, 'ILESO')).toBe('ILESO');
   });
   it('en combate empeora, pero tope de un escalón por turno', () => {
-    expect(nextCondicionFisica('ILESO', 'HERIDO', true)).toBe('HERIDO');
-    expect(nextCondicionFisica('ILESO', 'MUERTO', true)).toBe('HERIDO'); // nunca dos escalones de golpe
+    expect(nextCondicionFisica('ILESO', 'HERIDO', true, 'ILESO')).toBe('HERIDO');
+    expect(nextCondicionFisica('ILESO', 'MUERTO', true, 'ILESO')).toBe('HERIDO'); // nunca dos escalones de golpe
   });
   it('en combate, desde INCAPACITADO sí puede llegar a MUERTO (un solo escalón)', () => {
-    expect(nextCondicionFisica('INCAPACITADO', 'MUERTO', true)).toBe('MUERTO');
+    expect(nextCondicionFisica('INCAPACITADO', 'MUERTO', true, 'INCAPACITADO')).toBe('MUERTO');
   });
   it('sin propuesta del modelo, se queda igual', () => {
-    expect(nextCondicionFisica('HERIDO', null, true)).toBe('HERIDO');
-    expect(nextCondicionFisica('HERIDO', undefined, true)).toBe('HERIDO');
+    expect(nextCondicionFisica('HERIDO', null, true, 'HERIDO')).toBe('HERIDO');
+    expect(nextCondicionFisica('HERIDO', undefined, true, 'HERIDO')).toBe('HERIDO');
+  });
+});
+
+describe('healCeilingFor', () => {
+  it('sin descanso ni objeto médico, el techo es la condición actual (ninguna mejora posible)', () => {
+    expect(healCeilingFor('GRAVE', false, null)).toBe('GRAVE');
+  });
+  it('descansar/comer topa en HERIDO', () => {
+    expect(healCeilingFor('GRAVE', true, null)).toBe('HERIDO');
+    expect(healCeilingFor('HERIDO', true, null)).toBe('HERIDO');
+  });
+  it('descansar NO funciona desde INCAPACITADO — hace falta objeto sí o sí', () => {
+    expect(healCeilingFor('INCAPACITADO', true, null)).toBe('INCAPACITADO');
+  });
+  it('un objeto médico manda por encima de todo, incluso desde INCAPACITADO', () => {
+    expect(healCeilingFor('INCAPACITADO', false, 'HERIDO')).toBe('HERIDO');
+    expect(healCeilingFor('INCAPACITADO', false, 'ILESO')).toBe('ILESO');
+    expect(healCeilingFor('GRAVE', true, 'ILESO')).toBe('ILESO');
+  });
+});
+
+describe('condicionMalus', () => {
+  it('ILESO sin malus, HERIDO/GRAVE con malus creciente', () => {
+    expect(condicionMalus('ILESO')).toBe(0);
+    expect(condicionMalus('HERIDO')).toBeGreaterThan(0);
+    expect(condicionMalus('GRAVE')).toBeGreaterThan(condicionMalus('HERIDO'));
   });
 });
 

@@ -1,7 +1,8 @@
 import type { Attribute, AttributeBlock, GradoExito, RollResult } from './dice.js';
-import type { AbilityEffect } from '@prisma/client';
+import type { AbilityEffect, CondicionFisica } from '@prisma/client';
 import { gradoExitoFor } from './dice.js';
 import { effectiveAttributeValue } from './attributeWheel.js';
+import { condicionMalus } from './death.js';
 
 /// Ataque de NPC ya decidido (oculto al frontend) — se persiste en `Save.pendingNpcAttack`
 /// cuando la iniciativa de un intercambio favorece al NPC, y se consume/limpia al resolver la
@@ -22,8 +23,20 @@ function contestValue(attributes: AttributeBlock, attribute: Attribute): number 
   return Math.floor(Math.random() * 20) + 1 + Math.floor(attributes[attribute] / 2);
 }
 
-export function rollInitiative(playerAttributes: AttributeBlock, npcAttributes: AttributeBlock): 'jugador' | 'npc' {
-  return contestValue(playerAttributes, 'destreza') >= contestValue(npcAttributes, 'destreza') ? 'jugador' : 'npc';
+export interface InitiativeResult {
+  ganador: 'jugador' | 'npc';
+  /// Valores YA con destreza sumada (2026-07-29, "quiero que me indique qué salió en los dados
+  /// para saber por qué ataco primero" — antes `rollInitiative` solo devolvía el ganador, tirando
+  /// los números crudos, así que el turno de ataque nunca podía mostrar ninguna cifra real, a
+  /// diferencia del de defensa).
+  jugadorTirada: number;
+  npcTirada: number;
+}
+
+export function rollInitiative(playerAttributes: AttributeBlock, npcAttributes: AttributeBlock): InitiativeResult {
+  const jugadorTirada = contestValue(playerAttributes, 'destreza');
+  const npcTirada = contestValue(npcAttributes, 'destreza');
+  return { ganador: jugadorTirada >= npcTirada ? 'jugador' : 'npc', jugadorTirada, npcTirada };
 }
 
 export interface ExchangeParticipant {
@@ -34,6 +47,9 @@ export interface ExchangeParticipant {
   /// `preferredAttribute`, ver classAbilities.ts/berigLore.ts/worldCatalog.ts.
   attribute: Attribute;
   difficulty: number;
+  /// Malus mecánico por condición física (2026-07-29, ver death.ts § condicionMalus) — se resta
+  /// al valor crudo del atributo antes del multiplicador de tipo, para este lado del intercambio.
+  condicionFisica: CondicionFisica;
 }
 
 export interface ExchangeSideResult extends RollResult {
@@ -69,8 +85,10 @@ export interface ExchangeResult {
 /// por los dos `Math.random()` de las tiradas — mismo criterio que `rollCheck`: nunca deja que
 /// el modelo decida el número, solo lo narra ya resuelto.
 export function resolveExchange(atacante: ExchangeParticipant, defensor: ExchangeParticipant): ExchangeResult {
-  const valorEfectivoAtacante = effectiveAttributeValue(atacante.attributes[atacante.attribute], atacante.attribute, defensor.attribute, 'ataque');
-  const valorEfectivoDefensor = effectiveAttributeValue(defensor.attributes[defensor.attribute], defensor.attribute, atacante.attribute, 'defensa');
+  const valorCrudoAtacante = Math.max(1, atacante.attributes[atacante.attribute] - condicionMalus(atacante.condicionFisica));
+  const valorCrudoDefensor = Math.max(1, defensor.attributes[defensor.attribute] - condicionMalus(defensor.condicionFisica));
+  const valorEfectivoAtacante = effectiveAttributeValue(valorCrudoAtacante, atacante.attribute, defensor.attribute, 'ataque');
+  const valorEfectivoDefensor = effectiveAttributeValue(valorCrudoDefensor, defensor.attribute, atacante.attribute, 'defensa');
 
   const rollAtacante = Math.floor(Math.random() * 20) + 1;
   const resultAtacante = rollAtacante + Math.floor(valorEfectivoAtacante / 2);

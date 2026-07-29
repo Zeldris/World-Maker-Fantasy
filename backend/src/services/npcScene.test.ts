@@ -44,8 +44,8 @@ describe('tabulatedAttackAttribute', () => {
   it('usa fuerza por defecto', () => {
     expect(tabulatedAttackAttribute('Ataco con mi hacha')).toBe('fuerza');
   });
-  it('usa sigilo si se menciona una emboscada', () => {
-    expect(tabulatedAttackAttribute('Ataco por la espalda con sigilo')).toBe('sigilo');
+  it('usa destreza si se menciona una emboscada (sigilo bajó a atributo secundario, 2026-07-29)', () => {
+    expect(tabulatedAttackAttribute('Ataco por la espalda con sigilo')).toBe('destreza');
   });
 });
 
@@ -80,6 +80,11 @@ describe('detectsAttackIntent', () => {
     expect(detectsAttackIntent('Decido no atacar todavía')).toBe(false)
     expect(detectsAttackIntent('Prefiero no golpear primero')).toBe(false)
     expect(detectsAttackIntent('Cargo contra mi enemigo')).toBe(true)
+  });
+
+  it('no confunde "hierro" con "hiere"/"hiero" (auditoría 2026-07-29, tras el bug real de "ataque"~"saque" en turnResolution.ts)', () => {
+    expect(detectsAttackIntent('Aprieto los dientes, aguanto con mi Puño de Hierro y me preparo')).toBe(false)
+    expect(detectsAttackIntent('Reviso mi armadura de hierro antes de seguir')).toBe(false)
   });
 });
 

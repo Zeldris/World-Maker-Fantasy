@@ -39,6 +39,34 @@ export function detectsTravelIntent(action: string): boolean {
   return TRAVEL_INTENT_REGEX.test(normalizeText(action));
 }
 
+/// Palabras de 5+ letras de una acción ya normalizada — mismo umbral y criterio en todos los
+/// detectores de intención por tolerancia a erratas del proyecto (ver findFuzzyStemMatch abajo).
+export function fuzzyMatchCandidates(normalized: string): string[] {
+  return normalized.split(/\s+/).filter((w) => w.length >= 5);
+}
+
+/// Deuda técnica (2026-07-30, "control de deuda técnica"): este mismo bucle — palabras de 5+
+/// letras, distancia Levenshtein ≤2 contra una lista de stems — estaba reimplementado por
+/// separado en turnResolution.ts (saqueo), npcScene.ts (ataque) y narrador.ts (Reino), cada uno
+/// con su propio filtro de exclusiones a mano. Centralizado aquí tras el bug real de 2026-07-29
+/// ("ataque"/"desde"/"después"/"comer" confundidos con stems de saqueo, lo que desactivaba el
+/// combate real de fondo): cualquier detector nuevo hereda el mismo criterio sin reimplementar
+/// nada, y una futura mejora del matching (o una exclusión nueva) solo hay que tocarla aquí.
+/// Primitiva de una sola palabra — separada de `findFuzzyStemMatch` para que un caller que
+/// necesite probar varias palabras candidatas una a una (p.ej. detectsAttackIntent, que sigue
+/// buscando otra palabra si la primera coincidencia sale negada) no tenga que reimplementar el
+/// bucle de stems.
+export function fuzzyMatchesAnyStem(word: string, stems: string[]): boolean {
+  return stems.some((stem) => levenshtein(word, stem) <= 2);
+}
+
+/// Devuelve la primera palabra que matcheó (o null si ninguna) — para el caso simple de "¿alguna
+/// palabra de la acción coincide con algún stem de esta lista?", sin necesidad de comprobar nada
+/// más sobre esa palabra.
+export function findFuzzyStemMatch(words: string[], stems: string[], exclusions: ReadonlySet<string> = new Set()): string | null {
+  return words.find((w) => !exclusions.has(w) && fuzzyMatchesAnyStem(w, stems)) ?? null;
+}
+
 export interface LocationNode {
   id: string;
   slug: string;

@@ -29,7 +29,7 @@ export function characterSummaryFor(
   const base = `${save.characterName}, ${save.characterArchetype}. ${save.characterOrigin} ${save.characterMotivation}`;
   if (!estadoPartida) return base;
   const { timeLabel, locationName, region, level, attributes, condicionFisica } = estadoPartida;
-  const attrsTxt = (['fuerza', 'destreza', 'sigilo', 'voluntad', 'carisma', 'arcano'] as const)
+  const attrsTxt = (['fuerza', 'destreza', 'constitucion', 'inteligencia', 'voluntad', 'carisma', 'arcano'] as const)
     .map((a) => `${a} ${attributes[a]}`)
     .join(', ');
   return `${base}

@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { npcCombatAbilitiesFor, chooseNpcAbility, type NpcForCombatAbilities, type NpcCombatAbility } from './npcCombatAbilities.js';
 
-const ATTRS = { fuerza: 13, destreza: 10, sigilo: 5, voluntad: 8, carisma: 2, arcano: 2 };
+const ATTRS = { fuerza: 13, destreza: 10, constitucion: 5, inteligencia: 5, voluntad: 8, carisma: 2, arcano: 2 };
 
 describe('npcCombatAbilitiesFor', () => {
   it('siempre incluye Ataque base, aunque el NPC no tenga clase/raza/racial (p.ej. NPC social)', () => {
@@ -11,13 +11,12 @@ describe('npcCombatAbilitiesFor', () => {
     expect(abilities[0].name).toBe('Ataque base');
   });
 
-  it('añade las habilidades de clase hasta su nivel, nunca las de nivel superior', () => {
-    const npc: NpcForCombatAbilities = { level: 3, attributes: ATTRS, raza: null, clase: 'Guerrero', ataqueNatural: null, habilidadesRaciales: [] };
+  it('añade las 2 habilidades de la clase (todas desde nivel 1, tope de 10 habilidades), nunca las de la otra clase', () => {
+    const npc: NpcForCombatAbilities = { level: 1, attributes: ATTRS, raza: null, clase: 'Guerrero', ataqueNatural: null, habilidadesRaciales: [] };
     const abilities = npcCombatAbilitiesFor(npc, []);
-    // Guerrero desbloquea en 2 (Tajo Cruzado) y 3 (Guardia de Hierro) — nunca 5/6/10/12 (nivel 3).
-    expect(abilities.some((a) => a.name === 'Tajo Cruzado')).toBe(true);
-    expect(abilities.some((a) => a.name === 'Guardia de Hierro')).toBe(true);
-    expect(abilities.some((a) => a.name === 'Embestida')).toBe(false); // nivel 5
+    expect(abilities.some((a) => a.name === 'Puño de Hierro')).toBe(true);
+    expect(abilities.some((a) => a.name === 'Grito de Guerra')).toBe(true);
+    expect(abilities.some((a) => a.name === 'Lectura de Presa')).toBe(false); // Cazador
   });
 
   it('añade la habilidad racial humanoide cuando tiene raza asignada', () => {

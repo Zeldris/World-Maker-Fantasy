@@ -1,47 +1,17 @@
 import type { StartingAbility } from './startingAbilities.js';
+import { ENERGY_COST_BASICA } from './energy.js';
 
-/// Habilidades de COMBATE por CLASE (roadmap de Fable, 2026-07-21 — ver memoria
-/// project_tarkor_roadmap_habilidades_clase), genéricas de la combinación Guerrero/Cazador: no
-/// mencionan a Gorhorn, su hacha rota ni el Clan Maktor — cualquier personaje futuro de esta clase
-/// las aprende igual, sin importar su arma concreta u origen (petición explícita de la usuaria,
-/// 2026-07-21: "imagínate que me creo un guerrero o cazador de otra clase, pues no debería
-/// aparecer Maktor... debería ser algo más genérico").
+/// Habilidades de COMBATE por CLASE (rediseño 2026-07-29, tope de 10 habilidades de combate
+/// activas — "en vez de tener muchas habilidades usables a la vez... podamos variar sencillamente
+/// cambiando de arma"): se recorta de 12 a solo 4 (2 Guerrero + 2 Cazador), y ya NO son de
+/// ataque/aguante genéricos "pegar más fuerte" — eso ahora lo cubren las habilidades de arma
+/// (weaponAbilities.ts). Estas son de apoyo/contraataque con un efecto propio y descrito,
+/// repartidas a propósito en los 4 atributos que NI el arma equipada NI la racial de fuerza/
+/// destreza/constitución llegan a cubrir (Voluntad/Carisma/Inteligencia/Arcano) — así ningún
+/// atributo jugable se queda sin ninguna habilidad real de combate detrás.
 ///
-/// Distinto de la HABILIDAD ÚNICA DE PERSONAJE (aprendida a nivel medio, un movimiento de firma
-/// solo de ESE personaje — para Gorhorn sería "Grito de Maktor", grounded en que es el último
-/// superviviente de su clan): esa es personal y no vive aquí, sino en un mecanismo aparte keyed
-/// por `characterName`, no por clase — todavía no implementada (deferida, ver roadmap).
-///
-/// A diferencia de startingAbilities.ts (kit de partida, fijo desde el turno 1), estas se
-/// conceden dinámicamente cuando el nivel alcanza el umbral. `isStarting: true` aunque no sean
-/// literalmente "de partida": es el mismo campo que ya usa el resto del proyecto para decir
-/// "diseño, no la jugadora" (no editable, no borrable, ver DetailModal.tsx/HabilidadesPanel.tsx).
-///
-/// Arranque deliberadamente pequeño (decisión explícita de la usuaria: "empezamos con 2, una
-/// ofensiva y 1 defensiva"): del roster completo que propuso Fable, se implementaron primero solo
-/// estas 2 (2026-07-21). La ofensiva NO es un remate (petición explícita: "la primera ofensiva no
-/// puede ser un REMATE, debe ser un ataque normal o básico") — Tajo Cruzado es un ataque directo
-/// genérico, sin condición previa.
-///
-/// Resto del roster añadido 2026-07-22 (checklist punto 2, con luz verde para la mecánica real de
-/// puntos 1-2): 6 habilidades más, en los niveles que dejó libres el roster original de Fable (el
-/// 4 se deja reservado a propósito para la futura habilidad única de personaje — "Grito de
-/// Maktor" para Gorhorn, primer ASI_LEVELS de progression.ts, ver roadmap). "Sentencia del Hacha
-/// Rota" e "Ira de los Últimos Maktor" del roster original de Fable se renombran aquí a nombres
-/// genéricos (mismo criterio ya aplicado a Tajo Cruzado/Guardia de Hierro): ninguna habilidad de
-/// CLASE puede nombrar a Gorhorn, su hacha rota o el Clan Maktor — eso es privilegio exclusivo de
-/// la futura habilidad única de personaje.
-///
-/// Guerrero y Cazador (2026-07-22, petición explícita: "Guerrero es una clase y Cazador es otra
-/// con sus propias habilidades! Gorhorn es una variante especial que le permite aprender las
-/// habilidades de ambas clases") — hasta ahora vivían como un único roster fusionado sin distinguir
-/// cuál era de cada una; se separan aquí vía `clase`, sin cambiar el motor de turnos (Gorhorn sigue
-/// aprendiendo TODAS, de ambas clases, filtrando solo por nivel — `classAbilityUnlocksFor` no
-/// cambia su contrato). El reparto por atributo definitorio de cada clase (fuerza/voluntad =
-/// Guerrero, destreza = Cazador) dejaba a Cazador con solo 2 de las 8 originales (Ojo del Cazador,
-/// Zarpazo del Viento Rojo) — se amplió el mismo día con 4 habilidades nuevas para que tenga cuerpo
-/// propio, en niveles libres que no pisan los ya usados por Guerrero ni el 4 (reservado para la
-/// futura habilidad única de personaje).
+/// Todas se aprenden desde nivel 1 (mismo criterio que las de arma) — ya no hay un roster que
+/// desbloquear progresivamente, el tope de 10 ya limita de sobra la profundidad.
 export type Clase = 'Guerrero' | 'Cazador';
 
 export interface ClassAbilityUnlock {
@@ -52,195 +22,67 @@ export interface ClassAbilityUnlock {
 
 const CLASS_ABILITIES: ClassAbilityUnlock[] = [
   {
-    level: 2,
+    level: 1,
     clase: 'Guerrero',
     ability: {
-      name: 'Tajo Cruzado',
-      icon: '🗡️',
-      description: 'Dos tajos cruzados y veloces con el arma en mano — abre dos heridas donde el enemigo solo esperaba una.',
-      promptText:
-        'Giro el cuerpo entero y lanzo dos tajos cruzados y seguidos con mi arma, buscando abrir a mi enemigo antes de que pueda reaccionar al primero.',
-      category: 'combate',
-      effect: 'ATAQUE',
-      // Rediseño del turno de combate (2026-07-28, petición explícita: "no es que las de guerrero
-      // dependan todas de fuerza, sino que las habilidades propias dependiendo de que tipo sean")
-      // — dos tajos VELOCES y seguidos es precisión/rapidez, no fuerza bruta.
-      preferredAttribute: 'destreza',
-    },
-  },
-  {
-    level: 3,
-    clase: 'Guerrero',
-    ability: {
-      name: 'Guardia de Hierro',
-      icon: '🛡️',
-      description: 'Planta los pies, cierra la guardia y no cede terreno — aguanta el envite sin retroceder.',
-      promptText:
-        'Planto los pies, cierro la guardia con firmeza y no cedo terreno pase lo que pase, aguantando el envite sin retroceder ni un paso.',
+      name: 'Puño de Hierro',
+      icon: '✊',
+      description: 'Aguanta cualquier golpe entrante sin retroceder ni un paso, listo para responder de inmediato en cuanto el enemigo se descubre.',
+      promptText: 'Aprieto los dientes, aguanto el golpe entrante sin ceder terreno y me preparo para responder en cuanto se descubra.',
       category: 'combate',
       effect: 'AGUANTE',
       preferredAttribute: 'voluntad',
+      energyCost: ENERGY_COST_BASICA,
     },
   },
   {
-    level: 5,
+    level: 1,
     clase: 'Guerrero',
     ability: {
-      name: 'Embestida',
-      icon: '🐗',
-      description: 'Carga con todo el peso del cuerpo contra un enemigo, buscando derribarlo antes de que pueda reaccionar.',
-      promptText: 'Bajo el hombro y cargo con todo mi peso contra mi enemigo, buscando derribarlo de un solo golpe.',
-      category: 'combate',
-      effect: 'ATURDIMIENTO',
-      preferredAttribute: 'fuerza',
-    },
-  },
-  {
-    level: 6,
-    clase: 'Guerrero',
-    ability: {
-      name: 'Golpe Quebrantador',
-      icon: '💥',
-      description: 'Un golpe brutal dirigido a romper la guardia del enemigo, sin importar lo que interponga.',
-      promptText: 'Descargo un golpe brutal y directo, buscando romper cualquier guardia que mi enemigo interponga.',
-      category: 'combate',
-      effect: 'ATAQUE',
-      preferredAttribute: 'fuerza',
-    },
-  },
-  {
-    level: 7,
-    clase: 'Cazador',
-    ability: {
-      name: 'Ojo del Cazador',
-      icon: '🎯',
-      description: 'Un disparo o lanzamiento certero a distancia, calculado con la paciencia de un cazador experimentado.',
-      promptText:
-        'Me tomo un instante para apuntar con calma y lanzo un golpe certero a distancia, como un cazador que ya conoce a su presa.',
-      category: 'combate',
-      effect: 'ATAQUE',
-      // Rediseño del turno de combate (2026-07-28): "me tomo un instante... con calma" es
-      // paciencia y cálculo, no reflejos — distinta de Zarpazo/Lluvia Certera (destreza pura).
-      preferredAttribute: 'voluntad',
-    },
-  },
-  {
-    level: 8,
-    clase: 'Cazador',
-    ability: {
-      name: 'Zarpazo del Viento Rojo',
-      icon: '🌪️',
-      description: 'Una serie de golpes veloces y erráticos que dejan al enemigo desorientado, incapaz de anticipar el siguiente.',
-      promptText:
-        'Me muevo veloz y errático, encadenando golpes rápidos desde ángulos distintos hasta dejar a mi enemigo desorientado.',
-      category: 'combate',
-      effect: 'ATURDIMIENTO',
-      preferredAttribute: 'destreza',
-    },
-  },
-  {
-    // Cazador nueva (2026-07-22): equivalente de Cazador a la Guardia de Hierro del Guerrero —
-    // esquiva en vez de bloquear.
-    level: 9,
-    clase: 'Cazador',
-    ability: {
-      name: 'Paso de Sombra',
-      icon: '🌬️',
-      description: 'Un movimiento lateral rápido y silencioso que esquiva el golpe antes de que llegue, sin perder de vista al enemigo.',
-      promptText:
-        'Me desplazo lateral y rápido, casi sin hacer ruido, esquivando el golpe antes de que llegue sin perder de vista a mi enemigo.',
-      category: 'combate',
-      effect: 'AGUANTE',
-      // Rediseño del turno de combate (2026-07-28): "casi sin hacer ruido" — el propio nombre
-      // ("paso de SOMBRA") ya apunta a sigilo, no a la velocidad pura de Zarpazo/Lluvia Certera.
-      preferredAttribute: 'sigilo',
-    },
-  },
-  {
-    // Genérica de "Sentencia del Hacha Rota" (roster original de Fable) — sin mención al hacha
-    // rota de Gorhorn, ver nota de cabecera.
-    level: 10,
-    clase: 'Guerrero',
-    ability: {
-      name: 'Golpe de Sentencia',
-      icon: '⚰️',
-      description: 'El golpe final sobre un enemigo ya vencido — sin piedad, sin dudarlo.',
-      promptText: 'Alzo mi arma sobre el enemigo ya vencido y descargo el golpe final, sin piedad ni titubeo.',
-      category: 'combate',
-      effect: 'REMATE',
-      preferredAttribute: 'fuerza',
-    },
-  },
-  {
-    // Cazador nueva (2026-07-22): equivalente de Cazador al Golpe de Sentencia del Guerrero.
-    level: 11,
-    clase: 'Cazador',
-    ability: {
-      name: 'Disparo de Gracia',
-      icon: '🏹',
-      description: 'Un disparo certero y frío sobre un enemigo ya vencido, que no deja lugar a un segundo intento.',
-      promptText: 'Apunto con calma sobre mi enemigo ya vencido y disparo el golpe de gracia, sin darle opción a un segundo intento.',
-      category: 'combate',
-      effect: 'REMATE',
-      preferredAttribute: 'destreza',
-    },
-  },
-  {
-    // Genérica de "Ira de los Últimos Maktor" (roster original de Fable) — sin mención al Clan
-    // Maktor, ver nota de cabecera.
-    level: 12,
-    clase: 'Guerrero',
-    ability: {
-      name: 'Ira sin Freno',
-      icon: '🔥',
-      description: 'Deja que la ira más antigua tome el control por un instante, descargando toda su fuerza en un solo ataque desatado.',
-      promptText: 'Dejo que la ira más antigua que llevo dentro tome el control por un instante y descargo toda mi fuerza en un ataque desatado.',
-      category: 'combate',
-      effect: 'ATAQUE',
-      preferredAttribute: 'fuerza',
-    },
-  },
-  {
-    // Cazador nueva (2026-07-22): Guerrero no tiene INTIMIDACION en su roster — se le da a Cazador
-    // en vez de duplicar un efecto que Guerrero ya cubre, para que el roster completo (Guerrero +
-    // Cazador) toque los 5 AbilityEffect al menos una vez cada uno.
-    level: 13,
-    clase: 'Cazador',
-    ability: {
-      name: 'Marca del Cazador',
-      icon: '👁️',
-      description: 'Deja claro, con una sola mirada o gesto calculado, que la presa ya ha sido elegida — quiebra el nervio antes del primer golpe.',
-      promptText:
-        'Clavo la mirada en mi objetivo y dejo claro, sin una palabra, que ya lo he elegido como presa — quiero que sienta el peso de saberse cazado.',
+      name: 'Grito de Guerra',
+      icon: '📢',
+      description: 'Un grito que quiebra el nervio del enemigo un instante antes del choque — no todos los golpes se dan con el arma.',
+      promptText: 'Suelto un grito de guerra que retumba antes del choque, buscando quebrar el nervio de mi enemigo un instante antes de que reaccione.',
       category: 'combate',
       effect: 'INTIMIDACION',
-      // Rediseño del turno de combate (2026-07-28): una mirada que quiebra el nervio es presencia/
-      // presión social, no destreza física — encaja mucho mejor con INTIMIDACION que con reflejos.
       preferredAttribute: 'carisma',
+      energyCost: ENERGY_COST_BASICA,
     },
   },
   {
-    // Cazador nueva (2026-07-22): segundo ATAQUE de Cazador, para igualar el peso de ataques
-    // directos que ya tiene el roster de Guerrero.
-    level: 15,
+    level: 1,
     clase: 'Cazador',
     ability: {
-      name: 'Lluvia Certera',
-      icon: '🪃',
-      description: 'Una sucesión rápida de disparos o lanzamientos que caen sobre el enemigo casi a la vez, sin darle tiempo a cubrirse de todos.',
-      promptText: 'Encadeno una sucesión rápida de disparos o lanzamientos, casi a la vez, sin darle tiempo a mi enemigo a cubrirse de todos.',
+      name: 'Lectura de Presa',
+      icon: '🔍',
+      description: 'Lee el punto débil exacto del enemigo antes de moverse — un cazador nunca desperdicia el primer golpe.',
+      promptText: 'Estudio a mi enemigo un instante, leyendo su punto débil antes de moverme, y golpeo justo ahí sin desperdiciar el movimiento.',
       category: 'combate',
       effect: 'ATAQUE',
-      preferredAttribute: 'destreza',
+      preferredAttribute: 'inteligencia',
+      energyCost: ENERGY_COST_BASICA,
+    },
+  },
+  {
+    level: 1,
+    clase: 'Cazador',
+    ability: {
+      name: 'Instinto Salvaje',
+      icon: '🌀',
+      description: 'Un arrebato de instinto puro y salvaje, imposible de anticipar — ni el propio cazador sabe de dónde sale hasta que ya ha golpeado.',
+      promptText: 'Dejo que un arrebato de instinto puro y salvaje tome el control por un instante, golpeando de una forma que ni yo mismo podría anticipar.',
+      category: 'combate',
+      effect: 'ATURDIMIENTO',
+      preferredAttribute: 'arcano',
+      energyCost: ENERGY_COST_BASICA,
     },
   },
 ];
 
-/// Qué habilidades de clase desbloquea un personaje al alcanzar `level` (no acumulado — el
-/// llamador itera por cada nivel cruzado en el turno, ver turnResolution.ts). Hoy solo Gorhorn es
-/// jugable, y es la "variante especial" que aprende de AMBAS clases (Guerrero y Cazador) — de ahí
-/// que este filtro no distinga `clase`, solo nivel. Un futuro personaje de una sola clase
-/// necesitaría filtrar también por `clase` aquí.
+/// Qué habilidades de clase tiene un personaje — hoy solo Gorhorn es jugable, y es la "variante
+/// especial" que aprende de AMBAS clases (Guerrero y Cazador), de ahí que no filtre por `clase`.
+/// Un futuro personaje de una sola clase necesitaría filtrar también por `clase` aquí. Sin
+/// parámetro de nivel: las 4 se conceden de golpe a nivel 1 (ver comentario de cabecera).
 export function classAbilityUnlocksFor(characterName: string, level: number): StartingAbility[] {
   if (characterName !== 'Gorhorn') return [];
   return CLASS_ABILITIES.filter((u) => u.level === level).map((u) => u.ability);

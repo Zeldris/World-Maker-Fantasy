@@ -1,3 +1,4 @@
+import type { CondicionFisica } from '@prisma/client';
 import { normalizeText, levenshtein } from './travel.js';
 
 /// Palabras de objeto genéricas que un jugador puede pedir mirar/usar/revisar sin nombrarlo
@@ -48,4 +49,32 @@ export function detectItemReference(action: string, inventoryNames: string[]): I
 /// lleva encima o que lo encuentra de repente.
 export function missingItemBlockFor(check: ItemReferenceCheck): string {
   return `EL PERSONAJE NO TIENE "${check.noun}" ENTRE SUS PERTENENCIAS ahora mismo: narra que lo busca, lo considera o palpa su equipo y se da cuenta de que no lo tiene — nunca que sí lo tiene, ni que lo encuentra de repente, ni que aparece uno nuevo.`;
+}
+
+/// Detecta si la acción usa de verdad un objeto médico concreto del inventario (2026-07-29,
+/// reglas de curación: "si usas material médico sí puedes curarte" — nunca el modelo decide si
+/// "curó del todo", el objeto que de verdad lleve el jugador es la única fuente de verdad).
+/// Determinista por nombre real del objeto (no un sustantivo genérico como detectItemReference
+/// arriba) — el jugador lo referencia tal cual sale en su inventario, mismo patrón que ya usan
+/// los objetivos de combate entre comillas. Si varios objetos médicos coinciden, se queda con el
+/// de mayor tope de curación (ILESO > HERIDO) — usar el mejor que de verdad nombró.
+const CURA_HASTA_ORDER: CondicionFisica[] = ['ILESO', 'HERIDO'];
+
+export function detectMedicalItemUse(action: string, medicalItems: { name: string; curaHasta: CondicionFisica }[]): CondicionFisica | null {
+  const normalized = normalizeText(action);
+  const matches = medicalItems.filter((item) => normalized.includes(normalizeText(item.name)));
+  if (matches.length === 0) return null;
+  return matches.map((m) => m.curaHasta).sort((a, b) => CURA_HASTA_ORDER.indexOf(a) - CURA_HASTA_ORDER.indexOf(b))[0];
+}
+
+/// Detecta si la acción usa de verdad un objeto que restaura energía (2026-07-29, sistema de
+/// fatiga) — mismo criterio determinista que detectMedicalItemUse arriba (nombre real del
+/// inventario, nunca un sustantivo genérico). Si varios coinciden, se queda con el que más
+/// restaura — a diferencia de curaHasta (un enum con orden fijo), curaEnergia ya es un número, así
+/// que "mejor" es simplemente "más alto".
+export function detectEnergyItemUse(action: string, energyItems: { name: string; curaEnergia: number }[]): number | null {
+  const normalized = normalizeText(action);
+  const matches = energyItems.filter((item) => normalized.includes(normalizeText(item.name)));
+  if (matches.length === 0) return null;
+  return Math.max(...matches.map((m) => m.curaEnergia));
 }

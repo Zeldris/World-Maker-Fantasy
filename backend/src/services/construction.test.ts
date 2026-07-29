@@ -6,7 +6,7 @@ import type { CatalogLookup, InventoryRowLike } from './ingredients.js';
 
 // Ninguna de las 3 recetas base tiene `requisitos` todavía, así que estos valores no afectan a
 // checkRecipe(); existen para no repetir el bloque en cada llamada.
-const attrs: AttributeBlock = { fuerza: 10, destreza: 10, sigilo: 10, voluntad: 10, carisma: 10, arcano: 10 };
+const attrs: AttributeBlock = { fuerza: 10, destreza: 10, constitucion: 10, inteligencia: 10, voluntad: 10, carisma: 10, arcano: 10 };
 const secondary = EMPTY_SECONDARY_ATTRIBUTES;
 
 // catalogSlug de cada fila → tipo/categoría real (2026-07-29, refactor de ingredientes: ya no se

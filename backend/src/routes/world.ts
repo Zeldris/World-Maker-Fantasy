@@ -4,7 +4,6 @@ import { prisma } from '../lib/prisma.js';
 import { harvestSourceAliases, harvestSourceDescriptions, harvestSourcesThatAreFaunaWithoutNpc, harvestSourceRegion } from '../scripts/worldCatalog.js';
 import { coreRegionOf } from '../services/discovery.js';
 import { classAbilityUnlocksForClase } from '../services/classAbilities.js';
-import { startingAbilitiesFor } from '../services/startingAbilities.js';
 import { CONSTRUCTION_RECIPES } from '../services/construction.js';
 import { slugify } from '../lib/slugify.js';
 import { generateImagePrompt, type ImagePromptEntityType, type ImagePromptSizeProfile } from '../services/imagePromptGenerator.js';
@@ -245,7 +244,11 @@ export async function worldRoutes(app: FastifyInstance) {
         variantesSexo: variantesSexoFor('fauna', sourceSlug, FAUNA_SEXO_VARIANTES),
         discovered: isDiscovered('fauna', sourceSlug),
         // Rediseño de la vista de combate (2026-07-28): solo presentes si hay Npc real detrás
-        // (`cazable`) — flora/mineral sin ficha de combate se queda con los cuatro en null/vacío.
+        // (`cazable`) — flora/mineral sin ficha de combate se queda con los cinco en null/vacío.
+        // `level` (2026-07-29, indicador de dificultad antes de Combatir): sin esto, la fauna no
+        // tenía forma de participar en `difficultyHintFor` desde el frontend, a diferencia de los
+        // NPCs humanoides (`EnciclopediaNpcInfo.level` ya existía).
+        level: npcBySlug.get(sourceSlug)?.level ?? null,
         attributes: (npcBySlug.get(sourceSlug)?.attributes as AttributeBlock | undefined) ?? null,
         ataqueNatural: npcBySlug.get(sourceSlug)?.ataqueNatural ?? null,
         habilidadesRaciales: (npcBySlug.get(sourceSlug)?.habilidadesRaciales as unknown as
@@ -294,18 +297,6 @@ export async function worldRoutes(app: FastifyInstance) {
         imagePrompts: imagePromptsFor('personaje', p.slug),
         imageUrls: imageUrlsFor('personaje', p.slug),
       })),
-      // Habilidades iniciales del PERSONAJE (2026-07-22, separado de `classes` de abajo): Furia de
-      // Maktor/Piel de Guerra son el kit personal de Gorhorn (nombran su clan/hacha rota a
-      // propósito) — no pertenecen a ninguna de las dos clases genéricas, así que ya no viven
-      // anidadas dentro de una de ellas. Cuando haya más personajes jugables, esto pasa a
-      // depender de cuál esté activo, no solo 'Gorhorn'.
-      startingAbilities: startingAbilitiesFor('Gorhorn')
-        .filter((a) => a.category === 'combate')
-        .map((a) => ({
-          ...a,
-          imagePrompts: imagePromptsFor('ability', slugify(a.name)),
-          imageUrls: imageUrlsFor('ability', slugify(a.name)),
-        })),
       // Clases (roadmap 2026-07-21, separadas en dos el 2026-07-22 — petición explícita: "Guerrero
       // es una clase y Cazador es otra con sus propias habilidades! Gorhorn es una variante
       // especial que le permite aprender las habilidades de ambas"): contenido de diseño estático,

@@ -26,18 +26,32 @@ export interface RazaVariante {
 /// Habilidad racial (rediseño de la vista de combate, 2026-07-28) — a diferencia de las
 /// habilidades de CLASE (classAbilities.ts, de "seres inteligentes que pueden portar equipo"),
 /// esta es una única habilidad compartida por TODA la raza, no algo que se aprenda por nivel.
-/// Un `Npc` humanoide tiene como mucho esta habilidad como su única racial (`Npc.raza` referencia
-/// el `slug` de aquí); la fauna no la usa — la suya vive directamente en `Npc.habilidadesRaciales`
-/// (hasta 6, categorizada), porque cada fila de fauna en worldCatalog.ts ya es una especie entera.
+/// Un `Npc` humanoide tiene esta habilidad como su racial (`Npc.raza` referencia el `slug` de
+/// aquí); la fauna no la usa — la suya vive directamente en `Npc.habilidadesRaciales` (hasta 6,
+/// categorizada), porque cada fila de fauna en worldCatalog.ts ya es una especie entera.
 export interface HabilidadRacial {
   icon: string;
   name: string;
   description: string;
+  /// Texto en primera persona que se manda al Narrador al usarla en combate (2026-07-29,
+  /// sistema de habilidades por arma/raza — el jugador ahora sí puede usar su racial, antes
+  /// nunca se le mostraba). `description` es de cara al tooltip, en 3ª persona.
+  promptText: string;
   /// Rediseño del turno de combate (2026-07-28) — "tipo" de la habilidad para la rueda de
   /// debilidades (attributeWheel.ts) y el atributo con el que se tira (mismo campo que ya usan
   /// las habilidades de clase, classAbilities.ts). Elegido por lo que la habilidad representa de
   /// verdad, no por plantilla — nunca el mismo atributo por defecto para todas.
   preferredAttribute: Attribute;
+}
+
+/// Tope de 10 habilidades de combate (2026-07-29, "vamos a reducirlo a solo 10 activas en
+/// combate máx"): 2 de las 10 son raciales — una de ataque y una de defensa por raza, fijas,
+/// nunca las de arma equipada ni las de clase. Repartidas a propósito entre los 7 atributos para
+/// que ninguno se quede sin representación real en combate (ver reparto completo en el comentario
+/// de BERIG_RAZAS más abajo).
+export interface HabilidadesRaciales {
+  ataque: HabilidadRacial;
+  defensa: HabilidadRacial;
 }
 
 export interface RazaInfo {
@@ -47,7 +61,7 @@ export interface RazaInfo {
   rasgoFisico: string;
   rasgoCaracter: string;
   description: string;
-  habilidadRacial: HabilidadRacial;
+  habilidadesRaciales: HabilidadesRaciales;
   /// Presente solo en razas con diferenciación regional marcada (hoy: Orcos). El resto se
   /// consulta y se ilustra como una sola entrada, sin selector de variante.
   variantes?: RazaVariante[];
@@ -63,11 +77,24 @@ export const BERIG_RAZAS: RazaInfo[] = [
     rasgoCaracter: 'Fríos, calculadores; el orden y la ley ante todo — el desorden les produce una incomodidad física real.',
     description:
       'En la Meseta del Orden cada Goirnte nace hacia una casta de función y cada objeto tiene un lugar asignado — herencia directa de Goirme. Trabajan la Hierba del Hierro y presumen, con razón, de la mejor metalurgia de Helek Sirik. Su tabú cotidiano es lo inacabado: dejar una tarea a medias o un juramento sin cumplir es casi obsceno. Para la mayoría, la guerra de la Concordia de Hierro es un procedimiento más — órdenes que bajan, se cumplen y se archivan; la facción radical la dirige, la moderada intenta frenarla desde dentro. Elige una variante regional abajo para ver cómo cambia el cuerpo Goirnte según su cercanía a la frontera norte.',
-    habilidadRacial: {
-      icon: '🩶',
-      name: 'Piel Quitinosa',
-      description: 'Bajo tensión, su piel casi mineral se endurece de golpe y deja ver un tenue brillo metálico — encaja un golpe que a cualquier otro habría derribado.',
-      preferredAttribute: 'voluntad',
+    habilidadesRaciales: {
+      // Nueva (2026-07-29, ampliación de 1 a 2 habilidades raciales por raza): fríos y
+      // calculadores por naturaleza — el ataque Goirnte por excelencia es leer la guardia
+      // ajena con precisión matemática, no la fuerza bruta.
+      ataque: {
+        icon: '📐',
+        name: 'Golpe Calculado',
+        description: 'Lee la guardia del enemigo con frialdad absoluta y golpea justo donde el cálculo dice que debe ceder — sin margen de error, sin urgencia.',
+        promptText: 'Leo la guardia de mi enemigo con frialdad absoluta y golpeo justo donde el cálculo dice que debe ceder.',
+        preferredAttribute: 'inteligencia',
+      },
+      defensa: {
+        icon: '🩶',
+        name: 'Piel Quitinosa',
+        description: 'Bajo tensión, su piel casi mineral se endurece de golpe y deja ver un tenue brillo metálico — encaja un golpe que a cualquier otro habría derribado.',
+        promptText: 'Bajo tensión, mi piel casi mineral se endurece de golpe — encajo el impacto sin ceder terreno.',
+        preferredAttribute: 'voluntad',
+      },
     },
     // Variantes regionales (2026-07-22, petición explícita): los Goirntes de la frontera norte, ya
     // cerca del Margen Silencioso, se adaptaron físicamente al terreno de selva y desarrollaron un
@@ -102,11 +129,23 @@ export const BERIG_RAZAS: RazaInfo[] = [
     rasgoCaracter: "Orgullo, fuerza, honor. Clanes regidos por la Terk'ikar (Jefa) y el Kort'ikar (Jefe de Guerra).",
     description:
       'Nacidos de la magia salvaje de Tarkor, sin Semilla creadora propia. El día a día orco es pastoreo, caza y camino: seguir a los Corredores de Cauce, recolectar Raíz de Fuego con cuidado, migrar cuando la Terk\'ikar pacta con una Gargantúa de Ceniza el transporte del clan entero. Las hembras gobiernan la vida y los machos la guerra — costumbre, no ley. A los recién nacidos se les susurra: "Con ira nos quemaron, con honor nos rebelamos, y aún así nadie domó nuestros caminos". Dos tabúes prácticos: interrumpir un duelo de honor ya aceptado, y tocar el tótem de un clan ajeno sin permiso. Los clanes están divididos ante la guerra — el Clan Maktor, usado como carne de cañón hasta la aniquilación, es el precio más caro que ya se ha pagado. Elige una variante regional abajo para ver cómo cambia el cuerpo orco de clan a clan.',
-    habilidadRacial: {
-      icon: '🩸',
-      name: 'Sangre del Estallido',
-      description: 'La magia salvaje que los engendró despierta un instante bajo el dolor o la ira — un segundo aliento de fuerza bruta que ningún cuerpo debería tener.',
-      preferredAttribute: 'fuerza',
+    habilidadesRaciales: {
+      ataque: {
+        icon: '🩸',
+        name: 'Sangre del Estallido',
+        description: 'La magia salvaje que los engendró despierta un instante bajo el dolor o la ira — un segundo aliento de fuerza bruta que ningún cuerpo debería tener.',
+        promptText: 'La magia salvaje que corre por mi sangre despierta un instante bajo la ira — descargo un segundo aliento de fuerza bruta.',
+        preferredAttribute: 'fuerza',
+      },
+      // Nueva (2026-07-29) — generaciones de guerra y trabajo forzado curtieron a los orcos
+      // para encajar el castigo sin ceder terreno, no solo para devolverlo.
+      defensa: {
+        icon: '🪨',
+        name: 'Piel de Guerra',
+        description: 'Encaja el golpe con el cuerpo entero y aguanta el dolor sin ceder ni un paso — generaciones de guerra y trabajo forzado han curtido a los orcos para esto.',
+        promptText: 'Encajo el golpe con el cuerpo entero y aguanto el dolor sin ceder ni un paso.',
+        preferredAttribute: 'constitucion',
+      },
     },
     variantes: [
       {
@@ -145,11 +184,23 @@ export const BERIG_RAZAS: RazaInfo[] = [
     rasgoCaracter: 'Inquietantes por su ausencia, sigilo absoluto.',
     description:
       'En la mitad oriental del Margen Silencioso, donde hasta el sonido se apaga de forma antinatural, los silencios tienen sintaxis: hay pausas que afirman, niegan o advierten. Su voz casi inaudible obliga a acercarse, y esa cercanía forzada es para ellos la medida de la confianza; levantar la voz es su tabú — gritar es violencia, se grite lo que se grite. Perseguidos durante el Yugo de Hierro por "operar en la sombra sin autorización del orden", fueron el corazón de la Purga Silenciosa. Integrados en la Concordia de Hierro por presión, sirven hoy como mensajeros, correos y ojos desde El Refugio sin Nombre, su enclave más estable, con presencia dispersa hasta el borde de Ciénaga Troncal. Elige una variante regional abajo para ver cómo cambia el cuerpo Nabieus según dónde se críen.',
-    habilidadRacial: {
-      icon: '🌑',
-      name: 'Silencio Antinatural',
-      description: 'Se mueve sin el más mínimo ruido, incluso sobre terreno que delataría a cualquier otro — desaparece de la percepción de su enemigo en el momento justo.',
-      preferredAttribute: 'sigilo',
+    habilidadesRaciales: {
+      // Nueva (2026-07-29) — "ausencia hecha carne": el propio vacío que los envuelve puede
+      // usarse como arma, no solo para desaparecer.
+      ataque: {
+        icon: '🌌',
+        name: 'Golpe del Vacío',
+        description: 'Ataca desde un silencio que no debería esconder a nadie — el vacío que lo envuelve parece golpear con él, un instante antes de que el enemigo entienda qué ha pasado.',
+        promptText: 'Ataco desde un silencio que no debería esconder a nadie — el vacío que me envuelve parece golpear conmigo.',
+        preferredAttribute: 'arcano',
+      },
+      defensa: {
+        icon: '🌑',
+        name: 'Silencio Antinatural',
+        description: 'Se mueve sin el más mínimo ruido, incluso sobre terreno que delataría a cualquier otro — desaparece de la percepción de su enemigo en el momento justo.',
+        promptText: 'Me muevo sin el más mínimo ruido y desaparezco de la percepción de mi enemigo justo a tiempo.',
+        preferredAttribute: 'destreza',
+      },
     },
     // Variantes regionales (2026-07-22, petición explícita: los Nabieus criados en el borde de
     // Ciénaga Troncal desarrollan mutaciones reales, no solo un matiz de color — mismo patrón que
@@ -182,11 +233,23 @@ export const BERIG_RAZAS: RazaInfo[] = [
     rasgoCaracter: 'Instintivos y bestiales, pero sumamente inteligentes; cazadores.',
     description:
       'Ocupan la mayor parte de la mitad occidental del Margen Silencioso, con pequeños puestos avanzados más allá de la frontera oeste, ya en las Llanuras del Viento Rojo. La manada es la única institución Faerus: se caza junto, se come junto —la primera pieza de cada caza se comparte siempre— y se muere junto; abandonar a un herido de la manada es el tabú que no se perdona. Su olfato lee estados de ánimo: un Faerus sabe si tienes miedo antes que tú. Bajo la apariencia bestial hay una inteligencia fría y observadora. Sin escritura, y sin nada parecido a las ciudades-fortaleza Goirntes: sus dos únicos asentamientos, Hashma (en la selva, junto a la costa) y Kegi (en la frontera con las Llanuras), son poblados modestos construidos por y para la manada — además de El Claro de la Manada, un punto de encuentro estacional sin construcción propia para las manadas que no viven en ninguno de los dos poblados. No pertenecen a ninguna alianza — nadie los invitó y ellos no habrían ido; la magia salvaje liberada tras la ruptura ya devastó territorios de manada, y esa es la única parte del conflicto que de verdad les concierne. Elige una variante regional abajo para ver cómo cambia el pelaje Faerus según dónde vive la manada.',
-    habilidadRacial: {
-      icon: '👃',
-      name: 'Olfato de la Manada',
-      description: 'Su olfato lee el miedo antes que la propia presa lo sienta — anticipa el momento exacto en que el enemigo flaquea y ataca sin dudarlo.',
-      preferredAttribute: 'destreza',
+    habilidadesRaciales: {
+      ataque: {
+        icon: '👃',
+        name: 'Olfato de la Manada',
+        description: 'Su olfato lee el miedo antes que la propia presa lo sienta — anticipa el momento exacto en que el enemigo flaquea y ataca sin dudarlo.',
+        promptText: 'Mi olfato lee el miedo de mi enemigo antes que él mismo lo sienta — ataco en el instante exacto en que flaquea.',
+        preferredAttribute: 'destreza',
+      },
+      // Nueva (2026-07-29) — instintivos pero de manada: aunque estén solos, se plantan como
+      // si el resto de la Manada Rota respaldara cada paso.
+      defensa: {
+        icon: '🐺',
+        name: 'Presencia de Manada',
+        description: 'Se planta como si toda la manada respaldara cada paso, aunque esté solo — el enemigo duda un instante antes de comprometerse del todo.',
+        promptText: 'Me planto como si toda la manada respaldara cada paso, aunque esté solo.',
+        preferredAttribute: 'carisma',
+      },
     },
     // Variantes regionales (2026-07-22, petición explícita): las manadas que empujaron sus puestos
     // avanzados hacia el norte, dentro de las Llanuras del Viento Rojo, desarrollaron un pelaje
@@ -275,3 +338,12 @@ export const BERIG_PERSONAJES: PersonajeInfo[] = [
     voz: 'Frases cortas, en presente, sin adornos ("Huele mal. Nos vamos."); describe a las personas por su olor antes que por su aspecto ("hueles a miedo y a hierro"). Cuando piensa, emite un gruñido bajo casi inaudible.',
   },
 ];
+
+/// Raza del PERSONAJE JUGABLE (2026-07-29, sistema de habilidades por arma/raza) — mismo patrón
+/// que `startingAbilitiesFor`/`startingInventoryFor` (startingAbilities.ts/startingInventory.ts):
+/// keyed por `characterName`, no hay todavía un flujo de creación de personaje libre que permita
+/// elegir raza para un personaje nuevo. Slug real de `BERIG_RAZAS` arriba.
+export function razaFor(characterName: string): string | null {
+  if (characterName === 'Gorhorn') return 'orcos';
+  return null;
+}

@@ -2,11 +2,16 @@ import type { FastifyInstance } from 'fastify';
 import { Prisma } from '@prisma/client';
 import { prisma } from '../lib/prisma.js';
 import { getDefaultUserId } from '../lib/defaultUser.js';
-import { MAX_ATTRIBUTE, habilidadSlotsForLevel } from '../services/progression.js';
+import { MAX_ATTRIBUTE, maxCombatAbilitiesFor } from '../services/progression.js';
+import { energiaMaxFor } from '../services/energy.js';
 import { mergeFacts } from '../services/worldFacts.js';
 import { startingAbilitiesFor } from '../services/startingAbilities.js';
+import { GENERIC_COMBAT_ABILITIES } from '../services/genericCombatAbilities.js';
+import { classAbilityUnlocksFor } from '../services/classAbilities.js';
 import { startingInventoryFor } from '../services/startingInventory.js';
 import { startingQuestsFor } from '../services/startingQuests.js';
+import { razaFor } from '../services/berigLore.js';
+import { syncDynamicCombatAbilities, resolveEquippedWeaponSlots } from '../services/dynamicAbilities.js';
 import { startingSecondaryAttributesFor } from '../services/startingSecondaryAttributes.js';
 import { normalizeSecondaryAttributes, EMPTY_SECONDARY_ATTRIBUTES } from '../services/secondaryAttributes.js';
 import { destinationsFrom, initialLocationSlugFor } from '../services/travel.js';
@@ -149,9 +154,14 @@ export async function savesRoutes(app: FastifyInstance) {
             characterMotivation,
             attributes,
             secondaryAttributes,
+            // Sistema de fatiga (2026-07-29) — empieza con la energía llena, igual que
+            // condicionFisica arranca en ILESO (aquí sí hace falta fijarlo a mano: el default del
+            // schema es un 100 fijo, y el tope real depende de la Constitución de este personaje).
+            energia: energiaMaxFor(attributes.constitucion),
             portraitInitial,
             currentLocationId: initialLocation?.id,
             dificultad: dificultad ?? 'MEDIO',
+            raza: razaFor(characterName),
             worldState: { create: { fictionalDateLabel } },
             logEntries: {
               create: [
@@ -160,7 +170,16 @@ export async function savesRoutes(app: FastifyInstance) {
               ],
             },
             savedActions: {
-              create: startingAbilitiesFor(characterName).map((a) => ({ ...a, isStarting: true })),
+              // Bug real (2026-07-29, encontrado probando en vivo tras el rediseño "tope de 10"):
+              // classAbilityUnlocksFor(characterName, lvl) solo se llamaba desde el bucle de
+              // SUBIDA de nivel en turnResolution.ts (`for lvl = currentLevel+1 .. newLevel`) —
+              // como las 4 habilidades de clase están todas en `level: 1` y todo personaje EMPIEZA
+              // ya en nivel 1, ese bucle nunca las incluye (arranca en currentLevel+1 = 2): un
+              // personaje recién creado nunca llegaba a tenerlas, nunca. Se conceden aquí, en la
+              // creación, igual que las raciales/de arma (syncDynamicCombatAbilities más abajo).
+              create: [...startingAbilitiesFor(characterName), ...GENERIC_COMBAT_ABILITIES, ...classAbilityUnlocksFor(characterName, 1)].map(
+                (a) => ({ ...a, isStarting: true }),
+              ),
             },
             inventoryItems: {
               create: startingInventoryFor(characterName),
@@ -169,7 +188,14 @@ export async function savesRoutes(app: FastifyInstance) {
               create: startingQuestsData,
             },
           },
+          include: { inventoryItems: true },
         });
+
+        // Habilidades raciales + de arma (2026-07-29, sistema de habilidades por arma) — se
+        // resuelven ya aquí, en la creación, para que el kit inicial (hacha+cuchillo de Gorhorn)
+        // genere sus habilidades desde el primer turno, no solo tras el primer equipar/desequipar.
+        const equippedWeaponSlots = await resolveEquippedWeaponSlots(tx, world.id, save.inventoryItems);
+        await syncDynamicCombatAbilities(tx, save.id, save.raza, save.level, equippedWeaponSlots);
 
         // Enciclopedia progresiva (2026-07-23) — el equipo inicial ya se "conoce" desde el primer
         // instante, sin esperar a que un turno lo mencione (si no, el propio equipo del jugador se
@@ -378,12 +404,19 @@ export async function savesRoutes(app: FastifyInstance) {
         icon: a.icon,
         description: a.description,
         isStarting: a.isStarting,
+        // Rediseño de habilidades por arma (2026-07-29) — igual que `isStarting`, marca una
+        // habilidad como no editable/borrable por la jugadora (ver DetailModal.tsx), pero
+        // resincronizada sola en vez de fija de por vida.
+        isDynamic: a.isDynamic,
         category: a.category,
         // Rediseño del turno de combate (2026-07-28) — "tipo" para colorear el chip en la UI;
         // null en habilidades 'general' o en partidas anteriores a este campo.
         preferredAttribute: a.preferredAttribute,
+        // Sistema de fatiga (2026-07-29) — coste de energía para deshabilitar el botón en la UI
+        // cuando no alcanza (ver CombatPanel.tsx).
+        energyCost: a.energyCost,
       })),
-      habilidadSlots: habilidadSlotsForLevel(save.level),
+      habilidadSlots: maxCombatAbilitiesFor(save.level),
       profession: save.profession,
       professionProgress: save.professionProgress.map((p) => ({ professionId: p.professionId, nivel: p.nivel, xp: p.xp })),
       kingdomStats: save.kingdomStats
@@ -410,6 +443,11 @@ export async function savesRoutes(app: FastifyInstance) {
       destinations: destinations.map((d) => ({ locationId: d.locationId, slug: d.slug, name: d.name, minutos: d.minutos })),
       condicionFisica: save.condicionFisica,
       salud: save.salud,
+      // Sistema de fatiga (2026-07-29) — `energia` es el valor real persistido; `energiaMax` se
+      // deriva de Constitución EFECTIVA (con equipo, mismo criterio que narrateAndPersistTurn),
+      // nunca se persiste (evita que desincronice si sube el atributo o cambia de equipo).
+      energia: save.energia,
+      energiaMax: energiaMaxFor(effectiveAttributes(save.attributes as AttributeBlock, save.inventoryItems).constitucion),
       dificultad: save.dificultad,
       deathCount: save.deathCount,
       endedAt: save.endedAt?.toISOString() ?? null,
@@ -508,11 +546,21 @@ export async function savesRoutes(app: FastifyInstance) {
           data: { saveId: save.id, channel: 'WORLD', text: introWorldText, timeLabel: fictionalDateLabel },
         });
         await tx.savedAction.createMany({
-          data: startingAbilitiesFor(save.characterName).map((a) => ({ ...a, saveId: save.id, isStarting: true })),
+          // Mismo bug que en POST /saves (ver comentario de arriba): las habilidades de clase
+          // (level:1) tampoco se concedían al reiniciar.
+          data: [...startingAbilitiesFor(save.characterName), ...GENERIC_COMBAT_ABILITIES, ...classAbilityUnlocksFor(save.characterName, 1)].map(
+            (a) => ({ ...a, saveId: save.id, isStarting: true }),
+          ),
         });
-        await tx.inventoryItem.createMany({
+        const restartedInventory = await tx.inventoryItem.createManyAndReturn({
           data: startingInventoryFor(save.characterName).map((i) => ({ ...i, saveId: save.id })),
         });
+        // Bug real (2026-07-29, encontrado probando en vivo): reiniciar nunca llamaba a
+        // syncDynamicCombatAbilities — las raciales/de arma (isDynamic) se borraban arriba junto
+        // con el resto de savedActions y no se volvían a crear hasta el próximo equipar/desequipar
+        // manual, dejando al personaje sin ellas justo después de "reiniciar".
+        const restartedEquippedWeaponSlots = await resolveEquippedWeaponSlots(tx, save.worldId, restartedInventory);
+        await syncDynamicCombatAbilities(tx, save.id, save.raza, 1, restartedEquippedWeaponSlots);
         await tx.quest.createMany({
           data: startingQuestsData.map((q) => ({ ...q, saveId: save.id })),
         });
@@ -531,6 +579,10 @@ export async function savesRoutes(app: FastifyInstance) {
             // preferencia de la partida, no parte del progreso que "reiniciar" debe borrar).
             condicionFisica: 'ILESO',
             salud: 100,
+            // Sistema de fatiga (2026-07-29) — mismo criterio que condicionFisica/salud: un
+            // reinicio también restaura la energía al tope (Constitución no se resetea, así que
+            // se recalcula sobre la misma, no un 100 fijo).
+            energia: energiaMaxFor((save.attributes as AttributeBlock).constitucion),
             deathCount: 0,
             endedAt: null,
             lastRestLocationId: null,
@@ -697,7 +749,7 @@ export async function savesRoutes(app: FastifyInstance) {
       // (`attributes[attribute]` da `undefined`, y `undefined >= MAX_ATTRIBUTE` es `false`) y
       // `attributes[attribute] + 1` = `NaN` se persistía como clave espuria en el JSON de
       // atributos, consumiendo un punto de ascenso sin dar ningún beneficio real.
-      const VALID_ATTRIBUTES: Attribute[] = ['fuerza', 'destreza', 'sigilo', 'voluntad', 'carisma', 'arcano'];
+      const VALID_ATTRIBUTES: Attribute[] = ['fuerza', 'destreza', 'constitucion', 'inteligencia', 'voluntad', 'carisma', 'arcano'];
       if (!VALID_ATTRIBUTES.includes(attribute)) {
         return reply.status(400).send({ error: `Atributo no válido: "${attribute}"` });
       }
@@ -729,9 +781,9 @@ export async function savesRoutes(app: FastifyInstance) {
     '/saves/:id/habilidades',
     async (request, reply) => {
       // Roadmap de rediseño de paneles (2026-07-20/21): las habilidades de combate son fijas por
-      // clase (las da el diseño al subir de nivel, nunca la jugadora) — solo "general" es creable
-      // a mano. `habilidadSlotsForLevel` sigue existiendo para saber cuántas de las de clase están
-      // activas en este nivel, ya no como cupo de creación.
+      // clase/raza/arma (las da el diseño, nunca la jugadora) — solo "general" es creable a mano.
+      // `maxCombatAbilitiesFor` sigue existiendo para saber cuántas hay activas ahora mismo, ya no
+      // como cupo de creación.
       const { name, promptText, icon, description, category } = request.body;
       if (!name?.trim() || !promptText?.trim()) {
         return reply.status(400).send({ error: 'Faltan campos: name, promptText' });
@@ -764,8 +816,10 @@ export async function savesRoutes(app: FastifyInstance) {
         icon: created.icon,
         description: created.description,
         isStarting: created.isStarting,
+        isDynamic: created.isDynamic,
         category: created.category,
         preferredAttribute: created.preferredAttribute,
+        energyCost: created.energyCost,
       };
     },
   );
@@ -794,18 +848,30 @@ export async function savesRoutes(app: FastifyInstance) {
   app.delete<{ Params: { id: string; habilidadId: string } }>(
     '/saves/:id/habilidades/:habilidadId',
     async (request, reply) => {
-      // Bug real (auditoría 2026-07-22): `deleteMany` nunca lanza por "no encontrado" (devuelve
-      // count:0 en silencio) — el `.catch(() => null)` que había aquí solo podía estar tragando
-      // fallos DE VERDAD (conexión a la base de datos caída, etc.), nunca el caso que decía
-      // proteger. Se deja propagar como cualquier otro endpoint.
+      // Bug real (2026-07-29, comentario del schema nunca aplicado en la ruta): `isStarting`
+      // (kit inicial/clase) e `isDynamic` (racial/arma, ver SavedAction.isDynamic) están pensadas
+      // como "nunca editable/borrable por la jugadora" desde que existen, pero esta ruta borraba
+      // cualquier fila sin comprobarlo — el frontend nunca ofrece el botón para estas, pero nada
+      // lo impedía si se llamaba directamente. Mismo criterio que el PATCH de abajo: verificado
+      // aquí, no solo ocultando el botón.
+      const existing = await prisma.savedAction.findFirst({
+        where: { id: request.params.habilidadId, saveId: request.params.id },
+      });
+      if (!existing) {
+        return reply.status(204).send();
+      }
+      if (existing.isStarting || existing.isDynamic) {
+        return reply.status(400).send({ error: 'Esta habilidad no se puede borrar a mano' });
+      }
       await prisma.savedAction.deleteMany({ where: { id: request.params.habilidadId, saveId: request.params.id } });
       return reply.status(204).send();
     },
   );
 
   // Editar una habilidad creada por la jugadora (roadmap de rediseño de paneles, Fable
-  // 2026-07-20/21) — las de partida inicial (isStarting: true) nunca son editables, verificado
-  // aquí en el backend y no solo ocultando el botón en el frontend.
+  // 2026-07-20/21) — las de partida inicial (isStarting: true) o racial/de arma (isDynamic: true,
+  // 2026-07-29) nunca son editables, verificado aquí en el backend y no solo ocultando el botón
+  // en el frontend.
   app.patch<{
     Params: { id: string; habilidadId: string };
     Body: { name?: string; promptText?: string; icon?: string; description?: string };
@@ -816,8 +882,8 @@ export async function savesRoutes(app: FastifyInstance) {
     if (!existing) {
       return reply.status(404).send({ error: 'Habilidad no encontrada' });
     }
-    if (existing.isStarting) {
-      return reply.status(400).send({ error: 'Las habilidades de partida inicial no se pueden editar' });
+    if (existing.isStarting || existing.isDynamic) {
+      return reply.status(400).send({ error: 'Esta habilidad no se puede editar a mano' });
     }
 
     const { name, promptText, icon, description } = request.body;
@@ -845,8 +911,10 @@ export async function savesRoutes(app: FastifyInstance) {
       icon: updated.icon,
       description: updated.description,
       isStarting: updated.isStarting,
+      isDynamic: updated.isDynamic,
       category: updated.category,
       preferredAttribute: updated.preferredAttribute,
+      energyCost: updated.energyCost,
     };
   });
 
@@ -899,6 +967,23 @@ export async function savesRoutes(app: FastifyInstance) {
           : []),
         prisma.inventoryItem.update({ where: { id: item.id }, data: { slot } }),
       ]);
+
+      // Habilidades de arma (2026-07-29) — recalculadas cada vez que cambia lo que llevas en
+      // ARMA_PRINCIPAL/ARMA_SECUNDARIA, para que la habilidad refleje siempre el arma puesta
+      // ahora mismo. Fuera de la transacción de arriba (recalcula sobre el estado YA guardado);
+      // aceptable no ser 100% atómico aquí, es solo una resincronización determinista.
+      if (slot === 'ARMA_PRINCIPAL' || slot === 'ARMA_SECUNDARIA' || item.slot === 'ARMA_PRINCIPAL' || item.slot === 'ARMA_SECUNDARIA') {
+        const save = await prisma.save.findUnique({ where: { id: request.params.id }, select: { raza: true, level: true, worldId: true } });
+        if (save) {
+          const equippedRows = await prisma.inventoryItem.findMany({
+            where: { saveId: request.params.id, slot: { in: ['ARMA_PRINCIPAL', 'ARMA_SECUNDARIA'] } },
+            select: { slot: true, catalogSlug: true },
+          });
+          const equippedWeaponSlots = await resolveEquippedWeaponSlots(prisma, save.worldId, equippedRows);
+          await syncDynamicCombatAbilities(prisma, request.params.id, save.raza, save.level, equippedWeaponSlots);
+        }
+      }
+
       return { id: item.id, slot };
     },
   );

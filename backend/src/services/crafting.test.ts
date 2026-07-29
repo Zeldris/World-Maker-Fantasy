@@ -14,7 +14,7 @@ function recipe(key: string): CraftingRecipe {
 // de axeRepair, fuerza 10 de gargantuaArmor, inteligencia 8 de antidote, fuerza 8 de ironIngot,
 // fuerza 6 de stoneBlock) — para que los tests de materiales/ubicación de más abajo prueben SOLO
 // eso, sin toparse con el umbral de atributo.
-const attrs: AttributeBlock = { fuerza: 12, destreza: 10, sigilo: 10, voluntad: 10, carisma: 10, arcano: 10 };
+const attrs: AttributeBlock = { fuerza: 12, destreza: 10, constitucion: 10, inteligencia: 10, voluntad: 10, carisma: 10, arcano: 10 };
 const secondary = { ...EMPTY_SECONDARY_ATTRIBUTES, inteligencia: 8 };
 
 const axeRepair = recipe('axeRepair');

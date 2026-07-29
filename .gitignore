@@ -3,6 +3,9 @@
 .DS_Store
 Thumbs.db
 
+# Logs de arranque de dev-server lanzado desde la raíz — artefacto local, no fuente.
+logs/
+
 # Configuración local de Claude Code (permisos de sesión, locks) — específica de esta máquina,
 # no del proyecto.
 .claude/

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { detectItemReference } from './itemReference.js';
+import { detectItemReference, detectEnergyItemUse } from './itemReference.js';
 
 describe('detectItemReference', () => {
   it('detecta un objeto de la lista curada que el personaje NO tiene', () => {
@@ -28,5 +28,24 @@ describe('detectItemReference', () => {
     // "cuchilo" en vez de "cuchillo" — ningún sustantivo curado matchea exacto con esta errata.
     const result = detectItemReference('Reviso mi cuchilo', []);
     expect(result).toEqual({ noun: 'cuchillo', posee: false });
+  });
+});
+
+describe('detectEnergyItemUse', () => {
+  const ENERGY_ITEMS = [
+    { name: 'Ración de carne ahumada', curaEnergia: 30 },
+    { name: 'Cataplasma de salvia del polvo', curaEnergia: 10 },
+  ];
+
+  it('detecta el objeto real del inventario nombrado en la acción', () => {
+    expect(detectEnergyItemUse('Como mi ración de carne ahumada', ENERGY_ITEMS)).toBe(30);
+  });
+
+  it('sin ningún objeto de energía nombrado, devuelve null', () => {
+    expect(detectEnergyItemUse('Descanso un momento', ENERGY_ITEMS)).toBeNull();
+  });
+
+  it('si coinciden varios, se queda con el que más restaura', () => {
+    expect(detectEnergyItemUse('Uso mi ración de carne ahumada y mi cataplasma de salvia del polvo', ENERGY_ITEMS)).toBe(30);
   });
 });

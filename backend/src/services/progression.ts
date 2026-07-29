@@ -1,6 +1,7 @@
 /// Servicio de progresión (docs/10-niveles-xp-reino.md) — reversión de la decisión de mecánicas 4.
 /// Todo determinista, sin IA: el modelo nunca decide cuánta XP se gana, igual que nunca decide
 /// si una tirada tiene éxito.
+import { WEAPON_ABILITY_LEVEL_AVANZADA } from './weaponAbilities.js';
 
 /// Tabla de XP por nivel — valores exactos de D&D 5e (§ 2), nivel máximo 20.
 const LEVEL_THRESHOLDS: number[] = [
@@ -20,9 +21,13 @@ export function levelForXp(xp: number): number {
   return Math.min(level, MAX_LEVEL);
 }
 
-/// Huecos de la pestaña Habilidades (§ 4.3) — resuelve el conflicto de docs/09-panel-personaje.md § 3.
-export function habilidadSlotsForLevel(level: number): number {
-  return 3 + Math.floor(level / 2);
+/// Tope real de habilidades de combate activas (2026-07-29, rediseño "tope de 10": 2 raciales
+/// ataque+defensa + 2 de arma [4 desde el nivel de arma avanzada] + 4 de clase) — reemplaza a la
+/// vieja `habilidadSlotsForLevel`, que crecía suave con el nivel (3 + nivel/2) de cuando las
+/// habilidades de combate eran una lista progresiva de 12; ya no lo son, así que ese crecimiento
+/// no reflejaba nada real y el contador de HabilidadesPanel mentía sobre cuántos huecos había.
+export function maxCombatAbilitiesFor(level: number): number {
+  return 2 + (level >= WEAPON_ABILITY_LEVEL_AVANZADA ? 4 : 2) + 4;
 }
 
 const XP_BY_DIFFICULTY: Record<number, number> = {

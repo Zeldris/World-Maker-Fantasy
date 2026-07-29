@@ -12,13 +12,19 @@ export interface StartingAbility {
   /// (tabulatedAttackAttribute) cuando el turno manda el savedActionId de esta habilidad.
   effect?: AbilityEffect;
   preferredAttribute?: Attribute;
+  /// Sistema de fatiga (2026-07-29) — coste de energía fijo por tramo (energy.ts). Solo relevante
+  /// para category:'combate'; las generales se quedan en 0/undefined (siempre gratis).
+  energyCost?: number;
 }
 
 /// Kit de habilidades "de serie" de Gorhorn — no cuentan contra el cupo por nivel
 /// (docs/10-niveles-xp-reino.md § 4.3), son lo que el personaje ya sabía hacer antes de
-/// empezar la partida. Las 2 de combate las diseñó un pase de Fable calibrado para el
-/// clasificador (evitan nombrar atributo/dificultad, pero cargan léxico que empuja hacia el
-/// atributo correcto).
+/// empezar la partida.
+///
+/// Rediseño de atributos/armas (2026-07-29, "vamos a quitar entonces las habilidades fijas
+/// porque no aportan gran cosa"): las 2 de combate que había aquí (Furia de Maktor/Piel de
+/// Guerra) se eliminan — su papel lo cubren ahora las habilidades raciales (berigLore.ts) y las
+/// de arma equipada (weaponAbilities.ts), calculadas dinámicamente en vez de fijas de por vida.
 ///
 /// Las generales (2026-07-21, segunda revisión a petición explícita de la usuaria): la primera
 /// versión mezclaba utilidades genéricas ("Buscar provisiones") con acciones puntuales de un solo
@@ -28,25 +34,6 @@ export interface StartingAbility {
 /// utilidades de verdad genéricas, usables en cualquier situación: viajar, descansar donde sea
 /// (sin necesitar volver a un sitio conocido) y saquear/despiezar lo que tengas delante.
 const GORHORN_STARTING_ABILITIES: StartingAbility[] = [
-  {
-    name: 'Furia de Maktor',
-    icon: '🪓',
-    description: 'Descarga toda la potencia de su hacha rota sobre un enemigo a corta distancia, como el último martillo de su clan.',
-    promptText:
-      'Suelto un rugido de guerra y cargo contra mi enemigo, descargando mi hacha rota como una maza con toda la potencia de mis músculos.',
-    category: 'combate',
-    effect: 'ATAQUE',
-    preferredAttribute: 'fuerza',
-  },
-  {
-    name: 'Piel de Guerra',
-    icon: '🩸',
-    description: 'El dolor no manda sobre un Maktor: Gorhorn aguanta heridas, frío y agotamiento sin ceder terreno.',
-    promptText: 'Aprieto los dientes y aguanto el dolor y el cansancio sin retroceder ni un paso, negándome a caer.',
-    category: 'combate',
-    effect: 'AGUANTE',
-    preferredAttribute: 'voluntad',
-  },
   {
     name: 'Buscar provisiones',
     icon: '🌿',

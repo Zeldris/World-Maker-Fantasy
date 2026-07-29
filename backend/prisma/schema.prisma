@@ -130,6 +130,13 @@ model Save {
   /// narrativo, sin bonificadores mecánicos (misma filosofía que el inventario, decisión 5).
   profession String?
 
+  /// Slug de BERIG_RAZAS (berigLore.ts) — igual que `Npc.raza`, string libre sin FK (contenido
+  /// de diseño estático, no una tabla). 2026-07-29, sistema de habilidades por arma/raza: hasta
+  /// ahora el personaje jugable no tenía raza estructurada en ningún sitio — su habilidad racial
+  /// nunca se le mostraba, solo se calculaba para NPCs. Null = personaje sin raza asignada
+  /// todavía (partidas previas a este campo).
+  raza String?
+
   createdAt    DateTime @default(now())
   lastPlayedAt DateTime @default(now())
 
@@ -150,6 +157,11 @@ model Save {
   /// ver saludForCondicion en death.ts), no cambia el motor de combate ya calibrado, solo lo
   /// expone como número/barra en vez de solo una etiqueta. Sin daño variable todavía (v2).
   salud           Int             @default(100)
+  /// Fatiga/energía (2026-07-29, "que las habilidades no sean de uso ilimitado") — valor ACTUAL,
+  /// topado a `energiaMaxFor(constitucion)` (energy.ts) en cada turno, nunca al tope fijo de aquí:
+  /// el máximo real escala con Constitución, no es una constante persistida. Se inicializa al
+  /// máximo real en POST /saves (mismo criterio que condicionFisica arranca en ILESO).
+  energia         Int             @default(100)
 
   /// Último `Location` de kind refugio/asentamiento donde se descansó con éxito — punto de
   /// reaparición al morir (§ 4.1). Null = todavía no ha descansado en un sitio válido; el
@@ -526,6 +538,24 @@ enum ItemTipo {
   NARRATIVO
 }
 
+/// Categoría de arma (2026-07-29, sistema de habilidades por arma — "dependiendo el arma que
+/// lleves las habilidades se adapten... hacer un cuchillo con una lanza es imposible"): decide
+/// QUÉ atributo usa la habilidad de ataque/defensa que ese hueco de equipo genera — ver
+/// WEAPON_CATEGORY_ATTRIBUTE en weaponAbilities.ts. Solo con sentido en objetos `category: 'arma'`.
+enum WeaponCategory {
+  HACHA
+  MAZA
+  GARROTE
+  PICA
+  LANZA
+  CUCHILLO
+  DAGA
+  ESPADA
+  /// Objeto defensivo de mano secundaria (escudo) — en vez de generar una 2ª habilidad de
+  /// ataque, genera la habilidad de defensa del hueco.
+  ESCUDO
+}
+
 /// Qué acción/verbo exige `harvest.ts` para dar este recurso concreto (2026-07-29, petición
 /// explícita: "para conseguir estos recursos debes cazar... o talar... o picar... a veces al
 /// explorar la zona me saca recursos que no tiene sentido obtener directamente"). `discovery.ts`
@@ -603,6 +633,15 @@ model SavedAction {
   /// Atributo con el que se resuelve la tirada de esta habilidad — gana sobre la heurística de
   /// palabra clave de npcScene.ts (tabulatedAttackAttribute) cuando el turno manda `savedActionId`.
   preferredAttribute String?
+  /// Habilidad racial/de arma recalculada automáticamente (2026-07-29, sistema de habilidades por
+  /// arma) — a diferencia de `isStarting` (fija de por vida), estas se BORRAN y se vuelven a crear
+  /// cada vez que cambia el equipo o el nivel, para reflejar siempre el arma que llevas puesta
+  /// ahora mismo. Nunca editable/borrable por la jugadora (mismo criterio visual que isStarting).
+  isDynamic   Boolean  @default(false)
+  /// Sistema de fatiga (2026-07-29) — coste fijo por tramo (energy.ts § ENERGY_COST_BASICA/
+  /// AVANZADA), 0 en habilidades 'general' y en las genéricas siempre gratis (Ataque a mano,
+  /// Defenderse, Esquivar).
+  energyCost  Int      @default(0)
   createdAt   DateTime @default(now())
 
   @@index([saveId])
@@ -893,6 +932,10 @@ model ItemCatalog {
   /// Categorización mecánica real (2026-07-29) — ver comentario del enum ItemTipo. `category`
   /// (arriba) sigue siendo el subtipo fino DENTRO de este tipo, no se sustituye.
   tipo        ItemTipo
+  /// Solo en armas/escudos (2026-07-29, sistema de habilidades por arma) — decide qué habilidad
+  /// de ataque/defensa genera este objeto al equiparlo, ver weaponAbilities.ts. Null en el resto
+  /// del catálogo (herramientas, ropa, consumibles...).
+  tipoArma    WeaponCategory?
   description String
   /// Bonificador mecánico real al equipar (2026-07-19, mismo mecanismo que InventoryItem) — hoy
   /// solo asignado a las armas (categoría "arma"); el resto del catálogo sigue siendo puramente
@@ -914,6 +957,18 @@ model ItemCatalog {
   /// SecondaryAttribute, number>>, ver requisitos.ts) — comprobación de UMBRAL pura en
   /// PATCH /saves/:id/inventario/:itemId, nunca una tirada. Null = sin requisito.
   requisitos  Json?
+  /// Tope real de curación al usar este objeto (2026-07-29, "si sales de un combate Incapacitado,
+  /// tendrás que usar objetos específicos para volver a Herido o pasar directo a Ileso"): solo
+  /// tiene sentido en objetos `category: "medicinal"` — descansar/comer SIN objeto solo llega a
+  /// HERIDO y no hace nada si ya estás INCAPACITADO (ver death.ts § healCeilingFor); un objeto
+  /// médico con este campo puesto rompe ese tope, incluso desde INCAPACITADO. Null = el objeto no
+  /// cura condición física (la inmensa mayoría del catálogo, incluido el resto de "medicinal" que
+  /// no cura de verdad, como el contraveneno).
+  curaHasta   CondicionFisica?
+  /// Cantidad de energía que restaura al usarlo (2026-07-29, sistema de fatiga) — mismo criterio
+  /// que `curaHasta` pero numérico (la energía es un pool 0..max, no un enum con pasos fijos).
+  /// Null = el objeto no restaura energía.
+  curaEnergia Int?
   createdAt   DateTime @default(now())
 
   npcItems NpcItem[]

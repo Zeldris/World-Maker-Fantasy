@@ -1,5 +1,5 @@
 import { prisma } from '../lib/prisma.js';
-import { normalizeText, levenshtein } from './travel.js';
+import { normalizeText, fuzzyMatchCandidates, fuzzyMatchesAnyStem } from './travel.js';
 import { harvestSourceAliases } from '../scripts/worldCatalog.js';
 import { scopeFor } from './npcScene.js';
 import type { NpcKind, MetodoObtencion } from '@prisma/client';
@@ -34,15 +34,13 @@ export function matchesVerbForMetodo(action: string, metodo: MetodoObtencion): b
 /// en palabras de 5+ letras cuando la coincidencia exacta de substring falla.
 export function matchHarvestSource(action: string): string | undefined {
   const normalized = normalizeText(action);
-  const words = normalized.split(/\s+/).filter((w) => w.length >= 5);
+  const words = fuzzyMatchCandidates(normalized);
   for (const [sourceSlug, aliases] of Object.entries(harvestSourceAliases)) {
     const hit = aliases.some((alias) => {
       const normalizedAlias = normalizeText(alias);
       if (normalized.includes(normalizedAlias)) return true;
-      return normalizedAlias
-        .split(/\s+/)
-        .filter((w) => w.length >= 5)
-        .some((aliasWord) => words.some((w) => levenshtein(w, aliasWord) <= 2));
+      const aliasWords = fuzzyMatchCandidates(normalizedAlias);
+      return words.some((w) => fuzzyMatchesAnyStem(w, aliasWords));
     });
     if (hit) return sourceSlug;
   }
