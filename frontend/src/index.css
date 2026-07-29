@@ -65,16 +65,20 @@
 
   /* Rediseño del turno de combate (2026-07-28, petición explícita: "añadir color por estadística
      para que sea más claro") — un tono por atributo jugable, para identificar de un vistazo el
-     "tipo" de una habilidad (rueda de debilidades, attributeWheel.ts en el backend). 6 tonos
+     "tipo" de una habilidad (rueda de debilidades, attributeWheel.ts en el backend). Tonos
      repartidos por el círculo cromático para que se distingan entre sí a simple vista, elegidos
      para no confundirse con los ya semánticos de arriba (danger=rojo/fallo, moss=verde/éxito,
-     cost=ámbar/recurso). */
+     cost=ámbar/recurso). Rediseño de atributos (2026-07-29, referencia BG3/D&D): sigilo baja a
+     secundario (pierde su color de habilidad); constitucion hereda su morado; inteligencia entra
+     nueva, verde, en el hueco entre voluntad (dorado) y destreza (verde azulado). */
   --color-fuerza-400: #e0736f;
   --color-fuerza-500: #cc5852;
   --color-destreza-400: #5fd6bb;
   --color-destreza-500: #3fb89d;
-  --color-sigilo-400: #b088e0;
-  --color-sigilo-500: #9566cc;
+  --color-constitucion-400: #b088e0;
+  --color-constitucion-500: #9566cc;
+  --color-inteligencia-400: #8fd65f;
+  --color-inteligencia-500: #6bb83f;
   --color-voluntad-400: #e0c15f;
   --color-voluntad-500: #cca63f;
   --color-carisma-400: #e072ae;

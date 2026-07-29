@@ -2,7 +2,6 @@ import { useEffect, useState, type ReactNode } from 'react'
 import {
   getEnciclopedia,
   resolveImageUrl,
-  type EnciclopediaAbilityInfo,
   type EnciclopediaClassInfo,
   type EnciclopediaConstructionRecipe,
   type EnciclopediaFaunaFloraInfo,
@@ -64,7 +63,16 @@ function groupBy<T>(list: T[], keyFor: (item: T) => string): Map<string, T[]> {
 const ATTRIBUTES_INFO: { key: Attribute; icon: string; description: string }[] = [
   { key: 'fuerza', icon: '💪', description: 'Potencia física — golpear con fuerza, cargar peso, forzar algo con el cuerpo.' },
   { key: 'destreza', icon: '🏹', description: 'Precisión y reflejos — puntería a distancia, agilidad, reaccionar rápido.' },
-  { key: 'sigilo', icon: '🕵️', description: 'Discreción y percepción — moverse sin ser visto/oído, detectar rastros y peligros.' },
+  {
+    key: 'constitucion',
+    icon: '🪨',
+    description: 'Resistencia física pura — aguantar el castigo, el frío, el hambre, seguir en pie cuando otro ya habría caído.',
+  },
+  {
+    key: 'inteligencia',
+    icon: '🧠',
+    description: 'Agudeza mental aplicada al combate — leer al enemigo, anticipar su siguiente movimiento, aprovechar una abertura calculada.',
+  },
   {
     key: 'voluntad',
     icon: '🛡️',
@@ -81,12 +89,13 @@ const ATTRIBUTES_INFO: { key: Attribute; icon: string; description: string }[] =
 // Mismo orden que `ATTRIBUTE_RING` en backend/src/services/attributeWheel.ts — se duplica aquí
 // porque es una constante de diseño (no contenido de partida servido por la API); si cambia
 // allí, hay que actualizar este array a mano.
-const WEAKNESS_RING: Attribute[] = ['fuerza', 'destreza', 'sigilo', 'voluntad', 'carisma', 'arcano']
+const WEAKNESS_RING: Attribute[] = ['fuerza', 'destreza', 'inteligencia', 'arcano', 'constitucion', 'voluntad', 'carisma']
 
 const WEAKNESS_RING_COLOR: Record<Attribute, string> = {
   fuerza: 'var(--color-fuerza-500)',
   destreza: 'var(--color-destreza-500)',
-  sigilo: 'var(--color-sigilo-500)',
+  constitucion: 'var(--color-constitucion-500)',
+  inteligencia: 'var(--color-inteligencia-500)',
   voluntad: 'var(--color-voluntad-500)',
   carisma: 'var(--color-carisma-500)',
   arcano: 'var(--color-arcano-500)',
@@ -180,12 +189,12 @@ function AttributeWheelDiagram() {
             </tr>
             <tr className="border-b border-iron-900">
               <td className="py-1.5">2 · salta un nodo</td>
-              <td className="py-1.5">Sigilo vs Fuerza</td>
+              <td className="py-1.5">Inteligencia vs Fuerza</td>
               <td className="py-1.5 text-right">×1.15 / ÷1.15</td>
             </tr>
             <tr>
-              <td className="py-1.5">3 · extremos opuestos</td>
-              <td className="py-1.5">Voluntad vs Fuerza</td>
+              <td className="py-1.5">3 · máxima distancia (anillo de 7, sin antípoda exacta)</td>
+              <td className="py-1.5">Arcano vs Fuerza</td>
               <td className="py-1.5 text-right">sin relación (×1)</td>
             </tr>
           </tbody>
@@ -199,7 +208,7 @@ function AttributeWheelDiagram() {
 // existían en la ficha de personaje: nunca mueven una tirada (dice.ts), solo comprueban umbrales
 // de requisitos (craftear/equipar/construir/nivel de oficio, ver requisitos.ts en el backend).
 const SECONDARY_ATTRIBUTES_INFO: { key: SecondaryAttribute; icon: string; description: string }[] = [
-  { key: 'inteligencia', icon: '🧠', description: 'Agudeza mental pura — memoria, resolución de problemas (distinta de Carisma, que es persuasión social).' },
+  { key: 'sigilo', icon: '🕵️', description: 'Discreción — moverse sin ser visto/oído, detectar rastros. Narrativo/de umbral, ya no mueve tiradas de combate.' },
   { key: 'magia', icon: '✨', description: 'Afinidad narrativa con las escuelas de magia del mundo (elementos/oscura/purificadora/naturaleza/dominio) — distinta de Arcano, el único poder que hoy tira dados.' },
   { key: 'poderSemilla', icon: '🌱', description: 'Fuerza de la conexión innata con la Semilla creadora de tu raza — los Orcos, nacidos del Estallido sin Semilla propia, lo tienen más bajo y errático.' },
   { key: 'moral', icon: '🕊️', description: 'Entereza pasiva ante el horror, la pérdida o el miedo — no quebrarse por dentro (distinta de Voluntad, que es aguantar presión activa).' },
@@ -404,7 +413,6 @@ export function EnciclopediaPanel({ worldSlug, saveId, onInsert, onDetail }: Enc
   const [locations, setLocations] = useState<EnciclopediaLocationInfo[]>([])
   const [razas, setRazas] = useState<EnciclopediaRazaInfo[]>([])
   const [personajes, setPersonajes] = useState<EnciclopediaPersonajeInfo[]>([])
-  const [startingAbilities, setStartingAbilities] = useState<EnciclopediaAbilityInfo[]>([])
   const [classes, setClasses] = useState<EnciclopediaClassInfo[]>([])
   const [constructionRecipes, setConstructionRecipes] = useState<EnciclopediaConstructionRecipe[]>([])
   const [loading, setLoading] = useState(true)
@@ -436,7 +444,6 @@ export function EnciclopediaPanel({ worldSlug, saveId, onInsert, onDetail }: Enc
         setLocations(data.locations)
         setRazas(data.razas)
         setPersonajes(data.personajes)
-        setStartingAbilities(data.startingAbilities)
         setClasses(data.classes)
         setConstructionRecipes(data.constructionRecipes)
       })
@@ -777,30 +784,6 @@ export function EnciclopediaPanel({ worldSlug, saveId, onInsert, onDetail }: Enc
                 <PanelEmptyState icon="🎓" title="Sin clases catalogadas" hint="Todavía no hay ninguna en este mundo." />
               ) : (
                 <div className="flex flex-col gap-5">
-                  {startingAbilities.length > 0 && (
-                    <PanelSection title="Habilidades iniciales de Gorhorn">
-                      <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
-                        {startingAbilities.map((ability) => (
-                          <EntryCard
-                            key={ability.name}
-                            icon={ability.icon}
-                            name={ability.name}
-                            tooltip={ability.description}
-                            imageUrl={resolveImageUrl(ability.imageUrls.thumbnail)}
-                            onDetail={() =>
-                              onDetail(abilityToDetailTarget(ability, 'Habilidad inicial'), () =>
-                                onInsert({ icon: ability.icon, label: ability.name, description: ability.description, value: ability.promptText }),
-                              )
-                            }
-                            onQuickInsert={() =>
-                              onInsert({ icon: ability.icon, label: ability.name, description: ability.description, value: ability.promptText })
-                            }
-                          />
-                        ))}
-                      </div>
-                    </PanelSection>
-                  )}
-
                   {/* Colapsables por clase (2026-07-22, petición explícita: "Guerrero es una
                       clase y Cazador es otra con sus propias habilidades... que cada clase sea un
                       colapsable que al pulsarlo veas el árbol de habilidades") — Gorhorn aprende

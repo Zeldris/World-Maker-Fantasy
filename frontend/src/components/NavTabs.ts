@@ -21,13 +21,13 @@ export const characterTabs: Tab[] = [
   { id: 'personaje', icon: '⚔️', label: 'Personaje' },
   { id: 'inventario', icon: '🎒', label: 'Inventario' },
   { id: 'habilidades', icon: '✨', label: 'Habilidades' },
+  { id: 'companeros', icon: '👥', label: 'Compañeros' },
+  { id: 'reino', icon: '🏰', label: 'Reino' },
 ]
 
 export const worldTabs: Tab[] = [
   { id: 'mapa', icon: '🗺️', label: 'Mapa' },
   { id: 'diario', icon: '📖', label: 'Diario' },
   { id: 'misiones', icon: '🎯', label: 'Misiones' },
-  { id: 'companeros', icon: '👥', label: 'Compañeros' },
-  { id: 'reino', icon: '🏰', label: 'Reino' },
   { id: 'enciclopedia', icon: '📚', label: 'Enciclopedia' },
 ]

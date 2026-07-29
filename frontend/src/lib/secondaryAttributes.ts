@@ -1,7 +1,7 @@
 import type { SecondaryAttribute } from '../types'
 
 export const secondaryAttributeLabels: Record<SecondaryAttribute, string> = {
-  inteligencia: 'Inteligencia',
+  sigilo: 'Sigilo',
   magia: 'Magia',
   poderSemilla: 'Poder de Semilla',
   moral: 'Moral',

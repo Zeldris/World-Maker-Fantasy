@@ -138,8 +138,17 @@ export interface NarrateResponse {
   }
   progression: ProgressionResult
   condicionFisica: CondicionFisica
+  /// Sistema de fatiga (2026-07-29) — energía real tras este turno y su tope actual (deriva de
+  /// Constitución efectiva), listos para actualizar la barra sin recalcular nada en el cliente.
+  energia: number
+  energiaMax: number
   combateIniciado?: { npcs: NpcInSceneInfo[] } | null
   finDePartida: boolean
+  /// Bug real (2026-07-29, "si muero no hace lo que fijamos que haría" en combate): `condicionFisica`
+  /// de arriba ya viene resuelta tras un respawn sobrevivible (siempre ILESO, nunca MUERTO) — este
+  /// campo es la única forma real de saber que la muerte ocurrió ESTE turno, para poder cerrar el
+  /// combate en curso (ver submitCombatAction en GameView.tsx).
+  justDied: boolean
   // Loot/despiece/producción ya materializados en la partida (2026-07-19) — antes el inventario en
   // pantalla se quedaba desactualizado hasta recargar, porque el backend nunca los devolvía aquí.
   newInventoryItems: InventoryItemInfo[]
@@ -155,6 +164,15 @@ export interface NarrateResponse {
   /// la iniciativa del SIGUIENTE intercambio: la próxima acción del jugador debe tratarse como
   /// defensa a ciegas (elige una habilidad sin saber qué usará el NPC), no como ataque normal.
   esperandoDefensaJugador: boolean
+  /// Bug real (2026-07-29, "no sé qué ataques usa el enemigo... es poco claro el combate"): nombre
+  /// real, ya resuelto, de la habilidad de ataque/defensa que el NPC acaba de usar en el
+  /// intercambio de ESTE turno. null si no hubo intercambio de combate.
+  npcAbilityUsed: { npcName: string; abilityName: string; rol: 'ataque' | 'defensa' } | null
+  /// Rediseño del turno de combate (2026-07-29, "quiero que sea más claro cuando es turno de
+  /// ataque... indicándome qué salió en los dados"): tirada real de iniciativa que decidió quién
+  /// actúa en el PRÓXIMO intercambio. null si se forzó sin dados (aturdimiento/intimidación) o si
+  /// no hubo intercambio de combate este turno.
+  nextInitiativeRoll: { ganador: 'jugador' | 'npc'; jugadorTirada: number; npcTirada: number } | null
 }
 
 export interface TurnNarrateHandlers {
@@ -311,6 +329,10 @@ export interface SaveDetail {
   currentLocation: CurrentLocationInfo | null
   destinations: DestinationInfo[]
   condicionFisica: CondicionFisica
+  /// Sistema de fatiga (2026-07-29) — `energia` es el valor real; `energiaMax` ya viene derivado
+  /// de Constitución efectiva (con equipo), listo para pintar la barra sin recalcular nada aquí.
+  energia: number
+  energiaMax: number
   dificultad: Dificultad
   deathCount: number
   endedAt: string | null
@@ -624,7 +646,10 @@ export interface EnciclopediaFaunaFloraInfo {
   discovered: boolean
   /// Rediseño de la vista de combate (2026-07-28) — solo presentes si `cazable` (hay Npc real
   /// detrás): bloque de atributos, frase de ataque natural y hasta 6 habilidades raciales
-  /// propias (categorizadas). Flora/mineral sin Npc propio no tiene ninguno de los tres.
+  /// propias (categorizadas). Flora/mineral sin Npc propio no tiene ninguno de los cuatro.
+  /// `level` (2026-07-29, indicador de dificultad antes de Combatir) — mismo campo que ya tenía
+  /// `EnciclopediaNpcInfo`, para poder calcular la diferencia de nivel también contra fauna.
+  level?: number | null
   attributes?: AttributeBlock | null
   ataqueNatural?: string | null
   habilidadesRaciales?: { icon: string; name: string; description: string; categoria: 'ataque' | 'defensa' | 'utilidad'; preferredAttribute: Attribute }[]
@@ -674,10 +699,13 @@ export interface EnciclopediaRazaInfo {
   /// Sexo a nivel de RAZA GENERAL (2026-07-22) — eje independiente de `variantes` (región), nunca
   /// cruza con ella: no existe "Orcos de las Llanuras, macho" como combinación propia.
   variantesSexo?: EnciclopediaSexoVariante[]
-  /// Rediseño de la vista de combate (2026-07-28) — única habilidad racial, compartida por toda
-  /// la raza (no por individuo). Un NPC humanoide con `raza` igual a este `slug` la muestra en su
-  /// ficha de combate.
-  habilidadRacial: { icon: string; name: string; description: string; preferredAttribute: Attribute }
+  /// Rediseño de atributos (2026-07-29, tope de 10 habilidades de combate): 2 habilidades
+  /// raciales por raza — una de ataque y una de defensa, compartidas por toda la raza (no por
+  /// individuo). Un NPC humanoide con `raza` igual a este `slug` las muestra en su ficha de combate.
+  habilidadesRaciales: {
+    ataque: { icon: string; name: string; description: string; preferredAttribute: Attribute }
+    defensa: { icon: string; name: string; description: string; preferredAttribute: Attribute }
+  }
 }
 
 export interface EnciclopediaPersonajeInfo {
@@ -719,9 +747,7 @@ export interface EnciclopediaClassUnlock {
   ability: EnciclopediaAbilityInfo
 }
 
-// Guerrero y Cazador (2026-07-22, separadas en dos clases con árbol propio): ya no lleva
-// `startingAbilities` — el kit personal de Gorhorn (Furia de Maktor/Piel de Guerra) no pertenece a
-// ninguna de las dos clases genéricas, se expone aparte en `EnciclopediaResponse.startingAbilities`.
+// Guerrero y Cazador (2026-07-22, separadas en dos clases con árbol propio).
 export interface EnciclopediaClassInfo {
   name: string
   description: string
@@ -754,9 +780,6 @@ export interface EnciclopediaResponse {
   locations: EnciclopediaLocationInfo[]
   razas: EnciclopediaRazaInfo[]
   personajes: EnciclopediaPersonajeInfo[]
-  /// Kit de combate personal del protagonista (2026-07-22) — separado de `classes`, ver comentario
-  /// en `EnciclopediaClassInfo`.
-  startingAbilities: EnciclopediaAbilityInfo[]
   classes: EnciclopediaClassInfo[]
   constructionRecipes: EnciclopediaConstructionRecipe[]
 }

@@ -1,11 +1,16 @@
-export type Attribute = 'fuerza' | 'destreza' | 'sigilo' | 'voluntad' | 'carisma' | 'arcano'
+/// Rediseño de atributos (2026-07-29, referencia Baldur's Gate 3/D&D — mismo motor de dados y
+/// tablas de XP que ya usa Tarkor): los 6 clásicos de D&D (Voluntad = Sabiduría, mismo nombre que
+/// ya usaba el proyecto) + Arcano aparte, porque en el lore de Tarkor la magia es salvaje/innata,
+/// no intelecto (a diferencia de D&D puro). Sigilo baja a SecondaryAttribute — ni en D&D es un
+/// atributo primario, ahí es una habilidad bajo Destreza.
+export type Attribute = 'fuerza' | 'destreza' | 'constitucion' | 'inteligencia' | 'voluntad' | 'carisma' | 'arcano'
 
 export type AttributeBlock = Record<Attribute, number>
 
 /// Atributos secundarios de PJ (sesión de diseño 2026-07-23) — nunca alimentan una tirada
 /// (dice.ts), solo comprobaciones de umbral (requisitos de objetos/construcciones/oficios).
 export type SecondaryAttribute =
-  | 'inteligencia'
+  | 'sigilo'
   | 'magia'
   | 'poderSemilla'
   | 'moral'
@@ -129,6 +134,11 @@ export interface LogEntry {
   /// Rediseño de la vista de combate (2026-07-28) — marca si esta entrada se generó durante un
   /// turno de combate; LogPanel la pinta con fondo/borde rojo en vez del estilo normal.
   combate?: boolean
+  /// Bug real (2026-07-29, "no sé qué ataques usa el enemigo... es poco claro el combate"): nombre
+  /// real de la habilidad de ataque/defensa que el NPC usó en el intercambio de ESTE turno, para
+  /// que LogPanel lo muestre como badge estructurado en vez de depender de que la prosa del
+  /// narrador la mencione.
+  npcAbilityUsed?: { npcName: string; abilityName: string; rol: 'ataque' | 'defensa' }
 }
 
 export type EquipSlot =
@@ -246,10 +256,17 @@ export interface SavedActionInfo {
   icon: string
   description: string
   isStarting: boolean
+  /// Habilidad racial/de arma resincronizada sola (2026-07-29, sistema de habilidades por arma) —
+  /// igual que `isStarting`, nunca editable/borrable a mano (ver DetailModal.tsx), pero se
+  /// actualiza al cambiar de equipo o subir de nivel en vez de ser fija de por vida.
+  isDynamic: boolean
   category: SavedActionCategory
   /// Rediseño del turno de combate (2026-07-28) — "tipo" para la rueda de debilidades (backend)
   /// y el color del chip (UI). Null en habilidades 'general' o en partidas de antes de este campo.
   preferredAttribute: Attribute | null
+  /// Sistema de fatiga (2026-07-29) — coste de energía fijo por tramo (0 = gratis: habilidades
+  /// 'general' y las genéricas Defenderse/Esquivar, siempre disponibles). Ver CombatPanel.tsx.
+  energyCost: number
 }
 
 export type CondicionFisica = 'ILESO' | 'HERIDO' | 'GRAVE' | 'INCAPACITADO' | 'MUERTO'

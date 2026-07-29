@@ -12,13 +12,16 @@ import type { Attribute, AttributeBlock, Character } from '../types'
 const emptyAttributes: AttributeBlock = {
   fuerza: 8,
   destreza: 8,
-  sigilo: 8,
+  constitucion: 8,
+  inteligencia: 8,
   voluntad: 8,
   carisma: 8,
   arcano: 8,
 }
 
-const POINT_BUDGET = 60
+// Rediseño de atributos (2026-07-29): de 6 a 7 jugables — base 8×7=56 en vez de 8×6=48, mismos
+// 12 puntos extra a repartir de siempre (60-48=12, ahora 68-56=12).
+const POINT_BUDGET = 68
 
 export function CharacterSelect() {
   const navigate = useNavigate()

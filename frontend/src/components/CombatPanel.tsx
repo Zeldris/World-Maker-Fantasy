@@ -5,12 +5,22 @@ import { resolveImageUrl, type EnciclopediaResponse } from '../lib/api'
 import { resolveCombatAbilities, type ResolvedAbility } from '../lib/npcAbilities'
 import { faunaFloraToDetailTarget } from '../lib/enciclopediaTargets'
 import { useEnciclopediaLink } from '../context/EnciclopediaLinkContext'
+import { HealthBar } from './HealthBar'
+import { EnergyBar } from './EnergyBar'
 import { MediaSlot } from './ImagePromptDisplay'
 import { TooltipAnchor } from './TooltipAnchor'
 import type { CombatNpcDisplay } from './CombatComposer'
-import type { InventoryItemInfo, SavedActionInfo } from '../types'
+import type { CondicionFisica, InventoryItemInfo, SavedActionInfo } from '../types'
 
 interface CombatPanelProps {
+  /// Nombre del personaje (2026-07-29, "nunca queda claro el estado del enemigo... quiero saber
+  /// cómo estamos ambos") — para la barra de estado persistente de abajo.
+  playerName: string
+  playerCondicion: CondicionFisica
+  /// Sistema de fatiga (2026-07-29) — para la barra de energía junto a la de salud y para
+  /// deshabilitar/marcar el coste de las habilidades que no alcanzan.
+  energia: number
+  energiaMax: number
   npcs: CombatNpcDisplay[]
   selectedNpcSlug: string | null
   onSelectNpc: (slug: string) => void
@@ -26,6 +36,10 @@ interface CombatPanelProps {
   /// intercambio y el jugador debe elegir su defensa a ciegas: oculta objetivos/Huir/objetos y
   /// cambia la etiqueta del botón de acción.
   awaitingDefense: boolean
+  /// Rediseño del turno de combate (2026-07-29, "quiero que sea más claro cuando es turno de
+  /// ataque... indicándome qué salió en los dados para saber por qué ataco primero") — tirada real
+  /// de iniciativa del último turno resuelto; null si se forzó sin dados o aún no hay ninguna.
+  lastInitiativeRoll: { ganador: 'jugador' | 'npc'; jugadorTirada: number; npcTirada: number } | null
   onActuar: () => void
   onRegistrar: (npc: CombatNpcDisplay) => void
   onHuir: () => void
@@ -179,6 +193,10 @@ function EnemyFicha({
 /// que se queda en la barra inferior (petición explícita: "la barra de abajo queda libre para el
 /// texto") — el estado de selección vive en GameView.tsx, compartido entre este panel y esa barra.
 export function CombatPanel({
+  playerName,
+  playerCondicion,
+  energia,
+  energiaMax,
   npcs,
   selectedNpcSlug,
   onSelectNpc,
@@ -191,6 +209,7 @@ export function CombatPanel({
   busy,
   ended,
   awaitingDefense,
+  lastInitiativeRoll,
   onActuar,
   onRegistrar,
   onHuir,
@@ -215,6 +234,23 @@ export function CombatPanel({
         )}
       </header>
 
+      {/* Barra de estado persistente (2026-07-29, "nunca queda claro el estado del enemigo...
+          quiero saber cómo estamos ambos") — a diferencia de la lista de "Enemigos" de abajo,
+          esta NUNCA se oculta en awaitingDefense: es justo cuando más falta hace verla. */}
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 border-b border-iron-800 px-4 pb-2.5">
+        <div className="flex items-center gap-1.5">
+          <span className="max-w-24 truncate text-2xs text-wood-400">{playerName}</span>
+          <HealthBar condicionFisica={playerCondicion} />
+          <EnergyBar energia={energia} energiaMax={energiaMax} />
+        </div>
+        {npcs.map((npc) => (
+          <div key={npc.slug} className="flex items-center gap-1.5">
+            <span className="max-w-24 truncate text-2xs text-wood-400">{npc.name}</span>
+            <HealthBar condicionFisica={npc.condicion} />
+          </div>
+        ))}
+      </div>
+
       <div className="flex-1 space-y-3 overflow-y-auto px-4 py-3">
         {awaitingDefense && (
           // Rediseño del turno de combate (2026-07-28, petición explícita: "turno de defensa
@@ -222,6 +258,17 @@ export function CombatPanel({
           // ya decidió su ataque, oculto, y espera la respuesta del jugador.
           <div className="rounded-lg border border-danger-600/50 bg-danger-500/10 px-3 py-2 text-xs text-danger-200">
             ⚔️ Un enemigo actúa primero — elige a ciegas cómo defenderte.
+          </div>
+        )}
+
+        {!awaitingDefense && lastInitiativeRoll && (
+          // Equivalente en el turno de ATAQUE al banner de arriba (2026-07-29, "el de defensa es
+          // claro pero el de ataque no tanto, indícame qué salió en los dados") — mismos números
+          // reales que decidieron la iniciativa, para que quede claro por qué te toca golpear
+          // primero (o, si perdiste la tirada, por qué el próximo turno será de defensa a ciegas).
+          <div className="rounded-lg border border-accent-600/40 bg-accent-500/5 px-3 py-2 text-xs text-wood-300">
+            🎲 Iniciativa: tú {lastInitiativeRoll.jugadorTirada} vs {lastInitiativeRoll.npcTirada} del enemigo —{' '}
+            {lastInitiativeRoll.ganador === 'jugador' ? 'actúas primero.' : 'el enemigo actuará primero en tu próximo turno.'}
           </div>
         )}
 
@@ -299,10 +346,16 @@ export function CombatPanel({
                     // Null en habilidades 'general' o en partidas de antes de este campo — cae de
                     // vuelta al borde accent genérico de siempre, sin tinte de tipo.
                     const colors = a.preferredAttribute ? attributeColorClasses[a.preferredAttribute] : null
+                    // Sistema de fatiga (2026-07-29, "aparecerá deshabilitada y solo podrás usar
+                    // ataques normales o consumibles") — sin energía suficiente, el botón se
+                    // deshabilita en vez de dejar elegirla.
+                    const sinEnergia = a.energyCost > energia
                     return (
                       <span
                         key={a.id}
-                        className={`flex items-center gap-1 rounded-lg border ${colors?.border ?? 'border-accent-600/40'} bg-wood-950/60 px-2 py-1 text-2xs`}
+                        className={`flex items-center gap-1 rounded-lg border ${colors?.border ?? 'border-accent-600/40'} bg-wood-950/60 px-2 py-1 text-2xs ${
+                          sinEnergia ? 'opacity-50' : ''
+                        }`}
                       >
                         <TooltipAnchor text={a.description} className="flex items-center gap-1">
                           <button
@@ -310,12 +363,14 @@ export function CombatPanel({
                               onSelectAbility(a.id)
                               onSelectItem(null)
                             }}
-                            disabled={busy}
-                            className={`tactile flex items-center gap-1 rounded-md px-1 py-0.5 text-2xs transition-colors disabled:opacity-60 ${
+                            disabled={busy || sinEnergia}
+                            title={sinEnergia ? 'No tienes energía suficiente' : undefined}
+                            className={`tactile flex items-center gap-1 rounded-md px-1 py-0.5 text-2xs transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${
                               selectedAbilityId === a.id ? 'bg-accent-500/30 text-accent-100' : (colors?.text ?? 'text-wood-200')
                             }`}
                           >
                             <span>{a.icon}</span> {a.name}
+                            {a.energyCost > 0 && <span className="font-mono text-wood-500">⚡{a.energyCost}</span>}
                           </button>
                         </TooltipAnchor>
                         <button

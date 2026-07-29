@@ -62,8 +62,10 @@ export function resolveCombatAbilities(source: CombatAbilitySource, enciclopedia
   if (source.raza) {
     const raza = enciclopedia.razas.find((r) => r.slug === source.raza)
     if (raza) {
-      const { icon, name, description, preferredAttribute } = raza.habilidadRacial
-      abilities.push({ icon, name, description, preferredAttribute, detailTarget: razaToDetailTarget(raza) })
+      for (const habilidad of [raza.habilidadesRaciales.ataque, raza.habilidadesRaciales.defensa]) {
+        const { icon, name, description, preferredAttribute } = habilidad
+        abilities.push({ icon, name, description, preferredAttribute, detailTarget: razaToDetailTarget(raza) })
+      }
     }
   }
 

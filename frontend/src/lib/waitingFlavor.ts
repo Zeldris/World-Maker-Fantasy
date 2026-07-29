@@ -21,6 +21,21 @@ export const characterWaitingFlavor: string[] = [
   'El horizonte tiembla con el calor, borrando la línea entre tierra y cielo.',
 ]
 
+/// Frases de espera EN COMBATE (2026-07-29, "los mensajes que salen mientras narra el combate,
+/// deben ser relacionados con combates") — `characterWaitingFlavor` de arriba es ambiente de
+/// exploración (viento, dunas...), fuera de lugar mientras se resuelve un intercambio de golpes.
+/// Mismo criterio: puramente decorativas, sin relación con el resultado real del turno.
+export const combatWaitingFlavor: string[] = [
+  'Gorhorn aprieta el mango del hacha, atento al siguiente movimiento.',
+  'El polvo levantado por el último golpe todavía no se ha asentado.',
+  'Un jadeo entrecortado, suyo o del enemigo, corta el silencio tenso.',
+  'Los músculos en tensión, a la espera de saber quién golpea primero.',
+  'El filo mellado refleja un instante de luz antes del siguiente choque.',
+  'El corazón le late con fuerza contra las costillas.',
+  'Un paso en falso en la arena podría costarle caro ahora mismo.',
+  'El enemigo cambia el peso de un pie a otro, calculando.',
+]
+
 export const worldWaitingFlavor: string[] = [
   'El mundo sigue su curso, ajeno a este instante.',
   'En algún punto de Berig, la guerra no se detiene.',

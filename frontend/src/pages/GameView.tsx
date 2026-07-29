@@ -24,6 +24,7 @@ import { playerActionEntry } from '../lib/simulateAI'
 import { DiscoveryReveal } from '../components/DiscoveryReveal'
 import { CombatComposer, type CombatNpcDisplay } from '../components/CombatComposer'
 import { CombatPanel } from '../components/CombatPanel'
+import { combatDifficultyFor } from '../lib/combatDifficulty'
 import { HealthBar } from '../components/HealthBar'
 import {
   requestTurnClassify,
@@ -48,7 +49,7 @@ import {
   type SaveDetail,
   type ClassifyResponse,
 } from '../lib/api'
-import { characterWaitingFlavor, worldWaitingFlavor, useRotatingFlavor } from '../lib/waitingFlavor'
+import { characterWaitingFlavor, combatWaitingFlavor, worldWaitingFlavor, useRotatingFlavor } from '../lib/waitingFlavor'
 import { pickMentionedEntityBanner, mentionedEntityKey, resolveEntityBannerFromRef } from '../lib/mentionedEntityBanner'
 import type {
   Attribute,
@@ -248,6 +249,10 @@ export function GameView() {
   const [notFound, setNotFound] = useState(false)
   const [discoveries, setDiscoveries] = useState<DiscoveryItem[]>([])
   const [condicionFisica, setCondicionFisica] = useState<CondicionFisica>('ILESO')
+  // Sistema de fatiga (2026-07-29) — mismo patrón que condicionFisica: se sincroniza al cargar la
+  // partida y se actualiza con cada respuesta de turno.
+  const [energia, setEnergia] = useState(100)
+  const [energiaMax, setEnergiaMax] = useState(100)
   const [endedAt, setEndedAt] = useState<string | null>(null)
   const [combateIniciado, setCombateIniciado] = useState<{ npcs: NpcInSceneInfo[] } | null>(null)
   const [combatOpen, setCombatOpen] = useState(false)
@@ -269,6 +274,10 @@ export function GameView() {
   // jugador ya eligió su defensa a ciegas"; gatea el sub-modo de CombatPanel (oculta objetivos/
   // Huir/objetos, cambia "Actuar" por "Defenderte").
   const [combatAwaitingDefense, setCombatAwaitingDefense] = useState(false)
+  // Rediseño del turno de combate (2026-07-29, "quiero que sea más claro cuando es turno de
+  // ataque... indicándome qué salió en los dados") — tirada real de iniciativa del último turno
+  // resuelto, para que CombatPanel explique CON NÚMEROS por qué le toca atacar/defender ahora.
+  const [lastInitiativeRoll, setLastInitiativeRoll] = useState<{ ganador: 'jugador' | 'npc'; jugadorTirada: number; npcTirada: number } | null>(null)
   const [combatSelectedNpcSlug, setCombatSelectedNpcSlug] = useState<string | null>(null)
   const [combatSelectedAbilityId, setCombatSelectedAbilityId] = useState<string | null>(null)
   const [combatSelectedItemId, setCombatSelectedItemId] = useState<string | null>(null)
@@ -293,6 +302,19 @@ export function GameView() {
       }),
     [combateIniciado, combatNpcStates],
   )
+
+  // Indicador de dificultad antes de pulsar "Combatir" (2026-07-29, petición explícita: "que
+  // aparezca un texto en color... que me indique la dificultad según los niveles"). Usa el NPC de
+  // mayor nivel del encuentro (el peor caso, no un promedio que escondiera al más peligroso del
+  // grupo) — mismo criterio de diferencia de nivel que `difficultyHintFor` en el backend.
+  const combatDifficulty = useMemo(() => {
+    if (!combateIniciado || !enciclopediaData) return null
+    const levels = combateIniciado.npcs
+      .map((n) => enciclopediaData.npcs.find((e) => e.slug === n.slug)?.level ?? enciclopediaData.faunaFlora.find((f) => f.sourceSlug === n.slug)?.level)
+      .filter((l): l is number => typeof l === 'number')
+    if (levels.length === 0) return null
+    return combatDifficultyFor(Math.max(...levels) - level)
+  }, [combateIniciado, enciclopediaData, level])
   // Bug real (2026-07-25, "revisar partida"): `combatEnded` solo se marcaba con `finDePartida` o
   // la muerte del PROPIO personaje — nunca cuando el enemigo quedaba derrotado. Un NPC en GRAVE ya
   // se puede saquear (ver "Registrar" en CombatComposer), así que saquearlo es la señal real de
@@ -310,8 +332,8 @@ export function GameView() {
   // en mitad de una pelea (viajar, gestionar el Reino, leer el diario...).
   // 'profesiones' ya no es un PanelId de nivel superior (vive como sub-pestaña dentro de
   // PersonajePanel, que recibe `combatOpen` y deshabilita esa sub-pestaña por su cuenta).
-  const COMBAT_DISABLED_CHARACTER_TABS: PanelId[] = ['inventario']
-  const COMBAT_DISABLED_WORLD_TABS: PanelId[] = ['mapa', 'diario', 'misiones', 'companeros', 'reino']
+  const COMBAT_DISABLED_CHARACTER_TABS: PanelId[] = ['inventario', 'companeros', 'reino']
+  const COMBAT_DISABLED_WORLD_TABS: PanelId[] = ['mapa', 'diario', 'misiones']
 
   function openCombat() {
     if (!combateIniciado) return
@@ -330,6 +352,7 @@ export function GameView() {
     setCombatSelectedItemId(null)
     setCombatFreeText('')
     setCombatAwaitingDefense(false)
+    setLastInitiativeRoll(null)
     if (activePanel && (COMBAT_DISABLED_CHARACTER_TABS.includes(activePanel) || COMBAT_DISABLED_WORLD_TABS.includes(activePanel))) {
       setActivePanel(null)
     }
@@ -339,6 +362,11 @@ export function GameView() {
   async function submitCombatAction(action: string, opts: { savedActionId?: string }): Promise<boolean> {
     if (!action.trim() || combatBusy || combatEnded || !saveId) return false
     setCombatBusy(true)
+    // Bug real (2026-07-29, "no veo el cuadro rojo del narrador generando el texto" en combate):
+    // combatBusy solo bloquea los botones de CombatPanel — nunca activaba `characterThinking`,
+    // así que el LogPanel de "Tu personaje" nunca mostraba la tarjeta de "pensando" mientras se
+    // esperaba la narración de este turno, aunque sí lo hace fuera de combate (ver handleSubmit).
+    setCharacterThinking(true)
     try {
       const classifyResult = await requestTurnClassify({ saveId, action, enCombate: true, savedActionId: opts.savedActionId })
       const { classification, roll } = classifyResult
@@ -366,12 +394,17 @@ export function GameView() {
         narration,
         progression,
         condicionFisica,
+        energia,
+        energiaMax,
         combateIniciado: combate,
         finDePartida,
+        justDied,
         newInventoryItems,
         logEntryId,
         quests: updatedQuests,
         esperandoDefensaJugador,
+        npcAbilityUsed,
+        nextInitiativeRoll,
       } = await requestTurnNarrate({
         saveId,
         action,
@@ -393,13 +426,20 @@ export function GameView() {
         narration: narration.narration,
         progression,
         condicionFisica,
+        energia,
+        energiaMax,
         finDePartida,
         newInventoryItems,
         logEntryId,
         combate,
         esperandoDefensaJugador,
+        npcAbilityUsed,
+        nextInitiativeRoll,
       })
-      if (finDePartida || condicionFisica === 'MUERTO') setCombatEnded(true)
+      // Bug real (2026-07-29, "si muero no hace lo que fijamos que haría"): `condicionFisica` ya
+      // llega resuelta a ILESO tras un respawn sobrevivible (nunca MUERTO) — sin `justDied` este
+      // chequeo nunca se cumplía salvo fin de partida, y el combate seguía igual tras morir.
+      if (finDePartida || justDied) setCombatEnded(true)
       return true
     } catch {
       setCharacterLog((prev) => [
@@ -416,6 +456,7 @@ export function GameView() {
       return false
     } finally {
       setCombatBusy(false)
+      setCharacterThinking(false)
     }
   }
 
@@ -514,7 +555,7 @@ export function GameView() {
     }
   }, [deathCount])
 
-  const characterFlavor = useRotatingFlavor(characterThinking, characterWaitingFlavor)
+  const characterFlavor = useRotatingFlavor(characterThinking, combatOpen ? combatWaitingFlavor : characterWaitingFlavor)
   const worldFlavor = useRotatingFlavor(worldThinking, worldWaitingFlavor)
 
   // El temporizador de alrededores vive en un efecto aparte que no se reinicia en cada render
@@ -588,6 +629,8 @@ export function GameView() {
     setCurrentLocation(save.currentLocation)
     setDestinations(save.destinations)
     setCondicionFisica(save.condicionFisica)
+    setEnergia(save.energia)
+    setEnergiaMax(save.energiaMax)
     setDeathCount(save.deathCount)
     setDificultad(save.dificultad)
     setEndedAt(save.endedAt)
@@ -750,11 +793,15 @@ export function GameView() {
     narration: string
     progression: ProgressionResult
     condicionFisica: CondicionFisica
+    energia: number
+    energiaMax: number
     finDePartida: boolean
     newInventoryItems: InventoryItemInfo[]
     logEntryId: string
     combate?: { npcs: NpcInSceneInfo[] } | null
     esperandoDefensaJugador: boolean
+    npcAbilityUsed: { npcName: string; abilityName: string; rol: 'ataque' | 'defensa' } | null
+    nextInitiativeRoll: { ganador: 'jugador' | 'npc'; jugadorTirada: number; npcTirada: number } | null
   }) {
     // `buildEntityBanner` se calcula FUERA del updater (bug real, 2026-07-24, "sigue sin salir la
     // imagen" pese a candidatos válidos): StrictMode invoca dos veces en dev cualquier función
@@ -774,6 +821,7 @@ export function GameView() {
         createdAt: new Date().toISOString(),
         entityBanner,
         combate: true,
+        npcAbilityUsed: params.npcAbilityUsed ?? undefined,
       },
     ])
     if (params.newInventoryItems.length > 0) {
@@ -785,7 +833,10 @@ export function GameView() {
       setPendingAttributePoints((prev) => prev + params.progression.attributePointsGained)
     }
     setCondicionFisica(params.condicionFisica)
+    setEnergia(params.energia)
+    setEnergiaMax(params.energiaMax)
     setCombatAwaitingDefense(params.esperandoDefensaJugador)
+    setLastInitiativeRoll(params.nextInitiativeRoll)
     // Bug real (auditoría 2026-07-28): esta función (la que resuelve CADA turno mientras el
     // combate ya está abierto) nunca aplicaba el `combateIniciado` de la respuesta — a diferencia
     // de fuera de combate (ver más abajo), donde sí se hace. Un NPC nuevo añadido a media pelea
@@ -978,6 +1029,8 @@ export function GameView() {
         narration,
         progression,
         condicionFisica: newCondicion,
+        energia: newEnergia,
+        energiaMax: newEnergiaMax,
         combateIniciado: combate,
         finDePartida,
         newInventoryItems,
@@ -992,6 +1045,8 @@ export function GameView() {
       )
       setStreamingNarration(null)
       setCondicionFisica(newCondicion)
+      setEnergia(newEnergia)
+      setEnergiaMax(newEnergiaMax)
       setQuests(updatedQuests)
       if (newInventoryItems.length > 0) {
         setInventory((prev) => [...prev, ...newInventoryItems])
@@ -1255,11 +1310,11 @@ export function GameView() {
     inventario: 'accent',
     personaje: 'accent',
     habilidades: 'accent',
+    companeros: 'accent',
+    reino: 'accent',
     mapa: 'accent2',
     diario: 'accent',
     misiones: 'accent2',
-    companeros: 'accent2',
-    reino: 'accent2',
     enciclopedia: 'accent2',
   }
 
@@ -1353,6 +1408,7 @@ export function GameView() {
             isThinking={characterThinking}
             thinkingText={streamingNarration ?? timedThinkingText ?? characterFlavor}
             streaming={!!streamingNarration}
+            combate={combatOpen}
             emptyHint="Aquí aparecerá lo que le ocurra a tu personaje."
           />
           {combatOpen && combateIniciado ? (
@@ -1361,6 +1417,10 @@ export function GameView() {
             // se sustituye por CombatPanel mientras dura el combate; el log de mundo en sí sigue
             // acumulándose por debajo, sin perderse, listo para cuando termine.
             <CombatPanel
+              playerName={characterName ?? 'Tú'}
+              playerCondicion={condicionFisica}
+              energia={energia}
+              energiaMax={energiaMax}
               npcs={combatNpcsDisplay}
               selectedNpcSlug={combatSelectedNpcSlug}
               onSelectNpc={setCombatSelectedNpcSlug}
@@ -1373,6 +1433,7 @@ export function GameView() {
               busy={combatBusy}
               ended={combatEnded}
               awaitingDefense={combatAwaitingDefense}
+              lastInitiativeRoll={lastInitiativeRoll}
               onActuar={handleCombatActuar}
               onRegistrar={handleCombatRegistrar}
               onHuir={handleCombatHuir}
@@ -1430,21 +1491,28 @@ export function GameView() {
       )}
 
       {combateIniciado && !combatOpen && !endedAt && (
-        <div className="flex items-center justify-center gap-2 border-t border-iron-800 bg-wood-950/90 px-4 py-2 text-center">
-          <button
-            onClick={openCombat}
-            disabled={fleeingPreCombat}
-            className="animate-alert-pulse rounded-lg border border-red-700 bg-danger-500/10 px-3 py-1.5 text-xs font-bold uppercase tracking-wide text-danger-400 shadow-[0_0_14px_-4px_color-mix(in_srgb,var(--color-danger-500)_70%,transparent)] transition-colors hover:bg-danger-500/20 disabled:opacity-50"
-          >
-            ⚔️ Combatir
-          </button>
-          <button
-            onClick={handleFleeAttempt}
-            disabled={fleeingPreCombat}
-            className="tactile rounded-lg border border-iron-700 bg-wood-950/50 px-3 py-1.5 text-xs font-bold uppercase tracking-wide text-wood-300 transition-colors hover:border-accent-600/60 hover:text-accent-300 disabled:opacity-50"
-          >
-            {fleeingPreCombat ? 'Huyendo...' : '🏃 Huir'}
-          </button>
+        <div className="flex flex-col items-center gap-1.5 border-t border-iron-800 bg-wood-950/90 px-4 py-2 text-center">
+          {combatDifficulty && (
+            <p className={`text-2xs font-semibold uppercase tracking-[0.1em] ${combatDifficulty.colorClass}`}>
+              Dificultad: {combatDifficulty.label}
+            </p>
+          )}
+          <div className="flex items-center justify-center gap-2">
+            <button
+              onClick={openCombat}
+              disabled={fleeingPreCombat}
+              className="animate-alert-pulse rounded-lg border border-red-700 bg-danger-500/10 px-3 py-1.5 text-xs font-bold uppercase tracking-wide text-danger-400 shadow-[0_0_14px_-4px_color-mix(in_srgb,var(--color-danger-500)_70%,transparent)] transition-colors hover:bg-danger-500/20 disabled:opacity-50"
+            >
+              ⚔️ Combatir
+            </button>
+            <button
+              onClick={handleFleeAttempt}
+              disabled={fleeingPreCombat}
+              className="tactile rounded-lg border border-iron-700 bg-wood-950/50 px-3 py-1.5 text-xs font-bold uppercase tracking-wide text-wood-300 transition-colors hover:border-accent-600/60 hover:text-accent-300 disabled:opacity-50"
+            >
+              {fleeingPreCombat ? 'Huyendo...' : '🏃 Huir'}
+            </button>
+          </div>
         </div>
       )}
 

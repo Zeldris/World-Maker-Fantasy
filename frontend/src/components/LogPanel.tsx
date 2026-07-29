@@ -12,6 +12,12 @@ interface LogPanelProps {
   accent: 'accent' | 'accent2'
   isThinking?: boolean
   thinkingText?: string
+  /// Combate en curso (2026-07-29, "tiene que salir en rojo cuando sea de combate"): la tarjeta
+  /// de "pensando" normalmente sigue el tono de `accent`, pero en combate debe llevar el mismo
+  /// tinte rojo que ya usan las entradas resueltas (`entry.combate` más abajo) — si no, nada
+  /// distingue visualmente "el Narrador está resolviendo este turno de combate" de una espera
+  /// normal fuera de combate.
+  combate?: boolean
   /// Streaming (roadmap de velocidad, 2026-07-20, punto 13): true cuando `thinkingText` es la
   /// narración real creciendo palabra a palabra, no una frase de espera rotando — cambia cómo se
   /// renderiza (sin key-remount por cada carácter nuevo, que si no repetiría el fade-in en bucle).
@@ -55,7 +61,7 @@ const accentClasses = {
 // mientras narra el canal de personaje (ni `worldLog` ni `worldFlavor` cambian en ese momento),
 // así que memo() le evita re-renderizar (y volver a montar cada LogEntry) sin ninguna razón real
 // — el panel que SÍ está narrando sigue re-renderizando igual, sus props sí cambian de verdad.
-export const LogPanel = memo(function LogPanel({ title, subtitle, entries, accent, isThinking, thinkingText, streaming, emptyHint }: LogPanelProps) {
+export const LogPanel = memo(function LogPanel({ title, subtitle, entries, accent, isThinking, thinkingText, streaming, emptyHint, combate }: LogPanelProps) {
   const { enciclopediaIndex, onEntityDetail, onEntityQuickInsert } = useEnciclopediaLink()
   const scrollRef = useRef<HTMLDivElement>(null)
   const classes = accentClasses[accent]
@@ -131,6 +137,15 @@ export const LogPanel = memo(function LogPanel({ title, subtitle, entries, accen
                   Tu acción
                 </p>
               )}
+              {entry.npcAbilityUsed && (
+                <p className="mb-1 flex items-center gap-1 text-2xs font-semibold uppercase tracking-[0.1em] text-danger-400">
+                  <span aria-hidden="true">{entry.npcAbilityUsed.rol === 'ataque' ? '🗡️' : '🛡️'}</span>
+                  <span>
+                    {entry.npcAbilityUsed.npcName} {entry.npcAbilityUsed.rol === 'ataque' ? 'ataca con' : 'se defiende con'} "
+                    {entry.npcAbilityUsed.abilityName}"
+                  </span>
+                </p>
+              )}
               <p>
                 <EnciclopediaLinkedText
                   text={entry.text}
@@ -168,15 +183,19 @@ export const LogPanel = memo(function LogPanel({ title, subtitle, entries, accen
           ),
         )}
         {isThinking && (
-          <div className={`relative overflow-hidden rounded-lg border border-dashed px-3.5 py-3 ${classes.thinkingCard}`}>
+          <div
+            className={`relative overflow-hidden rounded-lg border border-dashed px-3.5 py-3 ${
+              combate ? 'border-red-700/50 bg-danger-500/10' : classes.thinkingCard
+            }`}
+          >
             <div className="thinking-sheen" />
             <div className="flex items-center gap-2.5">
               {/* Los 3 puntos parpadeantes se retiran (roadmap de animaciones 2026-07-20): la
                   gema del header ya respira mientras se piensa — dos bucles a la vez (ella +
                   thinking-sheen) es el tope de presupuesto en este hardware, no tres. */}
-              <span className={`h-1.5 w-1.5 rounded-full ${classes.thinkingDot}`} />
-              <p className={`text-2xs font-semibold uppercase tracking-[0.14em] ${classes.thinkingLabel}`}>
-                {classes.thinkingRail}
+              <span className={`h-1.5 w-1.5 rounded-full ${combate ? 'bg-red-400' : classes.thinkingDot}`} />
+              <p className={`text-2xs font-semibold uppercase tracking-[0.14em] ${combate ? 'text-red-300' : classes.thinkingLabel}`}>
+                {combate ? 'Resolviendo combate' : classes.thinkingRail}
               </p>
             </div>
             {thinkingText &&

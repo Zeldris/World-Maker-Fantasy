@@ -155,9 +155,13 @@ export function DetailModal({ target, onClose, onUnequip, onEquip, onSaveAbility
             <h2 className="font-serif text-lg text-wood-100">{target.ability.name}</h2>
             <p className="text-sm leading-relaxed text-wood-300">{target.ability.description || 'Sin descripción.'}</p>
             <p className="rounded-lg border border-iron-700 bg-wood-950/40 px-3 py-2 text-xs italic text-wood-400">"{target.ability.promptText}"</p>
-            {target.ability.isStarting ? (
+            {target.ability.isStarting || target.ability.isDynamic ? (
               <p className="text-2xs italic text-wood-500">
-                {target.ability.category === 'combate' ? 'Habilidad de clase — no editable.' : 'Habilidad de partida inicial — no editable.'}
+                {target.ability.isDynamic
+                  ? 'Habilidad racial/de arma — se actualiza sola al cambiar de equipo o subir de nivel, no editable.'
+                  : target.ability.category === 'combate'
+                    ? 'Habilidad de clase — no editable.'
+                    : 'Habilidad de partida inicial — no editable.'}
               </p>
             ) : (
               <div className="flex gap-2">
