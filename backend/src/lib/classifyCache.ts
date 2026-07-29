@@ -1,11 +1,16 @@
 import type { ClassificationResult } from '../services/narrador.js';
 import type { RollResult } from '../services/dice.js';
 import type { TravelResolution } from '../services/travel.js';
+import type { NpcInScene } from '../services/npcScene.js';
 
 interface CachedClassify {
   classification: ClassificationResult;
   roll?: RollResult;
   travel?: TravelResolution | null;
+  /// Auditoría de rendimiento 2026-07-28 ("rascar segundos"): se cachea junto al resto para que
+  /// un preview reutilizado en un envío real no obligue a recalcularlo — ver mismo comentario en
+  /// turn.ts sobre por qué /turn/narrate ya no necesita su propio detectNpcsInScene.
+  npcsInScene?: NpcInScene[];
   expiresAt: number;
 }
 

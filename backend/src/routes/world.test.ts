@@ -14,6 +14,7 @@ const findManyItemCatalog = vi.fn();
 const findManyHarvestYield = vi.fn();
 const findManyLocation = vi.fn();
 const findManyImagePrompt = vi.fn();
+const findManyNpcItem = vi.fn();
 
 vi.mock('../lib/prisma.js', () => ({
   prisma: {
@@ -23,6 +24,9 @@ vi.mock('../lib/prisma.js', () => ({
     harvestYield: { findMany: (...args: unknown[]) => findManyHarvestYield(...args) },
     location: { findMany: (...args: unknown[]) => findManyLocation(...args) },
     imagePrompt: { findMany: (...args: unknown[]) => findManyImagePrompt(...args) },
+    // Rediseño de la vista de combate (2026-07-28): "Ataque base" se calcula en el propio backend
+    // a partir del loadout de arma(s) de cada NPC, ver npcItem.findMany en world.ts.
+    npcItem: { findMany: (...args: unknown[]) => findManyNpcItem(...args) },
   },
 }));
 
@@ -42,6 +46,7 @@ describe('GET /world/:slug/enciclopedia', () => {
     findManyHarvestYield.mockReset().mockResolvedValue([]);
     findManyLocation.mockReset().mockResolvedValue([]);
     findManyImagePrompt.mockReset().mockResolvedValue([]);
+    findManyNpcItem.mockReset().mockResolvedValue([]);
   });
 
   it('404 si el mundo no existe', async () => {

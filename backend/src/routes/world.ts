@@ -1,6 +1,8 @@
 import type { FastifyInstance } from 'fastify';
+import type { AttributeBlock, Attribute } from '../services/dice.js';
 import { prisma } from '../lib/prisma.js';
-import { harvestSourceAliases, harvestSourceDescriptions, harvestSourcesThatAreFaunaWithoutNpc } from '../scripts/worldCatalog.js';
+import { harvestSourceAliases, harvestSourceDescriptions, harvestSourcesThatAreFaunaWithoutNpc, harvestSourceRegion } from '../scripts/worldCatalog.js';
+import { coreRegionOf } from '../services/discovery.js';
 import { classAbilityUnlocksForClase } from '../services/classAbilities.js';
 import { startingAbilitiesFor } from '../services/startingAbilities.js';
 import { CONSTRUCTION_RECIPES } from '../services/construction.js';
@@ -9,6 +11,7 @@ import { generateImagePrompt, type ImagePromptEntityType, type ImagePromptSizePr
 import { loreContextFor } from '../services/imagePromptContext.js';
 import { imageUrlsFor } from '../lib/imageAssets.js';
 import { BERIG_RAZAS, BERIG_PERSONAJES } from '../services/berigLore.js';
+import { baseAttackFor } from '../services/baseAttack.js';
 import {
   FAUNA_SEXO_VARIANTES,
   NPC_SEXO_VARIANTES,
@@ -78,7 +81,7 @@ export async function worldRoutes(app: FastifyInstance) {
 
     const { saveId } = request.query;
 
-    const [npcs, items, yields, locations, imagePrompts, discoveredEntities, locationVisits] = await Promise.all([
+    const [npcs, items, yields, locations, imagePrompts, discoveredEntities, locationVisits, npcItems] = await Promise.all([
       prisma.npc.findMany({ where: { worldId: world.id } }),
       prisma.itemCatalog.findMany({ where: { worldId: world.id } }),
       prisma.harvestYield.findMany({ where: { worldId: world.id }, include: { item: true } }),
@@ -89,7 +92,26 @@ export async function worldRoutes(app: FastifyInstance) {
       // `discovered` sale `true` para todo, mismo comportamiento que antes de este cambio.
       saveId ? prisma.discoveredEntity.findMany({ where: { saveId } }) : Promise.resolve([]),
       saveId ? prisma.locationVisit.findMany({ where: { saveId } }) : Promise.resolve([]),
+      // Rediseño de la vista de combate (2026-07-28) — arma(s) del loadout de cada NPC, para
+      // calcular su "Ataque base" (baseAttack.ts) aquí en el backend: la Enciclopedia nunca
+      // expuso el loadout crudo al frontend, y no hace falta empezar ahora — se resuelve el
+      // texto final una vez aquí y se manda ya hecho.
+      prisma.npcItem.findMany({ where: { npc: { worldId: world.id } }, include: { item: true } }),
     ]);
+
+    const weaponNamesByNpcId = new Map<string, string[]>();
+    for (const npcItem of npcItems) {
+      if (npcItem.item.category !== 'arma') continue;
+      const list = weaponNamesByNpcId.get(npcItem.npcId) ?? [];
+      list.push(npcItem.item.name);
+      weaponNamesByNpcId.set(npcItem.npcId, list);
+    }
+    const ataqueBaseFor = (n: { id: string; attributes: unknown; ataqueNatural: string | null }) =>
+      baseAttackFor({
+        attributes: n.attributes as AttributeBlock,
+        weaponNames: weaponNamesByNpcId.get(n.id) ?? [],
+        ataqueNatural: n.ataqueNatural,
+      });
 
     const isDiscovered = (entityType: string, entitySlug: string): boolean =>
       !saveId || discoveredEntities.some((d) => d.entityType === entityType && d.entitySlug === entitySlug);
@@ -126,14 +148,34 @@ export async function worldRoutes(app: FastifyInstance) {
 
     const npcSlugs = new Set(npcs.map((n) => n.slug));
     const npcBySlug = new Map(npcs.map((n) => [n.slug, n]));
+    const locationBySlug = new Map(locations.map((l) => [l.slug, l]));
     const yieldsBySource = new Map<string, { itemName: string; cantidad: number; condicion: string | null }[]>();
     const sourceNameBySlug = new Map<string, string>();
+    // Zona de origen por fuente (2026-07-29, colapsables de fauna/flora por zona en la
+    // Enciclopedia) — mismo criterio ya validado en discovery.ts: región real de su
+    // `homeLocationSlug` si es fauna con Npc propio, o `lugarOrigen` del primer objeto que da si
+    // es flora/mineral sin Npc — se queda en null si ninguna de las dos señales dice nada (fauna
+    // itinerante sin hogar fijo, o un lugarOrigen sin ninguna región reconocible).
+    const lugarOrigenBySource = new Map<string, string>();
     for (const y of yields) {
       sourceNameBySlug.set(y.sourceSlug, y.sourceName);
       const list = yieldsBySource.get(y.sourceSlug) ?? [];
       list.push({ itemName: y.item.name, cantidad: y.cantidad, condicion: y.condicion });
       yieldsBySource.set(y.sourceSlug, list);
+      if (y.item.lugarOrigen && !lugarOrigenBySource.has(y.sourceSlug)) {
+        lugarOrigenBySource.set(y.sourceSlug, y.item.lugarOrigen);
+      }
     }
+    const regionFor = (sourceSlug: string): string | null => {
+      // Override explícito primero (2026-07-29, confirmado por la usuaria) — cubre fauna sin
+      // homeLocationSlug fijo (itinerante) y fuentes cuyo primer objeto es genérico/compartido
+      // entre especies (ej. "Ración de carne fresca"), donde el lugarOrigen del objeto no puede
+      // decir de qué fuente concreta viene.
+      if (harvestSourceRegion[sourceSlug]) return coreRegionOf(harvestSourceRegion[sourceSlug]);
+      const homeLocationSlug = npcBySlug.get(sourceSlug)?.homeLocationSlug;
+      const npcRegion = homeLocationSlug ? locationBySlug.get(homeLocationSlug)?.region : null;
+      return coreRegionOf(npcRegion) ?? coreRegionOf(lugarOrigenBySource.get(sourceSlug));
+    };
     // Hallazgo real de Fable (2026-07-21): worldCatalog.ts siembra la fauna cazable como Npc
     // PLANTILLA (`allNpcs = [...npcs, ...fauna]`) para que el motor de escena la reconozca igual
     // que a una persona — pero eso hacía que la Enciclopedia listara cada animal DOS veces (en
@@ -155,11 +197,19 @@ export async function worldRoutes(app: FastifyInstance) {
         imageUrls: imageUrlsFor('npc', n.slug),
         variantesSexo: variantesSexoFor('npc', n.slug, NPC_SEXO_VARIANTES),
         discovered: isDiscovered('npc', n.slug),
+        // Rediseño de la vista de combate (2026-07-28): `attributes` ya existía en el modelo, solo
+        // faltaba exponerlo; `raza`/`clase` enganchan la ficha con `razas`/`classes` de más abajo.
+        attributes: n.attributes as AttributeBlock,
+        raza: n.raza,
+        clase: n.clase,
+        ataqueBase: ataqueBaseFor(n),
       })),
       items: items.map((i) => ({
         slug: i.slug,
         name: i.name,
         category: i.category,
+        // Categorización mecánica (2026-07-29) — ver itemTaxonomy.ts.
+        tipo: i.tipo,
         description: i.description,
         statBonusAttribute: i.statBonusAttribute,
         statBonusAmount: i.statBonusAmount,
@@ -186,12 +236,24 @@ export async function worldRoutes(app: FastifyInstance) {
         // verdad, tenga o no ficha de combate — Espina del Viento/Cornante/Sombra de Kroj son
         // fauna sin Npc propio (peligro ambiental o fuera del núcleo jugable), no flora/mineral.
         esFauna: npcSlugs.has(sourceSlug) || harvestSourcesThatAreFaunaWithoutNpc.has(sourceSlug),
+        // Zona de origen (2026-07-29, colapsables de fauna/flora por zona en la Enciclopedia).
+        region: regionFor(sourceSlug),
         description: npcBySlug.get(sourceSlug)?.bio ?? harvestSourceDescriptions[sourceSlug] ?? null,
         yields: yieldsBySource.get(sourceSlug) ?? [],
         imagePrompts: imagePromptsFor('fauna', sourceSlug),
         imageUrls: imageUrlsFor('fauna', sourceSlug),
         variantesSexo: variantesSexoFor('fauna', sourceSlug, FAUNA_SEXO_VARIANTES),
         discovered: isDiscovered('fauna', sourceSlug),
+        // Rediseño de la vista de combate (2026-07-28): solo presentes si hay Npc real detrás
+        // (`cazable`) — flora/mineral sin ficha de combate se queda con los cuatro en null/vacío.
+        attributes: (npcBySlug.get(sourceSlug)?.attributes as AttributeBlock | undefined) ?? null,
+        ataqueNatural: npcBySlug.get(sourceSlug)?.ataqueNatural ?? null,
+        habilidadesRaciales: (npcBySlug.get(sourceSlug)?.habilidadesRaciales as unknown as
+          { icon: string; name: string; description: string; categoria: 'ataque' | 'defensa' | 'utilidad'; preferredAttribute: Attribute }[]) ?? [],
+        ataqueBase: (() => {
+          const faunaNpc = npcBySlug.get(sourceSlug);
+          return faunaNpc ? ataqueBaseFor(faunaNpc) : null;
+        })(),
       })),
       // Lugares (2026-07-23): gateado por `LocationVisit` (visita física real), no por mención en
       // narración — eje independiente de DiscoveredEntity (ver comentario del modelo en schema.prisma).
@@ -311,6 +373,12 @@ export async function worldRoutes(app: FastifyInstance) {
       const { entityType, entitySlug, sizeProfile, regenerate } = request.body;
       if (!IMAGE_PROMPT_ENTITY_TYPES.includes(entityType as ImagePromptEntityType)) {
         return reply.status(400).send({ error: 'entityType inválido' });
+      }
+      // Bug real (auditoría 2026-07-28): sin este chequeo, un entitySlug ausente/no-string llegaba
+      // intacto a la clave compuesta de Prisma de más abajo y reventaba con un 500 genérico en vez
+      // de un 400 claro.
+      if (!entitySlug || typeof entitySlug !== 'string') {
+        return reply.status(400).send({ error: 'entitySlug inválido' });
       }
       if (!IMAGE_PROMPT_SIZE_PROFILES.includes(sizeProfile as ImagePromptSizeProfile)) {
         return reply.status(400).send({ error: 'sizeProfile inválido' });

@@ -32,8 +32,8 @@ export const env = {
   /// "control de acciones"): red de seguridad de producto independiente de la causa del fallo.
   /// Antes de esto, un fallo de clasificación (el Cronista devolviendo una duración disparatada,
   /// sea cual sea el motivo) podía dejar a la jugadora atascada horas reales sin ningún límite —
-  /// pasó de verdad jugando (3,6h reales por una simple ronda de exploración). 240 min = 4h
-  /// reales como punto de partida, ajustable sin tocar código.
+  /// pasó de verdad jugando (3,6h reales por una simple ronda de exploración). 30 min como punto
+  /// de partida, ajustable sin tocar código.
   transitMaxRealMinutes: Number(process.env.TRANSIT_MAX_REAL_MINUTES ?? 30),
 
   /// API de prompts de imagen (checklist 2026-07-21/22, punto 7): rotación con failover entre

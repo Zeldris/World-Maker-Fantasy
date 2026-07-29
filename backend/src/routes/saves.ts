@@ -33,6 +33,9 @@ async function buildStartingQuestsData(worldId: string, characterName: string) {
     title: q.title,
     description: q.description,
     targetNpcId: q.targetNpcSlug ? npcIdBySlug.get(q.targetNpcSlug) : undefined,
+    objetivo: q.objetivo,
+    rewardXp: q.rewardXp,
+    rewardItems: q.rewardItems ?? [],
   }));
 }
 
@@ -63,6 +66,7 @@ function toFrontendLogEntry(entry: {
   xpDelta?: number | null;
   entityBannerType?: string | null;
   entityBannerSlug?: string | null;
+  combate?: boolean;
 }) {
   return {
     id: entry.id,
@@ -77,6 +81,8 @@ function toFrontendLogEntry(entry: {
     entityBannerType: entry.entityBannerType ?? undefined,
     entityBannerSlug: entry.entityBannerSlug ?? undefined,
     createdAt: entry.createdAt.toISOString(),
+    // Rediseño de la vista de combate (2026-07-28) — fondo rojo en el frontend.
+    combate: entry.combate || undefined,
   };
 }
 
@@ -117,54 +123,85 @@ export async function savesRoutes(app: FastifyInstance) {
     const startingQuestsData = await buildStartingQuestsData(world.id, characterName);
     const secondaryAttributes = startingSecondaryAttributesFor(characterName) ?? EMPTY_SECONDARY_ATTRIBUTES;
 
-    const save = await prisma.save.create({
-      data: {
-        userId,
-        worldId: world.id,
-        pregeneratedCharacterId,
-        characterName,
-        characterArchetype,
-        characterOrigin,
-        characterMotivation,
-        attributes,
-        secondaryAttributes,
-        portraitInitial,
-        currentLocationId: initialLocation?.id,
-        dificultad: dificultad ?? 'MEDIO',
-        worldState: { create: { fictionalDateLabel } },
-        logEntries: {
-          create: [
-            { channel: 'CHARACTER', text: introCharacterText, timeLabel: fictionalDateLabel, fictionalMinutes: 480 },
-            { channel: 'WORLD', text: introWorldText, timeLabel: fictionalDateLabel, fictionalMinutes: 480 },
-          ],
-        },
-        savedActions: {
-          create: startingAbilitiesFor(characterName).map((a) => ({ ...a, isStarting: true })),
-        },
-        inventoryItems: {
-          create: startingInventoryFor(characterName),
-        },
-        quests: {
-          create: startingQuestsData,
-        },
-      },
-    });
+    // Transacción única (auditoría 2026-07-28, fix #9): crear la partida y registrar sus
+    // descubrimientos/primera visita de la Enciclopedia era antes tres awaits sueltos — un crash
+    // justo entre medias dejaba una partida jugable pero con la Enciclopedia incompleta, sin forma
+    // de recuperarla salvo reiniciar. Todo o nada.
+    //
+    // `timeout`/`maxWait` explícitos (bug real encontrado jugando en vivo, 2026-07-28): el pool de
+    // Supabase (`DATABASE_URL`, eu-west-3, pgbouncer=true) + la latencia real desde la Steam Deck
+    // (ver [[tarkor_rendimiento_prisma_relationjoins]]) hacen que una transacción interactiva con
+    // varios awaits secuenciales supere de sobra el timeout por defecto de Prisma (5s) — el motor
+    // cierra la transacción a mitad de camino y la siguiente query revienta con
+    // `PrismaClientKnownRequestError P2028: Transaction not found`. Aquí solo son 2-3 queries, pero
+    // se deja el mismo margen que en `restart` (más abajo, con muchas más) para no repetir el
+    // diagnóstico si esta ruta crece.
+    const save = await prisma.$transaction(
+      async (tx) => {
+        const save = await tx.save.create({
+          data: {
+            userId,
+            worldId: world.id,
+            pregeneratedCharacterId,
+            characterName,
+            characterArchetype,
+            characterOrigin,
+            characterMotivation,
+            attributes,
+            secondaryAttributes,
+            portraitInitial,
+            currentLocationId: initialLocation?.id,
+            dificultad: dificultad ?? 'MEDIO',
+            worldState: { create: { fictionalDateLabel } },
+            logEntries: {
+              create: [
+                { channel: 'CHARACTER', text: introCharacterText, timeLabel: fictionalDateLabel, fictionalMinutes: 480 },
+                { channel: 'WORLD', text: introWorldText, timeLabel: fictionalDateLabel, fictionalMinutes: 480 },
+              ],
+            },
+            savedActions: {
+              create: startingAbilitiesFor(characterName).map((a) => ({ ...a, isStarting: true })),
+            },
+            inventoryItems: {
+              create: startingInventoryFor(characterName),
+            },
+            quests: {
+              create: startingQuestsData,
+            },
+          },
+        });
 
-    // Enciclopedia progresiva (2026-07-23) — el equipo inicial ya se "conoce" desde el primer
-    // instante, sin esperar a que un turno lo mencione (si no, el propio equipo del jugador se
-    // vería como "???" hasta su primera acción). `mentionedText` vacío: solo cuenta la posesión.
-    await recordEntityDiscoveries({ saveId: save.id, worldId: world.id, mentionedText: '' });
-    // Misma lógica para el propio lugar de partida (bug real encontrado auditando la partida de
-    // Gorhorn: no había ningún `LocationVisit` para la Hondonada del Eco pese a llevar toda la
-    // partida ahí) — inserción directa, no pasa por turnResolution.ts, así que no dispara el
-    // hito/XP de "descubrimiento" que sí aplica a lugares nuevos alcanzados jugando.
-    if (initialLocation) {
-      await prisma.locationVisit.upsert({
-        where: { saveId_locationId: { saveId: save.id, locationId: initialLocation.id } },
-        create: { saveId: save.id, locationId: initialLocation.id },
-        update: {},
-      });
-    }
+        // Enciclopedia progresiva (2026-07-23) — el equipo inicial ya se "conoce" desde el primer
+        // instante, sin esperar a que un turno lo mencione (si no, el propio equipo del jugador se
+        // vería como "???" hasta su primera acción). También el objetivo de las misiones "de serie"
+        // (2026-07-25, petición explícita: citar un elemento del catálogo en el objetivo lo desbloquea).
+        await recordEntityDiscoveries(
+          {
+            saveId: save.id,
+            worldId: world.id,
+            mentionedText: startingQuestsData
+              .map((q) => q.objetivo)
+              .filter((o): o is string => !!o)
+              .join('\n'),
+          },
+          tx,
+        );
+        // Misma lógica para el propio lugar de partida (bug real encontrado auditando la partida de
+        // Gorhorn: no había ningún `LocationVisit` para la Hondonada del Eco pese a llevar toda la
+        // partida ahí) — inserción directa, no pasa por turnResolution.ts, así que no dispara el
+        // hito/XP de "descubrimiento" que sí aplica a lugares nuevos alcanzados jugando.
+        if (initialLocation) {
+          await tx.locationVisit.upsert({
+            where: { saveId_locationId: { saveId: save.id, locationId: initialLocation.id } },
+            create: { saveId: save.id, locationId: initialLocation.id },
+            update: {},
+          });
+        }
+
+        return save;
+      },
+      { maxWait: 10_000, timeout: 20_000 },
+    );
 
     return { id: save.id };
   });
@@ -205,21 +242,10 @@ export async function savesRoutes(app: FastifyInstance) {
       return reply.status(404).send({ error: 'Partida no encontrada' });
     }
 
-    // Posición (docs/12-mundo-estructurado.md § 1.6): destinos directos desde la ubicación
-    // actual, con tiempos ya ajustados a la destreza del personaje — misma lista cerrada que
-    // ve el clasificador, visible también para el jugador en el mapa.
-    const destinations = save.currentLocation
-      ? await destinationsFrom(save.currentLocation.id, save.attributes as AttributeBlock)
-      : [];
-
     // Tier/requisitos de equipar (sesión de diseño 2026-07-23) — viven en ItemCatalog, no en la
     // fila de InventoryItem; se resuelven aquí por `catalogSlug` para no repetir la consulta por
     // objeto. Objetos sin `catalogSlug` (narrativos sueltos, `newItem` del modelo) quedan sin tier.
     const catalogSlugs = [...new Set(save.inventoryItems.map((i) => i.catalogSlug).filter((s): s is string => Boolean(s)))];
-    const catalogItems = catalogSlugs.length
-      ? await prisma.itemCatalog.findMany({ where: { worldId: save.worldId, slug: { in: catalogSlugs } } })
-      : [];
-    const catalogItemBySlug = new Map(catalogItems.map((c) => [c.slug, c]));
 
     // Marca de misión en el mapa (punto 3 del diseño de Gistera Koh, 2026-07-23): el mapa necesita
     // saber en qué Location dibujar el "!" — bien la del propio `targetLocationId`, bien la
@@ -227,21 +253,34 @@ export async function savesRoutes(app: FastifyInstance) {
     // (p.ej. "derrota al Orco Enfurecido", que vive en la Hondonada del Eco).
     const questTargetLocationIds = save.quests.map((q) => q.targetLocationId).filter((id): id is string => Boolean(id));
     const questTargetNpcIds = save.quests.map((q) => q.targetNpcId).filter((id): id is string => Boolean(id));
-    const [questTargetLocations, questTargetNpcs] = await Promise.all([
-      questTargetLocationIds.length ? prisma.location.findMany({ where: { id: { in: questTargetLocationIds } } }) : [],
-      questTargetNpcIds.length ? prisma.npc.findMany({ where: { id: { in: questTargetNpcIds } } }) : [],
-    ]);
-    const locationSlugById = new Map(questTargetLocations.map((l) => [l.id, l.slug]));
-    const npcHomeLocationSlugById = new Map(questTargetNpcs.map((n) => [n.id, n.homeLocationSlug]));
 
     // Combate pendiente, reconstruido tras cualquier resincronización (bug real, 2026-07-23,
     // "revisar partida" — ver comentario de `pendingCombatNpcSlugs` en schema.prisma): mismo
     // shape que ya devuelve `/turn/narrate` directamente, para que `syncFromSave` en el frontend
     // pueda reabrir el aviso de "Combatir" aunque la respuesta directa del turno se perdiera.
     const pendingCombatSlugs = (save.pendingCombatNpcSlugs as string[] | null) ?? [];
-    const pendingCombatNpcs = pendingCombatSlugs.length
-      ? await prisma.npc.findMany({ where: { worldId: save.worldId, slug: { in: pendingCombatSlugs } } })
-      : [];
+
+    // Auditoría de rendimiento 2026-07-28 ("rascar segundos"): estas 5 consultas no dependen entre
+    // sí (todas solo leen de `save`, ya resuelto arriba) — antes iban en 5 `await` secuenciales,
+    // cada uno pagando su propio viaje de ida y vuelta al pool remoto de Supabase. Este endpoint es
+    // el de carga de partida (se dispara en cada apertura/recarga), así que el ahorro se nota en el
+    // punto de la sesión donde más se espera antes de poder hacer nada.
+    const [destinations, catalogItems, questTargetLocations, questTargetNpcs, pendingCombatNpcs] = await Promise.all([
+      // Posición (docs/12-mundo-estructurado.md § 1.6): destinos directos desde la ubicación
+      // actual, con tiempos ya ajustados a la destreza del personaje — misma lista cerrada que
+      // ve el clasificador, visible también para el jugador en el mapa.
+      save.currentLocation ? destinationsFrom(save.currentLocation.id, save.attributes as AttributeBlock) : Promise.resolve([]),
+      catalogSlugs.length ? prisma.itemCatalog.findMany({ where: { worldId: save.worldId, slug: { in: catalogSlugs } } }) : Promise.resolve([]),
+      questTargetLocationIds.length ? prisma.location.findMany({ where: { id: { in: questTargetLocationIds } } }) : Promise.resolve([]),
+      questTargetNpcIds.length ? prisma.npc.findMany({ where: { id: { in: questTargetNpcIds } } }) : Promise.resolve([]),
+      pendingCombatSlugs.length
+        ? prisma.npc.findMany({ where: { worldId: save.worldId, slug: { in: pendingCombatSlugs } } })
+        : Promise.resolve([]),
+    ]);
+    const catalogItemBySlug = new Map(catalogItems.map((c) => [c.slug, c]));
+    const locationSlugById = new Map(questTargetLocations.map((l) => [l.id, l.slug]));
+    const npcHomeLocationSlugById = new Map(questTargetNpcs.map((n) => [n.id, n.homeLocationSlug]));
+
     const pendingCombatStates = pendingCombatNpcs.length
       ? await prisma.npcState.findMany({
           where: {
@@ -290,6 +329,10 @@ export async function savesRoutes(app: FastifyInstance) {
           catalogSlug: i.catalogSlug,
           tier: catalogItem?.tier,
           requisitos: catalogItem?.requisitos as Requisitos | null | undefined,
+          // Categorización mecánica (2026-07-29) — mismo catalogItemBySlug de siempre, dos
+          // campos más para que el frontend pueda agrupar/filtrar por tipo/categoría real.
+          tipo: catalogItem?.tipo,
+          category: catalogItem?.category,
           // Imagen real de la Enciclopedia (petición explícita de la usuaria, 2026-07-24: "las
           // imágenes no salen" al ver un objeto desde Inventario/Equipo) — `DetailModal.tsx`
           // (kind:'item') nunca recibía esto, así que solo mostraba el emoji genérico aunque la
@@ -336,6 +379,9 @@ export async function savesRoutes(app: FastifyInstance) {
         description: a.description,
         isStarting: a.isStarting,
         category: a.category,
+        // Rediseño del turno de combate (2026-07-28) — "tipo" para colorear el chip en la UI;
+        // null en habilidades 'general' o en partidas anteriores a este campo.
+        preferredAttribute: a.preferredAttribute,
       })),
       habilidadSlots: habilidadSlotsForLevel(save.level),
       profession: save.profession,
@@ -372,6 +418,9 @@ export async function savesRoutes(app: FastifyInstance) {
         title: q.title,
         description: q.description,
         status: q.status,
+        objetivo: q.objetivo,
+        rewardXp: q.rewardXp,
+        rewardItems: q.rewardItems,
         targetLocationSlug:
           (q.targetLocationId ? locationSlugById.get(q.targetLocationId) : undefined) ??
           (q.targetNpcId ? (npcHomeLocationSlugById.get(q.targetNpcId) ?? undefined) : undefined) ??
@@ -382,7 +431,7 @@ export async function savesRoutes(app: FastifyInstance) {
     };
   });
 
-  app.post<{ Params: { id: string } }>('/saves/:id/restart', async (request, reply) => {
+  app.post<{ Params: { id: string }; Body: { introCharacterText?: string; introWorldText?: string } }>('/saves/:id/restart', async (request, reply) => {
     // Resetea ESTA partida a Día 1 (borra su log y sus hechos) sin borrar la fila de Save —
     // sigue en la lista, con el mismo id, distinto de borrarla del todo (DELETE /saves/:id).
     const save = await prisma.save.findUnique({
@@ -394,8 +443,15 @@ export async function savesRoutes(app: FastifyInstance) {
     }
 
     const fictionalDateLabel = formatFictionalDate(480);
-    const introCharacterText = `${save.characterName} llega a las tierras de ${save.world.name}. ${save.characterMotivation} Todo lo que ocurra a partir de ahora empieza aquí.`;
-    const introWorldText = `El mundo de ${save.world.name} sigue su curso, ajeno por ahora a la llegada de un nuevo actor en la historia.`;
+    // Intro propia por personaje pregenerado (2026-07-28) — CharacterSaves.tsx ya conoce el
+    // personaje de esta partida (`data/mock.ts`, la misma fuente que usa la creación de partida
+    // nueva) y manda su intro propia si la tiene; si no llega nada (personaje sin intro propia,
+    // o partida custom), cae a la misma plantilla genérica de siempre.
+    const introCharacterText =
+      request.body?.introCharacterText ??
+      `${save.characterName} llega a las tierras de ${save.world.name}. ${save.characterMotivation} Todo lo que ocurra a partir de ahora empieza aquí.`;
+    const introWorldText =
+      request.body?.introWorldText ?? `El mundo de ${save.world.name} sigue su curso, ajeno por ahora a la llegada de un nuevo actor en la historia.`;
 
     const initialLocationSlug = initialLocationSlugFor(save.characterName);
     const initialLocation = initialLocationSlug
@@ -403,82 +459,108 @@ export async function savesRoutes(app: FastifyInstance) {
       : null;
     const startingQuestsData = await buildStartingQuestsData(save.worldId, save.characterName);
 
-    await prisma.$transaction([
-      prisma.logEntry.deleteMany({ where: { saveId: save.id } }),
-      prisma.inventoryItem.deleteMany({ where: { saveId: save.id } }),
-      prisma.companion.deleteMany({ where: { saveId: save.id } }),
-      prisma.subject.deleteMany({ where: { saveId: save.id } }),
-      prisma.building.deleteMany({ where: { saveId: save.id } }),
-      prisma.territory.deleteMany({ where: { saveId: save.id } }),
-      prisma.characterTransit.deleteMany({ where: { saveId: save.id } }),
-      prisma.savedAction.deleteMany({ where: { saveId: save.id } }),
-      prisma.locationVisit.deleteMany({ where: { saveId: save.id } }),
-      prisma.quest.deleteMany({ where: { saveId: save.id } }),
-      prisma.sessionSummary.deleteMany({ where: { saveId: save.id } }),
-      // NpcState (2026-07-19): sin esto, la condición física/saqueo de un NPC de una partida
-      // anterior sobrevivía al "reiniciar" — un NPC ya derrotado seguía derrotado en el Día 1
-      // nuevo, en vez de volver a ILESO como todo lo demás.
-      prisma.npcState.deleteMany({ where: { saveId: save.id } }),
-      // Bug real (2026-07-23, encontrado al reiniciar la partida real de Gorhorn): ProfessionProgress
-      // y KingdomStats no se borraban — un nivel de oficio o una economía de reino ya fundada
-      // sobrevivían a "reiniciar", igual de incoherente que el NpcState de arriba antes de aquel fix.
-      prisma.professionProgress.deleteMany({ where: { saveId: save.id } }),
-      prisma.kingdomStats.deleteMany({ where: { saveId: save.id } }),
-      // Enciclopedia progresiva (2026-07-23): reiniciar vuelve a Día 1 también en lo que ya se
-      // "conoce" — sin esto, la Enciclopedia de una partida recién reiniciada seguiría mostrando
-      // NPCs/fauna/objetos de la partida anterior como ya descubiertos.
-      prisma.discoveredEntity.deleteMany({ where: { saveId: save.id } }),
-      prisma.worldState.update({
-        where: { saveId: save.id },
-        data: { fictionalDateLabel, fictionalMinutes: 480, facts: [], agenda: [], factionsStatus: {} },
-      }),
-      prisma.logEntry.create({
-        data: { saveId: save.id, channel: 'CHARACTER', text: introCharacterText, timeLabel: fictionalDateLabel },
-      }),
-      prisma.logEntry.create({
-        data: { saveId: save.id, channel: 'WORLD', text: introWorldText, timeLabel: fictionalDateLabel },
-      }),
-      prisma.savedAction.createMany({
-        data: startingAbilitiesFor(save.characterName).map((a) => ({ ...a, saveId: save.id, isStarting: true })),
-      }),
-      prisma.inventoryItem.createMany({
-        data: startingInventoryFor(save.characterName).map((i) => ({ ...i, saveId: save.id })),
-      }),
-      prisma.quest.createMany({
-        data: startingQuestsData.map((q) => ({ ...q, saveId: save.id })),
-      }),
-      prisma.save.update({
-        where: { id: save.id },
-        data: {
-          lastPlayedAt: new Date(),
-          level: 1,
-          xp: 0,
-          pendingAttributePoints: 0,
-          kingdomName: null,
-          profession: null,
-          currentLocationId: initialLocation?.id ?? null,
-          // docs/14-combate-y-muerte.md § 4.4: reiniciar borra el fin de partida y el contador
-          // de muertes — la dificultad elegida al crear la partida NO se resetea (es una
-          // preferencia de la partida, no parte del progreso que "reiniciar" debe borrar).
-          condicionFisica: 'ILESO',
-          salud: 100,
-          deathCount: 0,
-          endedAt: null,
-          lastRestLocationId: null,
-          pausedAt: null,
-        },
-      }),
-    ]);
+    // Callback en vez de array de operaciones (auditoría 2026-07-28, fix #9): el registro de
+    // descubrimientos/primera visita de más abajo antes vivía en dos awaits sueltos DESPUÉS de este
+    // array — un crash entre medias dejaba la partida reiniciada pero con la Enciclopedia sin sus
+    // datos "de serie". Ahora es una única transacción, todo o nada, igual que en POST /saves.
+    //
+    // `timeout`/`maxWait` explícitos (bug real jugando en vivo, 2026-07-28): esta transacción
+    // encadena ~17 queries secuenciales — contra el pool remoto de Supabase (pgbouncer=true,
+    // eu-west-3) con la latencia real de la Steam Deck, eso supera de sobra el timeout por defecto
+    // de Prisma (5s) y el motor cierra la transacción a mitad de camino: la query que llega tarde
+    // revienta con `PrismaClientKnownRequestError P2028: Transaction not found` — reproducido en
+    // aislado fuera de Fastify, mismo error exacto que "Reiniciar" daba en el frontend (el 500
+    // genérico solo decía "Error interno del servidor", sin este dato).
+    await prisma.$transaction(
+      async (tx) => {
+        await tx.logEntry.deleteMany({ where: { saveId: save.id } });
+        await tx.inventoryItem.deleteMany({ where: { saveId: save.id } });
+        await tx.companion.deleteMany({ where: { saveId: save.id } });
+        await tx.subject.deleteMany({ where: { saveId: save.id } });
+        await tx.building.deleteMany({ where: { saveId: save.id } });
+        await tx.territory.deleteMany({ where: { saveId: save.id } });
+        await tx.characterTransit.deleteMany({ where: { saveId: save.id } });
+        await tx.savedAction.deleteMany({ where: { saveId: save.id } });
+        await tx.locationVisit.deleteMany({ where: { saveId: save.id } });
+        await tx.quest.deleteMany({ where: { saveId: save.id } });
+        await tx.sessionSummary.deleteMany({ where: { saveId: save.id } });
+        // NpcState (2026-07-19): sin esto, la condición física/saqueo de un NPC de una partida
+        // anterior sobrevivía al "reiniciar" — un NPC ya derrotado seguía derrotado en el Día 1
+        // nuevo, en vez de volver a ILESO como todo lo demás.
+        await tx.npcState.deleteMany({ where: { saveId: save.id } });
+        // Bug real (2026-07-23, encontrado al reiniciar la partida real de Gorhorn): ProfessionProgress
+        // y KingdomStats no se borraban — un nivel de oficio o una economía de reino ya fundada
+        // sobrevivían a "reiniciar", igual de incoherente que el NpcState de arriba antes de aquel fix.
+        await tx.professionProgress.deleteMany({ where: { saveId: save.id } });
+        await tx.kingdomStats.deleteMany({ where: { saveId: save.id } });
+        // Enciclopedia progresiva (2026-07-23): reiniciar vuelve a Día 1 también en lo que ya se
+        // "conoce" — sin esto, la Enciclopedia de una partida recién reiniciada seguiría mostrando
+        // NPCs/fauna/objetos de la partida anterior como ya descubiertos.
+        await tx.discoveredEntity.deleteMany({ where: { saveId: save.id } });
+        await tx.worldState.update({
+          where: { saveId: save.id },
+          data: { fictionalDateLabel, fictionalMinutes: 480, facts: [], agenda: [], factionsStatus: {} },
+        });
+        await tx.logEntry.create({
+          data: { saveId: save.id, channel: 'CHARACTER', text: introCharacterText, timeLabel: fictionalDateLabel },
+        });
+        await tx.logEntry.create({
+          data: { saveId: save.id, channel: 'WORLD', text: introWorldText, timeLabel: fictionalDateLabel },
+        });
+        await tx.savedAction.createMany({
+          data: startingAbilitiesFor(save.characterName).map((a) => ({ ...a, saveId: save.id, isStarting: true })),
+        });
+        await tx.inventoryItem.createMany({
+          data: startingInventoryFor(save.characterName).map((i) => ({ ...i, saveId: save.id })),
+        });
+        await tx.quest.createMany({
+          data: startingQuestsData.map((q) => ({ ...q, saveId: save.id })),
+        });
+        await tx.save.update({
+          where: { id: save.id },
+          data: {
+            lastPlayedAt: new Date(),
+            level: 1,
+            xp: 0,
+            pendingAttributePoints: 0,
+            kingdomName: null,
+            profession: null,
+            currentLocationId: initialLocation?.id ?? null,
+            // docs/14-combate-y-muerte.md § 4.4: reiniciar borra el fin de partida y el contador
+            // de muertes — la dificultad elegida al crear la partida NO se resetea (es una
+            // preferencia de la partida, no parte del progreso que "reiniciar" debe borrar).
+            condicionFisica: 'ILESO',
+            salud: 100,
+            deathCount: 0,
+            endedAt: null,
+            lastRestLocationId: null,
+            pausedAt: null,
+          },
+        });
 
-    // Mismo motivo que en POST /saves — el equipo inicial ya se "conoce" desde ya.
-    await recordEntityDiscoveries({ saveId: save.id, worldId: save.worldId, mentionedText: '' });
-    if (initialLocation) {
-      await prisma.locationVisit.upsert({
-        where: { saveId_locationId: { saveId: save.id, locationId: initialLocation.id } },
-        create: { saveId: save.id, locationId: initialLocation.id },
-        update: {},
-      });
-    }
+        // Mismo motivo que en POST /saves — el equipo inicial ya se "conoce" desde ya, y el objetivo
+        // de las misiones "de serie" también puede desbloquear algo de la Enciclopedia.
+        await recordEntityDiscoveries(
+          {
+            saveId: save.id,
+            worldId: save.worldId,
+            mentionedText: startingQuestsData
+              .map((q) => q.objetivo)
+              .filter((o): o is string => !!o)
+              .join('\n'),
+          },
+          tx,
+        );
+        if (initialLocation) {
+          await tx.locationVisit.upsert({
+            where: { saveId_locationId: { saveId: save.id, locationId: initialLocation.id } },
+            create: { saveId: save.id, locationId: initialLocation.id },
+            update: {},
+          });
+        }
+      },
+      { maxWait: 10_000, timeout: 20_000 },
+    );
 
     return { id: save.id };
   });
@@ -610,6 +692,15 @@ export async function savesRoutes(app: FastifyInstance) {
       // Reparte UN punto pendiente de ascenso (ASI) en el atributo pedido (docs/10-niveles-xp-reino.md
       // § 4.2) — se llama una vez por punto, tope duro 18, nunca gasta más de lo disponible.
       const { attribute } = request.body;
+      // Bug real (auditoría 2026-07-28): `attribute` solo se validaba a nivel de TypeScript, nunca
+      // en runtime — un valor no válido (o ausente) pasaba de largo la comprobación de tope
+      // (`attributes[attribute]` da `undefined`, y `undefined >= MAX_ATTRIBUTE` es `false`) y
+      // `attributes[attribute] + 1` = `NaN` se persistía como clave espuria en el JSON de
+      // atributos, consumiendo un punto de ascenso sin dar ningún beneficio real.
+      const VALID_ATTRIBUTES: Attribute[] = ['fuerza', 'destreza', 'sigilo', 'voluntad', 'carisma', 'arcano'];
+      if (!VALID_ATTRIBUTES.includes(attribute)) {
+        return reply.status(400).send({ error: `Atributo no válido: "${attribute}"` });
+      }
       const save = await prisma.save.findUnique({ where: { id: request.params.id } });
       if (!save) {
         return reply.status(404).send({ error: 'Partida no encontrada' });
@@ -674,6 +765,7 @@ export async function savesRoutes(app: FastifyInstance) {
         description: created.description,
         isStarting: created.isStarting,
         category: created.category,
+        preferredAttribute: created.preferredAttribute,
       };
     },
   );
@@ -754,6 +846,7 @@ export async function savesRoutes(app: FastifyInstance) {
       description: updated.description,
       isStarting: updated.isStarting,
       category: updated.category,
+      preferredAttribute: updated.preferredAttribute,
     };
   });
 

@@ -29,6 +29,13 @@ export interface OllamaGenerateOptions {
   /// (a propósito, para no matar generaciones lentas pero legítimas), así que nada lo corta.
   /// Sin valor por defecto: cada llamada decide su propio margen según lo que ya sabe que tarda.
   timeoutMs?: number;
+  /// Fuerza esta llamada a CPU (Ollama `num_gpu: 0`) aunque el servidor tenga la iGPU activada
+  /// globalmente (roadmap 2026-07-24, hallazgo real jugando en la Steam Deck: el backend Vulkan
+  /// de la iGPU AMD narraba más rápido pero con menos coherencia — un NPC de otra región
+  /// apareciendo de la nada — que el mismo modelo/Modelfile en CPU). Se usa solo en las llamadas
+  /// donde importa la calidad narrativa (narración, diálogo de NPC); clasificación/resúmenes
+  /// siguen en GPU sin tocar, no necesitan esa precisión y sí se benefician de la velocidad.
+  forceCpu?: boolean;
 }
 
 export interface OllamaGenerateResult {
@@ -49,6 +56,7 @@ function buildRequestBody(options: OllamaGenerateOptions, stream: boolean) {
       num_thread: 4,
       ...(options.maxTokens ? { num_predict: options.maxTokens } : {}),
       ...(options.temperature !== undefined ? { temperature: options.temperature } : {}),
+      ...(options.forceCpu ? { num_gpu: 0 } : {}),
     },
   });
 }

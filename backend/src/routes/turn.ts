@@ -4,6 +4,7 @@ import { rollCheck } from '../services/dice.js';
 import type { AttributeBlock, RollResult } from '../services/dice.js';
 import { computeDuration, detectsRestIntent, mentionsExplicitDuration } from '../services/timedActions.js';
 import { narrateAndPersistTurn } from '../services/turnResolution.js';
+import type { PendingNpcAttack } from '../services/combatExchange.js';
 import { resolveTravel, bandaForMinutos, type TravelResolution } from '../services/travel.js';
 import { effectiveAttributes, effectiveDefense, equippedWeaponNames } from '../services/equipment.js';
 import {
@@ -15,6 +16,7 @@ import {
   detectsHostileSearchIntent,
   detectsVerbalAcceptanceIntent,
   tabulatedAttackAttribute,
+  type NpcInScene,
 } from '../services/npcScene.js';
 import { matchHarvestSource } from '../services/harvest.js';
 import { detectsSearchIntent, selectDiscoveries, type DiscoveryItem } from '../services/discovery.js';
@@ -50,6 +52,13 @@ interface NarrateBody {
   /// Mismo id que en ClassifyBody — turnResolution.ts lo usa para saber si el `effect` de la
   /// habilidad debe gatear REMATE/ATURDIMIENTO/INTIMIDACION/AGUANTE en este turno.
   savedActionId?: string;
+  /// Auditoría de rendimiento 2026-07-28 ("rascar segundos"): mismo dato que ya calculó
+  /// /turn/classify para ESTA MISMA acción — reenviado tal cual para que narrateAndPersistTurn no
+  /// tenga que pagar otra vez el mismo `detectNpcsInScene` (todo el roster de NPCs del mundo +
+  /// sus objetos, contra Supabase remoto) que ya se resolvió hace un instante para la misma
+  /// escena. Opcional porque worldTick.ts (resolución diferida) sigue calculándolo fresco, sin
+  /// pasar por aquí.
+  npcsInScene?: NpcInScene[];
 }
 
 /// Turno de juego, en dos pasos (docs/08-acciones-por-tiempo.md): `/turn/classify` es rápido
@@ -117,15 +126,17 @@ export async function turnRoutes(app: FastifyInstance) {
     let classification: ClassificationResult;
     let roll: RollResult | undefined;
     let travel: TravelResolution | null;
+    let npcsInScene: NpcInScene[];
 
     if (cached) {
       classification = cached.classification;
       roll = cached.roll;
       travel = cached.travel ?? null;
+      npcsInScene = cached.npcsInScene ?? [];
     } else {
       // Se calcula ANTES del viaje (bug real, 2026-07-23, "revisar partida" — ver comentario de
       // abajo): decidir si esto es un viaje necesita saber ya si hay un NPC delante.
-      const npcsInScene = await detectNpcsInScene({ action, worldId: save.worldId, sessionFacts, saveId, currentLocationId: save.currentLocationId });
+      npcsInScene = await detectNpcsInScene({ action, worldId: save.worldId, sessionFacts, saveId, currentLocationId: save.currentLocationId });
 
       // Viaje por el grafo de ubicaciones (docs/12-mundo-estructurado.md § 1.4): el modelo nunca
       // elige la ruta — si el matcher determinista resuelve un destino conocido, la banda y la
@@ -275,6 +286,26 @@ export async function turnRoutes(app: FastifyInstance) {
             classification.duracionEstimadaMinutos = 0;
           }
 
+          // Bug real (auditoría 2026-07-28): dentro del popup de combate, una acción sin verbo de
+          // ataque literal ni savedActionId con efecto (una defensa a ciegas o una huida escritas
+          // a mano) no pasa por el atajo tabulado ni por ninguno de los 3 regex de arriba —
+          // `classifyAction` no recibe ninguna señal de que esto es combate, así que puede devolver
+          // banda "extendida"/"larga" igual que le pasaba al ataque/diálogo/intención hostil antes
+          // de sus propias redes de seguridad. Eso creaba un CharacterTransit real (turn.ts, rama de
+          // arriba) mientras `submitCombatAction` (GameView.tsx) llamaba igualmente a /turn/narrate
+          // sin comprobarlo — el turno se resolvía dos veces (ahora y otra vez al vencer ese
+          // transit fantasma), y la segunda resolución (worldTick.ts) pierde `enCombate`/
+          // `savedActionId`/`pendingNpcAttack` por completo (no viajan en `CharacterTransit.
+          // zoneContext`), borrando en silencio cualquier ataque de NPC pendiente de defender.
+          // Ningún turno de combate debe crear nunca un transit real de minutos/horas de espera.
+          if (enCombate && classification.banda !== 'instantanea') {
+            console.warn(
+              `[clasificador] acción de combate clasificada como banda "${classification.banda}"/${classification.duracionEstimadaMinutos}min para "${action}" — forzada a instantánea.`,
+            );
+            classification.banda = 'instantanea';
+            classification.duracionEstimadaMinutos = 0;
+          }
+
           // Roadmap 2026-07-19 (clamp de banda): la fiabilidad de "banda" del clasificador pequeño
           // seguía sin validarse (docs/11 § 1.4) — en vez de confiar en que el modelo mantenga
           // banda↔duracionEstimadaMinutos coherentes, se deriva de forma determinista con la MISMA
@@ -287,7 +318,7 @@ export async function turnRoutes(app: FastifyInstance) {
         roll = classification.requiereTirada ? rollCheck(attributes, classification.atributo, classification.dificultad) : undefined;
       }
 
-      if (preview) setCachedClassify(saveId, enCombate, action, { classification, roll, travel });
+      if (preview) setCachedClassify(saveId, enCombate, action, { classification, roll, travel, npcsInScene });
     }
 
     if (!preview) consumeCachedClassify(saveId, enCombate, action);
@@ -375,11 +406,14 @@ export async function turnRoutes(app: FastifyInstance) {
     }
 
     const produccionLabel = produccion ? `${produccion.cantidad} de ${produccion.itemName}` : undefined;
-    return { classification, roll, duracionMinutos: minutos, produccion: produccionLabel, travel, discoveries };
+    // Auditoría de rendimiento 2026-07-28 ("rascar segundos"): `npcsInScene` viaja tal cual hasta
+    // el frontend para que /turn/narrate lo reciba de vuelta y no tenga que recalcularlo — ver
+    // NarrateBody.npcsInScene más abajo y el mismo comentario en turnResolution.ts.
+    return { classification, roll, duracionMinutos: minutos, produccion: produccionLabel, travel, discoveries, npcsInScene };
   });
 
   app.post<{ Body: NarrateBody }>('/turn/narrate', async (request, reply) => {
-    const { saveId, action, classification, roll, travel, enCombate, savedActionId } = request.body;
+    const { saveId, action, classification, roll, travel, enCombate, savedActionId, npcsInScene } = request.body;
     if (!saveId || !action || !classification) {
       return reply.status(400).send({ error: 'Faltan campos: saveId, action, classification' });
     }
@@ -441,7 +475,17 @@ export async function turnRoutes(app: FastifyInstance) {
     });
 
     try {
-      const { narration, progression, condicionFisica, combateIniciado, finDePartida, newInventoryItems, logEntryId } = await narrateAndPersistTurn({
+      const {
+        narration,
+        progression,
+        condicionFisica,
+        combateIniciado,
+        finDePartida,
+        newInventoryItems,
+        logEntryId,
+        quests,
+        esperandoDefensaJugador,
+      } = await narrateAndPersistTurn({
         saveId,
         worldId: save.worldId,
         action,
@@ -468,13 +512,37 @@ export async function turnRoutes(app: FastifyInstance) {
         lastRestLocationId: save.lastRestLocationId,
         enCombate,
         savedActionId,
+        // Auditoría de rendimiento 2026-07-28 ("rascar segundos") — reenviado tal cual desde
+        // /turn/classify para esta misma acción; si falta (worldTick.ts, o un cliente viejo),
+        // narrateAndPersistTurn lo calcula fresco él solo.
+        npcsInScene,
+        // Rediseño del turno de combate (2026-07-28) — dice si ESTE turno es la defensa a ciegas
+        // del jugador contra un ataque de NPC ya decidido el intercambio anterior.
+        pendingNpcAttack: save.pendingNpcAttack as unknown as PendingNpcAttack | null,
         onNarrationChunk: (delta) => writeLine({ type: 'chunk', text: delta }),
         onNarrationReset: () => writeLine({ type: 'reset' }),
       });
 
-      writeLine({ type: 'done', narration, progression, condicionFisica, combateIniciado, finDePartida, newInventoryItems, logEntryId });
+      writeLine({
+        type: 'done',
+        narration,
+        progression,
+        condicionFisica,
+        combateIniciado,
+        finDePartida,
+        newInventoryItems,
+        logEntryId,
+        quests,
+        esperandoDefensaJugador,
+      });
     } catch (err) {
-      writeLine({ type: 'error', message: err instanceof Error ? err.message : 'Error narrando el turno' });
+      // Bug real (auditoría 2026-07-28): este catch mandaba `err.message` crudo al cliente,
+      // saltándose la política que server.ts ya aplica a cualquier 500 no controlado (nunca
+      // filtrar detalles internos — fallos de Prisma, de un proveedor de IA, etc.). El error real
+      // se sigue viendo en los logs del servidor; el cliente recibe siempre el mismo mensaje
+      // genérico.
+      request.log.error(err);
+      writeLine({ type: 'error', message: 'Error narrando el turno' });
     } finally {
       reply.raw.end();
     }
