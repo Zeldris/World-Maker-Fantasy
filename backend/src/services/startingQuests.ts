@@ -5,6 +5,12 @@ export interface StartingQuest {
   /// id real en routes/saves.ts al crear/reiniciar la partida (mismo mecanismo que narrador.ts usa
   /// para misiones propuestas en juego, ver Quest.targetNpcId en schema.prisma).
   targetNpcSlug?: string;
+  /// Frase corta y accionable para el panel de Misiones (ver Quest.objetivo en schema.prisma) —
+  /// distinta de `description` (trasfondo narrativo largo).
+  objetivo: string;
+  /// Recompensa estática (petición explícita, 2026-07-25) — nunca decidida por el modelo.
+  rewardXp?: number;
+  rewardItems?: string[];
 }
 
 /// Misiones "de serie" de Gorhorn (petición explícita, 2026-07-23) — se siembran al crear partida
@@ -20,6 +26,11 @@ const GORHORN_STARTING_QUESTS: StartingQuest[] = [
     title: 'Recuperar el honor de los Maktor',
     description:
       'El Clan Maktor fue aniquilado y Gorhorn es, que él sepa, el último. No hay un solo golpe que arregle esto — es la misión de toda una vida: sobrevivir, hacerse fuerte, y devolverle al nombre Maktor un lugar entre los clanes de las Llanuras. Con el tiempo, quizás algo más que un lugar.',
+    objetivo: 'Devolverle al nombre Maktor un lugar entre los clanes de las Llanuras.',
+    // "De momento" (petición explícita, 2026-07-25) — sin gancho de cierre todavía (es la misión
+    // de toda una vida del personaje, no algo que se resuelva con un solo evento concreto), así
+    // que por ahora es solo el número mostrado en el panel, sin trigger de concesión automática.
+    rewardXp: 1000,
   },
 ];
 

@@ -2,6 +2,7 @@ import { normalizeText } from './travel.js';
 import type { Attribute, AttributeBlock } from './dice.js';
 import type { SecondaryAttributeBlock } from './secondaryAttributes.js';
 import { checkRequisitos, type Requisitos, type RequisitoShortfall } from './requisitos.js';
+import { totalQuantity, planConsumption, type IngredientRequirement, type CatalogLookup, type InventoryRowLike } from './ingredients.js';
 
 /// Crafteo v1 (roadmap 2026-07-20, propuesta de Fable): determinista, sin sistema nuevo — un
 /// intercambio 1:1 de filas de inventario, con o sin condición de ubicación. El crafteo ES la
@@ -12,16 +13,18 @@ import { checkRequisitos, type Requisitos, type RequisitoShortfall } from './req
 /// 5 recetas originales (hacha, carne ahumada, peto, antídoto, antorcha) eran 5 copias casi
 /// idénticas de detección + comprobación + narración + transacción, repetidas tanto aquí como en
 /// turnResolution.ts — ahora es una sola tabla de datos y un solo camino de código para las 5.
+///
+/// Refactor de ingredientes (2026-07-29, petición explícita: categorización mecánica de objetos):
+/// `ingredients` sustituye al antiguo `ingredientNamePrefixes: string[]` (matching por prefijo de
+/// nombre) — ahora matchea contra el tipo/categoría REAL del catálogo (ver ingredients.ts), y
+/// soporta cantidades reales (antes siempre se consumía la fila entera, sin contar unidades).
 export interface CraftingRecipe {
   key: string;
   verbRegex: RegExp;
   nounRegex: RegExp;
   /// Slug de ubicación requerido, o null si se puede craftear en cualquier sitio.
   location: string | null;
-  /// Prefijos de nombre (startsWith) de las filas de inventario que se consumen enteras — el
-  /// botín/despiece a veces materializa lotes ("Sal de trueque ×2") en una sola fila, así que
-  /// nunca se rastrea cantidad exacta, se consume la fila completa que matchea el prefijo.
-  ingredientNamePrefixes: string[];
+  ingredients: IngredientRequirement[];
   resultName: string;
   resultDescription: string;
   /// Slug de ItemCatalog (sesión de diseño 2026-07-23) — se copia al InventoryItem.catalogSlug
@@ -49,7 +52,10 @@ const AXE_REPAIR_RECIPE: CraftingRecipe = {
   verbRegex: /repar|reforj|restaur/,
   nounRegex: /hacha/,
   location: 'campamento-serhu',
-  ingredientNamePrefixes: ['Hacha de guerra rota', 'Sal de trueque'],
+  ingredients: [
+    { match: { kind: 'exact', catalogSlug: 'hacha-guerra-maktor-rota' }, cantidad: 1, label: 'hacha de guerra rota' },
+    { match: { kind: 'exact', catalogSlug: 'sal-trueque' }, cantidad: 1, label: 'sal de trueque' },
+  ],
   resultName: 'Hacha de guerra Maktor restaurada',
   resultCatalogSlug: 'hacha-guerra-maktor-restaurada',
   resultDescription:
@@ -72,7 +78,7 @@ const SMOKE_MEAT_RECIPE: CraftingRecipe = {
   verbRegex: /ahum|crear|creo/,
   nounRegex: /carne/,
   location: null,
-  ingredientNamePrefixes: ['Ración de carne fresca'],
+  ingredients: [{ match: { kind: 'exact', catalogSlug: 'racion-carne' }, cantidad: 1, label: 'ración de carne fresca' }],
   resultName: 'Ración de carne ahumada',
   resultCatalogSlug: 'racion-carne-ahumada',
   resultDescription: 'Ahumada sobre fuego — aguanta mucho más antes de estropearse que la carne fresca.',
@@ -88,7 +94,10 @@ const GARGANTUA_ARMOR_RECIPE: CraftingRecipe = {
   verbRegex: /fabric|monta|confeccion|cos[eo]|prepar|crear|creo/,
   nounRegex: /peto/,
   location: 'campamento-serhu',
-  ingredientNamePrefixes: ['Placa ósea de gargantúa', 'Cuerda de tendón'],
+  ingredients: [
+    { match: { kind: 'exact', catalogSlug: 'placa-osea-gargantua' }, cantidad: 1, label: 'placa ósea de gargantúa' },
+    { match: { kind: 'exact', catalogSlug: 'cuerda-tendon' }, cantidad: 1, label: 'cuerda de tendón' },
+  ],
   resultName: 'Peto de placas óseas de gargantúa',
   resultCatalogSlug: 'peto-placas-gargantua',
   resultDescription: 'Armadura pesada montada a mano en el campamento del clan, con placas óseas y tendón de gargantúa.',
@@ -110,7 +119,10 @@ const ANTIDOTE_RECIPE: CraftingRecipe = {
   verbRegex: /prepar|mezcl|hac|crear|creo/,
   nounRegex: /ant[ií]doto|contraveneno/,
   location: null,
-  ingredientNamePrefixes: ['Manojo de salvia del polvo', 'Pétalos de Flor de Ceniza'],
+  ingredients: [
+    { match: { kind: 'exact', catalogSlug: 'manojo-salvia-polvo' }, cantidad: 1, label: 'manojo de salvia del polvo' },
+    { match: { kind: 'exact', catalogSlug: 'petalos-flor-ceniza' }, cantidad: 1, label: 'pétalos de Flor de Ceniza' },
+  ],
   resultName: 'Contraveneno de salvia y ceniza',
   resultCatalogSlug: 'contraveneno-salvia-ceniza',
   resultDescription: 'Mezcla preparada de salvia del polvo y pétalos de Flor de Ceniza — neutraliza el veneno de Espina del Viento.',
@@ -130,7 +142,10 @@ const FIELD_TORCH_RECIPE: CraftingRecipe = {
   verbRegex: /fabric|monta|prepar|\bata|\bato|crear|creo/,
   nounRegex: /antorcha/,
   location: null,
-  ingredientNamePrefixes: ['Leña de matorral de cuerno', 'Bloque de resina de Trepador Ocaso'],
+  ingredients: [
+    { match: { kind: 'exact', catalogSlug: 'lena-matorral-cuerno' }, cantidad: 1, label: 'leña de matorral de cuerno' },
+    { match: { kind: 'exact', catalogSlug: 'resina-trepador-ocaso' }, cantidad: 1, label: 'bloque de resina de Trepador Ocaso' },
+  ],
   resultName: 'Antorcha de resina de ciénaga',
   resultCatalogSlug: 'antorcha-de-resina',
   resultDescription: 'Antorcha de madera envuelta en resina oscura de ciénaga, atada en el momento — arde incluso con lluvia.',
@@ -141,12 +156,58 @@ const FIELD_TORCH_RECIPE: CraftingRecipe = {
   narrationDo: 'El personaje ata una antorcha de campo con su leña de matorral de cuerno y su resina de Trepador Ocaso — narra la escena con naturalidad. El objeto ya se gestiona automáticamente por el backend.',
 };
 
+// Receta de refinado nueva (2026-07-29, petición explícita, ejemplo dado por la usuaria: "convertir
+// una mena de mineral en un lingote") — mismo oficio/ubicación que las dos recetas de arriba que ya
+// usan la fragua del campamento (hacha, peto): fundir mena es el paso previo natural a forjar.
+const IRON_INGOT_RECIPE: CraftingRecipe = {
+  key: 'ironIngot',
+  verbRegex: /fund|forj|refin|derret/,
+  nounRegex: /lingote.*hierro|hierro.*lingote/,
+  location: 'campamento-serhu',
+  ingredients: [{ match: { kind: 'exact', catalogSlug: 'mena-de-hierro' }, cantidad: 4, label: 'mena de hierro' }],
+  resultName: 'Lingote de hierro',
+  resultCatalogSlug: 'lingote-de-hierro',
+  resultDescription: 'Metal fundido en la fragua del campamento y colado en un molde sencillo — listo para forjar.',
+  tier: 2,
+  requisitos: { fuerza: 8 },
+  oficio: 'herrero',
+  narrationWant:
+    'El personaje quiere fundir mena de hierro en un lingote, pero no puede hacerlo ahora mismo (hace falta estar en el Campamento del Clan Serhu y llevar al menos 4 fragmentos de mena de hierro) — narra que lo intenta o lo considera, pero no que lo funde de verdad.',
+  narrationDo:
+    'El personaje funde su mena de hierro en la fragua del campamento, colándola en un molde sencillo hasta que enfría en un lingote — narra la escena (el calor, el fuelle, el metal al rojo) con el peso que merece. El objeto ya se gestiona automáticamente por el backend.',
+};
+
+// Receta de refinado nueva (2026-07-29, petición explícita, ejemplo dado por la usuaria:
+// "transformar piedra en bloques de construcción") — oficio 'carpintero' (mismo oficio que
+// CHOZA_RECIPE, "construye con lo que hay a mano"; ninguna de las 8 profesiones es literalmente
+// "cantero", carpintero es la que mejor encaja narrativamente). Ingrediente por CATEGORÍA (no
+// exacto): cualquier piedra en bruto sirve, a diferencia del lingote de hierro (mena específica).
+const STONE_BLOCK_RECIPE: CraftingRecipe = {
+  key: 'stoneBlock',
+  verbRegex: /tall|labr|desbast|fabric|prepar/,
+  nounRegex: /bloque.*piedra|piedra.*bloque|piedra.*tallad|tallad.*piedra/,
+  location: null,
+  ingredients: [{ match: { kind: 'category', tipo: 'RECURSO', category: 'piedra' }, cantidad: 5, label: 'piedra' }],
+  resultName: 'Bloque de piedra tallada',
+  resultCatalogSlug: 'bloque-piedra-tallada',
+  resultDescription: 'Bloque de piedra desbastado a golpes de maza y cincel hasta dejarlo plano por al menos dos caras — ya no es solo cascote, sirve para levantar un muro de verdad.',
+  tier: 1,
+  requisitos: { fuerza: 6 },
+  oficio: 'carpintero',
+  narrationWant:
+    'El personaje quiere tallar piedra en bloques, pero no lleva encima suficiente piedra en bruto para hacerlo (hacen falta al menos 5 piedras) — narra que lo intenta o lo considera, pero no que talla los bloques de verdad.',
+  narrationDo:
+    'El personaje talla su piedra en bloques a golpes de maza y cincel, desbastando cada cara hasta dejarla plana — narra la escena (el polvo, el ritmo del golpe, las esquirlas saltando) con naturalidad. El objeto ya se gestiona automáticamente por el backend.',
+};
+
 export const CRAFTING_RECIPES: CraftingRecipe[] = [
   AXE_REPAIR_RECIPE,
   SMOKE_MEAT_RECIPE,
   GARGANTUA_ARMOR_RECIPE,
   ANTIDOTE_RECIPE,
   FIELD_TORCH_RECIPE,
+  IRON_INGOT_RECIPE,
+  STONE_BLOCK_RECIPE,
 ];
 
 export function detectsCraftIntent(recipe: CraftingRecipe, action: string): boolean {
@@ -154,19 +215,20 @@ export function detectsCraftIntent(recipe: CraftingRecipe, action: string): bool
   return recipe.verbRegex.test(normalized) && recipe.nounRegex.test(normalized);
 }
 
-/// Puro: dado el slug de la ubicación actual, los nombres de inventario disponibles y los
+/// Puro: dado el slug de la ubicación actual, las filas de inventario disponibles y los
 /// atributos del PJ, decide si la receta puede materializarse ahora mismo. `alivio` (nivel de
 /// oficio si la receta lo tiene, ver professionProgress.ts) resta a los requisitos exigidos.
 export function canCraft(
   recipe: CraftingRecipe,
   currentLocationSlug: string | null,
-  inventoryNames: string[],
+  rows: InventoryRowLike[],
+  catalogBySlug: Map<string, CatalogLookup>,
   attributes: AttributeBlock,
   secondaryAttributes: SecondaryAttributeBlock,
   alivio = 0,
 ): boolean {
   if (recipe.location && currentLocationSlug !== recipe.location) return false;
-  const hasIngredients = recipe.ingredientNamePrefixes.every((prefix) => inventoryNames.some((n) => n.startsWith(prefix)));
+  const hasIngredients = recipe.ingredients.every((ing) => totalQuantity(rows, ing, catalogBySlug) >= ing.cantidad);
   if (!hasIngredients) return false;
   return craftRequisitoShortfalls(recipe, attributes, secondaryAttributes, alivio).length === 0;
 }
@@ -182,20 +244,18 @@ export function craftRequisitoShortfalls(
   return checkRequisitos(recipe.requisitos, attributes, secondaryAttributes, alivio);
 }
 
-export interface InventoryRowLike {
-  id: string;
-  name: string;
-}
-
-/// Puro: localiza la fila real de cada ingrediente para poder borrarla en la transacción — null
-/// si alguno ya no está (no debería pasar justo después de que `canCraft` diera true, pero
-/// protege de una carrera entre el chequeo y la resolución sin tocar la base de datos).
-export function planCraftConsumption(recipe: CraftingRecipe, rows: InventoryRowLike[]): string[] | null {
-  const rowIds: string[] = [];
-  for (const prefix of recipe.ingredientNamePrefixes) {
-    const row = rows.find((r) => r.name.startsWith(prefix));
-    if (!row) return null;
-    rowIds.push(row.id);
+/// Puro: localiza las filas reales a borrar/reducir para cada ingrediente — null si alguno ya no
+/// alcanza (no debería pasar justo después de que `canCraft` diera true, pero protege de una
+/// carrera entre el chequeo y la resolución sin tocar la base de datos).
+export function planCraftConsumption(
+  recipe: CraftingRecipe,
+  rows: InventoryRowLike[],
+  catalogBySlug: Map<string, CatalogLookup>,
+): { deleteIds: string[]; updateRemainder: { id: string; newQuantity: number } | null }[] | null {
+  const plans: { deleteIds: string[]; updateRemainder: { id: string; newQuantity: number } | null }[] = [];
+  for (const ingredient of recipe.ingredients) {
+    if (totalQuantity(rows, ingredient, catalogBySlug) < ingredient.cantidad) return null;
+    plans.push(planConsumption(rows, ingredient, catalogBySlug));
   }
-  return rowIds;
+  return plans;
 }

@@ -1,6 +1,6 @@
 import { prisma } from '../lib/prisma.js';
 import { env } from '../config/env.js';
-import { narrateAndPersistTurn } from '../services/turnResolution.js';
+import { narrateAndPersistTurn, TransitCancelledError } from '../services/turnResolution.js';
 import { computeDuration } from '../services/timedActions.js';
 import { effectiveAttributes, effectiveDefense, equippedWeaponNames } from '../services/equipment.js';
 import { normalizeSecondaryAttributes } from '../services/secondaryAttributes.js';
@@ -113,10 +113,16 @@ export async function resolveDueTransits(): Promise<void> {
         dificultad: save.dificultad,
         deathCount: save.deathCount,
         lastRestLocationId: save.lastRestLocationId,
+        // El borrado real del CharacterTransit ya ocurre DENTRO de narrateAndPersistTurn, en la
+        // misma transacción que aplica XP/objetos/hechos — ver TransitCancelledError.
+        transitIdToFinalize: transit.id,
       });
-
-      await prisma.characterTransit.delete({ where: { id: transit.id } });
     } catch (err) {
+      if (err instanceof TransitCancelledError) {
+        // El jugador canceló mientras se narraba (POST /saves/:id/transit/cancel ya borró la
+        // fila y registró su propio LogEntry) — nada que reintentar ni que loguear como error.
+        continue;
+      }
       // Un tránsito que falla al resolver se reintenta en el siguiente tick — no se borra.
       console.error(`[worldTick] error resolviendo tránsito ${transit.id}:`, err);
     }

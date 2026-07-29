@@ -1,3 +1,4 @@
+import type { Prisma } from '@prisma/client';
 import { prisma } from '../lib/prisma.js';
 import { normalizeText } from './travel.js';
 import { harvestSourceAliases } from '../scripts/worldCatalog.js';
@@ -14,16 +15,24 @@ import { harvestSourceAliases } from '../scripts/worldCatalog.js';
 ///
 /// Nombrado `entityDiscovery` (no `discovery`, ya ocupado por el "revelado progresivo" de
 /// hallazgos de búsqueda/recolección en combate — services/discovery.ts, concepto distinto).
-export async function recordEntityDiscoveries(params: { saveId: string; worldId: string; mentionedText: string }): Promise<void> {
+export async function recordEntityDiscoveries(
+  params: { saveId: string; worldId: string; mentionedText: string },
+  // Cliente opcional de transacción (auditoría 2026-07-28, fix #9): al crear/reiniciar partida se
+  // pasa el `tx` de la transacción que ya está creando el Save, para que un crash a mitad de
+  // proceso no deje la partida jugable pero sin descubrimientos/primera visita en la Enciclopedia.
+  // Sin `tx` (llamada normal desde turnResolution.ts, ya fuera de su propia transacción) usa el
+  // cliente global de siempre.
+  client: Prisma.TransactionClient | typeof prisma = prisma,
+): Promise<void> {
   try {
     const normalized = normalizeText(params.mentionedText);
     const discovered: { entityType: string; entitySlug: string }[] = [];
 
     const [npcs, yields, items, inventoryItems] = await Promise.all([
-      prisma.npc.findMany({ where: { worldId: params.worldId } }),
-      prisma.harvestYield.findMany({ where: { worldId: params.worldId } }),
-      prisma.itemCatalog.findMany({ where: { worldId: params.worldId } }),
-      prisma.inventoryItem.findMany({ where: { saveId: params.saveId } }),
+      client.npc.findMany({ where: { worldId: params.worldId } }),
+      client.harvestYield.findMany({ where: { worldId: params.worldId } }),
+      client.itemCatalog.findMany({ where: { worldId: params.worldId } }),
+      client.inventoryItem.findMany({ where: { saveId: params.saveId } }),
     ]);
 
     // Misma exclusión que /world/:slug/enciclopedia (world.ts): la fauna cazable también tiene
@@ -61,7 +70,7 @@ export async function recordEntityDiscoveries(params: { saveId: string; worldId:
 
     if (discovered.length === 0) return;
 
-    await prisma.discoveredEntity.createMany({
+    await client.discoveredEntity.createMany({
       data: discovered.map((d) => ({ saveId: params.saveId, entityType: d.entityType, entitySlug: d.entitySlug })),
       skipDuplicates: true,
     });

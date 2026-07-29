@@ -102,6 +102,15 @@ interface TurnContext {
   /// Con esto, el recorte nunca toca los bloques deterministas — solo acorta RAG/sessionFacts,
   /// que es lo realmente prescindible en un reintento de emergencia.
   criticalFactsCount?: number;
+  /// Lore recuperado por RAG (roadmap 2026-07-24, "revisar partida" — bug real jugando: Hagar y
+  /// Sella Marn, dos NPCs reales del canon pero de OTRAS regiones/tramas, aparecían en persona
+  /// en escenas donde no pintaban nada). Antes este lore vivía mezclado dentro de `worldFacts`
+  /// bajo el mismo epígrafe "HECHOS DEL MUNDO" que los hechos deterministas de la escena actual
+  /// — el prompt nunca distinguía "esto es trasfondo del mundo" de "esto está pasando aquí
+  /// ahora", así que un NPC traído por similitud semántica con la acción (p. ej. "hielo sílice"
+  /// → Hagar) quedaba con la misma licencia para aparecer que un NPC realmente en escena. Ahora
+  /// va en su propio bloque, con la instrucción explícita de que es solo trasfondo/ambientación.
+  backgroundLore?: string[];
 }
 
 interface ClassifyContext {
@@ -385,15 +394,26 @@ ${combatBlock}`;
 
   const groundingBlock = ctx.weaklyGrounded
     ? 'No tenemos hechos específicos sobre esto — describe el entorno o el resultado de forma genérica y creíble (terreno, clima, sensaciones), sin inventar fauna, personajes con nombre, clanes ni objetos con historia propia.'
-    : 'No inventes fauna, flora, personajes con nombre, clanes ni objetos con historia propia que no aparezcan en HECHOS DEL MUNDO — usa solo lo que ahí se te da.';
+    : 'No inventes fauna, flora, personajes con nombre, clanes ni objetos con historia propia que no aparezcan en HECHOS DEL MUNDO o en CONOCIMIENTO DE FONDO. Pero ojo: CONOCIMIENTO DE FONDO es solo trasfondo/ambientación — NUNCA es licencia para hacer aparecer en persona, en esta escena, a un personaje que solo esté ahí. Un personaje de CONOCIMIENTO DE FONDO puede motivar un detalle, un rumor, un objeto o una referencia indirecta, pero solo puede aparecer físicamente si además está en HECHOS DEL MUNDO o en NPCs EN ESCENA.';
+
+  // CONOCIMIENTO DE FONDO (roadmap 2026-07-24, ver comentario en TurnContext.backgroundLore):
+  // bloque separado de HECHOS DEL MUNDO a propósito — el lore RAG se recupera por similitud
+  // semántica con la acción, no por relevancia geográfica/narrativa a la escena actual, así que
+  // puede traer personajes reales del canon que viven en otra región o en la trama de otro
+  // personaje jugable. Iba fusionado en la misma lista que los hechos deterministas de la escena
+  // hasta que un NPC de otra región (Hagar, Sella Marn) apareció en persona sin venir a cuento.
+  const backgroundLoreBlock = `
+
+CONOCIMIENTO DE FONDO DEL MUNDO (lore general del mundo relacionado con la acción — solo contexto/ambientación, NO implica presencia física en esta escena):
+${factsBlock(ctx.backgroundLore ?? [])}`;
 
   const prompt = `${fixedInstructions}
 
 PERSONAJE:
 ${ctx.characterSummary}
 
-HECHOS DEL MUNDO:
-${factsBlock(ctx.worldFacts)}
+HECHOS DEL MUNDO (lo que es real y está pasando en esta escena/partida ahora mismo):
+${factsBlock(ctx.worldFacts)}${backgroundLoreBlock}
 ${groundingBlock}
 
 ${rollBlock}
@@ -539,7 +559,11 @@ Responde solo con el JSON pedido, nada más.`;
     // daño. Nunca por debajo de `criticalFactsCount` (ver comentario en TurnContext) — el recorte
     // se come primero el lore RAG/sessionFacts del final, nunca los bloques deterministas.
     const retryFacts = ctx.worldFacts.slice(0, Math.max(2, ctx.criticalFactsCount ?? 0));
-    const retryPrompt = prompt.replace(factsBlock(ctx.worldFacts), factsBlock(retryFacts));
+    // El lore de fondo (backgroundLoreBlock) es aún más prescindible que sessionFacts en un
+    // reintento de emergencia — se omite entero, nunca se recorta a medias.
+    const retryPrompt = prompt
+      .replace(factsBlock(ctx.worldFacts), factsBlock(retryFacts))
+      .replace(backgroundLoreBlock, '');
     // maxTokens 400 (roadmap de velocidad, 2026-07-19, hallazgo de Fable): antes este intento no
     // llevaba tope y podía irse a los 240s enteros de timeout en vez de cortar antes — 400 sigue
     // dando mucho más margen que los 220 del intento 1 (por si la causa real era truncar de más),

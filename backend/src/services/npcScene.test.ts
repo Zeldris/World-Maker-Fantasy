@@ -95,6 +95,11 @@ describe('detectsHostileSearchIntent', () => {
     expect(detectsHostileSearchIntent('Acabar con el Orco Enfurecido es mi objetivo')).toBe(true)
   });
 
+  it('bug real jugando en vivo (2026-07-28, "revisar partida"): "acabar con" seguido de posesivo también cuenta, no solo el listado de artículos', () => {
+    expect(detectsHostileSearchIntent('Yo me encargare de acabar con tu perseguidor')).toBe(true)
+    expect(detectsHostileSearchIntent('Acabaré con mi rival de una vez')).toBe(true)
+  });
+
   it('no dispara si la intención hostil va negada cerca (auditoría 2026-07-24, "revisa todo bien bien")', () => {
     expect(detectsHostileSearchIntent('Decido no luchar por esto')).toBe(false)
     expect(detectsHostileSearchIntent('Prefiero no pelear ahora mismo')).toBe(false)

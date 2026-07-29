@@ -41,10 +41,18 @@ function shuffled<T>(items: T[]): T[] {
 // el artículo completo ("Las Llanuras del Viento Rojo"), pero `lugarOrigen` es texto libre que casi
 // siempre lo abrevia sin artículo ("Clan Serhu, Llanuras del Viento Rojo.") — de ahí el núcleo sin
 // "Las/El/La", comparado por subcadena en ambos sentidos.
-const REGION_CORE_NAMES = ['Llanuras del Viento Rojo', 'Cristal Helado', 'Ciénaga Troncal', 'Margen Silencioso', 'Meseta del Orden'];
+export const REGION_CORE_NAMES = ['Llanuras del Viento Rojo', 'Cristal Helado', 'Ciénaga Troncal', 'Margen Silencioso', 'Meseta del Orden'];
 
 function regionsMentionedIn(text: string): string[] {
   return REGION_CORE_NAMES.filter((r) => text.includes(r));
+}
+
+/// Exportado (2026-07-29, colapsables de fauna/flora por zona en la Enciclopedia) — mismo
+/// criterio de "núcleo sin artículo, comparado por subcadena" que ya usa `selectDiscoveries` de
+/// aquí mismo, reutilizado tal cual en world.ts en vez de duplicar la lista/lógica.
+export function coreRegionOf(text: string | null | undefined): string | null {
+  if (!text) return null;
+  return REGION_CORE_NAMES.find((r) => text.includes(r)) ?? null;
 }
 
 /// Selecciona 2-4 hallazgos de los recursos ya cosechables del mundo — el backend decide QUÉ
@@ -62,7 +70,12 @@ function regionsMentionedIn(text: string): string[] {
 /// vez de inventar una región — mismo límite ya documentado en `harvest.ts`.
 export async function selectDiscoveries(worldId: string, currentLocationId: string | null): Promise<DiscoveryItem[]> {
   const [yields, currentLocation] = await Promise.all([
-    prisma.harvestYield.findMany({ where: { worldId }, include: { item: true } }),
+    // Solo PASIVO (2026-07-29, bug real jugando: "al explorar la zona me saca recursos que no
+    // tiene sentido obtener directamente") — antes esta consulta traía TODA la tabla, fauna
+    // incluida, así que pieles/huesos/colmillos (que exigen cazar+desollar) podían "aparecer"
+    // solos al explorar. Lo que exige caza/tala/minería/extracción deliberada nunca sale aquí,
+    // solo por harvest.ts nombrando la fuente y usando el verbo correcto.
+    prisma.harvestYield.findMany({ where: { worldId, metodoObtencion: 'PASIVO' }, include: { item: true } }),
     currentLocationId ? prisma.location.findUnique({ where: { id: currentLocationId }, select: { region: true } }) : Promise.resolve(null),
   ]);
   if (yields.length === 0) return [];

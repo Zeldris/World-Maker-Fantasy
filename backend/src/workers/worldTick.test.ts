@@ -20,7 +20,15 @@ vi.mock('../lib/prisma.js', () => ({
 }));
 
 const narrateAndPersistTurn = vi.fn();
-vi.mock('../services/turnResolution.js', () => ({ narrateAndPersistTurn: (...args: unknown[]) => narrateAndPersistTurn(...args) }));
+// TransitCancelledError (auditoría 2026-07-28): el borrado real del CharacterTransit ahora ocurre
+// DENTRO de narrateAndPersistTurn (mockeada aquí), en la misma transacción que aplica los efectos
+// del turno — si el jugador canceló mientras se narraba, esa llamada mockeada rechaza con esta
+// clase de error en vez de borrar nada aparte.
+class TransitCancelledError extends Error {}
+vi.mock('../services/turnResolution.js', () => ({
+  narrateAndPersistTurn: (...args: unknown[]) => narrateAndPersistTurn(...args),
+  TransitCancelledError,
+}));
 vi.mock('../services/timedActions.js', () => ({ computeDuration: vi.fn(() => ({ minutos: 30 })) }));
 vi.mock('../services/equipment.js', () => ({
   effectiveAttributes: vi.fn((base: unknown) => base),
@@ -81,7 +89,7 @@ describe('resolveDueTransits', () => {
     expect(del).not.toHaveBeenCalled();
   });
 
-  it('reclama el tránsito, narra y lo borra si todo sale bien', async () => {
+  it('reclama el tránsito, narra y le pide a narrateAndPersistTurn que lo finalice', async () => {
     findMany.mockResolvedValue([transitFixture()]);
     updateMany.mockResolvedValue({ count: 1 });
     narrateAndPersistTurn.mockResolvedValue(undefined);
@@ -93,8 +101,25 @@ describe('resolveDueTransits', () => {
       data: { busyUntil: expect.any(Date) },
     });
     expect(narrateAndPersistTurn).toHaveBeenCalledTimes(1);
-    expect(narrateAndPersistTurn).toHaveBeenCalledWith(expect.objectContaining({ saveId: 'save1', worldId: 'world1', action: 'seguir caminando' }));
-    expect(del).toHaveBeenCalledWith({ where: { id: 't1' } });
+    // El borrado real ya no lo hace worldTick.ts aparte (bug real, auditoría 2026-07-28: eso
+    // dejaba una ventana de carrera con /saves/:id/transit/cancel) — se lo pide a
+    // narrateAndPersistTurn vía `transitIdToFinalize`, para que borre dentro de su propia
+    // transacción y sea atómico con el cancelar.
+    expect(narrateAndPersistTurn).toHaveBeenCalledWith(
+      expect.objectContaining({ saveId: 'save1', worldId: 'world1', action: 'seguir caminando', transitIdToFinalize: 't1' }),
+    );
+    expect(del).not.toHaveBeenCalled();
+  });
+
+  it('si narrateAndPersistTurn rechaza con TransitCancelledError, no lo trata como error (el jugador ya canceló)', async () => {
+    findMany.mockResolvedValue([transitFixture()]);
+    updateMany.mockResolvedValue({ count: 1 });
+    narrateAndPersistTurn.mockRejectedValue(new TransitCancelledError());
+
+    await resolveDueTransits();
+
+    expect(narrateAndPersistTurn).toHaveBeenCalledTimes(1);
+    expect(console.error).not.toHaveBeenCalled();
   });
 
   it('se salta el tránsito si el reclamo atómico ya lo cogió otra ejecución (count 0)', async () => {
@@ -127,7 +152,6 @@ describe('resolveDueTransits', () => {
     await resolveDueTransits();
 
     expect(narrateAndPersistTurn).toHaveBeenCalledTimes(2);
-    expect(del).toHaveBeenCalledTimes(1);
-    expect(del).toHaveBeenCalledWith({ where: { id: 'ok' } });
+    expect(narrateAndPersistTurn).toHaveBeenNthCalledWith(2, expect.objectContaining({ transitIdToFinalize: 'ok' }));
   });
 });

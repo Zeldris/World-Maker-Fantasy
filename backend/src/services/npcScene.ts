@@ -1,6 +1,6 @@
 import { prisma } from '../lib/prisma.js';
 import { normalizeText, levenshtein } from './travel.js';
-import type { NpcKind, CondicionFisica } from '@prisma/client';
+import type { NpcKind, CondicionFisica, Temperamento } from '@prisma/client';
 import type { Attribute } from './dice.js';
 
 /// Detección determinista de "NPC en escena" (docs/12-mundo-estructurado.md § 2.5) — sin llamada
@@ -19,6 +19,22 @@ export interface NpcItemInScene {
   /// Slug de ItemCatalog (sesión de diseño 2026-07-23) — se copia al InventoryItem.catalogSlug
   /// real si se saquea, para poder mirar sus requisitos de equipar (ver requisitos.ts).
   catalogSlug: string;
+  /// Rediseño del turno de combate (2026-07-28) — necesario para resolver el "Ataque base" del
+  /// NPC (baseAttack.ts, mismo criterio que ya usa world.ts para la Enciclopedia): solo los
+  /// ítems `category === 'arma'` cuentan como arma equipable en su loadout.
+  category: string;
+}
+
+/// Habilidad racial de fauna, tal cual vive en `Npc.habilidadesRaciales` (worldCatalog.ts) — ver
+/// `NpcHabilidadRacial` allí. Duplicado aquí en vez de importado (ese archivo es contenido de
+/// seed, no un módulo pensado para importarse en el motor de turnos) — mismo criterio que el
+/// resto de shapes de este archivo, que ya reflejan columnas de Npc a mano.
+export interface NpcHabilidadRacialInScene {
+  icon: string;
+  name: string;
+  description: string;
+  categoria: 'ataque' | 'defensa' | 'utilidad';
+  preferredAttribute: Attribute;
 }
 
 export interface NpcInScene {
@@ -32,6 +48,19 @@ export interface NpcInScene {
   personality: string;
   bio: string;
   items: NpcItemInScene[];
+  /// Rediseño del turno de combate (2026-07-28) — necesarios para resolver iniciativa/ataque
+  /// base/habilidades de este NPC (combatExchange.ts/npcCombatAbilities.ts). `raza`/`clase`
+  /// null si no aplica (fauna no tiene `clase`; NPCs sociales pueden no tener ninguno de los
+  /// dos); `ataqueNatural`/`habilidadesRaciales` solo poblados en fauna.
+  attributes: { fuerza: number; destreza: number; sigilo: number; voluntad: number; carisma: number; arcano: number };
+  raza: string | null;
+  clase: string | null;
+  ataqueNatural: string | null;
+  habilidadesRaciales: NpcHabilidadRacialInScene[];
+  /// Disposición al combate (schema.prisma § Temperamento, 2026-07-29) — gate determinista en
+  /// shouldForceCombat (turnResolution.ts): AGRESIVO fuerza combate con cualquier interacción,
+  /// INOFENSIVO protege de la red de seguridad.
+  temperamento: Temperamento;
   /// Estado persistido POR PARTIDA (NpcState, roadmap 2026-07-19 "roadmap 3") — antes cada
   /// escena leía siempre el Npc estático, así que "Torgash resucita" cada vez que aparece.
   /// ILESO/false si todavía no existe fila (nunca se ha enfrentado a este NPC en esta partida).
@@ -135,7 +164,14 @@ export async function detectNpcsInScene(params: {
         statBonusAttribute: i.item.statBonusAttribute,
         statBonusAmount: i.item.statBonusAmount,
         catalogSlug: i.item.slug,
+        category: i.item.category,
       })),
+      attributes: npc.attributes as NpcInScene['attributes'],
+      raza: npc.raza,
+      clase: npc.clase,
+      ataqueNatural: npc.ataqueNatural,
+      habilidadesRaciales: (npc.habilidadesRaciales as unknown as NpcHabilidadRacialInScene[]) ?? [],
+      temperamento: npc.temperamento,
       condicionFisica: state?.condicionFisica ?? 'ILESO',
       saqueado: state?.saqueado ?? false,
     };
@@ -233,8 +269,26 @@ export function detectsAttackIntent(action: string): boolean {
 // (normalizeText ya quita el acento de "acabaré", pero la "e" del futuro rompe la coincidencia
 // literal exacta). Mismo patrón que el resto de esta sesión: no enumerar conjugación por
 // conjugación, `acabar(?:e)? con` cubre infinitivo y futuro sin más casuística.
+//
+// `enfrent` en vez de `enfrentarse a` (bug real jugando en vivo, 2026-07-24): "Me enfrento a 'Orco
+// enfurecido'" no matcheaba el infinitivo reflexivo exacto — mismo patrón exacto que el de arriba,
+// solo que sin arreglar todavía para este verbo. Sin abrir combate, cayó en el clasificador
+// general como banda "larga"/1440 min (24h) con atributo carisma, dejando al jugador "ocupado" en
+// un CharacterTransit real en vez de luchar. Stem sin conjugar cubre enfrento/enfrenta/enfrentar/
+// enfrentaré/enfrentarse por igual.
+//
+// `acabar(?:e)? con` SIN el listado de artículos que llevaba detrás (bug real jugando en vivo,
+// 2026-07-28, "revisar partida" — misma familia exacta que el bug de "Acabaré con el que te
+// persigue" de arriba, pero sin cubrir del todo): "Yo me encargaré de acabar con TU perseguidor"
+// no matcheaba porque el listado (el|ella|es[et]|los|las) nunca incluyó posesivos ("tu"/"su"/"mi")
+// ni nombres propios — cayó en el clasificador general como banda larga, dejó al jugador ~11 min
+// reales "ocupado", y cuando el CharacterTransit se resolvió en diferido, el Narrador contradijo
+// la propia promesa del jugador ("no es mi problema" tras comprometerse a acabar con el
+// perseguidor). Mismo criterio que combatir/pelear/luchar/enfrent arriba: el verbo solo ya es
+// señal de sobra fuerte, sin enumerar qué palabra puede seguirle — esto NUNCA abre combate por sí
+// solo (eso lo decide `shouldForceCombat` en turnResolution.ts aparte), solo evita la banda larga.
 const HOSTILE_SEARCH_REGEX =
-  /busca de pelea|busca de camorra|buscar pelea|buscando pelea|busca de guerra|en busca de sangre|para matar|acabar(?:e)? con (?:el|ella|es[et]|los|las)|vengarse de|enfrentarse a|combatir|combate\s+(?:contra|con)|pelear|luchar/;
+  /busca de pelea|busca de camorra|buscar pelea|buscando pelea|busca de guerra|en busca de sangre|para matar|acabar(?:e)? con|vengarse de|enfrent|combatir|combate\s+(?:contra|con)|pelear|luchar/;
 
 export function detectsHostileSearchIntent(action: string): boolean {
   const normalized = normalizeText(action);
@@ -252,8 +306,12 @@ export function detectsHostileSearchIntent(action: string): boolean {
 // `shouldForceCombat` (turnResolution.ts) y la tabulación de `turn.ts` comprueban esto para
 // suprimir el combate/la tabulación específicamente cuando la señal hostil viene de una promesa,
 // nunca de una declaración de intención inmediata real (esa sigue abriendo combate igual).
+// `me encarg(?:o|are)` (bug real, "revisar partida" 2026-07-25): "me encargo" (presente) no
+// matcheaba "me encargare" (futuro, tras quitar tilde de "encargaré") — mismo patrón exacto que
+// ya se arregló arriba para "acabar(e)? con", pero se quedó sin aplicar aquí. Con esto, la misión
+// determinista de turnResolution.ts sí se disparaba con "Yo me encargaré de tu perseguidor...".
 const VERBAL_ACCEPTANCE_REGEX =
-  /me encargo|acepto ayudar|te ayudo|cuenta conmigo|lo hare\b|acabare con|dalo por hecho|no te preocupes|de acuerdo/;
+  /me encarg(?:o|are)|acepto ayudar|te ayudo|cuenta conmigo|lo hare\b|acabare con|dalo por hecho|no te preocupes|de acuerdo/;
 
 export function detectsVerbalAcceptanceIntent(action: string): boolean {
   return VERBAL_ACCEPTANCE_REGEX.test(normalizeText(action));
@@ -320,7 +378,24 @@ function itemsLine(items: NpcItemInScene[]): string {
 /// (`bio`, nunca antes incluida aquí). Sin la descripción física/hechos ya establecidos de la
 /// propia entidad, el modelo no tenía NADA con qué contrastar antes de improvisar un detalle —
 /// mismo principio que el resto del motor: dale el hecho real en vez de esperar que no invente.
+// Bug real (2026-07-25, "revisar partida"): esta función describía a CUALQUIER NPC detectado en
+// escena como presente y con todo su equipo disponible, sin mirar nunca su condicionFisica/
+// saqueado real — un NPC ya INCAPACITADO/MUERTO/saqueado (el Orco Enfurecido, derrotado y
+// registrado hace turnos) "emergía de la oscuridad" con un rugido en cuanto su nombre volvía a
+// mencionarse, como si nunca hubiera caído. `detectNpcsInScene` ya consultaba el estado real —
+// simplemente no llegaba a usarse aquí. Mismo patrón que la clase de fallo "NPCs que resucitan"
+// ya documentada en docs/revisar-partida.md.
+function npcYaResuelto(npc: NpcInScene): boolean {
+  return npc.condicionFisica === 'INCAPACITADO' || npc.condicionFisica === 'MUERTO' || npc.saqueado;
+}
+
 export function npcSceneBlockFor(npc: NpcInScene, playerLevel: number): string {
+  if (npcYaResuelto(npc)) {
+    const estado = npc.condicionFisica === 'MUERTO' ? 'muerto' : 'incapacitado';
+    return `PERSONAJE MENCIONADO, YA RESUELTO: ${npc.name} — ${npc.role}${npc.faction ? `, ${npc.faction}` : ''}. Ya está ${estado}${
+      npc.saqueado ? ' y su cuerpo ya fue registrado (no lleva nada más encima, ya no hay botín que ofrecer)' : ''
+    }. NO lo narres como una amenaza activa: no ataca, no persigue, no "aparece de la nada" — si la escena lo menciona, es solo un cadáver ya visto, un recuerdo o una referencia al pasado, nunca un encuentro nuevo.`;
+  }
   const { label } = difficultyHintFor(npc.level, playerLevel);
   return `PERSONAJE EN ESCENA: ${npc.name} — ${npc.role}${npc.faction ? `, ${npc.faction}` : ''}, nivel ${npc.level} (acciones directas contra él/ella tienden a ${label}).
 Descripción/hechos ya establecidos (nunca los contradigas): ${npc.bio}

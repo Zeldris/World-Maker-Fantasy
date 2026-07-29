@@ -62,7 +62,10 @@ const CLASS_ABILITIES: ClassAbilityUnlock[] = [
         'Giro el cuerpo entero y lanzo dos tajos cruzados y seguidos con mi arma, buscando abrir a mi enemigo antes de que pueda reaccionar al primero.',
       category: 'combate',
       effect: 'ATAQUE',
-      preferredAttribute: 'fuerza',
+      // Rediseño del turno de combate (2026-07-28, petición explícita: "no es que las de guerrero
+      // dependan todas de fuerza, sino que las habilidades propias dependiendo de que tipo sean")
+      // — dos tajos VELOCES y seguidos es precisión/rapidez, no fuerza bruta.
+      preferredAttribute: 'destreza',
     },
   },
   {
@@ -116,7 +119,9 @@ const CLASS_ABILITIES: ClassAbilityUnlock[] = [
         'Me tomo un instante para apuntar con calma y lanzo un golpe certero a distancia, como un cazador que ya conoce a su presa.',
       category: 'combate',
       effect: 'ATAQUE',
-      preferredAttribute: 'destreza',
+      // Rediseño del turno de combate (2026-07-28): "me tomo un instante... con calma" es
+      // paciencia y cálculo, no reflejos — distinta de Zarpazo/Lluvia Certera (destreza pura).
+      preferredAttribute: 'voluntad',
     },
   },
   {
@@ -146,7 +151,9 @@ const CLASS_ABILITIES: ClassAbilityUnlock[] = [
         'Me desplazo lateral y rápido, casi sin hacer ruido, esquivando el golpe antes de que llegue sin perder de vista a mi enemigo.',
       category: 'combate',
       effect: 'AGUANTE',
-      preferredAttribute: 'destreza',
+      // Rediseño del turno de combate (2026-07-28): "casi sin hacer ruido" — el propio nombre
+      // ("paso de SOMBRA") ya apunta a sigilo, no a la velocidad pura de Zarpazo/Lluvia Certera.
+      preferredAttribute: 'sigilo',
     },
   },
   {
@@ -207,7 +214,9 @@ const CLASS_ABILITIES: ClassAbilityUnlock[] = [
         'Clavo la mirada en mi objetivo y dejo claro, sin una palabra, que ya lo he elegido como presa — quiero que sienta el peso de saberse cazado.',
       category: 'combate',
       effect: 'INTIMIDACION',
-      preferredAttribute: 'destreza',
+      // Rediseño del turno de combate (2026-07-28): una mirada que quiebra el nervio es presencia/
+      // presión social, no destreza física — encaja mucho mejor con INTIMIDACION que con reflejos.
+      preferredAttribute: 'carisma',
     },
   },
   {

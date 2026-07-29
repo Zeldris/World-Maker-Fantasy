@@ -1,22 +1,28 @@
 import { describe, it, expect } from 'vitest';
-import {
-  CAMPAMENTO_RECIPE,
-  CHOZA_RECIPE,
-  ATALAYA_RECIPE,
-  checkRecipe,
-  detectsBuildIntent,
-  planConsumption,
-  quantityOf,
-  totalQuantity,
-  type ConstructionRecipe,
-} from './construction.js';
+import { CAMPAMENTO_RECIPE, CHOZA_RECIPE, ATALAYA_RECIPE, checkRecipe, detectsBuildIntent, planConsumption, quantityOf, type ConstructionRecipe } from './construction.js';
 import type { AttributeBlock } from './dice.js';
 import { EMPTY_SECONDARY_ATTRIBUTES } from './secondaryAttributes.js';
+import type { CatalogLookup, InventoryRowLike } from './ingredients.js';
 
 // Ninguna de las 3 recetas base tiene `requisitos` todavía, así que estos valores no afectan a
 // checkRecipe(); existen para no repetir el bloque en cada llamada.
 const attrs: AttributeBlock = { fuerza: 10, destreza: 10, sigilo: 10, voluntad: 10, carisma: 10, arcano: 10 };
 const secondary = EMPTY_SECONDARY_ATTRIBUTES;
+
+// catalogSlug de cada fila → tipo/categoría real (2026-07-29, refactor de ingredientes: ya no se
+// matchea por prefijo de nombre). Mismos slugs que construction.ts usa de verdad.
+const catalogBySlug = new Map<string, CatalogLookup>([
+  ['lena-matorral-cuerno', { tipo: 'RECURSO', category: 'madera' }],
+  ['piedra', { tipo: 'RECURSO', category: 'piedra' }],
+  ['piel-gargantua', { tipo: 'RECURSO', category: 'piel' }],
+  ['piel-corredor', { tipo: 'RECURSO', category: 'piel' }],
+  ['hueso-largo-gargantua', { tipo: 'RECURSO', category: 'hueso' }],
+  ['cuerda-tendon', { tipo: 'EQUIPABLE', category: 'herramienta' }],
+]);
+
+function row(id: string, catalogSlug: string, cantidad?: number): InventoryRowLike {
+  return { id, name: cantidad ? `${catalogSlug} (${cantidad})` : catalogSlug, catalogSlug };
+}
 
 describe('quantityOf', () => {
   it('lee la cantidad del sufijo "(N)"', () => {
@@ -29,31 +35,15 @@ describe('quantityOf', () => {
   });
 });
 
-describe('totalQuantity', () => {
-  it('suma entre varias filas fungibles con el mismo prefijo', () => {
-    const rows = [
-      { id: '1', name: 'Leña (15)' },
-      { id: '2', name: 'Leña de matorral de cuerno (8)' },
-      { id: '3', name: 'Piedra (10)' },
-    ];
-    expect(totalQuantity(rows, 'Leña')).toBe(23);
-    expect(totalQuantity(rows, 'Piedra')).toBe(10);
-  });
-});
-
 describe('checkRecipe', () => {
-  it('detecta receta cumplida', () => {
-    const rows = [
-      { id: '1', name: 'Leña (20)' },
-      { id: '2', name: 'Piedra (10)' },
-      { id: '3', name: 'Piel de gargantúa (5)' },
-    ];
-    expect(checkRecipe(CAMPAMENTO_RECIPE, rows, attrs, secondary)).toEqual({ met: true, missing: [] });
+  it('detecta receta cumplida, sumando entre varias filas fungibles de la misma categoría', () => {
+    const rows = [row('1', 'lena-matorral-cuerno', 20), row('2', 'piedra', 10), row('3', 'piel-gargantua', 5)];
+    expect(checkRecipe(CAMPAMENTO_RECIPE, rows, catalogBySlug, attrs, secondary)).toEqual({ met: true, missing: [] });
   });
 
   it('reporta exactamente qué falta y cuánto', () => {
-    const rows = [{ id: '1', name: 'Leña (8)' }];
-    const result = checkRecipe(CAMPAMENTO_RECIPE, rows, attrs, secondary);
+    const rows = [row('1', 'lena-matorral-cuerno', 8)];
+    const result = checkRecipe(CAMPAMENTO_RECIPE, rows, catalogBySlug, attrs, secondary);
     expect(result.met).toBe(false);
     expect(result.missing).toEqual([
       { label: 'leña', tienes: 8, necesitas: 20 },
@@ -63,54 +53,47 @@ describe('checkRecipe', () => {
   });
 
   it('bloquea la construcción si no se llega al requisito de atributo de la receta', () => {
-    const rows = [
-      { id: '1', name: 'Leña (20)' },
-      { id: '2', name: 'Piedra (10)' },
-      { id: '3', name: 'Piel de gargantúa (5)' },
-    ];
+    const rows = [row('1', 'lena-matorral-cuerno', 20), row('2', 'piedra', 10), row('3', 'piel-gargantua', 5)];
     const recipeConRequisito: ConstructionRecipe = { ...CAMPAMENTO_RECIPE, requisitos: { fuerza: 12 } };
     const debil: AttributeBlock = { ...attrs, fuerza: 6 };
-    const result = checkRecipe(recipeConRequisito, rows, debil, secondary);
+    const result = checkRecipe(recipeConRequisito, rows, catalogBySlug, debil, secondary);
     expect(result.met).toBe(false);
     expect(result.missing).toEqual([{ label: 'fuerza', tienes: 6, necesitas: 12 }]);
   });
 
   it('el alivio de oficio reduce el requisito exigido de una construcción', () => {
-    const rows = [
-      { id: '1', name: 'Leña (20)' },
-      { id: '2', name: 'Piedra (10)' },
-      { id: '3', name: 'Piel de gargantúa (5)' },
-    ];
+    const rows = [row('1', 'lena-matorral-cuerno', 20), row('2', 'piedra', 10), row('3', 'piel-gargantua', 5)];
     const recipeConRequisito: ConstructionRecipe = { ...CAMPAMENTO_RECIPE, requisitos: { fuerza: 12 } };
     const debil: AttributeBlock = { ...attrs, fuerza: 8 };
-    expect(checkRecipe(recipeConRequisito, rows, debil, secondary, 4)).toEqual({ met: true, missing: [] });
+    expect(checkRecipe(recipeConRequisito, rows, catalogBySlug, debil, secondary, 4)).toEqual({ met: true, missing: [] });
+  });
+
+  it('cualquier piel de distinta especie cuenta igual (ingrediente fungible por categoría)', () => {
+    const rows = [row('1', 'lena-matorral-cuerno', 20), row('2', 'piedra', 10), row('3', 'piel-corredor', 3), row('4', 'piel-gargantua', 2)];
+    expect(checkRecipe(CAMPAMENTO_RECIPE, rows, catalogBySlug, attrs, secondary)).toEqual({ met: true, missing: [] });
   });
 });
 
 describe('planConsumption', () => {
+  const ingredient = CAMPAMENTO_RECIPE.requirements.find((r) => r.label === 'leña')!;
+
   it('borra filas completas hasta cubrir la cantidad exacta, sin remanente', () => {
-    const rows = [
-      { id: '1', name: 'Leña (12)' },
-      { id: '2', name: 'Leña (8)' },
-    ];
-    const plan = planConsumption(rows, 'Leña', 20);
+    const rows = [row('1', 'lena-matorral-cuerno', 12), row('2', 'lena-matorral-cuerno', 8)];
+    const plan = planConsumption(rows, ingredient, catalogBySlug);
     expect(plan.deleteIds.sort()).toEqual(['1', '2']);
     expect(plan.updateRemainder).toBeNull();
   });
 
   it('deja un remanente reducido en la última fila parcialmente consumida', () => {
-    const rows = [{ id: '1', name: 'Leña (25)' }];
-    const plan = planConsumption(rows, 'Leña', 20);
+    const rows = [row('1', 'lena-matorral-cuerno', 25)];
+    const plan = planConsumption(rows, ingredient, catalogBySlug);
     expect(plan.deleteIds).toEqual([]);
     expect(plan.updateRemainder).toEqual({ id: '1', newQuantity: 5 });
   });
 
   it('combina filas completas + una parcial', () => {
-    const rows = [
-      { id: '1', name: 'Leña (10)' },
-      { id: '2', name: 'Leña (15)' },
-    ];
-    const plan = planConsumption(rows, 'Leña', 20);
+    const rows = [row('1', 'lena-matorral-cuerno', 10), row('2', 'lena-matorral-cuerno', 15)];
+    const plan = planConsumption(rows, ingredient, catalogBySlug);
     expect(plan.deleteIds).toEqual(['1']);
     expect(plan.updateRemainder).toEqual({ id: '2', newQuantity: 5 });
   });
@@ -143,19 +126,12 @@ describe('detectsBuildIntent', () => {
 
 describe('checkRecipe — recetas nuevas', () => {
   it('choza: cumplida con piel/hueso largo/cuerda de tendón suficientes', () => {
-    const rows = [
-      { id: '1', name: 'Piel de gargantúa (10)' },
-      { id: '2', name: 'Hueso largo de gargantúa (6)' },
-      { id: '3', name: 'Cuerda de tendón (4)' },
-    ];
-    expect(checkRecipe(CHOZA_RECIPE, rows, attrs, secondary)).toEqual({ met: true, missing: [] });
+    const rows = [row('1', 'piel-gargantua', 10), row('2', 'hueso-largo-gargantua', 6), row('3', 'cuerda-tendon', 4)];
+    expect(checkRecipe(CHOZA_RECIPE, rows, catalogBySlug, attrs, secondary)).toEqual({ met: true, missing: [] });
   });
 
   it('atalaya: cumplida con piedra/leña suficientes', () => {
-    const rows = [
-      { id: '1', name: 'Piedra (15)' },
-      { id: '2', name: 'Leña (10)' },
-    ];
-    expect(checkRecipe(ATALAYA_RECIPE, rows, attrs, secondary)).toEqual({ met: true, missing: [] });
+    const rows = [row('1', 'piedra', 15), row('2', 'lena-matorral-cuerno', 10)];
+    expect(checkRecipe(ATALAYA_RECIPE, rows, catalogBySlug, attrs, secondary)).toEqual({ met: true, missing: [] });
   });
 });

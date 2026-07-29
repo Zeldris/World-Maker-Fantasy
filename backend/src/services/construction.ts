@@ -2,22 +2,21 @@ import { normalizeText } from './travel.js';
 import type { AttributeBlock } from './dice.js';
 import type { SecondaryAttributeBlock } from './secondaryAttributes.js';
 import { checkRequisitos, type Requisitos } from './requisitos.js';
+import { totalQuantity, type IngredientRequirement, type CatalogLookup, type InventoryRowLike } from './ingredients.js';
+
+export { quantityOf, baseNameOf, planConsumption } from './ingredients.js';
 
 /// Requisitos de construcción con cantidades reales (roadmap 2026-07-20/21, petición explícita de
-/// la usuaria: "para construir un campamento necesites x20 leños, 10 piedras y 5 pieles" — mismo
-/// principio que crafting.ts pero con CANTIDADES, no solo presencia de un objeto). A diferencia de
+/// la usuaria: "para construir un campamento necesites x20 leños, 10 piedras y 5 pieles") — mismo
+/// principio que crafting.ts pero con CANTIDADES, no solo presencia de un objeto. A diferencia de
 /// crafting.ts (intercambio 1:1 de una fila entera), aquí la cantidad puede repartirse entre varias
 /// filas de inventario (cada evento de producción/cosecha crea su propia fila, ej. "Leña (15)" +
 /// "Leña (8)") — hay que sumar entre filas y, si sobra, dejar el remanente en una fila reducida.
-
-export interface ResourceRequirement {
-  /// Prefijo de nombre (startsWith, mismo criterio que crafting.ts) — un solo prefijo genérico
-  /// como "Leña" o "Piel de" ya cubre todas las variantes fungibles (Leña de matorral de cuerno,
-  /// Piel de Corredor de Cauce, Piel de gargantúa...) sin listarlas una a una.
-  namePrefix: string;
-  label: string;
-  cantidad: number;
-}
+///
+/// Refactor de ingredientes (2026-07-29): `ResourceRequirement.namePrefix` (matching por prefijo
+/// de nombre) se sustituye por `IngredientRequirement` (ingredients.ts), matcheando contra el
+/// tipo/categoría real del catálogo en vez del nombre de la fila.
+export type ResourceRequirement = IngredientRequirement;
 
 export interface ConstructionRecipe {
   key: string;
@@ -33,7 +32,7 @@ export interface ConstructionRecipe {
   /// campamento va a ser la construcción básica y común"). Por ahora solo Orcos tiene recetas
   /// propias (choza, atalaya); el resto de razas queda con la división lista pero vacía.
   raza?: string;
-  requirements: ResourceRequirement[];
+  requirements: IngredientRequirement[];
   /// Sustantivo(s) que identifican esta construcción en texto libre normalizado (ver
   /// detectsBuildIntent) — un solo patrón simple por receta, mismo criterio que CAMP_NOUN_REGEX
   /// original: basta con el nombre del edificio, sin intentar cubrir sinónimos exhaustivos.
@@ -44,30 +43,6 @@ export interface ConstructionRecipe {
   tier?: number;
   requisitos?: Requisitos;
   oficio?: string;
-}
-
-const QUANTITY_SUFFIX_REGEX = /\((\d+)\)\s*$/;
-
-/// Cantidad real de una fila de inventario: el patrón ya establecido (turnResolution.ts,
-/// harvest.ts) mete la cantidad en el propio nombre, ej. "Leña (60)". Sin sufijo, unidad suelta = 1.
-export function quantityOf(name: string): number {
-  const match = name.match(QUANTITY_SUFFIX_REGEX);
-  return match ? Number(match[1]) : 1;
-}
-
-export interface InventoryRowLike {
-  id: string;
-  name: string;
-}
-
-export function baseNameOf(name: string): string {
-  return name.replace(QUANTITY_SUFFIX_REGEX, '').trim();
-}
-
-export function totalQuantity(rows: InventoryRowLike[], namePrefix: string): number {
-  return rows
-    .filter((r) => r.name.startsWith(namePrefix))
-    .reduce((sum, r) => sum + quantityOf(r.name), 0);
 }
 
 export interface RequirementShortfall {
@@ -87,12 +62,13 @@ export interface RecipeCheck {
 export function checkRecipe(
   recipe: ConstructionRecipe,
   rows: InventoryRowLike[],
+  catalogBySlug: Map<string, CatalogLookup>,
   attributes: AttributeBlock,
   secondaryAttributes: SecondaryAttributeBlock,
   alivio = 0,
 ): RecipeCheck {
   const missingMaterials = recipe.requirements
-    .map((req) => ({ label: req.label, tienes: totalQuantity(rows, req.namePrefix), necesitas: req.cantidad }))
+    .map((req) => ({ label: req.label, tienes: totalQuantity(rows, req, catalogBySlug), necesitas: req.cantidad }))
     .filter((r) => r.tienes < r.necesitas);
   const missingRequisitos = checkRequisitos(recipe.requisitos, attributes, secondaryAttributes, alivio).map((s) => ({
     label: s.atributo,
@@ -101,33 +77,6 @@ export function checkRecipe(
   }));
   const missing = [...missingMaterials, ...missingRequisitos];
   return { met: missing.length === 0, missing };
-}
-
-export interface ConsumptionPlan {
-  deleteIds: string[];
-  updateRemainder: { id: string; newQuantity: number } | null;
-}
-
-/// Puro: decide exactamente qué filas borrar y cuál actualizar con el remanente (si sobra) para
-/// consumir `cantidad` unidades de un requisito ya confirmado como cumplido — no toca la base de
-/// datos, para poder testearlo aparte del resto de la transacción.
-export function planConsumption(rows: InventoryRowLike[], namePrefix: string, cantidad: number): ConsumptionPlan {
-  const matching = rows.filter((r) => r.name.startsWith(namePrefix));
-  const deleteIds: string[] = [];
-  let remaining = cantidad;
-  let updateRemainder: ConsumptionPlan['updateRemainder'] = null;
-  for (const row of matching) {
-    if (remaining <= 0) break;
-    const q = quantityOf(row.name);
-    if (q <= remaining) {
-      deleteIds.push(row.id);
-      remaining -= q;
-    } else {
-      updateRemainder = { id: row.id, newQuantity: q - remaining };
-      remaining = 0;
-    }
-  }
-  return { deleteIds, updateRemainder };
 }
 
 const BUILD_VERB_REGEX = /constru|levant|mont[ao]|erig/;
@@ -150,9 +99,9 @@ export const CAMPAMENTO_RECIPE: ConstructionRecipe = {
     'Un cerco improvisado y rápido de levantar: un anillo de piedras apiladas para contener el fuego, un poste central de leña clavada en la tierra, y pieles tensadas a modo de toldo bajo contra el viento. Protege lo justo para pasar la noche — no aguanta una tormenta fuerte ni un asedio.',
   nounRegex: /campamento/,
   requirements: [
-    { namePrefix: 'Leña', label: 'leña', cantidad: 20 },
-    { namePrefix: 'Piedra', label: 'piedra', cantidad: 10 },
-    { namePrefix: 'Piel de', label: 'piel', cantidad: 5 },
+    { match: { kind: 'category', tipo: 'RECURSO', category: 'madera' }, cantidad: 20, label: 'leña' },
+    { match: { kind: 'category', tipo: 'RECURSO', category: 'piedra' }, cantidad: 10, label: 'piedra' },
+    { match: { kind: 'category', tipo: 'RECURSO', category: 'piel' }, cantidad: 5, label: 'piel' },
   ],
   // Sin tier/requisitos/oficio a propósito (2026-07-23): un campamento base es lo mínimo que
   // cualquiera puede levantar solo, sin necesitar ningún oficio.
@@ -176,9 +125,12 @@ export const CHOZA_RECIPE: ConstructionRecipe = {
   // llega aquí ya como "cabana", igual que "vigía" como "vigia" en ATALAYA_RECIPE.
   nounRegex: /choza|cabana/,
   requirements: [
-    { namePrefix: 'Piel de', label: 'piel', cantidad: 10 },
-    { namePrefix: 'Hueso largo', label: 'hueso largo de gargantúa', cantidad: 6 },
-    { namePrefix: 'Cuerda de tendón', label: 'cuerda de tendón', cantidad: 4 },
+    { match: { kind: 'category', tipo: 'RECURSO', category: 'piel' }, cantidad: 10, label: 'piel' },
+    // Exacto, no por categoría (2026-07-29): "hueso ligero" (corredor-de-cauce) es también
+    // category='hueso' pero NO sirve de armazón estructural — el prefijo original ("Hueso largo")
+    // ya excluía deliberadamente huesos más pequeños, se preserva esa distinción.
+    { match: { kind: 'exact', catalogSlug: 'hueso-largo-gargantua' }, cantidad: 6, label: 'hueso largo de gargantúa' },
+    { match: { kind: 'exact', catalogSlug: 'cuerda-tendon' }, cantidad: 4, label: 'cuerda de tendón' },
   ],
   // Sesión de diseño 2026-07-23: montar un armazón de huesos con pieles tensadas exige fuerza
   // real — oficio 'carpintero' (armazón y estructura, no forja ni curtido de la piel en sí).
@@ -198,8 +150,8 @@ export const ATALAYA_RECIPE: ConstructionRecipe = {
   raza: 'orcos',
   nounRegex: /atalaya|torre de vigia|puesto de vigia/,
   requirements: [
-    { namePrefix: 'Piedra', label: 'piedra', cantidad: 15 },
-    { namePrefix: 'Leña', label: 'leña', cantidad: 10 },
+    { match: { kind: 'category', tipo: 'RECURSO', category: 'piedra' }, cantidad: 15, label: 'piedra' },
+    { match: { kind: 'category', tipo: 'RECURSO', category: 'madera' }, cantidad: 10, label: 'leña' },
   ],
   // Sesión de diseño 2026-07-23: requisito de Voluntad (aguantar turnos de guardia sin ceder,
   // no fuerza bruta) — oficio 'rastreador', ya lee el cielo/terreno para anticipar tormentas.

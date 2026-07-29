@@ -4,17 +4,22 @@ import { xpForRollSuccess, xpForHitos, applyXp, type ProgressionResult, type Hit
 import { alivioForLevel, xpForCraftSuccess, applyProfessionXp } from './professionProgress.js';
 import { tickKingdom, daysCrossed, DEFAULT_KINGDOM_STATS } from './kingdomTick.js';
 import { mergeFacts } from './worldFacts.js';
+import { applyFactionRepDelta, effectiveTemperamento, FACTION_REP_ATTACK_DELTA, FACTION_REP_PEACE_DELTA } from './reputation.js';
 import {
   detectNpcsInScene,
   npcSceneBlockFor,
   contraataqueDifficultyFor,
+  difficultyHintFor,
   detectsAttackIntent,
   detectsHostileSearchIntent,
   detectsDialogueIntent,
   detectsVerbalAcceptanceIntent,
   scopeFor,
   pickAmbientEncounterCandidate,
+  type NpcInScene,
 } from './npcScene.js';
+import { resolveExchange, rollInitiative, exchangeContextBlock, type PendingNpcAttack } from './combatExchange.js';
+import { npcCombatAbilitiesFor, chooseNpcAbility } from './npcCombatAbilities.js';
 import { detectHarvest, harvestBlockFor } from './harvest.js';
 import { detectItemReference, missingItemBlockFor } from './itemReference.js';
 import {
@@ -48,10 +53,10 @@ import {
 import { continentForRegion, oppositeContinent } from '../lib/continent.js';
 import { advanceFictionalMinutes, formatFictionalDate } from './worldClock.js';
 import { prisma } from '../lib/prisma.js';
-import { rollCheck } from './dice.js';
 import type { RollResult, AttributeBlock } from './dice.js';
 import type { SecondaryAttributeBlock } from './secondaryAttributes.js';
-import type { Prisma, CondicionFisica, Dificultad, AbilityEffect } from '@prisma/client';
+import { Prisma } from '@prisma/client';
+import type { CondicionFisica, Dificultad, AbilityEffect } from '@prisma/client';
 
 const REINO_XP = { territory: 150, buildingActive: 100, firstSubject: 100, subject: 25 } as const;
 
@@ -67,6 +72,19 @@ export function detectsLootIntent(action: string): boolean {
   if (LOOT_INTENT_REGEX.test(normalized)) return true;
   const words = normalized.split(/\s+/).filter((w) => w.length >= 5);
   return LOOT_INTENT_STEMS.some((stem) => words.some((w) => levenshtein(w, stem) <= 2));
+}
+
+// Bug real (auditoría 2026-07-28): race entre worldTick.ts resolviendo un CharacterTransit vencido
+// y POST /saves/:id/transit/cancel — el worker "reclama" el tránsito moviendo busyUntil al futuro
+// (+10 min) mientras narra en segundo plano; en esa ventana, el endpoint de cancelar veía busyUntil
+// en el futuro (igual que si aún no hubiera vencido) y borraba la fila con éxito, pero la narración
+// en curso terminaba igual y persistía sus efectos — un "cancelado" con los efectos completos ya
+// aplicados. Señal de que el caller es worldTick.ts y de que debe verificarse la cancelación.
+export class TransitCancelledError extends Error {
+  constructor() {
+    super('El CharacterTransit fue cancelado mientras se resolvía este turno.');
+    this.name = 'TransitCancelledError';
+  }
 }
 
 function minutesLabel(minutos: number): string {
@@ -134,6 +152,24 @@ interface NarrateAndPersistParams {
   /// contraataca este turno — los regex se quedan intactos solo para cuando el jugador escribe
   /// la acción a mano, sin pulsar ningún botón de habilidad.
   savedActionId?: string;
+  /// Presente SOLO cuando llama worldTick.ts para resolver un CharacterTransit vencido (nunca en
+  /// el turno síncrono de /turn/narrate) — el id de esa fila. Se borra DENTRO de la misma
+  /// transacción que aplica los efectos del turno (en vez de después, como antes) para que sea
+  /// atómico con POST /saves/:id/transit/cancel: si esa fila ya no existe (el jugador canceló
+  /// mientras se narraba), el borrado afecta 0 filas y toda la transacción se aborta sin aplicar
+  /// nada — ver TransitCancelledError.
+  transitIdToFinalize?: string;
+  /// Rediseño del turno de combate (2026-07-28) — `Save.pendingNpcAttack` leído por el caller
+  /// (turn.ts) antes de llamar aquí. Presente = este turno es la defensa a ciegas del jugador
+  /// contra un ataque de NPC ya decidido el intercambio anterior; ausente/null = el jugador tiene
+  /// la iniciativa y este es su propio ataque (caso de siempre).
+  pendingNpcAttack?: PendingNpcAttack | null;
+  /// Auditoría de rendimiento 2026-07-28 ("rascar segundos"): /turn/classify ya calculó esto para
+  /// la MISMA acción justo antes de llamar aquí (turn.ts) — sin esto, `detectNpcsInScene` volvía a
+  /// traer TODO el roster de NPCs del mundo (con sus objetos) por segunda vez, mismo viaje de ida
+  /// y vuelta a Supabase remoto que la primera. Ausente cuando llama worldTick.ts (resolución
+  /// diferida, sin classify previo en esta llamada) — ahí se sigue calculando fresco.
+  npcsInScene?: NpcInScene[];
 }
 
 export interface NewInventoryItemInfo {
@@ -164,6 +200,32 @@ export interface NarrateAndPersistResult {
   /// entidad) — el frontend ya no usa un id inventado (`c-${Date.now()}`) para la entrada que
   /// acaba de crear, así que puede pedir luego "guarda esta imagen en esta entrada de verdad".
   logEntryId: string;
+  /// Bug real (2026-07-25, "revisar partida"): una misión podía crearse/cerrarse de verdad en la
+  /// DB este turno (newQuest, la misión determinista del Orco Enfurecido, cierre automático al
+  /// derrotar/recoger un objetivo...) sin que `/turn/narrate` devolviera nada al respecto — el
+  /// panel de Misiones se quedaba desactualizado hasta recargar la partida entera (mismo patrón
+  /// de bug que ya se arregló una vez para el inventario, ver newInventoryItems arriba). Devuelve
+  /// la lista COMPLETA de misiones de la partida (no solo un delta) — más simple y sin riesgo de
+  /// omitir un cambio, dado que este turno puede tocar varias misiones a la vez por caminos
+  /// distintos (newQuest del modelo, el fallback determinista, cierre por derrota/recolección).
+  /// `targetLocationSlug` se deja en null aquí a propósito (no se usa hoy en MisionesPanel.tsx;
+  /// resolverlo requeriría duplicar el cruce Location/Npc que ya hace getSave en routes/saves.ts)
+  /// — se rellena de verdad en la próxima carga completa de la partida.
+  quests: {
+    id: string;
+    title: string;
+    description: string;
+    status: string;
+    objetivo: string | null;
+    rewardXp: number | null;
+    rewardItems: string[];
+    targetLocationSlug: string | null;
+  }[];
+  /// Rediseño del turno de combate (2026-07-28) — true si la iniciativa del PRÓXIMO intercambio
+  /// favorece al NPC: el frontend debe pedirle al jugador que elija su defensa a ciegas en su
+  /// siguiente sumisión, en vez del modo de ataque normal. Nunca revela CUÁL habilidad eligió el
+  /// NPC (eso vive solo en `Save.pendingNpcAttack`, oculto) — solo que le toca defenderse.
+  esperandoDefensaJugador: boolean;
 }
 
 async function resolveInitialLocationId(
@@ -206,6 +268,9 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     onNarrationChunk,
     onNarrationReset,
     savedActionId,
+    transitIdToFinalize,
+    pendingNpcAttack,
+    npcsInScene: npcsInScenePrecomputed,
   } = params;
 
   // Revisión técnica 2026-07-22: estas 4 consultas no dependen entre sí (retrieveLore es la única
@@ -215,7 +280,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   // ms) frente a los 30-220s que domina la generación del modelo — vale la pena por ser gratis y
   // sin riesgo, no porque vaya a notarse en la duración total del turno.
   const regionLocationId = travel ? travel.toLocationId : currentLocationId;
-  const [abilityEffect, regionLocation, npcsInScene, harvestMatch, faunaSources] = await Promise.all([
+  const [abilityEffect, regionLocation, npcsInScene, harvestMatch, faunaSources, factionsStatus] = await Promise.all([
     // Efecto de la habilidad de clase pulsada (checklist 2026-07-21/22, puntos 1-2) — null si el
     // jugador escribió la acción a mano (sin savedActionId) o si esa SavedAction no tiene efecto
     // asignado (habilidades generales, o partidas en curso creadas antes de esta migración).
@@ -223,12 +288,21 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
       ? prisma.savedAction.findUnique({ where: { id: savedActionId }, select: { effect: true } }).then((r) => (r?.effect ?? null) as AbilityEffect | null)
       : Promise.resolve<AbilityEffect | null>(null),
     regionLocationId ? prisma.location.findUnique({ where: { id: regionLocationId }, select: { region: true, name: true } }) : Promise.resolve(null),
-    detectNpcsInScene({ action, worldId, sessionFacts, saveId, currentLocationId }),
+    // Auditoría de rendimiento 2026-07-28 ("rascar segundos"): si el caller (turn.ts) ya trae el
+    // resultado de /turn/classify para esta misma acción, se reutiliza tal cual en vez de repetir
+    // el mismo `detectNpcsInScene` (roster completo del mundo + objetos, contra Supabase remoto)
+    // por segunda vez en el mismo turno — worldTick.ts (resolución diferida) no lo trae, así que
+    // sigue calculándolo fresco como siempre.
+    npcsInScenePrecomputed ? Promise.resolve(npcsInScenePrecomputed) : detectNpcsInScene({ action, worldId, sessionFacts, saveId, currentLocationId }),
     travel ? Promise.resolve(null) : detectHarvest({ action, worldId, saveId, currentLocationId }),
     // Distingue fauna (animales, sin habla) de NPCs de verdad dentro de `npcsInScene` — ambos
     // comparten la misma tabla Npc/detección por alias (ver comentario del bloque de diálogo más
     // abajo, bug real 2026-07-23).
     prisma.harvestYield.findMany({ where: { worldId }, select: { sourceSlug: true } }),
+    // Reputación de facción (2026-07-29) — necesaria YA aquí (no solo al persistir el delta más
+    // abajo) para calcular el temperamento EFECTIVO de cada NPC en escena antes de decidir
+    // shouldForceCombat (ver reputation.ts § effectiveTemperamento).
+    prisma.worldState.findUnique({ where: { saveId }, select: { factionsStatus: true } }).then((r) => (r?.factionsStatus as Record<string, number> | null) ?? {}),
   ]);
   const faunaSlugs = new Set(faunaSources.map((y) => y.sourceSlug));
 
@@ -244,7 +318,14 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   // más importa (el comentario de arriba ya lo decía), así que se queda anclado igual que
   // entorno.ts, sin perder la acción real del jugador como señal de búsqueda.
   const regionLabel = regionLocation ? `${regionLocation.name}, ${regionLocation.region}` : null;
-  const retrieved = await retrieveLore(regionLabel ? `${action} — ${regionLabel}` : action, worldId, 4, excludeTags);
+  // Auditoría de rendimiento 2026-07-28 ("rascar segundos"): en combate, narrador.ts pide
+  // explícitamente "1-2 frases, corto y directo... nada de ambientación de relleno" y el
+  // CONOCIMIENTO DE FONDO (lore RAG) se ignora en la práctica — pero `retrieveLore` corría igual
+  // TODOS los turnos, pagando un embedding (Ollama) + una consulta pgvector contra Supabase remoto
+  // (la misma latencia de red ya identificada como cuello de botella real en este hardware) para
+  // un bloque que ni el prompt necesita en combate. `[]` se salta la llamada entera; `isWeaklyGrounded([])`
+  // ya cae sola al texto genérico correcto ("describe de forma genérica y creíble").
+  const retrieved = enCombate ? [] : await retrieveLore(regionLabel ? `${action} — ${regionLabel}` : action, worldId, 4, excludeTags);
   // Bug real del roadmap 2026-07-19: sin exigir `enCombate`, "le compro una ración a Torgash"
   // fuera de combate copiaba TODO su loadout gratis, sin tirada y con el NPC vivo — el regex solo
   // miraba el verbo. No hay estado persistido de "NPC derrotado" (la condición de los NPCs en
@@ -279,15 +360,156 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   const explicitTarget = quotedNameMatch
     ? (npcsInScene.find((n) => normalizeText(n.name) === normalizeText(quotedNameMatch[1])) ?? null)
     : null;
-  const npcAttackTarget =
-    enCombate && !lootMode && npcsInScene.length > 0 && countsAsAttack ? (explicitTarget ?? npcsInScene[0]) : null;
-  const npcAttackHits = !!npcAttackTarget && !!roll && roll.success;
-  const npcTargetNewCondicion = npcAttackTarget ? nextCondicionForAttack(abilityEffect, npcAttackTarget.condicionFisica) : null;
+
+  // Bug real (auditoría 2026-07-28, "revisar partida"): el saqueo no comprobaba condicionFisica en
+  // absoluto (se podía "registrar" a un NPC en ILESO/HERIDO/GRAVE, cuando la progresión de combate
+  // ya establecida dice que solo INCAPACITADO/MUERTO son saqueables) y además saqueaba TODOS los
+  // npcsInScene a la vez, no solo al objetivo — un aliado ileso de pie al lado del enemigo derrotado
+  // (p. ej. Gistera Koh junto al Orco Enfurecido) se saqueaba igual sin que el jugador lo pidiera.
+  // Mismo patrón que `explicitTarget` para el ataque: si la acción cita un nombre entre comillas, el
+  // saqueo se limita a ese NPC; si no, se limita a los NPCs realmente derrotados en escena.
+  const lootTargets = (explicitTarget ? [explicitTarget] : npcsInScene).filter(
+    (n) => n.condicionFisica === 'INCAPACITADO' || n.condicionFisica === 'MUERTO',
+  );
+  // Bug real (auditoría 2026-07-28): sin comprobar condicionFisica, "atacar" a un NPC ya
+  // INCAPACITADO/MUERTO seguía contando como golpe válido cada turno — oneStepWorseThan() se topa
+  // en MUERTO (se queda igual), pero el bloque de cierre de misión/reputación de más abajo solo
+  // mira si la condición NUEVA es terminal, no si YA lo era antes de este turno, así que repetía
+  // el descuento de reputación de facción sin límite contra un enemigo ya derrotado. Mismo criterio
+  // que `lootTargets`: un NPC ya derrotado no es un objetivo de ataque válido.
+  const candidateAttackTarget = explicitTarget ?? npcsInScene[0] ?? null;
+  // Rediseño del turno de combate (2026-07-28, petición explícita: "primero se tiran dados y se
+  // ve quien ataca primero... el otro entra en un turno de defensa... con su propia tirada de
+  // dados independiente de la de ataque") — sustituye el viejo "el jugador siempre ataca
+  // primero, el NPC contraataca con una tirada abstracta" por dos casos posibles, nunca los dos
+  // a la vez: `pendingNpcAttack` (Save.pendingNpcAttack, decidido el intercambio anterior) dice
+  // si ESTE turno es la defensa a ciegas del jugador contra un ataque de NPC ya resuelto en
+  // secreto, o si el jugador tiene la iniciativa y este es su propio ataque de siempre.
+  // Auditoría 2026-07-28 ("arregla todo lo que detectaste"): sustituir el atacante pendiente
+  // por `npcsInScene[0]` cuando ya no está en escena resolvía la defensa a ciegas contra un NPC
+  // sin ninguna relación con el `attribute`/`effect` ya decididos y ocultos en
+  // `pendingNpcAttack` — se descarta el ataque pendiente en vez de inventar un enfrentamiento
+  // incoherente; este turno se trata como un ataque normal del jugador, si lo hay.
+  const pendingNpcStillHere = pendingNpcAttack ? (npcsInScene.find((n) => n.id === pendingNpcAttack.npcId) ?? null) : null;
+  const npcParaIntercambio = pendingNpcStillHere ?? candidateAttackTarget;
+  const combateActivo =
+    enCombate &&
+    !lootMode &&
+    npcsInScene.length > 0 &&
+    npcParaIntercambio &&
+    npcParaIntercambio.condicionFisica !== 'INCAPACITADO' &&
+    npcParaIntercambio.condicionFisica !== 'MUERTO' &&
+    (!!pendingNpcStillHere || countsAsAttack);
+
+  let npcAttackTarget: NpcInScene | null = null;
+  let npcAttackHits = false;
+  let npcTargetNewCondicion: CondicionFisica | null = null;
+  // El jugador puede recibir un golpe en CUALQUIERA de los dos casos: si el NPC tiene la
+  // iniciativa (ataque directo), o incluso atacando él mismo, si su ataque falla del todo y la
+  // defensa del NPC es tan buena que de propina replica (`defensor_contragolpea`).
+  let jugadorRecibeGolpe = false;
+  let jugadorGolpeEfecto: AbilityEffect | null = null;
+  // Ataque de NPC para el PRÓXIMO intercambio, si la iniciativa lo favorece — se persiste en
+  // Save.pendingNpcAttack (ver tx.save.update más abajo) para que el jugador lo defienda a
+  // ciegas en su siguiente sumisión.
+  let nuevoPendingNpcAttack: PendingNpcAttack | null = null;
+  // `contextBlocks` (el array real donde se acumula el texto para el Narrador) se declara más
+  // abajo — este intercambio se resuelve antes de esa declaración, así que el texto se guarda
+  // aquí y se empuja en cuanto `contextBlocks` existe.
+  let exchangeNarrationBlock: string | null = null;
+  // Auditoría 2026-07-28: el roll tabulado de /turn/classify (`roll`, más abajo) ya no decide
+  // nada del combate desde que resolveExchange existe — antes seguía usándose para la XP y el
+  // RollBadge persistido, completamente desconectado del resultado real del intercambio (podía
+  // marcar "Éxito" junto a una narración que describía un fallo total). El lado del jugador en
+  // el intercambio (`combatExchangeRoll`) pasa a ser la única fuente de verdad para los dos.
+  let combatExchangeRoll: RollResult | null = null;
+
+  if (combateActivo && npcParaIntercambio) {
+    npcAttackTarget = npcParaIntercambio;
+    const npcWeaponNames = npcParaIntercambio.items.filter((i) => i.category === 'arma').map((i) => i.name);
+    const npcAbilities = npcCombatAbilitiesFor(npcParaIntercambio, npcWeaponNames);
+    let exchangeHappened = false;
+
+    if (pendingNpcAttack && pendingNpcStillHere && !classification.requiereTirada) {
+      // Salvaguarda (auditoría 2026-07-28): sin una tirada real decidida por el clasificador
+      // para ESTA acción concreta (p.ej. algo puramente narrativo escrito a mano mientras hay
+      // un ataque de NPC pendiente — huir incluido, si el clasificador no lo ve como algo
+      // reñido), no se fabrica una defensa con un atributo/dificultad sin sentido — el ataque
+      // pendiente se queda igual para la siguiente acción real del jugador.
+      nuevoPendingNpcAttack = pendingNpcAttack;
+    } else if (pendingNpcAttack && pendingNpcStillHere) {
+      // CASO DEFENSA: el NPC ya atacó (decidido el intercambio anterior, oculto hasta ahora) —
+      // el jugador responde a ciegas con la habilidad que acaba de elegir (`classification.atributo`
+      // ya refleja su `preferredAttribute` cuando viene de un botón, ver turn.ts).
+      const exchange = resolveExchange(
+        {
+          attributes: npcParaIntercambio.attributes,
+          attribute: pendingNpcAttack.attribute,
+          difficulty: difficultyHintFor(params.currentLevel, npcParaIntercambio.level).dificultad,
+        },
+        {
+          attributes,
+          attribute: classification.atributo,
+          difficulty: contraataqueDifficultyFor(npcParaIntercambio.level, params.currentLevel, defensa),
+        },
+      );
+      jugadorRecibeGolpe = exchange.resultado === 'golpe_pleno' || exchange.resultado === 'golpe_normal' || exchange.resultado === 'golpes_mutuos';
+      jugadorGolpeEfecto = pendingNpcAttack.effect;
+      npcAttackHits = exchange.resultado === 'defensor_contragolpea';
+      npcTargetNewCondicion = npcAttackHits ? oneStepWorseThan(npcParaIntercambio.condicionFisica) : null;
+      exchangeNarrationBlock = exchangeContextBlock(exchange, npcParaIntercambio.name, characterName);
+      combatExchangeRoll = exchange.defensor;
+      exchangeHappened = true;
+    } else {
+      // CASO ATAQUE: el jugador tiene la iniciativa — el NPC decide su defensa ahora mismo,
+      // oculta, nunca se le enseña al jugador qué eligió.
+      const npcDefensa = chooseNpcAbility(npcAbilities, 'defensa');
+      const exchange = resolveExchange(
+        {
+          attributes,
+          attribute: classification.atributo,
+          difficulty: difficultyHintFor(npcParaIntercambio.level, params.currentLevel).dificultad,
+        },
+        {
+          attributes: npcParaIntercambio.attributes,
+          attribute: npcDefensa.attribute,
+          difficulty: contraataqueDifficultyFor(params.currentLevel, npcParaIntercambio.level, 0),
+        },
+      );
+      npcAttackHits = exchange.resultado === 'golpe_pleno' || exchange.resultado === 'golpe_normal' || exchange.resultado === 'golpes_mutuos';
+      npcTargetNewCondicion = npcAttackHits ? nextCondicionForAttack(abilityEffect, npcParaIntercambio.condicionFisica) : null;
+      jugadorRecibeGolpe = exchange.resultado === 'defensor_contragolpea';
+      jugadorGolpeEfecto = null;
+      exchangeNarrationBlock = exchangeContextBlock(exchange, characterName, npcParaIntercambio.name);
+      combatExchangeRoll = exchange.atacante;
+      exchangeHappened = true;
+    }
+
+    if (exchangeHappened) {
+      // Iniciativa del PRÓXIMO intercambio — se decide ya para poder guardarla si favorece al NPC.
+      // Aturdimiento/intimidación con éxito (mismo espíritu que el viejo "NO CONTRAATACA ESTE
+      // TURNO"): quien acaba de aturdir/intimidar a su rival se garantiza la iniciativa siguiente,
+      // sin necesidad de tirar dados para decidirlo.
+      const jugadorAturdioAlNpc = !pendingNpcStillHere && npcAttackHits && (abilityEffect === 'ATURDIMIENTO' || abilityEffect === 'INTIMIDACION');
+      const npcAturdioAlJugador = !!pendingNpcStillHere && jugadorRecibeGolpe && (jugadorGolpeEfecto === 'ATURDIMIENTO' || jugadorGolpeEfecto === 'INTIMIDACION');
+      const iniciativaSiguiente = jugadorAturdioAlNpc
+        ? 'jugador'
+        : npcAturdioAlJugador
+          ? 'npc'
+          : rollInitiative(attributes, npcParaIntercambio.attributes);
+
+      if (iniciativaSiguiente === 'npc') {
+        const npcAtaque = chooseNpcAbility(npcAbilities, 'ataque');
+        nuevoPendingNpcAttack = { npcId: npcParaIntercambio.id, attribute: npcAtaque.attribute, effect: npcAtaque.effect, abilityName: npcAtaque.name };
+      }
+    }
+  }
 
   // Bloque de posición (docs/12 § 1.5): en un turno de viaje, la narración recibe la llegada al
   // destino + la ruta recorrida; en cualquier otro turno, recibe siempre dónde está y hacia
   // dónde puede ir — reduce los casos "weaklyGrounded" al dar siempre algo concreto que describir.
   const contextBlocks: string[] = [];
+  if (exchangeNarrationBlock) contextBlocks.push(exchangeNarrationBlock);
 
   // Sugerencia ambiental de encuentro (checklist 2026-07-21/22, punto 3 — "más NPCs/fauna
   // itinerante para encuentros casuales más frecuentes"): sin esto, el modelo nunca tenía ningún
@@ -397,46 +619,6 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     );
   }
 
-  // Contraataque determinista del NPC en combate (roadmap 2026-07-19): hasta ahora el "enemigo"
-  // nunca tenía turno propio — solo lo que el modelo decidiera narrar. Se resuelve ANTES de narrar
-  // (mismo patrón que la tirada del jugador, nunca lo decide el modelo): tirada de destreza del
-  // propio jugador contra la dificultad ya calibrada por diferencia de nivel — éxito = esquiva/
-  // bloquea, fallo = el golpe llega. Solo dentro del popup de combate (§ 2.3); fuera de combate
-  // esto no aplica.
-  let npcCounterFailed = false;
-  // ATURDIMIENTO/INTIMIDACION con éxito (checklist 2026-07-21/22, puntos 1-2): el NPC no
-  // contraataca este turno — sin tirada, sin bloque de "te alcanza", directamente fuera de
-  // combate para él. Solo aplica cuando la propia habilidad SÍ conectó (npcAttackHits), no por
-  // el mero hecho de intentarla.
-  const stunOrIntimidateLanded = npcAttackHits && (abilityEffect === 'ATURDIMIENTO' || abilityEffect === 'INTIMIDACION');
-  if (enCombate && npcsInScene.length > 0) {
-    // Bug real (auditoría 2026-07-24, misma familia que npcAttackTarget): esto contraatacaba
-    // siempre con el primer NPC detectado en escena, no con quien el jugador tiene delante de
-    // verdad — con un aliado (Gistera Koh) y el enemigo real (Orco Enfurecido) a la vez en
-    // escena, el "contraataque" podía describir al aliado golpeando al jugador. `npcAttackTarget`
-    // ya resuelve el objetivo real de este turno (nombre citado o único NPC hostil); solo cae a
-    // `npcsInScene[0]` cuando el turno no es un ataque (p. ej. usar un objeto en pleno combate).
-    const npc = npcAttackTarget ?? npcsInScene[0];
-    if (stunOrIntimidateLanded) {
-      contextBlocks.push(
-        `${npc.name.toUpperCase()} NO CONTRAATACA ESTE TURNO — ${
-          abilityEffect === 'ATURDIMIENTO' ? 'está aturdido/derribado' : 'tiene la guardia rota por la intimidación'
-        }, sin capacidad de responder ahora mismo. Narra la escena reflejando que no puede replicar.`,
-      );
-    } else {
-      const dificultadContraataque = contraataqueDifficultyFor(npc.level, params.currentLevel, defensa);
-      const contraataque = rollCheck(attributes, 'destreza', dificultadContraataque);
-      npcCounterFailed = !contraataque.success;
-      contextBlocks.push(
-        `CONTRAATAQUE DE ${npc.name.toUpperCase()} — RESULTADO YA RESUELTO, no lo cambies: tirada de destreza para esquivar/bloquear = ${contraataque.result} vs dificultad ${contraataque.difficulty} → ${
-          contraataque.success
-            ? 'ESQUIVAS/BLOQUEAS — el golpe no te alcanza, narra cómo lo evitas.'
-            : 'TE ALCANZA — narra el golpe y propón "condicionFisica" un escalón peor que ahora mismo.'
-        }`,
-      );
-    }
-  }
-
   if (harvestMatch) {
     contextBlocks.push(harvestBlockFor(harvestMatch));
   }
@@ -449,10 +631,21 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   const [activeQuests, companions, inventoryRows, professionProgressRows] = await Promise.all([
     prisma.quest.findMany({ where: { saveId, status: 'ACTIVA' } }),
     prisma.companion.findMany({ where: { saveId } }),
-    prisma.inventoryItem.findMany({ where: { saveId }, select: { id: true, name: true } }),
+    prisma.inventoryItem.findMany({ where: { saveId }, select: { id: true, name: true, catalogSlug: true } }),
     prisma.professionProgress.findMany({ where: { saveId } }),
   ]);
   const inventoryNames = inventoryRows.map((i) => i.name);
+  // Refactor de ingredientes (2026-07-29) — crafting.ts/construction.ts ya no matchean por
+  // prefijo de nombre, matchean por tipo/categoría real del catálogo. Se resuelve una sola vez
+  // aquí (mismo patrón `catalogItemBySlug` ya usado en saves.ts) a partir de los `catalogSlug`
+  // que de verdad lleva el jugador — objetos narrativos sueltos (sin catalogSlug) simplemente no
+  // pueden matchear ningún ingrediente por categoría, solo por coincidencia exacta si algún día
+  // la tuvieran.
+  const inventoryCatalogSlugs = [...new Set(inventoryRows.map((i) => i.catalogSlug).filter((s): s is string => Boolean(s)))];
+  const inventoryCatalogRows = inventoryCatalogSlugs.length
+    ? await prisma.itemCatalog.findMany({ where: { worldId, slug: { in: inventoryCatalogSlugs } }, select: { slug: true, tipo: true, category: true } })
+    : [];
+  const catalogBySlug = new Map(inventoryCatalogRows.map((c) => [c.slug, { tipo: c.tipo, category: c.category }]));
   // Alivio de requisitos por oficio (sesión de diseño 2026-07-23) — el nivel de UN oficio SOLO
   // relaja los requisitos de recetas de ESE oficio, nunca la tirada general (ver requisitos.ts).
   const oficioNivelById = new Map(professionProgressRows.map((p) => [p.professionId, p.nivel]));
@@ -513,7 +706,15 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   // reales aparece en el marcador). Fase 2 (más abajo, tras la narración): en cuanto Gorhorn le
   // habla, se presenta con prisas y de inmediato pide ayuda contra el Orco Enfurecido — ahí SÍ se
   // revela su nombre real, que desbloquea tanto el resto de la conversación como la Enciclopedia.
-  const gisteraYaPresentada = sessionFacts.some((f) => f.includes('Gistera Koh'));
+  // Bug real (auditoría 2026-07-28): `sessionFacts` es una ventana rodante de MAX_FACTS=10
+  // (worldFacts.ts) — en una sesión larga, el hecho que marca "Gistera Koh ya presentada" puede
+  // ser expulsado por hechos más nuevos, y entonces `gisteraYaPresentada` volvía a leer false,
+  // repitiendo el monólogo de presentación entero a mitad de partida. La existencia real de la
+  // misión (creada solo tras la presentación + aceptación, nunca antes) es una señal durable que
+  // sobrevive a la ventana rodante — no cierra la ventana corta entre "se presentó" y "aceptó
+  // todavía no", pero sí evita que se repita indefinidamente pasada esa aceptación.
+  const gisteraQuestYaExiste = await prisma.quest.findFirst({ where: { saveId, title: { contains: 'Orco Enfurecido' } } });
+  const gisteraYaPresentada = sessionFacts.some((f) => f.includes('Gistera Koh')) || !!gisteraQuestYaExiste;
   const gisteraSinNombreEnEscena = sessionFacts.some((f) => f.includes('sin nombre revelado todavía'));
   const gisteraEnEscena =
     gisteraKoh !== null || gisteraSinNombreEnEscena || gisteraYaPresentada || npcsInScene.some((npc) => npc.slug === 'gistera-koh');
@@ -564,7 +765,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   for (const recipe of CRAFTING_RECIPES) {
     const wants = detectsCraftIntent(recipe, action);
     const alivio = alivioFor(recipe.oficio);
-    const possible = wants && canCraft(recipe, currentLocationRecord?.slug ?? null, inventoryNames, attributes, secondaryAttributes, alivio);
+    const possible = wants && canCraft(recipe, currentLocationRecord?.slug ?? null, inventoryRows, catalogBySlug, attributes, secondaryAttributes, alivio);
     craftPossibleByKey[recipe.key] = possible;
     if (wants && !possible) {
       contextBlocks.push(recipe.narrationWant);
@@ -589,7 +790,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   // (mismo shape `{label,tienes,necesitas}`), así que el texto vale para ambos sin distinguir.
   const buildRecipe: ConstructionRecipe | undefined = CONSTRUCTION_RECIPES.find((r) => detectsBuildIntent(r, action));
   const buildRecipeCheck: RecipeCheck | null = buildRecipe
-    ? checkRecipe(buildRecipe, inventoryRows, attributes, secondaryAttributes, alivioFor(buildRecipe.oficio))
+    ? checkRecipe(buildRecipe, inventoryRows, catalogBySlug, attributes, secondaryAttributes, alivioFor(buildRecipe.oficio))
     : null;
   if (buildRecipe && buildRecipeCheck && !buildRecipeCheck.met) {
     const faltantes = buildRecipeCheck.missing.map((m) => `${m.label} (tienes ${m.tienes}, necesitas ${m.necesitas})`).join(', ');
@@ -609,7 +810,13 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   }
 
   const narration = await narrateAction({
-    worldFacts: [...contextBlocks, ...formatLoreForPrompt(retrieved), ...sessionFacts],
+    worldFacts: [...contextBlocks, ...sessionFacts],
+    // Separado de worldFacts (roadmap 2026-07-24, "revisar partida" — ver comentario en
+    // TurnContext.backgroundLore, narrador.ts): el lore RAG es trasfondo del mundo, no hechos de
+    // la escena actual — fusionarlos bajo el mismo "HECHOS DEL MUNDO" le daba al modelo licencia
+    // para hacer aparecer en persona a cualquier NPC que el RAG trajera por similitud de texto,
+    // aunque viviera en otra región o perteneciera a la trama de otro personaje jugable.
+    backgroundLore: formatLoreForPrompt(retrieved),
     characterSummary,
     action,
     roll,
@@ -706,11 +913,11 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
 
   // Condición física (docs/14 § 1) y descanso válido (§ 4.1) — deterministas, calculados antes
   // de la transacción porque no dependen de ella (solo leen el catálogo de mundo). Se combina la
-  // propuesta del modelo con la del contraataque determinista (la peor de las dos gana, pero
-  // nextCondicionFisica sigue topando a un único escalón por turno — nunca se suman).
+  // propuesta del modelo con la del intercambio de combate determinista (la peor de las dos
+  // gana, pero nextCondicionFisica sigue topando a un único escalón por turno — nunca se suman).
   const condicionPropuestaCombinada = worseCondicion(
     narration.condicionFisica,
-    npcCounterFailed ? oneStepWorseThan(params.condicionFisica) : null,
+    jugadorRecibeGolpe ? nextCondicionForAttack(jugadorGolpeEfecto, params.condicionFisica) : null,
   );
   const proposedCondicion = nextCondicionFisica(params.condicionFisica, condicionPropuestaCombinada, !!enCombate);
   const restSucceeds =
@@ -721,12 +928,29 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   const nuevoFictionalMinutes = advanceFictionalMinutes(fictionalMinutesActuales, minutosDeEsteTurno);
   const nuevaFictionalDateLabel = formatFictionalDate(nuevoFictionalMinutes);
 
-  const { progression, condicionFisica, finDePartida, newInventoryItems, logEntryId } = await prisma.$transaction(async (tx) => {
+  const { progression, condicionFisica, finDePartida, newInventoryItems, logEntryId, newQuestObjetivos } = await prisma.$transaction(async (tx) => {
+    // Ver TransitCancelledError arriba: si esta resolución viene de worldTick.ts, intenta borrar
+    // el CharacterTransit YA, al principio de la transacción — si otra transacción (el cancelar
+    // del jugador) ya lo borró primero, `count` es 0 y se aborta todo sin aplicar ningún efecto.
+    if (transitIdToFinalize) {
+      const finalized = await tx.characterTransit.deleteMany({ where: { id: transitIdToFinalize } });
+      if (finalized.count === 0) throw new TransitCancelledError();
+    }
+
     const newInventoryItems: NewInventoryItemInfo[] = [];
     // Nombres de todo lo materializado este turno (roadmap 2026-07-20, P1 de Fable) — para cerrar
     // solo la misión "conseguir Z" (Quest.targetItemName) al final de la transacción, sin repetir
     // el chequeo en cada uno de los 5 sitios que crean InventoryItem.
     const createdItemNames: string[] = [];
+    // XP de recompensa de misión concedida este turno (petición explícita, 2026-07-25) — se suma
+    // a xpTurno más abajo, junto a xpTirada/xpHito, para que la subida de nivel/progresión de la
+    // respuesta ya la refleje en el mismo turno en que se concede (ver bloque `lootMode`).
+    let questRewardXp = 0;
+    // Objetivo de cualquier misión creada este turno (petición explícita, 2026-07-25) — se añade
+    // al texto que escanea `recordEntityDiscoveries` al final de la función, para que si el
+    // objetivo cita un elemento real del catálogo (NPC, fauna, objeto), se desbloquee en la
+    // Enciclopedia igual que si lo hubiera mencionado la narración.
+    const newQuestObjetivos: string[] = [];
 
     await tx.worldState.update({
       where: { saveId },
@@ -752,9 +976,11 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     }
 
     // Loot (docs/12 § 4.5, decisión de la usuaria: copiar todo el loadout) — la ÚNICA fuente de
-    // botín es lo que el NPC lleva encima (NpcItem), nunca una invención del modelo.
+    // botín es lo que el NPC lleva encima (NpcItem), nunca una invención del modelo. `lootTargets`
+    // (ver más arriba) ya filtra por objetivo explícito y por condicionFisica INCAPACITADO/MUERTO —
+    // aquí ya no hace falta volver a comprobar nada de eso.
     if (lootMode) {
-      for (const npc of npcsInScene) {
+      for (const npc of lootTargets) {
         // NpcState (roadmap 2026-07-19): antes no había forma de saber si este NPC ya se había
         // saqueado en esta partida, así que el mismo botín se podía repetir infinitas veces.
         if (npc.saqueado) continue;
@@ -783,6 +1009,17 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
             update: { saqueado: true },
           });
         }
+
+        // Recompensa estática de misión al saquear (petición explícita, 2026-07-25): si el NPC
+        // saqueado es el objetivo de una misión ACTIVA con XP de recompensa definida, se concede
+        // aquí y la misión se cierra como resuelta. Guardado por el `if (npc.saqueado) continue`
+        // de arriba — un NPC ya saqueado nunca vuelve a pasar por aquí, así que esto solo concede
+        // la recompensa una vez, sin importar cuántas veces se intente registrar el cuerpo.
+        const rewardQuest = await tx.quest.findFirst({ where: { saveId, targetNpcId: npc.id, status: 'ACTIVA', rewardXp: { not: null } } });
+        if (rewardQuest) {
+          questRewardXp += rewardQuest.rewardXp!;
+          await tx.quest.update({ where: { id: rewardQuest.id }, data: { status: 'COMPLETADA' } });
+        }
       }
     }
 
@@ -805,14 +1042,18 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
         });
 
         // Reputación de facción determinista (roadmap 2026-07-19, prioridad 4): reutiliza
-        // `WorldState.factionsStatus` (Json reservado desde el diseño original, nunca usado
-        // hasta ahora — mismo patrón que `agenda`). Derrotar a un NPC de una facción concreta
-        // resta 1 con esa facción; sin facción (fauna, NPCs independientes) no afecta a nada.
+        // `WorldState.factionsStatus` (gauge 0-5000 por facción, ver reputation.ts — reemplaza
+        // el viejo ±1 sin límite). Atacar a un NPC de una facción concreta resta bastante más de
+        // lo que se recupera resolviendo algo en paz (deltas asimétricos, "pozo real" para
+        // ENEMIGO); sin facción (fauna, NPCs independientes) no afecta a nada.
         if (npcAttackTarget.faction) {
           const currentWorldState = await tx.worldState.findUnique({ where: { saveId }, select: { factionsStatus: true } });
-          const factionsStatus = { ...((currentWorldState?.factionsStatus as Record<string, number> | null) ?? {}) };
-          factionsStatus[npcAttackTarget.faction] = (factionsStatus[npcAttackTarget.faction] ?? 0) - 1;
-          await tx.worldState.update({ where: { saveId }, data: { factionsStatus } });
+          const updatedFactionsStatus = applyFactionRepDelta(
+            (currentWorldState?.factionsStatus as Record<string, number> | null) ?? {},
+            npcAttackTarget.faction,
+            FACTION_REP_ATTACK_DELTA,
+          );
+          await tx.worldState.update({ where: { saveId }, data: { factionsStatus: updatedFactionsStatus } });
         }
       }
     }
@@ -831,6 +1072,17 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
         });
         newInventoryItems.push({ ...created, slot: null });
         createdItemNames.push(created.name);
+      }
+      // Bug real (auditoría 2026-07-28): sin esto, el mismo cadáver de fauna ya derrotada se podía
+      // despiezar sin límite — marca este NpcState como ya aprovechado (mismo campo `saqueado` que
+      // cierra el saqueo de NPCs con nombre), para que harvest.ts lo bloquee la próxima vez.
+      if (harvestMatch.npcId && harvestMatch.npcKind && harvestMatch.yields.length > 0) {
+        const scope = scopeFor(harvestMatch.npcKind, currentLocationId);
+        await tx.npcState.upsert({
+          where: { saveId_npcId_scope: { saveId, npcId: harvestMatch.npcId, scope } },
+          create: { saveId, npcId: harvestMatch.npcId, scope, saqueado: true },
+          update: { saqueado: true },
+        });
       }
     }
 
@@ -864,13 +1116,28 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
       });
     }
 
-    // Crafteo v1: intercambio 1:1 de filas de inventario, tabulado en CRAFTING_RECIPES (auditoría
-    // 2026-07-22 — antes 5 bloques casi idénticos, uno por objeto).
+    // Crafteo v1: tabulado en CRAFTING_RECIPES (auditoría 2026-07-22 — antes 5 bloques casi
+    // idénticos, uno por objeto). Refactor de ingredientes (2026-07-29): ya no es siempre "una
+    // fila entera por ingrediente" — un plan por ingrediente (borrar filas + reducir remanente),
+    // mismo mecanismo exacto que ya usa la construcción de más abajo.
     for (const recipe of CRAFTING_RECIPES) {
       if (!craftPossibleByKey[recipe.key]) continue;
-      const rowIds = planCraftConsumption(recipe, inventoryRows);
-      if (!rowIds) continue;
-      await tx.inventoryItem.deleteMany({ where: { id: { in: rowIds } } });
+      const plans = planCraftConsumption(recipe, inventoryRows, catalogBySlug);
+      if (!plans) continue;
+      for (const plan of plans) {
+        if (plan.deleteIds.length > 0) {
+          await tx.inventoryItem.deleteMany({ where: { id: { in: plan.deleteIds } } });
+        }
+        if (plan.updateRemainder) {
+          const row = inventoryRows.find((r) => r.id === plan.updateRemainder!.id);
+          if (row) {
+            await tx.inventoryItem.update({
+              where: { id: plan.updateRemainder.id },
+              data: { name: `${baseNameOf(row.name)} (${plan.updateRemainder.newQuantity})` },
+            });
+          }
+        }
+      }
       const created = await tx.inventoryItem.create({
         data: {
           saveId,
@@ -894,7 +1161,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     // si sobra.
     if (buildRecipe && buildRecipeCheck?.met) {
       for (const req of buildRecipe.requirements) {
-        const plan = planConsumption(inventoryRows, req.namePrefix, req.cantidad);
+        const plan = planConsumption(inventoryRows, req, catalogBySlug);
         if (plan.deleteIds.length > 0) {
           await tx.inventoryItem.deleteMany({ where: { id: { in: plan.deleteIds } } });
         }
@@ -1082,9 +1349,17 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
             title: 'Acabar con el Orco Enfurecido',
             description:
               'Gistera Koh, expulsada del Clan Serhu, pidió ayuda para acabar con el guerrero que la persigue — Gorhorn ha aceptado. Derrotarlo la pondrá a salvo.',
+            objetivo: 'Derrotar al Orco Enfurecido que persigue a Gistera Koh.',
             targetNpcId: orcoEnfurecido?.id,
+            // Recompensa estática (petición explícita, 2026-07-25) — los objetos ya los concede el
+            // loot normal de NpcItem (ver loadout de orco-enfurecido-hondonada en worldCatalog.ts,
+            // aquí solo se listan para mostrarlos en el panel); el XP de bonus sí es nuevo, se
+            // concede aparte al saquearlo (ver bloque `lootMode` más abajo).
+            rewardXp: 100,
+            rewardItems: ['Mapa de las Llanuras', 'Maza orca'],
           },
         });
+        newQuestObjetivos.push('Derrotar al Orco Enfurecido que persigue a Gistera Koh.');
       }
     }
 
@@ -1118,9 +1393,12 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
           const yaDerrotado = state?.condicionFisica === 'INCAPACITADO' || state?.condicionFisica === 'MUERTO';
           if (yaDerrotado) continue;
           const currentWorldState = await tx.worldState.findUnique({ where: { saveId }, select: { factionsStatus: true } });
-          const factionsStatus = { ...((currentWorldState?.factionsStatus as Record<string, number> | null) ?? {}) };
-          factionsStatus[npc.faction] = (factionsStatus[npc.faction] ?? 0) + 1;
-          await tx.worldState.update({ where: { saveId }, data: { factionsStatus } });
+          const updatedFactionsStatus = applyFactionRepDelta(
+            (currentWorldState?.factionsStatus as Record<string, number> | null) ?? {},
+            npc.faction,
+            FACTION_REP_PEACE_DELTA,
+          );
+          await tx.worldState.update({ where: { saveId }, data: { factionsStatus: updatedFactionsStatus } });
         }
       }
     }
@@ -1173,9 +1451,14 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     if (isFirstVisitToDestination) hitos.push('descubrimiento');
     if (chapterDue) hitos.push('capitulo');
 
-    const xpTirada = roll ? xpForRollSuccess(classification.dificultad, roll.success) : 0;
+    // Auditoría 2026-07-28: en un turno de combate, `roll` (la tirada tabulada de
+    // /turn/classify) ya no tiene relación con lo que de verdad pasó — eso lo decide
+    // resolveExchange. `combatExchangeRoll` (el lado del jugador en el intercambio) manda
+    // siempre que exista; `roll` solo se usa como estaba fuera de combate.
+    const effectiveRoll: RollResult | null = combatExchangeRoll ?? roll ?? null;
+    const xpTirada = effectiveRoll ? xpForRollSuccess(effectiveRoll.difficulty, effectiveRoll.success) : 0;
     const xpHito = Math.max(xpForHitos(hitos), reinoXp);
-    const xpTurno = xpTirada + xpHito;
+    const xpTurno = xpTirada + xpHito + questRewardXp;
     const result = applyXp(params.currentXp, params.currentLevel, xpTurno);
 
     // Bug real encontrado auditando la partida de Gorhorn (2026-07-24, "revisar mi partida
@@ -1193,11 +1476,15 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
         saveId,
         channel: 'CHARACTER',
         text: narration.narration,
-        roll: roll ? (roll as unknown as Prisma.InputJsonValue) : undefined,
+        roll: effectiveRoll ? (effectiveRoll as unknown as Prisma.InputJsonValue) : undefined,
         timeLabel,
         xpDelta: xpTurno > 0 ? xpTurno : undefined,
         fictionalMinutes: nuevoFictionalMinutes,
         createdAt: nextLogEntryCreatedAt(),
+        // Rediseño de la vista de combate (2026-07-28): marca solo la narración PRINCIPAL de este
+        // turno (no los logs secundarios de subida de nivel/desbloqueo de habilidad de más abajo,
+        // que no son "narración de combate" en sí) — el frontend la pinta con fondo rojo.
+        combate: !!enCombate,
       },
     });
 
@@ -1302,6 +1589,10 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
         lastRestLocationId: finalLastRestLocationId,
         deathCount: finalDeathCount,
         endedAt: finalEndedAt,
+        // Rediseño del turno de combate (2026-07-28): guarda el ataque de NPC decidido para el
+        // PRÓXIMO intercambio (si la iniciativa lo favorece) o limpia el de este turno, ya
+        // consumido — nunca sobrevive más de un intercambio sin resolverse.
+        pendingNpcAttack: nuevoPendingNpcAttack ? (nuevoPendingNpcAttack as unknown as Prisma.InputJsonValue) : Prisma.JsonNull,
       },
     });
 
@@ -1311,6 +1602,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
       finDePartida: finDePartidaResult,
       newInventoryItems,
       logEntryId: mainLogEntry.id,
+      newQuestObjetivos,
     };
   });
 
@@ -1331,6 +1623,35 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   // ANTES de decidir si hace falta la red de seguridad — si el modelo "propuso" algo que no
   // corresponde a ningún NPC real en escena, cuenta como si no hubiera propuesto nada.
   const combatSlugsFromModel = (narration.combateIniciado?.npcSlugs ?? []).filter((slug) => npcsInScene.some((n) => n.slug === slug));
+  // Temperamento (2026-07-29, "si me encuentro un NPC 'Agresivo' me va a ser imposible no acabar
+  // peleando con él" + "la reputación influirá en los valores de combate"): el temperamento de
+  // catálogo (fijo) se desplaza por la reputación de facción de esta partida concreta —
+  // `effectiveTemperamento` (reputation.ts) es lo que de verdad decide aquí, no `n.temperamento`
+  // a secas. Un NPC con `faction: null` (fauna, independientes) no tiene de qué desplazarse y
+  // devuelve su valor de catálogo tal cual.
+  //
+  // Un modelo local pequeño no siempre sigue bien una instrucción de prompt, así que para
+  // AGRESIVO/ENEMIGO no nos fiamos solo del Narrador — cualquier NPC agresivo u hostil detectado
+  // en escena fuerza combate él solo, sin depender del verbo del jugador (mismo criterio de "no
+  // barrer a inocentes" que el bug del Múrgol de abajo: solo estos slugs, no todo `npcsInScene`).
+  const agresivoSlugsInScene = npcsInScene
+    .filter((n) => {
+      const t = effectiveTemperamento(n.temperamento, n.faction, factionsStatus);
+      return t === 'AGRESIVO' || t === 'ENEMIGO';
+    })
+    .map((n) => n.slug);
+  // Contraparte para AMIGABLE/INOFENSIVO: si TODOS los NPCs en escena son pacíficos, ninguno de
+  // ellos puede haber causado de verdad el empeoramiento de condición que narró el modelo — un
+  // giro ambiguo (el modelo "propuso" daño sin que nada en escena pudiera infligirlo) no debe
+  // abrir combate contra un Múrgol o un Corredor de Cauce. Los verbos explícitos del jugador
+  // (`detectsAttackIntent`/`detectsHostileSearchIntent`, líneas de abajo) siguen funcionando
+  // igual — atacar a algo pacífico de propia iniciativa sigue siendo posible.
+  const allNpcsInSceneArePacificos =
+    npcsInScene.length > 0 &&
+    npcsInScene.every((n) => {
+      const t = effectiveTemperamento(n.temperamento, n.faction, factionsStatus);
+      return t === 'AMIGABLE' || t === 'INOFENSIVO';
+    });
   // Bug real jugando en vivo (2026-07-24, decisión explícita de la usuaria: "aceptar ayudar solo
   // crea la misión, nunca abre combate"): "Cuenta conmigo. Acabaré con el que te persigue."
   // (aceptando ayudar a Gistera Koh) comparte vocabulario con `detectsHostileSearchIntent`
@@ -1342,15 +1663,21 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     !enCombate &&
     combatSlugsFromModel.length === 0 &&
     npcsInScene.length > 0 &&
-    (isCondicionDowngrade(params.condicionFisica, narration.condicionFisica) ||
+    (agresivoSlugsInScene.length > 0 ||
+      (isCondicionDowngrade(params.condicionFisica, narration.condicionFisica) && !allNpcsInSceneArePacificos) ||
       detectsAttackIntent(action) ||
       (detectsHostileSearchIntent(action) && !detectsVerbalAcceptanceIntent(action)));
   // Bug real (auditoría 2026-07-23, "ha metido un murgol que no pinta nada"): la red de seguridad
   // metía a TODOS los NPCs detectados en escena como participantes de combate (aliados, fauna de
   // paso...), no solo al hostil. Si la acción cita un nombre real entre comillas (`explicitTarget`,
-  // ver arriba), el popup arranca solo con ese — el listado completo de `npcsInScene` queda como
+  // ver arriba), el popup arranca solo con ese — y si lo que disparó la red de seguridad fue un
+  // NPC agresivo, solo él entra (mismo criterio) — el listado completo de `npcsInScene` queda como
   // último recurso para cuando la acción no nombra a nadie en concreto ("me defiendo").
-  const forcedCombatSlugs = explicitTarget ? [explicitTarget.slug] : npcsInScene.map((n) => n.slug);
+  const forcedCombatSlugs = explicitTarget
+    ? [explicitTarget.slug]
+    : agresivoSlugsInScene.length > 0
+      ? agresivoSlugsInScene
+      : npcsInScene.map((n) => n.slug);
   const combatSlugs = combatSlugsFromModel.length > 0 ? combatSlugsFromModel : shouldForceCombat ? forcedCombatSlugs : [];
 
   // Persistido (bug real, 2026-07-23, "revisar partida" — tercera vuelta sobre este mismo tema):
@@ -1370,7 +1697,20 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
           // condicionFisica/saqueado reales (auditoría de frontend, 2026-07-19): antes CombatModal
           // no tenía forma de saber si este NPC ya venía herido o ya saqueado de un encuentro
           // anterior en la misma partida — siempre arrancaba el popup asumiendo ILESO/sin saquear.
-          .map((n) => ({ slug: n.slug, name: n.name, condicionFisica: n.condicionFisica, saqueado: n.saqueado })),
+          //
+          // Bug real (auditoría 2026-07-28): `npcsInScene` se lee UNA sola vez al principio del
+          // turno (antes de la transacción) y nunca se reescribe en memoria tras el
+          // `tx.npcState.upsert` de más arriba — sin este override, el NPC recién golpeado ESTE
+          // MISMO turno se devolvía todavía con su condición de ANTES del golpe. El frontend ya
+          // no tiene ningún downgrade optimista propio (ver GameView.tsx) que lo tapara, así que
+          // esta respuesta tiene que traer la condición fresca ella sola.
+          .map((n) => ({
+            slug: n.slug,
+            name: n.name,
+            condicionFisica:
+              npcAttackTarget && npcAttackHits && npcTargetNewCondicion && n.id === npcAttackTarget.id ? npcTargetNewCondicion : n.condicionFisica,
+            saqueado: n.saqueado,
+          })),
       }
     : null;
 
@@ -1394,7 +1734,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
       npcAttackTarget: npcAttackTarget?.slug ?? null,
       npcAttackHits,
       combateIniciado: combateIniciado ? combateIniciado.npcs.map((n) => n.slug) : null,
-      gradoExito: roll?.gradoExito ?? null,
+      gradoExito: combatExchangeRoll?.gradoExito ?? roll?.gradoExito ?? null,
       newInventoryItemsCount: newInventoryItems.length,
     }),
   );
@@ -1404,8 +1744,33 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   await recordEntityDiscoveries({
     saveId,
     worldId,
-    mentionedText: [narration.narration, ...narration.newFacts].join('\n'),
+    mentionedText: [narration.narration, ...narration.newFacts, ...newQuestObjetivos].join('\n'),
   });
 
-  return { narration, progression, condicionFisica, combateIniciado, finDePartida, newInventoryItems, logEntryId };
+  // Ver comentario de `quests` en NarrateAndPersistResult — se consulta la lista completa ya
+  // fuera de la transacción (que a estas alturas ya ha hecho commit), en vez de rastrear un
+  // delta a mano por los varios sitios de este archivo que pueden crear/cerrar una misión.
+  const questRows = await prisma.quest.findMany({ where: { saveId }, orderBy: { createdAt: 'asc' } });
+  const quests = questRows.map((q) => ({
+    id: q.id,
+    title: q.title,
+    description: q.description,
+    status: q.status,
+    objetivo: q.objetivo,
+    rewardXp: q.rewardXp,
+    rewardItems: q.rewardItems,
+    targetLocationSlug: null,
+  }));
+
+  return {
+    narration,
+    progression,
+    condicionFisica,
+    combateIniciado,
+    finDePartida,
+    newInventoryItems,
+    logEntryId,
+    quests,
+    esperandoDefensaJugador: !!nuevoPendingNpcAttack,
+  };
 }

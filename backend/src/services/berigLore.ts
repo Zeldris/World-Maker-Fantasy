@@ -1,3 +1,5 @@
+import type { Attribute } from './dice.js';
+
 /// Razas y personajes jugables de Berig (2026-07-22, auditoría de lore vs Enciclopedia —
 /// "incluye de momento solo todo lo que sea de Berig"): contenido estático igual que
 /// classAbilities.ts/startingAbilities.ts — no hay tabla propia en Prisma, es lore de mundo, no
@@ -21,6 +23,23 @@ export interface RazaVariante {
   description: string;
 }
 
+/// Habilidad racial (rediseño de la vista de combate, 2026-07-28) — a diferencia de las
+/// habilidades de CLASE (classAbilities.ts, de "seres inteligentes que pueden portar equipo"),
+/// esta es una única habilidad compartida por TODA la raza, no algo que se aprenda por nivel.
+/// Un `Npc` humanoide tiene como mucho esta habilidad como su única racial (`Npc.raza` referencia
+/// el `slug` de aquí); la fauna no la usa — la suya vive directamente en `Npc.habilidadesRaciales`
+/// (hasta 6, categorizada), porque cada fila de fauna en worldCatalog.ts ya es una especie entera.
+export interface HabilidadRacial {
+  icon: string;
+  name: string;
+  description: string;
+  /// Rediseño del turno de combate (2026-07-28) — "tipo" de la habilidad para la rueda de
+  /// debilidades (attributeWheel.ts) y el atributo con el que se tira (mismo campo que ya usan
+  /// las habilidades de clase, classAbilities.ts). Elegido por lo que la habilidad representa de
+  /// verdad, no por plantilla — nunca el mismo atributo por defecto para todas.
+  preferredAttribute: Attribute;
+}
+
 export interface RazaInfo {
   slug: string;
   name: string;
@@ -28,6 +47,7 @@ export interface RazaInfo {
   rasgoFisico: string;
   rasgoCaracter: string;
   description: string;
+  habilidadRacial: HabilidadRacial;
   /// Presente solo en razas con diferenciación regional marcada (hoy: Orcos). El resto se
   /// consulta y se ilustra como una sola entrada, sin selector de variante.
   variantes?: RazaVariante[];
@@ -43,6 +63,12 @@ export const BERIG_RAZAS: RazaInfo[] = [
     rasgoCaracter: 'Fríos, calculadores; el orden y la ley ante todo — el desorden les produce una incomodidad física real.',
     description:
       'En la Meseta del Orden cada Goirnte nace hacia una casta de función y cada objeto tiene un lugar asignado — herencia directa de Goirme. Trabajan la Hierba del Hierro y presumen, con razón, de la mejor metalurgia de Helek Sirik. Su tabú cotidiano es lo inacabado: dejar una tarea a medias o un juramento sin cumplir es casi obsceno. Para la mayoría, la guerra de la Concordia de Hierro es un procedimiento más — órdenes que bajan, se cumplen y se archivan; la facción radical la dirige, la moderada intenta frenarla desde dentro. Elige una variante regional abajo para ver cómo cambia el cuerpo Goirnte según su cercanía a la frontera norte.',
+    habilidadRacial: {
+      icon: '🩶',
+      name: 'Piel Quitinosa',
+      description: 'Bajo tensión, su piel casi mineral se endurece de golpe y deja ver un tenue brillo metálico — encaja un golpe que a cualquier otro habría derribado.',
+      preferredAttribute: 'voluntad',
+    },
     // Variantes regionales (2026-07-22, petición explícita): los Goirntes de la frontera norte, ya
     // cerca del Margen Silencioso, se adaptaron físicamente al terreno de selva y desarrollaron un
     // oficio distinto (madera en vez de mineral) — mismo patrón que Orcos/Nabieus/Faerus.
@@ -75,7 +101,13 @@ export const BERIG_RAZAS: RazaInfo[] = [
       'Rasgos tribales; corpulentos, hembras más inteligentes y fuertes, machos más fieros. El cuerpo entero se adapta al clima de cada clan, no solo el color de piel: los Maktor y Serhu de las Llanuras tienen piel beige/arcilla y complexión de músculo largo hecha para el calor y la carrera; los Helsig de Cristal Helado, piel pálida azulada, cuerpo más recio y compacto con más grasa para retener calor; los Goshg de la Ciénaga Troncal, piel verde musgo veteada de rojo pálido y pies/manos anchos que no se hunden en el barro.',
     rasgoCaracter: "Orgullo, fuerza, honor. Clanes regidos por la Terk'ikar (Jefa) y el Kort'ikar (Jefe de Guerra).",
     description:
-      'Nacidos de la magia salvaje de Tarkor, sin Semilla creadora propia. El día a día orco es pastoreo, caza y camino: seguir a los Corredores de Cauce, recolectar Raíz de Fuego con cuidado, migrar cuando la Terk\'ikar pacta con una Gargantúa de Ceniza el transporte del clan entero. Las hembras gobiernan la vida y los machos la guerra — costumbre, no ley. A los recién nacidos se les susurra: "la ira te hizo, que el honor te sostenga". Dos tabúes prácticos: interrumpir un duelo de honor ya aceptado, y tocar el tótem de un clan ajeno sin permiso. Los clanes están divididos ante la guerra — el Clan Maktor, usado como carne de cañón hasta la aniquilación, es el precio más caro que ya se ha pagado. Elige una variante regional abajo para ver cómo cambia el cuerpo orco de clan a clan.',
+      'Nacidos de la magia salvaje de Tarkor, sin Semilla creadora propia. El día a día orco es pastoreo, caza y camino: seguir a los Corredores de Cauce, recolectar Raíz de Fuego con cuidado, migrar cuando la Terk\'ikar pacta con una Gargantúa de Ceniza el transporte del clan entero. Las hembras gobiernan la vida y los machos la guerra — costumbre, no ley. A los recién nacidos se les susurra: "Con ira nos quemaron, con honor nos rebelamos, y aún así nadie domó nuestros caminos". Dos tabúes prácticos: interrumpir un duelo de honor ya aceptado, y tocar el tótem de un clan ajeno sin permiso. Los clanes están divididos ante la guerra — el Clan Maktor, usado como carne de cañón hasta la aniquilación, es el precio más caro que ya se ha pagado. Elige una variante regional abajo para ver cómo cambia el cuerpo orco de clan a clan.',
+    habilidadRacial: {
+      icon: '🩸',
+      name: 'Sangre del Estallido',
+      description: 'La magia salvaje que los engendró despierta un instante bajo el dolor o la ira — un segundo aliento de fuerza bruta que ningún cuerpo debería tener.',
+      preferredAttribute: 'fuerza',
+    },
     variantes: [
       {
         slug: 'orcos-llanuras',
@@ -113,6 +145,12 @@ export const BERIG_RAZAS: RazaInfo[] = [
     rasgoCaracter: 'Inquietantes por su ausencia, sigilo absoluto.',
     description:
       'En la mitad oriental del Margen Silencioso, donde hasta el sonido se apaga de forma antinatural, los silencios tienen sintaxis: hay pausas que afirman, niegan o advierten. Su voz casi inaudible obliga a acercarse, y esa cercanía forzada es para ellos la medida de la confianza; levantar la voz es su tabú — gritar es violencia, se grite lo que se grite. Perseguidos durante el Yugo de Hierro por "operar en la sombra sin autorización del orden", fueron el corazón de la Purga Silenciosa. Integrados en la Concordia de Hierro por presión, sirven hoy como mensajeros, correos y ojos desde El Refugio sin Nombre, su enclave más estable, con presencia dispersa hasta el borde de Ciénaga Troncal. Elige una variante regional abajo para ver cómo cambia el cuerpo Nabieus según dónde se críen.',
+    habilidadRacial: {
+      icon: '🌑',
+      name: 'Silencio Antinatural',
+      description: 'Se mueve sin el más mínimo ruido, incluso sobre terreno que delataría a cualquier otro — desaparece de la percepción de su enemigo en el momento justo.',
+      preferredAttribute: 'sigilo',
+    },
     // Variantes regionales (2026-07-22, petición explícita: los Nabieus criados en el borde de
     // Ciénaga Troncal desarrollan mutaciones reales, no solo un matiz de color — mismo patrón que
     // las variantes de Orcos, cada una con su propia imagen independiente.
@@ -143,7 +181,13 @@ export const BERIG_RAZAS: RazaInfo[] = [
     rasgoFisico: 'Piel de hojas finas, cuerpo fibroso y resistente, postura de 2 a 4 patas.',
     rasgoCaracter: 'Instintivos y bestiales, pero sumamente inteligentes; cazadores.',
     description:
-      'Ocupan la mayor parte de la mitad occidental del Margen Silencioso, con pequeños puestos avanzados más allá de la frontera oeste, ya en las Llanuras del Viento Rojo. La manada es la única institución Faerus: se caza junto, se come junto —la primera pieza de cada caza se comparte siempre— y se muere junto; abandonar a un herido de la manada es el tabú que no se perdona. Su olfato lee estados de ánimo: un Faerus sabe si tienes miedo antes que tú. Bajo la apariencia bestial hay una inteligencia fría y observadora. Sin ciudades ni escritura, su único punto de encuentro es El Claro de la Manada — un lugar, no una construcción. No pertenecen a ninguna alianza — nadie los invitó y ellos no habrían ido; la magia salvaje liberada tras la ruptura ya devastó territorios de manada, y esa es la única parte del conflicto que de verdad les concierne. Elige una variante regional abajo para ver cómo cambia el pelaje Faerus según dónde vive la manada.',
+      'Ocupan la mayor parte de la mitad occidental del Margen Silencioso, con pequeños puestos avanzados más allá de la frontera oeste, ya en las Llanuras del Viento Rojo. La manada es la única institución Faerus: se caza junto, se come junto —la primera pieza de cada caza se comparte siempre— y se muere junto; abandonar a un herido de la manada es el tabú que no se perdona. Su olfato lee estados de ánimo: un Faerus sabe si tienes miedo antes que tú. Bajo la apariencia bestial hay una inteligencia fría y observadora. Sin escritura, y sin nada parecido a las ciudades-fortaleza Goirntes: sus dos únicos asentamientos, Hashma (en la selva, junto a la costa) y Kegi (en la frontera con las Llanuras), son poblados modestos construidos por y para la manada — además de El Claro de la Manada, un punto de encuentro estacional sin construcción propia para las manadas que no viven en ninguno de los dos poblados. No pertenecen a ninguna alianza — nadie los invitó y ellos no habrían ido; la magia salvaje liberada tras la ruptura ya devastó territorios de manada, y esa es la única parte del conflicto que de verdad les concierne. Elige una variante regional abajo para ver cómo cambia el pelaje Faerus según dónde vive la manada.',
+    habilidadRacial: {
+      icon: '👃',
+      name: 'Olfato de la Manada',
+      description: 'Su olfato lee el miedo antes que la propia presa lo sienta — anticipa el momento exacto en que el enemigo flaquea y ataca sin dudarlo.',
+      preferredAttribute: 'destreza',
+    },
     // Variantes regionales (2026-07-22, petición explícita): las manadas que empujaron sus puestos
     // avanzados hacia el norte, dentro de las Llanuras del Viento Rojo, desarrollaron un pelaje
     // distinto por el calor — mismo patrón que las variantes de Orcos/Nabieus.
