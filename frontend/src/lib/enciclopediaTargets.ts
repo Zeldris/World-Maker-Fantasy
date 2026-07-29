@@ -16,31 +16,87 @@ import type {
   EnciclopediaRazaInfo,
 } from './api'
 import type { EnciclopediaLinkTarget } from './enciclopediaIndex'
+import type { ItemTipo } from '../types'
 
 // Sesión de diseño 2026-07-23 (tier/requisitos de objetos) — mapa combinado para resolver
 // cualquier clave de `requisitos` (atributo jugable o secundario) a su etiqueta en español.
 const ALL_ATTRIBUTE_LABELS: Record<string, string> = { ...attributeLabels, ...secondaryAttributeLabels }
 
-export const ITEM_CATEGORY_ORDER = ['arma', 'herramienta', 'ropa', 'material', 'consumible', 'medicinal', 'documento', 'valor']
+// Categorización mecánica (2026-07-29) — subtipo fino (`category`) dentro de cada `tipo` amplio.
+// "material"/"medicinal" desaparecen como categorías propias: "material" genérico se dividió en
+// tipos de recurso/material más finos (piel/hueso/madera/piedra/mena/hierba/pluma/quitina/resina,
+// metal/bloque), "medicinal" sigue viviendo dentro de tipo=CONSUMIBLE, no en esta lista de arriba.
+export const ITEM_CATEGORY_ORDER = [
+  'arma',
+  'herramienta',
+  'ropa',
+  'consumible',
+  'medicinal',
+  'documento',
+  'valor',
+  'piel',
+  'hueso',
+  'madera',
+  'piedra',
+  'mena',
+  'hierba',
+  'pluma',
+  'quitina',
+  'resina',
+  'metal',
+  'bloque',
+]
 export const ITEM_CATEGORY_LABEL: Record<string, string> = {
   arma: 'Armas',
   herramienta: 'Herramientas',
   ropa: 'Ropa',
-  material: 'Materiales',
   consumible: 'Consumibles',
   medicinal: 'Medicinales',
   documento: 'Documentos',
   valor: 'Objetos de valor',
+  piel: 'Pieles',
+  hueso: 'Huesos',
+  madera: 'Madera',
+  piedra: 'Piedra',
+  mena: 'Mena',
+  hierba: 'Hierbas',
+  pluma: 'Plumas',
+  quitina: 'Quitina',
+  resina: 'Resina',
+  metal: 'Metal',
+  bloque: 'Bloques',
 }
 const ITEM_CATEGORY_ICON: Record<string, string> = {
   arma: '⚔️',
   herramienta: '🔨',
   ropa: '👕',
-  material: '🧵',
   consumible: '🍖',
   medicinal: '💊',
   documento: '📜',
   valor: '💰',
+  piel: '🧵',
+  hueso: '🦴',
+  madera: '🪵',
+  piedra: '🪨',
+  mena: '⛏️',
+  hierba: '🌿',
+  pluma: '🪶',
+  quitina: '🦂',
+  resina: '🟤',
+  metal: '🔩',
+  bloque: '🧱',
+}
+
+// Categorización mecánica (2026-07-29) — tipo amplio, exterior a `category` (subtipo fino de
+// arriba). "equipable"/"consumible"/"narrativo" agrupan lo que ya existía; "recurso"/"material"
+// son la distinción nueva (crudo vs. procesado) que antes vivía toda bajo un único "material".
+export const ITEM_TIPO_ORDER: ItemTipo[] = ['EQUIPABLE', 'CONSUMIBLE', 'MATERIAL', 'RECURSO', 'NARRATIVO']
+export const ITEM_TIPO_LABEL: Record<ItemTipo, string> = {
+  EQUIPABLE: 'Equipables',
+  CONSUMIBLE: 'Consumibles',
+  MATERIAL: 'Materiales',
+  RECURSO: 'Recursos',
+  NARRATIVO: 'Especiales',
 }
 
 export function itemIcon(category: string): string {

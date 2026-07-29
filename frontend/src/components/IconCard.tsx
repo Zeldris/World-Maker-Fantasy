@@ -42,7 +42,7 @@ export function IconCard({
       <button
         onClick={onDetail}
         aria-label={`Detalle de ${name}`}
-        className="absolute -right-1 -top-1 hidden h-5 w-5 items-center justify-center rounded-full border border-iron-700 bg-wood-950 text-2xs text-wood-300 transition-colors hover:border-accent-600/60 hover:text-accent-300 group-hover:flex"
+        className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full border border-iron-700 bg-wood-950 text-2xs text-wood-300 transition-colors hover:border-accent-600/60 hover:text-accent-300 sm:hidden sm:group-hover:flex"
       >
         ⓘ
       </button>

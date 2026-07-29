@@ -62,6 +62,25 @@
   --color-cost-400: #fbbf24;
   --color-cost-500: #f59e0b;
   --color-cost-600: #d97706;
+
+  /* Rediseño del turno de combate (2026-07-28, petición explícita: "añadir color por estadística
+     para que sea más claro") — un tono por atributo jugable, para identificar de un vistazo el
+     "tipo" de una habilidad (rueda de debilidades, attributeWheel.ts en el backend). 6 tonos
+     repartidos por el círculo cromático para que se distingan entre sí a simple vista, elegidos
+     para no confundirse con los ya semánticos de arriba (danger=rojo/fallo, moss=verde/éxito,
+     cost=ámbar/recurso). */
+  --color-fuerza-400: #e0736f;
+  --color-fuerza-500: #cc5852;
+  --color-destreza-400: #5fd6bb;
+  --color-destreza-500: #3fb89d;
+  --color-sigilo-400: #b088e0;
+  --color-sigilo-500: #9566cc;
+  --color-voluntad-400: #e0c15f;
+  --color-voluntad-500: #cca63f;
+  --color-carisma-400: #e072ae;
+  --color-carisma-500: #cc5794;
+  --color-arcano-400: #7591e0;
+  --color-arcano-500: #5772cc;
 }
 
 /* Escala de radio de esquina (roadmap de diseño CSS, Fable 2026-07-20) — ya vigente en la

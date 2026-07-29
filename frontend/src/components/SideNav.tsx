@@ -27,7 +27,7 @@ export function SideNav({ tabs, active, onSelect, align, dimmed, disabledIds }: 
       // Material distinto por riel (roadmap de rediseño visual, Fable 2026-07-20, Nivel 2):
       // izquierdo = Polvo del Camino ("tu equipo"), derecho = Hierro Grabado ("el mundo") — mismo
       // reparto que ya fija LogPanel (accent/accent2), reforzado ahora por textura.
-      className={`${align === 'left' ? 'dust-road' : 'iron-band corner-bracket'} flex w-14 shrink-0 flex-col items-center gap-1 rounded-xl py-2 sm:w-16 ${
+      className={`${align === 'left' ? 'dust-road' : 'iron-band corner-bracket'} flex w-14 min-h-0 shrink-0 flex-col items-center gap-1 overflow-y-auto rounded-xl py-2 sm:w-16 ${
         align === 'left' ? 'order-first' : 'order-last'
       } ${dimmed ? 'invisible' : ''}`}
     >

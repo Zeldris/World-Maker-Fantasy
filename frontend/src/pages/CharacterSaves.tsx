@@ -90,7 +90,11 @@ export function CharacterSaves() {
       return
     setRestartingId(saveId)
     try {
-      await restartSave(saveId)
+      // Intro propia por personaje pregenerado (2026-07-28, paridad con la creación de partida
+      // nueva) — este panel ya conoce el personaje de esta lista de partidas (`character`, de
+      // data/mock.ts); si tiene intro propia, se manda para que el reinicio la use también, en
+      // vez de caer siempre a la plantilla genérica del backend.
+      await restartSave(saveId, { introCharacterText: character?.introCharacterText, introWorldText: character?.introWorldText })
       setSaves((prev) =>
         prev.map((s) =>
           s.id === saveId ? { ...s, fictionalDate: 'Día 1, mañana', lastPlayedAt: new Date().toISOString(), endedAt: null } : s,
@@ -137,7 +141,7 @@ export function CharacterSaves() {
   }
 
   return (
-    <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-6 py-12">
+    <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-6 px-6 py-12">
       <div>
         <button
           onClick={() => navigate(`/solitario/mundo/${world.id}`)}

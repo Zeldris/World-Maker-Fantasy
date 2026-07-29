@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { memo, useEffect, useRef, useState } from 'react'
 import type { LogEntry } from '../types'
 import { RollBadge } from './RollBadge'
 import { PanelRivets } from './Rivet'
@@ -49,7 +49,13 @@ const accentClasses = {
   },
 }
 
-export function LogPanel({ title, subtitle, entries, accent, isThinking, thinkingText, streaming, emptyHint }: LogPanelProps) {
+// Auditoría de rendimiento 2026-07-28 ("rascar segundos"): memoizado — GameView.tsx monta DOS
+// LogPanel a la vez ("Tu personaje"/"El mundo") y re-renderiza en cada chunk de narración en
+// streaming (varias veces por segundo). El panel "El mundo" recibe props completamente estables
+// mientras narra el canal de personaje (ni `worldLog` ni `worldFlavor` cambian en ese momento),
+// así que memo() le evita re-renderizar (y volver a montar cada LogEntry) sin ninguna razón real
+// — el panel que SÍ está narrando sigue re-renderizando igual, sus props sí cambian de verdad.
+export const LogPanel = memo(function LogPanel({ title, subtitle, entries, accent, isThinking, thinkingText, streaming, emptyHint }: LogPanelProps) {
   const { enciclopediaIndex, onEntityDetail, onEntityQuickInsert } = useEnciclopediaLink()
   const scrollRef = useRef<HTMLDivElement>(null)
   const classes = accentClasses[accent]
@@ -109,9 +115,15 @@ export function LogPanel({ title, subtitle, entries, accent, isThinking, thinkin
             <div
               key={entry.id}
               className={
-                entry.isPlayerAction
-                  ? `animate-entry-in rounded-lg border border-l-2 px-3.5 py-2.5 text-sm text-wood-100 ${classes.playerBubble}`
-                  : 'animate-entry-in text-sm leading-relaxed text-wood-200'
+                // Rediseño de la vista de combate (2026-07-28, petición explícita: "narraciones
+                // del combate se vean reflejadas... con fondo color rojo") — el tinte de combate
+                // manda sobre el de "tu acción" (una entrada puede ser ambas a la vez), nunca al
+                // revés; fuera de combate, el estilo de siempre.
+                entry.combate
+                  ? 'animate-entry-in rounded-lg border border-l-2 border-red-700/50 bg-danger-500/10 px-3.5 py-2.5 text-sm text-wood-100'
+                  : entry.isPlayerAction
+                    ? `animate-entry-in rounded-lg border border-l-2 px-3.5 py-2.5 text-sm text-wood-100 ${classes.playerBubble}`
+                    : 'animate-entry-in text-sm leading-relaxed text-wood-200'
               }
             >
               {entry.isPlayerAction && (
@@ -180,4 +192,4 @@ export function LogPanel({ title, subtitle, entries, accent, isThinking, thinkin
       </div>
     </section>
   )
-}
+})

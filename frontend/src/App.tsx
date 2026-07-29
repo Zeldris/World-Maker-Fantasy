@@ -8,7 +8,7 @@ import { ComingSoon } from './pages/ComingSoon'
 
 function App() {
   return (
-    <div className="wood-grain mx-auto flex h-svh w-full max-w-6xl flex-col overflow-y-auto border-x border-iron-800">
+    <div className="wood-grain mx-auto flex h-svh w-full max-w-[1600px] flex-col overflow-y-auto border-x border-iron-800">
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/solitario" element={<WorldSelect />} />

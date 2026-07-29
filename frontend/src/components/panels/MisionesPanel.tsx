@@ -42,6 +42,18 @@ export function MisionesPanel({ quests }: MisionesPanelProps) {
           </span>
         </p>
         <p className="mt-1 text-xs leading-relaxed text-wood-400">{quest.description}</p>
+        {quest.objetivo && (
+          <p className="mt-1.5 text-xs leading-relaxed text-wood-300">
+            <span className="text-2xs font-semibold uppercase tracking-wide text-wood-500">Objetivo: </span>
+            {quest.objetivo}
+          </p>
+        )}
+        {(quest.rewardXp || quest.rewardItems.length > 0) && (
+          <p className="mt-1 text-xs leading-relaxed text-accent-300">
+            <span className="text-2xs font-semibold uppercase tracking-wide text-wood-500">Recompensa: </span>
+            {[...quest.rewardItems, quest.rewardXp ? `+${quest.rewardXp} XP` : null].filter(Boolean).join(', ')}
+          </p>
+        )}
       </div>
     )
   }

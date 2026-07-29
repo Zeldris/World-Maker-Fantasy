@@ -36,7 +36,7 @@ export function RollBadge({ roll }: { roll: RollInfo }) {
   // no hace falta explicarla aquí cada vez — solo lo que sí cambia: el dado y el total.
   const bono = Math.floor(roll.value / 2)
   return (
-    <div className={`relative mt-2 inline-flex items-center gap-2 rounded-md border px-2.5 py-1 font-mono text-2xs ${BADGE_STYLES[grado]} ${BADGE_ANIMATION[grado]}`}>
+    <div className={`relative mt-2 inline-flex flex-wrap items-center gap-x-2 gap-y-1 rounded-md border px-2.5 py-1 font-mono text-2xs ${BADGE_STYLES[grado]} ${BADGE_ANIMATION[grado]}`}>
       {grado === 'con_coste' && (
         <span className="animate-edge-flash-amber pointer-events-none absolute inset-0 rounded-md border border-cost-400" aria-hidden="true" />
       )}

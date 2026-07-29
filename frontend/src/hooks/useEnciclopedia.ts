@@ -2,11 +2,19 @@ import { useEffect, useMemo, useState } from 'react'
 import { getEnciclopedia, type EnciclopediaResponse } from '../lib/api'
 import { buildEnciclopediaIndex, EMPTY_ENCICLOPEDIA_INDEX, type EnciclopediaIndex } from '../lib/enciclopediaIndex'
 
+export interface UseEnciclopediaResult {
+  index: EnciclopediaIndex
+  /// Rediseño de la vista de combate (2026-07-28) — CombatPanel necesita el catálogo crudo
+  /// (`classes`/`razas`, y los `npcs`/`faunaFlora` con `attributes`/`ataqueBase`/etc ya resueltos
+  /// por el backend), no solo el índice de nombre→ficha que ya usaba la navegación de narración.
+  raw: EnciclopediaResponse | null
+}
+
 /// Fetch propio para GameView (2026-07-22, texto enlazable en narración/diario/descripciones) —
 /// duplica la llamada que ya hace EnciclopediaPanel.tsx al abrir esa pestaña, aceptado a propósito:
 /// evita tocar el fetch/estado ya probado de ese panel solo para compartirlo, a cambio de una
 /// petición de red de más (la respuesta no es pesada — texto, sin imágenes embebidas).
-export function useEnciclopedia(worldSlug: string | null): EnciclopediaIndex {
+export function useEnciclopedia(worldSlug: string | null): UseEnciclopediaResult {
   const [data, setData] = useState<EnciclopediaResponse | null>(null)
 
   useEffect(() => {
@@ -24,5 +32,6 @@ export function useEnciclopedia(worldSlug: string | null): EnciclopediaIndex {
     }
   }, [worldSlug])
 
-  return useMemo(() => (data ? buildEnciclopediaIndex(data) : EMPTY_ENCICLOPEDIA_INDEX), [data])
+  const index = useMemo(() => (data ? buildEnciclopediaIndex(data) : EMPTY_ENCICLOPEDIA_INDEX), [data])
+  return { index, raw: data }
 }

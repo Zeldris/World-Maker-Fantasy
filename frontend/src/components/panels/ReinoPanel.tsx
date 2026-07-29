@@ -8,10 +8,6 @@ interface ReinoPanelProps {
   territories: TerritoryInfo[]
   buildings: BuildingInfo[]
   subjects: SubjectInfo[]
-  // Reputación de facción (2026-07-19) — hoy solo baja (derrotar a un NPC de una facción conocida
-  // resta 1), sin lado positivo todavía; se muestra igual aquí porque es la relación del
-  // personaje con el mundo, más cerca de "Reino" que de ningún otro panel existente.
-  factionsStatus: Record<string, number>
   /// Economía de Reino (sesión de diseño 2026-07-23) — null hasta fundar el primer Territory.
   kingdomStats: KingdomStatsInfo | null
 }
@@ -41,11 +37,10 @@ const buildingStatusLabel: Record<BuildingInfo['status'], string> = {
   ABANDONADO: 'Abandonado',
 }
 
-export function ReinoPanel({ kingdomName, characterMotivation, territories, buildings, subjects, factionsStatus, kingdomStats }: ReinoPanelProps) {
+export function ReinoPanel({ kingdomName, characterMotivation, territories, buildings, subjects, kingdomStats }: ReinoPanelProps) {
   const isEmpty = territories.length === 0 && buildings.length === 0 && subjects.length === 0
-  const factionEntries = Object.entries(factionsStatus)
 
-  if (isEmpty && factionEntries.length === 0) {
+  if (isEmpty) {
     return (
       <PanelEmptyState
         icon="🏰"
@@ -72,23 +67,6 @@ export function ReinoPanel({ kingdomName, characterMotivation, territories, buil
                 <p className="text-2xs uppercase tracking-wide text-wood-500">{KINGDOM_STAT_LABEL[key]}</p>
                 <p className="font-mono text-sm tabular-nums text-accent2-300">{kingdomStats[key]}</p>
               </div>
-            ))}
-          </div>
-        </PanelSection>
-      )}
-
-      {factionEntries.length > 0 && (
-        <PanelSection title="Reputación de facción">
-          <div className="flex flex-wrap gap-2">
-            {factionEntries.map(([faction, score]) => (
-              <span
-                key={faction}
-                className={`rounded-full border px-2.5 py-1 text-xs ${
-                  score < 0 ? 'border-red-700/60 bg-red-500/10 text-red-400' : 'border-iron-700 bg-wood-950/40 text-wood-300'
-                }`}
-              >
-                {faction}: {score > 0 ? `+${score}` : score}
-              </span>
             ))}
           </div>
         </PanelSection>

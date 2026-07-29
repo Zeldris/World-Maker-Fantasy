@@ -10,6 +10,7 @@ import type {
   DiscoveryItem,
   EquipSlot,
   InventoryItemInfo,
+  ItemTipo,
   KingdomStatsInfo,
   LogEntry,
   NpcInSceneInfo,
@@ -61,6 +62,12 @@ export interface ClassificationResult {
 // el frontend, solo se reenvía tal cual de /turn/classify a /turn/narrate.
 export type TravelResolution = Record<string, unknown>
 
+// Auditoría de rendimiento 2026-07-28 ("rascar segundos") — igual de opaco que TravelResolution:
+// /turn/classify ya calculó los NPCs en escena para esta acción, y reenviarlo tal cual a
+// /turn/narrate le ahorra repetir la misma consulta (roster completo del mundo + objetos) una
+// segunda vez para el mismo turno.
+export type NpcSceneSnapshot = Record<string, unknown>[]
+
 export interface ClassifyResponse {
   classification: ClassificationResult
   roll?: RollInfo
@@ -74,6 +81,7 @@ export interface ClassifyResponse {
   // Revelado progresivo (docs/14-combate-y-muerte.md § 3.1) — 2-4 hallazgos ya decididos por el
   // backend para búsquedas/recolección genéricas de banda corta; vacío si no aplica.
   discoveries?: DiscoveryItem[]
+  npcsInScene?: NpcSceneSnapshot
 }
 
 export interface BusyError {
@@ -138,6 +146,15 @@ export interface NarrateResponse {
   /// Rework 2026-07-24 (persistencia de banners de entidad) — id real de la fila LogEntry de esta
   /// narración, para poder guardarle luego qué entidad se mostró como imagen (setLogEntryBanner).
   logEntryId: string
+  /// Bug real (2026-07-25, "revisar partida"): una misión podía crearse/cerrarse de verdad este
+  /// turno sin que el panel de Misiones se enterara hasta recargar la partida entera — mismo
+  /// patrón ya arreglado antes para el inventario (newInventoryItems). Lista completa, no un
+  /// delta (ver comentario en NarrateAndPersistResult, backend).
+  quests: QuestInfo[]
+  /// Rediseño del turno de combate (2026-07-28) — true cuando el backend decidió que un NPC gana
+  /// la iniciativa del SIGUIENTE intercambio: la próxima acción del jugador debe tratarse como
+  /// defensa a ciegas (elige una habilidad sin saber qué usará el NPC), no como ataque normal.
+  esperandoDefensaJugador: boolean
 }
 
 export interface TurnNarrateHandlers {
@@ -161,6 +178,9 @@ export async function requestTurnNarrate(
     /// Mismo id que en requestTurnClassify — turnResolution.ts lo usa para gatear
     /// REMATE/ATURDIMIENTO/INTIMIDACION/AGUANTE.
     savedActionId?: string
+    /// Auditoría de rendimiento 2026-07-28 — el mismo `npcsInScene` que devolvió
+    /// requestTurnClassify para esta acción, reenviado tal cual (ver NpcSceneSnapshot).
+    npcsInScene?: NpcSceneSnapshot
   },
   handlers?: TurnNarrateHandlers,
 ): Promise<NarrateResponse> {
@@ -320,8 +340,15 @@ export interface SaveSummary {
   endedAt: string | null
 }
 
-export async function restartSave(id: string): Promise<{ id: string }> {
-  return fetchJson(`${API_URL}/saves/${id}/restart`, { method: 'POST' })
+export async function restartSave(
+  id: string,
+  intro?: { introCharacterText?: string; introWorldText?: string },
+): Promise<{ id: string }> {
+  return fetchJson(`${API_URL}/saves/${id}/restart`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(intro ?? {}),
+  })
 }
 
 // Pausar/reanudar la partida (roadmap 2026-07-20: "quiero que la partida se pause si salgo de
@@ -512,6 +539,16 @@ export interface EnciclopediaSexoVariante {
   imageUrls: EnciclopediaImageUrls
 }
 
+// Rediseño de la vista de combate (2026-07-28) — calculada en el backend (baseAttack.ts) a partir
+// del arma equipada/loadout (si la hay) o del `ataqueNatural` de la fauna; nunca recalculada en el
+// frontend, que no tiene acceso al loadout crudo de un NPC.
+export interface EnciclopediaAtaqueBase {
+  icon: string
+  name: string
+  description: string
+  preferredAttribute: Attribute
+}
+
 export interface EnciclopediaNpcInfo {
   slug: string
   name: string
@@ -527,12 +564,23 @@ export interface EnciclopediaNpcInfo {
   /// Enciclopedia progresiva (2026-07-23) — true si ya se mencionó en narración/new_facts de
   /// esta partida; siempre true cuando la consulta no lleva `saveId` (sin partida que gatear).
   discovered: boolean
+  /// Rediseño de la vista de combate (2026-07-28) — bloque de atributos crudo (nivel/fuerza/
+  /// destreza/etc, mostrado como cifras reales en la ficha de enemigo, petición explícita de la
+  /// usuaria). `raza`/`clase` referencian los catálogos de habilidades ya existentes
+  /// (`razas`/`classes` de este mismo `EnciclopediaResponse`) — null/undefined si el NPC no
+  /// encaja en ninguno (social/no combatiente).
+  attributes: AttributeBlock
+  raza?: string | null
+  clase?: string | null
+  ataqueBase: EnciclopediaAtaqueBase
 }
 
 export interface EnciclopediaItemInfo {
   slug: string
   name: string
   category: string
+  /// Categorización mecánica (2026-07-29) — ver itemTaxonomy.ts (backend) / ItemTipo (types.ts).
+  tipo: ItemTipo
   description: string
   statBonusAttribute: string | null
   statBonusAmount: number | null
@@ -561,6 +609,9 @@ export interface EnciclopediaFaunaFloraInfo {
   /// Viento/Cornante/Sombra de Kroj son fauna de verdad sin ficha de combate propia, así que
   /// salían mal categorizados como flora/material. `esFauna` es la señal correcta para el icono.
   esFauna: boolean
+  /// Zona de origen (2026-07-29, colapsables de fauna/flora por zona) — null si no hay ninguna
+  /// señal real de región (fauna itinerante sin hogar fijo, o un lugarOrigen sin región reconocible).
+  region: string | null
   /// Descripción física real (bio del Npc si es fauna cazable, o de harvestSourceDescriptions
   /// si es flora/mineral sin Npc propio) — null solo si de verdad no hay ninguna todavía.
   description: string | null
@@ -571,6 +622,13 @@ export interface EnciclopediaFaunaFloraInfo {
   /// Enciclopedia progresiva (2026-07-23) — true si ya se mencionó en narración/new_facts de
   /// esta partida.
   discovered: boolean
+  /// Rediseño de la vista de combate (2026-07-28) — solo presentes si `cazable` (hay Npc real
+  /// detrás): bloque de atributos, frase de ataque natural y hasta 6 habilidades raciales
+  /// propias (categorizadas). Flora/mineral sin Npc propio no tiene ninguno de los tres.
+  attributes?: AttributeBlock | null
+  ataqueNatural?: string | null
+  habilidadesRaciales?: { icon: string; name: string; description: string; categoria: 'ataque' | 'defensa' | 'utilidad'; preferredAttribute: Attribute }[]
+  ataqueBase: EnciclopediaAtaqueBase | null
 }
 
 export interface EnciclopediaLocationInfo {
@@ -616,6 +674,10 @@ export interface EnciclopediaRazaInfo {
   /// Sexo a nivel de RAZA GENERAL (2026-07-22) — eje independiente de `variantes` (región), nunca
   /// cruza con ella: no existe "Orcos de las Llanuras, macho" como combinación propia.
   variantesSexo?: EnciclopediaSexoVariante[]
+  /// Rediseño de la vista de combate (2026-07-28) — única habilidad racial, compartida por toda
+  /// la raza (no por individuo). Un NPC humanoide con `raza` igual a este `slug` la muestra en su
+  /// ficha de combate.
+  habilidadRacial: { icon: string; name: string; description: string; preferredAttribute: Attribute }
 }
 
 export interface EnciclopediaPersonajeInfo {
@@ -639,6 +701,9 @@ export interface EnciclopediaAbilityInfo {
   category: 'combate' | 'general'
   imagePrompts: EnciclopediaImagePrompts
   imageUrls: EnciclopediaImageUrls
+  /// Rediseño del turno de combate (2026-07-28) — "tipo" de la habilidad para la rueda de
+  /// debilidades (attributeWheel.ts, backend) y su color en la UI.
+  preferredAttribute: Attribute
 }
 
 /// Antepone el origen real del backend a una ruta relativa de imagen (p.ej. "/images/fauna/x.png")

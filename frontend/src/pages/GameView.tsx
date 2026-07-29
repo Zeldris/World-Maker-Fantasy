@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useSession } from '../context/SessionContext'
 import { LogPanel } from '../components/LogPanel'
@@ -6,12 +6,12 @@ import { ChatComposer, type ChatComposerHandle } from '../components/ChatCompose
 import { SideNav } from '../components/SideNav'
 import { characterTabs, worldTabs, type PanelId } from '../components/NavTabs'
 import { PanelDrawer } from '../components/PanelDrawer'
-import { EstadisticasPanel } from '../components/panels/EstadisticasPanel'
 import { MapaPanel } from '../components/panels/MapaPanel'
 import { DiarioPanel } from '../components/panels/DiarioPanel'
 import { InventarioPanel } from '../components/panels/InventarioPanel'
 import { EnciclopediaPanel } from '../components/panels/EnciclopediaPanel'
-import { EquipoPanel, SLOT_LABEL } from '../components/panels/EquipoPanel'
+import { SLOT_LABEL } from '../components/panels/EquipoPanel'
+import { PersonajePanel, type PersonajeSubTab } from '../components/panels/PersonajePanel'
 import { DetailModal, type DetailTarget } from '../components/DetailModal'
 import { useEnciclopedia } from '../hooks/useEnciclopedia'
 import type { EnciclopediaLinkTarget } from '../lib/enciclopediaIndex'
@@ -20,10 +20,10 @@ import { CompanerosPanel } from '../components/panels/CompanerosPanel'
 import { ReinoPanel } from '../components/panels/ReinoPanel'
 import { MisionesPanel } from '../components/panels/MisionesPanel'
 import { HabilidadesPanel } from '../components/panels/HabilidadesPanel'
-import { ProfesionesPanel } from '../components/panels/ProfesionesPanel'
 import { playerActionEntry } from '../lib/simulateAI'
 import { DiscoveryReveal } from '../components/DiscoveryReveal'
 import { CombatComposer, type CombatNpcDisplay } from '../components/CombatComposer'
+import { CombatPanel } from '../components/CombatPanel'
 import { HealthBar } from '../components/HealthBar'
 import {
   requestTurnClassify,
@@ -160,6 +160,7 @@ export function GameView() {
   const [cancelingTransit, setCancelingTransit] = useState(false)
   const [nowTick, setNowTick] = useState(() => Date.now())
   const [activePanel, setActivePanel] = useState<PanelId | null>(null)
+  const [personajeSubTab, setPersonajeSubTab] = useState<PersonajeSubTab>('equipo')
   const [detailTarget, setDetailTarget] = useState<DetailTarget | null>(null)
   // Solo se usa para el detalle de la Enciclopedia (kind: 'info') — guarda el callback concreto
   // de "insertar este elemento" para esa entrada, ver handleEnciclopediaDetail.
@@ -167,7 +168,7 @@ export function GameView() {
   // Texto clicable en narración/diario/descripciones (2026-07-22, petición explícita) — un solo
   // índice construido una vez, reutilizado por LogPanel/DiarioPanel/DetailModal. Clicar una
   // mención simplemente reemplaza `detailTarget` (mismo estado de siempre), no abre nada nuevo.
-  const enciclopediaIndex = useEnciclopedia(worldIdSlug)
+  const { index: enciclopediaIndex, raw: enciclopediaData } = useEnciclopedia(worldIdSlug)
   // Banner de elemento citado bajo la narración (petición explícita de la usuaria, 2026-07-24):
   // ventana de "no repetir" de las últimas 4 narraciones, en memoria de esta sesión — no hace
   // falta persistirlo, un cambio de partida/recarga simplemente empieza la ventana de cero.
@@ -259,22 +260,57 @@ export function GameView() {
   const [combatNpcStates, setCombatNpcStates] = useState<CombatNpcDisplay[]>([])
   const [combatBusy, setCombatBusy] = useState(false)
   const [combatEnded, setCombatEnded] = useState(false)
-  const combatNpcsDisplay: CombatNpcDisplay[] = (combateIniciado?.npcs ?? []).map((n) => {
-    const state = combatNpcStates.find((s) => s.slug === n.slug)
-    return (
-      state ?? {
-        slug: n.slug,
-        name: n.name,
-        condicion: n.condicionFisica === 'MUERTO' ? 'INCAPACITADO' : n.condicionFisica,
-        yaSaqueado: n.saqueado,
-      }
-    )
-  })
+  // Rediseño de la vista de combate (2026-07-28): este estado vivía dentro de CombatComposer.tsx,
+  // remontado limpio cada vez que el combate se abría/cerraba (era un componente condicional).
+  // Ahora vive aquí porque lo comparten dos sitios distintos del layout a la vez (CombatPanel,
+  // arriba en el panel derecho, y el input de texto libre recortado, abajo) — `openCombat()` lo
+  // reinicia a mano, igual que antes hacía el `useState` inicial de aquel componente.
+  // Rediseño del turno de combate (2026-07-28) — true entre "el NPC ganó la iniciativa" y "el
+  // jugador ya eligió su defensa a ciegas"; gatea el sub-modo de CombatPanel (oculta objetivos/
+  // Huir/objetos, cambia "Actuar" por "Defenderte").
+  const [combatAwaitingDefense, setCombatAwaitingDefense] = useState(false)
+  const [combatSelectedNpcSlug, setCombatSelectedNpcSlug] = useState<string | null>(null)
+  const [combatSelectedAbilityId, setCombatSelectedAbilityId] = useState<string | null>(null)
+  const [combatSelectedItemId, setCombatSelectedItemId] = useState<string | null>(null)
+  const [combatFreeText, setCombatFreeText] = useState('')
+  // Auditoría de rendimiento 2026-07-28 ("rascar segundos"): memoizado — sin esto, `.map()`
+  // devolvía una referencia NUEVA en cada render de GameView (cada chunk de narración en
+  // streaming, cada tecla del composer...), y el useEffect de más abajo depende de este array
+  // entero: sin una referencia estable, se disparaba en cada uno de esos renders, no solo cuando
+  // el combate realmente cambia.
+  const combatNpcsDisplay: CombatNpcDisplay[] = useMemo(
+    () =>
+      (combateIniciado?.npcs ?? []).map((n) => {
+        const state = combatNpcStates.find((s) => s.slug === n.slug)
+        return (
+          state ?? {
+            slug: n.slug,
+            name: n.name,
+            condicion: n.condicionFisica === 'MUERTO' ? 'INCAPACITADO' : n.condicionFisica,
+            yaSaqueado: n.saqueado,
+          }
+        )
+      }),
+    [combateIniciado, combatNpcStates],
+  )
+  // Bug real (2026-07-25, "revisar partida"): `combatEnded` solo se marcaba con `finDePartida` o
+  // la muerte del PROPIO personaje — nunca cuando el enemigo quedaba derrotado. Un NPC en GRAVE ya
+  // se puede saquear (ver "Registrar" en CombatComposer), así que saquearlo es la señal real de
+  // "esto ya terminó" aunque nunca llegue a INCAPACITADO — sin esto, la pantalla de combate se
+  // quedaba encallada para siempre tras looter a un enemigo que no llegó a caer del todo.
+  useEffect(() => {
+    if (!combatOpen || combatEnded || combatNpcsDisplay.length === 0) return
+    const allResolved = combatNpcsDisplay.every((n) => n.condicion === 'INCAPACITADO' || n.yaSaqueado)
+    if (allResolved) setCombatEnded(true)
+  }, [combatOpen, combatEnded, combatNpcsDisplay])
+
   // Tabs que no tienen sentido en pleno combate (petición explícita, 2026-07-24) — Estadísticas,
   // Equipo, Habilidades y Enciclopedia se dejan libres a propósito ("no fuerces nada, ya lo
   // gestionaremos con un tutorial futuro"): solo se restringe lo que de verdad no se puede hacer
   // en mitad de una pelea (viajar, gestionar el Reino, leer el diario...).
-  const COMBAT_DISABLED_CHARACTER_TABS: PanelId[] = ['inventario', 'profesiones']
+  // 'profesiones' ya no es un PanelId de nivel superior (vive como sub-pestaña dentro de
+  // PersonajePanel, que recibe `combatOpen` y deshabilita esa sub-pestaña por su cuenta).
+  const COMBAT_DISABLED_CHARACTER_TABS: PanelId[] = ['inventario']
   const COMBAT_DISABLED_WORLD_TABS: PanelId[] = ['mapa', 'diario', 'misiones', 'companeros', 'reino']
 
   function openCombat() {
@@ -288,39 +324,83 @@ export function GameView() {
       })),
     )
     setCombatEnded(false)
+    // Mismo reinicio que antes hacía el `useState` inicial de CombatComposer al montarse.
+    setCombatSelectedNpcSlug(combateIniciado.npcs[0]?.slug ?? null)
+    setCombatSelectedAbilityId(null)
+    setCombatSelectedItemId(null)
+    setCombatFreeText('')
+    setCombatAwaitingDefense(false)
     if (activePanel && (COMBAT_DISABLED_CHARACTER_TABS.includes(activePanel) || COMBAT_DISABLED_WORLD_TABS.includes(activePanel))) {
       setActivePanel(null)
     }
     setCombatOpen(true)
   }
 
-  function downgradeCombatNpc(slug: string) {
-    setCombatNpcStates((prev) =>
-      prev.map((n) => {
-        if (n.slug !== slug) return n
-        const idx = CONDICION_ORDER.indexOf(n.condicion)
-        return { ...n, condicion: CONDICION_ORDER[Math.min(idx + 1, CONDICION_ORDER.length - 1)] }
-      }),
-    )
-  }
-
-  async function submitCombatAction(action: string, opts: { targetSlug?: string; savedActionId?: string }) {
-    if (!action.trim() || combatBusy || combatEnded || !saveId) return
+  async function submitCombatAction(action: string, opts: { savedActionId?: string }): Promise<boolean> {
+    if (!action.trim() || combatBusy || combatEnded || !saveId) return false
     setCombatBusy(true)
     try {
       const classifyResult = await requestTurnClassify({ saveId, action, enCombate: true, savedActionId: opts.savedActionId })
       const { classification, roll } = classifyResult
-      const { narration, progression, condicionFisica, finDePartida, newInventoryItems, logEntryId } = await requestTurnNarrate({
+      if (classifyResult.transit) {
+        // Salvaguarda (auditoría 2026-07-28): el backend ya fuerza banda "instantánea" para
+        // cualquier acción de combate (turn.ts), así que esto no debería pasar nunca — pero si
+        // pasara, seguir a narrate igualmente resolvería el turno DOS veces (ahora y otra vez al
+        // vencer ese transit, esta vez sin `enCombate`/`pendingNpcAttack`, perdiendo un ataque de
+        // NPC pendiente sin que el jugador llegue a defenderse). Se corta aquí en vez de arriesgar
+        // una doble resolución silenciosa.
+        setCharacterLog((prev) => [
+          ...prev,
+          {
+            id: `combat-err-${Date.now()}`,
+            channel: 'character',
+            text: 'Esta acción tardaría demasiado para resolverse en mitad de un combate — prueba con algo más directo.',
+            timeLabel: fictionalDate,
+            createdAt: new Date().toISOString(),
+            combate: true,
+          },
+        ])
+        return false
+      }
+      const {
+        narration,
+        progression,
+        condicionFisica,
+        combateIniciado: combate,
+        finDePartida,
+        newInventoryItems,
+        logEntryId,
+        quests: updatedQuests,
+        esperandoDefensaJugador,
+      } = await requestTurnNarrate({
         saveId,
         action,
         classification,
         roll,
         enCombate: true,
         savedActionId: opts.savedActionId,
+        npcsInScene: classifyResult.npcsInScene,
       })
-      if (opts.targetSlug && roll?.success) downgradeCombatNpc(opts.targetSlug)
-      handleCombatTurnResolved({ narration: narration.narration, progression, condicionFisica, finDePartida, newInventoryItems, logEntryId })
+      // Auditoría 2026-07-28: antes había aquí un downgrade optimista de la condición del NPC
+      // basado en `roll.success` (la tirada tabulada de classify) — desde que el intercambio real
+      // se decide en resolveExchange (turnResolution.ts), esa tirada ya no tiene relación con si
+      // el golpe conectó de verdad, así que podía mostrar al NPC más herido de lo que estaba y
+      // quedarse así para siempre (el merge de `combate.npcs` de abajo nunca corrige hacia atrás).
+      // El backend ya devuelve la condición fresca del NPC golpeado en la misma respuesta —
+      // `handleCombatTurnResolved` es la única fuente de verdad ahora.
+      setQuests(updatedQuests)
+      handleCombatTurnResolved({
+        narration: narration.narration,
+        progression,
+        condicionFisica,
+        finDePartida,
+        newInventoryItems,
+        logEntryId,
+        combate,
+        esperandoDefensaJugador,
+      })
       if (finDePartida || condicionFisica === 'MUERTO') setCombatEnded(true)
+      return true
     } catch {
       setCharacterLog((prev) => [
         ...prev,
@@ -330,8 +410,10 @@ export function GameView() {
           text: 'No se pudo resolver este turno de combate.',
           timeLabel: fictionalDate,
           createdAt: new Date().toISOString(),
+          combate: true,
         },
       ])
+      return false
     } finally {
       setCombatBusy(false)
     }
@@ -343,11 +425,69 @@ export function GameView() {
     submitCombatAction('Intento huir de este combate, alejándome como pueda.', {})
     setCombatOpen(false)
     setCombateIniciado(null)
+    setCombatAwaitingDefense(false)
   }
 
-  function handleCombatRegistrar(npc: CombatNpcDisplay) {
+  async function handleCombatRegistrar(npc: CombatNpcDisplay) {
     setCombatNpcStates((prev) => prev.map((n) => (n.slug === npc.slug ? { ...n, yaSaqueado: true } : n)))
-    submitCombatAction(`Registro el cuerpo de ${npc.name}.`, {})
+    // Comillas alrededor del nombre (bug real, auditoría 2026-07-28): igual que handleAttack ya
+    // hace para que el backend resuelva `explicitTarget` — sin ellas, el saqueo podía alcanzar a
+    // cualquier otro NPC derrotado que estuviera también en escena, no solo al pulsado aquí.
+    const ok = await submitCombatAction(`Registro el cuerpo de '${npc.name}'.`, {})
+    // Rollback (bug real, auditoría 2026-07-28): si el turno falla, el saqueo optimista de arriba
+    // dejaba al NPC marcado como saqueado en la UI para siempre, aunque el backend nunca llegó a
+    // aplicarlo — el botón de registrar desaparecía sin que el saqueo hubiera ocurrido de verdad.
+    if (!ok) {
+      setCombatNpcStates((prev) => prev.map((n) => (n.slug === npc.slug ? { ...n, yaSaqueado: false } : n)))
+    }
+  }
+
+  // Rediseño de la vista de combate (2026-07-28): mismos handlers que antes vivían dentro de
+  // CombatComposer.tsx (handleAttack/handleUseItem/resetSelection), movidos aquí porque el estado
+  // de selección que usan ahora se comparte entre CombatPanel (arriba) y el input de texto libre
+  // recortado (abajo).
+  function resetCombatSelection() {
+    setCombatSelectedAbilityId(null)
+    setCombatSelectedItemId(null)
+    setCombatFreeText('')
+  }
+
+  function handleCombatAttack() {
+    const selectedAbility = savedActions.find((a) => a.id === combatSelectedAbilityId)
+    if (!selectedAbility) return
+    // Defensa a ciegas (rediseño del turno de combate, 2026-07-28): reactiva, sin objetivo propio
+    // que elegir — el backend ya sabe que toca resolver la defensa pendiente del NPC por su
+    // propio `Save.pendingNpcAttack`, así que el texto no menciona ningún NPC.
+    if (combatAwaitingDefense) {
+      submitCombatAction(selectedAbility.promptText, { savedActionId: selectedAbility.id })
+      resetCombatSelection()
+      return
+    }
+    const selectedNpc = combatNpcsDisplay.find((n) => n.slug === combatSelectedNpcSlug) ?? null
+    const base = selectedAbility.promptText.trim().replace(/\.+$/, '')
+    const action = selectedNpc ? `${base} '${selectedNpc.name}'.` : selectedAbility.promptText
+    submitCombatAction(action, { savedActionId: selectedAbility.id })
+    resetCombatSelection()
+  }
+
+  // Objetos consumibles (petición explícita, 2026-07-22): siempre de uso propio, nunca contra un
+  // NPC objetivo.
+  function handleCombatUseItem() {
+    const selectedItem = inventory.find((i) => i.id === combatSelectedItemId)
+    if (!selectedItem) return
+    submitCombatAction(`Uso '${selectedItem.name}'.`, {})
+    resetCombatSelection()
+  }
+
+  function handleCombatActuar() {
+    if (combatSelectedAbilityId) handleCombatAttack()
+    else if (combatSelectedItemId) handleCombatUseItem()
+  }
+
+  function handleCombatFreeSubmit() {
+    if (!combatFreeText.trim()) return
+    submitCombatAction(combatFreeText, {})
+    resetCombatSelection()
   }
   const [quests, setQuests] = useState<QuestInfo[]>([])
   const [chapters, setChapters] = useState<SessionSummaryInfo[]>([])
@@ -509,6 +649,10 @@ export function GameView() {
     if (!saveId) return
     const updated = await updateSavedAction(saveId, habilidadId, params)
     setSavedActions((prev) => prev.map((a) => (a.id === habilidadId ? updated : a)))
+    // Bug real (auditoría 2026-07-28): DetailModal vuelve a modo vista con el `target` que se le
+    // pasó al abrirse, no con `savedActions` — sin esto, la ficha mostraba nombre/descripción
+    // previos al cambio hasta cerrarla y reabrirla, aunque la lista de abajo ya estuviera al día.
+    setDetailTarget((prev) => (prev?.kind === 'ability' && prev.ability.id === habilidadId ? { kind: 'ability', ability: updated } : prev))
   }
 
   function handleItemDetail(item: InventoryItemInfo) {
@@ -609,6 +753,8 @@ export function GameView() {
     finDePartida: boolean
     newInventoryItems: InventoryItemInfo[]
     logEntryId: string
+    combate?: { npcs: NpcInSceneInfo[] } | null
+    esperandoDefensaJugador: boolean
   }) {
     // `buildEntityBanner` se calcula FUERA del updater (bug real, 2026-07-24, "sigue sin salir la
     // imagen" pese a candidatos válidos): StrictMode invoca dos veces en dev cualquier función
@@ -627,6 +773,7 @@ export function GameView() {
         timeLabel: fictionalDate,
         createdAt: new Date().toISOString(),
         entityBanner,
+        combate: true,
       },
     ])
     if (params.newInventoryItems.length > 0) {
@@ -638,10 +785,45 @@ export function GameView() {
       setPendingAttributePoints((prev) => prev + params.progression.attributePointsGained)
     }
     setCondicionFisica(params.condicionFisica)
+    setCombatAwaitingDefense(params.esperandoDefensaJugador)
+    // Bug real (auditoría 2026-07-28): esta función (la que resuelve CADA turno mientras el
+    // combate ya está abierto) nunca aplicaba el `combateIniciado` de la respuesta — a diferencia
+    // de fuera de combate (ver más abajo), donde sí se hace. Un NPC nuevo añadido a media pelea
+    // quedaba invisible en CombatComposer, y si la condición real del backend avanzaba más de lo
+    // que reflejaba el estado local, el botón "Registrar" podía no aparecer nunca para un NPC ya
+    // derrotado de verdad en el servidor.
+    if (params.combate && params.combate.npcs.length > 0) {
+      setCombateIniciado(params.combate)
+      setCombatNpcStates((prev) => {
+        const bySlug = new Map(prev.map((n) => [n.slug, n]))
+        for (const n of params.combate!.npcs) {
+          const real: CombatNpcDisplay = {
+            slug: n.slug,
+            name: n.name,
+            condicion: n.condicionFisica === 'MUERTO' ? 'INCAPACITADO' : n.condicionFisica,
+            yaSaqueado: n.saqueado,
+          }
+          const local = bySlug.get(n.slug)
+          if (!local) {
+            bySlug.set(n.slug, real)
+            continue
+          }
+          // El backend manda: solo se sustituye el estado local si el real ha avanzado más (nunca
+          // "resucita" a alguien que el propio jugador ya vio caer más allá, por si acaso llega
+          // desordenado).
+          const avanza = CONDICION_ORDER.indexOf(real.condicion) > CONDICION_ORDER.indexOf(local.condicion)
+          if (avanza || (real.yaSaqueado && !local.yaSaqueado)) {
+            bySlug.set(n.slug, real)
+          }
+        }
+        return Array.from(bySlug.values())
+      })
+    }
     if (params.finDePartida) {
       setEndedAt(new Date().toISOString())
       setCombatOpen(false)
       setCombateIniciado(null)
+      setCombatAwaitingDefense(false)
     }
   }
 
@@ -677,8 +859,16 @@ export function GameView() {
 
     async function createNewSave() {
       if (!selectedWorld || !selectedCharacter) return
-      const introCharacterText = `${selectedCharacter.name} llega a las tierras de ${selectedWorld.name}. ${selectedCharacter.motivation} Todo lo que ocurra a partir de ahora empieza aquí.`
-      const introWorldText = `El mundo de ${selectedWorld.name} sigue su curso, ajeno por ahora a la llegada de un nuevo actor en la historia.`
+      // Intro propia por personaje pregenerado (2026-07-28, petición explícita: "había
+      // actualizado algunos mensajes... pero no veo que salgan") — antes esta plantilla genérica
+      // era la ÚNICA fuente posible, sin ningún hueco para una intro narrativa propia por
+      // personaje; el texto rico que ya se había escrito (data/mock.ts) nunca llegaba a usarse.
+      const introCharacterText =
+        selectedCharacter.introCharacterText ??
+        `${selectedCharacter.name} llega a las tierras de ${selectedWorld.name}. ${selectedCharacter.motivation} Todo lo que ocurra a partir de ahora empieza aquí.`
+      const introWorldText =
+        selectedCharacter.introWorldText ??
+        `El mundo de ${selectedWorld.name} sigue su curso, ajeno por ahora a la llegada de un nuevo actor en la historia.`
       try {
         const { id: newId } = await createSave({
           worldSlug: selectedWorld.id,
@@ -792,8 +982,9 @@ export function GameView() {
         finDePartida,
         newInventoryItems,
         logEntryId,
+        quests: updatedQuests,
       } = await requestTurnNarrate(
-        { saveId, action, classification, roll, travel },
+        { saveId, action, classification, roll, travel, npcsInScene: classifyResult.npcsInScene },
         {
           onChunk: (delta) => setStreamingNarration((prev) => (prev ?? '') + delta),
           onReset: () => setStreamingNarration(null),
@@ -801,6 +992,7 @@ export function GameView() {
       )
       setStreamingNarration(null)
       setCondicionFisica(newCondicion)
+      setQuests(updatedQuests)
       if (newInventoryItems.length > 0) {
         setInventory((prev) => [...prev, ...newInventoryItems])
       }
@@ -1046,15 +1238,13 @@ export function GameView() {
 
   const panelTitles: Record<PanelId, string> = {
     mapa: 'Mapa',
-    estadisticas: 'Estadísticas',
     inventario: 'Inventario',
-    equipo: 'Equipo',
+    personaje: 'Personaje',
     diario: 'Diario',
     misiones: 'Misiones',
     companeros: 'Compañeros',
     reino: 'Reino',
     habilidades: 'Habilidades',
-    profesiones: 'Profesiones',
     enciclopedia: 'Enciclopedia',
   }
   // Roadmap de diseño CSS (Fable, 2026-07-20, Nivel 3): el marco del cajón sigue la misma
@@ -1062,11 +1252,9 @@ export function GameView() {
   // mundo") — Diario se deja en 'accent' por defecto porque mezcla ambos canales por diseño
   // (ver DiarioPanel, gem/gem2 por entrada) y no encaja limpiamente en ninguno de los dos.
   const panelAccent: Record<PanelId, 'accent' | 'accent2'> = {
-    estadisticas: 'accent',
     inventario: 'accent',
-    equipo: 'accent',
+    personaje: 'accent',
     habilidades: 'accent',
-    profesiones: 'accent',
     mapa: 'accent2',
     diario: 'accent',
     misiones: 'accent2',
@@ -1080,8 +1268,8 @@ export function GameView() {
       value={{ enciclopediaIndex, onEntityDetail: handleEntityDetailNavigate, onEntityQuickInsert: handleEntityQuickInsert }}
     >
     <div className="relative flex min-h-0 flex-1 flex-col">
-      <header className="iron-band relative flex items-center justify-between px-5 pb-3 pt-2.5">
-        <div>
+      <header className="iron-band relative flex flex-wrap items-center justify-between gap-2 px-5 pb-3 pt-2.5">
+        <div className="min-w-0">
           <button
             onClick={() =>
               // Bug real (2026-07-24, "al darle a salir de la partida, que me lleve a las
@@ -1097,15 +1285,18 @@ export function GameView() {
           >
             ← Salir a tus partidas
           </button>
-          <p className="mt-0.5 font-serif text-base tracking-wide text-wood-200">
+          <p className="mt-0.5 truncate font-serif text-base tracking-wide text-wood-200">
             <span className="text-accent-400">{characterName}</span>
             <span className="mx-2 text-wood-600">·</span>
             <span className="text-wood-300">{worldName}</span>
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center justify-end gap-2">
           <button
-            onClick={() => setActivePanel('estadisticas')}
+            onClick={() => {
+              setPersonajeSubTab('estadisticas')
+              setActivePanel('personaje')
+            }}
             title={pendingAttributePoints > 0 ? `${pendingAttributePoints} puntos de atributo por repartir` : 'Nivel'}
             className="relative flex items-center gap-1.5 rounded-md border border-iron-700 bg-wood-950/60 px-2.5 py-1 font-serif text-xs tracking-wide text-wood-300 transition-colors hover:border-accent-600/60 hover:text-accent-300"
           >
@@ -1164,15 +1355,46 @@ export function GameView() {
             streaming={!!streamingNarration}
             emptyHint="Aquí aparecerá lo que le ocurra a tu personaje."
           />
-          <LogPanel
-            title="El mundo"
-            subtitle="Lo que ocurre más allá de tu personaje"
-            entries={worldLog}
-            accent="accent2"
-            isThinking={worldThinking}
-            thinkingText={worldFlavor}
-            emptyHint="El mundo todavía no ha mostrado sus cartas."
-          />
+          {combatOpen && combateIniciado ? (
+            // Rediseño de la vista de combate (2026-07-28, petición explícita: "quiero que la
+            // sección de combate salga sustituyendo a los logs de mundo") — el panel "El mundo"
+            // se sustituye por CombatPanel mientras dura el combate; el log de mundo en sí sigue
+            // acumulándose por debajo, sin perderse, listo para cuando termine.
+            <CombatPanel
+              npcs={combatNpcsDisplay}
+              selectedNpcSlug={combatSelectedNpcSlug}
+              onSelectNpc={setCombatSelectedNpcSlug}
+              combatAbilities={savedActions.filter((a) => a.category === 'combate')}
+              selectedAbilityId={combatSelectedAbilityId}
+              onSelectAbility={setCombatSelectedAbilityId}
+              combatItems={inventory.filter((i) => !i.slot)}
+              selectedItemId={combatSelectedItemId}
+              onSelectItem={setCombatSelectedItemId}
+              busy={combatBusy}
+              ended={combatEnded}
+              awaitingDefense={combatAwaitingDefense}
+              onActuar={handleCombatActuar}
+              onRegistrar={handleCombatRegistrar}
+              onHuir={handleCombatHuir}
+              onContinue={() => {
+                setCombatOpen(false)
+                setCombateIniciado(null)
+              }}
+              onAbilityDetail={handleAbilityDetail}
+              onItemDetail={handleItemDetail}
+              enciclopedia={enciclopediaData}
+            />
+          ) : (
+            <LogPanel
+              title="El mundo"
+              subtitle="Lo que ocurre más allá de tu personaje"
+              entries={worldLog}
+              accent="accent2"
+              isThinking={worldThinking}
+              thinkingText={worldFlavor}
+              emptyHint="El mundo todavía no ha mostrado sus cartas."
+            />
+          )}
         </div>
         <SideNav
           tabs={worldTabs}
@@ -1235,22 +1457,15 @@ export function GameView() {
           </p>
         </div>
       ) : combatOpen && combateIniciado ? (
-        // Rework 2026-07-24: sustituye al ChatComposer normal en el mismo sitio, en vez de un
-        // popup aparte — el log de arriba (LogPanel "Tu personaje") no cambia, ya recibe la
-        // narración de combate vía handleCombatTurnResolved con chips/banner/roll incluidos.
+        // Rework 2026-07-24, recortado en el rediseño de la vista de combate (2026-07-28): sigue
+        // sustituyendo al ChatComposer normal en el mismo sitio, pero ahora solo es el input de
+        // texto libre — enemigos/ficha/habilidades/objetos/Actuar viven en CombatPanel, arriba.
         <CombatComposer
-          npcs={combatNpcsDisplay}
-          combatAbilities={savedActions.filter((a) => a.category === 'combate')}
-          combatItems={inventory.filter((i) => !i.slot)}
+          freeText={combatFreeText}
+          onFreeTextChange={setCombatFreeText}
+          onSubmit={handleCombatFreeSubmit}
           busy={combatBusy}
           ended={combatEnded}
-          onSubmit={submitCombatAction}
-          onHuir={handleCombatHuir}
-          onRegistrar={handleCombatRegistrar}
-          onContinue={() => {
-            setCombatOpen(false)
-            setCombateIniciado(null)
-          }}
         />
       ) : (
         <ChatComposer
@@ -1279,14 +1494,23 @@ export function GameView() {
 
       {activePanel && (
         <PanelDrawer title={panelTitles[activePanel]} accent={panelAccent[activePanel]} onClose={() => setActivePanel(null)}>
-          {activePanel === 'estadisticas' && (
-            <EstadisticasPanel
+          {activePanel === 'personaje' && (
+            <PersonajePanel
+              activeSubTab={personajeSubTab}
+              onSubTabChange={setPersonajeSubTab}
+              combatOpen={combatOpen}
+              items={inventory}
+              onSlotClick={handleSlotClick}
               attributes={characterAttributes}
               secondaryAttributes={secondaryAttributes}
               level={level}
               xp={xp}
               pendingAttributePoints={pendingAttributePoints}
               onSpendPoint={handleSpendAttributePoint}
+              factionsStatus={factionsStatus}
+              currentProfession={profession}
+              onAdoptProfession={handleAdoptProfession}
+              professionProgress={professionProgress}
             />
           )}
           {activePanel === 'mapa' && (
@@ -1296,7 +1520,6 @@ export function GameView() {
           {activePanel === 'inventario' && (
             <InventarioPanel items={inventory} onUse={handleAttachItem} onDetail={handleItemDetail} />
           )}
-          {activePanel === 'equipo' && <EquipoPanel items={inventory} onSlotClick={handleSlotClick} />}
           {activePanel === 'companeros' && <CompanerosPanel companions={companions} />}
           {activePanel === 'misiones' && <MisionesPanel quests={quests} />}
           {activePanel === 'reino' && (
@@ -1306,7 +1529,6 @@ export function GameView() {
               territories={territories}
               buildings={buildings}
               subjects={subjects}
-              factionsStatus={factionsStatus}
               kingdomStats={kingdomStats}
             />
           )}
@@ -1321,9 +1543,6 @@ export function GameView() {
               onCreate={handleCreateHabilidad}
               onDetail={handleAbilityDetail}
             />
-          )}
-          {activePanel === 'profesiones' && (
-            <ProfesionesPanel currentProfession={profession} onAdopt={handleAdoptProfession} progress={professionProgress} />
           )}
         </PanelDrawer>
       )}

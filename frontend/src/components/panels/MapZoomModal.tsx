@@ -95,9 +95,9 @@ export function MapZoomModal({
         className="plank-panel animate-combat-enter relative flex h-[88vh] w-full max-w-5xl flex-col gap-3 rounded-xl p-4"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between gap-2">
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <h2 className="font-serif text-lg text-wood-100">Mapa completo</h2>
-          <div className="flex items-center gap-1.5">
+          <div className="flex flex-wrap items-center gap-1.5">
             <button
               onClick={() => setScale((s) => clampScale(s - ZOOM_STEP))}
               className="tactile rounded-lg border border-iron-700 px-2.5 py-1 text-sm text-wood-300 transition-colors hover:border-accent-600/60 hover:text-accent-300"

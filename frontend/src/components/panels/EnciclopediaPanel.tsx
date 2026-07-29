@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import {
   getEnciclopedia,
   resolveImageUrl,
@@ -23,6 +23,8 @@ import { beriRegions } from '../../data/map'
 import {
   ITEM_CATEGORY_LABEL,
   ITEM_CATEGORY_ORDER,
+  ITEM_TIPO_LABEL,
+  ITEM_TIPO_ORDER,
   abilityToDetailTarget,
   constructionToDetailTarget,
   faunaFloraIcon,
@@ -75,6 +77,123 @@ const ATTRIBUTES_INFO: { key: Attribute; icon: string; description: string }[] =
     description: 'El poder salvaje nacido de Tarkor — usarlo siempre conlleva un pequeño riesgo, incluso cuando sale bien.',
   },
 ]
+
+// Mismo orden que `ATTRIBUTE_RING` en backend/src/services/attributeWheel.ts — se duplica aquí
+// porque es una constante de diseño (no contenido de partida servido por la API); si cambia
+// allí, hay que actualizar este array a mano.
+const WEAKNESS_RING: Attribute[] = ['fuerza', 'destreza', 'sigilo', 'voluntad', 'carisma', 'arcano']
+
+const WEAKNESS_RING_COLOR: Record<Attribute, string> = {
+  fuerza: 'var(--color-fuerza-500)',
+  destreza: 'var(--color-destreza-500)',
+  sigilo: 'var(--color-sigilo-500)',
+  voluntad: 'var(--color-voluntad-500)',
+  carisma: 'var(--color-carisma-500)',
+  arcano: 'var(--color-arcano-500)',
+}
+
+// Rediseño del turno de combate (2026-07-28, petición explícita: "un tab para ver el árbol de
+// debilidades") — visualiza el anillo de attributeWheel.ts: cada flecha apunta a quien tiene
+// ventaja de tipo directa (distancia 1, ×1.5/÷1.5 en ambos árboles de ataque y defensa); saltarse
+// un nodo (distancia 2) es un efecto más suave, mostrado solo en la tabla de debajo, no como
+// flecha, para no saturar el dibujo con las 15 combinaciones posibles.
+function AttributeWheelDiagram() {
+  const size = 260
+  const center = size / 2
+  const radius = 92
+  const nodeRadius = 28
+  const points = WEAKNESS_RING.map((attr, i) => {
+    const angle = -Math.PI / 2 + (i * 2 * Math.PI) / WEAKNESS_RING.length
+    return { attr, x: center + radius * Math.cos(angle), y: center + radius * Math.sin(angle) }
+  })
+
+  return (
+    <div className="flex flex-col items-center gap-4">
+      <svg viewBox={`0 0 ${size} ${size}`} className="w-full max-w-xs">
+        <defs>
+          <marker id="weakness-ring-arrow" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto">
+            <path d="M0,0 L8,4 L0,8 Z" fill="var(--color-wood-500)" />
+          </marker>
+        </defs>
+        {points.map((p, i) => {
+          const next = points[(i + 1) % points.length]
+          const dx = next.x - p.x
+          const dy = next.y - p.y
+          const dist = Math.hypot(dx, dy)
+          const ux = dx / dist
+          const uy = dy / dist
+          return (
+            <line
+              key={`edge-${p.attr}`}
+              x1={p.x + ux * nodeRadius}
+              y1={p.y + uy * nodeRadius}
+              x2={next.x - ux * (nodeRadius + 8)}
+              y2={next.y - uy * (nodeRadius + 8)}
+              stroke="var(--color-wood-500)"
+              strokeWidth={1.5}
+              markerEnd="url(#weakness-ring-arrow)"
+            />
+          )
+        })}
+        {points.map((p) => {
+          const info = ATTRIBUTES_INFO.find((a) => a.key === p.attr)
+          return (
+            <g key={p.attr}>
+              <circle
+                cx={p.x}
+                cy={p.y}
+                r={nodeRadius}
+                fill={WEAKNESS_RING_COLOR[p.attr]}
+                fillOpacity={0.18}
+                stroke={WEAKNESS_RING_COLOR[p.attr]}
+                strokeWidth={2}
+              />
+              <text x={p.x} y={p.y - 3} textAnchor="middle" style={{ fontSize: 15 }}>
+                {info?.icon}
+              </text>
+              <text x={p.x} y={p.y + 14} textAnchor="middle" className="fill-wood-200" style={{ fontSize: 9 }}>
+                {attributeLabels[p.attr]}
+              </text>
+            </g>
+          )
+        })}
+      </svg>
+      <p className="max-w-sm text-center text-xs leading-relaxed text-wood-400">
+        Cada flecha apunta a quien tiene ventaja directa (distancia 1 en el anillo): usar ese tipo contra el anterior
+        multiplica tu atributo efectivo en la tirada; usarlo al revés lo divide. Aplica por separado a la tirada de ataque
+        y a la de defensa.
+      </p>
+      <div className="w-full overflow-x-auto">
+        <table className="w-full min-w-[280px] border-collapse text-xs">
+          <thead>
+            <tr className="border-b border-iron-800 text-wood-500">
+              <th className="py-1 text-left font-medium">Distancia en el anillo</th>
+              <th className="py-1 text-left font-medium">Ejemplo</th>
+              <th className="py-1 text-right font-medium">Multiplicador</th>
+            </tr>
+          </thead>
+          <tbody className="text-wood-300">
+            <tr className="border-b border-iron-900">
+              <td className="py-1.5">1 · contrario directo</td>
+              <td className="py-1.5">Destreza vs Fuerza</td>
+              <td className="py-1.5 text-right">×1.5 / ÷1.5</td>
+            </tr>
+            <tr className="border-b border-iron-900">
+              <td className="py-1.5">2 · salta un nodo</td>
+              <td className="py-1.5">Sigilo vs Fuerza</td>
+              <td className="py-1.5 text-right">×1.15 / ÷1.15</td>
+            </tr>
+            <tr>
+              <td className="py-1.5">3 · extremos opuestos</td>
+              <td className="py-1.5">Voluntad vs Fuerza</td>
+              <td className="py-1.5 text-right">sin relación (×1)</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  )
+}
 
 // Atributos secundarios (sesión de diseño 2026-07-23) — faltaban en esta pestaña aunque ya
 // existían en la ficha de personaje: nunca mueven una tirada (dice.ts), solo comprueban umbrales
@@ -210,6 +329,52 @@ function EntryCardGrid<T>({
   )
 }
 
+// Colapsable genérico (2026-07-29, petición explícita: colapsables por tipo de objeto, zona de
+// fauna/flora y raza de NPC) — mismo patrón visual ya usado para las clases (cabecera con flecha
+// que rota + contenido que aparece/desaparece), extraído aquí para no repetirlo 4 veces.
+function CollapsibleGroup({
+  title,
+  count,
+  expanded,
+  onToggle,
+  children,
+}: {
+  title: string
+  count: number
+  expanded: boolean
+  onToggle: () => void
+  children: ReactNode
+}) {
+  return (
+    <div className="rounded-lg border border-iron-800">
+      <button
+        onClick={onToggle}
+        className="tactile flex w-full items-center justify-between gap-2 rounded-lg px-3.5 py-2.5 text-left transition-colors hover:bg-wood-950/40"
+      >
+        <p className="text-2xs font-semibold uppercase tracking-[0.14em] text-wood-400">
+          {title} <span className="font-mono normal-case tracking-normal text-wood-600">({count})</span>
+        </p>
+        <span className={`shrink-0 text-wood-500 transition-transform ${expanded ? 'rotate-180' : ''}`}>▾</span>
+      </button>
+      {expanded && <div className="flex flex-col gap-4 border-t border-iron-800 px-3.5 py-3">{children}</div>}
+    </div>
+  )
+}
+
+// Set de claves expandidas (2026-07-29) — un solo hook reutilizado por los 4 colapsables de este
+// panel; Set en vez de un solo string porque abrir un grupo no debería cerrar otro.
+function useToggleSet(): [Set<string>, (key: string) => void] {
+  const [expanded, setExpanded] = useState<Set<string>>(new Set())
+  const toggle = (key: string) =>
+    setExpanded((prev) => {
+      const next = new Set(prev)
+      if (next.has(key)) next.delete(key)
+      else next.add(key)
+      return next
+    })
+  return [expanded, toggle]
+}
+
 const CATEGORY_TABS: { id: EnciclopediaCategory; label: string; icon: string }[] = [
   { id: 'npcs', label: 'NPCs', icon: '🧑' },
   { id: 'items', label: 'Objetos', icon: '📦' },
@@ -247,6 +412,16 @@ export function EnciclopediaPanel({ worldSlug, saveId, onInsert, onDetail }: Enc
   // pulsarlo veas el árbol de habilidades") — Set en vez de un solo string porque no hay razón
   // para que abrir una cierre la otra, a diferencia de las pestañas de arriba (sí exclusivas).
   const [expandedClasses, setExpandedClasses] = useState<Set<string>>(new Set())
+  // Colapsables por tipo de objeto / zona de fauna-flora / raza de NPC (2026-07-29, petición
+  // explícita) — mismo patrón que expandedClasses de arriba, vía el hook compartido de más abajo.
+  const [expandedItemTipos, toggleItemTipo] = useToggleSet()
+  const [expandedNpcRazas, toggleNpcRaza] = useToggleSet()
+  const [expandedFaunaZonas, toggleFaunaZona] = useToggleSet()
+  const [expandedFloraZonas, toggleFloraZona] = useToggleSet()
+  // Sub-tabs de la categoría "Atributos" (2026-07-28, petición explícita: "mete un tab para ver
+  // los atributos y otro para ver el árbol de debilidades") — exclusivas entre sí, a diferencia
+  // de `expandedClasses` de arriba.
+  const [attributesSubTab, setAttributesSubTab] = useState<'lista' | 'debilidades'>('lista')
 
   useEffect(() => {
     if (!worldSlug) return
@@ -276,15 +451,48 @@ export function EnciclopediaPanel({ worldSlug, saveId, onInsert, onDetail }: Enc
     }
   }, [worldSlug, saveId])
 
-  const itemsByCategory = groupBy(items, (i) => i.category)
-  const orderedItemCategories = [
-    ...ITEM_CATEGORY_ORDER.filter((c) => itemsByCategory.has(c)),
-    ...Array.from(itemsByCategory.keys()).filter((c) => !ITEM_CATEGORY_ORDER.includes(c)),
+  // Agrupación en dos niveles (2026-07-29, categorización mecánica de objetos): tipo (amplio,
+  // exterior) → categoría (subtipo fino, el groupBy de siempre, ahora anidado) — mismo patrón ya
+  // usado para razas/construcciones (constructionsByRaza más abajo), no un mecanismo nuevo.
+  const itemsByTipo = groupBy(items, (i) => i.tipo)
+  const orderedItemTipos = [
+    ...ITEM_TIPO_ORDER.filter((t) => itemsByTipo.has(t)),
+    ...Array.from(itemsByTipo.keys()).filter((t) => !ITEM_TIPO_ORDER.includes(t as (typeof ITEM_TIPO_ORDER)[number])),
   ]
+  function orderedCategoriesFor(itemsOfTipo: EnciclopediaItemInfo[]) {
+    const byCategory = groupBy(itemsOfTipo, (i) => i.category)
+    return [
+      ...ITEM_CATEGORY_ORDER.filter((c) => byCategory.has(c)),
+      ...Array.from(byCategory.keys()).filter((c) => !ITEM_CATEGORY_ORDER.includes(c)),
+    ].map((cat) => [cat, byCategory.get(cat) ?? []] as const)
+  }
 
   const locationsByRegion = groupBy(locations, (l) => l.region)
   const faunaEntries = faunaFlora.filter((e) => e.esFauna)
   const floraEntries = faunaFlora.filter((e) => !e.esFauna)
+
+  // Colapsables por raza de NPC (2026-07-29, petición explícita: "a los NPC separarlos por
+  // raza") — `razaNameBySlug` resuelve el nombre real desde `razas` (ya cargado para la propia
+  // pestaña de razas); NPCs sin raza asignada (facciones humanas genéricas, patrullas...) caen en
+  // un bucket aparte al final, nunca se pierden.
+  const razaNameBySlug = new Map(razas.map((r) => [r.slug, r.name]))
+  const SIN_RAZA = 'sin-raza'
+  const npcsByRaza = groupBy(npcs, (n) => n.raza ?? SIN_RAZA)
+  const orderedNpcRazas = [
+    ...razas.map((r) => r.slug).filter((slug) => npcsByRaza.has(slug)),
+    ...(npcsByRaza.has(SIN_RAZA) ? [SIN_RAZA] : []),
+  ]
+
+  // Colapsables por zona de fauna/flora (2026-07-29, petición explícita: "que fauna y flora
+  // tenga colapsables separándolos por zona") — mismo orden de regiones que ya usa el backend
+  // (discovery.ts, REGION_CORE_NAMES); lo que no tiene zona reconocible cae en un bucket aparte.
+  const ZONA_ORDER = ['Llanuras del Viento Rojo', 'Cristal Helado', 'Ciénaga Troncal', 'Margen Silencioso', 'Meseta del Orden']
+  const SIN_ZONA = 'sin-zona'
+  function groupedByZona(entries: EnciclopediaFaunaFloraInfo[]) {
+    const byZona = groupBy(entries, (e) => e.region ?? SIN_ZONA)
+    const ordered = [...ZONA_ORDER.filter((z) => byZona.has(z)), ...(byZona.has(SIN_ZONA) ? [SIN_ZONA] : [])]
+    return ordered.map((zona) => [zona, byZona.get(zona) ?? []] as const)
+  }
 
   // División por raza (2026-07-23, petición explícita: "tiene que haber construcciones por
   // raza... el campamento va a ser la construcción básica y común") — `raza: null` es la única
@@ -333,17 +541,18 @@ export function EnciclopediaPanel({ worldSlug, saveId, onInsert, onDetail }: Enc
 
   return (
     <div className="flex min-h-0 flex-1 gap-4">
-      <nav className="flex w-28 shrink-0 flex-col gap-1">
+      <nav className="flex w-11 shrink-0 flex-col gap-1 sm:w-28">
         {CATEGORY_TABS.map((tab) => (
           <button
             key={tab.id}
             onClick={() => setCategory(tab.id)}
+            title={tab.label}
             className={`flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-left text-xs transition-colors ${
               category === tab.id ? 'bg-accent2-500/10 font-medium text-accent2-300' : 'text-wood-400 hover:bg-wood-950/40 hover:text-wood-200'
             }`}
           >
             <span className="text-sm leading-none">{tab.icon}</span>
-            <span className="leading-tight">{tab.label}</span>
+            <span className="hidden leading-tight sm:inline">{tab.label}</span>
           </button>
         ))}
       </nav>
@@ -357,43 +566,77 @@ export function EnciclopediaPanel({ worldSlug, saveId, onInsert, onDetail }: Enc
               (npcs.length === 0 ? (
                 <PanelEmptyState icon="🧑" title="Sin NPCs catalogados" hint="Todavía no hay ninguno en este mundo." />
               ) : (
-                <EntryCardGrid
-                  items={npcs}
-                  keyOf={(npc) => npc.slug}
-                  icon={npcIcon}
-                  name={(npc) => npc.name}
-                  tooltip={(npc) => `${npc.role}${npc.faction ? ` — ${npc.faction}` : ''}`}
-                  imageUrl={(npc) => resolveImageUrl(npc.imageUrls.thumbnail)}
-                  toDetailTarget={npcToDetailTarget}
-                  toChip={(npc) => ({ icon: npcIcon(), label: npc.name, description: npc.bio })}
-                  onDetail={onDetail}
-                  onInsert={onInsert}
-                  discovered={(npc) => npc.discovered}
-                />
+                <div className="flex flex-col gap-3">
+                  {/* Colapsables por raza (2026-07-29, petición explícita: "a los NPC
+                      separarlos por raza"). */}
+                  {orderedNpcRazas.map((raza) => {
+                    const razaNpcs = npcsByRaza.get(raza) ?? []
+                    return (
+                      <CollapsibleGroup
+                        key={raza}
+                        title={raza === SIN_RAZA ? 'Sin raza asignada' : (razaNameBySlug.get(raza) ?? raza)}
+                        count={razaNpcs.length}
+                        expanded={expandedNpcRazas.has(raza)}
+                        onToggle={() => toggleNpcRaza(raza)}
+                      >
+                        <EntryCardGrid
+                          items={razaNpcs}
+                          keyOf={(npc) => npc.slug}
+                          icon={npcIcon}
+                          name={(npc) => npc.name}
+                          tooltip={(npc) => `${npc.role}${npc.faction ? ` — ${npc.faction}` : ''}`}
+                          imageUrl={(npc) => resolveImageUrl(npc.imageUrls.thumbnail)}
+                          toDetailTarget={npcToDetailTarget}
+                          toChip={(npc) => ({ icon: npcIcon(), label: npc.name, description: npc.bio })}
+                          onDetail={onDetail}
+                          onInsert={onInsert}
+                          discovered={(npc) => npc.discovered}
+                        />
+                      </CollapsibleGroup>
+                    )
+                  })}
+                </div>
               ))}
 
             {category === 'items' &&
               (items.length === 0 ? (
                 <PanelEmptyState icon="📦" title="Sin objetos catalogados" hint="Todavía no hay ninguno en este mundo." />
               ) : (
-                <div className="flex flex-col gap-5">
-                  {orderedItemCategories.map((cat) => (
-                    <PanelSection key={cat} title={ITEM_CATEGORY_LABEL[cat] ?? cat}>
-                      <EntryCardGrid
-                        items={itemsByCategory.get(cat) ?? []}
-                        keyOf={(item) => item.slug}
-                        icon={(item) => itemIcon(item.category)}
-                        name={(item) => item.name}
-                        tooltip={(item) => item.description}
-                        imageUrl={(item) => resolveImageUrl(item.imageUrls.thumbnail)}
-                        toDetailTarget={itemToDetailTarget}
-                        toChip={(item) => ({ icon: itemIcon(item.category), label: item.name, description: item.description })}
-                        onDetail={onDetail}
-                        onInsert={onInsert}
-                        discovered={(item) => item.discovered}
-                      />
-                    </PanelSection>
-                  ))}
+                <div className="flex flex-col gap-3">
+                  {/* Colapsables por tipo (2026-07-29, petición explícita: "además de la
+                      clasificación actual, quiero colapsables por tipo de item") — la
+                      clasificación tipo→categoría de siempre se mantiene intacta DENTRO de cada
+                      colapsable. */}
+                  {orderedItemTipos.map((tipo) => {
+                    const tipoItems = itemsByTipo.get(tipo) ?? []
+                    return (
+                      <CollapsibleGroup
+                        key={tipo}
+                        title={ITEM_TIPO_LABEL[tipo as (typeof ITEM_TIPO_ORDER)[number]] ?? tipo}
+                        count={tipoItems.length}
+                        expanded={expandedItemTipos.has(tipo)}
+                        onToggle={() => toggleItemTipo(tipo)}
+                      >
+                        {orderedCategoriesFor(tipoItems).map(([cat, catItems]) => (
+                          <PanelSection key={cat} title={ITEM_CATEGORY_LABEL[cat] ?? cat}>
+                            <EntryCardGrid
+                              items={catItems}
+                              keyOf={(item) => item.slug}
+                              icon={(item) => itemIcon(item.category)}
+                              name={(item) => item.name}
+                              tooltip={(item) => item.description}
+                              imageUrl={(item) => resolveImageUrl(item.imageUrls.thumbnail)}
+                              toDetailTarget={itemToDetailTarget}
+                              toChip={(item) => ({ icon: itemIcon(item.category), label: item.name, description: item.description })}
+                              onDetail={onDetail}
+                              onInsert={onInsert}
+                              discovered={(item) => item.discovered}
+                            />
+                          </PanelSection>
+                        ))}
+                      </CollapsibleGroup>
+                    )
+                  })}
                 </div>
               ))}
 
@@ -401,38 +644,64 @@ export function EnciclopediaPanel({ worldSlug, saveId, onInsert, onDetail }: Enc
               (faunaEntries.length === 0 ? (
                 <PanelEmptyState icon="🐾" title="Sin fauna catalogada" hint="Todavía no hay ninguna en este mundo." />
               ) : (
-                <EntryCardGrid
-                  items={faunaEntries}
-                  keyOf={(entry) => entry.sourceSlug}
-                  icon={faunaFloraIcon}
-                  name={(entry) => entry.sourceName}
-                  tooltip={yieldsSummary}
-                  imageUrl={(entry) => resolveImageUrl(entry.imageUrls.thumbnail)}
-                  toDetailTarget={faunaFloraToDetailTarget}
-                  toChip={(entry) => ({ icon: faunaFloraIcon(entry), label: entry.sourceName })}
-                  onDetail={onDetail}
-                  onInsert={onInsert}
-                  discovered={(entry) => entry.discovered}
-                />
+                <div className="flex flex-col gap-3">
+                  {/* Colapsables por zona (2026-07-29, petición explícita: "que fauna y flora
+                      tenga colapsables separándolos por zona"). */}
+                  {groupedByZona(faunaEntries).map(([zona, zonaEntries]) => (
+                    <CollapsibleGroup
+                      key={zona}
+                      title={zona === SIN_ZONA ? 'Zona desconocida' : zona}
+                      count={zonaEntries.length}
+                      expanded={expandedFaunaZonas.has(zona)}
+                      onToggle={() => toggleFaunaZona(zona)}
+                    >
+                      <EntryCardGrid
+                        items={zonaEntries}
+                        keyOf={(entry) => entry.sourceSlug}
+                        icon={faunaFloraIcon}
+                        name={(entry) => entry.sourceName}
+                        tooltip={yieldsSummary}
+                        imageUrl={(entry) => resolveImageUrl(entry.imageUrls.thumbnail)}
+                        toDetailTarget={faunaFloraToDetailTarget}
+                        toChip={(entry) => ({ icon: faunaFloraIcon(entry), label: entry.sourceName })}
+                        onDetail={onDetail}
+                        onInsert={onInsert}
+                        discovered={(entry) => entry.discovered}
+                      />
+                    </CollapsibleGroup>
+                  ))}
+                </div>
               ))}
 
             {category === 'flora' &&
               (floraEntries.length === 0 ? (
                 <PanelEmptyState icon="🌿" title="Sin flora catalogada" hint="Todavía no hay ninguna en este mundo." />
               ) : (
-                <EntryCardGrid
-                  items={floraEntries}
-                  keyOf={(entry) => entry.sourceSlug}
-                  icon={faunaFloraIcon}
-                  name={(entry) => entry.sourceName}
-                  tooltip={yieldsSummary}
-                  imageUrl={(entry) => resolveImageUrl(entry.imageUrls.thumbnail)}
-                  toDetailTarget={faunaFloraToDetailTarget}
-                  toChip={(entry) => ({ icon: faunaFloraIcon(entry), label: entry.sourceName })}
-                  onDetail={onDetail}
-                  onInsert={onInsert}
-                  discovered={(entry) => entry.discovered}
-                />
+                <div className="flex flex-col gap-3">
+                  {groupedByZona(floraEntries).map(([zona, zonaEntries]) => (
+                    <CollapsibleGroup
+                      key={zona}
+                      title={zona === SIN_ZONA ? 'Zona desconocida' : zona}
+                      count={zonaEntries.length}
+                      expanded={expandedFloraZonas.has(zona)}
+                      onToggle={() => toggleFloraZona(zona)}
+                    >
+                      <EntryCardGrid
+                        items={zonaEntries}
+                        keyOf={(entry) => entry.sourceSlug}
+                        icon={faunaFloraIcon}
+                        name={(entry) => entry.sourceName}
+                        tooltip={yieldsSummary}
+                        imageUrl={(entry) => resolveImageUrl(entry.imageUrls.thumbnail)}
+                        toDetailTarget={faunaFloraToDetailTarget}
+                        toChip={(entry) => ({ icon: faunaFloraIcon(entry), label: entry.sourceName })}
+                        onDetail={onDetail}
+                        onInsert={onInsert}
+                        discovered={(entry) => entry.discovered}
+                      />
+                    </CollapsibleGroup>
+                  ))}
+                </div>
               ))}
 
             {category === 'locations' &&
@@ -628,34 +897,61 @@ export function EnciclopediaPanel({ worldSlug, saveId, onInsert, onDetail }: Enc
 
             {category === 'attributes' && (
               <div className="flex flex-col gap-5">
-                <PanelSection title="Atributos jugables">
-                  <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-                    {ATTRIBUTES_INFO.map((attr) => (
-                      <EntryCard
-                        key={attr.key}
-                        icon={attr.icon}
-                        name={attributeLabels[attr.key]}
-                        tooltip={attr.description}
-                        onDetail={() => onDetail({ kind: 'info', icon: attr.icon, name: attributeLabels[attr.key], description: attr.description })}
-                      />
-                    ))}
-                  </div>
-                </PanelSection>
-                <PanelSection title="Atributos secundarios">
-                  <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-                    {SECONDARY_ATTRIBUTES_INFO.map((attr) => (
-                      <EntryCard
-                        key={attr.key}
-                        icon={attr.icon}
-                        name={secondaryAttributeLabels[attr.key]}
-                        tooltip={attr.description}
-                        onDetail={() =>
-                          onDetail({ kind: 'info', icon: attr.icon, name: secondaryAttributeLabels[attr.key], description: attr.description })
-                        }
-                      />
-                    ))}
-                  </div>
-                </PanelSection>
+                <div className="flex gap-1 rounded-lg border border-iron-800 bg-wood-950/40 p-1">
+                  {(
+                    [
+                      { id: 'lista', label: 'Atributos' },
+                      { id: 'debilidades', label: 'Árbol de debilidades' },
+                    ] as const
+                  ).map((tab) => (
+                    <button
+                      key={tab.id}
+                      onClick={() => setAttributesSubTab(tab.id)}
+                      className={`tactile flex-1 rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
+                        attributesSubTab === tab.id ? 'bg-accent2-500/10 text-accent2-300' : 'text-wood-400 hover:text-wood-200'
+                      }`}
+                    >
+                      {tab.label}
+                    </button>
+                  ))}
+                </div>
+
+                {attributesSubTab === 'lista' ? (
+                  <>
+                    <PanelSection title="Atributos jugables">
+                      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                        {ATTRIBUTES_INFO.map((attr) => (
+                          <EntryCard
+                            key={attr.key}
+                            icon={attr.icon}
+                            name={attributeLabels[attr.key]}
+                            tooltip={attr.description}
+                            onDetail={() => onDetail({ kind: 'info', icon: attr.icon, name: attributeLabels[attr.key], description: attr.description })}
+                          />
+                        ))}
+                      </div>
+                    </PanelSection>
+                    <PanelSection title="Atributos secundarios">
+                      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                        {SECONDARY_ATTRIBUTES_INFO.map((attr) => (
+                          <EntryCard
+                            key={attr.key}
+                            icon={attr.icon}
+                            name={secondaryAttributeLabels[attr.key]}
+                            tooltip={attr.description}
+                            onDetail={() =>
+                              onDetail({ kind: 'info', icon: attr.icon, name: secondaryAttributeLabels[attr.key], description: attr.description })
+                            }
+                          />
+                        ))}
+                      </div>
+                    </PanelSection>
+                  </>
+                ) : (
+                  <PanelSection title="Árbol de debilidades (combate)">
+                    <AttributeWheelDiagram />
+                  </PanelSection>
+                )}
               </div>
             )}
           </>

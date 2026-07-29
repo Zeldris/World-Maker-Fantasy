@@ -1,14 +1,12 @@
 export type PanelId =
   | 'mapa'
   | 'inventario'
-  | 'equipo'
-  | 'estadisticas'
+  | 'personaje'
   | 'diario'
   | 'misiones'
   | 'companeros'
   | 'reino'
   | 'habilidades'
-  | 'profesiones'
   | 'enciclopedia'
 
 export interface Tab {
@@ -20,11 +18,9 @@ export interface Tab {
 /// Nav dividido en dos rieles laterales, uno junto a cada panel de log (Tu personaje / El
 /// mundo) en vez de una única barra inferior — libera altura vertical para los propios logs.
 export const characterTabs: Tab[] = [
-  { id: 'estadisticas', icon: '📊', label: 'Estadísticas' },
+  { id: 'personaje', icon: '⚔️', label: 'Personaje' },
   { id: 'inventario', icon: '🎒', label: 'Inventario' },
-  { id: 'equipo', icon: '⚔️', label: 'Equipo' },
   { id: 'habilidades', icon: '✨', label: 'Habilidades' },
-  { id: 'profesiones', icon: '🔨', label: 'Profesiones' },
 ]
 
 export const worldTabs: Tab[] = [

@@ -69,6 +69,11 @@ export interface Character {
   attributes: AttributeBlock
   isPregenerated: boolean
   portraitInitial: string
+  /// Intro narrativa propia de este personaje pregenerado (2026-07-28, petición explícita) para
+  /// las 2 primeras entradas de log (canal personaje/mundo) al empezar una partida nueva con él —
+  /// ausente en personajes sin intro propia o custom, cae a la plantilla genérica (GameView.tsx).
+  introCharacterText?: string
+  introWorldText?: string
 }
 
 export type LogChannel = 'character' | 'world'
@@ -121,6 +126,9 @@ export interface LogEntry {
   /// para reconstruir `entityBanner` al cargar (ver GameView.tsx).
   entityBannerType?: string
   entityBannerSlug?: string
+  /// Rediseño de la vista de combate (2026-07-28) — marca si esta entrada se generó durante un
+  /// turno de combate; LogPanel la pinta con fondo/borde rojo en vez del estilo normal.
+  combate?: boolean
 }
 
 export type EquipSlot =
@@ -138,6 +146,11 @@ export type EquipSlot =
   | 'ANILLO_2'
   | 'CINTURON'
 
+/// Categorización mecánica de objetos (2026-07-29) — ver itemTaxonomy.ts (backend). RECURSO: se
+/// recoge/caza/tala/mina directo de la naturaleza. MATERIAL: sale de un proceso de crafteo.
+/// EQUIPABLE/CONSUMIBLE/NARRATIVO: los de siempre, ahora agrupados bajo un bucket mecánico.
+export type ItemTipo = 'RECURSO' | 'MATERIAL' | 'EQUIPABLE' | 'CONSUMIBLE' | 'NARRATIVO'
+
 export interface InventoryItemInfo {
   id: string
   name: string
@@ -152,6 +165,10 @@ export interface InventoryItemInfo {
   catalogSlug?: string | null
   tier?: number
   requisitos?: Partial<Record<Attribute | SecondaryAttribute, number>>
+  /// Categorización mecánica (2026-07-29) — ausente en objetos narrativos sueltos sin
+  /// catalogSlug (la IA los inventa sobre la marcha, sin fila de catálogo que consultar).
+  tipo?: ItemTipo
+  category?: string
   /// Imagen real de la Enciclopedia para este objeto (petición explícita de la usuaria,
   /// 2026-07-24: "las imágenes no salen" al ver un objeto desde Inventario/Equipo) — solo
   /// presente si `catalogSlug` existe y hay un banner subido de verdad (ver imageAssets.ts).
@@ -206,6 +223,13 @@ export interface QuestInfo {
   title: string
   description: string
   status: QuestStatus
+  /// Frase corta y accionable de qué hay que hacer (2026-07-25) — null en misiones creadas antes
+  /// de este campo, o en las que el modelo propone en juego (todavía sin objetivo estructurado).
+  objetivo: string | null
+  /// Recompensa estática, nunca decidida por el modelo (2026-07-25) — null/[] si no se ha
+  /// definido ninguna para esta misión.
+  rewardXp: number | null
+  rewardItems: string[]
   /// Slug de la Location donde marcar el objetivo en el mapa (punto 3 del diseño de Gistera Koh,
   /// 2026-07-23) — resuelto en el backend desde `targetLocationId` o, si la misión apunta a un
   /// NPC en vez de a un sitio, desde su `homeLocationSlug`. Null si no hay objetivo geográfico
@@ -223,6 +247,9 @@ export interface SavedActionInfo {
   description: string
   isStarting: boolean
   category: SavedActionCategory
+  /// Rediseño del turno de combate (2026-07-28) — "tipo" para la rueda de debilidades (backend)
+  /// y el color del chip (UI). Null en habilidades 'general' o en partidas de antes de este campo.
+  preferredAttribute: Attribute | null
 }
 
 export type CondicionFisica = 'ILESO' | 'HERIDO' | 'GRAVE' | 'INCAPACITADO' | 'MUERTO'
