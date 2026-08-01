@@ -57,7 +57,12 @@ async function main() {
   );
 
   console.log('\n=== FACTS/FACCIONES ===');
-  console.log(JSON.stringify({ facts: save.worldState?.facts, factionsStatus: save.worldState?.factionsStatus }, null, 2));
+  const sessionFacts = await prisma.sessionFact.findMany({
+    where: { saveId: save.id },
+    orderBy: { createdAt: 'asc' },
+    select: { text: true },
+  });
+  console.log(JSON.stringify({ facts: sessionFacts.map((f) => f.text), factionsStatus: save.worldState?.factionsStatus }, null, 2));
 
   console.log('\n=== TRÁNSITO ===');
   console.log(

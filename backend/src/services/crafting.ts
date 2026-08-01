@@ -31,8 +31,9 @@ export interface CraftingRecipe {
   /// del resultado para poder mirar sus requisitos de equipar (ver requisitos.ts). Opcional: no
   /// todas las recetas tienen fila propia en el catálogo del mundo.
   resultCatalogSlug?: string;
-  /// 'defensa' incluido a propósito (mismo criterio que ItemCatalog/InventoryItem, ver saves.ts):
-  /// el peto de gargantúa es armadura, no un arma con uno de los 6 atributos jugables.
+  /// 'defensa' incluido a propósito (mismo criterio que ItemCatalog/InventoryItem, ver
+  /// equipment.ts § effectiveDefense): el peto de gargantúa es armadura, no un arma con uno de
+  /// los 6 atributos jugables.
   statBonusAttribute?: Attribute | 'defensa';
   statBonusAmount?: number;
   /// Sesión de diseño 2026-07-23: nivel de rareza/dificultad del objeto (1-5), mínimos de

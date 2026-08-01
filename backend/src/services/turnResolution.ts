@@ -3,7 +3,7 @@ import { retrieveLore, formatLoreForPrompt, isWeaklyGrounded } from './retrieval
 import { xpForRollSuccess, xpForHitos, applyXp, type ProgressionResult, type HitoTipo } from './progression.js';
 import { alivioForLevel, xpForCraftSuccess, applyProfessionXp } from './professionProgress.js';
 import { tickKingdom, daysCrossed, DEFAULT_KINGDOM_STATS } from './kingdomTick.js';
-import { mergeFacts } from './worldFacts.js';
+import { appendSessionFacts, selectRelevantFacts } from './worldFacts.js';
 import { applyFactionRepDelta, effectiveTemperamento, FACTION_REP_ATTACK_DELTA, FACTION_REP_PEACE_DELTA } from './reputation.js';
 import {
   detectNpcsInScene,
@@ -23,7 +23,7 @@ import { npcCombatAbilitiesFor, chooseNpcAbility } from './npcCombatAbilities.js
 import { detectHarvest, harvestBlockFor } from './harvest.js';
 import { detectItemReference, detectMedicalItemUse, detectEnergyItemUse, missingItemBlockFor } from './itemReference.js';
 import { energiaMaxFor, nextEnergia } from './energy.js';
-import { weaponAbilitiesFor, WEAPON_ABILITY_LEVEL_AVANZADA, type EquippedWeaponSlot } from './weaponAbilities.js';
+import { WEAPON_ABILITY_LEVEL_AVANZADA, dualWieldAdjustedDifficulty, type EquippedWeaponSlot } from './weaponAbilities.js';
 import { syncDynamicCombatAbilities } from './dynamicAbilities.js';
 import {
   CRAFTING_RECIPES,
@@ -47,7 +47,7 @@ import {
   type TravelResolution,
 } from './travel.js';
 import { detectsRestIntent, type Produccion } from './timedActions.js';
-import { claimChapterIfDue, scheduleChapterSummaryGeneration } from './chapterSummary.js';
+import { claimChapterIfDue, scheduleChapterSummaryGeneration, releaseChapterClaim } from './chapterSummary.js';
 import { recordEntityDiscoveries } from './entityDiscovery.js';
 import {
   nextCondicionFisica,
@@ -57,7 +57,6 @@ import {
   isCondicionDowngrade,
   oneStepWorseThan,
   nextCondicionForAttack,
-  worseCondicion,
   saludForCondicion,
   saludBandFor,
   healCeilingFor,
@@ -65,7 +64,7 @@ import {
 import { continentForRegion, oppositeContinent } from '../lib/continent.js';
 import { advanceFictionalMinutes, formatFictionalDate } from './worldClock.js';
 import { prisma } from '../lib/prisma.js';
-import type { RollResult, AttributeBlock } from './dice.js';
+import type { RollResult, AttributeBlock, Attribute } from './dice.js';
 import type { SecondaryAttributeBlock } from './secondaryAttributes.js';
 import { Prisma } from '@prisma/client';
 import type { CondicionFisica, Dificultad, AbilityEffect } from '@prisma/client';
@@ -103,6 +102,20 @@ export function detectsLootIntent(action: string): boolean {
   if (LOOT_INTENT_REGEX.test(normalized)) return true;
   const words = fuzzyMatchCandidates(normalized).filter((w) => !/^ata/.test(w));
   return !!findFuzzyStemMatch(words, LOOT_INTENT_STEMS, LOOT_FUZZY_EXCLUSIONS);
+}
+
+// "Decapitar" (petición explícita, 2026-07-30: "un botón que solo sale cuando está incapacitado
+// para matarlo") — golpe de gracia determinista contra un enemigo YA incapacitado, sin tirada (no
+// puede resistir, ver `executeTargets` más abajo). Palabras de 5+ letras, mismo criterio de
+// tolerancia a erratas que el resto de detectores de este archivo.
+const EXECUTE_INTENT_REGEX = /remat|decapit|degoll|ejecut/;
+const EXECUTE_INTENT_STEMS = ['remat', 'decapit', 'degoll', 'ejecut'];
+
+export function detectsExecuteIntent(action: string): boolean {
+  const normalized = normalizeText(action);
+  if (EXECUTE_INTENT_REGEX.test(normalized)) return true;
+  const words = fuzzyMatchCandidates(normalized);
+  return !!findFuzzyStemMatch(words, EXECUTE_INTENT_STEMS);
 }
 
 // Bug real (auditoría 2026-07-28): race entre worldTick.ts resolviendo un CharacterTransit vencido
@@ -147,6 +160,11 @@ interface NarrateAndPersistParams {
   /// narrativa) — se le dice al modelo explícitamente en combate para que nunca confunda el arma
   /// del jugador con la del enemigo.
   equippedWeapons: string[];
+  /// TODO el equipo puesto + su description real (2026-07-30, auditoría "revisar partida" — el
+  /// Narrador nunca sabía qué llevaba puesto el personaje más allá del arma, ni conocía su
+  /// aspecto/historia concretos, ver equipment.ts § equippedItemsSummary). Vacío en partidas
+  /// previas a este campo (nunca null: el caller siempre lo deriva de `save.inventoryItems`).
+  equippedItems: { name: string; description: string }[];
   /// Sistema de habilidades por arma/raza (2026-07-29) — slug de BERIG_RAZAS (berigLore.ts) o
   /// null (personaje sin raza asignada, partidas previas a este campo).
   raza: string | null;
@@ -207,6 +225,12 @@ interface NarrateAndPersistParams {
   /// y vuelta a Supabase remoto que la primera. Ausente cuando llama worldTick.ts (resolución
   /// diferida, sin classify previo en esta llamada) — ahí se sigue calculando fresco.
   npcsInScene?: NpcInScene[];
+  /// Saqueo selectivo (petición explícita, 2026-07-30: "que pueda marcar los objetos que me
+  /// quiero quedar") — antes el saqueo copiaba SIEMPRE el loadout entero de cada NPC derrotado
+  /// (decisión de la usuaria original, docs/12 § 4.5); si se manda esta lista, solo se copian los
+  /// objetos cuyo nombre aparezca aquí, del resto no se crea nada. `undefined` (el botón
+  /// "Registrar"/"Saquear todo" de uno en uno no la manda) preserva el comportamiento de siempre.
+  lootItemNames?: string[];
 }
 
 export interface NewInventoryItemInfo {
@@ -217,6 +241,10 @@ export interface NewInventoryItemInfo {
   slot: null;
   statBonusAttribute: string | null;
   statBonusAmount: number | null;
+  /// Ranura de equipo real del catálogo (2026-07-30, "categorizar por ranura") — null si no hay
+  /// catalogSlug (narrativo suelto) o si el catálogo aún no la tiene asignada. Sin esto, un objeto
+  /// recién saqueado/crafteado no sabía en qué hueco encaja hasta recargar la partida entera.
+  equipSlot: string | null;
 }
 
 export interface NarrateAndPersistResult {
@@ -258,9 +286,11 @@ export interface NarrateAndPersistResult {
   /// la lista COMPLETA de misiones de la partida (no solo un delta) — más simple y sin riesgo de
   /// omitir un cambio, dado que este turno puede tocar varias misiones a la vez por caminos
   /// distintos (newQuest del modelo, el fallback determinista, cierre por derrota/recolección).
-  /// `targetLocationSlug` se deja en null aquí a propósito (no se usa hoy en MisionesPanel.tsx;
-  /// resolverlo requeriría duplicar el cruce Location/Npc que ya hace getSave en routes/saves.ts)
-  /// — se rellena de verdad en la próxima carga completa de la partida.
+  /// `targetLocationSlug` (bug real, auditoría 2026-07-30: se dejaba en null aquí "a propósito",
+  /// pero MapaPanel.tsx SÍ lo lee para dibujar el marcador de misión en el mapa — `setQuests`
+  /// sustituye el array entero en cada turno, así que el marcador desaparecía en cuanto se jugaba
+  /// cualquier acción, hasta la próxima recarga completa) — resuelto igual que en
+  /// routes/saves/detail.ts, mismo cruce Location/Npc.
   quests: {
     id: string;
     title: string;
@@ -271,6 +301,12 @@ export interface NarrateAndPersistResult {
     rewardItems: string[];
     targetLocationSlug: string | null;
   }[];
+  /// Notificación de misión aceptada (2026-07-31, petición explícita: "que aparezca en la
+  /// narración del personaje el título de la misión y el objetivo, a modo de notificación") — a
+  /// diferencia de `quests` (lista completa, sin delta), esto marca explícitamente que ESTE turno
+  /// creó una misión nueva, para que el frontend la resalte sin tener que comparar arrays. `null`
+  /// en la inmensa mayoría de turnos, que no crean ninguna.
+  newQuestInfo: { title: string; objetivo: string } | null;
   /// Rediseño del turno de combate (2026-07-28) — true si la iniciativa del PRÓXIMO intercambio
   /// favorece al NPC: el frontend debe pedirle al jugador que elija su defensa a ciegas en su
   /// siguiente sumisión, en vez del modo de ataque normal. Nunca revela CUÁL habilidad eligió el
@@ -300,6 +336,278 @@ async function resolveInitialLocationId(
   return location?.id;
 }
 
+export interface CombatExchangePhaseInput {
+  combateActivo: boolean | null | undefined;
+  npcParaIntercambio: NpcInScene | null;
+  pendingNpcAttack: PendingNpcAttack | null | undefined;
+  pendingNpcStillHere: NpcInScene | null;
+  requiereTirada: boolean;
+  classificationAtributo: Attribute;
+  currentLevel: number;
+  condicionFisicaJugador: CondicionFisica;
+  attributes: AttributeBlock;
+  defensa: number;
+  characterName: string;
+  abilityEffect: AbilityEffect | null;
+  /// Habilidad real por categoría de arma colapsada por llevar la misma en las dos manos
+  /// (2026-07-31, ver WeaponAbility.dualWield/DUAL_WIELD_DIFFICULTY_BONUS) — true cuando la
+  /// habilidad elegida ESTE turno (savedActionId) lo es. Solo se aplica en el CASO ATAQUE (el
+  /// jugador tiene la iniciativa) — reduce la dificultad de SU tirada, nunca dobla el intercambio.
+  dualWieldBonus: boolean;
+}
+
+export interface CombatExchangePhaseResult {
+  npcAttackTarget: NpcInScene | null;
+  npcAttackHits: boolean;
+  npcTargetNewCondicion: CondicionFisica | null;
+  jugadorRecibeGolpe: boolean;
+  jugadorGolpeEfecto: AbilityEffect | null;
+  nuevoPendingNpcAttack: PendingNpcAttack | null;
+  exchangeNarrationBlock: string | null;
+  combatExchangeRoll: RollResult | null;
+  npcAbilityUsed: { npcName: string; abilityName: string; rol: 'ataque' | 'defensa' } | null;
+  nextInitiativeRoll: InitiativeResult | null;
+  exchangeHappened: boolean;
+  npcEnergiaMax: number | null;
+  npcNuevaEnergia: number | null;
+  /// "Revisar partida" 2026-07-30 (queja explícita: "las habilidades que no son de ataque no
+  /// tienen mucho sentido con la narración... no queda claro si la estás usando") — a diferencia
+  /// del golpe/fallo normal (que ya tiene su bloque `exchangeNarrationBlock`), el efecto real de
+  /// ATURDIMIENTO/INTIMIDACION (quién gana la iniciativa siguiente) y REMATE (mata solo si el
+  /// objetivo ya estaba GRAVE/INCAPACITADO) se decidía puramente en memoria y nunca se le
+  /// mencionaba al Narrador — el modelo solo veía golpea/falla, nunca "esto además lo aturdió" o
+  /// "el remate no bastó para matarlo". Null salvo cuando el jugador ataca (tiene la iniciativa)
+  /// con una de estas 3 habilidades.
+  abilityEffectHint: string | null;
+}
+
+/// Rediseño del turno de combate (2026-07-28, extraído a función propia en la auditoría de
+/// deuda técnica 2026-07-30 — este bloque es, con diferencia, el más denso de todo el archivo y
+/// el que más bugs reales ha causado por estado compartido mal hilado, ver los comentarios de
+/// `combatSlugs`/`golpes_mutuos` más abajo en el historial de git): resuelve QUIÉN golpea a quién
+/// este turno — "primero se tiran dados y se ve quien ataca primero... el otro entra en un turno
+/// de defensa... con su propia tirada de dados independiente de la de ataque" — y decide la
+/// iniciativa del PRÓXIMO intercambio. Puro respecto a la base de datos (no escribe nada); quien
+/// llama decide qué persistir con el resultado.
+function resolveCombatExchangePhase(input: CombatExchangePhaseInput): CombatExchangePhaseResult {
+  const { npcParaIntercambio, pendingNpcAttack, pendingNpcStillHere, attributes, defensa, characterName, abilityEffect } = input;
+
+  let npcAttackTarget: NpcInScene | null = null;
+  let npcAttackHits = false;
+  let npcTargetNewCondicion: CondicionFisica | null = null;
+  // El jugador puede recibir un golpe en CUALQUIERA de los dos casos: si el NPC tiene la
+  // iniciativa (ataque directo), o incluso atacando él mismo, si su ataque falla del todo y la
+  // defensa del NPC es tan buena que de propina replica (`defensor_contragolpea`).
+  let jugadorRecibeGolpe = false;
+  let jugadorGolpeEfecto: AbilityEffect | null = null;
+  // Ataque de NPC para el PRÓXIMO intercambio, si la iniciativa lo favorece — se persiste en
+  // Save.pendingNpcAttack (ver tx.save.update más abajo) para que el jugador lo defienda a
+  // ciegas en su siguiente sumisión.
+  let nuevoPendingNpcAttack: PendingNpcAttack | null = null;
+  // `contextBlocks` (el array real donde se acumula el texto para el Narrador) vive en el caller
+  // — este intercambio se resuelve antes de esa declaración, así que el texto se devuelve aquí y
+  // el caller lo empuja en cuanto `contextBlocks` existe.
+  let exchangeNarrationBlock: string | null = null;
+  // Auditoría 2026-07-28: el roll tabulado de /turn/classify (`roll`, en el caller) ya no decide
+  // nada del combate desde que resolveExchange existe — antes seguía usándose para la XP y el
+  // RollBadge persistido, completamente desconectado del resultado real del intercambio (podía
+  // marcar "Éxito" junto a una narración que describía un fallo total). El lado del jugador en
+  // el intercambio (`combatExchangeRoll`) pasa a ser la única fuente de verdad para los dos.
+  let combatExchangeRoll: RollResult | null = null;
+  // Nombre real de la habilidad de ataque/defensa que usó el NPC en el intercambio de este turno
+  // (2026-07-29, ver NarrateAndPersistResult.npcAbilityUsed) — se rellena en cada una de las dos
+  // ramas de abajo, siempre que haya intercambio.
+  let npcAbilityUsed: { npcName: string; abilityName: string; rol: 'ataque' | 'defensa' } | null = null;
+  // Tirada real de iniciativa que decide QUIÉN actúa en el próximo intercambio (2026-07-29, "quiero
+  // que sea más claro cuando es turno de ataque... indicándome qué salió en los dados") — null
+  // cuando la iniciativa se fuerza sin dados (aturdimiento/intimidación del turno anterior, ver
+  // más abajo) o cuando no hubo intercambio de combate este turno.
+  let nextInitiativeRoll: InitiativeResult | null = null;
+  // Sistema de fatiga (2026-07-29) — hoisted fuera del bloque de abajo: hace falta después, al
+  // calcular la energía de este turno, sepa o no haber intercambio real de combate.
+  let exchangeHappened = false;
+  // Sistema de fatiga simétrico (2026-07-30, deuda técnica: "los NPC siguen eligiendo habilidad
+  // sin restricción de energía") — energía persistida del NPC tras este intercambio, mismas
+  // reglas que `nuevaEnergia` del jugador pero mirando el rol que tuvo EL NPC. null si no hubo
+  // intercambio real este turno (no se toca NpcState.energia).
+  let npcEnergiaMax: number | null = null;
+  let npcNuevaEnergia: number | null = null;
+  // Ver comentario de `CombatExchangePhaseResult.abilityEffectHint` más arriba.
+  let abilityEffectHint: string | null = null;
+
+  if (input.combateActivo && npcParaIntercambio) {
+    npcAttackTarget = npcParaIntercambio;
+    const npcWeaponNames = npcParaIntercambio.items.filter((i) => i.category === 'arma').map((i) => i.name);
+    const npcAbilities = npcCombatAbilitiesFor(npcParaIntercambio, npcWeaponNames);
+    npcEnergiaMax = energiaMaxFor(npcParaIntercambio.attributes.constitucion);
+    const npcEnergiaActual = npcParaIntercambio.energia ?? npcEnergiaMax;
+
+    if (pendingNpcAttack && pendingNpcStillHere && !input.requiereTirada) {
+      // Salvaguarda (auditoría 2026-07-28): sin una tirada real decidida por el clasificador
+      // para ESTA acción concreta (p.ej. algo puramente narrativo escrito a mano mientras hay
+      // un ataque de NPC pendiente — huir incluido, si el clasificador no lo ve como algo
+      // reñido), no se fabrica una defensa con un atributo/dificultad sin sentido — el ataque
+      // pendiente se queda igual para la siguiente acción real del jugador.
+      nuevoPendingNpcAttack = pendingNpcAttack;
+    } else if (pendingNpcAttack && pendingNpcStillHere) {
+      // CASO DEFENSA: el NPC ya atacó (decidido el intercambio anterior, oculto hasta ahora) —
+      // el jugador responde a ciegas con la habilidad que acaba de elegir (`classification.atributo`
+      // ya refleja su `preferredAttribute` cuando viene de un botón, ver turn.ts).
+      const exchange = resolveExchange(
+        {
+          attributes: npcParaIntercambio.attributes,
+          attribute: pendingNpcAttack.attribute,
+          difficulty: difficultyHintFor(input.currentLevel, npcParaIntercambio.level).dificultad,
+          condicionFisica: npcParaIntercambio.condicionFisica,
+        },
+        {
+          attributes,
+          attribute: input.classificationAtributo,
+          difficulty: contraataqueDifficultyFor(npcParaIntercambio.level, input.currentLevel, defensa),
+          condicionFisica: input.condicionFisicaJugador,
+        },
+      );
+      // `golpes_mutuos` (2026-07-29, bug real de partida: solo se dañaba al lado "defensor" de
+      // esta llamada, nunca al NPC pese a que la propia narración dice "AMBOS acaban acusando
+      // algo") — hiere a los dos lados, no solo al jugador.
+      jugadorRecibeGolpe = exchange.resultado === 'golpe_pleno' || exchange.resultado === 'golpe_normal' || exchange.resultado === 'golpes_mutuos';
+      jugadorGolpeEfecto = pendingNpcAttack.effect;
+      npcAttackHits = exchange.resultado === 'defensor_contragolpea' || exchange.resultado === 'golpes_mutuos';
+      npcTargetNewCondicion = npcAttackHits ? oneStepWorseThan(npcParaIntercambio.condicionFisica) : null;
+      exchangeNarrationBlock = `${npcParaIntercambio.name} ataca con "${pendingNpcAttack.abilityName}". ${exchangeContextBlock(exchange, npcParaIntercambio.name, characterName)}`;
+      combatExchangeRoll = exchange.defensor;
+      npcAbilityUsed = { npcName: npcParaIntercambio.name, abilityName: pendingNpcAttack.abilityName, rol: 'ataque' };
+      exchangeHappened = true;
+      // El NPC atacó este intercambio con la habilidad ya elegida el turno anterior — su coste/
+      // regen se descuentan/suman AHORA, cuando de verdad se resuelve (ver PendingNpcAttack.
+      // energyCost/energyRegen en combatExchange.ts).
+      npcNuevaEnergia = nextEnergia({
+        current: npcEnergiaActual,
+        max: npcEnergiaMax,
+        abilityEnergyCost: pendingNpcAttack.energyCost ?? 0,
+        abilityEnergyRegen: pendingNpcAttack.energyRegen ?? 0,
+        exchangeHappened: true,
+        restSucceeds: false,
+        itemRestoreAmount: null,
+      });
+    } else {
+      // CASO ATAQUE: el jugador tiene la iniciativa — el NPC decide su defensa ahora mismo,
+      // oculta, nunca se le enseña al jugador qué eligió.
+      const npcDefensa = chooseNpcAbility(npcAbilities, 'defensa', npcEnergiaActual);
+      // Doble arma (2026-07-31, ver dualWieldAdjustedDifficulty) — con la real de ataque colapsada
+      // por llevar la misma categoría en las dos manos, la dificultad del jugador baja (nunca
+      // dobla el intercambio).
+      const dificultadAtacante = dualWieldAdjustedDifficulty(
+        difficultyHintFor(npcParaIntercambio.level, input.currentLevel).dificultad,
+        input.dualWieldBonus,
+      );
+      const exchange = resolveExchange(
+        {
+          attributes,
+          attribute: input.classificationAtributo,
+          difficulty: dificultadAtacante,
+          condicionFisica: input.condicionFisicaJugador,
+        },
+        {
+          attributes: npcParaIntercambio.attributes,
+          attribute: npcDefensa.attribute,
+          difficulty: contraataqueDifficultyFor(input.currentLevel, npcParaIntercambio.level, 0),
+          condicionFisica: npcParaIntercambio.condicionFisica,
+        },
+      );
+      // `golpes_mutuos` hiere también al jugador, no solo al NPC — mismo criterio que en el CASO
+      // DEFENSA de arriba.
+      npcAttackHits = exchange.resultado === 'golpe_pleno' || exchange.resultado === 'golpe_normal' || exchange.resultado === 'golpes_mutuos';
+      npcTargetNewCondicion = npcAttackHits ? nextCondicionForAttack(abilityEffect, npcParaIntercambio.condicionFisica) : null;
+      jugadorRecibeGolpe = exchange.resultado === 'defensor_contragolpea' || exchange.resultado === 'golpes_mutuos';
+      jugadorGolpeEfecto = null;
+      exchangeNarrationBlock = `${npcParaIntercambio.name} se defiende con "${npcDefensa.name}". ${exchangeContextBlock(exchange, characterName, npcParaIntercambio.name)}`;
+      combatExchangeRoll = exchange.atacante;
+      npcAbilityUsed = { npcName: npcParaIntercambio.name, abilityName: npcDefensa.name, rol: 'defensa' };
+      exchangeHappened = true;
+      // El NPC se defendió este intercambio con la habilidad recién elegida — su coste/regen
+      // salen de esa misma habilidad, no de haber "estado defendiendo".
+      npcNuevaEnergia = nextEnergia({
+        current: npcEnergiaActual,
+        max: npcEnergiaMax,
+        abilityEnergyCost: npcDefensa.energyCost,
+        abilityEnergyRegen: npcDefensa.energyRegen,
+        exchangeHappened: true,
+        restSucceeds: false,
+        itemRestoreAmount: null,
+      });
+    }
+
+    if (exchangeHappened) {
+      // Iniciativa del PRÓXIMO intercambio — se decide ya para poder guardarla si favorece al NPC.
+      // Aturdimiento/intimidación con éxito (mismo espíritu que el viejo "NO CONTRAATACA ESTE
+      // TURNO"): quien acaba de aturdir/intimidar a su rival se garantiza la iniciativa siguiente,
+      // sin necesidad de tirar dados para decidirlo.
+      const jugadorAturdioAlNpc = !pendingNpcStillHere && npcAttackHits && (abilityEffect === 'ATURDIMIENTO' || abilityEffect === 'INTIMIDACION');
+      const npcAturdioAlJugador = !!pendingNpcStillHere && jugadorRecibeGolpe && (jugadorGolpeEfecto === 'ATURDIMIENTO' || jugadorGolpeEfecto === 'INTIMIDACION');
+
+      // Ver comentario de `abilityEffectHint` en CombatExchangePhaseResult — solo cuando el
+      // jugador ataca (nunca en la defensa a ciegas: ahí `abilityEffect` no decide nada mecánico
+      // propio, ver comentario de `input.abilityEffect` más arriba en el archivo).
+      if (!pendingNpcStillHere && (abilityEffect === 'ATURDIMIENTO' || abilityEffect === 'INTIMIDACION')) {
+        const verbo = abilityEffect === 'ATURDIMIENTO' ? 'aturdir' : 'intimidar';
+        abilityEffectHint = jugadorAturdioAlNpc
+          ? `EFECTO DE HABILIDAD — YA RESUELTO: el intento de ${verbo} a ${npcParaIntercambio.name} funciona de verdad — queda desorientado/acobardado y ${characterName} tendrá la iniciativa en el próximo intercambio. Narra ese desconcierto, no solo el golpe.`
+          : `EFECTO DE HABILIDAD — YA RESUELTO: el intento de ${verbo} a ${npcParaIntercambio.name} NO funciona — sigue centrado, sin ceder terreno. Narra que el intento falla en su propósito, más allá de si el golpe conecta o no.`;
+      } else if (!pendingNpcStillHere && abilityEffect === 'REMATE') {
+        const rematado = npcAttackHits && npcTargetNewCondicion === 'MUERTO';
+        abilityEffectHint = rematado
+          ? `EFECTO DE HABILIDAD — YA RESUELTO: el golpe de gracia contra ${npcParaIntercambio.name} conecta y remata de verdad — muere en el acto. Narra el golpe final, no una herida más.`
+          : `EFECTO DE HABILIDAD — YA RESUELTO: el intento de rematar a ${npcParaIntercambio.name} no consigue matarlo (${npcAttackHits ? 'conecta, pero no estaba lo bastante debilitado para morir' : 'ni siquiera conecta'}) — narra un golpe más, nunca su muerte.`;
+      }
+
+      let iniciativaSiguiente: 'jugador' | 'npc';
+      if (jugadorAturdioAlNpc) {
+        iniciativaSiguiente = 'jugador';
+      } else if (npcAturdioAlJugador) {
+        iniciativaSiguiente = 'npc';
+      } else {
+        nextInitiativeRoll = rollInitiative(attributes, npcParaIntercambio.attributes);
+        iniciativaSiguiente = nextInitiativeRoll.ganador;
+      }
+
+      if (iniciativaSiguiente === 'npc') {
+        // Filtrado por la energía ACTUAL (antes de la regen de este mismo turno) — una
+        // aproximación deliberada: el NPC de verdad tendrá algo más de energía cuando esta
+        // habilidad se resuelva el turno siguiente, pero anticipar esa regen exacta aquí no
+        // compensa la complejidad frente al mismo criterio "suficientemente determinista, no
+        // perfecto" del resto del sistema.
+        const npcAtaque = chooseNpcAbility(npcAbilities, 'ataque', npcEnergiaActual);
+        nuevoPendingNpcAttack = {
+          npcId: npcParaIntercambio.id,
+          attribute: npcAtaque.attribute,
+          effect: npcAtaque.effect,
+          abilityName: npcAtaque.name,
+          energyCost: npcAtaque.energyCost,
+          energyRegen: npcAtaque.energyRegen,
+        };
+      }
+    }
+  }
+
+  return {
+    npcAttackTarget,
+    npcAttackHits,
+    npcTargetNewCondicion,
+    jugadorRecibeGolpe,
+    jugadorGolpeEfecto,
+    nuevoPendingNpcAttack,
+    exchangeNarrationBlock,
+    combatExchangeRoll,
+    npcAbilityUsed,
+    nextInitiativeRoll,
+    exchangeHappened,
+    npcEnergiaMax,
+    npcNuevaEnergia,
+    abilityEffectHint,
+  };
+}
+
 /// Narra (retrieval + narrateAction) y persiste el resultado de un turno — hechos, XP/nivel,
 /// inventario/compañeros, eventos de Reino, posición/NPCs/despiece (docs/12), condición física
 /// y muerte/descanso (docs/14), LogEntry. Compartido entre el turno síncrono (bandas
@@ -320,6 +628,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     secondaryAttributes,
     defensa,
     equippedWeapons,
+    equippedItems,
     raza,
     currentLocationId,
     travel,
@@ -333,6 +642,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     transitIdToFinalize,
     pendingNpcAttack,
     npcsInScene: npcsInScenePrecomputed,
+    lootItemNames,
   } = params;
 
   // Revisión técnica 2026-07-22: estas 4 consultas no dependen entre sí (retrieveLore es la única
@@ -342,14 +652,14 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   // ms) frente a los 30-220s que domina la generación del modelo — vale la pena por ser gratis y
   // sin riesgo, no porque vaya a notarse en la duración total del turno.
   const regionLocationId = travel ? travel.toLocationId : currentLocationId;
-  const [selectedAbilityData, regionLocation, npcsInScene, harvestMatch, faunaSources, factionsStatus] = await Promise.all([
+  const [selectedAbilityData, regionLocation, npcsInSceneRaw, harvestMatch, faunaSources, factionsStatus, lastNarration, gisteraQuestYaExiste] = await Promise.all([
     // Efecto y coste de energía de la habilidad pulsada (checklist 2026-07-21/22, puntos 1-2;
     // coste de energía 2026-07-29) — null/0 si el jugador escribió la acción a mano (sin
     // savedActionId) o si esa SavedAction no tiene efecto asignado (habilidades generales, o
     // partidas en curso creadas antes de esta migración).
     savedActionId
-      ? prisma.savedAction.findUnique({ where: { id: savedActionId }, select: { effect: true, energyCost: true } })
-      : Promise.resolve<{ effect: AbilityEffect | null; energyCost: number } | null>(null),
+      ? prisma.savedAction.findUnique({ where: { id: savedActionId }, select: { name: true, effect: true, energyCost: true, energyRegen: true, dualWield: true } })
+      : Promise.resolve<{ name: string; effect: AbilityEffect | null; energyCost: number; energyRegen: number; dualWield: boolean } | null>(null),
     regionLocationId ? prisma.location.findUnique({ where: { id: regionLocationId }, select: { region: true, name: true } }) : Promise.resolve(null),
     // Auditoría de rendimiento 2026-07-28 ("rascar segundos"): si el caller (turn.ts) ya trae el
     // resultado de /turn/classify para esta misma acción, se reutiliza tal cual en vez de repetir
@@ -366,12 +676,43 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     // abajo) para calcular el temperamento EFECTIVO de cada NPC en escena antes de decidir
     // shouldForceCombat (ver reputation.ts § effectiveTemperamento).
     prisma.worldState.findUnique({ where: { saveId }, select: { factionsStatus: true } }).then((r) => (r?.factionsStatus as Record<string, number> | null) ?? {}),
+    // Anti-repetición (2026-07-30, auditoría "revisar partida" — queja explícita: "redundancias
+    // con la palabra sombra o cosas de este estilo"): el Narrador nunca veía su propia narración
+    // de turnos anteriores, solo `sessionFacts` (hechos discretos, nunca prosa) — sin eso, no
+    // tiene forma de saber que ya usó "sombra" dos veces seguidas hace un momento. Se le pasa el
+    // último párrafo narrado tal cual, con instrucción explícita de variar el lenguaje.
+    prisma.logEntry.findFirst({
+      where: { saveId, channel: 'CHARACTER', isPlayerAction: false },
+      orderBy: { createdAt: 'desc' },
+      select: { text: true },
+    }),
+    // Petición explícita de la usuaria (2026-08-01): "en cuanto acepto la misión de Gistera que
+    // ella se marche... y que no vuelva a aparecer" — hoisted aquí (antes vivía más abajo, junto
+    // al resto del bloque Gistera Koh) para poder filtrarla de `npcsInScene` ANTES de que nada la
+    // use como objetivo de ataque/diálogo por defecto (`candidateAttackTarget`/`dialogueTarget`,
+    // más abajo en este mismo archivo) — dejarlo para después de esos usos la habría dejado
+    // disponible como objetivo mecánico un turno más, aunque la narración ya la diera por ida.
+    prisma.quest.findFirst({ where: { saveId, title: { contains: 'Orco Enfurecido' } } }),
   ]);
+  // Ver comentario de arriba — `gisteraYaPresentada` también la necesita el bloque Gistera Koh
+  // más abajo (se reutiliza tal cual, sin volver a consultar). `gisteraSeHaMarchado` cubre tanto
+  // los turnos DESPUÉS de aceptar (el Quest ya existe) como el propio turno en el que se acepta
+  // (el Quest todavía no se ha creado en esta misma petición, pero la aceptación ya se detecta).
+  const gisteraYaPresentada = sessionFacts.some((f) => f.includes('Gistera Koh')) || !!gisteraQuestYaExiste;
+  const gisteraSeHaMarchado = !!gisteraQuestYaExiste || (gisteraYaPresentada && detectsVerbalAcceptanceIntent(action));
+  const npcsInScene = gisteraSeHaMarchado ? npcsInSceneRaw.filter((n) => n.slug !== 'gistera-koh') : npcsInSceneRaw;
   const abilityEffect = selectedAbilityData?.effect ?? null;
   // Coste de energía de la habilidad pulsada (2026-07-29, sistema de fatiga) — 0 si la acción no
   // usa ninguna SavedAction con coste (ataque a mano, Defenderse/Esquivar genéricas, habilidades
   // 'general', o partidas anteriores a este campo).
   const abilityEnergyCost = selectedAbilityData?.energyCost ?? 0;
+  // Rediseño 2026-07-31 — energía que recupera la habilidad pulsada (Defenderse/Esquivar; 0 en el
+  // resto, incluido Ataque Básico). Reemplaza al viejo regen por ROL (¿el jugador atacó o se
+  // defendió este turno?), ver energy.ts § nextEnergia.
+  const abilityEnergyRegen = selectedAbilityData?.energyRegen ?? 0;
+  // Doble arma (2026-07-31) — la habilidad pulsada colapsó por llevar la misma categoría de arma
+  // en las dos manos, ver DUAL_WIELD_DIFFICULTY_BONUS/resolveCombatExchangePhase.
+  const dualWieldBonus = selectedAbilityData?.dualWield ?? false;
   const faunaSlugs = new Set(faunaSources.map((y) => y.sourceSlug));
 
   // Excluye lore del continente contrario al de la ubicación actual — mismo bug de contaminación
@@ -439,6 +780,14 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   const lootTargets = (explicitTarget ? [explicitTarget] : npcsInScene).filter(
     (n) => n.condicionFisica === 'INCAPACITADO' || n.condicionFisica === 'MUERTO',
   );
+  // "Decapitar" (petición explícita, 2026-07-30, modal con checkbox: "marcar todos aquellos que
+  // quieras decapitar") — golpe de gracia determinista contra CADA enemigo YA incapacitado que
+  // el modal marcó, sin tirada (no puede resistir). Igual que `lootTargets` "sin objetivo
+  // explícito": el modal manda un único prompt mencionando los nombres elegidos (sin comillas),
+  // y `npcsInScene` (detectado por alias más arriba) ya queda acotado a justo esos — aquí solo
+  // hace falta filtrar por quién de ellos sigue INCAPACITADO (nunca ya MUERTO, no hay nada que
+  // rematar dos veces).
+  const executeTargets = !!enCombate && detectsExecuteIntent(action) ? npcsInScene.filter((n) => n.condicionFisica === 'INCAPACITADO') : [];
   // Bug real (auditoría 2026-07-28): sin comprobar condicionFisica, "atacar" a un NPC ya
   // INCAPACITADO/MUERTO seguía contando como golpe válido cada turno — oneStepWorseThan() se topa
   // en MUERTO (se queda igual), pero el bloque de cierre de misión/reputación de más abajo solo
@@ -469,145 +818,56 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     npcParaIntercambio.condicionFisica !== 'MUERTO' &&
     (!!pendingNpcStillHere || countsAsAttack);
 
-  let npcAttackTarget: NpcInScene | null = null;
-  let npcAttackHits = false;
-  let npcTargetNewCondicion: CondicionFisica | null = null;
-  // El jugador puede recibir un golpe en CUALQUIERA de los dos casos: si el NPC tiene la
-  // iniciativa (ataque directo), o incluso atacando él mismo, si su ataque falla del todo y la
-  // defensa del NPC es tan buena que de propina replica (`defensor_contragolpea`).
-  let jugadorRecibeGolpe = false;
-  let jugadorGolpeEfecto: AbilityEffect | null = null;
-  // Ataque de NPC para el PRÓXIMO intercambio, si la iniciativa lo favorece — se persiste en
-  // Save.pendingNpcAttack (ver tx.save.update más abajo) para que el jugador lo defienda a
-  // ciegas en su siguiente sumisión.
-  let nuevoPendingNpcAttack: PendingNpcAttack | null = null;
-  // `contextBlocks` (el array real donde se acumula el texto para el Narrador) se declara más
-  // abajo — este intercambio se resuelve antes de esa declaración, así que el texto se guarda
-  // aquí y se empuja en cuanto `contextBlocks` existe.
-  let exchangeNarrationBlock: string | null = null;
-  // Auditoría 2026-07-28: el roll tabulado de /turn/classify (`roll`, más abajo) ya no decide
-  // nada del combate desde que resolveExchange existe — antes seguía usándose para la XP y el
-  // RollBadge persistido, completamente desconectado del resultado real del intercambio (podía
-  // marcar "Éxito" junto a una narración que describía un fallo total). El lado del jugador en
-  // el intercambio (`combatExchangeRoll`) pasa a ser la única fuente de verdad para los dos.
-  let combatExchangeRoll: RollResult | null = null;
-  // Nombre real de la habilidad de ataque/defensa que usó el NPC en el intercambio de este turno
-  // (2026-07-29, ver NarrateAndPersistResult.npcAbilityUsed) — se rellena en cada una de las dos
-  // ramas de abajo, siempre que haya intercambio.
-  let npcAbilityUsed: { npcName: string; abilityName: string; rol: 'ataque' | 'defensa' } | null = null;
-  // Tirada real de iniciativa que decide QUIÉN actúa en el próximo intercambio (2026-07-29, "quiero
-  // que sea más claro cuando es turno de ataque... indicándome qué salió en los dados") — null
-  // cuando la iniciativa se fuerza sin dados (aturdimiento/intimidación del turno anterior, ver
-  // más abajo) o cuando no hubo intercambio este turno.
-  let nextInitiativeRoll: InitiativeResult | null = null;
-  // Sistema de fatiga (2026-07-29) — hoisted fuera del bloque de abajo: hace falta después, al
-  // calcular la energía de este turno, sepa o no haber intercambio real de combate.
-  let exchangeHappened = false;
-  // "Si te defiendes recuperas un poco más [de energía] que si atacas normal" — qué ROL tuvo el
-  // jugador en el intercambio de este turno, para elegir el ritmo de regeneración (energy.ts).
-  let jugadorEstaDefendiendo = false;
-
-  if (combateActivo && npcParaIntercambio) {
-    npcAttackTarget = npcParaIntercambio;
-    const npcWeaponNames = npcParaIntercambio.items.filter((i) => i.category === 'arma').map((i) => i.name);
-    const npcAbilities = npcCombatAbilitiesFor(npcParaIntercambio, npcWeaponNames);
-
-    if (pendingNpcAttack && pendingNpcStillHere && !classification.requiereTirada) {
-      // Salvaguarda (auditoría 2026-07-28): sin una tirada real decidida por el clasificador
-      // para ESTA acción concreta (p.ej. algo puramente narrativo escrito a mano mientras hay
-      // un ataque de NPC pendiente — huir incluido, si el clasificador no lo ve como algo
-      // reñido), no se fabrica una defensa con un atributo/dificultad sin sentido — el ataque
-      // pendiente se queda igual para la siguiente acción real del jugador.
-      nuevoPendingNpcAttack = pendingNpcAttack;
-    } else if (pendingNpcAttack && pendingNpcStillHere) {
-      // CASO DEFENSA: el NPC ya atacó (decidido el intercambio anterior, oculto hasta ahora) —
-      // el jugador responde a ciegas con la habilidad que acaba de elegir (`classification.atributo`
-      // ya refleja su `preferredAttribute` cuando viene de un botón, ver turn.ts).
-      const exchange = resolveExchange(
-        {
-          attributes: npcParaIntercambio.attributes,
-          attribute: pendingNpcAttack.attribute,
-          difficulty: difficultyHintFor(params.currentLevel, npcParaIntercambio.level).dificultad,
-          condicionFisica: npcParaIntercambio.condicionFisica,
-        },
-        {
-          attributes,
-          attribute: classification.atributo,
-          difficulty: contraataqueDifficultyFor(npcParaIntercambio.level, params.currentLevel, defensa),
-          condicionFisica: params.condicionFisica,
-        },
-      );
-      // `golpes_mutuos` (2026-07-29, bug real de partida: solo se dañaba al lado "defensor" de
-      // esta llamada, nunca al NPC pese a que la propia narración dice "AMBOS acaban acusando
-      // algo") — hiere a los dos lados, no solo al jugador.
-      jugadorRecibeGolpe = exchange.resultado === 'golpe_pleno' || exchange.resultado === 'golpe_normal' || exchange.resultado === 'golpes_mutuos';
-      jugadorGolpeEfecto = pendingNpcAttack.effect;
-      npcAttackHits = exchange.resultado === 'defensor_contragolpea' || exchange.resultado === 'golpes_mutuos';
-      npcTargetNewCondicion = npcAttackHits ? oneStepWorseThan(npcParaIntercambio.condicionFisica) : null;
-      exchangeNarrationBlock = `${npcParaIntercambio.name} ataca con "${pendingNpcAttack.abilityName}". ${exchangeContextBlock(exchange, npcParaIntercambio.name, characterName)}`;
-      combatExchangeRoll = exchange.defensor;
-      npcAbilityUsed = { npcName: npcParaIntercambio.name, abilityName: pendingNpcAttack.abilityName, rol: 'ataque' };
-      exchangeHappened = true;
-      jugadorEstaDefendiendo = true;
-    } else {
-      // CASO ATAQUE: el jugador tiene la iniciativa — el NPC decide su defensa ahora mismo,
-      // oculta, nunca se le enseña al jugador qué eligió.
-      const npcDefensa = chooseNpcAbility(npcAbilities, 'defensa');
-      const exchange = resolveExchange(
-        {
-          attributes,
-          attribute: classification.atributo,
-          difficulty: difficultyHintFor(npcParaIntercambio.level, params.currentLevel).dificultad,
-          condicionFisica: params.condicionFisica,
-        },
-        {
-          attributes: npcParaIntercambio.attributes,
-          attribute: npcDefensa.attribute,
-          difficulty: contraataqueDifficultyFor(params.currentLevel, npcParaIntercambio.level, 0),
-          condicionFisica: npcParaIntercambio.condicionFisica,
-        },
-      );
-      // `golpes_mutuos` hiere también al jugador, no solo al NPC — mismo criterio que en el CASO
-      // DEFENSA de arriba.
-      npcAttackHits = exchange.resultado === 'golpe_pleno' || exchange.resultado === 'golpe_normal' || exchange.resultado === 'golpes_mutuos';
-      npcTargetNewCondicion = npcAttackHits ? nextCondicionForAttack(abilityEffect, npcParaIntercambio.condicionFisica) : null;
-      jugadorRecibeGolpe = exchange.resultado === 'defensor_contragolpea' || exchange.resultado === 'golpes_mutuos';
-      jugadorGolpeEfecto = null;
-      exchangeNarrationBlock = `${npcParaIntercambio.name} se defiende con "${npcDefensa.name}". ${exchangeContextBlock(exchange, characterName, npcParaIntercambio.name)}`;
-      combatExchangeRoll = exchange.atacante;
-      npcAbilityUsed = { npcName: npcParaIntercambio.name, abilityName: npcDefensa.name, rol: 'defensa' };
-      exchangeHappened = true;
-    }
-
-    if (exchangeHappened) {
-      // Iniciativa del PRÓXIMO intercambio — se decide ya para poder guardarla si favorece al NPC.
-      // Aturdimiento/intimidación con éxito (mismo espíritu que el viejo "NO CONTRAATACA ESTE
-      // TURNO"): quien acaba de aturdir/intimidar a su rival se garantiza la iniciativa siguiente,
-      // sin necesidad de tirar dados para decidirlo.
-      const jugadorAturdioAlNpc = !pendingNpcStillHere && npcAttackHits && (abilityEffect === 'ATURDIMIENTO' || abilityEffect === 'INTIMIDACION');
-      const npcAturdioAlJugador = !!pendingNpcStillHere && jugadorRecibeGolpe && (jugadorGolpeEfecto === 'ATURDIMIENTO' || jugadorGolpeEfecto === 'INTIMIDACION');
-      let iniciativaSiguiente: 'jugador' | 'npc';
-      if (jugadorAturdioAlNpc) {
-        iniciativaSiguiente = 'jugador';
-      } else if (npcAturdioAlJugador) {
-        iniciativaSiguiente = 'npc';
-      } else {
-        nextInitiativeRoll = rollInitiative(attributes, npcParaIntercambio.attributes);
-        iniciativaSiguiente = nextInitiativeRoll.ganador;
-      }
-
-      if (iniciativaSiguiente === 'npc') {
-        const npcAtaque = chooseNpcAbility(npcAbilities, 'ataque');
-        nuevoPendingNpcAttack = { npcId: npcParaIntercambio.id, attribute: npcAtaque.attribute, effect: npcAtaque.effect, abilityName: npcAtaque.name };
-      }
-    }
-  }
+  const {
+    npcAttackTarget,
+    npcAttackHits,
+    npcTargetNewCondicion,
+    jugadorRecibeGolpe,
+    jugadorGolpeEfecto,
+    nuevoPendingNpcAttack,
+    exchangeNarrationBlock,
+    combatExchangeRoll,
+    npcAbilityUsed,
+    nextInitiativeRoll,
+    exchangeHappened,
+    npcNuevaEnergia,
+    abilityEffectHint,
+  } = resolveCombatExchangePhase({
+    combateActivo,
+    npcParaIntercambio,
+    pendingNpcAttack,
+    pendingNpcStillHere,
+    requiereTirada: classification.requiereTirada,
+    classificationAtributo: classification.atributo,
+    currentLevel: params.currentLevel,
+    condicionFisicaJugador: params.condicionFisica,
+    attributes,
+    defensa,
+    characterName,
+    abilityEffect,
+    dualWieldBonus,
+  });
 
   // Bloque de posición (docs/12 § 1.5): en un turno de viaje, la narración recibe la llegada al
   // destino + la ruta recorrida; en cualquier otro turno, recibe siempre dónde está y hacia
   // dónde puede ir — reduce los casos "weaklyGrounded" al dar siempre algo concreto que describir.
   const contextBlocks: string[] = [];
   if (exchangeNarrationBlock) contextBlocks.push(exchangeNarrationBlock);
+  if (abilityEffectHint) contextBlocks.push(abilityEffectHint);
+
+  // Ver `hasFalseCombatHit` (narrador.ts) — bug real jugando en vivo (2026-07-31, "sigo sin
+  // hacerle daño al enemigo"): el intercambio resolvió 'ataque_falla' (ningún lado conecta) pero
+  // la narración describió un golpe limpio de todos modos. Solo estos dos resultados dejan a
+  // AMBOS lados sin golpe — cualquier otro (`golpe_normal`/`golpe_pleno`/`golpes_mutuos`/
+  // `defensor_contragolpea`) sí tiene un golpe real en algún lado, así que no aplica la red.
+  const combatBothMissed = exchangeHappened && !npcAttackHits && !jugadorRecibeGolpe;
+
+  // Anti-repetición de vocabulario/imágenes (ver comentario de `lastNarration` más arriba).
+  if (lastNarration) {
+    contextBlocks.push(
+      `TU PROPIA NARRACIÓN DEL TURNO ANTERIOR (no la repitas): "${lastNarration.text}". Varía el vocabulario y las imágenes en este turno — evita reutilizar las mismas palabras o metáforas que acabas de usar ahí.`,
+    );
+  }
 
   // Sugerencia ambiental de encuentro (checklist 2026-07-21/22, punto 3 — "más NPCs/fauna
   // itinerante para encuentros casuales más frecuentes"): sin esto, el modelo nunca tenía ningún
@@ -672,6 +932,13 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   for (const npc of npcsInScene) {
     contextBlocks.push(npcSceneBlockFor(npc, params.currentLevel));
   }
+  // Ver `hasResurrectedDeadNpc` (narrador.ts) — bug real jugando en vivo (2026-08-01, "el orco que
+  // maté volvió a aparecer"): con el Orco Enfurecido MUERTO y saqueado desde hacía varios turnos,
+  // "Exploro la zona" narró que Gorhorn reconocía "huellas recientes" suyas, como si siguiera vivo
+  // y merodeando. `npcSceneBlockFor` (arriba) ya le da al modelo la instrucción de tratarlo solo
+  // como recuerdo, pero puede ignorarla igual que el resto de instrucciones "no hagas X" de esta
+  // sesión — mismo criterio: comprobar el texto ya generado, no confiar solo en la instrucción.
+  const possiblyResurrectedNpcNames = npcsInScene.filter((n) => n.condicionFisica === 'INCAPACITADO' || n.condicionFisica === 'MUERTO').map((n) => n.name);
 
   // Réplica de NPC en su propia llamada dedicada (sesión de diseño 2026-07-23, tercer intento —
   // ver `generateNpcReply` en narrador.ts para la explicación completa): pedirle a la MISMA
@@ -704,6 +971,18 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     );
   }
 
+  // "Doble descripción" (auditoría 2026-07-30, "revisar partida" — "hay 2, una la que ve el
+  // usuario otra la que usa el prompt... para mejorar las narraciones"): antes SOLO el nombre de
+  // las armas llegaba aquí (bloque de arriba) — el resto del equipo (ropa/accesorios/abalorios) y
+  // la `description` real de CUALQUIER objeto puesto (aspecto/historia concretos, ver
+  // equipment.ts § equippedItemsSummary) nunca llegaban al Narrador. Sin `enCombate`/prosa de
+  // relleno de por medio: siempre relevante, haya o no alguien más en escena.
+  if (equippedItems.length > 0) {
+    contextBlocks.push(
+      `EQUIPO PUESTO AHORA MISMO (aspecto/historia reales — descríbelo así si aparece en la narración, nunca inventes otro aspecto para estos objetos):\n${equippedItems.map((i) => `- ${i.name}: ${i.description}`).join('\n')}`,
+    );
+  }
+
   // Guardia anti-combate-fantasma (roadmap 2026-07-20, hallazgo real jugando: una simple errata
   // del jugador — "orco redazagado" en vez de "rezagado" — hacía que npcsInScene quedara vacío y
   // el modelo narrara un combate entero, incluida una muerte, sin que NINGÚN sistema determinista
@@ -717,8 +996,35 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     );
   }
 
+  // Guardia anti-combate-fantasma, variante 2 (bug real, auditoría 2026-07-30, "revisar
+  // partida"): "Yo me ocupo de tu perseguidor, no te preocupes" (aceptar ayudar a Gistera Koh) se
+  // clasificó como banda extendida/diferida — por decisión explícita de la usuaria (2026-07-24),
+  // aceptar ayudar NUNCA fuerza combate mecánico solo (ver `shouldForceCombat`/
+  // `detectsVerbalAcceptanceIntent` más abajo). Pero nada le impedía al modelo, al resolver ese
+  // turno diferido con el Orco ya "en escena", narrar una pelea entera y ganada ("golpea la cabeza
+  // del Orco en pleno rostro") sin que `resolveCombatExchangePhase` hubiera corrido ni una vez —
+  // el NPC se quedó ILESO de verdad en la base de datos pese a la narración. Si hay un NPC real en
+  // escena pero este turno no resolvió ningún intercambio mecánico (`exchangeHappened`), se avisa
+  // explícitamente — salvo que sea justo un "Decapitar" (`executeTargets`, ver abajo), donde SÍ se
+  // pide describir un golpe de gracia a propósito, sin tirada, porque el motor ya lo decidió así.
+  if (npcsInScene.length > 0 && !exchangeHappened && executeTargets.length === 0) {
+    contextBlocks.push(
+      'Ningún intercambio de combate mecánico se ha resuelto todavía este turno — puedes narrar tensión, acercamiento, amenaza o preparativos, pero NUNCA un golpe que conecta, una herida infligida, ni el resultado ya decidido de una pelea (ni a favor ni en contra del personaje). Esa resolución solo existe cuando el propio sistema la calcula, en un turno futuro dentro del combate real.',
+    );
+  }
+
   if (harvestMatch) {
     contextBlocks.push(harvestBlockFor(harvestMatch));
+  }
+
+  // "Decapitar" (2026-07-30) — los enemigos ya están incapacitados y no pueden resistir; se le
+  // dice al modelo tal cual para que narre un golpe de gracia definitivo por cada uno, nunca una
+  // pelea o resistencia que ya no existe mecánicamente.
+  if (executeTargets.length > 0) {
+    const nombres = executeTargets.map((n) => n.name).join(', ');
+    contextBlocks.push(
+      `${characterName} remata a ${nombres}, que yacen incapacitados en el suelo y no pueden oponer ninguna resistencia — describe un golpe de gracia definitivo para cada uno, nunca una pelea o un intento de defensa por su parte.`,
+    );
   }
 
   // Roadmap 2026-07-19: `Companion`/`Quest` se persistían pero nunca entraban en ningún prompt —
@@ -743,13 +1049,13 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   const inventoryCatalogRows = inventoryCatalogSlugs.length
     ? await prisma.itemCatalog.findMany({
         where: { worldId, slug: { in: inventoryCatalogSlugs } },
-        select: { slug: true, tipo: true, category: true, curaHasta: true, tipoArma: true, curaEnergia: true },
+        select: { slug: true, tipo: true, category: true, curaHasta: true, tipoArma: true, curaEnergia: true, equipSlot: true },
       })
     : [];
   const catalogBySlug = new Map(
     inventoryCatalogRows.map((c) => [
       c.slug,
-      { tipo: c.tipo, category: c.category, curaHasta: c.curaHasta, tipoArma: c.tipoArma, curaEnergia: c.curaEnergia },
+      { tipo: c.tipo, category: c.category, curaHasta: c.curaHasta, tipoArma: c.tipoArma, curaEnergia: c.curaEnergia, equipSlot: c.equipSlot },
     ]),
   );
   // Sistema de habilidades de arma (2026-07-29) — huecos ARMA_PRINCIPAL/ARMA_SECUNDARIA
@@ -757,6 +1063,25 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   const equippedWeaponSlotsForAbilities: EquippedWeaponSlot[] = inventoryRows
     .filter((i) => i.slot === 'ARMA_PRINCIPAL' || i.slot === 'ARMA_SECUNDARIA')
     .map((i) => ({ slot: i.slot!, tipoArma: (i.catalogSlug ? catalogBySlug.get(i.catalogSlug)?.tipoArma : null) ?? null }));
+  // Bug real (auditoría 2026-08-01, "revisar partida"): con las dos manos equipadas (p. ej. hacha
+  // en ARMA_PRINCIPAL + cuchillo en ARMA_SECUNDARIA), un "Ataque Básico" (rediseño 2026-07-30: SOLO
+  // mano principal, nunca la secundaria) narró "le clava su cuchillo de hielo sílice" — el bloque
+  // "ARMA DEL PERSONAJE" de más arriba lista las dos armas juntas ("empuña... Hacha de guerra rota
+  // y Cuchillo de hielo sílice") para evitar que el modelo le ponga en las manos el arma de OTRO
+  // personaje, pero nunca aclara CUÁL de las dos usa en ESTE golpe concreto — con dos opciones
+  // igual de válidas a la vista, el modelo elige mal. Ataque Básico es el único caso donde esto se
+  // puede resolver sin ambigüedad: por diseño usa siempre ARMA_PRINCIPAL, nunca la secundaria — las
+  // habilidades reales por categoría (Tajo Horizontal, etc.) no entran aquí porque su arma exacta
+  // sí puede vivir en la secundaria, y no hay forma barata de saberlo sin más cambios de esquema.
+  if (!pendingNpcStillHere && selectedAbilityData?.name === 'Ataque Básico') {
+    const armaPrincipal = inventoryRows.find((i) => i.slot === 'ARMA_PRINCIPAL') ?? null;
+    const armaSecundaria = inventoryRows.find((i) => i.slot === 'ARMA_SECUNDARIA') ?? null;
+    if (armaPrincipal && armaSecundaria) {
+      contextBlocks.push(
+        `ESTE GOLPE EN CONCRETO es con ${armaPrincipal.name} (la que lleva en la mano PRINCIPAL) — nunca con ${armaSecundaria.name} (mano secundaria), aunque lleve las dos encima.`,
+      );
+    }
+  }
   // Reglas de curación (2026-07-29, "si usas material médico sí puedes curarte a Ileso"): objetos
   // médicos QUE de verdad llevas encima ahora mismo, con su tope de curación real del catálogo —
   // detectMedicalItemUse (itemReference.ts) decide determinista si esta acción usa alguno.
@@ -770,6 +1095,16 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     .map((i) => ({ name: i.name, curaEnergia: i.catalogSlug ? (catalogBySlug.get(i.catalogSlug)?.curaEnergia ?? null) : null }))
     .filter((i): i is { name: string; curaEnergia: number } => i.curaEnergia !== null);
   const energyItemRestoreAmount = detectEnergyItemUse(action, energyItemsInInventory);
+  // Ver `hasFalseItemUse` (narrador.ts) — bug real jugando en vivo (2026-08-01, "descansar no
+  // curó, y encima consumió un objeto sin pedirlo"): descansar mientras INCAPACITADO no basta por
+  // sí solo (healCeilingFor exige un objeto médico real), pero la narración igualmente describió
+  // usar la cataplasma — objeto que ni el jugador nombró en su acción ni se detectó consumido
+  // aquí. Solo se manda la lista cuando NINGÚN objeto se detectó de verdad este turno: si alguno
+  // sí se usó, mencionarlo (o cualquier otro) en la narración ya no es sospechoso por sí solo.
+  const possiblyFalseItemUseNames =
+    medicalCuraHasta === null && energyItemRestoreAmount === null
+      ? [...medicalItemsInInventory, ...energyItemsInInventory].map((i) => i.name)
+      : [];
   // Alivio de requisitos por oficio (sesión de diseño 2026-07-23) — el nivel de UN oficio SOLO
   // relaja los requisitos de recetas de ESE oficio, nunca la tirada general (ver requisitos.ts).
   const oficioNivelById = new Map(professionProgressRows.map((p) => [p.professionId, p.nivel]));
@@ -837,13 +1172,24 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   // misión (creada solo tras la presentación + aceptación, nunca antes) es una señal durable que
   // sobrevive a la ventana rodante — no cierra la ventana corta entre "se presentó" y "aceptó
   // todavía no", pero sí evita que se repita indefinidamente pasada esa aceptación.
-  const gisteraQuestYaExiste = await prisma.quest.findFirst({ where: { saveId, title: { contains: 'Orco Enfurecido' } } });
-  const gisteraYaPresentada = sessionFacts.some((f) => f.includes('Gistera Koh')) || !!gisteraQuestYaExiste;
+  // `gisteraQuestYaExiste`/`gisteraYaPresentada` ya se calcularon arriba, justo tras resolver
+  // `npcsInScene` (hacía falta antes de tiempo para poder filtrarla de ahí — ver ese comentario).
   const gisteraSinNombreEnEscena = sessionFacts.some((f) => f.includes('sin nombre revelado todavía'));
   const gisteraEnEscena =
     gisteraKoh !== null || gisteraSinNombreEnEscena || gisteraYaPresentada || npcsInScene.some((npc) => npc.slug === 'gistera-koh');
   const gisteraSePresentaEsteTurno = gisteraEnEscena && !gisteraYaPresentada && detectsDialogueIntent(action);
-  if (gisteraEnEscena && gisteraYaPresentada) {
+  // Petición explícita de la usuaria (2026-08-01): "en cuanto acepto la misión de Gistera que
+  // ella se marche dirección Ciénaga [Troncal] y que no vuelva a aparecer" — una vez se ha ido
+  // (este turno de aceptación o cualquiera posterior), la instrucción deja de ser "intenta
+  // convencerlo" y pasa a ser la contraria: no volver a traerla a la escena bajo ningún concepto,
+  // ni aunque algún hecho de sesión la siga mencionando (son recuerdos de lo ya ocurrido, nunca
+  // presencia real). Va ANTES del resto de ramas porque, con el mismo `gisteraEnEscena` a true
+  // (su propio Quest cuenta como señal), la rama vieja seguiría disparando si no se excluye aquí.
+  if (gisteraSeHaMarchado) {
+    contextBlocks.push(
+      'GISTERA KOH ya se marchó hacia la Ciénaga Troncal en cuanto Gorhorn aceptó ayudarla — NO vuelve a aparecer en la escena a partir de ahora, bajo ningún concepto: no la menciones presente, no la hagas hablar, no la traigas de vuelta ni la reintroduzcas de ninguna forma. Si algún hecho de fondo la nombra, es solo un recuerdo de lo ya ocurrido, nunca algo que esté pasando ahora.',
+    );
+  } else if (gisteraEnEscena && gisteraYaPresentada) {
     contextBlocks.push(
       'GISTERA KOH busca convencer a Gorhorn de que la ayude a acabar con el Orco Enfurecido que la persigue — se ha fijado en la marca/tótem del Clan Maktor que lleva Gorhorn y lo usa a su favor (un expulsado hablando con otro sin clan). Si en algún turno Gorhorn acepta ayudarla de verdad (no antes, y no lo fuerces si Gorhorn todavía no se ha decidido), crea la misión con "newQuest" mencionando "Orco Enfurecido" en el título o la descripción, para que derrotarlo la cierre sola.',
     );
@@ -927,34 +1273,103 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     );
   }
 
-  if (lootMode || harvestMatch) {
+  if (harvestMatch) {
     contextBlocks.push(
       'IMPORTANTE: no rellenes "newItem" en este turno — el objeto o botín ya se gestiona automáticamente por el backend a partir de datos fijos.',
     );
   }
+  // Bug real (2026-07-31→2026-08-01, "saquear no cita los objetos que has saqueado bien, y no sale
+  // el link a la Enciclopedia" — y tras el primer intento de solo AVISAR al modelo del nombre
+  // exacto, seguía inventando objetos que no existen, p. ej. "Tótem Maktor"): saquear es un turno
+  // puramente mecánico, sin ninguna decisión narrativa real que tomar — pedirle al LLM que lo
+  // narre solo añade latencia (queja explícita: "tarda demasiado en narrar") y riesgo de
+  // alucinación sin ganar nada. Se calcula aquí (de solo lectura, mismo criterio que `lootTargets`
+  // + `lootItemNames` + `lootedItemNames` que usará después el bloque real de la transacción) qué
+  // objetos concretos se van a conceder, y se narra a mano — mismo principio que la escena de
+  // Gistera Koh más abajo: se le quita al modelo la posibilidad de fallar en vez de reforzar más
+  // el prompt.
+  const lootPreview = lootMode
+    ? lootTargets.flatMap((npc) => {
+        if (npc.saqueado) return [];
+        const yaTomados = npc.lootedItemNames;
+        return (lootItemNames ? npc.items.filter((item) => lootItemNames.includes(item.name)) : npc.items).filter(
+          (item) => !yaTomados.includes(item.name),
+        );
+      })
+    : [];
 
-  const narration = await narrateAction({
-    worldFacts: [...contextBlocks, ...sessionFacts],
-    // Separado de worldFacts (roadmap 2026-07-24, "revisar partida" — ver comentario en
-    // TurnContext.backgroundLore, narrador.ts): el lore RAG es trasfondo del mundo, no hechos de
-    // la escena actual — fusionarlos bajo el mismo "HECHOS DEL MUNDO" le daba al modelo licencia
-    // para hacer aparecer en persona a cualquier NPC que el RAG trajera por similitud de texto,
-    // aunque viviera en otra región o perteneciera a la trama de otro personaje jugable.
-    backgroundLore: formatLoreForPrompt(retrieved),
-    characterSummary,
-    action,
-    roll,
-    weaklyGrounded: isWeaklyGrounded(retrieved) && sessionFacts.length === 0 && contextBlocks.length === 0,
-    enCombate,
-    banda: classification.banda,
-    npcSlugsInScene: npcsInScene.map((n) => n.slug),
-    // `contextBlocks` va SIEMPRE primero en `worldFacts` (línea de arriba) — su longitud es
-    // justo el corte que un reintento de emergencia (attempt2, ver narrador.ts) debe respetar
-    // para no perder bloques deterministas/obligatorios como la escena de Gistera Koh.
-    criticalFactsCount: contextBlocks.length,
-    onNarrationChunk,
-    onNarrationReset,
-  });
+  // Escena de Gistera Koh, fase 2 — solución limpia (auditoría 2026-07-30, "revisar partida",
+  // tras encontrarlo fallando EN VIVO por segunda vez: la primera vez inventó "Múrgol" como
+  // nombre alternativo — 2026-07-24 —, esta vez "Lyria de la Tormenta Negra", llamándola además
+  // "el animal"). La instrucción negativa de más abajo ("NO la menciones tú en absoluto") ya
+  // existía desde el primer incidente y es tan explícita como razonablemente se puede pedir —
+  // pero un modelo pequeño, con una pregunta directa y entrecomillada del jugador delante
+  // ("¿quién eres?"), sigue sintiendo la necesidad de responderla él mismo pese a la prohibición.
+  // En vez de insistir con MÁS palabras a una instrucción que ya ha fallado dos veces (no hay
+  // "instrucción todavía más fuerte" que sea de fiar), se le quita al modelo la posibilidad de
+  // fallar: en este turno concreto (uno solo por partida, siempre el mismo patrón determinista)
+  // no se le pide en absoluto que resuelva el diálogo — se narra a mano la parte de Gorhorn, y el
+  // añadido determinista de siempre (más abajo) resuelve el resto. Mismo principio que la fase 1
+  // (ya 100% determinista) llevado un paso más allá.
+  const narration: NarrationResult = gisteraSePresentaEsteTurno
+    ? {
+        narration: `${characterName} se planta frente a la figura y le exige que hable, sin apartar la mirada.`,
+        newFacts: [],
+      }
+    : lootMode
+      ? {
+          narration:
+            lootPreview.length > 0
+              ? `${characterName} rebusca entre los restos y se hace con lo siguiente: ${lootPreview.map((item) => item.name).join(', ')}.`
+              : `${characterName} rebusca entre los restos, pero no queda nada más que llevarse.`,
+          newFacts: [],
+        }
+      : await narrateAction({
+          worldFacts: [...contextBlocks, ...(await selectRelevantFacts(action, saveId, sessionFacts))],
+          // Separado de worldFacts (roadmap 2026-07-24, "revisar partida" — ver comentario en
+          // TurnContext.backgroundLore, narrador.ts): el lore RAG es trasfondo del mundo, no hechos
+          // de la escena actual — fusionarlos bajo el mismo "HECHOS DEL MUNDO" le daba al modelo
+          // licencia para hacer aparecer en persona a cualquier NPC que el RAG trajera por
+          // similitud de texto, aunque viviera en otra región o perteneciera a la trama de otro
+          // personaje jugable.
+          backgroundLore: formatLoreForPrompt(retrieved),
+          characterSummary,
+          action,
+          roll,
+          weaklyGrounded: isWeaklyGrounded(retrieved) && sessionFacts.length === 0 && contextBlocks.length === 0,
+          enCombate,
+          banda: classification.banda,
+          npcSlugsInScene: npcsInScene.map((n) => n.slug),
+          // `contextBlocks` va SIEMPRE primero en `worldFacts` (línea de arriba) — su longitud es
+          // justo el corte que un reintento de emergencia (attempt2, ver narrador.ts) debe respetar
+          // para no perder bloques deterministas/obligatorios como la escena de Gistera Koh.
+          criticalFactsCount: contextBlocks.length,
+          lastNarrationText: lastNarration?.text,
+          combatBothMissed,
+          possiblyFalseItemUseNames,
+          possiblyResurrectedNpcNames,
+          onNarrationChunk,
+          onNarrationReset,
+        });
+  // Streaming (2026-07-30): la rama determinista de arriba nunca llama a `onNarrationChunk` (no
+  // hay generación en vivo que transmitir) — se manda de una vez aquí para que el frontend siga
+  // viendo el mismo patrón de un "chunk" seguido de "done", en vez de quedarse sin nada hasta el
+  // final de la respuesta HTTP completa.
+  if (gisteraSePresentaEsteTurno || lootMode) onNarrationChunk?.(narration.narration);
+
+  // "Revisar partida" 2026-07-30 (queja explícita: el jugador terminó INCAPACITADO sin que la
+  // narración reflejara ningún golpe recibido más allá del primero) — cuando el jugador ataca y
+  // el intercambio resulta en `golpes_mutuos`/`defensor_contragolpea`, ya se le avisa al modelo
+  // vía `abilityEffectHint`/`exchangeNarrationBlock` que narre que AMBOS acusan algo, pero un
+  // modelo pequeño tiende a narrar solo la victoria limpia del jugador e ignorar el golpe propio
+  // — la condición física SÍ baja igual (nextCondicionFisica, determinista), así que sin esta
+  // frase el jugador ve su barra de salud caer sin ninguna explicación narrativa. Mismo patrón
+  // que la escena de Gistera Koh más abajo: se garantiza con una frase añadida en vez de confiar
+  // en que el modelo la recoja del context block. Nunca en la defensa a ciegas (`pendingNpcStillHere`):
+  // ahí el golpe recibido YA es el protagonista del turno, el modelo no tiene motivo para omitirlo.
+  if (!pendingNpcStillHere && jugadorRecibeGolpe) {
+    narration.narration = `${narration.narration} En el fragor del choque, ${characterName} tampoco sale indemne — el golpe recibido se nota de verdad.`;
+  }
 
   // Escena de Gistera Koh, fase 1 — determinista, SIN nombre a propósito (ver comentario más
   // arriba). `newFacts` usa un marcador reconocible por código ("sin nombre revelado todavía")
@@ -978,6 +1393,20 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   if (gisteraSePresentaEsteTurno) {
     narration.narration = `${narration.narration} Con la respiración entrecortada, sin dejar de mirar hacia atrás, se presenta a toda prisa: "Soy Gistera Koh... del Clan Serhu, aunque ya no. No tengo tiempo para explicarte más — uno de los suyos me pisa los talones y quiere verme muerta. Llevas la marca de los Maktor, ¿verdad? Entonces sabes lo que es que un clan entero se vuelva contra los tuyos. ¿No quieres acabar con los Serhu? Empieza por el que me persigue — hazlo antes de que sea tarde para las dos."`;
     narration.newFacts = [...narration.newFacts, `Gistera Koh, una orca expulsada del Clan Serhu, le ha pedido a ${characterName} que la ayude a acabar con el Orco Enfurecido que la persigue.`];
+  }
+
+  // Escena de Gistera Koh, fase 3 — despedida determinista (petición explícita de la usuaria,
+  // 2026-08-01: "en cuanto acepto la misión de Gistera que ella se marche dirección Ciénaga del
+  // Pantano y que no vuelva a aparecer" — se usa el nombre real de esa región, Ciénaga Troncal,
+  // ver KNOWN_REGIONS en narrationLint.ts, para no inventar un topónimo que no existe en el mundo).
+  // `gisteraAceptaEsteTurno` solo es true el turno EXACTO de la aceptación (el Quest todavía no
+  // existía al principio de esta petición) — nunca se repite en turnos futuros. A partir de aquí,
+  // `npcsInScene` ya la excluye (ver `gisteraSeHaMarchado` arriba) y el contextBlock de más arriba
+  // le prohíbe al modelo volver a traerla — esta frase es la única vez que se narra su marcha.
+  const gisteraAceptaEsteTurno = gisteraSeHaMarchado && !gisteraQuestYaExiste;
+  if (gisteraAceptaEsteTurno) {
+    narration.narration = `${narration.narration} Gistera Koh asiente, aliviada, y sin perder ni un segundo más echa a andar hacia el sur, en dirección a la Ciénaga Troncal, perdiéndose pronto entre la maleza.`;
+    narration.newFacts = [...narration.newFacts, `Gistera Koh se marchó hacia la Ciénaga Troncal en cuanto ${characterName} aceptó ayudarla — ya no está en escena, no volverá a aparecer.`];
   }
 
   // Réplica de NPC en su propia llamada dedicada (ver comentario de `generateNpcReply` en
@@ -1025,24 +1454,34 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   // ese momento (el propio comentario original ya lo situaba "fuera de la transacción porque
   // puede llamar al Cronista (lento)" — pero seguía bloqueando la respuesta HTTP igual). Ahora
   // `claimChapterIfDue` es una comprobación barata (dos consultas indexadas, nunca Ollama) que se
-  // sigue esperando aquí porque decide el hito/XP de ESTE turno; si toca capítulo, la generación
-  // de verdad (`scheduleChapterSummaryGeneration`, la llamada lenta) se dispara con `void` —
-  // sin esperar — y solo se registra si falla, exactamente igual de resiliente que el try/catch
-  // original (`claimChapterIfDue` ya protege contra reclamar el mismo capítulo dos veces mientras
-  // la generación de fondo sigue en marcha).
+  // sigue esperando aquí porque decide el hito/XP de ESTE turno (usado más abajo, dentro de la
+  // transacción). La generación de verdad (`scheduleChapterSummaryGeneration`, la llamada lenta)
+  // ya NO se dispara aquí — bug real (auditoría 2026-07-30): disparada antes de la transacción,
+  // sobrevivía intacta a un rollback de esa misma transacción (p.ej. TransitCancelledError o un
+  // timeout real contra el pool remoto) y dejaba un `SessionSummary` persistido sin que el hito
+  // "capitulo"/su XP hubiera llegado a concederse de verdad — se dispara más abajo, solo tras
+  // confirmar que la transacción hizo commit (y se libera el reclamo si no lo hace, ver el catch).
   const chapterDue = await claimChapterIfDue(saveId);
-  if (chapterDue) {
-    void scheduleChapterSummaryGeneration(saveId, characterName);
-  }
 
   // Condición física (docs/14 § 1) y descanso válido (§ 4.1) — deterministas, calculados antes
-  // de la transacción porque no dependen de ella (solo leen el catálogo de mundo). Se combina la
-  // propuesta del modelo con la del intercambio de combate determinista (la peor de las dos
-  // gana, pero nextCondicionFisica sigue topando a un único escalón por turno — nunca se suman).
-  const condicionPropuestaCombinada = worseCondicion(
-    narration.condicionFisica,
-    jugadorRecibeGolpe ? nextCondicionForAttack(jugadorGolpeEfecto, params.condicionFisica) : null,
-  );
+  // de la transacción porque no dependen de ella (solo leen el catálogo de mundo).
+  //
+  // Bug real (auditoría 2026-07-30, "revisar partida" — queja explícita: "la narración dice que
+  // le hago daño al orco pero he recibido daño en todos los turnos aunque la narración no lo
+  // indica"): cuando SÍ hubo un intercambio de combate real este turno (`exchangeHappened`), antes
+  // se combinaba con `worseCondicion` la propuesta LIBRE del modelo (`narration.condicionFisica`
+  // — el prompt de combate literalmente invita a "proponer condicionFisica si el personaje sale
+  // herido de este intercambio") con el resultado YA resuelto del intercambio determinista
+  // (`jugadorRecibeGolpe`), y se quedaba con la PEOR de las dos. Eso dejaba que el modelo empeorara
+  // la condición del jugador sin que su propia prosa mencionara ningún golpe recibido (narraba
+  // solo al enemigo siendo herido) — la salud bajaba turno tras turno sin ninguna explicación
+  // narrativa real. El intercambio determinista ya es la única fuente de verdad del combate
+  // (resolveExchange, nunca el modelo) — con exchange real este turno, su resultado manda solo,
+  // sin combinar. Sin exchange (fuera de combate, o combate sin intercambio resuelto este turno)
+  // sigue confiando en la propuesta del modelo tal cual, como siempre.
+  const condicionPropuestaCombinada = exchangeHappened
+    ? (jugadorRecibeGolpe ? nextCondicionForAttack(jugadorGolpeEfecto, params.condicionFisica) : null)
+    : narration.condicionFisica;
   const restSucceeds = !!(
     !travel &&
     currentLocationRecord &&
@@ -1056,15 +1495,16 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   const proposedCondicion = nextCondicionFisica(params.condicionFisica, condicionPropuestaCombinada, !!enCombate, healCeiling);
 
   // Sistema de fatiga (2026-07-29) — gasto/regen de energía de este turno, siempre determinista
-  // (ver energy.ts § nextEnergia): coste de la habilidad pulsada, regen según rol si el coste fue
-  // 0, descanso válido restaura al tope, objeto consumido suma su restauración.
+  // (ver energy.ts § nextEnergia): coste de la habilidad pulsada, regen propio de esa misma
+  // habilidad (2026-07-31, ya no por rol), descanso válido restaura al tope, objeto consumido
+  // suma su restauración.
   const energiaMax = energiaMaxFor(attributes.constitucion);
   const nuevaEnergia = nextEnergia({
     current: params.energia,
     max: energiaMax,
     abilityEnergyCost,
+    abilityEnergyRegen,
     exchangeHappened,
-    wasDefending: jugadorEstaDefendiendo,
     restSucceeds,
     itemRestoreAmount: energyItemRestoreAmount,
   });
@@ -1074,17 +1514,24 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   const nuevoFictionalMinutes = advanceFictionalMinutes(fictionalMinutesActuales, minutosDeEsteTurno);
   const nuevaFictionalDateLabel = formatFictionalDate(nuevoFictionalMinutes);
 
-  const {
-    progression,
-    condicionFisica,
-    energia,
-    energiaMax: energiaMaxResult,
-    finDePartida,
-    justDied,
-    newInventoryItems,
-    logEntryId,
-    newQuestObjetivos,
-  } = await prisma.$transaction(async (tx) => {
+  // Envuelto en try/catch (auditoría 2026-07-30) SOLO para poder liberar el reclamo de capítulo
+  // (`releaseChapterClaim`) si la transacción no llega a comprometerse — ver el comentario de
+  // `chapterDue` más arriba. El resto de callers (turn.ts/worldTick.ts) siguen viendo exactamente
+  // el mismo error propagado que antes, este catch nunca lo absorbe.
+  let transactionResult: {
+    progression: ProgressionResult;
+    condicionFisica: CondicionFisica;
+    energia: number;
+    energiaMax: number;
+    finDePartida: boolean;
+    justDied: boolean;
+    newInventoryItems: NewInventoryItemInfo[];
+    logEntryId: string;
+    newQuestObjetivos: string[];
+    newQuestInfo: { title: string; objetivo: string } | null;
+  };
+  try {
+    transactionResult = await prisma.$transaction(async (tx) => {
     // Ver TransitCancelledError arriba: si esta resolución viene de worldTick.ts, intenta borrar
     // el CharacterTransit YA, al principio de la transacción — si otra transacción (el cancelar
     // del jugador) ya lo borró primero, `count` es 0 y se aborta todo sin aplicar ningún efecto.
@@ -1107,13 +1554,15 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     // objetivo cita un elemento real del catálogo (NPC, fauna, objeto), se desbloquee en la
     // Enciclopedia igual que si lo hubiera mencionado la narración.
     const newQuestObjetivos: string[] = [];
+    // Notificación de misión aceptada (ver NarrateAndPersistResult.newQuestInfo más arriba) — se
+    // rellena en los dos sitios que crean una Quest de verdad, más abajo.
+    let newQuestInfo: { title: string; objetivo: string } | null = null;
 
     await tx.worldState.update({
       where: { saveId },
       data: {
         fictionalMinutes: nuevoFictionalMinutes,
         fictionalDateLabel: nuevaFictionalDateLabel,
-        ...(narration.newFacts.length ? { facts: mergeFacts(sessionFacts, narration.newFacts) } : {}),
       },
     });
 
@@ -1131,16 +1580,32 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
       }
     }
 
-    // Loot (docs/12 § 4.5, decisión de la usuaria: copiar todo el loadout) — la ÚNICA fuente de
-    // botín es lo que el NPC lleva encima (NpcItem), nunca una invención del modelo. `lootTargets`
-    // (ver más arriba) ya filtra por objetivo explícito y por condicionFisica INCAPACITADO/MUERTO —
-    // aquí ya no hace falta volver a comprobar nada de eso.
+    // Loot (docs/12 § 4.5) — la ÚNICA fuente de botín es lo que el NPC lleva encima (NpcItem),
+    // nunca una invención del modelo. `lootTargets` (ver más arriba) ya filtra por objetivo
+    // explícito y por condicionFisica INCAPACITADO/MUERTO — aquí ya no hace falta volver a
+    // comprobar nada de eso.
+    //
+    // Saqueo selectivo (2026-07-30, sustituye la decisión original de "copiar siempre todo el
+    // loadout"): si `lootItemNames` viene informado (el modal de saqueo con checkboxes lo manda),
+    // solo se copian los objetos marcados — el resto del loadout se queda con el cadáver. Sin
+    // esa lista (el "Registrar"/"Saquear todo" de toda la vida), se sigue copiando todo.
+    //
+    // Saqueo PARCIAL de verdad (2026-07-31, petición explícita: "si no saqueas todo el botón sigue
+    // para poder saquear lo que dejaste") — antes `saqueado` se marcaba `true` en cuanto se tocaba
+    // CUALQUIER objeto del NPC, así que dejar algo sin marcar en el modal lo perdía para siempre
+    // (`if (npc.saqueado) continue` de abajo bloqueaba cualquier visita posterior). Ahora
+    // `NpcState.lootedItemNames` lleva la cuenta exacta de qué te has llevado ya — `itemsToLoot`
+    // excluye lo ya tomado (nunca duplica si vuelves a marcarlo sin querer) y `saqueado` solo pasa
+    // a `true` cuando `lootedItemNames` cubre el 100% del loadout conocido del NPC.
     if (lootMode) {
       for (const npc of lootTargets) {
-        // NpcState (roadmap 2026-07-19): antes no había forma de saber si este NPC ya se había
-        // saqueado en esta partida, así que el mismo botín se podía repetir infinitas veces.
+        // NpcState: una vez saqueado DEL TODO, no hay nada más que ofrecer — se sigue saltando.
         if (npc.saqueado) continue;
-        for (const item of npc.items) {
+        const yaTomados = npc.lootedItemNames;
+        const itemsToLoot = (lootItemNames ? npc.items.filter((item) => lootItemNames.includes(item.name)) : npc.items).filter(
+          (item) => !yaTomados.includes(item.name),
+        );
+        for (const item of itemsToLoot) {
           const created = await tx.inventoryItem.create({
             data: {
               saveId,
@@ -1154,15 +1619,17 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
               catalogSlug: item.catalogSlug,
             },
           });
-          newInventoryItems.push({ ...created, slot: null });
+          newInventoryItems.push({ ...created, slot: null, equipSlot: item.equipSlot });
           createdItemNames.push(created.name);
         }
         if (npc.items.length > 0) {
+          const nuevosTomados = [...new Set([...yaTomados, ...itemsToLoot.map((item) => item.name)])];
+          const todoTomado = npc.items.every((item) => nuevosTomados.includes(item.name));
           const scope = scopeFor(npc.kind, currentLocationId);
           await tx.npcState.upsert({
             where: { saveId_npcId_scope: { saveId, npcId: npc.id, scope } },
-            create: { saveId, npcId: npc.id, scope, saqueado: true },
-            update: { saqueado: true },
+            create: { saveId, npcId: npc.id, scope, saqueado: todoTomado, lootedItemNames: nuevosTomados },
+            update: { saqueado: todoTomado, lootedItemNames: nuevosTomados },
           });
         }
 
@@ -1179,15 +1646,27 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
       }
     }
 
-    if (npcAttackTarget && npcAttackHits && npcTargetNewCondicion) {
+    // Sistema de fatiga simétrico (2026-07-30) — `npcNuevaEnergia` viaja aquí en el MISMO upsert
+    // que la condición física en vez de uno aparte: los dos pueden cambiar en el mismo intercambio
+    // (un golpe que además gasta energía) y un NPC solo tiene una fila NpcState por scope.
+    if (npcAttackTarget && (npcNuevaEnergia !== null || (npcAttackHits && npcTargetNewCondicion))) {
       const scope = scopeFor(npcAttackTarget.kind, currentLocationId);
       await tx.npcState.upsert({
         where: { saveId_npcId_scope: { saveId, npcId: npcAttackTarget.id, scope } },
-        create: { saveId, npcId: npcAttackTarget.id, scope, condicionFisica: npcTargetNewCondicion },
-        update: { condicionFisica: npcTargetNewCondicion },
+        create: {
+          saveId,
+          npcId: npcAttackTarget.id,
+          scope,
+          ...(npcTargetNewCondicion ? { condicionFisica: npcTargetNewCondicion } : {}),
+          ...(npcNuevaEnergia !== null ? { energia: npcNuevaEnergia } : {}),
+        },
+        update: {
+          ...(npcAttackHits && npcTargetNewCondicion ? { condicionFisica: npcTargetNewCondicion } : {}),
+          ...(npcNuevaEnergia !== null ? { energia: npcNuevaEnergia } : {}),
+        },
       });
 
-      if (npcTargetNewCondicion === 'INCAPACITADO' || npcTargetNewCondicion === 'MUERTO') {
+      if (npcAttackHits && npcTargetNewCondicion && (npcTargetNewCondicion === 'INCAPACITADO' || npcTargetNewCondicion === 'MUERTO')) {
         // Cierre detectable por backend (roadmap 2026-07-19, mecánicas): si alguna misión ACTIVA
         // apuntaba a este NPC (Quest.targetNpcId, ver newQuest más arriba), derrotarlo la cierra
         // sola en cuanto cae — el modelo nunca tiene que acertar el título EXACTO vía
@@ -1214,6 +1693,33 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
       }
     }
 
+    // "Decapitar" (petición explícita, 2026-07-30) — sin tirada: un enemigo ya incapacitado no
+    // puede resistir el golpe de gracia. Uno por uno porque el modal puede marcar varios a la vez
+    // (checkbox). Mismo cierre de misión/reputación de facción que un golpe normal que deja
+    // MUERTO al objetivo (bloque de arriba) — en la práctica la misión ya se cerró al quedar
+    // INCAPACITADO, esto solo cubre el caso raro de que no lo hiciera.
+    for (const executeTarget of executeTargets) {
+      const scope = scopeFor(executeTarget.kind, currentLocationId);
+      await tx.npcState.upsert({
+        where: { saveId_npcId_scope: { saveId, npcId: executeTarget.id, scope } },
+        create: { saveId, npcId: executeTarget.id, scope, condicionFisica: 'MUERTO' },
+        update: { condicionFisica: 'MUERTO' },
+      });
+      await tx.quest.updateMany({
+        where: { saveId, targetNpcId: executeTarget.id, status: 'ACTIVA' },
+        data: { status: 'COMPLETADA' },
+      });
+      if (executeTarget.faction) {
+        const currentWorldState = await tx.worldState.findUnique({ where: { saveId }, select: { factionsStatus: true } });
+        const updatedFactionsStatus = applyFactionRepDelta(
+          (currentWorldState?.factionsStatus as Record<string, number> | null) ?? {},
+          executeTarget.faction,
+          FACTION_REP_ATTACK_DELTA,
+        );
+        await tx.worldState.update({ where: { saveId }, data: { factionsStatus: updatedFactionsStatus } });
+      }
+    }
+
     // Despiece/recolección (§ 3.3) — solo si la acción tuvo éxito (o no requería tirada).
     if (harvestMatch && (!roll || roll.success)) {
       for (const y of harvestMatch.yields) {
@@ -1226,7 +1732,8 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
             catalogSlug: y.itemSlug,
           },
         });
-        newInventoryItems.push({ ...created, slot: null });
+        // Materia prima cruda (RECURSO) — nunca EQUIPABLE, equipSlot siempre null.
+        newInventoryItems.push({ ...created, slot: null, equipSlot: null });
         createdItemNames.push(created.name);
       }
       // Bug real (auditoría 2026-07-28): sin esto, el mismo cadáver de fauna ya derrotada se podía
@@ -1254,7 +1761,8 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
           origin: 'producción',
         },
       });
-      newInventoryItems.push({ ...created, slot: null });
+      // Producción de acción por tiempo — nunca EQUIPABLE, equipSlot siempre null.
+      newInventoryItems.push({ ...created, slot: null, equipSlot: null });
       createdItemNames.push(created.name);
     }
 
@@ -1272,20 +1780,35 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
       });
     }
 
+    // Foto fresca del inventario, DENTRO de la transacción (auditoría 2026-07-30, bug real de
+    // condición de carrera): `inventoryRows` (arriba, fuera de la transacción) se leyó ANTES de
+    // narrar — un hueco de 30-220s en el que una acción duplicada (doble clic antes de que se
+    // bloquee el composer, dos pestañas) podía planear consumo de materiales dos veces contra la
+    // MISMA foto vieja. La primera transacción en comprometerse consume de verdad; sin esto, la
+    // segunda recalculaba su plan sobre datos ya obsoletos, encontraba "suficiente" material que
+    // ya no existía, y el `deleteMany` por id simplemente no borraba nada (0 filas afectadas, sin
+    // error) — pero seguía creando el objeto crafteado igual, dando un objeto gratis sin gastar
+    // nada. Recalculando aquí, con datos leídos DENTRO de esta misma transacción, la segunda
+    // pasada ve la foto ya consumida y `planCraftConsumption`/`canCraft` fallan de verdad.
+    const freshInventoryRows = await tx.inventoryItem.findMany({
+      where: { saveId },
+      select: { id: true, name: true, catalogSlug: true, slot: true },
+    });
+
     // Crafteo v1: tabulado en CRAFTING_RECIPES (auditoría 2026-07-22 — antes 5 bloques casi
     // idénticos, uno por objeto). Refactor de ingredientes (2026-07-29): ya no es siempre "una
     // fila entera por ingrediente" — un plan por ingrediente (borrar filas + reducir remanente),
     // mismo mecanismo exacto que ya usa la construcción de más abajo.
     for (const recipe of CRAFTING_RECIPES) {
       if (!craftPossibleByKey[recipe.key]) continue;
-      const plans = planCraftConsumption(recipe, inventoryRows, catalogBySlug);
+      const plans = planCraftConsumption(recipe, freshInventoryRows, catalogBySlug);
       if (!plans) continue;
       for (const plan of plans) {
         if (plan.deleteIds.length > 0) {
           await tx.inventoryItem.deleteMany({ where: { id: { in: plan.deleteIds } } });
         }
         if (plan.updateRemainder) {
-          const row = inventoryRows.find((r) => r.id === plan.updateRemainder!.id);
+          const row = freshInventoryRows.find((r) => r.id === plan.updateRemainder!.id);
           if (row) {
             await tx.inventoryItem.update({
               where: { id: plan.updateRemainder.id },
@@ -1306,7 +1829,15 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
             : {}),
         },
       });
-      newInventoryItems.push({ ...created, slot: null });
+      // `catalogBySlug` (arriba) solo trae los catalogSlug que el jugador YA tenía en inventario
+      // antes de este turno (para comprobar materiales) — un resultado de crafteo recién obtenido
+      // no está garantizado ahí. `equipSlot` se queda en null en ese caso (mismo criterio que
+      // harvest/producción): el frontend lo recibe bien en cuanto recarga GET /saves/:id.
+      newInventoryItems.push({
+        ...created,
+        slot: null,
+        equipSlot: recipe.resultCatalogSlug ? (catalogBySlug.get(recipe.resultCatalogSlug)?.equipSlot ?? null) : null,
+      });
       createdItemNames.push(created.name);
       await awardProfessionXp(recipe.oficio, recipe.tier);
     }
@@ -1314,15 +1845,16 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     // Construcción (roadmap 2026-07-20/21, ampliado 2026-07-22): a diferencia del resto de
     // crafteo (una fila entera 1:1), aquí se consumen CANTIDADES reales repartidas entre las
     // filas que hagan falta (planConsumption), dejando un remanente reducido en la última fila
-    // si sobra.
+    // si sobra. Mismo criterio anti-carrera que el crafteo de arriba: `freshInventoryRows`, no la
+    // foto de antes de narrar.
     if (buildRecipe && buildRecipeCheck?.met) {
       for (const req of buildRecipe.requirements) {
-        const plan = planConsumption(inventoryRows, req, catalogBySlug);
+        const plan = planConsumption(freshInventoryRows, req, catalogBySlug);
         if (plan.deleteIds.length > 0) {
           await tx.inventoryItem.deleteMany({ where: { id: { in: plan.deleteIds } } });
         }
         if (plan.updateRemainder) {
-          const row = inventoryRows.find((r) => r.id === plan.updateRemainder!.id);
+          const row = freshInventoryRows.find((r) => r.id === plan.updateRemainder!.id);
           if (row) {
             await tx.inventoryItem.update({
               where: { id: plan.updateRemainder.id },
@@ -1485,6 +2017,9 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
           targetItemName,
         },
       });
+      // Este camino nunca rellena `objetivo` (solo la misión determinista de abajo lo hace) — cae
+      // a `description`, para que la notificación siempre tenga algo real que mostrar.
+      newQuestInfo = { title: narration.newQuest.title, objetivo: narration.newQuest.description };
     }
 
     // Misión determinista de "acabar con el Orco Enfurecido" (segunda vuelta de diseño,
@@ -1516,6 +2051,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
           },
         });
         newQuestObjetivos.push('Derrotar al Orco Enfurecido que persigue a Gistera Koh.');
+        newQuestInfo = { title: 'Acabar con el Orco Enfurecido', objetivo: 'Derrotar al Orco Enfurecido que persigue a Gistera Koh.' };
       }
     }
 
@@ -1776,8 +2312,37 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
       newInventoryItems,
       logEntryId: mainLogEntry.id,
       newQuestObjetivos,
+      newQuestInfo,
     };
-  });
+    },
+    // `timeout`/`maxWait` explícitos (auditoría 2026-07-30: mismo bug real de partida ya
+    // encontrado y arreglado en saves/creation.ts — el pool de Supabase, eu-west-3, pgbouncer=true,
+    // más la latencia real desde la Steam Deck superan de sobra el timeout por defecto de Prisma
+    // [5s] en cuanto una transacción interactiva encadena varios awaits secuenciales, cerrándola a
+    // mitad de camino con `PrismaClientKnownRequestError P2028: Transaction not found`). Esta es la
+    // transacción MÁS pesada de todo el motor — corre en cada turno y puede encadenar saqueo,
+    // despiece, producción, crafteo, construcción, cierre de misión, XP/progresión de nivel y
+    // reputación de facción, todo secuencial — y era la única sin este margen ya aplicado en
+    // /saves y /saves/:id/restart.
+    { maxWait: 10_000, timeout: 30_000 },
+    );
+  } catch (err) {
+    if (chapterDue) releaseChapterClaim(saveId);
+    throw err;
+  }
+  const { progression, condicionFisica, energia, energiaMax: energiaMaxResult, finDePartida, justDied, newInventoryItems, logEntryId, newQuestObjetivos, newQuestInfo } =
+    transactionResult;
+  // La transacción hizo commit de verdad — ahora sí se dispara la generación lenta de fondo (ver
+  // el comentario de `chapterDue` más arriba).
+  if (chapterDue) {
+    void scheduleChapterSummaryGeneration(saveId, characterName);
+  }
+  // Persistencia de hechos nuevos (2026-07-30, ver worldFacts.ts): fuera de la transacción a
+  // propósito — embebe cada hecho nuevo vía Ollama, mismo criterio que `narrateAction`/`retrieveLore`
+  // de no bloquear una transacción de DB con una llamada externa lenta.
+  if (narration.newFacts.length) {
+    await appendSessionFacts(saveId, sessionFacts, narration.newFacts);
+  }
 
   // Red de seguridad (ver detectsAttackIntent/detectsHostileSearchIntent en npcScene.ts): si el
   // modelo no marcó combateIniciado pero o bien propuso empeorar la condición física (indicio de
@@ -1795,7 +2360,20 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   // que el frontend descarta en silencio (`combate.npcs.length > 0`). Ahora se valida el slug
   // ANTES de decidir si hace falta la red de seguridad — si el modelo "propuso" algo que no
   // corresponde a ningún NPC real en escena, cuenta como si no hubiera propuesto nada.
-  const combatSlugsFromModel = (narration.combateIniciado?.npcSlugs ?? []).filter((slug) => npcsInScene.some((n) => n.slug === slug));
+  // Bug real jugando en vivo (2026-08-01, "el orco que metí volvió a aparecer" — auditoría a fondo
+  // de "revisa bien en todos los sitios que pendingCombatNpcSlugs se actualiza bien"): TODO este
+  // bloque decide con quién se fuerza/persiste combate, y hasta ahora ninguna de sus piezas miraba
+  // `condicionFisica` — un NPC ya INCAPACITADO/MUERTO seguía siendo candidato de
+  // `detectNpcsInScene` (tiene `NpcState` propio) y podía matchear en escena vía `sessionFacts`
+  // durante turnos sin ninguna relación con él (p.ej. "Exploro la zona"). Su temperamento de
+  // catálogo (AGRESIVO/ENEMIGO) no desaparece al morir, así que `agresivoSlugsInScene` lo seguía
+  // contando como amenaza y podía reabrir `combateIniciado`/`pendingCombatNpcSlugs` contra un
+  // cadáver ya saqueado. `npcsInSceneVivos` es la misma lista sin nadie ya resuelto — se usa en
+  // todo lo que decide "hay una amenaza real aquí" de aquí para abajo; `npcsInScene` (sin filtrar)
+  // se sigue necesitando tal cual para `explicitTarget`/loot/decapitar/`npcSceneBlockFor`, que sí
+  // necesitan poder referirse a un NPC ya derrotado a propósito.
+  const npcsInSceneVivos = npcsInScene.filter((n) => n.condicionFisica !== 'INCAPACITADO' && n.condicionFisica !== 'MUERTO');
+  const combatSlugsFromModel = (narration.combateIniciado?.npcSlugs ?? []).filter((slug) => npcsInSceneVivos.some((n) => n.slug === slug));
   // Temperamento (2026-07-29, "si me encuentro un NPC 'Agresivo' me va a ser imposible no acabar
   // peleando con él" + "la reputación influirá en los valores de combate"): el temperamento de
   // catálogo (fijo) se desplaza por la reputación de facción de esta partida concreta —
@@ -1807,7 +2385,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   // AGRESIVO/ENEMIGO no nos fiamos solo del Narrador — cualquier NPC agresivo u hostil detectado
   // en escena fuerza combate él solo, sin depender del verbo del jugador (mismo criterio de "no
   // barrer a inocentes" que el bug del Múrgol de abajo: solo estos slugs, no todo `npcsInScene`).
-  const agresivoSlugsInScene = npcsInScene
+  const agresivoSlugsInScene = npcsInSceneVivos
     .filter((n) => {
       const t = effectiveTemperamento(n.temperamento, n.faction, factionsStatus);
       return t === 'AGRESIVO' || t === 'ENEMIGO';
@@ -1820,8 +2398,8 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   // (`detectsAttackIntent`/`detectsHostileSearchIntent`, líneas de abajo) siguen funcionando
   // igual — atacar a algo pacífico de propia iniciativa sigue siendo posible.
   const allNpcsInSceneArePacificos =
-    npcsInScene.length > 0 &&
-    npcsInScene.every((n) => {
+    npcsInSceneVivos.length > 0 &&
+    npcsInSceneVivos.every((n) => {
       const t = effectiveTemperamento(n.temperamento, n.faction, factionsStatus);
       return t === 'AMIGABLE' || t === 'INOFENSIVO';
     });
@@ -1835,7 +2413,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   const shouldForceCombat =
     !enCombate &&
     combatSlugsFromModel.length === 0 &&
-    npcsInScene.length > 0 &&
+    npcsInSceneVivos.length > 0 &&
     (agresivoSlugsInScene.length > 0 ||
       (isCondicionDowngrade(params.condicionFisica, narration.condicionFisica) && !allNpcsInSceneArePacificos) ||
       detectsAttackIntent(action) ||
@@ -1846,11 +2424,19 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   // ver arriba), el popup arranca solo con ese — y si lo que disparó la red de seguridad fue un
   // NPC agresivo, solo él entra (mismo criterio) — el listado completo de `npcsInScene` queda como
   // último recurso para cuando la acción no nombra a nadie en concreto ("me defiendo").
-  const forcedCombatSlugs = explicitTarget
-    ? [explicitTarget.slug]
+  //
+  // Bug real (2026-08-01, misma auditoría de `npcsInSceneVivos` de arriba): `explicitTarget` no
+  // mira `condicionFisica` (a propósito, lo necesita loot/decapitar para citar a un NPC ya
+  // derrotado) — pero si el jugador cita entre comillas a alguien YA muerto/incapacitado y esta
+  // acción además dispara `shouldForceCombat` por cualquier otro motivo, no tiene sentido "forzar
+  // combate" contra un cadáver. Se comprueba aquí, solo para esta decisión.
+  const explicitTargetVivo =
+    explicitTarget && explicitTarget.condicionFisica !== 'INCAPACITADO' && explicitTarget.condicionFisica !== 'MUERTO' ? explicitTarget : null;
+  const forcedCombatSlugs = explicitTargetVivo
+    ? [explicitTargetVivo.slug]
     : agresivoSlugsInScene.length > 0
       ? agresivoSlugsInScene
-      : npcsInScene.map((n) => n.slug);
+      : npcsInSceneVivos.map((n) => n.slug);
   const baseCombatSlugs = combatSlugsFromModel.length > 0 ? combatSlugsFromModel : shouldForceCombat ? forcedCombatSlugs : [];
   // Bug real (2026-07-29, jugando en vivo — "sigo sin hacerle daño al enemigo" con `enCombate`
   // ya activo): mientras el combate ya está abierto, `shouldForceCombat` exige `!enCombate`
@@ -1860,10 +2446,15 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   // de verdad (resolveExchange), el NPC de ese intercambio SIEMPRE se incluye aquí — así
   // `combateIniciado` (y con él la condición física fresca del NPC) llega al frontend en CADA
   // turno donde de verdad pasó algo, no solo cuando el modelo se acuerda de repetir el slug.
-  const combatSlugs =
+  const combatSlugsWithAttack =
     exchangeHappened && npcAttackTarget && !baseCombatSlugs.includes(npcAttackTarget.slug)
       ? [...baseCombatSlugs, npcAttackTarget.slug]
       : baseCombatSlugs;
+  // "Decapitar" (2026-07-30) — mismo criterio que el golpe normal de arriba: si esta acción
+  // ejecutó a uno o varios enemigos de verdad, sus slugs viajan aquí siempre, sin depender de que
+  // el modelo se acuerde de repetirlos en su propia propuesta narrativa.
+  const executeSlugs = executeTargets.map((n) => n.slug);
+  const combatSlugs = [...new Set([...combatSlugsWithAttack, ...executeSlugs])];
 
   // Persistido (bug real, 2026-07-23, "revisar partida" — tercera vuelta sobre este mismo tema):
   // `combateIniciado` viajaba SOLO en la respuesta directa de este turno — si el turno tardaba
@@ -1893,8 +2484,17 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
             slug: n.slug,
             name: n.name,
             condicionFisica:
-              npcAttackTarget && npcAttackHits && npcTargetNewCondicion && n.id === npcAttackTarget.id ? npcTargetNewCondicion : n.condicionFisica,
+              executeTargets.some((t) => t.id === n.id)
+                ? 'MUERTO'
+                : npcAttackTarget && npcAttackHits && npcTargetNewCondicion && n.id === npcAttackTarget.id
+                  ? npcTargetNewCondicion
+                  : n.condicionFisica,
             saqueado: n.saqueado,
+            // Bug real (2026-07-31, "saqueé 2 de 3 y la próxima vez me volvía a listar las 3"):
+            // este payload nunca mandaba qué objetos concretos ya se habían tomado — el frontend
+            // no tenía forma de filtrar el modal aunque `NpcState.lootedItemNames` ya llevaba la
+            // cuenta correcta en el backend desde el saqueo parcial (ver npcScene.ts).
+            lootedItemNames: n.lootedItemNames,
           })),
       }
     : null;
@@ -1936,16 +2536,35 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   // fuera de la transacción (que a estas alturas ya ha hecho commit), en vez de rastrear un
   // delta a mano por los varios sitios de este archivo que pueden crear/cerrar una misión.
   const questRows = await prisma.quest.findMany({ where: { saveId }, orderBy: { createdAt: 'asc' } });
-  const quests = questRows.map((q) => ({
-    id: q.id,
-    title: q.title,
-    description: q.description,
-    status: q.status,
-    objetivo: q.objetivo,
-    rewardXp: q.rewardXp,
-    rewardItems: q.rewardItems,
-    targetLocationSlug: null,
-  }));
+  // Mismo cruce Location/Npc que routes/saves/detail.ts (GET /saves/:id) — la marca de misión en
+  // el mapa (MapaPanel.tsx) necesita el mismo `targetLocationSlug` real aquí, no solo tras una
+  // recarga completa.
+  const questTargetLocationIds = questRows.map((q) => q.targetLocationId).filter((id): id is string => Boolean(id));
+  const questTargetNpcIds = questRows.map((q) => q.targetNpcId).filter((id): id is string => Boolean(id));
+  const [questTargetLocations, questTargetNpcs] = await Promise.all([
+    questTargetLocationIds.length ? prisma.location.findMany({ where: { id: { in: questTargetLocationIds } } }) : Promise.resolve([]),
+    questTargetNpcIds.length ? prisma.npc.findMany({ where: { id: { in: questTargetNpcIds } } }) : Promise.resolve([]),
+  ]);
+  const locationSlugById = new Map(questTargetLocations.map((l) => [l.id, l.slug]));
+  const npcHomeLocationSlugById = new Map(questTargetNpcs.map((n) => [n.id, n.homeLocationSlug]));
+  const quests = questRows.map((q) => {
+    // Dos pasos en vez de un único `??` anidado en tres niveles (bug real, auditoría 2026-07-30:
+    // TS 6.0.2 marca la versión de una sola expresión como "always nullish" — falso positivo del
+    // checker sobre este patrón concreto, confirmado con un repro aislado; mismo arreglo que
+    // routes/saves/detail.ts).
+    const fromLocation = q.targetLocationId ? locationSlugById.get(q.targetLocationId) : undefined;
+    const fromNpc = q.targetNpcId ? npcHomeLocationSlugById.get(q.targetNpcId) : undefined;
+    return {
+      id: q.id,
+      title: q.title,
+      description: q.description,
+      status: q.status,
+      objetivo: q.objetivo,
+      rewardXp: q.rewardXp,
+      rewardItems: q.rewardItems,
+      targetLocationSlug: fromLocation ?? fromNpc ?? null,
+    };
+  });
 
   return {
     narration,
@@ -1959,6 +2578,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     newInventoryItems,
     logEntryId,
     quests,
+    newQuestInfo,
     esperandoDefensaJugador: !!nuevoPendingNpcAttack,
     npcAbilityUsed,
     nextInitiativeRoll,

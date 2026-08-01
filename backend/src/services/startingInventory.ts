@@ -74,13 +74,19 @@ const GORHORN_STARTING_INVENTORY: StartingInventoryItem[] = [
     catalogSlug: 'capa-piel-gargantua',
   },
   {
-    name: 'Raciones de viaje (5 días)',
-    description: 'Comida seca para cinco días de viaje.',
+    name: 'Raciones de viaje',
+    description: 'Comida seca para varios días de viaje.',
     origin: 'inicial',
-    // Nombre distinto al del catálogo a propósito ("Ración de viaje", singular) — la cantidad
-    // (5 días) es propia de esta partida, no del catálogo genérico; se enlaza por catalogSlug en
-    // vez de depender de que el nombre coincida letra a letra (por eso `entityDiscovery.ts` nunca
-    // lo había reconocido).
+    // Nombre distinto al del catálogo a propósito ("Ración de viaje", singular) — se enlaza por
+    // catalogSlug en vez de depender de que el nombre coincida letra a letra (por eso
+    // `entityDiscovery.ts` nunca lo había reconocido).
+    //
+    // Bug real (auditoría 2026-07-30, "revisar partida"): el nombre incluía "(5 días)" — sin
+    // ninguna mecánica real detrás que contara esos días (el objeto se consume entero de una vez,
+    // no día a día), el clasificador de turnos (turn.ts) lo leía como si "(5 días)" fuera la
+    // DURACIÓN de la propia acción de "consumir la ración", clasificándola como banda "larga" y
+    // dejando al jugador en un `CharacterTransit` real de casi una hora por comer. Quitado el
+    // número: ya no tiene sentido de todos modos (nunca se contaron los días).
     catalogSlug: 'racion-viaje',
   },
   {

@@ -34,8 +34,10 @@ vi.mock('../services/equipment.js', () => ({
   effectiveAttributes: vi.fn((base: unknown) => base),
   effectiveDefense: vi.fn(() => 0),
   equippedWeaponNames: vi.fn(() => []),
+  equippedItemsSummary: vi.fn(() => []),
 }));
 vi.mock('../config/env.js', () => ({ env: { worldTickIntervalMinutes: 20 } }));
+vi.mock('../services/worldFacts.js', () => ({ loadSessionFacts: vi.fn(() => Promise.resolve([])) }));
 
 const { resolveDueTransits } = await import('./worldTick.js');
 

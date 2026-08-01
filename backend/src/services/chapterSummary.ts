@@ -43,6 +43,16 @@ export async function claimChapterIfDue(saveId: string): Promise<boolean> {
   return true;
 }
 
+/// Libera un reclamo hecho por `claimChapterIfDue` SIN llegar a programar la generación (auditoría
+/// 2026-07-30: si la transacción del turno que reclamó el capítulo acaba fallando/haciendo
+/// rollback, `scheduleChapterSummaryGeneration` nunca se llega a disparar — sin esto, el reclamo
+/// en memoria se quedaría atascado para siempre, bloqueando el capítulo de esta partida hasta
+/// reiniciar el proceso). El caller debe llamarla en el `catch` de esa transacción, nunca además
+/// de programar la generación de verdad.
+export function releaseChapterClaim(saveId: string): void {
+  pendingChapterGenerations.delete(saveId);
+}
+
 /// Genera y persiste el resumen de verdad (llamada lenta al Cronista) — SIN await desde el turno
 /// que lo dispara (`void scheduleChapterSummaryGeneration(...)`), para que el jugador no espere
 /// ni un segundo de más por esto. Nunca lanza fuera de sí misma: cualquier fallo solo se registra

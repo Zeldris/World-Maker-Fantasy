@@ -12,6 +12,15 @@ export interface PendingNpcAttack {
   attribute: Attribute;
   effect: AbilityEffect | null;
   abilityName: string;
+  /// Sistema de fatiga simétrico (2026-07-30) — coste de energía de esta habilidad ya elegida,
+  /// para descontarlo del NPC en el turno donde de verdad se resuelve (ver turnResolution.ts).
+  /// `?? 0` en la lectura cubre partidas con un pendingNpcAttack persistido antes de este campo.
+  energyCost: number;
+  /// Rediseño 2026-07-31 — energía que recupera esta habilidad ya elegida (en la práctica siempre
+  /// 0 aquí: un NPC nunca elige Esquivar/Defenderse como ATAQUE, ver chooseNpcAbility; se guarda
+  /// igual por completitud/simetría con el jugador). `?? 0` en la lectura, mismo criterio que
+  /// `energyCost`.
+  energyRegen: number;
 }
 
 /// Rediseño del turno de combate (2026-07-28, petición explícita: "primero se tiran dados y se

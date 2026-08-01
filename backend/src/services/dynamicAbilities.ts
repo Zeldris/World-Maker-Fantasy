@@ -1,7 +1,7 @@
 import type { Prisma, AbilityEffect, EquipSlot } from '@prisma/client';
 import { BERIG_RAZAS } from './berigLore.js';
 import { weaponAbilitiesFor, type EquippedWeaponSlot } from './weaponAbilities.js';
-import { ENERGY_COST_BASICA, ENERGY_COST_AVANZADA } from './energy.js';
+import { ENERGY_COST_BASICA, ENERGY_COST_AVANZADA, ENERGY_COST_ATAQUE_BASICO } from './energy.js';
 
 /// Deuda técnica (2026-07-30, "control de deuda técnica"): este bloque ("qué armas llevas
 /// equipadas ahora mismo → su `tipoArma` real del catálogo → `EquippedWeaponSlot[]`") estaba
@@ -36,9 +36,19 @@ export interface DynamicAbilityData {
   promptText: string;
   preferredAttribute: string;
   effect: AbilityEffect;
-  /// Sistema de fatiga (2026-07-29) — coste fijo por tramo (energy.ts): las raciales y la de arma
-  /// básica cuestan ENERGY_COST_BASICA, la de arma avanzada ENERGY_COST_AVANZADA.
+  /// Sistema de fatiga (2026-07-29) — coste fijo por tramo (energy.ts): las raciales cuestan
+  /// ENERGY_COST_BASICA, la de arma avanzada ENERGY_COST_AVANZADA, y desde 2026-07-31 Ataque
+  /// Básico (el único genérico que pasa por aquí) cuesta ENERGY_COST_ATAQUE_BASICO.
   energyCost: number;
+  /// Rediseño 2026-07-31 — ver StartingAbility.energyRegen/WeaponAbility.energyRegen. Siempre 0
+  /// aquí (ninguna dinámica regenera; el único genérico de este set, Ataque Básico, solo cuesta).
+  energyRegen: number;
+  /// Ver WeaponAbility.isGeneric — solo true para Ataque Básico (el resto, incluidas las
+  /// raciales, son habilidades reales).
+  isGeneric: boolean;
+  /// Ver WeaponAbility.dualWield (2026-07-31) — true cuando la real de ataque colapsó por llevar
+  /// la misma categoría en las dos manos. Siempre false en raciales.
+  dualWield: boolean;
 }
 
 export function dynamicCombatAbilitiesFor(raza: string | null, level: number, equipped: EquippedWeaponSlot[]): DynamicAbilityData[] {
@@ -48,8 +58,8 @@ export function dynamicCombatAbilitiesFor(raza: string | null, level: number, eq
     const razaInfo = BERIG_RAZAS.find((r) => r.slug === raza);
     if (razaInfo) {
       const { ataque, defensa } = razaInfo.habilidadesRaciales;
-      abilities.push({ ...ataque, preferredAttribute: ataque.preferredAttribute, effect: 'ATAQUE', energyCost: ENERGY_COST_BASICA });
-      abilities.push({ ...defensa, preferredAttribute: defensa.preferredAttribute, effect: 'AGUANTE', energyCost: ENERGY_COST_BASICA });
+      abilities.push({ ...ataque, preferredAttribute: ataque.preferredAttribute, effect: 'ATAQUE', energyCost: ENERGY_COST_BASICA, energyRegen: 0, isGeneric: false, dualWield: false });
+      abilities.push({ ...defensa, preferredAttribute: defensa.preferredAttribute, effect: 'AGUANTE', energyCost: ENERGY_COST_BASICA, energyRegen: 0, isGeneric: false, dualWield: false });
     }
   }
 
@@ -61,7 +71,10 @@ export function dynamicCombatAbilitiesFor(raza: string | null, level: number, eq
       promptText: w.promptText,
       preferredAttribute: w.attribute,
       effect: w.rol === 'defensa' ? 'AGUANTE' : 'ATAQUE',
-      energyCost: w.tier === 'avanzada' ? ENERGY_COST_AVANZADA : ENERGY_COST_BASICA,
+      energyCost: w.isGeneric ? ENERGY_COST_ATAQUE_BASICO : w.tier === 'avanzada' ? ENERGY_COST_AVANZADA : ENERGY_COST_BASICA,
+      energyRegen: w.energyRegen,
+      isGeneric: w.isGeneric,
+      dualWield: w.dualWield,
     });
   }
 
@@ -94,6 +107,9 @@ export async function syncDynamicCombatAbilities(
       effect: a.effect,
       preferredAttribute: a.preferredAttribute,
       energyCost: a.energyCost,
+      energyRegen: a.energyRegen,
+      isGeneric: a.isGeneric,
+      dualWield: a.dualWield,
     })),
   });
 }

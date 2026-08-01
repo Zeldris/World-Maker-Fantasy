@@ -1,8 +1,8 @@
-# Instalación en otro equipo (2026-07-24)
+# Instalación (2026-07-24, actualizado 2026-07-30 — migración local-first)
 
 **Por qué existe este documento:** para poder valorar si merece la pena mover Tarkor a otra máquina (p. ej. una Steam Deck, para comparar tiempos de narración) sin tener que reconstruir estos pasos de memoria cada vez.
 
-Hay dos caminos: **reutilizar la base de datos ya existente** (Supabase, en la nube — lo más rápido, cero configuración de Postgres) o **montar una base de datos local desde cero** (instalación totalmente independiente). Se indica en cada paso cuál aplica.
+**Actualización 2026-07-30:** Tarkor es un juego de un solo jugador que corre siempre en un solo dispositivo — no hay motivo para depender de una base de datos remota. El camino por defecto ahora es **Postgres local vía podman** (sección 3bis); Supabase remoto queda documentado como alternativa solo por si algún día hiciera falta jugar de verdad desde varios dispositivos con la misma partida sincronizada.
 
 ---
 
@@ -10,7 +10,7 @@ Hay dos caminos: **reutilizar la base de datos ya existente** (Supabase, en la n
 
 - **Node.js** — usado en esta máquina: v24 (backend y frontend son proyectos `type: "module"`, sin fichero `.nvmrc` que fije una versión mínima exacta; cualquier Node 20+ debería servir).
 - **Ollama** instalado y accesible en `http://localhost:11434` (o la URL que se ponga en `OLLAMA_BASE_URL`).
-- Solo si se monta base de datos local: **PostgreSQL** con la extensión **pgvector** disponible (necesaria para el RAG de lore — `LoreChunk.embedding` es de tipo `vector`).
+- **Postgres local vía podman** (ver 3bis) — `podman` es la única herramienta de contenedores presente en esta máquina (no hay `docker`/`psql`/`postgres` nativos). Necesaria la extensión **pgvector** (`LoreChunk.embedding` es de tipo `vector`).
 
 ## 2. Clonar el repo e instalar dependencias
 
@@ -22,37 +22,61 @@ cd ../frontend && npm install
 
 ## 3. Configurar `backend/.env`
 
-**Sobre los valores reales (DB y claves de API):** `backend/.env` nunca se sube al repo (está en `.gitignore`) y por eso este documento tampoco los escribe tal cual — copiarlos aquí, en un archivo que sí viaja con git, sería filtrar la contraseña de la base de datos y las claves de los proveedores de imagen. La forma correcta de llevarlos al equipo nuevo es **copiar el archivo `backend/.env` directamente** (USB, SCP, un gestor de contraseñas, lo que prefieras) — nunca pegándolo en un commit ni en este documento.
+`backend/.env` nunca se sube al repo (está en `.gitignore`). Desde la migración local-first (2026-07-30), `DATABASE_URL`/`DIRECT_URL` apuntan al Postgres local de la sección 3bis (misma URL para las dos, no hace falta pooler en local):
+```
+DATABASE_URL="postgresql://tarkor:tarkor@localhost:5432/tarkor"
+DIRECT_URL="postgresql://tarkor:tarkor@localhost:5432/tarkor"
+```
 
-Con eso claro, esto es lo que trae ese `.env` de este equipo, para saber qué esperar:
-
-- `DATABASE_URL` / `DIRECT_URL`: apuntan al mismo proyecto Supabase (`aws-0-eu-west-3.pooler.supabase.com`, puertos 6543/5432) que usa este equipo — copiando el `.env` tal cual, el equipo nuevo ve la misma partida de Gorhorn, el mismo catálogo de mundo y el mismo lore indexado, sin sembrar nada (**camino rápido**).
+Resto de variables (sin cambios):
 - `PORT=3001`
 - `OLLAMA_BASE_URL="http://localhost:11434"`, `OLLAMA_MODEL_NARRADOR="tarkor-narrador"`, `OLLAMA_MODEL_CRONISTA="qwen2.5:1.5b-instruct"`, `OLLAMA_KEEP_ALIVE="5m"`
 - `PACING_MIN_MS=3000`, `PACING_MAX_MS=10000`
-- `WORLD_TICK_INTERVAL_MINUTES=2` (ya bajado del default de `env.ts`/`.env.example` tras encontrar en partida real que 20 dejaba un tránsito vencido esperando de más)
-- `TRANSIT_MAX_REAL_MINUTES=30`
+- `WORLD_TICK_INTERVAL_MINUTES=2`
+- `TRANSIT_MAX_REAL_MINUTES=10`
 - `CEREBRAS_API_KEY`, `MISTRAL_API_KEY`, `SAMBANOVA_API_KEY` rellenas (cuenta propia de Tarkor); `CLOUDFLARE_*` vacías — rotación con failover para generar imágenes de la Enciclopedia, opcional: sin ninguna, esa función cae sola a Ollama local.
 
-**Camino independiente (Postgres local en vez de Supabase):** en su lugar, `DATABASE_URL`/`DIRECT_URL` apuntando a esa instancia local, y antes de migrar, habilitar la extensión a mano (Prisma no la gestiona vía schema, ver comentario en `schema.prisma`):
-```sql
-CREATE EXTENSION IF NOT EXISTS vector;
-```
+**Alternativa (Supabase remoto):** solo si algún día hace falta jugar de verdad desde varios dispositivos a la vez con la misma partida sincronizada — ver `.env.example` para la plantilla comentada. Si se usa, habilitar la extensión a mano igual (Prisma no la gestiona vía schema, ver comentario en `schema.prisma`): `CREATE EXTENSION IF NOT EXISTS vector;`.
 
 El frontend no tiene `.env` — `API_URL` está hardcodeado a `http://localhost:3001` en `frontend/src/lib/api.ts` (pendiente de mover a variable de entorno). Esto significa que **backend y frontend tienen que correr en la MISMA máquina** — no vale instalar solo el frontend apuntando a un backend remoto sin tocar ese archivo primero.
 
+## 3bis. Postgres local vía podman (por defecto desde 2026-07-30)
+
+Contenedor `tarkor-postgres`, imagen `pgvector/pgvector:pg16` (trae pgvector ya instalado), volumen nombrado `tarkor-postgres-data` para persistencia, puerto expuesto solo en `127.0.0.1:5432`.
+
+**Crear el contenedor (solo la primera vez):**
+```
+podman run -d --name tarkor-postgres \
+  -e POSTGRES_USER=tarkor \
+  -e POSTGRES_PASSWORD=tarkor \
+  -e POSTGRES_DB=tarkor \
+  -v tarkor-postgres-data:/var/lib/postgresql/data \
+  -p 127.0.0.1:5432:5432 \
+  docker.io/pgvector/pgvector:pg16
+
+podman exec tarkor-postgres psql -U tarkor -d tarkor -c "CREATE EXTENSION IF NOT EXISTS vector;"
+```
+
+**Arrancar/parar en cada sesión de juego** (el contenedor no se reinicia solo al reiniciar la Steam Deck):
+```
+podman start tarkor-postgres   # antes de jugar
+podman stop tarkor-postgres    # al terminar, si se prefiere no dejarlo corriendo de fondo
+podman ps                      # comprobar que está arriba
+```
+
+Los datos viven en el volumen `tarkor-postgres-data`, sobreviven a `podman stop`/`start` y a reinicios de la máquina — solo se pierden con `podman volume rm tarkor-postgres-data` explícito.
+
 ## 4. Migraciones de base de datos
 
-- **Camino rápido (Supabase ya existente):** no hace falta nada — las migraciones ya están aplicadas ahí.
-- **Camino independiente (Postgres local, recién creada):**
-  ```
-  cd backend
-  npx prisma migrate deploy
-  npx prisma generate
-  ```
-  Usar `migrate deploy`, no `migrate dev` — `migrate dev` crea una base de datos "shadow" para verificar el historial completo de migraciones desde cero, y esa base "shadow" no tiene la extensión `vector` habilitada (falla con `ERROR: type "vector" does not exist` la primera vez, ver migración `20260717200323_add_lore_chunk_rag`). `migrate deploy` no usa shadow database, aplica directo.
+Con el contenedor de 3bis arriba y el `.env` apuntando a él:
+```
+cd backend
+npx prisma migrate deploy
+npx prisma generate
+```
+Usar `migrate deploy`, no `migrate dev` — `migrate dev` crea una base de datos "shadow" para verificar el historial completo de migraciones desde cero, y esa base "shadow" no tiene la extensión `vector` habilitada (falla con `ERROR: type "vector" does not exist` la primera vez, ver migración `20260717200323_add_lore_chunk_rag`). `migrate deploy` no usa shadow database, aplica directo.
 
-## 5. Sembrar el mundo (SOLO si es una base de datos nueva, nunca si se reutiliza Supabase)
+## 5. Sembrar el mundo (SOLO la primera vez que se crea el contenedor/DB)
 
 ```
 cd backend
@@ -91,6 +115,6 @@ Frontend en `http://localhost:5173`, backend en `http://localhost:3001`.
 
 ## Notas / limitaciones conocidas
 
-- Todo asume **la misma máquina** para backend+frontend+Ollama (ver nota del punto 3 sobre `API_URL` hardcodeado).
-- No hay Docker/contenedor todavía — instalación manual pieza a pieza.
+- Todo asume **la misma máquina** para backend+frontend+Ollama+Postgres (ver nota del punto 3 sobre `API_URL` hardcodeado). Decisión deliberada (2026-07-30): Tarkor es de un solo jugador en un solo dispositivo, así que no hay motivo para pagar la complejidad de una topología distribuida.
+- Postgres corre en un contenedor podman (`tarkor-postgres`, sección 3bis) — hay que arrancarlo (`podman start tarkor-postgres`) antes de `npm run dev:nowatch`, si no se ha dejado corriendo de fondo.
 - El worker de fondo (`worldTick`, resuelve tránsitos largos) arranca solo con el backend, no necesita paso aparte.

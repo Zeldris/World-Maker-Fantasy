@@ -221,6 +221,7 @@ model Save {
   professionProgress ProfessionProgress[]
   kingdomStats     KingdomStats?
   discoveredEntities DiscoveredEntity[]
+  sessionFacts     SessionFact[]
 
   @@index([userId])
 }
@@ -335,13 +336,34 @@ model WorldState {
   /// tener que tocar los muchos sitios que ya lo leen como string. Año todavía sin implementar
   /// (pendiente de que el flujo día/hora se demuestre estable jugando).
   fictionalMinutes    Int     @default(480)
-  /// Hechos establecidos, p. ej. ["el puente está destruido", "el jugador tiene la carta comprometedora"]
-  facts               Json    @default("[]")
   /// Eventos pendientes de la agenda del mundo (facciones, NPCs) que el Cronista puede hacer "vencer"
   agenda              Json    @default("[]")
   factionsStatus      Json    @default("{}")
 
   updatedAt DateTime @updatedAt
+}
+
+/// Hechos establecidos de la partida (2026-07-30, mejora de cohesión — "recuperación por
+/// relevancia para sessionFacts, misma infraestructura que el RAG de lore"). Antes vivían en
+/// `WorldState.facts` (Json, ventana rodante de los últimos 10 — ver worldFacts.ts/mergeFacts):
+/// un hecho genuinamente importante de hace 15 turnos se perdía para siempre solo por antigüedad,
+/// mientras uno reciente pero ya irrelevante seguía ocupando hueco en cada prompt. Ahora se
+/// almacenan TODOS (con un tope generoso, ver `MAX_STORED_FACTS` en worldFacts.ts) con su propio
+/// embedding — igual que `LoreChunk` — y la selección de qué mandar al Narrador cada turno mezcla
+/// los más recientes (continuidad inmediata) con los más relevantes por similitud a la acción
+/// actual (cohesión con hechos antiguos que vuelven a importar), sin aumentar el tamaño del
+/// prompt frente a antes (mismo tope de 10 que se manda realmente).
+model SessionFact {
+  id        String   @id @default(cuid())
+  saveId    String
+  save      Save     @relation(fields: [saveId], references: [id], onDelete: Cascade)
+  text      String
+  /// Mismo patrón que LoreChunk.embedding — habilitado a mano vía `CREATE EXTENSION vector`, no
+  /// gestionado por Prisma (preview feature postgresqlExtensions), ver comentario del datasource.
+  embedding Unsupported("vector(768)")?
+  createdAt DateTime @default(now())
+
+  @@index([saveId, createdAt])
 }
 
 /// Entrada de log append-only. `roll` solo presente en entradas del canal CHARACTER que resuelven una tirada.
@@ -415,6 +437,18 @@ enum EquipSlot {
   ANILLO_1
   ANILLO_2
   CINTURON
+  /// 6 ranuras de consumible (2026-07-30, petición explícita: "raciones y cataplasma catalogalo
+  /// como Consumible que tendrá 6 slots en equipo donde podrás añadir los consumibles que quieres
+  /// usar en el combate") — familia intercambiable entre sí (ver `equipSlotFamily`, equipment.ts),
+  /// igual que ARMA_PRINCIPAL/ARMA_SECUNDARIA o ANILLO_1/ANILLO_2. `combatItems` (GameView.tsx)
+  /// ahora sale de estas ranuras, no de "cualquier objeto sin ranura" — hay que EQUIPAR un
+  /// consumible aquí a propósito para poder usarlo en combate.
+  CONSUMIBLE_1
+  CONSUMIBLE_2
+  CONSUMIBLE_3
+  CONSUMIBLE_4
+  CONSUMIBLE_5
+  CONSUMIBLE_6
 }
 
 /// Objeto que el personaje lleva encima o ha conseguido. Origen/descripción siguen siendo puro
@@ -639,9 +673,27 @@ model SavedAction {
   /// ahora mismo. Nunca editable/borrable por la jugadora (mismo criterio visual que isStarting).
   isDynamic   Boolean  @default(false)
   /// Sistema de fatiga (2026-07-29) — coste fijo por tramo (energy.ts § ENERGY_COST_BASICA/
-  /// AVANZADA), 0 en habilidades 'general' y en las genéricas siempre gratis (Ataque a mano,
-  /// Defenderse, Esquivar).
+  /// AVANZADA/ATAQUE_BASICO). 'general' se queda en 0.
   energyCost  Int      @default(0)
+  /// Rediseño 2026-07-31 (petición explícita: "ataque básico no es una habilidad como las demás,
+  /// ni defenderse ni esquivar... son acciones que tienen todos los personajes") — marca los 3
+  /// genéricos (Ataque Básico, Defenderse, Esquivar) para separarlos en su propio bloque en la UI
+  /// y excluirlos del cupo de 10 habilidades (antes se usaba `energyCost === 0` para esto último,
+  /// una heurística que dejó de servir en cuanto Ataque Básico pasó a costar 5 en vez de 0).
+  isGeneric   Boolean  @default(false)
+  /// Energía que RECUPERA usar esta habilidad en un intercambio de combate real (2026-07-31) —
+  /// Defenderse=10/Esquivar=5, 0 en el resto (incluido Ataque Básico, que solo cuesta). Sustituye
+  /// al viejo mecanismo de regen por ROL (¿el jugador atacó o se defendió este turno?) — ahora
+  /// depende de LA HABILIDAD usada, no del rol, ver energy.ts § nextEnergia.
+  energyRegen Int      @default(0)
+  /// Habilidad real por categoría exacta de arma (2026-07-31, petición explícita: "cada arma
+  /// equipada te dará una habilidad de su tipo... si llevas 2 armas del mismo tipo tendrás solo 1
+  /// habilidad de arma con doble efecto") — true cuando esta habilidad colapsó porque ARMA_
+  /// PRINCIPAL y ARMA_SECUNDARIA llevan la MISMA categoría (ver weaponAbilities.ts §
+  /// weaponAbilitiesFor). Se traduce en un bonus de dificultad al usarla (turnResolution.ts §
+  /// DUAL_WIELD_DIFFICULTY_BONUS) — nunca en una segunda tirada real, decisión explícita para no
+  /// duplicar el intercambio de combate en un mismo turno.
+  dualWield   Boolean  @default(false)
   createdAt   DateTime @default(now())
 
   @@index([saveId])
@@ -816,6 +868,17 @@ model Npc {
   faction String?
   /// Rol corto ("Kort'ikar del Clan Serhu", "soldado de patrulla") — libre
   role    String
+  /// Artículo determinado ("el"/"la") que necesita `name` al presentarse en el contexto del
+  /// Narrador — null si es un nombre propio que no lleva artículo (2026-07-31, bug real jugando:
+  /// "se gira hacia la orca enfurecida... el Orco Enfurecido salta hacia él" — el modelo confunde
+  /// el género de nombres descriptivos/de rol en la MISMA frase, nunca en nombres propios como
+  /// "Gorhorn" o "Gistera Koh"). Curado a mano en worldCatalog.ts, nunca derivado del string del
+  /// nombre — adivinar género gramatical por heurística es el mismo tipo de detector de texto
+  /// libre que ya ha dado falsos positivos en este proyecto (ver npcScene.ts § matchNpcAliases).
+  /// Se usa para REFORZAR el nombre en el propio contexto ("el Orco Enfurecido"), no para corregir
+  /// la prosa después — más seguro que un reemplazo de texto a ciegas, que podría corromper una
+  /// mención legítima en femenino de otro NPC real (p.ej. Gistera Koh) en la misma escena.
+  articulo String?
   /// Nivel en la MISMA escala de docs/10-niveles-xp-reino.md. Para PRINCIPAL es fijo; para
   /// PLANTILLA es el nivel canónico (levelMax acota el rango típico). Hoy el motor no hace
   /// tiradas opuestas: este nivel sirve para que el clasificador calibre la dificultad y el
@@ -909,9 +972,23 @@ model NpcState {
   /// sitio distinto empieza fresca, sin memoria de otras plantillas del mismo arquetipo.
   scope           String          @default("")
   condicionFisica CondicionFisica @default(ILESO)
-  /// true = ya se copió su loadout al inventario del jugador; bloquea "Registrar" de nuevo
-  /// sobre el mismo NPC hasta que la partida se reinicie.
+  /// Sistema de fatiga simétrico (2026-07-30, deuda técnica: "los NPC siguen eligiendo habilidad
+  /// sin restricción de energía" — ver energy.ts) — null = tope completo, mismo criterio lazy que
+  /// `condicionFisica` antes de que exista fila: un NPC nunca tocado no necesita fila propia. El
+  /// tope real (energiaMaxFor(constitución)) nunca se persiste aquí, se deriva en caliente igual
+  /// que en Save.
+  energia         Int?
+  /// Rediseño 2026-07-31 (petición explícita: "si no saqueas todo el botón sigue para poder
+  /// saquear lo que dejaste") — true = ya se copió TODO su loadout conocido al inventario del
+  /// jugador (comparado contra `lootedItemNames`), bloquea "Registrar"/"Saquear todo" de nuevo
+  /// sobre el mismo NPC hasta que la partida se reinicie. Antes se marcaba en cuanto se tocaba
+  /// CUALQUIER objeto suyo (saqueo parcial perdía el resto para siempre); ahora depende de
+  /// `lootedItemNames` cubrir el 100% de `Npc`/`ItemCatalog` asociados.
   saqueado        Boolean         @default(false)
+  /// Nombres de objeto YA copiados al inventario del jugador de este NPC, en esta partida
+  /// (2026-07-31) — permite un saqueo parcial real: dejar algo sin marcar en el modal no lo
+  /// pierde, una visita posterior solo ofrece lo que falta y nunca duplica lo ya tomado.
+  lootedItemNames String[]        @default([])
   updatedAt       DateTime        @updatedAt
 
   @@unique([saveId, npcId, scope])
@@ -937,6 +1014,21 @@ model ItemCatalog {
   /// del catálogo (herramientas, ropa, consumibles...).
   tipoArma    WeaponCategory?
   description String
+  /// Formas reales de referirse al objeto ("hacha", "el cuchillo"...) — mismo campo y mismo
+  /// propósito que Npc.aliases/Location.aliases: sin esto, tanto la Enciclopedia progresiva
+  /// (entityDiscovery.ts) como el texto clicable de narración (enciclopediaIndex.ts, frontend)
+  /// solo reconocían el nombre EXACTO y completo de catálogo — "mi hacha" nunca enganchaba con
+  /// "Hacha de guerra rota" (auditoría 2026-07-30, "revisar partida"). Default `[]` en vez de
+  /// obligatorio: la inmensa mayoría de objetos no necesita ninguno (su nombre ya es corto y
+  /// único, o no se presta a sinónimos seguros sin colisionar con otro objeto del catálogo).
+  aliases     String[] @default([])
+  /// Ranura de equipo real (2026-07-30, petición explícita: "hay que categorizarlos por las
+  /// partes equipables, para que no pueda poner un casco en los pies") — solo en objetos
+  /// `tipo: EQUIPABLE`, null en el resto (nunca se equipan). Familia, no ranura exacta a rajatabla:
+  /// ARMA_PRINCIPAL vale también para ARMA_SECUNDARIA y viceversa (cualquier arma va en cualquier
+  /// mano), ANILLO_1 vale también para ANILLO_2 (ver `equipSlotFamily`, equipment.ts) — el resto
+  /// de ranuras son 1:1 exactas.
+  equipSlot   EquipSlot?
   /// Bonificador mecánico real al equipar (2026-07-19, mismo mecanismo que InventoryItem) — hoy
   /// solo asignado a las armas (categoría "arma"); el resto del catálogo sigue siendo puramente
   /// narrativo. Se copia a InventoryItem.statBonus* al materializarse por saqueo/despiece.

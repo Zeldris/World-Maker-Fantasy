@@ -72,9 +72,15 @@ describe('nextCondicionFisica', () => {
   it('en combate, desde INCAPACITADO sí puede llegar a MUERTO (un solo escalón)', () => {
     expect(nextCondicionFisica('INCAPACITADO', 'MUERTO', true, 'INCAPACITADO')).toBe('MUERTO');
   });
-  it('sin propuesta del modelo, se queda igual', () => {
+  it('sin propuesta del modelo y sin causa real de mejora (healCeiling = current), se queda igual', () => {
     expect(nextCondicionFisica('HERIDO', null, true, 'HERIDO')).toBe('HERIDO');
     expect(nextCondicionFisica('HERIDO', undefined, true, 'HERIDO')).toBe('HERIDO');
+  });
+
+  it('bug real jugando en vivo (2026-07-31, "descansar no curó nada"): sin propuesta del modelo, un descanso/objeto médico válido (healCeiling mejor que current) SÍ cura igual', () => {
+    expect(nextCondicionFisica('GRAVE', null, false, 'HERIDO')).toBe('HERIDO');
+    expect(nextCondicionFisica('GRAVE', undefined, false, 'HERIDO')).toBe('HERIDO');
+    expect(nextCondicionFisica('INCAPACITADO', null, false, 'ILESO')).toBe('ILESO'); // objeto médico fuerte
   });
 });
 
@@ -94,6 +100,11 @@ describe('healCeilingFor', () => {
     expect(healCeilingFor('INCAPACITADO', false, 'ILESO')).toBe('ILESO');
     expect(healCeilingFor('GRAVE', true, 'ILESO')).toBe('ILESO');
   });
+  it('el techo nunca es PEOR que la condición actual (bug real, auditoría 2026-07-30: un ILESO descansando con éxito se veía "curado" hasta HERIDO)', () => {
+    expect(healCeilingFor('ILESO', true, null)).toBe('ILESO');
+    // objeto médico débil (tope HERIDO) usado por alguien ya ILESO — tampoco debe empeorarlo.
+    expect(healCeilingFor('ILESO', false, 'HERIDO')).toBe('ILESO');
+  });
 });
 
 describe('condicionMalus', () => {
@@ -101,6 +112,10 @@ describe('condicionMalus', () => {
     expect(condicionMalus('ILESO')).toBe(0);
     expect(condicionMalus('HERIDO')).toBeGreaterThan(0);
     expect(condicionMalus('GRAVE')).toBeGreaterThan(condicionMalus('HERIDO'));
+  });
+
+  it('bug real jugando en vivo (2026-07-31, "he ganado estando yo incapacitado"): INCAPACITADO tiene malus real, mayor que GRAVE — antes era 0, igual que ILESO, y el jugador seguía peleando como si nada', () => {
+    expect(condicionMalus('INCAPACITADO')).toBeGreaterThan(condicionMalus('GRAVE'));
   });
 });
 

@@ -22,6 +22,19 @@ export LD_LIBRARY_PATH="$HOME/.local/ollama/lib/ollama:$LD_LIBRARY_PATH"
 echo "Arrancando Tarkor..."
 echo
 
+# Postgres local (migración local-first 2026-07-30, ver docs/15-instalacion.md § 3bis) — contenedor
+# podman ya creado una vez, aquí solo se arranca si estaba parado. Silencioso si ya estaba arriba.
+if command -v podman >/dev/null 2>&1 && podman container exists tarkor-postgres 2>/dev/null; then
+  if podman ps --format '{{.Names}}' | grep -qx tarkor-postgres; then
+    echo "Postgres (tarkor-postgres) ya estaba corriendo."
+  else
+    echo "Arrancando Postgres (tarkor-postgres)..."
+    podman start tarkor-postgres >/dev/null
+  fi
+else
+  echo "AVISO: no existe el contenedor 'tarkor-postgres' — ver docs/15-instalacion.md § 3bis para crearlo."
+fi
+
 # Carga nvm/node en ESTE shell solo para el check de Ollama de abajo — cada ventana nueva se
 # monta la suya propia (ver NVM_INIT).
 NVM_INIT='export NVM_DIR="$HOME/.var/app/com.visualstudio.code/config/nvm"; [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh" && nvm use 22 >/dev/null 2>&1;'

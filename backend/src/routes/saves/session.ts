@@ -1,0 +1,134 @@
+import type { FastifyInstance } from 'fastify';
+import { Prisma } from '@prisma/client';
+import { prisma } from '../../lib/prisma.js';
+import { contraataqueDifficultyFor } from '../../services/npcScene.js';
+import { effectiveAttributes, effectiveDefense } from '../../services/equipment.js';
+import { rollCheck } from '../../services/dice.js';
+import type { AttributeBlock } from '../../services/dice.js';
+
+/// Control del estado de una partida EN CURSO (deuda técnica 2026-07-30, split de saves.ts):
+/// pausar/reanudar, cancelar una acción por tiempo, y huir antes de que un combate llegue a
+/// empezar — las cuatro son "el jugador cambia de idea sobre algo que ya estaba en marcha", a
+/// diferencia de creation.ts (arranca la partida) o detail.ts (solo lee su estado).
+export async function sessionRoutes(app: FastifyInstance) {
+  // Pausa/reanuda la partida (roadmap 2026-07-20, petición explícita: "quiero que la partida se
+  // pause si salgo de ella"). El frontend llama a pause al salir de GameView (desmontaje o
+  // beforeunload) y a resume al volver a entrar — ver `pausedAt` en schema.prisma para el
+  // razonamiento completo. Solo afecta a `resolveDueTransits` (worldTick.ts): mientras está
+  // pausada, un CharacterTransit vencido no se resuelve; al reanudar, `busyUntil` se alarga
+  // exactamente lo que ha durado la pausa, sin perder ni regalar tiempo de espera.
+  app.post<{ Params: { id: string } }>('/saves/:id/pause', async (request, reply) => {
+    const save = await prisma.save.findUnique({ where: { id: request.params.id } });
+    if (!save) {
+      return reply.status(404).send({ error: 'Partida no encontrada' });
+    }
+    if (!save.pausedAt) {
+      await prisma.save.update({ where: { id: save.id }, data: { pausedAt: new Date() } });
+    }
+    return reply.status(204).send();
+  });
+
+  app.post<{ Params: { id: string } }>('/saves/:id/resume', async (request, reply) => {
+    const save = await prisma.save.findUnique({ where: { id: request.params.id }, include: { characterTransit: true } });
+    if (!save) {
+      return reply.status(404).send({ error: 'Partida no encontrada' });
+    }
+    if (save.pausedAt) {
+      const pausedMs = Date.now() - save.pausedAt.getTime();
+      const ops: Prisma.PrismaPromise<unknown>[] = [prisma.save.update({ where: { id: save.id }, data: { pausedAt: null } })];
+      if (save.characterTransit && pausedMs > 0) {
+        ops.push(
+          prisma.characterTransit.update({
+            where: { saveId: save.id },
+            data: { busyUntil: new Date(save.characterTransit.busyUntil.getTime() + pausedMs) },
+          }),
+        );
+      }
+      await prisma.$transaction(ops);
+    }
+    return reply.status(204).send();
+  });
+
+  // Cancelar una acción extendida/larga en curso (roadmap 2026-07-21, petición explícita de la
+  // usuaria: "quiero meter un botón para poder cancelarla... no se realizará la acción") — borra
+  // el CharacterTransit para que worldTick nunca la resuelva, y deja constancia en el diario de
+  // que el personaje cambió de idea, en vez de fingir que la acción llegó a completarse.
+  app.post<{ Params: { id: string } }>('/saves/:id/transit/cancel', async (request, reply) => {
+    const save = await prisma.save.findUnique({
+      where: { id: request.params.id },
+      include: { characterTransit: true, worldState: true },
+    });
+    if (!save) {
+      return reply.status(404).send({ error: 'Partida no encontrada' });
+    }
+    if (!save.characterTransit || save.characterTransit.busyUntil <= new Date()) {
+      return reply.status(404).send({ error: 'No hay ninguna acción cancelable ahora mismo' });
+    }
+
+    // Mismo patrón de "reclamo atómico" que worldTick.ts: si busyUntil ya pasó a estar en el
+    // pasado justo antes de este borrado (carrera con el worker de fondo resolviéndola), el
+    // borrado no afecta a ninguna fila y se avisa en vez de fingir que se canceló.
+    const deleted = await prisma.characterTransit.deleteMany({
+      where: { saveId: save.id, busyUntil: { gt: new Date() } },
+    });
+    if (deleted.count === 0) {
+      return reply.status(409).send({ error: 'La acción ya se estaba resolviendo, no se pudo cancelar' });
+    }
+
+    await prisma.logEntry.create({
+      data: {
+        saveId: save.id,
+        channel: 'CHARACTER',
+        text: `${save.characterName} decide no seguir adelante con eso — cambia de idea antes de empezar.`,
+        timeLabel: save.worldState?.fictionalDateLabel ?? 'Día 1, mañana',
+      },
+    });
+    return reply.status(204).send();
+  });
+
+  // Huir ANTES de entrar al combate (petición explícita de la usuaria, 2026-07-24, tras la
+  // auditoría "revisa todo bien bien" — punto: el "Huir" de dentro de CombatModal.tsx pasa por
+  // todo el pipeline classify+narrate y cierra el popup de inmediato sin esperar a que termine,
+  // así que una resincronización a mitad de ese hueco podía resucitar el aviso de "Combatir" para
+  // una pelea de la que ya se había huido). Botón nuevo junto al aviso de "⚔️ Combatir", ANTES de
+  // abrir el popup: una única tirada determinista de destreza (misma fórmula que el contraataque,
+  // cuanto más nivel el enemigo, más difícil escapar), sin IA — si sale bien limpia el combate
+  // pendiente del todo (ya no hay carrera posible: es una sola llamada atómica); si falla, el
+  // frontend abre igualmente el popup de combate normal.
+  app.post<{ Params: { id: string } }>('/saves/:id/combat/flee', async (request, reply) => {
+    const save = await prisma.save.findUnique({
+      where: { id: request.params.id },
+      include: { worldState: true, inventoryItems: { where: { slot: { not: null } } } },
+    });
+    if (!save) {
+      return reply.status(404).send({ error: 'Partida no encontrada' });
+    }
+    if (save.endedAt) {
+      return reply.status(409).send({ error: 'Esta partida ha terminado' });
+    }
+
+    const pendingSlugs = (save.pendingCombatNpcSlugs as string[] | null) ?? [];
+    if (pendingSlugs.length === 0) {
+      return reply.status(404).send({ error: 'No hay ningún combate pendiente del que huir' });
+    }
+
+    const npcs = await prisma.npc.findMany({ where: { worldId: save.worldId, slug: { in: pendingSlugs } } });
+    const maxNpcLevel = npcs.reduce((max, n) => Math.max(max, n.level), 1);
+    const attributes = effectiveAttributes(save.attributes as AttributeBlock, save.inventoryItems);
+    const defensa = effectiveDefense(save.inventoryItems);
+    const dificultad = contraataqueDifficultyFor(maxNpcLevel, save.level, defensa);
+    const roll = rollCheck(attributes, 'destreza', dificultad);
+    const timeLabel = save.worldState?.fictionalDateLabel ?? 'Día 1, mañana';
+
+    const text = roll.success
+      ? `${save.characterName} logra escapar antes de que el combate llegue a empezar de verdad — pero huir así, dejando la pelea sin dar la cara, es una mancha en su honor que no se borra sola.`
+      : `${save.characterName} intenta escapar antes de que empiece la pelea, pero no lo consigue — no hay forma de zafarse de esto ahora mismo.`;
+
+    await prisma.$transaction([
+      prisma.logEntry.create({ data: { saveId: save.id, channel: 'CHARACTER', text, timeLabel } }),
+      ...(roll.success ? [prisma.save.update({ where: { id: save.id }, data: { pendingCombatNpcSlugs: [] } })] : []),
+    ]);
+
+    return { escaped: roll.success, text };
+  });
+}

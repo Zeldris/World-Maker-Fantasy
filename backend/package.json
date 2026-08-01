@@ -16,7 +16,8 @@
     "seed-catalog": "tsx src/scripts/seed-catalog.ts",
     "seed-image-prompts": "tsx src/scripts/seedImagePrompts.ts",
     "export-image-prompts": "tsx src/scripts/exportImagePrompts.ts",
-    "test": "vitest run"
+    "test": "vitest run",
+    "lint": "oxlint"
   },
   "dependencies": {
     "@fastify/cors": "^10.0.1",
@@ -28,9 +29,10 @@
   },
   "devDependencies": {
     "@types/node": "^22.10.2",
+    "oxlint": "^1.76.0",
     "prisma": "^6.1.0",
     "tsx": "^4.19.2",
-    "typescript": "^5.7.2",
+    "typescript": "~6.0.2",
     "vitest": "^4.1.10"
   }
 }

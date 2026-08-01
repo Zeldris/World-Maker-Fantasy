@@ -1,31 +1,127 @@
-import { describe, it, expect } from 'vitest';
-import { mergeFacts } from './worldFacts.js';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-describe('mergeFacts', () => {
-  it('añade hechos nuevos sin tocar los existentes', () => {
-    expect(mergeFacts(['Gorhorn va solo'], ['El pozo tiene agua fresca'])).toEqual([
-      'Gorhorn va solo',
-      'El pozo tiene agua fresca',
-    ]);
+// Rediseño 2026-07-30 (mejora de cohesión, ver SessionFact en schema.prisma): `mergeFacts`
+// (ventana rodante de los últimos 10, recorte por pura antigüedad) se sustituye por 3 funciones
+// sobre una tabla propia con embeddings — mismo patrón de mock que inventario.test.ts/turn.test.ts:
+// `vi.fn()` a nivel de módulo + `vi.mock` + import dinámico DESPUÉS del mock.
+const findManySessionFact = vi.fn();
+const countSessionFact = vi.fn();
+const deleteManySessionFact = vi.fn();
+const executeRaw = vi.fn();
+const queryRaw = vi.fn();
+const embed = vi.fn();
+
+vi.mock('../lib/prisma.js', () => ({
+  prisma: {
+    sessionFact: {
+      findMany: (...args: unknown[]) => findManySessionFact(...args),
+      count: (...args: unknown[]) => countSessionFact(...args),
+      deleteMany: (...args: unknown[]) => deleteManySessionFact(...args),
+    },
+    $executeRaw: (...args: unknown[]) => executeRaw(...args),
+    $queryRaw: (...args: unknown[]) => queryRaw(...args),
+  },
+}));
+
+vi.mock('../lib/embeddings.js', () => ({
+  embed: (...args: unknown[]) => embed(...args),
+  toVectorLiteral: (vector: number[]) => `[${vector.join(',')}]`,
+}));
+
+const { loadSessionFacts, appendSessionFacts, selectRelevantFacts } = await import('./worldFacts.js');
+
+describe('loadSessionFacts', () => {
+  beforeEach(() => findManySessionFact.mockReset());
+
+  it('devuelve el historial en orden cronológico (más antiguo primero), aunque la consulta pida los más recientes primero', async () => {
+    findManySessionFact.mockResolvedValue([{ text: 'hecho 3 (más reciente)' }, { text: 'hecho 2' }, { text: 'hecho 1 (más antiguo)' }]);
+    const result = await loadSessionFacts('save1');
+    expect(result).toEqual(['hecho 1 (más antiguo)', 'hecho 2', 'hecho 3 (más reciente)']);
+    expect(findManySessionFact).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { saveId: 'save1' }, orderBy: { createdAt: 'desc' } }),
+    );
+  });
+});
+
+describe('appendSessionFacts', () => {
+  beforeEach(() => {
+    executeRaw.mockReset().mockResolvedValue(undefined);
+    countSessionFact.mockReset().mockResolvedValue(0);
+    deleteManySessionFact.mockReset();
+    embed.mockReset().mockResolvedValue([0.1, 0.2, 0.3]);
   });
 
-  it('descarta un hecho casi idéntico a uno ya existente (≥70% palabras compartidas)', () => {
+  it('inserta un hecho genuinamente nuevo (embebiéndolo primero)', async () => {
+    await appendSessionFacts('save1', ['Gorhorn tiene un tótem de madera'], ['El Cruce de las Cenizas tiene patrullas de la Concordia']);
+    expect(embed).toHaveBeenCalledWith('El Cruce de las Cenizas tiene patrullas de la Concordia');
+    expect(executeRaw).toHaveBeenCalledTimes(1);
+  });
+
+  it('descarta un hecho casi idéntico a uno ya existente (≥70% palabras compartidas) — no lo embebe ni lo inserta', async () => {
     const existing = ['Gorhorn ve un grupo hostil de orcos cerca del pozo'];
-    const result = mergeFacts(existing, ['Gorhorn ve un grupo hostil de oca cerca del pozo']);
-    expect(result).toEqual(existing); // el duplicado casi idéntico (typo "oca") se descarta
+    await appendSessionFacts('save1', existing, ['Gorhorn ve un grupo hostil de oca cerca del pozo']);
+    expect(embed).not.toHaveBeenCalled();
+    expect(executeRaw).not.toHaveBeenCalled();
   });
 
-  it('no descarta hechos genuinamente distintos aunque compartan alguna palabra', () => {
-    const existing = ['Gorhorn tiene un tótem de madera'];
-    const result = mergeFacts(existing, ['El Cruce de las Cenizas tiene patrullas de la Concordia']);
-    expect(result).toHaveLength(2);
+  it('dos hechos nuevos casi idénticos ENTRE SÍ en el mismo turno: solo el primero se inserta', async () => {
+    await appendSessionFacts('save1', [], ['El puente está destruido', 'El puente quedó destruido']);
+    expect(executeRaw).toHaveBeenCalledTimes(1);
   });
 
-  it('recorta a los 10 hechos más recientes', () => {
-    const existing = Array.from({ length: 10 }, (_, i) => `hecho antiguo ${i}`);
-    const result = mergeFacts(existing, ['hecho nuevo totalmente distinto de los demás']);
-    expect(result).toHaveLength(10);
-    expect(result[result.length - 1]).toBe('hecho nuevo totalmente distinto de los demás');
-    expect(result).not.toContain('hecho antiguo 0'); // el más viejo se recorta
+  it('no hace nada si no hay hechos nuevos', async () => {
+    await appendSessionFacts('save1', ['algo'], []);
+    expect(embed).not.toHaveBeenCalled();
+    expect(executeRaw).not.toHaveBeenCalled();
+    expect(countSessionFact).not.toHaveBeenCalled();
+  });
+
+  it('poda las filas más antiguas cuando se supera el tope de almacenamiento (MAX_STORED_FACTS=50)', async () => {
+    countSessionFact.mockResolvedValue(52);
+    findManySessionFact.mockReset().mockResolvedValue([{ id: 'old1' }, { id: 'old2' }]);
+    await appendSessionFacts('save1', [], ['hecho nuevo']);
+    expect(findManySessionFact).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { saveId: 'save1' }, orderBy: { createdAt: 'asc' }, take: 2 }),
+    );
+    expect(deleteManySessionFact).toHaveBeenCalledWith({ where: { id: { in: ['old1', 'old2'] } } });
+  });
+
+  it('no poda nada si no se ha superado el tope', async () => {
+    countSessionFact.mockResolvedValue(10);
+    await appendSessionFacts('save1', [], ['hecho nuevo']);
+    expect(deleteManySessionFact).not.toHaveBeenCalled();
+  });
+});
+
+describe('selectRelevantFacts', () => {
+  beforeEach(() => {
+    queryRaw.mockReset();
+    embed.mockReset().mockResolvedValue([0.1, 0.2, 0.3]);
+  });
+
+  it('con MAX_SENT_FACTS (10) o menos, devuelve todo tal cual — sin embeber ni consultar nada', async () => {
+    const facts = Array.from({ length: 10 }, (_, i) => `hecho ${i}`);
+    const result = await selectRelevantFacts('acción del jugador', 'save1', facts);
+    expect(result).toEqual(facts);
+    expect(embed).not.toHaveBeenCalled();
+    expect(queryRaw).not.toHaveBeenCalled();
+  });
+
+  it('con más de 10, garantiza los 3 más recientes y completa con los más relevantes recuperados por similitud', async () => {
+    const facts = Array.from({ length: 15 }, (_, i) => `hecho ${i}`); // hecho 12/13/14 = los 3 más recientes
+    queryRaw.mockResolvedValue([{ text: 'hecho 2' }, { text: 'hecho 5' }, { text: 'hecho 14' }]); // "hecho 14" ya está en recencia
+    const result = await selectRelevantFacts('acción del jugador', 'save1', facts);
+    expect(embed).toHaveBeenCalledWith('acción del jugador');
+    // Recencia garantizada (12,13,14) + relevantes no solapados (2,5) — sin duplicar "hecho 14".
+    expect(result).toEqual(['hecho 2', 'hecho 5', 'hecho 12', 'hecho 13', 'hecho 14']);
+  });
+
+  it('devuelve el resultado final en orden cronológico (según el array original), no por score de similitud', async () => {
+    const facts = Array.from({ length: 15 }, (_, i) => `hecho ${i}`);
+    // La consulta "por relevancia" los devuelve en un orden distinto al cronológico.
+    queryRaw.mockResolvedValue([{ text: 'hecho 8' }, { text: 'hecho 1' }]);
+    const result = await selectRelevantFacts('acción del jugador', 'save1', facts);
+    const indices = result.map((f) => facts.indexOf(f));
+    expect(indices).toEqual([...indices].sort((a, b) => a - b));
   });
 });

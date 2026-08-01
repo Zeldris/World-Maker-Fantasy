@@ -54,6 +54,8 @@ async function main() {
       where: { worldId_slug: { worldId, slug: item.slug } },
       update: {
         name: item.name,
+        aliases: item.aliases ?? [],
+        equipSlot: item.equipSlot ?? null,
         category: item.category,
         tipo: item.tipo,
         description: item.description,
@@ -91,6 +93,7 @@ async function main() {
         aliases: npcData.aliases,
         faction: npcData.faction,
         role: npcData.role,
+        articulo: npcData.articulo ?? null,
         level: npcData.level,
         levelMax: npcData.levelMax,
         attributes: npcData.attributes,

@@ -18,6 +18,220 @@ import {
   RAZA_VARIANTE_SEXO_VARIANTES,
   type SexoVariantesEntry,
 } from '../services/sexDimorphism.js';
+import type { Npc } from '@prisma/client';
+
+interface VarianteSexoOut {
+  sexo: 'macho' | 'hembra';
+  rasgoFisico: string;
+  description: string;
+  medidaCm: number;
+  edadMaxima: number;
+  imagePrompts: { thumbnail: string | null; banner: string | null };
+  imageUrls: { thumbnail: string | null; banner: string | null };
+}
+
+/// Deuda técnica (2026-07-30, auditoría técnica: "el handler de /world/:slug/enciclopedia
+/// ensambla ~280 líneas de secciones de tipo de entidad SIN RELACIÓN entre sí, todo en un único
+/// cuerpo de función"). Agrupa todos los closures/mapas ya calculados que las 8 secciones de la
+/// respuesta comparten — un solo objeto en vez de repetir la misma lista larga de parámetros en
+/// cada `buildXSection`.
+interface EnciclopediaBuildContext {
+  imagePromptsFor: (entityType: ImagePromptEntityType, entitySlug: string) => { thumbnail: string | null; banner: string | null };
+  variantesSexoFor: (
+    entityType: 'npc' | 'fauna' | 'raza',
+    baseSlug: string,
+    variantes: Record<string, SexoVariantesEntry>,
+  ) => VarianteSexoOut[] | undefined;
+  isDiscovered: (entityType: string, entitySlug: string) => boolean;
+  isLocationDiscovered: (locationId: string) => boolean;
+  ataqueBaseFor: (n: { id: string; attributes: unknown; ataqueNatural: string | null }) => ReturnType<typeof baseAttackFor>;
+  regionFor: (sourceSlug: string) => string | null;
+  npcBySlug: Map<string, Npc>;
+  npcSlugs: Set<string>;
+  yieldsBySource: Map<string, { itemName: string; cantidad: number; condicion: string | null }[]>;
+  sourceNameBySlug: Map<string, string>;
+  /// Loadout saqueable (petición explícita, 2026-07-30: "que al saquear pueda marcar los objetos
+  /// que me quiero quedar") — antes deliberadamente NUNCA se exponía este dato crudo al frontend
+  /// (ver comentario histórico de `npcItems` más abajo); el modal de saqueo lo necesita para
+  /// enseñar de antemano qué lleva encima cada NPC, sin esperar a que el saqueo ya haya ocurrido.
+  /// Es contenido de CATÁLOGO (Npc/NpcItem no dependen de la partida), así que vale la pena
+  /// exponerlo aquí en vez de en un endpoint nuevo por partida.
+  lootableItemsByNpcId: Map<string, { name: string; cantidad: number; notas: string | null }[]>;
+}
+
+function buildNpcsSection(npcsForEncyclopedia: Npc[], ctx: EnciclopediaBuildContext) {
+  return npcsForEncyclopedia.map((n) => ({
+    slug: n.slug,
+    name: n.name,
+    kind: n.kind,
+    role: n.role,
+    faction: n.faction,
+    level: n.level,
+    bio: n.bio,
+    aliases: n.aliases,
+    imagePrompts: ctx.imagePromptsFor('npc', n.slug),
+    imageUrls: imageUrlsFor('npc', n.slug),
+    variantesSexo: ctx.variantesSexoFor('npc', n.slug, NPC_SEXO_VARIANTES),
+    discovered: ctx.isDiscovered('npc', n.slug),
+    // Rediseño de la vista de combate (2026-07-28): `attributes` ya existía en el modelo, solo
+    // faltaba exponerlo; `raza`/`clase` enganchan la ficha con `razas`/`classes` de más abajo.
+    attributes: n.attributes as AttributeBlock,
+    raza: n.raza,
+    clase: n.clase,
+    ataqueBase: ctx.ataqueBaseFor(n),
+    items: ctx.lootableItemsByNpcId.get(n.id) ?? [],
+  }));
+}
+
+function buildItemsSection(items: Awaited<ReturnType<typeof prisma.itemCatalog.findMany>>, ctx: EnciclopediaBuildContext) {
+  return items.map((i) => ({
+    slug: i.slug,
+    name: i.name,
+    aliases: i.aliases,
+    category: i.category,
+    // Categorización mecánica (2026-07-29) — ver itemTaxonomy.ts.
+    tipo: i.tipo,
+    description: i.description,
+    statBonusAttribute: i.statBonusAttribute,
+    statBonusAmount: i.statBonusAmount,
+    dimensiones: i.dimensiones,
+    lugarOrigen: i.lugarOrigen,
+    tier: i.tier,
+    requisitos: i.requisitos as Record<string, number> | null,
+    imagePrompts: ctx.imagePromptsFor('item', i.slug),
+    imageUrls: imageUrlsFor('item', i.slug),
+    discovered: ctx.isDiscovered('item', i.slug),
+  }));
+}
+
+// `description` (2026-07-22, misma auditoría que destapó el bug de loreContextFor): antes esta
+// pestaña no exponía NINGÚN texto descriptivo de la criatura/planta, solo sus recursos
+// cosechables — el bio real vivía en el Npc (fauna cazable) o en harvestSourceDescriptions
+// (flora/mineral sin Npc propio, ver worldCatalog.ts) pero nunca llegaba al frontend.
+function buildFaunaFloraSection(ctx: EnciclopediaBuildContext) {
+  return Array.from(ctx.sourceNameBySlug.entries()).map(([sourceSlug, sourceName]) => ({
+    sourceSlug,
+    sourceName,
+    aliases: harvestSourceAliases[sourceSlug] ?? [],
+    // `cazable` (mecánica real, ver harvest.ts): solo true si existe Npc con este slug — no
+    // tocar, condiciona si hace falta derrotarlo antes de poder despiezarlo.
+    cazable: ctx.npcSlugs.has(sourceSlug),
+    // `esFauna` (bug real 2026-07-22, separado a propósito de `cazable`): si es un animal de
+    // verdad, tenga o no ficha de combate — Espina del Viento/Cornante/Sombra de Kroj son
+    // fauna sin Npc propio (peligro ambiental o fuera del núcleo jugable), no flora/mineral.
+    esFauna: ctx.npcSlugs.has(sourceSlug) || harvestSourcesThatAreFaunaWithoutNpc.has(sourceSlug),
+    // Zona de origen (2026-07-29, colapsables de fauna/flora por zona en la Enciclopedia).
+    region: ctx.regionFor(sourceSlug),
+    description: ctx.npcBySlug.get(sourceSlug)?.bio ?? harvestSourceDescriptions[sourceSlug] ?? null,
+    yields: ctx.yieldsBySource.get(sourceSlug) ?? [],
+    imagePrompts: ctx.imagePromptsFor('fauna', sourceSlug),
+    imageUrls: imageUrlsFor('fauna', sourceSlug),
+    variantesSexo: ctx.variantesSexoFor('fauna', sourceSlug, FAUNA_SEXO_VARIANTES),
+    discovered: ctx.isDiscovered('fauna', sourceSlug),
+    // Rediseño de la vista de combate (2026-07-28): solo presentes si hay Npc real detrás
+    // (`cazable`) — flora/mineral sin ficha de combate se queda con los cinco en null/vacío.
+    // `level` (2026-07-29, indicador de dificultad antes de Combatir): sin esto, la fauna no
+    // tenía forma de participar en `difficultyHintFor` desde el frontend, a diferencia de los
+    // NPCs humanoides (`EnciclopediaNpcInfo.level` ya existía).
+    level: ctx.npcBySlug.get(sourceSlug)?.level ?? null,
+    attributes: (ctx.npcBySlug.get(sourceSlug)?.attributes as AttributeBlock | undefined) ?? null,
+    ataqueNatural: ctx.npcBySlug.get(sourceSlug)?.ataqueNatural ?? null,
+    habilidadesRaciales: (ctx.npcBySlug.get(sourceSlug)?.habilidadesRaciales as unknown as
+      { icon: string; name: string; description: string; categoria: 'ataque' | 'defensa' | 'utilidad'; preferredAttribute: Attribute }[]) ?? [],
+    ataqueBase: (() => {
+      const faunaNpc = ctx.npcBySlug.get(sourceSlug);
+      return faunaNpc ? ctx.ataqueBaseFor(faunaNpc) : null;
+    })(),
+  }));
+}
+
+// Lugares (2026-07-23): gateado por `LocationVisit` (visita física real), no por mención en
+// narración — eje independiente de DiscoveredEntity (ver comentario del modelo en schema.prisma).
+function buildLocationsSection(locations: Awaited<ReturnType<typeof prisma.location.findMany>>, ctx: EnciclopediaBuildContext) {
+  return locations.map((l) => ({
+    slug: l.slug,
+    name: l.name,
+    aliases: l.aliases,
+    region: l.region,
+    kind: l.kind,
+    description: l.description,
+    imagePrompts: ctx.imagePromptsFor('location', l.slug),
+    imageUrls: imageUrlsFor('location', l.slug),
+    discovered: ctx.isLocationDiscovered(l.id),
+  }));
+}
+
+// Razas y personajes jugables de Berig (2026-07-22): contenido estático (ver berigLore.ts),
+// mismo patrón que `classes` de abajo — no depende de ninguna tabla de este mundo en la BD.
+function buildRazasSection(ctx: EnciclopediaBuildContext) {
+  return BERIG_RAZAS.map((r) => ({
+    ...r,
+    imagePrompts: ctx.imagePromptsFor('raza', r.slug),
+    imageUrls: imageUrlsFor('raza', r.slug),
+    // Sexo (2026-07-22, "nos dejamos las razas también"): a nivel de RAZA GENERAL — solo
+    // presente en razas SIN variantes regionales (Goirntes, Nabieus, Faerus). Orcos no tiene
+    // entrada aquí (`RAZA_SEXO_VARIANTES` no la incluye a propósito): su sexo va cruzado con
+    // la región, ver más abajo.
+    variantesSexo: ctx.variantesSexoFor('raza', r.slug, RAZA_SEXO_VARIANTES),
+    // Variantes regionales (2026-07-22, "al pulsar orcos aun pudiese elegir el tipo según la
+    // región") — cada una con su propia imagen, mismo entityType 'raza' que la raza padre.
+    // Sexo CRUZADO con región (2026-07-22, "sí, cruzar para Orcos"): cada variante regional
+    // tiene su propio par macho/hembra, con imagen propia `<variante>-<sexo>`.
+    variantes: r.variantes?.map((v) => ({
+      ...v,
+      imagePrompts: ctx.imagePromptsFor('raza', v.slug),
+      imageUrls: imageUrlsFor('raza', v.slug),
+      variantesSexo: ctx.variantesSexoFor('raza', v.slug, RAZA_VARIANTE_SEXO_VARIANTES),
+    })),
+  }));
+}
+
+function buildPersonajesSection(ctx: EnciclopediaBuildContext) {
+  return BERIG_PERSONAJES.map((p) => ({
+    ...p,
+    imagePrompts: ctx.imagePromptsFor('personaje', p.slug),
+    imageUrls: imageUrlsFor('personaje', p.slug),
+  }));
+}
+
+// Clases (roadmap 2026-07-21, separadas en dos el 2026-07-22 — petición explícita: "Guerrero es
+// una clase y Cazador es otra con sus propias habilidades! Gorhorn es una variante especial que
+// le permite aprender las habilidades de ambas"): contenido de diseño estático, no depende del
+// mundo en la base de datos. Cada clase expone solo SU roster (`classAbilityUnlocksForClase`) —
+// Gorhorn sigue aprendiendo de las dos (ver `classAbilityUnlocksFor` en el motor de turnos, sin
+// cambios), pero la Enciclopedia ya puede mostrarlas como dos árboles independientes.
+function buildClassesSection(ctx: EnciclopediaBuildContext) {
+  return (['Guerrero', 'Cazador'] as const).map((clase) => ({
+    name: clase,
+    description:
+      clase === 'Guerrero'
+        ? 'Fuerza bruta y aguante en primera línea — golpea directo, encaja el golpe y no cede terreno.'
+        : 'Reflejos, puntería a distancia e instinto de rastreo — hiere antes de ser visto y remata sin errar.',
+    unlocks: classAbilityUnlocksForClase(clase).map((u) => ({
+      level: u.level,
+      ability: {
+        ...u.ability,
+        imagePrompts: ctx.imagePromptsFor('ability', slugify(u.ability.name)),
+        imageUrls: imageUrlsFor('ability', slugify(u.ability.name)),
+      },
+    })),
+  }));
+}
+
+// Construcciones (roadmap 2026-07-20/21): recetas con requisitos reales de materiales. nounRegex
+// es detalle interno de detección de intención, no de catálogo — no serializa limpio en JSON
+// (RegExp → "{}"), así que se omite explícitamente de la respuesta.
+function buildConstructionRecipesSection(ctx: EnciclopediaBuildContext) {
+  return CONSTRUCTION_RECIPES.map(({ key, name, description, raza, requirements }) => ({
+    key,
+    name,
+    description,
+    raza: raza ?? null,
+    requirements,
+    imagePrompts: ctx.imagePromptsFor('construccion', key),
+    imageUrls: imageUrlsFor('construccion', key),
+  }));
+}
 
 /// Catálogo de ubicaciones de un mundo (docs/12-mundo-estructurado.md § "Frontend", pendiente
 /// desde esa sesión): antes `frontend/src/data/map.ts` duplicaba a mano nombres/descripciones de
@@ -92,18 +306,23 @@ export async function worldRoutes(app: FastifyInstance) {
       saveId ? prisma.discoveredEntity.findMany({ where: { saveId } }) : Promise.resolve([]),
       saveId ? prisma.locationVisit.findMany({ where: { saveId } }) : Promise.resolve([]),
       // Rediseño de la vista de combate (2026-07-28) — arma(s) del loadout de cada NPC, para
-      // calcular su "Ataque base" (baseAttack.ts) aquí en el backend: la Enciclopedia nunca
-      // expuso el loadout crudo al frontend, y no hace falta empezar ahora — se resuelve el
-      // texto final una vez aquí y se manda ya hecho.
+      // calcular su "Ataque base" (baseAttack.ts) aquí en el backend. También alimenta el modal
+      // de saqueo selectivo (2026-07-30, ver `lootableItemsByNpcId` más abajo) — mismo dato crudo,
+      // ya no se descarta después de calcular las armas.
       prisma.npcItem.findMany({ where: { npc: { worldId: world.id } }, include: { item: true } }),
     ]);
 
     const weaponNamesByNpcId = new Map<string, string[]>();
+    const lootableItemsByNpcId = new Map<string, { name: string; cantidad: number; notas: string | null }[]>();
     for (const npcItem of npcItems) {
-      if (npcItem.item.category !== 'arma') continue;
-      const list = weaponNamesByNpcId.get(npcItem.npcId) ?? [];
-      list.push(npcItem.item.name);
-      weaponNamesByNpcId.set(npcItem.npcId, list);
+      if (npcItem.item.category === 'arma') {
+        const list = weaponNamesByNpcId.get(npcItem.npcId) ?? [];
+        list.push(npcItem.item.name);
+        weaponNamesByNpcId.set(npcItem.npcId, list);
+      }
+      const lootList = lootableItemsByNpcId.get(npcItem.npcId) ?? [];
+      lootList.push({ name: npcItem.item.name, cantidad: npcItem.cantidad, notas: npcItem.notas });
+      lootableItemsByNpcId.set(npcItem.npcId, lootList);
     }
     const ataqueBaseFor = (n: { id: string; attributes: unknown; ataqueNatural: string | null }) =>
       baseAttackFor({
@@ -182,155 +401,29 @@ export async function worldRoutes(app: FastifyInstance) {
     // se queda solo con los que no tienen ninguna fuente de cosecha propia.
     const npcsForEncyclopedia = npcs.filter((n) => !sourceNameBySlug.has(n.slug));
 
+    const ctx: EnciclopediaBuildContext = {
+      imagePromptsFor,
+      variantesSexoFor,
+      isDiscovered,
+      isLocationDiscovered,
+      ataqueBaseFor,
+      regionFor,
+      npcBySlug,
+      npcSlugs,
+      yieldsBySource,
+      sourceNameBySlug,
+      lootableItemsByNpcId,
+    };
+
     return {
-      npcs: npcsForEncyclopedia.map((n) => ({
-        slug: n.slug,
-        name: n.name,
-        kind: n.kind,
-        role: n.role,
-        faction: n.faction,
-        level: n.level,
-        bio: n.bio,
-        aliases: n.aliases,
-        imagePrompts: imagePromptsFor('npc', n.slug),
-        imageUrls: imageUrlsFor('npc', n.slug),
-        variantesSexo: variantesSexoFor('npc', n.slug, NPC_SEXO_VARIANTES),
-        discovered: isDiscovered('npc', n.slug),
-        // Rediseño de la vista de combate (2026-07-28): `attributes` ya existía en el modelo, solo
-        // faltaba exponerlo; `raza`/`clase` enganchan la ficha con `razas`/`classes` de más abajo.
-        attributes: n.attributes as AttributeBlock,
-        raza: n.raza,
-        clase: n.clase,
-        ataqueBase: ataqueBaseFor(n),
-      })),
-      items: items.map((i) => ({
-        slug: i.slug,
-        name: i.name,
-        category: i.category,
-        // Categorización mecánica (2026-07-29) — ver itemTaxonomy.ts.
-        tipo: i.tipo,
-        description: i.description,
-        statBonusAttribute: i.statBonusAttribute,
-        statBonusAmount: i.statBonusAmount,
-        dimensiones: i.dimensiones,
-        lugarOrigen: i.lugarOrigen,
-        tier: i.tier,
-        requisitos: i.requisitos as Record<string, number> | null,
-        imagePrompts: imagePromptsFor('item', i.slug),
-        imageUrls: imageUrlsFor('item', i.slug),
-        discovered: isDiscovered('item', i.slug),
-      })),
-      // `description` (2026-07-22, misma auditoría que destapó el bug de loreContextFor): antes
-      // esta pestaña no exponía NINGÚN texto descriptivo de la criatura/planta, solo sus recursos
-      // cosechables — el bio real vivía en el Npc (fauna cazable) o en harvestSourceDescriptions
-      // (flora/mineral sin Npc propio, ver worldCatalog.ts) pero nunca llegaba al frontend.
-      faunaFlora: Array.from(sourceNameBySlug.entries()).map(([sourceSlug, sourceName]) => ({
-        sourceSlug,
-        sourceName,
-        aliases: harvestSourceAliases[sourceSlug] ?? [],
-        // `cazable` (mecánica real, ver harvest.ts): solo true si existe Npc con este slug — no
-        // tocar, condiciona si hace falta derrotarlo antes de poder despiezarlo.
-        cazable: npcSlugs.has(sourceSlug),
-        // `esFauna` (bug real 2026-07-22, separado a propósito de `cazable`): si es un animal de
-        // verdad, tenga o no ficha de combate — Espina del Viento/Cornante/Sombra de Kroj son
-        // fauna sin Npc propio (peligro ambiental o fuera del núcleo jugable), no flora/mineral.
-        esFauna: npcSlugs.has(sourceSlug) || harvestSourcesThatAreFaunaWithoutNpc.has(sourceSlug),
-        // Zona de origen (2026-07-29, colapsables de fauna/flora por zona en la Enciclopedia).
-        region: regionFor(sourceSlug),
-        description: npcBySlug.get(sourceSlug)?.bio ?? harvestSourceDescriptions[sourceSlug] ?? null,
-        yields: yieldsBySource.get(sourceSlug) ?? [],
-        imagePrompts: imagePromptsFor('fauna', sourceSlug),
-        imageUrls: imageUrlsFor('fauna', sourceSlug),
-        variantesSexo: variantesSexoFor('fauna', sourceSlug, FAUNA_SEXO_VARIANTES),
-        discovered: isDiscovered('fauna', sourceSlug),
-        // Rediseño de la vista de combate (2026-07-28): solo presentes si hay Npc real detrás
-        // (`cazable`) — flora/mineral sin ficha de combate se queda con los cinco en null/vacío.
-        // `level` (2026-07-29, indicador de dificultad antes de Combatir): sin esto, la fauna no
-        // tenía forma de participar en `difficultyHintFor` desde el frontend, a diferencia de los
-        // NPCs humanoides (`EnciclopediaNpcInfo.level` ya existía).
-        level: npcBySlug.get(sourceSlug)?.level ?? null,
-        attributes: (npcBySlug.get(sourceSlug)?.attributes as AttributeBlock | undefined) ?? null,
-        ataqueNatural: npcBySlug.get(sourceSlug)?.ataqueNatural ?? null,
-        habilidadesRaciales: (npcBySlug.get(sourceSlug)?.habilidadesRaciales as unknown as
-          { icon: string; name: string; description: string; categoria: 'ataque' | 'defensa' | 'utilidad'; preferredAttribute: Attribute }[]) ?? [],
-        ataqueBase: (() => {
-          const faunaNpc = npcBySlug.get(sourceSlug);
-          return faunaNpc ? ataqueBaseFor(faunaNpc) : null;
-        })(),
-      })),
-      // Lugares (2026-07-23): gateado por `LocationVisit` (visita física real), no por mención en
-      // narración — eje independiente de DiscoveredEntity (ver comentario del modelo en schema.prisma).
-      locations: locations.map((l) => ({
-        slug: l.slug,
-        name: l.name,
-        region: l.region,
-        kind: l.kind,
-        description: l.description,
-        imagePrompts: imagePromptsFor('location', l.slug),
-        imageUrls: imageUrlsFor('location', l.slug),
-        discovered: isLocationDiscovered(l.id),
-      })),
-      // Razas y personajes jugables de Berig (2026-07-22): contenido estático (ver berigLore.ts),
-      // mismo patrón que `classes` de abajo — no depende de ninguna tabla de este mundo en la BD.
-      razas: BERIG_RAZAS.map((r) => ({
-        ...r,
-        imagePrompts: imagePromptsFor('raza', r.slug),
-        imageUrls: imageUrlsFor('raza', r.slug),
-        // Sexo (2026-07-22, "nos dejamos las razas también"): a nivel de RAZA GENERAL — solo
-        // presente en razas SIN variantes regionales (Goirntes, Nabieus, Faerus). Orcos no tiene
-        // entrada aquí (`RAZA_SEXO_VARIANTES` no la incluye a propósito): su sexo va cruzado con
-        // la región, ver más abajo.
-        variantesSexo: variantesSexoFor('raza', r.slug, RAZA_SEXO_VARIANTES),
-        // Variantes regionales (2026-07-22, "al pulsar orcos aun pudiese elegir el tipo según la
-        // región") — cada una con su propia imagen, mismo entityType 'raza' que la raza padre.
-        // Sexo CRUZADO con región (2026-07-22, "sí, cruzar para Orcos"): cada variante regional
-        // tiene su propio par macho/hembra, con imagen propia `<variante>-<sexo>`.
-        variantes: r.variantes?.map((v) => ({
-          ...v,
-          imagePrompts: imagePromptsFor('raza', v.slug),
-          imageUrls: imageUrlsFor('raza', v.slug),
-          variantesSexo: variantesSexoFor('raza', v.slug, RAZA_VARIANTE_SEXO_VARIANTES),
-        })),
-      })),
-      personajes: BERIG_PERSONAJES.map((p) => ({
-        ...p,
-        imagePrompts: imagePromptsFor('personaje', p.slug),
-        imageUrls: imageUrlsFor('personaje', p.slug),
-      })),
-      // Clases (roadmap 2026-07-21, separadas en dos el 2026-07-22 — petición explícita: "Guerrero
-      // es una clase y Cazador es otra con sus propias habilidades! Gorhorn es una variante
-      // especial que le permite aprender las habilidades de ambas"): contenido de diseño estático,
-      // no depende del mundo en la base de datos. Cada clase expone solo SU roster
-      // (`classAbilityUnlocksForClase`) — Gorhorn sigue aprendiendo de las dos (ver
-      // `classAbilityUnlocksFor` en el motor de turnos, sin cambios), pero la Enciclopedia ya
-      // puede mostrarlas como dos árboles independientes.
-      classes: (['Guerrero', 'Cazador'] as const).map((clase) => ({
-        name: clase,
-        description:
-          clase === 'Guerrero'
-            ? 'Fuerza bruta y aguante en primera línea — golpea directo, encaja el golpe y no cede terreno.'
-            : 'Reflejos, puntería a distancia e instinto de rastreo — hiere antes de ser visto y remata sin errar.',
-        unlocks: classAbilityUnlocksForClase(clase).map((u) => ({
-          level: u.level,
-          ability: {
-            ...u.ability,
-            imagePrompts: imagePromptsFor('ability', slugify(u.ability.name)),
-            imageUrls: imageUrlsFor('ability', slugify(u.ability.name)),
-          },
-        })),
-      })),
-      // Construcciones (roadmap 2026-07-20/21): recetas con requisitos reales de materiales.
-      // nounRegex es detalle interno de detección de intención, no de catálogo — no serializa
-      // limpio en JSON (RegExp → "{}"), así que se omite explícitamente de la respuesta.
-      constructionRecipes: CONSTRUCTION_RECIPES.map(({ key, name, description, raza, requirements }) => ({
-        key,
-        name,
-        description,
-        raza: raza ?? null,
-        requirements,
-        imagePrompts: imagePromptsFor('construccion', key),
-        imageUrls: imageUrlsFor('construccion', key),
-      })),
+      npcs: buildNpcsSection(npcsForEncyclopedia, ctx),
+      items: buildItemsSection(items, ctx),
+      faunaFlora: buildFaunaFloraSection(ctx),
+      locations: buildLocationsSection(locations, ctx),
+      razas: buildRazasSection(ctx),
+      personajes: buildPersonajesSection(ctx),
+      classes: buildClassesSection(ctx),
+      constructionRecipes: buildConstructionRecipesSection(ctx),
     };
   });
 

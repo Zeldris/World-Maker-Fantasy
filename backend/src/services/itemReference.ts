@@ -78,3 +78,19 @@ export function detectEnergyItemUse(action: string, energyItems: { name: string;
   if (matches.length === 0) return null;
   return Math.max(...matches.map((m) => m.curaEnergia));
 }
+
+/// Detecta si la acción cita, entre comillas simples, el nombre EXACTO de un objeto que el
+/// personaje ya lleva en su inventario — mismo patrón que `explicitTarget` (turn.ts/
+/// turnResolution.ts) para NPCs objetivo. Bug real (auditoría 2026-07-30, "revisar partida"):
+/// "Cosumo 'Raciones de viaje (5 días)'" se clasificó como banda "larga" — el clasificador pequeño
+/// puede leer cualquier número/palabra suelta del propio NOMBRE del objeto (el "(5 días)") como si
+/// fuera la duración de la acción. Usar/consultar/consumir un objeto propio es SIEMPRE una acción
+/// rápida, nunca de horas — mismo espíritu que forzar "instantanea" en ataque/diálogo (turn.ts). No
+/// exige ningún verbo concreto (a diferencia de `detectItemReference` arriba): citar el nombre
+/// EXACTO y completo de un objeto propio entre comillas ya es una señal lo bastante específica.
+export function detectsOwnedItemQuote(action: string, inventoryNames: string[]): boolean {
+  const quoted = action.match(/'([^']+)'/);
+  if (!quoted) return false;
+  const target = normalizeText(quoted[1]);
+  return inventoryNames.some((name) => normalizeText(name) === target);
+}

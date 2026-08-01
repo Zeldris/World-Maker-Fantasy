@@ -3,10 +3,23 @@ import { extractStreamingNarration } from './narrationStream.js';
 import { env } from '../config/env.js';
 import { normalizeText, fuzzyMatchCandidates, findFuzzyStemMatch } from './travel.js';
 import { detectsAttackIntent, detectsHostileSearchIntent } from './npcScene.js';
+import { similarity } from './worldFacts.js';
 import type { Attribute, RollResult } from './dice.js';
 import type { CondicionFisica } from '@prisma/client';
 
 const ATTRIBUTES: Attribute[] = ['fuerza', 'destreza', 'constitucion', 'inteligencia', 'voluntad', 'carisma', 'arcano'];
+
+/// Ejemplo few-shot (2026-07-31, "brainstorming de mejora de narración" — idea de la usuaria:
+/// enseñar ejemplos reales en vez de solo acumular más reglas de prosa). Un modelo pequeño sigue
+/// un ejemplo concreto mejor de lo que obedece una instrucción abstracta — extraído de un turno
+/// real de partida (auditoría "revisar partida" 2026-07-30) que ya cumplía todo lo que se le pide
+/// en `fixedInstructions`: frase corta, una consecuencia concreta (cae y jadea, no solo "lo
+/// golpea"), y el NPC respondiendo en primera persona con SU propio carácter — justo el fallo más
+/// grave y repetido que se ha visto en partida real (el modelo perdiendo el nombre/personalidad/
+/// sexo de un NPC en un diálogo, ver comentario de `combatBlock` más abajo). Constante a nivel de
+/// módulo, va PRIMERO en el prompt (antes de `fixedInstructions`) para que sea la parte más
+/// estable posible de cara al caché de prefijo de Ollama — nunca cambia turno a turno.
+const GOOD_NARRATION_EXAMPLE = `EJEMPLO DE BUEN ESTILO (referencia de tono/extensión — el contenido es de OTRA partida, ignóralo como hecho, fíjate solo en la forma): "Gorhorn aprovecha para darle una patada certera a las costillas del orco, haciendo que este tropiece y caiga al suelo, jadeando. «¡Maldita sea! ¿Crees que podrás contenerme? Espera a que me des la señal...»" — directo, sin relleno, con una consecuencia física concreta, y el NPC hablando en primera persona con su propio carácter (nunca genérico, nunca puesto en boca del personaje del jugador).`;
 
 export type Banda = 'instantanea' | 'corta' | 'extendida' | 'larga';
 
@@ -111,6 +124,33 @@ interface TurnContext {
   /// → Hagar) quedaba con la misma licencia para aparecer que un NPC realmente en escena. Ahora
   /// va en su propio bloque, con la instrucción explícita de que es solo trasfondo/ambientación.
   backgroundLore?: string[];
+  /// Repetición casi verbatim entre un turno de combate y el siguiente (2026-07-31, bug real
+  /// probando en vivo — "Gorhorn descarga una poderosa hachata hacia atrás contra el orco" salió
+  /// dos turnos seguidos, palabra por palabra, pese a que `worldFacts` YA incluye la instrucción
+  /// de no repetir — ver comentario de `isTooSimilarToLast` más abajo). Idéntico texto que el
+  /// bloque "TU PROPIA NARRACIÓN DEL TURNO ANTERIOR" de `worldFacts` (turnResolution.ts), pero
+  /// aparte y sin formatear — aquí hace falta el texto crudo para comparar, no la instrucción.
+  lastNarrationText?: string;
+  /// Ver `hasFalseCombatHit` más abajo — true cuando el intercambio de combate de este turno
+  /// (resolveExchange) resolvió 'ataque_falla' o 'parada_en_seco': los dos únicos resultados donde
+  /// NINGÚN lado conecta un golpe de verdad. Si la narración describe contacto/daño de todos
+  /// modos, es una alucinación del modelo, no una licencia narrativa — se reintenta.
+  combatBothMissed?: boolean;
+  /// Ver `hasFalseItemUse` más abajo — nombres reales de objetos médicos/de energía que el
+  /// personaje lleva encima PERO que este turno no se detectó que usara de verdad (ni
+  /// `detectMedicalItemUse` ni `detectEnergyItemUse` los reconocieron en la acción del jugador).
+  /// Si la narración de todos modos describe aplicárselos/consumirlos, es una alucinación — el
+  /// objeto sigue intacto en el inventario y el jugador se lleva la falsa impresión de haberlo
+  /// gastado (y de haberse curado) sin que ninguno de los dos pase de verdad. Vacío = no hace
+  /// falta comprobar nada este turno (algún objeto SÍ se usó de verdad, o no hay ninguno médico/
+  /// de energía en el inventario).
+  possiblyFalseItemUseNames?: string[];
+  /// Ver `hasResurrectedDeadNpc` más abajo — nombres reales de NPCs INCAPACITADO/MUERTO presentes
+  /// este turno (ver `npcSceneBlockFor`, npcScene.ts: ya reciben la instrucción explícita "no lo
+  /// narres como una amenaza activa... nunca un encuentro nuevo"). Bug documentado en el propio
+  /// runbook del proyecto (docs/revisar-partida.md § "NPCs que resucitan") — un modelo pequeño a
+  /// veces la ignora igual que ignoraba el resto de instrucciones "no hagas X" de esta lista.
+  possiblyResurrectedNpcNames?: string[];
 }
 
 interface ClassifyContext {
@@ -406,7 +446,9 @@ ${combatBlock}`;
 CONOCIMIENTO DE FONDO DEL MUNDO (lore general del mundo relacionado con la acción — solo contexto/ambientación, NO implica presencia física en esta escena):
 ${factsBlock(ctx.backgroundLore ?? [])}`;
 
-  const prompt = `${fixedInstructions}
+  const prompt = `${GOOD_NARRATION_EXAMPLE}
+
+${fixedInstructions}
 
 PERSONAJE:
 ${ctx.characterSummary}
@@ -602,10 +644,43 @@ Responde solo con el JSON pedido, nada más.`;
       // pólvora), pero un 7B en CPU a veces lo ignora. No hace falta gastar un intento nuevo:
       // si este ya se ha ganado igualmente el reintento del cascadeo (attempt2/3), simplemente
       // no se devuelve todavía — se guarda por si TODOS los intentos fallan igual.
-      if (!hasAnachronism(parsed.narration)) return parsed;
-      console.warn(`[narrador] intento ${idx + 1}/3 descartado por anacronismo, reintentando`);
-      if (idx === 0) ctx.onNarrationReset?.();
-      lastResult = parsed;
+      if (hasAnachronism(parsed.narration)) {
+        console.warn(`[narrador] intento ${idx + 1}/3 descartado por anacronismo, reintentando`);
+        if (idx === 0) ctx.onNarrationReset?.();
+        lastResult = parsed;
+        continue;
+      }
+      if (isTooSimilarToLast(parsed.narration, ctx.lastNarrationText)) {
+        console.warn(`[narrador] intento ${idx + 1}/3 descartado por repetir casi verbatim el turno anterior, reintentando`);
+        if (idx === 0) ctx.onNarrationReset?.();
+        lastResult = parsed;
+        continue;
+      }
+      if (hasEnglishLeak(parsed.narration)) {
+        console.warn(`[narrador] intento ${idx + 1}/3 descartado por fuga de inglés, reintentando`);
+        if (idx === 0) ctx.onNarrationReset?.();
+        lastResult = parsed;
+        continue;
+      }
+      if (hasFalseCombatHit(parsed.narration, ctx.combatBothMissed)) {
+        console.warn(`[narrador] intento ${idx + 1}/3 descartado por narrar un golpe que no conectó (ataque_falla/parada_en_seco), reintentando`);
+        if (idx === 0) ctx.onNarrationReset?.();
+        lastResult = parsed;
+        continue;
+      }
+      if (hasFalseItemUse(parsed.narration, ctx.possiblyFalseItemUseNames)) {
+        console.warn(`[narrador] intento ${idx + 1}/3 descartado por narrar el uso de un objeto que no se consumió de verdad, reintentando`);
+        if (idx === 0) ctx.onNarrationReset?.();
+        lastResult = parsed;
+        continue;
+      }
+      if (hasResurrectedDeadNpc(parsed.narration, ctx.possiblyResurrectedNpcNames)) {
+        console.warn(`[narrador] intento ${idx + 1}/3 descartado por narrar a un NPC incapacitado/muerto como si siguiera activo, reintentando`);
+        if (idx === 0) ctx.onNarrationReset?.();
+        lastResult = parsed;
+        continue;
+      }
+      return parsed;
     } catch (err) {
       // Roadmap de velocidad, 2026-07-20 (streaming): antes este catch tragaba el error en
       // silencio — sin esto, un fallo del intento 1 (el único que transmite en vivo) era
@@ -699,4 +774,103 @@ const ANACHRONISM_REGEX =
 
 function hasAnachronism(narration: string): boolean {
   return ANACHRONISM_REGEX.test(narration);
+}
+
+/// Fuga de inglés, red de seguridad determinista (2026-07-31, bug real probando en vivo: "el eco
+/// de su own pisadas" — una palabra en inglés suelta en medio de una frase en español). Mismo
+/// criterio que `hasAnachronism`/`stripNonLatinScript`: el Modelfile ya pide español, esto es la
+/// red de seguridad para cuando el modelo lo ignora de todos modos. Lista deliberadamente corta y
+/// conservadora — solo palabras función inglesas sin NINGÚN homónimo español real, para no
+/// disparar con nombres propios o préstamos legítimos.
+const ENGLISH_LEAK_REGEX = /\b(own|the|and|was|with|from)\b/i;
+
+export function hasEnglishLeak(narration: string): boolean {
+  return ENGLISH_LEAK_REGEX.test(narration);
+}
+
+/// Anti-repetición, red de seguridad determinista (2026-07-31, bug real probando en vivo: dos
+/// turnos de combate seguidos narraron "Gorhorn descarga una poderosa hachata hacia atrás contra
+/// el orco" casi palabra por palabra, pese a que `worldFacts` ya lleva la instrucción explícita de
+/// no repetir — ver `lastNarrationText`/`TurnContext`). En combate, con muchas instrucciones a la
+/// vez compitiendo por un hueco de 1-2 frases, "no repitas" es la primera que se cae. Mismo
+/// criterio que `hasAnachronism`: no confiar en que la instrucción baste, comprobar el texto YA
+/// generado y reintentar si hace falta, en vez de sumar todavía más prosa de reglas. Umbral sin
+/// calibrar con datos (mismo criterio que `RELEVANCE_THRESHOLD` en retrieval.ts) — ajustar si dado
+/// caso deja pasar repeticiones reales o dispara con turnos que solo comparten vocabulario normal
+/// de combate (los nombres de personaje/NPC, "ataca", "golpea"...).
+const REPEAT_SIMILARITY_THRESHOLD = 0.7;
+
+export function isTooSimilarToLast(narration: string, lastNarrationText?: string): boolean {
+  if (!lastNarrationText) return false;
+  return similarity(narration, lastNarrationText) >= REPEAT_SIMILARITY_THRESHOLD;
+}
+
+/// Narración-vs-mecánica, red de seguridad determinista (2026-07-31, bug real jugando en vivo:
+/// "la maza pesada golpea el cuello del orco, dejando un rastro de sangre" narrado en un turno
+/// donde `resolveExchange` (combatExchange.ts) resolvió 'ataque_falla' — la condición del NPC no
+/// cambió, confirmado por DB, pero el jugador leyó un golpe limpio). `exchangeContextBlock` ya le
+/// dice al modelo "YA RESUELTO, no lo cambies: narra cómo falla o es esquivado" para
+/// 'ataque_falla'/'parada_en_seco' (los dos únicos resultados donde NADIE conecta un golpe), pero
+/// un modelo pequeño bajo presión de combate a veces la ignora igual que ignoraba "no repitas"
+/// (ver `isTooSimilarToLast`) — mismo criterio: no confiar en la instrucción sola, comprobar el
+/// texto ya generado. Lista de palabras deliberadamente centrada en CONTACTO+DAÑO inequívoco
+/// (nunca solo "ataca"/"golpea con" de intención, que también aparecen narrando un fallo: "golpea
+/// el aire", "intenta golpear") — el riesgo real es solo un reintento de más, no un falso negativo
+/// que deje pasar la alucinación. "clava en" se probó y se quitó a propósito: un fallo real
+/// también puede describir el arma clavándose en la roca/el suelo tras errar, no solo en carne.
+const COMBAT_HIT_LEAK_REGEX =
+  /\b(golpe[oó]|impact[oó]|hiri[oó]|hiere|atraves[oó]|atraviesa|reban[oó]|degüell[oa]|hace sangrar|rastro de sangre|sangrando|sangra por)\b/i;
+
+export function hasFalseCombatHit(narration: string, combatBothMissed?: boolean): boolean {
+  if (!combatBothMissed) return false;
+  return COMBAT_HIT_LEAK_REGEX.test(narration);
+}
+
+/// Narración-vs-mecánica, mismo patrón que `hasFalseCombatHit` (2026-08-01, bug real jugando en
+/// vivo: descansar tras quedar INCAPACITADO no cura solo por descansar — hace falta un objeto
+/// médico real, ver healCeilingFor/death.ts — pero la narración dijo "agarra la cataplasma de
+/// salvia del polvo y aplica una fina capa en una herida abierta", aunque el jugador nunca la
+/// nombró en su acción y el objeto seguía intacto en el inventario después). El prompt YA deja
+/// claro que el backend gestiona objetos/botín de forma determinista (ver el aviso de "no rellenes
+/// newItem"), pero eso no impide que la PROSA libre narre un uso que nunca ocurrió mecánicamente —
+/// mismo hueco que el golpe fantasma de combate. Verbo de consumo + nombre real del objeto EN LA
+/// MISMA FRASE (no en toda la narración, para no disparar con una mención de pasada tipo "su
+/// cataplasma sigue en la mochila" — riesgo bajo pero real, mismo motivo que "maza" se descartó en
+/// combate).
+const ITEM_CONSUMPTION_VERB_REGEX = /\b(aplic\w*|us[oó]|usa\w*|consum\w*|beb\w*|com[eoí]\w*|unt\w*|vend\w*|ingier\w*|traga\w*)\b/i;
+
+export function hasFalseItemUse(narration: string, possiblyFalseItemUseNames?: string[]): boolean {
+  if (!possiblyFalseItemUseNames || possiblyFalseItemUseNames.length === 0) return false;
+  const normalizedNames = possiblyFalseItemUseNames.map(normalizeText);
+  return narration
+    .split(/(?<=[.!?])\s+/)
+    .some((sentence) => {
+      const normalizedSentence = normalizeText(sentence);
+      return ITEM_CONSUMPTION_VERB_REGEX.test(normalizedSentence) && normalizedNames.some((name) => normalizedSentence.includes(name));
+    });
+}
+
+/// Narración-vs-mecánica, mismo patrón que `hasFalseCombatHit`/`hasFalseItemUse` (2026-08-01,
+/// bug real jugando en vivo — clase de fallo ya documentada en docs/revisar-partida.md § "NPCs que
+/// resucitan"): con el Orco Enfurecido MUERTO y saqueado desde hacía varios turnos, un simple
+/// "Exploro la zona" narró "una mirada al oeste revela un conjunto de huellas recientes... Gorhorn
+/// reconoce el paso de un orco — probablemente el Orco Enfurecido" — implicando que sigue vivo y
+/// merodeando. `npcSceneBlockFor` (npcScene.ts) YA le da al modelo la instrucción explícita de
+/// tratarlo solo como "un cadáver ya visto, un recuerdo... nunca un encuentro nuevo" cuando está
+/// INCAPACITADO/MUERTO, pero un modelo pequeño la ignora bajo la misma presión creativa que el
+/// resto de esta lista. Vocabulario centrado en SEÑALES DE PRESENCIA RECIENTE/ACTIVA (huellas
+/// frescas, "sigue vivo", reaparece...) — deliberadamente no cualquier mención del nombre, para no
+/// disparar con un recuerdo legítimo en pasado ("recordó cuando luchó contra el Orco Enfurecido").
+const RESURRECTION_LEAK_REGEX =
+  /\b(huellas?\s+(recien\w*|frescas?)|rastro\s+reciente|reconoce el paso de|acaba de pasar|sigue\s+(con vida|vivo)|todav[ií]a\s+(con vida|vivo)|reaparece|vuelve a (atacar|aparecer|acercarse)|se acerca (de nuevo|otra vez))\b/i;
+
+export function hasResurrectedDeadNpc(narration: string, possiblyResurrectedNpcNames?: string[]): boolean {
+  if (!possiblyResurrectedNpcNames || possiblyResurrectedNpcNames.length === 0) return false;
+  const normalizedNames = possiblyResurrectedNpcNames.map(normalizeText);
+  return narration
+    .split(/(?<=[.!?])\s+/)
+    .some((sentence) => {
+      const normalizedSentence = normalizeText(sentence);
+      return RESURRECTION_LEAK_REGEX.test(normalizedSentence) && normalizedNames.some((name) => normalizedSentence.includes(name));
+    });
 }

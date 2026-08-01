@@ -1,12 +1,12 @@
 import { describe, it, expect } from 'vitest';
-import { energiaMaxFor, nextEnergia, ENERGY_COST_BASICA, ENERGY_COST_AVANZADA, type EnergyTurnInput } from './energy.js';
+import { energiaMaxFor, nextEnergia, ENERGY_COST_BASICA, ENERGY_COST_AVANZADA, ENERGY_COST_ATAQUE_BASICO, type EnergyTurnInput } from './energy.js';
 
 const BASE: EnergyTurnInput = {
   current: 50,
   max: 100,
   abilityEnergyCost: 0,
   exchangeHappened: false,
-  wasDefending: false,
+  abilityEnergyRegen: 0,
   restSucceeds: false,
   itemRestoreAmount: null,
 };
@@ -23,21 +23,29 @@ describe('nextEnergia', () => {
     expect(nextEnergia(BASE)).toBe(50);
   });
 
-  it('usar una habilidad con coste la descuenta y no regenera nada ese turno', () => {
+  it('usar una habilidad con coste la descuenta y no regenera nada ese turno (regen 0)', () => {
     expect(nextEnergia({ ...BASE, abilityEnergyCost: ENERGY_COST_BASICA, exchangeHappened: true })).toBe(35);
     expect(nextEnergia({ ...BASE, abilityEnergyCost: ENERGY_COST_AVANZADA, exchangeHappened: true })).toBe(25);
   });
 
-  it('atacar normal (coste 0, atacando) regenera un poco', () => {
-    expect(nextEnergia({ ...BASE, exchangeHappened: true, wasDefending: false })).toBe(60);
+  it('rediseño 2026-07-31: Ataque Básico cuesta 5 y no regenera nada', () => {
+    expect(nextEnergia({ ...BASE, abilityEnergyCost: ENERGY_COST_ATAQUE_BASICO, exchangeHappened: true })).toBe(45);
   });
 
-  it('defenderse (coste 0, defendiendo) regenera más que atacar normal', () => {
-    expect(nextEnergia({ ...BASE, exchangeHappened: true, wasDefending: true })).toBe(65);
+  it('rediseño 2026-07-31: Defenderse no cuesta nada y recupera 10 (ya no depende del "rol", sino de la habilidad usada)', () => {
+    expect(nextEnergia({ ...BASE, abilityEnergyCost: 0, abilityEnergyRegen: 10, exchangeHappened: true })).toBe(60);
+  });
+
+  it('rediseño 2026-07-31: Esquivar no cuesta nada y recupera 5', () => {
+    expect(nextEnergia({ ...BASE, abilityEnergyCost: 0, abilityEnergyRegen: 5, exchangeHappened: true })).toBe(55);
+  });
+
+  it('el regen solo se aplica si hubo intercambio de combate real este turno', () => {
+    expect(nextEnergia({ ...BASE, abilityEnergyRegen: 10, exchangeHappened: false })).toBe(50);
   });
 
   it('nunca pasa del máximo al regenerar', () => {
-    expect(nextEnergia({ ...BASE, current: 95, exchangeHappened: true, wasDefending: true })).toBe(100);
+    expect(nextEnergia({ ...BASE, current: 95, exchangeHappened: true, abilityEnergyRegen: 10 })).toBe(100);
   });
 
   it('nunca baja de 0 al gastar más de lo que queda', () => {

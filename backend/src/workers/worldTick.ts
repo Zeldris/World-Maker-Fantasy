@@ -2,9 +2,10 @@ import { prisma } from '../lib/prisma.js';
 import { env } from '../config/env.js';
 import { narrateAndPersistTurn, TransitCancelledError } from '../services/turnResolution.js';
 import { computeDuration } from '../services/timedActions.js';
-import { effectiveAttributes, effectiveDefense, equippedWeaponNames } from '../services/equipment.js';
+import { effectiveAttributes, effectiveDefense, equippedWeaponNames, equippedItemsSummary } from '../services/equipment.js';
 import { normalizeSecondaryAttributes } from '../services/secondaryAttributes.js';
 import { characterSummaryFor } from '../services/characterSummary.js';
+import { loadSessionFacts } from '../services/worldFacts.js';
 import type { ClassificationResult } from '../services/narrador.js';
 import type { RollResult, AttributeBlock } from '../services/dice.js';
 import type { TravelResolution } from '../services/travel.js';
@@ -65,12 +66,13 @@ export async function resolveDueTransits(): Promise<void> {
     try {
       const { action, classification, roll, travel } = transit.zoneContext as unknown as TransitZoneContext;
       const save = transit.save;
-      const sessionFacts = (save.worldState?.facts as string[] | undefined) ?? [];
+      const sessionFacts = await loadSessionFacts(save.id);
       const timeLabel = save.worldState?.fictionalDateLabel ?? 'Día 1, mañana';
       const attributes = effectiveAttributes(save.attributes as AttributeBlock, save.inventoryItems);
       const secondaryAttributes = normalizeSecondaryAttributes(save.secondaryAttributes);
       const defensa = effectiveDefense(save.inventoryItems);
       const equippedWeapons = equippedWeaponNames(save.inventoryItems);
+      const equippedItems = equippedItemsSummary(save.inventoryItems);
       const duration = travel ? null : computeDuration(action, classification.banda, attributes, classification.duracionEstimadaMinutos);
       const minutosDeEsteTurno = travel ? travel.minutos : duration!.minutos;
 
@@ -104,6 +106,7 @@ export async function resolveDueTransits(): Promise<void> {
         secondaryAttributes,
         defensa,
         equippedWeapons,
+        equippedItems,
         raza: save.raza,
         currentLocationId: save.currentLocationId,
         travel,

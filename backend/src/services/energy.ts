@@ -11,28 +11,30 @@ export function energiaMaxFor(constitucion: number): number {
 }
 
 /// Coste fijo por tramo (petición explícita: "fijo por tramo", no variable por habilidad ni por
-/// efecto) — el mismo para cualquier habilidad básica (racial, arma nivel 1, de clase) o avanzada
-/// (arma nivel máximo). Las genéricas (Ataque a mano, Defenderse, Esquivar) cuestan 0.
+/// efecto) — el mismo para cualquier habilidad básica (racial, de clase) o avanzada (arma nivel
+/// máximo). 'general' se queda en 0.
 export const ENERGY_COST_BASICA = 15;
 export const ENERGY_COST_AVANZADA = 25;
-
-/// Ritmo de regeneración EN COMBATE (petición explícita, 2026-07-29: "si usas una habilidad ese
-/// turno no recuperas nada, si haces un ataque normal recuperas un poco y si te defiendes un poco
-/// más") — depende del ROL que tuvo el jugador en el intercambio de este turno, no de cuál
-/// habilidad concreta usó, siempre que su coste haya sido 0.
-const ENERGY_REGEN_ATAQUE = 10;
-const ENERGY_REGEN_DEFENSA = 15;
+/// Rediseño 2026-07-31 ("ataque básico... son acciones que tienen todos los personajes... si usa
+/// ataque básico cuesta solo 5 de energía") — Ataque Básico deja de costar lo mismo que una
+/// habilidad real (antes caía en ENERGY_COST_BASICA=15 al ser tier 'basica' de arma) y pasa a un
+/// tramo propio, mucho más barato, acorde a ser la acción base que tiene cualquier personaje.
+export const ENERGY_COST_ATAQUE_BASICO = 5;
 
 export interface EnergyTurnInput {
   current: number;
   max: number;
-  /// Coste de la habilidad usada este turno (0 si fue ataque a mano o una genérica gratuita).
+  /// Coste de la habilidad usada este turno (0 en las que solo regeneran — Defenderse/Esquivar).
   abilityEnergyCost: number;
   /// true si este turno resolvió un intercambio de combate real (resolveExchange) — sin esto, no
   /// hay regen de combate que aplicar (un turno fuera de combate no gasta ni regenera por esta vía).
   exchangeHappened: boolean;
-  /// Rol que tuvo el jugador en ese intercambio — decide el ritmo de regen cuando el coste fue 0.
-  wasDefending: boolean;
+  /// Rediseño 2026-07-31 — reemplaza al viejo `wasDefending` (regen fijo por ROL: "si atacas
+  /// recuperas un poco, si te defiendes un poco más", sin mirar qué habilidad se usó de verdad).
+  /// Ahora el regen es una propiedad de LA HABILIDAD usada este turno (Defenderse=10/Esquivar=5,
+  /// 0 en cualquier otra, incluido Ataque Básico) — se lee de `SavedAction.energyRegen` (jugador)
+  /// o `NpcCombatAbility.energyRegen`/`PendingNpcAttack.energyRegen` (NPC), nunca inferido del rol.
+  abilityEnergyRegen: number;
   /// Descanso válido este turno (mismo detectsRestIntent que ya usa healCeilingFor) — restaura al
   /// tope entero, igual que un descanso válido cura hasta HERIDO en condicionFisica.
   restSucceeds: boolean;
@@ -46,8 +48,8 @@ export interface EnergyTurnInput {
 /// [0, max].
 export function nextEnergia(input: EnergyTurnInput): number {
   let energia = Math.max(0, input.current - input.abilityEnergyCost);
-  if (input.exchangeHappened && input.abilityEnergyCost === 0) {
-    energia += input.wasDefending ? ENERGY_REGEN_DEFENSA : ENERGY_REGEN_ATAQUE;
+  if (input.exchangeHappened) {
+    energia += input.abilityEnergyRegen;
   }
   if (input.restSucceeds) {
     energia = input.max;

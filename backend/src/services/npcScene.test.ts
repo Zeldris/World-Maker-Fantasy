@@ -1,11 +1,34 @@
-import { describe, it, expect } from 'vitest';
-import { matchNpcAliases, contraataqueDifficultyFor, tabulatedAttackAttribute, detectsAttackIntent, detectsHostileSearchIntent, detectsVerbalAcceptanceIntent, scopeFor, pickAmbientEncounterCandidate } from './npcScene.js';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { matchNpcAliases, contraataqueDifficultyFor, tabulatedAttackAttribute, detectsAttackIntent, detectsHostileSearchIntent, detectsVerbalAcceptanceIntent, scopeFor, pickAmbientEncounterCandidate, npcSceneBlockFor, type NpcInScene } from './npcScene.js';
 
 const NPCS = [
   { id: 'rezagado', aliases: ['guerrero orco rezagado', 'rezagado', 'orco rezagado', 'un rezagado'] },
   { id: 'torgash', aliases: ['torgash', "kort'ikar torgash", 'el jefe de guerra serhu'] },
   { id: 'ulkha', aliases: ['ulkha', "terk'ikar ulkha", 'jefa del clan serhu'] },
 ];
+
+// `detectNpcsInScene` (acotar el candidato, ver comentario en npcScene.ts) necesita prisma
+// mockeado — mismo patrón que inventario.test.ts/turn.test.ts: `vi.fn()` a nivel de módulo +
+// `vi.mock` + import dinámico DESPUÉS del mock, para la función que sí toca la base de datos.
+const findManyNpc = vi.fn();
+const findUniqueLocation = vi.fn();
+const findManyLocation = vi.fn();
+const findManyQuest = vi.fn();
+const findManyNpcState = vi.fn();
+
+vi.mock('../lib/prisma.js', () => ({
+  prisma: {
+    npc: { findMany: (...args: unknown[]) => findManyNpc(...args) },
+    location: {
+      findUnique: (...args: unknown[]) => findUniqueLocation(...args),
+      findMany: (...args: unknown[]) => findManyLocation(...args),
+    },
+    quest: { findMany: (...args: unknown[]) => findManyQuest(...args) },
+    npcState: { findMany: (...args: unknown[]) => findManyNpcState(...args) },
+  },
+}));
+
+const { detectNpcsInScene } = await import('./npcScene.js');
 
 describe('matchNpcAliases', () => {
   it('coincide con el alias exacto', () => {
@@ -122,6 +145,11 @@ describe('detectsVerbalAcceptanceIntent', () => {
     expect(detectsVerbalAcceptanceIntent('Ataco al Orco Enfurecido')).toBe(false)
     expect(detectsVerbalAcceptanceIntent('Busco combatir contra el Orco Enfurecido')).toBe(false)
   });
+
+  it('bug real jugando en vivo (2026-07-30, "revisar partida"): "me ocupo de" (presente y futuro) también cuenta, no solo "me encargo"', () => {
+    expect(detectsVerbalAcceptanceIntent('Yo me ocupo de él, no te preocupes.')).toBe(true)
+    expect(detectsVerbalAcceptanceIntent('Me ocuparé de tu perseguidor')).toBe(true)
+  });
 });
 
 describe('pickAmbientEncounterCandidate', () => {
@@ -136,5 +164,176 @@ describe('pickAmbientEncounterCandidate', () => {
     ];
     expect(pickAmbientEncounterCandidate(candidates, () => 0)).toEqual(candidates[0]);
     expect(pickAmbientEncounterCandidate(candidates, () => 0.99)).toEqual(candidates[1]);
+  });
+});
+
+// Cobertura nueva (auditoría de arquitectura 2026-07-30, "acotar el candidato, no añadir IA" —
+// ver npcScene.ts § detectNpcsInScene) — antes se comparaba contra TODO el roster del mundo sin
+// acotar, causa raíz confirmada del falso positivo real "presas" (Levenshtein 2 de "brasas")
+// enganchando a un NPC que no pintaba nada en la escena actual.
+function baseNpc(overrides: Partial<Record<string, unknown>> = {}) {
+  return {
+    id: 'lurker', slug: 'acechador-de-brasas', name: 'Acechador de Brasas', kind: 'PLANTILLA',
+    aliases: ['acechador', 'brasas', 'acechador de brasas', 'bestia de las brasas'],
+    level: 3, role: 'Carroñero nocturno', faction: null, personality: 'Paciente', bio: 'x',
+    items: [], attributes: {}, raza: null, clase: null, ataqueNatural: null, habilidadesRaciales: [],
+    homeLocationSlug: 'campamento-cienaga',
+    ...overrides,
+  };
+}
+
+const HONDONADA = { slug: 'hondonada-del-eco', region: 'Llanuras del Viento Rojo' };
+const CIENAGA_CAMPAMENTO = { slug: 'campamento-cienaga', region: 'Ciénaga Troncal' };
+
+describe('detectNpcsInScene — acotar el candidato por escena', () => {
+  beforeEach(() => {
+    findManyNpc.mockReset();
+    findUniqueLocation.mockReset();
+    findManyLocation.mockReset();
+    findManyQuest.mockReset();
+    findManyNpcState.mockReset();
+    findManyQuest.mockResolvedValue([]);
+    findManyNpcState.mockResolvedValue([]);
+  });
+
+  it('bug real (2026-07-24): "presas" no engancha a un NPC cuya región de origen no es la actual, aunque esté a distancia Levenshtein 2 de uno de sus alias ("brasas")', async () => {
+    findManyNpc.mockResolvedValue([baseNpc()]);
+    findUniqueLocation.mockResolvedValue(HONDONADA); // jugador en Llanuras, NPC vive en Ciénaga Troncal
+    findManyLocation.mockResolvedValue([CIENAGA_CAMPAMENTO]);
+
+    const result = await detectNpcsInScene({
+      action: 'Busco presas por la zona', worldId: 'w1', sessionFacts: [], saveId: 's1', currentLocationId: 'loc-hondonada',
+    });
+    expect(result).toEqual([]);
+  });
+
+  it('la misma acción SÍ engancha cuando la región actual coincide con la de origen del NPC (no rompe el caso legítimo)', async () => {
+    findManyNpc.mockResolvedValue([baseNpc()]);
+    findUniqueLocation.mockResolvedValue(CIENAGA_CAMPAMENTO); // jugador ya en la región del NPC
+    findManyLocation.mockResolvedValue([CIENAGA_CAMPAMENTO]);
+
+    const result = await detectNpcsInScene({
+      action: 'Busco presas por la zona', worldId: 'w1', sessionFacts: [], saveId: 's1', currentLocationId: 'loc-cienaga',
+    });
+    expect(result.map((n) => n.id)).toEqual(['lurker']);
+  });
+
+  it('un NPC PRINCIPAL es candidato en cualquier escena, sin importar la ubicación', async () => {
+    findManyNpc.mockResolvedValue([baseNpc({ kind: 'PRINCIPAL', homeLocationSlug: null })]);
+    findUniqueLocation.mockResolvedValue(HONDONADA);
+    findManyLocation.mockResolvedValue([]);
+
+    const result = await detectNpcsInScene({
+      action: 'Busco presas por la zona', worldId: 'w1', sessionFacts: [], saveId: 's1', currentLocationId: 'loc-hondonada',
+    });
+    expect(result.map((n) => n.id)).toEqual(['lurker']);
+  });
+
+  it('el objetivo de una misión activa es candidato en cualquier escena', async () => {
+    findManyNpc.mockResolvedValue([baseNpc()]);
+    findUniqueLocation.mockResolvedValue(HONDONADA);
+    findManyLocation.mockResolvedValue([CIENAGA_CAMPAMENTO]);
+    findManyQuest.mockResolvedValue([{ targetNpcId: 'lurker' }]);
+
+    const result = await detectNpcsInScene({
+      action: 'Busco presas por la zona', worldId: 'w1', sessionFacts: [], saveId: 's1', currentLocationId: 'loc-hondonada',
+    });
+    expect(result.map((n) => n.id)).toEqual(['lurker']);
+  });
+
+  it('un NPC ya establecido antes en esta partida (tiene NpcState propio) sigue siendo candidato aunque cambie de región', async () => {
+    findManyNpc.mockResolvedValue([baseNpc()]);
+    findUniqueLocation.mockResolvedValue(HONDONADA);
+    findManyLocation.mockResolvedValue([CIENAGA_CAMPAMENTO]);
+    findManyNpcState.mockResolvedValue([{ npcId: 'lurker' }]);
+
+    const result = await detectNpcsInScene({
+      action: 'Busco presas por la zona', worldId: 'w1', sessionFacts: [], saveId: 's1', currentLocationId: 'loc-hondonada',
+    });
+    expect(result.map((n) => n.id)).toEqual(['lurker']);
+  });
+
+  it('un NPC itinerante (sin homeLocationSlug) sigue siendo candidato en cualquier escena, igual que antes', async () => {
+    findManyNpc.mockResolvedValue([baseNpc({ homeLocationSlug: null })]);
+    findUniqueLocation.mockResolvedValue(HONDONADA);
+    findManyLocation.mockResolvedValue([]);
+
+    const result = await detectNpcsInScene({
+      action: 'Busco presas por la zona', worldId: 'w1', sessionFacts: [], saveId: 's1', currentLocationId: 'loc-hondonada',
+    });
+    expect(result.map((n) => n.id)).toEqual(['lurker']);
+  });
+
+  it('sin ubicación actual resuelta (p.ej. viajando), no se acota nada — mismo comportamiento que antes de este cambio', async () => {
+    findManyNpc.mockResolvedValue([baseNpc()]);
+    findManyLocation.mockResolvedValue([CIENAGA_CAMPAMENTO]);
+
+    const result = await detectNpcsInScene({
+      action: 'Busco presas por la zona', worldId: 'w1', sessionFacts: [], saveId: 's1', currentLocationId: null,
+    });
+    expect(result.map((n) => n.id)).toEqual(['lurker']);
+  });
+});
+
+// Cobertura nueva (bug real jugando en vivo, 2026-07-31: "el saqueo mecánico funciona perfecto —
+// la narración del saqueo está totalmente desconectada de él"): un cadáver ya resuelto pero sin
+// saquear TODAVÍA no listaba su equipo, así que el Narrador inventaba objetos que no existen en el
+// turno exacto de saquearlo.
+function npcFixture(overrides: Partial<NpcInScene> = {}): NpcInScene {
+  return {
+    id: 'orco', slug: 'orco-enfurecido', name: 'Orco enfurecido', articulo: 'el', kind: 'PRINCIPAL',
+    level: 1, role: 'Guerrero deshonrado', faction: null, personality: 'Errático', bio: 'x',
+    items: [
+      { name: 'Maza orca', cantidad: 1, notas: 'Astillada', description: 'x', equipSlot: 'ARMA_PRINCIPAL', statBonusAttribute: 'fuerza', statBonusAmount: 2, catalogSlug: 'maza-orca', category: 'arma', tipoArma: 'MAZA' },
+    ],
+    attributes: { fuerza: 11, destreza: 10, constitucion: 9, inteligencia: 4, voluntad: 7, carisma: 2, arcano: 2 },
+    raza: 'orcos', clase: 'Guerrero', ataqueNatural: null, habilidadesRaciales: [],
+    temperamento: 'AGRESIVO', condicionFisica: 'ILESO', saqueado: false, lootedItemNames: [], energia: null,
+    ...overrides,
+  };
+}
+
+describe('npcSceneBlockFor', () => {
+  it('NPC activo: lista su equipo real', () => {
+    const block = npcSceneBlockFor(npcFixture(), 1);
+    expect(block).toContain('Maza orca');
+    expect(block).toContain('PERSONAJE EN ESCENA');
+  });
+
+  it('incapacitado pero SIN saquear todavía: sigue listando su equipo real, para que el saqueo de este turno no se lo invente', () => {
+    const block = npcSceneBlockFor(npcFixture({ condicionFisica: 'INCAPACITADO', saqueado: false }), 1);
+    expect(block).toContain('YA RESUELTO');
+    expect(block).toContain('Maza orca');
+    expect(block).not.toMatch(/no hay botín que ofrecer/);
+  });
+
+  it('incapacitado Y YA saqueado: no lista ningún equipo, dice explícitamente que no queda botín', () => {
+    const block = npcSceneBlockFor(npcFixture({ condicionFisica: 'INCAPACITADO', saqueado: true }), 1);
+    expect(block).toContain('YA RESUELTO');
+    expect(block).not.toContain('Maza orca');
+    expect(block).toMatch(/no hay botín que ofrecer/);
+  });
+
+  it('muerto sin saquear: mismo criterio que incapacitado', () => {
+    const block = npcSceneBlockFor(npcFixture({ condicionFisica: 'MUERTO', saqueado: false }), 1);
+    expect(block).toContain('Maza orca');
+  });
+
+  // Bug real jugando en vivo (2026-07-31): "se gira hacia la orca enfurecida... el Orco Enfurecido
+  // salta hacia él" — mismo NPC, dos géneros en el mismo párrafo. El nombre se refuerza con su
+  // artículo correcto en el propio contexto, activo o ya resuelto.
+  it('con articulo, presenta el nombre con el artículo delante (activo)', () => {
+    const block = npcSceneBlockFor(npcFixture({ articulo: 'el' }), 1);
+    expect(block).toContain('PERSONAJE EN ESCENA: el Orco enfurecido —');
+  });
+
+  it('con articulo, presenta el nombre con el artículo delante (ya resuelto)', () => {
+    const block = npcSceneBlockFor(npcFixture({ articulo: 'el', condicionFisica: 'INCAPACITADO', saqueado: false }), 1);
+    expect(block).toContain('YA RESUELTO: el Orco enfurecido —');
+  });
+
+  it('sin articulo (nombre propio), no antepone nada', () => {
+    const block = npcSceneBlockFor(npcFixture({ articulo: null, name: 'Gistera Koh' }), 1);
+    expect(block).toContain('PERSONAJE EN ESCENA: Gistera Koh —');
   });
 });

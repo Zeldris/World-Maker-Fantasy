@@ -278,6 +278,11 @@ export const BERIG_RAZAS: RazaInfo[] = [
 export interface PersonajeInfo {
   slug: string;
   name: string;
+  /// Nombre corto alternativo (2026-07-30, auditoría "revisar partida" — linkability): el nombre
+  /// completo ("Dessa Kaltrenn") es el único registrado hoy en enciclopediaIndex.ts (frontend);
+  /// si la narración solo usa el nombre de pila, no engancha. Solo nombres propios (mismo criterio
+  /// de riesgo que Npc.aliases) — nunca un sustantivo genérico.
+  aliases?: string[];
   raza: string;
   icon: string;
   personalidad: string;
@@ -303,6 +308,7 @@ export const BERIG_PERSONAJES: PersonajeInfo[] = [
   {
     slug: 'dessa-kaltrenn',
     name: 'Dessa Kaltrenn',
+    aliases: ['Dessa'],
     raza: 'Goirntes',
     icon: '⚖️',
     personalidad:
@@ -316,6 +322,7 @@ export const BERIG_PERSONAJES: PersonajeInfo[] = [
   {
     slug: 'yerin-slaad',
     name: 'Yerin Slaad',
+    aliases: ['Yerin'],
     raza: 'Nabieus',
     icon: '🌑',
     personalidad: 'Observador silencioso, casi invisible. Pasar desapercibido ha sido su único método de supervivencia.',

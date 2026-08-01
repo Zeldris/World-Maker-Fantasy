@@ -1,0 +1,3 @@
+-- AlterTable
+ALTER TABLE "SavedAction" ADD COLUMN "isGeneric" BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE "SavedAction" ADD COLUMN "energyRegen" INTEGER NOT NULL DEFAULT 0;

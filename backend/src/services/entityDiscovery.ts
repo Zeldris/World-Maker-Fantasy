@@ -62,8 +62,15 @@ export async function recordEntityDiscoveries(
     // narración, así que ninguno de los dos criterios basta por sí solo.
     const ownedNames = new Set(inventoryItems.map((i) => normalizeText(i.name)));
     for (const item of items) {
-      const itemNameNormalized = normalizeText(item.name);
-      if (normalized.includes(itemNameNormalized) || ownedNames.has(itemNameNormalized)) {
+      // Alias (2026-07-30, auditoría "revisar partida"): antes solo el nombre EXACTO y completo
+      // de catálogo contaba — "Raciones de viaje" (nombre real del equipo inicial de Gorhorn,
+      // startingInventory.ts) nunca enganchaba con "Ración de viaje" (catálogo, singular), así
+      // que ese objeto nunca se "descubría" ni aunque el jugador ya lo llevara encima. Mismo
+      // criterio que npc.aliases arriba: nombre O cualquier alias, por mención O por posesión.
+      const itemNames = [item.name, ...(item.aliases ?? [])].map(normalizeText);
+      const mentioned = itemNames.some((n) => normalized.includes(n));
+      const owned = itemNames.some((n) => ownedNames.has(n));
+      if (mentioned || owned) {
         discovered.push({ entityType: 'item', entitySlug: item.slug });
       }
     }

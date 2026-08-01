@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { detectItemReference, detectEnergyItemUse } from './itemReference.js';
+import { detectItemReference, detectEnergyItemUse, detectsOwnedItemQuote } from './itemReference.js';
 
 describe('detectItemReference', () => {
   it('detecta un objeto de la lista curada que el personaje NO tiene', () => {
@@ -47,5 +47,25 @@ describe('detectEnergyItemUse', () => {
 
   it('si coinciden varios, se queda con el que más restaura', () => {
     expect(detectEnergyItemUse('Uso mi ración de carne ahumada y mi cataplasma de salvia del polvo', ENERGY_ITEMS)).toBe(30);
+  });
+});
+
+describe('detectsOwnedItemQuote', () => {
+  const INVENTORY = ['Raciones de viaje', 'Cuchillo de hielo sílice'];
+
+  it('detecta el nombre exacto citado entre comillas simples', () => {
+    expect(detectsOwnedItemQuote("Cosumo 'Raciones de viaje'", INVENTORY)).toBe(true);
+  });
+
+  it('ignora mayúsculas/acentos al comparar', () => {
+    expect(detectsOwnedItemQuote("Uso 'RACIONES DE VIAJE'", INVENTORY)).toBe(true);
+  });
+
+  it('sin comillas, no dispara aunque el nombre aparezca suelto en el texto', () => {
+    expect(detectsOwnedItemQuote('Cosumo mis raciones de viaje', INVENTORY)).toBe(false);
+  });
+
+  it('con comillas pero un nombre que no está en el inventario, no dispara', () => {
+    expect(detectsOwnedItemQuote("Uso 'Espada legendaria'", INVENTORY)).toBe(false);
   });
 });

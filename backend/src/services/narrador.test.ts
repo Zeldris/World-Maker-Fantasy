@@ -1,5 +1,15 @@
 import { describe, it, expect } from 'vitest';
-import { reinoIntentDetected, stripLeakedJson, stripNonLatinScript, deterministicFallbackNarration } from './narrador.js';
+import {
+  reinoIntentDetected,
+  stripLeakedJson,
+  stripNonLatinScript,
+  deterministicFallbackNarration,
+  isTooSimilarToLast,
+  hasEnglishLeak,
+  hasFalseCombatHit,
+  hasFalseItemUse,
+  hasResurrectedDeadNpc,
+} from './narrador.js';
 
 describe('reinoIntentDetected', () => {
   it('detecta coincidencia exacta de un stem', () => {
@@ -44,6 +54,108 @@ describe('stripNonLatinScript', () => {
   it('deja intacta una narración normal en español (con acentos/ñ) sin ningún alfabeto no latino', () => {
     const narration = 'El niño camina años después, mañana será mejor — ¿qué hará Gorhorn?';
     expect(stripNonLatinScript(narration)).toBe(narration);
+  });
+});
+
+describe('isTooSimilarToLast', () => {
+  it('bug real probando en vivo (2026-07-31): detecta una narración de combate casi verbatim del turno anterior', () => {
+    const anterior = 'Gorhorn descarga una poderosa hachata hacia atrás contra el orco, haciendo que este tropiece y pierda el equilibrio.';
+    const actual = 'Gorhorn descarga una poderosa hachata hacia atrás contra el orco, haciendo que este tropiece y caiga al suelo, jadeando de furia.';
+    expect(isTooSimilarToLast(actual, anterior)).toBe(true);
+  });
+
+  it('no dispara si no hay narración anterior (primer turno de la partida)', () => {
+    expect(isTooSimilarToLast('Gorhorn ataca al orco.', undefined)).toBe(false);
+  });
+
+  it('no dispara con dos narraciones genuinamente distintas, aunque compartan vocabulario normal de combate', () => {
+    const anterior = 'Gorhorn descarga un golpe directo con su hacha rota, pero el orco esquiva sin problema.';
+    const actual = 'El orco arremete con su maza astillada, pero Gorhorn se cubre a tiempo con el escudo y aguanta el impacto.';
+    expect(isTooSimilarToLast(actual, anterior)).toBe(false);
+  });
+});
+
+describe('hasEnglishLeak', () => {
+  it('bug real probando en vivo (2026-07-31): detecta una palabra inglesa suelta en medio de una frase en español', () => {
+    expect(hasEnglishLeak('el eco de su own pisadas en el polvo rojizo')).toBe(true);
+  });
+
+  it('no dispara con una narración normal en español', () => {
+    expect(hasEnglishLeak('Gorhorn camina cauteloso por las paredes de arcilla endurecida.')).toBe(false);
+  });
+
+  it('no confunde palabras españolas que casualmente empiezan igual (p.ej. "ownership" no es una palabra española, pero tampoco debe disparar por una palabra española que la contenga)', () => {
+    expect(hasEnglishLeak('Gorhorn recupera el honor de su propio clan.')).toBe(false);
+  });
+});
+
+describe('hasFalseCombatHit', () => {
+  it('bug real jugando en vivo (2026-07-31, "sigo sin hacerle daño al enemigo"): detecta un golpe narrado cuando el intercambio resolvió que nadie conecta', () => {
+    const narration =
+      'Gorhorn lanza su hacha de guerra rota con todas sus fuerzas. La maza pesada golpea el cuello del orco, dejando un rastro de sangre y haciéndolo tropezar hacia atrás.';
+    expect(hasFalseCombatHit(narration, true)).toBe(true);
+  });
+
+  it('no dispara si el intercambio sí tuvo un golpe real (combatBothMissed=false)', () => {
+    const narration = 'Gorhorn golpea con fuerza el hombro del orco, que retrocede dolorido.';
+    expect(hasFalseCombatHit(narration, false)).toBe(false);
+  });
+
+  it('no dispara con una narración de fallo/esquiva genuina, aunque combatBothMissed sea true', () => {
+    const narration = 'Gorhorn lanza su cuchillo hacia el orco, fallando el tiro. La hoja zumba y se clava en la roca a su espalda.';
+    expect(hasFalseCombatHit(narration, true)).toBe(false);
+  });
+
+  it('no dispara fuera de combate (combatBothMissed undefined)', () => {
+    expect(hasFalseCombatHit('Gorhorn golpea la puerta con el puño, impaciente.', undefined)).toBe(false);
+  });
+});
+
+describe('hasFalseItemUse', () => {
+  it('bug real jugando en vivo (2026-08-01, "descansar no curó, y encima consumió un objeto sin pedirlo"): detecta un objeto médico narrado como usado sin haberse detectado de verdad', () => {
+    const narration =
+      'Gorhorn se detiene a descansar. Agarra la cataplasma de salvia del polvo y aplica una fina capa en una herida abierta en el brazo.';
+    expect(hasFalseItemUse(narration, ['Cataplasma de salvia del polvo', 'Raciones de viaje'])).toBe(true);
+  });
+
+  it('no dispara si la lista viene vacía (algún objeto sí se usó de verdad este turno, o no hay ninguno médico/de energía)', () => {
+    const narration = 'Gorhorn agarra la cataplasma de salvia del polvo y se la aplica en la herida.';
+    expect(hasFalseItemUse(narration, [])).toBe(false);
+    expect(hasFalseItemUse(narration, undefined)).toBe(false);
+  });
+
+  it('no dispara con una mención de pasada del objeto, sin verbo de consumo en la misma frase', () => {
+    const narration = 'Gorhorn revisa su mochila. La cataplasma de salvia del polvo sigue intacta, guardada junto al resto de provisiones.';
+    expect(hasFalseItemUse(narration, ['Cataplasma de salvia del polvo'])).toBe(false);
+  });
+
+  it('no dispara si el objeto mencionado no está en la lista de posibles falsos usos', () => {
+    const narration = 'Gorhorn bebe un trago de agua de su cantimplora antes de seguir camino.';
+    expect(hasFalseItemUse(narration, ['Cataplasma de salvia del polvo'])).toBe(false);
+  });
+});
+
+describe('hasResurrectedDeadNpc', () => {
+  it('bug real jugando en vivo (2026-08-01, "el orco que maté volvió a aparecer"): detecta un NPC muerto narrado como si siguiera activo', () => {
+    const narration =
+      'Gorhorn examina la zona. Una mirada al oeste revela un conjunto de huellas recientes en la arcilla. Se fija con atención y reconoce el paso de un orco — probablemente el Orco Enfurecido.';
+    expect(hasResurrectedDeadNpc(narration, ['Orco Enfurecido'])).toBe(true);
+  });
+
+  it('no dispara si la lista viene vacía (ningún NPC incapacitado/muerto en escena este turno)', () => {
+    const narration = 'Gorhorn reconoce el paso de un orco entre la maleza.';
+    expect(hasResurrectedDeadNpc(narration, [])).toBe(false);
+    expect(hasResurrectedDeadNpc(narration, undefined)).toBe(false);
+  });
+
+  it('no dispara con un recuerdo legítimo en pasado, sin señales de presencia activa/reciente', () => {
+    const narration = 'Gorhorn recuerda el día en que luchó contra el Orco Enfurecido, antes de acabar con él.';
+    expect(hasResurrectedDeadNpc(narration, ['Orco Enfurecido'])).toBe(false);
+  });
+
+  it('no dispara si las huellas recientes son de otra criatura, no del NPC muerto', () => {
+    const narration = 'Gorhorn encuentra huellas recientes de un jabalí cerca del río. El Orco Enfurecido sigue muerto donde lo dejó.';
+    expect(hasResurrectedDeadNpc(narration, ['Orco Enfurecido'])).toBe(false);
   });
 });
 

@@ -15,6 +15,10 @@ export interface StartingAbility {
   /// Sistema de fatiga (2026-07-29) — coste de energía fijo por tramo (energy.ts). Solo relevante
   /// para category:'combate'; las generales se quedan en 0/undefined (siempre gratis).
   energyCost?: number;
+  /// Rediseño 2026-07-31 (energy.ts § nextEnergia) — energía que RECUPERA usar esta habilidad en
+  /// un intercambio real (Defenderse/Esquivar, ver genericCombatAbilities.ts). 0/undefined en el
+  /// resto.
+  energyRegen?: number;
 }
 
 /// Kit de habilidades "de serie" de Gorhorn — no cuentan contra el cupo por nivel

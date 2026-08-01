@@ -1,5 +1,17 @@
 import { describe, it, expect } from 'vitest';
-import { weaponAbilitiesFor, weaponRoleFor, WEAPON_CATEGORY_ATTRIBUTE, type EquippedWeaponSlot } from './weaponAbilities.js';
+import {
+  weaponAbilitiesFor,
+  weaponRoleFor,
+  WEAPON_CATEGORY_ATTRIBUTE,
+  DUAL_WIELD_DIFFICULTY_BONUS,
+  dualWieldAdjustedDifficulty,
+  type EquippedWeaponSlot,
+} from './weaponAbilities.js';
+
+// Rediseño 2026-07-31 (petición explícita: "renombrar siempre a 'Ataque Básico'") — la tier
+// básica de ataque ya no se llama "Golpe de Arma Pesada"/"Estocada Rápida"/"Golpe Desarmado" según
+// el arma; es SIEMPRE "Ataque Básico", armado o no, y lleva `isGeneric: true` (se agrupa aparte de
+// las habilidades reales en la UI). El atributo real sigue dependiendo del arma — eso no cambia.
 
 describe('weaponRoleFor', () => {
   it('solo ESCUDO es defensivo, el resto siempre ataque', () => {
@@ -11,45 +23,92 @@ describe('weaponRoleFor', () => {
   });
 });
 
+// Rediseño 2026-07-30 (petición explícita, probado en vivo: "ataque normal... se rige por el
+// tipo de arma de la MANO PRINCIPAL — la secundaria deja de generar su propia habilidad de
+// ataque aparte, como mucho aporta algo distinto si es un escudo"). "Ataque normal" es ahora UNA
+// SOLA tarjeta que mira únicamente ARMA_PRINCIPAL; la defensa de escudo se mantiene en cualquier
+// mano.
 describe('weaponAbilitiesFor', () => {
-  it('arma+arma de categorías distintas da 2 ataques con atributos distintos', () => {
+  it('Ataque Básico (genérico) SIEMPRE sale de la mano PRINCIPAL, aunque la secundaria lleve otra categoría distinta', () => {
     const equipped: EquippedWeaponSlot[] = [
-      { slot: 'ARMA_PRINCIPAL', tipoArma: 'DAGA' },
-      { slot: 'ARMA_SECUNDARIA', tipoArma: 'HACHA' },
+      { slot: 'ARMA_PRINCIPAL', tipoArma: 'HACHA' },
+      { slot: 'ARMA_SECUNDARIA', tipoArma: 'DAGA' },
     ];
     const result = weaponAbilitiesFor(equipped, 1);
-    expect(result).toHaveLength(2);
-    expect(result.every((a) => a.rol === 'ataque')).toBe(true);
-    expect(new Set(result.map((a) => a.attribute))).toEqual(new Set(['destreza', 'fuerza']));
+    const generico = result.find((a) => a.isGeneric)!;
+    expect(generico.attribute).toBe('fuerza'); // HACHA (principal), nunca DAGA (secundaria)
+    expect(generico).toMatchObject({ name: 'Ataque Básico', isGeneric: true, energyRegen: 0 });
   });
 
-  it('arma+escudo da 1 ataque + 1 defensa', () => {
+  it('arma en principal + escudo en secundaria: 1 ataque genérico + 1 real de la principal + 1 defensa', () => {
     const equipped: EquippedWeaponSlot[] = [
       { slot: 'ARMA_PRINCIPAL', tipoArma: 'ESPADA' },
       { slot: 'ARMA_SECUNDARIA', tipoArma: 'ESCUDO' },
     ];
     const result = weaponAbilitiesFor(equipped, 1);
-    expect(result).toHaveLength(2);
-    expect(result.find((a) => a.rol === 'ataque')?.attribute).toBe('destreza');
+    expect(result).toHaveLength(3); // Ataque Básico + "Tajo Preciso" (real de ESPADA) + Cobertura de Escudo
+    const ataques = result.filter((a) => a.rol === 'ataque');
+    expect(ataques).toHaveLength(2);
+    expect(ataques.every((a) => a.attribute === 'destreza')).toBe(true);
     expect(result.find((a) => a.rol === 'defensa')?.attribute).toBe('constitucion');
+    // El genérico es Ataque Básico; la real ("Tajo Preciso") y la defensa de escudo son habilidades reales.
+    expect(ataques.find((a) => a.isGeneric)?.name).toBe('Ataque Básico');
+    expect(ataques.find((a) => !a.isGeneric)).toMatchObject({ name: 'Tajo Preciso', tier: 'real', dualWield: false });
+    expect(result.find((a) => a.rol === 'defensa')?.isGeneric).toBe(false);
   });
 
-  it('dos armas de la MISMA categoría no duplican la tarjeta — cuenta una vez', () => {
+  it('mano principal vacía pero secundaria con arma real: el GENÉRICO cae a desarmado (nunca usa la secundaria), pero la REAL de la secundaria sí aparece', () => {
     const equipped: EquippedWeaponSlot[] = [
-      { slot: 'ARMA_PRINCIPAL', tipoArma: 'DAGA' },
+      { slot: 'ARMA_PRINCIPAL', tipoArma: null },
       { slot: 'ARMA_SECUNDARIA', tipoArma: 'CUCHILLO' },
     ];
     const result = weaponAbilitiesFor(equipped, 1);
-    expect(result).toHaveLength(1);
-    expect(result[0].attribute).toBe('destreza');
+    const ataques = result.filter((a) => a.rol === 'ataque');
+    expect(ataques).toHaveLength(2);
+    expect(ataques.find((a) => a.isGeneric)).toMatchObject({ name: 'Ataque Básico', attribute: 'fuerza', isGeneric: true });
+    expect(ataques.find((a) => !a.isGeneric)).toMatchObject({ name: 'Estocada Veloz', attribute: 'destreza', tier: 'real', dualWield: false });
   });
 
-  it('sin arma equipada en ningún hueco, no hay habilidades de arma', () => {
+  it('escudo en la mano PRINCIPAL: el ataque cae a desarmado, pero la defensa de escudo sigue contando', () => {
+    const equipped: EquippedWeaponSlot[] = [{ slot: 'ARMA_PRINCIPAL', tipoArma: 'ESCUDO' }];
+    const result = weaponAbilitiesFor(equipped, 1);
+    expect(result.find((a) => a.rol === 'ataque')).toMatchObject({ name: 'Ataque Básico' });
+    expect(result.find((a) => a.rol === 'defensa')).toMatchObject({ name: 'Cobertura de Escudo' });
+  });
+
+  it('sin arma equipada en ningún hueco, cae al ataque desarmado (fuerza) — nunca se queda sin ninguna', () => {
     const equipped: EquippedWeaponSlot[] = [
       { slot: 'ARMA_PRINCIPAL', tipoArma: null },
       { slot: 'CASCO', tipoArma: null },
     ];
-    expect(weaponAbilitiesFor(equipped, 20)).toHaveLength(0);
+    const result = weaponAbilitiesFor(equipped, 1);
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchObject({ name: 'Ataque Básico', attribute: 'fuerza', rol: 'ataque', tier: 'basica', isGeneric: true });
+  });
+
+  it('desarmado a nivel máximo suma también el desarmado avanzado', () => {
+    const result = weaponAbilitiesFor([], 20);
+    expect(result).toHaveLength(2);
+    expect(result.find((a) => a.tier === 'avanzada')).toMatchObject({ name: 'Puño Demoledor', attribute: 'fuerza', rol: 'ataque' });
+  });
+
+  it('con un arma real en la principal, NO añade el fallback desarmado de propina (ni su avanzada, "Puño Demoledor")', () => {
+    const equipped: EquippedWeaponSlot[] = [{ slot: 'ARMA_PRINCIPAL', tipoArma: 'HACHA' }];
+    const result = weaponAbilitiesFor(equipped, 20);
+    const ataques = result.filter((a) => a.rol === 'ataque');
+    expect(ataques).toHaveLength(3); // genérica + real ("Tajo Horizontal") + avanzada, ninguna desarmada
+    expect(ataques.some((a) => a.name === 'Puño Demoledor')).toBe(false);
+    expect(ataques.find((a) => a.tier === 'real')?.name).toBe('Tajo Horizontal'); // real de HACHA
+    expect(ataques.find((a) => a.tier === 'avanzada')?.name).toBe('Golpe Sísmico'); // avanzada de HACHA (fuerza), no la desarmada
+  });
+
+  it('dos escudos a la vez (principal y secundaria) no duplican la tarjeta de defensa', () => {
+    const equipped: EquippedWeaponSlot[] = [
+      { slot: 'ARMA_PRINCIPAL', tipoArma: 'ESCUDO' },
+      { slot: 'ARMA_SECUNDARIA', tipoArma: 'ESCUDO' },
+    ];
+    const result = weaponAbilitiesFor(equipped, 1);
+    expect(result.filter((a) => a.rol === 'defensa')).toHaveLength(1);
   });
 
   it('por debajo del nivel básico (imposible en la práctica, nivel mínimo es 1) no da habilidades', () => {
@@ -57,19 +116,105 @@ describe('weaponAbilitiesFor', () => {
     expect(weaponAbilitiesFor(equipped, 0)).toHaveLength(0);
   });
 
-  it('a nivel máximo se suma la avanzada SIN perder la básica (4 huecos, no un reemplazo)', () => {
+  it('a nivel máximo se suma la avanzada SIN perder la básica ni la real (5 huecos, no un reemplazo)', () => {
     const equipped: EquippedWeaponSlot[] = [
       { slot: 'ARMA_PRINCIPAL', tipoArma: 'ESPADA' },
       { slot: 'ARMA_SECUNDARIA', tipoArma: 'ESCUDO' },
     ];
     const result = weaponAbilitiesFor(equipped, 20);
-    expect(result).toHaveLength(4);
-    expect(result.filter((a) => a.tier === 'basica')).toHaveLength(2);
-    expect(result.filter((a) => a.tier === 'avanzada')).toHaveLength(2);
+    expect(result).toHaveLength(5); // Ataque Básico + "Tajo Preciso" (real) + "Ráfaga de Cortes" (avanzada) + Cobertura de Escudo + Muro Inquebrantable
+    expect(result.filter((a) => a.tier === 'basica')).toHaveLength(2); // Ataque Básico + Cobertura de Escudo
+    expect(result.filter((a) => a.tier === 'real')).toHaveLength(1); // "Tajo Preciso"
+    expect(result.filter((a) => a.tier === 'avanzada')).toHaveLength(2); // "Ráfaga de Cortes" + Muro Inquebrantable
   });
 
-  it('ignora huecos de equipo que no son de arma (CASCO, etc.)', () => {
+  it('ignora huecos de equipo que no son de arma (CASCO, etc.) — cuenta como desarmado', () => {
     const equipped: EquippedWeaponSlot[] = [{ slot: 'CASCO', tipoArma: null }];
-    expect(weaponAbilitiesFor(equipped, 20)).toHaveLength(0);
+    const result = weaponAbilitiesFor(equipped, 1);
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchObject({ name: 'Ataque Básico', attribute: 'fuerza', isGeneric: true });
+  });
+
+  it('bug real de partida (2026-07-31, "cuando no llevas nada equipado... el ataque pasa a ser con tus puños desnudos, garras o lo que sea"): el nombre es siempre "Ataque Básico", pero desarmado el texto SÍ menciona puños/garras (nunca lo deja a la libre interpretación del modelo)', () => {
+    const desarmado = weaponAbilitiesFor([{ slot: 'ARMA_PRINCIPAL', tipoArma: null }], 1)[0];
+    expect(desarmado.name).toBe('Ataque Básico');
+    expect(desarmado.attribute).toBe('fuerza');
+    expect(desarmado.description).toMatch(/puños|garras/);
+    expect(desarmado.promptText).toMatch(/puños|garras/);
+
+    const armado = weaponAbilitiesFor([{ slot: 'ARMA_PRINCIPAL', tipoArma: 'HACHA' }], 1)[0];
+    expect(armado.name).toBe('Ataque Básico');
+    expect(armado.description).not.toMatch(/puños|garras/);
+  });
+});
+
+// Rediseño 2026-07-31 (petición explícita: "cada arma que tengas equipada te dará una habilidad
+// de su tipo... si llevas 2 armas del mismo tipo tendrás solo 1 habilidad de arma con doble
+// efecto"). Habilidad REAL por categoría exacta — a diferencia de Ataque Básico (genérico, solo
+// mano principal), esta mira las DOS manos.
+describe('weaponAbilitiesFor — habilidad real por categoría exacta de arma', () => {
+  it('2 armas de la MISMA categoría (2 hachas) colapsan en 1 sola habilidad real, marcada dualWield', () => {
+    const equipped: EquippedWeaponSlot[] = [
+      { slot: 'ARMA_PRINCIPAL', tipoArma: 'HACHA' },
+      { slot: 'ARMA_SECUNDARIA', tipoArma: 'HACHA' },
+    ];
+    const result = weaponAbilitiesFor(equipped, 1);
+    const reales = result.filter((a) => a.tier === 'real');
+    expect(reales).toHaveLength(1);
+    expect(reales[0]).toMatchObject({ name: 'Tajo Horizontal', attribute: 'fuerza', dualWield: true, isGeneric: false });
+  });
+
+  it('2 armas de categorías DISTINTAS (hacha + cuchillo) dan las 2 habilidades reales por separado, ninguna dualWield', () => {
+    const equipped: EquippedWeaponSlot[] = [
+      { slot: 'ARMA_PRINCIPAL', tipoArma: 'HACHA' },
+      { slot: 'ARMA_SECUNDARIA', tipoArma: 'CUCHILLO' },
+    ];
+    const result = weaponAbilitiesFor(equipped, 1);
+    const reales = result.filter((a) => a.tier === 'real');
+    expect(reales).toHaveLength(2);
+    expect(reales.find((a) => a.attribute === 'fuerza')).toMatchObject({ name: 'Tajo Horizontal', dualWield: false });
+    expect(reales.find((a) => a.attribute === 'destreza')).toMatchObject({ name: 'Estocada Veloz', dualWield: false });
+  });
+
+  it('1 sola arma equipada: 1 habilidad real, nunca dualWield', () => {
+    const result = weaponAbilitiesFor([{ slot: 'ARMA_PRINCIPAL', tipoArma: 'MAZA' }], 1);
+    const reales = result.filter((a) => a.tier === 'real');
+    expect(reales).toHaveLength(1);
+    expect(reales[0]).toMatchObject({ name: 'Golpe Devastador', attribute: 'fuerza', dualWield: false });
+  });
+
+  it('sin ningún arma de rol ataque equipada (desarmado, o solo escudo), no hay ninguna real de ataque', () => {
+    expect(weaponAbilitiesFor([], 1).some((a) => a.tier === 'real')).toBe(false);
+    expect(weaponAbilitiesFor([{ slot: 'ARMA_PRINCIPAL', tipoArma: 'ESCUDO' }], 1).some((a) => a.tier === 'real')).toBe(false);
+  });
+
+  it('escudo en una mano no cuenta como "categoría de ataque" para el colapso — 1 arma real + 1 defensa, no dualWield', () => {
+    const equipped: EquippedWeaponSlot[] = [
+      { slot: 'ARMA_PRINCIPAL', tipoArma: 'LANZA' },
+      { slot: 'ARMA_SECUNDARIA', tipoArma: 'ESCUDO' },
+    ];
+    const result = weaponAbilitiesFor(equipped, 1);
+    expect(result.filter((a) => a.tier === 'real')).toEqual([
+      expect.objectContaining({ name: 'Punzada Penetrante', attribute: 'fuerza', dualWield: false }),
+    ]);
+  });
+
+  it('DUAL_WIELD_DIFFICULTY_BONUS es un número positivo (se resta de la dificultad del atacante)', () => {
+    expect(DUAL_WIELD_DIFFICULTY_BONUS).toBeGreaterThan(0);
+  });
+});
+
+describe('dualWieldAdjustedDifficulty', () => {
+  it('sin dualWield, la dificultad no cambia', () => {
+    expect(dualWieldAdjustedDifficulty(15, false)).toBe(15);
+  });
+
+  it('con dualWield, resta DUAL_WIELD_DIFFICULTY_BONUS', () => {
+    expect(dualWieldAdjustedDifficulty(15, true)).toBe(15 - DUAL_WIELD_DIFFICULTY_BONUS);
+  });
+
+  it('con dualWield, nunca baja de 8 (mismo suelo que contraataqueDifficultyFor)', () => {
+    expect(dualWieldAdjustedDifficulty(8, true)).toBe(8);
+    expect(dualWieldAdjustedDifficulty(9, true)).toBe(8);
   });
 });

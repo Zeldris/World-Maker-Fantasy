@@ -1,6 +1,6 @@
 import { prisma } from '../lib/prisma.js';
 import { normalizeText, fuzzyMatchCandidates, fuzzyMatchesAnyStem } from './travel.js';
-import type { NpcKind, CondicionFisica, Temperamento, WeaponCategory } from '@prisma/client';
+import type { NpcKind, CondicionFisica, Temperamento, WeaponCategory, EquipSlot } from '@prisma/client';
 import type { Attribute, AttributeBlock } from './dice.js';
 
 /// Detección determinista de "NPC en escena" (docs/12-mundo-estructurado.md § 2.5) — sin llamada
@@ -12,6 +12,15 @@ export interface NpcItemInScene {
   name: string;
   cantidad: number;
   notas: string | null;
+  /// Descripción real de catálogo (2026-07-30, auditoría "revisar partida" — "doble
+  /// descripción"): fallback de `itemsLine()` cuando este objeto no tiene `notas` propias —
+  /// antes, sin `notas`, el Narrador solo veía el nombre pelado del objeto, perdiendo su aspecto
+  /// real (p.ej. "Maza orca" sin saber que está "astillada, con sangre seca").
+  description: string;
+  /// Ranura de equipo real del catálogo (2026-07-30, "categorizar por ranura") — se copia al
+  /// InventoryItem real si se saquea, para que el frontend sepa dónde encaja sin esperar a
+  /// recargar la partida (ver `NewInventoryItemInfo.equipSlot`, turnResolution.ts).
+  equipSlot: EquipSlot | null;
   /// Bonificador de equipo (2026-07-19) — se copia al InventoryItem real si se saquea (ver
   /// turnResolution.ts), para que un hacha robada siga dando su bonificador al equiparla.
   statBonusAttribute: string | null;
@@ -45,6 +54,10 @@ export interface NpcInScene {
   id: string;
   slug: string;
   name: string;
+  /// "el"/"la" para reforzar el género correcto de nombres descriptivos en el contexto del
+  /// Narrador (ver comentario completo en schema.prisma § Npc.articulo) — null para nombres
+  /// propios que no lo necesitan.
+  articulo: string | null;
   kind: NpcKind;
   level: number;
   role: string;
@@ -70,6 +83,13 @@ export interface NpcInScene {
   /// ILESO/false si todavía no existe fila (nunca se ha enfrentado a este NPC en esta partida).
   condicionFisica: CondicionFisica;
   saqueado: boolean;
+  /// Saqueo parcial (2026-07-31, ver NpcState.lootedItemNames) — nombres de objeto ya copiados al
+  /// inventario del jugador de este NPC en esta partida. `[]` si nunca se ha tocado.
+  lootedItemNames: string[];
+  /// Sistema de fatiga simétrico (2026-07-30) — null = tope completo (mismo criterio lazy que
+  /// `condicionFisica`/ILESO): el tope real se deriva con `energiaMaxFor(attributes.constitucion)`
+  /// en el punto de uso (turnResolution.ts), nunca aquí.
+  energia: number | null;
 }
 
 interface NpcWithAliases {
@@ -124,6 +144,15 @@ export function scopeFor(npcKind: NpcKind, currentLocationId: string | null): st
 /// Busca NPCs en escena a partir del texto de la acción Y de los hechos ya establecidos de la
 /// sesión (para que un NPC mencionado en un turno anterior "el Kort'ikar Torgash llegó" siga
 /// reconociéndose en turnos siguientes aunque el jugador ya no repita su nombre completo).
+///
+/// Acotar el candidato, no añadir IA (auditoría de arquitectura 2026-07-30 — replanteamiento tras
+/// "llevamos días atascados"): antes se comparaba el texto contra TODO el roster de NPCs del
+/// mundo, sin acotar por ubicación — causa raíz confirmada del falso positivo real "presas" (a
+/// distancia Levenshtein 2 de "brasas") enganchando a un NPC que no pintaba nada en la escena
+/// actual. `matchNpcAliases` (Levenshtein≤2 + substring) sigue igual de permisivo a propósito
+/// (sigue haciendo falta para erratas reales), pero ahora solo se compara contra quienes de
+/// verdad son un candidato plausible aquí — mismo criterio de acotar por región que ya usa
+/// `selectDiscoveries` (discovery.ts) para fauna cosechable, extendido a NPCs:
 export async function detectNpcsInScene(params: {
   action: string;
   worldId: string;
@@ -131,15 +160,52 @@ export async function detectNpcsInScene(params: {
   saveId: string;
   currentLocationId: string | null;
 }): Promise<NpcInScene[]> {
-  const npcs = await prisma.npc.findMany({
-    where: { worldId: params.worldId },
-    include: { items: { include: { item: true } } },
-  });
+  const [npcs, currentLocation, activeQuestTargets, encounteredStates] = await Promise.all([
+    prisma.npc.findMany({
+      where: { worldId: params.worldId },
+      include: { items: { include: { item: true } } },
+    }),
+    params.currentLocationId
+      ? prisma.location.findUnique({ where: { id: params.currentLocationId }, select: { slug: true, region: true } })
+      : Promise.resolve(null),
+    prisma.quest.findMany({
+      where: { saveId: params.saveId, status: 'ACTIVA', targetNpcId: { not: null } },
+      select: { targetNpcId: true },
+    }),
+    prisma.npcState.findMany({ where: { saveId: params.saveId }, select: { npcId: true } }),
+  ]);
   if (npcs.length === 0) return [];
 
+  const questTargetIds = new Set(activeQuestTargets.map((q) => q.targetNpcId!));
+  const encounteredIds = new Set(encounteredStates.map((s) => s.npcId));
+
+  const homeSlugs = [...new Set(npcs.map((n) => n.homeLocationSlug).filter((s): s is string => !!s))];
+  const homeLocations = homeSlugs.length
+    ? await prisma.location.findMany({ where: { worldId: params.worldId, slug: { in: homeSlugs } }, select: { slug: true, region: true } })
+    : [];
+  const regionByHomeSlug = new Map(homeLocations.map((l) => [l.slug, l.region]));
+
+  // Candidato plausible para ESTA escena: personajes únicos de trama (PRINCIPAL, pueden aparecer
+  // en cualquier sitio por guion), el objetivo de una misión activa (esté donde esté el jugador),
+  // cualquiera ya establecido antes en esta partida (tiene NpcState propio — no es un
+  // "desconocido" nuevo), itinerantes sin `homeLocationSlug` (mismo criterio que el encuentro
+  // ambiental, turnResolution.ts), o cuyo `homeLocationSlug` cae en la ubicación/región actual.
+  // Sin ubicación resuelta este turno (p.ej. viajando), no se puede acotar — se deja sin filtrar
+  // en vez de arriesgarse a perder a alguien real (mismo límite que ya documenta discovery.ts).
+  const candidateNpcs = npcs.filter((npc) => {
+    if (npc.kind === 'PRINCIPAL') return true;
+    if (questTargetIds.has(npc.id)) return true;
+    if (encounteredIds.has(npc.id)) return true;
+    if (npc.homeLocationSlug === null) return true;
+    if (!currentLocation) return true;
+    if (npc.homeLocationSlug === currentLocation.slug) return true;
+    return regionByHomeSlug.get(npc.homeLocationSlug) === currentLocation.region;
+  });
+  if (candidateNpcs.length === 0) return [];
+
   const haystack = [params.action, ...params.sessionFacts].join('\n');
-  const matchedIds = new Set(matchNpcAliases(haystack, npcs));
-  const matchedNpcs = npcs.filter((npc) => matchedIds.has(npc.id));
+  const matchedIds = new Set(matchNpcAliases(haystack, candidateNpcs));
+  const matchedNpcs = candidateNpcs.filter((npc) => matchedIds.has(npc.id));
   if (matchedNpcs.length === 0) return [];
 
   // Sin filtrar por `scope` en la consulta (varía por NPC según su `kind`, no es un único valor
@@ -155,6 +221,7 @@ export async function detectNpcsInScene(params: {
       id: npc.id,
       slug: npc.slug,
       name: npc.name,
+      articulo: npc.articulo,
       kind: npc.kind,
       level: npc.level,
       role: npc.role,
@@ -165,6 +232,8 @@ export async function detectNpcsInScene(params: {
         name: i.item.name,
         cantidad: i.cantidad,
         notas: i.notas,
+        description: i.item.description,
+        equipSlot: i.item.equipSlot,
         statBonusAttribute: i.item.statBonusAttribute,
         statBonusAmount: i.item.statBonusAmount,
         catalogSlug: i.item.slug,
@@ -179,6 +248,8 @@ export async function detectNpcsInScene(params: {
       temperamento: npc.temperamento,
       condicionFisica: state?.condicionFisica ?? 'ILESO',
       saqueado: state?.saqueado ?? false,
+      lootedItemNames: state?.lootedItemNames ?? [],
+      energia: state?.energia ?? null,
     };
   });
 }
@@ -320,8 +391,13 @@ export function detectsHostileSearchIntent(action: string): boolean {
 // matcheaba "me encargare" (futuro, tras quitar tilde de "encargaré") — mismo patrón exacto que
 // ya se arregló arriba para "acabar(e)? con", pero se quedó sin aplicar aquí. Con esto, la misión
 // determinista de turnResolution.ts sí se disparaba con "Yo me encargaré de tu perseguidor...".
+// `me ocup(?:o|are)` (bug real, "revisar partida" 2026-07-30): "Yo me ocupo de él, no te
+// preocupes" narró un combate completo y "ganado" sin que ningún intercambio mecánico real se
+// hubiera resuelto — la promesa nunca abrió combate (correcto), pero SÍ se clasificó como banda
+// "larga" (varios minutos reales de espera) porque ningún regex de aceptación verbal cubría el
+// verbo "ocuparse de", solo "encargarse de"/"acabar con". Mismo patrón exacto, verbo distinto.
 const VERBAL_ACCEPTANCE_REGEX =
-  /me encarg(?:o|are)|acepto ayudar|te ayudo|cuenta conmigo|lo hare\b|acabare con|dalo por hecho|no te preocupes|de acuerdo/;
+  /me encarg(?:o|are)|me ocup(?:o|are)|acepto ayudar|te ayudo|cuenta conmigo|lo hare\b|acabare con|dalo por hecho|no te preocupes|de acuerdo/;
 
 export function detectsVerbalAcceptanceIntent(action: string): boolean {
   return VERBAL_ACCEPTANCE_REGEX.test(normalizeText(action));
@@ -377,7 +453,11 @@ export function pickAmbientEncounterCandidate(
 
 function itemsLine(items: NpcItemInScene[]): string {
   if (items.length === 0) return '(no lleva nada de interés)';
-  return items.map((i) => (i.cantidad > 1 ? `${i.name} ×${i.cantidad}` : i.name) + (i.notas ? ` (${i.notas})` : '')).join(', ');
+  // `notas` (personalización de ESTE NpcItem concreto) gana si existe; sin ella, cae a la
+  // `description` real de catálogo en vez de dejar el nombre pelado (ver comentario del campo).
+  return items
+    .map((i) => (i.cantidad > 1 ? `${i.name} ×${i.cantidad}` : i.name) + ` (${i.notas ?? i.description})`)
+    .join(', ');
 }
 
 /// Bloque "PERSONAJE EN ESCENA" (§ 2.5) para el prompt de narración — personalidad + equipo
@@ -400,15 +480,33 @@ function npcYaResuelto(npc: NpcInScene): boolean {
   return npc.condicionFisica === 'INCAPACITADO' || npc.condicionFisica === 'MUERTO' || npc.saqueado;
 }
 
+/// Refuerza el género/artículo correcto de un nombre descriptivo directamente en cómo se presenta
+/// (2026-07-31, bug real jugando: "se gira hacia la orca enfurecida... el Orco Enfurecido salta
+/// hacia él" — el modelo confundió el género del Orco Enfurecido con el de Gistera Koh, ambas
+/// orcas en la misma escena, en el mismo párrafo). Reforzar el hecho correcto en el propio
+/// contexto ("el Orco Enfurecido") es más seguro que corregir la prosa después con un reemplazo
+/// de texto a ciegas, que podría corromper una mención legítima en femenino de OTRO NPC real
+/// (Gistera Koh) presente en la misma escena.
+function displayName(npc: NpcInScene): string {
+  return npc.articulo ? `${npc.articulo} ${npc.name}` : npc.name;
+}
+
 export function npcSceneBlockFor(npc: NpcInScene, playerLevel: number): string {
   if (npcYaResuelto(npc)) {
     const estado = npc.condicionFisica === 'MUERTO' ? 'muerto' : 'incapacitado';
-    return `PERSONAJE MENCIONADO, YA RESUELTO: ${npc.name} — ${npc.role}${npc.faction ? `, ${npc.faction}` : ''}. Ya está ${estado}${
-      npc.saqueado ? ' y su cuerpo ya fue registrado (no lleva nada más encima, ya no hay botín que ofrecer)' : ''
-    }. NO lo narres como una amenaza activa: no ataca, no persigue, no "aparece de la nada" — si la escena lo menciona, es solo un cadáver ya visto, un recuerdo o una referencia al pasado, nunca un encuentro nuevo.`;
+    // Bug real jugando en vivo (2026-07-31): un cuerpo INCAPACITADO/MUERTO todavía sin saquear
+    // dejaba de listar su equipo aquí (correcto, para no describirlo como amenaza activa) — pero
+    // eso significa que en el turno EXACTO de saquearlo, el Narrador no tenía ni idea de qué había
+    // encima, e inventaba objetos que no existen ("monedas de cobre", material prohibido incluido)
+    // mientras el inventario real recibía otros completamente distintos. Ya resuelto como amenaza,
+    // pero su equipo real se sigue listando hasta que `saqueado` sea true.
+    const loot = npc.saqueado
+      ? ' y su cuerpo ya fue registrado (no lleva nada más encima, ya no hay botín que ofrecer)'
+      : `, todavía sin registrar. Si esta acción es saquearlo/registrarlo, esto es TODO lo que lleva encima, no existe ningún otro objeto: ${itemsLine(npc.items)}`;
+    return `PERSONAJE MENCIONADO, YA RESUELTO: ${displayName(npc)} — ${npc.role}${npc.faction ? `, ${npc.faction}` : ''}. Ya está ${estado}${loot}. NO lo narres como una amenaza activa: no ataca, no persigue, no "aparece de la nada" — si la escena lo menciona, es solo un cadáver ya visto, un recuerdo o una referencia al pasado, nunca un encuentro nuevo.`;
   }
   const { label } = difficultyHintFor(npc.level, playerLevel);
-  return `PERSONAJE EN ESCENA: ${npc.name} — ${npc.role}${npc.faction ? `, ${npc.faction}` : ''}, nivel ${npc.level} (acciones directas contra él/ella tienden a ${label}).
+  return `PERSONAJE EN ESCENA: ${displayName(npc)} — ${npc.role}${npc.faction ? `, ${npc.faction}` : ''}, nivel ${npc.level} (acciones directas contra él/ella tienden a ${label}).
 Descripción/hechos ya establecidos (nunca los contradigas): ${npc.bio}
 Personalidad: ${npc.personality}
 LLEVA ENCIMA: ${itemsLine(npc.items)}. Si es derrotado, registrado o comercia, lo que lleva encima es TODO lo que puede aparecer — no existe ningún otro objeto.`;
@@ -420,7 +518,7 @@ export function calibrationLineFor(npcs: NpcInScene[], playerLevel: number): str
   return npcs
     .map((npc) => {
       const { label } = difficultyHintFor(npc.level, playerLevel);
-      return `Hay un personaje en escena, ${npc.name} (nivel ${npc.level}) — las acciones directas contra él/ella tienden a ${label}.`;
+      return `Hay un personaje en escena, ${displayName(npc)} (nivel ${npc.level}) — las acciones directas contra él/ella tienden a ${label}.`;
     })
     .join(' ');
 }

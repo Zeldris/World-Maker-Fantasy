@@ -10,13 +10,23 @@ const CONDICION_ORDER: CondicionFisica[] = ['ILESO', 'HERIDO', 'GRAVE', 'INCAPAC
 /// incapacitado reaccione igual" — hasta ahora `condicionFisica` no afectaba ninguna tirada, solo
 /// paraba a quien ya había caído). Se resta al valor CRUDO del atributo antes del multiplicador
 /// de tipo (combatExchange.ts), para cualquiera de los dos lados y cualquier rol (atacar o
-/// defender) — HERIDO se nota poco, GRAVE cuesta de verdad. INCAPACITADO/MUERTO no tiran (ya
-/// paran de actuar antes de llegar aquí), el valor es irrelevante pero se define por completitud.
+/// defender) — HERIDO se nota poco, GRAVE cuesta de verdad.
+///
+/// Bug real jugando en vivo (2026-07-31, "he ganado la batalla estando yo incapacitado y el
+/// enemigo herido"): el comentario original de aquí asumía que un jugador INCAPACITADO "ya para
+/// de actuar antes de llegar aquí" — falso, nada en turnResolution.ts detiene al jugador (a
+/// diferencia del NPC, que sí queda excluido del intercambio si está INCAPACITADO/MUERTO, ver
+/// `npcParaIntercambio.condicionFisica !== 'INCAPACITADO'`). Con malus 0 (igual que ILESO), un
+/// jugador incapacitado seguía peleando exactamente igual de bien que uno sano — así terminó
+/// "ganando" un combate donde en realidad los dos habían caído a la vez. Decisión explícita de la
+/// usuaria: sigue pudiendo intentarlo, pero MUY penalizado — no un tope duro (eso lo pidió para
+/// otra cosa), un malus real. MUERTO se queda en 0: no llega a pelear otro turno (ver
+/// `finDePartida`/respawn en turnResolution.ts), el valor es irrelevante ahí.
 const CONDICION_MALUS: Record<CondicionFisica, number> = {
   ILESO: 0,
   HERIDO: 2,
   GRAVE: 5,
-  INCAPACITADO: 0,
+  INCAPACITADO: 10,
   MUERTO: 0,
 };
 
@@ -29,10 +39,23 @@ export function condicionMalus(condicion: CondicionFisica): number {
 /// combate Incapacitado, tendrás que usar objetos específicos"). Sin causa real (ni descanso
 /// válido ni objeto médico), no hay mejora posible — cierra el hueco de que el modelo mejorara la
 /// condición "porque sí" narrativamente, sin que nada en el turno lo justificara.
+///
+/// Bug real (auditoría 2026-07-30): las dos ramas de abajo devolvían su techo (HERIDO/
+/// `medicalCuraHasta`) sin comprobar antes si `current` ya estaba MEJOR que ese techo — un
+/// personaje ya ILESO que descansaba con éxito (o usaba un objeto médico débil, tope HERIDO)
+/// se veía "curado" hasta HERIDO por `nextCondicionFisica` (que solo sabe tomar lo PEOR entre
+/// la propuesta y el techo), empeorando de verdad a alguien que no tenía nada que curar. El
+/// techo nunca puede ser peor que la condición actual — como mucho, igual de bueno.
 export function healCeilingFor(current: CondicionFisica, restSucceeds: boolean, medicalCuraHasta: CondicionFisica | null): CondicionFisica {
-  if (medicalCuraHasta) return medicalCuraHasta; // el objeto manda, rompe el tope incluso desde INCAPACITADO
-  if (restSucceeds && current !== 'INCAPACITADO' && current !== 'MUERTO') return 'HERIDO';
-  return current; // sin causa real (ni descanso ni objeto), no se permite ninguna mejora
+  const currentIdx = CONDICION_ORDER.indexOf(current);
+  let ceiling: CondicionFisica = current;
+  if (medicalCuraHasta) {
+    ceiling = medicalCuraHasta; // el objeto manda, rompe el tope incluso desde INCAPACITADO
+  } else if (restSucceeds && current !== 'INCAPACITADO' && current !== 'MUERTO') {
+    ceiling = 'HERIDO';
+  }
+  const ceilingIdx = CONDICION_ORDER.indexOf(ceiling);
+  return CONDICION_ORDER[Math.min(currentIdx, ceilingIdx)];
 }
 
 /// Aplica la propuesta de condición física del Narrador con las reglas de § 1: empeorar fuera de
@@ -46,8 +69,18 @@ export function nextCondicionFisica(
   enCombate: boolean,
   healCeiling: CondicionFisica,
 ): CondicionFisica {
-  if (!proposed) return current;
   const currentIdx = CONDICION_ORDER.indexOf(current);
+  // Bug real jugando en vivo (2026-07-31, "descansar no curó nada"): sin propuesta del modelo,
+  // esto devolvía `current` sin más — un descanso/objeto médico válido (healCeiling ya mejor que
+  // current) solo curaba de verdad si el modelo, ADEMÁS de narrar la curación en prosa, se
+  // acordaba de rellenar el campo "condicionFisica" del JSON. Un pequeño porcentaje de turnos no
+  // lo rellenaba, y la curación narrada quedaba sin ningún efecto mecánico — mismo patrón que el
+  // resto de esta sesión: la causa determinista (restSucceeds/medicalCuraHasta, ya resuelta en
+  // healCeilingFor) tiene que bastar por sí sola, sin depender de que el modelo la confirme.
+  if (!proposed) {
+    const ceilingIdx = CONDICION_ORDER.indexOf(healCeiling);
+    return CONDICION_ORDER[Math.min(currentIdx, ceilingIdx)];
+  }
   const proposedIdx = CONDICION_ORDER.indexOf(proposed);
   if (proposedIdx <= currentIdx) {
     const ceilingIdx = CONDICION_ORDER.indexOf(healCeiling);
@@ -72,15 +105,6 @@ export function oneStepWorseThan(current: CondicionFisica): CondicionFisica {
 export function nextCondicionForAttack(effect: AbilityEffect | null | undefined, current: CondicionFisica): CondicionFisica {
   if (effect === 'REMATE' && (current === 'GRAVE' || current === 'INCAPACITADO')) return 'MUERTO';
   return oneStepWorseThan(current);
-}
-
-/// La más severa de dos propuestas de condición física — para combinar la señal determinista
-/// del contraataque con la propuesta narrativa del modelo sin que se sumen (nextCondicionFisica
-/// ya limita a un escalón por turno independientemente de cuál de las dos sea peor).
-export function worseCondicion(a: CondicionFisica | null | undefined, b: CondicionFisica | null | undefined): CondicionFisica | null {
-  if (!a) return b ?? null;
-  if (!b) return a;
-  return CONDICION_ORDER.indexOf(a) >= CONDICION_ORDER.indexOf(b) ? a : b;
 }
 
 /// Auxiliar de nextCondicionFisica — true si el Narrador propuso empeorar la condición, aunque
