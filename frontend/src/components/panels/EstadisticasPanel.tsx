@@ -1,9 +1,11 @@
-import type { Attribute, AttributeBlock, SecondaryAttributeBlock } from '../../types'
+import type { Attribute, AttributeBlock, CondicionFisica, SecondaryAttributeBlock } from '../../types'
 import { AttributeBars } from '../AttributeBars'
-import { attributeLabels } from '../../lib/dice'
+import { attributeLabels, attributeColorClasses } from '../../lib/dice'
 import { secondaryAttributeLabels } from '../../lib/secondaryAttributes'
 import { MAX_LEVEL, xpProgress } from '../../lib/progression'
 import { PanelSection } from '../PanelSection'
+import { HealthBar } from '../HealthBar'
+import { EnergyBar } from '../EnergyBar'
 
 interface EstadisticasPanelProps {
   attributes: AttributeBlock
@@ -12,9 +14,26 @@ interface EstadisticasPanelProps {
   xp: number
   pendingAttributePoints: number
   onSpendPoint: (attribute: Attribute) => void
+  /// Vida/fatiga actuales (2026-07-30, petición explícita: "en estadísticas hay que añadir la
+  /// vida actual y la fatiga") — mismos componentes ya usados en CombatPanel.tsx, reutilizados
+  /// tal cual para que la ficha de personaje muestre el mismo estado sin duplicar la lógica de
+  /// color/animación.
+  condicionFisica: CondicionFisica
+  energia: number
+  energiaMax: number
 }
 
-export function EstadisticasPanel({ attributes, secondaryAttributes, level, xp, pendingAttributePoints, onSpendPoint }: EstadisticasPanelProps) {
+export function EstadisticasPanel({
+  attributes,
+  secondaryAttributes,
+  level,
+  xp,
+  pendingAttributePoints,
+  onSpendPoint,
+  condicionFisica,
+  energia,
+  energiaMax,
+}: EstadisticasPanelProps) {
   const progress = xpProgress(level, xp)
   const percent = progress.span > 0 ? Math.min(100, (progress.current / progress.span) * 100) : 100
 
@@ -36,6 +55,13 @@ export function EstadisticasPanel({ attributes, secondaryAttributes, level, xp, 
           />
         </div>
       </div>
+
+      <PanelSection title="Estado">
+        <div className="flex flex-wrap items-center gap-2.5">
+          <HealthBar condicionFisica={condicionFisica} />
+          <EnergyBar energia={energia} energiaMax={energiaMax} />
+        </div>
+      </PanelSection>
 
       {pendingAttributePoints > 0 && (
         <div className="rounded-lg border border-accent-600/50 bg-accent-500/10 px-4 py-3">
@@ -59,7 +85,7 @@ export function EstadisticasPanel({ attributes, secondaryAttributes, level, xp, 
       )}
 
       <PanelSection title="Atributos jugables">
-        <AttributeBars attributes={attributes} labels={attributeLabels} />
+        <AttributeBars attributes={attributes} labels={attributeLabels} colors={attributeColorClasses} />
       </PanelSection>
 
       <PanelSection title="Atributos secundarios">

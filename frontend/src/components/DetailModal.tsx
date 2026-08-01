@@ -11,13 +11,20 @@ import {
 } from '../lib/api'
 import { AbilityForm, type AbilityFormParams } from './AbilityForm'
 import { EnciclopediaLinkedText } from './EnciclopediaLinkedText'
-import { useEnciclopediaLink } from '../context/EnciclopediaLinkContext'
+import { useEnciclopediaLink } from '../context/useEnciclopediaLink'
 import { MediaSlot, ImagePromptSlot } from './ImagePromptDisplay'
+import { TooltipAnchor } from './TooltipAnchor'
 
 export type DetailTarget =
   | { kind: 'item'; item: InventoryItemInfo }
   | { kind: 'ability'; ability: SavedActionInfo }
-  | { kind: 'slotPicker'; slot: EquipSlot; slotLabel: string; options: InventoryItemInfo[] }
+  // Rediseño de equipar (2026-07-30, petición explícita: "que al clicarlo se abra un panel donde
+  // aparece por qué lo puedo sustituir" — antes 'slotPicker' solo servía para ranuras VACÍAS y era
+  // una lista pelada de nombres; una ranura OCUPADA abría el detalle simple del objeto (solo
+  // "Quitar", sin forma de sustituirlo directo). Ahora una ranura cualquiera —ocupada o vacía—
+  // abre este mismo panel: lo puesto ahora mismo (si lo hay) + candidatos compatibles reales, un
+  // solo clic para sustituir (el backend ya lo hace atómico).
+  | { kind: 'slotManager'; slot: EquipSlot; slotLabel: string; equipped: InventoryItemInfo | undefined; options: InventoryItemInfo[] }
   | {
       kind: 'info'
       icon: string
@@ -104,6 +111,10 @@ export function DetailModal({ target, onClose, onUnequip, onEquip, onSaveAbility
     const firstVariant = target.variantes?.[0] ?? null
     setSelectedVariantSlug(firstVariant?.slug ?? null)
     setSelectedSexo((firstVariant?.variantesSexo ?? target.variantesSexo)?.[0]?.sexo ?? null)
+    // Deliberadamente solo `targetKey` (2026-07-22): resetear variante/sexo debe pasar al abrir
+    // una ENTRADA distinta (slug distinto), no cada vez que `target` cambia de referencia por un
+    // re-render del padre con el mismo slug — eso arrastraría de vuelta la selección del usuario.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [targetKey])
 
   return (
@@ -201,32 +212,91 @@ export function DetailModal({ target, onClose, onUnequip, onEquip, onSaveAbility
           />
         )}
 
-        {target.kind === 'slotPicker' && (
-          <>
-            <h2 className="font-serif text-lg text-wood-100">Equipar en {target.slotLabel}</h2>
-            {actionError && <p className="text-xs text-red-400">{actionError}</p>}
-            {target.options.length === 0 ? (
-              <p className="text-xs italic text-wood-500">No hay objetos sin equipar para asignar aquí.</p>
-            ) : (
-              <div className="flex flex-col gap-1.5">
-                {target.options.map((item) => (
-                  <button
-                    key={item.id}
-                    onClick={() => onEquip && runEquipAction(() => onEquip(item, target.slot))}
-                    className="tactile flex items-center justify-between rounded-lg border border-iron-700 bg-wood-950/40 px-3 py-2 text-left text-sm text-wood-200 transition-colors hover:border-accent-600/60 hover:text-accent-300"
-                  >
-                    {item.name}
-                    {!!item.tier && item.tier > 1 && (
-                      <span className="ml-2 shrink-0 rounded-full border border-accent2-600/50 bg-accent2-500/10 px-2 py-0.5 font-mono text-2xs text-accent2-300">
-                        Nivel {item.tier}
-                      </span>
+        {target.kind === 'slotManager' &&
+          (() => {
+            const equippedTarget = target.equipped?.catalogSlug ? enciclopediaIndex.bySlugKey.get(`item:${target.equipped.catalogSlug}`) : undefined
+            return (
+              <>
+                <h2 className="font-serif text-lg text-wood-100">{target.slotLabel}</h2>
+                {actionError && <p className="text-xs text-red-400">{actionError}</p>}
+
+                {target.equipped ? (
+                  <div className="rounded-lg border border-accent-600/40 bg-accent-500/5 p-3">
+                    <div className="mb-1.5 flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-medium text-wood-100">{target.equipped.name}</p>
+                        <p className="text-2xs uppercase tracking-[0.1em] text-moss-400">Puesto ahora mismo</p>
+                      </div>
+                      {equippedTarget && (
+                        <button
+                          type="button"
+                          onClick={() => onEntityDetail?.(equippedTarget)}
+                          aria-label={`Consultar ${target.equipped!.name} en la Enciclopedia`}
+                          className="tactile flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-iron-700 text-xs text-wood-500 transition-colors hover:border-accent-600/60 hover:text-accent-300"
+                        >
+                          ⓘ
+                        </button>
+                      )}
+                    </div>
+                    <p className="mb-2 text-xs leading-relaxed text-wood-400">{target.equipped.description}</p>
+                    {onUnequip && (
+                      <button
+                        onClick={() => runEquipAction(() => onUnequip(target.equipped!))}
+                        className="tactile rounded-lg border border-iron-700 px-3 py-1.5 text-xs text-wood-300 transition-colors hover:border-accent-600/60 hover:text-wood-100"
+                      >
+                        Quitar
+                      </button>
                     )}
-                  </button>
-                ))}
-              </div>
-            )}
-          </>
-        )}
+                  </div>
+                ) : (
+                  <p className="text-xs italic text-wood-500">Nada puesto ahí ahora mismo.</p>
+                )}
+
+                <p className="text-2xs font-semibold uppercase tracking-[0.14em] text-wood-500">
+                  {target.equipped ? 'Sustituir por' : 'Equipar'}
+                </p>
+                {target.options.length === 0 ? (
+                  <p className="text-xs italic text-wood-500">No tienes ningún objeto compatible con esta ranura.</p>
+                ) : (
+                  <div className="flex flex-col gap-1.5">
+                    {target.options.map((item) => {
+                      const candidateTarget = item.catalogSlug ? enciclopediaIndex.bySlugKey.get(`item:${item.catalogSlug}`) : undefined
+                      return (
+                        <div
+                          key={item.id}
+                          className="flex items-center gap-1.5 rounded-lg border border-iron-700 bg-wood-950/40 px-1.5 py-1.5 transition-colors hover:border-accent-600/60"
+                        >
+                          <TooltipAnchor text={item.description} className="min-w-0 flex-1">
+                            <button
+                              onClick={() => onEquip && runEquipAction(() => onEquip(item, target.slot))}
+                              className="tactile flex w-full items-center justify-between gap-2 text-left text-sm text-wood-200"
+                            >
+                              <span className="truncate">{item.name}</span>
+                              {!!item.tier && item.tier > 1 && (
+                                <span className="ml-2 shrink-0 rounded-full border border-accent2-600/50 bg-accent2-500/10 px-2 py-0.5 font-mono text-2xs text-accent2-300">
+                                  Nivel {item.tier}
+                                </span>
+                              )}
+                            </button>
+                          </TooltipAnchor>
+                          {candidateTarget && (
+                            <button
+                              type="button"
+                              onClick={() => onEntityDetail?.(candidateTarget)}
+                              aria-label={`Consultar ${item.name} en la Enciclopedia`}
+                              className="tactile flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-iron-700 text-2xs text-wood-500 transition-colors hover:border-accent-600/60 hover:text-accent-300"
+                            >
+                              ⓘ
+                            </button>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+              </>
+            )
+          })()}
 
         {target.kind === 'info' &&
           (() => {

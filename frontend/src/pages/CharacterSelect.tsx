@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { pregeneratedCharacters, worlds } from '../data/mock'
-import { useSession } from '../context/SessionContext'
+import { useSession } from '../context/useSession'
 import { CharacterCard } from '../components/CharacterCard'
 import { Button } from '../components/Button'
 import { StepDots } from '../components/StepDots'
@@ -23,16 +23,25 @@ const emptyAttributes: AttributeBlock = {
 // 12 puntos extra a repartir de siempre (60-48=12, ahora 68-56=12).
 const POINT_BUDGET = 68
 
+// Solo Gorhorn es jugable de verdad hoy (2026-07-30, petición explícita: "por ahora que solo
+// salga Gorhorn y el resto ocultos") — el resto de `pregeneratedCharacters` en mock.ts ni
+// siquiera tiene `introCharacterText`/`introWorldText` (solo Gorhorn los lleva), así que nunca
+// pudieron arrancar una partida real: son bocetos para cuando existan más personajes jugables,
+// no un catálogo ya terminado. Ocultos aquí en vez de borrados de mock.ts, para no perder ese
+// contenido cuando se retome.
+const PLAYABLE_CHARACTER_IDS = new Set(['char-gorhorn'])
+
 export function CharacterSelect() {
   const navigate = useNavigate()
   const { worldId } = useParams()
   const { selectedCharacter, setSelectedWorld, setSelectedCharacter } = useSession()
   const world = worlds.find((w) => w.id === worldId) ?? null
   const [tab, setTab] = useState<'pregen' | 'custom'>('pregen')
+  const playableCharacters = pregeneratedCharacters.filter((c) => PLAYABLE_CHARACTER_IDS.has(c.id))
 
   useEffect(() => {
     if (world) setSelectedWorld(world)
-  }, [world])
+  }, [world, setSelectedWorld])
 
   const [name, setName] = useState('')
   const [archetype, setArchetype] = useState('')
@@ -107,7 +116,7 @@ export function CharacterSelect() {
 
       {tab === 'pregen' ? (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          {pregeneratedCharacters.map((c, i) => (
+          {playableCharacters.map((c, i) => (
             <div key={c.id} className="animate-entry-in" style={{ animationDelay: `${i * 60}ms` }}>
               <CharacterCard character={c} selected={selectedCharacter?.id === c.id} onSelect={() => setSelectedCharacter(c)} />
             </div>

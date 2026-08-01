@@ -23,10 +23,11 @@ export function HabilidadesPanel({ savedActions, combatSlots, onUse, onCreate, o
   // Rediseño "tope de 10" (2026-07-29): las habilidades de combate son fijas por raza/arma/clase
   // (las da el diseño, nunca la jugadora) — `combatSlots` ya no crece suave con el nivel (viejo
   // `habilidadSlotsForLevel`), es el tope real: 2 raciales + 2 de arma (4 desde el nivel de arma
-  // avanzada) + 4 de clase. Defenderse/Esquivar (energyCost 0, sistema de fatiga) quedan FUERA de
-  // este tope a propósito — son un fallback universal siempre disponible, no parte del reparto
-  // curado por raza/arma/clase, así que no cuentan contra el cupo.
-  const combatUsed = savedActions.filter((a) => a.category === 'combate' && a.energyCost > 0).length
+  // avanzada) + 4 de clase. Los 3 genéricos (Ataque Básico/Defenderse/Esquivar) quedan FUERA de
+  // este tope a propósito — son la acción base de cualquier personaje, no parte del reparto curado
+  // por raza/arma/clase, así que no cuentan contra el cupo. Antes se usaba `energyCost > 0` para
+  // esto (dejó de servir en cuanto Ataque Básico pasó a costar 5, 2026-07-31) — ahora `isGeneric`.
+  const combatUsed = savedActions.filter((a) => a.category === 'combate' && !a.isGeneric).length
 
   return (
     <div className="flex flex-col gap-5">
@@ -76,7 +77,9 @@ export function HabilidadesPanel({ savedActions, combatSlots, onUse, onCreate, o
       {tab === 'combate' || !showCreateForm ? (
         <>
           <p className="text-2xs text-wood-400">
-            {tab === 'combate' ? `Habilidades activas: ${combatUsed} / ${combatSlots} (2 raciales + arma equipada + 4 de clase)` : 'Sin límite de huecos.'}
+            {tab === 'combate'
+              ? `Habilidades activas: ${combatUsed} / ${combatSlots} (2 raciales + 1-2 de arma equipada + 4 de clase)`
+              : 'Sin límite de huecos.'}
           </p>
 
           {inTab.length === 0 ? (
@@ -86,41 +89,45 @@ export function HabilidadesPanel({ savedActions, combatSlots, onUse, onCreate, o
               hint={tab === 'combate' ? 'Se conceden solas según tu raza, arma equipada y clase.' : 'Pulsa "+ Crear nueva" para guardar tu primera habilidad general.'}
             />
           ) : tab === 'combate' ? (
-            // Rediseño "tope de 10" (2026-07-29, "UI reflejando el reparto"): separadas en sus dos
-            // fuentes reales en vez de una cuadrícula plana — `isDynamic` (raciales + de arma, se
-            // resincronizan solas) vs `isStarting` (de clase, fijas de por vida). Ninguna de las
-            // dos es editable/borrable a mano (ver DetailModal.tsx).
+            // Rediseño "tope de 10" (2026-07-29, "UI reflejando el reparto"), extendido 2026-07-31
+            // (petición explícita: "ataque básico no es una habilidad como las demás... son
+            // acciones que tienen todos los personajes... en un bloque, y en otro las
+            // habilidades") — 3 fuentes reales en vez de una cuadrícula plana: `isGeneric` (Ataque
+            // Básico/Defenderse/Esquivar, primero, la acción base de cualquier personaje),
+            // `isDynamic && !isGeneric` (raciales + de arma real, se resincronizan solas) e
+            // `isStarting` (de clase, fijas de por vida). Ninguna de las tres es editable/borrable
+            // a mano (ver DetailModal.tsx).
             <div className="space-y-3">
-              {inTab.some((a) => a.isDynamic) && (
+              {inTab.some((a) => a.isGeneric) && (
+                <div>
+                  <p className="mb-1 text-2xs font-semibold uppercase tracking-[0.1em] text-wood-500">Acciones básicas</p>
+                  <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+                    {inTab
+                      .filter((a) => a.isGeneric)
+                      .map((a) => (
+                        <IconCard key={a.id} icon={a.icon} name={a.name} tooltip={a.description} onUse={() => onUse(a)} onDetail={() => onDetail(a)} />
+                      ))}
+                  </div>
+                </div>
+              )}
+              {inTab.some((a) => a.isDynamic && !a.isGeneric) && (
                 <div>
                   <p className="mb-1 text-2xs font-semibold uppercase tracking-[0.1em] text-wood-500">Raciales y de arma equipada</p>
                   <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
                     {inTab
-                      .filter((a) => a.isDynamic)
+                      .filter((a) => a.isDynamic && !a.isGeneric)
                       .map((a) => (
                         <IconCard key={a.id} icon={a.icon} name={a.name} tooltip={a.description} onUse={() => onUse(a)} onDetail={() => onDetail(a)} />
                       ))}
                   </div>
                 </div>
               )}
-              {inTab.some((a) => a.isStarting && !a.isDynamic && a.energyCost > 0) && (
+              {inTab.some((a) => a.isStarting && !a.isDynamic && !a.isGeneric && a.energyCost > 0) && (
                 <div>
                   <p className="mb-1 text-2xs font-semibold uppercase tracking-[0.1em] text-wood-500">De clase</p>
                   <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
                     {inTab
-                      .filter((a) => a.isStarting && !a.isDynamic && a.energyCost > 0)
-                      .map((a) => (
-                        <IconCard key={a.id} icon={a.icon} name={a.name} tooltip={a.description} onUse={() => onUse(a)} onDetail={() => onDetail(a)} />
-                      ))}
-                  </div>
-                </div>
-              )}
-              {inTab.some((a) => a.energyCost === 0) && (
-                <div>
-                  <p className="mb-1 text-2xs font-semibold uppercase tracking-[0.1em] text-wood-500">Siempre disponibles (gratis)</p>
-                  <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
-                    {inTab
-                      .filter((a) => a.energyCost === 0)
+                      .filter((a) => a.isStarting && !a.isDynamic && !a.isGeneric && a.energyCost > 0)
                       .map((a) => (
                         <IconCard key={a.id} icon={a.icon} name={a.name} tooltip={a.description} onUse={() => onUse(a)} onDetail={() => onDetail(a)} />
                       ))}
@@ -139,9 +146,10 @@ export function HabilidadesPanel({ savedActions, combatSlots, onUse, onCreate, o
           {tab === 'combate' && (
             <PanelSection title="De dónde salen">
               <p className="text-xs text-wood-500 italic">
-                Fijas, no se crean a mano: 2 raciales (ataque + defensa de tu raza), 2 del arma que llevas equipada (4 al alcanzar el nivel de arma
-                avanzada — cambian solas si cambias de arma) y 4 de tu clase — todas gastan energía al usarlas. Defenderse y Esquivar son gratis y
-                siempre están disponibles, aunque te quedes sin energía para el resto.
+                Ataque Básico, Defenderse y Esquivar los tiene cualquier personaje, siempre disponibles: Ataque Básico cuesta poca energía y se adapta
+                al arma que lleves equipada; Defenderse y Esquivar no cuestan nada y encima recuperan energía. El resto son fijas, no se crean a mano:
+                2 raciales (ataque + defensa de tu raza), 1-2 del arma que llevas equipada (una por categoría distinta en cada mano — llevar 2 del
+                mismo tipo da solo una, pero mejor) + 1 más al alcanzar el nivel avanzado, y 4 de tu clase — todas gastan energía real al usarlas.
               </p>
             </PanelSection>
           )}

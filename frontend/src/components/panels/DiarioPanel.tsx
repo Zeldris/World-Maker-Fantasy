@@ -5,7 +5,7 @@ import { RollBadge } from '../RollBadge'
 import { PanelEmptyState } from '../PanelEmptyState'
 import { PanelSection } from '../PanelSection'
 import { EnciclopediaLinkedText } from '../EnciclopediaLinkedText'
-import { useEnciclopediaLink } from '../../context/EnciclopediaLinkContext'
+import { useEnciclopediaLink } from '../../context/useEnciclopediaLink'
 
 interface DiarioPanelProps {
   saveId: string

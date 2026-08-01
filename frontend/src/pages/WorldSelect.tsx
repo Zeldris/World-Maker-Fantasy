@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom'
 import { worlds } from '../data/mock'
-import { useSession } from '../context/SessionContext'
+import { useSession } from '../context/useSession'
 import { WorldCard } from '../components/WorldCard'
 import { Button } from '../components/Button'
 import { StepDots } from '../components/StepDots'

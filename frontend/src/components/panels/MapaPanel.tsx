@@ -4,7 +4,7 @@ import { getEnciclopedia, getWorldLocations, type WorldLocationInfo } from '../.
 import { InteractiveMap } from './InteractiveMap'
 import type { CurrentLocationInfo, DestinationInfo, InventoryItemInfo, QuestInfo } from '../../types'
 import { PanelSection } from '../PanelSection'
-import { useEnciclopediaLink } from '../../context/EnciclopediaLinkContext'
+import { useEnciclopediaLink } from '../../context/useEnciclopediaLink'
 import { locationToDetailTarget, personajeToDetailTarget } from '../../lib/enciclopediaTargets'
 import type { EnciclopediaLinkTarget } from '../../lib/enciclopediaIndex'
 

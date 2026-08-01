@@ -3,8 +3,15 @@ import type { CondicionFisica } from '../types'
 export interface CombatNpcDisplay {
   slug: string
   name: string
-  condicion: Exclude<CondicionFisica, 'MUERTO'>
+  // Botón "Decapitar" (2026-07-30) — antes se colapsaba MUERTO a INCAPACITADO al mostrarlo (un
+  // enemigo rematado con una habilidad REMATE se veía igual que uno solo incapacitado); ahora que
+  // el jugador puede rematar a propósito desde el resumen de combate, el estado real se muestra
+  // tal cual, mismo criterio que el resto de la ficha de combate.
+  condicion: CondicionFisica
   yaSaqueado: boolean
+  // Saqueo parcial (2026-07-31) — qué objetos concretos ya se llevó el jugador de este NPC, para
+  // que el modal de saqueo (CombatPanel.tsx) no vuelva a ofrecerlos.
+  lootedItemNames: string[]
 }
 
 interface CombatComposerProps {

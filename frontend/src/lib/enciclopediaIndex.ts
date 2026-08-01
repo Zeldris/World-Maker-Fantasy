@@ -56,7 +56,9 @@ export function buildEnciclopediaIndex(data: EnciclopediaResponse | null): Encic
     npc.aliases.forEach((alias) => register(alias, target))
   }
   for (const item of data.items) {
-    register(item.name, itemToDetailTarget(item))
+    const target = itemToDetailTarget(item)
+    register(item.name, target)
+    item.aliases.forEach((alias) => register(alias, target))
   }
   for (const entry of data.faunaFlora) {
     const target = faunaFloraToDetailTarget(entry)
@@ -64,13 +66,17 @@ export function buildEnciclopediaIndex(data: EnciclopediaResponse | null): Encic
     entry.aliases.forEach((alias) => register(alias, target))
   }
   for (const loc of data.locations) {
-    register(loc.name, locationToDetailTarget(loc))
+    const target = locationToDetailTarget(loc)
+    register(loc.name, target)
+    loc.aliases.forEach((alias) => register(alias, target))
   }
   for (const pj of data.personajes) {
     // Gorhorn queda fuera a propósito: es el protagonista, su nombre sale en casi cada línea de
     // narración — enlazarlo cada vez sería puro ruido visual, no ayuda real de navegación.
     if (pj.slug === 'gorhorn') continue
-    register(pj.name, personajeToDetailTarget(pj))
+    const target = personajeToDetailTarget(pj)
+    register(pj.name, target)
+    ;(pj.aliases ?? []).forEach((alias) => register(alias, target))
   }
 
   if (entries.size === 0) return { regex: null, entries, bySlugKey }

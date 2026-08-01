@@ -139,6 +139,11 @@ export interface LogEntry {
   /// que LogPanel lo muestre como badge estructurado en vez de depender de que la prosa del
   /// narrador la mencione.
   npcAbilityUsed?: { npcName: string; abilityName: string; rol: 'ataque' | 'defensa' }
+  /// Notificación de misión aceptada (2026-07-31, petición explícita: "que aparezca en la
+  /// narración del personaje el título de la misión y el objetivo") — presente solo en el turno
+  /// EXACTO en que se crea una misión nueva; LogPanel la pinta con fondo/borde amarillo y una
+  /// tarjeta con el título+objetivo, en vez del estilo normal.
+  newQuest?: { title: string; objetivo: string }
 }
 
 export type EquipSlot =
@@ -155,6 +160,12 @@ export type EquipSlot =
   | 'ANILLO_1'
   | 'ANILLO_2'
   | 'CINTURON'
+  | 'CONSUMIBLE_1'
+  | 'CONSUMIBLE_2'
+  | 'CONSUMIBLE_3'
+  | 'CONSUMIBLE_4'
+  | 'CONSUMIBLE_5'
+  | 'CONSUMIBLE_6'
 
 /// Categorización mecánica de objetos (2026-07-29) — ver itemTaxonomy.ts (backend). RECURSO: se
 /// recoge/caza/tala/mina directo de la naturaleza. MATERIAL: sale de un proceso de crafteo.
@@ -173,6 +184,10 @@ export interface InventoryItemInfo {
   /// sueltos), nivel de rareza/dificultad (1-5, 1 = común), y mínimos de atributo para equiparlo
   /// — el backend ya rechaza el PATCH de equipar si no se cumplen (ver lib/api.ts, setItemSlot).
   catalogSlug?: string | null
+  /// Ranura de equipo real del catálogo (2026-07-30, "categorizar por ranura para que no pueda
+  /// poner un casco en los pies") — null en objetos narrativos sin categorizar (permisivo, ver
+  /// `isCompatibleWithSlot`, equipSlots.ts) o sin catalogSlug.
+  equipSlot?: EquipSlot | null
   tier?: number
   requisitos?: Partial<Record<Attribute | SecondaryAttribute, number>>
   /// Categorización mecánica (2026-07-29) — ausente en objetos narrativos sueltos sin
@@ -264,9 +279,21 @@ export interface SavedActionInfo {
   /// Rediseño del turno de combate (2026-07-28) — "tipo" para la rueda de debilidades (backend)
   /// y el color del chip (UI). Null en habilidades 'general' o en partidas de antes de este campo.
   preferredAttribute: Attribute | null
-  /// Sistema de fatiga (2026-07-29) — coste de energía fijo por tramo (0 = gratis: habilidades
-  /// 'general' y las genéricas Defenderse/Esquivar, siempre disponibles). Ver CombatPanel.tsx.
+  /// Sistema de fatiga (2026-07-29) — coste de energía fijo por tramo. Ver CombatPanel.tsx.
   energyCost: number
+  /// Rediseño 2026-07-31 — energía que RECUPERA usar esta habilidad en un intercambio real
+  /// (Defenderse=10/Esquivar=5); 0 en el resto, incluido Ataque Básico (que solo cuesta).
+  energyRegen: number
+  /// Rediseño 2026-07-31 (petición explícita: "ataque básico no es una habilidad como las demás,
+  /// ni defenderse ni esquivar... son acciones que tienen todos los personajes") — marca los 3
+  /// genéricos (Ataque Básico/Defenderse/Esquivar) para su propio bloque en la UI, separado de las
+  /// habilidades reales (de clase/raciales/de arma). Sustituye a la vieja heurística
+  /// `energyCost === 0` (dejó de servir en cuanto Ataque Básico pasó a costar 5).
+  isGeneric: boolean
+  /// Rediseño 2026-07-31 — habilidad real por categoría de arma (p.ej. "Tajo Horizontal" del
+  /// hacha) colapsada en una sola tarjeta por llevar la MISMA categoría en las dos manos — mejor
+  /// dificultad al usarla (backend), nunca un segundo golpe real. Ver CombatPanel.tsx.
+  dualWield: boolean
 }
 
 export type CondicionFisica = 'ILESO' | 'HERIDO' | 'GRAVE' | 'INCAPACITADO' | 'MUERTO'
@@ -285,6 +312,9 @@ export interface NpcInSceneInfo {
   // siempre ILESO/sin saquear para un NPC que ya venía herido o saqueado de un encuentro anterior.
   condicionFisica: CondicionFisica
   saqueado: boolean
+  // Saqueo parcial (2026-07-31) — nombres de objeto ya copiados al inventario de este NPC en esta
+  // partida, para que el modal de saqueo pueda dejar de ofrecer lo que ya te llevaste.
+  lootedItemNames: string[]
 }
 
 /// Un enlace de objeto/habilidad estilo World of Warcraft, insertado dentro del propio texto

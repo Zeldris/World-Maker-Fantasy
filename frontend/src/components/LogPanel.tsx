@@ -3,7 +3,7 @@ import type { LogEntry } from '../types'
 import { RollBadge } from './RollBadge'
 import { PanelRivets } from './Rivet'
 import { EnciclopediaLinkedText } from './EnciclopediaLinkedText'
-import { useEnciclopediaLink } from '../context/EnciclopediaLinkContext'
+import { useEnciclopediaLink } from '../context/useEnciclopediaLink'
 
 interface LogPanelProps {
   title: string
@@ -124,12 +124,18 @@ export const LogPanel = memo(function LogPanel({ title, subtitle, entries, accen
                 // Rediseño de la vista de combate (2026-07-28, petición explícita: "narraciones
                 // del combate se vean reflejadas... con fondo color rojo") — el tinte de combate
                 // manda sobre el de "tu acción" (una entrada puede ser ambas a la vez), nunca al
-                // revés; fuera de combate, el estilo de siempre.
-                entry.combate
-                  ? 'animate-entry-in rounded-lg border border-l-2 border-red-700/50 bg-danger-500/10 px-3.5 py-2.5 text-sm text-wood-100'
-                  : entry.isPlayerAction
-                    ? `animate-entry-in rounded-lg border border-l-2 px-3.5 py-2.5 text-sm text-wood-100 ${classes.playerBubble}`
-                    : 'animate-entry-in text-sm leading-relaxed text-wood-200'
+                // revés; fuera de combate, el estilo de siempre. Notificación de misión aceptada
+                // (2026-07-31, petición explícita: "fondo azul la narración normal, rojo combate y
+                // amarillo misiones") — `newQuest` manda sobre todo lo demás (es el evento más raro
+                // y específico de los tres); la narración normal pasa de texto plano a un fondo
+                // azul explícito, para que los 3 estados queden igual de intencionados.
+                entry.newQuest
+                  ? 'animate-entry-in rounded-lg border border-l-2 border-quest-600/50 bg-quest-500/10 px-3.5 py-2.5 text-sm text-wood-100'
+                  : entry.combate
+                    ? 'animate-entry-in rounded-lg border border-l-2 border-red-700/50 bg-danger-500/10 px-3.5 py-2.5 text-sm text-wood-100'
+                    : entry.isPlayerAction
+                      ? `animate-entry-in rounded-lg border border-l-2 px-3.5 py-2.5 text-sm text-wood-100 ${classes.playerBubble}`
+                      : 'animate-entry-in rounded-lg border border-l-2 border-accent-600/50 bg-accent-500/10 px-3.5 py-2.5 text-sm text-wood-100'
               }
             >
               {entry.isPlayerAction && (
@@ -155,6 +161,15 @@ export const LogPanel = memo(function LogPanel({ title, subtitle, entries, accen
                 />
               </p>
               {entry.roll && <RollBadge roll={entry.roll} />}
+              {entry.newQuest && (
+                <div className="mt-2 rounded-lg border border-quest-600/50 bg-quest-500/10 px-2.5 py-2">
+                  <p className="flex items-center gap-1.5 text-2xs font-semibold uppercase tracking-[0.1em] text-quest-400">
+                    <span aria-hidden="true">🎯</span>
+                    <span>Nueva misión: {entry.newQuest.title}</span>
+                  </p>
+                  <p className="mt-1 text-2xs text-wood-300">{entry.newQuest.objetivo}</p>
+                </div>
+              )}
               {entry.entityBanner && (
                 <button
                   type="button"

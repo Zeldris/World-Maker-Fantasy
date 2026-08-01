@@ -63,6 +63,14 @@
   --color-cost-500: #f59e0b;
   --color-cost-600: #d97706;
 
+  /* Notificación de misión aceptada (2026-07-31, petición explícita: "fondo azul la narración
+     normal, rojo combate y amarillo misiones") — tercer estado fijo/no tematizable, mismo criterio
+     que danger/moss/cost de arriba. Amarillo puro (no ámbar como `cost`, que ya significa otra
+     cosa: coste/gasto) para que no se confundan a simple vista. */
+  --color-quest-400: #facc15;
+  --color-quest-500: #eab308;
+  --color-quest-600: #ca8a04;
+
   /* Rediseño del turno de combate (2026-07-28, petición explícita: "añadir color por estadística
      para que sea más claro") — un tono por atributo jugable, para identificar de un vistazo el
      "tipo" de una habilidad (rueda de debilidades, attributeWheel.ts en el backend). Tonos

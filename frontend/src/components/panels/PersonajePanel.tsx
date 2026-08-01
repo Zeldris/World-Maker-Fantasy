@@ -1,4 +1,4 @@
-import type { Attribute, AttributeBlock, EquipSlot, InventoryItemInfo, ProfessionProgressInfo, SecondaryAttributeBlock } from '../../types'
+import type { Attribute, AttributeBlock, CondicionFisica, EquipSlot, InventoryItemInfo, ProfessionProgressInfo, SecondaryAttributeBlock } from '../../types'
 import { EquipoPanel } from './EquipoPanel'
 import { EstadisticasPanel } from './EstadisticasPanel'
 import { ReputacionPanel } from './ReputacionPanel'
@@ -36,6 +36,9 @@ interface PersonajePanelProps {
   xp: number
   pendingAttributePoints: number
   onSpendPoint: (attribute: Attribute) => void
+  condicionFisica: CondicionFisica
+  energia: number
+  energiaMax: number
 
   factionsStatus: Record<string, number>
 
@@ -56,6 +59,9 @@ export function PersonajePanel({
   xp,
   pendingAttributePoints,
   onSpendPoint,
+  condicionFisica,
+  energia,
+  energiaMax,
   factionsStatus,
   currentProfession,
   onAdoptProfession,
@@ -94,6 +100,9 @@ export function PersonajePanel({
           xp={xp}
           pendingAttributePoints={pendingAttributePoints}
           onSpendPoint={onSpendPoint}
+          condicionFisica={condicionFisica}
+          energia={energia}
+          energiaMax={energiaMax}
         />
       )}
       {activeSubTab === 'reputacion' && <ReputacionPanel factionsStatus={factionsStatus} />}

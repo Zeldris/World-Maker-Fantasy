@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { useSession } from '../context/SessionContext'
+import { useSession } from '../context/useSession'
 import { LogPanel } from '../components/LogPanel'
 import { ChatComposer, type ChatComposerHandle } from '../components/ChatComposer'
 import { SideNav } from '../components/SideNav'
@@ -10,7 +10,7 @@ import { MapaPanel } from '../components/panels/MapaPanel'
 import { DiarioPanel } from '../components/panels/DiarioPanel'
 import { InventarioPanel } from '../components/panels/InventarioPanel'
 import { EnciclopediaPanel } from '../components/panels/EnciclopediaPanel'
-import { SLOT_LABEL } from '../components/panels/EquipoPanel'
+import { SLOT_LABEL, isCompatibleWithSlot, isConsumibleSlot } from '../lib/equipSlots'
 import { PersonajePanel, type PersonajeSubTab } from '../components/panels/PersonajePanel'
 import { DetailModal, type DetailTarget } from '../components/DetailModal'
 import { useEnciclopedia } from '../hooks/useEnciclopedia'
@@ -44,13 +44,12 @@ import {
   setItemSlot,
   setLogEntryBanner,
   resolveImageUrl,
-  type BusyError,
-  type EndedGameError,
   type SaveDetail,
   type ClassifyResponse,
 } from '../lib/api'
 import { characterWaitingFlavor, combatWaitingFlavor, worldWaitingFlavor, useRotatingFlavor } from '../lib/waitingFlavor'
 import { pickMentionedEntityBanner, mentionedEntityKey, resolveEntityBannerFromRef } from '../lib/mentionedEntityBanner'
+import { isBusyError, isEndedGameError, formatCountdown, formatFictionalDuration } from '../lib/gameViewHelpers'
 import type {
   Attribute,
   AttributeBlock,
@@ -77,30 +76,6 @@ import type {
   SubjectInfo,
   TerritoryInfo,
 } from '../types'
-
-function isBusyError(err: unknown): err is BusyError {
-  return typeof err === 'object' && err !== null && (err as { status?: number }).status === 409 && !('ended' in err)
-}
-
-function isEndedGameError(err: unknown): err is EndedGameError {
-  return typeof err === 'object' && err !== null && (err as { ended?: boolean }).ended === true
-}
-
-/// Cuenta atrás de una acción larga en curso (roadmap 2026-07-20, hallazgo real jugando: sin
-/// esto, "vuelve en un rato" no decía nada — ni cuánto quedaba ni cuándo mirar). `busyUntil` ya
-/// llega como ISO string; se compara contra un reloj que se actualiza cada segundo (barato, es
-/// solo aritmética de fechas, el sondeo real que sí llama al backend sigue siendo el de 30s ya
-/// existente). Nunca negativo: si el tick de fondo tarda en confirmar la resolución, se queda en
-/// "resolviendo..." en vez de enseñar un contador en números rojos.
-function formatCountdown(busyUntilIso: string, nowMs: number): string {
-  const remainingMs = new Date(busyUntilIso).getTime() - nowMs
-  if (remainingMs <= 0) return 'resolviendo...'
-  const totalMinutes = Math.ceil(remainingMs / 60_000)
-  if (totalMinutes < 60) return `~${totalMinutes} min`
-  const horas = Math.floor(totalMinutes / 60)
-  const minutos = totalMinutes % 60
-  return minutos === 0 ? `~${horas}h` : `~${horas}h ${minutos}min`
-}
 
 /// Combina los adjuntos del composer con el texto libre en una única acción (docs/14-combate-y-muerte.md
 /// § 3: "composición verbo + objetivo"). Una habilidad (verbo) emparejada con un NPC o un hallazgo
@@ -158,6 +133,7 @@ export function GameView() {
   const [streamingNarration, setStreamingNarration] = useState<string | null>(null)
   const [busyUntil, setBusyUntil] = useState<string | null>(null)
   const [busyActivity, setBusyActivity] = useState<string | null>(null)
+  const [busyDuracionMinutos, setBusyDuracionMinutos] = useState<number | null>(null)
   const [cancelingTransit, setCancelingTransit] = useState(false)
   const [nowTick, setNowTick] = useState(() => Date.now())
   const [activePanel, setActivePanel] = useState<PanelId | null>(null)
@@ -261,7 +237,11 @@ export function GameView() {
   // saqueado) vivía dentro de CombatModal.tsx, remontado limpio cada vez que el popup se abría.
   // Ahora que no hay popup (el composer normal se sustituye por CombatComposer en el mismo sitio),
   // este estado vive aquí y se inicializa a mano en `openCombat()` cada vez que arranca una pelea.
-  const CONDICION_ORDER: Exclude<CondicionFisica, 'MUERTO'>[] = ['ILESO', 'HERIDO', 'GRAVE', 'INCAPACITADO']
+  // 'MUERTO' añadido (2026-07-30, botón "Decapitar") — antes esta lista se topaba en INCAPACITADO
+  // a propósito porque nada en combate podía mostrar MUERTO; ahora que sí puede pasar, tiene que
+  // seguir siendo el peor escalón de todos para que la fusión "nunca empeora sin razón real" de
+  // `handleCombatTurnResolved` (más abajo) siga funcionando igual.
+  const CONDICION_ORDER: CondicionFisica[] = ['ILESO', 'HERIDO', 'GRAVE', 'INCAPACITADO', 'MUERTO']
   const [combatNpcStates, setCombatNpcStates] = useState<CombatNpcDisplay[]>([])
   const [combatBusy, setCombatBusy] = useState(false)
   const [combatEnded, setCombatEnded] = useState(false)
@@ -295,8 +275,11 @@ export function GameView() {
           state ?? {
             slug: n.slug,
             name: n.name,
-            condicion: n.condicionFisica === 'MUERTO' ? 'INCAPACITADO' : n.condicionFisica,
+            // Botón "Decapitar" (2026-07-30) — ya no se colapsa MUERTO a INCAPACITADO, ver
+            // CombatNpcDisplay.condicion.
+            condicion: n.condicionFisica,
             yaSaqueado: n.saqueado,
+            lootedItemNames: n.lootedItemNames,
           }
         )
       }),
@@ -322,7 +305,7 @@ export function GameView() {
   // quedaba encallada para siempre tras looter a un enemigo que no llegó a caer del todo.
   useEffect(() => {
     if (!combatOpen || combatEnded || combatNpcsDisplay.length === 0) return
-    const allResolved = combatNpcsDisplay.every((n) => n.condicion === 'INCAPACITADO' || n.yaSaqueado)
+    const allResolved = combatNpcsDisplay.every((n) => n.condicion === 'INCAPACITADO' || n.condicion === 'MUERTO' || n.yaSaqueado)
     if (allResolved) setCombatEnded(true)
   }, [combatOpen, combatEnded, combatNpcsDisplay])
 
@@ -337,12 +320,19 @@ export function GameView() {
 
   function openCombat() {
     if (!combateIniciado) return
+    // Bug real (auditoría 2026-07-30): un turno puede traer a la vez un hallazgo (`discoveries`)
+    // Y una emboscada (`combateIniciado`) — sin esto, el aviso de "hallazgo descubierto" se quedaba
+    // solapado visualmente por encima del popup de combate recién abierto.
+    setDiscoveries([])
     setCombatNpcStates(
       combateIniciado.npcs.map((n) => ({
         slug: n.slug,
         name: n.name,
-        condicion: n.condicionFisica === 'MUERTO' ? 'INCAPACITADO' : n.condicionFisica,
+        // Botón "Decapitar" (2026-07-30) — ya no se colapsa MUERTO a INCAPACITADO, ver
+        // CombatNpcDisplay.condicion.
+        condicion: n.condicionFisica,
         yaSaqueado: n.saqueado,
+        lootedItemNames: n.lootedItemNames,
       })),
     )
     setCombatEnded(false)
@@ -351,7 +341,15 @@ export function GameView() {
     setCombatSelectedAbilityId(null)
     setCombatSelectedItemId(null)
     setCombatFreeText('')
-    setCombatAwaitingDefense(false)
+    // Bug real (auditoría 2026-07-30): NO se resetea `combatAwaitingDefense` aquí a propósito.
+    // `handleCombatHuir` cierra el popup de inmediato sin esperar la resolución real (fire-and-
+    // forget) — si la huida falla y el NPC contraataca, `handleCombatTurnResolved` deja
+    // `combatAwaitingDefense=true` (turno real, correcto) mientras el popup sigue cerrado y
+    // reaparece el aviso "⚔️ Combatir". Si `openCombat()` lo reseteaba aquí sin más, reabrir el
+    // popup mostraba los controles de ataque en vez del prompt de "Defenderte", aunque el backend
+    // (`Save.pendingNpcAttack`) siga esperando esa defensa de todos modos — confuso aunque no
+    // rompía la mecánica real. El combate SÍ termina en `false` cuando de verdad termina, ver
+    // `onContinue`/`handleCombatHuir`/`finDePartida` en handleCombatTurnResolved.
     setLastInitiativeRoll(null)
     if (activePanel && (COMBAT_DISABLED_CHARACTER_TABS.includes(activePanel) || COMBAT_DISABLED_WORLD_TABS.includes(activePanel))) {
       setActivePanel(null)
@@ -359,8 +357,20 @@ export function GameView() {
     setCombatOpen(true)
   }
 
-  async function submitCombatAction(action: string, opts: { savedActionId?: string }): Promise<boolean> {
-    if (!action.trim() || combatBusy || combatEnded || !saveId) return false
+  async function submitCombatAction(
+    action: string,
+    opts: { savedActionId?: string; lootItemNames?: string[]; allowAfterEnded?: boolean },
+  ): Promise<boolean> {
+    // Bug real jugando en vivo (2026-07-31, "al decapitarlo no se ha cerrado el combate... el
+    // saqueo listaba las 3 cosas en vez de 1"): este guard bloqueaba CUALQUIER acción en cuanto
+    // `combatEnded` era true — correcto para "Actuar"/Huir (no tiene sentido seguir peleando una
+    // vez resuelto), pero Registrar/Decapitar/Saquear son justo las acciones que la pantalla de
+    // combate YA terminado ofrece, y hoy dejaron de cerrar el combate por su cuenta (saqueo parcial,
+    // ver handleSaquearSeleccion) — sin `allowAfterEnded`, esas tres llamadas nunca llegaban ni a
+    // hacer la petición: `handleSaquearSeleccion`/`handleDecapitarSeleccion` marcaban optimistamente
+    // el estado local y luego `submitCombatAction` devolvía `false` en silencio, sin tocar el
+    // backend — el modal de saqueo volvía a mostrar todo porque NADA se había persistido de verdad.
+    if (!action.trim() || combatBusy || (combatEnded && !opts.allowAfterEnded) || !saveId) return false
     setCombatBusy(true)
     // Bug real (2026-07-29, "no veo el cuadro rojo del narrador generando el texto" en combate):
     // combatBusy solo bloquea los botones de CombatPanel — nunca activaba `characterThinking`,
@@ -402,6 +412,7 @@ export function GameView() {
         newInventoryItems,
         logEntryId,
         quests: updatedQuests,
+        newQuestInfo,
         esperandoDefensaJugador,
         npcAbilityUsed,
         nextInitiativeRoll,
@@ -413,6 +424,7 @@ export function GameView() {
         enCombate: true,
         savedActionId: opts.savedActionId,
         npcsInScene: classifyResult.npcsInScene,
+        lootItemNames: opts.lootItemNames,
       })
       // Auditoría 2026-07-28: antes había aquí un downgrade optimista de la condición del NPC
       // basado en `roll.success` (la tirada tabulada de classify) — desde que el intercambio real
@@ -435,6 +447,7 @@ export function GameView() {
         esperandoDefensaJugador,
         npcAbilityUsed,
         nextInitiativeRoll,
+        newQuestInfo,
       })
       // Bug real (2026-07-29, "si muero no hace lo que fijamos que haría"): `condicionFisica` ya
       // llega resuelta a ILESO tras un respawn sobrevivible (nunca MUERTO) — sin `justDied` este
@@ -474,12 +487,92 @@ export function GameView() {
     // Comillas alrededor del nombre (bug real, auditoría 2026-07-28): igual que handleAttack ya
     // hace para que el backend resuelva `explicitTarget` — sin ellas, el saqueo podía alcanzar a
     // cualquier otro NPC derrotado que estuviera también en escena, no solo al pulsado aquí.
-    const ok = await submitCombatAction(`Registro el cuerpo de '${npc.name}'.`, {})
+    const ok = await submitCombatAction(`Registro el cuerpo de '${npc.name}'.`, { allowAfterEnded: true })
     // Rollback (bug real, auditoría 2026-07-28): si el turno falla, el saqueo optimista de arriba
     // dejaba al NPC marcado como saqueado en la UI para siempre, aunque el backend nunca llegó a
     // aplicarlo — el botón de registrar desaparecía sin que el saqueo hubiera ocurrido de verdad.
     if (!ok) {
       setCombatNpcStates((prev) => prev.map((n) => (n.slug === npc.slug ? { ...n, yaSaqueado: false } : n)))
+    }
+  }
+
+  // Botón "Decapitar" (petición explícita, 2026-07-30: "un botón que solo sale cuando está
+  // incapacitado para matarlo") — golpe de gracia determinista contra un enemigo YA incapacitado,
+  // sin tirada (ver `detectsExecuteIntent`/`executeTarget` en turnResolution.ts). Comillas
+  // alrededor del nombre, mismo motivo que `handleCombatRegistrar`: sin ellas, el backend podría
+  // rematar a cualquier otro enemigo derrotado en escena, no solo al pulsado aquí.
+  //
+  // Ajustado tras probarlo en vivo (2026-07-30: "tienes que marcar todos aquellos que quieras
+  // decapitar... un popup con checkbox... y confirmarlo") — recibe la selección YA confirmada
+  // desde el modal (CombatSelectionModal en CombatPanel.tsx), nunca un solo NPC. UN único prompt
+  // mencionando a todos por nombre, SIN comillas — mismo motivo que `handleSaquearSeleccion` más
+  // abajo: con comillas, `explicitTarget` (el regex `'([^']+)'`) solo extrae UN nombre, así que
+  // varios seleccionados a la vez solo rematarían al primero.
+  async function handleDecapitarSeleccion(npcs: CombatNpcDisplay[]) {
+    if (npcs.length === 0) return
+    setCombatNpcStates((prev) => prev.map((n) => (npcs.some((p) => p.slug === n.slug) ? { ...n, condicion: 'MUERTO' } : n)))
+    const nombres = npcs.map((n) => n.name).join(', ')
+    const ok = await submitCombatAction(`Remato a ${nombres}, asestándoles el golpe de gracia final.`, { allowAfterEnded: true })
+    if (!ok) {
+      setCombatNpcStates((prev) => prev.map((n) => (npcs.some((p) => p.slug === n.slug) ? { ...n, condicion: 'INCAPACITADO' } : n)))
+      return
+    }
+    // Rediseño 2026-07-31 (petición explícita: "solo salir o decapitar cierran el combate") —
+    // decapitar es un cierre deliberado, a diferencia de saquear (que se queda abierto por si
+    // dejaste algo sin recoger, ver `handleSaquearSeleccion`). Mismo cierre que "Salir".
+    setCombatOpen(false)
+    setCombateIniciado(null)
+    setCombatAwaitingDefense(false)
+  }
+
+  // Resumen de combate (petición explícita, 2026-07-30: "no se entiende que vencí... quiero que
+  // cuando acabes te saque una vista... con un botón salir y un botón saquear que lance un prompt
+  // ya directamente en personaje para saquear a todos los enemigos derrotados"), ajustado tras
+  // probarlo en vivo ("que pueda marcar los que me quiero quedar") — recibe los NOMBRES de
+  // objetos YA confirmados desde el modal de selección; el backend (`lootItemNames`, ver
+  // turnResolution.ts) solo copia esos, no el loadout entero. UN solo prompt mencionando a cada
+  // enemigo por su nombre real, SIN comillas (mismo motivo que arriba: con comillas solo se
+  // saquearía al primero).
+  //
+  // Bug real (probado en vivo, 2026-07-30): la primera versión de este prompt no nombraba a NADIE
+  // — sin ningún alias de NPC en el texto, `detectNpcsInScene` (turnResolution.ts) nunca los
+  // detectaba "en escena" para este turno, así que `lootMode` nunca se activaba: no aparecía nada
+  // en el inventario y el estado de combate del servidor (`pendingCombatNpcSlugs`) nunca se
+  // tocaba, así que al recargar la página el popup de combate volvía a aparecer como si nada
+  // hubiera pasado.
+  // Saqueo parcial (2026-07-31, petición explícita: "que no cierre la pestaña de combate... si no
+  // saqueas todo el botón sigue para poder saquear lo que dejaste") — a diferencia de Decapitar/
+  // Salir, saquear NUNCA cierra el combate por su cuenta: `quedaAlgoPorSaquear` (CombatPanel.tsx)
+  // ya reacciona solo al estado real de `yaSaqueado` de cada NPC, así que el botón desaparece o
+  // sigue sin necesitar ningún cierre explícito aquí. Solo se marca `yaSaqueado` en los NPC de
+  // `fullyLootedSlugs` (los que tuvieron el 100% de sus objetos marcados en el modal) — el
+  // backend (`NpcState.lootedItemNames`) es quien de verdad decide esto; el resto se queda tal
+  // cual hasta la respuesta real del turno.
+  //
+  // Bug real (2026-08-01, "saqueé 2 de 3 y me volvía a listar los 3"): antes esto solo marcaba
+  // `yaSaqueado` de forma optimista y confiaba en que la respuesta del turno (`combate.npcs`, ver
+  // el merge de `handleCombatTurnResolved`) trajera `lootedItemNames` frescos — pero el saqueo ya
+  // no genera ningún `combateIniciado` en la respuesta (no hay intercambio de combate ni el modelo
+  // narra un slug que copiar), así que ese merge nunca se disparaba y el modal seguía ofreciendo
+  // TODO el loadout la próxima vez, aunque el backend ya lo tuviera bien registrado. Se marca
+  // `lootedItemNames` aquí mismo, con lo que el propio modal ya seleccionó — no hace falta esperar
+  // al servidor para saber esto: el backend nunca rechaza un objeto real de su loadout.
+  async function handleSaquearSeleccion(itemNames: string[], fullyLootedSlugs: string[], itemNamesByNpc: Record<string, string[]>) {
+    const porSaquear = combatNpcsDisplay.filter((n) => (n.condicion === 'INCAPACITADO' || n.condicion === 'MUERTO') && !n.yaSaqueado)
+    if (porSaquear.length > 0) {
+      setCombatNpcStates((prev) =>
+        prev.map((n) => {
+          const added = itemNamesByNpc[n.slug]
+          if (!added || added.length === 0) return n
+          return {
+            ...n,
+            yaSaqueado: fullyLootedSlugs.includes(n.slug) ? true : n.yaSaqueado,
+            lootedItemNames: [...new Set([...n.lootedItemNames, ...added])],
+          }
+        }),
+      )
+      const nombres = porSaquear.map((n) => n.name).join(', ')
+      await submitCombatAction(`Registro los cuerpos de los enemigos derrotados en este combate: ${nombres}.`, { lootItemNames: itemNames, allowAfterEnded: true })
     }
   }
 
@@ -581,6 +674,19 @@ export function GameView() {
     fictionalDateRef.current = fictionalDate
   }, [fictionalDate])
 
+  // Bug real (auditoría 2026-07-30): a diferencia de todos los demás bucles asíncronos largos de
+  // este archivo (cada uno con su propio flag `cancelled` de limpieza de efecto), el sondeo de
+  // reconexión de más abajo (hasta 72 intentos, ~12 min reales) vive dentro de un handler
+  // imperativo (`handleSubmit`), no de un `useEffect` — sin nada que lo corte, seguía llamando al
+  // backend y a `setState` varios minutos después de que la jugadora navegara fuera de esta
+  // pantalla (desmontaje real de GameView).
+  const mountedRef = useRef(true)
+  useEffect(() => {
+    return () => {
+      mountedRef.current = false
+    }
+  }, [])
+
   // Solapar classify con el tecleo (roadmap de velocidad, 2026-07-19): tras ~1,5s sin tocar el
   // composer, se lanza ya la clasificación en segundo plano con `preview:true` — no persiste nada
   // (backend, ver classifyCache.ts), solo precalienta la caché del servidor con este texto exacto.
@@ -623,6 +729,7 @@ export function GameView() {
     setProfessionProgress(save.professionProgress)
     setBusyUntil(save.transit?.busyUntil ?? null)
     setBusyActivity(save.transit?.activity ?? null)
+    setBusyDuracionMinutos(save.transit?.duracionMinutos ?? null)
     setSavedActions(save.savedActions)
     setCombatSlots(save.habilidadSlots)
     setProfessionState(save.profession)
@@ -708,13 +815,20 @@ export function GameView() {
     setDetailInsertHandler(null)
   }
 
+  // Rediseño de equipar (2026-07-30, petición explícita: "que al clicarlo se abra un panel donde
+  // aparece por qué lo puedo sustituir" — antes una ranura OCUPADA abría el detalle simple
+  // (`handleItemDetail`, solo "Quitar", sin forma de sustituir directo) y una VACÍA abría un picker
+  // sin filtrar por compatibilidad. Ahora CUALQUIER ranura abre el mismo panel — lo puesto ahora
+  // mismo (si lo hay) + candidatos ya filtrados por `isCompatibleWithSlot` (equipSlots.ts).
   function handleSlotClick(slot: EquipSlot, equipped: InventoryItemInfo | undefined) {
-    if (equipped) {
-      handleItemDetail(equipped)
-    } else {
-      setDetailTarget({ slotLabel: SLOT_LABEL[slot], kind: 'slotPicker', slot, options: inventory.filter((i) => !i.slot) })
-      setDetailInsertHandler(null)
-    }
+    setDetailTarget({
+      kind: 'slotManager',
+      slot,
+      slotLabel: SLOT_LABEL[slot],
+      equipped,
+      options: inventory.filter((i) => !i.slot && i.id !== equipped?.id && isCompatibleWithSlot(i, slot)),
+    })
+    setDetailInsertHandler(null)
   }
 
   function handleEnciclopediaInsert(chip: { icon: string; label: string; description?: string }) {
@@ -802,6 +916,7 @@ export function GameView() {
     esperandoDefensaJugador: boolean
     npcAbilityUsed: { npcName: string; abilityName: string; rol: 'ataque' | 'defensa' } | null
     nextInitiativeRoll: { ganador: 'jugador' | 'npc'; jugadorTirada: number; npcTirada: number } | null
+    newQuestInfo?: { title: string; objetivo: string } | null
   }) {
     // `buildEntityBanner` se calcula FUERA del updater (bug real, 2026-07-24, "sigue sin salir la
     // imagen" pese a candidatos válidos): StrictMode invoca dos veces en dev cualquier función
@@ -822,6 +937,7 @@ export function GameView() {
         entityBanner,
         combate: true,
         npcAbilityUsed: params.npcAbilityUsed ?? undefined,
+        newQuest: params.newQuestInfo ?? undefined,
       },
     ])
     if (params.newInventoryItems.length > 0) {
@@ -851,8 +967,11 @@ export function GameView() {
           const real: CombatNpcDisplay = {
             slug: n.slug,
             name: n.name,
-            condicion: n.condicionFisica === 'MUERTO' ? 'INCAPACITADO' : n.condicionFisica,
+            // Botón "Decapitar" (2026-07-30) — ya no se colapsa MUERTO a INCAPACITADO, ver
+            // CombatNpcDisplay.condicion.
+            condicion: n.condicionFisica,
             yaSaqueado: n.saqueado,
+            lootedItemNames: n.lootedItemNames,
           }
           const local = bySlug.get(n.slug)
           if (!local) {
@@ -865,6 +984,11 @@ export function GameView() {
           const avanza = CONDICION_ORDER.indexOf(real.condicion) > CONDICION_ORDER.indexOf(local.condicion)
           if (avanza || (real.yaSaqueado && !local.yaSaqueado)) {
             bySlug.set(n.slug, real)
+          } else if (real.lootedItemNames.length > local.lootedItemNames.length) {
+            // Saqueo parcial (2026-07-31): `lootedItemNames` solo crece, aunque `condicion`/
+            // `yaSaqueado` no hayan cambiado este turno — sin esto, la lista de "qué te falta por
+            // llevarte" se quedaba congelada en lo que había al abrir el combate.
+            bySlug.set(n.slug, { ...local, lootedItemNames: n.lootedItemNames })
           }
         }
         return Array.from(bySlug.values())
@@ -962,6 +1086,11 @@ export function GameView() {
     return () => {
       cancelled = true
     }
+    // Deliberadamente solo `id`: este efecto debe correr una única vez por navegación de ruta
+    // (crear o cargar), nunca de nuevo porque `selectedWorld`/`selectedCharacter`/
+    // `selectedDificultad` (SessionContext) cambien de referencia por otra razón — eso repetiría
+    // `createNewSave`/`loadExistingSave` sin que el jugador haya navegado a ningún sitio nuevo.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id])
 
   // Pausar/reanudar la partida de verdad al salir (roadmap 2026-07-20: "quiero que la partida se
@@ -1036,6 +1165,7 @@ export function GameView() {
         newInventoryItems,
         logEntryId,
         quests: updatedQuests,
+        newQuestInfo,
       } = await requestTurnNarrate(
         { saveId, action, classification, roll, travel, npcsInScene: classifyResult.npcsInScene },
         {
@@ -1079,6 +1209,7 @@ export function GameView() {
           createdAt: new Date().toISOString(),
           xpDelta: progression.xpDelta > 0 ? progression.xpDelta : undefined,
           entityBanner,
+          newQuest: newQuestInfo ?? undefined,
         },
       ])
       if (narration.newItem) {
@@ -1117,6 +1248,7 @@ export function GameView() {
       } else if (isBusyError(err)) {
         setBusyUntil(err.busyUntil)
         setBusyActivity(err.activity)
+        setBusyDuracionMinutos(err.duracionMinutos ?? null)
         setCharacterLog((prev) => prev.slice(0, -1))
       } else {
         // Sondeo de reconexión (2026-07-23): antes se comprobaba una sola vez y ya se avisaba de
@@ -1138,8 +1270,9 @@ export function GameView() {
         setTimedThinkingText('Esperando confirmación del narrador...')
         let resolved = false
         let lastSuccessfulSave: Awaited<ReturnType<typeof getSave>> | null = null
-        for (let attempt = 0; attempt < MAX_POLL_ATTEMPTS && !resolved; attempt++) {
+        for (let attempt = 0; attempt < MAX_POLL_ATTEMPTS && !resolved && mountedRef.current; attempt++) {
           if (attempt > 0) await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL_MS))
+          if (!mountedRef.current) break
           try {
             const save = await getSave(saveId)
             lastSuccessfulSave = save
@@ -1151,7 +1284,7 @@ export function GameView() {
             // Se reintenta en el siguiente sondeo — no se distingue de "aún no ha terminado".
           }
         }
-        if (!resolved) {
+        if (!resolved && mountedRef.current) {
           if (lastSuccessfulSave) {
             syncFromSave(lastSuccessfulSave)
             setCharacterLog((prev) => [
@@ -1238,6 +1371,11 @@ export function GameView() {
       cancelled = true
       clearInterval(interval)
     }
+    // Deliberadamente solo `saveId`: `buildEntityBanner` no está memoizada (nueva referencia cada
+    // render) pero lee todo lo reactivo que necesita de refs (enciclopediaIndexRef,
+    // recentlyShownEntitiesRef, entityBannerTurnRef) — incluirla aquí recrearía el intervalo de
+    // 10 minutos en cada render, rompiendo la cadencia real del sondeo.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [saveId])
 
   // Mientras el personaje está en una acción por tiempo (extendida/larga), sondea la partida
@@ -1427,7 +1565,12 @@ export function GameView() {
               combatAbilities={savedActions.filter((a) => a.category === 'combate')}
               selectedAbilityId={combatSelectedAbilityId}
               onSelectAbility={setCombatSelectedAbilityId}
-              combatItems={inventory.filter((i) => !i.slot)}
+              // Consumibles de combate (2026-07-30, petición explícita: "raciones y cataplasma
+              // catalogalo como Consumible que tendrá 6 slots en equipo donde podrás añadir los
+              // consumibles que quieres usar en el combate") — antes CUALQUIER objeto sin ranura
+              // (mochila entera, incluidos documentos/materiales) contaba como "usable" en
+              // combate; ahora solo lo que el jugador equipó a propósito en una de las 6 ranuras.
+              combatItems={inventory.filter((i) => isConsumibleSlot(i.slot))}
               selectedItemId={combatSelectedItemId}
               onSelectItem={setCombatSelectedItemId}
               busy={combatBusy}
@@ -1436,11 +1579,19 @@ export function GameView() {
               lastInitiativeRoll={lastInitiativeRoll}
               onActuar={handleCombatActuar}
               onRegistrar={handleCombatRegistrar}
+              onDecapitarSeleccion={handleDecapitarSeleccion}
               onHuir={handleCombatHuir}
               onContinue={() => {
                 setCombatOpen(false)
                 setCombateIniciado(null)
+                // Este combate ya terminó de verdad (todos los NPCs resueltos, ver `combatEnded`
+                // más arriba) — mismo criterio que `openCombat()` ya no puede asumir por su
+                // cuenta: aquí sí es seguro limpiar `combatAwaitingDefense`, para que el PRÓXIMO
+                // combate (uno nuevo, sin relación) no herede por error un "toca defender" de
+                // este que ya se cerró.
+                setCombatAwaitingDefense(false)
               }}
+              onSaquearSeleccion={handleSaquearSeleccion}
               onAbilityDetail={handleAbilityDetail}
               onItemDetail={handleItemDetail}
               enciclopedia={enciclopediaData}
@@ -1471,8 +1622,14 @@ export function GameView() {
         <div className="flex flex-wrap items-center justify-center gap-2 border-t border-iron-800 bg-wood-950/90 px-4 py-2 text-center text-xs text-wood-400">
           <span>
             <span className="gem mr-1.5 align-middle" /> Ocupado{busyActivity ? ` con "${busyActivity}"` : ''} — vuelve en{' '}
-            <span className="font-mono font-semibold text-accent-300">{formatCountdown(busyUntil, nowTick)}</span> (sobre las{' '}
-            {new Date(busyUntil).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}), se resolverá solo.
+            <span className="font-mono font-semibold text-accent-300">{formatCountdown(busyUntil, nowTick)}</span>
+            {busyDuracionMinutos ? (
+              <>
+                {' '}
+                (<span className="font-semibold text-wood-200">{formatFictionalDuration(busyDuracionMinutos)}</span> en {worldName})
+              </>
+            ) : null}{' '}
+            (sobre las {new Date(busyUntil).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}), se resolverá solo.
           </span>
           <button
             onClick={handleCancelTransit}
@@ -1575,6 +1732,9 @@ export function GameView() {
               xp={xp}
               pendingAttributePoints={pendingAttributePoints}
               onSpendPoint={handleSpendAttributePoint}
+              condicionFisica={condicionFisica}
+              energia={energia}
+              energiaMax={energiaMax}
               factionsStatus={factionsStatus}
               currentProfession={profession}
               onAdoptProfession={handleAdoptProfession}

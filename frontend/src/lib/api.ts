@@ -75,7 +75,9 @@ export interface ClassifyResponse {
   duracionMinutos?: number
   produccion?: string
   // Presente en bandas extendida/larga — el turno ya quedó resuelto en diferido, no hace falta narrar.
-  transit?: { busyUntil: string }
+  // `duracionMinutos` (2026-07-30, petición explícita: mostrar tiempo real Y ficticio juntos en
+  // la espera) — minutos de FICCIÓN que dura la acción, antes de comprimir a espera real.
+  transit?: { busyUntil: string; duracionMinutos?: number | null }
   // Presente cuando la acción se resolvió como un viaje por el grafo de ubicaciones.
   travel?: TravelResolution | null
   // Revelado progresivo (docs/14-combate-y-muerte.md § 3.1) — 2-4 hallazgos ya decididos por el
@@ -88,6 +90,7 @@ export interface BusyError {
   status: 409
   activity: string
   busyUntil: string
+  duracionMinutos?: number | null
 }
 
 export interface EndedGameError {
@@ -119,7 +122,7 @@ export async function requestTurnClassify(params: {
       const err: EndedGameError = { status: 409, ended: true, endedAt: body.endedAt }
       throw err
     }
-    const err: BusyError = { status: 409, activity: body.activity, busyUntil: body.busyUntil }
+    const err: BusyError = { status: 409, activity: body.activity, busyUntil: body.busyUntil, duracionMinutos: body.duracionMinutos ?? null }
     throw err
   }
   if (!response.ok) {
@@ -160,6 +163,11 @@ export interface NarrateResponse {
   /// patrón ya arreglado antes para el inventario (newInventoryItems). Lista completa, no un
   /// delta (ver comentario en NarrateAndPersistResult, backend).
   quests: QuestInfo[]
+  /// Notificación de misión aceptada (2026-07-31, petición explícita: "que aparezca en la
+  /// narración del personaje el título de la misión y el objetivo") — a diferencia de `quests`
+  /// (lista completa, sin delta), esto marca que ESTE turno creó una misión nueva. `null` en la
+  /// inmensa mayoría de turnos, que no crean ninguna.
+  newQuestInfo: { title: string; objetivo: string } | null
   /// Rediseño del turno de combate (2026-07-28) — true cuando el backend decidió que un NPC gana
   /// la iniciativa del SIGUIENTE intercambio: la próxima acción del jugador debe tratarse como
   /// defensa a ciegas (elige una habilidad sin saber qué usará el NPC), no como ataque normal.
@@ -199,6 +207,8 @@ export async function requestTurnNarrate(
     /// Auditoría de rendimiento 2026-07-28 — el mismo `npcsInScene` que devolvió
     /// requestTurnClassify para esta acción, reenviado tal cual (ver NpcSceneSnapshot).
     npcsInScene?: NpcSceneSnapshot
+    /// Saqueo selectivo (petición explícita, 2026-07-30) — ver el mismo campo en turnResolution.ts.
+    lootItemNames?: string[]
   },
   handlers?: TurnNarrateHandlers,
 ): Promise<NarrateResponse> {
@@ -320,7 +330,7 @@ export interface SaveDetail {
   territories: TerritoryInfo[]
   buildings: BuildingInfo[]
   subjects: SubjectInfo[]
-  transit: { activity: string; busyUntil: string } | null
+  transit: { activity: string; busyUntil: string; duracionMinutos?: number | null } | null
   savedActions: SavedActionInfo[]
   habilidadSlots: number
   profession: string | null
@@ -595,11 +605,19 @@ export interface EnciclopediaNpcInfo {
   raza?: string | null
   clase?: string | null
   ataqueBase: EnciclopediaAtaqueBase
+  /// Loadout saqueable (petición explícita, 2026-07-30: "que pueda marcar los objetos que me
+  /// quiero quedar") — mismo dato crudo de NpcItem, contenido de catálogo (no depende de la
+  /// partida), para que el modal de saqueo sepa de antemano qué lleva encima cada NPC.
+  items: { name: string; cantidad: number; notas: string | null }[]
 }
 
 export interface EnciclopediaItemInfo {
   slug: string
   name: string
+  /// Formas cortas/coloquiales de referirse al objeto (2026-07-30, auditoría "revisar partida" —
+  /// linkability) — mismo campo que NPC/fauna, para que el texto clicable (enciclopediaIndex.ts)
+  /// no dependa de que la narración use el nombre EXACTO y completo de catálogo.
+  aliases: string[]
   category: string
   /// Categorización mecánica (2026-07-29) — ver itemTaxonomy.ts (backend) / ItemTipo (types.ts).
   tipo: ItemTipo
@@ -659,6 +677,7 @@ export interface EnciclopediaFaunaFloraInfo {
 export interface EnciclopediaLocationInfo {
   slug: string
   name: string
+  aliases: string[]
   region: string
   kind: string
   description: string
@@ -711,6 +730,7 @@ export interface EnciclopediaRazaInfo {
 export interface EnciclopediaPersonajeInfo {
   slug: string
   name: string
+  aliases?: string[]
   raza: string
   icon: string
   personalidad: string

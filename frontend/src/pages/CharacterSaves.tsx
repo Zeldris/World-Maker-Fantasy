@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { pregeneratedCharacters, worlds } from '../data/mock'
-import { useSession } from '../context/SessionContext'
+import { useSession } from '../context/useSession'
 import { Button } from '../components/Button'
 import { StepDots } from '../components/StepDots'
 import { listSaves, deleteSave, restartSave, type SaveSummary } from '../lib/api'
@@ -110,7 +110,7 @@ export function CharacterSaves() {
   useEffect(() => {
     if (world) setSelectedWorld(world)
     if (character) setSelectedCharacter(character)
-  }, [world, character])
+  }, [world, character, setSelectedWorld, setSelectedCharacter])
 
   useEffect(() => {
     if (!world || !character) return
