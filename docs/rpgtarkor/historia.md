@@ -65,4 +65,4 @@ Nadie sabe todavía si es consecuencia del último asalto a la isla, la reacció
 
 ---
 
-**Ver también:** [Génesis y Formación](genesis.md) · [Áreas y geografía](areas.md) · [Razas](razas.md) · [Flora y fauna](flora-fauna.md) · [Items](items.md) · [Personajes](personajes.md) · [NPCs](npcs.md)
+**Ver también:** [Cronología mítica](cronologia-mitica.md) · [Cronología](cronologia.md) · [Génesis y Formación](genesis.md) · [Áreas y geografía](areas.md) · [Razas](razas.md) · [Flora y fauna](flora-fauna.md) · [Items](items.md) · [Personajes](personajes.md) · [NPCs](npcs.md)

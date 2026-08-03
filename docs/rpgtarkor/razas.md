@@ -77,4 +77,4 @@ Sin reino propio, los Ilvenar viven de corte en corte Kelife y de camino en cami
 
 ---
 
-**Ver también:** [Génesis y Formación](genesis.md) · [Áreas y geografía](areas.md) · [Historia y presente](historia.md) · [Flora y fauna](flora-fauna.md) · [Items](items.md) · [Personajes](personajes.md) · [NPCs](npcs.md)
+**Ver también:** [Cronología mítica](cronologia-mitica.md) · [Cronología](cronologia.md) · [Génesis y Formación](genesis.md) · [Áreas y geografía](areas.md) · [Historia y presente](historia.md) · [Flora y fauna](flora-fauna.md) · [Items](items.md) · [Personajes](personajes.md) · [NPCs](npcs.md)

@@ -5,7 +5,7 @@ import { energiaMaxFor } from '../../services/energy.js';
 import { destinationsFrom } from '../../services/travel.js';
 import { type Requisitos } from '../../services/requisitos.js';
 import { scopeFor } from '../../services/npcScene.js';
-import { effectiveAttributes } from '../../services/equipment.js';
+import { effectiveAttributes, effectiveSecondaryAttributes, type StatBonusMap } from '../../services/equipment.js';
 import { imageUrlsFor } from '../../lib/imageAssets.js';
 import type { AttributeBlock } from '../../services/dice.js';
 import { normalizeSecondaryAttributes } from '../../services/secondaryAttributes.js';
@@ -52,6 +52,13 @@ export async function detailRoutes(app: FastifyInstance) {
     // fila de InventoryItem; se resuelven aquí por `catalogSlug` para no repetir la consulta por
     // objeto. Objetos sin `catalogSlug` (narrativos sueltos, `newItem` del modelo) quedan sin tier.
     const catalogSlugs = [...new Set(save.inventoryItems.map((i) => i.catalogSlug).filter((s): s is string => Boolean(s)))];
+
+    // Solo lo EQUIPADO cuenta para bonificadores (2026-08-03, bug real encontrado de paso: esta
+    // consulta trae TODO el inventario sin filtrar por `slot`, a diferencia de turn.ts/worldTick.ts
+    // que sí filtran en la propia query — `effectiveAttributes` no filtra por dentro, así que un
+    // arma sin equipar en la mochila estaba inflando `energiaMax` más abajo). Mismo criterio que
+    // el comentario de `effectiveAttributes`/`effectiveDefense`: la mochila nunca suma.
+    const equippedItems = save.inventoryItems.filter((i) => i.slot !== null);
 
     // Marca de misión en el mapa (punto 3 del diseño de Gistera Koh, 2026-07-23): el mapa necesita
     // saber en qué Location dibujar el "!" — bien la del propio `targetLocationId`, bien la
@@ -135,7 +142,7 @@ export async function detailRoutes(app: FastifyInstance) {
       characterOrigin: save.characterOrigin,
       characterMotivation: save.characterMotivation,
       attributes: save.attributes,
-      secondaryAttributes: normalizeSecondaryAttributes(save.secondaryAttributes),
+      secondaryAttributes: effectiveSecondaryAttributes(normalizeSecondaryAttributes(save.secondaryAttributes), equippedItems),
       portraitInitial: save.portraitInitial,
       fictionalDateLabel: save.worldState?.fictionalDateLabel ?? 'Día 1, mañana',
       // Reputación de facción (roadmap 2026-07-19) — expuesto ya aunque todavía no haya panel
@@ -151,8 +158,7 @@ export async function detailRoutes(app: FastifyInstance) {
           description: i.description,
           origin: i.origin,
           slot: i.slot,
-          statBonusAttribute: i.statBonusAttribute,
-          statBonusAmount: i.statBonusAmount,
+          statBonuses: i.statBonuses as StatBonusMap | null,
           catalogSlug: i.catalogSlug,
           tier: catalogItem?.tier,
           requisitos: catalogItem?.requisitos as Requisitos | null | undefined,
@@ -163,6 +169,10 @@ export async function detailRoutes(app: FastifyInstance) {
           // campos más para que el frontend pueda agrupar/filtrar por tipo/categoría real.
           tipo: catalogItem?.tipo,
           category: catalogItem?.category,
+          // Efecto especial (2026-08-03, `tipo: ESPECIAL`) — mismo criterio que tier/requisitos:
+          // siempre la definición ACTUAL del catálogo, nunca una foto congelada en InventoryItem.
+          effectKey: catalogItem?.effectKey ?? null,
+          effectDescription: catalogItem?.effectDescription ?? null,
           // Imagen real de la Enciclopedia (petición explícita de la usuaria, 2026-07-24: "las
           // imágenes no salen" al ver un objeto desde Inventario/Equipo) — `DetailModal.tsx`
           // (kind:'item') nunca recibía esto, así que solo mostraba el emoji genérico aunque la
@@ -268,7 +278,7 @@ export async function detailRoutes(app: FastifyInstance) {
       // deriva de Constitución EFECTIVA (con equipo, mismo criterio que narrateAndPersistTurn),
       // nunca se persiste (evita que desincronice si sube el atributo o cambia de equipo).
       energia: save.energia,
-      energiaMax: energiaMaxFor(effectiveAttributes(save.attributes as AttributeBlock, save.inventoryItems).constitucion),
+      energiaMax: energiaMaxFor(effectiveAttributes(save.attributes as AttributeBlock, equippedItems).constitucion),
       dificultad: save.dificultad,
       deathCount: save.deathCount,
       endedAt: save.endedAt?.toISOString() ?? null,

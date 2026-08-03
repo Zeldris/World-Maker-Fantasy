@@ -138,21 +138,21 @@ export const loreChunks: LoreChunkInput[] = [
   {
     type: 'CLAN',
     title: 'Cultura y liderazgo de los clanes orcos',
-    text: 'En la mayoría de los clanes orcos, la Terk\'ikar (Jefa, casi siempre hembra) gobierna el día a día — asentamientos, disputas, migraciones. El Kort\'ikar (Jefe de Guerra, casi siempre macho) lidera en combate. Es costumbre cultural asentada, no ley escrita; se puede llegar a Kort\'ikar por duelo de honor, como hizo (y murió intentándolo) el padre de Gorhorn contra el Clan Serhu.',
+    text: 'En la mayoría de los clanes orcos, la Terk\'ikar (Jefa, casi siempre hembra) gobierna el día a día — asentamientos, disputas, migraciones. El Kort\'ikar (Jefe de Guerra, casi siempre macho) lidera en combate. Es costumbre cultural asentada, no ley escrita; se puede llegar a Kort\'ikar por duelo de honor.',
     tags: ['clanes', 'terkikar', 'kortikar', 'liderazgo-orco'],
     sourceDoc: 'areas.md',
   },
   {
     type: 'CLAN',
     title: 'Clan Maktor (el clan de Gorhorn)',
-    text: 'Clan de las Llanuras del Viento Rojo, aniquilado como carne de cañón por el mando Goirntes en las escaramuzas fronterizas de la Concordia de Hierro. Gorhorn es, hasta donde él sabe, el único superviviente. Sin Terk\'ikar ni Kort\'ikar vivos, el nombre no tiene ya peso político ni militar — restaurarlo es una cuestión de honor personal para Gorhorn.',
+    text: 'Clan de las Llanuras del Viento Rojo, aniquilado por una incursión Goirnte orquestada para desprestigiar al Clan Serhu (que se quedó mirando sin intervenir). El padre de Gorhorn, cansado del yugo Serhu, lideraba una revuelta cuando ocurrió, y murió en ella. Gorhorn es, hasta donde él sabe, el único superviviente. Sin Terk\'ikar ni Kort\'ikar vivos, el nombre no tiene ya peso político ni militar — restaurarlo es una cuestión de honor personal para Gorhorn.',
     tags: ['clan-maktor', 'gorhorn'],
     sourceDoc: 'areas.md',
   },
   {
     type: 'CLAN',
     title: 'Clan Serhu',
-    text: 'Clan vecino y rival de los Maktor en las Llanuras del Viento Rojo. El padre de Gorhorn murió disputando el puesto de Kort\'ikar de este clan en un duelo de honor. Sigue en pie. Su relación con Gorhorn queda abierta: puede ser un puente hacia comunidad o una fuente de rencor.',
+    text: 'Clan vecino y rival de los Maktor en las Llanuras del Viento Rojo, fundado generaciones atrás por el usurpador Ketg. Se quedaron mirando sin intervenir mientras los Goirntes aniquilaban lo que quedaba de los Maktor. Sigue en pie. Su relación con Gorhorn queda abierta: puede ser un puente hacia comunidad o una fuente de rencor, ahora con una razón concreta y reciente (la inacción durante la caída de los Maktor).',
     tags: ['clan-serhu', 'gorhorn'],
     sourceDoc: 'areas.md',
   },
@@ -339,7 +339,7 @@ export const loreChunks: LoreChunkInput[] = [
   {
     type: 'NPC',
     title: "Kort'ikar Torgash, del Clan Serhu",
-    text: 'Torgash es el Kort\'ikar (Jefe de Guerra) del Clan Serhu, vecino y rival histórico del extinto Clan Maktor de Gorhorn. Veterano de las escaramuzas fronterizas, ascendió al puesto cuando su predecesor murió en el frente — el mismo predecesor al que el padre de Gorhorn retó y perdió la vida, en un duelo de honor que Torgash recuerda y respeta. Busca, en silencio y contra la costumbre, unificar a los clanes orcos para retirarlos de la guerra de la Concordia de Hierro: los Serhu vieron de cerca lo que la Concordia hizo con los Maktor y no quieren ser los siguientes. Es grave, económico con las palabras, y pragmático hasta rozar la herejía cultural — prefiere pactar a duelar. Detesta a la Concordia en silencio. Se le encuentra en el Campamento del Clan Serhu, o en ruta si algo lo saca de allí.',
+    text: 'Torgash es el Kort\'ikar (Jefe de Guerra) del Clan Serhu, vecino y rival histórico del extinto Clan Maktor de Gorhorn. Veterano de las escaramuzas fronterizas, ascendió al puesto cuando su predecesor murió en el frente. Carga en silencio con el peso de la incursión Goirnte que aniquiló al Clan Maktor mientras su propio clan se quedaba mirando sin intervenir — no fue decisión suya, era joven y sin mando entonces. Busca, en silencio y contra la costumbre, unificar a los clanes orcos para retirarlos de la guerra de la Concordia de Hierro: los Serhu vieron de cerca lo que la Concordia hizo con los Maktor y no quieren ser los siguientes. Es grave, económico con las palabras, y pragmático hasta rozar la herejía cultural — prefiere pactar a duelar. Detesta a la Concordia en silencio. Se le encuentra en el Campamento del Clan Serhu, o en ruta si algo lo saca de allí.',
     tags: ['torgash', 'kortikar', 'clan-serhu', 'npc-principal'],
     sourceDoc: 'npcs.md',
   },

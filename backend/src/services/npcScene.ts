@@ -1,6 +1,6 @@
 import { prisma } from '../lib/prisma.js';
 import { normalizeText, fuzzyMatchCandidates, fuzzyMatchesAnyStem } from './travel.js';
-import type { NpcKind, CondicionFisica, Temperamento, WeaponCategory, EquipSlot } from '@prisma/client';
+import type { NpcKind, CondicionFisica, Temperamento, WeaponCategory, EquipSlot, Prisma } from '@prisma/client';
 import type { Attribute, AttributeBlock } from './dice.js';
 
 /// Detección determinista de "NPC en escena" (docs/12-mundo-estructurado.md § 2.5) — sin llamada
@@ -21,10 +21,10 @@ export interface NpcItemInScene {
   /// InventoryItem real si se saquea, para que el frontend sepa dónde encaja sin esperar a
   /// recargar la partida (ver `NewInventoryItemInfo.equipSlot`, turnResolution.ts).
   equipSlot: EquipSlot | null;
-  /// Bonificador de equipo (2026-07-19) — se copia al InventoryItem real si se saquea (ver
-  /// turnResolution.ts), para que un hacha robada siga dando su bonificador al equiparla.
-  statBonusAttribute: string | null;
-  statBonusAmount: number | null;
+  /// Bonificadores de equipo (2026-07-19, mapa múltiple desde 2026-08-03) — se copian al
+  /// InventoryItem real si se saquea (ver turnResolution.ts), para que un hacha robada siga
+  /// dando su bonificador al equiparla.
+  statBonuses: Prisma.JsonValue | null;
   /// Slug de ItemCatalog (sesión de diseño 2026-07-23) — se copia al InventoryItem.catalogSlug
   /// real si se saquea, para poder mirar sus requisitos de equipar (ver requisitos.ts).
   catalogSlug: string;
@@ -97,6 +97,19 @@ interface NpcWithAliases {
   aliases: string[];
 }
 
+// Auditoría 2026-08-02 ("revisar partida"): palabras/verbos MUY comunes del propio juego que están
+// a distancia Levenshtein ≤2 de un alias real de un solo NPC — mismo tipo de colisión que
+// ATTACK_FUZZY_EXCLUSIONS más abajo ("hierro"~"hiero"), pero para la detección de NPCs en escena.
+// Confirmado jugando en vivo, las dos veces con NpcState real de por medio (no solo narrativo):
+// - "lugar"~"hagar" (Hagar, distancia 2: l→h, u→a) — el hecho de sesión del turno 1 ("...este
+//   lugar ha sido escenario...") lo colaba en npcsInScene DURANTE TODA LA PARTIDA, hasta el punto
+//   de hijackear un intercambio de combate real contra él en vez del enemigo de verdad.
+// - "remato"~"rebano" (Múrgol, distancia 2: m→b, t→n) — "remato"/"remata" es el verbo fijo de
+//   CUALQUIER decapitar/rematar del juego, así que esta colisión se repite siempre que se remata.
+// Si se añade un NPC nuevo cuyo alias corto choque con una palabra de uso normal, añadirla aquí
+// en vez de tocar la tolerancia a erratas en general (sigue haciendo falta para erratas reales).
+const NPC_ALIAS_FUZZY_EXCLUSIONS = new Set(['lugar', 'remato', 'remata', 'rematar', 'remate', 'rematan', 'rematamos']);
+
 /// Puro: dado un texto y una lista de NPCs con sus aliases, devuelve los ids que matchean.
 /// Exportado sin envolver en la consulta a Prisma para poder testearlo aparte, como travel.ts.
 ///
@@ -108,7 +121,7 @@ interface NpcWithAliases {
 /// palabras de 5+ letras (evita falsos positivos en palabras cortas y comunes).
 export function matchNpcAliases(text: string, npcs: NpcWithAliases[]): string[] {
   const normalized = normalizeText(text);
-  const haystackWords = fuzzyMatchCandidates(normalized);
+  const haystackWords = fuzzyMatchCandidates(normalized).filter((w) => !NPC_ALIAS_FUZZY_EXCLUSIONS.has(w));
   const matched: string[] = [];
   for (const npc of npcs) {
     const hit = npc.aliases.some((alias) => {
@@ -234,8 +247,7 @@ export async function detectNpcsInScene(params: {
         notas: i.notas,
         description: i.item.description,
         equipSlot: i.item.equipSlot,
-        statBonusAttribute: i.item.statBonusAttribute,
-        statBonusAmount: i.item.statBonusAmount,
+        statBonuses: i.item.statBonuses,
         catalogSlug: i.item.slug,
         category: i.item.category,
         tipoArma: i.item.tipoArma,
@@ -437,18 +449,30 @@ export interface AmbientEncounterCandidate {
   slug: string;
   name: string;
   role: string;
+  /// Peso relativo de selección (docs/16-poblacion-dinamica.md, 2026-08-03: antes se elegía
+  /// siempre uniforme entre TODA la fauna itinerante del mundo, sin mirar abundancia real ni
+  /// región). Por defecto 1 — mismo comportamiento uniforme que antes si no se especifica.
+  weight?: number;
 }
 
-/// Puro: elige al azar un candidato de encuentro ambiental de entre los itinerantes disponibles
+/// Puro: elige un candidato de encuentro ambiental con probabilidad proporcional a `weight`
 /// (checklist 2026-07-21/22, punto 3 — "más NPCs/fauna itinerante para encuentros casuales más
-/// frecuentes"). Exportado sin envolver en Math.random directamente en turnResolution.ts para
-/// poder testearlo con una función de aleatoriedad inyectada, como el resto del proyecto.
+/// frecuentes"; ponderado por población real desde docs/16-poblacion-dinamica.md). Exportado sin
+/// envolver en Math.random directamente en turnResolution.ts para poder testearlo con una función
+/// de aleatoriedad inyectada, como el resto del proyecto.
 export function pickAmbientEncounterCandidate(
   candidates: AmbientEncounterCandidate[],
   random: () => number = Math.random,
 ): AmbientEncounterCandidate | null {
   if (candidates.length === 0) return null;
-  return candidates[Math.floor(random() * candidates.length)];
+  const totalWeight = candidates.reduce((sum, c) => sum + (c.weight ?? 1), 0);
+  if (totalWeight <= 0) return null;
+  let roll = random() * totalWeight;
+  for (const candidate of candidates) {
+    roll -= candidate.weight ?? 1;
+    if (roll < 0) return candidate;
+  }
+  return candidates[candidates.length - 1];
 }
 
 function itemsLine(items: NpcItemInScene[]): string {

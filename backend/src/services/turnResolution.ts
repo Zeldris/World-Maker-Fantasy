@@ -23,7 +23,7 @@ import { npcCombatAbilitiesFor, chooseNpcAbility } from './npcCombatAbilities.js
 import { detectHarvest, harvestBlockFor } from './harvest.js';
 import { detectItemReference, detectMedicalItemUse, detectEnergyItemUse, missingItemBlockFor } from './itemReference.js';
 import { energiaMaxFor, nextEnergia } from './energy.js';
-import { WEAPON_ABILITY_LEVEL_AVANZADA, dualWieldAdjustedDifficulty, type EquippedWeaponSlot } from './weaponAbilities.js';
+import { WEAPON_ABILITY_LEVEL_AVANZADA, dualWieldAdjustedDifficulty, weaponCategoryForRealAbilityName, type EquippedWeaponSlot } from './weaponAbilities.js';
 import { syncDynamicCombatAbilities } from './dynamicAbilities.js';
 import {
   CRAFTING_RECIPES,
@@ -37,6 +37,7 @@ import { shortfallLabel } from './requisitos.js';
 import { classAbilityUnlocksFor } from './classAbilities.js';
 import { protectedFactsFor } from './protectedFacts.js';
 import { lintRegionMismatch } from './narrationLint.js';
+import { decrementPopulationOnDeath } from './population.js';
 import {
   destinationsFrom,
   normalizeText,
@@ -44,6 +45,7 @@ import {
   findFuzzyStemMatch,
   initialLocationSlugFor,
   matchDestination,
+  detectsVagueMovementIntent,
   type TravelResolution,
 } from './travel.js';
 import { detectsRestIntent, type Produccion } from './timedActions.js';
@@ -239,8 +241,7 @@ export interface NewInventoryItemInfo {
   description: string;
   origin: string | null;
   slot: null;
-  statBonusAttribute: string | null;
-  statBonusAmount: number | null;
+  statBonuses: Prisma.JsonValue | null;
   /// Ranura de equipo real del catálogo (2026-07-30, "categorizar por ranura") — null si no hay
   /// catalogSlug (narrativo suelto) o si el catálogo aún no la tiene asignada. Sin esto, un objeto
   /// recién saqueado/crafteado no sabía en qué hueco encaja hasta recargar la partida entera.
@@ -869,28 +870,6 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     );
   }
 
-  // Sugerencia ambiental de encuentro (checklist 2026-07-21/22, punto 3 — "más NPCs/fauna
-  // itinerante para encuentros casuales más frecuentes"): sin esto, el modelo nunca tenía ningún
-  // empujón hacia el roster real de itinerantes del catálogo durante viaje/exploración — dependía
-  // por completo de que el JUGADOR mencionara un nombre primero (detectNpcsInScene solo detecta,
-  // nunca sugiere). No relaja la regla de "el combate solo se dispara contra un NPC/fauna real del
-  // catálogo" (petición explícita de la usuaria): al contrario, empuja al modelo a usar un nombre
-  // real y reconocible en vez de inventar una amenaza anónima. Solo cuando no hay ya nadie en
-  // escena, fuera de combate/saqueo/cosecha, con contexto real de ubicación — 25% de probabilidad
-  // (mismo orden que el evento de ambientación de entorno.ts) y siempre opcional para el modelo.
-  if (npcsInScene.length === 0 && !enCombate && !lootMode && !harvestMatch && (travel || currentLocationId) && Math.random() < 0.25) {
-    const itinerantCandidates = await prisma.npc.findMany({
-      where: { worldId, kind: 'PLANTILLA', homeLocationSlug: null },
-      select: { slug: true, name: true, role: true },
-    });
-    const candidate = pickAmbientEncounterCandidate(itinerantCandidates);
-    if (candidate) {
-      contextBlocks.push(
-        `SUGERENCIA OPCIONAL DE ENCUENTRO (úsala solo si encaja de forma natural con la escena, ignórala si no): el personaje podría cruzarse aquí con ${candidate.name} (${candidate.role}). Si decides introducirlo, usa ese nombre exacto para que el motor lo reconozca de verdad.`,
-      );
-    }
-  }
-
   // Hechos protegidos (roadmap 2026-07-20, mitigación de calidad narrativa): al principio del
   // todo, antes de cualquier otro contexto, para que la prohibición pese más que nada de lo que
   // venga después.
@@ -926,6 +905,63 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
         ? destinations.map((d) => `${d.name} (${minutesLabel(d.minutos)})`).join(', ')
         : '(sin rutas conocidas desde aquí todavía)';
       contextBlocks.push(`UBICACIÓN ACTUAL: ${location.name} — ${location.description}\nDESDE AQUÍ SE PUEDE IR A: ${destinosTxt}.`);
+
+      // Bug real jugando (docs/revisar-partida-hallazgos.md, 2026-08-01, "bucle" de ambientación
+      // sin progreso): "avanzo"/"continúo por la cueva" sin nombrar destino, con 2+ salidas reales
+      // desde aquí, no se puede resolver solo (`resolveTravel` ya solo auto-resuelve cuando hay
+      // EXACTAMENTE una salida) — sin este aviso, el modelo solía narrar ambientación genérica
+      // turno tras turno sin que la ubicación cambiara nunca. Instrucción explícita en vez de
+      // dejarlo como una opción más a ignorar: forzar la pregunta rompe el bucle en el turno
+      // siguiente, en cuanto el jugador nombre uno real.
+      if (!travel && !enCombate && destinations.length > 1 && detectsVagueMovementIntent(action)) {
+        contextBlocks.push(
+          `EL PERSONAJE QUIERE SEGUIR ADELANTE PERO HAY MÁS DE UN CAMINO POSIBLE (${destinations.map((d) => d.name).join(', ')}): no narres que ha llegado a ningún sitio nuevo ni inventes una ubicación — pregúntale directamente cuál de estos caminos concretos elige.`,
+        );
+      }
+    }
+  }
+
+  // Sugerencia ambiental de encuentro (checklist 2026-07-21/22, punto 3 — "más NPCs/fauna
+  // itinerante para encuentros casuales más frecuentes"): sin esto, el modelo nunca tenía ningún
+  // empujón hacia el roster real de itinerantes del catálogo durante viaje/exploración — dependía
+  // por completo de que el JUGADOR mencionara un nombre primero (detectNpcsInScene solo detecta,
+  // nunca sugiere). No relaja la regla de "el combate solo se dispara contra un NPC/fauna real del
+  // catálogo" (petición explícita de la usuaria): al contrario, empuja al modelo a usar un nombre
+  // real y reconocible en vez de inventar una amenaza anónima. Solo cuando no hay ya nadie en
+  // escena, fuera de combate/saqueo/cosecha, con contexto real de ubicación — 25% de probabilidad
+  // (mismo orden que el evento de ambientación de entorno.ts) y siempre opcional para el modelo.
+  //
+  // Ponderado por población real + filtrado por región (docs/16-poblacion-dinamica.md,
+  // 2026-08-03): antes se elegía uniforme entre TODA la fauna itinerante del mundo sin mirar
+  // dónde estaba el personaje ni cuánta abundancia real tenía cada especie — cazar mucho una
+  // especie en una zona ahora la hace de verdad más rara de encontrar ahí, y una especie extinta
+  // (`poblacion === 0`) deja de sugerirse. Solo cuenta la fauna con fila de `WorldPopulation` real
+  // y peso > 0 en la región activa — sin datos reales, no se sugiere nada (nunca se inventa).
+  if (npcsInScene.length === 0 && !enCombate && !lootMode && !harvestMatch && activeRegion && Math.random() < 0.25) {
+    const itinerantCandidates = await prisma.npc.findMany({
+      where: { worldId, kind: 'PLANTILLA', homeLocationSlug: null },
+      select: { slug: true, name: true, role: true },
+    });
+    if (itinerantCandidates.length > 0) {
+      const populationRows = await prisma.worldPopulation.findMany({
+        where: { worldId, targetType: 'FAUNA', targetSlug: { in: itinerantCandidates.map((c) => c.slug) } },
+      });
+      const populationBySlug = new Map(populationRows.map((row) => [row.targetSlug, row]));
+      const weightedCandidates = itinerantCandidates
+        .map((c) => {
+          const row = populationBySlug.get(c.slug);
+          if (!row || row.poblacion <= 0) return null;
+          const regionWeight = (row.distribucion as Record<string, number> | null)?.[activeRegion!] ?? 0;
+          if (regionWeight <= 0) return null;
+          return { slug: c.slug, name: c.name, role: c.role, weight: row.poblacion };
+        })
+        .filter((c): c is { slug: string; name: string; role: string; weight: number } => c !== null);
+      const candidate = pickAmbientEncounterCandidate(weightedCandidates);
+      if (candidate) {
+        contextBlocks.push(
+          `SUGERENCIA OPCIONAL DE ENCUENTRO (úsala solo si encaja de forma natural con la escena, ignórala si no): el personaje podría cruzarse aquí con ${candidate.name} (${candidate.role}). Si decides introducirlo, usa ese nombre exacto para que el motor lo reconozca de verdad.`,
+        );
+      }
     }
   }
 
@@ -1007,7 +1043,8 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   // escena pero este turno no resolvió ningún intercambio mecánico (`exchangeHappened`), se avisa
   // explícitamente — salvo que sea justo un "Decapitar" (`executeTargets`, ver abajo), donde SÍ se
   // pide describir un golpe de gracia a propósito, sin tirada, porque el motor ya lo decidió así.
-  if (npcsInScene.length > 0 && !exchangeHappened && executeTargets.length === 0) {
+  const combatNotYetResolved = npcsInScene.length > 0 && !exchangeHappened && executeTargets.length === 0;
+  if (combatNotYetResolved) {
     contextBlocks.push(
       'Ningún intercambio de combate mecánico se ha resuelto todavía este turno — puedes narrar tensión, acercamiento, amenaza o preparativos, pero NUNCA un golpe que conecta, una herida infligida, ni el resultado ya decidido de una pelea (ni a favor ni en contra del personaje). Esa resolución solo existe cuando el propio sistema la calcula, en un turno futuro dentro del combate real.',
     );
@@ -1069,17 +1106,33 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   // "ARMA DEL PERSONAJE" de más arriba lista las dos armas juntas ("empuña... Hacha de guerra rota
   // y Cuchillo de hielo sílice") para evitar que el modelo le ponga en las manos el arma de OTRO
   // personaje, pero nunca aclara CUÁL de las dos usa en ESTE golpe concreto — con dos opciones
-  // igual de válidas a la vista, el modelo elige mal. Ataque Básico es el único caso donde esto se
-  // puede resolver sin ambigüedad: por diseño usa siempre ARMA_PRINCIPAL, nunca la secundaria — las
-  // habilidades reales por categoría (Tajo Horizontal, etc.) no entran aquí porque su arma exacta
-  // sí puede vivir en la secundaria, y no hay forma barata de saberlo sin más cambios de esquema.
-  if (!pendingNpcStillHere && selectedAbilityData?.name === 'Ataque Básico') {
-    const armaPrincipal = inventoryRows.find((i) => i.slot === 'ARMA_PRINCIPAL') ?? null;
-    const armaSecundaria = inventoryRows.find((i) => i.slot === 'ARMA_SECUNDARIA') ?? null;
-    if (armaPrincipal && armaSecundaria) {
+  // igual de válidas a la vista, el modelo elige mal.
+  //
+  // Reproducido también en la real por categoría (2026-08-01, misma auditoría, misma partida):
+  // "Tajo Horizontal" (real de HACHA) narró "lanza su cuchillo de hielo sílice" — la secundaria,
+  // no el hacha. A diferencia del primer intento de este fix (que dejó la real fuera "porque su
+  // arma exacta puede vivir en la secundaria y no hay forma barata de saberlo"), sí que la hay:
+  // `equippedWeaponSlotsForAbilities` (arriba) ya sabe qué categoría lleva cada mano, y
+  // `weaponCategoryForRealAbilityName` (weaponAbilities.ts) hace el camino inverso desde el
+  // nombre de la habilidad pulsada — si esa categoría solo vive en UNA mano (nunca en dualWield,
+  // donde de verdad se usan las dos), se puede nombrar el arma exacta igual que con Ataque Básico.
+  const armaPrincipal = inventoryRows.find((i) => i.slot === 'ARMA_PRINCIPAL') ?? null;
+  const armaSecundaria = inventoryRows.find((i) => i.slot === 'ARMA_SECUNDARIA') ?? null;
+  if (!pendingNpcStillHere && armaPrincipal && armaSecundaria) {
+    if (selectedAbilityData?.name === 'Ataque Básico') {
       contextBlocks.push(
         `ESTE GOLPE EN CONCRETO es con ${armaPrincipal.name} (la que lleva en la mano PRINCIPAL) — nunca con ${armaSecundaria.name} (mano secundaria), aunque lleve las dos encima.`,
       );
+    } else if (!dualWieldBonus && selectedAbilityData?.name) {
+      const categoria = selectedAbilityData.name ? weaponCategoryForRealAbilityName(selectedAbilityData.name) : null;
+      if (categoria) {
+        const slotsConEsaCategoria = equippedWeaponSlotsForAbilities.filter((e) => e.tipoArma === categoria).map((e) => e.slot);
+        const armaExacta = slotsConEsaCategoria.length === 1 ? (slotsConEsaCategoria[0] === 'ARMA_PRINCIPAL' ? armaPrincipal : armaSecundaria) : null;
+        const otraArma = armaExacta === armaPrincipal ? armaSecundaria : armaPrincipal;
+        if (armaExacta) {
+          contextBlocks.push(`ESTE GOLPE EN CONCRETO es con ${armaExacta.name} — nunca con ${otraArma.name}, aunque lleve las dos encima.`);
+        }
+      }
     }
   }
   // Reglas de curación (2026-07-29, "si usas material médico sí puedes curarte a Ileso"): objetos
@@ -1346,6 +1399,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
           criticalFactsCount: contextBlocks.length,
           lastNarrationText: lastNarration?.text,
           combatBothMissed,
+          combatNotYetResolved,
           possiblyFalseItemUseNames,
           possiblyResurrectedNpcNames,
           onNarrationChunk,
@@ -1612,10 +1666,9 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
               name: item.cantidad > 1 ? `${item.name} ×${item.cantidad}` : item.name,
               description: item.notas ?? `Botín de ${npc.name}.`,
               origin: `botín de ${npc.name}`,
-              // El bonificador de equipo (si el objeto lo tenía en el catálogo) viaja con él —
-              // un hacha robada sigue dando su bonificador al equiparla.
-              statBonusAttribute: item.statBonusAttribute,
-              statBonusAmount: item.statBonusAmount,
+              // Los bonificadores de equipo (si el objeto los tenía en el catálogo) viajan con
+              // él — un hacha robada sigue dando su bonificador al equiparla.
+              statBonuses: item.statBonuses ?? Prisma.JsonNull,
               catalogSlug: item.catalogSlug,
             },
           });
@@ -1690,6 +1743,12 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
           );
           await tx.worldState.update({ where: { saveId }, data: { factionsStatus: updatedFactionsStatus } });
         }
+
+        // Población dinámica (docs/16-poblacion-dinamica.md): solo MUERTO resta población de
+        // verdad — INCAPACITADO es solo derrotado, no una baja real de la especie/raza.
+        if (npcTargetNewCondicion === 'MUERTO') {
+          await decrementPopulationOnDeath(tx, worldId, npcAttackTarget.raza, npcAttackTarget.slug, activeRegion);
+        }
       }
     }
 
@@ -1718,6 +1777,9 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
         );
         await tx.worldState.update({ where: { saveId }, data: { factionsStatus: updatedFactionsStatus } });
       }
+
+      // Población dinámica (docs/16-poblacion-dinamica.md) — Decapitar es siempre una muerte real.
+      await decrementPopulationOnDeath(tx, worldId, executeTarget.raza, executeTarget.slug, activeRegion);
     }
 
     // Despiece/recolección (§ 3.3) — solo si la acción tuvo éxito (o no requería tirada).
@@ -1824,9 +1886,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
           description: recipe.resultDescription,
           origin: 'crafteo',
           catalogSlug: recipe.resultCatalogSlug,
-          ...(recipe.statBonusAttribute
-            ? { statBonusAttribute: recipe.statBonusAttribute, statBonusAmount: recipe.statBonusAmount }
-            : {}),
+          statBonuses: recipe.statBonuses ?? Prisma.JsonNull,
         },
       });
       // `catalogBySlug` (arriba) solo trae los catalogSlug que el jugador YA tenía en inventario

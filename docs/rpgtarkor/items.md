@@ -44,4 +44,4 @@
 
 ---
 
-**Ver también:** [Génesis y Formación](genesis.md) · [Áreas y geografía](areas.md) · [Historia y presente](historia.md) · [Razas](razas.md) · [Flora y fauna](flora-fauna.md) · [Personajes](personajes.md) · [NPCs](npcs.md)
+**Ver también:** [Cronología mítica](cronologia-mitica.md) · [Cronología](cronologia.md) · [Génesis y Formación](genesis.md) · [Áreas y geografía](areas.md) · [Historia y presente](historia.md) · [Razas](razas.md) · [Flora y fauna](flora-fauna.md) · [Personajes](personajes.md) · [NPCs](npcs.md)

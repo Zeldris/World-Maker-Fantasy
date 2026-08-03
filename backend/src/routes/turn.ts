@@ -6,7 +6,7 @@ import { computeDuration, detectsRestIntent, mentionsExplicitDuration } from '..
 import { narrateAndPersistTurn } from '../services/turnResolution.js';
 import type { PendingNpcAttack } from '../services/combatExchange.js';
 import { resolveTravel, bandaForMinutos, type TravelResolution } from '../services/travel.js';
-import { effectiveAttributes, effectiveDefense, equippedWeaponNames, equippedItemsSummary } from '../services/equipment.js';
+import { effectiveAttributes, effectiveSecondaryAttributes, effectiveDefense, equippedWeaponNames, equippedItemsSummary } from '../services/equipment.js';
 import {
   detectNpcsInScene,
   calibrationLineFor,
@@ -525,7 +525,7 @@ export async function turnRoutes(app: FastifyInstance) {
     const sessionFacts = await loadSessionFacts(save.id);
     const timeLabel = save.worldState?.fictionalDateLabel ?? 'Día 1, mañana';
     const attributes = effectiveAttributes(save.attributes as AttributeBlock, save.inventoryItems);
-    const secondaryAttributes = normalizeSecondaryAttributes(save.secondaryAttributes);
+    const secondaryAttributes = effectiveSecondaryAttributes(normalizeSecondaryAttributes(save.secondaryAttributes), save.inventoryItems);
     const defensa = effectiveDefense(save.inventoryItems);
     const equippedWeapons = equippedWeaponNames(save.inventoryItems);
     const equippedItems = equippedItemsSummary(save.inventoryItems);

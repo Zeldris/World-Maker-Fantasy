@@ -136,6 +136,12 @@ interface TurnContext {
   /// NINGÚN lado conecta un golpe de verdad. Si la narración describe contacto/daño de todos
   /// modos, es una alucinación del modelo, no una licencia narrativa — se reintenta.
   combatBothMissed?: boolean;
+  /// Ver `hasPrematureCombatResolution` más abajo — true cuando hay un NPC real en escena pero
+  /// NINGÚN intercambio de combate se ha resuelto todavía este turno (ni ataque ni "Decapitar"),
+  /// típicamente un turno de aceptación/promesa verbal ("Yo me ocupo de tu perseguidor"). Si la
+  /// narración describe de todos modos un golpe ya conectado/un enemigo ya herido huyendo, es una
+  /// alucinación adelantada del combate, no una licencia narrativa — se reintenta.
+  combatNotYetResolved?: boolean;
   /// Ver `hasFalseItemUse` más abajo — nombres reales de objetos médicos/de energía que el
   /// personaje lleva encima PERO que este turno no se detectó que usara de verdad (ni
   /// `detectMedicalItemUse` ni `detectEnergyItemUse` los reconocieron en la acción del jugador).
@@ -668,6 +674,12 @@ Responde solo con el JSON pedido, nada más.`;
         lastResult = parsed;
         continue;
       }
+      if (hasPrematureCombatResolution(parsed.narration, ctx.combatNotYetResolved)) {
+        console.warn(`[narrador] intento ${idx + 1}/3 descartado por narrar un combate ya resuelto sin ningún intercambio mecánico este turno, reintentando`);
+        if (idx === 0) ctx.onNarrationReset?.();
+        lastResult = parsed;
+        continue;
+      }
       if (hasFalseItemUse(parsed.narration, ctx.possiblyFalseItemUseNames)) {
         console.warn(`[narrador] intento ${idx + 1}/3 descartado por narrar el uso de un objeto que no se consumió de verdad, reintentando`);
         if (idx === 0) ctx.onNarrationReset?.();
@@ -818,12 +830,37 @@ export function isTooSimilarToLast(narration: string, lastNarrationText?: string
 /// el aire", "intenta golpear") — el riesgo real es solo un reintento de más, no un falso negativo
 /// que deje pasar la alucinación. "clava en" se probó y se quitó a propósito: un fallo real
 /// también puede describir el arma clavándose en la roca/el suelo tras errar, no solo en carne.
+// "línea de sangre" añadido (auditoría 2026-08-02, "revisar partida" — bug real jugando en vivo):
+// "pero este esquiva fácilmente, dejando una línea de sangre fría donde la hoja rozó su
+// armadura" — dice fallo (esquiva) e impacto (sangre) en la MISMA frase; el hueco era de
+// vocabulario (la lista no cubría esta variante concreta de "hay sangre"), no de lógica.
 const COMBAT_HIT_LEAK_REGEX =
-  /\b(golpe[oó]|impact[oó]|hiri[oó]|hiere|atraves[oó]|atraviesa|reban[oó]|degüell[oa]|hace sangrar|rastro de sangre|sangrando|sangra por)\b/i;
+  /\b(golpe[oó]|impact[oó]|hiri[oó]|hiere|atraves[oó]|atraviesa|reban[oó]|degüell[oa]|hace sangrar|rastro de sangre|l[ií]nea de sangre|sangrando|sangra por)\b/i;
 
 export function hasFalseCombatHit(narration: string, combatBothMissed?: boolean): boolean {
   if (!combatBothMissed) return false;
   return COMBAT_HIT_LEAK_REGEX.test(narration);
+}
+
+/// Narración-vs-mecánica, mismo patrón que `hasFalseCombatHit` (2026-08-02, bug real jugando en
+/// vivo, confirmado en DOS partidas seguidas — 2026-07-31 y 2026-08-01): el turno de aceptar ayudar
+/// a Gistera Koh ("Yo me ocupo de tu perseguidor") no resuelve ningún intercambio de combate de
+/// verdad (aceptar ayudar nunca fuerza combate mecánico solo, decisión explícita de la usuaria), pero
+/// la narración describía un choque ya ganado ("lanza el cuchillo, acierta, el orco huye cojeando")
+/// — el NPC seguía ILESO de verdad en la base de datos, y dos turnos después el jugador volvía a
+/// atacar al mismo enemigo como si nunca hubiera huido. El contextBlock "Ningún intercambio de
+/// combate mecánico..." (turnResolution.ts) ya avisa de esto, pero un modelo pequeño lo ignora igual
+/// que el resto de instrucciones "no hagas X" de esta sesión — mismo criterio: comprobar el texto ya
+/// generado, no confiar solo en la instrucción. Vocabulario centrado en contacto/daño YA RESUELTO
+/// (mismos verbos que `COMBAT_HIT_LEAK_REGEX`) más las variantes propias de este caso concreto
+/// ("acierta", "huye cojeando/malherido") — el riesgo real es un reintento de más, no dejar pasar la
+/// alucinación.
+const PREMATURE_COMBAT_REGEX =
+  /\b(golpe[oó]|impact[oó]|hiri[oó]|hiere|atraves[oó]|atraviesa|reban[oó]|degüell[oa]|acierta|huye (cojeando|malherid[oa]|herid[oa])|cojeando)\b/i;
+
+export function hasPrematureCombatResolution(narration: string, combatNotYetResolved?: boolean): boolean {
+  if (!combatNotYetResolved) return false;
+  return PREMATURE_COMBAT_REGEX.test(narration);
 }
 
 /// Narración-vs-mecánica, mismo patrón que `hasFalseCombatHit` (2026-08-01, bug real jugando en

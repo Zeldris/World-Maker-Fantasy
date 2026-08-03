@@ -11,7 +11,15 @@ export const CATEGORY_VOCAB_BY_TIPO: Record<ItemTipo, string[]> = {
   MATERIAL: ['metal', 'bloque'],
   EQUIPABLE: ['arma', 'herramienta', 'ropa'],
   CONSUMIBLE: ['consumible', 'medicinal'],
-  NARRATIVO: ['documento', 'valor'],
+  // 'cosmetico' añadido 2026-08-03 (petición explícita: "crear... una categoría que es
+  // cosméticos") — mismo bucket NARRATIVO que 'valor' (equipable por sabor, sin bonus por
+  // defecto), no EQUIPABLE: los cosméticos especiales que sí den bonus (mochila con más espacio,
+  // etc.) siguen sin bonus "de arma", son casos concretos con su propio efecto — no cambia el
+  // criterio de qué tipo mecánico les corresponde.
+  NARRATIVO: ['documento', 'valor', 'cosmetico'],
+  // ESPECIAL (2026-08-03, "items de tipo Especial... efecto más complejo o útil para la
+  // narración") — un único subtipo por ahora, todos comparten el mismo mecanismo (`effectKey`).
+  ESPECIAL: ['especial'],
 };
 
 /// Falla rápido en seed-catalog.ts ante un typo de categoría o una combinación tipo/categoría que

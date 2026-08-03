@@ -32,6 +32,7 @@ vi.mock('../services/turnResolution.js', () => ({
 vi.mock('../services/timedActions.js', () => ({ computeDuration: vi.fn(() => ({ minutos: 30 })) }));
 vi.mock('../services/equipment.js', () => ({
   effectiveAttributes: vi.fn((base: unknown) => base),
+  effectiveSecondaryAttributes: vi.fn((base: unknown) => base),
   effectiveDefense: vi.fn(() => 0),
   equippedWeaponNames: vi.fn(() => []),
   equippedItemsSummary: vi.fn(() => []),

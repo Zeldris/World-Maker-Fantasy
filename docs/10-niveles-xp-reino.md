@@ -301,14 +301,17 @@ Coste añadido: **cero llamadas nuevas a Ollama** — `hitos` y `reino_events` v
 
 ---
 
-## 9. Pendientes de implementación (siguiente paso técnico, no hecho todavía — en orden)
+## 9. Pendientes de implementación (actualizado 2026-08-02)
 
-1. **Migración 1 (niveles):** `level`, `xp`, `pendingAttributePoints` en `Save`; `xpDelta` en `LogEntry`.
-2. **Servicio de progresión** (`backend/src/services/progression.ts`): tabla de niveles (§ 2), tablas de XP (§ 3.1, § 3.2, § 5.4), `awardXp(saveId, fuente)` con detección de subida de nivel y ASI, y `huecosHabilidad(nivel)` (§ 4.3). Todo determinista, con tests unitarios (es el candidato ideal: puro y sin IA).
-3. **Enganchar al flujo de turno** (§ 7): XP por tirada tras el paso 3, campo `hitos` en el JSON de narración + tope 1/turno, `capitulo` automático al crear `SessionSummary`.
-4. **Migración 2 (Reino):** `Territory`, `Building`, `Subject`, enums, `kingdomName` y relaciones en `Save`.
-5. **XP por eventos de Reino** (§ 5.4) al crear/promocionar filas, integrado con el tope de hitos.
-6. **Frontend — progresión:** XP/nivel en el header o ficha del personaje, "+XP" en las entradas del log con `xpDelta`, aviso de subida de nivel, y reparto de `pendingAttributePoints` (respetando tope 18).
-7. **Frontend — pestaña Reino:** lista de territorios/edificios/súbditos + el estado vacío narrativo del § 5.1 (construible ya con datos vacíos, como preveía 09 § 7).
-8. **Validar `reino_events`** con Qwen2.5:7b sobre casos reales de Gorhorn (ganar su primer aliado, levantar un refugio); si no es fiable, activar el plan B (§ 5.4).
-9. **Actualizar los documentos afectados:** [05-mecanicas-juego.md](05-mecanicas-juego.md) § 5 (progresión, ya obsoleto), [06-decisiones-mecanicas.md](06-decisiones-mecanicas.md) decisión 4 (enlazar aquí como diseño resultante) y [09-panel-personaje.md](09-panel-personaje.md) § 3 y § 5 (conflicto resuelto; Reino ya no se pospone).
+1. ~~Migración 1 (niveles)~~ — hecho.
+2. ~~Servicio de progresión~~ — hecho, `backend/src/services/progression.ts`, con tests unitarios.
+3. ~~Enganchar al flujo de turno~~ — hecho.
+4. ~~Migración 2 (Reino)~~ — hecho a nivel de schema (`Territory`/`Building`/`Subject`).
+5. ~~XP por eventos de Reino~~ — hecho a nivel de código.
+6. ~~Frontend — progresión~~ — hecho.
+7. ~~Frontend — pestaña Reino~~ — hecho a nivel de componente.
+8. **Validar `reino_events`** con el modelo sobre casos reales — Reino queda pausado como línea de
+   juego activa (decisión posterior, ver `docs/11-roadmap.md`: "centrarse en 1h de partida jugable
+   con exploración y combate; Reino/gobierno queda pausado"), así que esta validación no es
+   prioritaria mientras eso no cambie.
+9. Actualizar los documentos afectados — parcialmente hecho por esta misma pasada (2026-08-02).

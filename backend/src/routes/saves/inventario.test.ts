@@ -108,7 +108,7 @@ describe('PATCH /saves/:id/inventario/:itemId — ranura compatible', () => {
     updateInventoryItem.mockResolvedValue({});
     const app = await buildApp();
 
-    const res = await app.inject({ method: 'PATCH', url: '/saves/save1/inventario/item1', payload: { slot: 'ABALORIO' } });
+    const res = await app.inject({ method: 'PATCH', url: '/saves/save1/inventario/item1', payload: { slot: 'COSMETICO_CINTURA' } });
 
     expect(res.statusCode).toBe(200);
     expect(findUniqueItemCatalog).not.toHaveBeenCalled();

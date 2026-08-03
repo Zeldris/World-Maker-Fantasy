@@ -34,4 +34,8 @@ describe('computeDuration', () => {
     const fuerzaAlta = computeDuration('Recolecto espiga roja en la llanura', 'extendida', { ...attrs, fuerza: 20 }, 60);
     expect(fuerzaAlta.produccion?.cantidad).toBe(1);
   });
+
+  it('banda instantánea tiene un suelo de 1 minuto, no 0 (bug real jugando: 14 turnos de combate seguidos sin avanzar el reloj)', () => {
+    expect(computeDuration('Ataco con mi hacha', 'instantanea', attrs, 0)).toEqual({ minutos: 1 });
+  });
 });

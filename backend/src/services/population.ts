@@ -1,0 +1,105 @@
+import type { Prisma, PrismaClient, PopulationTargetType } from '@prisma/client';
+
+/// Población dinámica (docs/16-poblacion-dinamica.md) — hasta 2026-08-03, `WorldPopulation` era
+/// solo dato semilla (2026-07-29) sin ningún código de partida que lo leyera ni lo modificara. Esto
+/// le da uso real: morir de verdad depleciona la fila que corresponda, y una tasa de crecimiento
+/// diferenciada por tipo la repuebla con el tiempo — con un umbral mínimo bajo el cual una especie
+/// no se recupera sola (extinción real y permanente es posible).
+
+/// Umbral mínimo de reproducción (cifra explícita de la usuaria, 2026-08-02: "quiero que mientras
+/// sea 4+ pueda reproducirse pero menos en menos de 4") — por debajo, muy pocos individuos para
+/// encontrar pareja, la fila no crece este ciclo.
+export const UMBRAL_MINIMO_REPRODUCCION = 4;
+
+/// Tasas de partida, por día real transcurrido — no un cierre definitivo, fácilmente ajustables.
+/// La fauna se reproduce categóricamente más rápido que las razas de NPC (petición explícita:
+/// "lógicamente la fauna en general tiene más posibilidades de reproducirse que una raza de npc").
+export const GROWTH_RATE_PER_DAY: Record<PopulationTargetType, number> = {
+  FAUNA: 0.02,
+  RAZA: 0.003,
+};
+
+/// Sufijo de `targetSlug` para los 3 clanes orcos regionales (worldPopulation.ts) — biología
+/// distinta entre ellos, no fluyen entre sí salvo guerra/evento de mundo (decisión ya cerrada).
+/// Claves = `Location.region` tal cual se siembra en worldCatalog.ts (con artículo completo).
+const ORC_REGION_SUFFIX: Record<string, string> = {
+  'Las Llanuras del Viento Rojo': 'llanuras',
+  'Cristal Helado': 'cristal-helado',
+  'Ciénaga Troncal': 'cienaga',
+};
+
+/// Resuelve a qué fila de `WorldPopulation` corresponde un NPC (docs/16 § 3.1). `raza` null =
+/// fauna (cada especie de worldCatalog.ts es ya 1 fila, keyed por su propio slug). `raza` no-null
+/// = raza jugable: las de un solo territorio usan el slug de raza directo; los orcos necesitan la
+/// región activa para desambiguar entre sus 3 clanes. `null` si no hay fila que corresponda (nunca
+/// inventa una) — p.ej. un NPC sin raza que no es fauna de catálogo, o una región sin mapeo.
+export function populationTargetSlugFor(raza: string | null, slug: string, region: string | null): string | null {
+  if (!raza) return slug;
+  if (raza === 'orcos') {
+    const suffix = region ? ORC_REGION_SUFFIX[region] : undefined;
+    return suffix ? `orcos-${suffix}` : null;
+  }
+  return raza;
+}
+
+type TxClient = Pick<PrismaClient, 'worldPopulation'> | Prisma.TransactionClient;
+
+/// Resta 1 (sin bajar de 0) a la fila de población que corresponda a este NPC, dentro de la MISMA
+/// transacción que resuelve el turno (docs/16 § 3.2) — llamado solo cuando un NPC pasa de verdad a
+/// MUERTO (combate letal o Decapitar), nunca en INCAPACITADO. No hace nada si no hay fila que
+/// corresponda (mismo criterio de "no bloquear el turno si el dato no existe" que el resto del
+/// motor).
+export async function decrementPopulationOnDeath(
+  tx: TxClient,
+  worldId: string,
+  raza: string | null,
+  slug: string,
+  region: string | null,
+): Promise<void> {
+  const targetType: PopulationTargetType = raza ? 'RAZA' : 'FAUNA';
+  const targetSlug = populationTargetSlugFor(raza, slug, region);
+  if (!targetSlug) return;
+
+  const row = await tx.worldPopulation.findUnique({
+    where: { worldId_targetType_targetSlug: { worldId, targetType, targetSlug } },
+  });
+  if (!row || row.poblacion <= 0) return;
+
+  await tx.worldPopulation.update({
+    where: { id: row.id },
+    data: { poblacion: Math.max(0, row.poblacion - 1) },
+  });
+}
+
+const MS_POR_DIA = 24 * 60 * 60_000;
+
+/// Crecimiento prorrateado por tiempo real desde la última actualización de cada fila (docs/16
+/// § 3.3), llamado desde el tick periódico de `worldTick.ts` — nunca desde el turno síncrono, ya
+/// que `WorldPopulation` es del `World`, no de una `Save` concreta.
+///
+/// Solo se escribe la fila (y por tanto se avanza su `updatedAt`) cuando el crecimiento calculado
+/// cruza al menos 1 individuo entero — si actualizáramos en cada tick aunque el delta fuera 0,
+/// `updatedAt` se resetearía sin parar y el tiempo transcurrido nunca llegaría a acumularse lo
+/// bastante para cruzar el siguiente entero. Dejar la fila intacta hace que seguir esperando en el
+/// próximo tick sea exactamente igual de válido que esperar más entre ticks.
+export async function growAllPopulations(prisma: Pick<PrismaClient, 'worldPopulation'>): Promise<{ updated: number }> {
+  const rows = await prisma.worldPopulation.findMany();
+  const now = Date.now();
+  let updated = 0;
+
+  for (const row of rows) {
+    if (row.poblacion < UMBRAL_MINIMO_REPRODUCCION) continue;
+    const elapsedDays = (now - row.updatedAt.getTime()) / MS_POR_DIA;
+    if (elapsedDays <= 0) continue;
+    const delta = Math.floor(row.poblacion * GROWTH_RATE_PER_DAY[row.targetType] * elapsedDays);
+    if (delta < 1) continue;
+
+    await prisma.worldPopulation.update({
+      where: { id: row.id },
+      data: { poblacion: row.poblacion + delta },
+    });
+    updated++;
+  }
+
+  return { updated };
+}

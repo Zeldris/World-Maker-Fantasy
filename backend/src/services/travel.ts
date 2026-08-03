@@ -8,6 +8,20 @@ import type { Banda } from './narrador.js';
 
 const TRAVEL_INTENT_REGEX = /viaj|camin|desplaz|ruta|tramo|voy (a|hacia)|me dirijo|parto hacia|vuelvo a|regreso a|me acerco a/;
 
+/// Bug real jugando (docs/revisar-partida-hallazgos.md, 2026-08-01, "narración de ambientación
+/// repetida sin progreso tras el combate"): "avanzo por una salida" / "Continuo por la cueva" /
+/// "Continuo hasta llegar a la siguiente localización" no disparan `TRAVEL_INTENT_REGEX` (no
+/// nombran ningún verbo de viaje "hacia algo") y tampoco nombran un destino real, así que
+/// `resolveTravel` nunca actuaba — el turno caía en ambientación genérica una y otra vez sin que
+/// la ubicación cambiara nunca. A diferencia del viaje con destino nombrado, aquí no hace falta
+/// que el jugador diga un nombre — "seguir adelante" ya es intención de movimiento de sobra clara.
+/// Acotado a propósito para no confundir "sigo mirando"/"continúo hablando" (no es movimiento):
+/// "avanzo"/"prosigo"/"me adentro" solo significan eso, pero "sigo"/"continúo" exigen ir
+/// acompañados de una palabra que sí indique desplazamiento (camino, adelante, zona, "por <algo>"
+/// que no sea el idiom "por ahora", etc.).
+const VAGUE_MOVEMENT_REGEX =
+  /\b(avanz\w*|prosig\w*|me adentro|me interno)\b|\b(sigo|contin[uú]o)\b\s+por\s+(?!ahora\b)\w+|\b(sigo|contin[uú]o)\b[^.]*\b(camino|adelante|explorando|hasta llegar|zona|localizaci[oó]n|lugar|senda|ruta)\b|\bsiguiente (zona|localizaci[oó]n|lugar|[aá]rea)\b|\bbusco (la )?salida\b/;
+
 export function normalizeText(text: string): string {
   return text
     .toLowerCase()
@@ -37,6 +51,10 @@ export function levenshtein(a: string, b: string): number {
 
 export function detectsTravelIntent(action: string): boolean {
   return TRAVEL_INTENT_REGEX.test(normalizeText(action));
+}
+
+export function detectsVagueMovementIntent(action: string): boolean {
+  return VAGUE_MOVEMENT_REGEX.test(normalizeText(action));
 }
 
 /// Palabras de 5+ letras de una acción ya normalizada — mismo umbral y criterio en todos los
@@ -210,19 +228,13 @@ export interface TravelResolution {
 /// cerrada de Location del mundo, calcula ruta con Dijkstra y deriva banda — todo determinista.
 /// Devuelve null si no hay intención de viaje, no hay ubicación actual, el destino no matchea,
 /// ya está ahí, o el destino queda fuera del grafo v1 (el turno sigue el flujo normal).
-export async function resolveTravel(params: {
-  action: string;
-  worldId: string;
-  currentLocationId: string | null;
-  attributes: AttributeBlock;
-}): Promise<TravelResolution | null> {
-  const { action, worldId, currentLocationId, attributes } = params;
-  if (!currentLocationId || !detectsTravelIntent(action)) return null;
-
+async function resolveTravelPath(
+  worldId: string,
+  currentLocationId: string,
+  destination: LocationNode,
+  attributes: AttributeBlock,
+): Promise<TravelResolution | null> {
   const locations = await prisma.location.findMany({ where: { worldId } });
-  const destination = matchDestination(action, locations, currentLocationId);
-  if (!destination) return null;
-
   const links = await prisma.locationLink.findMany({
     where: { from: { worldId } },
     select: { fromId: true, toId: true, minutosBase: true, terreno: true, riesgo: true },
@@ -257,6 +269,43 @@ export async function resolveTravel(params: {
     minutos,
     banda: bandaForMinutos(minutos),
   };
+}
+
+export async function resolveTravel(params: {
+  action: string;
+  worldId: string;
+  currentLocationId: string | null;
+  attributes: AttributeBlock;
+}): Promise<TravelResolution | null> {
+  const { action, worldId, currentLocationId, attributes } = params;
+  if (!currentLocationId) return null;
+
+  if (detectsTravelIntent(action)) {
+    const locations = await prisma.location.findMany({ where: { worldId } });
+    const destination = matchDestination(action, locations, currentLocationId);
+    if (destination) {
+      const resolved = await resolveTravelPath(worldId, currentLocationId, destination, attributes);
+      if (resolved) return resolved;
+    }
+  }
+
+  // Fallback de movimiento vago sin destino nombrado (ver comentario de VAGUE_MOVEMENT_REGEX
+  // arriba) — solo se resuelve solo si hay EXACTAMENTE una salida directa conocida desde aquí:
+  // con una sola opción real, "seguir adelante" no tiene ninguna ambigüedad genuina que decidir
+  // (el modelo nunca elige la ruta, esto sigue siendo así). Con 2+ salidas no se adivina cuál —
+  // eso sí sería inventar una elección del jugador — se deja que el turno siga su curso normal
+  // (el contexto ya lista las opciones reales; ver aviso reforzado en turnResolution.ts).
+  if (detectsVagueMovementIntent(action)) {
+    const options = await destinationsFrom(currentLocationId, attributes);
+    if (options.length === 1) {
+      const destination = await prisma.location.findUnique({ where: { id: options[0].locationId } });
+      if (destination) {
+        return resolveTravelPath(worldId, currentLocationId, destination, attributes);
+      }
+    }
+  }
+
+  return null;
 }
 
 /// Ubicación inicial al crear una partida nueva (docs/12-mundo-estructurado.md § 1.2) — hoy

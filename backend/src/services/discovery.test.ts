@@ -1,0 +1,45 @@
+import { describe, it, expect } from 'vitest';
+import { detectsSearchIntent, coreRegionOf, REGION_CORE_NAMES } from './discovery.js';
+
+// Cobertura nueva (auditoría 2026-08-03, "análisis completo backend/frontend") — solo las
+// funciones puras; `selectDiscoveries` depende de Prisma y queda cubierta indirectamente por los
+// tests de integración de turn.ts.
+
+describe('detectsSearchIntent', () => {
+  it('detecta buscar/explorar/rebuscar/recoger/recolectar/rastrear', () => {
+    expect(detectsSearchIntent('Busco algo de comer por la zona')).toBe(true);
+    expect(detectsSearchIntent('Exploro los alrededores')).toBe(true);
+    expect(detectsSearchIntent('Rebusco entre los escombros')).toBe(true);
+    // 'Recojo' (yo recojo) no vale como ejemplo de "recog": el cambio ortográfico g→j de la
+    // conjugación española rompe el stem — mismo tipo de sorpresa de conjugación ya documentado
+    // en otros detectores del proyecto (ver matchNpcAliases). "Recoge"/"recogiendo" sí lo tienen.
+    expect(detectsSearchIntent('Recogiendo lo que encuentro útil')).toBe(true);
+    expect(detectsSearchIntent('Recolecto materiales de la zona')).toBe(true);
+    expect(detectsSearchIntent('Rastreo huellas recientes')).toBe(true);
+  });
+
+  it('no detecta intención de búsqueda en una acción no relacionada', () => {
+    expect(detectsSearchIntent('Hablo con el mercader sobre el precio')).toBe(false);
+  });
+});
+
+describe('coreRegionOf', () => {
+  it('encuentra el núcleo de región sin artículo dentro de un texto libre', () => {
+    expect(coreRegionOf('Clan Serhu, Llanuras del Viento Rojo.')).toBe('Llanuras del Viento Rojo');
+    expect(coreRegionOf('Cristal Helado.')).toBe('Cristal Helado');
+  });
+
+  it('devuelve null sin texto', () => {
+    expect(coreRegionOf(null)).toBeNull();
+    expect(coreRegionOf(undefined)).toBeNull();
+    expect(coreRegionOf('')).toBeNull();
+  });
+
+  it('devuelve null si el texto no menciona ninguna región reconocible', () => {
+    expect(coreRegionOf('Un objeto sin procedencia clara.')).toBeNull();
+  });
+
+  it('REGION_CORE_NAMES cubre las 5 regiones de Berig', () => {
+    expect(REGION_CORE_NAMES).toHaveLength(5);
+  });
+});

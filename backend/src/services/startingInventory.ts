@@ -6,8 +6,10 @@ export interface StartingInventoryItem {
   description: string;
   origin: string;
   slot?: EquipSlot;
-  statBonusAttribute?: Attribute | 'defensa';
-  statBonusAmount?: number;
+  /// Bonificadores múltiples por objeto (2026-08-03, sustituye a statBonusAttribute/statBonusAmount
+  /// — un solo par no dejaba, p.ej., una armadura buena sumar fuerza Y defensa a la vez). Mismo
+  /// patrón que `Requisitos` (requisitos.ts): mapa parcial, tantas claves como haga falta.
+  statBonuses?: Partial<Record<Attribute | 'defensa', number>>;
   /// Slug de ItemCatalog (petición explícita de la usuaria, 2026-07-24: "el hacha de guerra y el
   /// tótem que llevo equipado no están en la enciclopedia") — sin esto, el equipo inicial nunca
   /// tenía fila de catálogo que enlazar, así que era invisible tanto en la Enciclopedia (su lista
@@ -28,8 +30,7 @@ const GORHORN_STARTING_INVENTORY: StartingInventoryItem[] = [
     description: 'El hacha de guerra de su clan, partida por la mitad — la usa como una maza pesada.',
     origin: 'inicial',
     slot: 'ARMA_PRINCIPAL',
-    statBonusAttribute: 'fuerza',
-    statBonusAmount: 2,
+    statBonuses: { fuerza: 2 },
     catalogSlug: 'hacha-guerra-maktor-rota',
   },
   {
@@ -37,17 +38,18 @@ const GORHORN_STARTING_INVENTORY: StartingInventoryItem[] = [
     description: 'Filo mineral tallado, no forjado — comercio con el Clan Helsig, regalo de Hagar.',
     origin: 'inicial',
     slot: 'ARMA_SECUNDARIA',
-    statBonusAttribute: 'destreza',
-    statBonusAmount: 1,
+    statBonuses: { destreza: 1 },
     catalogSlug: 'cuchillo-hielo-silice',
   },
   {
     name: 'Tótem Maktor',
     description: 'El tótem del Clan Maktor, atado con cuerdas a la espalda — el objeto más importante de Gorhorn, lo único que le queda de sus ancestros.',
     origin: 'inicial',
-    slot: 'ABALORIO',
-    statBonusAttribute: 'voluntad',
-    statBonusAmount: 1,
+    slot: 'COSMETICO_ESPALDA',
+    // Sin statBonus* (2026-08-03, corregido — este archivo tenía +1 voluntad puesto a mano, algo
+    // que la usuaria nunca pidió y que contradecía directamente su propia decisión de diseño: "es
+    // cosmético, no un objeto equipable" con efecto real. El objeto de ItemCatalog ya estaba bien
+    // (sin bonus); solo esta materialización inicial lo llevaba pegado por fuera.
     catalogSlug: 'totem-maktor',
   },
   {
@@ -55,8 +57,7 @@ const GORHORN_STARTING_INVENTORY: StartingInventoryItem[] = [
     description: 'Cuero curtido sobre el pecho descubierto, sin nada más.',
     origin: 'inicial',
     slot: 'CAMISA',
-    statBonusAttribute: 'defensa',
-    statBonusAmount: 1,
+    statBonuses: { defensa: 1 },
     catalogSlug: 'arnes-cuero',
   },
   {

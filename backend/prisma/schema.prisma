@@ -425,7 +425,6 @@ model CharacterTransit {
 /// distinto, así que varios objetos sin equipar (slot = null) conviven sin problema.
 enum EquipSlot {
   CASCO
-  ABALORIO
   CAMISA
   ARMADURA_SUPERIOR
   GUANTES
@@ -449,6 +448,15 @@ enum EquipSlot {
   CONSUMIBLE_4
   CONSUMIBLE_5
   CONSUMIBLE_6
+  /// 3 ranuras de cosmético puro (2026-08-03, petición explícita: "crear dentro de los items
+  /// equipables una categoría que es cosméticos... Espalda, Cabeza y Cintura") — sustituyen a
+  /// ABALORIO (demasiado genérico, sin sitio anatómico propio). 1:1 exactas, sin familia
+  /// compartida (a diferencia de ARMA_*/ANILLO_*/CONSUMIBLE_*): un cosmético de espalda nunca vale
+  /// en el hueco de cintura. `category: 'cosmetico'` en ItemCatalog es la convención de catálogo
+  /// que las acompaña (campo libre, no enum — ver comentario de `category`).
+  COSMETICO_ESPALDA
+  COSMETICO_CABEZA
+  COSMETICO_CINTURA
 }
 
 /// Objeto que el personaje lleva encima o ha conseguido. Origen/descripción siguen siendo puro
@@ -467,13 +475,13 @@ model InventoryItem {
   /// Hueco de equipo asignado (null = en la mochila, sin equipar). La jugadora lo asigna a mano
   /// desde el panel "Equipo" — el modelo nunca lo decide.
   slot        EquipSlot?
-  /// Bonificador mecánico real (solo cuenta mientras `slot` no es null) — uno de los 6 atributos
-  /// jugables ('fuerza'|'destreza'|'sigilo'|'voluntad'|'carisma'|'arcano'), nunca mágico por
-  /// ahora (arcano incluido en la lista pero sin usarlo todavía en objetos reales — Gorhorn es
-  /// guerrero, sin nada mágico hasta que se decida introducirlo). Ambos null = objeto puramente
-  /// narrativo, como antes.
-  statBonusAttribute String?
-  statBonusAmount     Int?
+  /// Bonificadores mecánicos reales (solo cuentan mientras `slot` no es null) — mapa múltiple
+  /// (2026-08-03, sustituye a statBonusAttribute/statBonusAmount) de cero o más de los 7
+  /// atributos jugables más 'defensa' — nunca mágico por ahora (arcano incluido en la lista pero
+  /// sin usarlo todavía en objetos reales — Gorhorn es guerrero, sin nada mágico hasta que se
+  /// decida introducirlo). Null = objeto puramente narrativo, como antes.
+  /// Partial<Record<Attribute | 'defensa', number>> (ver StatBonusMap, equipment.ts).
+  statBonuses Json?
   /// Slug de ItemCatalog de origen (sesión de diseño 2026-07-23) — no es FK real (mismo criterio
   /// laxo que Quest.targetItemName): un objeto narrativo suelto (newItem del modelo) nunca tiene
   /// uno. Se rellena cuando se sabe el origen (saqueo/despiece/crafteo, ver turnResolution.ts) —
@@ -570,6 +578,13 @@ enum ItemTipo {
   CONSUMIBLE
   /// Documentos, objetos de valor/trueque — sin mecánica de combate/equipo/consumo.
   NARRATIVO
+  /// Efecto real, pero ni de combate ni de equipo (2026-08-03, petición explícita: "los items de
+  /// tipo Especial... tendrán un efecto que será más complejo o útil para la narración o las
+  /// posibilidades de juego" — p.ej. el Mapa de las Llanuras, o un futuro diario que desbloquea
+  /// flora de una zona). Ver `effectKey`/`effectDescription` más abajo — sustituye el patrón de
+  /// mirar `item.name === '...'` a mano en el frontend (así vivía el Mapa hasta ahora) por una
+  /// clave real que cualquier sistema puede consultar.
+  ESPECIAL
 }
 
 /// Categoría de arma (2026-07-29, sistema de habilidades por arma — "dependiendo el arma que
@@ -1029,11 +1044,13 @@ model ItemCatalog {
   /// mano), ANILLO_1 vale también para ANILLO_2 (ver `equipSlotFamily`, equipment.ts) — el resto
   /// de ranuras son 1:1 exactas.
   equipSlot   EquipSlot?
-  /// Bonificador mecánico real al equipar (2026-07-19, mismo mecanismo que InventoryItem) — hoy
-  /// solo asignado a las armas (categoría "arma"); el resto del catálogo sigue siendo puramente
-  /// narrativo. Se copia a InventoryItem.statBonus* al materializarse por saqueo/despiece.
-  statBonusAttribute String?
-  statBonusAmount    Int?
+  /// Bonificadores mecánicos reales al equipar (2026-07-19, mismo mecanismo que InventoryItem;
+  /// mapa múltiple desde 2026-08-03 — sustituye a statBonusAttribute/statBonusAmount, un solo par
+  /// no dejaba a un objeto sumar, p.ej., fuerza Y defensa a la vez) — hoy sobre todo en armas
+  /// (categoría "arma") y armadura; el resto del catálogo sigue siendo puramente narrativo.
+  /// Partial<Record<Attribute | 'defensa', number>> (ver StatBonusMap, equipment.ts). Se copia a
+  /// InventoryItem.statBonuses al materializarse por saqueo/despiece.
+  statBonuses Json?
   /// Medidas físicas aproximadas en texto libre (2026-07-22, "para los objetos sus medidas y su
   /// lugar de origen... que eso se refleje en los prompts") — p.ej. "hoja de 45 cm, mango de 15
   /// cm". Texto libre porque la forma de medir varía demasiado entre categorías (arma, ropa,
@@ -1061,6 +1078,17 @@ model ItemCatalog {
   /// que `curaHasta` pero numérico (la energía es un pool 0..max, no un enum con pasos fijos).
   /// Null = el objeto no restaura energía.
   curaEnergia Int?
+  /// Clave estable del efecto especial (2026-08-03, `tipo: ESPECIAL`) — un identificador que un
+  /// sistema concreto del juego consulta para activar su propio comportamiento (p.ej.
+  /// `'reveal-map-llanuras'` para MapaPanel.tsx). Texto libre a propósito, como `sourceSlug` en
+  /// HarvestYield: no hay (ni tiene sentido crear) un enum cerrado de "todos los efectos
+  /// especiales posibles" — cada sistema que consuma una clave nueva la define y la documenta
+  /// donde vive ese sistema, no aquí. Null en el resto del catálogo (tipo != ESPECIAL).
+  effectKey         String?
+  /// Texto explicando el efecto en español llano, para mostrar en un sitio propio y diferenciado
+  /// de `description` (inventario/detalle) — nunca en la narración del Narrador. Null si
+  /// `effectKey` también lo es.
+  effectDescription String?
   createdAt   DateTime @default(now())
 
   npcItems NpcItem[]

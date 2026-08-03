@@ -82,11 +82,11 @@ Esta idea no es un sistema nuevo aislado — le da uso real a varias piezas que 
 
 **Conclusión del presupuesto:** cuanto más desgranamos las acciones largas hacia `CharacterTransit`, más barato se vuelve el sistema en tiempo de espera real — no más caro. Las acciones instantáneas/cortas no cambian de coste, solo de percepción (contador visual en vez de espera muda).
 
-## 9. Pendientes de implementación (siguiente paso técnico, no hecho todavía)
+## 9. Pendientes de implementación — **todo hecho** (actualizado 2026-08-02)
 
-1. Ampliar el JSON de `classifyAction` con `banda` y `duracionEstimadaMinutos`.
-2. Escribir las fórmulas deterministas de duración/producción (backend, sin IA) — empezar con 2-3 acciones típicas de Gorhorn (cortar leña, viajar, descansar).
-3. Componente de frontend: contador visual en vivo para banda corta/extendida (sustituye o complementa el texto ambiental ya construido).
-4. Implementar `CharacterTransit` de verdad: crear la fila al iniciar una acción extendida/larga, resolverla en el worker de reloj de mundo o al reabrir la partida.
-5. Migración de Prisma para el campo de condición física (pendiente ya desde antes, ahora con más motivo).
-6. Decidir el catálogo inicial de acciones largas tipo "downtime" (fabricar, entrenar, descansar, construir) — empezar con las que ya tienen sentido para Gorhorn en las Llanuras.
+1. ~~Ampliar el JSON de `classifyAction` con `banda` y `duracionEstimadaMinutos`~~ — hecho.
+2. ~~Escribir las fórmulas deterministas de duración/producción~~ — hecho, `backend/src/services/timedActions.ts`.
+3. ~~Componente de frontend: contador visual en vivo para banda corta/extendida~~ — hecho.
+4. ~~Implementar `CharacterTransit` de verdad~~ — hecho, `backend/src/workers/worldTick.ts` § `resolveDueTransits`.
+5. ~~Migración de Prisma para el campo de condición física~~ — hecho.
+6. ~~Decidir el catálogo inicial de acciones largas tipo "downtime"~~ — hecho, ver `harvestYields`/producción en `worldCatalog.ts`.

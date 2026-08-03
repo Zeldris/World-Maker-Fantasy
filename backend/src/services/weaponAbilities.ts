@@ -172,6 +172,18 @@ const WEAPON_REAL_ATAQUE_CONTENT: Record<'HACHA' | 'MAZA' | 'GARROTE' | 'PICA' |
   },
 };
 
+/// Camino inverso de `WEAPON_REAL_ATAQUE_CONTENT` (2026-08-01, bug real jugando en vivo: "Tajo
+/// Horizontal" — la real de HACHA — narró "lanza su cuchillo de hielo sílice", el arma de la mano
+/// SECUNDARIA — mismo problema que ya se arregló para Ataque Básico, aquí reproducido de verdad
+/// para la real de categoría). Dado el NOMBRE de una habilidad real por categoría, su categoría de
+/// arma exacta — turnResolution.ts lo usa para, cuando esa categoría solo vive en UNA de las dos
+/// manos (nunca en dualWield, donde de verdad se usan las dos), nombrar el arma exacta en la
+/// narración en vez de dejarlo a que el modelo elija entre las dos que lleva encima.
+export function weaponCategoryForRealAbilityName(name: string): WeaponCategory | null {
+  const entry = (Object.entries(WEAPON_REAL_ATAQUE_CONTENT) as [WeaponCategory, WeaponAbilityContent][]).find(([, content]) => content.name === name);
+  return entry ? entry[0] : null;
+}
+
 /// Bonus de dificultad al usar la real de ataque cuando colapsó por llevar la MISMA categoría en
 /// las dos manos (`WeaponAbility.dualWield`) — mismo orden de magnitud que el resto de ajustes de
 /// dificultad del proyecto (p.ej. `defensa` en `contraataqueDifficultyFor`, npcScene.ts). Se resta

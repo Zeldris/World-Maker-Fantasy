@@ -6,8 +6,11 @@ personaje jugable nuevo — para que desde el primer día tenga las dos cosas qu
 catálogo: (1) una descripción real de cara al Narrador, no solo a la Enciclopedia, y (2) que sea
 "linkable" (clicable/descubrible) aunque la narración no use su nombre exacto y completo.
 
-Ver también `docs/revisar-partida.md` (mismo espíritu de runbook) y la memoria
-`tarkor_auditoria_linkability_doble_descripcion_2026-07-30` (Claude Code).
+Ver también `docs/revisar-partida.md` (mismo espíritu de runbook), la memoria
+`tarkor_auditoria_linkability_doble_descripcion_2026-07-30` (Claude Code), y
+`docs/puntos-de-codigo-nuevo-contenido.md` (mapa completo de qué ARCHIVOS tocar además de los
+campos del catálogo — gotchas de compilación, colisión de alias frontend vs backend, mapa visual,
+etc.).
 
 ## 1. Objeto nuevo (`ItemCatalog`, `worldCatalog.ts` § `items`)
 
@@ -37,7 +40,7 @@ Después de editar `worldCatalog.ts`:
 
 ```
 cd backend
-npm run seed-catalog   # upsert real contra Supabase — SÍ actualiza partidas ya en curso
+npm run seed-catalog   # upsert contra el Postgres LOCAL (podman, ver docs/15-instalacion.md) — SÍ actualiza partidas ya en curso
 ```
 
 `migrate dev` NUNCA en este proyecto (la shadow DB no tiene `vector` — ver docs/15-instalacion.md
@@ -84,9 +87,9 @@ Patrón ya consolidado en `weaponAbilities.ts`/`classAbilities.ts`/`berigLore.ts
 ## 6. Verificación antes de dar por cerrado
 
 ```
-cd backend && npx tsc --noEmit -p tsconfig.json && npx vitest run
-cd frontend && npx tsc --noEmit -p tsconfig.json && npx vitest run
+cd backend  && npm run lint && npx tsc --noEmit && npx vitest run
+cd frontend && npm run lint && npx tsc -b        && npx vitest run
 ```
 
 Si se tocó `schema.prisma` o `worldCatalog.ts`, correr `npm run seed-catalog` (backend) para que
-el mundo ya sembrado en Supabase refleje el cambio — editar solo el archivo TS no basta.
+el Postgres local ya sembrado refleje el cambio — editar solo el archivo TS no basta.

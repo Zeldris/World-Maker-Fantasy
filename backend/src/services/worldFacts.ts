@@ -12,7 +12,12 @@ import { embed, toVectorLiteral } from '../lib/embeddings.js';
 const MAX_STORED_FACTS = 50;
 const MAX_SENT_FACTS = 10;
 const RECENCY_GUARANTEED = 3;
-const DUPLICATE_THRESHOLD = 0.7;
+// Bajado de 0.7 a 0.65 (auditoría 2026-08-02, "revisar partida" — bug real jugando en vivo): dos
+// hechos seguidos del mismo combate, "El Orco Enfurecido ha sido derrotado y ahora está herido,
+// ~50/100 de salud" / "El Orco Enfurecido ahora está herido, ~50/100 de salud", tenían 0.69 de
+// similitud — justo por debajo del umbral, así que el segundo (una paráfrasis casi idéntica) no se
+// descartaba y se colaba duplicado en sessionFacts.
+const DUPLICATE_THRESHOLD = 0.65;
 
 function normalize(fact: string): string {
   return fact

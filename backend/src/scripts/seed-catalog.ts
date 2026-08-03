@@ -59,8 +59,7 @@ async function main() {
         category: item.category,
         tipo: item.tipo,
         description: item.description,
-        statBonusAttribute: item.statBonusAttribute ?? null,
-        statBonusAmount: item.statBonusAmount ?? null,
+        statBonuses: item.statBonuses ?? Prisma.JsonNull,
         // dimensiones/lugarOrigen faltaban aquí (bug real preexistente, corregido de paso
         // 2026-07-23): un reseed nunca actualizaba estos campos en filas ya creadas, solo
         // `create` los recibía. tier/requisitos son nuevos, mismo criterio desde el principio.
@@ -71,6 +70,8 @@ async function main() {
         curaHasta: item.curaHasta ?? null,
         tipoArma: item.tipoArma ?? null,
         curaEnergia: item.curaEnergia ?? null,
+        effectKey: item.effectKey ?? null,
+        effectDescription: item.effectDescription ?? null,
       },
       create: { worldId, ...item },
     });

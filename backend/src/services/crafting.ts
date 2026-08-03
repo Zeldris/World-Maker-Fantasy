@@ -33,9 +33,9 @@ export interface CraftingRecipe {
   resultCatalogSlug?: string;
   /// 'defensa' incluido a propósito (mismo criterio que ItemCatalog/InventoryItem, ver
   /// equipment.ts § effectiveDefense): el peto de gargantúa es armadura, no un arma con uno de
-  /// los 6 atributos jugables.
-  statBonusAttribute?: Attribute | 'defensa';
-  statBonusAmount?: number;
+  /// los 6 atributos jugables. Mapa de varios bonus a la vez (2026-08-03, sustituye al par
+  /// statBonusAttribute/statBonusAmount) — mismo patrón que `Requisitos`.
+  statBonuses?: Partial<Record<Attribute | 'defensa', number>>;
   /// Sesión de diseño 2026-07-23: nivel de rareza/dificultad del objeto (1-5), mínimos de
   /// atributo del PJ para poder craftearlo, y a qué oficio pertenece (id de professions.ts) — el
   /// nivel de ESE oficio alivia el requisito (ver professionProgress.ts), nunca la tirada general.
@@ -61,8 +61,7 @@ const AXE_REPAIR_RECIPE: CraftingRecipe = {
   resultCatalogSlug: 'hacha-guerra-maktor-restaurada',
   resultDescription:
     'El hacha rota del clan, reforjada — la cabeza reasentada y el filo devuelto. Lo único del Clan Maktor que ha vuelto a estar entero.',
-  statBonusAttribute: 'fuerza',
-  statBonusAmount: 3,
+  statBonuses: { fuerza: 3 },
   // Sesión de diseño 2026-07-23: reforjar el hacha del clan a un arma de tier 3 exige fuerza real
   // (blandirla y guiar al herrero) — oficio 'herrero' porque ocurre en la fragua del campamento.
   tier: 3,
@@ -102,8 +101,7 @@ const GARGANTUA_ARMOR_RECIPE: CraftingRecipe = {
   resultName: 'Peto de placas óseas de gargantúa',
   resultCatalogSlug: 'peto-placas-gargantua',
   resultDescription: 'Armadura pesada montada a mano en el campamento del clan, con placas óseas y tendón de gargantúa.',
-  statBonusAttribute: 'defensa',
-  statBonusAmount: 2,
+  statBonuses: { defensa: 2 },
   // Sesión de diseño 2026-07-23: montar armadura pesada de placas óseas exige fuerza — mismo
   // oficio 'herrero' que el hacha (misma fragua del campamento, no hace falta un oficio aparte).
   tier: 3,
@@ -128,8 +126,10 @@ const ANTIDOTE_RECIPE: CraftingRecipe = {
   resultCatalogSlug: 'contraveneno-salvia-ceniza',
   resultDescription: 'Mezcla preparada de salvia del polvo y pétalos de Flor de Ceniza — neutraliza el veneno de Espina del Viento.',
   // Sesión de diseño 2026-07-23: mezclar un contraveneno de verdad exige entender qué se está
-  // mezclando — requisito de Inteligencia (atributo secundario, ver secondaryAttributes.ts), no
-  // de fuerza física. Oficio 'sanador': encaja con quien ya conoce estas hierbas de antes.
+  // mezclando — requisito de Inteligencia, no de fuerza física. Oficio 'sanador': encaja con
+  // quien ya conoce estas hierbas de antes. (Nota 2026-08-03: Inteligencia es atributo JUGABLE
+  // desde el rediseño a 7, no secundario — este comentario decía lo contrario por error histórico,
+  // ya corregido; el requisito en sí nunca cambió de comportamiento.)
   tier: 2,
   requisitos: { inteligencia: 8 },
   oficio: 'sanador',

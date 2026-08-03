@@ -51,3 +51,10 @@ Conciso: qué está bien, qué anomalías concretas (citando la línea de log ex
 bug de código de verdad (no solo una rareza puntual del modelo) proponer el fix — pero no aplicarlo
 sin decirlo primero y esperar luz verde, salvo que la usuaria ya haya pedido explícitamente que se
 arregle en el mismo mensaje.
+
+## 5. Registrar el hallazgo
+
+Antes de dar por nuevo cualquier fallo, mirar `docs/revisar-partida-hallazgos.md` — puede que ya se
+haya visto y se sepa si tiene fix determinista, está pendiente, o se decidió que no era bug. Al
+terminar la auditoría, añadir SIEMPRE una entrada nueva al final de ese archivo (fecha, síntoma
+citado, causa raíz si se conoce, y estado: FIJADO/PENDIENTE/NO ES BUG), haya o no fix ya aplicado.

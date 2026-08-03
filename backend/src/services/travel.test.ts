@@ -1,7 +1,26 @@
-import { describe, it, expect } from 'vitest';
-import {
+import { describe, it, expect, vi } from 'vitest';
+import type { AttributeBlock } from './dice.js';
+
+const locationFindMany = vi.fn();
+const locationFindUnique = vi.fn();
+const linkFindMany = vi.fn();
+
+vi.mock('../lib/prisma.js', () => ({
+  prisma: {
+    location: {
+      findMany: (...args: unknown[]) => locationFindMany(...args),
+      findUnique: (...args: unknown[]) => locationFindUnique(...args),
+    },
+    locationLink: {
+      findMany: (...args: unknown[]) => linkFindMany(...args),
+    },
+  },
+}));
+
+const {
   normalizeText,
   detectsTravelIntent,
+  detectsVagueMovementIntent,
   matchDestination,
   buildAdjacency,
   shortestPath,
@@ -12,9 +31,12 @@ import {
   fuzzyMatchCandidates,
   fuzzyMatchesAnyStem,
   findFuzzyStemMatch,
-  type LocationNode,
-  type LinkEdge,
-} from './travel.js';
+  resolveTravel,
+} = await import('./travel.js');
+type LocationNode = import('./travel.js').LocationNode;
+type LinkEdge = import('./travel.js').LinkEdge;
+
+const ATTRS: AttributeBlock = { fuerza: 10, destreza: 10, constitucion: 10, inteligencia: 10, voluntad: 10, carisma: 10, arcano: 10 };
 
 describe('normalizeText', () => {
   it('quita tildes y pasa a minúsculas', () => {
@@ -57,6 +79,40 @@ describe('detectsTravelIntent', () => {
   });
   it('no detecta intención de viaje en una acción no relacionada', () => {
     expect(detectsTravelIntent('examino mis alrededores con cuidado')).toBe(false);
+  });
+});
+
+// docs/revisar-partida-hallazgos.md (2026-08-01, "bucle" de ambientación sin progreso): "avanzo"/
+// "continúo" sin nombrar un destino real no disparaban ni detectsTravelIntent ni matchDestination.
+describe('detectsVagueMovementIntent', () => {
+  it('detecta "avanzo"/"prosigo"/"me adentro" solos, sin necesitar más contexto', () => {
+    expect(detectsVagueMovementIntent('Avanzo por una salida')).toBe(true);
+    expect(detectsVagueMovementIntent('Prosigo con cautela')).toBe(true);
+    expect(detectsVagueMovementIntent('Me adentro en la oscuridad')).toBe(true);
+  });
+
+  it('detecta "sigo"/"continúo" solo si van acompañados de una palabra de movimiento', () => {
+    expect(detectsVagueMovementIntent('Continuo por la cueva')).toBe(true);
+    expect(detectsVagueMovementIntent('Continuo hasta llegar a la siguiente localización')).toBe(true);
+    expect(detectsVagueMovementIntent('Sigo adelante sin mirar atrás')).toBe(true);
+  });
+
+  it('detecta "siguiente zona/localización" y "busco la salida"', () => {
+    expect(detectsVagueMovementIntent('Voy a la siguiente zona')).toBe(true);
+    expect(detectsVagueMovementIntent('Busco la salida de la cueva')).toBe(true);
+  });
+
+  it('NO confunde "sigo mirando"/"continúo hablando" con movimiento (no van acompañados de nada que indique desplazamiento)', () => {
+    expect(detectsVagueMovementIntent('Sigo mirando el horizonte')).toBe(false);
+    expect(detectsVagueMovementIntent('Continuo hablando con el mercader')).toBe(false);
+  });
+
+  it('NO confunde el idiom "continúo por ahora" con "continúo por <lugar>"', () => {
+    expect(detectsVagueMovementIntent('Continuo por ahora sin decir nada más')).toBe(false);
+  });
+
+  it('no detecta nada en una acción sin ninguna intención de movimiento', () => {
+    expect(detectsVagueMovementIntent('Examino mi inventario con calma')).toBe(false);
   });
 });
 
@@ -143,5 +199,49 @@ describe('initialLocationSlugFor', () => {
   });
   it('otros personajes no tienen ubicación inicial todavía (fuera de alcance v1)', () => {
     expect(initialLocationSlugFor('Sael Vhorn')).toBeUndefined();
+  });
+});
+
+// docs/revisar-partida-hallazgos.md (2026-08-01, "bucle" de ambientación sin progreso): fallback de
+// movimiento vago sin destino nombrado — solo se auto-resuelve con EXACTAMENTE una salida real.
+describe('resolveTravel — fallback de movimiento vago (sin destino nombrado)', () => {
+  const LOC_A = { id: 'loc-a', slug: 'zona-a', name: 'Zona A', description: '', region: 'Las Llanuras del Viento Rojo', kind: 'CAMPO', aliases: [] };
+  const LOC_B = { id: 'loc-b', slug: 'zona-b', name: 'Zona B', description: '', region: 'Las Llanuras del Viento Rojo', kind: 'CAMPO', aliases: ['zona b'] };
+  const LOC_C = { id: 'loc-c', slug: 'zona-c', name: 'Zona C', description: '', region: 'Las Llanuras del Viento Rojo', kind: 'CAMPO', aliases: ['zona c'] };
+  const linkAB = { fromId: 'loc-a', toId: 'loc-b', minutosBase: 10, terreno: 'llano', riesgo: null, from: LOC_A, to: LOC_B };
+  const linkAC = { fromId: 'loc-a', toId: 'loc-c', minutosBase: 15, terreno: 'llano', riesgo: null, from: LOC_A, to: LOC_C };
+
+  it('con una sola salida real, "avanzo" viaja ahí sin que el jugador nombre nada', async () => {
+    locationFindMany.mockResolvedValue([LOC_A, LOC_B]);
+    locationFindUnique.mockResolvedValue(LOC_B);
+    linkFindMany.mockResolvedValue([linkAB]);
+
+    const result = await resolveTravel({ action: 'Avanzo por una salida', worldId: 'w1', currentLocationId: 'loc-a', attributes: ATTRS });
+    expect(result?.toLocationId).toBe('loc-b');
+    expect(result?.toLocationName).toBe('Zona B');
+  });
+
+  it('con 2+ salidas reales, no adivina cuál — no resuelve viaje (deja que el turno pregunte)', async () => {
+    locationFindMany.mockResolvedValue([LOC_A, LOC_B, LOC_C]);
+    linkFindMany.mockResolvedValue([linkAB, linkAC]);
+
+    const result = await resolveTravel({ action: 'Continuo por el camino adelante', worldId: 'w1', currentLocationId: 'loc-a', attributes: ATTRS });
+    expect(result).toBeNull();
+  });
+
+  it('sin ninguna intención de movimiento (vaga ni nombrada), no hace nada', async () => {
+    locationFindMany.mockResolvedValue([LOC_A, LOC_B]);
+    linkFindMany.mockResolvedValue([linkAB]);
+
+    const result = await resolveTravel({ action: 'Examino mi inventario con calma', worldId: 'w1', currentLocationId: 'loc-a', attributes: ATTRS });
+    expect(result).toBeNull();
+  });
+
+  it('un destino nombrado explícitamente sigue funcionando igual que siempre (no lo toca el fallback)', async () => {
+    locationFindMany.mockResolvedValue([LOC_A, LOC_B, LOC_C]);
+    linkFindMany.mockResolvedValue([linkAB, linkAC]);
+
+    const result = await resolveTravel({ action: 'Voy hacia la zona b', worldId: 'w1', currentLocationId: 'loc-a', attributes: ATTRS });
+    expect(result?.toLocationId).toBe('loc-b');
   });
 });

@@ -59,7 +59,11 @@ Estos son los valores confirmados que necesita el `World` de la base de datos y 
 - Sigue sin resolver si los **Nabieus** deberían figurar explícitamente en la lista de "razas diseñadas" de la Era 1 (están vinculados a Kroj, una Semilla Fiel, igual que Kalisar a Sezix) — detalle menor, no bloqueante.
 
 ### Pendientes de implementación (siguiente paso técnico)
+
+*(Actualizado 2026-08-02 — 1-3 hechos desde hace tiempo. El punto 4 sigue abierto pero atado al
+lore de los otros 7 personajes, pausado a propósito — ver `docs/11-roadmap.md` § 0.)*
+
 1. ~~Atributos numéricos para los 8 personajes~~ — **hecho**, ver tabla en [rpgtarkor/personajes.md](rpgtarkor/personajes.md) (las 6 estadísticas base; el resto queda pendiente, ver arriba).
-2. **Sustituir el mundo placeholder "Valdreth"** por Helek Sirik en `frontend/src/data/mock.ts` (nombre, sinopsis, facciones = Alianza de la Rama Blanca / Concordia de Hierro, tema de color — probablemente tonos azules/cristalinos dado "Origen Azul", no el latón/musgo actual) y en el `Modelfile` del Narrador con el contrato de mundo de arriba.
+2. ~~Sustituir el mundo placeholder "Valdreth"~~ — **hecho**, `frontend/src/data/mock.ts` y el `Modelfile` del Narrador usan Helek Sirik.
 3. ~~Sustituir los 4 personajes pregenerados actuales~~ — **hecho**, los 8 personajes de Helek Sirik ya están en `frontend/src/data/mock.ts`.
-4. **Elegir el gancho de partida concreto** para una partida en solitario: con 8 protagonistas potenciales pero una sola partida jugable a la vez (MVP en solitario), decidir cómo se presenta esto en la selección de personaje.
+4. **Elegir el gancho de partida concreto** para una partida en solitario: con 8 protagonistas potenciales pero una sola partida jugable a la vez (MVP en solitario), decidir cómo se presenta esto en la selección de personaje — solo Gorhorn es jugable hoy, ver punto 0 de `docs/11-roadmap.md`.

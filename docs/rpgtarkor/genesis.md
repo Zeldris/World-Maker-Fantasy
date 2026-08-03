@@ -11,6 +11,8 @@
 ### Madre
 Ser primordial de origen incierto. Uno de sus miles de nombres —el más desconocido— es **Helek** ("origen" en nohade); de ahí el nombre del planeta: **Helek Sirik** ("Origen Azul"). Oculta algo cuya naturaleza no se ha revelado aún: se descubrirá con la historia. Ese mismo secreto es, más adelante, el detonante de la caída de Tarkor.
 
+*(Añadido 2026-08-03, ver [cronologia-mitica.md § Año −200.000.000](cronologia-mitica.md#año-−200000000-aprox--helek-sirik-se-forma-como-planeta-y-madre-crea-las-13-semillas):* Madre no formó el planeta — llegó, se desconoce de dónde, muy poco después de que Helek Sirik terminara de formarse por procesos físicos normales. Se comporta como una creadora suprema, pero solo ha estado presente durante una fracción mínima de la vida real del planeta, y no tiene ni idea de qué había antes de ella, ni de qué hay más allá de su propia creación — la misma ceguera que insinúa la Entidad Desconocida, más abajo.)*
+
 ### Nohade
 Lengua creada por Berd para que las Semillas pudieran comunicarse entre sí y con Madre. Es exclusivamente divina: ningún mortal la ha hablado jamás. *(No confundir con las lenguas comunes ni las lenguas de clan de los mortales).*
 
@@ -98,4 +100,4 @@ Entre las Semillas fieles el Estallido se vivió como la primera herida del mund
 
 ---
 
-**Ver también:** [Áreas y geografía](areas.md) · [Historia y presente](historia.md) · [Razas](razas.md) · [Flora y fauna](flora-fauna.md) · [Items](items.md) · [Personajes](personajes.md) · [NPCs](npcs.md)
+**Ver también:** [Cronología mítica](cronologia-mitica.md) · [Cronología](cronologia.md) · [Áreas y geografía](areas.md) · [Historia y presente](historia.md) · [Razas](razas.md) · [Flora y fauna](flora-fauna.md) · [Items](items.md) · [Personajes](personajes.md) · [NPCs](npcs.md)

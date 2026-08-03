@@ -47,12 +47,19 @@ export const worldPopulations: WorldPopulationInput[] = [
     distribucion: { 'Margen Silencioso': 1 },
   },
   // Los 3 clanes orcos son filas separadas a propósito (confirmado por la usuaria: son
-  // sub-razas ya adaptadas a su región — biología distinta entre ellas, Maktor/Serhu vs. Helsig
-  // vs. Goshg — que rara vez se desplazan salvo guerra o evento de mundo muy concreto).
+  // sub-razas ya adaptadas a su región — biología distinta entre ellas, Serhu vs. Helsig vs.
+  // Goshg — que rara vez se desplazan salvo guerra o evento de mundo muy concreto). El Clan
+  // Maktor no tiene fila propia: reducido a Gorhorn en solitario, no una población a trackear.
   {
     targetType: 'RAZA',
     targetSlug: 'orcos-llanuras',
-    label: 'Orcos del clan Maktor/Serhu (Llanuras del Viento Rojo)',
+    // Etiqueta corregida (2026-08-03, sesión "ampliamos lore" — historia orca profunda): ya no
+    // dice "Maktor/Serhu". Con el Clan Maktor reducido a Gorhorn en solitario (aniquilado por una
+    // incursión Goirnte, ver areas.md § Historia profunda), esta fila es de facto solo el Clan
+    // Serhu — se deja el targetSlug genérico `orcos-llanuras` tal cual (no rompe nada que ya
+    // dependa de él), solo se corrige el label. La cifra (800/1.000) no cambia: ya cuadraba con
+    // el ritmo de crecimiento explicado en areas.md § "El cerco social".
+    label: 'Orcos del Clan Serhu (Llanuras del Viento Rojo)',
     poblacion: 800,
     poblacionMax: 1000,
     distribucion: { 'Llanuras del Viento Rojo': 1 },
@@ -165,6 +172,17 @@ export const worldPopulations: WorldPopulationInput[] = [
     label: 'Rondador de Brasas',
     poblacion: 250,
     poblacionMax: 400,
+    distribucion: { 'Llanuras del Viento Rojo': 1 },
+  },
+  // Canizor (añadido 2026-08-03, sesión "ampliamos lore"): solitario y territorial (a diferencia
+  // del Aullador Rojo, que caza en jauría) — cada individuo necesita un territorio propio grande,
+  // así que su población se queda deliberadamente baja, por debajo de Rondador de Brasas.
+  {
+    targetType: 'FAUNA',
+    targetSlug: 'canizor',
+    label: 'Canizor',
+    poblacion: 200,
+    poblacionMax: 320,
     distribucion: { 'Llanuras del Viento Rojo': 1 },
   },
   // Gargantúa de Ceniza: la más controlada de todas a propósito — enorme, solo se caza en

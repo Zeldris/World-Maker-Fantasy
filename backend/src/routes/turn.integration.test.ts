@@ -309,6 +309,45 @@ describe('Ataque Básico: atribución de arma cuando hay dos armas equipadas', (
     expect(hint).toContain('mano PRINCIPAL');
     expect(hint).not.toMatch(/con Cuchillo de hielo sílice \(la que lleva/);
   }, 15_000);
+
+  // Bug real jugando en vivo (2026-08-01, "revisar partida", misma auditoría): "Tajo Horizontal"
+  // (la real de HACHA) narró "lanza su cuchillo de hielo sílice" — la secundaria, no el hacha.
+  // Reproducido con la misma pareja de armas que el test de arriba, pero apuntando ambas a un
+  // catalogSlug real (worldCatalog.ts) para que `equippedWeaponSlotsForAbilities` sepa su
+  // categoría — sin eso, `weaponCategoryForRealAbilityName` no tendría nada contra qué matchear.
+  it('el contexto del Narrador nombra el arma exacta de una habilidad real por categoría, aunque viva en la mano secundaria', async () => {
+    narrateAction.mockClear();
+    await prisma.inventoryItem.updateMany({ where: { saveId, name: 'Hacha de guerra rota' }, data: { catalogSlug: 'hacha-guerra-maktor-rota' } });
+    await prisma.inventoryItem.updateMany({ where: { saveId, name: 'Cuchillo de hielo sílice' }, data: { catalogSlug: 'cuchillo-hielo-silice' } });
+    const tajoHorizontal = await prisma.savedAction.create({
+      data: {
+        saveId,
+        name: 'Tajo Horizontal',
+        promptText: 'Lanzo un tajo amplio en horizontal, buscando cortar con todo el filo de mi hacha.',
+        category: 'combate',
+      },
+    });
+    const app = await buildApp();
+    const action = "Lanzo un tajo amplio en horizontal, buscando cortar con todo el filo de mi hacha 'Orco enfurecido'.";
+    const classifyRes = await app.inject({
+      method: 'POST',
+      url: '/turn/classify',
+      payload: { saveId, action, enCombate: true, savedActionId: tajoHorizontal.id },
+    });
+    const { classification, roll } = classifyRes.json();
+    await app.inject({
+      method: 'POST',
+      url: '/turn/narrate',
+      payload: { saveId, action, classification, roll, enCombate: true, savedActionId: tajoHorizontal.id },
+    });
+
+    const narrateCallArgs = narrateAction.mock.calls.at(-1)?.[0] as { worldFacts?: string[] };
+    const hint = narrateCallArgs.worldFacts?.find((f) => f.includes('ESTE GOLPE EN CONCRETO'));
+    // El arma correcta (hacha) va en el "es con", la incorrecta (cuchillo) solo puede aparecer en
+    // el "nunca con" que la descarta explícitamente — nunca al revés.
+    expect(hint).toMatch(/^ESTE GOLPE EN CONCRETO es con Hacha de guerra rota/);
+    expect(hint).toContain('nunca con Cuchillo de hielo sílice');
+  }, 15_000);
 });
 
 // Cobertura nueva (2026-07-31, petición explícita: "que aparezca en la narración del personaje el

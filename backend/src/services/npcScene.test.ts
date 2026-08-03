@@ -5,6 +5,8 @@ const NPCS = [
   { id: 'rezagado', aliases: ['guerrero orco rezagado', 'rezagado', 'orco rezagado', 'un rezagado'] },
   { id: 'torgash', aliases: ['torgash', "kort'ikar torgash", 'el jefe de guerra serhu'] },
   { id: 'ulkha', aliases: ['ulkha', "terk'ikar ulkha", 'jefa del clan serhu'] },
+  { id: 'hagar', aliases: ['hagar'] },
+  { id: 'murgol', aliases: ['murgol', 'múrgol', 'murgoles', 'múrgoles', 'rebano', 'rebaño'] },
 ];
 
 // `detectNpcsInScene` (acotar el candidato, ver comentario en npcScene.ts) necesita prisma
@@ -53,6 +55,20 @@ describe('matchNpcAliases', () => {
     // para detectar a Torgash/Ulkha "en escena" solo porque sus alias también mencionan "serhu"
     // en medio de una frase más larga ("el jefe de guerra serhu", "jefa del clan serhu").
     expect(matchNpcAliases('Gistera Koh, una orca del Clan Serhu, ha aparecido ante Gorhorn', NPCS)).toEqual([]);
+  });
+
+  it('bug real jugando en vivo (2026-08-02): "lugar" no debe disparar a Hagar por tolerancia a erratas (Levenshtein("lugar","hagar")=2)', () => {
+    expect(matchNpcAliases('Gorhorn se da cuenta de que este lugar ha sido escenario de conflictos', NPCS)).toEqual([]);
+  });
+
+  it('bug real jugando en vivo (2026-08-02): "remato"/"remata" no deben disparar al Múrgol por tolerancia a erratas (Levenshtein("remato","rebano")=2)', () => {
+    expect(matchNpcAliases('Remato a Orco enfurecido, asestándoles el golpe de gracia final.', NPCS)).toEqual([]);
+    expect(matchNpcAliases('Lo remata sin piedad.', NPCS)).toEqual([]);
+  });
+
+  it('Hagar y el Múrgol siguen detectándose por su alias real, la exclusión no los deja invisibles del todo', () => {
+    expect(matchNpcAliases('Hagar se acerca sonriendo', NPCS)).toEqual(['hagar']);
+    expect(matchNpcAliases('Veo un múrgol pastando', NPCS)).toEqual(['murgol']);
   });
 });
 
@@ -157,12 +173,32 @@ describe('pickAmbientEncounterCandidate', () => {
     expect(pickAmbientEncounterCandidate([])).toBeNull();
   });
 
-  it('elige el candidato en el índice que dicte la función de aleatoriedad inyectada', () => {
+  it('elige el candidato en el índice que dicte la función de aleatoriedad inyectada (sin peso = uniforme)', () => {
     const candidates = [
       { slug: 'orco-rezagado', name: 'Guerrero orco rezagado', role: 'Guerrero sin clan' },
       { slug: 'mercader-de-paso', name: 'Mercader de paso', role: 'Comerciante itinerante' },
     ];
     expect(pickAmbientEncounterCandidate(candidates, () => 0)).toEqual(candidates[0]);
+    expect(pickAmbientEncounterCandidate(candidates, () => 0.99)).toEqual(candidates[1]);
+  });
+
+  // docs/16-poblacion-dinamica.md (2026-08-03): ponderado por población real en vez de uniforme.
+  it('pondera por `weight` — una especie mucho más abundante sale elegida en un rango mucho más amplio', () => {
+    const candidates = [
+      { slug: 'corredor-de-cauce', name: 'Corredor de Cauce', role: 'Fauna itinerante', weight: 90 },
+      { slug: 'gargantua-de-ceniza', name: 'Gargantúa de Ceniza', role: 'Fauna itinerante', weight: 10 },
+    ];
+    // totalWeight = 100: [0, 0.9) cae en el primero, [0.9, 1) en el segundo.
+    expect(pickAmbientEncounterCandidate(candidates, () => 0.5)).toEqual(candidates[0]);
+    expect(pickAmbientEncounterCandidate(candidates, () => 0.95)).toEqual(candidates[1]);
+  });
+
+  it('un candidato con weight 0 (especie extinta) nunca sale elegido si hay alternativa', () => {
+    const candidates = [
+      { slug: 'especie-extinta', name: 'Especie extinta', role: 'Fauna itinerante', weight: 0 },
+      { slug: 'especie-viva', name: 'Especie viva', role: 'Fauna itinerante', weight: 5 },
+    ];
+    expect(pickAmbientEncounterCandidate(candidates, () => 0)).toEqual(candidates[1]);
     expect(pickAmbientEncounterCandidate(candidates, () => 0.99)).toEqual(candidates[1]);
   });
 });
@@ -284,7 +320,7 @@ function npcFixture(overrides: Partial<NpcInScene> = {}): NpcInScene {
     id: 'orco', slug: 'orco-enfurecido', name: 'Orco enfurecido', articulo: 'el', kind: 'PRINCIPAL',
     level: 1, role: 'Guerrero deshonrado', faction: null, personality: 'Errático', bio: 'x',
     items: [
-      { name: 'Maza orca', cantidad: 1, notas: 'Astillada', description: 'x', equipSlot: 'ARMA_PRINCIPAL', statBonusAttribute: 'fuerza', statBonusAmount: 2, catalogSlug: 'maza-orca', category: 'arma', tipoArma: 'MAZA' },
+      { name: 'Maza orca', cantidad: 1, notas: 'Astillada', description: 'x', equipSlot: 'ARMA_PRINCIPAL', statBonuses: { fuerza: 2 }, catalogSlug: 'maza-orca', category: 'arma', tipoArma: 'MAZA' },
     ],
     attributes: { fuerza: 11, destreza: 10, constitucion: 9, inteligencia: 4, voluntad: 7, carisma: 2, arcano: 2 },
     raza: 'orcos', clase: 'Guerrero', ataqueNatural: null, habilidadesRaciales: [],

@@ -66,10 +66,10 @@ La usuaria priorizó construirla ya en vez de esperar (contradice la recomendaci
 2. **Mapa**: vista estática de las regiones de Berig/Vaelira ya documentadas, sin posición dinámica todavía.
 3. **La barra inferior en sí** y el patrón de drawer/panel — se puede montar con datos vacíos/placeholder en el resto de pestañas, listo para conectar cuando cada una tenga datos reales.
 
-## 8. Pendientes de implementación (siguiente paso técnico, no hecho todavía)
+## 8. Pendientes de implementación (actualizado 2026-08-02)
 
-1. Resolver el conflicto de niveles (§ 3) — decisión de la usuaria, no técnica.
-2. Diseñar y migrar los modelos nuevos: `Quest`, `SavedAction`, y (más adelante) los de "Reino".
-3. Abordar la persistencia real de `Save`/`WorldState`/`LogEntry` — prerrequisito de casi todo esto.
-4. Construir el componente de barra inferior + drawer, empezando por Estadísticas y Mapa (los dos que no dependen de persistencia).
-5. Diseñar el catálogo inicial de Profesiones (contenido curado, como el lore).
+1. ~~Resolver el conflicto de niveles (§ 3)~~ — hecho.
+2. ~~Diseñar y migrar los modelos nuevos: `Quest`, `SavedAction`~~ — hecho. Los de "Reino" (`Territory`/`Building`/`Subject`) también existen en el schema, pero Reino queda pausado como línea de juego activa (ver `docs/11-roadmap.md`).
+3. ~~Abordar la persistencia real de `Save`/`WorldState`/`LogEntry`~~ — hecho.
+4. ~~Construir el componente de barra inferior + drawer~~ — hecho.
+5. **Diseñar el catálogo inicial de Profesiones** (contenido curado, como el lore) — sigue sin implementar. Ver memoria `tarkor_habilidades_profesion_pendiente` (Claude Code): idea aplazada de exponer las recetas ya existentes en `crafting.ts` como habilidades "general" descubribles por nivel de oficio.

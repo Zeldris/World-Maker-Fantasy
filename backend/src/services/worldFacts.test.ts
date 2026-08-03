@@ -57,9 +57,16 @@ describe('appendSessionFacts', () => {
     expect(executeRaw).toHaveBeenCalledTimes(1);
   });
 
-  it('descarta un hecho casi idéntico a uno ya existente (≥70% palabras compartidas) — no lo embebe ni lo inserta', async () => {
+  it('descarta un hecho casi idéntico a uno ya existente (≥65% palabras compartidas) — no lo embebe ni lo inserta', async () => {
     const existing = ['Gorhorn ve un grupo hostil de orcos cerca del pozo'];
     await appendSessionFacts('save1', existing, ['Gorhorn ve un grupo hostil de oca cerca del pozo']);
+    expect(embed).not.toHaveBeenCalled();
+    expect(executeRaw).not.toHaveBeenCalled();
+  });
+
+  it('descarta una paráfrasis casi idéntica aunque quede justo por debajo del 70% (bug real jugando: 0.69 de similitud no se descartaba)', async () => {
+    const existing = ['El Orco Enfurecido ha sido derrotado y ahora está herido, ~50/100 de salud.'];
+    await appendSessionFacts('save1', existing, ['El Orco Enfurecido ahora está herido, ~50/100 de salud.']);
     expect(embed).not.toHaveBeenCalled();
     expect(executeRaw).not.toHaveBeenCalled();
   });

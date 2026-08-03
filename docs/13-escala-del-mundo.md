@@ -39,7 +39,7 @@ Las 8 aristas originales **admiten una colocación 2D consistente** — esto no 
 |---|---|---|---|
 | Los Pilares Rotos | 0 | 0 | origen (hito visible — céntrico, como pide el lore) |
 | El Pozo de Cauce Viejo | +13,5 | 0 | |
-| El Cruce de las Cenizas | 0 | −18 | el nodo más al **sur** — es la entrada del camino de la Meseta, y la Meseta queda al sur (§ 3) |
+| El Cruce de las Cenizas | 0 | −18 | el nodo más al **sur** del núcleo — es la entrada del camino de la Meseta, y la Meseta queda al sur (§ 3). Esta distancia es la real de juego (tiempos de viaje); el dibujo en pantalla del Cruce usa una posición distinta, solo visual (ver nota 2026-08-03 más abajo) |
 | La Hondonada del Eco | +5 | +7,5 | |
 | Campamento del Clan Serhu | +21 | −5 | sureste del Pozo, sobre la senda de pastoreo |
 | Los Restos de Maktor | +10 | +20,5 | el más profundo en la estepa, hacia el norte salvaje |
@@ -61,6 +61,41 @@ Mismo margen de error que los 6 originales en las aristas usadas para triangular
 
 Nota: los tiempos de docs/12 § 1.3 quedan intactos; esta tabla solo los proyecta.
 
+**Actualización 2026-08-03 (auditoría "y el resto de zonas están bien?"), tres pasadas el mismo
+día — la primera y la segunda quedaron superadas por la tercera, se dejan aquí porque cada una
+enseñó algo real:**
+
+**Primera pasada (solo documental, superada):** al calibrar contra el mapa real de Azgaar (burg612
+"Campamento del Clan Serhu"), el núcleo entero proyectaba en la zona norte-central del polígono
+real de Las Llanuras, lejos del borde dibujado de El Margen Silencioso. Se estimó el hueco en ~90 km
+y se documentó sin tocar coordenadas, asumiendo que el Cruce de las Cenizas marcaba solo "el límite
+de lo jugable", no el límite físico real.
+
+**Segunda pasada (recalibración de bloque, también superada):** la usuaria, al ver que el Cruce
+seguía en la misma posición visual tras la primera pasada, pidió medir contra el PNG real en vez de
+asumir. Midiendo sobre los vértices reales del polígono (renderizando los 12 nodos con
+`rsvg-convert`), el hueco real resultó de ~170 km, no ~90. Con eso medido, se desplazó
+`LLANURAS_OFFSET_Y` para mover el núcleo ENTERO en bloque hacia el sur. Esto sí dejaba el Cruce
+junto al borde real — pero arrastraba también a los otros 11 nodos, que ya estaban bien donde
+estaban. La usuaria lo detectó de inmediato viendo el mapa: "las posiciones del resto de
+localizaciones estaban bien pero las has bajado... el cruce cenizas el que había que bajar".
+
+**Tercera pasada (la que queda) — separar lo visual de lo triangulado:** en vez de mover el bloque,
+se revirtió `LLANURAS_OFFSET_Y` a su valor anclado al burg real de Campamento Serhu (los otros 11
+nodos vuelven a su posición de siempre) y se movió SOLO la posición visual de
+`cruce-de-las-cenizas` en `frontend/src/data/map.ts` (de -18 a -180 en el eje y), sin tocar esta
+tabla ni las distancias MEDIDO de arriba. Decisión explícita de la usuaria: "olvídate de las
+distancias de Azgaar, establezcamos nosotros las nuestras" — la posición en pantalla del Cruce ya
+no representa la distancia triangulada real (que sigue siendo -18, la de esta tabla, la que rige
+los tiempos de viaje reales vía `LocationLink`), es una posición puramente artística elegida para
+que quede junto al borde real dibujado con El Margen Silencioso. El resto del núcleo no se ve
+afectado por este desacople. Ver también [areas.md](rpgtarkor/areas.md), nota de escala del Cruce
+de las Cenizas (también actualizada), y el comentario de `cruce-de-las-cenizas` en `map.ts`.
+
+Aparte (de la primera pasada, sigue vigente): se corrigió un bug de signo real en
+`LLANURAS_OFFSET_Y` — el núcleo se dibujaba 10 km más al sur de lo que la propia calibración
+pretendía. Con la tercera pasada, el offset volvió a depender de ese mismo ancla ya corregida.
+
 ---
 
 ## 2. Las Llanuras del Viento Rojo
@@ -73,7 +108,7 @@ Esto encaja de lleno con la escala ya validada en docs/12: cruzarlo entero son ~
 
 ### 2.2 La región completa — MEDIDO (2026-07-22, mapa real de Azgaar; antes EXTRAPOLADO)
 
-El núcleo v1 **no es toda la región: es su esquina suroccidental**, la que toca el camino de la Meseta. Tres piezas de canon obligan a que la región sea mayor que el núcleo:
+El núcleo v1 **no es toda la región: es su esquina suroccidental**, la que toca el camino de la Meseta *(matizado 2026-08-03 — al calibrar contra el mapa real de Azgaar, el núcleo de los 11 nodos triangulados cae en la zona norte-central de la región, no en la esquina suroeste exacta; solo el Cruce de las Cenizas se dibuja aparte, junto al borde real, como posición puramente visual — ver la actualización al final de § 1.1, tercera pasada)*. Tres piezas de canon obligan a que la región sea mayor que el núcleo:
 
 1. Los clanes son **pastores nómadas con migraciones estacionales** a lomos de Gargantúas (areas.md) — un ciclo estacional necesita pastos de temporada fuera del territorio de asentamiento fijo.
 2. Los Corredores de Cauce migran "siguiendo las escasas corrientes de agua subterránea" en manadas de decenas — el Pozo de Cauce Viejo es *un* punto de esa corriente, no su origen ni su final.

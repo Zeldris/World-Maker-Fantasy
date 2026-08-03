@@ -40,7 +40,12 @@ export function mentionsExplicitDuration(action: string): boolean {
 /// motor de dados). Empieza con las 3 acciones típicas que sugiere el propio diseño; el resto
 /// de acciones por tiempo usan la estimación del clasificador tal cual.
 export function computeDuration(action: string, banda: Banda, attributes: AttributeBlock, duracionEstimadaMinutos: number): DurationResult {
-  if (banda === 'instantanea') return { minutos: 0 };
+  // Suelo de 1 minuto en vez de 0 (auditoría 2026-08-02, "revisar partida" — reportado como "una de
+  // las cosas más graves": un combate real de varios intercambios seguidos, cada uno banda
+  // "instantánea", dejaba el reloj de ficción clavado en el mismo minuto turno tras turno). Un
+  // intercambio de combate/diálogo sigue narrándose como algo casi inmediato (1 min, no una espera
+  // real), pero una pelea larga ahora sí acumula minutos de verdad en vez de sentirse congelada.
+  if (banda === 'instantanea') return { minutos: 1 };
 
   const lower = action.toLowerCase();
 

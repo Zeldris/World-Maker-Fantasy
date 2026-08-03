@@ -2,10 +2,11 @@ import { prisma } from '../lib/prisma.js';
 import { env } from '../config/env.js';
 import { narrateAndPersistTurn, TransitCancelledError } from '../services/turnResolution.js';
 import { computeDuration } from '../services/timedActions.js';
-import { effectiveAttributes, effectiveDefense, equippedWeaponNames, equippedItemsSummary } from '../services/equipment.js';
+import { effectiveAttributes, effectiveSecondaryAttributes, effectiveDefense, equippedWeaponNames, equippedItemsSummary } from '../services/equipment.js';
 import { normalizeSecondaryAttributes } from '../services/secondaryAttributes.js';
 import { characterSummaryFor } from '../services/characterSummary.js';
 import { loadSessionFacts } from '../services/worldFacts.js';
+import { growAllPopulations } from '../services/population.js';
 import type { ClassificationResult } from '../services/narrador.js';
 import type { RollResult, AttributeBlock } from '../services/dice.js';
 import type { TravelResolution } from '../services/travel.js';
@@ -69,7 +70,7 @@ export async function resolveDueTransits(): Promise<void> {
       const sessionFacts = await loadSessionFacts(save.id);
       const timeLabel = save.worldState?.fictionalDateLabel ?? 'Día 1, mañana';
       const attributes = effectiveAttributes(save.attributes as AttributeBlock, save.inventoryItems);
-      const secondaryAttributes = normalizeSecondaryAttributes(save.secondaryAttributes);
+      const secondaryAttributes = effectiveSecondaryAttributes(normalizeSecondaryAttributes(save.secondaryAttributes), save.inventoryItems);
       const defensa = effectiveDefense(save.inventoryItems);
       const equippedWeapons = equippedWeaponNames(save.inventoryItems);
       const equippedItems = equippedItemsSummary(save.inventoryItems);
@@ -136,6 +137,9 @@ export async function resolveDueTransits(): Promise<void> {
 
 async function tick(): Promise<void> {
   await resolveDueTransits();
+  // Población dinámica (docs/16-poblacion-dinamica.md) — `WorldPopulation` es del World, no de
+  // una Save concreta, así que crece en el mismo tick de fondo en vez de en el turno síncrono.
+  await growAllPopulations(prisma).catch((err) => console.error('[worldTick] error creciendo población:', err));
 }
 
 let intervalHandle: NodeJS.Timeout | null = null;

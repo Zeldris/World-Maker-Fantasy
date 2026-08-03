@@ -3,7 +3,7 @@ import { prisma } from '../../lib/prisma.js';
 import { syncDynamicCombatAbilities, resolveEquippedWeaponSlots } from '../../services/dynamicAbilities.js';
 import { normalizeSecondaryAttributes } from '../../services/secondaryAttributes.js';
 import { checkRequisitos, shortfallLabel, type Requisitos } from '../../services/requisitos.js';
-import { equipSlotFamily } from '../../services/equipment.js';
+import { equipSlotFamily, effectiveAttributes, effectiveSecondaryAttributes } from '../../services/equipment.js';
 import type { AttributeBlock } from '../../services/dice.js';
 import type { EquipSlot } from '@prisma/client';
 
@@ -55,10 +55,16 @@ export async function inventarioRoutes(app: FastifyInstance) {
           });
         }
 
+        // Efectivos, no base (2026-08-03, hueco real encontrado de paso: esta comprobación de
+        // requisitos nunca contaba el equipo YA puesto — un anillo que da +3 fuerza no ayudaba a
+        // cumplir el requisito de fuerza 12 de una armadura, aunque narrativamente sí deberías
+        // poder ponértela con esa fuerza real de encima). Mismo criterio que energiaMax/combate:
+        // solo lo ya equipado, nunca la mochila entera.
+        const equippedItems = await prisma.inventoryItem.findMany({ where: { saveId: request.params.id, slot: { not: null } } });
         const shortfalls = checkRequisitos(
           catalogItem?.requisitos as Requisitos | undefined,
-          save.attributes as AttributeBlock,
-          normalizeSecondaryAttributes(save.secondaryAttributes),
+          effectiveAttributes(save.attributes as AttributeBlock, equippedItems),
+          effectiveSecondaryAttributes(normalizeSecondaryAttributes(save.secondaryAttributes), equippedItems),
         );
         if (shortfalls.length > 0) {
           return reply.status(400).send({

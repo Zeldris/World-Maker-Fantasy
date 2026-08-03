@@ -1,5 +1,6 @@
 import type { AttributeBlock, Attribute } from './dice.js';
 import type { EquipSlot } from '@prisma/client';
+import { SECONDARY_ATTRIBUTES, type SecondaryAttribute, type SecondaryAttributeBlock } from './secondaryAttributes.js';
 
 const ATTRIBUTES: Attribute[] = ['fuerza', 'destreza', 'constitucion', 'inteligencia', 'voluntad', 'carisma', 'arcano'];
 
@@ -7,36 +8,69 @@ function isAttribute(value: string): value is Attribute {
   return (ATTRIBUTES as string[]).includes(value);
 }
 
+function isSecondaryAttribute(value: string): value is SecondaryAttribute {
+  return (SECONDARY_ATTRIBUTES as string[]).includes(value);
+}
+
+/// Mapa de bonificadores de UN objeto (2026-08-03, sustituye al par statBonusAttribute/
+/// statBonusAmount — un solo par no dejaba a un objeto sumar, p.ej., fuerza Y defensa a la vez).
+/// Mismo patrón que `Requisitos` (requisitos.ts): mapa parcial, `'defensa'` incluido junto a los
+/// 6 atributos jugables (ver comentario de `effectiveDefense` más abajo).
+export type StatBonusMap = Partial<Record<string, number>>;
+
 export interface EquippedStatBonus {
-  statBonusAttribute: string | null;
-  statBonusAmount: number | null;
+  /// `unknown` a propósito: llega tal cual del campo `Json?` de Prisma (ItemCatalog/InventoryItem
+  /// .statBonuses) en cada caller, sin que cada uno tenga que castear — se normaliza aquí mismo,
+  /// un único sitio de confianza para esta forma de dato en vez de repetir `as StatBonusMap` en
+  /// cada ruta/servicio que llama a estas dos funciones.
+  statBonuses: unknown;
+}
+
+function asStatBonusMap(value: unknown): StatBonusMap {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
+  return value as StatBonusMap;
 }
 
 /// Estadísticas de objetos (instrucción explícita de la usuaria, 2026-07-19, reabriendo la
-/// decisión de mecánicas 6): un objeto EQUIPADO puede sumar un bonificador real a uno de los 6
-/// atributos jugables — puro y determinista, mismo espíritu que progression.ts/death.ts. Solo
-/// cuenta lo que está en un hueco de equipo (`slot` no null); la mochila nunca da bonificadores.
+/// decisión de mecánicas 6; extendido 2026-08-03 a múltiples bonus por objeto): un objeto
+/// EQUIPADO puede sumar bonificadores reales a varios de los 6 atributos jugables a la vez —
+/// puro y determinista, mismo espíritu que progression.ts/death.ts. Solo cuenta lo que está en un
+/// hueco de equipo (`slot` no null); la mochila nunca da bonificadores.
 export function effectiveAttributes(base: AttributeBlock, equippedItems: EquippedStatBonus[]): AttributeBlock {
   const result = { ...base };
   for (const item of equippedItems) {
-    if (!item.statBonusAttribute || !item.statBonusAmount) continue;
-    if (!isAttribute(item.statBonusAttribute)) continue;
-    result[item.statBonusAttribute] += item.statBonusAmount;
+    for (const [attribute, amount] of Object.entries(asStatBonusMap(item.statBonuses))) {
+      if (!amount || !isAttribute(attribute)) continue;
+      result[attribute] += amount;
+    }
+  }
+  return result;
+}
+
+/// Simétrico a `effectiveAttributes`, pero para los 9 atributos secundarios (2026-08-03, hueco
+/// real encontrado tras construir el mapa de bonus múltiple: la petición explícita de la usuaria
+/// —"cosméticos... bonus especiales de attrs secundarios"— nunca llegó a tener ningún sitio que la
+/// aplicara de verdad; `normalizeSecondaryAttributes` se llamaba a pelo en cada ruta, sin pasar
+/// nunca por el equipo puesto). Mismo criterio: solo cuenta lo equipado, la mochila nunca suma.
+export function effectiveSecondaryAttributes(base: SecondaryAttributeBlock, equippedItems: EquippedStatBonus[]): SecondaryAttributeBlock {
+  const result = { ...base };
+  for (const item of equippedItems) {
+    for (const [attribute, amount] of Object.entries(asStatBonusMap(item.statBonuses))) {
+      if (!amount || !isSecondaryAttribute(attribute)) continue;
+      result[attribute] += amount;
+    }
   }
   return result;
 }
 
 /// Slot de defensa (roadmap 2026-07-19, prioridad 1: cerrar el combate ya calibrado): mismo
-/// patrón que effectiveAttributes, pero para armadura/escudo equipado — `statBonusAttribute`
-/// vale 'defensa' en vez de uno de los 6 atributos jugables (isAttribute lo ignora arriba, así
-/// que ambas funciones pueden convivir sobre el mismo InventoryItem sin pisarse). Se resta a la
-/// dificultad de contraataque del NPC (npcScene.ts) — llevar armadura real hace más fácil
-/// esquivar/bloquear, no solo decorativo.
+/// patrón que effectiveAttributes, pero para armadura/escudo equipado — la clave `'defensa'` del
+/// mapa vale para esto en vez de uno de los 6 atributos jugables (isAttribute la ignora arriba,
+/// así que ambas funciones pueden convivir sobre el mismo InventoryItem sin pisarse, incluso el
+/// mismo objeto dando fuerza Y defensa a la vez). Se resta a la dificultad de contraataque del
+/// NPC (npcScene.ts) — llevar armadura real hace más fácil esquivar/bloquear, no solo decorativo.
 export function effectiveDefense(equippedItems: EquippedStatBonus[]): number {
-  return equippedItems.reduce((sum, item) => {
-    if (item.statBonusAttribute === 'defensa' && item.statBonusAmount) return sum + item.statBonusAmount;
-    return sum;
-  }, 0);
+  return equippedItems.reduce((sum, item) => sum + (asStatBonusMap(item.statBonuses).defensa ?? 0), 0);
 }
 
 export interface EquippedWeaponInfo {
@@ -80,12 +114,4 @@ export function equipSlotFamily(canonical: EquipSlot): EquipSlot[] {
   if (canonical === 'ANILLO_1' || canonical === 'ANILLO_2') return ['ANILLO_1', 'ANILLO_2'];
   if (CONSUMIBLE_SLOTS.includes(canonical)) return CONSUMIBLE_SLOTS;
   return [canonical];
-}
-
-/// Ranuras equipadas que alimentan "Tus objetos" en combate (2026-07-30, petición explícita:
-/// "raciones y cataplasma catalogalo como Consumible que tendrá 6 slots en equipo donde podrás
-/// añadir los consumibles que quieres usar en el combate") — ya no vale CUALQUIER objeto sin
-/// ranura (mochila entera), solo lo que el jugador equipó a propósito aquí.
-export function isConsumibleSlot(slot: EquipSlot | null | undefined): boolean {
-  return !!slot && (CONSUMIBLE_SLOTS as string[]).includes(slot);
 }

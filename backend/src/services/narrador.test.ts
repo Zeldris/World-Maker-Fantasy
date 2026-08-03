@@ -7,6 +7,7 @@ import {
   isTooSimilarToLast,
   hasEnglishLeak,
   hasFalseCombatHit,
+  hasPrematureCombatResolution,
   hasFalseItemUse,
   hasResurrectedDeadNpc,
 } from './narrador.js';
@@ -108,6 +109,33 @@ describe('hasFalseCombatHit', () => {
 
   it('no dispara fuera de combate (combatBothMissed undefined)', () => {
     expect(hasFalseCombatHit('Gorhorn golpea la puerta con el puño, impaciente.', undefined)).toBe(false);
+  });
+
+  it('bug real jugando en vivo (2026-08-02): detecta "línea de sangre" como contradicción esquiva+impacto (hueco de vocabulario, no de lógica)', () => {
+    const narration = 'Gorhorn lanza su hacha, pero este esquiva fácilmente, dejando una línea de sangre fría donde la hoja rozó su armadura.';
+    expect(hasFalseCombatHit(narration, true)).toBe(true);
+  });
+});
+
+describe('hasPrematureCombatResolution', () => {
+  it('bug real jugando en vivo, confirmado en dos partidas (2026-07-31 y 2026-08-01): detecta un combate narrado como ya resuelto en el turno de aceptar ayudar a Gistera Koh, sin ningún intercambio mecánico', () => {
+    const narration =
+      "Gorhorn se gira hacia el orco y lanza su cuchillo con fuerza. El arma acierta de lleno, y el orco huye cojeando entre la maleza.";
+    expect(hasPrematureCombatResolution(narration, true)).toBe(true);
+  });
+
+  it('no dispara si el combate ya se resolvió de verdad este turno (combatNotYetResolved=false)', () => {
+    const narration = 'Gorhorn lanza su cuchillo y acierta de lleno, dejando al orco tambaleante.';
+    expect(hasPrematureCombatResolution(narration, false)).toBe(false);
+  });
+
+  it('no dispara con una narración de tensión/acercamiento genuina, sin combate ya resuelto', () => {
+    const narration = 'Gorhorn se gira hacia el orco, empuñando su hacha, listo para lo que venga.';
+    expect(hasPrematureCombatResolution(narration, true)).toBe(false);
+  });
+
+  it('no dispara fuera de este escenario concreto (combatNotYetResolved undefined)', () => {
+    expect(hasPrematureCombatResolution('El orco huye cojeando, malherido.', undefined)).toBe(false);
   });
 });
 
