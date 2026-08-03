@@ -3,7 +3,7 @@
 // en narraciones/descripciones — ver enciclopediaIndex.ts). Única fuente de verdad: tanto el
 // panel como el enlazado de texto abren SIEMPRE el mismo detalle para la misma entidad.
 import { slugify } from './slugify'
-import { attributeLabels } from './dice'
+import { attributeLabels, statBonusLabels } from './dice'
 import { secondaryAttributeLabels } from './secondaryAttributes'
 import type {
   EnciclopediaAbilityInfo,
@@ -27,9 +27,11 @@ const ALL_ATTRIBUTE_LABELS: Record<string, string> = { ...attributeLabels, ...se
 // tipos de recurso/material más finos (piel/hueso/madera/piedra/mena/hierba/pluma/quitina/resina,
 // metal/bloque), "medicinal" sigue viviendo dentro de tipo=CONSUMIBLE, no en esta lista de arriba.
 export const ITEM_CATEGORY_ORDER = [
+  'especial',
   'arma',
   'herramienta',
   'ropa',
+  'cosmetico',
   'consumible',
   'medicinal',
   'documento',
@@ -47,9 +49,11 @@ export const ITEM_CATEGORY_ORDER = [
   'bloque',
 ]
 export const ITEM_CATEGORY_LABEL: Record<string, string> = {
+  especial: 'Especiales',
   arma: 'Armas',
   herramienta: 'Herramientas',
   ropa: 'Ropa',
+  cosmetico: 'Cosméticos',
   consumible: 'Consumibles',
   medicinal: 'Medicinales',
   documento: 'Documentos',
@@ -67,9 +71,11 @@ export const ITEM_CATEGORY_LABEL: Record<string, string> = {
   bloque: 'Bloques',
 }
 const ITEM_CATEGORY_ICON: Record<string, string> = {
+  especial: '✨',
   arma: '⚔️',
   herramienta: '🔨',
   ropa: '👕',
+  cosmetico: '📿',
   consumible: '🍖',
   medicinal: '💊',
   documento: '📜',
@@ -90,13 +96,18 @@ const ITEM_CATEGORY_ICON: Record<string, string> = {
 // Categorización mecánica (2026-07-29) — tipo amplio, exterior a `category` (subtipo fino de
 // arriba). "equipable"/"consumible"/"narrativo" agrupan lo que ya existía; "recurso"/"material"
 // son la distinción nueva (crudo vs. procesado) que antes vivía toda bajo un único "material".
-export const ITEM_TIPO_ORDER: ItemTipo[] = ['EQUIPABLE', 'CONSUMIBLE', 'MATERIAL', 'RECURSO', 'NARRATIVO']
+// ESPECIAL (2026-08-03) va primero a propósito — son los objetos con más peso real (efecto de
+// juego, no solo sabor), tiene sentido que aparezcan antes que equipables comunes.
+export const ITEM_TIPO_ORDER: ItemTipo[] = ['ESPECIAL', 'EQUIPABLE', 'CONSUMIBLE', 'MATERIAL', 'RECURSO', 'NARRATIVO']
 export const ITEM_TIPO_LABEL: Record<ItemTipo, string> = {
+  // "Especiales" (2026-08-03) se muda aquí, a `tipo: ESPECIAL` de verdad — antes lo llevaba
+  // NARRATIVO sin serlo realmente (cosméticos/documentos/valor no tienen ningún efecto de juego).
+  ESPECIAL: 'Especiales',
   EQUIPABLE: 'Equipables',
   CONSUMIBLE: 'Consumibles',
   MATERIAL: 'Materiales',
   RECURSO: 'Recursos',
-  NARRATIVO: 'Especiales',
+  NARRATIVO: 'Narrativos',
 }
 
 export function itemIcon(category: string): string {
@@ -143,8 +154,11 @@ export function npcToDetailTarget(npc: EnciclopediaNpcInfo): EnciclopediaLinkTar
 
 export function itemToDetailTarget(item: EnciclopediaItemInfo): EnciclopediaLinkTarget {
   const requisitosEntries = Object.entries(item.requisitos ?? {})
+  const statBonusEntries = Object.entries(item.statBonuses ?? {}).filter(([, amount]) => !!amount)
   const extraLines = [
-    item.statBonusAttribute && item.statBonusAmount ? `Bonificador: +${item.statBonusAmount} ${item.statBonusAttribute}.` : null,
+    statBonusEntries.length > 0
+      ? `Bonificador: ${statBonusEntries.map(([k, v]) => `+${v} ${statBonusLabels[k] ?? k}`).join(', ')}.`
+      : null,
     item.dimensiones ? `Medidas: ${item.dimensiones}` : null,
     item.lugarOrigen ? `Origen: ${item.lugarOrigen}` : null,
     // Sesión de diseño 2026-07-23 — tier 1 es común, no se resalta.

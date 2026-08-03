@@ -24,11 +24,11 @@ interface MapaPanelProps {
   quests: QuestInfo[]
 }
 
-// Nombre exacto del objeto de misión (petición explícita, 2026-07-23) que desbloquea ver los
-// puntos de ubicación de Llanuras en el mapa — InventoryItem no expone un slug de catálogo al
-// frontend (mismo motivo que Quest.targetItemName compara por nombre, no por id), así que el
-// nombre exacto es la única señal disponible aquí.
-const MAPA_LLANURAS_ITEM_NAME = 'Mapa de las Llanuras'
+// Clave de efecto especial (petición explícita, 2026-07-23; migrado 2026-08-03 de comparar por
+// nombre exacto de objeto a `effectKey`, `tipo: ESPECIAL` — ver ItemCatalog en schema.prisma) que
+// desbloquea ver los puntos de ubicación de Llanuras en el mapa. Ya no se rompe si el objeto se
+// renombra en un saqueo/regalo personalizado, a diferencia de comparar por `name`.
+const REVEAL_MAP_LLANURAS_EFFECT_KEY = 'reveal-map-llanuras'
 
 // Catálogo real de ubicaciones de Llanuras, combinado con la geometría medida a mano (el backend
 // no guarda coordenadas de mapa) — ver comentario en data/map.ts. Se pide una sola vez por mundo,
@@ -108,7 +108,7 @@ export function MapaPanel({ worldSlug, currentLocation, destinations, inventory,
   const { nodes: llanurasNodes, edges: llanurasEdges, poiFallback: llanurasPuntosDeInteres, locationsBySlug } = useLlanurasGraph(worldSlug)
   const protagonistaTarget = useProtagonistaTarget(worldSlug)
   const { onEntityDetail } = useEnciclopediaLink()
-  const hasLlanurasMap = inventory.some((i) => i.name === MAPA_LLANURAS_ITEM_NAME)
+  const hasLlanurasMap = inventory.some((i) => i.effectKey === REVEAL_MAP_LLANURAS_EFFECT_KEY)
   const questTargetLocationSlug = quests.find((q) => q.status === 'ACTIVA' && q.targetLocationSlug)?.targetLocationSlug ?? null
 
   return (
@@ -133,7 +133,7 @@ export function MapaPanel({ worldSlug, currentLocation, destinations, inventory,
         />
         {!hasLlanurasMap && (
           <p className="mt-2 text-xs italic text-wood-500">
-            Sin un mapa de la región, solo se ve el contorno — consigue el "{MAPA_LLANURAS_ITEM_NAME}" para ver sus puntos de interés.
+            Sin un mapa de la región, solo se ve el contorno — consigue el "Mapa de las Llanuras" para ver sus puntos de interés.
           </p>
         )}
       </PanelSection>

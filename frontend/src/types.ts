@@ -148,7 +148,6 @@ export interface LogEntry {
 
 export type EquipSlot =
   | 'CASCO'
-  | 'ABALORIO'
   | 'CAMISA'
   | 'ARMADURA_SUPERIOR'
   | 'GUANTES'
@@ -166,11 +165,16 @@ export type EquipSlot =
   | 'CONSUMIBLE_4'
   | 'CONSUMIBLE_5'
   | 'CONSUMIBLE_6'
+  // 3 ranuras de cosmético puro (2026-08-03) — sustituyen a ABALORIO, ver equipment.prisma /
+  // equipSlots.ts. 1:1 exactas, sin familia compartida.
+  | 'COSMETICO_ESPALDA'
+  | 'COSMETICO_CABEZA'
+  | 'COSMETICO_CINTURA'
 
 /// Categorización mecánica de objetos (2026-07-29) — ver itemTaxonomy.ts (backend). RECURSO: se
 /// recoge/caza/tala/mina directo de la naturaleza. MATERIAL: sale de un proceso de crafteo.
 /// EQUIPABLE/CONSUMIBLE/NARRATIVO: los de siempre, ahora agrupados bajo un bucket mecánico.
-export type ItemTipo = 'RECURSO' | 'MATERIAL' | 'EQUIPABLE' | 'CONSUMIBLE' | 'NARRATIVO'
+export type ItemTipo = 'RECURSO' | 'MATERIAL' | 'EQUIPABLE' | 'CONSUMIBLE' | 'NARRATIVO' | 'ESPECIAL'
 
 export interface InventoryItemInfo {
   id: string
@@ -178,8 +182,10 @@ export interface InventoryItemInfo {
   description: string
   origin?: string
   slot: EquipSlot | null
-  statBonusAttribute: Attribute | null
-  statBonusAmount: number | null
+  /// Mapa de bonificadores (2026-08-03, sustituye al par statBonusAttribute/statBonusAmount — un
+  /// solo par no dejaba a un objeto sumar, p.ej., fuerza Y defensa a la vez). 'defensa' incluido
+  /// junto a los 7 atributos jugables, mismo criterio que el backend (equipment.ts).
+  statBonuses: Partial<Record<Attribute | 'defensa', number>> | null
   /// Sesión de diseño 2026-07-23: slug de ItemCatalog de origen (null en objetos narrativos
   /// sueltos), nivel de rareza/dificultad (1-5, 1 = común), y mínimos de atributo para equiparlo
   /// — el backend ya rechaza el PATCH de equipar si no se cumplen (ver lib/api.ts, setItemSlot).
@@ -194,6 +200,11 @@ export interface InventoryItemInfo {
   /// catalogSlug (la IA los inventa sobre la marcha, sin fila de catálogo que consultar).
   tipo?: ItemTipo
   category?: string
+  /// Solo si `tipo: 'ESPECIAL'` (2026-08-03) — clave estable que un sistema concreto del
+  /// frontend consulta (p.ej. MapaPanel.tsx) y texto explicando el efecto, para mostrar en un
+  /// sitio propio y diferenciado de `description`.
+  effectKey?: string | null
+  effectDescription?: string | null
   /// Imagen real de la Enciclopedia para este objeto (petición explícita de la usuaria,
   /// 2026-07-24: "las imágenes no salen" al ver un objeto desde Inventario/Equipo) — solo
   /// presente si `catalogSlug` existe y hay un banner subido de verdad (ver imageAssets.ts).

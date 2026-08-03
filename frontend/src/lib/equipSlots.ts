@@ -2,7 +2,6 @@ import type { EquipSlot } from '../types'
 
 export const SLOT_ORDER: EquipSlot[] = [
   'CASCO',
-  'ABALORIO',
   'CAMISA',
   'ARMADURA_SUPERIOR',
   'GUANTES',
@@ -20,6 +19,11 @@ export const SLOT_ORDER: EquipSlot[] = [
   'CONSUMIBLE_4',
   'CONSUMIBLE_5',
   'CONSUMIBLE_6',
+  // 3 ranuras de cosmético puro (2026-08-03, petición explícita: "crear... una categoría que es
+  // cosméticos... Espalda, Cabeza y Cintura") — sustituyen a ABALORIO, sin familia compartida.
+  'COSMETICO_ESPALDA',
+  'COSMETICO_CABEZA',
+  'COSMETICO_CINTURA',
 ]
 
 /// Familia de ranuras compatibles (2026-07-30, petición explícita: "categorizar por ranura para
@@ -55,7 +59,6 @@ export function isCompatibleWithSlot(item: { catalogSlug?: string | null; equipS
 
 export const SLOT_LABEL: Record<EquipSlot, string> = {
   CASCO: 'Casco',
-  ABALORIO: 'Abalorio',
   CAMISA: 'Camisa',
   ARMADURA_SUPERIOR: 'Armadura superior',
   GUANTES: 'Guantes',
@@ -73,4 +76,7 @@ export const SLOT_LABEL: Record<EquipSlot, string> = {
   CONSUMIBLE_4: 'Consumible 4',
   CONSUMIBLE_5: 'Consumible 5',
   CONSUMIBLE_6: 'Consumible 6',
+  COSMETICO_ESPALDA: 'Cosmético (espalda)',
+  COSMETICO_CABEZA: 'Cosmético (cabeza)',
+  COSMETICO_CINTURA: 'Cosmético (cintura)',
 }

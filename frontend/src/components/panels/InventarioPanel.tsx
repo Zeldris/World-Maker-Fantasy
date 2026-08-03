@@ -1,5 +1,5 @@
 import type { InventoryItemInfo, ItemTipo } from '../../types'
-import { attributeLabels } from '../../lib/dice'
+import { statBonusLabels } from '../../lib/dice'
 import { ITEM_TIPO_LABEL, ITEM_TIPO_ORDER, itemIcon } from '../../lib/enciclopediaTargets'
 import { PanelEmptyState } from '../PanelEmptyState'
 import { PanelSection } from '../PanelSection'
@@ -17,27 +17,43 @@ function ItemGrid({ items, onUse, onDetail }: InventarioPanelProps) {
       {items.map((item) => (
         <IconCard
           key={item.id}
-          icon={item.slot ? '⚔️' : itemIcon(item.category ?? '')}
+          icon={item.tipo === 'ESPECIAL' ? '✨' : item.slot ? '⚔️' : itemIcon(item.category ?? '')}
           name={item.name}
-          tooltip={item.description}
+          tooltip={item.effectDescription ?? item.description}
           onUse={() => onUse(item)}
           onDetail={() => onDetail(item)}
           badge={
-            item.slot && (
-              <span
-                aria-hidden="true"
-                className="pointer-events-none absolute -left-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full border border-moss-600 bg-wood-950 text-2xs font-bold leading-none text-moss-400"
-              >
-                E
-              </span>
-            )
+            <>
+              {item.slot && (
+                <span
+                  aria-hidden="true"
+                  className="pointer-events-none absolute -left-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full border border-moss-600 bg-wood-950 text-2xs font-bold leading-none text-moss-400"
+                >
+                  E
+                </span>
+              )}
+              {/* Objeto especial (2026-08-03, `tipo: ESPECIAL`) — marca aparte, diferenciada del
+                  resto, para no perderlo entre el resto de la mochila; el efecto completo vive en
+                  DetailModal.tsx. */}
+              {item.tipo === 'ESPECIAL' && (
+                <span
+                  aria-hidden="true"
+                  className="pointer-events-none absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full border border-quest-600 bg-wood-950 text-2xs leading-none text-quest-400"
+                >
+                  ✨
+                </span>
+              )}
+            </>
           }
           extra={
             <>
-              {!!item.statBonusAttribute && !!item.statBonusAmount && (
-                <span className="rounded-full border border-accent-600/50 bg-accent-500/10 px-1.5 py-0.5 font-mono text-2xs text-accent-300">
-                  +{item.statBonusAmount} {attributeLabels[item.statBonusAttribute]}
-                </span>
+              {Object.entries(item.statBonuses ?? {}).map(
+                ([attribute, amount]) =>
+                  !!amount && (
+                    <span key={attribute} className="rounded-full border border-accent-600/50 bg-accent-500/10 px-1.5 py-0.5 font-mono text-2xs text-accent-300">
+                      +{amount} {statBonusLabels[attribute] ?? attribute}
+                    </span>
+                  ),
               )}
               {/* Tier > 1 (sesión de diseño 2026-07-23) — tier 1 es común, no se resalta. */}
               {!!item.tier && item.tier > 1 && (

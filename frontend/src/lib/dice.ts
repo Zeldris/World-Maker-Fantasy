@@ -10,6 +10,12 @@ export const attributeLabels: Record<Attribute, string> = {
   arcano: 'Arcano',
 }
 
+/// Etiquetas para bonificadores de objetos (2026-08-03) — `attributeLabels` de arriba solo cubre
+/// los 7 atributos jugables; los objetos de armadura/escudo usan la clave especial 'defensa'
+/// (ver equipment.ts § effectiveDefense, backend), que necesita su propia etiqueta para no
+/// renderizarse como "undefined" en la UI (bug real: nunca la tuvo, ver InventoryItemInfo.statBonuses).
+export const statBonusLabels: Record<string, string> = { ...attributeLabels, defensa: 'Defensa' }
+
 /// Rediseño del turno de combate (2026-07-28) — un color por atributo (tokens en index.css) para
 /// identificar el "tipo" de una habilidad de un vistazo. Clases completas y literales a propósito
 /// (no una plantilla `` `border-${attr}-500` ``): Tailwind solo genera CSS para clases que ve

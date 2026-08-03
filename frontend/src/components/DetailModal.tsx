@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import type { EquipSlot, InventoryItemInfo, SavedActionInfo } from '../types'
-import { attributeLabels } from '../lib/dice'
+import { statBonusLabels } from '../lib/dice'
 import {
   resolveImageUrl,
   type EnciclopediaImagePrompts,
@@ -126,7 +126,7 @@ export function DetailModal({ target, onClose, onUnequip, onEquip, onSaveAbility
         {target.kind === 'item' && (
           <>
             <MediaSlot
-              icon={target.item.slot ? '⚔️' : '🎒'}
+              icon={target.item.tipo === 'ESPECIAL' ? '✨' : target.item.slot ? '⚔️' : '🎒'}
               variant="placeholder"
               imageUrl={resolveImageUrl(target.item.imageUrls?.banner ?? null)}
             />
@@ -135,11 +135,27 @@ export function DetailModal({ target, onClose, onUnequip, onEquip, onSaveAbility
               {target.item.slot && <p className="text-2xs font-semibold uppercase tracking-[0.1em] text-moss-400">Equipado</p>}
             </div>
             <p className="text-sm leading-relaxed text-wood-300">{target.item.description}</p>
+            {/* Efecto especial (2026-08-03, `tipo: ESPECIAL`) — diferenciado a propósito del resto
+                (petición explícita: "que se describan claramente... no sé si era mejor meterle un
+                algo especial que lo diferencie y muestre solo el efecto especial"), mismo estilo
+                visual que ya usa el aviso de misión nueva en LogPanel.tsx. */}
+            {!!target.item.effectDescription && (
+              <div className="rounded-lg border border-quest-600/50 bg-quest-500/10 px-3 py-2.5">
+                <p className="mb-1 text-2xs font-semibold uppercase tracking-[0.1em] text-quest-400">✨ Efecto especial</p>
+                <p className="text-sm leading-relaxed text-wood-200">{target.item.effectDescription}</p>
+              </div>
+            )}
             <div className="flex flex-wrap gap-1.5">
-              {!!target.item.statBonusAttribute && !!target.item.statBonusAmount && (
-                <p className="self-start rounded-full border border-accent-600/50 bg-accent-500/10 px-2.5 py-1 font-mono text-xs text-accent-300">
-                  +{target.item.statBonusAmount} {attributeLabels[target.item.statBonusAttribute]}
-                </p>
+              {Object.entries(target.item.statBonuses ?? {}).map(
+                ([attribute, amount]) =>
+                  !!amount && (
+                    <p
+                      key={attribute}
+                      className="self-start rounded-full border border-accent-600/50 bg-accent-500/10 px-2.5 py-1 font-mono text-xs text-accent-300"
+                    >
+                      +{amount} {statBonusLabels[attribute] ?? attribute}
+                    </p>
+                  ),
               )}
               {!!target.item.tier && target.item.tier > 1 && (
                 <p className="self-start rounded-full border border-accent2-600/50 bg-accent2-500/10 px-2.5 py-1 font-mono text-xs text-accent2-300">

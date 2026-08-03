@@ -622,8 +622,8 @@ export interface EnciclopediaItemInfo {
   /// Categorización mecánica (2026-07-29) — ver itemTaxonomy.ts (backend) / ItemTipo (types.ts).
   tipo: ItemTipo
   description: string
-  statBonusAttribute: string | null
-  statBonusAmount: number | null
+  /// Mapa de bonificadores (2026-08-03, sustituye al par statBonusAttribute/statBonusAmount).
+  statBonuses: Partial<Record<string, number>> | null
   /// Medidas físicas y lugar de origen (2026-07-22, "para los objetos sus medidas y su lugar de
   /// origen") — texto libre, null cuando el objeto no tiene un origen especial.
   dimensiones: string | null
@@ -632,6 +632,11 @@ export interface EnciclopediaItemInfo {
   /// diseño 2026-07-23) — null/undefined en objetos tier 1 sin requisito real.
   tier?: number
   requisitos?: Partial<Record<string, number>> | null
+  /// Solo en `tipo: 'ESPECIAL'` (2026-08-03) — clave estable que un sistema concreto del frontend
+  /// consulta (p.ej. MapaPanel.tsx) y texto explicando el efecto, para mostrar aparte de
+  /// `description`. Ver comentario de ambos campos en schema.prisma (backend).
+  effectKey?: string | null
+  effectDescription?: string | null
   imagePrompts: EnciclopediaImagePrompts
   imageUrls: EnciclopediaImageUrls
   /// Enciclopedia progresiva (2026-07-23) — mencionado en narración O visto ya en el inventario.

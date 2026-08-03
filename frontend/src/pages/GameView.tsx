@@ -1215,7 +1215,7 @@ export function GameView() {
       if (narration.newItem) {
         setInventory((prev) => [
           ...prev,
-          { id: `item-${Date.now()}`, slot: null, statBonusAttribute: null, statBonusAmount: null, ...narration.newItem! },
+          { id: `item-${Date.now()}`, slot: null, statBonuses: null, ...narration.newItem! },
         ])
       }
       if (narration.newCompanion) {

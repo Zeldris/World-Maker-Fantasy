@@ -14,7 +14,6 @@ interface EquipoPanelProps {
 
 const SLOT_ICON: Record<EquipSlot, string> = {
   CASCO: '🪖',
-  ABALORIO: '📿',
   CAMISA: '👕',
   ARMADURA_SUPERIOR: '🥋',
   GUANTES: '🧤',
@@ -32,6 +31,9 @@ const SLOT_ICON: Record<EquipSlot, string> = {
   CONSUMIBLE_4: '🧪',
   CONSUMIBLE_5: '🧪',
   CONSUMIBLE_6: '🧪',
+  COSMETICO_ESPALDA: '🎒',
+  COSMETICO_CABEZA: '💎',
+  COSMETICO_CINTURA: '📿',
 }
 
 // Disposición anatómica (roadmap de rediseño de paneles, Fable 2026-07-20/21): cabeza arriba,
@@ -41,7 +43,8 @@ const SLOT_ICON: Record<EquipSlot, string> = {
 // viven en su propia fila flex debajo — a propósito sin entrada aquí.
 const SLOT_AREA: Partial<Record<EquipSlot, string>> = {
   CASCO: 'casco',
-  ABALORIO: 'abalorio',
+  COSMETICO_CABEZA: 'cabeza',
+  COSMETICO_ESPALDA: 'espalda',
   ARMA_PRINCIPAL: 'armaP',
   GUANTES: 'guantes',
   CAMISA: 'camisa',
@@ -49,6 +52,7 @@ const SLOT_AREA: Partial<Record<EquipSlot, string>> = {
   ARMA_SECUNDARIA: 'armaS',
   ANILLO_1: 'anillo1',
   CINTURON: 'cinturon',
+  COSMETICO_CINTURA: 'cintura',
   ANILLO_2: 'anillo2',
   ARMADURA_INFERIOR: 'inferior',
   BOTAS: 'botas',
@@ -114,13 +118,13 @@ export function EquipoPanel({ items, onSlotClick }: EquipoPanelProps) {
         style={{
           gridTemplateColumns: 'repeat(5, 1fr)',
           gridTemplateAreas: `
-            ".      .        casco      .          ."
-            ".      .        abalorio   .          ."
-            "armaP  guantes  camisa     accesorio  armaS"
-            "armaP  guantes  superior   accesorio  armaS"
-            ".      anillo1  cinturon   anillo2    ."
-            ".      .        inferior   .          ."
-            ".      .        botas      .          ."
+            ".        cabeza   casco      .          ."
+            ".        .        espalda    .          ."
+            "armaP    guantes  camisa     accesorio  armaS"
+            "armaP    guantes  superior   accesorio  armaS"
+            "cintura  anillo1  cinturon   anillo2    ."
+            ".        .        inferior   .          ."
+            ".        .        botas      .          ."
           `,
           gridAutoRows: '4.5rem',
         }}

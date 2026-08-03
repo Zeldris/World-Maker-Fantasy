@@ -60,8 +60,21 @@ export const beriRegions: MapRegion[] = [
 // unidades del lienzo), el resto del núcleo se proyecta con un simple desplazamiento. Vive aquí
 // (no en InteractiveMap.tsx) para que MapZoomModal.tsx pueda dibujar los mismos puntos sobre el
 // mapa completo sin duplicar la calibración ni crear un import circular entre ambos componentes.
+//
+// Bug real (auditoría 2026-08-03, "y el resto de zonas están bien?"): el offset de Y se despejó
+// con el signo cambiado (`+5` en vez de `-5`) — con `+5`, el propio campamento-serhu (el nodo
+// ancla) se proyectaba en (534.6, 195.1), 10 km al sur de su ancla real (534.6, 185.1). `-5` es
+// el signo correcto: reproduce el ancla exacta.
+//
+// Intento fallido, mismo día — probado y revertido: mover TODO el bloque hacia el sur (offset Y a
+// 335) para que el Cruce de las Cenizas quedara junto al borde real con El Margen Silencioso.
+// Arreglaba el Cruce pero arrastraba a los otros 11 nodos, que ya estaban bien donde estaban —
+// la usuaria lo pilló enseguida viendo el mapa ("las posiciones del resto de localizaciones
+// estaban bien pero las has bajado... el cruce cenizas el que había que bajar"). El offset del
+// bloque vuelve a depender solo del ancla real de campamento-serhu; ver más abajo cómo se movió
+// el Cruce sin tocar el resto.
 const LLANURAS_OFFSET_X = 534.6141357421875 - 21
-const LLANURAS_OFFSET_Y = 185.10536193847656 + 5
+const LLANURAS_OFFSET_Y = 185.10536193847656 - 5
 
 /// docs/13-escala-del-mundo.md § 1.1: +x = este, +y = norte. El lienzo de Azgaar tiene el norte
 /// arriba (y menor) igual que cualquier mapa estándar, así que solo hay que invertir el eje Y.
@@ -76,7 +89,18 @@ export function projectLlanurasNodes(nodes: LlanurasNode[]): Map<string, { x: nu
 export const llanurasNodePositions: Record<string, { x: number; y: number }> = {
   'pilares-rotos': { x: 0, y: 0 },
   'pozo-cauce-viejo': { x: 13.5, y: 0 },
-  'cruce-de-las-cenizas': { x: 0, y: -18 },
+  // `y` (y `x`) NO son la distancia triangulada de docs/13-escala-del-mundo.md § 1.1 (esa sigue
+  // siendo (0,-18), MEDIDO contra los tiempos de viaje reales de LocationLink, y no cambia — ver
+  // esa tabla para la distancia de juego real Cruce↔Pilares/Pozo). Esta posición es SOLO visual
+  // (2026-08-03, misma auditoría de mapa): decisión explícita de la usuaria de dejar de atar el
+  // dibujo del Cruce a la triangulación real y ponerlo donde corresponde de verdad contra el PNG.
+  // Primer intento (0,-180) lo pegaba al borde exterior; ajuste fino pedido por la usuaria
+  // (flecha sobre una captura del mapa real) lo mete en la muesca donde El Margen Silencioso se
+  // adentra más en Llanuras, justo frente a "Puesto Rabioso del Márgen" (burg ya nombrado así en
+  // el .map real de Azgaar) — verificado renderizando sobre el PNG real con rsvg-convert. El
+  // resto del núcleo no se toca. La mecánica de viaje no usa estas coordenadas (usa las horas/km
+  // reales de LocationLink en la DB), así que este desacople no cambia ningún tiempo de viaje.
+  'cruce-de-las-cenizas': { x: 20, y: -144 },
   'hondonada-del-eco': { x: 5, y: 7.5 },
   'campamento-serhu': { x: 21, y: -5 },
   'restos-de-maktor': { x: 10, y: 20.5 },
