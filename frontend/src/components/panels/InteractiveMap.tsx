@@ -1,7 +1,29 @@
 import { useEffect, useMemo, useState } from 'react'
-import { projectLlanurasNodes, type LlanurasEdge, type LlanurasNode, type MapRegion } from '../../data/map'
+import { projectLlanurasNodes, type LlanurasEdge, type LlanurasNode, type MapNodeOption, type MapRegion } from '../../data/map'
 import berigMapUrl from '../../assets/maps/helek-sirik-berig.png'
 import { MapZoomModal } from './MapZoomModal'
+
+// "Paleta de puntos" (2026-08-04, ver MapNodeOption en data/map.ts): abanico de satélites por
+// encima del punto, en vez de un menú/modal aparte — el propio nodo "se abre". Radio y ángulos en
+// las mismas unidades pequeñas que el resto del dibujado de este componente (viewBox de ~290×510).
+// Reducido de 4.6 a 3.6 (auditoría de deuda técnica 2026-08-04): en el racimo denso del núcleo de
+// Llanuras (hondonada-del-eco/tumulos-del-honor/osario-de-la-manada, a solo 2.2-2.4 unidades entre
+// sí — más cerca que el radio de sus propios iconos) los satélites podían invadir el icono de un
+// nodo VECINO, no solo el propio. Un radio menor reduce cuánto se solapan, pero no lo elimina del
+// todo — esos 3 nodos están tan pegados entre sí que ningún radio de paleta lo resuelve solo;
+// arreglarlo de verdad exigiría separar sus coordenadas, y eso necesita verificarse contra el
+// render real con la usuaria (docs/feedback: nunca mover nodos del mapa a ciegas).
+const PALETTE_RADIUS = 3.6
+const PALETTE_ANGLE_START = 200
+const PALETTE_ANGLE_END = 340
+
+function paletteOffsets(count: number): { x: number; y: number }[] {
+  return Array.from({ length: count }, (_, i) => {
+    const angleDeg = count === 1 ? 270 : PALETTE_ANGLE_START + (i * (PALETTE_ANGLE_END - PALETTE_ANGLE_START)) / (count - 1)
+    const rad = (angleDeg * Math.PI) / 180
+    return { x: PALETTE_RADIUS * Math.cos(rad), y: PALETTE_RADIUS * Math.sin(rad) }
+  })
+}
 
 interface Shape {
   name: string
@@ -77,10 +99,16 @@ interface InteractiveMapProps {
   llanurasNodes?: LlanurasNode[]
   llanurasEdges?: LlanurasEdge[]
   currentLocationSlug?: string | null
-  /// Abre la ficha de la Enciclopedia del punto pulsado (petición explícita, 2026-07-22: "cuando
-  /// pulso alguno de los puntos debería abrirme su entrada en la enciclopedia") — independiente
-  /// de `selectedNodeSlug` (que solo resalta y enseña la descripción corta bajo el mapa).
-  onNodeDetail?: (slug: string) => void
+  /// Qué hay anclado en este nodo (2026-08-04, reemplaza `onNodeDetail`): puede ser tu posición,
+  /// la ubicación en sí, y/o una o más construcciones — con 1 sola opción se abre directo (mismo
+  /// comportamiento de siempre), con 2+ se despliega la paleta de satélites en vez de decidir en
+  /// silencio cuál mostrar (bug real que tenía el código anterior: de pie sobre tu ubicación,
+  /// pulsar el nodo SIEMPRE abría tu propia ficha, nunca la de la ubicación).
+  getNodeOptions?: (slug: string) => MapNodeOption[]
+  /// Icono de construcción activa por slug de ubicación (2026-08-04, "el campamento" — primera
+  /// construcción anclada al mapa) — badge adicional sobre el nodo, independiente de la insignia
+  /// de "aquí ahora" y del "!" de misión.
+  buildingIconBySlug?: Map<string, string>
   /// "Niebla de guerra" por región (petición explícita, 2026-07-23): sin el objeto "Mapa de las
   /// Llanuras" en el inventario, la región se ve resaltada (sabes en qué región estás) pero sin
   /// los puntos de ubicación concretos — mismo patrón pensado para el resto de Berig cuando tenga
@@ -99,11 +127,16 @@ export function InteractiveMap({
   llanurasNodes,
   llanurasEdges,
   currentLocationSlug,
-  onNodeDetail,
+  getNodeOptions,
+  buildingIconBySlug,
   hasLlanurasMap,
   questTargetLocationSlug,
 }: InteractiveMapProps) {
   const [selectedName, setSelectedName] = useState(currentRegion)
+  // Paleta de puntos (2026-08-04): qué nodo tiene su abanico de satélites desplegado ahora mismo,
+  // null = ninguno. Se cierra solo al elegir una opción, al pulsar el mismo nodo otra vez, o al
+  // pulsar fuera (imagen de fondo).
+  const [expandedNodeSlug, setExpandedNodeSlug] = useState<string | null>(null)
   // Bug real (auditoría 2026-07-22): `useState(currentRegion)` solo copia la prop la primera vez
   // — si el jugador viaja a otra región con el panel de Mapa ya abierto, `currentRegion` cambia
   // pero el resaltado se quedaba en la región vieja hasta cerrar y reabrir el panel. Se resincroniza
@@ -158,6 +191,7 @@ export function InteractiveMap({
             height={600}
             preserveAspectRatio="xMidYMid slice"
             onDragStart={(e) => e.preventDefault()}
+            onClick={() => setExpandedNodeSlug(null)}
             style={{ WebkitUserDrag: 'none', userSelect: 'none' } as React.CSSProperties}
           />
 
@@ -254,7 +288,11 @@ export function InteractiveMap({
                   y1={from.y}
                   x2={to.x}
                   y2={to.y}
-                  stroke="var(--color-iron-600)"
+                  // `--color-iron-600` no existe en index.css (solo iron-700/800/900) — bug real,
+                  // hacía el stroke inválido y las líneas de ruta llevaban invisibles desde que se
+                  // construyó esta función, no algo específico de las zonas nuevas (2026-08-05,
+                  // encontrado jugando: "no veo ninguna línea de ruta en el mapa").
+                  stroke="var(--color-wood-300)"
                   strokeWidth={0.6}
                   strokeDasharray={edge.riesgo ? '2 1.5' : undefined}
                   opacity={0.75}
@@ -269,6 +307,9 @@ export function InteractiveMap({
               const isCurrentNode = node.slug === currentLocationSlug
               const isSelectedNode = node.slug === selectedNodeSlug
               const isQuestTarget = node.slug === questTargetLocationSlug
+              const buildingIcon = buildingIconBySlug?.get(node.slug)
+              const nodeOptions = getNodeOptions?.(node.slug) ?? []
+              const isExpanded = expandedNodeSlug === node.slug
               return (
                 <g
                   // Roadmap de mapa (Fable 2026-07-20, Nivel 2): la key incluye si es el nodo
@@ -291,13 +332,26 @@ export function InteractiveMap({
                   onClick={(e) => {
                     e.stopPropagation()
                     setSelectedNodeSlug(node.slug)
-                    onNodeDetail?.(node.slug)
+                    // Paleta de puntos (2026-08-04): con 1 sola cosa anclada se abre directo, como
+                    // siempre; con 2+ se despliega el abanico de satélites en vez de decidir en
+                    // silencio cuál mostrar.
+                    if (nodeOptions.length <= 1) {
+                      setExpandedNodeSlug(null)
+                      nodeOptions[0]?.onSelect()
+                    } else {
+                      setExpandedNodeSlug((prev) => (prev === node.slug ? null : node.slug))
+                    }
                   }}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' || e.key === ' ') {
                       e.preventDefault()
                       setSelectedNodeSlug(node.slug)
-                      onNodeDetail?.(node.slug)
+                      if (nodeOptions.length <= 1) {
+                        setExpandedNodeSlug(null)
+                        nodeOptions[0]?.onSelect()
+                      } else {
+                        setExpandedNodeSlug((prev) => (prev === node.slug ? null : node.slug))
+                      }
                     }
                   }}
                 >
@@ -356,6 +410,42 @@ export function InteractiveMap({
                       </text>
                     </g>
                   )}
+                  {buildingIcon && (
+                    // Badge de construcción (2026-08-04, "el campamento" — primera construcción
+                    // anclada al mapa) — desplazamiento abajo-derecha, para no pisar la insignia
+                    // dorada de "aquí ahora" (centro) ni el "!" de misión (arriba-derecha).
+                    <g className="pointer-events-none">
+                      <circle cx={pos.x + 1.9} cy={pos.y + 1.9} r={1.7} fill="var(--color-wood-800)" stroke="white" strokeWidth={0.4} />
+                      <text x={pos.x + 1.9} y={pos.y + 2.0} textAnchor="middle" dominantBaseline="central" style={{ fontSize: 2.1 }}>
+                        {buildingIcon}
+                      </text>
+                    </g>
+                  )}
+                  {isExpanded &&
+                    nodeOptions.map((opt, i) => {
+                      const offset = paletteOffsets(nodeOptions.length)[i]
+                      const ox = pos.x + offset.x
+                      const oy = pos.y + offset.y
+                      return (
+                        <g
+                          key={opt.id}
+                          className="tactile cursor-pointer outline-none"
+                          style={{ transformBox: 'fill-box', transformOrigin: 'center' } as React.CSSProperties}
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setExpandedNodeSlug(null)
+                            opt.onSelect()
+                          }}
+                        >
+                          <title>{opt.label}</title>
+                          <line x1={pos.x} y1={pos.y} x2={ox} y2={oy} stroke="var(--color-accent2-500)" strokeWidth={0.35} opacity={0.6} />
+                          <circle cx={ox} cy={oy} r={2.4} fill="var(--color-wood-950)" stroke="var(--color-accent2-500)" strokeWidth={0.5} />
+                          <text x={ox} y={oy} textAnchor="middle" dominantBaseline="central" style={{ fontSize: 2.4 }}>
+                            {opt.icon}
+                          </text>
+                        </g>
+                      )
+                    })}
                 </g>
               )
             })}
@@ -429,7 +519,8 @@ export function InteractiveMap({
           llanurasEdges={hasLlanurasMap ? llanurasEdges : undefined}
           currentLocationSlug={currentLocationSlug}
           questTargetLocationSlug={questTargetLocationSlug}
-          onNodeDetail={onNodeDetail}
+          getNodeOptions={getNodeOptions}
+          buildingIconBySlug={buildingIconBySlug}
         />
       )}
     </div>

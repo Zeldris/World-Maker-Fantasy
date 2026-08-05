@@ -19,6 +19,31 @@ export interface LlanurasEdge {
   riesgo: boolean
 }
 
+/// "Paleta de puntos" (2026-08-04, petición explícita: "que se abra una paleta de puntos como
+/// selecciona un color de una paleta de colores") — cuando un nodo del mapa tiene más de una cosa
+/// anclada (tu posición, la ubicación en sí, una construcción...), en vez de abrir directo se
+/// despliegan estos satélites alrededor del punto y el jugador elige cuál ver en la Enciclopedia.
+/// Vive aquí (no en InteractiveMap.tsx) para que MapZoomModal.tsx pueda compartir el mismo tipo
+/// sin import circular entre ambos componentes de mapa.
+export interface MapNodeOption {
+  id: string
+  icon: string
+  label: string
+  onSelect: () => void
+}
+
+/// Icono por receta de construcción (2026-08-04, "el campamento" — primera construcción anclada
+/// al mapa) — misma `key` que ConstructionRecipe.key en el backend (construction.ts). Sin entrada
+/// = construcción libre del modelo sin receta fija, no se pinta ningún icono especial para ella.
+// 'ayuntamiento' (2026-08-04, renombrado desde 'atalaya' — docs/17-reglas-construcciones-reino.md)
+// siempre guarda esta MISMA key sin importar el tier (pequeño/mediano/grande) — mejorarlo no
+// cambia de icono, solo de tamaño/capacidad.
+export const CONSTRUCTION_RECIPE_ICONS: Record<string, string> = {
+  campamento: '🏕️',
+  choza: '🛖',
+  ayuntamiento: '🏛️',
+}
+
 // Contenido tomado de docs/rpgtarkor/areas.md — condensado para la UI. Berig es el continente
 // de Gorhorn (único personaje probado hasta ahora); Vaelira se añadirá cuando haga falta. Sin
 // equivalente en el backend (no hay modelo Region en Prisma, es lore de continente, no de
@@ -101,15 +126,62 @@ export const llanurasNodePositions: Record<string, { x: number; y: number }> = {
   // resto del núcleo no se toca. La mecánica de viaje no usa estas coordenadas (usa las horas/km
   // reales de LocationLink en la DB), así que este desacople no cambia ningún tiempo de viaje.
   'cruce-de-las-cenizas': { x: 20, y: -144 },
-  'hondonada-del-eco': { x: 5, y: 7.5 },
+  // hondonada-del-eco / tumulos-del-honor / osario-de-la-manada (auditoría de deuda técnica
+  // 2026-08-04, permiso explícito de la usuaria "tienes permiso para mover lo que necesites"):
+  // en sus posiciones MEDIDAS originales (5,7.5)/(6.2,5.6)/(10.95,7.6) quedaban a solo 2.2-2.4
+  // unidades entre sí — más cerca que el propio radio de sus iconos (2.0) — así que ya se pisaban
+  // un poco entre ellos en reposo, y la paleta de puntos nueva (InteractiveMap.tsx) lo hacía
+  // mucho más obvio al desplegar satélites. Confirmado renderizando sobre el PNG real con
+  // rsvg-convert antes y después del cambio (mismo método que el resto de este bloque) — el
+  // estado "Las Llanuras del Viento Rojo" tiene de sobra sitio libre alrededor, así que se
+  // separaron los 3 SOLO entre sí (ningún otro nodo se toca), manteniendo su disposición relativa
+  // aproximada (hondonada al oeste, osario al este, túmulos entre medias, hacia Restos de Maktor,
+  // como ya describía docs/13-escala-del-mundo.md § 1.1). Es visual, igual que el Cruce de las
+  // Cenizas de arriba — la mecánica de viaje sigue usando los minutos reales de LocationLink, no
+  // estas coordenadas.
+  'hondonada-del-eco': { x: 1, y: 10 },
   'campamento-serhu': { x: 21, y: -5 },
   'restos-de-maktor': { x: 10, y: 20.5 },
-  'osario-de-la-manada': { x: 10.95, y: 7.6 },
+  'osario-de-la-manada': { x: 17, y: 12 },
   'agujas-iman': { x: -7, y: 8.3 },
-  manaderos: { x: 18.1, y: 2.8 },
-  'tumulos-del-honor': { x: 6.2, y: 5.6 },
+  // manaderos (mismo motivo/permiso que el trío de arriba): a 5.4 unidades de pozo-cauce-viejo,
+  // seguía dentro del radio de colisión de la paleta. Empujado en la misma dirección desde su
+  // ancla (pozo-cauce-viejo) hasta quedar fuera de ese radio, sin tocar ningún otro nodo.
+  manaderos: { x: 20.3, y: 4.2 },
+  'tumulos-del-honor': { x: 9, y: 11.5 },
   // Ampliación del núcleo (checklist 2026-07-21/22, "Puerta 2" — ver docs/13-escala-del-mundo.md
   // § 2.2 y su addendum): primeros dos nodos fuera del polígono original de 45×30 km.
   'pastos-de-la-deriva': { x: 30, y: -1 },
   'filo-de-las-brasas': { x: 16, y: 31 },
+
+  // Tercera ampliación (sesión "ampliamos lore" 2026-08-05, docs/13-escala-del-mundo.md § 2.2ter):
+  // los deltas triangulados a ciegas (5 km/h, sinuosidad 1,1) sacaban varios nodos fuera del
+  // polígono real de Azgaar — sin `rsvg-convert`/Node en este entorno para verificar contra el
+  // `.map` real (como sí se hizo para el Cruce de las Cenizas en su día). Recalibrados los 16 uno
+  // a uno contra capturas reales que fue compartiendo la usuaria (novena/décima pasada) — a
+  // diferencia de El Cruce de las Cenizas, aquí NO quedan decoupleadas: § 2.2ter ya se actualizó
+  // con estas mismas coordenadas y con los `minutosBase` de `worldCatalog.ts` recalculados a
+  // partir de la distancia real entre ellas (respetando el orden — más lejos nunca menos tiempo
+  // — sin ser estrictamente proporcionales). Topología también replanteada esa misma pasada: la
+  // costa pasó de abanico a cadena, y La Grieta Cantora se reenganchó de El Osario de la Manada a
+  // El Cruce de las Cenizas.
+  'oasis-de-juncos-rojos': { x: 24.3, y: 14.9 }, // confirmado correcto 2026-08-05
+  // Desacoplado de la distancia triangulada real (280 min, que en línea recta caía muy al norte y
+  // fuera del polígono real) — mismo criterio que el Cruce de las Cenizas: la posición visual no
+  // tiene por qué coincidir con la distancia mecánica, que sigue intacta en `LocationLink`.
+  'desembocadura-callada': { x: -2, y: 42 }, // confirmado correcto 2026-08-05
+  'playa-de-ceniza-blanca': { x: -20, y: 22 }, // confirmado correcto 2026-08-05
+  'pozas-de-marea': { x: -20, y: 36 }, // confirmado correcto 2026-08-05
+  'acantilados-partidos': { x: -21, y: 44 }, // confirmado correcto 2026-08-05
+  'embarcadero-de-ceniza': { x: -21, y: 54 }, // confirmado correcto 2026-08-05
+  'fosa-horadada': { x: -16, y: -16 }, // confirmado correcto 2026-08-05
+  'dunas-ahogadas': { x: -24, y: -28 }, // confirmado correcto 2026-08-05
+  'vientre-del-engano': { x: -10, y: -40 }, // confirmado correcto 2026-08-05
+  'laberinto-de-canones': { x: 6, y: -42 }, // confirmado correcto 2026-08-05
+  'fumarolas-negras': { x: 19, y: 42 }, // confirmado correcto 2026-08-05
+  'paso-de-los-huesos': { x: 41, y: 2 }, // confirmado correcto 2026-08-05
+  'sabana-alta': { x: 54, y: -10 }, // confirmado correcto 2026-08-05
+  'vergel-de-kegi': { x: -8, y: -175 }, // confirmado correcto 2026-08-05
+  'grieta-cantora': { x: 6, y: -100 }, // confirmado correcto 2026-08-05
+  'campo-yermo': { x: 19, y: 22 }, // confirmado correcto 2026-08-05
 }

@@ -144,6 +144,10 @@ export interface LogEntry {
   /// EXACTO en que se crea una misión nueva; LogPanel la pinta con fondo/borde amarillo y una
   /// tarjeta con el título+objetivo, en vez del estilo normal.
   newQuest?: { title: string; objetivo: string }
+  /// Eventos de viaje interactivos (2026-08-05) — marca el aviso determinista de que un viaje
+  /// largo se interrumpió antes de llegar al destino pedido; LogPanel la pinta con fondo/borde
+  /// ámbar, mismo criterio que `combate` (rojo) y `newQuest` (amarillo).
+  travelInterrupted?: boolean
 }
 
 export type EquipSlot =
@@ -230,9 +234,30 @@ export interface TerritoryInfo {
   population: number
 }
 
+/// Notificación de fundación de reino (2026-08-04, "el Ayuntamiento") — solo al construir el
+/// Ayuntamiento tier 1 desde cero, nunca en una mejora.
+export interface KingdomFoundedInfo {
+  title: string
+  region: string
+  outcome: 'SIN_DUENO' | 'PACIFICA' | 'CONFLICTO'
+  /// "Maktor" precargado si el personaje es Gorhorn, si no null (formulario en blanco).
+  suggestedName: string | null
+  /// true solo para Gorhorn — el campo de nombre del popup queda bloqueado.
+  nameLocked: boolean
+}
+
 export interface BuildingInfo {
   id: string
   territoryId?: string | null
+  /// Dónde se plantó de verdad (2026-08-04, "el campamento" — primera construcción anclada al
+  /// mapa) — null si es una construcción libre del modelo sin Location conocida.
+  locationId?: string | null
+  /// Clave de ConstructionRecipe ('campamento'/'choza'/'ayuntamiento'...) si vino de una receta
+  /// fija — null para construcciones libres. Decide qué icono mostrar en el mapa. El Ayuntamiento
+  /// SIEMPRE guarda 'ayuntamiento' aquí sin importar el tier — mejorarlo no cambia esta clave.
+  recipeKey?: string | null
+  /// Nivel del Ayuntamiento (1/2/3 = pequeño/mediano/grande, 2026-08-04) — null para el resto.
+  tier?: number | null
   name: string
   kind: string
   status: BuildingStatus

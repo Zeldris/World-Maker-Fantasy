@@ -11,6 +11,7 @@ import type {
   EquipSlot,
   InventoryItemInfo,
   ItemTipo,
+  KingdomFoundedInfo,
   KingdomStatsInfo,
   LogEntry,
   NpcInSceneInfo,
@@ -168,6 +169,14 @@ export interface NarrateResponse {
   /// (lista completa, sin delta), esto marca que ESTE turno creó una misión nueva. `null` en la
   /// inmensa mayoría de turnos, que no crean ninguna.
   newQuestInfo: { title: string; objetivo: string } | null
+  /// Notificación de fundación de reino (2026-08-04, "el Ayuntamiento") — solo al construir el
+  /// Ayuntamiento tier 1 desde cero, nunca en una mejora. `null` en la inmensa mayoría de turnos.
+  newKingdomFounded: KingdomFoundedInfo | null
+  /// Compañero REALMENTE creado este turno (2026-08-04, tope de slots) — a diferencia de
+  /// `narration.newCompanion` (lo que PROPUSO el modelo), esto es lo que el backend persistió de
+  /// verdad. `null` si no hubo propuesta o si se rechazó por falta de hueco — el frontend debe
+  /// usar este campo para actualizar la lista de compañeros, nunca `narration.newCompanion` solo.
+  companionCreated: CompanionInfo | null
   /// Rediseño del turno de combate (2026-07-28) — true cuando el backend decidió que un NPC gana
   /// la iniciativa del SIGUIENTE intercambio: la próxima acción del jugador debe tratarse como
   /// defensa a ciegas (elige una habilidad sin saber qué usará el NPC), no como ataque normal.
@@ -181,6 +190,14 @@ export interface NarrateResponse {
   /// actúa en el PRÓXIMO intercambio. null si se forzó sin dados (aturdimiento/intimidación) o si
   /// no hubo intercambio de combate este turno.
   nextInitiativeRoll: { ganador: 'jugador' | 'npc'; jugadorTirada: number; npcTirada: number } | null
+  /// Bug real (auditoría de deuda técnica 2026-08-04): construir/mejorar/fundar un edificio de
+  /// verdad en la DB no se reflejaba en el mapa ni en el panel de Reino hasta recargar la partida
+  /// entera — `syncFromSave` (GameView.tsx) solo se llama al cargar/reconectar, nunca tras un turno
+  /// normal resuelto con éxito. Mismo criterio que `quests`: listas/valor completos, no un delta.
+  territories: TerritoryInfo[]
+  buildings: BuildingInfo[]
+  subjects: SubjectInfo[]
+  kingdomStats: KingdomStatsInfo | null
 }
 
 export interface TurnNarrateHandlers {
@@ -497,6 +514,17 @@ export async function setProfession(id: string, profession: string): Promise<{ p
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ profession }),
+  })
+}
+
+/// Fundación de reino (2026-08-04) — el popup que se abre al terminar de construir el Ayuntamiento
+/// (tier 1) manda aquí el formulario. Bloqueo de nombre para Gorhorn verificado en el backend, no
+/// solo aquí (ver reino.ts).
+export async function fundarReino(id: string, kingdomName: string, description?: string): Promise<{ kingdomName: string }> {
+  return fetchJson(`${API_URL}/saves/${id}/reino/fundar`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ kingdomName, description }),
   })
 }
 

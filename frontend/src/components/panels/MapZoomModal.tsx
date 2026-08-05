@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from 'react'
 import berigMapUrl from '../../assets/maps/helek-sirik-berig.png'
-import { projectLlanurasNodes, type LlanurasEdge, type LlanurasNode } from '../../data/map'
+import { projectLlanurasNodes, type LlanurasEdge, type LlanurasNode, type MapNodeOption } from '../../data/map'
 
 interface MapZoomModalProps {
   onClose: () => void
@@ -13,7 +13,29 @@ interface MapZoomModalProps {
   /// Punto 3 del diseño de Gistera Koh (2026-07-23) — mismo dato que ya recibe el mapa pequeño
   /// (InteractiveMap.tsx), para que el "!" de misión también se vea en el visor ampliado.
   questTargetLocationSlug?: string | null
-  onNodeDetail?: (slug: string) => void
+  /// Paleta de puntos (2026-08-04, ver InteractiveMap.tsx) — mismo contrato que el mapa pequeño,
+  /// replicado aquí porque ambos componentes dibujan los nodos por separado.
+  getNodeOptions?: (slug: string) => MapNodeOption[]
+  buildingIconBySlug?: Map<string, string>
+}
+
+// Paleta de puntos — mismas proporciones relativas que InteractiveMap.tsx, pero en las unidades
+// base de este componente (radios ya definidos más abajo, NODE_HALO_R≈6.5) y divididas entre
+// `scale` como el resto de la insignia para que no crezca al hacer zoom. Reducido en la misma
+// proporción que InteractiveMap.tsx (auditoría de deuda técnica 2026-08-04) — aquí el riesgo real
+// de invadir el icono de un nodo vecino es menor que en el mapa pequeño porque este componente sí
+// tiene una vía de escape real (hacer zoom separa visualmente los nodos del racimo denso, cosa que
+// el mapa pequeño no puede hacer), pero se ajusta igual para quedar consistente.
+const PALETTE_RADIUS = 10
+const PALETTE_ANGLE_START = 200
+const PALETTE_ANGLE_END = 340
+
+function paletteOffsets(count: number): { x: number; y: number }[] {
+  return Array.from({ length: count }, (_, i) => {
+    const angleDeg = count === 1 ? 270 : PALETTE_ANGLE_START + (i * (PALETTE_ANGLE_END - PALETTE_ANGLE_START)) / (count - 1)
+    const rad = (angleDeg * Math.PI) / 180
+    return { x: PALETTE_RADIUS * Math.cos(rad), y: PALETTE_RADIUS * Math.sin(rad) }
+  })
 }
 
 const MIN_SCALE = 1
@@ -45,12 +67,14 @@ export function MapZoomModal({
   llanurasEdges,
   currentLocationSlug,
   questTargetLocationSlug,
-  onNodeDetail,
+  getNodeOptions,
+  buildingIconBySlug,
 }: MapZoomModalProps) {
   const [scale, setScale] = useState(MIN_SCALE)
   const [offset, setOffset] = useState({ x: 0, y: 0 })
   const [isDragging, setIsDragging] = useState(false)
   const dragRef = useRef<{ startX: number; startY: number; startOffsetX: number; startOffsetY: number } | null>(null)
+  const [expandedNodeSlug, setExpandedNodeSlug] = useState<string | null>(null)
 
   const nodePositions = useMemo(() => (llanurasNodes ? projectLlanurasNodes(llanurasNodes) : null), [llanurasNodes])
   const showGraph = nodePositions && llanurasNodes && llanurasEdges
@@ -137,6 +161,7 @@ export function MapZoomModal({
           onPointerUp={handlePointerUp}
           onPointerLeave={handlePointerUp}
           onDragStart={(e) => e.preventDefault()}
+          onClick={() => setExpandedNodeSlug(null)}
         >
           <div
             className="absolute inset-0"
@@ -173,7 +198,9 @@ export function MapZoomModal({
                       y1={from.y}
                       x2={to.x}
                       y2={to.y}
-                      stroke="var(--color-iron-600)"
+                      // Mismo bug que InteractiveMap.tsx: `--color-iron-600` no existe en
+                      // index.css, dejaba el stroke inválido y la línea invisible (2026-08-05).
+                      stroke="var(--color-wood-300)"
                       strokeWidth={0.6 / scale}
                       strokeDasharray={edge.riesgo ? `${2 / scale} ${1.5 / scale}` : undefined}
                       opacity={0.75}
@@ -185,6 +212,9 @@ export function MapZoomModal({
                   if (!pos) return null
                   const isCurrentNode = node.slug === currentLocationSlug
                   const isQuestTarget = node.slug === questTargetLocationSlug
+                  const buildingIcon = buildingIconBySlug?.get(node.slug)
+                  const nodeOptions = getNodeOptions?.(node.slug) ?? []
+                  const isExpanded = expandedNodeSlug === node.slug
                   return (
                     <g
                       key={node.slug}
@@ -194,12 +224,22 @@ export function MapZoomModal({
                       onPointerDown={(e) => e.stopPropagation()}
                       onClick={(e) => {
                         e.stopPropagation()
-                        onNodeDetail?.(node.slug)
+                        if (nodeOptions.length <= 1) {
+                          setExpandedNodeSlug(null)
+                          nodeOptions[0]?.onSelect()
+                        } else {
+                          setExpandedNodeSlug((prev) => (prev === node.slug ? null : node.slug))
+                        }
                       }}
                       onKeyDown={(e) => {
                         if (e.key === 'Enter' || e.key === ' ') {
                           e.preventDefault()
-                          onNodeDetail?.(node.slug)
+                          if (nodeOptions.length <= 1) {
+                            setExpandedNodeSlug(null)
+                            nodeOptions[0]?.onSelect()
+                          } else {
+                            setExpandedNodeSlug((prev) => (prev === node.slug ? null : node.slug))
+                          }
                         }
                       }}
                     >
@@ -259,6 +299,62 @@ export function MapZoomModal({
                           </text>
                         </g>
                       )}
+                      {buildingIcon && (
+                        // Badge de construcción (2026-08-04) — abajo-derecha, mismo criterio que
+                        // el mapa pequeño (InteractiveMap.tsx) para no pisar los otros dos badges.
+                        <g className="pointer-events-none">
+                          <circle
+                            cx={pos.x + 5.5 / scale}
+                            cy={pos.y + 5.5 / scale}
+                            r={4.5 / scale}
+                            fill="var(--color-wood-800)"
+                            stroke="white"
+                            strokeWidth={1 / scale}
+                          />
+                          <text
+                            x={pos.x + 5.5 / scale}
+                            y={pos.y + 5.7 / scale}
+                            textAnchor="middle"
+                            dominantBaseline="central"
+                            style={{ fontSize: 5.5 / scale }}
+                          >
+                            {buildingIcon}
+                          </text>
+                        </g>
+                      )}
+                      {isExpanded &&
+                        nodeOptions.map((opt, i) => {
+                          const offset = paletteOffsets(nodeOptions.length)[i]
+                          const ox = pos.x + offset.x / scale
+                          const oy = pos.y + offset.y / scale
+                          return (
+                            <g
+                              key={opt.id}
+                              className="pointer-events-auto cursor-pointer outline-none"
+                              onPointerDown={(e) => e.stopPropagation()}
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                setExpandedNodeSlug(null)
+                                opt.onSelect()
+                              }}
+                            >
+                              <title>{opt.label}</title>
+                              <line
+                                x1={pos.x}
+                                y1={pos.y}
+                                x2={ox}
+                                y2={oy}
+                                stroke="var(--color-accent2-500)"
+                                strokeWidth={0.9 / scale}
+                                opacity={0.6}
+                              />
+                              <circle cx={ox} cy={oy} r={6.5 / scale} fill="var(--color-wood-950)" stroke="var(--color-accent2-500)" strokeWidth={1 / scale} />
+                              <text x={ox} y={oy} textAnchor="middle" dominantBaseline="central" style={{ fontSize: 6.5 / scale }}>
+                                {opt.icon}
+                              </text>
+                            </g>
+                          )
+                        })}
                     </g>
                   )
                 })}

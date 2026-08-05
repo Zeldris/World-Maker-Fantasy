@@ -10,6 +10,11 @@ interface ReinoPanelProps {
   subjects: SubjectInfo[]
   /// Economía de Reino (sesión de diseño 2026-07-23) — null hasta fundar el primer Territory.
   kingdomStats: KingdomStatsInfo | null
+  /// Bug real (auditoría de deuda técnica 2026-08-04): cancelar el popup de fundación (o recargar
+  /// la página con él abierto) perdía la única oportunidad de nombrar el reino para siempre — no
+  /// había ningún sitio para volver a intentarlo. undefined = no reabrir (no debería pasar en la
+  /// práctica, GameView siempre lo pasa).
+  onFundarReino?: () => void
 }
 
 const KINGDOM_STAT_LABEL: Record<keyof KingdomStatsInfo, string> = {
@@ -37,8 +42,25 @@ const buildingStatusLabel: Record<BuildingInfo['status'], string> = {
   ABANDONADO: 'Abandonado',
 }
 
-export function ReinoPanel({ kingdomName, characterMotivation, territories, buildings, subjects, kingdomStats }: ReinoPanelProps) {
+// Nivel del Ayuntamiento (2026-08-04, docs/17-reglas-construcciones-reino.md) — 'ayuntamiento' es
+// la única receta con tiers; el resto de construcciones no muestra nada aquí.
+const AYUNTAMIENTO_TIER_LABEL: Record<number, string> = {
+  1: 'pequeño',
+  2: 'mediano',
+  3: 'grande',
+}
+
+export function ReinoPanel({
+  kingdomName,
+  characterMotivation,
+  territories,
+  buildings,
+  subjects,
+  kingdomStats,
+  onFundarReino,
+}: ReinoPanelProps) {
   const isEmpty = territories.length === 0 && buildings.length === 0 && subjects.length === 0
+  const ayuntamiento = buildings.find((b) => b.recipeKey === 'ayuntamiento')
 
   if (isEmpty) {
     return (
@@ -55,8 +77,21 @@ export function ReinoPanel({ kingdomName, characterMotivation, territories, buil
 
   return (
     <div className="flex flex-col gap-5">
-      {kingdomName && (
+      {kingdomName ? (
         <p className="font-serif text-lg tracking-wide text-accent2-300">{kingdomName}</p>
+      ) : (
+        ayuntamiento &&
+        onFundarReino && (
+          <div className="flex items-center justify-between gap-3 rounded-lg border border-accent-600/50 bg-accent-600/10 px-3.5 py-2.5">
+            <p className="text-xs leading-relaxed text-wood-300">Tu Ayuntamiento sigue sin nombre de reino.</p>
+            <button
+              onClick={onFundarReino}
+              className="tactile shrink-0 rounded-lg border border-accent-600 bg-gradient-to-b from-accent-400 to-accent-600 px-3 py-1.5 text-2xs font-bold uppercase tracking-wide text-wood-950 transition-colors"
+            >
+              Fundar reino
+            </button>
+          </div>
+        )
       )}
 
       {kingdomStats && (
@@ -105,7 +140,10 @@ export function ReinoPanel({ kingdomName, characterMotivation, territories, buil
                     {buildingStatusLabel[b.status]}
                   </span>
                 </p>
-                <p className="mt-0.5 text-2xs text-wood-500">{b.kind}</p>
+                <p className="mt-0.5 text-2xs text-wood-500">
+                  {b.kind}
+                  {b.recipeKey === 'ayuntamiento' && b.tier && ` · Ayuntamiento ${AYUNTAMIENTO_TIER_LABEL[b.tier] ?? b.tier}`}
+                </p>
                 <p className="mt-1 text-xs leading-relaxed text-wood-400">{b.description}</p>
               </div>
             ))}

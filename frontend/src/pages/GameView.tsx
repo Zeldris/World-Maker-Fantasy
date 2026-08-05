@@ -26,6 +26,7 @@ import { CombatComposer, type CombatNpcDisplay } from '../components/CombatCompo
 import { CombatPanel } from '../components/CombatPanel'
 import { combatDifficultyFor } from '../lib/combatDifficulty'
 import { HealthBar } from '../components/HealthBar'
+import { KingdomFoundingModal } from '../components/KingdomFoundingModal'
 import {
   requestTurnClassify,
   requestTurnNarrate,
@@ -41,6 +42,7 @@ import {
   deleteSavedAction,
   updateSavedAction,
   setProfession,
+  fundarReino,
   setItemSlot,
   setLogEntryBanner,
   resolveImageUrl,
@@ -62,6 +64,7 @@ import type {
   DiscoveryItem,
   EquipSlot,
   InventoryItemInfo,
+  KingdomFoundedInfo,
   KingdomStatsInfo,
   LogEntry,
   MentionedEntityBanner,
@@ -108,6 +111,8 @@ export function GameView() {
   const [xp, setXp] = useState(0)
   const [pendingAttributePoints, setPendingAttributePoints] = useState(0)
   const [kingdomName, setKingdomName] = useState<string | null>(null)
+  // Popup de fundación de reino (2026-08-04) — se abre solo al construir el Ayuntamiento tier 1.
+  const [kingdomFoundedInfo, setKingdomFoundedInfo] = useState<KingdomFoundedInfo | null>(null)
   const [territories, setTerritories] = useState<TerritoryInfo[]>([])
   const [buildings, setBuildings] = useState<BuildingInfo[]>([])
   const [subjects, setSubjects] = useState<SubjectInfo[]>([])
@@ -773,6 +778,33 @@ export function GameView() {
     }
   }
 
+  async function handleFundarReino(name: string, description?: string) {
+    if (!saveId) return
+    const result = await fundarReino(saveId, name, description)
+    setKingdomName(result.kingdomName)
+    setKingdomFoundedInfo(null)
+  }
+
+  // Bug real (auditoría de deuda técnica 2026-08-04): cancelar el popup de fundación (o recargar
+  // la página mientras seguía abierto) perdía la única oportunidad de nombrar el reino para
+  // siempre — `newKingdomFounded` solo llega una vez, al construir el Ayuntamiento tier 1 desde
+  // cero. Reconstruye el mismo popup a partir de lo que ya hay persistido (Building+Territory) en
+  // vez de depender de aquella notificación puntual. El outcome ya se decidió de verdad al
+  // construir (Territory.control) — aquí solo se aproxima el texto informativo, la fundación en sí
+  // no se repite.
+  function handleReabrirFundacionReino() {
+    const ayuntamiento = buildings.find((b) => b.recipeKey === 'ayuntamiento')
+    if (!ayuntamiento) return
+    const territory = territories.find((t) => t.id === ayuntamiento.territoryId)
+    setKingdomFoundedInfo({
+      title: ayuntamiento.name,
+      region: territory?.region ?? '',
+      outcome: territory?.control === 'DISPUTADO' ? 'CONFLICTO' : 'PACIFICA',
+      suggestedName: characterName === 'Gorhorn' ? 'Maktor' : null,
+      nameLocked: characterName === 'Gorhorn',
+    })
+  }
+
   async function handleCreateHabilidad(params: {
     name: string
     promptText: string
@@ -1166,6 +1198,12 @@ export function GameView() {
         logEntryId,
         quests: updatedQuests,
         newQuestInfo,
+        newKingdomFounded,
+        companionCreated,
+        territories: updatedTerritories,
+        buildings: updatedBuildings,
+        subjects: updatedSubjects,
+        kingdomStats: updatedKingdomStats,
       } = await requestTurnNarrate(
         { saveId, action, classification, roll, travel, npcsInScene: classifyResult.npcsInScene },
         {
@@ -1178,6 +1216,14 @@ export function GameView() {
       setEnergia(newEnergia)
       setEnergiaMax(newEnergiaMax)
       setQuests(updatedQuests)
+      // Bug real (auditoría de deuda técnica 2026-08-04): construir/mejorar/fundar un edificio de
+      // verdad en la DB no se veía en el mapa ni en el panel de Reino hasta recargar la partida
+      // entera — `syncFromSave` (más abajo) solo se llama al cargar/reconectar, nunca aquí. Mismo
+      // criterio que `quests`: el backend ya manda la lista/valor completo cada turno.
+      setTerritories(updatedTerritories)
+      setBuildings(updatedBuildings)
+      setSubjects(updatedSubjects)
+      setKingdomStats(updatedKingdomStats)
       if (newInventoryItems.length > 0) {
         setInventory((prev) => [...prev, ...newInventoryItems])
       }
@@ -1212,14 +1258,20 @@ export function GameView() {
           newQuest: newQuestInfo ?? undefined,
         },
       ])
-      if (narration.newItem) {
-        setInventory((prev) => [
-          ...prev,
-          { id: `item-${Date.now()}`, slot: null, statBonuses: null, ...narration.newItem! },
-        ])
+      // Bug real (auditoría de deuda técnica 2026-08-04, mismo patrón que companionCreated):
+      // `narration.newItem` (name+description sueltos del LLM) se añadía aquí con un id
+      // inventado en el cliente (`item-${Date.now()}`) que el backend no reconoce — equipar ese
+      // objeto fallaba con 404 hasta la siguiente recarga completa. El backend ahora también
+      // empuja este objeto a `newInventoryItems` (igual que saqueo/despiece/crafteo), que ya se
+      // procesa arriba con el id REAL — este bloque aparte sobra y solo podía desincronizar.
+      // Bug real (2026-08-04, tope de slots de compañero): `narration.newCompanion` es solo lo
+      // que el modelo PROPUSO — el backend puede rechazarlo en silencio por falta de hueco.
+      // `companionCreated` es lo que de verdad se persistió, null si se rechazó.
+      if (companionCreated) {
+        setCompanions((prev) => [...prev, companionCreated])
       }
-      if (narration.newCompanion) {
-        setCompanions((prev) => [...prev, { id: `companion-${Date.now()}`, ...narration.newCompanion! }])
+      if (newKingdomFounded) {
+        setKingdomFoundedInfo(newKingdomFounded)
       }
       setXp(progression.newXp)
       if (progression.leveledUp) {
@@ -1717,6 +1769,10 @@ export function GameView() {
         />
       )}
 
+      {kingdomFoundedInfo && (
+        <KingdomFoundingModal info={kingdomFoundedInfo} onCancel={() => setKingdomFoundedInfo(null)} onConfirm={handleFundarReino} />
+      )}
+
       {activePanel && (
         <PanelDrawer title={panelTitles[activePanel]} accent={panelAccent[activePanel]} onClose={() => setActivePanel(null)}>
           {activePanel === 'personaje' && (
@@ -1742,7 +1798,7 @@ export function GameView() {
             />
           )}
           {activePanel === 'mapa' && (
-            <MapaPanel worldSlug={worldIdSlug} currentLocation={currentLocation} destinations={destinations} inventory={inventory} quests={quests} />
+            <MapaPanel worldSlug={worldIdSlug} currentLocation={currentLocation} destinations={destinations} inventory={inventory} quests={quests} buildings={buildings} />
           )}
           {activePanel === 'diario' && saveId && <DiarioPanel saveId={saveId} chapters={chapters} />}
           {activePanel === 'inventario' && (
@@ -1758,6 +1814,7 @@ export function GameView() {
               buildings={buildings}
               subjects={subjects}
               kingdomStats={kingdomStats}
+              onFundarReino={handleReabrirFundacionReino}
             />
           )}
           {activePanel === 'enciclopedia' && (

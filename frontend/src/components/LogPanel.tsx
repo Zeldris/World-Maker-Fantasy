@@ -129,18 +129,29 @@ export const LogPanel = memo(function LogPanel({ title, subtitle, entries, accen
                 // amarillo misiones") — `newQuest` manda sobre todo lo demás (es el evento más raro
                 // y específico de los tres); la narración normal pasa de texto plano a un fondo
                 // azul explícito, para que los 3 estados queden igual de intencionados.
+                // Eventos de viaje interactivos (2026-08-05) — 4º estado, fondo ámbar: por debajo
+                // de `newQuest` pero por encima de `combate`/`isPlayerAction` (es su propia
+                // LogEntry aparte, nunca coincide con ninguno de los otros tres en la misma fila).
                 entry.newQuest
                   ? 'animate-entry-in rounded-lg border border-l-2 border-quest-600/50 bg-quest-500/10 px-3.5 py-2.5 text-sm text-wood-100'
-                  : entry.combate
-                    ? 'animate-entry-in rounded-lg border border-l-2 border-red-700/50 bg-danger-500/10 px-3.5 py-2.5 text-sm text-wood-100'
-                    : entry.isPlayerAction
-                      ? `animate-entry-in rounded-lg border border-l-2 px-3.5 py-2.5 text-sm text-wood-100 ${classes.playerBubble}`
-                      : 'animate-entry-in rounded-lg border border-l-2 border-accent-600/50 bg-accent-500/10 px-3.5 py-2.5 text-sm text-wood-100'
+                  : entry.travelInterrupted
+                    ? 'animate-entry-in rounded-lg border border-l-2 border-cost-600/50 bg-cost-500/10 px-3.5 py-2.5 text-sm text-wood-100'
+                    : entry.combate
+                      ? 'animate-entry-in rounded-lg border border-l-2 border-red-700/50 bg-danger-500/10 px-3.5 py-2.5 text-sm text-wood-100'
+                      : entry.isPlayerAction
+                        ? `animate-entry-in rounded-lg border border-l-2 px-3.5 py-2.5 text-sm text-wood-100 ${classes.playerBubble}`
+                        : 'animate-entry-in rounded-lg border border-l-2 border-accent-600/50 bg-accent-500/10 px-3.5 py-2.5 text-sm text-wood-100'
               }
             >
               {entry.isPlayerAction && (
                 <p className={`mb-1 text-2xs font-semibold uppercase tracking-[0.14em] ${classes.playerLabel}`}>
                   Tu acción
+                </p>
+              )}
+              {entry.travelInterrupted && (
+                <p className="mb-1 flex items-center gap-1 text-2xs font-semibold uppercase tracking-[0.1em] text-cost-400">
+                  <span aria-hidden="true">🧭</span>
+                  <span>Viaje interrumpido</span>
                 </p>
               )}
               {entry.npcAbilityUsed && (
