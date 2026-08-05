@@ -255,6 +255,7 @@ model Location {
   visits    LocationVisit[]
   saves         Save[] @relation("CurrentLocation")
   restingSaves  Save[] @relation("LastRestLocation")
+  buildings     Building[]
 
   @@unique([worldId, slug])
 }
@@ -401,6 +402,12 @@ model LogEntry {
   /// campos ya existentes (`roll` también aparece en tiradas fuera de combate), así que necesita
   /// su propia columna para sobrevivir a una recarga de partida.
   combate        Boolean    @default(false)
+  /// Eventos de viaje interactivos (2026-08-05): marca la entrada determinista (nunca narrada por
+  /// el LLM) que avisa de que un viaje largo se interrumpió antes de llegar al destino pedido —
+  /// el frontend la pinta con fondo ámbar en el log, igual que `combate` con el rojo. Sin esto, el
+  /// jugador podía terminar en una ubicación distinta a la pedida sin ninguna señal visible más
+  /// allá de la narración de llegada, que no sabe (ni debe saber) cuál era el destino original.
+  travelInterrupted Boolean @default(false)
   createdAt      DateTime   @default(now())
 
   @@index([saveId, createdAt])
@@ -813,6 +820,25 @@ model Building {
   /// Opcional: un refugio levantado en mitad del viaje no pertenece a ningún territorio
   territoryId String?
   territory   Territory?     @relation(fields: [territoryId], references: [id], onDelete: SetNull)
+  /// Dónde se plantó de verdad (2026-08-04, primera construcción anclada al mapa: "el campamento")
+  /// — opcional porque las construcciones libres del modelo (newBuilding, sin receta fija) no
+  /// siempre tienen una Location real donde anclarse. Reutiliza el mismo nodo/Location que ya
+  /// dibuja el mapa en vez de inventar coordenadas propias (el backend nunca las ha guardado).
+  locationId  String?
+  location    Location?      @relation(fields: [locationId], references: [id], onDelete: SetNull)
+  /// Clave de ConstructionRecipe (construction.ts: 'campamento'/'choza'/'ayuntamiento'...) si esta
+  /// fila vino de una receta fija — null para construcciones libres que el modelo propuso vía
+  /// `newBuilding` sin pasar por ninguna receta. Sirve para elegir el icono en el mapa y para
+  /// enlazar con la ficha genérica de la Enciclopedia (misma `key` que ya usa esa ficha). El
+  /// Ayuntamiento SIEMPRE guarda `'ayuntamiento'` aquí sin importar el tier — mejorarlo actualiza
+  /// esta misma fila, nunca crea una nueva (docs/17-reglas-construcciones-reino.md).
+  recipeKey   String?
+  /// Nivel del Ayuntamiento (1=pequeño/2=mediano/3=grande) — null para el resto de construcciones,
+  /// que no tienen niveles. Decide cuántos edificios de reino (choza...) puedes tener a la vez.
+  /// OJO: NO es lo mismo que `ConstructionRecipe.tier` (construction.ts, dificultad "Craftable"
+  /// 1-5 de la receta) — ese nunca se copia aquí, este campo solo lo rellena
+  /// `ConstructionRecipe.ayuntamientoNivel` (docs/17-reglas-construcciones-reino.md).
+  tier        Int?
   name        String
   /// Tipo libre ("refugio", "granja", "taller", "muralla", "monumento"...) — no enum cerrado,
   /// misma razón que Companion.role: no sabemos aún qué construirán los jugadores

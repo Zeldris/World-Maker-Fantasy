@@ -210,6 +210,10 @@ export interface TravelSegment {
   toName: string;
   terreno: string;
   riesgo?: string | null;
+  /// Minutos base de ESTA arista (antes de destreza) — separado de `TravelResolution.baseMinutos`
+  /// (el total acumulado) para poder truncar una ruta a mitad de camino sin recalcular contra el
+  /// grafo (ver travelInterruption.ts, eventos de viaje interactivos, 2026-08-05).
+  minutosBase: number;
 }
 
 export interface TravelResolution {
@@ -254,6 +258,7 @@ async function resolveTravelPath(
       toName: pathNames[i + 1],
       terreno: edge?.terreno ?? 'terreno sin datos',
       riesgo: edge?.riesgo,
+      minutosBase: edge?.minutosBase ?? 0,
     });
   }
   const minutos = minutosConDestreza(result.totalMinutos, attributes);

@@ -2,6 +2,12 @@
 echo Arrancando backend y frontend de Tarkor...
 echo.
 
+echo Sincronizando catalogo del mundo (seed-catalog)...
+pushd C:\RPG_Tarkor\backend
+call npm run seed-catalog
+popd
+echo.
+
 start "Tarkor - Backend" cmd /k "cd /d C:\RPG_Tarkor\backend && npm run dev:nowatch"
 start "Tarkor - Frontend" cmd /k "cd /d C:\RPG_Tarkor\frontend && npm run dev"
 

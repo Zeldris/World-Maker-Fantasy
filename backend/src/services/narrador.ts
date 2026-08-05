@@ -578,7 +578,13 @@ Responde solo con el JSON pedido, nada más.`;
       prompt,
       format,
       maxTokens: 220,
-      timeoutMs: 180_000,
+      // Bajado de 180s a 90s (2026-08-04, "ronda larga de pruebas" — logs reales de la Deck bajo
+      // presión de memoria: el intento 1 se colgó del todo y agotó los 180s completos en CADA
+      // turno narrado de la sesión, y el intento 2 (que sí funcionó) tardó solo ~60-105s más
+      // encima de eso). 90s deja el triple de margen que el peor caso normal de la usuaria (~60s
+      // en situaciones concretas) sin seguir regalando minutos enteros a un cuelgue real antes de
+      // caer al intento 2, que es el que de verdad completa el turno.
+      timeoutMs: 90_000,
       keepAlive: '1h',
       temperature: combatTemperature,
     };

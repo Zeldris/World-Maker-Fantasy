@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { matchNpcAliases, contraataqueDifficultyFor, tabulatedAttackAttribute, detectsAttackIntent, detectsHostileSearchIntent, detectsVerbalAcceptanceIntent, scopeFor, pickAmbientEncounterCandidate, npcSceneBlockFor, type NpcInScene } from './npcScene.js';
+import { matchNpcAliases, contraataqueDifficultyFor, tabulatedAttackAttribute, detectsAttackIntent, detectsHostileSearchIntent, detectsVerbalAcceptanceIntent, scopeFor, pickAmbientEncounterCandidate, npcSceneBlockFor, buildNpcInScene, type NpcInScene, type NpcWithItems } from './npcScene.js';
 
 const NPCS = [
   { id: 'rezagado', aliases: ['guerrero orco rezagado', 'rezagado', 'orco rezagado', 'un rezagado'] },
@@ -371,5 +371,84 @@ describe('npcSceneBlockFor', () => {
   it('sin articulo (nombre propio), no antepone nada', () => {
     const block = npcSceneBlockFor(npcFixture({ articulo: null, name: 'Gistera Koh' }), 1);
     expect(block).toContain('PERSONAJE EN ESCENA: Gistera Koh —');
+  });
+});
+
+// Extraído de detectNpcsInScene (2026-08-05, eventos de viaje interactivos) para que un NPC pueda
+// entrar en escena por una vía distinta al matching de texto (ver travelInterruption.ts) —
+// extracción pura, mismo resultado exacto que el `.map` inline de antes de extraerla.
+describe('buildNpcInScene', () => {
+  const NPC_WITH_ITEMS: NpcWithItems = {
+    id: 'orco-1',
+    slug: 'orco-rezagado',
+    name: 'Guerrero orco rezagado',
+    articulo: 'el',
+    kind: 'PLANTILLA',
+    level: 2,
+    role: 'Guerrero sin clan',
+    faction: null,
+    personality: 'Desconfiado',
+    bio: 'x',
+    attributes: { fuerza: 14, destreza: 9, constitucion: 11, inteligencia: 7, voluntad: 11, carisma: 7, arcano: 6 },
+    raza: 'orcos',
+    clase: 'Guerrero',
+    ataqueNatural: null,
+    habilidadesRaciales: [],
+    temperamento: 'CAUTELOSO',
+    items: [
+      {
+        id: 'npcitem-1',
+        npcId: 'orco-1',
+        itemId: 'item-1',
+        cantidad: 1,
+        notas: 'Mellada',
+        item: {
+          id: 'item-1',
+          slug: 'maza-orca',
+          name: 'Maza orca',
+          description: 'Pesada y desgastada',
+          equipSlot: 'ARMA_PRINCIPAL',
+          statBonuses: null,
+          category: 'arma',
+          tipoArma: 'MAZA',
+        },
+      },
+    ],
+  } as unknown as NpcWithItems;
+
+  it('sin NpcState previo (nunca visto en esta partida), aplica los defaults ILESO/sin saquear', () => {
+    const result = buildNpcInScene(NPC_WITH_ITEMS, undefined);
+    expect(result.id).toBe('orco-1');
+    expect(result.slug).toBe('orco-rezagado');
+    expect(result.condicionFisica).toBe('ILESO');
+    expect(result.saqueado).toBe(false);
+    expect(result.lootedItemNames).toEqual([]);
+    expect(result.energia).toBeNull();
+    expect(result.items).toEqual([
+      {
+        name: 'Maza orca',
+        cantidad: 1,
+        notas: 'Mellada',
+        description: 'Pesada y desgastada',
+        equipSlot: 'ARMA_PRINCIPAL',
+        statBonuses: null,
+        catalogSlug: 'maza-orca',
+        category: 'arma',
+        tipoArma: 'MAZA',
+      },
+    ]);
+  });
+
+  it('con NpcState existente, usa el estado real persistido en vez de los defaults', () => {
+    const state = {
+      id: 'state-1', saveId: 'save-1', npcId: 'orco-1', scope: 'loc-x',
+      condicionFisica: 'INCAPACITADO', energia: 5, saqueado: true, lootedItemNames: ['Maza orca'],
+      updatedAt: new Date(),
+    } as unknown as Parameters<typeof buildNpcInScene>[1];
+    const result = buildNpcInScene(NPC_WITH_ITEMS, state);
+    expect(result.condicionFisica).toBe('INCAPACITADO');
+    expect(result.saqueado).toBe(true);
+    expect(result.lootedItemNames).toEqual(['Maza orca']);
+    expect(result.energia).toBe(5);
   });
 });

@@ -4,7 +4,14 @@ import { xpForRollSuccess, xpForHitos, applyXp, type ProgressionResult, type Hit
 import { alivioForLevel, xpForCraftSuccess, applyProfessionXp } from './professionProgress.js';
 import { tickKingdom, daysCrossed, DEFAULT_KINGDOM_STATS } from './kingdomTick.js';
 import { appendSessionFacts, selectRelevantFacts } from './worldFacts.js';
-import { applyFactionRepDelta, effectiveTemperamento, FACTION_REP_ATTACK_DELTA, FACTION_REP_PEACE_DELTA } from './reputation.js';
+import {
+  applyFactionRepDelta,
+  effectiveTemperamento,
+  resolveFoundingOutcome,
+  FACTION_REP_ATTACK_DELTA,
+  FACTION_REP_PEACE_DELTA,
+  type FoundingOutcome,
+} from './reputation.js';
 import {
   detectNpcsInScene,
   npcSceneBlockFor,
@@ -16,11 +23,13 @@ import {
   detectsVerbalAcceptanceIntent,
   scopeFor,
   pickAmbientEncounterCandidate,
+  buildNpcInScene,
   type NpcInScene,
+  type NpcWithItems,
 } from './npcScene.js';
 import { resolveExchange, rollInitiative, exchangeContextBlock, type PendingNpcAttack, type InitiativeResult } from './combatExchange.js';
 import { npcCombatAbilitiesFor, chooseNpcAbility } from './npcCombatAbilities.js';
-import { detectHarvest, harvestBlockFor } from './harvest.js';
+import { detectHarvest } from './harvest.js';
 import { detectItemReference, detectMedicalItemUse, detectEnergyItemUse, missingItemBlockFor } from './itemReference.js';
 import { energiaMaxFor, nextEnergia } from './energy.js';
 import { WEAPON_ABILITY_LEVEL_AVANZADA, dualWieldAdjustedDifficulty, weaponCategoryForRealAbilityName, type EquippedWeaponSlot } from './weaponAbilities.js';
@@ -32,7 +41,20 @@ import {
   craftRequisitoShortfalls,
   planCraftConsumption,
 } from './crafting.js';
-import { detectsBuildIntent, checkRecipe, planConsumption, baseNameOf, CONSTRUCTION_RECIPES, type ConstructionRecipe, type RecipeCheck } from './construction.js';
+import {
+  detectsBuildIntent,
+  checkRecipe,
+  planConsumption,
+  planRecipeConsumption,
+  baseNameOf,
+  CONSTRUCTION_RECIPES,
+  REINO_BUILDING_RECIPE_KEYS,
+  reinoBuildingCapacityForTier,
+  companionSlotsForRecipeKey,
+  MAX_MINUTOS_DESDE_AYUNTAMIENTO,
+  type ConstructionRecipe,
+  type RecipeCheck,
+} from './construction.js';
 import { shortfallLabel } from './requisitos.js';
 import { classAbilityUnlocksFor } from './classAbilities.js';
 import { protectedFactsFor } from './protectedFacts.js';
@@ -46,6 +68,8 @@ import {
   initialLocationSlugFor,
   matchDestination,
   detectsVagueMovementIntent,
+  buildAdjacency,
+  shortestPath,
   type TravelResolution,
 } from './travel.js';
 import { detectsRestIntent, type Produccion } from './timedActions.js';
@@ -233,6 +257,25 @@ interface NarrateAndPersistParams {
   /// objetos cuyo nombre aparezca aquí, del resto no se crea nada. `undefined` (el botón
   /// "Registrar"/"Saquear todo" de uno en uno no la manda) preserva el comportamiento de siempre.
   lootItemNames?: string[];
+  /// Bug real jugando en vivo (2026-08-04, "ronda larga de pruebas"): `Save.pendingCombatNpcSlugs`
+  /// (a quién sigue enfrentado el jugador de un turno a otro) se escribía siempre pero nunca se
+  /// leía aquí — un ataque de seguimiento SIN comillas ("le lanzo otro golpe al orco") caía
+  /// directo a `npcsInScene[0]`, que no tiene ninguna relación con "contra quién sigo luchando".
+  /// Un hecho de sesión de puro trasfondo ("el Orco persigue a Gistera Koh") basta para que
+  /// `detectNpcsInScene` la cuele en escena por su alias — y si su Npc.id ordena antes que el del
+  /// enemigo real, el combate entero se redirige en silencio contra ella, un PNJ nunca hostil.
+  /// Presente = slugs de con quién ya estaba enfrentado ANTES de este turno (turn.ts, leído de
+  /// `save.pendingCombatNpcSlugs`); ausente en las llamadas diferidas de worldTick.ts.
+  pendingCombatNpcSlugs?: string[];
+  /// Eventos de viaje interactivos (2026-08-05) — id de `Npc` elegido por `pickTravelInterruption`
+  /// (turn.ts) al iniciar un viaje que se truncó a mitad de camino. Presente = este turno de
+  /// llegada debe meter a ese NPC en escena de forma determinista (no depende de que el Narrador
+  /// narre su nombre), para que combate forzado/diálogo lo traten como a cualquier NPC real.
+  travelInterruptionNpcId?: string | null;
+  /// Nombre del destino que el jugador pidió de verdad, antes de truncar (turn.ts) — si está
+  /// presente, se escribe un LogEntry determinista aparte avisando de la interrupción (nunca se le
+  /// pasa al Narrador: no tiene por qué saber a dónde iba el jugador para narrar bien la llegada).
+  travelInterruptionOriginalDestinationName?: string | null;
 }
 
 export interface NewInventoryItemInfo {
@@ -246,6 +289,20 @@ export interface NewInventoryItemInfo {
   /// catalogSlug (narrativo suelto) o si el catálogo aún no la tiene asignada. Sin esto, un objeto
   /// recién saqueado/crafteado no sabía en qué hueco encaja hasta recargar la partida entera.
   equipSlot: string | null;
+}
+
+/// Notificación de fundación de reino (2026-08-04, "el Ayuntamiento" — docs/17-reglas-
+/// construcciones-reino.md) — se rellena solo al construir el Ayuntamiento tier 1 desde cero
+/// (nunca en una mejora de tier), para que el frontend abra el popup de fundación de facción.
+export interface KingdomFoundedInfo {
+  title: string;
+  region: string;
+  outcome: FoundingOutcome;
+  /// "Maktor" precargado si `characterName === 'Gorhorn'`, si no null (formulario en blanco).
+  suggestedName: string | null;
+  /// true solo para Gorhorn — el nombre del reino queda bloqueado, verificado también en el
+  /// backend al fundar de verdad (POST /saves/:id/reino/fundar), no solo aquí.
+  nameLocked: boolean;
 }
 
 export interface NarrateAndPersistResult {
@@ -308,6 +365,13 @@ export interface NarrateAndPersistResult {
   /// creó una misión nueva, para que el frontend la resalte sin tener que comparar arrays. `null`
   /// en la inmensa mayoría de turnos, que no crean ninguna.
   newQuestInfo: { title: string; objetivo: string } | null;
+  /// Notificación de fundación de reino (2026-08-04, "el Ayuntamiento") — solo al construir el
+  /// Ayuntamiento tier 1 desde cero, nunca en una mejora. `null` en la inmensa mayoría de turnos.
+  newKingdomFounded: KingdomFoundedInfo | null;
+  /// Compañero REALMENTE creado este turno (2026-08-04, tope de slots) — null si no hubo ninguna
+  /// propuesta o si se rechazó por falta de hueco. El frontend debe fiarse de esto, no de
+  /// `narration.newCompanion` directo (ese solo dice qué PROPUSO el modelo, no qué pasó de verdad).
+  companionCreated: { id: string; name: string; role: string; notes: string } | null;
   /// Rediseño del turno de combate (2026-07-28) — true si la iniciativa del PRÓXIMO intercambio
   /// favorece al NPC: el frontend debe pedirle al jugador que elija su defensa a ciegas en su
   /// siguiente sumisión, en vez del modo de ataque normal. Nunca revela CUÁL habilidad eligió el
@@ -324,6 +388,35 @@ export interface NarrateAndPersistResult {
   /// turno. null si la iniciativa se forzó sin dados (aturdimiento/intimidación) o si no hubo
   /// intercambio de combate este turno.
   nextInitiativeRoll: InitiativeResult | null;
+  /// Bug real (auditoría de deuda técnica 2026-08-04): construir/mejorar/fundar podía persistir de
+  /// verdad en la DB (Building/Territory/KingdomStats) sin que `/turn/narrate` devolviera nada al
+  /// respecto — el mapa y el panel de Reino se quedaban desactualizados hasta recargar la partida
+  /// entera (mismo patrón de bug ya arreglado una vez para inventario/misiones, ver `quests` más
+  /// arriba). Mismo criterio que `quests`: listas COMPLETAS ya fuera de la transacción (que a estas
+  /// alturas ya ha hecho commit), no un delta a mano — más simple y sin riesgo de omitir un cambio.
+  territories: { id: string; name: string; region: string | null; description: string; control: string; population: number }[];
+  buildings: {
+    id: string;
+    territoryId: string | null;
+    locationId: string | null;
+    recipeKey: string | null;
+    tier: number | null;
+    name: string;
+    kind: string;
+    status: string;
+    description: string;
+  }[];
+  subjects: { id: string; territoryId: string | null; name: string; role: string; notes: string }[];
+  kingdomStats: {
+    poblacion: number;
+    felicidad: number;
+    comida: number;
+    bebida: number;
+    riqueza: number;
+    soldados: number;
+    trabajadores: number;
+    visitantes: number;
+  } | null;
 }
 
 async function resolveInitialLocationId(
@@ -609,6 +702,79 @@ function resolveCombatExchangePhase(input: CombatExchangePhaseInput): CombatExch
   };
 }
 
+/// Reglas de reino (2026-08-04, docs/17-reglas-construcciones-reino.md) — cupo por región, cercanía/
+/// cupo del Ayuntamiento, mejora en el nivel justo anterior, y unicidad del Ayuntamiento. Recibe
+/// `db` como parámetro (en vez de cerrar sobre `prisma`) para poder llamarse dos veces con el mismo
+/// código: una vez de solo lectura ANTES de la transacción (aviso al LLM, mejor esfuerzo) y otra
+/// vez con `tx`, DENTRO de la transacción, justo antes de crear/mejorar de verdad (auditoría
+/// 2026-08-04, bug real: sin la segunda llamada, dos turnos de "construir X" casi simultáneos
+/// podían colarse ambos por el primer chequeo y duplicar Ayuntamientos/Territorios — misma clase de
+/// carrera ya cerrada para crafteo con `freshInventoryRows`/`planCraftConsumption`).
+async function computeBuildBlockedReason(
+  db: Prisma.TransactionClient,
+  saveId: string,
+  worldId: string,
+  buildRecipe: ConstructionRecipe,
+  activeRegion: string | null,
+  currentLocationRecord: { id: string },
+): Promise<string | null> {
+  if (buildRecipe.maxPerRegion) {
+    const sameRegionCount = await db.building.count({
+      where: { saveId, recipeKey: buildRecipe.key, status: { in: ['ACTIVO', 'EN_CONSTRUCCION'] }, location: { region: activeRegion ?? undefined } },
+    });
+    if (sameRegionCount >= buildRecipe.maxPerRegion) {
+      return `ya tiene ${buildRecipe.name} activo en esta región (máximo ${buildRecipe.maxPerRegion} por región)`;
+    }
+  }
+  if (buildRecipe.requiresAyuntamiento) {
+    const ayuntamiento = await db.building.findFirst({
+      where: { saveId, recipeKey: 'ayuntamiento', status: 'ACTIVO' },
+      include: { location: true },
+    });
+    if (!ayuntamiento?.location) {
+      return 'necesita un Ayuntamiento construido antes de poder levantar esto';
+    }
+    if (ayuntamiento.location.region !== activeRegion) {
+      return 'debe construirse en la misma región donde está el Ayuntamiento';
+    }
+    const links = await db.locationLink.findMany({
+      where: { from: { worldId } },
+      select: { fromId: true, toId: true, minutosBase: true, terreno: true, riesgo: true },
+    });
+    const path = shortestPath(buildAdjacency(links), ayuntamiento.location.id, currentLocationRecord.id);
+    if (!path || path.totalMinutos > MAX_MINUTOS_DESDE_AYUNTAMIENTO) {
+      return 'está demasiado lejos del Ayuntamiento para depender de él';
+    }
+    const reinoCount = await db.building.count({
+      where: { saveId, recipeKey: { in: REINO_BUILDING_RECIPE_KEYS }, status: 'ACTIVO' },
+    });
+    const capacity = reinoBuildingCapacityForTier(ayuntamiento.tier ?? 1);
+    if (reinoCount >= capacity) {
+      return `el Ayuntamiento ya está en su cupo máximo de edificios de reino (${capacity})`;
+    }
+  }
+  if (buildRecipe.upgradesRecipeKey) {
+    const target = await db.building.findFirst({ where: { saveId, recipeKey: buildRecipe.upgradesRecipeKey } });
+    const expectedCurrentTier = (buildRecipe.ayuntamientoNivel ?? 1) - 1;
+    if (!target) {
+      return 'no tiene ningún Ayuntamiento que mejorar todavía';
+    }
+    if ((target.tier ?? 1) !== expectedCurrentTier) {
+      return 'su Ayuntamiento no está en el nivel justo anterior para esta mejora';
+    }
+  }
+  // Máximo 1 Ayuntamiento por partida (de facto, "por continente" — hoy solo Berig está en juego):
+  // solo aplica al tier 1 (construcción NUEVA, sin `upgradesRecipeKey`) — las mejoras ya están
+  // cubiertas por la comprobación de arriba, que exige que SÍ exista uno.
+  if (buildRecipe.key === 'ayuntamiento' && !buildRecipe.upgradesRecipeKey) {
+    const existing = await db.building.findFirst({ where: { saveId, recipeKey: 'ayuntamiento' } });
+    if (existing) {
+      return 'solo puede haber un Ayuntamiento por continente — hay que mejorar el que ya existe, no construir otro';
+    }
+  }
+  return null;
+}
+
 /// Narra (retrieval + narrateAction) y persiste el resultado de un turno — hechos, XP/nivel,
 /// inventario/compañeros, eventos de Reino, posición/NPCs/despiece (docs/12), condición física
 /// y muerte/descanso (docs/14), LogEntry. Compartido entre el turno síncrono (bandas
@@ -644,6 +810,9 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     pendingNpcAttack,
     npcsInScene: npcsInScenePrecomputed,
     lootItemNames,
+    pendingCombatNpcSlugs,
+    travelInterruptionNpcId,
+    travelInterruptionOriginalDestinationName,
   } = params;
 
   // Revisión técnica 2026-07-22: estas 4 consultas no dependen entre sí (retrieveLore es la única
@@ -658,8 +827,10 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     // coste de energía 2026-07-29) — null/0 si el jugador escribió la acción a mano (sin
     // savedActionId) o si esa SavedAction no tiene efecto asignado (habilidades generales, o
     // partidas en curso creadas antes de esta migración).
+    // `saveId` en el filtro (auditoría de deuda técnica 2026-08-04, bug real de fuga entre
+    // partidas): sin él, un `savedActionId` de OTRA partida seguía resolviendo aquí también.
     savedActionId
-      ? prisma.savedAction.findUnique({ where: { id: savedActionId }, select: { name: true, effect: true, energyCost: true, energyRegen: true, dualWield: true } })
+      ? prisma.savedAction.findFirst({ where: { id: savedActionId, saveId }, select: { name: true, effect: true, energyCost: true, energyRegen: true, dualWield: true } })
       : Promise.resolve<{ name: string; effect: AbilityEffect | null; energyCost: number; energyRegen: number; dualWield: boolean } | null>(null),
     regionLocationId ? prisma.location.findUnique({ where: { id: regionLocationId }, select: { region: true, name: true } }) : Promise.resolve(null),
     // Auditoría de rendimiento 2026-07-28 ("rascar segundos"): si el caller (turn.ts) ya trae el
@@ -695,13 +866,35 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     // disponible como objetivo mecánico un turno más, aunque la narración ya la diera por ida.
     prisma.quest.findFirst({ where: { saveId, title: { contains: 'Orco Enfurecido' } } }),
   ]);
+
+  // Eventos de viaje interactivos (2026-08-05): si este turno resuelve un viaje truncado por una
+  // interrupción (turn.ts, pickTravelInterruption), el NPC elegido entra en escena de forma
+  // DETERMINISTA — a diferencia del resto de `npcsInScene` (detectado por texto vía
+  // detectNpcsInScene), este no depende de que el Narrador narre su nombre. Se resuelve antes del
+  // filtro de Gistera para que shouldForceCombat/npcSceneBlockFor/dialogueTarget más abajo lo
+  // traten exactamente igual que a cualquier otro NPC ya detectado.
+  let npcsInSceneWithInterruption = npcsInSceneRaw;
+  if (travelInterruptionNpcId && !npcsInSceneRaw.some((n) => n.id === travelInterruptionNpcId)) {
+    const interruptionNpc: NpcWithItems | null = await prisma.npc.findUnique({
+      where: { id: travelInterruptionNpcId },
+      include: { items: { include: { item: true } } },
+    });
+    if (interruptionNpc) {
+      const interruptionLocationId = travel?.toLocationId ?? currentLocationId;
+      const interruptionState = await prisma.npcState.findUnique({
+        where: { saveId_npcId_scope: { saveId, npcId: interruptionNpc.id, scope: scopeFor(interruptionNpc.kind, interruptionLocationId) } },
+      });
+      npcsInSceneWithInterruption = [...npcsInSceneRaw, buildNpcInScene(interruptionNpc, interruptionState ?? undefined)];
+    }
+  }
+
   // Ver comentario de arriba — `gisteraYaPresentada` también la necesita el bloque Gistera Koh
   // más abajo (se reutiliza tal cual, sin volver a consultar). `gisteraSeHaMarchado` cubre tanto
   // los turnos DESPUÉS de aceptar (el Quest ya existe) como el propio turno en el que se acepta
   // (el Quest todavía no se ha creado en esta misma petición, pero la aceptación ya se detecta).
   const gisteraYaPresentada = sessionFacts.some((f) => f.includes('Gistera Koh')) || !!gisteraQuestYaExiste;
   const gisteraSeHaMarchado = !!gisteraQuestYaExiste || (gisteraYaPresentada && detectsVerbalAcceptanceIntent(action));
-  const npcsInScene = gisteraSeHaMarchado ? npcsInSceneRaw.filter((n) => n.slug !== 'gistera-koh') : npcsInSceneRaw;
+  const npcsInScene = gisteraSeHaMarchado ? npcsInSceneWithInterruption.filter((n) => n.slug !== 'gistera-koh') : npcsInSceneWithInterruption;
   const abilityEffect = selectedAbilityData?.effect ?? null;
   // Coste de energía de la habilidad pulsada (2026-07-29, sistema de fatiga) — 0 si la acción no
   // usa ninguna SavedAction con coste (ataque a mano, Defenderse/Esquivar genéricas, habilidades
@@ -795,7 +988,17 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   // mira si la condición NUEVA es terminal, no si YA lo era antes de este turno, así que repetía
   // el descuento de reputación de facción sin límite contra un enemigo ya derrotado. Mismo criterio
   // que `lootTargets`: un NPC ya derrotado no es un objetivo de ataque válido.
-  const candidateAttackTarget = explicitTarget ?? npcsInScene[0] ?? null;
+  // Bug real jugando en vivo (2026-08-04): sin nombre citado, un ataque de seguimiento caía
+  // directo a `npcsInScene[0]` sin mirar contra quién ya estaba enfrentado el jugador — un NPC
+  // solo mencionado de pasada en un hecho de trasfondo (p.ej. "el Orco persigue a Gistera Koh")
+  // podía colarse en escena y robarle el combate entero al enemigo real. Si ya había pelea en
+  // marcha (`pendingCombatNpcSlugs`), ese NPC manda sobre el orden de detección, igual que ya
+  // hace `explicitTarget` — solo cae a `npcsInScene[0]` cuando no hay ni nombre citado ni combate
+  // previo (p.ej. el primer golpe de un encuentro nuevo).
+  const ongoingCombatTarget = pendingCombatNpcSlugs?.length
+    ? (npcsInScene.find((n) => pendingCombatNpcSlugs.includes(n.slug)) ?? null)
+    : null;
+  const candidateAttackTarget = explicitTarget ?? ongoingCombatTarget ?? npcsInScene[0] ?? null;
   // Rediseño del turno de combate (2026-07-28, petición explícita: "primero se tiran dados y se
   // ve quien ataca primero... el otro entra en un turno de defensa... con su propia tirada de
   // dados independiente de la de ataque") — sustituye el viejo "el jugador siempre ataca
@@ -1048,10 +1251,6 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     contextBlocks.push(
       'Ningún intercambio de combate mecánico se ha resuelto todavía este turno — puedes narrar tensión, acercamiento, amenaza o preparativos, pero NUNCA un golpe que conecta, una herida infligida, ni el resultado ya decidido de una pelea (ni a favor ni en contra del personaje). Esa resolución solo existe cuando el propio sistema la calcula, en un turno futuro dentro del combate real.',
     );
-  }
-
-  if (harvestMatch) {
-    contextBlocks.push(harvestBlockFor(harvestMatch));
   }
 
   // "Decapitar" (2026-07-30) — los enemigos ya están incapacitados y no pueden resistir; se le
@@ -1315,22 +1514,64 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   const buildRecipeCheck: RecipeCheck | null = buildRecipe
     ? checkRecipe(buildRecipe, inventoryRows, catalogBySlug, attributes, secondaryAttributes, alivioFor(buildRecipe.oficio))
     : null;
+
+  // Reglas de reino (2026-08-04, docs/17-reglas-construcciones-reino.md) — comprobaciones
+  // deterministas ADICIONALES a materiales/atributos, solo evaluadas si esos ya están completos
+  // (si faltan materiales, ese sigue siendo el problema real a narrar, no estas reglas). De solo
+  // lectura, con `prisma` (no `tx`): mejor esfuerzo para el aviso al LLM — el gate real y
+  // obligatorio es la segunda llamada a `computeBuildBlockedReason`, DENTRO de la transacción
+  // (ver comentario junto a su definición, bug real de condición de carrera).
+  const buildBlockedReason: string | null =
+    buildRecipe && buildRecipeCheck?.met && currentLocationRecord
+      ? await computeBuildBlockedReason(prisma, saveId, worldId, buildRecipe, activeRegion, currentLocationRecord)
+      : null;
+
+  // Determinista de una vez (2026-08-04, "el campamento" — primera construcción anclada al mapa):
+  // igual que el saqueo, construir con una receta fija no tiene ninguna decisión narrativa real
+  // que tomar — nombre/descripción ya están fijados por la receta. Antes se le pedía al modelo que
+  // narrara y rellenara `newBuilding` con su propio texto libre, con el mismo riesgo de
+  // alucinación/omisión ya corregido en saqueo/golpes falsos/objeto falso (y un bug real latente:
+  // los materiales se consumían igualmente aunque el modelo fallara en proponer el edificio). Con
+  // `buildMode`, este turno entero se resuelve sin llamar al LLM — ver el bloque de `narration`
+  // más abajo.
+  const buildMode = !!buildRecipe && !!buildRecipeCheck?.met && !buildBlockedReason;
   if (buildRecipe && buildRecipeCheck && !buildRecipeCheck.met) {
     const faltantes = buildRecipeCheck.missing.map((m) => `${m.label} (tienes ${m.tienes}, necesitas ${m.necesitas})`).join(', ');
     contextBlocks.push(
       `El personaje quiere construir ${buildRecipe.name}, pero todavía no cumple los requisitos: ${faltantes} — narra que lo intenta o lo planea, pero no que lo termina de verdad.`,
     );
-  } else if (buildRecipe && buildRecipeCheck?.met) {
+  } else if (buildRecipe && buildBlockedReason) {
     contextBlocks.push(
-      `El personaje tiene todos los materiales para construir ${buildRecipe.name} — narra la construcción con el peso que merece. Los materiales ya se consumen automáticamente por el backend.`,
+      `El personaje quiere construir ${buildRecipe.name}, pero no puede: ${buildBlockedReason} — narra que lo intenta o lo descubre, pero no que lo termina de verdad.`,
     );
   }
 
-  if (harvestMatch) {
-    contextBlocks.push(
-      'IMPORTANTE: no rellenes "newItem" en este turno — el objeto o botín ya se gestiona automáticamente por el backend a partir de datos fijos.',
-    );
+  // Slots de compañero (2026-08-04, docs/17-reglas-construcciones-reino.md): 0 de base, cada
+  // construcción ACTIVA propia da los suyos (`companionSlotsForRecipeKey`). Aviso al modelo aquí
+  // (best-effort, mismo criterio que el resto de contextBlocks) — el tope real y obligatorio se
+  // aplica de todos modos al crear el Companion de verdad, más abajo en la transacción.
+  //
+  // Gate de rendimiento (auditoría de deuda técnica 2026-08-04): esto se calculaba en TODOS los
+  // turnos, aunque la inmensa mayoría no tienen nada que ver con reclutar — 2 queries de solo
+  // lectura desperdiciadas por turno. Ahora solo se calcula si la acción sugiere reclutar/aliarse.
+  // El gate real (dentro de la transacción, solo cuando `narration.newCompanion` llega de verdad)
+  // sigue siendo incondicional y no depende de esto — en el peor caso (el modelo decide narrar un
+  // reclutamiento a partir de una acción que no matchea este regex) el hard gate lo bloquea igual,
+  // solo se pierde el aviso previo al LLM.
+  const COMPANION_INTENT_REGEX = /reclut|acompan|companer|se una|unirs|unirt|aliad/;
+  if (COMPANION_INTENT_REGEX.test(normalizeText(action))) {
+    const [companionCount, companionBuildings] = await Promise.all([
+      prisma.companion.count({ where: { saveId } }),
+      prisma.building.findMany({ where: { saveId, status: 'ACTIVO' }, select: { recipeKey: true } }),
+    ]);
+    const maxCompanions = companionBuildings.reduce((sum, b) => sum + companionSlotsForRecipeKey(b.recipeKey), 0);
+    if (companionCount >= maxCompanions) {
+      contextBlocks.push(
+        `El personaje no tiene ningún slot de compañero libre (${companionCount}/${maxCompanions}, hacen falta más construcciones propias para tener sitio) — no rellenes "newCompanion" este turno, aunque la acción sugiera ganar un aliado.`,
+      );
+    }
   }
+
   // Bug real (2026-07-31→2026-08-01, "saquear no cita los objetos que has saqueado bien, y no sale
   // el link a la Enciclopedia" — y tras el primer intento de solo AVISAR al modelo del nombre
   // exacto, seguía inventando objetos que no existen, p. ej. "Tótem Maktor"): saquear es un turno
@@ -1350,6 +1591,23 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
         );
       })
     : [];
+
+  // Despiece/recolección determinista (ronda de pruebas 2026-08-04, hallazgos 7/7b/7c: la
+  // narración libre describía éxito completo — "la carne seca y fría, las pieles finas y
+  // suaves" — con tirada fallida y sin crear ningún InventoryItem, y hasta alucinó un "agarre"
+  // de un orco muerto y saqueado varios turnos antes). Mismo principio que el saqueo de arriba:
+  // esto es un turno puramente mecánico (la condición ya se decidió en `harvestMatch`/`roll` antes
+  // de narrar), así que se le quita al modelo la posibilidad de mentir sobre el resultado en vez
+  // de perseguir el bug caso a caso con más detectores.
+  const harvestOutcome = harvestMatch
+    ? harvestMatch.requierePresaPrevia
+      ? 'sin_presa'
+      : harvestMatch.yaDespiezada
+        ? 'ya_despiezada'
+        : roll && !roll.success
+          ? 'fallo'
+          : 'exito'
+    : null;
 
   // Escena de Gistera Koh, fase 2 — solución limpia (auditoría 2026-07-30, "revisar partida",
   // tras encontrarlo fallando EN VIVO por segunda vez: la primera vez inventó "Múrgol" como
@@ -1377,7 +1635,24 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
               : `${characterName} rebusca entre los restos, pero no queda nada más que llevarse.`,
           newFacts: [],
         }
-      : await narrateAction({
+      : buildMode
+        ? {
+            narration: `${characterName} termina de construir ${buildRecipe!.name}. ${buildRecipe!.description}`,
+            newFacts: [],
+          }
+        : harvestOutcome
+          ? {
+              narration:
+                harvestOutcome === 'sin_presa'
+                  ? `${characterName} busca algo que aprovechar de ${harvestMatch!.sourceName}, pero no hay ningún cadáver o presa derrotada de la que sacar nada.`
+                  : harvestOutcome === 'ya_despiezada'
+                    ? `${characterName} rebusca en los restos de ${harvestMatch!.sourceName}, pero ya se llevó antes todo lo aprovechable.`
+                    : harvestOutcome === 'fallo'
+                      ? `${characterName} lo intenta, pero no logra sacar nada de provecho de ${harvestMatch!.sourceName} esta vez.`
+                      : `${characterName} despieza/recolecta ${harvestMatch!.sourceName} y consigue: ${harvestMatch!.yields.map((y) => (y.cantidad > 1 ? `${y.itemName} (${y.cantidad})` : y.itemName)).join(', ')}.`,
+              newFacts: [],
+            }
+          : await narrateAction({
           worldFacts: [...contextBlocks, ...(await selectRelevantFacts(action, saveId, sessionFacts))],
           // Separado de worldFacts (roadmap 2026-07-24, "revisar partida" — ver comentario en
           // TurnContext.backgroundLore, narrador.ts): el lore RAG es trasfondo del mundo, no hechos
@@ -1409,7 +1684,21 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   // hay generación en vivo que transmitir) — se manda de una vez aquí para que el frontend siga
   // viendo el mismo patrón de un "chunk" seguido de "done", en vez de quedarse sin nada hasta el
   // final de la respuesta HTTP completa.
-  if (gisteraSePresentaEsteTurno || lootMode) onNarrationChunk?.(narration.narration);
+  if (gisteraSePresentaEsteTurno || lootMode || buildMode || harvestOutcome) onNarrationChunk?.(narration.narration);
+
+  // Bug real (ronda de pruebas 2026-08-04, hallazgo 10): al rechazar una construcción por no
+  // cumplir requisitos (materiales/atributos insuficientes o una regla de reino, `buildRecipe`
+  // detectado pero `buildMode` false) el gate mecánico ya funciona bien — nada se construye,
+  // materiales intactos —, pero el modelo seguía grabando en `newFacts` que la construcción SÍ
+  // se estaba levantando ("Gorhorn está fundando un pequeño ayuntamiento..."), un hecho de
+  // sesión PERMANENTE que turnos futuros "recordarían" como cierto pese a no haber pasado nunca.
+  // La instrucción de prompt de arriba ("narra que lo intenta, pero no que lo termina de
+  // verdad") ya existía y no bastó — mismo principio que el resto de esta sesión: si la mecánica
+  // ya sabe que el intento fracasó, no hace falta confiar en que la prosa libre del modelo no lo
+  // contradiga en un campo aparte que ni siquiera se lee al narrar.
+  if (buildRecipe && !buildMode) {
+    narration.newFacts = [];
+  }
 
   // "Revisar partida" 2026-07-30 (queja explícita: el jugador terminó INCAPACITADO sin que la
   // narración reflejara ningún golpe recibido más allá del primero) — cuando el jugador ataca y
@@ -1583,6 +1872,9 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     logEntryId: string;
     newQuestObjetivos: string[];
     newQuestInfo: { title: string; objetivo: string } | null;
+    newKingdomFounded: KingdomFoundedInfo | null;
+    companionCreated: { id: string; name: string; role: string; notes: string } | null;
+    partiallyLootedSlugs: string[];
   };
   try {
     transactionResult = await prisma.$transaction(async (tx) => {
@@ -1595,6 +1887,13 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     }
 
     const newInventoryItems: NewInventoryItemInfo[] = [];
+    // Saqueo parcial: NPCs tocados este turno que se quedan CON botín pendiente (auditoría
+    // "ronda larga de pruebas" 2026-08-04, hallazgo real jugando en vivo) — sin esto, `combatSlugs`
+    // más abajo se queda vacío en cualquier turno de solo-saqueo (ni intercambio ni decapitar), así
+    // que `Save.pendingCombatNpcSlugs` se sobrescribía a `[]` aunque quedaran objetos por saquear:
+    // un refresco de página justo ahí perdía el aviso de "sigue en combate/saqueable" para el resto
+    // del botín, aunque los datos reales (`NpcState.saqueado`/`lootedItemNames`) fueran correctos.
+    const partiallyLootedSlugs: string[] = [];
     // Nombres de todo lo materializado este turno (roadmap 2026-07-20, P1 de Fable) — para cerrar
     // solo la misión "conseguir Z" (Quest.targetItemName) al final de la transacción, sin repetir
     // el chequeo en cada uno de los 5 sitios que crean InventoryItem.
@@ -1611,6 +1910,15 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     // Notificación de misión aceptada (ver NarrateAndPersistResult.newQuestInfo más arriba) — se
     // rellena en los dos sitios que crean una Quest de verdad, más abajo.
     let newQuestInfo: { title: string; objetivo: string } | null = null;
+    // Notificación de fundación de reino (2026-08-04, ver NarrateAndPersistResult.newKingdomFounded
+    // más arriba) — se rellena solo al construir el Ayuntamiento tier 1 desde cero (nunca en una
+    // mejora de tier), para que el frontend abra el popup de fundación de facción.
+    let newKingdomFounded: KingdomFoundedInfo | null = null;
+    // Compañero REALMENTE creado este turno (2026-08-04, ver el tope de slots más abajo) — null
+    // si no hubo ninguna propuesta o si se rechazó por falta de hueco. El frontend debe usar esto,
+    // nunca `narration.newCompanion` directo, para no mostrar en la UI a alguien que el backend
+    // acabó de rechazar en silencio.
+    let companionCreated: { id: string; name: string; role: string; notes: string } | null = null;
 
     await tx.worldState.update({
       where: { saveId },
@@ -1653,9 +1961,17 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     // a `true` cuando `lootedItemNames` cubre el 100% del loadout conocido del NPC.
     if (lootMode) {
       for (const npc of lootTargets) {
+        const scope = scopeFor(npc.kind, currentLocationId);
+        // Revalidación anti-carrera (auditoría de deuda técnica 2026-08-04, mismo patrón ya
+        // cerrado hoy para construcción/crafteo/despiece): `npc.saqueado`/`npc.lootedItemNames`
+        // vienen de `npcsInScene`, leído con `prisma` ANTES de esta transacción — dos turnos de
+        // "saqueo" casi simultáneos sobre el mismo NPC (doble clic, reintento de red, dos
+        // pestañas) podían pasar ambos el guard con la misma foto ya obsoleta y duplicar el
+        // botín de una sola muerte. Se relee fresco con `tx` justo antes de decidir qué llevarse.
+        const freshState = await tx.npcState.findUnique({ where: { saveId_npcId_scope: { saveId, npcId: npc.id, scope } } });
         // NpcState: una vez saqueado DEL TODO, no hay nada más que ofrecer — se sigue saltando.
-        if (npc.saqueado) continue;
-        const yaTomados = npc.lootedItemNames;
+        if (freshState?.saqueado) continue;
+        const yaTomados = freshState?.lootedItemNames ?? npc.lootedItemNames;
         const itemsToLoot = (lootItemNames ? npc.items.filter((item) => lootItemNames.includes(item.name)) : npc.items).filter(
           (item) => !yaTomados.includes(item.name),
         );
@@ -1678,7 +1994,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
         if (npc.items.length > 0) {
           const nuevosTomados = [...new Set([...yaTomados, ...itemsToLoot.map((item) => item.name)])];
           const todoTomado = npc.items.every((item) => nuevosTomados.includes(item.name));
-          const scope = scopeFor(npc.kind, currentLocationId);
+          if (!todoTomado) partiallyLootedSlugs.push(npc.slug);
           await tx.npcState.upsert({
             where: { saveId_npcId_scope: { saveId, npcId: npc.id, scope } },
             create: { saveId, npcId: npc.id, scope, saqueado: todoTomado, lootedItemNames: nuevosTomados },
@@ -1759,6 +2075,18 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     // INCAPACITADO, esto solo cubre el caso raro de que no lo hiciera.
     for (const executeTarget of executeTargets) {
       const scope = scopeFor(executeTarget.kind, currentLocationId);
+      // Revalidación anti-carrera (auditoría de deuda técnica 2026-08-04, mismo patrón ya
+      // cerrado hoy para construcción/crafteo/despiece/saqueo): `executeTargets` sale de
+      // `npcsInScene`, leído con `prisma` ANTES de esta transacción — dos "decapito a X" casi
+      // simultáneos podían pasar ambos el filtro `condicionFisica === 'INCAPACITADO'` con la
+      // misma foto obsoleta y aplicar la muerte DOS veces: población mundial restada dos veces
+      // por una sola baja, y penalización de reputación de facción duplicada. La escritura de
+      // `condicionFisica: 'MUERTO'` en sí es idempotente, pero sus efectos secundarios no lo son
+      // — se saltan enteros si el NPC ya estaba MUERTO de verdad justo antes de escribir.
+      const freshExecuteState = await tx.npcState.findUnique({
+        where: { saveId_npcId_scope: { saveId, npcId: executeTarget.id, scope } },
+      });
+      if (freshExecuteState?.condicionFisica === 'MUERTO') continue;
       await tx.npcState.upsert({
         where: { saveId_npcId_scope: { saveId, npcId: executeTarget.id, scope } },
         create: { saveId, npcId: executeTarget.id, scope, condicionFisica: 'MUERTO' },
@@ -1783,7 +2111,22 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     }
 
     // Despiece/recolección (§ 3.3) — solo si la acción tuvo éxito (o no requería tirada).
-    if (harvestMatch && (!roll || roll.success)) {
+    //
+    // Revalidación anti-carrera (auditoría de deuda técnica 2026-08-04, mismo patrón exacto ya
+    // cerrado hoy para construcción/crafteo): `harvestMatch` se calculó con `prisma`, ANTES de
+    // esta transacción — dos turnos de despiece casi simultáneos sobre el mismo cadáver de fauna
+    // podían pasar ambos el chequeo de `saqueado` ya obsoleto y duplicar el botín de un solo
+    // cuerpo. Solo aplica a fauna (`npcId` presente, el único caso con tope real); los recursos
+    // vegetales/minerales no tienen límite de por sí (renovables, por diseño — ver harvest.ts).
+    const harvestStillValid =
+      harvestMatch?.npcId && harvestMatch.npcKind
+        ? !(
+            await tx.npcState.findUnique({
+              where: { saveId_npcId_scope: { saveId, npcId: harvestMatch.npcId, scope: scopeFor(harvestMatch.npcKind, currentLocationId) } },
+            })
+          )?.saqueado
+        : true;
+    if (harvestMatch && (!roll || roll.success) && harvestStillValid) {
       for (const y of harvestMatch.yields) {
         const created = await tx.inventoryItem.create({
           data: {
@@ -1907,9 +2250,37 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     // filas que hagan falta (planConsumption), dejando un remanente reducido en la última fila
     // si sobra. Mismo criterio anti-carrera que el crafteo de arriba: `freshInventoryRows`, no la
     // foto de antes de narrar.
-    if (buildRecipe && buildRecipeCheck?.met) {
-      for (const req of buildRecipe.requirements) {
-        const plan = planConsumption(freshInventoryRows, req, catalogBySlug);
+    //
+    // Revalidación anti-carrera completa (auditoría 2026-08-04, bug real): `buildMode`/
+    // `buildRecipeCheck`/`buildBlockedReason` de más arriba se calcularon con `prisma`, ANTES de
+    // esta transacción — un hueco de segundos en el que un doble envío del mismo turno (doble
+    // clic, reintento de red, dos pestañas) podía colar dos construcciones sobre la misma foto ya
+    // obsoleta. `buildRecipeConsumptionPlans` (null si algún material ya no alcanza, mismo criterio
+    // que `planCraftConsumption`) y una segunda pasada de `computeBuildBlockedReason` con `tx`
+    // (releyendo cupo por región/Ayuntamiento/unicidad de verdad) son la fuente de verdad real —
+    // sin esto, dos "construyo un ayuntamiento" casi simultáneos podían crear dos `Building` +
+    // `Territory` para la misma partida, o levantar la construcción sin gastar nada.
+    const buildRecipeConsumptionPlans =
+      buildMode && buildRecipe ? planRecipeConsumption(buildRecipe, freshInventoryRows, catalogBySlug) : null;
+    const buildStillBlockedReason =
+      buildMode && buildRecipe && buildRecipeConsumptionPlans && currentLocationRecord
+        ? await computeBuildBlockedReason(tx, saveId, worldId, buildRecipe, activeRegion, currentLocationRecord)
+        : null;
+    const buildValidNow = !!buildRecipeConsumptionPlans && !buildStillBlockedReason;
+    // Narración mentirosa si se pierde la carrera (auditoría 2026-08-04, cierre del hallazgo de
+    // arriba): el texto sintético "termina de construir X" (más arriba, antes de esta transacción,
+    // ver `buildMode` cerca de la narración) ya se decidió y hasta se transmitió por streaming
+    // ANTES de saber si `buildValidNow` iba a ser true — mismo riesgo de "la narración dice algo
+    // que la DB no respalda" que hasFalseCombatHit/hasFalseItemUse ya cierran para otros casos.
+    // No se puede deshacer el chunk ya emitido, pero SÍ se corrige aquí el texto final que de
+    // verdad se persiste en LogEntry y se devuelve en el `done` — el frontend descarta el preview
+    // en streaming en cuanto llega `done` y pinta este texto, así que el resultado visible/
+    // guardado siempre es honesto aunque el hueco de streaming, rarísimo, no lo sea por un instante.
+    if (buildMode && buildRecipe && !buildValidNow) {
+      narration.narration = `${characterName} lo intenta, pero justo en ese instante se da cuenta de que ya no dispone de lo necesario para terminarlo.`;
+    }
+    if (buildRecipe && buildValidNow) {
+      for (const plan of buildRecipeConsumptionPlans!) {
         if (plan.deleteIds.length > 0) {
           await tx.inventoryItem.deleteMany({ where: { id: { in: plan.deleteIds } } });
         }
@@ -1931,16 +2302,40 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
         data: { saveId, name: narration.newItem.name, description: narration.newItem.description, origin: 'partida' },
       });
       createdItemNames.push(created.name);
+      // Bug real (auditoría de deuda técnica 2026-08-04, mismo patrón que companionCreated): a
+      // diferencia de los otros 4 sitios que crean InventoryItem en este archivo (saqueo,
+      // despiece, producción, crafteo/construcción), este era el único que no empujaba a
+      // `newInventoryItems` — el frontend solo se enteraba vía `narration.newItem` (name+
+      // description sueltos del LLM, sin id real) y se veía obligado a inventarse un id de
+      // cliente (`item-${Date.now()}`) que el backend no reconoce, rompiendo equipar ese objeto
+      // hasta la siguiente recarga completa. Objeto libre, sin catalogSlug de por medio →
+      // equipSlot siempre null, mismo criterio que el resto de creaciones sin catálogo.
+      newInventoryItems.push({ ...created, slot: null, equipSlot: null });
     }
     if (narration.newCompanion) {
-      await tx.companion.create({
-        data: {
-          saveId,
-          name: narration.newCompanion.name,
-          role: narration.newCompanion.role,
-          notes: narration.newCompanion.notes,
-        },
-      });
+      // Tope real de slots (2026-08-04, ver el aviso de contextBlocks más arriba) — reconsultado
+      // fresco dentro de la transacción, mismo criterio que `freshInventoryRows`: el modelo puede
+      // ignorar el aviso, esto es lo que garantiza que nunca se cree un compañero sin hueco.
+      const [freshCompanionCount, freshCompanionBuildings] = await Promise.all([
+        tx.companion.count({ where: { saveId } }),
+        tx.building.findMany({ where: { saveId, status: 'ACTIVO' }, select: { recipeKey: true } }),
+      ]);
+      const freshMaxCompanions = freshCompanionBuildings.reduce((sum, b) => sum + companionSlotsForRecipeKey(b.recipeKey), 0);
+      if (freshCompanionCount < freshMaxCompanions) {
+        const created = await tx.companion.create({
+          data: {
+            saveId,
+            name: narration.newCompanion.name,
+            role: narration.newCompanion.role,
+            notes: narration.newCompanion.notes,
+          },
+        });
+        // Bug real introducido por el tope de arriba (2026-08-04): el frontend añadía
+        // `narration.newCompanion` a su lista de compañeros de forma optimista, sin saber que el
+        // backend podía rechazarlo en silencio por falta de hueco — devolver el registro REAL
+        // (o null si se rechazó) es lo único fiable, mismo criterio que `newInventoryItems`.
+        companionCreated = created;
+      }
     }
 
     // Eventos de Reino (docs/10-niveles-xp-reino.md § 5) — necesitan enlazar por nombre de
@@ -1988,7 +2383,78 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
       return found?.id;
     }
 
-    if (narration.newBuilding) {
+    // Building determinista (2026-08-04, ver `buildMode` más arriba, "el campamento" — primera
+    // construcción anclada al mapa): nombre/descripción/receta salen de CONSTRUCTION_RECIPES,
+    // nunca de `narration.newBuilding` (que en este turno ni siquiera existe — el LLM no se llegó
+    // a llamar). Anclado a `currentLocationId` para que el mapa (InteractiveMap.tsx) pueda pintar
+    // su icono en el mismo nodo — null si el personaje está en tránsito o en un punto sin Location
+    // conocida, igual de válido, solo sin icono. Gate real `buildValidNow` (no `buildMode`, ver
+    // comentario junto a su cálculo más arriba) — si se pierde la carrera contra otro turno
+    // concurrente, este bloque entero se salta sin crear/mejorar nada.
+    if (buildValidNow && buildRecipe) {
+      if (buildRecipe.upgradesRecipeKey) {
+        // Mejora de Ayuntamiento (2026-08-04): actualiza el MISMO `Building.id`, nunca crea uno
+        // nuevo — "no se acumulan, mejoras el actual" (docs/17-reglas-construcciones-reino.md).
+        // El objetivo ya se verificó arriba (`buildBlockedReason`), pero se re-busca fresco dentro
+        // de la transacción por si acaso, mismo criterio que `freshInventoryRows`.
+        const target = await tx.building.findFirst({ where: { saveId, recipeKey: buildRecipe.upgradesRecipeKey } });
+        if (target) {
+          await tx.building.update({
+            where: { id: target.id },
+            data: { name: buildRecipe.name, description: buildRecipe.description, tier: buildRecipe.ayuntamientoNivel, status: 'ACTIVO' },
+          });
+        }
+      } else {
+        const created = await tx.building.create({
+          data: {
+            saveId,
+            locationId: currentLocationId ?? undefined,
+            recipeKey: buildRecipe.key,
+            name: buildRecipe.name,
+            kind: buildRecipe.key,
+            description: buildRecipe.description,
+            status: 'ACTIVO',
+            tier: buildRecipe.ayuntamientoNivel ?? undefined,
+          },
+        });
+        // Fundación de reino (2026-08-04): solo al construir el Ayuntamiento tier 1 desde cero,
+        // nunca en una mejora (esa rama ni pasa por aquí). Resuelve contra la(s) facción(es) dueña
+        // de la región (reputation.ts) y crea el Territory correspondiente — mismo criterio que
+        // `narration.newTerritory` de abajo (primer Territory = primera vez que "hay reino").
+        if (buildRecipe.key === 'ayuntamiento') {
+          const worldStateForFounding = await tx.worldState.findUnique({ where: { saveId }, select: { factionsStatus: true } });
+          const foundingFactionsStatus = (worldStateForFounding?.factionsStatus as Record<string, number> | null) ?? {};
+          const outcome = resolveFoundingOutcome(activeRegion, foundingFactionsStatus);
+          const existingTerritoriesForFounding = await tx.territory.count({ where: { saveId } });
+          const founded = await tx.territory.create({
+            data: {
+              saveId,
+              name: activeRegion ?? 'Territorio sin nombre',
+              region: activeRegion,
+              description: `Territorio fundado al construir ${buildRecipe.name}.`,
+              control: outcome === 'CONFLICTO' ? 'DISPUTADO' : 'RECLAMADO',
+            },
+          });
+          await tx.building.update({ where: { id: created.id }, data: { territoryId: founded.id } });
+          if (existingTerritoriesForFounding === 0) {
+            await tx.kingdomStats.upsert({ where: { saveId }, create: { saveId, ...DEFAULT_KINGDOM_STATS }, update: {} });
+          }
+          reinoXp = Math.max(reinoXp, REINO_XP.territory);
+          // Gorhorn (2026-08-04, petición explícita): nombre de reino precargado y BLOQUEADO —
+          // "Maktor". Cualquier otro personaje: formulario en blanco, todo editable (verificado
+          // también en el backend al fundar de verdad, no solo en el frontend — ver ruta nueva
+          // POST /saves/:id/reino/fundar).
+          newKingdomFounded = {
+            title: buildRecipe.name,
+            region: activeRegion ?? '',
+            outcome,
+            suggestedName: characterName === 'Gorhorn' ? 'Maktor' : null,
+            nameLocked: characterName === 'Gorhorn',
+          };
+        }
+      }
+      reinoXp = Math.max(reinoXp, REINO_XP.buildingActive);
+    } else if (narration.newBuilding) {
       await tx.building.create({
         data: {
           saveId,
@@ -2094,23 +2560,44 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
       const existingOrcoQuest = await tx.quest.findFirst({ where: { saveId, title: { contains: 'Orco Enfurecido' } } });
       if (!existingOrcoQuest) {
         const orcoEnfurecido = await tx.npc.findUnique({ where: { worldId_slug: { worldId, slug: 'orco-enfurecido-hondonada' } } });
+        // Bug real (ronda de pruebas 2026-08-04, hallazgo 9): si el jugador ya había derrotado y
+        // saqueado al Orco Enfurecido por su cuenta ANTES de aceptar la ayuda de Gistera, esta
+        // misión se creaba igual como ACTIVA apuntando a un NPC ya resuelto — como nunca vuelve a
+        // producirse ni un ataque (está muerto) ni un saqueo (el guard `if (freshState?.saqueado)
+        // continue` del bloque `lootMode` ya lo descarta, `saqueado` sigue en `true`), ninguno de
+        // los dos caminos que cierran la misión (arriba, al incapacitar/matar; en `lootMode`, al
+        // saquear) llegaba a dispararse nunca — quedaba ACTIVA para siempre, sin recompensa
+        // posible. Se comprueba aquí su estado real (scope '' — es PRINCIPAL, ver scopeFor) y, si
+        // ya está resuelto, la misión nace ya COMPLETADA con su XP concedido en el acto, en vez de
+        // quedar como contenido roto e imposible de terminar.
+        const orcoState = orcoEnfurecido
+          ? await tx.npcState.findUnique({ where: { saveId_npcId_scope: { saveId, npcId: orcoEnfurecido.id, scope: '' } } })
+          : null;
+        const orcoYaResuelto = orcoState?.condicionFisica === 'INCAPACITADO' || orcoState?.condicionFisica === 'MUERTO';
         await tx.quest.create({
           data: {
             saveId,
             title: 'Acabar con el Orco Enfurecido',
-            description:
-              'Gistera Koh, expulsada del Clan Serhu, pidió ayuda para acabar con el guerrero que la persigue — Gorhorn ha aceptado. Derrotarlo la pondrá a salvo.',
+            description: orcoYaResuelto
+              ? 'Gistera Koh, expulsada del Clan Serhu, pidió ayuda para acabar con el guerrero que la persigue — Gorhorn ya se había ocupado de él antes de que ella lo pidiera.'
+              : 'Gistera Koh, expulsada del Clan Serhu, pidió ayuda para acabar con el guerrero que la persigue — Gorhorn ha aceptado. Derrotarlo la pondrá a salvo.',
             objetivo: 'Derrotar al Orco Enfurecido que persigue a Gistera Koh.',
             targetNpcId: orcoEnfurecido?.id,
+            status: orcoYaResuelto ? 'COMPLETADA' : 'ACTIVA',
             // Recompensa estática (petición explícita, 2026-07-25) — los objetos ya los concede el
             // loot normal de NpcItem (ver loadout de orco-enfurecido-hondonada en worldCatalog.ts,
             // aquí solo se listan para mostrarlos en el panel); el XP de bonus sí es nuevo, se
-            // concede aparte al saquearlo (ver bloque `lootMode` más abajo).
+            // concede aparte al saquearlo (ver bloque `lootMode` más abajo) — o, si ya estaba
+            // resuelto, aquí mismo.
             rewardXp: 100,
             rewardItems: ['Mapa de las Llanuras', 'Maza orca'],
           },
         });
-        newQuestObjetivos.push('Derrotar al Orco Enfurecido que persigue a Gistera Koh.');
+        if (orcoYaResuelto) {
+          questRewardXp += 100;
+        } else {
+          newQuestObjetivos.push('Derrotar al Orco Enfurecido que persigue a Gistera Koh.');
+        }
         newQuestInfo = { title: 'Acabar con el Orco Enfurecido', objetivo: 'Derrotar al Orco Enfurecido que persigue a Gistera Koh.' };
       }
     }
@@ -2223,6 +2710,24 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     let logEntrySequence = 0;
     const nextLogEntryCreatedAt = () => new Date(Date.now() + logEntrySequence++);
 
+    // Eventos de viaje interactivos (2026-08-05): aviso determinista, ANTES de la narración de
+    // llegada — nunca lo escribe el LLM (no sabe a dónde iba el jugador, y no debe inventarlo).
+    // Sin esto, el jugador podía acabar en una ubicación distinta a la pedida sin ninguna señal
+    // más allá de leer con atención la narración de llegada.
+    if (travelInterruptionOriginalDestinationName) {
+      await tx.logEntry.create({
+        data: {
+          saveId,
+          channel: 'CHARACTER',
+          text: `El camino hacia ${travelInterruptionOriginalDestinationName} se corta antes de tiempo — algo te sale al paso.`,
+          timeLabel,
+          fictionalMinutes: nuevoFictionalMinutes,
+          createdAt: nextLogEntryCreatedAt(),
+          travelInterrupted: true,
+        },
+      });
+    }
+
     const mainLogEntry = await tx.logEntry.create({
       data: {
         saveId,
@@ -2310,8 +2815,17 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     // que la condición física vuelve a ILESO.
     let finalEnergia = nuevaEnergia;
 
+    // Punto de guardado (2026-08-04, docs/17-reglas-construcciones-reino.md): solo descansar en
+    // una construcción PROPIA activa mueve el respawn — un refugio/asentamiento ajeno sigue
+    // curando igual (`restSucceeds` ya lo cubre arriba), pero ya no actualiza dónde reapareces.
     if (restSucceeds && currentLocationRecord) {
-      finalLastRestLocationId = currentLocationRecord.id;
+      const ownBuildingHere = await tx.building.findFirst({
+        where: { saveId, locationId: currentLocationRecord.id, status: 'ACTIVO' },
+        select: { id: true },
+      });
+      if (ownBuildingHere) {
+        finalLastRestLocationId = currentLocationRecord.id;
+      }
     }
 
     if (proposedCondicion === 'MUERTO') {
@@ -2325,6 +2839,16 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
         const respawnLocationId =
           params.lastRestLocationId ?? (await resolveInitialLocationId(tx, worldId, characterName)) ?? currentLocationId ?? undefined;
         const respawnLocation = respawnLocationId ? await tx.location.findUnique({ where: { id: respawnLocationId } }) : null;
+        // Recupera la construcción propia (2026-08-04, petición explícita: "vuelve al último
+        // momento que descansaste en el campamento, recuperando el campamento si fuese así") — si
+        // era tu punto de guardado y quedó DANADO/ABANDONADO mientras tanto, reaparecer aquí la
+        // devuelve a ACTIVO en el mismo momento, nunca te deja "sin base" tras morir una vez.
+        if (respawnLocationId) {
+          await tx.building.updateMany({
+            where: { saveId, locationId: respawnLocationId, status: { in: ['DANADO', 'ABANDONADO'] } },
+            data: { status: 'ACTIVO' },
+          });
+        }
         await tx.logEntry.create({
           data: {
             saveId,
@@ -2373,6 +2897,9 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
       logEntryId: mainLogEntry.id,
       newQuestObjetivos,
       newQuestInfo,
+      newKingdomFounded,
+      companionCreated,
+      partiallyLootedSlugs,
     };
     },
     // `timeout`/`maxWait` explícitos (auditoría 2026-07-30: mismo bug real de partida ya
@@ -2390,8 +2917,21 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     if (chapterDue) releaseChapterClaim(saveId);
     throw err;
   }
-  const { progression, condicionFisica, energia, energiaMax: energiaMaxResult, finDePartida, justDied, newInventoryItems, logEntryId, newQuestObjetivos, newQuestInfo } =
-    transactionResult;
+  const {
+    progression,
+    condicionFisica,
+    energia,
+    energiaMax: energiaMaxResult,
+    finDePartida,
+    justDied,
+    newInventoryItems,
+    logEntryId,
+    newQuestObjetivos,
+    newQuestInfo,
+    newKingdomFounded,
+    companionCreated,
+    partiallyLootedSlugs,
+  } = transactionResult;
   // La transacción hizo commit de verdad — ahora sí se dispara la generación lenta de fondo (ver
   // el comentario de `chapterDue` más arriba).
   if (chapterDue) {
@@ -2433,7 +2973,23 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   // se sigue necesitando tal cual para `explicitTarget`/loot/decapitar/`npcSceneBlockFor`, que sí
   // necesitan poder referirse a un NPC ya derrotado a propósito.
   const npcsInSceneVivos = npcsInScene.filter((n) => n.condicionFisica !== 'INCAPACITADO' && n.condicionFisica !== 'MUERTO');
-  const combatSlugsFromModel = (narration.combateIniciado?.npcSlugs ?? []).filter((slug) => npcsInSceneVivos.some((n) => n.slug === slug));
+  // Bug real jugando en vivo (2026-08-04, "ronda larga de pruebas"): esto se fiaba a ciegas de
+  // `combateIniciado.npcSlugs`, propuesto libremente por el modelo en su JSON — en un turno de
+  // descanso totalmente ajeno a combate (`enCombate: false`, sin ningún verbo hostil), el modelo
+  // propuso igualmente combate contra Gistera Koh (temperamento CAUTELOSO, nunca hostil), solo
+  // porque un hecho de sesión de trasfondo la menciona de pasada. Filtrado solo por "¿está viva y
+  // en escena?" no bastaba — ahora también exige que sea de verdad hostil
+  // (AGRESIVO/ENEMIGO, con reputación de facción ya aplicada, mismo criterio que
+  // `agresivoSlugsInScene` más abajo). Un NPC pacífico solo puede entrar en combate por la vía
+  // determinista de siempre (intercambio/ejecución/`shouldForceCombat`), nunca porque el modelo lo
+  // proponga sin más.
+  const combatSlugsFromModel = (narration.combateIniciado?.npcSlugs ?? []).filter((slug) =>
+    npcsInSceneVivos.some((n) => {
+      if (n.slug !== slug) return false;
+      const t = effectiveTemperamento(n.temperamento, n.faction, factionsStatus);
+      return t === 'AGRESIVO' || t === 'ENEMIGO';
+    }),
+  );
   // Temperamento (2026-07-29, "si me encuentro un NPC 'Agresivo' me va a ser imposible no acabar
   // peleando con él" + "la reputación influirá en los valores de combate"): el temperamento de
   // catálogo (fijo) se desplaza por la reputación de facción de esta partida concreta —
@@ -2514,7 +3070,11 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   // ejecutó a uno o varios enemigos de verdad, sus slugs viajan aquí siempre, sin depender de que
   // el modelo se acuerde de repetirlos en su propia propuesta narrativa.
   const executeSlugs = executeTargets.map((n) => n.slug);
-  const combatSlugs = [...new Set([...combatSlugsWithAttack, ...executeSlugs])];
+  // Saqueo parcial (ver `partiallyLootedSlugs` más arriba): un NPC tocado este turno que se queda
+  // CON botín pendiente sigue contando como "en combate" para que `pendingCombatNpcSlugs`
+  // sobreviva a un resync/recarga — sin esto, un turno de solo-saqueo (sin exchange ni decapitar)
+  // vaciaba el campo aunque quedaran objetos por saquear.
+  const combatSlugs = [...new Set([...combatSlugsWithAttack, ...executeSlugs, ...partiallyLootedSlugs])];
 
   // Persistido (bug real, 2026-07-23, "revisar partida" — tercera vuelta sobre este mismo tema):
   // `combateIniciado` viajaba SOLO en la respuesta directa de este turno — si el turno tardaba
@@ -2626,6 +3186,47 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     };
   });
 
+  // Ver comentario de `territories`/`buildings`/`subjects`/`kingdomStats` en NarrateAndPersistResult
+  // — mismo criterio que `quests`: listas completas ya fuera de la transacción, no un delta a mano.
+  const [territoryRows, buildingRows, subjectRows, kingdomStatsRow] = await Promise.all([
+    prisma.territory.findMany({ where: { saveId }, orderBy: { acquiredAt: 'asc' } }),
+    prisma.building.findMany({ where: { saveId }, orderBy: { createdAt: 'asc' } }),
+    prisma.subject.findMany({ where: { saveId }, orderBy: { createdAt: 'asc' } }),
+    prisma.kingdomStats.findUnique({ where: { saveId } }),
+  ]);
+  const territories = territoryRows.map((t) => ({
+    id: t.id,
+    name: t.name,
+    region: t.region,
+    description: t.description,
+    control: t.control,
+    population: t.population,
+  }));
+  const buildings = buildingRows.map((b) => ({
+    id: b.id,
+    territoryId: b.territoryId,
+    locationId: b.locationId,
+    recipeKey: b.recipeKey,
+    tier: b.tier,
+    name: b.name,
+    kind: b.kind,
+    status: b.status,
+    description: b.description,
+  }));
+  const subjects = subjectRows.map((s) => ({ id: s.id, territoryId: s.territoryId, name: s.name, role: s.role, notes: s.notes }));
+  const kingdomStats = kingdomStatsRow
+    ? {
+        poblacion: kingdomStatsRow.poblacion,
+        felicidad: kingdomStatsRow.felicidad,
+        comida: kingdomStatsRow.comida,
+        bebida: kingdomStatsRow.bebida,
+        riqueza: kingdomStatsRow.riqueza,
+        soldados: kingdomStatsRow.soldados,
+        trabajadores: kingdomStatsRow.trabajadores,
+        visitantes: kingdomStatsRow.visitantes,
+      }
+    : null;
+
   return {
     narration,
     progression,
@@ -2639,8 +3240,14 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     logEntryId,
     quests,
     newQuestInfo,
+    newKingdomFounded,
+    companionCreated,
     esperandoDefensaJugador: !!nuevoPendingNpcAttack,
     npcAbilityUsed,
     nextInitiativeRoll,
+    territories,
+    buildings,
+    subjects,
+    kingdomStats,
   };
 }

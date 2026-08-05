@@ -36,6 +36,14 @@ export const env = {
   /// de partida, ajustable sin tocar código.
   transitMaxRealMinutes: Number(process.env.TRANSIT_MAX_REAL_MINUTES ?? 30),
 
+  /// Eventos de viaje interactivos (2026-08-05, petición explícita: "que las esperas entre los
+  /// movimientos de zonas sean más dinámicas"): probabilidad, por CADA nodo intermedio de un
+  /// viaje extendida/larga, de que ese tramo interrumpa el viaje con un encuentro real (ver
+  /// travelInterruption.ts). Un viaje de más tramos tiene más tiradas independientes, no una
+  /// probabilidad mayor por tramo — así "más largo = más posibilidades" sale solo. Valor inicial
+  /// conservador, ajustable sin tocar código.
+  travelInterruptionProbabilityPerSegment: Number(process.env.TRAVEL_INTERRUPTION_PROBABILITY_PER_SEGMENT ?? 0.18),
+
   /// API de prompts de imagen (checklist 2026-07-21/22, punto 7): rotación con failover entre
   /// proveedores cloud gratuitos (mismo patrón que AiOrchestrator de VeriNews_AI), con Ollama
   /// como último fallback local si ninguno tiene clave o todos fallan — la funcionalidad nunca

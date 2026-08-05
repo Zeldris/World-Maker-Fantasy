@@ -1,6 +1,6 @@
 import { prisma } from '../lib/prisma.js';
 import { normalizeText, fuzzyMatchCandidates, fuzzyMatchesAnyStem } from './travel.js';
-import type { NpcKind, CondicionFisica, Temperamento, WeaponCategory, EquipSlot, Prisma } from '@prisma/client';
+import type { NpcKind, CondicionFisica, Temperamento, WeaponCategory, EquipSlot, Prisma, NpcState } from '@prisma/client';
 import type { Attribute, AttributeBlock } from './dice.js';
 
 /// Detección determinista de "NPC en escena" (docs/12-mundo-estructurado.md § 2.5) — sin llamada
@@ -95,6 +95,48 @@ export interface NpcInScene {
 interface NpcWithAliases {
   id: string;
   aliases: string[];
+}
+
+export type NpcWithItems = Prisma.NpcGetPayload<{ include: { items: { include: { item: true } } } }>;
+
+/// Extraído de `detectNpcsInScene` (2026-08-05, eventos de viaje interactivos) para que un NPC
+/// pueda entrar en escena por una vía DISTINTA al matching de texto — p.ej. una interrupción de
+/// viaje ya decidida de antemano (travelInterruption.ts), sin depender de que el Narrador narre
+/// el nombre correcto. Extracción pura, mismo resultado exacto que el `.map` inline de antes.
+export function buildNpcInScene(npc: NpcWithItems, state: NpcState | undefined): NpcInScene {
+  return {
+    id: npc.id,
+    slug: npc.slug,
+    name: npc.name,
+    articulo: npc.articulo,
+    kind: npc.kind,
+    level: npc.level,
+    role: npc.role,
+    faction: npc.faction,
+    personality: npc.personality,
+    bio: npc.bio,
+    items: npc.items.map((i) => ({
+      name: i.item.name,
+      cantidad: i.cantidad,
+      notas: i.notas,
+      description: i.item.description,
+      equipSlot: i.item.equipSlot,
+      statBonuses: i.item.statBonuses,
+      catalogSlug: i.item.slug,
+      category: i.item.category,
+      tipoArma: i.item.tipoArma,
+    })),
+    attributes: npc.attributes as NpcInScene['attributes'],
+    raza: npc.raza,
+    clase: npc.clase,
+    ataqueNatural: npc.ataqueNatural,
+    habilidadesRaciales: (npc.habilidadesRaciales as unknown as NpcHabilidadRacialInScene[]) ?? [],
+    temperamento: npc.temperamento,
+    condicionFisica: state?.condicionFisica ?? 'ILESO',
+    saqueado: state?.saqueado ?? false,
+    lootedItemNames: state?.lootedItemNames ?? [],
+    energia: state?.energia ?? null,
+  };
 }
 
 // Auditoría 2026-08-02 ("revisar partida"): palabras/verbos MUY comunes del propio juego que están
@@ -228,42 +270,9 @@ export async function detectNpcsInScene(params: {
   });
   const stateByKey = new Map(states.map((s) => [`${s.npcId}|${s.scope}`, s]));
 
-  return matchedNpcs.map((npc) => {
-    const state = stateByKey.get(`${npc.id}|${scopeFor(npc.kind, params.currentLocationId)}`);
-    return {
-      id: npc.id,
-      slug: npc.slug,
-      name: npc.name,
-      articulo: npc.articulo,
-      kind: npc.kind,
-      level: npc.level,
-      role: npc.role,
-      faction: npc.faction,
-      personality: npc.personality,
-      bio: npc.bio,
-      items: npc.items.map((i) => ({
-        name: i.item.name,
-        cantidad: i.cantidad,
-        notas: i.notas,
-        description: i.item.description,
-        equipSlot: i.item.equipSlot,
-        statBonuses: i.item.statBonuses,
-        catalogSlug: i.item.slug,
-        category: i.item.category,
-        tipoArma: i.item.tipoArma,
-      })),
-      attributes: npc.attributes as NpcInScene['attributes'],
-      raza: npc.raza,
-      clase: npc.clase,
-      ataqueNatural: npc.ataqueNatural,
-      habilidadesRaciales: (npc.habilidadesRaciales as unknown as NpcHabilidadRacialInScene[]) ?? [],
-      temperamento: npc.temperamento,
-      condicionFisica: state?.condicionFisica ?? 'ILESO',
-      saqueado: state?.saqueado ?? false,
-      lootedItemNames: state?.lootedItemNames ?? [],
-      energia: state?.energia ?? null,
-    };
-  });
+  return matchedNpcs.map((npc) =>
+    buildNpcInScene(npc, stateByKey.get(`${npc.id}|${scopeFor(npc.kind, params.currentLocationId)}`)),
+  );
 }
 
 /// Escala de calibración de dificultad por diferencia de nivel (§ 2.2) — el backend calcula la

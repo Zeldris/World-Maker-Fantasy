@@ -16,6 +16,12 @@ interface TransitZoneContext {
   classification: ClassificationResult;
   roll?: RollResult;
   travel?: TravelResolution | null;
+  /// Eventos de viaje interactivos (2026-08-05) — ver turn.ts/travelInterruption.ts. Presente si
+  /// este `travel` (ya truncado al crear el tránsito) corresponde a un viaje interrumpido.
+  travelInterruptionNpcId?: string | null;
+  /// Nombre del destino que el jugador pidió de verdad, antes de truncar — solo para el aviso
+  /// determinista de "tu viaje se interrumpió" (turnResolution.ts), nunca se lo pasa al Narrador.
+  travelInterruptionOriginalDestinationName?: string | null;
 }
 
 /// Worker local del reloj de mundo (decisiones técnicas 3 y 4 en docs/04-decisiones-tecnicas.md).
@@ -65,7 +71,8 @@ export async function resolveDueTransits(): Promise<void> {
     if (claim.count === 0) continue;
 
     try {
-      const { action, classification, roll, travel } = transit.zoneContext as unknown as TransitZoneContext;
+      const { action, classification, roll, travel, travelInterruptionNpcId, travelInterruptionOriginalDestinationName } =
+        transit.zoneContext as unknown as TransitZoneContext;
       const save = transit.save;
       const sessionFacts = await loadSessionFacts(save.id);
       const timeLabel = save.worldState?.fictionalDateLabel ?? 'Día 1, mañana';
@@ -122,6 +129,8 @@ export async function resolveDueTransits(): Promise<void> {
         // El borrado real del CharacterTransit ya ocurre DENTRO de narrateAndPersistTurn, en la
         // misma transacción que aplica XP/objetos/hechos — ver TransitCancelledError.
         transitIdToFinalize: transit.id,
+        travelInterruptionNpcId,
+        travelInterruptionOriginalDestinationName,
       });
     } catch (err) {
       if (err instanceof TransitCancelledError) {

@@ -36,6 +36,7 @@ export function toFrontendLogEntry(entry: {
   entityBannerType?: string | null;
   entityBannerSlug?: string | null;
   combate?: boolean;
+  travelInterrupted?: boolean;
 }) {
   return {
     id: entry.id,
@@ -52,5 +53,7 @@ export function toFrontendLogEntry(entry: {
     createdAt: entry.createdAt.toISOString(),
     // Rediseño de la vista de combate (2026-07-28) — fondo rojo en el frontend.
     combate: entry.combate || undefined,
+    // Eventos de viaje interactivos (2026-08-05) — fondo ámbar en el frontend, mismo criterio.
+    travelInterrupted: entry.travelInterrupted || undefined,
   };
 }

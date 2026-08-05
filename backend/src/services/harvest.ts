@@ -129,16 +129,3 @@ export async function detectHarvest(params: {
     yields: rows.map((r) => ({ itemName: r.item.name, cantidad: r.cantidad, condicion: r.condicion, itemSlug: r.item.slug })),
   };
 }
-
-/// Bloque de prompt (§ 3.3): "Esto es TODO lo que da" — cierra la puerta a que el modelo invente
-/// algo más allá de la lista fija.
-export function harvestBlockFor(match: HarvestMatch): string {
-  if (match.requierePresaPrevia) {
-    return `DESPIECE/RECOLECCIÓN — ${match.sourceName}: todavía no se ha cazado/derrotado ninguno en esta partida, así que no hay ningún cadáver o presa que despiezar ahora mismo. Narra que se intenta pero no se encuentra nada que aprovechar.`;
-  }
-  if (match.yaDespiezada) {
-    return `DESPIECE/RECOLECCIÓN — ${match.sourceName}: este cadáver ya se despiezó antes en esta partida, no queda nada más que sacar de él. Narra que se busca pero ya no hay nada útil.`;
-  }
-  const parts = match.yields.map((y) => `${y.cantidad} ${y.itemName}${y.condicion ? ` (${y.condicion})` : ''}`);
-  return `DESPIECE/RECOLECCIÓN — ${match.sourceName}: ${parts.join(', ')}. Esto es TODO lo que da.`;
-}

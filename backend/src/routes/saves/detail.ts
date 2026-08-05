@@ -196,6 +196,9 @@ export async function detailRoutes(app: FastifyInstance) {
       buildings: save.buildings.map((b) => ({
         id: b.id,
         territoryId: b.territoryId,
+        locationId: b.locationId,
+        recipeKey: b.recipeKey,
+        tier: b.tier,
         name: b.name,
         kind: b.kind,
         status: b.status,

@@ -150,6 +150,78 @@ Cristal Helado/Ciénaga (Puerta 1, sigue pausada). Sin recalcular aquí el % de 
 que representa el núcleo: dos nodos no cambian el orden de magnitud de § 2.2, y forzar una cifra
 nueva sin más ampliaciones sería falsa precisión.
 
+### 2.2ter Tercera ampliación del núcleo — sabana, fosa, costa norte y desierto Nabierus (2026-08-05)
+
+Sesión "ampliamos lore" 2026-08-05: 16 nodos nuevos (más 3 reservados como contenido futuro, sin
+coordenadas todavía — ver `areas.md` § Puntos de interés), cada uno colgado de un único nodo ya
+existente en cadena, a petición explícita de la usuaria de que no se pudiera ir en línea recta del
+núcleo a la costa o al desierto profundo.
+
+**Historial de esta tabla (importante para no confundir versiones)**: la primera versión (misma
+sesión, novena pasada) se trianguló a ciegas con el método de siempre (5 km/h, sinuosidad 1,1)
+ANTES de comprobar el polígono real de Azgaar — varios nodos caían fuera de la región. Sin
+`rsvg-convert`/Node en este entorno para repetir la verificación que se hizo para El Cruce de las
+Cenizas en su día, se recalibraron las 16 posiciones a mano contra capturas reales que fue
+compartiendo la usuaria (décima pasada), y con las posiciones ya buenas se detectaron varias
+inversiones de tiempo (un punto más lejano costando menos que uno más cercano) — corregidas aquí.
+**Esta tabla ya son las coordenadas VISUALES reales confirmadas** (iguales a
+`frontend/src/data/map.ts`, sin desacople), no una triangulación matemática — los minutos se
+recalcularon a partir de la distancia recta real entre estas coordenadas, respetando el orden
+(más lejos nunca menos tiempo) pero sin ser estrictamente proporcionales a los km. Coordenadas en
+km, origen en Los Pilares Rotos, +x = este, +y = norte.
+
+**Cadena del río hacia el mar** (desde Los Manaderos, +20,3 / +4,2 visual):
+
+| Nodo | x (km) | y (km) | Arista | Distancia recta | Minutos base |
+|---|---|---|---|---|---|
+| El Oasis de Juncos Rojos | +24,3 | +14,9 | Los Manaderos | 11,4 km | 115 |
+| La Desembocadura Callada | −2 | +42 | El Oasis de Juncos Rojos | 37,8 km | 280 |
+| Las Pozas de Marea | −20 | +36 | La Desembocadura Callada | 19,0 km | 180 |
+| Playa de Ceniza Blanca | −20 | +22 | Las Pozas de Marea | 14,0 km | 130 |
+| Los Acantilados Partidos | −21 | +44 | Las Pozas de Marea | 8,1 km | 90 |
+| El Embarcadero de Ceniza | −21 | +54 | Los Acantilados Partidos | 10,0 km | 100 |
+
+*(Replanteada en la décima pasada: la costa pasó de abanico — las 4 volviendo a la Desembocadura —
+a cadena real a lo largo de la orilla, más corta de dibujar y más coherente con que las 4 zonas
+están mucho más cerca entre sí que de la Desembocadura.)*
+
+**Cadena del desierto profundo** (desde Las Agujas Imán, −7 / +8,3, sin cambios):
+
+| Nodo | x (km) | y (km) | Arista | Distancia recta | Minutos base |
+|---|---|---|---|---|---|
+| La Fosa Horadada | −16 | −16 | Las Agujas Imán | 25,9 km | 220 |
+| Las Dunas Ahogadas | −24 | −28 | La Fosa Horadada | 14,4 km | 135 |
+| El Vientre del Engaño | −10 | −40 | Las Dunas Ahogadas | 18,4 km | 175 |
+| El Laberinto de Cañones | +6 | −42 | El Vientre del Engaño | 16,1 km | 150 |
+
+**Sueltas** (una arista cada una, desde un nodo del núcleo ya existente):
+
+| Nodo | x (km) | y (km) | Arista | Distancia recta | Minutos base |
+|---|---|---|---|---|---|
+| Las Fumarolas Negras | +19 | +42 | El Filo de las Brasas | 11,4 km | 110 |
+| El Paso de los Huesos | +41 | +2 | Los Pastos de la Deriva | 11,4 km | 110 |
+| La Sabana Alta | +54 | −10 | El Paso de los Huesos | 17,7 km | 165 |
+| El Vergel de Kegi | −8 | −175 | El Cruce de las Cenizas | 41,8 km | 300 |
+| La Grieta Cantora | +6 | −100 | El Cruce de las Cenizas | 46,2 km | 320 |
+| El Campo Yermo | +19 | +22 | Los Restos de Maktor | 9,1 km | 95 |
+
+**La Grieta Cantora, reenganchada (décima pasada)**: colgaba de El Osario de la Manada — tras
+confirmar su posición real quedó mucho más lejos de él (112 km) que de El Cruce de las Cenizas
+(46,2 km), así que se reengancha ahí. Es, con diferencia, la arista más larga de toda esta
+ampliación — de ahí sus 320 minutos, los más altos de la tabla.
+
+**Nota sobre El Cruce de las Cenizas**: su propia posición (20, −144) sigue siendo puramente
+visual/artística (ver § 1.1) — su distancia mecánica real para SUS aristas originales
+(↔Pilares Rotos, ↔Pozo de Cauce Viejo) sigue siendo la de esa tabla, no esta. Pero El Vergel de
+Kegi y La Grieta Cantora sí se triangularon contra la posición visual de El Cruce (no la
+mecánica), porque su punto de referencia real en el mapa es ese, no el (0,−18) original — mismo
+razonamiento que ya usaba la versión anterior de esta nota, solo que ahora sin desacople propio
+para estas dos zonas nuevas: su fila de esta tabla YA es su posición visual final.
+
+Sin coordenadas para La Ciudad Hundida / El Archivo Cegado / El Observatorio Roto (contenido
+futuro tras un terremoto sin fecha fijada): no están en el grafo todavía, así que no hay arista
+que triangular. Cuando se añadan, colgarán de Las Dunas Ahogadas o de El Vientre del Engaño.
+
 ### 2.3 "Estepa infinita" — reconciliado, no es conflicto
 
 `areas.md` llama a las Llanuras "estepa infinita". 110 km no es infinito — pero no hace falta tocar la prosa: es **hipérbole de quien la cruza a pie**, y el propio terreno la justifica. En llanura rasa el horizonte de una persona está a ~5 km; sin más referencia vertical que los Pilares Rotos, cada día de marcha ofrece el mismo círculo de tierra rojiza idéntica. Una travesía de la región entera son 2–3 jornadas viendo siempre lo mismo: para el caminante *es* infinita. La palabra describe una experiencia, no un dato — se queda como está.

@@ -1,5 +1,17 @@
 import { describe, it, expect } from 'vitest';
-import { CAMPAMENTO_RECIPE, CHOZA_RECIPE, ATALAYA_RECIPE, checkRecipe, detectsBuildIntent, planConsumption, quantityOf, type ConstructionRecipe } from './construction.js';
+import {
+  CAMPAMENTO_RECIPE,
+  CHOZA_RECIPE,
+  AYUNTAMIENTO_PEQUENO_RECIPE,
+  AYUNTAMIENTO_MEDIANO_RECIPE,
+  AYUNTAMIENTO_GRANDE_RECIPE,
+  CONSTRUCTION_RECIPES,
+  checkRecipe,
+  detectsBuildIntent,
+  planConsumption,
+  quantityOf,
+  type ConstructionRecipe,
+} from './construction.js';
 import type { AttributeBlock } from './dice.js';
 import { EMPTY_SECONDARY_ATTRIBUTES } from './secondaryAttributes.js';
 import type { CatalogLookup, InventoryRowLike } from './ingredients.js';
@@ -18,6 +30,7 @@ const catalogBySlug = new Map<string, CatalogLookup>([
   ['piel-corredor', { tipo: 'RECURSO', category: 'piel' }],
   ['hueso-largo-gargantua', { tipo: 'RECURSO', category: 'hueso' }],
   ['cuerda-tendon', { tipo: 'EQUIPABLE', category: 'herramienta' }],
+  ['mena-de-hierro', { tipo: 'RECURSO', category: 'mena' }],
 ]);
 
 function row(id: string, catalogSlug: string, cantidad?: number): InventoryRowLike {
@@ -117,10 +130,35 @@ describe('detectsBuildIntent', () => {
     expect(detectsBuildIntent(CAMPAMENTO_RECIPE, 'Levanto una choza de piel y hueso junto al pozo')).toBe(false);
   });
 
-  it('detecta construir una atalaya de vigía, distinta de las otras dos', () => {
-    expect(detectsBuildIntent(ATALAYA_RECIPE, 'Levanto una atalaya de vigía en el cruce')).toBe(true);
-    expect(detectsBuildIntent(CAMPAMENTO_RECIPE, 'Levanto una atalaya de vigía en el cruce')).toBe(false);
-    expect(detectsBuildIntent(CHOZA_RECIPE, 'Levanto una atalaya de vigía en el cruce')).toBe(false);
+  it('detecta construir un ayuntamiento (pequeño), distinto de las otras dos', () => {
+    expect(detectsBuildIntent(AYUNTAMIENTO_PEQUENO_RECIPE, 'Levanto un ayuntamiento en el cruce')).toBe(true);
+    expect(detectsBuildIntent(CAMPAMENTO_RECIPE, 'Levanto un ayuntamiento en el cruce')).toBe(false);
+    expect(detectsBuildIntent(CHOZA_RECIPE, 'Levanto un ayuntamiento en el cruce')).toBe(false);
+  });
+
+  // 2026-08-04: "mejorar" también cuenta como verbo de construcción (BUILD_VERB_REGEX incluye
+  // mejor/ampl) — necesario para que las mejoras de Ayuntamiento se detecten sin decir "construyo".
+  it('detecta mejorar el ayuntamiento a mediano/grande, sin confundirse entre niveles', () => {
+    expect(detectsBuildIntent(AYUNTAMIENTO_MEDIANO_RECIPE, 'Mejoro mi ayuntamiento a mediano')).toBe(true);
+    expect(detectsBuildIntent(AYUNTAMIENTO_GRANDE_RECIPE, 'Mejoro mi ayuntamiento a mediano')).toBe(false);
+    // El nounRegex del pequeño (/ayuntamiento/, sin exigir "mediano") SÍ matchea este texto en
+    // aislado — la desambiguación real solo pasa vía el ORDEN de CONSTRUCTION_RECIPES.find() (ver
+    // el test de abajo), no llamando detectsBuildIntent() directo sobre el pequeño.
+
+    expect(detectsBuildIntent(AYUNTAMIENTO_GRANDE_RECIPE, 'Amplío el ayuntamiento hasta hacerlo grande')).toBe(true);
+    expect(detectsBuildIntent(AYUNTAMIENTO_MEDIANO_RECIPE, 'Amplío el ayuntamiento hasta hacerlo grande')).toBe(false);
+  });
+
+  // Orden real de CONSTRUCTION_RECIPES.find() (2026-08-04): "ayuntamiento mediano"/"ayuntamiento
+  // grande" también matchearían el patrón simple del pequeño si ese se comprobara antes — el
+  // orden del array es lo que evita que .find() se quede con la receta equivocada.
+  it('CONSTRUCTION_RECIPES.find() elige la receta de Ayuntamiento correcta según el nivel mencionado', () => {
+    const buscaMediano = CONSTRUCTION_RECIPES.find((r) => detectsBuildIntent(r, 'Mejoro mi ayuntamiento a mediano'));
+    expect(buscaMediano?.key).toBe('ayuntamiento-mediano');
+    const buscaGrande = CONSTRUCTION_RECIPES.find((r) => detectsBuildIntent(r, 'Amplío el ayuntamiento hasta hacerlo grande'));
+    expect(buscaGrande?.key).toBe('ayuntamiento-grande');
+    const buscaPequeno = CONSTRUCTION_RECIPES.find((r) => detectsBuildIntent(r, 'Construyo un ayuntamiento'));
+    expect(buscaPequeno?.key).toBe('ayuntamiento');
   });
 });
 
@@ -130,8 +168,38 @@ describe('checkRecipe — recetas nuevas', () => {
     expect(checkRecipe(CHOZA_RECIPE, rows, catalogBySlug, attrs, secondary)).toEqual({ met: true, missing: [] });
   });
 
-  it('atalaya: cumplida con piedra/leña suficientes', () => {
+  it('ayuntamiento pequeño: cumplido con piedra/leña suficientes', () => {
     const rows = [row('1', 'piedra', 15), row('2', 'lena-matorral-cuerno', 10)];
-    expect(checkRecipe(ATALAYA_RECIPE, rows, catalogBySlug, attrs, secondary)).toEqual({ met: true, missing: [] });
+    expect(checkRecipe(AYUNTAMIENTO_PEQUENO_RECIPE, rows, catalogBySlug, attrs, secondary)).toEqual({ met: true, missing: [] });
+  });
+
+  it('ayuntamiento grande: cumplido con piedra/leña/mena de hierro suficientes y carisma alto', () => {
+    const rows = [row('1', 'piedra', 60), row('2', 'lena-matorral-cuerno', 50), row('3', 'mena-de-hierro', 15)];
+    const carismatico: AttributeBlock = { ...attrs, carisma: 18 };
+    expect(checkRecipe(AYUNTAMIENTO_GRANDE_RECIPE, rows, catalogBySlug, carismatico, secondary)).toEqual({ met: true, missing: [] });
+  });
+});
+
+describe('Campos de reglas de reino en las recetas (2026-08-04)', () => {
+  it('campamento: 1 slot de compañero, tope de 1 por región', () => {
+    expect(CAMPAMENTO_RECIPE.companionSlots).toBe(1);
+    expect(CAMPAMENTO_RECIPE.maxPerRegion).toBe(1);
+  });
+
+  it('choza: 2 slots de compañero, exige Ayuntamiento', () => {
+    expect(CHOZA_RECIPE.companionSlots).toBe(2);
+    expect(CHOZA_RECIPE.requiresAyuntamiento).toBe(true);
+  });
+
+  it('las 3 recetas de Ayuntamiento comparten key y suben de nivel/capacidad', () => {
+    expect(AYUNTAMIENTO_PEQUENO_RECIPE.key).toBe('ayuntamiento');
+    expect(AYUNTAMIENTO_PEQUENO_RECIPE.ayuntamientoNivel).toBe(1);
+    expect(AYUNTAMIENTO_PEQUENO_RECIPE.reinoBuildingCapacity).toBe(10);
+    expect(AYUNTAMIENTO_MEDIANO_RECIPE.upgradesRecipeKey).toBe('ayuntamiento');
+    expect(AYUNTAMIENTO_MEDIANO_RECIPE.ayuntamientoNivel).toBe(2);
+    expect(AYUNTAMIENTO_MEDIANO_RECIPE.reinoBuildingCapacity).toBe(25);
+    expect(AYUNTAMIENTO_GRANDE_RECIPE.upgradesRecipeKey).toBe('ayuntamiento');
+    expect(AYUNTAMIENTO_GRANDE_RECIPE.ayuntamientoNivel).toBe(3);
+    expect(AYUNTAMIENTO_GRANDE_RECIPE.reinoBuildingCapacity).toBe(60);
   });
 });

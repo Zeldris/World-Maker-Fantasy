@@ -45,3 +45,29 @@ export function effectiveTemperamento(catalogTemperamento: Temperamento, faction
   const effectiveIndex = Math.max(0, Math.min(TEMPERAMENTO_ORDER.length - 1, catalogIndex + shift));
   return TEMPERAMENTO_ORDER[effectiveIndex];
 }
+
+/// Fundación de reino (2026-08-04, docs/17-reglas-construcciones-reino.md) — qué facción(es) son
+/// dueñas de cada región de Berig según el lore (docs/rpgtarkor/areas.md), seedeado a mano: no
+/// existe ninguna tabla real de "región → facción" en la base de datos, solo `Npc.faction` (libre
+/// por NPC) y `World.factions` (catálogo suelto). Ciénaga Troncal y El Margen Silencioso quedan
+/// sin entrada a propósito — sus clanes de lore (Goshg, Nabieus/Faerus) todavía no tienen ningún
+/// NPC seedeado con ese `faction` exacto, así que mecánicamente hoy son "sin dueño".
+export const REGION_OWNING_FACTIONS: Record<string, string[]> = {
+  'Las Llanuras del Viento Rojo': ['Clan Serhu'],
+  'La Meseta del Orden': ['Concordia de Hierro'],
+  'Cristal Helado': ['Clan Helsig'],
+};
+
+export type FoundingOutcome = 'SIN_DUENO' | 'PACIFICA' | 'CONFLICTO';
+
+/// Puro — decide qué pasa al fundar un Ayuntamiento (tier 1) en esta región, según tu reputación
+/// con SUS facciones dueñas. `SIN_DUENO` (ninguna facción conocida reclama la región) y
+/// `PACIFICA` (reputación ≥ neutral con TODAS las dueñas) resultan en territorio tuyo sin más;
+/// `CONFLICTO` (peor que neutral con alguna) dice que la región queda en disputa — más de una
+/// facción ocupando el mismo territorio.
+export function resolveFoundingOutcome(region: string | null, factionsStatus: Record<string, number>): FoundingOutcome {
+  const owners = (region && REGION_OWNING_FACTIONS[region]) || [];
+  if (owners.length === 0) return 'SIN_DUENO';
+  const hostile = owners.some((faction) => factionRepFor(factionsStatus, faction) < FACTION_REP_DEFAULT);
+  return hostile ? 'CONFLICTO' : 'PACIFICA';
+}

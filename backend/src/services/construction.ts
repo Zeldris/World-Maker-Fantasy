@@ -2,7 +2,7 @@ import { normalizeText } from './travel.js';
 import type { AttributeBlock } from './dice.js';
 import type { SecondaryAttributeBlock } from './secondaryAttributes.js';
 import { checkRequisitos, type Requisitos } from './requisitos.js';
-import { totalQuantity, type IngredientRequirement, type CatalogLookup, type InventoryRowLike } from './ingredients.js';
+import { totalQuantity, planConsumption, type IngredientRequirement, type CatalogLookup, type InventoryRowLike } from './ingredients.js';
 
 export { quantityOf, baseNameOf, planConsumption } from './ingredients.js';
 
@@ -39,11 +39,39 @@ export interface ConstructionRecipe {
   nounRegex: RegExp;
   /// Sesión de diseño 2026-07-23: mismo concepto "Craftable" que CraftingRecipe (crafting.ts) —
   /// nivel 1-5, mínimos de atributo del PJ, oficio (id de professions.ts) cuyo nivel alivia el
-  /// requisito. Se copia a Building.tier al crearse (ver turnResolution.ts), mejor esfuerzo.
+  /// requisito. NO tiene nada que ver con `Building.tier`/`ayuntamientoNivel` de abajo — ese es
+  /// el nivel del Ayuntamiento (pequeño/mediano/grande), este es solo dificultad de receta.
   tier?: number;
   requisitos?: Requisitos;
   oficio?: string;
+  /// Reglas de construcciones/reino (2026-08-04, docs/17-reglas-construcciones-reino.md) — cuántos
+  /// slots de compañero desbloquea esta construcción una vez `ACTIVO`. undefined = 0.
+  companionSlots?: number;
+  /// Máximo de construcciones ACTIVAS/EN_CONSTRUCCION de esta receta por región (`Location.region`
+  /// de su `locationId`) — el Campamento es 1; el resto no tiene tope propio (puede que sí tengan
+  /// `reinoBuildingCapacity`, ver abajo, que es un tope distinto y compartido entre recetas).
+  maxPerRegion?: number;
+  /// true = necesita un Ayuntamiento (cualquier nivel) ya construido en la partida antes de poder
+  /// levantarse — y además debe caer en su misma región y dentro de la distancia máxima permitida
+  /// (ver MAX_MINUTOS_DESDE_AYUNTAMIENTO más abajo).
+  requiresAyuntamiento?: boolean;
+  /// Si esta receta MEJORA un Ayuntamiento ya existente en vez de construir uno nuevo, la `key` de
+  /// la receta que mejora (siempre `'ayuntamiento'`) — turnResolution.ts hace `UPDATE` del mismo
+  /// `Building.id` en vez de `CREATE` cuando esto está presente.
+  upgradesRecipeKey?: string;
+  /// Nivel de Ayuntamiento que esta receta deja tras completarse (1/2/3 = pequeño/mediano/grande)
+  /// — se copia a `Building.tier`. Solo lo llevan las 3 recetas de Ayuntamiento.
+  ayuntamientoNivel?: number;
+  /// Cuántos edificios de tipo reino (los que llevan `requiresAyuntamiento: true`) puedes tener
+  /// ACTIVOS a la vez con este nivel de Ayuntamiento — solo lo llevan las 3 recetas de Ayuntamiento.
+  reinoBuildingCapacity?: number;
 }
+
+/// Distancia máxima (minutos de viaje reales, mismo grafo que `shortestPath`/`buildAdjacency` de
+/// travel.ts) entre un edificio de tipo reino y el Ayuntamiento del que depende — bastante para
+/// cubrir el núcleo medido de una región (docs/13-escala-del-mundo.md § 1.1: la mayoría de tramos
+/// entre nodos del núcleo de Llanuras rondan 60-150 min) sin llegar a otra región.
+export const MAX_MINUTOS_DESDE_AYUNTAMIENTO = 600;
 
 export interface RequirementShortfall {
   label: string;
@@ -79,7 +107,27 @@ export function checkRecipe(
   return { met: missing.length === 0, missing };
 }
 
-const BUILD_VERB_REGEX = /constru|levant|mont[ao]|erig/;
+/// Puro: localiza las filas reales a consumir para TODOS los requisitos de materiales de la
+/// receta — null si alguno ya no alcanza contra ESTAS filas (protege de la misma carrera que
+/// `planCraftConsumption` en crafting.ts: `checkRecipe` de más arriba puede haberse evaluado
+/// contra una foto de inventario ya obsoleta, leída antes de la transacción real).
+export function planRecipeConsumption(
+  recipe: ConstructionRecipe,
+  rows: InventoryRowLike[],
+  catalogBySlug: Map<string, CatalogLookup>,
+): { deleteIds: string[]; updateRemainder: { id: string; newQuantity: number } | null }[] | null {
+  const plans: { deleteIds: string[]; updateRemainder: { id: string; newQuantity: number } | null }[] = [];
+  for (const req of recipe.requirements) {
+    if (totalQuantity(rows, req, catalogBySlug) < req.cantidad) return null;
+    plans.push(planConsumption(rows, req, catalogBySlug));
+  }
+  return plans;
+}
+
+// "mejor"/"ampl" (2026-08-04): mejorar un Ayuntamiento existente no es "construir" en sentido
+// estricto ("Mejoro mi ayuntamiento a mediano", "Amplío el ayuntamiento") — mismo verbo genérico
+// para las 3 recetas, la receta correcta la decide el `nounRegex` de cada una.
+const BUILD_VERB_REGEX = /constru|levant|mont[ao]|erig|mejor|ampl/;
 
 /// Detección genérica: verbo de construcción + el sustantivo propio de ESTA receta (reemplaza al
 /// antiguo detectsCampBuildIntent, hoy uno de tres — ver CONSTRUCTION_RECIPES).
@@ -105,6 +153,11 @@ export const CAMPAMENTO_RECIPE: ConstructionRecipe = {
   ],
   // Sin tier/requisitos/oficio a propósito (2026-07-23): un campamento base es lo mínimo que
   // cualquiera puede levantar solo, sin necesitar ningún oficio.
+  // Reglas de reino (2026-08-04): 1 slot de compañero, máximo 1 activo por región — es tu
+  // refugio/punto de guardado PERSONAL, no infraestructura de reino (por eso no lleva
+  // `requiresAyuntamiento`, a diferencia de la choza).
+  companionSlots: 1,
+  maxPerRegion: 1,
 };
 
 // Segunda receta (checklist 2026-07-21/22, punto 5/6 — "una casa, o lo que sea"): refugio más
@@ -137,27 +190,106 @@ export const CHOZA_RECIPE: ConstructionRecipe = {
   tier: 2,
   requisitos: { fuerza: 10 },
   oficio: 'carpintero',
+  // Reglas de reino (2026-08-04): 2 slots de compañero, pero es infraestructura de reino de
+  // verdad — no se puede levantar sin Ayuntamiento, ni fuera de su región/distancia (comprobado
+  // en turnResolution.ts, no aquí: hace falta consultar la DB).
+  companionSlots: 2,
+  requiresAyuntamiento: true,
 };
 
-// Tercera receta: atalaya de vigía — utilidad real distinta al refugio (vigilar el terreno abierto
-// de la llanura), misma piedra de Los Pilares Rotos que el campamento, leña para el armazón.
-export const ATALAYA_RECIPE: ConstructionRecipe = {
-  key: 'atalaya',
-  name: 'una atalaya de vigía',
+// Ayuntamiento (2026-08-04, renombrado desde "Atalaya de vigía" — docs/17-reglas-construcciones-
+// reino.md): funda el reino y desbloquea construir edificios de tipo reino (choza, futuro "puesto
+// avanzado") a su alrededor. 3 niveles NO acumulables — mejorar es actualizar el mismo `Building`,
+// nunca construir uno aparte (`upgradesRecipeKey`/`ayuntamientoNivel` lo gestionan en
+// turnResolution.ts). Las 3 comparten `key: 'ayuntamiento'` a propósito.
+
+export const AYUNTAMIENTO_PEQUENO_RECIPE: ConstructionRecipe = {
+  key: 'ayuntamiento',
+  name: 'un pequeño ayuntamiento',
   // Caracterizada como construcción ORCA (2026-07-23, ver comentario de CHOZA_RECIPE arriba).
   description:
-    'Construcción típica de los clanes orcos de las Llanuras, para vigilar territorio abierto sin depender de patrullas propias: una plataforma elevada sobre un armazón de leña trabada, con un pretil bajo de piedra apilada alrededor del borde para cubrirse mientras se vigila. Lo bastante alta para avistar tanto manadas como patrullas de la Concordia de Hierro antes de que se acerquen, sin más techo que el cielo.',
+    'El primer asiento de mando de un reino naciente: una sala de consejo modesta, de piedra apilada y vigas de leña trabada, con un único fuego central alrededor del que se reúnen quienes juran lealtad. Nada imponente todavía, pero suficiente para que un liderazgo real empiece a echar raíces en la región.',
   raza: 'orcos',
-  nounRegex: /atalaya|torre de vigia|puesto de vigia/,
+  nounRegex: /ayuntamiento/,
   requirements: [
     { match: { kind: 'category', tipo: 'RECURSO', category: 'piedra' }, cantidad: 15, label: 'piedra' },
     { match: { kind: 'category', tipo: 'RECURSO', category: 'madera' }, cantidad: 10, label: 'leña' },
   ],
-  // Sesión de diseño 2026-07-23: requisito de Voluntad (aguantar turnos de guardia sin ceder,
-  // no fuerza bruta) — oficio 'rastreador', ya lee el cielo/terreno para anticipar tormentas.
-  tier: 2,
-  requisitos: { voluntad: 10 },
-  oficio: 'rastreador',
+  // Carisma, no fuerza ni voluntad (2026-08-04): fundar un liderazgo real es una cuestión de
+  // autoridad, no de músculo ni de aguante — sin oficio a propósito, cualquiera con suficiente
+  // presencia puede intentarlo, no hace falta un gremio.
+  requisitos: { carisma: 10 },
+  companionSlots: 0,
+  ayuntamientoNivel: 1,
+  reinoBuildingCapacity: 10,
 };
 
-export const CONSTRUCTION_RECIPES: ConstructionRecipe[] = [CAMPAMENTO_RECIPE, CHOZA_RECIPE, ATALAYA_RECIPE];
+export const AYUNTAMIENTO_MEDIANO_RECIPE: ConstructionRecipe = {
+  key: 'ayuntamiento-mediano',
+  name: 'un ayuntamiento mediano',
+  description:
+    'El asiento de mando crece: muros de piedra más gruesos, una techumbre real de leña y piel curtida, y una sala aparte para recibir a quienes vienen a jurar lealtad o a negociar. Ya no es un fuego de campamento con pretensiones — es el corazón administrativo de un territorio que empieza a sostenerse solo.',
+  raza: 'orcos',
+  // Lookahead — necesita las dos palabras presentes, en cualquier orden, para no confundirse con
+  // el pequeño (`AYUNTAMIENTO_PEQUENO_RECIPE.nounRegex` matchea "ayuntamiento" solo) ni con el
+  // grande. El orden en CONSTRUCTION_RECIPES (más abajo) ya pone este antes que el pequeño.
+  nounRegex: /(?=.*ayuntamiento)(?=.*median)/,
+  requirements: [
+    { match: { kind: 'category', tipo: 'RECURSO', category: 'piedra' }, cantidad: 30, label: 'piedra' },
+    { match: { kind: 'category', tipo: 'RECURSO', category: 'madera' }, cantidad: 25, label: 'leña' },
+  ],
+  requisitos: { carisma: 14 },
+  upgradesRecipeKey: 'ayuntamiento',
+  ayuntamientoNivel: 2,
+  reinoBuildingCapacity: 25,
+};
+
+export const AYUNTAMIENTO_GRANDE_RECIPE: ConstructionRecipe = {
+  key: 'ayuntamiento-grande',
+  name: 'un gran ayuntamiento',
+  description:
+    'La capital de verdad: piedra maciza, un salón de consejo lo bastante grande para reunir a súbditos y visitantes de varios asentamientos a la vez, y refuerzos de mena de hierro en los puntos de carga. Un reino que ha llegado hasta aquí ya no depende de la voluntad de una sola persona para sostenerse.',
+  raza: 'orcos',
+  nounRegex: /(?=.*ayuntamiento)(?=.*grande)/,
+  requirements: [
+    { match: { kind: 'category', tipo: 'RECURSO', category: 'piedra' }, cantidad: 60, label: 'piedra' },
+    { match: { kind: 'category', tipo: 'RECURSO', category: 'madera' }, cantidad: 50, label: 'leña' },
+    { match: { kind: 'category', tipo: 'RECURSO', category: 'mena' }, cantidad: 15, label: 'mena de hierro' },
+  ],
+  requisitos: { carisma: 18 },
+  upgradesRecipeKey: 'ayuntamiento',
+  ayuntamientoNivel: 3,
+  reinoBuildingCapacity: 60,
+};
+
+// Orden deliberado (2026-08-04): grande y mediano ANTES que pequeño — `CONSTRUCTION_RECIPES.find`
+// se queda con la primera receta cuya `nounRegex` matchea, y el texto "ayuntamiento mediano"
+// también matchea el patrón (más simple) del pequeño si ese se comprobara antes.
+export const CONSTRUCTION_RECIPES: ConstructionRecipe[] = [
+  CAMPAMENTO_RECIPE,
+  CHOZA_RECIPE,
+  AYUNTAMIENTO_GRANDE_RECIPE,
+  AYUNTAMIENTO_MEDIANO_RECIPE,
+  AYUNTAMIENTO_PEQUENO_RECIPE,
+];
+
+/// `key` de las recetas que dependen de tener un Ayuntamiento (choza, futuro "puesto avanzado") —
+/// para contar cuántas hay activas contra la capacidad del Ayuntamiento sin hardcodear 'choza' en
+/// turnResolution.ts.
+export const REINO_BUILDING_RECIPE_KEYS: string[] = CONSTRUCTION_RECIPES.filter((r) => r.requiresAyuntamiento).map((r) => r.key);
+
+/// Slots de compañero que da una construcción, por su `recipeKey` guardada en `Building` — 0 para
+/// construcciones libres del modelo (`recipeKey: null`) o cualquier clave que no matchee ninguna
+/// receta conocida (defensivo: nunca debería pasar, pero no debe reventar si pasa).
+export function companionSlotsForRecipeKey(recipeKey: string | null): number {
+  return CONSTRUCTION_RECIPES.find((r) => r.key === recipeKey)?.companionSlots ?? 0;
+}
+
+/// Capacidad de edificios de reino según el nivel actual del Ayuntamiento (`Building.tier`) —
+/// deriva de las 3 recetas en vez de repetir los números 10/25/60 sueltos en turnResolution.ts.
+export function reinoBuildingCapacityForTier(tier: number): number {
+  const recipe = [AYUNTAMIENTO_PEQUENO_RECIPE, AYUNTAMIENTO_MEDIANO_RECIPE, AYUNTAMIENTO_GRANDE_RECIPE].find(
+    (r) => r.ayuntamientoNivel === tier,
+  );
+  return recipe?.reinoBuildingCapacity ?? 0;
+}

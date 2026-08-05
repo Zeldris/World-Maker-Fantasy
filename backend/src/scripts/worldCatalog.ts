@@ -175,6 +175,175 @@ export const locations: LocationInput[] = [
     aliases: ['los tumulos del honor', 'los túmulos del honor'],
   },
 
+  // --- Tercera ampliación del núcleo (checklist, sesión "ampliamos lore" 2026-08-05): sabana,
+  // fosa de Espina del Viento, costa norte y desierto Nabierus — ver areas.md § Puntos de interés
+  // y docs/13-escala-del-mundo.md § 2.2ter para la topología y coordenadas. Cada zona nueva cuelga
+  // de UN único nodo del núcleo ya existente (nunca de varios), a propósito: el objetivo explícito
+  // de la usuaria era que no se pudiera ir en línea recta de cualquier parte a cualquier parte —
+  // para llegar a la costa hay que pasar por Los Manaderos → El Oasis → La Desembocadura; para el
+  // desierto profundo, por Las Agujas Imán → La Fosa → Las Dunas → El Vientre. Sin `locationLink`
+  // ni nodo de mapa para La Ciudad Hundida / El Archivo Cegado / El Observatorio Roto: son
+  // contenido futuro explícito (tras el terremoto sin fecha fijada), no entran al grafo todavía.
+  {
+    slug: 'oasis-de-juncos-rojos',
+    name: 'El Oasis de Juncos Rojos',
+    region: 'Las Llanuras del Viento Rojo',
+    kind: 'punto de agua',
+    description:
+      'Agua en superficie de verdad, alimentada por la misma corriente subterránea que sigue Los Manaderos — un punto verde real en medio del polvo rojo, disputado entre clanes, fauna y cualquiera que necesite descansar de la travesía.',
+    aliases: ['el oasis de juncos rojos', 'oasis de juncos rojos'],
+  },
+
+  {
+    slug: 'desembocadura-callada',
+    name: 'La Desembocadura Callada',
+    region: 'Las Llanuras del Viento Rojo',
+    kind: 'costa',
+    description:
+      'El punto donde la corriente subterránea que alimenta El Pozo de Cauce Viejo y Los Manaderos aflora por fin al mar, en una marisma salobre de juncos y barro — cierra el recorrido completo del agua de las Llanuras, desde su nacimiento tierra adentro hasta el mar.',
+    aliases: ['la desembocadura callada', 'desembocadura callada'],
+  },
+
+  {
+    slug: 'playa-de-ceniza-blanca',
+    name: 'Playa de Ceniza Blanca',
+    region: 'Las Llanuras del Viento Rojo',
+    kind: 'costa',
+    description:
+      'Franja de arena clara entre dos brazos bajos de roca — la zona costera más accesible y menos hostil de toda la región, el único punto donde el mar se alcanza y se usa sin escalar ni cruzar marisma.',
+    aliases: ['playa de ceniza blanca', 'la playa de ceniza blanca'],
+  },
+
+  {
+    slug: 'acantilados-partidos',
+    name: 'Los Acantilados Partidos',
+    region: 'Las Llanuras del Viento Rojo',
+    kind: 'costa',
+    description:
+      'Pared costera vertical partida por grietas profundas, oleaje violento rompiendo abajo y nidos de aves marinas en las cornisas más altas — bello y letal, un mal paso aquí no perdona.',
+    aliases: ['los acantilados partidos', 'acantilados partidos'],
+  },
+
+  {
+    slug: 'pozas-de-marea',
+    name: 'Las Pozas de Marea',
+    region: 'Las Llanuras del Viento Rojo',
+    kind: 'costa',
+    description:
+      'Costa baja de roca plana, salpicada de charcas que la marea llena y vacía dos veces al día — vida propia y contenida en cada poza, zona de recolección tranquila entre dos extremos más hostiles de la costa.',
+    aliases: ['las pozas de marea', 'pozas de marea'],
+  },
+
+  {
+    slug: 'embarcadero-de-ceniza',
+    name: 'El Embarcadero de Ceniza',
+    region: 'Las Llanuras del Viento Rojo',
+    kind: 'asentamiento',
+    description:
+      'Puesto avanzado del Clan Serhu en la costa norte, botes de fondo plano varados sobre travesaños de madera y redes tendidas a secar — primer contacto real del clan con el mar. Pesca y transporte de corta distancia a lo largo de la costa; ningún Serhu se aventura mar adentro.',
+    aliases: ['el embarcadero de ceniza', 'embarcadero de ceniza', 'embarcadero serhu'],
+  },
+
+  {
+    slug: 'fosa-horadada',
+    name: 'La Fosa Horadada',
+    region: 'Las Llanuras del Viento Rojo',
+    kind: 'hito',
+    description:
+      'Un sumidero amplio y profundo, paredes de arena compactada perforadas por decenas de bocas de túnel — la mayor madriguera conocida de Espina del Viento de toda la región. Bajar es una decisión, no un accidente: la red se extiende bajo tierra mucho más de lo que sugiere la boca del pozo.',
+    aliases: ['la fosa horadada', 'fosa horadada'],
+  },
+
+  {
+    slug: 'dunas-ahogadas',
+    name: 'Las Dunas Ahogadas',
+    region: 'Las Llanuras del Viento Rojo',
+    kind: 'ruinas',
+    description:
+      'Fragmentos de piedra tallada y metal ennegrecido asomando entre dunas rojas que el viento cubre y descubre sin patrón fijo — la única prueba visible de que un reino entero, el de los Nabierus, sigue enterrado debajo.',
+    aliases: ['las dunas ahogadas', 'dunas ahogadas'],
+  },
+
+  {
+    slug: 'vientre-del-engano',
+    name: 'El Vientre del Engaño',
+    region: 'Las Llanuras del Viento Rojo',
+    kind: 'hito',
+    description:
+      'Una hondonada seca y estéril donde nada crece, y donde nacen —según los pastores— todas las tormentas de arena magnética de la región. El punto exacto, aunque nadie vivo lo sepa ya, donde las hijas de Madre desataron sin saberlo la sequía y el viento que sepultaron el Reino Nabierus.',
+    aliases: ['el vientre del engaño', 'vientre del engaño'],
+  },
+
+  {
+    slug: 'laberinto-de-canones',
+    name: 'El Laberinto de Cañones',
+    region: 'Las Llanuras del Viento Rojo',
+    kind: 'cañón',
+    description:
+      'Badlands de paredes de arcilla estrecha y sinuosa, fácil perderse, ecos que engañan al oído — terreno de emboscada tanto para depredadores como para quien conoce sus atajos.',
+    aliases: ['el laberinto de cañones', 'laberinto de cañones'],
+  },
+
+  {
+    slug: 'fumarolas-negras',
+    name: 'Las Fumarolas Negras',
+    region: 'Las Llanuras del Viento Rojo',
+    kind: 'hito',
+    description:
+      'Campo de grietas humeantes y vidrio volcánico negro más allá de El Filo de las Brasas — más hostil y menos transitado que el propio Filo, donde el calor sale directo de la tierra.',
+    aliases: ['las fumarolas negras', 'fumarolas negras'],
+  },
+
+  {
+    slug: 'paso-de-los-huesos',
+    name: 'El Paso de los Huesos',
+    region: 'Las Llanuras del Viento Rojo',
+    kind: 'cañón',
+    description:
+      "Cañón estrecho tapizado de restos óseos de migraciones fallidas de Corredores de Cauce — paso obligado natural hacia La Sabana Alta, y recordatorio de que ni la propia migración sagrada de los orcos sale siempre bien.",
+    aliases: ['el paso de los huesos', 'paso de los huesos'],
+  },
+
+  {
+    slug: 'sabana-alta',
+    name: 'La Sabana Alta',
+    region: 'Las Llanuras del Viento Rojo',
+    kind: 'pradera',
+    description:
+      'Praderas de hierba roja que llega a la cintura, mucho más alta y densa que la hierba rasa del resto de la llanura — el viento la mueve en oleadas visibles desde lejos. Refugio y coto de caza de manadas de Corredores de Cauce que no se ven en otras zonas del núcleo.',
+    aliases: ['la sabana alta', 'sabana alta'],
+  },
+
+  {
+    slug: 'vergel-de-kegi',
+    name: 'El Vergel de Kegi',
+    region: 'Las Llanuras del Viento Rojo',
+    kind: 'coto de caza',
+    description:
+      'Coto de caza y comercio de los Faerus de la llanura, más allá de su poblado de Kegi — el punto donde su artesanía en pieles y su relación con los orcos se pone a prueba cara a cara.',
+    aliases: ['el vergel de kegi', 'vergel de kegi'],
+  },
+
+  {
+    slug: 'grieta-cantora',
+    name: 'La Grieta Cantora',
+    region: 'Las Llanuras del Viento Rojo',
+    kind: 'hito',
+    description:
+      'Formación rocosa donde el viento, al colarse por sus grietas, produce un sonido propio y constante — el contraste exacto con El Margen Silencioso, donde el sonido se apaga: aquí el viento canta.',
+    aliases: ['la grieta cantora', 'grieta cantora'],
+  },
+
+  {
+    slug: 'campo-yermo',
+    name: 'El Campo Yermo',
+    region: 'Las Llanuras del Viento Rojo',
+    kind: 'ruinas',
+    description:
+      "Llanura marcada por huesos viejos y metal oxidado que nadie ha reclamado nunca del todo — posible escenario de la guerra interna entre Maktor y Serhu de hace más de mil años, el \"primer golpe\" que dejó al Clan Maktor maltrecho durante un milenio.",
+    aliases: ['el campo yermo', 'campo yermo'],
+  },
+
   // ══════════════════════════════════════════════════════════════════════════
   // REGIÓN: LA MESETA DEL ORDEN
   // ══════════════════════════════════════════════════════════════════════════
@@ -233,7 +402,7 @@ export const locations: LocationInput[] = [
     region: 'Cristal Helado',
     kind: 'asentamiento',
     description:
-      'El mayor asentamiento del Clan Helsig — poco más que un campamento minero fortificado alrededor del yacimiento de hielo sílice más rico de la región, con turnos de mina que no paran ni de noche. Aquí trabajó Gorhorn tres meses de joven. Fuera del núcleo jugable actual.',
+      "El mayor asentamiento del Clan Helsig — poco más que un campamento minero fortificado alrededor del yacimiento de hielo sílice más rico de la región, con turnos de mina que no paran ni de noche. Hogar de la Terk'ikar Brenka, que gobierna la tribu, y su pareja, la Kort'ikar Solgra, que lidera la guerra. Aquí trabajó Gorhorn tres meses de joven. Fuera del núcleo jugable actual.",
     aliases: ['veta helada', 'la veta', 'campamento helsig', 'minas de la veta helada'],
   },
 
@@ -247,8 +416,18 @@ export const locations: LocationInput[] = [
     region: 'Ciénaga Troncal',
     kind: 'asentamiento',
     description:
-      'El mayor de los dos poblados del Clan Goshg — empalizadas de madera oscura levantadas sobre pilotes por encima del agua, unidas por pasarelas y canoas. Aquí se reúnen las dos tribus Goshg en la estación de las crecidas. Fuera del núcleo jugable actual.',
+      "El mayor de los dos poblados del Clan Goshg — empalizadas de madera oscura levantadas sobre pilotes por encima del agua, unidas por pasarelas y canoas. Aquí se reúnen las dos tribus Goshg en la estación de las crecidas. Hogar de la Terk'ikar Doshka, que gobierna la tribu, y su hermano menor, el Kort'ikar Dulgren, que lidera la guerra. Fuera del núcleo jugable actual.",
     aliases: ['cerco de los pilotes', 'el cerco', 'pilotes', 'poblado goshg'],
+  },
+
+  {
+    slug: 'jeyselt',
+    name: 'Jeyselt',
+    region: 'Ciénaga Troncal',
+    kind: 'asentamiento',
+    description:
+      'Poblado Nabieus en la explanada más pequeña del sur de la ciénaga, del clan Keseg Prisilke — nombre en lengua común: Fin Susurrado. Cuerpos adaptados a vivir en las zonas más difíciles del pantano, distintos de sus parientes del Margen Silencioso. Sin conexión previa con Gorhorn. Fuera del núcleo jugable actual.',
+    aliases: ['jeyselt', 'fin susurrado', 'keseg prisilke', 'poblado nabieus de la cienaga'],
   },
 
   {
@@ -257,7 +436,7 @@ export const locations: LocationInput[] = [
     region: 'Ciénaga Troncal',
     kind: 'región',
     description:
-      'Terreno húmedo, en gran parte inhabitable, con tres pequeñas zonas llanas invadidas por Trepadores Ocaso. Rica en alimento y madera, pobre en minerales. La habitan las dos tribus del Clan Goshg, que viven de los Trepadores Ocaso y los Cornantes y tallan sus tótems en la misma madera oscura que Gorhorn lleva a la espalda. Sin conexión previa con Gorhorn — territorio completamente nuevo si la partida llega aquí. Fuera del núcleo jugable actual.',
+      'Terreno húmedo, en gran parte inhabitable, con tres pequeñas zonas llanas invadidas por Trepadores Ocaso. Rica en alimento y madera, pobre en minerales. La zona llana más amplia la habitan las dos tribus del Clan Goshg, que viven de los Trepadores Ocaso y los Cornantes y tallan sus tótems en la misma madera oscura que Gorhorn lleva a la espalda; la explanada más pequeña del sur (ver Jeyselt) la habita una tribu Nabieus adaptada al pantano. Sin conexión previa con Gorhorn — territorio completamente nuevo si la partida llega aquí. Fuera del núcleo jugable actual.',
     // 'la cienaga'/'la ciénaga' quitados (auditoría 2026-08-02, "revisar partida"): prefijo literal
     // de 'cienaga troncal'/'ciénaga troncal' de esta misma entidad — el enlazador de texto clicable
     // (enciclopediaIndex.ts) hace matching de izquierda a derecha y el alias corto ganaba SIEMPRE
@@ -493,6 +672,145 @@ export const locationLinks: LocationLinkInput[] = [
     toSlug: 'restos-de-maktor',
     minutosBase: 185,
     terreno: 'Estepa profunda',
+    riesgo: 'Tormentas de arena magnética',
+  },
+
+  // --- Tercera ampliación del núcleo (sesión "ampliamos lore" 2026-08-05) — cada zona nueva
+  // cuelga de UN único nodo del núcleo ya existente, a propósito (ver comentario en `locations`
+  // arriba): sin aristas cruzadas entre cadenas nuevas, y ninguna arista nueva toca los 12 nodos
+  // originales entre sí. Minutos recalculados una segunda vez (misma sesión, "décima pasada") a
+  // partir de las distancias REALES ya confirmadas contra el mapa (ver `frontend/src/data/map.ts`)
+  // — no la triangulación a ciegas original (5 km/h/sinuosidad 1,1, que resultó no coincidir con
+  // el polígono real). Regla de la usuaria: los minutos no tienen que ser exactamente
+  // proporcionales a la distancia, pero nunca puede haber una inversión (un punto más lejano no
+  // puede costar menos tiempo que uno más cercano). Tabla completa en
+  // docs/13-escala-del-mundo.md § 2.2ter, ya actualizada a juego con estos valores.
+
+  // --- Desde Los Manaderos: la cadena del río hacia el mar ---
+  {
+    fromSlug: 'manaderos',
+    toSlug: 'oasis-de-juncos-rojos',
+    minutosBase: 115,
+    terreno: 'Siguiendo la corriente subterránea hacia el norte',
+    riesgo: 'Espinas del Viento en las hondonadas del cauce',
+  },
+  {
+    fromSlug: 'oasis-de-juncos-rojos',
+    toSlug: 'desembocadura-callada',
+    minutosBase: 280,
+    terreno: 'Marisma y juncos, la corriente ensanchándose hacia el mar',
+    riesgo: 'Terreno blando, fácil quedarse atascado',
+  },
+  // Cadena de la costa: reordenada por distancia real (Desembocadura → Pozas → Acantilados →
+  // Embarcadero es el tramo más largo entero; Pozas → Playa es el ramal corto hacia el sur).
+  {
+    fromSlug: 'desembocadura-callada',
+    toSlug: 'pozas-de-marea',
+    minutosBase: 180,
+    terreno: 'Costa baja de roca plana',
+    riesgo: 'Marea — algunas charcas se cubren sin aviso',
+  },
+  {
+    fromSlug: 'pozas-de-marea',
+    toSlug: 'playa-de-ceniza-blanca',
+    minutosBase: 130,
+    terreno: 'Costa de arena clara',
+  },
+  {
+    fromSlug: 'pozas-de-marea',
+    toSlug: 'acantilados-partidos',
+    minutosBase: 90,
+    terreno: 'Costa rocosa ascendente',
+    riesgo: 'Oleaje violento, grietas ocultas en el borde',
+  },
+  {
+    fromSlug: 'acantilados-partidos',
+    toSlug: 'embarcadero-de-ceniza',
+    minutosBase: 100,
+    terreno: 'Costa siguiendo la línea de pesca Serhu',
+    riesgo: 'Vigías Serhu del embarcadero — se llega visto',
+  },
+
+  // --- Desde Las Agujas Imán: la cadena del desierto profundo ---
+  {
+    fromSlug: 'agujas-iman',
+    toSlug: 'fosa-horadada',
+    minutosBase: 220,
+    terreno: 'Arena suelta más allá de las rocas imantadas',
+    riesgo: 'Nidos de Espina del Viento — la mayor madriguera conocida',
+  },
+  {
+    fromSlug: 'fosa-horadada',
+    toSlug: 'dunas-ahogadas',
+    minutosBase: 135,
+    terreno: 'Dunas rojas cambiantes',
+    riesgo: 'Tormentas de arena magnética, orientación inestable',
+  },
+  {
+    fromSlug: 'dunas-ahogadas',
+    toSlug: 'vientre-del-engano',
+    minutosBase: 175,
+    terreno: 'Desierto profundo, tierra estéril',
+    riesgo: 'Origen de las tormentas de arena magnética de la región',
+  },
+  {
+    fromSlug: 'vientre-del-engano',
+    toSlug: 'laberinto-de-canones',
+    minutosBase: 150,
+    terreno: 'Badlands de arcilla estrecha y sinuosa',
+    riesgo: 'Fácil perderse, terreno de emboscada',
+  },
+
+  // --- Desde El Filo de las Brasas: más adentro del borde volcánico ---
+  {
+    fromSlug: 'filo-de-las-brasas',
+    toSlug: 'fumarolas-negras',
+    minutosBase: 110,
+    terreno: 'Grietas humeantes y vidrio volcánico',
+    riesgo: 'Calor extremo directo del suelo',
+  },
+
+  // --- Desde Los Pastos de la Deriva: la cadena de la sabana ---
+  {
+    fromSlug: 'pastos-de-la-deriva',
+    toSlug: 'paso-de-los-huesos',
+    minutosBase: 110,
+    terreno: 'Cañón estrecho tapizado de restos óseos',
+    riesgo: 'Paso obligado, sin ruta alternativa',
+  },
+  {
+    fromSlug: 'paso-de-los-huesos',
+    toSlug: 'sabana-alta',
+    minutosBase: 165,
+    terreno: 'Hierba roja hasta la cintura',
+    riesgo: 'Aulladores Rojos aprovechando el sigilo de la hierba alta',
+  },
+
+  // --- Desde El Cruce de las Cenizas: frontera con El Margen Silencioso ---
+  {
+    fromSlug: 'cruce-de-las-cenizas',
+    toSlug: 'vergel-de-kegi',
+    minutosBase: 300,
+    terreno: 'Frontera boscosa con El Margen Silencioso',
+    riesgo: 'Territorio Faerus — el trato exige respeto',
+  },
+  // Replanteado (calibración visual 2026-08-05): La Grieta Cantora colgaba de El Osario de la
+  // Manada (en el núcleo), pero tras confirmar su posición real quedó mucho más cerca de El
+  // Cruce de las Cenizas — la línea antigua cruzaba todo el mapa sin necesidad. Es la arista más
+  // larga de toda esta ampliación (46 unidades reales), de ahí el minutosBase más alto.
+  {
+    fromSlug: 'cruce-de-las-cenizas',
+    toSlug: 'grieta-cantora',
+    minutosBase: 320,
+    terreno: 'Estepa abierta hacia la formación rocosa',
+  },
+
+  // --- Sueltas, cuelgan de un nodo ya existente sin cadena propia ---
+  {
+    fromSlug: 'restos-de-maktor',
+    toSlug: 'campo-yermo',
+    minutosBase: 95,
+    terreno: 'Estepa marcada por metal oxidado y huesos viejos',
     riesgo: 'Tormentas de arena magnética',
   },
 ];
@@ -843,21 +1161,24 @@ export const npcs: NpcInput[] = [
   // REGIÓN: LAS LLANURAS DEL VIENTO ROJO
   // ══════════════════════════════════════════════════════════════════════════
 
-  // Gistera Koh (segunda vuelta de diseño, 2026-07-23: "Una orca de nombre Gistera Koh, expulsada
-  // del clan Serhu y perseguida por el orco enfurecido") — encuentro guionizado del primer turno
-  // de la partida (ver turnResolution.ts, hook del primer turno). PRINCIPAL: personaje con nombre
-  // e historia propia, no un arquetipo repetible. No es objetivo de combate ni de saqueo — el
-  // loadout es solo lo que lleva encima para huir, contexto narrativo si el jugador la registra.
+  // Gistera Koh — encuentro guionizado del primer turno de la partida (ver turnResolution.ts,
+  // hook del primer turno). PRINCIPAL: personaje con nombre e historia propia, no un arquetipo
+  // repetible. No es objetivo de combate ni de saqueo — el loadout es solo lo que lleva encima
+  // para huir, contexto narrativo si el jugador la registra. Historia completa reescrita
+  // 2026-08-05 (ver npcs.md #13 para el detalle íntegro, incluido el secreto reservado de Gorhorn
+  // que esta bio NO debe filtrar): ya no es una guerrera expulsada por rechazar un duelo — es la
+  // hija adoptiva del artesano Uhuld Koh, ejecutado por los suyos a sueldo Goirnte por tramar
+  // liberar a los orcos del yugo de la casta de Ketg.
   {
     slug: 'gistera-koh',
     name: 'Gistera Koh',
     kind: 'PRINCIPAL',
     aliases: ['gistera koh', 'gistera'],
     faction: null,
-    role: 'Guerrera expulsada del Clan Serhu, huye del Orco Enfurecido',
+    role: 'Hija adoptiva de un artesano Serhu ejecutado por los suyos, huye del guerrero que lo mató',
     level: 1,
     attributes: { fuerza: 8, destreza: 10, constitucion: 8, inteligencia: 6, voluntad: 12, carisma: 6, arcano: 4 },
-    bio: "Orca del Clan Serhu, piel beige y arcilla curtida por el sol de la estepa, trenzas deshechas de días corriendo sin parar. Retada a un duelo de honor por un guerrero de su propio clan, se negó a pelear y huyó — a ojos Serhu, deshonra suficiente para expulsarla. No fue cobardía: vio en sus ojos algo que ya no reconocía, y prefirió vivir señalada antes que enfrentarse a un hombre que ya no estaba del todo cuerdo. Lleva días delante de él, cada vez más cerca. Rápida de lengua y más rápida de ojo — lee a la gente antes de que hablen, y no ha sobrevivido esto solo corriendo.",
+    bio: "Orca de origen desconocido: un artesano Serhu, Uhuld Koh, la encontró desorientada en el desierto a los 10 años y la crió como propia, dándole su nombre. Uhuld tramaba en secreto exponer la represión Goirnte sobre los suyos — delatado por miedo, no por convicción, por sus propios compañeros de confianza, tres guerreros Serhu pagados por los Goirntes lo mataron ante sus ojos, escondida entre las sombras de la cabaña; sus últimas palabras fueron gloria a los Maktor. El clan hizo desaparecer su cuerpo sin rito ni tumba — el castigo real de la casta de Ketg contra quien la desafía. Gistera huyó esa misma noche; el guerrero que dio el golpe final la sigue desde entonces, obsesionado, sin que sus propios compañeros lo sepan. Reconoce el símbolo Maktor en el tótem de Gorhorn del que Uhuld le hablaba sin explicarle nunca del todo por qué le importaba tanto — es lo que la hace confiar en él en cuanto lo ve.",
     personality: 'Aguda y pragmática, mide cada palabra antes de gastarla — no tiene tiempo ni margen para el orgullo que se permiten los guerreros con clan.',
     homeLocationSlug: 'hondonada-del-eco',
     raza: 'orcos',
@@ -1035,29 +1356,24 @@ export const npcs: NpcInput[] = [
     ],
   },
 
-  // Misión inicial de combate (petición explícita, 2026-07-23: "una mision simple, en la que nos
-  // enfrentaremos a un orco enfurecido localizado cerca de nuestra posicion inicial") — PRINCIPAL,
-  // no PLANTILLA, porque es un encuentro único ligado a esta misión (una sola fila de NpcState por
-  // partida), no un arquetipo repetible como orco-rezagado. Vive en la propia Hondonada del Eco: su
-  // descripción ya avisa de que, al estar hundida, "no se ve quién se acerca por arriba hasta que
-  // es tarde" — la emboscada encaja sin inventar una ubicación nueva. Su loadout incluye el "Mapa
-  // de las Llanuras" que la misión da como recompensa.
+  // Misión inicial de combate — PRINCIPAL, no PLANTILLA, porque es un encuentro único ligado a
+  // esta misión (una sola fila de NpcState por partida), no un arquetipo repetible como
+  // orco-rezagado. Vive en la propia Hondonada del Eco: su descripción ya avisa de que, al estar
+  // hundida, "no se ve quién se acerca por arriba hasta que es tarde" — la emboscada encaja sin
+  // inventar una ubicación nueva. Su loadout incluye el "Mapa de las Llanuras" que la misión da
+  // como recompensa.
   //
-  // Bio conectada (segunda vuelta de diseño, 2026-07-23) a Gistera Koh (ver más abajo): ya no es
-  // una furia genérica por una pérdida sin nombre — retó a Gistera Koh a un duelo de honor, ella
-  // se negó a pelear y huyó, y esa humillación pública es lo que lo rompió. Reutiliza la misma
-  // costumbre de duelo de honor ya establecida (areas.md § "Los clanes orcos" — se puede llegar a
-  // Kort'ikar por duelo de honor), esta vez del lado de quien lo pierde sin sangre.
-  // (Nota 2026-08-03: el ejemplo que citaba aquí este comentario — "el padre de Gorhorn murió
-  // reclamando el puesto de Kort'ikar en un duelo" — ya no es canon, ver areas.md § Historia
-  // profunda. La costumbre del duelo de honor en sí sigue vigente, solo cambió ese ejemplo.)
+  // Historia completa reescrita 2026-08-05 (ver npcs.md #14 para el detalle íntegro): ya no
+  // persigue a Gistera Koh por un duelo de honor rechazado — es uno de los tres guerreros Serhu
+  // pagados en secreto por los Goirntes para matar al artesano Uhuld Koh, padre adoptivo de
+  // Gistera, antes de que su plan contra la casta de Ketg saliera a la luz.
   {
     slug: 'orco-enfurecido-hondonada',
     name: 'Orco enfurecido',
     kind: 'PRINCIPAL',
     aliases: ['orco enfurecido'],
     faction: null,
-    role: "Guerrero Serhu deshonrado, persigue a Gistera Koh tras un duelo de honor rechazado",
+    role: "Uno de los guerreros que mataron a Uhuld Koh por encargo Goirnte; persigue a Gistera Koh sin que sus compañeros lo sepan",
     articulo: 'el',
     // Rebalanceo (2026-07-29, "el Orco Enfurecido... debería ser relativamente fácil ganar... no
     // tan complicado como es ahora" — es el primer combate real del juego): bajado de nivel 2 a
@@ -1065,7 +1381,7 @@ export const npcs: NpcInput[] = [
     // fuerza/voluntad ligeramente reducidas frente a la versión original.
     level: 1,
     attributes: { fuerza: 8, destreza: 6, constitucion: 10, inteligencia: 4, voluntad: 6, carisma: 2, arcano: 0 },
-    bio: "Orco del Clan Serhu, calvo y de complexión corpulenta, piel beige agrietada, sin pintura de clan visible — se la arrancó él mismo, en el mismo arranque de furia que lo trajo hasta aquí. Retó a Gistera Koh a un duelo de honor hace semanas; ella se negó a pelear y huyó en vez de aceptarlo. Para el clan, negarse y huir es deshonra — de ella. Para él, verla huir en vez de enfrentarlo lo rompió de otra forma: humillado en público, dejó de hablar con nadie y salió tras ella sin que ningún Kort'ikar se lo ordenara. Duerme y merodea en la Hondonada del Eco, donde el terreno hundido le permite ver llegar a cualquiera antes de que lo vean a él. Entre sus cosas lleva un mapa de las rutas y campamentos de la región, marcado a mano — lo único suyo que aún tiene sentido.",
+    bio: "Orco del Clan Serhu, calvo y de complexión corpulenta, piel beige agrietada, sin pintura de clan visible — se la arrancó él mismo, en el mismo arranque de furia que lo trajo hasta aquí. Uno de los tres guerreros pagados en secreto por los Goirntes para asegurar la muerte del artesano Uhuld Koh, cuyo plan amenazaba con exponer la represión de los suyos: fue él quien le aplastó el cráneo con la maza después de que Uhuld, ya herido, lo alcanzara con el hacha. Vio huir esa misma noche a la hija adoptiva de Uhuld y la siguió por su cuenta, sin avisar a sus compañeros — ni él mismo sabe ya si por acabar el encargo o por una obsesión que se le ha ido de las manos. A pocos kilómetros del Karot Veku estuvo a punto de caer en una trampa que ella le tendió; la humillación de haberlo estado a punto de lograr una fugitiva a la que dobla en tamaño terminó de quebrarlo. Duerme y merodea en la Hondonada del Eco, donde el terreno hundido le permite ver llegar a cualquiera antes de que lo vean a él.",
     personality: 'Errático y violento con cualquiera, obsesivo con ella — ataca al primer contacto sin intentar hablar.',
     homeLocationSlug: 'hondonada-del-eco',
     raza: 'orcos',

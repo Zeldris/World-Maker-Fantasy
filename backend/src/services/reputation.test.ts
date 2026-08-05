@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { FACTION_REP_MAX, FACTION_REP_MIN, applyFactionRepDelta, effectiveTemperamento, factionRepFor } from './reputation.js';
+import { FACTION_REP_MAX, FACTION_REP_MIN, applyFactionRepDelta, effectiveTemperamento, factionRepFor, resolveFoundingOutcome } from './reputation.js';
 
 describe('factionRepFor', () => {
   it('devuelve el default neutro (2500) si la facción no tiene fila todavía', () => {
@@ -56,5 +56,26 @@ describe('effectiveTemperamento', () => {
   it('nunca se sale de los extremos AMIGABLE/ENEMIGO por mucho que empuje la reputación', () => {
     expect(effectiveTemperamento('AMIGABLE', 'Clan Serhu', { 'Clan Serhu': 0 })).toBe('CAUTELOSO');
     expect(effectiveTemperamento('ENEMIGO', 'Clan Serhu', { 'Clan Serhu': 5000 })).toBe('CAUTELOSO');
+  });
+});
+
+describe('resolveFoundingOutcome', () => {
+  it('región sin facción dueña conocida (Ciénaga Troncal, El Margen Silencioso): sin dueño', () => {
+    expect(resolveFoundingOutcome('Ciénaga Troncal', {})).toBe('SIN_DUENO');
+    expect(resolveFoundingOutcome('El Margen Silencioso', {})).toBe('SIN_DUENO');
+    expect(resolveFoundingOutcome(null, {})).toBe('SIN_DUENO');
+  });
+
+  it('región con dueña y reputación neutra o mejor (sin fila = default 2500): fundación pacífica', () => {
+    expect(resolveFoundingOutcome('Las Llanuras del Viento Rojo', {})).toBe('PACIFICA');
+    expect(resolveFoundingOutcome('Las Llanuras del Viento Rojo', { 'Clan Serhu': 4000 })).toBe('PACIFICA');
+  });
+
+  it('región con dueña y reputación por debajo del neutro: conflicto', () => {
+    expect(resolveFoundingOutcome('Las Llanuras del Viento Rojo', { 'Clan Serhu': 1000 })).toBe('CONFLICTO');
+  });
+
+  it('región desconocida (typo/región nueva sin seedear): tratada como sin dueño, no revienta', () => {
+    expect(resolveFoundingOutcome('Región inventada', {})).toBe('SIN_DUENO');
   });
 });

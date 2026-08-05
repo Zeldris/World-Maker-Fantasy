@@ -7,6 +7,7 @@ import { habilidadesRoutes } from './saves/habilidades.js';
 import { inventarioRoutes } from './saves/inventario.js';
 import { logRoutes } from './saves/log.js';
 import { listRoutes } from './saves/list.js';
+import { reinoRoutes } from './saves/reino.js';
 
 /// Rutas de persistencia real de partidas (decisión 2026-07-17: /turn y /entorno dejan de ser
 /// stateless — el frontend crea una partida una vez y a partir de ahí solo manda `saveId`).
@@ -24,4 +25,5 @@ export async function savesRoutes(app: FastifyInstance) {
   await app.register(inventarioRoutes);
   await app.register(logRoutes);
   await app.register(listRoutes);
+  await app.register(reinoRoutes);
 }

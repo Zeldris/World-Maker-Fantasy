@@ -35,10 +35,21 @@ else
   echo "AVISO: no existe el contenedor 'tarkor-postgres' — ver docs/15-instalacion.md § 3bis para crearlo."
 fi
 
-# Carga nvm/node en ESTE shell solo para el check de Ollama de abajo — cada ventana nueva se
-# monta la suya propia (ver NVM_INIT).
+# Carga nvm/node en ESTE shell — para el check de Ollama de abajo y para el seed-catalog que
+# sigue (cada ventana nueva de backend/frontend se monta la suya propia, ver NVM_INIT).
 NVM_INIT='export NVM_DIR="$HOME/.var/app/com.visualstudio.code/config/nvm"; [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh" && nvm use 22 >/dev/null 2>&1;'
 eval "$NVM_INIT"
+
+# Seed del catálogo (2026-08-05, bug real: se cambió worldCatalog.ts en varias sesiones de lore y
+# nadie corrió `npm run seed-catalog` a mano — las zonas nuevas no aparecían en el mapa pese a
+# estar bien en el código). Idempotente vía upsert por @@unique (ver cabecera de worldCatalog.ts),
+# así que correrlo en cada arranque es seguro y rápido (solo upserts a Postgres, sin LLM de por
+# medio) — mejor pagar ese segundo de más siempre que arriesgarse a jugar con el catálogo
+# desincronizado otra vez. No aborta el arranque si falla (por si Postgres tarda en estar listo);
+# solo avisa.
+echo "Sincronizando catálogo del mundo (seed-catalog)..."
+(cd "$DIR/backend" && npm run seed-catalog) || echo "AVISO: seed-catalog falló — el mapa/catálogo puede no estar al día. Revisa que Postgres esté arriba y corre 'npm run seed-catalog' a mano en backend/."
+echo
 
 TERMINAL=""
 for candidate in konsole xterm gnome-terminal xfce4-terminal; do
@@ -64,11 +75,11 @@ if curl -s -o /dev/null http://localhost:11434; then
   echo "Ollama ya estaba corriendo."
 elif [ -n "$TERMINAL" ]; then
   echo "Abriendo Ollama en una ventana nueva ($TERMINAL)..."
-  run_in_new_window "Tarkor - Ollama" "OLLAMA_IGPU_ENABLE=1 ollama serve"
+  run_in_new_window "Tarkor - Ollama" "OLLAMA_IGPU_ENABLE=1 OLLAMA_FLASH_ATTENTION=1 OLLAMA_KV_CACHE_TYPE=q8_0 ollama serve"
   sleep 3
 else
   echo "Arrancando Ollama en segundo plano (no se encontró terminal gráfica)..."
-  OLLAMA_IGPU_ENABLE=1 nohup ollama serve > "$LOGS/ollama.log" 2>&1 &
+  OLLAMA_IGPU_ENABLE=1 OLLAMA_FLASH_ATTENTION=1 OLLAMA_KV_CACHE_TYPE=q8_0 nohup ollama serve > "$LOGS/ollama.log" 2>&1 &
   disown
   sleep 3
 fi

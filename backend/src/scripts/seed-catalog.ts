@@ -33,14 +33,19 @@ async function main() {
   }
 
   console.log(`  Rutas (${locationLinks.length})...`);
+  // Bug real (2026-08-05, encontrado jugando: "la desembocadura callada conecta con los restos de
+  // maktor" — una arista que ya no existía en `locationLinks` seguía viva en la DB): el upsert de
+  // abajo crea/actualiza, pero nunca borraba las aristas que se quitan de `worldCatalog.ts` al
+  // reestructurar rutas — se quedaban fantasma para siempre. Mismo patrón que `harvestYield` más
+  // abajo: se borra todo lo del mundo y se recrea entero, más simple y seguro que diferenciar caso
+  // a caso qué arista sigue viva.
+  await prisma.locationLink.deleteMany({ where: { from: { worldId } } });
   for (const link of locationLinks) {
     const fromId = locationIdBySlug.get(link.fromSlug);
     const toId = locationIdBySlug.get(link.toSlug);
     if (!fromId || !toId) throw new Error(`Ruta con slug desconocido: ${link.fromSlug} <-> ${link.toSlug}`);
-    await prisma.locationLink.upsert({
-      where: { fromId_toId: { fromId, toId } },
-      update: { minutosBase: link.minutosBase, terreno: link.terreno, riesgo: link.riesgo },
-      create: { fromId, toId, minutosBase: link.minutosBase, terreno: link.terreno, riesgo: link.riesgo },
+    await prisma.locationLink.create({
+      data: { fromId, toId, minutosBase: link.minutosBase, terreno: link.terreno, riesgo: link.riesgo },
     });
   }
 

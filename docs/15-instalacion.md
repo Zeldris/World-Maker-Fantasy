@@ -87,6 +87,8 @@ npm run seed-image-prompts  # opcional: prompts de imagen para la Enciclopedia
 
 Las imágenes ya subidas (`backend/uploads/images/`) SÍ están versionadas en el repo (a diferencia de `uploads/opciones/`, que es solo staging personal y está en `.gitignore`) — no hace falta copiarlas aparte, vienen con el `git clone`.
 
+**Después de la primera vez** (2026-08-05, bug real: varias sesiones de lore cambiaron `worldCatalog.ts` sin que nadie corriera `seed-catalog` de nuevo — el contenido nuevo no aparecía en el juego pese a estar bien en el código): `iniciar-tarkor.sh`/`.bat` ya corren `npm run seed-catalog` solo (rápido, idempotente, sin Ollama de por medio) en cada arranque, así que el catálogo nunca se queda desincronizado sin querer. `npm run reindex-lore` es más lento (necesita Ollama para los embeddings) y no se corre en cada arranque — usar `./actualizar-mundo.sh` (raíz del repo) cuando cambie `loreChunks.ts` de verdad, hace ambas cosas (`seed-catalog` + `reindex-lore`) sin necesidad de arrancar backend/frontend.
+
 ## 6. Modelos de Ollama
 
 Tres modelos distintos, cada uno con su rol (ver `docs/03-arquitectura.md` § 4.3):
@@ -101,7 +103,7 @@ Si se cambia el `Modelfile` en el futuro, hay que reconstruir `tarkor-narrador` 
 
 ## 7. Arrancar todo
 
-En Windows, la usuaria ya tiene `iniciar-tarkor.bat`/`detener-tarkor.bat` en la raíz del repo (abren dos ventanas: backend con `npm run dev:nowatch`, frontend con `npm run dev`). En otro sistema operativo (p. ej. SteamOS/Linux en modo escritorio, si se prueba en una Steam Deck), el equivalente manual es, en dos terminales separadas:
+La usuaria tiene `iniciar-tarkor.sh`/`detener-tarkor.sh` (Linux/SteamOS, el sistema real de uso — arranca Postgres/Ollama si hace falta, corre `seed-catalog`, y abre backend+frontend cada uno en su propia ventana de terminal) e `iniciar-tarkor.bat`/`detener-tarkor.bat` (Windows, equivalente más simple, sin la orquestación de Postgres/Ollama) en la raíz del repo. El equivalente manual, si hiciera falta, en dos terminales separadas:
 
 ```
 # Terminal 1

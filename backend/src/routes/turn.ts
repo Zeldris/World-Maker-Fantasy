@@ -6,6 +6,7 @@ import { computeDuration, detectsRestIntent, mentionsExplicitDuration } from '..
 import { narrateAndPersistTurn } from '../services/turnResolution.js';
 import type { PendingNpcAttack } from '../services/combatExchange.js';
 import { resolveTravel, bandaForMinutos, type TravelResolution } from '../services/travel.js';
+import { pickTravelInterruption } from '../services/travelInterruption.js';
 import { effectiveAttributes, effectiveSecondaryAttributes, effectiveDefense, equippedWeaponNames, equippedItemsSummary } from '../services/equipment.js';
 import {
   detectNpcsInScene,
@@ -92,8 +93,12 @@ async function resolveClassificationForTurn(params: {
   attributes: AttributeBlock;
   sessionFacts: string[];
   characterSummary: string;
+  /// Ver el mismo campo en NarrateAndPersistParams (turnResolution.ts) — bug real jugando en
+  /// vivo (2026-08-04): sin esto, el atajo tabulado calibraba la dificultad contra
+  /// `npcsInScene[0]` aunque el jugador ya estuviera enfrentado a otro NPC.
+  pendingCombatNpcSlugs: string[];
 }): Promise<ClassificationResolution> {
-  const { saveId, action, enCombate, savedActionId, preview, worldId, currentLocationId, level, attributes, sessionFacts, characterSummary } = params;
+  const { saveId, action, enCombate, savedActionId, preview, worldId, currentLocationId, level, attributes, sessionFacts, characterSummary, pendingCombatNpcSlugs } = params;
 
   // Solapar classify con el tecleo (roadmap de velocidad, 2026-07-19): si un `preview:true`
   // anterior con este MISMO texto exacto ya hizo el trabajo caro, se reutiliza sin repetirlo
@@ -148,8 +153,12 @@ async function resolveClassificationForTurn(params: {
       // CombatModal.tsx mandó savedActionId, su `preferredAttribute` GANA sobre la heurística
       // de palabra clave (tabulatedAttackAttribute) — determinista, no depende de que el
       // promptText de la habilidad contenga la palabra "exacta" que el regex espera.
+      // `saveId` en el filtro (auditoría de deuda técnica 2026-08-04, bug real de fuga entre
+      // partidas): sin él, cualquier `savedActionId` de OTRA partida seguía resolviendo — un id
+      // adivinado o reutilizado por error de una habilidad ajena podía prestar su
+      // efecto/atributo preferido a un personaje que nunca la desbloqueó de verdad.
       const selectedAbility = savedActionId
-        ? await prisma.savedAction.findUnique({ where: { id: savedActionId }, select: { effect: true, preferredAttribute: true } })
+        ? await prisma.savedAction.findFirst({ where: { id: savedActionId, saveId }, select: { effect: true, preferredAttribute: true } })
         : null;
       // Paleta de verbos + clasificación tabulada (roadmap de velocidad, 2026-07-19, prioridad 2):
       // un ataque dentro del popup de combate contra un NPC ya en escena es 100% determinista
@@ -182,11 +191,18 @@ async function resolveClassificationForTurn(params: {
       // (Múrgol, sin relación ninguna) no tiene sentido para una promesa a futuro. Cae a
       // `classifyAction` normal; la red de seguridad de banda de más abajo sigue forzando
       // "instantanea" igual, solo que después de una llamada a Ollama en vez de saltársela.
+      // Mismo criterio que `ongoingCombatTarget` en turnResolution.ts (bug real, 2026-08-04): un
+      // ataque de seguimiento sin nombre citado prefiere a quien el jugador ya estaba enfrentando
+      // antes de caer a `npcsInScene[0]`, que puede ser un NPC solo mencionado de pasada en un
+      // hecho de trasfondo.
+      const ongoingCombatTarget = pendingCombatNpcSlugs.length
+        ? (npcsInScene.find((n) => pendingCombatNpcSlugs.includes(n.slug)) ?? null)
+        : null;
       const tabulatedTarget =
         npcsInScene.length > 0 &&
         ((enCombate && (detectsAttackIntent(action) || !!selectedAbility?.effect)) ||
           (!enCombate && detectsHostileSearchIntent(action) && !detectsVerbalAcceptanceIntent(action)))
-          ? (explicitTarget ?? npcsInScene[0])
+          ? (explicitTarget ?? ongoingCombatTarget ?? npcsInScene[0])
           : null;
       if (tabulatedTarget) {
         const { dificultad } = difficultyHintFor(tabulatedTarget.level, level);
@@ -413,6 +429,7 @@ export async function turnRoutes(app: FastifyInstance) {
       attributes,
       sessionFacts,
       characterSummary,
+      pendingCombatNpcSlugs: (save.pendingCombatNpcSlugs as string[] | null) ?? [],
     });
 
     const { minutos, produccion } = travel
@@ -430,11 +447,28 @@ export async function turnRoutes(app: FastifyInstance) {
     }
 
     if (classification.banda === 'extendida' || classification.banda === 'larga') {
+      // Eventos de viaje interactivos (2026-08-05, petición explícita: "que las esperas entre los
+      // movimientos de zonas sean más dinámicas"): decidido AQUÍ, al iniciar el viaje, no al
+      // resolverlo — si algún nodo intermedio de la ruta dispara, el viaje se trunca a ese punto
+      // (llegada real, no la del destino pedido) y el candidato elegido entra en escena de verdad
+      // en cuanto se resuelva el tránsito (ver turnResolution.ts). Solo aplica a viajes de verdad
+      // (`travel` no nulo) — acciones largas sin desplazamiento (construir, descansar) no entran.
+      const interruption = travel
+        ? await pickTravelInterruption(save.worldId, travel, env.travelInterruptionProbabilityPerSegment, attributes)
+        : null;
+      const effectiveTravel = interruption ? interruption.travel : travel;
+      const effectiveMinutos = interruption ? interruption.travel.minutos : minutos;
+      // Nombre del destino ORIGINAL pedido por el jugador (antes de truncar) — se guarda aparte
+      // porque `effectiveTravel.toLocationName` ya es el de la parada intermedia. Solo sirve para
+      // el aviso determinista de "tu viaje se interrumpió" al resolver (turnResolution.ts); el
+      // Narrador nunca lo ve, para no forzarlo a explicar un destino al que no llegó.
+      const interruptedOriginalDestinationName = interruption ? travel!.toLocationName : null;
+
       // Compresión de tiempo (roadmap 2026-07-19): `minutos` es tiempo de FICCIÓN — mapearlo 1:1 a
       // espera real hacía matemáticamente imposible una sesión fluida (un viaje interno normal ya
       // son 83-248 min de ficción con el grafo actual). El reloj ficticio sigue avanzando el total
       // real de `minutos` sin comprimir (ver narrateAndPersistTurn) — solo se comprime la espera.
-      const minutosReales = Math.min(Math.max(1, minutos / env.fictionMinutesPerRealMinute), env.transitMaxRealMinutes);
+      const minutosReales = Math.min(Math.max(1, effectiveMinutos / env.fictionMinutesPerRealMinute), env.transitMaxRealMinutes);
       const busyUntil = new Date(Date.now() + minutosReales * 60_000);
       const produccionLabel = produccion ? `${produccion.cantidad} de ${produccion.itemName}` : undefined;
       const startText = `${save.characterName} se pone a ello: "${action}". Estará ocupado un buen rato${
@@ -473,8 +507,33 @@ export async function turnRoutes(app: FastifyInstance) {
         }),
         prisma.characterTransit.upsert({
           where: { saveId },
-          create: { saveId, activity: action, busyUntil, zoneContext: { action, classification, roll, travel, duracionMinutos: minutos } as object },
-          update: { activity: action, busyUntil, zoneContext: { action, classification, roll, travel, duracionMinutos: minutos } as object },
+          create: {
+            saveId,
+            activity: action,
+            busyUntil,
+            zoneContext: {
+              action,
+              classification,
+              roll,
+              travel: effectiveTravel,
+              duracionMinutos: effectiveMinutos,
+              travelInterruptionNpcId: interruption?.npcId ?? null,
+              travelInterruptionOriginalDestinationName: interruptedOriginalDestinationName,
+            } as object,
+          },
+          update: {
+            activity: action,
+            busyUntil,
+            zoneContext: {
+              action,
+              classification,
+              roll,
+              travel: effectiveTravel,
+              duracionMinutos: effectiveMinutos,
+              travelInterruptionNpcId: interruption?.npcId ?? null,
+              travelInterruptionOriginalDestinationName: interruptedOriginalDestinationName,
+            } as object,
+          },
         }),
         prisma.save.update({ where: { id: saveId }, data: { lastPlayedAt: new Date() } }),
       ]);
@@ -483,7 +542,7 @@ export async function turnRoutes(app: FastifyInstance) {
       // ej: 7 mins de tiempo real 2 dias en Helek" — sin esto, la espera solo mostraba el
       // tiempo real comprimido, sin ninguna pista de cuánto dura DE VERDAD la acción dentro de
       // la ficción, dejando la pregunta "¿por qué tarda tanto?" sin respuesta visible en la UI.
-      return { classification, roll, transit: { busyUntil, duracionMinutos: minutos }, travel };
+      return { classification, roll, transit: { busyUntil, duracionMinutos: effectiveMinutos }, travel: effectiveTravel };
     }
 
     // Instantánea/corta: el jugador verá el turno completo en esta misma sesión — deja ya la
@@ -585,9 +644,15 @@ export async function turnRoutes(app: FastifyInstance) {
         logEntryId,
         quests,
         newQuestInfo,
+        newKingdomFounded,
+        companionCreated,
         esperandoDefensaJugador,
         npcAbilityUsed,
         nextInitiativeRoll,
+        territories,
+        buildings,
+        subjects,
+        kingdomStats,
       } = await narrateAndPersistTurn({
         saveId,
         worldId: save.worldId,
@@ -625,6 +690,7 @@ export async function turnRoutes(app: FastifyInstance) {
         // Rediseño del turno de combate (2026-07-28) — dice si ESTE turno es la defensa a ciegas
         // del jugador contra un ataque de NPC ya decidido el intercambio anterior.
         pendingNpcAttack: save.pendingNpcAttack as unknown as PendingNpcAttack | null,
+        pendingCombatNpcSlugs: (save.pendingCombatNpcSlugs as string[] | null) ?? [],
         lootItemNames,
         onNarrationChunk: (delta) => writeLine({ type: 'chunk', text: delta }),
         onNarrationReset: () => writeLine({ type: 'reset' }),
@@ -644,9 +710,15 @@ export async function turnRoutes(app: FastifyInstance) {
         logEntryId,
         quests,
         newQuestInfo,
+        newKingdomFounded,
+        companionCreated,
         esperandoDefensaJugador,
         npcAbilityUsed,
         nextInitiativeRoll,
+        territories,
+        buildings,
+        subjects,
+        kingdomStats,
       });
     } catch (err) {
       // Bug real (auditoría 2026-07-28): este catch mandaba `err.message` crudo al cliente,

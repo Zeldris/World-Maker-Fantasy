@@ -114,6 +114,40 @@ describe('resolveDueTransits', () => {
     expect(del).not.toHaveBeenCalled();
   });
 
+  // Eventos de viaje interactivos (2026-08-05) — `travelInterruptionNpcId` viaja dentro del mismo
+  // `zoneContext` que `travel`/`action`/`classification`, así que worldTick.ts solo tiene que
+  // desestructurarlo y reenviarlo tal cual — este test cubre justo ese reenvío.
+  it('reenvía travelInterruptionNpcId a narrateAndPersistTurn cuando el tránsito lo trae', async () => {
+    findMany.mockResolvedValue([
+      transitFixture({
+        zoneContext: {
+          action: 'viajo hacia la zona de prueba destino',
+          classification: { requiereTirada: false, atributo: 'destreza', dificultad: 8, razon: 'x', banda: 'extendida', duracionEstimadaMinutos: 100 },
+          roll: undefined,
+          travel: { toLocationId: 'loc-mid', toLocationName: 'Zona Intermedia' },
+          travelInterruptionNpcId: 'npc-agresor',
+        },
+      }),
+    ]);
+    updateMany.mockResolvedValue({ count: 1 });
+    narrateAndPersistTurn.mockResolvedValue(undefined);
+
+    await resolveDueTransits();
+
+    expect(narrateAndPersistTurn).toHaveBeenCalledWith(expect.objectContaining({ travelInterruptionNpcId: 'npc-agresor' }));
+  });
+
+  it('reenvía travelInterruptionNpcId como undefined cuando el tránsito no es una interrupción (viaje normal o acción sin viaje)', async () => {
+    findMany.mockResolvedValue([transitFixture()]); // zoneContext por defecto, sin travelInterruptionNpcId
+    updateMany.mockResolvedValue({ count: 1 });
+    narrateAndPersistTurn.mockResolvedValue(undefined);
+
+    await resolveDueTransits();
+
+    const call = narrateAndPersistTurn.mock.calls[0][0] as { travelInterruptionNpcId?: string | null };
+    expect(call.travelInterruptionNpcId).toBeUndefined();
+  });
+
   it('si narrateAndPersistTurn rechaza con TransitCancelledError, no lo trata como error (el jugador ya canceló)', async () => {
     findMany.mockResolvedValue([transitFixture()]);
     updateMany.mockResolvedValue({ count: 1 });
