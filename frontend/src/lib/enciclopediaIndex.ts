@@ -7,6 +7,13 @@
 // Deliberadamente NO se indexan razas ni el nombre propio de Gorhorn: "orco"/"Orcos" es
 // prácticamente un sustantivo común en este mundo (aparecería subrayado en casi cada frase de
 // combate) y "Gorhorn" sale en casi cada entrada del diario — el ruido visual no compensaría.
+//
+// Tampoco se indexan "Facciones"/"Historia" (2026-08-06, decisión explícita al construir esas
+// secciones, no un olvido): nombres como "Concordia de Hierro" ya aparecen constantemente en bios
+// y descripciones de NPC existentes — este proyecto ya se ha encontrado varias veces con bugs
+// reales de colisión de alias en este mismo índice (ver memoria de sesión), así que se prefirió no
+// arriesgar otro falso positivo sin que la usuaria lo pidiera explícitamente. Ninguna de las dos
+// tiene siquiera campo `aliases` en su tipo (api.ts) — coherente con esta decisión, no un hueco.
 import type { EnciclopediaResponse } from './api'
 import type { DetailTarget } from '../components/DetailModal'
 import {

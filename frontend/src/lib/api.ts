@@ -198,6 +198,13 @@ export interface NarrateResponse {
   buildings: BuildingInfo[]
   subjects: SubjectInfo[]
   kingdomStats: KingdomStatsInfo | null
+  /// deathCount/factionsStatus/professionProgress (auditoría 2026-08-06, bug real): las tres se
+  /// mutan en el mismo turno (combate/decapitar/crafteo) pero no viajaban de vuelta — el contador
+  /// de muertes, la pestaña Reputación y la pestaña Profesiones se quedaban con el valor de la
+  /// última recarga completa hasta la siguiente. Mismo criterio que territories/buildings arriba.
+  deathCount: number
+  factionsStatus: Record<string, number>
+  professionProgress: ProfessionProgressInfo[]
 }
 
 export interface TurnNarrateHandlers {
@@ -808,7 +815,6 @@ export interface EnciclopediaClassInfo {
 }
 
 export interface EnciclopediaConstructionRequirement {
-  namePrefix: string
   label: string
   cantidad: number
 }
@@ -826,6 +832,51 @@ export interface EnciclopediaConstructionRecipe {
   imageUrls: EnciclopediaImageUrls
 }
 
+export interface EnciclopediaCraftingRecipe {
+  key: string
+  name: string
+  description: string
+  /// Id de professions.ts ('herrero'/'sanador'/'carpintero'...), o null si está al alcance de
+  /// cualquiera sin oficio (2026-08-06, sección "Crafteo" — mismo eje que `raza` en Construcciones,
+  /// pero por oficio en vez de por raza).
+  oficio: string | null
+  /// Mismo shape que EnciclopediaConstructionRequirement (backend: IngredientRequirement
+  /// compartido entre crafting.ts/construction.ts) — reutilizado tal cual, no duplicado.
+  requirements: EnciclopediaConstructionRequirement[]
+  imagePrompts: EnciclopediaImagePrompts
+  imageUrls: EnciclopediaImageUrls
+}
+
+export interface EnciclopediaFaccionInfo {
+  slug: string
+  name: string
+  raza: string
+  description: string
+  discovered: boolean
+  imagePrompts: EnciclopediaImagePrompts
+  imageUrls: EnciclopediaImageUrls
+}
+
+export interface EnciclopediaHistoriaInfo {
+  slug: string
+  title: string
+  era: 'comun' | 'semillas'
+  /// null en era 'semillas' (mítica, sin fechar) — con año en era 'comun', usado para agrupar en
+  /// bloques de 500 años.
+  year: number | null
+  requiresTranslation: boolean
+  discovered: boolean
+  /// Computado en el backend: discovered && (!requiresTranslation || traductor descubierto).
+  unlocked: boolean
+  /// null si !unlocked — el backend nunca manda el texto real sin desbloquear (2026-08-06,
+  /// mecanismo "escrito en el idioma de las Semillas").
+  text: string | null
+  /// Igual que `text`: { thumbnail: null, banner: null } mientras !unlocked — ni el prompt ni la
+  /// imagen viajan antes de tiempo (mostrar una escena sería otra forma de fugar el contenido).
+  imagePrompts: EnciclopediaImagePrompts
+  imageUrls: EnciclopediaImageUrls
+}
+
 export interface EnciclopediaResponse {
   npcs: EnciclopediaNpcInfo[]
   items: EnciclopediaItemInfo[]
@@ -835,6 +886,9 @@ export interface EnciclopediaResponse {
   personajes: EnciclopediaPersonajeInfo[]
   classes: EnciclopediaClassInfo[]
   constructionRecipes: EnciclopediaConstructionRecipe[]
+  craftingRecipes: EnciclopediaCraftingRecipe[]
+  factions: EnciclopediaFaccionInfo[]
+  historia: EnciclopediaHistoriaInfo[]
 }
 
 /// `saveId` (2026-07-23, enciclopedia progresiva) — gatea NPCs/fauna/flora/objetos/lugares por lo
@@ -845,7 +899,8 @@ export async function getEnciclopedia(worldSlug: string, saveId?: string | null)
   return fetchJson(`${API_URL}/world/${worldSlug}/enciclopedia${query}`)
 }
 
-export type ImagePromptEntityType = 'npc' | 'item' | 'fauna' | 'ability' | 'raza' | 'personaje' | 'location' | 'construccion'
+// 'faction'/'historia' (2026-08-06) — mismo literal que el backend, ver imagePromptGenerator.ts.
+export type ImagePromptEntityType = 'npc' | 'item' | 'fauna' | 'ability' | 'raza' | 'personaje' | 'location' | 'construccion' | 'faction' | 'historia' | 'crafteo'
 /// 'thumbnail' = icono cuadrado de la cuadrícula (EntryCard), 'banner' = MediaSlot ancho del
 /// detalle (~3:1, medido contra la UI real) — ver imagePromptGenerator.ts en el backend.
 export type ImagePromptSizeProfile = 'thumbnail' | 'banner'

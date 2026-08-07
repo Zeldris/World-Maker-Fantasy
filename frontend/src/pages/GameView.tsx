@@ -421,6 +421,9 @@ export function GameView() {
         esperandoDefensaJugador,
         npcAbilityUsed,
         nextInitiativeRoll,
+        deathCount: updatedDeathCount,
+        factionsStatus: updatedFactionsStatus,
+        professionProgress: updatedProfessionProgress,
       } = await requestTurnNarrate({
         saveId,
         action,
@@ -439,6 +442,13 @@ export function GameView() {
       // El backend ya devuelve la condición fresca del NPC golpeado en la misma respuesta —
       // `handleCombatTurnResolved` es la única fuente de verdad ahora.
       setQuests(updatedQuests)
+      // Bug real (auditoría 2026-08-06): matar/decapitar a un NPC de facción en combate cambia
+      // `factionsStatus` en el acto (reputation.ts), y morir en combate cambia `deathCount` — sin
+      // esto, Personaje → Reputación/Profesiones y el contador de muertes se quedaban con el valor
+      // de antes del combate hasta recargar la partida entera.
+      setDeathCount(updatedDeathCount)
+      setFactionsStatus(updatedFactionsStatus)
+      setProfessionProgress(updatedProfessionProgress)
       handleCombatTurnResolved({
         narration: narration.narration,
         progression,
@@ -1204,6 +1214,9 @@ export function GameView() {
         buildings: updatedBuildings,
         subjects: updatedSubjects,
         kingdomStats: updatedKingdomStats,
+        deathCount: updatedDeathCount,
+        factionsStatus: updatedFactionsStatus,
+        professionProgress: updatedProfessionProgress,
       } = await requestTurnNarrate(
         { saveId, action, classification, roll, travel, npcsInScene: classifyResult.npcsInScene },
         {
@@ -1224,6 +1237,12 @@ export function GameView() {
       setBuildings(updatedBuildings)
       setSubjects(updatedSubjects)
       setKingdomStats(updatedKingdomStats)
+      // Bug real (auditoría 2026-08-06): mismo problema que arriba — el contador de muertes, la
+      // pestaña Reputación y la pestaña Profesiones se quedaban con el valor de la última recarga
+      // completa hasta la siguiente, aunque el turno que se acaba de resolver ya los cambiara.
+      setDeathCount(updatedDeathCount)
+      setFactionsStatus(updatedFactionsStatus)
+      setProfessionProgress(updatedProfessionProgress)
       if (newInventoryItems.length > 0) {
         setInventory((prev) => [...prev, ...newInventoryItems])
       }

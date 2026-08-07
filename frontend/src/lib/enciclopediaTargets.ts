@@ -8,7 +8,10 @@ import { secondaryAttributeLabels } from './secondaryAttributes'
 import type {
   EnciclopediaAbilityInfo,
   EnciclopediaConstructionRecipe,
+  EnciclopediaCraftingRecipe,
+  EnciclopediaFaccionInfo,
   EnciclopediaFaunaFloraInfo,
+  EnciclopediaHistoriaInfo,
   EnciclopediaItemInfo,
   EnciclopediaLocationInfo,
   EnciclopediaNpcInfo,
@@ -232,6 +235,22 @@ export function constructionToDetailTarget(recipe: EnciclopediaConstructionRecip
   }
 }
 
+export function craftingToDetailTarget(recipe: EnciclopediaCraftingRecipe): EnciclopediaLinkTarget {
+  const requisitos = recipe.requirements.map((r) => `${r.cantidad} de ${r.label}`).join(', ')
+  return {
+    kind: 'info',
+    icon: '🔨',
+    name: recipe.name,
+    meta: 'Objeto crafteado',
+    description: recipe.description,
+    extra: `Necesita: ${requisitos}.`,
+    imagePrompts: recipe.imagePrompts,
+    imageUrls: recipe.imageUrls,
+    entityType: 'crafteo',
+    entitySlug: recipe.key,
+  }
+}
+
 export function razaToDetailTarget(raza: EnciclopediaRazaInfo): EnciclopediaLinkTarget {
   return {
     kind: 'info',
@@ -246,6 +265,43 @@ export function razaToDetailTarget(raza: EnciclopediaRazaInfo): EnciclopediaLink
     entitySlug: raza.slug,
     variantes: raza.variantes,
     variantesSexo: raza.variantesSexo,
+  }
+}
+
+// Secciones "Facciones"/"Historia" (2026-08-06) — imagen bajo demanda igual que el resto de
+// categorías con entidad real (auditoría 2026-08-06: "revisa que todo tiene banner/icono").
+export function faccionToDetailTarget(faccion: EnciclopediaFaccionInfo): EnciclopediaLinkTarget {
+  return {
+    kind: 'info',
+    icon: '🚩',
+    name: faccion.name,
+    description: faccion.description,
+    imagePrompts: faccion.imagePrompts,
+    imageUrls: faccion.imageUrls,
+    entityType: 'faction',
+    entitySlug: faccion.slug,
+  }
+}
+
+// `unlocked` distingue "no encontrado" (la propia tarjeta ya sale bloqueada como "???", ver
+// `discovered` en EntryCardGrid) de "encontrado pero sin traducir" (la tarjeta se ve, pero el
+// texto real no ha llegado del backend — nunca viaja por la red hasta desbloquearse). Mismo
+// criterio para la imagen: `entityType`/`entitySlug` solo se rellenan si `unlocked`, así que el
+// botón de "generar imagen" del DetailModal ni siquiera aparece para una entrada sin traducir —
+// generar una escena del contenido bloqueado sería otra forma de fugarlo antes de tiempo.
+export function historiaEntryToDetailTarget(entry: EnciclopediaHistoriaInfo): EnciclopediaLinkTarget {
+  return {
+    kind: 'info',
+    icon: '📜',
+    name: entry.title,
+    meta: entry.year != null ? `Año ${entry.year}` : 'Era de las Semillas',
+    description: entry.unlocked
+      ? (entry.text ?? '')
+      : 'Escrito sin traducir — hace falta encontrar a alguien capaz de leer el idioma de las Semillas para desvelar su contenido.',
+    imagePrompts: entry.imagePrompts,
+    imageUrls: entry.imageUrls,
+    entityType: entry.unlocked ? 'historia' : undefined,
+    entitySlug: entry.unlocked ? entry.slug : undefined,
   }
 }
 

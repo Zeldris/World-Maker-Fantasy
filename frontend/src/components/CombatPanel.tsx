@@ -252,7 +252,17 @@ export function CombatPanel({
   // Resumen de combate (2026-07-30) — solo se ofrece "Saquear todo" si de verdad queda algo sin
   // saquear (INCAPACITADO o MUERTO — un enemigo decapitado se puede saquear igual); si ya se
   // registró todo uno a uno durante la pelea, el resumen solo ofrece salir.
-  const lootables = npcs.filter((n) => (n.condicion === 'INCAPACITADO' || n.condicion === 'MUERTO') && !n.yaSaqueado)
+  //
+  // Bug real (auditoría 2026-08-06): sin el filtro `enciclopedia?.npcs.some(...)`, un enemigo de
+  // FAUNA derrotado también contaba como "lootable" — pero `lootOptions` de abajo solo mira
+  // `enciclopedia.npcs` (nunca `enciclopedia.faunaFlora`, que ni siquiera tiene un campo `items`
+  // con forma de loadout: la fauna se despieza por narración, harvest.ts, un mecanismo totalmente
+  // aparte de este modal). Eso dejaba "Saquear todo" siempre visible tras derrotar fauna, abriendo
+  // un modal sin ninguna opción que marcar — y como `fullyLootedSlugs` sale de `lootOptions`, esa
+  // fauna nunca podía marcarse `yaSaqueado`, así que el botón reaparecía para siempre.
+  const lootables = npcs.filter(
+    (n) => (n.condicion === 'INCAPACITADO' || n.condicion === 'MUERTO') && !n.yaSaqueado && enciclopedia?.npcs.some((e) => e.slug === n.slug),
+  )
   const quedaAlgoPorSaquear = lootables.length > 0
 
   // Opciones del modal de saqueo (2026-07-30) — el loadout real de cada enemigo saqueable viene

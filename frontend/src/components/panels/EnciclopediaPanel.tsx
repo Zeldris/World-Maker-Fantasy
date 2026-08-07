@@ -4,7 +4,10 @@ import {
   resolveImageUrl,
   type EnciclopediaClassInfo,
   type EnciclopediaConstructionRecipe,
+  type EnciclopediaCraftingRecipe,
+  type EnciclopediaFaccionInfo,
   type EnciclopediaFaunaFloraInfo,
+  type EnciclopediaHistoriaInfo,
   type EnciclopediaItemInfo,
   type EnciclopediaLocationInfo,
   type EnciclopediaNpcInfo,
@@ -19,6 +22,7 @@ import { PanelSection } from '../PanelSection'
 import { TooltipAnchor } from '../TooltipAnchor'
 import type { DetailTarget } from '../DetailModal'
 import { beriRegions } from '../../data/map'
+import { professions } from '../../data/professions'
 import {
   ITEM_CATEGORY_LABEL,
   ITEM_CATEGORY_ORDER,
@@ -26,8 +30,11 @@ import {
   ITEM_TIPO_ORDER,
   abilityToDetailTarget,
   constructionToDetailTarget,
+  craftingToDetailTarget,
+  faccionToDetailTarget,
   faunaFloraIcon,
   faunaFloraToDetailTarget,
+  historiaEntryToDetailTarget,
   itemIcon,
   itemToDetailTarget,
   locationToDetailTarget,
@@ -38,7 +45,20 @@ import {
   yieldsSummary,
 } from '../../lib/enciclopediaTargets'
 
-type EnciclopediaCategory = 'npcs' | 'items' | 'fauna' | 'flora' | 'locations' | 'classes' | 'construction' | 'attributes' | 'razas' | 'personajes'
+type EnciclopediaCategory =
+  | 'npcs'
+  | 'items'
+  | 'fauna'
+  | 'flora'
+  | 'locations'
+  | 'classes'
+  | 'construction'
+  | 'attributes'
+  | 'razas'
+  | 'personajes'
+  | 'facciones'
+  | 'historia'
+  | 'crafteo'
 
 interface EnciclopediaPanelProps {
   worldSlug: string | null
@@ -392,8 +412,11 @@ const CATEGORY_TABS: { id: EnciclopediaCategory; label: string; icon: string }[]
   { id: 'locations', label: 'Lugares', icon: '🗺️' },
   { id: 'razas', label: 'Razas', icon: '🏛️' },
   { id: 'personajes', label: 'Personajes', icon: '🎭' },
+  { id: 'facciones', label: 'Facciones', icon: '🚩' },
+  { id: 'historia', label: 'Historia', icon: '📜' },
   { id: 'classes', label: 'Clases', icon: '🎓' },
   { id: 'construction', label: 'Construcciones', icon: '🏗️' },
+  { id: 'crafteo', label: 'Crafteo', icon: '🔨' },
   { id: 'attributes', label: 'Atributos', icon: '📊' },
 ]
 
@@ -415,6 +438,9 @@ export function EnciclopediaPanel({ worldSlug, saveId, onInsert, onDetail }: Enc
   const [personajes, setPersonajes] = useState<EnciclopediaPersonajeInfo[]>([])
   const [classes, setClasses] = useState<EnciclopediaClassInfo[]>([])
   const [constructionRecipes, setConstructionRecipes] = useState<EnciclopediaConstructionRecipe[]>([])
+  const [craftingRecipes, setCraftingRecipes] = useState<EnciclopediaCraftingRecipe[]>([])
+  const [factions, setFactions] = useState<EnciclopediaFaccionInfo[]>([])
+  const [historia, setHistoria] = useState<EnciclopediaHistoriaInfo[]>([])
   const [loading, setLoading] = useState(true)
   // Colapsables de clase (2026-07-22, petición explícita: "que cada clase sea un colapsable que al
   // pulsarlo veas el árbol de habilidades") — Set en vez de un solo string porque no hay razón
@@ -426,10 +452,16 @@ export function EnciclopediaPanel({ worldSlug, saveId, onInsert, onDetail }: Enc
   const [expandedNpcRazas, toggleNpcRaza] = useToggleSet()
   const [expandedFaunaZonas, toggleFaunaZona] = useToggleSet()
   const [expandedFloraZonas, toggleFloraZona] = useToggleSet()
+  const [expandedFaccionRazas, toggleFaccionRaza] = useToggleSet()
+  const [expandedHistoriaPeriodos, toggleHistoriaPeriodo] = useToggleSet()
   // Sub-tabs de la categoría "Atributos" (2026-07-28, petición explícita: "mete un tab para ver
   // los atributos y otro para ver el árbol de debilidades") — exclusivas entre sí, a diferencia
   // de `expandedClasses` de arriba.
   const [attributesSubTab, setAttributesSubTab] = useState<'lista' | 'debilidades'>('lista')
+  // Sub-tabs de "Historia" (2026-08-06, petición explícita: "la enciclopedia colocadas por años
+  // cronologicamente en rangos de 500 años... antes de el año 0 no hay escritos en lengua común")
+  // — mismo patrón que attributesSubTab, exclusivas entre sí.
+  const [historiaEra, setHistoriaEra] = useState<'comun' | 'semillas'>('comun')
 
   useEffect(() => {
     if (!worldSlug) return
@@ -446,6 +478,9 @@ export function EnciclopediaPanel({ worldSlug, saveId, onInsert, onDetail }: Enc
         setPersonajes(data.personajes)
         setClasses(data.classes)
         setConstructionRecipes(data.constructionRecipes)
+        setCraftingRecipes(data.craftingRecipes)
+        setFactions(data.factions)
+        setHistoria(data.historia)
       })
       .catch(() => {
         // Sin conexión al backend: la enciclopedia se queda vacía en vez de romper el panel.
@@ -490,6 +525,22 @@ export function EnciclopediaPanel({ worldSlug, saveId, onInsert, onDetail }: Enc
     ...(npcsByRaza.has(SIN_RAZA) ? [SIN_RAZA] : []),
   ]
 
+  // Facciones agrupadas por raza (2026-08-06, petición explícita: "las facciones agrupadas por
+  // raza") — mismo patrón exacto que NPCs-por-raza de arriba; `Faction.raza` nunca es null, así
+  // que no hace falta bucket "sin raza" aquí.
+  const faccionesByRaza = groupBy(factions, (f) => f.raza)
+  const orderedFaccionRazas = razas.map((r) => r.slug).filter((slug) => faccionesByRaza.has(slug))
+
+  // Historia por era + bloques de 500 años (2026-08-06, petición explícita: "la enciclopedia
+  // colocadas por años cronologicamente en rangos de 500 años cada periodo") — Era de las Semillas
+  // (mítica, antes del año 0) se queda como lista plana, demasiado dispersa e imprecisa para
+  // bloques fijos; Era Común sí se agrupa, mismo `groupBy` + `CollapsibleGroup` que fauna/flora
+  // por zona más abajo.
+  const historiaComun = historia.filter((h) => h.era === 'comun')
+  const historiaSemillas = historia.filter((h) => h.era === 'semillas')
+  const historiaByPeriodo = groupBy(historiaComun, (h) => String(Math.floor((h.year ?? 0) / 500) * 500))
+  const orderedHistoriaPeriodos = Array.from(historiaByPeriodo.keys()).sort((a, b) => Number(a) - Number(b))
+
   // Colapsables por zona de fauna/flora (2026-07-29, petición explícita: "que fauna y flora
   // tenga colapsables separándolos por zona") — mismo orden de regiones que ya usa el backend
   // (discovery.ts, REGION_CORE_NAMES); lo que no tiene zona reconocible cae en un bucket aparte.
@@ -510,6 +561,49 @@ export function EnciclopediaPanel({ worldSlug, saveId, onInsert, onDetail }: Enc
     constructionRecipes.filter((r): r is typeof constructionRecipes[number] & { raza: string } => !!r.raza),
     (r) => r.raza,
   )
+  // División por oficio (2026-08-06, sección "Crafteo") — mismo criterio que construcciones por
+  // raza (arriba): "Sin oficio" es la única común hoy (smokeMeat/fieldTorch), el resto de oficios
+  // solo se muestra si tiene alguna receta de verdad.
+  const oficioNameById = new Map(professions.map((p) => [p.id, p.name]))
+  const sinOficioCrafting = craftingRecipes.filter((r) => !r.oficio)
+  const craftingByOficio = groupBy(
+    craftingRecipes.filter((r): r is typeof craftingRecipes[number] & { oficio: string } => !!r.oficio),
+    (r) => r.oficio,
+  )
+  function renderCraftingList(recipes: EnciclopediaCraftingRecipe[]) {
+    return (
+      <div className="flex flex-col gap-2">
+        {recipes.map((recipe) => {
+          const requisitos = recipe.requirements.map((r) => `${r.cantidad} de ${r.label}`).join(', ')
+          const imageUrl = resolveImageUrl(recipe.imageUrls.thumbnail)
+          return (
+            <button
+              key={recipe.key}
+              onClick={(e) => {
+                if (e.shiftKey) {
+                  onInsert({ icon: '🔨', label: recipe.name, value: `Crafteo ${recipe.name}` })
+                } else {
+                  onDetail(craftingToDetailTarget(recipe), () => onInsert({ icon: '🔨', label: recipe.name, value: `Crafteo ${recipe.name}` }))
+                }
+              }}
+              className="tactile flex items-center gap-3 rounded-lg border border-iron-800 bg-wood-950/40 px-3.5 py-2.5 text-left transition-colors hover:border-accent2-600/40 hover:bg-accent2-500/5"
+            >
+              {imageUrl ? (
+                <img src={imageUrl} alt="" className="h-8 w-8 shrink-0 rounded object-cover object-top" />
+              ) : (
+                <span className="shrink-0 text-2xl leading-none">🔨</span>
+              )}
+              <div>
+                <p className="font-medium text-wood-100">{recipe.name}</p>
+                <p className="mt-1 text-xs leading-relaxed text-wood-400">Necesita: {requisitos}.</p>
+              </div>
+            </button>
+          )
+        })}
+      </div>
+    )
+  }
+
   function renderConstructionList(recipes: EnciclopediaConstructionRecipe[]) {
     return (
       <div className="flex flex-col gap-2">
@@ -779,6 +873,118 @@ export function EnciclopediaPanel({ worldSlug, saveId, onInsert, onDetail }: Enc
                 />
               ))}
 
+            {category === 'facciones' &&
+              (factions.length === 0 ? (
+                <PanelEmptyState icon="🚩" title="Sin facciones catalogadas" hint="Todavía no hay ninguna en este mundo." />
+              ) : (
+                <div className="flex flex-col gap-3">
+                  {orderedFaccionRazas.map((raza) => {
+                    const razaFactions = faccionesByRaza.get(raza) ?? []
+                    return (
+                      <CollapsibleGroup
+                        key={raza}
+                        title={razaNameBySlug.get(raza) ?? raza}
+                        count={razaFactions.length}
+                        expanded={expandedFaccionRazas.has(raza)}
+                        onToggle={() => toggleFaccionRaza(raza)}
+                      >
+                        <EntryCardGrid
+                          items={razaFactions}
+                          keyOf={(f) => f.slug}
+                          icon={() => '🚩'}
+                          name={(f) => f.name}
+                          tooltip={(f) => f.description}
+                          imageUrl={(f) => resolveImageUrl(f.imageUrls.thumbnail)}
+                          toDetailTarget={faccionToDetailTarget}
+                          toChip={(f) => ({ icon: '🚩', label: f.name, description: f.description })}
+                          onDetail={onDetail}
+                          onInsert={onInsert}
+                          discovered={(f) => f.discovered}
+                        />
+                      </CollapsibleGroup>
+                    )
+                  })}
+                </div>
+              ))}
+
+            {category === 'historia' && (
+              <div className="flex flex-col gap-4">
+                <div className="flex gap-1 rounded-lg border border-iron-800 bg-wood-950/40 p-1">
+                  {(
+                    [
+                      { id: 'comun', label: 'Era Común' },
+                      { id: 'semillas', label: 'Era de las Semillas' },
+                    ] as const
+                  ).map((tab) => (
+                    <button
+                      key={tab.id}
+                      onClick={() => setHistoriaEra(tab.id)}
+                      className={`tactile flex-1 rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
+                        historiaEra === tab.id ? 'bg-accent2-500/10 text-accent2-300' : 'text-wood-400 hover:text-wood-200'
+                      }`}
+                    >
+                      {tab.label}
+                    </button>
+                  ))}
+                </div>
+
+                {historiaEra === 'comun' &&
+                  (historiaComun.length === 0 ? (
+                    <PanelEmptyState icon="📜" title="Sin entradas de la Era Común" hint="Todavía no hay ninguna en este mundo." />
+                  ) : (
+                    orderedHistoriaPeriodos.map((periodo) => {
+                      const entries = historiaByPeriodo.get(periodo) ?? []
+                      return (
+                        <CollapsibleGroup
+                          key={periodo}
+                          title={`Años ${periodo}-${Number(periodo) + 500}`}
+                          count={entries.length}
+                          expanded={expandedHistoriaPeriodos.has(periodo)}
+                          onToggle={() => toggleHistoriaPeriodo(periodo)}
+                        >
+                          <EntryCardGrid
+                            items={entries}
+                            keyOf={(h) => h.slug}
+                            icon={() => '📜'}
+                            name={(h) => h.title}
+                            tooltip={(h) => (h.unlocked ? (h.text ?? '') : 'Escrito sin traducir.')}
+                            imageUrl={(h) => resolveImageUrl(h.imageUrls.thumbnail)}
+                            toDetailTarget={historiaEntryToDetailTarget}
+                            toChip={(h) => ({ icon: '📜', label: h.title })}
+                            onDetail={onDetail}
+                            onInsert={onInsert}
+                            discovered={(h) => h.discovered}
+                          />
+                        </CollapsibleGroup>
+                      )
+                    })
+                  ))}
+
+                {historiaEra === 'semillas' &&
+                  (historiaSemillas.length === 0 ? (
+                    <PanelEmptyState
+                      icon="📜"
+                      title="Sin entradas de la Era de las Semillas"
+                      hint="Un tiempo que ningún pueblo mortal puede fechar todavía no tiene ningún hallazgo registrado."
+                    />
+                  ) : (
+                    <EntryCardGrid
+                      items={historiaSemillas}
+                      keyOf={(h) => h.slug}
+                      icon={() => '📜'}
+                      name={(h) => h.title}
+                      tooltip={(h) => (h.unlocked ? (h.text ?? '') : 'Escrito sin traducir.')}
+                      imageUrl={(h) => resolveImageUrl(h.imageUrls.thumbnail)}
+                      toDetailTarget={historiaEntryToDetailTarget}
+                      toChip={(h) => ({ icon: '📜', label: h.title })}
+                      onDetail={onDetail}
+                      onInsert={onInsert}
+                      discovered={(h) => h.discovered}
+                    />
+                  ))}
+              </div>
+            )}
+
             {category === 'classes' &&
               (classes.length === 0 ? (
                 <PanelEmptyState icon="🎓" title="Sin clases catalogadas" hint="Todavía no hay ninguna en este mundo." />
@@ -872,6 +1078,24 @@ export function EnciclopediaPanel({ worldSlug, saveId, onInsert, onDetail }: Enc
                     return (
                       <PanelSection key={raza.slug} title={raza.name}>
                         {renderConstructionList(list)}
+                      </PanelSection>
+                    )
+                  })}
+                </div>
+              ))}
+
+            {category === 'crafteo' &&
+              (craftingRecipes.length === 0 ? (
+                <PanelEmptyState icon="🔨" title="Sin recetas de crafteo catalogadas" hint="Todavía no hay ninguna disponible." />
+              ) : (
+                <div className="flex flex-col gap-5">
+                  {sinOficioCrafting.length > 0 && <PanelSection title="Sin oficio">{renderCraftingList(sinOficioCrafting)}</PanelSection>}
+                  {professions.map((profession) => {
+                    const list = craftingByOficio.get(profession.id) ?? []
+                    if (list.length === 0) return null
+                    return (
+                      <PanelSection key={profession.id} title={oficioNameById.get(profession.id) ?? profession.id}>
+                        {renderCraftingList(list)}
                       </PanelSection>
                     )
                   })}
