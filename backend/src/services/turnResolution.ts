@@ -1,7 +1,7 @@
 import { narrateAction, generateNpcReply, hasFalseTravelClaim, type ClassificationResult, type NarrationResult } from './narrador.js';
 import { retrieveLore, formatLoreForPrompt, isWeaklyGrounded } from './retrieval.js';
 import { xpForRollSuccess, xpForHitos, applyXp, type ProgressionResult, type HitoTipo } from './progression.js';
-import { alivioForLevel, xpForCraftSuccess, applyProfessionXp } from './professionProgress.js';
+import { alivioForLevel, xpForCraftSuccess, professionLevelForXp } from './professionProgress.js';
 import { tickKingdom, daysCrossed, DEFAULT_KINGDOM_STATS } from './kingdomTick.js';
 import { appendSessionFacts, selectRelevantFacts } from './worldFacts.js';
 import {
@@ -339,6 +339,15 @@ export interface NarrateAndPersistResult {
   /// objetos — el inventario en pantalla se quedaba desactualizado hasta recargar la partida.
   /// Ahora el frontend puede añadirlos directamente al estado local sin otra consulta.
   newInventoryItems: NewInventoryItemInfo[];
+  /// Bug real (auditoría de código completa, 2026-08-07): crafteo/construcción SÍ borran/reducen
+  /// filas reales de InventoryItem al consumir materiales (`plan.deleteIds`/`plan.updateRemainder`
+  /// más abajo), pero `/turn/narrate` nunca lo comunicaba — el inventario en pantalla seguía
+  /// mostrando materiales ya gastados (fantasma) hasta recargar la partida entera. Mismo criterio
+  /// que `newInventoryItems`: el frontend aplica esto directo al estado local, sin otra consulta.
+  removedInventoryItemIds: string[];
+  /// Filas que NO desaparecen del todo pero cambian de nombre (p. ej. "Piedra (5)" → "Piedra (2)")
+  /// al consumirse solo una parte de una pila — mismo hueco que `removedInventoryItemIds`.
+  updatedInventoryItems: { id: string; name: string }[];
   /// Id real de la fila LogEntry de esta narración (rework 2026-07-24, persistencia de banners de
   /// entidad) — el frontend ya no usa un id inventado (`c-${Date.now()}`) para la entrada que
   /// acaba de crear, así que puede pedir luego "guarda esta imagen en esta entrada de verdad".
@@ -1942,6 +1951,8 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     finDePartida: boolean;
     justDied: boolean;
     newInventoryItems: NewInventoryItemInfo[];
+    removedInventoryItemIds: string[];
+    updatedInventoryItems: { id: string; name: string }[];
     logEntryId: string;
     newQuestObjetivos: string[];
     newQuestInfo: { title: string; objetivo: string } | null;
@@ -1965,6 +1976,10 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     }
 
     const newInventoryItems: NewInventoryItemInfo[] = [];
+    // Ver el comentario de `removedInventoryItemIds` en NarrateAndPersistResult — se rellenan en
+    // crafteo/construcción, los dos únicos caminos que de verdad borran/reducen filas existentes.
+    const removedInventoryItemIds: string[] = [];
+    const updatedInventoryItems: { id: string; name: string }[] = [];
     // Saqueo parcial: NPCs tocados este turno que se quedan CON botín pendiente (auditoría
     // "ronda larga de pruebas" 2026-08-04, hallazgo real jugando en vivo) — sin esto, `combatSlugs`
     // más abajo se queda vacío en cualquier turno de solo-saqueo (ni intercambio ni decapitar), así
@@ -2078,16 +2093,22 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
           createdItemNames.push(created.name);
           actualLootedNames.push(created.name);
         }
-        if (npc.items.length > 0) {
-          const nuevosTomados = [...new Set([...yaTomados, ...itemsToLoot.map((item) => item.name)])];
-          const todoTomado = npc.items.every((item) => nuevosTomados.includes(item.name));
-          if (!todoTomado) partiallyLootedSlugs.push(npc.slug);
-          await tx.npcState.upsert({
-            where: { saveId_npcId_scope: { saveId, npcId: npc.id, scope } },
-            create: { saveId, npcId: npc.id, scope, saqueado: todoTomado, lootedItemNames: nuevosTomados },
-            update: { saqueado: todoTomado, lootedItemNames: nuevosTomados },
-          });
-        }
+        // Bug real (auditoría de código completa, 2026-08-07): el guard `npc.items.length > 0`
+        // saltaba ESTE BLOQUE ENTERO para un NPC con loadout vacío (varios PRINCIPAL de catálogo,
+        // p.ej. Vrask Ombra/Kael Dorn/Yovenne Tal/Sella Marn, `loadout: []`) — `NpcState.saqueado`
+        // nunca llegaba a `true` para ellos por esta vía, así que "Saquear todo" los seguía
+        // ofreciendo como pendientes para siempre (el botón nunca desaparecía tras esa pelea).
+        // `npc.items.every(...)` sobre un array vacío ya es `true` por definición (nada que
+        // tomar = todo tomado), así que quitar el guard basta: se comporta exactamente igual para
+        // cualquier NPC con loadout real, y además cierra correctamente el caso vacío.
+        const nuevosTomados = [...new Set([...yaTomados, ...itemsToLoot.map((item) => item.name)])];
+        const todoTomado = npc.items.every((item) => nuevosTomados.includes(item.name));
+        if (!todoTomado) partiallyLootedSlugs.push(npc.slug);
+        await tx.npcState.upsert({
+          where: { saveId_npcId_scope: { saveId, npcId: npc.id, scope } },
+          create: { saveId, npcId: npc.id, scope, saqueado: todoTomado, lootedItemNames: nuevosTomados },
+          update: { saqueado: todoTomado, lootedItemNames: nuevosTomados },
+        });
 
         // Recompensa estática de misión al saquear (petición explícita, 2026-07-25): si el NPC
         // saqueado es el objetivo de una misión ACTIVA con XP de recompensa definida, se concede
@@ -2284,19 +2305,29 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     const unlockedProfessionAbilities: { oficio: string; nivel: number; ability: StartingAbility }[] = [];
     async function awardProfessionXp(oficio: string | undefined, tier: number | undefined): Promise<void> {
       if (!oficio) return;
-      const existing = await tx.professionProgress.findUnique({ where: { saveId_professionId: { saveId, professionId: oficio } } });
-      // 0 (no 1) a propósito: a diferencia de `applyProfessionXp` (que trata "nunca practicado"
-      // como nivel base 1 para el cálculo de XP), aquí necesitamos distinguir "nunca practicado"
-      // de "ya en nivel 1" para no dar por desbloqueadas de golpe las habilidades de nivel 1 de
-      // un oficio que el personaje nunca ha tocado.
-      const previousLevel = existing?.nivel ?? 0;
-      const result = applyProfessionXp(existing?.xp ?? 0, existing?.nivel ?? 1, xpForCraftSuccess(tier));
-      await tx.professionProgress.upsert({
+      const xpDelta = xpForCraftSuccess(tier);
+      // Auditoría 2026-08-07 (bug real, mismo patrón que population.ts/pendingAttributePoints ya
+      // fijado en este archivo): la versión anterior leía `existing` con `findUnique` y luego
+      // escribía un `nivel`/`xp` ABSOLUTO calculado en JS — dos turnos casi simultáneos otorgando
+      // XP del mismo oficio (doble clic, dos pestañas, mismo vector ya documentado en otros sitios
+      // de este archivo) podían leer el mismo valor obsoleto y pisarse: se perdía XP en silencio y,
+      // peor con el desbloqueo de habilidades de oficio nuevo, se podía duplicar la propia
+      // habilidad si ambos turnos cruzaban el mismo nivel a la vez. `{ increment: xpDelta }` es
+      // atómico de verdad en Postgres — nunca pierde ni duplica, sea cual sea el orden real de los
+      // dos turnos. `nivel: 0` como base de una fila nueva es a propósito (nunca se lee así fuera
+      // de esta función: se corrige más abajo, dentro de la MISMA transacción, antes de que nada
+      // pueda leer el estado intermedio).
+      const afterIncrement = await tx.professionProgress.upsert({
         where: { saveId_professionId: { saveId, professionId: oficio } },
-        create: { saveId, professionId: oficio, nivel: result.newLevel, xp: result.newXp },
-        update: { nivel: result.newLevel, xp: result.newXp },
+        create: { saveId, professionId: oficio, nivel: 0, xp: xpDelta },
+        update: { xp: { increment: xpDelta } },
       });
-      for (let lvl = previousLevel + 1; lvl <= result.newLevel; lvl++) {
+      const previousLevel = afterIncrement.nivel;
+      const newLevel = professionLevelForXp(afterIncrement.xp);
+      if (newLevel > previousLevel) {
+        await tx.professionProgress.update({ where: { saveId_professionId: { saveId, professionId: oficio } }, data: { nivel: newLevel } });
+      }
+      for (let lvl = previousLevel + 1; lvl <= newLevel; lvl++) {
         for (const ability of professionAbilityUnlocksFor(oficio, lvl)) {
           unlockedProfessionAbilities.push({ oficio, nivel: lvl, ability });
         }
@@ -2329,14 +2360,17 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
       for (const plan of plans) {
         if (plan.deleteIds.length > 0) {
           await tx.inventoryItem.deleteMany({ where: { id: { in: plan.deleteIds } } });
+          removedInventoryItemIds.push(...plan.deleteIds);
         }
         if (plan.updateRemainder) {
           const row = freshInventoryRows.find((r) => r.id === plan.updateRemainder!.id);
           if (row) {
+            const newName = `${baseNameOf(row.name)} (${plan.updateRemainder.newQuantity})`;
             await tx.inventoryItem.update({
               where: { id: plan.updateRemainder.id },
-              data: { name: `${baseNameOf(row.name)} (${plan.updateRemainder.newQuantity})` },
+              data: { name: newName },
             });
+            updatedInventoryItems.push({ id: plan.updateRemainder.id, name: newName });
           }
         }
       }
@@ -2402,14 +2436,17 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
       for (const plan of buildRecipeConsumptionPlans!) {
         if (plan.deleteIds.length > 0) {
           await tx.inventoryItem.deleteMany({ where: { id: { in: plan.deleteIds } } });
+          removedInventoryItemIds.push(...plan.deleteIds);
         }
         if (plan.updateRemainder) {
           const row = freshInventoryRows.find((r) => r.id === plan.updateRemainder!.id);
           if (row) {
+            const newName = `${baseNameOf(row.name)} (${plan.updateRemainder.newQuantity})`;
             await tx.inventoryItem.update({
               where: { id: plan.updateRemainder.id },
-              data: { name: `${baseNameOf(row.name)} (${plan.updateRemainder.newQuantity})` },
+              data: { name: newName },
             });
+            updatedInventoryItems.push({ id: plan.updateRemainder.id, name: newName });
           }
         }
       }
@@ -3041,6 +3078,8 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
       finDePartida: finDePartidaResult,
       justDied: proposedCondicion === 'MUERTO',
       newInventoryItems,
+      removedInventoryItemIds,
+      updatedInventoryItems,
       logEntryId: mainLogEntry.id,
       newQuestObjetivos,
       newQuestInfo,
@@ -3073,6 +3112,8 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     finDePartida,
     justDied,
     newInventoryItems,
+    removedInventoryItemIds,
+    updatedInventoryItems,
     logEntryId,
     newQuestObjetivos,
     newQuestInfo,
@@ -3397,6 +3438,8 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     finDePartida,
     justDied,
     newInventoryItems,
+    removedInventoryItemIds,
+    updatedInventoryItems,
     logEntryId,
     quests,
     newQuestInfo,

@@ -6,6 +6,7 @@ import { coreRegionOf } from '../services/discovery.js';
 import { classAbilityUnlocksForClase } from '../services/classAbilities.js';
 import { CONSTRUCTION_RECIPES } from '../services/construction.js';
 import { CRAFTING_RECIPES } from '../services/crafting.js';
+import { allProfessionAbilityUnlocks } from '../services/professionAbilities.js';
 import { slugify } from '../lib/slugify.js';
 import { generateImagePrompt, type ImagePromptEntityType, type ImagePromptSizeProfile } from '../services/imagePromptGenerator.js';
 import { loreContextFor } from '../services/imagePromptContext.js';
@@ -305,6 +306,12 @@ function buildCraftingRecipesSection(ctx: EnciclopediaBuildContext) {
 /// `Location` — una sola fuente de verdad ahora. Incluye `LocationLink` (con `riesgo`) para que el
 /// mapa dibuje aristas reales sin repetir esa tabla también en el frontend.
 export async function worldRoutes(app: FastifyInstance) {
+  // Rediseño de profesiones (2026-08-07): roster COMPLETO de recetas de oficio (desbloqueadas o
+  // no) — estático, independiente de mundo/partida, así que no vive bajo /world/:slug. Habilidades
+  // > Profesiones lo usa para mostrar TODAS las recetas de una profesión creadora siempre, no solo
+  // las ya desbloqueadas (bloqueadas con el motivo si el nivel de oficio no llega todavía).
+  app.get('/profession-recipes', async () => allProfessionAbilityUnlocks());
+
   app.get<{ Params: { slug: string } }>('/world/:slug/locations', async (request, reply) => {
     const world = await prisma.world.findUnique({ where: { slug: request.params.slug } });
     if (!world) {

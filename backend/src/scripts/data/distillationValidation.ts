@@ -2,7 +2,16 @@
 /// compare-narrador-models.ts (Fase 3, modelo local fine-tuneado) — mismos criterios de aceptación
 /// en ambos sitios, para que "pasar el filtro" signifique lo mismo al generar datos que al evaluar
 /// el modelo entrenado con ellos.
-import { hasAnachronism, hasEnglishLeak, hasFalseCombatHit, hasResurrectedDeadNpc, hasFalseTravelClaim } from '../../services/narrador.js';
+import {
+  hasAnachronism,
+  hasEnglishLeak,
+  hasFalseCombatHit,
+  hasResurrectedDeadNpc,
+  hasFalseTravelClaim,
+  hasFalseItemUse,
+  hasPrematureCombatResolution,
+  isTooSimilarToLast,
+} from '../../services/narrador.js';
 import type { NarrationResult } from '../../services/narrador.js';
 import type { DistillationScenario } from './distillationScenarios.js';
 
@@ -29,15 +38,20 @@ export function validateSchema(parsed: NarrationResult, scenario: DistillationSc
 }
 
 /// Detectores reales de narrador.ts — las mismas funciones que protegen producción, reutilizadas
-/// tal cual para puntuar al profesor o al modelo fine-tuneado. `combatNotYetResolved`/
-/// `possiblyFalseItemUseNames` no están modelados en el banco de escenarios actual (ningún seed
-/// los necesita todavía), así que no se comprueban aquí.
+/// tal cual para puntuar al profesor o al modelo fine-tuneado. `hasFalseItemUse`/
+/// `hasPrematureCombatResolution`/`isTooSimilarToLast` se sumaron aquí el 2026-08-07 (barrido de
+/// ampliación del dataset) — hasta entonces protegían producción sin que el pipeline de destilación
+/// los ejercitara nunca, cero cobertura de entrenamiento para esas 3 clases de bug ya cazadas
+/// jugando en vivo.
 export function runDetectors(parsed: NarrationResult, scenario: DistillationScenario): string | null {
   if (hasAnachronism(parsed.narration)) return 'anacronismo detectado (hasAnachronism)';
   if (hasEnglishLeak(parsed.narration)) return 'fuga de inglés detectada (hasEnglishLeak)';
   if (hasFalseCombatHit(parsed.narration, scenario.ctx.combatBothMissed)) return 'golpe narrado sin conexión mecánica (hasFalseCombatHit)';
   if (hasResurrectedDeadNpc(parsed.narration, scenario.ctx.possiblyResurrectedNpcNames)) return 'NPC muerto narrado como activo (hasResurrectedDeadNpc)';
   if (hasFalseTravelClaim(parsed, scenario.ctx.possiblyFalseTravelDestinationNames)) return 'llegada a destino ambiguo sin resolver (hasFalseTravelClaim)';
+  if (hasFalseItemUse(parsed.narration, scenario.ctx.possiblyFalseItemUseNames)) return 'uso de objeto narrado sin respaldo mecánico (hasFalseItemUse)';
+  if (hasPrematureCombatResolution(parsed.narration, scenario.ctx.combatNotYetResolved)) return 'combate resuelto sin intercambio mecánico (hasPrematureCombatResolution)';
+  if (isTooSimilarToLast(parsed.narration, scenario.ctx.lastNarrationText)) return 'narración demasiado parecida a la anterior (isTooSimilarToLast)';
   return null;
 }
 

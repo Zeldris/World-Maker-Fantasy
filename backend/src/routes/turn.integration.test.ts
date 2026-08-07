@@ -63,6 +63,28 @@ function lastNdjsonLine(payload: string): Record<string, unknown> {
   return JSON.parse(lines[lines.length - 1]);
 }
 
+/// Candado de turno (auditoría de código completa, 2026-08-07, turnLock.ts): desde que existe,
+/// dos "mismo turno" casi simultáneos para la MISMA partida ya no se resuelven los dos en paralelo
+/// — el segundo se rechaza con 409 antes de tocar narración/Ollama, ni siquiera llega a emitir
+/// NDJSON. Las pruebas de "condición de carrera" de aquí abajo verificaban antes que un guard MÁS
+/// PROFUNDO (dentro de la transacción) evitaba duplicar efectos aunque los dos llegaran a narrar;
+/// ahora el candado corta antes de eso, así que se adapta la comprobación: sigue habiendo
+/// exactamente un ganador (con su narración de éxito) y un perdedor, pero el perdedor ahora es un
+/// 409 seco, nunca una narración de "ya se lo llevaron" (esa rama de código sigue viva y sigue
+/// protegiendo OTRO vector — worldTick.ts resolviendo un tránsito diferido en paralelo con una
+/// acción en vivo pasa por un candado compartido, pero un reintento de red que sortee este candado
+/// por microsegundos de diferencia real seguiría cayendo en el guard interno).
+function splitLockWinnerAndLoser(responses: { statusCode: number; payload: string }[]): {
+  ganador: Record<string, unknown>;
+  perdedorStatusCode: number;
+} {
+  const locked = responses.filter((r) => r.statusCode === 409);
+  const ok = responses.filter((r) => r.statusCode !== 409);
+  expect(locked).toHaveLength(1);
+  expect(ok).toHaveLength(1);
+  return { ganador: lastNdjsonLine(ok[0].payload), perdedorStatusCode: locked[0].statusCode };
+}
+
 const ATTRS = { fuerza: 15, destreza: 10, constitucion: 12, inteligencia: 8, voluntad: 8, carisma: 8, arcano: 4 };
 
 describe('Misión de apertura: combate contra el Orco Enfurecido (integración real, solo LLM mockeado)', () => {
@@ -915,17 +937,13 @@ describe('Construcción: condición de carrera en turnos concurrentes (auditorí
 
     expect(await prisma.building.count({ where: { saveId, recipeKey: 'ayuntamiento' } })).toBe(1);
     expect(await prisma.territory.count({ where: { saveId } })).toBe(1);
-    // Bug real (auditoría 2026-08-04, cierre): el texto sintético "termina de construir X" se
-    // decide y se transmite ANTES de saber si la transacción va a ganar la carrera — sin corregir
-    // el `narration.narration` final, el turno perdedor podía persistir/devolver una narración que
-    // afirma un éxito que la DB no respalda. Exactamente un turno dice "termina de construir" y el
-    // otro admite que ya no tenía los materiales.
-    const narrations = [resA, resB].map((r) => (lastNdjsonLine(r.payload).narration as { narration: string }).narration);
-    expect(narrations.filter((n) => n.includes('termina de construir'))).toHaveLength(1);
-    expect(narrations.filter((n) => n.includes('ya no dispone de lo necesario'))).toHaveLength(1);
+    // Con el candado de turno (turnLock.ts, 2026-08-07) el segundo "fundo un ayuntamiento" ya ni
+    // llega a narrar — 409 seco, antes de tocar materiales/Ollama. El ganador sí termina de
+    // construir de verdad.
+    const { ganador } = splitLockWinnerAndLoser([resA, resB]);
+    expect((ganador.narration as { narration: string }).narration).toMatch(/termina de construir/);
     // Los materiales se consumieron una sola vez — ninguna fila de piedra/leña suelta ni
-    // duplicada (la segunda pasada, si llega a intentarlo, ve `planRecipeConsumption` devolver
-    // null contra el inventario ya vacío y se salta la construcción entera).
+    // duplicada.
     expect(await prisma.inventoryItem.count({ where: { saveId } })).toBe(0);
   }, 20_000);
 });
@@ -1134,15 +1152,10 @@ describe('Despiece: condición de carrera en turnos concurrentes (auditoría 202
     });
     expect(state.saqueado).toBe(true);
 
-    // Narración honesta también para quien pierde la carrera (auditoría 2026-08-06): antes de
-    // este arreglo, los dos turnos afirmaban por igual haber conseguido el botín, aunque solo uno
-    // de verdad se lo llevó — el perdedor debe decir que ya no queda nada, nunca listar objetos.
-    const narrations = [res1, res2].map((r) => (lastNdjsonLine(r.payload).narration as { narration: string }).narration);
-    const ganador = narrations.filter((n) => n.includes('consigue:'));
-    const perdedor = narrations.filter((n) => !n.includes('consigue:'));
-    expect(ganador).toHaveLength(1);
-    expect(perdedor).toHaveLength(1);
-    expect(perdedor[0]).toMatch(/ya se llevó/);
+    // Con el candado de turno (turnLock.ts, 2026-08-07) el segundo "despiezo" ya ni llega a
+    // narrar — 409 seco. El ganador sí consigue el botín de verdad.
+    const { ganador } = splitLockWinnerAndLoser([res1, res2]);
+    expect((ganador.narration as { narration: string }).narration).toMatch(/consigue:/);
   }, 20_000);
 });
 
@@ -1200,14 +1213,10 @@ describe('Saqueo: condición de carrera en turnos concurrentes (auditoría 2026-
     const state = await prisma.npcState.findUniqueOrThrow({ where: { saveId_npcId_scope: { saveId, npcId, scope: '' } } });
     expect(state.saqueado).toBe(true);
 
-    // Narración honesta también para quien pierde la carrera (auditoría 2026-08-06) — el perdedor
-    // no debe afirmar "se hace con lo siguiente" si de verdad no se llevó nada.
-    const narrations = [res1, res2].map((r) => (lastNdjsonLine(r.payload).narration as { narration: string }).narration);
-    const ganador = narrations.filter((n) => n.includes('se hace con lo siguiente'));
-    const perdedor = narrations.filter((n) => !n.includes('se hace con lo siguiente'));
-    expect(ganador).toHaveLength(1);
-    expect(perdedor).toHaveLength(1);
-    expect(perdedor[0]).toMatch(/adelantado/);
+    // Con el candado de turno (turnLock.ts, 2026-08-07) el segundo "registro el cuerpo" ya ni
+    // llega a narrar — 409 seco. El ganador sí se hace con el botín de verdad.
+    const { ganador } = splitLockWinnerAndLoser([res1, res2]);
+    expect((ganador.narration as { narration: string }).narration).toMatch(/se hace con lo siguiente/);
   }, 20_000);
 });
 

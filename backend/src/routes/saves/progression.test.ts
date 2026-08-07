@@ -8,8 +8,6 @@ import Fastify from 'fastify';
 const findUniqueSave = vi.fn();
 const updateSave = vi.fn();
 const queryRawSave = vi.fn();
-const loadSessionFacts = vi.fn();
-const appendSessionFacts = vi.fn();
 
 vi.mock('../../lib/prisma.js', () => ({
   prisma: {
@@ -28,11 +26,6 @@ vi.mock('../../lib/prisma.js', () => ({
   },
 }));
 
-vi.mock('../../services/worldFacts.js', () => ({
-  loadSessionFacts: (...args: unknown[]) => loadSessionFacts(...args),
-  appendSessionFacts: (...args: unknown[]) => appendSessionFacts(...args),
-}));
-
 const { progressionRoutes } = await import('./progression.js');
 
 async function buildApp() {
@@ -48,8 +41,6 @@ describe('POST /saves/:id/attribute-points', () => {
     findUniqueSave.mockReset();
     updateSave.mockReset();
     queryRawSave.mockReset();
-    loadSessionFacts.mockReset().mockResolvedValue([]);
-    appendSessionFacts.mockReset().mockResolvedValue(undefined);
   });
 
   it('rechaza un atributo no válido en runtime, ANTES de tocar la base de datos (bug real: antes esto colaba NaN)', async () => {
@@ -148,45 +139,5 @@ describe('POST /saves/:id/attribute-points', () => {
     const res = await app.inject({ method: 'POST', url: '/saves/save1/attribute-points', payload: { attribute: 'fuerza' } });
 
     expect(res.statusCode).toBe(404);
-  });
-});
-
-describe('POST /saves/:id/profesion', () => {
-  beforeEach(() => {
-    findUniqueSave.mockReset();
-    updateSave.mockReset();
-    loadSessionFacts.mockReset().mockResolvedValue([]);
-    appendSessionFacts.mockReset().mockResolvedValue(undefined);
-  });
-
-  it('rechaza profession vacía o ausente', async () => {
-    const app = await buildApp();
-
-    const res = await app.inject({ method: 'POST', url: '/saves/save1/profesion', payload: { profession: '   ' } });
-
-    expect(res.statusCode).toBe(400);
-    expect(updateSave).not.toHaveBeenCalled();
-  });
-
-  it('guarda la profesión y añade un hecho de sesión', async () => {
-    findUniqueSave.mockResolvedValue({ id: 'save1', characterName: 'Gorhorn' });
-    updateSave.mockResolvedValue({});
-    const app = await buildApp();
-
-    const res = await app.inject({ method: 'POST', url: '/saves/save1/profesion', payload: { profession: 'herrero' } });
-
-    expect(res.statusCode).toBe(200);
-    expect(updateSave).toHaveBeenCalledWith({ where: { id: 'save1' }, data: { profession: 'herrero' } });
-    expect(appendSessionFacts).toHaveBeenCalledWith('save1', [], ['Gorhorn ejerce como herrero.']);
-  });
-
-  it('404 si la partida no existe', async () => {
-    findUniqueSave.mockResolvedValue(null);
-    const app = await buildApp();
-
-    const res = await app.inject({ method: 'POST', url: '/saves/save1/profesion', payload: { profession: 'herrero' } });
-
-    expect(res.statusCode).toBe(404);
-    expect(updateSave).not.toHaveBeenCalled();
   });
 });

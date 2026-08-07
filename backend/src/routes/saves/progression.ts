@@ -1,13 +1,17 @@
 import type { FastifyInstance } from 'fastify';
 import { prisma } from '../../lib/prisma.js';
 import { MAX_ATTRIBUTE } from '../../services/progression.js';
-import { loadSessionFacts, appendSessionFacts } from '../../services/worldFacts.js';
 import type { AttributeBlock, Attribute } from '../../services/dice.js';
 
 /// Progresión "manual" del personaje (deuda técnica 2026-07-30, split de saves.ts): repartir un
-/// punto de atributo ganado por nivel, y elegir profesión — las dos son decisiones puntuales de
-/// la jugadora sobre su propio personaje, sin relación con el ciclo de vida de la partida ni con
-/// el combate.
+/// punto de atributo ganado por nivel — decisión puntual de la jugadora sobre su propio personaje,
+/// sin relación con el ciclo de vida de la partida ni con el combate.
+///
+/// La ruta de "elegir profesión" (`POST /saves/:id/profesion`) se quitó en el rediseño de
+/// profesiones (2026-08-07, petición explícita: "eso de adoptar profesiones no es lo que quiero")
+/// — no enganchaba con ninguna mecánica real (`ProfessionProgress` ya es independiente de cuál
+/// estuviera "activa"). Sustituido por oficios que se aprenden de verdad (nivel ≥ 1 en
+/// `ProfessionProgress`), sembrados al crear personaje o, más adelante, enseñados por un NPC.
 export async function progressionRoutes(app: FastifyInstance) {
   app.post<{ Params: { id: string }; Body: { attribute: Attribute } }>(
     '/saves/:id/attribute-points',
@@ -66,26 +70,4 @@ export async function progressionRoutes(app: FastifyInstance) {
       return { attributes: outcome.attributes, pendingAttributePoints: outcome.pendingAttributePoints };
     },
   );
-
-  app.post<{ Params: { id: string }; Body: { profession: string } }>('/saves/:id/profesion', async (request, reply) => {
-    const { profession } = request.body;
-    if (!profession?.trim()) {
-      return reply.status(400).send({ error: 'Falta el campo: profession' });
-    }
-    const save = await prisma.save.findUnique({ where: { id: request.params.id } });
-    if (!save) {
-      return reply.status(404).send({ error: 'Partida no encontrada' });
-    }
-
-    const fact = `${save.characterName} ejerce como ${profession}.`;
-
-    await prisma.save.update({ where: { id: save.id }, data: { profession } });
-    // Fuera de la transacción a propósito (embebe vía Ollama, ver comentario de appendSessionFacts
-    // en turnResolution.ts) — no hay riesgo real de dejar `profession` sin su hecho asociado: en el
-    // peor caso (fallo justo aquí) el hecho se puede volver a añadir, no rompe ninguna invariante.
-    const sessionFacts = await loadSessionFacts(save.id);
-    await appendSessionFacts(save.id, sessionFacts, [fact]);
-
-    return { profession };
-  });
 }

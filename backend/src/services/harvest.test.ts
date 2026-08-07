@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { matchHarvestSource, matchesVerbForMetodo } from './harvest.js';
+import { matchHarvestSource, matchesVerbForMetodo, detectHarvestSourcesInScene } from './harvest.js';
 
 describe('matchHarvestSource', () => {
   it('coincide con un alias exacto', () => {
@@ -45,5 +45,24 @@ describe('matchesVerbForMetodo', () => {
 
   it('PASIVO nunca matchea ningún verbo (solo sale de discovery.ts, nunca de una fuente nombrada)', () => {
     expect(matchesVerbForMetodo('Recojo, talo, pico y despiezo todo a la vez', 'PASIVO')).toBe(false);
+  });
+});
+
+// Rediseño de profesiones (2026-08-07): "ya localizado en la zona" para el pop-up de una
+// habilidad de recolección — busca alias de fuentes candidatas en los hechos de sesión recientes.
+describe('detectHarvestSourcesInScene', () => {
+  it('encuentra una fuente mencionada en los hechos recientes', () => {
+    const facts = ['Gorhorn llega a Los Pilares Rotos.', 'Ve vetas de hierro visibles entre las grietas de la roca erosionada.'];
+    expect(detectHarvestSourcesInScene(facts, ['veta-hierro-pilares-rotos', 'matorral-de-cuerno'])).toEqual(['veta-hierro-pilares-rotos']);
+  });
+
+  it('devuelve vacío si ninguna fuente candidata se ha mencionado todavía', () => {
+    const facts = ['Gorhorn camina por la llanura al anochecer.'];
+    expect(detectHarvestSourcesInScene(facts, ['veta-hierro-pilares-rotos', 'matorral-de-cuerno'])).toEqual([]);
+  });
+
+  it('solo busca entre los slugs candidatos dados, ignora menciones de otras fuentes', () => {
+    const facts = ['Gorhorn ve un matorral de cuerno cerca del camino.'];
+    expect(detectHarvestSourcesInScene(facts, ['veta-hierro-pilares-rotos'])).toEqual([]);
   });
 });

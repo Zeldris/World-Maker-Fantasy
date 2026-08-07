@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import Fastify from 'fastify';
+import { Prisma } from '@prisma/client';
 
 /// Cobertura nueva (2026-08-04, docs/17-reglas-construcciones-reino.md): el popup de fundación de
 /// reino manda aquí el formulario. Regla real a proteger: Gorhorn tiene el nombre de reino
@@ -209,6 +210,21 @@ describe('POST /saves/:id/reino/fundar', () => {
       expect(createFaction).toHaveBeenCalledWith(
         expect.objectContaining({ data: expect.objectContaining({ description: 'Facción fundada por Otro personaje.' }) }),
       );
+    });
+
+    it('condición de carrera (auditoría 2026-08-07): dos fundaciones casi simultáneas — la segunda choca contra el slug único y da 400, no 500', async () => {
+      findUniqueSave.mockResolvedValue({ id: 'save1', characterName: 'Otro personaje', kingdomName: null, worldId: 'w1', raza: 'orcos' });
+      findFirstBuilding.mockResolvedValue({ id: 'b1', territoryId: null });
+      updateSave.mockResolvedValue({});
+      createFaction.mockRejectedValue(
+        new Prisma.PrismaClientKnownRequestError('Unique constraint failed', { code: 'P2002', clientVersion: '0.0.0' }),
+      );
+      const app = await buildApp();
+
+      const res = await app.inject({ method: 'POST', url: '/saves/save1/reino/fundar', payload: { kingdomName: 'Reino de la Estepa' } });
+
+      expect(res.statusCode).toBe(400);
+      expect(JSON.parse(res.body).error).toMatch(/Ya has fundado tu reino/);
     });
 
     it('el slug de la Faction incluye el saveId — dos partidas con el mismo nombre de reino no chocan', async () => {

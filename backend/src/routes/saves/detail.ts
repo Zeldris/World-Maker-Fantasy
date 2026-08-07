@@ -251,7 +251,6 @@ export async function detailRoutes(app: FastifyInstance) {
         dualWield: a.dualWield,
       })),
       habilidadSlots: maxCombatAbilitiesFor(save.level),
-      profession: save.profession,
       professionProgress: save.professionProgress.map((p) => ({ professionId: p.professionId, nivel: p.nivel, xp: p.xp })),
       kingdomStats: save.kingdomStats
         ? {

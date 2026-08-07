@@ -73,6 +73,14 @@ export function effectiveDefense(equippedItems: EquippedStatBonus[]): number {
   return equippedItems.reduce((sum, item) => sum + (asStatBonusMap(item.statBonuses).defensa ?? 0), 0);
 }
 
+/// Bonus de slots de inventario (rediseño de profesiones, 2026-08-07: "cosméticos que podrán
+/// tener bonus del tipo +5 slots en el inventario") — mismo patrón exacto que `effectiveDefense`,
+/// clave `'inventorySlots'` del mismo StatBonusMap en vez de `'defensa'`. Ver `inventoryCapacityFor`
+/// (inventoryCapacity.ts) para cómo se combina con el aporte de Fuerza/Constitución.
+export function effectiveInventorySlotsBonus(equippedItems: EquippedStatBonus[]): number {
+  return equippedItems.reduce((sum, item) => sum + (asStatBonusMap(item.statBonuses).inventorySlots ?? 0), 0);
+}
+
 export interface EquippedWeaponInfo {
   name: string;
   slot: string | null;

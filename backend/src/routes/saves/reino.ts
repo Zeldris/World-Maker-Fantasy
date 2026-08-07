@@ -1,4 +1,5 @@
 import type { FastifyInstance } from 'fastify';
+import { Prisma } from '@prisma/client';
 import { prisma } from '../../lib/prisma.js';
 import { slugify } from '../../lib/slugify.js';
 
@@ -52,25 +53,38 @@ export async function reinoRoutes(app: FastifyInstance) {
       const trimmedDescription = description?.trim();
       const factionSlug = `${slugify(finalKingdomName)}-${save.id}`;
 
-      await prisma.$transaction(async (tx) => {
-        await tx.save.update({ where: { id: save.id }, data: { kingdomName: finalKingdomName } });
-        if (trimmedDescription && ayuntamiento.territoryId) {
-          await tx.territory.update({ where: { id: ayuntamiento.territoryId }, data: { description: trimmedDescription } });
+      try {
+        await prisma.$transaction(async (tx) => {
+          await tx.save.update({ where: { id: save.id }, data: { kingdomName: finalKingdomName } });
+          if (trimmedDescription && ayuntamiento.territoryId) {
+            await tx.territory.update({ where: { id: ayuntamiento.territoryId }, data: { description: trimmedDescription } });
+          }
+          const faction = await tx.faction.create({
+            data: {
+              worldId: save.worldId,
+              saveId: save.id,
+              slug: factionSlug,
+              name: finalKingdomName,
+              raza: save.raza!,
+              description: trimmedDescription || `Facción fundada por ${save.characterName}.`,
+            },
+          });
+          await tx.discoveredEntity.create({
+            data: { saveId: save.id, entityType: 'faction', entitySlug: faction.slug },
+          });
+        });
+      } catch (err) {
+        // Condición de carrera (auditoría de código completa, 2026-08-07): el guard de
+        // `save.kingdomName` de arriba se lee ANTES de esta transacción — dos "fundar reino" casi
+        // simultáneos (doble clic) pasan ambos el guard con `kingdomName` todavía null, y el
+        // segundo choca aquí contra el `@@unique` de `Faction.slug` (determinista, mismo saveId).
+        // Sin este catch, ese choque se propagaba como 500 genérico en vez del mismo 400 claro que
+        // ya da el guard normal.
+        if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
+          return reply.status(400).send({ error: 'Ya has fundado tu reino' });
         }
-        const faction = await tx.faction.create({
-          data: {
-            worldId: save.worldId,
-            saveId: save.id,
-            slug: factionSlug,
-            name: finalKingdomName,
-            raza: save.raza!,
-            description: trimmedDescription || `Facción fundada por ${save.characterName}.`,
-          },
-        });
-        await tx.discoveredEntity.create({
-          data: { saveId: save.id, entityType: 'faction', entitySlug: faction.slug },
-        });
-      });
+        throw err;
+      }
 
       return { kingdomName: finalKingdomName };
     },

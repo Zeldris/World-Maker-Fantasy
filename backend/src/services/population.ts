@@ -17,6 +17,10 @@ export const UMBRAL_MINIMO_REPRODUCCION = 4;
 export const GROWTH_RATE_PER_DAY: Record<PopulationTargetType, number> = {
   FAUNA: 0.02,
   RAZA: 0.003,
+  // Recursos de recolección (rediseño de profesiones, 2026-08-07) — entre fauna (se reproduce) y
+  // raza (crece muy despacio): una veta/matorral no se "reproduce", pero sí se repone con el
+  // tiempo (vetas nuevas expuestas por erosión, rebrote de matorral) — cifra de partida, ajustable.
+  RECURSO: 0.01,
 };
 
 /// Sufijo de `targetSlug` para los 3 clanes orcos regionales (worldPopulation.ts) — biología

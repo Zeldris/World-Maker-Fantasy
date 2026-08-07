@@ -1,8 +1,10 @@
 /// Niveles de oficio (sesión de diseño 2026-07-23) — eje independiente del nivel de personaje
 /// (progression.ts): cada profesión (id de professions.ts) tiene su propia XP/nivel, que sube
 /// solo craftereando/construyendo con ese oficio. Determinista, sin IA, mismo estilo puro que
-/// progression.ts. `Save.profession` (el string activo) no cambia de comportamiento — esto
-/// recuerda el nivel de CADA oficio practicado alguna vez, aunque cambies de profesión activa.
+/// progression.ts. Esto recuerda el nivel de CADA oficio practicado alguna vez, independiente de
+/// los demás (rediseño de profesiones, 2026-08-07: ya no hay una única "profesión activa" —
+/// `Save.profession` y el botón "Adoptar" se quitaron por completo, no enganchaban con ninguna
+/// mecánica real).
 
 /// Tabla de niveles mucho más corta que la de personaje (20 niveles D&D) — un oficio no es una
 /// segunda vida de aventurero, es una progresión de artesano: 5 niveles bastan para que "alivio de

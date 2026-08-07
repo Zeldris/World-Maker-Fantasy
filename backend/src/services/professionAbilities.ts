@@ -15,9 +15,12 @@ import type { StartingAbility } from './startingAbilities.js';
 /// Las recetas SIN oficio (ahumar carne, antorcha de campo — "al alcance de cualquiera, sin
 /// necesitar oficio") quedan fuera a propósito: no hay ningún nivel que alcanzar, nada que
 /// desbloquear.
-interface ProfessionAbilityUnlock {
+export interface ProfessionAbilityUnlock {
   oficio: string;
   nivel: number;
+  /// `recipe.key` (crafting.ts) — para enlazar desde la ficha de la habilidad a su entrada real en
+  /// la Enciclopedia (sección Crafteo, `crafteo:${recipeKey}`, rediseño de profesiones 2026-08-07).
+  recipeKey: string;
   ability: StartingAbility;
 }
 
@@ -26,6 +29,7 @@ function abilityFor(recipe: CraftingRecipe, name: string, icon: string, promptTe
   return {
     oficio: recipe.oficio,
     nivel: recipe.tier,
+    recipeKey: recipe.key,
     ability: { name, icon, description: recipe.resultDescription, promptText, category: 'profesion' },
   };
 }

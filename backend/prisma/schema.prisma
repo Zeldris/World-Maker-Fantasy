@@ -128,10 +128,6 @@ model Save {
   /// Nombre del reino/dominio si el jugador lo bautiza — null = aún sin reino (docs/10 § 5.1).
   kingdomName String?
 
-  /// Profesión adoptada del catálogo curado (docs/09-panel-personaje.md § 2) — contexto
-  /// narrativo, sin bonificadores mecánicos (misma filosofía que el inventario, decisión 5).
-  profession String?
-
   /// Slug de BERIG_RAZAS (berigLore.ts) — igual que `Npc.raza`, string libre sin FK (contenido
   /// de diseño estático, no una tabla). 2026-07-29, sistema de habilidades por arma/raza: hasta
   /// ahora el personaje jugable no tenía raza estructurada en ningún sitio — su habilidad racial
@@ -1237,6 +1233,11 @@ model HarvestYield {
 enum PopulationTargetType {
   RAZA
   FAUNA
+  /// Rediseño de profesiones (2026-08-07) — fuentes de recolección NO-fauna (MINERIA/TALA/
+  /// EXTRACCION de HarvestYield: vetas de mineral, matorrales, etc.). `targetSlug` =
+  /// `HarvestYield.sourceSlug`. Permite saber determinísticamente qué hay disponible en la región
+  /// del jugador al pulsar "Explorar" en una habilidad de recolección, sin pasar por el Narrador.
+  RECURSO
 }
 
 /// Dos ejes DELIBERADAMENTE separados (decisión de diseño explícita de la usuaria, 2026-07-29):

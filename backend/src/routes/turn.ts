@@ -29,6 +29,7 @@ import { peekCachedClassify, setCachedClassify, consumeCachedClassify } from '..
 import { normalizeSecondaryAttributes } from '../services/secondaryAttributes.js';
 import { characterSummaryFor } from '../services/characterSummary.js';
 import { loadSessionFacts } from '../services/worldFacts.js';
+import { claimTurnInFlight, releaseTurnInFlight } from '../services/turnLock.js';
 
 interface ClassifyBody {
   saveId: string;
@@ -597,6 +598,20 @@ export async function turnRoutes(app: FastifyInstance) {
       return reply.status(404).send({ error: 'Partida no encontrada' });
     }
 
+    // Candado de turno (auditoría de código completa, 2026-08-07, ver turnLock.ts) — ANTES de
+    // cualquier `await` de aquí en adelante, para que dos peticiones casi simultáneas no puedan
+    // pasar ambas este chequeo. Mismo código 409 que `busyUntil` en /turn/classify, distinto
+    // motivo (aquí es "ya hay una narración en curso para esta partida", no "personaje ocupado
+    // tiempo de ficción").
+    if (!claimTurnInFlight(saveId)) {
+      // `locked: true` (no solo el 409) para que el frontend lo distinga del resto de 409 de este
+      // proyecto (`busyUntil`/`endedAt`) — a diferencia de esos, aquí NO hay nada resolviéndose en
+      // segundo plano que valga la pena sondear: este turno se rechazó de raíz, nunca llegó a
+      // narrar. Tratarlo con el mismo mecanismo de reconexión que un stream cortado a mitad haría
+      // que el frontend esperase minutos un resultado que nunca va a llegar.
+      return reply.status(409).send({ error: 'Ya hay un turno resolviéndose para esta partida — espera a que termine.', locked: true });
+    }
+
     const sessionFacts = await loadSessionFacts(save.id);
     const timeLabel = save.worldState?.fictionalDateLabel ?? 'Día 1, mañana';
     const attributes = effectiveAttributes(save.attributes as AttributeBlock, save.inventoryItems);
@@ -657,6 +672,8 @@ export async function turnRoutes(app: FastifyInstance) {
         finDePartida,
         justDied,
         newInventoryItems,
+        removedInventoryItemIds,
+        updatedInventoryItems,
         logEntryId,
         quests,
         newQuestInfo,
@@ -726,6 +743,8 @@ export async function turnRoutes(app: FastifyInstance) {
         finDePartida,
         justDied,
         newInventoryItems,
+        removedInventoryItemIds,
+        updatedInventoryItems,
         logEntryId,
         quests,
         newQuestInfo,
@@ -751,6 +770,7 @@ export async function turnRoutes(app: FastifyInstance) {
       request.log.error(err);
       writeLine({ type: 'error', message: 'Error narrando el turno' });
     } finally {
+      releaseTurnInFlight(saveId);
       reply.raw.end();
     }
   });

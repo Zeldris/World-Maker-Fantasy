@@ -6,6 +6,9 @@ import { startingAbilitiesFor } from '../../services/startingAbilities.js';
 import { GENERIC_COMBAT_ABILITIES } from '../../services/genericCombatAbilities.js';
 import { classAbilityUnlocksFor } from '../../services/classAbilities.js';
 import { startingInventoryFor } from '../../services/startingInventory.js';
+import { startingProfessionsFor } from '../../services/startingProfessions.js';
+import { professionAbilityUnlocksFor } from '../../services/professionAbilities.js';
+import { harvestAbilityUnlocksFor } from '../../services/harvestAbilities.js';
 import { razaFor } from '../../services/berigLore.js';
 import { syncDynamicCombatAbilities, resolveEquippedWeaponSlots } from '../../services/dynamicAbilities.js';
 import { startingSecondaryAttributesFor } from '../../services/startingSecondaryAttributes.js';
@@ -124,10 +127,20 @@ export async function creationRoutes(app: FastifyInstance) {
               // isGeneric (2026-07-31): solo las 2 genéricas de aquí (Defenderse/Esquivar) lo
               // llevan — separadas en su propio `.map` para no marcar como genéricas ni las
               // habilidades "de serie" del personaje ni las de clase.
+              // Mismo bug de "nivel 1 al crear" (comentario de arriba) también le toca a las
+              // habilidades de oficio (2026-08-07, rediseño de profesiones): Gorhorn empieza con
+              // varios oficios YA a nivel 1 (startingProfessionsFor) — sin conceder aquí sus
+              // desbloqueos de nivel 1, nunca los recibiría (professionAbilityUnlocksFor/
+              // harvestAbilityUnlocksFor solo se llaman desde el bucle de SUBIDA de nivel de
+              // turnResolution.ts, que arranca en nivel+1).
               create: [
                 ...startingAbilitiesFor(characterName).map((a) => ({ ...a, isStarting: true })),
                 ...GENERIC_COMBAT_ABILITIES.map((a) => ({ ...a, isStarting: true, isGeneric: true })),
                 ...classAbilityUnlocksFor(characterName, 1).map((a) => ({ ...a, isStarting: true })),
+                ...startingProfessionsFor(characterName).flatMap((oficio) => [
+                  ...professionAbilityUnlocksFor(oficio, 1).map((a) => ({ ...a, isStarting: true })),
+                  ...harvestAbilityUnlocksFor(oficio, 1).map((a) => ({ ...a, isStarting: true })),
+                ]),
               ],
             },
             inventoryItems: {
@@ -135,6 +148,9 @@ export async function creationRoutes(app: FastifyInstance) {
             },
             quests: {
               create: startingQuestsData,
+            },
+            professionProgress: {
+              create: startingProfessionsFor(characterName).map((professionId) => ({ professionId })),
             },
           },
           include: { inventoryItems: true },
@@ -271,6 +287,10 @@ export async function creationRoutes(app: FastifyInstance) {
             ...startingAbilitiesFor(save.characterName).map((a) => ({ ...a, saveId: save.id, isStarting: true })),
             ...GENERIC_COMBAT_ABILITIES.map((a) => ({ ...a, saveId: save.id, isStarting: true, isGeneric: true })),
             ...classAbilityUnlocksFor(save.characterName, 1).map((a) => ({ ...a, saveId: save.id, isStarting: true })),
+            ...startingProfessionsFor(save.characterName).flatMap((oficio) => [
+              ...professionAbilityUnlocksFor(oficio, 1).map((a) => ({ ...a, saveId: save.id, isStarting: true })),
+              ...harvestAbilityUnlocksFor(oficio, 1).map((a) => ({ ...a, saveId: save.id, isStarting: true })),
+            ]),
           ],
         });
         const restartedInventory = await tx.inventoryItem.createManyAndReturn({
@@ -285,6 +305,9 @@ export async function creationRoutes(app: FastifyInstance) {
         await tx.quest.createMany({
           data: startingQuestsData.map((q) => ({ ...q, saveId: save.id })),
         });
+        await tx.professionProgress.createMany({
+          data: startingProfessionsFor(save.characterName).map((professionId) => ({ professionId, saveId: save.id })),
+        });
         await tx.save.update({
           where: { id: save.id },
           data: {
@@ -293,7 +316,6 @@ export async function creationRoutes(app: FastifyInstance) {
             xp: 0,
             pendingAttributePoints: 0,
             kingdomName: null,
-            profession: null,
             currentLocationId: initialLocation?.id ?? null,
             // docs/14-combate-y-muerte.md § 4.4: reiniciar borra el fin de partida y el contador
             // de muertes — la dificultad elegida al crear la partida NO se resetea (es una

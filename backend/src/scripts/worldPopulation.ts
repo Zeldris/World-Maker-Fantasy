@@ -196,4 +196,33 @@ export const worldPopulations: WorldPopulationInput[] = [
     poblacionMax: 100,
     distribucion: { 'Llanuras del Viento Rojo': 1 },
   },
+
+  // --- Recursos de recolección (rediseño de profesiones, 2026-08-07) — MINERIA/TALA de
+  // HarvestYield, núcleo jugable (Llanuras). Desuello (CAZA) no necesita fila propia: ya usa la
+  // población FAUNA de arriba. EXTRACCION (hierbas/flores) queda fuera por ahora — ninguna
+  // profesión nueva las necesita todavía.
+  {
+    targetType: 'RECURSO',
+    targetSlug: 'roca-pilares-rotos',
+    label: 'Roca de Los Pilares Rotos (piedra)',
+    poblacion: 500,
+    poblacionMax: 600,
+    distribucion: { 'Llanuras del Viento Rojo': 1 },
+  },
+  {
+    targetType: 'RECURSO',
+    targetSlug: 'veta-hierro-pilares-rotos',
+    label: 'Veta de hierro de Los Pilares Rotos',
+    poblacion: 150,
+    poblacionMax: 200,
+    distribucion: { 'Llanuras del Viento Rojo': 1 },
+  },
+  {
+    targetType: 'RECURSO',
+    targetSlug: 'matorral-de-cuerno',
+    label: 'Matorral de Cuerno (madera)',
+    poblacion: 400,
+    poblacionMax: 500,
+    distribucion: { 'Llanuras del Viento Rojo': 1 },
+  },
 ];

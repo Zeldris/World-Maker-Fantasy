@@ -19,6 +19,7 @@ vi.mock('../lib/prisma.js', () => ({
 }));
 
 const { turnRoutes } = await import('./turn.js');
+const { claimTurnInFlight, releaseTurnInFlight } = await import('../services/turnLock.js');
 
 async function buildApp() {
   const app = Fastify();
@@ -72,6 +73,7 @@ describe('POST /turn/classify', () => {
 describe('POST /turn/narrate', () => {
   beforeEach(() => {
     findUniqueSave.mockReset();
+    releaseTurnInFlight('save1'); // el candado es un Set en memoria, module-level — se limpia entre tests
   });
 
   it('400 si falta classification', async () => {
@@ -89,6 +91,38 @@ describe('POST /turn/narrate', () => {
       url: '/turn/narrate',
       payload: { saveId: 'no-existe', action: 'miro alrededor', classification: { banda: 'corta' } },
     });
+    expect(res.statusCode).toBe(404);
+  });
+
+  it('409 si ya hay un turno resolviéndose para esta partida (auditoría de código completa, 2026-08-07)', async () => {
+    // Bug real que esto cierra: sin este candado, dos peticiones casi simultáneas (doble clic,
+    // reintento de red) para la MISMA partida podían resolverse en paralelo y pisarse la escritura
+    // final del Save (xp/nivel/condición física/ubicación) — ver turnLock.ts.
+    findUniqueSave.mockResolvedValue({ id: 'save1', worldId: 'w1', world: {}, worldState: {}, inventoryItems: [] });
+    claimTurnInFlight('save1');
+    const app = await buildApp();
+
+    const res = await app.inject({
+      method: 'POST',
+      url: '/turn/narrate',
+      payload: { saveId: 'save1', action: 'miro alrededor', classification: { banda: 'corta' } },
+    });
+
+    expect(res.statusCode).toBe(409);
+    expect(res.json().locked).toBe(true);
+  });
+
+  it('un segundo turno para OTRA partida no se ve afectado por el candado de la primera', async () => {
+    claimTurnInFlight('save1');
+    findUniqueSave.mockResolvedValue(null); // llega hasta el 404 real — no se corta en el candado
+    const app = await buildApp();
+
+    const res = await app.inject({
+      method: 'POST',
+      url: '/turn/narrate',
+      payload: { saveId: 'save2', action: 'miro alrededor', classification: { banda: 'corta' } },
+    });
+
     expect(res.statusCode).toBe(404);
   });
 });

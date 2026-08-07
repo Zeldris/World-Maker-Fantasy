@@ -6,6 +6,7 @@ import { effectiveAttributes, effectiveSecondaryAttributes, effectiveDefense, eq
 import { normalizeSecondaryAttributes } from '../services/secondaryAttributes.js';
 import { characterSummaryFor } from '../services/characterSummary.js';
 import { loadSessionFacts } from '../services/worldFacts.js';
+import { claimTurnInFlight, releaseTurnInFlight } from '../services/turnLock.js';
 import { growAllPopulations } from '../services/population.js';
 import type { ClassificationResult } from '../services/narrador.js';
 import type { RollResult, AttributeBlock } from '../services/dice.js';
@@ -83,6 +84,14 @@ export async function resolveDueTransits(): Promise<void> {
     });
     if (claim.count === 0) continue;
 
+    // Candado de turno (auditoría de código completa, 2026-08-07, ver turnLock.ts) — este mismo
+    // `saveId` puede tener un turno EN VIVO resolviéndose ahora mismo vía POST /turn/narrate
+    // (turn.ts), que comparte este mismo candado. Sin esto, un tránsito diferido y una acción
+    // manual del jugador podían llamar a `narrateAndPersistTurn` en paralelo para la misma
+    // partida — la resolución exacta que este candado existe para evitar. El tránsito se queda
+    // reclamado (busyUntil ya empujado arriba) para el siguiente tick, no se pierde.
+    if (!claimTurnInFlight(transit.save.id)) continue;
+
     try {
       const { action, classification, roll, travel, travelInterruptionNpcId, travelInterruptionOriginalDestinationName } =
         transit.zoneContext as unknown as TransitZoneContext;
@@ -153,6 +162,8 @@ export async function resolveDueTransits(): Promise<void> {
       }
       // Un tránsito que falla al resolver se reintenta en el siguiente tick — no se borra.
       console.error(`[worldTick] error resolviendo tránsito ${transit.id}:`, err);
+    } finally {
+      releaseTurnInFlight(transit.save.id);
     }
   }
 }

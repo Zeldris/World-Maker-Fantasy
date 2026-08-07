@@ -47,6 +47,20 @@ export function matchHarvestSource(action: string): string | undefined {
   return undefined;
 }
 
+/// Rediseño de profesiones (2026-08-07): "ya localizado en la zona" para el pop-up de una
+/// habilidad de recolección (Minar/Talar/...) — mismo espíritu que `detectNpcsInScene`
+/// (npcScene.ts), pero sobre fuentes de recolección: busca alias de cada `sourceSlug` candidato
+/// mencionados en los hechos de sesión recientes de la partida. Puro, sin BD (mismo criterio que
+/// `matchHarvestSource`) — el caller decide qué `candidateSlugs` tienen sentido (p.ej. las fuentes
+/// MINERIA con población real > 0 en la región actual, ver /saves/:id/recolectar).
+export function detectHarvestSourcesInScene(sessionFacts: string[], candidateSlugs: string[]): string[] {
+  const normalizedFacts = normalizeText(sessionFacts.join(' \n '));
+  return candidateSlugs.filter((slug) => {
+    const aliases = harvestSourceAliases[slug] ?? [];
+    return aliases.some((alias) => normalizedFacts.includes(normalizeText(alias)));
+  });
+}
+
 export interface HarvestYieldEntry {
   itemName: string;
   cantidad: number;
