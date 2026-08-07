@@ -182,6 +182,20 @@ export function DetailModal({ target, onClose, onUnequip, onEquip, onSaveAbility
             <h2 className="font-serif text-lg text-wood-100">{target.ability.name}</h2>
             <p className="text-sm leading-relaxed text-wood-300">{target.ability.description || 'Sin descripción.'}</p>
             <p className="rounded-lg border border-iron-700 bg-wood-950/40 px-3 py-2 text-xs italic text-wood-400">"{target.ability.promptText}"</p>
+            {target.ability.recipeKey &&
+              (() => {
+                const recipeTarget = enciclopediaIndex.bySlugKey.get(`crafteo:${target.ability.recipeKey}`)
+                return (
+                  recipeTarget && (
+                    <button
+                      onClick={() => onEntityDetail?.(recipeTarget)}
+                      className="tactile self-start rounded-lg border border-iron-700 px-3 py-1.5 text-xs text-wood-300 transition-colors hover:border-accent-600/60 hover:text-accent-300"
+                    >
+                      ⓘ Ver receta en la Enciclopedia
+                    </button>
+                  )
+                )
+              })()}
             {target.ability.isStarting || target.ability.isDynamic ? (
               <p className="text-2xs italic text-wood-500">
                 {target.ability.isDynamic

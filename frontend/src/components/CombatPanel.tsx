@@ -674,7 +674,12 @@ export function CombatPanel({
             const itemNames = [...new Set(selected.map((o) => o.itemName))]
             // Saqueo parcial (2026-07-31, "si no saqueas todo el botón sigue") — un NPC solo
             // cuenta como saqueado del todo si TODAS sus opciones (no solo alguna) están marcadas.
-            const npcSlugs = [...new Set(lootOptions.map((o) => o.npcSlug))]
+            // De `lootables`, NO de `lootOptions` (auditoría 2026-08-07, bug real: un PRINCIPAL
+            // con loadout vacío en catálogo — Vrask Ombra, Kael Dorn... — no aporta NINGUNA opción
+            // a `lootOptions`, así que nunca aparecía aquí y "Saquear todo" lo seguía ofreciendo
+            // como pendiente para siempre, aunque no hubiera nada que marcar). `.every()` sobre un
+            // array vacío de opciones ya da `true` — se cuenta como saqueado del todo sin más.
+            const npcSlugs = lootables.map((n) => n.slug)
             const fullyLootedSlugs = npcSlugs.filter((slug) => lootOptions.filter((o) => o.npcSlug === slug).every((o) => selectedIds.includes(o.id)))
             // Bug real (2026-08-01, "saqueé 2 de 3 y me volvía a listar los 3"): el backend no
             // siempre manda `combateIniciado` de vuelta en un turno de saqueo (depende de que el

@@ -1,5 +1,7 @@
 import { useState } from 'react'
-import type { SavedActionCategory, SavedActionInfo } from '../../types'
+import type { ProfessionProgressInfo, ProfessionRecipeInfo, SavedActionCategory, SavedActionInfo } from '../../types'
+import { professions } from '../../data/professions'
+import { professionSpan, MAX_PROFESSION_LEVEL } from '../../lib/professionLevels'
 import { PanelEmptyState } from '../PanelEmptyState'
 import { PanelSection } from '../PanelSection'
 import { IconCard } from '../IconCard'
@@ -8,12 +10,37 @@ import { AbilityForm } from '../AbilityForm'
 interface HabilidadesPanelProps {
   savedActions: SavedActionInfo[]
   combatSlots: number
+  professionProgress: ProfessionProgressInfo[]
+  professionRecipes: ProfessionRecipeInfo[]
   onUse: (ability: SavedActionInfo) => void
   onCreate: (params: { name: string; promptText: string; icon: string; description: string; category: SavedActionCategory }) => Promise<void>
   onDetail: (ability: SavedActionInfo) => void
 }
 
-export function HabilidadesPanel({ savedActions, combatSlots, onUse, onCreate, onDetail }: HabilidadesPanelProps) {
+/// Objeto de habilidad "de previsualización" para una receta todavía bloqueada — no existe como
+/// SavedAction real en BD (nunca se desbloqueó), así que no tiene id real; sirve solo para poder
+/// abrir su ficha de solo lectura (rediseño de profesiones, 2026-08-07: "onDetail sigue
+/// funcionando aunque esté bloqueada"). isStarting:true fuerza la rama "no editable" en DetailModal.
+function previewAbilityFor(recipe: ProfessionRecipeInfo): SavedActionInfo {
+  return {
+    id: `preview:${recipe.recipeKey}`,
+    name: recipe.ability.name,
+    promptText: recipe.ability.promptText,
+    icon: recipe.ability.icon,
+    description: recipe.ability.description,
+    isStarting: true,
+    isDynamic: false,
+    category: recipe.ability.category,
+    preferredAttribute: null,
+    energyCost: 0,
+    energyRegen: 0,
+    isGeneric: false,
+    dualWield: false,
+    recipeKey: recipe.recipeKey,
+  }
+}
+
+export function HabilidadesPanel({ savedActions, combatSlots, professionProgress, professionRecipes, onUse, onCreate, onDetail }: HabilidadesPanelProps) {
   // Generales primero (2026-08-07, reordenado junto con la pestaña nueva de Profesiones) — el
   // tab por defecto sigue la misma pestaña, para no abrir en una que no sea la resaltada visualmente.
   const [tab, setTab] = useState<SavedActionCategory>('general')
@@ -30,6 +57,17 @@ export function HabilidadesPanel({ savedActions, combatSlots, onUse, onCreate, o
   // por raza/arma/clase, así que no cuentan contra el cupo. Antes se usaba `energyCost > 0` para
   // esto (dejó de servir en cuanto Ataque Básico pasó a costar 5, 2026-07-31) — ahora `isGeneric`.
   const combatUsed = savedActions.filter((a) => a.category === 'combate' && !a.isGeneric).length
+
+  // Rediseño de profesiones (2026-08-07): profesiones creadoras que el jugador practica de verdad
+  // (fila en professionProgress, nivel ≥ 1 — sin fila = nunca aprendida). Cada una muestra su
+  // barra + TODAS sus recetas (roster estático professionRecipes), bloqueadas o no según el nivel.
+  const progressByOficio = new Map(professionProgress.map((p) => [p.professionId, p]))
+  const creacionProfessions = professions.filter((p) => p.category === 'creacion' && progressByOficio.has(p.id))
+  // Habilidades de oficio ya desbloqueadas que NO pertenecen a ninguna profesión creadora (p.ej.
+  // "Preparar antídoto" de sanador, que no tiene categoría en este rediseño) — se siguen mostrando,
+  // en un bloque aparte más simple, para no dejarlas invisibles.
+  const coveredNames = new Set(professionRecipes.filter((r) => creacionProfessions.some((p) => p.id === r.oficio)).map((r) => r.ability.name))
+  const otherProfessionAbilities = inTab.filter((a) => !coveredNames.has(a.name))
 
   return (
     <div className="flex flex-col gap-5">
@@ -92,27 +130,84 @@ export function HabilidadesPanel({ savedActions, combatSlots, onUse, onCreate, o
             onCancel={() => setShowCreateForm(false)}
           />
         </PanelSection>
+      ) : tab === 'profesion' ? (
+        creacionProfessions.length === 0 && otherProfessionAbilities.length === 0 ? (
+          <PanelEmptyState
+            icon="🛠️"
+            title="Sin oficios todavía"
+            hint="Crafteando o construyendo con un oficio empieza a subir su nivel de verdad."
+          />
+        ) : (
+          <div className="space-y-5">
+            {creacionProfessions.map((profession) => {
+              const progress = progressByOficio.get(profession.id)!
+              const { current, span } = professionSpan(progress.nivel, progress.xp)
+              const percent = span > 0 ? Math.min(100, (current / span) * 100) : 100
+              const recipes = professionRecipes.filter((r) => r.oficio === profession.id).sort((a, b) => a.nivel - b.nivel)
+              return (
+                <div key={profession.id}>
+                  <div className="mb-1 flex items-center justify-between text-xs">
+                    <span className="font-medium text-wood-100">{profession.name}</span>
+                    <span className="font-mono tabular-nums text-wood-500">
+                      {progress.nivel >= MAX_PROFESSION_LEVEL ? `Nivel ${progress.nivel} (máximo)` : `Nivel ${progress.nivel} — ${current}/${span} XP`}
+                    </span>
+                  </div>
+                  <div className="mb-2 h-1 overflow-hidden rounded-full bg-iron-800">
+                    <div
+                      className="h-full rounded-full bg-gradient-to-r from-accent-600 to-accent-400 transition-[width] duration-500"
+                      style={{ width: `${percent}%` }}
+                    />
+                  </div>
+                  <p className="mb-2 text-2xs leading-relaxed text-wood-400">{profession.description}</p>
+                  {recipes.length === 0 ? (
+                    <p className="text-2xs italic text-wood-600">Todavía sin recetas propias.</p>
+                  ) : (
+                    <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+                      {recipes.map((recipe) => {
+                        const unlocked = progress.nivel >= recipe.nivel
+                        const realAbility = unlocked ? savedActions.find((a) => a.name === recipe.ability.name) : undefined
+                        return (
+                          <IconCard
+                            key={recipe.recipeKey}
+                            icon={recipe.ability.icon}
+                            name={recipe.ability.name}
+                            tooltip={recipe.ability.description}
+                            onUse={() => (realAbility ? onUse(realAbility) : undefined)}
+                            onDetail={() => onDetail(realAbility ?? previewAbilityFor(recipe))}
+                            locked={unlocked ? undefined : { reason: `Necesitas nivel ${recipe.nivel} de ${profession.name}` }}
+                          />
+                        )
+                      })}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+            {otherProfessionAbilities.length > 0 && (
+              <div>
+                <p className="mb-1 text-2xs font-semibold uppercase tracking-[0.1em] text-wood-500">Otras habilidades de oficio</p>
+                <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+                  {otherProfessionAbilities.map((a) => (
+                    <IconCard key={a.id} icon={a.icon} name={a.name} tooltip={a.description} onUse={() => onUse(a)} onDetail={() => onDetail(a)} />
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )
       ) : (
         <>
           <p className="text-2xs text-wood-400">
             {tab === 'combate'
               ? `Habilidades activas: ${combatUsed} / ${combatSlots} (2 raciales + 1-2 de arma equipada + 4 de clase) — solo consulta, para atacar usa el panel de Combate durante un enfrentamiento.`
-              : tab === 'profesion'
-                ? 'Se desbloquean solas al subir de nivel un oficio crafteando o construyendo.'
-                : 'Sin límite de huecos.'}
+              : 'Sin límite de huecos.'}
           </p>
 
           {inTab.length === 0 ? (
             <PanelEmptyState
-              icon={tab === 'combate' ? '⚔️' : tab === 'profesion' ? '🛠️' : '✨'}
-              title={tab === 'combate' ? 'Sin habilidades de combate todavía' : tab === 'profesion' ? 'Sin habilidades de oficio todavía' : 'Sin habilidades generales todavía'}
-              hint={
-                tab === 'combate'
-                  ? 'Se conceden solas según tu raza, arma equipada y clase.'
-                  : tab === 'profesion'
-                    ? 'Sube de nivel un oficio crafteando o construyendo para desbloquear la primera.'
-                    : 'Pulsa "+ Crear nueva" para guardar tu primera habilidad general.'
-              }
+              icon={tab === 'combate' ? '⚔️' : '✨'}
+              title={tab === 'combate' ? 'Sin habilidades de combate todavía' : 'Sin habilidades generales todavía'}
+              hint={tab === 'combate' ? 'Se conceden solas según tu raza, arma equipada y clase.' : 'Pulsa "+ Crear nueva" para guardar tu primera habilidad general.'}
             />
           ) : tab === 'combate' ? (
             // Rediseño "tope de 10" (2026-07-29, "UI reflejando el reparto"), extendido 2026-07-31

@@ -15,7 +15,9 @@ import type {
   KingdomStatsInfo,
   LogEntry,
   NpcInSceneInfo,
+  HarvestSourceCandidate,
   ProfessionProgressInfo,
+  ProfessionRecipeInfo,
   ProgressionResult,
   QuestInfo,
   RollInfo,
@@ -100,6 +102,16 @@ export interface EndedGameError {
   endedAt: string
 }
 
+/// Candado de turno (auditoría de código completa, 2026-08-07, ver turnLock.ts en el backend) —
+/// distinto de `BusyError`: aquí no hay ningún `busyUntil` que contar ni nada resolviéndose en
+/// segundo plano que valga la pena sondear — el turno se rechazó de raíz, nunca llegó a narrar.
+/// Tratarlo con el mecanismo de reconexión (pensado para un stream cortado a mitad) haría esperar
+/// minutos un resultado que nunca va a llegar.
+export interface TurnLockedError {
+  status: 409
+  locked: true
+}
+
 export async function requestTurnClassify(params: {
   saveId: string
   action: string
@@ -156,6 +168,14 @@ export interface NarrateResponse {
   // Loot/despiece/producción ya materializados en la partida (2026-07-19) — antes el inventario en
   // pantalla se quedaba desactualizado hasta recargar, porque el backend nunca los devolvía aquí.
   newInventoryItems: InventoryItemInfo[]
+  /// Bug real (auditoría de código completa, 2026-08-07): crafteo/construcción SÍ borran/reducen
+  /// filas reales de inventario al consumir materiales, pero el backend nunca lo comunicaba aquí —
+  /// el inventario en pantalla seguía mostrando materiales ya gastados (fantasma) hasta recargar
+  /// la partida entera. Mismo criterio que `newInventoryItems`.
+  removedInventoryItemIds: string[]
+  /// Filas que no desaparecen del todo pero cambian de nombre al consumirse solo una parte de una
+  /// pila (p. ej. "Piedra (5)" → "Piedra (2)") — mismo hueco que `removedInventoryItemIds`.
+  updatedInventoryItems: { id: string; name: string }[]
   /// Rework 2026-07-24 (persistencia de banners de entidad) — id real de la fila LogEntry de esta
   /// narración, para poder guardarle luego qué entidad se mostró como imagen (setLogEntryBanner).
   logEntryId: string
@@ -242,6 +262,13 @@ export async function requestTurnNarrate(
     body: JSON.stringify(params),
   })
 
+  if (response.status === 409) {
+    const body = await response.json()
+    if (body.locked) {
+      const err: TurnLockedError = { status: 409, locked: true }
+      throw err
+    }
+  }
   if (!response.ok) {
     throw new Error(`El backend respondió ${response.status}`)
   }
@@ -357,7 +384,6 @@ export interface SaveDetail {
   transit: { activity: string; busyUntil: string; duracionMinutos?: number | null } | null
   savedActions: SavedActionInfo[]
   habilidadSlots: number
-  profession: string | null
   professionProgress: ProfessionProgressInfo[]
   kingdomStats: KingdomStatsInfo | null
   currentLocation: CurrentLocationInfo | null
@@ -516,13 +542,34 @@ export async function getDiario(saveId: string): Promise<DiarioEntry[]> {
   return fetchJson(`${API_URL}/saves/${saveId}/diario`)
 }
 
-export async function setProfession(id: string, profession: string): Promise<{ profession: string }> {
-  return fetchJson(`${API_URL}/saves/${id}/profesion`, {
+/// Roster estático de recetas de oficio (rediseño de profesiones, 2026-08-07) — independiente de
+/// partida, se pide una vez al cargar Habilidades > Profesiones.
+export async function getProfessionRecipes(): Promise<ProfessionRecipeInfo[]> {
+  return fetchJson(`${API_URL}/profession-recipes`)
+}
+
+/// Pop-up de recolección (rediseño de profesiones, 2026-08-07) — "ya localizado en la zona".
+export async function getRecolectarLocalizado(saveId: string, oficio: string): Promise<{ sources: HarvestSourceCandidate[]; puedeExplorar: boolean }> {
+  return fetchJson(`${API_URL}/saves/${saveId}/recolectar/${oficio}`)
+}
+
+/// Botón "Explorar" del pop-up — determinista, sin gastar turno.
+export async function explorarRecolectar(saveId: string, oficio: string): Promise<{ sources: HarvestSourceCandidate[] }> {
+  return fetchJson(`${API_URL}/saves/${saveId}/recolectar/${oficio}/explorar`, { method: 'POST' })
+}
+
+/// Confirmar selección del pop-up de recolección (cantidades parciales, no todo-o-nada).
+export async function confirmarRecoleccion(
+  saveId: string,
+  selections: { sourceSlug: string; itemSlug: string; cantidad: number }[],
+): Promise<{ items: InventoryItemInfo[] }> {
+  return fetchJson(`${API_URL}/saves/${saveId}/recolectar/confirmar`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ profession }),
+    body: JSON.stringify({ selections }),
   })
 }
+
 
 /// Fundación de reino (2026-08-04) — el popup que se abre al terminar de construir el Ayuntamiento
 /// (tier 1) manda aquí el formulario. Bloqueo de nombre para Gorhorn verificado en el backend, no

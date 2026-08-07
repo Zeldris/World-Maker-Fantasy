@@ -30,6 +30,32 @@ export interface ProfessionProgressInfo {
   xp: number
 }
 
+/// Fuente recolectable "ya localizada" o recién "explorada" (rediseño de profesiones, 2026-08-07)
+/// — GET/POST /saves/:id/recolectar/:oficio[/explorar]. `disponible` es la población real del
+/// mundo para esta fuente ahora mismo (tope real, no decorativo).
+export interface HarvestSourceCandidate {
+  sourceSlug: string
+  sourceName: string
+  disponible: number
+  yields: { itemSlug: string; itemName: string; cantidadMaxima: number }[]
+}
+
+/// Roster ESTÁTICO de recetas de oficio (rediseño de profesiones, 2026-08-07) — GET /profession-recipes,
+/// independiente de partida. Habilidades > Profesiones lo cruza con `ProfessionProgressInfo` para
+/// decidir qué tarjetas van bloqueadas.
+export interface ProfessionRecipeInfo {
+  oficio: string
+  nivel: number
+  recipeKey: string
+  ability: {
+    name: string
+    icon: string
+    description: string
+    promptText: string
+    category: SavedActionCategory
+  }
+}
+
 /// Economía de Reino (sesión de diseño 2026-07-23) — null hasta que se funda el primer Territory.
 export interface KingdomStatsInfo {
   poblacion: number
@@ -188,8 +214,9 @@ export interface InventoryItemInfo {
   slot: EquipSlot | null
   /// Mapa de bonificadores (2026-08-03, sustituye al par statBonusAttribute/statBonusAmount — un
   /// solo par no dejaba a un objeto sumar, p.ej., fuerza Y defensa a la vez). 'defensa' incluido
-  /// junto a los 7 atributos jugables, mismo criterio que el backend (equipment.ts).
-  statBonuses: Partial<Record<Attribute | 'defensa', number>> | null
+  /// junto a los 7 atributos jugables, mismo criterio que el backend (equipment.ts). 'inventorySlots'
+  /// (2026-08-07, rediseño de profesiones) — bonus de cosméticos a la capacidad de inventario.
+  statBonuses: Partial<Record<Attribute | 'defensa' | 'inventorySlots', number>> | null
   /// Sesión de diseño 2026-07-23: slug de ItemCatalog de origen (null en objetos narrativos
   /// sueltos), nivel de rareza/dificultad (1-5, 1 = común), y mínimos de atributo para equiparlo
   /// — el backend ya rechaza el PATCH de equipar si no se cumplen (ver lib/api.ts, setItemSlot).
@@ -314,6 +341,11 @@ export interface SavedActionInfo {
   /// actualiza al cambiar de equipo o subir de nivel en vez de ser fija de por vida.
   isDynamic: boolean
   category: SavedActionCategory
+  /// SOLO frontend, nunca viene del backend (rediseño de profesiones, 2026-08-07) — resuelto en
+  /// GameView.tsx cruzando esta habilidad contra ProfessionRecipeInfo[] (GET /profession-recipes)
+  /// por `name` cuando category === 'profesion', para poder enlazar a su entrada de Enciclopedia
+  /// (`crafteo:${recipeKey}`) desde DetailModal.tsx. Undefined si no hay receta que enlazar.
+  recipeKey?: string
   /// Rediseño del turno de combate (2026-07-28) — "tipo" para la rueda de debilidades (backend)
   /// y el color del chip (UI). Null en habilidades 'general' o en partidas de antes de este campo.
   preferredAttribute: Attribute | null

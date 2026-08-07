@@ -27,6 +27,8 @@ import { CombatPanel } from '../components/CombatPanel'
 import { combatDifficultyFor } from '../lib/combatDifficulty'
 import { HealthBar } from '../components/HealthBar'
 import { KingdomFoundingModal } from '../components/KingdomFoundingModal'
+import { HarvestSelectionModal } from '../components/HarvestSelectionModal'
+import { inventoryCapacityFor } from '../lib/inventoryCapacity'
 import {
   requestTurnClassify,
   requestTurnNarrate,
@@ -41,17 +43,17 @@ import {
   createSavedAction,
   deleteSavedAction,
   updateSavedAction,
-  setProfession,
   fundarReino,
   setItemSlot,
   setLogEntryBanner,
   resolveImageUrl,
+  getProfessionRecipes,
   type SaveDetail,
   type ClassifyResponse,
 } from '../lib/api'
 import { characterWaitingFlavor, combatWaitingFlavor, worldWaitingFlavor, useRotatingFlavor } from '../lib/waitingFlavor'
 import { pickMentionedEntityBanner, mentionedEntityKey, resolveEntityBannerFromRef } from '../lib/mentionedEntityBanner'
-import { isBusyError, isEndedGameError, formatCountdown, formatFictionalDuration } from '../lib/gameViewHelpers'
+import { isBusyError, isEndedGameError, isTurnLockedError, formatCountdown, formatFictionalDuration, applyInventoryDelta } from '../lib/gameViewHelpers'
 import type {
   Attribute,
   AttributeBlock,
@@ -70,6 +72,7 @@ import type {
   MentionedEntityBanner,
   NpcInSceneInfo,
   ProfessionProgressInfo,
+  ProfessionRecipeInfo,
   ProgressionResult,
   QuestInfo,
   SavedActionCategory,
@@ -106,6 +109,8 @@ export function GameView() {
   const [characterLog, setCharacterLog] = useState<LogEntry[]>([])
   const [worldLog, setWorldLog] = useState<LogEntry[]>([])
   const [inventory, setInventory] = useState<InventoryItemInfo[]>([])
+  // Pop-up de recolección (rediseño de profesiones, 2026-08-07) — null = cerrado.
+  const [harvestModal, setHarvestModal] = useState<{ oficio: string; label: string } | null>(null)
   const [companions, setCompanions] = useState<CompanionInfo[]>([])
   const [level, setLevel] = useState(1)
   const [xp, setXp] = useState(0)
@@ -119,11 +124,22 @@ export function GameView() {
   const [factionsStatus, setFactionsStatus] = useState<Record<string, number>>({})
   const [kingdomStats, setKingdomStats] = useState<KingdomStatsInfo | null>(null)
   const [professionProgress, setProfessionProgress] = useState<ProfessionProgressInfo[]>([])
+  // Roster estático de recetas de oficio (rediseño de profesiones, 2026-08-07) — independiente de
+  // partida, se pide una sola vez al montar (no cambia mientras se juega). Habilidades > Profesiones
+  // lo usa para mostrar TODAS las recetas de una profesión creadora, bloqueadas o no.
+  const [professionRecipes, setProfessionRecipes] = useState<ProfessionRecipeInfo[]>([])
+  useEffect(() => {
+    getProfessionRecipes()
+      .then(setProfessionRecipes)
+      .catch(() => {
+        // Si falla, Habilidades > Profesiones simplemente no muestra el roster bloqueado — no
+        // rompe nada más, no hace falta reintentar agresivamente.
+      })
+  }, [])
   const [deathCount, setDeathCount] = useState(0)
   const [dificultad, setDificultad] = useState<Dificultad>('NOVATO')
   const [savedActions, setSavedActions] = useState<SavedActionInfo[]>([])
   const [combatSlots, setCombatSlots] = useState(3)
-  const [profession, setProfessionState] = useState<string | null>(null)
   const [fictionalDate, setFictionalDate] = useState('Día 1, mañana')
   const [currentLocation, setCurrentLocation] = useState<CurrentLocationInfo | null>(null)
   const [destinations, setDestinations] = useState<DestinationInfo[]>([])
@@ -415,6 +431,8 @@ export function GameView() {
         finDePartida,
         justDied,
         newInventoryItems,
+        removedInventoryItemIds,
+        updatedInventoryItems,
         logEntryId,
         quests: updatedQuests,
         newQuestInfo,
@@ -457,6 +475,8 @@ export function GameView() {
         energiaMax,
         finDePartida,
         newInventoryItems,
+        removedInventoryItemIds,
+        updatedInventoryItems,
         logEntryId,
         combate,
         esperandoDefensaJugador,
@@ -469,13 +489,18 @@ export function GameView() {
       // chequeo nunca se cumplía salvo fin de partida, y el combate seguía igual tras morir.
       if (finDePartida || justDied) setCombatEnded(true)
       return true
-    } catch {
+    } catch (err) {
+      // Candado de turno (auditoría de código completa, 2026-08-07) — este intercambio se
+      // rechazó de raíz (ya había uno en curso para esta partida), mensaje propio en vez del
+      // genérico de abajo para que quede claro que no fue un fallo real.
       setCharacterLog((prev) => [
         ...prev,
         {
           id: `combat-err-${Date.now()}`,
           channel: 'character',
-          text: 'No se pudo resolver este turno de combate.',
+          text: isTurnLockedError(err)
+            ? 'Todavía se está resolviendo tu turno anterior — espera un momento e inténtalo de nuevo.'
+            : 'No se pudo resolver este turno de combate.',
           timeLabel: fictionalDate,
           createdAt: new Date().toISOString(),
           combate: true,
@@ -578,11 +603,16 @@ export function GameView() {
       setCombatNpcStates((prev) =>
         prev.map((n) => {
           const added = itemNamesByNpc[n.slug]
-          if (!added || added.length === 0) return n
+          // `undefined` = este NPC no formaba parte de esta ronda de saqueo, se deja igual. Un
+          // array VACÍO sí es una respuesta real (auditoría 2026-08-07: NPC con loadout vacío en
+          // catálogo, nada que añadir pero SÍ puede quedar marcado como saqueado del todo) — antes
+          // se trataba igual que "no tocado" y `yaSaqueado` nunca se ponía a `true` en la sesión
+          // en curso (solo se corregía tras recargar la partida).
+          if (added === undefined) return n
           return {
             ...n,
             yaSaqueado: fullyLootedSlugs.includes(n.slug) ? true : n.yaSaqueado,
-            lootedItemNames: [...new Set([...n.lootedItemNames, ...added])],
+            lootedItemNames: added.length > 0 ? [...new Set([...n.lootedItemNames, ...added])] : n.lootedItemNames,
           }
         }),
       )
@@ -747,7 +777,6 @@ export function GameView() {
     setBusyDuracionMinutos(save.transit?.duracionMinutos ?? null)
     setSavedActions(save.savedActions)
     setCombatSlots(save.habilidadSlots)
-    setProfessionState(save.profession)
     setCurrentLocation(save.currentLocation)
     setDestinations(save.destinations)
     setCondicionFisica(save.condicionFisica)
@@ -775,16 +804,6 @@ export function GameView() {
       // Si falla (p. ej. ya se resolvió justo antes), el sondeo de 30s ya en marcha lo reflejará.
     } finally {
       setCancelingTransit(false)
-    }
-  }
-
-  async function handleAdoptProfession(name: string) {
-    if (!saveId) return
-    setProfessionState(name)
-    try {
-      await setProfession(saveId, name)
-    } catch {
-      // Si falla, se resincroniza en la próxima carga de la partida.
     }
   }
 
@@ -853,7 +872,12 @@ export function GameView() {
   }
 
   function handleAbilityDetail(ability: SavedActionInfo) {
-    setDetailTarget({ kind: 'ability', ability })
+    // Enlace a Enciclopedia (rediseño de profesiones, 2026-08-07): `recipeKey` no viene del
+    // backend en el SavedAction real — se resuelve aquí cruzando por `name` contra el roster
+    // estático ya cargado (profesionRecipes). Solo aplica a habilidades de oficio (category
+    // 'profesion'); el resto se queda sin recipeKey, sin enlace, sin cambio de comportamiento.
+    const matchingRecipe = ability.category === 'profesion' ? professionRecipes.find((r) => r.ability.name === ability.name) : undefined
+    setDetailTarget({ kind: 'ability', ability: matchingRecipe ? { ...ability, recipeKey: matchingRecipe.recipeKey } : ability })
     setDetailInsertHandler(null)
   }
 
@@ -898,7 +922,21 @@ export function GameView() {
     composerRef.current?.insertChip({ icon: target.icon, label: target.name, description: target.description })
   }
 
+  // Habilidades base de recolección (rediseño de profesiones, 2026-08-07) — Minar/Talar abren el
+  // pop-up de selección (HarvestSelectionModal) en vez de mandar texto libre al composer; el
+  // oficio no viaja en el SavedAction (solo hay 2, mapeo fijo aquí es más simple que pedir todo un
+  // roster al backend para esto). Desollar es una habilidad normal: el despiece por texto libre
+  // ya funciona igual que antes, no necesita el pop-up (target siempre una presa ya derrotada
+  // delante, no una fuente que "explorar").
+  const HARVEST_ABILITY_OFICIO: Record<string, string> = { Minar: 'minero', Talar: 'talador' }
+
   function handleAttachAbility(ability: SavedActionInfo) {
+    const oficio = HARVEST_ABILITY_OFICIO[ability.name]
+    if (oficio) {
+      setHarvestModal({ oficio, label: ability.name })
+      setActivePanel(null)
+      return
+    }
     composerRef.current?.insertChip({ icon: ability.icon, label: ability.name, description: ability.description, value: ability.promptText })
     setActivePanel(null)
   }
@@ -953,6 +991,8 @@ export function GameView() {
     energiaMax: number
     finDePartida: boolean
     newInventoryItems: InventoryItemInfo[]
+    removedInventoryItemIds: string[]
+    updatedInventoryItems: { id: string; name: string }[]
     logEntryId: string
     combate?: { npcs: NpcInSceneInfo[] } | null
     esperandoDefensaJugador: boolean
@@ -982,8 +1022,10 @@ export function GameView() {
         newQuest: params.newQuestInfo ?? undefined,
       },
     ])
-    if (params.newInventoryItems.length > 0) {
-      setInventory((prev) => [...prev, ...params.newInventoryItems])
+    if (params.newInventoryItems.length > 0 || params.removedInventoryItemIds.length > 0 || params.updatedInventoryItems.length > 0) {
+      setInventory((prev) =>
+        applyInventoryDelta(prev, params.newInventoryItems, params.removedInventoryItemIds, params.updatedInventoryItems),
+      )
     }
     setXp(params.progression.newXp)
     if (params.progression.leveledUp) {
@@ -1205,6 +1247,8 @@ export function GameView() {
         combateIniciado: combate,
         finDePartida,
         newInventoryItems,
+        removedInventoryItemIds,
+        updatedInventoryItems,
         logEntryId,
         quests: updatedQuests,
         newQuestInfo,
@@ -1243,8 +1287,8 @@ export function GameView() {
       setDeathCount(updatedDeathCount)
       setFactionsStatus(updatedFactionsStatus)
       setProfessionProgress(updatedProfessionProgress)
-      if (newInventoryItems.length > 0) {
-        setInventory((prev) => [...prev, ...newInventoryItems])
+      if (newInventoryItems.length > 0 || removedInventoryItemIds.length > 0 || updatedInventoryItems.length > 0) {
+        setInventory((prev) => applyInventoryDelta(prev, newInventoryItems, removedInventoryItemIds, updatedInventoryItems))
       }
       if (combate && combate.npcs.length > 0) setCombateIniciado(combate)
       if (finDePartida) setEndedAt(new Date().toISOString())
@@ -1321,6 +1365,21 @@ export function GameView() {
         setBusyActivity(err.activity)
         setBusyDuracionMinutos(err.duracionMinutos ?? null)
         setCharacterLog((prev) => prev.slice(0, -1))
+      } else if (isTurnLockedError(err)) {
+        // Candado de turno (auditoría de código completa, 2026-08-07) — a diferencia del resto de
+        // errores de aquí abajo, este turno se rechazó de raíz, nunca llegó a narrar: NO hay nada
+        // resolviéndose en segundo plano que valga la pena sondear (por eso NO cae al sondeo de
+        // reconexión de más abajo, que esperaría minutos un resultado que nunca va a llegar).
+        setCharacterLog((prev) => [
+          ...prev.slice(0, -1),
+          {
+            id: `turn-locked-${Date.now()}`,
+            channel: 'character',
+            text: 'Todavía se está resolviendo tu turno anterior — espera un momento e inténtalo de nuevo.',
+            timeLabel: fictionalDate,
+            createdAt: new Date().toISOString(),
+          },
+        ])
       } else {
         // Sondeo de reconexión (2026-07-23): antes se comprobaba una sola vez y ya se avisaba de
         // "puede que tengas que reintentarla" — pero el backend sigue narrando en segundo plano
@@ -1792,13 +1851,30 @@ export function GameView() {
         <KingdomFoundingModal info={kingdomFoundedInfo} onCancel={() => setKingdomFoundedInfo(null)} onConfirm={handleFundarReino} />
       )}
 
+      {harvestModal && saveId && characterAttributes && (
+        <HarvestSelectionModal
+          saveId={saveId}
+          oficio={harvestModal.oficio}
+          oficioLabel={harvestModal.label}
+          inventoryUsed={inventory.length}
+          inventoryCapacity={inventoryCapacityFor(
+            characterAttributes,
+            inventory.filter((i) => i.slot !== null),
+          )}
+          onConfirm={(created) => {
+            setInventory((prev) => [...prev, ...created])
+            setHarvestModal(null)
+          }}
+          onCancel={() => setHarvestModal(null)}
+        />
+      )}
+
       {activePanel && (
         <PanelDrawer title={panelTitles[activePanel]} accent={panelAccent[activePanel]} onClose={() => setActivePanel(null)}>
           {activePanel === 'personaje' && (
             <PersonajePanel
               activeSubTab={personajeSubTab}
               onSubTabChange={setPersonajeSubTab}
-              combatOpen={combatOpen}
               items={inventory}
               onSlotClick={handleSlotClick}
               attributes={characterAttributes}
@@ -1811,9 +1887,6 @@ export function GameView() {
               energia={energia}
               energiaMax={energiaMax}
               factionsStatus={factionsStatus}
-              currentProfession={profession}
-              onAdoptProfession={handleAdoptProfession}
-              professionProgress={professionProgress}
             />
           )}
           {activePanel === 'mapa' && (
@@ -1821,7 +1894,15 @@ export function GameView() {
           )}
           {activePanel === 'diario' && saveId && <DiarioPanel saveId={saveId} chapters={chapters} />}
           {activePanel === 'inventario' && (
-            <InventarioPanel items={inventory} onUse={handleAttachItem} onDetail={handleItemDetail} />
+            <InventarioPanel
+              items={inventory}
+              capacity={inventoryCapacityFor(
+                characterAttributes,
+                inventory.filter((i) => i.slot !== null),
+              )}
+              onUse={handleAttachItem}
+              onDetail={handleItemDetail}
+            />
           )}
           {activePanel === 'companeros' && <CompanerosPanel companions={companions} />}
           {activePanel === 'misiones' && <MisionesPanel quests={quests} />}
@@ -1843,6 +1924,8 @@ export function GameView() {
             <HabilidadesPanel
               savedActions={savedActions}
               combatSlots={combatSlots}
+              professionProgress={professionProgress}
+              professionRecipes={professionRecipes}
               onUse={handleAttachAbility}
               onCreate={handleCreateHabilidad}
               onDetail={handleAbilityDetail}

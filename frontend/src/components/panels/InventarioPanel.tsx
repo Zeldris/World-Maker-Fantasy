@@ -7,11 +7,14 @@ import { IconCard } from '../IconCard'
 
 interface InventarioPanelProps {
   items: InventoryItemInfo[]
+  /// Capacidad real de inventario (rediseño de profesiones, 2026-08-07) — base + Fuerza/
+  /// Constitución + bonus de cosméticos equipados (ver lib/inventoryCapacity.ts).
+  capacity: number
   onUse: (item: InventoryItemInfo) => void
   onDetail: (item: InventoryItemInfo) => void
 }
 
-function ItemGrid({ items, onUse, onDetail }: InventarioPanelProps) {
+function ItemGrid({ items, onUse, onDetail }: Omit<InventarioPanelProps, 'capacity'>) {
   return (
     <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
       {items.map((item) => (
@@ -74,14 +77,23 @@ function ItemGrid({ items, onUse, onDetail }: InventarioPanelProps) {
 // equipados se quedan en su propia sección arriba (petición explícita de siempre, "equipados
 // primero") porque cruzan varios tipos a la vez (un arma y una armadura equipadas no deberían
 // separarse solo por eso); el resto se agrupa por tipo, igual que ya hace la Enciclopedia.
-export function InventarioPanel({ items, onUse, onDetail }: InventarioPanelProps) {
+export function InventarioPanel({ items, capacity, onUse, onDetail }: InventarioPanelProps) {
+  const capacityLabel = (
+    <p className={`text-2xs ${items.length >= capacity ? 'text-red-400' : 'text-wood-500'}`}>
+      Capacidad: {items.length}/{capacity} objetos
+    </p>
+  )
+
   if (items.length === 0) {
     return (
-      <PanelEmptyState
-        icon="🎒"
-        title="La mochila está vacía"
-        hint="Lo que consigas o fabriques durante la partida aparecerá aquí."
-      />
+      <div className="flex flex-col gap-3">
+        {capacityLabel}
+        <PanelEmptyState
+          icon="🎒"
+          title="La mochila está vacía"
+          hint="Lo que consigas o fabriques durante la partida aparecerá aquí."
+        />
+      </div>
     )
   }
 
@@ -101,6 +113,7 @@ export function InventarioPanel({ items, onUse, onDetail }: InventarioPanelProps
 
   return (
     <div className="flex flex-col gap-5">
+      {capacityLabel}
       {equipped.length > 0 && (
         <PanelSection title="Equipados">
           <ItemGrid items={equipped} onUse={onUse} onDetail={onDetail} />
