@@ -317,7 +317,7 @@ describe('detectNpcsInScene — acotar el candidato por escena', () => {
 // turno exacto de saquearlo.
 function npcFixture(overrides: Partial<NpcInScene> = {}): NpcInScene {
   return {
-    id: 'orco', slug: 'orco-enfurecido', name: 'Orco enfurecido', articulo: 'el', kind: 'PRINCIPAL',
+    id: 'orco', slug: 'orco-enfurecido', name: 'Orco enfurecido', articulo: 'el', genero: null, kind: 'PRINCIPAL',
     level: 1, role: 'Guerrero deshonrado', faction: null, personality: 'Errático', bio: 'x',
     items: [
       { name: 'Maza orca', cantidad: 1, notas: 'Astillada', description: 'x', equipSlot: 'ARMA_PRINCIPAL', statBonuses: { fuerza: 2 }, catalogSlug: 'maza-orca', effectKey: null, category: 'arma', tipoArma: 'MAZA' },
@@ -372,6 +372,25 @@ describe('npcSceneBlockFor', () => {
     const block = npcSceneBlockFor(npcFixture({ articulo: null, name: 'Gistera Koh' }), 1);
     expect(block).toContain('PERSONAJE EN ESCENA: Gistera Koh —');
   });
+
+  // Bug real jugando (2026-07-30): Gistera Koh, nombre propio femenino ("Orca" ya en su bio),
+  // narrada como "el orco" al referirse a ella de forma genérica en vez de por su nombre —
+  // `articulo` no ayuda aquí (su NOMBRE no lleva artículo, el problema es la prosa libre).
+  it('con genero, refuerza explícitamente el género correcto y prohíbe el opuesto (activo)', () => {
+    const block = npcSceneBlockFor(npcFixture({ articulo: null, name: 'Gistera Koh', genero: 'F' }), 1);
+    expect(block).toContain('GÉNERO DE GISTERA KOH: femenino');
+    expect(block).toContain('NUNCA en masculino');
+  });
+
+  it('con genero, refuerza también en el bloque YA RESUELTO (cadáver/recuerdo)', () => {
+    const block = npcSceneBlockFor(npcFixture({ articulo: null, name: 'Gistera Koh', genero: 'F', condicionFisica: 'MUERTO', saqueado: true }), 1);
+    expect(block).toContain('GÉNERO DE GISTERA KOH: femenino');
+  });
+
+  it('sin genero, no añade ningún refuerzo de género', () => {
+    const block = npcSceneBlockFor(npcFixture({ genero: null }), 1);
+    expect(block).not.toContain('GÉNERO DE');
+  });
 });
 
 // Extraído de detectNpcsInScene (2026-08-05, eventos de viaje interactivos) para que un NPC pueda
@@ -383,6 +402,7 @@ describe('buildNpcInScene', () => {
     slug: 'orco-rezagado',
     name: 'Guerrero orco rezagado',
     articulo: 'el',
+    genero: null,
     kind: 'PLANTILLA',
     level: 2,
     role: 'Guerrero sin clan',

@@ -16,6 +16,9 @@
     "seed-catalog": "tsx src/scripts/seed-catalog.ts",
     "seed-image-prompts": "tsx src/scripts/seedImagePrompts.ts",
     "export-image-prompts": "tsx src/scripts/exportImagePrompts.ts",
+    "generate-distillation-dataset": "tsx src/scripts/generate-distillation-dataset.ts",
+    "split-distillation-dataset": "tsx src/scripts/split-distillation-dataset.ts",
+    "compare-narrador-models": "tsx src/scripts/compare-narrador-models.ts",
     "test": "vitest run",
     "lint": "oxlint"
   },

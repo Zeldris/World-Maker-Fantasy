@@ -59,4 +59,19 @@ export const env = {
   cloudflareApiKey: process.env.CLOUDFLARE_API_KEY ?? '',
   cloudflareAccountId: process.env.CLOUDFLARE_ACCOUNT_ID ?? '',
   cloudflareModel: process.env.CLOUDFLARE_MODEL ?? '@cf/meta/llama-3.3-70b-instruct-fp8-fast',
+  /// Gemini (2026-08-07, plan "IA local propia") — API propia (no OpenAI-compatible, formato
+  /// generateContent de Google), añadida a la rotación tanto de prompts de imagen como del script
+  /// de destilación. Soporta responseSchema (JSON forzado por schema de verdad, no solo "modo
+  /// JSON" instruido) — el único proveedor de la rotación con esa garantía aparte de Ollama local.
+  geminiApiKey: process.env.GEMINI_API_KEY ?? '',
+  // 'gemini-flash-latest' en vez de fijar una versión (probado en vivo, 2026-08-07: la cuenta
+  // recién creada de la usuaria no tenía acceso a 'gemini-2.5-flash' — "no longer available to
+  // new users" — pese a aparecer listado; el alias -latest evita depender de qué versión concreta
+  // esté disponible para una clave nueva en cada momento).
+  geminiModel: process.env.GEMINI_MODEL ?? 'gemini-flash-latest',
+  /// Groq (2026-08-07) — OpenAI-compatible, aloja modelos open-weight (Llama 3.3 70B) a velocidad
+  /// muy alta con tier gratuito generoso. Buen candidato para ampliar la rotación sin depender
+  /// tanto de la cuota de Mistral/SambaNova.
+  groqApiKey: process.env.GROQ_API_KEY ?? '',
+  groqModel: process.env.GROQ_MODEL ?? 'llama-3.3-70b-versatile',
 };

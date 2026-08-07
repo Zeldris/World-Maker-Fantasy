@@ -10,12 +10,16 @@ vi.mock('./cerebrasClient.js', () => ({ cerebrasClient: { disponible: vi.fn(), c
 vi.mock('./mistralClient.js', () => ({ mistralClient: { disponible: vi.fn(), complete: vi.fn(), getModelId: () => 'mistral' } }));
 vi.mock('./sambanovaClient.js', () => ({ sambanovaClient: { disponible: vi.fn(), complete: vi.fn(), getModelId: () => 'sambanova' } }));
 vi.mock('./cloudflareClient.js', () => ({ cloudflareClient: { disponible: vi.fn(), complete: vi.fn(), getModelId: () => 'cloudflare' } }));
+vi.mock('./geminiClient.js', () => ({ geminiClient: { disponible: vi.fn(), complete: vi.fn(), getModelId: () => 'gemini' } }));
+vi.mock('./groqClient.js', () => ({ groqClient: { disponible: vi.fn(), complete: vi.fn(), getModelId: () => 'groq' } }));
 vi.mock('../ollama.js', () => ({ ollamaGenerate: vi.fn() }));
 
 const { cerebrasClient } = await import('./cerebrasClient.js');
 const { mistralClient } = await import('./mistralClient.js');
 const { sambanovaClient } = await import('./sambanovaClient.js');
 const { cloudflareClient } = await import('./cloudflareClient.js');
+const { geminiClient } = await import('./geminiClient.js');
+const { groqClient } = await import('./groqClient.js');
 const { ollamaGenerate } = await import('../ollama.js');
 const { completeWithFallback } = await import('./orchestrator.js');
 
@@ -30,6 +34,8 @@ describe('completeWithFallback', () => {
     reset(mistralClient as never, false);
     reset(sambanovaClient as never, false);
     reset(cloudflareClient as never, false);
+    reset(geminiClient as never, false);
+    reset(groqClient as never, false);
     vi.mocked(ollamaGenerate).mockReset();
   });
 

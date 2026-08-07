@@ -118,6 +118,7 @@ async function main() {
         faction: npcData.faction,
         role: npcData.role,
         articulo: npcData.articulo ?? null,
+        genero: npcData.genero ?? null,
         level: npcData.level,
         levelMax: npcData.levelMax,
         attributes: npcData.attributes,

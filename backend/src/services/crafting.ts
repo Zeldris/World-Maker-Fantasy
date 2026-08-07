@@ -48,7 +48,7 @@ export interface CraftingRecipe {
   narrationDo: string;
 }
 
-const AXE_REPAIR_RECIPE: CraftingRecipe = {
+export const AXE_REPAIR_RECIPE: CraftingRecipe = {
   key: 'axeRepair',
   verbRegex: /repar|reforj|restaur/,
   nounRegex: /hacha/,
@@ -89,7 +89,7 @@ const SMOKE_MEAT_RECIPE: CraftingRecipe = {
   narrationDo: 'El personaje ahuma su ración de carne fresca sobre el fuego — narra la escena (el humo, la espera, el olor) con naturalidad. El objeto ya se gestiona automáticamente por el backend.',
 };
 
-const GARGANTUA_ARMOR_RECIPE: CraftingRecipe = {
+export const GARGANTUA_ARMOR_RECIPE: CraftingRecipe = {
   key: 'gargantuaArmor',
   verbRegex: /fabric|monta|confeccion|cos[eo]|prepar|crear|creo/,
   nounRegex: /peto/,
@@ -113,7 +113,7 @@ const GARGANTUA_ARMOR_RECIPE: CraftingRecipe = {
     'El personaje fabrica un peto de placas óseas de gargantúa aquí mismo, en el Campamento del Clan Serhu, con placas óseas y cuerda de tendón que lleva encima — narra la escena del montaje con el peso que merece. El objeto ya se gestiona automáticamente por el backend.',
 };
 
-const ANTIDOTE_RECIPE: CraftingRecipe = {
+export const ANTIDOTE_RECIPE: CraftingRecipe = {
   key: 'antidote',
   verbRegex: /prepar|mezcl|hac|crear|creo/,
   nounRegex: /ant[ií]doto|contraveneno/,
@@ -160,7 +160,7 @@ const FIELD_TORCH_RECIPE: CraftingRecipe = {
 // Receta de refinado nueva (2026-07-29, petición explícita, ejemplo dado por la usuaria: "convertir
 // una mena de mineral en un lingote") — mismo oficio/ubicación que las dos recetas de arriba que ya
 // usan la fragua del campamento (hacha, peto): fundir mena es el paso previo natural a forjar.
-const IRON_INGOT_RECIPE: CraftingRecipe = {
+export const IRON_INGOT_RECIPE: CraftingRecipe = {
   key: 'ironIngot',
   verbRegex: /fund|forj|refin|derret/,
   nounRegex: /lingote.*hierro|hierro.*lingote/,
@@ -183,7 +183,7 @@ const IRON_INGOT_RECIPE: CraftingRecipe = {
 // CHOZA_RECIPE, "construye con lo que hay a mano"; ninguna de las 8 profesiones es literalmente
 // "cantero", carpintero es la que mejor encaja narrativamente). Ingrediente por CATEGORÍA (no
 // exacto): cualquier piedra en bruto sirve, a diferencia del lingote de hierro (mena específica).
-const STONE_BLOCK_RECIPE: CraftingRecipe = {
+export const STONE_BLOCK_RECIPE: CraftingRecipe = {
   key: 'stoneBlock',
   verbRegex: /tall|labr|desbast|fabric|prepar/,
   nounRegex: /bloque.*piedra|piedra.*bloque|piedra.*tallad|tallad.*piedra/,

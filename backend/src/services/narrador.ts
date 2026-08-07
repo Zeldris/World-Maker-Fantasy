@@ -366,7 +366,16 @@ function rollBlockFor(roll: RollResult): string {
 }
 
 /// Paso 2 del turno: narra con el resultado de la tirada ya fijado (o sin tirada si no hacía falta).
-export async function narrateAction(ctx: TurnContext & { roll?: RollResult }): Promise<NarrationResult> {
+/// Extraído de narrateAction (2026-08-07, plan "IA local propia") como función pura sin efectos
+/// secundarios ni llamadas a Ollama — el script de destilación (generate-distillation-dataset.ts)
+/// necesita el MISMO prompt exacto que recibe producción para que el profesor cloud se evalúe
+/// sobre condiciones idénticas, sin arriesgarse a que una copia a mano se desincronice la próxima
+/// vez que se ajuste una instrucción aquí (ha pasado muchas veces en el historial de este fichero).
+export function buildNarrationPrompt(ctx: TurnContext & { roll?: RollResult }): {
+  prompt: string;
+  format: Record<string, unknown>;
+  backgroundLoreBlock: string;
+} {
   const rollBlock = ctx.roll
     ? rollBlockFor(ctx.roll)
     : 'Esta acción no necesita tirada — narra el resultado directamente, pero sigue aportando algo concreto: qué cambia, qué consigue o qué nota el personaje, no solo atmósfera.';
@@ -560,6 +569,12 @@ Responde solo con el JSON pedido, nada más.`;
     },
     required: ['narration', 'newFacts'],
   };
+
+  return { prompt, format, backgroundLoreBlock };
+}
+
+export async function narrateAction(ctx: TurnContext & { roll?: RollResult }): Promise<NarrationResult> {
+  const { prompt, format, backgroundLoreBlock } = buildNarrationPrompt(ctx);
 
   // Tres intentos en cascada. Visto en pruebas reales (2026-07-18): una acción concreta colgó
   // 4 de 4 veces con el modelo grande, incluso reduciendo hechos y relajando la regla de "no
@@ -799,10 +814,10 @@ export function stripLeakedJson(narration: string): string {
 /// Contrato de mundo (docs/07-mundo-helek-sirik.md § 9): medieval-fantástico, sin pólvora ni
 /// tecnología industrial en ningún continente. Ya reforzado en el Modelfile — esto es la red de
 /// seguridad determinista para cuando el modelo lo ignora de todos modos (visto en pruebas reales).
-const ANACHRONISM_REGEX =
+export const ANACHRONISM_REGEX =
   /p[óo]lvora|pistola|rifle|escopeta|pl[áa]stico|electricidad|el[ée]ctric[oa]|motor(?:\s+de)?\s+(?:combusti[óo]n|explosi[óo]n)|hormig[óo]n|acero industrial|tel[ée]fono|internet/i;
 
-function hasAnachronism(narration: string): boolean {
+export function hasAnachronism(narration: string): boolean {
   return ANACHRONISM_REGEX.test(narration);
 }
 

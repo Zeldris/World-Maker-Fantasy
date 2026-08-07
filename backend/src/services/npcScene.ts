@@ -63,6 +63,10 @@ export interface NpcInScene {
   /// Narrador (ver comentario completo en schema.prisma § Npc.articulo) — null para nombres
   /// propios que no lo necesitan.
   articulo: string | null;
+  /// "M"/"F" — ver schema.prisma § Npc.genero. Distinto de `articulo`: refuerza el género de
+  /// NOMBRES PROPIOS a los que el modelo se refiere de forma genérica en prosa libre en vez de
+  /// por su nombre (p.ej. "el orco" para Gistera Koh, femenino). Null = sin refuerzo explícito.
+  genero: string | null;
   kind: NpcKind;
   level: number;
   role: string;
@@ -114,6 +118,7 @@ export function buildNpcInScene(npc: NpcWithItems, state: NpcState | undefined):
     slug: npc.slug,
     name: npc.name,
     articulo: npc.articulo,
+    genero: npc.genero,
     kind: npc.kind,
     level: npc.level,
     role: npc.role,
@@ -530,6 +535,19 @@ function displayName(npc: NpcInScene): string {
   return npc.articulo ? `${npc.articulo} ${npc.name}` : npc.name;
 }
 
+/// Refuerzo explícito de género para NOMBRES PROPIOS (bug real jugando, 2026-07-30: Gistera Koh,
+/// femenino ya explícito como primera palabra de su `bio`, narrada como "el orco" al referirse a
+/// ella de forma genérica en vez de por su nombre) — `articulo`/`displayName` de arriba ya cubren
+/// el caso de un NOMBRE que es en sí un rol/descripción ("Orco Enfurecido"); esto cubre el
+/// contrario. Mismo espíritu que protectedFactsFor: una prohibición explícita ("nunca en
+/// masculino") se respeta mejor en un 7B local que un hecho implícito dentro de un párrafo largo
+/// de bio.
+function generoHintFor(npc: NpcInScene): string {
+  if (!npc.genero) return '';
+  const [propio, opuesto] = npc.genero === 'F' ? ['femenino ("ella"/"la")', 'masculino ("él"/"el")'] : ['masculino ("él"/"el")', 'femenino ("ella"/"la")'];
+  return ` GÉNERO DE ${npc.name.toUpperCase()}: ${propio} — si te refieres a ${npc.name} sin usar su nombre (p.ej. por su raza o rol), hazlo siempre en ${propio}, NUNCA en ${opuesto}, aunque su raza o rol suene distinto por defecto.`;
+}
+
 export function npcSceneBlockFor(npc: NpcInScene, playerLevel: number): string {
   if (npcYaResuelto(npc)) {
     const estado = npc.condicionFisica === 'MUERTO' ? 'muerto' : 'incapacitado';
@@ -542,10 +560,10 @@ export function npcSceneBlockFor(npc: NpcInScene, playerLevel: number): string {
     const loot = npc.saqueado
       ? ' y su cuerpo ya fue registrado (no lleva nada más encima, ya no hay botín que ofrecer)'
       : `, todavía sin registrar. Si esta acción es saquearlo/registrarlo, esto es TODO lo que lleva encima, no existe ningún otro objeto: ${itemsLine(npc.items)}`;
-    return `PERSONAJE MENCIONADO, YA RESUELTO: ${displayName(npc)} — ${npc.role}${npc.faction ? `, ${npc.faction}` : ''}. Ya está ${estado}${loot}. NO lo narres como una amenaza activa: no ataca, no persigue, no "aparece de la nada" — si la escena lo menciona, es solo un cadáver ya visto, un recuerdo o una referencia al pasado, nunca un encuentro nuevo.`;
+    return `PERSONAJE MENCIONADO, YA RESUELTO: ${displayName(npc)} — ${npc.role}${npc.faction ? `, ${npc.faction}` : ''}. Ya está ${estado}${loot}. NO lo narres como una amenaza activa: no ataca, no persigue, no "aparece de la nada" — si la escena lo menciona, es solo un cadáver ya visto, un recuerdo o una referencia al pasado, nunca un encuentro nuevo.${generoHintFor(npc)}`;
   }
   const { label } = difficultyHintFor(npc.level, playerLevel);
-  return `PERSONAJE EN ESCENA: ${displayName(npc)} — ${npc.role}${npc.faction ? `, ${npc.faction}` : ''}, nivel ${npc.level} (acciones directas contra él/ella tienden a ${label}).
+  return `PERSONAJE EN ESCENA: ${displayName(npc)} — ${npc.role}${npc.faction ? `, ${npc.faction}` : ''}, nivel ${npc.level} (acciones directas contra él/ella tienden a ${label}).${generoHintFor(npc)}
 Descripción/hechos ya establecidos (nunca los contradigas): ${npc.bio}
 Personalidad: ${npc.personality}
 LLEVA ENCIMA: ${itemsLine(npc.items)}. Si es derrotado, registrado o comercia, lo que lleva encima es TODO lo que puede aparecer — no existe ningún otro objeto.`;

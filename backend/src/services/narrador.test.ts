@@ -11,6 +11,7 @@ import {
   hasFalseItemUse,
   hasResurrectedDeadNpc,
   hasFalseTravelClaim,
+  hasAnachronism,
 } from './narrador.js';
 
 describe('reinoIntentDetected', () => {
@@ -88,6 +89,20 @@ describe('hasEnglishLeak', () => {
 
   it('no confunde palabras españolas que casualmente empiezan igual (p.ej. "ownership" no es una palabra española, pero tampoco debe disparar por una palabra española que la contenga)', () => {
     expect(hasEnglishLeak('Gorhorn recupera el honor de su propio clan.')).toBe(false);
+  });
+});
+
+describe('hasAnachronism', () => {
+  it('detecta pólvora/armas de fuego', () => {
+    expect(hasAnachronism('un fuerte olor a pólvora inunda el aire tras el disparo de rifle')).toBe(true);
+  });
+
+  it('detecta tecnología moderna (electricidad, plástico)', () => {
+    expect(hasAnachronism('la luz eléctrica parpadea sobre el suelo de plástico')).toBe(true);
+  });
+
+  it('no dispara con una narración normal en español medieval-fantástico', () => {
+    expect(hasAnachronism('Gorhorn afila su hacha de hierro junto al fuego de leña.')).toBe(false);
   });
 });
 

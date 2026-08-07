@@ -840,6 +840,10 @@ export interface NpcInput {
   /// (bug real jugando, 2026-07-31 — ver comentario completo en schema.prisma). Omitido = nombre
   /// propio, no necesita artículo.
   articulo?: 'el' | 'la';
+  /// "M"/"F" — ver comentario completo en schema.prisma § Npc.genero (bug real jugando,
+  /// 2026-07-30: Gistera Koh, nombre propio, narrada como "el orco" pese a que su `bio` ya dice
+  /// "Orca"). Distinto de `articulo`: se puebla solo donde ya se ha visto el fallo en vivo.
+  genero?: 'M' | 'F';
   level: number;
   levelMax?: number;
   attributes: AttributeBlock;
@@ -1175,6 +1179,7 @@ export const npcs: NpcInput[] = [
     kind: 'PRINCIPAL',
     aliases: ['gistera koh', 'gistera'],
     faction: null,
+    genero: 'F',
     role: 'Hija adoptiva de un artesano Serhu ejecutado por los suyos, huye del guerrero que lo mató',
     level: 1,
     attributes: { fuerza: 8, destreza: 10, constitucion: 8, inteligencia: 6, voluntad: 12, carisma: 6, arcano: 4 },

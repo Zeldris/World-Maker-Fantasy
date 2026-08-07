@@ -6,7 +6,10 @@ export interface StartingAbility {
   icon: string;
   description: string;
   promptText: string;
-  category: 'combate' | 'general';
+  /// 'profesion' (2026-08-07) — habilidades de oficio desbloqueadas por nivel (ver
+  /// professionAbilities.ts): igual que 'general' en todo lo mecánico (nunca de combate, siempre
+  /// clicable/atacable a la acción), pero en su propia pestaña del panel de Habilidades.
+  category: 'combate' | 'general' | 'profesion';
   /// Mecánica real de habilidades de clase (checklist 2026-07-21/22, puntos 1-2) — solo relevante
   /// para category:'combate'. Gana sobre la heurística de palabra clave de npcScene.ts
   /// (tabulatedAttackAttribute) cuando el turno manda el savedActionId de esta habilidad.

@@ -57,6 +57,8 @@ import {
 } from './construction.js';
 import { shortfallLabel } from './requisitos.js';
 import { classAbilityUnlocksFor } from './classAbilities.js';
+import { professionAbilityUnlocksFor } from './professionAbilities.js';
+import type { StartingAbility } from './startingAbilities.js';
 import { protectedFactsFor } from './protectedFacts.js';
 import { lintRegionMismatch } from './narrationLint.js';
 import { decrementPopulationOnDeath } from './population.js';
@@ -2273,15 +2275,32 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     // Nivel de oficio (sesión de diseño 2026-07-23): se otorga en cuanto la receta se materializa
     // de verdad (no solo se comprueba posible) — un solo upsert, la profesión ya es dato estático
     // de la receta, cero coste de IA.
+    //
+    // Habilidades de oficio (retomado 2026-08-07, idea aplazada desde el 2026-07-28 — ver
+    // professionAbilities.ts): se registran aquí los niveles de oficio CRUZADOS por este turno,
+    // pero las filas de SavedAction/LogEntry se crean más abajo (después de nextLogEntryCreatedAt,
+    // igual que el desbloqueo de habilidades de clase) — esta función se invoca demasiado pronto en
+    // la transacción para usar ese contador de orden todavía.
+    const unlockedProfessionAbilities: { oficio: string; nivel: number; ability: StartingAbility }[] = [];
     async function awardProfessionXp(oficio: string | undefined, tier: number | undefined): Promise<void> {
       if (!oficio) return;
       const existing = await tx.professionProgress.findUnique({ where: { saveId_professionId: { saveId, professionId: oficio } } });
+      // 0 (no 1) a propósito: a diferencia de `applyProfessionXp` (que trata "nunca practicado"
+      // como nivel base 1 para el cálculo de XP), aquí necesitamos distinguir "nunca practicado"
+      // de "ya en nivel 1" para no dar por desbloqueadas de golpe las habilidades de nivel 1 de
+      // un oficio que el personaje nunca ha tocado.
+      const previousLevel = existing?.nivel ?? 0;
       const result = applyProfessionXp(existing?.xp ?? 0, existing?.nivel ?? 1, xpForCraftSuccess(tier));
       await tx.professionProgress.upsert({
         where: { saveId_professionId: { saveId, professionId: oficio } },
         create: { saveId, professionId: oficio, nivel: result.newLevel, xp: result.newXp },
         update: { nivel: result.newLevel, xp: result.newXp },
       });
+      for (let lvl = previousLevel + 1; lvl <= result.newLevel; lvl++) {
+        for (const ability of professionAbilityUnlocksFor(oficio, lvl)) {
+          unlockedProfessionAbilities.push({ oficio, nivel: lvl, ability });
+        }
+      }
     }
 
     // Foto fresca del inventario, DENTRO de la transacción (auditoría 2026-07-30, bug real de
@@ -2900,6 +2919,34 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
       if (params.currentLevel < WEAPON_ABILITY_LEVEL_AVANZADA && result.newLevel >= WEAPON_ABILITY_LEVEL_AVANZADA) {
         await syncDynamicCombatAbilities(tx, saveId, raza, result.newLevel, equippedWeaponSlotsForAbilities);
       }
+    }
+
+    // Habilidades de oficio (professionAbilities.ts) — independiente de si el PERSONAJE subió de
+    // nivel este turno (es el nivel del OFICIO el que importa, ver awardProfessionXp más arriba).
+    // isStarting:true (mismo criterio que las de clase): son de diseño, no creadas a mano por la
+    // jugadora, así que no son editables ni borrables desde el panel de Habilidades.
+    for (const { oficio, nivel, ability } of unlockedProfessionAbilities) {
+      await tx.savedAction.create({
+        data: {
+          saveId,
+          name: ability.name,
+          promptText: ability.promptText,
+          icon: ability.icon,
+          description: ability.description,
+          category: ability.category,
+          isStarting: true,
+        },
+      });
+      await tx.logEntry.create({
+        data: {
+          saveId,
+          channel: 'CHARACTER',
+          text: `${characterName} desbloquea la habilidad de oficio "${ability.name}" (nivel ${nivel} de ${oficio}).`,
+          timeLabel,
+          fictionalMinutes: nuevoFictionalMinutes,
+          createdAt: nextLogEntryCreatedAt(),
+        },
+      });
     }
 
     // Condición física, descanso y muerte (docs/14 § 1, § 4) — en este orden: primero se fija

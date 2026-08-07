@@ -12,3 +12,7 @@ output/
 # Carpeta de pruebas/candidatas de imagen de la usuaria (2026-07-23) — staging personal antes de
 # elegir qué sube de verdad a uploads/images/, nunca se sube al repo.
 uploads/opciones/
+
+# Modelos .gguf del fine-tuning (2026-08-07, docs/fine-tuning-ia-local.md) — artefacto generado en
+# Colab, varios GB, nunca se sube al repo (Ollama los usa desde aquí en local).
+models/

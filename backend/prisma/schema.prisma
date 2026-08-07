@@ -923,6 +923,15 @@ model Npc {
   /// la prosa después — más seguro que un reemplazo de texto a ciegas, que podría corromper una
   /// mención legítima en femenino de otro NPC real (p.ej. Gistera Koh) en la misma escena.
   articulo String?
+  /// Género gramatical ("M"/"F"), distinto de `articulo` (2026-08-07, bug real jugando,
+  /// 2026-07-30: Gistera Koh — orca, femenino, ya explícito como primera palabra de su `bio` —
+  /// narrada como "el orco"). `articulo` solo ayuda cuando el NOMBRE del NPC es un rol/descripción
+  /// ("Orco Enfurecido"); esto cubre el caso contrario, un nombre propio ("Gistera Koh") al que el
+  /// modelo se refiere de forma genérica en prosa libre en vez de por su nombre, ignorando el
+  /// género ya establecido en `bio`. Null = no reforzado explícitamente (el modelo usa `bio` tal
+  /// cual, como siempre) — se puebla solo donde ya se ha visto el fallo en vivo, no en todo el
+  /// catálogo de golpe.
+  genero String?
   /// Nivel en la MISMA escala de docs/10-niveles-xp-reino.md. Para PRINCIPAL es fijo; para
   /// PLANTILLA es el nivel canónico (levelMax acota el rango típico). Hoy el motor no hace
   /// tiradas opuestas: este nivel sirve para que el clasificador calibre la dificultad y el
