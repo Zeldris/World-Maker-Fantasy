@@ -1,4 +1,4 @@
-import { narrateAction, generateNpcReply, type ClassificationResult, type NarrationResult } from './narrador.js';
+import { narrateAction, generateNpcReply, hasFalseTravelClaim, type ClassificationResult, type NarrationResult } from './narrador.js';
 import { retrieveLore, formatLoreForPrompt, isWeaklyGrounded } from './retrieval.js';
 import { xpForRollSuccess, xpForHitos, applyXp, type ProgressionResult, type HitoTipo } from './progression.js';
 import { alivioForLevel, xpForCraftSuccess, applyProfessionXp } from './professionProgress.js';
@@ -289,6 +289,11 @@ export interface NewInventoryItemInfo {
   /// catalogSlug (narrativo suelto) o si el catálogo aún no la tiene asignada. Sin esto, un objeto
   /// recién saqueado/crafteado no sabía en qué hueco encaja hasta recargar la partida entera.
   equipSlot: string | null;
+  /// Clave de efecto especial de catálogo (bug real jugando, 2026-08-06: "Mapa de las Llanuras"
+  /// saqueado en pleno turno no activaba los puntos del mapa hasta recargar la partida entera —
+  /// mismo patrón exacto ya arreglado una vez para `equipSlot`, ver comentario ahí). Null si el
+  /// objeto no tiene catalogSlug o su entrada de catálogo no es ESPECIAL.
+  effectKey: string | null;
 }
 
 /// Notificación de fundación de reino (2026-08-04, "el Ayuntamiento" — docs/17-reglas-
@@ -417,6 +422,12 @@ export interface NarrateAndPersistResult {
     trabajadores: number;
     visitantes: number;
   } | null;
+  /// deathCount/factionsStatus/professionProgress (auditoría 2026-08-06) — mismo criterio que
+  /// territories/buildings/subjects/kingdomStats arriba: el frontend necesita el valor YA
+  /// actualizado por este turno, no solo lo que tenía cacheado desde el último `syncFromSave`.
+  deathCount: number;
+  factionsStatus: Record<string, number>;
+  professionProgress: { professionId: string; nivel: number; xp: number }[];
 }
 
 async function resolveInitialLocationId(
@@ -998,7 +1009,20 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   const ongoingCombatTarget = pendingCombatNpcSlugs?.length
     ? (npcsInScene.find((n) => pendingCombatNpcSlugs.includes(n.slug)) ?? null)
     : null;
-  const candidateAttackTarget = explicitTarget ?? ongoingCombatTarget ?? npcsInScene[0] ?? null;
+  // `npcsInScene` (detectado por alias, sin filtrar) sigue conteniendo a cualquier NPC ya
+  // MUERTO/INCAPACITADO que el alias siga matcheando en hechos de sesión antiguos (un cadáver no
+  // deja de "estar en escena" nunca, ver comentario completo de `npcsInSceneVivos` más abajo,
+  // donde se define esta misma lista para las decisiones de forzar combate). Adelantada aquí
+  // (bug real jugando en vivo, 2026-08-07, auditoría "revisa la partida" en directo): un
+  // "Ataco a la corretolva" sin comillas, con el Orco Enfurecido (MUERTO/saqueado hace turnos)
+  // todavía en cabeza de `npcsInScene`, resolvía `candidateAttackTarget` al cadáver — `combateActivo`
+  // ya bloquea correctamente pelear contra un MUERTO, pero el resultado neto era que NINGÚN
+  // intercambio mecánico ocurría contra NADIE, mientras el Narrador seguía narrando un golpe
+  // real contra la corretolva (sin NpcState creado, sin XP de combate real, sin nada saqueable
+  // después) — "el primer golpe de un encuentro nuevo" (comentario original de este fallback) casi
+  // nunca es, de hecho, un cadáver ya resuelto.
+  const npcsInSceneVivos = npcsInScene.filter((n) => n.condicionFisica !== 'INCAPACITADO' && n.condicionFisica !== 'MUERTO');
+  const candidateAttackTarget = explicitTarget ?? ongoingCombatTarget ?? npcsInSceneVivos[0] ?? npcsInScene[0] ?? null;
   // Rediseño del turno de combate (2026-07-28, petición explícita: "primero se tiran dados y se
   // ve quien ataca primero... el otro entra en un turno de defensa... con su propia tirada de
   // dados independiente de la de ataque") — sustituye el viejo "el jugador siempre ataca
@@ -1058,6 +1082,10 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   const contextBlocks: string[] = [];
   if (exchangeNarrationBlock) contextBlocks.push(exchangeNarrationBlock);
   if (abilityEffectHint) contextBlocks.push(abilityEffectHint);
+  // Ver `hasFalseTravelClaim` (narrador.ts) — nombres reales de los destinos ambiguos, rellenado
+  // solo en el mismo `if` de más abajo que ya decide forzar la pregunta ("EL PERSONAJE QUIERE
+  // SEGUIR ADELANTE PERO HAY MÁS DE UN CAMINO POSIBLE").
+  let possiblyFalseTravelDestinationNames: string[] = [];
 
   // Ver `hasFalseCombatHit` (narrador.ts) — bug real jugando en vivo (2026-07-31, "sigo sin
   // hacerle daño al enemigo"): el intercambio resolvió 'ataque_falla' (ningún lado conecta) pero
@@ -1120,6 +1148,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
         contextBlocks.push(
           `EL PERSONAJE QUIERE SEGUIR ADELANTE PERO HAY MÁS DE UN CAMINO POSIBLE (${destinations.map((d) => d.name).join(', ')}): no narres que ha llegado a ningún sitio nuevo ni inventes una ubicación — pregúntale directamente cuál de estos caminos concretos elige.`,
         );
+        possiblyFalseTravelDestinationNames = destinations.map((d) => d.name);
       }
     }
   }
@@ -1285,13 +1314,30 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   const inventoryCatalogRows = inventoryCatalogSlugs.length
     ? await prisma.itemCatalog.findMany({
         where: { worldId, slug: { in: inventoryCatalogSlugs } },
-        select: { slug: true, tipo: true, category: true, curaHasta: true, tipoArma: true, curaEnergia: true, equipSlot: true },
+        select: {
+          slug: true,
+          tipo: true,
+          category: true,
+          curaHasta: true,
+          tipoArma: true,
+          curaEnergia: true,
+          equipSlot: true,
+          effectKey: true,
+        },
       })
     : [];
   const catalogBySlug = new Map(
     inventoryCatalogRows.map((c) => [
       c.slug,
-      { tipo: c.tipo, category: c.category, curaHasta: c.curaHasta, tipoArma: c.tipoArma, curaEnergia: c.curaEnergia, equipSlot: c.equipSlot },
+      {
+        tipo: c.tipo,
+        category: c.category,
+        curaHasta: c.curaHasta,
+        tipoArma: c.tipoArma,
+        curaEnergia: c.curaEnergia,
+        equipSlot: c.equipSlot,
+        effectKey: c.effectKey,
+      },
     ]),
   );
   // Sistema de habilidades de arma (2026-07-29) — huecos ARMA_PRINCIPAL/ARMA_SECUNDARIA
@@ -1677,6 +1723,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
           combatNotYetResolved,
           possiblyFalseItemUseNames,
           possiblyResurrectedNpcNames,
+          possiblyFalseTravelDestinationNames,
           onNarrationChunk,
           onNarrationReset,
         });
@@ -1685,6 +1732,23 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   // viendo el mismo patrón de un "chunk" seguido de "done", en vez de quedarse sin nada hasta el
   // final de la respuesta HTTP completa.
   if (gisteraSePresentaEsteTurno || lootMode || buildMode || harvestOutcome) onNarrationChunk?.(narration.narration);
+
+  // Narración mentirosa si el modelo agota los 3 reintentos (bug real jugando en vivo, 2026-08-06,
+  // auditoría "revisa la partida" en directo): `hasFalseTravelClaim` (narrador.ts) ya descarta y
+  // reintenta una narración que da por resuelta una llegada ambigua (2+ salidas, `resolveTravel`
+  // no pudo elegir sola) — pero un modelo local pequeño puede converger en la MISMA frase las 3
+  // veces (confirmado en vivo: intentos 1 y 2 descartados por esto mismo, el 3º por repetir casi
+  // verbatim el turno anterior), agotando los reintentos sin corregirse solo. A diferencia del
+  // resto de comprobaciones de esta lista (solo prosa de pantalla, se acepta lo que quede tras 3
+  // intentos), aquí el riesgo es peor: `newFacts` persiste un hecho de sesión FALSO ("ha dejado la
+  // Hondonada...") que turnos futuros recordarían como cierto para siempre, aunque
+  // `Save.currentLocationId` nunca cambió. Mismo principio que el candado de `newBuilding` de
+  // abajo: si la mecánica ya sabe que la narración es falsa, se corrige aquí en vez de confiar en
+  // que la prosa libre no la contradiga.
+  if (possiblyFalseTravelDestinationNames.length > 0 && hasFalseTravelClaim(narration, possiblyFalseTravelDestinationNames)) {
+    narration.narration = `${characterName} sigue adelante, pero el camino se abre en más de un sentido: ${possiblyFalseTravelDestinationNames.join(', ')}. Antes de escoger uno, se detiene a pensar cuál de los dos tomar.`;
+    narration.newFacts = [];
+  }
 
   // Bug real (ronda de pruebas 2026-08-04, hallazgo 10): al rechazar una construcción por no
   // cumplir requisitos (materiales/atributos insuficientes o una regla de reino, `buildRecipe`
@@ -1698,6 +1762,13 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   // contradiga en un campo aparte que ni siquiera se lee al narrar.
   if (buildRecipe && !buildMode) {
     narration.newFacts = [];
+    // Bug real (auditoría 2026-08-06): el fix de arriba (newFacts) no bastaba — el modelo podía
+    // seguir rellenando `newBuilding` (un campo estructurado APARTE que sí se lee y se actúa, ver
+    // más abajo `else if (narration.newBuilding)`) aunque se le dijera que no completara la
+    // construcción. Sin este candado, un jugador podía conseguir un `Building` real —sin gastar
+    // materiales ni pasar ninguna regla de reino (cupo de región, Ayuntamiento cercano...)— con
+    // solo describir la construcción de forma convincente cuando de verdad le faltaban recursos.
+    narration.newBuilding = null;
   }
 
   // "Revisar partida" 2026-07-30 (queja explícita: el jugador terminó INCAPACITADO sin que la
@@ -1875,6 +1946,11 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     newKingdomFounded: KingdomFoundedInfo | null;
     companionCreated: { id: string; name: string; role: string; notes: string } | null;
     partiallyLootedSlugs: string[];
+    /// Auditoría 2026-08-06 — ver comentario de `deathCount` en NarrateAndPersistResult. Calculado
+    /// DENTRO de la transacción (`finalDeathCount`), tiene que salir de aquí igual que el resto de
+    /// campos de este objeto, no se puede releer después: no hay ninguna tabla que lo persista
+    /// aparte de `Save.deathCount`, ya escrito por la propia transacción.
+    deathCount: number;
   };
   try {
     transactionResult = await prisma.$transaction(async (tx) => {
@@ -1959,6 +2035,14 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     // `NpcState.lootedItemNames` lleva la cuenta exacta de qué te has llevado ya — `itemsToLoot`
     // excluye lo ya tomado (nunca duplica si vuelves a marcarlo sin querer) y `saqueado` solo pasa
     // a `true` cuando `lootedItemNames` cubre el 100% del loadout conocido del NPC.
+    // Narración mentirosa si se pierde la carrera (auditoría 2026-08-06, mismo patrón que
+    // buildMode más abajo): `lootPreview` (arriba, antes de esta transacción) ya decidió y emitió
+    // en streaming el texto "se hace con lo siguiente: X, Y" a partir de una foto de `npcsInScene`
+    // que puede estar obsoleta — dos "saquear" casi simultáneos sobre el mismo NPC (doble clic,
+    // reintento de red, dos pestañas) hacían que el segundo no creara ningún InventoryItem
+    // (bloqueado por `freshState?.saqueado`, ya cerrado como bug mecánico) pero su narración ya
+    // fijada seguía afirmando el saqueo igualmente. Se corrige aquí, con lo que de verdad se creó.
+    const actualLootedNames: string[] = [];
     if (lootMode) {
       for (const npc of lootTargets) {
         const scope = scopeFor(npc.kind, currentLocationId);
@@ -1988,8 +2072,9 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
               catalogSlug: item.catalogSlug,
             },
           });
-          newInventoryItems.push({ ...created, slot: null, equipSlot: item.equipSlot });
+          newInventoryItems.push({ ...created, slot: null, equipSlot: item.equipSlot, effectKey: item.effectKey });
           createdItemNames.push(created.name);
+          actualLootedNames.push(created.name);
         }
         if (npc.items.length > 0) {
           const nuevosTomados = [...new Set([...yaTomados, ...itemsToLoot.map((item) => item.name)])];
@@ -2012,6 +2097,12 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
           questRewardXp += rewardQuest.rewardXp!;
           await tx.quest.update({ where: { id: rewardQuest.id }, data: { status: 'COMPLETADA' } });
         }
+      }
+      if (actualLootedNames.length !== lootPreview.length) {
+        narration.narration =
+          actualLootedNames.length > 0
+            ? `${characterName} rebusca entre los restos y se hace con lo siguiente: ${actualLootedNames.join(', ')}.`
+            : `${characterName} rebusca entre los restos, pero alguien se le ha adelantado — no queda nada que llevarse.`;
       }
     }
 
@@ -2137,8 +2228,8 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
             catalogSlug: y.itemSlug,
           },
         });
-        // Materia prima cruda (RECURSO) — nunca EQUIPABLE, equipSlot siempre null.
-        newInventoryItems.push({ ...created, slot: null, equipSlot: null });
+        // Materia prima cruda (RECURSO) — nunca EQUIPABLE ni ESPECIAL, equipSlot/effectKey siempre null.
+        newInventoryItems.push({ ...created, slot: null, equipSlot: null, effectKey: null });
         createdItemNames.push(created.name);
       }
       // Bug real (auditoría 2026-07-28): sin esto, el mismo cadáver de fauna ya derrotada se podía
@@ -2153,6 +2244,14 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
         });
       }
     }
+    // Narración mentirosa si se pierde la carrera (auditoría 2026-08-06, mismo patrón que loot/
+    // build más arriba): `harvestOutcome === 'exito'` (antes de esta transacción) ya fijó y emitió
+    // en streaming "despieza/recolecta X y consigue: ...", pero `harvestStillValid` (releído con
+    // `tx`) puede decir que otro turno casi simultáneo ya se llevó ese mismo cadáver — sin
+    // corregir aquí, el jugador vería en su Diario un botín que nunca recibió.
+    if (harvestOutcome === 'exito' && harvestMatch && !harvestStillValid) {
+      narration.narration = `${characterName} rebusca en los restos de ${harvestMatch.sourceName}, pero ya se llevó antes todo lo aprovechable.`;
+    }
 
     // Producción de acciones por tiempo (docs/08 § 4) — hasta ahora "debería conseguir 60 de
     // leña" era solo texto de aviso y nunca se materializaba de verdad (roadmap 2026-07-19).
@@ -2166,8 +2265,8 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
           origin: 'producción',
         },
       });
-      // Producción de acción por tiempo — nunca EQUIPABLE, equipSlot siempre null.
-      newInventoryItems.push({ ...created, slot: null, equipSlot: null });
+      // Producción de acción por tiempo — nunca EQUIPABLE ni ESPECIAL, equipSlot/effectKey siempre null.
+      newInventoryItems.push({ ...created, slot: null, equipSlot: null, effectKey: null });
       createdItemNames.push(created.name);
     }
 
@@ -2240,6 +2339,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
         ...created,
         slot: null,
         equipSlot: recipe.resultCatalogSlug ? (catalogBySlug.get(recipe.resultCatalogSlug)?.equipSlot ?? null) : null,
+        effectKey: recipe.resultCatalogSlug ? (catalogBySlug.get(recipe.resultCatalogSlug)?.effectKey ?? null) : null,
       });
       createdItemNames.push(created.name);
       await awardProfessionXp(recipe.oficio, recipe.tier);
@@ -2309,8 +2409,8 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
       // description sueltos del LLM, sin id real) y se veía obligado a inventarse un id de
       // cliente (`item-${Date.now()}`) que el backend no reconoce, rompiendo equipar ese objeto
       // hasta la siguiente recarga completa. Objeto libre, sin catalogSlug de por medio →
-      // equipSlot siempre null, mismo criterio que el resto de creaciones sin catálogo.
-      newInventoryItems.push({ ...created, slot: null, equipSlot: null });
+      // equipSlot/effectKey siempre null, mismo criterio que el resto de creaciones sin catálogo.
+      newInventoryItems.push({ ...created, slot: null, equipSlot: null, effectKey: null });
     }
     if (narration.newCompanion) {
       // Tope real de slots (2026-08-04, ver el aviso de contextBlocks más arriba) — reconsultado
@@ -2900,6 +3000,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
       newKingdomFounded,
       companionCreated,
       partiallyLootedSlugs,
+      deathCount: finalDeathCount,
     };
     },
     // `timeout`/`maxWait` explícitos (auditoría 2026-07-30: mismo bug real de partida ya
@@ -2931,6 +3032,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     newKingdomFounded,
     companionCreated,
     partiallyLootedSlugs,
+    deathCount: finalDeathCountResult,
   } = transactionResult;
   // La transacción hizo commit de verdad — ahora sí se dispara la generación lenta de fondo (ver
   // el comentario de `chapterDue` más arriba).
@@ -2971,8 +3073,9 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   // cadáver ya saqueado. `npcsInSceneVivos` es la misma lista sin nadie ya resuelto — se usa en
   // todo lo que decide "hay una amenaza real aquí" de aquí para abajo; `npcsInScene` (sin filtrar)
   // se sigue necesitando tal cual para `explicitTarget`/loot/decapitar/`npcSceneBlockFor`, que sí
-  // necesitan poder referirse a un NPC ya derrotado a propósito.
-  const npcsInSceneVivos = npcsInScene.filter((n) => n.condicionFisica !== 'INCAPACITADO' && n.condicionFisica !== 'MUERTO');
+  // necesitan poder referirse a un NPC ya derrotado a propósito. (Definida más arriba, junto a
+  // `candidateAttackTarget` — mismo fallback de "encuentro nuevo sin nombre citado" que también la
+  // necesitaba, ver comentario ahí.)
   // Bug real jugando en vivo (2026-08-04, "ronda larga de pruebas"): esto se fiaba a ciegas de
   // `combateIniciado.npcSlugs`, propuesto libremente por el modelo en su JSON — en un turno de
   // descanso totalmente ajeno a combate (`enCombate: false`, sin ningún verbo hostil), el modelo
@@ -3188,12 +3291,22 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
 
   // Ver comentario de `territories`/`buildings`/`subjects`/`kingdomStats` en NarrateAndPersistResult
   // — mismo criterio que `quests`: listas completas ya fuera de la transacción, no un delta a mano.
-  const [territoryRows, buildingRows, subjectRows, kingdomStatsRow] = await Promise.all([
+  const [territoryRows, buildingRows, subjectRows, kingdomStatsRow, freshWorldState, freshProfessionProgress] = await Promise.all([
     prisma.territory.findMany({ where: { saveId }, orderBy: { acquiredAt: 'asc' } }),
     prisma.building.findMany({ where: { saveId }, orderBy: { createdAt: 'asc' } }),
     prisma.subject.findMany({ where: { saveId }, orderBy: { createdAt: 'asc' } }),
     prisma.kingdomStats.findUnique({ where: { saveId } }),
+    // deathCount/factionsStatus/professionProgress (auditoría 2026-08-06, bug real): las tres se
+    // mutan dentro de la transacción de este mismo turno (combate/decapitar/crafteo) pero nunca
+    // viajaban de vuelta al frontend — GameView.tsx solo las actualizaba en `syncFromSave`, así que
+    // el jugador veía el contador de muertes, la pestaña Reputación o Profesiones desactualizados
+    // hasta recargar del todo. Mismo criterio que quests/territories: se releen ya fuera de la
+    // transacción (que a estas alturas ya hizo commit), nunca se rastrea el delta a mano.
+    prisma.worldState.findUnique({ where: { saveId }, select: { factionsStatus: true } }),
+    prisma.professionProgress.findMany({ where: { saveId } }),
   ]);
+  const freshFactionsStatus = (freshWorldState?.factionsStatus as Record<string, number> | null) ?? {};
+  const professionProgress = freshProfessionProgress.map((p) => ({ professionId: p.professionId, nivel: p.nivel, xp: p.xp }));
   const territories = territoryRows.map((t) => ({
     id: t.id,
     name: t.name,
@@ -3249,5 +3362,8 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     buildings,
     subjects,
     kingdomStats,
+    deathCount: finalDeathCountResult,
+    factionsStatus: freshFactionsStatus,
+    professionProgress,
   };
 }

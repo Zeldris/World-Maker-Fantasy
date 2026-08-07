@@ -28,23 +28,42 @@ export async function progressionRoutes(app: FastifyInstance) {
       if (!save) {
         return reply.status(404).send({ error: 'Partida no encontrada' });
       }
-      if (save.pendingAttributePoints <= 0) {
+
+      // Bug real (auditoría 2026-08-06): `Save.attributes` es un único Json — sin bloquear la fila,
+      // dos POST casi simultáneos (doble clic, dos pestañas) leían el mismo `attributes` desde
+      // ANTES de que ninguno escribiera, así que los dos calculaban `fuerza + 1` sobre el mismo
+      // valor de partida: `pendingAttributePoints` (decrement, sí atómico en Postgres) acababa
+      // consumiendo 2 puntos, pero `attributes` solo subía +1 — un punto de ascenso se perdía en
+      // silencio. `SELECT ... FOR UPDATE` bloquea la fila hasta que la primera transacción
+      // termina, así la segunda ve ya el `attributes` actualizado antes de calcular el suyo.
+      let outcome: { kind: 'ok'; attributes: AttributeBlock; pendingAttributePoints: number } | { kind: 'no-points' } | { kind: 'at-max' };
+      try {
+        outcome = await prisma.$transaction(async (tx) => {
+          const [locked] = await tx.$queryRaw<{ pendingAttributePoints: number; attributes: AttributeBlock }[]>`
+            SELECT "pendingAttributePoints", attributes FROM "Save" WHERE id = ${save.id} FOR UPDATE
+          `;
+          if (locked.pendingAttributePoints <= 0) return { kind: 'no-points' };
+          if (locked.attributes[attribute] >= MAX_ATTRIBUTE) return { kind: 'at-max' };
+          const updated = await tx.save.update({
+            where: { id: save.id },
+            data: {
+              pendingAttributePoints: { decrement: 1 },
+              attributes: { ...locked.attributes, [attribute]: locked.attributes[attribute] + 1 },
+            },
+          });
+          return { kind: 'ok', attributes: updated.attributes as AttributeBlock, pendingAttributePoints: updated.pendingAttributePoints };
+        });
+      } catch {
+        return reply.status(500).send({ error: 'No se pudo repartir el punto de atributo' });
+      }
+
+      if (outcome.kind === 'no-points') {
         return reply.status(400).send({ error: 'No quedan puntos de atributo pendientes' });
       }
-      const attributes = save.attributes as AttributeBlock;
-      if (attributes[attribute] >= MAX_ATTRIBUTE) {
+      if (outcome.kind === 'at-max') {
         return reply.status(400).send({ error: `${attribute} ya está en el máximo (${MAX_ATTRIBUTE})` });
       }
-
-      const updated = await prisma.save.update({
-        where: { id: save.id },
-        data: {
-          pendingAttributePoints: { decrement: 1 },
-          attributes: { ...attributes, [attribute]: attributes[attribute] + 1 },
-        },
-      });
-
-      return { attributes: updated.attributes, pendingAttributePoints: updated.pendingAttributePoints };
+      return { attributes: outcome.attributes, pendingAttributePoints: outcome.pendingAttributePoints };
     },
   );
 

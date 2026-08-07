@@ -28,12 +28,20 @@ export async function recordEntityDiscoveries(
     const normalized = normalizeText(params.mentionedText);
     const discovered: { entityType: string; entitySlug: string }[] = [];
 
-    const [npcs, yields, items, inventoryItems] = await Promise.all([
+    const [npcs, yields, items, inventoryItems, factionRows, historiaRows] = await Promise.all([
       client.npc.findMany({ where: { worldId: params.worldId } }),
       client.harvestYield.findMany({ where: { worldId: params.worldId } }),
       client.itemCatalog.findMany({ where: { worldId: params.worldId } }),
       client.inventoryItem.findMany({ where: { saveId: params.saveId } }),
+      // Cascadas de descubrimiento (2026-08-06, secciones "Facciones"/"Historia" de la
+      // Enciclopedia) — ver uso más abajo en los loops de npc/item. Catálogo (saveId null) + la
+      // fundada en ESTA partida (reino.ts) — nunca la de otra partida distinta, aunque compartan
+      // nombre (mismo filtro que /world/:slug/enciclopedia, ver world.ts).
+      client.faction.findMany({ where: { worldId: params.worldId, OR: [{ saveId: null }, { saveId: params.saveId }] } }),
+      client.historiaEntry.findMany({ where: { worldId: params.worldId } }),
     ]);
+    const factionSlugByName = new Map(factionRows.map((f) => [f.name, f.slug]));
+    const historiaSlugByDocumentoItemSlug = new Map(historiaRows.map((h) => [h.documentoItemSlug, h.slug]));
 
     // Misma exclusión que /world/:slug/enciclopedia (world.ts): la fauna cazable también tiene
     // fila Npc para el motor de escena — cuenta como 'fauna', no como 'npc', para no duplicar.
@@ -44,6 +52,12 @@ export async function recordEntityDiscoveries(
       const aliases = [npc.name, ...npc.aliases];
       if (aliases.some((a) => normalized.includes(normalizeText(a)))) {
         discovered.push({ entityType: 'npc', entitySlug: npc.slug });
+        // Cascada (2026-08-06, sección "Facciones"): descubrir un NPC de una facción también
+        // descubre esa facción — igualdad exacta contra Faction.name, ver fail-fast en
+        // seed-catalog.ts.
+        if (npc.faction && factionSlugByName.has(npc.faction)) {
+          discovered.push({ entityType: 'faction', entitySlug: factionSlugByName.get(npc.faction)! });
+        }
       }
     }
 
@@ -72,6 +86,12 @@ export async function recordEntityDiscoveries(
       const owned = itemNames.some((n) => ownedNames.has(n));
       if (mentioned || owned) {
         discovered.push({ entityType: 'item', entitySlug: item.slug });
+        // Cascada (2026-08-06, sección "Historia"): el objeto físico desbloquea SU HistoriaEntry
+        // (solo revela que existe/es legible — la barrera de traducción, si aplica, se resuelve
+        // en tiempo de lectura en /world/:slug/enciclopedia, no aquí).
+        if (historiaSlugByDocumentoItemSlug.has(item.slug)) {
+          discovered.push({ entityType: 'historia', entitySlug: historiaSlugByDocumentoItemSlug.get(item.slug)! });
+        }
       }
     }
 

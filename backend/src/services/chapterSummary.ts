@@ -31,15 +31,29 @@ const pendingChapterGenerations = new Set<string>();
 /// `scheduleChapterSummaryGeneration` inmediatamente si esto devuelve true.
 export async function claimChapterIfDue(saveId: string): Promise<boolean> {
   if (pendingChapterGenerations.has(saveId)) return false;
+  // Bug real (auditoría 2026-08-06): el reclamo se hacía DESPUÉS de dos `await` (mismo hueco de
+  // carrera "comprobar-esperar-actuar" ya cerrado varias veces en este proyecto para
+  // construcción/saqueo/despiece) — dos turnos casi simultáneos para la misma partida (doble
+  // envío, o un turno en vivo solapando la resolución diferida de worldTick.ts) pasaban los dos
+  // el `has()` de arriba antes de que ninguno reclamara, y los dos acababan disparando su propio
+  // hito "capitulo" (500 XP cada uno) y su propio `SessionSummary` con el mismo `chapterNumber`
+  // (sin `@@unique` que lo impida en el schema). Reclamar YA, antes de cualquier `await`, cierra
+  // el hueco: `Set.has`/`Set.add` son síncronos, así que el segundo turno ve el reclamo del
+  // primero sin ceder el control de por medio.
+  pendingChapterGenerations.add(saveId);
 
   const lastSummary = await prisma.sessionSummary.findFirst({ where: { saveId }, orderBy: { chapterNumber: 'desc' } });
   const since = lastSummary?.createdAt ?? new Date(0);
   const actionsSinceLastSummary = await prisma.logEntry.count({
     where: { saveId, channel: 'CHARACTER', isPlayerAction: true, createdAt: { gt: since } },
   });
-  if (!shouldCreateChapter(actionsSinceLastSummary)) return false;
+  if (!shouldCreateChapter(actionsSinceLastSummary)) {
+    // Todavía no toca capítulo — libera el reclamo, el caller nunca va a llamar a
+    // scheduleChapterSummaryGeneration/releaseChapterClaim para este `false`.
+    pendingChapterGenerations.delete(saveId);
+    return false;
+  }
 
-  pendingChapterGenerations.add(saveId);
   return true;
 }
 
@@ -93,10 +107,20 @@ async function generateAndPersistChapterSummary(saveId: string, characterName: s
   // 2026-07-22: `pacing.ts` existía desde esa decisión pero nada lo llamaba todavía.
   await new Promise((resolve) => setTimeout(resolve, randomPacingDelayMs()));
 
+  // Bug real jugando en vivo (2026-08-07, auditoría "revisa la partida"): el Capítulo 1 real de
+  // Gorhorn salió con `ollamaModelCronista` (1.5B) diciendo que "ataca a Gistera Koh... y logra
+  // detenerla antes de que pueda matarle" — invención completa: Gistera es su aliada, nunca lo
+  // atacó, ver el registro real en el propio `logText`. Condensar ~15-30 turnos de prosa en 2-3
+  // frases sin confundir quién es aliado y quién enemigo es una tarea bastante más exigente que
+  // la clasificación estructurada corta para la que sí basta el modelo pequeño (ver comentario en
+  // narrador.ts sobre `ollamaModelCronista`) — y a diferencia de esos otros usos, esta llamada ya
+  // corre en segundo plano sin que el jugador espere un solo segundo por ella (ver el retardo de
+  // ritmo justo arriba), así que no hay ningún coste real en usar el modelo grande del Narrador
+  // aquí, solo beneficio en fidelidad.
   const { text } = await ollamaGenerate({
-    model: env.ollamaModelCronista,
+    model: env.ollamaModelNarrador,
     system:
-      'Eres el cronista de un juego de rol. Tu única tarea es condensar un registro de juego en un resumen breve de capítulo, en tercera persona, sin inventar nada que no esté en el registro.',
+      'Eres el cronista de un juego de rol. Tu única tarea es condensar un registro de juego en un resumen breve de capítulo, en tercera persona, sin inventar nada que no esté en el registro — en particular, nunca confundas quién es aliado y quién es enemigo, ni inventes ningún enfrentamiento que no aparezca explícitamente en el registro.',
     prompt: `Registro de ${characterName} en este capítulo:\n${logText}${continuidad}\n\nResume en 2-3 frases lo más importante que ha ocurrido — suficiente para que alguien que vuelve a la partida tras días sin jugar recuerde dónde estaba. Si conecta con el capítulo anterior, que se note (p. ej. "tras aquello..."), sin repetirlo.`,
     timeoutMs: 90_000,
   });

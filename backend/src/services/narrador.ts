@@ -157,6 +157,12 @@ interface TurnContext {
   /// runbook del proyecto (docs/revisar-partida.md § "NPCs que resucitan") — un modelo pequeño a
   /// veces la ignora igual que ignoraba el resto de instrucciones "no hagas X" de esta lista.
   possiblyResurrectedNpcNames?: string[];
+  /// Ver `hasFalseTravelClaim` más abajo — nombres reales de los 2+ destinos posibles cuando
+  /// `resolveTravel` (travel.ts) no pudo auto-resolver un "avanzo"/"continúo" sin destino nombrado
+  /// (turnResolution.ts ya le pide al modelo explícitamente que pregunte cuál elige, en vez de
+  /// inventar una llegada). Vacío = no aplica este turno (viaje resuelto de verdad, un solo
+  /// destino, o esta acción no era movimiento vago).
+  possiblyFalseTravelDestinationNames?: string[];
 }
 
 interface ClassifyContext {
@@ -698,6 +704,12 @@ Responde solo con el JSON pedido, nada más.`;
         lastResult = parsed;
         continue;
       }
+      if (hasFalseTravelClaim(parsed, ctx.possiblyFalseTravelDestinationNames)) {
+        console.warn(`[narrador] intento ${idx + 1}/3 descartado por narrar una llegada a un destino sin resolver mecánicamente (2+ salidas posibles), reintentando`);
+        if (idx === 0) ctx.onNarrationReset?.();
+        lastResult = parsed;
+        continue;
+      }
       return parsed;
     } catch (err) {
       // Roadmap de velocidad, 2026-07-20 (streaming): antes este catch tragaba el error en
@@ -916,4 +928,30 @@ export function hasResurrectedDeadNpc(narration: string, possiblyResurrectedNpcN
       const normalizedSentence = normalizeText(sentence);
       return RESURRECTION_LEAK_REGEX.test(normalizedSentence) && normalizedNames.some((name) => normalizedSentence.includes(name));
     });
+}
+
+/// Narración-vs-mecánica, mismo patrón que `hasFalseItemUse`/`hasResurrectedDeadNpc` (bug real
+/// jugando en vivo, 2026-08-06 — auditoría "revisa la partida" en directo: "Avanzo, dejando atrás
+/// la Hondonada" desde un nodo con 2 salidas reales no puede auto-resolverse solo — el aviso
+/// explícito de turnResolution.ts le pide al modelo preguntar cuál de los caminos elige, en vez de
+/// narrar una llegada — pero narró "Gorhorn se arrastra... hacia los Pilares Rotos" y persistió el
+/// hecho "Gorhorn ha dejado la Hondonada del Eco y avanza hacia los Pilares Rotos" en `newFacts`,
+/// aunque `Save.currentLocationId` nunca cambió: la ubicación real y el hecho recordado para
+/// siempre quedaron desincronizados. Se comprueba tanto la prosa como `newFacts` (a diferencia del
+/// resto de comprobaciones de esta lista, que solo miran la prosa) porque aquí el hueco más
+/// peligroso es justo el hecho persistido, no el texto de pantalla. Verbo de movimiento YA
+/// COMPLETADO/comprometido a una dirección + nombre real de uno de los destinos ambiguos, en la
+/// misma frase — una pregunta bien hecha ("¿hacia el Pozo o hacia los Pilares?") nombra los
+/// destinos sin usar ninguno de estos verbos, así que no dispara en falso.
+const FALSE_TRAVEL_VERB_REGEX =
+  /\b(ha dejado|deja atras|dejo atras|abandona\w*|abandono|ha llegado|llega\w*|llego|alcanza\w*|alcanzo|entra\w* en|entro en|arriba\w* a|arribo a|avanza\w* hacia|camina\w* hacia|se dirige\w* hacia|dirigio\w* hacia|parte\w* hacia|prosigue\w* hacia|se encuentra ya en|esta ya en)\b/i;
+
+export function hasFalseTravelClaim(narration: NarrationResult, possiblyFalseTravelDestinationNames?: string[]): boolean {
+  if (!possiblyFalseTravelDestinationNames || possiblyFalseTravelDestinationNames.length === 0) return false;
+  const normalizedNames = possiblyFalseTravelDestinationNames.map(normalizeText);
+  const sentences = [narration.narration, ...narration.newFacts].flatMap((text) => text.split(/(?<=[.!?])\s+/));
+  return sentences.some((sentence) => {
+    const normalizedSentence = normalizeText(sentence);
+    return FALSE_TRAVEL_VERB_REGEX.test(normalizedSentence) && normalizedNames.some((name) => normalizedSentence.includes(name));
+  });
 }

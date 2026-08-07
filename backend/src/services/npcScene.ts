@@ -28,6 +28,11 @@ export interface NpcItemInScene {
   /// Slug de ItemCatalog (sesión de diseño 2026-07-23) — se copia al InventoryItem.catalogSlug
   /// real si se saquea, para poder mirar sus requisitos de equipar (ver requisitos.ts).
   catalogSlug: string;
+  /// Clave de efecto especial de catálogo (2026-08-06, bug real jugando: "Mapa de las Llanuras" no
+  /// activaba los puntos del mapa hasta recargar) — se copia al InventoryItem real si se saquea,
+  /// mismo criterio exacto que equipSlot/statBonuses arriba (sin esto, MapaPanel.tsx no lo veía
+  /// hasta la siguiente GET /saves/:id, que sí lo resuelve vía join con ItemCatalog).
+  effectKey: string | null;
   /// Rediseño del turno de combate (2026-07-28) — necesario para resolver el "Ataque base" del
   /// NPC (baseAttack.ts, mismo criterio que ya usa world.ts para la Enciclopedia): solo los
   /// ítems `category === 'arma'` cuentan como arma equipable en su loadout.
@@ -123,6 +128,7 @@ export function buildNpcInScene(npc: NpcWithItems, state: NpcState | undefined):
       equipSlot: i.item.equipSlot,
       statBonuses: i.item.statBonuses,
       catalogSlug: i.item.slug,
+      effectKey: i.item.effectKey,
       category: i.item.category,
       tipoArma: i.item.tipoArma,
     })),

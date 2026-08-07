@@ -114,6 +114,20 @@ describe('PATCH /saves/:id/inventario/:itemId — ranura compatible', () => {
     expect(findUniqueItemCatalog).not.toHaveBeenCalled();
   });
 
+  it('rechaza un slot que no es ningún valor real de EquipSlot, incluso sin catalogSlug que consultar (auditoría 2026-08-06)', async () => {
+    // Bug real: antes solo se comprobaba null-o-string, nunca contra el enum — un objeto
+    // narrativo sin catalogSlug se saltaba entera la validación de ranura y llegaba un string
+    // cualquiera al `update` de Prisma, reventando con un 500 genérico en vez de un 400 claro.
+    findFirstInventoryItem.mockResolvedValue({ id: 'item1', name: 'Recuerdo improvisado', catalogSlug: null, slot: null });
+    const app = await buildApp();
+
+    const res = await app.inject({ method: 'PATCH', url: '/saves/save1/inventario/item1', payload: { slot: 'NO_ES_UNA_RANURA_REAL' } });
+
+    expect(res.statusCode).toBe(400);
+    expect(JSON.parse(res.body).error).toMatch(/Ranura no válida/);
+    expect(updateInventoryItem).not.toHaveBeenCalled();
+  });
+
   it('desequipar (slot: null) siempre está permitido, sin comprobar ranura', async () => {
     findFirstInventoryItem.mockResolvedValue({ id: 'item1', name: 'Yelmo de patrulla goirntes', catalogSlug: 'yelmo-patrulla-goirntes', slot: 'CASCO' });
     updateInventoryItem.mockResolvedValue({});

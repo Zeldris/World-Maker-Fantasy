@@ -64,6 +64,16 @@ export async function sessionRoutes(app: FastifyInstance) {
     if (!save.characterTransit || save.characterTransit.busyUntil <= new Date()) {
       return reply.status(404).send({ error: 'No hay ninguna acción cancelable ahora mismo' });
     }
+    // Bug real (auditoría 2026-08-06): `busyUntil` por sí solo NO distingue "todavía esperando"
+    // de "worldTick ya lo reclamó y lo está narrando" — el reclamo empuja `busyUntil` 10 minutos
+    // al futuro precisamente para cubrir la narración, así que durante esa ventana este `if` de
+    // arriba dejaba cancelar una acción que ya estaba en marcha de verdad (sin duplicar nada — el
+    // borrado dentro de `narrateAndPersistTurn` aborta limpio si la fila desaparece antes—, pero
+    // tirando a la basura una narración ya generada y dejando un LogEntry falso de "cambia de idea
+    // antes de empezar"). `claimedAt` (zoneContext, ver worldTick.ts) es la marca real.
+    if ((save.characterTransit.zoneContext as { claimedAt?: string } | null)?.claimedAt) {
+      return reply.status(409).send({ error: 'La acción ya se estaba resolviendo, no se pudo cancelar' });
+    }
 
     // Mismo patrón de "reclamo atómico" que worldTick.ts: si busyUntil ya pasó a estar en el
     // pasado justo antes de este borrado (carrera con el worker de fondo resolviéndola), el

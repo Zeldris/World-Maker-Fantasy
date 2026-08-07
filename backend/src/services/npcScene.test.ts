@@ -320,7 +320,7 @@ function npcFixture(overrides: Partial<NpcInScene> = {}): NpcInScene {
     id: 'orco', slug: 'orco-enfurecido', name: 'Orco enfurecido', articulo: 'el', kind: 'PRINCIPAL',
     level: 1, role: 'Guerrero deshonrado', faction: null, personality: 'Errático', bio: 'x',
     items: [
-      { name: 'Maza orca', cantidad: 1, notas: 'Astillada', description: 'x', equipSlot: 'ARMA_PRINCIPAL', statBonuses: { fuerza: 2 }, catalogSlug: 'maza-orca', category: 'arma', tipoArma: 'MAZA' },
+      { name: 'Maza orca', cantidad: 1, notas: 'Astillada', description: 'x', equipSlot: 'ARMA_PRINCIPAL', statBonuses: { fuerza: 2 }, catalogSlug: 'maza-orca', effectKey: null, category: 'arma', tipoArma: 'MAZA' },
     ],
     attributes: { fuerza: 11, destreza: 10, constitucion: 9, inteligencia: 4, voluntad: 7, carisma: 2, arcano: 2 },
     raza: 'orcos', clase: 'Guerrero', ataqueNatural: null, habilidadesRaciales: [],
@@ -411,6 +411,9 @@ describe('buildNpcInScene', () => {
           statBonuses: null,
           category: 'arma',
           tipoArma: 'MAZA',
+          // Bug real jugando (2026-08-06): "Mapa de las Llanuras" saqueado en pleno turno no
+          // activaba los puntos del mapa hasta recargar — effectKey no viajaba desde aquí.
+          effectKey: 'reveal-map-llanuras',
         },
       },
     ],
@@ -433,6 +436,7 @@ describe('buildNpcInScene', () => {
         equipSlot: 'ARMA_PRINCIPAL',
         statBonuses: null,
         catalogSlug: 'maza-orca',
+        effectKey: 'reveal-map-llanuras',
         category: 'arma',
         tipoArma: 'MAZA',
       },

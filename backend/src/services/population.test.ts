@@ -25,41 +25,36 @@ describe('populationTargetSlugFor', () => {
 });
 
 describe('decrementPopulationOnDeath', () => {
-  it('resta 1 a la fila que corresponde, sin bajar de 0', async () => {
-    const update = vi.fn().mockResolvedValue({});
-    const tx = {
-      worldPopulation: {
-        findUnique: vi.fn().mockResolvedValue({ id: 'row1', poblacion: 5 }),
-        update,
-      },
-    };
+  // Cobertura reescrita (auditoría 2026-08-06, bug real de condición de carrera): antes esto era
+  // `findUnique` + `update` con el valor de `poblacion` capturado en memoria — sin bloqueo, un tick
+  // de `growAllPopulations` casi simultáneo sobre la misma fila podía pisar la muerte en silencio.
+  // Ahora es un `updateMany` atómico con `{ decrement: 1 }`, guardado por `poblacion: { gt: 0 } }`.
+  it('resta 1 a la fila que corresponde de forma atómica, sin leer nada antes', async () => {
+    const updateMany = vi.fn().mockResolvedValue({ count: 1 });
+    const tx = { worldPopulation: { updateMany } };
     await decrementPopulationOnDeath(tx as any, 'world1', null, 'murgol', 'Las Llanuras del Viento Rojo');
-    expect(tx.worldPopulation.findUnique).toHaveBeenCalledWith({
-      where: { worldId_targetType_targetSlug: { worldId: 'world1', targetType: 'FAUNA', targetSlug: 'murgol' } },
+    expect(updateMany).toHaveBeenCalledWith({
+      where: { worldId: 'world1', targetType: 'FAUNA', targetSlug: 'murgol', poblacion: { gt: 0 } },
+      data: { poblacion: { decrement: 1 } },
     });
-    expect(update).toHaveBeenCalledWith({ where: { id: 'row1' }, data: { poblacion: 4 } });
   });
 
-  it('no baja de 0 aunque ya estuviera muy cerca', async () => {
-    const update = vi.fn().mockResolvedValue({});
-    const tx = {
-      worldPopulation: {
-        findUnique: vi.fn().mockResolvedValue({ id: 'row1', poblacion: 0 }),
-        update,
-      },
-    };
+  it('el guard poblacion > 0 evita bajar de 0 sin necesidad de releer nada', async () => {
+    const updateMany = vi.fn().mockResolvedValue({ count: 0 });
+    const tx = { worldPopulation: { updateMany } };
     await decrementPopulationOnDeath(tx as any, 'world1', 'orcos', 'torgash', 'Las Llanuras del Viento Rojo');
-    expect(update).not.toHaveBeenCalled();
+    expect(updateMany).toHaveBeenCalledWith({
+      where: { worldId: 'world1', targetType: 'RAZA', targetSlug: 'orcos-llanuras', poblacion: { gt: 0 } },
+      data: { poblacion: { decrement: 1 } },
+    });
   });
 
-  it('no hace nada si no encuentra una fila que corresponda (nunca bloquea el turno)', async () => {
-    const update = vi.fn();
-    const findUnique = vi.fn().mockResolvedValue(null);
-    const tx = { worldPopulation: { findUnique, update } };
+  it('no hace nada si populationTargetSlugFor no reconoce la región (nunca bloquea el turno)', async () => {
+    const updateMany = vi.fn();
+    const tx = { worldPopulation: { updateMany } };
     await decrementPopulationOnDeath(tx as any, 'world1', 'orcos', 'algun-npc', null);
     // Región nula para 'orcos' => populationTargetSlugFor devuelve null antes de tocar la DB.
-    expect(findUnique).not.toHaveBeenCalled();
-    expect(update).not.toHaveBeenCalled();
+    expect(updateMany).not.toHaveBeenCalled();
   });
 });
 
@@ -105,7 +100,7 @@ describe('growAllPopulations', () => {
       },
     };
     const result = await growAllPopulations(prisma as any);
-    expect(update).toHaveBeenCalledWith({ where: { id: 'r1' }, data: { poblacion: 1600 } });
+    expect(update).toHaveBeenCalledWith({ where: { id: 'r1' }, data: { poblacion: { increment: 600 } } });
     expect(result.updated).toBe(1);
   });
 
@@ -119,6 +114,6 @@ describe('growAllPopulations', () => {
       },
     };
     await growAllPopulations(prisma as any);
-    expect(update).toHaveBeenCalledWith({ where: { id: 'r1' }, data: { poblacion: 1090 } });
+    expect(update).toHaveBeenCalledWith({ where: { id: 'r1' }, data: { poblacion: { increment: 90 } } });
   });
 });

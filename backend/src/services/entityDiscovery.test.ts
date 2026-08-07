@@ -16,6 +16,8 @@ function fakeClient(overrides: Partial<Record<string, unknown>> = {}) {
     harvestYield: { findMany: vi.fn(() => Promise.resolve([])) },
     itemCatalog: { findMany: vi.fn(() => Promise.resolve([])) },
     inventoryItem: { findMany: vi.fn(() => Promise.resolve([])) },
+    faction: { findMany: vi.fn(() => Promise.resolve([])) },
+    historiaEntry: { findMany: vi.fn(() => Promise.resolve([])) },
     discoveredEntity: { createMany: vi.fn(() => Promise.resolve({ count: 0 })) },
     ...overrides,
   };
@@ -103,6 +105,79 @@ describe('recordEntityDiscoveries', () => {
     const client = fakeClient({
       itemCatalog: { findMany: vi.fn(() => Promise.resolve([{ slug: 'racion-de-viaje', name: 'Ración de viaje', aliases: ['Raciones de viaje'] }])) },
       inventoryItem: { findMany: vi.fn(() => Promise.resolve([{ name: 'Raciones de viaje' }])) },
+    });
+
+    await recordEntityDiscoveries({ saveId: 's1', worldId: 'w1', mentionedText: 'Camino en silencio.' }, client as never);
+
+    expect(client.discoveredEntity.createMany).toHaveBeenCalledWith({
+      data: [{ saveId: 's1', entityType: 'item', entitySlug: 'racion-de-viaje' }],
+      skipDuplicates: true,
+    });
+  });
+
+  it('descubrir un NPC de una facción también descubre esa facción (cascada, sección "Facciones")', async () => {
+    const client = fakeClient({
+      npc: { findMany: vi.fn(() => Promise.resolve([{ slug: 'torgash', name: 'Torgash', aliases: [], faction: 'Clan Serhu' }])) },
+      faction: { findMany: vi.fn(() => Promise.resolve([{ slug: 'clan-serhu', name: 'Clan Serhu' }])) },
+    });
+
+    await recordEntityDiscoveries({ saveId: 's1', worldId: 'w1', mentionedText: 'Torgash levanta su lanza.' }, client as never);
+
+    expect(client.discoveredEntity.createMany).toHaveBeenCalledWith({
+      data: [
+        { saveId: 's1', entityType: 'npc', entitySlug: 'torgash' },
+        { saveId: 's1', entityType: 'faction', entitySlug: 'clan-serhu' },
+      ],
+      skipDuplicates: true,
+    });
+  });
+
+  it('la query de Faction para la cascada pide catálogo + solo la fundada de ESTA partida (2026-08-06)', async () => {
+    // Regresión: sin este filtro, la cascada NPC→facción de una partida podría "descubrir por
+    // casualidad" la facción fundada en OTRA partida distinta si compartieran nombre de reino.
+    const client = fakeClient();
+
+    await recordEntityDiscoveries({ saveId: 's1', worldId: 'w1', mentionedText: 'x' }, client as never);
+
+    expect(client.faction.findMany).toHaveBeenCalledWith({ where: { worldId: 'w1', OR: [{ saveId: null }, { saveId: 's1' }] } });
+  });
+
+  it('un NPC sin facción, o cuya facción no tiene fila en el catálogo, no dispara ninguna cascada', async () => {
+    const client = fakeClient({
+      npc: { findMany: vi.fn(() => Promise.resolve([{ slug: 'gorhorn', name: 'Gorhorn', aliases: [], faction: null }])) },
+      faction: { findMany: vi.fn(() => Promise.resolve([{ slug: 'clan-serhu', name: 'Clan Serhu' }])) },
+    });
+
+    await recordEntityDiscoveries({ saveId: 's1', worldId: 'w1', mentionedText: 'Gorhorn levanta su hacha.' }, client as never);
+
+    expect(client.discoveredEntity.createMany).toHaveBeenCalledWith({
+      data: [{ saveId: 's1', entityType: 'npc', entitySlug: 'gorhorn' }],
+      skipDuplicates: true,
+    });
+  });
+
+  it('descubrir/poseer un objeto con HistoriaEntry enganchada también descubre esa entrada (cascada, sección "Historia")', async () => {
+    const client = fakeClient({
+      itemCatalog: { findMany: vi.fn(() => Promise.resolve([{ slug: 'tablilla-quemada-maktor', name: 'Tablilla quemada', aliases: [] }])) },
+      historiaEntry: { findMany: vi.fn(() => Promise.resolve([{ slug: 'la-caida-del-clan-maktor', documentoItemSlug: 'tablilla-quemada-maktor' }])) },
+    });
+
+    await recordEntityDiscoveries({ saveId: 's1', worldId: 'w1', mentionedText: 'Encuentras una tablilla quemada entre los escombros.' }, client as never);
+
+    expect(client.discoveredEntity.createMany).toHaveBeenCalledWith({
+      data: [
+        { saveId: 's1', entityType: 'item', entitySlug: 'tablilla-quemada-maktor' },
+        { saveId: 's1', entityType: 'historia', entitySlug: 'la-caida-del-clan-maktor' },
+      ],
+      skipDuplicates: true,
+    });
+  });
+
+  it('un objeto sin ninguna HistoriaEntry enganchada no dispara ninguna cascada de historia', async () => {
+    const client = fakeClient({
+      itemCatalog: { findMany: vi.fn(() => Promise.resolve([{ slug: 'racion-de-viaje', name: 'Ración de viaje', aliases: [] }])) },
+      inventoryItem: { findMany: vi.fn(() => Promise.resolve([{ name: 'Ración de viaje' }])) },
+      historiaEntry: { findMany: vi.fn(() => Promise.resolve([{ slug: 'la-caida-del-clan-maktor', documentoItemSlug: 'tablilla-quemada-maktor' }])) },
     });
 
     await recordEntityDiscoveries({ saveId: 's1', worldId: 'w1', mentionedText: 'Camino en silencio.' }, client as never);

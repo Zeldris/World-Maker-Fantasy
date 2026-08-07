@@ -1,6 +1,11 @@
 import { completeWithFallback } from '../lib/aiProviders/orchestrator.js';
 
-export type ImagePromptEntityType = 'npc' | 'item' | 'fauna' | 'ability' | 'raza' | 'personaje' | 'location' | 'construccion';
+// 'faction'/'historia' (2026-08-06) — mismo literal que `DiscoveredEntity.entityType` a propósito
+// (el doc comment de ese modelo en schema.prisma ya dice "mismo vocabulario que
+// ImagePromptEntityType"), no 'faccion' aunque el resto de la Enciclopedia mezcle español/inglés
+// libremente (raza/personaje/construccion vs. item/location) — evita dos nombres distintos para el
+// mismo tipo de entidad en dos subsistemas hermanos.
+export type ImagePromptEntityType = 'npc' | 'item' | 'fauna' | 'ability' | 'raza' | 'personaje' | 'location' | 'construccion' | 'faction' | 'historia' | 'crafteo';
 
 /// Dos superficies reales de la UI, medidas contra el código (no tallas inventadas): EntryCard
 /// (cuadrícula de la Enciclopedia, InventarioPanel) es un icono pequeño y cuadrado; MediaSlot
@@ -18,6 +23,9 @@ const ENTITY_TYPE_HINT: Record<ImagePromptEntityType, string> = {
   personaje: 'a character portrait of this specific playable protagonist',
   location: 'a wide establishing/environment illustration of this real place',
   construccion: 'an illustration of this specific building/structure',
+  faction: 'a heraldic emblem/banner illustration representing this faction or clan (not a specific named character)',
+  historia: 'an illustration of the historical scene or physical document described in this lore entry',
+  crafteo: 'an item/prop illustration of this specific crafted result',
 };
 
 // Cadena de dimensiones EXACTA (petición explícita, 2026-07-22: "no se está especificando las

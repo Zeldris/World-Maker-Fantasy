@@ -1,9 +1,16 @@
 import type { FastifyInstance } from 'fastify';
 import { prisma } from '../../lib/prisma.js';
+import { slugify } from '../../lib/slugify.js';
 
 /// Fundación de reino (2026-08-04, docs/17-reglas-construcciones-reino.md) — el popup que se abre
 /// al terminar de construir el Ayuntamiento (tier 1) manda aquí el formulario. Decisión manual de
 /// la jugadora, nunca del modelo (mismo criterio narrativo-sin-mecánica que el resto de Save).
+///
+/// Fundar tu reino TAMBIÉN funda tu propia facción (2026-08-06) — el propio documento de diseño
+/// original ("fundar la facción") ya lo decía, pero el catálogo `Faction` de la Enciclopedia no
+/// existía todavía cuando se construyó esto: solo llegó a crear el `Territory`. Ahora, en la misma
+/// transacción, se crea también la fila `Faction` (escapada a esta partida vía `saveId`) y su
+/// `DiscoveredEntity` — la jugadora ya "conoce" su propia facción en cuanto la funda.
 export async function reinoRoutes(app: FastifyInstance) {
   app.post<{ Params: { id: string }; Body: { kingdomName: string; description?: string } }>(
     '/saves/:id/reino/fundar',
@@ -18,6 +25,13 @@ export async function reinoRoutes(app: FastifyInstance) {
       if (!ayuntamiento) {
         return reply.status(400).send({ error: 'Todavía no has construido ningún Ayuntamiento' });
       }
+      // Fundar dos veces crearía dos filas de Faction con el mismo slug determinista (choca contra
+      // @@unique([worldId, slug])) — el frontend solo abre este formulario una vez (al construir el
+      // Ayuntamiento tier 1 desde cero), pero se guarda explícito en vez de dejar que reviente el
+      // segundo intento con un error de base de datos poco claro.
+      if (save.kingdomName) {
+        return reply.status(400).send({ error: 'Ya has fundado tu reino' });
+      }
 
       // Gorhorn (petición explícita, 2026-08-04): el nombre del reino viene precargado y
       // BLOQUEADO — "Maktor" — verificado aquí en el backend, no solo ocultando el campo en el
@@ -28,10 +42,35 @@ export async function reinoRoutes(app: FastifyInstance) {
         return reply.status(400).send({ error: 'Falta el campo: kingdomName' });
       }
 
-      await prisma.save.update({ where: { id: save.id }, data: { kingdomName: finalKingdomName } });
-      if (description?.trim() && ayuntamiento.territoryId) {
-        await prisma.territory.update({ where: { id: ayuntamiento.territoryId }, data: { description: description.trim() } });
+      // Sin raza no hay bajo qué agrupar la facción en la Enciclopedia (petición explícita: "las
+      // facciones agrupadas por raza") — no debería pasar en partidas nuevas (la raza se fija al
+      // crear personaje), pero una partida antigua sin este campo no debe crear una facción rota.
+      if (!save.raza) {
+        return reply.status(400).send({ error: 'Tu personaje necesita una raza asignada para fundar una facción' });
       }
+
+      const trimmedDescription = description?.trim();
+      const factionSlug = `${slugify(finalKingdomName)}-${save.id}`;
+
+      await prisma.$transaction(async (tx) => {
+        await tx.save.update({ where: { id: save.id }, data: { kingdomName: finalKingdomName } });
+        if (trimmedDescription && ayuntamiento.territoryId) {
+          await tx.territory.update({ where: { id: ayuntamiento.territoryId }, data: { description: trimmedDescription } });
+        }
+        const faction = await tx.faction.create({
+          data: {
+            worldId: save.worldId,
+            saveId: save.id,
+            slug: factionSlug,
+            name: finalKingdomName,
+            raza: save.raza!,
+            description: trimmedDescription || `Facción fundada por ${save.characterName}.`,
+          },
+        });
+        await tx.discoveredEntity.create({
+          data: { saveId: save.id, entityType: 'faction', entitySlug: faction.slug },
+        });
+      });
 
       return { kingdomName: finalKingdomName };
     },

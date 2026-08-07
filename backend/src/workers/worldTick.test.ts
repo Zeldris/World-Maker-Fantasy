@@ -99,9 +99,15 @@ describe('resolveDueTransits', () => {
 
     await resolveDueTransits();
 
+    // `zoneContext` viaja con `claimedAt` añadido (auditoría 2026-08-06) — la marca real que
+    // distingue "reclamado, narrándose de verdad" de "todavía esperando" para
+    // POST /saves/:id/transit/cancel (ver session.ts), independiente de `busyUntil`.
     expect(updateMany).toHaveBeenCalledWith({
       where: { id: 't1', busyUntil: { lte: expect.any(Date) } },
-      data: { busyUntil: expect.any(Date) },
+      data: {
+        busyUntil: expect.any(Date),
+        zoneContext: expect.objectContaining({ action: 'seguir caminando', claimedAt: expect.any(String) }),
+      },
     });
     expect(narrateAndPersistTurn).toHaveBeenCalledTimes(1);
     // El borrado real ya no lo hace worldTick.ts aparte (bug real, auditoría 2026-07-28: eso

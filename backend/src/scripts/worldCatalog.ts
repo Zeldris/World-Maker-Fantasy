@@ -2742,6 +2742,128 @@ export const items: ItemCatalogInput[] = [
   },
 ];
 
+// ══════════════════════════════════════════════════════════════════════════
+// FACCIONES (Enciclopedia § "Facciones", 2026-08-06)
+// ══════════════════════════════════════════════════════════════════════════
+
+export interface FactionInput {
+  slug: string;
+  name: string;
+  /// Uno de BERIG_RAZAS (berigLore.ts: 'goirntes'|'orcos'|'nabieus'|'faerus') — texto libre, sin
+  /// FK, mismo criterio que Npc.raza.
+  raza: string;
+  description: string;
+}
+
+// Las 4 facciones ya presentes como `Npc.faction` (texto libre) en el catálogo de arriba, ahora
+// formalizadas con ficha propia. El `name` de cada una debe coincidir EXACTAMENTE con el string
+// usado en `faction:` de los NPCs de esa facción (seed-catalog.ts falla pronto si no coinciden) —
+// contenido sourced de docs/rpgtarkor/areas.md § "Los clanes orcos" y las menciones de la
+// Concordia en historia.md/razas.md/npcs.md, sin inventar nada nuevo.
+export const factions: FactionInput[] = [
+  {
+    slug: 'clan-serhu',
+    name: 'Clan Serhu',
+    raza: 'orcos',
+    description:
+      'Clan orco de las Llanuras del Viento Rojo, asentado en el Campamento del Clan Serhu junto al Pozo de Cauce Viejo — empalizada de estacas afiladas rodeando chozas de techo cónico, con vigías apostados en las torres de la entrada. Fundado generaciones atrás por el usurpador Ketg tras traicionar a su propia Terk\'ikar, Nietka, con ayuda Goirnte — desde entonces gobierna una casta cerrada de descendientes suyos, hoy la Terk\'ikar Ulkha y el Kort\'ikar Torgash, que sostiene su poder puertas adentro por miedo, no por el honor y la asamblea abierta del resto de clanes orcos. Bajo control indirecto de la Concordia de Hierro, que les provee armas a cambio de someter a otras tribus orcas y lanzar incursiones en su nombre. Su tótem es una cabeza de Gargantúa de Ceniza tallada, herencia compartida con el Clan Maktor de antes del golpe de Ketg.',
+  },
+  {
+    slug: 'clan-helsig',
+    name: 'Clan Helsig',
+    raza: 'orcos',
+    description:
+      'Tribu orca de las zonas gélidas de Cristal Helado, asentada en La Veta Helada — poco más que un campamento minero fortificado alrededor del yacimiento de hielo sílice más rico de la región. Gobernada por la Terk\'ikar Brenka y su pareja, la Kort\'ikar Solgra, que lidera la guerra. Su vida diaria la dicta la montaña: turnos en las minas, talla paciente del hielo sílice y una caza tan escasa que racionar es ley no escrita. Comercian cuchillos y herramientas con el resto de clanes a cambio de comida y pieles, y aceptan brazos de fuera en sus minas — así llegó a conocer Gorhorn a Hagar, de este clan. Mantienen un perfil neutral y defensivo ante los Goirntes, evitando la confrontación abierta.',
+  },
+  {
+    slug: 'concordia-de-hierro',
+    name: 'Concordia de Hierro',
+    raza: 'goirntes',
+    description:
+      'Alianza militar Goirnte formada tras El Detonante, con sede en el Baluarte de Goirme — la mayor de las ciudades-fortaleza Goirntes, muros de hierro negro pulido tallados con una simetría antinatural y el obelisco de leyes más alto de todo Berig en su plaza central. La lidera oficialmente la facción radical del orden Goirnte, convencida de que la magia salvaje es una amenaza existencial que exige mano dura — bajo su mando unificado somete a clanes orcos y a los Nabieus, de grado o por presión, y resucita con otro nombre las viejas imposiciones del Yugo de Hierro: tributo en mineral, madera y contingentes de guerra obligatorios. Su mando militar recae en el General Vrask Ombra.',
+  },
+  {
+    slug: 'concordia-de-hierro-moderada',
+    name: 'Concordia de Hierro (facción moderada)',
+    raza: 'goirntes',
+    description:
+      'Corriente interna de la Concordia de Hierro que intenta frenar a los radicales desde dentro de la política, no desde el campo de batalla — opera en los mismos pasillos de piedra pulida y bajo los mismos obeliscos de leyes del Baluarte de Goirme que la facción a la que se opone. La lidera la Archimagistrada Yovenne Tal, que cita de memoria las leyes de los obeliscos y jamás improvisa un argumento que no pueda sostener por escrito — pero la propia ley que invoca le exige pruebas presentadas "en orden" de la traición que rompió el sello de contención, pruebas que hasta ahora nadie ha podido entregarle por canal legítimo.',
+  },
+];
+
+// ══════════════════════════════════════════════════════════════════════════
+// HISTORIA (Enciclopedia § "Historia", 2026-08-06)
+// ══════════════════════════════════════════════════════════════════════════
+
+export interface HistoriaEntryInput {
+  slug: string;
+  title: string;
+  /// 'comun' = después del año 0 (docs/rpgtarkor/cronologia.md), se agrupa por bloques de 500
+  /// años en la Enciclopedia. 'semillas' = mítico, anterior al año 0
+  /// (docs/rpgtarkor/cronologia-mitica.md), lista plana sin bloques — `year` siempre null aquí.
+  era: 'comun' | 'semillas';
+  year: number | null;
+  text: string;
+  /// Solo true para hallazgos de la Era de las Semillas, escritos en el idioma de las Semillas —
+  /// el texto real no se sirve al frontend hasta que `translatorNpcSlug` también esté descubierto
+  /// (ver /world/:slug/enciclopedia). Ninguna entrada de esta pasada lo necesita todavía: no existe
+  /// hoy ningún NPC traductor en el catálogo (Nabierus no está definido como personaje jugable
+  /// aún) — el campo y su gating quedan construidos y probados con datos sintéticos, sin contenido
+  /// real que dependa de él por ahora.
+  requiresTranslation?: boolean;
+  /// Debe existir en `items` (validado en seed-catalog.ts) — el objeto físico que, al
+  /// descubrirse/poseerse, desbloquea esta entrada.
+  documentoItemSlug: string;
+  /// Solo si requiresTranslation=true — debe existir en `npcs`/`fauna` (validado en seed-catalog.ts).
+  translatorNpcSlug?: string;
+}
+
+// Los 5 objetos `category: 'documento'` ya existentes en el catálogo de arriba, cada uno enganchado
+// a su propia entrada de lore. Años anclados a docs/rpgtarkor/cronologia.md (hoy, año ~4.010 —
+// "El Detonante" ~4.005-4.008 formó la Concordia de Hierro actual).
+export const historiaEntries: HistoriaEntryInput[] = [
+  {
+    slug: 'correspondencia-concordia',
+    title: 'Correo interceptado de la Concordia',
+    era: 'comun',
+    year: 4009,
+    text: 'Un rollo de pergamino sellado con cera y el emblema de la Concordia de Hierro, interceptado antes de llegar a su destinatario. Órdenes de mando cifradas en el lenguaje burocrático de los obeliscos — quien lo lea con cuidado encontrará más de lo que debería saber sobre los movimientos de la Concordia en la frontera de las Llanuras.',
+    documentoItemSlug: 'correspondencia-concordia',
+  },
+  {
+    slug: 'mapa-de-patrullas',
+    title: 'Rutas de patrulla de la Concordia',
+    era: 'comun',
+    year: 4009,
+    text: 'Un croquis a mano alzada sobre cuero fino, con las rutas de patrulla de la Concordia de Hierro marcadas en tinta ya desvaída por el tiempo — un rastro de por dónde no conviene pasar, y de hasta dónde llega de verdad el control Goirnte sobre el territorio de las Llanuras.',
+    documentoItemSlug: 'mapa-de-patrullas',
+  },
+  {
+    slug: 'diario-de-soldado',
+    title: 'Diario de un soldado goirnte',
+    era: 'comun',
+    year: 4009,
+    text: 'Un cuaderno de tapas de cuero gastado y letra apretada, encontrado entre los efectos de un soldado raso de la Concordia de Hierro. No hay órdenes ni secretos militares — solo un nombre, una familia esperando en la Meseta del Orden, y la cuenta de los días que faltan para volver a casa. Un recordatorio incómodo de que quienes ejecutan las órdenes de la Concordia rara vez las han elegido.',
+    documentoItemSlug: 'diario-de-soldado',
+  },
+  {
+    slug: 'sello-patrulla-concordia',
+    title: 'Sello de patrulla de la Concordia',
+    era: 'comun',
+    year: 4009,
+    text: 'Un disco de aleación gris grabado con el emblema de una patrulla de la Concordia de Hierro. Acredita a quien lo lleva ante cualquier puesto Goirnte del territorio — o lo incrimina, si quien lo lleva no tiene ningún derecho a portarlo.',
+    documentoItemSlug: 'sello-patrulla-concordia',
+  },
+  {
+    slug: 'tablilla-quemada-maktor',
+    title: 'La caída del Clan Maktor',
+    era: 'comun',
+    year: 4000,
+    text: 'Un fragmento de tablilla de arcilla cocida, ennegrecido por el fuego que arrasó el asentamiento del Clan Maktor. Lo poco que se distingue basta para reconstruir lo esencial: cien años después de un primer golpe que ya había dejado al clan maltrecho, una revuelta contra el yugo Serhu terminó en una incursión Goirnte orquestada para desprestigiar a los propios Serhu — que no intervinieron. El clan fue aniquilado casi por completo aquel día. Solo se tiene noticia de un superviviente, un niño de diez años que logró escapar.',
+    documentoItemSlug: 'tablilla-quemada-maktor',
+  },
+];
+
 export interface HarvestYieldInput {
   sourceSlug: string;
   sourceName: string;

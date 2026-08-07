@@ -60,14 +60,16 @@ export async function decrementPopulationOnDeath(
   const targetSlug = populationTargetSlugFor(raza, slug, region);
   if (!targetSlug) return;
 
-  const row = await tx.worldPopulation.findUnique({
-    where: { worldId_targetType_targetSlug: { worldId, targetType, targetSlug } },
-  });
-  if (!row || row.poblacion <= 0) return;
-
-  await tx.worldPopulation.update({
-    where: { id: row.id },
-    data: { poblacion: Math.max(0, row.poblacion - 1) },
+  // Bug real (auditoría 2026-08-06): antes esto era un `findUnique` + `update` con el valor de
+  // `poblacion` capturado en memoria — sin ningún bloqueo, una muerte resuelta en un turno en vivo
+  // y un tick de `growAllPopulations` (worldTick.ts) casi simultáneos sobre la MISMA fila podían
+  // pisarse: el que escribe último sobrescribe con un número calculado sobre un `poblacion` ya
+  // obsoleto, borrando en silencio la muerte o el crecimiento del otro. `updateMany` con
+  // `{ decrement: 1 }` es atómico de verdad en Postgres — el guard `poblacion: { gt: 0 }` evita
+  // que baje de 0 sin necesitar releer nada antes.
+  await tx.worldPopulation.updateMany({
+    where: { worldId, targetType, targetSlug, poblacion: { gt: 0 } },
+    data: { poblacion: { decrement: 1 } },
   });
 }
 
@@ -94,9 +96,13 @@ export async function growAllPopulations(prisma: Pick<PrismaClient, 'worldPopula
     const delta = Math.floor(row.poblacion * GROWTH_RATE_PER_DAY[row.targetType] * elapsedDays);
     if (delta < 1) continue;
 
+    // Bug real (auditoría 2026-08-06, ver comentario de decrementPopulationOnDeath arriba): mismo
+    // riesgo de carrera con una muerte resuelta en un turno en vivo justo entre este `findMany` y
+    // este `update` — `{ increment: delta }` es atómico, no pisa lo que haya escrito el otro lado
+    // mientras tanto (a diferencia de sumar `delta` a un `row.poblacion` ya capturado en memoria).
     await prisma.worldPopulation.update({
       where: { id: row.id },
-      data: { poblacion: row.poblacion + delta },
+      data: { poblacion: { increment: delta } },
     });
     updated++;
   }

@@ -5,7 +5,7 @@ import { normalizeSecondaryAttributes } from '../../services/secondaryAttributes
 import { checkRequisitos, shortfallLabel, type Requisitos } from '../../services/requisitos.js';
 import { equipSlotFamily, effectiveAttributes, effectiveSecondaryAttributes } from '../../services/equipment.js';
 import type { AttributeBlock } from '../../services/dice.js';
-import type { EquipSlot } from '@prisma/client';
+import { EquipSlot } from '@prisma/client';
 
 /// Asignar/quitar un hueco de equipo (deuda técnica 2026-07-30, split de saves.ts) — decisión
 /// manual de la jugadora, el modelo nunca la toma (mismo criterio narrativo-sin-mecánica que el
@@ -18,6 +18,14 @@ export async function inventarioRoutes(app: FastifyInstance) {
       const { slot } = request.body;
       if (slot !== null && typeof slot !== 'string') {
         return reply.status(400).send({ error: 'Falta el campo: slot (EquipSlot o null)' });
+      }
+      // Bug real (auditoría 2026-08-06): `slot` solo se comprobaba null-o-string, nunca contra el
+      // enum real — un objeto narrativo sin `catalogSlug` (o cuyo `catalogSlug` no resuelve en
+      // ItemCatalog) se saltaba entera la comprobación de ranura de más abajo y llegaba intacto al
+      // `update` de Prisma, que revienta con un 500 genérico ante cualquier string que no sea un
+      // valor real de EquipSlot.
+      if (slot !== null && !Object.values(EquipSlot).includes(slot)) {
+        return reply.status(400).send({ error: `Ranura no válida: "${slot}"` });
       }
       const item = await prisma.inventoryItem.findFirst({ where: { id: request.params.itemId, saveId: request.params.id } });
       if (!item) {

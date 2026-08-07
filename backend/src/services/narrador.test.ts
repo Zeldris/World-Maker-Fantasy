@@ -10,6 +10,7 @@ import {
   hasPrematureCombatResolution,
   hasFalseItemUse,
   hasResurrectedDeadNpc,
+  hasFalseTravelClaim,
 } from './narrador.js';
 
 describe('reinoIntentDetected', () => {
@@ -184,6 +185,35 @@ describe('hasResurrectedDeadNpc', () => {
   it('no dispara si las huellas recientes son de otra criatura, no del NPC muerto', () => {
     const narration = 'Gorhorn encuentra huellas recientes de un jabalí cerca del río. El Orco Enfurecido sigue muerto donde lo dejó.';
     expect(hasResurrectedDeadNpc(narration, ['Orco Enfurecido'])).toBe(false);
+  });
+});
+
+describe('hasFalseTravelClaim', () => {
+  it('bug real jugando en vivo (2026-08-06, auditoría "revisa la partida" en directo): detecta una llegada narrada a un destino sin resolver mecánicamente', () => {
+    const narration = {
+      narration: 'Gorhorn se arrastra lentamente hacia los Pilares Rotos, cada paso una lucha contra su propia debilidad.',
+      newFacts: ['Gorhorn ha dejado la Hondonada del Eco y avanza hacia los Pilares Rotos.'],
+    };
+    expect(hasFalseTravelClaim(narration, ['El Pozo de Cauce Viejo', 'Pilares Rotos'])).toBe(true);
+  });
+
+  it('no dispara si la lista viene vacía (viaje resuelto de verdad, un solo destino, o no era movimiento vago)', () => {
+    const narration = { narration: 'Gorhorn llega a los Pilares Rotos tras una larga caminata.', newFacts: [] };
+    expect(hasFalseTravelClaim(narration, [])).toBe(false);
+    expect(hasFalseTravelClaim(narration, undefined)).toBe(false);
+  });
+
+  it('no dispara si el modelo pregunta cuál de los caminos elegir, sin narrar ninguna llegada', () => {
+    const narration = {
+      narration: 'Gorhorn se detiene donde el camino se bifurca: uno lleva al Pozo de Cauce Viejo, el otro a los Pilares Rotos. ¿Hacia dónde sigue?',
+      newFacts: [],
+    };
+    expect(hasFalseTravelClaim(narration, ['El Pozo de Cauce Viejo', 'Pilares Rotos'])).toBe(false);
+  });
+
+  it('no dispara si el destino mencionado no está entre los ambiguos de este turno', () => {
+    const narration = { narration: 'Gorhorn recuerda su paso por los Pilares Rotos hace tiempo.', newFacts: [] };
+    expect(hasFalseTravelClaim(narration, ['El Pozo de Cauce Viejo'])).toBe(false);
   });
 });
 

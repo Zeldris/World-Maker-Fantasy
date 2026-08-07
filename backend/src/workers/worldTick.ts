@@ -22,6 +22,15 @@ interface TransitZoneContext {
   /// Nombre del destino que el jugador pidió de verdad, antes de truncar — solo para el aviso
   /// determinista de "tu viaje se interrumpió" (turnResolution.ts), nunca se lo pasa al Narrador.
   travelInterruptionOriginalDestinationName?: string | null;
+  /// Marca de reclamo (auditoría 2026-08-06, bug real): antes, el único indicio de "esto ya se
+  /// está narrando" era `busyUntil` empujado `CLAIM_BUFFER_MS` al futuro — el mismo campo que
+  /// `POST /saves/:id/transit/cancel` usa para decidir "esto sigue esperando, se puede cancelar".
+  /// Los dos casos son indistinguibles con solo `busyUntil`, así que cancelar podía borrar un
+  /// tránsito que ya estaba narrándose de verdad — sin duplicar nada (el borrado dentro de
+  /// `narrateAndPersistTurn` ya aborta limpio si la fila desaparece primero, ver
+  /// `TransitCancelledError`), pero sí con una narración ya generada tirada a la basura y un
+  /// LogEntry falso de "cambia de idea antes de empezar" para una acción que ya había arrancado.
+  claimedAt?: string;
 }
 
 /// Worker local del reloj de mundo (decisiones técnicas 3 y 4 en docs/04-decisiones-tecnicas.md).
@@ -64,9 +73,13 @@ export async function resolveDueTransits(): Promise<void> {
     // la ventana "vencido" — si otra ejecución concurrente ya lo reclamó primero, `count` es 0 y
     // se salta. Si la narración falla más abajo, el tránsito vuelve a estar "vencido" pasado el
     // colchón, así que se reintenta solo, sin quedar huérfano.
+    // `claimedAt` viaja en el mismo `updateMany` atómico que empuja `busyUntil` (auditoría
+    // 2026-08-06, ver TransitZoneContext) — así `POST /saves/:id/transit/cancel` puede negarse a
+    // cancelar en cuanto vea la marca, sin depender solo de comparar `busyUntil` contra "ahora".
+    const claimedZoneContext = { ...(transit.zoneContext as object), claimedAt: new Date().toISOString() };
     const claim = await prisma.characterTransit.updateMany({
       where: { id: transit.id, busyUntil: { lte: new Date() } },
-      data: { busyUntil: new Date(Date.now() + CLAIM_BUFFER_MS) },
+      data: { busyUntil: new Date(Date.now() + CLAIM_BUFFER_MS), zoneContext: claimedZoneContext },
     });
     if (claim.count === 0) continue;
 

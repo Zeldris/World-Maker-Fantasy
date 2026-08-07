@@ -5,6 +5,7 @@ import { harvestSourceAliases, harvestSourceDescriptions, harvestSourcesThatAreF
 import { coreRegionOf } from '../services/discovery.js';
 import { classAbilityUnlocksForClase } from '../services/classAbilities.js';
 import { CONSTRUCTION_RECIPES } from '../services/construction.js';
+import { CRAFTING_RECIPES } from '../services/crafting.js';
 import { slugify } from '../lib/slugify.js';
 import { generateImagePrompt, type ImagePromptEntityType, type ImagePromptSizeProfile } from '../services/imagePromptGenerator.js';
 import { loreContextFor } from '../services/imagePromptContext.js';
@@ -162,6 +163,55 @@ function buildLocationsSection(locations: Awaited<ReturnType<typeof prisma.locat
   }));
 }
 
+// Facciones (Enciclopedia § "Facciones", 2026-08-06) — catálogo real (Faction), gateado por
+// DiscoveredEntity igual que npc/fauna/item (ver cascada en entityDiscovery.ts: descubrir un NPC
+// de la facción descubre la facción). Imagen bajo demanda igual que raza/location (2026-08-06,
+// auditoría de la Enciclopedia: "revisa que todo tiene banner/icono") — mismo entityType 'faction'
+// que ya usa DiscoveredEntity, ver imagePromptContext.ts.
+function buildFactionsSection(factionRows: Awaited<ReturnType<typeof prisma.faction.findMany>>, ctx: EnciclopediaBuildContext) {
+  return factionRows.map((f) => ({
+    slug: f.slug,
+    name: f.name,
+    raza: f.raza,
+    description: f.description,
+    discovered: ctx.isDiscovered('faction', f.slug),
+    imagePrompts: ctx.imagePromptsFor('faction', f.slug),
+    imageUrls: imageUrlsFor('faction', f.slug),
+  }));
+}
+
+// Historia (Enciclopedia § "Historia", 2026-08-06) — catálogo real (HistoriaEntry), enganchado a
+// un objeto físico (`documentoItemSlug`) que la descubre (cascada en entityDiscovery.ts). Doble
+// candado: `discovered` (objeto encontrado, controla si la tarjeta se ve) y `unlocked` (además,
+// si `requiresTranslation`, el NPC traductor también descubierto — controla si el TEXTO real
+// viaja al frontend). `unlocked` se calcula aquí, en tiempo de lectura, nunca se guarda.
+//
+// Imagen bajo demanda (2026-08-06, auditoría de la Enciclopedia) SOLO si `unlocked` — igual que el
+// texto real, `imagePrompts`/`imageUrls` se quedan en null mientras la entrada no esté traducida:
+// generar/mostrar una imagen de una escena que el texto todavía oculta sería otra forma de fugar
+// justo el contenido que el candado de traducción existe para proteger.
+function buildHistoriaSection(historiaRows: Awaited<ReturnType<typeof prisma.historiaEntry.findMany>>, ctx: EnciclopediaBuildContext) {
+  return historiaRows.map((h) => {
+    const discovered = ctx.isDiscovered('historia', h.slug);
+    const unlocked = discovered && (!h.requiresTranslation || ctx.isDiscovered('npc', h.translatorNpcSlug ?? ''));
+    return {
+      slug: h.slug,
+      title: h.title,
+      era: h.era,
+      year: h.year,
+      requiresTranslation: h.requiresTranslation,
+      discovered,
+      unlocked,
+      // Nunca se manda el texto real si no está desbloqueado — no solo se oculta en pantalla, no
+      // viaja por la red hasta que corresponde (petición explícita: escrito en idioma de las
+      // Semillas, ilegible hasta encontrar traductor).
+      text: unlocked ? h.text : null,
+      imagePrompts: unlocked ? ctx.imagePromptsFor('historia', h.slug) : { thumbnail: null, banner: null },
+      imageUrls: unlocked ? imageUrlsFor('historia', h.slug) : { thumbnail: null, banner: null },
+    };
+  });
+}
+
 // Razas y personajes jugables de Berig (2026-07-22): contenido estático (ver berigLore.ts),
 // mismo patrón que `classes` de abajo — no depende de ninguna tabla de este mundo en la BD.
 function buildRazasSection(ctx: EnciclopediaBuildContext) {
@@ -234,6 +284,22 @@ function buildConstructionRecipesSection(ctx: EnciclopediaBuildContext) {
   }));
 }
 
+// Crafteo (Enciclopedia § "Crafteo", 2026-08-06) — recetas de crafting.ts, mismo patrón que
+// Construcciones (contenido estático, sin fila de BD, sin gateo de descubrimiento). `oficio` en
+// vez de `raza` como eje de agrupado en el frontend. `nounRegex`/`verbRegex` se omiten igual que
+// `nounRegex` de construcciones (detalle interno de detección, no serializa limpio en JSON).
+function buildCraftingRecipesSection(ctx: EnciclopediaBuildContext) {
+  return CRAFTING_RECIPES.map(({ key, resultName, resultDescription, oficio, ingredients }) => ({
+    key,
+    name: resultName,
+    description: resultDescription,
+    oficio: oficio ?? null,
+    requirements: ingredients,
+    imagePrompts: ctx.imagePromptsFor('crafteo', key),
+    imageUrls: imageUrlsFor('crafteo', key),
+  }));
+}
+
 /// Catálogo de ubicaciones de un mundo (docs/12-mundo-estructurado.md § "Frontend", pendiente
 /// desde esa sesión): antes `frontend/src/data/map.ts` duplicaba a mano nombres/descripciones de
 /// `Location` — una sola fuente de verdad ahora. Incluye `LocationLink` (con `riesgo`) para que el
@@ -295,7 +361,7 @@ export async function worldRoutes(app: FastifyInstance) {
 
     const { saveId } = request.query;
 
-    const [npcs, items, yields, locations, imagePrompts, discoveredEntities, locationVisits, npcItems] = await Promise.all([
+    const [npcs, items, yields, locations, imagePrompts, discoveredEntities, locationVisits, npcItems, factionRows, historiaRows] = await Promise.all([
       prisma.npc.findMany({ where: { worldId: world.id } }),
       prisma.itemCatalog.findMany({ where: { worldId: world.id } }),
       prisma.harvestYield.findMany({ where: { worldId: world.id }, include: { item: true } }),
@@ -311,6 +377,14 @@ export async function worldRoutes(app: FastifyInstance) {
       // de saqueo selectivo (2026-07-30, ver `lootableItemsByNpcId` más abajo) — mismo dato crudo,
       // ya no se descarta después de calcular las armas.
       prisma.npcItem.findMany({ where: { npc: { worldId: world.id } }, include: { item: true } }),
+      // Secciones "Facciones"/"Historia" (2026-08-06) — ver buildFactionsSection/buildHistoriaSection.
+      // `factions`: catálogo del mundo (saveId null) + la fundada en ESTA partida al fundar el
+      // reino, si la hay (reino.ts) — nunca la de otra partida distinta del mismo mundo. Ojo:
+      // `{ saveId: saveId ?? undefined }` en el OR sería un bug real — un valor `undefined` hace
+      // que Prisma OMITA la condición entera (coincide con TODO), así que sin `saveId` en la query
+      // colarían las facciones fundadas de cualquier partida. La rama solo se añade si hay `saveId`.
+      prisma.faction.findMany({ where: { worldId: world.id, OR: saveId ? [{ saveId: null }, { saveId }] : [{ saveId: null }] } }),
+      prisma.historiaEntry.findMany({ where: { worldId: world.id } }),
     ]);
 
     const weaponNamesByNpcId = new Map<string, string[]>();
@@ -425,6 +499,9 @@ export async function worldRoutes(app: FastifyInstance) {
       personajes: buildPersonajesSection(ctx),
       classes: buildClassesSection(ctx),
       constructionRecipes: buildConstructionRecipesSection(ctx),
+      craftingRecipes: buildCraftingRecipesSection(ctx),
+      factions: buildFactionsSection(factionRows, ctx),
+      historia: buildHistoriaSection(historiaRows, ctx),
     };
   });
 
@@ -437,6 +514,9 @@ export async function worldRoutes(app: FastifyInstance) {
     'personaje',
     'location',
     'construccion',
+    'faction',
+    'historia',
+    'crafteo',
   ];
   const IMAGE_PROMPT_SIZE_PROFILES: ImagePromptSizeProfile[] = ['thumbnail', 'banner'];
 

@@ -79,6 +79,8 @@ model World {
   harvestYields          HarvestYield[]
   imagePrompts           ImagePrompt[]
   worldPopulations       WorldPopulation[]
+  factionCatalog         Faction[]
+  historiaEntries        HistoriaEntry[]
 }
 
 /// Personajes preseleccionables asociados a un mundo (plantilla, no instancia jugada).
@@ -222,6 +224,7 @@ model Save {
   kingdomStats     KingdomStats?
   discoveredEntities DiscoveredEntity[]
   sessionFacts     SessionFact[]
+  foundedFactions  Faction[]
 
   @@index([userId])
 }
@@ -312,8 +315,8 @@ model DiscoveredEntity {
   id           String   @id @default(cuid())
   saveId       String
   save         Save     @relation(fields: [saveId], references: [id], onDelete: Cascade)
-  /// 'npc' | 'fauna' | 'item' — mismo vocabulario que ImagePromptEntityType, pero sin los tipos
-  /// siempre-visibles de arriba.
+  /// 'npc' | 'fauna' | 'item' | 'faction' | 'historia' (2026-08-06) — mismo vocabulario que
+  /// ImagePromptEntityType, pero sin los tipos siempre-visibles de arriba.
   entityType   String
   entitySlug   String
   discoveredAt DateTime @default(now())
@@ -986,6 +989,60 @@ model Npc {
 
   items     NpcItem[]
   npcStates NpcState[]
+
+  @@unique([worldId, slug])
+}
+
+/// Facción/clan que el jugador puede descubrir (sección "Facciones" de la Enciclopedia,
+/// 2026-08-06) — formaliza en tabla lo que hasta ahora era solo `Npc.faction` (string libre, sin
+/// FK) y el catálogo suelto `World.factions` (String[], sin relación con esto). `raza` es también
+/// texto libre (uno de BERIG_RAZAS, berigLore.ts — NO es una tabla, igual que `Npc.raza`), no una
+/// FK real. El enganche con `Npc.faction` es por IGUALDAD EXACTA de `name` (ver
+/// entityDiscovery.ts) — no hay FK entre Npc y Faction a propósito, mismo criterio que el resto
+/// del catálogo (Npc.raza tampoco referencia BERIG_RAZAS con FK).
+///
+/// `saveId` (2026-08-06, "fundar tu reino ya fundaba tu facción, solo faltaba conectarlo" — ver
+/// reino.ts): null = fila de catálogo de mundo (las sembradas en worldCatalog.ts, compartidas por
+/// cualquier partida). Relleno = facción fundada DENTRO de esa partida al fundar el reino
+/// (Ayuntamiento tier 1) — invisible para el resto de partidas del mismo mundo. El `@@unique`
+/// sigue siendo `[worldId, slug]` sin cambios: el `slug` de una facción fundada incluye el
+/// `save.id`, así que nunca choca ni con el catálogo ni con la de otra partida.
+model Faction {
+  id          String  @id @default(cuid())
+  worldId     String
+  world       World   @relation(fields: [worldId], references: [id], onDelete: Cascade)
+  saveId      String?
+  save        Save?   @relation(fields: [saveId], references: [id], onDelete: Cascade)
+  slug        String
+  name        String
+  raza        String
+  description String
+
+  @@unique([worldId, slug])
+}
+
+/// Entrada de lore descubrible como objeto físico (libro/diario/nota) — sección "Historia" de la
+/// Enciclopedia (2026-08-06). Dos eras: 'comun' (desde el año 0, `year` relleno, se agrupa en la
+/// Enciclopedia por bloques de 500 años) y 'semillas' (mítica, anterior al año 0 — `year` siempre
+/// null, lista plana sin bloques por lo disperso e impreciso del periodo). `documentoItemSlug` es
+/// el objeto físico (`ItemCatalog.slug`, normalmente `category: 'documento'`) que desbloquea esta
+/// entrada al descubrirse — mismo eje que el resto de `DiscoveredEntity`. `requiresTranslation` +
+/// `translatorNpcSlug` (mecanismo "escrito en el idioma de las Semillas", petición explícita de la
+/// usuaria): cuando es true, el TEXTO real (`text`) solo se sirve al frontend si el NPC traductor
+/// referenciado también está descubierto — ver `/world/:slug/enciclopedia` (routes/world.ts) para
+/// el cómputo real de `unlocked`, siempre en tiempo de lectura, nunca almacenado.
+model HistoriaEntry {
+  id                  String  @id @default(cuid())
+  worldId             String
+  world               World   @relation(fields: [worldId], references: [id], onDelete: Cascade)
+  slug                String
+  title               String
+  era                 String
+  year                Int?
+  text                String
+  requiresTranslation Boolean @default(false)
+  documentoItemSlug   String
+  translatorNpcSlug   String?
 
   @@unique([worldId, slug])
 }

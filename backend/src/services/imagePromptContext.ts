@@ -1,6 +1,7 @@
 import { prisma } from '../lib/prisma.js';
 import { harvestSourceAliases, harvestSourceDescriptions } from '../scripts/worldCatalog.js';
 import { CONSTRUCTION_RECIPES } from './construction.js';
+import { CRAFTING_RECIPES } from './crafting.js';
 import { allClassAbilityUnlocks } from './classAbilities.js';
 import { startingAbilitiesFor } from './startingAbilities.js';
 import { slugify } from '../lib/slugify.js';
@@ -167,12 +168,37 @@ export async function loreContextFor(worldId: string, entityType: ImagePromptEnt
     return { name: location.name, loreContext: `Región: ${location.region}. Tipo: ${location.kind}. ${location.description}` };
   }
 
+  if (entityType === 'faction') {
+    const faction = await prisma.faction.findUnique({ where: { worldId_slug: { worldId, slug: entitySlug } } });
+    if (!faction) return null;
+    return { name: faction.name, loreContext: `Raza dominante: ${faction.raza}. ${faction.description}` };
+  }
+
+  if (entityType === 'historia') {
+    // Sin candado de traducción aquí a propósito (2026-08-06): esta función lee directo de la BD,
+    // fuera del filtro de `/world/:slug/enciclopedia` — el candado real está en `world.ts`, que
+    // solo expone `entityType`/`entitySlug` al frontend (y por tanto solo deja pulsar "generar
+    // imagen") cuando la entrada ya está `unlocked`. Si nunca se llega a pedir el prompt para una
+    // entrada bloqueada, esta rama nunca se ejecuta para ella — no hace falta duplicar el candado.
+    const entry = await prisma.historiaEntry.findUnique({ where: { worldId_slug: { worldId, slug: entitySlug } } });
+    if (!entry) return null;
+    return { name: entry.title, loreContext: entry.text };
+  }
+
   if (entityType === 'construccion') {
     // Contenido estático en código (construction.ts), sin fila de BD — mismo patrón que 'ability'
     // más abajo: se busca por `key`, el mismo slug que ya expone /world/:slug/enciclopedia.
     const recipe = CONSTRUCTION_RECIPES.find((r) => r.key === entitySlug);
     if (!recipe) return null;
     return { name: recipe.name, loreContext: recipe.description };
+  }
+
+  if (entityType === 'crafteo') {
+    // Contenido estático en código (crafting.ts), mismo patrón que 'construccion' — se busca por
+    // `key` (2026-08-06, sección "Crafteo" de la Enciclopedia).
+    const recipe = CRAFTING_RECIPES.find((r) => r.key === entitySlug);
+    if (!recipe) return null;
+    return { name: recipe.resultName, loreContext: recipe.resultDescription };
   }
 
   if (entityType === 'personaje') {

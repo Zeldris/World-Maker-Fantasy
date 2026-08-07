@@ -97,8 +97,18 @@ async function resolveClassificationForTurn(params: {
   /// vivo (2026-08-04): sin esto, el atajo tabulado calibraba la dificultad contra
   /// `npcsInScene[0]` aunque el jugador ya estuviera enfrentado a otro NPC.
   pendingCombatNpcSlugs: string[];
+  /// Bug real jugando en vivo (2026-08-07, auditoría "revisa la partida" en directo): un NPC ya
+  /// ganó la iniciativa y tiene un ataque decidido en secreto (`Save.pendingNpcAttack`) — la
+  /// respuesta del jugador a ESO es SIEMPRE una defensa a ciegas que necesita tirada de verdad
+  /// (turnResolution.ts ya asume esto: sin `requiereTirada`, descarta el intercambio entero y dejx
+  /// el ataque pendiente intacto para el turno siguiente). Sin este dato aquí, texto libre de
+  /// defensa sin pulsar el botón de Esquivar/Defenderse (sin `savedActionId`, así que sin
+  /// `preferredAttribute` tampoco) caía en `classifyAction` (el LLM), que podía decidir "no hace
+  /// falta tirada" para una esquiva clarísima — el combate se congelaba sin tirar dados mientras
+  /// la narración libre igualmente inventaba un cambio de salud sin respaldo mecánico ninguno.
+  pendingNpcAttack: PendingNpcAttack | null;
 }): Promise<ClassificationResolution> {
-  const { saveId, action, enCombate, savedActionId, preview, worldId, currentLocationId, level, attributes, sessionFacts, characterSummary, pendingCombatNpcSlugs } = params;
+  const { saveId, action, enCombate, savedActionId, preview, worldId, currentLocationId, level, attributes, sessionFacts, characterSummary, pendingCombatNpcSlugs, pendingNpcAttack } = params;
 
   // Solapar classify con el tecleo (roadmap de velocidad, 2026-07-19): si un `preview:true`
   // anterior con este MISMO texto exacto ya hizo el trabajo caro, se reutiliza sin repetirlo
@@ -198,9 +208,14 @@ async function resolveClassificationForTurn(params: {
       const ongoingCombatTarget = pendingCombatNpcSlugs.length
         ? (npcsInScene.find((n) => pendingCombatNpcSlugs.includes(n.slug)) ?? null)
         : null;
+      // `!!pendingNpcAttack` (bug real 2026-08-07, ver comentario del parámetro arriba): con un
+      // ataque de NPC ya decidido en secreto, CUALQUIER respuesta del jugador es su defensa a
+      // ciegas — nunca "no hace falta tirada", sin importar si el texto libre suena a ataque, a
+      // esquiva o a cualquier otra cosa. Mismo criterio que el resto de este bloque: determinista,
+      // no depende de que la LLM lo adivine bien.
       const tabulatedTarget =
         npcsInScene.length > 0 &&
-        ((enCombate && (detectsAttackIntent(action) || !!selectedAbility?.effect)) ||
+        ((enCombate && (detectsAttackIntent(action) || !!selectedAbility?.effect || !!pendingNpcAttack)) ||
           (!enCombate && detectsHostileSearchIntent(action) && !detectsVerbalAcceptanceIntent(action)))
           ? (explicitTarget ?? ongoingCombatTarget ?? npcsInScene[0])
           : null;
@@ -430,6 +445,7 @@ export async function turnRoutes(app: FastifyInstance) {
       sessionFacts,
       characterSummary,
       pendingCombatNpcSlugs: (save.pendingCombatNpcSlugs as string[] | null) ?? [],
+      pendingNpcAttack: save.pendingNpcAttack as unknown as PendingNpcAttack | null,
     });
 
     const { minutos, produccion } = travel
@@ -653,6 +669,9 @@ export async function turnRoutes(app: FastifyInstance) {
         buildings,
         subjects,
         kingdomStats,
+        deathCount,
+        factionsStatus,
+        professionProgress,
       } = await narrateAndPersistTurn({
         saveId,
         worldId: save.worldId,
@@ -719,6 +738,9 @@ export async function turnRoutes(app: FastifyInstance) {
         buildings,
         subjects,
         kingdomStats,
+        deathCount,
+        factionsStatus,
+        professionProgress,
       });
     } catch (err) {
       // Bug real (auditoría 2026-07-28): este catch mandaba `err.message` crudo al cliente,

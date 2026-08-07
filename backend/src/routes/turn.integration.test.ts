@@ -5,6 +5,7 @@ import { getDefaultUserId } from '../lib/defaultUser.js';
 import { resolveDueTransits } from '../workers/worldTick.js';
 import { minutosConDestreza, bandaForMinutos } from '../services/travel.js';
 import type { NarrationResult } from '../services/narrador.js';
+import { hasFalseTravelClaim } from '../services/narrador.js';
 import type { TravelResolution } from '../services/travel.js';
 import type { TravelInterruption } from '../services/travelInterruption.js';
 import type { AttributeBlock } from '../services/dice.js';
@@ -24,10 +25,14 @@ const narrateAction = vi.fn(async (ctx: { onNarrationChunk?: (d: string) => void
   return { narration: 'El golpe conecta.', newFacts: [] };
 });
 
-vi.mock('../services/narrador.js', () => ({
-  classifyAction: (...args: unknown[]) => classifyAction(...args),
-  narrateAction: (ctx: Parameters<typeof narrateAction>[0]) => narrateAction(ctx),
-}));
+vi.mock('../services/narrador.js', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../services/narrador.js')>();
+  return {
+    ...actual,
+    classifyAction: (...args: unknown[]) => classifyAction(...args),
+    narrateAction: (ctx: Parameters<typeof narrateAction>[0]) => narrateAction(ctx),
+  };
+});
 
 // Eventos de viaje interactivos (2026-08-05) — SOLO la selección de candidato se mockea aquí
 // (`pickTravelInterruption`), no `truncateTravelResolution`/`bandaForMinutos` (que siguen siendo
@@ -633,6 +638,35 @@ describe('Construcción determinista: campamento', () => {
     const buildings = await prisma.building.findMany({ where: { saveId } });
     expect(buildings).toHaveLength(1);
   }, 15_000);
+
+  it('sin materiales suficientes, aunque el LLM desobedezca y rellene newBuilding igualmente: NO crea ningún Building (auditoría 2026-08-06)', async () => {
+    // Bug real: el candado de "construcción rechazada" solo limpiaba `narration.newFacts`, nunca
+    // `narration.newBuilding` — un modelo que ignorase la instrucción de "no completes la
+    // construcción" podía conseguir un edificio real sin materiales ni comprobar ninguna regla de
+    // reino, con solo rellenar ese campo estructurado aparte.
+    narrateAction.mockClear();
+    narrateAction.mockResolvedValueOnce({
+      narration: 'Gorhorn se pone manos a la obra y termina de levantar un pequeño ayuntamiento.',
+      newFacts: [],
+      newBuilding: { name: 'un ayuntamiento colado', kind: 'ayuntamiento', description: 'x' },
+    });
+    const app = await buildApp();
+    const action = 'Construyo un ayuntamiento aquí mismo.';
+    const classifyRes = await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action, enCombate: true } });
+    const { classification, roll } = classifyRes.json();
+    await app.inject({
+      method: 'POST',
+      url: '/turn/narrate',
+      payload: { saveId, action, classification, roll, enCombate: true },
+    });
+
+    expect(narrateAction).toHaveBeenCalledTimes(1);
+    // Sigue sin haber ningún ayuntamiento — ni ese ni ningún otro edificio nuevo aparte del
+    // campamento ya existente de la prueba anterior.
+    const buildings = await prisma.building.findMany({ where: { saveId } });
+    expect(buildings).toHaveLength(1);
+    expect(buildings[0].recipeKey).toBe('campamento');
+  }, 15_000);
 });
 
 const ATTRS_CARISMATICO = { ...ATTRS, carisma: 14 };
@@ -1086,7 +1120,7 @@ describe('Despiece: condición de carrera en turnos concurrentes (auditoría 202
 
   it('dos "despiezo al aullador rojo" simultáneos solo dan botín una vez', async () => {
     narrateAction.mockClear();
-    await Promise.all([
+    const [res1, res2] = await Promise.all([
       doTurn(saveId, 'Despiezo al aullador rojo caído.'),
       doTurn(saveId, 'Despiezo al aullador rojo caído.'),
     ]);
@@ -1099,6 +1133,16 @@ describe('Despiece: condición de carrera en turnos concurrentes (auditoría 202
       where: { saveId_npcId_scope: { saveId, npcId: auladorId, scope: hondonadaId } },
     });
     expect(state.saqueado).toBe(true);
+
+    // Narración honesta también para quien pierde la carrera (auditoría 2026-08-06): antes de
+    // este arreglo, los dos turnos afirmaban por igual haber conseguido el botín, aunque solo uno
+    // de verdad se lo llevó — el perdedor debe decir que ya no queda nada, nunca listar objetos.
+    const narrations = [res1, res2].map((r) => (lastNdjsonLine(r.payload).narration as { narration: string }).narration);
+    const ganador = narrations.filter((n) => n.includes('consigue:'));
+    const perdedor = narrations.filter((n) => !n.includes('consigue:'));
+    expect(ganador).toHaveLength(1);
+    expect(perdedor).toHaveLength(1);
+    expect(perdedor[0]).toMatch(/ya se llevó/);
   }, 20_000);
 });
 
@@ -1147,7 +1191,7 @@ describe('Saqueo: condición de carrera en turnos concurrentes (auditoría 2026-
   it('dos "registro el cuerpo" simultáneos solo dan el botín una vez', async () => {
     narrateAction.mockClear();
     const action = "Registro el cuerpo de 'Orco enfurecido'.";
-    await Promise.all([doTurn(saveId, action), doTurn(saveId, action)]);
+    const [res1, res2] = await Promise.all([doTurn(saveId, action), doTurn(saveId, action)]);
 
     // 3 objetos de catálogo en el loadout del Orco Enfurecido (Maza orca, Amuleto de hueso, Mapa
     // de las Llanuras, ver worldCatalog.ts) — si la carrera duplicara el botín, saldrían 6.
@@ -1155,6 +1199,15 @@ describe('Saqueo: condición de carrera en turnos concurrentes (auditoría 2026-
     expect(items).toHaveLength(3);
     const state = await prisma.npcState.findUniqueOrThrow({ where: { saveId_npcId_scope: { saveId, npcId, scope: '' } } });
     expect(state.saqueado).toBe(true);
+
+    // Narración honesta también para quien pierde la carrera (auditoría 2026-08-06) — el perdedor
+    // no debe afirmar "se hace con lo siguiente" si de verdad no se llevó nada.
+    const narrations = [res1, res2].map((r) => (lastNdjsonLine(r.payload).narration as { narration: string }).narration);
+    const ganador = narrations.filter((n) => n.includes('se hace con lo siguiente'));
+    const perdedor = narrations.filter((n) => !n.includes('se hace con lo siguiente'));
+    expect(ganador).toHaveLength(1);
+    expect(perdedor).toHaveLength(1);
+    expect(perdedor[0]).toMatch(/adelantado/);
   }, 20_000);
 });
 
@@ -1281,6 +1334,74 @@ describe('Objetivo de ataque en combate ya iniciado: un ataque sin comillas no s
 
     const gisteraState = await prisma.npcState.findFirst({ where: { saveId, npcId: gisteraId } });
     expect(gisteraState).toBeNull(); // nunca fue objetivo, nunca se le creó estado de combate
+  }, 20_000);
+});
+
+// Bug real jugando en vivo (2026-08-07, auditoría "revisa la partida" en directo): con un enemigo
+// ya MUERTO/saqueado hace turnos todavía detectable en escena (su alias sigue matcheando hechos de
+// sesión antiguos), un "Ataco a X" sin comillas contra una fauna NUEVA en la misma escena caía a
+// `npcsInScene[0]` (el cadáver) — `combateActivo` bloquea correctamente pelear contra un MUERTO,
+// pero el resultado neto era CERO intercambio mecánico contra NADIE, mientras la narración seguía
+// describiendo un golpe real contra la fauna (sin NpcState creado, sin nada saqueable/despiezable
+// después). El fallback ahora prefiere un NPC vivo en escena antes que caer al primero sin más.
+describe('Objetivo de ataque en escena nueva: un cadáver que sigue detectable no bloquea el combate contra fauna nueva (bug real 2026-08-07)', () => {
+  let saveId: string;
+  let orcoId: string;
+  let corretolvasId: string;
+
+  beforeAll(async () => {
+    vi.spyOn(Math, 'random').mockReturnValue(0.99);
+    const userId = await getDefaultUserId();
+    const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
+    const hondonada = await prisma.location.findFirstOrThrow({ where: { worldId: world.id, slug: 'hondonada-del-eco' } });
+    const orco = await prisma.npc.findFirstOrThrow({ where: { worldId: world.id, slug: 'orco-enfurecido-hondonada' } });
+    const corretolvas = await prisma.npc.findFirstOrThrow({ where: { worldId: world.id, slug: 'corretolvas' } });
+    orcoId = orco.id;
+    corretolvasId = corretolvas.id;
+    const save = await prisma.save.create({
+      data: {
+        userId,
+        worldId: world.id,
+        characterName: 'Gorhorn de prueba 20',
+        characterArchetype: 'guerrero',
+        characterOrigin: 'Clan Maktor',
+        characterMotivation: 'x',
+        attributes: ATTRS,
+        portraitInitial: 'G',
+        currentLocationId: hondonada.id,
+      },
+    });
+    saveId = save.id;
+    await prisma.worldState.create({ data: { saveId } });
+    // El Orco Enfurecido ya resuelto de un combate anterior — MUERTO, ya saqueado del todo (mismo
+    // estado exacto que dejó la partida real de Gorhorn tras "Decapitar").
+    await prisma.npcState.create({
+      data: { saveId, npcId: orcoId, scope: '', condicionFisica: 'MUERTO', saqueado: true, lootedItemNames: ['Maza orca'] },
+    });
+  });
+
+  afterAll(async () => {
+    vi.restoreAllMocks();
+    await prisma.save.delete({ where: { id: saveId } });
+  });
+
+  it('un ataque de encuentro nuevo sin comillas golpea a la fauna viva, no al cadáver ya resuelto', async () => {
+    // Mencionar "el orco enfurecido" de pasada (mismo patrón que un hecho de sesión de trasfondo lo
+    // habría colado en escena) es justo lo que antes del fix hacía que `npcsInScene[0]` fuera el
+    // cadáver — la corretolva es la única realmente viva en esta escena.
+    await doTurn(
+      saveId,
+      'Ataco a la corretolva con mi hacha, recordando de pasada al orco enfurecido que ya dejé atrás.',
+    );
+
+    const corretolvasState = await prisma.npcState.findFirst({ where: { saveId, npcId: corretolvasId } });
+    expect(corretolvasState).not.toBeNull(); // hubo intercambio mecánico real contra ella
+    expect(corretolvasState?.condicionFisica).not.toBe('ILESO');
+
+    // El cadáver sigue exactamente igual — nunca fue tocado por este turno.
+    const orcoState = await prisma.npcState.findFirst({ where: { saveId, npcId: orcoId } });
+    expect(orcoState?.condicionFisica).toBe('MUERTO');
+    expect(orcoState?.saqueado).toBe(true);
   }, 20_000);
 });
 
@@ -1604,6 +1725,88 @@ describe('Construcción rechazada: no se graba un newFact falso de que sí se co
   }, 20_000);
 });
 
+describe('Movimiento vago con 2+ salidas: no se persiste una llegada falsa aunque el LLM insista tras 3 intentos (bug real jugando en vivo, 2026-08-06)', () => {
+  let saveId: string;
+  let locationId: string;
+
+  beforeAll(async () => {
+    const userId = await getDefaultUserId();
+    const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
+    // La Hondonada del Eco tiene 2 salidas reales (Pozo de Cauce Viejo, Pilares Rotos) — el mismo
+    // nodo donde se encontró el bug jugando: `resolveTravel` no puede auto-elegir con 2+ opciones,
+    // así que un "avanzo" sin destino nombrado nunca resuelve `travel`, y `hasFalseTravelClaim`
+    // (narrador.ts) es la única red que impide que la narración dé la llegada por hecha.
+    const location = await prisma.location.findFirstOrThrow({ where: { worldId: world.id, slug: 'hondonada-del-eco' } });
+    locationId = location.id;
+    const save = await prisma.save.create({
+      data: {
+        userId,
+        worldId: world.id,
+        characterName: 'Gorhorn de prueba 19',
+        characterArchetype: 'guerrero',
+        characterOrigin: 'Clan Maktor',
+        characterMotivation: 'x',
+        attributes: ATTRS,
+        portraitInitial: 'G',
+        currentLocationId: location.id,
+      },
+    });
+    saveId = save.id;
+    await prisma.worldState.create({ data: { saveId } });
+  });
+
+  afterAll(async () => {
+    await prisma.save.delete({ where: { id: saveId } });
+  });
+
+  it('narra el cruce sin resolver destino y descarta narration/newFacts si el LLM da la llegada por hecha, sin mover a Save.currentLocationId', async () => {
+    const app = await buildApp();
+    // Turno de relleno (mismo motivo que en 'newQuestInfo'/'Construcción rechazada' de arriba):
+    // esquivar el gancho de fase-1 de Gistera Koh en la acción #1 de la partida.
+    const filler = 'Miro alrededor con calma';
+    classifyAction.mockResolvedValue({
+      requiereTirada: false, atributo: 'fuerza', dificultad: 8, razon: 'x', banda: 'corta', duracionEstimadaMinutos: 20,
+    });
+    const fillerClassify = await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action: filler, enCombate: true } });
+    const fillerParsed = fillerClassify.json();
+    await app.inject({
+      method: 'POST',
+      url: '/turn/narrate',
+      payload: { saveId, action: filler, classification: fillerParsed.classification, roll: fillerParsed.roll, enCombate: true },
+    });
+
+    // Reproduce exactamente el caso real jugando en vivo (2026-08-06): incluso agotando los 3
+    // intentos (el mock aquí solo hace falta una vez, `hasFalseTravelClaim` corrige el resultado
+    // final sin importar cuál de los 3 lo generó).
+    narrateAction.mockResolvedValueOnce({
+      narration: 'Gorhorn se arrastra lentamente hacia los Pilares Rotos, cada paso una lucha contra su propia debilidad.',
+      newFacts: ['Gorhorn ha dejado la Hondonada del Eco y avanza hacia los Pilares Rotos.'],
+    });
+    const action = 'Avanzo, dejando atrás la Hondonada.';
+    const classifyRes = await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action, enCombate: false } });
+    const { classification, roll } = classifyRes.json();
+    const narrateRes = await app.inject({
+      method: 'POST',
+      url: '/turn/narrate',
+      payload: { saveId, action, classification, roll, enCombate: false },
+    });
+
+    // La corrección determinista SÍ puede nombrar ambos destinos (para preguntar cuál elige, igual
+    // que ya le pide el aviso de turnResolution.ts al modelo) — lo que no puede es dar la llegada
+    // por hecha. `hasFalseTravelClaim` es la misma comprobación real que ya decide esto en
+    // producción: si el texto final YA no la dispara, la corrección hizo su trabajo.
+    const done = lastNdjsonLine(narrateRes.payload) as { narration: { narration: string; newFacts: string[] } };
+    expect(hasFalseTravelClaim(done.narration, ['El Pozo de Cauce Viejo', 'Pilares Rotos'])).toBe(false);
+    expect(done.narration.newFacts).toEqual([]);
+
+    const facts = await prisma.sessionFact.findMany({ where: { saveId } });
+    expect(facts.some((f) => f.text.includes('Pilares Rotos'))).toBe(false);
+
+    const savedRow = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
+    expect(savedRow.currentLocationId).toBe(locationId);
+  }, 20_000);
+});
+
 /// Eventos de viaje interactivos (2026-08-05) — cadena de 3 ubicaciones PROPIA de este test
 /// (origen → intermedia → destino), desconectada del grafo real de Llanuras. `pickTravelInterruption`
 /// va mockeado (ver cabecera del archivo) para no depender de qué NPCs itinerantes/población real
@@ -1746,11 +1949,13 @@ describe('Viaje largo interrumpido a mitad de camino (integración real, solo LL
     expect(save.currentLocationId).toBe(midId); // NO llegó al destino pedido, se quedó en la intermedia
     expect(save.pendingCombatNpcSlugs).toContain(interruptionNpcSlug);
 
-    // La prueba real de que ya no depende de que el Narrador narre el nombre: el mock del LLM
-    // (narrateAction, arriba del archivo) nunca menciona "Agresor de prueba" en ningún momento,
-    // y aun así el combate se forzó de verdad contra ese NPC concreto.
-    const narrateCalls = narrateAction.mock.calls;
-    const anyCallMentionsAgresor = narrateCalls.some((call) => JSON.stringify(call).includes('Agresor de prueba'));
-    expect(anyCallMentionsAgresor).toBe(false);
+    // La prueba real de que el combate forzado ya no depende de que el Narrador acierte el
+    // nombre: el mock del LLM (narrateAction, cabecera del archivo) devuelve SIEMPRE el mismo
+    // texto genérico fijo ("El golpe conecta.", newFacts: []), sin mencionar jamás a "Agresor de
+    // prueba" en su salida — y aun así `pendingCombatNpcSlugs` (arriba) confirma que el combate
+    // se forzó de verdad contra ese NPC concreto. (El CONTEXTO que se le envía al mock sí incluye
+    // su ficha completa — así debe ser, el Narrador necesita saber quién está en escena; lo que
+    // no debe pasar, y no pasa, es que el motor dependa de que el modelo ACIERTE ese nombre por
+    // su cuenta en la narración que devuelve, algo que este mock nunca hace por construcción.)
   }, 20_000);
 });

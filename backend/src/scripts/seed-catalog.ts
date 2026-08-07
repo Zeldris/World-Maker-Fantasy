@@ -1,7 +1,7 @@
 import 'dotenv/config';
 import { Prisma } from '@prisma/client';
 import { prisma } from '../lib/prisma.js';
-import { locations, locationLinks, npcs, fauna, items, harvestYields } from './worldCatalog.js';
+import { locations, locationLinks, npcs, fauna, items, harvestYields, factions, historiaEntries } from './worldCatalog.js';
 import { assertValidCategory } from '../services/itemTaxonomy.js';
 import { worldPopulations } from './worldPopulation.js';
 
@@ -83,6 +83,24 @@ async function main() {
     itemIdBySlug.set(item.slug, row.id);
   }
 
+  console.log(`  Facciones (${factions.length})...`);
+  const factionNameSet = new Set(factions.map((f) => f.name));
+  for (const faction of factions) {
+    await prisma.faction.upsert({
+      where: { worldId_slug: { worldId, slug: faction.slug } },
+      update: { name: faction.name, raza: faction.raza, description: faction.description },
+      create: { worldId, ...faction },
+    });
+  }
+  // Fail-fast (2026-08-06): cada Npc.faction no-null usado en worldCatalog.ts debe tener una
+  // Faction homónima exacta — si no, el enganche de descubrimiento en cascada
+  // (entityDiscovery.ts) nunca dispararía para ese NPC, en silencio.
+  for (const npc of [...npcs, ...fauna]) {
+    if (npc.faction && !factionNameSet.has(npc.faction)) {
+      throw new Error(`NPC "${npc.slug}" tiene faction "${npc.faction}" sin ninguna Faction homónima en el catálogo de facciones.`);
+    }
+  }
+
   const allNpcs = [...npcs, ...fauna];
   console.log(`  NPCs (${allNpcs.length})...`);
   for (const npc of allNpcs) {
@@ -131,6 +149,43 @@ async function main() {
     }
   }
 
+  console.log(`  Entradas de Historia (${historiaEntries.length})...`);
+  const allNpcSlugsForHistoria = new Set(allNpcs.map((n) => n.slug));
+  for (const entry of historiaEntries) {
+    if (!itemIdBySlug.has(entry.documentoItemSlug)) {
+      throw new Error(`HistoriaEntry "${entry.slug}" referencia un objeto desconocido: ${entry.documentoItemSlug}`);
+    }
+    if (entry.translatorNpcSlug && !allNpcSlugsForHistoria.has(entry.translatorNpcSlug)) {
+      throw new Error(`HistoriaEntry "${entry.slug}" referencia un NPC traductor desconocido: ${entry.translatorNpcSlug}`);
+    }
+    if (entry.requiresTranslation && !entry.translatorNpcSlug) {
+      throw new Error(`HistoriaEntry "${entry.slug}" tiene requiresTranslation=true pero no translatorNpcSlug.`);
+    }
+    await prisma.historiaEntry.upsert({
+      where: { worldId_slug: { worldId, slug: entry.slug } },
+      update: {
+        title: entry.title,
+        era: entry.era,
+        year: entry.year,
+        text: entry.text,
+        requiresTranslation: entry.requiresTranslation ?? false,
+        documentoItemSlug: entry.documentoItemSlug,
+        translatorNpcSlug: entry.translatorNpcSlug ?? null,
+      },
+      create: {
+        worldId,
+        slug: entry.slug,
+        title: entry.title,
+        era: entry.era,
+        year: entry.year,
+        text: entry.text,
+        requiresTranslation: entry.requiresTranslation ?? false,
+        documentoItemSlug: entry.documentoItemSlug,
+        translatorNpcSlug: entry.translatorNpcSlug ?? null,
+      },
+    });
+  }
+
   console.log(`  Recursos cosechables (${harvestYields.length})...`);
   // Invariante (2026-07-29): todas las filas de un mismo sourceSlug deben exigir el mismo verbo
   // — harvest.ts asume esto (mira solo la primera fila para decidir qué regex aplicar). Falla
@@ -168,12 +223,18 @@ async function main() {
   console.log(`  Población del mundo (${worldPopulations.length})...`);
   // Upsert real (no borrar+recrear como HarvestYield): `poblacion` es mutable de cara al futuro
   // (nacimientos/muertes/migraciones simuladas más adelante) — un reseed nunca debería resetear
-  // el valor actual a la semilla si ya se ha ido moviendo, solo crear lo que falte. `update: {}`
-  // vacío a propósito: ya existente, no se toca.
+  // el valor actual a la semilla si ya se ha ido moviendo, solo crear lo que falte.
+  //
+  // Bug real (auditoría 2026-08-06): el `update` se dejó VACÍO del todo para proteger solo
+  // `poblacion` — pero eso también bloqueaba cualquier corrección futura de `label`/`poblacionMax`/
+  // `distribucion` en una fila ya sembrada (precedente real: worldPopulation.ts ya corrigió una
+  // vez el label de "Maktor/Serhu" a "Clan Serhu", corrección que un reseed sobre un mundo ya
+  // sembrado nunca habría aplicado). `distribucion` en concreto no es solo cosmético: lo lee
+  // travelInterruption.ts para ponderar encuentros ambientales por región.
   for (const pop of worldPopulations) {
     await prisma.worldPopulation.upsert({
       where: { worldId_targetType_targetSlug: { worldId, targetType: pop.targetType, targetSlug: pop.targetSlug } },
-      update: {},
+      update: { label: pop.label, poblacionMax: pop.poblacionMax, distribucion: pop.distribucion },
       create: {
         worldId,
         targetType: pop.targetType,

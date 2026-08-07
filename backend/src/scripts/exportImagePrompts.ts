@@ -24,6 +24,9 @@ const SECTION_LABEL: Record<ImagePromptEntityType, string> = {
   personaje: 'Personajes jugables',
   location: 'Lugares',
   construccion: 'Construcciones',
+  faction: 'Facciones',
+  historia: 'Historia',
+  crafteo: 'Crafteo',
 };
 
 const SIZE_PROFILE_LABEL: Record<ImagePromptSizeProfile, string> = {
