@@ -188,7 +188,9 @@ export function DetailModal({ target, onClose, onUnequip, onEquip, onSaveAbility
                   ? 'Habilidad racial/de arma — se actualiza sola al cambiar de equipo o subir de nivel, no editable.'
                   : target.ability.category === 'combate'
                     ? 'Habilidad de clase — no editable.'
-                    : 'Habilidad de partida inicial — no editable.'}
+                    : target.ability.category === 'profesion'
+                      ? 'Habilidad de oficio — se desbloquea sola al subir de nivel, no editable.'
+                      : 'Habilidad de partida inicial — no editable.'}
               </p>
             ) : (
               <div className="flex gap-2">

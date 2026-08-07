@@ -298,7 +298,9 @@ export interface QuestInfo {
   targetLocationSlug: string | null
 }
 
-export type SavedActionCategory = 'combate' | 'general'
+/// 'profesion' (2026-08-07) — habilidades de oficio desbloqueadas por nivel, su propia pestaña
+/// "Profesiones" en el panel de Habilidades (ver HabilidadesPanel.tsx), distinta de "Generales".
+export type SavedActionCategory = 'combate' | 'general' | 'profesion'
 
 export interface SavedActionInfo {
   id: string

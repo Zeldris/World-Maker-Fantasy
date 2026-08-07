@@ -14,7 +14,9 @@ interface HabilidadesPanelProps {
 }
 
 export function HabilidadesPanel({ savedActions, combatSlots, onUse, onCreate, onDetail }: HabilidadesPanelProps) {
-  const [tab, setTab] = useState<SavedActionCategory>('combate')
+  // Generales primero (2026-08-07, reordenado junto con la pestaña nueva de Profesiones) — el
+  // tab por defecto sigue la misma pestaña, para no abrir en una que no sea la resaltada visualmente.
+  const [tab, setTab] = useState<SavedActionCategory>('general')
   // Ver la cuadrícula y crear una nueva ya no se muestran a la vez (petición explícita de la
   // usuaria, 2026-07-21) — solo aplica a "general" (combate no tiene formulario de creación).
   const [showCreateForm, setShowCreateForm] = useState(false)
@@ -33,6 +35,14 @@ export function HabilidadesPanel({ savedActions, combatSlots, onUse, onCreate, o
     <div className="flex flex-col gap-5">
       <div className="flex gap-2 border-b border-iron-700">
         <button
+          onClick={() => setTab('general')}
+          className={`border-b-2 px-3 py-2 text-sm transition-colors ${
+            tab === 'general' ? 'border-accent-500 font-medium text-accent-300' : 'border-transparent text-wood-400 hover:text-wood-200'
+          }`}
+        >
+          Generales
+        </button>
+        <button
           onClick={() => setTab('combate')}
           className={`border-b-2 px-3 py-2 text-sm transition-colors ${
             tab === 'combate' ? 'border-accent-500 font-medium text-accent-300' : 'border-transparent text-wood-400 hover:text-wood-200'
@@ -41,15 +51,12 @@ export function HabilidadesPanel({ savedActions, combatSlots, onUse, onCreate, o
           Combate
         </button>
         <button
-          onClick={() => {
-            setTab('general')
-            setShowCreateForm(false)
-          }}
+          onClick={() => setTab('profesion')}
           className={`border-b-2 px-3 py-2 text-sm transition-colors ${
-            tab === 'general' ? 'border-accent-500 font-medium text-accent-300' : 'border-transparent text-wood-400 hover:text-wood-200'
+            tab === 'profesion' ? 'border-accent-500 font-medium text-accent-300' : 'border-transparent text-wood-400 hover:text-wood-200'
           }`}
         >
-          Generales
+          Profesiones
         </button>
       </div>
 
@@ -74,19 +81,38 @@ export function HabilidadesPanel({ savedActions, combatSlots, onUse, onCreate, o
         </div>
       )}
 
-      {tab === 'combate' || !showCreateForm ? (
+      {tab === 'general' && showCreateForm ? (
+        <PanelSection title="Guardar nueva (general)">
+          <AbilityForm
+            mode="create"
+            onSubmit={async (params) => {
+              await onCreate({ ...params, category: 'general' })
+              setShowCreateForm(false)
+            }}
+            onCancel={() => setShowCreateForm(false)}
+          />
+        </PanelSection>
+      ) : (
         <>
           <p className="text-2xs text-wood-400">
             {tab === 'combate'
-              ? `Habilidades activas: ${combatUsed} / ${combatSlots} (2 raciales + 1-2 de arma equipada + 4 de clase)`
-              : 'Sin límite de huecos.'}
+              ? `Habilidades activas: ${combatUsed} / ${combatSlots} (2 raciales + 1-2 de arma equipada + 4 de clase) — solo consulta, para atacar usa el panel de Combate durante un enfrentamiento.`
+              : tab === 'profesion'
+                ? 'Se desbloquean solas al subir de nivel un oficio crafteando o construyendo.'
+                : 'Sin límite de huecos.'}
           </p>
 
           {inTab.length === 0 ? (
             <PanelEmptyState
-              icon={tab === 'combate' ? '⚔️' : '✨'}
-              title={tab === 'combate' ? 'Sin habilidades de combate todavía' : 'Sin habilidades generales todavía'}
-              hint={tab === 'combate' ? 'Se conceden solas según tu raza, arma equipada y clase.' : 'Pulsa "+ Crear nueva" para guardar tu primera habilidad general.'}
+              icon={tab === 'combate' ? '⚔️' : tab === 'profesion' ? '🛠️' : '✨'}
+              title={tab === 'combate' ? 'Sin habilidades de combate todavía' : tab === 'profesion' ? 'Sin habilidades de oficio todavía' : 'Sin habilidades generales todavía'}
+              hint={
+                tab === 'combate'
+                  ? 'Se conceden solas según tu raza, arma equipada y clase.'
+                  : tab === 'profesion'
+                    ? 'Sube de nivel un oficio crafteando o construyendo para desbloquear la primera.'
+                    : 'Pulsa "+ Crear nueva" para guardar tu primera habilidad general.'
+              }
             />
           ) : tab === 'combate' ? (
             // Rediseño "tope de 10" (2026-07-29, "UI reflejando el reparto"), extendido 2026-07-31
@@ -97,6 +123,12 @@ export function HabilidadesPanel({ savedActions, combatSlots, onUse, onCreate, o
             // `isDynamic && !isGeneric` (raciales + de arma real, se resincronizan solas) e
             // `isStarting` (de clase, fijas de por vida). Ninguna de las tres es editable/borrable
             // a mano (ver DetailModal.tsx).
+            //
+            // Solo información (petición explícita, 2026-08-07: "las de combate pasará a ser solo
+            // de informacion, para saber y elegir las habilidades que quieres usar") — pulsar la
+            // tarjeta ya no manda la acción (eso solo tenía sentido fuera de combate); ahora abre
+            // la misma ficha que el botón ⓘ. El combate real se sigue eligiendo y atacando desde
+            // CombatPanel durante un enfrentamiento, sin cambios ahí.
             <div className="space-y-3">
               {inTab.some((a) => a.isGeneric) && (
                 <div>
@@ -105,7 +137,7 @@ export function HabilidadesPanel({ savedActions, combatSlots, onUse, onCreate, o
                     {inTab
                       .filter((a) => a.isGeneric)
                       .map((a) => (
-                        <IconCard key={a.id} icon={a.icon} name={a.name} tooltip={a.description} onUse={() => onUse(a)} onDetail={() => onDetail(a)} />
+                        <IconCard key={a.id} icon={a.icon} name={a.name} tooltip={a.description} onUse={() => onDetail(a)} onDetail={() => onDetail(a)} />
                       ))}
                   </div>
                 </div>
@@ -117,7 +149,7 @@ export function HabilidadesPanel({ savedActions, combatSlots, onUse, onCreate, o
                     {inTab
                       .filter((a) => a.isDynamic && !a.isGeneric)
                       .map((a) => (
-                        <IconCard key={a.id} icon={a.icon} name={a.name} tooltip={a.description} onUse={() => onUse(a)} onDetail={() => onDetail(a)} />
+                        <IconCard key={a.id} icon={a.icon} name={a.name} tooltip={a.description} onUse={() => onDetail(a)} onDetail={() => onDetail(a)} />
                       ))}
                   </div>
                 </div>
@@ -129,7 +161,7 @@ export function HabilidadesPanel({ savedActions, combatSlots, onUse, onCreate, o
                     {inTab
                       .filter((a) => a.isStarting && !a.isDynamic && !a.isGeneric && a.energyCost > 0)
                       .map((a) => (
-                        <IconCard key={a.id} icon={a.icon} name={a.name} tooltip={a.description} onUse={() => onUse(a)} onDetail={() => onDetail(a)} />
+                        <IconCard key={a.id} icon={a.icon} name={a.name} tooltip={a.description} onUse={() => onDetail(a)} onDetail={() => onDetail(a)} />
                       ))}
                   </div>
                 </div>
@@ -154,17 +186,6 @@ export function HabilidadesPanel({ savedActions, combatSlots, onUse, onCreate, o
             </PanelSection>
           )}
         </>
-      ) : (
-        <PanelSection title="Guardar nueva (general)">
-          <AbilityForm
-            mode="create"
-            onSubmit={async (params) => {
-              await onCreate({ ...params, category: 'general' })
-              setShowCreateForm(false)
-            }}
-            onCancel={() => setShowCreateForm(false)}
-          />
-        </PanelSection>
       )}
     </div>
   )
