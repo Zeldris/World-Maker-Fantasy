@@ -171,13 +171,34 @@ function pick<T>(items: T[], random: () => number): T | undefined {
   return items[Math.floor(random() * items.length)];
 }
 
-export function generateSurroundings(ctx: SurroundingsContext, random: () => number = Math.random): SurroundingsResult {
+const MAX_INTENTOS_ANTIRREPETICION = 5;
+
+/// Bug real jugando en vivo (revisión de partida 2026-08-08): con solo 2 frases por franja horaria
+/// y una tirada `random()` independiente en cada llamada, repetir la misma frase 3 de cada 4 veces
+/// es simplemente lo esperable estadísticamente — no hay memoria de "qué se mostró la última vez",
+/// a diferencia de la narración de combate (que sí tiene anti-repetición con reintento, ver
+/// `tarkor_antirepeticion_reintento_2026-07-31`). `previousDescription` (el texto del último
+/// `LogEntry` de canal MUNDO, ya lo tenía a mano `routes/entorno.ts`) permite volver a tirar unas
+/// pocas veces si sale idéntico al de la vez anterior — barato (nunca llama a Ollama, es solo
+/// re-tirar el propio dado determinista), y con bancas de 2-5 frases 5 intentos prácticamente
+/// garantizan una frase distinta sin arriesgarse a un bucle infinito si algún día la banca se queda
+/// en 1 sola frase.
+export function generateSurroundings(
+  ctx: SurroundingsContext,
+  random: () => number = Math.random,
+  previousDescription?: string | null,
+): SurroundingsResult {
   const bank = bankFor(ctx.region);
   const franja = franjaHorariaFor(hourFromTimeLabel(ctx.timeLabel));
-  const parts = [pick(bank.terreno, random), pick(bank.porFranja[franja], random)];
-  // Mención de fauna/sonido solo 1 de cada 2 veces — que no salga SIEMPRE un animal de por medio
-  // es parte de lo que hace creíble la ambientación (mismo criterio que el resto del motor: nunca
-  // forzar una señal en todos los turnos si en la vida real no siempre habría algo que ver/oír).
-  if (bank.fauna.length > 0 && random() < 0.5) parts.push(pick(bank.fauna, random));
-  return { description: parts.filter((p): p is string => !!p).join(' ') };
+  let description = '';
+  for (let intento = 0; intento < MAX_INTENTOS_ANTIRREPETICION; intento++) {
+    const parts = [pick(bank.terreno, random), pick(bank.porFranja[franja], random)];
+    // Mención de fauna/sonido solo 1 de cada 2 veces — que no salga SIEMPRE un animal de por medio
+    // es parte de lo que hace creíble la ambientación (mismo criterio que el resto del motor: nunca
+    // forzar una señal en todos los turnos si en la vida real no siempre habría algo que ver/oír).
+    if (bank.fauna.length > 0 && random() < 0.5) parts.push(pick(bank.fauna, random));
+    description = parts.filter((p): p is string => !!p).join(' ');
+    if (description !== previousDescription) break;
+  }
+  return { description };
 }

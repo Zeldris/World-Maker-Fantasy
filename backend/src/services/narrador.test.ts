@@ -10,6 +10,7 @@ import {
   hasPrematureCombatResolution,
   hasFalseItemUse,
   hasResurrectedDeadNpc,
+  hasGisteraReencuentroSinNombrar,
   hasFalseTravelClaim,
   hasAnachronism,
 } from './narrador.js';
@@ -131,6 +132,10 @@ describe('hasFalseCombatHit', () => {
     const narration = 'Gorhorn lanza su hacha, pero este esquiva fácilmente, dejando una línea de sangre fría donde la hoja rozó su armadura.';
     expect(hasFalseCombatHit(narration, true)).toBe(true);
   });
+
+  it('bug real jugando en vivo (2026-08-08): detecta el gerundio "atravesando", no solo pasado/presente ("atravesó"/"atraviesa")', () => {
+    expect(hasFalseCombatHit('Gorhorn da un fuerte golpe, atravesando el cuello del ave con una precisión sorprendente.', true)).toBe(true);
+  });
 });
 
 describe('hasPrematureCombatResolution', () => {
@@ -152,6 +157,18 @@ describe('hasPrematureCombatResolution', () => {
 
   it('no dispara fuera de este escenario concreto (combatNotYetResolved undefined)', () => {
     expect(hasPrematureCombatResolution('El orco huye cojeando, malherido.', undefined)).toBe(false);
+  });
+
+  it('bug real jugando en vivo (2026-08-08, habilidad "Cazar" nueva): detecta una caza narrada como ya atrapada/inmovilizada sin ningún intercambio mecánico', () => {
+    const narration =
+      'Gorhorn se agacha rápidamente, lanzando una astuta trampa que atrapa al Corretolva en un instante. Con el Corretolva ya inmovilizado, decide registrar su cuerpo para encontrar algo útil.';
+    expect(hasPrematureCombatResolution(narration, true)).toBe(true);
+  });
+
+  it('bug real jugando en vivo (2026-08-08, mismo día): detecta el gerundio "atravesando" en el primer turno de "Salgo a cazar", antes de cualquier intercambio mecánico real', () => {
+    const narration =
+      'Gorhorn, sin perder tiempo, da un fuerte golpe con la hacha, atravesando el cuello del ave con una precisión sorprendente. El buitrón cae al suelo, con su plumaje negro ensangrentado.';
+    expect(hasPrematureCombatResolution(narration, true)).toBe(true);
   });
 });
 
@@ -200,6 +217,31 @@ describe('hasResurrectedDeadNpc', () => {
   it('no dispara si las huellas recientes son de otra criatura, no del NPC muerto', () => {
     const narration = 'Gorhorn encuentra huellas recientes de un jabalí cerca del río. El Orco Enfurecido sigue muerto donde lo dejó.';
     expect(hasResurrectedDeadNpc(narration, ['Orco Enfurecido'])).toBe(false);
+  });
+});
+
+describe('hasGisteraReencuentroSinNombrar', () => {
+  it('bug real jugando en vivo (visto 3 veces en 3 partidas): detecta la reintroducción de Gistera Koh sin nombrarla, reciclando su propia intro', () => {
+    const narration =
+      'Gorhorn rebusca entre los restos. Una orca marcada del Clan Serhu, sin nombre revelado, se acerca a Gorhorn con prisas, jadeante.';
+    expect(hasGisteraReencuentroSinNombrar(narration, true)).toBe(true);
+  });
+
+  it('bug real jugando en vivo (variante confirmada, "el hocico húmedo de una orca Serhu... algo invisible persigue su silueta")', () => {
+    const narration =
+      'Gorhorn nota una presión inusual a su derecha y se gira, encontrándose con los ojos brillantes y el hocico húmedo de una orca Serhu. La bestia agita sus orejas mientras algo invisible persigue su silueta.';
+    expect(hasGisteraReencuentroSinNombrar(narration, true)).toBe(true);
+  });
+
+  it('no dispara si Gistera Koh no se ha marchado todavía (su propia intro real, primer turno)', () => {
+    const narration = 'Una orca marcada del Clan Serhu se acerca a Gorhorn con prisas — algo la persigue.';
+    expect(hasGisteraReencuentroSinNombrar(narration, false)).toBe(false);
+    expect(hasGisteraReencuentroSinNombrar(narration, undefined)).toBe(false);
+  });
+
+  it('no dispara con una mención neutra del Clan Serhu sin persecución/huida (p.ej. Ulkha, siempre nombrada, dando órdenes en su campamento)', () => {
+    const narration = 'La Terk\'ikar Ulkha, una orca del Clan Serhu, ordena a sus guerreros que se preparen.';
+    expect(hasGisteraReencuentroSinNombrar(narration, true)).toBe(false);
   });
 });
 

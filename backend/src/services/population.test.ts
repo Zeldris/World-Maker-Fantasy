@@ -1,5 +1,20 @@
 import { describe, it, expect, vi } from 'vitest';
-import { populationTargetSlugFor, decrementPopulationOnDeath, growAllPopulations, UMBRAL_MINIMO_REPRODUCCION } from './population.js';
+import { populationTargetSlugFor, decrementPopulationOnDeath, growAllPopulations, stripRegionArticle, UMBRAL_MINIMO_REPRODUCCION } from './population.js';
+
+describe('stripRegionArticle', () => {
+  // Bug real jugando en vivo (2026-08-07, "no aparece ningún recurso en la Hondonada"):
+  // `WorldPopulation.distribucion` se siembra sin artículo, `Location.region` siempre lo lleva
+  // completo — 3 de las 5 regiones reales del mundo lo llevan y quedaban rotas en silencio.
+  it.each([
+    ['Las Llanuras del Viento Rojo', 'Llanuras del Viento Rojo'],
+    ['El Margen Silencioso', 'Margen Silencioso'],
+    ['La Meseta del Orden', 'Meseta del Orden'],
+    ['Cristal Helado', 'Cristal Helado'],
+    ['Ciénaga Troncal', 'Ciénaga Troncal'],
+  ])('%s -> %s', (region, expected) => {
+    expect(stripRegionArticle(region)).toBe(expected);
+  });
+});
 
 describe('populationTargetSlugFor', () => {
   it('fauna (raza null) usa el slug del NPC directamente', () => {

@@ -8,6 +8,15 @@ import { ENERGY_COST_BASICA, ENERGY_COST_ATAQUE_BASICO } from './energy.js';
 
 export interface NpcCombatAbility {
   name: string;
+  /// Revisión de partida 2026-08-08, bug real jugando en vivo: un Múrgol (fauna sin arma, cuyo
+  /// `ataqueNatural` es "Topetazo torpe con su cornamenta ramificada...") se narró repetidamente
+  /// como "el orco lanudo" dando "zarpazos" — porque el único dato que llegaba al Narrador era el
+  /// NOMBRE de la habilidad ("Ataque base", siempre igual, sin ninguna pista de CÓMO ataca de
+  /// verdad esta especie) — `ataqueBase.description` (baseAttack.ts, ya calculada) se descartaba
+  /// aquí mismo antes de este fix. Sin arma/ataqueNatural, el resto de habilidades (de clase,
+  /// raciales) sí tenían nombres propios descriptivos, pero fauna desarmada dependía SOLO de
+  /// "Ataque base" — el caso más grave y más frecuente.
+  description: string;
   attribute: Attribute;
   /// null para Ataque base y habilidades raciales (siempre puramente descriptivas, nunca leídas
   /// como mecánica de combate — ver comentario de `Npc.habilidadesRaciales` en schema.prisma) —
@@ -50,13 +59,21 @@ export function npcCombatAbilitiesFor(npc: NpcForCombatAbilities, weaponNames: s
   // base deja de ser gratis y pasa a costar ENERGY_COST_ATAQUE_BASICO, simétrico entre jugador y
   // NPC.
   const ataqueBase = baseAttackFor({ attributes: npc.attributes, weaponNames, ataqueNatural: npc.ataqueNatural });
-  abilities.push({ name: ataqueBase.name, attribute: ataqueBase.preferredAttribute, effect: null, energyCost: ENERGY_COST_ATAQUE_BASICO, energyRegen: 0 });
+  abilities.push({
+    name: ataqueBase.name,
+    description: ataqueBase.description,
+    attribute: ataqueBase.preferredAttribute,
+    effect: null,
+    energyCost: ENERGY_COST_ATAQUE_BASICO,
+    energyRegen: 0,
+  });
 
   if (npc.clase) {
     for (const unlock of classAbilityUnlocksForClase(npc.clase as Clase)) {
       if (unlock.level > npc.level) continue;
       abilities.push({
         name: unlock.ability.name,
+        description: unlock.ability.description,
         attribute: unlock.ability.preferredAttribute ?? 'fuerza',
         effect: unlock.ability.effect ?? null,
         energyCost: ENERGY_COST_BASICA,
@@ -70,6 +87,7 @@ export function npcCombatAbilitiesFor(npc: NpcForCombatAbilities, weaponNames: s
     if (raza) {
       abilities.push({
         name: raza.habilidadesRaciales.ataque.name,
+        description: raza.habilidadesRaciales.ataque.description,
         attribute: raza.habilidadesRaciales.ataque.preferredAttribute,
         effect: null,
         energyCost: ENERGY_COST_BASICA,
@@ -77,6 +95,7 @@ export function npcCombatAbilitiesFor(npc: NpcForCombatAbilities, weaponNames: s
       });
       abilities.push({
         name: raza.habilidadesRaciales.defensa.name,
+        description: raza.habilidadesRaciales.defensa.description,
         attribute: raza.habilidadesRaciales.defensa.preferredAttribute,
         effect: null,
         energyCost: ENERGY_COST_BASICA,
@@ -86,7 +105,14 @@ export function npcCombatAbilitiesFor(npc: NpcForCombatAbilities, weaponNames: s
   }
 
   for (const racial of npc.habilidadesRaciales) {
-    abilities.push({ name: racial.name, attribute: racial.preferredAttribute, effect: null, energyCost: ENERGY_COST_BASICA, energyRegen: 0 });
+    abilities.push({
+      name: racial.name,
+      description: racial.description,
+      attribute: racial.preferredAttribute,
+      effect: null,
+      energyCost: ENERGY_COST_BASICA,
+      energyRegen: 0,
+    });
   }
 
   // Esquivar/Defenderse genéricos (2026-07-30, petición explícita: "a los npc les falta la
@@ -96,8 +122,24 @@ export function npcCombatAbilitiesFor(npc: NpcForCombatAbilities, weaponNames: s
   // NINGUNA opción defensiva real — `chooseNpcAbility('defensa', ...)` caía siempre en el roster
   // entero (en la práctica, reusar Ataque base como si fuera una defensa). Gratis (energyCost 0)
   // y, desde 2026-07-31, RECUPERAN energía (10/5) — mismos números que el lado del jugador.
-  abilities.push({ name: 'Esquivar', attribute: 'destreza', effect: 'AGUANTE', energyCost: 0, energyRegen: 5 });
-  abilities.push({ name: 'Defenderse', attribute: 'constitucion', effect: 'AGUANTE', energyCost: 0, energyRegen: 10 });
+  // Descripciones idénticas a GENERIC_COMBAT_ABILITIES (genericCombatAbilities.ts) — mismo verbo
+  // que ya usa el jugador para las mismas dos acciones, coherencia entre los dos lados.
+  abilities.push({
+    name: 'Esquivar',
+    description: 'Se aparta del golpe confiando solo en sus reflejos.',
+    attribute: 'destreza',
+    effect: 'AGUANTE',
+    energyCost: 0,
+    energyRegen: 5,
+  });
+  abilities.push({
+    name: 'Defenderse',
+    description: 'Se planta y aguanta el golpe con pura resistencia física.',
+    attribute: 'constitucion',
+    effect: 'AGUANTE',
+    energyCost: 0,
+    energyRegen: 10,
+  });
 
   return abilities;
 }

@@ -12,6 +12,12 @@ export interface PendingNpcAttack {
   attribute: Attribute;
   effect: AbilityEffect | null;
   abilityName: string;
+  /// Revisión de partida 2026-08-08, bug real jugando en vivo: un Múrgol sin arma (`ataqueNatural`:
+  /// "Topetazo torpe con su cornamenta ramificada...") se narró como "el orco lanudo" dando
+  /// "zarpazos" — el Narrador solo veía el NOMBRE de la habilidad ("Ataque base", siempre igual,
+  /// sin pista de cómo ataca de verdad esta especie en concreto). `?? ''` en la lectura cubre un
+  /// `pendingNpcAttack` persistido antes de este campo (partida en curso).
+  abilityDescription: string;
   /// Sistema de fatiga simétrico (2026-07-30) — coste de energía de esta habilidad ya elegida,
   /// para descontarlo del NPC en el turno donde de verdad se resuelve (ver turnResolution.ts).
   /// `?? 0` en la lectura cubre partidas con un pendingNpcAttack persistido antes de este campo.
@@ -82,6 +88,21 @@ const OUTCOME_TABLE: Record<GradoExito, Record<GradoExito, ExchangeOutcome>> = {
 };
 
 export interface ExchangeResult {
+  atacante: ExchangeSideResult;
+  defensor: ExchangeSideResult;
+  resultado: ExchangeOutcome;
+}
+
+/// Cara visible del intercambio para el frontend (revisión de partida 2026-08-08, petición
+/// explícita: "que aparezca el resultado de las tiradas... indicando qué atributo y valor sacó
+/// [el jugador] y el del enemigo y por qué perdió o ganó la tirada") — hasta hoy `ExchangeResult`
+/// se calculaba entero pero solo se usaba para construir el texto narrativo del Narrador
+/// (`exchangeContextBlock`) y se descartaba en cuanto ese texto existía; nunca viajaba
+/// estructurado hasta la respuesta HTTP. `atacanteEsJugador` es necesario porque quién ataca y
+/// quién defiende cambia de turno a turno (según quién tenga la iniciativa, ver
+/// `resolveCombatExchangePhase`), así que el frontend no puede asumirlo por su cuenta.
+export interface CombatExchangeDisplay {
+  atacanteEsJugador: boolean;
   atacante: ExchangeSideResult;
   defensor: ExchangeSideResult;
   resultado: ExchangeOutcome;

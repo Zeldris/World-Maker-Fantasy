@@ -66,6 +66,10 @@ describe('matchNpcAliases', () => {
     expect(matchNpcAliases('Lo remata sin piedad.', NPCS)).toEqual([]);
   });
 
+  it('bug real jugando en vivo (2026-08-08, revisión de partida): "hablar" no debe disparar a Hagar (Levenshtein("hablar","hagar")=2) — el propio bio de Orco Enfurecido ya usa "sin intentar hablar", así que esta colisión podía dispararse desde la primerísima escena de cualquier partida nueva', () => {
+    expect(matchNpcAliases('Orco enfurecido ataca sin intentar hablar.', NPCS)).toEqual([]);
+  });
+
   it('Hagar y el Múrgol siguen detectándose por su alias real, la exclusión no los deja invisibles del todo', () => {
     expect(matchNpcAliases('Hagar se acerca sonriendo', NPCS)).toEqual(['hagar']);
     expect(matchNpcAliases('Veo un múrgol pastando', NPCS)).toEqual(['murgol']);
@@ -320,7 +324,7 @@ function npcFixture(overrides: Partial<NpcInScene> = {}): NpcInScene {
     id: 'orco', slug: 'orco-enfurecido', name: 'Orco enfurecido', articulo: 'el', genero: null, kind: 'PRINCIPAL',
     level: 1, role: 'Guerrero deshonrado', faction: null, personality: 'Errático', bio: 'x',
     items: [
-      { name: 'Maza orca', cantidad: 1, notas: 'Astillada', description: 'x', equipSlot: 'ARMA_PRINCIPAL', statBonuses: { fuerza: 2 }, catalogSlug: 'maza-orca', effectKey: null, category: 'arma', tipoArma: 'MAZA' },
+      { name: 'Maza orca', cantidad: 1, notas: 'Astillada', description: 'x', equipSlot: 'ARMA_PRINCIPAL', statBonuses: { fuerza: 2 }, catalogSlug: 'maza-orca', effectKey: null, category: 'arma', tipoArma: 'MAZA', tipo: 'EQUIPABLE' },
     ],
     attributes: { fuerza: 11, destreza: 10, constitucion: 9, inteligencia: 4, voluntad: 7, carisma: 2, arcano: 2 },
     raza: 'orcos', clase: 'Guerrero', ataqueNatural: null, habilidadesRaciales: [],

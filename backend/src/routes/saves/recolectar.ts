@@ -3,8 +3,10 @@ import { prisma } from '../../lib/prisma.js';
 import { metodoForOficio } from '../../services/harvestAbilities.js';
 import { detectHarvestSourcesInScene } from '../../services/harvest.js';
 import { loadSessionFacts, appendSessionFacts } from '../../services/worldFacts.js';
-import { inventoryCapacityFor } from '../../services/inventoryCapacity.js';
+import { inventoryCapacityFor, totalInventoryUnits } from '../../services/inventoryCapacity.js';
 import { effectiveInventorySlotsBonus } from '../../services/equipment.js';
+import { stripRegionArticle } from '../../services/population.js';
+import { quantityOf } from '../../services/ingredients.js';
 import type { AttributeBlock } from '../../services/dice.js';
 import type { MetodoObtencion } from '@prisma/client';
 
@@ -13,6 +15,14 @@ import type { MetodoObtencion } from '@prisma/client';
 /// pop-up de la habilidad base ("Minar"/"Talar") necesita saber QUÉ hay recolectable antes de que
 /// el jugador escriba nada. Desuello (CAZA) no pasa por aquí — sigue el flujo de despiece normal
 /// ya existente (harvest.ts), targeteando una presa ya derrotada, no una fuente por explorar.
+
+/// Cooldown real por fuente (bug real jugando en vivo, 2026-08-07: "puedo darle a minar
+/// indefinidamente sin moverme de la zona" — la habilidad no costaba turno ni tenía ningún límite
+/// entre usos, así que una veta de 500 de población se sentía infinita en la práctica). Real, no
+/// de ficción: mismo criterio que `updatedAt`/crecimiento de `growAllPopulations` (population.ts),
+/// más simple que depender del reloj de ficción de una `Save` concreta para una fila que es del
+/// `World` (compartida entre partidas). Cifra de partida, ajustable — no es un cierre definitivo.
+const RECOLECCION_COOLDOWN_MS = 30 * 60_000;
 
 interface SourceCandidate {
   sourceSlug: string;
@@ -23,10 +33,16 @@ interface SourceCandidate {
 
 /// Fuentes candidatas para `oficio` en la región actual: las que tienen HarvestYield con el
 /// método correcto Y una fila WorldPopulation tipo RECURSO con población real > 0 en esa región
-/// (nunca se ofrece recolectar algo que el propio mundo dice que no queda).
-async function candidateSourcesFor(worldId: string, metodo: MetodoObtencion, region: string | null): Promise<SourceCandidate[]> {
+/// (nunca se ofrece recolectar algo que el propio mundo dice que no queda) Y que no estén en
+/// cooldown por haberse recolectado hace poco. `anyOnCooldown` distingue "no hay nada aquí" de
+/// "lo que hay está agotado por ahora" para el mensaje del frontend.
+async function candidateSourcesFor(
+  worldId: string,
+  metodo: MetodoObtencion,
+  region: string | null,
+): Promise<{ candidates: SourceCandidate[]; anyOnCooldown: boolean }> {
   const rows = await prisma.harvestYield.findMany({ where: { worldId, metodoObtencion: metodo }, include: { item: true } });
-  if (rows.length === 0) return [];
+  if (rows.length === 0) return { candidates: [], anyOnCooldown: false };
   const bySlug = new Map<string, typeof rows>();
   for (const row of rows) {
     if (!bySlug.has(row.sourceSlug)) bySlug.set(row.sourceSlug, []);
@@ -35,17 +51,26 @@ async function candidateSourcesFor(worldId: string, metodo: MetodoObtencion, reg
   const populations = await prisma.worldPopulation.findMany({
     where: { worldId, targetType: 'RECURSO', targetSlug: { in: [...bySlug.keys()] }, poblacion: { gt: 0 } },
   });
+  const cooldownCutoff = Date.now() - RECOLECCION_COOLDOWN_MS;
   const candidates: SourceCandidate[] = [];
+  let anyOnCooldown = false;
   for (const pop of populations) {
     // Sin región conocida (save.currentLocation nulo — posible según el schema), falla CERRADO:
     // ninguna fuente es candidata, en vez de ofrecer las de todas las regiones del mundo por
     // saltarse el filtro (bug real encontrado en auditoría, 2026-08-07 — antes `region && ...`
     // con region=null no filtraba nada).
     if (!region) continue;
+    // `distribucion` se siembra SIN artículo ("Llanuras del Viento Rojo"), `region` siempre lo
+    // lleva completo ("Las Llanuras del Viento Rojo") — ver stripRegionArticle (population.ts,
+    // bug real encontrado jugando en vivo 2026-08-07).
     const distribucion = pop.distribucion as Record<string, number>;
-    if (!(distribucion[region] > 0)) continue;
+    if (!(distribucion[stripRegionArticle(region)] > 0)) continue;
     const sourceRows = bySlug.get(pop.targetSlug) ?? [];
     if (sourceRows.length === 0) continue;
+    if (pop.lastHarvestedAt && pop.lastHarvestedAt.getTime() > cooldownCutoff) {
+      anyOnCooldown = true;
+      continue;
+    }
     candidates.push({
       sourceSlug: pop.targetSlug,
       sourceName: sourceRows[0].sourceName,
@@ -53,7 +78,7 @@ async function candidateSourcesFor(worldId: string, metodo: MetodoObtencion, reg
       yields: sourceRows.map((r) => ({ itemSlug: r.item.slug, itemName: r.item.name, cantidadMaxima: r.cantidad })),
     });
   }
-  return candidates;
+  return { candidates, anyOnCooldown };
 }
 
 export async function recolectarRoutes(app: FastifyInstance) {
@@ -65,8 +90,8 @@ export async function recolectarRoutes(app: FastifyInstance) {
     const save = await prisma.save.findUnique({ where: { id: request.params.id }, include: { currentLocation: true } });
     if (!save) return reply.status(404).send({ error: 'Partida no encontrada' });
 
-    const candidates = await candidateSourcesFor(save.worldId, metodo, save.currentLocation?.region ?? null);
-    if (candidates.length === 0) return { sources: [], puedeExplorar: false };
+    const { candidates, anyOnCooldown } = await candidateSourcesFor(save.worldId, metodo, save.currentLocation?.region ?? null);
+    if (candidates.length === 0) return { sources: [], puedeExplorar: false, enCooldown: anyOnCooldown };
 
     const sessionFacts = await loadSessionFacts(save.id);
     const localizados = detectHarvestSourcesInScene(
@@ -74,7 +99,7 @@ export async function recolectarRoutes(app: FastifyInstance) {
       candidates.map((c) => c.sourceSlug),
     );
     const sources = candidates.filter((c) => localizados.includes(c.sourceSlug));
-    return { sources, puedeExplorar: sources.length === 0 };
+    return { sources, puedeExplorar: sources.length === 0, enCooldown: sources.length === 0 && anyOnCooldown };
   });
 
   // Determinista, sin gastar turno ni pasar por Ollama (decisión de diseño, 2026-08-07: ya existe
@@ -89,8 +114,8 @@ export async function recolectarRoutes(app: FastifyInstance) {
     const save = await prisma.save.findUnique({ where: { id: request.params.id }, include: { currentLocation: true } });
     if (!save) return reply.status(404).send({ error: 'Partida no encontrada' });
 
-    const candidates = await candidateSourcesFor(save.worldId, metodo, save.currentLocation?.region ?? null);
-    if (candidates.length === 0) return { sources: [] };
+    const { candidates, anyOnCooldown } = await candidateSourcesFor(save.worldId, metodo, save.currentLocation?.region ?? null);
+    if (candidates.length === 0) return { sources: [], enCooldown: anyOnCooldown };
 
     const sessionFacts = await loadSessionFacts(save.id);
     await appendSessionFacts(
@@ -109,15 +134,35 @@ export async function recolectarRoutes(app: FastifyInstance) {
         return reply.status(400).send({ error: 'Falta el campo: selections' });
       }
 
-      const save = await prisma.save.findUnique({ where: { id: request.params.id } });
+      const save = await prisma.save.findUnique({ where: { id: request.params.id }, include: { worldState: true } });
       if (!save) return reply.status(404).send({ error: 'Partida no encontrada' });
 
-      const created = await prisma.$transaction(async (tx) => {
+      interface TouchedStack {
+        id: string;
+        catalogName: string;
+        description: string;
+        catalogSlug: string;
+        /// true = la fila YA existía antes de esta petición (el cliente ya la tiene en su estado
+        /// local, hay que decirle que cambió de nombre); false = fila nueva, creada en esta misma
+        /// petición (el cliente todavía no la conoce, hay que dársela entera).
+        wasPreexisting: boolean;
+        quantity: number;
+      }
+
+      const cooldownCutoff = new Date(Date.now() - RECOLECCION_COOLDOWN_MS);
+      const touched = await prisma.$transaction(async (tx) => {
         // Capacidad real (Parte D) — releída DENTRO de la transacción, igual que el resto de
         // gates de este proyecto (revalidar justo antes de escribir, no confiar en un conteo de
         // antes de abrir la transacción).
-        const [currentCount, equippedItems] = await Promise.all([
-          tx.inventoryItem.count({ where: { saveId: save.id } }),
+        //
+        // Bug real jugando en vivo (2026-08-08, "podemos tener inventario infinito"): esto contaba
+        // FILAS (`InventoryItem.count()`) contra el número de SELECCIONES de la petición — una vez
+        // existe una pila ("Piedra (1)"), recolectar más solo incrementa su cantidad sin crear
+        // fila nueva, así que `count()` nunca sube: inventario sin límite real para cualquier
+        // recurso ya poseído. Ahora se mide en UNIDADES totales (`totalInventoryUnits`) — la
+        // cantidad pedida (`sel.cantidad`, no 1 por selección) es lo que de verdad pesa.
+        const [currentItems, equippedItems] = await Promise.all([
+          tx.inventoryItem.findMany({ where: { saveId: save.id }, select: { name: true } }),
           tx.inventoryItem.findMany({ where: { saveId: save.id, slot: { not: null } }, select: { statBonuses: true } }),
         ]);
         const capacity = inventoryCapacityFor(
@@ -125,13 +170,26 @@ export async function recolectarRoutes(app: FastifyInstance) {
           (save.attributes as AttributeBlock).constitucion,
           effectiveInventorySlotsBonus(equippedItems),
         );
-        if (currentCount + selections.length > capacity) {
-          throw new Error(`No te cabe en el inventario (${currentCount}/${capacity} slots, intentas añadir ${selections.length}).`);
-        }
+        // Topa por espacio libre real igual que ya se topa por `HarvestYield.cantidad`/población
+        // más abajo — nunca un rechazo duro de toda la petición: si solo caben 3 de las 9 pedidas,
+        // se añaden esas 3 (mismo criterio de "coger lo que se pueda" que el resto de este motor).
+        let unitsRemaining = Math.max(0, capacity - totalInventoryUnits(currentItems));
 
-        const newItems: { id: string; name: string; description: string; slot: null; catalogSlug: string; equipSlot: null; effectKey: null }[] = [];
+        // Acumula en la pila ya existente en vez de crear siempre una fila nueva (bug real jugando
+        // en vivo, 2026-08-07: "Piedra (3)" + "Piedra (3)" sueltas en vez de "Piedra (6)") — mismo
+        // patrón de cantidad-en-el-nombre que ya usa crafteo/construcción (`quantityOf`/
+        // `baseNameOf`, ingredients.ts). Keyed por `catalogSlug` para que dos selecciones del MISMO
+        // objeto dentro de esta misma petición (dos fuentes distintas con el mismo yield) también
+        // se sumen entre sí, no solo contra lo que ya hubiera de antes.
+        const touched = new Map<string, TouchedStack>();
+        // Fuentes (no objetos) ya validadas/depletadas EN ESTA MISMA petición — cooldown y
+        // población son por `sourceSlug`, no por `itemSlug`; una fuente con 2 yields distintos
+        // seleccionados a la vez solo debe pasar el guard de cooldown una vez (si no, la segunda
+        // selección vería el `lastHarvestedAt` que la primera acaba de fijar hace un instante y se
+        // bloquearía a sí misma en la misma petición).
+        const sourcesTouchedThisRequest = new Set<string>();
         for (const sel of selections) {
-          if (sel.cantidad <= 0) continue;
+          if (sel.cantidad <= 0 || unitsRemaining <= 0) continue;
 
           // Validación contra la fuente de verdad (2026-08-07, auditoría: sin esto, `selections`
           // viene del cliente sin comprobar nada — se podía pedir cualquier itemSlug para
@@ -143,35 +201,132 @@ export async function recolectarRoutes(app: FastifyInstance) {
             include: { item: true },
           });
           if (!yieldRow) continue;
-          const cantidad = Math.min(sel.cantidad, yieldRow.cantidad);
+          const cantidad = Math.min(sel.cantidad, yieldRow.cantidad, unitsRemaining);
 
           // Depleción atómica (mismo patrón que decrementPopulationOnDeath, population.ts) — el
-          // guard `poblacion: { gte: cantidad }` evita bajar de 0 sin necesitar releer nada antes;
-          // si `count` da 0, otra recolección casi simultánea ya se llevó lo que quedaba.
+          // guard `poblacion: { gte: cantidad }` evita bajar de 0 sin necesitar releer nada antes.
+          // Cooldown real (bug real jugando en vivo, 2026-08-07: "minar indefinidamente sin
+          // moverme de la zona") en el MISMO guard atómico: si ya se recolectó esta fuente hace
+          // menos de `RECOLECCION_COOLDOWN_MS`, `count` da 0 igual que si no quedara población.
           const result = await tx.worldPopulation.updateMany({
-            where: { worldId: save.worldId, targetType: 'RECURSO', targetSlug: sel.sourceSlug, poblacion: { gte: cantidad } },
-            data: { poblacion: { decrement: cantidad } },
+            where: {
+              worldId: save.worldId,
+              targetType: 'RECURSO',
+              targetSlug: sel.sourceSlug,
+              poblacion: { gte: cantidad },
+              ...(sourcesTouchedThisRequest.has(sel.sourceSlug) ? {} : { OR: [{ lastHarvestedAt: null }, { lastHarvestedAt: { lt: cooldownCutoff } }] }),
+            },
+            data: { poblacion: { decrement: cantidad }, lastHarvestedAt: new Date() },
           });
           if (result.count === 0) continue;
+          sourcesTouchedThisRequest.add(sel.sourceSlug);
+          unitsRemaining -= cantidad;
 
           const catalogItem = yieldRow.item;
-          const item = await tx.inventoryItem.create({
-            data: {
-              saveId: save.id,
-              name: cantidad > 1 ? `${catalogItem.name} (${cantidad})` : catalogItem.name,
-              description: catalogItem.description,
-              origin: 'recolección',
-              catalogSlug: catalogItem.slug,
-            },
+          const alreadyTouched = touched.get(catalogItem.slug);
+          if (alreadyTouched) {
+            alreadyTouched.quantity += cantidad;
+            continue;
+          }
+
+          // Pila ya existente de una recolección anterior (nunca una fila equipada — un objeto
+          // RECURSO nunca se equipa, pero el filtro deja la intención explícita).
+          const existingRow = await tx.inventoryItem.findFirst({
+            where: { saveId: save.id, catalogSlug: catalogItem.slug, slot: null },
           });
-          // Materia prima cruda (RECURSO) — nunca EQUIPABLE ni ESPECIAL, mismo criterio que el
-          // resto de yields de despiece/recolección (turnResolution.ts): equipSlot/effectKey null.
-          newItems.push({ id: item.id, name: item.name, description: item.description, slot: null, catalogSlug: catalogItem.slug, equipSlot: null, effectKey: null });
+          if (existingRow) {
+            touched.set(catalogItem.slug, {
+              id: existingRow.id,
+              catalogName: catalogItem.name,
+              description: catalogItem.description,
+              catalogSlug: catalogItem.slug,
+              wasPreexisting: true,
+              quantity: quantityOf(existingRow.name) + cantidad,
+            });
+          } else {
+            const createdRow = await tx.inventoryItem.create({
+              data: { saveId: save.id, name: catalogItem.name, description: catalogItem.description, origin: 'recolección', catalogSlug: catalogItem.slug },
+            });
+            touched.set(catalogItem.slug, {
+              id: createdRow.id,
+              catalogName: catalogItem.name,
+              description: catalogItem.description,
+              catalogSlug: catalogItem.slug,
+              wasPreexisting: false,
+              quantity: cantidad,
+            });
+          }
         }
-        return newItems;
+
+        // Un solo write final por pila tocada, ya con la cantidad total sumada — evita escribir el
+        // nombre a medias si la misma pila se tocó más de una vez en este bucle (dos selecciones
+        // del mismo objeto en una sola petición).
+        for (const stack of touched.values()) {
+          const finalName = stack.quantity > 1 ? `${stack.catalogName} (${stack.quantity})` : stack.catalogName;
+          await tx.inventoryItem.update({ where: { id: stack.id }, data: { name: finalName } });
+        }
+
+        // Registro escrito determinista de lo recolectado (petición explícita, 2026-08-07: "un
+        // texto de narración que no dependa de la AI") — mismo criterio que el resto del motor de
+        // turnos: nunca inventar prosa por IA para algo que ya se sabe con certeza mecánica. Solo
+        // si de verdad se consiguió algo (no todas las peticiones tienen éxito: capacidad llena,
+        // cooldown, población agotada a mitad de bucle).
+        let logEntry: { id: string; text: string; timeLabel: string; createdAt: string; fictionalMinutes: number } | null = null;
+        if (touched.size > 0) {
+          const resumen = [...touched.values()]
+            .map((s) => (s.quantity > 1 ? `${s.catalogName} (${s.quantity})` : s.catalogName))
+            .join(', ');
+          const text = `${save.characterName} recolecta en la zona: ${resumen}.`;
+          const timeLabel = save.worldState?.fictionalDateLabel ?? 'Día 1, mañana';
+          const fictionalMinutes = save.worldState?.fictionalMinutes ?? 480;
+          const created = await tx.logEntry.create({
+            data: { saveId: save.id, channel: 'CHARACTER', text, timeLabel, fictionalMinutes, isPlayerAction: false },
+          });
+          logEntry = { id: created.id, text, timeLabel, createdAt: created.createdAt.toISOString(), fictionalMinutes };
+        }
+
+        return { touched, logEntry };
       });
 
-      return { items: created };
+      // Hecho de sesión (fuera de la transacción, igual que `appendSessionFacts` en /explorar —
+      // no bloquea la transacción de DB con el embebido de Ollama) para que el propio Narrador
+      // sepa más tarde que esos recursos ya se tomaron de esta fuente, si la menciona de nuevo.
+      if (touched.touched.size > 0) {
+        const sessionFacts = await loadSessionFacts(save.id);
+        await appendSessionFacts(save.id, sessionFacts, [touched.logEntry!.text]);
+      }
+
+      // Materia prima cruda — siempre tipo RECURSO por diseño (nunca EQUIPABLE ni ESPECIAL), mismo
+      // criterio que el resto de yields de despiece/recolección (turnResolution.ts). `tipo` aquí
+      // (bug real jugando en vivo, 2026-08-07): sin él, el objeto recién recolectado aparecía "sin
+      // categorizar" en el Inventario hasta la próxima recarga completa — mismo patrón exacto ya
+      // arreglado dos veces antes para equipSlot/effectKey, olvidado para tipo en ambos arreglos.
+      const items: { id: string; name: string; description: string; slot: null; catalogSlug: string; equipSlot: null; effectKey: null; tipo: 'RECURSO' }[] =
+        [];
+      // Pilas que YA existían antes de esta petición — el cliente las tiene en su estado local con
+      // el nombre viejo, solo necesita el nombre nuevo (bug real jugando en vivo, 2026-08-07: "no
+      // acumula los items" — cada recolección creaba una fila nueva en vez de sumar a la ya
+      // existente, mismo patrón que `updatedInventoryItems` ya resuelve para crafteo/construcción).
+      const updatedItems: { id: string; name: string }[] = [];
+      for (const stack of touched.touched.values()) {
+        const finalName = stack.quantity > 1 ? `${stack.catalogName} (${stack.quantity})` : stack.catalogName;
+        if (stack.wasPreexisting) {
+          updatedItems.push({ id: stack.id, name: finalName });
+        } else {
+          items.push({
+            id: stack.id,
+            name: finalName,
+            description: stack.description,
+            slot: null,
+            catalogSlug: stack.catalogSlug,
+            equipSlot: null,
+            effectKey: null,
+            tipo: 'RECURSO',
+          });
+        }
+      }
+
+      return { items, updatedItems, logEntry: touched.logEntry };
     },
   );
 }

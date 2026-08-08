@@ -34,9 +34,23 @@ npm run split-distillation-dataset
 Esto ya se ha ejecutado — el resultado son dos archivos que vas a necesitar en el Paso 3:
 
 ```
-backend/output/distillation-dataset/train.jsonl   (191 ejemplos, para entrenar)
-backend/output/distillation-dataset/eval.jsonl    (32 ejemplos, para comparar después — no lo subas a Colab)
+backend/output/distillation-dataset/train.jsonl   (317 ejemplos, para entrenar)
+backend/output/distillation-dataset/eval.jsonl    (57 ejemplos, para comparar después — no lo subas a Colab)
 ```
+
+**Ampliado 2026-08-07** (tras el primer intento, ver Paso 7 — resultado BLOCKED): las 191/32
+originales se quedaban cortas justo en las categorías donde salieron las regresiones
+(`anacronismo_bait`, `viaje`, `npc_muerto_bait`) — se añadieron semillas nuevas ahí y 3 categorías
+enteras que antes no tenían NINGÚN ejemplo (`item_falso_bait`, `combate_prematuro_bait`,
+`repeticion_bait` — detectores reales de producción sin cobertura de entrenamiento).
+
+**Completado 2026-08-08**: la cuota de los proveedores cloud gratuitos (rotación Gemini → Groq →
+Mistral → SambaNova → Cerebras → Cloudflare, ver `generate-distillation-dataset.ts`) se repuso —
+generadas las 3 categorías que seguían en cero (6+6+12 ejemplos) y completado el barrido general
+del resto (70 aceptados, 9 descartados por el propio filtro de calidad al detectar anacronismo —
+funcionando como se espera). Cerebras se quedó sin crédito (HTTP 402) a media tanda, pero
+Cloudflare Workers AI cubrió el hueco sin intervención manual. Dataset final: 317 train + 57 eval
+(374 en total, frente a los 191+32=223 originales). Ya no queda ninguna combinación pendiente.
 
 ## Paso 1 — Abrir el notebook en Colab
 
@@ -144,8 +158,8 @@ num_train_epochs = 3,
 
 ### 4.5 — Celda de entrenamiento (`trainer.train()`)
 
-No cambies nada. Ejecútala y **espera** — con 191 ejemplos, debería tardar entre **20 y 40
-minutos** en la GPU gratuita. Verás una barra de progreso y números bajando poco a poco (la
+No cambies nada. Ejecútala y **espera** — con ~317 ejemplos, debería tardar entre **35 y 65
+minutos** en la GPU gratuita (algo más que la tanda anterior de 238, al ser más ejemplos). Verás una barra de progreso y números bajando poco a poco (la
 "pérdida"/`loss` — cuanto más baja, mejor está aprendiendo). Puedes dejar la pestaña abierta y
 hacer otra cosa mientras tanto; si Colab te desconecta por inactividad, vuelve a esta página,
 reconéctate y sigue ejecutando desde donde se quedó.
@@ -203,10 +217,12 @@ En cuanto `tarkor-narrador-v2` exista en Ollama (paso anterior), dentro de `back
 npm run compare-narrador-models
 ```
 
-Esto re-narra los 32 escenarios de `eval.jsonl` (nunca vistos en el entrenamiento) con los dos
+Esto re-narra los 42 escenarios de `eval.jsonl` (nunca vistos en el entrenamiento) con los dos
 modelos, mide latencia, y puntúa con los mismos detectores automáticos que protegen el juego real
 (anacronismo, fuga de inglés, golpes/objetos/viajes narrados sin respaldo mecánico, NPCs muertos
-"resucitados", slugs de combate inventados). Al final imprime un veredicto: si el candidato
+"resucitados", slugs de combate inventados, objeto usado sin respaldo, combate resuelto sin tirada,
+repetición de narración — estos 3 últimos sumados el 2026-08-07, antes sin cobertura). Al final
+imprime un veredicto: si el candidato
 introduce una sola regresión nueva respecto al actual, queda **bloqueado** aunque mejore de media —
 solo si no hay regresiones y mejora, indica el cambio a hacer en `backend/.env`
 (`OLLAMA_MODEL_NARRADOR="tarkor-narrador-v2"`) y reiniciar el backend.

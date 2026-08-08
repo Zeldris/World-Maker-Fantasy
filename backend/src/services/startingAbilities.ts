@@ -76,6 +76,21 @@ const GORHORN_STARTING_ABILITIES: StartingAbility[] = [
     promptText: 'Registro y saqueo el cuerpo que tengo delante, sea un enemigo derrotado o una presa cazada, en busca de todo lo que pueda aprovechar.',
     category: 'general',
   },
+  {
+    name: 'Cazar',
+    icon: '🏹',
+    // Bug real jugando en vivo (revisión de partida 2026-08-08: "buscar presas... eso no va, sale
+    // un pequeño raposa que desaparece sin más"): el texto libre nunca conectaba de forma fiable
+    // con la fauna real del catálogo (dependía de una sugerencia ambiental opcional al 25%, ajena
+    // a que el jugador estuviera cazando de verdad). Mismo criterio que Minar/Talar
+    // (harvestAbilities.ts): en vez de reforzar la detección de texto libre, abre un pop-up
+    // (HuntSelectionModal) con la fauna real y con población activa en la zona ahora mismo —
+    // `promptText` no se usa nunca (GameView.tsx intercepta por nombre antes de llegar al
+    // composer), se deja por consistencia con el resto de `StartingAbility`.
+    description: 'Busca fauna real de la zona para cazarla — una presa débil puede caer sin pelear, varias a la vez siempre exigen combate.',
+    promptText: 'Salgo a cazar por la zona.',
+    category: 'general',
+  },
 ];
 
 export function startingAbilitiesFor(characterName: string): StartingAbility[] {

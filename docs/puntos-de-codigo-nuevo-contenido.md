@@ -131,6 +131,12 @@ una planta/mineral nuevo se toca solo:
 - `harvestSourceDescriptions` (descripción visual/lore, línea 2480 — se creó el 2026-07-22 porque
   antes 14 fuentes no tenían NINGÚN texto descriptivo en ningún sitio)
 - **Nunca** `harvestSourcesThatAreFaunaWithoutNpc` (ese set es solo para animales sin stats)
+- **Nuevo requisito (rediseño de profesiones, 2026-08-07)**: si el recurso debe poder recolectarse
+  desde el pop-up de "Minar"/"Talar" (`metodoObtencion: 'MINERIA'` o `'TALA'`, no `'EXTRACCION'`),
+  hace falta TAMBIÉN una fila en `worldPopulation.ts` con `targetType: 'RECURSO'` y
+  `targetSlug === sourceSlug` — sin ella, `candidateSourcesFor` (`recolectar.ts`) nunca lo ofrece
+  ni en "ya localizado" ni en "Explorar", aunque el `HarvestYield` exista y esté bien formado (ver
+  `docs/16-poblacion-dinamica.md` § 3.5).
 
 Mismos matices de seed/alias/región que §3.
 

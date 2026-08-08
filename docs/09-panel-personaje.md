@@ -38,7 +38,7 @@ Al tocar un icono, un panel sube desde abajo (o se abre en modal en pantallas gr
 | **Compañeros** | Aliados que viajan con el personaje, poblados por `newCompanion` del Narrador. | `Companion`. | **Hecho.** |
 | **Reino** | Súbditos, edificios, territorios — estado vacío tratado como narrativo, no bloqueado (la usuaria priorizó construirlo ya, contra la recomendación original de § 5). | `Territory`/`Building`/`Subject`. | **Hecho.** |
 | **Habilidades** | Rejilla de iconos con pestañas Combate/Generales; clicar adjunta al chat (no envía directo). | `SavedAction` (+ `icon`/`description`/`isStarting`/`category`) — resuelto el conflicto de § 3 por la vía (B), niveles reabiertos. | **Hecho**, con kit inicial de 8 habilidades para Gorhorn (`backend/src/services/startingAbilities.ts`). |
-| **Profesiones** | Catálogo curado de 6 profesiones ligadas a la cultura orca de las Llanuras. | `frontend/src/data/professions.ts` (estático) + `Save.profession`. | **Hecho.** |
+| **Profesiones** | Ya no es pestaña propia (rediseño 2026-08-07) — vive dentro de Habilidades > Profesiones. Recolectoras (minero/talador/desollador) dan una habilidad base con pop-up de recolección; creadoras (herrero/carpintero/curtidor/constructor) muestran barra + TODAS sus recetas, bloqueadas por nivel si no se alcanzan. | `frontend/src/data/professions.ts` + `ProfessionProgress` (progreso real por oficio, no una única "adoptada" — `Save.profession` se quitó del todo). | **Hecho.** |
 
 ## 3. Conflicto resuelto: "nivel del personaje"
 
@@ -72,4 +72,9 @@ La usuaria priorizó construirla ya en vez de esperar (contradice la recomendaci
 2. ~~Diseñar y migrar los modelos nuevos: `Quest`, `SavedAction`~~ — hecho. Los de "Reino" (`Territory`/`Building`/`Subject`) también existen en el schema, pero Reino queda pausado como línea de juego activa (ver `docs/11-roadmap.md`).
 3. ~~Abordar la persistencia real de `Save`/`WorldState`/`LogEntry`~~ — hecho.
 4. ~~Construir el componente de barra inferior + drawer~~ — hecho.
-5. **Diseñar el catálogo inicial de Profesiones** (contenido curado, como el lore) — sigue sin implementar. Ver memoria `tarkor_habilidades_profesion_pendiente` (Claude Code): idea aplazada de exponer las recetas ya existentes en `crafting.ts` como habilidades "general" descubribles por nivel de oficio.
+5. ~~Diseñar el catálogo inicial de Profesiones~~ — hecho (2026-08-07): recolectoras vs creadoras,
+   recetas de `crafting.ts` expuestas como habilidades de oficio desbloqueables por nivel, pop-up
+   de recolección determinista respaldado por `WorldPopulation` (ver `docs/16-poblacion-dinamica.md`
+   § 3.5). El sub-tab propio de "Personaje > Profesiones" se quitó, redundante con Habilidades.
+   Pendiente real: quién ENSEÑA un oficio nuevo (NPCs) — aplazado a propósito hasta que haya un
+   caso concreto, mismo criterio que las facciones dinámicas por NPC.

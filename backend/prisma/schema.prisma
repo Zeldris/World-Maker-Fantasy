@@ -1275,6 +1275,13 @@ model WorldPopulation {
 
   updatedAt DateTime @updatedAt
 
+  /// Cooldown de recolección (bug real jugando en vivo, 2026-08-07: "puedo darle a minar
+  /// indefinidamente sin moverme de la zona") — solo se rellena para `targetType: RECURSO`, cuándo
+  /// se recolectó esta fuente por última vez de verdad (`recolectar.ts`). `null` = nunca
+  /// recolectada, o fuera de cooldown desde hace tiempo. No afecta a FAUNA/RAZA (esas no pasan por
+  /// `recolectar.ts`, se depliezan al morir, no al "recolectar" repetidamente en el sitio).
+  lastHarvestedAt DateTime?
+
   @@unique([worldId, targetType, targetSlug])
 }
 

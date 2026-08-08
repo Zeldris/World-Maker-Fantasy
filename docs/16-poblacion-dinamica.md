@@ -96,10 +96,10 @@ crecimiento entero todavía, el tiempo transcurrido se seguirá acumulando en el
 que sí lo cruce — el tick puede correr cada 2 minutos sin que la tasa "por día real" se descontrole.
 
 Tasas de partida (`GROWTH_RATE_PER_DAY`, en `population.ts`, fácilmente ajustables):
-`FAUNA: 0.02` (2%/día), `RAZA: 0.003` (0.3%/día) — la fauna crece ~7× más rápido que las razas de
-NPC, coherente con "lógicamente la fauna tiene más posibilidades de reproducirse que una raza de
-NPC". Son valores de partida, no un cierre definitivo — ajustar con confianza si al jugar se ve
-demasiado rápido/lento.
+`FAUNA: 0.02` (2%/día), `RAZA: 0.003` (0.3%/día), `RECURSO: 0.01` (1%/día, ver § 3.5) — la fauna
+crece ~7× más rápido que las razas de NPC, coherente con "lógicamente la fauna tiene más
+posibilidades de reproducirse que una raza de NPC". Son valores de partida, no un cierre
+definitivo — ajustar con confianza si al jugar se ve demasiado rápido/lento.
 
 Como `WorldPopulation` es del `World`, no de una `Save` concreta, el crecimiento se comparte entre
 todas las partidas de ese mundo — coherente con que ya era así de diseño ("un único número global,
@@ -127,6 +127,21 @@ Esto conecta directamente el sistema con la queja original: cazar mucho una espe
 hace más rara de encontrar ahí (y finalmente puede desaparecer), mientras las zonas que se dejan en
 paz mantienen variedad — sin tocar nada del resto del motor de encuentros (sigue siendo solo una
 SUGERENCIA opcional para el modelo, 25% de probabilidad, nunca fuerza combate).
+
+### 3.5 RECURSO — recolección de profesiones sin gastar turno (añadido 2026-08-07)
+
+Tercer `targetType` además de `FAUNA`/`RAZA` (rediseño de profesiones recolectoras: minería/tala) —
+mismo mecanismo de crecimiento de § 3.3, tasa propia (`RECURSO: 0.01`, entre fauna y raza). La
+diferencia está en cómo se depleciona: no viene de matar a un NPC, viene de recolectar de verdad.
+
+- `GET /saves/:id/recolectar/:oficio` (`recolectar.ts`) usa la fila `WorldPopulation` (tipo
+  `RECURSO`, `poblacion > 0`, `distribucion[región activa] > 0`) para decidir qué ofrecer en el
+  pop-up de "Minar"/"Talar" — determinista, sin narrar nada ni gastar turno.
+- `POST /saves/:id/recolectar/confirmar` decrementa `poblacion` atómicamente (mismo guard
+  `poblacion: { gte: cantidad }` que `decrementPopulationOnDeath`), validado contra `HarvestYield`
+  para no permitir ni un objeto que no sea un yield real de esa fuente ni una cantidad por encima
+  del máximo real por recolección (`HarvestYield.cantidad` — bug real de la auditoría de código
+  completa 2026-08-07, ver memoria de esa auditoría: antes solo topaba por población total).
 
 ## 4. Fuera de alcance a propósito
 

@@ -52,7 +52,10 @@ export async function entornoRoutes(app: FastifyInstance) {
       }
     }
 
-    const result = generateSurroundings({ region: save.currentLocation?.region ?? null, timeLabel });
+    // Anti-repetición (bug real jugando en vivo, revisión de partida 2026-08-08): `lastWorldEntry`
+    // ya se leyó arriba para el corte por `timeLabel` — se reutiliza su texto para que
+    // `generateSurroundings` pueda evitar repetirlo literalmente si vuelve a tocar la misma franja.
+    const result = generateSurroundings({ region: save.currentLocation?.region ?? null, timeLabel }, undefined, lastWorldEntry?.text ?? null);
 
     // Ya no se toca el canal CHARACTER desde aquí (petición explícita de la usuaria, 2026-07-23 —
     // ver comentario del módulo). El "gancho"/evento con "¿Qué haces?" que antes vivía aquí

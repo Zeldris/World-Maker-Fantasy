@@ -85,7 +85,7 @@ describe('pickTravelInterruption', () => {
       {
         targetSlug: 'guerrero-orco-rezagado',
         poblacion: 50,
-        distribucion: { 'Las Llanuras del Viento Rojo': 1 },
+        distribucion: { 'Llanuras del Viento Rojo': 1 },
       },
     ]);
     locationFindMany.mockResolvedValue([
@@ -123,7 +123,7 @@ describe('pickTravelInterruption', () => {
       {
         targetSlug: 'guerrero-orco-rezagado',
         poblacion: 50,
-        distribucion: { 'Las Llanuras del Viento Rojo': 1 },
+        distribucion: { 'Llanuras del Viento Rojo': 1 },
       },
     ]);
     locationFindMany.mockResolvedValue([

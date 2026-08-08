@@ -486,3 +486,662 @@ personajes.md` anotado con el intercambio de categorías, y la única partida re
 DB local (Gorhorn) migrada a mano (`UPDATE` sobre `secondaryAttributes`) para que ya tenga
 `sigilo: 5` en vez del `inteligencia: 10` residual. Verificado: `tsc`/`oxlint`/`vitest` limpios
 (516/518 backend, 18/18 frontend).
+
+---
+
+## 2026-08-07 — "no aparece ningún recurso" recolectando en la Hondonada del Eco
+
+**Síntoma**: la usuaria, probando el pop-up nuevo de recolección (Minar/Talar), reportó que en la
+Hondonada del Eco no aparecía ningún recurso ni opción de Explorar.
+
+**Causa raíz**: `WorldPopulation.distribucion` se siembra SIN artículo ("Llanuras del Viento
+Rojo"), pero `Location.region` siempre lo lleva completo ("Las Llanuras del Viento Rojo") —
+comparar uno contra otro directamente (`distribucion[region]`) fallaba en silencio para 3 de las 5
+regiones reales del mundo (Llanuras del Viento Rojo, Margen Silencioso, Meseta del Orden — las
+otras dos, Cristal Helado y Ciénaga Troncal, no llevan artículo y "funcionaban" por coincidencia).
+Confirmado consultando la DB local real: las 3 filas `WorldPopulation` tipo `RECURSO` existían con
+población > 0, pero nunca pasaban el filtro de región.
+
+**Alcance real, más allá del síntoma reportado**: el mismo patrón roto vivía en dos sitios más,
+ambos silenciosos porque son sugerencias opcionales sin ningún error visible si no encuentran nada:
+la ponderación de encuentros ambientales por población real (`turnResolution.ts`, función de
+2026-08-03, rota desde que se construyó) y quién aparece al interrumpirse un viaje largo
+(`travelInterruption.ts`, función de 2026-08-05) — en este último, además INVERTIDO: los NPCs sin
+fila de población colaban con un peso por defecto, mientras los que sí tenían datos reales quedaban
+descartados por el propio bug.
+
+**Estado**: FIJADO. `stripRegionArticle` (`population.ts`) nueva, aplicada en los 3 sitios
+(`recolectar.ts`, `turnResolution.ts`, `travelInterruption.ts`). 2 tests de
+`travelInterruption.test.ts` tenían el mismo error en su propio mock (clave con artículo) —
+corregidos también. Verificado: `tsc` limpio, 678 tests backend en verde. Sigue sin commitear.
+
+## 2026-08-07 — "hielo sílice" narrado sin venir a cuento en combate (Orco Enfurecido)
+
+**Síntoma**: dos turnos seguidos de combate (08:18 y 08:19 de la misma partida) mencionan "hielo
+sílice" sin relación con el arma o habilidad usada — 08:18: *"Gorhorn lanza un tajo certero pero el
+Orco Enfurecido esquiva con una agilidad sorprendente, dejando un rastro de hielo sílice en su
+piel"* (atacando con el hacha, no con el cuchillo de hielo sílice — y además se contradice: dice
+"esquiva" pero luego narra una marca en la piel). 08:19, con una habilidad de furia/racial sin
+relación con hielo: *"en un destello de hielo sílice, derriba a Orco Enfurecido..."*.
+
+**Causa raíz**: sin confirmar — parece el modelo local enganchándose a un objeto del inventario
+(el cuchillo de hielo sílice está equipado como arma secundaria) sin relación con la acción real,
+más que un bug determinista con causa raíz clara. La frase de 08:18 no dispara `hasFalseCombatHit`
+(el vocabulario "rastro de hielo sílice" no coincide con `COMBAT_HIT_LEAK_REGEX`, pensado para
+"rastro de sangre").
+
+**Estado**: PENDIENTE, sin arreglar — un solo caso no basta para diseñar un detector nuevo sin
+riesgo de falso positivo (mismo criterio que la "maza mal atribuida" de la auditoría 2026-07-31).
+Si se repite, anotar aquí el segundo caso para diseñar el detector con confianza.
+
+## 2026-08-07 (continuación) — objetos recién recolectados "sin categorizar" en el Inventario
+
+**Síntoma**: capturas de pantalla del panel de Inventario mostrando "Piedra (3)" y "Leña de
+matorral de cuerno" duplicados — una vez bien agrupados bajo "RECURSOS" (con icono real) y otra
+vez bajo "SIN CATEGORIZAR" (icono de caja genérica).
+
+**Causa raíz**: NO son filas duplicadas de verdad (confirmado consultando la DB: 4 filas reales
+`InventoryItem`, todas con `catalogSlug` correcto, de 2 recolecciones reales distintas hechas
+~7 minutos aparte). Es un fallo de categorización: `InventoryItem` no guarda ninguna columna
+`tipo` — se calcula al vuelo en `GET /saves/:id` (`detail.ts`) vía join con `ItemCatalog`. Ningún
+sitio del motor de turnos que crea un objeto NUEVO (saqueo/crafteo/despiece/producción/recolección)
+mandaba `tipo` en su respuesta inmediata — el frontend agrupa por `item.tipo` (InventarioPanel.tsx),
+así que cualquier objeto recién conseguido caía en "sin categorizar" hasta la próxima recarga
+completa de la partida, momento en el que `detail.ts` sí lo resuelve bien. Mismo patrón exacto que
+ya se arregló DOS VECES antes para `equipSlot` (2026-07-30) y `effectKey` (2026-08-06) — `tipo` se
+quedó fuera en ambos arreglos.
+
+**Estado**: FIJADO. `tipo` añadido a `NewInventoryItemInfo` (turnResolution.ts, los 5 sitios que
+crean objetos) y a `NpcItemInScene`/`buildNpcInScene` (npcScene.ts, saqueo) y al endpoint de
+recolección (`recolectar.ts`) — hardcodeado a `'RECURSO'` en despiece/recolección (siempre lo son
+por diseño), tomado del catálogo cuando está disponible en saqueo/crafteo, `null` en objetos
+narrativos sueltos sin `catalogSlug` (producción/newItem del modelo). Verificado: tsc limpio en
+los dos lados, 678 tests backend + 18 frontend en verde. Sigue sin commitear.
+
+## 2026-08-07 (continuación) — la recolección no acumula, crea una fila nueva cada vez
+
+**Síntoma**: mismo screenshot de arriba, tras el primer arreglo — ya categorizado bien, pero
+"Piedra (3)" y "Leña de matorral de cuerno" seguían apareciendo DOS veces cada uno en vez de sumar
+a "Piedra (6)".
+
+**Causa raíz**: `POST /saves/:id/recolectar/confirmar` creaba siempre una fila `InventoryItem`
+nueva, sin comprobar si el jugador ya tenía una pila del mismo `catalogSlug` a la que sumar. El
+propio proyecto ya tiene el patrón correcto para esto (cantidad en el nombre, `quantityOf`/
+`baseNameOf` de `ingredients.ts`, usado por crafteo/construcción para CONSUMIR) — nunca se aplicó
+en sentido contrario (ACUMULAR) en la recolección nueva.
+
+**Estado**: FIJADO. `confirmar` ahora busca una fila existente sin equipar del mismo `catalogSlug`
+antes de crear; si existe, suma la cantidad y actualiza su nombre en vez de crear una fila nueva
+(también dentro de una misma petición, si dos selecciones distintas producen el mismo objeto).
+Respuesta extendida con `updatedItems` (mismo patrón que `removedInventoryItemIds`/
+`updatedInventoryItems` ya resuelve para crafteo/construcción) para que el frontend actualice la
+pila existente en su estado local en vez de solo añadir. Verificado: tsc limpio, 679 tests backend
+(+2 nuevos) + 18 frontend en verde. Sigue sin commitear.
+
+**Nota**: las 4 filas ya creadas en la partida real de la usuaria ANTES de este arreglo (2×
+"Piedra (3)", 2× "Leña de matorral de cuerno") no se fusionan solas — el fix solo evita NUEVOS
+duplicados. Pendiente: preguntar si quiere que se fusionen a mano en su partida actual, o dejar que
+se auto-corrija la próxima vez que recolecte cada uno (se sumará sobre una de las dos filas
+existentes, quedando 3 en vez de 2 hasta que se recoja una tercera vez).
+
+## 2026-08-07 (continuación) — consumir un objeto médico/de energía no lo quitaba del inventario
+
+**Síntoma**: "he consumido una ración de comida y no ha desaparecido del inventario" — la usuaria
+confirmó que ya le había pasado lo mismo antes en combate.
+
+**Causa raíz**: grave, y llevaba ahí desde que existe el sistema de fatiga (2026-07-29).
+`detectMedicalItemUse`/`detectEnergyItemUse` (itemReference.ts) decidían correctamente el efecto
+mecánico (curar hasta X / restaurar N de energía) según qué objeto real nombraba la acción, pero
+**ningún sitio del motor de turnos borraba ni reducía la fila `InventoryItem` correspondiente** —
+el efecto se aplicaba, el objeto se quedaba para siempre, reutilizable sin límite. Confirmado
+contra la DB real: "Raciones de viaje" y "Cataplasma de salvia del polvo" de la partida de la
+usuaria, ambas con `curaEnergia`/`curaHasta` reales en catálogo, `slot: null`, nunca borradas.
+
+**Estado**: FIJADO. Los dos detectores ahora devuelven también el `id` real de la fila que
+matcheó (antes solo el valor derivado). Dentro de la transacción, revalidado contra
+`freshInventoryRows` (mismo criterio anti-carrera del resto del archivo) y consumido de verdad:
+borra la fila si era la última unidad, reduce el sufijo de cantidad si quedan más (`quantityOf`/
+`baseNameOf`, mismo patrón que crafteo/construcción). Verificado: tsc limpio, 682 tests backend
+(+7 nuevos) + 18 frontend en verde. Sigue sin commitear.
+
+## 2026-08-07 (continuación) — el modal de "qué equipar" no mostraba ninguna estadística
+
+**Síntoma**: "al equipar cuando eliges que poner no estan saliendo las stats de lo que llevas
+equipado y de lo que puedes equipar".
+
+**Causa raíz**: confirmado en el código — `DetailModal.tsx`, rama `slotManager`, nunca renderizaba
+`statBonuses` ni para el objeto puesto ahora mismo ni para ninguna de las opciones candidatas
+(a diferencia de la ficha de un objeto suelto y de las tarjetas del panel de Inventario, que sí lo
+hacen). Imposible comparar qué conviene equipar sin recargar mentalmente qué bonus tenía cada cosa.
+
+**Estado**: FIJADO. Añadidos los mismos badges de `statBonuses` (`+N Atributo`) que ya usa el resto
+de la UI, tanto en la tarjeta de "puesto ahora mismo" como en cada fila de opción candidata.
+Verificado: tsc -b limpio, 18 tests frontend en verde. Sigue sin commitear.
+
+## 2026-08-07 (continuación) — consumibles equipados "no salen en el inventario": SIN REPRODUCIR
+
+**Síntoma**: "los consumibles que me equipo por alguna razón al tenerlos equipados no salen en el
+inventario".
+
+**Investigado, no confirmado como bug de código todavía**: `InventarioPanel.tsx` agrupa TODO
+objeto con `slot` no nulo (equipado, sea el tipo que sea) en su propia sección "Equipados" arriba
+del todo — por diseño explícito, no debería desaparecer, solo cambiar de sección. La validación de
+ranura (`equipSlotFamily`, equipment.ts) y el catálogo real (`equipSlot: 'CONSUMIBLE_1'` en
+`racion-viaje`/`cataplasma-salvia`) se revisaron y son correctos. En la partida real de la usuaria,
+en el momento de revisar, NINGÚN consumible estaba equipado (`slot: null` en ambos) — no se pudo
+verificar el síntoma contra datos reales.
+
+**Estado**: NO ES BUG — confirmado con capturas de pantalla completas (sin cortar por scroll):
+"Raciones de viaje" y "Cataplasma de salvia del polvo" SÍ aparecen bajo "Equipados", justo al
+principio de la sección, con el mismo badge "E" que el resto de objetos equipados. La primera
+captura que dio pie a esta investigación estaba cortada por el scroll — no llegaba a mostrar el
+principio de la sección "Equipados" (tampoco se veía "Arnés de cuero", equipado desde el inicio de
+la partida, lo que ya lo delataba). El código funciona exactamente como está diseñado.
+
+**Lo que SÍ era un bug real, visible en esa misma captura completa**: TODOS los objetos bajo
+"Equipados" mostraban el mismo icono de espadas cruzadas, sin importar qué fueran de verdad
+("Raciones de viaje", "Cataplasma de salvia del polvo" o "Tótem Maktor" equipados salían con
+icono de arma). Causa: `ItemGrid` (InventarioPanel.tsx) forzaba el icono de arma para CUALQUIER
+objeto con `slot` no nulo, en vez de usar `itemIcon(item.category)` como ya hace con los objetos
+sin equipar. Mismo patrón roto en la ficha de detalle de un objeto suelto (`DetailModal.tsx`,
+rama `item`).
+
+**Estado**: FIJADO en los dos sitios — el icono ahora siempre refleja la categoría real del
+objeto (arma/ropa/consumible/medicinal/cosmético...), tanto equipado como no; el badge "E" ya
+existente sigue siendo la única señal de "está equipado". El paperdoll (`EquipoPanel.tsx`) no
+tenía este problema — ahí el icono es intencionalmente el de la RANURA (consumible/casco/...),
+diseño distinto y correcto. Verificado: tsc -b limpio, 18 tests frontend en verde. Sigue sin
+commitear.
+
+## 2026-08-07 (continuación) — Minar/Talar sin ningún límite: recolección indefinida sin moverse
+
+**Síntoma**: "puedo darle a minar y que salga todo el rato 3 de piedra y añadir toda la piedra que
+quiera indefinidamente dandole a la habilidad... recoger recursos en una misma zona ilimitadamente
+sin tener que moverme de ella".
+
+**Diagnóstico**: la población SÍ bajaba de verdad (confirmado contra la DB real: 500→477 tras
+varias recolecciones, coincidiendo exacto con lo que había en el inventario) — no era un pozo
+infinito, pero con 500-600 de población y sin ningún coste por uso (Minar/Talar son deterministas,
+sin turno ni tirada), en la práctica se sentía indistinguible de infinito: se podía pulsar la
+habilidad tan rápido como se quisiera, sin moverse, sin límite entre intentos.
+
+**Decisión (consultada con la usuaria, opción recomendada elegida)**: cooldown real por fuente, no
+solo un coste de tiempo — cada fuente recuerda cuándo se recolectó por última vez de verdad; hasta
+que no pasa un tiempo real fijo, esa fuente concreta no vuelve a ofrecerse aunque le quede
+población. Además, petición explícita de la usuaria en el mismo mensaje: "deberiamos tambien
+añadir un texto de narracion (quizas que no dependa de la AI) para dejar escrito los recursos que
+se han recoletado".
+
+**Estado**: FIJADO. `WorldPopulation.lastHarvestedAt` nuevo (migración manual aplicada), cooldown
+de 30 min reales (cifra de partida, ajustable) comprobado en el MISMO guard atómico que la
+población (`poblacion: {gte}` + `OR: [{lastHarvestedAt: null}, {lastHarvestedAt: {lt: cutoff}}]`)
+— dos selecciones de la misma fuente en una sola petición no se bloquean entre sí (el cooldown solo
+se comprueba la primera vez que se toca esa fuente en la petición). El pop-up distingue "no hay
+nada aquí" de "está agotado por ahora, vuelve más tarde". Registro escrito determinista añadido:
+al confirmar una recolección con éxito, se crea un `LogEntry` real ("Gorhorn recolecta en la zona:
+Piedra (3)...") sin pasar por Ollama ni por el Narrador, más un hecho de sesión para que el propio
+Narrador lo sepa más adelante si hace falta. Verificado: tsc limpio en los dos lados, 685 tests
+backend (+13 en recolectar.test.ts) + 18 frontend en verde (con `--no-file-parallelism` para
+esquivar un flake preexistente de los tests de integración compartiendo Postgres real, sin
+relación con este cambio). Sigue sin commitear.
+
+## 2026-08-08 — repetición literal de la ambientación de "mañana" (`entorno.ts`)
+
+**Síntoma**: 3 de las 4 veces que tocó franja "mañana" en la misma sesión (08:57, 09:57, 09:58,
+10:28) salió la frase idéntica: *"El sol de la mañana pega bajo y de lado, alargando cada sombra
+sobre la arena."*.
+
+**Causa raíz confirmada leyendo el código**: `generateSurroundings` (`entorno.ts`) elige con
+`Math.random()` puro, sin memoria del turno anterior, sobre una banca de solo 2 frases por franja
+horaria para "mañana" — con 2 opciones y tiradas independientes, repetir 3 de 4 veces es
+simplemente lo esperable estadísticamente (nunca se comprueba si coincide con lo último mostrado).
+A diferencia de la narración de combate (que sí tiene anti-repetición con reintento, ver
+`tarkor_antirepeticion_reintento_2026-07-31`), esta ambientación determinista no tiene ningún
+mecanismo equivalente — tiene sentido, nunca hizo falta hasta que la banca por franja se quedó tan
+pequeña.
+
+**Fix propuesto, no aplicado todavía**: pasar el texto de la última ambientación mostrada (fácil de
+tener a mano, ya se persiste como `LogEntry` de canal MUNDO) y volver a tirar si `pick(...)` repite
+exactamente la frase de terreno o de franja anterior — mismo espíritu que el anti-repetición de
+combate, más barato aquí porque no hace falta ni una llamada a Ollama (es solo re-tirar el dado
+determinista). Alternativa más simple todavía: ampliar la banca de "mañana" (y revisar si alguna
+otra franja se ha quedado igual de corta) de 2 a 4-5 frases, que ya bajaría mucho la probabilidad
+de repetir sin tocar la lógica.
+
+**Estado**: PENDIENTE — encontrado revisando la partida, sin aplicar fix a falta de luz verde.
+
+## 2026-08-08 — errores gramaticales sueltos del modelo en narración de combate/exploración
+
+**Síntomas concretos** (mismo tramo de partida, turnos ya narrados por el modelo, no por texto
+determinista):
+- 08:19: *"...en un destello de hielo sílice, **derriba a** Orco Enfurecido con una patada..."* —
+  falta la contracción "al" (debería ser "derriba **al** Orco Enfurecido"). El mismo turno reincide
+  además en el "hielo sílice" fuera de lugar ya registrado más arriba (mismo caso de siempre, no
+  cuenta como tercer caso nuevo — es la misma frase de la misma sesión ya vista).
+- 09:57: *"Bebe un poco de agua de la **cantea** que lleva atada a la muñeca..."* — "cantea" no es
+  una palabra española real (probablemente cruce/alucinación con "cantimplora").
+- 10:58: *"...su mirada **escanean** el entorno..."* — discordancia número sujeto/verbo ("su
+  mirada", singular, con verbo en plural).
+- 08:22 (más dudoso, a vigilar si se repite): *"Gorhorn clava su hacha... en el torso del orco,
+  quien esquiva con una parada rápida y salvaje."* — mezcla en la misma frase un impacto directo
+  ("clava... en el torso") con una esquiva, ambiguo/contradictorio según se lea.
+
+**Causa raíz**: calidad de redacción del modelo local suelto, no un bug de código determinista con
+un patrón claro y barato de detectar (a diferencia de anacronismo/npc-muerto/golpe-falso/repetición
+de vocabulario, que sí tienen detectores deterministas con reintento). Un corrector gramatical
+genérico sería una pieza nueva de infraestructura (otra pasada de detección + reintento, o una
+segunda llamada a un modelo corrector) — no trivial, y con riesgo de falsos positivos si el
+detector es simplista (regex de concordancia en español no es fiable en general).
+
+**Estado**: PENDIENTE, registrado para tener referencia si se repite el patrón. No se propone fix
+de código todavía — a decidir si merece la pena invertir en un corrector gramatical determinista/
+con reintento o se acepta como ruido ocasional del modelo actual.
+
+## 2026-08-08 (continuación) — "orca enfurecida"/"el Orco Enfurecido" en el mismo párrafo
+
+**Síntoma**: 08:16, mismo combate: *"Gorhorn se gira bruscamente hacia **la orca enfurecida** que
+acaba de aparecer... pero **el Orco Enfurecido** ya está a menos de diez pasos..."* — femenino y
+masculino para el mismo NPC en la misma frase/párrafo.
+
+**Causa raíz confirmada leyendo el catálogo**: de los 13 NPC con nombre propio de `worldCatalog.ts`
+(sin contar fauna), solo **uno** tiene `genero` puesto — Gistera Koh, arreglada el 2026-08-07
+precisamente por este mismo bug (`tarkor_genero_npc_gistera_koh_2026-08-07`). "Orco Enfurecido" es
+inequívocamente masculino (nombre, bio: "él mismo", "orco") pero se quedó fuera de aquel arreglo —
+sin `genero`, `generoHintFor` (`npcScene.ts`) no añade ninguna pista de género al prompt, así que el
+modelo queda libre de mezclar "orco"/"orca" a su aire.
+
+**Alcance real más allá del síntoma reportado**: mismo hueco en el resto del roster con género
+inequívoco por bio — al menos Guerrero orco rezagado, Oficial/Soldado de patrulla de la Concordia
+(a confirmar si son ambiguos por diseño o no), General Vrask Ombra, Kael Dorn, Hagar, Torgash
+(masculinos); Terk'ikar Ulkha, Archimagistrada Yovenne Tal, Sella Marn (femeninos). Dos plantillas
+SÍ son ambiguas por diseño a propósito (alias con las dos formas): "Cazador/a Serhu" y "Peregrino/a
+de los Túmulos" — a esas NO hay que ponerles `genero` fijo.
+
+**Estado**: PENDIENTE. Fix de patrón ya validado (mismo que Gistera Koh) — añadir `genero: 'M'`/`'F'`
+a cada NPC inequívoco del catálogo (empezando por Orco Enfurecido, el caso confirmado) y reseed. Sin
+aplicar todavía, a falta de luz verde y de confirmar caso a caso cuáles son plantillas ambiguas.
+
+## 2026-08-08 (continuación) — "Un pequeño raposa": género de artículo + animal inventado
+
+**Síntoma**: 10:58, *"Un pequeño raposa, asustada, desaparece entre los matorrales de cuerno."*
+
+**Dos problemas distintos**:
+1. Gramatical: "raposa" es femenino ("la raposa") — debería ser "**una** pequeña raposa", no "un".
+2. De grounding: "raposa" no existe en ningún sitio del catálogo/lore (`grep` sin resultados) — la
+   fauna real y establecida de Las Llanuras del Viento Rojo es Aullador Rojo, Buitre Cenizo,
+   Canizor, Corredor de Cauce, Corretolvas, Cruzavientos, Gargantúa de Ceniza, Múrgol, Rondador de
+   Brasas, Salamandra de Escoria — ninguna es un equivalente de "zorro". El modelo se inventó un
+   animal genérico del mundo real en vez de usar el roster real, el mismo tipo de fallo que ya se
+   prohíbe explícitamente para materiales de arma/armadura (`narrador.ts`) pero nunca se extendió a
+   fauna.
+
+**Estado**: PENDIENTE. Sin detector/regla determinista todavía — a decidir si se extiende la misma
+instrucción de "usa solo lo ya establecido" (hoy limitada a materiales) también a fauna/animales.
+
+## 2026-08-08 (continuación) — "buscar presas" no conecta nunca con un encuentro real
+
+**Síntoma**: 3 turnos seguidos (09:58, 10:28, 10:58) de "buscar presas"/"cazar" en la misma sesión
+no produjeron nunca un encuentro real — solo prosa ambiental repetitiva y, en el último, un animal
+inventado que desaparece sin más (ver hallazgo anterior). Ninguno enganchó con combate real pese a
+que la fauna itinerante SÍ tiene población real y activa en esa región ahora mismo (confirmado en
+el volcado: Cruzavientos/Corredor de Cauce/Gargantúa de Ceniza/Múrgol con `WorldPopulation` > 0).
+
+**Causa raíz, leyendo el código**: por diseño (`harvest.ts`: *"el 'cazar' en sí lo resuelve el
+combate"*) cazar debería derivar en un combate real contra fauna del catálogo, pero el único puente
+hacia eso es la "sugerencia ambiental de encuentro" (`turnResolution.ts` ~L1191) — genérica, dispara
+solo un 25% de las veces en CUALQUIER turno con la escena vacía (nada que ver con que el jugador
+esté cazando de verdad), y es puramente opcional para el modelo ("úsala solo si encaja, ignórala si
+no"). No hay ningún detector que reconozca "estoy intentando cazar" y refuerce/obligue a que el
+encuentro sugerido sea real y del roster — así que en una racha de mala suerte con la tirada del
+25% (o si el modelo decide ignorar la sugerencia), cazar se queda en pura ambientación sin salida,
+indistinguible de "no funciona".
+
+**Estado**: FIJADO (2026-08-08). Nueva habilidad general "Cazar" (mismo patrón que Minar/Talar):
+abre `HuntSelectionModal` con la fauna real con población activa en la región actual
+(`GET /saves/:id/cazar`), checkboxes sin cantidad (una especie es "sí/no", no hay stock que
+repartir). Diseño de la resolución, decidido con la usuaria en la propia conversación:
+- Una ÚNICA presa "muy débil" (nivel ≤ nivel del jugador − 2, mismo umbral que la banda "Fácil" de
+  `difficultyHintFor`) ofrece una tirada de caza limpia SIN combate — % = `capturablePct` de
+  catálogo (dato ya sembrado desde 2026-07-29 y sin ningún caller hasta hoy, pensado explícitamente
+  para esto) + la destreza del personaje, tope 90. Si sale bien: narración determinista (sin IA,
+  mismo criterio que recolectar.ts), la presa queda MUERTA sin pelear, población depleciona de
+  verdad (`decrementPopulationOnDeath`).
+- Elegir varias presas a la vez, o una sola que no sea lo bastante débil, o que la propia tirada de
+  caza limpia falle: SIEMPRE combate real. Corrección de diseño importante hecha a media
+  implementación: la primera versión abría el combate ella misma (escritura directa de `NpcState`/
+  `pendingCombatNpcSlugs`, sin narración) — la usuaria corrigió: "cazar sí que fuerza una narración
+  cuando eliges objetivos y esa narración inicia el combate". La versión final NO escribe nada de
+  combate en el backend para este caso: solo valida y devuelve un `actionText` con los nombres
+  citados entre comillas (p. ej. "Salgo a cazar y ataco a 'Múrgol', 'Corredor de Cauce'."), y el
+  FRONTEND lo manda por el turno normal (`handleSubmit`) — la narración real y el
+  `shouldForceCombat`/`detectNpcsInScene` ya existentes abren el combate exactamente igual que si
+  el jugador lo hubiera escrito él mismo, sin duplicar ninguna lógica de combate nueva.
+- Solo se admite una presa por ESPECIE por petición (no cantidad) — `NpcState.scope` es
+  `Location.id` para una `PLANTILLA`, dos individuos de la misma especie a la vez en el mismo sitio
+  violarían `@@unique([saveId, npcId, scope])` sin un rediseño mayor del modelo de encuentros.
+  Combinar varias especies distintas no tiene ese problema y es justo lo que pide "combate contra
+  tantos enemigos como selecciones de la lista".
+
+Verificado: tsc limpio en los dos lados, 1379 tests backend (+8 en `cazar.test.ts`) + 18 frontend
+en verde. Sigue sin commitear.
+
+## 2026-08-08 (continuación) — género inconsistente de "Orco Enfurecido" ("la orca enfurecida"/"el Orco Enfurecido" en el mismo párrafo)
+
+**Causa raíz confirmada**: de los 13 NPC con nombre propio de `worldCatalog.ts`, solo Gistera Koh
+tenía `genero` puesto (arreglo de 2026-08-07) — nunca se propagó al resto del roster con género
+inequívoco por bio.
+
+**Estado**: FIJADO. `genero` añadido a los 6 casos con señal textual explícita en su propia bio
+(nunca por heurística de nombre, mismo criterio ya establecido para este campo): Orco Enfurecido,
+Guerrero orco rezagado, Mercader de paso, Hagar, Torgash → 'M' ("Orco de..."); Terk'ikar Ulkha →
+'F' ("Orca del Clan Serhu"); Archimagistrada Yovenne Tal → 'F' (el propio título ya es la forma
+femenina). Dejados SIN tocar a propósito: Cazador/a Serhu y Peregrino de los Túmulos (ambiguos por
+diseño, alias con las dos formas), y Oficial/Soldado de patrulla, General Vrask Ombra, Kael Dorn,
+Sella Marn (razas Goirnte/Nabieus sin ningún sustantivo de especie con género gramatical en su bio,
+ni "él"/"ella" explícito — poner algo aquí sería adivinar, no leer un dato ya establecido).
+`npm run seed-catalog` reejecutado para aplicar los cambios a la partida real. Verificado: tsc +
+1379 tests backend en verde. Sigue sin commitear.
+
+## 2026-08-08 (continuación) — "Un pequeño raposa": animal inventado fuera del roster
+
+**Estado**: FIJADO. La instrucción ya existente que prohíbe inventar materiales de arma/armadura
+(`narrador.ts`, `fixedInstructions`) se amplió con la misma regla para fauna: "usa solo fauna ya
+establecida en este mundo... nunca un animal mundano del mundo real que no exista aquí (zorro,
+ciervo, conejo, lobo, oso...)". El error de artículo/género ("un" en vez de "una") no tiene detector
+determinista propio — con la fauna ya acotada al roster real por la nueva habilidad "Cazar" (ver
+arriba) y este recordatorio de prompt, el caso concreto reportado no debería volver a darse.
+
+## 2026-08-08 (continuación) — repetición literal de ambientación de "mañana": FIJADO
+
+**Estado**: FIJADO (visto arriba como PENDIENTE, resuelto en la misma sesión). `generateSurroundings`
+(`entorno.ts`) ahora recibe el texto del último `LogEntry` de canal MUNDO (`routes/entorno.ts` ya lo
+leía para el corte por `timeLabel`) y reintenta hasta 5 veces si la tirada repite la misma frase
+literal — sin bucle infinito: si de verdad no hay alternativa (banca de 1 sola frase, caso
+`SIN_UBICACION`), acepta la repetición en vez de insistir para siempre. Verificado con test nuevo
+(`entorno.test.ts`) que fuerza la coincidencia y comprueba el reintento, más el caso sin alternativa.
+
+## 2026-08-08 (continuación, partida reiniciada) — capacidad de inventario por filas, no por cantidad
+
+**Síntoma reportado**: "tengo 9 piedras y cuentan como 1 en el inventario" — la usuaria lo señaló
+como error.
+
+**No es un bug**: es la decisión de diseño explícita de la propia usuaria del 2026-08-07 ("el
+inventario va a ser por slots y dependerá en parte de los stats de fuerza y constitución... un
+slot = una fila de InventoryItem, no peso" — `inventoryCapacity.ts`). Una pila de 9 piedras es UNA
+fila (`"Piedra (9)"`), así que cuenta como 1 slot a propósito, igual que en muchos RPG donde
+apilar el mismo recurso no cuesta hueco extra. Confirmado que el código hace exactamente lo que se
+pidió entonces, no lo que se podría estar esperando ahora al verlo en juego.
+
+**Estado**: PENDIENTE de decisión — no se ha tocado nada. Si la usuaria prefiere que la cantidad
+apilada SÍ cuente (p. ej. 9 piedras = 9 de los N slots), es un cambio de mecánica real a decidir
+explícitamente, no un fix de bug.
+
+## 2026-08-08 (continuación) — "Cazar" narró la presa ya atrapada sin combate mecánico real
+
+**Síntoma**: "Salgo a cazar y ataco a 'Corretolvas'" abrió combate real (Corretolvas ILESO en la
+base de datos, ningún golpe dado todavía — tirada de Destreza "Éxito con coste" fue la
+clasificación genérica de la acción libre, no un intercambio de combate), pero la narración dijo
+*"lanzando una astuta trampa que atrapa al Corretolva... Con el Corretolva ya inmovilizado, decide
+registrar su cuerpo para encontrar algo útil"* — un desenlace que el turno todavía no había
+decidido. Mecánicamente correcto (`CombatPanel` sí mostraba Corretolvas ILESO); la PROSA
+contradecía esa mecánica.
+
+**Causa raíz**: ya existía el detector exacto para esta clase de bug —
+`hasPrematureCombatResolution`/`combatNotYetResolved` (2026-08-02, mismo hueco con vocabulario de
+golpe/huida: "acierta", "huye cojeando"...) — pero su lista de palabras nunca cubría vocabulario de
+captura/inmovilización, porque la habilidad "Cazar" no existía todavía cuando se escribió.
+
+**Estado**: FIJADO. `PREMATURE_COMBAT_REGEX` ampliado con `atrap(a/ó)/atrapad[oa]`,
+`inmoviliz(a/ó)/inmovilizad[oa]`, `captur(a/ó)/capturad[oa]`. Test nuevo con el texto real de este
+bug. Verificado: 1380 tests backend en verde.
+
+**Hallazgo colateral, no relacionado, no arreglado (un solo caso)**: la misma narración incluyó
+*"coge la lanza corta de caza esgrimida por Hagar"* — Hagar es un NPC real del catálogo (amigo de
+Gorhorn en Cristal Helado) que no tiene NINGUNA relación con esta escena ni con ese objeto
+concreto; parece una alucinación pura del modelo tirando de un nombre real del lore sin venir a
+cuento. Un solo caso no basta para diseñar un detector sin riesgo de falso positivo (mismo criterio
+que el resto de esta lista) — anotado por si se repite.
+
+## 2026-08-08 (continuación) — imagen ausente en la ficha de combate (sí sale en la narración)
+
+**Síntoma**: la ficha de "Información" del enemigo en `CombatPanel` mostraba el placeholder
+genérico (⚔️) para Corretolvas, mientras la MISMA especie sí mostraba su imagen real bajo la
+narración del diario, unos párrafos más abajo en la misma pantalla.
+
+**Causa raíz confirmada**: Corretolvas (como buena parte de la fauna) solo tiene subida la imagen
+de su variante de sexo (`corretolvas-macho-banner.png`), no una imagen "neutra" en
+`corretolvas-banner.png` — así que `fauna.imageUrls.banner` es `null` para estas especies. Este
+hueco exacto ya se encontró y arregló el 2026-07-24 para el banner que aparece bajo la narración
+(`mentionedEntityBanner.ts` § `resolveBannerUrl`, con su propio comentario citando el mismo bug con
+Múrgol) — pero `CombatPanel.tsx` (escrito 4 días después, 2026-07-28) nunca se actualizó con el
+mismo fallback: leía `imageUrls.banner` a secas, tanto en la ficha ampliada del enemigo como en la
+miniatura del selector de objetivo.
+
+**Estado**: FIJADO en los dos sitios de `CombatPanel.tsx` (ficha ampliada + miniatura del
+selector), con el mismo fallback ya validado: variante de sexo → imagen base. Verificado: tsc -b
+limpio, 18 tests frontend en verde. Nota: el mismo hueco podría existir en algún otro sitio del
+panel de Enciclopedia que no se ha barrido a fondo — no reportado por la usuaria, fuera de alcance
+de esta pasada.
+
+## 2026-08-08 (continuación) — posible reaparición de la escena de Gistera Koh sin nombrarla
+
+**Síntoma**: tras rematar al Orco Enfurecido, "Explorar la zona" narró: *"Una orca marcada del
+Clan Serhu se acerca a Gorhorn con agitación, contando que algo la persigue"* — casi calcado a la
+escena de introducción de Gistera Koh (misma partida, unos turnos antes), pese a que los hechos de
+mundo ya establecen que "Gistera Koh se marchó hacia la Ciénaga Troncal... no volverá a aparecer".
+
+**Por qué las redes de seguridad existentes no lo cazan**: la exclusión de Gistera Koh
+(`tarkor_gistera_koh_despedida_2026-08-01`) opera sobre su `Npc` real — aquí el modelo no la
+nombra, solo repite la misma escena con una orca sin nombre, así que ninguna detección por slug la
+alcanza. `isTooSimilarToLast` tampoco, porque compara solo contra el texto del turno INMEDIATAMENTE
+anterior, no contra hechos de varios turnos atrás.
+
+**Estado**: PENDIENTE, sin fix — un solo caso, sin patrón determinista barato evidente (¿comparar
+contra TODOS los hechos de sesión, no solo el último turno? riesgo real de falsos positivos con
+escenas genuinamente similares pero no repetidas). Anotado para vigilar si se repite.
+
+## 2026-08-08 (continuación) — capacidad de inventario: bug real confirmado, no solo percepción
+
+**Corrección sobre el hallazgo anterior** ("capacidad de inventario por filas, no por cantidad —
+NO ES BUG"): la usuaria matizó — "un slot pero lo que se acumule en él cuenta como slot... sino es
+que podemos tener inventario infinito". No pedía cambiar "1 fila = 1 slot visual" (eso se queda
+igual), sino que la CANTIDAD acumulada dentro de esa fila pese contra el tope, cosa que el código
+no hacía: `recolectar.ts` comprobaba `InventoryItem.count()` (filas) contra `selections.length`
+(número de selecciones, ni siquiera la cantidad pedida) — una vez existe una pila ("Piedra (1)"),
+seguir recolectando solo incrementa su cantidad sin crear fila nueva, así que ninguno de los dos
+números subía nunca. Inventario realmente sin límite para cualquier recurso ya poseído, confirmado
+como bug real, no solo una decisión de diseño ya tomada.
+
+**Estado**: FIJADO. Nueva `totalInventoryUnits()` (unidades reales sumando `quantityOf` de cada
+fila, no 1 por fila) en `inventoryCapacity.ts` (backend y frontend, mismo criterio de duplicado a
+propósito que el resto de fórmulas de esa carpeta). `recolectar.ts` ya no rechaza la petición
+entera si no cabe (esto NO cambió: sigue "coger lo que se pueda", mismo criterio que el tope de
+`HarvestYield.cantidad`/población) — ahora topa la cantidad real añadida por el espacio libre
+REAL en unidades, dentro del propio bucle, restando lo ya usado a medida que se procesa cada
+selección. `InventarioPanel.tsx` y el contador del pop-up de recolección (`HarvestSelectionModal`
+vía `GameView.tsx`) también corregidos para mostrar unidades reales, no filas — antes mostraban
+p. ej. "5/40" con 38 piedras acumuladas en 1 sola fila, mintiendo sobre cuánto quedaba libre de
+verdad. Verificado: tsc limpio en los dos lados, 1386 tests backend (+4 en `inventoryCapacity.test.ts`,
++2 nuevos en `recolectar.test.ts`) + 18 frontend en verde.
+
+## 2026-08-08 (continuación) — Cazar ofrecía cualquier presa de la región, sin detección real
+
+**Síntoma**: el pop-up de Cazar mostraba cualquier especie con población real en TODA la región
+(p. ej. "Las Llanuras del Viento Rojo" puede tener miles de individuos, `worldPopulation.ts`), sin
+importar el punto exacto donde estuviera el jugador ni si de verdad había rastro de ella ahí ahora
+— "podría pelear/cazar cualquier presa en cualquier zona". Petición explícita: mismo patrón que
+Minar/Talar/Saqueo — detección determinista de lo que hay AHORA, con cantidades realistas ("2
+Múrgol, 8 Corretolvas, 1 Gargantúa"), pudiendo no encontrar nada, como al buscar recursos.
+
+**Diseño implementado**:
+- Mismo flujo en dos pasos que recolección: `GET /saves/:id/cazar` comprueba primero si ya se
+  "localizó" fauna en esta visita (hechos de sesión, reutilizando `detectHarvestSourcesInScene` de
+  harvest.ts sin cambios — los mismos alias de despiece sirven para detectar fauna en escena); si
+  no hay nada localizado, `puedeExplorar: true` en vez de la lista completa.
+- `POST /saves/:id/cazar/explorar` — determinista salvo por una tirada real de qué se encuentra
+  (nunca gasta turno): hasta 3 intentos, cada uno con un 35% de no encontrar nada (para que "no
+  encuentras nada" sea un resultado real) y, si no falla, una tirada ponderada por población real
+  (mismo peso ya usado por la sugerencia de encuentro ambiental, `pickAmbientEncounterCandidate`)
+  sobre los candidatos reales de la región. Si las 3 fallan, no se localiza nada y no se escribe
+  ningún hecho de sesión (se puede reintentar).
+- La CANTIDAD mostrada ("avistados") nunca es la población mundial real (cientos o miles) ni una
+  tirada que haya que recordar aparte — se deriva de `capturablePct` de catálogo (ya curado a mano
+  por especie: 80 para Múrgol/dócil-común, 10 para Cruzavientos/Gargantúa/rara-peligrosa) dividido
+  entre 10, topado por la población real restante — así baja sola a medida que se caza de verdad,
+  sin inventar ni persistir un contador nuevo.
+
+**Estado**: FIJADO. Verificado: tsc limpio en los dos lados, 1420 tests backend (+11 nuevos en
+`cazar.test.ts`: `avistadosFor`, `rollSightings`, GET con/sin localización, POST /explorar con
+éxito/fallo) + 18 frontend en verde. `HuntSelectionModal.tsx` ahora tiene el mismo botón "Explorar"
+que `HarvestSelectionModal` y muestra "×N avistados" por especie. Sigue sin commitear.
+
+## 2026-08-08 (continuación) — Hagar alucinado por SEGUNDA vez, ahora con NpcState real corrompido
+
+**Síntoma**: en dos turnos de la partida real (uno narrando que Gorhorn coge una lanza "esgrimida
+por Hagar", otro narrando "Gorhorn se gira hacia Hagar, quien lo observa con ojos preocupados")
+Hagar apareció sin venir a cuento — vive en Cristal Helado, fuera del núcleo jugable actual, sin
+ninguna relación con la Hondonada del Eco. Peor aún: el `NpcState` de Hagar en la partida real
+quedó con `condicionFisica: HERIDO` y `energia: 89` — no solo una alucinación narrativa, un
+intercambio de combate real (contra el Orco Enfurecido) le aplicó daño A ÉL en vez de al enemigo
+de verdad.
+
+**Causa raíz confirmada** (reproducido con `matchNpcAliases` contra los hechos reales de la
+partida): esto es la MISMA clase de bug ya documentada y arreglada una vez el 2026-08-02 —
+"lugar"~"hagar" (Levenshtein 2) — pero con una palabra NUEVA no cubierta entonces:
+**"hablar"~"hagar" (Levenshtein 2: b→g, l→a)**. El propio bio de catálogo del Orco Enfurecido ya
+dice *"ataca al primer contacto sin intentar hablar"* — un hecho de sesión con esa frase basta para
+colar a Hagar en `npcsInScene` durante TODA la partida a partir de ahí (`kind: 'PRINCIPAL'` lo hace
+candidato en cualquier sitio, sin ninguna acotación por región).
+
+**Estado**: FIJADO. `'hablar'` añadido a `NPC_ALIAS_FUZZY_EXCLUSIONS` (npcScene.ts) — comprobado
+que ninguna conjugación real (habla/hablo/hablan/hablando/etc.) está de verdad a distancia ≤2 de
+"hagar" (solo el infinitivo lo está), así que no hace falta excluir más que esa forma. Test nuevo
+con el texto real del bio de Orco Enfurecido. El `NpcState` corrompido de Hagar en la partida real
+se ha borrado (nunca estuvo realmente en la escena). Verificado: 1422 tests backend en verde.
+
+## 2026-08-08 (continuación) — fauna sin arma pierde su ataque real en combate ("el orco lanudo")
+
+**Síntoma**: un Múrgol (fauna dócil, cuadrúpedo lanudo, `ataqueNatural`: "Topetazo torpe con su
+cornamenta ramificada, casi siempre sin intención real de dañar") se narró repetidamente como
+*"el orco lanudo"*/*"orco enmarañado"* dando *"zarpazos"* — confundiendo su especie (fauna vs. una
+persona orca) Y su forma de atacar (garras en vez de cornamenta).
+
+**Causa raíz confirmada leyendo el código**: `baseAttackFor` (baseAttack.ts) SÍ calcula bien la
+descripción real ("Topetazo torpe...") cuando no hay arma — pero `npcCombatAbilitiesFor`
+(npcCombatAbilities.ts) construía el objeto `NpcCombatAbility` sin ningún campo `description`,
+descartándola en el acto. El único dato que llegaba después al Narrador
+(`exchangeNarrationBlock`/`PendingNpcAttack`, turnResolution.ts/combatExchange.ts) era el NOMBRE de
+la habilidad — siempre literalmente **"Ataque base"**, idéntico para cualquier especie desarmada,
+sin ninguna pista de cómo ataca de verdad esta en concreto. Sin nada que agarrar, el modelo cayó en
+vocabulario genérico de combate orco (mucho más presente en el resto de la partida) en vez de usar
+el dato real ya calculado y disponible.
+
+**Alcance real**: afecta a CUALQUIER combatiente sin arma cuyo nombre de habilidad no sea ya
+descriptivo por sí mismo — todas las habilidades de clase/raciales SÍ tienen nombre propio
+("Puño de Hierro", "Furia de Maktor"), así que el hueco real es sobre todo fauna sin arma
+(la mayoría del bestiario) usando el "Ataque base" genérico.
+
+**Estado**: FIJADO. `description` añadido a `NpcCombatAbility` (npcCombatAbilities.ts) y
+propagado en los 6 sitios que construyen una (Ataque base, habilidad de clase, racial de
+ataque/defensa, racial de fauna, Esquivar/Defenderse genéricos) — nunca se pierde de nuevo.
+`exchangeNarrationBlock`/`PendingNpcAttack.abilityDescription` (combatExchange.ts/
+turnResolution.ts) ahora la incluyen junto al nombre en el contexto que recibe el Narrador. Test
+nuevo reproduciendo el caso real del Múrgol. Verificado: tsc limpio, 1422 tests backend + 18
+frontend en verde.
+
+**Hallazgos colaterales de la misma partida, sin arreglar (criterio de "un solo caso, sin patrón
+barato" de siempre)**:
+- El Orco Enfurecido (bio: "ataca al primer contacto sin intentar hablar", AGRESIVO) se narró
+  suplicando piedad ("¡No me mates, te lo ruego!") y retrocediendo defensivamente — contradice de
+  frente su propia caracterización ya establecida. Un solo caso.
+- "El metal partierto"/"la maza partierta" — palabra inventada (ni "partido" ni ninguna forma real
+  española), aparece dos veces con género distinto en el mismo combate. Ruido del modelo, sin
+  patrón claro que detectar.
+- Un turno de esquiva simple concedió +500 XP (vs. los +25 habituales de cada intercambio) — el
+  modelo decide libremente cuándo marcar un "hito" (descubrimiento/objetivo), y aquí pareció
+  sobrevalorar una esquiva normal como logro mayor. Sin forma barata de validar "¿de verdad merecía
+  esto un hito?" contra ningún dato mecánico real — se deja como observación, no como bug con fix.
+
+## 2026-08-08 (continuación, partida reiniciada) — el modelo podía autoconcederse hito "capitulo" (500 XP, el tope absoluto)
+
+**Síntoma confirmado**: el "+500/+525 XP en un turno normal de combate, justo al subir de nivel"
+observado ya DOS veces en dos partidas distintas (visto antes como simple observación, "el modelo
+decide libremente cuándo marcar un hito") resultó ser un bug real y serio, no solo una rareza del
+modelo.
+
+**Causa raíz confirmada leyendo el código**: `narrador.ts` § `HitoTipo` (el tipo que usa el propio
+JSON del modelo) ya documenta la intención: *"'capitulo' no está aquí porque ese lo emite el
+backend, no el modelo"* — pero `JSON.parse(text) as NarrationResult` es una ASERCIÓN de tipo, no
+una validación real; TypeScript no protege nada en tiempo de ejecución. `turnResolution.ts` hacía
+`if (narration.hito) hitos.push(narration.hito)` sin comprobar el valor contra nada — si el modelo
+alucinaba igualmente la cadena `"capitulo"` en su JSON (probablemente por haberla visto mencionada
+en el propio prompt/instrucciones), se aceptaba sin más. `xpForHitos` se queda con el máximo de
+todos los hitos del turno (500, el tope absoluto reservado para cerrar un capítulo entero de la
+historia) — un simple "ataco a un buitre" podía llevarse esa recompensa entera.
+
+**Estado**: FIJADO. Lista blanca explícita en `turnResolution.ts`
+(`HITOS_QUE_PUEDE_PROPONER_EL_MODELO = ['descubrimiento', 'objetivo_menor', 'objetivo_mayor']`) —
+"capitulo" solo puede entrar ahora vía `chapterDue` (`claimChapterIfDue`, determinista, ya
+existente, nunca decidido por el modelo). Sin test unitario dedicado (misma limitación de siempre:
+esta lógica vive dentro de la función gigante `narrateAndPersistTurn`, no exportada ni testeada por
+separado — se confirma jugando en vivo). Verificado: tsc limpio, 1424 tests backend en verde.
+
+## 2026-08-08 (continuación) — hueco de gerundios en los detectores de golpe prematuro/fantasma
+
+**Síntoma**: "Salgo a cazar y ataco a 'Buitre Cenizo'" (primer turno del combate, sin ningún
+intercambio mecánico todavía — `NpcState` real del Buitre quedó en GRAVE, no MUERTO) se narró como
+*"Gorhorn... da un fuerte golpe con la hacha, **atravesando** el cuello del ave... El buitrón cae
+al suelo..."* — el mismo tipo de contradicción narración-vs-mecánica que `hasPrematureCombatResolution`
+ya detecta (y que se acababa de ampliar ese mismo día para "atrapa"/"inmoviliza"), pero esta vez el
+verbo SÍ estaba en la lista (`atraves[oó]|atraviesa`) en sus formas de pasado/presente, nunca en
+gerundio (`atravesando`).
+
+**Alcance real**: el mismo hueco existía en potencia para CUALQUIER verbo de las dos listas
+(`COMBAT_HIT_LEAK_REGEX`/`PREMATURE_COMBAT_REGEX`) — "golpeando", "hiriendo", "rebanando" tampoco
+estaban cubiertos, solo sus formas en pasado/presente.
+
+**Estado**: FIJADO. Gerundios añadidos a las dos listas (`golpeando`, `impactando`, `hiriendo`,
+`atravesando`, `rebanando`). Tests nuevos con el texto real del bug en las dos funciones. Verificado:
+1424 tests backend en verde.
+
+**Hallazgos colaterales de la misma partida, sin arreglar (un solo caso cada uno, mismo criterio de
+siempre)**:
+- Antes de derrotar y saquear al Orco Enfurecido, la narración le hizo empuñar "la maza orca" a
+  Gorhorn — un objeto que no entra al inventario hasta el saqueo, varios turnos después.
+- Tras matar y saquear al Orco Enfurecido, un turno posterior de "Uso 'Cataplasma de salvia del
+  polvo'" narró que Gorhorn le aplicaba el ungüento AL PROPIO Orco Enfurecido (ya muerto y
+  saqueado) en vez de a sí mismo — variante nueva de la familia "NPC muerto tratado como si
+  siguiera presente" (`hasResurrectedDeadNpc`), pero con vocabulario de curación en vez de señales
+  de presencia activa; su regex actual no lo cubre y ampliarlo con un solo caso arriesga falsos
+  positivos legítimos ("recordó cuando le aplicó una cataplasma a X").
+
+## 2026-08-08 (continuación) — "+525 XP" seguía viéndose: pendiente de reiniciar backend, no bug nuevo
+
+**Importante para no confundir**: esta ronda mostró OTRA VEZ el mismo "+525 XP en un ataque normal,
+justo al subir de nivel" que se acababa de fijar (ver entrada anterior, "el modelo podía
+autoconcederse hito capitulo"). Comprobado por timestamp real (`LogEntry.createdAt`): la partida se
+jugó con el backend todavía sirviendo el código de ANTES del fix — no hay forma de que un proceso
+Node ya arrancado recoja un cambio de archivo sin reiniciar. No es una recaída del fix, es la propia
+usuaria quien reinicia el backend cuando le toca (nunca esta sesión de Claude) — quedará resuelto en
+la próxima partida tras reiniciar.
+
+## 2026-08-08 (continuación) — Gistera Koh reaparece sin nombrarse, tercera vez confirmada
+
+**Síntoma**: tras rematar al Orco Enfurecido, la narración volvió a describir "una orca marcada del
+Clan Serhu, sin nombre revelado... con prisuebas [sic], jadeante" — y más tarde en el mismo log,
+otra vez: "el hocico húmedo de una orca Serhu... algo invisible persigue su silueta". Es la MISMA
+escena de introducción de Gistera Koh, reciclada palabra por palabra, pese a que el hecho de sesión
+ya dice que se marchó para siempre. Ya se había visto una vez antes (2026-08-08, ronda anterior) y
+se dejó como PENDIENTE por ser un solo caso — con esta ronda van 3 apariciones confirmadas.
+
+**Por qué la protección existente no lo cazaba**: `gisteraSeHaMarchado` (turnResolution.ts) ya
+excluye a Gistera Koh de `npcsInScene` por SLUG desde el 2026-08-01 — pero el texto nunca dice
+"Gistera Koh", así que ninguna detección por nombre/slug puede alcanzarlo.
+
+**Estado**: FIJADO. Nuevo detector `hasGisteraReencuentroSinNombrar` (mismo patrón que
+`hasResurrectedDeadNpc`) — exige mención del clan ("orca... Serhu") Y vocabulario de
+persecución/huida A LA VEZ en la misma narración (nunca cada uno por separado, para no disparar con
+una mención neutra y legítima de Ulkha/Torgash — también "del Clan Serhu", pero siempre nombrados y
+sin huir de nada). Activo solo cuando `gisteraSeHaMarchado` ya es cierto. Tests nuevos con las 2
+variantes reales observadas + caso negativo de Ulkha. Verificado: tsc limpio, 1428 tests backend +
+18 frontend en verde.

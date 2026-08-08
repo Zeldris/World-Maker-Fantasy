@@ -11,8 +11,12 @@ const findUniqueSave = vi.fn();
 const findFirstHarvestYield = vi.fn();
 const updateManyWorldPopulation = vi.fn();
 const createInventoryItem = vi.fn();
-const countInventoryItem = vi.fn();
+const updateInventoryItem = vi.fn();
 const findManyInventoryItem = vi.fn();
+const findFirstInventoryItem = vi.fn();
+const createLogEntry = vi.fn();
+const loadSessionFacts = vi.fn();
+const appendSessionFacts = vi.fn();
 const transaction = vi.fn();
 
 vi.mock('../../lib/prisma.js', () => ({
@@ -20,6 +24,14 @@ vi.mock('../../lib/prisma.js', () => ({
     save: { findUnique: (...args: unknown[]) => findUniqueSave(...args) },
     $transaction: (...args: unknown[]) => transaction(...args),
   },
+}));
+
+// Registro escrito determinista de la recolección (petición explícita, 2026-08-07) — mockeado
+// aparte porque `appendSessionFacts` en la vida real embebe con Ollama, no debe tocarse en un test
+// unitario de esta ruta.
+vi.mock('../../services/worldFacts.js', () => ({
+  loadSessionFacts: (...args: unknown[]) => loadSessionFacts(...args),
+  appendSessionFacts: (...args: unknown[]) => appendSessionFacts(...args),
 }));
 
 const { recolectarRoutes } = await import('./recolectar.js');
@@ -36,16 +48,29 @@ describe('POST /saves/:id/recolectar/confirmar', () => {
     findFirstHarvestYield.mockReset();
     updateManyWorldPopulation.mockReset();
     createInventoryItem.mockReset();
-    countInventoryItem.mockReset().mockResolvedValue(0);
+    updateInventoryItem.mockReset();
     findManyInventoryItem.mockReset().mockResolvedValue([]);
-    findUniqueSave.mockResolvedValue({ id: 'save1', worldId: 'world1', attributes: { fuerza: 10, constitucion: 10 } });
+    // Sin pila previa por defecto — cada test de acumulación la sobreescribe explícitamente.
+    findFirstInventoryItem.mockReset().mockResolvedValue(null);
+    createLogEntry.mockReset().mockResolvedValue({ id: 'log1', createdAt: new Date('2026-08-07T12:00:00Z') });
+    loadSessionFacts.mockReset().mockResolvedValue([]);
+    appendSessionFacts.mockReset().mockResolvedValue(undefined);
+    findUniqueSave.mockResolvedValue({
+      id: 'save1',
+      worldId: 'world1',
+      characterName: 'Gorhorn',
+      attributes: { fuerza: 10, constitucion: 10 },
+      worldState: { fictionalDateLabel: 'Día 1, mañana', fictionalMinutes: 480 },
+    });
     transaction.mockReset().mockImplementation((cb: (tx: unknown) => unknown) =>
       cb({
         inventoryItem: {
-          count: (...args: unknown[]) => countInventoryItem(...args),
           findMany: (...args: unknown[]) => findManyInventoryItem(...args),
+          findFirst: (...args: unknown[]) => findFirstInventoryItem(...args),
           create: (...args: unknown[]) => createInventoryItem(...args),
+          update: (...args: unknown[]) => updateInventoryItem(...args),
         },
+        logEntry: { create: (...args: unknown[]) => createLogEntry(...args) },
         harvestYield: { findFirst: (...args: unknown[]) => findFirstHarvestYield(...args) },
         worldPopulation: { updateMany: (...args: unknown[]) => updateManyWorldPopulation(...args) },
       }),
@@ -82,9 +107,112 @@ describe('POST /saves/:id/recolectar/confirmar', () => {
 
     expect(res.statusCode).toBe(200);
     expect(updateManyWorldPopulation).toHaveBeenCalledWith(
-      expect.objectContaining({ where: expect.objectContaining({ poblacion: { gte: 3 } }), data: { poblacion: { decrement: 3 } } }),
+      expect.objectContaining({
+        where: expect.objectContaining({ poblacion: { gte: 3 } }),
+        data: expect.objectContaining({ poblacion: { decrement: 3 } }),
+      }),
     );
-    expect(createInventoryItem).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ name: 'Piedra (3)' }) }));
+    // El nombre final (con la cantidad ya topada) se escribe en el update de cierre, no en el
+    // create inicial — ver el test de acumulación de abajo para por qué está separado así.
+    expect(updateInventoryItem).toHaveBeenCalledWith({ where: { id: 'item1' }, data: { name: 'Piedra (3)' } });
+    expect(JSON.parse(res.body).items).toEqual([
+      expect.objectContaining({ id: 'item1', name: 'Piedra (3)', catalogSlug: 'piedra', tipo: 'RECURSO' }),
+    ]);
+    // Registro escrito determinista (petición explícita, 2026-08-07: "un texto de narración que
+    // no dependa de la AI") — sin llamar a Ollama, ni al Narrador.
+    expect(createLogEntry).toHaveBeenCalledWith({
+      data: expect.objectContaining({ saveId: 'save1', channel: 'CHARACTER', text: 'Gorhorn recolecta en la zona: Piedra (3).', isPlayerAction: false }),
+    });
+    expect(appendSessionFacts).toHaveBeenCalledWith('save1', [], ['Gorhorn recolecta en la zona: Piedra (3).']);
+    expect(JSON.parse(res.body).logEntry).toEqual(expect.objectContaining({ id: 'log1', text: 'Gorhorn recolecta en la zona: Piedra (3).' }));
+  });
+
+  it('el guard de cooldown va en la misma consulta atómica que la de población', async () => {
+    findFirstHarvestYield.mockResolvedValue({ cantidad: 3, item: { slug: 'piedra', name: 'Piedra' } });
+    updateManyWorldPopulation.mockResolvedValue({ count: 1 });
+    createInventoryItem.mockResolvedValue({ id: 'item1' });
+    const app = await buildApp();
+
+    await app.inject({
+      method: 'POST',
+      url: '/saves/save1/recolectar/confirmar',
+      payload: { selections: [{ sourceSlug: 'roca-pilares-rotos', itemSlug: 'piedra', cantidad: 3 }] },
+    });
+
+    expect(updateManyWorldPopulation).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ OR: [{ lastHarvestedAt: null }, { lastHarvestedAt: { lt: expect.any(Date) } }] }),
+        data: expect.objectContaining({ lastHarvestedAt: expect.any(Date) }),
+      }),
+    );
+  });
+
+  it('en cooldown (recolectado hace poco), la actualización de población no encuentra fila y no da nada', async () => {
+    findFirstHarvestYield.mockResolvedValue({ cantidad: 3, item: { slug: 'piedra', name: 'Piedra' } });
+    // El guard atómico (poblacion+cooldown en el WHERE) es lo que de verdad bloquea — se simula
+    // aquí como si la fila no hubiera pasado el filtro (count: 0), mismo resultado que sin población.
+    updateManyWorldPopulation.mockResolvedValue({ count: 0 });
+    const app = await buildApp();
+
+    const res = await app.inject({
+      method: 'POST',
+      url: '/saves/save1/recolectar/confirmar',
+      payload: { selections: [{ sourceSlug: 'roca-pilares-rotos', itemSlug: 'piedra', cantidad: 3 }] },
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(JSON.parse(res.body).items).toEqual([]);
+    expect(createLogEntry).not.toHaveBeenCalled();
+    expect(appendSessionFacts).not.toHaveBeenCalled();
+  });
+
+  it('dos selecciones de la MISMA fuente en una sola petición solo comprueban el cooldown una vez (si no, la 2ª se bloquearía a sí misma)', async () => {
+    findFirstHarvestYield.mockImplementation(({ where }: { where: { item: { slug: string } } }) =>
+      Promise.resolve(
+        where.item.slug === 'piedra' ? { cantidad: 3, item: { slug: 'piedra', name: 'Piedra' } } : { cantidad: 2, item: { slug: 'mena-de-hierro', name: 'Mena de hierro' } },
+      ),
+    );
+    updateManyWorldPopulation.mockResolvedValue({ count: 1 });
+    createInventoryItem.mockImplementation(({ data }: { data: { catalogSlug: string } }) =>
+      Promise.resolve({ id: data.catalogSlug === 'piedra' ? 'item-piedra' : 'item-mena' }),
+    );
+    const app = await buildApp();
+
+    await app.inject({
+      method: 'POST',
+      url: '/saves/save1/recolectar/confirmar',
+      payload: {
+        selections: [
+          { sourceSlug: 'roca-pilares-rotos', itemSlug: 'piedra', cantidad: 3 },
+          { sourceSlug: 'roca-pilares-rotos', itemSlug: 'mena-de-hierro', cantidad: 2 },
+        ],
+      },
+    });
+
+    expect(updateManyWorldPopulation).toHaveBeenCalledTimes(2);
+    // La 1ª comprueba cooldown (lleva OR), la 2ª (misma fuente, ya validada en esta petición) no.
+    expect(updateManyWorldPopulation.mock.calls[0][0].where.OR).toBeDefined();
+    expect(updateManyWorldPopulation.mock.calls[1][0].where.OR).toBeUndefined();
+  });
+
+  it('acumula sobre una pila ya existente en vez de crear una fila nueva (bug real jugando en vivo, "no acumula los items")', async () => {
+    findFirstHarvestYield.mockResolvedValue({ cantidad: 3, item: { slug: 'piedra', name: 'Piedra' } });
+    updateManyWorldPopulation.mockResolvedValue({ count: 1 });
+    findFirstInventoryItem.mockResolvedValue({ id: 'item-viejo', name: 'Piedra (3)' });
+    const app = await buildApp();
+
+    const res = await app.inject({
+      method: 'POST',
+      url: '/saves/save1/recolectar/confirmar',
+      payload: { selections: [{ sourceSlug: 'roca-pilares-rotos', itemSlug: 'piedra', cantidad: 3 }] },
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(createInventoryItem).not.toHaveBeenCalled();
+    expect(updateInventoryItem).toHaveBeenCalledWith({ where: { id: 'item-viejo' }, data: { name: 'Piedra (6)' } });
+    const body = JSON.parse(res.body);
+    expect(body.items).toEqual([]);
+    expect(body.updatedItems).toEqual([{ id: 'item-viejo', name: 'Piedra (6)' }]);
   });
 
   it('no crea el objeto si la población ya no alcanza (otra recolección casi simultánea se lo llevó)', async () => {
@@ -103,8 +231,8 @@ describe('POST /saves/:id/recolectar/confirmar', () => {
     expect(createInventoryItem).not.toHaveBeenCalled();
   });
 
-  it('rechaza si no cabe en el inventario (capacidad real, Parte D)', async () => {
-    countInventoryItem.mockResolvedValue(100);
+  it('sin espacio libre (capacidad real, Parte D), no añade nada — topa a 0 en vez de rechazar toda la petición', async () => {
+    findManyInventoryItem.mockResolvedValue(Array.from({ length: 100 }, (_, i) => ({ name: `Objeto ${i}` })));
     findFirstHarvestYield.mockResolvedValue({ cantidad: 3, item: { slug: 'piedra', name: 'Piedra' } });
     const app = await buildApp();
 
@@ -114,8 +242,31 @@ describe('POST /saves/:id/recolectar/confirmar', () => {
       payload: { selections: [{ sourceSlug: 'roca-pilares-rotos', itemSlug: 'piedra', cantidad: 3 }] },
     });
 
-    expect(res.statusCode).toBe(500);
+    expect(res.statusCode).toBe(200);
+    expect(JSON.parse(res.body).items).toEqual([]);
     expect(createInventoryItem).not.toHaveBeenCalled();
+  });
+
+  // Bug real jugando en vivo (2026-08-08, "podemos tener inventario infinito"): una pila ya
+  // acumulada ("Piedra (38)") es UNA sola fila — antes de este fix, el gate de capacidad contaba
+  // FILAS, así que esta partida (1 fila, muy por debajo del límite) podía seguir recolectando sin
+  // límite real. Ahora se mide en unidades: con capacidad 40 y 38 ya acumuladas, solo caben 2 más.
+  it('topa por unidades acumuladas en una pila existente, no por número de filas (bug real: inventario efectivamente infinito)', async () => {
+    findManyInventoryItem.mockResolvedValue([{ name: 'Piedra (38)' }]);
+    findFirstHarvestYield.mockResolvedValue({ cantidad: 5, item: { slug: 'piedra', name: 'Piedra' } });
+    findFirstInventoryItem.mockResolvedValue({ id: 'item1', name: 'Piedra (38)' });
+    updateManyWorldPopulation.mockResolvedValue({ count: 1 });
+    const app = await buildApp();
+
+    const res = await app.inject({
+      method: 'POST',
+      url: '/saves/save1/recolectar/confirmar',
+      payload: { selections: [{ sourceSlug: 'roca-pilares-rotos', itemSlug: 'piedra', cantidad: 5 }] },
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(updateManyWorldPopulation).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ poblacion: { decrement: 2 } }) }));
+    expect(updateInventoryItem).toHaveBeenCalledWith({ where: { id: 'item1' }, data: { name: 'Piedra (40)' } });
   });
 
   it('rechaza sin ninguna selección', async () => {

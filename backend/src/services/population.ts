@@ -23,6 +23,23 @@ export const GROWTH_RATE_PER_DAY: Record<PopulationTargetType, number> = {
   RECURSO: 0.01,
 };
 
+/// Bug real jugando en vivo (2026-08-07, "no aparece ningún recurso en la Hondonada"): las claves
+/// de `WorldPopulation.distribucion` (aquí y en `harvestSourceRegion`, worldCatalog.ts) se siembran
+/// SIN artículo ("Llanuras del Viento Rojo"), pero `Location.region` SIEMPRE lo lleva completo
+/// ("Las Llanuras del Viento Rojo") — igual que `ORC_REGION_SUFFIX` de abajo, que sí usa el
+/// artículo completo a propósito (ver su comentario). Comparar `distribucion[location.region]`
+/// directamente fallaba silenciosamente para cualquier región CON artículo (Llanuras/Margen/
+/// Meseta — 3 de las 5 regiones reales) — "Cristal Helado"/"Ciénaga Troncal" no lo llevan, así que
+/// ahí "funcionaba" por pura coincidencia, ocultando el bug. Afectaba a la vez a tres sitios
+/// distintos: el pop-up de recolección nuevo (recolectar.ts), la ponderación de encuentros
+/// ambientales (turnResolution.ts, desde 2026-08-03) y quién aparece al interrumpir un viaje
+/// (travelInterruption.ts, desde 2026-08-05) — los dos últimos fallaban en silencio (una sugerencia
+/// opcional que simplemente no salía nunca), nadie lo había notado hasta que el pop-up de
+/// recolección lo hizo visible de golpe.
+export function stripRegionArticle(region: string): string {
+  return region.replace(/^(Las|La|El|Los)\s+/, '');
+}
+
 /// Sufijo de `targetSlug` para los 3 clanes orcos regionales (worldPopulation.ts) — biología
 /// distinta entre ellos, no fluyen entre sí salvo guerra/evento de mundo (decisión ya cerrada).
 /// Claves = `Location.region` tal cual se siembra en worldCatalog.ts (con artículo completo).

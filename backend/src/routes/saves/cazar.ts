@@ -1,0 +1,251 @@
+import type { FastifyInstance } from 'fastify';
+import { prisma } from '../../lib/prisma.js';
+import { decrementPopulationOnDeath, stripRegionArticle } from '../../services/population.js';
+import { scopeFor, pickAmbientEncounterCandidate } from '../../services/npcScene.js';
+import { detectHarvestSourcesInScene } from '../../services/harvest.js';
+import { loadSessionFacts, appendSessionFacts } from '../../services/worldFacts.js';
+import type { AttributeBlock } from '../../services/dice.js';
+
+/// Caza (revisión de partida 2026-08-08, "buscar presas... eso no va, sale un pequeño raposa que
+/// desaparece sin más" + diseño consultado con la usuaria): el texto libre nunca conectaba de
+/// forma fiable con la fauna real del catálogo — dependía de una sugerencia ambiental opcional al
+/// 25%, ajena a que el jugador estuviera cazando de verdad (turnResolution.ts ~L1191), así que el
+/// modelo acababa inventando animales fuera del roster ("raposa" no existe en ningún sitio del
+/// mundo). Mismo criterio que recolectar.ts (Minar/Talar): un pop-up determinista con la fauna
+/// real y con población activa en la zona ahora mismo, sin depender del Narrador para decidir con
+/// qué te cruzas.
+///
+/// Diseño de la resolución (decidido con la usuaria): elegir una ÚNICA presa "muy débil" frente al
+/// personaje (nivel ≤ nivel del jugador − 2, mismo umbral que la banda "Fácil" de
+/// `difficultyHintFor`, npcScene.ts) ofrece una tirada de caza limpia sin combate — % = su
+/// `capturablePct` de catálogo (dato ya sembrado y sin ningún caller hasta hoy, pensado
+/// explícitamente para esto, ver comentario de schema.prisma § Npc.capturablePct) + la destreza del
+/// personaje, tope 90 para que nunca sea un éxito garantizado. Elegir varias presas a la vez —
+/// aunque cada una sea débil por separado — siempre exige combate real contra todas: la propia
+/// usuaria lo decidió así ("el % de caza auto solo saltara si eliges una unica presa, si es varias
+/// es combate obligatorio").
+///
+/// Bug de diseño evitado a tiempo (misma conversación): la primera versión de esta ruta abría el
+/// combate ELLA MISMA (NpcState + `pendingCombatNpcSlugs` directos, sin narración) para el caso
+/// "toca pelear" — la usuaria corrigió: "cazar sí que fuerza una narración cuando eliges objetivos
+/// y esa narración inicia el combate". Así que esta ruta SOLO decide de forma determinista (nunca
+/// el modelo) si hay caza limpia y, si la hay, si sale bien — el caso "toca pelear" no escribe nada
+/// de combate aquí: solo valida y devuelve a qué presas nombrar, y el FRONTEND manda ese texto por
+/// el mismo `handleSubmit` de cualquier acción libre (GameView.tsx) — narración real +
+/// `shouldForceCombat`/`detectNpcsInScene` (turnResolution.ts) abren el combate exactamente igual
+/// que si el jugador hubiera escrito "Ataco a 'X'" él mismo, sin duplicar ninguna lógica de combate.
+///
+/// Solo se admite UNA presa por especie por petición (no cantidad/stock por especie): `NpcState`
+/// usa `scope = Location.id` para una `PLANTILLA` (npcScene.ts § scopeFor) — dos individuos de la
+/// MISMA especie a la vez en el mismo sitio violarían el `@@unique([saveId, npcId, scope])` sin
+/// un rediseño mayor del propio modelo de encuentros. Cazar varias especies distintas a la vez
+/// (cada una su propio `npcId`) no tiene ese problema y es justo lo que pide "combate contra tantos
+/// enemigos como selecciones de la lista".
+const NIVEL_DIFERENCIA_PRESA_DEBIL = 2;
+const CHANCE_CAZA_LIMPIA_TOPE = 90;
+
+/// Localización real (2026-08-08, "podría pelear/cazar cualquier presa en cualquier zona... a lo
+/// mejor hay 2 múrgol, 8 corretolvas y 1 gargantúa, o puede que no encuentres nada, como los
+/// objetos"): antes CUALQUIER especie con población > 0 en TODA la región (Llanuras del Viento
+/// Rojo puede tener miles de individuos, worldPopulation.ts) aparecía siempre en el pop-up, sin
+/// importar el punto exacto donde estuviera el jugador ni si de verdad había rastro de ella ahí.
+/// Mismo patrón en dos pasos que Minar/Talar (recolectar.ts): "ya localizado" (hechos de sesión,
+/// reutilizando `detectHarvestSourcesInScene` — los mismos alias sirven para fauna, cada especie
+/// cazable ya es también una fuente de despiece) vs "Explorar" (determinista, sin gastar turno).
+///
+/// La CANTIDAD mostrada ("avistados") nunca es la población mundial real (miles) ni una tirada
+/// aleatoria que haya que recordar entre peticiones — se deriva de `capturablePct` (cifra ya
+/// curada a mano por especie: 80 para Múrgol/dócil y común, 10 para Cruzavientos/Gargantúa/rara),
+/// topada por la población real restante para que baje sola a medida que se caza de verdad, sin
+/// inventar un contador nuevo que persistir.
+const CAZA_AVISTAMIENTO_DIVISOR = 10;
+
+export function avistadosFor(capturablePct: number, poblacion: number): number {
+  return Math.min(poblacion, Math.max(1, Math.round(capturablePct / CAZA_AVISTAMIENTO_DIVISOR)));
+}
+
+export interface HuntCandidate {
+  slug: string;
+  name: string;
+  level: number;
+  debil: boolean;
+  poblacion: number;
+  capturablePct: number;
+}
+
+interface SightedHuntCandidate {
+  slug: string;
+  name: string;
+  level: number;
+  debil: boolean;
+  avistados: number;
+}
+
+function toSighted(c: HuntCandidate): SightedHuntCandidate {
+  return { slug: c.slug, name: c.name, level: c.level, debil: c.debil, avistados: avistadosFor(c.capturablePct, c.poblacion) };
+}
+
+async function candidateFaunaFor(worldId: string, region: string | null, playerLevel: number): Promise<HuntCandidate[]> {
+  if (!region) return [];
+  const populations = await prisma.worldPopulation.findMany({
+    where: { worldId, targetType: 'FAUNA', poblacion: { gt: 0 } },
+  });
+  const withRegion = populations.filter((pop) => {
+    const distribucion = pop.distribucion as Record<string, number>;
+    return (distribucion[stripRegionArticle(region)] ?? 0) > 0;
+  });
+  if (withRegion.length === 0) return [];
+
+  const poblacionBySlug = new Map(withRegion.map((p) => [p.targetSlug, p.poblacion]));
+  const npcs = await prisma.npc.findMany({
+    where: { worldId, slug: { in: withRegion.map((p) => p.targetSlug) } },
+    select: { slug: true, name: true, level: true, capturablePct: true },
+  });
+  return npcs.map((npc) => ({
+    slug: npc.slug,
+    name: npc.name,
+    level: npc.level,
+    debil: npc.level <= playerLevel - NIVEL_DIFERENCIA_PRESA_DEBIL,
+    poblacion: poblacionBySlug.get(npc.slug) ?? 0,
+    capturablePct: npc.capturablePct,
+  }));
+}
+
+/// Tirada de "Explorar" (determinista salvo por el propio azar de qué hay cerca, igual que un
+/// encuentro ambiental real): hasta 3 intentos, cada uno con un 35% de fallar sin más (para que
+/// "no encuentras nada" sea un resultado real, no solo cuando la región está vacía de verdad) y si
+/// no falla, una tirada ponderada por población real (mismo peso que ya usa la sugerencia de
+/// encuentro ambiental de turnResolution.ts) sobre los candidatos reales de la región.
+const CAZA_EXPLORAR_INTENTOS = 3;
+const CAZA_EXPLORAR_CHANCE_FALLO = 0.35;
+
+export function rollSightings(candidates: HuntCandidate[], random: () => number = Math.random): HuntCandidate[] {
+  const found = new Map<string, HuntCandidate>();
+  for (let i = 0; i < CAZA_EXPLORAR_INTENTOS; i++) {
+    if (random() < CAZA_EXPLORAR_CHANCE_FALLO) continue;
+    const pick = pickAmbientEncounterCandidate(
+      candidates.map((c) => ({ slug: c.slug, name: c.name, role: '', weight: c.poblacion })),
+      random,
+    );
+    if (pick) found.set(pick.slug, candidates.find((c) => c.slug === pick.slug)!);
+  }
+  return [...found.values()];
+}
+
+export async function cazarRoutes(app: FastifyInstance) {
+  app.get<{ Params: { id: string } }>('/saves/:id/cazar', async (request, reply) => {
+    const save = await prisma.save.findUnique({ where: { id: request.params.id }, include: { currentLocation: true } });
+    if (!save) return reply.status(404).send({ error: 'Partida no encontrada' });
+
+    const candidates = await candidateFaunaFor(save.worldId, save.currentLocation?.region ?? null, save.level);
+    if (candidates.length === 0) return { candidates: [], puedeExplorar: false };
+
+    const sessionFacts = await loadSessionFacts(save.id);
+    const localizados = detectHarvestSourcesInScene(
+      sessionFacts,
+      candidates.map((c) => c.slug),
+    );
+    const sighted = candidates.filter((c) => localizados.includes(c.slug));
+    return { candidates: sighted.map(toSighted), puedeExplorar: sighted.length === 0 };
+  });
+
+  // Determinista, sin gastar turno ni pasar por Ollama (mismo criterio que recolectar.ts) — pero,
+  // a diferencia de recolectar (que revela SIEMPRE todo lo real de la región), aquí hay una tirada
+  // real de qué se encuentra (`rollSightings`): puede no salir nada, igual que explorar en busca de
+  // recursos y no dar con ninguno.
+  app.post<{ Params: { id: string } }>('/saves/:id/cazar/explorar', async (request, reply) => {
+    const save = await prisma.save.findUnique({ where: { id: request.params.id }, include: { currentLocation: true } });
+    if (!save) return reply.status(404).send({ error: 'Partida no encontrada' });
+
+    const candidates = await candidateFaunaFor(save.worldId, save.currentLocation?.region ?? null, save.level);
+    if (candidates.length === 0) return { candidates: [] };
+
+    const sighted = rollSightings(candidates);
+    if (sighted.length === 0) return { candidates: [] };
+
+    const sightedInfo = sighted.map(toSighted);
+    const text = `${save.characterName} detecta señales de fauna cerca: ${sightedInfo.map((c) => `${c.avistados} ${c.name}`).join(', ')}.`;
+    const sessionFacts = await loadSessionFacts(save.id);
+    await appendSessionFacts(save.id, sessionFacts, [text]);
+
+    return { candidates: sightedInfo };
+  });
+
+  app.post<{ Params: { id: string }; Body: { slugs: string[] } }>('/saves/:id/cazar/confirmar', async (request, reply) => {
+    const { slugs } = request.body;
+    if (!Array.isArray(slugs) || slugs.length === 0) {
+      return reply.status(400).send({ error: 'Falta el campo: slugs' });
+    }
+
+    const save = await prisma.save.findUnique({ where: { id: request.params.id }, include: { currentLocation: true, worldState: true } });
+    if (!save) return reply.status(404).send({ error: 'Partida no encontrada' });
+    if (Array.isArray(save.pendingCombatNpcSlugs) && save.pendingCombatNpcSlugs.length > 0) {
+      return reply.status(400).send({ error: 'Ya hay un combate en curso — resuélvelo antes de salir a cazar.' });
+    }
+
+    const region = save.currentLocation?.region ?? null;
+    const uniqueSlugs = [...new Set(slugs)];
+    const candidates = await candidateFaunaFor(save.worldId, region, save.level);
+    const selected = uniqueSlugs
+      .map((slug) => candidates.find((c) => c.slug === slug))
+      .filter((c): c is HuntCandidate => !!c);
+    if (selected.length === 0) {
+      return reply.status(400).send({ error: 'Esa fauna ya no está disponible aquí — puede que se te haya adelantado.' });
+    }
+
+    // Caza limpia sin combate: solo con una única presa, débil de verdad frente al personaje —
+    // cualquier otro caso (varias presas, o una sola pero no lo bastante débil) exige combate real,
+    // narrado y abierto por el propio turno normal (ver comentario de cabecera).
+    if (selected.length === 1 && selected[0].debil) {
+      const npc = await prisma.npc.findUnique({ where: { worldId_slug: { worldId: save.worldId, slug: selected[0].slug } } });
+      if (!npc) return reply.status(400).send({ error: 'Esa fauna ya no está disponible aquí.' });
+
+      const destreza = (save.attributes as AttributeBlock).destreza;
+      const chance = Math.min(CHANCE_CAZA_LIMPIA_TOPE, npc.capturablePct + destreza);
+      const exito = Math.random() * 100 < chance;
+
+      if (!exito) {
+        return {
+          resuelveSinCombate: false,
+          exito: false,
+          actionText: `Intento cazar a '${npc.name}' de forma sigilosa y limpia, pero fallo — no queda más remedio que enfrentarla en combate.`,
+        };
+      }
+
+      const currentLocationId = save.currentLocation?.id ?? null;
+      const scope = scopeFor(npc.kind, currentLocationId);
+      const text = `${save.characterName} caza limpiamente a ${npc.name}, sin darle ninguna opción de reaccionar.`;
+      const timeLabel = save.worldState?.fictionalDateLabel ?? 'Día 1, mañana';
+      const fictionalMinutes = save.worldState?.fictionalMinutes ?? 480;
+
+      const logEntry = await prisma.$transaction(async (tx) => {
+        await tx.npcState.upsert({
+          where: { saveId_npcId_scope: { saveId: save.id, npcId: npc.id, scope } },
+          create: { saveId: save.id, npcId: npc.id, scope, condicionFisica: 'MUERTO' },
+          update: { condicionFisica: 'MUERTO' },
+        });
+        await decrementPopulationOnDeath(tx, save.worldId, null, npc.slug, region);
+        const created = await tx.logEntry.create({ data: { saveId: save.id, channel: 'CHARACTER', text, timeLabel, fictionalMinutes, isPlayerAction: false } });
+        await tx.save.update({ where: { id: save.id }, data: { pendingCombatNpcSlugs: [npc.slug] } });
+        return created;
+      });
+
+      const sessionFacts = await loadSessionFacts(save.id);
+      await appendSessionFacts(save.id, sessionFacts, [text]);
+
+      return {
+        resuelveSinCombate: true,
+        exito: true,
+        combate: { npcs: [{ slug: npc.slug, name: npc.name, condicionFisica: 'MUERTO' as const, saqueado: false, lootedItemNames: [] }] },
+        logEntry: { id: logEntry.id, text, timeLabel, createdAt: logEntry.createdAt.toISOString() },
+      };
+    }
+
+    const names = selected.map((c) => c.name);
+    return {
+      resuelveSinCombate: false,
+      exito: null,
+      actionText: `Salgo a cazar y ataco a ${names.map((n) => `'${n}'`).join(', ')}.`,
+    };
+  });
+}

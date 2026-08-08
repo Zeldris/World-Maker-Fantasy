@@ -27,7 +27,14 @@ import {
   type NpcInScene,
   type NpcWithItems,
 } from './npcScene.js';
-import { resolveExchange, rollInitiative, exchangeContextBlock, type PendingNpcAttack, type InitiativeResult } from './combatExchange.js';
+import {
+  resolveExchange,
+  rollInitiative,
+  exchangeContextBlock,
+  type PendingNpcAttack,
+  type InitiativeResult,
+  type CombatExchangeDisplay,
+} from './combatExchange.js';
 import { npcCombatAbilitiesFor, chooseNpcAbility } from './npcCombatAbilities.js';
 import { detectHarvest } from './harvest.js';
 import { detectItemReference, detectMedicalItemUse, detectEnergyItemUse, missingItemBlockFor } from './itemReference.js';
@@ -47,6 +54,7 @@ import {
   planConsumption,
   planRecipeConsumption,
   baseNameOf,
+  quantityOf,
   CONSTRUCTION_RECIPES,
   REINO_BUILDING_RECIPE_KEYS,
   reinoBuildingCapacityForTier,
@@ -61,7 +69,7 @@ import { professionAbilityUnlocksFor } from './professionAbilities.js';
 import type { StartingAbility } from './startingAbilities.js';
 import { protectedFactsFor } from './protectedFacts.js';
 import { lintRegionMismatch } from './narrationLint.js';
-import { decrementPopulationOnDeath } from './population.js';
+import { decrementPopulationOnDeath, stripRegionArticle } from './population.js';
 import {
   destinationsFrom,
   normalizeText,
@@ -296,6 +304,13 @@ export interface NewInventoryItemInfo {
   /// mismo patrón exacto ya arreglado una vez para `equipSlot`, ver comentario ahí). Null si el
   /// objeto no tiene catalogSlug o su entrada de catálogo no es ESPECIAL.
   effectKey: string | null;
+  /// Categorización real para agrupar el Inventario (bug real jugando en vivo, 2026-08-07 —
+  /// mismo patrón exacto que equipSlot/effectKey de arriba, olvidado en los dos arreglos
+  /// anteriores): sin esto, un objeto recién conseguido este turno (saqueo/crafteo/despiece/
+  /// construcción/recolección) se veía "sin categorizar" en el Inventario hasta recargar la
+  /// partida entera, porque `InventoryItem` no guarda `tipo` — se calcula al vuelo en `detail.ts`
+  /// vía join con `ItemCatalog`. `null` solo para objetos narrativos sin `catalogSlug` (newItem).
+  tipo: string | null;
 }
 
 /// Notificación de fundación de reino (2026-08-04, "el Ayuntamiento" — docs/17-reglas-
@@ -398,6 +413,15 @@ export interface NarrateAndPersistResult {
   /// da al frontend el nombre real, ya resuelto, de la habilidad de ataque/defensa que el NPC
   /// acaba de usar en el intercambio de ESTE turno. null si no hubo intercambio de combate.
   npcAbilityUsed: { npcName: string; abilityName: string; rol: 'ataque' | 'defensa' } | null;
+  /// Revisión de partida 2026-08-08, petición explícita: "que aparezca el resultado de las
+  /// tiradas... qué atributo y valor sacó [el jugador] y el del enemigo y por qué perdió o ganó" —
+  /// las dos tiradas reales del intercambio de ESTE turno (ver `CombatExchangeDisplay`,
+  /// combatExchange.ts), null si no hubo intercambio.
+  combatExchangeDisplay: CombatExchangeDisplay | null;
+  /// Mismo hueco exacto que `npcAbilityUsed` pero para el lado del jugador (petición explícita,
+  /// misma revisión: "cuando seleccione una habilidad esta se refleje en la narración con su
+  /// descripción") — null en texto libre sin botón o sin intercambio.
+  playerAbilityUsed: { name: string; icon: string; description: string; rol: 'ataque' | 'defensa' } | null;
   /// Rediseño del turno de combate (2026-07-29, "quiero que sea más claro cuando es turno de
   /// ataque... indicándome qué salió en los dados para saber por qué ataco primero") — tirada real
   /// de iniciativa que decidió quién actúa en el PRÓXIMO intercambio, calculada al resolver ESTE
@@ -470,6 +494,12 @@ export interface CombatExchangePhaseInput {
   /// habilidad elegida ESTE turno (savedActionId) lo es. Solo se aplica en el CASO ATAQUE (el
   /// jugador tiene la iniciativa) — reduce la dificultad de SU tirada, nunca dobla el intercambio.
   dualWieldBonus: boolean;
+  /// Habilidad elegida por el jugador este turno (savedActionId ya resuelto contra SavedAction,
+  /// ver el caller) — null en texto libre sin botón. Revisión de partida 2026-08-08, petición
+  /// explícita: "falta que cuando seleccione una habilidad esta se refleje en la narración con su
+  /// descripción, para que así sepamos que usamos" — mismo hueco que ya se cerró para el NPC
+  /// (`npcAbilityUsed`) nunca se cerró para el propio jugador.
+  selectedAbility: { name: string; icon: string; description: string } | null;
 }
 
 export interface CombatExchangePhaseResult {
@@ -482,6 +512,12 @@ export interface CombatExchangePhaseResult {
   exchangeNarrationBlock: string | null;
   combatExchangeRoll: RollResult | null;
   npcAbilityUsed: { npcName: string; abilityName: string; rol: 'ataque' | 'defensa' } | null;
+  /// Cara visible de las dos tiradas del intercambio (jugador y NPC), ver
+  /// `CombatExchangeDisplay` (combatExchange.ts) — null si no hubo intercambio real este turno.
+  combatExchangeDisplay: CombatExchangeDisplay | null;
+  /// Habilidad del JUGADOR usada en este intercambio (nombre/icono/descripción de catálogo, ver
+  /// `CombatExchangePhaseInput.selectedAbility`) — null en texto libre sin botón o sin intercambio.
+  playerAbilityUsed: { name: string; icon: string; description: string; rol: 'ataque' | 'defensa' } | null;
   nextInitiativeRoll: InitiativeResult | null;
   exchangeHappened: boolean;
   npcEnergiaMax: number | null;
@@ -530,6 +566,10 @@ function resolveCombatExchangePhase(input: CombatExchangePhaseInput): CombatExch
   // marcar "Éxito" junto a una narración que describía un fallo total). El lado del jugador en
   // el intercambio (`combatExchangeRoll`) pasa a ser la única fuente de verdad para los dos.
   let combatExchangeRoll: RollResult | null = null;
+  // Ver comentario de `CombatExchangePhaseResult.combatExchangeDisplay`/`playerAbilityUsed` más
+  // arriba — se rellenan en cada una de las dos ramas de abajo, siempre que haya intercambio.
+  let combatExchangeDisplay: CombatExchangeDisplay | null = null;
+  let playerAbilityUsed: { name: string; icon: string; description: string; rol: 'ataque' | 'defensa' } | null = null;
   // Nombre real de la habilidad de ataque/defensa que usó el NPC en el intercambio de este turno
   // (2026-07-29, ver NarrateAndPersistResult.npcAbilityUsed) — se rellena en cada una de las dos
   // ramas de abajo, siempre que haya intercambio.
@@ -590,9 +630,11 @@ function resolveCombatExchangePhase(input: CombatExchangePhaseInput): CombatExch
       jugadorGolpeEfecto = pendingNpcAttack.effect;
       npcAttackHits = exchange.resultado === 'defensor_contragolpea' || exchange.resultado === 'golpes_mutuos';
       npcTargetNewCondicion = npcAttackHits ? oneStepWorseThan(npcParaIntercambio.condicionFisica) : null;
-      exchangeNarrationBlock = `${npcParaIntercambio.name} ataca con "${pendingNpcAttack.abilityName}". ${exchangeContextBlock(exchange, npcParaIntercambio.name, characterName)}`;
+      exchangeNarrationBlock = `${npcParaIntercambio.name} ataca con "${pendingNpcAttack.abilityName}" (${pendingNpcAttack.abilityDescription || 'sin descripción propia'}). ${exchangeContextBlock(exchange, npcParaIntercambio.name, characterName)}`;
       combatExchangeRoll = exchange.defensor;
       npcAbilityUsed = { npcName: npcParaIntercambio.name, abilityName: pendingNpcAttack.abilityName, rol: 'ataque' };
+      combatExchangeDisplay = { atacanteEsJugador: false, atacante: exchange.atacante, defensor: exchange.defensor, resultado: exchange.resultado };
+      if (input.selectedAbility) playerAbilityUsed = { ...input.selectedAbility, rol: 'defensa' };
       exchangeHappened = true;
       // El NPC atacó este intercambio con la habilidad ya elegida el turno anterior — su coste/
       // regen se descuentan/suman AHORA, cuando de verdad se resuelve (ver PendingNpcAttack.
@@ -637,9 +679,11 @@ function resolveCombatExchangePhase(input: CombatExchangePhaseInput): CombatExch
       npcTargetNewCondicion = npcAttackHits ? nextCondicionForAttack(abilityEffect, npcParaIntercambio.condicionFisica) : null;
       jugadorRecibeGolpe = exchange.resultado === 'defensor_contragolpea' || exchange.resultado === 'golpes_mutuos';
       jugadorGolpeEfecto = null;
-      exchangeNarrationBlock = `${npcParaIntercambio.name} se defiende con "${npcDefensa.name}". ${exchangeContextBlock(exchange, characterName, npcParaIntercambio.name)}`;
+      exchangeNarrationBlock = `${npcParaIntercambio.name} se defiende con "${npcDefensa.name}" (${npcDefensa.description}). ${exchangeContextBlock(exchange, characterName, npcParaIntercambio.name)}`;
       combatExchangeRoll = exchange.atacante;
       npcAbilityUsed = { npcName: npcParaIntercambio.name, abilityName: npcDefensa.name, rol: 'defensa' };
+      combatExchangeDisplay = { atacanteEsJugador: true, atacante: exchange.atacante, defensor: exchange.defensor, resultado: exchange.resultado };
+      if (input.selectedAbility) playerAbilityUsed = { ...input.selectedAbility, rol: 'ataque' };
       exchangeHappened = true;
       // El NPC se defendió este intercambio con la habilidad recién elegida — su coste/regen
       // salen de esa misma habilidad, no de haber "estado defendiendo".
@@ -699,6 +743,7 @@ function resolveCombatExchangePhase(input: CombatExchangePhaseInput): CombatExch
           attribute: npcAtaque.attribute,
           effect: npcAtaque.effect,
           abilityName: npcAtaque.name,
+          abilityDescription: npcAtaque.description,
           energyCost: npcAtaque.energyCost,
           energyRegen: npcAtaque.energyRegen,
         };
@@ -716,6 +761,8 @@ function resolveCombatExchangePhase(input: CombatExchangePhaseInput): CombatExch
     exchangeNarrationBlock,
     combatExchangeRoll,
     npcAbilityUsed,
+    combatExchangeDisplay,
+    playerAbilityUsed,
     nextInitiativeRoll,
     exchangeHappened,
     npcEnergiaMax,
@@ -852,8 +899,13 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     // `saveId` en el filtro (auditoría de deuda técnica 2026-08-04, bug real de fuga entre
     // partidas): sin él, un `savedActionId` de OTRA partida seguía resolviendo aquí también.
     savedActionId
-      ? prisma.savedAction.findFirst({ where: { id: savedActionId, saveId }, select: { name: true, effect: true, energyCost: true, energyRegen: true, dualWield: true } })
-      : Promise.resolve<{ name: string; effect: AbilityEffect | null; energyCost: number; energyRegen: number; dualWield: boolean } | null>(null),
+      ? prisma.savedAction.findFirst({
+          where: { id: savedActionId, saveId },
+          select: { name: true, icon: true, description: true, effect: true, energyCost: true, energyRegen: true, dualWield: true },
+        })
+      : Promise.resolve<{ name: string; icon: string; description: string; effect: AbilityEffect | null; energyCost: number; energyRegen: number; dualWield: boolean } | null>(
+          null,
+        ),
     regionLocationId ? prisma.location.findUnique({ where: { id: regionLocationId }, select: { region: true, name: true } }) : Promise.resolve(null),
     // Auditoría de rendimiento 2026-07-28 ("rascar segundos"): si el caller (turn.ts) ya trae el
     // resultado de /turn/classify para esta misma acción, se reutiliza tal cual en vez de repetir
@@ -1071,6 +1123,8 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     exchangeHappened,
     npcNuevaEnergia,
     abilityEffectHint,
+    combatExchangeDisplay,
+    playerAbilityUsed,
   } = resolveCombatExchangePhase({
     combateActivo,
     npcParaIntercambio,
@@ -1085,6 +1139,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     characterName,
     abilityEffect,
     dualWieldBonus,
+    selectedAbility: selectedAbilityData ? { name: selectedAbilityData.name, icon: selectedAbilityData.icon, description: selectedAbilityData.description } : null,
   });
 
   // Bloque de posición (docs/12 § 1.5): en un turno de viaje, la narración recibe la llegada al
@@ -1194,7 +1249,10 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
         .map((c) => {
           const row = populationBySlug.get(c.slug);
           if (!row || row.poblacion <= 0) return null;
-          const regionWeight = (row.distribucion as Record<string, number> | null)?.[activeRegion!] ?? 0;
+          // Bug real jugando en vivo 2026-08-07 (ver stripRegionArticle, population.ts): `distribucion`
+          // se siembra sin artículo, `activeRegion` (Location.region) siempre lo lleva completo —
+          // esta ponderación fallaba en silencio para Llanuras/Margen/Meseta (3 de 5 regiones).
+          const regionWeight = (row.distribucion as Record<string, number> | null)?.[stripRegionArticle(activeRegion!)] ?? 0;
           if (regionWeight <= 0) return null;
           return { slug: c.slug, name: c.name, role: c.role, weight: row.poblacion };
         })
@@ -1395,15 +1453,23 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   // médicos QUE de verdad llevas encima ahora mismo, con su tope de curación real del catálogo —
   // detectMedicalItemUse (itemReference.ts) decide determinista si esta acción usa alguno.
   const medicalItemsInInventory = inventoryRows
-    .map((i) => ({ name: i.name, curaHasta: i.catalogSlug ? (catalogBySlug.get(i.catalogSlug)?.curaHasta ?? null) : null }))
-    .filter((i): i is { name: string; curaHasta: CondicionFisica } => i.curaHasta !== null);
-  const medicalCuraHasta = detectMedicalItemUse(action, medicalItemsInInventory);
+    .map((i) => ({ id: i.id, name: i.name, curaHasta: i.catalogSlug ? (catalogBySlug.get(i.catalogSlug)?.curaHasta ?? null) : null }))
+    .filter((i): i is { id: string; name: string; curaHasta: CondicionFisica } => i.curaHasta !== null);
+  const medicalItemMatch = detectMedicalItemUse(action, medicalItemsInInventory);
+  const medicalCuraHasta = medicalItemMatch?.curaHasta ?? null;
   // Sistema de fatiga (2026-07-29, "los consumibles se pueden usar también para recuperar... la
   // energía") — mismo patrón que medicalItemsInInventory/detectMedicalItemUse de arriba.
   const energyItemsInInventory = inventoryRows
-    .map((i) => ({ name: i.name, curaEnergia: i.catalogSlug ? (catalogBySlug.get(i.catalogSlug)?.curaEnergia ?? null) : null }))
-    .filter((i): i is { name: string; curaEnergia: number } => i.curaEnergia !== null);
-  const energyItemRestoreAmount = detectEnergyItemUse(action, energyItemsInInventory);
+    .map((i) => ({ id: i.id, name: i.name, curaEnergia: i.catalogSlug ? (catalogBySlug.get(i.catalogSlug)?.curaEnergia ?? null) : null }))
+    .filter((i): i is { id: string; name: string; curaEnergia: number } => i.curaEnergia !== null);
+  const energyItemMatch = detectEnergyItemUse(action, energyItemsInInventory);
+  const energyItemRestoreAmount = energyItemMatch?.curaEnergia ?? null;
+  // Bug real jugando en vivo (2026-08-07, "he consumido una ración de comida y no ha desaparecido
+  // del inventario" — también en combate): el efecto mecánico se aplicaba pero la fila de
+  // InventoryItem nunca se tocaba. Consumido de verdad más abajo, DENTRO de la transacción (mismo
+  // criterio anti-carrera que el resto de consumos de este archivo) — un objeto puede aparecer una
+  // sola vez aquí aunque cure Y restaure energía a la vez (p. ej. una ración completa).
+  const consumedItemIds = [...new Set([medicalItemMatch?.id, energyItemMatch?.id].filter((id): id is string => !!id))];
   // Ver `hasFalseItemUse` (narrador.ts) — bug real jugando en vivo (2026-08-01, "descansar no
   // curó, y encima consumió un objeto sin pedirlo"): descansar mientras INCAPACITADO no basta por
   // sí solo (healCeilingFor exige un objeto médico real), pero la narración igualmente describió
@@ -1735,6 +1801,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
           possiblyFalseItemUseNames,
           possiblyResurrectedNpcNames,
           possiblyFalseTravelDestinationNames,
+          gisteraSeHaMarchado,
           onNarrationChunk,
           onNarrationReset,
         });
@@ -2089,7 +2156,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
               catalogSlug: item.catalogSlug,
             },
           });
-          newInventoryItems.push({ ...created, slot: null, equipSlot: item.equipSlot, effectKey: item.effectKey });
+          newInventoryItems.push({ ...created, slot: null, equipSlot: item.equipSlot, effectKey: item.effectKey, tipo: item.tipo });
           createdItemNames.push(created.name);
           actualLootedNames.push(created.name);
         }
@@ -2251,8 +2318,9 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
             catalogSlug: y.itemSlug,
           },
         });
-        // Materia prima cruda (RECURSO) — nunca EQUIPABLE ni ESPECIAL, equipSlot/effectKey siempre null.
-        newInventoryItems.push({ ...created, slot: null, equipSlot: null, effectKey: null });
+        // Materia prima cruda — siempre tipo RECURSO por diseño (nunca EQUIPABLE ni ESPECIAL,
+        // equipSlot/effectKey siempre null; ver comentario del enum ItemTipo).
+        newInventoryItems.push({ ...created, slot: null, equipSlot: null, effectKey: null, tipo: 'RECURSO' });
         createdItemNames.push(created.name);
       }
       // Bug real (auditoría 2026-07-28): sin esto, el mismo cadáver de fauna ya derrotada se podía
@@ -2288,8 +2356,9 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
           origin: 'producción',
         },
       });
-      // Producción de acción por tiempo — nunca EQUIPABLE ni ESPECIAL, equipSlot/effectKey siempre null.
-      newInventoryItems.push({ ...created, slot: null, equipSlot: null, effectKey: null });
+      // Producción de acción por tiempo — sin catalogSlug (objeto narrativo puro), tipo null igual
+      // que newItem del modelo más abajo; nunca EQUIPABLE ni ESPECIAL, equipSlot/effectKey null.
+      newInventoryItems.push({ ...created, slot: null, equipSlot: null, effectKey: null, tipo: null });
       createdItemNames.push(created.name);
     }
 
@@ -2349,6 +2418,26 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
       select: { id: true, name: true, catalogSlug: true, slot: true },
     });
 
+    // Consumo real de objetos médicos/de energía (bug real jugando en vivo, 2026-08-07: "he
+    // consumido una ración y no ha desaparecido del inventario", también en combate) —
+    // `consumedItemIds` se calculó ANTES de esta transacción; se revalida aquí contra
+    // `freshInventoryRows` (mismo criterio anti-carrera que crafteo/construcción: un turno casi
+    // simultáneo pudo consumir/perder esa misma fila entretanto) y se descuenta 1 unidad real —
+    // borra la fila si era la última, reduce el sufijo de cantidad si quedan más.
+    for (const itemId of consumedItemIds) {
+      const row = freshInventoryRows.find((r) => r.id === itemId);
+      if (!row) continue;
+      const quantity = quantityOf(row.name);
+      if (quantity <= 1) {
+        await tx.inventoryItem.delete({ where: { id: itemId } });
+        removedInventoryItemIds.push(itemId);
+      } else {
+        const newName = `${baseNameOf(row.name)} (${quantity - 1})`;
+        await tx.inventoryItem.update({ where: { id: itemId }, data: { name: newName } });
+        updatedInventoryItems.push({ id: itemId, name: newName });
+      }
+    }
+
     // Crafteo v1: tabulado en CRAFTING_RECIPES (auditoría 2026-07-22 — antes 5 bloques casi
     // idénticos, uno por objeto). Refactor de ingredientes (2026-07-29): ya no es siempre "una
     // fila entera por ingrediente" — un plan por ingrediente (borrar filas + reducir remanente),
@@ -2386,13 +2475,14 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
       });
       // `catalogBySlug` (arriba) solo trae los catalogSlug que el jugador YA tenía en inventario
       // antes de este turno (para comprobar materiales) — un resultado de crafteo recién obtenido
-      // no está garantizado ahí. `equipSlot` se queda en null en ese caso (mismo criterio que
-      // harvest/producción): el frontend lo recibe bien en cuanto recarga GET /saves/:id.
+      // no está garantizado ahí. `equipSlot`/`tipo` se quedan en null en ese caso (mismo criterio
+      // que harvest/producción): el frontend lo recibe bien en cuanto recarga GET /saves/:id.
       newInventoryItems.push({
         ...created,
         slot: null,
         equipSlot: recipe.resultCatalogSlug ? (catalogBySlug.get(recipe.resultCatalogSlug)?.equipSlot ?? null) : null,
         effectKey: recipe.resultCatalogSlug ? (catalogBySlug.get(recipe.resultCatalogSlug)?.effectKey ?? null) : null,
+        tipo: recipe.resultCatalogSlug ? (catalogBySlug.get(recipe.resultCatalogSlug)?.tipo ?? null) : null,
       });
       createdItemNames.push(created.name);
       await awardProfessionXp(recipe.oficio, recipe.tier);
@@ -2465,8 +2555,8 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
       // description sueltos del LLM, sin id real) y se veía obligado a inventarse un id de
       // cliente (`item-${Date.now()}`) que el backend no reconoce, rompiendo equipar ese objeto
       // hasta la siguiente recarga completa. Objeto libre, sin catalogSlug de por medio →
-      // equipSlot/effectKey siempre null, mismo criterio que el resto de creaciones sin catálogo.
-      newInventoryItems.push({ ...created, slot: null, equipSlot: null, effectKey: null });
+      // equipSlot/effectKey/tipo siempre null, mismo criterio que el resto de creaciones sin catálogo.
+      newInventoryItems.push({ ...created, slot: null, equipSlot: null, effectKey: null, tipo: null });
     }
     if (narration.newCompanion) {
       // Tope real de slots (2026-08-04, ver el aviso de contextBlocks más arriba) — reconsultado
@@ -2841,8 +2931,21 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
       });
     }
 
+    // Bug real jugando en vivo (revisión de partida 2026-08-08, "+525 XP" en un simple golpe de
+    // combate, dos veces en dos partidas distintas, siempre justo al subir de nivel): `narration.hito`
+    // viene de `JSON.parse(text) as NarrationResult` — una ASERCIÓN de tipo, nunca una validación
+    // real en tiempo de ejecución. El propio comentario de `narrador.ts` § HitoTipo ya dice
+    // "'capitulo' no está aquí porque ese lo emite el backend, no el modelo" — pero nada lo
+    // impedía de verdad: si el modelo alucinaba igualmente la cadena "capitulo" en el JSON, este
+    // `if` la aceptaba sin más, y `xpForHitos` se queda con el valor MÁS ALTO de todos los hitos de
+    // este turno (500, el tope absoluto del juego) — un simple "ataco a un buitre" podía
+    // autoconcederse la recompensa reservada para cerrar un capítulo entero de la historia.
+    // Lista blanca explícita: solo los 3 tipos que de verdad puede proponer el modelo (ver
+    // `narrador.ts` § HitoTipo) — "capitulo" solo puede entrar más abajo, vía `chapterDue`
+    // (`claimChapterIfDue`, determinista, nunca decidido por el modelo).
+    const HITOS_QUE_PUEDE_PROPONER_EL_MODELO: HitoTipo[] = ['descubrimiento', 'objetivo_menor', 'objetivo_mayor'];
     const hitos: HitoTipo[] = [];
-    if (narration.hito) hitos.push(narration.hito);
+    if (narration.hito && HITOS_QUE_PUEDE_PROPONER_EL_MODELO.includes(narration.hito)) hitos.push(narration.hito);
     if (isFirstVisitToDestination) hitos.push('descubrimiento');
     if (chapterDue) hitos.push('capitulo');
 
@@ -3447,6 +3550,8 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     companionCreated,
     esperandoDefensaJugador: !!nuevoPendingNpcAttack,
     npcAbilityUsed,
+    combatExchangeDisplay,
+    playerAbilityUsed,
     nextInitiativeRoll,
     territories,
     buildings,

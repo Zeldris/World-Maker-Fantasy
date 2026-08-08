@@ -34,4 +34,32 @@ describe('generateSurroundings', () => {
     const { description } = generateSurroundings({ region: 'Región inventada que no existe', timeLabel: 'Día 1, 09:30' });
     expect(description.length).toBeGreaterThan(0);
   });
+
+  // Bug real jugando en vivo (revisión de partida 2026-08-08): con solo 2 frases por franja y sin
+  // memoria de la última mostrada, repetir 3 de cada 4 veces era simplemente lo esperable
+  // estadísticamente — "El sol de la mañana pega bajo y de lado..." salió así en la misma sesión.
+  it('reintenta si la tirada repite literalmente la descripción anterior, y sí la deja repetir si es la única posible', () => {
+    const first = generateSurroundings({ region: 'Las Llanuras del Viento Rojo', timeLabel: 'Día 1, 09:30' }, () => 0);
+
+    let calls = 0;
+    const randomQueReintenta = () => {
+      calls++;
+      // Primer intento: mismos valores que `first` (0), para simular que el azar "quiso" repetir
+      // — el propio `generateSurroundings` debe notar la coincidencia y volver a tirar con un
+      // valor distinto en el segundo intento.
+      return calls <= 4 ? 0 : 0.9;
+    };
+    const second = generateSurroundings(
+      { region: 'Las Llanuras del Viento Rojo', timeLabel: 'Día 1, 09:30' },
+      randomQueReintenta,
+      first.description,
+    );
+    expect(second.description).not.toBe(first.description);
+
+    // Sin alternativa real (banca de una sola frase), nunca debe bucle infinito ni fallar — se
+    // acepta la única frase posible aunque coincida con la anterior.
+    const soloUnaFrase = generateSurroundings({ region: null, timeLabel: 'Día 1, 09:30' }, () => 0);
+    const repetida = generateSurroundings({ region: null, timeLabel: 'Día 1, 09:30' }, () => 0, soloUnaFrase.description);
+    expect(repetida.description).toBe(soloUnaFrase.description);
+  });
 });

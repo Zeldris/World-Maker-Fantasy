@@ -1,5 +1,12 @@
 # Roadmap — Tarkor (auditoría, 2026-07-18)
 
+**Actualización (2026-08-07):** el catálogo de Profesiones (único pendiente real que quedaba del
+punto de abajo, aparte del benchmark de `llama3.2` y las líneas pausadas) queda cerrado — ver
+[09-panel-personaje.md](09-panel-personaje.md) § 8 y la memoria del rediseño (recolectoras vs
+creadoras, capacidad de inventario real, `docs/16-poblacion-dinamica.md` § 3.5 para el pop-up de
+recolección). Misma sesión: auditoría de código completa (back+front) con 5 bugs reales
+arreglados y un candado de turno nuevo que cierra dos condiciones de carrera del motor de turnos.
+
 **Actualización (2026-08-03):** población dinámica implementada — ver
 [16-poblacion-dinamica.md](16-poblacion-dinamica.md). `WorldPopulation` (sembrado desde 2026-07-29,
 nunca leído hasta ahora) ya depleciona de verdad al morir un NPC (fauna o raza, incluidos los NPC

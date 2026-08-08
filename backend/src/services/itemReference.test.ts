@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { detectItemReference, detectEnergyItemUse, detectsOwnedItemQuote } from './itemReference.js';
+import { detectItemReference, detectMedicalItemUse, detectEnergyItemUse, detectsOwnedItemQuote } from './itemReference.js';
 
 describe('detectItemReference', () => {
   it('detecta un objeto de la lista curada que el personaje NO tiene', () => {
@@ -33,12 +33,12 @@ describe('detectItemReference', () => {
 
 describe('detectEnergyItemUse', () => {
   const ENERGY_ITEMS = [
-    { name: 'Ración de carne ahumada', curaEnergia: 30 },
-    { name: 'Cataplasma de salvia del polvo', curaEnergia: 10 },
+    { id: 'item-racion', name: 'Ración de carne ahumada', curaEnergia: 30 },
+    { id: 'item-cataplasma', name: 'Cataplasma de salvia del polvo', curaEnergia: 10 },
   ];
 
-  it('detecta el objeto real del inventario nombrado en la acción', () => {
-    expect(detectEnergyItemUse('Como mi ración de carne ahumada', ENERGY_ITEMS)).toBe(30);
+  it('detecta el objeto real del inventario nombrado en la acción, con su id real', () => {
+    expect(detectEnergyItemUse('Como mi ración de carne ahumada', ENERGY_ITEMS)).toEqual({ id: 'item-racion', curaEnergia: 30 });
   });
 
   it('sin ningún objeto de energía nombrado, devuelve null', () => {
@@ -46,7 +46,35 @@ describe('detectEnergyItemUse', () => {
   });
 
   it('si coinciden varios, se queda con el que más restaura', () => {
-    expect(detectEnergyItemUse('Uso mi ración de carne ahumada y mi cataplasma de salvia del polvo', ENERGY_ITEMS)).toBe(30);
+    expect(detectEnergyItemUse('Uso mi ración de carne ahumada y mi cataplasma de salvia del polvo', ENERGY_ITEMS)).toEqual({
+      id: 'item-racion',
+      curaEnergia: 30,
+    });
+  });
+});
+
+describe('detectMedicalItemUse', () => {
+  // Bug real jugando en vivo (2026-08-07, "he consumido una ración y no ha desaparecido del
+  // inventario"): sin devolver el `id` real de la fila que matcheó, nada podía consumirla de
+  // verdad — el efecto de curación se aplicaba pero el objeto se quedaba para siempre.
+  const MEDICAL_ITEMS = [
+    { id: 'item-cataplasma', name: 'Cataplasma de salvia del polvo', curaHasta: 'HERIDO' as const },
+    { id: 'item-elixir', name: 'Elixir de sanación mayor', curaHasta: 'ILESO' as const },
+  ];
+
+  it('detecta el objeto médico real nombrado en la acción, con su id real', () => {
+    expect(detectMedicalItemUse('Uso mi cataplasma de salvia del polvo', MEDICAL_ITEMS)).toEqual({ id: 'item-cataplasma', curaHasta: 'HERIDO' });
+  });
+
+  it('sin ningún objeto médico nombrado, devuelve null', () => {
+    expect(detectMedicalItemUse('Descanso un momento', MEDICAL_ITEMS)).toBeNull();
+  });
+
+  it('si coinciden varios, se queda con el de mayor tope de curación (ILESO antes que HERIDO)', () => {
+    expect(detectMedicalItemUse('Uso mi cataplasma de salvia del polvo y mi elixir de sanación mayor', MEDICAL_ITEMS)).toEqual({
+      id: 'item-elixir',
+      curaHasta: 'ILESO',
+    });
   });
 });
 

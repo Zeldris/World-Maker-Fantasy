@@ -1206,6 +1206,7 @@ export const npcs: NpcInput[] = [
     kind: 'PLANTILLA',
     aliases: ['guerrero orco rezagado'],
     faction: null,
+    genero: 'M', // Bio explícita en masculino ("Orco corpulento") — misma auditoría de género, 2026-08-08.
     role: 'Guerrero sin clan, separado de los suyos',
     articulo: 'el',
     level: 2,
@@ -1270,6 +1271,7 @@ export const npcs: NpcInput[] = [
     kind: 'PRINCIPAL',
     aliases: ['torgash', "kort'ikar torgash"],
     faction: 'Clan Serhu',
+    genero: 'M', // Bio explícita en masculino ("Orco del Clan Serhu") — misma auditoría de género, 2026-08-08.
     role: "Kort'ikar del Clan Serhu",
     level: 10,
     attributes: { fuerza: 20, destreza: 12, constitucion: 22, inteligencia: 12, voluntad: 22, carisma: 12, arcano: 6 },
@@ -1298,6 +1300,7 @@ export const npcs: NpcInput[] = [
     kind: 'PLANTILLA',
     aliases: ['mercader', 'mercader de paso', 'comerciante', 'un mercader'],
     faction: null,
+    genero: 'M', // Bio explícita en masculino ("Orco sin clan") — misma auditoría de género, 2026-08-08.
     role: 'Comerciante itinerante',
     articulo: 'el',
     level: 1,
@@ -1378,6 +1381,11 @@ export const npcs: NpcInput[] = [
     kind: 'PRINCIPAL',
     aliases: ['orco enfurecido'],
     faction: null,
+    // Bug real jugando en vivo (revisión de partida 2026-08-08): "se gira hacia la orca
+    // enfurecida... pero el Orco Enfurecido ya está a menos de diez pasos" — mismo género
+    // mezclado en la misma frase que ya se arregló para Gistera Koh (ver su comentario), nunca
+    // propagado al resto del roster. Bio explícita en masculino ("él mismo", "orco").
+    genero: 'M',
     role: "Uno de los guerreros que mataron a Uhuld Koh por encargo Goirnte; persigue a Gistera Koh sin que sus compañeros lo sepan",
     articulo: 'el',
     // Rebalanceo (2026-07-29, "el Orco Enfurecido... debería ser relativamente fácil ganar... no
@@ -1479,6 +1487,7 @@ export const npcs: NpcInput[] = [
     kind: 'PRINCIPAL',
     aliases: ['ulkha', "terk'ikar ulkha", 'la terk\'ikar', 'jefa del clan serhu', 'terk\'ikar del clan serhu'],
     faction: 'Clan Serhu',
+    genero: 'F', // Bio explícita en femenino ("Orca del Clan Serhu") — misma auditoría de género, 2026-08-08.
     role: "Terk'ikar del Clan Serhu",
     level: 6,
     attributes: { fuerza: 9, destreza: 8, constitucion: 9, inteligencia: 14, voluntad: 16, carisma: 15, arcano: 8 },
@@ -1511,6 +1520,7 @@ export const npcs: NpcInput[] = [
     kind: 'PRINCIPAL',
     aliases: ['yovenne tal', 'archimagistrada yovenne tal', 'archimagistrada tal'],
     faction: 'Concordia de Hierro (facción moderada)',
+    genero: 'F', // Título ya en femenino ("Archimagistrada", no "Archimagistrado") — misma auditoría de género, 2026-08-08.
     role: 'Archimagistrada de la facción moderada Goirnte',
     level: 5,
     attributes: { fuerza: 6, destreza: 7, constitucion: 6, inteligencia: 15, voluntad: 15, carisma: 14, arcano: 3 },
@@ -1577,6 +1587,7 @@ export const npcs: NpcInput[] = [
     kind: 'PRINCIPAL',
     aliases: ['hagar'],
     faction: 'Clan Helsig',
+    genero: 'M', // Bio explícita en masculino ("Orco del Clan Helsig") — misma auditoría de género, 2026-08-08.
     role: 'Minero de hielo sílice, amigo de infancia de Gorhorn',
     level: 2,
     attributes: { fuerza: 15, destreza: 8, constitucion: 13, inteligencia: 8, voluntad: 12, carisma: 11, arcano: 9 },

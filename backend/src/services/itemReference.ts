@@ -60,11 +60,28 @@ export function missingItemBlockFor(check: ItemReferenceCheck): string {
 /// de mayor tope de curación (ILESO > HERIDO) — usar el mejor que de verdad nombró.
 const CURA_HASTA_ORDER: CondicionFisica[] = ['ILESO', 'HERIDO'];
 
-export function detectMedicalItemUse(action: string, medicalItems: { name: string; curaHasta: CondicionFisica }[]): CondicionFisica | null {
+/// Bug real jugando en vivo (2026-08-07, "he consumido una ración de comida y no ha desaparecido
+/// del inventario" — pasaba también en combate): el efecto mecánico (curar/restaurar energía) SÍ
+/// se aplicaba, pero ningún sitio sabía QUÉ fila de InventoryItem consumir para borrarla/reducirla
+/// — `detectMedicalItemUse`/`detectEnergyItemUse` solo devolvían el valor derivado (curaHasta/
+/// curaEnergia), nunca qué objeto concreto lo produjo. Ahora devuelven también el `id` real de la
+/// fila que matcheó, para que turnResolution.ts pueda consumirla de verdad (ver `consumedItemIds`).
+export interface MedicalItemMatch {
+  id: string;
+  curaHasta: CondicionFisica;
+}
+
+export function detectMedicalItemUse(action: string, medicalItems: { id: string; name: string; curaHasta: CondicionFisica }[]): MedicalItemMatch | null {
   const normalized = normalizeText(action);
   const matches = medicalItems.filter((item) => normalized.includes(normalizeText(item.name)));
   if (matches.length === 0) return null;
-  return matches.map((m) => m.curaHasta).sort((a, b) => CURA_HASTA_ORDER.indexOf(a) - CURA_HASTA_ORDER.indexOf(b))[0];
+  const best = matches.sort((a, b) => CURA_HASTA_ORDER.indexOf(a.curaHasta) - CURA_HASTA_ORDER.indexOf(b.curaHasta))[0];
+  return { id: best.id, curaHasta: best.curaHasta };
+}
+
+export interface EnergyItemMatch {
+  id: string;
+  curaEnergia: number;
 }
 
 /// Detecta si la acción usa de verdad un objeto que restaura energía (2026-07-29, sistema de
@@ -72,11 +89,12 @@ export function detectMedicalItemUse(action: string, medicalItems: { name: strin
 /// inventario, nunca un sustantivo genérico). Si varios coinciden, se queda con el que más
 /// restaura — a diferencia de curaHasta (un enum con orden fijo), curaEnergia ya es un número, así
 /// que "mejor" es simplemente "más alto".
-export function detectEnergyItemUse(action: string, energyItems: { name: string; curaEnergia: number }[]): number | null {
+export function detectEnergyItemUse(action: string, energyItems: { id: string; name: string; curaEnergia: number }[]): EnergyItemMatch | null {
   const normalized = normalizeText(action);
   const matches = energyItems.filter((item) => normalized.includes(normalizeText(item.name)));
   if (matches.length === 0) return null;
-  return Math.max(...matches.map((m) => m.curaEnergia));
+  const best = matches.sort((a, b) => b.curaEnergia - a.curaEnergia)[0];
+  return { id: best.id, curaEnergia: best.curaEnergia };
 }
 
 /// Detecta si la acción cita, entre comillas simples, el nombre EXACTO de un objeto que el

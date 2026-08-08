@@ -163,6 +163,12 @@ interface TurnContext {
   /// inventar una llegada). Vacío = no aplica este turno (viaje resuelto de verdad, un solo
   /// destino, o esta acción no era movimiento vago).
   possiblyFalseTravelDestinationNames?: string[];
+  /// Ver `hasGisteraReencuentroSinNombrar` más abajo — true cuando Gistera Koh ya se marchó para
+  /// siempre (mismo cálculo que excluye su slug de `npcsInScene`, turnResolution.ts). Bug real
+  /// jugando en vivo, visto ya varias veces: el modelo la reintroduce SIN nombrarla ("una orca
+  /// marcada del Clan Serhu, sin nombre revelado") — la exclusión por slug no puede cazar esto
+  /// porque nunca la nombra.
+  gisteraSeHaMarchado?: boolean;
 }
 
 interface ClassifyContext {
@@ -436,7 +442,7 @@ export function buildNarrationPrompt(ctx: TurnContext & { roll?: RollResult }): 
   // acción) va al final. Nota 2026-07-22: medido en vivo que el prefill de un prompt típico
   // (~900 tokens) tarda ~0.3s en este hardware — perder algo de caché de prefijo por variar
   // `lengthGuidance` es coste real pero insignificante frente a los 60s+ que domina el decode.
-  const fixedInstructions = `${lengthGuidance} NUNCA termines la narración con preguntas retóricas dirigidas al jugador (nada de "¿qué harás?", "¿te arriesgas?", "¿continúas?") ni le ofrezcas explícitamente una lista de opciones a elegir — eso lo decide el jugador con su siguiente acción libre, no el narrador proponiéndoselo. RECORDATORIO DE MUNDO (mundo medieval-fantástico): JAMÁS menciones pólvora, armas de fuego, metal industrial, plástico, electricidad ni ningún objeto o tecnología moderna/anacrónica — ni como ambientación ni como detalle suelto. Si necesitas un olor o peligro genérico, usa algo coherente con el lugar (sudor, sangre, humo de leña, arcilla, azufre volcánico), nunca un cliché de videojuego moderno. No contradigas los hechos ya establecidos sobre el propio personaje (por ejemplo, si va solo, no le des compañeros, seguidores o un grupo propio que no existían antes) ni repitas como si fuera nuevo un lugar o hecho que ya aparece en HECHOS DEL MUNDO. Si la narración revela algo que el personaje ahora sabe o que cambia la situación, añádelo también a "newFacts" como frase corta, para que se recuerde en turnos futuros. Sí puedes improvisar libremente NPCs sin nombre o sucesos menores que no tengan peso en la trama (un viajero anónimo, un ruido, el clima) — pero si a cualquier NPC (con nombre o improvisado) le describes un arma, armadura o material, usa solo los ya establecidos en este mundo (hierro, hueso, cuero o piel curtida, madera, hielo sílice, arcilla): nunca inventes un material distinto (nada de bronce, acero, cobre, obsidiana ni ningún otro que no hayas visto ya en HECHOS DEL MUNDO). Solo si la acción resulta de verdad en que el personaje consigue o fabrica un objeto físico duradero (no algo que se consume o desaparece en la escena), rellena "newItem" con su nombre y descripción — en caso contrario déjalo en null; esto pasará en la minoría de turnos, no en cada uno. Igual para "newCompanion": solo si la acción resulta de verdad en ganar un aliado o compañero de verdad (nunca lo inventes de la nada ni contradigas que el personaje va solo), rellénalo con nombre/rol/notas; si no, déjalo en null.
+  const fixedInstructions = `${lengthGuidance} NUNCA termines la narración con preguntas retóricas dirigidas al jugador (nada de "¿qué harás?", "¿te arriesgas?", "¿continúas?") ni le ofrezcas explícitamente una lista de opciones a elegir — eso lo decide el jugador con su siguiente acción libre, no el narrador proponiéndoselo. RECORDATORIO DE MUNDO (mundo medieval-fantástico): JAMÁS menciones pólvora, armas de fuego, metal industrial, plástico, electricidad ni ningún objeto o tecnología moderna/anacrónica — ni como ambientación ni como detalle suelto. Si necesitas un olor o peligro genérico, usa algo coherente con el lugar (sudor, sangre, humo de leña, arcilla, azufre volcánico), nunca un cliché de videojuego moderno. No contradigas los hechos ya establecidos sobre el propio personaje (por ejemplo, si va solo, no le des compañeros, seguidores o un grupo propio que no existían antes) ni repitas como si fuera nuevo un lugar o hecho que ya aparece en HECHOS DEL MUNDO. Si la narración revela algo que el personaje ahora sabe o que cambia la situación, añádelo también a "newFacts" como frase corta, para que se recuerde en turnos futuros. Sí puedes improvisar libremente NPCs sin nombre o sucesos menores que no tengan peso en la trama (un viajero anónimo, un ruido, el clima) — pero si a cualquier NPC (con nombre o improvisado) le describes un arma, armadura o material, usa solo los ya establecidos en este mundo (hierro, hueso, cuero o piel curtida, madera, hielo sílice, arcilla): nunca inventes un material distinto (nada de bronce, acero, cobre, obsidiana ni ningún otro que no hayas visto ya en HECHOS DEL MUNDO). Igual con cualquier animal o criatura que aparezca (con nombre o improvisado): usa solo fauna ya establecida en este mundo (la que se te da como pista de posible encuentro, la ya vista en HECHOS DEL MUNDO, o el bestiario propio de este lugar) — nunca un animal mundano del mundo real que no exista aquí (zorro, ciervo, conejo, lobo, oso...). Solo si la acción resulta de verdad en que el personaje consigue o fabrica un objeto físico duradero (no algo que se consume o desaparece en la escena), rellena "newItem" con su nombre y descripción — en caso contrario déjalo en null; esto pasará en la minoría de turnos, no en cada uno. Igual para "newCompanion": solo si la acción resulta de verdad en ganar un aliado o compañero de verdad (nunca lo inventes de la nada ni contradigas que el personaje va solo), rellénalo con nombre/rol/notas; si no, déjalo en null.
 
 Progresión: si este turno logra algo significativo que no sea solo superar la tirada (un descubrimiento importante, cerrar un objetivo menor, cerrar un objetivo mayor/misión larga), rellena "hito" con "descubrimiento", "objetivo_menor" u "objetivo_mayor" — en caso contrario, null. Esto es poco frecuente, no pasa en cada turno.
 
@@ -719,6 +725,12 @@ export async function narrateAction(ctx: TurnContext & { roll?: RollResult }): P
         lastResult = parsed;
         continue;
       }
+      if (hasGisteraReencuentroSinNombrar(parsed.narration, ctx.gisteraSeHaMarchado)) {
+        console.warn(`[narrador] intento ${idx + 1}/3 descartado por reintroducir a Gistera Koh sin nombrarla pese a haberse marchado para siempre, reintentando`);
+        if (idx === 0) ctx.onNarrationReset?.();
+        lastResult = parsed;
+        continue;
+      }
       if (hasFalseTravelClaim(parsed, ctx.possiblyFalseTravelDestinationNames)) {
         console.warn(`[narrador] intento ${idx + 1}/3 descartado por narrar una llegada a un destino sin resolver mecánicamente (2+ salidas posibles), reintentando`);
         if (idx === 0) ctx.onNarrationReset?.();
@@ -867,8 +879,13 @@ export function isTooSimilarToLast(narration: string, lastNarrationText?: string
 // "pero este esquiva fácilmente, dejando una línea de sangre fría donde la hoja rozó su
 // armadura" — dice fallo (esquiva) e impacto (sangre) en la MISMA frase; el hueco era de
 // vocabulario (la lista no cubría esta variante concreta de "hay sangre"), no de lógica.
+// Gerundios añadidos (bug real jugando en vivo, revisión de partida 2026-08-08): "atravesando el
+// cuello del ave" en un turno de "Salgo a cazar y ataco a 'Buitre Cenizo'" (combate recién abierto,
+// sin ningún intercambio mecánico todavía) se coló porque la lista solo cubría las formas en
+// pasado/presente de cada verbo (`atraves[oó]`/`atraviesa`), nunca el gerundio — el mismo hueco
+// existe en potencia para cualquier otro verbo de la lista ("golpeando", "hiriendo", "rebanando").
 const COMBAT_HIT_LEAK_REGEX =
-  /\b(golpe[oó]|impact[oó]|hiri[oó]|hiere|atraves[oó]|atraviesa|reban[oó]|degüell[oa]|hace sangrar|rastro de sangre|l[ií]nea de sangre|sangrando|sangra por)\b/i;
+  /\b(golpe[oó]|golpeando|impact[oó]|impactando|hiri[oó]|hiere|hiriendo|atraves[oó]|atraviesa|atravesando|reban[oó]|rebanando|degüell[oa]|hace sangrar|rastro de sangre|l[ií]nea de sangre|sangrando|sangra por)\b/i;
 
 export function hasFalseCombatHit(narration: string, combatBothMissed?: boolean): boolean {
   if (!combatBothMissed) return false;
@@ -888,8 +905,17 @@ export function hasFalseCombatHit(narration: string, combatBothMissed?: boolean)
 /// (mismos verbos que `COMBAT_HIT_LEAK_REGEX`) más las variantes propias de este caso concreto
 /// ("acierta", "huye cojeando/malherido") — el riesgo real es un reintento de más, no dejar pasar la
 /// alucinación.
+// Ampliado (bug real jugando en vivo, 2026-08-08, habilidad "Cazar" nueva ese mismo día): "Salgo a
+// cazar y ataco a 'Corretolvas'" abrió combate real (Corretolvas ILESO en la base de datos, el
+// jugador todavía sin dar un solo golpe), pero la narración describió una caza ya cerrada —
+// "lanzando una astuta trampa que atrapa al Corretolva... con el Corretolva ya inmovilizado,
+// decide registrar su cuerpo". El vocabulario de captura/inmovilización es una variante nueva del
+// mismo hueco (narrar un desenlace que el propio turno todavía no ha decidido): ni golpe ni huida,
+// pero igual de "ya resuelto sin intercambio mecánico" — mismo criterio que el resto de esta lista.
+// Mismo hueco de gerundios que COMBAT_HIT_LEAK_REGEX (bug real jugando en vivo, revisión de
+// partida 2026-08-08) — "atravesando" en un turno de caza sin combate mecánico todavía.
 const PREMATURE_COMBAT_REGEX =
-  /\b(golpe[oó]|impact[oó]|hiri[oó]|hiere|atraves[oó]|atraviesa|reban[oó]|degüell[oa]|acierta|huye (cojeando|malherid[oa]|herid[oa])|cojeando)\b/i;
+  /\b(golpe[oó]|golpeando|impact[oó]|impactando|hiri[oó]|hiere|hiriendo|atraves[oó]|atraviesa|atravesando|reban[oó]|rebanando|degüell[oa]|acierta|huye (cojeando|malherid[oa]|herid[oa])|cojeando|atrap[oa]|atrapad[oa]|inmoviliz[oa]|inmovilizad[oa]|captur[oa]|capturad[oa])\b/i;
 
 export function hasPrematureCombatResolution(narration: string, combatNotYetResolved?: boolean): boolean {
   if (!combatNotYetResolved) return false;
@@ -943,6 +969,28 @@ export function hasResurrectedDeadNpc(narration: string, possiblyResurrectedNpcN
       const normalizedSentence = normalizeText(sentence);
       return RESURRECTION_LEAK_REGEX.test(normalizedSentence) && normalizedNames.some((name) => normalizedSentence.includes(name));
     });
+}
+
+/// Narración-vs-mecánica, variante de `hasResurrectedDeadNpc` (bug real jugando en vivo, visto ya
+/// tres veces en tres partidas/sesiones distintas): Gistera Koh se marcha para siempre nada más
+/// aceptar su misión ("ya no está en escena, no volverá a aparecer", ver `gisteraSeHaMarchado`
+/// en turnResolution.ts, que ya la excluye de `npcsInScene` por slug) — pero el modelo la
+/// reintroduce sin nombrarla NUNCA, reciclando su propia intro casi textual ("una orca marcada del
+/// Clan Serhu, sin nombre revelado... algo la persigue", "jadeante"/"persigue su silueta"...). La
+/// exclusión por slug no puede cazar esto porque el texto nunca dice "Gistera Koh".
+///
+/// Se exige la mención del clan Y vocabulario de persecución/huida A LA VEZ (no cada uno por
+/// separado) — Torgash/Ulkha (también "del Clan Serhu", pero SIEMPRE nombrados) podrían aparecer
+/// legítimamente en escena más adelante sin estar huyendo de nada; exigir las dos señales juntas
+/// evita ese falso positivo mientras sigue cazando el patrón real (confirmado en las 3 apariciones
+/// reales: siempre persecución/huida, nunca una mención neutra del clan).
+const GISTERA_CLAN_MENTION_REGEX = /orca\s+(?:marcada\s+)?(?:del\s+clan\s+)?serhu/i;
+const GISTERA_PERSECUCION_REGEX = /persigu\w*|persecucion\w*|jadea\w*|sin aliento|huy[eo]|huyendo|acecha\w*/i;
+
+export function hasGisteraReencuentroSinNombrar(narration: string, gisteraSeHaMarchado?: boolean): boolean {
+  if (!gisteraSeHaMarchado) return false;
+  const normalized = normalizeText(narration);
+  return GISTERA_CLAN_MENTION_REGEX.test(normalized) && GISTERA_PERSECUCION_REGEX.test(normalized);
 }
 
 /// Narración-vs-mecánica, mismo patrón que `hasFalseItemUse`/`hasResurrectedDeadNpc` (bug real

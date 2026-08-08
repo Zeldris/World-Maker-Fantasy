@@ -2,6 +2,7 @@ import { prisma } from '../lib/prisma.js';
 import type { AttributeBlock } from './dice.js';
 import { minutosConDestreza, bandaForMinutos, type TravelResolution } from './travel.js';
 import { pickAmbientEncounterCandidate, type AmbientEncounterCandidate } from './npcScene.js';
+import { stripRegionArticle } from './population.js';
 
 /// Eventos de viaje interactivos (2026-08-05, petición explícita: "que las esperas entre los
 /// movimientos de zonas sean más dinámicas"). Un viaje "extendida"/"larga" se resolvía siempre de
@@ -91,7 +92,9 @@ export async function pickTravelInterruption(
         const row = populationBySlug.get(npc.slug);
         if (!row) return { slug: npc.slug, name: npc.name, role: npc.role, weight: 1 };
         if (row.poblacion <= 0) return null;
-        const regionWeight = (row.distribucion as Record<string, number> | null)?.[region] ?? 0;
+        // Bug real jugando en vivo 2026-08-07 (ver stripRegionArticle, population.ts): `distribucion`
+        // se siembra sin artículo, `region` (Location.region) siempre lo lleva completo.
+        const regionWeight = (row.distribucion as Record<string, number> | null)?.[stripRegionArticle(region)] ?? 0;
         if (regionWeight <= 0) return null;
         return { slug: npc.slug, name: npc.name, role: npc.role, weight: row.poblacion };
       })

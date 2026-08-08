@@ -1,6 +1,6 @@
 import { prisma } from '../lib/prisma.js';
 import { normalizeText, fuzzyMatchCandidates, fuzzyMatchesAnyStem } from './travel.js';
-import type { NpcKind, CondicionFisica, Temperamento, WeaponCategory, EquipSlot, Prisma, NpcState } from '@prisma/client';
+import type { NpcKind, CondicionFisica, Temperamento, WeaponCategory, EquipSlot, ItemTipo, Prisma, NpcState } from '@prisma/client';
 import type { Attribute, AttributeBlock } from './dice.js';
 
 /// Detección determinista de "NPC en escena" (docs/12-mundo-estructurado.md § 2.5) — sin llamada
@@ -41,6 +41,13 @@ export interface NpcItemInScene {
   /// schema.prisma), decide qué habilidad de ataque/defensa genera este objeto. Null en objetos
   /// que no son arma/escudo.
   tipoArma: WeaponCategory | null;
+  /// Categorización mecánica real para agrupar el Inventario (bug real jugando en vivo,
+  /// 2026-08-07: mismo patrón exacto que equipSlot/effectKey de arriba, pero olvidado en los dos
+  /// arreglos anteriores — un objeto recién saqueado se veía "sin categorizar" hasta recargar la
+  /// partida entera porque `InventoryItem` no guarda `tipo`, se calcula al vuelo en `detail.ts`
+  /// vía join con `ItemCatalog`). Se copia al InventoryItem real si se saquea, ver
+  /// `NewInventoryItemInfo.tipo` (turnResolution.ts).
+  tipo: ItemTipo;
 }
 
 /// Habilidad racial de fauna, tal cual vive en `Npc.habilidadesRaciales` (worldCatalog.ts) — ver
@@ -136,6 +143,7 @@ export function buildNpcInScene(npc: NpcWithItems, state: NpcState | undefined):
       effectKey: i.item.effectKey,
       category: i.item.category,
       tipoArma: i.item.tipoArma,
+      tipo: i.item.tipo,
     })),
     attributes: npc.attributes as NpcInScene['attributes'],
     raza: npc.raza,
@@ -159,9 +167,23 @@ export function buildNpcInScene(npc: NpcWithItems, state: NpcState | undefined):
 //   de hijackear un intercambio de combate real contra él en vez del enemigo de verdad.
 // - "remato"~"rebano" (Múrgol, distancia 2: m→b, t→n) — "remato"/"remata" es el verbo fijo de
 //   CUALQUIER decapitar/rematar del juego, así que esta colisión se repite siempre que se remata.
+// - "hablar"~"hagar" (Hagar otra vez, distancia 2: b→g, l→a — revisión de partida 2026-08-08):
+//   el propio bio de catálogo de Orco Enfurecido ya usa "sin intentar hablar", así que esta
+//   colisión concreta podía dispararse desde la primerísima escena de cualquier partida nueva.
+//   Confirmado con NpcState real: Hagar quedó con `energia`/`condicionFisica` tocados por un
+//   intercambio que en realidad iba contra el Orco Enfurecido.
 // Si se añade un NPC nuevo cuyo alias corto choque con una palabra de uso normal, añadirla aquí
 // en vez de tocar la tolerancia a erratas en general (sigue haciendo falta para erratas reales).
-const NPC_ALIAS_FUZZY_EXCLUSIONS = new Set(['lugar', 'remato', 'remata', 'rematar', 'remate', 'rematan', 'rematamos']);
+const NPC_ALIAS_FUZZY_EXCLUSIONS = new Set([
+  'lugar',
+  'remato',
+  'remata',
+  'rematar',
+  'remate',
+  'rematan',
+  'rematamos',
+  'hablar',
+]);
 
 /// Puro: dado un texto y una lista de NPCs con sus aliases, devuelve los ids que matchean.
 /// Exportado sin envolver en la consulta a Prisma para poder testearlo aparte, como travel.ts.

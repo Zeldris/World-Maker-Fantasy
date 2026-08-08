@@ -54,6 +54,24 @@ describe('npcCombatAbilitiesFor', () => {
     const abilities = npcCombatAbilitiesFor(npc, []);
     expect(abilities.map((a) => a.name)).toEqual(['Ataque base', 'Lana Espesa', 'Esquivar', 'Defenderse']);
   });
+
+  // Bug real jugando en vivo (revisión de partida 2026-08-08): un Múrgol sin arma (fauna, solo
+  // `ataqueNatural`) se narró como "el orco lanudo" dando "zarpazos" — el Narrador solo recibía el
+  // NOMBRE de la habilidad ("Ataque base", siempre igual), nunca su descripción real
+  // ("Topetazo torpe..."), así que no tenía ninguna pista de cómo ataca de verdad esta especie.
+  it('sin arma, el Ataque base lleva la descripción real de ataqueNatural (no se pierde)', () => {
+    const npc: NpcForCombatAbilities = {
+      level: 1,
+      attributes: ATTRS,
+      raza: null,
+      clase: null,
+      ataqueNatural: 'Topetazo torpe con su cornamenta ramificada, casi siempre sin intención real de dañar.',
+      habilidadesRaciales: [],
+    };
+    const abilities = npcCombatAbilitiesFor(npc, []);
+    const ataqueBase = abilities.find((a) => a.name === 'Ataque base')!;
+    expect(ataqueBase.description).toBe('Topetazo torpe con su cornamenta ramificada, casi siempre sin intención real de dañar.');
+  });
 });
 
 describe('chooseNpcAbility', () => {
@@ -73,9 +91,9 @@ describe('chooseNpcAbility', () => {
 
   it('un roster con una única habilidad de ataque real + Esquivar/Defenderse: atacar siempre elige la de ataque, nunca Esquivar/Defenderse aunque el random las señale', () => {
     const roster: NpcCombatAbility[] = [
-      { name: 'Zarpazo', attribute: 'fuerza', effect: null, energyCost: 0, energyRegen: 0 },
-      { name: 'Esquivar', attribute: 'destreza', effect: 'AGUANTE', energyCost: 0, energyRegen: 5 },
-      { name: 'Defenderse', attribute: 'constitucion', effect: 'AGUANTE', energyCost: 0, energyRegen: 10 },
+      { name: 'Zarpazo', description: 'Un zarpazo rápido.', attribute: 'fuerza', effect: null, energyCost: 0, energyRegen: 0 },
+      { name: 'Esquivar', description: 'Se aparta del golpe confiando solo en sus reflejos.', attribute: 'destreza', effect: 'AGUANTE', energyCost: 0, energyRegen: 5 },
+      { name: 'Defenderse', description: 'Se planta y aguanta el golpe con pura resistencia física.', attribute: 'constitucion', effect: 'AGUANTE', energyCost: 0, energyRegen: 10 },
     ];
     for (const r of [0, 0.5, 0.99]) {
       expect(chooseNpcAbility(roster, 'ataque', 999, () => r)).toEqual(roster[0]);
@@ -97,7 +115,9 @@ describe('chooseNpcAbility', () => {
     // son parte fija del roster real, SIEMPRE hay una AGUANTE — este caso ya no se puede dar en
     // la práctica, pero `chooseNpcAbility` en sí debe seguir cubriendo el hueco si algún día un
     // roster viniera sin ninguna.
-    const soloAtaque: NpcCombatAbility[] = [{ name: 'Ataque base', attribute: 'fuerza', effect: null, energyCost: 0, energyRegen: 0 }];
+    const soloAtaque: NpcCombatAbility[] = [
+      { name: 'Ataque base', description: 'Golpe improvisado, cuerpo a cuerpo, sin arma ni ventaja natural.', attribute: 'fuerza', effect: null, energyCost: 0, energyRegen: 0 },
+    ];
     expect(chooseNpcAbility(soloAtaque, 'defensa', 999, () => 0.1)).toEqual(soloAtaque[0]);
   });
 });
@@ -111,7 +131,14 @@ describe('chooseNpcAbility — sistema de fatiga simétrico (2026-07-30)', () =>
   it('rediseño 2026-07-31: sin energía ni para el propio Ataque base (cuesta 5), atacando sigue eligiendo una de ataque real — nunca Esquivar/Defenderse aunque sean las únicas afrontables (mismo bug ya arreglado el 2026-07-31, ahora también en este caso límite)', () => {
     const result = chooseNpcAbility(abilities, 'ataque', 0, () => 0);
     expect(result.effect).not.toBe('AGUANTE');
-    expect(result).toEqual({ name: 'Ataque base', attribute: expect.any(String), effect: null, energyCost: ENERGY_COST_ATAQUE_BASICO, energyRegen: 0 });
+    expect(result).toEqual({
+      name: 'Ataque base',
+      description: expect.any(String),
+      attribute: expect.any(String),
+      effect: null,
+      energyCost: ENERGY_COST_ATAQUE_BASICO,
+      energyRegen: 0,
+    });
   });
 
   it('descarta las habilidades de coste mayor al disponible, aunque el random las habría elegido', () => {
