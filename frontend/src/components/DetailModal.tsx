@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { EquipSlot, InventoryItemInfo, SavedActionInfo } from '../types'
 import { statBonusLabels } from '../lib/dice'
+import { itemIcon } from '../lib/enciclopediaTargets'
 import {
   resolveImageUrl,
   type EnciclopediaImagePrompts,
@@ -125,8 +126,11 @@ export function DetailModal({ target, onClose, onUnequip, onEquip, onSaveAbility
       >
         {target.kind === 'item' && (
           <>
+            {/* Bug real jugando en vivo (2026-08-07): mismo fallo que InventarioPanel.tsx — un
+                objeto equipado mostraba siempre el icono de espadas cruzadas, sin importar qué
+                fuera de verdad ("Raciones de viaje" equipada salía con icono de arma). */}
             <MediaSlot
-              icon={target.item.tipo === 'ESPECIAL' ? '✨' : target.item.slot ? '⚔️' : '🎒'}
+              icon={target.item.tipo === 'ESPECIAL' ? '✨' : itemIcon(target.item.category ?? '')}
               variant="placeholder"
               imageUrl={resolveImageUrl(target.item.imageUrls?.banner ?? null)}
             />
@@ -271,6 +275,25 @@ export function DetailModal({ target, onClose, onUnequip, onEquip, onSaveAbility
                       )}
                     </div>
                     <p className="mb-2 text-xs leading-relaxed text-wood-400">{target.equipped.description}</p>
+                    {/* Bug real jugando en vivo (2026-08-07, "no salen las stats de lo que llevas
+                        equipado y de lo que puedes equipar"): este modal nunca mostraba
+                        statBonuses, a diferencia de la ficha de un objeto suelto (rama 'item' más
+                        arriba) y de las tarjetas del panel de Inventario. */}
+                    {Object.entries(target.equipped.statBonuses ?? {}).some(([, amount]) => !!amount) && (
+                      <div className="mb-2 flex flex-wrap gap-1.5">
+                        {Object.entries(target.equipped.statBonuses ?? {}).map(
+                          ([attribute, amount]) =>
+                            !!amount && (
+                              <span
+                                key={attribute}
+                                className="rounded-full border border-accent-600/50 bg-accent-500/10 px-2 py-0.5 font-mono text-2xs text-accent-300"
+                              >
+                                +{amount} {statBonusLabels[attribute] ?? attribute}
+                              </span>
+                            ),
+                        )}
+                      </div>
+                    )}
                     {onUnequip && (
                       <button
                         onClick={() => runEquipAction(() => onUnequip(target.equipped!))}
@@ -301,12 +324,31 @@ export function DetailModal({ target, onClose, onUnequip, onEquip, onSaveAbility
                           <TooltipAnchor text={item.description} className="min-w-0 flex-1">
                             <button
                               onClick={() => onEquip && runEquipAction(() => onEquip(item, target.slot))}
-                              className="tactile flex w-full items-center justify-between gap-2 text-left text-sm text-wood-200"
+                              className="tactile flex w-full flex-col items-start gap-1 text-left text-sm text-wood-200"
                             >
-                              <span className="truncate">{item.name}</span>
-                              {!!item.tier && item.tier > 1 && (
-                                <span className="ml-2 shrink-0 rounded-full border border-accent2-600/50 bg-accent2-500/10 px-2 py-0.5 font-mono text-2xs text-accent2-300">
-                                  Nivel {item.tier}
+                              <span className="flex w-full items-center justify-between gap-2">
+                                <span className="truncate">{item.name}</span>
+                                {!!item.tier && item.tier > 1 && (
+                                  <span className="ml-2 shrink-0 rounded-full border border-accent2-600/50 bg-accent2-500/10 px-2 py-0.5 font-mono text-2xs text-accent2-300">
+                                    Nivel {item.tier}
+                                  </span>
+                                )}
+                              </span>
+                              {/* Bug real jugando en vivo (2026-08-07): sin esto no había forma de
+                                  comparar lo puesto contra las opciones antes de equipar. */}
+                              {Object.entries(item.statBonuses ?? {}).some(([, amount]) => !!amount) && (
+                                <span className="flex flex-wrap gap-1">
+                                  {Object.entries(item.statBonuses ?? {}).map(
+                                    ([attribute, amount]) =>
+                                      !!amount && (
+                                        <span
+                                          key={attribute}
+                                          className="rounded-full border border-accent-600/50 bg-accent-500/10 px-1.5 py-0.5 font-mono text-2xs text-accent-300"
+                                        >
+                                          +{amount} {statBonusLabels[attribute] ?? attribute}
+                                        </span>
+                                      ),
+                                  )}
                                 </span>
                               )}
                             </button>

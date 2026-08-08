@@ -118,7 +118,13 @@ function EnemyFicha({
         name: npc.name,
         meta: `${npc.role}${npc.faction ? ` — ${npc.faction}` : ''} · nivel ${npc.level}`,
         bio: npc.bio,
-        imageUrl: resolveImageUrl(npc.imageUrls.banner),
+        // Bug real jugando en vivo (2026-08-08, habilidad "Cazar" nueva): con Corretolvas en
+        // combate, la ficha se quedó sin imagen — `imageUrls.banner` es null cuando la especie
+        // solo tiene subida la variante de sexo (aquí, solo "macho"), mismo hueco ya arreglado en
+        // 2026-07-24 para el banner bajo la narración (`mentionedEntityBanner.ts` §
+        // resolveBannerUrl) pero nunca portado a esta ficha, escrita 4 días después sin el mismo
+        // fallback.
+        imageUrl: resolveImageUrl(npc.variantesSexo?.[0]?.imageUrls.banner ?? npc.imageUrls.banner),
         attributes: npc.attributes,
         abilities: resolveCombatAbilities({ level: npc.level, ataqueBase: npc.ataqueBase, raza: npc.raza, clase: npc.clase }, enciclopedia),
       }
@@ -129,7 +135,7 @@ function EnemyFicha({
         name: fauna.sourceName,
         meta: 'Fauna',
         bio: fauna.description ?? '',
-        imageUrl: resolveImageUrl(fauna.imageUrls.banner),
+        imageUrl: resolveImageUrl(fauna.variantesSexo?.[0]?.imageUrls.banner ?? fauna.imageUrls.banner),
         attributes: fauna.attributes ?? null,
         abilities: resolveCombatAbilities(
           { ataqueBase: fauna.ataqueBase, habilidadesRaciales: fauna.habilidadesRaciales, selfTarget: faunaFloraToDetailTarget(fauna) },
@@ -429,7 +435,13 @@ export function CombatPanel({
               {npcs.map((npc) => {
                 const npcEnciclopedia =
                   enciclopedia?.npcs.find((n) => n.slug === npc.slug) ?? enciclopedia?.faunaFlora.find((f) => f.sourceSlug === npc.slug)
-                const thumbnail = npcEnciclopedia ? resolveImageUrl(npcEnciclopedia.imageUrls.thumbnail ?? npcEnciclopedia.imageUrls.banner) : null
+                // Mismo fallback de variante de sexo que EnemyFicha más arriba (bug real
+                // jugando en vivo, 2026-08-08) — sin esto, esta miniatura también se queda vacía
+                // para cualquier especie sin imagen "neutra" subida.
+                const sexoVariant = npcEnciclopedia?.variantesSexo?.[0]
+                const thumbnail = npcEnciclopedia
+                  ? resolveImageUrl(sexoVariant?.imageUrls.thumbnail ?? sexoVariant?.imageUrls.banner ?? npcEnciclopedia.imageUrls.thumbnail ?? npcEnciclopedia.imageUrls.banner)
+                  : null
                 return (
                   <button
                     key={npc.slug}

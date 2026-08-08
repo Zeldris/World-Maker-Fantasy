@@ -28,7 +28,8 @@ import { combatDifficultyFor } from '../lib/combatDifficulty'
 import { HealthBar } from '../components/HealthBar'
 import { KingdomFoundingModal } from '../components/KingdomFoundingModal'
 import { HarvestSelectionModal } from '../components/HarvestSelectionModal'
-import { inventoryCapacityFor } from '../lib/inventoryCapacity'
+import { HuntSelectionModal } from '../components/HuntSelectionModal'
+import { inventoryCapacityFor, totalInventoryUnits } from '../lib/inventoryCapacity'
 import {
   requestTurnClassify,
   requestTurnNarrate,
@@ -58,6 +59,7 @@ import type {
   Attribute,
   AttributeBlock,
   BuildingInfo,
+  CombatExchangeInfo,
   CompanionInfo,
   CondicionFisica,
   CurrentLocationInfo,
@@ -111,6 +113,7 @@ export function GameView() {
   const [inventory, setInventory] = useState<InventoryItemInfo[]>([])
   // Pop-up de recolección (rediseño de profesiones, 2026-08-07) — null = cerrado.
   const [harvestModal, setHarvestModal] = useState<{ oficio: string; label: string } | null>(null)
+  const [huntModalOpen, setHuntModalOpen] = useState(false)
   const [companions, setCompanions] = useState<CompanionInfo[]>([])
   const [level, setLevel] = useState(1)
   const [xp, setXp] = useState(0)
@@ -438,6 +441,8 @@ export function GameView() {
         newQuestInfo,
         esperandoDefensaJugador,
         npcAbilityUsed,
+        playerAbilityUsed,
+        combatExchangeDisplay,
         nextInitiativeRoll,
         deathCount: updatedDeathCount,
         factionsStatus: updatedFactionsStatus,
@@ -481,6 +486,8 @@ export function GameView() {
         combate,
         esperandoDefensaJugador,
         npcAbilityUsed,
+        playerAbilityUsed,
+        combatExchangeDisplay,
         nextInitiativeRoll,
         newQuestInfo,
       })
@@ -937,8 +944,41 @@ export function GameView() {
       setActivePanel(null)
       return
     }
+    // "Cazar" (revisión de partida 2026-08-08) — mismo patrón que Minar/Talar: abre un pop-up en
+    // vez de mandar `promptText` directo al composer.
+    if (ability.name === 'Cazar') {
+      setHuntModalOpen(true)
+      setActivePanel(null)
+      return
+    }
     composerRef.current?.insertChip({ icon: ability.icon, label: ability.name, description: ability.description, value: ability.promptText })
     setActivePanel(null)
+  }
+
+  // Resolución del pop-up de caza (revisión de partida 2026-08-08): una única presa débil puede
+  // resolverse sin combate (tirada determinista ya hecha en el backend) — se abre directamente el
+  // panel de combate ya resuelto (solo queda saquear), sin pasar por `openCombat()`'s banner "⚔️
+  // Combatir" porque no hay nada que pelear. Cualquier otro caso NO ha tocado la partida todavía:
+  // se manda `actionText` por el turno normal (`handleSubmit`), exactamente como si el jugador lo
+  // hubiera escrito él mismo — la narración real es quien decide cómo empieza el encuentro y quien
+  // abre el combate (decisión explícita de la usuaria, no una apertura silenciosa desde aquí).
+  function handleHuntResolved(
+    result:
+      | {
+          resuelveSinCombate: true
+          combate: { npcs: NpcInSceneInfo[] }
+          logEntry: { id: string; text: string; timeLabel: string; createdAt: string }
+        }
+      | { resuelveSinCombate: false; actionText: string },
+  ) {
+    setHuntModalOpen(false)
+    if (result.resuelveSinCombate) {
+      setCharacterLog((prev) => [...prev, { ...result.logEntry, channel: 'character' }])
+      setCombateIniciado(result.combate)
+      openCombat()
+      return
+    }
+    handleSubmit(result.actionText)
   }
 
   function handleAttachItem(item: InventoryItemInfo) {
@@ -997,6 +1037,8 @@ export function GameView() {
     combate?: { npcs: NpcInSceneInfo[] } | null
     esperandoDefensaJugador: boolean
     npcAbilityUsed: { npcName: string; abilityName: string; rol: 'ataque' | 'defensa' } | null
+    playerAbilityUsed: { name: string; icon: string; description: string; rol: 'ataque' | 'defensa' } | null
+    combatExchangeDisplay: CombatExchangeInfo | null
     nextInitiativeRoll: { ganador: 'jugador' | 'npc'; jugadorTirada: number; npcTirada: number } | null
     newQuestInfo?: { title: string; objetivo: string } | null
   }) {
@@ -1019,6 +1061,8 @@ export function GameView() {
         entityBanner,
         combate: true,
         npcAbilityUsed: params.npcAbilityUsed ?? undefined,
+        playerAbilityUsed: params.playerAbilityUsed ?? undefined,
+        combatExchange: params.combatExchangeDisplay ?? undefined,
         newQuest: params.newQuestInfo ?? undefined,
       },
     ])
@@ -1856,17 +1900,30 @@ export function GameView() {
           saveId={saveId}
           oficio={harvestModal.oficio}
           oficioLabel={harvestModal.label}
-          inventoryUsed={inventory.length}
+          inventoryUsed={totalInventoryUnits(inventory)}
           inventoryCapacity={inventoryCapacityFor(
             characterAttributes,
             inventory.filter((i) => i.slot !== null),
           )}
-          onConfirm={(created) => {
-            setInventory((prev) => [...prev, ...created])
+          onConfirm={(created, updated, logEntry) => {
+            // Bug real jugando en vivo (2026-08-07, "no acumula los items"): recolectar el mismo
+            // objeto dos veces creaba dos filas sueltas en vez de sumar a la pila ya existente —
+            // mismo patrón exacto que `applyInventoryDelta` ya resuelve para crafteo/construcción.
+            setInventory((prev) => applyInventoryDelta(prev, created, [], updated))
+            // Registro escrito determinista (petición explícita, 2026-08-07: "un texto de
+            // narración que no dependa de la AI") — mismo canal (personaje) que cualquier otra
+            // narración, sin pasar por streaming ni por el Narrador.
+            if (logEntry) {
+              setCharacterLog((prev) => [...prev, { ...logEntry, channel: 'character' }])
+            }
             setHarvestModal(null)
           }}
           onCancel={() => setHarvestModal(null)}
         />
+      )}
+
+      {huntModalOpen && saveId && (
+        <HuntSelectionModal saveId={saveId} onResuelto={handleHuntResolved} onCancel={() => setHuntModalOpen(false)} />
       )}
 
       {activePanel && (

@@ -2,6 +2,7 @@ import type {
   Attribute,
   AttributeBlock,
   BuildingInfo,
+  CombatExchangeInfo,
   CompanionInfo,
   CondicionFisica,
   CurrentLocationInfo,
@@ -16,6 +17,7 @@ import type {
   LogEntry,
   NpcInSceneInfo,
   HarvestSourceCandidate,
+  HuntCandidate,
   ProfessionProgressInfo,
   ProfessionRecipeInfo,
   ProgressionResult,
@@ -205,6 +207,15 @@ export interface NarrateResponse {
   /// real, ya resuelto, de la habilidad de ataque/defensa que el NPC acaba de usar en el
   /// intercambio de ESTE turno. null si no hubo intercambio de combate.
   npcAbilityUsed: { npcName: string; abilityName: string; rol: 'ataque' | 'defensa' } | null
+  /// Mismo hueco exacto que `npcAbilityUsed` pero para el lado del jugador (revisión de partida
+  /// 2026-08-08, petición explícita: "cuando seleccione una habilidad esta se refleje en la
+  /// narración con su descripción"). null en texto libre sin botón o sin intercambio.
+  playerAbilityUsed: { name: string; icon: string; description: string; rol: 'ataque' | 'defensa' } | null
+  /// Las dos tiradas reales del intercambio de combate de ESTE turno (revisión de partida
+  /// 2026-08-08, petición explícita: "que aparezca el resultado de las tiradas... qué atributo y
+  /// valor sacaste tú y el del enemigo, y por qué perdiste o ganaste"). null si no hubo
+  /// intercambio mecánico real este turno.
+  combatExchangeDisplay: CombatExchangeInfo | null
   /// Rediseño del turno de combate (2026-07-29, "quiero que sea más claro cuando es turno de
   /// ataque... indicándome qué salió en los dados"): tirada real de iniciativa que decidió quién
   /// actúa en el PRÓXIMO intercambio. null si se forzó sin dados (aturdimiento/intimidación) o si
@@ -549,12 +560,15 @@ export async function getProfessionRecipes(): Promise<ProfessionRecipeInfo[]> {
 }
 
 /// Pop-up de recolección (rediseño de profesiones, 2026-08-07) — "ya localizado en la zona".
-export async function getRecolectarLocalizado(saveId: string, oficio: string): Promise<{ sources: HarvestSourceCandidate[]; puedeExplorar: boolean }> {
+export async function getRecolectarLocalizado(
+  saveId: string,
+  oficio: string,
+): Promise<{ sources: HarvestSourceCandidate[]; puedeExplorar: boolean; enCooldown?: boolean }> {
   return fetchJson(`${API_URL}/saves/${saveId}/recolectar/${oficio}`)
 }
 
 /// Botón "Explorar" del pop-up — determinista, sin gastar turno.
-export async function explorarRecolectar(saveId: string, oficio: string): Promise<{ sources: HarvestSourceCandidate[] }> {
+export async function explorarRecolectar(saveId: string, oficio: string): Promise<{ sources: HarvestSourceCandidate[]; enCooldown?: boolean }> {
   return fetchJson(`${API_URL}/saves/${saveId}/recolectar/${oficio}/explorar`, { method: 'POST' })
 }
 
@@ -562,11 +576,52 @@ export async function explorarRecolectar(saveId: string, oficio: string): Promis
 export async function confirmarRecoleccion(
   saveId: string,
   selections: { sourceSlug: string; itemSlug: string; cantidad: number }[],
-): Promise<{ items: InventoryItemInfo[] }> {
+): Promise<{
+  items: InventoryItemInfo[]
+  updatedItems: { id: string; name: string }[]
+  /// Registro escrito determinista de lo recolectado (petición explícita, 2026-08-07: "un texto
+  /// de narración que no dependa de la AI") — null si la petición no consiguió nada de verdad
+  /// (capacidad llena, cooldown, población agotada a mitad de camino).
+  logEntry: { id: string; text: string; timeLabel: string; createdAt: string } | null
+}> {
   return fetchJson(`${API_URL}/saves/${saveId}/recolectar/confirmar`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ selections }),
+  })
+}
+
+/// Habilidad "Cazar" (revisión de partida 2026-08-08) — fauna YA LOCALIZADA en la zona ahora
+/// mismo, para el pop-up de selección (HuntSelectionModal). `puedeExplorar` = no hay nada
+/// localizado todavía en esta visita, mismo patrón de dos pasos que recolección.
+export async function getCazarCandidatos(saveId: string): Promise<{ candidates: HuntCandidate[]; puedeExplorar: boolean }> {
+  return fetchJson(`${API_URL}/saves/${saveId}/cazar`)
+}
+
+/// Botón "Explorar" del pop-up de caza — determinista, sin gastar turno, pero con una tirada real
+/// de qué se encuentra: puede no salir nada, igual que explorar en busca de recursos.
+export async function explorarCaza(saveId: string): Promise<{ candidates: HuntCandidate[] }> {
+  return fetchJson(`${API_URL}/saves/${saveId}/cazar/explorar`, { method: 'POST' })
+}
+
+/// Confirmar selección del pop-up de caza. Con una única presa débil puede resolverse sin combate
+/// (`resuelveSinCombate: true`, ver `combate`) — en cualquier otro caso (varias presas, una sola
+/// no lo bastante débil, o la propia tirada de caza limpia falla) esta llamada NO abre combate ni
+/// toca nada de la partida: solo devuelve `actionText`, que el llamador debe mandar por el turno
+/// normal (`handleSubmit` en GameView.tsx) para que la narración real sea quien lo abra — decisión
+/// explícita de la usuaria: "cazar sí que fuerza una narración cuando eliges objetivos y esa
+/// narración inicia el combate".
+export async function confirmarCaza(
+  saveId: string,
+  slugs: string[],
+): Promise<
+  | { resuelveSinCombate: true; exito: true; combate: { npcs: NpcInSceneInfo[] }; logEntry: { id: string; text: string; timeLabel: string; createdAt: string } }
+  | { resuelveSinCombate: false; exito: false | null; actionText: string }
+> {
+  return fetchJson(`${API_URL}/saves/${saveId}/cazar/confirmar`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ slugs }),
   })
 }
 

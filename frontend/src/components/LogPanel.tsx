@@ -1,6 +1,7 @@
 import { memo, useEffect, useRef, useState } from 'react'
 import type { LogEntry } from '../types'
 import { RollBadge } from './RollBadge'
+import { CombatExchangeBadge } from './CombatExchangeBadge'
 import { PanelRivets } from './Rivet'
 import { EnciclopediaLinkedText } from './EnciclopediaLinkedText'
 import { useEnciclopediaLink } from '../context/useEnciclopediaLink'
@@ -163,6 +164,23 @@ export const LogPanel = memo(function LogPanel({ title, subtitle, entries, accen
                   </span>
                 </p>
               )}
+              {/* Mismo hueco exacto que npcAbilityUsed pero para el jugador (revisión de partida
+                  2026-08-08, petición explícita: "cuando seleccione una habilidad esta se refleje
+                  en la narración con su descripción") — usa el icono real de la habilidad en vez
+                  del genérico 🗡️/🛡️, y muestra la descripción para saber qué hace de verdad. */}
+              {entry.playerAbilityUsed && (
+                <div className="mb-1 flex items-start gap-1.5 text-2xs font-semibold uppercase tracking-[0.1em] text-accent-400">
+                  <span aria-hidden="true" className="shrink-0 text-sm not-italic">
+                    {entry.playerAbilityUsed.icon}
+                  </span>
+                  <span className="normal-case tracking-normal">
+                    <span className="font-semibold uppercase tracking-[0.1em]">
+                      {entry.playerAbilityUsed.rol === 'ataque' ? 'Usas' : 'Te defiendes con'} "{entry.playerAbilityUsed.name}"
+                    </span>
+                    {entry.playerAbilityUsed.description && <span className="ml-1.5 font-normal text-wood-400">— {entry.playerAbilityUsed.description}</span>}
+                  </span>
+                </div>
+              )}
               <p>
                 <EnciclopediaLinkedText
                   text={entry.text}
@@ -172,6 +190,7 @@ export const LogPanel = memo(function LogPanel({ title, subtitle, entries, accen
                 />
               </p>
               {entry.roll && <RollBadge roll={entry.roll} />}
+              {entry.combatExchange && <CombatExchangeBadge exchange={entry.combatExchange} />}
               {entry.newQuest && (
                 <div className="mt-2 rounded-lg border border-quest-600/50 bg-quest-500/10 px-2.5 py-2">
                   <p className="flex items-center gap-1.5 text-2xs font-semibold uppercase tracking-[0.1em] text-quest-400">

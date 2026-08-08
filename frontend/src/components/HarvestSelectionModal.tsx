@@ -8,7 +8,7 @@ interface HarvestSelectionModalProps {
   oficioLabel: string
   inventoryUsed: number
   inventoryCapacity: number
-  onConfirm: (created: InventoryItemInfo[]) => void
+  onConfirm: (created: InventoryItemInfo[], updated: { id: string; name: string }[], logEntry: { id: string; text: string; timeLabel: string; createdAt: string } | null) => void
   onCancel: () => void
 }
 
@@ -26,6 +26,10 @@ export function HarvestSelectionModal({ saveId, oficio, oficioLabel, inventoryUs
   const [confirming, setConfirming] = useState(false)
   const [sources, setSources] = useState<HarvestSourceCandidate[]>([])
   const [puedeExplorar, setPuedeExplorar] = useState(false)
+  // Cooldown real por fuente (bug real jugando en vivo, 2026-08-07: "puedo minar indefinidamente
+  // sin moverme de la zona") — distingue "no hay nada aquí" de "lo que hay está agotado por
+  // ahora", para no invitar a "Explorar" algo que ya se sabe que sigue en cooldown.
+  const [enCooldown, setEnCooldown] = useState(false)
   const [selections, setSelections] = useState<Record<SelectionKey, number>>({})
   const [error, setError] = useState<string | null>(null)
 
@@ -34,6 +38,7 @@ export function HarvestSelectionModal({ saveId, oficio, oficioLabel, inventoryUs
       .then((res) => {
         setSources(res.sources)
         setPuedeExplorar(res.puedeExplorar)
+        setEnCooldown(!!res.enCooldown)
       })
       .catch(() => setError('No se pudo comprobar qué hay en la zona.'))
       .finally(() => setLoading(false))
@@ -47,6 +52,7 @@ export function HarvestSelectionModal({ saveId, oficio, oficioLabel, inventoryUs
       const res = await explorarRecolectar(saveId, oficio)
       setSources(res.sources)
       setPuedeExplorar(false)
+      setEnCooldown(!!res.enCooldown)
     } catch {
       setError('No se pudo explorar la zona.')
     } finally {
@@ -74,7 +80,7 @@ export function HarvestSelectionModal({ saveId, oficio, oficioLabel, inventoryUs
     setError(null)
     try {
       const res = await confirmarRecoleccion(saveId, selectionList)
-      onConfirm(res.items)
+      onConfirm(res.items, res.updatedItems, res.logEntry)
     } catch {
       setError('No se pudo recolectar — puede que otra acción se haya adelantado.')
       setConfirming(false)
@@ -94,7 +100,9 @@ export function HarvestSelectionModal({ saveId, oficio, oficioLabel, inventoryUs
         ) : error && sources.length === 0 ? (
           <p className="text-xs text-red-400">{error}</p>
         ) : sources.length === 0 ? (
-          puedeExplorar ? (
+          enCooldown ? (
+            <p className="text-xs text-wood-400">Ya has agotado lo accesible por ahora — vuelve más tarde o busca en otra zona.</p>
+          ) : puedeExplorar ? (
             <div className="flex flex-col items-start gap-2">
               <p className="text-xs text-wood-400">No has localizado nada todavía en esta zona.</p>
               <button

@@ -40,6 +40,20 @@ export interface HarvestSourceCandidate {
   yields: { itemSlug: string; itemName: string; cantidadMaxima: number }[]
 }
 
+/// Fauna real YA LOCALIZADA en la zona (revisión de partida 2026-08-08, habilidad "Cazar") —
+/// GET/POST /saves/:id/cazar[/explorar], mismo patrón en dos pasos que HarvestSourceCandidate.
+/// `debil` = nivel de la presa ≤ nivel del jugador − 2, el único caso en el que elegir UNA sola
+/// presa ofrece una caza limpia sin combate (ver HuntSelectionModal). `avistados` es una cantidad
+/// realista para esta visita (nunca la población mundial real, que puede ser de miles) — baja sola
+/// según se caza de verdad, sin ser un contador que haya que persistir aparte.
+export interface HuntCandidate {
+  slug: string
+  name: string
+  level: number
+  debil: boolean
+  avistados: number
+}
+
 /// Roster ESTÁTICO de recetas de oficio (rediseño de profesiones, 2026-08-07) — GET /profession-recipes,
 /// independiente de partida. Habilidades > Profesiones lo cruza con `ProfessionProgressInfo` para
 /// decidir qué tarjetas van bloqueadas.
@@ -123,6 +137,27 @@ export interface RollInfo {
   gradoExito?: 'claro' | 'con_coste' | 'fallo'
 }
 
+/// Un lado del intercambio de combate (revisión de partida 2026-08-08, petición explícita: "que
+/// aparezca el resultado de las tiradas... indicando qué atributo y valor sacaste tú y el del
+/// enemigo, y por qué perdiste o ganaste la tirada"). Mismo shape que `RollInfo` + `valorEfectivo`
+/// (el valor de atributo YA con el multiplicador de la rueda de debilidades aplicado — distinto
+/// del `value` crudo, que es el que se ve en la ficha de personaje).
+export interface CombatExchangeSideInfo extends RollInfo {
+  valorEfectivo: number
+}
+
+export type CombatExchangeOutcome = 'defensor_contragolpea' | 'ataque_falla' | 'parada_en_seco' | 'golpes_mutuos' | 'golpe_normal' | 'golpe_pleno'
+
+/// Las dos tiradas reales de un intercambio de combate de ESTE turno (backend, combatExchange.ts
+/// § CombatExchangeDisplay) — `atacanteEsJugador` es necesario porque quién ataca y quién defiende
+/// cambia turno a turno según la iniciativa, el frontend no puede asumirlo.
+export interface CombatExchangeInfo {
+  atacanteEsJugador: boolean
+  atacante: CombatExchangeSideInfo
+  defensor: CombatExchangeSideInfo
+  resultado: CombatExchangeOutcome
+}
+
 /// Banner de elemento citado bajo la narración (petición explícita de la usuaria, 2026-07-24) —
 /// forma mínima y autocontenida a propósito (nunca importa `EnciclopediaLinkTarget`/`DetailTarget`
 /// de components/DetailModal.tsx: crearía un import circular, ya que ese módulo importa tipos de
@@ -165,6 +200,13 @@ export interface LogEntry {
   /// que LogPanel lo muestre como badge estructurado en vez de depender de que la prosa del
   /// narrador la mencione.
   npcAbilityUsed?: { npcName: string; abilityName: string; rol: 'ataque' | 'defensa' }
+  /// Mismo hueco exacto que `npcAbilityUsed` pero para el lado del jugador (revisión de partida
+  /// 2026-08-08, petición explícita: "cuando seleccione una habilidad esta se refleje en la
+  /// narración con su descripción, para que así sepamos que usamos y la respuesta a ese uso").
+  playerAbilityUsed?: { name: string; icon: string; description: string; rol: 'ataque' | 'defensa' }
+  /// Las dos tiradas reales de este intercambio de combate — ver `CombatExchangeInfo`. Presente
+  /// solo si hubo intercambio mecánico real este turno.
+  combatExchange?: CombatExchangeInfo
   /// Notificación de misión aceptada (2026-07-31, petición explícita: "que aparezca en la
   /// narración del personaje el título de la misión y el objetivo") — presente solo en el turno
   /// EXACTO en que se crea una misión nueva; LogPanel la pinta con fondo/borde amarillo y una

@@ -1,6 +1,7 @@
 import type { InventoryItemInfo, ItemTipo } from '../../types'
 import { statBonusLabels } from '../../lib/dice'
 import { ITEM_TIPO_LABEL, ITEM_TIPO_ORDER, itemIcon } from '../../lib/enciclopediaTargets'
+import { totalInventoryUnits } from '../../lib/inventoryCapacity'
 import { PanelEmptyState } from '../PanelEmptyState'
 import { PanelSection } from '../PanelSection'
 import { IconCard } from '../IconCard'
@@ -20,7 +21,11 @@ function ItemGrid({ items, onUse, onDetail }: Omit<InventarioPanelProps, 'capaci
       {items.map((item) => (
         <IconCard
           key={item.id}
-          icon={item.tipo === 'ESPECIAL' ? '✨' : item.slot ? '⚔️' : itemIcon(item.category ?? '')}
+          // Bug real jugando en vivo (2026-08-07): un objeto equipado mostraba SIEMPRE el mismo
+          // icono de espadas cruzadas, sin importar qué fuera de verdad — "Raciones de viaje" o
+          // "Tótem Maktor" equipados salían con icono de arma. El badge "E" de abajo ya distingue
+          // "equipado" visualmente; el icono debe reflejar el objeto real siempre, tipo o no.
+          icon={item.tipo === 'ESPECIAL' ? '✨' : itemIcon(item.category ?? '')}
           name={item.name}
           tooltip={item.effectDescription ?? item.description}
           onUse={() => onUse(item)}
@@ -78,9 +83,13 @@ function ItemGrid({ items, onUse, onDetail }: Omit<InventarioPanelProps, 'capaci
 // primero") porque cruzan varios tipos a la vez (un arma y una armadura equipadas no deberían
 // separarse solo por eso); el resto se agrupa por tipo, igual que ya hace la Enciclopedia.
 export function InventarioPanel({ items, capacity, onUse, onDetail }: InventarioPanelProps) {
+  // Bug real jugando en vivo (2026-08-08, "podemos tener inventario infinito"): esto contaba
+  // filas, no unidades — una pila de 9 piedras aparentaba pesar 1 solo hueco. Ver
+  // `totalInventoryUnits` (lib/inventoryCapacity.ts).
+  const usedUnits = totalInventoryUnits(items)
   const capacityLabel = (
-    <p className={`text-2xs ${items.length >= capacity ? 'text-red-400' : 'text-wood-500'}`}>
-      Capacidad: {items.length}/{capacity} objetos
+    <p className={`text-2xs ${usedUnits >= capacity ? 'text-red-400' : 'text-wood-500'}`}>
+      Capacidad: {usedUnits}/{capacity} objetos
     </p>
   )
 
