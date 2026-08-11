@@ -53,6 +53,12 @@ de golpe). El trabajo, en orden:
    `loreChunks.ts` + `npm run reindex-lore`, nuevas criaturas/objetos en el catálogo técnico, etc.)
    — la sesión de lore NO toca código salvo que la usuaria lo pida explícitamente; solo dejarlo
    anotado para la pasada posterior.
+7. **Si la sesión cambió vocabulario, tono o nombres de forma notable** (no una corrección menor),
+   anotarlo TAMBIÉN bajo "Pendiente de dataset" en `docs/ampliar-lore-checklist.md` — el narrador
+   fine-tuneado (`docs/fine-tuning-ia-local.md`) aprendió de ejemplos generados con el lore de su
+   momento; un cambio de fondo puede dejar ejemplos ya entrenados desalineados con el mundo actual
+   sin que nada lo avise. No implica regenerar el dataset en la misma sesión — solo dejar constancia
+   para cuando se decida.
 
 ## 2. Verificación numérica — cómo, en la práctica
 

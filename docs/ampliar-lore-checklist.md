@@ -15,11 +15,12 @@ tareas de una conversación no sobrevive al cierre de la sesión, este archivo s
   tercera ampliación ya están implementadas (ver sesión "séptima pasada" más abajo). Cuando se
   añadan, cuelgan de `dunas-ahogadas` o `vientre-del-engano` (ver docs/13-escala-del-mundo.md §
   2.2ter).
-- **`npm run reindex-lore` y `npm run seed-catalog` sin correr todavía** — `loreChunks.ts` y
-  `worldCatalog.ts` se actualizaron en la sexta y séptima pasada, pero este entorno no tiene
-  Node/DB disponible para ejecutar ninguno de los dos scripts. Correr ambos (+ `tsc -b` en
-  frontend, `tsc --noEmit` en backend, `vitest run`) antes de la próxima partida — nada de esto se
-  ha podido verificar en ejecución real todavía, solo por lectura y balance de llaves/paréntesis.
+- ~~**`npm run reindex-lore` y `npm run seed-catalog` sin correr todavía**~~ — **superado** (ver
+  sesiones octava a undécima más abajo): la usuaria sí corrió `seed-catalog` con backend/DB reales
+  tras esta nota, lo que permitió detectar y arreglar en vivo el bug de `iniciar-tarkor.sh` (no lo
+  corría solo), el de las líneas de ruta invisibles, y el de `seed-catalog` sin `delete` de rutas
+  viejas (undécima pasada). Este entorno de Claude Code sigue sin Node/DB propios, pero eso ya no
+  bloquea nada: la propia usuaria cierra el ciclo de verificación jugando.
 - **Tono de Ulkha/Torgash frente a "la casta de Ketg" (detectado en la sexta pasada, sin resolver)**:
   sus bios/chunks los describen como personalmente razonables ("fría en el cálculo y cálida en el
   trato", "prefiere pactar a duelar"), mientras que el lore de gobierno de Serhu (añadido
@@ -27,6 +28,19 @@ tareas de una conversación no sobrevive al cierre de la sesión, este archivo s
   de miedo sin exilio ni compasión. Se ha dejado así a propósito (institución opresiva, individuos
   con matices) en vez de decidir en silencio que hay que endurecerlos — revisar con la usuaria si
   el tono actual sigue encajando o si conviene ensombrecerlos.
+
+---
+
+## Pendiente de dataset (acumulado, revisar antes de cerrar cada pasada)
+
+*(Sección nueva 2026-08-11, ver `docs/ampliar-lore.md` § 1.7.)* El narrador fine-tuneado
+(`docs/fine-tuning-ia-local.md`) aprendió de ejemplos generados con el lore de su momento — un
+cambio de fondo en vocabulario, tono o nombres puede dejar ejemplos ya entrenados desalineados con
+el mundo actual, sin que nada lo avise solo. Cuando una sesión de "ampliamos lore" cambie algo así
+de notable, se anota aquí (qué cambió y desde qué sesión) — no implica regenerar el dataset de
+inmediato, solo dejar constancia para cuando se decida.
+
+Sin entradas todavía.
 
 ---
 

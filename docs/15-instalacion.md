@@ -1,6 +1,6 @@
 # Instalación (2026-07-24, actualizado 2026-07-30 — migración local-first)
 
-**Por qué existe este documento:** para poder valorar si merece la pena mover Tarkor a otra máquina (p. ej. una Steam Deck, para comparar tiempos de narración) sin tener que reconstruir estos pasos de memoria cada vez.
+**Por qué existe este documento:** para no tener que reconstruir de memoria los pasos de instalación cada vez que Tarkor se mueve o se reinstala en una máquina — el traslado a Steam Deck (motivo original de este documento, para comparar tiempos de narración) ya se hizo y es la máquina real de desarrollo/juego desde entonces.
 
 **Actualización 2026-07-30:** Tarkor es un juego de un solo jugador que corre siempre en un solo dispositivo — no hay motivo para depender de una base de datos remota. El camino por defecto ahora es **Postgres local vía podman** (sección 3bis); Supabase remoto queda documentado como alternativa solo por si algún día hiciera falta jugar de verdad desde varios dispositivos con la misma partida sincronizada.
 

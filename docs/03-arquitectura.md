@@ -4,6 +4,19 @@
 **Fecha:** 2026-07-16
 **Punto de partida:** decisiones de producto cerradas en [02-decisiones.md](02-decisiones.md) + demo de frontend ya montada en `frontend/`.
 
+**Actualizado 2026-08-11 — este archivo documenta el arranque del proyecto (2026-07-16) y queda
+desfasado en varios puntos concretos, igual que ya se anotó en
+[04-decisiones-tecnicas.md](04-decisiones-tecnicas.md) § Pendientes: la máquina real de desarrollo
+hoy es una Steam Deck (APU AMD, sin GPU dedicada útil para LLM — no el i7-4700MQ/GT 730M de la
+§ 4 de abajo), Postgres corre **local vía podman** (no Supabase — ver
+[15-instalacion.md](15-instalacion.md) § 3bis, que sustituye a la § 8 de abajo), y el Narrador de
+producción es el modelo propio fine-tuneado `tarkor-narrador` (no `qwen2.5:7b` a pelo — ver
+[fine-tuning-ia-local.md](fine-tuning-ia-local.md)), con `qwen2.5:1.5b-instruct` como clasificador/
+Cronista (no `llama3.2:latest`, nunca llegó a usarse). El diseño conceptual de abajo (Ollama en
+local, sin coste de nube, worker propio para el reloj de mundo, cola serializada) sigue siendo
+correcto y vigente — solo los detalles concretos de hardware/hosting/modelo cambiaron con el
+tiempo. Se deja el resto del documento sin reescribir, por historial.**
+
 ---
 
 ## 1. Visión general
