@@ -12,6 +12,9 @@ export interface CombatNpcDisplay {
   // Saqueo parcial (2026-07-31) — qué objetos concretos ya se llevó el jugador de este NPC, para
   // que el modal de saqueo (CombatPanel.tsx) no vuelva a ofrecerlos.
   lootedItemNames: string[]
+  // Rediseño de combate (2026-08-09, "Analizar rival") — gatea qué muestra la ficha del rival
+  // (CombatPanel.tsx § EnemyFicha).
+  analizado: boolean
 }
 
 interface CombatComposerProps {

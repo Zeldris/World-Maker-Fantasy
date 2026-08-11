@@ -36,6 +36,7 @@ function previewAbilityFor(recipe: ProfessionRecipeInfo): SavedActionInfo {
     energyRegen: 0,
     isGeneric: false,
     dualWield: false,
+    rol: null,
     recipeKey: recipe.recipeKey,
   }
 }

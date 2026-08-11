@@ -264,6 +264,9 @@ export async function requestTurnNarrate(
     npcsInScene?: NpcSceneSnapshot
     /// Saqueo selectivo (petición explícita, 2026-07-30) — ver el mismo campo en turnResolution.ts.
     lootItemNames?: string[]
+    /// Rediseño de combate (2026-08-09) — ver el mismo campo en turnResolution.ts
+    /// (NarrateAndPersistParams.isItemUse).
+    isItemUse?: boolean
   },
   handlers?: TurnNarrateHandlers,
 ): Promise<NarrateResponse> {
@@ -938,9 +941,9 @@ export interface EnciclopediaCraftingRecipe {
   key: string
   name: string
   description: string
-  /// Id de professions.ts ('herrero'/'sanador'/'carpintero'...), o null si está al alcance de
-  /// cualquiera sin oficio (2026-08-06, sección "Crafteo" — mismo eje que `raza` en Construcciones,
-  /// pero por oficio en vez de por raza).
+  /// Id de professions.ts ('herrero-orco-llanuras'/'alquimista-orcos-llanuras'/'carpintero-orcos-
+  /// llanuras'...), o null si está al alcance de cualquiera sin oficio (2026-08-06, sección
+  /// "Crafteo" — mismo eje que `raza` en Construcciones, pero por oficio en vez de por raza).
   oficio: string | null
   /// Mismo shape que EnciclopediaConstructionRequirement (backend: IngredientRequirement
   /// compartido entre crafting.ts/construction.ts) — reutilizado tal cual, no duplicado.

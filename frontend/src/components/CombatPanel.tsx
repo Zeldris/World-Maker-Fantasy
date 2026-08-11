@@ -1,23 +1,24 @@
 import { useMemo, useState } from 'react'
 import { CONDICION_LABEL } from '../lib/health'
 import { attributeLabels, attributeColorClasses } from '../lib/dice'
+import { recommendedAttributeAgainst } from '../lib/attributeWheel'
 import { resolveImageUrl, type EnciclopediaResponse } from '../lib/api'
-import { resolveCombatAbilities, type ResolvedAbility } from '../lib/npcAbilities'
-import { faunaFloraToDetailTarget } from '../lib/enciclopediaTargets'
-import { useEnciclopediaLink } from '../context/useEnciclopediaLink'
 import { HealthBar } from './HealthBar'
 import { EnergyBar } from './EnergyBar'
 import { MediaSlot } from './ImagePromptDisplay'
 import { TooltipAnchor } from './TooltipAnchor'
 import { CombatSelectionModal } from './CombatSelectionModal'
 import type { CombatNpcDisplay } from './CombatComposer'
-import type { CondicionFisica, InventoryItemInfo, SavedActionInfo } from '../types'
+import type { AttributeBlock, CondicionFisica, InventoryItemInfo, SavedActionInfo } from '../types'
 
 interface CombatPanelProps {
   /// Nombre del personaje (2026-07-29, "nunca queda claro el estado del enemigo... quiero saber
   /// cómo estamos ambos") — para la barra de estado persistente de abajo.
   playerName: string
   playerCondicion: CondicionFisica
+  /// Rediseño de combate (2026-08-09, "Analizar rival") — para calcular el atributo recomendado
+  /// contra el rival ya analizado (EnemyFicha), sin depender de ningún endpoint nuevo.
+  playerAttributes: AttributeBlock
   /// Sistema de fatiga (2026-07-29) — para la barra de energía junto a la de salud y para
   /// deshabilitar/marcar el coste de las habilidades que no alcanzan.
   energia: number
@@ -64,50 +65,25 @@ interface CombatPanelProps {
   enciclopedia: EnciclopediaResponse | null
 }
 
-/// Chip de habilidad de solo lectura (las del enemigo) — tooltip estilizado con la descripción
-/// (rediseño de la vista de combate, 2026-07-28, petición explícita: "no falta un hover que
-/// muestre la descripción") + icono "ⓘ" para abrir su ficha completa en la Enciclopedia, si tiene
-/// una página real a la que enlazar (`detailTarget`, ver npcAbilities.ts).
-///
-/// Rediseño (petición explícita, 2026-07-30, tras verlo en vivo: "se ve fatal... queda muy
-/// cargada de color") — un punto de color por atributo en vez de teñir el borde Y el texto
-/// enteros: mismo dato de un vistazo (mismo color que el árbol de debilidades de la Enciclopedia),
-/// sin el efecto "confeti" de varios chips con 7 colores posibles a la vez.
-function AbilityChip({ ability, onDetail }: { ability: ResolvedAbility; onDetail: (target: NonNullable<ResolvedAbility['detailTarget']>) => void }) {
-  const colors = attributeColorClasses[ability.preferredAttribute]
-  return (
-    <span className="flex items-center gap-1.5 rounded-lg border border-iron-700 bg-wood-950/40 px-2 py-1 text-2xs text-wood-300">
-      <TooltipAnchor text={ability.description} className="flex items-center gap-1.5">
-        <span className={`h-2 w-2 shrink-0 rounded-full ${colors.dot}`} aria-hidden="true" />
-        <span aria-hidden="true">{ability.icon}</span> <span>{ability.name}</span>
-      </TooltipAnchor>
-      {ability.detailTarget && (
-        <button
-          type="button"
-          onClick={() => onDetail(ability.detailTarget!)}
-          aria-label={`Consultar ${ability.name} en la Enciclopedia`}
-          className="tactile flex h-4 w-4 items-center justify-center rounded-full border border-iron-700 text-2xs text-wood-500 transition-colors hover:border-accent-600/60 hover:text-accent-300"
-        >
-          ⓘ
-        </button>
-      )}
-    </span>
-  )
-}
-
-/// Ficha de un enemigo — imagen, rol/facción/nivel, bio, atributos y habilidades resueltas
-/// (rediseño de la vista de combate, 2026-07-28, petición explícita: "que al enemigo que clickeas
-/// carge la imagen de este con una ficha de personaje con sus habilidades, pequeña descipción y
-/// estadísticas"). Busca el enemigo por slug tanto en `npcs` (humanoides) como en `faunaFlora`
-/// (fauna) — mismo slug que usa el motor de escena para los dos, ver worldCatalog.ts.
+/// Ficha de un enemigo — imagen, rol/facción/nivel, bio y (solo si ya se analizó) el atributo
+/// recomendado contra él (rediseño de combate, 2026-08-09, petición explícita: "las habilidades
+/// del enemigo y sus stats ahora se ven por defecto, eso lo vamos a cambiar... cuando se usen
+/// habilidades de tipo utilidad como 'Analizar rival'... lo desbloquea indicándote qué atributo es
+/// el recomendado usar contra el rival"). Antes mostraba SIEMPRE estadísticas y habilidades
+/// completas sin coste ninguno — ahora la ficha no revela nada de eso hasta usar Analizar rival
+/// con éxito (`NpcInScene.analizado`, backend), y ni entonces vuelve a mostrar el roster completo,
+/// solo el atributo recomendado. Busca el enemigo por slug tanto en `npcs` (humanoides) como en
+/// `faunaFlora` (fauna) — mismo slug que usa el motor de escena para los dos, ver worldCatalog.ts.
 function EnemyFicha({
   slug,
+  analizado,
+  playerAttributes,
   enciclopedia,
-  onDetail,
 }: {
   slug: string
+  analizado: boolean
+  playerAttributes: AttributeBlock
   enciclopedia: EnciclopediaResponse | null
-  onDetail: (target: NonNullable<ResolvedAbility['detailTarget']>) => void
 }) {
   const [infoExpanded, setInfoExpanded] = useState(true)
   const target = useMemo(() => {
@@ -126,7 +102,6 @@ function EnemyFicha({
         // fallback.
         imageUrl: resolveImageUrl(npc.variantesSexo?.[0]?.imageUrls.banner ?? npc.imageUrls.banner),
         attributes: npc.attributes,
-        abilities: resolveCombatAbilities({ level: npc.level, ataqueBase: npc.ataqueBase, raza: npc.raza, clase: npc.clase }, enciclopedia),
       }
     }
     const fauna = enciclopedia.faunaFlora.find((f) => f.sourceSlug === slug)
@@ -137,10 +112,6 @@ function EnemyFicha({
         bio: fauna.description ?? '',
         imageUrl: resolveImageUrl(fauna.variantesSexo?.[0]?.imageUrls.banner ?? fauna.imageUrls.banner),
         attributes: fauna.attributes ?? null,
-        abilities: resolveCombatAbilities(
-          { ataqueBase: fauna.ataqueBase, habilidadesRaciales: fauna.habilidadesRaciales, selfTarget: faunaFloraToDetailTarget(fauna) },
-          enciclopedia,
-        ),
       }
     }
     return null
@@ -148,14 +119,14 @@ function EnemyFicha({
 
   if (!target) return null
 
+  const atributoRecomendado = analizado && target.attributes ? recommendedAttributeAgainst(playerAttributes, target.attributes) : null
+
   return (
     <div className="space-y-2.5">
       <h3 className="font-serif text-base text-wood-100">{target.name}</h3>
       {/* Colapsable (petición explícita, 2026-07-28: "que sea colapsable con un Legend que sea
-          'Información'... también las estadísticas y habilidades del NPC") — mismo patrón visual
-          que las clases colapsables de EnciclopediaPanel.tsx (cabecera con flecha que rota +
-          contenido que aparece/desaparece debajo). Imagen/meta/bio/atributos/habilidades del
-          enemigo viven todos aquí dentro — todo es "sobre él", nada usable por el jugador.*/}
+          'Información'") — mismo patrón visual que las clases colapsables de EnciclopediaPanel.tsx
+          (cabecera con flecha que rota + contenido que aparece/desaparece debajo). */}
       <div className="rounded-lg border border-iron-800">
         <button
           type="button"
@@ -179,33 +150,14 @@ function EnemyFicha({
             )}
             <p className="text-2xs uppercase tracking-[0.1em] text-wood-500">{target.meta}</p>
             {target.bio && <p className="text-xs leading-relaxed text-wood-300">{target.bio}</p>}
-            {target.attributes && (
-              <div>
-                <p className="mb-1 text-2xs font-semibold uppercase tracking-[0.14em] text-wood-500">Estadísticas</p>
-                {/* Rediseño (2026-07-30, "queda muy cargada de color") — punto de color en vez de
-                    pastilla entera teñida, mismo criterio que AbilityChip/"Tus habilidades". */}
-                <div className="flex flex-wrap gap-1.5">
-                  {(Object.keys(target.attributes) as (keyof typeof target.attributes)[]).map((attr) => (
-                    <span
-                      key={attr}
-                      className="flex items-center gap-1.5 rounded-full border border-iron-700 bg-wood-950/50 px-2 py-0.5 font-mono text-2xs text-wood-300"
-                    >
-                      <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${attributeColorClasses[attr].dot}`} aria-hidden="true" />
-                      {attributeLabels[attr]} {target.attributes![attr]}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
-            {target.abilities.length > 0 && (
-              <div>
-                <p className="mb-1 text-2xs font-semibold uppercase tracking-[0.14em] text-wood-500">Habilidades</p>
-                <div className="flex flex-wrap gap-1.5">
-                  {target.abilities.map((ability, i) => (
-                    <AbilityChip key={`${ability.name}-${i}`} ability={ability} onDetail={onDetail} />
-                  ))}
-                </div>
-              </div>
+            {atributoRecomendado ? (
+              <p className="flex items-center gap-1.5 text-xs text-wood-300">
+                <span className={`h-2 w-2 shrink-0 rounded-full ${attributeColorClasses[atributoRecomendado].dot}`} aria-hidden="true" />
+                <span className="font-semibold uppercase tracking-[0.08em] text-wood-500">Atributo recomendado:</span>{' '}
+                {attributeLabels[atributoRecomendado]}
+              </p>
+            ) : (
+              <p className="text-2xs italic text-wood-500">Analiza al rival para descubrir qué atributo conviene usar contra él.</p>
             )}
           </div>
         )}
@@ -222,6 +174,7 @@ function EnemyFicha({
 export function CombatPanel({
   playerName,
   playerCondicion,
+  playerAttributes,
   energia,
   energiaMax,
   npcs,
@@ -247,7 +200,6 @@ export function CombatPanel({
   onItemDetail,
   enciclopedia,
 }: CombatPanelProps) {
-  const { onEntityDetail } = useEnciclopediaLink()
   // Modales de selección (petición explícita, 2026-07-30, tras probar en vivo el "Decapitar"/
   // "Saquear todo" de un solo clic: "tienes que marcar todos aquellos que quieras... un popup
   // donde marcando con checkbox puedas elegir y confirmarlo o cancelarlo").
@@ -505,8 +457,9 @@ export function CombatPanel({
         {!awaitingDefense && selectedNpcSlug && (
           <EnemyFicha
             slug={selectedNpcSlug}
+            analizado={npcs.find((n) => n.slug === selectedNpcSlug)?.analizado ?? false}
+            playerAttributes={playerAttributes}
             enciclopedia={enciclopedia}
-            onDetail={(target) => onEntityDetail?.(target)}
           />
         )}
 
@@ -526,17 +479,23 @@ export function CombatPanel({
           // en vez de chips envueltos: más fácil de leer de arriba abajo en un panel estrecho.
           <div className="space-y-3 rounded-lg border border-accent-600/50 bg-accent-500/5 p-2.5">
             {combatAbilities.length > 0 &&
-              // Rediseño 2026-07-31 (petición explícita: "ataque básico no es una habilidad como
-              // las demás, ni defenderse ni esquivar... son acciones que tienen todos los
-              // personajes... en un bloque, y en otro las habilidades") — mismas filas de siempre,
-              // solo agrupadas en dos bloques por `isGeneric` en vez de una lista plana. Genéricos
-              // primero: son la acción por defecto de cualquier personaje.
+              // Rediseño de combate (2026-08-09, petición explícita: "podamos crear tabs en el
+              // combate con las habilidades de daño, las defensivas y las de utilidad más
+              // separada") — sustituye el viejo agrupado por `isGeneric` (genéricas/reales) por
+              // uno por `rol`: solo 'ataque' puede hacer daño incondicional, 'defensa' nunca hace
+              // daño, 'utilidad' es reactiva/condicionada al rival (ver combatExchange.ts). Los 3
+              // genéricos (Ataque Básico/Defenderse/Esquivar) ya encajan solos en su grupo real
+              // por `rol` — dentro de cada grupo, genéricos primero (acción por defecto).
               (
                 [
-                  { key: 'generic', label: awaitingDefense ? '🛡️ Elige cómo defenderte' : '⚔️ Acciones básicas', list: combatAbilities.filter((a) => a.isGeneric) },
-                  { key: 'real', label: '⚡ Tus habilidades', list: combatAbilities.filter((a) => !a.isGeneric) },
+                  { key: 'ataque', label: '⚔️ Daño', list: combatAbilities.filter((a) => a.rol === 'ataque') },
+                  { key: 'defensa', label: '🛡️ Defensivas', list: combatAbilities.filter((a) => a.rol === 'defensa') },
+                  { key: 'utilidad', label: '🔮 Utilidad', list: combatAbilities.filter((a) => a.rol === 'utilidad') },
+                  // Red de seguridad para partidas antiguas que no hayan resincronizado sus
+                  // habilidades desde este rediseño (rol todavía null) — nunca desaparecen de la UI.
+                  { key: 'otras', label: '✨ Otras', list: combatAbilities.filter((a) => a.rol === null) },
                 ] as const
-              ).map(
+              ).map((group) => ({ ...group, list: [...group.list].sort((a, b) => Number(b.isGeneric) - Number(a.isGeneric)) })).map(
                 (group) =>
                   group.list.length > 0 && (
                     <div key={group.key}>

@@ -33,7 +33,11 @@ function gradoOf(side: CombatExchangeSideInfo): 'claro' | 'con_coste' | 'fallo' 
 
 function SideRow({ label, side }: { label: string; side: CombatExchangeSideInfo }) {
   const grado = gradoOf(side)
-  const bono = Math.floor(side.value / 2)
+  // Bug real (revisión de rediseño de combate, 2026-08-09): el bono mostrado se calculaba sobre
+  // el atributo crudo (`value`) en vez del ya multiplicado por el árbol de debilidades
+  // (`valorEfectivo`, ya presente en el tipo y en la respuesta del backend) — el número en
+  // pantalla nunca cuadraba con `result` cuando el árbol aplicaba un multiplicador de verdad.
+  const bono = Math.floor(side.valorEfectivo / 2)
   return (
     <div className={`flex flex-wrap items-center gap-x-2 gap-y-0.5 rounded-md border px-2 py-1 font-mono text-2xs ${SIDE_STYLES[grado]}`}>
       <span className="font-sans font-semibold uppercase tracking-[0.08em]">{label}</span>

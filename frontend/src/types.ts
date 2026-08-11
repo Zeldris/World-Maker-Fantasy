@@ -406,6 +406,10 @@ export interface SavedActionInfo {
   /// hacha) colapsada en una sola tarjeta por llevar la MISMA categoría en las dos manos — mejor
   /// dificultad al usarla (backend), nunca un segundo golpe real. Ver CombatPanel.tsx.
   dualWield: boolean
+  /// Rediseño de combate (2026-08-09) — 'ataque' (único rol que hace daño incondicional al
+  /// conectar), 'defensa' (nunca hace daño) o 'utilidad' (reactiva/condicionada al rival, ver
+  /// CombatExchangeBadge.tsx y el backend). Null en habilidades 'general' o partidas antiguas.
+  rol: 'ataque' | 'defensa' | 'utilidad' | null
 }
 
 export type CondicionFisica = 'ILESO' | 'HERIDO' | 'GRAVE' | 'INCAPACITADO' | 'MUERTO'
@@ -427,6 +431,9 @@ export interface NpcInSceneInfo {
   // Saqueo parcial (2026-07-31) — nombres de objeto ya copiados al inventario de este NPC en esta
   // partida, para que el modal de saqueo pueda dejar de ofrecer lo que ya te llevaste.
   lootedItemNames: string[]
+  // Rediseño de combate (2026-08-09, "Analizar rival") — gatea si CombatPanel.tsx § EnemyFicha
+  // muestra el atributo recomendado contra este rival. Sin analizar, la ficha no muestra nada.
+  analizado: boolean
 }
 
 /// Un enlace de objeto/habilidad estilo World of Warcraft, insertado dentro del propio texto

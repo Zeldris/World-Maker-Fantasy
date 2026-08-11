@@ -304,6 +304,7 @@ export function GameView() {
             condicion: n.condicionFisica,
             yaSaqueado: n.saqueado,
             lootedItemNames: n.lootedItemNames,
+            analizado: n.analizado,
           }
         )
       }),
@@ -357,6 +358,7 @@ export function GameView() {
         condicion: n.condicionFisica,
         yaSaqueado: n.saqueado,
         lootedItemNames: n.lootedItemNames,
+        analizado: n.analizado,
       })),
     )
     setCombatEnded(false)
@@ -383,7 +385,7 @@ export function GameView() {
 
   async function submitCombatAction(
     action: string,
-    opts: { savedActionId?: string; lootItemNames?: string[]; allowAfterEnded?: boolean },
+    opts: { savedActionId?: string; lootItemNames?: string[]; allowAfterEnded?: boolean; isItemUse?: boolean },
   ): Promise<boolean> {
     // Bug real jugando en vivo (2026-07-31, "al decapitarlo no se ha cerrado el combate... el
     // saqueo listaba las 3 cosas en vez de 1"): este guard bloqueaba CUALQUIER acción en cuanto
@@ -456,6 +458,7 @@ export function GameView() {
         savedActionId: opts.savedActionId,
         npcsInScene: classifyResult.npcsInScene,
         lootItemNames: opts.lootItemNames,
+        isItemUse: opts.isItemUse,
       })
       // Auditoría 2026-07-28: antes había aquí un downgrade optimista de la condición del NPC
       // basado en `roll.success` (la tirada tabulada de classify) — desde que el intercambio real
@@ -657,11 +660,13 @@ export function GameView() {
   }
 
   // Objetos consumibles (petición explícita, 2026-07-22): siempre de uso propio, nunca contra un
-  // NPC objetivo.
+  // NPC objetivo. Rediseño de combate (2026-08-09, "si uso un consumible el rival también puede
+  // actuar") — `isItemUse: true` deja que el backend active el intercambio de verdad (el NPC
+  // puede actuar este turno) sin que consumir cuente nunca como golpe propio.
   function handleCombatUseItem() {
     const selectedItem = inventory.find((i) => i.id === combatSelectedItemId)
     if (!selectedItem) return
-    submitCombatAction(`Uso '${selectedItem.name}'.`, {})
+    submitCombatAction(`Uso '${selectedItem.name}'.`, { isItemUse: true })
     resetCombatSelection()
   }
 
@@ -929,13 +934,17 @@ export function GameView() {
     composerRef.current?.insertChip({ icon: target.icon, label: target.name, description: target.description })
   }
 
-  // Habilidades base de recolección (rediseño de profesiones, 2026-08-07) — Minar/Talar abren el
-  // pop-up de selección (HarvestSelectionModal) en vez de mandar texto libre al composer; el
-  // oficio no viaja en el SavedAction (solo hay 2, mapeo fijo aquí es más simple que pedir todo un
-  // roster al backend para esto). Desollar es una habilidad normal: el despiece por texto libre
-  // ya funciona igual que antes, no necesita el pop-up (target siempre una presa ya derrotada
-  // delante, no una fuente que "explorar").
-  const HARVEST_ABILITY_OFICIO: Record<string, string> = { Minar: 'minero', Talar: 'talador' }
+  // Habilidades base de recolección (rediseño de profesiones, 2026-08-07) — Minar/Talar/Desollar
+  // abren el pop-up de selección (HarvestSelectionModal) en vez de mandar texto libre al composer;
+  // el oficio no viaja en el SavedAction (solo hay 3, mapeo fijo aquí es más simple que pedir todo
+  // un roster al backend para esto). Desollar se sumó al pop-up el 2026-08-09 (petición explícita:
+  // "que al usar la habilidad de profesión de desollar funcione como el resto") — antes era una
+  // habilidad normal de texto libre; ahora busca en la escena presas ya derrotadas (cazadas por el
+  // jugador o descritas como cadáver por la narración) igual que Minar/Talar buscan vetas/madera,
+  // solo que sin "Explorar" propio (backend/src/routes/saves/recolectar.ts § carcassCandidatesFor).
+  // Los valores son solo el PREFIJO base del oficio (sin raza/región) — metodoForOficio
+  // (harvestAbilities.ts) empareja por prefijo, no por igualdad exacta.
+  const HARVEST_ABILITY_OFICIO: Record<string, string> = { Minar: 'minero', Talar: 'talador', Desollar: 'desollador' }
 
   function handleAttachAbility(ability: SavedActionInfo) {
     const oficio = HARVEST_ABILITY_OFICIO[ability.name]
@@ -1100,6 +1109,7 @@ export function GameView() {
             condicion: n.condicionFisica,
             yaSaqueado: n.saqueado,
             lootedItemNames: n.lootedItemNames,
+            analizado: n.analizado,
           }
           const local = bySlug.get(n.slug)
           if (!local) {
@@ -1110,7 +1120,7 @@ export function GameView() {
           // "resucita" a alguien que el propio jugador ya vio caer más allá, por si acaso llega
           // desordenado).
           const avanza = CONDICION_ORDER.indexOf(real.condicion) > CONDICION_ORDER.indexOf(local.condicion)
-          if (avanza || (real.yaSaqueado && !local.yaSaqueado)) {
+          if (avanza || (real.yaSaqueado && !local.yaSaqueado) || (real.analizado && !local.analizado)) {
             bySlug.set(n.slug, real)
           } else if (real.lootedItemNames.length > local.lootedItemNames.length) {
             // Saqueo parcial (2026-07-31): `lootedItemNames` solo crece, aunque `condicion`/
@@ -1747,6 +1757,7 @@ export function GameView() {
               combatItems={inventory.filter((i) => isConsumibleSlot(i.slot))}
               selectedItemId={combatSelectedItemId}
               onSelectItem={setCombatSelectedItemId}
+              playerAttributes={characterAttributes}
               busy={combatBusy}
               ended={combatEnded}
               awaitingDefense={combatAwaitingDefense}

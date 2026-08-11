@@ -20,82 +20,732 @@ export interface Profession {
 // craftereando/construyendo con él (backend/src/services/professionProgress.ts).
 export const professions: Profession[] = [
   {
-    id: 'cazador',
-    name: 'Cazador de Corredores de Cauce',
+    id: 'herrero-orco-llanuras',
+    name: 'Herrería de los Orcos de las Llanuras del Viento Rojo',
     description:
-      'Caza en las carreras rituales que los clanes usan como prueba de valor, siguiendo las manadas de Corredores de Cauce a lo largo de las corrientes subterráneas de las Llanuras.',
-  },
-  {
-    id: 'herrero',
-    name: 'Herrero de campamento',
-    description:
-      'Trabaja metal y hueso volcánico para armar y reparar armas orcas — sin las fraguas fijas de una ciudad-fortaleza Goirntes, todo su taller cabe en un carro.',
+      'Herreria de Orcos de las Llanuras del Viento Rojo. Esta profesion se centra en los recursos que ofrece la zona de Llanuras del Viento Rojo.',
     category: 'creacion',
   },
   {
-    id: 'domador',
-    name: 'Guía de Gargantúas de Ceniza',
+    id: 'herrero-orco-cristal',
+    name: 'Herrería de los Orcos de Cristal Helado',
     description:
-      'Aprende de las Terk\'ikar el don de comunión con las Gargantúas de Ceniza, los reptiles que transportan comunidades enteras en las migraciones estacionales.',
-  },
-  {
-    id: 'sanador',
-    name: 'Sanador de hierbas de las Llanuras',
-    description:
-      'Conoce la Salvia del Polvo y otras hierbas que crecen en terreno árido — no magia, remedios de verdad para cortar hemorragias y limpiar heridas, aprendidos por necesidad.',
-  },
-  {
-    id: 'rastreador',
-    name: 'Rastreador de tormentas',
-    description:
-      'Lee el cielo y el polvo para anticipar las tormentas de arena magnética — una habilidad que decide si un campamento sobrevive la noche.',
-  },
-  {
-    id: 'mercader',
-    name: 'Mercader de paso',
-    description:
-      'Comercia en El Cruce de las Cenizas y otros puntos de paso, moviéndose entre el territorio orco y las patrullas de la Concordia de Hierro sin pertenecer del todo a ninguno.',
-  },
-  {
-    id: 'carpintero',
-    name: 'Carpintero de campamento',
-    description:
-      'Trabaja madera de matorral de cuerno y de los Trepadores Ocaso de la Ciénaga — chozas, atalayas y armazones, todo lo que un clan sin ciudad fija necesita construir con lo que hay a mano.',
+      'Herreria de Orcos de Cristal Helado. Esta profesion se centra en los recursos que ofrece la zona de Cristal Helado.',
     category: 'creacion',
   },
   {
-    id: 'curtidor',
-    name: 'Curtidor de pieles',
+    id: 'herrero-orco-cienaga',
+    name: 'Herrería de los Orcos de la Cienaga Troncal',
     description:
-      'Cura y trabaja las pieles de la caza — de Corredor de Cauce a gargantúa — para ropa, arneses y correas. Oficio silencioso, imprescindible en cualquier campamento orco.',
+      'Herreria de Orcos de la Cienaga Troncal. Esta profesion se centra en los recursos que ofrece la zona de la Cienaga Troncal.',
     category: 'creacion',
   },
   {
-    id: 'minero',
-    name: 'Minero de las Llanuras',
+    id: 'herrero-nabierus-cienaga',
+    name: 'Herrería de Nabierus de la Cienaga Troncal',
     description:
-      'Excava vetas de mena de hierro y otros minerales expuestos en el basalto de las Llanuras del Viento Rojo — trabajo duro y solitario, la materia prima que después el herrero funde y forja.',
+      'Herreria de Nabierus de la Cienaga Troncal. Esta profesion se centra en los recursos que ofrece la zona de la Cienaga Troncal.',
+    category: 'creacion',
+  },
+  {
+    id: 'herrero-nabierus-margen',
+    name: 'Herrería de Nabierus del Margen Silencioso',
+    description:
+      'Herreria de Nabierus del Margen Silencioso. Esta profesion se centra en los recursos que ofrece la zona del Margen Silencioso.',
+    category: 'creacion',
+  },
+  {
+    id: 'herrero-faerus-margen',
+    name: 'Herrería de faerus del Margen Silencioso',
+    description:
+      'Herreria de Faerus del Margen Silencioso. Esta profesion se centra en los recursos que ofrece la zona del Margen Silencioso.',
+    category: 'creacion',
+  },
+  {
+    id: 'herrero-faerus-llanuras',
+    name: 'Herrería de Faerus de las Llanuras del Viento Rojo',
+    description:
+      'Herreria de Faerus de las Llanuras del Viento Rojo. Esta profesion se centra en los recursos que ofrece la zona de las Llanuras del Viento Rojo.',
+    category: 'creacion',
+  },
+  {
+    id: 'herrero-goirntes-meseta',
+    name: 'Herrería de Goirntes de la Meseta del Orden',
+    description:
+      'Herreria de Goirntes de la Meseta del Orden. Esta profesion se centra en los recursos que ofrece la zona de la Meseta del Orden.',
+    category: 'creacion',
+  },
+  {
+    id: 'domador-orcos-llanuras',
+    name: 'Domador de los Orcos de las Llanuras del Viento Rojo',
+    description:
+      'Domador de los Orcos de las Llanuras del Viento Rojo. Esta profesion se centra en la fauna que ofrece la zona de las Llanuras del Viento Rojo.',
+  },
+  {
+    id: 'domador-orcos-cienaga',
+    name: 'Domador de los Orcos de la Cienaga Troncal',
+    description:
+      'Domador de los Orcos de la Cienaga Troncal. Esta profesion se centra en la fauna que ofrece la zona de la Cienaga Troncal.',
+  },
+  {
+    id: 'domador-orcos-cristal',
+    name: 'Domador de los Orcos de Cristal Helado',
+    description:
+      'Domador de los Orcos de Cristal Helado. Esta profesion se centra en la fauna que ofrece la zona de Cristal Helado.',
+  },
+  {
+    id: 'domador-faerus-llanuras',
+    name: 'Domador de los Faerus de las Llanuras del Viento Rojo',
+    description:
+      'Domador de los Faerus de las Llanuras del Viento Rojo. Esta profesion se centra en la fauna que ofrece la zona de las Llanuras del Viento Rojo.',
+  },
+  {
+    id: 'domador-faerus-margen',
+    name: 'Domador de los Faerus del Margen Silencioso',
+    description:
+      'Domador de los Faerus del Margen Silencioso. Esta profesion se centra en la fauna que ofrece la zona del Margen Silencioso.',
+  },
+  {
+    id: 'domador-nabierus-cienaga',
+    name: 'Domador de los Nabierus de la Cienaga Troncal',
+    description:
+      'Domador de los Nabierus de la Cienaga Troncal. Esta profesion se centra en la fauna que ofrece la zona de la Cienaga Troncal.',
+  },
+  // Recolectora (2026-08-09, aclaración explícita): recoge plantas/hierbas del área — mismo eje
+  // que minero/desollador/talador, alimenta a la creadora 'alquimista' (pociones/ungüentos), no a
+  // 'sanador' (ya no existe como profesión, ver comentario de ANTIDOTE_RECIPE en crafting.ts).
+  {
+    id: 'herborista-orcos-llanuras',
+    name: 'Herborista de los Orcos de las Llanuras del Viento Rojo',
+    description:
+      'Herborista de los Orcos de las Llanuras del Viento Rojo. Esta profesion se centra en las plantas que ofrece la zona de las Llanuras del Viento Rojo.',
     category: 'recoleccion',
   },
   {
-    id: 'desollador',
-    name: 'Desollador de presas',
+    id: 'herborista-orcos-cienaga',
+    name: 'Herborista de los Orcos de la Cienaga Troncal',
     description:
-      'Despelleja y despieza la caza con precisión — de un Corredor de Cauce a una gargantúa caída, cada piel, hueso y tendón se aprovecha entero si el corte es limpio.',
+      'Herborista de los Orcos de la Cienaga Troncal. Esta profesion se centra en las plantas que ofrece la zona de la Cienaga Troncal.',
     category: 'recoleccion',
   },
   {
-    id: 'talador',
-    name: 'Talador de matorral de cuerno',
+    id: 'herborista-orcos-cristal',
+    name: 'Herborista de los Orcos de Cristal Helado',
     description:
-      'Tala y acarrea madera de matorral de cuerno y de los Trepadores Ocaso — trabajo previo y necesario para que el carpintero tenga con qué construir.',
+      'Herborista de los Orcos de Cristal Helado. Esta profesion se centra en las plantas que ofrece la zona de Cristal Helado.',
     category: 'recoleccion',
   },
   {
-    id: 'constructor',
-    name: 'Constructor de campamento',
+    id: 'herborista-faerus-llanuras',
+    name: 'Herborista de los Faerus de las Llanuras del Viento Rojo',
     description:
-      'Levanta y mantiene lo que un clan sin ciudad fija necesita en pie — atalayas, empalizadas, el propio Ayuntamiento — dirigiendo el trabajo que el carpintero y el talador dejan listo.',
+      'Herborista de los Faerus de las Llanuras del Viento Rojo. Esta profesion se centra en las plantas que ofrece la zona de las Llanuras del Viento Rojo.',
+    category: 'recoleccion',
+  },
+  {
+    id: 'herborista-faerus-margen',
+    name: 'Herborista de los Faerus del Margen Silencioso',
+    description:
+      'Herborista de los Faerus del Margen Silencioso. Esta profesion se centra en las plantas que ofrece la zona del Margen Silencioso.',
+    category: 'recoleccion',
+  },
+  {
+    id: 'herborista-nabierus-cienaga',
+    name: 'Herborista de los Nabierus de la Cienaga Troncal',
+    description:
+      'Herborista de los Nabierus de la Cienaga Troncal. Esta profesion se centra en las plantas que ofrece la zona de la Cienaga Troncal.',
+    category: 'recoleccion',
+  },
+  {
+    id: 'herborista-nabierus-margen',
+    name: 'Herborista de los Nabierus del Margen Silencioso',
+    description:
+      'Herborista de los Nabierus del Margen Silencioso. Esta profesion se centra en las plantas que ofrece la zona del Margen Silencioso.',
+    category: 'recoleccion',
+  },
+  {
+    id: 'herborista-goirntes-margen',
+    name: 'Herborista de los Goirntes del Margen Silencioso',
+    description:
+      'Herborista de los Goirntes del Margen Silencioso. Esta profesion se centra en las plantas que ofrece la zona del Margen Silencioso.',
+    category: 'recoleccion',
+  },
+  {
+    id: 'herborista-goirntes-meseta',
+    name: 'Herborista de los Goirntes de la Meseta del Orden',
+    description:
+      'Herborista de los Goirntes de la Meseta del Orden. Esta profesion se centra en las plantas que ofrece la zona de la Meseta del Orden.',
+    category: 'recoleccion',
+  },
+  {
+    id: 'sastre-orcos-llanuras',
+    name: 'Sastre de los Orcos de las Llanuras del Viento Rojo',
+    description:
+      'Crea ropa y accesorios de los Orcos de las Llanuras del Viento Rojo. Esta profesion se centra en los recursos que ofrece la zona de las Llanuras del Viento Rojo.',
+    category: 'creacion',
+  },
+  {
+    id: 'sastre-orcos-cienaga',
+    name: 'Sastre de los Orcos de la Cienaga Troncal',
+    description:
+      'Crea ropa y accesorios de los Orcos de la Cienaga Troncal. Esta profesion se centra en los recursos que ofrece la zona de la Cienaga Troncal.',
+    category: 'creacion',
+  },
+  {
+    id: 'sastre-orcos-cristal',
+    name: 'Sastre de los Orcos de Cristal Helado',
+    description:
+      'Crea ropa y accesorios de los Orcos de Cristal Helado. Esta profesion se centra en los recursos que ofrece la zona de Cristal Helado.',
+    category: 'creacion',
+  },
+  {
+    id: 'sastre-faerus-llanuras',
+    name: 'Sastre de los Faerus de las Llanuras del Viento Rojo',
+    description:
+      'Crea ropa y accesorios de los Faerus de las Llanuras del Viento Rojo. Esta profesion se centra en los recursos que ofrece la zona de las Llanuras del Viento Rojo.',
+    category: 'creacion',
+  },
+  {
+    id: 'sastre-nabierus-cienaga',
+    name: 'Sastre de los Nabierus de la Cienaga Troncal',
+    description:
+      'Crea ropa y accesorios de los Nabierus de la Cienaga Troncal. Esta profesion se centra en los recursos que ofrece la zona de la Cienaga Troncal.',
+    category: 'creacion',
+  },
+  {
+    id: 'sastre-nabierus-margen',
+    name: 'Sastre de los Nabierus del Margen Silencioso',
+    description:
+      'Crea ropa y accesorios de los Nabierus del Margen Silencioso. Esta profesion se centra en los recursos que ofrece la zona del Margen Silencioso.',
+    category: 'creacion',
+  },
+  {
+    id: 'sastre-goirntes-margen',
+    name: 'Sastre de los Goirntes del Margen Silencioso',
+    description:
+      'Crea ropa y accesorios de los Goirntes del Margen Silencioso. Esta profesion se centra en los recursos que ofrece la zona del Margen Silencioso.',
+    category: 'creacion',
+  },
+  {
+    id: 'sastre-goirntes-meseta',
+    name: 'Sastre de los Goirntes de la Meseta del Orden',
+    description:
+      'Crea ropa y accesorios de los Goirntes de la Meseta del Orden. Esta profesion se centra en los recursos que ofrece la zona de la Meseta del Orden.',
+    category: 'creacion',
+  },
+  // Creadora (2026-08-09, aclaración explícita): transforma lo que recoge 'herborista' en
+  // pociones/ungüentos/material médico — es el equivalente real de la antigua 'sanador' (ya
+  // retirada de este catálogo), no una profesión nueva sin relación.
+  {
+    // Orcos de las Llanuras del Viento Rojo (Gorhorn/Clan Maktor) no tenían variante propia de
+    // alquimista pese a sí tenerla de herborista — añadida para que ANTIDOTE_RECIPE (crafting.ts,
+    // el contraveneno de salvia y ceniza del Campamento del Clan Serhu) tenga un oficio real al
+    // que enganchar, en vez de reusar el de otra región.
+    id: 'alquimista-orcos-llanuras',
+    name: 'Alquimista de los Orcos de las Llanuras del Viento Rojo',
+    description:
+      'Crea pociones y elixires de los Orcos de las Llanuras del Viento Rojo. Esta profesion se centra en los ingredientes que ofrece la zona de las Llanuras del Viento Rojo.',
+    category: 'creacion',
+  },
+  {
+    id: 'alquimista-orcos-cienaga',
+    name: 'Alquimista de los Orcos de la Cienaga Troncal',
+    description:
+      'Crea pociones y elixires de los Orcos de la Cienaga Troncal. Esta profesion se centra en los ingredientes que ofrece la zona de la Cienaga Troncal.',
+    category: 'creacion',
+  },
+  {
+    id: 'alquimista-nabierus-cienaga',
+    name: 'Alquimista de los Nabierus de la Cienaga Troncal',
+    description:
+      'Crea pociones y elixires de los Nabierus de la Cienaga Troncal. Esta profesion se centra en los ingredientes que ofrece la zona de la Cienaga Troncal.',
+    category: 'creacion',
+  },
+  {
+    id: 'alquimista-nabierus-margen',
+    name: 'Alquimista de los Nabierus del Margen Silencioso',
+    description:
+      'Crea pociones y elixires de los Nabierus del Margen Silencioso. Esta profesion se centra en los ingredientes que ofrece la zona del Margen Silencioso.',
+    category: 'creacion',
+  },
+  {
+    id: 'alquimista-faerus-llanuras',
+    name: 'Alquimista de los Faerus de las Llanuras del Viento Rojo',
+    description:
+      'Crea pociones y elixires de los Faerus de las Llanuras del Viento Rojo. Esta profesion se centra en los ingredientes que ofrece la zona de las Llanuras del Viento Rojo.',
+    category: 'creacion',
+  },
+  {
+    id: 'alquimista-faerus-margen',
+    name: 'Alquimista de los Faerus del Margen Silencioso',
+    description:
+      'Crea pociones y elixires de los Faerus del Margen Silencioso. Esta profesion se centra en los ingredientes que ofrece la zona del Margen Silencioso.',
+    category: 'creacion',
+  },
+  {
+    id: 'alquimista-goirntes-margen',
+    name: 'Alquimista de los Goirntes del Margen Silencioso',
+    description:
+      'Crea pociones y elixires de los Goirntes del Margen Silencioso. Esta profesion se centra en los ingredientes que ofrece la zona del Margen Silencioso.',
+    category: 'creacion',
+  },
+  {
+    id: 'alquimista-goirntes-meseta',
+    name: 'Alquimista de los Goirntes de la Meseta del Orden',
+    description:
+      'Crea pociones y elixires de los Goirntes de la Meseta del Orden. Esta profesion se centra en los ingredientes que ofrece la zona de la Meseta del Orden.',
+    category: 'creacion',
+  },
+  {
+    id: 'carpintero-orcos-llanuras',
+    name: 'Carpintero de los Orcos de las Llanuras del Viento Rojo',
+    description:
+      'Crea armas, herramientas o recursos de los Orcos de las Llanuras del Viento Rojo. Esta profesion se centra en los recursos que ofrece la zona de las Llanuras del Viento Rojo.',
+    category: 'creacion',
+  },
+  {
+    id: 'carpintero-orcos-cristal',
+    name: 'Carpintero de los Orcos de Cristal Helado',
+    description:
+      'Crea armas, herramientas o recursos de los Orcos de Cristal Helado. Esta profesion se centra en los recursos que ofrece la zona de Cristal Helado.',
+    category: 'creacion',
+  },
+  {
+    id: 'carpintero-orcos-cienaga',
+    name: 'Carpintero de los Orcos de la Cienaga Troncal',
+    description:
+      'Crea armas, herramientas o recursos de los Orcos de la Cienaga Troncal. Esta profesion se centra en los recursos que ofrece la zona de la Cienaga Troncal.',
+    category: 'creacion',
+  },
+  {
+    id: 'carpintero-faerus-llanuras',
+    name: 'Carpintero de los Faerus de las Llanuras del Viento Rojo',
+    description:
+      'Crea armas, herramientas o recursos de los Faerus de las Llanuras del Viento Rojo. Esta profesion se centra en los recursos que ofrece la zona de las Llanuras del Viento Rojo.',
+    category: 'creacion',
+  },
+  {
+    id: 'carpintero-faerus-margen',
+    name: 'Carpintero de los Faerus del Margen Silencioso',
+    description:
+      'Crea armas, herramientas o recursos de los Faerus del Margen Silencioso. Esta profesion se centra en los recursos que ofrece la zona del Margen Silencioso.',
+    category: 'creacion',
+  },
+  {
+    id: 'carpintero-nabierus-cienaga',
+    name: 'Carpintero de los Nabierus de la Cienaga Troncal',
+    description:
+      'Crea armas, herramientas o recursos de los Nabierus de la Cienaga Troncal. Esta profesion se centra en los recursos que ofrece la zona de la Cienaga Troncal.',
+    category: 'creacion',
+  },
+  {
+    id: 'carpintero-nabierus-margen',
+    name: 'Carpintero de los Nabierus del Margen Silencioso',
+    description:
+      'Crea armas, herramientas o recursos de los Nabierus del Margen Silencioso. Esta profesion se centra en los recursos que ofrece la zona del Margen Silencioso.',
+    category: 'creacion',
+  },
+  {
+    id: 'carpintero-goirntes-margen',
+    name: 'Carpintero de los Goirntes del Margen Silencioso',
+    description:
+      'Crea armas, herramientas o recursos de los Goirntes del Margen Silencioso. Esta profesion se centra en los recursos que ofrece la zona del Margen Silencioso.',
+    category: 'creacion',
+  },
+  {
+    id: 'carpintero-goirntes-meseta',
+    name: 'Carpintero de los Goirntes de la Meseta del Orden',
+    description:
+      'Crea armas, herramientas o recursos de los Goirntes de la Meseta del Orden. Esta profesion se centra en los recursos que ofrece la zona de la Meseta del Orden.',
+    category: 'creacion',
+  },
+  {
+    id: 'curtidor-orcos-llanuras',
+    name: 'Curtidor de los Orcos de las Llanuras del Viento Rojo',
+    description:
+      'Cura y trabaja las pieles de la caza de los Orcos de las Llanuras del Viento Rojo. Esta profesion se centra en los recursos que ofrece la zona de las Llanuras del Viento Rojo.',
+    category: 'creacion',
+  },
+  {
+    id: 'curtidor-orcos-cristal',
+    name: 'Curtidor de los Orcos de Cristal Helado',
+    description:
+      'Cura y trabaja las pieles de la caza de los Orcos de Cristal Helado. Esta profesion se centra en los recursos que ofrece la zona de Cristal Helado.',
+    category: 'creacion',
+  },
+  {
+    id: 'curtidor-orcos-cienaga',
+    name: 'Curtidor de los Orcos de la Cienaga Troncal',
+    description:
+      'Cura y trabaja las pieles de la caza de los Orcos de la Cienaga Troncal. Esta profesion se centra en los recursos que ofrece la zona de la Cienaga Troncal.',
+    category: 'creacion',
+  },
+  {
+    id: 'curtidor-nabierus-cienaga',
+    name: 'Curtidor de los Nabierus de la Cienaga Troncal',
+    description:
+      'Cura y trabaja las pieles de la caza de los Nabierus de la Cienaga Troncal. Esta profesion se centra en los recursos que ofrece la zona de la Cienaga Troncal.',
+    category: 'creacion',
+  },
+  {
+    id: 'curtidor-nabierus-margen',
+    name: 'Curtidor de los Nabierus del Margen Silencioso',
+    description:
+      'Cura y trabaja las pieles de la caza de los Nabierus del Margen Silencioso. Esta profesion se centra en los recursos que ofrece la zona del Margen Silencioso.',
+    category: 'creacion',
+  },
+  {
+    id: 'curtidor-faerus-llanuras',
+    name: 'Curtidor de los Faerus de las Llanuras del Viento Rojo',
+    description:
+      'Cura y trabaja las pieles de la caza de los Faerus de las Llanuras del Viento Rojo. Esta profesion se centra en los recursos que ofrece la zona de las Llanuras del Viento Rojo.',
+    category: 'creacion',
+  },
+  {
+    id: 'curtidor-faerus-margen',
+    name: 'Curtidor de los Faerus del Margen Silencioso',
+    description:
+      'Cura y trabaja las pieles de la caza de los Faerus del Margen Silencioso. Esta profesion se centra en los recursos que ofrece la zona del Margen Silencioso.',
+    category: 'creacion',
+  },
+  {
+    id: 'curtidor-goirntes-margen',
+    name: 'Curtidor de los Goirntes del Margen Silencioso',
+    description:
+      'Cura y trabaja las pieles de la caza de los Goirntes del Margen Silencioso. Esta profesion se centra en los recursos que ofrece la zona del Margen Silencioso.',
+    category: 'creacion',
+  },
+  {
+    id: 'curtidor-goirntes-meseta',
+    name: 'Curtidor de los Goirntes de la Meseta del Orden',
+    description:
+      'Cura y trabaja las pieles de la caza de los Goirntes de la Meseta del Orden. Esta profesion se centra en los recursos que ofrece la zona de la Meseta del Orden.',
+    category: 'creacion',
+  },
+  {
+    id: 'minero-llanuras',
+    name: 'Minero de las Llanuras del Viento Rojo',
+    description:
+      'Extrae minerales y piedras de las Llanuras del Viento Rojo.',
+    category: 'recoleccion',
+  },
+  {
+    id: 'minero-cienaga',
+    name: 'Minero de la Cienaga Troncal',
+    description:
+      'Extrae minerales y piedras de la Cienaga Troncal.',
+    category: 'recoleccion',
+  },
+  {
+    id: 'minero-cristal',
+    name: 'Minero de Cristal Helado',
+    description:
+      'Extrae minerales y piedras de Cristal Helado.',
+    category: 'recoleccion',
+  },
+  {
+    id: 'minero-margen',
+    name: 'Minero del Margen Silencioso',
+    description:
+      'Extrae minerales y piedras del Margen Silencioso.',
+    category: 'recoleccion',
+  },
+  {
+    id: 'minero-meseta',
+    name: 'Minero de la Meseta del Orden',
+    description:
+      'Extrae minerales y piedras de la Meseta del Orden.',
+    category: 'recoleccion',
+  },
+  // Escalado por raza+región (2026-08-09, petición explícita: "añade también desollador como
+  // profesión a cada raza como las demás") — antes solo variaba por región (igual que minero/
+  // talador), pero alimenta a 'peletero' (creadora) que SÍ varía por raza, así que ahora copia
+  // exactamente los mismos 9 combos raza+región de peletero-*, uno a uno.
+  {
+    id: 'desollador-orcos-llanuras',
+    name: 'Desollador de presas de los Orcos de las Llanuras del Viento Rojo',
+    description:
+      'Desuella y prepara pieles de presas de los Orcos de las Llanuras del Viento Rojo.',
+    category: 'recoleccion',
+  },
+  {
+    id: 'desollador-orcos-cristal',
+    name: 'Desollador de presas de los Orcos de Cristal Helado',
+    description:
+      'Desuella y prepara pieles de presas de los Orcos de Cristal Helado.',
+    category: 'recoleccion',
+  },
+  {
+    id: 'desollador-orcos-cienaga',
+    name: 'Desollador de presas de los Orcos de la Cienaga Troncal',
+    description:
+      'Desuella y prepara pieles de presas de los Orcos de la Cienaga Troncal.',
+    category: 'recoleccion',
+  },
+  {
+    id: 'desollador-nabierus-cienaga',
+    name: 'Desollador de presas de los Nabierus de la Cienaga Troncal',
+    description:
+      'Desuella y prepara pieles de presas de los Nabierus de la Cienaga Troncal.',
+    category: 'recoleccion',
+  },
+  {
+    id: 'desollador-nabierus-margen',
+    name: 'Desollador de presas de los Nabierus del Margen Silencioso',
+    description:
+      'Desuella y prepara pieles de presas de los Nabierus del Margen Silencioso.',
+    category: 'recoleccion',
+  },
+  {
+    id: 'desollador-faerus-llanuras',
+    name: 'Desollador de presas de los Faerus de las Llanuras del Viento Rojo',
+    description:
+      'Desuella y prepara pieles de presas de los Faerus de las Llanuras del Viento Rojo.',
+    category: 'recoleccion',
+  },
+  {
+    id: 'desollador-faerus-margen',
+    name: 'Desollador de presas de los Faerus del Margen Silencioso',
+    description:
+      'Desuella y prepara pieles de presas de los Faerus del Margen Silencioso.',
+    category: 'recoleccion',
+  },
+  {
+    id: 'desollador-goirntes-margen',
+    name: 'Desollador de presas de los Goirntes del Margen Silencioso',
+    description:
+      'Desuella y prepara pieles de presas de los Goirntes del Margen Silencioso.',
+    category: 'recoleccion',
+  },
+  {
+    id: 'desollador-goirntes-meseta',
+    name: 'Desollador de presas de los Goirntes de la Meseta del Orden',
+    description:
+      'Desuella y prepara pieles de presas de los Goirntes de la Meseta del Orden.',
+    category: 'recoleccion',
+  },
+  {
+    id: 'talador-llanuras',
+    name: 'Talador de madera de las Llanuras del Viento Rojo',
+    description:
+      'Talador de madera de las Llanuras del Viento Rojo. Extrae madera de los árboles de las Llanuras del Viento Rojo.',
+    category: 'recoleccion',
+  },
+  {
+    id: 'talador-cristal',
+    name: 'Talador de madera de Cristal Helado',
+    description:
+      'Talador de madera de Cristal Helado. Extrae madera de los árboles de Cristal Helado.',
+    category: 'recoleccion',
+  },
+  {
+    id: 'talador-cienaga',
+    name: 'Talador de madera de la Cienaga Troncal',
+    description:
+      'Talador de madera de la Cienaga Troncal. Extrae madera de los árboles de la Cienaga Troncal.',
+    category: 'recoleccion',
+  },
+  {
+    id: 'talador-margen',
+    name: 'Talador de madera del Margen Silencioso',
+    description:
+      'Talador de madera del Margen Silencioso. Extrae madera de los árboles del Margen Silencioso.',
+    category: 'recoleccion',
+  },
+  {
+    id: 'talador-meseta',
+    name: 'Talador de madera de la Meseta del Orden',
+    description:
+      'Talador de madera de la Meseta del Orden. Extrae madera de los árboles de la Meseta del Orden.',
+    category: 'recoleccion',
+  },
+  {
+    id: 'constructor-orcos-llanuras',
+    name: 'Constructor de los Orcos de las Llanuras del Viento Rojo',
+    description:
+      'Constructor de los Orcos de las Llanuras del Viento Rojo. Esta profesion se centra en los recursos que ofrece la zona de las Llanuras del Viento Rojo.',
+    category: 'creacion',
+  },
+  {
+    id: 'constructor-orcos-cristal',
+    name: 'Constructor de los Orcos de Cristal Helado',
+    description:
+      'Constructor de los Orcos de Cristal Helado. Esta profesion se centra en los recursos que ofrece la zona de Cristal Helado.',
+    category: 'creacion',
+  },
+  {
+    id: 'constructor-orcos-cienaga',
+    name: 'Constructor de los Orcos de la Cienaga Troncal',
+    description:
+      'Constructor de los Orcos de la Cienaga Troncal. Esta profesion se centra en los recursos que ofrece la zona de la Cienaga Troncal.',
+    category: 'creacion',
+  },
+  {
+    id: 'constructor-nabierus-cienaga',
+    name: 'Constructor de los Nabierus de la Cienaga Troncal',
+    description:
+      'Constructor de los Nabierus de la Cienaga Troncal. Esta profesion se centra en los recursos que ofrece la zona de la Cienaga Troncal.',
+    category: 'creacion',
+  },
+  {
+    id: 'constructor-nabierus-margen',
+    name: 'Constructor de los Nabierus del Margen Silencioso',
+    description:
+      'Constructor de los Nabierus del Margen Silencioso. Esta profesion se centra en los recursos que ofrece la zona del Margen Silencioso.',
+    category: 'creacion',
+  },
+  {
+    id: 'constructor-faerus-llanuras',
+    name: 'Constructor de los Faerus de las Llanuras del Viento Rojo',
+    description:
+      'Constructor de los Faerus de las Llanuras del Viento Rojo. Esta profesion se centra en los recursos que ofrece la zona de las Llanuras del Viento Rojo.',
+    category: 'creacion',
+  },
+  {
+    id: 'constructor-faerus-margen',
+    name: 'Constructor de los Faerus del Margen Silencioso',
+    description:
+      'Constructor de los Faerus del Margen Silencioso. Esta profesion se centra en los recursos que ofrece la zona del Margen Silencioso.',
+    category: 'creacion',
+  },
+  {
+    id: 'constructor-goirntes-margen',
+    name: 'Constructor de los Goirntes del Margen Silencioso',
+    description:
+      'Constructor de los Goirntes del Margen Silencioso. Esta profesion se centra en los recursos que ofrece la zona del Margen Silencioso.',
+    category: 'creacion',
+  },
+  {
+    id: 'constructor-goirntes-meseta',
+    name: 'Constructor de los Goirntes de la Meseta del Orden',
+    description:
+      'Constructor de los Goirntes de la Meseta del Orden. Esta profesion se centra en los recursos que ofrece la zona de la Meseta del Orden.',
+    category: 'creacion',
+  },
+  {
+    id: 'peletero-orcos-llanuras',
+    name: 'Peletero de los Orcos de las Llanuras del Viento Rojo',
+    description:
+      'Peletero que trabaja el cuero y las pieles de los Orcos de las Llanuras del Viento Rojo. Esta profesion se centra en los recursos que ofrece la zona de las Llanuras del Viento Rojo.',
+    category: 'creacion',
+  },
+  {
+    id: 'peletero-orcos-cristal',
+    name: 'Peletero de los Orcos de Cristal Helado',
+    description:
+      'Peletero que trabaja el cuero y las pieles de los Orcos de Cristal Helado. Esta profesion se centra en los recursos que ofrece la zona de Cristal Helado.',
+    category: 'creacion',
+  },
+  {
+    id: 'peletero-orcos-cienaga',
+    name: 'Peletero de los Orcos de la Cienaga Troncal',
+    description:
+      'Peletero que trabaja el cuero y las pieles de los Orcos de la Cienaga Troncal. Esta profesion se centra en los recursos que ofrece la zona de la Cienaga Troncal.',
+    category: 'creacion',
+  },
+  {
+    id: 'peletero-nabierus-cienaga',
+    name: 'Peletero de los Nabierus de la Cienaga Troncal',
+    description:
+      'Peletero que trabaja el cuero y las pieles de los Nabierus de la Cienaga Troncal. Esta profesion se centra en los recursos que ofrece la zona de la Cienaga Troncal.',
+    category: 'creacion',
+  },
+  {
+    id: 'peletero-nabierus-margen',
+    name: 'Peletero de los Nabierus del Margen Silencioso',
+    description:
+      'Peletero que trabaja el cuero y las pieles de los Nabierus del Margen Silencioso. Esta profesion se centra en los recursos que ofrece la zona del Margen Silencioso.',
+    category: 'creacion',
+  },
+  {
+    id: 'peletero-faerus-llanuras',
+    name: 'Peletero de los Faerus de las Llanuras del Viento Rojo',
+    description:
+      'Peletero que trabaja el cuero y las pieles de los Faerus de las Llanuras del Viento Rojo. Esta profesion se centra en los recursos que ofrece la zona de las Llanuras del Viento Rojo.',
+    category: 'creacion',
+  },
+  {
+    id: 'peletero-faerus-margen',
+    name: 'Peletero de los Faerus del Margen Silencioso',
+    description:
+      'Peletero que trabaja el cuero y las pieles de los Faerus del Margen Silencioso. Esta profesion se centra en los recursos que ofrece la zona del Margen Silencioso.',
+    category: 'creacion',
+  },
+  {
+    id: 'peletero-goirntes-margen',
+    name: 'Peletero de los Goirntes del Margen Silencioso',
+    description:
+      'Peletero que trabaja el cuero y las pieles de los Goirntes del Margen Silencioso. Esta profesion se centra en los recursos que ofrece la zona del Margen Silencioso.',
+    category: 'creacion',
+  },
+  {
+    id: 'peletero-goirntes-meseta',
+    name: 'Peletero de los Goirntes de la Meseta del Orden',
+    description:
+      'Peletero que trabaja el cuero y las pieles de los Goirntes de la Meseta del Orden. Esta profesion se centra en los recursos que ofrece la zona de la Meseta del Orden.',
+    category: 'creacion',
+  },
+  {
+    id: 'cocinero-orco-llanuras',
+    name: 'Cocinero de los Orcos de las Llanuras del Viento Rojo',
+    description:
+      'Cocinero que prepara comidas y bebidas para los Orcos de las Llanuras del Viento Rojo. Esta profesion se centra en los recursos que ofrece la zona de las Llanuras del Viento Rojo.',
+    category: 'creacion',
+  },
+  {
+    id: 'cocinero-orco-cristal',
+    name: 'Cocinero de los Orcos de las Llanuras de Cristal Helado',
+    description:
+      'Cocinero que prepara comidas y bebidas para los Orcos de las Llanuras de Cristal Helado. Esta profesion se centra en los recursos que ofrece la zona de las Llanuras de Cristal Helado.',
+    category: 'creacion',
+  },
+  {
+    id: 'cocinero-orco-cienaga',
+    name: 'Cocinero de los Orcos de la Cienaga Troncal',
+    description:
+      'Cocinero que prepara comidas y bebidas para los Orcos de la Cienaga Troncal. Esta profesion se centra en los recursos que ofrece la zona de la Cienaga Troncal.',
+    category: 'creacion',
+  },
+  {
+    id: 'cocinero-faerus-llanuras',
+    name: 'Cocinero de los Faerus de las Llanuras del Viento Rojo',
+    description:
+      'Cocinero que prepara comidas y bebidas para los Faerus de las Llanuras del Viento Rojo. Esta profesion se centra en los recursos que ofrece la zona de las Llanuras del Viento Rojo.',
+    category: 'creacion',
+  },
+  {
+    id: 'cocinero-faerus-margen',
+    name: 'Cocinero de los Faerus del Margen Silencioso',
+    description:
+      'Cocinero que prepara comidas y bebidas para los Faerus del Margen Silencioso. Esta profesion se centra en los recursos que ofrece la zona del Margen Silencioso.',
+    category: 'creacion',
+  },
+  {
+    id: 'cocinero-nabierus-cienaga',
+    name: 'Cocinero de los Nabierus de la Cienaga Troncal',
+    description:
+      'Cocinero que prepara comidas y bebidas para los Nabierus de la Cienaga Troncal. Esta profesion se centra en los recursos que ofrece la zona de la Cienaga Troncal.',
+    category: 'creacion',
+  },
+  {
+    id: 'cocinero-nabierus-margen',
+    name: 'Cocinero de los Nabierus del Margen Silencioso',
+    description:
+      'Cocinero que prepara comidas y bebidas para los Nabierus del Margen Silencioso. Esta profesion se centra en los recursos que ofrece la zona del Margen Silencioso.',
+    category: 'creacion',
+  },
+  {
+    id: 'cocinero-goirntes-margen',
+    name: 'Cocinero de los Goirntes del Margen Silencioso',
+    description:
+      'Cocinero que prepara comidas y bebidas para los Goirntes del Margen Silencioso. Esta profesion se centra en los recursos que ofrece la zona del Margen Silencioso.',
+    category: 'creacion',
+  },
+  {
+    id: 'cocinero-goirntes-meseta',
+    name: 'Cocinero de los Goirntes de la Meseta del Orden',
+    description:
+      'Cocinero que prepara comidas y bebidas para los Goirntes de la Meseta del Orden. Esta profesion se centra en los recursos que ofrece la zona de la Meseta del Orden.',
     category: 'creacion',
   },
 ]

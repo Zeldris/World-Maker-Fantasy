@@ -31,7 +31,7 @@ export const pregeneratedCharacters: Character[] = [
     archetype: 'Guerrero superviviente del clan Maktor (Orco)',
     origin: 'Único superviviente de un clan orco de escasa relevancia, aniquilado como carne de cañón por el mando Goirntes en una de las primeras escaramuzas de la Concordia de Hierro.',
     motivation: 'Que la muerte de su clan signifique algo, y restaurar el nombre de los Maktor — aunque eso implique romper el juramento que lo ata a un bando que ya no respeta.',
-    attributes: { fuerza: 18, destreza: 9, constitucion: 5, inteligencia: 5, voluntad: 12, carisma: 8, arcano: 8 },
+    attributes: { fuerza: 10, destreza: 6, constitucion: 7, inteligencia: 7, voluntad: 8, carisma: 6, arcano: 2 },
     isPregenerated: true,
     portraitInitial: 'G',
     introCharacterText:
