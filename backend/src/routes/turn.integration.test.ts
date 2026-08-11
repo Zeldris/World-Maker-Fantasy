@@ -6,7 +6,7 @@ import { getDefaultUserId } from '../lib/defaultUser.js';
 import { resolveDueTransits } from '../workers/worldTick.js';
 import { minutosConDestreza, bandaForMinutos } from '../services/travel.js';
 import type { NarrationResult } from '../services/narrador.js';
-import { hasFalseTravelClaim } from '../services/narrador.js';
+import { hasFalseTravelClaim, hasFalsePhantomTravel } from '../services/narrador.js';
 import type { TravelResolution } from '../services/travel.js';
 import type { TravelInterruption } from '../services/travelInterruption.js';
 import type { AttributeBlock } from '../services/dice.js';
@@ -1318,6 +1318,147 @@ describe('Punto de guardado: solo construcciones propias', () => {
   }, 20_000);
 });
 
+// Cobertura nueva (auditoría 2026-08-11, "pruebas por API": la ficha de Descansar prometía curar
+// "sin necesitar volver a un lugar conocido", pero la mecánica real (healCeilingFor/death.ts)
+// solo curaba en refugio/asentamiento — aclarado con la usuaria: SÍ cura en cualquier sitio, pero
+// un vivac improvisado topa en GRAVE; solo un refugio/asentamiento real llega a HERIDO.
+describe('Descansar en cualquier sitio cura, pero topa en GRAVE (solo refugio/asentamiento llega a HERIDO)', () => {
+  let saveId: string;
+  let pilaresId: string;
+
+  beforeAll(async () => {
+    const userId = await getDefaultUserId();
+    const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
+    // Los Pilares Rotos: kind 'hito', NUNCA un punto de descanso válido (isValidRestLocationKind).
+    const pilares = await prisma.location.findFirstOrThrow({ where: { worldId: world.id, slug: 'pilares-rotos' } });
+    pilaresId = pilares.id;
+    const save = await prisma.save.create({
+      data: {
+        userId,
+        worldId: world.id,
+        characterName: 'Gorhorn de prueba 10',
+        characterArchetype: 'guerrero',
+        characterOrigin: 'Clan Maktor',
+        characterMotivation: 'x',
+        attributes: ATTRS,
+        portraitInitial: 'G',
+        currentLocationId: pilares.id,
+        condicionFisica: 'INCAPACITADO',
+      },
+    });
+    saveId = save.id;
+    await prisma.worldState.create({ data: { saveId } });
+    classifyAction.mockResolvedValue({
+      requiereTirada: false, atributo: 'constitucion', dificultad: 8, razon: 'x', banda: 'extendida', duracionEstimadaMinutos: 120,
+    });
+  });
+
+  afterAll(async () => {
+    await prisma.save.delete({ where: { id: saveId } });
+  });
+
+  it('descansar en un hito (sin refugio válido) mejora INCAPACITADO hasta GRAVE, nunca hasta HERIDO', async () => {
+    await doTurn(saveId, 'Descanso aquí mismo un rato para recuperar fuerzas.');
+    const save = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
+    expect(save.condicionFisica).toBe('GRAVE');
+    expect(save.currentLocationId).toBe(pilaresId); // sigue en el mismo sitio, esto no es respawn
+  }, 15_000);
+
+  it('un segundo descanso en el mismo hito ya no mejora nada más (el tope de un vivac improvisado es GRAVE)', async () => {
+    await doTurn(saveId, 'Descanso otra vez, esperando recuperarme del todo.');
+    const save = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
+    expect(save.condicionFisica).toBe('GRAVE');
+  }, 15_000);
+});
+
+// Cobertura nueva (auditoría 2026-08-11, "pruebas por API" + duda directa de la usuaria: "ahora
+// mismo al morir no está volviendo a punto anterior, solo revives sin más") — nunca existía un
+// test end-to-end que encadenara "acampar en un sitio" → "morir estando en OTRO sitio" → "reaparece
+// en el campamento, no donde murió". `lastRestLocationId` ya se comprobaba (arriba), y
+// `resolveDeathOutcome`/`whisperText` ya tenían tests unitarios puros (death.test.ts), pero el
+// ENGANCHE real entre los dos (`narrateAndPersistTurn`, `params.lastRestLocationId` →
+// `finalCurrentLocationId`) nunca se había probado contra la BD real.
+describe('Respawn tras morir: vuelve al último campamento, no se queda donde murió', () => {
+  let saveId: string;
+  let hondonadaId: string;
+  let pilaresId: string;
+
+  beforeAll(async () => {
+    const userId = await getDefaultUserId();
+    const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
+    const hondonada = await prisma.location.findFirstOrThrow({ where: { worldId: world.id, slug: 'hondonada-del-eco' } });
+    const pilares = await prisma.location.findFirstOrThrow({ where: { worldId: world.id, slug: 'pilares-rotos' } });
+    hondonadaId = hondonada.id;
+    pilaresId = pilares.id;
+    const save = await prisma.save.create({
+      data: {
+        userId,
+        worldId: world.id,
+        characterName: 'Gorhorn de prueba 9',
+        characterArchetype: 'guerrero',
+        characterOrigin: 'Clan Maktor',
+        characterMotivation: 'x',
+        attributes: { ...ATTRS, fuerza: 15, constitucion: 15 },
+        portraitInitial: 'G',
+        currentLocationId: hondonada.id,
+        condicionFisica: 'HERIDO', // para que restSucceeds cuente al descansar (§ arriba)
+        dificultad: 'NOVATO', // sin límite de muertes, la Entidad siempre responde
+      },
+    });
+    saveId = save.id;
+    await prisma.worldState.create({ data: { saveId } });
+  });
+
+  afterAll(async () => {
+    await prisma.save.delete({ where: { id: saveId } });
+  });
+
+  it('acampa en la Hondonada, muere en Los Pilares Rotos, reaparece en la Hondonada (no en Los Pilares)', async () => {
+    await giveMaterials(saveId, [
+      { name: 'Leña de matorral de cuerno (20)', catalogSlug: 'lena-matorral-cuerno' },
+      { name: 'Piedra (10)', catalogSlug: 'piedra' },
+      { name: 'Lana de múrgol (5)', catalogSlug: 'lana-murgol' },
+    ]);
+    classifyAction.mockResolvedValueOnce({
+      requiereTirada: false, atributo: 'fuerza', dificultad: 15, razon: 'x', banda: 'larga', duracionEstimadaMinutos: 4320,
+    });
+    await doTurn(saveId, 'Construyo un campamento base en este lugar.');
+    expect(await prisma.building.count({ where: { saveId, recipeKey: 'campamento', status: 'ACTIVO' } })).toBe(1);
+
+    classifyAction.mockResolvedValueOnce({
+      requiereTirada: false, atributo: 'constitucion', dificultad: 8, razon: 'x', banda: 'extendida', duracionEstimadaMinutos: 120,
+    });
+    await doTurn(saveId, 'Descanso en mi campamento un rato para curarme.');
+    const savedAfterRest = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
+    expect(savedAfterRest.lastRestLocationId).toBe(hondonadaId);
+
+    // El personaje se aleja del campamento y llega a las puertas de la muerte estando en OTRO
+    // sitio — `condicionFisica` a INCAPACITADO (un escalón antes de MUERTO: `nextCondicionFisica`
+    // solo empeora un escalón por turno, incluso en combate) para que un solo turno de combate
+    // baste para morir.
+    await prisma.save.update({
+      where: { id: saveId },
+      data: { currentLocationId: pilaresId, condicionFisica: 'INCAPACITADO' },
+    });
+    classifyAction.mockResolvedValueOnce({
+      requiereTirada: true, atributo: 'fuerza', dificultad: 18, razon: 'x', banda: 'instantanea', duracionEstimadaMinutos: 0,
+    });
+    narrateAction.mockResolvedValueOnce({
+      narration: 'El golpe final acaba con Gorhorn.',
+      newFacts: [],
+      condicionFisica: 'MUERTO',
+    });
+    await doTurn(saveId, 'Sigo luchando contra todo pronóstico.');
+
+    const savedAfterDeath = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
+    expect(savedAfterDeath.condicionFisica).toBe('ILESO'); // respawn siempre revive a salvo
+    expect(savedAfterDeath.deathCount).toBe(1);
+    expect(savedAfterDeath.endedAt).toBeNull(); // NOVATO, sin fin de partida
+    expect(savedAfterDeath.currentLocationId).toBe(hondonadaId); // vuelve al campamento…
+    expect(savedAfterDeath.currentLocationId).not.toBe(pilaresId); // …no se queda donde murió
+  }, 20_000);
+});
+
 // Cobertura nueva (auditoría de deuda técnica AMPLIA 2026-08-04, bug real de condición de carrera
 // — mismo patrón exacto ya cerrado hoy para construcción/crafteo): `harvestMatch`
 // (turnResolution.ts) se calcula con `prisma`, ANTES de la transacción — dos turnos de despiece
@@ -2039,6 +2180,82 @@ describe('Movimiento vago con 2+ salidas: no se persiste una llegada falsa aunqu
 
     const facts = await prisma.sessionFact.findMany({ where: { saveId } });
     expect(facts.some((f) => f.text.includes('Pilares Rotos'))).toBe(false);
+
+    const savedRow = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
+    expect(savedRow.currentLocationId).toBe(locationId);
+  }, 20_000);
+});
+
+// Cobertura nueva (auditoría 2026-08-11, "pruebas por API"): complementario al bloque de arriba —
+// aquí el jugador nombra una dirección que NO matchea ningún alias real ("hacia el norte"), así
+// que `travel` sale null sin que haya nada ambiguo que preguntar (a diferencia del caso de 2+
+// salidas de arriba). `hasFalsePhantomTravel` es la única red que impide que la narración describa
+// de todos modos que el personaje abandona la ubicación actual.
+describe('Destino inventado sin alias real ("hacia el norte"): no se persiste una salida falsa (bug real jugando por API, 2026-08-11)', () => {
+  let saveId: string;
+  let locationId: string;
+
+  beforeAll(async () => {
+    const userId = await getDefaultUserId();
+    const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
+    const location = await prisma.location.findFirstOrThrow({ where: { worldId: world.id, slug: 'hondonada-del-eco' } });
+    locationId = location.id;
+    const save = await prisma.save.create({
+      data: {
+        userId,
+        worldId: world.id,
+        characterName: 'Gorhorn de prueba 20',
+        characterArchetype: 'guerrero',
+        characterOrigin: 'Clan Maktor',
+        characterMotivation: 'x',
+        attributes: ATTRS,
+        portraitInitial: 'G',
+        currentLocationId: location.id,
+      },
+    });
+    saveId = save.id;
+    await prisma.worldState.create({ data: { saveId } });
+  });
+
+  afterAll(async () => {
+    await prisma.save.delete({ where: { id: saveId } });
+  });
+
+  it('descarta una narración que da la salida por hecha ("sale de la hondonada"), sin mover Save.currentLocationId', async () => {
+    const app = await buildApp();
+    const filler = 'Miro alrededor con calma';
+    classifyAction.mockResolvedValue({
+      requiereTirada: false, atributo: 'fuerza', dificultad: 8, razon: 'x', banda: 'corta', duracionEstimadaMinutos: 20,
+    });
+    const fillerClassify = await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action: filler, enCombate: true } });
+    const fillerParsed = fillerClassify.json();
+    await app.inject({
+      method: 'POST',
+      url: '/turn/narrate',
+      payload: { saveId, action: filler, classification: fillerParsed.classification, roll: fillerParsed.roll, enCombate: true },
+    });
+
+    // Reproduce el hallazgo real: "el norte" no es alias de ninguna Location real, así que
+    // `resolveTravel` no encuentra nada que resolver (`travel: null`), pero la narración de todos
+    // modos describe una salida ya completada. Nombra el sitio con su alias real de catálogo
+    // ("la hondonada del eco", worldCatalog.ts — el único que existe hoy, sin forma corta) para
+    // que el test refleje lo que el detector puede ver de verdad contra datos reales.
+    narrateAction.mockResolvedValueOnce({
+      narration: 'Gorhorn sale de la Hondonada del Eco, caminando firme hacia el norte, alejándose del orco.',
+      newFacts: [],
+    });
+    const action = 'Salgo de la hondonada y camino hacia el norte, alejándome del orco.';
+    const classifyRes = await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action, enCombate: false } });
+    const { classification, roll } = classifyRes.json();
+    expect(classification.travel).toBeFalsy();
+    const narrateRes = await app.inject({
+      method: 'POST',
+      url: '/turn/narrate',
+      payload: { saveId, action, classification, roll, enCombate: false },
+    });
+
+    const done = lastNdjsonLine(narrateRes.payload) as { narration: { narration: string; newFacts: string[] } };
+    expect(hasFalsePhantomTravel(done.narration, ['La Hondonada del Eco', 'la hondonada del eco'])).toBe(false);
 
     const savedRow = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
     expect(savedRow.currentLocationId).toBe(locationId);

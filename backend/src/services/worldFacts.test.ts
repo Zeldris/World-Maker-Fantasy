@@ -76,6 +76,18 @@ describe('appendSessionFacts', () => {
     expect(executeRaw).toHaveBeenCalledTimes(1);
   });
 
+  // Auditoría 2026-08-11 ("pruebas por API"): dos fuentes de recolección distintas descubiertas en
+  // el MISMO turno ("roca" y "veta de hierro", ambas en Los Pilares Rotos) compartían 9 de 11
+  // palabras — toda la plantilla fija "Gorhorn localiza ... en la zona", nada del contenido real —
+  // así que la segunda se descartaba como si fuera el mismo hecho, perdiendo el descubrimiento.
+  it('NO descarta dos hechos con la MISMA plantilla pero contenido real distinto (bug real: "roca" vs "veta de hierro" en el mismo sitio)', async () => {
+    await appendSessionFacts('save1', [], [
+      'Gorhorn localiza roca de los pilares rotos en la zona.',
+      'Gorhorn localiza veta de hierro de los pilares rotos en la zona.',
+    ]);
+    expect(executeRaw).toHaveBeenCalledTimes(2);
+  });
+
   it('no hace nada si no hay hechos nuevos', async () => {
     await appendSessionFacts('save1', ['algo'], []);
     expect(embed).not.toHaveBeenCalled();

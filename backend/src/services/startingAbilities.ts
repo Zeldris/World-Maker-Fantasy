@@ -68,7 +68,11 @@ const GORHORN_STARTING_ABILITIES: StartingAbility[] = [
   {
     name: 'Descansar',
     icon: '🔥',
-    description: 'Se detiene donde esté, monta un vivac breve y descansa para recuperar fuerzas — sin necesitar volver a un lugar conocido.',
+    // Auditoría 2026-08-11 ("la ficha promete curar en cualquier sitio, pero la mecánica solo
+    // curaba en refugio/asentamiento"): aclarado con la usuaria — sí cura en cualquier sitio, pero
+    // un vivac improvisado solo llega hasta Grave; hace falta un refugio o asentamiento real para
+    // llegar a Herido (ver healCeilingFor, death.ts).
+    description: 'Se detiene donde esté, monta un vivac breve y descansa para recuperar fuerzas — un alivio real incluso a la intemperie, aunque solo un refugio o asentamiento de verdad permite recuperarse del todo.',
     promptText: 'Me detengo aquí mismo, monto un vivac breve y descanso para recuperar fuerzas antes de seguir.',
     category: 'general',
   },

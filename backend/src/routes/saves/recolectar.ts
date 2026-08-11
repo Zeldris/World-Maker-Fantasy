@@ -8,6 +8,7 @@ import { inventoryCapacityFor, totalInventoryUnits } from '../../services/invent
 import { effectiveInventorySlotsBonus } from '../../services/equipment.js';
 import { stripRegionArticle } from '../../services/population.js';
 import { quantityOf } from '../../services/ingredients.js';
+import { closeItemQuests } from '../../services/turnResolution.js';
 import type { AttributeBlock } from '../../services/dice.js';
 import type { MetodoObtencion } from '@prisma/client';
 
@@ -372,6 +373,16 @@ export async function recolectarRoutes(app: FastifyInstance) {
           });
           logEntry = { id: created.id, text, timeLabel, createdAt: created.createdAt.toISOString(), fictionalMinutes };
         }
+
+        // Cierre de misión "conseguir Z" (bug real, auditoría 2026-08-11 "pruebas por API"): este
+        // endpoint determinista nunca pasaba por `narrateAndPersistTurn`, así que ninguna misión
+        // `targetItemName` se cerraba nunca si el objeto venía de Minar/Talar/Desollar — mismo
+        // criterio que turnResolution.ts, extraído a `closeItemQuests` para no duplicar la lógica.
+        await closeItemQuests(
+          tx,
+          save.id,
+          [...touched.values()].map((s) => s.catalogName),
+        );
 
         return { touched, logEntry };
       });

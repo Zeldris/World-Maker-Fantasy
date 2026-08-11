@@ -36,23 +36,39 @@ export function condicionMalus(condicion: CondicionFisica): number {
 
 /// Techo real de mejora este turno (2026-07-29, reglas de curación: "si descansas o comes solo
 /// puedes volver a Herido... si usas material médico sí puedes curarte a Ileso... si sales de un
-/// combate Incapacitado, tendrás que usar objetos específicos"). Sin causa real (ni descanso
-/// válido ni objeto médico), no hay mejora posible — cierra el hueco de que el modelo mejorara la
-/// condición "porque sí" narrativamente, sin que nada en el turno lo justificara.
+/// combate Incapacitado, tendrás que usar objetos específicos"). Sin causa real (ni descanso ni
+/// objeto médico), no hay mejora posible — cierra el hueco de que el modelo mejorara la condición
+/// "porque sí" narrativamente, sin que nada en el turno lo justificara.
 ///
-/// Bug real (auditoría 2026-07-30): las dos ramas de abajo devolvían su techo (HERIDO/
-/// `medicalCuraHasta`) sin comprobar antes si `current` ya estaba MEJOR que ese techo — un
-/// personaje ya ILESO que descansaba con éxito (o usaba un objeto médico débil, tope HERIDO)
-/// se veía "curado" hasta HERIDO por `nextCondicionFisica` (que solo sabe tomar lo PEOR entre
-/// la propuesta y el techo), empeorando de verdad a alguien que no tenía nada que curar. El
-/// techo nunca puede ser peor que la condición actual — como mucho, igual de bueno.
-export function healCeilingFor(current: CondicionFisica, restSucceeds: boolean, medicalCuraHasta: CondicionFisica | null): CondicionFisica {
+/// Dos escalones de descanso (auditoría 2026-08-11, "la descripción de Descansar promete curar en
+/// cualquier sitio pero la mecánica solo curaba en refugio/asentamiento" — aclarado con la
+/// usuaria): `restAttempted` (el jugador intentó descansar, EN CUALQUIER SITIO, con éxito
+/// mecánico) topa como mucho en GRAVE — un vivac improvisado ayuda, pero poco. `restInValidLocation`
+/// (además, el sitio es un refugio/asentamiento real) topa en HERIDO — sigue sin bastar desde
+/// INCAPACITADO, que necesita objeto médico sí o sí, pero SÍ mejora a GRAVE igual que el descanso
+/// improvisado (antes no hacía nada en absoluto). `restInValidLocation` implica `restAttempted`
+/// (nunca al revés) — es el mismo caller quien garantiza esa relación (turnResolution.ts).
+///
+/// Bug real (auditoría 2026-07-30): las ramas de abajo devolvían su techo sin comprobar antes si
+/// `current` ya estaba MEJOR que ese techo — un personaje ya ILESO que descansaba con éxito (o
+/// usaba un objeto médico débil, tope HERIDO) se veía "curado" hasta HERIDO por
+/// `nextCondicionFisica` (que solo sabe tomar lo PEOR entre la propuesta y el techo), empeorando
+/// de verdad a alguien que no tenía nada que curar. El techo nunca puede ser peor que la
+/// condición actual — como mucho, igual de bueno.
+export function healCeilingFor(
+  current: CondicionFisica,
+  restAttempted: boolean,
+  restInValidLocation: boolean,
+  medicalCuraHasta: CondicionFisica | null,
+): CondicionFisica {
   const currentIdx = CONDICION_ORDER.indexOf(current);
   let ceiling: CondicionFisica = current;
   if (medicalCuraHasta) {
     ceiling = medicalCuraHasta; // el objeto manda, rompe el tope incluso desde INCAPACITADO
-  } else if (restSucceeds && current !== 'INCAPACITADO' && current !== 'MUERTO') {
+  } else if (restInValidLocation && current !== 'INCAPACITADO' && current !== 'MUERTO') {
     ceiling = 'HERIDO';
+  } else if (restAttempted && current !== 'MUERTO') {
+    ceiling = 'GRAVE';
   }
   const ceilingIdx = CONDICION_ORDER.indexOf(ceiling);
   return CONDICION_ORDER[Math.min(currentIdx, ceilingIdx)];

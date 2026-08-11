@@ -9,9 +9,11 @@ import {
   hasFalseCombatHit,
   hasPrematureCombatResolution,
   hasFalseItemUse,
+  hasFalseInventoryReview,
   hasResurrectedDeadNpc,
   hasGisteraReencuentroSinNombrar,
   hasFalseTravelClaim,
+  hasFalsePhantomTravel,
   hasAnachronism,
 } from './narrador.js';
 
@@ -196,6 +198,31 @@ describe('hasFalseItemUse', () => {
   });
 });
 
+describe('hasFalseInventoryReview', () => {
+  it('bug real jugando por API (2026-08-11, "pruebas por API"): detecta una revisión de equipo que omite objetos reales tras afirmar exclusividad', () => {
+    const narration =
+      'Gorhorn revisa su equipo con calma, notando que el cuchillo de hielo sílice y el tótem Maktor son los únicos objetos que lleva consigo en este viaje.';
+    const realInventory = ['Hacha de guerra rota', 'Cuchillo de hielo sílice', 'Tótem Maktor', 'Arnés de cuero', 'Raciones de viaje'];
+    expect(hasFalseInventoryReview(narration, realInventory)).toBe(true);
+  });
+
+  it('no dispara si la narración menciona TODOS los objetos reales, aunque afirme exclusividad', () => {
+    const narration = 'Gorhorn revisa su equipo: el hacha de guerra rota y las raciones de viaje son los únicos objetos que lleva.';
+    expect(hasFalseInventoryReview(narration, ['Hacha de guerra rota', 'Raciones de viaje'])).toBe(false);
+  });
+
+  it('no dispara con una revisión vaga sin ninguna frase de exclusividad — no es una mentira, solo poco específica', () => {
+    const narration = 'Gorhorn revisa su equipo, todo en su sitio, y sigue camino.';
+    expect(hasFalseInventoryReview(narration, ['Hacha de guerra rota', 'Raciones de viaje'])).toBe(false);
+  });
+
+  it('no dispara si la lista viene vacía (la acción de este turno no era revisar el inventario)', () => {
+    const narration = 'Gorhorn revisa su equipo: los únicos objetos que lleva son un hacha y una cuerda.';
+    expect(hasFalseInventoryReview(narration, [])).toBe(false);
+    expect(hasFalseInventoryReview(narration, undefined)).toBe(false);
+  });
+});
+
 describe('hasResurrectedDeadNpc', () => {
   it('bug real jugando en vivo (2026-08-01, "el orco que maté volvió a aparecer"): detecta un NPC muerto narrado como si siguiera activo', () => {
     const narration =
@@ -271,6 +298,37 @@ describe('hasFalseTravelClaim', () => {
   it('no dispara si el destino mencionado no está entre los ambiguos de este turno', () => {
     const narration = { narration: 'Gorhorn recuerda su paso por los Pilares Rotos hace tiempo.', newFacts: [] };
     expect(hasFalseTravelClaim(narration, ['El Pozo de Cauce Viejo'])).toBe(false);
+  });
+});
+
+describe('hasFalsePhantomTravel', () => {
+  it('bug real jugando por API (2026-08-11, "pruebas por API"): detecta que abandona la ubicación actual sin ningún viaje resuelto (destino inventado, "hacia el norte" no es ningún alias real)', () => {
+    const narration = {
+      narration: 'Gorhorn sale de la hondonada, caminando firme hacia el norte, alejándose del orco.',
+      newFacts: [],
+    };
+    // El nombre completo Y sus alias reales, mismo criterio que turnResolution.ts pasa de verdad
+    // (`[location.name, ...location.aliases]`) — el modelo suele usar la forma corta.
+    expect(hasFalsePhantomTravel(narration, ['La Hondonada del Eco', 'hondonada', 'el eco'])).toBe(true);
+  });
+
+  it('también dispara si la mentira vive en newFacts, aunque la prosa sea más comedida', () => {
+    const narration = {
+      narration: 'Gorhorn se aleja con cautela, sin perder de vista el horizonte.',
+      newFacts: ['Gorhorn ha dejado La Hondonada del Eco.'],
+    };
+    expect(hasFalsePhantomTravel(narration, ['La Hondonada del Eco'])).toBe(true);
+  });
+
+  it('no dispara si la lista viene vacía (viaje resuelto de verdad, o esta acción no era de movimiento)', () => {
+    const narration = { narration: 'Gorhorn sale de la hondonada hacia el norte.', newFacts: [] };
+    expect(hasFalsePhantomTravel(narration, [])).toBe(false);
+    expect(hasFalsePhantomTravel(narration, undefined)).toBe(false);
+  });
+
+  it('no dispara con una narración que se queda en el sitio, sin verbo de abandono', () => {
+    const narration = { narration: 'Gorhorn mira hacia el norte, pensativo, sin moverse todavía.', newFacts: [] };
+    expect(hasFalsePhantomTravel(narration, ['La Hondonada del Eco'])).toBe(false);
   });
 });
 

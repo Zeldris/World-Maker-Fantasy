@@ -16,9 +16,43 @@ import { EMPTY_SECONDARY_ATTRIBUTES } from '../../services/secondaryAttributes.j
 import { initialLocationSlugFor } from '../../services/travel.js';
 import { formatFictionalDate } from '../../services/worldClock.js';
 import { recordEntityDiscoveries } from '../../services/entityDiscovery.js';
-import type { AttributeBlock } from '../../services/dice.js';
+import type { AttributeBlock, Attribute } from '../../services/dice.js';
 import { Prisma, type Dificultad } from '@prisma/client';
 import { buildStartingQuestsData } from './shared.js';
+
+/// Mismas 7 claves que `progression.ts` § VALID_ATTRIBUTES (duplicado a propósito, mismo criterio
+/// ya establecido en ese archivo — no hay un módulo compartido de validación de atributos todavía).
+const VALID_ATTRIBUTES: Attribute[] = ['fuerza', 'destreza', 'constitucion', 'inteligencia', 'voluntad', 'carisma', 'arcano'];
+
+/// Auditoría 2026-08-11 ("pruebas por API"): el guard de la ruta solo cubría 3 de los ~10 campos
+/// `string` no opcionales de `CreateSaveBody` — faltar cualquier otro (p. ej. `characterOrigin`)
+/// no daba un 400 claro, reventaba con un 500 genérico más abajo (algún campo `String` no-nulo de
+/// Prisma recibiendo `undefined`). Sin corrupción de datos (todo vive en una única transacción que
+/// revierte limpia), pero el mensaje de error era inútil para cualquier cliente que no replique
+/// exactamente el formulario de creación actual.
+function validationErrorFor(body: CreateSaveBody): string | null {
+  const requiredStringFields: (keyof CreateSaveBody)[] = [
+    'worldSlug',
+    'characterName',
+    'characterArchetype',
+    'characterOrigin',
+    'characterMotivation',
+    'portraitInitial',
+    'introCharacterText',
+    'introWorldText',
+  ];
+  const missing = requiredStringFields.filter((field) => !body[field]);
+  if (missing.length > 0) return `Faltan campos: ${missing.join(', ')}`;
+
+  if (!body.attributes || typeof body.attributes !== 'object') return 'Falta el campo: attributes';
+  const attributeKeys = Object.keys(body.attributes);
+  const missingAttributes = VALID_ATTRIBUTES.filter((a) => !attributeKeys.includes(a));
+  if (missingAttributes.length > 0) return `Faltan atributos: ${missingAttributes.join(', ')}`;
+  const invalidValue = VALID_ATTRIBUTES.find((a) => typeof body.attributes[a] !== 'number');
+  if (invalidValue) return `El atributo "${invalidValue}" debe ser un número`;
+
+  return null;
+}
 
 interface CreateSaveBody {
   worldSlug: string;
@@ -56,8 +90,9 @@ export async function creationRoutes(app: FastifyInstance) {
       dificultad,
     } = request.body;
 
-    if (!worldSlug || !characterName || !attributes) {
-      return reply.status(400).send({ error: 'Faltan campos: worldSlug, characterName, attributes' });
+    const validationError = validationErrorFor(request.body);
+    if (validationError) {
+      return reply.status(400).send({ error: validationError });
     }
 
     const world = await prisma.world.findUnique({ where: { slug: worldSlug } });

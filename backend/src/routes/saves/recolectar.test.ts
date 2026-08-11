@@ -26,6 +26,11 @@ const detectNpcsInScene = vi.fn();
 const scopeFor = vi.fn();
 const findUniqueNpcTx = vi.fn();
 const updateManyNpcStateTx = vi.fn();
+// Cierre de misión "conseguir Z" (auditoría 2026-08-11, bug real: closeItemQuests nunca se
+// llamaba desde este endpoint) — mockeados con valor por defecto inocuo para que los tests que no
+// les prestan atención no revienten si closeItemQuests llega a consultarlos.
+const findManyQuestTx = vi.fn();
+const updateQuestTx = vi.fn();
 
 vi.mock('../../lib/prisma.js', () => ({
   prisma: {
@@ -72,6 +77,8 @@ describe('POST /saves/:id/recolectar/confirmar', () => {
     findUniqueNpcTx.mockReset();
     updateManyNpcStateTx.mockReset();
     scopeFor.mockReset().mockReturnValue('');
+    findManyQuestTx.mockReset().mockResolvedValue([]);
+    updateQuestTx.mockReset();
     findUniqueSave.mockResolvedValue({
       id: 'save1',
       worldId: 'world1',
@@ -93,6 +100,10 @@ describe('POST /saves/:id/recolectar/confirmar', () => {
         worldPopulation: { updateMany: (...args: unknown[]) => updateManyWorldPopulation(...args) },
         npc: { findUnique: (...args: unknown[]) => findUniqueNpcTx(...args) },
         npcState: { updateMany: (...args: unknown[]) => updateManyNpcStateTx(...args) },
+        quest: {
+          findMany: (...args: unknown[]) => findManyQuestTx(...args),
+          update: (...args: unknown[]) => updateQuestTx(...args),
+        },
       }),
     );
   });
@@ -233,6 +244,24 @@ describe('POST /saves/:id/recolectar/confirmar', () => {
     const body = JSON.parse(res.body);
     expect(body.items).toEqual([]);
     expect(body.updatedItems).toEqual([{ id: 'item-viejo', name: 'Piedra (6)' }]);
+  });
+
+  it('bug real (auditoría 2026-08-11, "pruebas por API"): minar cierra sola una misión "conseguir Z" con ese objeto, cosa que antes nunca pasaba en este endpoint', async () => {
+    findFirstHarvestYield.mockResolvedValue({ cantidad: 3, item: { slug: 'piedra', name: 'Piedra' } });
+    updateManyWorldPopulation.mockResolvedValue({ count: 1 });
+    createInventoryItem.mockResolvedValue({ id: 'item1' });
+    findManyQuestTx.mockResolvedValue([{ id: 'quest1', targetItemName: 'Piedra' }]);
+    const app = await buildApp();
+
+    const res = await app.inject({
+      method: 'POST',
+      url: '/saves/save1/recolectar/confirmar',
+      payload: { selections: [{ sourceSlug: 'roca-pilares-rotos', itemSlug: 'piedra', cantidad: 3 }] },
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(findManyQuestTx).toHaveBeenCalledWith({ where: { saveId: 'save1', status: 'ACTIVA', targetItemName: { not: null } } });
+    expect(updateQuestTx).toHaveBeenCalledWith({ where: { id: 'quest1' }, data: { status: 'COMPLETADA' } });
   });
 
   it('no crea el objeto si la población ya no alcanza (otra recolección casi simultánea se lo llevó)', async () => {

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { detectsLootIntent, detectsExecuteIntent } from './turnResolution.js';
+import { detectsLootIntent, detectsExecuteIntent, detectsInventoryReviewIntent } from './turnResolution.js';
 
 describe('detectsLootIntent', () => {
   it('detecta coincidencia exacta de un stem', () => {
@@ -38,5 +38,21 @@ describe('detectsExecuteIntent', () => {
   it('no dispara con una acción sin intención de rematar', () => {
     expect(detectsExecuteIntent("Registro el cuerpo de 'Orco enfurecido'.")).toBe(false);
     expect(detectsExecuteIntent('Miro con cuidado el horizonte.')).toBe(false);
+  });
+});
+
+// Cobertura nueva (auditoría 2026-08-11, "pruebas por API" — ver hasFalseInventoryReview en
+// narrador.ts).
+describe('detectsInventoryReviewIntent', () => {
+  it('detecta variantes reales de revisar equipo/inventario/mochila', () => {
+    expect(detectsInventoryReviewIntent('Reviso mi equipo y observo con calma el terreno.')).toBe(true);
+    expect(detectsInventoryReviewIntent('Compruebo mi inventario antes de seguir.')).toBe(true);
+    expect(detectsInventoryReviewIntent('Miro mi mochila para ver qué llevo.')).toBe(true);
+    expect(detectsInventoryReviewIntent('Inspecciono mi equipo con cuidado.')).toBe(true);
+  });
+
+  it('no dispara con una acción que no tiene nada que ver con revisar el inventario', () => {
+    expect(detectsInventoryReviewIntent("Ataco a 'Orco enfurecido' con mi hacha.")).toBe(false);
+    expect(detectsInventoryReviewIntent('Camino hacia el pozo a rellenar el odre.')).toBe(false);
   });
 });

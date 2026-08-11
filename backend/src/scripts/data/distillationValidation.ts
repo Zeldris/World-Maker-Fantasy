@@ -8,7 +8,9 @@ import {
   hasFalseCombatHit,
   hasResurrectedDeadNpc,
   hasFalseTravelClaim,
+  hasFalsePhantomTravel,
   hasFalseItemUse,
+  hasFalseInventoryReview,
   hasPrematureCombatResolution,
   isTooSimilarToLast,
 } from '../../services/narrador.js';
@@ -54,7 +56,9 @@ export function runDetectors(parsed: NarrationResult, ctx: ValidationCtx): strin
   if (hasFalseCombatHit(parsed.narration, ctx.combatBothMissed)) return 'golpe narrado sin conexión mecánica (hasFalseCombatHit)';
   if (hasResurrectedDeadNpc(parsed.narration, ctx.possiblyResurrectedNpcNames)) return 'NPC muerto narrado como activo (hasResurrectedDeadNpc)';
   if (hasFalseTravelClaim(parsed, ctx.possiblyFalseTravelDestinationNames)) return 'llegada a destino ambiguo sin resolver (hasFalseTravelClaim)';
+  if (hasFalsePhantomTravel(parsed, ctx.phantomTravelLocationNames)) return 'abandona la ubicación actual sin ningún viaje resuelto (hasFalsePhantomTravel)';
   if (hasFalseItemUse(parsed.narration, ctx.possiblyFalseItemUseNames)) return 'uso de objeto narrado sin respaldo mecánico (hasFalseItemUse)';
+  if (hasFalseInventoryReview(parsed.narration, ctx.possiblyFalseInventoryReviewNames)) return 'revisión de inventario incompleta narrada como exhaustiva (hasFalseInventoryReview)';
   if (hasPrematureCombatResolution(parsed.narration, ctx.combatNotYetResolved)) return 'combate resuelto sin intercambio mecánico (hasPrematureCombatResolution)';
   if (isTooSimilarToLast(parsed.narration, ctx.lastNarrationText)) return 'narración demasiado parecida a la anterior (isTooSimilarToLast)';
   return null;

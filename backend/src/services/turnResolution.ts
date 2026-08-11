@@ -1,5 +1,5 @@
 import { env } from '../config/env.js';
-import { narrateAction, generateNpcReply, hasFalseTravelClaim, type ClassificationResult, type NarrationResult } from './narrador.js';
+import { narrateAction, generateNpcReply, hasFalseTravelClaim, hasFalsePhantomTravel, type ClassificationResult, type NarrationResult } from './narrador.js';
 import { retrieveLore, formatLoreForPrompt, isWeaklyGrounded } from './retrieval.js';
 import { xpForRollSuccess, xpForHitos, applyXp, type ProgressionResult, type HitoTipo } from './progression.js';
 import { alivioForLevel, xpForCraftSuccess, professionLevelForXp } from './professionProgress.js';
@@ -80,6 +80,7 @@ import {
   findFuzzyStemMatch,
   initialLocationSlugFor,
   matchDestination,
+  detectsTravelIntent,
   detectsVagueMovementIntent,
   buildAdjacency,
   shortestPath,
@@ -156,6 +157,17 @@ export function detectsExecuteIntent(action: string): boolean {
   if (EXECUTE_INTENT_REGEX.test(normalized)) return true;
   const words = fuzzyMatchCandidates(normalized);
   return !!findFuzzyStemMatch(words, EXECUTE_INTENT_STEMS);
+}
+
+// Revisar inventario/equipo (auditoría 2026-08-11, "pruebas por API" — ver hasFalseInventoryReview
+// en narrador.ts). Sin tolerancia a erratas a propósito: una detección de menos aquí solo pierde
+// el chequeo extra de esta acción concreta (sin coste real), mientras que sumar otra lista de
+// stems de 5+ letras es exactamente la clase de riesgo de colisión que ya causó el bug real de
+// "cazar"~"hagar" en npcScene.ts — no vale la pena para un detector de bajo riesgo como este.
+const INVENTORY_REVIEW_INTENT_REGEX = /\brevis\w*\s+(mi|el|su|los?|las?)\s+(equipo|inventario|mochila|pertenencias|objetos)\b|\b(compruebo|comprueba|inspeccion\w*)\s+(mi|el|su|lo que)\s*(equipo|inventario|mochila|llevo|lleva)?\b|\bmiro (mi|el|su) (inventario|equipo|mochila)\b/;
+
+export function detectsInventoryReviewIntent(action: string): boolean {
+  return INVENTORY_REVIEW_INTENT_REGEX.test(normalizeText(action));
 }
 
 // Bug real (auditoría 2026-07-28): race entre worldTick.ts resolviendo un CharacterTransit vencido
@@ -1094,6 +1106,28 @@ async function computeBuildBlockedReason(
   return null;
 }
 
+/// Cierre determinista de misión "conseguir Z" (`Quest.targetItemName`) — cualquier objeto
+/// materializado de verdad esta transacción que mencione el nombre objetivo cierra la misión sola,
+/// sin pasar por el modelo. Extraída (auditoría 2026-08-11, "pruebas por API") de dentro de
+/// `narrateAndPersistTurn` para poder llamarla TAMBIÉN desde los endpoints deterministas nuevos
+/// del rediseño de profesiones (`recolectar.ts`/`cazar.ts` § confirmar) — antes solo vivía en el
+/// camino de turno normal (saqueo/despiece narrado/crafteo/`newItem`), así que cualquier misión
+/// "consígueme N de X" quedaba imposible de completar si X se obtenía minando/talando/cazando por
+/// el flujo real del jugador (los botones de Minar/Talar/Cazar), aunque el objeto se creara bien.
+export async function closeItemQuests(tx: Prisma.TransactionClient, saveId: string, createdItemNames: string[]): Promise<void> {
+  if (createdItemNames.length === 0) return;
+  const activeQuestsWithItem = await tx.quest.findMany({
+    where: { saveId, status: 'ACTIVA', targetItemName: { not: null } },
+  });
+  for (const quest of activeQuestsWithItem) {
+    const targetNormalized = normalizeText(quest.targetItemName!);
+    const conseguido = createdItemNames.some((name) => normalizeText(name).includes(targetNormalized));
+    if (conseguido) {
+      await tx.quest.update({ where: { id: quest.id }, data: { status: 'COMPLETADA' } });
+    }
+  }
+}
+
 /// Narra (retrieval + narrateAction) y persiste el resultado de un turno — hechos, XP/nivel,
 /// inventario/compañeros, eventos de Reino, posición/NPCs/despiece (docs/12), condición física
 /// y muerte/descanso (docs/14), LogEntry. Compartido entre el turno síncrono (bandas
@@ -1425,6 +1459,14 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   // solo en el mismo `if` de más abajo que ya decide forzar la pregunta ("EL PERSONAJE QUIERE
   // SEGUIR ADELANTE PERO HAY MÁS DE UN CAMINO POSIBLE").
   let possiblyFalseTravelDestinationNames: string[] = [];
+  // Ver `hasFalsePhantomTravel` (narrador.ts) — auditoría 2026-08-11, "pruebas por API": a
+  // diferencia del caso de arriba (2+ destinos reales ambiguos), esto cubre cuando el jugador
+  // nombra una dirección/destino que NO matchea ningún alias real (p. ej. "hacia el norte") — aquí
+  // `travel` sale null sin que haya nada ambiguo que preguntar, pero la narración puede describir
+  // de todos modos que el personaje "sale de"/"abandona" la ubicación actual, aunque
+  // `currentLocationId` nunca cambia. Nombre real de la ubicación ACTUAL (no de un destino), solo
+  // cuando hubo intención de viaje real pero `travel` no se resolvió.
+  let phantomTravelLocationNames: string[] = [];
 
   // Ver `hasFalseCombatHit` (narrador.ts) — bug real jugando en vivo (2026-07-31, "sigo sin
   // hacerle daño al enemigo"): el intercambio resolvió 'ataque_falla' (ningún lado conecta) pero
@@ -1488,6 +1530,14 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
           `EL PERSONAJE QUIERE SEGUIR ADELANTE PERO HAY MÁS DE UN CAMINO POSIBLE (${destinations.map((d) => d.name).join(', ')}): no narres que ha llegado a ningún sitio nuevo ni inventes una ubicación — pregúntale directamente cuál de estos caminos concretos elige.`,
         );
         possiblyFalseTravelDestinationNames = destinations.map((d) => d.name);
+      }
+      // Ver comentario de `phantomTravelLocationNames` arriba — cualquier intención real de viaje
+      // (nombrada o vaga) que no se resolvió mecánicamente este turno es candidata: el jugador
+      // sigue en `location`, así que narrar que la abandona es una alucinación.
+      if (!travel && !enCombate && (detectsTravelIntent(action) || detectsVagueMovementIntent(action))) {
+        // Alias reales además del nombre completo — el modelo suele referirse al sitio por su
+        // forma corta ("la hondonada", no "La Hondonada del Eco"), igual que el propio jugador.
+        phantomTravelLocationNames = [location.name, ...location.aliases];
       }
     }
   }
@@ -2022,6 +2072,12 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   // llamada a narrateAction de más abajo; se necesita como variable propia para poder reutilizar
   // EXACTAMENTE el mismo contexto en la captura en segundo plano tras el commit (mismo prompt que
   // vio el modelo local, para que el profesor cloud responda a la misma pregunta).
+  // Ver `hasFalseInventoryReview` (narrador.ts) — solo se manda la lista real (sin sufijo de
+  // cantidad, `baseNameOf`) cuando la acción de este turno es de verdad una revisión de
+  // inventario/equipo; en cualquier otro turno no hay nada que comprobar.
+  const possiblyFalseInventoryReviewNames = detectsInventoryReviewIntent(action)
+    ? [...new Set(inventoryRows.map((i) => baseNameOf(i.name)))]
+    : [];
   const narrationCtx = {
     worldFacts: [...contextBlocks, ...(await selectRelevantFacts(action, saveId, sessionFacts))],
     // Separado de worldFacts (roadmap 2026-07-24, "revisar partida" — ver comentario en
@@ -2048,6 +2104,8 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     possiblyFalseItemUseNames,
     possiblyResurrectedNpcNames,
     possiblyFalseTravelDestinationNames,
+    phantomTravelLocationNames,
+    possiblyFalseInventoryReviewNames,
     gisteraSeHaMarchado,
     onNarrationChunk,
     onNarrationReset,
@@ -2109,6 +2167,17 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   // que la prosa libre no la contradiga.
   if (possiblyFalseTravelDestinationNames.length > 0 && hasFalseTravelClaim(narration, possiblyFalseTravelDestinationNames)) {
     narration.narration = `${characterName} sigue adelante, pero el camino se abre en más de un sentido: ${possiblyFalseTravelDestinationNames.join(', ')}. Antes de escoger uno, se detiene a pensar cuál de los dos tomar.`;
+    narration.newFacts = [];
+  }
+
+  // Mismo principio que el bloque de arriba, para el caso complementario (auditoría 2026-08-11,
+  // "pruebas por API"): un destino/dirección inventado sin alias real (p. ej. "hacia el norte")
+  // deja `travel` en null sin nada ambiguo que preguntar, pero el modelo puede agotar los 3
+  // reintentos de narrador.ts sin corregirse solo — igual de peligroso que el caso de arriba
+  // porque `Save.currentLocationId` nunca cambia pese a que la narración/newFacts describan una
+  // salida ya hecha.
+  if (phantomTravelLocationNames.length > 0 && hasFalsePhantomTravel(narration, phantomTravelLocationNames)) {
+    narration.narration = `${characterName} se detiene: no hay ningún camino conocido en esa dirección desde aquí, y sigue en ${phantomTravelLocationNames[0]}.`;
     narration.newFacts = [];
   }
 
@@ -2258,16 +2327,18 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   const condicionPropuestaCombinada = exchangeHappened
     ? (jugadorRecibeGolpe ? nextCondicionForAttack(jugadorGolpeEfecto, params.condicionFisica) : null)
     : narration.condicionFisica;
-  const restSucceeds = !!(
-    !travel &&
-    currentLocationRecord &&
-    detectsRestIntent(action) &&
-    (!roll || roll.success) &&
-    isValidRestLocationKind(currentLocationRecord.kind)
-  );
-  // Reglas de curación (2026-07-29): sin descanso válido ni objeto médico, el techo es la propia
+  // `restAttempted` (cualquier sitio) vs `restSucceeds` (además, refugio/asentamiento real) —
+  // auditoría 2026-08-11, "la ficha de Descansar promete curar en cualquier sitio pero la
+  // mecánica solo curaba con isValidRestLocationKind". Aclarado con la usuaria: SÍ debe curar en
+  // cualquier sitio (tope GRAVE, un vivac improvisado ayuda poco), pero solo un refugio/
+  // asentamiento real llega a HERIDO — ver el desglose completo en healCeilingFor (death.ts).
+  // `restSucceeds` sigue gating energía (nextEnergia, abajo) y el punto de guardado (más abajo,
+  // "Punto de guardado") sin cambios: solo la mejora de condicionFisica gana el escalón nuevo.
+  const restAttempted = !!(!travel && currentLocationRecord && detectsRestIntent(action) && (!roll || roll.success));
+  const restSucceeds = !!(restAttempted && isValidRestLocationKind(currentLocationRecord!.kind));
+  // Reglas de curación (2026-07-29): sin descanso ni objeto médico, el techo es la propia
   // condición actual — ninguna mejora "porque sí" pasa (ver healCeilingFor/death.ts).
-  const healCeiling = healCeilingFor(params.condicionFisica, restSucceeds, medicalCuraHasta);
+  const healCeiling = healCeilingFor(params.condicionFisica, restAttempted, restSucceeds, medicalCuraHasta);
   const proposedCondicion = nextCondicionFisica(params.condicionFisica, condicionPropuestaCombinada, !!enCombate, healCeiling);
 
   // Sistema de fatiga (2026-07-29) — gasto/regen de energía de este turno, siempre determinista
@@ -2726,6 +2797,20 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
       }
     }
 
+    // Resuelve equipSlot/effectKey/tipo del RESULTADO de una receta por su propio catalogSlug
+    // (auditoría 2026-08-11, ver comentario junto a newInventoryItems.push más abajo) — memoizado
+    // dentro del turno, nunca más de una consulta por slug distinto aunque dispare varias recetas.
+    const resultCatalogRowCache = new Map<string, { equipSlot: string | null; effectKey: string | null; tipo: string | null } | null>();
+    async function resultCatalogRowFor(slug: string) {
+      if (resultCatalogRowCache.has(slug)) return resultCatalogRowCache.get(slug)!;
+      const row = await tx.itemCatalog.findUnique({
+        where: { worldId_slug: { worldId, slug } },
+        select: { equipSlot: true, effectKey: true, tipo: true },
+      });
+      resultCatalogRowCache.set(slug, row);
+      return row;
+    }
+
     // Crafteo v1: tabulado en CRAFTING_RECIPES (auditoría 2026-07-22 — antes 5 bloques casi
     // idénticos, uno por objeto). Refactor de ingredientes (2026-07-29): ya no es siempre "una
     // fila entera por ingrediente" — un plan por ingrediente (borrar filas + reducir remanente),
@@ -2761,16 +2846,20 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
           statBonuses: recipe.statBonuses ?? Prisma.JsonNull,
         },
       });
-      // `catalogBySlug` (arriba) solo trae los catalogSlug que el jugador YA tenía en inventario
-      // antes de este turno (para comprobar materiales) — un resultado de crafteo recién obtenido
-      // no está garantizado ahí. `equipSlot`/`tipo` se quedan en null en ese caso (mismo criterio
-      // que harvest/producción): el frontend lo recibe bien en cuanto recarga GET /saves/:id.
+      // Bug real (auditoría 2026-08-11, "pruebas por API"): `catalogBySlug` (arriba) solo trae los
+      // catalogSlug que el jugador YA tenía en inventario ANTES de este turno (por diseño, para
+      // comprobar materiales) — el RESULTADO de una receta es, casi siempre, algo que el jugador NO
+      // tenía todavía, así que reutilizar ese mismo mapa aquí dejaba `equipSlot`/`effectKey`/`tipo`
+      // en null salvo que ya tuviera otra unidad del mismo objeto. Se resuelve con una consulta
+      // directa al catálogo por el propio `resultCatalogSlug` (memoizada más abajo, barata: como
+      // mucho una fila por receta distinta que se dispare en el mismo turno).
+      const resultCatalogRow = recipe.resultCatalogSlug ? await resultCatalogRowFor(recipe.resultCatalogSlug) : null;
       newInventoryItems.push({
         ...created,
         slot: null,
-        equipSlot: recipe.resultCatalogSlug ? (catalogBySlug.get(recipe.resultCatalogSlug)?.equipSlot ?? null) : null,
-        effectKey: recipe.resultCatalogSlug ? (catalogBySlug.get(recipe.resultCatalogSlug)?.effectKey ?? null) : null,
-        tipo: recipe.resultCatalogSlug ? (catalogBySlug.get(recipe.resultCatalogSlug)?.tipo ?? null) : null,
+        equipSlot: resultCatalogRow?.equipSlot ?? null,
+        effectKey: resultCatalogRow?.effectKey ?? null,
+        tipo: resultCatalogRow?.tipo ?? null,
       });
       createdItemNames.push(created.name);
       await awardProfessionXp(recipe.oficio, recipe.tier);
@@ -3179,18 +3268,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     // Cierre de misión "conseguir Z" (roadmap 2026-07-20, P1 de Fable, Quest.targetItemName):
     // cualquier objeto materializado ESTE turno (loot/despiece/producción/crafteo/newItem, ver
     // createdItemNames más arriba) que mencione el nombre objetivo cierra la misión sola.
-    if (createdItemNames.length > 0) {
-      const activeQuestsWithItem = await tx.quest.findMany({
-        where: { saveId, status: 'ACTIVA', targetItemName: { not: null } },
-      });
-      for (const quest of activeQuestsWithItem) {
-        const targetNormalized = normalizeText(quest.targetItemName!);
-        const conseguido = createdItemNames.some((name) => normalizeText(name).includes(targetNormalized));
-        if (conseguido) {
-          await tx.quest.update({ where: { id: quest.id }, data: { status: 'COMPLETADA' } });
-        }
-      }
-    }
+    await closeItemQuests(tx, saveId, createdItemNames);
 
     // Posición (docs/12 § 1.4 paso 7): al llegar, currentLocationId cambia al destino y se
     // registran visitas (destino + nodos intermedios), sin XP salvo la primera vez en el destino.

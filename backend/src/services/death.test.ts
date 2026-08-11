@@ -86,24 +86,35 @@ describe('nextCondicionFisica', () => {
 
 describe('healCeilingFor', () => {
   it('sin descanso ni objeto médico, el techo es la condición actual (ninguna mejora posible)', () => {
-    expect(healCeilingFor('GRAVE', false, null)).toBe('GRAVE');
+    expect(healCeilingFor('GRAVE', false, false, null)).toBe('GRAVE');
   });
-  it('descansar/comer topa en HERIDO', () => {
-    expect(healCeilingFor('GRAVE', true, null)).toBe('HERIDO');
-    expect(healCeilingFor('HERIDO', true, null)).toBe('HERIDO');
+  it('descansar en un refugio/asentamiento real topa en HERIDO', () => {
+    expect(healCeilingFor('GRAVE', true, true, null)).toBe('HERIDO');
+    expect(healCeilingFor('HERIDO', true, true, null)).toBe('HERIDO');
   });
-  it('descansar NO funciona desde INCAPACITADO — hace falta objeto sí o sí', () => {
-    expect(healCeilingFor('INCAPACITADO', true, null)).toBe('INCAPACITADO');
+  // Auditoría 2026-08-11 ("Descansar promete curar en cualquier sitio, pero la mecánica solo
+  // curaba en refugio/asentamiento" — aclarado con la usuaria: sí cura en cualquier sitio, pero
+  // tope GRAVE; solo un refugio/asentamiento real llega a HERIDO).
+  it('descansar en CUALQUIER sitio (sin refugio válido) topa en GRAVE, no en HERIDO', () => {
+    expect(healCeilingFor('INCAPACITADO', true, false, null)).toBe('GRAVE');
+    expect(healCeilingFor('GRAVE', true, false, null)).toBe('GRAVE');
+  });
+  it('un vivac sin refugio válido no hace nada si ya se está mejor que GRAVE (nunca empeora)', () => {
+    expect(healCeilingFor('HERIDO', true, false, null)).toBe('HERIDO');
+    expect(healCeilingFor('ILESO', true, false, null)).toBe('ILESO');
+  });
+  it('descansar en un refugio válido NO llega a HERIDO desde INCAPACITADO — hace falta objeto médico para eso, pero SÍ mejora a GRAVE (antes no hacía nada en absoluto)', () => {
+    expect(healCeilingFor('INCAPACITADO', true, true, null)).toBe('GRAVE');
   });
   it('un objeto médico manda por encima de todo, incluso desde INCAPACITADO', () => {
-    expect(healCeilingFor('INCAPACITADO', false, 'HERIDO')).toBe('HERIDO');
-    expect(healCeilingFor('INCAPACITADO', false, 'ILESO')).toBe('ILESO');
-    expect(healCeilingFor('GRAVE', true, 'ILESO')).toBe('ILESO');
+    expect(healCeilingFor('INCAPACITADO', false, false, 'HERIDO')).toBe('HERIDO');
+    expect(healCeilingFor('INCAPACITADO', false, false, 'ILESO')).toBe('ILESO');
+    expect(healCeilingFor('GRAVE', true, true, 'ILESO')).toBe('ILESO');
   });
   it('el techo nunca es PEOR que la condición actual (bug real, auditoría 2026-07-30: un ILESO descansando con éxito se veía "curado" hasta HERIDO)', () => {
-    expect(healCeilingFor('ILESO', true, null)).toBe('ILESO');
+    expect(healCeilingFor('ILESO', true, true, null)).toBe('ILESO');
     // objeto médico débil (tope HERIDO) usado por alguien ya ILESO — tampoco debe empeorarlo.
-    expect(healCeilingFor('ILESO', false, 'HERIDO')).toBe('ILESO');
+    expect(healCeilingFor('ILESO', false, false, 'HERIDO')).toBe('ILESO');
   });
 });
 

@@ -163,12 +163,23 @@ interface TurnContext {
   /// inventar una llegada). Vacío = no aplica este turno (viaje resuelto de verdad, un solo
   /// destino, o esta acción no era movimiento vago).
   possiblyFalseTravelDestinationNames?: string[];
+  /// Ver `hasFalsePhantomTravel` más abajo — nombre real de la ubicación ACTUAL, solo cuando hubo
+  /// intención de viaje real (nombrada o vaga) que `resolveTravel` no pudo resolver mecánicamente
+  /// este turno (destino inventado/sin alias real, no el caso de 2+ destinos ambiguos de arriba).
+  /// Vacío = no aplica (viaje resuelto de verdad, o esta acción no era de movimiento).
+  phantomTravelLocationNames?: string[];
   /// Ver `hasGisteraReencuentroSinNombrar` más abajo — true cuando Gistera Koh ya se marchó para
   /// siempre (mismo cálculo que excluye su slug de `npcsInScene`, turnResolution.ts). Bug real
   /// jugando en vivo, visto ya varias veces: el modelo la reintroduce SIN nombrarla ("una orca
   /// marcada del Clan Serhu, sin nombre revelado") — la exclusión por slug no puede cazar esto
   /// porque nunca la nombra.
   gisteraSeHaMarchado?: boolean;
+  /// Ver `hasFalseInventoryReview` más abajo — nombres reales (ya sin sufijo de cantidad, ver
+  /// `baseNameOf`) de TODO lo que el personaje lleva encima, solo cuando la acción de este turno
+  /// es una revisión de inventario/equipo (`detectsInventoryReviewIntent`, turnResolution.ts).
+  /// Vacío = no aplica este turno (no es una acción de revisar equipo, o el inventario tiene 0-1
+  /// objetos y no hay nada real que omitir).
+  possiblyFalseInventoryReviewNames?: string[];
 }
 
 interface ClassifyContext {
@@ -737,6 +748,18 @@ export async function narrateAction(ctx: TurnContext & { roll?: RollResult }): P
         lastResult = parsed;
         continue;
       }
+      if (hasFalsePhantomTravel(parsed, ctx.phantomTravelLocationNames)) {
+        console.warn(`[narrador] intento ${idx + 1}/3 descartado por narrar que abandona la ubicación actual sin ningún viaje resuelto mecánicamente (destino inventado/sin alias real), reintentando`);
+        if (idx === 0) ctx.onNarrationReset?.();
+        lastResult = parsed;
+        continue;
+      }
+      if (hasFalseInventoryReview(parsed.narration, ctx.possiblyFalseInventoryReviewNames)) {
+        console.warn(`[narrador] intento ${idx + 1}/3 descartado por narrar una revisión de inventario incompleta como si fuera exhaustiva, reintentando`);
+        if (idx === 0) ctx.onNarrationReset?.();
+        lastResult = parsed;
+        continue;
+      }
       return parsed;
     } catch (err) {
       // Roadmap de velocidad, 2026-07-20 (streaming): antes este catch tragaba el error en
@@ -922,6 +945,25 @@ export function hasPrematureCombatResolution(narration: string, combatNotYetReso
   return PREMATURE_COMBAT_REGEX.test(narration);
 }
 
+/// Narración-vs-mecánica, mismo patrón que `hasFalseItemUse` pero de EXCLUSIVIDAD, no de uso
+/// (auditoría 2026-08-11, "pruebas por API": "Reviso mi equipo y observo con calma el terreno..."
+/// narró "notando que el cuchillo de hielo sílice y el tótem Maktor son los únicos objetos que
+/// lleva consigo en este viaje" — el inventario real tenía 8 objetos, no 2). Solo dispara si la
+/// narración usa una frase de exclusividad EXPLÍCITA ("los únicos objetos", "solo lleva"...): una
+/// revisión vaga sin enumerar nada ("revisa su equipo, todo en orden") no es una mentira, es solo
+/// poco específica, y no debe gastar un reintento por eso — mismo criterio de "el riesgo real es
+/// un reintento de más, no dejar pasar la alucinación" que el resto de esta familia de detectores.
+const INVENTORY_EXCLUSIVITY_REGEX =
+  /\b(los?|las?) unic[oa]s? (objetos?|cosas?|pertenencias?|items?) que (lleva|porta|tiene)|\bsolo (lleva|porta|tiene|carga)\b|\bunicamente (lleva|porta|tiene|carga)\b|\bnada mas que (lleva|porta|tiene)\b|\beso es todo lo que lleva\b|\bno lleva nada mas\b/i;
+
+export function hasFalseInventoryReview(narration: string, possiblyFalseInventoryReviewNames?: string[]): boolean {
+  if (!possiblyFalseInventoryReviewNames || possiblyFalseInventoryReviewNames.length === 0) return false;
+  const normalizedNarration = normalizeText(narration);
+  if (!INVENTORY_EXCLUSIVITY_REGEX.test(normalizedNarration)) return false;
+  const normalizedNames = possiblyFalseInventoryReviewNames.map(normalizeText);
+  return normalizedNames.some((name) => !normalizedNarration.includes(name));
+}
+
 /// Narración-vs-mecánica, mismo patrón que `hasFalseCombatHit` (2026-08-01, bug real jugando en
 /// vivo: descansar tras quedar INCAPACITADO no cura solo por descansar — hace falta un objeto
 /// médico real, ver healCeilingFor/death.ts — pero la narración dijo "agarra la cataplasma de
@@ -1006,12 +1048,36 @@ export function hasGisteraReencuentroSinNombrar(narration: string, gisteraSeHaMa
 /// COMPLETADO/comprometido a una dirección + nombre real de uno de los destinos ambiguos, en la
 /// misma frase — una pregunta bien hecha ("¿hacia el Pozo o hacia los Pilares?") nombra los
 /// destinos sin usar ninguno de estos verbos, así que no dispara en falso.
+// "sale de"/"salio de"/"escapa de"/"huye de" añadidos (auditoría 2026-08-11, "pruebas por API",
+// ver hasFalsePhantomTravel más abajo): el caso real que los echaba en falta era "Gorhorn sale de
+// la hondonada, caminando firme hacia el norte..." — "sale de" no estaba en la lista, así que ni
+// siquiera hasFalseTravelClaim (más abajo) lo habría cazado si el destino inventado hubiera
+// coincidido por casualidad con un nombre real.
 const FALSE_TRAVEL_VERB_REGEX =
-  /\b(ha dejado|deja atras|dejo atras|abandona\w*|abandono|ha llegado|llega\w*|llego|alcanza\w*|alcanzo|entra\w* en|entro en|arriba\w* a|arribo a|avanza\w* hacia|camina\w* hacia|se dirige\w* hacia|dirigio\w* hacia|parte\w* hacia|prosigue\w* hacia|se encuentra ya en|esta ya en)\b/i;
+  /\b(ha dejado|deja atras|dejo atras|abandona\w*|abandono|ha llegado|llega\w*|llego|alcanza\w*|alcanzo|entra\w* en|entro en|arriba\w* a|arribo a|avanza\w* hacia|camina\w* hacia|se dirige\w* hacia|dirigio\w* hacia|parte\w* hacia|prosigue\w* hacia|se encuentra ya en|esta ya en|sale\w* de|salio de|escapa\w* de|escapo de|huye\w* de|huyo de)\b/i;
 
 export function hasFalseTravelClaim(narration: NarrationResult, possiblyFalseTravelDestinationNames?: string[]): boolean {
   if (!possiblyFalseTravelDestinationNames || possiblyFalseTravelDestinationNames.length === 0) return false;
   const normalizedNames = possiblyFalseTravelDestinationNames.map(normalizeText);
+  const sentences = [narration.narration, ...narration.newFacts].flatMap((text) => text.split(/(?<=[.!?])\s+/));
+  return sentences.some((sentence) => {
+    const normalizedSentence = normalizeText(sentence);
+    return FALSE_TRAVEL_VERB_REGEX.test(normalizedSentence) && normalizedNames.some((name) => normalizedSentence.includes(name));
+  });
+}
+
+/// Complementario a `hasFalseTravelClaim` (auditoría 2026-08-11, "pruebas por API"): aquel cubre
+/// "2+ destinos reales ambiguos, el modelo narra la llegada a uno sin preguntar" — este cubre el
+/// caso contrario, un destino/dirección que NO matchea ningún alias real (p. ej. "Salgo de la
+/// hondonada y camino hacia el norte, alejándome del orco" — "el norte" no es ningún alias de
+/// ninguna Location). `travel` sale `null` (correcto: no hay nada que resolver), pero la narración
+/// describió de todos modos "Gorhorn sale de la hondonada, caminando firme hacia el norte..." —
+/// `Save.currentLocationId` nunca cambió, así que el jugador cree que se movió y no es verdad.
+/// Mismo verbo compartido que `hasFalseTravelClaim`, pero comprobado contra el nombre de la
+/// ubicación ACTUAL (no de un destino) — narrar que la abandona/deja atrás es la mentira aquí.
+export function hasFalsePhantomTravel(narration: NarrationResult, phantomTravelLocationNames?: string[]): boolean {
+  if (!phantomTravelLocationNames || phantomTravelLocationNames.length === 0) return false;
+  const normalizedNames = phantomTravelLocationNames.map(normalizeText);
   const sentences = [narration.narration, ...narration.newFacts].flatMap((text) => text.split(/(?<=[.!?])\s+/));
   return sentences.some((sentence) => {
     const normalizedSentence = normalizeText(sentence);

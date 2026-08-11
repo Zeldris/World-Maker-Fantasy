@@ -1160,7 +1160,8 @@ inventario real tenía 8 objetos (hacha, cuchillo, tótem, arnés, pantalones, c
 cataplasma). Mismo defecto de fondo que la familia "golpe falso"/"objeto falso" ya cerrada en
 combate (`hasFalseCombatHit`/`hasFalseItemUse`), pero esta ruta narrativa genérica (fuera de
 combate, sin acción de objeto detectada) no tiene ningún detector post-hoc equivalente.
-**Estado**: PENDIENTE, sin arreglar.
+**Estado**: FIJADO (2026-08-11) — nuevo detector `hasFalseInventoryReview` (narrador.ts), mismo
+patrón que la familia golpe/objeto falso, wireado en el reintento y en `runDetectors`.
 
 **2. Viaje fantasma con destino inventado**. "Salgo de la hondonada y camino hacia el norte,
 alejándome del orco" (sin nombrar ningún destino real de los conectados a la ubicación actual) —
@@ -1170,7 +1171,10 @@ ocurrido: *"Gorhorn sale de la hondonada, caminando firme hacia el norte..."*. C
 `currentLocation` no cambia tras el turno — el jugador cree que se movió y no es así. Mismo patrón
 de fondo que el hallazgo 1 (narración sin grounding determinista que la contradiga cuando no hay
 ningún objeto/NPC/golpe real de por medio que comprobar).
-**Estado**: PENDIENTE, sin arreglar.
+**Estado**: FIJADO (2026-08-11) — nuevo detector `hasFalsePhantomTravel` (narrador.ts) +
+corrección post-hoc en `turnResolution.ts` (mismo patrón que `hasFalseTravelClaim`), que reescribe
+la narración si el modelo afirma haber salido de la ubicación actual sin ningún viaje mecánico
+resuelto.
 
 **3. Una fuente de recolección "desaparece" si se descubre junto a otra en el mismo turno**.
 Explorando minería en Los Pilares Rotos con `POST /saves/:id/recolectar/minero-llanuras/explorar`
@@ -1190,9 +1194,10 @@ hierro de los pilares rotos en la zona."* comparten 9 de 11 palabras (toda la pl
 umbral, aunque las dos frases hablen de entidades completamente distintas (roca vs. veta de hierro).
 Cualquier lote de 2+ hechos generados con la misma plantilla en el mismo turno es candidato al mismo
 bug — no es exclusivo de recolección, es un defecto de la métrica de similitud en sí.
-**Estado**: PENDIENTE, sin arreglar. Posible fix: ponderar la similitud hacia las palabras
-"de contenido" (nombres propios/sustantivos específicos) en vez de solapamiento plano, o comparar
-solo el fragmento tras el verbo fijo cuando el hecho sigue una plantilla conocida.
+**Estado**: FIJADO (2026-08-11) — nueva `factSimilarity` (worldFacts.ts) dedicada a este chequeo:
+quita stopwords y compara solo las palabras de contenido (Jaccard), en vez de la `similarity`
+compartida con `isTooSimilarToLast` (narrador.ts) que comparaba solapamiento plano de plantilla
+completa. "Roca" y "veta de hierro" de los pilares rotos ya se guardan como hechos distintos.
 
 **4. La descripción de "Descansar" promete algo que la mecánica no cumple**. Su texto in-game dice
 *"Se detiene donde esté, monta un vivac breve y descansa para recuperar fuerzas — sin necesitar
@@ -1203,8 +1208,12 @@ Pilares Rotos, `kind: 'hito'`) el descanso narra recuperación pero no cura ni u
 sin ningún aviso de por qué. Confirmado con prueba de control: mismo texto exacto de acción, mismo
 personaje, en Hondonada del Eco (`refugio`) sí curó energía al máximo (30→86); en Los Pilares Rotos
 (`hito`) no cambió nada.
-**Estado**: PENDIENTE, sin arreglar — a decidir si el fix es ampliar `isValidRestLocationKind` o
-corregir la descripción de la habilidad para que no prometa de más.
+**Estado**: FIJADO (2026-08-11) — rediseño de dos tramos acordado con la usuaria (no era ninguna de
+las dos opciones planteadas inicialmente): descansar en cualquier sitio cura de verdad, pero con
+tope GRAVE; solo en refugio/asentamiento real el tope sube a HERIDO. `healCeilingFor` (death.ts)
+pasa a recibir `restAttempted`/`restInValidLocation` en vez de un único booleano, y el texto de la
+habilidad (`startingAbilities.ts`) ahora describe los dos tramos en vez de prometer curación total
+en cualquier sitio.
 
 **Confirmado funcionando bien en esta ronda** (no hace falta re-probarlo): equipar/desequipar con
 validación de ranura y familia de 6 huecos de consumible; resincronización de habilidades de arma
@@ -1253,10 +1262,9 @@ obtiene recolectando (mineral, madera, piel/despiece) o cazando quedará imposib
 el camino normal del jugador — solo se cerraría si, por casualidad, ese mismo objeto también se
 consigue alguna vez por saqueo/crafteo/narración libre.
 
-**Estado**: PENDIENTE, sin arreglar. Fix más directo: extraer el bloque de cierre "conseguir Z" de
-`turnResolution.ts` a una función compartida (recibiendo `saveId` + lista de nombres de objetos
-creados) y llamarla también desde el final de `recolectar.ts`/`cazar.ts` § `confirmar`, dentro de
-su propia transacción.
+**Estado**: FIJADO (2026-08-11) — bloque de cierre extraído a `closeItemQuests` (exportada de
+`turnResolution.ts`), llamada también desde `recolectar.ts` § `confirmar` dentro de su propia
+transacción. `cazar.ts` no se tocó en esta ronda (sin caso de prueba real que lo dispare todavía).
 
 ## 2026-08-11 (continuación) — el objeto recién crafteado sale "sin categorizar" (regresión parcial del fix de 2026-08-07)
 
@@ -1293,10 +1301,9 @@ CATEGORIZAR" (icono genérico) hasta la próxima recarga completa de la partida,
 `GET /saves/:id` sí lo resuelve bien vía join — mismo efecto visual que el bug de 2026-08-07, pero
 todavía vivo para el camino de crafteo.
 
-**Estado**: PENDIENTE, sin arreglar. Fix: para el objeto RESULTADO, consultar su `tipo`/`equipSlot`/
-`effectKey` directamente por `recipe.resultCatalogSlug` contra `ItemCatalog` (una consulta suelta o
-un segundo mapa aparte), en vez de reutilizar `catalogBySlug` (que se queda tal cual para lo que
-sí hace bien: ingredientes que el jugador ya posee).
+**Estado**: FIJADO (2026-08-11) — nuevo `resultCatalogRowFor` (turnResolution.ts), resolver
+memoizado que consulta el `resultCatalogSlug` directamente por `worldId_slug` contra `ItemCatalog`,
+en vez de reutilizar `catalogBySlug` (que se queda tal cual para ingredientes).
 
 ## 2026-08-11 (continuación) — segunda tanda: reino, capítulo, muerte definitiva, despiece (sin bugs nuevos)
 
@@ -1358,10 +1365,9 @@ opaco/genérico en vez de uno útil — el formulario real de creación de perso
 los campos hoy, así que en la práctica no se ha visto disparado jugando normal; el riesgo es de cara
 a cualquier cliente futuro (API pública, script de importación, etc.) que no replique exactamente
 el formulario actual.
-**Estado**: PENDIENTE, sin arreglar. Fix: ampliar el guard inicial para cubrir todos los campos
-`string` no opcionales de `CreateSaveBody` (`characterArchetype`/`characterOrigin`/
-`characterMotivation`/`portraitInitial`/`introCharacterText`/`introWorldText`), además de validar
-`attributes` con las 7 claves reales (mismo `VALID_ATTRIBUTES`/patrón ya usado en
+**Estado**: FIJADO (2026-08-11) — `validationErrorFor` (creation.ts) cubre ahora los ~10 campos
+`string` no opcionales de `CreateSaveBody`, además de validar `attributes` con las 7 claves reales
+(mismo `VALID_ATTRIBUTES`/patrón ya usado en
 `progression.ts`) — todo devuelto como 400 con mensaje claro antes de tocar nada más.
 
 **Construcción (campamento base) — confirmado funcionando bien**: `Building` de la receta más

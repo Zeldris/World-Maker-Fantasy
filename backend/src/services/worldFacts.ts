@@ -39,6 +39,39 @@ export function similarity(a: string, b: string): number {
   return shared / Math.max(wordsA.size, wordsB.size);
 }
 
+/// Palabras de función del castellano sin contenido propio — casi cualquier hecho generado por
+/// plantilla las repite ("localiza X en la zona", "X está herido"), así que inflan la similitud
+/// de `similarity()` sin aportar nada que distinga un hecho de otro.
+const FACT_STOPWORDS = new Set([
+  'el', 'la', 'los', 'las', 'un', 'una', 'unos', 'unas',
+  'de', 'del', 'al', 'a', 'en', 'con', 'por', 'para', 'sin',
+  'y', 'o', 'que', 'se', 'su', 'sus', 'lo', 'le', 'les',
+  'ha', 'han', 'está', 'están', 'es', 'son', 'ya',
+]);
+
+/// Similitud específica para deduplicar `SessionFact` (auditoría 2026-08-11, bug real jugando por
+/// API: dos fuentes de recolección descubiertas en el mismo turno, p. ej. "Gorhorn localiza roca
+/// de los pilares rotos en la zona." / "Gorhorn localiza veta de hierro de los pilares rotos en la
+/// zona.", comparten 9 de 11 palabras — toda la plantilla fija, ninguna del contenido real que las
+/// distingue — así que `similarity()` (solapamiento plano, `compartidas/máximo`) las veía como el
+/// MISMO hecho y descartaba la segunda, perdiendo un descubrimiento real). Deliberadamente
+/// SEPARADA de `similarity()` (compartida con narrador.ts para detectar narración repetida, prosa
+/// larga con un umbral ya calibrado aparte — no se toca para no descalibrar ese detector distinto):
+/// aquí se filtran antes las palabras de función más comunes (arriba) y se usa Jaccard real
+/// (intersección/UNIÓN, no intersección/máximo) — las palabras de plantilla, comunes a casi
+/// cualquier hecho, dejan de dominar la similitud; lo que sobrevive es el contenido real.
+/// Verificado contra los 3 casos reales ya conocidos (bug del Orco Enfurecido, "orcos"~"oca",
+/// "el puente está/quedó destruido") — siguen detectándose como duplicado con el mismo umbral.
+function factSimilarity(a: string, b: string): number {
+  const wordsA = new Set(normalize(a).split(' ').filter((w) => w && !FACT_STOPWORDS.has(w)));
+  const wordsB = new Set(normalize(b).split(' ').filter((w) => w && !FACT_STOPWORDS.has(w)));
+  if (!wordsA.size || !wordsB.size) return 0;
+  let shared = 0;
+  for (const w of wordsA) if (wordsB.has(w)) shared++;
+  const union = wordsA.size + wordsB.size - shared;
+  return shared / union;
+}
+
 /// Historial completo (acotado a MAX_STORED_FACTS, orden cronológico) — para quien necesita ver
 /// TODO lo establecido recientemente, no solo lo más relevante ahora mismo: el haystack de
 /// detección de NPCs en escena (npcScene.ts) y comprobaciones deterministas tipo "¿ya se presentó
@@ -65,7 +98,7 @@ export async function appendSessionFacts(saveId: string, existing: string[], new
   if (newFacts.length === 0) return;
   const seen = [...existing];
   for (const fact of newFacts) {
-    if (seen.some((f) => similarity(f, fact) >= DUPLICATE_THRESHOLD)) continue;
+    if (seen.some((f) => factSimilarity(f, fact) >= DUPLICATE_THRESHOLD)) continue;
     seen.push(fact);
     const vector = await embed(fact);
     await prisma.$executeRaw`
