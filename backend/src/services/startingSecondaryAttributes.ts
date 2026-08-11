@@ -12,9 +12,9 @@ import type { SecondaryAttributeBlock } from './secondaryAttributes.js';
 const GORHORN_SECONDARY_ATTRIBUTES: SecondaryAttributeBlock = {
   sigilo: 5,
   magia: 3,
-  poderSemilla: 11,
-  moral: 15,
-  resistenciaFisica: 16,
+  poderSemilla: 4,
+  moral: 12,
+  resistenciaFisica: 10,
   resistenciaMagica: 7,
   resistenciaSemilla: 4,
   resistenciaFrio: 6,

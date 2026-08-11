@@ -226,3 +226,89 @@ imprime un veredicto: si el candidato
 introduce una sola regresión nueva respecto al actual, queda **bloqueado** aunque mejore de media —
 solo si no hay regresiones y mejora, indica el cambio a hacer en `backend/.env`
 (`OLLAMA_MODEL_NARRADOR="tarkor-narrador-v2"`) y reiniciar el backend.
+
+---
+
+## Recolección en vivo de pares de preferencia (DPO)
+
+Todo lo de arriba (Pasos 0-7) es **imitación** (SFT): el modelo aprende a copiar las respuestas de
+un profesor cloud. Esta sección añade una vía **paralela y aditiva** — no sustituye nada de lo
+anterior, los dos datasets/pipelines conviven — que en vez de solo imitar, aprende de una
+**comparación**: para el mismo turno real de una partida, "esta respuesta (la de la nube) es mejor
+que esta otra (la del modelo local)".
+
+**Cómo funciona, en una frase**: mientras juegas normal, cada cierto turno el backend manda en
+segundo plano — sin que tú lo notes, sin que afecte a lo que ves en pantalla — la misma pregunta
+que le hizo al modelo local a un proveedor cloud, y guarda las dos respuestas juntas. La nube
+**nunca** narra tu partida de verdad (se probó y se descartó como narrador en vivo por poca
+fiabilidad) — solo sirve de referencia en la sombra para mejorar el modelo local más adelante.
+
+### Activarla
+
+En `backend/.env`:
+
+```
+LIVE_TEACHER_CAPTURE_ENABLED="true"
+```
+
+Reinicia el backend. A partir de ahí, mientras juegues, un turno de cada ~3 (ajustable con
+`LIVE_TEACHER_CAPTURE_SAMPLE_RATE`, un número entre 0 y 1) dispara esta captura de fondo. No
+ralentiza tus turnos — la llamada a la nube corre en paralelo, nunca antes de que veas tu narración.
+Consume la misma cuota gratuita de los proveedores cloud que `generate-distillation-dataset.ts`, así
+que si vas a generar dataset sintético y jugar el mismo día, tenlo en cuenta.
+
+### Exportar lo recolectado
+
+Cuando quieras preparar una tanda para entrenar, dentro de `backend/`:
+
+```
+npm run export-dpo-dataset
+```
+
+Escribe (o amplía, nunca sobrescribe) `backend/output/dpo-dataset/live-dpo.jsonl` — solo con los
+turnos donde la respuesta de la nube pasó los mismos filtros de calidad que protegen el juego real.
+Puedes ejecutarlo varias veces según vayas jugando: cada vez añade solo lo nuevo desde la última
+vez, nunca duplica.
+
+---
+
+## Paso DPO 1-7 — entrenar con los pares en vivo (Colab, ruta paralela)
+
+Mismo esqueleto que los Pasos 1-7 de arriba, con las diferencias marcadas en cada uno. Para la
+primera vez, se recomienda partir del modelo base (Qwen2.5-7B-Instruct), no del ya entrenado por
+SFT — más simple, y es justo lo que se pidió: una vía en paralelo, no encadenada. Encadenar
+SFT→DPO (entrenar por preferencia sobre el modelo YA afinado por imitación) es una mejora futura
+razonable, no necesaria para probar esto por primera vez.
+
+- **Paso DPO 1**: en vez del notebook "Mistral_v0.3", busca en
+  [github.com/unslothai/notebooks](https://github.com/unslothai/notebooks) uno cuyo nombre incluya
+  "DPO" (Unsloth publica varios, la lista cambia — cualquiera que use `DPOTrainer` de la librería
+  `trl` sirve). Ábrelo en Colab igual que en el Paso 1 original.
+- **Paso DPO 2**: igual que el Paso 2 — T4 GPU.
+- **Paso DPO 3**: igual que el Paso 3, pero sube `live-dpo.jsonl` (de `backend/output/dpo-dataset/`)
+  en vez de `train.jsonl`.
+- **Paso DPO 4**: mismo cambio de `model_name` a `"unsloth/Qwen2.5-7B-Instruct-bnb-4bit"` (4.2). La
+  celda del dataset (4.3) es distinta: `DPOTrainer` espera columnas `prompt`/`chosen`/`rejected`
+  (cada una una lista de mensajes `{role, content}`, el mismo formato que ya trae
+  `live-dpo.jsonl`) — comprueba en el notebook elegido si su celda de carga ya sabe leer ese
+  formato tal cual (`load_dataset("json", data_files="/content/live-dpo.jsonl", split="train")`
+  suele bastar) o si pide adaptarlo con una función `formatting_func` propia, según cómo esté
+  escrito ese notebook en concreto. La celda de configuración (4.4) usa `DPOConfig`/`DPOTrainer` en
+  vez de `SFTConfig`/`SFTTrainer` — tiene un parámetro nuevo, `beta` (déjalo en el valor por defecto
+  del notebook la primera vez), pero no hace falta el mismo cambio de `max_steps`.
+- **Paso DPO 5**: igual que el Paso 5, pero con un nombre de salida distinto para no chocar con los
+  anteriores:
+  ```python
+  if True: model.save_pretrained_gguf("tarkor-narrador-dpo", tokenizer, quantization_method = "q4_k_m")
+  ```
+- **Paso DPO 6**: trae el `.gguf` de vuelta como en el Paso 6, pero a
+  `backend/models/tarkor-narrador-dpo.gguf`, y regístralo con un nombre nuevo (reutiliza
+  `Modelfile.finetuned` tal cual, mismo `SYSTEM`):
+  ```
+  ollama create tarkor-narrador-dpo -f Modelfile.finetuned
+  ```
+  Esto convive con `tarkor-narrador` y `tarkor-narrador-v2` sin tocarlos.
+- **Paso DPO 7**: exactamente la misma puerta que el Paso 7 —
+  `npm run compare-narrador-models` contra este candidato, la misma regla de "cualquier regresión
+  bloquea", y solo si es estrictamente mejor se cambia `OLLAMA_MODEL_NARRADOR` en `.env` a
+  `"tarkor-narrador-dpo"` y se reinicia el backend.

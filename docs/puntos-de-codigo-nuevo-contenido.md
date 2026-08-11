@@ -239,32 +239,49 @@ categoría.
 
 ---
 
-## 7. Colisión de alias — el mecanismo exacto (backend y frontend son distintos)
+## 7. Colisión de alias — el mecanismo exacto (backend y frontend, unificado 2026-08-11)
 
-Dos detectores estructuralmente diferentes, con riesgo distinto — vale la pena tenerlos claros
-porque comprobar uno NO garantiza que el otro esté a salvo:
+**Actualizado 2026-08-11**: hasta esta fecha, backend y frontend usaban dos mecanismos de matching
+distintos con riesgo muy diferente. Se unificó el criterio: `matchesAliasBoundary` (nueva,
+`travel.ts`) porta al backend el mismo límite de palabra real (`\p{L}\p{N}`, no `\b` de JS — `\b`
+trata letras acentuadas como "no palabra" y rompe con nombres propios de este mundo) y la misma
+longitud mínima (4 caracteres, `MIN_ALIAS_MATCH_LENGTH`) que ya usaba el frontend
+(`enciclopediaIndex.ts` § `MIN_PATTERN_LENGTH`) — solo para aliases de una sola palabra; un alias
+multi-palabra ya es específico de sobra y no tiene mínimo propio. Tests de regresión en
+`travel.test.ts` (`matchesAliasBoundary`, `matchDestination`) y `npcScene.test.ts`
+(`matchNpcAliases`), incluida la reproducción exacta del bug histórico "res"/"presas"/"brasas".
 
-**Backend (decide de verdad la partida — NPC en escena, descubrimientos, destino de viaje):**
-- `npcScene.ts:109` (`matchNpcAliases`) — `.includes()` puro, **sin filtro de longitud alguno**;
-  el respaldo con tolerancia a erratas (Levenshtein ≤2) solo aplica a alias de una palabra de 5+
-  letras (línea 128).
-- `entityDiscovery.ts:44,53,69` — mismo `.includes()` sin filtro, para NPCs, fauna y objetos.
-- `travel.ts:85` (`matchDestination`) — mismo `.includes()` sin filtro, para ubicaciones.
-→ **Cualquier alias, sea cual sea su longitud, es un riesgo real de colisión aquí.** Este es el
-mecanismo exacto detrás de los bugs ya documentados de "res"/"presas"/"brasas".
+**Dónde se aplica ahora:**
+- `npcScene.ts` (`matchNpcAliases`) — la comparación literal (antes `.includes()` puro) ahora pasa
+  por `matchesAliasBoundary`. El respaldo con tolerancia a erratas (Levenshtein ≤2, alias de una
+  palabra de 5+ letras) es un mecanismo APARTE, sin tocar — sigue teniendo su propio riesgo, ver
+  nota de abajo.
+- `entityDiscovery.ts` — los 3 puntos de detección (NPC, fauna, objeto — antes `.includes()` sin
+  filtro) usan `matchesAliasBoundary` igual.
+- `travel.ts` (`matchDestination`) — mismo cambio; sigue ordenando por alias más largo primero
+  cuando hay varios candidatos.
 
-**Texto clicable del frontend** (`enciclopediaIndex.ts:35,91`):
-- `MIN_PATTERN_LENGTH = 4` — nada más corto se registra como clicable.
-- Regex con límites de palabra real (`\p{L}\p{N}`, no `\b` de JS, que falla con acentos) — "eco"
-  dentro de "ecosistema" NO colisionaría aquí (sí lo haría en el backend).
-- Ordenado por longitud descendente (línea 86) para que "Kort'ikar Torgash" gane sobre "Torgash".
-→ **Bastante más seguro que los detectores del backend**, pero sigue habiendo riesgo con
-sustantivos genéricos de 4+ letras y límite de palabra.
+**Mecanismo aparte, también revisado en esta pasada**: la tolerancia a erratas por Levenshtein de
+`matchNpcAliases` (rama separada de `matchesAliasBoundary`, alias de una sola palabra de 5+
+letras) puede dar falsos positivos genuinos entre una palabra común y un alias corto sin relación
+semántica. Encontrado escribiendo los tests de esta pasada: `Levenshtein("cazar", "hagar") = 2` —
+"cazar" es un verbo muy frecuente en este juego (caza/recolección) y detectaba a Hagar en escena
+sin que el jugador lo mencionara. Un barrido sistemático contra ~150 verbos de acción típicos del
+juego confirmó que no era un choque aislado: "hagar" (patrón X-a-X-a-r) está a distancia ≤2 de toda
+una familia de verbos en "-ar" de la misma longitud — sanar, talar, nadar, matar, apagar, bajar,
+pagar, negar, además de los ya documentados lugar/remato-remata/hablar. **Arreglado** añadiendo los
+9 verbos nuevos a `NPC_ALIAS_FUZZY_EXCLUSIONS` (mismo mecanismo ya usado para los anteriores — ver
+comentario en `npcScene.ts`), con test de regresión para cada uno en `npcScene.test.ts`. El resto
+de aliases del catálogo (Torgash, Ulkha, Gistera, Múrgol...) no mostró ningún choque en el mismo
+barrido — el problema es específico de "hagar" por su longitud y forma silábica, no genérico de la
+rama fuzzy.
 
-En resumen: el mismo alias puede ser seguro en el frontend y peligroso en el backend, o al revés
-— comprobar uno no libra al otro. No existe ningún script permanente de comprobación (el
-`_checkItemAliases.ts` de un solo uso mencionado en `nuevo-elemento-catalogo.md` se borró tras
-usarlo, confirmado que ya no está en `backend/src/scripts/`).
+**Texto clicable del frontend** (`enciclopediaIndex.ts:35,91`) — sin cambios, ya tenía este
+criterio antes: `MIN_PATTERN_LENGTH = 4`, límite de palabra real, orden por longitud descendente.
+
+No existe ningún script permanente de comprobación de colisiones (el `_checkItemAliases.ts` de un
+solo uso mencionado en `nuevo-elemento-catalogo.md` se borró tras usarlo, confirmado que ya no está
+en `backend/src/scripts/`).
 
 ---
 

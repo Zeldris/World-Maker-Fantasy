@@ -1,5 +1,5 @@
 import { prisma } from '../lib/prisma.js';
-import { normalizeText, fuzzyMatchCandidates, fuzzyMatchesAnyStem } from './travel.js';
+import { normalizeText, fuzzyMatchCandidates, fuzzyMatchesAnyStem, matchesAliasBoundary } from './travel.js';
 import type { NpcKind, CondicionFisica, Temperamento, WeaponCategory, EquipSlot, ItemTipo, Prisma, NpcState } from '@prisma/client';
 import type { Attribute, AttributeBlock } from './dice.js';
 
@@ -106,6 +106,10 @@ export interface NpcInScene {
   /// `condicionFisica`/ILESO): el tope real se deriva con `energiaMaxFor(attributes.constitucion)`
   /// en el punto de uso (turnResolution.ts), nunca aquí.
   energia: number | null;
+  /// Rediseño de combate (2026-08-09, "Analizar rival") — true en cuanto el jugador lo analiza con
+  /// éxito una vez, para siempre en esta partida. Gatea qué muestra la ficha del rival en combate
+  /// (CombatPanel.tsx § EnemyFicha) — sin analizar, ni estadísticas ni habilidades.
+  analizado: boolean;
 }
 
 interface NpcWithAliases {
@@ -155,6 +159,7 @@ export function buildNpcInScene(npc: NpcWithItems, state: NpcState | undefined):
     saqueado: state?.saqueado ?? false,
     lootedItemNames: state?.lootedItemNames ?? [],
     energia: state?.energia ?? null,
+    analizado: state?.analizado ?? false,
   };
 }
 
@@ -183,6 +188,20 @@ const NPC_ALIAS_FUZZY_EXCLUSIONS = new Set([
   'rematan',
   'rematamos',
   'hablar',
+  // Barrido sistemático (auditoría 2026-08-11, escrita al portar matchesAliasBoundary): "hagar"
+  // (5 letras, patrón X-a-X-a-r) resultó estar a distancia Levenshtein ≤2 de toda una familia de
+  // verbos comunes en "-ar" de la misma longitud — no un choque aislado como los de arriba, sino
+  // estructural al propio alias. Encontrado probando "cazar" (verbo muy frecuente en este juego de
+  // caza/recolección) y confirmado con un barrido contra ~150 verbos de acción típicos del juego.
+  'cazar',
+  'sanar',
+  'talar',
+  'nadar',
+  'matar',
+  'apagar',
+  'bajar',
+  'pagar',
+  'negar',
 ]);
 
 /// Puro: dado un texto y una lista de NPCs con sus aliases, devuelve los ids que matchean.
@@ -202,7 +221,7 @@ export function matchNpcAliases(text: string, npcs: NpcWithAliases[]): string[] 
     const hit = npc.aliases.some((alias) => {
       const normalizedAlias = normalizeText(alias);
       if (normalizedAlias.length === 0) return false;
-      if (normalized.includes(normalizedAlias)) return true;
+      if (matchesAliasBoundary(normalized, normalizedAlias)) return true;
       // Bug real encontrado auditando la partida de Gorhorn (2026-07-23, "revisar partida"): la
       // tolerancia a erratas comparaba cada palabra SUELTA de un alias multi-palabra por separado
       // — así que un alias como "el kort'ikar serhu" (Torgash) o "jefa del clan serhu" (Ulkha)

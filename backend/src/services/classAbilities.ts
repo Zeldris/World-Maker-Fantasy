@@ -12,6 +12,17 @@ import { ENERGY_COST_BASICA } from './energy.js';
 ///
 /// Todas se aprenden desde nivel 1 (mismo criterio que las de arma) — ya no hay un roster que
 /// desbloquear progresivamente, el tope de 10 ya limita de sobra la profundidad.
+///
+/// Rediseño de combate (2026-08-09, petición explícita: "una habilidad defensiva o de utilidad
+/// nunca hará daño directo"): las 4 pasan a `rol: 'utilidad'`, reactivas — su efecto solo se
+/// evalúa si el RIVAL atacó con una habilidad `rol:'ataque'` ese mismo intercambio Y la tirada
+/// PROPIA tiene éxito (resuelto en `combatExchange.ts` § resolveIndependentExchange, aplicado en
+/// turnResolution.ts § applyUtilityEffects). Nunca hacen daño incondicional por su cuenta — la
+/// única que sí "devuelve" daño (Contraataque) solo lo hace como reacción a un ataque real, nunca
+/// desde su propia tirada en solitario. Dos renombradas in-place (mismo hueco de atributo/clase,
+/// descripción y `effect` reescritos): Puño de Hierro → Contraataque (su descripción ya sonaba a
+/// esto: "aguanta... listo para responder"), Lectura de Presa → Analizar rival (deja de dañar,
+/// pasa a revelar el atributo recomendado contra el rival).
 export type Clase = 'Guerrero' | 'Cazador';
 
 export interface ClassAbilityUnlock {
@@ -25,12 +36,13 @@ const CLASS_ABILITIES: ClassAbilityUnlock[] = [
     level: 1,
     clase: 'Guerrero',
     ability: {
-      name: 'Puño de Hierro',
+      name: 'Contraataque',
       icon: '✊',
-      description: 'Aguanta cualquier golpe entrante sin retroceder ni un paso, listo para responder de inmediato en cuanto el enemigo se descubre.',
-      promptText: 'Aprieto los dientes, aguanto el golpe entrante sin ceder terreno y me preparo para responder en cuanto se descubra.',
+      description: 'Aguanta cualquier golpe entrante sin retroceder ni un paso — si el rival ataca de verdad, responde de inmediato con un golpe propio.',
+      promptText: 'Aprieto los dientes, aguanto el golpe entrante sin ceder terreno, listo para responder en el instante en que ataque de verdad.',
       category: 'combate',
-      effect: 'AGUANTE',
+      effect: 'ATAQUE',
+      rol: 'utilidad',
       preferredAttribute: 'voluntad',
       energyCost: ENERGY_COST_BASICA,
     },
@@ -41,10 +53,11 @@ const CLASS_ABILITIES: ClassAbilityUnlock[] = [
     ability: {
       name: 'Grito de Guerra',
       icon: '📢',
-      description: 'Un grito que quiebra el nervio del enemigo un instante antes del choque — no todos los golpes se dan con el arma.',
-      promptText: 'Suelto un grito de guerra que retumba antes del choque, buscando quebrar el nervio de mi enemigo un instante antes de que reaccione.',
+      description: 'Un grito que quiebra el nervio del enemigo justo antes del choque — si llega a atacar de verdad, el golpe se le queda a medias y pierde la iniciativa.',
+      promptText: 'Suelto un grito de guerra que retumba antes del choque, buscando quebrar el nervio de mi enemigo justo cuando ataque.',
       category: 'combate',
       effect: 'INTIMIDACION',
+      rol: 'utilidad',
       preferredAttribute: 'carisma',
       energyCost: ENERGY_COST_BASICA,
     },
@@ -53,12 +66,13 @@ const CLASS_ABILITIES: ClassAbilityUnlock[] = [
     level: 1,
     clase: 'Cazador',
     ability: {
-      name: 'Lectura de Presa',
+      name: 'Analizar rival',
       icon: '🔍',
-      description: 'Lee el punto débil exacto del enemigo antes de moverse — un cazador nunca desperdicia el primer golpe.',
-      promptText: 'Estudio a mi enemigo un instante, leyendo su punto débil antes de moverme, y golpeo justo ahí sin desperdiciar el movimiento.',
+      description: 'Estudia al rival un instante, leyendo su punto débil — revela qué atributo conviene usar contra él, nunca inflige daño por sí sola.',
+      promptText: 'Estudio a mi enemigo un instante, leyendo su punto débil antes de moverme.',
       category: 'combate',
-      effect: 'ATAQUE',
+      effect: 'ANALISIS',
+      rol: 'utilidad',
       preferredAttribute: 'inteligencia',
       energyCost: ENERGY_COST_BASICA,
     },
@@ -69,10 +83,11 @@ const CLASS_ABILITIES: ClassAbilityUnlock[] = [
     ability: {
       name: 'Instinto Salvaje',
       icon: '🌀',
-      description: 'Un arrebato de instinto puro y salvaje, imposible de anticipar — ni el propio cazador sabe de dónde sale hasta que ya ha golpeado.',
-      promptText: 'Dejo que un arrebato de instinto puro y salvaje tome el control por un instante, golpeando de una forma que ni yo mismo podría anticipar.',
+      description: 'Un arrebato de instinto puro y salvaje — si el rival ataca de verdad, lo desorienta lo justo para robarle la iniciativa, sin llegar a herirlo.',
+      promptText: 'Dejo que un arrebato de instinto puro y salvaje tome el control por un instante, listo para desorientar a mi rival en cuanto ataque.',
       category: 'combate',
       effect: 'ATURDIMIENTO',
+      rol: 'utilidad',
       preferredAttribute: 'arcano',
       energyCost: ENERGY_COST_BASICA,
     },

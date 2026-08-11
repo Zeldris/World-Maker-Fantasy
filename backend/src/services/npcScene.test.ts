@@ -7,6 +7,11 @@ const NPCS = [
   { id: 'ulkha', aliases: ['ulkha', "terk'ikar ulkha", 'jefa del clan serhu'] },
   { id: 'hagar', aliases: ['hagar'] },
   { id: 'murgol', aliases: ['murgol', 'múrgol', 'murgoles', 'múrgoles', 'rebano', 'rebaño'] },
+  // Alias corto sintético (auditoría 2026-08-11) — reproduce exactamente el mecanismo documentado
+  // en docs/revisar-partida.md § 3 ("res" de múrgol matcheaba dentro de "presas"/"interesante").
+  // Hoy ningún alias real del catálogo es tan corto (verificado, solo 'kael'/'kegi' a 4 letras),
+  // pero el detector debe protegerse igual contra el PATRÓN, no solo contra los casos ya vistos.
+  { id: 'corto', aliases: ['res'] },
 ];
 
 // `detectNpcsInScene` (acotar el candidato, ver comentario en npcScene.ts) necesita prisma
@@ -73,6 +78,24 @@ describe('matchNpcAliases', () => {
   it('Hagar y el Múrgol siguen detectándose por su alias real, la exclusión no los deja invisibles del todo', () => {
     expect(matchNpcAliases('Hagar se acerca sonriendo', NPCS)).toEqual(['hagar']);
     expect(matchNpcAliases('Veo un múrgol pastando', NPCS)).toEqual(['murgol']);
+  });
+
+  it('auditoría 2026-08-11 (docs/puntos-de-codigo-nuevo-contenido.md § 7): un alias corto de una sola palabra no matchea como substring de otra palabra', () => {
+    expect(matchNpcAliases('Busco presas para comer esta noche', NPCS)).toEqual([]);
+    expect(matchNpcAliases('Eso me parece interesante', NPCS)).toEqual([]);
+    expect(matchNpcAliases('Espero una respuesta clara', NPCS)).toEqual([]);
+  });
+
+  it('auditoría 2026-08-11: familia de verbos en "-ar" que a distancia Levenshtein ≤2 de "hagar" no deben disparar a Hagar por tolerancia a erratas', () => {
+    expect(matchNpcAliases('Voy a cazar algo para cenar', NPCS)).toEqual([]);
+    expect(matchNpcAliases('Uso la salvia del polvo para sanar la herida', NPCS)).toEqual([]);
+    expect(matchNpcAliases('Voy a talar el matorral de cuerno', NPCS)).toEqual([]);
+    expect(matchNpcAliases('No sé nadar en esta corriente', NPCS)).toEqual([]);
+    expect(matchNpcAliases('Intento matar al Corredor de Cauce', NPCS)).toEqual([]);
+    expect(matchNpcAliases('Voy a apagar el fuego del campamento', NPCS)).toEqual([]);
+    expect(matchNpcAliases('Decido bajar por la hondonada', NPCS)).toEqual([]);
+    expect(matchNpcAliases('No tengo con qué pagar al mercader', NPCS)).toEqual([]);
+    expect(matchNpcAliases('Me niego a negar lo que vi', NPCS)).toEqual([]);
   });
 });
 
@@ -328,7 +351,7 @@ function npcFixture(overrides: Partial<NpcInScene> = {}): NpcInScene {
     ],
     attributes: { fuerza: 11, destreza: 10, constitucion: 9, inteligencia: 4, voluntad: 7, carisma: 2, arcano: 2 },
     raza: 'orcos', clase: 'Guerrero', ataqueNatural: null, habilidadesRaciales: [],
-    temperamento: 'AGRESIVO', condicionFisica: 'ILESO', saqueado: false, lootedItemNames: [], energia: null,
+    temperamento: 'AGRESIVO', condicionFisica: 'ILESO', saqueado: false, lootedItemNames: [], energia: null, analizado: false,
     ...overrides,
   };
 }

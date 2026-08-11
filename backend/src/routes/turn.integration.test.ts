@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeAll, afterAll } from 'vitest';
 import Fastify from 'fastify';
+import { Prisma } from '@prisma/client';
 import { prisma } from '../lib/prisma.js';
 import { getDefaultUserId } from '../lib/defaultUser.js';
 import { resolveDueTransits } from '../workers/worldTick.js';
@@ -404,6 +405,234 @@ describe('Ataque Básico: atribución de arma cuando hay dos armas equipadas', (
     // el "nunca con" que la descarta explícitamente — nunca al revés.
     expect(hint).toMatch(/^ESTE GOLPE EN CONCRETO es con Hacha de guerra rota/);
     expect(hint).toContain('nunca con Cuchillo de hielo sílice');
+  }, 15_000);
+});
+
+// Cobertura nueva (rediseño de combate, 2026-08-09, petición explícita: "una habilidad defensiva
+// o de utilidad nunca hará daño directo... las de ataque sí" + "si uso un consumible el rival
+// también puede actuar"): las 4 habilidades de clase reconvertidas a rol:'utilidad' reactivo
+// (Contraataque/Grito de Guerra/Instinto Salvaje solo se disparan si el rival ataca con daño Y la
+// tirada propia tiene éxito; Analizar rival nunca es reactiva) y el gate de daño incondicional
+// ahora depende de `rol`, no de `effect`. Dados pinchados al máximo (mismo criterio que "Misión de
+// apertura" más arriba) — con Math.random()=0.99, CUALQUIER tirada de este archivo resuelve
+// 'claro', así que un intercambio reactivo se dispara siempre que la condición de rol se cumpla.
+describe('Rediseño de combate: habilidades de utilidad reactivas y consumibles con turno real', () => {
+  let saveId: string;
+  let worldId: string;
+  let npcId: string;
+  let npcSlug: string;
+  let contraataqueId: string;
+  let gritoDeGuerraId: string;
+  let analizarRivalId: string;
+
+  beforeAll(async () => {
+    vi.spyOn(Math, 'random').mockReturnValue(0.99);
+    const userId = await getDefaultUserId();
+    const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
+    worldId = world.id;
+    const npc = await prisma.npc.findFirstOrThrow({ where: { worldId, slug: 'orco-enfurecido-hondonada' } });
+    npcId = npc.id;
+    npcSlug = npc.slug;
+    const location = await prisma.location.findFirstOrThrow({ where: { worldId, slug: 'hondonada-del-eco' } });
+
+    const save = await prisma.save.create({
+      data: {
+        userId,
+        worldId,
+        characterName: 'Gorhorn de prueba utilidad',
+        characterArchetype: 'guerrero',
+        characterOrigin: 'Clan Maktor',
+        characterMotivation: 'x',
+        attributes: ATTRS,
+        portraitInitial: 'G',
+        currentLocationId: location.id,
+      },
+    });
+    saveId = save.id;
+    await prisma.worldState.create({ data: { saveId } });
+
+    // Mismos nombre/effect/rol/preferredAttribute reales que classAbilities.ts — creados a mano
+    // porque este personaje de prueba no se llama 'Gorhorn' (classAbilityUnlocksFor no las
+    // sembraría solo).
+    contraataqueId = (
+      await prisma.savedAction.create({
+        data: {
+          saveId,
+          name: 'Contraataque',
+          promptText: 'Aprieto los dientes, aguanto el golpe entrante sin ceder terreno.',
+          category: 'combate',
+          effect: 'ATAQUE',
+          rol: 'utilidad',
+          preferredAttribute: 'voluntad',
+        },
+      })
+    ).id;
+    gritoDeGuerraId = (
+      await prisma.savedAction.create({
+        data: {
+          saveId,
+          name: 'Grito de Guerra',
+          promptText: 'Suelto un grito de guerra que retumba antes del choque.',
+          category: 'combate',
+          effect: 'INTIMIDACION',
+          rol: 'utilidad',
+          preferredAttribute: 'carisma',
+        },
+      })
+    ).id;
+    analizarRivalId = (
+      await prisma.savedAction.create({
+        data: {
+          saveId,
+          name: 'Analizar rival',
+          promptText: 'Estudio a mi enemigo un instante, leyendo su punto débil.',
+          category: 'combate',
+          effect: 'ANALISIS',
+          rol: 'utilidad',
+          preferredAttribute: 'inteligencia',
+        },
+      })
+    ).id;
+  });
+
+  afterAll(async () => {
+    vi.restoreAllMocks();
+    await prisma.save.delete({ where: { id: saveId } });
+  });
+
+  it('Contraataque: si el NPC ataca con daño y la tirada propia tiene éxito, devuelve el golpe además del que ya recibiste', async () => {
+    await prisma.npcState.deleteMany({ where: { saveId, npcId } });
+    await prisma.save.update({
+      where: { id: saveId },
+      data: {
+        condicionFisica: 'ILESO',
+        pendingCombatNpcSlugs: [npcSlug],
+        pendingNpcAttack: {
+          npcId,
+          attribute: 'fuerza',
+          effect: 'ATAQUE',
+          rol: 'ataque',
+          abilityName: 'Ataque base',
+          abilityDescription: 'Golpe improvisado.',
+          energyCost: 5,
+          energyRegen: 0,
+        },
+      },
+    });
+
+    const app = await buildApp();
+    const action = "Aguanto el golpe entrante y me preparo para responder 'Orco enfurecido'.";
+    const classifyRes = await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action, enCombate: true, savedActionId: contraataqueId } });
+    expect(classifyRes.statusCode).toBe(200);
+    const { classification, roll } = classifyRes.json();
+    const narrateRes = await app.inject({
+      method: 'POST',
+      url: '/turn/narrate',
+      payload: { saveId, action, classification, roll, enCombate: true, savedActionId: contraataqueId },
+    });
+    expect(narrateRes.statusCode).toBe(200);
+
+    // El golpe base del NPC (rol 'ataque' real) sigue llegando — Contraataque nunca lo cancela,
+    // solo añade su propio golpe de vuelta.
+    const save = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
+    expect(save.condicionFisica).not.toBe('ILESO');
+    // Contraataque disparado: el NPC también acusa un golpe.
+    const npcState = await prisma.npcState.findFirst({ where: { saveId, npcId } });
+    expect(npcState?.condicionFisica).not.toBe('ILESO');
+  }, 15_000);
+
+  it('Grito de Guerra: si el NPC ataca con daño y la tirada propia tiene éxito, cancela el golpe entrante del todo y te deja la iniciativa', async () => {
+    await prisma.npcState.deleteMany({ where: { saveId, npcId } });
+    await prisma.save.update({
+      where: { id: saveId },
+      data: {
+        condicionFisica: 'ILESO',
+        pendingCombatNpcSlugs: [npcSlug],
+        pendingNpcAttack: {
+          npcId,
+          attribute: 'fuerza',
+          effect: 'ATAQUE',
+          rol: 'ataque',
+          abilityName: 'Ataque base',
+          abilityDescription: 'Golpe improvisado.',
+          energyCost: 5,
+          energyRegen: 0,
+        },
+      },
+    });
+
+    const app = await buildApp();
+    const action = "Suelto un grito de guerra justo antes del choque 'Orco enfurecido'.";
+    const classifyRes = await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action, enCombate: true, savedActionId: gritoDeGuerraId } });
+    const { classification, roll } = classifyRes.json();
+    const narrateRes = await app.inject({
+      method: 'POST',
+      url: '/turn/narrate',
+      payload: { saveId, action, classification, roll, enCombate: true, savedActionId: gritoDeGuerraId },
+    });
+    expect(narrateRes.statusCode).toBe(200);
+
+    // Cancelado del todo — el jugador NO recibe el golpe, pese a que el NPC "ganó" su propia tirada.
+    const save = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
+    expect(save.condicionFisica).toBe('ILESO');
+    // Te llevas la iniciativa siguiente — no queda un nuevo pendingNpcAttack esperando defensa.
+    const done = lastNdjsonLine(narrateRes.payload);
+    expect(done.esperandoDefensaJugador).toBe(false);
+    const saveAfter = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
+    expect(saveAfter.pendingNpcAttack).toBeNull();
+  }, 15_000);
+
+  it('Analizar rival: nunca hace daño, y marca NpcState.analizado tras usarla con éxito en tu propio turno de iniciativa', async () => {
+    await prisma.npcState.deleteMany({ where: { saveId, npcId } });
+    await prisma.save.update({ where: { id: saveId }, data: { condicionFisica: 'ILESO', pendingCombatNpcSlugs: [], pendingNpcAttack: Prisma.JsonNull } });
+
+    const app = await buildApp();
+    const action = "Estudio un instante a 'Orco enfurecido', leyendo su punto débil.";
+    const classifyRes = await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action, enCombate: true, savedActionId: analizarRivalId } });
+    const { classification, roll } = classifyRes.json();
+    const narrateRes = await app.inject({
+      method: 'POST',
+      url: '/turn/narrate',
+      payload: { saveId, action, classification, roll, enCombate: true, savedActionId: analizarRivalId },
+    });
+    expect(narrateRes.statusCode).toBe(200);
+
+    const npcState = await prisma.npcState.findFirst({ where: { saveId, npcId } });
+    expect(npcState?.analizado).toBe(true);
+    // Nunca hace daño por sí sola — el NPC sigue ILESO (o lo que fuera antes), nunca peor SOLO por
+    // usar Analizar rival.
+    expect(npcState?.condicionFisica ?? 'ILESO').toBe('ILESO');
+  }, 15_000);
+
+  it('consumir un objeto en combate activa el intercambio (el NPC puede actuar), pero nunca cuenta como golpe propio', async () => {
+    await prisma.npcState.deleteMany({ where: { saveId, npcId } });
+    await prisma.save.update({ where: { id: saveId }, data: { condicionFisica: 'ILESO', pendingCombatNpcSlugs: [], pendingNpcAttack: Prisma.JsonNull } });
+    // Sin intención de ataque ni savedActionId, /turn/classify no tabula — cae a `classifyAction`
+    // (mockeada en todo el archivo, sin valor por defecto: hay que dárselo aquí).
+    classifyAction.mockResolvedValue({
+      requiereTirada: false, atributo: 'destreza', dificultad: 8, razon: 'x', banda: 'instantanea', duracionEstimadaMinutos: 0,
+    });
+
+    const app = await buildApp();
+    const action = "Bebo mi poción de curación 'Orco enfurecido'.";
+    // Sin savedActionId — un consumible se manda como texto libre (GameView.tsx § handleCombatUseItem).
+    const classifyRes = await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action, enCombate: true } });
+    const { classification, roll } = classifyRes.json();
+    const narrateRes = await app.inject({
+      method: 'POST',
+      url: '/turn/narrate',
+      payload: { saveId, action, classification, roll, enCombate: true, isItemUse: true },
+    });
+    expect(narrateRes.statusCode).toBe(200);
+
+    // El intercambio se activó de verdad (antes del rediseño, `combateActivo` salía false y esto
+    // nunca ocurría) — `combatExchangeDisplay` solo se rellena cuando `exchangeHappened`.
+    const done = lastNdjsonLine(narrateRes.payload);
+    expect(done.combatExchangeDisplay).not.toBeNull();
+    // Nunca cuenta como golpe propio — el NPC no puede acabar peor SOLO por esto (sea cual sea el
+    // resultado de la tirada del NPC contra el jugador, nunca al revés).
+    const npcState = await prisma.npcState.findFirst({ where: { saveId, npcId } });
+    expect(npcState?.condicionFisica ?? 'ILESO').toBe('ILESO');
   }, 15_000);
 });
 

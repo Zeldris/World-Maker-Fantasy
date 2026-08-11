@@ -34,6 +34,17 @@ describe('dynamicCombatAbilitiesFor (sistema de fatiga)', () => {
     expect(abilities).toHaveLength(1);
     expect(abilities[0]).toMatchObject({ name: 'Ataque Básico', preferredAttribute: 'fuerza', effect: 'ATAQUE', isGeneric: true });
   });
+
+  // Rediseño de combate (2026-08-09) — WeaponAbility.rol ya existía (weaponAbilities.ts), pero se
+  // descartaba al pasar por aquí; la racial ataque/defensa es trivialmente 'ataque'/'defensa'.
+  it('propaga rol: racial ataque/defensa trivial, de arma toma WeaponAbility.rol (nunca se descarta)', () => {
+    const abilities = dynamicCombatAbilitiesFor('orcos', WEAPON_ABILITY_LEVEL_BASICA, [{ slot: 'ARMA_PRINCIPAL', tipoArma: 'ESCUDO' }]);
+    const [ataqueRacial, defensaRacial] = abilities.filter((a) => a.name !== 'Ataque Básico' && a.name !== 'Cobertura de Escudo');
+    expect(ataqueRacial.rol).toBe('ataque');
+    expect(defensaRacial.rol).toBe('defensa');
+    expect(abilities.find((a) => a.name === 'Ataque Básico')?.rol).toBe('ataque');
+    expect(abilities.find((a) => a.name === 'Cobertura de Escudo')?.rol).toBe('defensa');
+  });
 });
 
 describe('resolveEquippedWeaponSlots (deuda técnica 2026-07-30, extraído de 3 copias casi idénticas en routes/saves.ts)', () => {

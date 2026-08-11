@@ -32,6 +32,7 @@ const {
   fuzzyMatchesAnyStem,
   findFuzzyStemMatch,
   resolveTravel,
+  matchesAliasBoundary,
 } = await import('./travel.js');
 type LocationNode = import('./travel.js').LocationNode;
 type LinkEdge = import('./travel.js').LinkEdge;
@@ -120,7 +121,31 @@ const locations: LocationNode[] = [
   { id: 'a', slug: 'hondonada-del-eco', name: 'La Hondonada del Eco', aliases: ['hondonada', 'el eco'] },
   { id: 'b', slug: 'pozo-cauce-viejo', name: 'El Pozo de Cauce Viejo', aliases: ['pozo', 'el pozo'] },
   { id: 'c', slug: 'pilares-rotos', name: 'Los Pilares Rotos', aliases: ['pilares'] },
+  // Alias reales de worldCatalog.ts (restos-de-maktor) — "maktor" a secas se quitó de aquí en
+  // 2026-07-30 precisamente por el bug real que reproduce el test de abajo; solo quedan formas
+  // multi-palabra inequívocas.
+  { id: 'd', slug: 'restos-de-maktor', name: 'Los Restos de Maktor', aliases: ['los restos de maktor', 'ruinas de maktor'] },
 ];
+
+describe('matchesAliasBoundary — límite de palabra + longitud mínima (auditoría 2026-08-11)', () => {
+  it('un alias corto de una sola palabra NO matchea como substring de otra palabra (bug real "res"/"presas" de docs/revisar-partida.md § 3)', () => {
+    expect(matchesAliasBoundary('busco presas para cazar esta noche', 'res')).toBe(false);
+    expect(matchesAliasBoundary('eso me parece interesante', 'res')).toBe(false);
+  });
+  it('un alias de 4+ letras SÍ matchea como palabra suelta', () => {
+    expect(matchesAliasBoundary('veo un murgol pastando', 'murgol')).toBe(true);
+  });
+  it('un alias de 4+ letras NO matchea si es solo parte de otra palabra más larga', () => {
+    expect(matchesAliasBoundary('el ecosistema de la hondonada', 'eco')).toBe(false);
+  });
+  it('un alias multi-palabra no tiene mínimo de longitud propio, ya es específico por sí solo', () => {
+    expect(matchesAliasBoundary('voy a los restos de maktor', 'los restos de maktor')).toBe(true);
+  });
+  it('respeta el límite de palabra con nombres propios acentuados (no usa \\b de JS)', () => {
+    expect(matchesAliasBoundary("hablo con torgash", 'torgash')).toBe(true);
+    expect(matchesAliasBoundary('un torgashiano inventado', 'torgash')).toBe(false);
+  });
+});
 
 describe('matchDestination', () => {
   it('matchea por el alias más largo que aparece en el texto', () => {
@@ -133,6 +158,10 @@ describe('matchDestination', () => {
   });
   it('no matchea si no hay ningún alias en el texto', () => {
     const match = matchDestination('descanso un rato', locations);
+    expect(match).toBeUndefined();
+  });
+  it('bug real de docs/revisar-partida.md § 3: presentarse como "Gorhorn Maktor" no debe activar un viaje a las ruinas', () => {
+    const match = matchDestination('Soy Gorhorn Maktor, quien eres', locations);
     expect(match).toBeUndefined();
   });
 });

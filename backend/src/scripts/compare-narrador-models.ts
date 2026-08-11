@@ -55,7 +55,7 @@ async function runModel(model: string, scenario: DistillationScenario, prompt: s
     } catch {
       return { ok: false, latencyMs, reason: 'JSON mal formado' };
     }
-    const error = validateSchema(parsed, scenario) ?? runDetectors(parsed, scenario);
+    const error = validateSchema(parsed, scenario.ctx) ?? runDetectors(parsed, scenario.ctx);
     return error ? { ok: false, latencyMs, reason: error } : { ok: true, latencyMs };
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);

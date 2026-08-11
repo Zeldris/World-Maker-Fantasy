@@ -128,6 +128,10 @@ export async function detailRoutes(app: FastifyInstance) {
               // parcial dejaba `lootedItemNames` undefined en el frontend (NpcInSceneInfo lo exige
               // siempre), rompiendo el filtro del modal de saqueo (CombatPanel.tsx).
               lootedItemNames: state?.lootedItemNames ?? [],
+              // Rediseño de combate (2026-08-09, "Analizar rival") — mismo campo que ya manda
+              // turnResolution.ts en la respuesta directa del turno; sin esto, recargar la partida
+              // a mitad de combate perdía el desbloqueo de la ficha del rival hasta el próximo golpe.
+              analizado: state?.analizado ?? false,
             };
           }),
         }
@@ -249,6 +253,8 @@ export async function detailRoutes(app: FastifyInstance) {
         // Rediseño 2026-07-31 — habilidad real por categoría de arma colapsada por llevar la
         // misma en las dos manos (ver weaponAbilities.ts § DUAL_WIELD_DIFFICULTY_BONUS).
         dualWield: a.dualWield,
+        // Rediseño de combate (2026-08-09) — ver `enum AbilityRol` (schema.prisma).
+        rol: a.rol,
       })),
       habilidadSlots: maxCombatAbilitiesFor(save.level),
       professionProgress: save.professionProgress.map((p) => ({ professionId: p.professionId, nivel: p.nivel, xp: p.xp })),

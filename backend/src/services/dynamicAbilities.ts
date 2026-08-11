@@ -1,4 +1,4 @@
-import type { Prisma, AbilityEffect, EquipSlot } from '@prisma/client';
+import type { Prisma, AbilityEffect, AbilityRol, EquipSlot } from '@prisma/client';
 import { BERIG_RAZAS } from './berigLore.js';
 import { weaponAbilitiesFor, type EquippedWeaponSlot } from './weaponAbilities.js';
 import { ENERGY_COST_BASICA, ENERGY_COST_AVANZADA, ENERGY_COST_ATAQUE_BASICO } from './energy.js';
@@ -36,6 +36,10 @@ export interface DynamicAbilityData {
   promptText: string;
   preferredAttribute: string;
   effect: AbilityEffect;
+  /// Rediseño de combate (2026-08-09) — ver `enum AbilityRol` (schema.prisma). Las raciales son
+  /// trivialmente 'ataque'/'defensa' según el slot del que vienen; las de arma ya traían su
+  /// propio `WeaponAbility.rol` (weaponAbilities.ts), antes descartado al llegar aquí.
+  rol: AbilityRol;
   /// Sistema de fatiga (2026-07-29) — coste fijo por tramo (energy.ts): las raciales cuestan
   /// ENERGY_COST_BASICA, la de arma avanzada ENERGY_COST_AVANZADA, y desde 2026-07-31 Ataque
   /// Básico (el único genérico que pasa por aquí) cuesta ENERGY_COST_ATAQUE_BASICO.
@@ -58,8 +62,8 @@ export function dynamicCombatAbilitiesFor(raza: string | null, level: number, eq
     const razaInfo = BERIG_RAZAS.find((r) => r.slug === raza);
     if (razaInfo) {
       const { ataque, defensa } = razaInfo.habilidadesRaciales;
-      abilities.push({ ...ataque, preferredAttribute: ataque.preferredAttribute, effect: 'ATAQUE', energyCost: ENERGY_COST_BASICA, energyRegen: 0, isGeneric: false, dualWield: false });
-      abilities.push({ ...defensa, preferredAttribute: defensa.preferredAttribute, effect: 'AGUANTE', energyCost: ENERGY_COST_BASICA, energyRegen: 0, isGeneric: false, dualWield: false });
+      abilities.push({ ...ataque, preferredAttribute: ataque.preferredAttribute, effect: 'ATAQUE', rol: 'ataque', energyCost: ENERGY_COST_BASICA, energyRegen: 0, isGeneric: false, dualWield: false });
+      abilities.push({ ...defensa, preferredAttribute: defensa.preferredAttribute, effect: 'AGUANTE', rol: 'defensa', energyCost: ENERGY_COST_BASICA, energyRegen: 0, isGeneric: false, dualWield: false });
     }
   }
 
@@ -71,6 +75,7 @@ export function dynamicCombatAbilitiesFor(raza: string | null, level: number, eq
       promptText: w.promptText,
       preferredAttribute: w.attribute,
       effect: w.rol === 'defensa' ? 'AGUANTE' : 'ATAQUE',
+      rol: w.rol,
       energyCost: w.isGeneric ? ENERGY_COST_ATAQUE_BASICO : w.tier === 'avanzada' ? ENERGY_COST_AVANZADA : ENERGY_COST_BASICA,
       energyRegen: w.energyRegen,
       isGeneric: w.isGeneric,
@@ -105,6 +110,7 @@ export async function syncDynamicCombatAbilities(
       isStarting: true,
       isDynamic: true,
       effect: a.effect,
+      rol: a.rol,
       preferredAttribute: a.preferredAttribute,
       energyCost: a.energyCost,
       energyRegen: a.energyRegen,

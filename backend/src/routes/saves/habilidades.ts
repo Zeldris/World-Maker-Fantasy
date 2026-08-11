@@ -51,6 +51,7 @@ export async function habilidadesRoutes(app: FastifyInstance) {
         energyRegen: created.energyRegen,
         isGeneric: created.isGeneric,
         dualWield: created.dualWield,
+        rol: created.rol,
       };
     },
   );
@@ -128,6 +129,7 @@ export async function habilidadesRoutes(app: FastifyInstance) {
       energyRegen: updated.energyRegen,
       isGeneric: updated.isGeneric,
       dualWield: updated.dualWield,
+      rol: updated.rol,
     };
   });
 }

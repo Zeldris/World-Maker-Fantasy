@@ -30,7 +30,6 @@ const GORHORN_STARTING_INVENTORY: StartingInventoryItem[] = [
     description: 'El hacha de guerra de su clan, partida por la mitad — la usa como una maza pesada.',
     origin: 'inicial',
     slot: 'ARMA_PRINCIPAL',
-    statBonuses: { fuerza: 2 },
     catalogSlug: 'hacha-guerra-maktor-rota',
   },
   {
@@ -38,7 +37,6 @@ const GORHORN_STARTING_INVENTORY: StartingInventoryItem[] = [
     description: 'Filo mineral tallado, no forjado — comercio con el Clan Helsig, regalo de Hagar.',
     origin: 'inicial',
     slot: 'ARMA_SECUNDARIA',
-    statBonuses: { destreza: 1 },
     catalogSlug: 'cuchillo-hielo-silice',
   },
   {
@@ -57,7 +55,6 @@ const GORHORN_STARTING_INVENTORY: StartingInventoryItem[] = [
     description: 'Cuero curtido sobre el pecho descubierto, sin nada más.',
     origin: 'inicial',
     slot: 'CAMISA',
-    statBonuses: { defensa: 1 },
     catalogSlug: 'arnes-cuero',
   },
   {

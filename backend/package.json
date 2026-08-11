@@ -19,6 +19,7 @@
     "generate-distillation-dataset": "tsx src/scripts/generate-distillation-dataset.ts",
     "split-distillation-dataset": "tsx src/scripts/split-distillation-dataset.ts",
     "compare-narrador-models": "tsx src/scripts/compare-narrador-models.ts",
+    "export-dpo-dataset": "tsx src/scripts/export-dpo-dataset.ts",
     "test": "vitest run",
     "lint": "oxlint"
   },

@@ -9,6 +9,7 @@ import Fastify from 'fastify';
 /// población total (cientos de unidades), saltándose el máximo real ("3 piedras por recolección").
 const findUniqueSave = vi.fn();
 const findFirstHarvestYield = vi.fn();
+const findManyHarvestYield = vi.fn();
 const updateManyWorldPopulation = vi.fn();
 const createInventoryItem = vi.fn();
 const updateInventoryItem = vi.fn();
@@ -18,10 +19,18 @@ const createLogEntry = vi.fn();
 const loadSessionFacts = vi.fn();
 const appendSessionFacts = vi.fn();
 const transaction = vi.fn();
+// Desuello (2026-08-09) — mockeados aparte, mismo criterio que `worldFacts.js` de abajo: son
+// colaboradores de servicio, no detalle de implementación de esta ruta (detectNpcsInScene ya
+// tiene su propia batería de tests en npcScene.test.ts).
+const detectNpcsInScene = vi.fn();
+const scopeFor = vi.fn();
+const findUniqueNpcTx = vi.fn();
+const updateManyNpcStateTx = vi.fn();
 
 vi.mock('../../lib/prisma.js', () => ({
   prisma: {
     save: { findUnique: (...args: unknown[]) => findUniqueSave(...args) },
+    harvestYield: { findMany: (...args: unknown[]) => findManyHarvestYield(...args) },
     $transaction: (...args: unknown[]) => transaction(...args),
   },
 }));
@@ -32,6 +41,11 @@ vi.mock('../../lib/prisma.js', () => ({
 vi.mock('../../services/worldFacts.js', () => ({
   loadSessionFacts: (...args: unknown[]) => loadSessionFacts(...args),
   appendSessionFacts: (...args: unknown[]) => appendSessionFacts(...args),
+}));
+
+vi.mock('../../services/npcScene.js', () => ({
+  detectNpcsInScene: (...args: unknown[]) => detectNpcsInScene(...args),
+  scopeFor: (...args: unknown[]) => scopeFor(...args),
 }));
 
 const { recolectarRoutes } = await import('./recolectar.js');
@@ -55,10 +69,14 @@ describe('POST /saves/:id/recolectar/confirmar', () => {
     createLogEntry.mockReset().mockResolvedValue({ id: 'log1', createdAt: new Date('2026-08-07T12:00:00Z') });
     loadSessionFacts.mockReset().mockResolvedValue([]);
     appendSessionFacts.mockReset().mockResolvedValue(undefined);
+    findUniqueNpcTx.mockReset();
+    updateManyNpcStateTx.mockReset();
+    scopeFor.mockReset().mockReturnValue('');
     findUniqueSave.mockResolvedValue({
       id: 'save1',
       worldId: 'world1',
       characterName: 'Gorhorn',
+      currentLocationId: 'loc1',
       attributes: { fuerza: 10, constitucion: 10 },
       worldState: { fictionalDateLabel: 'Día 1, mañana', fictionalMinutes: 480 },
     });
@@ -73,6 +91,8 @@ describe('POST /saves/:id/recolectar/confirmar', () => {
         logEntry: { create: (...args: unknown[]) => createLogEntry(...args) },
         harvestYield: { findFirst: (...args: unknown[]) => findFirstHarvestYield(...args) },
         worldPopulation: { updateMany: (...args: unknown[]) => updateManyWorldPopulation(...args) },
+        npc: { findUnique: (...args: unknown[]) => findUniqueNpcTx(...args) },
+        npcState: { updateMany: (...args: unknown[]) => updateManyNpcStateTx(...args) },
       }),
     );
   });
@@ -269,6 +289,82 @@ describe('POST /saves/:id/recolectar/confirmar', () => {
     expect(updateInventoryItem).toHaveBeenCalledWith({ where: { id: 'item1' }, data: { name: 'Piedra (40)' } });
   });
 
+  // Desuello (2026-08-09): un yield de método CAZA no toca WorldPopulation en absoluto — reclama
+  // NpcState.saqueado de forma atómica (mismo guard-en-el-where que ya usa saqueo de NPCs con
+  // nombre), y el texto determinista dice "despieza" en vez de "recolecta".
+  it('un yield de método CAZA marca NpcState.saqueado en vez de tocar WorldPopulation', async () => {
+    findFirstHarvestYield.mockResolvedValue({ cantidad: 1, metodoObtencion: 'CAZA', item: { slug: 'piel-corretolvas', name: 'Piel de Corretolvas' } });
+    findUniqueNpcTx.mockResolvedValue({ id: 'npc1', kind: 'PLANTILLA' });
+    scopeFor.mockReturnValue('loc1');
+    updateManyNpcStateTx.mockResolvedValue({ count: 1 });
+    createInventoryItem.mockResolvedValue({ id: 'item1' });
+    const app = await buildApp();
+
+    const res = await app.inject({
+      method: 'POST',
+      url: '/saves/save1/recolectar/confirmar',
+      payload: { selections: [{ sourceSlug: 'corretolvas', itemSlug: 'piel-corretolvas', cantidad: 1 }] },
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(updateManyWorldPopulation).not.toHaveBeenCalled();
+    expect(updateManyNpcStateTx).toHaveBeenCalledWith({
+      where: { saveId: 'save1', npcId: 'npc1', scope: 'loc1', saqueado: false },
+      data: { saqueado: true },
+    });
+    expect(createLogEntry).toHaveBeenCalledWith({
+      data: expect.objectContaining({ text: 'Gorhorn despieza una presa cercana: Piel de Corretolvas.' }),
+    });
+  });
+
+  it('un cadáver ya despiezado (saqueado:true) no da nada — el guard atómico lo bloquea', async () => {
+    findFirstHarvestYield.mockResolvedValue({ cantidad: 1, metodoObtencion: 'CAZA', item: { slug: 'piel-corretolvas', name: 'Piel de Corretolvas' } });
+    findUniqueNpcTx.mockResolvedValue({ id: 'npc1', kind: 'PLANTILLA' });
+    scopeFor.mockReturnValue('loc1');
+    updateManyNpcStateTx.mockResolvedValue({ count: 0 });
+    const app = await buildApp();
+
+    const res = await app.inject({
+      method: 'POST',
+      url: '/saves/save1/recolectar/confirmar',
+      payload: { selections: [{ sourceSlug: 'corretolvas', itemSlug: 'piel-corretolvas', cantidad: 1 }] },
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(JSON.parse(res.body).items).toEqual([]);
+    expect(createInventoryItem).not.toHaveBeenCalled();
+  });
+
+  it('dos yields del mismo cadáver en una sola petición solo reclaman NpcState.saqueado una vez', async () => {
+    findFirstHarvestYield.mockImplementation(({ where }: { where: { item: { slug: string } } }) =>
+      Promise.resolve(
+        where.item.slug === 'piel-corretolvas'
+          ? { cantidad: 1, metodoObtencion: 'CAZA', item: { slug: 'piel-corretolvas', name: 'Piel de Corretolvas' } }
+          : { cantidad: 1, metodoObtencion: 'CAZA', item: { slug: 'hueso-ligero', name: 'Hueso ligero' } },
+      ),
+    );
+    findUniqueNpcTx.mockResolvedValue({ id: 'npc1', kind: 'PLANTILLA' });
+    scopeFor.mockReturnValue('loc1');
+    updateManyNpcStateTx.mockResolvedValue({ count: 1 });
+    createInventoryItem.mockImplementation(({ data }: { data: { catalogSlug: string } }) =>
+      Promise.resolve({ id: data.catalogSlug === 'piel-corretolvas' ? 'item-piel' : 'item-hueso' }),
+    );
+    const app = await buildApp();
+
+    await app.inject({
+      method: 'POST',
+      url: '/saves/save1/recolectar/confirmar',
+      payload: {
+        selections: [
+          { sourceSlug: 'corretolvas', itemSlug: 'piel-corretolvas', cantidad: 1 },
+          { sourceSlug: 'corretolvas', itemSlug: 'hueso-ligero', cantidad: 1 },
+        ],
+      },
+    });
+
+    expect(updateManyNpcStateTx).toHaveBeenCalledTimes(1);
+  });
+
   it('rechaza sin ninguna selección', async () => {
     const app = await buildApp();
 
@@ -294,31 +390,91 @@ describe('POST /saves/:id/recolectar/confirmar', () => {
 describe('GET /saves/:id/recolectar/:oficio', () => {
   beforeEach(() => {
     findUniqueSave.mockReset();
+    findManyHarvestYield.mockReset().mockResolvedValue([]);
+    detectNpcsInScene.mockReset().mockResolvedValue([]);
+    findUniqueSave.mockResolvedValue({
+      id: 'save1',
+      worldId: 'world1',
+      currentLocationId: 'loc1',
+      currentLocation: { region: 'Las Llanuras del Viento Rojo' },
+    });
   });
 
-  it('rechaza un oficio que no es recolector', async () => {
-    findUniqueSave.mockResolvedValue({ id: 'save1', worldId: 'world1', currentLocation: { region: 'Las Llanuras del Viento Rojo' } });
+  it('rechaza un oficio que no es recolector (herrero es creador, no tiene "explorar")', async () => {
     const app = await buildApp();
 
-    const res = await app.inject({ method: 'GET', url: '/saves/save1/recolectar/herrero' });
+    const res = await app.inject({ method: 'GET', url: '/saves/save1/recolectar/herrero-orco-llanuras' });
 
     expect(res.statusCode).toBe(400);
   });
 
-  it('rechaza desollador (CAZA usa el despiece normal, no este flujo)', async () => {
-    findUniqueSave.mockResolvedValue({ id: 'save1', worldId: 'world1', currentLocation: { region: 'Las Llanuras del Viento Rojo' } });
+  // Desuello (2026-08-09, petición explícita: "que al usar la habilidad de profesión de desollar
+  // funcione como el resto y explore la zona con los cadáveres derrotados") — a diferencia del
+  // resto, ya NO rechaza CAZA: busca fauna derrotada y sin despiezar en la escena.
+  it('desollador (CAZA) devuelve como fuente una fauna derrotada y sin despiezar en escena', async () => {
+    detectNpcsInScene.mockResolvedValue([
+      { slug: 'corretolvas', name: 'Corretolvas', ataqueNatural: 'Muerde', condicionFisica: 'MUERTO', saqueado: false },
+    ]);
+    findManyHarvestYield.mockResolvedValue([
+      { sourceSlug: 'corretolvas', item: { slug: 'piel-corretolvas', name: 'Piel de Corretolvas' }, cantidad: 1 },
+    ]);
     const app = await buildApp();
 
-    const res = await app.inject({ method: 'GET', url: '/saves/save1/recolectar/desollador' });
+    const res = await app.inject({ method: 'GET', url: '/saves/save1/recolectar/desollador-orcos-llanuras' });
 
-    expect(res.statusCode).toBe(400);
+    expect(res.statusCode).toBe(200);
+    const body = JSON.parse(res.body);
+    expect(body.sources).toEqual([
+      { sourceSlug: 'corretolvas', sourceName: 'Corretolvas', disponible: 1, yields: [{ itemSlug: 'piel-corretolvas', itemName: 'Piel de Corretolvas', cantidadMaxima: 1 }] },
+    ]);
+    // Nunca "Explorar" para desuello: o el cadáver ya está en escena, o no hay nada que buscar.
+    expect(body.puedeExplorar).toBe(false);
+  });
+
+  it('desollador (CAZA) ignora fauna todavía viva (condicionFisica ILESO/HERIDO/GRAVE)', async () => {
+    detectNpcsInScene.mockResolvedValue([
+      { slug: 'corretolvas', name: 'Corretolvas', ataqueNatural: 'Muerde', condicionFisica: 'HERIDO', saqueado: false },
+    ]);
+    const app = await buildApp();
+
+    const res = await app.inject({ method: 'GET', url: '/saves/save1/recolectar/desollador-orcos-llanuras' });
+
+    expect(JSON.parse(res.body).sources).toEqual([]);
+  });
+
+  it('desollador (CAZA) ignora un cadáver ya despiezado (saqueado:true)', async () => {
+    detectNpcsInScene.mockResolvedValue([
+      { slug: 'corretolvas', name: 'Corretolvas', ataqueNatural: 'Muerde', condicionFisica: 'MUERTO', saqueado: true },
+    ]);
+    const app = await buildApp();
+
+    const res = await app.inject({ method: 'GET', url: '/saves/save1/recolectar/desollador-orcos-llanuras' });
+
+    expect(JSON.parse(res.body).sources).toEqual([]);
+  });
+
+  it('desollador (CAZA) ignora NPCs humanoides (ataqueNatural null) aunque estén derrotados', async () => {
+    detectNpcsInScene.mockResolvedValue([{ slug: 'hagar', name: 'Hagar', ataqueNatural: null, condicionFisica: 'MUERTO', saqueado: false }]);
+    const app = await buildApp();
+
+    const res = await app.inject({ method: 'GET', url: '/saves/save1/recolectar/desollador-orcos-llanuras' });
+
+    expect(JSON.parse(res.body).sources).toEqual([]);
+  });
+
+  it('minero/talador siguen sin tocar detectNpcsInScene ni npcState — solo desollador (CAZA) lo usa', async () => {
+    const app = await buildApp();
+
+    await app.inject({ method: 'GET', url: '/saves/save1/recolectar/minero-llanuras' });
+
+    expect(detectNpcsInScene).not.toHaveBeenCalled();
   });
 
   it('404 si la partida no existe', async () => {
     findUniqueSave.mockResolvedValue(null);
     const app = await buildApp();
 
-    const res = await app.inject({ method: 'GET', url: '/saves/nope/recolectar/minero' });
+    const res = await app.inject({ method: 'GET', url: '/saves/nope/recolectar/minero-llanuras' });
 
     expect(res.statusCode).toBe(404);
   });

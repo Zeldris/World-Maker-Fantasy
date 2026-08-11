@@ -30,6 +30,34 @@ export function normalizeText(text: string): string {
     .trim();
 }
 
+/// Por debajo de esto, un alias de una sola palabra no se compara por substring — mismo umbral
+/// que `MIN_PATTERN_LENGTH` en frontend/src/lib/enciclopediaIndex.ts (texto clicable de la
+/// Enciclopedia), unificado aquí para el backend.
+const MIN_ALIAS_MATCH_LENGTH = 4;
+
+function escapeForRegex(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/// Comprueba si un alias YA NORMALIZADO aparece dentro de un texto YA NORMALIZADO con límite de
+/// palabra real (auditoría 2026-08-11, ver docs/puntos-de-codigo-nuevo-contenido.md § 7 — bugs
+/// reales "res"/"presas"/"brasas": `normalized.includes(alias)` puro, sin ningún filtro, hacía que
+/// un alias corto matcheara como substring de cualquier palabra que lo contuviera). Dos
+/// protecciones, mismo criterio ya validado en el frontend (`enciclopediaIndex.ts`):
+/// 1. Un alias de una sola palabra por debajo de `MIN_ALIAS_MATCH_LENGTH` nunca matchea por
+///    substring — un alias multi-palabra ("el kort'ikar serhu") ya es específico de sobra por sí
+///    solo, no necesita este mínimo.
+/// 2. Límite de palabra con `\p{L}/\p{N}` (flag `u`), no `\b` de JS — `\b` trata letras acentuadas
+///    (á, é, ñ...) como "no palabra" y rompe el límite justo en nombres propios de este mundo.
+/// Sustituye gradualmente los `.includes()` sin filtro de `npcScene.ts`/`entityDiscovery.ts` y el
+/// propio `matchDestination` de abajo — la tolerancia a erratas (Levenshtein, ver
+/// `fuzzyMatchesAnyStem`) es un mecanismo aparte, no se toca.
+export function matchesAliasBoundary(normalizedText: string, normalizedAlias: string): boolean {
+  if (normalizedAlias.length === 0) return false;
+  if (!normalizedAlias.includes(' ') && normalizedAlias.length < MIN_ALIAS_MATCH_LENGTH) return false;
+  return new RegExp(`(?<![\\p{L}\\p{N}])${escapeForRegex(normalizedAlias)}(?![\\p{L}\\p{N}])`, 'u').test(normalizedText);
+}
+
 /// Distancia de edición clásica (Levenshtein) — vive aquí junto a normalizeText porque varios
 /// detectores de texto libre (npcScene.ts, harvest.ts) la necesitan para tolerar erratas de una
 /// sola palabra (roadmap 2026-07-20, bug real jugando: "redazagado" en vez de "rezagado" hacía
@@ -100,7 +128,7 @@ export function matchDestination(action: string, locations: LocationNode[], excl
   const candidates = locations
     .filter((loc) => loc.id !== excludeId)
     .flatMap((loc) => loc.aliases.map((alias) => ({ loc, alias: normalizeText(alias) })))
-    .filter(({ alias }) => alias.length > 0 && normalizedAction.includes(alias))
+    .filter(({ alias }) => matchesAliasBoundary(normalizedAction, alias))
     .sort((a, b) => b.alias.length - a.alias.length);
   return candidates[0]?.loc;
 }

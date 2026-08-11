@@ -241,7 +241,7 @@ export const locations: LocationInput[] = [
     kind: 'asentamiento',
     description:
       'Puesto avanzado del Clan Serhu en la costa norte, botes de fondo plano varados sobre travesaños de madera y redes tendidas a secar — primer contacto real del clan con el mar. Pesca y transporte de corta distancia a lo largo de la costa; ningún Serhu se aventura mar adentro.',
-    aliases: ['el embarcadero de ceniza', 'embarcadero de ceniza', 'embarcadero serhu'],
+    aliases: ['el embarcadero de ceniza', 'embarcadero de ceniza'],
   },
 
   {
@@ -803,6 +803,7 @@ export const locationLinks: LocationLinkInput[] = [
     toSlug: 'grieta-cantora',
     minutosBase: 320,
     terreno: 'Estepa abierta hacia la formación rocosa',
+    riesgo: 'Trayecto largo y sin refugio, expuesto a tormentas de arena magnética',
   },
 
   // --- Sueltas, cuelgan de un nodo ya existente sin cadena propia ---
@@ -1182,7 +1183,7 @@ export const npcs: NpcInput[] = [
     genero: 'F',
     role: 'Hija adoptiva de un artesano Serhu ejecutado por los suyos, huye del guerrero que lo mató',
     level: 1,
-    attributes: { fuerza: 8, destreza: 10, constitucion: 8, inteligencia: 6, voluntad: 12, carisma: 6, arcano: 4 },
+    attributes: { fuerza: 6, destreza: 8, constitucion: 6, inteligencia: 6, voluntad: 10, carisma: 6, arcano: 4 },
     bio: "Orca de origen desconocido: un artesano Serhu, Uhuld Koh, la encontró desorientada en el desierto a los 10 años y la crió como propia, dándole su nombre. Uhuld tramaba en secreto exponer la represión Goirnte sobre los suyos — delatado por miedo, no por convicción, por sus propios compañeros de confianza, tres guerreros Serhu pagados por los Goirntes lo mataron ante sus ojos, escondida entre las sombras de la cabaña; sus últimas palabras fueron gloria a los Maktor. El clan hizo desaparecer su cuerpo sin rito ni tumba — el castigo real de la casta de Ketg contra quien la desafía. Gistera huyó esa misma noche; el guerrero que dio el golpe final la sigue desde entonces, obsesionado, sin que sus propios compañeros lo sepan. Reconoce el símbolo Maktor en el tótem de Gorhorn del que Uhuld le hablaba sin explicarle nunca del todo por qué le importaba tanto — es lo que la hace confiar en él en cuanto lo ve.",
     personality: 'Aguda y pragmática, mide cada palabra antes de gastarla — no tiene tiempo ni margen para el orgullo que se permiten los guerreros con clan.',
     homeLocationSlug: 'hondonada-del-eco',
@@ -1393,14 +1394,14 @@ export const npcs: NpcInput[] = [
     // nivel 1 (mismo nivel que el personaje recién creado, la banda de dificultad más favorable) y
     // fuerza/voluntad ligeramente reducidas frente a la versión original.
     level: 1,
-    attributes: { fuerza: 8, destreza: 6, constitucion: 10, inteligencia: 4, voluntad: 6, carisma: 2, arcano: 0 },
+    attributes: { fuerza: 8, destreza: 4, constitucion: 7, inteligencia: 4, voluntad: 6, carisma: 2, arcano: 0 },
     bio: "Orco del Clan Serhu, calvo y de complexión corpulenta, piel beige agrietada, sin pintura de clan visible — se la arrancó él mismo, en el mismo arranque de furia que lo trajo hasta aquí. Uno de los tres guerreros pagados en secreto por los Goirntes para asegurar la muerte del artesano Uhuld Koh, cuyo plan amenazaba con exponer la represión de los suyos: fue él quien le aplastó el cráneo con la maza después de que Uhuld, ya herido, lo alcanzara con el hacha. Vio huir esa misma noche a la hija adoptiva de Uhuld y la siguió por su cuenta, sin avisar a sus compañeros — ni él mismo sabe ya si por acabar el encargo o por una obsesión que se le ha ido de las manos. A pocos kilómetros del Karot Veku estuvo a punto de caer en una trampa que ella le tendió; la humillación de haberlo estado a punto de lograr una fugitiva a la que dobla en tamaño terminó de quebrarlo. Duerme y merodea en la Hondonada del Eco, donde el terreno hundido le permite ver llegar a cualquiera antes de que lo vean a él.",
     personality: 'Errático y violento con cualquiera, obsesivo con ella — ataca al primer contacto sin intentar hablar.',
     homeLocationSlug: 'hondonada-del-eco',
     raza: 'orcos',
     clase: 'Guerrero',
     temperamento: 'AGRESIVO',
-    capturablePct: 5,
+    capturablePct: 0,
     loadout: [
       { itemSlug: 'maza-orca', notas: 'Astillada, con sangre seca' },
       { itemSlug: 'amuleto-hueso' },
@@ -1676,7 +1677,7 @@ export interface ItemCatalogInput {
   /// Tope real de curación al usar este objeto (2026-07-29) — solo con sentido en objetos
   /// `category: 'medicinal'` que de verdad traten heridas (no antídotos/sedantes). Omitido = no
   /// cura condición física. Ver comentario del campo homónimo en schema.prisma.
-  curaHasta?: 'HERIDO' | 'ILESO';
+  curaHasta?: 'GRAVE' | 'HERIDO' | 'ILESO';
   /// Categoría de arma (2026-07-29, sistema de habilidades por arma) — decide qué atributo usa
   /// la habilidad de ataque/defensa que este objeto genera al equiparlo. Solo en `category: 'arma'`.
   tipoArma?: WeaponCategory;
@@ -1707,6 +1708,8 @@ export const items: ItemCatalogInput[] = [
     description: 'Hoja corta de hierro sin adornos, mango de madera desgastada — común, sin origen especial.',
     statBonuses: { destreza: 1 },
     dimensiones: 'Hoja de 15 cm, mango de 10 cm.',
+    tier: 1,
+    requisitos: { destreza: 4 },
     tipoArma: 'CUCHILLO',
   },
 
@@ -1737,6 +1740,8 @@ export const items: ItemCatalogInput[] = [
     statBonuses: { destreza: 2 },
     dimensiones: 'Hoja de 20 cm.',
     lugarOrigen: 'Manufactura goirnte, Meseta del Orden.',
+    tier: 2,
+    requisitos: { destreza: 8 },
     tipoArma: 'DAGA',
   },
 
@@ -1848,7 +1853,7 @@ export const items: ItemCatalogInput[] = [
     tipo: 'EQUIPABLE',
     equipSlot: 'ARMA_PRINCIPAL',
     description: 'Asta corta y ligera de madera clara con punta de hueso afilado, del tamaño justo para manejarla con una mano — la de los jóvenes cazadores.',
-    statBonuses: { destreza: 3 },
+    statBonuses: { destreza: 2, fuerza: 1 },
     dimensiones: 'Asta de 120 cm, punta de hueso de 15 cm.',
     lugarOrigen: 'Llanuras del Viento Rojo.',
     tier: 2,
@@ -1864,7 +1869,7 @@ export const items: ItemCatalogInput[] = [
     tipo: 'EQUIPABLE',
     equipSlot: 'ARMA_PRINCIPAL',
     description: 'Asta larga rematada en una punta de hueso de gargantúa pulido hasta sacarle filo, blanco amarillento veteado — usada en cacerías rituales y duelos de honor.',
-    statBonuses: { destreza: 6 },
+    statBonuses: { destreza: 4, fuerza: 2 },
     dimensiones: 'Asta de 190 cm, punta de hueso de 25 cm.',
     lugarOrigen: 'Llanuras del Viento Rojo, cacería ritual orca.',
     // Sesión de diseño 2026-07-23: arma de duelo/cacería ritual (tier 2) — exige algo más de
@@ -1881,7 +1886,7 @@ export const items: ItemCatalogInput[] = [
     tipo: 'EQUIPABLE',
     equipSlot: 'ARMA_PRINCIPAL',
     description: 'Maza de cabeza nudosa de hueso reforzado con remaches de hierro, mango corto envuelto en cuero — tosca, pesada, hecha para aplastar, no para el filo.',
-    statBonuses: { fuerza: 1 },
+    statBonuses: { fuerza: 1, voluntad: 1 },
     dimensiones: 'Mango de 55 cm, cabeza nudosa de 15 cm de diámetro.',
     lugarOrigen: 'Manufactura orca.',
     tier: 1,
@@ -1900,13 +1905,24 @@ export const items: ItemCatalogInput[] = [
     statBonuses: { fuerza: 1 },
     dimensiones: 'Asta de 210 cm.',
     lugarOrigen: 'Concordia de Hierro, Meseta del Orden.',
+    tier: 2,
+    requisitos: { fuerza: 8, destreza: 6 },
     tipoArma: 'PICA',
   },
 
   // --- herramienta ---
 
-  { slug: 'aguja-de-cardo', name: 'Aguja de Cardo Brújula', aliases: ['aguja de cardo'], category: 'herramienta',
-    tipo: 'EQUIPABLE', equipSlot: 'ACCESORIO', description: 'Aguja imantada natural: colgada de un hilo señala siempre el mismo rumbo, incluso en plena tormenta.', dimensiones: 'Aguja de 4 cm, colgada de un hilo de 20 cm.' },
+  { 
+    slug: 'aguja-de-cardo', 
+    name: 'Aguja de Cardo Brújula', 
+    aliases: ['aguja de cardo'], 
+    category: 'herramienta',
+    tipo: 'EQUIPABLE', 
+    equipSlot: 'ACCESORIO', 
+    description: 'Aguja imantada natural: colgada de un hilo señala siempre el mismo rumbo, incluso en plena tormenta.',
+    dimensiones: 'Aguja de 4 cm, colgada de un hilo de 20 cm.',
+    lugarOrigen: 'Las Agujas Imán, Llanuras del Viento Rojo.',
+  },
 
   {
     slug: 'antorcha-de-resina',
@@ -2029,7 +2045,8 @@ export const items: ItemCatalogInput[] = [
     tipo: 'EQUIPABLE',
     equipSlot: 'ANILLO_1',
     description: 'Anillo tallado de una sola vértebra de Corredor de Cauce, pulida hasta sacarle brillo — recuerdo de una presa.',
-    statBonuses: { voluntad: 1 },
+    statBonuses: { carisma: 1 , inteligencia: 1 },
+    tier: 2,
     dimensiones: 'Anillo de 2 cm de diámetro.',
     lugarOrigen: 'Llanuras del Viento Rojo.',
   },
@@ -2041,17 +2058,34 @@ export const items: ItemCatalogInput[] = [
     tipo: 'EQUIPABLE',
     equipSlot: 'CAMISA',
     description: 'Arnés de cuero curtido, correas cruzadas al pecho, remaches de hueso.',
-    statBonuses: { defensa: 1 },
+    statBonuses: { constitucion: 2 },
     dimensiones: 'Ajustable a un contorno de torso de 90 a 120 cm.',
   },
 
   // Accesorio
-  { slug: 'bandolera-de-caza', name: 'Bandolera de caza', category: 'ropa',
-    tipo: 'EQUIPABLE', equipSlot: 'ACCESORIO', description: 'Lazadas de tendón para cuchillo, trampas y piezas menores.', dimensiones: 'Banda cruzada de 100 cm.', lugarOrigen: 'Llanuras del Viento Rojo.' },
+  { 
+    slug: 'bandolera-de-caza',
+    name: 'Bandolera de caza', 
+    category: 'ropa',
+    tipo: 'EQUIPABLE', 
+    equipSlot: 'ACCESORIO', 
+    description: 'Lazadas de tendón para cuchillo, trampas y piezas menores.', 
+    dimensiones: 'Banda cruzada de 100 cm.', 
+    lugarOrigen: 'Llanuras del Viento Rojo.' 
+  },
 
   // Botas
-  { slug: 'botas-de-estepa', name: 'Botas de estepa', category: 'ropa',
-    tipo: 'EQUIPABLE', equipSlot: 'BOTAS', description: 'Cuero y suela de piel de corredor, gastadas.', dimensiones: 'Caña hasta el tobillo.', lugarOrigen: 'Llanuras del Viento Rojo.' },
+  { 
+    slug: 'botas-de-estepa', 
+    name: 'Botas de estepa', 
+    category: 'ropa',
+    tipo: 'EQUIPABLE', 
+    equipSlot: 'BOTAS', 
+    description: 'Cuero y suela de piel de corredor, gastadas.', 
+    statBonuses: { constitucion: 2 },
+    dimensiones: 'Caña hasta el tobillo.', 
+    lugarOrigen: 'Llanuras del Viento Rojo.' 
+  },
 
   {
     slug: 'botas-marcha-goirntes',
@@ -2061,9 +2095,11 @@ export const items: ItemCatalogInput[] = [
     tipo: 'EQUIPABLE',
     equipSlot: 'BOTAS',
     description: 'Suela claveteada de aleación, equipamiento estándar de patrulla.',
-    statBonuses: { destreza: 1 },
+    tier: 2,
+    statBonuses: { destreza: 1, constitucion: 1 },
     dimensiones: 'Caña hasta media pantorrilla.',
     lugarOrigen: 'Concordia de Hierro, Meseta del Orden.',
+    requisitos: { fuerza: 8, destreza: 8, constitucion: 6 },
   },
 
   {
@@ -2076,6 +2112,9 @@ export const items: ItemCatalogInput[] = [
     description: 'Capa gruesa de piel gris ceniza de gargantúa, pesada y cálida, con pequeñas placas óseas todavía cosidas al cuero.',
     dimensiones: 'Capa de 140 cm de largo.',
     lugarOrigen: 'Llanuras del Viento Rojo.',
+    statBonuses: {constitucion: 1, destreza: 2 },
+    tier: 2,
+    requisitos: { fuerza: 8, destreza: 8, constitucion: 6 },
   },
 
   {
@@ -2088,6 +2127,9 @@ export const items: ItemCatalogInput[] = [
     description: 'Capucha de piel rojiza de Corredor de Cauce, ajustada a la cabeza — protege del sol y de la arena magnética.',
     dimensiones: 'Ajustada a cabeza y cuello.',
     lugarOrigen: 'Llanuras del Viento Rojo.',
+    statBonuses: {constitucion: 1, destreza: 1 },
+    tier: 2,
+    requisitos: { fuerza: 8, destreza: 8, constitucion: 6 },
   },
 
   // Cinturón
@@ -2099,9 +2141,10 @@ export const items: ItemCatalogInput[] = [
     tipo: 'EQUIPABLE',
     equipSlot: 'CINTURON',
     description: 'Colmillos y garras cosidos al cuero — entre orcos, respeto a la vista.',
-    statBonuses: { carisma: 1 },
+    statBonuses: { carisma: 1, voluntad: 1 },
     dimensiones: 'Cinturón de 90 a 110 cm.',
     lugarOrigen: 'Llanuras del Viento Rojo.',
+    tier: 2,
   },
 
   {
@@ -2122,8 +2165,20 @@ export const items: ItemCatalogInput[] = [
     requisitos: { resistenciaFisica: 8 },
   },
 
-  { slug: 'faldar-piel-gargantua', name: 'Faldar de piel de gargantúa', aliases: ['faldar de piel'], category: 'ropa',
-    tipo: 'EQUIPABLE', equipSlot: 'ARMADURA_INFERIOR', description: 'Faldar de piel gris ceniza de gargantúa, con pequeñas placas óseas todavía cosidas al cuero — abrigo, no defensa.', dimensiones: 'Faldar de 55 cm de largo.', lugarOrigen: 'Llanuras del Viento Rojo.' },
+  { 
+    slug: 'faldar-piel-gargantua', 
+    name: 'Faldar de piel de gargantúa', 
+    aliases: ['faldar de piel'], 
+    category: 'ropa',
+    tipo: 'EQUIPABLE', 
+    equipSlot: 'ARMADURA_INFERIOR', 
+    description: 'Faldar de piel gris ceniza de gargantúa, con pequeñas placas óseas todavía cosidas al cuero — abrigo, no defensa.', 
+    dimensiones: 'Faldar de 55 cm de largo.', 
+    lugarOrigen: 'Llanuras del Viento Rojo.' ,
+    statBonuses: {constitucion: 1, destreza: 2 },
+    tier: 2,
+    requisitos: { fuerza: 8, destreza: 8, constitucion: 6 },
+  },
 
   // Guantes
   {
@@ -2152,8 +2207,20 @@ export const items: ItemCatalogInput[] = [
     lugarOrigen: 'Concordia de Hierro, Meseta del Orden.',
   },
 
-  { slug: 'manta-campana-goirntes', name: 'Manta de campaña goirntes', aliases: ['manta de campaña'], category: 'ropa',
-    tipo: 'EQUIPABLE', equipSlot: 'ACCESORIO', description: 'Lana encerada, enrollada al hombro.', dimensiones: 'Manta enrollada de 150x90 cm.', lugarOrigen: 'Meseta del Orden.' },
+  { 
+    slug: 'manta-campana-goirntes', 
+    name: 'Manta de campaña goirntes', 
+    aliases: ['manta de campaña'], 
+    category: 'ropa',
+    tipo: 'EQUIPABLE', 
+    equipSlot: 'ACCESORIO',
+    description: 'Lana encerada, enrollada al hombro.', 
+    dimensiones: 'Manta enrollada de 150x90 cm.', 
+    lugarOrigen: 'Meseta del Orden.' ,
+    statBonuses: {constitucion: 2, voluntad: 1 },
+    tier: 2,
+    requisitos: { fuerza: 8, destreza: 8, constitucion: 6 },
+  },
 
   // Equipo inicial de Gorhorn (petición explícita de la usuaria, 2026-07-24: "el hacha de guerra
   // y el tótem que llevo equipado no están en la enciclopedia", luego "los pantalones de piel
@@ -2170,6 +2237,11 @@ export const items: ItemCatalogInput[] = [
     tipo: 'EQUIPABLE',
     equipSlot: 'ARMADURA_INFERIOR',
     description: 'Piel con pequeños detalles de pelo de cornamenta.',
+    dimensiones: 'Cubren de la cadera al tobillo.',
+    lugarOrigen: 'Llanuras del Viento Rojo.',
+    statBonuses: {constitucion: 1, voluntad: 1 },
+    tier: 1,
+    requisitos: { fuerza: 6, destreza: 4, constitucion: 6 },
   },
 
   {
@@ -2183,6 +2255,8 @@ export const items: ItemCatalogInput[] = [
     statBonuses: { defensa: 1 },
     dimensiones: 'Cubren de la cadera al tobillo.',
     lugarOrigen: 'Meseta del Orden.',
+    tier: 1,
+    requisitos: { fuerza: 8, destreza: 8, constitucion: 6 },
   },
 
   // Armadura superior/inferior
@@ -2203,8 +2277,20 @@ export const items: ItemCatalogInput[] = [
     requisitos: { fuerza: 10 },
   },
 
-  { slug: 'talabarte-goirntes', name: 'Talabarte de cuero goirntes', aliases: ['talabarte de cuero'], category: 'ropa',
-    tipo: 'EQUIPABLE', equipSlot: 'CINTURON', description: 'Correaje de oficial, hebilla con el sello de la Concordia.', dimensiones: 'Correaje ajustable al torso.', lugarOrigen: 'Concordia de Hierro, Meseta del Orden.' },
+  { 
+    slug: 'talabarte-goirntes', 
+    name: 'Talabarte de cuero goirntes', 
+    aliases: ['talabarte de cuero'], 
+    category: 'ropa',
+    tipo: 'EQUIPABLE', 
+    equipSlot: 'CINTURON', 
+    description: 'Correaje de oficial, hebilla con el sello de la Concordia.', 
+    dimensiones: 'Correaje ajustable al torso.', 
+    lugarOrigen: 'Concordia de Hierro, Meseta del Orden.',
+    statBonuses: {constitucion: 2, voluntad: 1 },
+    tier: 2,
+    requisitos: { fuerza: 8, destreza: 8, constitucion: 6 },
+  },
 
   // --- Ampliación de equipo/objetos (roadmap 2026-07-20, propuesta de Fable, ver memoria
   // project_tarkor_propuesta_objetos.md) — llena los huecos de EquipSlot que antes no tenían
@@ -2221,6 +2307,8 @@ export const items: ItemCatalogInput[] = [
     statBonuses: { defensa: 1 },
     dimensiones: 'Casco abierto, contorno de cabeza de 55 a 60 cm.',
     lugarOrigen: 'Concordia de Hierro, Meseta del Orden.',
+    tier: 1,
+    requisitos: { fuerza: 8, destreza: 8, constitucion: 6 },
   },
 
   // ══════════════════════════════════════════════════════════════════════════
@@ -2229,14 +2317,41 @@ export const items: ItemCatalogInput[] = [
 
   // --- consumible ---
 
-  { slug: 'agua-hervida-liquen', name: 'Agua hervida de liquen', aliases: ['agua hervida'], category: 'consumible',
-    tipo: 'CONSUMIBLE', equipSlot: 'CONSUMIBLE_1', description: 'Liquen húmedo del cauce hervido sobre fuego — más segura de beber que masticarlo en crudo.', dimensiones: 'Cantimplora de 500 ml.' },
+  { 
+    slug: 'agua-hervida-liquen', 
+    name: 'Agua hervida de liquen', 
+    aliases: ['agua hervida'], 
+    category: 'consumible',
+    tipo: 'CONSUMIBLE', 
+    equipSlot: 'CONSUMIBLE_1', 
+    description: 'Liquen húmedo del cauce hervido sobre fuego — más segura de beber que masticarlo en crudo.', 
+    dimensiones: 'Cantimplora de 500 ml.',
+    curaEnergia: 30,
+    curaHasta: 'HERIDO',
+  },
 
-  { slug: 'bulbo-cauce', name: 'Bulbo del Cauce', category: 'consumible',
-    tipo: 'CONSUMIBLE', equipSlot: 'CONSUMIBLE_1', description: 'Tubérculo fibroso: comida y un trago de agua en uno.', dimensiones: 'Tubérculo de 8 cm.' },
+  { 
+    slug: 'bulbo-cauce', 
+    name: 'Bulbo del Cauce', 
+    category: 'consumible',
+    tipo: 'CONSUMIBLE', 
+    equipSlot: 'CONSUMIBLE_1', 
+    description: 'Tubérculo fibroso: comida y un trago de agua en uno.',
+    dimensiones: 'Tubérculo de 8 cm.',
+    curaEnergia: 15,
+    curaHasta: 'GRAVE',
+  },
 
-  { slug: 'glandula-ignea', name: 'Glándula ígnea de salamandra', aliases: ['glándula ígnea'], category: 'consumible',
-    tipo: 'CONSUMIBLE', equipSlot: 'CONSUMIBLE_1', description: 'Bolsa membranosa de un rojo anaranjado, caliente al tacto — iniciador de fuego potente, pariente animal de la Raíz de Fuego.', dimensiones: 'Bolsa de 6 cm.' },
+  { 
+    slug: 'glandula-ignea', 
+    name: 'Glándula ígnea de salamandra', 
+    aliases: ['glándula ígnea'], 
+    category: 'consumible',
+    tipo: 'CONSUMIBLE', 
+    equipSlot: 'CONSUMIBLE_1', 
+    description: 'Bolsa membranosa de un rojo anaranjado, caliente al tacto — iniciador de fuego potente, pariente animal de la Raíz de Fuego.', 
+    dimensiones: 'Bolsa de 6 cm.' 
+  },
 
   {
     slug: 'grano-espiga-roja',
@@ -2247,10 +2362,21 @@ export const items: ItemCatalogInput[] = [
     description: 'Puñado de grano rojo ocre de Espiga Roja — tostado o crudo, como forraje.',
     dimensiones: 'Puñado de 100 a 200 g.',
     lugarOrigen: 'Llanuras del Viento Rojo.',
+    curaEnergia: 10,
   },
 
-  { slug: 'liquen-humedo', name: 'Liquen húmedo del cauce', aliases: ['liquen húmedo'], category: 'consumible',
-    tipo: 'CONSUMIBLE', equipSlot: 'CONSUMIBLE_1', description: 'Masticado calma la sed; donde crece, cavar un par de codos da agua.', dimensiones: 'Puñado de unos 10 cm.' },
+  { 
+    slug: 'liquen-humedo', 
+    name: 'Liquen húmedo del cauce', 
+    aliases: ['liquen húmedo'], 
+    category: 'consumible',
+    tipo: 'CONSUMIBLE', 
+    equipSlot: 'CONSUMIBLE_1', 
+    description: 'Masticado calma la sed; donde crece, cavar un par de codos da agua.', 
+    dimensiones: 'Puñado de unos 10 cm.',
+    curaEnergia: 10,
+    curaHasta: 'HERIDO',
+  },
 
   {
     slug: 'aguardiente-goirntes',
@@ -2262,11 +2388,21 @@ export const items: ItemCatalogInput[] = [
     description: 'Petaca de metal con licor claro y fuerte — ración líquida de campaña, limpia heridas o da valor.',
     dimensiones: 'Petaca de 15 cm, 250 ml.',
     lugarOrigen: 'Meseta del Orden.',
+    curaEnergia: 30,
+    curaHasta: 'HERIDO', 
   },
 
-  { slug: 'racion-carne-ahumada', name: 'Ración de carne ahumada', category: 'consumible',
-    tipo: 'CONSUMIBLE', equipSlot: 'CONSUMIBLE_1', description: 'Ahumada sobre fuego — a diferencia de la carne fresca, aguanta mucho más antes de estropearse.', dimensiones: 'Trozos de 300 a 500 g.',
-    curaEnergia: 30 },
+  { 
+    slug: 'racion-carne-ahumada', 
+    name: 'Ración de carne ahumada',
+    category: 'consumible',
+    tipo: 'CONSUMIBLE', 
+    equipSlot: 'CONSUMIBLE_1', 
+    description: 'Ahumada sobre fuego — a diferencia de la carne fresca, aguanta mucho más antes de estropearse.', 
+    dimensiones: 'Trozos de 300 a 500 g.',
+    curaEnergia: 20,
+    curaHasta: 'GRAVE'
+  },
 
   {
     slug: 'racion-carne',
@@ -2276,6 +2412,8 @@ export const items: ItemCatalogInput[] = [
     equipSlot: 'CONSUMIBLE_1',
     description: 'Trozos de carne fresca de caza, todavía con algo de sangre — se estropea en días.',
     dimensiones: 'Trozos de 300 a 500 g.',
+    curaEnergia: 15,
+    curaHasta: 'GRAVE' 
   },
 
   {
@@ -2295,6 +2433,7 @@ export const items: ItemCatalogInput[] = [
     // energía" era inalcanzable para una partida nueva, porque su único objeto de comida no
     // restauraba nada (solo lo hacía `racion-carne-ahumada`, que él nunca lleva encima).
     curaEnergia: 20,
+    curaHasta: 'GRAVE' 
   },
 
   {
@@ -2306,6 +2445,8 @@ export const items: ItemCatalogInput[] = [
     description: 'Bloque compacto de comida prensada envuelto en papel encerado — más compacta y mejor conservada que la de campaña orca.',
     dimensiones: 'Bloque de 12x8 cm.',
     lugarOrigen: 'Meseta del Orden.',
+    curaEnergia: 25,
+    curaHasta: 'GRAVE' 
   },
 
   {
@@ -2331,15 +2472,39 @@ export const items: ItemCatalogInput[] = [
     dimensiones: 'Aguijón de 6 cm.',
   },
 
-  { slug: 'cataplasma-flor-ceniza', name: 'Cataplasma de Flor de Ceniza', category: 'medicinal',
-    tipo: 'CONSUMIBLE', equipSlot: 'CONSUMIBLE_1', description: 'Forma preparada de los pétalos de Flor de Ceniza — adormece el dolor y ayuda a dormir a un herido, más suave que la cataplasma de salvia.', dimensiones: 'Emplasto de 8x8 cm.' },
+  { 
+    slug: 'cataplasma-flor-ceniza', 
+    name: 'Cataplasma de Flor de Ceniza', 
+    category: 'medicinal',
+    tipo: 'CONSUMIBLE', 
+    equipSlot: 'CONSUMIBLE_1', 
+    description: 'Forma preparada de los pétalos de Flor de Ceniza — adormece el dolor y ayuda a dormir a un herido, más suave que la cataplasma de salvia.', 
+    dimensiones: 'Emplasto de 8x8 cm.' 
+  },
 
-  { slug: 'cataplasma-salvia', name: 'Cataplasma de salvia del polvo', aliases: ['cataplasma de salvia'], category: 'medicinal',
-    tipo: 'CONSUMIBLE', equipSlot: 'CONSUMIBLE_1', description: 'Pasta verde grisácea de hojas machacadas de Salvia del Polvo — forma preparada de la salvia, corta hemorragias y limpia heridas.', dimensiones: 'Emplasto de 10x10 cm.', lugarOrigen: 'Llanuras del Viento Rojo.', curaHasta: 'HERIDO' },
+  { 
+    slug: 'cataplasma-salvia', 
+    name: 'Cataplasma de salvia del polvo', 
+    aliases: ['cataplasma de salvia'], 
+    category: 'medicinal',
+    tipo: 'CONSUMIBLE', 
+    equipSlot: 'CONSUMIBLE_1', 
+    description: 'Pasta verde grisácea de hojas machacadas de Salvia del Polvo — forma preparada de la salvia, corta hemorragias y limpia heridas.', 
+    dimensiones: 'Emplasto de 10x10 cm.', 
+    lugarOrigen: 'Llanuras del Viento Rojo.', 
+    curaHasta: 'ILESO' 
+  },
 
   // Crafteo Tier 2, ronda 2 de objetos (roadmap 2026-07-20)
-  { slug: 'contraveneno-salvia-ceniza', name: 'Contraveneno de salvia y ceniza', category: 'medicinal',
-    tipo: 'CONSUMIBLE', equipSlot: 'CONSUMIBLE_1', description: 'Pasta oscura de olor amargo, mezcla preparada de salvia del polvo y pétalos de Flor de Ceniza — neutraliza el veneno de Espina del Viento.', dimensiones: 'Pasta de 50 g.' },
+  { 
+    slug: 'contraveneno-salvia-ceniza', 
+    name: 'Contraveneno de salvia y ceniza', 
+    category: 'medicinal',
+    tipo: 'CONSUMIBLE', 
+    equipSlot: 'CONSUMIBLE_1', 
+    description: 'Pasta oscura de olor amargo, mezcla preparada de salvia del polvo y pétalos de Flor de Ceniza — neutraliza el veneno de Espina del Viento.', 
+    dimensiones: 'Pasta de 50 g.' 
+  },
 
   {
     slug: 'manojo-salvia-polvo',
@@ -2350,11 +2515,20 @@ export const items: ItemCatalogInput[] = [
     equipSlot: 'CONSUMIBLE_1',
     description: 'Manojo de hojas grises secas de Salvia del Polvo, atadas con un cordel — machacadas, cortan hemorragias y limpian heridas.',
     dimensiones: 'Manojo de 15 cm.',
-    lugarOrigen: 'Llanuras del Viento Rojo.',
+    lugarOrigen: 'Llanuras del Viento Rojo.', 
+    curaHasta: 'HERIDO' 
   },
 
-  { slug: 'petalos-flor-ceniza', name: 'Pétalos de Flor de Ceniza', category: 'medicinal',
-    tipo: 'CONSUMIBLE', equipSlot: 'CONSUMIBLE_1', description: 'Infusión que adormece el dolor y deja dormir a un herido.', dimensiones: 'Puñado de pétalos de 3 a 4 cm.' },
+  { 
+    slug: 'petalos-flor-ceniza', 
+    name: 'Pétalos de Flor de Ceniza', 
+    category: 'medicinal',
+    tipo: 'CONSUMIBLE', 
+    equipSlot: 'CONSUMIBLE_1', 
+    description: 'Infusión que adormece el dolor y deja dormir a un herido.', 
+    dimensiones: 'Puñado de pétalos de 3 a 4 cm.',
+    curaHasta: 'GRAVE' 
+  },
 
   // ══════════════════════════════════════════════════════════════════════════
   // TIPO: MATERIAL
@@ -2472,8 +2646,16 @@ export const items: ItemCatalogInput[] = [
 
   // --- piedra ---
 
-  { slug: 'cuna-hielo-silice-sin-tallar', name: 'Cuña de hielo sílice sin tallar', aliases: ['cuña sin tallar'], category: 'piedra',
-    tipo: 'RECURSO', description: 'Bloque en bruto de hielo sílice de las minas de Cristal Helado, todavía sin tallar por manos Helsig — solo tiene sentido de verdad si se abre Cristal Helado.', dimensiones: 'Bloque en bruto de 15x10 cm.', lugarOrigen: 'Cristal Helado.' },
+  { 
+    slug: 'cuna-hielo-silice-sin-tallar', 
+    name: 'Cuña de hielo sílice sin tallar', 
+    aliases: ['cuña sin tallar'], 
+    category: 'piedra',
+    tipo: 'RECURSO', 
+    description: 'Bloque en bruto de hielo sílice de las minas de Cristal Helado, todavía sin tallar por manos Helsig — solo tiene sentido de verdad si se abre Cristal Helado.', 
+    dimensiones: 'Bloque en bruto de 15x10 cm.', 
+    lugarOrigen: 'Cristal Helado.' 
+  },
 
   {
     slug: 'esquirla-hielo-silice',
@@ -2485,8 +2667,14 @@ export const items: ItemCatalogInput[] = [
     lugarOrigen: 'Cristal Helado.',
   },
 
-  { slug: 'piedra', name: 'Piedra', category: 'piedra',
-    tipo: 'RECURSO', description: 'Bloques y cascotes de roca erosionada — sirven para levantar muros, cimientos o un campamento.', dimensiones: 'Bloques de 20 a 30 cm.' },
+  { 
+    slug: 'piedra',
+    name: 'Piedra', 
+    category: 'piedra',
+    tipo: 'RECURSO', 
+    description: 'Bloques y cascotes de roca erosionada — sirven para levantar muros, cimientos o un campamento.', 
+    dimensiones: 'Bloques de 20 a 30 cm.' 
+  },
 
   // --- piel ---
 
@@ -2609,8 +2797,15 @@ export const items: ItemCatalogInput[] = [
     lugarOrigen: 'Concordia de Hierro.',
   },
 
-  { slug: 'diario-de-soldado', name: 'Diario de un soldado goirntes', aliases: ['diario de soldado'], category: 'documento',
-    tipo: 'NARRATIVO', description: 'Cuaderno de tapas de cuero gastado, letra apretada — un nombre, una familia en la Meseta, humaniza el saqueo.', dimensiones: 'Cuaderno de 15x10 cm.', lugarOrigen: 'Meseta del Orden.' },
+  { slug: 'diario-de-soldado', 
+    name: 'Diario de un soldado goirntes', 
+    aliases: ['diario de soldado'], 
+    category: 'documento',
+    tipo: 'NARRATIVO', 
+    description: 'Cuaderno de tapas de cuero gastado, letra apretada — un nombre, una familia en la Meseta, humaniza el saqueo.', 
+    dimensiones: 'Cuaderno de 15x10 cm.', 
+    lugarOrigen: 'Meseta del Orden.' 
+  },
 
   // Objeto con efecto mecánico real (petición explícita, 2026-07-23): tenerlo en el inventario
   // desbloquea ver los puntos de ubicación de Llanuras en la pestaña de Mapa — mismo patrón "un
@@ -2642,8 +2837,15 @@ export const items: ItemCatalogInput[] = [
     lugarOrigen: 'Concordia de Hierro.',
   },
 
-  { slug: 'tablilla-quemada-maktor', name: 'Tablilla quemada', category: 'documento',
-    tipo: 'NARRATIVO', description: 'Fragmento de una tablilla de arcilla cocida, ennegrecida por el fuego que arrasó el asentamiento — lo que queda de la escritura apenas se distingue.', dimensiones: 'Fragmento de 12x8 cm.', lugarOrigen: 'Clan Maktor.' },
+  { 
+    slug: 'tablilla-quemada-maktor', 
+    name: 'Tablilla quemada', 
+    category: 'documento',
+    tipo: 'NARRATIVO', 
+    description: 'Fragmento de una tablilla de arcilla cocida, ennegrecida por el fuego que arrasó el asentamiento — lo que queda de la escritura apenas se distingue.', 
+    dimensiones: 'Fragmento de 12x8 cm.', 
+    lugarOrigen: 'Clan Maktor.' 
+  },
 
   // --- valor ---
 
@@ -2673,11 +2875,24 @@ export const items: ItemCatalogInput[] = [
     dimensiones: 'Cordel de 40 cm con piezas de 2 a 3 cm.',
   },
 
-  { slug: 'brazalete-trenzado-maktor', name: 'Brazalete trenzado del Clan Maktor', aliases: ['brazalete trenzado'], category: 'valor',
-    tipo: 'NARRATIVO', description: 'Tiras de cuero trenzado con cuentas de hueso, el trenzado propio del clan.', dimensiones: 'Brazalete de 18 cm.', lugarOrigen: 'Clan Maktor.' },
+  { 
+    slug: 'brazalete-trenzado-maktor', 
+    name: 'Brazalete trenzado del Clan Maktor', 
+    aliases: ['brazalete trenzado'], 
+    category: 'valor',
+    tipo: 'NARRATIVO', 
+    description: 'Tiras de cuero trenzado con cuentas de hueso, el trenzado propio del clan.', 
+    dimensiones: 'Brazalete de 18 cm.', lugarOrigen: 'Clan Maktor.' 
+  },
 
-  { slug: 'esquirla-celeste-caida', name: 'Esquirla celeste caída', aliases: ['esquirla celeste'], category: 'valor',
-    tipo: 'NARRATIVO', description: 'Fragmento diminuto y frío al tacto, caído del cielo durante una tormenta — nadie en las Llanuras sabe explicar de dónde viene el Origen Azul, solo que a veces deja esto atrás.', dimensiones: 'Fragmento de 2 cm.' },
+  { slug: 'esquirla-celeste-caida', 
+    name: 'Esquirla celeste caída', 
+    aliases: ['esquirla celeste'], 
+    category: 'valor',
+    tipo: 'NARRATIVO', 
+    description: 'Fragmento diminuto y frío al tacto, caído del cielo durante una tormenta — nadie en las Llanuras sabe explicar de dónde viene el Origen Azul, solo que a veces deja esto atrás.', 
+    dimensiones: 'Fragmento de 2 cm.' 
+  },
 
   {
     slug: 'garra-rondador',
@@ -2689,15 +2904,31 @@ export const items: ItemCatalogInput[] = [
     dimensiones: 'Garra de 8 cm.',
   },
 
-  { slug: 'hueso-marcado-primer-caceria', name: 'Hueso marcado de primera cacería', aliases: ['hueso marcado'], category: 'valor',
-    tipo: 'NARRATIVO', description: 'Hueso con muescas rituales — ofrenda dejada por quien cobró su primera pieza en nombre de quien yace en el túmulo.', dimensiones: 'Hueso de 15 cm.', lugarOrigen: 'Llanuras del Viento Rojo.' },
+  { 
+    slug: 'hueso-marcado-primer-caceria', 
+    name: 'Hueso marcado de primera cacería', 
+    aliases: ['hueso marcado'], 
+    category: 'valor',
+    tipo: 'NARRATIVO', 
+    description: 'Hueso con muescas rituales — ofrenda dejada por quien cobró su primera pieza en nombre de quien yace en el túmulo.', 
+    dimensiones: 'Hueso de 15 cm.', 
+    lugarOrigen: 'Llanuras del Viento Rojo.' 
+  },
 
   // --- Tier 0, ronda 2 de objetos (roadmap 2026-07-20, ver memoria
   // project_tarkor_roadmap_objetos_2.md) — cierra 7 huecos reales del catálogo: Restos de Maktor
   // y Túmulos del Honor sin objeto propio, rareza cósmica del Origen Azul, comercio goirntes
   // ampliado, y dos formas preparadas más (mismo patrón que cataplasma-salvia).
-  { slug: 'juguete-hueso-maktor', name: 'Juguete de hueso tallado', aliases: ['juguete de hueso'], category: 'valor',
-    tipo: 'NARRATIVO', description: 'Una figurita infantil tallada en hueso, medio enterrada entre los cimientos quemados — de algún niño del Clan Maktor que no llegó a crecer.', dimensiones: 'Figurita de 6 cm.', lugarOrigen: 'Ciénaga Troncal, Clan Maktor.' },
+  { 
+    slug: 'juguete-hueso-maktor', 
+    name: 'Juguete de hueso tallado', 
+    aliases: ['juguete de hueso'], 
+    category: 'valor',
+    tipo: 'NARRATIVO', 
+    description: 'Una figurita infantil tallada en hueso, medio enterrada entre los cimientos quemados — de algún niño del Clan Maktor que no llegó a crecer.', 
+    dimensiones: 'Figurita de 6 cm.', 
+    lugarOrigen: 'Ciénaga Troncal, Clan Maktor.' 
+  },
 
   {
     slug: 'marca-de-clan',
@@ -2709,14 +2940,37 @@ export const items: ItemCatalogInput[] = [
     dimensiones: 'Colgante de 5 cm.',
   },
 
-  { slug: 'panuelo-luto-serhu', name: 'Pañuelo de luto Serhu', aliases: ['pañuelo de luto'], category: 'valor',
-    tipo: 'NARRATIVO', description: 'Tela oscura anudada a la piedra de un túmulo — luto Serhu por alguien que murió con honor.', dimensiones: 'Tela de 30x30 cm.', lugarOrigen: 'Clan Serhu.' },
+  { 
+    slug: 'panuelo-luto-serhu', 
+    name: 'Pañuelo de luto Serhu', 
+    aliases: ['pañuelo de luto'], 
+    category: 'valor',
+    tipo: 'NARRATIVO', 
+    description: 'Tela oscura anudada a la piedra de un túmulo — luto Serhu por alguien que murió con honor.', 
+    dimensiones: 'Tela de 30x30 cm.', 
+    lugarOrigen: 'Clan Serhu.' 
+  },
 
-  { slug: 'pluma-sombra-kroj', name: 'Pluma de Sombra de Kroj', aliases: ['pluma de sombra'], category: 'valor',
-    tipo: 'NARRATIVO', description: 'Pluma larga de un negro casi azulado que absorbe la luz — objeto de trueque con el Margen Silencioso.', dimensiones: 'Pluma de 25 cm.', lugarOrigen: 'Margen Silencioso.' },
+  { 
+    slug: 'pluma-sombra-kroj', 
+    name: 'Pluma de Sombra de Kroj', 
+    aliases: ['pluma de sombra'], 
+    category: 'valor',
+    tipo: 'NARRATIVO', 
+    description: 'Pluma larga de un negro casi azulado que absorbe la luz — objeto de trueque con el Margen Silencioso.', 
+    dimensiones: 'Pluma de 25 cm.', 
+    lugarOrigen: 'Margen Silencioso.' 
+  },
 
-  { slug: 'pluma-timonera', name: 'Pluma timonera de Cruzavientos', aliases: ['pluma timonera'], category: 'valor',
-    tipo: 'NARRATIVO', description: 'Pluma larga y rígida de Cruzavientos, punta gris acerado — adorno y trueque, los Serhu las montan en lanzas y trenzas.', dimensiones: 'Pluma de 30 cm.' },
+  { 
+    slug: 'pluma-timonera', 
+    name: 'Pluma timonera de Cruzavientos', 
+    aliases: ['pluma timonera'], 
+    category: 'valor',
+    tipo: 'NARRATIVO', 
+    description: 'Pluma larga y rígida de Cruzavientos, punta gris acerado — adorno y trueque, los Serhu las montan en lanzas y trenzas.', 
+    dimensiones: 'Pluma de 30 cm.' 
+  },
 
   {
     slug: 'sal-trueque',
@@ -2727,11 +2981,25 @@ export const items: ItemCatalogInput[] = [
     dimensiones: 'Bloques de 8x5 cm.',
   },
 
-  { slug: 'arena-magnetica', name: 'Saquito de arena imán', aliases: ['arena imán'], category: 'valor',
-    tipo: 'NARRATIVO', description: 'Limaduras que dejan las tormentas — los herreros goirntes pagan bien por un saquito.', dimensiones: 'Saquito de 10x8 cm.' },
+  { 
+    slug: 'arena-magnetica', 
+    name: 'Saquito de arena imán', 
+    aliases: ['arena imán'], 
+    category: 'valor',
+    tipo: 'NARRATIVO', 
+    description: 'Limaduras que dejan las tormentas — los herreros goirntes pagan bien por un saquito.', 
+    dimensiones: 'Saquito de 10x8 cm.' 
+  },
 
-  { slug: 'silbato-hueso-caza', name: 'Silbato de hueso de caza', aliases: ['silbato de hueso'], category: 'valor',
-    tipo: 'NARRATIVO', description: 'Pequeño silbato tallado en hueso pulido — señales de caza Serhu.', dimensiones: 'Silbato de 5 cm.', lugarOrigen: 'Clan Serhu, Llanuras del Viento Rojo.' },
+  { 
+    slug: 'silbato-hueso-caza', 
+    name: 'Silbato de hueso de caza', 
+    aliases: ['silbato de hueso'], 
+    category: 'valor',
+    tipo: 'NARRATIVO', 
+    description: 'Pequeño silbato tallado en hueso pulido — señales de caza Serhu.', 
+    dimensiones: 'Silbato de 5 cm.', lugarOrigen: 'Clan Serhu, Llanuras del Viento Rojo.' 
+  },
 
   {
     slug: 'totem-clan-roto',
@@ -2755,6 +3023,8 @@ export const items: ItemCatalogInput[] = [
     tipo: 'NARRATIVO',
     equipSlot: 'COSMETICO_ESPALDA',
     description: 'Tótem de madera oscura de ciénaga, con un rostro tallado en el centro y plumas y cuentas colgando de cordones de cuero a los lados, ceñido en ambos extremos por bandas de metal envejecido — tallado con la marca del Clan Maktor, único, el de Gorhorn.',
+    dimensiones: 'Tótem de 30 cm de largo, atado con cuerdas a la espalda.',
+    lugarOrigen: 'Clan Maktor, Llanuras del Viento Rojo.',
   },
 ];
 
@@ -2916,22 +3186,50 @@ export const harvestYields: HarvestYieldInput[] = [
   // --- Aullador Rojo ---
 
   // --- Fauna/flora nueva (roadmap 2026-07-20, propuesta de Fable) ---
-  { sourceSlug: 'aullador-rojo', sourceName: 'Aullador Rojo',
-    metodoObtencion: 'CAZA', itemSlug: 'racion-carne', cantidad: 2, condicion: 'carne dura de depredador — mejor cocinada' },
+  { 
+    sourceSlug: 'aullador-rojo', 
+    sourceName: 'Aullador Rojo',
+    metodoObtencion: 'CAZA', 
+    itemSlug: 'racion-carne', 
+    cantidad: 2, 
+    condicion: 'carne dura de depredador — mejor cocinada' 
+  },
 
-  { sourceSlug: 'aullador-rojo', sourceName: 'Aullador Rojo',
-    metodoObtencion: 'CAZA', itemSlug: 'hueso-ligero', cantidad: 3 },
+  { 
+    sourceSlug: 'aullador-rojo', 
+    sourceName: 'Aullador Rojo',
+    metodoObtencion: 'CAZA', 
+    itemSlug: 'hueso-ligero', 
+    cantidad: 3 
+  },
 
-  { sourceSlug: 'aullador-rojo', sourceName: 'Aullador Rojo',
-    metodoObtencion: 'CAZA', itemSlug: 'colmillo-aullador', cantidad: 2, condicion: 'cuchillo' },
+  { 
+    sourceSlug: 'aullador-rojo', 
+    sourceName: 'Aullador Rojo',
+    metodoObtencion: 'CAZA', 
+    itemSlug: 'colmillo-aullador', 
+    cantidad: 2, 
+    condicion: 'cuchillo' 
+  },
 
   // --- Buitre Cenizo ---
 
-  { sourceSlug: 'buitre-cenizo', sourceName: 'Buitre Cenizo',
-    metodoObtencion: 'CAZA', itemSlug: 'racion-carne', cantidad: 1, condicion: 'carne de carroñero — mala fama, solo con hambre real' },
+  { 
+    sourceSlug: 'buitre-cenizo', 
+    sourceName: 'Buitre Cenizo',
+    metodoObtencion: 'CAZA', 
+    itemSlug: 'racion-carne', 
+    cantidad: 1, 
+    condicion: 'carne de carroñero — mala fama, solo con hambre real' 
+  },
 
-  { sourceSlug: 'buitre-cenizo', sourceName: 'Buitre Cenizo',
-    metodoObtencion: 'CAZA', itemSlug: 'hueso-ligero', cantidad: 2 },
+  { 
+    sourceSlug: 'buitre-cenizo', 
+    sourceName: 'Buitre Cenizo',
+    metodoObtencion: 'CAZA', 
+    itemSlug: 'hueso-ligero', 
+    cantidad: 2 
+  },
 
   // --- Bulbo del Cauce ---
 
@@ -2946,14 +3244,30 @@ export const harvestYields: HarvestYieldInput[] = [
 
   // --- Canizor (añadido 2026-08-03, sesión "ampliamos lore") ---
 
-  { sourceSlug: 'canizor', sourceName: 'Canizor',
-    metodoObtencion: 'CAZA', itemSlug: 'piel-canizor', cantidad: 1, condicion: 'cuchillo (deshuello) — la piel de una hembra vale más' },
+  { 
+    sourceSlug: 'canizor', 
+    sourceName: 'Canizor',
+    metodoObtencion: 'CAZA', 
+    itemSlug: 'piel-canizor', 
+    cantidad: 1, 
+    condicion: 'cuchillo (deshuello) — la piel de una hembra vale más' 
+  },
 
-  { sourceSlug: 'canizor', sourceName: 'Canizor',
-    metodoObtencion: 'CAZA', itemSlug: 'racion-carne', cantidad: 2 },
+  { 
+    sourceSlug: 'canizor', 
+    sourceName: 'Canizor',
+    metodoObtencion: 'CAZA', 
+    itemSlug: 'racion-carne', 
+    cantidad: 2 
+  },
 
-  { sourceSlug: 'canizor', sourceName: 'Canizor',
-    metodoObtencion: 'CAZA', itemSlug: 'hueso-ligero', cantidad: 2 },
+  { 
+    sourceSlug: 'canizor', 
+    sourceName: 'Canizor',
+    metodoObtencion: 'CAZA', 
+    itemSlug: 'hueso-ligero', 
+    cantidad: 2 
+  },
 
   // --- Cardo Brújula ---
 
@@ -2979,33 +3293,74 @@ export const harvestYields: HarvestYieldInput[] = [
 
   // --- Corredor de Cauce ---
 
-  { sourceSlug: 'corredor-de-cauce', sourceName: 'Corredor de Cauce',
-    metodoObtencion: 'CAZA', itemSlug: 'piel-corredor', cantidad: 1, condicion: 'cuchillo (deshuello)' },
+  { 
+    sourceSlug: 'corredor-de-cauce', 
+    sourceName: 'Corredor de Cauce',
+    metodoObtencion: 'CAZA', 
+    itemSlug: 'piel-corredor', 
+    cantidad: 1, 
+    condicion: 'cuchillo (deshuello)' 
+  },
 
-  { sourceSlug: 'corredor-de-cauce', sourceName: 'Corredor de Cauce',
-    metodoObtencion: 'CAZA', itemSlug: 'racion-carne', cantidad: 4 },
+  { 
+    sourceSlug: 'corredor-de-cauce', 
+    sourceName: 'Corredor de Cauce',
+    metodoObtencion: 'CAZA', 
+    itemSlug: 'racion-carne', 
+    cantidad: 4 
+  },
 
-  { sourceSlug: 'corredor-de-cauce', sourceName: 'Corredor de Cauce',
-    metodoObtencion: 'CAZA', itemSlug: 'cuerda-tendon', cantidad: 2, condicion: 'cuchillo' },
+  { 
+    sourceSlug: 'corredor-de-cauce', 
+    sourceName: 'Corredor de Cauce',
+    metodoObtencion: 'CAZA', 
+    itemSlug: 'cuerda-tendon', 
+    cantidad: 2, 
+    condicion: 'cuchillo' 
+  },
 
-  { sourceSlug: 'corredor-de-cauce', sourceName: 'Corredor de Cauce',
-    metodoObtencion: 'CAZA', itemSlug: 'hueso-ligero', cantidad: 6 },
+  { 
+    sourceSlug: 'corredor-de-cauce', 
+    sourceName: 'Corredor de Cauce',
+    metodoObtencion: 'CAZA', 
+    itemSlug: 'hueso-ligero', 
+    cantidad: 6 
+  },
 
   // --- Corretolvas ---
 
-  { sourceSlug: 'corretolvas', sourceName: 'Corretolvas',
-    metodoObtencion: 'CAZA', itemSlug: 'racion-carne', cantidad: 1 },
+  { sourceSlug: 'corretolvas', 
+    sourceName: 'Corretolvas',
+    metodoObtencion: 'CAZA', 
+    itemSlug: 'racion-carne', 
+    cantidad: 1 
+  },
 
-  { sourceSlug: 'corretolvas', sourceName: 'Corretolvas',
-    metodoObtencion: 'CAZA', itemSlug: 'plumas-rojizas', cantidad: 1 },
+  { 
+    sourceSlug: 'corretolvas', 
+    sourceName: 'Corretolvas',
+    metodoObtencion: 'CAZA', 
+    itemSlug: 'plumas-rojizas', 
+    cantidad: 1 
+  },
 
   // --- Cruzavientos ---
 
-  { sourceSlug: 'cruzavientos', sourceName: 'Cruzavientos',
-    metodoObtencion: 'CAZA', itemSlug: 'racion-carne', cantidad: 2 },
+  { 
+    sourceSlug: 'cruzavientos', 
+    sourceName: 'Cruzavientos',
+    metodoObtencion: 'CAZA', 
+    itemSlug: 'racion-carne', 
+    cantidad: 2 
+  },
 
-  { sourceSlug: 'cruzavientos', sourceName: 'Cruzavientos',
-    metodoObtencion: 'CAZA', itemSlug: 'pluma-timonera', cantidad: 2 },
+  { 
+    sourceSlug: 'cruzavientos', 
+    sourceName: 'Cruzavientos',
+    metodoObtencion: 'CAZA', 
+    itemSlug: 'pluma-timonera', 
+    cantidad: 2 
+  },
 
   // --- Espiga Roja ---
 
@@ -3029,8 +3384,13 @@ export const harvestYields: HarvestYieldInput[] = [
     condicion: 'extracción cuidadosa (destreza, Media 15 — falla = veneno perdido, no herida automática)',
   },
 
-  { sourceSlug: 'espina-del-viento', sourceName: 'Espina del Viento',
-    metodoObtencion: 'CAZA', itemSlug: 'caparazon-espina', cantidad: 1 },
+  { 
+    sourceSlug: 'espina-del-viento', 
+    sourceName: 'Espina del Viento',
+    metodoObtencion: 'CAZA', 
+    itemSlug: 'caparazon-espina', 
+    cantidad: 1 
+  },
 
   // --- Flor de Ceniza ---
 
@@ -3130,22 +3490,48 @@ export const harvestYields: HarvestYieldInput[] = [
 
   // --- Múrgol ---
 
-  { sourceSlug: 'murgol', sourceName: 'Múrgol',
-    metodoObtencion: 'CAZA', itemSlug: 'racion-carne', cantidad: 3 },
+  { 
+    sourceSlug: 'murgol', 
+    sourceName: 'Múrgol',
+    metodoObtencion: 'CAZA', 
+    itemSlug: 'racion-carne', 
+    cantidad: 3 
+  },
 
-  { sourceSlug: 'murgol', sourceName: 'Múrgol',
-    metodoObtencion: 'CAZA', itemSlug: 'lana-murgol', cantidad: 1, condicion: 'cuchillo' },
+  { 
+    sourceSlug: 'murgol', 
+    sourceName: 'Múrgol',
+    metodoObtencion: 'CAZA', 
+    itemSlug: 'lana-murgol', 
+    cantidad: 1, 
+    condicion: 'cuchillo' 
+  },
 
-  { sourceSlug: 'murgol', sourceName: 'Múrgol',
-    metodoObtencion: 'CAZA', itemSlug: 'hueso-ligero', cantidad: 4 },
+  { 
+    sourceSlug: 'murgol', 
+    sourceName: 'Múrgol',
+    metodoObtencion: 'CAZA', 
+    itemSlug: 'hueso-ligero', 
+    cantidad: 4 
+  },
 
   // --- Ofrendas de los Túmulos del Honor ---
 
-  { sourceSlug: 'ofrendas-tumulos-honor', sourceName: 'Ofrendas de los Túmulos del Honor',
-    metodoObtencion: 'EXTRACCION', itemSlug: 'panuelo-luto-serhu', cantidad: 1 },
+  { 
+    sourceSlug: 'ofrendas-tumulos-honor', 
+    sourceName: 'Ofrendas de los Túmulos del Honor',
+    metodoObtencion: 'EXTRACCION', 
+    itemSlug: 'panuelo-luto-serhu', 
+    cantidad: 1 
+  },
 
-  { sourceSlug: 'ofrendas-tumulos-honor', sourceName: 'Ofrendas de los Túmulos del Honor',
-    metodoObtencion: 'EXTRACCION', itemSlug: 'hueso-marcado-primer-caceria', cantidad: 1 },
+  { 
+    sourceSlug: 'ofrendas-tumulos-honor', 
+    sourceName: 'Ofrendas de los Túmulos del Honor',
+    metodoObtencion: 'EXTRACCION', 
+    itemSlug: 'hueso-marcado-primer-caceria', 
+    cantidad: 1
+  },
 
   // --- Raíz de Fuego ---
 
@@ -3161,14 +3547,28 @@ export const harvestYields: HarvestYieldInput[] = [
   // --- Restos personales de Maktor ---
 
   // --- Tier 0, ronda 2 de objetos (roadmap 2026-07-20) ---
-  { sourceSlug: 'restos-personales-maktor', sourceName: 'Restos personales de Maktor',
-    metodoObtencion: 'EXTRACCION', itemSlug: 'juguete-hueso-maktor', cantidad: 1 },
+  { sourceSlug: 'restos-personales-maktor', 
+    sourceName: 'Restos personales de Maktor',
+    metodoObtencion: 'EXTRACCION', 
+    itemSlug: 'juguete-hueso-maktor', 
+    cantidad: 1 
+  },
 
-  { sourceSlug: 'restos-personales-maktor', sourceName: 'Restos personales de Maktor',
-    metodoObtencion: 'EXTRACCION', itemSlug: 'brazalete-trenzado-maktor', cantidad: 1 },
+  { 
+    sourceSlug: 'restos-personales-maktor', 
+    sourceName: 'Restos personales de Maktor',
+    metodoObtencion: 'EXTRACCION', 
+    itemSlug: 'brazalete-trenzado-maktor', 
+    cantidad: 1 
+  },
 
-  { sourceSlug: 'restos-personales-maktor', sourceName: 'Restos personales de Maktor',
-    metodoObtencion: 'EXTRACCION', itemSlug: 'tablilla-quemada-maktor', cantidad: 1 },
+  { 
+    sourceSlug: 'restos-personales-maktor', 
+    sourceName: 'Restos personales de Maktor',
+    metodoObtencion: 'EXTRACCION', 
+    itemSlug: 'tablilla-quemada-maktor', 
+    cantidad: 1 
+  },
 
   // --- Roca de Los Pilares Rotos ---
 
@@ -3195,11 +3595,22 @@ export const harvestYields: HarvestYieldInput[] = [
     condicion: 'cuchillo de deshuello',
   },
 
-  { sourceSlug: 'rondador-de-brasas', sourceName: 'Rondador de Brasas',
-    metodoObtencion: 'CAZA', itemSlug: 'garra-rondador', cantidad: 2 },
+  { 
+    sourceSlug: 'rondador-de-brasas', 
+    sourceName: 'Rondador de Brasas',
+    metodoObtencion: 'CAZA', 
+    itemSlug: 'garra-rondador', 
+    cantidad: 2 
+  },
 
-  { sourceSlug: 'rondador-de-brasas', sourceName: 'Rondador de Brasas',
-    metodoObtencion: 'CAZA', itemSlug: 'racion-carne', cantidad: 3, condicion: 'carne fuerte — mejor ahumada' },
+  { 
+    sourceSlug: 'rondador-de-brasas', 
+    sourceName: 'Rondador de Brasas',
+    metodoObtencion: 'CAZA', 
+    itemSlug: 'racion-carne', 
+    cantidad: 3, 
+    condicion: 'carne fuerte — mejor ahumada' 
+  },
 
   // --- Salamandra de Escoria ---
 
@@ -3221,8 +3632,13 @@ export const harvestYields: HarvestYieldInput[] = [
     condicion: 'cuchillo de deshuello',
   },
 
-  { sourceSlug: 'salamandra-de-escoria', sourceName: 'Salamandra de Escoria',
-    metodoObtencion: 'CAZA', itemSlug: 'racion-carne', cantidad: 2 },
+  { 
+    sourceSlug: 'salamandra-de-escoria', 
+    sourceName: 'Salamandra de Escoria',
+    metodoObtencion: 'CAZA', 
+    itemSlug: 'racion-carne', 
+    cantidad: 2 
+  },
 
   // --- Salvia del Polvo ---
 

@@ -1,7 +1,7 @@
 import type { Attribute, AttributeBlock, GradoExito, RollResult } from './dice.js';
 import type { AbilityEffect, CondicionFisica } from '@prisma/client';
 import { gradoExitoFor } from './dice.js';
-import { effectiveAttributeValue } from './attributeWheel.js';
+import { effectiveAttributeValue, type CombatTree } from './attributeWheel.js';
 import { condicionMalus } from './death.js';
 
 /// Ataque de NPC ya decidido (oculto al frontend) — se persiste en `Save.pendingNpcAttack`
@@ -11,6 +11,12 @@ export interface PendingNpcAttack {
   npcId: string;
   attribute: Attribute;
   effect: AbilityEffect | null;
+  /// Rediseño de combate (2026-08-09) — en la práctica SIEMPRE 'ataque': `chooseNpcAbility('ataque',
+  /// ...)` (npcCombatAbilities.ts) ya filtra a solo `rol==='ataque'` antes de decidir el ataque
+  /// pendiente de un NPC. Se persiste igual (en vez de asumirlo a ciegas en turnResolution.ts) para
+  /// que la invariante quede comprobable, no solo documentada — si ese filtro cambiara algún día,
+  /// la detección de "modo independiente" en CASO DEFENSA seguiría siendo correcta.
+  rol: 'ataque' | 'defensa' | 'utilidad';
   abilityName: string;
   /// Revisión de partida 2026-08-08, bug real jugando en vivo: un Múrgol sin arma (`ataqueNatural`:
   /// "Topetazo torpe con su cornamenta ramificada...") se narró como "el orco lanudo" dando
@@ -65,6 +71,13 @@ export interface ExchangeParticipant {
   /// Malus mecánico por condición física (2026-07-29, ver death.ts § condicionMalus) — se resta
   /// al valor crudo del atributo antes del multiplicador de tipo, para este lado del intercambio.
   condicionFisica: CondicionFisica;
+  /// Rediseño de combate (2026-08-09) — rol de la habilidad elegida por este lado ESTE
+  /// intercambio. Decide qué función usa el caller (turnResolution.ts § resolveCombatExchangePhase):
+  /// ataque-vs-defensa/ataque sigue cruzando OUTCOME_TABLE vía `resolveExchange`; en cuanto
+  /// CUALQUIER lado es 'utilidad', se usa `resolveIndependentExchange` en su lugar. `resolveExchange`
+  /// en sí no lee este campo (sigue funcionando exactamente igual que antes) — vive aquí para que
+  /// el caller tenga un único objeto por lado, no un parámetro suelto aparte.
+  rol: 'ataque' | 'defensa' | 'utilidad';
 }
 
 export interface ExchangeSideResult extends RollResult {
@@ -79,7 +92,13 @@ export type ExchangeOutcome =
   | 'parada_en_seco' // ataque decente, defensa excelente: bloqueado sin daño
   | 'golpes_mutuos' // ambos con grado parejo (los dos "con_coste" o los dos "claro"): los dos acusan algo
   | 'golpe_normal' // ataque decente y defensa floja, o ataque excelente y defensa decente: golpe que llega
-  | 'golpe_pleno'; // ataque excelente y defensa falla: el peor caso, el efecto de la habilidad atacante se aplica entero
+  | 'golpe_pleno' // ataque excelente y defensa falla: el peor caso, el efecto de la habilidad atacante se aplica entero
+  /// Rediseño de combate (2026-08-09) — marca `CombatExchangeDisplay` cuando el intercambio se
+  /// resolvió por `resolveIndependentExchange` (cualquier lado rol:'utilidad'), no por la tabla
+  /// cruzada de arriba — el frontend ya muestra el éxito/fallo de cada lado por separado
+  /// (CombatExchangeBadge.tsx), este valor solo evita forzar uno de los 6 desenlaces de ataque-vs-
+  /// defensa donde no aplica ninguno.
+  | 'independiente';
 
 const OUTCOME_TABLE: Record<GradoExito, Record<GradoExito, ExchangeOutcome>> = {
   fallo: { claro: 'defensor_contragolpea', con_coste: 'ataque_falla', fallo: 'ataque_falla' },
@@ -108,48 +127,73 @@ export interface CombatExchangeDisplay {
   resultado: ExchangeOutcome;
 }
 
+/// Una sola tirada de un lado del intercambio — extraído (rediseño de combate, 2026-08-09) de lo
+/// que antes vivía duplicado inline dentro de `resolveExchange`, para que `resolveIndependentExchange`
+/// pueda reusar exactamente la misma mecánica (malus por condición, multiplicador de tipo,
+/// d20+bono, grado de éxito) sin cruzar `OUTCOME_TABLE` después.
+function rollSide(self: ExchangeParticipant, opponentAttribute: Attribute, tree: CombatTree): ExchangeSideResult {
+  const valorCrudo = Math.max(1, self.attributes[self.attribute] - condicionMalus(self.condicionFisica));
+  const valorEfectivo = effectiveAttributeValue(valorCrudo, self.attribute, opponentAttribute, tree);
+  const roll = Math.floor(Math.random() * 20) + 1;
+  const result = roll + Math.floor(valorEfectivo / 2);
+  const gradoExito = gradoExitoFor(result, self.difficulty);
+  return {
+    attribute: self.attribute,
+    value: self.attributes[self.attribute],
+    valorEfectivo,
+    roll,
+    result,
+    difficulty: self.difficulty,
+    success: gradoExito !== 'fallo',
+    gradoExito,
+  };
+}
+
 /// Resuelve un intercambio completo de ataque vs. defensa — dos tiradas independientes (nunca
 /// una sola tirada de "contraataque" como hacía el sistema antiguo), cada una con su propio
 /// multiplicador de tipo (rueda de debilidades, distinta para atacar que para defender), cruzadas
 /// en una tabla de 9 resultados en vez de un simple golpea/no golpea. Puro y determinista salvo
 /// por los dos `Math.random()` de las tiradas — mismo criterio que `rollCheck`: nunca deja que
 /// el modelo decida el número, solo lo narra ya resuelto.
+///
+/// Solo válida para un intercambio ataque-vs-defensa (o ataque-vs-ataque) — el caller
+/// (turnResolution.ts) decide ANTES de llamar si algún lado es `rol:'utilidad'`, en cuyo caso usa
+/// `resolveIndependentExchange` en su lugar; esta función no lee `ExchangeParticipant.rol` en
+/// absoluto, sigue funcionando exactamente igual que antes del rediseño.
 export function resolveExchange(atacante: ExchangeParticipant, defensor: ExchangeParticipant): ExchangeResult {
-  const valorCrudoAtacante = Math.max(1, atacante.attributes[atacante.attribute] - condicionMalus(atacante.condicionFisica));
-  const valorCrudoDefensor = Math.max(1, defensor.attributes[defensor.attribute] - condicionMalus(defensor.condicionFisica));
-  const valorEfectivoAtacante = effectiveAttributeValue(valorCrudoAtacante, atacante.attribute, defensor.attribute, 'ataque');
-  const valorEfectivoDefensor = effectiveAttributeValue(valorCrudoDefensor, defensor.attribute, atacante.attribute, 'defensa');
-
-  const rollAtacante = Math.floor(Math.random() * 20) + 1;
-  const resultAtacante = rollAtacante + Math.floor(valorEfectivoAtacante / 2);
-  const gradoAtacante = gradoExitoFor(resultAtacante, atacante.difficulty);
-
-  const rollDefensor = Math.floor(Math.random() * 20) + 1;
-  const resultDefensor = rollDefensor + Math.floor(valorEfectivoDefensor / 2);
-  const gradoDefensor = gradoExitoFor(resultDefensor, defensor.difficulty);
-
+  const resultadoAtacante = rollSide(atacante, defensor.attribute, 'ataque');
+  const resultadoDefensor = rollSide(defensor, atacante.attribute, 'defensa');
   return {
-    atacante: {
-      attribute: atacante.attribute,
-      value: atacante.attributes[atacante.attribute],
-      valorEfectivo: valorEfectivoAtacante,
-      roll: rollAtacante,
-      result: resultAtacante,
-      difficulty: atacante.difficulty,
-      success: gradoAtacante !== 'fallo',
-      gradoExito: gradoAtacante,
-    },
-    defensor: {
-      attribute: defensor.attribute,
-      value: defensor.attributes[defensor.attribute],
-      valorEfectivo: valorEfectivoDefensor,
-      roll: rollDefensor,
-      result: resultDefensor,
-      difficulty: defensor.difficulty,
-      success: gradoDefensor !== 'fallo',
-      gradoExito: gradoDefensor,
-    },
-    resultado: OUTCOME_TABLE[gradoAtacante][gradoDefensor],
+    atacante: resultadoAtacante,
+    defensor: resultadoDefensor,
+    resultado: OUTCOME_TABLE[resultadoAtacante.gradoExito][resultadoDefensor.gradoExito],
+  };
+}
+
+export interface IndependentSideOutcome extends ExchangeSideResult {
+  /// true si este lado tiró con éxito (gradoExito !== 'fallo') — y por tanto su propio efecto (si
+  /// tiene uno reactivo) puede evaluarse. Nunca depende de si el OTRO lado tuvo éxito o no.
+  efectoAplica: boolean;
+}
+
+export interface IndependentExchangeResult {
+  atacante: IndependentSideOutcome;
+  defensor: IndependentSideOutcome;
+}
+
+/// Camino de resolución separado para cuando CUALQUIERA de los dos lados eligió una habilidad
+/// `rol:'utilidad'` (rediseño de combate, 2026-08-09, petición explícita: "cada uno su tirada...
+/// si los dos ganáis cada uno la vuestra, se podrán aplicar las dos de utilidad a la vez") — a
+/// diferencia de `resolveExchange`, NUNCA cruza `OUTCOME_TABLE`: el éxito de cada lado decide SOLO
+/// su propio efecto, nunca el del contrario. `atacante`/`defensor` aquí son solo etiquetas de
+/// "quién tiene la iniciativa este intercambio" (mismo significado posicional que en
+/// `resolveExchange`) — ninguno de los dos "gana" sobre el otro por tener la iniciativa.
+export function resolveIndependentExchange(atacante: ExchangeParticipant, defensor: ExchangeParticipant): IndependentExchangeResult {
+  const resultadoAtacante = rollSide(atacante, defensor.attribute, 'ataque');
+  const resultadoDefensor = rollSide(defensor, atacante.attribute, 'defensa');
+  return {
+    atacante: { ...resultadoAtacante, efectoAplica: resultadoAtacante.gradoExito !== 'fallo' },
+    defensor: { ...resultadoDefensor, efectoAplica: resultadoDefensor.gradoExito !== 'fallo' },
   };
 }
 
@@ -163,6 +207,11 @@ const OUTCOME_NARRATION_HINT: Record<ExchangeOutcome, (atacante: string, defenso
   golpe_normal: (atacante, defensor) => `El ataque de ${atacante} alcanza a ${defensor} con normalidad pese a su defensa — narra el golpe.`,
   golpe_pleno: (atacante, defensor) =>
     `El PEOR caso para ${defensor}: el ataque de ${atacante} conecta de lleno, casi sin resistencia — narra el golpe con toda su fuerza.`,
+  // `OUTCOME_TABLE` (arriba) nunca produce este valor — solo lo asigna `resolveIndependentExchange`
+  // directamente, que no pasa por `OUTCOME_NARRATION_HINT` en absoluto (usa
+  // `independentExchangeContextBlock` en su lugar). Entrada presente solo para que el Record sea
+  // exhaustivo a nivel de tipos.
+  independiente: () => '',
 };
 
 /// Texto "YA RESUELTO, no lo cambies" para el Narrador (mismo patrón que el resto de tiradas de
@@ -171,4 +220,15 @@ const OUTCOME_NARRATION_HINT: Record<ExchangeOutcome, (atacante: string, defenso
 export function exchangeContextBlock(exchange: ExchangeResult, atacanteNombre: string, defensorNombre: string): string {
   const grados = `${atacanteNombre} tira ${exchange.atacante.result} (${exchange.atacante.gradoExito}) vs dificultad ${exchange.atacante.difficulty} · ${defensorNombre} tira ${exchange.defensor.result} (${exchange.defensor.gradoExito}) vs dificultad ${exchange.defensor.difficulty}.`;
   return `RESULTADO DEL INTERCAMBIO — YA RESUELTO, no lo cambies: ${grados} ${OUTCOME_NARRATION_HINT[exchange.resultado](atacanteNombre, defensorNombre)}`;
+}
+
+/// Equivalente de `exchangeContextBlock` para el camino independiente (rediseño de combate,
+/// 2026-08-09) — solo da los números de las dos tiradas, SIN interpretar un desenlace conjunto
+/// (no hay "quién gana": cada lado se juzga por su cuenta). El caller (turnResolution.ts §
+/// resolveCombatExchangePhase) añade a continuación su propia frase sobre qué efecto concreto se
+/// disparó o no, ya que eso depende de qué habilidad de utilidad se usó y si el rival atacó con
+/// daño — información que este archivo no tiene.
+export function independentExchangeContextBlock(result: IndependentExchangeResult, atacanteNombre: string, defensorNombre: string): string {
+  const grados = `${atacanteNombre} tira ${result.atacante.result} (${result.atacante.gradoExito}) vs dificultad ${result.atacante.difficulty} · ${defensorNombre} tira ${result.defensor.result} (${result.defensor.gradoExito}) vs dificultad ${result.defensor.difficulty}.`;
+  return `RESULTADO DEL INTERCAMBIO — YA RESUELTO, no lo cambies: ${grados} Cada tirada se juzga por separado, no hay un "quién gana" conjunto.`;
 }

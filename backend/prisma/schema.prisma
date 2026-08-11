@@ -568,6 +568,29 @@ enum AbilityEffect {
   REMATE
   INTIMIDACION
   AGUANTE
+  /// Rediseño de combate (2026-08-09, "Analizar rival"/"Lectura de Presa" reconvertida): revela
+  /// el atributo recomendado contra el rival analizado — nunca hace daño, nunca reutiliza ATAQUE
+  /// (eso haría que una tirada de análisis con éxito bajara condicionFisica vía
+  /// nextCondicionForAttack, justo lo que este rediseño evita para cualquier rol distinto de
+  /// 'ataque').
+  ANALISIS
+}
+
+/// Rol mecánico de una habilidad (rediseño de combate, 2026-08-09, petición explícita: "una
+/// habilidad defensiva o de utilidad nunca hará daño directo... las de ataque sí") — distinto de
+/// `AbilityEffect` (que sigue describiendo el efecto narrativo/mecánico concreto: qué pasa si
+/// conecta). `rol` decide DOS cosas: (1) si puede hacer daño incondicional al conectar (solo
+/// 'ataque' — cierra el hueco de hoy donde una habilidad AGUANTE elegida para atacar igual hacía
+/// daño), y (2) cómo se resuelve el intercambio (`combatExchange.ts`): ataque-vs-defensa cruza
+/// una tabla de resultados conjunta; en cuanto CUALQUIER lado es 'utilidad', cada lado tira
+/// independiente y su propio éxito/fallo decide solo su propio efecto, nunca el del rival.
+/// Mismo shape que el `categoria` que YA existía (sin usarse en combate real) para las
+/// habilidades raciales de fauna en `Npc.habilidadesRaciales` (worldCatalog.ts) — este enum lo
+/// generaliza a TODA habilidad de combate (arma, clase, racial humanoide, genérica).
+enum AbilityRol {
+  ataque
+  defensa
+  utilidad
 }
 
 /// Categorización mecánica de objetos (2026-07-29, petición explícita: "separar los items por
@@ -685,6 +708,10 @@ model SavedAction {
   /// ya en curso hasta que se reinicien o suba de nivel de nuevo (mismo patrón aditivo/nullable
   /// que el resto del proyecto).
   effect             AbilityEffect?
+  /// Rediseño de combate (2026-08-09) — ver comentario completo en `enum AbilityRol`. Mismo
+  /// criterio nullable/aditivo que `effect`: solo relevante para category:'combate', null hasta
+  /// que la partida se resincronice.
+  rol                AbilityRol?
   /// Atributo con el que se resuelve la tirada de esta habilidad — gana sobre la heurística de
   /// palabra clave de npcScene.ts (tabulatedAttackAttribute) cuando el turno manda `savedActionId`.
   preferredAttribute String?
@@ -1092,6 +1119,12 @@ model NpcState {
   /// (2026-07-31) — permite un saqueo parcial real: dejar algo sin marcar en el modal no lo
   /// pierde, una visita posterior solo ofrece lo que falta y nunca duplica lo ya tomado.
   lootedItemNames String[]        @default([])
+  /// Rediseño de combate (2026-08-09, "Analizar rival") — true en cuanto el jugador analiza con
+  /// éxito a ESTE npc/scope concreto una vez, para siempre en esta partida (no hace falta
+  /// repetirlo en el siguiente combate: el atributo recomendado es un dato fijo de sus
+  /// `attributes`, no cambia entre encuentros). Gatea qué muestra la ficha del rival en combate
+  /// (CombatPanel.tsx § EnemyFicha) — sin analizar, ni estadísticas ni habilidades.
+  analizado       Boolean         @default(false)
   updatedAt       DateTime        @updatedAt
 
   @@unique([saveId, npcId, scope])
@@ -1327,4 +1360,57 @@ model ImagePrompt {
   updatedAt  DateTime @updatedAt
 
   @@unique([worldId, entityType, entitySlug, sizeProfile])
+}
+
+/// Captura en vivo de turnos reales para el pipeline DPO (plan "IA local propia", fase 2 — pares
+/// de preferencia chosen/rejected para DPOTrainer, en paralelo al pipeline SFT existente de
+/// generate-distillation-dataset.ts). Por cada turno narrado en vivo por el modelo local
+/// (narrador.ts), se dispara en segundo plano una llamada al MISMO prompt contra un profesor cloud
+/// (completeCloudOnly) — si la respuesta cloud pasa los mismos detectores/validación que protegen
+/// producción, queda marcada como candidata a exportación junto con la salida local YA calculada
+/// (nunca se vuelve a llamar a Ollama solo para comparar). Sin relación FK a Save/World a
+/// propósito: los datos de entrenamiento deben sobrevivir a que la partida se borre/reinicie.
+model LiveTeacherCapture {
+  id      String @id @default(cuid())
+  /// Sin @relation a propósito (ver comentario de arriba) — dato de solo referencia/auditoría,
+  /// nunca un JOIN real; así borrar/reiniciar un Save no arrastra ni bloquea estas filas.
+  saveId  String
+  worldId String
+
+  /// Texto EXACTO enviado como "system" a completeCloudOnly (mismo bloque SYSTEM del Modelfile
+  /// que usa producción/generate-distillation-dataset.ts) — guardado tal cual para que el export
+  /// DPO no dependa de que el Modelfile no haya cambiado entre la captura y la exportación.
+  systemPrompt String
+  /// Texto EXACTO enviado como "user" — prompt de buildNarrationPrompt + el bloque de formato
+  /// JSON Schema (mismo patrón que buildTeacherUserContent en modelfileSystemPrompt.ts).
+  userContent String
+
+  /// Salida cruda del profesor cloud (puede incluir fences markdown sin limpiar todavía).
+  cloudRawText String
+  /// Proveedor real que respondió ("gemini:gemini-flash-latest", "groq:llama-3.3-70b-versatile"...).
+  cloudProvider String
+  /// true si cloudRawText, tras extractJsonPayload + JSON.parse, pasó validateSchema + runDetectors
+  /// (los MISMOS detectores que protegen producción). Solo las filas con true son candidatas de
+  /// exportación DPO — se guardan también los rechazos (false) para poder auditar cuánto alucina
+  /// cada proveedor sin descartar la fila entera de la tabla.
+  cloudValid Boolean
+  /// Motivo de rechazo si cloudValid es false (mismo string que devuelven validateSchema/
+  /// runDetectors) — null si cloudValid es true. Solo diagnóstico, nunca se exporta.
+  cloudRejectReason String?
+
+  /// Salida local YA calculada por narrateAction para este turno real — "for free", nunca una
+  /// segunda llamada a Ollama solo para esta captura.
+  localNarrationJson Json
+  /// Modelo local que produjo localNarrationJson (env.ollamaModelNarrador en el momento de la
+  /// captura) — útil para descartar/filtrar filas si el narrador local cambia de versión entre
+  /// capturas (p. ej. tras promocionar tarkor-narrador-v2).
+  localModel String
+
+  /// Export/consumo (para que re-ejecutar el script de export no duplique filas).
+  exportedAt DateTime?
+
+  createdAt DateTime @default(now())
+
+  @@index([saveId])
+  @@index([cloudValid, exportedAt])
 }

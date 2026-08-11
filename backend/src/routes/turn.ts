@@ -66,6 +66,9 @@ interface NarrateBody {
   /// Saqueo selectivo (petición explícita, 2026-07-30) — reenviado tal cual a
   /// `narrateAndPersistTurn`, ver el comentario de `lootItemNames` en turnResolution.ts.
   lootItemNames?: string[];
+  /// Rediseño de combate (2026-08-09) — reenviado tal cual a `narrateAndPersistTurn`, ver el
+  /// comentario de `NarrateAndPersistParams.isItemUse` en turnResolution.ts.
+  isItemUse?: boolean;
 }
 
 interface ClassificationResolution {
@@ -585,7 +588,7 @@ export async function turnRoutes(app: FastifyInstance) {
   });
 
   app.post<{ Body: NarrateBody }>('/turn/narrate', async (request, reply) => {
-    const { saveId, action, classification, roll, travel, enCombate, savedActionId, npcsInScene, lootItemNames } = request.body;
+    const { saveId, action, classification, roll, travel, enCombate, savedActionId, npcsInScene, lootItemNames, isItemUse } = request.body;
     if (!saveId || !action || !classification) {
       return reply.status(400).send({ error: 'Faltan campos: saveId, action, classification' });
     }
@@ -721,6 +724,7 @@ export async function turnRoutes(app: FastifyInstance) {
         lastRestLocationId: save.lastRestLocationId,
         enCombate,
         savedActionId,
+        isItemUse,
         // Auditoría de rendimiento 2026-07-28 ("rascar segundos") — reenviado tal cual desde
         // /turn/classify para esta misma acción; si falta (worldTick.ts, o un cliente viejo),
         // narrateAndPersistTurn lo calcula fresco él solo.

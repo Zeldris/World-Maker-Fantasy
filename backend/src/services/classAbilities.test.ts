@@ -7,7 +7,14 @@ describe('classAbilityUnlocksFor', () => {
   it('Gorhorn aprende las 4 habilidades de golpe a nivel 1 (variante especial: ambas clases)', () => {
     const result = classAbilityUnlocksFor('Gorhorn', 1);
     expect(result).toHaveLength(4);
-    expect(result.map((a) => a.name).sort()).toEqual(['Grito de Guerra', 'Instinto Salvaje', 'Lectura de Presa', 'Puño de Hierro'].sort());
+    expect(result.map((a) => a.name).sort()).toEqual(['Analizar rival', 'Contraataque', 'Grito de Guerra', 'Instinto Salvaje'].sort());
+  });
+
+  // Rediseño de combate (2026-08-09): las 4 pasan a rol:'utilidad' — nunca hacen daño
+  // incondicional por su cuenta, solo reaccionan si el rival ataca con una de rol:'ataque'.
+  it('las 4 son rol:\'utilidad\'', () => {
+    const result = classAbilityUnlocksFor('Gorhorn', 1);
+    expect(result.every((a) => a.rol === 'utilidad')).toBe(true);
   });
 
   it('otro personaje sin clase asignada no aprende ninguna (fuera de alcance v1)', () => {

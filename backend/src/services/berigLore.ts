@@ -295,7 +295,7 @@ export const BERIG_PERSONAJES: PersonajeInfo[] = [
   {
     slug: 'gorhorn',
     name: 'Gorhorn',
-    raza: 'Orcos, Clan Maktor',
+    raza: 'Orcos de las Llanuras, Clan Maktor',
     icon: '🪓',
     personalidad:
       'Orgulloso pero no arrogante — su honor es la única moneda que le queda. Pese a su apariencia tosca es inteligente, quizás el orco macho que más se acerca a la inteligencia de las hembras. Justo pero bárbaro, con una personalidad afable sorprendente para un orco — aunque la paciencia no es su punto fuerte, y cuando la pierde se ve al "verdadero orco" que hay en él.',

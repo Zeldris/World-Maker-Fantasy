@@ -66,7 +66,7 @@ export const AXE_REPAIR_RECIPE: CraftingRecipe = {
   // (blandirla y guiar al herrero) — oficio 'herrero' porque ocurre en la fragua del campamento.
   tier: 3,
   requisitos: { fuerza: 12 },
-  oficio: 'herrero',
+  oficio: 'herrero-orco-llanuras',
   narrationWant:
     'El personaje quiere reparar su hacha rota, pero no puede hacerlo ahora mismo (hace falta estar en el Campamento del Clan Serhu y tener sal de trueque para pagar al herrero) — narra que lo intenta o lo considera, pero no que la repara de verdad.',
   narrationDo:
@@ -106,7 +106,7 @@ export const GARGANTUA_ARMOR_RECIPE: CraftingRecipe = {
   // oficio 'herrero' que el hacha (misma fragua del campamento, no hace falta un oficio aparte).
   tier: 3,
   requisitos: { fuerza: 10 },
-  oficio: 'herrero',
+  oficio: 'herrero-orco-llanuras',
   narrationWant:
     'El personaje quiere fabricar un peto de placas óseas de gargantúa, pero no puede hacerlo ahora mismo (hace falta estar en el Campamento del Clan Serhu y tener placas óseas de gargantúa y cuerda de tendón) — narra que lo intenta o lo considera, pero no que lo fabrica de verdad.',
   narrationDo:
@@ -130,9 +130,15 @@ export const ANTIDOTE_RECIPE: CraftingRecipe = {
   // quien ya conoce estas hierbas de antes. (Nota 2026-08-03: Inteligencia es atributo JUGABLE
   // desde el rediseño a 7, no secundario — este comentario decía lo contrario por error histórico,
   // ya corregido; el requisito en sí nunca cambió de comportamiento.)
+  // Oficio remapeado (2026-08-09): 'sanador' ya no existe en professions.ts (rediseño por
+  // raza+región). Su hueco temático es ahora 'alquimista' (creadora — transforma en pociones/
+  // ungüentos lo que 'herborista', la recolectora, recoge; equivalente real de "sanador"), no
+  // 'herborista' — se añadió la variante 'alquimista-orcos-llanuras' en professions.ts porque no
+  // existía ninguna para orcos de las Llanuras (mismo criterio que herrero/constructor de esta
+  // misma receta, pensadas para el Campamento del Clan Serhu).
   tier: 2,
   requisitos: { inteligencia: 8 },
-  oficio: 'sanador',
+  oficio: 'alquimista-orcos-llanuras',
   narrationWant:
     'El personaje quiere preparar un antídoto, pero no lleva encima salvia del polvo y pétalos de Flor de Ceniza a la vez — narra que lo intenta o lo considera, pero no que lo prepara de verdad.',
   narrationDo: 'El personaje prepara un contraveneno mezclando su salvia del polvo con pétalos de Flor de Ceniza — narra la escena con naturalidad. El objeto ya se gestiona automáticamente por el backend.',
@@ -171,7 +177,7 @@ export const IRON_INGOT_RECIPE: CraftingRecipe = {
   resultDescription: 'Metal fundido en la fragua del campamento y colado en un molde sencillo — listo para forjar.',
   tier: 2,
   requisitos: { fuerza: 8 },
-  oficio: 'herrero',
+  oficio: 'herrero-orco-llanuras',
   narrationWant:
     'El personaje quiere fundir mena de hierro en un lingote, pero no puede hacerlo ahora mismo (hace falta estar en el Campamento del Clan Serhu y llevar al menos 4 fragmentos de mena de hierro) — narra que lo intenta o lo considera, pero no que lo funde de verdad.',
   narrationDo:
@@ -194,7 +200,7 @@ export const STONE_BLOCK_RECIPE: CraftingRecipe = {
   resultDescription: 'Bloque de piedra desbastado a golpes de maza y cincel hasta dejarlo plano por al menos dos caras — ya no es solo cascote, sirve para levantar un muro de verdad.',
   tier: 1,
   requisitos: { fuerza: 6 },
-  oficio: 'carpintero',
+  oficio: 'constructor-orcos-llanuras',
   narrationWant:
     'El personaje quiere tallar piedra en bloques, pero no lleva encima suficiente piedra en bruto para hacerlo (hacen falta al menos 5 piedras) — narra que lo intenta o lo considera, pero no que talla los bloques de verdad.',
   narrationDo:

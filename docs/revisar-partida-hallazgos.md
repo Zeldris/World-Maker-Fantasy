@@ -1145,3 +1145,309 @@ una mención neutra y legítima de Ulkha/Torgash — también "del Clan Serhu", 
 sin huir de nada). Activo solo cuando `gisteraSeHaMarchado` ya es cierto. Tests nuevos con las 2
 variantes reales observadas + caso negativo de Ulkha. Verificado: tsc limpio, 1428 tests backend +
 18 frontend en verde.
+
+## 2026-08-11 — pruebas por API tras el rediseño de combate (fuera de combate a propósito)
+
+Tras terminar el rediseño de combate (rol ataque/defensa/utilidad, ver plan `melodic-riding-
+shannon`), la usuaria pidió expresamente "prueba todo, no solo combate" — ronda de pruebas contra
+el backend real (dos partidas nuevas de Gorhorn) hablando directo con la API (`curl`), sin frontend.
+4 hallazgos, ninguno arreglado todavía (pendiente decidir orden con la usuaria).
+
+**1. Narración de inventario alucinada al "revisar el equipo"**. Acción libre "Reviso mi equipo y
+observo con calma el terreno..." (banda instantánea, sin combate) narró: *"notando que el cuchillo
+de hielo sílice y el tótem Maktor son los únicos objetos que lleva consigo en este viaje"* — el
+inventario real tenía 8 objetos (hacha, cuchillo, tótem, arnés, pantalones, capa, raciones,
+cataplasma). Mismo defecto de fondo que la familia "golpe falso"/"objeto falso" ya cerrada en
+combate (`hasFalseCombatHit`/`hasFalseItemUse`), pero esta ruta narrativa genérica (fuera de
+combate, sin acción de objeto detectada) no tiene ningún detector post-hoc equivalente.
+**Estado**: PENDIENTE, sin arreglar.
+
+**2. Viaje fantasma con destino inventado**. "Salgo de la hondonada y camino hacia el norte,
+alejándome del orco" (sin nombrar ningún destino real de los conectados a la ubicación actual) —
+`classification`/`travel` vuelven `travel: null` (no hay viaje mecánico, correcto: "norte" no es
+ningún alias real) pero la narración de todos modos describe el desplazamiento como si hubiera
+ocurrido: *"Gorhorn sale de la hondonada, caminando firme hacia el norte..."*. Confirmado que
+`currentLocation` no cambia tras el turno — el jugador cree que se movió y no es así. Mismo patrón
+de fondo que el hallazgo 1 (narración sin grounding determinista que la contradiga cuando no hay
+ningún objeto/NPC/golpe real de por medio que comprobar).
+**Estado**: PENDIENTE, sin arreglar.
+
+**3. Una fuente de recolección "desaparece" si se descubre junto a otra en el mismo turno**.
+Explorando minería en Los Pilares Rotos con `POST /saves/:id/recolectar/minero-llanuras/explorar`
+aparecen 2 fuentes reales (Roca y Veta de hierro, las dos con `WorldPopulation` > 0 en esa región) —
+pero al reabrir el panel (`GET /saves/:id/recolectar/minero-llanuras`) solo "Roca de Los Pilares
+Rotos" sigue localizada; la veta de hierro ya no aparece, como si nunca se hubiera descubierto.
+Confirmado leyendo la tabla `SessionFact` directamente: solo se guardó *"Gorhorn localiza roca de
+los pilares rotos en la zona."* — el hecho de la veta nunca llegó a persistirse.
+
+**Causa raíz confirmada**: `appendSessionFacts` (`worldFacts.ts`) descarta un hecho nuevo si su
+`similarity` contra uno ya existente (`seen`, incluye los del MISMO turno) supera
+`DUPLICATE_THRESHOLD` (0.65) — pensado para cazar parafraseos casi idénticos del mismo hecho (ver
+el fix de 2026-08-02 que bajó el umbral de 0.7 a 0.65). `similarity` es solapamiento de palabras sin
+pesos: *"Gorhorn localiza roca de los pilares rotos en la zona."* vs *"Gorhorn localiza veta de
+hierro de los pilares rotos en la zona."* comparten 9 de 11 palabras (toda la plantilla fija
+"Gorhorn localiza ... en la zona" + "de los pilares rotos") → similarity ≈ 0.82, muy por encima del
+umbral, aunque las dos frases hablen de entidades completamente distintas (roca vs. veta de hierro).
+Cualquier lote de 2+ hechos generados con la misma plantilla en el mismo turno es candidato al mismo
+bug — no es exclusivo de recolección, es un defecto de la métrica de similitud en sí.
+**Estado**: PENDIENTE, sin arreglar. Posible fix: ponderar la similitud hacia las palabras
+"de contenido" (nombres propios/sustantivos específicos) en vez de solapamiento plano, o comparar
+solo el fragmento tras el verbo fijo cuando el hecho sigue una plantilla conocida.
+
+**4. La descripción de "Descansar" promete algo que la mecánica no cumple**. Su texto in-game dice
+*"Se detiene donde esté, monta un vivac breve y descansa para recuperar fuerzas — sin necesitar
+volver a un lugar conocido."* (`startingAbilities.ts`), pero la curación real
+(`restSucceeds`/`isValidRestLocationKind`, `death.ts`/`turnResolution.ts`) solo se activa si
+`currentLocation.kind` es `'refugio'` o `'asentamiento'` — en cualquier otro tipo (p. ej. Los
+Pilares Rotos, `kind: 'hito'`) el descanso narra recuperación pero no cura ni un punto de energía,
+sin ningún aviso de por qué. Confirmado con prueba de control: mismo texto exacto de acción, mismo
+personaje, en Hondonada del Eco (`refugio`) sí curó energía al máximo (30→86); en Los Pilares Rotos
+(`hito`) no cambió nada.
+**Estado**: PENDIENTE, sin arreglar — a decidir si el fix es ampliar `isValidRestLocationKind` o
+corregir la descripción de la habilidad para que no prometa de más.
+
+**Confirmado funcionando bien en esta ronda** (no hace falta re-probarlo): equipar/desequipar con
+validación de ranura y familia de 6 huecos de consumible; resincronización de habilidades de arma
+al cambiar de arma equipada; viaje con destino real nombrado explícitamente; techo de curación de
+Descansar (energía llena, condición tope en HERIDO — por diseño, `healCeilingFor`); puntos de
+atributo bajo 6 peticiones `POST /saves/:id/attribute-points` simultáneas de verdad (el `SELECT ...
+FOR UPDATE` aguanta, sin puntos perdidos); tope máximo de atributo sin consumir el punto; recarga de
+partida estable (`GET /saves/:id` idéntico en dos lecturas seguidas); `POST /saves/:id/restart`
+limpio (XP/nivel/condición/ubicación reseteados, sin combate colgado).
+
+**Nota de metodología, no un bug**: llamar a `/turn/narrate` directamente después de una acción de
+banda "extendida" (viajes largos) sin pasar por el protocolo real duplica el procesamiento — el
+propio `/turn/classify` ya crea el `CharacterTransit` y dos `LogEntry` ("se pone a ello...") y
+devuelve sin narrar; el frontend real (`GameView.tsx`) nunca llama a narrate en ese caso, solo
+sondea `GET /saves/:id` cada 30s hasta que el worker de fondo (`worldTick.ts`) resuelve el tránsito
+solo. Confirmado narrando manualmente de todos modos: el worker, al no encontrar el tránsito ya
+finalizado, lo reprocesó una segunda vez (dos narraciones de llegada distintas para el mismo viaje).
+Como el frontend real jamás toma ese camino, no se cuenta como hallazgo de producto — se deja
+anotado aquí para no repetir el mismo rodeo la próxima vez que se pruebe por API.
+
+**Pendiente para otra ronda** (no probado todavía): misión completa (aceptar→cumplir), crafteo,
+enciclopedia, reino/construcción.
+
+## 2026-08-11 (continuación) — misiones "conseguir X" nunca se cierran si el objeto viene de Minar/Talar/Desollar/Cazar
+
+**Síntoma**: creada a mano una misión de prueba ACTIVA con `targetItemName: 'Piedra'`
+(`rewardXp: 77`), y recolectada Piedra de verdad vía `POST /saves/:id/recolectar/confirmar`
+(el flujo real que usa el botón de Minar en el juego) — la misión se queda `ACTIVA` para siempre,
+`xp` no sube nada. El mismo objeto conseguido por saqueo/crafteo narrado sí la habría cerrado.
+
+**Causa raíz confirmada leyendo el código**: el cierre determinista de misión "conseguir Z"
+(`turnResolution.ts`, bloque `createdItemNames.length > 0` → `tx.quest.updateMany` por
+`targetItemName`) vive DENTRO de `narrateAndPersistTurn` — solo se ejecuta cuando el objeto se
+crea a través del flujo de turno normal (`/turn/narrate`: saqueo, despiece narrado, crafteo,
+`newItem` del modelo). Los endpoints deterministas nuevos del rediseño de profesiones
+(`recolectar.ts` § `/saves/:id/recolectar/:oficio/confirmar`, y por el mismo motivo
+`cazar.ts` § `/saves/:id/cazar/confirmar`) crean `InventoryItem` en su propia transacción,
+totalmente aparte de `turnResolution.ts` — ninguno de los dos comprueba ni actualiza `Quest` en
+ningún momento (confirmado: cero referencias a `quest`/`Quest`/`targetItemName` en los dos
+archivos). El crafteo (`services/crafting.ts`) SÍ sigue pasando por `narrateAndPersistTurn`, así
+que no le afecta — el hueco es específico de los dos endpoints deterministas de recolección/caza
+introducidos el 2026-08-07/2026-08-08.
+
+**Alcance real**: cualquier misión futura del tipo "consígueme N de X" donde X sea algo que se
+obtiene recolectando (mineral, madera, piel/despiece) o cazando quedará imposible de completar por
+el camino normal del jugador — solo se cerraría si, por casualidad, ese mismo objeto también se
+consigue alguna vez por saqueo/crafteo/narración libre.
+
+**Estado**: PENDIENTE, sin arreglar. Fix más directo: extraer el bloque de cierre "conseguir Z" de
+`turnResolution.ts` a una función compartida (recibiendo `saveId` + lista de nombres de objetos
+creados) y llamarla también desde el final de `recolectar.ts`/`cazar.ts` § `confirmar`, dentro de
+su propia transacción.
+
+## 2026-08-11 (continuación) — el objeto recién crafteado sale "sin categorizar" (regresión parcial del fix de 2026-08-07)
+
+**Síntoma**: prueba de control tras el hallazgo anterior — craftear "Bloque de piedra tallada"
+(receta real, `STONE_BLOCK_RECIPE`, consume 5 Piedra) vía turno normal (`/turn/narrate`, sin pasar
+por ningún endpoint dedicado). El objeto se crea bien (`removedInventoryItemIds` quita la piedra
+consumida, `newInventoryItems` trae el bloque nuevo), pero con `"tipo": null` — pese a que el
+catálogo real (`ItemCatalog` en Postgres, confirmado consultado directamente) sí tiene
+`tipo: 'MATERIAL'` para `bloque-piedra-tallada`. Mismo síntoma exacto que el bug ya cerrado el
+2026-08-07 ("objetos recién recolectados sin categorizar en el Inventario"), pero esta vez con un
+objeto CRAFTEADO, no recolectado.
+
+**Causa raíz confirmada leyendo el código**: no es un problema de datos (el `seed-catalog` está al
+día) — es estructural. `catalogBySlug` (`turnResolution.ts:1669`) se construye SOLO a partir de los
+`catalogSlug` que el inventario del jugador YA tenía ANTES de este turno (`inventoryCatalogSlugs`,
+línea 1653) — por diseño correcto para su uso original (matchear ingredientes que el jugador ya
+posee, `canCraft`/`planCraftConsumption`). El bloque que arma la respuesta del objeto CRAFTEADO
+(líneas 2758-2760) reutiliza ese MISMO mapa para mirar `equipSlot`/`effectKey`/`tipo` del
+`recipe.resultCatalogSlug` — pero el resultado de una receta es, por definición, algo que el
+jugador normalmente NO tenía antes de craftearlo, así que `catalogBySlug.get(resultCatalogSlug)`
+es casi siempre `undefined` y los tres campos caen a `null`. El propio comentario de la línea 2751
+ya advierte la limitación de origen ("`catalogBySlug` (arriba) solo trae los catalogSlug que el
+jugador YA tenía en inventario") pero el código de más abajo no lo tuvo en cuenta al reutilizar el
+mismo mapa para el resultado.
+
+**Por qué el fix de 2026-08-07 no lo cazó**: aquel fix añadió `tipo` a los 5 sitios que crean
+objetos nuevos (saqueo/crafteo/despiece/producción/recolección) tomándolo "del catálogo cuando está
+disponible" — crafteo SÍ quedó dentro de esa lista, pero la fuente de la que lee (`catalogBySlug`)
+tiene este hueco estructural que un objeto recién crafteado activa casi siempre (solo se libraría si
+el jugador ya tuviera otra unidad del mismo resultado en inventario antes de craftear esta).
+
+**Efecto real**: cualquier objeto recién crafteado aparece en el panel de Inventario como "SIN
+CATEGORIZAR" (icono genérico) hasta la próxima recarga completa de la partida, momento en el que
+`GET /saves/:id` sí lo resuelve bien vía join — mismo efecto visual que el bug de 2026-08-07, pero
+todavía vivo para el camino de crafteo.
+
+**Estado**: PENDIENTE, sin arreglar. Fix: para el objeto RESULTADO, consultar su `tipo`/`equipSlot`/
+`effectKey` directamente por `recipe.resultCatalogSlug` contra `ItemCatalog` (una consulta suelta o
+un segundo mapa aparte), en vez de reutilizar `catalogBySlug` (que se queda tal cual para lo que
+sí hace bien: ingredientes que el jugador ya posee).
+
+## 2026-08-11 (continuación) — segunda tanda: reino, capítulo, muerte definitiva, despiece (sin bugs nuevos)
+
+Continuación de la ronda de pruebas por API ("sigue haciendo pruebas... hasta que yo te mande
+parar"). Sin hallazgos nuevos en esta tanda — todo lo probado se comporta como está diseñado, se
+deja constancia para no reprobarlo sin necesidad:
+
+- **Fundación de reino** (`POST /saves/:id/reino/fundar`): guard "sin Ayuntamiento" (400) correcto;
+  bajo 3 peticiones EN PARALELO de verdad para la misma partida, solo una funda de verdad (nombre
+  bloqueado "Maktor" para Gorhorn, confirmado), las otras dos devuelven el 400 limpio ya documentado
+  (auditoría 2026-08-07) en vez de un 500 — la `Faction` creada aparece bien en la Enciclopedia con
+  `discovered: true` desde el primer instante, tal como se diseñó.
+- **Progresión de capítulo** (`chapterSummary.ts`, cada 15 turnos): forzado el umbral (14 acciones
+  sembradas + 1 turno real de por medio) — dispara exactamente UN `SessionSummary` (`chapterNumber:
+  1`, resumen coherente con lo ocurrido) y el hito "capitulo" (+500 XP, subida de nivel real),
+  sin duplicar. `attributePointsGained: 0` en la subida a nivel 2 es correcto (`ASI_LEVELS` de
+  `progression.ts` no incluye el nivel 2 — D&D solo da puntos en niveles concretos).
+- **Fin de partida por muerte definitiva** (`endedAt`): con `endedAt` puesto a mano, `/turn/classify`
+  responde 409 "Esta partida ha terminado" tal como documenta `docs/14-combate-y-muerte.md` § 4.4;
+  `POST /saves/:id/restart` limpia `endedAt`/`condicionFisica`/`deathCount` correctamente.
+- **Despiece (Desollar) — inconcluso, no reproducido**: creado a mano un `NpcState` de fauna
+  (Buitre Cenizo) `INCAPACITADO`+`saqueado:false` en la ubicación actual, pero
+  `GET /saves/:id/recolectar/desollador-orcos-llanuras` no lo ofrece como candidato.
+  `carcassCandidatesFor` (`recolectar.ts`) depende de `detectNpcsInScene`, que a su vez mira
+  menciones recientes en `sessionFacts` — un `NpcState` creado directamente en la BD, sin ningún
+  turno narrado que mencionara al Buitre, no tiene ningún hecho de sesión del que colgar la
+  detección. Probable comportamiento correcto (el despiece exige que el cadáver siga "en escena" de
+  verdad, no solo que exista su fila), pero no se pudo confirmar sin narrar un combate real —
+  pendiente de reprobar jugando en vivo en vez de por API directa.
+
+## 2026-08-11 (continuación) — tercera tanda: sesión (pausa/cancelar/huir), habilidades generales, construcción, validación de creación
+
+**Confirmado funcionando bien** (sin hallazgos): pausar/reanudar partida (`busyUntil` se alarga
+exactamente lo pausado, probado con un tránsito real y ~5s de pausa real); cancelar un tránsito
+activo (borra la fila + dobla como aviso en el diario, 404 limpio si no hay nada que cancelar);
+huir antes de que empiece un combate (`POST /saves/:id/combat/flee`, tirada real, limpia
+`pendingCombatNpcSlugs` en éxito, 404 limpio sin combate pendiente); CRUD de habilidades "general"
+(crear, editar, borrar) con el guard real (no solo de frontend) contra editar/borrar habilidades
+`isStarting`/`isDynamic` y contra crear con `category:'combate'` a mano.
+
+**Bug real: `POST /saves` solo valida 3 de ~10 campos requeridos — cualquier otro campo ausente
+revienta con 500 genérico en vez de un 400 claro**. Investigación en varios pasos: primero pareció
+un problema de `attributes` (`{}` vacío, o solo 3 de las 7 claves reales, devolvían
+`{"error":"Error interno del servidor"}` con HTTP 500), pero aislando campo a campo (probado con
+`attributes` completo y sano de sobra, quitando solo un campo cada vez) se confirmó que el mismo
+500 salta igual si falta CUALQUIERA de `characterOrigin`, `introCharacterText` (confirmados
+directamente) — y por el mismo patrón de código, presumiblemente también `characterArchetype`,
+`characterMotivation`, `portraitInitial`, `introWorldText` (todos destructurados de `CreateSaveBody`
+y usados sin comprobar más abajo). La causa raíz real: el guard de la ruta
+(`if (!worldSlug || !characterName || !attributes)`) solo cubre 3 de los ~10 campos del body —
+el resto se usa tal cual, sin ningún `?.`/valor por defecto, en algún punto de la lógica de creación
+(probablemente un campo `String` no-nulo de Prisma recibiendo `undefined`). Mismo patrón de fondo
+ya documentado y arreglado una vez en `POST /saves/:id/attribute-points` (auditoría 2026-07-28:
+"`attribute` solo se validaba a nivel de TypeScript, nunca en runtime") — aquí sigue sin cerrar, y
+en el punto de entrada más importante de todos (crear personaje). **Sin corrupción de datos**
+(confirmado en varias variantes: ninguna fila `Save` a medias queda en la BD tras el 500 — todo
+vive en una sola transacción que revierte limpia), así que el impacto real es un mensaje de error
+opaco/genérico en vez de uno útil — el formulario real de creación de personaje siempre manda todos
+los campos hoy, así que en la práctica no se ha visto disparado jugando normal; el riesgo es de cara
+a cualquier cliente futuro (API pública, script de importación, etc.) que no replique exactamente
+el formulario actual.
+**Estado**: PENDIENTE, sin arreglar. Fix: ampliar el guard inicial para cubrir todos los campos
+`string` no opcionales de `CreateSaveBody` (`characterArchetype`/`characterOrigin`/
+`characterMotivation`/`portraitInitial`/`introCharacterText`/`introWorldText`), además de validar
+`attributes` con las 7 claves reales (mismo `VALID_ATTRIBUTES`/patrón ya usado en
+`progression.ts`) — todo devuelto como 400 con mensaje claro antes de tocar nada más.
+
+**Construcción (campamento base) — confirmado funcionando bien**: `Building` de la receta más
+simple (`CAMPAMENTO_RECIPE`, banda "larga" → resuelto en diferido por `worldTick.ts`, protocolo
+correcto de solo `classify` + esperar, sin narrar a mano, aprendido en la tanda anterior). El
+edificio se creó bien (`status: 'ACTIVO'`, descripción real de la receta) y los 3 materiales
+(leña/piedra/piel) se consumieron correctamente del inventario — sin rastro del bug de "sin
+categorizar" de crafteo (no aplica: `Building` no es `InventoryItem`, no pasa por `catalogBySlug`).
+
+## 2026-08-11 (continuación) — cuarta tanda: calidad de narración (petición explícita: "buscar mejoras... qué es necesario mejorar para que la narración sea de calidad")
+
+Cambio de enfoque a petición de la usuaria: no solo lógica/mecánica, sino la PROSA en sí. Partida
+nueva y limpia (`cmsoha1m200crrivbf59nvap9`) dedicada solo a esto, varios turnos leídos con
+atención en vez de solo comprobados por su efecto mecánico.
+
+**1. "Golpe fantasma" reproducido con vocabulario que SÍ debería estar cubierto — posible fallo del
+reintento, no del detector**. Turno de combate real: acción "Descargo un golpe... contra 'Orco
+enfurecido'", tirada mecánica real `resultado: 'ataque_falla'` (el ataque del jugador falla limpio,
+`combatExchangeDisplay` lo confirma, ningún lado recibe daño — `condicionFisica` real del jugador Y
+del NPC se quedan ambos en ILESO). La narración, sin embargo, dice: *"Gorhorn descarga su hacha...
+en el orco, **quien se retuerce bajo el impacto** pero no cede."* — describe un impacto conectado
+que la mecánica dice que no ocurrió. Lo notable: esto NO es un hueco de vocabulario nuevo — 
+`COMBAT_HIT_LEAK_REGEX` (narrador.ts) YA incluye `impact[oó]` explícitamente, y `combatBothMissed`
+(turnResolution.ts:1432, con un comentario que describe LITERALMENTE este mismo caso — "el
+intercambio resolvió 'ataque_falla'... pero la narración describió un golpe limpio de todos modos",
+arreglado el 2026-07-31) debería haber sido `true` aquí (ni el jugador ni el NPC reciben golpe este
+turno). El detector debería haber disparado un reintento. Sin acceso a los logs del proceso en vivo
+(este backend corre en una terminal de la usuaria, no capturado por esta sesión) no se puede
+confirmar si: (a) el reintento se disparó y el modelo repitió una variante parecida en el segundo
+intento también (límite real del sistema: un solo reintento, sin garantía de que el modelo pequeño
+no insista), o (b) hay algún otro hueco no identificado en cómo se computan
+`exchangeHappened`/`npcAttackHits`/`jugadorRecibeGolpe` para este resultado concreto tras el
+rediseño de combate de esta misma sesión (aunque el camino de código parece ser el mismo
+`resolveExchange` de siempre, sin tocar). **Estado**: PENDIENTE de diagnóstico — antes de tocar
+código, comprobar en los logs reales del backend (`request.log`/stdout) si `hasFalseCombatHit`
+llegó a disparar un reintento en este turno concreto; si sí, el problema es de fondo (reintento
+único insuficiente contra un modelo local pequeño) y no tiene arreglo determinista fácil.
+
+**2. Descolocación de tono: una acción explícitamente pacífica se narra como confrontacional**.
+Acción: *"Levanto las manos vacías y le hablo con calma a 'Orco enfurecido': '¿Podemos hablar? No
+busco pelea.'"* — inequívoca (manos vacías, calma, "no busco pelea"). Narración: *"Gorhorn se
+planta frente a la figura y **le exige que hable**, sin apartar la mirada."* — "exige" y "sin
+apartar la mirada" describen una postura confrontacional/desafiante, lo contrario del tono pedido.
+No hay ningún detector determinista para esto (a diferencia de golpe/objeto/viaje falso, que
+comprueban HECHOS mecánicos concretos) — el tono es más difícil de verificar por regex, pero es
+justo el tipo de cosa que rompe la inmersión: el jugador escribe una acción con una intención clara
+y el personaje "hace" otra cosa distinta en la narración. **Estado**: sin detector posible con el
+enfoque actual (regex sobre hechos, no sobre tono) — candidato a instrucción de prompt más
+explícita ("si el jugador especifica un tono/actitud concreto en su acción, la narración debe
+reflejar ESE tono, no uno inventado") más que a un fix de código determinista.
+
+**3. Diálogo sin atribuir, pegado sin transición al final de la narración**. Mismo turno que el
+punto 2: tras un monólogo largo de Gistera Koh, la respuesta termina en seco con
+`"¡Calla! ¿Hablar? ¡No me toques!"` sin ninguna acotación (nadie dice "gruñe el orco" ni similar) ni
+transición de escena — el lector tiene que inferir que el hablante cambió del todo (de Gistera al
+Orco Enfurecido). Se repite el patrón en otro turno (respuesta de Gistera mezcla comillas simples y
+dobles para lo que parece ser la misma línea continua de diálogo, sin motivo aparente). Es un
+defecto de forma/legibilidad, no de coherencia de hechos — ningún detector actual lo cubre.
+**Estado**: sin arreglar, candidato a instrucción de prompt ("cuando cambie el hablante dentro de
+la misma narración, dilo explícitamente — nunca dos líneas de diálogo seguidas sin acotación
+cuando son de personajes distintos").
+
+**Confirmado como buena señal de calidad** (no son bugs, se documentan porque contradicen la
+sospecha inicial al leerlos):
+- Uso correcto de lore profundo: la narración de Gistera Koh mencionó "la caída del Ketg"/"la casta
+  de Ketg" sin que el jugador lo mencionara antes — parecía un nombre inventado a primera vista,
+  pero es un término real y específico de `docs/rpgtarkor/areas.md`/`npcs.md` (el usurpador
+  histórico que fundó la casta gobernante del Clan Serhu). Buena señal: el modelo está usando lore
+  de fondo real, no solo lo que está en el contexto inmediato del turno.
+- Continuidad física correcta: en el turno de combate del punto 1, describe "el metal partido
+  chirría" — coherente con que el arma equipada es literalmente el "Hacha de guerra rota".
+- El guardarraíl determinista de `condicionFisica` funcionó bien de fondo: el modelo propuso
+  `"condicionFisica": "GRAVE"` para el jugador en el turno de ataque fallido (sin ninguna causa
+  mecánica real, un salto de ILESO a GRAVE sin pasar por HERIDO) — `nextCondicionFisica` lo
+  descartó correctamente y el valor persistido se quedó en ILESO. La mecánica está bien blindada
+  incluso cuando el texto se equivoca; el problema de esta tanda es solo de PROSA, no de estado real
+  del personaje.
+
+**Recomendación general para la usuaria**: de los 3 hallazgos, el (1) es el único con un camino de
+arreglo claro y determinista (si se confirma que el reintento sí se disparó y aun así falló, subir
+a 2 reintentos como tope antes de aceptar, o añadir una frase de "última instancia" más agresiva al
+prompt del segundo intento). Los (2) y (3) son de una familia distinta — calidad de prosa/tono que
+no se puede cazar con una lista de palabras prohibidas, porque no hay ninguna palabra "equivocada"
+en sí (a diferencia de "sangra"/"impacto"), es la interpretación completa del tono/estructura la que
+falla. Si se quiere mejorar esa familia de forma sistemática, el camino más realista es reforzar el
+prompt del Narrador con instrucciones más explícitas sobre tono-reflejado-en-la-acción y
+atribución-de-diálogo, más que seguir añadiendo detectores post-hoc — la lista de detectores ya
+cubre bien los casos de "hecho mecánico contradicho", pero tono/forma es un problema categóricamente
+distinto.

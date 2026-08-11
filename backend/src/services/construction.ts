@@ -187,9 +187,12 @@ export const CHOZA_RECIPE: ConstructionRecipe = {
   ],
   // Sesión de diseño 2026-07-23: montar un armazón de huesos con pieles tensadas exige fuerza
   // real — oficio 'carpintero' (armazón y estructura, no forja ni curtido de la piel en sí).
+  // Id actualizado (2026-08-09): professions.ts ahora escala 'carpintero' por raza+región — esta
+  // choza es construcción orca de las Llanuras (ver su descripción), variante 'carpintero-orcos-
+  // llanuras'.
   tier: 2,
   requisitos: { fuerza: 10 },
-  oficio: 'carpintero',
+  oficio: 'carpintero-orcos-llanuras',
   // Reglas de reino (2026-08-04): 2 slots de compañero, pero es infraestructura de reino de
   // verdad — no se puede levantar sin Ayuntamiento, ni fuera de su región/distancia (comprobado
   // en turnResolution.ts, no aquí: hace falta consultar la DB).

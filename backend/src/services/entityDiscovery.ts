@@ -1,6 +1,6 @@
 import type { Prisma } from '@prisma/client';
 import { prisma } from '../lib/prisma.js';
-import { normalizeText } from './travel.js';
+import { normalizeText, matchesAliasBoundary } from './travel.js';
 import { harvestSourceAliases } from '../scripts/worldCatalog.js';
 
 /// Enciclopedia progresiva (sesión de diseño 2026-07-23, petición explícita de la usuaria: "en vez
@@ -50,7 +50,7 @@ export async function recordEntityDiscoveries(
     for (const npc of npcs) {
       if (faunaSlugs.has(npc.slug)) continue;
       const aliases = [npc.name, ...npc.aliases];
-      if (aliases.some((a) => normalized.includes(normalizeText(a)))) {
+      if (aliases.some((a) => matchesAliasBoundary(normalized, normalizeText(a)))) {
         discovered.push({ entityType: 'npc', entitySlug: npc.slug });
         // Cascada (2026-08-06, sección "Facciones"): descubrir un NPC de una facción también
         // descubre esa facción — igualdad exacta contra Faction.name, ver fail-fast en
@@ -65,7 +65,7 @@ export async function recordEntityDiscoveries(
     for (const y of yields) sourceNameBySlug.set(y.sourceSlug, y.sourceName);
     for (const [sourceSlug, sourceName] of sourceNameBySlug) {
       const aliases = [sourceName, ...(harvestSourceAliases[sourceSlug] ?? [])];
-      if (aliases.some((a) => normalized.includes(normalizeText(a)))) {
+      if (aliases.some((a) => matchesAliasBoundary(normalized, normalizeText(a)))) {
         discovered.push({ entityType: 'fauna', entitySlug: sourceSlug });
       }
     }
@@ -82,7 +82,7 @@ export async function recordEntityDiscoveries(
       // que ese objeto nunca se "descubría" ni aunque el jugador ya lo llevara encima. Mismo
       // criterio que npc.aliases arriba: nombre O cualquier alias, por mención O por posesión.
       const itemNames = [item.name, ...(item.aliases ?? [])].map(normalizeText);
-      const mentioned = itemNames.some((n) => normalized.includes(n));
+      const mentioned = itemNames.some((n) => matchesAliasBoundary(normalized, n));
       const owned = itemNames.some((n) => ownedNames.has(n));
       if (mentioned || owned) {
         discovered.push({ entityType: 'item', entitySlug: item.slug });

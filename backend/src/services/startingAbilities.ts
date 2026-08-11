@@ -1,4 +1,4 @@
-import type { AbilityEffect } from '@prisma/client';
+import type { AbilityEffect, AbilityRol } from '@prisma/client';
 import type { Attribute } from './dice.js';
 
 export interface StartingAbility {
@@ -14,6 +14,9 @@ export interface StartingAbility {
   /// para category:'combate'. Gana sobre la heurística de palabra clave de npcScene.ts
   /// (tabulatedAttackAttribute) cuando el turno manda el savedActionId de esta habilidad.
   effect?: AbilityEffect;
+  /// Rediseño de combate (2026-08-09) — ver `enum AbilityRol` (schema.prisma). Solo relevante
+  /// para category:'combate', igual que `effect`/`preferredAttribute`.
+  rol?: AbilityRol;
   preferredAttribute?: Attribute;
   /// Sistema de fatiga (2026-07-29) — coste de energía fijo por tramo (energy.ts). Solo relevante
   /// para category:'combate'; las generales se quedan en 0/undefined (siempre gratis).

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { resolveExchange, rollInitiative, type ExchangeParticipant } from './combatExchange.js';
+import { resolveExchange, resolveIndependentExchange, rollInitiative, type ExchangeParticipant } from './combatExchange.js';
 import type { AttributeBlock } from './dice.js';
 
 const BASE_ATTRIBUTES: AttributeBlock = { fuerza: 10, destreza: 10, constitucion: 10, inteligencia: 10, voluntad: 10, carisma: 10, arcano: 10 };
@@ -21,8 +21,8 @@ describe('resolveExchange', () => {
   // Mismo atributo en los dos lados (multiplicador de tipo = 1, sin ventaja) para aislar la
   // tabla de resultados cruzados del efecto de la rueda de debilidades — esa se cubre aparte
   // en attributeWheel.test.ts, ya integrada aquí en el último bloque de tests.
-  const atacanteBase: ExchangeParticipant = { attributes: BASE_ATTRIBUTES, attribute: 'fuerza', difficulty: 15, condicionFisica: 'ILESO' };
-  const defensorBase: ExchangeParticipant = { attributes: BASE_ATTRIBUTES, attribute: 'fuerza', difficulty: 15, condicionFisica: 'ILESO' };
+  const atacanteBase: ExchangeParticipant = { attributes: BASE_ATTRIBUTES, attribute: 'fuerza', difficulty: 15, condicionFisica: 'ILESO', rol: 'ataque' };
+  const defensorBase: ExchangeParticipant = { attributes: BASE_ATTRIBUTES, attribute: 'fuerza', difficulty: 15, condicionFisica: 'ILESO', rol: 'defensa' };
 
   it('atacante falla + defensor claro → el defensor contragolpea', () => {
     mockRolls(R_FOR_ROLL_5, R_FOR_ROLL_20);
@@ -74,8 +74,8 @@ describe('resolveExchange', () => {
 
   it('aplica el multiplicador de la rueda de debilidades al valor efectivo de cada lado', () => {
     mockRolls(R_FOR_ROLL_10, R_FOR_ROLL_10);
-    const atacante: ExchangeParticipant = { attributes: BASE_ATTRIBUTES, attribute: 'destreza', difficulty: 15, condicionFisica: 'ILESO' };
-    const defensor: ExchangeParticipant = { attributes: BASE_ATTRIBUTES, attribute: 'fuerza', difficulty: 15, condicionFisica: 'ILESO' };
+    const atacante: ExchangeParticipant = { attributes: BASE_ATTRIBUTES, attribute: 'destreza', difficulty: 15, condicionFisica: 'ILESO', rol: 'ataque' };
+    const defensor: ExchangeParticipant = { attributes: BASE_ATTRIBUTES, attribute: 'fuerza', difficulty: 15, condicionFisica: 'ILESO', rol: 'defensa' };
     const result = resolveExchange(atacante, defensor);
     // Destreza contra Fuerza: el atacante tiene ventaja de tipo (×1.5), el defensor la desventaja.
     expect(result.atacante.valorEfectivo).toBeGreaterThan(result.atacante.value);
@@ -84,13 +84,59 @@ describe('resolveExchange', () => {
 
   it('un participante HERIDO/GRAVE tira con un valor efectivo menor que uno ILESO (malus por condición)', () => {
     mockRolls(R_FOR_ROLL_10, R_FOR_ROLL_10);
-    const ileso: ExchangeParticipant = { attributes: BASE_ATTRIBUTES, attribute: 'fuerza', difficulty: 15, condicionFisica: 'ILESO' };
-    const herido: ExchangeParticipant = { attributes: BASE_ATTRIBUTES, attribute: 'fuerza', difficulty: 15, condicionFisica: 'HERIDO' };
-    const grave: ExchangeParticipant = { attributes: BASE_ATTRIBUTES, attribute: 'fuerza', difficulty: 15, condicionFisica: 'GRAVE' };
+    const ileso: ExchangeParticipant = { attributes: BASE_ATTRIBUTES, attribute: 'fuerza', difficulty: 15, condicionFisica: 'ILESO', rol: 'defensa' };
+    const herido: ExchangeParticipant = { attributes: BASE_ATTRIBUTES, attribute: 'fuerza', difficulty: 15, condicionFisica: 'HERIDO', rol: 'ataque' };
+    const grave: ExchangeParticipant = { attributes: BASE_ATTRIBUTES, attribute: 'fuerza', difficulty: 15, condicionFisica: 'GRAVE', rol: 'ataque' };
     const resultHerido = resolveExchange(herido, ileso);
     const resultGrave = resolveExchange(grave, ileso);
     expect(resultHerido.atacante.valorEfectivo).toBeLessThan(BASE_ATTRIBUTES.fuerza);
     expect(resultGrave.atacante.valorEfectivo).toBeLessThan(resultHerido.atacante.valorEfectivo);
+  });
+});
+
+describe('resolveIndependentExchange', () => {
+  // Rediseño de combate (2026-08-09) — nunca cruza OUTCOME_TABLE: el éxito de cada lado se juzga
+  // por su cuenta, `efectoAplica` es simplemente `gradoExito !== 'fallo'` de ESE lado.
+  const atacante: ExchangeParticipant = { attributes: BASE_ATTRIBUTES, attribute: 'fuerza', difficulty: 15, condicionFisica: 'ILESO', rol: 'ataque' };
+  const defensor: ExchangeParticipant = { attributes: BASE_ATTRIBUTES, attribute: 'fuerza', difficulty: 15, condicionFisica: 'ILESO', rol: 'utilidad' };
+
+  it('los dos fallan → efectoAplica false en los dos, cada uno con su propio grado', () => {
+    mockRolls(R_FOR_ROLL_5, R_FOR_ROLL_5);
+    const result = resolveIndependentExchange(atacante, defensor);
+    expect(result.atacante.gradoExito).toBe('fallo');
+    expect(result.atacante.efectoAplica).toBe(false);
+    expect(result.defensor.gradoExito).toBe('fallo');
+    expect(result.defensor.efectoAplica).toBe(false);
+  });
+
+  it('el atacante tiene éxito y el defensor falla → solo el del atacante aplica (nunca depende del otro)', () => {
+    mockRolls(R_FOR_ROLL_20, R_FOR_ROLL_5);
+    const result = resolveIndependentExchange(atacante, defensor);
+    expect(result.atacante.efectoAplica).toBe(true);
+    expect(result.defensor.efectoAplica).toBe(false);
+  });
+
+  it('los dos tienen éxito a la vez → los dos efectoAplica true (no es "el mejor gana")', () => {
+    mockRolls(R_FOR_ROLL_20, R_FOR_ROLL_20);
+    const result = resolveIndependentExchange(atacante, defensor);
+    expect(result.atacante.efectoAplica).toBe(true);
+    expect(result.defensor.efectoAplica).toBe(true);
+  });
+
+  it('éxito con coste también cuenta como efectoAplica (solo el fallo lo bloquea)', () => {
+    mockRolls(R_FOR_ROLL_10, R_FOR_ROLL_10);
+    const result = resolveIndependentExchange(atacante, defensor);
+    expect(result.atacante.gradoExito).toBe('con_coste');
+    expect(result.atacante.efectoAplica).toBe(true);
+  });
+
+  it('sigue aplicando el multiplicador de la rueda de debilidades al valorEfectivo de cada lado', () => {
+    mockRolls(R_FOR_ROLL_10, R_FOR_ROLL_10);
+    const atacanteDestreza: ExchangeParticipant = { attributes: BASE_ATTRIBUTES, attribute: 'destreza', difficulty: 15, condicionFisica: 'ILESO', rol: 'ataque' };
+    const defensorFuerza: ExchangeParticipant = { attributes: BASE_ATTRIBUTES, attribute: 'fuerza', difficulty: 15, condicionFisica: 'ILESO', rol: 'utilidad' };
+    const result = resolveIndependentExchange(atacanteDestreza, defensorFuerza);
+    expect(result.atacante.valorEfectivo).toBeGreaterThan(result.atacante.value);
+    expect(result.defensor.valorEfectivo).toBeLessThan(result.defensor.value);
   });
 });
 

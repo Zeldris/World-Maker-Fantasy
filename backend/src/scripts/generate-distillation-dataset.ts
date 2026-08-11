@@ -16,7 +16,6 @@ import '../lib/setupFetch.js';
 import { readFileSync, existsSync, mkdirSync, appendFileSync } from 'node:fs';
 import path from 'node:path';
 
-import { buildNarrationPrompt } from '../services/narrador.js';
 import type { NarrationResult } from '../services/narrador.js';
 import { mistralClient } from '../lib/aiProviders/mistralClient.js';
 import { sambanovaClient } from '../lib/aiProviders/sambanovaClient.js';
@@ -27,6 +26,7 @@ import { cloudflareClient } from '../lib/aiProviders/cloudflareClient.js';
 import type { AiClient } from '../lib/aiProviders/aiClient.js';
 import { DISTILLATION_SCENARIOS, type DistillationScenario } from './data/distillationScenarios.js';
 import { validateSchema, runDetectors, extractJsonPayload } from './data/distillationValidation.js';
+import { readModelfileSystemPrompt, buildTeacherUserContent } from '../lib/modelfileSystemPrompt.js';
 
 // Gemini primero (2026-08-07): único proveedor de la rotación con JSON forzado por schema real
 // (responseSchema), no solo "modo JSON" instruido — la garantía más parecida a la gramática de
@@ -36,21 +36,8 @@ const TEACHER_ROTATION: AiClient[] = [geminiClient, groqClient, mistralClient, s
 const OUTPUT_DIR = path.resolve(import.meta.dirname, '../../output/distillation-dataset');
 const MAX_TOKENS = 900;
 
-function readModelfileSystemPrompt(): string {
-  const modelfilePath = path.resolve(import.meta.dirname, '../../Modelfile');
-  const content = readFileSync(modelfilePath, 'utf-8');
-  const match = content.match(/SYSTEM\s+"""([\s\S]*?)"""/);
-  if (!match) throw new Error('[generate-distillation-dataset] no se pudo extraer el bloque SYSTEM de backend/Modelfile');
-  return match[1].trim();
-}
-
 function buildTeacherMessages(scenario: DistillationScenario, systemPrompt: string): { systemPrompt: string; userContent: string } {
-  const { prompt, format } = buildNarrationPrompt(scenario.ctx);
-  const userContent = `${prompt}
-
-Responde SOLO con un JSON válido, sin texto fuera del JSON, que cumpla EXACTAMENTE este JSON Schema — los campos con "enum" solo pueden tomar uno de esos valores exactos, nunca otro distinto ni inventado:
-${JSON.stringify(format, null, 2)}`;
-  return { systemPrompt, userContent };
+  return { systemPrompt, userContent: buildTeacherUserContent(scenario.ctx) };
 }
 
 async function callTeachers(systemPrompt: string, userContent: string): Promise<{ text: string; provider: string } | null> {
@@ -143,8 +130,8 @@ async function main() {
       continue;
     }
 
-    const schemaError = validateSchema(parsed, scenario);
-    const detectorError = schemaError ?? runDetectors(parsed, scenario);
+    const schemaError = validateSchema(parsed, scenario.ctx);
+    const detectorError = schemaError ?? runDetectors(parsed, scenario.ctx);
     if (detectorError) {
       console.warn(`  descartado (${result.provider}): ${detectorError}`);
       rejected++;

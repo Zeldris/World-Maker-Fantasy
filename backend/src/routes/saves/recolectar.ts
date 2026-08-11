@@ -2,6 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import { prisma } from '../../lib/prisma.js';
 import { metodoForOficio } from '../../services/harvestAbilities.js';
 import { detectHarvestSourcesInScene } from '../../services/harvest.js';
+import { detectNpcsInScene, scopeFor } from '../../services/npcScene.js';
 import { loadSessionFacts, appendSessionFacts } from '../../services/worldFacts.js';
 import { inventoryCapacityFor, totalInventoryUnits } from '../../services/inventoryCapacity.js';
 import { effectiveInventorySlotsBonus } from '../../services/equipment.js';
@@ -10,11 +11,18 @@ import { quantityOf } from '../../services/ingredients.js';
 import type { AttributeBlock } from '../../services/dice.js';
 import type { MetodoObtencion } from '@prisma/client';
 
-/// Recolección (rediseño de profesiones, 2026-08-07) — lado "recolectora" (minero/talador): a
-/// diferencia de las de oficio creador (crafting.ts, un solo objeto por texto libre), aquí el
-/// pop-up de la habilidad base ("Minar"/"Talar") necesita saber QUÉ hay recolectable antes de que
-/// el jugador escriba nada. Desuello (CAZA) no pasa por aquí — sigue el flujo de despiece normal
-/// ya existente (harvest.ts), targeteando una presa ya derrotada, no una fuente por explorar.
+/// Recolección (rediseño de profesiones, 2026-08-07) — lado "recolectora" (minero/talador/
+/// desollador): a diferencia de las de oficio creador (crafting.ts, un solo objeto por texto
+/// libre), aquí el pop-up de la habilidad base ("Minar"/"Talar"/"Desollar") necesita saber QUÉ hay
+/// recolectable antes de que el jugador escriba nada.
+///
+/// Desuello (CAZA, petición explícita 2026-08-09: "que al usar la habilidad de profesión de
+/// desollar funcione como el resto y explore la zona con los cadáveres derrotados en la zona")
+/// funciona distinto al resto de recolectoras: no hay `WorldPopulation` tipo RECURSO ni
+/// "Explorar" propio — sus "fuentes" son fauna YA vencida en combate (INCAPACITADO/MUERTO,
+/// decapitada o no) que la propia escena ya reconoce (`detectNpcsInScene`, mismo mecanismo
+/// determinista que saqueo/decapitar) y que todavía no se ha despiezado. Ver
+/// `carcassCandidatesFor` más abajo.
 
 /// Cooldown real por fuente (bug real jugando en vivo, 2026-08-07: "puedo darle a minar
 /// indefinidamente sin moverme de la zona" — la habilidad no costaba turno ni tenía ningún límite
@@ -81,14 +89,62 @@ async function candidateSourcesFor(
   return { candidates, anyOnCooldown };
 }
 
+/// Desuello (2026-08-09, ver comentario de cabecera) — "candidatos" son fauna ya en escena
+/// (`detectNpcsInScene`, mismo mecanismo determinista que ya usan saqueo/decapitar) que está
+/// vencida (`condicionFisica` INCAPACITADO o MUERTO — se pueda o no rematar/decapitar, no hace
+/// falta que esté MUERTA en concreto) y que todavía no se ha despiezado (`!saqueado`, mismo campo
+/// que ya reutiliza harvest.ts § `detectHarvest` para "yaDespiezada"). Solo cuenta fauna real
+/// (`ataqueNatural` no nulo — humanoides no se desuellan) con al menos una fila HarvestYield de
+/// método CAZA para su slug. Sin cooldown ni "Explorar": no hay nada que redescubrir, o el cadáver
+/// sigue en escena o no.
+async function carcassCandidatesFor(worldId: string, saveId: string, currentLocationId: string | null, sessionFacts: string[]): Promise<SourceCandidate[]> {
+  const npcsInScene = await detectNpcsInScene({ action: '', worldId, sessionFacts, saveId, currentLocationId });
+  const carcasses = npcsInScene.filter(
+    (n) => n.ataqueNatural !== null && !n.saqueado && (n.condicionFisica === 'INCAPACITADO' || n.condicionFisica === 'MUERTO'),
+  );
+  if (carcasses.length === 0) return [];
+
+  const rows = await prisma.harvestYield.findMany({
+    where: { worldId, metodoObtencion: 'CAZA', sourceSlug: { in: carcasses.map((c) => c.slug) } },
+    include: { item: true },
+  });
+  const bySlug = new Map<string, typeof rows>();
+  for (const row of rows) {
+    if (!bySlug.has(row.sourceSlug)) bySlug.set(row.sourceSlug, []);
+    bySlug.get(row.sourceSlug)!.push(row);
+  }
+
+  return carcasses
+    .filter((c) => bySlug.has(c.slug))
+    .map((c) => {
+      const yieldRows = bySlug.get(c.slug)!;
+      return {
+        sourceSlug: c.slug,
+        sourceName: c.name,
+        // A diferencia de RECURSO (`disponible` = población real, un tope compartido entre
+        // yields), un cadáver da CADA yield una sola vez, entero — `disponible` aquí solo existe
+        // para no truncar `Math.min(cantidadMaxima, disponible)` en el modal, así que se fija al
+        // mayor `cantidad` de sus propios yields (nunca el cuello de botella real).
+        disponible: Math.max(1, ...yieldRows.map((r) => r.cantidad)),
+        yields: yieldRows.map((r) => ({ itemSlug: r.item.slug, itemName: r.item.name, cantidadMaxima: r.cantidad })),
+      };
+    });
+}
+
 export async function recolectarRoutes(app: FastifyInstance) {
   app.get<{ Params: { id: string; oficio: string } }>('/saves/:id/recolectar/:oficio', async (request, reply) => {
     const metodo = metodoForOficio(request.params.oficio);
-    if (!metodo || metodo === 'CAZA') {
-      return reply.status(400).send({ error: `"${request.params.oficio}" no es un oficio recolector con exploración (usa el despiece normal para desuello)` });
+    if (!metodo) {
+      return reply.status(400).send({ error: `"${request.params.oficio}" no es un oficio recolector` });
     }
     const save = await prisma.save.findUnique({ where: { id: request.params.id }, include: { currentLocation: true } });
     if (!save) return reply.status(404).send({ error: 'Partida no encontrada' });
+
+    if (metodo === 'CAZA') {
+      const sessionFacts = await loadSessionFacts(save.id);
+      const sources = await carcassCandidatesFor(save.worldId, save.id, save.currentLocationId, sessionFacts);
+      return { sources, puedeExplorar: false, enCooldown: false };
+    }
 
     const { candidates, anyOnCooldown } = await candidateSourcesFor(save.worldId, metodo, save.currentLocation?.region ?? null);
     if (candidates.length === 0) return { sources: [], puedeExplorar: false, enCooldown: anyOnCooldown };
@@ -188,6 +244,13 @@ export async function recolectarRoutes(app: FastifyInstance) {
         // selección vería el `lastHarvestedAt` que la primera acaba de fijar hace un instante y se
         // bloquearía a sí misma en la misma petición).
         const sourcesTouchedThisRequest = new Set<string>();
+        // Solo para el texto determinista final (2026-08-09): "recolecta" no encaja para desuello
+        // ("Gorhorn recolecta: Piel de Corretolvas" suena a que la piel crecía en el suelo) — si
+        // TODO lo conseguido en esta petición vino de CAZA, el texto dice "despieza" en su lugar.
+        // El pop-up nunca mezcla oficios en una sola petición, pero esto no depende de esa
+        // suposición: si hay una mezcla real, se queda con el verbo neutro ("recolecta").
+        let anyCaza = false;
+        let anyNonCaza = false;
         for (const sel of selections) {
           if (sel.cantidad <= 0 || unitsRemaining <= 0) continue;
 
@@ -203,23 +266,47 @@ export async function recolectarRoutes(app: FastifyInstance) {
           if (!yieldRow) continue;
           const cantidad = Math.min(sel.cantidad, yieldRow.cantidad, unitsRemaining);
 
-          // Depleción atómica (mismo patrón que decrementPopulationOnDeath, population.ts) — el
-          // guard `poblacion: { gte: cantidad }` evita bajar de 0 sin necesitar releer nada antes.
-          // Cooldown real (bug real jugando en vivo, 2026-08-07: "minar indefinidamente sin
-          // moverme de la zona") en el MISMO guard atómico: si ya se recolectó esta fuente hace
-          // menos de `RECOLECCION_COOLDOWN_MS`, `count` da 0 igual que si no quedara población.
-          const result = await tx.worldPopulation.updateMany({
-            where: {
-              worldId: save.worldId,
-              targetType: 'RECURSO',
-              targetSlug: sel.sourceSlug,
-              poblacion: { gte: cantidad },
-              ...(sourcesTouchedThisRequest.has(sel.sourceSlug) ? {} : { OR: [{ lastHarvestedAt: null }, { lastHarvestedAt: { lt: cooldownCutoff } }] }),
-            },
-            data: { poblacion: { decrement: cantidad }, lastHarvestedAt: new Date() },
-          });
-          if (result.count === 0) continue;
-          sourcesTouchedThisRequest.add(sel.sourceSlug);
+          if (yieldRow.metodoObtencion === 'CAZA') {
+            // Desuello (2026-08-09): no hay `WorldPopulation` que depletar — el "recurso" es la
+            // presa misma, ya reducida al morir en combate. Claim atómico sobre `NpcState.saqueado`
+            // (mismo guard-en-el-where que ya usa el saqueo de NPCs con nombre): una única fuente
+            // puede dar varios yields distintos (piel + hueso del mismo cadáver) en la misma
+            // petición, así que el claim solo se intenta la PRIMERA vez que aparece este
+            // `sourceSlug` — las siguientes selecciones de la misma fuente ya lo dan por hecho
+            // (si no, la segunda vería `saqueado:true` recién puesto por la primera y se
+            // bloquearía a sí misma dentro de la misma petición).
+            if (!sourcesTouchedThisRequest.has(sel.sourceSlug)) {
+              const npc = await tx.npc.findUnique({ where: { worldId_slug: { worldId: save.worldId, slug: sel.sourceSlug } }, select: { id: true, kind: true } });
+              if (!npc) continue;
+              const scope = scopeFor(npc.kind, save.currentLocationId);
+              const claimed = await tx.npcState.updateMany({
+                where: { saveId: save.id, npcId: npc.id, scope, saqueado: false },
+                data: { saqueado: true },
+              });
+              if (claimed.count === 0) continue;
+              sourcesTouchedThisRequest.add(sel.sourceSlug);
+            }
+            anyCaza = true;
+          } else {
+            // Depleción atómica (mismo patrón que decrementPopulationOnDeath, population.ts) — el
+            // guard `poblacion: { gte: cantidad }` evita bajar de 0 sin necesitar releer nada antes.
+            // Cooldown real (bug real jugando en vivo, 2026-08-07: "minar indefinidamente sin
+            // moverme de la zona") en el MISMO guard atómico: si ya se recolectó esta fuente hace
+            // menos de `RECOLECCION_COOLDOWN_MS`, `count` da 0 igual que si no quedara población.
+            const result = await tx.worldPopulation.updateMany({
+              where: {
+                worldId: save.worldId,
+                targetType: 'RECURSO',
+                targetSlug: sel.sourceSlug,
+                poblacion: { gte: cantidad },
+                ...(sourcesTouchedThisRequest.has(sel.sourceSlug) ? {} : { OR: [{ lastHarvestedAt: null }, { lastHarvestedAt: { lt: cooldownCutoff } }] }),
+              },
+              data: { poblacion: { decrement: cantidad }, lastHarvestedAt: new Date() },
+            });
+            if (result.count === 0) continue;
+            sourcesTouchedThisRequest.add(sel.sourceSlug);
+            anyNonCaza = true;
+          }
           unitsRemaining -= cantidad;
 
           const catalogItem = yieldRow.item;
@@ -276,7 +363,8 @@ export async function recolectarRoutes(app: FastifyInstance) {
           const resumen = [...touched.values()]
             .map((s) => (s.quantity > 1 ? `${s.catalogName} (${s.quantity})` : s.catalogName))
             .join(', ');
-          const text = `${save.characterName} recolecta en la zona: ${resumen}.`;
+          const verbo = anyCaza && !anyNonCaza ? 'despieza una presa cercana' : 'recolecta en la zona';
+          const text = `${save.characterName} ${verbo}: ${resumen}.`;
           const timeLabel = save.worldState?.fictionalDateLabel ?? 'Día 1, mañana';
           const fictionalMinutes = save.worldState?.fictionalMinutes ?? 480;
           const created = await tx.logEntry.create({

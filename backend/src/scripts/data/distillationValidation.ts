@@ -12,8 +12,13 @@ import {
   hasPrematureCombatResolution,
   isTooSimilarToLast,
 } from '../../services/narrador.js';
-import type { NarrationResult } from '../../services/narrador.js';
-import type { DistillationScenario } from './distillationScenarios.js';
+import type { NarrationResult, buildNarrationPrompt } from '../../services/narrador.js';
+
+/// Firma común (2026-08-11, captura en vivo de pares DPO): antes recibían un `DistillationScenario`
+/// entero y solo leían `scenario.ctx.*` — se recibe el `ctx` directamente para que el servicio de
+/// captura en vivo (que nunca tiene un `DistillationScenario`, solo el mismo `ctx` real de
+/// `narrateAction`) pueda reutilizar estas dos funciones tal cual, sin un wrapper artificial.
+type ValidationCtx = Parameters<typeof buildNarrationPrompt>[0];
 
 const HITO_VALUES = ['descubrimiento', 'objetivo_menor', 'objetivo_mayor'];
 const CONDICION_VALUES = ['ILESO', 'HERIDO', 'GRAVE', 'INCAPACITADO', 'MUERTO'];
@@ -22,10 +27,10 @@ const QUEST_STATUS_VALUES = ['COMPLETADA', 'FALLIDA'];
 /// Validación de slugs/enums — la red de seguridad que Ollama garantiza por gramática y que un
 /// profesor cloud (sin esa restricción estructural) puede saltarse por pura alucinación. Esto es
 /// justo lo que habría cazado el "lobo_gris" inventado en el experimento en vivo de esta sesión.
-export function validateSchema(parsed: NarrationResult, scenario: DistillationScenario): string | null {
+export function validateSchema(parsed: NarrationResult, ctx: ValidationCtx): string | null {
   if (typeof parsed.narration !== 'string' || parsed.narration.trim().length === 0) return 'narration ausente o vacía';
   if (!Array.isArray(parsed.newFacts)) return 'newFacts no es un array';
-  const validSlugs = scenario.ctx.npcSlugsInScene ?? [];
+  const validSlugs = ctx.npcSlugsInScene ?? [];
   if (parsed.combateIniciado?.npcSlugs) {
     const invalid = parsed.combateIniciado.npcSlugs.filter((slug) => !validSlugs.includes(slug));
     if (invalid.length > 0) return `combateIniciado.npcSlugs con slug(s) inválido(s)/inventado(s): ${JSON.stringify(invalid)}`;
@@ -43,15 +48,15 @@ export function validateSchema(parsed: NarrationResult, scenario: DistillationSc
 /// ampliación del dataset) — hasta entonces protegían producción sin que el pipeline de destilación
 /// los ejercitara nunca, cero cobertura de entrenamiento para esas 3 clases de bug ya cazadas
 /// jugando en vivo.
-export function runDetectors(parsed: NarrationResult, scenario: DistillationScenario): string | null {
+export function runDetectors(parsed: NarrationResult, ctx: ValidationCtx): string | null {
   if (hasAnachronism(parsed.narration)) return 'anacronismo detectado (hasAnachronism)';
   if (hasEnglishLeak(parsed.narration)) return 'fuga de inglés detectada (hasEnglishLeak)';
-  if (hasFalseCombatHit(parsed.narration, scenario.ctx.combatBothMissed)) return 'golpe narrado sin conexión mecánica (hasFalseCombatHit)';
-  if (hasResurrectedDeadNpc(parsed.narration, scenario.ctx.possiblyResurrectedNpcNames)) return 'NPC muerto narrado como activo (hasResurrectedDeadNpc)';
-  if (hasFalseTravelClaim(parsed, scenario.ctx.possiblyFalseTravelDestinationNames)) return 'llegada a destino ambiguo sin resolver (hasFalseTravelClaim)';
-  if (hasFalseItemUse(parsed.narration, scenario.ctx.possiblyFalseItemUseNames)) return 'uso de objeto narrado sin respaldo mecánico (hasFalseItemUse)';
-  if (hasPrematureCombatResolution(parsed.narration, scenario.ctx.combatNotYetResolved)) return 'combate resuelto sin intercambio mecánico (hasPrematureCombatResolution)';
-  if (isTooSimilarToLast(parsed.narration, scenario.ctx.lastNarrationText)) return 'narración demasiado parecida a la anterior (isTooSimilarToLast)';
+  if (hasFalseCombatHit(parsed.narration, ctx.combatBothMissed)) return 'golpe narrado sin conexión mecánica (hasFalseCombatHit)';
+  if (hasResurrectedDeadNpc(parsed.narration, ctx.possiblyResurrectedNpcNames)) return 'NPC muerto narrado como activo (hasResurrectedDeadNpc)';
+  if (hasFalseTravelClaim(parsed, ctx.possiblyFalseTravelDestinationNames)) return 'llegada a destino ambiguo sin resolver (hasFalseTravelClaim)';
+  if (hasFalseItemUse(parsed.narration, ctx.possiblyFalseItemUseNames)) return 'uso de objeto narrado sin respaldo mecánico (hasFalseItemUse)';
+  if (hasPrematureCombatResolution(parsed.narration, ctx.combatNotYetResolved)) return 'combate resuelto sin intercambio mecánico (hasPrematureCombatResolution)';
+  if (isTooSimilarToLast(parsed.narration, ctx.lastNarrationText)) return 'narración demasiado parecida a la anterior (isTooSimilarToLast)';
   return null;
 }
 

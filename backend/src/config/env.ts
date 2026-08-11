@@ -74,4 +74,14 @@ export const env = {
   /// tanto de la cuota de Mistral/SambaNova.
   groqApiKey: process.env.GROQ_API_KEY ?? '',
   groqModel: process.env.GROQ_MODEL ?? 'llama-3.3-70b-versatile',
+
+  /// Captura en vivo para el pipeline DPO (plan "IA local propia", fase 2 — pares de preferencia
+  /// chosen/rejected, en paralelo al pipeline SFT existente) — apagado por defecto: nunca se llama
+  /// a un proveedor cloud durante partidas reales salvo que se active explícitamente (consume la
+  /// MISMA cuota gratuita compartida con generate-distillation-dataset.ts).
+  liveTeacherCaptureEnabled: (process.env.LIVE_TEACHER_CAPTURE_ENABLED ?? 'false') === 'true',
+  /// Fracción de turnos narrados por el modelo local que además disparan una captura en segundo
+  /// plano (0 a 1). 0.3 por defecto: suficiente densidad de pares DPO sin agotar la cuota gratuita
+  /// de los proveedores cloud en una sesión larga de juego.
+  liveTeacherCaptureSampleRate: Number(process.env.LIVE_TEACHER_CAPTURE_SAMPLE_RATE ?? 0.3),
 };

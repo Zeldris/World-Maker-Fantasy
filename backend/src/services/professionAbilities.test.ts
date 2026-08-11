@@ -3,30 +3,39 @@ import { professionAbilityUnlocksFor, allProfessionAbilityUnlocks } from './prof
 import { CRAFTING_RECIPES, detectsCraftIntent } from './crafting.js';
 
 describe('professionAbilityUnlocksFor', () => {
-  it('carpintero nivel 1 desbloquea "Tallar bloque de piedra"', () => {
-    const result = professionAbilityUnlocksFor('carpintero', 1);
+  // Ids escalados por raza+región (2026-08-09, professions.ts) — el emparejamiento sigue siendo
+  // por igualdad EXACTA contra `recipe.oficio` (crafting.ts), a diferencia de harvestAbilities.ts
+  // (recolectoras, por prefijo): una receta de creación pertenece a UNA variante concreta, nunca a
+  // "cualquier herrero", así que no hace falta tolerancia de prefijo aquí.
+  it('carpintero-orcos-llanuras nivel 1 NO desbloquea nada (STONE_BLOCK_RECIPE es de constructor, no de carpintero)', () => {
+    const result = professionAbilityUnlocksFor('carpintero-orcos-llanuras', 1);
+    expect(result).toHaveLength(0);
+  });
+
+  it('constructor-orcos-llanuras nivel 1 desbloquea "Tallar bloque de piedra"', () => {
+    const result = professionAbilityUnlocksFor('constructor-orcos-llanuras', 1);
     expect(result).toHaveLength(1);
     expect(result[0].name).toBe('Tallar bloque de piedra');
     expect(result[0].category).toBe('profesion');
   });
 
-  it('herrero nivel 2 desbloquea solo el lingote de hierro (tier 2), no las de tier 3 todavía', () => {
-    const result = professionAbilityUnlocksFor('herrero', 2);
+  it('herrero-orco-llanuras nivel 2 desbloquea solo el lingote de hierro (tier 2), no las de tier 3 todavía', () => {
+    const result = professionAbilityUnlocksFor('herrero-orco-llanuras', 2);
     expect(result.map((a) => a.name)).toEqual(['Fundir lingote de hierro']);
   });
 
-  it('herrero nivel 3 desbloquea las dos recetas de tier 3 (hacha y peto)', () => {
-    const result = professionAbilityUnlocksFor('herrero', 3);
+  it('herrero-orco-llanuras nivel 3 desbloquea las dos recetas de tier 3 (hacha y peto)', () => {
+    const result = professionAbilityUnlocksFor('herrero-orco-llanuras', 3);
     expect(result.map((a) => a.name).sort()).toEqual(['Fabricar peto de gargantúa', 'Reparar hacha de guerra'].sort());
   });
 
-  it('sanador nivel 2 desbloquea el antídoto', () => {
-    const result = professionAbilityUnlocksFor('sanador', 2);
+  it('alquimista-orcos-llanuras nivel 2 desbloquea el antídoto (oficio remapeado de "sanador", ya retirado)', () => {
+    const result = professionAbilityUnlocksFor('alquimista-orcos-llanuras', 2);
     expect(result.map((a) => a.name)).toEqual(['Preparar antídoto']);
   });
 
   it('un oficio/nivel sin ninguna receta gateada no desbloquea nada', () => {
-    expect(professionAbilityUnlocksFor('herrero', 1)).toEqual([]);
+    expect(professionAbilityUnlocksFor('herrero-orco-llanuras', 1)).toEqual([]);
     expect(professionAbilityUnlocksFor('cazador', 1)).toEqual([]);
   });
 
