@@ -188,9 +188,10 @@ describe('Misión de apertura: combate contra el Orco Enfurecido (integración r
   }, 15_000);
 
   // Cobertura nueva (2026-07-31, petición explícita: "si no saqueas todo el botón sigue para poder
-  // saquear lo que dejaste") — el Orco Enfurecido lleva 3 objetos de catálogo (Maza orca, Amuleto
-  // de hueso, Mapa de las Llanuras, ver worldCatalog.ts); saquear solo uno dejando los otros dos
-  // NO debe marcarlo `saqueado`, y una segunda pasada por el resto no debe duplicar el primero.
+  // saquear lo que dejaste") — el Orco Enfurecido lleva 2 objetos de catálogo (Maza orca, Amuleto
+  // de hueso — "Mapa de las Llanuras" se quitó del loadout el 2026-08-13, ahora solo se entrega
+  // como recompensa de misión, ver worldCatalog.ts); saquear solo uno dejando el otro NO debe
+  // marcarlo `saqueado`, y una segunda pasada por el resto no debe duplicar el primero.
   it('saqueo parcial: dejar objetos sin marcar no marca `saqueado`, y una segunda pasada no duplica lo ya tomado', async () => {
     // A diferencia del ataque tabulado (test de arriba), "registrar el cuerpo" no tiene atajo
     // tabulado propio en /turn/classify — cae a `classifyAction` (mockeada en todo el archivo,
@@ -211,7 +212,7 @@ describe('Misión de apertura: combate contra el Orco Enfurecido (integración r
     });
 
     const afterFirst = await prisma.npcState.findFirst({ where: { saveId, npcId } });
-    expect(afterFirst?.saqueado).toBe(false); // quedan 2 objetos sin tomar
+    expect(afterFirst?.saqueado).toBe(false); // queda 1 objeto sin tomar
     expect(afterFirst?.lootedItemNames).toEqual(['Maza orca']);
     const inventoryAfterFirst = await prisma.inventoryItem.findMany({ where: { saveId } });
     expect(inventoryAfterFirst.map((i) => i.name)).toEqual(['Maza orca']);
@@ -232,8 +233,8 @@ describe('Misión de apertura: combate contra el Orco Enfurecido (integración r
     expect(narrateAction).not.toHaveBeenCalled();
     expect(lastNdjsonLine(narrateRes.payload).narration).toEqual({ narration: expect.stringContaining('Maza orca'), newFacts: [] });
 
-    // Segunda pasada — re-selecciona "Maza orca" (ya tomada) + los 2 que faltaban: no debe
-    // duplicar la maza, y ahora sí debe quedar completamente saqueado.
+    // Segunda pasada — re-selecciona "Maza orca" (ya tomada) + el que faltaba: no debe duplicar
+    // la maza, y ahora sí debe quedar completamente saqueado.
     const classifyRes2 = await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action, enCombate: true } });
     const { classification: classification2, roll: roll2 } = classifyRes2.json();
     await app.inject({
@@ -245,15 +246,15 @@ describe('Misión de apertura: combate contra el Orco Enfurecido (integración r
         classification: classification2,
         roll: roll2,
         enCombate: true,
-        lootItemNames: ['Maza orca', 'Amuleto de hueso', 'Mapa de las Llanuras'],
+        lootItemNames: ['Maza orca', 'Amuleto de hueso'],
       },
     });
 
     const afterSecond = await prisma.npcState.findFirst({ where: { saveId, npcId } });
     expect(afterSecond?.saqueado).toBe(true);
-    expect(afterSecond?.lootedItemNames).toEqual(expect.arrayContaining(['Maza orca', 'Amuleto de hueso', 'Mapa de las Llanuras']));
+    expect(afterSecond?.lootedItemNames).toEqual(expect.arrayContaining(['Maza orca', 'Amuleto de hueso']));
     const inventoryAfterSecond = await prisma.inventoryItem.findMany({ where: { saveId } });
-    expect(inventoryAfterSecond.map((i) => i.name).sort()).toEqual(['Amuleto de hueso', 'Mapa de las Llanuras', 'Maza orca']);
+    expect(inventoryAfterSecond.map((i) => i.name).sort()).toEqual(['Amuleto de hueso', 'Maza orca']);
     // Ya saqueado del todo — no hay nada pendiente, `pendingCombatNpcSlugs` vuelve a quedar vacío.
     const saveAfterFullLoot = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
     expect(saveAfterFullLoot.pendingCombatNpcSlugs).toEqual([]);
@@ -1576,10 +1577,11 @@ describe('Saqueo: condición de carrera en turnos concurrentes (auditoría 2026-
     const action = "Registro el cuerpo de 'Orco enfurecido'.";
     const [res1, res2] = await Promise.all([doTurn(saveId, action), doTurn(saveId, action)]);
 
-    // 3 objetos de catálogo en el loadout del Orco Enfurecido (Maza orca, Amuleto de hueso, Mapa
-    // de las Llanuras, ver worldCatalog.ts) — si la carrera duplicara el botín, saldrían 6.
+    // 2 objetos de catálogo en el loadout del Orco Enfurecido (Maza orca, Amuleto de hueso — "Mapa
+    // de las Llanuras" se quitó del loadout el 2026-08-13, ahora solo se entrega como recompensa
+    // de misión, ver worldCatalog.ts) — si la carrera duplicara el botín, saldrían 4.
     const items = await prisma.inventoryItem.findMany({ where: { saveId } });
-    expect(items).toHaveLength(3);
+    expect(items).toHaveLength(2);
     const state = await prisma.npcState.findUniqueOrThrow({ where: { saveId_npcId_scope: { saveId, npcId, scope: '' } } });
     expect(state.saqueado).toBe(true);
 

@@ -139,9 +139,18 @@ async function main() {
       create: { worldId, ...npcData, habilidadesRaciales: habilidadesRacialesJson },
     });
 
-    for (const entry of loadout) {
+    const loadoutItemIds = loadout.map((entry) => {
       const itemId = itemIdBySlug.get(entry.itemSlug);
       if (!itemId) throw new Error(`NPC "${npc.slug}" lleva un objeto desconocido: ${entry.itemSlug}`);
+      return itemId;
+    });
+    // Mismo bug que ya se arregló para locationLink (2026-08-03): un upsert por entrada nunca
+    // borra lo que se QUITÓ del loadout en worldCatalog.ts — un objeto retirado del código se
+    // quedaba vivo en la DB para siempre (bug real, 2026-08-13: "Mapa de las Llanuras" seguía
+    // saqueable del Orco Enfurecido tras quitarlo del loadout, porque ya estaba seedado).
+    await prisma.npcItem.deleteMany({ where: { npcId: row.id, itemId: { notIn: loadoutItemIds } } });
+    for (const entry of loadout) {
+      const itemId = itemIdBySlug.get(entry.itemSlug)!;
       await prisma.npcItem.upsert({
         where: { npcId_itemId: { npcId: row.id, itemId } },
         update: { cantidad: entry.cantidad ?? 1, notas: entry.notas },
