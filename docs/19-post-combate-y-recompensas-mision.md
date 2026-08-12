@@ -83,6 +83,10 @@ el resto (`border-iron-700 text-wood-400`), sin ningún tratamiento especial. Ca
 acotado — nuevo caso en el mapa de colores por `status`, mismo patrón que los "3 fondos" ya
 existentes en `LogPanel.tsx` (notificación de misión aceptada, 2026-07-31).
 
+**Implementado y verificado (2026-08-13)**: nuevo `CARD_CLASS` (`MisionesPanel.tsx`) — la tarjeta
+entera de una misión `COMPLETADA` lleva fondo/borde amarillo (`bg-yellow-500/10 border-yellow-600/40`),
+no solo la pastilla de estado (que también pasa de gris a amarillo). `ACTIVA`/`FALLIDA` sin cambios.
+
 ### 5. Narración determinista de recompensas al completar
 
 Ligado al punto 3: cuando una misión pasa a `COMPLETADA`, debería generarse un `LogEntry`
