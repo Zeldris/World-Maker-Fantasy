@@ -265,6 +265,41 @@ async function main() {
   });
   console.log(`    ${backfilled.count} partida(s) actualizada(s) a La Hondonada del Eco.`);
 
+  // Backfill de InventoryItem huérfanas (2026-08-13, bugs reales jugando en vivo: "las
+  // estadísticas del inventario inicial no salen" + "el efecto del mapa no funciona y sale como
+  // objeto sin categorizar, equipable en cualquier ranura") — dos rutas de creación de
+  // InventoryItem (startingInventory.ts, grantQuestRewardItems en turnResolution.ts) no copiaban
+  // `catalogSlug`/`statBonuses` desde ItemCatalog antes de este fix; las filas ya creadas en
+  // partidas EN CURSO se quedaron así para siempre, sin volver a pasar por ese código. Solo toca
+  // filas cuyo nombre coincide EXACTO con un objeto de catálogo real, nunca uno inventado por el
+  // modelo (`newItem` sin ficha real detrás) — mismo criterio de "solo lo que existe de verdad"
+  // que el resto del motor.
+  console.log('  Backfill de InventoryItem sin catalogSlug/statBonuses...');
+  const catalogRowsForBackfill = await prisma.itemCatalog.findMany({ where: { worldId }, select: { slug: true, name: true, statBonuses: true } });
+  const catalogByName = new Map(catalogRowsForBackfill.map((c) => [c.name, c]));
+  const catalogBySlug = new Map(catalogRowsForBackfill.map((c) => [c.slug, c]));
+  const existingItems = await prisma.inventoryItem.findMany({
+    where: { save: { worldId } },
+    select: { id: true, name: true, catalogSlug: true, statBonuses: true },
+  });
+  let backfilledItems = 0;
+  for (const item of existingItems) {
+    const catalog = item.catalogSlug ? catalogBySlug.get(item.catalogSlug) : catalogByName.get(item.name);
+    if (!catalog) continue;
+    const needsCatalogSlug = !item.catalogSlug;
+    const needsStatBonuses = item.statBonuses === null && catalog.statBonuses !== null;
+    if (!needsCatalogSlug && !needsStatBonuses) continue;
+    await prisma.inventoryItem.update({
+      where: { id: item.id },
+      data: {
+        ...(needsCatalogSlug ? { catalogSlug: catalog.slug } : {}),
+        ...(needsStatBonuses ? { statBonuses: catalog.statBonuses ?? Prisma.JsonNull } : {}),
+      },
+    });
+    backfilledItems++;
+  }
+  console.log(`    ${backfilledItems} objeto(s) de inventario actualizado(s).`);
+
   console.log('Catálogo de mundo sembrado correctamente.');
 }
 

@@ -381,6 +381,7 @@ export async function recolectarRoutes(app: FastifyInstance) {
         await closeItemQuests(
           tx,
           save.id,
+          save.worldId,
           [...touched.values()].map((s) => s.catalogName),
           save.worldState?.fictionalDateLabel ?? 'Día 1, mañana',
           save.worldState?.fictionalMinutes ?? 480,

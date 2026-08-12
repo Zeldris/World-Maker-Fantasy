@@ -1135,14 +1135,35 @@ async function computeBuildBlockedReason(
 /// Deduplicado por nombre contra lo que el jugador YA tiene, para no duplicar si ya lo consiguió
 /// por otra vía (saqueo, crafteo...) antes de que la misión se cerrara — y para que llamar a esto
 /// dos veces sobre la misma misión ya recompensada no vuelva a crear nada.
-async function grantQuestRewardItems(tx: Prisma.TransactionClient, saveId: string, rewardItems: string[]): Promise<string[]> {
+async function grantQuestRewardItems(tx: Prisma.TransactionClient, saveId: string, worldId: string, rewardItems: string[]): Promise<string[]> {
   if (rewardItems.length === 0) return [];
   const owned = await tx.inventoryItem.findMany({ where: { saveId }, select: { name: true } });
   const ownedNormalized = new Set(owned.map((i) => normalizeText(i.name)));
   const toGrant = rewardItems.filter((name) => !ownedNormalized.has(normalizeText(name)));
   if (toGrant.length === 0) return [];
+  // Bug real jugando en vivo (2026-08-13): esta función creaba la InventoryItem con solo
+  // nombre/descripción genérica, sin `catalogSlug` ni `statBonuses` — el Mapa de las Llanuras
+  // entregado como recompensa salía "sin categorizar" en el inventario, equipable en CUALQUIER
+  // ranura (`isCompatibleWithSlot`, equipSlots.ts, trata "sin catalogSlug" como objeto narrativo
+  // suelto sin nada contra que validar, a propósito permisivo para eso) y su propio efecto
+  // (`effectKey`, MapaPanel.tsx) nunca se activaba, porque ese lookup también depende de
+  // catalogSlug. Se resuelve por nombre EXACTO contra ItemCatalog del mundo — mismo criterio que
+  // ya usa el saqueo/crafteo real (turnResolution.ts arriba), nunca un objeto "de recompensa" sin
+  // ficha real detrás si existe una.
+  const catalogRows = await tx.itemCatalog.findMany({ where: { worldId, name: { in: toGrant } } });
+  const catalogByName = new Map(catalogRows.map((c) => [c.name, c]));
   await tx.inventoryItem.createMany({
-    data: toGrant.map((name) => ({ saveId, name, description: 'Recompensa de misión.', origin: 'recompensa de misión' })),
+    data: toGrant.map((name) => {
+      const catalog = catalogByName.get(name);
+      return {
+        saveId,
+        name,
+        description: catalog?.description ?? 'Recompensa de misión.',
+        origin: 'recompensa de misión',
+        catalogSlug: catalog?.slug,
+        statBonuses: catalog?.statBonuses ?? Prisma.JsonNull,
+      };
+    }),
   });
   return toGrant;
 }
@@ -1170,6 +1191,7 @@ function questRewardNarrationFor(questTitle: string, grantedItems: string[], rew
 export async function closeItemQuests(
   tx: Prisma.TransactionClient,
   saveId: string,
+  worldId: string,
   createdItemNames: string[],
   timeLabel: string,
   fictionalMinutes: number,
@@ -1183,7 +1205,7 @@ export async function closeItemQuests(
     const conseguido = createdItemNames.some((name) => normalizeText(name).includes(targetNormalized));
     if (conseguido) {
       await tx.quest.update({ where: { id: quest.id }, data: { status: 'COMPLETADA' } });
-      const grantedItems = await grantQuestRewardItems(tx, saveId, quest.rewardItems);
+      const grantedItems = await grantQuestRewardItems(tx, saveId, worldId, quest.rewardItems);
       if (grantedItems.length > 0 || quest.rewardXp) {
         await tx.logEntry.create({
           data: {
@@ -1209,6 +1231,7 @@ export async function closeItemQuests(
 async function completeNpcTargetQuests(
   tx: Prisma.TransactionClient,
   saveId: string,
+  worldId: string,
   npcId: string,
   timeLabel: string,
   fictionalMinutes: number,
@@ -1217,7 +1240,7 @@ async function completeNpcTargetQuests(
   let lastCompleted: QuestCompletedInfo | null = null;
   for (const quest of activeQuestsWithNpc) {
     await tx.quest.update({ where: { id: quest.id }, data: { status: 'COMPLETADA' } });
-    const grantedItems = await grantQuestRewardItems(tx, saveId, quest.rewardItems);
+    const grantedItems = await grantQuestRewardItems(tx, saveId, worldId, quest.rewardItems);
     if (grantedItems.length > 0 || quest.rewardXp) {
       const rewardText = questRewardNarrationFor(quest.title, grantedItems, quest.rewardXp);
       const rewardEntry = await tx.logEntry.create({
@@ -2737,7 +2760,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
         // sola en cuanto cae — el modelo nunca tiene que acertar el título EXACTO vía
         // questProgress para el caso más común de misión de combate ("derrotar a X"). También
         // concede rewardItems/rewardXp de verdad y narra la recompensa (docs/19 pieza 3).
-        const completedHere = await completeNpcTargetQuests(tx, saveId, npcAttackTarget.id, nuevaFictionalDateLabel, nuevoFictionalMinutes);
+        const completedHere = await completeNpcTargetQuests(tx, saveId, worldId, npcAttackTarget.id, nuevaFictionalDateLabel, nuevoFictionalMinutes);
         if (completedHere) questCompletedInfo = completedHere;
 
         // Reputación de facción determinista (roadmap 2026-07-19, prioridad 4): reutiliza
@@ -2790,7 +2813,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
       // Mismo cierre + recompensa real que un golpe normal que deja MUERTO al objetivo (bloque de
       // arriba) — en la práctica la misión ya se cerró al quedar INCAPACITADO, esto solo cubre el
       // caso raro de que no lo hiciera.
-      const completedByExecute = await completeNpcTargetQuests(tx, saveId, executeTarget.id, nuevaFictionalDateLabel, nuevoFictionalMinutes);
+      const completedByExecute = await completeNpcTargetQuests(tx, saveId, worldId, executeTarget.id, nuevaFictionalDateLabel, nuevoFictionalMinutes);
       if (completedByExecute) questCompletedInfo = completedByExecute;
       if (executeTarget.faction) {
         const currentWorldState = await tx.worldState.findUnique({ where: { saveId }, select: { factionsStatus: true } });
@@ -3379,7 +3402,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
           // La misión nace ya COMPLETADA (nunca pasa por `completeNpcTargetQuests`, que solo
           // actúa sobre misiones que YA estaban ACTIVA) — hay que conceder el mapa aquí mismo o
           // se perdería para siempre en este camino concreto (orco ya resuelto antes de aceptar).
-          const grantedItems = await grantQuestRewardItems(tx, saveId, ['Mapa de las Llanuras']);
+          const grantedItems = await grantQuestRewardItems(tx, saveId, worldId, ['Mapa de las Llanuras']);
           if (grantedItems.length > 0) {
             const rewardText = questRewardNarrationFor('Acabar con el Orco Enfurecido', grantedItems, 100);
             const rewardEntry = await tx.logEntry.create({
@@ -3444,7 +3467,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     // Cierre de misión "conseguir Z" (roadmap 2026-07-20, P1 de Fable, Quest.targetItemName):
     // cualquier objeto materializado ESTE turno (loot/despiece/producción/crafteo/newItem, ver
     // createdItemNames más arriba) que mencione el nombre objetivo cierra la misión sola.
-    await closeItemQuests(tx, saveId, createdItemNames, nuevaFictionalDateLabel, nuevoFictionalMinutes);
+    await closeItemQuests(tx, saveId, worldId, createdItemNames, nuevaFictionalDateLabel, nuevoFictionalMinutes);
 
     // Posición (docs/12 § 1.4 paso 7): al llegar, currentLocationId cambia al destino y se
     // registran visitas (destino + nodos intermedios), sin XP salvo la primera vez en el destino.

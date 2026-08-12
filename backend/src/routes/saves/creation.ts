@@ -5,7 +5,7 @@ import { energiaMaxFor } from '../../services/energy.js';
 import { startingAbilitiesFor } from '../../services/startingAbilities.js';
 import { GENERIC_COMBAT_ABILITIES } from '../../services/genericCombatAbilities.js';
 import { classAbilityUnlocksFor } from '../../services/classAbilities.js';
-import { startingInventoryFor } from '../../services/startingInventory.js';
+import { startingInventoryFor, type StartingInventoryItem } from '../../services/startingInventory.js';
 import { startingProfessionsFor } from '../../services/startingProfessions.js';
 import { professionAbilityUnlocksFor } from '../../services/professionAbilities.js';
 import { harvestAbilityUnlocksFor } from '../../services/harvestAbilities.js';
@@ -52,6 +52,30 @@ function validationErrorFor(body: CreateSaveBody): string | null {
   if (invalidValue) return `El atributo "${invalidValue}" debe ser un número`;
 
   return null;
+}
+
+/// Bug real jugando en vivo (2026-08-13, "las estadísticas del inventario inicial no salen"):
+/// `GORHORN_STARTING_INVENTORY` (startingInventory.ts) enlaza cada objeto a su ItemCatalog vía
+/// `catalogSlug`, pero ninguna entrada rellena `statBonuses` a mano — a diferencia del saqueo/
+/// crafteo real (turnResolution.ts), que SÍ copian `statBonuses` del catálogo al crear la
+/// InventoryItem, esta ruta nunca lo hacía, así que el hacha/cuchillo/armadura "de serie" de
+/// Gorhorn se creaban con `statBonuses: null` para siempre. Se resuelve aquí, una sola vez, contra
+/// ItemCatalog — mismo criterio de "el catálogo es la fuente de verdad" que ya usa
+/// `grantQuestRewardItems`.
+async function withCatalogStatBonuses(
+  tx: Prisma.TransactionClient,
+  worldId: string,
+  items: StartingInventoryItem[],
+): Promise<StartingInventoryItem[]> {
+  const slugs = items.map((i) => i.catalogSlug).filter((s): s is string => !!s);
+  if (slugs.length === 0) return items;
+  const catalogRows = await tx.itemCatalog.findMany({ where: { worldId, slug: { in: slugs } }, select: { slug: true, statBonuses: true } });
+  const statBonusesBySlug = new Map(catalogRows.map((r) => [r.slug, r.statBonuses]));
+  return items.map((item) => {
+    if (item.statBonuses || !item.catalogSlug) return item;
+    const catalogBonuses = statBonusesBySlug.get(item.catalogSlug);
+    return catalogBonuses ? { ...item, statBonuses: catalogBonuses as StartingInventoryItem['statBonuses'] } : item;
+  });
 }
 
 interface CreateSaveBody {
@@ -179,7 +203,7 @@ export async function creationRoutes(app: FastifyInstance) {
               ],
             },
             inventoryItems: {
-              create: startingInventoryFor(characterName),
+              create: await withCatalogStatBonuses(tx, world.id, startingInventoryFor(characterName)),
             },
             quests: {
               create: startingQuestsData,
@@ -328,8 +352,9 @@ export async function creationRoutes(app: FastifyInstance) {
             ]),
           ],
         });
+        const startingInventoryWithStats = await withCatalogStatBonuses(tx, save.worldId, startingInventoryFor(save.characterName));
         const restartedInventory = await tx.inventoryItem.createManyAndReturn({
-          data: startingInventoryFor(save.characterName).map((i) => ({ ...i, saveId: save.id })),
+          data: startingInventoryWithStats.map((i) => ({ ...i, saveId: save.id })),
         });
         // Bug real (2026-07-29, encontrado probando en vivo): reiniciar nunca llamaba a
         // syncDynamicCombatAbilities — las raciales/de arma (isDynamic) se borraban arriba junto

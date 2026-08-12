@@ -1729,6 +1729,67 @@ describe('Decapitar cierra una misión "derrotar a X" con rewardItems y entrega 
   }, 20_000);
 });
 
+// Bug real jugando en vivo (2026-08-13, "el efecto del mapa no está funcionando y sale en el
+// inventario como objeto sin categorizar... y me deja ponerlo en cualquier ranura de equipo"):
+// `grantQuestRewardItems` creaba la InventoryItem con solo nombre/descripción genérica, sin
+// `catalogSlug` — sin ese enlace, MapaPanel.tsx (efecto `reveal-map-llanuras`) nunca lo encontraba
+// y `isCompatibleWithSlot` (frontend) trataba el objeto como "narrativo suelto sin catálogo",
+// permisivo por diseño para ESE caso — dejándolo equipar en cualquier ranura. Usa el nombre EXACTO
+// del catálogo real ("Mapa de las Llanuras", sin sufijo de prueba) a propósito, para que el lookup
+// por nombre contra ItemCatalog encuentre la fila real.
+describe('La recompensa de misión enlaza con ItemCatalog cuando el nombre coincide (2026-08-13)', () => {
+  let saveId: string;
+  let npcId: string;
+
+  beforeAll(async () => {
+    const userId = await getDefaultUserId();
+    const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
+    const hondonada = await prisma.location.findFirstOrThrow({ where: { worldId: world.id, slug: 'hondonada-del-eco' } });
+    const orco = await prisma.npc.findFirstOrThrow({ where: { worldId: world.id, slug: 'orco-enfurecido-hondonada' } });
+    npcId = orco.id;
+    const save = await prisma.save.create({
+      data: {
+        userId,
+        worldId: world.id,
+        characterName: 'Gorhorn de prueba 18',
+        characterArchetype: 'guerrero',
+        characterOrigin: 'Clan Maktor',
+        characterMotivation: 'x',
+        attributes: ATTRS,
+        portraitInitial: 'G',
+        currentLocationId: hondonada.id,
+      },
+    });
+    saveId = save.id;
+    await prisma.worldState.create({ data: { saveId } });
+    await prisma.npcState.create({ data: { saveId, npcId, scope: '', condicionFisica: 'INCAPACITADO' } });
+    await prisma.quest.create({
+      data: {
+        saveId,
+        title: 'Acabar con el Orco Enfurecido (prueba 2)',
+        description: 'x',
+        status: 'ACTIVA',
+        targetNpcId: npcId,
+        rewardItems: ['Mapa de las Llanuras'],
+      },
+    });
+    classifyAction.mockResolvedValue({
+      requiereTirada: false, atributo: 'fuerza', dificultad: 8, razon: 'x', banda: 'instantanea', duracionEstimadaMinutos: 0,
+    });
+  });
+
+  afterAll(async () => {
+    await prisma.save.delete({ where: { id: saveId } });
+  });
+
+  it('el objeto concedido lleva el catalogSlug real, no un objeto sin categorizar', async () => {
+    await doTurn(saveId, 'Decapito al Orco Enfurecido de un solo golpe.');
+
+    const item = await prisma.inventoryItem.findFirstOrThrow({ where: { saveId, name: 'Mapa de las Llanuras' } });
+    expect(item.catalogSlug).toBe('mapa-de-las-llanuras');
+  }, 20_000);
+});
+
 // docs/19-post-combate-y-recompensas-mision.md pieza 2 (2026-08-13) — recuperación de INCAPACITADO
 // a las 6h de ficción y desaparición de un cadáver a las 48h. `applyCondicionTimeouts` se dispara
 // dentro de CUALQUIER turno resuelto (mismo punto que avanza `fictionalMinutes`), así que un turno

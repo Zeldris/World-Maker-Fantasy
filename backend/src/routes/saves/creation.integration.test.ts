@@ -59,3 +59,45 @@ describe('POST /saves/:id/restart limpia el combate pendiente de la partida ante
     expect(restarted.condicionFisica).toBe('ILESO');
   }, 15_000);
 });
+
+// Bug real jugando en vivo (2026-08-13, "las estadísticas del inventario inicial no salen"):
+// `startingInventoryFor` enlaza cada objeto a su ItemCatalog vía `catalogSlug`, pero nunca
+// rellenaba `statBonuses` — a diferencia del saqueo/crafteo real, que sí lo copian del catálogo al
+// crear la InventoryItem. `characterName` tiene que ser EXACTAMENTE "Gorhorn" (no un sufijo de
+// prueba) — `startingInventoryFor` solo devuelve el kit real para ese nombre exacto.
+describe('POST /saves/:id/restart rellena statBonuses del inventario inicial desde el catálogo', () => {
+  let saveId: string;
+
+  beforeAll(async () => {
+    const userId = await getDefaultUserId();
+    const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
+    const save = await prisma.save.create({
+      data: {
+        userId,
+        worldId: world.id,
+        characterName: 'Gorhorn',
+        characterArchetype: 'guerrero',
+        characterOrigin: 'Clan Maktor',
+        characterMotivation: 'x',
+        attributes: { fuerza: 10, destreza: 10, constitucion: 10, inteligencia: 10, voluntad: 10, carisma: 10, arcano: 10 },
+        portraitInitial: 'G',
+      },
+    });
+    saveId = save.id;
+    await prisma.worldState.create({ data: { saveId } });
+  });
+
+  afterAll(async () => {
+    await prisma.save.delete({ where: { id: saveId } });
+  });
+
+  it('el hacha de guerra inicial trae su bonificador de fuerza del catálogo', async () => {
+    const app = await buildApp();
+    const res = await app.inject({ method: 'POST', url: `/saves/${saveId}/restart`, payload: {} });
+    expect(res.statusCode).toBe(200);
+
+    const hacha = await prisma.inventoryItem.findFirstOrThrow({ where: { saveId, name: 'Hacha de guerra rota' } });
+    expect(hacha.catalogSlug).toBe('hacha-guerra-maktor-rota');
+    expect(hacha.statBonuses).toEqual({ fuerza: 1 });
+  }, 15_000);
+});
