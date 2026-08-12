@@ -1,5 +1,11 @@
 # Roadmap — Tarkor (auditoría, 2026-07-18)
 
+**Actualización (2026-08-13):** todo lo anotado el día anterior, implementado y verificado en una
+sola sesión ("sigue e implementa todas las fases que sacamos ayer al roadmap"): validador de
+grounding completo (Fase 0 + Fase 1 + Fase 2, docs/18) y las 5 piezas de post-combate/recompensas
+(docs/19), más el fix del regex de resurrección del Orco Enfurecido diagnosticado el día anterior.
+11 commits, tsc + vitest limpios en backend y frontend en todo momento. Pendiente: jugarlo en vivo.
+
 **Actualización (2026-08-12, continuación):** investigación cerrada (nada implementado, a propósito
 — "para mañana") sobre post-combate y recompensas de misión: narrar explícitamente la inconsciencia
 al terminar un combate, recuperación tras 6h de tiempo de ficción si no se decapita (no existe hoy),
