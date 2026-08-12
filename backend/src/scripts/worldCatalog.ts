@@ -1402,10 +1402,14 @@ export const npcs: NpcInput[] = [
     clase: 'Guerrero',
     temperamento: 'AGRESIVO',
     capturablePct: 0,
+    // "Mapa de las Llanuras" quitado del loadout a propósito (2026-08-13, petición explícita:
+    // "el loot del orco será todo menos el mapa, el mapa se te dará como resultado de dejar
+    // inconsciente al orco") — ya no se saquea del cadáver, se entrega solo como recompensa real
+    // de la misión "Acabar con el Orco Enfurecido" (Quest.rewardItems, ver
+    // completeNpcTargetQuests en turnResolution.ts), desacoplado del saqueo.
     loadout: [
       { itemSlug: 'maza-orca', notas: 'Astillada, con sangre seca' },
       { itemSlug: 'amuleto-hueso' },
-      { itemSlug: 'mapa-de-las-llanuras' },
     ],
   },
 

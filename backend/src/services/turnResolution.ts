@@ -1106,6 +1106,35 @@ async function computeBuildBlockedReason(
   return null;
 }
 
+/// Entrega real de los `InventoryItem` prometidos por `Quest.rewardItems` al completarse una
+/// misión (docs/19-post-combate-y-recompensas-mision.md, pieza 3). Antes ese campo era solo texto
+/// para mostrar en el panel (ver comentario en schema.prisma) — nunca creaba el objeto de verdad,
+/// la entrega dependía enteramente de que el loot normal del cadáver también lo incluyera.
+/// Deduplicado por nombre contra lo que el jugador YA tiene, para no duplicar si ya lo consiguió
+/// por otra vía (saqueo, crafteo...) antes de que la misión se cerrara — y para que llamar a esto
+/// dos veces sobre la misma misión ya recompensada no vuelva a crear nada.
+async function grantQuestRewardItems(tx: Prisma.TransactionClient, saveId: string, rewardItems: string[]): Promise<string[]> {
+  if (rewardItems.length === 0) return [];
+  const owned = await tx.inventoryItem.findMany({ where: { saveId }, select: { name: true } });
+  const ownedNormalized = new Set(owned.map((i) => normalizeText(i.name)));
+  const toGrant = rewardItems.filter((name) => !ownedNormalized.has(normalizeText(name)));
+  if (toGrant.length === 0) return [];
+  await tx.inventoryItem.createMany({
+    data: toGrant.map((name) => ({ saveId, name, description: 'Recompensa de misión.', origin: 'recompensa de misión' })),
+  });
+  return toGrant;
+}
+
+/// Narración determinista de recompensa (docs/19 pieza 5) — mismo criterio de "nunca lo decide el
+/// modelo" que ya rige saqueo/despiece/crafteo. Solo se llama cuando hay algo real que anunciar
+/// (objetos concedidos de verdad esta vez, o XP) — nunca para una misión ya recompensada antes.
+function questRewardNarrationFor(questTitle: string, grantedItems: string[], rewardXp: number | null): string {
+  const parts: string[] = [];
+  if (grantedItems.length > 0) parts.push(`consigue ${grantedItems.join(', ')}`);
+  if (rewardXp) parts.push(`+${rewardXp} XP`);
+  return `Misión completada: "${questTitle}"${parts.length > 0 ? ` — ${parts.join(', ')}` : ''}.`;
+}
+
 /// Cierre determinista de misión "conseguir Z" (`Quest.targetItemName`) — cualquier objeto
 /// materializado de verdad esta transacción que mencione el nombre objetivo cierra la misión sola,
 /// sin pasar por el modelo. Extraída (auditoría 2026-08-11, "pruebas por API") de dentro de
@@ -1114,7 +1143,15 @@ async function computeBuildBlockedReason(
 /// camino de turno normal (saqueo/despiece narrado/crafteo/`newItem`), así que cualquier misión
 /// "consígueme N de X" quedaba imposible de completar si X se obtenía minando/talando/cazando por
 /// el flujo real del jugador (los botones de Minar/Talar/Cazar), aunque el objeto se creara bien.
-export async function closeItemQuests(tx: Prisma.TransactionClient, saveId: string, createdItemNames: string[]): Promise<void> {
+/// `timeLabel`/`fictionalMinutes` (2026-08-13, pieza 3): para poder anunciar la recompensa con un
+/// `LogEntry` real, mismo criterio que el resto del motor — nunca solo un cambio de estado mudo.
+export async function closeItemQuests(
+  tx: Prisma.TransactionClient,
+  saveId: string,
+  createdItemNames: string[],
+  timeLabel: string,
+  fictionalMinutes: number,
+): Promise<void> {
   if (createdItemNames.length === 0) return;
   const activeQuestsWithItem = await tx.quest.findMany({
     where: { saveId, status: 'ACTIVA', targetItemName: { not: null } },
@@ -1124,6 +1161,51 @@ export async function closeItemQuests(tx: Prisma.TransactionClient, saveId: stri
     const conseguido = createdItemNames.some((name) => normalizeText(name).includes(targetNormalized));
     if (conseguido) {
       await tx.quest.update({ where: { id: quest.id }, data: { status: 'COMPLETADA' } });
+      const grantedItems = await grantQuestRewardItems(tx, saveId, quest.rewardItems);
+      if (grantedItems.length > 0 || quest.rewardXp) {
+        await tx.logEntry.create({
+          data: {
+            saveId,
+            channel: 'CHARACTER',
+            text: questRewardNarrationFor(quest.title, grantedItems, quest.rewardXp),
+            isPlayerAction: false,
+            timeLabel,
+            fictionalMinutes,
+          },
+        });
+      }
+    }
+  }
+}
+
+/// Cierre determinista de misión "derrotar a X" (`Quest.targetNpcId`) + recompensa real (docs/19
+/// pieza 3) — extraído para no duplicar el mismo bloque (buscar quests activas por `targetNpcId`,
+/// cerrarlas, conceder `rewardItems`/`rewardXp`, narrar) entre el ataque normal y "Decapitar", los
+/// dos caminos que pueden dejar a un NPC INCAPACITADO/MUERTO. `condicionAlcanzada` decide el verbo
+/// de la narración de recompensa (mismo criterio que `npcFallsUnconsciousThisTurn` — INCAPACITADO
+/// y MUERTO cuentan igual como "derrotado" para efectos de misión).
+async function completeNpcTargetQuests(
+  tx: Prisma.TransactionClient,
+  saveId: string,
+  npcId: string,
+  timeLabel: string,
+  fictionalMinutes: number,
+): Promise<void> {
+  const activeQuestsWithNpc = await tx.quest.findMany({ where: { saveId, targetNpcId: npcId, status: 'ACTIVA' } });
+  for (const quest of activeQuestsWithNpc) {
+    await tx.quest.update({ where: { id: quest.id }, data: { status: 'COMPLETADA' } });
+    const grantedItems = await grantQuestRewardItems(tx, saveId, quest.rewardItems);
+    if (grantedItems.length > 0 || quest.rewardXp) {
+      await tx.logEntry.create({
+        data: {
+          saveId,
+          channel: 'CHARACTER',
+          text: questRewardNarrationFor(quest.title, grantedItems, quest.rewardXp),
+          isPlayerAction: false,
+          timeLabel,
+          fictionalMinutes,
+        },
+      });
     }
   }
 }
@@ -2589,11 +2671,9 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
         // Cierre detectable por backend (roadmap 2026-07-19, mecánicas): si alguna misión ACTIVA
         // apuntaba a este NPC (Quest.targetNpcId, ver newQuest más arriba), derrotarlo la cierra
         // sola en cuanto cae — el modelo nunca tiene que acertar el título EXACTO vía
-        // questProgress para el caso más común de misión de combate ("derrotar a X").
-        await tx.quest.updateMany({
-          where: { saveId, targetNpcId: npcAttackTarget.id, status: 'ACTIVA' },
-          data: { status: 'COMPLETADA' },
-        });
+        // questProgress para el caso más común de misión de combate ("derrotar a X"). También
+        // concede rewardItems/rewardXp de verdad y narra la recompensa (docs/19 pieza 3).
+        await completeNpcTargetQuests(tx, saveId, npcAttackTarget.id, nuevaFictionalDateLabel, nuevoFictionalMinutes);
 
         // Reputación de facción determinista (roadmap 2026-07-19, prioridad 4): reutiliza
         // `WorldState.factionsStatus` (gauge 0-5000 por facción, ver reputation.ts — reemplaza
@@ -2642,10 +2722,10 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
         create: { saveId, npcId: executeTarget.id, scope, condicionFisica: 'MUERTO' },
         update: { condicionFisica: 'MUERTO' },
       });
-      await tx.quest.updateMany({
-        where: { saveId, targetNpcId: executeTarget.id, status: 'ACTIVA' },
-        data: { status: 'COMPLETADA' },
-      });
+      // Mismo cierre + recompensa real que un golpe normal que deja MUERTO al objetivo (bloque de
+      // arriba) — en la práctica la misión ya se cerró al quedar INCAPACITADO, esto solo cubre el
+      // caso raro de que no lo hiciera.
+      await completeNpcTargetQuests(tx, saveId, executeTarget.id, nuevaFictionalDateLabel, nuevoFictionalMinutes);
       if (executeTarget.faction) {
         const currentWorldState = await tx.worldState.findUnique({ where: { saveId }, select: { factionsStatus: true } });
         const updatedFactionsStatus = applyFactionRepDelta(
@@ -3217,17 +3297,35 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
             objetivo: 'Derrotar al Orco Enfurecido que persigue a Gistera Koh.',
             targetNpcId: orcoEnfurecido?.id,
             status: orcoYaResuelto ? 'COMPLETADA' : 'ACTIVA',
-            // Recompensa estática (petición explícita, 2026-07-25) — los objetos ya los concede el
-            // loot normal de NpcItem (ver loadout de orco-enfurecido-hondonada en worldCatalog.ts,
-            // aquí solo se listan para mostrarlos en el panel); el XP de bonus sí es nuevo, se
-            // concede aparte al saquearlo (ver bloque `lootMode` más abajo) — o, si ya estaba
-            // resuelto, aquí mismo.
+            // Recompensa estática (petición explícita, 2026-07-25). "Maza orca"/"Amuleto de hueso"
+            // siguen viniendo del loot normal del cadáver (siguen en su `loadout`, worldCatalog.ts)
+            // — NO van aquí, porque desde la pieza 3 (docs/19, 2026-08-13) `rewardItems` entrega el
+            // objeto de verdad al completarse la misión, y listar algo que también da el loot lo
+            // adelantaría al momento de derrotarlo, saltándose el propio saqueo. El mapa sí va aquí
+            // a propósito (petición explícita, 2026-08-13: "el mapa se te dará como resultado de
+            // dejar inconsciente al orco") — se quitó de su `loadout`, ya no se puede saquear.
             rewardXp: 100,
-            rewardItems: ['Mapa de las Llanuras', 'Maza orca'],
+            rewardItems: ['Mapa de las Llanuras'],
           },
         });
         if (orcoYaResuelto) {
           questRewardXp += 100;
+          // La misión nace ya COMPLETADA (nunca pasa por `completeNpcTargetQuests`, que solo
+          // actúa sobre misiones que YA estaban ACTIVA) — hay que conceder el mapa aquí mismo o
+          // se perdería para siempre en este camino concreto (orco ya resuelto antes de aceptar).
+          const grantedItems = await grantQuestRewardItems(tx, saveId, ['Mapa de las Llanuras']);
+          if (grantedItems.length > 0) {
+            await tx.logEntry.create({
+              data: {
+                saveId,
+                channel: 'CHARACTER',
+                text: questRewardNarrationFor('Acabar con el Orco Enfurecido', grantedItems, 100),
+                isPlayerAction: false,
+                timeLabel: nuevaFictionalDateLabel,
+                fictionalMinutes: nuevoFictionalMinutes,
+              },
+            });
+          }
         } else {
           newQuestObjetivos.push('Derrotar al Orco Enfurecido que persigue a Gistera Koh.');
         }
@@ -3278,7 +3376,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     // Cierre de misión "conseguir Z" (roadmap 2026-07-20, P1 de Fable, Quest.targetItemName):
     // cualquier objeto materializado ESTE turno (loot/despiece/producción/crafteo/newItem, ver
     // createdItemNames más arriba) que mencione el nombre objetivo cierra la misión sola.
-    await closeItemQuests(tx, saveId, createdItemNames);
+    await closeItemQuests(tx, saveId, createdItemNames, nuevaFictionalDateLabel, nuevoFictionalMinutes);
 
     // Posición (docs/12 § 1.4 paso 7): al llegar, currentLocationId cambia al destino y se
     // registran visitas (destino + nodos intermedios), sin XP salvo la primera vez en el destino.

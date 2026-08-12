@@ -382,6 +382,8 @@ export async function recolectarRoutes(app: FastifyInstance) {
           tx,
           save.id,
           [...touched.values()].map((s) => s.catalogName),
+          save.worldState?.fictionalDateLabel ?? 'Día 1, mañana',
+          save.worldState?.fictionalMinutes ?? 480,
         );
 
         return { touched, logEntry };

@@ -1652,6 +1652,69 @@ describe('Decapitar: condición de carrera en turnos concurrentes (auditoría 20
   }, 20_000);
 });
 
+// Recompensa determinista de misión (docs/19-post-combate-y-recompensas-mision.md, pieza 3) —
+// antes Quest.rewardItems era solo texto para el panel, nunca creaba el InventoryItem de verdad.
+describe('Decapitar cierra una misión "derrotar a X" con rewardItems y entrega el objeto de verdad', () => {
+  let saveId: string;
+  let npcId: string;
+
+  beforeAll(async () => {
+    const userId = await getDefaultUserId();
+    const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
+    const hondonada = await prisma.location.findFirstOrThrow({ where: { worldId: world.id, slug: 'hondonada-del-eco' } });
+    const orco = await prisma.npc.findFirstOrThrow({ where: { worldId: world.id, slug: 'orco-enfurecido-hondonada' } });
+    npcId = orco.id;
+    const save = await prisma.save.create({
+      data: {
+        userId,
+        worldId: world.id,
+        characterName: 'Gorhorn de prueba 17',
+        characterArchetype: 'guerrero',
+        characterOrigin: 'Clan Maktor',
+        characterMotivation: 'x',
+        attributes: ATTRS,
+        portraitInitial: 'G',
+        currentLocationId: hondonada.id,
+      },
+    });
+    saveId = save.id;
+    await prisma.worldState.create({ data: { saveId } });
+    await prisma.npcState.create({ data: { saveId, npcId, scope: '', condicionFisica: 'INCAPACITADO' } });
+    await prisma.quest.create({
+      data: {
+        saveId,
+        title: 'Acabar con el Orco Enfurecido (prueba)',
+        description: 'x',
+        status: 'ACTIVA',
+        targetNpcId: npcId,
+        rewardXp: 100,
+        rewardItems: ['Mapa de las Llanuras (prueba)'],
+      },
+    });
+    classifyAction.mockResolvedValue({
+      requiereTirada: false, atributo: 'fuerza', dificultad: 8, razon: 'x', banda: 'instantanea', duracionEstimadaMinutos: 0,
+    });
+  });
+
+  afterAll(async () => {
+    await prisma.save.delete({ where: { id: saveId } });
+  });
+
+  it('la misión se completa, el objeto se crea de verdad y hay un LogEntry anunciando la recompensa', async () => {
+    await doTurn(saveId, 'Decapito al Orco Enfurecido de un solo golpe.');
+
+    const quest = await prisma.quest.findFirstOrThrow({ where: { saveId, title: { contains: 'Orco Enfurecido (prueba)' } } });
+    expect(quest.status).toBe('COMPLETADA');
+
+    const item = await prisma.inventoryItem.findFirst({ where: { saveId, name: 'Mapa de las Llanuras (prueba)' } });
+    expect(item).not.toBeNull();
+
+    const rewardLog = await prisma.logEntry.findFirst({ where: { saveId, text: { contains: 'Mapa de las Llanuras (prueba)' } } });
+    expect(rewardLog).not.toBeNull();
+    expect(rewardLog!.text).toContain('+100 XP');
+  }, 20_000);
+});
+
 // Bug real jugando en vivo (2026-08-04, "ronda larga de pruebas" — el propio combate contra el
 // Orco Enfurecido en la Hondonada del Eco redirigió el golpe a Gistera Koh, un PNJ nunca hostil,
 // en cuanto el segundo turno de ataque dejó de citar su nombre entre comillas). Confirmado en
@@ -2027,6 +2090,12 @@ describe('Misión de Gistera Koh: NPC objetivo ya resuelto no deja la misión at
     expect(quest.status).toBe('COMPLETADA');
     const save = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
     expect(save.xp).toBeGreaterThanOrEqual(100);
+
+    // docs/19-post-combate-y-recompensas-mision.md, pieza 3 (2026-08-13): el mapa ya no está en el
+    // loadout del orco (no se saquea) — solo esta rama ("ya resuelto antes de aceptar") puede
+    // concederlo, así que es la única cobertura real de que no se pierda en este camino concreto.
+    const mapa = await prisma.inventoryItem.findFirst({ where: { saveId, name: 'Mapa de las Llanuras' } });
+    expect(mapa).not.toBeNull();
   }, 30_000);
 });
 

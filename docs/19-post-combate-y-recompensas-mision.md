@@ -1,8 +1,9 @@
 # Post-combate (inconsciencia/recuperación) y recompensas deterministas de misión
 
 **Estado:** documento vivo. Investigación cerrada el 2026-08-12; implementación empezada el
-2026-08-13 ("sigue e implementa todas las fases que sacamos ayer al roadmap"). Pieza 1 (narrar
-inconsciencia) **implementada y verificada**. Piezas 2-4 siguen pendientes, ver cada sección.
+2026-08-13 ("sigue e implementa todas las fases que sacamos ayer al roadmap"). Piezas 1, 3, 4 y 5
+**implementadas y verificadas**. Solo la pieza 2 (recuperación tras 6h) sigue pendiente — es la
+más grande de las cinco (mecanismo de tiempo nuevo, campo de schema nuevo).
 
 ## Contexto
 
@@ -76,6 +77,37 @@ recompensa determinista de misión que describe la usuaria no existe todavía** 
   Orco Enfurecido en el catálogo y entregarlo SOLO como recompensa de misión (ligado a
   INCAPACITADO/MUERTO, no a saquear el cuerpo), para que quede desacoplado del saqueo normal.
 
+**Implementado y verificado (2026-08-13)** — junto con la pieza 5 (narración), en el mismo commit:
+- `grantQuestRewardItems` (nueva, privada) — crea de verdad los `InventoryItem` de `rewardItems`
+  que el jugador aún no tenga (dedup por nombre normalizado), idempotente si se llama dos veces
+  sobre la misma misión ya recompensada.
+- `questRewardNarrationFor` (nueva, privada) — texto determinista `Misión completada: "X" —
+  consigue Y, +N XP.`, mismo criterio "nunca lo decide el modelo" del resto del motor.
+- `closeItemQuests` (misión "conseguir Z") ahora recibe `timeLabel`/`fictionalMinutes` y llama a
+  las dos funciones de arriba tras cerrar — cubre tanto el turno normal como `recolectar.ts`
+  (Minar/Talar/Desollar), ambos call sites actualizados.
+- `completeNpcTargetQuests` (nueva, privada) — extraída para no duplicar el mismo bloque (cerrar +
+  recompensar + narrar) entre un ataque normal y "Decapitar", los dos caminos que pueden dejar a
+  un NPC INCAPACITADO/MUERTO.
+- El mapa se quitó de verdad del `loadout` del Orco Enfurecido (`worldCatalog.ts`) y su
+  `rewardItems` pasó de `['Mapa de las Llanuras', 'Maza orca']` a solo `['Mapa de las Llanuras']`
+  — "Maza orca"/"Amuleto de hueso" siguen viniendo del loot normal (seguían en el `loadout`);
+  incluirlos también en `rewardItems` los habría adelantado al momento de derrotarlo, antes de
+  poder saquear de verdad.
+- **Hueco cerrado en el mismo commit**: la rama "el orco ya estaba resuelto antes de aceptar la
+  misión de Gistera" (`orcoYaResuelto`, la misión nace ya `COMPLETADA` directamente vía
+  `tx.quest.create`) nunca pasa por `completeNpcTargetQuests` — sin un fix aparte ahí, el mapa se
+  habría perdido para siempre en ese camino concreto. Cubierto con un test de integración real
+  (extensión del test ya existente "la misión nace ya COMPLETADA...").
+- **Alcance NO cubierto a propósito** (documentado, no descubierto tarde): la recompensa-al-saquear
+  más antigua (`turnResolution.ts`, "Recompensa estática de misión al saquear", solo XP) y el cierre
+  de misión "llegar a Y" (`targetLocationId`) siguen sin pasar por `grantQuestRewardItems` — ninguna
+  misión real hoy usa `rewardItems` en esos dos caminos, así que no había caso de prueba real que
+  lo justificara; extender si algún día una misión de ese tipo los necesita.
+- Tests: 1 nuevo de integración real (Decapitar + misión con `rewardItems` → objeto creado + log),
+  1 extendido (rama `orcoYaResuelto`), 2 tests de `recolectar.test.ts` corregidos (mocks
+  desactualizados por el cambio de firma de `closeItemQuests`).
+
 ### 4. Fondo amarillo al completar una misión (UI)
 
 Confirmado en `MisionesPanel.tsx:11,17`: `COMPLETADA` se pinta hoy con el mismo estilo neutro que
@@ -94,6 +126,9 @@ determinista (sin IA) que liste XP + objetos concedidos — mismo criterio de "n
 modelo" que ya rige saqueo/despiece/crafteo. Hoy no existe ningún `LogEntry` dedicado a esto; el
 aviso actual de completar misión (si lo hay) depende de que el propio narrador lo mencione de
 pasada.
+
+**Implementado junto con la pieza 3** (mismo commit, 2026-08-13) — ver `questRewardNarrationFor`
+en la sección de arriba, es la misma pieza de trabajo, no una separada.
 
 ## Pendiente de decidir con la usuaria (antes de implementar)
 

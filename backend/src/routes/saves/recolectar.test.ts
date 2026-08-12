@@ -12,6 +12,7 @@ const findFirstHarvestYield = vi.fn();
 const findManyHarvestYield = vi.fn();
 const updateManyWorldPopulation = vi.fn();
 const createInventoryItem = vi.fn();
+const createManyInventoryItem = vi.fn();
 const updateInventoryItem = vi.fn();
 const findManyInventoryItem = vi.fn();
 const findFirstInventoryItem = vi.fn();
@@ -67,6 +68,7 @@ describe('POST /saves/:id/recolectar/confirmar', () => {
     findFirstHarvestYield.mockReset();
     updateManyWorldPopulation.mockReset();
     createInventoryItem.mockReset();
+    createManyInventoryItem.mockReset().mockResolvedValue({ count: 0 });
     updateInventoryItem.mockReset();
     findManyInventoryItem.mockReset().mockResolvedValue([]);
     // Sin pila previa por defecto — cada test de acumulación la sobreescribe explícitamente.
@@ -93,6 +95,7 @@ describe('POST /saves/:id/recolectar/confirmar', () => {
           findMany: (...args: unknown[]) => findManyInventoryItem(...args),
           findFirst: (...args: unknown[]) => findFirstInventoryItem(...args),
           create: (...args: unknown[]) => createInventoryItem(...args),
+          createMany: (...args: unknown[]) => createManyInventoryItem(...args),
           update: (...args: unknown[]) => updateInventoryItem(...args),
         },
         logEntry: { create: (...args: unknown[]) => createLogEntry(...args) },
@@ -250,7 +253,7 @@ describe('POST /saves/:id/recolectar/confirmar', () => {
     findFirstHarvestYield.mockResolvedValue({ cantidad: 3, item: { slug: 'piedra', name: 'Piedra' } });
     updateManyWorldPopulation.mockResolvedValue({ count: 1 });
     createInventoryItem.mockResolvedValue({ id: 'item1' });
-    findManyQuestTx.mockResolvedValue([{ id: 'quest1', targetItemName: 'Piedra' }]);
+    findManyQuestTx.mockResolvedValue([{ id: 'quest1', title: 'Conseguir piedra', targetItemName: 'Piedra', rewardItems: [], rewardXp: null }]);
     const app = await buildApp();
 
     const res = await app.inject({
