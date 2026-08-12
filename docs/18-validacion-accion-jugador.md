@@ -1,8 +1,34 @@
 # Validación de "grounding" de la acción del jugador contra el lore real
 
-**Estado:** documento vivo, fase de diseño cerrada (2026-08-12). Ninguna fase implementada todavía
-— este documento fija el plan y el criterio antes de tocar código, para no reabrir el mismo debate
-cada vez que se retome.
+**Estado:** documento vivo. Fase 0 (mecanismo) + primer chequeo de Fase 1 (arma que no llevas)
+**implementados y verificados (2026-08-13)** — ver `backend/src/services/playerActionValidation.ts`.
+Pendiente jugarlo en vivo antes de seguir ampliando (NPC/fauna en escena, anacronismo) — es el
+primer mecanismo de su tipo (cortar un turno antes de llegar a la IA), vale la pena confirmarlo con
+una partida real antes de construir más encima.
+
+## Implementado (2026-08-13)
+
+- `backend/src/services/playerActionValidation.ts` — `detectsUnequippedWeaponClaim(action,
+  equippedWeaponNames)`: vocabulario cerrado de 9 sustantivos de categoría de arma (mismo enum
+  `WeaponCategory` de Prisma) + verbo de uso/ataque en la misma frase (mismo criterio que
+  `hasFalseItemUse`) — sin verbo, no dispara (evita bloquear una mención/recuerdo legítimo).
+  `wrongWeaponNarrationFor(armaReal)`: pool de 5 frases en la voz de Gorhorn (borrador de la
+  sesión de diseño), selección aleatoria simple (anti-repetición consecutiva estricta queda como
+  refinamiento futuro, no bloqueante).
+- Cableado en `POST /turn/classify` (`turn.ts`), justo después del guard de tránsito ocupado y
+  antes de cualquier llamada a IA — usa `save.inventoryItems` ya disponible, sin consulta nueva.
+  Si dispara, persiste la acción + la respuesta como `LogEntry` reales y devuelve
+  `{ blocked: { narration } }` en vez de `{ classification, ... }`.
+- `ClassifyResponse.blocked` nuevo (frontend `api.ts`) — `GameView.tsx` lo comprueba en los dos
+  sitios que llaman a `/turn/classify` (turno normal y turno de combate) y, si está presente, se
+  salta `/turn/narrate` por completo y recarga la partida (mismo patrón ya usado para `transit`).
+- Alcance conocido de esta primera versión: solo dispara si el jugador lleva AL MENOS un arma
+  equipada (ir desarmado y reclamar un arma es un caso distinto, fuera de alcance); sin "lanz\*" en
+  el regex de verbos (colisiona con el propio sustantivo "lanza") — se prefiere un falso negativo
+  raro a arriesgar bloquear una acción legítima.
+- Tests: `playerActionValidation.test.ts` (8, unitarios puros) + `turn.classify.test.ts` (2 nuevos,
+  con Prisma mockeado) — confirman que `classifyAction` (la llamada a IA) nunca se invoca cuando
+  dispara, y que el camino normal sigue igual cuando el arma sí coincide.
 
 ## Contexto
 

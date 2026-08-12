@@ -209,3 +209,83 @@ describe('POST /turn/classify — camino tabulado de combate (sin Ollama)', () =
     expect(body.transit).toBeUndefined();
   });
 });
+
+// Validador de "grounding" de la acción del jugador (Fase 0/1, docs/18-validacion-accion-
+// jugador.md) — reclamar un arma que no lleva encima se resuelve aquí mismo, ANTES de
+// classifyAction, sin gastar ninguna llamada a IA.
+describe('POST /turn/classify — arma que no lleva equipada (validador de grounding)', () => {
+  beforeEach(() => {
+    findUniqueSave.mockReset();
+    findManyNpc.mockReset().mockResolvedValue([]);
+    findManyNpcState.mockReset().mockResolvedValue([]);
+    findUniqueLocation.mockReset().mockResolvedValue(null);
+    findManyLocation.mockReset().mockResolvedValue([]);
+    findManyQuest.mockReset().mockResolvedValue([]);
+    logEntryCreate.mockReset().mockResolvedValue({});
+    classifyAction.mockReset();
+  });
+
+  it('reclamar un arma de categoría distinta a la equipada se resuelve sin llamar a classifyAction', async () => {
+    findUniqueSave.mockResolvedValue({
+      id: 'save1',
+      worldId: 'world1',
+      level: 3,
+      attributes: ATTRS,
+      inventoryItems: [{ name: 'Maza orca', slot: 'ARMA_PRINCIPAL' }],
+      condicionFisica: 'ILESO',
+      currentLocationId: null,
+      endedAt: null,
+      characterTransit: null,
+      worldState: { fictionalDateLabel: 'Día 1, mañana', fictionalMinutes: 480 },
+    });
+
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/turn/classify',
+      payload: { saveId: 'save1', action: "Uso mi lanza y lo apuñalo." },
+    });
+
+    expect(res.statusCode).toBe(200);
+    const body = res.json();
+    expect(typeof body.blocked?.narration).toBe('string');
+    expect(body.blocked.narration.length).toBeGreaterThan(0);
+    expect(body.classification).toBeUndefined();
+    expect(classifyAction).not.toHaveBeenCalled();
+    expect(logEntryCreate).toHaveBeenCalledTimes(2);
+  });
+
+  it('con el arma correcta (coincide con lo equipado), sigue el camino normal', async () => {
+    findUniqueSave.mockResolvedValue({
+      id: 'save1',
+      worldId: 'world1',
+      level: 3,
+      attributes: ATTRS,
+      inventoryItems: [{ name: 'Maza orca', slot: 'ARMA_PRINCIPAL' }],
+      condicionFisica: 'ILESO',
+      currentLocationId: null,
+      endedAt: null,
+      characterTransit: null,
+      worldState: { fictionalDateLabel: 'Día 1, mañana', fictionalMinutes: 480 },
+    });
+    classifyAction.mockResolvedValue({
+      requiereTirada: false,
+      atributo: 'fuerza',
+      dificultad: 10,
+      razon: 'x',
+      banda: 'instantanea',
+      duracionEstimadaMinutos: 0,
+    });
+
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/turn/classify',
+      payload: { saveId: 'save1', action: 'Ataco con mi maza.' },
+    });
+
+    expect(res.statusCode).toBe(200);
+    const body = res.json();
+    expect(body.blocked).toBeUndefined();
+  });
+});

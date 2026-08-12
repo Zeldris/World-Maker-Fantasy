@@ -30,6 +30,7 @@ import { normalizeSecondaryAttributes } from '../services/secondaryAttributes.js
 import { characterSummaryFor } from '../services/characterSummary.js';
 import { loadSessionFacts } from '../services/worldFacts.js';
 import { claimTurnInFlight, releaseTurnInFlight } from '../services/turnLock.js';
+import { detectsUnequippedWeaponClaim, wrongWeaponNarrationFor } from '../services/playerActionValidation.js';
 
 interface ClassifyBody {
   saveId: string;
@@ -417,6 +418,27 @@ export async function turnRoutes(app: FastifyInstance) {
         busyUntil: save.characterTransit.busyUntil,
         duracionMinutos: (save.characterTransit.zoneContext as { duracionMinutos?: number } | null)?.duracionMinutos ?? null,
       });
+    }
+
+    // Validador de "grounding" de la acción del jugador (Fase 0/1, docs/18-validacion-accion-
+    // jugador.md) — corre ANTES de la primera llamada a IA (classifyAction, más abajo). Si el
+    // jugador reclama usar un arma que no lleva encima ("uso mi lanza" con una maza equipada), el
+    // turno se resuelve aquí mismo con una frase determinista en la voz del personaje, sin gastar
+    // ni un segundo de generación. `blocked` es nuevo en `ClassifyResponse` — el frontend, al
+    // verlo, se salta `/turn/narrate` por completo (mismo patrón que ya usa `transit`).
+    const weaponClaim = detectsUnequippedWeaponClaim(action, equippedWeaponNames(save.inventoryItems));
+    if (weaponClaim) {
+      const armaReal = save.inventoryItems.find((i) => i.slot === 'ARMA_PRINCIPAL')?.name ?? equippedWeaponNames(save.inventoryItems)[0];
+      const narrationText = wrongWeaponNarrationFor(armaReal);
+      const blockedTimeLabel = save.worldState?.fictionalDateLabel ?? 'Día 1, mañana';
+      const blockedFictionalMinutes = save.worldState?.fictionalMinutes ?? 480;
+      await prisma.logEntry.create({
+        data: { saveId, channel: 'CHARACTER', text: action, isPlayerAction: true, timeLabel: blockedTimeLabel, fictionalMinutes: blockedFictionalMinutes },
+      });
+      await prisma.logEntry.create({
+        data: { saveId, channel: 'CHARACTER', text: narrationText, isPlayerAction: false, timeLabel: blockedTimeLabel, fictionalMinutes: blockedFictionalMinutes },
+      });
+      return { blocked: { narration: narrationText } };
     }
 
     // Estadísticas de objetos (2026-07-19): la tirada usa los atributos EFECTIVOS (base + lo
