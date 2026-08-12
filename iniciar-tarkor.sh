@@ -107,3 +107,11 @@ echo "Frontend: http://localhost:5173"
 echo
 echo "Deja las ventanas nuevas abiertas mientras juegas — cerrarlas para la partida."
 echo "Para pararlo todo, usa detener-tarkor.sh"
+
+# Sin esta pausa, si el script se lanza con doble clic (o cualquier lanzador que cierre la
+# ventana en cuanto el comando termina), esta ventana desaparece antes de poder leer si Postgres
+# y Ollama arrancaron bien — a diferencia de backend/frontend, que sí se quedan abiertos porque
+# corren en SUS PROPIAS ventanas con `exec bash` al final. Bug real (2026-08-13): parecía que el
+# script "solo levantaba backend y frontend" cuando en realidad Postgres/Ollama sí arrancaban,
+# solo que la confirmación desaparecía con la ventana.
+read -r -p "Pulsa Enter para cerrar esta ventana... "
