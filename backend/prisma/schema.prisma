@@ -1320,6 +1320,14 @@ model WorldPopulation {
   /// recolectada, o fuera de cooldown desde hace tiempo. No afecta a FAUNA/RAZA (esas no pasan por
   /// `recolectar.ts`, se depliezan al morir, no al "recolectar" repetidamente en el sitio).
   lastHarvestedAt DateTime?
+  /// Dónde se recolectó por última vez (bug real jugando en vivo, 2026-08-13: "avanzo por la
+  /// hondonada buscando más elementos... ahí sí que debería poder volver a usarla" — el cooldown
+  /// de arriba era puramente de reloj, sin memoria de sitio, así que moverte a otra Location no
+  /// servía de nada). El guard de `recolectar.ts` ahora pasa si CUALQUIERA de las dos condiciones
+  /// se cumple: pasaron los 30 min, O el jugador está en una Location distinta a esta. Compartido
+  /// entre partidas igual que `poblacion`/`lastHarvestedAt` (mismo criterio ya aceptado para esta
+  /// fila) — en la práctica solo importa para la partida real de la jugadora.
+  lastHarvestedLocationId String?
 
   @@unique([worldId, targetType, targetSlug])
 }

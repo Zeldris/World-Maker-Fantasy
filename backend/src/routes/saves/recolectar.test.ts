@@ -175,8 +175,10 @@ describe('POST /saves/:id/recolectar/confirmar', () => {
 
     expect(updateManyWorldPopulation).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: expect.objectContaining({ OR: [{ lastHarvestedAt: null }, { lastHarvestedAt: { lt: expect.any(Date) } }] }),
-        data: expect.objectContaining({ lastHarvestedAt: expect.any(Date) }),
+        where: expect.objectContaining({
+          OR: [{ lastHarvestedAt: null }, { lastHarvestedAt: { lt: expect.any(Date) } }, { lastHarvestedLocationId: { not: 'loc1' } }],
+        }),
+        data: expect.objectContaining({ lastHarvestedAt: expect.any(Date), lastHarvestedLocationId: 'loc1' }),
       }),
     );
   });

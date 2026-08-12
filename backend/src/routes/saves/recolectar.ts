@@ -43,12 +43,19 @@ interface SourceCandidate {
 /// Fuentes candidatas para `oficio` en la región actual: las que tienen HarvestYield con el
 /// método correcto Y una fila WorldPopulation tipo RECURSO con población real > 0 en esa región
 /// (nunca se ofrece recolectar algo que el propio mundo dice que no queda) Y que no estén en
-/// cooldown por haberse recolectado hace poco. `anyOnCooldown` distingue "no hay nada aquí" de
-/// "lo que hay está agotado por ahora" para el mensaje del frontend.
+/// cooldown por haberse recolectado hace poco EN ESTA MISMA Location. `anyOnCooldown` distingue
+/// "no hay nada aquí" de "lo que hay está agotado por ahora" para el mensaje del frontend.
+///
+/// Cooldown location-aware (bug real jugando en vivo, 2026-08-13: "avanzo por la hondonada
+/// buscando más elementos... ahí sí que debería poder volver a usarla, al igual que si cambiamos
+/// de zona" — antes el cooldown de 30 min era puro reloj, sin memoria de sitio, así que moverte a
+/// otra Location no servía de nada). Pasa el guard si CUALQUIERA de las dos condiciones se cumple:
+/// pasaron los 30 min reales, O `locationId` no coincide con `lastHarvestedLocationId`.
 async function candidateSourcesFor(
   worldId: string,
   metodo: MetodoObtencion,
   region: string | null,
+  locationId: string | null,
 ): Promise<{ candidates: SourceCandidate[]; anyOnCooldown: boolean }> {
   const rows = await prisma.harvestYield.findMany({ where: { worldId, metodoObtencion: metodo }, include: { item: true } });
   if (rows.length === 0) return { candidates: [], anyOnCooldown: false };
@@ -76,7 +83,8 @@ async function candidateSourcesFor(
     if (!(distribucion[stripRegionArticle(region)] > 0)) continue;
     const sourceRows = bySlug.get(pop.targetSlug) ?? [];
     if (sourceRows.length === 0) continue;
-    if (pop.lastHarvestedAt && pop.lastHarvestedAt.getTime() > cooldownCutoff) {
+    const sameLocation = locationId !== null && pop.lastHarvestedLocationId === locationId;
+    if (pop.lastHarvestedAt && pop.lastHarvestedAt.getTime() > cooldownCutoff && sameLocation) {
       anyOnCooldown = true;
       continue;
     }
@@ -147,7 +155,7 @@ export async function recolectarRoutes(app: FastifyInstance) {
       return { sources, puedeExplorar: false, enCooldown: false };
     }
 
-    const { candidates, anyOnCooldown } = await candidateSourcesFor(save.worldId, metodo, save.currentLocation?.region ?? null);
+    const { candidates, anyOnCooldown } = await candidateSourcesFor(save.worldId, metodo, save.currentLocation?.region ?? null, save.currentLocationId);
     if (candidates.length === 0) return { sources: [], puedeExplorar: false, enCooldown: anyOnCooldown };
 
     const sessionFacts = await loadSessionFacts(save.id);
@@ -171,7 +179,7 @@ export async function recolectarRoutes(app: FastifyInstance) {
     const save = await prisma.save.findUnique({ where: { id: request.params.id }, include: { currentLocation: true } });
     if (!save) return reply.status(404).send({ error: 'Partida no encontrada' });
 
-    const { candidates, anyOnCooldown } = await candidateSourcesFor(save.worldId, metodo, save.currentLocation?.region ?? null);
+    const { candidates, anyOnCooldown } = await candidateSourcesFor(save.worldId, metodo, save.currentLocation?.region ?? null, save.currentLocationId);
     if (candidates.length === 0) return { sources: [], enCooldown: anyOnCooldown };
 
     const sessionFacts = await loadSessionFacts(save.id);
@@ -294,15 +302,27 @@ export async function recolectarRoutes(app: FastifyInstance) {
             // Cooldown real (bug real jugando en vivo, 2026-08-07: "minar indefinidamente sin
             // moverme de la zona") en el MISMO guard atómico: si ya se recolectó esta fuente hace
             // menos de `RECOLECCION_COOLDOWN_MS`, `count` da 0 igual que si no quedara población.
+            // Location-aware (bug real jugando en vivo, 2026-08-13: "avanzo por la hondonada
+            // buscando más elementos... debería poder volver a usarla, al igual que si cambiamos
+            // de zona") — el cooldown también se salta si `currentLocationId` no coincide con
+            // dónde se recolectó la última vez, aunque no hayan pasado los 30 min.
             const result = await tx.worldPopulation.updateMany({
               where: {
                 worldId: save.worldId,
                 targetType: 'RECURSO',
                 targetSlug: sel.sourceSlug,
                 poblacion: { gte: cantidad },
-                ...(sourcesTouchedThisRequest.has(sel.sourceSlug) ? {} : { OR: [{ lastHarvestedAt: null }, { lastHarvestedAt: { lt: cooldownCutoff } }] }),
+                ...(sourcesTouchedThisRequest.has(sel.sourceSlug)
+                  ? {}
+                  : {
+                      OR: [
+                        { lastHarvestedAt: null },
+                        { lastHarvestedAt: { lt: cooldownCutoff } },
+                        { lastHarvestedLocationId: { not: save.currentLocationId } },
+                      ],
+                    }),
               },
-              data: { poblacion: { decrement: cantidad }, lastHarvestedAt: new Date() },
+              data: { poblacion: { decrement: cantidad }, lastHarvestedAt: new Date(), lastHarvestedLocationId: save.currentLocationId },
             });
             if (result.count === 0) continue;
             sourcesTouchedThisRequest.add(sel.sourceSlug);
