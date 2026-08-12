@@ -406,6 +406,15 @@ export function GameView() {
     try {
       const classifyResult = await requestTurnClassify({ saveId, action, enCombate: true, savedActionId: opts.savedActionId })
       const { classification, roll } = classifyResult
+      if (classifyResult.blocked) {
+        // Validador de "grounding" (docs/18-validacion-accion-jugador.md) — el backend ya
+        // persistió la acción y la respuesta determinista en el log, así que basta con recargar
+        // la partida para reflejarlas, en vez de sintetizar un mensaje local (a diferencia del
+        // aviso de `transit` de abajo, que sí es puramente informativo del cliente).
+        const save = await getSave(saveId)
+        syncFromSave(save)
+        return false
+      }
       if (classifyResult.transit) {
         // Salvaguarda (auditoría 2026-07-28): el backend ya fuerza banda "instantánea" para
         // cualquier acción de combate (turn.ts), así que esto no debería pasar nunca — pero si
@@ -1294,6 +1303,16 @@ export function GameView() {
       const classifyResult: ClassifyResponse = await requestTurnClassify({ saveId, action })
       const { classification, roll, travel } = classifyResult
       setDiscoveries(classifyResult.discoveries ?? [])
+
+      if (classifyResult.blocked) {
+        // Validador de "grounding" de la acción del jugador (docs/18-validacion-accion-jugador.md)
+        // — el backend ya resolvió el turno (persistió acción + respuesta determinista en el log)
+        // sin pasar por /turn/narrate. Recargar la partida basta, mismo patrón que `transit`.
+        setCharacterThinking(false)
+        const save = await getSave(saveId)
+        syncFromSave(save)
+        return
+      }
 
       if (classifyResult.transit) {
         // Banda extendida/larga: el backend ya lo resolvió en diferido (acción + texto de

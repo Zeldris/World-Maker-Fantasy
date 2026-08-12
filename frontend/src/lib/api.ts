@@ -89,6 +89,11 @@ export interface ClassifyResponse {
   // backend para búsquedas/recolección genéricas de banda corta; vacío si no aplica.
   discoveries?: DiscoveryItem[]
   npcsInScene?: NpcSceneSnapshot
+  // Validador de "grounding" de la acción del jugador (docs/18-validacion-accion-jugador.md) —
+  // presente cuando el backend rechazó la acción de raíz (p. ej. reclamar un arma que no lleva
+  // encima) y ya persistió una frase determinista en el log. El turno queda resuelto aquí mismo:
+  // no hace falta (ni se debe) llamar a /turn/narrate.
+  blocked?: { narration: string }
 }
 
 export interface BusyError {
