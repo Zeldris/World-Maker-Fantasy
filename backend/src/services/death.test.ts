@@ -118,6 +118,39 @@ describe('healCeilingFor', () => {
     // objeto médico débil (tope HERIDO) usado por alguien ya ILESO — tampoco debe empeorarlo.
     expect(healCeilingFor('ILESO', false, false, 'HERIDO')).toBe('ILESO');
   });
+
+  // Primeros auxilios (2026-08-13, petición explícita: "si es incapacitado solo hay un item que te
+  // lleva a grave... luego otro que mejora el estado al siguiente, de grave a herido y de herido a
+  // ileso" — cada objeto sube COMO MUCHO un escalón, nunca de golpe hasta su curaHasta).
+  describe('curaUnPaso (objetos de primeros auxilios, un escalón como mucho)', () => {
+    it('objeto tier 1 (tope GRAVE) usado desde INCAPACITADO sube exactamente a GRAVE', () => {
+      expect(healCeilingFor('INCAPACITADO', false, false, 'GRAVE', true)).toBe('GRAVE');
+    });
+    it('objeto tier 1 (tope GRAVE) usado desde GRAVE no hace nada más — es su propio techo', () => {
+      expect(healCeilingFor('GRAVE', false, false, 'GRAVE', true)).toBe('GRAVE');
+    });
+    it('objeto tier 1 (tope GRAVE) usado desde HERIDO/ILESO no hace nada — ya se está mejor que su techo', () => {
+      expect(healCeilingFor('HERIDO', false, false, 'GRAVE', true)).toBe('HERIDO');
+      expect(healCeilingFor('ILESO', false, false, 'GRAVE', true)).toBe('ILESO');
+    });
+    it('objeto tier 2 (tope HERIDO) usado desde GRAVE sube exactamente a HERIDO', () => {
+      expect(healCeilingFor('GRAVE', false, false, 'HERIDO', true)).toBe('HERIDO');
+    });
+    // El caso clave que distingue esto del objeto "de techo" normal: usado desde MÁS de un
+    // escalón por debajo de su tope, solo sube UNO — nunca salta directo a su curaHasta.
+    it('objeto tier 2 (tope HERIDO) usado desde INCAPACITADO solo sube UN escalón, a GRAVE — no salta a HERIDO', () => {
+      expect(healCeilingFor('INCAPACITADO', false, false, 'HERIDO', true)).toBe('GRAVE');
+    });
+    it('objeto tier 3 (tope ILESO, la receta final) usado desde HERIDO sube exactamente a ILESO', () => {
+      expect(healCeilingFor('HERIDO', false, false, 'ILESO', true)).toBe('ILESO');
+    });
+    it('objeto tier 3 (tope ILESO) usado desde INCAPACITADO solo sube UN escalón, a GRAVE — no salta a ILESO', () => {
+      expect(healCeilingFor('INCAPACITADO', false, false, 'ILESO', true)).toBe('GRAVE');
+    });
+    it('el mismo objeto con curaUnPaso false (comportamiento normal) sí rompe el tope de golpe, para contraste', () => {
+      expect(healCeilingFor('INCAPACITADO', false, false, 'ILESO', false)).toBe('ILESO');
+    });
+  });
 });
 
 describe('condicionMalus', () => {

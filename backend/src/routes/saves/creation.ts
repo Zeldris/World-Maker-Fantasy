@@ -131,6 +131,8 @@ export async function creationRoutes(app: FastifyInstance) {
     const initialLocation = initialLocationSlug
       ? await prisma.location.findUnique({ where: { worldId_slug: { worldId: world.id, slug: initialLocationSlug } } })
       : null;
+    const razaSlug = razaFor(characterName);
+    const startingProfessions = startingProfessionsFor(characterName, razaSlug, initialLocation?.region ?? null);
     const startingQuestsData = await buildStartingQuestsData(world.id, characterName);
     const secondaryAttributes = startingSecondaryAttributesFor(characterName) ?? EMPTY_SECONDARY_ATTRIBUTES;
 
@@ -167,7 +169,7 @@ export async function creationRoutes(app: FastifyInstance) {
             portraitInitial,
             currentLocationId: initialLocation?.id,
             dificultad: dificultad ?? 'MEDIO',
-            raza: razaFor(characterName),
+            raza: razaSlug,
             worldState: { create: { fictionalDateLabel } },
             logEntries: {
               create: [
@@ -196,7 +198,7 @@ export async function creationRoutes(app: FastifyInstance) {
                 ...startingAbilitiesFor(characterName).map((a) => ({ ...a, isStarting: true })),
                 ...GENERIC_COMBAT_ABILITIES.map((a) => ({ ...a, isStarting: true, isGeneric: true })),
                 ...classAbilityUnlocksFor(characterName, 1).map((a) => ({ ...a, isStarting: true })),
-                ...startingProfessionsFor(characterName).flatMap((oficio) => [
+                ...startingProfessions.flatMap((oficio) => [
                   ...professionAbilityUnlocksFor(oficio, 1).map((a) => ({ ...a, isStarting: true })),
                   ...harvestAbilityUnlocksFor(oficio, 1).map((a) => ({ ...a, isStarting: true })),
                 ]),
@@ -209,7 +211,7 @@ export async function creationRoutes(app: FastifyInstance) {
               create: startingQuestsData,
             },
             professionProgress: {
-              create: startingProfessionsFor(characterName).map((professionId) => ({ professionId })),
+              create: startingProfessions.map((professionId) => ({ professionId })),
             },
           },
           include: { inventoryItems: true },
@@ -282,6 +284,7 @@ export async function creationRoutes(app: FastifyInstance) {
     const initialLocation = initialLocationSlug
       ? await prisma.location.findUnique({ where: { worldId_slug: { worldId: save.worldId, slug: initialLocationSlug } } })
       : null;
+    const startingProfessions = startingProfessionsFor(save.characterName, save.raza, initialLocation?.region ?? null);
     const startingQuestsData = await buildStartingQuestsData(save.worldId, save.characterName);
 
     // Callback en vez de array de operaciones (auditoría 2026-07-28, fix #9): el registro de
@@ -346,7 +349,7 @@ export async function creationRoutes(app: FastifyInstance) {
             ...startingAbilitiesFor(save.characterName).map((a) => ({ ...a, saveId: save.id, isStarting: true })),
             ...GENERIC_COMBAT_ABILITIES.map((a) => ({ ...a, saveId: save.id, isStarting: true, isGeneric: true })),
             ...classAbilityUnlocksFor(save.characterName, 1).map((a) => ({ ...a, saveId: save.id, isStarting: true })),
-            ...startingProfessionsFor(save.characterName).flatMap((oficio) => [
+            ...startingProfessions.flatMap((oficio) => [
               ...professionAbilityUnlocksFor(oficio, 1).map((a) => ({ ...a, saveId: save.id, isStarting: true })),
               ...harvestAbilityUnlocksFor(oficio, 1).map((a) => ({ ...a, saveId: save.id, isStarting: true })),
             ]),
@@ -366,7 +369,7 @@ export async function creationRoutes(app: FastifyInstance) {
           data: startingQuestsData.map((q) => ({ ...q, saveId: save.id })),
         });
         await tx.professionProgress.createMany({
-          data: startingProfessionsFor(save.characterName).map((professionId) => ({ professionId, saveId: save.id })),
+          data: startingProfessions.map((professionId) => ({ professionId, saveId: save.id })),
         });
         await tx.save.update({
           where: { id: save.id },

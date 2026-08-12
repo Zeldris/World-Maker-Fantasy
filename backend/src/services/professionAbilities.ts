@@ -1,4 +1,15 @@
-import { AXE_REPAIR_RECIPE, GARGANTUA_ARMOR_RECIPE, ANTIDOTE_RECIPE, IRON_INGOT_RECIPE, STONE_BLOCK_RECIPE, type CraftingRecipe } from './crafting.js';
+import {
+  AXE_REPAIR_RECIPE,
+  GARGANTUA_ARMOR_RECIPE,
+  ANTIDOTE_RECIPE,
+  IRON_INGOT_RECIPE,
+  STONE_BLOCK_RECIPE,
+  FIRST_AID_BANDAGE_RECIPE,
+  RED_SPIKE_INFUSION_RECIPE,
+  BASIC_POULTICE_RECIPE,
+  COMPLETE_POULTICE_RECIPE,
+  type CraftingRecipe,
+} from './crafting.js';
 import type { StartingAbility } from './startingAbilities.js';
 
 /// Habilidades de OFICIO (idea aplazada 2026-07-28, retomada 2026-08-07): las recetas de
@@ -43,6 +54,10 @@ const PROFESSION_ABILITIES: ProfessionAbilityUnlock[] = [
   abilityFor(ANTIDOTE_RECIPE, 'Preparar antídoto', '🧪', 'Preparo un antídoto mezclando lo que llevo encima.'),
   abilityFor(AXE_REPAIR_RECIPE, 'Reparar hacha de guerra', '🔨', 'Reparo mi hacha de guerra rota en la fragua del campamento.'),
   abilityFor(GARGANTUA_ARMOR_RECIPE, 'Fabricar peto de gargantúa', '🛡️', 'Fabrico un peto de placas óseas de gargantúa en la fragua del campamento.'),
+  abilityFor(FIRST_AID_BANDAGE_RECIPE, 'Atar vendaje improvisado', '🩹', 'Ato un vendaje improvisado con mi manojo de salvia del polvo.'),
+  abilityFor(RED_SPIKE_INFUSION_RECIPE, 'Preparar infusión de espiga roja', '☕', 'Preparo una infusión de espiga roja.'),
+  abilityFor(BASIC_POULTICE_RECIPE, 'Preparar cataplasma básica de salvia', '🌿', 'Preparo una cataplasma básica de salvia.'),
+  abilityFor(COMPLETE_POULTICE_RECIPE, 'Preparar cataplasma completa de salvia y ceniza', '✨', 'Preparo una cataplasma completa de salvia y ceniza.'),
 ];
 
 /// Qué habilidades de oficio se desbloquean exactamente al alcanzar `nivel` en `oficio` — llamar

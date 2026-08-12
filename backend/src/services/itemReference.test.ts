@@ -58,12 +58,16 @@ describe('detectMedicalItemUse', () => {
   // inventario"): sin devolver el `id` real de la fila que matcheó, nada podía consumirla de
   // verdad — el efecto de curación se aplicaba pero el objeto se quedaba para siempre.
   const MEDICAL_ITEMS = [
-    { id: 'item-cataplasma', name: 'Cataplasma de salvia del polvo', curaHasta: 'HERIDO' as const },
-    { id: 'item-elixir', name: 'Elixir de sanación mayor', curaHasta: 'ILESO' as const },
+    { id: 'item-cataplasma', name: 'Cataplasma de salvia del polvo', curaHasta: 'HERIDO' as const, curaUnPaso: false },
+    { id: 'item-elixir', name: 'Elixir de sanación mayor', curaHasta: 'ILESO' as const, curaUnPaso: false },
   ];
 
   it('detecta el objeto médico real nombrado en la acción, con su id real', () => {
-    expect(detectMedicalItemUse('Uso mi cataplasma de salvia del polvo', MEDICAL_ITEMS)).toEqual({ id: 'item-cataplasma', curaHasta: 'HERIDO' });
+    expect(detectMedicalItemUse('Uso mi cataplasma de salvia del polvo', MEDICAL_ITEMS)).toEqual({
+      id: 'item-cataplasma',
+      curaHasta: 'HERIDO',
+      curaUnPaso: false,
+    });
   });
 
   it('sin ningún objeto médico nombrado, devuelve null', () => {
@@ -74,7 +78,15 @@ describe('detectMedicalItemUse', () => {
     expect(detectMedicalItemUse('Uso mi cataplasma de salvia del polvo y mi elixir de sanación mayor', MEDICAL_ITEMS)).toEqual({
       id: 'item-elixir',
       curaHasta: 'ILESO',
+      curaUnPaso: false,
     });
+  });
+
+  // Primeros auxilios (2026-08-13) — el `curaUnPaso` real del objeto viaja en la respuesta, para
+  // que healCeilingFor (death.ts) sepa si romper el tope de golpe o subir solo un escalón.
+  it('propaga curaUnPaso del objeto que matchea', () => {
+    const items = [{ id: 'item-vendaje', name: 'Vendaje improvisado', curaHasta: 'GRAVE' as const, curaUnPaso: true }];
+    expect(detectMedicalItemUse('Ato mi vendaje improvisado', items)).toEqual({ id: 'item-vendaje', curaHasta: 'GRAVE', curaUnPaso: true });
   });
 });
 

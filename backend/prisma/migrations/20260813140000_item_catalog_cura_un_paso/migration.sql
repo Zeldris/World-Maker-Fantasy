@@ -1,0 +1,1 @@
+ALTER TABLE "ItemCatalog" ADD COLUMN "curaUnPaso" BOOLEAN NOT NULL DEFAULT false;

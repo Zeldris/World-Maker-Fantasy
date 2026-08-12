@@ -84,11 +84,29 @@ export function healCeilingFor(
   restAttempted: boolean,
   restInValidLocation: boolean,
   medicalCuraHasta: CondicionFisica | null,
+  // Primeros auxilios (2026-08-13, petición explícita: "quiero unas profesiones... que sea
+  // primeros-auxilios que tenga pocas recetas de objetos básicos con los que te puedes curar pero
+  // solo objetos tipo mejoran el estado en el que estas... mejora al siguiente"): con esto en
+  // `true`, el objeto YA NO rompe el tope de golpe hasta `medicalCuraHasta` — como mucho sube UN
+  // escalón desde `current`, y `medicalCuraHasta` pasa a ser el tope de ESE escalón (así un
+  // objeto de tier bajo, usado desde muy mal, nunca cura más lejos de lo que le tocaría a un
+  // objeto de tier bajo usado en su punto exacto). Objetos normales (alquimista y superiores,
+  // `curaUnPaso: false`) siguen rompiendo el tope de golpe, sin cambios.
+  medicalCuraUnPaso = false,
 ): CondicionFisica {
   const currentIdx = CONDICION_ORDER.indexOf(current);
   let ceiling: CondicionFisica = current;
   if (medicalCuraHasta) {
-    ceiling = medicalCuraHasta; // el objeto manda, rompe el tope incluso desde INCAPACITADO
+    if (medicalCuraUnPaso) {
+      // CONDICION_ORDER va de mejor a peor (ILESO=0 primero), así que "un escalón mejor" es
+      // RESTAR uno al índice. El resultado real es el MAYOR de los dos índices (el peor de los
+      // dos) — nunca mejor que un escalón por encima de `current`, y nunca mejor que el propio
+      // tope del objeto (`medicalIdx`), lo que gane primero.
+      const medicalIdx = CONDICION_ORDER.indexOf(medicalCuraHasta);
+      ceiling = CONDICION_ORDER[Math.max(currentIdx - 1, medicalIdx)];
+    } else {
+      ceiling = medicalCuraHasta; // el objeto manda, rompe el tope incluso desde INCAPACITADO
+    }
   } else if (restInValidLocation && current !== 'INCAPACITADO' && current !== 'MUERTO') {
     ceiling = 'HERIDO';
   } else if (restAttempted && current !== 'MUERTO') {

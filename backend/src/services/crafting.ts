@@ -207,6 +207,93 @@ export const STONE_BLOCK_RECIPE: CraftingRecipe = {
     'El personaje talla su piedra en bloques a golpes de maza y cincel, desbastando cada cara hasta dejarla plana — narra la escena (el polvo, el ritmo del golpe, las esquirlas saltando) con naturalidad. El objeto ya se gestiona automáticamente por el backend.',
 };
 
+// Primeros auxilios (2026-08-13, petición explícita: "una profesión que sea primeros-auxilios que
+// tenga pocas recetas de objetos básicos... si es incapacitado solo hay un item que te lleva a
+// grave... luego otro que mejora al siguiente, de grave a herido y de herido a ileso") — oficio
+// nuevo 'primeros-auxilios-orcos-llanuras' (distinto de 'alquimista', reservado para objetos
+// mejores más adelante). Los 3 objetos de condición usan `curaUnPaso: true` (ver ItemCatalog/
+// healCeilingFor) — cada uno solo sube UN escalón desde donde esté el jugador, nunca de golpe
+// hasta su curaHasta. Deliberadamente MÁS débiles que la materia prima sin craftear (manojo-
+// salvia-polvo/petalos-flor-ceniza YA curan HERIDO/GRAVE de golpe en crudo) — esta profesión
+// existe por el escalón final (HERIDO→ILESO, tier 3, el único punto que la materia prima sola
+// nunca alcanza), no para competir con ella en los tramos bajos.
+export const FIRST_AID_BANDAGE_RECIPE: CraftingRecipe = {
+  key: 'firstAidBandage',
+  verbRegex: /prepar|at[ao]|venda|hac|crear|creo/,
+  nounRegex: /vendaje/,
+  location: null,
+  ingredients: [{ match: { kind: 'exact', catalogSlug: 'manojo-salvia-polvo' }, cantidad: 1, label: 'manojo de salvia del polvo' }],
+  resultName: 'Vendaje improvisado',
+  resultCatalogSlug: 'vendaje-improvisado',
+  resultDescription: 'Tiras de tela atadas sobre un manojo machacado de salvia del polvo — primeros auxilios de campaña, lo justo para dejar de desangrarse.',
+  tier: 1,
+  oficio: 'primeros-auxilios-orcos-llanuras',
+  narrationWant:
+    'El personaje quiere atar un vendaje improvisado, pero no lleva encima ningún manojo de salvia del polvo — narra que lo intenta o lo considera, pero no que lo prepara de verdad.',
+  narrationDo:
+    'El personaje machaca su manojo de salvia del polvo y lo ata sobre la herida con tiras de tela — narra la escena con naturalidad, sin prometer más curación de la justa. El objeto ya se gestiona automáticamente por el backend.',
+};
+
+export const RED_SPIKE_INFUSION_RECIPE: CraftingRecipe = {
+  key: 'redSpikeInfusion',
+  verbRegex: /prepar|hierv|infusion|hac|crear|creo/,
+  nounRegex: /infusi[oó]n.*espiga|espiga.*infusi[oó]n/,
+  location: null,
+  ingredients: [{ match: { kind: 'exact', catalogSlug: 'grano-espiga-roja' }, cantidad: 2, label: 'grano de espiga roja' }],
+  resultName: 'Infusión de espiga roja',
+  resultCatalogSlug: 'infusion-espiga-roja',
+  resultDescription: 'Grano de espiga roja tostado e infusionado en agua hirviendo — más nutritiva que el grano crudo, prepara para seguir adelante.',
+  tier: 1,
+  oficio: 'primeros-auxilios-orcos-llanuras',
+  narrationWant:
+    'El personaje quiere preparar una infusión de espiga roja, pero no lleva encima suficiente grano de espiga roja (hacen falta al menos 2) — narra que lo intenta o lo considera, pero no que la prepara de verdad.',
+  narrationDo:
+    'El personaje tuesta e infusiona su grano de espiga roja en agua hirviendo — narra la escena (el olor tostado, el vapor) con naturalidad. El objeto ya se gestiona automáticamente por el backend.',
+};
+
+export const BASIC_POULTICE_RECIPE: CraftingRecipe = {
+  key: 'basicPoultice',
+  verbRegex: /prepar|machac|hac|crear|creo/,
+  nounRegex: /cataplasma b[aá]sica/,
+  location: null,
+  ingredients: [
+    { match: { kind: 'exact', catalogSlug: 'manojo-salvia-polvo' }, cantidad: 1, label: 'manojo de salvia del polvo' },
+    { match: { kind: 'exact', catalogSlug: 'petalos-flor-ceniza' }, cantidad: 1, label: 'pétalos de Flor de Ceniza' },
+  ],
+  resultName: 'Cataplasma básica de salvia',
+  resultCatalogSlug: 'cataplasma-basica-salvia',
+  resultDescription: 'Salvia del polvo y pétalos de Flor de Ceniza machacados juntos en una pasta simple — cura mejor que el vendaje improvisado, pero sigue siendo primeros auxilios de campaña.',
+  tier: 2,
+  oficio: 'primeros-auxilios-orcos-llanuras',
+  narrationWant:
+    'El personaje quiere preparar una cataplasma básica de salvia, pero no lleva encima manojo de salvia del polvo y pétalos de Flor de Ceniza a la vez — narra que lo intenta o lo considera, pero no que la prepara de verdad.',
+  narrationDo:
+    'El personaje machaca juntos su manojo de salvia del polvo y sus pétalos de Flor de Ceniza hasta formar una pasta — narra la escena con naturalidad. El objeto ya se gestiona automáticamente por el backend.',
+};
+
+export const COMPLETE_POULTICE_RECIPE: CraftingRecipe = {
+  key: 'completePoultice',
+  verbRegex: /prepar|machac|hac|crear|creo/,
+  nounRegex: /cataplasma completa/,
+  location: null,
+  ingredients: [
+    { match: { kind: 'exact', catalogSlug: 'manojo-salvia-polvo' }, cantidad: 2, label: 'manojo de salvia del polvo' },
+    { match: { kind: 'exact', catalogSlug: 'petalos-flor-ceniza' }, cantidad: 1, label: 'pétalos de Flor de Ceniza' },
+  ],
+  resultName: 'Cataplasma completa de salvia y ceniza',
+  resultCatalogSlug: 'cataplasma-completa-salvia-ceniza',
+  resultDescription: 'La preparación más cuidada de primeros auxilios que se puede hacer en campaña — doble ración de salvia del polvo y pétalos de Flor de Ceniza, machacados y aplicados con calma. Cierra hasta la última herida.',
+  // La receta final de la profesión (2026-08-13, petición explícita: "la última receta que se
+  // aprende es la que cura de herido a ileso") — tier 3, el más alto de las 4 recetas nuevas, así
+  // que hace falta subir la profesión practicando las otras 3 antes de poder craftearla.
+  tier: 3,
+  oficio: 'primeros-auxilios-orcos-llanuras',
+  narrationWant:
+    'El personaje quiere preparar una cataplasma completa de salvia y ceniza, pero no lleva encima suficiente manojo de salvia del polvo (hacen falta 2) y pétalos de Flor de Ceniza a la vez — narra que lo intenta o lo considera, pero no que la prepara de verdad.',
+  narrationDo:
+    'El personaje machaca con calma su doble ración de salvia del polvo junto a sus pétalos de Flor de Ceniza, aplicando la cataplasma con el cuidado que merece una cura completa — narra la escena con naturalidad. El objeto ya se gestiona automáticamente por el backend.',
+};
+
 export const CRAFTING_RECIPES: CraftingRecipe[] = [
   AXE_REPAIR_RECIPE,
   SMOKE_MEAT_RECIPE,
@@ -215,6 +302,10 @@ export const CRAFTING_RECIPES: CraftingRecipe[] = [
   FIELD_TORCH_RECIPE,
   IRON_INGOT_RECIPE,
   STONE_BLOCK_RECIPE,
+  FIRST_AID_BANDAGE_RECIPE,
+  RED_SPIKE_INFUSION_RECIPE,
+  BASIC_POULTICE_RECIPE,
+  COMPLETE_POULTICE_RECIPE,
 ];
 
 export function detectsCraftIntent(recipe: CraftingRecipe, action: string): boolean {

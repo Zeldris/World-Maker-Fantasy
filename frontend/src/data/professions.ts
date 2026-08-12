@@ -622,6 +622,76 @@ export const professions: Profession[] = [
       'Constructor de los Goirntes de la Meseta del Orden. Esta profesion se centra en los recursos que ofrece la zona de la Meseta del Orden.',
     category: 'creacion',
   },
+  // Creadora nueva (2026-08-13, petición explícita: "una profesión que sea primeros-auxilios que
+  // tenga pocas recetas de objetos básicos con los que te puedes curar... solo objetos tipo
+  // mejoran el estado en el que estas") — distinta de 'alquimista' a propósito (esa se reserva
+  // para objetos superiores más adelante, decisión explícita de la usuaria: "curandero esa
+  // profesión la haremos más adelante"). Mismos 9 combos raza+región que peletero/curtidor/
+  // desollador/carpintero/constructor. Cualquier personaje jugable la lleva de serie
+  // (startingProfessions.ts la calcula por raza+región, no solo Gorhorn).
+  {
+    id: 'primeros-auxilios-orcos-llanuras',
+    name: 'Primeros auxilios de los Orcos de las Llanuras del Viento Rojo',
+    description:
+      'Prepara vendajes y cataplasmas básicas de primeros auxilios de los Orcos de las Llanuras del Viento Rojo. Esta profesion se centra en los recursos que ofrece la zona de las Llanuras del Viento Rojo.',
+    category: 'creacion',
+  },
+  {
+    id: 'primeros-auxilios-orcos-cristal',
+    name: 'Primeros auxilios de los Orcos de Cristal Helado',
+    description:
+      'Prepara vendajes y cataplasmas básicas de primeros auxilios de los Orcos de Cristal Helado. Esta profesion se centra en los recursos que ofrece la zona de Cristal Helado.',
+    category: 'creacion',
+  },
+  {
+    id: 'primeros-auxilios-orcos-cienaga',
+    name: 'Primeros auxilios de los Orcos de la Cienaga Troncal',
+    description:
+      'Prepara vendajes y cataplasmas básicas de primeros auxilios de los Orcos de la Cienaga Troncal. Esta profesion se centra en los recursos que ofrece la zona de la Cienaga Troncal.',
+    category: 'creacion',
+  },
+  {
+    id: 'primeros-auxilios-nabierus-cienaga',
+    name: 'Primeros auxilios de los Nabierus de la Cienaga Troncal',
+    description:
+      'Prepara vendajes y cataplasmas básicas de primeros auxilios de los Nabierus de la Cienaga Troncal. Esta profesion se centra en los recursos que ofrece la zona de la Cienaga Troncal.',
+    category: 'creacion',
+  },
+  {
+    id: 'primeros-auxilios-nabierus-margen',
+    name: 'Primeros auxilios de los Nabierus del Margen Silencioso',
+    description:
+      'Prepara vendajes y cataplasmas básicas de primeros auxilios de los Nabierus del Margen Silencioso. Esta profesion se centra en los recursos que ofrece la zona del Margen Silencioso.',
+    category: 'creacion',
+  },
+  {
+    id: 'primeros-auxilios-faerus-llanuras',
+    name: 'Primeros auxilios de los Faerus de las Llanuras del Viento Rojo',
+    description:
+      'Prepara vendajes y cataplasmas básicas de primeros auxilios de los Faerus de las Llanuras del Viento Rojo. Esta profesion se centra en los recursos que ofrece la zona de las Llanuras del Viento Rojo.',
+    category: 'creacion',
+  },
+  {
+    id: 'primeros-auxilios-faerus-margen',
+    name: 'Primeros auxilios de los Faerus del Margen Silencioso',
+    description:
+      'Prepara vendajes y cataplasmas básicas de primeros auxilios de los Faerus del Margen Silencioso. Esta profesion se centra en los recursos que ofrece la zona del Margen Silencioso.',
+    category: 'creacion',
+  },
+  {
+    id: 'primeros-auxilios-goirntes-margen',
+    name: 'Primeros auxilios de los Goirntes del Margen Silencioso',
+    description:
+      'Prepara vendajes y cataplasmas básicas de primeros auxilios de los Goirntes del Margen Silencioso. Esta profesion se centra en los recursos que ofrece la zona del Margen Silencioso.',
+    category: 'creacion',
+  },
+  {
+    id: 'primeros-auxilios-goirntes-meseta',
+    name: 'Primeros auxilios de los Goirntes de la Meseta del Orden',
+    description:
+      'Prepara vendajes y cataplasmas básicas de primeros auxilios de los Goirntes de la Meseta del Orden. Esta profesion se centra en los recursos que ofrece la zona de la Meseta del Orden.',
+    category: 'creacion',
+  },
   {
     id: 'peletero-orcos-llanuras',
     name: 'Peletero de los Orcos de las Llanuras del Viento Rojo',

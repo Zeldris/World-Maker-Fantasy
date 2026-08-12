@@ -1874,6 +1874,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
           tipo: true,
           category: true,
           curaHasta: true,
+          curaUnPaso: true,
           tipoArma: true,
           curaEnergia: true,
           equipSlot: true,
@@ -1888,6 +1889,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
         tipo: c.tipo,
         category: c.category,
         curaHasta: c.curaHasta,
+        curaUnPaso: c.curaUnPaso,
         tipoArma: c.tipoArma,
         curaEnergia: c.curaEnergia,
         equipSlot: c.equipSlot,
@@ -1939,10 +1941,16 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   // médicos QUE de verdad llevas encima ahora mismo, con su tope de curación real del catálogo —
   // detectMedicalItemUse (itemReference.ts) decide determinista si esta acción usa alguno.
   const medicalItemsInInventory = inventoryRows
-    .map((i) => ({ id: i.id, name: i.name, curaHasta: i.catalogSlug ? (catalogBySlug.get(i.catalogSlug)?.curaHasta ?? null) : null }))
-    .filter((i): i is { id: string; name: string; curaHasta: CondicionFisica } => i.curaHasta !== null);
+    .map((i) => ({
+      id: i.id,
+      name: i.name,
+      curaHasta: i.catalogSlug ? (catalogBySlug.get(i.catalogSlug)?.curaHasta ?? null) : null,
+      curaUnPaso: i.catalogSlug ? (catalogBySlug.get(i.catalogSlug)?.curaUnPaso ?? false) : false,
+    }))
+    .filter((i): i is { id: string; name: string; curaHasta: CondicionFisica; curaUnPaso: boolean } => i.curaHasta !== null);
   const medicalItemMatch = detectMedicalItemUse(action, medicalItemsInInventory);
   const medicalCuraHasta = medicalItemMatch?.curaHasta ?? null;
+  const medicalCuraUnPaso = medicalItemMatch?.curaUnPaso ?? false;
   // Sistema de fatiga (2026-07-29, "los consumibles se pueden usar también para recuperar... la
   // energía") — mismo patrón que medicalItemsInInventory/detectMedicalItemUse de arriba.
   const energyItemsInInventory = inventoryRows
@@ -2502,7 +2510,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   const restSucceeds = !!(restAttempted && isValidRestLocationKind(currentLocationRecord!.kind));
   // Reglas de curación (2026-07-29): sin descanso ni objeto médico, el techo es la propia
   // condición actual — ninguna mejora "porque sí" pasa (ver healCeilingFor/death.ts).
-  const healCeiling = healCeilingFor(params.condicionFisica, restAttempted, restSucceeds, medicalCuraHasta);
+  const healCeiling = healCeilingFor(params.condicionFisica, restAttempted, restSucceeds, medicalCuraHasta, medicalCuraUnPaso);
   const proposedCondicion = nextCondicionFisica(params.condicionFisica, condicionPropuestaCombinada, !!enCombate, healCeiling);
 
   // Sistema de fatiga (2026-07-29) — gasto/regen de energía de este turno, siempre determinista

@@ -57,8 +57,9 @@ export function missingItemBlockFor(check: ItemReferenceCheck): string {
 /// Determinista por nombre real del objeto (no un sustantivo genérico como detectItemReference
 /// arriba) — el jugador lo referencia tal cual sale en su inventario, mismo patrón que ya usan
 /// los objetivos de combate entre comillas. Si varios objetos médicos coinciden, se queda con el
-/// de mayor tope de curación (ILESO > HERIDO) — usar el mejor que de verdad nombró.
-const CURA_HASTA_ORDER: CondicionFisica[] = ['ILESO', 'HERIDO'];
+/// de mayor tope de curación (ILESO > HERIDO > GRAVE) — usar el mejor que de verdad nombró. GRAVE
+/// añadido (2026-08-13) — el objeto de primeros auxilios de tier 1 tiene curaHasta: GRAVE.
+const CURA_HASTA_ORDER: CondicionFisica[] = ['ILESO', 'HERIDO', 'GRAVE'];
 
 /// Bug real jugando en vivo (2026-08-07, "he consumido una ración de comida y no ha desaparecido
 /// del inventario" — pasaba también en combate): el efecto mecánico (curar/restaurar energía) SÍ
@@ -69,14 +70,19 @@ const CURA_HASTA_ORDER: CondicionFisica[] = ['ILESO', 'HERIDO'];
 export interface MedicalItemMatch {
   id: string;
   curaHasta: CondicionFisica;
+  /// Primeros auxilios (2026-08-13) — ver ItemCatalog.curaUnPaso/healCeilingFor (death.ts).
+  curaUnPaso: boolean;
 }
 
-export function detectMedicalItemUse(action: string, medicalItems: { id: string; name: string; curaHasta: CondicionFisica }[]): MedicalItemMatch | null {
+export function detectMedicalItemUse(
+  action: string,
+  medicalItems: { id: string; name: string; curaHasta: CondicionFisica; curaUnPaso: boolean }[],
+): MedicalItemMatch | null {
   const normalized = normalizeText(action);
   const matches = medicalItems.filter((item) => normalized.includes(normalizeText(item.name)));
   if (matches.length === 0) return null;
   const best = matches.sort((a, b) => CURA_HASTA_ORDER.indexOf(a.curaHasta) - CURA_HASTA_ORDER.indexOf(b.curaHasta))[0];
-  return { id: best.id, curaHasta: best.curaHasta };
+  return { id: best.id, curaHasta: best.curaHasta, curaUnPaso: best.curaUnPaso };
 }
 
 export interface EnergyItemMatch {

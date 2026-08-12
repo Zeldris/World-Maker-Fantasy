@@ -24,6 +24,10 @@ const antidote = recipe('antidote');
 const fieldTorch = recipe('fieldTorch');
 const ironIngot = recipe('ironIngot');
 const stoneBlock = recipe('stoneBlock');
+const firstAidBandage = recipe('firstAidBandage');
+const redSpikeInfusion = recipe('redSpikeInfusion');
+const basicPoultice = recipe('basicPoultice');
+const completePoultice = recipe('completePoultice');
 
 // catalogSlug de cada fila → tipo/categoría real del catálogo (2026-07-29, refactor de
 // ingredientes: crafting.ts ya no matchea por prefijo de nombre, matchea por catalogSlug/tipo/
@@ -41,6 +45,7 @@ const catalogBySlug = new Map<string, CatalogLookup>([
   ['mena-de-hierro', { tipo: 'RECURSO', category: 'mena' }],
   ['piedra', { tipo: 'RECURSO', category: 'piedra' }],
   ['odre-agua', { tipo: 'EQUIPABLE', category: 'herramienta' }],
+  ['grano-espiga-roja', { tipo: 'CONSUMIBLE', category: 'consumible' }],
 ]);
 
 function row(id: string, catalogSlug: string, cantidad?: number): InventoryRowLike {
@@ -48,7 +53,7 @@ function row(id: string, catalogSlug: string, cantidad?: number): InventoryRowLi
 }
 
 describe('CRAFTING_RECIPES', () => {
-  it('tiene las 7 recetas esperadas, cada una con una clave única', () => {
+  it('tiene las 11 recetas esperadas, cada una con una clave única', () => {
     expect(CRAFTING_RECIPES.map((r) => r.key)).toEqual([
       'axeRepair',
       'smokeMeat',
@@ -57,6 +62,10 @@ describe('CRAFTING_RECIPES', () => {
       'fieldTorch',
       'ironIngot',
       'stoneBlock',
+      'firstAidBandage',
+      'redSpikeInfusion',
+      'basicPoultice',
+      'completePoultice',
     ]);
   });
 });
@@ -109,6 +118,28 @@ describe('detectsCraftIntent', () => {
     expect(detectsCraftIntent(stoneBlock, 'Desbasto piedra tallada')).toBe(true);
     expect(detectsCraftIntent(stoneBlock, 'Tallo un cuchillo')).toBe(false);
   });
+
+  it('detecta intención de atar un vendaje improvisado', () => {
+    expect(detectsCraftIntent(firstAidBandage, 'Ato un vendaje improvisado con mi manojo de salvia del polvo')).toBe(true);
+    expect(detectsCraftIntent(firstAidBandage, 'Preparo un vendaje con lo que tengo')).toBe(true);
+    expect(detectsCraftIntent(firstAidBandage, 'Ato mis botas')).toBe(false);
+  });
+
+  it('detecta intención de preparar una infusión de espiga roja', () => {
+    expect(detectsCraftIntent(redSpikeInfusion, 'Preparo una infusión de espiga roja')).toBe(true);
+    expect(detectsCraftIntent(redSpikeInfusion, 'Hiervo espiga roja en infusión')).toBe(true);
+    expect(detectsCraftIntent(redSpikeInfusion, 'Preparo la cena')).toBe(false);
+  });
+
+  it('detecta intención de preparar cataplasma básica de salvia, distinta de la completa', () => {
+    expect(detectsCraftIntent(basicPoultice, 'Preparo una cataplasma básica de salvia')).toBe(true);
+    expect(detectsCraftIntent(basicPoultice, 'Preparo una cataplasma completa de salvia y ceniza')).toBe(false);
+  });
+
+  it('detecta intención de preparar cataplasma completa de salvia y ceniza, distinta de la básica', () => {
+    expect(detectsCraftIntent(completePoultice, 'Preparo una cataplasma completa de salvia y ceniza')).toBe(true);
+    expect(detectsCraftIntent(completePoultice, 'Preparo una cataplasma básica de salvia')).toBe(false);
+  });
 });
 
 describe('canCraft — ingrediente exacto (catalogSlug concreto)', () => {
@@ -149,6 +180,32 @@ describe('canCraft — ingrediente exacto (catalogSlug concreto)', () => {
     const debil: AttributeBlock = { ...attrs, fuerza: 8 };
     const recipeConRequisito: CraftingRecipe = { ...axeRepair, requisitos: { fuerza: 12 } };
     expect(craftRequisitoShortfalls(recipeConRequisito, debil, secondary, 4)).toEqual([]);
+  });
+});
+
+describe('canCraft — recetas de primeros auxilios (2026-08-13)', () => {
+  it('vendaje improvisado exige 1 manojo de salvia del polvo, en cualquier sitio', () => {
+    expect(canCraft(firstAidBandage, null, [row('1', 'manojo-salvia-polvo')], catalogBySlug, attrs, secondary)).toBe(true);
+    expect(canCraft(firstAidBandage, null, [], catalogBySlug, attrs, secondary)).toBe(false);
+  });
+  it('infusión de espiga roja exige 2 granos de espiga roja', () => {
+    expect(canCraft(redSpikeInfusion, null, [row('1', 'grano-espiga-roja', 2)], catalogBySlug, attrs, secondary)).toBe(true);
+    expect(canCraft(redSpikeInfusion, null, [row('1', 'grano-espiga-roja', 1)], catalogBySlug, attrs, secondary)).toBe(false);
+  });
+  it('cataplasma básica exige 1 manojo de salvia + 1 pétalos de Flor de Ceniza', () => {
+    expect(
+      canCraft(basicPoultice, null, [row('1', 'manojo-salvia-polvo'), row('2', 'petalos-flor-ceniza')], catalogBySlug, attrs, secondary),
+    ).toBe(true);
+    expect(canCraft(basicPoultice, null, [row('1', 'manojo-salvia-polvo')], catalogBySlug, attrs, secondary)).toBe(false);
+  });
+  it('cataplasma completa exige 2 manojos de salvia + 1 pétalos de Flor de Ceniza — la receta final, más exigente', () => {
+    expect(
+      canCraft(completePoultice, null, [row('1', 'manojo-salvia-polvo', 2), row('2', 'petalos-flor-ceniza')], catalogBySlug, attrs, secondary),
+    ).toBe(true);
+    // Solo 1 manojo (lo que basta para la básica) no llega para la completa.
+    expect(
+      canCraft(completePoultice, null, [row('1', 'manojo-salvia-polvo', 1), row('2', 'petalos-flor-ceniza')], catalogBySlug, attrs, secondary),
+    ).toBe(false);
   });
 });
 

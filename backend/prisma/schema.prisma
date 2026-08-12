@@ -1201,6 +1201,14 @@ model ItemCatalog {
   /// cura condición física (la inmensa mayoría del catálogo, incluido el resto de "medicinal" que
   /// no cura de verdad, como el contraveneno).
   curaHasta   CondicionFisica?
+  /// Primeros auxilios (2026-08-13, petición explícita: objetos "básicos" que solo mejoran UN
+  /// escalón de condición desde donde estés, nunca de golpe hasta `curaHasta` como los objetos
+  /// normales) — con esto en `true`, `curaHasta` deja de ser un tope absoluto y pasa a ser el
+  /// MEJOR resultado posible con este objeto (nunca peor que un escalón por encima de la
+  /// condición actual). Ver `healCeilingFor` (death.ts) para la fórmula real. `false`/`null` =
+  /// comportamiento de siempre (rompe el tope de golpe, incluso desde INCAPACITADO) — el resto
+  /// del catálogo (alquimista y superiores) sigue así a propósito.
+  curaUnPaso  Boolean          @default(false)
   /// Cantidad de energía que restaura al usarlo (2026-07-29, sistema de fatiga) — mismo criterio
   /// que `curaHasta` pero numérico (la energía es un pool 0..max, no un enum con pasos fijos).
   /// Null = el objeto no restaura energía.

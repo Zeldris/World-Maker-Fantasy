@@ -1682,6 +1682,11 @@ export interface ItemCatalogInput {
   /// `category: 'medicinal'` que de verdad traten heridas (no antídotos/sedantes). Omitido = no
   /// cura condición física. Ver comentario del campo homónimo en schema.prisma.
   curaHasta?: 'GRAVE' | 'HERIDO' | 'ILESO';
+  /// Primeros auxilios (2026-08-13) — con `curaHasta` puesto, decide si este objeto rompe el tope
+  /// de golpe (comportamiento normal, `false`/omitido) o solo sube UN escalón como mucho, con
+  /// `curaHasta` de tope de ESE escalón (ver healCeilingFor, death.ts). Ver comentario del campo
+  /// homónimo en schema.prisma.
+  curaUnPaso?: boolean;
   /// Categoría de arma (2026-07-29, sistema de habilidades por arma) — decide qué atributo usa
   /// la habilidad de ataque/defensa que este objeto genera al equiparlo. Solo en `category: 'arma'`.
   tipoArma?: WeaponCategory;
@@ -2531,7 +2536,66 @@ export const items: ItemCatalogInput[] = [
     equipSlot: 'CONSUMIBLE_1', 
     description: 'Infusión que adormece el dolor y deja dormir a un herido.', 
     dimensiones: 'Puñado de pétalos de 3 a 4 cm.',
-    curaHasta: 'GRAVE' 
+    curaHasta: 'GRAVE'
+  },
+
+  // Primeros auxilios (2026-08-13, petición explícita: "una profesión que sea primeros-auxilios
+  // que tenga pocas recetas de objetos básicos... si es incapacitado solo hay un item que te lleva
+  // a grave... luego otro que mejora al siguiente, de grave a herido y de herido a ileso") — 3
+  // objetos escalonados (curaUnPaso: true, ver crafting.ts § oficio 'primeros-auxilios-orcos-
+  // llanuras') más uno de energía pura, todos crafteados a partir de lo que ya recolecta
+  // herborista en Llanuras. Deliberadamente MÁS débiles objeto a objeto que 'manojo-salvia-polvo'/
+  // 'petalos-flor-ceniza' en crudo (que ya curan HERIDO/GRAVE de golpe sin craftear nada) — el
+  // profesión existe para el escalón final (HERIDO→ILESO), no para competir con la materia prima.
+  {
+    slug: 'vendaje-improvisado',
+    name: 'Vendaje improvisado',
+    category: 'medicinal',
+    tipo: 'CONSUMIBLE',
+    equipSlot: 'CONSUMIBLE_1',
+    description: 'Tiras de tela atadas sobre un manojo machacado de salvia del polvo — primeros auxilios de campaña, lo justo para dejar de desangrarse.',
+    dimensiones: 'Vendaje de 2 m.',
+    lugarOrigen: 'Llanuras del Viento Rojo.',
+    curaHasta: 'GRAVE',
+    curaUnPaso: true,
+  },
+
+  {
+    slug: 'cataplasma-basica-salvia',
+    name: 'Cataplasma básica de salvia',
+    category: 'medicinal',
+    tipo: 'CONSUMIBLE',
+    equipSlot: 'CONSUMIBLE_1',
+    description: 'Salvia del polvo y pétalos de Flor de Ceniza machacados juntos en una pasta simple — cura mejor que el vendaje improvisado, pero sigue siendo primeros auxilios de campaña.',
+    dimensiones: 'Emplasto de 10x10 cm.',
+    lugarOrigen: 'Llanuras del Viento Rojo.',
+    curaHasta: 'HERIDO',
+    curaUnPaso: true,
+  },
+
+  {
+    slug: 'cataplasma-completa-salvia-ceniza',
+    name: 'Cataplasma completa de salvia y ceniza',
+    category: 'medicinal',
+    tipo: 'CONSUMIBLE',
+    equipSlot: 'CONSUMIBLE_1',
+    description: 'La preparación más cuidada de primeros auxilios que se puede hacer en campaña — doble ración de salvia del polvo y pétalos de Flor de Ceniza, machacados y aplicados con calma. Cierra hasta la última herida.',
+    dimensiones: 'Emplasto de 15x15 cm.',
+    lugarOrigen: 'Llanuras del Viento Rojo.',
+    curaHasta: 'ILESO',
+    curaUnPaso: true,
+  },
+
+  {
+    slug: 'infusion-espiga-roja',
+    name: 'Infusión de espiga roja',
+    category: 'medicinal',
+    tipo: 'CONSUMIBLE',
+    equipSlot: 'CONSUMIBLE_1',
+    description: 'Grano de espiga roja tostado e infusionado en agua hirviendo — más nutritiva que el grano crudo, prepara para seguir adelante.',
+    dimensiones: 'Cuenco de 250 ml.',
+    lugarOrigen: 'Llanuras del Viento Rojo.',
+    curaEnergia: 25,
   },
 
   // ══════════════════════════════════════════════════════════════════════════
