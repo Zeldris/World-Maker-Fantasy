@@ -999,8 +999,15 @@ export function hasFalseItemUse(narration: string, possiblyFalseItemUseNames?: s
 /// resto de esta lista. Vocabulario centrado en SEÑALES DE PRESENCIA RECIENTE/ACTIVA (huellas
 /// frescas, "sigue vivo", reaparece...) — deliberadamente no cualquier mención del nombre, para no
 /// disparar con un recuerdo legítimo en pasado ("recordó cuando luchó contra el Orco Enfurecido").
+// Vocabulario de "ataca de nuevo" ampliado (auditoría "revisar partida", 2026-08-12 — bug real
+// jugando en vivo: con el Orco Enfurecido MUERTO/saqueado desde hacía varios turnos, un "Salgo a
+// cazar y ataco a 'Múrgol'" (sin mencionar al orco) narró "El orco enfurecido se da la vuelta
+// bruscamente... el orco se lanza hacia él con un rugido atronador" — el vocabulario de arriba
+// (huellas, "sigue vivo", "reaparece"...) no cubría una iniciativa de ataque directa como esta.
+// Verificado contra el texto real capturado en el log: la versión anterior de este regex devolvía
+// `false` para esta frase exacta, dejando pasar la resurrección sin reintento.
 const RESURRECTION_LEAK_REGEX =
-  /\b(huellas?\s+(recien\w*|frescas?)|rastro\s+reciente|reconoce el paso de|acaba de pasar|sigue\s+(con vida|vivo)|todav[ií]a\s+(con vida|vivo)|reaparece|vuelve a (atacar|aparecer|acercarse)|se acerca (de nuevo|otra vez))\b/i;
+  /\b(huellas?\s+(recien\w*|frescas?)|rastro\s+reciente|reconoce el paso de|acaba de pasar|sigue\s+(con vida|vivo)|todav[ií]a\s+(con vida|vivo)|reaparece|vuelve a (atacar|aparecer|acercarse)|se acerca (de nuevo|otra vez)|se (lanza|abalanza|arroja)\s+(hacia|sobre|contra)|se (da la vuelta|gira|vuelve)\s+bruscamente|embiste|carga contra|arremete\s+(hacia|contra))\b/i;
 
 export function hasResurrectedDeadNpc(narration: string, possiblyResurrectedNpcNames?: string[]): boolean {
   if (!possiblyResurrectedNpcNames || possiblyResurrectedNpcNames.length === 0) return false;

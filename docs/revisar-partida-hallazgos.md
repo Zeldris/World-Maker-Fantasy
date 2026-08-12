@@ -1489,11 +1489,13 @@ importa a la usuaria (ver conversación de la misma sesión sobre el validador d
    enfurecido'])` devuelve `false` con el texto real capturado en el log — el reintento nunca se
    disparó.
 
-**Estado**: PENDIENTE, sin arreglar (reportado, no se aplica sin luz verde). Fix más directo y de
-menor riesgo: ampliar `RESURRECTION_LEAK_REGEX` (narrador.ts) con vocabulario de "gira hacia/se
-lanza hacia/embiste/carga contra" cuando el sujeto es un NPC ya resuelto — cierra este caso concreto
-sin tocar `npcScene.ts`. El comportamiento de fondo (NPCs `PRINCIPAL` ya muertos siguiendo siendo
-"candidatos" varios turnos por sus propios hechos de muerte) es más discutible de tocar: es el mismo
-mecanismo que mantiene vivas conversaciones/continuidad con NPCs reales sin repetir su nombre cada
-turno, así que recortarlo podría romper casos legítimos — no se propone tocarlo salvo que este
-patrón se repita con otros NPCs.
+**Estado**: FIJADO (2026-08-13) — `RESURRECTION_LEAK_REGEX` (narrador.ts) ampliado con vocabulario
+de iniciativa de ataque directa ("se lanza/abalanza/arroja hacia", "se da la vuelta/gira/vuelve
+bruscamente", "embiste", "carga contra", "arremete"). Verificado contra el texto real capturado en
+el log de esta misma partida (antes devolvía `false`, ahora `true`) y contra dos casos que NO deben
+disparar (memoria legítima en pasado, mención pasiva del cadáver) — ambos siguen en `false`. Test
+de regresión nuevo en `narrador.test.ts` con el texto real. El comportamiento de fondo (NPCs
+`PRINCIPAL` ya muertos siguiendo siendo "candidatos" varios turnos por sus propios hechos de
+muerte) se deja tal cual a propósito: es el mismo mecanismo que mantiene vivas conversaciones/
+continuidad con NPCs reales sin repetir su nombre cada turno, y tocarlo podría romper casos
+legítimos — no se toca salvo que este patrón se repita con otros NPCs pese a este fix.

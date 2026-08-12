@@ -245,6 +245,16 @@ describe('hasResurrectedDeadNpc', () => {
     const narration = 'Gorhorn encuentra huellas recientes de un jabalí cerca del río. El Orco Enfurecido sigue muerto donde lo dejó.';
     expect(hasResurrectedDeadNpc(narration, ['Orco Enfurecido'])).toBe(false);
   });
+
+  it('bug real jugando en vivo (auditoría "revisar partida", 2026-08-12): detecta una iniciativa de ataque directa de un NPC ya resuelto, no solo señales de presencia pasiva', () => {
+    // Texto real capturado en el log de una partida: con el Orco Enfurecido MUERTO/saqueado desde
+    // hacía varios turnos y en otra ubicación, un "Salgo a cazar y ataco a 'Múrgol'" (sin
+    // mencionarlo) narró esto. La versión anterior del regex (vocabulario de "sigue vivo"/
+    // "reaparece") no lo cazaba.
+    const narration =
+      'El orco enfurecido se da la vuelta bruscamente, vislumbrando una sombra fugaz entre los áridos montículos de tierra. Antes de que Gorhorn pueda reaccionar, el orco se lanza hacia él con un rugido atronador.';
+    expect(hasResurrectedDeadNpc(narration, ['Orco enfurecido'])).toBe(true);
+  });
 });
 
 describe('hasGisteraReencuentroSinNombrar', () => {
