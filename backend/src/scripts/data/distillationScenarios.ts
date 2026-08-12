@@ -18,6 +18,11 @@ import { npcs, fauna, locations, type NpcInput } from '../worldCatalog.js';
 // de narrador.ts que protegen la partida en producción hoy mismo, pero hasta ahora ningún seed del
 // banco los ejercitaba — cero cobertura de entrenamiento para esas 3 clases de bug ya cazadas
 // jugando en vivo, no solo "pocos ejemplos" en categorías existentes.
+//
+// inventario_falso_bait/viaje_fantasma_bait añadidas (2026-08-11, ronda de bugs de la misma
+// fecha): hasFalseInventoryReview/hasFalsePhantomTravel son detectores nuevos de esta misma sesión,
+// mismo hueco que el barrido anterior — protegen producción desde ya pero el banco no tenía ningún
+// seed que los ejercitara.
 export type ScenarioCategory =
   | 'exploracion'
   | 'combate'
@@ -29,7 +34,9 @@ export type ScenarioCategory =
   | 'npc_muerto_bait'
   | 'item_falso_bait'
   | 'combate_prematuro_bait'
-  | 'repeticion_bait';
+  | 'repeticion_bait'
+  | 'inventario_falso_bait'
+  | 'viaje_fantasma_bait';
 
 /// Mismo personaje y resumen que ya usa test-turn.ts (el único script manual existente que ya
 /// prueba turnos reales) — no se importa de ahí porque ese fichero ejecuta su propio main() al
@@ -80,6 +87,15 @@ function npcBySlug(slug: string): NpcInput {
   return npc;
 }
 
+/// Mismos nombre + alias reales que usa turnResolution.ts para poblar `phantomTravelLocationNames`
+/// (nunca a mano, para no desincronizarse del catálogo real — ver el bug de 2026-08-11 donde un
+/// alias corto asumido, "hondonada", no existía de verdad en el catálogo).
+function phantomTravelNamesFor(slug: string): string[] {
+  const loc = locations.find((l) => l.slug === slug);
+  if (!loc) throw new Error(`[distillationScenarios] ubicación desconocida: ${slug}`);
+  return [loc.name, ...loc.aliases];
+}
+
 /// Tirada determinista para un grado de éxito concreto — no usa rollCheck real (que tira dados de
 /// verdad) porque aquí interesa reproducibilidad: el mismo escenario siempre genera la misma
 /// tirada, para poder comparar ejecuciones del pipeline entre sí.
@@ -109,6 +125,10 @@ interface ScenarioBase {
   possiblyFalseItemUseNames?: string[];
   combatNotYetResolved?: boolean;
   lastNarrationText?: string;
+  /// Mismos 2 campos que TurnContext (narrador.ts) para hasFalseInventoryReview/hasFalsePhantomTravel
+  /// (detectores nuevos, 2026-08-11).
+  possiblyFalseInventoryReviewNames?: string[];
+  phantomTravelLocationNames?: string[];
 }
 
 interface ScenarioSeed {
@@ -1134,6 +1154,68 @@ const SEEDS: ScenarioSeed[] = [
     },
     actionVariants: ['Vuelvo a atacar al soldado con mi hacha.', 'Ataco de nuevo al soldado de la Concordia.', 'Repito el ataque contra el soldado.'],
     rollVariants: [{ attribute: 'fuerza', gradoExito: 'claro' }, { attribute: 'fuerza', gradoExito: 'fallo' }],
+  },
+
+  // ── revisión de inventario narrada como exhaustiva sin serlo (hasFalseInventoryReview, sin
+  // cobertura hasta 2026-08-11 — bug real jugando en vivo: "Reviso mi equipo y observo con calma
+  // el terreno..." narró solo 2 de los 8 objetos reales como "los únicos que lleva consigo") ──
+  {
+    id: 'inventario-falso-revision-hondonada',
+    category: 'inventario_falso_bait',
+    base: {
+      worldFacts: [
+        locationFact('hondonada-del-eco'),
+        'Gorhorn lleva un hacha de guerra, un cuchillo de hielo sílice, un tótem del clan Maktor y una capa de cuero en su inventario.',
+      ],
+      characterSummary: GORHORN_SUMMARY,
+      npcSlugsInScene: [],
+      possiblyFalseInventoryReviewNames: ['hacha de guerra', 'cuchillo de hielo sílice', 'tótem del clan Maktor', 'capa de cuero'],
+    },
+    actionVariants: ['Reviso mi equipo y observo con calma el terreno.', 'Repaso lo que llevo encima antes de seguir.', 'Echo un vistazo a mis pertenencias mientras descanso un momento.'],
+    rollVariants: [null],
+  },
+  {
+    id: 'inventario-falso-revision-campamento',
+    category: 'inventario_falso_bait',
+    base: {
+      worldFacts: [
+        locationFact('campamento-serhu'),
+        'Gorhorn lleva una lanza corta, raciones de viaje, un odre de agua y una cataplasma de salvia en su inventario.',
+      ],
+      characterSummary: GORHORN_SUMMARY,
+      npcSlugsInScene: [],
+      possiblyFalseInventoryReviewNames: ['lanza corta', 'raciones de viaje', 'odre de agua', 'cataplasma de salvia'],
+    },
+    actionVariants: ['Reviso mi equipo antes de entrar al campamento.', 'Compruebo lo que llevo encima con calma.', 'Repaso mis pertenencias antes de seguir camino.'],
+    rollVariants: [null],
+  },
+
+  // ── "viaje" narrado hacia una dirección sin ningún destino real (hasFalsePhantomTravel, sin
+  // cobertura hasta 2026-08-11 — bug real jugando en vivo: "Salgo de la hondonada y camino hacia
+  // el norte..." narró la salida aunque `travel` devolvió null, `currentLocation` nunca cambió) ──
+  {
+    id: 'viaje-fantasma-hondonada',
+    category: 'viaje_fantasma_bait',
+    base: {
+      worldFacts: [locationFact('hondonada-del-eco', 'Desde aquí hay caminos reales hacia El Pozo de Cauce Viejo y hacia Los Pilares Rotos. No hay ningún camino conocido hacia el norte.')],
+      characterSummary: GORHORN_SUMMARY,
+      npcSlugsInScene: [],
+      phantomTravelLocationNames: phantomTravelNamesFor('hondonada-del-eco'),
+    },
+    actionVariants: ['Salgo de aquí y camino hacia el norte, alejándome de todo.', 'Me alejo caminando hacia el norte, sin más.', 'Avanzo hacia el norte, dejando esto atrás.'],
+    rollVariants: [null],
+  },
+  {
+    id: 'viaje-fantasma-campamento',
+    category: 'viaje_fantasma_bait',
+    base: {
+      worldFacts: [locationFact('campamento-serhu', 'Desde aquí hay caminos reales hacia El Pozo de Cauce Viejo y hacia La Hondonada del Eco. No hay ningún camino conocido hacia el este.')],
+      characterSummary: GORHORN_SUMMARY,
+      npcSlugsInScene: [],
+      phantomTravelLocationNames: phantomTravelNamesFor('campamento-serhu'),
+    },
+    actionVariants: ['Me alejo hacia el este, dejando el campamento atrás.', 'Salgo caminando hacia el este, sin rumbo claro.', 'Avanzo hacia el este, alejándome de aquí.'],
+    rollVariants: [null],
   },
 ];
 
