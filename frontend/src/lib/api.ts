@@ -202,6 +202,11 @@ export interface NarrateResponse {
   /// (lista completa, sin delta), esto marca que ESTE turno creó una misión nueva. `null` en la
   /// inmensa mayoría de turnos, que no crean ninguna.
   newQuestInfo: { title: string; objetivo: string } | null
+  /// Notificación de misión COMPLETADA (2026-08-13) — `logEntryId`/`text` son los de la LogEntry
+  /// real ya persistida por el backend (questRewardNarrationFor), para insertarla tal cual con
+  /// marca visual de "misión completada" en vez de una tarjeta sintética aparte. `null` en la
+  /// inmensa mayoría de turnos, que no completan ninguna.
+  questCompletedInfo: { logEntryId: string; text: string; title: string; grantedItems: string[]; rewardXp: number } | null
   /// Notificación de fundación de reino (2026-08-04, "el Ayuntamiento") — solo al construir el
   /// Ayuntamiento tier 1 desde cero, nunca en una mejora. `null` en la inmensa mayoría de turnos.
   newKingdomFounded: KingdomFoundedInfo | null

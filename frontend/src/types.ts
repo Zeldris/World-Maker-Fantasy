@@ -212,6 +212,11 @@ export interface LogEntry {
   /// EXACTO en que se crea una misión nueva; LogPanel la pinta con fondo/borde amarillo y una
   /// tarjeta con el título+objetivo, en vez del estilo normal.
   newQuest?: { title: string; objetivo: string }
+  /// Notificación de misión COMPLETADA (2026-08-13, hallazgo real jugando: la recompensa se
+  /// narraba y persistía bien, pero sin ninguna marca visual — indistinguible de la narración
+  /// normal) — presente solo en la LogEntry real de recompensa (questRewardNarrationFor); LogPanel
+  /// la pinta con el mismo fondo/borde amarillo que `newQuest`, pero con su propia tarjeta.
+  questCompleted?: { title: string; grantedItems: string[]; rewardXp: number }
   /// Eventos de viaje interactivos (2026-08-05) — marca el aviso determinista de que un viaje
   /// largo se interrumpió antes de llegar al destino pedido; LogPanel la pinta con fondo/borde
   /// ámbar, mismo criterio que `combate` (rojo) y `newQuest` (amarillo).

@@ -1703,7 +1703,7 @@ describe('Decapitar cierra una misión "derrotar a X" con rewardItems y entrega 
   });
 
   it('la misión se completa, el objeto se crea de verdad y hay un LogEntry anunciando la recompensa', async () => {
-    await doTurn(saveId, 'Decapito al Orco Enfurecido de un solo golpe.');
+    const res = await doTurn(saveId, 'Decapito al Orco Enfurecido de un solo golpe.');
 
     const quest = await prisma.quest.findFirstOrThrow({ where: { saveId, title: { contains: 'Orco Enfurecido (prueba)' } } });
     expect(quest.status).toBe('COMPLETADA');
@@ -1714,6 +1714,18 @@ describe('Decapitar cierra una misión "derrotar a X" con rewardItems y entrega 
     const rewardLog = await prisma.logEntry.findFirst({ where: { saveId, text: { contains: 'Mapa de las Llanuras (prueba)' } } });
     expect(rewardLog).not.toBeNull();
     expect(rewardLog!.text).toContain('+100 XP');
+
+    // Bug real jugando en vivo (2026-08-13): la recompensa se persistía bien, pero /turn/narrate
+    // nunca avisaba de ella — el jugador solo veía la narración de combate, sin ninguna marca de
+    // "misión completada" hasta la siguiente recarga. `questCompletedInfo` cierra ese hueco.
+    const done = lastNdjsonLine(res.payload);
+    expect(done.questCompletedInfo).toEqual({
+      logEntryId: rewardLog!.id,
+      text: rewardLog!.text,
+      title: 'Acabar con el Orco Enfurecido (prueba)',
+      grantedItems: ['Mapa de las Llanuras (prueba)'],
+      rewardXp: 100,
+    });
   }, 20_000);
 });
 

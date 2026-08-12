@@ -354,6 +354,19 @@ export interface KingdomFoundedInfo {
   nameLocked: boolean;
 }
 
+/// Notificación de misión completada (2026-08-13, ver NarrateAndPersistResult.questCompletedInfo)
+/// — `logEntryId`/`text` son los de la fila REAL ya persistida por questRewardNarrationFor (nunca
+/// un id/texto sintético), para que el frontend pueda insertarla como una LogEntry más, con marca
+/// visual de "misión completada" (mismo criterio que newQuestInfo, pero para el cierre en vez del
+/// alta).
+export interface QuestCompletedInfo {
+  logEntryId: string;
+  text: string;
+  title: string;
+  grantedItems: string[];
+  rewardXp: number;
+}
+
 export interface NarrateAndPersistResult {
   narration: NarrationResult;
   progression: ProgressionResult;
@@ -425,6 +438,13 @@ export interface NarrateAndPersistResult {
   /// creó una misión nueva, para que el frontend la resalte sin tener que comparar arrays. `null`
   /// en la inmensa mayoría de turnos, que no crean ninguna.
   newQuestInfo: { title: string; objetivo: string } | null;
+  /// Notificación de misión COMPLETADA (2026-08-13, hallazgo real jugando: la narración de
+  /// recompensa — questRewardNarrationFor — se persistía bien como LogEntry aparte, pero
+  /// `/turn/narrate` nunca avisaba de que existía, así que ese turno el jugador solo veía la
+  /// narración normal de combate; la entrada de recompensa aparecía sin más, sin destacar, y solo
+  /// tras la siguiente recarga completa). Mismo criterio que `newQuestInfo`: `null` en la inmensa
+  /// mayoría de turnos, que no completan ninguna.
+  questCompletedInfo: QuestCompletedInfo | null;
   /// Notificación de fundación de reino (2026-08-04, "el Ayuntamiento") — solo al construir el
   /// Ayuntamiento tier 1 desde cero, nunca en una mejora. `null` en la inmensa mayoría de turnos.
   newKingdomFounded: KingdomFoundedInfo | null;
@@ -1192,24 +1212,28 @@ async function completeNpcTargetQuests(
   npcId: string,
   timeLabel: string,
   fictionalMinutes: number,
-): Promise<void> {
+): Promise<QuestCompletedInfo | null> {
   const activeQuestsWithNpc = await tx.quest.findMany({ where: { saveId, targetNpcId: npcId, status: 'ACTIVA' } });
+  let lastCompleted: QuestCompletedInfo | null = null;
   for (const quest of activeQuestsWithNpc) {
     await tx.quest.update({ where: { id: quest.id }, data: { status: 'COMPLETADA' } });
     const grantedItems = await grantQuestRewardItems(tx, saveId, quest.rewardItems);
     if (grantedItems.length > 0 || quest.rewardXp) {
-      await tx.logEntry.create({
+      const rewardText = questRewardNarrationFor(quest.title, grantedItems, quest.rewardXp);
+      const rewardEntry = await tx.logEntry.create({
         data: {
           saveId,
           channel: 'CHARACTER',
-          text: questRewardNarrationFor(quest.title, grantedItems, quest.rewardXp),
+          text: rewardText,
           isPlayerAction: false,
           timeLabel,
           fictionalMinutes,
         },
       });
+      lastCompleted = { logEntryId: rewardEntry.id, text: rewardText, title: quest.title, grantedItems, rewardXp: quest.rewardXp ?? 0 };
     }
   }
+  return lastCompleted;
 }
 
 /// Recuperación de INCAPACITADO tras 6h de ficción / desaparición de un cadáver tras 48h (docs/19
@@ -2495,6 +2519,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     logEntryId: string;
     newQuestObjetivos: string[];
     newQuestInfo: { title: string; objetivo: string } | null;
+    questCompletedInfo: QuestCompletedInfo | null;
     newKingdomFounded: KingdomFoundedInfo | null;
     companionCreated: { id: string; name: string; role: string; notes: string } | null;
     partiallyLootedSlugs: string[];
@@ -2550,6 +2575,12 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     // Notificación de misión aceptada (ver NarrateAndPersistResult.newQuestInfo más arriba) — se
     // rellena en los dos sitios que crean una Quest de verdad, más abajo.
     let newQuestInfo: { title: string; objetivo: string } | null = null;
+    // Notificación de misión completada (ver NarrateAndPersistResult.questCompletedInfo más
+    // arriba) — se rellena en completeNpcTargetQuests (derrota normal/Decapitar) y en la rama
+    // orcoYaResuelto (aceptar la misión con el objetivo ya resuelto de antes), los 3 sitios que
+    // conceden recompensa de verdad. Si dos misiones se completaran en el mismo turno (caso raro),
+    // gana la última — la recompensa real de ambas se concede igual, solo la tarjeta es una sola.
+    let questCompletedInfo: QuestCompletedInfo | null = null;
     // Notificación de fundación de reino (2026-08-04, ver NarrateAndPersistResult.newKingdomFounded
     // más arriba) — se rellena solo al construir el Ayuntamiento tier 1 desde cero (nunca en una
     // mejora de tier), para que el frontend abra el popup de fundación de facción.
@@ -2706,7 +2737,8 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
         // sola en cuanto cae — el modelo nunca tiene que acertar el título EXACTO vía
         // questProgress para el caso más común de misión de combate ("derrotar a X"). También
         // concede rewardItems/rewardXp de verdad y narra la recompensa (docs/19 pieza 3).
-        await completeNpcTargetQuests(tx, saveId, npcAttackTarget.id, nuevaFictionalDateLabel, nuevoFictionalMinutes);
+        const completedHere = await completeNpcTargetQuests(tx, saveId, npcAttackTarget.id, nuevaFictionalDateLabel, nuevoFictionalMinutes);
+        if (completedHere) questCompletedInfo = completedHere;
 
         // Reputación de facción determinista (roadmap 2026-07-19, prioridad 4): reutiliza
         // `WorldState.factionsStatus` (gauge 0-5000 por facción, ver reputation.ts — reemplaza
@@ -2758,7 +2790,8 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
       // Mismo cierre + recompensa real que un golpe normal que deja MUERTO al objetivo (bloque de
       // arriba) — en la práctica la misión ya se cerró al quedar INCAPACITADO, esto solo cubre el
       // caso raro de que no lo hiciera.
-      await completeNpcTargetQuests(tx, saveId, executeTarget.id, nuevaFictionalDateLabel, nuevoFictionalMinutes);
+      const completedByExecute = await completeNpcTargetQuests(tx, saveId, executeTarget.id, nuevaFictionalDateLabel, nuevoFictionalMinutes);
+      if (completedByExecute) questCompletedInfo = completedByExecute;
       if (executeTarget.faction) {
         const currentWorldState = await tx.worldState.findUnique({ where: { saveId }, select: { factionsStatus: true } });
         const updatedFactionsStatus = applyFactionRepDelta(
@@ -3348,16 +3381,18 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
           // se perdería para siempre en este camino concreto (orco ya resuelto antes de aceptar).
           const grantedItems = await grantQuestRewardItems(tx, saveId, ['Mapa de las Llanuras']);
           if (grantedItems.length > 0) {
-            await tx.logEntry.create({
+            const rewardText = questRewardNarrationFor('Acabar con el Orco Enfurecido', grantedItems, 100);
+            const rewardEntry = await tx.logEntry.create({
               data: {
                 saveId,
                 channel: 'CHARACTER',
-                text: questRewardNarrationFor('Acabar con el Orco Enfurecido', grantedItems, 100),
+                text: rewardText,
                 isPlayerAction: false,
                 timeLabel: nuevaFictionalDateLabel,
                 fictionalMinutes: nuevoFictionalMinutes,
               },
             });
+            questCompletedInfo = { logEntryId: rewardEntry.id, text: rewardText, title: 'Acabar con el Orco Enfurecido', grantedItems, rewardXp: 100 };
           }
         } else {
           newQuestObjetivos.push('Derrotar al Orco Enfurecido que persigue a Gistera Koh.');
@@ -3693,6 +3728,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
       logEntryId: mainLogEntry.id,
       newQuestObjetivos,
       newQuestInfo,
+      questCompletedInfo,
       newKingdomFounded,
       companionCreated,
       partiallyLootedSlugs,
@@ -3727,6 +3763,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     logEntryId,
     newQuestObjetivos,
     newQuestInfo,
+    questCompletedInfo,
     newKingdomFounded,
     companionCreated,
     partiallyLootedSlugs,
@@ -4065,6 +4102,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     logEntryId,
     quests,
     newQuestInfo,
+    questCompletedInfo,
     newKingdomFounded,
     companionCreated,
     esperandoDefensaJugador: !!nuevoPendingNpcAttack,

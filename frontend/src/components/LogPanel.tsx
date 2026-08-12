@@ -130,10 +130,13 @@ export const LogPanel = memo(function LogPanel({ title, subtitle, entries, accen
                 // amarillo misiones") — `newQuest` manda sobre todo lo demás (es el evento más raro
                 // y específico de los tres); la narración normal pasa de texto plano a un fondo
                 // azul explícito, para que los 3 estados queden igual de intencionados.
+                // Notificación de misión COMPLETADA (2026-08-13) — mismo fondo amarillo que
+                // `newQuest` (es el mismo tipo de evento, alta vs. cierre), en su propia LogEntry
+                // aparte, así que nunca coincide con `newQuest` en la misma fila.
                 // Eventos de viaje interactivos (2026-08-05) — 4º estado, fondo ámbar: por debajo
                 // de `newQuest` pero por encima de `combate`/`isPlayerAction` (es su propia
                 // LogEntry aparte, nunca coincide con ninguno de los otros tres en la misma fila).
-                entry.newQuest
+                entry.newQuest || entry.questCompleted
                   ? 'animate-entry-in rounded-lg border border-l-2 border-quest-600/50 bg-quest-500/10 px-3.5 py-2.5 text-sm text-wood-100'
                   : entry.travelInterrupted
                     ? 'animate-entry-in rounded-lg border border-l-2 border-cost-600/50 bg-cost-500/10 px-3.5 py-2.5 text-sm text-wood-100'
@@ -198,6 +201,18 @@ export const LogPanel = memo(function LogPanel({ title, subtitle, entries, accen
                     <span>Nueva misión: {entry.newQuest.title}</span>
                   </p>
                   <p className="mt-1 text-2xs text-wood-300">{entry.newQuest.objetivo}</p>
+                </div>
+              )}
+              {entry.questCompleted && (
+                <div className="mt-2 rounded-lg border border-quest-600/50 bg-quest-500/10 px-2.5 py-2">
+                  <p className="flex items-center gap-1.5 text-2xs font-semibold uppercase tracking-[0.1em] text-quest-400">
+                    <span aria-hidden="true">🏆</span>
+                    <span>Misión completada: {entry.questCompleted.title}</span>
+                  </p>
+                  <p className="mt-1 text-2xs text-wood-300">
+                    {entry.questCompleted.grantedItems.length > 0 && `${entry.questCompleted.grantedItems.join(', ')} · `}
+                    +{entry.questCompleted.rewardXp} XP
+                  </p>
                 </div>
               )}
               {entry.entityBanner && (

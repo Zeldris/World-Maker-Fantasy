@@ -456,6 +456,7 @@ export function GameView() {
         logEntryId,
         quests: updatedQuests,
         newQuestInfo,
+        questCompletedInfo,
         esperandoDefensaJugador,
         npcAbilityUsed,
         playerAbilityUsed,
@@ -508,6 +509,7 @@ export function GameView() {
         combatExchangeDisplay,
         nextInitiativeRoll,
         newQuestInfo,
+        questCompletedInfo,
       })
       // Bug real (2026-07-29, "si muero no hace lo que fijamos que haría"): `condicionFisica` ya
       // llega resuelta a ILESO tras un respawn sobrevivible (nunca MUERTO) — sin `justDied` este
@@ -1083,6 +1085,7 @@ export function GameView() {
     combatExchangeDisplay: CombatExchangeInfo | null
     nextInitiativeRoll: { ganador: 'jugador' | 'npc'; jugadorTirada: number; npcTirada: number } | null
     newQuestInfo?: { title: string; objetivo: string } | null
+    questCompletedInfo?: { logEntryId: string; text: string; title: string; grantedItems: string[]; rewardXp: number } | null
   }) {
     // `buildEntityBanner` se calcula FUERA del updater (bug real, 2026-07-24, "sigue sin salir la
     // imagen" pese a candidatos válidos): StrictMode invoca dos veces en dev cualquier función
@@ -1092,22 +1095,40 @@ export function GameView() {
     // devolvía `undefined` siempre. Calcularlo una sola vez, antes de `setCharacterLog`, evita la
     // doble ejecución por completo.
     const entityBanner = buildEntityBanner(params.narration, params.logEntryId)
-    setCharacterLog((prev) => [
-      ...prev,
-      {
-        id: params.logEntryId,
-        channel: 'character',
-        text: params.narration,
-        timeLabel: fictionalDate,
-        createdAt: new Date().toISOString(),
-        entityBanner,
-        combate: true,
-        npcAbilityUsed: params.npcAbilityUsed ?? undefined,
-        playerAbilityUsed: params.playerAbilityUsed ?? undefined,
-        combatExchange: params.combatExchangeDisplay ?? undefined,
-        newQuest: params.newQuestInfo ?? undefined,
-      },
-    ])
+    setCharacterLog((prev) => {
+      const next = [
+        ...prev,
+        {
+          id: params.logEntryId,
+          channel: 'character' as const,
+          text: params.narration,
+          timeLabel: fictionalDate,
+          createdAt: new Date().toISOString(),
+          entityBanner,
+          combate: true,
+          npcAbilityUsed: params.npcAbilityUsed ?? undefined,
+          playerAbilityUsed: params.playerAbilityUsed ?? undefined,
+          combatExchange: params.combatExchangeDisplay ?? undefined,
+          newQuest: params.newQuestInfo ?? undefined,
+        },
+      ]
+      // Misión completada (2026-08-13) — LogEntry REAL aparte (id/texto de verdad, ya persistida
+      // por el backend vía questRewardNarrationFor), nunca fusionada con la narración principal de
+      // arriba: el combate puede cerrar una misión en el mismo golpe que la mata, pero son dos
+      // filas distintas en la DB.
+      if (params.questCompletedInfo) {
+        const { logEntryId, text, title, grantedItems, rewardXp } = params.questCompletedInfo
+        next.push({
+          id: logEntryId,
+          channel: 'character' as const,
+          text,
+          timeLabel: fictionalDate,
+          createdAt: new Date().toISOString(),
+          questCompleted: { title, grantedItems, rewardXp },
+        })
+      }
+      return next
+    })
     if (params.newInventoryItems.length > 0 || params.removedInventoryItemIds.length > 0 || params.updatedInventoryItems.length > 0) {
       setInventory((prev) =>
         applyInventoryDelta(prev, params.newInventoryItems, params.removedInventoryItemIds, params.updatedInventoryItems),
@@ -1360,6 +1381,7 @@ export function GameView() {
         logEntryId,
         quests: updatedQuests,
         newQuestInfo,
+        questCompletedInfo,
         newKingdomFounded,
         companionCreated,
         territories: updatedTerritories,
@@ -1415,20 +1437,36 @@ export function GameView() {
       // Calculado fuera del updater (ver comentario igual en handleCombatTurnResolved) — evita que
       // la doble invocación de StrictMode en dev deduplique la entidad contra sí misma.
       const entityBanner = buildEntityBanner(narration.narration, logEntryId)
-      setCharacterLog((prev) => [
-        ...prev,
-        {
-          id: logEntryId,
-          channel: 'character',
-          text: narration.narration,
-          timeLabel: fictionalDate,
-          roll,
-          createdAt: new Date().toISOString(),
-          xpDelta: progression.xpDelta > 0 ? progression.xpDelta : undefined,
-          entityBanner,
-          newQuest: newQuestInfo ?? undefined,
-        },
-      ])
+      setCharacterLog((prev) => {
+        const next = [
+          ...prev,
+          {
+            id: logEntryId,
+            channel: 'character' as const,
+            text: narration.narration,
+            timeLabel: fictionalDate,
+            roll,
+            createdAt: new Date().toISOString(),
+            xpDelta: progression.xpDelta > 0 ? progression.xpDelta : undefined,
+            entityBanner,
+            newQuest: newQuestInfo ?? undefined,
+          },
+        ]
+        // Misión completada (2026-08-13) — ver el mismo bloque en handleCombatTurnResolved: fila
+        // real aparte, nunca fusionada con la narración principal.
+        if (questCompletedInfo) {
+          const { logEntryId: rewardId, text, title, grantedItems, rewardXp } = questCompletedInfo
+          next.push({
+            id: rewardId,
+            channel: 'character' as const,
+            text,
+            timeLabel: fictionalDate,
+            createdAt: new Date().toISOString(),
+            questCompleted: { title, grantedItems, rewardXp },
+          })
+        }
+        return next
+      })
       // Bug real (auditoría de deuda técnica 2026-08-04, mismo patrón que companionCreated):
       // `narration.newItem` (name+description sueltos del LLM) se añadía aquí con un id
       // inventado en el cliente (`item-${Date.now()}`) que el backend no reconoce — equipar ese
