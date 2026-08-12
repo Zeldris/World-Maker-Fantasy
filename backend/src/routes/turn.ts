@@ -37,7 +37,12 @@ import {
   absentSceneNpcNarrationFor,
   detectsPlayerAnachronism,
   anachronismNarrationFor,
+  detectsWrongRegionHarvestClaim,
+  wrongRegionHarvestNarrationFor,
+  detectsUnknownConstructionClaim,
+  unknownConstructionNarrationFor,
 } from '../services/playerActionValidation.js';
+import { harvestSourceAliases } from '../scripts/worldCatalog.js';
 
 interface ClassifyBody {
   saveId: string;
@@ -451,6 +456,12 @@ export async function turnRoutes(app: FastifyInstance) {
       return resolveBlockedTurn(anachronismNarrationFor());
     }
 
+    // Tipo de construcción inventado ("construyo una Torre de Cristal") — también puro regex,
+    // sin consultas.
+    if (detectsUnknownConstructionClaim(action)) {
+      return resolveBlockedTurn(unknownConstructionNarrationFor());
+    }
+
     // Arma que no lleva encima ("uso mi lanza" con una maza equipada).
     const weaponClaim = detectsUnequippedWeaponClaim(action, equippedWeaponNames(save.inventoryItems));
     if (weaponClaim) {
@@ -479,13 +490,23 @@ export async function turnRoutes(app: FastifyInstance) {
       return resolveBlockedTurn(absentSceneNpcNarrationFor(absentNpcClaim.name));
     }
 
+    // Fuente de flora/mineral real de OTRA región ("recolecto matorral de cuerno" estando en una
+    // región donde no crece). `currentLocationForSummary` se carga ya aquí (antes se hacía más
+    // abajo, junto a `characterSummary`) porque este chequeo también necesita la región actual —
+    // reordenar en vez de duplicar la carga.
+    const currentLocationForSummary = save.currentLocationId
+      ? await prisma.location.findUnique({ where: { id: save.currentLocationId } })
+      : null;
+    const wrongRegionHarvestClaim = detectsWrongRegionHarvestClaim(action, currentLocationForSummary?.region ?? null);
+    if (wrongRegionHarvestClaim) {
+      const nombre = harvestSourceAliases[wrongRegionHarvestClaim.sourceSlug]?.[0] ?? wrongRegionHarvestClaim.sourceSlug.replace(/-/g, ' ');
+      return resolveBlockedTurn(wrongRegionHarvestNarrationFor(nombre));
+    }
+
     // Estadísticas de objetos (2026-07-19): la tirada usa los atributos EFECTIVOS (base + lo
     // que sume el equipo puesto), nunca los atributos crudos guardados en el personaje.
     const attributes = effectiveAttributes(save.attributes as AttributeBlock, save.inventoryItems);
     const timeLabel = save.worldState?.fictionalDateLabel ?? 'Día 1, mañana';
-    const currentLocationForSummary = save.currentLocationId
-      ? await prisma.location.findUnique({ where: { id: save.currentLocationId } })
-      : null;
     const characterSummary = characterSummaryFor(save, {
       timeLabel,
       locationName: currentLocationForSummary?.name ?? null,

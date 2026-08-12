@@ -12,6 +12,10 @@
 import { normalizeText } from './travel.js';
 import { matchNpcAliases, detectsAttackIntent, detectsDialogueIntent, detectsHostileSearchIntent } from './npcScene.js';
 import { ANACHRONISM_REGEX } from './narrador.js';
+import { matchHarvestSource, matchesVerbForMetodo } from './harvest.js';
+import { stripRegionArticle } from './population.js';
+import { harvestSourceRegion } from '../scripts/worldCatalog.js';
+import { CONSTRUCTION_RECIPES } from './construction.js';
 import { prisma } from '../lib/prisma.js';
 
 /// Anacronismo en el propio texto del JUGADOR ("me monto en mi nave espacial") — reutiliza
@@ -144,4 +148,78 @@ const ABSENT_NPC_LINES: ((nombre: string) => string)[] = [
 export function absentSceneNpcNarrationFor(nombre: string): string {
   const line = ABSENT_NPC_LINES[Math.floor(Math.random() * ABSENT_NPC_LINES.length)];
   return line(nombre);
+}
+
+export interface WrongRegionHarvestClaim {
+  /// Nombre de la fuente reclamada, tal como la nombró el jugador (se usa el propio texto de
+  /// `matchHarvestSource`, que no expone un nombre "bonito" — se resuelve en turn.ts si hace
+  /// falta un nombre más presentable).
+  sourceSlug: string;
+}
+
+/// Fase 2 de docs/18-validacion-accion-jugador.md: detecta si el jugador reclama recolectar/
+/// talar/minar/despiezar una fuente REAL de catálogo (`harvestSourceAliases`,
+/// worldCatalog.ts) cuya región conocida (`harvestSourceRegion`) NO coincide con la región
+/// actual — reutiliza `matchHarvestSource` (harvest.ts), el mismo matcher que ya usa el flujo
+/// real de recolección, así que nunca se desincroniza de cómo el resto del motor interpreta este
+/// texto. Solo dispara con verbo real de recolección (`matchesVerbForMetodo` contra los 4
+/// métodos) en la MISMA acción — mismo criterio de "verbo + entidad" que el resto de esta
+/// familia. Sin datos suficientes (fuente sin región conocida, o ubicación actual desconocida a
+/// media transición), no dispara — más vale dejar pasar que bloquear con dudas.
+export function detectsWrongRegionHarvestClaim(action: string, currentRegion: string | null): WrongRegionHarvestClaim | null {
+  if (!currentRegion) return null;
+  const hasHarvestVerb = (['CAZA', 'TALA', 'MINERIA', 'EXTRACCION'] as const).some((metodo) => matchesVerbForMetodo(action, metodo));
+  if (!hasHarvestVerb) return null;
+  const sourceSlug = matchHarvestSource(action);
+  if (!sourceSlug) return null;
+  const sourceRegion = harvestSourceRegion[sourceSlug];
+  if (!sourceRegion) return null;
+  if (stripRegionArticle(sourceRegion) === stripRegionArticle(currentRegion)) return null;
+  return { sourceSlug };
+}
+
+/// Mismo criterio que el resto — pool de 5, 1 cómica menos frecuente. `nombre` ya viene resuelto
+/// (turn.ts, `harvestSourceDescriptions`/nombre de catálogo) a un nombre presentable.
+const WRONG_REGION_HARVEST_LINES: ((nombre: string) => string)[] = [
+  (nombre) => `Gorhorn busca con la mirada, pero no hay ni rastro de ${nombre} por aquí — no es cosa de esta tierra.`,
+  (nombre) => `Nada de ${nombre} crece ni se encuentra en estos parajes. Gorhorn lo sabe con solo mirar alrededor.`,
+  () => `Gorhorn se agacha a mirar el suelo, pero no encuentra lo que buscaba — no es nada que se dé en esta tierra.`,
+  (nombre) => `${nombre} no tiene sitio aquí — Gorhorn ha recorrido bastante mundo como para reconocer lo que falta.`,
+  (nombre) => `Gorhorn rebusca un momento, luego se rinde. «¿${nombre}? Aquí no, desde luego...» Sacude la cabeza y sigue camino.`,
+];
+
+export function wrongRegionHarvestNarrationFor(nombre: string): string {
+  const line = WRONG_REGION_HARVEST_LINES[Math.floor(Math.random() * WRONG_REGION_HARVEST_LINES.length)];
+  return line(nombre);
+}
+
+/// Verbo de construcción para ESTE chequeo — deliberadamente MÁS ESTRECHO que el `BUILD_VERB_REGEX`
+/// interno de construction.ts (que incluye "mejor"/"ampl"/"mont[ao]"). Ahí la ambigüedad no importa
+/// porque siempre se combina con el sustantivo de una receta YA conocida; aquí la ausencia de
+/// receta conocida es la propia señal de violación, así que un verbo tan genérico como "mejorar"
+/// (ampliamente usado para cosas que no son construir, "mejoro mi puntería") dispararía en falso
+/// constantemente. Solo los verbos inequívocos de "construir algo desde cero".
+const STRICT_BUILD_VERB_REGEX = /\b(constru|levant|erig)\w*\b/i;
+
+/// Fase 2 de docs/18-validacion-accion-jugador.md: detecta si el jugador reclama construir un
+/// tipo de edificio que no coincide con ninguna receta real (`CONSTRUCTION_RECIPES`,
+/// construction.ts) — "construyo una Torre de Cristal" cuando solo existen campamento/choza/
+/// ayuntamiento. Reutiliza el `nounRegex` de cada receta real, nunca una lista propia.
+export function detectsUnknownConstructionClaim(action: string): boolean {
+  const normalized = normalizeText(action);
+  if (!STRICT_BUILD_VERB_REGEX.test(normalized)) return false;
+  return !CONSTRUCTION_RECIPES.some((recipe) => recipe.nounRegex.test(normalized));
+}
+
+/// Mismo criterio que el resto — pool de 5, 1 cómica menos frecuente.
+const UNKNOWN_CONSTRUCTION_LINES: string[] = [
+  'Gorhorn se detiene a pensarlo mejor. No sabría ni por dónde empezar a levantar algo así — no es nada que conozca.',
+  'La idea se desvanece antes de convertirse en un plan real. Gorhorn no tiene ni la más remota idea de cómo se construye algo así.',
+  'Gorhorn mira alrededor, buscando algo con lo que empezar, pero no encuentra ni la forma de plantearlo.',
+  'No es una construcción que Gorhorn sepa levantar — ni con todo el tiempo y los materiales del mundo.',
+  'Gorhorn se rasca la nuca. «¿Eso? Ni idea de cómo se hace algo así, la verdad...» Se ríe entre dientes y lo deja estar.',
+];
+
+export function unknownConstructionNarrationFor(): string {
+  return UNKNOWN_CONSTRUCTION_LINES[Math.floor(Math.random() * UNKNOWN_CONSTRUCTION_LINES.length)];
 }

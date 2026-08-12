@@ -263,6 +263,92 @@ describe('POST /turn/classify — anacronismo en la acción del jugador (validad
   });
 });
 
+// Validador de "grounding" de la acción del jugador — tipo de construcción inventado (Fase 2,
+// docs/18-validacion-accion-jugador.md), también sin consultas.
+describe('POST /turn/classify — tipo de construcción inventado (validador de grounding)', () => {
+  beforeEach(() => {
+    findUniqueSave.mockReset();
+    findManyNpc.mockReset().mockResolvedValue([]);
+    findManyNpcState.mockReset().mockResolvedValue([]);
+    findUniqueLocation.mockReset().mockResolvedValue(null);
+    findManyLocation.mockReset().mockResolvedValue([]);
+    findManyQuest.mockReset().mockResolvedValue([]);
+    logEntryCreate.mockReset().mockResolvedValue({});
+    classifyAction.mockReset();
+  });
+
+  it('construir un tipo de edificio sin receta real se resuelve sin llamar a classifyAction', async () => {
+    findUniqueSave.mockResolvedValue({
+      id: 'save1',
+      worldId: 'world1',
+      level: 3,
+      attributes: ATTRS,
+      inventoryItems: [],
+      condicionFisica: 'ILESO',
+      currentLocationId: null,
+      endedAt: null,
+      characterTransit: null,
+      worldState: { fictionalDateLabel: 'Día 1, mañana', fictionalMinutes: 480 },
+    });
+
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/turn/classify',
+      payload: { saveId: 'save1', action: 'Construyo una Torre de Cristal.' },
+    });
+
+    expect(res.statusCode).toBe(200);
+    const body = res.json();
+    expect(typeof body.blocked?.narration).toBe('string');
+    expect(classifyAction).not.toHaveBeenCalled();
+    expect(findManyNpc).not.toHaveBeenCalled();
+  });
+});
+
+// Validador de "grounding" de la acción del jugador — reclamar recolectar/despiezar una fuente
+// real de OTRA región (Fase 2, docs/18-validacion-accion-jugador.md).
+describe('POST /turn/classify — flora/fauna de otra región (validador de grounding)', () => {
+  beforeEach(() => {
+    findUniqueSave.mockReset();
+    findManyNpc.mockReset().mockResolvedValue([]);
+    findManyNpcState.mockReset().mockResolvedValue([]);
+    findUniqueLocation.mockReset().mockResolvedValue(null);
+    findManyLocation.mockReset().mockResolvedValue([]);
+    findManyQuest.mockReset().mockResolvedValue([]);
+    logEntryCreate.mockReset().mockResolvedValue({});
+    classifyAction.mockReset();
+  });
+
+  it('despiezar una fauna real cuya región conocida no coincide con la actual se resuelve sin llamar a classifyAction', async () => {
+    findUniqueSave.mockResolvedValue({
+      id: 'save1',
+      worldId: 'world1',
+      level: 3,
+      attributes: ATTRS,
+      inventoryItems: [],
+      condicionFisica: 'ILESO',
+      currentLocationId: 'loc1',
+      endedAt: null,
+      characterTransit: null,
+      worldState: { fictionalDateLabel: 'Día 1, mañana', fictionalMinutes: 480 },
+    });
+    findUniqueLocation.mockResolvedValue({ slug: 'pilares-rotos', region: 'Las Llanuras del Viento Rojo' });
+
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/turn/classify',
+      payload: { saveId: 'save1', action: 'Despiezo un cornante.' },
+    });
+
+    expect(res.statusCode).toBe(200);
+    const body = res.json();
+    expect(typeof body.blocked?.narration).toBe('string');
+    expect(classifyAction).not.toHaveBeenCalled();
+  });
+});
+
 // Validador de "grounding" de la acción del jugador (Fase 0/1, docs/18-validacion-accion-
 // jugador.md) — reclamar un arma que no lleva encima se resuelve aquí mismo, ANTES de
 // classifyAction, sin gastar ninguna llamada a IA.

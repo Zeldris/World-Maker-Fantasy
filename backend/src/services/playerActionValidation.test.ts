@@ -12,6 +12,10 @@ const {
   absentSceneNpcNarrationFor,
   detectsPlayerAnachronism,
   anachronismNarrationFor,
+  detectsWrongRegionHarvestClaim,
+  wrongRegionHarvestNarrationFor,
+  detectsUnknownConstructionClaim,
+  unknownConstructionNarrationFor,
 } = await import('./playerActionValidation.js');
 
 describe('detectsUnequippedWeaponClaim', () => {
@@ -105,6 +109,66 @@ describe('anachronismNarrationFor', () => {
   it('siempre devuelve una frase no vacía', () => {
     for (let i = 0; i < 20; i++) {
       expect(anachronismNarrationFor().length).toBeGreaterThan(0);
+    }
+  });
+});
+
+describe('detectsWrongRegionHarvestClaim', () => {
+  it('detecta talar una fuente real cuya región conocida no coincide con la actual', () => {
+    expect(detectsWrongRegionHarvestClaim('Talo el matorral de cuerno.', 'Ciénaga Troncal')).toEqual({ sourceSlug: 'matorral-de-cuerno' });
+  });
+
+  it('no dispara si la región coincide (con o sin artículo)', () => {
+    expect(detectsWrongRegionHarvestClaim('Talo el matorral de cuerno.', 'Las Llanuras del Viento Rojo')).toBeNull();
+    expect(detectsWrongRegionHarvestClaim('Talo el matorral de cuerno.', 'Llanuras del Viento Rojo')).toBeNull();
+  });
+
+  it('no dispara sin región actual conocida', () => {
+    expect(detectsWrongRegionHarvestClaim('Talo el matorral de cuerno.', null)).toBeNull();
+  });
+
+  it('no dispara sin verbo real de recolección (mención de pasada)', () => {
+    expect(detectsWrongRegionHarvestClaim('Recuerdo el matorral de cuerno de mi tierra.', 'Ciénaga Troncal')).toBeNull();
+  });
+
+  it('no dispara si el texto no nombra ninguna fuente real de catálogo', () => {
+    expect(detectsWrongRegionHarvestClaim('Exploro la zona con cuidado.', 'Ciénaga Troncal')).toBeNull();
+  });
+});
+
+describe('wrongRegionHarvestNarrationFor', () => {
+  it('siempre devuelve una frase no vacía', () => {
+    for (let i = 0; i < 20; i++) {
+      expect(wrongRegionHarvestNarrationFor('matorral de cuerno').length).toBeGreaterThan(0);
+    }
+  });
+});
+
+describe('detectsUnknownConstructionClaim', () => {
+  it('detecta construir un tipo de edificio que no coincide con ninguna receta real', () => {
+    expect(detectsUnknownConstructionClaim('Construyo una Torre de Cristal.')).toBe(true);
+  });
+
+  it('no dispara con una receta real conocida', () => {
+    expect(detectsUnknownConstructionClaim('Construyo un campamento.')).toBe(false);
+    expect(detectsUnknownConstructionClaim('Levanto una choza.')).toBe(false);
+    expect(detectsUnknownConstructionClaim('Construyo un ayuntamiento.')).toBe(false);
+  });
+
+  it('no dispara sin verbo real de construcción', () => {
+    expect(detectsUnknownConstructionClaim('Admiro la torre desde lejos.')).toBe(false);
+  });
+
+  it('no dispara con "mejorar"/"ampliar" en un sentido no constructivo (verbo deliberadamente excluido)', () => {
+    expect(detectsUnknownConstructionClaim('Intento mejorar mi puntería practicando.')).toBe(false);
+    expect(detectsUnknownConstructionClaim('Amplío mis conocimientos sobre la zona.')).toBe(false);
+  });
+});
+
+describe('unknownConstructionNarrationFor', () => {
+  it('siempre devuelve una frase no vacía', () => {
+    for (let i = 0; i < 20; i++) {
+      expect(unknownConstructionNarrationFor().length).toBeGreaterThan(0);
     }
   });
 });

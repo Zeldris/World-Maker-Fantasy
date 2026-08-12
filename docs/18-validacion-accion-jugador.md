@@ -1,8 +1,10 @@
 # Validación de "grounding" de la acción del jugador contra el lore real
 
-**Estado:** documento vivo. Fase 0 (mecanismo) + Fase 1 completa (arma que no llevas, NPC/fauna
-real de catálogo con el que interactúas pero que no está en esta escena) **implementadas y
-verificadas (2026-08-13)** — ver `backend/src/services/playerActionValidation.ts`. Pendiente
+**Estado:** documento vivo. Fase 0 + Fase 1 + Fase 2 completas (arma que no llevas, NPC/fauna real
+de catálogo con el que interactúas pero que no está en esta escena, anacronismo, flora/mineral de
+otra región, tipo de construcción inventado) **implementadas y verificadas (2026-08-13)** — ver
+`backend/src/services/playerActionValidation.ts`. Fase 3 (cualquier entidad en cualquier parte del
+mundo) sigue aparcada a propósito, sin implementar — ver su propia sección más abajo. Pendiente
 jugarlo en vivo antes de confiar del todo en ello — es el primer mecanismo de su tipo (cortar un
 turno antes de llegar a la IA).
 
@@ -27,6 +29,21 @@ cualquier otro export real de ese archivo (como `ANACHRONISM_REGEX`) se volvía 
 silencio dentro de ese archivo de test en cuanto algo más lo importaba — rompía los 7 tests de
 ese archivo con un error que ni siquiera apuntaba a la causa real. Corregido al mismo patrón
 `importOriginal` que ya usaba correctamente `turn.integration.test.ts`.
+
+**Fase 2 completada (2026-08-13)**, dos chequeos más, ambos reutilizando matchers ya existentes
+en vez de listas propias:
+- `detectsWrongRegionHarvestClaim`: reutiliza `matchHarvestSource` (harvest.ts, el mismo matcher
+  del flujo real de recolección) + `harvestSourceRegion` (worldCatalog.ts) + `stripRegionArticle`
+  (population.ts, ya existía para el mismo problema de "Las Llanuras" vs "Llanuras" en otro sitio)
+  — si el jugador reclama recolectar/talar/minar/despiezar una fuente real cuya región conocida no
+  coincide con la actual, corta el turno.
+- `detectsUnknownConstructionClaim`: reutiliza el `nounRegex` de cada `CONSTRUCTION_RECIPES`
+  (construction.ts) — si el jugador reclama construir algo que no coincide con ninguna receta
+  real. **Decisión de diseño explícita**: NO reutiliza el `BUILD_VERB_REGEX` interno de
+  construction.ts (incluye "mejor"/"ampl"/"mont[ao]", demasiado genéricos fuera del contexto de un
+  sustantivo de receta ya conocido — "mejoro mi puntería" habría disparado en falso constantemente)
+  — usa un verbo propio, más estricto (`constru`/`levant`/`erig` únicamente), aceptando algún falso
+  negativo raro a cambio de no bloquear frases legítimas de uso extremadamente común.
 
 ## Implementado (2026-08-13)
 
