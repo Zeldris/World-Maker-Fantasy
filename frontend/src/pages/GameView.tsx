@@ -1007,7 +1007,19 @@ export function GameView() {
       }),
     )
     try {
-      if (saveId) await setItemSlot(saveId, item.id, slot)
+      if (saveId) {
+        await setItemSlot(saveId, item.id, slot)
+        // Bug real jugando en vivo (2026-08-12, "me he puesto la maza pero sigo viendo la
+        // habilidad de estocada del cuchillo"): el backend SÍ resincroniza las habilidades de arma
+        // dinámicas en la misma transacción del PATCH (syncDynamicCombatAbilities, dynamicAbilities.ts)
+        // — el hueco era puramente de caché del frontend, `setItemSlot` solo actualiza `inventory`
+        // en local y nunca vuelve a pedir `savedActions`, así que el tab de Habilidades seguía
+        // mostrando la instantánea de antes de equipar hasta el próximo turno/recarga. Un `getSave`
+        // + `syncFromSave` tras equipar es el mismo patrón ya usado en el resto de mutaciones de
+        // esta pantalla (ver `handleCancelTransit` más arriba).
+        const save = await getSave(saveId)
+        syncFromSave(save)
+      }
     } catch (err) {
       setInventory(previous)
       // Re-lanzado a propósito (sesión de diseño 2026-07-23): el equipar puede fallar de verdad
@@ -1021,7 +1033,13 @@ export function GameView() {
     const previous = inventory
     setInventory((prev) => prev.map((i) => (i.id === item.id ? { ...i, slot: null } : i)))
     try {
-      if (saveId) await setItemSlot(saveId, item.id, null)
+      if (saveId) {
+        await setItemSlot(saveId, item.id, null)
+        // Mismo hueco de caché que handleEquipItem — desequipar también dispara
+        // syncDynamicCombatAbilities en el backend (vuelve al arma desarmada/la otra mano).
+        const save = await getSave(saveId)
+        syncFromSave(save)
+      }
     } catch (err) {
       setInventory(previous)
       throw err

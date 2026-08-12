@@ -10,6 +10,21 @@ export const attributeLabels: Record<Attribute, string> = {
   arcano: 'Arcano',
 }
 
+/// Abreviatura de 3 letras por atributo (2026-08-12, rediseño de la vista de combate a 2 columnas:
+/// "una abbr del attr y una descripción de la habilidad") — las tarjetas de habilidad en 2 columnas
+/// no tienen ancho para `attributeLabels` completo ("Inteligencia", "Constitución"...) junto al
+/// resto de la fila (icono, nombre, coste). Mismo criterio de mayúsculas que el resto de badges
+/// compactos de la app (p. ej. "×2" de dualWield).
+export const attributeAbbr: Record<Attribute, string> = {
+  fuerza: 'FUE',
+  destreza: 'DES',
+  constitucion: 'CON',
+  inteligencia: 'INT',
+  voluntad: 'VOL',
+  carisma: 'CAR',
+  arcano: 'ARC',
+}
+
 /// Etiquetas para bonificadores de objetos (2026-08-03) — `attributeLabels` de arriba solo cubre
 /// los 7 atributos jugables; los objetos de armadura/escudo usan la clave especial 'defensa'
 /// (ver equipment.ts § effectiveDefense, backend), que necesita su propia etiqueta para no

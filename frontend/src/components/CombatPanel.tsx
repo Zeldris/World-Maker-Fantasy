@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { CONDICION_LABEL } from '../lib/health'
-import { attributeLabels, attributeColorClasses } from '../lib/dice'
+import { attributeLabels, attributeColorClasses, attributeAbbr } from '../lib/dice'
 import { recommendedAttributeAgainst } from '../lib/attributeWheel'
 import { resolveImageUrl, type EnciclopediaResponse } from '../lib/api'
 import { HealthBar } from './HealthBar'
@@ -86,6 +86,12 @@ function EnemyFicha({
   enciclopedia: EnciclopediaResponse | null
 }) {
   const [infoExpanded, setInfoExpanded] = useState(true)
+  // Pestañas Información/Análisis (2026-08-12, petición explícita: "el resultado de analizar a un
+  // rival que salga en otro tab que será 'Análisis'... aparecerá vacía mientras no uses una
+  // habilidad de análisis") — antes el atributo recomendado (o su placeholder) vivía mezclado con
+  // imagen/bio dentro del mismo bloque "Información", sin distinguir "sobre el rival" de
+  // "lo que YO he descubierto sobre él con Analizar rival".
+  const [fichaTab, setFichaTab] = useState<'info' | 'analisis'>('info')
   const target = useMemo(() => {
     if (!enciclopedia) return null
     const npc = enciclopedia.npcs.find((n) => n.slug === slug)
@@ -133,32 +139,60 @@ function EnemyFicha({
           onClick={() => setInfoExpanded((v) => !v)}
           className="tactile flex w-full items-center justify-between gap-2 rounded-lg px-2.5 py-1.5 text-left transition-colors hover:bg-wood-950/40"
         >
-          <p className="text-2xs font-semibold uppercase tracking-[0.14em] text-wood-500">Información</p>
+          <p className="text-2xs font-semibold uppercase tracking-[0.14em] text-wood-500">Ficha del rival</p>
           <span className={`shrink-0 text-wood-500 transition-transform ${infoExpanded ? 'rotate-180' : ''}`}>▾</span>
         </button>
         {infoExpanded && (
-          <div className="space-y-2.5 border-t border-iron-800 px-2.5 py-2.5">
-            {/* Mismo recorte que el banner de narración (LogPanel.tsx) — petición explícita:
-                "que se vea bien como en la narración". `MediaSlot` (h-40, object-top) recortaba
-                mal algunas imágenes; este aspect-ratio ancho es el que ya se ve bien en el log. */}
-            {target.imageUrl ? (
-              <div className="overflow-hidden rounded-lg border border-iron-700 bg-wood-950/60">
-                <img src={target.imageUrl} alt="" className="aspect-[2.5/1] w-full object-cover" />
-              </div>
-            ) : (
-              <MediaSlot icon="⚔️" variant="placeholder" />
-            )}
-            <p className="text-2xs uppercase tracking-[0.1em] text-wood-500">{target.meta}</p>
-            {target.bio && <p className="text-xs leading-relaxed text-wood-300">{target.bio}</p>}
-            {atributoRecomendado ? (
-              <p className="flex items-center gap-1.5 text-xs text-wood-300">
-                <span className={`h-2 w-2 shrink-0 rounded-full ${attributeColorClasses[atributoRecomendado].dot}`} aria-hidden="true" />
-                <span className="font-semibold uppercase tracking-[0.08em] text-wood-500">Atributo recomendado:</span>{' '}
-                {attributeLabels[atributoRecomendado]}
-              </p>
-            ) : (
-              <p className="text-2xs italic text-wood-500">Analiza al rival para descubrir qué atributo conviene usar contra él.</p>
-            )}
+          <div className="border-t border-iron-800">
+            {/* Mismo patrón visual de pestañas que HabilidadesPanel.tsx (borde inferior que se
+                enciende en la activa). */}
+            <div className="flex gap-1 px-2.5 pt-1.5">
+              <button
+                type="button"
+                onClick={() => setFichaTab('info')}
+                className={`border-b-2 px-2 py-1 text-2xs transition-colors ${
+                  fichaTab === 'info' ? 'border-accent-500 font-medium text-accent-300' : 'border-transparent text-wood-500 hover:text-wood-300'
+                }`}
+              >
+                Información
+              </button>
+              <button
+                type="button"
+                onClick={() => setFichaTab('analisis')}
+                className={`border-b-2 px-2 py-1 text-2xs transition-colors ${
+                  fichaTab === 'analisis' ? 'border-accent-500 font-medium text-accent-300' : 'border-transparent text-wood-500 hover:text-wood-300'
+                }`}
+              >
+                Análisis
+              </button>
+            </div>
+            <div className="space-y-2.5 border-t border-iron-800 px-2.5 py-2.5">
+              {fichaTab === 'info' ? (
+                <>
+                  {/* Mismo recorte que el banner de narración (LogPanel.tsx) — petición explícita:
+                      "que se vea bien como en la narración". `MediaSlot` (h-40, object-top)
+                      recortaba mal algunas imágenes; este aspect-ratio ancho es el que ya se ve
+                      bien en el log. */}
+                  {target.imageUrl ? (
+                    <div className="overflow-hidden rounded-lg border border-iron-700 bg-wood-950/60">
+                      <img src={target.imageUrl} alt="" className="aspect-[2.5/1] w-full object-cover" />
+                    </div>
+                  ) : (
+                    <MediaSlot icon="⚔️" variant="placeholder" />
+                  )}
+                  <p className="text-2xs uppercase tracking-[0.1em] text-wood-500">{target.meta}</p>
+                  {target.bio && <p className="text-xs leading-relaxed text-wood-300">{target.bio}</p>}
+                </>
+              ) : atributoRecomendado ? (
+                <p className="flex items-center gap-1.5 text-xs text-wood-300">
+                  <span className={`h-2 w-2 shrink-0 rounded-full ${attributeColorClasses[atributoRecomendado].dot}`} aria-hidden="true" />
+                  <span className="font-semibold uppercase tracking-[0.08em] text-wood-500">Atributo recomendado:</span>{' '}
+                  {attributeLabels[atributoRecomendado]}
+                </p>
+              ) : (
+                <p className="text-2xs italic text-wood-500">Analiza al rival para descubrir qué atributo conviene usar contra él.</p>
+              )}
+            </div>
           </div>
         )}
       </div>
@@ -454,7 +488,12 @@ export function CombatPanel({
           </div>
         )}
 
-        {!awaitingDefense && selectedNpcSlug && (
+        {/* Ficha del rival (2026-08-12, petición explícita: "en el turno de defensa hay que añadir
+            también la información del enemigo... en la de ataque sí") — antes se ocultaba entera
+            en `awaitingDefense`, igual que el selector de objetivo (que sí tiene sentido ocultar:
+            no eliges a quién defenderte). `selectedNpcSlug` no se resetea al entrar en defensa —
+            sigue siendo el rival ya elegido, así que la ficha no necesita ningún dato nuevo. */}
+        {selectedNpcSlug && (
           <EnemyFicha
             slug={selectedNpcSlug}
             analizado={npcs.find((n) => n.slug === selectedNpcSlug)?.analizado ?? false}
@@ -500,7 +539,12 @@ export function CombatPanel({
                   group.list.length > 0 && (
                     <div key={group.key}>
                       <p className="mb-1.5 text-2xs font-semibold uppercase tracking-[0.14em] text-accent-300">{group.label}</p>
-                      <div className="space-y-1">
+                      {/* 2 columnas + descripción siempre visible (2026-08-12, petición explícita:
+                          "salga en 2 columnas con una abbr del attr y una descripción de la
+                          habilidad") — sustituye la fila de una sola columna con la descripción
+                          escondida detrás de un tooltip solo-hover (incómodo en un dispositivo
+                          táctil/mando, la Steam Deck) por una tarjeta que la muestra siempre. */}
+                      <div className="grid grid-cols-2 gap-1.5">
                         {group.list.map((a) => {
                           // Null en habilidades 'general' o en partidas de antes de este campo —
                           // cae de vuelta a un punto neutro, sin tinte de tipo.
@@ -510,48 +554,132 @@ export function CombatPanel({
                           // botón se deshabilita en vez de dejar elegirla.
                           const sinEnergia = a.energyCost > energia
                           const isSelected = selectedAbilityId === a.id
+                          // Tarjeta entera clickable (2026-08-12, petición explícita: "asegúrate de
+                          // que el cuadro completo sea clickable") — antes solo la fila superior
+                          // (icono+nombre) era un <button>; la descripción y el resto del cuadro no
+                          // reaccionaban al clic. Ahora la tarjeta entera es el elemento interactivo
+                          // (div con role="button", no un <button> real: dentro va anidado el
+                          // botón ⓘ, y un <button> no puede contener otro <button> válido en HTML)
+                          // — el ⓘ para su propio clic con stopPropagation para no seleccionar la
+                          // habilidad de paso al pedir su ficha de Enciclopedia.
+                          const disabledCard = busy || sinEnergia
+                          const selectThisAbility = () => {
+                            if (disabledCard) return
+                            onSelectAbility(a.id)
+                            onSelectItem(null)
+                          }
                           return (
                             <div
                               key={a.id}
-                              className={`flex items-center gap-1.5 rounded-lg border px-2 py-1.5 transition-colors ${
-                                isSelected ? 'border-accent-500 bg-accent-500/15' : 'border-iron-700 bg-wood-950/50'
+                              role="button"
+                              tabIndex={disabledCard ? -1 : 0}
+                              aria-disabled={disabledCard}
+                              aria-pressed={isSelected}
+                              onClick={selectThisAbility}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter' || e.key === ' ') {
+                                  e.preventDefault()
+                                  selectThisAbility()
+                                }
+                              }}
+                              title={sinEnergia ? 'No tienes energía suficiente' : undefined}
+                              className={`tactile relative flex flex-col gap-1 rounded-lg border p-2 pr-6 text-left transition-[transform,border-color,box-shadow,opacity] duration-150 ${
+                                disabledCard ? 'cursor-not-allowed' : 'cursor-pointer'
+                              } ${
+                                isSelected
+                                  ? 'animate-pop-once border-accent-500 bg-accent-500/15 shadow-[0_0_16px_-6px_var(--color-accent-500)]'
+                                  : 'border-iron-700 bg-wood-950/50 hover:-translate-y-0.5 hover:border-accent-600/40'
                               } ${sinEnergia ? 'opacity-50' : ''}`}
                             >
-                              <TooltipAnchor text={a.description} className="min-w-0 flex-1">
-                                <button
-                                  onClick={() => {
-                                    onSelectAbility(a.id)
-                                    onSelectItem(null)
-                                  }}
-                                  disabled={busy || sinEnergia}
-                                  title={sinEnergia ? 'No tienes energía suficiente' : undefined}
-                                  className="tactile flex w-full items-center gap-2 text-left text-xs disabled:cursor-not-allowed"
+                              <div className="flex w-full items-start gap-2 text-xs">
+                                {/* Insignia de icono con tinte del atributo (2026-08-12, "se ve un
+                                    poco feo") — sustituye al emoji suelto flotando en el texto por
+                                    un bloque con peso visual propio, mismo criterio que los avatares
+                                    de NPC de la lista de "Enemigos" de arriba. */}
+                                <span
+                                  className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-sm ${colors ? colors.bg : 'bg-wood-800'}`}
+                                  aria-hidden="true"
                                 >
-                                  {/* Punto de color por atributo (2026-07-30) — sustituye al chip
-                                      entero teñido: mismo dato de un vistazo, sin saturar la vista. */}
-                                  <span
-                                    className={`h-2 w-2 shrink-0 rounded-full ${colors ? colors.dot : 'bg-wood-600'}`}
-                                    aria-hidden="true"
-                                  />
-                                  <span aria-hidden="true">{a.icon}</span>
-                                  <span className={`truncate ${isSelected ? 'font-medium text-accent-100' : 'text-wood-200'}`}>{a.name}</span>
-                                  {/* Doble arma (2026-07-31) — misma categoría en las dos manos: mejor dificultad al usarla, nunca un segundo golpe real. */}
-                                  {a.dualWield && (
-                                    <span
-                                      className="shrink-0 rounded-full border border-accent-600/50 px-1 font-mono text-2xs text-accent-300"
-                                      title="Llevas 2 armas de este tipo — mejor dificultad al usarla"
-                                    >
-                                      ×2
-                                    </span>
-                                  )}
-                                  {a.energyCost > 0 && <span className="ml-auto shrink-0 font-mono text-2xs text-wood-500">⚡{a.energyCost}</span>}
-                                </button>
-                              </TooltipAnchor>
+                                  {a.icon}
+                                </span>
+                                <span className="min-w-0 flex-1">
+                                  <span className="flex items-center gap-1.5">
+                                    <span className={`truncate ${isSelected ? 'font-medium text-accent-100' : 'text-wood-200'}`}>{a.name}</span>
+                                    {/* Marca de "básica" (2026-08-12, petición explícita) — Ataque
+                                        Básico/Defenderse/Esquivar las tiene cualquier personaje sin
+                                        aprenderlas, a diferencia del resto (de clase/raciales/de
+                                        arma); antes solo se distinguían por ir siempre primero en
+                                        el grupo (orden sutil, fácil de no notar). */}
+                                    {a.isGeneric && (
+                                      <span
+                                        className="shrink-0 rounded-full border border-wood-600 px-1 font-mono text-2xs text-wood-400"
+                                        title="Habilidad básica: la tiene cualquier personaje, no hace falta aprenderla"
+                                      >
+                                        Básica
+                                      </span>
+                                    )}
+                                  </span>
+                                  <span className="mt-0.5 flex flex-wrap items-center gap-1.5 text-2xs">
+                                    {/* Abreviatura de atributo (sustituye al punto de color solo,
+                                        2026-07-30) — mismo dato de un vistazo, pero legible sin
+                                        tener que aprenderse qué color es cada atributo. */}
+                                    {a.preferredAttribute && (
+                                      <span className={`inline-flex items-center gap-1 font-mono ${colors?.text ?? 'text-wood-500'}`}>
+                                        <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${colors ? colors.dot : 'bg-wood-600'}`} aria-hidden="true" />
+                                        {attributeAbbr[a.preferredAttribute]}
+                                      </span>
+                                    )}
+                                    {/* Doble arma (2026-07-31) — misma categoría en las dos manos: mejor dificultad al usarla, nunca un segundo golpe real. */}
+                                    {a.dualWield && (
+                                      <span
+                                        className="rounded-full border border-accent-600/50 px-1 font-mono text-accent-300"
+                                        title="Llevas 2 armas de este tipo — mejor dificultad al usarla"
+                                      >
+                                        ×2
+                                      </span>
+                                    )}
+                                    {/* Rayo amarillo explícito (2026-08-12, "lo sigo viendo
+                                        igual...no es amarillo ni es más grande") — el intento
+                                        anterior de "sin color = amarillo natural del emoji" no
+                                        funcionó: al vivir dentro del mismo span que `text-wood-500`,
+                                        heredaba ese gris igual (la fuente de este sistema no trae
+                                        glifo de emoji a color, así que el `color` de CSS sí le
+                                        afecta). Color amarillo forzado + tamaño explícito mayor que
+                                        el resto de la fila (`text-2xs`), en su propio span para no
+                                        heredar nada del número. */}
+                                    {a.energyCost > 0 && (
+                                      <span className="inline-flex items-center gap-0.5 font-mono text-wood-500">
+                                        -{a.energyCost}
+                                        <span aria-hidden="true" className="text-base text-yellow-400">
+                                          ⚡
+                                        </span>
+                                      </span>
+                                    )}
+                                    {/* Regen de Defenderse/Esquivar ("falta el +10 y +5") — estas
+                                        dos no cuestan nada (energyCost 0) pero SÍ devuelven energía
+                                        al usarlas de verdad en un intercambio (energy.ts §
+                                        nextEnergia); sin esto la tarjeta no decía nada aunque su
+                                        propia descripción prometa "recupera algo de energía". */}
+                                    {a.energyRegen > 0 && (
+                                      <span className="inline-flex items-center gap-0.5 font-mono text-moss-400">
+                                        +{a.energyRegen}
+                                        <span aria-hidden="true" className="text-base text-yellow-400">
+                                          ⚡
+                                        </span>
+                                      </span>
+                                    )}
+                                  </span>
+                                </span>
+                              </div>
+                              <p className="text-2xs leading-snug text-wood-400">{a.description}</p>
                               <button
                                 type="button"
-                                onClick={() => onAbilityDetail(a)}
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  onAbilityDetail(a)
+                                }}
                                 aria-label={`Consultar ${a.name} en la Enciclopedia`}
-                                className="tactile flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-iron-700 text-2xs text-wood-500 transition-colors hover:border-accent-600/60 hover:text-accent-300"
+                                className="tactile absolute right-1.5 top-1.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-iron-700 bg-wood-950/70 text-2xs text-wood-500 transition-colors hover:border-accent-600/60 hover:text-accent-300"
                               >
                                 ⓘ
                               </button>
@@ -604,16 +732,27 @@ export function CombatPanel({
             )}
           </div>
         )}
-        <button
-          onClick={onActuar}
-          disabled={busy || (awaitingDefense ? !selectedAbilityId : !selectedAbilityId && !selectedItemId)}
-          className="tactile w-full rounded-lg border border-accent-600 bg-gradient-to-b from-accent-400 to-accent-600 px-3.5 py-2 text-xs font-bold uppercase tracking-wide text-wood-950 disabled:cursor-not-allowed disabled:border-iron-700 disabled:from-wood-700 disabled:to-wood-700 disabled:text-wood-500"
-        >
-          {awaitingDefense ? 'Defenderte' : 'Actuar'}
-        </button>
           </>
         )}
       </div>
+
+      {/* "Actuar" fijo fuera del scroll (2026-08-12, petición explícita: "para no tener que ir al
+          final al seleccionar una habilidad") — antes vivía como último elemento DENTRO del `div`
+          con `overflow-y-auto` de arriba, así que con la lista de habilidades larga había que
+          bajar del todo para pulsarlo tras elegir una. Ahora es un pie aparte, hermano de ese
+          contenedor dentro del mismo `flex flex-col` del `<section>` — siempre visible, el scroll
+          ya no lo afecta. Nunca se muestra en la pantalla de resumen (`ended`), igual que antes. */}
+      {!ended && (
+        <div className="border-t border-iron-800 px-4 py-3">
+          <button
+            onClick={onActuar}
+            disabled={busy || (awaitingDefense ? !selectedAbilityId : !selectedAbilityId && !selectedItemId)}
+            className="tactile w-full rounded-lg border border-accent-600 bg-gradient-to-b from-accent-400 to-accent-600 px-3.5 py-2 text-xs font-bold uppercase tracking-wide text-wood-950 disabled:cursor-not-allowed disabled:border-iron-700 disabled:from-wood-700 disabled:to-wood-700 disabled:text-wood-500"
+          >
+            {awaitingDefense ? 'Defenderte' : 'Actuar'}
+          </button>
+        </div>
+      )}
 
       {decapitarModalOpen && (
         <CombatSelectionModal
