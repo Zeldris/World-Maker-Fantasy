@@ -1,9 +1,9 @@
 # Post-combate (inconsciencia/recuperación) y recompensas deterministas de misión
 
-**Estado:** documento vivo. Investigación cerrada el 2026-08-12; implementación empezada el
-2026-08-13 ("sigue e implementa todas las fases que sacamos ayer al roadmap"). Piezas 1, 3, 4 y 5
-**implementadas y verificadas**. Solo la pieza 2 (recuperación tras 6h) sigue pendiente — es la
-más grande de las cinco (mecanismo de tiempo nuevo, campo de schema nuevo).
+**Estado:** documento vivo. Investigación cerrada el 2026-08-12; implementación completa el
+2026-08-13 ("sigue e implementa todas las fases que sacamos ayer al roadmap", y confirmado "todo
+ahora" al preguntar por el alcance de la pieza 2). **Las 5 piezas implementadas y verificadas**
+(tsc + vitest limpios, backend y frontend). Pendiente jugarlo en vivo.
 
 ## Contexto
 
@@ -86,6 +86,27 @@ Necesita, además del mecanismo de tiempo:
 - Pregunta abierta, no cerrada todavía: ¿la desaparición a las 48h de un cadáver ya saqueado del
   todo simplemente borra su `NpcState`/lo saca de escena, o hace falta algo más (p. ej. un
   `SessionFact` que registre que el cuerpo "ya no está" para que el Narrador no lo mencione)?
+
+**Implementado y verificado (2026-08-13)**:
+- Backend: `detectsPostCombatInteraction` (nuevo `services/postCombatInteraction.ts`) — reutiliza
+  la lista de `detectNpcsInScene` ya calculada para el validador de grounding (sin consulta nueva),
+  filtra por `condicionFisica` INCAPACITADO/MUERTO y comprueba que el jugador nombra a ese NPC por
+  su nombre en la propia acción (no solo por hechos de sesión antiguos, mismo cuidado que el bug de
+  resurrección de esta misma sesión). Cableado en `POST /turn/classify`, solo fuera de combate
+  (`!enCombate`), antes de `classifyAction` — devuelve `{ postCombatInteraction: {...} }` en vez de
+  la clasificación normal; no es una violación (a diferencia del validador de grounding), así que
+  no persiste ningún `LogEntry`, no cuenta como una acción de verdad.
+- Frontend: `PostCombatInteractionModal.tsx` (nuevo) — misma carcasa de overlay que
+  `CombatSelectionModal.tsx`. `GameView.tsx` detecta `classifyResult.postCombatInteraction`,
+  deshace el "TÚ: ..." optimista del log (el backend no persistió nada) y abre el modal. Saquear/
+  Decapitar reutilizan el mecanismo determinista YA existente sin ningún endpoint nuevo: solo
+  llaman a `handleSubmit` con el mismo texto libre que ya reconocen `detectsLootIntent`/
+  `detectsExecuteIntent` (`Saqueo el cuerpo de 'X'.` / `Decapito a 'X'.`), el turno normal se
+  encarga del resto.
+- La pregunta abierta sobre `SessionFact` al desaparecer un cadáver se deja tal cual (no se
+  implementó nada aparte del borrado del `NpcState`) — riesgo bajo: el propio Narrador ya evita
+  narrar como activo a cualquier NPC MUERTO por instrucción de `npcSceneBlockFor`, y sin `NpcState`
+  ni siquiera aparece como "ya resuelto" en el contexto, simplemente deja de mencionarse.
 
 ### 3. Recompensa determinista de misión (el mapa, y en general)
 

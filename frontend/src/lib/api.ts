@@ -18,6 +18,7 @@ import type {
   NpcInSceneInfo,
   HarvestSourceCandidate,
   HuntCandidate,
+  PostCombatInteractionInfo,
   ProfessionProgressInfo,
   ProfessionRecipeInfo,
   ProgressionResult,
@@ -94,6 +95,11 @@ export interface ClassifyResponse {
   // encima) y ya persistió una frase determinista en el log. El turno queda resuelto aquí mismo:
   // no hace falta (ni se debe) llamar a /turn/narrate.
   blocked?: { narration: string }
+  // Interacción con un NPC/fauna ya incapacitado o muerto, fuera de combate (docs/19-post-combate-
+  // y-recompensas-mision.md pieza 2) — el turno tampoco llega a /turn/narrate aquí, pero a
+  // diferencia de `blocked` no es una violación: el frontend abre el panel mecánico (Saquear/
+  // Decapitar/Salir) en vez de mostrar ningún texto.
+  postCombatInteraction?: PostCombatInteractionInfo
 }
 
 export interface BusyError {

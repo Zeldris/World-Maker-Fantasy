@@ -28,6 +28,7 @@ import { combatDifficultyFor } from '../lib/combatDifficulty'
 import { HealthBar } from '../components/HealthBar'
 import { KingdomFoundingModal } from '../components/KingdomFoundingModal'
 import { HarvestSelectionModal } from '../components/HarvestSelectionModal'
+import { PostCombatInteractionModal } from '../components/PostCombatInteractionModal'
 import { HuntSelectionModal } from '../components/HuntSelectionModal'
 import { inventoryCapacityFor, totalInventoryUnits } from '../lib/inventoryCapacity'
 import {
@@ -73,6 +74,7 @@ import type {
   LogEntry,
   MentionedEntityBanner,
   NpcInSceneInfo,
+  PostCombatInteractionInfo,
   ProfessionProgressInfo,
   ProfessionRecipeInfo,
   ProgressionResult,
@@ -114,6 +116,10 @@ export function GameView() {
   // Pop-up de recolección (rediseño de profesiones, 2026-08-07) — null = cerrado.
   const [harvestModal, setHarvestModal] = useState<{ oficio: string; label: string } | null>(null)
   const [huntModalOpen, setHuntModalOpen] = useState(false)
+  // Interacción con un NPC/fauna ya incapacitado o muerto, fuera de combate (docs/19-post-combate-
+  // y-recompensas-mision.md pieza 2) — null = cerrado. `/turn/classify` lo detecta y corta el
+  // turno antes de narrar; este panel deja Saquear/Decapitar/Salir sin gastar generación.
+  const [postCombatTarget, setPostCombatTarget] = useState<PostCombatInteractionInfo | null>(null)
   const [companions, setCompanions] = useState<CompanionInfo[]>([])
   const [level, setLevel] = useState(1)
   const [xp, setXp] = useState(0)
@@ -1324,6 +1330,17 @@ export function GameView() {
         return
       }
 
+      if (classifyResult.postCombatInteraction) {
+        // Interacción con un NPC/fauna ya incapacitado o muerto, fuera de combate (docs/19 pieza
+        // 2) — el backend no persistió nada (no fue una acción de verdad, solo abrió el menú), así
+        // que hay que deshacer el "TÚ: ..." optimista que se metió arriba antes de llamar a
+        // classify, o quedaría una entrada fantasma en el log que nunca existió en el backend.
+        setCharacterThinking(false)
+        setCharacterLog((prev) => prev.slice(0, logLengthBeforeThisTurn))
+        setPostCombatTarget(classifyResult.postCombatInteraction)
+        return
+      }
+
       if (classification.banda === 'corta' && classifyResult.duracionMinutos) {
         const { duracionMinutos, produccion } = classifyResult
         setTimedThinkingText(`${action} — unos ${duracionMinutos} min de juego${produccion ? ` (${produccion})` : ''}...`)
@@ -1972,6 +1989,24 @@ export function GameView() {
 
       {huntModalOpen && saveId && (
         <HuntSelectionModal saveId={saveId} onResuelto={handleHuntResolved} onCancel={() => setHuntModalOpen(false)} />
+      )}
+
+      {postCombatTarget && (
+        <PostCombatInteractionModal
+          target={postCombatTarget}
+          busy={characterThinking}
+          onSalir={() => setPostCombatTarget(null)}
+          onSaquear={() => {
+            const target = postCombatTarget
+            setPostCombatTarget(null)
+            handleSubmit(`Saqueo el cuerpo de '${target.name}'.`)
+          }}
+          onDecapitar={() => {
+            const target = postCombatTarget
+            setPostCombatTarget(null)
+            handleSubmit(`Decapito a '${target.name}'.`)
+          }}
+        />
       )}
 
       {activePanel && (

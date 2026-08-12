@@ -415,6 +415,16 @@ export interface SavedActionInfo {
 export type CondicionFisica = 'ILESO' | 'HERIDO' | 'GRAVE' | 'INCAPACITADO' | 'MUERTO'
 export type Dificultad = 'NOVATO' | 'MEDIO' | 'AVANZADO'
 
+/// Interacción con un NPC/fauna ya incapacitado o muerto, fuera de combate (docs/19-post-combate-
+/// y-recompensas-mision.md pieza 2) — lo que devuelve /turn/classify en vez de la clasificación
+/// normal cuando el jugador nombra a alguien ya resuelto que sigue en escena.
+export interface PostCombatInteractionInfo {
+  slug: string
+  name: string
+  condicionFisica: 'INCAPACITADO' | 'MUERTO'
+  saqueado: boolean
+}
+
 export interface DiscoveryItem {
   itemCatalogSlug: string
   name: string
