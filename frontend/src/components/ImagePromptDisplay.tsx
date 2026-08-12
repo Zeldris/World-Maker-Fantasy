@@ -37,6 +37,9 @@ function ImageLightbox({ imageUrl, onClose }: { imageUrl: string; onClose: () =>
     return () => document.removeEventListener('keydown', handleKey)
   }, [onClose])
 
+  // La Fullscreen API rechaza la promesa si el navegador la deniega (política de permisos,
+  // gesto de usuario insuficiente...) — no hay nada accionable que mostrarle a la usuaria, así
+  // que se silencia a propósito en los 3 sitios de este archivo que la usan.
   const toggleFullscreen = () => {
     if (document.fullscreenElement) {
       document.exitFullscreen().catch(() => {})

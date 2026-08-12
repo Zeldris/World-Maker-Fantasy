@@ -1,5 +1,6 @@
 import type { BusyError, EndedGameError, TurnLockedError } from './api'
-import type { InventoryItemInfo } from '../types'
+import type { CombatNpcDisplay } from '../components/CombatComposer'
+import type { InventoryItemInfo, LogEntry, NpcInSceneInfo } from '../types'
 
 /// Bug real (auditoría de código completa, 2026-08-07): crafteo/construcción SÍ borran/reducen
 /// filas reales de InventoryItem al consumir materiales, pero el backend solo devolvía lo AÑADIDO
@@ -60,4 +61,36 @@ export function formatFictionalDuration(duracionMinutos: number): string {
   }
   const dias = duracionMinutos / 1440
   return `${Number.isInteger(dias) ? dias : dias.toFixed(1)} días`
+}
+
+/// Mapeo puro reutilizado en los 3 sitios de GameView.tsx que construyen el estado de combate de
+/// un NPC a partir de lo que trae el backend (`combateIniciado.npcs`) — botón "Decapitar"
+/// (2026-07-30): el estado en pantalla ya no colapsa MUERTO a INCAPACITADO, ver
+/// `CombatNpcDisplay.condicion`.
+export function npcInSceneToCombatDisplay(npc: NpcInSceneInfo): CombatNpcDisplay {
+  return {
+    slug: npc.slug,
+    name: npc.name,
+    condicion: npc.condicionFisica,
+    yaSaqueado: npc.saqueado,
+    lootedItemNames: npc.lootedItemNames,
+    analizado: npc.analizado,
+  }
+}
+
+/// LogEntry de recompensa de misión completada (2026-08-13) — misma construcción usada tanto al
+/// resolver un turno de combate como uno normal (handleSubmit), siempre como fila aparte, nunca
+/// fusionada con la narración principal.
+export function questCompletedLogEntry(
+  info: { logEntryId: string; text: string; title: string; grantedItems: string[]; rewardXp: number },
+  timeLabel: string,
+): LogEntry {
+  return {
+    id: info.logEntryId,
+    channel: 'character',
+    text: info.text,
+    timeLabel,
+    createdAt: new Date().toISOString(),
+    questCompleted: { title: info.title, grantedItems: info.grantedItems, rewardXp: info.rewardXp },
+  }
 }

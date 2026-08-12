@@ -14,6 +14,8 @@ import { SLOT_LABEL, isCompatibleWithSlot, isConsumibleSlot } from '../lib/equip
 import { PersonajePanel, type PersonajeSubTab } from '../components/panels/PersonajePanel'
 import { DetailModal, type DetailTarget } from '../components/DetailModal'
 import { useEnciclopedia } from '../hooks/useEnciclopedia'
+import { useEntityBanner } from '../hooks/useEntityBanner'
+import { useReconnectionPolling } from '../hooks/useReconnectionPolling'
 import type { EnciclopediaLinkTarget } from '../lib/enciclopediaIndex'
 import { EnciclopediaLinkProvider } from '../context/EnciclopediaLinkContext'
 import { CompanerosPanel } from '../components/panels/CompanerosPanel'
@@ -28,6 +30,7 @@ import { combatDifficultyFor } from '../lib/combatDifficulty'
 import { HealthBar } from '../components/HealthBar'
 import { KingdomFoundingModal } from '../components/KingdomFoundingModal'
 import { HarvestSelectionModal } from '../components/HarvestSelectionModal'
+import { REINO_ABILITY_RECIPE_KEY } from '../data/reinoRecipes'
 import { PostCombatInteractionModal } from '../components/PostCombatInteractionModal'
 import { HuntSelectionModal } from '../components/HuntSelectionModal'
 import { inventoryCapacityFor, totalInventoryUnits } from '../lib/inventoryCapacity'
@@ -47,15 +50,22 @@ import {
   updateSavedAction,
   fundarReino,
   setItemSlot,
-  setLogEntryBanner,
-  resolveImageUrl,
   getProfessionRecipes,
+  getRecipesStatus,
   type SaveDetail,
   type ClassifyResponse,
 } from '../lib/api'
 import { characterWaitingFlavor, combatWaitingFlavor, worldWaitingFlavor, useRotatingFlavor } from '../lib/waitingFlavor'
-import { pickMentionedEntityBanner, mentionedEntityKey, resolveEntityBannerFromRef } from '../lib/mentionedEntityBanner'
-import { isBusyError, isEndedGameError, isTurnLockedError, formatCountdown, formatFictionalDuration, applyInventoryDelta } from '../lib/gameViewHelpers'
+import {
+  isBusyError,
+  isEndedGameError,
+  isTurnLockedError,
+  formatCountdown,
+  formatFictionalDuration,
+  applyInventoryDelta,
+  npcInSceneToCombatDisplay,
+  questCompletedLogEntry,
+} from '../lib/gameViewHelpers'
 import type {
   Attribute,
   AttributeBlock,
@@ -72,13 +82,13 @@ import type {
   KingdomFoundedInfo,
   KingdomStatsInfo,
   LogEntry,
-  MentionedEntityBanner,
   NpcInSceneInfo,
   PostCombatInteractionInfo,
   ProfessionProgressInfo,
   ProfessionRecipeInfo,
   ProgressionResult,
   QuestInfo,
+  RecipeStatusInfo,
   SavedActionCategory,
   SavedActionInfo,
   SecondaryAttributeBlock,
@@ -151,6 +161,24 @@ export function GameView() {
   const [combatSlots, setCombatSlots] = useState(3)
   const [fictionalDate, setFictionalDate] = useState('Día 1, mañana')
   const [currentLocation, setCurrentLocation] = useState<CurrentLocationInfo | null>(null)
+  // Estado real de cada receta EN ESTA PARTIDA (2026-08-13, petición explícita: "que salgan
+  // deshabilitadas si no cumples las condiciones... el hover con... 5/10") — depende del
+  // inventario/atributos/ubicación reales, así que se recarga cada vez que cualquiera de los tres
+  // cambia. Bug real de auditoría (2026-08-13): al depender solo de `[saveId, inventory]`, subir
+  // un punto de atributo (handleSpendAttributePoint) o viajar a la ubicación que pedía una receta
+  // (ej. Campamento del Clan Serhu) no refrescaba nada — las tarjetas se quedaban mostrando "Falta:
+  // Fuerza" o "Debes estar en X" aunque el jugador ya cumpliera la condición, hasta que algo no
+  // relacionado tocara el inventario.
+  const [recipesStatus, setRecipesStatus] = useState<RecipeStatusInfo[]>([])
+  useEffect(() => {
+    if (!saveId) return
+    getRecipesStatus(saveId)
+      .then((res) => setRecipesStatus(res.recipes))
+      .catch(() => {
+        // Si falla, las tarjetas de Habilidades/Enciclopedia simplemente no se deshabilitan por
+        // esto — no rompe nada más.
+      })
+  }, [saveId, inventory, characterAttributes, currentLocation])
   const [destinations, setDestinations] = useState<DestinationInfo[]>([])
   const [input, setInput] = useState('')
   const composerRef = useRef<ChatComposerHandle>(null)
@@ -175,83 +203,15 @@ export function GameView() {
   // Texto clicable en narración/diario/descripciones (2026-07-22, petición explícita) — un solo
   // índice construido una vez, reutilizado por LogPanel/DiarioPanel/DetailModal. Clicar una
   // mención simplemente reemplaza `detailTarget` (mismo estado de siempre), no abre nada nuevo.
-  const { index: enciclopediaIndex, raw: enciclopediaData } = useEnciclopedia(worldIdSlug)
-  // Banner de elemento citado bajo la narración (petición explícita de la usuaria, 2026-07-24):
-  // ventana de "no repetir" de las últimas 4 narraciones, en memoria de esta sesión — no hace
-  // falta persistirlo, un cambio de partida/recarga simplemente empieza la ventana de cero.
-  //
-  // Bug real jugando en vivo (2026-07-24, "sigue sin salir la imagen"): la primera versión
-  // guardaba solo una lista de las últimas 6 claves MOSTRADAS y la recortaba con `.slice(-6)` —
-  // es decir, expiraba una entrada solo cuando aparecían 6 entidades DISTINTAS nuevas después de
-  // ella. Con solo 2-3 candidatas reales con imagen subida en esta zona del juego (Gistera Koh,
-  // Orco Enfurecido...), en cuanto cada una se mostraba una vez quedaban ambas bloqueadas para
-  // siempre — nunca hay una tercera/cuarta/etc. distinta que las empuje fuera de la ventana. Ahora
-  // la expiración es por Nº DE NARRACIONES transcurridas (turnCounter), no por cuántas entidades
-  // distintas se han enseñado — así una NPC protagonista puede volver a aparecer pasadas unas
-  // pocas narraciones aunque no haya ninguna otra entidad nueva de por medio.
-  // `enciclopediaIndexRef` (mismo patrón que `characterThinkingRef`/`fictionalDateRef` más abajo):
-  // `tickSurroundings` vive dentro de un efecto con `[saveId]` como única dependencia, así que su
-  // clausura se crea una sola vez — sin el ref, se quedaría leyendo para siempre el índice vacío
-  // del primer render, de antes de que `useEnciclopedia` terminara de cargar los datos reales.
-  const RECENTLY_SHOWN_TURN_WINDOW = 4
-  const recentlyShownEntitiesRef = useRef<Map<string, number>>(new Map())
-  const entityBannerTurnRef = useRef(0)
-  const enciclopediaIndexRef = useRef(enciclopediaIndex)
-  useEffect(() => {
-    enciclopediaIndexRef.current = enciclopediaIndex
-  }, [enciclopediaIndex])
-  // Reconstruye `entityBanner` para las entradas ya persistidas (rework 2026-07-24) en cuanto la
-  // Enciclopedia termina de cargar — `syncFromSave` (al entrar/recargar) las rellena con
-  // `entityBannerType`/`entityBannerSlug` (la referencia que sí sobrevive en BD), pero necesita el
-  // índice de la Enciclopedia ya construido para resolver la imagen real; como ese fetch es
-  // asíncrono y separado, este efecto corre en cuanto está listo, no en el momento de la carga.
-  useEffect(() => {
-    if (!enciclopediaIndex.bySlugKey.size) return
-    const resolve = (entry: LogEntry): LogEntry => {
-      if (entry.entityBanner || !entry.entityBannerType || !entry.entityBannerSlug) return entry
-      const resolved = resolveEntityBannerFromRef(entry.entityBannerType, entry.entityBannerSlug, enciclopediaIndex)
-      if (!resolved) return entry
-      // Bug real jugando en vivo (2026-07-24, "las imágenes al recargar no se ven" — icono de
-      // imagen rota): `resolveEntityBannerFromRef` devuelve la ruta relativa tal cual (igual que
-      // `pickMentionedEntityBanner` con `bannerUrl`), quien llama es quien la convierte en URL
-      // completa con `resolveImageUrl` (mismo patrón que `buildEntityBanner`) — faltaba aquí.
-      const imageUrl = resolveImageUrl(resolved.imageUrl)
-      if (!imageUrl) return entry
-      return { ...entry, entityBanner: { ...resolved, imageUrl } }
-    }
-    setCharacterLog((prev) => prev.map(resolve))
-    setWorldLog((prev) => prev.map(resolve))
-  }, [enciclopediaIndex])
-  // `logEntryId` (rework 2026-07-24, persistencia de banners): el id REAL de la fila LogEntry ya
-  // creada en el backend para esta narración — antes se usaba un id inventado (`c-${Date.now()}`)
-  // que no correspondía a nada en BD, así que no había forma de guardarle luego qué entidad se
-  // mostró. Si se pasa, y hay match, se dispara un PATCH de fondo (fire-and-forget: un fallo aquí
-  // solo significa que la imagen no sobrevive a una recarga, nada más grave).
-  function buildEntityBanner(text: string, logEntryId?: string): MentionedEntityBanner | undefined {
-    // Cualquier fallo aquí es puramente cosmético (una imagen de más o de menos) — nunca debe
-    // impedir que la narración en sí se guarde/muestre. Aislado en try/catch tras un bug real
-    // sospechado de un remount/HMR dejando `recentlyShownEntitiesRef` con una forma antigua.
-    try {
-      const currentTurn = ++entityBannerTurnRef.current
-      const recentlyShown = new Set(
-        Array.from(recentlyShownEntitiesRef.current.entries())
-          .filter(([, shownAtTurn]) => currentTurn - shownAtTurn < RECENTLY_SHOWN_TURN_WINDOW)
-          .map(([key]) => key),
-      )
-      const match = pickMentionedEntityBanner(text, enciclopediaIndexRef.current, recentlyShown)
-      if (!match) return undefined
-      const imageUrl = resolveImageUrl(match.bannerUrl)
-      if (!imageUrl) return undefined
-      recentlyShownEntitiesRef.current.set(mentionedEntityKey(match.target), currentTurn)
-      if (logEntryId && saveId && match.target.entityType && match.target.entitySlug) {
-        setLogEntryBanner(saveId, logEntryId, match.target.entityType, match.target.entitySlug).catch(() => {})
-      }
-      return { name: match.target.name, icon: match.target.icon, imageUrl }
-    } catch (err) {
-      console.error('buildEntityBanner failed', err)
-      return undefined
-    }
-  }
+  const {
+    index: enciclopediaIndex,
+    raw: enciclopediaData,
+    loading: enciclopediaLoading,
+  } = useEnciclopedia(worldIdSlug, saveId, recipesStatus)
+  // Banner de elemento citado bajo la narración (petición explícita de la usuaria, 2026-07-24) —
+  // ver src/hooks/useEntityBanner.ts para la lógica completa (ventana de "no repetir", reconstrucción
+  // de banners persistidos al cargar la Enciclopedia).
+  const { buildEntityBanner } = useEntityBanner(saveId, enciclopediaIndex, setCharacterLog, setWorldLog)
   const [notFound, setNotFound] = useState(false)
   const [discoveries, setDiscoveries] = useState<DiscoveryItem[]>([])
   const [condicionFisica, setCondicionFisica] = useState<CondicionFisica>('ILESO')
@@ -299,21 +259,9 @@ export function GameView() {
   // el combate realmente cambia.
   const combatNpcsDisplay: CombatNpcDisplay[] = useMemo(
     () =>
-      (combateIniciado?.npcs ?? []).map((n) => {
-        const state = combatNpcStates.find((s) => s.slug === n.slug)
-        return (
-          state ?? {
-            slug: n.slug,
-            name: n.name,
-            // Botón "Decapitar" (2026-07-30) — ya no se colapsa MUERTO a INCAPACITADO, ver
-            // CombatNpcDisplay.condicion.
-            condicion: n.condicionFisica,
-            yaSaqueado: n.saqueado,
-            lootedItemNames: n.lootedItemNames,
-            analizado: n.analizado,
-          }
-        )
-      }),
+      (combateIniciado?.npcs ?? []).map(
+        (n) => combatNpcStates.find((s) => s.slug === n.slug) ?? npcInSceneToCombatDisplay(n),
+      ),
     [combateIniciado, combatNpcStates],
   )
 
@@ -355,18 +303,7 @@ export function GameView() {
     // Y una emboscada (`combateIniciado`) — sin esto, el aviso de "hallazgo descubierto" se quedaba
     // solapado visualmente por encima del popup de combate recién abierto.
     setDiscoveries([])
-    setCombatNpcStates(
-      combateIniciado.npcs.map((n) => ({
-        slug: n.slug,
-        name: n.name,
-        // Botón "Decapitar" (2026-07-30) — ya no se colapsa MUERTO a INCAPACITADO, ver
-        // CombatNpcDisplay.condicion.
-        condicion: n.condicionFisica,
-        yaSaqueado: n.saqueado,
-        lootedItemNames: n.lootedItemNames,
-        analizado: n.analizado,
-      })),
-    )
+    setCombatNpcStates(combateIniciado.npcs.map(npcInSceneToCombatDisplay))
     setCombatEnded(false)
     // Mismo reinicio que antes hacía el `useState` inicial de CombatComposer al montarse.
     setCombatSelectedNpcSlug(combateIniciado.npcs[0]?.slug ?? null)
@@ -748,18 +685,10 @@ export function GameView() {
     fictionalDateRef.current = fictionalDate
   }, [fictionalDate])
 
-  // Bug real (auditoría 2026-07-30): a diferencia de todos los demás bucles asíncronos largos de
-  // este archivo (cada uno con su propio flag `cancelled` de limpieza de efecto), el sondeo de
-  // reconexión de más abajo (hasta 72 intentos, ~12 min reales) vive dentro de un handler
-  // imperativo (`handleSubmit`), no de un `useEffect` — sin nada que lo corte, seguía llamando al
-  // backend y a `setState` varios minutos después de que la jugadora navegara fuera de esta
-  // pantalla (desmontaje real de GameView).
-  const mountedRef = useRef(true)
-  useEffect(() => {
-    return () => {
-      mountedRef.current = false
-    }
-  }, [])
+  // Sondeo de reconexión tras un turno que no confirmó a tiempo — ver
+  // src/hooks/useReconnectionPolling.ts para la lógica completa (intervalos, tope de intentos,
+  // limpieza al desmontar).
+  const { pollForResolution } = useReconnectionPolling()
 
   // Solapar classify con el tecleo (roadmap de velocidad, 2026-07-19): tras ~1,5s sin tocar el
   // composer, se lanza ya la clasificación en segundo plano con `preview:true` — no persiste nada
@@ -903,10 +832,19 @@ export function GameView() {
   function handleAbilityDetail(ability: SavedActionInfo) {
     // Enlace a Enciclopedia (rediseño de profesiones, 2026-08-07): `recipeKey` no viene del
     // backend en el SavedAction real — se resuelve aquí cruzando por `name` contra el roster
-    // estático ya cargado (profesionRecipes). Solo aplica a habilidades de oficio (category
-    // 'profesion'); el resto se queda sin recipeKey, sin enlace, sin cambio de comportamiento.
-    const matchingRecipe = ability.category === 'profesion' ? professionRecipes.find((r) => r.ability.name === ability.name) : undefined
-    setDetailTarget({ kind: 'ability', ability: matchingRecipe ? { ...ability, recipeKey: matchingRecipe.recipeKey } : ability })
+    // estático ya cargado (profesionRecipes), que cubre tanto category 'profesion' como 'reino'
+    // CON oficio (ej. la Choza, 2026-08-13). Lo que no tiene oficio (Campamento/Ayuntamiento) cae
+    // a REINO_ABILITY_RECIPE_KEY (data/reinoRecipes.ts); el resto se queda sin recipeKey, sin
+    // enlace, sin cambio de comportamiento.
+    const matchingRecipe =
+      ability.category === 'profesion' || ability.category === 'reino' ? professionRecipes.find((r) => r.ability.name === ability.name) : undefined
+    const reinoRecipeKey = ability.category === 'reino' && !matchingRecipe ? REINO_ABILITY_RECIPE_KEY[ability.name] : undefined
+    const recipeLink = matchingRecipe
+      ? { recipeKey: matchingRecipe.recipeKey, recipeCategory: matchingRecipe.recipeCategory }
+      : reinoRecipeKey
+        ? { recipeKey: reinoRecipeKey, recipeCategory: 'construccion' as const }
+        : undefined
+    setDetailTarget({ kind: 'ability', ability: recipeLink ? { ...ability, ...recipeLink } : ability })
     setDetailInsertHandler(null)
   }
 
@@ -961,7 +899,15 @@ export function GameView() {
   // solo que sin "Explorar" propio (backend/src/routes/saves/recolectar.ts § carcassCandidatesFor).
   // Los valores son solo el PREFIJO base del oficio (sin raza/región) — metodoForOficio
   // (harvestAbilities.ts) empareja por prefijo, no por igualdad exacta.
-  const HARVEST_ABILITY_OFICIO: Record<string, string> = { Minar: 'minero', Talar: 'talador', Desollar: 'desollador' }
+  // "Recolectar hierbas" (herborista) sumado 2026-08-13 — bug real jugando en vivo: la habilidad
+  // existía en backend (harvestAbilities.ts) pero, al faltar aquí, caía al chip de texto libre en
+  // vez de abrir el mismo pop-up de selección que el resto de recolectoras.
+  const HARVEST_ABILITY_OFICIO: Record<string, string> = {
+    Minar: 'minero',
+    Talar: 'talador',
+    Desollar: 'desollador',
+    'Recolectar hierbas': 'herborista',
+  }
 
   function handleAttachAbility(ability: SavedActionInfo) {
     const oficio = HARVEST_ABILITY_OFICIO[ability.name]
@@ -1116,17 +1062,7 @@ export function GameView() {
       // por el backend vía questRewardNarrationFor), nunca fusionada con la narración principal de
       // arriba: el combate puede cerrar una misión en el mismo golpe que la mata, pero son dos
       // filas distintas en la DB.
-      if (params.questCompletedInfo) {
-        const { logEntryId, text, title, grantedItems, rewardXp } = params.questCompletedInfo
-        next.push({
-          id: logEntryId,
-          channel: 'character' as const,
-          text,
-          timeLabel: fictionalDate,
-          createdAt: new Date().toISOString(),
-          questCompleted: { title, grantedItems, rewardXp },
-        })
-      }
+      if (params.questCompletedInfo) next.push(questCompletedLogEntry(params.questCompletedInfo, fictionalDate))
       return next
     })
     if (params.newInventoryItems.length > 0 || params.removedInventoryItemIds.length > 0 || params.updatedInventoryItems.length > 0) {
@@ -1155,16 +1091,7 @@ export function GameView() {
       setCombatNpcStates((prev) => {
         const bySlug = new Map(prev.map((n) => [n.slug, n]))
         for (const n of params.combate!.npcs) {
-          const real: CombatNpcDisplay = {
-            slug: n.slug,
-            name: n.name,
-            // Botón "Decapitar" (2026-07-30) — ya no se colapsa MUERTO a INCAPACITADO, ver
-            // CombatNpcDisplay.condicion.
-            condicion: n.condicionFisica,
-            yaSaqueado: n.saqueado,
-            lootedItemNames: n.lootedItemNames,
-            analizado: n.analizado,
-          }
+          const real: CombatNpcDisplay = npcInSceneToCombatDisplay(n)
           const local = bySlug.get(n.slug)
           if (!local) {
             bySlug.set(n.slug, real)
@@ -1291,6 +1218,8 @@ export function GameView() {
   // el único momento en que el desmontaje de React no está garantizado).
   useEffect(() => {
     if (!saveId) return
+    // Best-effort: si falla, la partida sigue marcada "en pausa" en el backend pero la usuaria ya
+    // está jugando con normalidad — no hay ninguna acción real que ofrecerle ante este fallo.
     resumeSave(saveId).catch(() => {})
 
     const handleBeforeUnload = () => pauseSave(saveId)
@@ -1426,6 +1355,9 @@ export function GameView() {
       if (travel) {
         // Un viaje resuelto síncronamente (banda corta) ya cambió currentLocationId en el
         // backend — resincronizamos posición/destinos en vez de reconstruirlo a mano aquí.
+        // Best-effort: si esta resincronización falla, el próximo turno o refresco de panel ya
+        // trae la posición al día — no hay error puntual que mostrar por un viaje que, mecánicamente,
+        // ya se resolvió bien en el backend.
         getSave(saveId)
           .then((save) => {
             setCurrentLocation(save.currentLocation)
@@ -1454,17 +1386,7 @@ export function GameView() {
         ]
         // Misión completada (2026-08-13) — ver el mismo bloque en handleCombatTurnResolved: fila
         // real aparte, nunca fusionada con la narración principal.
-        if (questCompletedInfo) {
-          const { logEntryId: rewardId, text, title, grantedItems, rewardXp } = questCompletedInfo
-          next.push({
-            id: rewardId,
-            channel: 'character' as const,
-            text,
-            timeLabel: fictionalDate,
-            createdAt: new Date().toISOString(),
-            questCompleted: { title, grantedItems, rewardXp },
-          })
-        }
+        if (questCompletedInfo) next.push(questCompletedLogEntry(questCompletedInfo, fictionalDate))
         return next
       })
       // Bug real (auditoría de deuda técnica 2026-08-04, mismo patrón que companionCreated):
@@ -1527,65 +1449,10 @@ export function GameView() {
           },
         ])
       } else {
-        // Sondeo de reconexión (2026-07-23): antes se comprobaba una sola vez y ya se avisaba de
-        // "puede que tengas que reintentarla" — pero el backend sigue narrando en segundo plano
-        // bastante después de que el stream del cliente se corte (cola de Ollama, rotación cloud),
-        // así que un solo intento inmediato disparaba el aviso demasiado pronto. Sondea cada 10s
-        // mientras el composer sigue bloqueado (characterThinking se queda a true hasta el
-        // finally), mostrando un indicador discreto en vez del aviso de error.
-        //
-        // Bug real encontrado auditando la partida de Gorhorn (2026-07-23, "revisar partida" —
-        // "una cosa que pasa mucho y me obliga a recargar"): el tope original (~2 min) se quedaba
-        // corto frente al peor caso REAL de la cascada de reintentos de `narrateAction`
-        // (narrador.ts): intento 1 (180s) + intento 2 (240s) + intento 3 (90s) = 510s solo en
-        // narrar, más hasta 120s si además hay una réplica de diálogo (`generateNpcReply`) — hasta
-        // ~10-11 minutos en el peor caso real en este hardware CPU-only. Con un tope de 2 min, el
-        // aviso de "puede que tengas que reintentarla" saltaba con el turno TODAVÍA en curso.
-        const POLL_INTERVAL_MS = 10_000
-        const MAX_POLL_ATTEMPTS = 72
+        // Sondeo de reconexión (2026-07-23) — ver src/hooks/useReconnectionPolling.ts para la
+        // lógica completa (intervalos, tope de intentos, mensajes de fallback).
         setTimedThinkingText('Esperando confirmación del narrador...')
-        let resolved = false
-        let lastSuccessfulSave: Awaited<ReturnType<typeof getSave>> | null = null
-        for (let attempt = 0; attempt < MAX_POLL_ATTEMPTS && !resolved && mountedRef.current; attempt++) {
-          if (attempt > 0) await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL_MS))
-          if (!mountedRef.current) break
-          try {
-            const save = await getSave(saveId)
-            lastSuccessfulSave = save
-            if (save.characterLog.length > logLengthBeforeThisTurn + 1) {
-              syncFromSave(save)
-              resolved = true
-            }
-          } catch {
-            // Se reintenta en el siguiente sondeo — no se distingue de "aún no ha terminado".
-          }
-        }
-        if (!resolved && mountedRef.current) {
-          if (lastSuccessfulSave) {
-            syncFromSave(lastSuccessfulSave)
-            setCharacterLog((prev) => [
-              ...prev,
-              {
-                id: `err-${Date.now()}`,
-                channel: 'character',
-                text: 'La acción quedó registrada, pero la narración sigue sin completarse tras esperar — puede que tengas que reintentarla.',
-                timeLabel: fictionalDate,
-                createdAt: new Date().toISOString(),
-              },
-            ])
-          } else {
-            setCharacterLog((prev) => [
-              ...prev,
-              {
-                id: `err-${Date.now()}`,
-                channel: 'character',
-                text: 'No se pudo contactar con el Narrador. ¿Está el backend corriendo en localhost:3001?',
-                timeLabel: fictionalDate,
-                createdAt: new Date().toISOString(),
-              },
-            ])
-          }
-        }
+        await pollForResolution({ saveId, logLengthBeforeThisTurn, fictionalDate, syncFromSave, setCharacterLog })
       }
     } finally {
       setCharacterThinking(false)
@@ -2096,7 +1963,13 @@ export function GameView() {
             />
           )}
           {activePanel === 'enciclopedia' && (
-            <EnciclopediaPanel worldSlug={worldIdSlug} saveId={saveId} onInsert={handleEnciclopediaInsert} onDetail={handleEnciclopediaDetail} />
+            <EnciclopediaPanel
+              data={enciclopediaData}
+              loading={enciclopediaLoading}
+              recipesStatus={recipesStatus}
+              onInsert={handleEnciclopediaInsert}
+              onDetail={handleEnciclopediaDetail}
+            />
           )}
           {activePanel === 'habilidades' && (
             <HabilidadesPanel
@@ -2104,6 +1977,7 @@ export function GameView() {
               combatSlots={combatSlots}
               professionProgress={professionProgress}
               professionRecipes={professionRecipes}
+              recipesStatus={recipesStatus}
               onUse={handleAttachAbility}
               onCreate={handleCreateHabilidad}
               onDetail={handleAbilityDetail}

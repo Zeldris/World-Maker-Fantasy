@@ -15,7 +15,7 @@ export function IconCard({
   onDetail,
   badge,
   extra,
-  locked,
+  disabled,
 }: {
   icon: string
   name: string
@@ -26,20 +26,19 @@ export function IconCard({
   badge?: ReactNode
   /// Contenido extra bajo el nombre, dentro del propio botón (p. ej. el chip de bonificador).
   extra?: ReactNode
-  /// Receta/habilidad que SÍ conoces pero no alcanzas todavía por nivel de oficio (rediseño de
-  /// profesiones, 2026-08-07 — distinto del "???" de EntryCard en la Enciclopedia, que oculta la
-  /// identidad de algo no descubierto: aquí ya sabes qué es, el tooltip explica qué falta). El
-  /// click principal queda inerte; `onDetail` (la ficha) sigue funcionando igual.
-  locked?: { reason: string }
+  /// Receta/habilidad ya desbloqueada pero que no se puede usar AHORA MISMO (2026-08-13: faltan
+  /// materiales, atributos o la ubicación correcta — el propio `tooltip` explica qué falta, ej.
+  /// "Necesita: 3/5 de piedra"). El click principal queda inerte; `onDetail` sigue funcionando.
+  disabled?: boolean
 }) {
   return (
     <div className="group relative">
-      <TooltipAnchor text={locked ? locked.reason : tooltip} className="block">
+      <TooltipAnchor text={tooltip} className="block">
         <button
-          onClick={locked ? undefined : onUse}
-          disabled={!!locked}
+          onClick={disabled ? undefined : onUse}
+          disabled={!!disabled}
           className={`tactile flex w-full flex-col items-center gap-1 rounded-lg border px-2 py-3 text-center transition-colors ${
-            locked
+            disabled
               ? 'cursor-not-allowed border-iron-800 bg-wood-950/20 opacity-60'
               : 'border-iron-700 bg-wood-950/40 hover:border-accent-600/60 hover:bg-accent-500/10'
           }`}

@@ -15,6 +15,7 @@
 // arriesgar otro falso positivo sin que la usuaria lo pidiera explícitamente. Ninguna de las dos
 // tiene siquiera campo `aliases` en su tipo (api.ts) — coherente con esta decisión, no un hueco.
 import type { EnciclopediaResponse } from './api'
+import type { RecipeStatusInfo } from '../types'
 import type { DetailTarget } from '../components/DetailModal'
 import {
   npcToDetailTarget,
@@ -22,6 +23,8 @@ import {
   faunaFloraToDetailTarget,
   locationToDetailTarget,
   personajeToDetailTarget,
+  craftingToDetailTarget,
+  constructionToDetailTarget,
 } from './enciclopediaTargets'
 
 export type EnciclopediaLinkTarget = Extract<DetailTarget, { kind: 'info' }>
@@ -38,15 +41,20 @@ export interface EnciclopediaIndex {
 export const EMPTY_ENCICLOPEDIA_INDEX: EnciclopediaIndex = { regex: null, entries: new Map(), bySlugKey: new Map() }
 
 /// Por debajo de esto no se registra — evita enlazar palabras cortas y genéricas (alias como
-/// "el eco" o similares) que darían falsos positivos constantes en prosa normal.
-const MIN_PATTERN_LENGTH = 4
+/// "el eco" o similares) que darían falsos positivos constantes en prosa normal. Exportada para
+/// que el test (enciclopediaIndex.test.ts) no dependa de un número repetido a mano.
+export const MIN_PATTERN_LENGTH = 4
 
 function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 }
 
-export function buildEnciclopediaIndex(data: EnciclopediaResponse | null): EnciclopediaIndex {
+export function buildEnciclopediaIndex(data: EnciclopediaResponse | null, recipesStatus: RecipeStatusInfo[] = []): EnciclopediaIndex {
   if (!data) return EMPTY_ENCICLOPEDIA_INDEX
+  // Clave compuesta recipeCategory:recipeKey (auditoría 2026-08-13) — mismo criterio que
+  // HabilidadesPanel.tsx/EnciclopediaPanel.tsx, evita mezclar el estado de una receta de crafteo
+  // con una de construcción si algún día comparten `key`.
+  const recipeStatusByKey = new Map(recipesStatus.map((s) => [`${s.recipeCategory}:${s.recipeKey}`, s]))
 
   const entries = new Map<string, EnciclopediaLinkTarget>()
   const bySlugKey = new Map<string, EnciclopediaLinkTarget>()
@@ -84,6 +92,26 @@ export function buildEnciclopediaIndex(data: EnciclopediaResponse | null): Encic
     const target = personajeToDetailTarget(pj)
     register(pj.name, target)
     ;(pj.aliases ?? []).forEach((alias) => register(alias, target))
+  }
+
+  // Recetas de crafteo/construcción (2026-08-13, bug real encontrado revisando el enlace "ⓘ Ver
+  // receta en la Enciclopedia" de una habilidad de oficio/reino desde Habilidades: nunca abría
+  // nada, para NINGUNA receta, desde que ese botón existe — bySlugKey nunca llegó a incluirlas,
+  // solo npcs/items/faunaFlora/locations/personajes). SOLO en `bySlugKey` (nunca en `entries`/el
+  // regex de menciones en texto libre): a diferencia de las demás entidades de arriba, un nombre
+  // de receta como "un campamento base" o "Bloque de piedra tallada" no tiene sentido subrayado
+  // dentro de la narración normal, y el propio comentario de cabecera de este archivo ya avisa del
+  // riesgo real de colisiones de alias — no se arriesga sin que se haya pedido explícitamente.
+  // `recipesStatus` (mismo día, "que ponga lo que tienes contra lo que falta") — con partida
+  // activa, la ficha abierta desde este enlace lleva el conteo real tienes/necesitas, no solo el
+  // listado estático.
+  for (const recipe of data.craftingRecipes) {
+    const target = craftingToDetailTarget(recipe, recipeStatusByKey.get(`crafteo:${recipe.key}`))
+    if (target.entityType && target.entitySlug) bySlugKey.set(`${target.entityType}:${target.entitySlug}`, target)
+  }
+  for (const recipe of data.constructionRecipes) {
+    const target = constructionToDetailTarget(recipe, recipeStatusByKey.get(`construccion:${recipe.key}`))
+    if (target.entityType && target.entitySlug) bySlugKey.set(`${target.entityType}:${target.entitySlug}`, target)
   }
 
   if (entries.size === 0) return { regex: null, entries, bySlugKey }

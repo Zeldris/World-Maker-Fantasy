@@ -23,6 +23,7 @@ import type {
   ProfessionRecipeInfo,
   ProgressionResult,
   QuestInfo,
+  RecipeStatusInfo,
   RollInfo,
   SavedActionCategory,
   SavedActionInfo,
@@ -32,9 +33,9 @@ import type {
   TerritoryInfo,
 } from '../types'
 
-// Backend local — hardcodeado por simplicidad mientras solo se prueba en local.
-// TODO: mover a variable de entorno (VITE_API_URL) cuando haga falta desplegar en algún sitio.
-const API_URL = 'http://localhost:3001'
+// VITE_API_URL permite apuntar a otro backend (staging, otra máquina) sin tocar código;
+// localhost:3001 sigue siendo el valor por defecto para desarrollo local.
+const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3001'
 
 /// Helper compartido (auditoría 2026-07-22): antes cada función repetía a mano el mismo
 /// `if (!response.ok) throw new Error(...)`, en dos variantes — una simple ("El backend
@@ -578,6 +579,13 @@ export async function getProfessionRecipes(): Promise<ProfessionRecipeInfo[]> {
   return fetchJson(`${API_URL}/profession-recipes`)
 }
 
+/// Cuánto tienes de cada ingrediente de las recetas ya conocidas, EN ESTA PARTIDA (2026-08-13) —
+/// a diferencia de getProfessionRecipes (estático), depende del inventario/atributos/ubicación
+/// reales, así que se recarga cada vez que el inventario cambia (ver GameView.tsx).
+export async function getRecipesStatus(saveId: string): Promise<{ recipes: RecipeStatusInfo[] }> {
+  return fetchJson(`${API_URL}/saves/${saveId}/recipes-status`)
+}
+
 /// Pop-up de recolección (rediseño de profesiones, 2026-08-07) — "ya localizado en la zona".
 export async function getRecolectarLocalizado(
   saveId: string,
@@ -948,6 +956,13 @@ export interface EnciclopediaConstructionRecipe {
   /// es común a cualquiera (2026-07-23, "tiene que haber construcciones por raza... el campamento
   /// va a ser la construcción básica y común").
   raza: string | null
+  /// Id de professions.ts, o null si no requiere oficio (Campamento, Ayuntamiento — "cualquiera
+  /// puede intentarlo, no hace falta un gremio"). Sumado 2026-08-13 junto con `tier`: Habilidades
+  /// ahora solo muestra lo ya desbloqueado, así que este es el único sitio que enseña el requisito
+  /// de nivel de las recetas todavía bloqueadas.
+  oficio: string | null
+  /// Nivel de `oficio` que hace falta, o null si `oficio` es null.
+  tier: number | null
   requirements: EnciclopediaConstructionRequirement[]
   imagePrompts: EnciclopediaImagePrompts
   imageUrls: EnciclopediaImageUrls
@@ -961,6 +976,9 @@ export interface EnciclopediaCraftingRecipe {
   /// llanuras'...), o null si está al alcance de cualquiera sin oficio (2026-08-06, sección
   /// "Crafteo" — mismo eje que `raza` en Construcciones, pero por oficio en vez de por raza).
   oficio: string | null
+  /// Nivel de `oficio` que hace falta, o null si `oficio` es null. Sumado 2026-08-13, mismo motivo
+  /// que en EnciclopediaConstructionRecipe (arriba).
+  tier: number | null
   /// Mismo shape que EnciclopediaConstructionRequirement (backend: IngredientRequirement
   /// compartido entre crafting.ts/construction.ts) — reutilizado tal cual, no duplicado.
   requirements: EnciclopediaConstructionRequirement[]

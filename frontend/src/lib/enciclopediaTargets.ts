@@ -5,6 +5,7 @@
 import { slugify } from './slugify'
 import { attributeLabels, statBonusLabels } from './dice'
 import { secondaryAttributeLabels } from './secondaryAttributes'
+import { professions } from '../data/professions'
 import type {
   EnciclopediaAbilityInfo,
   EnciclopediaConstructionRecipe,
@@ -18,6 +19,7 @@ import type {
   EnciclopediaPersonajeInfo,
   EnciclopediaRazaInfo,
 } from './api'
+import type { RecipeStatusInfo } from '../types'
 import type { EnciclopediaLinkTarget } from './enciclopediaIndex'
 import type { ItemTipo } from '../types'
 
@@ -219,15 +221,50 @@ export function locationToDetailTarget(loc: EnciclopediaLocationInfo): Enciclope
   }
 }
 
-export function constructionToDetailTarget(recipe: EnciclopediaConstructionRecipe): EnciclopediaLinkTarget {
-  const requisitos = recipe.requirements.map((r) => `${r.cantidad} de ${r.label}`).join(', ')
+// Requisito de nivel de oficio, en texto (2026-08-13, petición explícita: "las habilidades de las
+// cuales no tengamos suficiente nivel en profesión que no salgan [en Habilidades]... si quieres
+// consultar el listado por nivel vas a la enciclopedia") — Habilidades ahora solo muestra lo ya
+// desbloqueado, así que esta ficha es el único sitio que enseña el nivel que hace falta. Exportada
+// (auditoría 2026-08-13, dedupe renderCraftingList/renderConstructionList) — EnciclopediaPanel.tsx
+// también la usa para la fila de lista, no solo esta ficha de detalle.
+export function oficioRequirementLine(oficio: string | null, tier: number | null): string | null {
+  if (!oficio || !tier) return null
+  const professionName = professions.find((p) => p.id === oficio)?.name ?? oficio
+  return `Requiere nivel ${tier} de ${professionName}.`
+}
+
+// Ingredientes en formato lista, con conteo real tienes/necesitas (2026-08-13, petición explícita:
+// "que ponga lo que tienes contra lo que falta 0/5... con un card en formato lista") — cuando hay
+// `status` (partida activa), la ficha renderiza `ingredients` como una lista propia, una fila por
+// material (ver DetailModal.tsx); `extra` se queda solo con el resto (nivel/atributos/ubicación).
+// Sin `status` (Enciclopedia fuera de una partida activa), no hay ningún conteo real que mostrar —
+// cae al texto plano de siempre dentro de `extra`, sin lista.
+function extraLinesFor(
+  requirements: { cantidad: number; label: string }[],
+  nivel: string | null,
+  status: RecipeStatusInfo | undefined,
+): string | undefined {
+  const parts: string[] = []
+  if (!status) parts.push(`Necesita: ${requirements.map((r) => `${r.cantidad} de ${r.label}`).join(', ')}.`)
+  if (nivel) parts.push(nivel)
+  if (status) {
+    if (status.missingRequisitos.length > 0) parts.push(`Falta: ${status.missingRequisitos.join(', ')}.`)
+    if (!status.locationOk && status.requiredLocationName) parts.push(`Debes estar en ${status.requiredLocationName}.`)
+    // Reglas de reino (auditoría 2026-08-13) — Ayuntamiento/región/distancia/cupo, ver recipesStatus.ts.
+    if (status.blockedReason) parts.push(`${status.blockedReason[0].toUpperCase()}${status.blockedReason.slice(1)}.`)
+  }
+  return parts.length > 0 ? parts.join(' ') : undefined
+}
+
+export function constructionToDetailTarget(recipe: EnciclopediaConstructionRecipe, status?: RecipeStatusInfo): EnciclopediaLinkTarget {
   return {
     kind: 'info',
     icon: '🏗️',
     name: recipe.name,
     meta: 'Construcción',
     description: recipe.description,
-    extra: `Necesita: ${requisitos}.`,
+    extra: extraLinesFor(recipe.requirements, oficioRequirementLine(recipe.oficio, recipe.tier), status),
+    ingredients: status?.ingredients,
     imagePrompts: recipe.imagePrompts,
     imageUrls: recipe.imageUrls,
     entityType: 'construccion',
@@ -235,15 +272,15 @@ export function constructionToDetailTarget(recipe: EnciclopediaConstructionRecip
   }
 }
 
-export function craftingToDetailTarget(recipe: EnciclopediaCraftingRecipe): EnciclopediaLinkTarget {
-  const requisitos = recipe.requirements.map((r) => `${r.cantidad} de ${r.label}`).join(', ')
+export function craftingToDetailTarget(recipe: EnciclopediaCraftingRecipe, status?: RecipeStatusInfo): EnciclopediaLinkTarget {
   return {
     kind: 'info',
     icon: '🔨',
     name: recipe.name,
     meta: 'Objeto crafteado',
     description: recipe.description,
-    extra: `Necesita: ${requisitos}.`,
+    extra: extraLinesFor(recipe.requirements, oficioRequirementLine(recipe.oficio, recipe.tier), status),
+    ingredients: status?.ingredients,
     imagePrompts: recipe.imagePrompts,
     imageUrls: recipe.imageUrls,
     entityType: 'crafteo',

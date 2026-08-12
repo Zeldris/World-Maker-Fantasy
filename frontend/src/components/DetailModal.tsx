@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import type { EquipSlot, InventoryItemInfo, SavedActionInfo } from '../types'
+import type { EquipSlot, IngredientStatusInfo, InventoryItemInfo, SavedActionInfo } from '../types'
 import { statBonusLabels } from '../lib/dice'
 import { itemIcon } from '../lib/enciclopediaTargets'
 import {
@@ -33,6 +33,12 @@ export type DetailTarget =
       meta?: string
       description: string
       extra?: string
+      /// Ingredientes/materiales de una receta de crafteo/construcción, con el conteo real
+      /// tienes/necesitas EN ESTA PARTIDA (2026-08-13, petición explícita: "que ponga lo que
+      /// tienes contra lo que falta 0/5... con un card en formato lista") — renderizado como lista
+      /// propia, una fila por material, en vez de metido en `extra` como texto plano. Undefined
+      /// fuera de una partida activa (sin inventario real contra el que contar).
+      ingredients?: IngredientStatusInfo[]
       imagePrompts?: EnciclopediaImagePrompts
       /// Imagen real ya subida (checklist 2026-07-21/22, punto 7) — cuando existe, sustituye al
       /// emoji de MediaSlot; si no, el modal sigue mostrando el placeholder de siempre.
@@ -51,6 +57,33 @@ export type DetailTarget =
       /// individuos únicos con nombre propio.
       variantesSexo?: EnciclopediaSexoVariante[]
     }
+
+// Deduplicado (auditoría de deuda técnica, 2026-08-12): el mapeo de statBonuses a chips estaba
+// copiado 3 veces (objeto suelto, ranura equipada, candidato a equipar) — cada uno con su propio
+// tamaño/relleno de chip y su propio elemento contenedor, así que ambos quedan parametrizados en
+// vez de forzar una única apariencia.
+function StatBonusList({
+  bonuses,
+  chipClassName,
+  as: Tag = 'span',
+}: {
+  bonuses: InventoryItemInfo['statBonuses']
+  chipClassName: string
+  as?: 'span' | 'p'
+}) {
+  return (
+    <>
+      {Object.entries(bonuses ?? {}).map(
+        ([attribute, amount]) =>
+          !!amount && (
+            <Tag key={attribute} className={chipClassName}>
+              +{amount} {statBonusLabels[attribute] ?? attribute}
+            </Tag>
+          ),
+      )}
+    </>
+  )
+}
 
 interface DetailModalProps {
   target: DetailTarget
@@ -150,17 +183,11 @@ export function DetailModal({ target, onClose, onUnequip, onEquip, onSaveAbility
               </div>
             )}
             <div className="flex flex-wrap gap-1.5">
-              {Object.entries(target.item.statBonuses ?? {}).map(
-                ([attribute, amount]) =>
-                  !!amount && (
-                    <p
-                      key={attribute}
-                      className="self-start rounded-full border border-accent-600/50 bg-accent-500/10 px-2.5 py-1 font-mono text-xs text-accent-300"
-                    >
-                      +{amount} {statBonusLabels[attribute] ?? attribute}
-                    </p>
-                  ),
-              )}
+              <StatBonusList
+                bonuses={target.item.statBonuses}
+                as="p"
+                chipClassName="self-start rounded-full border border-accent-600/50 bg-accent-500/10 px-2.5 py-1 font-mono text-xs text-accent-300"
+              />
               {!!target.item.tier && target.item.tier > 1 && (
                 <p className="self-start rounded-full border border-accent2-600/50 bg-accent2-500/10 px-2.5 py-1 font-mono text-xs text-accent2-300">
                   Nivel {target.item.tier}
@@ -188,7 +215,7 @@ export function DetailModal({ target, onClose, onUnequip, onEquip, onSaveAbility
             <p className="rounded-lg border border-iron-700 bg-wood-950/40 px-3 py-2 text-xs italic text-wood-400">"{target.ability.promptText}"</p>
             {target.ability.recipeKey &&
               (() => {
-                const recipeTarget = enciclopediaIndex.bySlugKey.get(`crafteo:${target.ability.recipeKey}`)
+                const recipeTarget = enciclopediaIndex.bySlugKey.get(`${target.ability.recipeCategory ?? 'crafteo'}:${target.ability.recipeKey}`)
                 return (
                   recipeTarget && (
                     <button
@@ -208,7 +235,9 @@ export function DetailModal({ target, onClose, onUnequip, onEquip, onSaveAbility
                     ? 'Habilidad de clase — no editable.'
                     : target.ability.category === 'profesion'
                       ? 'Habilidad de oficio — se desbloquea sola al subir de nivel, no editable.'
-                      : 'Habilidad de partida inicial — no editable.'}
+                      : target.ability.category === 'reino'
+                        ? 'Habilidad de reino — disponible desde el inicio o al subir de nivel de oficio, no editable.'
+                        : 'Habilidad de partida inicial — no editable.'}
               </p>
             ) : (
               <div className="flex gap-2">
@@ -281,17 +310,10 @@ export function DetailModal({ target, onClose, onUnequip, onEquip, onSaveAbility
                         arriba) y de las tarjetas del panel de Inventario. */}
                     {Object.entries(target.equipped.statBonuses ?? {}).some(([, amount]) => !!amount) && (
                       <div className="mb-2 flex flex-wrap gap-1.5">
-                        {Object.entries(target.equipped.statBonuses ?? {}).map(
-                          ([attribute, amount]) =>
-                            !!amount && (
-                              <span
-                                key={attribute}
-                                className="rounded-full border border-accent-600/50 bg-accent-500/10 px-2 py-0.5 font-mono text-2xs text-accent-300"
-                              >
-                                +{amount} {statBonusLabels[attribute] ?? attribute}
-                              </span>
-                            ),
-                        )}
+                        <StatBonusList
+                          bonuses={target.equipped.statBonuses}
+                          chipClassName="rounded-full border border-accent-600/50 bg-accent-500/10 px-2 py-0.5 font-mono text-2xs text-accent-300"
+                        />
                       </div>
                     )}
                     {onUnequip && (
@@ -338,17 +360,10 @@ export function DetailModal({ target, onClose, onUnequip, onEquip, onSaveAbility
                                   comparar lo puesto contra las opciones antes de equipar. */}
                               {Object.entries(item.statBonuses ?? {}).some(([, amount]) => !!amount) && (
                                 <span className="flex flex-wrap gap-1">
-                                  {Object.entries(item.statBonuses ?? {}).map(
-                                    ([attribute, amount]) =>
-                                      !!amount && (
-                                        <span
-                                          key={attribute}
-                                          className="rounded-full border border-accent-600/50 bg-accent-500/10 px-1.5 py-0.5 font-mono text-2xs text-accent-300"
-                                        >
-                                          +{amount} {statBonusLabels[attribute] ?? attribute}
-                                        </span>
-                                      ),
-                                  )}
+                                  <StatBonusList
+                                    bonuses={item.statBonuses}
+                                    chipClassName="rounded-full border border-accent-600/50 bg-accent-500/10 px-1.5 py-0.5 font-mono text-2xs text-accent-300"
+                                  />
                                 </span>
                               )}
                             </button>
@@ -462,6 +477,18 @@ export function DetailModal({ target, onClose, onUnequip, onEquip, onSaveAbility
                     — enlazarlo generaba una fila de chips repetidos/cruzados sin sentido. Ya
                     siempre visible (2026-07-22): con la vista combinada de aspectos ya no tiene
                     sentido ocultar el rasgo de carácter general solo por haber elegido un aspecto. */}
+                {target.ingredients && target.ingredients.length > 0 && (
+                  <div className="flex flex-col gap-1 rounded-lg border border-iron-700 bg-wood-950/40 p-2.5">
+                    {target.ingredients.map((i) => (
+                      <div key={i.label} className="flex items-center justify-between gap-3 text-xs">
+                        <span className={i.met ? 'text-wood-300' : 'text-red-400'}>{i.label}</span>
+                        <span className={`font-mono tabular-nums ${i.met ? 'text-accent-300' : 'text-red-400'}`}>
+                          {i.tienes}/{i.necesitas}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
                 {target.extra && (
                   <p className="whitespace-pre-line text-xs leading-relaxed text-wood-400">{target.extra}</p>
                 )}

@@ -1,6 +1,7 @@
 import { useState } from 'react'
-import type { ProfessionProgressInfo, ProfessionRecipeInfo, SavedActionCategory, SavedActionInfo } from '../../types'
+import type { ProfessionProgressInfo, ProfessionRecipeInfo, RecipeStatusInfo, SavedActionCategory, SavedActionInfo } from '../../types'
 import { professions } from '../../data/professions'
+import { REINO_ABILITY_RECIPE_KEY } from '../../data/reinoRecipes'
 import { professionSpan, MAX_PROFESSION_LEVEL } from '../../lib/professionLevels'
 import { PanelEmptyState } from '../PanelEmptyState'
 import { PanelSection } from '../PanelSection'
@@ -12,36 +13,83 @@ interface HabilidadesPanelProps {
   combatSlots: number
   professionProgress: ProfessionProgressInfo[]
   professionRecipes: ProfessionRecipeInfo[]
+  /// Estado real de materiales/atributos/ubicación de cada receta EN ESTA PARTIDA (2026-08-13,
+  /// petición explícita: "que salgan deshabilitadas si no cumples las condiciones... el hover
+  /// con... 5/10") — ver GET /saves/:id/recipes-status.
+  recipesStatus: RecipeStatusInfo[]
   onUse: (ability: SavedActionInfo) => void
   onCreate: (params: { name: string; promptText: string; icon: string; description: string; category: SavedActionCategory }) => Promise<void>
   onDetail: (ability: SavedActionInfo) => void
 }
 
-/// Objeto de habilidad "de previsualización" para una receta todavía bloqueada — no existe como
-/// SavedAction real en BD (nunca se desbloqueó), así que no tiene id real; sirve solo para poder
-/// abrir su ficha de solo lectura (rediseño de profesiones, 2026-08-07: "onDetail sigue
-/// funcionando aunque esté bloqueada"). isStarting:true fuerza la rama "no editable" en DetailModal.
-function previewAbilityFor(recipe: ProfessionRecipeInfo): SavedActionInfo {
-  return {
-    id: `preview:${recipe.recipeKey}`,
-    name: recipe.ability.name,
-    promptText: recipe.ability.promptText,
-    icon: recipe.ability.icon,
-    description: recipe.ability.description,
-    isStarting: true,
-    isDynamic: false,
-    category: recipe.ability.category,
-    preferredAttribute: null,
-    energyCost: 0,
-    energyRegen: 0,
-    isGeneric: false,
-    dualWield: false,
-    rol: null,
-    recipeKey: recipe.recipeKey,
+// Tooltip combinado: descripción + qué hace falta (2026-08-13) — "tipo 5/10" por ingrediente,
+// siempre visible (incluso ya cumplido, para poder planificar), más atributos/ubicación que
+// falten si los hay. Sin receta asociada (habilidades 'general' de siempre, sin materiales),
+// se queda con la descripción tal cual.
+function readinessTooltip(description: string, status: RecipeStatusInfo | undefined): string {
+  if (!status) return description
+  const parts: string[] = []
+  if (status.ingredients.length > 0) {
+    parts.push(`Necesita: ${status.ingredients.map((i) => `${i.label} ${i.tienes}/${i.necesitas}`).join(', ')}.`)
   }
+  if (status.missingRequisitos.length > 0) {
+    parts.push(`Falta: ${status.missingRequisitos.join(', ')}.`)
+  }
+  if (!status.locationOk && status.requiredLocationName) {
+    parts.push(`Debes estar en ${status.requiredLocationName}.`)
+  }
+  // Reglas de reino (auditoría 2026-08-13) — Ayuntamiento/región/distancia/cupo, ver recipesStatus.ts.
+  if (status.blockedReason) {
+    parts.push(`${status.blockedReason[0].toUpperCase()}${status.blockedReason.slice(1)}.`)
+  }
+  return parts.length > 0 ? `${description} — ${parts.join(' ')}` : description
 }
 
-export function HabilidadesPanel({ savedActions, combatSlots, professionProgress, professionRecipes, onUse, onCreate, onDetail }: HabilidadesPanelProps) {
+// Cuadrícula de tarjetas repetida 8 veces en este panel (auditoría de deuda técnica, 2026-08-12)
+// — solo cambiaban la lista de origen y, en las pestañas de combate (sin receta real detrás), el
+// que la tarjeta abriera el detalle en vez de ejecutar la habilidad. `statusFor` queda fuera a
+// propósito (undefined): esas pestañas nunca deshabilitan ni añaden el aviso de materiales.
+function AbilityGrid({
+  abilities,
+  onUse,
+  onDetail,
+  statusFor,
+}: {
+  abilities: SavedActionInfo[]
+  onUse: (ability: SavedActionInfo) => void
+  onDetail: (ability: SavedActionInfo) => void
+  statusFor?: (abilityName: string) => RecipeStatusInfo | undefined
+}) {
+  return (
+    <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+      {abilities.map((a) => {
+        const status = statusFor?.(a.name)
+        return (
+          <IconCard
+            key={a.id}
+            icon={a.icon}
+            name={a.name}
+            tooltip={statusFor ? readinessTooltip(a.description, status) : a.description}
+            onUse={() => onUse(a)}
+            onDetail={() => onDetail(a)}
+            disabled={status && !status.met}
+          />
+        )
+      })}
+    </div>
+  )
+}
+
+export function HabilidadesPanel({
+  savedActions,
+  combatSlots,
+  professionProgress,
+  professionRecipes,
+  recipesStatus,
+  onUse,
+  onCreate,
+  onDetail,
+}: HabilidadesPanelProps) {
   // Generales primero (2026-08-07, reordenado junto con la pestaña nueva de Profesiones) — el
   // tab por defecto sigue la misma pestaña, para no abrir en una que no sea la resaltada visualmente.
   const [tab, setTab] = useState<SavedActionCategory>('general')
@@ -61,14 +109,50 @@ export function HabilidadesPanel({ savedActions, combatSlots, professionProgress
 
   // Rediseño de profesiones (2026-08-07): profesiones creadoras que el jugador practica de verdad
   // (fila en professionProgress, nivel ≥ 1 — sin fila = nunca aprendida). Cada una muestra su
-  // barra + TODAS sus recetas (roster estático professionRecipes), bloqueadas o no según el nivel.
+  // barra + SOLO las recetas ya desbloqueadas de verdad (petición explícita, 2026-08-13: "las
+  // habilidades de las cuales no tengamos suficiente nivel en profesión que no salgan, si quieres
+  // consultar el listado por nivel vas a la enciclopedia") — antes se mostraban TODAS con un
+  // candado; ahora Habilidades es solo lo usable, y la Enciclopedia (§ Crafteo/Construcciones,
+  // ambas con su nivel requerido, ver enciclopediaTargets.ts) es el único sitio con el roster
+  // completo. Como una receta desbloqueada YA existe como SavedAction real (isStarting:true,
+  // creada al subir de nivel — turnResolution.ts), basta con cruzar `inTab` contra
+  // professionRecipes por nombre para saber a qué oficio pertenece cada una, sin necesitar ningún
+  // objeto de "previsualización" bloqueada.
   const progressByOficio = new Map(professionProgress.map((p) => [p.professionId, p]))
   const creacionProfessions = professions.filter((p) => p.category === 'creacion' && progressByOficio.has(p.id))
+  const recipeByAbilityName = new Map(professionRecipes.map((r) => [r.ability.name, r]))
+  // Estado de materiales/atributos/ubicación por receta (2026-08-13) — cubre tanto las CON oficio
+  // (professionRecipes) como las de reino SIN oficio (REINO_ABILITY_RECIPE_KEY, Campamento/
+  // Ayuntamiento). `undefined` = habilidad sin receta asociada (general de siempre), nunca se
+  // deshabilita. Clave compuesta `recipeCategory:recipeKey` (auditoría 2026-08-13) — hoy ningún
+  // `key` se repite entre CRAFTING_RECIPES y CONSTRUCTION_RECIPES (backend), pero indexar solo por
+  // recipeKey mostraría en silencio el estado de la receta equivocada el día que colisionen.
+  const statusByRecipeKey = new Map(recipesStatus.map((s) => [`${s.recipeCategory}:${s.recipeKey}`, s]))
+  function statusFor(abilityName: string) {
+    const matched = recipeByAbilityName.get(abilityName)
+    if (matched) return statusByRecipeKey.get(`${matched.recipeCategory}:${matched.recipeKey}`)
+    const reinoRecipeKey = REINO_ABILITY_RECIPE_KEY[abilityName]
+    return reinoRecipeKey ? statusByRecipeKey.get(`construccion:${reinoRecipeKey}`) : undefined
+  }
+  // Recetas de construction.ts (recipeCategory 'construccion', ej. la Choza) quedan FUERA de este
+  // tab — 2026-08-13, van a la pestaña "Reino" en vez de aquí (ver más abajo), aunque compartan el
+  // mismo mecanismo de desbloqueo por nivel de oficio.
+  const coveredNames = new Set(
+    professionRecipes
+      .filter((r) => r.recipeCategory !== 'construccion' && creacionProfessions.some((p) => p.id === r.oficio))
+      .map((r) => r.ability.name),
+  )
   // Habilidades de oficio ya desbloqueadas que NO pertenecen a ninguna profesión creadora (p.ej.
   // "Preparar antídoto" de sanador, que no tiene categoría en este rediseño) — se siguen mostrando,
   // en un bloque aparte más simple, para no dejarlas invisibles.
-  const coveredNames = new Set(professionRecipes.filter((r) => creacionProfessions.some((p) => p.id === r.oficio)).map((r) => r.ability.name))
-  const otherProfessionAbilities = inTab.filter((a) => !coveredNames.has(a.name))
+  const otherProfessionAbilities = inTab.filter((a) => !coveredNames.has(a.name) && recipeByAbilityName.get(a.name)?.recipeCategory !== 'construccion')
+
+  // Pestaña "Reino" (2026-08-13, petición explícita: "hay que añadir un tab en habilidades para
+  // las habilidades de reino") — Campamento/Ayuntamiento (siempre disponibles desde el inicio) y
+  // la Choza (una vez desbloqueada por nivel de oficio) ya son `savedActions` reales de categoría
+  // 'reino' en cuanto existen — mismo criterio de "solo lo usable" que en Profesiones, arriba.
+  const reinoConOficio = inTab.filter((a) => recipeByAbilityName.has(a.name))
+  const reinoLibreAcceso = inTab.filter((a) => !recipeByAbilityName.has(a.name))
 
   return (
     <div className="flex flex-col gap-5">
@@ -96,6 +180,14 @@ export function HabilidadesPanel({ savedActions, combatSlots, professionProgress
           }`}
         >
           Profesiones
+        </button>
+        <button
+          onClick={() => setTab('reino')}
+          className={`border-b-2 px-3 py-2 text-sm transition-colors ${
+            tab === 'reino' ? 'border-accent-500 font-medium text-accent-300' : 'border-transparent text-wood-400 hover:text-wood-200'
+          }`}
+        >
+          Reino
         </button>
       </div>
 
@@ -144,7 +236,6 @@ export function HabilidadesPanel({ savedActions, combatSlots, professionProgress
               const progress = progressByOficio.get(profession.id)!
               const { current, span } = professionSpan(progress.nivel, progress.xp)
               const percent = span > 0 ? Math.min(100, (current / span) * 100) : 100
-              const recipes = professionRecipes.filter((r) => r.oficio === profession.id).sort((a, b) => a.nivel - b.nivel)
               return (
                 <div key={profession.id}>
                   <div className="mb-1 flex items-center justify-between text-xs">
@@ -160,38 +251,46 @@ export function HabilidadesPanel({ savedActions, combatSlots, professionProgress
                     />
                   </div>
                   <p className="mb-2 text-2xs leading-relaxed text-wood-400">{profession.description}</p>
-                  {recipes.length === 0 ? (
-                    <p className="text-2xs italic text-wood-600">Todavía sin recetas propias.</p>
-                  ) : (
-                    <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
-                      {recipes.map((recipe) => {
-                        const unlocked = progress.nivel >= recipe.nivel
-                        const realAbility = unlocked ? savedActions.find((a) => a.name === recipe.ability.name) : undefined
-                        return (
-                          <IconCard
-                            key={recipe.recipeKey}
-                            icon={recipe.ability.icon}
-                            name={recipe.ability.name}
-                            tooltip={recipe.ability.description}
-                            onUse={() => (realAbility ? onUse(realAbility) : undefined)}
-                            onDetail={() => onDetail(realAbility ?? previewAbilityFor(recipe))}
-                            locked={unlocked ? undefined : { reason: `Necesitas nivel ${recipe.nivel} de ${profession.name}` }}
-                          />
-                        )
-                      })}
-                    </div>
-                  )}
+                  {(() => {
+                    const unlockedRecipes = inTab.filter((a) => recipeByAbilityName.get(a.name)?.oficio === profession.id)
+                    return unlockedRecipes.length === 0 ? (
+                      <p className="text-2xs italic text-wood-600">
+                        Todavía sin recetas desbloqueadas — consulta la Enciclopedia § Crafteo para ver el listado completo por nivel.
+                      </p>
+                    ) : (
+                      <AbilityGrid abilities={unlockedRecipes} onUse={onUse} onDetail={onDetail} statusFor={statusFor} />
+                    )
+                  })()}
                 </div>
               )
             })}
             {otherProfessionAbilities.length > 0 && (
               <div>
                 <p className="mb-1 text-2xs font-semibold uppercase tracking-[0.1em] text-wood-500">Otras habilidades de oficio</p>
-                <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
-                  {otherProfessionAbilities.map((a) => (
-                    <IconCard key={a.id} icon={a.icon} name={a.name} tooltip={a.description} onUse={() => onUse(a)} onDetail={() => onDetail(a)} />
-                  ))}
-                </div>
+                <AbilityGrid abilities={otherProfessionAbilities} onUse={onUse} onDetail={onDetail} statusFor={statusFor} />
+              </div>
+            )}
+          </div>
+        )
+      ) : tab === 'reino' ? (
+        reinoConOficio.length === 0 && reinoLibreAcceso.length === 0 ? (
+          <PanelEmptyState
+            icon="🏰"
+            title="Sin habilidades de reino todavía"
+            hint="Levantar un campamento o un ayuntamiento las desbloquea — consulta la Enciclopedia § Construcciones para ver el listado completo por nivel."
+          />
+        ) : (
+          <div className="space-y-5">
+            {reinoLibreAcceso.length > 0 && (
+              <div>
+                <p className="mb-1 text-2xs font-semibold uppercase tracking-[0.1em] text-wood-500">Edificios de libre acceso</p>
+                <AbilityGrid abilities={reinoLibreAcceso} onUse={onUse} onDetail={onDetail} statusFor={statusFor} />
+              </div>
+            )}
+            {reinoConOficio.length > 0 && (
+              <div>
+                <p className="mb-1 text-2xs font-semibold uppercase tracking-[0.1em] text-wood-500">Edificios que requieren oficio</p>
+                <AbilityGrid abilities={reinoConOficio} onUse={onUse} onDetail={onDetail} statusFor={statusFor} />
               </div>
             )}
           </div>
@@ -229,46 +328,28 @@ export function HabilidadesPanel({ savedActions, combatSlots, professionProgress
               {inTab.some((a) => a.isGeneric) && (
                 <div>
                   <p className="mb-1 text-2xs font-semibold uppercase tracking-[0.1em] text-wood-500">Acciones básicas</p>
-                  <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
-                    {inTab
-                      .filter((a) => a.isGeneric)
-                      .map((a) => (
-                        <IconCard key={a.id} icon={a.icon} name={a.name} tooltip={a.description} onUse={() => onDetail(a)} onDetail={() => onDetail(a)} />
-                      ))}
-                  </div>
+                  <AbilityGrid abilities={inTab.filter((a) => a.isGeneric)} onUse={onDetail} onDetail={onDetail} />
                 </div>
               )}
               {inTab.some((a) => a.isDynamic && !a.isGeneric) && (
                 <div>
                   <p className="mb-1 text-2xs font-semibold uppercase tracking-[0.1em] text-wood-500">Raciales y de arma equipada</p>
-                  <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
-                    {inTab
-                      .filter((a) => a.isDynamic && !a.isGeneric)
-                      .map((a) => (
-                        <IconCard key={a.id} icon={a.icon} name={a.name} tooltip={a.description} onUse={() => onDetail(a)} onDetail={() => onDetail(a)} />
-                      ))}
-                  </div>
+                  <AbilityGrid abilities={inTab.filter((a) => a.isDynamic && !a.isGeneric)} onUse={onDetail} onDetail={onDetail} />
                 </div>
               )}
               {inTab.some((a) => a.isStarting && !a.isDynamic && !a.isGeneric && a.energyCost > 0) && (
                 <div>
                   <p className="mb-1 text-2xs font-semibold uppercase tracking-[0.1em] text-wood-500">De clase</p>
-                  <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
-                    {inTab
-                      .filter((a) => a.isStarting && !a.isDynamic && !a.isGeneric && a.energyCost > 0)
-                      .map((a) => (
-                        <IconCard key={a.id} icon={a.icon} name={a.name} tooltip={a.description} onUse={() => onDetail(a)} onDetail={() => onDetail(a)} />
-                      ))}
-                  </div>
+                  <AbilityGrid
+                    abilities={inTab.filter((a) => a.isStarting && !a.isDynamic && !a.isGeneric && a.energyCost > 0)}
+                    onUse={onDetail}
+                    onDetail={onDetail}
+                  />
                 </div>
               )}
             </div>
           ) : (
-            <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
-              {inTab.map((a) => (
-                <IconCard key={a.id} icon={a.icon} name={a.name} tooltip={a.description} onUse={() => onUse(a)} onDetail={() => onDetail(a)} />
-              ))}
-            </div>
+            <AbilityGrid abilities={inTab} onUse={onUse} onDetail={onDetail} />
           )}
 
           {tab === 'combate' && (

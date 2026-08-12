@@ -1,22 +1,16 @@
-import { useEffect, useState, type ReactNode } from 'react'
+import { useState, type ReactNode } from 'react'
 import {
-  getEnciclopedia,
   resolveImageUrl,
-  type EnciclopediaClassInfo,
   type EnciclopediaConstructionRecipe,
   type EnciclopediaCraftingRecipe,
-  type EnciclopediaFaccionInfo,
   type EnciclopediaFaunaFloraInfo,
-  type EnciclopediaHistoriaInfo,
+  type EnciclopediaImageUrls,
   type EnciclopediaItemInfo,
-  type EnciclopediaLocationInfo,
-  type EnciclopediaNpcInfo,
-  type EnciclopediaPersonajeInfo,
-  type EnciclopediaRazaInfo,
+  type EnciclopediaResponse,
 } from '../../lib/api'
 import { attributeLabels } from '../../lib/dice'
 import { secondaryAttributeLabels } from '../../lib/secondaryAttributes'
-import type { Attribute, SecondaryAttribute } from '../../types'
+import type { Attribute, RecipeStatusInfo, SecondaryAttribute } from '../../types'
 import { PanelEmptyState } from '../PanelEmptyState'
 import { PanelSection } from '../PanelSection'
 import { TooltipAnchor } from '../TooltipAnchor'
@@ -40,6 +34,7 @@ import {
   locationToDetailTarget,
   npcIcon,
   npcToDetailTarget,
+  oficioRequirementLine,
   personajeToDetailTarget,
   razaToDetailTarget,
   yieldsSummary,
@@ -61,10 +56,21 @@ type EnciclopediaCategory =
   | 'crafteo'
 
 interface EnciclopediaPanelProps {
-  worldSlug: string | null
-  /// Enciclopedia progresiva (2026-07-23) — gatea NPCs/fauna/flora/objetos/lugares por lo ya
-  /// descubierto en ESTA partida; null = todo visible (p.ej. pantallas fuera de una partida activa).
-  saveId: string | null
+  /// Datos crudos de la Enciclopedia (auditoría 2026-08-13, dedupe de doble fetch): antes este
+  /// panel pedía por su cuenta lo mismo que ya había pedido `useEnciclopedia` en GameView.tsx para
+  /// el enlazado de menciones en narración — sin ninguna razón real (ver useEnciclopedia.ts), y
+  /// encima con `saveId` distinto entre ambas llamadas. Ahora GameView es la única fuente de red;
+  /// este panel solo consume. `null` = todavía no ha llegado la primera respuesta.
+  data: EnciclopediaResponse | null
+  /// `true` mientras la petición (de GameView) sigue en vuelo — distinto de `data === null`, que
+  /// también es el estado tras un fallo de red ya resuelto (ver comentario de useEnciclopedia.ts).
+  loading: boolean
+  /// Estado real de materiales/atributos/ubicación de cada receta EN ESTA PARTIDA (2026-08-13,
+  /// petición explícita: "el hover... 5/10... en la propia enciclopedia también") — viene de
+  /// GameView.tsx (GET /saves/:id/recipes-status, ya se recarga con el inventario), no se pide
+  /// aparte aquí para no duplicar la petición ni arriesgar quedarse con datos viejos. Vacío = sin
+  /// partida activa, las secciones de Crafteo/Construcciones se quedan con el listado estático.
+  recipesStatus: RecipeStatusInfo[]
   onInsert: (chip: { icon: string; label: string; description?: string; value?: string }) => void
   onDetail: (target: DetailTarget, onInsertForTarget?: () => void) => void
 }
@@ -428,20 +434,22 @@ const CATEGORY_TABS: { id: EnciclopediaCategory; label: string; icon: string }[]
 // 2026-07-21, Nivel 2 de su roadmap): con 7 categorías y creciendo, una barra de tabs horizontal
 // ya rompía a 2 líneas — la Enciclopedia es el único panel con subnavegación interna, así que
 // merece su propio layout de dos columnas dentro del cajón.
-export function EnciclopediaPanel({ worldSlug, saveId, onInsert, onDetail }: EnciclopediaPanelProps) {
+export function EnciclopediaPanel({ data, loading, recipesStatus, onInsert, onDetail }: EnciclopediaPanelProps) {
   const [category, setCategory] = useState<EnciclopediaCategory>('npcs')
-  const [npcs, setNpcs] = useState<EnciclopediaNpcInfo[]>([])
-  const [items, setItems] = useState<EnciclopediaItemInfo[]>([])
-  const [faunaFlora, setFaunaFlora] = useState<EnciclopediaFaunaFloraInfo[]>([])
-  const [locations, setLocations] = useState<EnciclopediaLocationInfo[]>([])
-  const [razas, setRazas] = useState<EnciclopediaRazaInfo[]>([])
-  const [personajes, setPersonajes] = useState<EnciclopediaPersonajeInfo[]>([])
-  const [classes, setClasses] = useState<EnciclopediaClassInfo[]>([])
-  const [constructionRecipes, setConstructionRecipes] = useState<EnciclopediaConstructionRecipe[]>([])
-  const [craftingRecipes, setCraftingRecipes] = useState<EnciclopediaCraftingRecipe[]>([])
-  const [factions, setFactions] = useState<EnciclopediaFaccionInfo[]>([])
-  const [historia, setHistoria] = useState<EnciclopediaHistoriaInfo[]>([])
-  const [loading, setLoading] = useState(true)
+  // Derivados directos del prop `data` (ya no hay fetch/estado propio, ver comentario de la
+  // interfaz de arriba) — arrays vacíos mientras `data` es null, mismo aspecto que el estado
+  // inicial de antes.
+  const npcs = data?.npcs ?? []
+  const items = data?.items ?? []
+  const faunaFlora = data?.faunaFlora ?? []
+  const locations = data?.locations ?? []
+  const razas = data?.razas ?? []
+  const personajes = data?.personajes ?? []
+  const classes = data?.classes ?? []
+  const constructionRecipes = data?.constructionRecipes ?? []
+  const craftingRecipes = data?.craftingRecipes ?? []
+  const factions = data?.factions ?? []
+  const historia = data?.historia ?? []
   // Colapsables de clase (2026-07-22, petición explícita: "que cada clase sea un colapsable que al
   // pulsarlo veas el árbol de habilidades") — Set en vez de un solo string porque no hay razón
   // para que abrir una cierre la otra, a diferencia de las pestañas de arriba (sí exclusivas).
@@ -462,36 +470,6 @@ export function EnciclopediaPanel({ worldSlug, saveId, onInsert, onDetail }: Enc
   // cronologicamente en rangos de 500 años... antes de el año 0 no hay escritos en lengua común")
   // — mismo patrón que attributesSubTab, exclusivas entre sí.
   const [historiaEra, setHistoriaEra] = useState<'comun' | 'semillas'>('comun')
-
-  useEffect(() => {
-    if (!worldSlug) return
-    let cancelled = false
-    setLoading(true)
-    getEnciclopedia(worldSlug, saveId)
-      .then((data) => {
-        if (cancelled) return
-        setNpcs(data.npcs)
-        setItems(data.items)
-        setFaunaFlora(data.faunaFlora)
-        setLocations(data.locations)
-        setRazas(data.razas)
-        setPersonajes(data.personajes)
-        setClasses(data.classes)
-        setConstructionRecipes(data.constructionRecipes)
-        setCraftingRecipes(data.craftingRecipes)
-        setFactions(data.factions)
-        setHistoria(data.historia)
-      })
-      .catch(() => {
-        // Sin conexión al backend: la enciclopedia se queda vacía en vez de romper el panel.
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false)
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [worldSlug, saveId])
 
   // Agrupación en dos niveles (2026-07-29, categorización mecánica de objetos): tipo (amplio,
   // exterior) → categoría (subtipo fino, el groupBy de siempre, ahora anidado) — mismo patrón ya
@@ -570,32 +548,55 @@ export function EnciclopediaPanel({ worldSlug, saveId, onInsert, onDetail }: Enc
     craftingRecipes.filter((r): r is typeof craftingRecipes[number] & { oficio: string } => !!r.oficio),
     (r) => r.oficio,
   )
-  function renderCraftingList(recipes: EnciclopediaCraftingRecipe[]) {
+  // Estado real de materiales EN ESTA PARTIDA (2026-08-13) — atenúa la tarjeta y sustituye el
+  // listado estático "Necesita: X de Y" por el conteo real "Y: tienes/necesitas" cuando hay una
+  // partida activa. Sin `saveId` (Enciclopedia fuera de partida), `recipesStatus` llega vacío y
+  // todo cae al listado estático de siempre — nunca se rompe, solo deja de atenuar. Clave
+  // compuesta `recipeCategory:recipeKey` (auditoría 2026-08-13, mismo criterio que
+  // HabilidadesPanel.tsx) — hoy ningún `key` se repite entre crafteo y construcción, pero indexar
+  // solo por recipeKey mostraría en silencio el estado de la receta equivocada si algún día colisionan.
+  const recipeStatusByKey = new Map(recipesStatus.map((s) => [`${s.recipeCategory}:${s.recipeKey}`, s]))
+  // Fila de lista de crafteo/construcción (auditoría 2026-08-13, dedupe de renderCraftingList/
+  // renderConstructionList): las dos eran casi idénticas salvo icono/texto de inserción/categoría
+  // de estado — y la línea "Requiere nivel X de Y" solo salía en construcción por una omisión real
+  // (`oficioRequirementLine` ya soportaba ambas desde que `oficio`/`tier` llegaron a
+  // EnciclopediaCraftingRecipe, ver enciclopediaTargets.ts). Genérico sobre el shape común a ambos
+  // tipos de receta en vez de sobre uno concreto, para no tener que castear en las dos llamadas.
+  function renderRecipeList<
+    R extends { key: string; name: string; oficio: string | null; tier: number | null; requirements: { cantidad: number; label: string }[]; imageUrls: EnciclopediaImageUrls },
+  >(recipes: R[], statusCategory: 'crafteo' | 'construccion', icon: string, insertValue: (recipe: R) => string, toDetailTarget: (recipe: R, status?: RecipeStatusInfo) => DetailTarget) {
     return (
       <div className="flex flex-col gap-2">
         {recipes.map((recipe) => {
-          const requisitos = recipe.requirements.map((r) => `${r.cantidad} de ${r.label}`).join(', ')
+          const status = recipeStatusByKey.get(`${statusCategory}:${recipe.key}`)
+          const requisitos = status ? status.ingredients.map((i) => `${i.label} ${i.tienes}/${i.necesitas}`).join(', ') : recipe.requirements.map((r) => `${r.cantidad} de ${r.label}`).join(', ')
+          const nivel = oficioRequirementLine(recipe.oficio, recipe.tier)
           const imageUrl = resolveImageUrl(recipe.imageUrls.thumbnail)
+          const value = insertValue(recipe)
           return (
             <button
               key={recipe.key}
               onClick={(e) => {
                 if (e.shiftKey) {
-                  onInsert({ icon: '🔨', label: recipe.name, value: `Crafteo ${recipe.name}` })
+                  onInsert({ icon, label: recipe.name, value })
                 } else {
-                  onDetail(craftingToDetailTarget(recipe), () => onInsert({ icon: '🔨', label: recipe.name, value: `Crafteo ${recipe.name}` }))
+                  onDetail(toDetailTarget(recipe, status), () => onInsert({ icon, label: recipe.name, value }))
                 }
               }}
-              className="tactile flex items-center gap-3 rounded-lg border border-iron-800 bg-wood-950/40 px-3.5 py-2.5 text-left transition-colors hover:border-accent2-600/40 hover:bg-accent2-500/5"
+              className={`tactile flex items-center gap-3 rounded-lg border border-iron-800 bg-wood-950/40 px-3.5 py-2.5 text-left transition-colors hover:border-accent2-600/40 hover:bg-accent2-500/5 ${
+                status && !status.met ? 'opacity-60' : ''
+              }`}
             >
               {imageUrl ? (
                 <img src={imageUrl} alt="" className="h-8 w-8 shrink-0 rounded object-cover object-top" />
               ) : (
-                <span className="shrink-0 text-2xl leading-none">🔨</span>
+                <span className="shrink-0 text-2xl leading-none">{icon}</span>
               )}
               <div>
                 <p className="font-medium text-wood-100">{recipe.name}</p>
-                <p className="mt-1 text-xs leading-relaxed text-wood-400">Necesita: {requisitos}.</p>
+                <p className="mt-1 text-xs leading-relaxed text-wood-400">
+                  Necesita: {requisitos}.{nivel ? ` ${nivel}` : ''}
+                </p>
               </div>
             </button>
           )
@@ -603,42 +604,10 @@ export function EnciclopediaPanel({ worldSlug, saveId, onInsert, onDetail }: Enc
       </div>
     )
   }
-
-  function renderConstructionList(recipes: EnciclopediaConstructionRecipe[]) {
-    return (
-      <div className="flex flex-col gap-2">
-        {recipes.map((recipe) => {
-          const requisitos = recipe.requirements.map((r) => `${r.cantidad} de ${r.label}`).join(', ')
-          const imageUrl = resolveImageUrl(recipe.imageUrls.thumbnail)
-          return (
-            <button
-              key={recipe.key}
-              onClick={(e) => {
-                if (e.shiftKey) {
-                  onInsert({ icon: '🏗️', label: recipe.name, value: `Me pongo a construir ${recipe.name}` })
-                } else {
-                  onDetail(constructionToDetailTarget(recipe), () =>
-                    onInsert({ icon: '🏗️', label: recipe.name, value: `Me pongo a construir ${recipe.name}` }),
-                  )
-                }
-              }}
-              className="tactile flex items-center gap-3 rounded-lg border border-iron-800 bg-wood-950/40 px-3.5 py-2.5 text-left transition-colors hover:border-accent2-600/40 hover:bg-accent2-500/5"
-            >
-              {imageUrl ? (
-                <img src={imageUrl} alt="" className="h-8 w-8 shrink-0 rounded object-cover object-top" />
-              ) : (
-                <span className="shrink-0 text-2xl leading-none">🏗️</span>
-              )}
-              <div>
-                <p className="font-medium text-wood-100">{recipe.name}</p>
-                <p className="mt-1 text-xs leading-relaxed text-wood-400">Necesita: {requisitos}.</p>
-              </div>
-            </button>
-          )
-        })}
-      </div>
-    )
-  }
+  const renderCraftingList = (recipes: EnciclopediaCraftingRecipe[]) =>
+    renderRecipeList(recipes, 'crafteo', '🔨', (recipe) => `Crafteo ${recipe.name}`, craftingToDetailTarget)
+  const renderConstructionList = (recipes: EnciclopediaConstructionRecipe[]) =>
+    renderRecipeList(recipes, 'construccion', '🏗️', (recipe) => `Me pongo a construir ${recipe.name}`, constructionToDetailTarget)
 
   return (
     <div className="flex min-h-0 flex-1 gap-4">

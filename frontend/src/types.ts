@@ -61,6 +61,9 @@ export interface ProfessionRecipeInfo {
   oficio: string
   nivel: number
   recipeKey: string
+  /// Qué sección de la Enciclopedia indexa esta receta ('crafteo' para crafting.ts, 'construccion'
+  /// para construction.ts, ej. la Choza) — 2026-08-13, ver `recipeCategory` en SavedActionInfo.
+  recipeCategory: 'crafteo' | 'construccion'
   ability: {
     name: string
     icon: string
@@ -68,6 +71,32 @@ export interface ProfessionRecipeInfo {
     promptText: string
     category: SavedActionCategory
   }
+}
+
+/// Cuánto tienes de cada ingrediente de una receta ya conocida, AHORA MISMO en esta partida
+/// (2026-08-13, petición explícita: "que salgan deshabilitadas si no cumples las condiciones...
+/// el hover con... 5/10"). A diferencia de ProfessionRecipeInfo (estático, sin partida), esto
+/// viene de GET /saves/:id/recipes-status — depende del inventario/atributos/ubicación reales.
+export interface IngredientStatusInfo {
+  label: string
+  tienes: number
+  necesitas: number
+  met: boolean
+}
+
+export interface RecipeStatusInfo {
+  recipeKey: string
+  recipeCategory: 'crafteo' | 'construccion'
+  met: boolean
+  ingredients: IngredientStatusInfo[]
+  missingRequisitos: string[]
+  locationOk: boolean
+  requiredLocationName: string | null
+  /// Reglas de reino (auditoría 2026-08-13: cupo de Ayuntamiento, misma región, distancia,
+  /// nivel-anterior-correcto al mejorar, un solo Ayuntamiento) — solo viene relleno cuando
+  /// materiales/atributos YA se cumplen (mismo criterio que el backend). null = no aplica o no
+  /// bloquea.
+  blockedReason: string | null
 }
 
 /// Economía de Reino (sesión de diseño 2026-07-23) — null hasta que se funda el primer Territory.
@@ -374,7 +403,12 @@ export interface QuestInfo {
 
 /// 'profesion' (2026-08-07) — habilidades de oficio desbloqueadas por nivel, su propia pestaña
 /// "Profesiones" en el panel de Habilidades (ver HabilidadesPanel.tsx), distinta de "Generales".
-export type SavedActionCategory = 'combate' | 'general' | 'profesion'
+/// 'reino' (2026-08-13) — TODAS las recetas de construction.ts (Campamento, Ayuntamiento x3, y
+/// cualquier edificio con oficio como la Choza), en su propia pestaña "Reino": tengan oficio o no,
+/// son "edificar algo del mundo persistente", un concepto distinto de "craftear un objeto propio"
+/// (profesion) o "acción de siempre disponible" (general) — nunca creable a mano por la jugadora
+/// (ver AbilityForm.tsx, solo ofrece 'general').
+export type SavedActionCategory = 'combate' | 'general' | 'profesion' | 'reino'
 
 export interface SavedActionInfo {
   id: string
@@ -390,9 +424,15 @@ export interface SavedActionInfo {
   category: SavedActionCategory
   /// SOLO frontend, nunca viene del backend (rediseño de profesiones, 2026-08-07) — resuelto en
   /// GameView.tsx cruzando esta habilidad contra ProfessionRecipeInfo[] (GET /profession-recipes)
-  /// por `name` cuando category === 'profesion', para poder enlazar a su entrada de Enciclopedia
-  /// (`crafteo:${recipeKey}`) desde DetailModal.tsx. Undefined si no hay receta que enlazar.
+  /// por `name` cuando category === 'profesion' (o contra un mapeo fijo local para las habilidades
+  /// GENERALES de construcción sin oficio — Campamento/Ayuntamiento, 2026-08-13), para poder
+  /// enlazar a su entrada de Enciclopedia desde DetailModal.tsx. Undefined si no hay receta que
+  /// enlazar.
   recipeKey?: string
+  /// Qué sección de la Enciclopedia usar para el enlace de arriba ('crafteo' si se omite, por
+  /// compatibilidad con las habilidades de oficio ya existentes antes de sumar 'construccion'
+  /// 2026-08-13) — ver DetailModal.tsx.
+  recipeCategory?: 'crafteo' | 'construccion'
   /// Rediseño del turno de combate (2026-07-28) — "tipo" para la rueda de debilidades (backend)
   /// y el color del chip (UI). Null en habilidades 'general' o en partidas de antes de este campo.
   preferredAttribute: Attribute | null
