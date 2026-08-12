@@ -10,6 +10,33 @@
 /// (`classifyAction`, narrador.ts) — si detecta una violación, el turno se resuelve aquí mismo con
 /// una frase determinista en la voz de Gorhorn, sin gastar ni un segundo de generación.
 import { normalizeText } from './travel.js';
+import { matchNpcAliases, detectsAttackIntent, detectsDialogueIntent, detectsHostileSearchIntent } from './npcScene.js';
+import { ANACHRONISM_REGEX } from './narrador.js';
+import { prisma } from '../lib/prisma.js';
+
+/// Anacronismo en el propio texto del JUGADOR ("me monto en mi nave espacial") — reutiliza
+/// `ANACHRONISM_REGEX` (narrador.ts), la misma fuente de verdad que ya protege la salida del
+/// Narrador, en vez de mantener una segunda lista de términos prohibidos que desincronizarse de
+/// ella. A diferencia del chequeo de arma, no exige ningún verbo: mencionar pólvora/electricidad/
+/// tecnología moderna en un mundo medieval-fantástico es ya la violación en sí, no hace falta que
+/// el jugador reclame usarla de verdad.
+export function detectsPlayerAnachronism(action: string): boolean {
+  return ANACHRONISM_REGEX.test(action);
+}
+
+/// Mismo criterio que el resto — pool de 5, 1 cómica menos frecuente. Borrador de la sesión de
+/// diseño (docs/18-validacion-accion-jugador.md § "Borrador de frases").
+const ANACHRONISM_LINES: string[] = [
+  'Gorhorn frunce el ceño ante su propia idea, como si tratara de masticar algo que no existe. No hay ningún camino a lo que describe, ni en Helek Sirik ni en ningún sitio que él conozca.',
+  'Gorhorn se detiene en seco. Sea lo que sea eso, no tiene nombre en ninguna lengua que hable un orco — y él ya ha viajado bastante como para saberlo.',
+  'El pensamiento se disuelve antes de convertirse en acción, como humo que no encuentra madera que quemar. Gorhorn ni siquiera sabría por dónde empezar.',
+  'Gorhorn sacude la cabeza, casi con lástima por sí mismo. Lo que acaba de pensar no tiene sitio en este mundo, y una parte de él lo sabe antes de intentarlo.',
+  'Gorhorn se palpa la cabeza, extrañado. «Será el calor, será el viento, será que llevo ya demasiado tiempo hablando solo con cadáveres... porque juraría que acabo de pensar en algo que no existe.» Sacude la cabeza y vuelve a lo suyo.',
+];
+
+export function anachronismNarrationFor(): string {
+  return ANACHRONISM_LINES[Math.floor(Math.random() * ANACHRONISM_LINES.length)];
+}
 
 /// Sustantivos de categoría de arma en español coloquial (mismo enum `WeaponCategory` de Prisma:
 /// HACHA/MAZA/GARROTE/PICA/LANZA/CUCHILLO/DAGA/ESPADA/ESCUDO) — vocabulario cerrado a propósito,
@@ -77,4 +104,44 @@ const WRONG_WEAPON_LINES: ((armaReal: string) => string)[] = [
 export function wrongWeaponNarrationFor(armaReal: string): string {
   const line = WRONG_WEAPON_LINES[Math.floor(Math.random() * WRONG_WEAPON_LINES.length)];
   return line(armaReal);
+}
+
+export interface AbsentSceneNpcClaim {
+  /// Nombre real de catálogo del NPC/fauna reclamado ("Torgash") — para la frase de vuelta.
+  name: string;
+}
+
+/// Detecta si la acción del jugador interactúa con un NPC/fauna REAL de catálogo (existe de
+/// verdad en algún sitio del mundo) que no está en la lista de NPCs realmente en escena este
+/// turno (`detectNpcsInScene`, npcScene.ts) — "existe pero no está aquí" (Fase 1 de
+/// docs/18-validacion-accion-jugador.md; el caso "no existe en ningún sitio" es Fase 3, aparcado
+/// a propósito por la dificultad de distinguir mención/recuerdo de afirmación de presencia).
+///
+/// Reutiliza `matchNpcAliases` (mismo motor de coincidencia — boundary + tolerancia a erratas —
+/// que ya usa `detectNpcsInScene`) contra el catálogo COMPLETO del mundo, no solo los candidatos
+/// de esta escena, para no mantener ninguna lista propia que desincronizarse del catálogo real.
+/// Solo dispara con intención real de interacción (mismos detectores que ya usa `turn.ts` para
+/// decidir diálogo/ataque/búsqueda hostil) — una mención de pasada sin intención de interactuar
+/// no es una reclamación de presencia.
+export async function detectsAbsentSceneNpcClaim(action: string, worldId: string, npcsInSceneSlugs: string[]): Promise<AbsentSceneNpcClaim | null> {
+  if (!detectsAttackIntent(action) && !detectsDialogueIntent(action) && !detectsHostileSearchIntent(action)) return null;
+  const allNpcs = await prisma.npc.findMany({ where: { worldId }, select: { slug: true, name: true, aliases: true } });
+  const matchable = allNpcs.map((n) => ({ id: n.slug, aliases: [n.name, ...n.aliases] }));
+  const matchedSlugs = new Set(matchNpcAliases(action, matchable));
+  const absent = allNpcs.find((n) => matchedSlugs.has(n.slug) && !npcsInSceneSlugs.includes(n.slug));
+  return absent ? { name: absent.name } : null;
+}
+
+/// Mismo criterio que `WRONG_WEAPON_LINES` — pool de 5, 1 cómica menos frecuente.
+const ABSENT_NPC_LINES: ((nombre: string) => string)[] = [
+  (nombre) => `Gorhorn mira alrededor, extrañado. No hay ni rastro de ${nombre} por aquí — quienquiera que sea, no está en este lugar.`,
+  (nombre) => `El nombre de ${nombre} se queda flotando en el aire, sin nadie a quien dirigirlo. Aquí no hay nadie así.`,
+  () => `Gorhorn se detiene, buscando con la mirada a alguien que no está. Sea quien sea, no se encuentra en este lugar ahora mismo.`,
+  (nombre) => `No hay ningún ${nombre} al que dirigirse aquí — Gorhorn lo comprueba con la mirada antes de actuar en vano.`,
+  (nombre) => `Gorhorn frunce el ceño. «¿${nombre}? Aquí no hay nadie con ese nombre, que yo vea...» Baja la guardia, un poco confuso.`,
+];
+
+export function absentSceneNpcNarrationFor(nombre: string): string {
+  const line = ABSENT_NPC_LINES[Math.floor(Math.random() * ABSENT_NPC_LINES.length)];
+  return line(nombre);
 }

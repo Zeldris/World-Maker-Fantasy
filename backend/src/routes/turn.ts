@@ -30,7 +30,14 @@ import { normalizeSecondaryAttributes } from '../services/secondaryAttributes.js
 import { characterSummaryFor } from '../services/characterSummary.js';
 import { loadSessionFacts } from '../services/worldFacts.js';
 import { claimTurnInFlight, releaseTurnInFlight } from '../services/turnLock.js';
-import { detectsUnequippedWeaponClaim, wrongWeaponNarrationFor } from '../services/playerActionValidation.js';
+import {
+  detectsUnequippedWeaponClaim,
+  wrongWeaponNarrationFor,
+  detectsAbsentSceneNpcClaim,
+  absentSceneNpcNarrationFor,
+  detectsPlayerAnachronism,
+  anachronismNarrationFor,
+} from '../services/playerActionValidation.js';
 
 interface ClassifyBody {
   saveId: string;
@@ -421,17 +428,14 @@ export async function turnRoutes(app: FastifyInstance) {
     }
 
     // Validador de "grounding" de la acción del jugador (Fase 0/1, docs/18-validacion-accion-
-    // jugador.md) — corre ANTES de la primera llamada a IA (classifyAction, más abajo). Si el
-    // jugador reclama usar un arma que no lleva encima ("uso mi lanza" con una maza equipada), el
-    // turno se resuelve aquí mismo con una frase determinista en la voz del personaje, sin gastar
-    // ni un segundo de generación. `blocked` es nuevo en `ClassifyResponse` — el frontend, al
-    // verlo, se salta `/turn/narrate` por completo (mismo patrón que ya usa `transit`).
-    const weaponClaim = detectsUnequippedWeaponClaim(action, equippedWeaponNames(save.inventoryItems));
-    if (weaponClaim) {
-      const armaReal = save.inventoryItems.find((i) => i.slot === 'ARMA_PRINCIPAL')?.name ?? equippedWeaponNames(save.inventoryItems)[0];
-      const narrationText = wrongWeaponNarrationFor(armaReal);
-      const blockedTimeLabel = save.worldState?.fictionalDateLabel ?? 'Día 1, mañana';
-      const blockedFictionalMinutes = save.worldState?.fictionalMinutes ?? 480;
+    // jugador.md) — corre ANTES de la primera llamada a IA (classifyAction, más abajo). Si
+    // dispara, el turno se resuelve aquí mismo con una frase determinista en la voz del
+    // personaje, sin gastar ni un segundo de generación. `blocked` es nuevo en
+    // `ClassifyResponse` — el frontend, al verlo, se salta `/turn/narrate` por completo (mismo
+    // patrón que ya usa `transit`).
+    const blockedTimeLabel = save.worldState?.fictionalDateLabel ?? 'Día 1, mañana';
+    const blockedFictionalMinutes = save.worldState?.fictionalMinutes ?? 480;
+    async function resolveBlockedTurn(narrationText: string) {
       await prisma.logEntry.create({
         data: { saveId, channel: 'CHARACTER', text: action, isPlayerAction: true, timeLabel: blockedTimeLabel, fictionalMinutes: blockedFictionalMinutes },
       });
@@ -441,11 +445,44 @@ export async function turnRoutes(app: FastifyInstance) {
       return { blocked: { narration: narrationText } };
     }
 
+    // Anacronismo en el propio texto del jugador ("me monto en mi nave espacial") — el chequeo
+    // más barato de todos (regex plano, sin consultas), va primero.
+    if (detectsPlayerAnachronism(action)) {
+      return resolveBlockedTurn(anachronismNarrationFor());
+    }
+
+    // Arma que no lleva encima ("uso mi lanza" con una maza equipada).
+    const weaponClaim = detectsUnequippedWeaponClaim(action, equippedWeaponNames(save.inventoryItems));
+    if (weaponClaim) {
+      const armaReal = save.inventoryItems.find((i) => i.slot === 'ARMA_PRINCIPAL')?.name ?? equippedWeaponNames(save.inventoryItems)[0];
+      return resolveBlockedTurn(wrongWeaponNarrationFor(armaReal));
+    }
+
+    // NPC/fauna real de catálogo con el que el jugador interactúa, pero que no está de verdad en
+    // esta escena ("existe pero no está aquí"). `sessionFacts` se carga ya aquí (antes se hacía
+    // más abajo, junto a `characterSummary`) porque `detectNpcsInScene` también lo necesita —
+    // reordenar en vez de duplicar la carga.
+    const sessionFacts = await loadSessionFacts(save.id);
+    const npcsInSceneForValidation = await detectNpcsInScene({
+      action,
+      worldId: save.worldId,
+      sessionFacts,
+      saveId,
+      currentLocationId: save.currentLocationId,
+    });
+    const absentNpcClaim = await detectsAbsentSceneNpcClaim(
+      action,
+      save.worldId,
+      npcsInSceneForValidation.map((n) => n.slug),
+    );
+    if (absentNpcClaim) {
+      return resolveBlockedTurn(absentSceneNpcNarrationFor(absentNpcClaim.name));
+    }
+
     // Estadísticas de objetos (2026-07-19): la tirada usa los atributos EFECTIVOS (base + lo
     // que sume el equipo puesto), nunca los atributos crudos guardados en el personaje.
     const attributes = effectiveAttributes(save.attributes as AttributeBlock, save.inventoryItems);
     const timeLabel = save.worldState?.fictionalDateLabel ?? 'Día 1, mañana';
-    const sessionFacts = await loadSessionFacts(save.id);
     const currentLocationForSummary = save.currentLocationId
       ? await prisma.location.findUnique({ where: { id: save.currentLocationId } })
       : null;

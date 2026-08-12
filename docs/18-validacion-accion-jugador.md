@@ -1,10 +1,32 @@
 # Validación de "grounding" de la acción del jugador contra el lore real
 
-**Estado:** documento vivo. Fase 0 (mecanismo) + primer chequeo de Fase 1 (arma que no llevas)
-**implementados y verificados (2026-08-13)** — ver `backend/src/services/playerActionValidation.ts`.
-Pendiente jugarlo en vivo antes de seguir ampliando (NPC/fauna en escena, anacronismo) — es el
-primer mecanismo de su tipo (cortar un turno antes de llegar a la IA), vale la pena confirmarlo con
-una partida real antes de construir más encima.
+**Estado:** documento vivo. Fase 0 (mecanismo) + Fase 1 completa (arma que no llevas, NPC/fauna
+real de catálogo con el que interactúas pero que no está en esta escena) **implementadas y
+verificadas (2026-08-13)** — ver `backend/src/services/playerActionValidation.ts`. Pendiente
+jugarlo en vivo antes de confiar del todo en ello — es el primer mecanismo de su tipo (cortar un
+turno antes de llegar a la IA).
+
+**Límite real descubierto implementando el chequeo de NPC/fauna** (documentado aquí para no
+redescubrirlo): NO puede cazar "NPC `PRINCIPAL` mencionado por texto pero no realmente presente" —
+`detectNpcsInScene` incluye SIEMPRE a los `PRINCIPAL` como candidatos sin importar ubicación
+(diseño correcto, son personajes de trama que pueden aparecer en cualquier sitio), así que si el
+texto los menciona, `detectNpcsInScene` los da por "en escena" por el mismo motivo que este
+chequeo los encontraría — mismo signal, mismo resultado, nunca puede haber discrepancia para
+`PRINCIPAL`. Donde SÍ funciona de verdad: fauna/NPCs `PLANTILLA` de OTRA región, nunca antes
+encontrados y sin misión que los señale — esos quedan fuera de la lista de candidatos de
+`detectNpcsInScene` aunque el texto los nombre, así que este chequeo es la ÚNICA red que los cierra.
+Alcance más estrecho que "cualquier NPC", pero real y verificado (test de integración con una
+fauna de Ciénaga Troncal mencionada estando en Los Pilares Rotos).
+
+**Fase 1 completada del todo** con el tercer chequeo (anacronismo en el texto del jugador,
+`detectsPlayerAnachronism`) — reutiliza `ANACHRONISM_REGEX` (narrador.ts), ampliado con "nave
+espacial"/coche/avión/robot (el ejemplo real de la propia sesión de diseño). **Bug real
+encontrado implementando este chequeo, corregido en el mismo commit**: `turn.classify.test.ts`
+mockeaba `narrador.js` con un reemplazo COMPLETO del módulo (no `importOriginal`), así que
+cualquier otro export real de ese archivo (como `ANACHRONISM_REGEX`) se volvía `undefined` en
+silencio dentro de ese archivo de test en cuanto algo más lo importaba — rompía los 7 tests de
+ese archivo con un error que ni siquiera apuntaba a la causa real. Corregido al mismo patrón
+`importOriginal` que ya usaba correctamente `turn.integration.test.ts`.
 
 ## Implementado (2026-08-13)
 
@@ -26,7 +48,15 @@ una partida real antes de construir más encima.
   equipada (ir desarmado y reclamar un arma es un caso distinto, fuera de alcance); sin "lanz\*" en
   el regex de verbos (colisiona con el propio sustantivo "lanza") — se prefiere un falso negativo
   raro a arriesgar bloquear una acción legítima.
-- Tests: `playerActionValidation.test.ts` (8, unitarios puros) + `turn.classify.test.ts` (2 nuevos,
+- `detectsAbsentSceneNpcClaim(action, worldId, npcsInSceneSlugs)`: reutiliza `matchNpcAliases`
+  (npcScene.ts, mismo motor boundary+fuzzy que ya usa `detectNpcsInScene`) contra el catálogo
+  COMPLETO del mundo, filtrado por intención real de interacción (`detectsAttackIntent`/
+  `detectsDialogueIntent`/`detectsHostileSearchIntent`, ya existentes) — sin lista propia que
+  desincronizarse del catálogo. `absentSceneNpcNarrationFor(nombre)`: mismo patrón de 5 frases.
+  Requiere una llamada extra a `detectNpcsInScene` al principio de `/turn/classify` (antes de
+  `resolveClassificationForTurn`, que la recalcula igual más abajo) — coste de una consulta extra
+  a DB, nunca de IA, para poder cortar antes de la primera llamada a Ollama.
+- Tests: `playerActionValidation.test.ts` (13, unitarios puros) + `turn.classify.test.ts` (3 nuevos,
   con Prisma mockeado) — confirman que `classifyAction` (la llamada a IA) nunca se invoca cuando
   dispara, y que el camino normal sigue igual cuando el arma sí coincide.
 

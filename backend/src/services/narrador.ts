@@ -849,8 +849,12 @@ export function stripLeakedJson(narration: string): string {
 /// Contrato de mundo (docs/07-mundo-helek-sirik.md § 9): medieval-fantástico, sin pólvora ni
 /// tecnología industrial en ningún continente. Ya reforzado en el Modelfile — esto es la red de
 /// seguridad determinista para cuando el modelo lo ignora de todos modos (visto en pruebas reales).
+/// "nave espacial"/coche/avión/robot añadidos (2026-08-13, validador de grounding del jugador,
+/// docs/18-validacion-accion-jugador.md — ejemplo real de la sesión de diseño: "me monto en mi
+/// nave espacial y me voy volando") — mismo regex reutilizado por `detectsPlayerAnachronism`
+/// (playerActionValidation.ts), así que ampliarlo aquí también refuerza la salida del Narrador.
 export const ANACHRONISM_REGEX =
-  /p[óo]lvora|pistola|rifle|escopeta|pl[áa]stico|electricidad|el[ée]ctric[oa]|motor(?:\s+de)?\s+(?:combusti[óo]n|explosi[óo]n)|hormig[óo]n|acero industrial|tel[ée]fono|internet/i;
+  /p[óo]lvora|pistola|rifle|escopeta|pl[áa]stico|electricidad|el[ée]ctric[oa]|motor(?:\s+de)?\s+(?:combusti[óo]n|explosi[óo]n)|hormig[óo]n|acero industrial|tel[ée]fono|internet|nave espacial|robot|autom[óo]vil|\bcoche\b|\bavi[óo]n\b/i;
 
 export function hasAnachronism(narration: string): boolean {
   return ANACHRONISM_REGEX.test(narration);

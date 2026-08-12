@@ -1,5 +1,18 @@
-import { describe, it, expect } from 'vitest';
-import { detectsUnequippedWeaponClaim, wrongWeaponNarrationFor } from './playerActionValidation.js';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+
+const findManyNpc = vi.fn();
+vi.mock('../lib/prisma.js', () => ({
+  prisma: { npc: { findMany: (...args: unknown[]) => findManyNpc(...args) } },
+}));
+
+const {
+  detectsUnequippedWeaponClaim,
+  wrongWeaponNarrationFor,
+  detectsAbsentSceneNpcClaim,
+  absentSceneNpcNarrationFor,
+  detectsPlayerAnachronism,
+  anachronismNarrationFor,
+} = await import('./playerActionValidation.js');
 
 describe('detectsUnequippedWeaponClaim', () => {
   it('detecta reclamar un arma de categoría distinta a la equipada', () => {
@@ -35,6 +48,63 @@ describe('wrongWeaponNarrationFor', () => {
   it('siempre devuelve una frase no vacía', () => {
     for (let i = 0; i < 20; i++) {
       expect(wrongWeaponNarrationFor('Maza orca').length).toBeGreaterThan(0);
+    }
+  });
+});
+
+describe('detectsAbsentSceneNpcClaim', () => {
+  beforeEach(() => {
+    findManyNpc.mockReset().mockResolvedValue([
+      { slug: 'torgash', name: 'Torgash', aliases: ["kort'ikar torgash"] },
+      { slug: 'orco-enfurecido-hondonada', name: 'Orco enfurecido', aliases: ['orco enfurecido'] },
+    ]);
+  });
+
+  it('detecta interactuar con un NPC real de catálogo que no está en la escena actual', async () => {
+    const result = await detectsAbsentSceneNpcClaim("Le pregunto a Torgash por su clan.", 'world1', []);
+    expect(result).toEqual({ name: 'Torgash' });
+  });
+
+  it('no dispara si el NPC mencionado SÍ está en la lista de escena', async () => {
+    const result = await detectsAbsentSceneNpcClaim('Le pregunto a Torgash por su clan.', 'world1', ['torgash']);
+    expect(result).toBeNull();
+  });
+
+  it('no dispara sin intención real de interacción (mención de pasada)', async () => {
+    const result = await detectsAbsentSceneNpcClaim('Pienso en lo que me dijo Torgash hace días.', 'world1', []);
+    expect(result).toBeNull();
+  });
+
+  it('no dispara si el texto no nombra a ningún NPC real del catálogo', async () => {
+    const result = await detectsAbsentSceneNpcClaim('Ataco a un desconocido cualquiera.', 'world1', []);
+    expect(result).toBeNull();
+  });
+});
+
+describe('absentSceneNpcNarrationFor', () => {
+  it('siempre devuelve una frase no vacía', () => {
+    for (let i = 0; i < 20; i++) {
+      expect(absentSceneNpcNarrationFor('Torgash').length).toBeGreaterThan(0);
+    }
+  });
+});
+
+describe('detectsPlayerAnachronism', () => {
+  it('detecta un anacronismo en la propia acción del jugador', () => {
+    expect(detectsPlayerAnachronism('Me monto en mi nave espacial y me voy volando.')).toBe(true);
+    expect(detectsPlayerAnachronism('Busco un mechero para encender fuego rápido.')).toBe(false);
+    expect(detectsPlayerAnachronism('¿Tengo pólvora en el inventario?')).toBe(true);
+  });
+
+  it('no dispara con una acción normal, coherente con el mundo', () => {
+    expect(detectsPlayerAnachronism('Exploro la zona con cuidado, hacha en mano.')).toBe(false);
+  });
+});
+
+describe('anachronismNarrationFor', () => {
+  it('siempre devuelve una frase no vacía', () => {
+    for (let i = 0; i < 20; i++) {
+      expect(anachronismNarrationFor().length).toBeGreaterThan(0);
     }
   });
 });

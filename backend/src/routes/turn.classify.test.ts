@@ -35,9 +35,19 @@ vi.mock('../lib/prisma.js', () => ({
   },
 }));
 
-vi.mock('../services/narrador.js', () => ({
-  classifyAction: (...args: unknown[]) => classifyAction(...args),
-}));
+// `importOriginal` (no un reemplazo completo del módulo) — mismo patrón que
+// turn.integration.test.ts. Bug real encontrado en esta misma sesión (2026-08-13): un reemplazo
+// completo tira también el resto de exports reales de narrador.js (p. ej. `ANACHRONISM_REGEX`,
+// que `playerActionValidation.ts` importa) — cualquier import nuevo desde otro módulo se
+// convierte en `undefined` en silencio dentro de este archivo de test, sin relación aparente con
+// lo que de verdad se está mockeando.
+vi.mock('../services/narrador.js', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../services/narrador.js')>();
+  return {
+    ...actual,
+    classifyAction: (...args: unknown[]) => classifyAction(...args),
+  };
+});
 
 vi.mock('../services/worldFacts.js', () => ({ loadSessionFacts: vi.fn(() => Promise.resolve([])) }));
 
@@ -210,6 +220,49 @@ describe('POST /turn/classify — camino tabulado de combate (sin Ollama)', () =
   });
 });
 
+// Validador de "grounding" de la acción del jugador — anacronismo en el propio texto del
+// jugador, el chequeo más barato (regex plano, sin consultas), se resuelve antes que ningún otro.
+describe('POST /turn/classify — anacronismo en la acción del jugador (validador de grounding)', () => {
+  beforeEach(() => {
+    findUniqueSave.mockReset();
+    findManyNpc.mockReset().mockResolvedValue([]);
+    findManyNpcState.mockReset().mockResolvedValue([]);
+    findUniqueLocation.mockReset().mockResolvedValue(null);
+    findManyLocation.mockReset().mockResolvedValue([]);
+    findManyQuest.mockReset().mockResolvedValue([]);
+    logEntryCreate.mockReset().mockResolvedValue({});
+    classifyAction.mockReset();
+  });
+
+  it('un anacronismo en la propia acción se resuelve sin llamar a classifyAction ni a detectNpcsInScene', async () => {
+    findUniqueSave.mockResolvedValue({
+      id: 'save1',
+      worldId: 'world1',
+      level: 3,
+      attributes: ATTRS,
+      inventoryItems: [],
+      condicionFisica: 'ILESO',
+      currentLocationId: null,
+      endedAt: null,
+      characterTransit: null,
+      worldState: { fictionalDateLabel: 'Día 1, mañana', fictionalMinutes: 480 },
+    });
+
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/turn/classify',
+      payload: { saveId: 'save1', action: 'Me monto en mi nave espacial y me voy volando.' },
+    });
+
+    expect(res.statusCode).toBe(200);
+    const body = res.json();
+    expect(typeof body.blocked?.narration).toBe('string');
+    expect(classifyAction).not.toHaveBeenCalled();
+    expect(findManyNpc).not.toHaveBeenCalled();
+  });
+});
+
 // Validador de "grounding" de la acción del jugador (Fase 0/1, docs/18-validacion-accion-
 // jugador.md) — reclamar un arma que no lleva encima se resuelve aquí mismo, ANTES de
 // classifyAction, sin gastar ninguna llamada a IA.
@@ -253,6 +306,61 @@ describe('POST /turn/classify — arma que no lleva equipada (validador de groun
     expect(body.classification).toBeUndefined();
     expect(classifyAction).not.toHaveBeenCalled();
     expect(logEntryCreate).toHaveBeenCalledTimes(2);
+  });
+
+  it('interactuar con una fauna/NPC real de OTRA región (no candidata a esta escena) se resuelve sin llamar a classifyAction', async () => {
+    findUniqueSave.mockResolvedValue({
+      id: 'save1',
+      worldId: 'world1',
+      level: 3,
+      attributes: ATTRS,
+      inventoryItems: [{ name: 'Maza orca', slot: 'ARMA_PRINCIPAL' }],
+      condicionFisica: 'ILESO',
+      currentLocationId: 'loc1',
+      endedAt: null,
+      characterTransit: null,
+      worldState: { fictionalDateLabel: 'Día 1, mañana', fictionalMinutes: 480 },
+    });
+    findUniqueLocation.mockResolvedValue({ slug: 'pilares-rotos', region: 'Las Llanuras del Viento Rojo' });
+    // Fauna real de OTRA región (Ciénaga Troncal), nunca encontrada antes, sin misión que la
+    // señale — `detectNpcsInScene` la descarta como candidata (homeLocationSlug de otra región),
+    // así que el chequeo de grounding es la ÚNICA vía que la detecta como "existe pero no está aquí".
+    findManyNpc.mockResolvedValue([
+      {
+        id: 'npc-cienaga',
+        slug: 'bicho-cienaga',
+        name: 'Bicho de Ciénaga',
+        aliases: ['bicho de cienaga'],
+        kind: 'PLANTILLA',
+        homeLocationSlug: 'cienaga-troncal',
+        level: 1,
+        role: 'fauna',
+        faction: null,
+        personality: 'x',
+        bio: 'x',
+        items: [],
+        attributes: ATTRS,
+        raza: null,
+        clase: null,
+        ataqueNatural: null,
+        habilidadesRaciales: [],
+        temperamento: 'INOFENSIVO',
+      },
+    ]);
+    findManyLocation.mockResolvedValue([{ slug: 'cienaga-troncal', region: 'Ciénaga Troncal' }]);
+
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/turn/classify',
+      payload: { saveId: 'save1', action: 'Ataco a un Bicho de Ciénaga.' },
+    });
+
+    expect(res.statusCode).toBe(200);
+    const body = res.json();
+    expect(typeof body.blocked?.narration).toBe('string');
+    expect(body.blocked.narration.length).toBeGreaterThan(0);
+    expect(classifyAction).not.toHaveBeenCalled();
   });
 
   it('con el arma correcta (coincide con lo equipado), sigue el camino normal', async () => {
