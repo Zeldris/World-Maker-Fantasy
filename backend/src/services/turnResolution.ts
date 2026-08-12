@@ -1475,6 +1475,15 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   // `defensor_contragolpea`) sí tiene un golpe real en algún lado, así que no aplica la red.
   const combatBothMissed = exchangeHappened && !npcAttackHits && !jugadorRecibeGolpe;
 
+  // Narrar inconsciencia (docs/19-post-combate-y-recompensas-mision.md, pieza 1) — true SOLO en
+  // el turno exacto en que el NPC pasa a INCAPACITADO/MUERTO (no si ya estaba así de antes), para
+  // pedirle al Narrador que describa ese momento concreto en vez de dejarlo implícito — hoy el
+  // panel de victoria puede aparecer sin que la propia narración del golpe final lo haya narrado.
+  const npcFallsUnconsciousThisTurn =
+    (npcTargetNewCondicion === 'INCAPACITADO' || npcTargetNewCondicion === 'MUERTO') &&
+    npcParaIntercambio?.condicionFisica !== 'INCAPACITADO' &&
+    npcParaIntercambio?.condicionFisica !== 'MUERTO';
+
   // Anti-repetición de vocabulario/imágenes (ver comentario de `lastNarration` más arriba).
   if (lastNarration) {
     contextBlocks.push(
@@ -2100,6 +2109,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     criticalFactsCount: contextBlocks.length,
     lastNarrationText: lastNarration?.text,
     combatBothMissed,
+    npcFallsUnconsciousThisTurn,
     combatNotYetResolved,
     possiblyFalseItemUseNames,
     possiblyResurrectedNpcNames,

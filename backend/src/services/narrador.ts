@@ -142,6 +142,12 @@ interface TurnContext {
   /// narración describe de todos modos un golpe ya conectado/un enemigo ya herido huyendo, es una
   /// alucinación adelantada del combate, no una licencia narrativa — se reintenta.
   combatNotYetResolved?: boolean;
+  /// docs/19-post-combate-y-recompensas-mision.md, pieza 1 — true SOLO en el turno exacto en que
+  /// el NPC objetivo pasa a INCAPACITADO/MUERTO (no si ya estaba así de antes). Usado en
+  /// `combatBlock` para pedir explícitamente que se narre el momento de caer inconsciente/morir,
+  /// en vez de dejarlo implícito (hoy el panel de victoria puede aparecer sin que la propia
+  /// narración del golpe final lo haya descrito).
+  npcFallsUnconsciousThisTurn?: boolean;
   /// Ver `hasFalseItemUse` más abajo — nombres reales de objetos médicos/de energía que el
   /// personaje lleva encima PERO que este turno no se detectó que usara de verdad (ni
   /// `detectMedicalItemUse` ni `detectEnergyItemUse` los reconocieron en la acción del jugador).
@@ -414,7 +420,11 @@ export function buildNarrationPrompt(ctx: TurnContext & { roll?: RollResult }): 
           : ' Ninguno sorprende al otro — ambos se preparan a la vez, en igualdad de condiciones.'
       : '';
   const combatBlock = ctx.enCombate
-    ? 'ESTÁS DENTRO DE UN COMBATE (docs/14-combate-y-muerte.md § 2.3): narra en 1-2 frases, corto y directo, el intercambio de ESTE turno — nada de ambientación de relleno, es el ritmo de un choque, no una escena. Puedes proponer "condicionFisica" si el personaje sale herido de este intercambio (nunca lo cures aquí salvo que la acción sea explícitamente curarse).'
+    ? `ESTÁS DENTRO DE UN COMBATE (docs/14-combate-y-muerte.md § 2.3): narra en 1-2 frases, corto y directo, el intercambio de ESTE turno — nada de ambientación de relleno, es el ritmo de un choque, no una escena. Puedes proponer "condicionFisica" si el personaje sale herido de este intercambio (nunca lo cures aquí salvo que la acción sea explícitamente curarse).${
+        ctx.npcFallsUnconsciousThisTurn
+          ? ' Este golpe deja al rival INCAPACITADO o MUERTO — tu narración de este turno tiene que describir explícitamente ese momento (cae inconsciente, se desploma sin sentido, muere...), no dejarlo implícito ni solo insinuado.'
+          : ''
+      }`
     : `Fuera de combate nunca empeores "condicionFisica" — solo puedes proponerla si el personaje se cura o descansa de verdad (mejora), o déjala en null. ${
         hostileEngagement
           ? `Esta escena ES un enfrentamiento real contra ${npcSlugs.length === 1 ? 'el NPC ya' : 'los NPCs ya'} en escena — rellena "combateIniciado" con los NPCs implicados (usa exactamente los slugs ya listados, nunca inventes uno), esto no es opcional aquí.${ambushHint}`

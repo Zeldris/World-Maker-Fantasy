@@ -15,6 +15,7 @@ import {
   hasFalseTravelClaim,
   hasFalsePhantomTravel,
   hasAnachronism,
+  buildNarrationPrompt,
 } from './narrador.js';
 
 describe('reinoIntentDetected', () => {
@@ -364,5 +365,19 @@ describe('deterministicFallbackNarration', () => {
 
   it('sin tirada, narra igualmente sin romper', () => {
     expect(deterministicFallbackNarration({ action: 'Miro el paisaje' }).narration.length).toBeGreaterThan(0);
+  });
+});
+
+describe('buildNarrationPrompt — narrar inconsciencia (docs/19-post-combate-y-recompensas-mision.md, pieza 1)', () => {
+  const baseCtx = { worldFacts: [], characterSummary: 'Gorhorn', action: 'Ataco', enCombate: true };
+
+  it('pide explícitamente narrar el momento de caer inconsciente/morir cuando este golpe termina el combate', () => {
+    const { prompt } = buildNarrationPrompt({ ...baseCtx, npcFallsUnconsciousThisTurn: true });
+    expect(prompt).toMatch(/INCAPACITADO o MUERTO/);
+  });
+
+  it('no añade esa instrucción en un turno de combate normal', () => {
+    const { prompt } = buildNarrationPrompt({ ...baseCtx, npcFallsUnconsciousThisTurn: false });
+    expect(prompt).not.toMatch(/INCAPACITADO o MUERTO/);
   });
 });

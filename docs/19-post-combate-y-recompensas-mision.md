@@ -1,8 +1,8 @@
 # Post-combate (inconsciencia/recuperación) y recompensas deterministas de misión
 
-**Estado:** solo investigación, nada implementado. Anotado a petición explícita de la usuaria
-("no hagas nada ahora, anótalo en el roadmap para mañana pero deja la investigación ya lista") —
-objetivo: que la sesión de mañana pueda empezar a construir sin tener que re-derivar nada de esto.
+**Estado:** documento vivo. Investigación cerrada el 2026-08-12; implementación empezada el
+2026-08-13 ("sigue e implementa todas las fases que sacamos ayer al roadmap"). Pieza 1 (narrar
+inconsciencia) **implementada y verificada**. Piezas 2-4 siguen pendientes, ver cada sección.
 
 ## Contexto
 
@@ -36,6 +36,14 @@ que la propia narración del último golpe lo haya descrito con claridad.
 **Alcance**: instrucción de prompt nueva, condicionada a "este golpe deja al NPC en
 INCAPACITADO/MUERTO" (dato ya disponible en `turnResolution.ts` en el momento de construir el
 prompt). Bajo riesgo, un solo archivo.
+
+**Implementado y verificado (2026-08-13)**: nuevo `npcFallsUnconsciousThisTurn` calculado en
+`turnResolution.ts` justo al lado de `combatBothMissed` (mismo patrón) — true solo el turno EXACTO
+en que `npcTargetNewCondicion` pasa a INCAPACITADO/MUERTO viniendo de un estado distinto (nunca si
+ya estaba así de antes). Viaja por `TurnContext.npcFallsUnconsciousThisTurn` (narrador.ts) hasta
+`combatBlock` en `buildNarrationPrompt`, que añade una frase explícita pidiendo narrar ese momento
+concreto cuando aplica. Tests: 2 nuevos en `narrador.test.ts` (con/sin la instrucción en el
+prompt).
 
 ### 2. Recuperación tras 6 horas de tiempo de juego si no se decapita
 
