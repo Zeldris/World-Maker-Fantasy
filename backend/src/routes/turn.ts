@@ -43,6 +43,7 @@ import {
   unknownConstructionNarrationFor,
 } from '../services/playerActionValidation.js';
 import { harvestSourceAliases } from '../scripts/worldCatalog.js';
+import { detectsPostCombatInteraction } from '../services/postCombatInteraction.js';
 
 interface ClassifyBody {
   saveId: string;
@@ -501,6 +502,18 @@ export async function turnRoutes(app: FastifyInstance) {
     if (wrongRegionHarvestClaim) {
       const nombre = harvestSourceAliases[wrongRegionHarvestClaim.sourceSlug]?.[0] ?? wrongRegionHarvestClaim.sourceSlug.replace(/-/g, ' ');
       return resolveBlockedTurn(wrongRegionHarvestNarrationFor(nombre));
+    }
+
+    // Interacción con un NPC/fauna ya incapacitado o muerto, FUERA de combate (docs/19 pieza 2) —
+    // no es una violación (no usa `resolveBlockedTurn`, no gasta ningún LogEntry): es un atajo
+    // mecánico legítimo. No hay nada nuevo que narrar sobre alguien ya resuelto, así que el turno
+    // no llega ni a `classifyAction` — el frontend recibe la ficha y decide Saquear/Decapitar/Salir
+    // sin que este intento de interacción cuente como una acción de verdad.
+    if (!enCombate) {
+      const postCombatTarget = detectsPostCombatInteraction(action, npcsInSceneForValidation);
+      if (postCombatTarget) {
+        return { postCombatInteraction: postCombatTarget };
+      }
     }
 
     // Estadísticas de objetos (2026-07-19): la tirada usa los atributos EFECTIVOS (base + lo

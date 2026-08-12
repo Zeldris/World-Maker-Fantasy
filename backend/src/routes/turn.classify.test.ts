@@ -220,6 +220,105 @@ describe('POST /turn/classify — camino tabulado de combate (sin Ollama)', () =
   });
 });
 
+// Interacción con un NPC ya incapacitado/muerto fuera de combate (docs/19 pieza 2) — atajo
+// mecánico legítimo, no una violación: no llama a classifyAction, no persiste ningún LogEntry.
+describe('POST /turn/classify — interacción con un NPC ya incapacitado, fuera de combate (docs/19 pieza 2)', () => {
+  beforeEach(() => {
+    findUniqueSave.mockReset();
+    findManyNpc.mockReset().mockResolvedValue([
+      {
+        id: 'npc1',
+        aliases: ['orco enfurecido'],
+        slug: 'orco-enfurecido',
+        name: 'Orco Enfurecido',
+        kind: 'PRINCIPAL',
+        level: 2,
+        role: 'amenaza',
+        faction: null,
+        personality: 'furioso',
+        bio: 'x',
+        items: [],
+        attributes: ATTRS,
+        raza: null,
+        clase: null,
+        ataqueNatural: 'Zarpazo',
+        habilidadesRaciales: [],
+        temperamento: 'AGRESIVO',
+      },
+    ]);
+    findManyNpcState.mockReset().mockResolvedValue([
+      { npcId: 'npc1', scope: '', condicionFisica: 'INCAPACITADO', saqueado: false, energia: null, lootedItemNames: [], analizado: false },
+    ]);
+    findUniqueLocation.mockReset().mockResolvedValue(null);
+    findManyLocation.mockReset().mockResolvedValue([]);
+    findManyQuest.mockReset().mockResolvedValue([]);
+    logEntryCreate.mockReset().mockResolvedValue({});
+    classifyAction.mockReset();
+  });
+
+  it('nombrar a un NPC incapacitado en escena, fuera de combate, devuelve la ficha sin llamar a classifyAction ni persistir nada', async () => {
+    findUniqueSave.mockResolvedValue({
+      id: 'save1',
+      worldId: 'world1',
+      level: 3,
+      attributes: ATTRS,
+      inventoryItems: [],
+      condicionFisica: 'ILESO',
+      currentLocationId: null,
+      endedAt: null,
+      characterTransit: null,
+      worldState: { fictionalDateLabel: 'Día 1, mañana', fictionalMinutes: 480 },
+    });
+
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/turn/classify',
+      payload: { saveId: 'save1', action: 'Reviso al Orco Enfurecido de cerca.' },
+    });
+
+    expect(res.statusCode).toBe(200);
+    const body = res.json();
+    expect(body.postCombatInteraction).toEqual({
+      slug: 'orco-enfurecido',
+      name: 'Orco Enfurecido',
+      condicionFisica: 'INCAPACITADO',
+      saqueado: false,
+    });
+    expect(classifyAction).not.toHaveBeenCalled();
+    expect(logEntryCreate).not.toHaveBeenCalled();
+  });
+
+  it('no dispara si la misma acción ocurre dentro de un combate activo (enCombate: true)', async () => {
+    findUniqueSave.mockResolvedValue({
+      id: 'save1',
+      worldId: 'world1',
+      level: 3,
+      attributes: ATTRS,
+      inventoryItems: [],
+      condicionFisica: 'ILESO',
+      currentLocationId: null,
+      endedAt: null,
+      characterTransit: null,
+      worldState: { fictionalDateLabel: 'Día 1, mañana', fictionalMinutes: 480 },
+    });
+    classifyAction.mockResolvedValue({
+      requiereTirada: false, atributo: 'fuerza', dificultad: 8, razon: 'x', banda: 'instantanea', duracionEstimadaMinutos: 0,
+    });
+
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/turn/classify',
+      payload: { saveId: 'save1', action: 'Reviso al Orco Enfurecido de cerca.', enCombate: true },
+    });
+
+    expect(res.statusCode).toBe(200);
+    const body = res.json();
+    expect(body.postCombatInteraction).toBeUndefined();
+  });
+});
+
 // Validador de "grounding" de la acción del jugador — anacronismo en el propio texto del
 // jugador, el chequeo más barato (regex plano, sin consultas), se resuelve antes que ningún otro.
 describe('POST /turn/classify — anacronismo en la acción del jugador (validador de grounding)', () => {
