@@ -1,5 +1,25 @@
 # Roadmap — Tarkor (auditoría, 2026-07-18)
 
+**Actualización (2026-08-12, continuación):** investigación cerrada (nada implementado, a propósito
+— "para mañana") sobre post-combate y recompensas de misión: narrar explícitamente la inconsciencia
+al terminar un combate, recuperación tras 6h de tiempo de ficción si no se decapita (no existe hoy),
+recompensa determinista de misión (el campo `rewardItems` de `Quest` es solo texto, no entrega
+objetos de verdad — hallazgo real), y fondo amarillo para misiones completadas (no existe hoy). El
+rebautizo propuesto del Orco Enfurecido a "NPC único" era un malentendido — ya es `PRINCIPAL`/scope
+global, no aporta nada al bug de resurrección (ese sigue tracked aparte en
+`revisar-partida-hallazgos.md`). Detalle completo, hallazgos con file:line y piezas de trabajo en
+[19-post-combate-y-recompensas-mision.md](19-post-combate-y-recompensas-mision.md).
+
+**Actualización (2026-08-12):** diseño cerrado (sin implementar todavía) de un validador de
+"grounding" de la acción del JUGADOR contra el catálogo real — arma que no lleva, NPC/fauna/flora/
+edificio inventado o presente-pero-ausente, anacronismo en su propio texto — el lado simétrico de
+la familia de detectores "narración-vs-mecánica" que ya protege al Narrador. Plan completo,
+hallazgos de exploración y borrador de frases en el nuevo
+[18-validacion-accion-jugador.md](18-validacion-accion-jugador.md). Restricción de diseño clave:
+el mundo está solo al ~1% de lore (Las Llanuras del Viento Rojo), así que el validador lee siempre
+el catálogo en vivo, nunca una lista quemada — crece solo con el lore, nunca hay que tocarlo al
+ampliar contenido.
+
 **Actualización (2026-08-07):** el catálogo de Profesiones (único pendiente real que quedaba del
 punto de abajo, aparte del benchmark de `llama3.2` y las líneas pausadas) queda cerrado — ver
 [09-panel-personaje.md](09-panel-personaje.md) § 8 y la memoria del rediseño (recolectoras vs

@@ -1457,3 +1457,43 @@ prompt del Narrador con instrucciones más explícitas sobre tono-reflejado-en-l
 atribución-de-diálogo, más que seguir añadiendo detectores post-hoc — la lista de detectores ya
 cubre bien los casos de "hecho mecánico contradicho", pero tono/forma es un problema categóricamente
 distinto.
+
+## 2026-08-12 — Orco Enfurecido (ya MUERTO) narrado atacando a Gorhorn durante una cacería de Múrgol, en otra ubicación
+
+**Síntoma**: partida `cms82odjc000qri0up7n1msni`. A las 08:36 Gorhorn remata al Orco Enfurecido
+(`NpcState` real: `MUERTO`, `saqueado`, confirmado en `auditSave.ts`). A las 10:00, ya en Los
+Pilares Rotos (ubicación distinta de donde murió el orco, Hondonada del Eco), el jugador escribe
+"Salgo a cazar y ataco a 'Múrgol'." — sin mencionar al orco en ningún momento. La narración,
+sin embargo, dice: *"El orco enfurecido se da la vuelta bruscamente... Antes de que Gorhorn pueda
+reaccionar, el orco se lanza hacia él con un rugido atronador."* — el cadáver ya saqueado narrado
+como si atacara de nuevo, en un turno que ni siquiera lo menciona. Mecánicamente el objetivo real
+sigue siendo Múrgol en los turnos siguientes (loot/NpcState de Múrgol correctos), así que el efecto
+es solo de narración, pero es justo la clase de "el mundo no respeta su propia verdad" que más le
+importa a la usuaria (ver conversación de la misma sesión sobre el validador de grounding).
+
+**Causa raíz confirmada, dos fallos en cadena**:
+1. `detectNpcsInScene` (`npcScene.ts:302-315`) considera candidato a CUALQUIER NPC `kind: 'PRINCIPAL'`
+   sin importar ubicación (intencional: personajes de trama pueden aparecer en cualquier sitio) —
+   pero el filtro final (`matchNpcAliases` contra `haystack = [action, ...sessionFacts].join('\n')`,
+   línea 313) busca el alias tanto en la ACCIÓN como en los `sessionFacts` recientes. Los propios
+   hechos de la muerte del orco ("Orco enfurecido está muerto y no puede oponer resistencia", etc.)
+   contienen su nombre, así que siguen hicieron `match` turnos después, sin que la acción del
+   jugador lo mencionara — el cadáver "vuelve a estar en escena" solo porque se habló de su muerte
+   hace poco.
+2. Con el orco correctamente incluido en `possiblyResurrectedNpcNames` (turnResolution.ts:1601,
+   deriva de `npcsInScene` filtrado por `MUERTO`/`INCAPACITADO`), el detector
+   `hasResurrectedDeadNpc` (narrador.ts) debería haber forzado un reintento — pero
+   `RESURRECTION_LEAK_REGEX` no cubre el vocabulario real que usó el modelo ("se da la vuelta
+   bruscamente", "se lanza hacia él con un rugido atronador"), solo cosas como "reaparece"/"vuelve a
+   atacar"/"sigue vivo". **Verificado directamente**: `hasResurrectedDeadNpc(narracionReal, ['Orco
+   enfurecido'])` devuelve `false` con el texto real capturado en el log — el reintento nunca se
+   disparó.
+
+**Estado**: PENDIENTE, sin arreglar (reportado, no se aplica sin luz verde). Fix más directo y de
+menor riesgo: ampliar `RESURRECTION_LEAK_REGEX` (narrador.ts) con vocabulario de "gira hacia/se
+lanza hacia/embiste/carga contra" cuando el sujeto es un NPC ya resuelto — cierra este caso concreto
+sin tocar `npcScene.ts`. El comportamiento de fondo (NPCs `PRINCIPAL` ya muertos siguiendo siendo
+"candidatos" varios turnos por sus propios hechos de muerte) es más discutible de tocar: es el mismo
+mecanismo que mantiene vivas conversaciones/continuidad con NPCs reales sin repetir su nombre cada
+turno, así que recortarlo podría romper casos legítimos — no se propone tocarlo salvo que este
+patrón se repita con otros NPCs.
