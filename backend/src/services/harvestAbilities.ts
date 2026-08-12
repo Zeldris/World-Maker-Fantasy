@@ -67,6 +67,21 @@ const HARVEST_ABILITIES: HarvestAbilityUnlock[] = [
       category: 'profesion',
     },
   },
+  // Bug real encontrado jugando en vivo (2026-08-13, "no veo la habilidad de recolección para
+  // herborista"): existía la profesión (professions.ts) y el catálogo (HarvestYield método
+  // EXTRACCION), pero nunca su botón — herborista se quedó fuera de HARVEST_ABILITIES desde el
+  // rediseño de profesiones original, mismo hueco que ya se cerró antes para desollador.
+  {
+    oficio: 'herborista',
+    metodo: 'EXTRACCION',
+    ability: {
+      name: 'Recolectar hierbas',
+      icon: '🌿',
+      description: 'Busca hierbas o flores medicinales ya localizadas en la zona, o explora en busca de alguna nueva.',
+      promptText: 'Busco hierbas o flores medicinales por la zona.',
+      category: 'profesion',
+    },
+  },
 ];
 
 /// Qué habilidad base recolectora se desbloquea al alcanzar nivel 1 en `oficio` — mismo criterio
