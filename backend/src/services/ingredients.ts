@@ -52,6 +52,29 @@ export function totalQuantity(rows: InventoryRowLike[], ingredient: IngredientRe
   return rows.filter((r) => matchesRow(r, ingredient.match, catalogBySlug)).reduce((sum, r) => sum + quantityOf(r.name), 0);
 }
 
+export interface IngredientStatus {
+  label: string;
+  tienes: number;
+  necesitas: number;
+  met: boolean;
+}
+
+// Deshabilitar recetas ya desbloqueadas si faltan materiales (2026-08-13, petición explícita: "que
+// salgan deshabilitadas si no cumples las condiciones... el hover con la información que saque los
+// recursos necesarios y cuántos tienes... tipo 5/10"). A diferencia de `totalQuantity`/`checkRecipe`
+// (que solo dicen qué FALTA), esto devuelve TODOS los ingredientes con su "tienes/necesitas" — hace
+// falta el conteo también de los que ya cumples, para el "5/5" del hover, no solo de los que no.
+export function checkIngredients(
+  requirements: IngredientRequirement[],
+  rows: InventoryRowLike[],
+  catalogBySlug: Map<string, CatalogLookup>,
+): IngredientStatus[] {
+  return requirements.map((req) => {
+    const tienes = totalQuantity(rows, req, catalogBySlug);
+    return { label: req.label, tienes, necesitas: req.cantidad, met: tienes >= req.cantidad };
+  });
+}
+
 export interface ConsumptionPlan {
   deleteIds: string[];
   updateRemainder: { id: string; newQuantity: number } | null;

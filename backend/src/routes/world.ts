@@ -273,12 +273,19 @@ function buildClassesSection(ctx: EnciclopediaBuildContext) {
 // Construcciones (roadmap 2026-07-20/21): recetas con requisitos reales de materiales. nounRegex
 // es detalle interno de detección de intención, no de catálogo — no serializa limpio en JSON
 // (RegExp → "{}"), así que se omite explícitamente de la respuesta.
+// `oficio`/`tier` sumados 2026-08-13 (petición explícita: "las habilidades de las cuales no
+// tengamos suficiente nivel en profesión que no salgan [en Habilidades]... si quieres consultar
+// el listado por nivel vas a la enciclopedia") — Habilidades ahora solo muestra lo YA desbloqueado
+// (HabilidadesPanel.tsx), así que la Enciclopedia pasa a ser el único sitio que enseña el roster
+// completo con su requisito de nivel.
 function buildConstructionRecipesSection(ctx: EnciclopediaBuildContext) {
-  return CONSTRUCTION_RECIPES.map(({ key, name, description, raza, requirements }) => ({
+  return CONSTRUCTION_RECIPES.map(({ key, name, description, raza, oficio, tier, requirements }) => ({
     key,
     name,
     description,
     raza: raza ?? null,
+    oficio: oficio ?? null,
+    tier: tier ?? null,
     requirements,
     imagePrompts: ctx.imagePromptsFor('construccion', key),
     imageUrls: imageUrlsFor('construccion', key),
@@ -289,12 +296,14 @@ function buildConstructionRecipesSection(ctx: EnciclopediaBuildContext) {
 // Construcciones (contenido estático, sin fila de BD, sin gateo de descubrimiento). `oficio` en
 // vez de `raza` como eje de agrupado en el frontend. `nounRegex`/`verbRegex` se omiten igual que
 // `nounRegex` de construcciones (detalle interno de detección, no serializa limpio en JSON).
+// `tier` sumado 2026-08-13, mismo motivo que en Construcciones (arriba).
 function buildCraftingRecipesSection(ctx: EnciclopediaBuildContext) {
-  return CRAFTING_RECIPES.map(({ key, resultName, resultDescription, oficio, ingredients }) => ({
+  return CRAFTING_RECIPES.map(({ key, resultName, resultDescription, oficio, tier, ingredients }) => ({
     key,
     name: resultName,
     description: resultDescription,
     oficio: oficio ?? null,
+    tier: tier ?? null,
     requirements: ingredients,
     imagePrompts: ctx.imagePromptsFor('crafteo', key),
     imageUrls: imageUrlsFor('crafteo', key),

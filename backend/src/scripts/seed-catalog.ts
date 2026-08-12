@@ -269,7 +269,7 @@ async function main() {
   // Backfill de InventoryItem huérfanas (2026-08-13, bugs reales jugando en vivo: "las
   // estadísticas del inventario inicial no salen" + "el efecto del mapa no funciona y sale como
   // objeto sin categorizar, equipable en cualquier ranura") — dos rutas de creación de
-  // InventoryItem (startingInventory.ts, grantQuestRewardItems en turnResolution.ts) no copiaban
+  // InventoryItem (startingInventory.ts, grantQuestRewardItems en questResolution.ts) no copiaban
   // `catalogSlug`/`statBonuses` desde ItemCatalog antes de este fix; las filas ya creadas en
   // partidas EN CURSO se quedaron así para siempre, sin volver a pasar por ese código. Solo toca
   // filas cuyo nombre coincide EXACTO con un objeto de catálogo real, nunca uno inventado por el

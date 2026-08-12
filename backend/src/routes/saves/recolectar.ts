@@ -8,7 +8,7 @@ import { inventoryCapacityFor, totalInventoryUnits } from '../../services/invent
 import { effectiveInventorySlotsBonus } from '../../services/equipment.js';
 import { stripRegionArticle } from '../../services/population.js';
 import { quantityOf } from '../../services/ingredients.js';
-import { closeItemQuests } from '../../services/turnResolution.js';
+import { closeItemQuests } from '../../services/questResolution.js';
 import type { AttributeBlock } from '../../services/dice.js';
 import type { MetodoObtencion } from '@prisma/client';
 
@@ -306,6 +306,13 @@ export async function recolectarRoutes(app: FastifyInstance) {
             // buscando más elementos... debería poder volver a usarla, al igual que si cambiamos
             // de zona") — el cooldown también se salta si `currentLocationId` no coincide con
             // dónde se recolectó la última vez, aunque no hayan pasado los 30 min.
+            //
+            // Bug real de auditoría (2026-08-13): `{ not: save.currentLocationId }` con
+            // `currentLocationId` NULO (campo nullable — posible tras `creation.ts`) se traduce en
+            // Prisma como `IS NOT NULL`, cierto para CUALQUIER fuente ya recolectada antes — el
+            // cooldown quedaba inservible en ese estado en vez de bloquear. Con ubicación
+            // desconocida no hay "misma zona" que comprobar, así que esa rama del OR se omite del
+            // todo (fallo cerrado: solo puede saltar el cooldown por tiempo, nunca por ubicación).
             const result = await tx.worldPopulation.updateMany({
               where: {
                 worldId: save.worldId,
@@ -318,7 +325,7 @@ export async function recolectarRoutes(app: FastifyInstance) {
                       OR: [
                         { lastHarvestedAt: null },
                         { lastHarvestedAt: { lt: cooldownCutoff } },
-                        { lastHarvestedLocationId: { not: save.currentLocationId } },
+                        ...(save.currentLocationId ? [{ lastHarvestedLocationId: { not: save.currentLocationId } }] : []),
                       ],
                     }),
               },
@@ -398,14 +405,14 @@ export async function recolectarRoutes(app: FastifyInstance) {
         // endpoint determinista nunca pasaba por `narrateAndPersistTurn`, así que ninguna misión
         // `targetItemName` se cerraba nunca si el objeto venía de Minar/Talar/Desollar — mismo
         // criterio que turnResolution.ts, extraído a `closeItemQuests` para no duplicar la lógica.
-        await closeItemQuests(
+        await closeItemQuests({
           tx,
-          save.id,
-          save.worldId,
-          [...touched.values()].map((s) => s.catalogName),
-          save.worldState?.fictionalDateLabel ?? 'Día 1, mañana',
-          save.worldState?.fictionalMinutes ?? 480,
-        );
+          saveId: save.id,
+          worldId: save.worldId,
+          createdItemNames: [...touched.values()].map((s) => s.catalogName),
+          timeLabel: save.worldState?.fictionalDateLabel ?? 'Día 1, mañana',
+          fictionalMinutes: save.worldState?.fictionalMinutes ?? 480,
+        });
 
         return { touched, logEntry };
       });

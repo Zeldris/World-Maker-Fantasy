@@ -2,6 +2,7 @@ import { prisma } from '../lib/prisma.js';
 import { ollamaGenerate } from '../lib/ollama.js';
 import { env } from '../config/env.js';
 import { randomPacingDelayMs } from '../config/pacing.js';
+import { createInFlightClaimSet } from '../lib/inFlightClaimSet.js';
 
 /// Memoria de partida por capítulos (docs/01-analisis-producto.md § "Resumen/Memoria de partida",
 /// docs/10-niveles-xp-reino.md § 3.2/§ 7): cada N acciones del jugador, el backend (no el modelo)
@@ -21,16 +22,16 @@ export function shouldCreateChapter(actionsSinceLastSummary: number): boolean {
 // muestra al jugador en ese momento. Ahora se dispara en segundo plano sin esperar — pero eso abre
 // la puerta a que 2-3 turnos seguidos (mientras la generación de fondo todavía no ha escrito el
 // `SessionSummary`) vean `actionsSinceLastSummary >= 15` igual de cierto y disparen cada uno su
-// propia generación + su propio hito "capitulo" duplicado. Este Set evita eso: una vez reclamado
-// un capítulo para un saveId, no se vuelve a reclamar hasta que la generación de fondo termine
-// (con éxito o error) y lo libere.
-const pendingChapterGenerations = new Set<string>();
+// propia generación + su propio hito "capitulo" duplicado. Este candado evita eso: una vez
+// reclamado un capítulo para un saveId, no se vuelve a reclamar hasta que la generación de fondo
+// termine (con éxito o error) y lo libere. Compartido vía `createInFlightClaimSet`
+// (lib/inFlightClaimSet.ts) — mismo patrón exacto que `turnLock.ts`.
+const chapterClaims = createInFlightClaimSet<string>();
 
 /// Comprobación barata (dos consultas indexadas, nunca llama a Ollama): decide si toca capítulo
 /// nuevo y, si es así, reclama el turno para él en el acto — el caller debe programar
 /// `scheduleChapterSummaryGeneration` inmediatamente si esto devuelve true.
 export async function claimChapterIfDue(saveId: string): Promise<boolean> {
-  if (pendingChapterGenerations.has(saveId)) return false;
   // Bug real (auditoría 2026-08-06): el reclamo se hacía DESPUÉS de dos `await` (mismo hueco de
   // carrera "comprobar-esperar-actuar" ya cerrado varias veces en este proyecto para
   // construcción/saqueo/despiece) — dos turnos casi simultáneos para la misma partida (doble
@@ -38,9 +39,9 @@ export async function claimChapterIfDue(saveId: string): Promise<boolean> {
   // el `has()` de arriba antes de que ninguno reclamara, y los dos acababan disparando su propio
   // hito "capitulo" (500 XP cada uno) y su propio `SessionSummary` con el mismo `chapterNumber`
   // (sin `@@unique` que lo impida en el schema). Reclamar YA, antes de cualquier `await`, cierra
-  // el hueco: `Set.has`/`Set.add` son síncronos, así que el segundo turno ve el reclamo del
-  // primero sin ceder el control de por medio.
-  pendingChapterGenerations.add(saveId);
+  // el hueco: `claim` es síncrono, así que el segundo turno ve el reclamo del primero sin ceder
+  // el control de por medio.
+  if (!chapterClaims.claim(saveId)) return false;
 
   const lastSummary = await prisma.sessionSummary.findFirst({ where: { saveId }, orderBy: { chapterNumber: 'desc' } });
   const since = lastSummary?.createdAt ?? new Date(0);
@@ -50,7 +51,7 @@ export async function claimChapterIfDue(saveId: string): Promise<boolean> {
   if (!shouldCreateChapter(actionsSinceLastSummary)) {
     // Todavía no toca capítulo — libera el reclamo, el caller nunca va a llamar a
     // scheduleChapterSummaryGeneration/releaseChapterClaim para este `false`.
-    pendingChapterGenerations.delete(saveId);
+    chapterClaims.release(saveId);
     return false;
   }
 
@@ -64,7 +65,7 @@ export async function claimChapterIfDue(saveId: string): Promise<boolean> {
 /// reiniciar el proceso). El caller debe llamarla en el `catch` de esa transacción, nunca además
 /// de programar la generación de verdad.
 export function releaseChapterClaim(saveId: string): void {
-  pendingChapterGenerations.delete(saveId);
+  chapterClaims.release(saveId);
 }
 
 /// Genera y persiste el resumen de verdad (llamada lenta al Cronista) — SIN await desde el turno
@@ -78,7 +79,7 @@ export async function scheduleChapterSummaryGeneration(saveId: string, character
   } catch (err) {
     console.warn(`[capitulo] generación de resumen en segundo plano falló (saveId=${saveId}):`, err);
   } finally {
-    pendingChapterGenerations.delete(saveId);
+    chapterClaims.release(saveId);
   }
 }
 

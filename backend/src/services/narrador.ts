@@ -182,7 +182,7 @@ interface TurnContext {
   gisteraSeHaMarchado?: boolean;
   /// Ver `hasFalseInventoryReview` más abajo — nombres reales (ya sin sufijo de cantidad, ver
   /// `baseNameOf`) de TODO lo que el personaje lleva encima, solo cuando la acción de este turno
-  /// es una revisión de inventario/equipo (`detectsInventoryReviewIntent`, turnResolution.ts).
+  /// es una revisión de inventario/equipo (`detectsInventoryReviewIntent`, npcScene.ts).
   /// Vacío = no aplica este turno (no es una acción de revisar equipo, o el inventario tiene 0-1
   /// objetos y no hay nada real que omitir).
   possiblyFalseInventoryReviewNames?: string[];
@@ -704,68 +704,44 @@ export async function narrateAction(ctx: TurnContext & { roll?: RollResult }): P
       // pólvora), pero un 7B en CPU a veces lo ignora. No hace falta gastar un intento nuevo:
       // si este ya se ha ganado igualmente el reintento del cascadeo (attempt2/3), simplemente
       // no se devuelve todavía — se guarda por si TODOS los intentos fallan igual.
-      if (hasAnachronism(parsed.narration)) {
-        console.warn(`[narrador] intento ${idx + 1}/3 descartado por anacronismo, reintentando`);
-        if (idx === 0) ctx.onNarrationReset?.();
-        lastResult = parsed;
-        continue;
-      }
-      if (isTooSimilarToLast(parsed.narration, ctx.lastNarrationText)) {
-        console.warn(`[narrador] intento ${idx + 1}/3 descartado por repetir casi verbatim el turno anterior, reintentando`);
-        if (idx === 0) ctx.onNarrationReset?.();
-        lastResult = parsed;
-        continue;
-      }
-      if (hasEnglishLeak(parsed.narration)) {
-        console.warn(`[narrador] intento ${idx + 1}/3 descartado por fuga de inglés, reintentando`);
-        if (idx === 0) ctx.onNarrationReset?.();
-        lastResult = parsed;
-        continue;
-      }
-      if (hasFalseCombatHit(parsed.narration, ctx.combatBothMissed)) {
-        console.warn(`[narrador] intento ${idx + 1}/3 descartado por narrar un golpe que no conectó (ataque_falla/parada_en_seco), reintentando`);
-        if (idx === 0) ctx.onNarrationReset?.();
-        lastResult = parsed;
-        continue;
-      }
-      if (hasPrematureCombatResolution(parsed.narration, ctx.combatNotYetResolved)) {
-        console.warn(`[narrador] intento ${idx + 1}/3 descartado por narrar un combate ya resuelto sin ningún intercambio mecánico este turno, reintentando`);
-        if (idx === 0) ctx.onNarrationReset?.();
-        lastResult = parsed;
-        continue;
-      }
-      if (hasFalseItemUse(parsed.narration, ctx.possiblyFalseItemUseNames)) {
-        console.warn(`[narrador] intento ${idx + 1}/3 descartado por narrar el uso de un objeto que no se consumió de verdad, reintentando`);
-        if (idx === 0) ctx.onNarrationReset?.();
-        lastResult = parsed;
-        continue;
-      }
-      if (hasResurrectedDeadNpc(parsed.narration, ctx.possiblyResurrectedNpcNames)) {
-        console.warn(`[narrador] intento ${idx + 1}/3 descartado por narrar a un NPC incapacitado/muerto como si siguiera activo, reintentando`);
-        if (idx === 0) ctx.onNarrationReset?.();
-        lastResult = parsed;
-        continue;
-      }
-      if (hasGisteraReencuentroSinNombrar(parsed.narration, ctx.gisteraSeHaMarchado)) {
-        console.warn(`[narrador] intento ${idx + 1}/3 descartado por reintroducir a Gistera Koh sin nombrarla pese a haberse marchado para siempre, reintentando`);
-        if (idx === 0) ctx.onNarrationReset?.();
-        lastResult = parsed;
-        continue;
-      }
-      if (hasFalseTravelClaim(parsed, ctx.possiblyFalseTravelDestinationNames)) {
-        console.warn(`[narrador] intento ${idx + 1}/3 descartado por narrar una llegada a un destino sin resolver mecánicamente (2+ salidas posibles), reintentando`);
-        if (idx === 0) ctx.onNarrationReset?.();
-        lastResult = parsed;
-        continue;
-      }
-      if (hasFalsePhantomTravel(parsed, ctx.phantomTravelLocationNames)) {
-        console.warn(`[narrador] intento ${idx + 1}/3 descartado por narrar que abandona la ubicación actual sin ningún viaje resuelto mecánicamente (destino inventado/sin alias real), reintentando`);
-        if (idx === 0) ctx.onNarrationReset?.();
-        lastResult = parsed;
-        continue;
-      }
-      if (hasFalseInventoryReview(parsed.narration, ctx.possiblyFalseInventoryReviewNames)) {
-        console.warn(`[narrador] intento ${idx + 1}/3 descartado por narrar una revisión de inventario incompleta como si fuera exhaustiva, reintentando`);
+      // Validadores en cascada (refactor de deuda técnica, sin cambio de comportamiento): antes era
+      // un `if` casi idéntico por validador, copiado 11 veces. El ORDEN importa (es observable: el
+      // primer validador que falla es el que se reporta y el que decide si hay reintento), así que
+      // se recorre en el mismo orden que antes con un solo bucle interno.
+      const rejection = [
+        { check: () => hasAnachronism(parsed.narration), reason: 'anacronismo' },
+        { check: () => isTooSimilarToLast(parsed.narration, ctx.lastNarrationText), reason: 'repetir casi verbatim el turno anterior' },
+        { check: () => hasEnglishLeak(parsed.narration), reason: 'fuga de inglés' },
+        { check: () => hasFalseCombatHit(parsed.narration, ctx.combatBothMissed), reason: 'narrar un golpe que no conectó (ataque_falla/parada_en_seco)' },
+        {
+          check: () => hasPrematureCombatResolution(parsed.narration, ctx.combatNotYetResolved),
+          reason: 'narrar un combate ya resuelto sin ningún intercambio mecánico este turno',
+        },
+        { check: () => hasFalseItemUse(parsed.narration, ctx.possiblyFalseItemUseNames), reason: 'narrar el uso de un objeto que no se consumió de verdad' },
+        {
+          check: () => hasResurrectedDeadNpc(parsed.narration, ctx.possiblyResurrectedNpcNames),
+          reason: 'narrar a un NPC incapacitado/muerto como si siguiera activo',
+        },
+        {
+          check: () => hasGisteraReencuentroSinNombrar(parsed.narration, ctx.gisteraSeHaMarchado),
+          reason: 'reintroducir a Gistera Koh sin nombrarla pese a haberse marchado para siempre',
+        },
+        {
+          check: () => hasFalseTravelClaim(parsed, ctx.possiblyFalseTravelDestinationNames),
+          reason: 'narrar una llegada a un destino sin resolver mecánicamente (2+ salidas posibles)',
+        },
+        {
+          check: () => hasFalsePhantomTravel(parsed, ctx.phantomTravelLocationNames),
+          reason: 'narrar que abandona la ubicación actual sin ningún viaje resuelto mecánicamente (destino inventado/sin alias real)',
+        },
+        {
+          check: () => hasFalseInventoryReview(parsed.narration, ctx.possiblyFalseInventoryReviewNames),
+          reason: 'narrar una revisión de inventario incompleta como si fuera exhaustiva',
+        },
+      ].find((validator) => validator.check());
+
+      if (rejection) {
+        console.warn(`[narrador] intento ${idx + 1}/3 descartado por ${rejection.reason}, reintentando`);
         if (idx === 0) ctx.onNarrationReset?.();
         lastResult = parsed;
         continue;
@@ -991,15 +967,28 @@ export function hasFalseInventoryReview(narration: string, possiblyFalseInventor
 /// combate).
 const ITEM_CONSUMPTION_VERB_REGEX = /\b(aplic\w*|us[oó]|usa\w*|consum\w*|beb\w*|com[eoí]\w*|unt\w*|vend\w*|ingier\w*|traga\w*)\b/i;
 
+/// Deduplicación (refactor de deuda técnica, sin cambio de comportamiento): `hasFalseItemUse`,
+/// `hasResurrectedDeadNpc`, `hasFalseTravelClaim` y `hasFalsePhantomTravel` repetían el mismo
+/// algoritmo — partir en frases, normalizar cada una, y comprobar si matchea a la vez una regex de
+/// acción sospechosa y alguno de los nombres normalizados dados. Acepta uno o varios textos (los
+/// dos detectores de viaje comprueban tanto la prosa como `newFacts`) para no forzar a los
+/// callers de un solo texto a envolverlo en un array.
+const SENTENCE_SPLIT_REGEX = /(?<=[.!?])\s+/;
+
+function sentenceMatchesRegexAndName(text: string | string[], actionRegex: RegExp, normalizedNames: string[]): boolean {
+  const texts = Array.isArray(text) ? text : [text];
+  return texts
+    .flatMap((t) => t.split(SENTENCE_SPLIT_REGEX))
+    .some((sentence) => {
+      const normalizedSentence = normalizeText(sentence);
+      return actionRegex.test(normalizedSentence) && normalizedNames.some((name) => normalizedSentence.includes(name));
+    });
+}
+
 export function hasFalseItemUse(narration: string, possiblyFalseItemUseNames?: string[]): boolean {
   if (!possiblyFalseItemUseNames || possiblyFalseItemUseNames.length === 0) return false;
   const normalizedNames = possiblyFalseItemUseNames.map(normalizeText);
-  return narration
-    .split(/(?<=[.!?])\s+/)
-    .some((sentence) => {
-      const normalizedSentence = normalizeText(sentence);
-      return ITEM_CONSUMPTION_VERB_REGEX.test(normalizedSentence) && normalizedNames.some((name) => normalizedSentence.includes(name));
-    });
+  return sentenceMatchesRegexAndName(narration, ITEM_CONSUMPTION_VERB_REGEX, normalizedNames);
 }
 
 /// Narración-vs-mecánica, mismo patrón que `hasFalseCombatHit`/`hasFalseItemUse` (2026-08-01,
@@ -1026,12 +1015,7 @@ const RESURRECTION_LEAK_REGEX =
 export function hasResurrectedDeadNpc(narration: string, possiblyResurrectedNpcNames?: string[]): boolean {
   if (!possiblyResurrectedNpcNames || possiblyResurrectedNpcNames.length === 0) return false;
   const normalizedNames = possiblyResurrectedNpcNames.map(normalizeText);
-  return narration
-    .split(/(?<=[.!?])\s+/)
-    .some((sentence) => {
-      const normalizedSentence = normalizeText(sentence);
-      return RESURRECTION_LEAK_REGEX.test(normalizedSentence) && normalizedNames.some((name) => normalizedSentence.includes(name));
-    });
+  return sentenceMatchesRegexAndName(narration, RESURRECTION_LEAK_REGEX, normalizedNames);
 }
 
 /// Narración-vs-mecánica, variante de `hasResurrectedDeadNpc` (bug real jugando en vivo, visto ya
@@ -1080,11 +1064,7 @@ const FALSE_TRAVEL_VERB_REGEX =
 export function hasFalseTravelClaim(narration: NarrationResult, possiblyFalseTravelDestinationNames?: string[]): boolean {
   if (!possiblyFalseTravelDestinationNames || possiblyFalseTravelDestinationNames.length === 0) return false;
   const normalizedNames = possiblyFalseTravelDestinationNames.map(normalizeText);
-  const sentences = [narration.narration, ...narration.newFacts].flatMap((text) => text.split(/(?<=[.!?])\s+/));
-  return sentences.some((sentence) => {
-    const normalizedSentence = normalizeText(sentence);
-    return FALSE_TRAVEL_VERB_REGEX.test(normalizedSentence) && normalizedNames.some((name) => normalizedSentence.includes(name));
-  });
+  return sentenceMatchesRegexAndName([narration.narration, ...narration.newFacts], FALSE_TRAVEL_VERB_REGEX, normalizedNames);
 }
 
 /// Complementario a `hasFalseTravelClaim` (auditoría 2026-08-11, "pruebas por API"): aquel cubre
@@ -1099,9 +1079,5 @@ export function hasFalseTravelClaim(narration: NarrationResult, possiblyFalseTra
 export function hasFalsePhantomTravel(narration: NarrationResult, phantomTravelLocationNames?: string[]): boolean {
   if (!phantomTravelLocationNames || phantomTravelLocationNames.length === 0) return false;
   const normalizedNames = phantomTravelLocationNames.map(normalizeText);
-  const sentences = [narration.narration, ...narration.newFacts].flatMap((text) => text.split(/(?<=[.!?])\s+/));
-  return sentences.some((sentence) => {
-    const normalizedSentence = normalizeText(sentence);
-    return FALSE_TRAVEL_VERB_REGEX.test(normalizedSentence) && normalizedNames.some((name) => normalizedSentence.includes(name));
-  });
+  return sentenceMatchesRegexAndName([narration.narration, ...narration.newFacts], FALSE_TRAVEL_VERB_REGEX, normalizedNames);
 }

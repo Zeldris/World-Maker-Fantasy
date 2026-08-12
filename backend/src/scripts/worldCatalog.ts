@@ -1406,7 +1406,7 @@ export const npcs: NpcInput[] = [
     // "el loot del orco será todo menos el mapa, el mapa se te dará como resultado de dejar
     // inconsciente al orco") — ya no se saquea del cadáver, se entrega solo como recompensa real
     // de la misión "Acabar con el Orco Enfurecido" (Quest.rewardItems, ver
-    // completeNpcTargetQuests en turnResolution.ts), desacoplado del saqueo.
+    // completeNpcTargetQuests en questResolution.ts), desacoplado del saqueo.
     loadout: [
       { itemSlug: 'maza-orca', notas: 'Astillada, con sangre seca' },
       { itemSlug: 'amuleto-hueso' },

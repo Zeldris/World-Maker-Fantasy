@@ -1,8 +1,9 @@
-import { normalizeText } from './travel.js';
+import { normalizeText, buildAdjacency, shortestPath } from './travel.js';
 import type { AttributeBlock } from './dice.js';
 import type { SecondaryAttributeBlock } from './secondaryAttributes.js';
 import { checkRequisitos, type Requisitos } from './requisitos.js';
 import { totalQuantity, planConsumption, type IngredientRequirement, type CatalogLookup, type InventoryRowLike } from './ingredients.js';
+import type { Prisma } from '@prisma/client';
 
 export { quantityOf, baseNameOf, planConsumption } from './ingredients.js';
 
@@ -295,4 +296,86 @@ export function reinoBuildingCapacityForTier(tier: number): number {
     (r) => r.ayuntamientoNivel === tier,
   );
   return recipe?.reinoBuildingCapacity ?? 0;
+}
+
+/// Reglas de reino (2026-08-04, docs/17-reglas-construcciones-reino.md) — cupo por región, cercanía/
+/// cupo del Ayuntamiento, mejora en el nivel justo anterior, y unicidad del Ayuntamiento. Recibe
+/// `db` como parámetro (en vez de cerrar sobre `prisma`) para poder llamarse dos veces con el mismo
+/// código: una vez de solo lectura ANTES de la transacción (aviso al LLM, mejor esfuerzo) y otra
+/// vez con `tx`, DENTRO de la transacción, justo antes de crear/mejorar de verdad (auditoría
+/// 2026-08-04, bug real: sin la segunda llamada, dos turnos de "construir X" casi simultáneos
+/// podían colarse ambos por el primer chequeo y duplicar Ayuntamientos/Territorios — misma clase de
+/// carrera ya cerrada para crafteo con `freshInventoryRows`/`planCraftConsumption`).
+///
+/// Movida desde turnResolution.ts (refactor de deuda técnica 2026-08-13) — es lógica de dominio
+/// pura sobre construcción, no de orquestación de turno; GET /saves/:id/recipes-status
+/// (recipesStatus.ts) también la reutiliza en modo solo-lectura (mismo `prisma` en vez de `tx`,
+/// igual que la llamada "mejor esfuerzo" de turnResolution.ts) — antes ese endpoint solo miraba
+/// materiales/atributos y podía marcar como "disponible" un edificio de reino que turnResolution.ts
+/// iba a rechazar de todos modos (sin Ayuntamiento, fuera de región, cupo lleno...), dejando el
+/// botón de Habilidades/Enciclopedia habilitado sin motivo.
+export async function computeBuildBlockedReason(params: {
+  db: Prisma.TransactionClient;
+  saveId: string;
+  worldId: string;
+  buildRecipe: ConstructionRecipe;
+  activeRegion: string | null;
+  currentLocationRecord: { id: string };
+}): Promise<string | null> {
+  const { db, saveId, worldId, buildRecipe, activeRegion, currentLocationRecord } = params;
+  if (buildRecipe.maxPerRegion) {
+    const sameRegionCount = await db.building.count({
+      where: { saveId, recipeKey: buildRecipe.key, status: { in: ['ACTIVO', 'EN_CONSTRUCCION'] }, location: { region: activeRegion ?? undefined } },
+    });
+    if (sameRegionCount >= buildRecipe.maxPerRegion) {
+      return `ya tiene ${buildRecipe.name} activo en esta región (máximo ${buildRecipe.maxPerRegion} por región)`;
+    }
+  }
+  if (buildRecipe.requiresAyuntamiento) {
+    const ayuntamiento = await db.building.findFirst({
+      where: { saveId, recipeKey: 'ayuntamiento', status: 'ACTIVO' },
+      include: { location: true },
+    });
+    if (!ayuntamiento?.location) {
+      return 'necesita un Ayuntamiento construido antes de poder levantar esto';
+    }
+    if (ayuntamiento.location.region !== activeRegion) {
+      return 'debe construirse en la misma región donde está el Ayuntamiento';
+    }
+    const links = await db.locationLink.findMany({
+      where: { from: { worldId } },
+      select: { fromId: true, toId: true, minutosBase: true, terreno: true, riesgo: true },
+    });
+    const path = shortestPath(buildAdjacency(links), ayuntamiento.location.id, currentLocationRecord.id);
+    if (!path || path.totalMinutos > MAX_MINUTOS_DESDE_AYUNTAMIENTO) {
+      return 'está demasiado lejos del Ayuntamiento para depender de él';
+    }
+    const reinoCount = await db.building.count({
+      where: { saveId, recipeKey: { in: REINO_BUILDING_RECIPE_KEYS }, status: 'ACTIVO' },
+    });
+    const capacity = reinoBuildingCapacityForTier(ayuntamiento.tier ?? 1);
+    if (reinoCount >= capacity) {
+      return `el Ayuntamiento ya está en su cupo máximo de edificios de reino (${capacity})`;
+    }
+  }
+  if (buildRecipe.upgradesRecipeKey) {
+    const target = await db.building.findFirst({ where: { saveId, recipeKey: buildRecipe.upgradesRecipeKey } });
+    const expectedCurrentTier = (buildRecipe.ayuntamientoNivel ?? 1) - 1;
+    if (!target) {
+      return 'no tiene ningún Ayuntamiento que mejorar todavía';
+    }
+    if ((target.tier ?? 1) !== expectedCurrentTier) {
+      return 'su Ayuntamiento no está en el nivel justo anterior para esta mejora';
+    }
+  }
+  // Máximo 1 Ayuntamiento por partida (de facto, "por continente" — hoy solo Berig está en juego):
+  // solo aplica al tier 1 (construcción NUEVA, sin `upgradesRecipeKey`) — las mejoras ya están
+  // cubiertas por la comprobación de arriba, que exige que SÍ exista uno.
+  if (buildRecipe.key === 'ayuntamiento' && !buildRecipe.upgradesRecipeKey) {
+    const existing = await db.building.findFirst({ where: { saveId, recipeKey: 'ayuntamiento' } });
+    if (existing) {
+      return 'solo puede haber un Ayuntamiento por continente — hay que mejorar el que ya existe, no construir otro';
+    }
+  }
+  return null;
 }

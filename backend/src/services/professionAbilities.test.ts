@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { professionAbilityUnlocksFor, allProfessionAbilityUnlocks } from './professionAbilities.js';
 import { CRAFTING_RECIPES, detectsCraftIntent } from './crafting.js';
+import { CONSTRUCTION_RECIPES, detectsBuildIntent } from './construction.js';
 
 describe('professionAbilityUnlocksFor', () => {
   // Ids escalados por raza+región (2026-08-09, professions.ts) — el emparejamiento sigue siendo
@@ -39,16 +40,33 @@ describe('professionAbilityUnlocksFor', () => {
     expect(professionAbilityUnlocksFor('cazador', 1)).toEqual([]);
   });
 
-  it('todas las habilidades de oficio son de categoría "profesion" (su propia pestaña, nunca combate)', () => {
-    expect(allProfessionAbilityUnlocks().every((u) => u.ability.category === 'profesion')).toBe(true);
+  it('las de crafteo son "profesion" y las de construcción son "reino" (nunca combate)', () => {
+    expect(allProfessionAbilityUnlocks().every((u) => u.ability.category === (u.recipeCategory === 'construccion' ? 'reino' : 'profesion'))).toBe(true);
+  });
+
+  // Edificios de construction.ts con oficio propio (2026-08-13, petición explícita: "hay que
+  // añadir también los edificios como habilidades de construcción, al igual que el resto de
+  // elementos de profesiones") — la Choza sí tiene oficio+tier (a diferencia de Campamento/
+  // Ayuntamiento, que van como habilidad GENERAL en startingAbilities.ts por no tener oficio).
+  it('carpintero-orcos-llanuras nivel 2 desbloquea "Construir choza de piel y hueso"', () => {
+    const result = professionAbilityUnlocksFor('carpintero-orcos-llanuras', 2);
+    expect(result.map((a) => a.name)).toEqual(['Construir choza de piel y hueso']);
   });
 });
 
 describe('promptText de cada habilidad de oficio dispara de verdad su propia receta', () => {
   // Red de seguridad contra el error real que sería más fácil de cometer aquí: escribir un
-  // promptText que "suena bien" pero no case con el verbRegex/nounRegex de la receta, dejando el
-  // botón sin efecto real al pulsarlo.
-  it.each(allProfessionAbilityUnlocks())('$ability.name', ({ ability }) => {
+  // promptText que "suena bien" pero no case con el verbRegex/nounRegex (crafteo) o BUILD_VERB_
+  // REGEX/nounRegex (construcción) de la receta, dejando el botón sin efecto real al pulsarlo.
+  it.each(allProfessionAbilityUnlocks())('$ability.name', ({ ability, recipeCategory }) => {
+    if (recipeCategory === 'construccion') {
+      // Emparejado por description (única por receta, y es justo lo que buildAbilityFor copia tal
+      // cual) en vez de por oficio+tier: no hay ambigüedad hoy, pero mismo criterio que abajo.
+      const recipe = CONSTRUCTION_RECIPES.find((r) => r.description === ability.description);
+      expect(recipe).toBeDefined();
+      expect(detectsBuildIntent(recipe!, ability.promptText)).toBe(true);
+      return;
+    }
     // Emparejado por resultDescription (única por receta, y es justo lo que abilityFor copia tal
     // cual) en vez de por oficio+tier: herrero tier 3 tiene DOS recetas, así que emparejar solo
     // por esos dos campos sería ambiguo.

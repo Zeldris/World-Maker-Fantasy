@@ -1,5 +1,5 @@
 import { prisma } from '../lib/prisma.js';
-import { normalizeText, fuzzyMatchCandidates, fuzzyMatchesAnyStem, matchesAliasBoundary } from './travel.js';
+import { normalizeText, fuzzyMatchCandidates, fuzzyMatchesAnyStem, findFuzzyStemMatch, matchesAliasBoundary } from './travel.js';
 import type { NpcKind, CondicionFisica, Temperamento, WeaponCategory, EquipSlot, ItemTipo, Prisma, NpcState } from '@prisma/client';
 import type { Attribute, AttributeBlock } from './dice.js';
 
@@ -474,6 +474,68 @@ const VERBAL_ACCEPTANCE_REGEX =
 
 export function detectsVerbalAcceptanceIntent(action: string): boolean {
   return VERBAL_ACCEPTANCE_REGEX.test(normalizeText(action));
+}
+
+// Movido desde turnResolution.ts (refactor de deuda técnica 2026-08-13) — detectores puros
+// `(action) => boolean` sin relación con narrar/persistir un turno, misma familia que el resto de
+// `detectsXxx` de este archivo (loot/decapitar están conceptualmente ligados a un NPC en escena).
+const LOOT_INTENT_REGEX = /registr|saque|desped|coj|robo|compr|qued/;
+
+// Auditoría de typo-tolerance (roadmap 2026-07-19, P0.4 de Fable): mismo patrón que
+// matchNpcAliases/detectsAttackIntent — solo los stems literales de 5+ letras entran en la
+// tolerancia a erratas; "coj"/"robo"/"qued" (≤4 letras) se quedan solo con el regex exacto.
+const LOOT_INTENT_STEMS = ['registr', 'saque', 'desped', 'compr'];
+
+// Bug real (2026-07-29, jugando en vivo — "hice yo el daño al enemigo pero el daño lo recibí yo"):
+// la tolerancia a erratas de abajo (distancia Levenshtein ≤2) confunde palabras normales y muy
+// comunes con los stems de saqueo — "ataque"/"atacar"/"ataco" con "saque", "desde"/"después"/
+// "despido" con "desped", "coger" con "compr". Cualquier turno de combate que usara alguna de
+// estas (literal en varias habilidades de arma/raciales, ver weaponAbilities.ts/berigLore.ts, o
+// simplemente frecuente en cualquier narración) se clasificaba como saqueo — eso fuerza
+// `combateActivo` a false en turnResolution.ts: el intercambio real nunca se resolvía y el
+// jugador podía acabar herido solo por la propuesta libre del narrador, sin ningún golpe mecánico
+// real detrás. Reducir la tolerancia global a distancia 1 rompería el test ya existente de erratas
+// reales ("saqeo" a distancia 2 de "saque") — se excluyen por nombre en vez de eso, mismo criterio
+// que el resto de listas curadas del proyecto (nunca un regex/tolerancia genérica sin acotar).
+// La familia "atac-" (atacar/ataque/ataco/atacando/atacas/atacamos/atacan...) se excluye por
+// prefijo, ya que cubre muchas conjugaciones; el resto son colisiones sueltas sin prefijo común.
+// "comer"/"comió" (2026-07-29, auditoría tras el bug de "ataque"): colisionan con "compr" —
+// justo la palabra que usaría cualquier acción de comer un consumible para recuperar energía
+// (energy.ts/itemReference.ts § detectEnergyItemUse), encontrada auditando el resto de listas de
+// tolerancia a erratas del proyecto en busca de la misma clase de bug.
+const LOOT_FUZZY_EXCLUSIONS = new Set(['desde', 'despues', 'despido', 'coger', 'cogido', 'comer', 'comio']);
+
+export function detectsLootIntent(action: string): boolean {
+  const normalized = normalizeText(action);
+  if (LOOT_INTENT_REGEX.test(normalized)) return true;
+  const words = fuzzyMatchCandidates(normalized).filter((w) => !/^ata/.test(w));
+  return !!findFuzzyStemMatch(words, LOOT_INTENT_STEMS, LOOT_FUZZY_EXCLUSIONS);
+}
+
+// "Decapitar" (petición explícita, 2026-07-30: "un botón que solo sale cuando está incapacitado
+// para matarlo") — golpe de gracia determinista contra un enemigo YA incapacitado, sin tirada (no
+// puede resistir, ver `executeTargets` en turnResolution.ts). Palabras de 5+ letras, mismo
+// criterio de tolerancia a erratas que el resto de detectores de este archivo.
+const EXECUTE_INTENT_REGEX = /remat|decapit|degoll|ejecut/;
+const EXECUTE_INTENT_STEMS = ['remat', 'decapit', 'degoll', 'ejecut'];
+
+export function detectsExecuteIntent(action: string): boolean {
+  const normalized = normalizeText(action);
+  if (EXECUTE_INTENT_REGEX.test(normalized)) return true;
+  const words = fuzzyMatchCandidates(normalized);
+  return !!findFuzzyStemMatch(words, EXECUTE_INTENT_STEMS);
+}
+
+// Revisar inventario/equipo (auditoría 2026-08-11, "pruebas por API" — ver hasFalseInventoryReview
+// en narrador.ts). Sin tolerancia a erratas a propósito: una detección de menos aquí solo pierde
+// el chequeo extra de esta acción concreta (sin coste real), mientras que sumar otra lista de
+// stems de 5+ letras es exactamente la clase de riesgo de colisión que ya causó el bug real de
+// "cazar"~"hagar" más arriba en este mismo archivo — no vale la pena para un detector de bajo
+// riesgo como este.
+const INVENTORY_REVIEW_INTENT_REGEX = /\brevis\w*\s+(mi|el|su|los?|las?)\s+(equipo|inventario|mochila|pertenencias|objetos)\b|\b(compruebo|comprueba|inspeccion\w*)\s+(mi|el|su|lo que)\s*(equipo|inventario|mochila|llevo|lleva)?\b|\bmiro (mi|el|su) (inventario|equipo|mochila)\b/;
+
+export function detectsInventoryReviewIntent(action: string): boolean {
+  return INVENTORY_REVIEW_INTENT_REGEX.test(normalizeText(action));
 }
 
 /// Bug real encontrado auditando la partida de Gorhorn (2026-07-23, "revisar partida"): una

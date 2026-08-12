@@ -183,6 +183,40 @@ describe('POST /saves/:id/recolectar/confirmar', () => {
     );
   });
 
+  // Bug real de auditoría (2026-08-13): `{ not: save.currentLocationId }` con `currentLocationId`
+  // nulo se traduce en Prisma como `IS NOT NULL` — cierto para CUALQUIER fuente ya recolectada
+  // antes, inutilizando el cooldown entero en vez de bloquear. Con ubicación desconocida esa rama
+  // del OR debe omitirse del todo (solo tiempo puede saltar el cooldown, nunca "otra ubicación").
+  it('con currentLocationId nulo, el guard NO incluye la rama de "otra ubicación" (evita el `IS NOT NULL` que invalidaría el cooldown)', async () => {
+    findUniqueSave.mockResolvedValueOnce({
+      id: 'save1',
+      worldId: 'world1',
+      characterName: 'Gorhorn',
+      currentLocationId: null,
+      attributes: { fuerza: 10, constitucion: 10 },
+      worldState: { fictionalDateLabel: 'Día 1, mañana', fictionalMinutes: 480 },
+    });
+    findFirstHarvestYield.mockResolvedValue({ cantidad: 3, item: { slug: 'piedra', name: 'Piedra' } });
+    updateManyWorldPopulation.mockResolvedValue({ count: 1 });
+    createInventoryItem.mockResolvedValue({ id: 'item1' });
+    const app = await buildApp();
+
+    await app.inject({
+      method: 'POST',
+      url: '/saves/save1/recolectar/confirmar',
+      payload: { selections: [{ sourceSlug: 'roca-pilares-rotos', itemSlug: 'piedra', cantidad: 3 }] },
+    });
+
+    expect(updateManyWorldPopulation).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          OR: [{ lastHarvestedAt: null }, { lastHarvestedAt: { lt: expect.any(Date) } }],
+        }),
+        data: expect.objectContaining({ lastHarvestedAt: expect.any(Date), lastHarvestedLocationId: null }),
+      }),
+    );
+  });
+
   it('en cooldown (recolectado hace poco), la actualización de población no encuentra fila y no da nada', async () => {
     findFirstHarvestYield.mockResolvedValue({ cantidad: 3, item: { slug: 'piedra', name: 'Piedra' } });
     // El guard atómico (poblacion+cooldown en el WHERE) es lo que de verdad bloquea — se simula

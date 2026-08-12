@@ -1,7 +1,8 @@
+import { createInFlightClaimSet } from '../lib/inFlightClaimSet.js';
+
 /// Candado de turno en memoria (auditoría de código completa, 2026-08-07) — mismo patrón exacto
-/// que `pendingChapterGenerations` (chapterSummary.ts): un `Set` síncrono, reclamado ANTES de
-/// cualquier `await`, para cerrar el hueco de "comprobar-esperar-actuar" sin necesitar ninguna
-/// columna nueva ni locking de base de datos.
+/// que `pendingChapterGenerations` (chapterSummary.ts), ahora compartido vía
+/// `createInFlightClaimSet` (lib/inFlightClaimSet.ts).
 ///
 /// Bug real que cierra (hallazgo de auditoría, no reproducido en vivo todavía): `/turn/narrate`
 /// lee el `Save` fresco al empezar, pero entre eso y el commit final de la transacción pasan
@@ -20,22 +21,18 @@
 /// autocura solo si el proceso se reinicia a mitad de una narración (un candado persistido en DB
 /// necesitaría una caducidad a mano para no dejar una partida atascada para siempre tras un
 /// cuelgue).
-const saveIdsWithTurnInFlight = new Set<string>();
+const turnClaims = createInFlightClaimSet<string>();
 
 /// Reclama el turno para `saveId` — `false` si ya hay uno en curso (el caller debe responder 409
-/// sin más, nunca seguir adelante). Síncrono y sin ningún `await` de por medio a propósito, para
-/// que dos peticiones casi simultáneas no puedan pasar ambas el `has()` antes de que ninguna
-/// reclame (mismo criterio que `claimChapterIfDue`).
+/// sin más, nunca seguir adelante).
 export function claimTurnInFlight(saveId: string): boolean {
-  if (saveIdsWithTurnInFlight.has(saveId)) return false;
-  saveIdsWithTurnInFlight.add(saveId);
-  return true;
+  return turnClaims.claim(saveId);
 }
 
 /// Libera el candado — el caller debe llamarla exactamente una vez por cada `claimTurnInFlight`
-/// que devolvió `true`, tanto si el turno terminó bien como si falló (mismo criterio que
-/// `releaseChapterClaim`: sin esto en el camino de error, un turno que revienta a mitad dejaría la
-/// partida bloqueada para el resto de la sesión del servidor).
+/// que devolvió `true`, tanto si el turno terminó bien como si falló (sin esto en el camino de
+/// error, un turno que revienta a mitad dejaría la partida bloqueada para el resto de la sesión
+/// del servidor).
 export function releaseTurnInFlight(saveId: string): void {
-  saveIdsWithTurnInFlight.delete(saveId);
+  turnClaims.release(saveId);
 }

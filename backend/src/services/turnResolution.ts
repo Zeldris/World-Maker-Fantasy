@@ -5,6 +5,7 @@ import { xpForRollSuccess, xpForHitos, applyXp, type ProgressionResult, type Hit
 import { alivioForLevel, xpForCraftSuccess, professionLevelForXp } from './professionProgress.js';
 import { tickKingdom, daysCrossed, DEFAULT_KINGDOM_STATS } from './kingdomTick.js';
 import { appendSessionFacts, selectRelevantFacts } from './worldFacts.js';
+import { closeItemQuests, completeNpcTargetQuests, grantQuestRewardItems, questRewardNarrationFor, type QuestCompletedInfo } from './questResolution.js';
 import {
   applyFactionRepDelta,
   effectiveTemperamento,
@@ -22,6 +23,9 @@ import {
   detectsHostileSearchIntent,
   detectsDialogueIntent,
   detectsVerbalAcceptanceIntent,
+  detectsLootIntent,
+  detectsExecuteIntent,
+  detectsInventoryReviewIntent,
   scopeFor,
   pickAmbientEncounterCandidate,
   buildNpcInScene,
@@ -39,7 +43,7 @@ import {
   type CombatExchangeDisplay,
 } from './combatExchange.js';
 import { npcCombatAbilitiesFor, chooseNpcAbility } from './npcCombatAbilities.js';
-import { detectHarvest } from './harvest.js';
+import { detectHarvest, type HarvestMatch } from './harvest.js';
 import { detectItemReference, detectMedicalItemUse, detectEnergyItemUse, missingItemBlockFor } from './itemReference.js';
 import { energiaMaxFor, nextEnergia } from './energy.js';
 import { WEAPON_ABILITY_LEVEL_AVANZADA, dualWieldAdjustedDifficulty, weaponCategoryForRealAbilityName, type EquippedWeaponSlot } from './weaponAbilities.js';
@@ -54,19 +58,17 @@ import {
 import {
   detectsBuildIntent,
   checkRecipe,
-  planConsumption,
   planRecipeConsumption,
   baseNameOf,
   quantityOf,
   CONSTRUCTION_RECIPES,
-  REINO_BUILDING_RECIPE_KEYS,
-  reinoBuildingCapacityForTier,
   companionSlotsForRecipeKey,
-  MAX_MINUTOS_DESDE_AYUNTAMIENTO,
+  computeBuildBlockedReason,
   type ConstructionRecipe,
   type RecipeCheck,
 } from './construction.js';
 import { shortfallLabel } from './requisitos.js';
+import type { CatalogLookup, InventoryRowLike } from './ingredients.js';
 import { classAbilityUnlocksFor } from './classAbilities.js';
 import { professionAbilityUnlocksFor } from './professionAbilities.js';
 import type { StartingAbility } from './startingAbilities.js';
@@ -76,14 +78,10 @@ import { decrementPopulationOnDeath, stripRegionArticle } from './population.js'
 import {
   destinationsFrom,
   normalizeText,
-  fuzzyMatchCandidates,
-  findFuzzyStemMatch,
   initialLocationSlugFor,
   matchDestination,
   detectsTravelIntent,
   detectsVagueMovementIntent,
-  buildAdjacency,
-  shortestPath,
   type TravelResolution,
 } from './travel.js';
 import { detectsRestIntent, type Produccion } from './timedActions.js';
@@ -113,64 +111,6 @@ import { Prisma } from '@prisma/client';
 import type { CondicionFisica, Dificultad, AbilityEffect, AbilityRol } from '@prisma/client';
 
 const REINO_XP = { territory: 150, buildingActive: 100, firstSubject: 100, subject: 25 } as const;
-
-const LOOT_INTENT_REGEX = /registr|saque|desped|coj|robo|compr|qued/;
-
-// Auditoría de typo-tolerance (roadmap 2026-07-19, P0.4 de Fable): mismo patrón que
-// matchNpcAliases/detectsAttackIntent — solo los stems literales de 5+ letras entran en la
-// tolerancia a erratas; "coj"/"robo"/"qued" (≤4 letras) se quedan solo con el regex exacto.
-const LOOT_INTENT_STEMS = ['registr', 'saque', 'desped', 'compr'];
-
-// Bug real (2026-07-29, jugando en vivo — "hice yo el daño al enemigo pero el daño lo recibí yo"):
-// la tolerancia a erratas de abajo (distancia Levenshtein ≤2) confunde palabras normales y muy
-// comunes con los stems de saqueo — "ataque"/"atacar"/"ataco" con "saque", "desde"/"después"/
-// "despido" con "desped", "coger" con "compr". Cualquier turno de combate que usara alguna de
-// estas (literal en varias habilidades de arma/raciales, ver weaponAbilities.ts/berigLore.ts, o
-// simplemente frecuente en cualquier narración) se clasificaba como saqueo — eso fuerza
-// `combateActivo` a false en turnResolution.ts: el intercambio real nunca se resolvía y el
-// jugador podía acabar herido solo por la propuesta libre del narrador, sin ningún golpe mecánico
-// real detrás. Reducir la tolerancia global a distancia 1 rompería el test ya existente de erratas
-// reales ("saqeo" a distancia 2 de "saque") — se excluyen por nombre en vez de eso, mismo criterio
-// que el resto de listas curadas del proyecto (nunca un regex/tolerancia genérica sin acotar).
-// La familia "atac-" (atacar/ataque/ataco/atacando/atacas/atacamos/atacan...) se excluye por
-// prefijo, ya que cubre muchas conjugaciones; el resto son colisiones sueltas sin prefijo común.
-// "comer"/"comió" (2026-07-29, auditoría tras el bug de "ataque"): colisionan con "compr" —
-// justo la palabra que usaría cualquier acción de comer un consumible para recuperar energía
-// (energy.ts/itemReference.ts § detectEnergyItemUse), encontrada auditando el resto de listas de
-// tolerancia a erratas del proyecto en busca de la misma clase de bug.
-const LOOT_FUZZY_EXCLUSIONS = new Set(['desde', 'despues', 'despido', 'coger', 'cogido', 'comer', 'comio']);
-
-export function detectsLootIntent(action: string): boolean {
-  const normalized = normalizeText(action);
-  if (LOOT_INTENT_REGEX.test(normalized)) return true;
-  const words = fuzzyMatchCandidates(normalized).filter((w) => !/^ata/.test(w));
-  return !!findFuzzyStemMatch(words, LOOT_INTENT_STEMS, LOOT_FUZZY_EXCLUSIONS);
-}
-
-// "Decapitar" (petición explícita, 2026-07-30: "un botón que solo sale cuando está incapacitado
-// para matarlo") — golpe de gracia determinista contra un enemigo YA incapacitado, sin tirada (no
-// puede resistir, ver `executeTargets` más abajo). Palabras de 5+ letras, mismo criterio de
-// tolerancia a erratas que el resto de detectores de este archivo.
-const EXECUTE_INTENT_REGEX = /remat|decapit|degoll|ejecut/;
-const EXECUTE_INTENT_STEMS = ['remat', 'decapit', 'degoll', 'ejecut'];
-
-export function detectsExecuteIntent(action: string): boolean {
-  const normalized = normalizeText(action);
-  if (EXECUTE_INTENT_REGEX.test(normalized)) return true;
-  const words = fuzzyMatchCandidates(normalized);
-  return !!findFuzzyStemMatch(words, EXECUTE_INTENT_STEMS);
-}
-
-// Revisar inventario/equipo (auditoría 2026-08-11, "pruebas por API" — ver hasFalseInventoryReview
-// en narrador.ts). Sin tolerancia a erratas a propósito: una detección de menos aquí solo pierde
-// el chequeo extra de esta acción concreta (sin coste real), mientras que sumar otra lista de
-// stems de 5+ letras es exactamente la clase de riesgo de colisión que ya causó el bug real de
-// "cazar"~"hagar" en npcScene.ts — no vale la pena para un detector de bajo riesgo como este.
-const INVENTORY_REVIEW_INTENT_REGEX = /\brevis\w*\s+(mi|el|su|los?|las?)\s+(equipo|inventario|mochila|pertenencias|objetos)\b|\b(compruebo|comprueba|inspeccion\w*)\s+(mi|el|su|lo que)\s*(equipo|inventario|mochila|llevo|lleva)?\b|\bmiro (mi|el|su) (inventario|equipo|mochila)\b/;
-
-export function detectsInventoryReviewIntent(action: string): boolean {
-  return INVENTORY_REVIEW_INTENT_REGEX.test(normalizeText(action));
-}
 
 // Bug real (auditoría 2026-07-28): race entre worldTick.ts resolviendo un CharacterTransit vencido
 // y POST /saves/:id/transit/cancel — el worker "reclama" el tránsito moviendo busyUntil al futuro
@@ -352,19 +292,6 @@ export interface KingdomFoundedInfo {
   /// true solo para Gorhorn — el nombre del reino queda bloqueado, verificado también en el
   /// backend al fundar de verdad (POST /saves/:id/reino/fundar), no solo aquí.
   nameLocked: boolean;
-}
-
-/// Notificación de misión completada (2026-08-13, ver NarrateAndPersistResult.questCompletedInfo)
-/// — `logEntryId`/`text` son los de la fila REAL ya persistida por questRewardNarrationFor (nunca
-/// un id/texto sintético), para que el frontend pueda insertarla como una LogEntry más, con marca
-/// visual de "misión completada" (mismo criterio que newQuestInfo, pero para el cierre en vez del
-/// alta).
-export interface QuestCompletedInfo {
-  logEntryId: string;
-  text: string;
-  title: string;
-  grantedItems: string[];
-  rewardXp: number;
 }
 
 export interface NarrateAndPersistResult {
@@ -1055,208 +982,89 @@ function resolveCombatExchangePhase(input: CombatExchangePhaseInput): CombatExch
   };
 }
 
-/// Reglas de reino (2026-08-04, docs/17-reglas-construcciones-reino.md) — cupo por región, cercanía/
-/// cupo del Ayuntamiento, mejora en el nivel justo anterior, y unicidad del Ayuntamiento. Recibe
-/// `db` como parámetro (en vez de cerrar sobre `prisma`) para poder llamarse dos veces con el mismo
-/// código: una vez de solo lectura ANTES de la transacción (aviso al LLM, mejor esfuerzo) y otra
-/// vez con `tx`, DENTRO de la transacción, justo antes de crear/mejorar de verdad (auditoría
-/// 2026-08-04, bug real: sin la segunda llamada, dos turnos de "construir X" casi simultáneos
-/// podían colarse ambos por el primer chequeo y duplicar Ayuntamientos/Territorios — misma clase de
-/// carrera ya cerrada para crafteo con `freshInventoryRows`/`planCraftConsumption`).
-async function computeBuildBlockedReason(
-  db: Prisma.TransactionClient,
-  saveId: string,
-  worldId: string,
-  buildRecipe: ConstructionRecipe,
-  activeRegion: string | null,
-  currentLocationRecord: { id: string },
-): Promise<string | null> {
-  if (buildRecipe.maxPerRegion) {
-    const sameRegionCount = await db.building.count({
-      where: { saveId, recipeKey: buildRecipe.key, status: { in: ['ACTIVO', 'EN_CONSTRUCCION'] }, location: { region: activeRegion ?? undefined } },
-    });
-    if (sameRegionCount >= buildRecipe.maxPerRegion) {
-      return `ya tiene ${buildRecipe.name} activo en esta región (máximo ${buildRecipe.maxPerRegion} por región)`;
-    }
-  }
-  if (buildRecipe.requiresAyuntamiento) {
-    const ayuntamiento = await db.building.findFirst({
-      where: { saveId, recipeKey: 'ayuntamiento', status: 'ACTIVO' },
-      include: { location: true },
-    });
-    if (!ayuntamiento?.location) {
-      return 'necesita un Ayuntamiento construido antes de poder levantar esto';
-    }
-    if (ayuntamiento.location.region !== activeRegion) {
-      return 'debe construirse en la misma región donde está el Ayuntamiento';
-    }
-    const links = await db.locationLink.findMany({
-      where: { from: { worldId } },
-      select: { fromId: true, toId: true, minutosBase: true, terreno: true, riesgo: true },
-    });
-    const path = shortestPath(buildAdjacency(links), ayuntamiento.location.id, currentLocationRecord.id);
-    if (!path || path.totalMinutos > MAX_MINUTOS_DESDE_AYUNTAMIENTO) {
-      return 'está demasiado lejos del Ayuntamiento para depender de él';
-    }
-    const reinoCount = await db.building.count({
-      where: { saveId, recipeKey: { in: REINO_BUILDING_RECIPE_KEYS }, status: 'ACTIVO' },
-    });
-    const capacity = reinoBuildingCapacityForTier(ayuntamiento.tier ?? 1);
-    if (reinoCount >= capacity) {
-      return `el Ayuntamiento ya está en su cupo máximo de edificios de reino (${capacity})`;
-    }
-  }
-  if (buildRecipe.upgradesRecipeKey) {
-    const target = await db.building.findFirst({ where: { saveId, recipeKey: buildRecipe.upgradesRecipeKey } });
-    const expectedCurrentTier = (buildRecipe.ayuntamientoNivel ?? 1) - 1;
-    if (!target) {
-      return 'no tiene ningún Ayuntamiento que mejorar todavía';
-    }
-    if ((target.tier ?? 1) !== expectedCurrentTier) {
-      return 'su Ayuntamiento no está en el nivel justo anterior para esta mejora';
-    }
-  }
-  // Máximo 1 Ayuntamiento por partida (de facto, "por continente" — hoy solo Berig está en juego):
-  // solo aplica al tier 1 (construcción NUEVA, sin `upgradesRecipeKey`) — las mejoras ya están
-  // cubiertas por la comprobación de arriba, que exige que SÍ exista uno.
-  if (buildRecipe.key === 'ayuntamiento' && !buildRecipe.upgradesRecipeKey) {
-    const existing = await db.building.findFirst({ where: { saveId, recipeKey: 'ayuntamiento' } });
-    if (existing) {
-      return 'solo puede haber un Ayuntamiento por continente — hay que mejorar el que ya existe, no construir otro';
-    }
-  }
-  return null;
-}
-
-/// Entrega real de los `InventoryItem` prometidos por `Quest.rewardItems` al completarse una
-/// misión (docs/19-post-combate-y-recompensas-mision.md, pieza 3). Antes ese campo era solo texto
-/// para mostrar en el panel (ver comentario en schema.prisma) — nunca creaba el objeto de verdad,
-/// la entrega dependía enteramente de que el loot normal del cadáver también lo incluyera.
-/// Deduplicado por nombre contra lo que el jugador YA tiene, para no duplicar si ya lo consiguió
-/// por otra vía (saqueo, crafteo...) antes de que la misión se cerrara — y para que llamar a esto
-/// dos veces sobre la misma misión ya recompensada no vuelva a crear nada.
-async function grantQuestRewardItems(tx: Prisma.TransactionClient, saveId: string, worldId: string, rewardItems: string[]): Promise<string[]> {
-  if (rewardItems.length === 0) return [];
-  const owned = await tx.inventoryItem.findMany({ where: { saveId }, select: { name: true } });
-  const ownedNormalized = new Set(owned.map((i) => normalizeText(i.name)));
-  const toGrant = rewardItems.filter((name) => !ownedNormalized.has(normalizeText(name)));
-  if (toGrant.length === 0) return [];
-  // Bug real jugando en vivo (2026-08-13): esta función creaba la InventoryItem con solo
-  // nombre/descripción genérica, sin `catalogSlug` ni `statBonuses` — el Mapa de las Llanuras
-  // entregado como recompensa salía "sin categorizar" en el inventario, equipable en CUALQUIER
-  // ranura (`isCompatibleWithSlot`, equipSlots.ts, trata "sin catalogSlug" como objeto narrativo
-  // suelto sin nada contra que validar, a propósito permisivo para eso) y su propio efecto
-  // (`effectKey`, MapaPanel.tsx) nunca se activaba, porque ese lookup también depende de
-  // catalogSlug. Se resuelve por nombre EXACTO contra ItemCatalog del mundo — mismo criterio que
-  // ya usa el saqueo/crafteo real (turnResolution.ts arriba), nunca un objeto "de recompensa" sin
-  // ficha real detrás si existe una.
-  const catalogRows = await tx.itemCatalog.findMany({ where: { worldId, name: { in: toGrant } } });
-  const catalogByName = new Map(catalogRows.map((c) => [c.name, c]));
-  await tx.inventoryItem.createMany({
-    data: toGrant.map((name) => {
-      const catalog = catalogByName.get(name);
-      return {
-        saveId,
-        name,
-        description: catalog?.description ?? 'Recompensa de misión.',
-        origin: 'recompensa de misión',
-        catalogSlug: catalog?.slug,
-        statBonuses: catalog?.statBonuses ?? Prisma.JsonNull,
-      };
-    }),
-  });
-  return toGrant;
-}
-
-/// Narración determinista de recompensa (docs/19 pieza 5) — mismo criterio de "nunca lo decide el
-/// modelo" que ya rige saqueo/despiece/crafteo. Solo se llama cuando hay algo real que anunciar
-/// (objetos concedidos de verdad esta vez, o XP) — nunca para una misión ya recompensada antes.
-function questRewardNarrationFor(questTitle: string, grantedItems: string[], rewardXp: number | null): string {
-  const parts: string[] = [];
-  if (grantedItems.length > 0) parts.push(`consigue ${grantedItems.join(', ')}`);
-  if (rewardXp) parts.push(`+${rewardXp} XP`);
-  return `Misión completada: "${questTitle}"${parts.length > 0 ? ` — ${parts.join(', ')}` : ''}.`;
-}
-
-/// Cierre determinista de misión "conseguir Z" (`Quest.targetItemName`) — cualquier objeto
-/// materializado de verdad esta transacción que mencione el nombre objetivo cierra la misión sola,
-/// sin pasar por el modelo. Extraída (auditoría 2026-08-11, "pruebas por API") de dentro de
-/// `narrateAndPersistTurn` para poder llamarla TAMBIÉN desde los endpoints deterministas nuevos
-/// del rediseño de profesiones (`recolectar.ts`/`cazar.ts` § confirmar) — antes solo vivía en el
-/// camino de turno normal (saqueo/despiece narrado/crafteo/`newItem`), así que cualquier misión
-/// "consígueme N de X" quedaba imposible de completar si X se obtenía minando/talando/cazando por
-/// el flujo real del jugador (los botones de Minar/Talar/Cazar), aunque el objeto se creara bien.
-/// `timeLabel`/`fictionalMinutes` (2026-08-13, pieza 3): para poder anunciar la recompensa con un
-/// `LogEntry` real, mismo criterio que el resto del motor — nunca solo un cambio de estado mudo.
-export async function closeItemQuests(
-  tx: Prisma.TransactionClient,
-  saveId: string,
-  worldId: string,
-  createdItemNames: string[],
-  timeLabel: string,
-  fictionalMinutes: number,
-): Promise<void> {
-  if (createdItemNames.length === 0) return;
-  const activeQuestsWithItem = await tx.quest.findMany({
-    where: { saveId, status: 'ACTIVA', targetItemName: { not: null } },
-  });
-  for (const quest of activeQuestsWithItem) {
-    const targetNormalized = normalizeText(quest.targetItemName!);
-    const conseguido = createdItemNames.some((name) => normalizeText(name).includes(targetNormalized));
-    if (conseguido) {
-      await tx.quest.update({ where: { id: quest.id }, data: { status: 'COMPLETADA' } });
-      const grantedItems = await grantQuestRewardItems(tx, saveId, worldId, quest.rewardItems);
-      if (grantedItems.length > 0 || quest.rewardXp) {
-        await tx.logEntry.create({
-          data: {
-            saveId,
-            channel: 'CHARACTER',
-            text: questRewardNarrationFor(quest.title, grantedItems, quest.rewardXp),
-            isPlayerAction: false,
-            timeLabel,
-            fictionalMinutes,
-          },
-        });
+/// Crafteo v1 — bloque de detección/aviso PRE-transacción, extraído de `narrateAndPersistTurn`
+/// (refactor de deuda técnica 2026-08-13). Puro (solo lee `inventoryRows`/`catalogBySlug` ya
+/// resueltos por el caller, nunca escribe) — `craftPossibleByKey` sigue haciendo falta tal cual
+/// más abajo, DENTRO de la transacción (revalidado con `tx`, ver `freshInventoryRows`), así que
+/// viaja de vuelta al caller en vez de consumirse aquí.
+function resolveCraftIntentContext(
+  action: string,
+  currentLocationSlug: string | null,
+  inventoryRows: InventoryRowLike[],
+  catalogBySlug: Map<string, CatalogLookup>,
+  attributes: AttributeBlock,
+  secondaryAttributes: SecondaryAttributeBlock,
+  alivioFor: (oficio: string | undefined) => number,
+): { craftPossibleByKey: Record<string, boolean>; blocks: string[] } {
+  const craftPossibleByKey: Record<string, boolean> = {};
+  const blocks: string[] = [];
+  for (const recipe of CRAFTING_RECIPES) {
+    const wants = detectsCraftIntent(recipe, action);
+    const alivio = alivioFor(recipe.oficio);
+    const possible = wants && canCraft(recipe, currentLocationSlug, inventoryRows, catalogBySlug, attributes, secondaryAttributes, alivio);
+    craftPossibleByKey[recipe.key] = possible;
+    if (wants && !possible) {
+      blocks.push(recipe.narrationWant);
+      const shortfalls = craftRequisitoShortfalls(recipe, attributes, secondaryAttributes, alivio);
+      if (shortfalls.length > 0) {
+        blocks.push(`Además, al personaje todavía le falta: ${shortfalls.map(shortfallLabel).join(', ')} para poder craftear ${recipe.resultName}.`);
       }
+    } else if (possible) {
+      blocks.push(recipe.narrationDo);
     }
   }
+  return { craftPossibleByKey, blocks };
 }
 
-/// Cierre determinista de misión "derrotar a X" (`Quest.targetNpcId`) + recompensa real (docs/19
-/// pieza 3) — extraído para no duplicar el mismo bloque (buscar quests activas por `targetNpcId`,
-/// cerrarlas, conceder `rewardItems`/`rewardXp`, narrar) entre el ataque normal y "Decapitar", los
-/// dos caminos que pueden dejar a un NPC INCAPACITADO/MUERTO. `condicionAlcanzada` decide el verbo
-/// de la narración de recompensa (mismo criterio que `npcFallsUnconsciousThisTurn` — INCAPACITADO
-/// y MUERTO cuentan igual como "derrotado" para efectos de misión).
-async function completeNpcTargetQuests(
-  tx: Prisma.TransactionClient,
-  saveId: string,
-  worldId: string,
-  npcId: string,
-  timeLabel: string,
-  fictionalMinutes: number,
-): Promise<QuestCompletedInfo | null> {
-  const activeQuestsWithNpc = await tx.quest.findMany({ where: { saveId, targetNpcId: npcId, status: 'ACTIVA' } });
-  let lastCompleted: QuestCompletedInfo | null = null;
-  for (const quest of activeQuestsWithNpc) {
-    await tx.quest.update({ where: { id: quest.id }, data: { status: 'COMPLETADA' } });
-    const grantedItems = await grantQuestRewardItems(tx, saveId, worldId, quest.rewardItems);
-    if (grantedItems.length > 0 || quest.rewardXp) {
-      const rewardText = questRewardNarrationFor(quest.title, grantedItems, quest.rewardXp);
-      const rewardEntry = await tx.logEntry.create({
-        data: {
-          saveId,
-          channel: 'CHARACTER',
-          text: rewardText,
-          isPlayerAction: false,
-          timeLabel,
-          fictionalMinutes,
-        },
-      });
-      lastCompleted = { logEntryId: rewardEntry.id, text: rewardText, title: quest.title, grantedItems, rewardXp: quest.rewardXp ?? 0 };
-    }
+interface BuildIntentContext {
+  buildRecipe: ConstructionRecipe | undefined;
+  buildRecipeCheck: RecipeCheck | null;
+  buildBlockedReason: string | null;
+  buildMode: boolean;
+  blocks: string[];
+}
+
+/// Construcción — bloque de detección/validación/aviso PRE-transacción, extraído de
+/// `narrateAndPersistTurn` (refactor de deuda técnica 2026-08-13). Usa `prisma` de solo lectura a
+/// propósito (mejor esfuerzo para el aviso al LLM, mismo criterio que tenía inline) — el gate real
+/// y obligatorio sigue siendo la segunda llamada a `computeBuildBlockedReason` DENTRO de la
+/// transacción, con `tx` (ver ese comentario, bug real de condición de carrera). Los 4 valores
+/// calculados aquí se siguen necesitando tal cual en el resto de la función (narración
+/// determinista, transacción, respuesta) — viajan de vuelta al caller sin resolverse aquí.
+async function resolveBuildIntentContext(params: {
+  action: string;
+  saveId: string;
+  worldId: string;
+  activeRegion: string | null;
+  currentLocationRecord: { id: string; kind: string; slug: string } | null;
+  inventoryRows: InventoryRowLike[];
+  catalogBySlug: Map<string, CatalogLookup>;
+  attributes: AttributeBlock;
+  secondaryAttributes: SecondaryAttributeBlock;
+  alivioFor: (oficio: string | undefined) => number;
+}): Promise<BuildIntentContext> {
+  const { action, saveId, worldId, activeRegion, currentLocationRecord, inventoryRows, catalogBySlug, attributes, secondaryAttributes, alivioFor } = params;
+  const buildRecipe: ConstructionRecipe | undefined = CONSTRUCTION_RECIPES.find((r) => detectsBuildIntent(r, action));
+  const buildRecipeCheck: RecipeCheck | null = buildRecipe
+    ? checkRecipe(buildRecipe, inventoryRows, catalogBySlug, attributes, secondaryAttributes, alivioFor(buildRecipe.oficio))
+    : null;
+  const buildBlockedReason: string | null =
+    buildRecipe && buildRecipeCheck?.met && currentLocationRecord
+      ? await computeBuildBlockedReason({ db: prisma, saveId, worldId, buildRecipe, activeRegion, currentLocationRecord })
+      : null;
+  const buildMode = !!buildRecipe && !!buildRecipeCheck?.met && !buildBlockedReason;
+  const blocks: string[] = [];
+  if (buildRecipe && buildRecipeCheck && !buildRecipeCheck.met) {
+    const faltantes = buildRecipeCheck.missing.map((m) => `${m.label} (tienes ${m.tienes}, necesitas ${m.necesitas})`).join(', ');
+    blocks.push(
+      `El personaje quiere construir ${buildRecipe.name}, pero todavía no cumple los requisitos: ${faltantes} — narra que lo intenta o lo planea, pero no que lo termina de verdad.`,
+    );
+  } else if (buildRecipe && buildBlockedReason) {
+    blocks.push(
+      `El personaje quiere construir ${buildRecipe.name}, pero no puede: ${buildBlockedReason} — narra que lo intenta o lo descubre, pero no que lo termina de verdad.`,
+    );
   }
-  return lastCompleted;
+  return { buildRecipe, buildRecipeCheck, buildBlockedReason, buildMode, blocks };
 }
 
 /// Recuperación de INCAPACITADO tras 6h de ficción / desaparición de un cadáver tras 48h (docs/19
@@ -1280,6 +1088,546 @@ async function applyCondicionTimeouts(tx: Prisma.TransactionClient, saveId: stri
       await tx.npcState.delete({ where: { id: state.id } });
     }
   }
+}
+
+interface LootModeResult {
+  actualLootedNames: string[];
+  newInventoryItems: NewInventoryItemInfo[];
+  createdItemNames: string[];
+  partiallyLootedSlugs: string[];
+  questRewardXp: number;
+  /// null si el número de objetos realmente saqueados coincidió con `lootPreviewCount` (el
+  /// preview en streaming, emitido ANTES de esta transacción, seguía siendo honesto) — el caller
+  /// solo tiene que sustituir `narration.narration` cuando no es null (auditoría 2026-08-06,
+  /// narración mentirosa si se pierde la carrera contra otro "saquear" casi simultáneo).
+  narrationOverride: string | null;
+}
+
+/// Saqueo (docs/12 § 4.5), extraído de la transacción de `narrateAndPersistTurn` (refactor de
+/// deuda técnica 2026-08-13) — entrada/salida acotada: solo toca `NpcState`/`InventoryItem`/
+/// `Quest` de los NPCs saqueados este turno, nada del resto del turno. El caller solo tiene que
+/// sumar/concatenar el resultado a sus propios acumuladores y aplicar `narrationOverride` si lo
+/// hay. La ÚNICA fuente de botín sigue siendo lo que el NPC lleva encima (NpcItem), nunca una
+/// invención del modelo.
+async function applyLootMode(params: {
+  tx: Prisma.TransactionClient;
+  lootTargets: NpcInScene[];
+  lootItemNames: string[] | null | undefined;
+  /// Longitud de `lootPreview` (calculado antes de la transacción, con `prisma`) — solo hace
+  /// falta el número para decidir si el preview en streaming sigue siendo honesto, no la lista
+  /// entera.
+  lootPreviewCount: number;
+  currentLocationId: string | null;
+  saveId: string;
+  characterName: string;
+}): Promise<LootModeResult> {
+  const { tx, lootTargets, lootItemNames, lootPreviewCount, currentLocationId, saveId, characterName } = params;
+  const actualLootedNames: string[] = [];
+  const newInventoryItems: NewInventoryItemInfo[] = [];
+  const createdItemNames: string[] = [];
+  const partiallyLootedSlugs: string[] = [];
+  let questRewardXp = 0;
+  for (const npc of lootTargets) {
+    const scope = scopeFor(npc.kind, currentLocationId);
+    // Revalidación anti-carrera (auditoría de deuda técnica 2026-08-04, mismo patrón ya cerrado
+    // para construcción/crafteo/despiece): `npc.saqueado`/`npc.lootedItemNames` vienen de
+    // `npcsInScene`, leído con `prisma` ANTES de esta transacción — dos turnos de "saqueo" casi
+    // simultáneos sobre el mismo NPC (doble clic, reintento de red, dos pestañas) podían pasar
+    // ambos el guard con la misma foto ya obsoleta y duplicar el botín de una sola muerte. Se
+    // relee fresco con `tx` justo antes de decidir qué llevarse.
+    const freshState = await tx.npcState.findUnique({ where: { saveId_npcId_scope: { saveId, npcId: npc.id, scope } } });
+    // NpcState: una vez saqueado DEL TODO, no hay nada más que ofrecer — se sigue saltando.
+    if (freshState?.saqueado) continue;
+    const yaTomados = freshState?.lootedItemNames ?? npc.lootedItemNames;
+    const itemsToLoot = (lootItemNames ? npc.items.filter((item) => lootItemNames.includes(item.name)) : npc.items).filter(
+      (item) => !yaTomados.includes(item.name),
+    );
+    for (const item of itemsToLoot) {
+      const created = await tx.inventoryItem.create({
+        data: {
+          saveId,
+          name: item.cantidad > 1 ? `${item.name} ×${item.cantidad}` : item.name,
+          description: item.notas ?? `Botín de ${npc.name}.`,
+          origin: `botín de ${npc.name}`,
+          // Los bonificadores de equipo (si el objeto los tenía en el catálogo) viajan con él —
+          // un hacha robada sigue dando su bonificador al equiparla.
+          statBonuses: item.statBonuses ?? Prisma.JsonNull,
+          catalogSlug: item.catalogSlug,
+        },
+      });
+      newInventoryItems.push({ ...created, slot: null, equipSlot: item.equipSlot, effectKey: item.effectKey, tipo: item.tipo });
+      createdItemNames.push(created.name);
+      actualLootedNames.push(created.name);
+    }
+    // Bug real (auditoría de código completa, 2026-08-07): el guard `npc.items.length > 0`
+    // saltaba ESTE BLOQUE ENTERO para un NPC con loadout vacío — `npc.items.every(...)` sobre un
+    // array vacío ya es `true` por definición (nada que tomar = todo tomado), así que quitar el
+    // guard basta.
+    const nuevosTomados = [...new Set([...yaTomados, ...itemsToLoot.map((item) => item.name)])];
+    const todoTomado = npc.items.every((item) => nuevosTomados.includes(item.name));
+    if (!todoTomado) partiallyLootedSlugs.push(npc.slug);
+    await tx.npcState.upsert({
+      where: { saveId_npcId_scope: { saveId, npcId: npc.id, scope } },
+      create: { saveId, npcId: npc.id, scope, saqueado: todoTomado, lootedItemNames: nuevosTomados },
+      update: { saqueado: todoTomado, lootedItemNames: nuevosTomados },
+    });
+
+    // Recompensa estática de misión al saquear (petición explícita, 2026-07-25): si el NPC
+    // saqueado es el objetivo de una misión ACTIVA con XP de recompensa definida, se concede aquí
+    // y la misión se cierra como resuelta. Guardado por el `if (freshState?.saqueado) continue`
+    // de arriba — un NPC ya saqueado nunca vuelve a pasar por aquí, así que esto solo concede la
+    // recompensa una vez, sin importar cuántas veces se intente registrar el cuerpo.
+    const rewardQuest = await tx.quest.findFirst({ where: { saveId, targetNpcId: npc.id, status: 'ACTIVA', rewardXp: { not: null } } });
+    if (rewardQuest) {
+      questRewardXp += rewardQuest.rewardXp!;
+      await tx.quest.update({ where: { id: rewardQuest.id }, data: { status: 'COMPLETADA' } });
+    }
+  }
+  const narrationOverride =
+    actualLootedNames.length !== lootPreviewCount
+      ? actualLootedNames.length > 0
+        ? `${characterName} rebusca entre los restos y se hace con lo siguiente: ${actualLootedNames.join(', ')}.`
+        : `${characterName} rebusca entre los restos, pero alguien se le ha adelantado — no queda nada que llevarse.`
+      : null;
+  return { actualLootedNames, newInventoryItems, createdItemNames, partiallyLootedSlugs, questRewardXp, narrationOverride };
+}
+
+/// Aplica el resultado YA resuelto del intercambio de combate (`resolveCombatExchangePhase`) al
+/// `NpcState` del objetivo — extraído de la transacción de `narrateAndPersistTurn` (refactor de
+/// deuda técnica 2026-08-13). Sistema de fatiga simétrico (2026-07-30): `npcNuevaEnergia` viaja
+/// en el MISMO upsert que la condición física en vez de uno aparte, porque los dos pueden cambiar
+/// en el mismo intercambio (un golpe que además gasta energía) y un NPC solo tiene una fila
+/// NpcState por scope. Si el golpe deja al NPC INCAPACITADO/MUERTO, cierra también su misión
+/// asociada, resta reputación de facción y decrementa población — mismo criterio que
+/// `applyExecuteTargets` para "Decapitar".
+async function applyCombatExchangeToNpcState(params: {
+  tx: Prisma.TransactionClient;
+  npcAttackTarget: NpcInScene | null;
+  npcNuevaEnergia: number | null;
+  npcAttackHits: boolean;
+  npcTargetNewCondicion: CondicionFisica | null;
+  analizarRivalExito: boolean;
+  saveId: string;
+  worldId: string;
+  currentLocationId: string | null;
+  nuevoFictionalMinutes: number;
+  nuevaFictionalDateLabel: string;
+  activeRegion: string | null;
+}): Promise<{ questCompletedInfo: QuestCompletedInfo | null }> {
+  const {
+    tx,
+    npcAttackTarget,
+    npcNuevaEnergia,
+    npcAttackHits,
+    npcTargetNewCondicion,
+    analizarRivalExito,
+    saveId,
+    worldId,
+    currentLocationId,
+    nuevoFictionalMinutes,
+    nuevaFictionalDateLabel,
+    activeRegion,
+  } = params;
+  let questCompletedInfo: QuestCompletedInfo | null = null;
+  if (!npcAttackTarget || !(npcNuevaEnergia !== null || (npcAttackHits && npcTargetNewCondicion) || analizarRivalExito)) {
+    return { questCompletedInfo };
+  }
+  const scope = scopeFor(npcAttackTarget.kind, currentLocationId);
+  await tx.npcState.upsert({
+    where: { saveId_npcId_scope: { saveId, npcId: npcAttackTarget.id, scope } },
+    create: {
+      saveId,
+      npcId: npcAttackTarget.id,
+      scope,
+      ...(npcTargetNewCondicion ? { condicionFisica: npcTargetNewCondicion, condicionFisicaSinceMinutes: nuevoFictionalMinutes } : {}),
+      ...(npcNuevaEnergia !== null ? { energia: npcNuevaEnergia } : {}),
+      // Rediseño de combate (2026-08-09, "Analizar rival") — permanente por NPC/scope en esta
+      // partida, nunca se vuelve a poner en false (mismo criterio idempotente que `saqueado`).
+      ...(analizarRivalExito ? { analizado: true } : {}),
+    },
+    update: {
+      ...(npcAttackHits && npcTargetNewCondicion ? { condicionFisica: npcTargetNewCondicion, condicionFisicaSinceMinutes: nuevoFictionalMinutes } : {}),
+      ...(npcNuevaEnergia !== null ? { energia: npcNuevaEnergia } : {}),
+      ...(analizarRivalExito ? { analizado: true } : {}),
+    },
+  });
+
+  if (npcAttackHits && npcTargetNewCondicion && (npcTargetNewCondicion === 'INCAPACITADO' || npcTargetNewCondicion === 'MUERTO')) {
+    // Cierre detectable por backend (roadmap 2026-07-19, mecánicas): si alguna misión ACTIVA
+    // apuntaba a este NPC (Quest.targetNpcId, ver newQuest más arriba), derrotarlo la cierra sola
+    // en cuanto cae — el modelo nunca tiene que acertar el título EXACTO vía questProgress para
+    // el caso más común de misión de combate ("derrotar a X"). También concede rewardItems/
+    // rewardXp de verdad y narra la recompensa (docs/19 pieza 3).
+    const completedHere = await completeNpcTargetQuests(tx, saveId, worldId, npcAttackTarget.id, nuevaFictionalDateLabel, nuevoFictionalMinutes);
+    if (completedHere) questCompletedInfo = completedHere;
+
+    // Reputación de facción determinista (roadmap 2026-07-19, prioridad 4): reutiliza
+    // `WorldState.factionsStatus` (gauge 0-5000 por facción, ver reputation.ts — reemplaza el
+    // viejo ±1 sin límite). Atacar a un NPC de una facción concreta resta bastante más de lo que
+    // se recupera resolviendo algo en paz (deltas asimétricos, "pozo real" para ENEMIGO); sin
+    // facción (fauna, NPCs independientes) no afecta a nada.
+    if (npcAttackTarget.faction) {
+      const currentWorldState = await tx.worldState.findUnique({ where: { saveId }, select: { factionsStatus: true } });
+      const updatedFactionsStatus = applyFactionRepDelta(
+        (currentWorldState?.factionsStatus as Record<string, number> | null) ?? {},
+        npcAttackTarget.faction,
+        FACTION_REP_ATTACK_DELTA,
+      );
+      await tx.worldState.update({ where: { saveId }, data: { factionsStatus: updatedFactionsStatus } });
+    }
+
+    // Población dinámica (docs/16-poblacion-dinamica.md): solo MUERTO resta población de verdad
+    // — INCAPACITADO es solo derrotado, no una baja real de la especie/raza.
+    if (npcTargetNewCondicion === 'MUERTO') {
+      await decrementPopulationOnDeath(tx, worldId, npcAttackTarget.raza, npcAttackTarget.slug, activeRegion);
+    }
+  }
+  return { questCompletedInfo };
+}
+
+/// "Decapitar" (petición explícita, 2026-07-30), extraído de la transacción de
+/// `narrateAndPersistTurn` (refactor de deuda técnica 2026-08-13) — sin tirada: un enemigo ya
+/// incapacitado no puede resistir el golpe de gracia. Uno por uno porque el modal puede marcar
+/// varios a la vez (checkbox). Mismo cierre de misión/reputación de facción/población que un
+/// golpe normal que deja MUERTO al objetivo — en la práctica la misión ya se cerró al quedar
+/// INCAPACITADO, esto solo cubre el caso raro de que no lo hiciera.
+async function applyExecuteTargets(params: {
+  tx: Prisma.TransactionClient;
+  executeTargets: NpcInScene[];
+  saveId: string;
+  worldId: string;
+  currentLocationId: string | null;
+  nuevoFictionalMinutes: number;
+  nuevaFictionalDateLabel: string;
+  activeRegion: string | null;
+}): Promise<{ questCompletedInfo: QuestCompletedInfo | null }> {
+  const { tx, executeTargets, saveId, worldId, currentLocationId, nuevoFictionalMinutes, nuevaFictionalDateLabel, activeRegion } = params;
+  let questCompletedInfo: QuestCompletedInfo | null = null;
+  for (const executeTarget of executeTargets) {
+    const scope = scopeFor(executeTarget.kind, currentLocationId);
+    // Revalidación anti-carrera (auditoría de deuda técnica 2026-08-04, mismo patrón ya cerrado
+    // para construcción/crafteo/despiece/saqueo): `executeTargets` sale de `npcsInScene`, leído
+    // con `prisma` ANTES de esta transacción — dos "decapito a X" casi simultáneos podían pasar
+    // ambos el filtro `condicionFisica === 'INCAPACITADO'` con la misma foto obsoleta y aplicar
+    // la muerte DOS veces: población mundial restada dos veces por una sola baja, y penalización
+    // de reputación de facción duplicada. La escritura de `condicionFisica: 'MUERTO'` en sí es
+    // idempotente, pero sus efectos secundarios no lo son — se saltan enteros si el NPC ya
+    // estaba MUERTO de verdad justo antes de escribir.
+    const freshExecuteState = await tx.npcState.findUnique({
+      where: { saveId_npcId_scope: { saveId, npcId: executeTarget.id, scope } },
+    });
+    if (freshExecuteState?.condicionFisica === 'MUERTO') continue;
+    await tx.npcState.upsert({
+      where: { saveId_npcId_scope: { saveId, npcId: executeTarget.id, scope } },
+      create: { saveId, npcId: executeTarget.id, scope, condicionFisica: 'MUERTO', condicionFisicaSinceMinutes: nuevoFictionalMinutes },
+      update: { condicionFisica: 'MUERTO', condicionFisicaSinceMinutes: nuevoFictionalMinutes },
+    });
+    // Mismo cierre + recompensa real que un golpe normal que deja MUERTO al objetivo — en la
+    // práctica la misión ya se cerró al quedar INCAPACITADO, esto solo cubre el caso raro de que
+    // no lo hiciera.
+    const completedByExecute = await completeNpcTargetQuests(tx, saveId, worldId, executeTarget.id, nuevaFictionalDateLabel, nuevoFictionalMinutes);
+    if (completedByExecute) questCompletedInfo = completedByExecute;
+    if (executeTarget.faction) {
+      const currentWorldState = await tx.worldState.findUnique({ where: { saveId }, select: { factionsStatus: true } });
+      const updatedFactionsStatus = applyFactionRepDelta(
+        (currentWorldState?.factionsStatus as Record<string, number> | null) ?? {},
+        executeTarget.faction,
+        FACTION_REP_ATTACK_DELTA,
+      );
+      await tx.worldState.update({ where: { saveId }, data: { factionsStatus: updatedFactionsStatus } });
+    }
+
+    // Población dinámica (docs/16-poblacion-dinamica.md) — Decapitar es siempre una muerte real.
+    await decrementPopulationOnDeath(tx, worldId, executeTarget.raza, executeTarget.slug, activeRegion);
+  }
+  return { questCompletedInfo };
+}
+
+/// Despiece/recolección (§ 3.3), extraído de la transacción de `narrateAndPersistTurn` (refactor
+/// de deuda técnica 2026-08-13) — solo si la acción tuvo éxito (o no requería tirada). Revalida
+/// `harvestMatch` (calculado con `prisma`, ANTES de esta transacción) contra `tx` justo aquí,
+/// mismo criterio anti-carrera que crafteo/construcción/saqueo: dos turnos de despiece casi
+/// simultáneos sobre el mismo cadáver de fauna no pueden duplicar el botín de un solo cuerpo.
+async function applyHarvest(params: {
+  tx: Prisma.TransactionClient;
+  harvestMatch: HarvestMatch | null;
+  harvestOutcome: 'sin_presa' | 'ya_despiezada' | 'fallo' | 'exito' | null;
+  roll: RollResult | null | undefined;
+  saveId: string;
+  currentLocationId: string | null;
+  characterName: string;
+}): Promise<{ newInventoryItems: NewInventoryItemInfo[]; createdItemNames: string[]; narrationOverride: string | null }> {
+  const { tx, harvestMatch, harvestOutcome, roll, saveId, currentLocationId, characterName } = params;
+  const newInventoryItems: NewInventoryItemInfo[] = [];
+  const createdItemNames: string[] = [];
+  // Solo aplica a fauna (`npcId` presente, el único caso con tope real); los recursos
+  // vegetales/minerales no tienen límite de por sí (renovables, por diseño — ver harvest.ts).
+  const harvestStillValid =
+    harvestMatch?.npcId && harvestMatch.npcKind
+      ? !(
+          await tx.npcState.findUnique({
+            where: { saveId_npcId_scope: { saveId, npcId: harvestMatch.npcId, scope: scopeFor(harvestMatch.npcKind, currentLocationId) } },
+          })
+        )?.saqueado
+      : true;
+  if (harvestMatch && (!roll || roll.success) && harvestStillValid) {
+    for (const y of harvestMatch.yields) {
+      const created = await tx.inventoryItem.create({
+        data: {
+          saveId,
+          name: y.cantidad > 1 ? `${y.itemName} (${y.cantidad})` : y.itemName,
+          description: `Obtenido despiezando/recolectando: ${harvestMatch.sourceName}.`,
+          origin: 'despiece/recolección',
+          catalogSlug: y.itemSlug,
+        },
+      });
+      // Materia prima cruda — siempre tipo RECURSO por diseño (nunca EQUIPABLE ni ESPECIAL,
+      // equipSlot/effectKey siempre null; ver comentario del enum ItemTipo).
+      newInventoryItems.push({ ...created, slot: null, equipSlot: null, effectKey: null, tipo: 'RECURSO' });
+      createdItemNames.push(created.name);
+    }
+    // Bug real (auditoría 2026-07-28): sin esto, el mismo cadáver de fauna ya derrotada se podía
+    // despiezar sin límite — marca este NpcState como ya aprovechado (mismo campo `saqueado` que
+    // cierra el saqueo de NPCs con nombre), para que harvest.ts lo bloquee la próxima vez.
+    if (harvestMatch.npcId && harvestMatch.npcKind && harvestMatch.yields.length > 0) {
+      const scope = scopeFor(harvestMatch.npcKind, currentLocationId);
+      await tx.npcState.upsert({
+        where: { saveId_npcId_scope: { saveId, npcId: harvestMatch.npcId, scope } },
+        create: { saveId, npcId: harvestMatch.npcId, scope, saqueado: true },
+        update: { saqueado: true },
+      });
+    }
+  }
+  // Narración mentirosa si se pierde la carrera (auditoría 2026-08-06, mismo patrón que loot/
+  // build): `harvestOutcome === 'exito'` (antes de esta transacción) ya fijó y emitió en
+  // streaming "despieza/recolecta X y consigue: ...", pero `harvestStillValid` (releído con `tx`)
+  // puede decir que otro turno casi simultáneo ya se llevó ese mismo cadáver — sin corregir aquí,
+  // el jugador vería en su Diario un botín que nunca recibió.
+  const narrationOverride =
+    harvestOutcome === 'exito' && harvestMatch && !harvestStillValid
+      ? `${characterName} rebusca en los restos de ${harvestMatch.sourceName}, pero ya se llevó antes todo lo aprovechable.`
+      : null;
+  return { newInventoryItems, createdItemNames, narrationOverride };
+}
+
+/// Decide con qué NPCs se abre/persiste el popup de combate este turno y sincroniza
+/// `Save.pendingCombatNpcSlugs` — extraído de `narrateAndPersistTurn` (refactor de deuda técnica
+/// 2026-08-13). Pura salvo el propio `prisma.save.update` final; entrada/salida acotada — todo lo
+/// que necesita ya está resuelto por el caller (narración, intercambio de combate, decapitar,
+/// saqueo parcial), no dispara ninguna otra lectura/escritura por su cuenta.
+async function resolveCombatSlugsAndPersist(params: {
+  saveId: string;
+  action: string;
+  enCombate: boolean | undefined;
+  narration: NarrationResult;
+  npcsInScene: NpcInScene[];
+  npcsInSceneVivos: NpcInScene[];
+  factionsStatus: Record<string, number>;
+  condicionFisicaJugador: CondicionFisica;
+  explicitTarget: NpcInScene | null;
+  exchangeHappened: boolean;
+  npcAttackTarget: NpcInScene | null;
+  npcAttackHits: boolean;
+  npcTargetNewCondicion: CondicionFisica | null;
+  executeTargets: NpcInScene[];
+  partiallyLootedSlugs: string[];
+}): Promise<{ combatSlugs: string[]; combateIniciado: NonNullable<NarrateAndPersistResult['combateIniciado']> | null }> {
+  const {
+    saveId,
+    action,
+    enCombate,
+    narration,
+    npcsInScene,
+    npcsInSceneVivos,
+    factionsStatus,
+    condicionFisicaJugador,
+    explicitTarget,
+    exchangeHappened,
+    npcAttackTarget,
+    npcAttackHits,
+    npcTargetNewCondicion,
+    executeTargets,
+    partiallyLootedSlugs,
+  } = params;
+
+  // Red de seguridad (ver detectsAttackIntent/detectsHostileSearchIntent en npcScene.ts): si el
+  // modelo no marcó combateIniciado pero o bien propuso empeorar la condición física (indicio de
+  // que sí narró daño real), o el jugador usó un verbo de ataque claro, o declaró intención hostil
+  // de búsqueda ("en busca de pelea", "para matarlo"...) contra un NPC ya en escena, se fuerza
+  // igualmente — evita que una pelea real narrada por el modelo se quede sin popup de combate
+  // por un olvido del campo (bug real jugando, 2026-07-22: justo el caso de búsqueda hostil).
+  //
+  // Bug real encontrado auditando la partida de Gorhorn (2026-07-23, "revisar partida" — un
+  // "Ataco al Orco Enfurecido" real no abrió el popup): el modelo SÍ rellenó "combateIniciado",
+  // pero con un slug que no matcheaba ninguno de `npcsInScene` (inventado o mal escrito). Antes,
+  // `combatSlugsFromModel.length === 0` ya daba false (el modelo "sí propuso algo"), así que la
+  // red de seguridad NUNCA se activaba — y como el slug no matcheaba nada real, `combatSlugs`
+  // acababa vacío igualmente tras el `.filter()` de abajo, dejando un `combateIniciado: {npcs: []}`
+  // que el frontend descarta en silencio (`combate.npcs.length > 0`). Ahora se valida el slug
+  // ANTES de decidir si hace falta la red de seguridad — si el modelo "propuso" algo que no
+  // corresponde a ningún NPC real en escena, cuenta como si no hubiera propuesto nada.
+  // Bug real jugando en vivo (2026-08-01, "el orco que metí volvió a aparecer" — auditoría a fondo
+  // de "revisa bien en todos los sitios que pendingCombatNpcSlugs se actualiza bien"): TODO este
+  // bloque decide con quién se fuerza/persiste combate, y hasta ahora ninguna de sus piezas miraba
+  // `condicionFisica` — un NPC ya INCAPACITADO/MUERTO seguía siendo candidato de
+  // `detectNpcsInScene` (tiene `NpcState` propio) y podía matchear en escena vía `sessionFacts`
+  // durante turnos sin ninguna relación con él (p.ej. "Exploro la zona"). Su temperamento de
+  // catálogo (AGRESIVO/ENEMIGO) no desaparece al morir, así que `agresivoSlugsInScene` lo seguía
+  // contando como amenaza y podía reabrir `combateIniciado`/`pendingCombatNpcSlugs` contra un
+  // cadáver ya saqueado. `npcsInSceneVivos` es la misma lista sin nadie ya resuelto — se usa en
+  // todo lo que decide "hay una amenaza real aquí" de aquí para abajo; `npcsInScene` (sin filtrar)
+  // se sigue necesitando tal cual para `explicitTarget`/loot/decapitar/`npcSceneBlockFor`, que sí
+  // necesitan poder referirse a un NPC ya derrotado a propósito.
+  // Bug real jugando en vivo (2026-08-04, "ronda larga de pruebas"): esto se fiaba a ciegas de
+  // `combateIniciado.npcSlugs`, propuesto libremente por el modelo en su JSON — en un turno de
+  // descanso totalmente ajeno a combate (`enCombate: false`, sin ningún verbo hostil), el modelo
+  // propuso igualmente combate contra Gistera Koh (temperamento CAUTELOSO, nunca hostil), solo
+  // porque un hecho de sesión de trasfondo la menciona de pasada. Filtrado solo por "¿está viva y
+  // en escena?" no bastaba — ahora también exige que sea de verdad hostil
+  // (AGRESIVO/ENEMIGO, con reputación de facción ya aplicada, mismo criterio que
+  // `agresivoSlugsInScene` más abajo). Un NPC pacífico solo puede entrar en combate por la vía
+  // determinista de siempre (intercambio/ejecución/`shouldForceCombat`), nunca porque el modelo lo
+  // proponga sin más.
+  const combatSlugsFromModel = (narration.combateIniciado?.npcSlugs ?? []).filter((slug) =>
+    npcsInSceneVivos.some((n) => {
+      if (n.slug !== slug) return false;
+      const t = effectiveTemperamento(n.temperamento, n.faction, factionsStatus);
+      return t === 'AGRESIVO' || t === 'ENEMIGO';
+    }),
+  );
+  // Temperamento (2026-07-29, "si me encuentro un NPC 'Agresivo' me va a ser imposible no acabar
+  // peleando con él" + "la reputación influirá en los valores de combate"): el temperamento de
+  // catálogo (fijo) se desplaza por la reputación de facción de esta partida concreta —
+  // `effectiveTemperamento` (reputation.ts) es lo que de verdad decide aquí, no `n.temperamento`
+  // a secas. Un NPC con `faction: null` (fauna, independientes) no tiene de qué desplazarse y
+  // devuelve su valor de catálogo tal cual.
+  //
+  // Un modelo local pequeño no siempre sigue bien una instrucción de prompt, así que para
+  // AGRESIVO/ENEMIGO no nos fiamos solo del Narrador — cualquier NPC agresivo u hostil detectado
+  // en escena fuerza combate él solo, sin depender del verbo del jugador (mismo criterio de "no
+  // barrer a inocentes" que el bug del Múrgol de abajo: solo estos slugs, no todo `npcsInScene`).
+  const agresivoSlugsInScene = npcsInSceneVivos
+    .filter((n) => {
+      const t = effectiveTemperamento(n.temperamento, n.faction, factionsStatus);
+      return t === 'AGRESIVO' || t === 'ENEMIGO';
+    })
+    .map((n) => n.slug);
+  // Contraparte para AMIGABLE/INOFENSIVO: si TODOS los NPCs en escena son pacíficos, ninguno de
+  // ellos puede haber causado de verdad el empeoramiento de condición que narró el modelo — un
+  // giro ambiguo (el modelo "propuso" daño sin que nada en escena pudiera infligirlo) no debe
+  // abrir combate contra un Múrgol o un Corredor de Cauce. Los verbos explícitos del jugador
+  // (`detectsAttackIntent`/`detectsHostileSearchIntent`, líneas de abajo) siguen funcionando
+  // igual — atacar a algo pacífico de propia iniciativa sigue siendo posible.
+  const allNpcsInSceneArePacificos =
+    npcsInSceneVivos.length > 0 &&
+    npcsInSceneVivos.every((n) => {
+      const t = effectiveTemperamento(n.temperamento, n.faction, factionsStatus);
+      return t === 'AMIGABLE' || t === 'INOFENSIVO';
+    });
+  // Bug real jugando en vivo (2026-07-24, decisión explícita de la usuaria: "aceptar ayudar solo
+  // crea la misión, nunca abre combate"): "Cuenta conmigo. Acabaré con el que te persigue."
+  // (aceptando ayudar a Gistera Koh) comparte vocabulario con `detectsHostileSearchIntent`
+  // ("acabar(e)? con") — necesario para que el clasificador la trate como instantánea, pero forzaba
+  // combate igual contra TODOS los NPCs en escena (Gistera Koh, la propia aliada que pidió ayuda, Y
+  // un Múrgol de paso sin relación ninguna) — una promesa a futuro no es un ataque ahora mismo.
+  // Nunca suprime `detectsAttackIntent` (un ataque real de verdad sigue abriendo combate).
+  const shouldForceCombat =
+    !enCombate &&
+    combatSlugsFromModel.length === 0 &&
+    npcsInSceneVivos.length > 0 &&
+    (agresivoSlugsInScene.length > 0 ||
+      (isCondicionDowngrade(condicionFisicaJugador, narration.condicionFisica) && !allNpcsInSceneArePacificos) ||
+      detectsAttackIntent(action) ||
+      (detectsHostileSearchIntent(action) && !detectsVerbalAcceptanceIntent(action)));
+  // Bug real (auditoría 2026-07-23, "ha metido un murgol que no pinta nada"): la red de seguridad
+  // metía a TODOS los NPCs detectados en escena como participantes de combate (aliados, fauna de
+  // paso...), no solo al hostil. Si la acción cita un nombre real entre comillas (`explicitTarget`,
+  // ver arriba), el popup arranca solo con ese — y si lo que disparó la red de seguridad fue un
+  // NPC agresivo, solo él entra (mismo criterio) — el listado completo de `npcsInScene` queda como
+  // último recurso para cuando la acción no nombra a nadie en concreto ("me defiendo").
+  //
+  // Bug real (2026-08-01, misma auditoría de `npcsInSceneVivos` de arriba): `explicitTarget` no
+  // mira `condicionFisica` (a propósito, lo necesita loot/decapitar para citar a un NPC ya
+  // derrotado) — pero si el jugador cita entre comillas a alguien YA muerto/incapacitado y esta
+  // acción además dispara `shouldForceCombat` por cualquier otro motivo, no tiene sentido "forzar
+  // combate" contra un cadáver. Se comprueba aquí, solo para esta decisión.
+  const explicitTargetVivo =
+    explicitTarget && explicitTarget.condicionFisica !== 'INCAPACITADO' && explicitTarget.condicionFisica !== 'MUERTO' ? explicitTarget : null;
+  const forcedCombatSlugs = explicitTargetVivo
+    ? [explicitTargetVivo.slug]
+    : agresivoSlugsInScene.length > 0
+      ? agresivoSlugsInScene
+      : npcsInSceneVivos.map((n) => n.slug);
+  const baseCombatSlugs = combatSlugsFromModel.length > 0 ? combatSlugsFromModel : shouldForceCombat ? forcedCombatSlugs : [];
+  // Bug real (2026-07-29, jugando en vivo — "sigo sin hacerle daño al enemigo" con `enCombate`
+  // ya activo): mientras el combate ya está abierto, `shouldForceCombat` exige `!enCombate`
+  // (nunca se cumple) — así que `combatSlugs` dependía SOLO de que el modelo volviera a listar el
+  // slug del NPC en su propia `combateIniciado.npcSlugs` cada turno, algo que no garantiza en
+  // absoluto (campo narrativo, no determinista). Si esta acción resolvió un intercambio mecánico
+  // de verdad (resolveExchange), el NPC de ese intercambio SIEMPRE se incluye aquí — así
+  // `combateIniciado` (y con él la condición física fresca del NPC) llega al frontend en CADA
+  // turno donde de verdad pasó algo, no solo cuando el modelo se acuerda de repetir el slug.
+  const combatSlugsWithAttack =
+    exchangeHappened && npcAttackTarget && !baseCombatSlugs.includes(npcAttackTarget.slug)
+      ? [...baseCombatSlugs, npcAttackTarget.slug]
+      : baseCombatSlugs;
+  // "Decapitar" (2026-07-30) — mismo criterio que el golpe normal de arriba: si esta acción
+  // ejecutó a uno o varios enemigos de verdad, sus slugs viajan aquí siempre, sin depender de que
+  // el modelo se acuerde de repetirlos en su propia propuesta narrativa.
+  const executeSlugs = executeTargets.map((n) => n.slug);
+  // Saqueo parcial (ver `partiallyLootedSlugs` del caller): un NPC tocado este turno que se queda
+  // CON botín pendiente sigue contando como "en combate" para que `pendingCombatNpcSlugs`
+  // sobreviva a un resync/recarga — sin esto, un turno de solo-saqueo (sin exchange ni decapitar)
+  // vaciaba el campo aunque quedaran objetos por saquear.
+  const combatSlugs = [...new Set([...combatSlugsWithAttack, ...executeSlugs, ...partiallyLootedSlugs])];
+
+  // Persistido (bug real, 2026-07-23, "revisar partida" — tercera vuelta sobre este mismo tema):
+  // `combateIniciado` viajaba SOLO en la respuesta directa de este turno — si el turno tardaba
+  // tanto que el sondeo de reconexión del cliente (GameView.tsx) tenía que recuperar la partida
+  // vía `GET /saves/:id` en vez de recibir la respuesta directa, el combate se calculaba bien
+  // aquí pero se perdía sin dejar rastro, porque `Save` no lo guardaba en ningún sitio. Se
+  // sobrescribe cada turno (vacío si no hay combate ESTE turno) para que `GET /saves/:id` pueda
+  // reconstruir el mismo aviso tras cualquier resincronización, no solo en la respuesta directa.
+  await prisma.save.update({ where: { id: saveId }, data: { pendingCombatNpcSlugs: combatSlugs } });
+
+  const combateIniciado = combatSlugs.length
+    ? {
+        npcs: combatSlugs
+          .map((slug) => npcsInScene.find((n) => n.slug === slug))
+          .filter((n): n is (typeof npcsInScene)[number] => !!n)
+          // condicionFisica/saqueado reales (auditoría de frontend, 2026-07-19): antes CombatModal
+          // no tenía forma de saber si este NPC ya venía herido o ya saqueado de un encuentro
+          // anterior en la misma partida — siempre arrancaba el popup asumiendo ILESO/sin saquear.
+          //
+          // Bug real (auditoría 2026-07-28): `npcsInScene` se lee UNA sola vez al principio del
+          // turno (antes de la transacción) y nunca se reescribe en memoria tras el
+          // `tx.npcState.upsert` de más arriba — sin este override, el NPC recién golpeado ESTE
+          // MISMO turno se devolvía todavía con su condición de ANTES del golpe. El frontend ya
+          // no tiene ningún downgrade optimista propio (ver GameView.tsx) que lo tapara, así que
+          // esta respuesta tiene que traer la condición fresca ella sola.
+          .map((n) => ({
+            slug: n.slug,
+            name: n.name,
+            condicionFisica:
+              executeTargets.some((t) => t.id === n.id)
+                ? ('MUERTO' as CondicionFisica)
+                : npcAttackTarget && npcAttackHits && npcTargetNewCondicion && n.id === npcAttackTarget.id
+                  ? npcTargetNewCondicion
+                  : n.condicionFisica,
+            saqueado: n.saqueado,
+            // Bug real (2026-07-31, "saqueé 2 de 3 y la próxima vez me volvía a listar las 3"):
+            // este payload nunca mandaba qué objetos concretos ya se habían tomado — el frontend
+            // no tenía forma de filtrar el modal aunque `NpcState.lootedItemNames` ya llevaba la
+            // cuenta correcta en el backend desde el saqueo parcial (ver npcScene.ts).
+            lootedItemNames: n.lootedItemNames,
+            // Rediseño de combate (2026-08-09, "Analizar rival") — gatea la ficha del rival en
+            // CombatPanel.tsx § EnemyFicha.
+            analizado: n.analizado,
+          })),
+      }
+    : null;
+
+  return { combatSlugs, combateIniciado };
 }
 
 /// Narra (retrieval + narrateAction) y persiste el resultado de un turno — hechos, XP/nivel,
@@ -2100,24 +2448,16 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   // atributo (sesión de diseño 2026-07-23): UMBRAL puro, `canCraft` ya los comprueba — aquí solo
   // se añade un aviso dinámico cuando el motivo del bloqueo es de atributo, no de materiales (el
   // texto estático `narrationWant` de cada receta no sabe de atributos).
-  const craftPossibleByKey: Record<string, boolean> = {};
-  for (const recipe of CRAFTING_RECIPES) {
-    const wants = detectsCraftIntent(recipe, action);
-    const alivio = alivioFor(recipe.oficio);
-    const possible = wants && canCraft(recipe, currentLocationRecord?.slug ?? null, inventoryRows, catalogBySlug, attributes, secondaryAttributes, alivio);
-    craftPossibleByKey[recipe.key] = possible;
-    if (wants && !possible) {
-      contextBlocks.push(recipe.narrationWant);
-      const shortfalls = craftRequisitoShortfalls(recipe, attributes, secondaryAttributes, alivio);
-      if (shortfalls.length > 0) {
-        contextBlocks.push(
-          `Además, al personaje todavía le falta: ${shortfalls.map(shortfallLabel).join(', ')} para poder craftear ${recipe.resultName}.`,
-        );
-      }
-    } else if (possible) {
-      contextBlocks.push(recipe.narrationDo);
-    }
-  }
+  const { craftPossibleByKey, blocks: craftBlocks } = resolveCraftIntentContext(
+    action,
+    currentLocationRecord?.slug ?? null,
+    inventoryRows,
+    catalogBySlug,
+    attributes,
+    secondaryAttributes,
+    alivioFor,
+  );
+  contextBlocks.push(...craftBlocks);
 
   // Construcción con requisitos reales (roadmap 2026-07-20/21, petición explícita de la usuaria:
   // "para construir un campamento necesites x20 leños, 10 piedras y 5 pieles") — mismo patrón
@@ -2127,41 +2467,23 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   // primera cuyo sustantivo aparece en la acción gana — los nombres no se solapan a propósito.
   // Ampliado 2026-07-23 con requisitos de atributo — `missing[]` ya mezcla materiales y atributos
   // (mismo shape `{label,tienes,necesitas}`), así que el texto vale para ambos sin distinguir.
-  const buildRecipe: ConstructionRecipe | undefined = CONSTRUCTION_RECIPES.find((r) => detectsBuildIntent(r, action));
-  const buildRecipeCheck: RecipeCheck | null = buildRecipe
-    ? checkRecipe(buildRecipe, inventoryRows, catalogBySlug, attributes, secondaryAttributes, alivioFor(buildRecipe.oficio))
-    : null;
-
-  // Reglas de reino (2026-08-04, docs/17-reglas-construcciones-reino.md) — comprobaciones
-  // deterministas ADICIONALES a materiales/atributos, solo evaluadas si esos ya están completos
-  // (si faltan materiales, ese sigue siendo el problema real a narrar, no estas reglas). De solo
-  // lectura, con `prisma` (no `tx`): mejor esfuerzo para el aviso al LLM — el gate real y
-  // obligatorio es la segunda llamada a `computeBuildBlockedReason`, DENTRO de la transacción
-  // (ver comentario junto a su definición, bug real de condición de carrera).
-  const buildBlockedReason: string | null =
-    buildRecipe && buildRecipeCheck?.met && currentLocationRecord
-      ? await computeBuildBlockedReason(prisma, saveId, worldId, buildRecipe, activeRegion, currentLocationRecord)
-      : null;
-
-  // Determinista de una vez (2026-08-04, "el campamento" — primera construcción anclada al mapa):
-  // igual que el saqueo, construir con una receta fija no tiene ninguna decisión narrativa real
-  // que tomar — nombre/descripción ya están fijados por la receta. Antes se le pedía al modelo que
-  // narrara y rellenara `newBuilding` con su propio texto libre, con el mismo riesgo de
-  // alucinación/omisión ya corregido en saqueo/golpes falsos/objeto falso (y un bug real latente:
-  // los materiales se consumían igualmente aunque el modelo fallara en proponer el edificio). Con
-  // `buildMode`, este turno entero se resuelve sin llamar al LLM — ver el bloque de `narration`
-  // más abajo.
-  const buildMode = !!buildRecipe && !!buildRecipeCheck?.met && !buildBlockedReason;
-  if (buildRecipe && buildRecipeCheck && !buildRecipeCheck.met) {
-    const faltantes = buildRecipeCheck.missing.map((m) => `${m.label} (tienes ${m.tienes}, necesitas ${m.necesitas})`).join(', ');
-    contextBlocks.push(
-      `El personaje quiere construir ${buildRecipe.name}, pero todavía no cumple los requisitos: ${faltantes} — narra que lo intenta o lo planea, pero no que lo termina de verdad.`,
-    );
-  } else if (buildRecipe && buildBlockedReason) {
-    contextBlocks.push(
-      `El personaje quiere construir ${buildRecipe.name}, pero no puede: ${buildBlockedReason} — narra que lo intenta o lo descubre, pero no que lo termina de verdad.`,
-    );
-  }
+  const {
+    buildRecipe,
+    buildMode,
+    blocks: buildBlocks,
+  } = await resolveBuildIntentContext({
+    action,
+    saveId,
+    worldId,
+    activeRegion,
+    currentLocationRecord,
+    inventoryRows,
+    catalogBySlug,
+    attributes,
+    secondaryAttributes,
+    alivioFor,
+  });
+  contextBlocks.push(...buildBlocks);
 
   // Slots de compañero (2026-08-04, docs/17-reglas-construcciones-reino.md): 0 de base, cada
   // construcción ACTIVA propia da los suyos (`companionSlotsForRecipeKey`). Aviso al modelo aquí
@@ -2668,227 +2990,62 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     // reintento de red, dos pestañas) hacían que el segundo no creara ningún InventoryItem
     // (bloqueado por `freshState?.saqueado`, ya cerrado como bug mecánico) pero su narración ya
     // fijada seguía afirmando el saqueo igualmente. Se corrige aquí, con lo que de verdad se creó.
-    const actualLootedNames: string[] = [];
     if (lootMode) {
-      for (const npc of lootTargets) {
-        const scope = scopeFor(npc.kind, currentLocationId);
-        // Revalidación anti-carrera (auditoría de deuda técnica 2026-08-04, mismo patrón ya
-        // cerrado hoy para construcción/crafteo/despiece): `npc.saqueado`/`npc.lootedItemNames`
-        // vienen de `npcsInScene`, leído con `prisma` ANTES de esta transacción — dos turnos de
-        // "saqueo" casi simultáneos sobre el mismo NPC (doble clic, reintento de red, dos
-        // pestañas) podían pasar ambos el guard con la misma foto ya obsoleta y duplicar el
-        // botín de una sola muerte. Se relee fresco con `tx` justo antes de decidir qué llevarse.
-        const freshState = await tx.npcState.findUnique({ where: { saveId_npcId_scope: { saveId, npcId: npc.id, scope } } });
-        // NpcState: una vez saqueado DEL TODO, no hay nada más que ofrecer — se sigue saltando.
-        if (freshState?.saqueado) continue;
-        const yaTomados = freshState?.lootedItemNames ?? npc.lootedItemNames;
-        const itemsToLoot = (lootItemNames ? npc.items.filter((item) => lootItemNames.includes(item.name)) : npc.items).filter(
-          (item) => !yaTomados.includes(item.name),
-        );
-        for (const item of itemsToLoot) {
-          const created = await tx.inventoryItem.create({
-            data: {
-              saveId,
-              name: item.cantidad > 1 ? `${item.name} ×${item.cantidad}` : item.name,
-              description: item.notas ?? `Botín de ${npc.name}.`,
-              origin: `botín de ${npc.name}`,
-              // Los bonificadores de equipo (si el objeto los tenía en el catálogo) viajan con
-              // él — un hacha robada sigue dando su bonificador al equiparla.
-              statBonuses: item.statBonuses ?? Prisma.JsonNull,
-              catalogSlug: item.catalogSlug,
-            },
-          });
-          newInventoryItems.push({ ...created, slot: null, equipSlot: item.equipSlot, effectKey: item.effectKey, tipo: item.tipo });
-          createdItemNames.push(created.name);
-          actualLootedNames.push(created.name);
-        }
-        // Bug real (auditoría de código completa, 2026-08-07): el guard `npc.items.length > 0`
-        // saltaba ESTE BLOQUE ENTERO para un NPC con loadout vacío (varios PRINCIPAL de catálogo,
-        // p.ej. Vrask Ombra/Kael Dorn/Yovenne Tal/Sella Marn, `loadout: []`) — `NpcState.saqueado`
-        // nunca llegaba a `true` para ellos por esta vía, así que "Saquear todo" los seguía
-        // ofreciendo como pendientes para siempre (el botón nunca desaparecía tras esa pelea).
-        // `npc.items.every(...)` sobre un array vacío ya es `true` por definición (nada que
-        // tomar = todo tomado), así que quitar el guard basta: se comporta exactamente igual para
-        // cualquier NPC con loadout real, y además cierra correctamente el caso vacío.
-        const nuevosTomados = [...new Set([...yaTomados, ...itemsToLoot.map((item) => item.name)])];
-        const todoTomado = npc.items.every((item) => nuevosTomados.includes(item.name));
-        if (!todoTomado) partiallyLootedSlugs.push(npc.slug);
-        await tx.npcState.upsert({
-          where: { saveId_npcId_scope: { saveId, npcId: npc.id, scope } },
-          create: { saveId, npcId: npc.id, scope, saqueado: todoTomado, lootedItemNames: nuevosTomados },
-          update: { saqueado: todoTomado, lootedItemNames: nuevosTomados },
-        });
-
-        // Recompensa estática de misión al saquear (petición explícita, 2026-07-25): si el NPC
-        // saqueado es el objetivo de una misión ACTIVA con XP de recompensa definida, se concede
-        // aquí y la misión se cierra como resuelta. Guardado por el `if (npc.saqueado) continue`
-        // de arriba — un NPC ya saqueado nunca vuelve a pasar por aquí, así que esto solo concede
-        // la recompensa una vez, sin importar cuántas veces se intente registrar el cuerpo.
-        const rewardQuest = await tx.quest.findFirst({ where: { saveId, targetNpcId: npc.id, status: 'ACTIVA', rewardXp: { not: null } } });
-        if (rewardQuest) {
-          questRewardXp += rewardQuest.rewardXp!;
-          await tx.quest.update({ where: { id: rewardQuest.id }, data: { status: 'COMPLETADA' } });
-        }
-      }
-      if (actualLootedNames.length !== lootPreview.length) {
-        narration.narration =
-          actualLootedNames.length > 0
-            ? `${characterName} rebusca entre los restos y se hace con lo siguiente: ${actualLootedNames.join(', ')}.`
-            : `${characterName} rebusca entre los restos, pero alguien se le ha adelantado — no queda nada que llevarse.`;
-      }
+      const lootResult = await applyLootMode({
+        tx,
+        lootTargets,
+        lootItemNames,
+        lootPreviewCount: lootPreview.length,
+        currentLocationId,
+        saveId,
+        characterName,
+      });
+      newInventoryItems.push(...lootResult.newInventoryItems);
+      createdItemNames.push(...lootResult.createdItemNames);
+      partiallyLootedSlugs.push(...lootResult.partiallyLootedSlugs);
+      questRewardXp += lootResult.questRewardXp;
+      if (lootResult.narrationOverride) narration.narration = lootResult.narrationOverride;
     }
 
     // Sistema de fatiga simétrico (2026-07-30) — `npcNuevaEnergia` viaja aquí en el MISMO upsert
     // que la condición física en vez de uno aparte: los dos pueden cambiar en el mismo intercambio
     // (un golpe que además gasta energía) y un NPC solo tiene una fila NpcState por scope.
-    if (npcAttackTarget && (npcNuevaEnergia !== null || (npcAttackHits && npcTargetNewCondicion) || analizarRivalExito)) {
-      const scope = scopeFor(npcAttackTarget.kind, currentLocationId);
-      await tx.npcState.upsert({
-        where: { saveId_npcId_scope: { saveId, npcId: npcAttackTarget.id, scope } },
-        create: {
-          saveId,
-          npcId: npcAttackTarget.id,
-          scope,
-          ...(npcTargetNewCondicion ? { condicionFisica: npcTargetNewCondicion, condicionFisicaSinceMinutes: nuevoFictionalMinutes } : {}),
-          ...(npcNuevaEnergia !== null ? { energia: npcNuevaEnergia } : {}),
-          // Rediseño de combate (2026-08-09, "Analizar rival") — permanente por NPC/scope en esta
-          // partida, nunca se vuelve a poner en false (mismo criterio idempotente que `saqueado`).
-          ...(analizarRivalExito ? { analizado: true } : {}),
-        },
-        update: {
-          ...(npcAttackHits && npcTargetNewCondicion ? { condicionFisica: npcTargetNewCondicion, condicionFisicaSinceMinutes: nuevoFictionalMinutes } : {}),
-          ...(npcNuevaEnergia !== null ? { energia: npcNuevaEnergia } : {}),
-          ...(analizarRivalExito ? { analizado: true } : {}),
-        },
-      });
+    // Aplica el intercambio de combate ya resuelto al NpcState del objetivo — ver
+    // `applyCombatExchangeToNpcState` más arriba.
+    const combatExchangeResult = await applyCombatExchangeToNpcState({
+      tx,
+      npcAttackTarget,
+      npcNuevaEnergia,
+      npcAttackHits,
+      npcTargetNewCondicion,
+      analizarRivalExito,
+      saveId,
+      worldId,
+      currentLocationId,
+      nuevoFictionalMinutes,
+      nuevaFictionalDateLabel,
+      activeRegion,
+    });
+    if (combatExchangeResult.questCompletedInfo) questCompletedInfo = combatExchangeResult.questCompletedInfo;
 
-      if (npcAttackHits && npcTargetNewCondicion && (npcTargetNewCondicion === 'INCAPACITADO' || npcTargetNewCondicion === 'MUERTO')) {
-        // Cierre detectable por backend (roadmap 2026-07-19, mecánicas): si alguna misión ACTIVA
-        // apuntaba a este NPC (Quest.targetNpcId, ver newQuest más arriba), derrotarlo la cierra
-        // sola en cuanto cae — el modelo nunca tiene que acertar el título EXACTO vía
-        // questProgress para el caso más común de misión de combate ("derrotar a X"). También
-        // concede rewardItems/rewardXp de verdad y narra la recompensa (docs/19 pieza 3).
-        const completedHere = await completeNpcTargetQuests(tx, saveId, worldId, npcAttackTarget.id, nuevaFictionalDateLabel, nuevoFictionalMinutes);
-        if (completedHere) questCompletedInfo = completedHere;
+    // "Decapitar" (petición explícita, 2026-07-30) — ver `applyExecuteTargets` más arriba.
+    const executeResult = await applyExecuteTargets({
+      tx,
+      executeTargets,
+      saveId,
+      worldId,
+      currentLocationId,
+      nuevoFictionalMinutes,
+      nuevaFictionalDateLabel,
+      activeRegion,
+    });
+    if (executeResult.questCompletedInfo) questCompletedInfo = executeResult.questCompletedInfo;
 
-        // Reputación de facción determinista (roadmap 2026-07-19, prioridad 4): reutiliza
-        // `WorldState.factionsStatus` (gauge 0-5000 por facción, ver reputation.ts — reemplaza
-        // el viejo ±1 sin límite). Atacar a un NPC de una facción concreta resta bastante más de
-        // lo que se recupera resolviendo algo en paz (deltas asimétricos, "pozo real" para
-        // ENEMIGO); sin facción (fauna, NPCs independientes) no afecta a nada.
-        if (npcAttackTarget.faction) {
-          const currentWorldState = await tx.worldState.findUnique({ where: { saveId }, select: { factionsStatus: true } });
-          const updatedFactionsStatus = applyFactionRepDelta(
-            (currentWorldState?.factionsStatus as Record<string, number> | null) ?? {},
-            npcAttackTarget.faction,
-            FACTION_REP_ATTACK_DELTA,
-          );
-          await tx.worldState.update({ where: { saveId }, data: { factionsStatus: updatedFactionsStatus } });
-        }
-
-        // Población dinámica (docs/16-poblacion-dinamica.md): solo MUERTO resta población de
-        // verdad — INCAPACITADO es solo derrotado, no una baja real de la especie/raza.
-        if (npcTargetNewCondicion === 'MUERTO') {
-          await decrementPopulationOnDeath(tx, worldId, npcAttackTarget.raza, npcAttackTarget.slug, activeRegion);
-        }
-      }
-    }
-
-    // "Decapitar" (petición explícita, 2026-07-30) — sin tirada: un enemigo ya incapacitado no
-    // puede resistir el golpe de gracia. Uno por uno porque el modal puede marcar varios a la vez
-    // (checkbox). Mismo cierre de misión/reputación de facción que un golpe normal que deja
-    // MUERTO al objetivo (bloque de arriba) — en la práctica la misión ya se cerró al quedar
-    // INCAPACITADO, esto solo cubre el caso raro de que no lo hiciera.
-    for (const executeTarget of executeTargets) {
-      const scope = scopeFor(executeTarget.kind, currentLocationId);
-      // Revalidación anti-carrera (auditoría de deuda técnica 2026-08-04, mismo patrón ya
-      // cerrado hoy para construcción/crafteo/despiece/saqueo): `executeTargets` sale de
-      // `npcsInScene`, leído con `prisma` ANTES de esta transacción — dos "decapito a X" casi
-      // simultáneos podían pasar ambos el filtro `condicionFisica === 'INCAPACITADO'` con la
-      // misma foto obsoleta y aplicar la muerte DOS veces: población mundial restada dos veces
-      // por una sola baja, y penalización de reputación de facción duplicada. La escritura de
-      // `condicionFisica: 'MUERTO'` en sí es idempotente, pero sus efectos secundarios no lo son
-      // — se saltan enteros si el NPC ya estaba MUERTO de verdad justo antes de escribir.
-      const freshExecuteState = await tx.npcState.findUnique({
-        where: { saveId_npcId_scope: { saveId, npcId: executeTarget.id, scope } },
-      });
-      if (freshExecuteState?.condicionFisica === 'MUERTO') continue;
-      await tx.npcState.upsert({
-        where: { saveId_npcId_scope: { saveId, npcId: executeTarget.id, scope } },
-        create: { saveId, npcId: executeTarget.id, scope, condicionFisica: 'MUERTO', condicionFisicaSinceMinutes: nuevoFictionalMinutes },
-        update: { condicionFisica: 'MUERTO', condicionFisicaSinceMinutes: nuevoFictionalMinutes },
-      });
-      // Mismo cierre + recompensa real que un golpe normal que deja MUERTO al objetivo (bloque de
-      // arriba) — en la práctica la misión ya se cerró al quedar INCAPACITADO, esto solo cubre el
-      // caso raro de que no lo hiciera.
-      const completedByExecute = await completeNpcTargetQuests(tx, saveId, worldId, executeTarget.id, nuevaFictionalDateLabel, nuevoFictionalMinutes);
-      if (completedByExecute) questCompletedInfo = completedByExecute;
-      if (executeTarget.faction) {
-        const currentWorldState = await tx.worldState.findUnique({ where: { saveId }, select: { factionsStatus: true } });
-        const updatedFactionsStatus = applyFactionRepDelta(
-          (currentWorldState?.factionsStatus as Record<string, number> | null) ?? {},
-          executeTarget.faction,
-          FACTION_REP_ATTACK_DELTA,
-        );
-        await tx.worldState.update({ where: { saveId }, data: { factionsStatus: updatedFactionsStatus } });
-      }
-
-      // Población dinámica (docs/16-poblacion-dinamica.md) — Decapitar es siempre una muerte real.
-      await decrementPopulationOnDeath(tx, worldId, executeTarget.raza, executeTarget.slug, activeRegion);
-    }
-
-    // Despiece/recolección (§ 3.3) — solo si la acción tuvo éxito (o no requería tirada).
-    //
-    // Revalidación anti-carrera (auditoría de deuda técnica 2026-08-04, mismo patrón exacto ya
-    // cerrado hoy para construcción/crafteo): `harvestMatch` se calculó con `prisma`, ANTES de
-    // esta transacción — dos turnos de despiece casi simultáneos sobre el mismo cadáver de fauna
-    // podían pasar ambos el chequeo de `saqueado` ya obsoleto y duplicar el botín de un solo
-    // cuerpo. Solo aplica a fauna (`npcId` presente, el único caso con tope real); los recursos
-    // vegetales/minerales no tienen límite de por sí (renovables, por diseño — ver harvest.ts).
-    const harvestStillValid =
-      harvestMatch?.npcId && harvestMatch.npcKind
-        ? !(
-            await tx.npcState.findUnique({
-              where: { saveId_npcId_scope: { saveId, npcId: harvestMatch.npcId, scope: scopeFor(harvestMatch.npcKind, currentLocationId) } },
-            })
-          )?.saqueado
-        : true;
-    if (harvestMatch && (!roll || roll.success) && harvestStillValid) {
-      for (const y of harvestMatch.yields) {
-        const created = await tx.inventoryItem.create({
-          data: {
-            saveId,
-            name: y.cantidad > 1 ? `${y.itemName} (${y.cantidad})` : y.itemName,
-            description: `Obtenido despiezando/recolectando: ${harvestMatch.sourceName}.`,
-            origin: 'despiece/recolección',
-            catalogSlug: y.itemSlug,
-          },
-        });
-        // Materia prima cruda — siempre tipo RECURSO por diseño (nunca EQUIPABLE ni ESPECIAL,
-        // equipSlot/effectKey siempre null; ver comentario del enum ItemTipo).
-        newInventoryItems.push({ ...created, slot: null, equipSlot: null, effectKey: null, tipo: 'RECURSO' });
-        createdItemNames.push(created.name);
-      }
-      // Bug real (auditoría 2026-07-28): sin esto, el mismo cadáver de fauna ya derrotada se podía
-      // despiezar sin límite — marca este NpcState como ya aprovechado (mismo campo `saqueado` que
-      // cierra el saqueo de NPCs con nombre), para que harvest.ts lo bloquee la próxima vez.
-      if (harvestMatch.npcId && harvestMatch.npcKind && harvestMatch.yields.length > 0) {
-        const scope = scopeFor(harvestMatch.npcKind, currentLocationId);
-        await tx.npcState.upsert({
-          where: { saveId_npcId_scope: { saveId, npcId: harvestMatch.npcId, scope } },
-          create: { saveId, npcId: harvestMatch.npcId, scope, saqueado: true },
-          update: { saqueado: true },
-        });
-      }
-    }
-    // Narración mentirosa si se pierde la carrera (auditoría 2026-08-06, mismo patrón que loot/
-    // build más arriba): `harvestOutcome === 'exito'` (antes de esta transacción) ya fijó y emitió
-    // en streaming "despieza/recolecta X y consigue: ...", pero `harvestStillValid` (releído con
-    // `tx`) puede decir que otro turno casi simultáneo ya se llevó ese mismo cadáver — sin
-    // corregir aquí, el jugador vería en su Diario un botín que nunca recibió.
-    if (harvestOutcome === 'exito' && harvestMatch && !harvestStillValid) {
-      narration.narration = `${characterName} rebusca en los restos de ${harvestMatch.sourceName}, pero ya se llevó antes todo lo aprovechable.`;
-    }
+    // Despiece/recolección (§ 3.3) — ver `applyHarvest` más arriba.
+    const harvestResult = await applyHarvest({ tx, harvestMatch, harvestOutcome, roll, saveId, currentLocationId, characterName });
+    newInventoryItems.push(...harvestResult.newInventoryItems);
+    createdItemNames.push(...harvestResult.createdItemNames);
+    if (harvestResult.narrationOverride) narration.narration = harvestResult.narrationOverride;
 
     // Producción de acciones por tiempo (docs/08 § 4) — hasta ahora "debería conseguir 60 de
     // leña" era solo texto de aviso y nunca se materializaba de verdad (roadmap 2026-07-19).
@@ -3071,7 +3228,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
       buildMode && buildRecipe ? planRecipeConsumption(buildRecipe, freshInventoryRows, catalogBySlug) : null;
     const buildStillBlockedReason =
       buildMode && buildRecipe && buildRecipeConsumptionPlans && currentLocationRecord
-        ? await computeBuildBlockedReason(tx, saveId, worldId, buildRecipe, activeRegion, currentLocationRecord)
+        ? await computeBuildBlockedReason({ db: tx, saveId, worldId, buildRecipe, activeRegion, currentLocationRecord })
         : null;
     const buildValidNow = !!buildRecipeConsumptionPlans && !buildStillBlockedReason;
     // Narración mentirosa si se pierde la carrera (auditoría 2026-08-04, cierre del hallazgo de
@@ -3475,7 +3632,14 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     // Cierre de misión "conseguir Z" (roadmap 2026-07-20, P1 de Fable, Quest.targetItemName):
     // cualquier objeto materializado ESTE turno (loot/despiece/producción/crafteo/newItem, ver
     // createdItemNames más arriba) que mencione el nombre objetivo cierra la misión sola.
-    await closeItemQuests(tx, saveId, worldId, createdItemNames, nuevaFictionalDateLabel, nuevoFictionalMinutes);
+    await closeItemQuests({
+      tx,
+      saveId,
+      worldId,
+      createdItemNames,
+      timeLabel: nuevaFictionalDateLabel,
+      fictionalMinutes: nuevoFictionalMinutes,
+    });
 
     // Posición (docs/12 § 1.4 paso 7): al llegar, currentLocationId cambia al destino y se
     // registran visitas (destino + nodos intermedios), sin XP salvo la primera vez en el destino.
@@ -3821,184 +3985,28 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     await appendSessionFacts(saveId, sessionFacts, narration.newFacts);
   }
 
-  // Red de seguridad (ver detectsAttackIntent/detectsHostileSearchIntent en npcScene.ts): si el
-  // modelo no marcó combateIniciado pero o bien propuso empeorar la condición física (indicio de
-  // que sí narró daño real), o el jugador usó un verbo de ataque claro, o declaró intención hostil
-  // de búsqueda ("en busca de pelea", "para matarlo"...) contra un NPC ya en escena, se fuerza
-  // igualmente — evita que una pelea real narrada por el modelo se quede sin popup de combate
-  // por un olvido del campo (bug real jugando, 2026-07-22: justo el caso de búsqueda hostil).
-  //
-  // Bug real encontrado auditando la partida de Gorhorn (2026-07-23, "revisar partida" — un
-  // "Ataco al Orco Enfurecido" real no abrió el popup): el modelo SÍ rellenó "combateIniciado",
-  // pero con un slug que no matcheaba ninguno de `npcsInScene` (inventado o mal escrito). Antes,
-  // `combatSlugsFromModel.length === 0` ya daba false (el modelo "sí propuso algo"), así que la
-  // red de seguridad NUNCA se activaba — y como el slug no matcheaba nada real, `combatSlugs`
-  // acababa vacío igualmente tras el `.filter()` de abajo, dejando un `combateIniciado: {npcs: []}`
-  // que el frontend descarta en silencio (`combate.npcs.length > 0`). Ahora se valida el slug
-  // ANTES de decidir si hace falta la red de seguridad — si el modelo "propuso" algo que no
-  // corresponde a ningún NPC real en escena, cuenta como si no hubiera propuesto nada.
-  // Bug real jugando en vivo (2026-08-01, "el orco que metí volvió a aparecer" — auditoría a fondo
-  // de "revisa bien en todos los sitios que pendingCombatNpcSlugs se actualiza bien"): TODO este
-  // bloque decide con quién se fuerza/persiste combate, y hasta ahora ninguna de sus piezas miraba
-  // `condicionFisica` — un NPC ya INCAPACITADO/MUERTO seguía siendo candidato de
-  // `detectNpcsInScene` (tiene `NpcState` propio) y podía matchear en escena vía `sessionFacts`
-  // durante turnos sin ninguna relación con él (p.ej. "Exploro la zona"). Su temperamento de
-  // catálogo (AGRESIVO/ENEMIGO) no desaparece al morir, así que `agresivoSlugsInScene` lo seguía
-  // contando como amenaza y podía reabrir `combateIniciado`/`pendingCombatNpcSlugs` contra un
-  // cadáver ya saqueado. `npcsInSceneVivos` es la misma lista sin nadie ya resuelto — se usa en
-  // todo lo que decide "hay una amenaza real aquí" de aquí para abajo; `npcsInScene` (sin filtrar)
-  // se sigue necesitando tal cual para `explicitTarget`/loot/decapitar/`npcSceneBlockFor`, que sí
-  // necesitan poder referirse a un NPC ya derrotado a propósito. (Definida más arriba, junto a
-  // `candidateAttackTarget` — mismo fallback de "encuentro nuevo sin nombre citado" que también la
-  // necesitaba, ver comentario ahí.)
-  // Bug real jugando en vivo (2026-08-04, "ronda larga de pruebas"): esto se fiaba a ciegas de
-  // `combateIniciado.npcSlugs`, propuesto libremente por el modelo en su JSON — en un turno de
-  // descanso totalmente ajeno a combate (`enCombate: false`, sin ningún verbo hostil), el modelo
-  // propuso igualmente combate contra Gistera Koh (temperamento CAUTELOSO, nunca hostil), solo
-  // porque un hecho de sesión de trasfondo la menciona de pasada. Filtrado solo por "¿está viva y
-  // en escena?" no bastaba — ahora también exige que sea de verdad hostil
-  // (AGRESIVO/ENEMIGO, con reputación de facción ya aplicada, mismo criterio que
-  // `agresivoSlugsInScene` más abajo). Un NPC pacífico solo puede entrar en combate por la vía
-  // determinista de siempre (intercambio/ejecución/`shouldForceCombat`), nunca porque el modelo lo
-  // proponga sin más.
-  const combatSlugsFromModel = (narration.combateIniciado?.npcSlugs ?? []).filter((slug) =>
-    npcsInSceneVivos.some((n) => {
-      if (n.slug !== slug) return false;
-      const t = effectiveTemperamento(n.temperamento, n.faction, factionsStatus);
-      return t === 'AGRESIVO' || t === 'ENEMIGO';
-    }),
-  );
-  // Temperamento (2026-07-29, "si me encuentro un NPC 'Agresivo' me va a ser imposible no acabar
-  // peleando con él" + "la reputación influirá en los valores de combate"): el temperamento de
-  // catálogo (fijo) se desplaza por la reputación de facción de esta partida concreta —
-  // `effectiveTemperamento` (reputation.ts) es lo que de verdad decide aquí, no `n.temperamento`
-  // a secas. Un NPC con `faction: null` (fauna, independientes) no tiene de qué desplazarse y
-  // devuelve su valor de catálogo tal cual.
-  //
-  // Un modelo local pequeño no siempre sigue bien una instrucción de prompt, así que para
-  // AGRESIVO/ENEMIGO no nos fiamos solo del Narrador — cualquier NPC agresivo u hostil detectado
-  // en escena fuerza combate él solo, sin depender del verbo del jugador (mismo criterio de "no
-  // barrer a inocentes" que el bug del Múrgol de abajo: solo estos slugs, no todo `npcsInScene`).
-  const agresivoSlugsInScene = npcsInSceneVivos
-    .filter((n) => {
-      const t = effectiveTemperamento(n.temperamento, n.faction, factionsStatus);
-      return t === 'AGRESIVO' || t === 'ENEMIGO';
-    })
-    .map((n) => n.slug);
-  // Contraparte para AMIGABLE/INOFENSIVO: si TODOS los NPCs en escena son pacíficos, ninguno de
-  // ellos puede haber causado de verdad el empeoramiento de condición que narró el modelo — un
-  // giro ambiguo (el modelo "propuso" daño sin que nada en escena pudiera infligirlo) no debe
-  // abrir combate contra un Múrgol o un Corredor de Cauce. Los verbos explícitos del jugador
-  // (`detectsAttackIntent`/`detectsHostileSearchIntent`, líneas de abajo) siguen funcionando
-  // igual — atacar a algo pacífico de propia iniciativa sigue siendo posible.
-  const allNpcsInSceneArePacificos =
-    npcsInSceneVivos.length > 0 &&
-    npcsInSceneVivos.every((n) => {
-      const t = effectiveTemperamento(n.temperamento, n.faction, factionsStatus);
-      return t === 'AMIGABLE' || t === 'INOFENSIVO';
-    });
-  // Bug real jugando en vivo (2026-07-24, decisión explícita de la usuaria: "aceptar ayudar solo
-  // crea la misión, nunca abre combate"): "Cuenta conmigo. Acabaré con el que te persigue."
-  // (aceptando ayudar a Gistera Koh) comparte vocabulario con `detectsHostileSearchIntent`
-  // ("acabar(e)? con") — necesario para que el clasificador la trate como instantánea, pero forzaba
-  // combate igual contra TODOS los NPCs en escena (Gistera Koh, la propia aliada que pidió ayuda, Y
-  // un Múrgol de paso sin relación ninguna) — una promesa a futuro no es un ataque ahora mismo.
-  // Nunca suprime `detectsAttackIntent` (un ataque real de verdad sigue abriendo combate).
-  const shouldForceCombat =
-    !enCombate &&
-    combatSlugsFromModel.length === 0 &&
-    npcsInSceneVivos.length > 0 &&
-    (agresivoSlugsInScene.length > 0 ||
-      (isCondicionDowngrade(params.condicionFisica, narration.condicionFisica) && !allNpcsInSceneArePacificos) ||
-      detectsAttackIntent(action) ||
-      (detectsHostileSearchIntent(action) && !detectsVerbalAcceptanceIntent(action)));
-  // Bug real (auditoría 2026-07-23, "ha metido un murgol que no pinta nada"): la red de seguridad
-  // metía a TODOS los NPCs detectados en escena como participantes de combate (aliados, fauna de
-  // paso...), no solo al hostil. Si la acción cita un nombre real entre comillas (`explicitTarget`,
-  // ver arriba), el popup arranca solo con ese — y si lo que disparó la red de seguridad fue un
-  // NPC agresivo, solo él entra (mismo criterio) — el listado completo de `npcsInScene` queda como
-  // último recurso para cuando la acción no nombra a nadie en concreto ("me defiendo").
-  //
-  // Bug real (2026-08-01, misma auditoría de `npcsInSceneVivos` de arriba): `explicitTarget` no
-  // mira `condicionFisica` (a propósito, lo necesita loot/decapitar para citar a un NPC ya
-  // derrotado) — pero si el jugador cita entre comillas a alguien YA muerto/incapacitado y esta
-  // acción además dispara `shouldForceCombat` por cualquier otro motivo, no tiene sentido "forzar
-  // combate" contra un cadáver. Se comprueba aquí, solo para esta decisión.
-  const explicitTargetVivo =
-    explicitTarget && explicitTarget.condicionFisica !== 'INCAPACITADO' && explicitTarget.condicionFisica !== 'MUERTO' ? explicitTarget : null;
-  const forcedCombatSlugs = explicitTargetVivo
-    ? [explicitTargetVivo.slug]
-    : agresivoSlugsInScene.length > 0
-      ? agresivoSlugsInScene
-      : npcsInSceneVivos.map((n) => n.slug);
-  const baseCombatSlugs = combatSlugsFromModel.length > 0 ? combatSlugsFromModel : shouldForceCombat ? forcedCombatSlugs : [];
-  // Bug real (2026-07-29, jugando en vivo — "sigo sin hacerle daño al enemigo" con `enCombate`
-  // ya activo): mientras el combate ya está abierto, `shouldForceCombat` exige `!enCombate`
-  // (nunca se cumple) — así que `combatSlugs` dependía SOLO de que el modelo volviera a listar el
-  // slug del NPC en su propia `combateIniciado.npcSlugs` cada turno, algo que no garantiza en
-  // absoluto (campo narrativo, no determinista). Si esta acción resolvió un intercambio mecánico
-  // de verdad (resolveExchange), el NPC de ese intercambio SIEMPRE se incluye aquí — así
-  // `combateIniciado` (y con él la condición física fresca del NPC) llega al frontend en CADA
-  // turno donde de verdad pasó algo, no solo cuando el modelo se acuerda de repetir el slug.
-  const combatSlugsWithAttack =
-    exchangeHappened && npcAttackTarget && !baseCombatSlugs.includes(npcAttackTarget.slug)
-      ? [...baseCombatSlugs, npcAttackTarget.slug]
-      : baseCombatSlugs;
-  // "Decapitar" (2026-07-30) — mismo criterio que el golpe normal de arriba: si esta acción
-  // ejecutó a uno o varios enemigos de verdad, sus slugs viajan aquí siempre, sin depender de que
-  // el modelo se acuerde de repetirlos en su propia propuesta narrativa.
-  const executeSlugs = executeTargets.map((n) => n.slug);
-  // Saqueo parcial (ver `partiallyLootedSlugs` más arriba): un NPC tocado este turno que se queda
-  // CON botín pendiente sigue contando como "en combate" para que `pendingCombatNpcSlugs`
-  // sobreviva a un resync/recarga — sin esto, un turno de solo-saqueo (sin exchange ni decapitar)
-  // vaciaba el campo aunque quedaran objetos por saquear.
-  const combatSlugs = [...new Set([...combatSlugsWithAttack, ...executeSlugs, ...partiallyLootedSlugs])];
-
-  // Persistido (bug real, 2026-07-23, "revisar partida" — tercera vuelta sobre este mismo tema):
-  // `combateIniciado` viajaba SOLO en la respuesta directa de este turno — si el turno tardaba
-  // tanto que el sondeo de reconexión del cliente (GameView.tsx) tenía que recuperar la partida
-  // vía `GET /saves/:id` en vez de recibir la respuesta directa, el combate se calculaba bien
-  // aquí pero se perdía sin dejar rastro, porque `Save` no lo guardaba en ningún sitio. Se
-  // sobrescribe cada turno (vacío si no hay combate ESTE turno) para que `GET /saves/:id` pueda
-  // reconstruir el mismo aviso tras cualquier resincronización, no solo en la respuesta directa.
-  await prisma.save.update({ where: { id: saveId }, data: { pendingCombatNpcSlugs: combatSlugs } });
-
-  const combateIniciado = combatSlugs.length
-    ? {
-        npcs: combatSlugs
-          .map((slug) => npcsInScene.find((n) => n.slug === slug))
-          .filter((n): n is (typeof npcsInScene)[number] => !!n)
-          // condicionFisica/saqueado reales (auditoría de frontend, 2026-07-19): antes CombatModal
-          // no tenía forma de saber si este NPC ya venía herido o ya saqueado de un encuentro
-          // anterior en la misma partida — siempre arrancaba el popup asumiendo ILESO/sin saquear.
-          //
-          // Bug real (auditoría 2026-07-28): `npcsInScene` se lee UNA sola vez al principio del
-          // turno (antes de la transacción) y nunca se reescribe en memoria tras el
-          // `tx.npcState.upsert` de más arriba — sin este override, el NPC recién golpeado ESTE
-          // MISMO turno se devolvía todavía con su condición de ANTES del golpe. El frontend ya
-          // no tiene ningún downgrade optimista propio (ver GameView.tsx) que lo tapara, así que
-          // esta respuesta tiene que traer la condición fresca ella sola.
-          .map((n) => ({
-            slug: n.slug,
-            name: n.name,
-            condicionFisica:
-              executeTargets.some((t) => t.id === n.id)
-                ? 'MUERTO'
-                : npcAttackTarget && npcAttackHits && npcTargetNewCondicion && n.id === npcAttackTarget.id
-                  ? npcTargetNewCondicion
-                  : n.condicionFisica,
-            saqueado: n.saqueado,
-            // Bug real (2026-07-31, "saqueé 2 de 3 y la próxima vez me volvía a listar las 3"):
-            // este payload nunca mandaba qué objetos concretos ya se habían tomado — el frontend
-            // no tenía forma de filtrar el modal aunque `NpcState.lootedItemNames` ya llevaba la
-            // cuenta correcta en el backend desde el saqueo parcial (ver npcScene.ts).
-            lootedItemNames: n.lootedItemNames,
-            // Rediseño de combate (2026-08-09, "Analizar rival") — gatea la ficha del rival en
-            // CombatPanel.tsx § EnemyFicha.
-            analizado: n.analizado,
-          })),
-      }
-    : null;
+  // Decide con qué NPCs se abre/persiste el popup de combate este turno — ver
+  // `resolveCombatSlugsAndPersist` más arriba (red de seguridad contra un `combateIniciado` que
+  // el modelo olvida o propone mal, temperamento AGRESIVO/ENEMIGO forzando combate solo,
+  // decapitar/saqueo parcial siempre incluidos, y la persistencia en `Save.pendingCombatNpcSlugs`
+  // para sobrevivir a una resincronización).
+  const { combateIniciado } = await resolveCombatSlugsAndPersist({
+    saveId,
+    action,
+    enCombate,
+    narration,
+    npcsInScene,
+    npcsInSceneVivos,
+    factionsStatus,
+    condicionFisicaJugador: params.condicionFisica,
+    explicitTarget,
+    exchangeHappened,
+    npcAttackTarget,
+    npcAttackHits,
+    npcTargetNewCondicion,
+    executeTargets,
+    partiallyLootedSlugs,
+  });
 
   // Log de diagnóstico por turno (roadmap 2026-07-20, prioridad P0 de Fable): una línea
   // estructurada con qué detectores dispararon y con qué resultado. Los 3 bugs reales de hoy

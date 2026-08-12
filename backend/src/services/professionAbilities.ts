@@ -10,6 +10,7 @@ import {
   COMPLETE_POULTICE_RECIPE,
   type CraftingRecipe,
 } from './crafting.js';
+import { CHOZA_RECIPE, type ConstructionRecipe } from './construction.js';
 import type { StartingAbility } from './startingAbilities.js';
 
 /// Habilidades de OFICIO (idea aplazada 2026-07-28, retomada 2026-08-07): las recetas de
@@ -26,12 +27,24 @@ import type { StartingAbility } from './startingAbilities.js';
 /// Las recetas SIN oficio (ahumar carne, antorcha de campo — "al alcance de cualquiera, sin
 /// necesitar oficio") quedan fuera a propósito: no hay ningún nivel que alcanzar, nada que
 /// desbloquear.
+///
+/// Excepción de categoría (2026-08-13): las recetas de construction.ts con oficio (`buildAbilityFor`
+/// más abajo, hoy solo la Choza) siguen el MISMO desbloqueo por nivel de oficio, pero su
+/// `ability.category` es 'reino', no 'profesion' — tienen su propia pestaña "Reino" en el panel de
+/// Habilidades junto a Campamento/Ayuntamiento (startingAbilities.ts, sin oficio), porque
+/// "edificar algo del mundo persistente" es un concepto distinto de "craftear un objeto propio".
 export interface ProfessionAbilityUnlock {
   oficio: string;
   nivel: number;
-  /// `recipe.key` (crafting.ts) — para enlazar desde la ficha de la habilidad a su entrada real en
-  /// la Enciclopedia (sección Crafteo, `crafteo:${recipeKey}`, rediseño de profesiones 2026-08-07).
+  /// `recipe.key` (crafting.ts o construction.ts) — para enlazar desde la ficha de la habilidad a
+  /// su entrada real en la Enciclopedia (rediseño de profesiones 2026-08-07). El slug completo es
+  /// `${recipeCategory}:${recipeKey}` — ver `recipeCategory` justo debajo.
   recipeKey: string;
+  /// Qué sección de la Enciclopedia indexa esta receta ('crafteo' para crafting.ts, 'construccion'
+  /// para construction.ts — mismo `entityType` que enciclopediaTargets.ts usa al construir
+  /// `bySlugKey`). Añadido 2026-08-13 al sumar la Choza (construction.ts) a este roster: antes
+  /// todas las entradas eran de crafteo y DetailModal.tsx daba el prefijo por hecho.
+  recipeCategory: 'crafteo' | 'construccion';
   ability: StartingAbility;
 }
 
@@ -41,7 +54,28 @@ function abilityFor(recipe: CraftingRecipe, name: string, icon: string, promptTe
     oficio: recipe.oficio,
     nivel: recipe.tier,
     recipeKey: recipe.key,
+    recipeCategory: 'crafteo',
     ability: { name, icon, description: recipe.resultDescription, promptText, category: 'profesion' },
+  };
+}
+
+// Edificios de construction.ts con oficio+tier propios (2026-08-13, petición explícita: "hay que
+// añadir también los edificios como habilidades de construcción, al igual que el resto de
+// elementos de profesiones") — mismo patrón que abilityFor, pero para ConstructionRecipe. Solo
+// cubre recetas CON oficio: las que no lo llevan (Campamento, Ayuntamiento — "cualquiera puede
+// intentarlo, no hace falta un gremio", ver construction.ts) van como habilidad de categoría
+// 'reino' en startingAbilities.ts en vez de aquí, porque no hay ningún nivel de oficio que
+// desbloquearlas. `ability.category` es 'reino', no 'profesion' (misma petición, extendida el
+// mismo día: "hay que añadir un tab en habilidades para las habilidades de reino") — su propia
+// pestaña, distinta de "Profesiones", aunque el desbloqueo siga dependiendo del nivel de oficio.
+function buildAbilityFor(recipe: ConstructionRecipe, name: string, icon: string, promptText: string): ProfessionAbilityUnlock {
+  if (!recipe.oficio || !recipe.tier) throw new Error(`[professionAbilities] receta de construcción sin oficio/tier: ${recipe.key}`);
+  return {
+    oficio: recipe.oficio,
+    nivel: recipe.tier,
+    recipeKey: recipe.key,
+    recipeCategory: 'construccion',
+    ability: { name, icon, description: recipe.description, promptText, category: 'reino' },
   };
 }
 
@@ -58,6 +92,7 @@ const PROFESSION_ABILITIES: ProfessionAbilityUnlock[] = [
   abilityFor(RED_SPIKE_INFUSION_RECIPE, 'Preparar infusión de espiga roja', '☕', 'Preparo una infusión de espiga roja.'),
   abilityFor(BASIC_POULTICE_RECIPE, 'Preparar cataplasma básica de salvia', '🌿', 'Preparo una cataplasma básica de salvia.'),
   abilityFor(COMPLETE_POULTICE_RECIPE, 'Preparar cataplasma completa de salvia y ceniza', '✨', 'Preparo una cataplasma completa de salvia y ceniza.'),
+  buildAbilityFor(CHOZA_RECIPE, 'Construir choza de piel y hueso', '🛖', 'Construyo una choza de piel y hueso con los materiales que llevo.'),
 ];
 
 /// Qué habilidades de oficio se desbloquean exactamente al alcanzar `nivel` en `oficio` — llamar

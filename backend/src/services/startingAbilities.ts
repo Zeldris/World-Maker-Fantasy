@@ -9,7 +9,11 @@ export interface StartingAbility {
   /// 'profesion' (2026-08-07) — habilidades de oficio desbloqueadas por nivel (ver
   /// professionAbilities.ts): igual que 'general' en todo lo mecánico (nunca de combate, siempre
   /// clicable/atacable a la acción), pero en su propia pestaña del panel de Habilidades.
-  category: 'combate' | 'general' | 'profesion';
+  /// 'reino' (2026-08-13) — recetas de construction.ts (Campamento, Ayuntamiento x3 aquí; la
+  /// Choza, con oficio propio, en professionAbilities.ts) — su propia pestaña "Reino", separada de
+  /// "Profesiones" aunque alguna tenga oficio, porque conceptualmente son "levantar algo del mundo
+  /// persistente", no "craftear un objeto propio".
+  category: 'combate' | 'general' | 'profesion' | 'reino';
   /// Mecánica real de habilidades de clase (checklist 2026-07-21/22, puntos 1-2) — solo relevante
   /// para category:'combate'. Gana sobre la heurística de palabra clave de npcScene.ts
   /// (tabulatedAttackAttribute) cuando el turno manda el savedActionId de esta habilidad.
@@ -97,6 +101,41 @@ const GORHORN_STARTING_ABILITIES: StartingAbility[] = [
     description: 'Busca fauna real de la zona para cazarla — una presa débil puede caer sin pelear, varias a la vez siempre exigen combate.',
     promptText: 'Salgo a cazar por la zona.',
     category: 'general',
+  },
+  // Edificios sin oficio (2026-08-13, petición explícita: "hay que añadir también los edificios
+  // como habilidades de construcción, al igual que el resto de elementos de profesiones") —
+  // Campamento y los 3 niveles de Ayuntamiento no llevan `oficio` en construction.ts a propósito
+  // ("cualquiera puede intentarlo, no hace falta un gremio"), así que van aquí en vez de en
+  // professionAbilities.ts (que exige oficio+tier). Categoría 'reino' (pestaña propia, 2026-08-13,
+  // petición explícita: "hay que añadir un tab en habilidades para las habilidades de reino"), no
+  // 'general' — misma pestaña que la Choza, que sí tiene oficio y vive en professionAbilities.ts.
+  {
+    name: 'Construir campamento',
+    icon: '🏕️',
+    description: 'Levanta un campamento base con leña, piedra y piel — un refugio rápido para pasar la noche y guardar partida.',
+    promptText: 'Construyo un campamento base con lo que llevo encima.',
+    category: 'reino',
+  },
+  {
+    name: 'Fundar ayuntamiento',
+    icon: '🏛️',
+    description: 'Levanta el primer ayuntamiento de un reino en esta región — el asiento de mando que desbloquea construir infraestructura de reino a su alrededor.',
+    promptText: 'Construyo un ayuntamiento en este territorio.',
+    category: 'reino',
+  },
+  {
+    name: 'Ampliar ayuntamiento a mediano',
+    icon: '🏛️',
+    description: 'Mejora tu ayuntamiento ya construido a tamaño mediano, ampliando cuánta infraestructura de reino puedes sostener.',
+    promptText: 'Mejoro mi ayuntamiento a uno mediano.',
+    category: 'reino',
+  },
+  {
+    name: 'Ampliar ayuntamiento a grande',
+    icon: '🏛️',
+    description: 'Mejora tu ayuntamiento ya construido a un gran ayuntamiento, la capital de un reino asentado.',
+    promptText: 'Amplío mi ayuntamiento hasta convertirlo en uno grande.',
+    category: 'reino',
   },
 ];
 
