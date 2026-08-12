@@ -46,20 +46,46 @@ ya estaba así de antes). Viaja por `TurnContext.npcFallsUnconsciousThisTurn` (n
 concreto cuando aplica. Tests: 2 nuevos en `narrador.test.ts` (con/sin la instrucción en el
 prompt).
 
-### 2. Recuperación tras 6 horas de tiempo de juego si no se decapita
+### 2. Recuperación tras 6h (INCAPACITADO) / desaparición tras 48h (MUERTO) + panel de interacción
 
 **No existe ningún mecanismo de este tipo hoy** — confirmado por grep en `death.ts` y el resto de
-`services/*.ts`: cero código que revierta `condicionFisica` de INCAPACITADO a un estado mejor con
-el paso del tiempo. Es una pieza nueva de verdad:
-- Necesita guardar CUÁNDO quedó incapacitado (marca de tiempo de ficción — `NpcState` no tiene hoy
-  ningún campo así, habría que añadirlo).
-- Necesita comprobarlo en cada turno/tick contra `fictionalDate` actual (mismo tipo de comprobación
-  que ya hace `worldTick.ts` para tránsitos).
-- Decisión de diseño pendiente: ¿a qué condición se recupera exactamente (vuelve a GRAVE? a ILESO?)
-  y qué pasa si el jugador vuelve a atacarlo a mitad de recuperación.
+`services/*.ts`: cero código que revierta `condicionFisica` con el paso del tiempo, ni que borre/
+oculte un cadáver. Diseño confirmado con la usuaria (2026-08-13), más amplio que el esbozo inicial:
+
+**a) Recuperación de INCAPACITADO** — a las 6h de tiempo de ficción sin decapitar, vuelve a
+**HERIDO** (no GRAVE ni ILESO — decisión explícita de la usuaria, corrige la recomendación inicial
+de este documento). Si se le ataca de nuevo a mitad de la recuperación, **combate normal, sin caso
+especial**: si se remata, MUERTO; si no, sigue INCAPACITADO y el conteo de 6h se reinicia solo
+(nueva marca de tiempo al volver a dejarlo INCAPACITADO), sin lógica aparte que mantener.
+
+**b) Desaparición de un cadáver (MUERTO)** — a las 48h de tiempo de ficción (no tiempo real), el
+cadáver desaparece del mundo.
+
+**c) Panel de interacción fuera de combate (pieza nueva, no estaba en el esbozo inicial)** —
+interactuar con un NPC/fauna incapacitado o un cadáver (sin estar en combate activo) abre una
+vista tipo "Victoria" de `CombatPanel.tsx` pero SIN el texto de victoria: la ficha del NPC/fauna
+(igual que en combate) + botones:
+- **INCAPACITADO**: Salir · Saquear (solo si `!saqueado`) · Decapitar.
+- **MUERTO**: Salir · Saquear (solo si `!saqueado` — sin Decapitar, ya está muerto).
+
+Necesita, además del mecanismo de tiempo:
+- Nuevos campos en `NpcState`: marca de tiempo de ficción de cuándo quedó INCAPACITADO (para la
+  regla a) y de cuándo quedó MUERTO (para la regla b) — requiere migración de schema (SQL a mano,
+  nunca `prisma migrate dev`, ver docs/15-instalacion.md).
+- Comprobación en cada turno/tick contra `fictionalMinutes` actual (mismo tipo de chequeo que ya
+  hace `worldTick.ts` para tránsitos) — candidato natural: el mismo sitio que ya recorre NPCs en
+  escena, o un paso nuevo en `worldTick.ts`.
+- Detección de "el jugador quiere interactuar con un NPC/fauna incapacitado o muerto que ya
+  conoce" fuera de combate — probablemente reutilizando `detectNpcsInScene` + comprobar
+  `condicionFisica`, similar en espíritu al validador de grounding de hoy pero para el caso
+  contrario (SÍ existe y SÍ está aquí, solo que inconsciente/muerto).
+- Frontend: panel nuevo o variante de la pantalla "ended" de `CombatPanel.tsx`, disparable sin
+  pasar por combate.
 - Se decapita → `decrementPopulationOnDeath` ya se dispara (mecanismo existente, no tocar). Dejarlo
-  vivo e inconsciente → sin decremento de población, y ahora además con posibilidad real de que se
-  reponga si no se remata a tiempo.
+  vivo e inconsciente → sin decremento de población hasta que se decapite o se remate de verdad.
+- Pregunta abierta, no cerrada todavía: ¿la desaparición a las 48h de un cadáver ya saqueado del
+  todo simplemente borra su `NpcState`/lo saca de escena, o hace falta algo más (p. ej. un
+  `SessionFact` que registre que el cuerpo "ya no está" para que el Narrador no lo mencione)?
 
 ### 3. Recompensa determinista de misión (el mapa, y en general)
 

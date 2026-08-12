@@ -22,6 +22,30 @@ const CONDICION_ORDER: CondicionFisica[] = ['ILESO', 'HERIDO', 'GRAVE', 'INCAPAC
 /// usuaria: sigue pudiendo intentarlo, pero MUY penalizado — no un tope duro (eso lo pidió para
 /// otra cosa), un malus real. MUERTO se queda en 0: no llega a pelear otro turno (ver
 /// `finDePartida`/respawn en turnResolution.ts), el valor es irrelevante ahí.
+/// Recuperación/desaparición por tiempo (docs/19-post-combate-y-recompensas-mision.md pieza 2,
+/// 2026-08-13, decisión explícita de la usuaria) — puro: dado cuándo cambió por última vez
+/// `condicionFisica` (`NpcState.condicionFisicaSinceMinutes`, en minutos de FICCIÓN, no reales) y
+/// el minuto de ficción actual, decide si toca revertir/despachar. La escritura real en DB vive en
+/// turnResolution.ts (necesita `tx`), esto solo decide el "¿toca ya?".
+const RECOVERY_INCAPACITADO_MINUTES = 6 * 60;
+const DESPAWN_MUERTO_MINUTES = 48 * 60;
+
+/// INCAPACITADO sin decapitar durante 6h de ficción → se recupera a HERIDO (no GRAVE ni ILESO —
+/// decisión explícita de la usuaria, corrige la primera propuesta de este mismo documento).
+export function npcRecoversFromIncapacitado(sinceMinutes: number | null, nowMinutes: number): boolean {
+  if (sinceMinutes === null) return false;
+  return nowMinutes - sinceMinutes >= RECOVERY_INCAPACITADO_MINUTES;
+}
+
+/// MUERTO durante 48h de ficción → el cadáver desaparece del mundo (se borra su NpcState — mismo
+/// espíritu que el resto del modelo, donde una fila de NPC `PLANTILLA` ya es "un encuentro
+/// concreto", no un registro permanente; para `PRINCIPAL` equivale a que el mundo haya seguido su
+/// curso con el cuerpo, sin dejarlo eternamente saqueable/decapitable en el mismo sitio).
+export function npcCorpseShouldDespawn(sinceMinutes: number | null, nowMinutes: number): boolean {
+  if (sinceMinutes === null) return false;
+  return nowMinutes - sinceMinutes >= DESPAWN_MUERTO_MINUTES;
+}
+
 const CONDICION_MALUS: Record<CondicionFisica, number> = {
   ILESO: 0,
   HERIDO: 2,

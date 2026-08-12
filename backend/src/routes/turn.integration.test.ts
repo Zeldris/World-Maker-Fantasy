@@ -1715,6 +1715,97 @@ describe('Decapitar cierra una misión "derrotar a X" con rewardItems y entrega 
   }, 20_000);
 });
 
+// docs/19-post-combate-y-recompensas-mision.md pieza 2 (2026-08-13) — recuperación de INCAPACITADO
+// a las 6h de ficción y desaparición de un cadáver a las 48h. `applyCondicionTimeouts` se dispara
+// dentro de CUALQUIER turno resuelto (mismo punto que avanza `fictionalMinutes`), así que un turno
+// cualquiera basta para comprobarlo — no hace falta que la acción tenga nada que ver con el NPC.
+describe('Recuperación de INCAPACITADO tras 6h de ficción (docs/19 pieza 2)', () => {
+  let saveId: string;
+  let npcId: string;
+
+  beforeAll(async () => {
+    const userId = await getDefaultUserId();
+    const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
+    const hondonada = await prisma.location.findFirstOrThrow({ where: { worldId: world.id, slug: 'hondonada-del-eco' } });
+    const orco = await prisma.npc.findFirstOrThrow({ where: { worldId: world.id, slug: 'orco-enfurecido-hondonada' } });
+    npcId = orco.id;
+    const save = await prisma.save.create({
+      data: {
+        userId,
+        worldId: world.id,
+        characterName: 'Gorhorn de prueba 18',
+        characterArchetype: 'guerrero',
+        characterOrigin: 'Clan Maktor',
+        characterMotivation: 'x',
+        attributes: ATTRS,
+        portraitInitial: 'G',
+        currentLocationId: hondonada.id,
+      },
+    });
+    saveId = save.id;
+    // fictionalMinutes por defecto (480) - condicionFisicaSinceMinutes (0) = 8h > umbral de 6h —
+    // cualquier turno, sin importar cuánto avance el reloj él solo, ya cruza el umbral.
+    await prisma.worldState.create({ data: { saveId } });
+    await prisma.npcState.create({ data: { saveId, npcId, scope: '', condicionFisica: 'INCAPACITADO', condicionFisicaSinceMinutes: 0 } });
+    classifyAction.mockResolvedValue({
+      requiereTirada: false, atributo: 'destreza', dificultad: 8, razon: 'x', banda: 'instantanea', duracionEstimadaMinutos: 0,
+    });
+  });
+
+  afterAll(async () => {
+    await prisma.save.delete({ where: { id: saveId } });
+  });
+
+  it('un turno cualquiera revierte la condición a HERIDO', async () => {
+    await doTurn(saveId, 'Exploro la zona con cuidado.');
+    const state = await prisma.npcState.findUniqueOrThrow({ where: { saveId_npcId_scope: { saveId, npcId, scope: '' } } });
+    expect(state.condicionFisica).toBe('HERIDO');
+  }, 20_000);
+});
+
+describe('Desaparición de un cadáver tras 48h de ficción (docs/19 pieza 2)', () => {
+  let saveId: string;
+  let npcId: string;
+
+  beforeAll(async () => {
+    const userId = await getDefaultUserId();
+    const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
+    const hondonada = await prisma.location.findFirstOrThrow({ where: { worldId: world.id, slug: 'hondonada-del-eco' } });
+    const orco = await prisma.npc.findFirstOrThrow({ where: { worldId: world.id, slug: 'orco-enfurecido-hondonada' } });
+    npcId = orco.id;
+    const save = await prisma.save.create({
+      data: {
+        userId,
+        worldId: world.id,
+        characterName: 'Gorhorn de prueba 19',
+        characterArchetype: 'guerrero',
+        characterOrigin: 'Clan Maktor',
+        characterMotivation: 'x',
+        attributes: ATTRS,
+        portraitInitial: 'G',
+        currentLocationId: hondonada.id,
+      },
+    });
+    saveId = save.id;
+    // fictionalMinutes explícito bien por encima de 48h (2880 min) desde condicionFisicaSinceMinutes.
+    await prisma.worldState.create({ data: { saveId, fictionalMinutes: 4000 } });
+    await prisma.npcState.create({ data: { saveId, npcId, scope: '', condicionFisica: 'MUERTO', condicionFisicaSinceMinutes: 0, saqueado: true } });
+    classifyAction.mockResolvedValue({
+      requiereTirada: false, atributo: 'destreza', dificultad: 8, razon: 'x', banda: 'instantanea', duracionEstimadaMinutos: 0,
+    });
+  });
+
+  afterAll(async () => {
+    await prisma.save.delete({ where: { id: saveId } });
+  });
+
+  it('un turno cualquiera borra el NpcState del cadáver', async () => {
+    await doTurn(saveId, 'Exploro la zona con cuidado.');
+    const state = await prisma.npcState.findUnique({ where: { saveId_npcId_scope: { saveId, npcId, scope: '' } } });
+    expect(state).toBeNull();
+  }, 20_000);
+});
+
 // Bug real jugando en vivo (2026-08-04, "ronda larga de pruebas" — el propio combate contra el
 // Orco Enfurecido en la Hondonada del Eco redirigió el golpe a Gistera Koh, un PNJ nunca hostil,
 // en cuanto el segundo turno de ataque dejó de citar su nombre entre comillas). Confirmado en

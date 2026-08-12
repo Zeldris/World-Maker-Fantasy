@@ -221,8 +221,8 @@ export async function cazarRoutes(app: FastifyInstance) {
       const logEntry = await prisma.$transaction(async (tx) => {
         await tx.npcState.upsert({
           where: { saveId_npcId_scope: { saveId: save.id, npcId: npc.id, scope } },
-          create: { saveId: save.id, npcId: npc.id, scope, condicionFisica: 'MUERTO' },
-          update: { condicionFisica: 'MUERTO' },
+          create: { saveId: save.id, npcId: npc.id, scope, condicionFisica: 'MUERTO', condicionFisicaSinceMinutes: fictionalMinutes },
+          update: { condicionFisica: 'MUERTO', condicionFisicaSinceMinutes: fictionalMinutes },
         });
         await decrementPopulationOnDeath(tx, save.worldId, null, npc.slug, region);
         const created = await tx.logEntry.create({ data: { saveId: save.id, channel: 'CHARACTER', text, timeLabel, fictionalMinutes, isPlayerAction: false } });

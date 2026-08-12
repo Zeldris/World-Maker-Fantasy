@@ -8,6 +8,8 @@ import {
   isValidRestLocationKind,
   healCeilingFor,
   condicionMalus,
+  npcRecoversFromIncapacitado,
+  npcCorpseShouldDespawn,
 } from './death.js';
 
 describe('limiteMuertes', () => {
@@ -161,5 +163,30 @@ describe('isValidRestLocationKind', () => {
   it('hito y cruce no son válidos', () => {
     expect(isValidRestLocationKind('hito')).toBe(false);
     expect(isValidRestLocationKind('cruce')).toBe(false);
+  });
+});
+
+describe('npcRecoversFromIncapacitado', () => {
+  it('no se recupera antes de las 6h', () => {
+    expect(npcRecoversFromIncapacitado(0, 6 * 60 - 1)).toBe(false);
+  });
+  it('se recupera justo a las 6h o más', () => {
+    expect(npcRecoversFromIncapacitado(0, 6 * 60)).toBe(true);
+    expect(npcRecoversFromIncapacitado(100, 100 + 6 * 60)).toBe(true);
+  });
+  it('sin marca de tiempo previa (null), no dispara', () => {
+    expect(npcRecoversFromIncapacitado(null, 999_999)).toBe(false);
+  });
+});
+
+describe('npcCorpseShouldDespawn', () => {
+  it('no desaparece antes de las 48h', () => {
+    expect(npcCorpseShouldDespawn(0, 48 * 60 - 1)).toBe(false);
+  });
+  it('desaparece justo a las 48h o más', () => {
+    expect(npcCorpseShouldDespawn(0, 48 * 60)).toBe(true);
+  });
+  it('sin marca de tiempo previa (null), no dispara', () => {
+    expect(npcCorpseShouldDespawn(null, 999_999)).toBe(false);
   });
 });

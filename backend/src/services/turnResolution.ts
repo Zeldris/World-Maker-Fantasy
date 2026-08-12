@@ -101,6 +101,8 @@ import {
   saludForCondicion,
   saludBandFor,
   healCeilingFor,
+  npcRecoversFromIncapacitado,
+  npcCorpseShouldDespawn,
 } from './death.js';
 import { continentForRegion, oppositeContinent } from '../lib/continent.js';
 import { advanceFictionalMinutes, formatFictionalDate } from './worldClock.js';
@@ -1206,6 +1208,29 @@ async function completeNpcTargetQuests(
           fictionalMinutes,
         },
       });
+    }
+  }
+}
+
+/// Recuperación de INCAPACITADO tras 6h de ficción / desaparición de un cadáver tras 48h (docs/19
+/// pieza 2, 2026-08-13) — se llama una vez por turno resuelto de verdad (`narrateAndPersistTurn`
+/// es el único punto de convergencia entre el turno síncrono y la resolución diferida de un
+/// `CharacterTransit`, así que cubre los dos caminos por los que puede avanzar `fictionalMinutes`
+/// sin duplicar el cableado). Barre TODOS los `NpcState` INCAPACITADO/MUERTO de esta partida — en
+/// la práctica siempre son pocas filas, no vale la pena acotar por escena.
+async function applyCondicionTimeouts(tx: Prisma.TransactionClient, saveId: string, nowMinutes: number): Promise<void> {
+  const affected = await tx.npcState.findMany({
+    where: { saveId, condicionFisica: { in: ['INCAPACITADO', 'MUERTO'] } },
+    select: { id: true, condicionFisica: true, condicionFisicaSinceMinutes: true },
+  });
+  for (const state of affected) {
+    if (state.condicionFisica === 'INCAPACITADO' && npcRecoversFromIncapacitado(state.condicionFisicaSinceMinutes, nowMinutes)) {
+      await tx.npcState.update({
+        where: { id: state.id },
+        data: { condicionFisica: 'HERIDO', condicionFisicaSinceMinutes: nowMinutes },
+      });
+    } else if (state.condicionFisica === 'MUERTO' && npcCorpseShouldDespawn(state.condicionFisicaSinceMinutes, nowMinutes)) {
+      await tx.npcState.delete({ where: { id: state.id } });
     }
   }
 }
@@ -2489,6 +2514,14 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
       if (finalized.count === 0) throw new TransitCancelledError();
     }
 
+    // docs/19-post-combate-y-recompensas-mision.md pieza 2 — recuperación de INCAPACITADO a las 6h
+    // de ficción / desaparición de un cadáver a las 48h. Antes de nada más este turno, con el
+    // `fictionalMinutes` ya avanzado: cualquier NPC afectado debe verse ya actualizado en el resto
+    // de este mismo turno (p. ej. si vuelve a estar HERIDO, `npcsInScene` de este turno ya debería
+    // reflejarlo si se recalculara — no se recalcula aquí, pero al menos la DB queda consistente
+    // para el turno SIGUIENTE sin depender de que pase algo más).
+    await applyCondicionTimeouts(tx, saveId, nuevoFictionalMinutes);
+
     const newInventoryItems: NewInventoryItemInfo[] = [];
     // Ver el comentario de `removedInventoryItemIds` en NarrateAndPersistResult — se rellenan en
     // crafteo/construcción, los dos únicos caminos que de verdad borran/reducen filas existentes.
@@ -2654,14 +2687,14 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
           saveId,
           npcId: npcAttackTarget.id,
           scope,
-          ...(npcTargetNewCondicion ? { condicionFisica: npcTargetNewCondicion } : {}),
+          ...(npcTargetNewCondicion ? { condicionFisica: npcTargetNewCondicion, condicionFisicaSinceMinutes: nuevoFictionalMinutes } : {}),
           ...(npcNuevaEnergia !== null ? { energia: npcNuevaEnergia } : {}),
           // Rediseño de combate (2026-08-09, "Analizar rival") — permanente por NPC/scope en esta
           // partida, nunca se vuelve a poner en false (mismo criterio idempotente que `saqueado`).
           ...(analizarRivalExito ? { analizado: true } : {}),
         },
         update: {
-          ...(npcAttackHits && npcTargetNewCondicion ? { condicionFisica: npcTargetNewCondicion } : {}),
+          ...(npcAttackHits && npcTargetNewCondicion ? { condicionFisica: npcTargetNewCondicion, condicionFisicaSinceMinutes: nuevoFictionalMinutes } : {}),
           ...(npcNuevaEnergia !== null ? { energia: npcNuevaEnergia } : {}),
           ...(analizarRivalExito ? { analizado: true } : {}),
         },
@@ -2719,8 +2752,8 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
       if (freshExecuteState?.condicionFisica === 'MUERTO') continue;
       await tx.npcState.upsert({
         where: { saveId_npcId_scope: { saveId, npcId: executeTarget.id, scope } },
-        create: { saveId, npcId: executeTarget.id, scope, condicionFisica: 'MUERTO' },
-        update: { condicionFisica: 'MUERTO' },
+        create: { saveId, npcId: executeTarget.id, scope, condicionFisica: 'MUERTO', condicionFisicaSinceMinutes: nuevoFictionalMinutes },
+        update: { condicionFisica: 'MUERTO', condicionFisicaSinceMinutes: nuevoFictionalMinutes },
       });
       // Mismo cierre + recompensa real que un golpe normal que deja MUERTO al objetivo (bloque de
       // arriba) — en la práctica la misión ya se cerró al quedar INCAPACITADO, esto solo cubre el

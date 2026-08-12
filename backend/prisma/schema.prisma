@@ -1125,6 +1125,12 @@ model NpcState {
   /// `attributes`, no cambia entre encuentros). Gatea qué muestra la ficha del rival en combate
   /// (CombatPanel.tsx § EnemyFicha) — sin analizar, ni estadísticas ni habilidades.
   analizado       Boolean         @default(false)
+  /// docs/19-post-combate-y-recompensas-mision.md pieza 2 (2026-08-13) — `fictionalMinutes` (no
+  /// tiempo real, el reloj del mundo se pausa cuando el backend está parado) del momento en que
+  /// `condicionFisica` pasó a su valor ACTUAL. Solo se usa cuando el valor actual es INCAPACITADO
+  /// (recupera a HERIDO a las 6h) o MUERTO (el cadáver desaparece a las 48h) — se rellena siempre
+  /// que cambia por simplicidad, aunque para ILESO/HERIDO/GRAVE no se lea nunca.
+  condicionFisicaSinceMinutes Int?
   updatedAt       DateTime        @updatedAt
 
   @@unique([saveId, npcId, scope])
