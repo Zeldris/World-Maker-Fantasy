@@ -1205,7 +1205,11 @@ export const npcs: NpcInput[] = [
     slug: 'orco-rezagado',
     name: 'Guerrero orco rezagado',
     kind: 'PLANTILLA',
-    aliases: ['guerrero orco rezagado'],
+    // 'orco rezagado' añadido (auditoría de catálogo fauna/npcs, 2026-08-13): único NPC de su
+    // familia de arquetipos itinerantes sin ninguna forma corta — 'guerrero orco rezagado' exige
+    // la frase completa como substring literal (matchNpcAliases, npcScene.ts), y "el orco
+    // rezagado" (sin "guerrero") es la forma más natural de referirse a él en juego.
+    aliases: ['guerrero orco rezagado', 'orco rezagado'],
     faction: null,
     genero: 'M', // Bio explícita en masculino ("Orco corpulento") — misma auditoría de género, 2026-08-08.
     role: 'Guerrero sin clan, separado de los suyos',
@@ -1569,6 +1573,9 @@ export const npcs: NpcInput[] = [
     kind: 'PRINCIPAL',
     aliases: ['kael dorn', 'kael'],
     faction: null,
+    // Bio explícita en masculino ("el hombre más buscado de Berig") — misma auditoría de género,
+    // 2026-08-13 (auditoría de catálogo fauna/npcs).
+    genero: 'M',
     role: 'Exmiembro de la facción radical Goirnte, fugitivo',
     level: 3,
     attributes: { fuerza: 8, destreza: 9, constitucion: 6, inteligencia: 8, voluntad: 8, carisma: 6, arcano: 4 },
@@ -1807,6 +1814,7 @@ export const items: ItemCatalogInput[] = [
   {
     slug: 'hacha-guerra-orca',
     name: 'Hacha de guerra orca',
+    aliases: ['hacha de guerra orca'],
     category: 'arma',
     tipo: 'EQUIPABLE',
     equipSlot: 'ARMA_PRINCIPAL',
@@ -2365,6 +2373,7 @@ export const items: ItemCatalogInput[] = [
   {
     slug: 'grano-espiga-roja',
     name: 'Grano de espiga roja',
+    aliases: ['grano de espiga roja'],
     category: 'consumible',
     tipo: 'CONSUMIBLE',
     equipSlot: 'CONSUMIBLE_1',
@@ -2402,8 +2411,9 @@ export const items: ItemCatalogInput[] = [
   },
 
   { 
-    slug: 'racion-carne-ahumada', 
+    slug: 'racion-carne-ahumada',
     name: 'Ración de carne ahumada',
+    aliases: ['carne ahumada'],
     category: 'consumible',
     tipo: 'CONSUMIBLE', 
     equipSlot: 'CONSUMIBLE_1', 
@@ -2416,6 +2426,7 @@ export const items: ItemCatalogInput[] = [
   {
     slug: 'racion-carne',
     name: 'Ración de carne fresca',
+    aliases: ['carne fresca'],
     category: 'consumible',
     tipo: 'CONSUMIBLE',
     equipSlot: 'CONSUMIBLE_1',
@@ -2481,14 +2492,20 @@ export const items: ItemCatalogInput[] = [
     dimensiones: 'Aguijón de 6 cm.',
   },
 
-  { 
-    slug: 'cataplasma-flor-ceniza', 
-    name: 'Cataplasma de Flor de Ceniza', 
+  {
+    slug: 'cataplasma-flor-ceniza',
+    name: 'Cataplasma de Flor de Ceniza',
+    aliases: ['cataplasma de flor de ceniza'],
     category: 'medicinal',
-    tipo: 'CONSUMIBLE', 
-    equipSlot: 'CONSUMIBLE_1', 
-    description: 'Forma preparada de los pétalos de Flor de Ceniza — adormece el dolor y ayuda a dormir a un herido, más suave que la cataplasma de salvia.', 
-    dimensiones: 'Emplasto de 8x8 cm.' 
+    tipo: 'CONSUMIBLE',
+    equipSlot: 'CONSUMIBLE_1',
+    description: 'Forma preparada de los pétalos de Flor de Ceniza — adormece el dolor y ayuda a dormir a un herido, más suave que la cataplasma de salvia.',
+    dimensiones: 'Emplasto de 8x8 cm.',
+    // Corregido (auditoría de catálogo, 2026-08-13): prometía curar en su propia descripción pero
+    // no tenía ningún efecto mecánico real — mismo patrón crudo→preparado que salvia (HERIDO→ILESO,
+    // manojo-salvia-polvo/cataplasma-salvia): pétalos-flor-ceniza (crudo) ya cura hasta GRAVE, la
+    // forma preparada sube un escalón, igual que su hermana de salvia.
+    curaHasta: 'HERIDO',
   },
 
   { 
@@ -2505,9 +2522,10 @@ export const items: ItemCatalogInput[] = [
   },
 
   // Crafteo Tier 2, ronda 2 de objetos (roadmap 2026-07-20)
-  { 
-    slug: 'contraveneno-salvia-ceniza', 
-    name: 'Contraveneno de salvia y ceniza', 
+  {
+    slug: 'contraveneno-salvia-ceniza',
+    name: 'Contraveneno de salvia y ceniza',
+    aliases: ['contraveneno'],
     category: 'medicinal',
     tipo: 'CONSUMIBLE', 
     equipSlot: 'CONSUMIBLE_1', 
@@ -2528,9 +2546,10 @@ export const items: ItemCatalogInput[] = [
     curaHasta: 'HERIDO' 
   },
 
-  { 
-    slug: 'petalos-flor-ceniza', 
-    name: 'Pétalos de Flor de Ceniza', 
+  {
+    slug: 'petalos-flor-ceniza',
+    name: 'Pétalos de Flor de Ceniza',
+    aliases: ['pétalos de flor de ceniza'],
     category: 'medicinal',
     tipo: 'CONSUMIBLE', 
     equipSlot: 'CONSUMIBLE_1', 
@@ -2563,6 +2582,7 @@ export const items: ItemCatalogInput[] = [
   {
     slug: 'cataplasma-basica-salvia',
     name: 'Cataplasma básica de salvia',
+    aliases: ['cataplasma básica'],
     category: 'medicinal',
     tipo: 'CONSUMIBLE',
     equipSlot: 'CONSUMIBLE_1',
@@ -2576,6 +2596,7 @@ export const items: ItemCatalogInput[] = [
   {
     slug: 'cataplasma-completa-salvia-ceniza',
     name: 'Cataplasma completa de salvia y ceniza',
+    aliases: ['cataplasma completa'],
     category: 'medicinal',
     tipo: 'CONSUMIBLE',
     equipSlot: 'CONSUMIBLE_1',
@@ -2589,6 +2610,7 @@ export const items: ItemCatalogInput[] = [
   {
     slug: 'infusion-espiga-roja',
     name: 'Infusión de espiga roja',
+    aliases: ['infusión de espiga'],
     category: 'medicinal',
     tipo: 'CONSUMIBLE',
     equipSlot: 'CONSUMIBLE_1',
@@ -2607,6 +2629,7 @@ export const items: ItemCatalogInput[] = [
   {
     slug: 'bloque-piedra-tallada',
     name: 'Bloque de piedra tallada',
+    aliases: ['bloque de piedra'],
     category: 'bloque',
     tipo: 'MATERIAL',
     description: 'Bloque de piedra desbastado a golpes de maza y cincel hasta dejarlo plano por al menos dos caras — ya no es solo cascote, sirve para levantar un muro de verdad.',
@@ -2663,6 +2686,7 @@ export const items: ItemCatalogInput[] = [
   {
     slug: 'hueso-largo-gargantua',
     name: 'Hueso largo de gargantúa',
+    aliases: ['hueso largo'],
     category: 'hueso',
     tipo: 'RECURSO',
     description: 'Hueso largo y macizo de un blanco amarillento, pesado en la mano — materia prima de lanzas.',
@@ -2682,6 +2706,7 @@ export const items: ItemCatalogInput[] = [
   {
     slug: 'placa-osea-gargantua',
     name: 'Placa ósea de gargantúa',
+    aliases: ['placa ósea'],
     category: 'hueso',
     tipo: 'RECURSO',
     description: 'Placa ósea blanquecina y gruesa, curva como una costilla — usada en construcción o armadura pesada.',
@@ -2694,6 +2719,7 @@ export const items: ItemCatalogInput[] = [
   {
     slug: 'lena-matorral-cuerno',
     name: 'Leña de matorral de cuerno',
+    aliases: ['leña de matorral'],
     category: 'madera',
     tipo: 'RECURSO',
     description: 'Trozos de madera oscura y retorcida, corteza agrietada — arde lento y caliente. Producto de la fórmula de leña ya existente.',
@@ -2728,6 +2754,7 @@ export const items: ItemCatalogInput[] = [
   {
     slug: 'esquirla-hielo-silice',
     name: 'Esquirla de hielo sílice',
+    aliases: ['esquirla de hielo'],
     category: 'piedra',
     tipo: 'RECURSO',
     description: 'Esquirla translúcida de un blanco azulado, fría al tacto y con un filo natural — para tallar filos y prótesis.',
@@ -2758,6 +2785,7 @@ export const items: ItemCatalogInput[] = [
   {
     slug: 'piel-corredor',
     name: 'Piel de Corredor de Cauce',
+    aliases: ['piel de corredor'],
     category: 'piel',
     tipo: 'RECURSO',
     description: 'Piel rojiza de Corredor de Cauce, fina y flexible, curtida para aguantar el calor de la llanura.',
@@ -2788,6 +2816,7 @@ export const items: ItemCatalogInput[] = [
   {
     slug: 'piel-rondador',
     name: 'Piel de Rondador de Brasas',
+    aliases: ['piel de rondador'],
     category: 'piel',
     tipo: 'RECURSO',
     description: 'Piel gruesa de un gris ceniciento, pelaje espeso propio de cazador nocturno — buena capa.',
@@ -2797,6 +2826,7 @@ export const items: ItemCatalogInput[] = [
   {
     slug: 'piel-salamandra',
     name: 'Piel de Salamandra de Escoria',
+    aliases: ['piel de salamandra'],
     category: 'piel',
     tipo: 'RECURSO',
     description: 'Piel escamosa de un gris ceniciento, resistente al fuego — cuero ignífugo.',
@@ -2808,6 +2838,7 @@ export const items: ItemCatalogInput[] = [
   {
     slug: 'plumas-rojizas',
     name: 'Puñado de plumas rojizas',
+    aliases: ['plumas rojizas'],
     category: 'pluma',
     tipo: 'RECURSO',
     description: 'Puñado de plumas cortas de un rojo apagado, de Corretolvas — uso decorativo o trueque menor.',
@@ -2819,6 +2850,7 @@ export const items: ItemCatalogInput[] = [
   {
     slug: 'caparazon-espina',
     name: 'Caparazón de Espina del Viento',
+    aliases: ['caparazón de espina'],
     category: 'quitina',
     tipo: 'RECURSO',
     description: 'Placa de quitina oscura y brillante, dura como el cuerno, del caparazón de una Espina del Viento.',
@@ -2830,6 +2862,7 @@ export const items: ItemCatalogInput[] = [
   {
     slug: 'resina-trepador-ocaso',
     name: 'Bloque de resina de Trepador Ocaso',
+    aliases: ['resina de trepador ocaso'],
     category: 'resina',
     tipo: 'RECURSO',
     description: 'Bloque de resina ambarina y pegajosa — sella e impermeabiliza.',
@@ -3072,12 +3105,37 @@ export const items: ItemCatalogInput[] = [
   {
     slug: 'totem-clan-roto',
     name: 'Tótem de clan roto',
+    aliases: ['tótem de clan roto'],
     category: 'cosmetico',
     tipo: 'NARRATIVO',
     equipSlot: 'COSMETICO_ESPALDA',
     description: 'Fragmento de madera de ciénaga tallada, roto por la mitad, con restos de un símbolo de clan irreconocible — gancho de un posible superviviente Maktor.',
     dimensiones: 'Fragmento de 15 cm.',
-    lugarOrigen: 'Ciénaga Troncal.',
+    // Corregido (auditoría de catálogo, 2026-08-13): decía "Ciénaga Troncal", región fuera del
+    // núcleo jugable hoy (sus 3 ubicaciones están marcadas explícitamente "fuera del núcleo
+    // jugable actual") — el objeto quedaba inalcanzable en la práctica. La madera de ciénaga
+    // tallada sigue siendo de dónde viene el material (el propio Clan Goshg talla tótems con esa
+    // misma madera, ver `territorios-clan-goshg`), pero el HALLAZGO real ahora es entre los restos
+    // del propio Clan Maktor — coherente con ser "gancho de un posible superviviente Maktor".
+    lugarOrigen: 'Los Restos de Maktor, Llanuras del Viento Rojo (madera de ciénaga, de origen distante).',
+  },
+
+  {
+    slug: 'totem-del-clan-maktor',
+    name: 'Tótem del Clan Maktor',
+    aliases: ['tótem del clan maktor', 'tótem del clan'],
+    category: 'cosmetico',
+    tipo: 'NARRATIVO',
+    equipSlot: 'COSMETICO_ESPALDA',
+    // Crafteo (2026-08-13, MAKTOR_CLAN_TOTEM_RECIPE, crafting.ts) — repara `totem-clan-roto`. NO
+    // es el `totem-maktor` personal de Gorhorn (equipo inicial, "único, el de Gorhorn") — este es
+    // el de un clan que se creía sin nadie más.
+    description: 'El fragmento roto, restaurado — un tótem íntegro con la marca del Clan Maktor, símbolo de que quien lo llevaba no fue el único superviviente. No es el tótem de Gorhorn: es el del clan entero.',
+    statBonuses: { carisma: 1 },
+    dimensiones: 'Tótem de 15 cm de largo.',
+    lugarOrigen: 'Los Restos de Maktor, Llanuras del Viento Rojo.',
+    tier: 2,
+    requisitos: { carisma: 8 },
   },
 
   {
@@ -3630,12 +3688,23 @@ export const harvestYields: HarvestYieldInput[] = [
     cantidad: 1 
   },
 
-  { 
-    sourceSlug: 'restos-personales-maktor', 
+  {
+    sourceSlug: 'restos-personales-maktor',
     sourceName: 'Restos personales de Maktor',
-    metodoObtencion: 'EXTRACCION', 
-    itemSlug: 'tablilla-quemada-maktor', 
-    cantidad: 1 
+    metodoObtencion: 'EXTRACCION',
+    itemSlug: 'tablilla-quemada-maktor',
+    cantidad: 1
+  },
+
+  // Auditoría de catálogo, 2026-08-13: `totem-clan-roto` existía en ItemCatalog sin ninguna vía
+  // real de conseguirlo — misma fuente que el resto de restos personales de Maktor (mismo cuarto
+  // yield posible de la misma tirada, no un sourceSlug nuevo).
+  {
+    sourceSlug: 'restos-personales-maktor',
+    sourceName: 'Restos personales de Maktor',
+    metodoObtencion: 'EXTRACCION',
+    itemSlug: 'totem-clan-roto',
+    cantidad: 1,
   },
 
   // --- Roca de Los Pilares Rotos ---
@@ -3827,11 +3896,27 @@ export const harvestSourceAliases: Record<string, string[]> = {
 export const harvestSourcesThatAreFaunaWithoutNpc = new Set(['cornante', 'espina-del-viento', 'sombra-de-kroj']);
 
 /// Zona de origen explícita por fuente (2026-07-29, colapsables de fauna/flora por zona en la
-/// Enciclopedia) — confirmado por la usuaria: todas estas pertenecen a Llanuras del Viento Rojo.
-/// Necesario aparte del `homeLocationSlug` del Npc (muchas fauna cazable no tiene uno fijo —
-/// itinerante por la llanura, sin un solo punto de "casa") y del `lugarOrigen` del objeto que dan
-/// (varias comparten un mismo objeto genérico entre especies, ej. "Ración de carne fresca", que
-/// no puede llevar una región fija sin mentir sobre las demás fuentes que también lo dan).
+/// Enciclopedia) — confirmado por la usuaria: la inmensa mayoría de estas pertenecen a Llanuras
+/// del Viento Rojo (excepciones documentadas junto a cada una, ya sea Ciénaga Troncal, Meseta del
+/// Orden o Cristal Helado). Necesario aparte del `homeLocationSlug` del Npc (muchas fauna cazable
+/// no tiene uno fijo — itinerante por la llanura, sin un solo punto de "casa") y del `lugarOrigen`
+/// del objeto que dan (varias comparten un mismo objeto genérico entre especies, ej. "Ración de
+/// carne fresca", que no puede llevar una región fija sin mentir sobre las demás fuentes que
+/// también lo dan).
+///
+/// Auditoría de catálogo EXTRACCION (2026-08-13): 7 fuentes con `metodoObtencion: 'EXTRACCION'`/
+/// `'MINERIA'` reales y con descripción propia (`harvestSourceDescriptions`) que mencionaba una
+/// región concreta llevaban sin fila aquí — sin ella, `detectsWrongRegionHarvestClaim`
+/// (playerActionValidation.ts) nunca puede avisar "eso no se da en esta tierra" para ellas, y las
+/// del núcleo jugable (Llanuras) tampoco entraban en `candidateSourcesFor` (recolectar.ts), que
+/// filtra por `WorldPopulation.distribucion[región]` — mismo bug de fondo que las 3 filas de
+/// `WorldPopulation` que faltaban (ver worldPopulation.ts). Añadidas: `espiga-roja`,
+/// `restos-personales-maktor`, `salvia-del-polvo` y `veta-hierro-pilares-rotos` (las 4 del núcleo,
+/// Llanuras — esta última ya tenía población sembrada pero le faltaba la propia entrada de región,
+/// inconsistencia real); `hierba-del-hierro` (Meseta del Orden), `trepador-ocaso` (Ciénaga
+/// Troncal) y `hielo-silice` (Cristal Helado) solo como documentación — ya estaban marcadas "fuera
+/// del núcleo jugable actual" en su propio `condicion`/descripción, así que no llevan fila nueva
+/// en `WorldPopulation` (añadir población ahí sería inventar contenido inalcanzable hoy).
 export const harvestSourceRegion: Record<string, string> = {
   'arena-iman': 'Llanuras del Viento Rojo',
   'aullador-rojo': 'Llanuras del Viento Rojo',
@@ -3840,18 +3925,47 @@ export const harvestSourceRegion: Record<string, string> = {
   'cardo-brujula': 'Llanuras del Viento Rojo',
   // Corregido (2026-07-29, auditoría al asignar población): su propia descripción dice "se
   // hunden en el barro de la ciénaga" — no encaja con Llanuras pese a la instrucción general.
+  // 5 fuentes CAZA sin entrada (auditoría de catálogo, 2026-08-13, hallazgo del agente de
+  // recolección dejado fuera de su alcance explícito — cerrado ahora): mismo hueco que el resto
+  // de esta tabla, misma región que ya tienen sembrada en `worldPopulation.ts` (`distribucion`).
+  'canizor': 'Llanuras del Viento Rojo',
   cornante: 'Ciénaga Troncal',
+  'corredor-de-cauce': 'Llanuras del Viento Rojo',
   corretolvas: 'Llanuras del Viento Rojo',
   cruzavientos: 'Llanuras del Viento Rojo',
+  'espiga-roja': 'Llanuras del Viento Rojo',
   'espina-del-viento': 'Llanuras del Viento Rojo',
   'flor-de-ceniza': 'Llanuras del Viento Rojo',
+  'gargantua-de-ceniza': 'Llanuras del Viento Rojo',
+  // Fuera del núcleo jugable (2026-08-13) — su propia descripción/condicion lo dice: "laderas de
+  // las montañas de Cristal Helado". Solo documentación, sin fila de `WorldPopulation`.
+  'hielo-silice': 'Cristal Helado',
+  // Fuera del núcleo jugable (2026-08-13) — condicion explícita: "Solo en la Meseta del Orden —
+  // fuera del núcleo jugable actual". Solo documentación, sin fila de `WorldPopulation`.
+  'hierba-del-hierro': 'Meseta del Orden',
   'liquen-del-cauce': 'Llanuras del Viento Rojo',
   'matorral-de-cuerno': 'Llanuras del Viento Rojo',
   murgol: 'Llanuras del Viento Rojo',
   'ofrendas-tumulos-honor': 'Llanuras del Viento Rojo',
   'raiz-de-fuego': 'Llanuras del Viento Rojo',
+  // Restos de Maktor (Location `restos-de-maktor`, ver `locations` arriba) tiene
+  // region: 'Las Llanuras del Viento Rojo' — dentro del núcleo jugable, solo le faltaba esta fila.
+  'restos-personales-maktor': 'Llanuras del Viento Rojo',
   'roca-pilares-rotos': 'Llanuras del Viento Rojo',
   'rondador-de-brasas': 'Llanuras del Viento Rojo',
+  'salamandra-de-escoria': 'Llanuras del Viento Rojo',
+  // Su condicion dice "los orcos de las Llanuras la conocen de niños" — mismo núcleo jugable.
+  'salvia-del-polvo': 'Llanuras del Viento Rojo',
+  // Única fauna/fuente CAZA fuera de Llanuras/Ciénaga — misma forma sin artículo que el resto de
+  // este mapa (y que `distribucion` en `worldPopulation.ts`); su propia descripción dice "caza en
+  // grupo en El Margen Silencioso".
+  'sombra-de-kroj': 'Margen Silencioso',
+  // Fuera del núcleo jugable (2026-08-13) — condicion explícita: "Solo en Ciénaga Troncal — fuera
+  // del núcleo jugable actual". Solo documentación, sin fila de `WorldPopulation`.
+  'trepador-ocaso': 'Ciénaga Troncal',
+  // Misma formación rocosa que 'roca-pilares-rotos' (ya en Llanuras arriba) — le faltaba su propia
+  // entrada aunque ya tuviera fila de `WorldPopulation` sembrada (inconsistencia real, 2026-08-13).
+  'veta-hierro-pilares-rotos': 'Llanuras del Viento Rojo',
 };
 
 export const harvestSourceDescriptions: Record<string, string> = {

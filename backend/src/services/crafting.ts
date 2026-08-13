@@ -294,6 +294,77 @@ export const COMPLETE_POULTICE_RECIPE: CraftingRecipe = {
     'El personaje machaca con calma su doble ración de salvia del polvo junto a sus pétalos de Flor de Ceniza, aplicando la cataplasma con el cuidado que merece una cura completa — narra la escena con naturalidad. El objeto ya se gestiona automáticamente por el backend.',
 };
 
+// Garrote de matorral de cuerno (auditoría de catálogo, 2026-08-13: el objeto existía en
+// ItemCatalog, tier 1, "la primera arma para quien no tiene ninguna" — pero nunca tenía ninguna
+// vía real para llegar a manos del jugador). Oficio 'carpintero' (mismo oficio que la choza/bloque
+// de piedra tallada — trabajar madera con las manos), sin requisitos ni tier de crafteo: es
+// deliberadamente la opción más básica, coherente con ser "la primera arma".
+export const CLUB_RECIPE: CraftingRecipe = {
+  key: 'club',
+  verbRegex: /tall|fabric|prepar|hac|crear|creo/,
+  nounRegex: /garrote/,
+  location: null,
+  ingredients: [{ match: { kind: 'exact', catalogSlug: 'lena-matorral-cuerno' }, cantidad: 2, label: 'leña de matorral de cuerno' }],
+  resultName: 'Garrote de matorral de cuerno',
+  resultCatalogSlug: 'garrote-matorral-cuerno',
+  resultDescription: 'Madera densa y retorcida, tallada a mano — la primera arma para quien no tiene ninguna.',
+  oficio: 'carpintero-orcos-llanuras',
+  narrationWant:
+    'El personaje quiere tallar un garrote de matorral de cuerno, pero no lleva encima suficiente leña de matorral de cuerno (hacen falta al menos 2) — narra que lo intenta o lo considera, pero no que lo talla de verdad.',
+  narrationDo:
+    'El personaje talla a mano un garrote con su leña de matorral de cuerno, retorcida y densa — narra la escena con naturalidad. El objeto ya se gestiona automáticamente por el backend.',
+};
+
+// Faldar de piel de gargantúa (auditoría de catálogo, 2026-08-13: mismo hueco que el garrote —
+// existía en ItemCatalog, hermano de `capa-piel-gargantua`/`peto-placas-gargantua`, sin ninguna
+// vía real de conseguirlo). Mismo oficio/ubicación que el peto de placas óseas (curtir piel de
+// gargantúa en el campamento del clan) — a diferencia del peto (herrero, huesos+tendón), aquí es
+// trabajo de curtidor sobre la propia piel.
+export const GARGANTUA_LEG_ARMOR_RECIPE: CraftingRecipe = {
+  key: 'gargantuaLegArmor',
+  verbRegex: /confeccion|cos[eo]|curt|prepar|fabric|crear|creo/,
+  nounRegex: /faldar/,
+  location: 'campamento-serhu',
+  ingredients: [{ match: { kind: 'exact', catalogSlug: 'piel-gargantua' }, cantidad: 2, label: 'piel de gargantúa' }],
+  resultName: 'Faldar de piel de gargantúa',
+  resultCatalogSlug: 'faldar-piel-gargantua',
+  resultDescription: 'Faldar de piel gris ceniza de gargantúa, con pequeñas placas óseas todavía cosidas al cuero — abrigo, no defensa.',
+  tier: 2,
+  requisitos: { destreza: 8 },
+  oficio: 'curtidor-orcos-llanuras',
+  narrationWant:
+    'El personaje quiere confeccionar un faldar de piel de gargantúa, pero no lleva encima suficiente piel de gargantúa (hacen falta al menos 2) y además hace falta estar en el Campamento del Clan Serhu — narra que lo intenta o lo considera, pero no que lo confecciona de verdad.',
+  narrationDo:
+    'El personaje curte y cose su piel de gargantúa aquí mismo, en el Campamento del Clan Serhu, dejando las placas óseas pequeñas cosidas al cuero — narra la escena con naturalidad. El objeto ya se gestiona automáticamente por el backend.',
+};
+
+// Tótem del Clan Maktor (auditoría de catálogo, 2026-08-13, petición explícita: "el tótem que se
+// pueda reparar en las construcciones... de momento llevar el totem equipado da +1 de carisma") —
+// repara `totem-clan-roto` (fragmento roto encontrado en Los Restos de Maktor, "gancho de un
+// posible superviviente Maktor") en un tótem íntegro nuevo, DISTINTO del `totem-maktor` personal
+// de Gorhorn (su propio tótem, equipo inicial, "único, el de Gorhorn") — este es el de un clan que
+// se creía sin nadie más, restaurado como monumento, no una posesión personal. Ubicación Los
+// Restos de Maktor a propósito ("en las construcciones" — se repara en las propias ruinas del
+// clan, no en cualquier sitio) — construcción especial ligada a Gorhorn/Maktor, no un oficio
+// genérico: sin requisito de oficio, solo de Carisma (es un acto de memoria, no de destreza).
+export const MAKTOR_CLAN_TOTEM_RECIPE: CraftingRecipe = {
+  key: 'maktorClanTotem',
+  verbRegex: /repar|restaur|reconstru/,
+  nounRegex: /t[oó]tem/,
+  location: 'restos-de-maktor',
+  ingredients: [{ match: { kind: 'exact', catalogSlug: 'totem-clan-roto' }, cantidad: 1, label: 'tótem de clan roto' }],
+  resultName: 'Tótem del Clan Maktor',
+  resultCatalogSlug: 'totem-del-clan-maktor',
+  resultDescription: 'El fragmento roto, restaurado — un tótem íntegro con la marca del Clan Maktor, símbolo de que quien lo llevaba no fue el único superviviente. No es el tótem de Gorhorn: es el del clan entero.',
+  statBonuses: { carisma: 1 },
+  tier: 2,
+  requisitos: { carisma: 8 },
+  narrationWant:
+    'El personaje quiere reparar el tótem de clan roto, pero no puede hacerlo ahora mismo (hace falta estar en Los Restos de Maktor y llevar el tótem de clan roto encima) — narra que lo intenta o lo considera, pero no que lo repara de verdad.',
+  narrationDo:
+    'El personaje repara el tótem de clan roto aquí mismo, entre las ruinas de Los Restos de Maktor, devolviéndole su forma íntegra — narra la escena (el peso del hallazgo, la marca del clan reapareciendo) con el peso que merece. El objeto ya se gestiona automáticamente por el backend.',
+};
+
 export const CRAFTING_RECIPES: CraftingRecipe[] = [
   AXE_REPAIR_RECIPE,
   SMOKE_MEAT_RECIPE,
@@ -306,6 +377,9 @@ export const CRAFTING_RECIPES: CraftingRecipe[] = [
   RED_SPIKE_INFUSION_RECIPE,
   BASIC_POULTICE_RECIPE,
   COMPLETE_POULTICE_RECIPE,
+  CLUB_RECIPE,
+  GARGANTUA_LEG_ARMOR_RECIPE,
+  MAKTOR_CLAN_TOTEM_RECIPE,
 ];
 
 export function detectsCraftIntent(recipe: CraftingRecipe, action: string): boolean {

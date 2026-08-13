@@ -28,6 +28,9 @@ const firstAidBandage = recipe('firstAidBandage');
 const redSpikeInfusion = recipe('redSpikeInfusion');
 const basicPoultice = recipe('basicPoultice');
 const completePoultice = recipe('completePoultice');
+const club = recipe('club');
+const gargantuaLegArmor = recipe('gargantuaLegArmor');
+const maktorClanTotem = recipe('maktorClanTotem');
 
 // catalogSlug de cada fila → tipo/categoría real del catálogo (2026-07-29, refactor de
 // ingredientes: crafting.ts ya no matchea por prefijo de nombre, matchea por catalogSlug/tipo/
@@ -46,6 +49,8 @@ const catalogBySlug = new Map<string, CatalogLookup>([
   ['piedra', { tipo: 'RECURSO', category: 'piedra' }],
   ['odre-agua', { tipo: 'EQUIPABLE', category: 'herramienta' }],
   ['grano-espiga-roja', { tipo: 'CONSUMIBLE', category: 'consumible' }],
+  ['piel-gargantua', { tipo: 'RECURSO', category: 'piel' }],
+  ['totem-clan-roto', { tipo: 'NARRATIVO', category: 'cosmetico' }],
 ]);
 
 function row(id: string, catalogSlug: string, cantidad?: number): InventoryRowLike {
@@ -53,7 +58,7 @@ function row(id: string, catalogSlug: string, cantidad?: number): InventoryRowLi
 }
 
 describe('CRAFTING_RECIPES', () => {
-  it('tiene las 11 recetas esperadas, cada una con una clave única', () => {
+  it('tiene las 14 recetas esperadas, cada una con una clave única', () => {
     expect(CRAFTING_RECIPES.map((r) => r.key)).toEqual([
       'axeRepair',
       'smokeMeat',
@@ -66,6 +71,9 @@ describe('CRAFTING_RECIPES', () => {
       'redSpikeInfusion',
       'basicPoultice',
       'completePoultice',
+      'club',
+      'gargantuaLegArmor',
+      'maktorClanTotem',
     ]);
   });
 });
@@ -139,6 +147,24 @@ describe('detectsCraftIntent', () => {
   it('detecta intención de preparar cataplasma completa de salvia y ceniza, distinta de la básica', () => {
     expect(detectsCraftIntent(completePoultice, 'Preparo una cataplasma completa de salvia y ceniza')).toBe(true);
     expect(detectsCraftIntent(completePoultice, 'Preparo una cataplasma básica de salvia')).toBe(false);
+  });
+
+  it('detecta intención de tallar un garrote (auditoría de catálogo, 2026-08-13)', () => {
+    expect(detectsCraftIntent(club, 'Tallo un garrote con la leña que llevo')).toBe(true);
+    expect(detectsCraftIntent(club, 'Fabrico un garrote de matorral de cuerno')).toBe(true);
+    expect(detectsCraftIntent(club, 'Tallo un cuchillo')).toBe(false);
+  });
+
+  it('detecta intención de confeccionar el faldar de piel de gargantúa', () => {
+    expect(detectsCraftIntent(gargantuaLegArmor, 'Confecciono un faldar con mi piel de gargantúa')).toBe(true);
+    expect(detectsCraftIntent(gargantuaLegArmor, 'Curto un faldar de piel de gargantúa')).toBe(true);
+    expect(detectsCraftIntent(gargantuaLegArmor, 'Confecciono un peto')).toBe(false);
+  });
+
+  it('detecta intención de reparar el tótem de clan roto', () => {
+    expect(detectsCraftIntent(maktorClanTotem, 'Reparo el tótem de clan roto')).toBe(true);
+    expect(detectsCraftIntent(maktorClanTotem, 'Intento restaurar el tótem')).toBe(true);
+    expect(detectsCraftIntent(maktorClanTotem, 'Miro el tótem con cariño')).toBe(false);
   });
 });
 
@@ -226,6 +252,27 @@ describe('canCraft — ironIngot exige mena de hierro exacta y la fragua del cam
   it('no funde fuera del campamento ni con menos de 4', () => {
     expect(canCraft(ironIngot, 'hondonada-del-eco', [row('1', 'mena-de-hierro', 4)], catalogBySlug, attrs, secondary)).toBe(false);
     expect(canCraft(ironIngot, 'campamento-serhu', [row('1', 'mena-de-hierro', 3)], catalogBySlug, attrs, secondary)).toBe(false);
+  });
+});
+
+describe('canCraft — 3 objetos antes inalcanzables (auditoría de catálogo, 2026-08-13)', () => {
+  it('garrote: 2 de leña de matorral de cuerno, en cualquier sitio', () => {
+    expect(canCraft(club, null, [row('1', 'lena-matorral-cuerno', 2)], catalogBySlug, attrs, secondary)).toBe(true);
+    expect(canCraft(club, null, [row('1', 'lena-matorral-cuerno', 1)], catalogBySlug, attrs, secondary)).toBe(false);
+  });
+  it('faldar de piel de gargantúa: 2 pieles, solo en el campamento del clan', () => {
+    expect(canCraft(gargantuaLegArmor, 'campamento-serhu', [row('1', 'piel-gargantua', 2)], catalogBySlug, attrs, secondary)).toBe(true);
+    expect(canCraft(gargantuaLegArmor, 'hondonada-del-eco', [row('1', 'piel-gargantua', 2)], catalogBySlug, attrs, secondary)).toBe(false);
+    expect(canCraft(gargantuaLegArmor, 'campamento-serhu', [row('1', 'piel-gargantua', 1)], catalogBySlug, attrs, secondary)).toBe(false);
+  });
+  it('tótem del Clan Maktor: el tótem roto, solo en Los Restos de Maktor', () => {
+    expect(canCraft(maktorClanTotem, 'restos-de-maktor', [row('1', 'totem-clan-roto')], catalogBySlug, attrs, secondary)).toBe(true);
+    expect(canCraft(maktorClanTotem, 'hondonada-del-eco', [row('1', 'totem-clan-roto')], catalogBySlug, attrs, secondary)).toBe(false);
+    expect(canCraft(maktorClanTotem, 'restos-de-maktor', [], catalogBySlug, attrs, secondary)).toBe(false);
+  });
+  it('el requisito de Carisma del tótem se exige de verdad', () => {
+    const pocoCarismatico: AttributeBlock = { ...attrs, carisma: 4 };
+    expect(canCraft(maktorClanTotem, 'restos-de-maktor', [row('1', 'totem-clan-roto')], catalogBySlug, pocoCarismatico, secondary)).toBe(false);
   });
 });
 

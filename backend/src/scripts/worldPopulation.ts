@@ -197,10 +197,42 @@ export const worldPopulations: WorldPopulationInput[] = [
     distribucion: { 'Llanuras del Viento Rojo': 1 },
   },
 
+  // --- NPCs itinerantes sin `homeLocationSlug` fijo — mismo bug de fondo que el de herborista
+  // (auditoría de catálogo 2026-08-13): la sugerencia ambiental de encuentro (`turnResolution.ts`,
+  // 25% de probabilidad por turno explorando) exige una fila `WorldPopulation` con
+  // `targetType: 'FAUNA'` y `poblacion > 0` para poder proponer un candidato sin que el jugador lo
+  // nombre antes — sin fila, un NPC bien definido y con loadout completo nunca se sugiere solo, y
+  // sin ninguna misión que lo señale, en la práctica no aparece nunca en una partida real. Cifras
+  // deliberadamente bajas (arquetipo humano suelto, no una especie entera como la fauna de arriba)
+  // — más raro que la fauna común, pero no tan excepcional como la Gargantúa de Ceniza.
+  {
+    targetType: 'FAUNA',
+    targetSlug: 'orco-rezagado',
+    label: 'Orco rezagado',
+    poblacion: 30,
+    poblacionMax: 50,
+    distribucion: { 'Llanuras del Viento Rojo': 1 },
+  },
+  {
+    targetType: 'FAUNA',
+    targetSlug: 'mercader-de-paso',
+    label: 'Mercader de paso',
+    poblacion: 25,
+    poblacionMax: 40,
+    distribucion: { 'Llanuras del Viento Rojo': 1 },
+  },
+  {
+    targetType: 'FAUNA',
+    targetSlug: 'peregrino-de-los-tumulos',
+    label: 'Peregrino de los túmulos',
+    poblacion: 20,
+    poblacionMax: 35,
+    distribucion: { 'Llanuras del Viento Rojo': 1 },
+  },
+
   // --- Recursos de recolección (rediseño de profesiones, 2026-08-07) — MINERIA/TALA de
   // HarvestYield, núcleo jugable (Llanuras). Desuello (CAZA) no necesita fila propia: ya usa la
-  // población FAUNA de arriba. EXTRACCION (hierbas/flores) queda fuera por ahora — ninguna
-  // profesión nueva las necesita todavía.
+  // población FAUNA de arriba.
   {
     targetType: 'RECURSO',
     targetSlug: 'roca-pilares-rotos',
@@ -223,6 +255,102 @@ export const worldPopulations: WorldPopulationInput[] = [
     label: 'Matorral de Cuerno (madera)',
     poblacion: 400,
     poblacionMax: 500,
+    distribucion: { 'Llanuras del Viento Rojo': 1 },
+  },
+
+  // --- EXTRACCION (hierbas/flores/objetos), núcleo jugable (Llanuras) — bug real confirmado
+  // jugando en vivo (2026-08-13, "llevo 2 zonas sin encontrar nada en herboristería"): el
+  // comentario de arriba decía "EXTRACCION queda fuera por ahora — ninguna profesión nueva las
+  // necesita todavía" (2026-08-07), pero la profesión herborista ya se activó y usa exactamente
+  // estas fuentes — sin fila `WorldPopulation`, `candidateSourcesFor` (recolectar.ts) nunca las
+  // ofrece: cero población sembrada = herborista nunca encuentra nada, en ninguna zona. Añadidas
+  // las 10 fuentes EXTRACCION cuya propia descripción/región (`harvestSourceRegion`) ya confirma
+  // que son del núcleo jugable — quedan fuera a propósito `hierba-del-hierro` (Meseta del Orden) y
+  // `trepador-ocaso` (Ciénaga Troncal), ambas marcadas "fuera del núcleo jugable actual" en su
+  // propio HarvestYield, mismo criterio que ya se aplicó a `hielo-silice` (MINERIA, Cristal
+  // Helado). Cifras deliberadamente por debajo de piedra/veta/madera (más "delicadas" que roca o
+  // madera): 60-90 para objetos finitos no renovables por naturaleza (ofrendas rituales, restos
+  // personales) o flora muy restringida (Flor de Ceniza, solo en suelo de ceniza volcánica) y
+  // arena imán (ligada a tormentas puntuales, no a crecimiento); 80-140 para el resto de flora
+  // silvestre, cifra de partida ajustable como el resto de este archivo.
+  {
+    targetType: 'RECURSO',
+    targetSlug: 'arena-iman',
+    label: 'Arena Imán',
+    poblacion: 70,
+    poblacionMax: 90,
+    distribucion: { 'Llanuras del Viento Rojo': 1 },
+  },
+  {
+    targetType: 'RECURSO',
+    targetSlug: 'bulbo-del-cauce',
+    label: 'Bulbo del Cauce',
+    poblacion: 110,
+    poblacionMax: 140,
+    distribucion: { 'Llanuras del Viento Rojo': 1 },
+  },
+  {
+    targetType: 'RECURSO',
+    targetSlug: 'cardo-brujula',
+    label: 'Cardo Brújula',
+    poblacion: 90,
+    poblacionMax: 120,
+    distribucion: { 'Llanuras del Viento Rojo': 1 },
+  },
+  {
+    targetType: 'RECURSO',
+    targetSlug: 'espiga-roja',
+    label: 'Espiga Roja',
+    poblacion: 130,
+    poblacionMax: 150,
+    distribucion: { 'Llanuras del Viento Rojo': 1 },
+  },
+  {
+    targetType: 'RECURSO',
+    targetSlug: 'flor-de-ceniza',
+    label: 'Flor de Ceniza',
+    poblacion: 60,
+    poblacionMax: 80,
+    distribucion: { 'Llanuras del Viento Rojo': 1 },
+  },
+  {
+    targetType: 'RECURSO',
+    targetSlug: 'liquen-del-cauce',
+    label: 'Liquen del Cauce',
+    poblacion: 100,
+    poblacionMax: 130,
+    distribucion: { 'Llanuras del Viento Rojo': 1 },
+  },
+  {
+    targetType: 'RECURSO',
+    targetSlug: 'ofrendas-tumulos-honor',
+    label: 'Ofrendas de los Túmulos del Honor',
+    poblacion: 60,
+    poblacionMax: 80,
+    distribucion: { 'Llanuras del Viento Rojo': 1 },
+  },
+  {
+    targetType: 'RECURSO',
+    targetSlug: 'raiz-de-fuego',
+    label: 'Raíz de Fuego',
+    poblacion: 80,
+    poblacionMax: 110,
+    distribucion: { 'Llanuras del Viento Rojo': 1 },
+  },
+  {
+    targetType: 'RECURSO',
+    targetSlug: 'restos-personales-maktor',
+    label: 'Restos personales de Maktor',
+    poblacion: 60,
+    poblacionMax: 80,
+    distribucion: { 'Llanuras del Viento Rojo': 1 },
+  },
+  {
+    targetType: 'RECURSO',
+    targetSlug: 'salvia-del-polvo',
+    label: 'Salvia del Polvo',
+    poblacion: 110,
+    poblacionMax: 140,
     distribucion: { 'Llanuras del Viento Rojo': 1 },
   },
 ];
