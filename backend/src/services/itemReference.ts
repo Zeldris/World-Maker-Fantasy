@@ -1,5 +1,6 @@
 import type { CondicionFisica } from '@prisma/client';
 import { normalizeText, levenshtein } from './travel.js';
+import { baseNameOf } from './ingredients.js';
 
 /// Palabras de objeto genéricas que un jugador puede pedir mirar/usar/revisar sin nombrarlo
 /// exactamente como en su inventario (roadmap 2026-07-19: "mirar el mapa" sin tener uno debía
@@ -79,7 +80,12 @@ export function detectMedicalItemUse(
   medicalItems: { id: string; name: string; curaHasta: CondicionFisica; curaUnPaso: boolean }[],
 ): MedicalItemMatch | null {
   const normalized = normalizeText(action);
-  const matches = medicalItems.filter((item) => normalized.includes(normalizeText(item.name)));
+  // `baseNameOf` (bug real jugando en vivo, 2026-08-13: "usé el vendaje y no se consumió del
+  // inventario") — con una pila de 2+ ("Vendaje improvisado (2)"), el jugador cita el objeto por
+  // su nombre SIN el sufijo de cantidad ("Uso 'Vendaje improvisado'"), así que un `.includes()`
+  // contra el nombre CON sufijo nunca matcheaba con una pila de 2 o más — el objeto no se detectaba
+  // como usado, y por tanto tampoco se consumía. Con una única unidad (sin sufijo) sí coincidía.
+  const matches = medicalItems.filter((item) => normalized.includes(normalizeText(baseNameOf(item.name))));
   if (matches.length === 0) return null;
   const best = matches.sort((a, b) => CURA_HASTA_ORDER.indexOf(a.curaHasta) - CURA_HASTA_ORDER.indexOf(b.curaHasta))[0];
   return { id: best.id, curaHasta: best.curaHasta, curaUnPaso: best.curaUnPaso };
@@ -97,7 +103,9 @@ export interface EnergyItemMatch {
 /// que "mejor" es simplemente "más alto".
 export function detectEnergyItemUse(action: string, energyItems: { id: string; name: string; curaEnergia: number }[]): EnergyItemMatch | null {
   const normalized = normalizeText(action);
-  const matches = energyItems.filter((item) => normalized.includes(normalizeText(item.name)));
+  // Mismo fix que `detectMedicalItemUse` de arriba — `baseNameOf` para no romper el match contra
+  // una pila de 2+ unidades.
+  const matches = energyItems.filter((item) => normalized.includes(normalizeText(baseNameOf(item.name))));
   if (matches.length === 0) return null;
   const best = matches.sort((a, b) => b.curaEnergia - a.curaEnergia)[0];
   return { id: best.id, curaEnergia: best.curaEnergia };

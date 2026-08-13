@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { resolveExchange, resolveIndependentExchange, rollInitiative, type ExchangeParticipant } from './combatExchange.js';
+import { resolveExchange, resolveIndependentExchange, rollInitiative, exchangeContextBlock, type ExchangeParticipant } from './combatExchange.js';
 import type { AttributeBlock } from './dice.js';
 
 const BASE_ATTRIBUTES: AttributeBlock = { fuerza: 10, destreza: 10, constitucion: 10, inteligencia: 10, voluntad: 10, carisma: 10, arcano: 10 };
@@ -30,6 +30,28 @@ describe('resolveExchange', () => {
     expect(result.atacante.gradoExito).toBe('fallo');
     expect(result.defensor.gradoExito).toBe('claro');
     expect(result.resultado).toBe('defensor_contragolpea');
+  });
+
+  // Bug real jugando en vivo (2026-08-13, petición explícita: "solo si la habilidad especifica
+  // que hace daño en defensa debe hacerlo... solo las de ataque hacen daño") — una habilidad de
+  // defensa sin `effect: 'ATAQUE'` (todas hoy: Esquivar/Bloquear/etc., AGUANTE o sin efecto) NUNCA
+  // debería narrar un golpe de vuelta que conecta de verdad, aunque la tirada saque
+  // `defensor_contragolpea`. El caller (turnResolution.ts) decide el gate mirando la habilidad
+  // real; `exchangeContextBlock` solo narra lo que el caller le diga que aplica.
+  it('exchangeContextBlock narra defensor_contragolpea como un simple fallo si la defensa no puede contragolpear (sin effect ATAQUE)', () => {
+    mockRolls(R_FOR_ROLL_5, R_FOR_ROLL_20);
+    const exchange = resolveExchange(atacanteBase, defensorBase);
+    const conBonus = exchangeContextBlock(exchange, 'Orco', 'Gorhorn', true);
+    const sinBonus = exchangeContextBlock(exchange, 'Orco', 'Gorhorn', false);
+    expect(conBonus).toContain('de propina consigue tocar');
+    expect(sinBonus).not.toContain('de propina consigue tocar');
+    expect(sinBonus).toContain('no llega a alcanzar');
+  });
+
+  it('exchangeContextBlock sigue narrando el contragolpe cuando SÍ aplica (parámetro por defecto true)', () => {
+    mockRolls(R_FOR_ROLL_5, R_FOR_ROLL_20);
+    const exchange = resolveExchange(atacanteBase, defensorBase);
+    expect(exchangeContextBlock(exchange, 'Orco', 'Gorhorn')).toContain('de propina consigue tocar');
   });
 
   it('atacante falla + defensor con_coste → el ataque simplemente falla', () => {

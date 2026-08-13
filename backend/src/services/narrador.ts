@@ -186,6 +186,20 @@ interface TurnContext {
   /// Vacío = no aplica este turno (no es una acción de revisar equipo, o el inventario tiene 0-1
   /// objetos y no hay nada real que omitir).
   possiblyFalseInventoryReviewNames?: string[];
+  /// Ver `hasFalseWeaponThrowClaim` más abajo — nombres reales de las armas que el personaje lleva
+  /// equipadas (ARMA_PRINCIPAL/ARMA_SECUNDARIA), solo en turnos de combate. Este juego no tiene
+  /// ninguna mecánica de "lanzar arma" (sin habilidad, sin recuperarla después) — si la narración
+  /// describe el arma saliendo volando de la mano, es una alucinación, nunca una licencia
+  /// narrativa: el turno siguiente el jugador sigue atacando con la misma arma sin haberla
+  /// recogido. Vacío = no aplica (fuera de combate, o sin arma equipada).
+  equippedWeaponNamesInCombat?: string[];
+  /// Ver `hasFalseEquipmentChangeClaim` más abajo — nombres reales (sin sufijo de cantidad) de
+  /// TODO objeto equipable que el personaje lleva encima, en CUALQUIER turno (equipar/desequipar
+  /// es una decisión manual de la jugadora vía `PATCH /saves/:id/inventario/:itemId` — el modelo
+  /// nunca lo decide ni lo narra de verdad, así que un cambio de equipo narrado siempre es una
+  /// alucinación, sin depender de la intención de este turno). Vacío = no lleva ningún objeto
+  /// equipable encima.
+  equippableItemNames?: string[];
 }
 
 interface ClassifyContext {
@@ -727,6 +741,10 @@ export async function narrateAction(ctx: TurnContext & { roll?: RollResult }): P
           reason: 'reintroducir a Gistera Koh sin nombrarla pese a haberse marchado para siempre',
         },
         {
+          check: () => hasFalseGisteraNamedReturn(parsed.narration, ctx.gisteraSeHaMarchado),
+          reason: 'nombrar a Gistera Koh directamente pese a haberse marchado para siempre',
+        },
+        {
           check: () => hasFalseTravelClaim(parsed, ctx.possiblyFalseTravelDestinationNames),
           reason: 'narrar una llegada a un destino sin resolver mecánicamente (2+ salidas posibles)',
         },
@@ -737,6 +755,14 @@ export async function narrateAction(ctx: TurnContext & { roll?: RollResult }): P
         {
           check: () => hasFalseInventoryReview(parsed.narration, ctx.possiblyFalseInventoryReviewNames),
           reason: 'narrar una revisión de inventario incompleta como si fuera exhaustiva',
+        },
+        {
+          check: () => hasFalseWeaponThrowClaim(parsed.narration, ctx.equippedWeaponNamesInCombat),
+          reason: 'narrar el arma equipada como lanzada/fuera de la mano, sin mecánica real de lanzar armas',
+        },
+        {
+          check: () => hasFalseEquipmentChangeClaim(parsed.narration, ctx.equippableItemNames),
+          reason: 'narrar un cambio de equipo (ponerse/quitarse/atarse algo) no pedido y sin reflejo real en InventoryItem.slot',
         },
       ].find((validator) => validator.check());
 
@@ -954,6 +980,47 @@ export function hasFalseInventoryReview(narration: string, possiblyFalseInventor
   return normalizedNames.some((name) => !normalizedNarration.includes(name));
 }
 
+/// Narración-vs-mecánica (auditoría "revisar partida", 2026-08-13, bug real jugando en vivo: un
+/// turno de "Ataco con un golpe directo, con el arma que llevo en la mano principal" narró
+/// "Gorhorn lanza su hacha de guerra rota con fuerza hacia el orco... rebotando lejos en la pared
+/// de arcilla" — el juego no tiene mecánica de lanzar armas (sin habilidad que lo modele, sin
+/// forma de recuperarla), y el turno siguiente Gorhorn seguía atacando con la misma hacha sin
+/// ninguna acción de recogerla — la narración prometió un cambio de estado del arma que la
+/// mecánica nunca produjo.
+///
+/// El nombre del arma tiene que ser el OBJETO DIRECTO de "lanza" (adyacente, con como mucho un
+/// artículo/posesivo de por medio) — a propósito para no disparar con "lanza un golpe/una
+/// estocada... con su hacha", donde "hacha" no es lo que se lanza, es la herramienta del golpe.
+function weaponThrowRegexFor(weaponNameNormalized: string): RegExp {
+  return new RegExp(`\\blanz\\w*\\s+(su|el|la|tu|una?)?\\s*${weaponNameNormalized}`, 'i');
+}
+
+export function hasFalseWeaponThrowClaim(narration: string, equippedWeaponNamesInCombat?: string[]): boolean {
+  if (!equippedWeaponNamesInCombat || equippedWeaponNamesInCombat.length === 0) return false;
+  const normalizedNarration = normalizeText(narration);
+  return equippedWeaponNamesInCombat.some((name) => weaponThrowRegexFor(normalizeText(name)).test(normalizedNarration));
+}
+
+/// Narración-vs-mecánica (auditoría "revisar partida", 2026-08-13, bug real jugando en vivo: en un
+/// simple turno de viaje, "Gorhorn arranca la capa de piel de gargantúa y la atóona a su cintura
+/// como una falda, revelando su pecho descubierto" — un cambio de equipo completo, no pedido por
+/// la jugadora, sin ningún reflejo real en `InventoryItem.slot` (sigue en ACCESORIO toda la
+/// partida). Equipar/desequipar es SIEMPRE una decisión manual vía `PATCH
+/// /saves/:id/inventario/:itemId` (ver inventario.ts: "decisión manual de la jugadora, el modelo
+/// nunca la toma") — nunca pasa por aquí, así que no hace falta comprobar la intención de este
+/// turno como en `hasFalseItemUse`: CUALQUIER cambio de vestimenta narrado es alucinación, siempre.
+///
+/// Verbos curados a propósito (nunca "se pone"/"se quita": demasiado genéricos, "se pone en pie"/
+/// "se pone furioso"/"se quita de en medio" no tienen nada que ver con equipo) — mismo criterio de
+/// mismo-sentencia-que-el-nombre-real que `hasFalseItemUse`/`hasFalseInventoryReview`.
+const EQUIP_CHANGE_VERB_REGEX = /\b(arranc\w*|ata\w*|desata\w*|ci[ñn]\w*|revist\w*|desvist\w*)\b/i;
+
+export function hasFalseEquipmentChangeClaim(narration: string, equippableItemNames?: string[]): boolean {
+  if (!equippableItemNames || equippableItemNames.length === 0) return false;
+  const normalizedNames = equippableItemNames.map(normalizeText);
+  return sentenceMatchesRegexAndName(narration, EQUIP_CHANGE_VERB_REGEX, normalizedNames);
+}
+
 /// Narración-vs-mecánica, mismo patrón que `hasFalseCombatHit` (2026-08-01, bug real jugando en
 /// vivo: descansar tras quedar INCAPACITADO no cura solo por descansar — hace falta un objeto
 /// médico real, ver healCeilingFor/death.ts — pero la narración dijo "agarra la cataplasma de
@@ -1038,6 +1105,21 @@ export function hasGisteraReencuentroSinNombrar(narration: string, gisteraSeHaMa
   if (!gisteraSeHaMarchado) return false;
   const normalized = normalizeText(narration);
   return GISTERA_CLAN_MENTION_REGEX.test(normalized) && GISTERA_PERSECUCION_REGEX.test(normalized);
+}
+
+/// Complementario a `hasGisteraReencuentroSinNombrar` (auditoría "revisar partida", 2026-08-13,
+/// bug real jugando en vivo: en pleno combate contra el Orco Enfurecido, defendiéndose de SU
+/// golpe, la narración dijo "Gistera Koh se aproxima a Gorhorn con una expresión de furia" — el
+/// caso de arriba solo caza la reintroducción SIN nombrarla; este cubre el caso contrario, donde
+/// el modelo sí la nombra literalmente pese a que el hecho protegido diga que se marchó para
+/// siempre. Nombre/alias exacto con límite de palabra (no basta con que "gistera" aparezca dentro
+/// de otra palabra) — a diferencia del caso sin nombrar, aquí no hace falta exigir vocabulario de
+/// persecución además: el propio nombre ya es la señal inequívoca.
+const GISTERA_NAME_REGEX = /\bgistera(\s+koh)?\b/i;
+
+export function hasFalseGisteraNamedReturn(narration: string, gisteraSeHaMarchado?: boolean): boolean {
+  if (!gisteraSeHaMarchado) return false;
+  return GISTERA_NAME_REGEX.test(normalizeText(narration));
 }
 
 /// Narración-vs-mecánica, mismo patrón que `hasFalseItemUse`/`hasResurrectedDeadNpc` (bug real

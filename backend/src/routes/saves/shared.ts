@@ -37,6 +37,7 @@ export function toFrontendLogEntry(entry: {
   entityBannerSlug?: string | null;
   combate?: boolean;
   travelInterrupted?: boolean;
+  combatExchange?: unknown;
 }) {
   return {
     id: entry.id,
@@ -44,6 +45,9 @@ export function toFrontendLogEntry(entry: {
     text: entry.text,
     timeLabel: entry.timeLabel,
     roll: entry.roll ?? undefined,
+    // Bug real jugando en vivo (2026-08-13) — sin esto, recargar la partida perdía el lado
+    // "Enemigo" del intercambio de combate (ver comentario de la columna en schema.prisma).
+    combatExchange: entry.combatExchange ?? undefined,
     isPlayerAction: entry.isPlayerAction || undefined,
     xpDelta: entry.xpDelta ?? undefined,
     // Persistencia de banners de entidad (rework 2026-07-24) — solo la referencia (tipo+slug); el

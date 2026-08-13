@@ -217,9 +217,23 @@ const OUTCOME_NARRATION_HINT: Record<ExchangeOutcome, (atacante: string, defenso
 /// Texto "YA RESUELTO, no lo cambies" para el Narrador (mismo patrón que el resto de tiradas de
 /// combate, turnResolution.ts) — nunca deja que el modelo decida ni el número ni el desenlace,
 /// solo lo narra ya calculado.
-export function exchangeContextBlock(exchange: ExchangeResult, atacanteNombre: string, defensorNombre: string): string {
+///
+/// `defensorPuedeContragolpear` (bug real jugando en vivo, 2026-08-13, petición explícita de la
+/// usuaria: "solo si la habilidad especifica que hace daño en defensa debe hacerlo... solo las de
+/// ataque hacen daño"): `defensor_contragolpea` solo debería narrar un golpe de vuelta que
+/// conecta de verdad si la habilidad de defensa elegida tiene `effect: 'ATAQUE'` — hoy NINGUNA
+/// habilidad `rol: 'defensa'` lo tiene (todas son AGUANTE o sin efecto), así que el "de propina
+/// replica" del texto original nunca debería narrarse; el caller (turnResolution.ts) decide el
+/// booleano mirando la habilidad real, este archivo no conoce habilidades, solo tiradas.
+export function exchangeContextBlock(
+  exchange: ExchangeResult,
+  atacanteNombre: string,
+  defensorNombre: string,
+  defensorPuedeContragolpear: boolean = true,
+): string {
   const grados = `${atacanteNombre} tira ${exchange.atacante.result} (${exchange.atacante.gradoExito}) vs dificultad ${exchange.atacante.difficulty} · ${defensorNombre} tira ${exchange.defensor.result} (${exchange.defensor.gradoExito}) vs dificultad ${exchange.defensor.difficulty}.`;
-  return `RESULTADO DEL INTERCAMBIO — YA RESUELTO, no lo cambies: ${grados} ${OUTCOME_NARRATION_HINT[exchange.resultado](atacanteNombre, defensorNombre)}`;
+  const resultadoEfectivo = exchange.resultado === 'defensor_contragolpea' && !defensorPuedeContragolpear ? 'ataque_falla' : exchange.resultado;
+  return `RESULTADO DEL INTERCAMBIO — YA RESUELTO, no lo cambies: ${grados} ${OUTCOME_NARRATION_HINT[resultadoEfectivo](atacanteNombre, defensorNombre)}`;
 }
 
 /// Equivalente de `exchangeContextBlock` para el camino independiente (rediseño de combate,

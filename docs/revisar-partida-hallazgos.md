@@ -9,6 +9,81 @@ Cada entrada: fecha, qué se detectó (cita textual si es narración), causa ra�
 
 ---
 
+## Índice
+
+**2026-08-01**
+- [descansar no curaba + objeto médico narrado sin usarse](#2026-08-01-descansar-no-curaba-objeto-médico-narrado-sin-usarse)
+- [el orco ya muerto "volvió a aparecer"](#2026-08-01-el-orco-ya-muerto-volvió-a-aparecer)
+- [auditoría completa de `pendingCombatNpcSlugs` ("al reiniciar me empieza en combate")](#2026-08-01-auditoría-completa-de-pendingcombatnpcslugs-al-reiniciar-me-empieza-en-combate)
+- [arma equivocada en narración (dos rondas)](#2026-08-01-arma-equivocada-en-narración-dos-rondas)
+- [narración autocontradictoria (esquiva + sangra en la misma frase)](#2026-08-01-narración-autocontradictoria-esquiva-sangra-en-la-misma-frase)
+- [narración de combate anticipada en el turno de aceptar la misión de Gistera Koh](#2026-08-01-narración-de-combate-anticipada-en-el-turno-de-aceptar-la-misión-de-gistera-koh)
+- [Hagar aparece de la nada y responde en vez de Gistera Koh](#2026-08-01-hagar-aparece-de-la-nada-y-responde-en-vez-de-gistera-koh)
+- ["Los Restos de Maktor" enlazado al saquear (CONFIRMADO con captura)](#2026-08-01-los-restos-de-maktor-enlazado-al-saquear-confirmado-con-captura)
+- ["Clan Serhu" enlaza al Campamento aunque nadie esté ahí](#2026-08-01-clan-serhu-enlaza-al-campamento-aunque-nadie-esté-ahí)
+- [el tiempo de ficción no avanza durante el combate (por diseño, pero se siente roto)](#2026-08-01-el-tiempo-de-ficción-no-avanza-durante-el-combate-por-diseño-pero-se-siente-roto)
+- [narración de ambientación repetida sin progreso tras el combate ("bucle")](#2026-08-01-narración-de-ambientación-repetida-sin-progreso-tras-el-combate-bucle)
+- ["Las Agujas Imán" partido en dos, esta vez en el propio texto del jugador](#2026-08-01-las-agujas-imán-partido-en-dos-esta-vez-en-el-propio-texto-del-jugador)
+- ["el cuerpo del múrgol" al decapitar al Orco Enfurecido](#2026-08-01-el-cuerpo-del-múrgol-al-decapitar-al-orco-enfurecido)
+
+**2026-08-03**
+- [auditoría "revisa todos los MD" (sincronización lore↔código) + "y el resto de zonas están bien?" (posiciones del mapa)](#2026-08-03-auditoría-revisa-todos-los-md-sincronización-lorecódigo-y-el-resto-de-zonas-están-bien-posiciones-del-mapa)
+- [análisis completo backend/frontend (mejoras y huecos sin cubrir)](#2026-08-03-análisis-completo-backendfrontend-mejoras-y-huecos-sin-cubrir)
+
+**2026-08-07**
+- ["no aparece ningún recurso" recolectando en la Hondonada del Eco](#2026-08-07-no-aparece-ningún-recurso-recolectando-en-la-hondonada-del-eco)
+- ["hielo sílice" narrado sin venir a cuento en combate (Orco Enfurecido)](#2026-08-07-hielo-sílice-narrado-sin-venir-a-cuento-en-combate-orco-enfurecido)
+- [objetos recién recolectados "sin categorizar" en el Inventario](#2026-08-07-continuación-objetos-recién-recolectados-sin-categorizar-en-el-inventario)
+- [la recolección no acumula, crea una fila nueva cada vez](#2026-08-07-continuación-la-recolección-no-acumula-crea-una-fila-nueva-cada-vez)
+- [consumir un objeto médico/de energía no lo quitaba del inventario](#2026-08-07-continuación-consumir-un-objeto-médicode-energía-no-lo-quitaba-del-inventario)
+- [el modal de "qué equipar" no mostraba ninguna estadística](#2026-08-07-continuación-el-modal-de-qué-equipar-no-mostraba-ninguna-estadística)
+- [consumibles equipados "no salen en el inventario": SIN REPRODUCIR](#2026-08-07-continuación-consumibles-equipados-no-salen-en-el-inventario-sin-reproducir)
+- [Minar/Talar sin ningún límite: recolección indefinida sin moverse](#2026-08-07-continuación-minartalar-sin-ningún-límite-recolección-indefinida-sin-moverse)
+
+**2026-08-08**
+- [repetición literal de la ambientación de "mañana" (`entorno.ts`)](#2026-08-08-repetición-literal-de-la-ambientación-de-mañana-entornots)
+- [errores gramaticales sueltos del modelo en narración de combate/exploración](#2026-08-08-errores-gramaticales-sueltos-del-modelo-en-narración-de-combateexploración)
+- ["orca enfurecida"/"el Orco Enfurecido" en el mismo párrafo](#2026-08-08-continuación-orca-enfurecidael-orco-enfurecido-en-el-mismo-párrafo)
+- ["Un pequeño raposa": género de artículo + animal inventado](#2026-08-08-continuación-un-pequeño-raposa-género-de-artículo-animal-inventado)
+- ["buscar presas" no conecta nunca con un encuentro real](#2026-08-08-continuación-buscar-presas-no-conecta-nunca-con-un-encuentro-real)
+- [género inconsistente de "Orco Enfurecido" ("la orca enfurecida"/"el Orco Enfurecido" en el mismo párrafo)](#2026-08-08-continuación-género-inconsistente-de-orco-enfurecido-la-orca-enfurecidael-orco-enfurecido-en-el-mismo-párrafo)
+- ["Un pequeño raposa": animal inventado fuera del roster](#2026-08-08-continuación-un-pequeño-raposa-animal-inventado-fuera-del-roster)
+- [repetición literal de ambientación de "mañana": FIJADO](#2026-08-08-continuación-repetición-literal-de-ambientación-de-mañana-fijado)
+- [capacidad de inventario por filas, no por cantidad](#2026-08-08-continuación-partida-reiniciada-capacidad-de-inventario-por-filas-no-por-cantidad)
+- ["Cazar" narró la presa ya atrapada sin combate mecánico real](#2026-08-08-continuación-cazar-narró-la-presa-ya-atrapada-sin-combate-mecánico-real)
+- [imagen ausente en la ficha de combate (sí sale en la narración)](#2026-08-08-continuación-imagen-ausente-en-la-ficha-de-combate-sí-sale-en-la-narración)
+- [posible reaparición de la escena de Gistera Koh sin nombrarla](#2026-08-08-continuación-posible-reaparición-de-la-escena-de-gistera-koh-sin-nombrarla)
+- [capacidad de inventario: bug real confirmado, no solo percepción](#2026-08-08-continuación-capacidad-de-inventario-bug-real-confirmado-no-solo-percepción)
+- [Cazar ofrecía cualquier presa de la región, sin detección real](#2026-08-08-continuación-cazar-ofrecía-cualquier-presa-de-la-región-sin-detección-real)
+- [Hagar alucinado por SEGUNDA vez, ahora con NpcState real corrompido](#2026-08-08-continuación-hagar-alucinado-por-segunda-vez-ahora-con-npcstate-real-corrompido)
+- [fauna sin arma pierde su ataque real en combate ("el orco lanudo")](#2026-08-08-continuación-fauna-sin-arma-pierde-su-ataque-real-en-combate-el-orco-lanudo)
+- [el modelo podía autoconcederse hito "capitulo" (500 XP, el tope absoluto)](#2026-08-08-continuación-partida-reiniciada-el-modelo-podía-autoconcederse-hito-capitulo-500-xp-el-tope-absoluto)
+- [hueco de gerundios en los detectores de golpe prematuro/fantasma](#2026-08-08-continuación-hueco-de-gerundios-en-los-detectores-de-golpe-prematurofantasma)
+- ["+525 XP" seguía viéndose: pendiente de reiniciar backend, no bug nuevo](#2026-08-08-continuación-525-xp-seguía-viéndose-pendiente-de-reiniciar-backend-no-bug-nuevo)
+- [Gistera Koh reaparece sin nombrarse, tercera vez confirmada](#2026-08-08-continuación-gistera-koh-reaparece-sin-nombrarse-tercera-vez-confirmada)
+
+**2026-08-11**
+- [pruebas por API tras el rediseño de combate (fuera de combate a propósito)](#2026-08-11-pruebas-por-api-tras-el-rediseño-de-combate-fuera-de-combate-a-propósito)
+- [misiones "conseguir X" nunca se cierran si el objeto viene de Minar/Talar/Desollar/Cazar](#2026-08-11-continuación-misiones-conseguir-x-nunca-se-cierran-si-el-objeto-viene-de-minartalardesollarcazar)
+- [el objeto recién crafteado sale "sin categorizar" (regresión parcial del fix de 2026-08-07)](#2026-08-11-continuación-el-objeto-recién-crafteado-sale-sin-categorizar-regresión-parcial-del-fix-de-2026-08-07)
+- [segunda tanda: reino, capítulo, muerte definitiva, despiece (sin bugs nuevos)](#2026-08-11-continuación-segunda-tanda-reino-capítulo-muerte-definitiva-despiece-sin-bugs-nuevos)
+- [tercera tanda: sesión (pausa/cancelar/huir), habilidades generales, construcción, validación de creación](#2026-08-11-continuación-tercera-tanda-sesión-pausacancelarhuir-habilidades-generales-construcción-validación-de-creación)
+- [cuarta tanda: calidad de narración (petición explícita: "buscar mejoras... qué es necesario mejorar para que la narración sea de calidad")](#2026-08-11-continuación-cuarta-tanda-calidad-de-narración-petición-explícita-buscar-mejoras-qué-es-necesario-mejorar-para-que-la-narración-sea-de-calidad)
+
+**2026-08-12**
+- [Orco Enfurecido (ya MUERTO) narrado atacando a Gorhorn durante una cacería de Múrgol, en otra ubicación](#2026-08-12-orco-enfurecido-ya-muerto-narrado-atacando-a-gorhorn-durante-una-cacería-de-múrgol-en-otra-ubicación)
+
+**2026-08-13**
+- [Gistera Koh nombrada explícitamente en mitad de un combate, tras marcharse para siempre](#2026-08-13-gistera-koh-nombrada-explícitamente-en-mitad-de-un-combate-tras-marcharse-para-siempre)
+- ["Misión completada" aparece en el log ANTES que la narración del turno que la resolvió](#2026-08-13-misión-completada-aparece-en-el-log-antes-que-la-narración-del-turno-que-la-resolvió)
+- [continuación: "Vendaje improvisado" usado pero nunca consumido del inventario (CONFIRMADO en BD)](#2026-08-13-continuación-vendaje-improvisado-usado-pero-nunca-consumido-del-inventario-confirmado-en-bd)
+- [continuación: arma narrada como lanzada en un ataque cuerpo a cuerpo, sin reflejo mecánico](#2026-08-13-continuación-arma-narrada-como-lanzada-en-un-ataque-cuerpo-a-cuerpo-sin-reflejo-mecánico)
+- [continuación: cambio de equipo alucinado y contradictorio ("capa... como falda" → "capa... como asiento")](#2026-08-13-continuación-cambio-de-equipo-alucinado-y-contradictorio-capa-como-falda-capa-como-asiento)
+- [continuación: palabra en inglés colada en narración española ("small clearing")](#2026-08-13-continuación-palabra-en-inglés-colada-en-narración-española-small-clearing)
+- [continuación: aportes en vivo de la usuaria, 6 puntos (habilidad no-daño, crafteo, tiempo, energía, recolección, viaje/caza)](#2026-08-13-continuación-aportes-en-vivo-de-la-usuaria-6-puntos-habilidad-no-daño-crafteo-tiempo-energía-recolección-viajecaza)
+
+---
+
 ## 2026-08-01 — descansar no curaba + objeto médico narrado sin usarse
 
 **Síntoma**: "descansar no funcionó, además consumió objetos sin pedirlo". Narración: *"Agarra la
@@ -1499,3 +1574,327 @@ de regresión nuevo en `narrador.test.ts` con el texto real. El comportamiento d
 muerte) se deja tal cual a propósito: es el mismo mecanismo que mantiene vivas conversaciones/
 continuidad con NPCs reales sin repetir su nombre cada turno, y tocarlo podría romper casos
 legítimos — no se toca salvo que este patrón se repita con otros NPCs pese a este fix.
+
+## 2026-08-13 — Gistera Koh nombrada explícitamente en mitad de un combate, tras marcharse para siempre
+
+Partida real de Gorhorn (`auditSave.ts`), turno 08:21: acción del jugador "Me planto y aguanto el
+golpe que venga con pura resistencia física" (defensa contra el ataque del Orco Enfurecido, en
+combate activo). Narración devuelta: *"Gistera Koh se aproxima a Gorhorn con una expresión de
+furia en su rostro."* Gistera Koh se había marchado 5 minutos ficticios antes (08:16, "echa a andar
+hacia el sur... perdiéndose pronto entre la maleza") y el hecho protegido correspondiente ya estaba
+establecido: *"Gistera Koh se marchó hacia la Ciénaga Troncal en cuanto Gorhorn aceptó ayudarla —
+ya no está en escena, no volverá a aparecer."*
+
+**Causa raíz**: `hasGisteraReencuentroSinNombrar` (narrador.ts) está diseñado explícitamente para
+el caso en que el texto REINTRODUCE a Gistera Koh sin nombrarla (por señales de clan+persecución —
+"la exclusión por slug no puede cazar esto porque el texto nunca dice 'Gistera Koh'", comentario en
+el propio código). Este caso es el complementario: el texto SÍ la nombra explícitamente. No existe
+ningún detector que compruebe si el nombre literal "Gistera Koh" (o sus alias) aparece en la
+narración cuando `gisteraSeHaMarchado` es `true` — la exclusión de `npcsInScene` le impide ser
+candidata real, pero no impide que el modelo alucine su nombre en texto libre.
+
+**Estado**: FIJADO (2026-08-13). `hasFalseGisteraNamedReturn(narration, gisteraSeHaMarchado)`
+(narrador.ts) — límite de palabra sobre "gistera"/"gistera koh", enganchado al mismo bucle de
+reintento que `hasGisteraReencuentroSinNombrar`, mismo `ctx.gisteraSeHaMarchado`. 4 tests nuevos en
+`narrador.test.ts` con la frase real capturada en el log de esta misma partida.
+
+## 2026-08-13 — "Misión completada" aparece en el log ANTES que la narración del turno que la resolvió
+
+Misma partida. Log ordenado por `createdAt` (igual que lo consulta `/saves/:id` y `/saves/:id/diario`
+en la app real, no solo el script de auditoría):
+```
+[08:26] (PJ) Misión completada: "Acabar con el Orco Enfurecido" — consigue Mapa de las Llanuras, +100 XP.
+[08:25] (PJ) El orco enfurecido bloquea la estocada con su maza astillada... dejándolo aturdido. [+25 XP]
+```
+La notificación de recompensa lleva un `timeLabel` posterior (08:26) al de la narración que
+mecánicamente la disparó (08:25), pero como ambos endpoints ordenan por `createdAt` (orden real de
+inserción en la transacción, no por `timeLabel`/`fictionalMinutes`), el anuncio de recompensa se ve
+ANTES que el propio combate que la ganó — lee al revés en el diario/log de personaje.
+
+**Causa raíz**: dentro de la transacción de `narrateAndPersistTurn`, el `LogEntry` de recompensa de
+misión (creado en `completeNpcTargetQuests`, `questResolution.ts:142`, invocado desde
+`applyCombatExchangeToNpcState`/`applyExecuteTargets`) se crea ANTES que `mainLogEntry` (la
+narración principal del turno, `turnResolution.ts:3727`) — mismo orden que el caso especial de la
+misión de apertura ya-resuelta (`rewardEntry`, línea 3573, también antes de `mainLogEntry`).
+
+**Estado**: FIJADO (2026-08-13). No se movió la llamada (`completeNpcTargetQuests`/`closeItemQuests`
+siguen ejecutándose en el mismo punto, antes de `mainLogEntry`, por sus propias dependencias de
+datos) — en su lugar, `createdAt` explícito ya no depende del reloj real en cada punto del código:
+un `turnStartTime` fijo al principio de la transacción + offsets relativos (`nextBeforeMainLogCreatedAt`/
+`mainLogEntryCreatedAt`/`nextAfterMainLogCreatedAt`) deciden el orden de lectura sin importar en qué
+momento real se cree cada fila. Las recompensas de misión (caso general y el especial del Orco
+Enfurecido ya resuelto) ahora usan `nextAfterMainLogCreatedAt`. Verificado contra la BD real:
+`turn.integration.test.ts` ampliado con una comprobación explícita de `createdAt` (recompensa
+después de la narración principal), 49/49 en verde.
+
+## 2026-08-13 (continuación) — "Vendaje improvisado" usado pero nunca consumido del inventario (CONFIRMADO en BD)
+
+**Síntoma**: partida nueva, mismo día. Turno `10:49`, acción `Uso 'Vendaje improvisado'`: *"Gorhorn
+machaca otra porción de salvia del polvo y la envuelve en un pañuelo antes de aplicárselo a una
+herida que aún late dolorosamente... [+25 XP]"* — la narración describe fabricar/aplicar de nuevo
+(no "usar lo que ya llevaba"), sospechoso de ser la misma clase de alucinación que el bug de
+`descansar`/objeto médico de 2026-08-01.
+
+**Confirmado contra la BD real** (no solo sospecha de narración): la partida tiene exactamente 2
+filas `InventoryItem` con `catalogSlug='vendaje-improvisado'`, con `createdAt` real
+`11:12:54.766` y `11:23:21.686` — que corresponden EXACTAMENTE a los dos turnos de *crafteo*
+("Ato un vendaje improvisado...", `10:48` y `12:30` en tiempo ficticio), no al turno de *uso*
+intermedio (`10:49`). El turno de "Uso" no borró ni decrementó ninguna fila — el objeto creado a
+las `10:48` debería haber desaparecido en el "Uso" de `10:49` y no lo hizo.
+
+**Causa raíz CONFIRMADA (2026-08-13, sesión de fixes)**: reproducido con un script suelto contra
+`detectMedicalItemUse` real (mismo método que recomienda este runbook) — con UNA sola unidad
+("Vendaje improvisado", sin sufijo) el matching funciona bien; con 2+ unidades en la misma pila
+("Vendaje improvisado (2)"), el `.includes()` contra el nombre CON sufijo de cantidad nunca
+coincide con la forma en que el jugador cita el objeto ("Uso 'Vendaje improvisado'", sin el "(2)")
+— el objeto deja de detectarse como usado en cuanto hay pila de 2+, y por tanto tampoco se consume.
+Bug genérico, no exclusivo de `vendaje-improvisado`: afecta a CUALQUIER objeto médico/de energía en
+pila de 2+ (raciones, cataplasmas...). El caso concreto de la partida auditada (pila de 1 en ese
+momento) no encaja exactamente con este mecanismo — probablemente un proceso de backend
+desactualizado sirviendo la partida en ese momento (mismo patrón ya visto y documentado el
+2026-08-08, "+525 XP seguía viéndose: pendiente de reiniciar backend, no bug nuevo"), no reproducible
+hoy contra el código actual.
+
+**Fix aplicado**: `detectMedicalItemUse`/`detectEnergyItemUse` (`itemReference.ts`) ahora matchean
+contra `baseNameOf(item.name)` (le quita el sufijo "(N)" antes de comparar) en vez del nombre crudo.
+Tests nuevos en `itemReference.test.ts` cubriendo pila de 2+ para los dos detectores.
+
+**Estado**: FIJADO.
+
+## 2026-08-13 (continuación) — arma narrada como lanzada en un ataque cuerpo a cuerpo, sin reflejo mecánico
+
+**Síntoma**: turno `08:23`, acción `Ataco con un golpe directo, con el arma que llevo en la mano
+principal 'Orco enfurecido'` (ataque cuerpo a cuerpo): *"Gorhorn lanza su hacha de guerra rota con
+fuerza hacia el orco, pero éste la esquiva con una torpezada del brazo, rebotando lejos en la pared
+de arcilla."* — narra un LANZAMIENTO (arma fuera de la mano, rebotando lejos), pero el turno
+`10:44` (más de dos horas ficticias después, otro combate) sigue usando "su hacha rota" con
+total normalidad, sin ninguna acción de "recoger arma" entre medias. Ni el inventario ni el slot
+`ARMA_PRINCIPAL` reflejan ningún cambio real — el arma nunca se soltó de verdad.
+
+**Causa raíz**: variante nueva de la familia "arma equivocada en narración" (2026-08-01, ya FIJADA
+para mano principal/secundaria) — aquí el error no es QUÉ arma usa, sino que inventa un TIPO de
+acción (lanzar en vez de golpear) que la mecánica real no soporta para esta habilidad.
+
+**Fix aplicado**: `hasFalseWeaponThrowClaim` (`narrador.ts`) — mismo patrón de
+comprobación-post-hoc-más-reintento que el resto de esta familia. El juego no tiene NINGUNA
+mecánica de lanzar armas (sin habilidad que lo modele, sin forma de recuperarla), así que en
+combate cualquier narración de la forma "lanza {su/el/la/tu/un(a)} {arma equipada}" (el arma como
+objeto directo de "lanza", no como herramienta de un golpe: "lanza un golpe/una estocada... con su
+hacha" no dispara) fuerza un reintento. `ctx.equippedWeaponNamesInCombat` (turnResolution.ts) solo
+se rellena en combate, con los nombres reales de `ARMA_PRINCIPAL`/`ARMA_SECUNDARIA`. Test nuevo en
+`narrador.test.ts` con la frase real capturada en el log de esta misma partida.
+
+**Estado**: FIJADO.
+
+## 2026-08-13 (continuación) — cambio de equipo alucinado y contradictorio ("capa... como falda" → "capa... como asiento")
+
+**Síntoma**: turno `08:32` (viajar a "los manaderos", sin que el jugador mencionara su ropa):
+*"Gorhorn arranca la capa de piel de gargantúa y la atóona a su cintura como una falda, revelando
+su pecho descubierto."* (nótese además el typo "atóona"). El inventario real sigue mostrando
+"Capa de piel de gargantúa [ACCESORIO]" sin ningún cambio de slot en toda la partida. Más tarde,
+turno `12:31` (montar un vivac): *"...usando la capa de piel de gargantua como asiento..."* — la
+misma prenda, ahora usada de forma totalmente distinta, sin que ninguna de las dos descripciones
+tenga respaldo mecánico real.
+
+**Causa raíz**: alucinación de equipo no solicitado por el jugador — variante de la familia ya
+conocida "objeto médico narrado sin usarse" (2026-08-01/2026-08-07), pero sobre ropa/accesorios en
+vez de consumibles.
+
+**Fix aplicado**: `hasFalseEquipmentChangeClaim` (`narrador.ts`) — a diferencia de
+`hasFalseItemUse`, no hace falta comprobar la intención de este turno: equipar/desequipar es
+SIEMPRE una decisión manual vía `PATCH /saves/:id/inventario/:itemId` (nunca pasa por narración),
+así que cualquier cambio de vestimenta narrado es alucinación siempre, en cualquier turno. Verbos
+curados (`arranca`/`ata`/`desata`/`ciñe`/`reviste`/`desviste` — deliberadamente SIN "se pone"/"se
+quita", demasiado genéricos: "se pone en pie"/"se pone furioso" no tienen nada que ver con equipo)
++ nombre real de un objeto EQUIPABLE (con `equipSlot` en catálogo, para no disparar con materia
+prima) en la MISMA frase. `ctx.equippableItemNames` (turnResolution.ts) se calcula en TODO turno,
+sin condición. Test nuevo en `narrador.test.ts` con la frase real capturada en el log.
+
+**Estado**: FIJADO.
+
+## 2026-08-13 (continuación) — palabra en inglés colada en narración española ("small clearing")
+
+**Síntoma**: turno `12:31`: *"Gorhorn se detiene en una **small clearing** y comienza a montar un
+rudimentario campamento... atando las armas alrededor para formar una tipo improvisado
+barricada."* — palabra en inglés suelta en medio de una narración en español, más una concordancia
+rota ("una tipo... barricada").
+
+**Causa raíz**: misma familia que "errores gramaticales sueltos del modelo" (2026-08-08, PENDIENTE,
+sin detector determinista barato) — pero primera vez que se cuela una palabra en INGLÉS completa,
+no solo una conjugación/palabra inventada en español. A vigilar si se repite el patrón.
+
+**Estado**: PENDIENTE, mismo criterio que 2026-08-08 (no se propone corrector gramatical genérico
+sin que se repita más).
+
+## 2026-08-13 (continuación) — aportes en vivo de la usuaria, 6 puntos (habilidad no-daño, crafteo, tiempo, energía, recolección, viaje/caza)
+
+Misma sesión de revisión. La usuaria reportó 6 síntomas de su propia partida en vivo, investigados
+uno a uno (solo lectura, sin aplicar ningún fix todavía).
+
+**1. Habilidades no-ATAQUE (ATURDIMIENTO/INTIMIDACION/AGUANTE) hicieron daño real** — el gate real
+de "esto puede doler" en `resolveCombatExchangePhase` (`turnResolution.ts:588-983`) mira `rol`
+(`'ataque'`/`'defensa'`/`'utilidad'`), NO `effect` — y `nextCondicionForAttack` (`death.ts:163-166`)
+solo distingue `REMATE` como caso especial; cualquier otro `effect` (incluido `ATAQUE`, `null`,
+`ATURDIMIENTO`...) empeora la condición igual si `rol==='ataque'`. Confirmado a propósito en
+`death.test.ts:185-187`. Hoy TODAS las definiciones estáticas (`classAbilities.ts`,
+`genericCombatAbilities.ts`, `npcCombatAbilities.ts`, `dynamicAbilities.ts`) emparejan bien
+`effect` no-ATAQUE con `rol` no-`'ataque'` — pero `effect`/`rol` se leen por separado desde la fila
+`SavedAction` persistida (`turnResolution.ts:1710-1714`,`1788-1791`) sin validar esa invariante al
+leer; una fila desalineada (legado, migración incompleta) colaría daño real por una habilidad
+"no de daño". Sin test que fuerce ese desalineamiento; tampoco hay test de "Instinto Salvaje"
+(ATURDIMIENTO) pese a estar comentado.
+
+**Confirmado y FIJADO más tarde en la misma sesión** (ver entrada "`defensor_contragolpea` hacía
+daño real con CUALQUIER habilidad de defensa" más abajo): el mecanismo real no era una fila
+`SavedAction` desalineada — era el resultado `defensor_contragolpea` del `OUTCOME_TABLE`
+(`combatExchange.ts`) aplicando daño real en los caminos NO independientes de
+`resolveCombatExchangePhase` sin comprobar `effect==='ATAQUE'` de la habilidad de defensa usada.
+Cualquier esquiva/bloqueo con tirada excelente colaba un golpe de vuelta real. Ya arreglado.
+
+**2. "El crafteo debería ser determinista, no narrado"** — **NO ES BUG**, ya lo es. `canCraft`/
+`CRAFTING_RECIPES` (`crafting.ts`) deciden 100% por código (ubicación, ingredientes, requisitos,
+objeto resultante) ANTES de narrar — mismo orden que combate (`resolveCraftIntentContext`,
+`turnResolution.ts:2473-2481`, resuelto antes de `narrateAction` en la línea 2665; la transacción
+que materializa el `InventoryItem` en 2908 usa el booleano ya calculado, línea 3212, nunca
+reinterpreta la narración). La percepción probablemente viene de que la REDACCIÓN de
+`narrationDo`/`narrationWant` sí deja libertad de prosa al LLM, y eso se puede sentir como si
+"decidiera" aunque el objeto/stats ya estén cerrados de antemano.
+
+**3. "Fabricar/combate no hacen pasar el tiempo"** — **percepción, no bug de 0 minutos** (aunque sí
+hay margen de mejora). Combate: 1 minuto fijo por intercambio (`timedActions.ts:48`, ya arreglado
+en 2026-08-02 tras un bug idéntico — antes SÍ era 0). Crafteo: sin campo de duración propio, cae en
+la banda `"corta"` del clasificador → 15 min por defecto (`timedActions.ts:88`). Viajar/descansar
+avanzan decenas/cientos de minutos, así que 1 minuto de combate "se siente" congelado en
+comparación, aunque técnicamente si avanza.
+
+**4. "Descansé y la energía no se recuperó" — CONFIRMADO, bug de diseño real, no solo percepción.**
+Restaurar energía exige `restSucceeds` (`turnResolution.ts:2853-2854`), que solo es `true` si
+`currentLocationRecord.kind` es `'refugio'` o `'asentamiento'` (`isValidRestLocationKind`,
+`death.ts:237-238`) — un vivac en un `hito`/`cruce` en mitad del camino (exactamente lo que hizo la
+usuaria: "monto un vivac breve... aquí mismo") mejora algo la `condicionFisica` pero deja la
+`energia` intacta, sin ningún aviso de que el sitio no cualifica. Hueco de test confirmado:
+`energy.test.ts` prueba la restauración aislada (pasando `restSucceeds:true` a mano) y el único
+integration test de vivac en un `hito` nunca comprueba `energia`.
+
+**Fix aplicado (2026-08-13, decisión de la usuaria: restaurar algo en cualquier sitio)**: mismo
+criterio de dos escalones que ya tenía `healCeilingFor` para `condicionFisica` desde el
+2026-08-11. `nextEnergia` (`energy.ts`) gana un parámetro `restAttempted` (descanso válido EN
+CUALQUIER SITIO, mismo criterio que `healCeilingFor`): si es `true` y `restSucceeds` no lo es,
+sube la energía hasta la MITAD del tope (nunca la baja si ya estaba por encima) — `restSucceeds`
+(refugio/asentamiento real) sigue siendo el único que llega al tope entero. Wireado en
+`turnResolution.ts` (el `restAttempted` que ya calculaba `healCeilingFor` se reutiliza tal cual, sin
+cálculo nuevo). Tests nuevos en `energy.test.ts` (3, caso puro) y `turn.integration.test.ts` (1,
+contra la BD real, cerrando el hueco de cobertura documentado arriba).
+
+**Estado**: FIJADO. `tsc` limpio, 880 tests backend, `turn.integration.test.ts` 50/50 en verde.
+
+**5. "Al recolectar, el número puesto es el total del inventario, no lo recién cogido" —
+CONFIRMADO, bug real de redacción.** `recolectar.ts:391-395` construye el texto "recolecta en la
+zona: X (N)" a partir de `s.quantity`, que en `recolectar.ts:349-360` se calcula como
+`quantityOf(existingRow.name) + cantidad` cuando ya había pila previa — el TOTAL tras sumar, no lo
+recién cosechado. Coincide exactamente con la evidencia real (3, luego 6, luego 9 en vez de 3, 3,
+3). Fix: separar en `TouchedStack` el total de la pila (para el nombre real del `InventoryItem`,
+que sigue bien) de la cantidad cosechada ESTE turno (variable local `cantidad`, ya disponible antes
+de sumar) para el texto del log. **Estado**: PENDIENTE.
+
+**6a. UX de espera al viajar — no es solo frontend, es un diseño real de backend a revisar.**
+`POST /turn/classify` (`turn.ts:582-678`) YA decide de forma determinista TODO el resultado del
+viaje al iniciarlo — ruta, y si habrá evento/dónde se trunca (`pickTravelInterruption`,
+`travelInterruption.ts`, decidido en el momento de arrancar, no al resolver) — pero NO genera la
+narración de llegada hasta que `worldTick.ts` (`resolveDueTransits`) detecta que `busyUntil` (tiempo
+REAL) ya venció; hasta entonces, `/turn/classify` devuelve 409 "sigue ocupado", así que no hay forma
+de saltarse la espera actuando/refrescando antes. La propuesta de la usuaria (narrar ya si no hay
+evento; si hay evento, resolverlo y EDITAR el primer prompt de llegada con sus matices) es viable
+pero requiere cambio real de backend: adelantar `narrateAndPersistTurn` al momento de iniciar el
+viaje cuando `interruption === null`. **Estado**: PENDIENTE, propuesta de diseño a valorar.
+
+**6b. Cazar varios animales de la misma especie pero solo 1 cadáver para desollar — CONFIRMADO,
+desajuste real por diseño del modelo de datos.** `NpcState` para fauna `PLANTILLA` usa
+`scope = Location.id`: una única fila representa TODO el encuentro con esa especie en ese sitio, no
+cada individuo (`schema.prisma:1087-1121`). `cazar.ts:38-43` lo confirma explícitamente ("solo se
+admite UNA presa por especie por petición"); el despiece (`harvest.ts:96-138`) consulta esa misma
+fila única. La narración puede describir varias muertes de la misma especie ("7 Corretolvas"), pero
+solo hay un cadáver mecánico real por especie+ubicación. **Estado**: PENDIENTE — a decidir si el
+modelo de datos pasa a trackear individuos (cambio grande) o si se ajusta la narración/vocabulario
+para no prometer más cadáveres de los que hay (cambio pequeño).
+
+**Aparte (mismo hilo, diseño de combate — CORREGIDO tras una primera respuesta equivocada)**: la
+usuaria preguntó si el combate debería mostrar una tirada OPUESTA real (su atributo vs el atributo
+de defensa del rival, p. ej. Fuerza vs Destreza) en vez de "vs 15". Primera respuesta (INCORRECTA):
+mirando solo `difficultyHintFor`/`dice.ts` (usado para tiradas sueltas fuera de intercambio), dije
+que la Dificultad es un número fijo por nivel, sin relación con el atributo del rival. **Corregido**:
+el intercambio de combate real (`combatExchange.ts`, `resolveExchange`/`resolveIndependentExchange`)
+SÍ hace exactamente eso — cada lado tira con SU PROPIO atributo (`rollSide`), ajustado por una
+"rueda de debilidades" real (`attributeWheel.ts`, `ATTRIBUTE_RING`: Fuerza→Destreza→Inteligencia→
+Arcano→Constitución→Voluntad→Carisma→Fuerza; Destreza le gana a Fuerza por diseño explícito de la
+usuaria, 2026-07-28) que multiplica el valor efectivo del atributo según el tipo del rival. Ya
+existe `CombatExchangeBadge.tsx` (frontend) mostrando las DOS tiradas juntas ("Tú"/"Enemigo"), cada
+una con su atributo/dado/bono-ya-ajustado/resultado/dificultad. **Estado**: mecánica ya existe y
+funciona — ver el hallazgo siguiente para el bug real de persistencia que hace que a veces solo se
+vea un lado.
+
+## 2026-08-13 (continuación) — `combatExchangeDisplay` (las dos tiradas del intercambio) no se persiste — desaparece al recargar la partida
+
+**Síntoma**: la usuaria confirma en vivo: "antes había 2 [tiradas, Tú/Enemigo], pero cerrar la
+partida y volver a abrirla ahora sale una" — justo el badge de dos lados (`CombatExchangeBadge`)
+colapsando al de un solo lado (`RollBadge`) tras recargar.
+
+**Causa raíz CONFIRMADA**: `LogEntry` (`schema.prisma:370-410`) solo tiene una columna `roll: Json?`
+para UNA tirada (`RollInfo`) — no existe ninguna columna para `CombatExchangeDisplay` (las dos
+tiradas + quién ataca + resultado cruzado). `combatExchangeDisplay` viaja en la respuesta HTTP del
+turno recién resuelto (`turn.ts:801,876`), pero al persistir el `LogEntry` dentro de la transacción
+(`turnResolution.ts:3773-3778`) solo se guarda `roll: effectiveRoll`, donde
+`effectiveRoll = combatExchangeRoll ?? roll` (línea 3747) — es decir, SOLO el lado del jugador,
+nunca el objeto de dos lados completo. Al recargar desde `/saves/:id` (que lee `LogEntry` de la
+BD), el frontend nunca tuvo nunca un `combatExchange` que reconstruir — solo el `roll` de un lado,
+así que cae al `RollBadge` de una sola tirada.
+
+**Petición de diseño adicional de la usuaria** (una vez arreglada la persistencia): hacer el badge
+de dos lados más claro — cabecera "Atributo vs Atributo", tirada de un lado, tirada del otro,
+luego los cálculos, y remate indicando quién gana el intercambio (no solo dos filas paralelas con
+la frase de resultado suelta debajo, como hace hoy `CombatExchangeBadge.tsx`).
+
+**Fix aplicado**: (1) columna `LogEntry.combatExchange Json?` nueva (migración
+`20260813150000_log_entry_combat_exchange`, aplicada con `prisma migrate deploy` + `prisma
+generate`, nunca `migrate dev`); persistida en `mainLogEntry.create` (`turnResolution.ts:3778`) y
+devuelta en recarga vía `toFrontendLogEntry` (`routes/saves/shared.ts`, usado por `GET /saves/:id`
+y `GET /saves/:id/diario`). (2) `CombatExchangeBadge.tsx` rediseñado: cabecera "Atributo vs
+Atributo" con punto de color por atributo, fila de cada lado (Tú/Enemigo) con su cálculo completo,
+y remate indicando quién gana el intercambio (🏆 en la fila ganadora + frase). De paso, corregido un
+hueco de tipo real: `CombatExchangeOutcome` (frontend `types.ts`) no incluía `'independiente'` — el
+backend SÍ lo manda para cualquier habilidad de utilidad/ANALISIS, así que el pie de resultado se
+veía en blanco para esos turnos; añadida su etiqueta.
+
+**Estado**: FIJADO. `tsc -b` limpio, 877 tests backend + 22 frontend, 3 integration test files en
+verde por separado.
+
+## 2026-08-13 (continuación) — `defensor_contragolpea` hacía daño real con CUALQUIER habilidad de defensa, no solo las de ataque
+
+**Síntoma**: la usuaria, revisando el rediseño del badge de arriba, preguntó por el resultado
+`defensor_contragolpea` y confirmó explícitamente la regla de diseño ya fijada antes: *"solo si la
+habilidad especifica que hace daño en defensa debe hacerlo... solo las de ataque hacen daño"*.
+
+**Causa raíz CONFIRMADA — bug real, no percepción**: en los dos caminos NO independientes de
+`resolveCombatExchangePhase` (`turnResolution.ts`, CASO DEFENSA ~línea 753 y "NPC se defiende"
+~línea 900), el resultado `defensor_contragolpea` del `OUTCOME_TABLE` (`combatExchange.ts`)
+otorgaba un golpe de vuelta REAL (`npcAttackHits`/`jugadorRecibeGolpe = true`, empeora
+`condicionFisica`) con solo mirar el resultado de las tiradas — sin comprobar en ningún momento si
+la habilidad de defensa usada tenía `effect: 'ATAQUE'`. Confirmado por grep: NINGUNA habilidad
+`rol: 'defensa'` del catálogo (`classAbilities.ts`/`genericCombatAbilities.ts`/
+`npcCombatAbilities.ts`/`dynamicAbilities.ts`) tiene `effect: 'ATAQUE'` — todas son `AGUANTE` o sin
+efecto — así que CUALQUIER esquiva/bloqueo con una tirada excelente colaba daño real que la propia
+regla de diseño prohíbe. (El camino SÍ independiente, para Contraataque/Grito de Guerra/utilidad,
+ya hacía esto bien desde el rediseño de combate 2026-08-09 — el hueco estaba solo en el camino
+"simple" de ataque-vs-defensa.)
+
+**Fix aplicado**: `npcAttackHits`/`jugadorRecibeGolpe` para `defensor_contragolpea` ahora exigen
+además `effect === 'ATAQUE'` de la habilidad de defensa concreta (la del jugador en CASO DEFENSA,
+la del NPC en el camino inverso) — hoy, al no existir ninguna así, el bonus queda inactivo pero
+listo para cuando se añada una. `exchangeContextBlock` (`combatExchange.ts`) recibe un nuevo
+parámetro `defensorPuedeContragolpear` para que la narración deje de prometer un "golpe de vuelta
+que sí conecta" cuando el gate no se cumple (cae al mismo texto que `ataque_falla`) — evita el
+mismo tipo de bug "narración promete daño que la mecánica no hizo" ya visto varias veces en este
+runbook. Tests nuevos en `combatExchange.test.ts`.
+
+**Estado**: FIJADO. `tsc` limpio, 877 tests backend (incluye los 2 nuevos), 3 integration test
+files en verde por separado.

@@ -35,9 +35,16 @@ export interface EnergyTurnInput {
   /// 0 en cualquier otra, incluido Ataque Básico) — se lee de `SavedAction.energyRegen` (jugador)
   /// o `NpcCombatAbility.energyRegen`/`PendingNpcAttack.energyRegen` (NPC), nunca inferido del rol.
   abilityEnergyRegen: number;
-  /// Descanso válido este turno (mismo detectsRestIntent que ya usa healCeilingFor) — restaura al
-  /// tope entero, igual que un descanso válido cura hasta HERIDO en condicionFisica.
+  /// Descanso en refugio/asentamiento real este turno — restaura al tope entero, igual que un
+  /// descanso válido cura hasta HERIDO en condicionFisica.
   restSucceeds: boolean;
+  /// Descanso intentado EN CUALQUIER SITIO, con éxito mecánico (mismo `detectsRestIntent` que
+  /// `restAttempted` de `healCeilingFor`, death.ts) — bug real jugando en vivo, 2026-08-13: "he
+  /// descansado [en un vivac fuera de refugio/asentamiento] y la energía no se recuperó", mismo
+  /// síntoma ya arreglado para condicionFisica el 2026-08-11 ("cura en cualquier sitio, pero
+  /// menos"). Un vivac improvisado restaura HASTA la mitad del tope — nunca reduce energía ya por
+  /// encima de eso. `restSucceeds` (arriba) manda si además el sitio es válido.
+  restAttempted: boolean;
   /// Objeto consumido este turno que restaura energía (ItemCatalog.curaEnergia, detectado por
   /// detectEnergyItemUse en itemReference.ts) — null si no se usó ninguno.
   itemRestoreAmount: number | null;
@@ -53,6 +60,8 @@ export function nextEnergia(input: EnergyTurnInput): number {
   }
   if (input.restSucceeds) {
     energia = input.max;
+  } else if (input.restAttempted) {
+    energia = Math.max(energia, Math.floor(input.max / 2));
   }
   if (input.itemRestoreAmount) {
     energia += input.itemRestoreAmount;

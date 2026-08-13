@@ -1370,6 +1370,38 @@ describe('Descansar en cualquier sitio cura, pero topa en GRAVE (solo refugio/as
     const save = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
     expect(save.condicionFisica).toBe('GRAVE');
   }, 15_000);
+
+  // Bug real jugando en vivo (2026-08-13, "he descansado y la energía no se recuperó" en un vivac
+  // fuera de refugio/asentamiento) — hueco de cobertura real: este describe ya probaba el mismo
+  // escenario para condicionFisica, nunca para energía. Save propio con energía baja para que el
+  // ascenso a la mitad del tope sea observable (ver energy.test.ts para el caso puro).
+  it('un vivac en un hito (sin refugio válido) SÍ restaura energía, hasta la mitad del tope', async () => {
+    const userId = await getDefaultUserId();
+    const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
+    const save = await prisma.save.create({
+      data: {
+        userId,
+        worldId: world.id,
+        characterName: 'Gorhorn de prueba 10b',
+        characterArchetype: 'guerrero',
+        characterOrigin: 'Clan Maktor',
+        characterMotivation: 'x',
+        attributes: ATTRS,
+        portraitInitial: 'G',
+        currentLocationId: pilaresId,
+        energia: 5,
+      },
+    });
+    await prisma.worldState.create({ data: { saveId: save.id } });
+    try {
+      await doTurn(save.id, 'Descanso aquí mismo un rato para recuperar fuerzas.');
+      const updated = await prisma.save.findUniqueOrThrow({ where: { id: save.id } });
+      // energiaMaxFor(constitucion=12) = 50 + 12*3 = 86 — mitad = 43.
+      expect(updated.energia).toBe(43);
+    } finally {
+      await prisma.save.delete({ where: { id: save.id } });
+    }
+  }, 15_000);
 });
 
 // Cobertura nueva (auditoría 2026-08-11, "pruebas por API" + duda directa de la usuaria: "ahora
@@ -1726,6 +1758,16 @@ describe('Decapitar cierra una misión "derrotar a X" con rewardItems y entrega 
       grantedItems: ['Mapa de las Llanuras (prueba)'],
       rewardXp: 100,
     });
+
+    // Auditoría "revisar partida" 2026-08-13, bug real jugando en vivo: "Misión completada" se
+    // leía ANTES que la narración del propio turno que la resolvió (mismo `createdAt` de
+    // Postgres, orden de lectura no garantizado) — la fila de recompensa debe ordenar DESPUÉS de
+    // la narración principal del turno, no antes, en el mismo orden (`createdAt asc`) que usan
+    // `/saves/:id` y `/saves/:id/diario` de verdad.
+    const allEntries = await prisma.logEntry.findMany({ where: { saveId }, orderBy: { createdAt: 'asc' } });
+    const mainNarrationEntry = allEntries.find((e) => e.channel === 'CHARACTER' && !e.isPlayerAction && e.id !== rewardLog!.id);
+    expect(mainNarrationEntry).toBeDefined();
+    expect(rewardLog!.createdAt.getTime()).toBeGreaterThan(mainNarrationEntry!.createdAt.getTime());
   }, 20_000);
 });
 

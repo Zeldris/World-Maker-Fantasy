@@ -90,8 +90,10 @@ export async function closeItemQuests(params: {
   createdItemNames: string[];
   timeLabel: string;
   fictionalMinutes: number;
+  /// Ver comentario de `completeNpcTargetQuests` más abajo — mismo criterio de orden de lectura.
+  createdAt?: () => Date;
 }): Promise<void> {
-  const { tx, saveId, worldId, createdItemNames, timeLabel, fictionalMinutes } = params;
+  const { tx, saveId, worldId, createdItemNames, timeLabel, fictionalMinutes, createdAt } = params;
   if (createdItemNames.length === 0) return;
   const activeQuestsWithItem = await tx.quest.findMany({
     where: { saveId, status: 'ACTIVA', targetItemName: { not: null } },
@@ -111,6 +113,7 @@ export async function closeItemQuests(params: {
             isPlayerAction: false,
             timeLabel,
             fictionalMinutes,
+            ...(createdAt ? { createdAt: createdAt() } : {}),
           },
         });
       }
@@ -131,6 +134,12 @@ export async function completeNpcTargetQuests(
   npcId: string,
   timeLabel: string,
   fictionalMinutes: number,
+  /// Auditoría "revisar partida" 2026-08-13 (bug real jugando en vivo: "Misión completada" se leía
+  /// ANTES que la narración del propio turno que la resolvió) — quien llama desde dentro de la
+  /// transacción de `narrateAndPersistTurn` pasa su reloj sintético "después de mainLogEntry"
+  /// (ver comentario al principio de esa transacción); opcional para no romper otros posibles
+  /// llamadores que no tengan ese concepto (usa el `createdAt` implícito de Postgres si no se pasa).
+  createdAt?: () => Date,
 ): Promise<QuestCompletedInfo | null> {
   const activeQuestsWithNpc = await tx.quest.findMany({ where: { saveId, targetNpcId: npcId, status: 'ACTIVA' } });
   let lastCompleted: QuestCompletedInfo | null = null;
@@ -147,6 +156,7 @@ export async function completeNpcTargetQuests(
           isPlayerAction: false,
           timeLabel,
           fictionalMinutes,
+          ...(createdAt ? { createdAt: createdAt() } : {}),
         },
       });
       lastCompleted = { logEntryId: rewardEntry.id, text: rewardText, title: quest.title, grantedItems, rewardXp: quest.rewardXp ?? 0 };

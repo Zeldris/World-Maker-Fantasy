@@ -175,7 +175,17 @@ export interface CombatExchangeSideInfo extends RollInfo {
   valorEfectivo: number
 }
 
-export type CombatExchangeOutcome = 'defensor_contragolpea' | 'ataque_falla' | 'parada_en_seco' | 'golpes_mutuos' | 'golpe_normal' | 'golpe_pleno'
+// 'independiente' (bug real, 2026-08-13: faltaba en este type — el backend YA lo manda para
+// cualquier habilidad de utilidad/ANALISIS, combatExchange.ts § resolveIndependentExchange, pero
+// como no estaba declarado aquí el mapa de etiquetas del badge lo pintaba en blanco).
+export type CombatExchangeOutcome =
+  | 'defensor_contragolpea'
+  | 'ataque_falla'
+  | 'parada_en_seco'
+  | 'golpes_mutuos'
+  | 'golpe_normal'
+  | 'golpe_pleno'
+  | 'independiente'
 
 /// Las dos tiradas reales de un intercambio de combate de ESTE turno (backend, combatExchange.ts
 /// § CombatExchangeDisplay) — `atacanteEsJugador` es necesario porque quién ataca y quién defiende

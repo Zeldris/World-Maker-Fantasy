@@ -8,6 +8,7 @@ const BASE: EnergyTurnInput = {
   exchangeHappened: false,
   abilityEnergyRegen: 0,
   restSucceeds: false,
+  restAttempted: false,
   itemRestoreAmount: null,
 };
 
@@ -59,5 +60,23 @@ describe('nextEnergia', () => {
   it('un objeto consumido suma su restauración, topado al máximo', () => {
     expect(nextEnergia({ ...BASE, current: 90, itemRestoreAmount: 30 })).toBe(100);
     expect(nextEnergia({ ...BASE, current: 10, itemRestoreAmount: 30 })).toBe(40);
+  });
+
+  // Bug real jugando en vivo (2026-08-13, "he descansado [fuera de refugio/asentamiento] y la
+  // energía no se recuperó") — mismo criterio ya fijado para condicionFisica el 2026-08-11
+  // (healCeilingFor): un vivac en cualquier sitio SÍ debe restaurar algo, solo un refugio/
+  // asentamiento real llega al tope entero (restSucceeds).
+  describe('restAttempted (vivac en cualquier sitio, mitad del tope)', () => {
+    it('sube hasta la mitad del tope si estaba por debajo', () => {
+      expect(nextEnergia({ ...BASE, current: 10, restAttempted: true })).toBe(50);
+    });
+
+    it('no baja la energía si ya estaba por encima de la mitad del tope', () => {
+      expect(nextEnergia({ ...BASE, current: 80, restAttempted: true })).toBe(80);
+    });
+
+    it('restSucceeds (refugio/asentamiento real) manda por encima de restAttempted — sigue llegando al tope entero', () => {
+      expect(nextEnergia({ ...BASE, current: 10, restAttempted: true, restSucceeds: true })).toBe(100);
+    });
   });
 });

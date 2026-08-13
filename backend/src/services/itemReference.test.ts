@@ -51,6 +51,12 @@ describe('detectEnergyItemUse', () => {
       curaEnergia: 30,
     });
   });
+
+  // Mismo bug/fix que detectMedicalItemUse — ver el describe de abajo.
+  it('matchea aunque la pila tenga sufijo de cantidad en el nombre', () => {
+    const items = [{ id: 'item-racion', name: 'Ración de carne ahumada (3)', curaEnergia: 30 }];
+    expect(detectEnergyItemUse("Uso 'Ración de carne ahumada'", items)).toEqual({ id: 'item-racion', curaEnergia: 30 });
+  });
 });
 
 describe('detectMedicalItemUse', () => {
@@ -87,6 +93,16 @@ describe('detectMedicalItemUse', () => {
   it('propaga curaUnPaso del objeto que matchea', () => {
     const items = [{ id: 'item-vendaje', name: 'Vendaje improvisado', curaHasta: 'GRAVE' as const, curaUnPaso: true }];
     expect(detectMedicalItemUse('Ato mi vendaje improvisado', items)).toEqual({ id: 'item-vendaje', curaHasta: 'GRAVE', curaUnPaso: true });
+  });
+
+  // Bug real jugando en vivo (2026-08-13, "revisar partida": "usé el vendaje y no se consumió del
+  // inventario") — con una pila de 2+, el nombre real lleva sufijo de cantidad ("Vendaje
+  // improvisado (2)"), pero el jugador cita el objeto SIN el sufijo ("Uso 'Vendaje improvisado'").
+  // Sin `baseNameOf`, el `.includes()` nunca coincidía con 2+ unidades — solo con la primera unidad
+  // suelta (sin sufijo), así que el objeto nunca se detectaba como usado ni se consumía.
+  it('matchea aunque la pila tenga sufijo de cantidad en el nombre', () => {
+    const items = [{ id: 'item-vendaje', name: 'Vendaje improvisado (2)', curaHasta: 'GRAVE' as const, curaUnPaso: true }];
+    expect(detectMedicalItemUse("Uso 'Vendaje improvisado'", items)).toEqual({ id: 'item-vendaje', curaHasta: 'GRAVE', curaUnPaso: true });
   });
 });
 

@@ -285,6 +285,27 @@ describe('POST /saves/:id/recolectar/confirmar', () => {
     expect(body.updatedItems).toEqual([{ id: 'item-viejo', name: 'Piedra (6)' }]);
   });
 
+  it('el texto del log usa lo cosechado ESTA vez, no el total de la pila (bug real jugando en vivo, 2026-08-13: "recolecta Piedra (6)" en vez de "(3)" con una pila previa de 3)', async () => {
+    findFirstHarvestYield.mockResolvedValue({ cantidad: 3, item: { slug: 'piedra', name: 'Piedra' } });
+    updateManyWorldPopulation.mockResolvedValue({ count: 1 });
+    findFirstInventoryItem.mockResolvedValue({ id: 'item-viejo', name: 'Piedra (3)' });
+    const app = await buildApp();
+
+    const res = await app.inject({
+      method: 'POST',
+      url: '/saves/save1/recolectar/confirmar',
+      payload: { selections: [{ sourceSlug: 'roca-pilares-rotos', itemSlug: 'piedra', cantidad: 3 }] },
+    });
+
+    expect(res.statusCode).toBe(200);
+    // El nombre real del InventoryItem SÍ debe llevar el total (6) — solo el TEXTO del log debe
+    // hablar de lo recién cosechado (3).
+    expect(updateInventoryItem).toHaveBeenCalledWith({ where: { id: 'item-viejo' }, data: { name: 'Piedra (6)' } });
+    expect(createLogEntry).toHaveBeenCalledWith({
+      data: expect.objectContaining({ text: 'Gorhorn recolecta en la zona: Piedra (3).' }),
+    });
+  });
+
   it('bug real (auditoría 2026-08-11, "pruebas por API"): minar cierra sola una misión "conseguir Z" con ese objeto, cosa que antes nunca pasaba en este endpoint', async () => {
     findFirstHarvestYield.mockResolvedValue({ cantidad: 3, item: { slug: 'piedra', name: 'Piedra' } });
     updateManyWorldPopulation.mockResolvedValue({ count: 1 });

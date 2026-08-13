@@ -728,6 +728,7 @@ function resolveCombatExchangePhase(input: CombatExchangePhaseInput): CombatExch
           abilityEnergyRegen: pendingNpcAttack.energyRegen ?? 0,
           exchangeHappened: true,
           restSucceeds: false,
+          restAttempted: false,
           itemRestoreAmount: null,
         });
       } else {
@@ -750,11 +751,18 @@ function resolveCombatExchangePhase(input: CombatExchangePhaseInput): CombatExch
         // `golpes_mutuos` (2026-07-29, bug real de partida: solo se dañaba al lado "defensor" de
         // esta llamada, nunca al NPC pese a que la propia narración dice "AMBOS acaban acusando
         // algo") — hiere a los dos lados, no solo al jugador.
+        //
+        // `defensor_contragolpea` (bug real jugando en vivo, 2026-08-13, "solo las de ataque hacen
+        // daño"): el jugador es el "defensor" aquí — su golpe de propina SOLO cuenta si la
+        // habilidad de defensa que eligió tiene de verdad `effect: 'ATAQUE'` (hoy ninguna
+        // `rol: 'defensa'` lo tiene, ver classAbilities.ts/genericCombatAbilities.ts/
+        // npcCombatAbilities.ts — todas son AGUANTE o sin efecto).
+        const jugadorContragolpeaAplica = exchange.resultado === 'defensor_contragolpea' && abilityEffect === 'ATAQUE';
         jugadorRecibeGolpe = exchange.resultado === 'golpe_pleno' || exchange.resultado === 'golpe_normal' || exchange.resultado === 'golpes_mutuos';
         jugadorGolpeEfecto = pendingNpcAttack.effect;
-        npcAttackHits = exchange.resultado === 'defensor_contragolpea' || exchange.resultado === 'golpes_mutuos';
+        npcAttackHits = jugadorContragolpeaAplica || exchange.resultado === 'golpes_mutuos';
         npcTargetNewCondicion = npcAttackHits ? oneStepWorseThan(npcParaIntercambio.condicionFisica) : null;
-        exchangeNarrationBlock = `${npcParaIntercambio.name} ataca con "${pendingNpcAttack.abilityName}" (${pendingNpcAttack.abilityDescription || 'sin descripción propia'}). ${exchangeContextBlock(exchange, npcParaIntercambio.name, characterName)}`;
+        exchangeNarrationBlock = `${npcParaIntercambio.name} ataca con "${pendingNpcAttack.abilityName}" (${pendingNpcAttack.abilityDescription || 'sin descripción propia'}). ${exchangeContextBlock(exchange, npcParaIntercambio.name, characterName, jugadorContragolpeaAplica)}`;
         combatExchangeRoll = exchange.defensor;
         npcAbilityUsed = { npcName: npcParaIntercambio.name, abilityName: pendingNpcAttack.abilityName, rol: 'ataque' };
         combatExchangeDisplay = { atacanteEsJugador: false, atacante: exchange.atacante, defensor: exchange.defensor, resultado: exchange.resultado };
@@ -770,6 +778,7 @@ function resolveCombatExchangePhase(input: CombatExchangePhaseInput): CombatExch
           abilityEnergyRegen: pendingNpcAttack.energyRegen ?? 0,
           exchangeHappened: true,
           restSucceeds: false,
+          restAttempted: false,
           itemRestoreAmount: null,
         });
       }
@@ -875,6 +884,7 @@ function resolveCombatExchangePhase(input: CombatExchangePhaseInput): CombatExch
           abilityEnergyRegen: npcDefensa.energyRegen,
           exchangeHappened: true,
           restSucceeds: false,
+          restAttempted: false,
           itemRestoreAmount: null,
         });
       } else {
@@ -890,11 +900,16 @@ function resolveCombatExchangePhase(input: CombatExchangePhaseInput): CombatExch
         );
         // `golpes_mutuos` hiere también al jugador, no solo al NPC — mismo criterio que en el CASO
         // DEFENSA de arriba.
+        //
+        // `defensor_contragolpea` (mismo fix que el CASO DEFENSA de arriba, 2026-08-13): aquí el
+        // NPC es el "defensor" — su golpe de propina solo cuenta si SU habilidad de defensa tiene
+        // de verdad `effect: 'ATAQUE'` (hoy ninguna la tiene, ver npcCombatAbilities.ts).
+        const npcContragolpeaAplica = exchange.resultado === 'defensor_contragolpea' && npcDefensa.effect === 'ATAQUE';
         npcAttackHits = exchange.resultado === 'golpe_pleno' || exchange.resultado === 'golpe_normal' || exchange.resultado === 'golpes_mutuos';
         npcTargetNewCondicion = npcAttackHits ? nextCondicionForAttack(abilityEffect, npcParaIntercambio.condicionFisica) : null;
-        jugadorRecibeGolpe = exchange.resultado === 'defensor_contragolpea' || exchange.resultado === 'golpes_mutuos';
-        jugadorGolpeEfecto = null;
-        exchangeNarrationBlock = `${npcParaIntercambio.name} se defiende con "${npcDefensa.name}" (${npcDefensa.description}). ${exchangeContextBlock(exchange, characterName, npcParaIntercambio.name)}`;
+        jugadorRecibeGolpe = npcContragolpeaAplica || exchange.resultado === 'golpes_mutuos';
+        jugadorGolpeEfecto = npcContragolpeaAplica ? 'ATAQUE' : null;
+        exchangeNarrationBlock = `${npcParaIntercambio.name} se defiende con "${npcDefensa.name}" (${npcDefensa.description}). ${exchangeContextBlock(exchange, characterName, npcParaIntercambio.name, npcContragolpeaAplica)}`;
         combatExchangeRoll = exchange.atacante;
         npcAbilityUsed = { npcName: npcParaIntercambio.name, abilityName: npcDefensa.name, rol: 'defensa' };
         combatExchangeDisplay = { atacanteEsJugador: true, atacante: exchange.atacante, defensor: exchange.defensor, resultado: exchange.resultado };
@@ -909,6 +924,7 @@ function resolveCombatExchangePhase(input: CombatExchangePhaseInput): CombatExch
           abilityEnergyRegen: npcDefensa.energyRegen,
           exchangeHappened: true,
           restSucceeds: false,
+          restAttempted: false,
           itemRestoreAmount: null,
         });
       }
@@ -1213,6 +1229,9 @@ async function applyCombatExchangeToNpcState(params: {
   nuevoFictionalMinutes: number;
   nuevaFictionalDateLabel: string;
   activeRegion: string | null;
+  /// Ver comentario de `completeNpcTargetQuests` (questResolution.ts) — reloj sintético
+  /// "después de mainLogEntry" para que la recompensa de misión se lea en el orden correcto.
+  nextAfterMainLogCreatedAt?: () => Date;
 }): Promise<{ questCompletedInfo: QuestCompletedInfo | null }> {
   const {
     tx,
@@ -1227,6 +1246,7 @@ async function applyCombatExchangeToNpcState(params: {
     nuevoFictionalMinutes,
     nuevaFictionalDateLabel,
     activeRegion,
+    nextAfterMainLogCreatedAt,
   } = params;
   let questCompletedInfo: QuestCompletedInfo | null = null;
   if (!npcAttackTarget || !(npcNuevaEnergia !== null || (npcAttackHits && npcTargetNewCondicion) || analizarRivalExito)) {
@@ -1258,7 +1278,15 @@ async function applyCombatExchangeToNpcState(params: {
     // en cuanto cae — el modelo nunca tiene que acertar el título EXACTO vía questProgress para
     // el caso más común de misión de combate ("derrotar a X"). También concede rewardItems/
     // rewardXp de verdad y narra la recompensa (docs/19 pieza 3).
-    const completedHere = await completeNpcTargetQuests(tx, saveId, worldId, npcAttackTarget.id, nuevaFictionalDateLabel, nuevoFictionalMinutes);
+    const completedHere = await completeNpcTargetQuests(
+      tx,
+      saveId,
+      worldId,
+      npcAttackTarget.id,
+      nuevaFictionalDateLabel,
+      nuevoFictionalMinutes,
+      nextAfterMainLogCreatedAt,
+    );
     if (completedHere) questCompletedInfo = completedHere;
 
     // Reputación de facción determinista (roadmap 2026-07-19, prioridad 4): reutiliza
@@ -1300,8 +1328,10 @@ async function applyExecuteTargets(params: {
   nuevoFictionalMinutes: number;
   nuevaFictionalDateLabel: string;
   activeRegion: string | null;
+  nextAfterMainLogCreatedAt?: () => Date;
 }): Promise<{ questCompletedInfo: QuestCompletedInfo | null }> {
-  const { tx, executeTargets, saveId, worldId, currentLocationId, nuevoFictionalMinutes, nuevaFictionalDateLabel, activeRegion } = params;
+  const { tx, executeTargets, saveId, worldId, currentLocationId, nuevoFictionalMinutes, nuevaFictionalDateLabel, activeRegion, nextAfterMainLogCreatedAt } =
+    params;
   let questCompletedInfo: QuestCompletedInfo | null = null;
   for (const executeTarget of executeTargets) {
     const scope = scopeFor(executeTarget.kind, currentLocationId);
@@ -1325,7 +1355,15 @@ async function applyExecuteTargets(params: {
     // Mismo cierre + recompensa real que un golpe normal que deja MUERTO al objetivo — en la
     // práctica la misión ya se cerró al quedar INCAPACITADO, esto solo cubre el caso raro de que
     // no lo hiciera.
-    const completedByExecute = await completeNpcTargetQuests(tx, saveId, worldId, executeTarget.id, nuevaFictionalDateLabel, nuevoFictionalMinutes);
+    const completedByExecute = await completeNpcTargetQuests(
+      tx,
+      saveId,
+      worldId,
+      executeTarget.id,
+      nuevaFictionalDateLabel,
+      nuevoFictionalMinutes,
+      nextAfterMainLogCreatedAt,
+    );
     if (completedByExecute) questCompletedInfo = completedByExecute;
     if (executeTarget.faction) {
       const currentWorldState = await tx.worldState.findUnique({ where: { saveId }, select: { factionsStatus: true } });
@@ -2571,6 +2609,14 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   const possiblyFalseInventoryReviewNames = detectsInventoryReviewIntent(action)
     ? [...new Set(inventoryRows.map((i) => baseNameOf(i.name)))]
     : [];
+  // Ver `hasFalseWeaponThrowClaim` (narrador.ts) — solo en combate, este juego no tiene ninguna
+  // mecánica de lanzar armas (sin habilidad que la modele, sin forma de recuperarla después).
+  const equippedWeaponNamesInCombat = enCombate ? [armaPrincipal, armaSecundaria].filter((i) => i !== null).map((i) => baseNameOf(i.name)) : [];
+  // Ver `hasFalseEquipmentChangeClaim` (narrador.ts) — CUALQUIER turno, nunca condicionado a
+  // intención: equipar/desequipar es siempre una decisión manual fuera del turno narrado, así que
+  // un cambio de equipo narrado es alucinación siempre. Solo objetos EQUIPABLES (con `equipSlot`
+  // real en catálogo) — materia prima/recursos nunca se "visten", ver comentario del campo.
+  const equippableItemNames = [...new Set(inventoryRows.filter((i) => i.catalogSlug && catalogBySlug.get(i.catalogSlug)?.equipSlot).map((i) => baseNameOf(i.name)))];
   const narrationCtx = {
     worldFacts: [...contextBlocks, ...(await selectRelevantFacts(action, saveId, sessionFacts))],
     // Separado de worldFacts (roadmap 2026-07-24, "revisar partida" — ver comentario en
@@ -2600,6 +2646,8 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     possiblyFalseTravelDestinationNames,
     phantomTravelLocationNames,
     possiblyFalseInventoryReviewNames,
+    equippedWeaponNamesInCombat,
+    equippableItemNames,
     gisteraSeHaMarchado,
     onNarrationChunk,
     onNarrationReset,
@@ -2826,8 +2874,11 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   // mecánica solo curaba con isValidRestLocationKind". Aclarado con la usuaria: SÍ debe curar en
   // cualquier sitio (tope GRAVE, un vivac improvisado ayuda poco), pero solo un refugio/
   // asentamiento real llega a HERIDO — ver el desglose completo en healCeilingFor (death.ts).
-  // `restSucceeds` sigue gating energía (nextEnergia, abajo) y el punto de guardado (más abajo,
-  // "Punto de guardado") sin cambios: solo la mejora de condicionFisica gana el escalón nuevo.
+  // `restSucceeds` sigue gating el punto de guardado (más abajo, "Punto de guardado") sin cambios.
+  // Energía (2026-08-13, mismo síntoma otra vez pero para energía: "he descansado y la energía no
+  // se recuperó" en un vivac fuera de refugio/asentamiento) — ahora `restAttempted` TAMBIÉN
+  // restaura energía (hasta la mitad del tope), `restSucceeds` sigue siendo el único que llega al
+  // tope entero, ver energy.ts § nextEnergia.
   const restAttempted = !!(!travel && currentLocationRecord && detectsRestIntent(action) && (!roll || roll.success));
   const restSucceeds = !!(restAttempted && isValidRestLocationKind(currentLocationRecord!.kind));
   // Reglas de curación (2026-07-29): sin descanso ni objeto médico, el techo es la propia
@@ -2847,6 +2898,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     abilityEnergyRegen,
     exchangeHappened,
     restSucceeds,
+    restAttempted,
     itemRestoreAmount: energyItemRestoreAmount,
   });
 
@@ -2884,6 +2936,31 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   };
   try {
     transactionResult = await prisma.$transaction(async (tx) => {
+    // `now()` de Postgres es fijo durante TODA la transacción (auditoría "revisar partida",
+    // 2026-08-13, bug real jugando en vivo: "Misión completada" se leía ANTES que la narración
+    // del propio turno que la resolvió) — sin `createdAt` explícito, dos filas creadas en
+    // momentos distintos del código pueden caer con el MISMO timestamp de Postgres, y el orden de
+    // lectura (`orderBy: createdAt asc`, `/saves/:id` y `/saves/:id/diario`) deja de reflejar el
+    // orden narrativo real.
+    //
+    // Checkpoint fijo (no un contador de "reloj real + tick", que rompería el orden si dos
+    // llamadas quedan separadas por trabajo real de por medio — probado y descartado: reservar el
+    // primer tick de `mainLogEntry` aquí arriba con `Date.now()+0` y dejar que el aviso de "viaje
+    // interrumpido" (más abajo) pidiera el suyo con `Date.now()` FRESCO en su propio punto del
+    // código habría quedado por ENCIMA del de `mainLogEntry`, invirtiendo su orden ya correcto, en
+    // cuanto pasara más de 0ms de trabajo real entre ambas llamadas — que es siempre). En su
+    // lugar: un único `turnStartTime` fijo, y tres franjas de offset relativas a él — negativa
+    // para lo que debe leerse ANTES de la narración principal (viaje interrumpido), `+1000` fijo
+    // para la narración principal, y por encima de `+1000` para lo que debe leerse DESPUÉS
+    // (recompensas de misión resueltas durante el intercambio de combate/decapitar) — sin
+    // importar en qué punto real del código se cree cada fila.
+    const turnStartTime = Date.now();
+    let beforeMainLogSeq = 0;
+    const nextBeforeMainLogCreatedAt = () => new Date(turnStartTime - 1000 + beforeMainLogSeq++);
+    const mainLogEntryCreatedAt = new Date(turnStartTime);
+    let afterMainLogSeq = 1;
+    const nextAfterMainLogCreatedAt = () => new Date(turnStartTime + afterMainLogSeq++);
+
     // Ver TransitCancelledError arriba: si esta resolución viene de worldTick.ts, intenta borrar
     // el CharacterTransit YA, al principio de la transacción — si otra transacción (el cancelar
     // del jugador) ya lo borró primero, `count` es 0 y se aborta todo sin aplicar ningún efecto.
@@ -3025,6 +3102,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
       nuevoFictionalMinutes,
       nuevaFictionalDateLabel,
       activeRegion,
+      nextAfterMainLogCreatedAt,
     });
     if (combatExchangeResult.questCompletedInfo) questCompletedInfo = combatExchangeResult.questCompletedInfo;
 
@@ -3038,6 +3116,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
       nuevoFictionalMinutes,
       nuevaFictionalDateLabel,
       activeRegion,
+      nextAfterMainLogCreatedAt,
     });
     if (executeResult.questCompletedInfo) questCompletedInfo = executeResult.questCompletedInfo;
 
@@ -3071,7 +3150,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     //
     // Habilidades de oficio (retomado 2026-08-07, idea aplazada desde el 2026-07-28 — ver
     // professionAbilities.ts): se registran aquí los niveles de oficio CRUZADOS por este turno,
-    // pero las filas de SavedAction/LogEntry se crean más abajo (después de nextLogEntryCreatedAt,
+    // pero las filas de SavedAction/LogEntry se crean más abajo (después de nextAfterMainLogCreatedAt,
     // igual que el desbloqueo de habilidades de clase) — esta función se invoca demasiado pronto en
     // la transacción para usar ese contador de orden todavía.
     const unlockedProfessionAbilities: { oficio: string; nivel: number; ability: StartingAbility }[] = [];
@@ -3578,6 +3657,10 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
                 isPlayerAction: false,
                 timeLabel: nuevaFictionalDateLabel,
                 fictionalMinutes: nuevoFictionalMinutes,
+                // Auditoría "revisar partida" 2026-08-13 — ver comentario al principio de la
+                // transacción: esta fila se crea ANTES que `mainLogEntry` en el código, pero debe
+                // LEERSE después (es la recompensa de un turno que aún no se ha narrado).
+                createdAt: nextAfterMainLogCreatedAt(),
               },
             });
             questCompletedInfo = { logEntryId: rewardEntry.id, text: rewardText, title: 'Acabar con el Orco Enfurecido', grantedItems, rewardXp: 100 };
@@ -3639,6 +3722,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
       createdItemNames,
       timeLabel: nuevaFictionalDateLabel,
       fictionalMinutes: nuevoFictionalMinutes,
+      createdAt: nextAfterMainLogCreatedAt,
     });
 
     // Posición (docs/12 § 1.4 paso 7): al llegar, currentLocationId cambia al destino y se
@@ -3696,20 +3780,12 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     const xpTurno = xpTirada + xpHito + questRewardXp;
     const result = applyXp(params.currentXp, params.currentLevel, xpTurno);
 
-    // Bug real encontrado auditando la partida de Gorhorn (2026-07-24, "revisar mi partida
-    // actual"): `now()` de Postgres es fijo durante TODA una transacción — si un mismo turno crea
-    // varias LogEntry aquí (narración + subida de nivel + desbloqueo de habilidad...), todas caen
-    // con el MISMO `createdAt`, y sin desempate el orden de lectura (`orderBy: createdAt asc`) no
-    // está garantizado — puede salir "sube a nivel 2" antes que la narración que lo causó. Mismo
-    // arreglo que en turn.ts (transición a banda extendida/larga): `createdAt` explícito con +1ms
-    // por fila, en el mismo orden en que se crean, para que el orden de lectura sea siempre el real.
-    let logEntrySequence = 0;
-    const nextLogEntryCreatedAt = () => new Date(Date.now() + logEntrySequence++);
-
     // Eventos de viaje interactivos (2026-08-05): aviso determinista, ANTES de la narración de
     // llegada — nunca lo escribe el LLM (no sabe a dónde iba el jugador, y no debe inventarlo).
     // Sin esto, el jugador podía acabar en una ubicación distinta a la pedida sin ninguna señal
-    // más allá de leer con atención la narración de llegada.
+    // más allá de leer con atención la narración de llegada. `nextBeforeMainLogCreatedAt` (ver
+    // comentario al principio de la transacción) — offset fijo respecto a `mainLogEntry`, no reloj
+    // real, para que el orden sea correcto sin importar cuánto trabajo real pase entre ambas filas.
     if (travelInterruptionOriginalDestinationName) {
       await tx.logEntry.create({
         data: {
@@ -3718,7 +3794,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
           text: `El camino hacia ${travelInterruptionOriginalDestinationName} se corta antes de tiempo — algo te sale al paso.`,
           timeLabel,
           fictionalMinutes: nuevoFictionalMinutes,
-          createdAt: nextLogEntryCreatedAt(),
+          createdAt: nextBeforeMainLogCreatedAt(),
           travelInterrupted: true,
         },
       });
@@ -3730,10 +3806,13 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
         channel: 'CHARACTER',
         text: narration.narration,
         roll: effectiveRoll ? (effectiveRoll as unknown as Prisma.InputJsonValue) : undefined,
+        // Bug real jugando en vivo (2026-08-13): sin persistir esto, recargar la partida perdía
+        // el lado "Enemigo" del intercambio — `roll` de arriba solo guarda el lado del jugador.
+        combatExchange: combatExchangeDisplay ? (combatExchangeDisplay as unknown as Prisma.InputJsonValue) : undefined,
         timeLabel,
         xpDelta: xpTurno > 0 ? xpTurno : undefined,
         fictionalMinutes: nuevoFictionalMinutes,
-        createdAt: nextLogEntryCreatedAt(),
+        createdAt: mainLogEntryCreatedAt,
         // Rediseño de la vista de combate (2026-07-28): marca solo la narración PRINCIPAL de este
         // turno (no los logs secundarios de subida de nivel/desbloqueo de habilidad de más abajo,
         // que no son "narración de combate" en sí) — el frontend la pinta con fondo rojo.
@@ -3751,7 +3830,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
           text: `${characterName} sube a nivel ${result.newLevel}.${attributeNote}`,
           timeLabel,
           fictionalMinutes: nuevoFictionalMinutes,
-          createdAt: nextLogEntryCreatedAt(),
+          createdAt: nextAfterMainLogCreatedAt(),
         },
       });
 
@@ -3783,7 +3862,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
               text: `${characterName} desbloquea la habilidad de clase "${ability.name}".`,
               timeLabel,
               fictionalMinutes: nuevoFictionalMinutes,
-              createdAt: nextLogEntryCreatedAt(),
+              createdAt: nextAfterMainLogCreatedAt(),
             },
           });
         }
@@ -3821,7 +3900,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
           text: `${characterName} desbloquea la habilidad de oficio "${ability.name}" (nivel ${nivel} de ${oficio}).`,
           timeLabel,
           fictionalMinutes: nuevoFictionalMinutes,
-          createdAt: nextLogEntryCreatedAt(),
+          createdAt: nextAfterMainLogCreatedAt(),
         },
       });
     }
@@ -3880,7 +3959,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
             text: whisperText(characterName, respawnLocation?.name ?? 'un lugar que reconoce', outcome.avisoUltimaVez),
             timeLabel,
             fictionalMinutes: nuevoFictionalMinutes,
-            createdAt: nextLogEntryCreatedAt(),
+            createdAt: nextAfterMainLogCreatedAt(),
           },
         });
         finalCondicion = 'ILESO';

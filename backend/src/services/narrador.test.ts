@@ -12,8 +12,11 @@ import {
   hasFalseInventoryReview,
   hasResurrectedDeadNpc,
   hasGisteraReencuentroSinNombrar,
+  hasFalseGisteraNamedReturn,
   hasFalseTravelClaim,
   hasFalsePhantomTravel,
+  hasFalseWeaponThrowClaim,
+  hasFalseEquipmentChangeClaim,
   hasAnachronism,
   buildNarrationPrompt,
 } from './narrador.js';
@@ -280,6 +283,88 @@ describe('hasGisteraReencuentroSinNombrar', () => {
   it('no dispara con una mención neutra del Clan Serhu sin persecución/huida (p.ej. Ulkha, siempre nombrada, dando órdenes en su campamento)', () => {
     const narration = 'La Terk\'ikar Ulkha, una orca del Clan Serhu, ordena a sus guerreros que se preparen.';
     expect(hasGisteraReencuentroSinNombrar(narration, true)).toBe(false);
+  });
+});
+
+describe('hasFalseGisteraNamedReturn', () => {
+  it('bug real jugando en vivo (2026-08-13, revisar partida): detecta que se la nombre directamente en mitad de un combate contra otro NPC, pese a haberse marchado para siempre', () => {
+    const narration = 'Gistera Koh se aproxima a Gorhorn con una expresión de furia en su rostro.';
+    expect(hasFalseGisteraNamedReturn(narration, true)).toBe(true);
+  });
+
+  it('detecta también el alias corto "Gistera" a secas', () => {
+    expect(hasFalseGisteraNamedReturn('Gistera se detiene un instante, observándolo.', true)).toBe(true);
+  });
+
+  it('no dispara si Gistera Koh no se ha marchado todavía', () => {
+    const narration = 'Gistera Koh asiente, aliviada, y echa a andar hacia el sur.';
+    expect(hasFalseGisteraNamedReturn(narration, false)).toBe(false);
+    expect(hasFalseGisteraNamedReturn(narration, undefined)).toBe(false);
+  });
+
+  it('no dispara con un nombre que solo contiene "gistera" como subcadena de otra palabra', () => {
+    expect(hasFalseGisteraNamedReturn('Gorhorn examina un gisteral extraño en el suelo.', true)).toBe(false);
+  });
+});
+
+describe('hasFalseWeaponThrowClaim', () => {
+  const WEAPONS = ['Hacha de guerra rota', 'Cuchillo de hielo sílice'];
+
+  it('bug real jugando en vivo (2026-08-13, revisar partida): detecta el arma narrada como lanzada en un ataque cuerpo a cuerpo', () => {
+    const narration =
+      'Gorhorn lanza su hacha de guerra rota con fuerza hacia el orco, pero éste la esquiva con una torpezada del brazo, rebotando lejos en la pared de arcilla.';
+    expect(hasFalseWeaponThrowClaim(narration, WEAPONS)).toBe(true);
+  });
+
+  it('detecta sin artículo/posesivo delante del nombre', () => {
+    expect(hasFalseWeaponThrowClaim('Gorhorn lanza cuchillo de hielo sílice hacia el orco.', WEAPONS)).toBe(true);
+  });
+
+  it('no dispara con "lanza un golpe/una estocada... con" — el arma no es el objeto directo de "lanza"', () => {
+    expect(hasFalseWeaponThrowClaim('Gorhorn lanza un golpe certero con su hacha de guerra rota.', WEAPONS)).toBe(false);
+    expect(hasFalseWeaponThrowClaim('Gorhorn lanza una estocada rápida con el cuchillo de hielo sílice en la mano.', WEAPONS)).toBe(false);
+  });
+
+  it('no dispara fuera de combate (lista vacía)', () => {
+    const narration = 'Gorhorn lanza su hacha de guerra rota con fuerza hacia el orco.';
+    expect(hasFalseWeaponThrowClaim(narration, [])).toBe(false);
+    expect(hasFalseWeaponThrowClaim(narration, undefined)).toBe(false);
+  });
+
+  it('no dispara si el arma lanzada no es ninguna de las equipadas (p. ej. un objeto arrojadizo real, si algún día existiera)', () => {
+    expect(hasFalseWeaponThrowClaim('Gorhorn lanza una piedra hacia el orco.', WEAPONS)).toBe(false);
+  });
+});
+
+describe('hasFalseEquipmentChangeClaim', () => {
+  const ITEMS = ['Capa de piel de gargantúa', 'Arnés de cuero'];
+
+  it('bug real jugando en vivo (2026-08-13, revisar partida): detecta un cambio de equipo narrado sin pedirlo, en un simple turno de viaje', () => {
+    const narration =
+      'Gorhorn arranca la capa de piel de gargantúa y la atóona a su cintura como una falda, revelando su pecho descubierto.';
+    expect(hasFalseEquipmentChangeClaim(narration, ITEMS)).toBe(true);
+  });
+
+  it('detecta "ata"/"desata"/"ciñe"/"reviste" junto al nombre real del objeto', () => {
+    expect(hasFalseEquipmentChangeClaim('Gorhorn se ata la capa de piel de gargantúa a la cintura.', ITEMS)).toBe(true);
+    expect(hasFalseEquipmentChangeClaim('Gorhorn desata la capa de piel de gargantúa y la deja caer.', ITEMS)).toBe(true);
+    expect(hasFalseEquipmentChangeClaim('Gorhorn se ciñe la capa de piel de gargantúa sobre los hombros.', ITEMS)).toBe(true);
+    expect(hasFalseEquipmentChangeClaim('Gorhorn se reviste con la capa de piel de gargantúa antes de partir.', ITEMS)).toBe(true);
+  });
+
+  it('no dispara con "se pone"/"se quita" sueltos, sin nombrar ningún objeto real (demasiado genéricos)', () => {
+    expect(hasFalseEquipmentChangeClaim('Gorhorn se pone en pie de un salto, furioso.', ITEMS)).toBe(false);
+    expect(hasFalseEquipmentChangeClaim('Gorhorn se quita de en medio justo a tiempo.', ITEMS)).toBe(false);
+  });
+
+  it('no dispara si el verbo y el objeto están en frases distintas', () => {
+    expect(hasFalseEquipmentChangeClaim('Gorhorn ata su montura al poste. Lleva la capa de piel de gargantúa sobre los hombros.', ITEMS)).toBe(false);
+  });
+
+  it('no dispara sin lista de objetos equipables (materia prima/recursos, o inventario vacío)', () => {
+    const narration = 'Gorhorn arranca la capa de piel de gargantúa y la ata a su cintura.';
+    expect(hasFalseEquipmentChangeClaim(narration, [])).toBe(false);
+    expect(hasFalseEquipmentChangeClaim(narration, undefined)).toBe(false);
   });
 });
 

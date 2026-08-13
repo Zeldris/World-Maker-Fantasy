@@ -212,6 +212,11 @@ export async function recolectarRoutes(app: FastifyInstance) {
         /// petición (el cliente todavía no la conoce, hay que dársela entera).
         wasPreexisting: boolean;
         quantity: number;
+        /// Cantidad cosechada en ESTA petición (distinta de `quantity`, el total de la pila tras
+        /// sumar) — bug real jugando en vivo, 2026-08-13: el mensaje del log usaba `quantity`
+        /// (total ya acumulado) para un verbo puntual ("recolecta: Piedra (N)"), así que "(N)" se
+        /// leía como "cogiste N ahora" cuando en realidad era el total en inventario.
+        harvestedThisTurn: number;
       }
 
       const cooldownCutoff = new Date(Date.now() - RECOLECCION_COOLDOWN_MS);
@@ -341,6 +346,7 @@ export async function recolectarRoutes(app: FastifyInstance) {
           const alreadyTouched = touched.get(catalogItem.slug);
           if (alreadyTouched) {
             alreadyTouched.quantity += cantidad;
+            alreadyTouched.harvestedThisTurn += cantidad;
             continue;
           }
 
@@ -357,6 +363,7 @@ export async function recolectarRoutes(app: FastifyInstance) {
               catalogSlug: catalogItem.slug,
               wasPreexisting: true,
               quantity: quantityOf(existingRow.name) + cantidad,
+              harvestedThisTurn: cantidad,
             });
           } else {
             const createdRow = await tx.inventoryItem.create({
@@ -369,6 +376,7 @@ export async function recolectarRoutes(app: FastifyInstance) {
               catalogSlug: catalogItem.slug,
               wasPreexisting: false,
               quantity: cantidad,
+              harvestedThisTurn: cantidad,
             });
           }
         }
@@ -389,7 +397,7 @@ export async function recolectarRoutes(app: FastifyInstance) {
         let logEntry: { id: string; text: string; timeLabel: string; createdAt: string; fictionalMinutes: number } | null = null;
         if (touched.size > 0) {
           const resumen = [...touched.values()]
-            .map((s) => (s.quantity > 1 ? `${s.catalogName} (${s.quantity})` : s.catalogName))
+            .map((s) => (s.harvestedThisTurn > 1 ? `${s.catalogName} (${s.harvestedThisTurn})` : s.catalogName))
             .join(', ');
           const verbo = anyCaza && !anyNonCaza ? 'despieza una presa cercana' : 'recolecta en la zona';
           const text = `${save.characterName} ${verbo}: ${resumen}.`;

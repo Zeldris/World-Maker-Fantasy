@@ -407,6 +407,12 @@ model LogEntry {
   /// jugador podía terminar en una ubicación distinta a la pedida sin ninguna señal visible más
   /// allá de la narración de llegada, que no sabe (ni debe saber) cuál era el destino original.
   travelInterrupted Boolean @default(false)
+  /// CombatExchangeDisplay (combatExchange.ts): las DOS tiradas reales de un intercambio de
+  /// combate ("Tú"/"Enemigo") — bug real jugando en vivo, 2026-08-13: hasta ahora solo viajaba en
+  /// la respuesta HTTP del turno recién resuelto (turn.ts), nunca se guardaba, así que recargar la
+  /// partida perdía el lado del enemigo y el badge de dos filas colapsaba al de una sola tirada
+  /// (`roll`, que solo guarda el lado del jugador). null si el turno no tuvo intercambio real.
+  combatExchange Json?
   createdAt      DateTime   @default(now())
 
   @@index([saveId, createdAt])
@@ -1279,6 +1285,13 @@ model HarvestYield {
 /// y migraciones futuras (esta sesión solo sienta los datos, la simulación dinámica es aparte).
 enum PopulationTargetType {
   RAZA
+  /// Nombre engañoso a propósito de evitar una migración (auditoría de catálogo, 2026-08-13):
+  /// cubre CUALQUIER Npc que se trackea como individuo suelto, no solo animales — incluye
+  /// arquetipos humanoides itinerantes sin raza propia trackeada (`orco-rezagado`,
+  /// `mercader-de-paso`, `peregrino-de-los-tumulos`). `RAZA` es la excepción, reservada a las
+  /// razas jugables con población de clan entera (orcos/goirntes/nabieus/faerus); todo lo demás
+  /// que vive y muere como individuo cae aquí. Invisible para el modelo/jugadora en cualquier
+  /// caso — puro filtro interno de consulta, nunca se serializa en ningún prompt ni en la UI.
   FAUNA
   /// Rediseño de profesiones (2026-08-07) — fuentes de recolección NO-fauna (MINERIA/TALA/
   /// EXTRACCION de HarvestYield: vetas de mineral, matorrales, etc.). `targetSlug` =
