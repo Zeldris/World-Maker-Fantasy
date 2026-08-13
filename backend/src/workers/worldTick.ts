@@ -56,116 +56,176 @@ interface TransitZoneContext {
 /// por duplicado. Reproducido de verdad al lanzar dos resoluciones manuales a la vez.
 const CLAIM_BUFFER_MS = 10 * 60_000;
 
-export async function resolveDueTransits(): Promise<void> {
-  const due = await prisma.characterTransit.findMany({
-    // `save.pausedAt: null` (roadmap 2026-07-20, "quiero que la partida se pause si salgo de
-    // ella"): mientras la jugadora no está en GameView, el tránsito puede seguir "vencido" sin
-    // resolverse — `POST /saves/:id/resume` alarga `busyUntil` al volver, así que esto nunca
-    // hace que se pierda tiempo de espera, solo lo congela mientras está fuera.
-    where: { busyUntil: { lte: new Date() }, save: { pausedAt: null } },
+type DueTransit = Awaited<ReturnType<typeof fetchDueTransits>>[number];
+
+async function fetchDueTransits() {
+  // `save.pausedAt: null` (roadmap 2026-07-20, "quiero que la partida se pause si salgo de
+  // ella"): mientras la jugadora no está en GameView, el tránsito puede seguir "vencido" sin
+  // resolverse — `POST /saves/:id/resume` alarga `busyUntil` al volver, así que esto nunca
+  // hace que se pierda tiempo de espera, solo lo congela mientras está fuera.
+  return prisma.characterTransit.findMany({
+    // `narrationClaimedAt: null` (2026-08-13, espera de viaje precalculada) — una fila que
+    // `startEagerTransitResolution` ya está resolviendo por adelantado (turn.ts, viaje sin
+    // evento) queda excluida de este barrido aunque `busyUntil` ya haya vencido: las dos vías
+    // nunca deben narrar la misma fila dos veces. Se libera sola si esa resolución falla del
+    // todo (el catch de abajo no la vuelve a poner a null a propósito — un tránsito eternamente
+    // reclamado pero nunca resuelto ya lo cubre el mismo colchón que el resto de este archivo:
+    // se reintenta desde cero solo si el proceso se reinicia, ver comentario de `agenda` arriba).
+    where: { busyUntil: { lte: new Date() }, narrationClaimedAt: null, save: { pausedAt: null } },
     // `currentLocation` (auditoría 2026-07-24, checklist 2026-07-23 pendiente "contexto de
     // narración diferida más pobre que el turno en vivo"): hacía falta para poder construir el
     // mismo resumen de personaje rico (`characterSummaryFor`) que ya recibe el turno síncrono.
     include: { save: { include: { worldState: true, inventoryItems: { where: { slot: { not: null } } }, currentLocation: true } } },
   });
+}
+
+/// Cuerpo real de resolver UN tránsito — extraído (2026-08-13, espera de viaje precalculada) de
+/// `resolveDueTransits` para que `startEagerTransitResolution` (turn.ts, viaje sin evento) pueda
+/// reusarlo tal cual, con la única diferencia de CUÁNDO se llama y qué `notBefore` le pasa a
+/// `narrateAndPersistTurn`. El caller ya reclamó la fila (`narrationClaimedAt`) antes de llamar.
+async function resolveClaimedTransit(transit: DueTransit, notBefore?: Date): Promise<void> {
+  // Candado de turno (auditoría de código completa, 2026-08-07, ver turnLock.ts) — este mismo
+  // `saveId` puede tener un turno EN VIVO resolviéndose ahora mismo vía POST /turn/narrate
+  // (turn.ts), que comparte este mismo candado. Sin esto, un tránsito diferido y una acción
+  // manual del jugador podían llamar a `narrateAndPersistTurn` en paralelo para la misma
+  // partida — la resolución exacta que este candado existe para evitar.
+  if (!claimTurnInFlight(transit.save.id)) return;
+
+  try {
+    const { action, classification, roll, travel, travelInterruptionNpcId, travelInterruptionOriginalDestinationName } =
+      transit.zoneContext as unknown as TransitZoneContext;
+    const save = transit.save;
+    const sessionFacts = await loadSessionFacts(save.id);
+    const timeLabel = save.worldState?.fictionalDateLabel ?? 'Día 1, mañana';
+    const attributes = effectiveAttributes(save.attributes as AttributeBlock, save.inventoryItems);
+    const secondaryAttributes = effectiveSecondaryAttributes(normalizeSecondaryAttributes(save.secondaryAttributes), save.inventoryItems);
+    const defensa = effectiveDefense(save.inventoryItems);
+    const equippedWeapons = equippedWeaponNames(save.inventoryItems);
+    const equippedItems = equippedItemsSummary(save.inventoryItems);
+    const duration = travel ? null : computeDuration(action, classification.banda, attributes, classification.duracionEstimadaMinutos);
+    const minutosDeEsteTurno = travel ? travel.minutos : duration!.minutos;
+
+    // Mismo resumen de personaje rico que el turno síncrono (auditoría 2026-07-24) — antes esto
+    // era solo "{nombre}, {arquetipo}. {origen} {motivación}", sin ubicación/atributos/condición
+    // física, así que un viaje/descanso largo real resuelto en diferido narraba a ciegas sobre
+    // dónde está el personaje o cómo llegó — encontrado de rebote auditando otro bug el
+    // 2026-07-23, quedó pendiente como "ya lo veremos" en el checklist de esa sesión.
+    const characterSummary = characterSummaryFor(save, {
+      timeLabel,
+      locationName: save.currentLocation?.name ?? null,
+      region: save.currentLocation?.region ?? null,
+      level: save.level,
+      attributes,
+      condicionFisica: save.condicionFisica,
+    });
+
+    await narrateAndPersistTurn({
+      saveId: save.id,
+      worldId: save.worldId,
+      action,
+      characterSummary,
+      characterName: save.characterName,
+      timeLabel,
+      sessionFacts,
+      currentXp: save.xp,
+      currentLevel: save.level,
+      classification,
+      roll,
+      attributes,
+      secondaryAttributes,
+      defensa,
+      equippedWeapons,
+      equippedItems,
+      raza: save.raza,
+      currentLocationId: save.currentLocationId,
+      travel,
+      minutosDeEsteTurno,
+      fictionalMinutesActuales: save.worldState?.fictionalMinutes ?? 480,
+      produccion: duration?.produccion,
+      condicionFisica: save.condicionFisica,
+      energia: save.energia,
+      dificultad: save.dificultad,
+      deathCount: save.deathCount,
+      lastRestLocationId: save.lastRestLocationId,
+      // El borrado real del CharacterTransit ya ocurre DENTRO de narrateAndPersistTurn, en la
+      // misma transacción que aplica XP/objetos/hechos — ver TransitCancelledError.
+      transitIdToFinalize: transit.id,
+      travelInterruptionNpcId,
+      travelInterruptionOriginalDestinationName,
+      notBefore,
+    });
+  } catch (err) {
+    if (err instanceof TransitCancelledError) {
+      // El jugador canceló mientras se narraba (POST /saves/:id/transit/cancel ya borró la
+      // fila y registró su propio LogEntry) — nada que reintentar ni que loguear como error.
+      return;
+    }
+    // Un tránsito que falla al resolver se reintenta en el siguiente tick — no se borra. Libera
+    // el reclamo de narración para que `fetchDueTransits` vuelva a encontrarla (si venía de la
+    // vía anticipada) — sin esto, un fallo en `startEagerTransitResolution` dejaría la fila
+    // atascada para siempre, sin que el barrido periódico pudiera reintentarla nunca.
+    await prisma.characterTransit.updateMany({ where: { id: transit.id }, data: { narrationClaimedAt: null } }).catch(() => {});
+    console.error(`[worldTick] error resolviendo tránsito ${transit.id}:`, err);
+  } finally {
+    releaseTurnInFlight(transit.save.id);
+  }
+}
+
+export async function resolveDueTransits(): Promise<void> {
+  const due = await fetchDueTransits();
 
   for (const transit of due) {
-    // Reclamo atómico: solo sigue esta ejecución si de verdad consigue mover `busyUntil` fuera de
-    // la ventana "vencido" — si otra ejecución concurrente ya lo reclamó primero, `count` es 0 y
-    // se salta. Si la narración falla más abajo, el tránsito vuelve a estar "vencido" pasado el
-    // colchón, así que se reintenta solo, sin quedar huérfano.
-    // `claimedAt` viaja en el mismo `updateMany` atómico que empuja `busyUntil` (auditoría
-    // 2026-08-06, ver TransitZoneContext) — así `POST /saves/:id/transit/cancel` puede negarse a
-    // cancelar en cuanto vea la marca, sin depender solo de comparar `busyUntil` contra "ahora".
+    // Reclamo atómico (auditoría 2026-08-06, colchón contra dos ticks solapados, ver
+    // `CLAIM_BUFFER_MS`) — solo sigue esta ejecución si de verdad consigue reclamar la fila; si
+    // otra ejecución concurrente (u otro arranque anticipado) ya lo hizo primero, `count` es 0 y
+    // se salta. `claimedAt` (dentro de `zoneContext`, distinto de la columna `narrationClaimedAt`)
+    // viaja en el mismo `updateMany` atómico — así `POST /saves/:id/transit/cancel` puede negarse
+    // a cancelar en cuanto vea la marca, sin depender solo de comparar `busyUntil` contra "ahora".
     const claimedZoneContext = { ...(transit.zoneContext as object), claimedAt: new Date().toISOString() };
     const claim = await prisma.characterTransit.updateMany({
-      where: { id: transit.id, busyUntil: { lte: new Date() } },
-      data: { busyUntil: new Date(Date.now() + CLAIM_BUFFER_MS), zoneContext: claimedZoneContext },
+      where: { id: transit.id, busyUntil: { lte: new Date() }, narrationClaimedAt: null },
+      data: { busyUntil: new Date(Date.now() + CLAIM_BUFFER_MS), narrationClaimedAt: new Date(), zoneContext: claimedZoneContext },
     });
     if (claim.count === 0) continue;
 
-    // Candado de turno (auditoría de código completa, 2026-08-07, ver turnLock.ts) — este mismo
-    // `saveId` puede tener un turno EN VIVO resolviéndose ahora mismo vía POST /turn/narrate
-    // (turn.ts), que comparte este mismo candado. Sin esto, un tránsito diferido y una acción
-    // manual del jugador podían llamar a `narrateAndPersistTurn` en paralelo para la misma
-    // partida — la resolución exacta que este candado existe para evitar. El tránsito se queda
-    // reclamado (busyUntil ya empujado arriba) para el siguiente tick, no se pierde.
-    if (!claimTurnInFlight(transit.save.id)) continue;
-
-    try {
-      const { action, classification, roll, travel, travelInterruptionNpcId, travelInterruptionOriginalDestinationName } =
-        transit.zoneContext as unknown as TransitZoneContext;
-      const save = transit.save;
-      const sessionFacts = await loadSessionFacts(save.id);
-      const timeLabel = save.worldState?.fictionalDateLabel ?? 'Día 1, mañana';
-      const attributes = effectiveAttributes(save.attributes as AttributeBlock, save.inventoryItems);
-      const secondaryAttributes = effectiveSecondaryAttributes(normalizeSecondaryAttributes(save.secondaryAttributes), save.inventoryItems);
-      const defensa = effectiveDefense(save.inventoryItems);
-      const equippedWeapons = equippedWeaponNames(save.inventoryItems);
-      const equippedItems = equippedItemsSummary(save.inventoryItems);
-      const duration = travel ? null : computeDuration(action, classification.banda, attributes, classification.duracionEstimadaMinutos);
-      const minutosDeEsteTurno = travel ? travel.minutos : duration!.minutos;
-
-      // Mismo resumen de personaje rico que el turno síncrono (auditoría 2026-07-24) — antes esto
-      // era solo "{nombre}, {arquetipo}. {origen} {motivación}", sin ubicación/atributos/condición
-      // física, así que un viaje/descanso largo real resuelto en diferido narraba a ciegas sobre
-      // dónde está el personaje o cómo llegó — encontrado de rebote auditando otro bug el
-      // 2026-07-23, quedó pendiente como "ya lo veremos" en el checklist de esa sesión.
-      const characterSummary = characterSummaryFor(save, {
-        timeLabel,
-        locationName: save.currentLocation?.name ?? null,
-        region: save.currentLocation?.region ?? null,
-        level: save.level,
-        attributes,
-        condicionFisica: save.condicionFisica,
-      });
-
-      await narrateAndPersistTurn({
-        saveId: save.id,
-        worldId: save.worldId,
-        action,
-        characterSummary,
-        characterName: save.characterName,
-        timeLabel,
-        sessionFacts,
-        currentXp: save.xp,
-        currentLevel: save.level,
-        classification,
-        roll,
-        attributes,
-        secondaryAttributes,
-        defensa,
-        equippedWeapons,
-        equippedItems,
-        raza: save.raza,
-        currentLocationId: save.currentLocationId,
-        travel,
-        minutosDeEsteTurno,
-        fictionalMinutesActuales: save.worldState?.fictionalMinutes ?? 480,
-        produccion: duration?.produccion,
-        condicionFisica: save.condicionFisica,
-        energia: save.energia,
-        dificultad: save.dificultad,
-        deathCount: save.deathCount,
-        lastRestLocationId: save.lastRestLocationId,
-        // El borrado real del CharacterTransit ya ocurre DENTRO de narrateAndPersistTurn, en la
-        // misma transacción que aplica XP/objetos/hechos — ver TransitCancelledError.
-        transitIdToFinalize: transit.id,
-        travelInterruptionNpcId,
-        travelInterruptionOriginalDestinationName,
-      });
-    } catch (err) {
-      if (err instanceof TransitCancelledError) {
-        // El jugador canceló mientras se narraba (POST /saves/:id/transit/cancel ya borró la
-        // fila y registró su propio LogEntry) — nada que reintentar ni que loguear como error.
-        continue;
-      }
-      // Un tránsito que falla al resolver se reintenta en el siguiente tick — no se borra.
-      console.error(`[worldTick] error resolviendo tránsito ${transit.id}:`, err);
-    } finally {
-      releaseTurnInFlight(transit.save.id);
-    }
+    await resolveClaimedTransit(transit);
   }
+}
+
+/// Espera de viaje precalculada (2026-08-13, petición explícita de la usuaria: "el prompt se
+/// lanza ya en medio de la espera... dejandolo calculado" — no esperar los minutos reales y LUEGO
+/// llamar al modelo, solapar las dos cosas). `turn.ts` la llama SIN esperar (fire-and-forget) justo
+/// al crear un `CharacterTransit` de viaje sin evento (`pickTravelInterruption` ya devolvió null,
+/// así que no hay nada más que resolver más adelante) — el cómputo entero (incluida la llamada al
+/// modelo) arranca YA, y `narrateAndPersistTurn` retiene el commit real hasta `notBefore`
+/// (`busyUntil`, la misma cuenta atrás que ya ve el jugador) — así nunca se ve la llegada antes de
+/// que termine la espera visual prometida, pero tampoco se apila la latencia del modelo DESPUÉS.
+///
+/// Reclamo por id, SIN condición de `busyUntil` (a diferencia de `resolveDueTransits`, que solo
+/// reclama tránsitos ya vencidos) — esta fila se acaba de crear, `busyUntil` está en el futuro a
+/// propósito. `claimedAt` (dentro de `zoneContext`, mismo criterio que `resolveDueTransits`) viaja
+/// en el mismo reclamo — sin esto, `POST /saves/:id/transit/cancel` no vería que esta fila ya se
+/// está resolviendo de verdad (esa ruta solo mira `zoneContext.claimedAt`, nunca la columna
+/// `narrationClaimedAt`) y dejaría cancelar mientras esta función sigue en marcha; no sería un bug
+/// de datos (`TransitCancelledError` ya lo cubre limpio, ver `resolveClaimedTransit`), pero sí
+/// tiraría a la basura una narración ya generada — el mismo desperdicio que ese comentario describe.
+export async function startEagerTransitResolution(transitId: string, notBefore: Date): Promise<void> {
+  const found = await prisma.characterTransit.findUnique({
+    where: { id: transitId },
+    include: { save: { include: { worldState: true, inventoryItems: { where: { slot: { not: null } } }, currentLocation: true } } },
+  });
+  // Borrada entre la creación y esta lectura (cancelada al vuelo, carrera improbable con el
+  // propio POST que la creó) — nada que resolver.
+  if (!found) return;
+
+  const claimedZoneContext = { ...(found.zoneContext as object), claimedAt: new Date().toISOString() };
+  const claim = await prisma.characterTransit.updateMany({
+    where: { id: transitId, narrationClaimedAt: null },
+    data: { narrationClaimedAt: new Date(), zoneContext: claimedZoneContext },
+  });
+  if (claim.count === 0) return;
+
+  await resolveClaimedTransit(found, notBefore);
 }
 
 async function tick(): Promise<void> {

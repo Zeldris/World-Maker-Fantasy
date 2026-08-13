@@ -19,9 +19,14 @@ interface HuntSelectionModalProps {
 /// Pop-up de la habilidad "Cazar" (revisión de partida 2026-08-08, mismo patrón en dos pasos que
 /// HarvestSelectionModal — "ya localizado" vs "Explorar" — a raíz de "podría cazar cualquier presa
 /// en cualquier zona... que no sea el listado completo, puede darse que no encuentres nada, como
-/// los objetos"). Checkboxes simples, sin cantidad — no hay stock por especie que repartir (ver
-/// comentario de cazar.ts sobre el límite de una presa por especie a la vez), y `avistados` es una
-/// cifra realista para esta visita, nunca la población mundial real.
+/// los objetos"). `avistados` es una cifra realista para esta visita, nunca la población mundial
+/// real.
+///
+/// Caza en grupo (2026-08-13, petición explícita: "el jugador primero debe marcar contra cuantos
+/// quiere combatir") — con `avistados > 1`, un selector +/- deja elegir cuántos comprometer al
+/// combate (tope real: `avistados`); el backend tira un dado sobre esto y PUEDE devolver algo
+/// distinto (menos o más), nunca es un número garantizado — se avisa aquí mismo para que no
+/// sorprenda.
 export function HuntSelectionModal({ saveId, onResuelto, onCancel }: HuntSelectionModalProps) {
   const [loading, setLoading] = useState(true)
   const [exploring, setExploring] = useState(false)
@@ -29,6 +34,7 @@ export function HuntSelectionModal({ saveId, onResuelto, onCancel }: HuntSelecti
   const [candidates, setCandidates] = useState<HuntCandidate[]>([])
   const [puedeExplorar, setPuedeExplorar] = useState(false)
   const [selected, setSelected] = useState<Set<string>>(new Set())
+  const [cantidades, setCantidades] = useState<Record<string, number>>({})
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
@@ -58,10 +64,21 @@ export function HuntSelectionModal({ saveId, onResuelto, onCancel }: HuntSelecti
   function toggle(slug: string) {
     setSelected((prev) => {
       const next = new Set(prev)
-      if (next.has(slug)) next.delete(slug)
-      else next.add(slug)
+      if (next.has(slug)) {
+        next.delete(slug)
+      } else {
+        next.add(slug)
+        // Por defecto, comprometer a TODOS los avistados — la jugadora puede bajarlo con el
+        // selector +/- si prefiere arriesgar menos.
+        const avistados = candidates.find((c) => c.slug === slug)?.avistados ?? 1
+        setCantidades((prevCantidades) => ({ ...prevCantidades, [slug]: avistados }))
+      }
       return next
     })
+  }
+
+  function setCantidad(slug: string, avistados: number, delta: number) {
+    setCantidades((prev) => ({ ...prev, [slug]: Math.max(1, Math.min(avistados, (prev[slug] ?? avistados) + delta)) }))
   }
 
   const cazaLimpiaDisponible = selected.size === 1 && candidates.find((c) => c.slug === [...selected][0])?.debil
@@ -71,7 +88,7 @@ export function HuntSelectionModal({ saveId, onResuelto, onCancel }: HuntSelecti
     setConfirming(true)
     setError(null)
     try {
-      const res = await confirmarCaza(saveId, [...selected])
+      const res = await confirmarCaza(saveId, [...selected], cantidades)
       onResuelto(res)
     } catch {
       setError('No se pudo cazar — puede que otra acción se haya adelantado.')
@@ -109,16 +126,39 @@ export function HuntSelectionModal({ saveId, onResuelto, onCancel }: HuntSelecti
         ) : (
           <div className="space-y-1.5">
             {candidates.map((c) => (
-              <label
-                key={c.slug}
-                className="flex cursor-pointer items-center justify-between gap-2 rounded-lg border border-iron-700 bg-wood-950/40 p-2.5 text-xs text-wood-300"
-              >
-                <span className="flex items-center gap-2">
-                  <input type="checkbox" checked={selected.has(c.slug)} onChange={() => toggle(c.slug)} className="accent-accent-500" />
-                  {c.name} <span className="text-wood-500">×{c.avistados}</span>
-                </span>
-                {c.debil && <span className="text-2xs uppercase tracking-wide text-accent-400">presa débil</span>}
-              </label>
+              <div key={c.slug} className="rounded-lg border border-iron-700 bg-wood-950/40 p-2.5 text-xs text-wood-300">
+                <label className="flex cursor-pointer items-center justify-between gap-2">
+                  <span className="flex items-center gap-2">
+                    <input type="checkbox" checked={selected.has(c.slug)} onChange={() => toggle(c.slug)} className="accent-accent-500" />
+                    {c.name} <span className="text-wood-500">×{c.avistados}</span>
+                  </span>
+                  {c.debil && <span className="text-2xs uppercase tracking-wide text-accent-400">presa débil</span>}
+                </label>
+                {selected.has(c.slug) && c.avistados > 1 && (
+                  <div className="mt-2 flex items-center justify-between gap-2 pl-6">
+                    <span className="text-2xs text-wood-500">Combatir contra:</span>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setCantidad(c.slug, c.avistados, -1)}
+                        disabled={(cantidades[c.slug] ?? c.avistados) <= 1}
+                        className="tactile h-6 w-6 rounded border border-iron-700 text-wood-300 disabled:cursor-not-allowed disabled:opacity-40"
+                      >
+                        −
+                      </button>
+                      <span className="w-4 text-center font-mono text-wood-100">{cantidades[c.slug] ?? c.avistados}</span>
+                      <button
+                        type="button"
+                        onClick={() => setCantidad(c.slug, c.avistados, 1)}
+                        disabled={(cantidades[c.slug] ?? c.avistados) >= c.avistados}
+                        className="tactile h-6 w-6 rounded border border-iron-700 text-wood-300 disabled:cursor-not-allowed disabled:opacity-40"
+                      >
+                        +
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
             ))}
           </div>
         )}
@@ -129,7 +169,7 @@ export function HuntSelectionModal({ saveId, onResuelto, onCancel }: HuntSelecti
               ? 'Elige una o varias presas.'
               : cazaLimpiaDisponible
                 ? 'Presa débil y sola — puede caer sin pelear, según tu destreza.'
-                : 'Combate obligatorio contra todas las seleccionadas.'}
+                : 'Combate obligatorio contra todas las seleccionadas — con varios avistados, puede que se comprometan menos o más de los que marques.'}
           </p>
         )}
         {error && candidates.length > 0 && <p className="text-xs text-red-400">{error}</p>}

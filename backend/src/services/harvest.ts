@@ -118,14 +118,21 @@ export async function detectHarvest(params: {
   if (faunaNpc) {
     const scope = scopeFor(faunaNpc.kind, params.currentLocationId);
     const state = await prisma.npcState.findUnique({ where: { saveId_npcId_scope: { saveId: params.saveId, npcId: faunaNpc.id, scope } } });
-    const derrotada = state?.condicionFisica === 'INCAPACITADO' || state?.condicionFisica === 'MUERTO';
+    // Caza en grupo (2026-08-13) — con `groupSize` puesto, el individuo ACTUAL puede haber
+    // "resucitado" a ILESO para seguir el combate contra el resto (ver
+    // applyCombatExchangeToNpcState, turnResolution.ts) aunque YA haya cadáveres reales caídos
+    // (`groupDefeated > 0`) esperando despiece — `condicionFisica` sola ya no basta para decidir
+    // si hay presa que despiezar.
+    const derrotada = state?.condicionFisica === 'INCAPACITADO' || state?.condicionFisica === 'MUERTO' || !!state?.groupDefeated;
     if (!derrotada) {
       return { sourceSlug, sourceName: rows[0].sourceName, yields: [], requierePresaPrevia: true };
     }
     // Bug real (auditoría 2026-07-28): sin esto, el mismo cadáver ya derrotado se podía despiezar
-    // una y otra vez sin límite — reutiliza `saqueado` (el mismo campo que ya cierra el saqueo de
-    // NPCs con nombre) como marca de "este cadáver ya no tiene nada más que dar".
-    if (state?.saqueado) {
+    // una y otra vez sin límite — `saqueado` (individuo solitario) o `corpsesLooted` (grupo, ver
+    // comentario del campo en schema.prisma) marcan "esto ya no tiene nada más que dar AHORA
+    // MISMO" — un grupo puede volver a tener presa real más adelante si cae otro individuo más.
+    const yaDespiezada = state?.groupSize ? state.corpsesLooted >= state.groupDefeated : !!state?.saqueado;
+    if (yaDespiezada) {
       return { sourceSlug, sourceName: rows[0].sourceName, yields: [], yaDespiezada: true };
     }
     return {

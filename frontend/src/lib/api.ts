@@ -638,9 +638,14 @@ export async function explorarCaza(saveId: string): Promise<{ candidates: HuntCa
 /// normal (`handleSubmit` en GameView.tsx) para que la narración real sea quien lo abra — decisión
 /// explícita de la usuaria: "cazar sí que fuerza una narración cuando eliges objetivos y esa
 /// narración inicia el combate".
+/// `cantidades` (caza en grupo, 2026-08-13, petición explícita: "el jugador primero debe marcar
+/// contra cuantos quiere combatir") — cuántos individuos de CADA especie quiere comprometer al
+/// combate, solo relevante para especies con `avistados > 1`; el backend tira un dado sobre esto
+/// (puede salir algo distinto, ver `groupVarianceClause`), nunca es un número garantizado.
 export async function confirmarCaza(
   saveId: string,
   slugs: string[],
+  cantidades?: Record<string, number>,
 ): Promise<
   | { resuelveSinCombate: true; exito: true; combate: { npcs: NpcInSceneInfo[] }; logEntry: { id: string; text: string; timeLabel: string; createdAt: string } }
   | { resuelveSinCombate: false; exito: false | null; actionText: string }
@@ -648,7 +653,7 @@ export async function confirmarCaza(
   return fetchJson(`${API_URL}/saves/${saveId}/cazar/confirmar`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ slugs }),
+    body: JSON.stringify({ slugs, cantidades }),
   })
 }
 

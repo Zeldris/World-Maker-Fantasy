@@ -11,6 +11,10 @@ const findManyWorldPopulation = vi.fn();
 const findManyNpc = vi.fn();
 const findUniqueNpc = vi.fn();
 const upsertNpcState = vi.fn();
+// Caza en grupo (2026-08-13) — upsert DIRECTO (fuera de $transaction) que hace cazar.ts para
+// pre-crear el NpcState del grupo ANTES de devolver el actionText — distinto del `upsertNpcState`
+// de arriba, que solo vive DENTRO del mock de `$transaction` (caza limpia sin combate).
+const upsertNpcStateDirect = vi.fn();
 const updateManyWorldPopulation = vi.fn();
 const createLogEntry = vi.fn();
 const updateSave = vi.fn();
@@ -26,6 +30,7 @@ vi.mock('../../lib/prisma.js', () => ({
       findMany: (...args: unknown[]) => findManyNpc(...args),
       findUnique: (...args: unknown[]) => findUniqueNpc(...args),
     },
+    npcState: { upsert: (...args: unknown[]) => upsertNpcStateDirect(...args) },
     $transaction: (...args: unknown[]) => transaction(...args),
   },
 }));
@@ -35,7 +40,7 @@ vi.mock('../../services/worldFacts.js', () => ({
   appendSessionFacts: (...args: unknown[]) => appendSessionFacts(...args),
 }));
 
-const { cazarRoutes, avistadosFor, rollSightings } = await import('./cazar.js');
+const { cazarRoutes, avistadosFor, rollSightings, rollGroupEngagement, groupVarianceClause } = await import('./cazar.js');
 
 async function buildApp() {
   const app = Fastify();
@@ -98,6 +103,47 @@ describe('rollSightings', () => {
   it('con la tirada de fallo por debajo del umbral en los 3 intentos, no encuentra nada', () => {
     const result = rollSightings([A, B], () => 0.1);
     expect(result).toEqual([]);
+  });
+});
+
+// Caza en grupo (2026-08-13, petición explícita: "el jugador primero debe marcar contra cuantos
+// quiere combatir... con un calculo determinista puede darse que salgan menos o más de los que
+// marcaste").
+describe('rollGroupEngagement', () => {
+  it('roll 1-2 (r bajo): uno menos que lo elegido', () => {
+    expect(rollGroupEngagement(3, 10, () => 0)).toBe(2); // floor(0*6)+1=1 -> delta -1
+  });
+
+  it('roll 3-4 (r medio): exactamente lo elegido', () => {
+    expect(rollGroupEngagement(3, 10, () => 0.4)).toBe(3); // floor(0.4*6)+1=3 -> delta 0
+  });
+
+  it('roll 5-6 (r alto): uno más que lo elegido', () => {
+    expect(rollGroupEngagement(3, 10, () => 0.99)).toBe(4); // floor(0.99*6)+1=6 -> delta +1
+  });
+
+  it('nunca baja de 1 aunque el roll reste', () => {
+    expect(rollGroupEngagement(1, 10, () => 0)).toBe(1);
+  });
+
+  it('nunca supera los avistados reales aunque el roll sume', () => {
+    expect(rollGroupEngagement(5, 5, () => 0.99)).toBe(5);
+  });
+});
+
+describe('groupVarianceClause', () => {
+  it('igual a lo elegido: sin cláusula (null)', () => {
+    expect(groupVarianceClause(2, 2)).toBeNull();
+  });
+
+  it('sale MÁS de lo marcado: intrusión sorpresa', () => {
+    expect(groupVarianceClause(1, 2)).toBe('aunque al acercarme, otro más se suma de repente, sin previo aviso');
+    expect(groupVarianceClause(1, 3)).toBe('aunque al acercarme, 2 más se suman de repente, sin previo aviso');
+  });
+
+  it('sale MENOS de lo marcado: solo se consigue acorralar a algunos', () => {
+    expect(groupVarianceClause(2, 1)).toBe('aunque al final solo consigo acorralar a uno de los que había marcado');
+    expect(groupVarianceClause(4, 2)).toBe('aunque al final solo consigo acorralar a 2 de los que había marcado');
   });
 });
 
@@ -182,6 +228,7 @@ describe('POST /saves/:id/cazar/confirmar', () => {
     findManyNpc.mockReset().mockResolvedValue([MURGOL_NPC, CRUZAVIENTOS_NPC]);
     findUniqueNpc.mockReset().mockResolvedValue(MURGOL_NPC);
     upsertNpcState.mockReset();
+    upsertNpcStateDirect.mockReset();
     updateManyWorldPopulation.mockReset();
     createLogEntry.mockReset().mockResolvedValue({ id: 'log1', createdAt: new Date('2026-08-08T12:00:00Z') });
     updateSave.mockReset();
@@ -209,7 +256,7 @@ describe('POST /saves/:id/cazar/confirmar', () => {
     expect(transaction).not.toHaveBeenCalled();
   });
 
-  it('varias presas seleccionadas: combate obligatorio, NUNCA escribe en la base de datos (la narración real lo abre)', async () => {
+  it('varias presas seleccionadas: combate obligatorio, nunca pasa por $transaction (la narración real lo abre) — pero SÍ pre-crea el grupo de Múrgol (8 avistados)', async () => {
     const app = await buildApp();
     const res = await app.inject({
       method: 'POST',
@@ -222,9 +269,35 @@ describe('POST /saves/:id/cazar/confirmar', () => {
     expect(body.actionText).toContain("'Múrgol'");
     expect(body.actionText).toContain("'Cruzavientos'");
     expect(transaction).not.toHaveBeenCalled();
+    // Múrgol: capturablePct 80, población 50 -> avistadosFor(80,50)=8 avistados, grupo real.
+    // Cruzavientos: capturablePct 10, población 20 -> avistadosFor(10,20)=1, sin grupo, sin upsert.
+    expect(upsertNpcStateDirect).toHaveBeenCalledTimes(1);
+    expect(upsertNpcStateDirect).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { saveId_npcId_scope: { saveId: 'save1', npcId: 'npc-murgol', scope: 'loc1' } },
+        create: expect.objectContaining({ condicionFisica: 'ILESO', groupDefeated: 0, corpsesLooted: 0 }),
+      }),
+    );
   });
 
-  it('una sola presa pero NO débil (Cruzavientos, nivel 5 contra jugador nivel 3): combate obligatorio, sin escribir en la base de datos', async () => {
+  it('caza en grupo: cantidad elegida distinta de la resuelta añade la cláusula de variación al actionText, y el NpcState guarda el tamaño REAL del grupo', async () => {
+    // Dos especies a la vez (fuerza combate, sin pasar por la caza limpia de Múrgol solo).
+    vi.spyOn(Math, 'random').mockReturnValue(0.99); // roll 6 -> delta +1 (rollGroupEngagement)
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/saves/save1/cazar/confirmar',
+      payload: { slugs: ['murgol', 'cruzavientos'], cantidades: { murgol: 2 } },
+    });
+    const body = res.json();
+    expect(body.actionText).toContain("Salgo a cazar y ataco a 'Múrgol', 'Cruzavientos'.");
+    expect(body.actionText).toContain('otro más se suma de repente, sin previo aviso');
+    expect(upsertNpcStateDirect).toHaveBeenCalledWith(
+      expect.objectContaining({ create: expect.objectContaining({ groupSize: 3 }) }), // 2 elegidos + 1 del roll
+    );
+  });
+
+  it('una sola presa pero NO débil (Cruzavientos, nivel 5 contra jugador nivel 3): combate obligatorio, sin escribir en la base de datos (1 solo avistado, sin grupo)', async () => {
     findUniqueNpc.mockResolvedValue(CRUZAVIENTOS_NPC);
     const app = await buildApp();
     const res = await app.inject({ method: 'POST', url: '/saves/save1/cazar/confirmar', payload: { slugs: ['cruzavientos'] } });
@@ -232,6 +305,7 @@ describe('POST /saves/:id/cazar/confirmar', () => {
     expect(body.resuelveSinCombate).toBe(false);
     expect(body.actionText).toContain("'Cruzavientos'");
     expect(transaction).not.toHaveBeenCalled();
+    expect(upsertNpcStateDirect).not.toHaveBeenCalled();
   });
 
   it('una sola presa débil, tirada de caza limpia con ÉXITO: mata sin combate, depleciona población y registra el log', async () => {

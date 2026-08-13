@@ -217,6 +217,16 @@ interface NarrateAndPersistParams {
   /// mientras se narraba), el borrado afecta 0 filas y toda la transacción se aborta sin aplicar
   /// nada — ver TransitCancelledError.
   transitIdToFinalize?: string;
+  /// Espera de viaje precalculada (2026-08-13, petición explícita: "el prompt se lanza ya en
+  /// medio de la espera... dejandolo calculado" — no apilar la latencia del modelo DESPUÉS de la
+  /// espera visual, solapar las dos). Presente SOLO cuando `turn.ts` arranca esta narración de
+  /// forma anticipada, nada más iniciar un viaje sin evento (ver `startEagerTransitResolution`,
+  /// workers/worldTick.ts) — todo el cómputo (narrar, resolver combate/crafteo/etc.) corre igual
+  /// de pronto como siempre, pero la escritura real en BD (justo debajo) espera hasta esta fecha
+  /// antes de comprometerse, para que el jugador nunca vea la llegada antes de que termine la
+  /// espera visual que ya se le prometió (`CharacterTransit.busyUntil`). Si el cómputo tarda más
+  /// que esto (poco frecuente), se compromete en cuanto termina, sin esperar de más.
+  notBefore?: Date;
   /// Rediseño del turno de combate (2026-07-28) — `Save.pendingNpcAttack` leído por el caller
   /// (turn.ts) antes de llamar aquí. Presente = este turno es la defensa a ciegas del jugador
   /// contra un ataque de NPC ya decidido el intercambio anterior; ausente/null = el jugador tiene
@@ -948,6 +958,21 @@ function resolveCombatExchangePhase(input: CombatExchangePhaseInput): CombatExch
           : `EFECTO DE HABILIDAD — YA RESUELTO: el intento de rematar a ${npcParaIntercambio.name} no consigue matarlo (${npcAttackHits ? 'conecta, pero no estaba lo bastante debilitado para morir' : 'ni siquiera conecta'}) — narra un golpe más, nunca su muerte.`;
       }
 
+      // Caza en grupo (2026-08-13, petición explícita: "que el narrador prometa nada que no se
+      // realice por acción") — si este golpe deja al individuo ACTUAL incapacitado/muerto y el
+      // grupo tiene más miembros, el combate sigue: se le dice al modelo explícitamente que NO
+      // narre el grupo entero como derrotado, solo a este individuo. Si era el último, lo
+      // contrario — evita que el modelo alargue el combate más de la cuenta o lo cierre antes de
+      // tiempo, mismo criterio "YA RESUELTO, no lo cambies" que el resto de hints de combate.
+      if (npcAttackHits && npcTargetNewCondicion && (npcTargetNewCondicion === 'INCAPACITADO' || npcTargetNewCondicion === 'MUERTO') && npcParaIntercambio.groupSize) {
+        const restantes = npcParaIntercambio.groupSize - npcParaIntercambio.groupDefeated - 1;
+        const groupHint =
+          restantes > 0
+            ? `GRUPO — YA RESUELTO: caído este individuo, todavía quedan ${restantes} más de su misma especie en la zona. El combate NO ha terminado — narra solo la caída de ESTE, nunca el grupo entero como derrotado.`
+            : `GRUPO — YA RESUELTO: este era el último de su especie en la zona — ahora sí puedes narrar el grupo entero como resuelto.`;
+        exchangeNarrationBlock = exchangeNarrationBlock ? `${exchangeNarrationBlock} ${groupHint}` : groupHint;
+      }
+
       let iniciativaSiguiente: 'jugador' | 'npc';
       if (iniciativaForzadaPorUtilidad) {
         iniciativaSiguiente = iniciativaForzadaPorUtilidad;
@@ -1253,26 +1278,37 @@ async function applyCombatExchangeToNpcState(params: {
     return { questCompletedInfo };
   }
   const scope = scopeFor(npcAttackTarget.kind, currentLocationId);
+  const esGolpeDeMuerte = npcAttackHits && npcTargetNewCondicion && (npcTargetNewCondicion === 'INCAPACITADO' || npcTargetNewCondicion === 'MUERTO');
+  // Caza en grupo (2026-08-13) — ver el hint gemelo en `resolveCombatExchangePhase` (misma
+  // condición exacta, `npcAttackTarget.groupSize`/`.groupDefeated` ya leídos en el mismo turno
+  // ANTES de narrar, para que lo que se escribe aquí coincida con lo que se le pidió narrar al
+  // modelo). Si quedan más miembros, el individuo ACTUAL "resucita" a ILESO para el siguiente en
+  // vez de quedarse en INCAPACITADO/MUERTO — misma fila, `groupDefeated` sube uno.
+  const grupoContinua = !!(esGolpeDeMuerte && npcAttackTarget.groupSize && npcAttackTarget.groupDefeated + 1 < npcAttackTarget.groupSize);
+  const condicionAEscribir = grupoContinua ? 'ILESO' : npcTargetNewCondicion;
   await tx.npcState.upsert({
     where: { saveId_npcId_scope: { saveId, npcId: npcAttackTarget.id, scope } },
     create: {
       saveId,
       npcId: npcAttackTarget.id,
       scope,
-      ...(npcTargetNewCondicion ? { condicionFisica: npcTargetNewCondicion, condicionFisicaSinceMinutes: nuevoFictionalMinutes } : {}),
+      ...(npcTargetNewCondicion ? { condicionFisica: condicionAEscribir!, condicionFisicaSinceMinutes: nuevoFictionalMinutes } : {}),
       ...(npcNuevaEnergia !== null ? { energia: npcNuevaEnergia } : {}),
       // Rediseño de combate (2026-08-09, "Analizar rival") — permanente por NPC/scope en esta
       // partida, nunca se vuelve a poner en false (mismo criterio idempotente que `saqueado`).
       ...(analizarRivalExito ? { analizado: true } : {}),
+      ...(esGolpeDeMuerte && npcAttackTarget.groupSize ? { groupDefeated: 1, corpsesLooted: 0 } : {}),
     },
     update: {
-      ...(npcAttackHits && npcTargetNewCondicion ? { condicionFisica: npcTargetNewCondicion, condicionFisicaSinceMinutes: nuevoFictionalMinutes } : {}),
+      ...(npcAttackHits && npcTargetNewCondicion
+        ? { condicionFisica: condicionAEscribir!, condicionFisicaSinceMinutes: nuevoFictionalMinutes, ...(esGolpeDeMuerte && npcAttackTarget.groupSize ? { groupDefeated: { increment: 1 } } : {}) }
+        : {}),
       ...(npcNuevaEnergia !== null ? { energia: npcNuevaEnergia } : {}),
       ...(analizarRivalExito ? { analizado: true } : {}),
     },
   });
 
-  if (npcAttackHits && npcTargetNewCondicion && (npcTargetNewCondicion === 'INCAPACITADO' || npcTargetNewCondicion === 'MUERTO')) {
+  if (esGolpeDeMuerte) {
     // Cierre detectable por backend (roadmap 2026-07-19, mecánicas): si alguna misión ACTIVA
     // apuntaba a este NPC (Quest.targetNpcId, ver newQuest más arriba), derrotarlo la cierra sola
     // en cuanto cae — el modelo nunca tiene que acertar el título EXACTO vía questProgress para
@@ -1347,10 +1383,18 @@ async function applyExecuteTargets(params: {
       where: { saveId_npcId_scope: { saveId, npcId: executeTarget.id, scope } },
     });
     if (freshExecuteState?.condicionFisica === 'MUERTO') continue;
+    // Caza en grupo (2026-08-13) — mismo criterio que `applyCombatExchangeToNpcState`, pero con
+    // el estado FRESCO ya leído arriba (esta función ya revalida contra `tx` por su propia
+    // carrera de "decapitar dos veces") en vez de la foto de antes de la transacción.
+    const grupoContinuaDecapitar = !!(freshExecuteState?.groupSize && freshExecuteState.groupDefeated + 1 < freshExecuteState.groupSize);
     await tx.npcState.upsert({
       where: { saveId_npcId_scope: { saveId, npcId: executeTarget.id, scope } },
       create: { saveId, npcId: executeTarget.id, scope, condicionFisica: 'MUERTO', condicionFisicaSinceMinutes: nuevoFictionalMinutes },
-      update: { condicionFisica: 'MUERTO', condicionFisicaSinceMinutes: nuevoFictionalMinutes },
+      update: {
+        condicionFisica: grupoContinuaDecapitar ? 'ILESO' : 'MUERTO',
+        condicionFisicaSinceMinutes: nuevoFictionalMinutes,
+        ...(freshExecuteState?.groupSize ? { groupDefeated: { increment: 1 } } : {}),
+      },
     });
     // Mismo cierre + recompensa real que un golpe normal que deja MUERTO al objetivo — en la
     // práctica la misión ya se cerró al quedar INCAPACITADO, esto solo cubre el caso raro de que
@@ -1701,6 +1745,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     savedActionId,
     isItemUse,
     transitIdToFinalize,
+    notBefore,
     pendingNpcAttack,
     npcsInScene: npcsInScenePrecomputed,
     lootItemNames,
@@ -2231,6 +2276,18 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     contextBlocks.push(
       `${characterName} remata a ${nombres}, que yacen incapacitados en el suelo y no pueden oponer ninguna resistencia — describe un golpe de gracia definitivo para cada uno, nunca una pelea o un intento de defensa por su parte.`,
     );
+    // Caza en grupo (2026-08-13) — mismo hint gemelo que combate normal, ver comentario en
+    // resolveCombatExchangePhase. Aquí puede haber varios objetivos a la vez (checkbox), cada uno
+    // con su propio grupo — una línea por objetivo que de verdad tenga grupo.
+    for (const target of executeTargets) {
+      if (!target.groupSize) continue;
+      const restantes = target.groupSize - target.groupDefeated - 1;
+      contextBlocks.push(
+        restantes > 0
+          ? `GRUPO — YA RESUELTO: rematado ${target.name}, todavía quedan ${restantes} más de su misma especie en la zona. El combate NO ha terminado — narra solo la caída de ESTE, nunca el grupo entero como derrotado.`
+          : `GRUPO — YA RESUELTO: ${target.name} era el último de su especie en la zona — ahora sí puedes narrar el grupo entero como resuelto.`,
+      );
+    }
   }
 
   // Roadmap 2026-07-19: `Companion`/`Quest` se persistían pero nunca entraban en ningún prompt —
@@ -2934,6 +2991,13 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     /// aparte de `Save.deathCount`, ya escrito por la propia transacción.
     deathCount: number;
   };
+  // Espera de viaje precalculada (ver comentario de `notBefore` en NarrateAndPersistParams) — el
+  // cómputo (narración incluida) ya terminó en este punto; si venía adelantado a propósito, aquí
+  // es donde se retiene ANTES de comprometer nada en BD, nunca antes de narrar.
+  if (notBefore) {
+    const waitMs = notBefore.getTime() - Date.now();
+    if (waitMs > 0) await new Promise((resolve) => setTimeout(resolve, waitMs));
+  }
   try {
     transactionResult = await prisma.$transaction(async (tx) => {
     // `now()` de Postgres es fijo durante TODA la transacción (auditoría "revisar partida",

@@ -110,6 +110,10 @@ export interface NpcInScene {
   /// éxito una vez, para siempre en esta partida. Gatea qué muestra la ficha del rival en combate
   /// (CombatPanel.tsx § EnemyFicha) — sin analizar, ni estadísticas ni habilidades.
   analizado: boolean;
+  /// Caza en grupo (2026-08-13) — ver comentario completo en schema.prisma § NpcState.groupSize.
+  /// null = encuentro solitario de siempre.
+  groupSize: number | null;
+  groupDefeated: number;
 }
 
 interface NpcWithAliases {
@@ -160,6 +164,8 @@ export function buildNpcInScene(npc: NpcWithItems, state: NpcState | undefined):
     lootedItemNames: state?.lootedItemNames ?? [],
     energia: state?.energia ?? null,
     analizado: state?.analizado ?? false,
+    groupSize: state?.groupSize ?? null,
+    groupDefeated: state?.groupDefeated ?? 0,
   };
 }
 

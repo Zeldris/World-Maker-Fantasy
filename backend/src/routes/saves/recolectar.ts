@@ -293,10 +293,25 @@ export async function recolectarRoutes(app: FastifyInstance) {
               const npc = await tx.npc.findUnique({ where: { worldId_slug: { worldId: save.worldId, slug: sel.sourceSlug } }, select: { id: true, kind: true } });
               if (!npc) continue;
               const scope = scopeFor(npc.kind, save.currentLocationId);
-              const claimed = await tx.npcState.updateMany({
-                where: { saveId: save.id, npcId: npc.id, scope, saqueado: false },
-                data: { saqueado: true },
-              });
+              // Caza en grupo (2026-08-13) — un grupo (`groupSize` no nulo) tiene varios cadáveres
+              // reales acumulados (`groupDefeated`, sube uno por cada individuo caído), cada uno
+              // despiezable por separado — `saqueado` (booleano) solo tiene sentido para 1
+              // individuo, ver comentario del campo en schema.prisma. Lectura previa (no dentro
+              // del mismo `updateMany` atómico: Prisma no compara una columna contra otra en un
+              // `where` sin SQL crudo) solo para saber qué camino tomar — el claim en sí SIGUE
+              // siendo atómico (increment/`lt` se evalúan contra el valor en vivo en Postgres, no
+              // contra esta foto), así que dos despieces casi simultáneos no pueden duplicar el
+              // mismo cadáver.
+              const freshState = await tx.npcState.findUnique({ where: { saveId_npcId_scope: { saveId: save.id, npcId: npc.id, scope } } });
+              const claimed = freshState?.groupSize
+                ? await tx.npcState.updateMany({
+                    where: { saveId: save.id, npcId: npc.id, scope, corpsesLooted: { lt: freshState.groupDefeated } },
+                    data: { corpsesLooted: { increment: 1 } },
+                  })
+                : await tx.npcState.updateMany({
+                    where: { saveId: save.id, npcId: npc.id, scope, saqueado: false },
+                    data: { saqueado: true },
+                  });
               if (claimed.count === 0) continue;
               sourcesTouchedThisRequest.add(sel.sourceSlug);
             }

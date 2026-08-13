@@ -3,7 +3,8 @@ import Fastify from 'fastify';
 import { Prisma } from '@prisma/client';
 import { prisma } from '../lib/prisma.js';
 import { getDefaultUserId } from '../lib/defaultUser.js';
-import { resolveDueTransits } from '../workers/worldTick.js';
+import { resolveDueTransits, startEagerTransitResolution } from '../workers/worldTick.js';
+import { recolectarRoutes } from './saves/recolectar.js';
 import { minutosConDestreza, bandaForMinutos } from '../services/travel.js';
 import type { NarrationResult } from '../services/narrador.js';
 import { hasFalseTravelClaim, hasFalsePhantomTravel } from '../services/narrador.js';
@@ -2055,6 +2056,101 @@ describe('Objetivo de ataque en escena nueva: un cadáver que sigue detectable n
   }, 20_000);
 });
 
+// Caza en grupo (2026-08-13, petición explícita: "el jugador primero debe marcar contra cuantos
+// quiere combatir... el cálculo determinista puede darse que salgan menos o más... y que el
+// narrador no prometa nada que no se realice por acción"). Dados pinchados al máximo (mismo
+// criterio que el resto de este archivo) para garantizar el golpe. En vez de subir la escalera
+// entera de condicionFisica turno a turno (lento e innecesario para lo que se quiere probar
+// aquí), se adelanta a mano a GRAVE antes de cada golpe decisivo — mismo criterio que otros tests
+// de este archivo que adelantan `busyUntil`/estado a mano para no esperar de más.
+describe('Caza en grupo: el individuo actual "resucita" a ILESO mientras queden más del grupo, y el corpsesLooted real permite despiece parcial', () => {
+  let saveId: string;
+  let corretolvasId: string;
+  let hondonadaId: string;
+
+  beforeAll(async () => {
+    vi.spyOn(Math, 'random').mockReturnValue(0.99);
+    const userId = await getDefaultUserId();
+    const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
+    const hondonada = await prisma.location.findFirstOrThrow({ where: { worldId: world.id, slug: 'hondonada-del-eco' } });
+    const corretolvas = await prisma.npc.findFirstOrThrow({ where: { worldId: world.id, slug: 'corretolvas' } });
+    corretolvasId = corretolvas.id;
+    hondonadaId = hondonada.id;
+    const save = await prisma.save.create({
+      data: {
+        userId,
+        worldId: world.id,
+        characterName: 'Gorhorn de prueba (caza en grupo)',
+        characterArchetype: 'guerrero',
+        characterOrigin: 'Clan Maktor',
+        characterMotivation: 'x',
+        attributes: ATTRS,
+        portraitInitial: 'G',
+        currentLocationId: hondonada.id,
+      },
+    });
+    saveId = save.id;
+    await prisma.worldState.create({ data: { saveId } });
+    // Mismo estado que dejaría cazar.ts al confirmar un grupo de 2 avistados: ILESO, grupo de 2,
+    // ninguno caído todavía.
+    await prisma.npcState.create({
+      data: { saveId, npcId: corretolvasId, scope: hondonadaId, condicionFisica: 'GRAVE', groupSize: 2, groupDefeated: 0, corpsesLooted: 0 },
+    });
+  });
+
+  afterAll(async () => {
+    vi.restoreAllMocks();
+    await prisma.save.delete({ where: { id: saveId } });
+  });
+
+  it('cae el primer individuo del grupo: el NpcState "resucita" a ILESO, groupDefeated sube a 1 — el combate NO termina', async () => {
+    const res = await doTurn(saveId, "Ataco a 'Corretolvas' con todas mis fuerzas.");
+    expect(res.statusCode).toBe(200);
+
+    const state = await prisma.npcState.findUniqueOrThrow({ where: { saveId_npcId_scope: { saveId, npcId: corretolvasId, scope: hondonadaId } } });
+    expect(state.condicionFisica).toBe('ILESO'); // "resucitó" para el siguiente individuo
+    expect(state.groupDefeated).toBe(1);
+    expect(state.groupSize).toBe(2);
+
+    // El combate sigue de verdad — el NPC sigue en pendingCombatNpcSlugs para el siguiente turno.
+    const save = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
+    expect(save.pendingCombatNpcSlugs).toContain('corretolvas');
+  }, 20_000);
+
+  it('con un cadáver real ya caído (groupDefeated=1), el despiece SÍ da algo aunque el individuo actual siga ILESO', async () => {
+    const app = Fastify();
+    await app.register(recolectarRoutes);
+    const res = await app.inject({
+      method: 'POST',
+      url: `/saves/${saveId}/recolectar/confirmar`,
+      // 'racion-carne' es el itemSlug real de un HarvestYield CAZA de 'corretolvas' (worldCatalog.ts).
+      payload: { selections: [{ sourceSlug: 'corretolvas', itemSlug: 'racion-carne', cantidad: 1 }] },
+    });
+    expect(res.statusCode).toBe(200);
+    const body = res.json() as { items: unknown[] };
+    expect(body.items.length).toBeGreaterThan(0);
+
+    const state = await prisma.npcState.findUniqueOrThrow({ where: { saveId_npcId_scope: { saveId, npcId: corretolvasId, scope: hondonadaId } } });
+    expect(state.corpsesLooted).toBe(1); // consumió el único cadáver real disponible
+  }, 20_000);
+
+  it('cae el ÚLTIMO individuo del grupo: el NpcState se queda en INCAPACITADO/MUERTO de verdad — el grupo entero está resuelto', async () => {
+    // Adelanta a mano el individuo ACTUAL (ya "resucitado" a ILESO) hasta GRAVE, para que el
+    // siguiente golpe decisivo (dados al máximo) lo deje INCAPACITADO — el último del grupo.
+    await prisma.npcState.update({
+      where: { saveId_npcId_scope: { saveId, npcId: corretolvasId, scope: hondonadaId } },
+      data: { condicionFisica: 'GRAVE' },
+    });
+
+    const res = await doTurn(saveId, "Ataco a 'Corretolvas' con todas mis fuerzas.");
+    expect(res.statusCode).toBe(200);
+
+    const state = await prisma.npcState.findUniqueOrThrow({ where: { saveId_npcId_scope: { saveId, npcId: corretolvasId, scope: hondonadaId } } });
+    expect(state.condicionFisica).toBe('INCAPACITADO'); // NO resucita: era el último
+    expect(state.groupDefeated).toBe(2);
+  }, 20_000);
+});
+
 // Bug real jugando en vivo (2026-08-04, "ronda larga de pruebas"): en un turno de descanso
 // (`enCombate: false`, sin ningún verbo hostil) el LLM propuso igualmente `combateIniciado` contra
 // Gistera Koh (temperamento CAUTELOSO, nunca hostil) solo porque un hecho de sesión la menciona de
@@ -2690,4 +2786,78 @@ describe('Viaje largo interrumpido a mitad de camino (integración real, solo LL
     // no debe pasar, y no pasa, es que el motor dependa de que el modelo ACIERTE ese nombre por
     // su cuenta en la narración que devuelve, algo que este mock nunca hace por construcción.)
   }, 20_000);
+});
+
+// Espera de viaje precalculada (2026-08-13, petición explícita: "el prompt se lanza ya en medio
+// de la espera... dejandolo calculado... a no ser que entre un evento"). Prueba el MECANISMO
+// (startEagerTransitResolution/notBefore) directamente, sin pasar por turn.ts: el suelo real de
+// `busyUntil` en turn.ts nunca baja de 1 minuto real (Math.max(1, ...) en minutosReales), así que
+// probar esto de punta a punta por HTTP haría el test minutos más lento sin aportar nada — el
+// enganche turn.ts → startEagerTransitResolution en sí (que SÍ depende de esa fórmula) no se
+// prueba aquí, solo el propio mecanismo de retener el commit hasta `notBefore`.
+describe('Espera de viaje precalculada: notBefore retiene el commit sin retener el cómputo (2026-08-13)', () => {
+  let saveId: string;
+
+  beforeAll(async () => {
+    const userId = await getDefaultUserId();
+    const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
+    const save = await prisma.save.create({
+      data: {
+        userId,
+        worldId: world.id,
+        characterName: 'Gorhorn de prueba (espera precalculada)',
+        characterArchetype: 'guerrero',
+        characterOrigin: 'Clan Maktor',
+        characterMotivation: 'x',
+        attributes: ATTRS,
+        portraitInitial: 'G',
+      },
+    });
+    saveId = save.id;
+    await prisma.worldState.create({ data: { saveId } });
+  });
+
+  afterAll(async () => {
+    await prisma.save.delete({ where: { id: saveId } });
+  });
+
+  it('no comete nada en BD antes de notBefore, y comete justo después — sin doble resolución con resolveDueTransits', async () => {
+    const transit = await prisma.characterTransit.create({
+      data: {
+        saveId,
+        activity: 'Descanso un buen rato para recuperar fuerzas.',
+        busyUntil: new Date(Date.now() + 10 * 60_000), // lejos a propósito: notBefore manda, no esto
+        zoneContext: {
+          action: 'Descanso un buen rato para recuperar fuerzas.',
+          classification: { requiereTirada: false, atributo: 'constitucion', dificultad: 8, razon: 'x', banda: 'extendida', duracionEstimadaMinutos: 240 },
+          roll: undefined,
+          travel: null,
+        } as object,
+      },
+    });
+
+    const notBefore = new Date(Date.now() + 300);
+    const resolution = startEagerTransitResolution(transit.id, notBefore);
+
+    // A mitad de la espera: reclamada (narrationClaimedAt puesto), pero NADA comprometido todavía.
+    await new Promise((r) => setTimeout(r, 120));
+    const midway = await prisma.characterTransit.findUnique({ where: { id: transit.id } });
+    expect(midway).not.toBeNull();
+    expect(midway!.narrationClaimedAt).not.toBeNull();
+
+    // Un barrido de resolveDueTransits() a mitad de la espera NO debe tocar esta fila (ya
+    // reclamada) — si lo hiciera, sería una doble resolución real.
+    await prisma.characterTransit.update({ where: { id: transit.id }, data: { busyUntil: new Date(Date.now() - 1000) } });
+    await resolveDueTransits();
+    const afterSweep = await prisma.characterTransit.findUnique({ where: { id: transit.id } });
+    expect(afterSweep).not.toBeNull(); // sigue viva: el barrido la ignoró por narrationClaimedAt
+
+    await resolution;
+
+    const afterCommit = await prisma.characterTransit.findUnique({ where: { id: transit.id } });
+    expect(afterCommit).toBeNull(); // ya comprometido y borrado
+
+    const logEntry = await prisma.logEntry.findFirst({ where: { saveId, channel: 'CHARACTER', isPlayerAction: false }, orderBy: { createdAt: 'desc' } });
+    expect(logEntry?.text).toBe('El golpe conecta.'); // texto fijo del mock de narrateAction
+  }, 10_000);
 });

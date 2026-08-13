@@ -6,6 +6,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 /// tránsito vivo para reintentar (nunca huérfano), y que un fallo en un tránsito no bloquea los
 /// demás del mismo tick.
 const findMany = vi.fn();
+const findUnique = vi.fn();
 const updateMany = vi.fn();
 const del = vi.fn();
 
@@ -13,6 +14,7 @@ vi.mock('../lib/prisma.js', () => ({
   prisma: {
     characterTransit: {
       findMany: (...args: unknown[]) => findMany(...args),
+      findUnique: (...args: unknown[]) => findUnique(...args),
       updateMany: (...args: unknown[]) => updateMany(...args),
       delete: (...args: unknown[]) => del(...args),
     },
@@ -40,7 +42,7 @@ vi.mock('../services/equipment.js', () => ({
 vi.mock('../config/env.js', () => ({ env: { worldTickIntervalMinutes: 20 } }));
 vi.mock('../services/worldFacts.js', () => ({ loadSessionFacts: vi.fn(() => Promise.resolve([])) }));
 
-const { resolveDueTransits } = await import('./worldTick.js');
+const { resolveDueTransits, startEagerTransitResolution } = await import('./worldTick.js');
 
 function transitFixture(overrides: Partial<Record<string, unknown>> = {}) {
   return {
@@ -77,6 +79,7 @@ function transitFixture(overrides: Partial<Record<string, unknown>> = {}) {
 describe('resolveDueTransits', () => {
   beforeEach(() => {
     findMany.mockReset();
+    findUnique.mockReset();
     updateMany.mockReset();
     del.mockReset();
     narrateAndPersistTurn.mockReset();
@@ -103,9 +106,10 @@ describe('resolveDueTransits', () => {
     // distingue "reclamado, narrándose de verdad" de "todavía esperando" para
     // POST /saves/:id/transit/cancel (ver session.ts), independiente de `busyUntil`.
     expect(updateMany).toHaveBeenCalledWith({
-      where: { id: 't1', busyUntil: { lte: expect.any(Date) } },
+      where: { id: 't1', busyUntil: { lte: expect.any(Date) }, narrationClaimedAt: null },
       data: {
         busyUntil: expect.any(Date),
+        narrationClaimedAt: expect.any(Date),
         zoneContext: expect.objectContaining({ action: 'seguir caminando', claimedAt: expect.any(String) }),
       },
     });
@@ -196,5 +200,54 @@ describe('resolveDueTransits', () => {
 
     expect(narrateAndPersistTurn).toHaveBeenCalledTimes(2);
     expect(narrateAndPersistTurn).toHaveBeenNthCalledWith(2, expect.objectContaining({ transitIdToFinalize: 'ok' }));
+  });
+});
+
+// Espera de viaje precalculada (2026-08-13) — arranque anticipado desde turn.ts, ver comentario
+// de la función en worldTick.ts. Reclama por id, SIN condición de `busyUntil` (a diferencia de
+// `resolveDueTransits`, que solo mira tránsitos ya vencidos) — esta fila se acaba de crear.
+describe('startEagerTransitResolution', () => {
+  beforeEach(() => {
+    findUnique.mockReset();
+    updateMany.mockReset();
+    del.mockReset();
+    narrateAndPersistTurn.mockReset();
+    vi.spyOn(console, 'error').mockImplementation(() => undefined);
+  });
+
+  it('lee la fila, reclama con claimedAt en zoneContext, y narra con notBefore', async () => {
+    findUnique.mockResolvedValue(transitFixture());
+    updateMany.mockResolvedValue({ count: 1 });
+    narrateAndPersistTurn.mockResolvedValue(undefined);
+    const notBefore = new Date(Date.now() + 5000);
+
+    await startEagerTransitResolution('t1', notBefore);
+
+    expect(findUnique).toHaveBeenCalledWith(expect.objectContaining({ where: { id: 't1' } }));
+    // `claimedAt` viaja en el mismo reclamo (auditoría 2026-08-13) — para que
+    // POST /saves/:id/transit/cancel vea que esto ya se está resolviendo de verdad.
+    expect(updateMany).toHaveBeenCalledWith({
+      where: { id: 't1', narrationClaimedAt: null },
+      data: { narrationClaimedAt: expect.any(Date), zoneContext: expect.objectContaining({ action: 'seguir caminando', claimedAt: expect.any(String) }) },
+    });
+    expect(narrateAndPersistTurn).toHaveBeenCalledWith(expect.objectContaining({ transitIdToFinalize: 't1', notBefore }));
+  });
+
+  it('no hace nada si la fila ya no existe al leerla (cancelada al vuelo antes de poder reclamarla)', async () => {
+    findUnique.mockResolvedValue(null);
+
+    await startEagerTransitResolution('t1', new Date());
+
+    expect(updateMany).not.toHaveBeenCalled();
+    expect(narrateAndPersistTurn).not.toHaveBeenCalled();
+  });
+
+  it('no hace nada si el reclamo falla (count 0) — no narra', async () => {
+    findUnique.mockResolvedValue(transitFixture());
+    updateMany.mockResolvedValue({ count: 0 });
+
+    await startEagerTransitResolution('t1', new Date());
+
+    expect(narrateAndPersistTurn).not.toHaveBeenCalled();
   });
 });

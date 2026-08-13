@@ -1806,7 +1806,32 @@ REAL) ya venció; hasta entonces, `/turn/classify` devuelve 409 "sigue ocupado",
 de saltarse la espera actuando/refrescando antes. La propuesta de la usuaria (narrar ya si no hay
 evento; si hay evento, resolverlo y EDITAR el primer prompt de llegada con sus matices) es viable
 pero requiere cambio real de backend: adelantar `narrateAndPersistTurn` al momento de iniciar el
-viaje cuando `interruption === null`. **Estado**: PENDIENTE, propuesta de diseño a valorar.
+viaje cuando `interruption === null`.
+
+**Fix aplicado (2026-08-13, decisión de diseño confirmada: "calcular ya, pero ocultarlo hasta que
+acabe la espera")**: `narrateAndPersistTurn` gana un parámetro opcional `notBefore: Date` — todo el
+cómputo (incluida la llamada al modelo) corre exactamente igual que siempre, pero justo ANTES de
+abrir la transacción que compromete el resultado en BD, si `notBefore` todavía no ha llegado,
+espera (`setTimeout`) hasta esa fecha. `turn.ts`, al iniciar un viaje SIN evento
+(`interruption === null`), llama (fire-and-forget, sin bloquear la respuesta HTTP) a la nueva
+`startEagerTransitResolution(transitId, busyUntil)` (`worldTick.ts`) — mismo cuerpo de resolución
+que ya usaba el barrido periódico (`resolveClaimedTransit`, extraído de `resolveDueTransits`),
+reclamando la fila por id con una columna nueva (`CharacterTransit.narrationClaimedAt`,
+independiente de `busyUntil`, que sigue siendo puramente la cuenta atrás visible del jugador) para
+que el barrido periódico nunca la resuelva dos veces. `zoneContext.claimedAt` también se marca en
+el mismo reclamo, para que `POST /saves/:id/transit/cancel` sepa que esta fila ya se está
+resolviendo de verdad (ver ese comentario en session.ts) y no desperdicie una narración ya
+generada. Con evento (`interruption !== null`) se deja la resolución diferida de siempre, sin
+adelantarla — `effectiveTravel` ya incorpora el truncamiento, no hay ningún "editar el prompt
+después" que hacer aparte en esta arquitectura concreta.
+
+Verificado: `tsc` limpio, 893 tests backend (incluye cobertura nueva de
+`startEagerTransitResolution` en `worldTick.test.ts`, y un test de integración contra Postgres real
+en `turn.integration.test.ts` que confirma que el commit NO se hace antes de `notBefore` y que un
+barrido de `resolveDueTransits()` a mitad de la espera no duplica la resolución), 3 integration
+test files en verde por separado.
+
+**Estado**: FIJADO.
 
 **6b. Cazar varios animales de la misma especie pero solo 1 cadáver para desollar — CONFIRMADO,
 desajuste real por diseño del modelo de datos.** `NpcState` para fauna `PLANTILLA` usa
@@ -1814,9 +1839,39 @@ desajuste real por diseño del modelo de datos.** `NpcState` para fauna `PLANTIL
 cada individuo (`schema.prisma:1087-1121`). `cazar.ts:38-43` lo confirma explícitamente ("solo se
 admite UNA presa por especie por petición"); el despiece (`harvest.ts:96-138`) consulta esa misma
 fila única. La narración puede describir varias muertes de la misma especie ("7 Corretolvas"), pero
-solo hay un cadáver mecánico real por especie+ubicación. **Estado**: PENDIENTE — a decidir si el
-modelo de datos pasa a trackear individuos (cambio grande) o si se ajusta la narración/vocabulario
-para no prometer más cadáveres de los que hay (cambio pequeño).
+solo hay un cadáver mecánico real por especie+ubicación.
+
+**Fix aplicado (2026-08-13, spec ampliada por la usuaria en vivo)**: "el jugador primero debe
+marcar contra cuantos quiere combatir... con un cálculo determinista puede darse que salgan menos
+o más de los que marcaste... y que el narrador no prometa nada que no se realice por acción". Se
+descartó trackear individuos con filas separadas (habría exigido tocar el `@@unique([saveId,
+npcId, scope])`) a favor de un **contador en la misma fila** (decisión explícita de la usuaria):
+`NpcState` gana `groupSize`/`groupDefeated`/`corpsesLooted` (null/0/0 = encuentro solitario de
+siempre, sin cambio de comportamiento para todo el código anterior a este campo).
+
+- `cazar.ts`: con `avistados > 1`, `rollGroupEngagement` (tirada 1d6: 1-2 uno menos, 3-4 igual,
+  5-6 uno más que lo elegido, topado a `[1, avistados]`) decide el tamaño REAL del grupo antes de
+  devolver el `actionText` — `groupVarianceClause` añade una frase determinista cuando difiere de
+  lo marcado ("aunque al acercarme, otro más se suma de repente, sin previo aviso" / "aunque al
+  final solo consigo acorralar a uno de los que había marcado"), nunca decidida por el modelo.
+- `turnResolution.ts` (`applyCombatExchangeToNpcState`/`applyExecuteTargets`): un golpe que deja al
+  individuo ACTUAL incapacitado/muerto, con más miembros por caer, "resucita" el mismo `NpcState` a
+  ILESO para el siguiente (mismo `groupDefeated` sube uno) en vez de cerrar el encuentro — el
+  combate sigue de verdad, no es cosmético. Hint gemelo antes de narrar (`resolveCombatExchangePhase`
+  y el bloque de "Decapitar") deja explícito si quedan más o si era el último, para que el
+  Narrador nunca cierre el grupo antes de tiempo ni lo alargue de más.
+- `recolectar.ts`/`harvest.ts`: el despiece de un grupo consume `corpsesLooted < groupDefeated`
+  (cadáveres reales ya caídos y sin despiezar) en vez del booleano `saqueado` — permite despiece
+  parcial mientras el combate contra el resto del grupo sigue abierto.
+- Frontend (`HuntSelectionModal.tsx`): selector +/- por especie cuando `avistados > 1`, tope real
+  en `avistados`, enviado como `cantidades` a `POST /cazar/confirmar`.
+
+Verificado: `tsc` limpio (backend+frontend), 904 tests backend + 22 frontend, 54+2+2 integration
+tests en verde por separado — incluye un test de integración nuevo contra Postgres real que
+confirma el ciclo completo (cae el primer individuo → resucita a ILESO con `groupDefeated=1` →
+despiece parcial consume el cadáver real → cae el último → queda INCAPACITADO de verdad).
+
+**Estado**: FIJADO.
 
 **Aparte (mismo hilo, diseño de combate — CORREGIDO tras una primera respuesta equivocada)**: la
 usuaria preguntó si el combate debería mostrar una tirada OPUESTA real (su atributo vs el atributo

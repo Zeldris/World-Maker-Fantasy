@@ -119,6 +119,38 @@ async function candidateFaunaFor(worldId: string, region: string | null, playerL
 const CAZA_EXPLORAR_INTENTOS = 3;
 const CAZA_EXPLORAR_CHANCE_FALLO = 0.35;
 
+/// Caza en grupo (2026-08-13, petición explícita: "el jugador primero debe marcar contra cuantos
+/// quiere combatir... con un calculo determinista puede darse que salgan menos o más de los que
+/// marcaste"). Tirada simple 1d6 sobre lo elegido — primera versión de balance, ajustable después
+/// con datos reales de partida: 1-2 uno menos (algunos se dispersan/no llegan a comprometerse),
+/// 3-4 exactamente lo elegido, 5-6 uno más (el ruido del combate atrae a otro del grupo). Topado
+/// siempre a [1, avistados] — nunca menos de 1 (no tiene sentido "cazar cero") ni más de lo que de
+/// verdad hay avistado.
+export function rollGroupEngagement(cantidadElegida: number, avistados: number, random: () => number = Math.random): number {
+  const roll = Math.floor(random() * 6) + 1;
+  const delta = roll <= 2 ? -1 : roll >= 5 ? 1 : 0;
+  return Math.max(1, Math.min(avistados, cantidadElegida + delta));
+}
+
+/// Cláusula determinista para el texto de la acción cuando lo que de verdad se compromete al
+/// combate difiere de lo que el jugador marcó (petición explícita, 2026-08-13: "que refleje la
+/// intrusión cuando sale más o menos de lo que marcaste... si marcas 2 y solo consigues acorralar
+/// a uno" / "arrinconas a una pero otra aparece repentinamente"). Nunca deja que el Narrador
+/// decida ni invente el número — esto ya es el hecho resuelto, la prosa libre solo lo viste.
+/// `null` si `cantidadReal === cantidadElegida` (nada que aclarar).
+export function groupVarianceClause(cantidadElegida: number, cantidadReal: number): string | null {
+  if (cantidadReal === cantidadElegida) return null;
+  if (cantidadReal > cantidadElegida) {
+    const extra = cantidadReal - cantidadElegida;
+    return extra === 1
+      ? 'aunque al acercarme, otro más se suma de repente, sin previo aviso'
+      : `aunque al acercarme, ${extra} más se suman de repente, sin previo aviso`;
+  }
+  return cantidadReal === 1
+    ? 'aunque al final solo consigo acorralar a uno de los que había marcado'
+    : `aunque al final solo consigo acorralar a ${cantidadReal} de los que había marcado`;
+}
+
 export function rollSightings(candidates: HuntCandidate[], random: () => number = Math.random): HuntCandidate[] {
   const found = new Map<string, HuntCandidate>();
   for (let i = 0; i < CAZA_EXPLORAR_INTENTOS; i++) {
@@ -171,8 +203,8 @@ export async function cazarRoutes(app: FastifyInstance) {
     return { candidates: sightedInfo };
   });
 
-  app.post<{ Params: { id: string }; Body: { slugs: string[] } }>('/saves/:id/cazar/confirmar', async (request, reply) => {
-    const { slugs } = request.body;
+  app.post<{ Params: { id: string }; Body: { slugs: string[]; cantidades?: Record<string, number> } }>('/saves/:id/cazar/confirmar', async (request, reply) => {
+    const { slugs, cantidades } = request.body;
     if (!Array.isArray(slugs) || slugs.length === 0) {
       return reply.status(400).send({ error: 'Falta el campo: slugs' });
     }
@@ -241,11 +273,36 @@ export async function cazarRoutes(app: FastifyInstance) {
       };
     }
 
+    // Caza en grupo (2026-08-13) — solo tiene sentido para especies con más de un avistado; con 1
+    // avistado, el combate sigue exactamente igual que siempre (NpcState sin groupSize, creada
+    // fresca por el propio motor de turnos como cualquier encuentro solitario). Se resuelve AQUÍ,
+    // antes de devolver el actionText, para que el combate ya empiece contra el tamaño de grupo
+    // real — nunca decidido por el modelo, ver comentario de `rollGroupEngagement`.
+    const npcsBySlug = new Map((await prisma.npc.findMany({ where: { worldId: save.worldId, slug: { in: selected.map((c) => c.slug) } } })).map((n) => [n.slug, n]));
+    const currentLocationId = save.currentLocation?.id ?? null;
+    const varianceClauses: string[] = [];
+    await Promise.all(
+      selected
+        .map((c) => ({ ...c, avistados: avistadosFor(c.capturablePct, c.poblacion) }))
+        .filter((c) => c.avistados > 1)
+        .map(async (c) => {
+          const npc = npcsBySlug.get(c.slug);
+          if (!npc) return;
+          const cantidadElegida = Math.max(1, Math.min(c.avistados, Math.round(cantidades?.[c.slug] ?? c.avistados)));
+          const cantidadReal = rollGroupEngagement(cantidadElegida, c.avistados);
+          const scope = scopeFor(npc.kind, currentLocationId);
+          await prisma.npcState.upsert({
+            where: { saveId_npcId_scope: { saveId: save.id, npcId: npc.id, scope } },
+            create: { saveId: save.id, npcId: npc.id, scope, condicionFisica: 'ILESO', groupSize: cantidadReal, groupDefeated: 0, corpsesLooted: 0 },
+            update: { condicionFisica: 'ILESO', groupSize: cantidadReal, groupDefeated: 0, corpsesLooted: 0, saqueado: false, lootedItemNames: [] },
+          });
+          const clause = groupVarianceClause(cantidadElegida, cantidadReal);
+          if (clause) varianceClauses.push(`Con '${c.name}', ${clause}.`);
+        }),
+    );
+
     const names = selected.map((c) => c.name);
-    return {
-      resuelveSinCombate: false,
-      exito: null,
-      actionText: `Salgo a cazar y ataco a ${names.map((n) => `'${n}'`).join(', ')}.`,
-    };
+    const actionText = [`Salgo a cazar y ataco a ${names.map((n) => `'${n}'`).join(', ')}.`, ...varianceClauses].join(' ');
+    return { resuelveSinCombate: false, exito: null, actionText };
   });
 }

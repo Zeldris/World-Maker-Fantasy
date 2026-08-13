@@ -429,6 +429,13 @@ model CharacterTransit {
   busyUntil   DateTime
   zoneContext Json?
   createdAt   DateTime @default(now())
+  /// Espera de viaje precalculada (2026-08-13) — candado de reclamo SEPARADO de `busyUntil`
+  /// (que sigue siendo puramente la cuenta atrás visible del jugador, nunca se toca para esto).
+  /// `turn.ts` lo pone al arrancar un viaje sin evento, reclamando esta fila para la resolución
+  /// anticipada (ver `startEagerTransitResolution`, workers/worldTick.ts) — mientras esté puesto,
+  /// `resolveDueTransits` (el barrido periódico) la ignora aunque `busyUntil` ya haya vencido, para
+  /// que las dos vías nunca narren la misma fila dos veces.
+  narrationClaimedAt DateTime?
 }
 
 /// Los 13 huecos de equipo fijos que pidió la usuaria — puramente organizativo/narrativo, sin
@@ -1137,6 +1144,25 @@ model NpcState {
   /// (recupera a HERIDO a las 6h) o MUERTO (el cadáver desaparece a las 48h) — se rellena siempre
   /// que cambia por simplicidad, aunque para ILESO/HERIDO/GRAVE no se lea nunca.
   condicionFisicaSinceMinutes Int?
+  /// Caza en grupo (2026-08-13, petición explícita: "el jugador primero debe marcar contra
+  /// cuantos quiere combatir... con un calculo determinista puede darse que salgan menos o más
+  /// de los que marcaste... y que el narrador no prometa nada que no se realice por acción").
+  /// Contador en la MISMA fila en vez de una fila por individuo (decisión explícita: no tocar el
+  /// `@@unique([saveId, npcId, scope])` de arriba) — esta fila sigue representando UN individuo
+  /// "activo" de combate a la vez; cuando cae, si `groupDefeated + 1 < groupSize` todavía quedan
+  /// más, así que `condicionFisica` "resucita" a ILESO para el siguiente en vez de quedarse en
+  /// MUERTO (ver `applyCombatExchangeToNpcState`/`applyExecuteTargets`, turnResolution.ts). null
+  /// = encuentro solitario de siempre, sin cambio de comportamiento (todo el código que ya existía
+  /// antes de este campo sigue funcionando igual, `groupSize` nunca se pone fuera de cazar.ts).
+  groupSize       Int?
+  /// Cuántos individuos del grupo han caído (MUERTO) hasta ahora — sube en cada kill dentro del
+  /// grupo, tope real en `groupSize`. Ver `corpsesLooted` para cuántos de esos cadáveres ya se
+  /// despiezaron (recolectar.ts).
+  groupDefeated   Int             @default(0)
+  /// Cadáveres del grupo YA despiezados — sustituye a `saqueado` (booleano, solo tiene sentido
+  /// para 1 individuo) cuando `groupSize` no es null. Disponibles para despiece ahora mismo =
+  /// `groupDefeated - corpsesLooted`, nunca negativo.
+  corpsesLooted   Int             @default(0)
   updatedAt       DateTime        @updatedAt
 
   @@unique([saveId, npcId, scope])

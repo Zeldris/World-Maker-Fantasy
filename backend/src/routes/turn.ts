@@ -48,6 +48,7 @@ import {
 } from '../services/playerActionValidation.js';
 import { harvestSourceAliases } from '../scripts/worldCatalog.js';
 import { detectsPostCombatInteraction } from '../services/postCombatInteraction.js';
+import { startEagerTransitResolution } from '../workers/worldTick.js';
 
 interface ClassifyBody {
   saveId: string;
@@ -616,7 +617,7 @@ export async function turnRoutes(app: FastifyInstance) {
       // `createdAt` explícito con +1ms fuerza el orden real sin depender del default compartido.
       const playerActionAt = new Date();
       const startTextAt = new Date(playerActionAt.getTime() + 1);
-      await prisma.$transaction([
+      const [, , transitRow] = await prisma.$transaction([
         prisma.logEntry.create({
           data: {
             saveId,
@@ -670,6 +671,21 @@ export async function turnRoutes(app: FastifyInstance) {
         }),
         prisma.save.update({ where: { id: saveId }, data: { lastPlayedAt: new Date() } }),
       ]);
+
+      // Espera de viaje precalculada (2026-08-13, petición explícita: "si no hay eventos con las
+      // esperas... no hay que esperar los mins y luego lanzar el prompt... el prompt se lanza ya
+      // en medio de la espera"). Solo cuando NO hay evento (`interruption === null`): con evento,
+      // `pickTravelInterruption` YA truncó `effectiveTravel` a la parada intermedia real — no hay
+      // ningún paso posterior de "resolver el evento" que editar, el propio `effectiveTravel` ya
+      // lo incorpora — pero se deja la resolución diferida de siempre para ese caso, sin
+      // adelantarla, por prudencia (menos margen de sobra si algo del evento cambia entre medias).
+      // Fire-and-forget: no bloquea esta respuesta, y cualquier fallo se registra solo, el barrido
+      // periódico de `worldTick.ts` reintenta esta misma fila si `narrationClaimedAt` se libera.
+      if (!interruption) {
+        void startEagerTransitResolution(transitRow.id, busyUntil).catch((err) =>
+          console.error(`[turn] error en la resolución anticipada del tránsito ${transitRow.id}:`, err),
+        );
+      }
 
       // Petición explícita de la usuaria (2026-07-30): "cuando salgan esas esperas que ponga
       // ej: 7 mins de tiempo real 2 dias en Helek" — sin esto, la espera solo mostraba el

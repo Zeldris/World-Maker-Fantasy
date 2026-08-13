@@ -27,6 +27,10 @@ const detectNpcsInScene = vi.fn();
 const scopeFor = vi.fn();
 const findUniqueNpcTx = vi.fn();
 const updateManyNpcStateTx = vi.fn();
+// Caza en grupo (2026-08-13) — lectura previa para decidir si el cadáver es de un grupo
+// (corpsesLooted/groupDefeated) o solitario (saqueado); null = solitario, comportamiento de
+// siempre para los tests ya existentes de esta describe.
+const findUniqueNpcStateTx = vi.fn();
 // Cierre de misión "conseguir Z" (auditoría 2026-08-11, bug real: closeItemQuests nunca se
 // llamaba desde este endpoint) — mockeados con valor por defecto inocuo para que los tests que no
 // les prestan atención no revienten si closeItemQuests llega a consultarlos.
@@ -78,6 +82,7 @@ describe('POST /saves/:id/recolectar/confirmar', () => {
     appendSessionFacts.mockReset().mockResolvedValue(undefined);
     findUniqueNpcTx.mockReset();
     updateManyNpcStateTx.mockReset();
+    findUniqueNpcStateTx.mockReset().mockResolvedValue(null);
     scopeFor.mockReset().mockReturnValue('');
     findManyQuestTx.mockReset().mockResolvedValue([]);
     updateQuestTx.mockReset();
@@ -102,7 +107,10 @@ describe('POST /saves/:id/recolectar/confirmar', () => {
         harvestYield: { findFirst: (...args: unknown[]) => findFirstHarvestYield(...args) },
         worldPopulation: { updateMany: (...args: unknown[]) => updateManyWorldPopulation(...args) },
         npc: { findUnique: (...args: unknown[]) => findUniqueNpcTx(...args) },
-        npcState: { updateMany: (...args: unknown[]) => updateManyNpcStateTx(...args) },
+        npcState: {
+          updateMany: (...args: unknown[]) => updateManyNpcStateTx(...args),
+          findUnique: (...args: unknown[]) => findUniqueNpcStateTx(...args),
+        },
         quest: {
           findMany: (...args: unknown[]) => findManyQuestTx(...args),
           update: (...args: unknown[]) => updateQuestTx(...args),
@@ -452,6 +460,52 @@ describe('POST /saves/:id/recolectar/confirmar', () => {
     });
 
     expect(updateManyNpcStateTx).toHaveBeenCalledTimes(1);
+  });
+
+  // Caza en grupo (2026-08-13) — con `groupSize` puesto, el despiece consume UN cadáver real
+  // (`corpsesLooted < groupDefeated`) en vez del booleano `saqueado`, que solo tiene sentido para
+  // un individuo solitario.
+  describe('Caza en grupo: despiece consume corpsesLooted/groupDefeated en vez de saqueado', () => {
+    it('con cadáveres reales disponibles (groupDefeated > corpsesLooted), reclama uno y NO toca saqueado', async () => {
+      findFirstHarvestYield.mockResolvedValue({ cantidad: 1, metodoObtencion: 'CAZA', item: { slug: 'piel-corretolvas', name: 'Piel de Corretolvas' } });
+      findUniqueNpcTx.mockResolvedValue({ id: 'npc1', kind: 'PLANTILLA' });
+      scopeFor.mockReturnValue('loc1');
+      findUniqueNpcStateTx.mockResolvedValue({ groupSize: 5, groupDefeated: 2, corpsesLooted: 0 });
+      updateManyNpcStateTx.mockResolvedValue({ count: 1 });
+      createInventoryItem.mockResolvedValue({ id: 'item1' });
+      const app = await buildApp();
+
+      const res = await app.inject({
+        method: 'POST',
+        url: '/saves/save1/recolectar/confirmar',
+        payload: { selections: [{ sourceSlug: 'corretolvas', itemSlug: 'piel-corretolvas', cantidad: 1 }] },
+      });
+
+      expect(res.statusCode).toBe(200);
+      expect(updateManyNpcStateTx).toHaveBeenCalledWith({
+        where: { saveId: 'save1', npcId: 'npc1', scope: 'loc1', corpsesLooted: { lt: 2 } },
+        data: { corpsesLooted: { increment: 1 } },
+      });
+    });
+
+    it('sin cadáveres reales disponibles (corpsesLooted ya alcanzó groupDefeated), el guard atómico bloquea aunque el grupo siga en pie', async () => {
+      findFirstHarvestYield.mockResolvedValue({ cantidad: 1, metodoObtencion: 'CAZA', item: { slug: 'piel-corretolvas', name: 'Piel de Corretolvas' } });
+      findUniqueNpcTx.mockResolvedValue({ id: 'npc1', kind: 'PLANTILLA' });
+      scopeFor.mockReturnValue('loc1');
+      findUniqueNpcStateTx.mockResolvedValue({ groupSize: 5, groupDefeated: 1, corpsesLooted: 1 });
+      updateManyNpcStateTx.mockResolvedValue({ count: 0 }); // corpsesLooted(1) < groupDefeated(1) es falso en la BD real
+      const app = await buildApp();
+
+      const res = await app.inject({
+        method: 'POST',
+        url: '/saves/save1/recolectar/confirmar',
+        payload: { selections: [{ sourceSlug: 'corretolvas', itemSlug: 'piel-corretolvas', cantidad: 1 }] },
+      });
+
+      expect(res.statusCode).toBe(200);
+      expect(JSON.parse(res.body).items).toEqual([]);
+      expect(createInventoryItem).not.toHaveBeenCalled();
+    });
   });
 
   it('rechaza sin ninguna selección', async () => {

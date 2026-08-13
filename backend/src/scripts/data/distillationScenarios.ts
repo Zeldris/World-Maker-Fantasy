@@ -77,6 +77,8 @@ function npcInSceneFromCatalog(npc: NpcInput, overrides: Partial<NpcInScene> = {
     lootedItemNames: [],
     energia: null,
     analizado: false,
+    groupSize: null,
+    groupDefeated: 0,
     ...overrides,
   };
 }
