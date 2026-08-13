@@ -4,9 +4,10 @@
 // (alternativa larga-a-corta para que gane siempre la coincidencia más específica, p.ej.
 // "Kort'ikar Torgash" antes que "Torgash" a secas) más un mapa de texto normalizado → DetailTarget.
 //
-// Deliberadamente NO se indexan razas ni el nombre propio de Gorhorn: "orco"/"Orcos" es
-// prácticamente un sustantivo común en este mundo (aparecería subrayado en casi cada frase de
-// combate) y "Gorhorn" sale en casi cada entrada del diario — el ruido visual no compensaría.
+// Deliberadamente NO se indexan razas: "orco"/"Orcos" es prácticamente un sustantivo común en
+// este mundo (aparecería subrayado en casi cada frase de combate) — el ruido visual no
+// compensaría. (Gorhorn SÍ se indexa desde 2026-08-13, petición explícita de la usuaria, pese a
+// que sale en casi cada línea del diario — decisión consciente de asumir ese ruido visual.)
 //
 // Tampoco se indexan "Facciones"/"Historia" (2026-08-06, decisión explícita al construir esas
 // secciones, no un olvido): nombres como "Concordia de Hierro" ya aparecen constantemente en bios
@@ -86,9 +87,6 @@ export function buildEnciclopediaIndex(data: EnciclopediaResponse | null, recipe
     loc.aliases.forEach((alias) => register(alias, target))
   }
   for (const pj of data.personajes) {
-    // Gorhorn queda fuera a propósito: es el protagonista, su nombre sale en casi cada línea de
-    // narración — enlazarlo cada vez sería puro ruido visual, no ayuda real de navegación.
-    if (pj.slug === 'gorhorn') continue
     const target = personajeToDetailTarget(pj)
     register(pj.name, target)
     ;(pj.aliases ?? []).forEach((alias) => register(alias, target))

@@ -3,6 +3,9 @@ import { CONDICION_LABEL } from '../lib/health'
 import { attributeLabels, attributeColorClasses, attributeAbbr } from '../lib/dice'
 import { recommendedAttributeAgainst } from '../lib/attributeWheel'
 import { resolveImageUrl, type EnciclopediaResponse } from '../lib/api'
+import { resolveCombatAbilities } from '../lib/npcAbilities'
+import { faunaFloraToDetailTarget } from '../lib/enciclopediaTargets'
+import { useEnciclopediaLink } from '../context/useEnciclopediaLink'
 import { HealthBar } from './HealthBar'
 import { EnergyBar } from './EnergyBar'
 import { MediaSlot } from './ImagePromptDisplay'
@@ -92,6 +95,7 @@ function EnemyFicha({
   // imagen/bio dentro del mismo bloque "Información", sin distinguir "sobre el rival" de
   // "lo que YO he descubierto sobre él con Analizar rival".
   const [fichaTab, setFichaTab] = useState<'info' | 'analisis'>('info')
+  const { onEntityDetail } = useEnciclopediaLink()
   const target = useMemo(() => {
     if (!enciclopedia) return null
     const npc = enciclopedia.npcs.find((n) => n.slug === slug)
@@ -108,6 +112,15 @@ function EnemyFicha({
         // fallback.
         imageUrl: resolveImageUrl(npc.variantesSexo?.[0]?.imageUrls.banner ?? npc.imageUrls.banner),
         attributes: npc.attributes,
+        // Petición explícita (2026-08-13): "al analizar al enemigo no sale ni sus attrs ni sus
+        // habilidades" — `resolveCombatAbilities` (lib/npcAbilities.ts) ya existía, escrita para
+        // esto mismo, pero nunca se llamó desde ningún sitio real. Humanoide: se resuelve por
+        // clase/raza (catálogos ya en la Enciclopedia), no por `habilidadesRaciales` (eso es solo
+        // de fauna).
+        abilities: resolveCombatAbilities(
+          { level: npc.level, ataqueBase: npc.ataqueBase, raza: npc.raza, clase: npc.clase },
+          enciclopedia,
+        ),
       }
     }
     const fauna = enciclopedia.faunaFlora.find((f) => f.sourceSlug === slug)
@@ -118,6 +131,10 @@ function EnemyFicha({
         bio: fauna.description ?? '',
         imageUrl: resolveImageUrl(fauna.variantesSexo?.[0]?.imageUrls.banner ?? fauna.imageUrls.banner),
         attributes: fauna.attributes ?? null,
+        abilities: resolveCombatAbilities(
+          { level: fauna.level ?? undefined, ataqueBase: fauna.ataqueBase, habilidadesRaciales: fauna.habilidadesRaciales, selfTarget: faunaFloraToDetailTarget(fauna) },
+          enciclopedia,
+        ),
       }
     }
     return null
@@ -184,11 +201,59 @@ function EnemyFicha({
                   {target.bio && <p className="text-xs leading-relaxed text-wood-300">{target.bio}</p>}
                 </>
               ) : atributoRecomendado ? (
-                <p className="flex items-center gap-1.5 text-xs text-wood-300">
-                  <span className={`h-2 w-2 shrink-0 rounded-full ${attributeColorClasses[atributoRecomendado].dot}`} aria-hidden="true" />
-                  <span className="font-semibold uppercase tracking-[0.08em] text-wood-500">Atributo recomendado:</span>{' '}
-                  {attributeLabels[atributoRecomendado]}
-                </p>
+                <>
+                  <p className="flex items-center gap-1.5 text-xs text-wood-300">
+                    <span className={`h-2 w-2 shrink-0 rounded-full ${attributeColorClasses[atributoRecomendado].dot}`} aria-hidden="true" />
+                    <span className="font-semibold uppercase tracking-[0.08em] text-wood-500">Atributo recomendado:</span>{' '}
+                    {attributeLabels[atributoRecomendado]}
+                  </p>
+                  {/* Atributos + habilidades del rival (2026-08-13, petición explícita: "al
+                      analizar al enemigo no sale ni sus attrs ni sus habilidades") — solo se
+                      revelan aquí, tras un análisis con éxito, nunca antes (mismo criterio que el
+                      atributo recomendado de arriba). */}
+                  {target.attributes && (
+                    <div className="grid grid-cols-3 gap-x-3 gap-y-1 rounded-lg border border-iron-800 bg-wood-950/40 p-2">
+                      {(Object.entries(target.attributes) as [keyof typeof attributeLabels, number][]).map(([attr, value]) => (
+                        <p key={attr} className={`flex items-center gap-1 text-2xs ${attributeColorClasses[attr].text}`}>
+                          <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${attributeColorClasses[attr].dot}`} aria-hidden="true" />
+                          {attributeAbbr[attr]} <span className="font-mono text-wood-300">{value}</span>
+                        </p>
+                      ))}
+                    </div>
+                  )}
+                  {target.abilities.length > 0 && (
+                    <div className="space-y-1.5">
+                      <p className="text-2xs font-semibold uppercase tracking-[0.08em] text-wood-500">Habilidades</p>
+                      {target.abilities.map((a, i) => (
+                        <div key={`${a.name}-${i}`} className="flex items-start gap-2 rounded-lg border border-iron-800 bg-wood-950/40 p-2">
+                          <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-wood-800 text-xs" aria-hidden="true">
+                            {a.icon}
+                          </span>
+                          <span className="min-w-0 flex-1 text-2xs">
+                            <span className="flex items-center gap-1.5">
+                              <span className="truncate text-wood-200">{a.name}</span>
+                              <span className={`inline-flex items-center gap-1 font-mono ${attributeColorClasses[a.preferredAttribute].text}`}>
+                                <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${attributeColorClasses[a.preferredAttribute].dot}`} aria-hidden="true" />
+                                {attributeAbbr[a.preferredAttribute]}
+                              </span>
+                            </span>
+                            <span className="mt-0.5 block leading-snug text-wood-400">{a.description}</span>
+                          </span>
+                          {a.detailTarget && (
+                            <button
+                              type="button"
+                              onClick={() => onEntityDetail?.(a.detailTarget!)}
+                              aria-label={`Consultar ${a.name} en la Enciclopedia`}
+                              className="tactile flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-iron-700 bg-wood-950/70 text-2xs text-wood-500 transition-colors hover:border-accent-600/60 hover:text-accent-300"
+                            >
+                              ⓘ
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </>
               ) : (
                 <p className="text-2xs italic text-wood-500">Analiza al rival para descubrir qué atributo conviene usar contra él.</p>
               )}
