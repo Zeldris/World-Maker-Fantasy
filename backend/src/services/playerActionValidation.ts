@@ -1,10 +1,11 @@
 /// Validador de "grounding" de la acción del JUGADOR contra el estado real de la partida — lado
 /// simétrico de la familia de detectores "narración-vs-mecánica" (narrador.ts), que ya protege al
 /// Narrador de inventar NPCs/objetos/viajes. Ver docs/18-validacion-accion-jugador.md para el
-/// diseño completo por fases; este archivo implementa la Fase 0 (mecanismo) + el primer chequeo
-/// de la Fase 1 (arma que no llevas). Regla de diseño fija: nunca una lista de entidades quemada
-/// en el código — solo lo que ya trae la propia partida (equipo real, NPCs en escena...), para
-/// que crecer el catálogo del mundo no obligue nunca a tocar este archivo.
+/// diseño completo por fases; este archivo implementa las Fases 0-3 (Fase 3 acotada a nombre
+/// citado entre comillas, para no arriesgar falsos positivos sobre prosa libre). Regla de diseño
+/// fija: nunca una lista de entidades quemada en el código — solo lo que ya trae la propia
+/// partida (equipo real, NPCs en escena...) o el catálogo real del mundo, para que crecer el
+/// catálogo no obligue nunca a tocar este archivo.
 ///
 /// Se llama al principio de `POST /turn/classify` (turn.ts), ANTES de la primera llamada a IA
 /// (`classifyAction`, narrador.ts) — si detecta una violación, el turno se resuelve aquí mismo con
@@ -150,6 +151,55 @@ export function absentSceneNpcNarrationFor(nombre: string): string {
   return line(nombre);
 }
 
+export interface FabricatedNpcClaim {
+  /// Nombre citado por el jugador tal cual, entre comillas.
+  quotedName: string;
+}
+
+/// Nombre citado entre comillas simples ("ataco a 'el Dragón de Fuego Eterno'") — mismo patrón
+/// que ya usa `itemReference.ts`/`turnResolution.ts` para objetivo explícito de combate.
+const QUOTED_NAME_REGEX = /'([^']+)'/;
+
+/// Por debajo de esto no dispara — evita falsos positivos con comillas triviales ("digo 'hola'"),
+/// mismo criterio que `MIN_PATTERN_LENGTH` del índice de Enciclopedia del frontend.
+const MIN_QUOTED_NAME_LENGTH = 3;
+
+/// Fase 3 de docs/18-validacion-accion-jugador.md, ACOTADA a nombre entre comillas (decisión de
+/// diseño explícita, 2026-08-13, para acotar el riesgo de falso positivo que el propio documento
+/// señala como el obstáculo principal de esta fase): detecta si el jugador nombra ENTRE COMILLAS
+/// un NPC/fauna que no existe en NINGÚN sitio del catálogo del mundo — a diferencia de
+/// `detectsAbsentSceneNpcClaim` (existe de verdad, pero no en esta escena), aquí no existe en
+/// absoluto. Texto libre SIN comillas queda fuera a propósito: "ataco al Dragón de Fuego Eterno"
+/// sin comillas no dispara — prosa descriptiva legítima que solo SUENA a nombre propio no debe
+/// bloquearse; las comillas son la señal deliberada de "esto es un nombre concreto", el mismo
+/// criterio que ya usa el resto del motor para elegir un objetivo explícito de combate.
+export async function detectsFabricatedNpcClaim(action: string, worldId: string): Promise<FabricatedNpcClaim | null> {
+  const quotedMatch = action.match(QUOTED_NAME_REGEX);
+  if (!quotedMatch) return null;
+  const quotedName = quotedMatch[1].trim();
+  if (quotedName.length < MIN_QUOTED_NAME_LENGTH) return null;
+  if (!detectsAttackIntent(action) && !detectsDialogueIntent(action) && !detectsHostileSearchIntent(action)) return null;
+  const allNpcs = await prisma.npc.findMany({ where: { worldId }, select: { slug: true, name: true, aliases: true } });
+  const matchable = allNpcs.map((n) => ({ id: n.slug, aliases: [n.name, ...n.aliases] }));
+  const matched = matchNpcAliases(quotedName, matchable);
+  return matched.length === 0 ? { quotedName } : null;
+}
+
+/// Mismo criterio que el resto — pool de 5, 1 cómica menos frecuente. A diferencia de
+/// `ABSENT_NPC_LINES`, insiste en "no existe" en vez de "no está aquí".
+const FABRICATED_NPC_LINES: ((nombre: string) => string)[] = [
+  (nombre) => `Gorhorn repite el nombre para sus adentros, buscándole algún eco real. No conoce a nadie llamado ${nombre}, ni ha oído hablar de tal cosa en ninguna tierra que haya pisado.`,
+  (nombre) => `El nombre de ${nombre} no le suena a nada — ni persona, ni bestia, ni nada que camine sobre Helek Sirik que Gorhorn sepa.`,
+  (nombre) => `Gorhorn frunce el ceño. ${nombre} no es nadie que él conozca, ni siquiera de oídas — y él ha oído hablar de más de una leyenda dudosa.`,
+  () => `No hay nadie así en este mundo que Gorhorn sepa, ni entre los vivos ni en las historias que se cuentan junto al fuego.`,
+  (nombre) => `Gorhorn se rasca la barbilla. «¿${nombre}? Suena a nombre inventado por un borracho de taberna...» Sacude la cabeza y sigue con lo suyo.`,
+];
+
+export function fabricatedNpcNarrationFor(nombre: string): string {
+  const line = FABRICATED_NPC_LINES[Math.floor(Math.random() * FABRICATED_NPC_LINES.length)];
+  return line(nombre);
+}
+
 export interface WrongRegionHarvestClaim {
   /// Nombre de la fuente reclamada, tal como la nombró el jugador (se usa el propio texto de
   /// `matchHarvestSource`, que no expone un nombre "bonito" — se resuelve en turn.ts si hace
@@ -190,6 +240,41 @@ const WRONG_REGION_HARVEST_LINES: ((nombre: string) => string)[] = [
 
 export function wrongRegionHarvestNarrationFor(nombre: string): string {
   const line = WRONG_REGION_HARVEST_LINES[Math.floor(Math.random() * WRONG_REGION_HARVEST_LINES.length)];
+  return line(nombre);
+}
+
+export interface FabricatedHarvestSourceClaim {
+  /// Nombre citado por el jugador tal cual, entre comillas.
+  quotedName: string;
+}
+
+/// Fase 3 de docs/18-validacion-accion-jugador.md, ACOTADA a nombre entre comillas — mismo
+/// criterio y misma razón que `detectsFabricatedNpcClaim`. A diferencia de
+/// `detectsWrongRegionHarvestClaim` (existe de verdad, pero en otra región), aquí la fuente citada
+/// no existe en absoluto en `harvestSourceAliases` (worldCatalog.ts). Puro, sin BD (mismo criterio
+/// que `matchHarvestSource`, del que reutiliza el matcher tal cual sobre el nombre citado).
+export function detectsFabricatedHarvestSourceClaim(action: string): FabricatedHarvestSourceClaim | null {
+  const quotedMatch = action.match(QUOTED_NAME_REGEX);
+  if (!quotedMatch) return null;
+  const quotedName = quotedMatch[1].trim();
+  if (quotedName.length < MIN_QUOTED_NAME_LENGTH) return null;
+  const hasHarvestVerb = (['CAZA', 'TALA', 'MINERIA', 'EXTRACCION'] as const).some((metodo) => matchesVerbForMetodo(action, metodo));
+  if (!hasHarvestVerb) return null;
+  return matchHarvestSource(quotedName) === undefined ? { quotedName } : null;
+}
+
+/// Mismo criterio que el resto — pool de 5, 1 cómica menos frecuente. A diferencia de
+/// `WRONG_REGION_HARVEST_LINES`, insiste en "no existe" en vez de "no crece aquí".
+const FABRICATED_HARVEST_SOURCE_LINES: ((nombre: string) => string)[] = [
+  (nombre) => `Gorhorn no tiene ni idea de qué es ${nombre} — ni lo ha visto, ni lo ha oído nombrar en ningún sitio de Helek Sirik.`,
+  (nombre) => `El nombre no le dice nada a Gorhorn. Sea lo que sea ${nombre}, no es nada que sepa reconocer, y mucho menos recolectar.`,
+  (nombre) => `Gorhorn busca en su memoria y no encuentra nada parecido a ${nombre} — ni planta, ni mineral, ni nada que pueda arrancarse de la tierra.`,
+  () => `No existe tal cosa, que Gorhorn sepa — ni en estas tierras ni en ninguna otra que haya recorrido.`,
+  (nombre) => `Gorhorn se rasca la cabeza. «¿${nombre}? A saber qué es eso... suena inventado.» Se encoge de hombros y sigue a lo suyo.`,
+];
+
+export function fabricatedHarvestSourceNarrationFor(nombre: string): string {
+  const line = FABRICATED_HARVEST_SOURCE_LINES[Math.floor(Math.random() * FABRICATED_HARVEST_SOURCE_LINES.length)];
   return line(nombre);
 }
 

@@ -582,3 +582,124 @@ describe('POST /turn/classify — arma que no lleva equipada (validador de groun
     expect(body.blocked).toBeUndefined();
   });
 });
+
+// Validador de "grounding" de la acción del jugador — Fase 3 acotada a comillas
+// (docs/18-validacion-accion-jugador.md): NPC/fauna nombrado ENTRE COMILLAS que no existe en
+// absoluto en el catálogo, no solo "existe pero no está en esta escena" (eso ya es la Fase 1,
+// arriba).
+describe('POST /turn/classify — NPC/fauna inventado citado entre comillas (validador de grounding, Fase 3)', () => {
+  beforeEach(() => {
+    findUniqueSave.mockReset();
+    findManyNpc.mockReset().mockResolvedValue([]);
+    findManyNpcState.mockReset().mockResolvedValue([]);
+    findUniqueLocation.mockReset().mockResolvedValue(null);
+    findManyLocation.mockReset().mockResolvedValue([]);
+    findManyQuest.mockReset().mockResolvedValue([]);
+    logEntryCreate.mockReset().mockResolvedValue({});
+    classifyAction.mockReset();
+  });
+
+  it('atacar a un nombre citado entre comillas que no existe en ningún sitio del catálogo se resuelve sin llamar a classifyAction', async () => {
+    findUniqueSave.mockResolvedValue({
+      id: 'save1',
+      worldId: 'world1',
+      level: 3,
+      attributes: ATTRS,
+      inventoryItems: [],
+      condicionFisica: 'ILESO',
+      currentLocationId: null,
+      endedAt: null,
+      characterTransit: null,
+      worldState: { fictionalDateLabel: 'Día 1, mañana', fictionalMinutes: 480 },
+    });
+
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/turn/classify',
+      payload: { saveId: 'save1', action: "Ataco a 'el Dragón de Fuego Eterno'." },
+    });
+
+    expect(res.statusCode).toBe(200);
+    const body = res.json();
+    expect(typeof body.blocked?.narration).toBe('string');
+    expect(classifyAction).not.toHaveBeenCalled();
+  });
+
+  it('el mismo nombre SIN comillas no dispara (prosa libre legítima), sigue el camino normal', async () => {
+    findUniqueSave.mockResolvedValue({
+      id: 'save1',
+      worldId: 'world1',
+      level: 3,
+      attributes: ATTRS,
+      inventoryItems: [],
+      condicionFisica: 'ILESO',
+      currentLocationId: null,
+      endedAt: null,
+      characterTransit: null,
+      worldState: { fictionalDateLabel: 'Día 1, mañana', fictionalMinutes: 480 },
+    });
+    classifyAction.mockResolvedValue({
+      requiereTirada: false,
+      atributo: 'fuerza',
+      dificultad: 10,
+      razon: 'x',
+      banda: 'instantanea',
+      duracionEstimadaMinutos: 0,
+    });
+
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/turn/classify',
+      payload: { saveId: 'save1', action: 'Ataco al Dragón de Fuego Eterno.' },
+    });
+
+    expect(res.statusCode).toBe(200);
+    const body = res.json();
+    expect(body.blocked).toBeUndefined();
+  });
+});
+
+// Validador de "grounding" de la acción del jugador — Fase 3 acotada a comillas: flora/mineral
+// citado entre comillas que no existe en absoluto en `harvestSourceAliases`, no solo "existe pero
+// en otra región" (eso ya es la Fase 2, arriba).
+describe('POST /turn/classify — flora/mineral inventado citado entre comillas (validador de grounding, Fase 3)', () => {
+  beforeEach(() => {
+    findUniqueSave.mockReset();
+    findManyNpc.mockReset().mockResolvedValue([]);
+    findManyNpcState.mockReset().mockResolvedValue([]);
+    findUniqueLocation.mockReset().mockResolvedValue(null);
+    findManyLocation.mockReset().mockResolvedValue([]);
+    findManyQuest.mockReset().mockResolvedValue([]);
+    logEntryCreate.mockReset().mockResolvedValue({});
+    classifyAction.mockReset();
+  });
+
+  it('recolectar un nombre citado entre comillas que no existe en ningún catálogo se resuelve sin llamar a classifyAction', async () => {
+    findUniqueSave.mockResolvedValue({
+      id: 'save1',
+      worldId: 'world1',
+      level: 3,
+      attributes: ATTRS,
+      inventoryItems: [],
+      condicionFisica: 'ILESO',
+      currentLocationId: null,
+      endedAt: null,
+      characterTransit: null,
+      worldState: { fictionalDateLabel: 'Día 1, mañana', fictionalMinutes: 480 },
+    });
+
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/turn/classify',
+      payload: { saveId: 'save1', action: "Recolecto 'flor de cristal lunar'." },
+    });
+
+    expect(res.statusCode).toBe(200);
+    const body = res.json();
+    expect(typeof body.blocked?.narration).toBe('string');
+    expect(classifyAction).not.toHaveBeenCalled();
+  });
+});

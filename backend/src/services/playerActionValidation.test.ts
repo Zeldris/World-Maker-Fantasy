@@ -16,6 +16,10 @@ const {
   wrongRegionHarvestNarrationFor,
   detectsUnknownConstructionClaim,
   unknownConstructionNarrationFor,
+  detectsFabricatedNpcClaim,
+  fabricatedNpcNarrationFor,
+  detectsFabricatedHarvestSourceClaim,
+  fabricatedHarvestSourceNarrationFor,
 } = await import('./playerActionValidation.js');
 
 describe('detectsUnequippedWeaponClaim', () => {
@@ -169,6 +173,76 @@ describe('unknownConstructionNarrationFor', () => {
   it('siempre devuelve una frase no vacía', () => {
     for (let i = 0; i < 20; i++) {
       expect(unknownConstructionNarrationFor().length).toBeGreaterThan(0);
+    }
+  });
+});
+
+describe('detectsFabricatedNpcClaim', () => {
+  beforeEach(() => {
+    findManyNpc.mockReset().mockResolvedValue([{ slug: 'torgash', name: 'Torgash', aliases: ["kort'ikar torgash"] }]);
+  });
+
+  it('detecta un nombre citado entre comillas que no existe en ningún sitio del catálogo', async () => {
+    const result = await detectsFabricatedNpcClaim("Ataco a 'el Dragón de Fuego Eterno'.", 'world1');
+    expect(result).toEqual({ quotedName: 'el Dragón de Fuego Eterno' });
+  });
+
+  it('no dispara si el nombre citado SÍ coincide con un NPC real del catálogo', async () => {
+    const result = await detectsFabricatedNpcClaim("Ataco a 'Torgash'.", 'world1');
+    expect(result).toBeNull();
+  });
+
+  it('no dispara SIN comillas, aunque el nombre suene inventado (prosa libre legítima)', async () => {
+    const result = await detectsFabricatedNpcClaim('Ataco al Dragón de Fuego Eterno.', 'world1');
+    expect(result).toBeNull();
+    expect(findManyNpc).not.toHaveBeenCalled();
+  });
+
+  it('no dispara sin intención real de interacción (mención de pasada)', async () => {
+    const result = await detectsFabricatedNpcClaim("Pienso en 'el Dragón de Fuego Eterno' de las leyendas.", 'world1');
+    expect(result).toBeNull();
+  });
+
+  it('no dispara con un nombre citado demasiado corto', async () => {
+    const result = await detectsFabricatedNpcClaim("Ataco a 'X'.", 'world1');
+    expect(result).toBeNull();
+  });
+});
+
+describe('fabricatedNpcNarrationFor', () => {
+  it('siempre devuelve una frase no vacía', () => {
+    for (let i = 0; i < 20; i++) {
+      expect(fabricatedNpcNarrationFor('el Dragón de Fuego Eterno').length).toBeGreaterThan(0);
+    }
+  });
+});
+
+describe('detectsFabricatedHarvestSourceClaim', () => {
+  it('detecta un nombre citado entre comillas que no existe en ningún catálogo de recolección', () => {
+    expect(detectsFabricatedHarvestSourceClaim("Recolecto 'flor de cristal lunar'.")).toEqual({ quotedName: 'flor de cristal lunar' });
+  });
+
+  it('no dispara si el nombre citado SÍ coincide con una fuente real', () => {
+    expect(detectsFabricatedHarvestSourceClaim("Talo 'matorral de cuerno'.")).toBeNull();
+  });
+
+  it('no dispara SIN comillas, aunque el nombre suene inventado (prosa libre legítima)', () => {
+    expect(detectsFabricatedHarvestSourceClaim('Recolecto flor de cristal lunar.')).toBeNull();
+  });
+
+  it('no dispara sin verbo real de recolección (mención de pasada)', () => {
+    expect(detectsFabricatedHarvestSourceClaim("Recuerdo 'flor de cristal lunar' de mi tierra.")).toBeNull();
+  });
+
+  it('no dispara con un nombre citado demasiado corto', () => {
+    expect(detectsFabricatedHarvestSourceClaim("Recolecto 'X'.")).toBeNull();
+  });
+});
+
+describe('fabricatedHarvestSourceNarrationFor', () => {
+  it('siempre devuelve una frase no vacía', () => {
+    for (let i = 0; i < 20; i++) {
+      expect(fabricatedHarvestSourceNarrationFor('flor de cristal lunar').length).toBeGreaterThan(0);
     }
   });
 });

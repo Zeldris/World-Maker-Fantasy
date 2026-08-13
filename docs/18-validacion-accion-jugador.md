@@ -1,12 +1,22 @@
 # Validación de "grounding" de la acción del jugador contra el lore real
 
-**Estado:** documento vivo. Fase 0 + Fase 1 + Fase 2 completas (arma que no llevas, NPC/fauna real
-de catálogo con el que interactúas pero que no está en esta escena, anacronismo, flora/mineral de
-otra región, tipo de construcción inventado) **implementadas y verificadas (2026-08-13)** — ver
-`backend/src/services/playerActionValidation.ts`. Fase 3 (cualquier entidad en cualquier parte del
-mundo) sigue aparcada a propósito, sin implementar — ver su propia sección más abajo. Pendiente
-jugarlo en vivo antes de confiar del todo en ello — es el primer mecanismo de su tipo (cortar un
-turno antes de llegar a la IA).
+**Estado:** documento vivo. Fases 0, 1, 2 y 3 completas — ver
+`backend/src/services/playerActionValidation.ts`. Pendiente jugarlo en vivo antes de confiar del
+todo en ello — es el primer mecanismo de su tipo (cortar un turno antes de llegar a la IA).
+
+**Fase 3 completada (2026-08-13), ACOTADA a nombre entre comillas** (decisión explícita, tomada
+con la usuaria, para acotar el riesgo de falso positivo que esta misma sección ya señalaba como el
+obstáculo principal): `detectsFabricatedNpcClaim`/`detectsFabricatedHarvestSourceClaim` detectan
+un NPC/fauna/flora/mineral nombrado ENTRE COMILLAS ("ataco a 'el Dragón de Fuego Eterno'") que no
+existe en absoluto en el catálogo del mundo — a diferencia de las Fases 1/2 (existe de verdad,
+pero no aquí / en otra región), aquí no existe en ningún sitio. Texto libre SIN comillas queda
+fuera a propósito: "ataco al Dragón de Fuego Eterno" sin comillas NO dispara — las comillas son la
+misma señal deliberada de "esto es un nombre concreto" que ya usa el resto del motor
+(`turnResolution.ts`/`itemReference.ts`) para elegir un objetivo explícito, así que reutilizar esa
+convención evita inventar un mecanismo nuevo de detección de nombres propios en prosa libre (el
+problema lingüístico que hacía esta fase "la difícil de verdad" en el diseño original). Tipo de
+construcción inventado no necesitó chequeo nuevo: `detectsUnknownConstructionClaim` (Fase 2) ya
+cubre el 100% del caso, al ser `CONSTRUCTION_RECIPES` una lista cerrada.
 
 **Límite real descubierto implementando el chequeo de NPC/fauna** (documentado aquí para no
 redescubrirlo): NO puede cazar "NPC `PRINCIPAL` mencionado por texto pero no realmente presente" —
@@ -95,6 +105,10 @@ cosmético (mejor lectura del diario), con un coste de latencia genuino (una cor
 de puntuación en español informal necesita otra llamada a IA, y cada turno ya tarda 30-90s+ en
 CPU). Si se retoma alguna vez, tiene que ser **solo cosmético al renderizar el diario, nunca
 tocando el texto real que se envía al narrador** — nunca una segunda llamada a IA por turno.
+Reconfirmada (2026-08-13): la usuaria preguntó explícitamente por "añadir comillas u otro formato
+para que la IA lo interprete mejor" — mismo problema de fondo (decidir DÓNDE formatear exige
+entender la intención del texto, que es justo lo que costaría la llamada extra), descartada de
+nuevo con el mismo razonamiento.
 
 ## Restricción de diseño que lo condiciona todo
 
@@ -165,11 +179,14 @@ que ya rige todo el motor de turnos.
 **Fase 2.** Flora/minerales inventados (`harvestSourceAliases`) y tipos de construcción inventados
 (`CONSTRUCTION_RECIPES`).
 
-**Fase 3 — aparcada, la difícil de verdad.** "Cualquier NPC/edificio/fauna/flora en TODO el
-mundo, exista o no, esté aquí o no". El obstáculo no es técnico, es lingüístico: distinguir "lo
-menciono/pienso en él" (legítimo) de "afirmo que está aquí ahora" (violación) en texto libre es un
-problema de verdad difícil de acertar sin falsos positivos que penalicen escritura legítima. Aquí
-es donde más ayuda crecer el lore: cuantas más entidades reales existan, menos casos límite habrá.
+**Fase 3 — completada (2026-08-13), acotada a nombre entre comillas.** "Cualquier NPC/fauna/flora
+en TODO el mundo, exista o no" — el obstáculo lingüístico original (distinguir "lo menciono" de
+"afirmo que está aquí ahora" en prosa libre) se esquivó por completo exigiendo que el jugador cite
+el nombre entre comillas, la misma convención que ya usa el resto del motor para un objetivo
+explícito. Consecuencia aceptada a propósito: sin comillas, "ataco al Dragón de Fuego Eterno"
+sigue sin disparar — cobertura menor que "cualquier prosa libre", pero cero riesgo nuevo de falso
+positivo. Sigue siendo cierto que cuantas más entidades reales existan (crecer el lore), menos
+casos habrá donde el jugador tenga que citar un nombre para toparse con este chequeo.
 
 **Cada fase, además:**
 - Pool de 4-5 frases por categoría en la voz de Gorhorn — épico-trágico (tono fijado en el

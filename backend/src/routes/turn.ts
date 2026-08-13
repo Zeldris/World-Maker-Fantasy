@@ -41,6 +41,10 @@ import {
   wrongRegionHarvestNarrationFor,
   detectsUnknownConstructionClaim,
   unknownConstructionNarrationFor,
+  detectsFabricatedNpcClaim,
+  fabricatedNpcNarrationFor,
+  detectsFabricatedHarvestSourceClaim,
+  fabricatedHarvestSourceNarrationFor,
 } from '../services/playerActionValidation.js';
 import { harvestSourceAliases } from '../scripts/worldCatalog.js';
 import { detectsPostCombatInteraction } from '../services/postCombatInteraction.js';
@@ -491,6 +495,14 @@ export async function turnRoutes(app: FastifyInstance) {
       return resolveBlockedTurn(absentSceneNpcNarrationFor(absentNpcClaim.name));
     }
 
+    // Fase 3 (acotada a comillas, docs/18-validacion-accion-jugador.md): NPC/fauna nombrado ENTRE
+    // COMILLAS que no existe en absoluto en el catálogo del mundo — a diferencia del chequeo de
+    // arriba (existe pero no está en esta escena), aquí no existe en ningún sitio.
+    const fabricatedNpcClaim = await detectsFabricatedNpcClaim(action, save.worldId);
+    if (fabricatedNpcClaim) {
+      return resolveBlockedTurn(fabricatedNpcNarrationFor(fabricatedNpcClaim.quotedName));
+    }
+
     // Fuente de flora/mineral real de OTRA región ("recolecto matorral de cuerno" estando en una
     // región donde no crece). `currentLocationForSummary` se carga ya aquí (antes se hacía más
     // abajo, junto a `characterSummary`) porque este chequeo también necesita la región actual —
@@ -502,6 +514,14 @@ export async function turnRoutes(app: FastifyInstance) {
     if (wrongRegionHarvestClaim) {
       const nombre = harvestSourceAliases[wrongRegionHarvestClaim.sourceSlug]?.[0] ?? wrongRegionHarvestClaim.sourceSlug.replace(/-/g, ' ');
       return resolveBlockedTurn(wrongRegionHarvestNarrationFor(nombre));
+    }
+
+    // Fase 3 (acotada a comillas): flora/mineral nombrado ENTRE COMILLAS que no existe en
+    // absoluto en `harvestSourceAliases` — a diferencia del chequeo de arriba (existe, pero en
+    // otra región), aquí la fuente citada no existe en ningún catálogo.
+    const fabricatedHarvestSourceClaim = detectsFabricatedHarvestSourceClaim(action);
+    if (fabricatedHarvestSourceClaim) {
+      return resolveBlockedTurn(fabricatedHarvestSourceNarrationFor(fabricatedHarvestSourceClaim.quotedName));
     }
 
     // Interacción con un NPC/fauna ya incapacitado o muerto, FUERA de combate (docs/19 pieza 2) —
