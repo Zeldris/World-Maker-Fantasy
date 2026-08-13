@@ -6,17 +6,29 @@
 
 **Decisiones tomadas a partir de este análisis:** ver [06-decisiones-mecanicas.md](06-decisiones-mecanicas.md).
 
+**Nota (2026-08-13, auditoría de documentación):** este documento fija el diseño de ARRANQUE de las
+mecánicas (2026-07-16) y sigue siendo válido como tal, pero no cubre varios sistemas grandes
+llegados después — combate por turnos con tarjetas de habilidad y árbol de ventajas por atributo
+(`attributeWheel.ts`, [14-combate-y-muerte.md](14-combate-y-muerte.md)), energía/fatiga como
+recurso de combate, niveles/XP/Reino ([10-niveles-xp-reino.md](10-niveles-xp-reino.md)), acciones
+por tiempo ([08-acciones-por-tiempo.md](08-acciones-por-tiempo.md)), y el validador de grounding de
+la acción del jugador ([18-validacion-accion-jugador.md](18-validacion-accion-jugador.md)). Para el
+diseño vigente de cualquiera de estos, esos documentos son la fuente de verdad, no este.
+
 ---
 
 ## 0. Alcance — no es un RPG de combate
 
 **Corrección importante hecha durante el diseño:** Tarkor no es un RPG centrado en combate. Es un motor de resolución de acciones **genérico** — observar, recolectar, construir, comerciar, gobernar, dar órdenes, negociar, explorar, luchar... la idea es poder intentar prácticamente cualquier cosa, siempre dentro de las normas del mundo y de lo que la partida ya ha establecido. Todo pasa por el mismo mecanismo (clasificación → tirada → consecuencias), sin un subsistema especial para combate. La salud es solo una faceta más del estado del personaje, no el eje del diseño.
 
+**Corrección (2026-08-13):** esto describe la intención de diseño **genérico** (sigue siendo cierto: no hay "modo combate" en el sentido de mecánica exclusiva desconectada del resto), pero desde [14-combate-y-muerte.md](14-combate-y-muerte.md) (2026-07-18, ya implementado) el combate sí vive en un **modo aparte por turnos** con su propio popup, tarjetas de habilidad, coste de energía y un sistema de ventajas por tipo de atributo (`attributeWheel.ts`) — bastante más maquinaria propia que "observar" o "recolectar". La sección 0 sigue siendo válida como principio (mismo motor de tiradas/consecuencias por debajo), pero no como descripción literal de que no existe nada específico de combate en el código de hoy.
+
 ---
 
 ## 1. Lo que ya está fijado (no se toca aquí)
 
 - **Atributos** (ya en el frontend demo y en `PregeneratedCharacter.attributes`/`Save.attributes`): `fuerza`, `destreza`, `sigilo`, `voluntad`, `carisma`, `arcano`. Rango típico 4–18, presupuesto de creación ~60 puntos.
+  **Corrección (2026-08-13):** rediseñado el 2026-07-29 (`backend/src/services/dice.ts`) — los 7 atributos jugables hoy son `fuerza`, `destreza`, `constitucion`, `inteligencia`, `voluntad`, `carisma`, `arcano` (referencia D&D/BG3). `sigilo` bajó a **atributo secundario** (`secondaryAttributes.ts`, junto con `magia`, `poderSemilla`, `moral` y 4 resistencias) — ya no se tira, solo alimenta comprobaciones de umbral (requisitos de objetos/construcciones/oficios).
 - **El backend calcula la tirada, nunca el modelo** (decisión de arquitectura § 5): el LLM narra alrededor de un resultado ya fijado, no decide si algo tiene éxito.
 - **Qwen2.5:7b (Narrador) es fiable con salida estructurada** — esto es relevante para el punto 3 de abajo.
 
@@ -42,6 +54,7 @@ Aplicable a **cualquier tipo de acción** — física, social, de construcción,
 | Muy difícil | 22 | Persuadir a un noble hostil de algo que le perjudica |
 
 **Grados de éxito: binario** (éxito/fallo, sin críticos por ahora — se puede añadir más adelante sin romper nada).
+**Corrección (2026-08-13):** ya añadido — `gradoExitoFor` (`backend/src/services/dice.ts`) lee la misma tirada en **tres tramos**: `claro` (resultado ≥ dificultad + 5), `con_coste` (resultado ≥ dificultad pero por debajo de +5, éxito con pero) y `fallo`. No es una tirada nueva ni cambia la fórmula, pero ya no es binario — está enganchado en `turnResolution.ts` y `narrador.ts` para narrar de forma distinta cada tramo.
 
 ---
 
@@ -74,9 +87,11 @@ Dado el alcance genérico (sección 0), el estado del personaje no es solo "salu
 
 ---
 
-## 6. Inventario y equipo — DECIDIDO
+## 6. Inventario y equipo — DECIDIDO, luego REABIERTO
 
 **Contexto narrativo, sin bonificadores fijos tabulados.** Lo que el personaje posee vive como hechos ("tiene 200 monedas", "posee una granja", "lleva una ganzúa fina"), y el Narrador lo tiene en cuenta al narrar y al fijar la dificultad de una tirada (es más fácil forzar una cerradura con ganzúa que sin ella) — pero no hay una tabla fija de "objeto X = +2 a tirada Y". Coherente con no tener números fijos para casi nada salvo los atributos y la tirada misma.
+
+**Corrección (2026-08-13):** esta decisión se reabrió a petición explícita de la usuaria (2026-07-19, ampliado 2026-08-03 a varios bonus por objeto). Hoy **sí existe una tabla real de bonificadores**: `ItemCatalog`/`InventoryItem.statBonuses` (JSON) y `backend/src/services/equipment.ts` (`effectiveAttributes`, `effectiveSecondaryAttributes`, `effectiveDefense`, `effectiveInventorySlotsBonus`) — un objeto **equipado** (no el que va en la mochila) puede sumar de verdad a varios de los 7 atributos, a `defensa` o a slots de inventario. El texto narrativo sigue existiendo en paralelo, pero ya no es la única vía.
 
 ---
 

@@ -2,6 +2,14 @@
 
 Documento vivo, igual que [02-decisiones.md](02-decisiones.md) y [04-decisiones-tecnicas.md](04-decisiones-tecnicas.md) pero para el sistema de juego interno. Referencia: [05-mecanicas-juego.md](05-mecanicas-juego.md).
 
+**Nota (2026-08-13, auditoría de documentación):** mismo aviso que en 05 — este documento fija
+decisiones de ARRANQUE (2026-07-16) y varias siguen vigentes tal cual, pero sistemas grandes
+llegados después tienen su propio documento como fuente de verdad:
+[14-combate-y-muerte.md](14-combate-y-muerte.md) (combate por turnos, energía/fatiga, árbol de
+ventajas por atributo), [10-niveles-xp-reino.md](10-niveles-xp-reino.md) (niveles/XP/Reino),
+[08-acciones-por-tiempo.md](08-acciones-por-tiempo.md) (acciones por tiempo),
+[18-validacion-accion-jugador.md](18-validacion-accion-jugador.md) (validador de grounding).
+
 ---
 
 ## Decididas
@@ -14,9 +22,13 @@ Documento vivo, igual que [02-decisiones.md](02-decisiones.md) y [04-decisiones-
 
 **Impacto:** todas las decisiones de este documento (tiradas, estado del personaje, progresión, inventario) están pensadas para ser genéricas por tipo de acción, no específicas de combate.
 
+**Corrección (2026-08-13):** el principio de motor genérico se mantiene, pero desde [14-combate-y-muerte.md](14-combate-y-muerte.md) (diseñado 2026-07-18, ya implementado) el combate vive en un **modo aparte por turnos** (popup dedicado, tarjetas de habilidad, coste de energía, ventajas por tipo de atributo) — no es "un tipo de acción más" resuelto exactamente igual que recolectar o construir. Ver ese documento para el diseño real de combate, no descrito aquí.
+
 ### 1. Fórmula de resolución de tiradas y umbrales de dificultad — **2026-07-16**
 
 **Decisión:** `resultado = d20 + floor(atributo / 2)`, éxito si `resultado >= dificultad`. Umbrales: Trivial 8, Fácil 12, Media 15, Difícil 18, Muy difícil 22. Grados de éxito **binarios** (éxito/fallo, sin críticos por ahora).
+
+**Corrección (2026-08-13):** la fórmula y los umbrales siguen igual, pero los grados de éxito ya no son binarios — `gradoExitoFor` (`backend/src/services/dice.ts`) distingue `claro` / `con_coste` / `fallo` sobre el mismo resultado, enganchado en la narración real (`turnResolution.ts`, `narrador.ts`). No es un sistema de críticos nuevo, es leer en tres tramos la misma tirada.
 
 **Por qué:** fórmula ya prototipada en la demo de frontend (`lib/dice.ts`), se formaliza como la real. Binario en vez de con críticos para no complicar el prompting del Narrador desde el principio (2 casos a narrar, no 4) — se puede añadir después sin romper nada.
 
@@ -56,6 +68,8 @@ Documento vivo, igual que [02-decisiones.md](02-decisiones.md) y [04-decisiones-
 
 **Impacto:** no hace falta una tabla de objetos/bonificadores en el modelo de datos por ahora. El inventario, si se representa, vive como hechos libres igual que el resto del estado no estructurado.
 
+**Reversión (2026-08-13, decisión tomada 2026-07-19, ampliada 2026-08-03):** la usuaria pidió explícitamente reabrir esto — "mejora natural para más adelante si hace falta" dejó de ser hipotético. Hoy sí hay una tabla real: `ItemCatalog`/`InventoryItem.statBonuses` + `backend/src/services/equipment.ts`, que suma bonificadores reales a atributos/defensa/slots de inventario cuando el objeto está **equipado** (la mochila nunca bonifica). Los hechos libres narrativos ("tiene 200 monedas", "posee una granja") siguen existiendo para todo lo que no es equipo mecánico.
+
 ### 6. Magia (`arcano`) como riesgo narrativo, no como mecánica nueva — **2026-07-17**
 
 **Decisión:** usar el atributo `arcano` siempre conlleva un pequeño riesgo, incluso en éxito — el Narrador puede añadir un coste o efecto secundario narrativo (algo se resiente, atrae atención, deja un rastro) aunque la tirada salga bien.
@@ -69,7 +83,7 @@ Documento vivo, igual que [02-decisiones.md](02-decisiones.md) y [04-decisiones-
 ## Pendientes
 
 *(Actualizado 2026-08-02 — todo lo de abajo salvo el punto 5 lleva meses hecho; se deja tachado por
-historial. Desfase de documentación arrastrado desde la auditoría de `docs/11-roadmap.md` 2026-07-18.)*
+historial. Desfase de documentación arrastrado desde la auditoría de `docs/archivo/11-roadmap-historico.md` 2026-07-18.)*
 
 1. ~~Añadir el campo de condición física~~ — **hecho**, `Save.condicionFisica` (enum `ILESO→HERIDO→GRAVE→INCAPACITADO→MUERTO`), junto con todo el sistema de combate/muerte/descanso de [14-combate-y-muerte.md](14-combate-y-muerte.md).
 2. ~~Construir el servicio de tiradas~~ — hecho, `backend/src/services/dice.ts`.

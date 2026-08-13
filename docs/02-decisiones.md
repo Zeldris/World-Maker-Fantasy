@@ -59,6 +59,8 @@ Para las **acciones largas** (viajar, esperar varios días dentro de la ficción
 
 **Decisión:** la paleta base de toda la app es "madera + hierro": tonos marrones claros y oscuros (superficie tipo tablón de madera con veta) combinados con negros tipo hierro forjado (bordes, remaches/"clavos" decorativos en las esquinas de paneles y tarjetas). Sobre esa base neutra, cada **mundo** del catálogo lleva su propio tema de dos acentos de color (uno primario y uno secundario) que se aplica dinámicamente a toda la pantalla en cuanto el jugador lo selecciona — hoy solo existe el tema de Valdreth (latón + musgo), pero la arquitectura ya soporta que futuros mundos definan su propio tema sin tocar componentes.
 
+**Corrección (2026-08-13):** "Valdreth" era el mundo placeholder de la demo de frontend y se retiró por completo al día siguiente de esta decisión, sustituido por el mundo semilla real **Helek Sirik** (decisión 5 de este mismo documento, [07-mundo-helek-sirik.md](07-mundo-helek-sirik.md)) — no queda ninguna referencia a "Valdreth" en el código. El único tema hoy activo es el de Helek Sirik (`frontend/src/data/mock.ts`), en azules/grises, no latón+musgo. El mecanismo descrito (tematización dinámica por mundo vía `theme: WorldTheme`) sigue siendo correcto y vigente, solo cambió qué mundo/colores concretos lo usan.
+
 **Por qué:** primera iteración de diseño de la demo de frontend usaba un violeta/dorado genérico; la usuaria pidió una base más "de madera con clavos negros", coherente con la ambientación de fantasía. Además, cada mundo del catálogo debería sentirse visualmente distinto cuando el jugador entra en él.
 
 **Impacto (implementación en `frontend/`):**

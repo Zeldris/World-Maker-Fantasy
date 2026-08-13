@@ -111,7 +111,7 @@ Necesita, además del mecanismo de tiempo:
 ### 3. Recompensa determinista de misión (el mapa, y en general)
 
 Hallazgo clave en `prisma/schema.prisma`, modelo `Quest`: el campo `rewardItems` (ej.
-`['Mapa de las Llanuras', 'Maza orca']`, fijado en `turnResolution.ts:3216` al crear la misión del
+`['Mapa de las Llanuras', 'Maza orca']`, fijado en `turnResolution.ts:3562` al crear la misión del
 Orco Enfurecido) es **solo texto para mostrar en el panel — no crea ningún `InventoryItem` por sí
 solo** (comentario explícito en el propio schema). La entrega real de esos objetos hoy pasa
 enteramente por el loot normal del cadáver (su `loadout` en `worldCatalog.ts`). Es decir: **la

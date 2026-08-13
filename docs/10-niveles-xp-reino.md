@@ -129,9 +129,19 @@ huecosHabilidad(nivel) = 3 + floor(nivel / 2)
 
 ## 5. Modelo de datos de Reino
 
+**Nota (2026-08-13, reconciliación pendiente desde § 9 punto 8): este § 5 documenta el diseño v1
+histórico (2026-07-19, "para revisión, no migrar todavía"), no el estado actual.** Los tres
+modelos (`Territory`/`Building`/`Subject`) SÍ se migraron tal cual y siguen siendo la base real,
+pero la afirmación central de § 5.1 ("sin capa de números de gestión") ya no es cierta: desde
+2026-07-23 existe `KingdomStats` (población/felicidad/comida/bebida/riqueza/soldados/trabajadores/
+visitantes, `schema.prisma`) con un tick diario real (`backend/src/services/kingdomTick.ts`) — es
+exactamente la capa de gestión que aquí se descartaba. `docs/17-reglas-construcciones-reino.md` es
+hoy la fuente de verdad viva de las reglas de construcción/Reino; este § 5 se conserva por su valor
+de historial de diseño (por qué se empezó sin números de gestión), no como arquitectura vigente.
+
 ### 5.1 Principio: tres piezas, y el vacío es un estado válido
 
-La pestaña Reino muestra tres cosas ([09-panel-personaje.md](09-panel-personaje.md) § 2): súbditos, edificios y zonas conquistadas. Tres modelos nuevos, hermanos de `InventoryItem`/`Companion` en filosofía: **estado narrativo persistido, sin capa de números de gestión** (nada de comida/oro/moral por turno — eso sería un juego de estrategia dentro del RPG, y no está pedido). Si algún día se quiere simulación económica, estos modelos son la base, no un impedimento.
+La pestaña Reino muestra tres cosas ([09-panel-personaje.md](09-panel-personaje.md) § 2): súbditos, edificios y zonas conquistadas. Tres modelos nuevos, hermanos de `InventoryItem`/`Companion` en filosofía: **estado narrativo persistido, sin capa de números de gestión** (nada de comida/oro/moral por turno — eso sería un juego de estrategia dentro del RPG, y no está pedido). Si algún día se quiere simulación económica, estos modelos son la base, no un impedimento. *(Diseño original — ver nota de arriba: la capa de números de gestión SÍ llegó después, vía `KingdomStats`.)*
 
 **El estado vacío es el punto de partida correcto, no un bug.** Gorhorn hoy: cero territorios, cero edificios, cero súbditos — único superviviente de su clan. El frontend no debe tratar "0 filas" como error ni como pestaña bloqueada: renderiza un estado vacío narrativo construido con lo que ya existe (`characterMotivation`), p. ej.: *"Gorhorn no gobierna a nadie todavía. El nombre de los Maktor aún espera ser restaurado."* La pestaña cuenta desde el primer día la historia de lo que falta — que es justo la historia de Gorhorn.
 
@@ -245,7 +255,11 @@ Cuando el backend **crea o promociona** filas de Reino, otorga XP con esta tabla
 
 Estos eventos **sustituyen** al hito genérico ese turno (siguen bajo el tope de 1 hito/turno del § 3.2, aplicando el mayor): ganar tu primer súbdito no paga dos veces.
 
-**¿Quién crea las filas?** La llamada de narración devuelve, junto a `new_facts` y `hitos`, un campo opcional `reino_events` (crear territorio, crear/actualizar edificio, crear súbdito, ajustar población) que el backend **valida contra el estado actual** y materializa. Es el mismo patrón de la decisión 2 (el modelo propone estructura, el backend ejecuta) — pero hay que validar que Qwen2.5:7b lo devuelve con fiabilidad antes de confiar en él (pendiente 8; el plan B es crear las filas a mano vía endpoints/UI de edición y dejar al modelo solo `new_facts`).
+**¿Quién crea las filas?** La llamada de narración devuelve, junto a `new_facts` y `hitos`, campos opcionales que el backend **valida contra el estado actual** y materializa. *(Diseño original: un único `reino_events`. En la implementación real son tres campos separados —
+`newTerritory`/`newBuilding`/`newSubject`, ver `narrador.ts` — mismo espíritu, forma final
+distinta.)* Es el mismo patrón de la decisión 2 (el modelo propone estructura, el backend
+ejecuta) — validado con fiabilidad razonable jugando en vivo (reino "Maktor" fundado 2026-08-07),
+sin necesitar el plan B de creación manual.
 
 ---
 
@@ -310,8 +324,18 @@ Coste añadido: **cero llamadas nuevas a Ollama** — `hitos` y `reino_events` v
 5. ~~XP por eventos de Reino~~ — hecho a nivel de código.
 6. ~~Frontend — progresión~~ — hecho.
 7. ~~Frontend — pestaña Reino~~ — hecho a nivel de componente.
-8. **Validar `reino_events`** con el modelo sobre casos reales — Reino queda pausado como línea de
-   juego activa (decisión posterior, ver `docs/11-roadmap.md`: "centrarse en 1h de partida jugable
-   con exploración y combate; Reino/gobierno queda pausado"), así que esta validación no es
-   prioritaria mientras eso no cambie.
-9. Actualizar los documentos afectados — parcialmente hecho por esta misma pasada (2026-08-02).
+8. ~~Validar `reino_events` con el modelo sobre casos reales~~ — **hecho, y Reino ya no está
+   pausado** (actualización 2026-08-13): la pausa citada aquí (`docs/archivo/11-roadmap-historico.md`, 2026-07-19) se
+   revirtió — reino fundado y jugado en vivo (2026-08-07), reglas de construcción cerradas
+   (`docs/17-reglas-construcciones-reino.md`, 2026-08-04) y habilidades/recetas de construcción con
+   deshabilitado en tiempo real (2026-08-13). Dos detalles de ESTE documento que quedan
+   desfasados y sin reconciliar todavía (no corregidos en esta pasada por ser cambio de diseño
+   grande, no una errata): (a) el campo real que devuelve la narración no es un único
+   `reino_events` sino tres campos separados (`newTerritory`/`newBuilding`/`newSubject`, ver
+   `narrador.ts`); (b) § 5.1 dice explícitamente que Reino no tendría "capa de números de gestión
+   (nada de comida/oro/moral por turno)" — desde 2026-07-23 existe `KingdomStats`
+   (población/felicidad/comida/bebida/riqueza/soldados/trabajadores/visitantes) con un tick diario
+   real (`kingdomTick.ts`), que es exactamente esa capa. `docs/17` es hoy la fuente de verdad viva
+   de Reino; este § 5 describe el diseño v1 histórico.
+9. Actualizar los documentos afectados — parcialmente hecho por esta misma pasada (2026-08-02);
+   pendiente real: reconciliar § 5 de este documento con `docs/17` (punto 8 de arriba).

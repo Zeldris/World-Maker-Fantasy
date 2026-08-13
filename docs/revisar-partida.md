@@ -58,3 +58,5 @@ Antes de dar por nuevo cualquier fallo, mirar `docs/revisar-partida-hallazgos.md
 haya visto y se sepa si tiene fix determinista, está pendiente, o se decidió que no era bug. Al
 terminar la auditoría, añadir SIEMPRE una entrada nueva al final de ese archivo (fecha, síntoma
 citado, causa raíz si se conoce, y estado: FIJADO/PENDIENTE/NO ES BUG), haya o no fix ya aplicado.
+Ese archivo tiene un índice al principio (por fecha, 2026-08-13) — añadir también ahí la entrada
+nueva, bajo la fecha correspondiente (nueva fecha = nuevo grupo).

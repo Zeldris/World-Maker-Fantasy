@@ -217,7 +217,7 @@ En cuanto `tarkor-narrador-v2` exista en Ollama (paso anterior), dentro de `back
 npm run compare-narrador-models
 ```
 
-Esto re-narra los 42 escenarios de `eval.jsonl` (nunca vistos en el entrenamiento) con los dos
+Esto re-narra los 57 escenarios de `eval.jsonl` (nunca vistos en el entrenamiento) con los dos
 modelos, mide latencia, y puntúa con los mismos detectores automáticos que protegen el juego real
 (anacronismo, fuga de inglés, golpes/objetos/viajes narrados sin respaldo mecánico, NPCs muertos
 "resucitados", slugs de combate inventados, objeto usado sin respaldo, combate resuelto sin tirada,

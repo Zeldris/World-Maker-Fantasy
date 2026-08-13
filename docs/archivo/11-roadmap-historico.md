@@ -1,5 +1,11 @@
 # Roadmap — Tarkor (auditoría, 2026-07-18)
 
+**ARCHIVADO (2026-08-13, auditoría de documentación):** este documento ya es, en su gran mayoría,
+puro historial — el detalle vivo de bugs/hallazgos vive en `docs/revisar-partida-hallazgos.md`, y
+el diseño vigente de cada sistema vive en su propio doc numerado (05-19). Movido a `docs/archivo/`
+para que deje de leerse como "el roadmap activo" del proyecto. Se conserva sin tocar por valor de
+historial — no es fuente de verdad de nada a día de hoy.
+
 **Actualización (2026-08-13):** todo lo anotado el día anterior, implementado y verificado en una
 sola sesión ("sigue e implementa todas las fases que sacamos ayer al roadmap"): validador de
 grounding completo (Fase 0 + Fase 1 + Fase 2, docs/18) y las 5 piezas de post-combate/recompensas
@@ -89,7 +95,7 @@ Es coherente con que Gorhorn es el único personaje jugado hasta ahora, pero en 
 5. ~~**Condición física**~~ — **hecho** (2026-07-18): implementada junto con el resto de [14-combate-y-muerte.md](14-combate-y-muerte.md) (combate, muerte, descanso).
 6. ~~**`WorldState.agenda` nunca se resuelve**~~ — **decisión tomada (2026-07-18)**: no se construye. El panel "El mundo" (`entorno.ts`) ya cubre esa necesidad con ambientación periódica + evento probabilístico (25%), y nada ha escrito nunca en `agenda`. Construir un resolutor para una cola sin productor no aporta nada — el campo queda reservado sin uso hasta que exista contenido real de agenda que justificarlo (ver comentario ampliado en `worldTick.ts`).
 7. ~~**Misiones**~~ — **hecho** (2026-07-18): modelo `Quest` nuevo (mismo patrón que Reino — `newQuest`/`questProgress` en `narrador.ts`, materializado en `turnResolution.ts`), `MisionesPanel.tsx` en el frontend. Verificado en vivo (crear + consultar).
-8. **Validar `reino_events` con Ollama de verdad** — pendiente 8 del diseño de niveles/Reino (`docs/10-niveles-xp-reino.md`): confirmar jugando si el modelo local devuelve `newTerritory`/`newBuilding`/`newSubject` con fiabilidad razonable, o si hace falta el plan B (crear filas de Reino a mano).
+8. ~~**Validar `reino_events` con Ollama de verdad**~~ — hecho: `newTerritory`/`newBuilding`/`newSubject` funcionan con fiabilidad razonable en juego real (reino "Maktor" fundado y jugado en vivo, 2026-08-07), Reino dejó de estar pausado (reglas de construcción `docs/17`, 2026-08-04; economía/recetas en tiempo real, 2026-08-13) — ver nota de reconciliación pendiente en `docs/10-niveles-xp-reino.md` § 9 punto 8.
 
 ## 3. Higiene técnica, sin prisa
 

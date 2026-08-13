@@ -14,8 +14,11 @@ incorrectos), se corrige aquí y se señala explícitamente.
 
 ## 1. Objeto nuevo
 
-**Datos:** `backend/src/scripts/worldCatalog.ts`, interfaz `ItemCatalogInput` (línea 1129), array
-`items` (línea 1182). Modelo Prisma `ItemCatalog` (`schema.prisma:1000`).
+**Datos:** `backend/src/scripts/worldCatalog.ts`, interfaz `ItemCatalogInput` (línea 1640), array
+`items` (línea 1704). Modelo Prisma `ItemCatalog` (`schema.prisma:1142`). *(Números de línea
+verificados 2026-08-13 — `worldCatalog.ts` ha crecido mucho desde el 2026-08-01 original por las
+sucesivas ampliaciones de lore, así que estas referencias se desactualizan rápido; si vuelven a
+quedar desfasadas, un `grep -n` del nombre exacto es más fiable que confiar en el número.)
 
 | Campo | Para qué sirve de verdad (dónde se consume) |
 |---|---|
@@ -51,8 +54,8 @@ opcional en `docs/15-instalacion.md`).
 
 ## 2. NPC de historia y personaje jugable
 
-**NPC de historia — datos:** `worldCatalog.ts`, interfaz `NpcInput` (línea 423), array `npcs`
-(línea 698). Modelo `Npc` (`schema.prisma:857`), enums `NpcKind`/`Temperamento`.
+**NPC de historia — datos:** `worldCatalog.ts`, interfaz `NpcInput` (línea 833), array `npcs`
+(línea 1164). Modelo `Npc` (`schema.prisma:924`), enums `NpcKind`/`Temperamento`.
 
 | Campo | Para qué sirve de verdad |
 |---|---|
@@ -90,19 +93,19 @@ fila huérfana que items.
 
 ## 3. Fauna
 
-Se modela como filas de `Npc` con `kind:'PLANTILLA'`, en el array `fauna` (`worldCatalog.ts:475`),
+Se modela como filas de `Npc` con `kind:'PLANTILLA'`, en el array `fauna` (`worldCatalog.ts:889`),
 con el MISMO slug que su `HarvestYield.sourceSlug` (reutilizado a propósito, comentario en la línea
 466-474, para que combate/`NpcState`/detección funcionen sin tocar nada más). `loadout: []` siempre
 — el botín sale de `HarvestYield`, no de `NpcItem`.
 
 Todo el §2 aplica igual, **más la capa de cosecha/botín**:
 
-- `HarvestYieldInput` (`worldCatalog.ts:2096`), array `harvestYields` (2108) — una fila por
+- `HarvestYieldInput` (`worldCatalog.ts:3221`), array `harvestYields` (3233) — una fila por
   `{sourceSlug, itemSlug}`. **Invariante que hace abortar `seed-catalog.ts:129-141`**: todas las
   filas del mismo `sourceSlug` deben compartir `metodoObtencion`.
-- `harvestSourceAliases` (línea 2392) — usado por `harvest.ts:38`, `entityDiscovery.ts:53`, y el
+- `harvestSourceAliases` (línea 3769) — usado por `harvest.ts:38`, `entityDiscovery.ts:53`, y el
   endpoint de Enciclopedia (`world.ts:115`). **Importante**: este diccionario (y `harvestSourceRegion`
-  línea 2458, `harvestSourceDescriptions` línea 2480) se lee directo del módulo TS en cada petición
+  línea 3835, `harvestSourceDescriptions` línea 3857) se lee directo del módulo TS en cada petición
   — **`seed-catalog.ts` NUNCA los escribe en Postgres** — editarlos surte efecto al momento, sin
   reseeding.
 - `harvestYields` es la ÚNICA excepción a "upsert, nunca borra": `seed-catalog.ts:145` hace
@@ -114,7 +117,7 @@ Todo el §2 aplica igual, **más la capa de cosecha/botín**:
 **Icono en frontend** (`enciclopediaTargets.ts:113-121`): 🐾 vs 🌿 depende de `entry.esFauna`,
 calculado en el backend como `npcSlugs.has(sourceSlug) || harvestSourcesThatAreFaunaWithoutNpc.has(sourceSlug)`
 (`world.ts:122`) — una especie animal SIN fila `Npc` (peligro ambiental, sin stats de combate) debe
-añadirse a `harvestSourcesThatAreFaunaWithoutNpc` (`worldCatalog.ts:2450`) o se categoriza mal como
+añadirse a `harvestSourcesThatAreFaunaWithoutNpc` (`worldCatalog.ts:3827`) o se categoriza mal como
 "Flora/material" (bug ya documentado en el propio comentario del código, línea 2443-2447).
 
 ---
@@ -127,8 +130,8 @@ una planta/mineral nuevo se toca solo:
 
 - `harvestYields` (filas de botín)
 - `harvestSourceAliases` (detector)
-- `harvestSourceRegion` (agrupado por región en Enciclopedia, línea 2458)
-- `harvestSourceDescriptions` (descripción visual/lore, línea 2480 — se creó el 2026-07-22 porque
+- `harvestSourceRegion` (agrupado por región en Enciclopedia, línea 3835)
+- `harvestSourceDescriptions` (descripción visual/lore, línea 3857 — se creó el 2026-07-22 porque
   antes 14 fuentes no tenían NINGÚN texto descriptivo en ningún sitio)
 - **Nunca** `harvestSourcesThatAreFaunaWithoutNpc` (ese set es solo para animales sin stats)
 - **Nuevo requisito (rediseño de profesiones, 2026-08-07)**: si el recurso debe poder recolectarse
@@ -177,7 +180,7 @@ Narrador], `preferredAttribute`, `effect`):
 
 ### Deep-dive: categoría de arma nueva (`WeaponCategory`)
 
-Enum en `schema.prisma:579` (`HACHA MAZA GARROTE PICA LANZA CUCHILLO DAGA ESPADA ESCUDO`).
+Enum en `schema.prisma:623` (`HACHA MAZA GARROTE PICA LANZA CUCHILLO DAGA ESPADA ESCUDO`).
 
 **Arma nueva de una categoría YA existente**: solo la fila de `ItemCatalogInput` con
 `tipoArma:'HACHA'` (etc.) — nada más que tocar, el contenido de habilidad es compartido por
@@ -185,7 +188,7 @@ categoría.
 
 **Categoría nueva de verdad** (p. ej. `BALLESTA`) — TODO esto:
 
-1. `schema.prisma:579-591` — añadir el valor al enum. Migración a mano, p. ej.
+1. `schema.prisma:623-635` — añadir el valor al enum. Migración a mano, p. ej.
    `ALTER TYPE "WeaponCategory" ADD VALUE 'BALLESTA';` (sintaxis confirmada contra migraciones
    reales ya aplicadas: `20260729130000_temperamento_5_escalones`, `20260730210000_equip_slot_consumibles`).
 2. `weaponAbilities.ts:11` `WEAPON_CATEGORY_ATTRIBUTE` — **esta SÍ falla en tiempo de compilación**
@@ -229,7 +232,7 @@ categoría.
   Una región COMPLETAMENTE nueva (ninguna de esas 5) necesita las dos listas actualizadas, o el
   filtrado de descubrimientos/el lint de región simplemente no la reconocen — sin avisar de nada.
 - **La conectividad no es automática**: hace falta al menos una fila en `locationLinks`
-  (`worldCatalog.ts:279`, `LocationLinkInput`) o la ubicación queda huérfana, inalcanzable por
+  (`worldCatalog.ts:508`, `LocationLinkInput`) o la ubicación queda huérfana, inalcanzable por
   `travel.ts` (`shortestPath`) — nada falla, simplemente nunca aparece como destino de viaje.
 - **Mapa del frontend**: `frontend/src/data/map.ts:76` `llanurasNodePositions` — tabla de
   coordenadas x/y mantenida a mano, por slug. `MapaPanel.tsx:52` filtra

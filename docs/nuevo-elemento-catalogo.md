@@ -47,6 +47,33 @@ npm run seed-catalog   # upsert contra el Postgres LOCAL (podman, ver docs/15-in
 § 4); si el cambio necesita tocar `schema.prisma`, escribir la migración a mano y aplicar con
 `npx prisma migrate deploy` + `npx prisma generate`.
 
+## 1bis. Fuente de recolección nueva (`HarvestYield`, `worldCatalog.ts` § `harvestYields`/`harvestSourceAliases`/`harvestSourceRegion`)
+
+Añadido tras la auditoría de catálogo de 2026-08-13 (hueco real: `harvestSourceAliases` no tenía
+ninguna regla de colisión escrita en ningún runbook, a diferencia de los objetos del punto 1).
+
+- `harvestSourceAliases[sourceSlug]`: mismo criterio de genericidad que el punto 1.2 de arriba,
+  pero con un impacto mecánico MAYOR — `matchHarvestSource` (harvest.ts) recorre el catálogo
+  COMPLETO sin filtrar por región y devuelve la PRIMERA fuente que matchea, materializando ESE
+  objeto de verdad (no es solo un desbloqueo cosmético de Enciclopedia como con los objetos). Un
+  alias genérico de una sola palabra ("salvia", "espiga", "cardo"...) es aceptable HOY porque cada
+  uno es único en todo el catálogo — pero en cuanto se añada una segunda fuente con un alias
+  parecido (muy probable al ampliar una región nueva), la que se declaró ANTES en el array siempre
+  gana, en silencio, sin ningún error. Antes de dar un alias genérico por bueno en una fuente
+  nueva: `grep` el término contra TODO `harvestSourceAliases` (no solo contra la propia región que
+  se está ampliando) y, si ya hay algo parecido, calificarlo con el nombre de la fuente en vez de
+  dejarlo suelto (mismo criterio que ya se aplicó a propósito para `mena`/`veta` frente a
+  `piedra`/`roca`, y para `res`/`ganado` frente al Múrgol — ver comentarios en el propio archivo).
+- `harvestSourceRegion[sourceSlug]`: obligatorio si la fuente es del núcleo jugable — sin él,
+  `detectsWrongRegionHarvestClaim` (`playerActionValidation.ts`, validador de grounding) nunca
+  puede avisar "eso no se da en esta tierra" para esa fuente.
+- Población real (`worldPopulation.ts`, `targetType: 'RECURSO'` para MINERIA/TALA/EXTRACCION,
+  `targetType: 'FAUNA'` para CAZA — ver comentario del enum en `schema.prisma`): **obligatorio**
+  para el núcleo jugable. Sin fila, `candidateSourcesFor` (`recolectar.ts`) nunca ofrece la fuente
+  aunque `HarvestYield`/aliases/región estén perfectos — bug real confirmado dos veces en la misma
+  auditoría (herborista completo sin ninguna fila EXTRACCION; 3 NPCs itinerantes sin fila `FAUNA`
+  para la sugerencia ambiental de `turnResolution.ts`).
+
 ## 2. NPC/fauna nuevo (`Npc`, `worldCatalog.ts` § `npcs`/`fauna`)
 
 Ya tenía buen soporte desde antes — solo recordatorio:

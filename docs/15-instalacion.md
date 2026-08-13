@@ -8,7 +8,7 @@
 
 ## 1. Requisitos previos
 
-- **Node.js** — usado en esta máquina: v24 (backend y frontend son proyectos `type: "module"`, sin fichero `.nvmrc` que fije una versión mínima exacta; cualquier Node 20+ debería servir).
+- **Node.js** — backend y frontend son proyectos `type: "module"`, sin fichero `.nvmrc` que fije una versión mínima exacta; cualquier Node 20+ debería servir. En la práctica, tanto `iniciar-tarkor.sh` como `actualizar-mundo.sh` fijan `nvm use 22` en cada ventana nueva que abren (ver `NVM_INIT` en ambos scripts) — usar la 22 si hay dudas de cuál instalar.
 - **Ollama** instalado y accesible en `http://localhost:11434` (o la URL que se ponga en `OLLAMA_BASE_URL`).
 - **Postgres local vía podman** (ver 3bis) — `podman` es la única herramienta de contenedores presente en esta máquina (no hay `docker`/`psql`/`postgres` nativos). Necesaria la extensión **pgvector** (`LoreChunk.embedding` es de tipo `vector`).
 
@@ -28,13 +28,14 @@ DATABASE_URL="postgresql://tarkor:tarkor@localhost:5432/tarkor"
 DIRECT_URL="postgresql://tarkor:tarkor@localhost:5432/tarkor"
 ```
 
-Resto de variables (sin cambios):
+Resto de variables:
 - `PORT=3001`
 - `OLLAMA_BASE_URL="http://localhost:11434"`, `OLLAMA_MODEL_NARRADOR="tarkor-narrador"`, `OLLAMA_MODEL_CRONISTA="qwen2.5:1.5b-instruct"`, `OLLAMA_KEEP_ALIVE="5m"`
-- `PACING_MIN_MS=3000`, `PACING_MAX_MS=10000`
-- `WORLD_TICK_INTERVAL_MINUTES=2`
-- `TRANSIT_MAX_REAL_MINUTES=10`
-- `CEREBRAS_API_KEY`, `MISTRAL_API_KEY`, `SAMBANOVA_API_KEY` rellenas (cuenta propia de Tarkor); `CLOUDFLARE_*` vacías — rotación con failover para generar imágenes de la Enciclopedia, opcional: sin ninguna, esa función cae sola a Ollama local.
+- `PACING_MIN_MS=1000`, `PACING_MAX_MS=5000` (bajados desde 3000/10000 originales — sin fecha exacta registrada, `.env.example` se quedó con los valores viejos)
+- `WORLD_TICK_INTERVAL_MINUTES=1` (bajado de 2 a 1 el 2026-08-07, junto con `TRANSIT_MAX_REAL_MINUTES` de abajo — ver comentario en `.env`)
+- `TRANSIT_MAX_REAL_MINUTES=5` (bajado de 10 a 5 el 2026-08-07, el rendimiento del motor mejoró bastante desde que se fijó el 10 original)
+- `CEREBRAS_API_KEY`, `MISTRAL_API_KEY`, `SAMBANOVA_API_KEY`, `CLOUDFLARE_API_KEY`/`CLOUDFLARE_ACCOUNT_ID`, `GEMINI_API_KEY`, `GROQ_API_KEY` — las 6 rellenas (cuenta propia de Tarkor; Gemini/Groq se sumaron a la rotación el 2026-08-07). Mismo orquestador (`lib/aiProviders/orchestrator.ts`, rotación con failover Cerebras→Mistral→SambaNova→Cloudflare→Gemini→Groq) para generar prompts de imagen de la Enciclopedia Y para `generate-distillation-dataset.ts` (ver `docs/fine-tuning-ia-local.md`) — opcional en los dos casos: sin ninguna clave, cae sola a Ollama local.
+- `LIVE_TEACHER_CAPTURE_ENABLED`/`LIVE_TEACHER_CAPTURE_SAMPLE_RATE` — captura en vivo para el pipeline DPO, ver `docs/fine-tuning-ia-local.md` § "Recolección en vivo de pares de preferencia".
 
 **Alternativa (Supabase remoto):** solo si algún día hace falta jugar de verdad desde varios dispositivos a la vez con la misma partida sincronizada — ver `.env.example` para la plantilla comentada. Si se usa, habilitar la extensión a mano igual (Prisma no la gestiona vía schema, ver comentario en `schema.prisma`): `CREATE EXTENSION IF NOT EXISTS vector;`.
 
@@ -103,7 +104,7 @@ Si se cambia el `Modelfile` en el futuro, hay que reconstruir `tarkor-narrador` 
 
 ## 7. Arrancar todo
 
-La usuaria tiene `iniciar-tarkor.sh`/`detener-tarkor.sh` (Linux/SteamOS, el sistema real de uso — arranca Postgres/Ollama si hace falta, corre `seed-catalog`, y abre backend+frontend cada uno en su propia ventana de terminal) e `iniciar-tarkor.bat`/`detener-tarkor.bat` (Windows, equivalente más simple, sin la orquestación de Postgres/Ollama) en la raíz del repo. El equivalente manual, si hiciera falta, en dos terminales separadas:
+La usuaria tiene `iniciar-tarkor.sh`/`detener-tarkor.sh` (Linux/SteamOS, el sistema real de uso — arranca Postgres/Ollama si hace falta, corre `seed-catalog`, y abre backend+frontend cada uno en su propia ventana de terminal) e `iniciar-tarkor.bat` (Windows, equivalente más simple, sin la orquestación de Postgres/Ollama — `detener-tarkor.bat` ya no existe, se quitó el 2026-07-29 al pasar el foco a Linux/SteamOS, así que en Windows hay que cerrar las ventanas a mano) en la raíz del repo. El equivalente manual, si hiciera falta, en dos terminales separadas:
 
 ```
 # Terminal 1

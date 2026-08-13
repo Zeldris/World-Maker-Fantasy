@@ -30,7 +30,7 @@ Al tocar un icono, un panel sube desde abajo (o se abre en modal en pantallas gr
 
 | Pestaña | Qué muestra | Fuente de datos | Estado |
 |---|---|---|---|
-| **Mapa** | Regiones de Berig, punto actual, puntos de interés. | `frontend/src/data/map.ts` (estático) + `InteractiveMap.tsx` (SVG clicable). Posición real por `Location`/`currentLocationId` diseñada en `docs/12`, no implementada aún — hoy "aquí ahora" sigue fijo a las Llanuras. | **Hecho** (posición dinámica real, pendiente de `docs/12`). |
+| **Mapa** | Regiones de Berig, punto actual, puntos de interés. | `frontend/src/data/map.ts` (SVG de regiones, estático) + `InteractiveMap.tsx` (clicable) + `MapaPanel.tsx`, que ya recibe `currentLocation`/`destinations` reales del backend (`Save.currentLocationId`, `docs/12` § 1) — "aquí ahora" y los destinos con tiempo de viaje ya ajustado a destreza dejaron de estar hardcodeados (corregido 2026-08-02, ver `docs/12` § 7 punto 10). | **Hecho** (posición dinámica real). |
 | **Inventario** | Objetos que lleva el personaje, clicables para adjuntar a una acción. | `InventoryItem`, poblado por `newItem` del Narrador (sin catálogo cerrado todavía — ver `docs/12` § 4 para loot determinista). | **Hecho.** |
 | **Estadísticas** | 6 atributos + nivel/XP + reparto de puntos ASI. | `Save.attributes`/`level`/`xp`. | **Hecho.** |
 | **Diario** | Registro cronológico completo (personaje + mundo mezclados). | `LogEntry`. | **Hecho.** |
@@ -56,9 +56,9 @@ La usuaria priorizó construirla ya en vez de esperar (contradice la recomendaci
 
 ## 6. Cosas que añado yo, con valor pero no pedidas explícitamente
 
-- **Reputación/relaciones**: ya está implícito en el lore (Clan Serhu, Concordia de Hierro, Hagar...) pero no tiene ningún sitio donde vivir en la UI. Candidata a pestaña futura o a vivir dentro de "Diario"/"Misiones" en vez de ser una pestaña propia — no la añado a la barra todavía, pero la señalo para no perderla.
-- **Indicador de notificación** (punto/badge) en pestañas con novedades — p. ej. "Misiones" con un punto si acaba de aparecer un gancho de aventura nuevo, "Diario" si hay entradas sin leer. Mejora de UX barata, no requiere datos nuevos, solo comparar contra la última vez que se abrió cada panel.
-- **Reutilizar "Habilidades" como acceso rápido al `ChatComposer`**: en vez de una pestaña aislada, que una habilidad guardada rellene el campo de texto del chat (o lo envíe directamente) — así no es una mecánica nueva desconectada, es un atajo sobre el flujo de acción libre que ya existe.
+- **Reputación/relaciones** (construido) — no quedó como pestaña propia de la barra inferior: vive como sub-pestaña dentro de "Personaje" (`ReputacionPanel.tsx`, junto a Equipo/Estadísticas/Profesiones, panel `9234c0e`), sincronizada en vivo tras cada turno.
+- **Indicador de notificación** (punto/badge) en pestañas con novedades — p. ej. "Misiones" con un punto si acaba de aparecer un gancho de aventura nuevo, "Diario" si hay entradas sin leer. Sigue sin construirse: mejora de UX barata pendiente, no requiere datos nuevos, solo comparar contra la última vez que se abrió cada panel.
+- **Reutilizar "Habilidades" como acceso rápido al `ChatComposer`** (construido) — clicar una habilidad guardada la adjunta al composer en vez de enviarla directa (§ 2, fila Habilidades); no es una mecánica nueva desconectada, es el atajo sobre el flujo de acción libre que ya existía.
 
 ## 7. Qué se puede construir YA (sin esperar a persistencia)
 
@@ -69,7 +69,7 @@ La usuaria priorizó construirla ya en vez de esperar (contradice la recomendaci
 ## 8. Pendientes de implementación (actualizado 2026-08-02)
 
 1. ~~Resolver el conflicto de niveles (§ 3)~~ — hecho.
-2. ~~Diseñar y migrar los modelos nuevos: `Quest`, `SavedAction`~~ — hecho. Los de "Reino" (`Territory`/`Building`/`Subject`) también existen en el schema, pero Reino queda pausado como línea de juego activa (ver `docs/11-roadmap.md`).
+2. ~~Diseñar y migrar los modelos nuevos: `Quest`, `SavedAction`~~ — hecho. Los de "Reino" (`Territory`/`Building`/`Subject`) también existen en el schema — la pausa de Reino como línea de juego activa que citaba `docs/archivo/11-roadmap-historico.md` (2026-07-19) quedó superada: reino fundado y jugado en vivo (2026-08-07), reglas de construcción cerradas (`docs/17-reglas-construcciones-reino.md`, 2026-08-04) y economía de reino (`KingdomStats`) con habilidades/recetas de construcción en tiempo real (2026-08-13) — ver `docs/10-niveles-xp-reino.md` § 9 para el detalle y una nota pendiente de reconciliar allí.
 3. ~~Abordar la persistencia real de `Save`/`WorldState`/`LogEntry`~~ — hecho.
 4. ~~Construir el componente de barra inferior + drawer~~ — hecho.
 5. ~~Diseñar el catálogo inicial de Profesiones~~ — hecho (2026-08-07): recolectoras vs creadoras,

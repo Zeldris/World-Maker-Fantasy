@@ -15,6 +15,6 @@ echo Backend:  http://localhost:3001
 echo Frontend: http://localhost:5173
 echo.
 echo Se han abierto 2 ventanas nuevas (Backend y Frontend) - dejalas abiertas mientras juegas.
-echo Para pararlo todo, usa detener-tarkor.bat
+echo Para pararlo todo, cierra las 2 ventanas (Backend y Frontend) a mano
 echo.
 pause

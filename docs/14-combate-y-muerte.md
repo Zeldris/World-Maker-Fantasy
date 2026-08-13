@@ -51,9 +51,21 @@ Cada turno dentro del popup es un turno normal (`/turn/classify` + `/turn/narrat
 
 ### 2.4 Condición física en combate — por bando
 
+**Superado (ver nota de § 2.5): sí se persiste, por partida, en `NpcState`.** Queda el diseño
+original abajo por historial — describía correctamente el v1, antes de que hiciera falta
+sobrevivir a un combate parcial (saqueo aplazado, reencuentro con un NPC ya herido).
+
 Un combate puede tener varios NPCs; cada uno lleva su propia condición física **de esa pelea**, no persistida en `Npc` (que es catálogo de mundo, no estado de partida) — vive en el `zoneContext` del combate activo (ver § 2.5) mientras dura, y se descarta al terminar (salvo lo que el Narrador decida guardar como hecho: "el Orco rezagado escapó herido" sí puede quedar en `WorldState.facts`, sus números no).
 
 ### 2.5 Estado del combate activo
+
+**Superado (2026-08-13, este documento contradecía el código actual): el modelo nuevo SÍ llegó a
+hacer falta y SÍ se construyó — `NpcState`** (uno por NPC×partida, no descartado al terminar el
+combate). Persiste condición física real entre turnos y sobrevive a recargar la página; además
+recupera de `INCAPACITADO` a `HERIDO` tras 6h de ficción y el cadáver desaparece tras 48h (ver
+`docs/19-post-combate-y-recompensas-mision.md`). Es la pieza que hace posible saquear/decapitar
+más tarde sin pasar por combate (`postCombatInteraction.ts`). Queda el razonamiento original abajo
+por historial — en el momento en que se escribió, era correcto que nadie lo había pedido todavía.
 
 No hace falta un modelo nuevo — reutiliza el patrón de `CharacterTransit` pero sin tiempo de espera real (el combate no es una acción en diferido, es una serie de turnos síncronos). Basta un campo en memoria de sesión del lado del frontend (qué NPCs siguen en pie, su condición) más lo que cada turno ya persiste (LogEntry, XP, condición física del jugador). Si se necesita sobrevivir a un refresco de página a mitad de combate, se añade más adelante un `CombatSession` — no se diseña aquí por no ser necesario para v1 (nadie ha pedido persistencia de combate a mitad de pelea todavía).
 
@@ -189,7 +201,7 @@ endedAt DateTime?
 2. ~~**Selector de dificultad en la creación de partida**~~ — **hecho**: `SessionContext` guarda `selectedDificultad`, seleccionable en `CharacterSaves.tsx` (Novato/Medio/Avanzado con frase corta) justo antes de "+ Nueva partida"; se manda en `POST /saves`.
 3. ~~**Detección de descanso válido**~~ — **hecho**: `detectsRestIntent()` (movido a `timedActions.ts`, mismo regex que ya usaba `computeDuration`) + `isValidRestLocationKind()` en `death.ts`, enganchado en `turnResolution.ts` — verificado en vivo: descansar en La Hondonada del Eco (kind refugio) fija `lastRestLocationId` correctamente.
 4. ~~**Flujo de muerte determinista**~~ — **hecho**: `backend/src/services/death.ts` (`limiteMuertes`, `resolveDeathOutcome`, `whisperText`, `nextCondicionFisica`, `isValidRestLocationKind`), enganchado en `turnResolution.ts` donde `condicionFisica` pasa a `MUERTO`. Verificado con pruebas unitarias puras (los 3 niveles de dificultad, avisos de última oportunidad, fin de partida) — todas correctas.
-5. ~~**Combate**~~ — **hecho**: `combateIniciado`/`condicionFisica` en el JSON de `narrateAction` (enriquecido con nombres de NPC antes de llegar al frontend), `CombatModal.tsx` con composer propio (habilidades de categoría combate + NPCs clicables + Huir), flag `enCombate` que cambia el tono del prompt y las reglas de `nextCondicionFisica`. **Simplificación v1 explícita**: la condición física de los NPCs durante el combate es un heurístico puramente visual del propio `CombatModal` (sube un escalón si la tirada del jugador tiene éxito) — no hay modelo de datos para combate, tal y como decide el propio § 2.5.
+5. ~~**Combate**~~ — **hecho**: `combateIniciado`/`condicionFisica` en el JSON de `narrateAction` (enriquecido con nombres de NPC antes de llegar al frontend), composer propio (habilidades de categoría combate + NPCs clicables + Huir), flag `enCombate` que cambia el tono del prompt y las reglas de `nextCondicionFisica`. **Desfasado (no una errata menor, señalado aquí):** el componente original `CombatModal.tsx` fue rediseñado y renombrado a `CombatPanel.tsx` (sesión 2026-08-12); y la "simplificación v1 explícita" de abajo ya no es cierta — desde `NpcState` (§ 2.4-2.5 de este documento la descartaban a propósito) la condición física de cada NPC SÍ se persiste de verdad por partida (recupera de `INCAPACITADO` a `HERIDO` tras 6h de ficción, el cadáver desaparece a las 48h, `docs/19-post-combate-y-recompensas-mision.md`), no un heurístico visual descartado al cerrar el combate. § 2.4/2.5 de este documento describen el diseño v1 histórico, ya superado.
 6. ~~**`ComposerAttachment` ampliado**~~ — **hecho**: variantes `discoveredItem`/`npc` + plantilla verbo+objetivo en `buildActionText` (`GameView.tsx`) — empareja habilidad+objetivo por índice, con fallback para hallazgos sueltos ("Recojo...") y NPCs sueltos.
 7. ~~**Revelado progresivo**~~ — **hecho**: `backend/src/services/discovery.ts` (detector de búsqueda genérica + selección de 2-4 hallazgos desde `HarvestYield`, calculado en `/turn/classify` para que el frontend arranque el contador de inmediato) + `DiscoveryReveal.tsx` (revelado con temporizador comprimido, hallazgos clicables).
 8. ~~**`CharacterSaves.tsx`**~~ — **hecho**: partidas con `endedAt` se muestran como "Partida terminada" (no navegables, pero reiniciables/borrables), badge de dificultad visible en cada partida.

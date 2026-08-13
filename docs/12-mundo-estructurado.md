@@ -113,6 +113,13 @@ En `Save` se añade:
 
 ### 1.3 El grafo v1 de las Llanuras del Viento Rojo
 
+**Nota (2026-08-13): este es el grafo de arranque, no el estado actual.** Desde 2026-07-20 se ha
+ampliado varias veces (4 POIs el 2026-07-22, 2 más el 2026-07-22bis, 16 nodos nuevos —sabana, fosa,
+costa norte, desierto Nabierus— el 2026-08-05) hasta pasar de 6 a más de 20 nodos. Las tablas de
+nodos/aristas de más abajo quedan como estaban (siguen siendo canon para estos 6), pero para el
+grafo completo ver `docs/13-escala-del-mundo.md` § 1.1, § 2.2bis y § 2.2ter (que sí se mantuvo al
+día) y `backend/src/scripts/worldCatalog.ts`.
+
 Los 5 POIs ya documentados + **un nodo nuevo necesario**: el **Campamento del Clan Serhu**. Sin él, los NPCs del § 2 no tienen dónde estar y los ganchos 2 y 6 de `personajes.md` no tienen origen físico. Es el único lugar nuevo que se canoniza aquí (habrá que añadirlo a `areas.md` y como lore chunk — ver pendientes). Se coloca cerca del Pozo de Cauce Viejo: un clan que pastorea y caza necesita el agua permanente, y explica que el Pozo sea "punto de encuentro para bien o para mal".
 
 **Nodos:**
@@ -583,7 +590,7 @@ Para el despiece de fauna (§ 3.3), mismo flujo con `HarvestYield` como fuente, 
 8. ~~**Despiece/recolección**~~ — **hecho**: `backend/src/services/harvest.ts` — matcher de especies, bloque de prompt, materialización de `InventoryItem` desde `HarvestYield` en éxito. *(Pendiente menor, no bloqueante: espiga roja y matorral de cuerno todavía no tienen una rama propia en `computeDuration`/`timedActions.ts` — hoy caen en el fallback genérico de banda, no en el patrón de leña ya existente.)*
 9. ~~**Lore chunks nuevos**~~ — **hecho**: Torgash, Ulkha, Hagar (ampliado), Campamento Serhu, las 4 especies nuevas, y un gancho derivado ("acercarse al Campamento del Clan Serhu") — 9 fragmentos nuevos, corpus de 41→50, reindexado con `npm run reindex-lore`.
 10. **Frontend** — **hecho lo esencial**: `MapaPanel`/`GameView` leen `Save.currentLocation`/`destinations` reales del backend (ya no hardcodeado) y muestran tiempos de viaje ya ajustados a destreza; `travel` viaja de `/turn/classify` a `/turn/narrate` en `api.ts`. **Pendiente, no bloqueante**: servir el catálogo completo de ubicaciones vía `GET /world/:id/locations` para que `frontend/src/data/map.ts` deje de duplicar a mano el mapa esquemático de regiones (el nivel de detalle de POI ya no depende de esa copia, pero el mapa SVG de regiones de Berig sigue siendo estático).
-11. ~~Actualizar los .md afectados~~ — **hecho** (2026-07-18): `areas.md`, `npcs.md`, enlazado desde [11-roadmap.md](11-roadmap.md).
+11. ~~Actualizar los .md afectados~~ — **hecho** (2026-07-18): `areas.md`, `npcs.md`, enlazado desde [11-roadmap-historico.md](archivo/11-roadmap-historico.md).
 
 **Verificado en vivo (2026-07-18)** contra una partida desechable de prueba (creada y borrada en la misma sesión, sin tocar la partida real de la usuaria): crear partida → ubicación inicial correcta → `/turn/classify` resuelve "voy hacia el pozo a rellenar el odre" en 1.3s de forma 100% determinista (ruta, terreno, riesgo, banda `extendida` correctos) → `worldTick` resuelve el tránsito → `currentLocationId` actualizado, hito `descubrimiento` (+50 XP), narración anclada en el terreno real sin inventar nada → detección de NPC en escena (Torgash, calibración "Difícil" para la diferencia de nivel correcta; plantilla "patrulla de la concordia") → despiece de Corredor de Cauce y recolección de Salvia del Polvo con las cantidades/condiciones exactas del catálogo.
 
