@@ -1764,10 +1764,8 @@ export function GameView() {
             // se sustituye por CombatPanel mientras dura el combate; el log de mundo en sí sigue
             // acumulándose por debajo, sin perderse, listo para cuando termine.
             <CombatPanel
-              playerName={characterName ?? 'Tú'}
               playerCondicion={condicionFisica}
               energia={energia}
-              energiaMax={energiaMax}
               npcs={combatNpcsDisplay}
               selectedNpcSlug={combatSelectedNpcSlug}
               onSelectNpc={setCombatSelectedNpcSlug}

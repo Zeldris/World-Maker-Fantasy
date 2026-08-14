@@ -7,7 +7,6 @@ import { resolveCombatAbilities } from '../lib/npcAbilities'
 import { faunaFloraToDetailTarget } from '../lib/enciclopediaTargets'
 import { useEnciclopediaLink } from '../context/useEnciclopediaLink'
 import { HealthBar } from './HealthBar'
-import { EnergyBar } from './EnergyBar'
 import { MediaSlot } from './ImagePromptDisplay'
 import { TooltipAnchor } from './TooltipAnchor'
 import { CombatSelectionModal } from './CombatSelectionModal'
@@ -15,17 +14,15 @@ import type { CombatNpcDisplay } from './CombatComposer'
 import type { AttributeBlock, CondicionFisica, InventoryItemInfo, SavedActionInfo } from '../types'
 
 interface CombatPanelProps {
-  /// Nombre del personaje (2026-07-29, "nunca queda claro el estado del enemigo... quiero saber
-  /// cómo estamos ambos") — para la barra de estado persistente de abajo.
-  playerName: string
   playerCondicion: CondicionFisica
   /// Rediseño de combate (2026-08-09, "Analizar rival") — para calcular el atributo recomendado
   /// contra el rival ya analizado (EnemyFicha), sin depender de ningún endpoint nuevo.
   playerAttributes: AttributeBlock
-  /// Sistema de fatiga (2026-07-29) — para la barra de energía junto a la de salud y para
-  /// deshabilitar/marcar el coste de las habilidades que no alcanzan.
+  /// Sistema de fatiga (2026-07-29) — para deshabilitar/marcar el coste de las habilidades que no
+  /// alcanzan. Vida/energía propias quitadas de la barra de estado de aquí (petición explícita,
+  /// 2026-08-15: "ya lo tenemos en la parte superior") — `energiaMax` ya no hace falta aquí, solo
+  /// Personaje > Estadísticas la sigue usando.
   energia: number
-  energiaMax: number
   npcs: CombatNpcDisplay[]
   selectedNpcSlug: string | null
   onSelectNpc: (slug: string) => void
@@ -292,11 +289,9 @@ function EnemyFicha({
 /// que se queda en la barra inferior (petición explícita: "la barra de abajo queda libre para el
 /// texto") — el estado de selección vive en GameView.tsx, compartido entre este panel y esa barra.
 export function CombatPanel({
-  playerName,
   playerCondicion,
   playerAttributes,
   energia,
-  energiaMax,
   npcs,
   selectedNpcSlug,
   onSelectNpc,
@@ -369,7 +364,27 @@ export function CombatPanel({
   })
 
   return (
-    <section className="plank-panel relative flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl">
+    <section
+      className={`plank-panel relative flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl transition-colors duration-500 ${
+        // Solo el COLOR del borde (nunca el ancho/box-shadow, ya fijados por `.plank-panel` — una
+        // utilidad `shadow-*` de Tailwind los pisaría enteros en vez de sumarse).
+        !ended ? (awaitingDefense ? 'border-accent-500' : 'border-danger-500') : ''
+      }`}
+    >
+      {/* Tinte de fondo rojo/azul según de quién es el turno (petición explícita, 2026-08-15: "que
+          el fondo del panel de combate cambie entre rojo y azul según si es turno de ataque y
+          defensa... que llame más la atención") — capa aparte por encima del `.plank-panel` base
+          (nunca se toca esa clase compartida, la usan más paneles) en vez de reemplazar su
+          `background-image`; va primera en el DOM así que el resto del contenido (sin z-index
+          propio) pinta encima de forma natural. Mismo rojo de combate (danger) para "te toca
+          atacar" y azul del propio jugador (accent, ya usado en "Tu personaje") para "te toca
+          defender" — oculto tras la victoria/derrota (`ended`), donde ya no hay turno que marcar. */}
+      {!ended && (
+        <div
+          aria-hidden="true"
+          className={`pointer-events-none absolute inset-0 transition-colors duration-500 ${awaitingDefense ? 'bg-accent-500/10' : 'bg-danger-500/10'}`}
+        />
+      )}
       <header className="relative flex items-center justify-between gap-2.5 px-4 py-3">
         <div className="flex items-center gap-2.5">
           <span className="gem animate-gem-breathe" />
@@ -395,13 +410,11 @@ export function CombatPanel({
 
       {/* Barra de estado persistente (2026-07-29, "nunca queda claro el estado del enemigo...
           quiero saber cómo estamos ambos") — a diferencia de la lista de "Enemigos" de abajo,
-          esta NUNCA se oculta en awaitingDefense: es justo cuando más falta hace verla. */}
+          esta NUNCA se oculta en awaitingDefense: es justo cuando más falta hace verla. Vida/
+          energía del propio jugador quitadas de aquí (petición explícita, 2026-08-15: "ya lo
+          tenemos en la parte superior") — quedaba duplicado con Personaje > Estadísticas, esta
+          fila se queda solo con el estado de los rivales. */}
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 border-b border-iron-800 px-4 pb-2.5">
-        <div className="flex items-center gap-1.5">
-          <span className="max-w-24 truncate text-2xs text-wood-400">{playerName}</span>
-          <HealthBar condicionFisica={playerCondicion} />
-          <EnergyBar energia={energia} energiaMax={energiaMax} />
-        </div>
         {npcs.map((npc) => (
           <div key={npc.slug} className="flex items-center gap-1.5">
             <span className="max-w-24 truncate text-2xs text-wood-400">{npc.name}</span>
@@ -493,21 +506,35 @@ export function CombatPanel({
           </div>
         )}
 
+        {/* Rediseño del banner de iniciativa (petición explícita, 2026-08-15: "que la tirada
+            iniciativa sea visible tanto en el turno de ataque como en el de defensa, además de
+            que se vea mejor y llame más la atención") — antes eran DOS bloques mutuamente
+            excluyentes, y solo el de ataque enseñaba los números reales; el de defensa se
+            quedaba en un aviso genérico sin la tirada. Ahora es un único bloque que siempre
+            muestra los números cuando existen (`lastInitiativeRoll`), con el mismo rojo/azul que
+            ya tiñe el panel entero (ver el `<section>` de más abajo) para que el tono coincida de
+            un vistazo con "de quién es este turno". `lastInitiativeRoll` puede faltar en defensa
+            si el enemigo forzó el turno sin tirada real (Aturdimiento/Intimidación) — ahí se cae
+            al aviso genérico de siempre. */}
         {awaitingDefense && (
-          // Rediseño del turno de combate (2026-07-28, petición explícita: "turno de defensa
-          // donde elige una habilidad a ciegas") — sin objetivo que elegir, es reactivo: el NPC
-          // ya decidió su ataque, oculto, y espera la respuesta del jugador.
-          <div className="rounded-lg border border-danger-600/50 bg-danger-500/10 px-3 py-2 text-xs text-danger-200">
-            ⚔️ Un enemigo actúa primero — elige a ciegas cómo defenderte.
+          <div
+            className={`rounded-lg border-2 px-3.5 py-2.5 text-sm font-semibold shadow-[0_0_16px_-6px_var(--color-accent-500)] ${
+              lastInitiativeRoll ? 'border-accent-500/70 bg-accent-500/15 text-accent-200' : 'border-accent-600/50 bg-accent-500/10 text-accent-200'
+            }`}
+          >
+            {lastInitiativeRoll ? (
+              <>
+                🎲 Iniciativa: tú {lastInitiativeRoll.jugadorTirada} vs {lastInitiativeRoll.npcTirada} del enemigo — un enemigo actúa primero, elige a
+                ciegas cómo defenderte.
+              </>
+            ) : (
+              <>⚔️ Un enemigo actúa primero — elige a ciegas cómo defenderte.</>
+            )}
           </div>
         )}
 
         {!awaitingDefense && lastInitiativeRoll && (
-          // Equivalente en el turno de ATAQUE al banner de arriba (2026-07-29, "el de defensa es
-          // claro pero el de ataque no tanto, indícame qué salió en los dados") — mismos números
-          // reales que decidieron la iniciativa, para que quede claro por qué te toca golpear
-          // primero (o, si perdiste la tirada, por qué el próximo turno será de defensa a ciegas).
-          <div className="rounded-lg border border-accent-600/40 bg-accent-500/5 px-3 py-2 text-xs text-wood-300">
+          <div className="rounded-lg border-2 border-danger-500/70 bg-danger-500/15 px-3.5 py-2.5 text-sm font-semibold text-danger-200 shadow-[0_0_16px_-6px_var(--color-danger-500)]">
             🎲 Iniciativa: tú {lastInitiativeRoll.jugadorTirada} vs {lastInitiativeRoll.npcTirada} del enemigo —{' '}
             {lastInitiativeRoll.ganador === 'jugador' ? 'actúas primero.' : 'el enemigo actuará primero en tu próximo turno.'}
           </div>
