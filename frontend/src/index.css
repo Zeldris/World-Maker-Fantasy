@@ -181,6 +181,31 @@ body {
     0 8px 24px -12px rgba(0, 0, 0, 0.7);
 }
 
+/* Turno de defensa en combate (CombatPanel.tsx, petición explícita 2026-08-15: "el turno de
+   ataque el fondo por defecto y en el de defensa la madera de fondo que sea azul") — sustituye
+   SOLO el `background-image` de `.plank-panel` (mismo veteado, gradiente base teñido de azul en
+   vez de madera lisa), nunca un elemento aparte por encima del contenido: un fondo siempre pinta
+   detrás de todo lo suyo, así que la imagen del rival y el resto del panel nunca se ven afectados
+   al hacer scroll (a diferencia del overlay `<div>` del primer intento). Mismo azul ya usado para
+   "Tu personaje" (accent) en vez de un color nuevo. */
+.plank-panel-defense {
+  background-image:
+    repeating-linear-gradient(
+      1deg,
+      rgba(0, 0, 0, 0.35) 0px,
+      rgba(0, 0, 0, 0.35) 2px,
+      rgba(255, 255, 255, 0.04) 2px,
+      rgba(255, 255, 255, 0.04) 3px,
+      transparent 3px,
+      transparent 34px
+    ),
+    linear-gradient(
+      155deg,
+      color-mix(in srgb, var(--color-accent-500) 20%, var(--color-wood-800)),
+      color-mix(in srgb, var(--color-accent-500) 10%, var(--color-wood-900)) 65%
+    );
+}
+
 /* Banda de hierro — el "chrome" de mando (header, barra inferior): metal oscuro que
    enmarca la madera del contenido, en vez de más madera plana.
    Roadmap de rediseño visual (Fable 2026-07-20, Nivel 2): Hierro Grabado/Ley generalizado aquí

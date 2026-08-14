@@ -363,32 +363,22 @@ export function CombatPanel({
       }))
   })
 
+  // Fondo azul en turno de defensa, madera normal en turno de ataque (petición explícita,
+  // 2026-08-15, segunda vuelta tras "no en rojo todo... incluso en la imagen" — simplificado a
+  // propósito: nada de overlay ni de rojo en ataque, solo `.plank-panel-defense` (index.css)
+  // tiñendo el propio `background-image` de `.plank-panel` — un fondo SIEMPRE pinta detrás de su
+  // contenido, así que la imagen del rival nunca se ve afectada, a diferencia del `<div>` overlay
+  // del primer intento, que se quedaba fijo tapando lo que se desplazara bajo él al hacer scroll).
+  const defenseBg = !ended && awaitingDefense
+
   return (
-    <section
-      className={`plank-panel relative flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl transition-colors duration-500 ${
-        // Solo el COLOR del borde (nunca el ancho/box-shadow, ya fijados por `.plank-panel` — una
-        // utilidad `shadow-*` de Tailwind los pisaría enteros en vez de sumarse).
-        !ended ? (awaitingDefense ? 'border-accent-500' : 'border-danger-500') : ''
-      }`}
-    >
-      {/* Tinte de fondo rojo/azul según de quién es el turno (petición explícita, 2026-08-15: "que
-          el fondo del panel de combate cambie entre rojo y azul según si es turno de ataque y
-          defensa... que llame más la atención") — capa aparte por encima del `.plank-panel` base
-          (nunca se toca esa clase compartida, la usan más paneles) en vez de reemplazar su
-          `background-image`; va primera en el DOM así que el resto del contenido (sin z-index
-          propio) pinta encima de forma natural. Mismo rojo de combate (danger) para "te toca
-          atacar" y azul del propio jugador (accent, ya usado en "Tu personaje") para "te toca
-          defender" — oculto tras la victoria/derrota (`ended`), donde ya no hay turno que marcar. */}
-      {!ended && (
-        <div
-          aria-hidden="true"
-          className={`pointer-events-none absolute inset-0 transition-colors duration-500 ${awaitingDefense ? 'bg-accent-500/10' : 'bg-danger-500/10'}`}
-        />
-      )}
+    <section className={`plank-panel relative flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl ${defenseBg ? 'plank-panel-defense' : ''}`}>
       <header className="relative flex items-center justify-between gap-2.5 px-4 py-3">
         <div className="flex items-center gap-2.5">
           <span className="gem animate-gem-breathe" />
-          <h2 className="font-serif text-sm tracking-wide text-danger-400">⚔️ Combate</h2>
+          <h2 className="font-serif text-sm tracking-wide text-danger-400">
+            ⚔️ Combate{!ended && <span className="text-wood-400"> — {awaitingDefense ? 'Defensa' : 'Ataque'}</span>}
+          </h2>
         </div>
         <div className="flex items-center gap-2">
           {!ended && !awaitingDefense && (
