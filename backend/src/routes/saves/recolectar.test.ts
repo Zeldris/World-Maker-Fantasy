@@ -36,6 +36,9 @@ const findUniqueNpcStateTx = vi.fn();
 // les prestan atención no revienten si closeItemQuests llega a consultarlos.
 const findManyQuestTx = vi.fn();
 const updateQuestTx = vi.fn();
+// Coste de tiempo de recolección (petición explícita, 2026-08-14) — la ruta ahora avanza
+// `WorldState.fictionalMinutes` dentro de la misma transacción cuando se consigue algo de verdad.
+const updateWorldStateTx = vi.fn();
 
 vi.mock('../../lib/prisma.js', () => ({
   prisma: {
@@ -86,6 +89,7 @@ describe('POST /saves/:id/recolectar/confirmar', () => {
     scopeFor.mockReset().mockReturnValue('');
     findManyQuestTx.mockReset().mockResolvedValue([]);
     updateQuestTx.mockReset();
+    updateWorldStateTx.mockReset();
     findUniqueSave.mockResolvedValue({
       id: 'save1',
       worldId: 'world1',
@@ -106,6 +110,7 @@ describe('POST /saves/:id/recolectar/confirmar', () => {
         logEntry: { create: (...args: unknown[]) => createLogEntry(...args) },
         harvestYield: { findFirst: (...args: unknown[]) => findFirstHarvestYield(...args) },
         worldPopulation: { updateMany: (...args: unknown[]) => updateManyWorldPopulation(...args) },
+        worldState: { update: (...args: unknown[]) => updateWorldStateTx(...args) },
         npc: { findUnique: (...args: unknown[]) => findUniqueNpcTx(...args) },
         npcState: {
           updateMany: (...args: unknown[]) => updateManyNpcStateTx(...args),

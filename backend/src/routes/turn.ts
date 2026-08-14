@@ -800,6 +800,10 @@ export async function turnRoutes(app: FastifyInstance) {
         condicionFisica,
         energia,
         energiaMax,
+        // Renombrado al desestructurar (evita chocar con el `timeLabel` de entrada, calculado
+        // justo arriba a partir de `save.worldState` ANTES de este turno) — el nuevo `writeLine`
+        // de más abajo manda este otro, el que ya incluye el avance de reloj de ESTE turno.
+        timeLabel: newTimeLabel,
         combateIniciado,
         finDePartida,
         justDied,
@@ -875,6 +879,7 @@ export async function turnRoutes(app: FastifyInstance) {
         condicionFisica,
         energia,
         energiaMax,
+        timeLabel: newTimeLabel,
         combateIniciado,
         finDePartida,
         justDied,

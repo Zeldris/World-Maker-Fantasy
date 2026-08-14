@@ -54,6 +54,29 @@ describe('resolveExchange', () => {
     expect(exchangeContextBlock(exchange, 'Orco', 'Gorhorn')).toContain('de propina consigue tocar');
   });
 
+  // Bug real de segunda vuelta (2026-08-14, "me hizo daño con una habilidad defensiva" — "Lana
+  // Espesa", una defensiva sin `effect:'ATAQUE'`, seguía hiriendo al jugador vía `golpes_mutuos`):
+  // el mismo gate de arriba se aplicó a `defensor_contragolpea` pero se dejó fuera `golpes_mutuos`,
+  // el otro desenlace donde el defensor también hace daño de vuelta. Downgrade a `golpe_normal`
+  // (el ataque SÍ conecta, solo el golpe de vuelta del defensor queda anulado) — a diferencia de
+  // `defensor_contragolpea` (ahí el ataque ya había fallado del todo).
+  it('exchangeContextBlock narra golpes_mutuos como un golpe normal (solo atacante) si el defensor no puede contragolpear', () => {
+    mockRolls(R_FOR_ROLL_20, R_FOR_ROLL_20);
+    const exchange = resolveExchange(atacanteBase, defensorBase);
+    expect(exchange.resultado).toBe('golpes_mutuos');
+    const conBonus = exchangeContextBlock(exchange, 'Orco', 'Gorhorn', true);
+    const sinBonus = exchangeContextBlock(exchange, 'Orco', 'Gorhorn', false);
+    expect(conBonus).toContain('AMBOS acaban acusando algo');
+    expect(sinBonus).not.toContain('AMBOS acaban acusando algo');
+    expect(sinBonus).toContain('alcanza a Gorhorn con normalidad');
+  });
+
+  it('exchangeContextBlock sigue narrando golpes mutuos cuando el defensor SÍ puede contragolpear (parámetro por defecto true)', () => {
+    mockRolls(R_FOR_ROLL_20, R_FOR_ROLL_20);
+    const exchange = resolveExchange(atacanteBase, defensorBase);
+    expect(exchangeContextBlock(exchange, 'Orco', 'Gorhorn')).toContain('AMBOS acaban acusando algo');
+  });
+
   it('atacante falla + defensor con_coste → el ataque simplemente falla', () => {
     mockRolls(R_FOR_ROLL_5, R_FOR_ROLL_10);
     expect(resolveExchange(atacanteBase, defensorBase).resultado).toBe('ataque_falla');

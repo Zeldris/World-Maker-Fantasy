@@ -172,6 +172,12 @@ export interface NarrateResponse {
   /// Constitución efectiva), listos para actualizar la barra sin recalcular nada en el cliente.
   energia: number
   energiaMax: number
+  /// Hora ficticia real tras ESTE turno (bug real, petición explícita 2026-08-14: "se logea mal la
+  /// hora" — GameView.tsx antes solo fijaba `fictionalDate` al cargar la partida y sellaba cada
+  /// entrada de log nueva con ese valor congelado el resto de la sesión en vivo, aunque el reloj
+  /// real del backend sí hubiera avanzado). Úsalo para refrescar `fictionalDate` Y para sellar la
+  /// entrada de log de este mismo turno, nunca el valor local ya obsoleto.
+  timeLabel: string
   combateIniciado?: { npcs: NpcInSceneInfo[] } | null
   finDePartida: boolean
   /// Bug real (2026-07-29, "si muero no hace lo que fijamos que haría" en combate): `condicionFisica`

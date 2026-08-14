@@ -313,6 +313,11 @@ export interface NarrateAndPersistResult {
   /// que recalcularlo por su cuenta.
   energia: number;
   energiaMax: number;
+  /// Hora ficticia real tras este turno (worldClock.ts) — ver el comentario en el `return` de
+  /// `narrateAndPersistTurn` para el bug que cierra: sin esto, el frontend no tenía forma de saber
+  /// que el reloj había avanzado dentro de una sesión en vivo, y seguía sellando cada entrada nueva
+  /// del log con la hora del último `syncFromSave` completo.
+  timeLabel: string;
   /// Enriquecido con nombres y estado real (el modelo solo propone slugs, § 2.5) para que el
   /// frontend pueda mostrar el popup de combate ya sincronizado con `NpcState`, sin una consulta
   /// adicional ni asumir que todo NPC arranca ILESO/sin saquear.
@@ -762,17 +767,22 @@ function resolveCombatExchangePhase(input: CombatExchangePhaseInput): CombatExch
         // esta llamada, nunca al NPC pese a que la propia narración dice "AMBOS acaban acusando
         // algo") — hiere a los dos lados, no solo al jugador.
         //
-        // `defensor_contragolpea` (bug real jugando en vivo, 2026-08-13, "solo las de ataque hacen
-        // daño"): el jugador es el "defensor" aquí — su golpe de propina SOLO cuenta si la
-        // habilidad de defensa que eligió tiene de verdad `effect: 'ATAQUE'` (hoy ninguna
-        // `rol: 'defensa'` lo tiene, ver classAbilities.ts/genericCombatAbilities.ts/
-        // npcCombatAbilities.ts — todas son AGUANTE o sin efecto).
-        const jugadorContragolpeaAplica = exchange.resultado === 'defensor_contragolpea' && abilityEffect === 'ATAQUE';
+        // `defensor_contragolpea`/`golpes_mutuos` (bug real jugando en vivo, 2026-08-13 y
+        // 2026-08-14, "solo las de ataque hacen daño... me hizo daño con una habilidad defensiva"):
+        // el jugador es el "defensor" aquí — su golpe de propina SOLO cuenta si la habilidad de
+        // defensa que eligió tiene de verdad `effect: 'ATAQUE'` (hoy ninguna `rol: 'defensa'` lo
+        // tiene, ver classAbilities.ts/genericCombatAbilities.ts/npcCombatAbilities.ts — todas son
+        // AGUANTE o sin efecto). El primer fix solo cubrió `defensor_contragolpea`; `golpes_mutuos`
+        // (el NPC ataca, el jugador se defiende bien Y encima "contragolpea") se quedó sin el mismo
+        // gate — mismo booleano de capacidad, comprobado en los dos desenlaces.
+        const jugadorPuedeContragolpear = abilityEffect === 'ATAQUE';
+        const jugadorContragolpeaAplica = exchange.resultado === 'defensor_contragolpea' && jugadorPuedeContragolpear;
         jugadorRecibeGolpe = exchange.resultado === 'golpe_pleno' || exchange.resultado === 'golpe_normal' || exchange.resultado === 'golpes_mutuos';
         jugadorGolpeEfecto = pendingNpcAttack.effect;
-        npcAttackHits = jugadorContragolpeaAplica || exchange.resultado === 'golpes_mutuos';
+        npcAttackHits =
+          jugadorContragolpeaAplica || (exchange.resultado === 'golpes_mutuos' && jugadorPuedeContragolpear);
         npcTargetNewCondicion = npcAttackHits ? oneStepWorseThan(npcParaIntercambio.condicionFisica) : null;
-        exchangeNarrationBlock = `${npcParaIntercambio.name} ataca con "${pendingNpcAttack.abilityName}" (${pendingNpcAttack.abilityDescription || 'sin descripción propia'}). ${exchangeContextBlock(exchange, npcParaIntercambio.name, characterName, jugadorContragolpeaAplica)}`;
+        exchangeNarrationBlock = `${npcParaIntercambio.name} ataca con "${pendingNpcAttack.abilityName}" (${pendingNpcAttack.abilityDescription || 'sin descripción propia'}). ${exchangeContextBlock(exchange, npcParaIntercambio.name, characterName, jugadorPuedeContragolpear)}`;
         combatExchangeRoll = exchange.defensor;
         npcAbilityUsed = { npcName: npcParaIntercambio.name, abilityName: pendingNpcAttack.abilityName, rol: 'ataque' };
         combatExchangeDisplay = { atacanteEsJugador: false, atacante: exchange.atacante, defensor: exchange.defensor, resultado: exchange.resultado };
@@ -911,15 +921,19 @@ function resolveCombatExchangePhase(input: CombatExchangePhaseInput): CombatExch
         // `golpes_mutuos` hiere también al jugador, no solo al NPC — mismo criterio que en el CASO
         // DEFENSA de arriba.
         //
-        // `defensor_contragolpea` (mismo fix que el CASO DEFENSA de arriba, 2026-08-13): aquí el
-        // NPC es el "defensor" — su golpe de propina solo cuenta si SU habilidad de defensa tiene
-        // de verdad `effect: 'ATAQUE'` (hoy ninguna la tiene, ver npcCombatAbilities.ts).
-        const npcContragolpeaAplica = exchange.resultado === 'defensor_contragolpea' && npcDefensa.effect === 'ATAQUE';
+        // `defensor_contragolpea`/`golpes_mutuos` (mismo fix que el CASO DEFENSA de arriba,
+        // 2026-08-13 y 2026-08-14 — bug real jugando en vivo, "Lana Espesa" [defensiva, sin
+        // effect:'ATAQUE'] seguía hiriendo al jugador vía golpes_mutuos): aquí el NPC es el
+        // "defensor" — su golpe de propina SOLO cuenta si SU habilidad de defensa tiene de verdad
+        // `effect: 'ATAQUE'` (hoy ninguna la tiene, ver npcCombatAbilities.ts). Mismo booleano de
+        // capacidad para los dos desenlaces, igual que en el CASO DEFENSA.
+        const npcPuedeContragolpear = npcDefensa.effect === 'ATAQUE';
+        const npcContragolpeaAplica = exchange.resultado === 'defensor_contragolpea' && npcPuedeContragolpear;
         npcAttackHits = exchange.resultado === 'golpe_pleno' || exchange.resultado === 'golpe_normal' || exchange.resultado === 'golpes_mutuos';
         npcTargetNewCondicion = npcAttackHits ? nextCondicionForAttack(abilityEffect, npcParaIntercambio.condicionFisica) : null;
-        jugadorRecibeGolpe = npcContragolpeaAplica || exchange.resultado === 'golpes_mutuos';
-        jugadorGolpeEfecto = npcContragolpeaAplica ? 'ATAQUE' : null;
-        exchangeNarrationBlock = `${npcParaIntercambio.name} se defiende con "${npcDefensa.name}" (${npcDefensa.description}). ${exchangeContextBlock(exchange, characterName, npcParaIntercambio.name, npcContragolpeaAplica)}`;
+        jugadorRecibeGolpe = npcContragolpeaAplica || (exchange.resultado === 'golpes_mutuos' && npcPuedeContragolpear);
+        jugadorGolpeEfecto = jugadorRecibeGolpe ? 'ATAQUE' : null;
+        exchangeNarrationBlock = `${npcParaIntercambio.name} se defiende con "${npcDefensa.name}" (${npcDefensa.description}). ${exchangeContextBlock(exchange, characterName, npcParaIntercambio.name, npcPuedeContragolpear)}`;
         combatExchangeRoll = exchange.atacante;
         npcAbilityUsed = { npcName: npcParaIntercambio.name, abilityName: npcDefensa.name, rol: 'defensa' };
         combatExchangeDisplay = { atacanteEsJugador: true, atacante: exchange.atacante, defensor: exchange.defensor, resultado: exchange.resultado };
@@ -1513,6 +1527,13 @@ async function resolveCombatSlugsAndPersist(params: {
   npcTargetNewCondicion: CondicionFisica | null;
   executeTargets: NpcInScene[];
   partiallyLootedSlugs: string[];
+  /// Bug real (auditoría 2026-08-14, "acaba de salir pero en el siguiente turno" — Analizar Rival
+  /// con éxito este mismo turno, pero la Ficha del rival seguía vacía hasta el turno siguiente):
+  /// mismo bug que ya se documentó y arregló abajo para `condicionFisica` (`npcsInScene` se lee
+  /// UNA vez al principio del turno, antes de que `tx.npcState.upsert` escriba `analizado: true`),
+  /// pero ese fix nunca se extendió a este campo. `npcAttackTarget` es el mismo NPC que
+  /// `npcParaIntercambio` (ver línea ~659), así que sirve igual de identificador aquí.
+  analizarRivalExito: boolean;
 }): Promise<{ combatSlugs: string[]; combateIniciado: NonNullable<NarrateAndPersistResult['combateIniciado']> | null }> {
   const {
     saveId,
@@ -1530,6 +1551,7 @@ async function resolveCombatSlugsAndPersist(params: {
     npcTargetNewCondicion,
     executeTargets,
     partiallyLootedSlugs,
+    analizarRivalExito,
   } = params;
 
   // Red de seguridad (ver detectsAttackIntent/detectsHostileSearchIntent en npcScene.ts): si el
@@ -1703,8 +1725,10 @@ async function resolveCombatSlugsAndPersist(params: {
             // cuenta correcta en el backend desde el saqueo parcial (ver npcScene.ts).
             lootedItemNames: n.lootedItemNames,
             // Rediseño de combate (2026-08-09, "Analizar rival") — gatea la ficha del rival en
-            // CombatPanel.tsx § EnemyFicha.
-            analizado: n.analizado,
+            // CombatPanel.tsx § EnemyFicha. Override del análisis recién resuelto ESTE turno
+            // (auditoría 2026-08-14) — mismo criterio que el override de `condicionFisica` de
+            // arriba, `n.analizado` por sí solo es la foto de ANTES de este turno.
+            analizado: analizarRivalExito && npcAttackTarget && n.id === npcAttackTarget.id ? true : n.analizado,
           })),
       }
     : null;
@@ -3057,6 +3081,13 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     // solo la misión "conseguir Z" (Quest.targetItemName) al final de la transacción, sin repetir
     // el chequeo en cada uno de los 5 sitios que crean InventoryItem.
     const createdItemNames: string[] = [];
+    // Nombres de lo crafteado ESTE turno, en el mismo orden en que se resuelve cada receta
+    // (auditoría 2026-08-14, petición explícita repetida: "la habilidad de crafteo debe ser
+    // determinista no narrada") — el resultado en sí (qué se crea, qué se consume) ya era
+    // determinista desde 2026-07-22 (CRAFTING_RECIPES/planCraftConsumption), pero el TEXTO seguía
+    // siendo prosa libre del modelo; esto permite sustituirlo por una frase fija, mismo criterio
+    // que loot/harvest (`narrationOverride`) más abajo.
+    const craftedResultNames: string[] = [];
     // XP de recompensa de misión concedida este turno (petición explícita, 2026-07-25) — se suma
     // a xpTurno más abajo, junto a xpTirada/xpHito, para que la subida de nivel/progresión de la
     // respuesta ya la refleje en el mismo turno en que se concede (ver bloque `lootMode`).
@@ -3357,7 +3388,15 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
         tipo: resultCatalogRow?.tipo ?? null,
       });
       createdItemNames.push(created.name);
+      craftedResultNames.push(created.name);
       await awardProfessionXp(recipe.oficio, recipe.tier);
+    }
+    // Sustituye la prosa libre del modelo por una frase fija (auditoría 2026-08-14, ver comentario
+    // de `craftedResultNames` más arriba) — mismo criterio que `lootResult.narrationOverride`/
+    // `harvestResult.narrationOverride`: nunca dejar que el modelo "cuente" algo que ya se decidió
+    // por código, ni con matices que la mecánica no respalda.
+    if (craftedResultNames.length > 0) {
+      narration.narration = `${characterName} craftea: ${craftedResultNames.join(', ')}.`;
     }
 
     // Construcción (roadmap 2026-07-20/21, ampliado 2026-07-22): a diferencia del resto de
@@ -4162,6 +4201,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     npcTargetNewCondicion,
     executeTargets,
     partiallyLootedSlugs,
+    analizarRivalExito,
   });
 
   // Log de diagnóstico por turno (roadmap 2026-07-20, prioridad P0 de Fable): una línea
@@ -4244,7 +4284,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     // el jugador veía el contador de muertes, la pestaña Reputación o Profesiones desactualizados
     // hasta recargar del todo. Mismo criterio que quests/territories: se releen ya fuera de la
     // transacción (que a estas alturas ya hizo commit), nunca se rastrea el delta a mano.
-    prisma.worldState.findUnique({ where: { saveId }, select: { factionsStatus: true } }),
+    prisma.worldState.findUnique({ where: { saveId }, select: { factionsStatus: true, fictionalDateLabel: true } }),
     prisma.professionProgress.findMany({ where: { saveId } }),
   ]);
   const freshFactionsStatus = (freshWorldState?.factionsStatus as Record<string, number> | null) ?? {};
@@ -4288,6 +4328,17 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     condicionFisica,
     energia,
     energiaMax: energiaMaxResult,
+    // Reloj de ficción (bug real, petición explícita 2026-08-14: "se logea mal la hora" + "un
+    // combate... sin narrarlo ni avisarlo" justo después de una acción sin coste de tiempo) — hasta
+    // ahora `/turn/narrate` nunca devolvía la hora nueva tras avanzar el reloj (`nuevaFictionalDateLabel`,
+    // calculado arriba y ya persistido en `WorldState` dentro de la transacción): el frontend
+    // (`GameView.tsx`) solo fijaba su `fictionalDate` una vez, al cargar la partida (`syncFromSave`),
+    // y sellaba CADA entrada de log nueva con ese mismo valor congelado el resto de la sesión en
+    // vivo — turnos posteriores que sí avanzaban tiempo de verdad en la BD se mostraban con una hora
+    // vieja, haciendo parecer que dos sucesos muy separados en el tiempo pasaron "a la vez" o en
+    // orden incoherente. Releído fresco tras el commit (igual que `factionsStatus` arriba) en vez de
+    // threading manual desde dentro de la transacción — misma fuente de verdad que ya persiste ahí.
+    timeLabel: freshWorldState?.fictionalDateLabel ?? nuevaFictionalDateLabel,
     combateIniciado,
     finDePartida,
     justDied,

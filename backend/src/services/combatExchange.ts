@@ -233,6 +233,15 @@ const OUTCOME_NARRATION_HINT: Record<ExchangeOutcome, (atacante: string, defenso
 /// habilidad `rol: 'defensa'` lo tiene (todas son AGUANTE o sin efecto), así que el "de propina
 /// replica" del texto original nunca debería narrarse; el caller (turnResolution.ts) decide el
 /// booleano mirando la habilidad real, este archivo no conoce habilidades, solo tiradas.
+///
+/// Bug real de segunda vuelta (2026-08-14, "me hizo daño con una habilidad defensiva" —
+/// "Lana Espesa", una habilidad `rol:'defensa'` sin `effect:'ATAQUE'`, seguía hiriendo al jugador
+/// vía `golpes_mutuos`): la regla de la usuaria ("solo las de ataque hacen daño") se aplicó a
+/// `defensor_contragolpea` en su momento pero se dejó fuera `golpes_mutuos`, el otro desenlace
+/// donde el defensor también hace daño — mismo gate, mismo parámetro (el defensor de este
+/// intercambio es el mismo en los dos casos). Downgrade a `golpe_normal` (el ataque SÍ conecta,
+/// solo el golpe de vuelta del defensor queda anulado), no a `ataque_falla` — a diferencia de
+/// `defensor_contragolpea` (el ataque ya había fallado del todo ahí), aquí el atacante sí acertó.
 export function exchangeContextBlock(
   exchange: ExchangeResult,
   atacanteNombre: string,
@@ -240,7 +249,12 @@ export function exchangeContextBlock(
   defensorPuedeContragolpear: boolean = true,
 ): string {
   const grados = `${atacanteNombre} tira ${exchange.atacante.result} (${exchange.atacante.gradoExito}) vs dificultad ${exchange.atacante.difficulty} · ${defensorNombre} tira ${exchange.defensor.result} (${exchange.defensor.gradoExito}) vs dificultad ${exchange.defensor.difficulty}.`;
-  const resultadoEfectivo = exchange.resultado === 'defensor_contragolpea' && !defensorPuedeContragolpear ? 'ataque_falla' : exchange.resultado;
+  const resultadoEfectivo =
+    !defensorPuedeContragolpear && exchange.resultado === 'defensor_contragolpea'
+      ? 'ataque_falla'
+      : !defensorPuedeContragolpear && exchange.resultado === 'golpes_mutuos'
+        ? 'golpe_normal'
+        : exchange.resultado;
   return `RESULTADO DEL INTERCAMBIO — YA RESUELTO, no lo cambies: ${grados} ${OUTCOME_NARRATION_HINT[resultadoEfectivo](atacanteNombre, defensorNombre)}`;
 }
 

@@ -407,6 +407,7 @@ export function GameView() {
         condicionFisica,
         energia,
         energiaMax,
+        timeLabel: newTimeLabel,
         combateIniciado: combate,
         finDePartida,
         justDied,
@@ -457,6 +458,7 @@ export function GameView() {
         condicionFisica,
         energia,
         energiaMax,
+        timeLabel: newTimeLabel,
         finDePartida,
         newInventoryItems,
         removedInventoryItemIds,
@@ -1043,6 +1045,7 @@ export function GameView() {
     condicionFisica: CondicionFisica
     energia: number
     energiaMax: number
+    timeLabel: string
     finDePartida: boolean
     newInventoryItems: InventoryItemInfo[]
     removedInventoryItemIds: string[]
@@ -1072,7 +1075,7 @@ export function GameView() {
           id: params.logEntryId,
           channel: 'character' as const,
           text: params.narration,
-          timeLabel: fictionalDate,
+          timeLabel: params.timeLabel,
           createdAt: new Date().toISOString(),
           entityBanner,
           combate: true,
@@ -1086,7 +1089,7 @@ export function GameView() {
       // por el backend vía questRewardNarrationFor), nunca fusionada con la narración principal de
       // arriba: el combate puede cerrar una misión en el mismo golpe que la mata, pero son dos
       // filas distintas en la DB.
-      if (params.questCompletedInfo) next.push(questCompletedLogEntry(params.questCompletedInfo, fictionalDate))
+      if (params.questCompletedInfo) next.push(questCompletedLogEntry(params.questCompletedInfo, params.timeLabel))
       return next
     })
     if (params.newInventoryItems.length > 0 || params.removedInventoryItemIds.length > 0 || params.updatedInventoryItems.length > 0) {
@@ -1102,6 +1105,7 @@ export function GameView() {
     setCondicionFisica(params.condicionFisica)
     setEnergia(params.energia)
     setEnergiaMax(params.energiaMax)
+    setFictionalDate(params.timeLabel)
     setCombatAwaitingDefense(params.esperandoDefensaJugador)
     setLastInitiativeRoll(params.nextInitiativeRoll)
     // Bug real (auditoría 2026-07-28): esta función (la que resuelve CADA turno mientras el
@@ -1326,6 +1330,7 @@ export function GameView() {
         condicionFisica: newCondicion,
         energia: newEnergia,
         energiaMax: newEnergiaMax,
+        timeLabel: newTimeLabel,
         combateIniciado: combate,
         finDePartida,
         newInventoryItems,
@@ -1355,6 +1360,7 @@ export function GameView() {
       setCondicionFisica(newCondicion)
       setEnergia(newEnergia)
       setEnergiaMax(newEnergiaMax)
+      setFictionalDate(newTimeLabel)
       setQuests(updatedQuests)
       // Bug real (auditoría de deuda técnica 2026-08-04): construir/mejorar/fundar un edificio de
       // verdad en la DB no se veía en el mapa ni en el panel de Reino hasta recargar la partida
@@ -1400,7 +1406,7 @@ export function GameView() {
             id: logEntryId,
             channel: 'character' as const,
             text: narration.narration,
-            timeLabel: fictionalDate,
+            timeLabel: newTimeLabel,
             roll,
             createdAt: new Date().toISOString(),
             xpDelta: progression.xpDelta > 0 ? progression.xpDelta : undefined,
@@ -1410,7 +1416,7 @@ export function GameView() {
         ]
         // Misión completada (2026-08-13) — ver el mismo bloque en handleCombatTurnResolved: fila
         // real aparte, nunca fusionada con la narración principal.
-        if (questCompletedInfo) next.push(questCompletedLogEntry(questCompletedInfo, fictionalDate))
+        if (questCompletedInfo) next.push(questCompletedLogEntry(questCompletedInfo, newTimeLabel))
         return next
       })
       // Bug real (auditoría de deuda técnica 2026-08-04, mismo patrón que companionCreated):
@@ -1442,7 +1448,7 @@ export function GameView() {
             id: `levelup-${Date.now()}`,
             channel: 'character',
             text: `${characterName} sube a nivel ${progression.newLevel}.${attributeNote}`,
-            timeLabel: fictionalDate,
+            timeLabel: newTimeLabel,
             createdAt: new Date().toISOString(),
             isLevelUp: true,
           },
@@ -1933,6 +1939,11 @@ export function GameView() {
             // narración, sin pasar por streaming ni por el Narrador.
             if (logEntry) {
               setCharacterLog((prev) => [...prev, { ...logEntry, channel: 'character' }])
+              // Coste de tiempo de recolección (petición explícita, 2026-08-14) — backend/
+              // recolectar.ts ahora avanza el reloj de verdad; sin esto, `fictionalDate` (el mismo
+              // valor congelado que ya causaba "se logea mal la hora") se quedaba atrás del propio
+              // `timeLabel` que este turno acaba de sellar en su LogEntry.
+              setFictionalDate(logEntry.timeLabel)
             }
             setHarvestModal(null)
           }}

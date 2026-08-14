@@ -161,10 +161,16 @@ describe('Misión de apertura: combate contra el Orco Enfurecido (integración r
     expect(finalState?.condicionFisica).toBe('INCAPACITADO');
     expect(finalState?.saqueado).toBe(false); // nunca se saquea solo por incapacitarlo
 
-    // `golpes_mutuos` (ambos lados conectan con dados pinchados al máximo) — el jugador también
-    // debería haber acumulado daño real, nunca quedar en ILESO tras varios golpes recibidos.
+    // `golpes_mutuos` (ambos lados conectan con dados pinchados al máximo) — pero Gorhorn siempre
+    // gana la iniciativa con este mock (empate → gana jugador, ver rollInitiative), así que el NPC
+    // nunca llega a atacar de verdad en estos 4 turnos, solo se defiende. Auditoría 2026-08-14
+    // ("me hizo daño con una habilidad defensiva... solo las de ataque hacen daño"): el golpe de
+    // vuelta del NPC en `golpes_mutuos` ahora exige que SU habilidad de defensa tenga
+    // `effect:'ATAQUE'` (ninguna la tiene) — antes del fix, cualquier `golpes_mutuos` hería a
+    // Gorhorn igual aunque el NPC solo se defendiera, que es justo el bug que se corrigió. Gorhorn
+    // se queda ILESO de verdad: nunca recibió un ataque real, solo asestó los suyos.
     const save = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
-    expect(save.condicionFisica).not.toBe('ILESO');
+    expect(save.condicionFisica).toBe('ILESO');
   }, 30_000);
 
   it('el `/turn/narrate` de después de incapacitar no vuelve a bajar la condición ni permite un segundo saqueo automático', async () => {
@@ -604,6 +610,14 @@ describe('Rediseño de combate: habilidades de utilidad reactivas y consumibles 
     // Nunca hace daño por sí sola — el NPC sigue ILESO (o lo que fuera antes), nunca peor SOLO por
     // usar Analizar rival.
     expect(npcState?.condicionFisica ?? 'ILESO').toBe('ILESO');
+
+    // Bug real (auditoría 2026-08-14, "acaba de salir pero en el siguiente turno" — la Ficha del
+    // rival en el frontend seguía vacía hasta el turno siguiente pese a que NpcState.analizado ya
+    // era `true` arriba): `combateIniciado.npcs[].analizado` en la respuesta de ESTE MISMO turno
+    // venía de `npcsInScene`, leído antes de la transacción — sin el override, mentía a pesar de
+    // que la BD ya tenía el dato correcto.
+    const { combateIniciado } = lastNdjsonLine(narrateRes.payload) as { combateIniciado: { npcs: { slug: string; analizado: boolean }[] } | null };
+    expect(combateIniciado?.npcs?.find((n) => n.slug === 'orco-enfurecido-hondonada')?.analizado).toBe(true);
   }, 15_000);
 
   it('consumir un objeto en combate activa el intercambio (el NPC puede actuar), pero nunca cuenta como golpe propio', async () => {
@@ -1997,6 +2011,57 @@ describe('Objetos narrativos "PASIVO" ligados a su Location exacta (auditoría 2
   }, 20_000);
 });
 
+// Crafteo: narración determinista, no la prosa del modelo (auditoría 2026-08-14, petición
+// explícita repetida: "la habilidad de crafteo debe ser determinista no narrada") — el RESULTADO
+// (qué se crea, qué se consume) ya era determinista desde 2026-07-22, pero el TEXTO que veía la
+// jugadora seguía siendo lo que devolviera el mock/LLM de narrador.js. Ahora se sustituye siempre,
+// mismo criterio que ya usan loot/harvest.
+describe('Crafteo: la narración final es la frase determinista, no la del modelo', () => {
+  let saveId: string;
+
+  beforeAll(async () => {
+    const userId = await getDefaultUserId();
+    const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
+    const hondonada = await prisma.location.findFirstOrThrow({ where: { worldId: world.id, slug: 'hondonada-del-eco' } });
+    const save = await prisma.save.create({
+      data: {
+        userId,
+        worldId: world.id,
+        characterName: 'Gorhorn de prueba (crafteo determinista)',
+        characterArchetype: 'guerrero',
+        characterOrigin: 'Clan Maktor',
+        characterMotivation: 'x',
+        attributes: ATTRS,
+        portraitInitial: 'G',
+        currentLocationId: hondonada.id,
+      },
+    });
+    saveId = save.id;
+    await prisma.worldState.create({ data: { saveId } });
+    classifyAction.mockResolvedValue({
+      requiereTirada: false, atributo: 'destreza', dificultad: 8, razon: 'x', banda: 'instantanea', duracionEstimadaMinutos: 0,
+    });
+  });
+
+  afterAll(async () => {
+    await prisma.save.delete({ where: { id: saveId } });
+  });
+
+  it('craftear un Vendaje improvisado sustituye la prosa del modelo por la frase fija, y consume/crea de verdad', async () => {
+    await giveMaterials(saveId, [{ name: 'Manojo de salvia del polvo', catalogSlug: 'manojo-salvia-polvo' }]);
+
+    const res = await doTurn(saveId, 'Ato un vendaje con mi manojo de salvia del polvo.');
+    expect(res.statusCode).toBe(200);
+    const body = lastNdjsonLine(res.payload) as { narration: { narration: string } };
+    expect(body.narration.narration).toBe('Gorhorn de prueba (crafteo determinista) craftea: Vendaje improvisado.');
+    expect(body.narration.narration).not.toContain('El golpe conecta'); // no es el texto del mock del LLM
+
+    const inventory = await prisma.inventoryItem.findMany({ where: { saveId } });
+    expect(inventory.some((i) => i.name === 'Vendaje improvisado')).toBe(true);
+    expect(inventory.some((i) => i.name.startsWith('Manojo de salvia del polvo'))).toBe(false); // ingrediente consumido
+  }, 20_000);
+});
+
 // Bug real jugando en vivo (2026-08-04, "ronda larga de pruebas" — el propio combate contra el
 // Orco Enfurecido en la Hondonada del Eco redirigió el golpe a Gistera Koh, un PNJ nunca hostil,
 // en cuanto el segundo turno de ataque dejó de citar su nombre entre comillas). Confirmado en
@@ -2214,6 +2279,12 @@ describe('Caza en grupo: el individuo actual "resucita" a ILESO mientras queden 
       where: { saveId_npcId_scope: { saveId, npcId: corretolvasId, scope: hondonadaId } },
       data: { condicionFisica: 'GRAVE' },
     });
+    // Fuerza que ESTE turno resuelva "jugador ataca, NPC se defiende" (auditoría 2026-08-14, gate
+    // de golpes_mutuos: sin esto, un `pendingNpcAttack` heredado del intercambio anterior podía
+    // resolver este turno como CASO DEFENSA en su lugar — el jugador defendiéndose con una
+    // habilidad sin `effect:'ATAQUE'`, que ya no cuenta como golpe propio contra el NPC, correcto
+    // tras el fix, pero no lo que este test necesita comprobar).
+    await prisma.save.update({ where: { id: saveId }, data: { pendingNpcAttack: Prisma.JsonNull } });
 
     const res = await doTurn(saveId, "Ataco a 'Corretolvas' con todas mis fuerzas.");
     expect(res.statusCode).toBe(200);

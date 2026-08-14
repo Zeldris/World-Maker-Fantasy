@@ -10,6 +10,7 @@ import { stripRegionArticle } from '../../services/population.js';
 import { quantityOf } from '../../services/ingredients.js';
 import { closeItemQuests } from '../../services/questResolution.js';
 import { recordEntityDiscoveries } from '../../services/entityDiscovery.js';
+import { advanceFictionalMinutes, formatFictionalDate } from '../../services/worldClock.js';
 import type { AttributeBlock } from '../../services/dice.js';
 import type { MetodoObtencion } from '@prisma/client';
 
@@ -33,6 +34,26 @@ import type { MetodoObtencion } from '@prisma/client';
 /// más simple que depender del reloj de ficción de una `Save` concreta para una fila que es del
 /// `World` (compartida entre partidas). Cifra de partida, ajustable — no es un cierre definitivo.
 const RECOLECCION_COOLDOWN_MS = 30 * 60_000;
+
+/// Coste de tiempo ficticio (bug real jugando en vivo + petición explícita, 2026-08-14: "recolectar,
+/// talar...todas las acciones no estan contabilizando el en el reloj de mundo....toda accion lleva
+/// un tiempo y las de recoleccion de las profesiones deberian ser minimo 10 mins de juego hasta 30
+/// mins....todo depende de la cantidad recolectada") — esta ruta nunca tocaba
+/// `WorldState.fictionalMinutes`, a diferencia de `narrateAndPersistTurn` (worldClock.ts): Minar/
+/// Talar/Desollar salían gratis en el reloj de ficción, y además el propio `LogEntry` que crean
+/// quedaba sellado con la hora YA OBSOLETA de `save.worldState` (leída antes de esta petición, nunca
+/// avanzada) — mismo síntoma raíz que el reloj del cliente (`GameView.tsx`, `fictionalDate`) nunca
+/// se actualiza tras un turno normal. Escala lineal simple, sin IA: 10 min para 1 unidad conseguida,
+/// +2 min por unidad adicional, tope 30 (mismo criterio del resto del motor: nunca lo decide el
+/// modelo, solo mecánica determinista).
+const RECOLECCION_MINUTOS_BASE = 10;
+const RECOLECCION_MINUTOS_TOPE = 30;
+const RECOLECCION_MINUTOS_POR_UNIDAD_EXTRA = 2;
+
+function minutosRecoleccionFor(totalUnidades: number): number {
+  if (totalUnidades <= 0) return 0;
+  return Math.min(RECOLECCION_MINUTOS_TOPE, RECOLECCION_MINUTOS_BASE + (totalUnidades - 1) * RECOLECCION_MINUTOS_POR_UNIDAD_EXTRA);
+}
 
 interface SourceCandidate {
   sourceSlug: string;
@@ -411,18 +432,26 @@ export async function recolectarRoutes(app: FastifyInstance) {
         // si de verdad se consiguió algo (no todas las peticiones tienen éxito: capacidad llena,
         // cooldown, población agotada a mitad de bucle).
         let logEntry: { id: string; text: string; timeLabel: string; createdAt: string; fictionalMinutes: number } | null = null;
+        let nuevoFictionalMinutes = save.worldState?.fictionalMinutes ?? 480;
+        let nuevaFictionalDateLabel = save.worldState?.fictionalDateLabel ?? 'Día 1, mañana';
         if (touched.size > 0) {
           const resumen = [...touched.values()]
             .map((s) => (s.harvestedThisTurn > 1 ? `${s.catalogName} (${s.harvestedThisTurn})` : s.catalogName))
             .join(', ');
           const verbo = anyCaza && !anyNonCaza ? 'despieza una presa cercana' : 'recolecta en la zona';
           const text = `${save.characterName} ${verbo}: ${resumen}.`;
-          const timeLabel = save.worldState?.fictionalDateLabel ?? 'Día 1, mañana';
-          const fictionalMinutes = save.worldState?.fictionalMinutes ?? 480;
-          const created = await tx.logEntry.create({
-            data: { saveId: save.id, channel: 'CHARACTER', text, timeLabel, fictionalMinutes, isPlayerAction: false },
+          const totalUnidades = [...touched.values()].reduce((sum, s) => sum + s.harvestedThisTurn, 0);
+          const minutosCoste = minutosRecoleccionFor(totalUnidades);
+          nuevoFictionalMinutes = advanceFictionalMinutes(save.worldState?.fictionalMinutes ?? 480, minutosCoste);
+          nuevaFictionalDateLabel = formatFictionalDate(nuevoFictionalMinutes);
+          await tx.worldState.update({
+            where: { saveId: save.id },
+            data: { fictionalMinutes: nuevoFictionalMinutes, fictionalDateLabel: nuevaFictionalDateLabel },
           });
-          logEntry = { id: created.id, text, timeLabel, createdAt: created.createdAt.toISOString(), fictionalMinutes };
+          const created = await tx.logEntry.create({
+            data: { saveId: save.id, channel: 'CHARACTER', text, timeLabel: nuevaFictionalDateLabel, fictionalMinutes: nuevoFictionalMinutes, isPlayerAction: false },
+          });
+          logEntry = { id: created.id, text, timeLabel: nuevaFictionalDateLabel, createdAt: created.createdAt.toISOString(), fictionalMinutes: nuevoFictionalMinutes };
         }
 
         // Cierre de misión "conseguir Z" (bug real, auditoría 2026-08-11 "pruebas por API"): este
@@ -434,8 +463,8 @@ export async function recolectarRoutes(app: FastifyInstance) {
           saveId: save.id,
           worldId: save.worldId,
           createdItemNames: [...touched.values()].map((s) => s.catalogName),
-          timeLabel: save.worldState?.fictionalDateLabel ?? 'Día 1, mañana',
-          fictionalMinutes: save.worldState?.fictionalMinutes ?? 480,
+          timeLabel: nuevaFictionalDateLabel,
+          fictionalMinutes: nuevoFictionalMinutes,
         });
 
         return { touched, logEntry };

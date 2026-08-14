@@ -87,6 +87,10 @@ Cada entrada: fecha, qué se detectó (cita textual si es narración), causa ra�
 - [continuación: ronda de 6 hallazgos en vivo tras "revisar partida" (persistencia de ability-used, descubrimientos de Enciclopedia, categoría de Herborista, narración "inconsciente", renombrado Decapitar→Matar, Sella Marn/núcleo jugable)](#2026-08-14-continuación-ronda-de-hallazgos-en-vivo-tras-revisar-partida-6-puntos)
 - [continuación: objetos narrativos "PASIVO" salían en cualquier sitio de la región, incluida la primerísima escena](#2026-08-14-continuación-objetos-narrativos-pasivo-salían-en-cualquier-sitio-de-la-región-incluida-la-primerísima-escena)
 - [continuación: objetos recolectados de verdad descubiertos en BD, pero invisibles en la Enciclopedia (frontend nunca la refrescaba)](#2026-08-14-continuación-objetos-recolectados-de-verdad-descubiertos-en-bd-pero-invisibles-en-la-enciclopedia-frontend-nunca-la-refrescaba)
+- [continuación: golpes_mutuos también dañaba con una habilidad defensiva sin `ATAQUE`](#2026-08-14-continuación-golpes_mutuos-también-dañaba-con-una-habilidad-defensiva-sin-ataque)
+- [continuación: crafteo narraba con el modelo en vez de la frase determinista](#2026-08-14-continuación-crafteo-narraba-con-el-modelo-en-vez-de-la-frase-determinista)
+- [continuación: combate "sin sentido" con Cruzavientos + reloj de mundo congelado en recolección](#2026-08-14-continuación-combate-sin-sentido-con-cruzavientos-reloj-de-mundo-congelado-en-recolección)
+- [continuación: revisión centrada en narración — ataque a Múrgol narrado como si fuera contra Cruzavientos](#2026-08-14-continuación-revisión-centrada-en-narración-ataque-a-múrgol-narrado-como-si-fuera-contra-cruzavientos)
 
 ---
 
@@ -2143,3 +2147,117 @@ sitios, fácil dejarse uno, que es exactamente como se coló este bug la primera
 **Estado**: FIJADO. `tsc -b` limpio, 22 tests frontend en verde (sin cambios, esta ruta no tenía
 cobertura de test antes ni la tiene ahora — es un hook simple sin lógica de negocio propia más allá
 de "pedir de nuevo").
+
+## 2026-08-14 (continuación) — golpes_mutuos también dañaba con una habilidad defensiva sin `ATAQUE`
+
+**Síntoma**: "me hizo daño con una habilidad defensiva y en el siguiente turno otra vez" — captura
+mostrando a Múrgol usando "Lana Espesa" (defensiva) y aun así infligiendo daño real vía
+`combatExchange`.
+
+**Causa raíz**: el downgrade de `defensor_contragolpea` → `ataque_falla` cuando el defensor no tiene
+una habilidad con `effect:'ATAQUE'` (fix del 2026-08-13) nunca cubrió el otro resultado posible del
+mismo intercambio, `golpes_mutuos` — ese caso seguía aplicando daño incondicionalmente en ambos lados
+de `turnResolution.ts` (CASO DEFENSA y "NPC se defiende"), exactamente el mismo bug de fondo sin
+cerrar del todo.
+
+**Fix aplicado**: mismo criterio, extendido a `golpes_mutuos` en los dos sitios simétricos
+(`combatExchange.ts` § `exchangeContextBlock`, `turnResolution.ts` en ambas ramas) — solo el lado
+cuya habilidad activa tiene `effect:'ATAQUE'` puede dañar, sea `defensor_contragolpea` o
+`golpes_mutuos`.
+
+**Estado**: FIJADO. 2 tests nuevos en `combatExchange.test.ts`; 2 tests de integración existentes en
+`turn.integration.test.ts` ajustados (uno probaba la condición de carrera de "Caza en grupo" y
+necesitaba resetear `pendingNpcAttack` para no colarse por la rama corregida; el otro literalmente
+afirmaba el bug viejo — "el jugador no sale ILESO tras atacar repetidamente" — y su aserción se
+invirtió con un comentario explicando por qué). 917 unit + 58+2+2 integration en verde.
+
+## 2026-08-14 (continuación) — crafteo narraba con el modelo en vez de la frase determinista
+
+**Síntoma**: "usar una habilidad de crafteo no dijimos que iba a ser determinista y no narrado?" —
+recordatorio de un criterio de diseño ya decidido (mismo patrón que saqueo/despiece) que el código de
+crafteo nunca llegó a aplicar del todo: el objeto se creaba de verdad, pero el texto que veía la
+jugadora seguía siendo el que proponía el modelo, no una frase fija.
+
+**Fix aplicado**: `turnResolution.ts` acumula los nombres de lo crafteado en el bucle de
+`CRAFTING_RECIPES` y, si hubo al menos uno, sobreescribe `narration.narration` con
+`"{personaje} craftea: {lista}."` — mismo mecanismo `narrationOverride` que ya usa el despiece.
+
+**Estado**: FIJADO. Test de integración nuevo en `turn.integration.test.ts` (receta real "Vendaje
+improvisado") verificando el texto exacto y el consumo/creación de inventario.
+
+## 2026-08-14 (continuación) — combate "sin sentido" con Cruzavientos + reloj de mundo congelado en recolección
+
+**Síntoma** (mensaje único con 3 partes): "revisa la partida porque sin narracion ni nada tambien me
+ha aparecido un combate con cruzavientos sin sentido" + "recolectar, talar...todas las acciones no
+estan contabilizando el en el reloj de mundo....toda accion lleva un tiempo" + "se logea mal la hora
+como en la segunda imagen" (captura: una entrada de las 08:49 mostrada pegada justo después de la de
+las 08:22, ambas con la misma etiqueta "Día 1, 08:22").
+
+**Verificado contra la BD real primero** (`auditSave.ts` + consultas sueltas a `LogEntry`): el
+combate con Cruzavientos SÍ estaba bien narrado y con `timeLabel` correcto y creciente en la propia
+base de datos (08:37→08:49) — el motor determinista funcionaba bien. El síntoma era puramente de
+presentación en vivo, no de datos persistidos.
+
+**Causa raíz real, única, que explica las 3 partes del mensaje a la vez**: `GameView.tsx` solo llama
+`setFictionalDate(...)` UNA vez, dentro de `syncFromSave` (carga inicial/reconexión) — cada turno
+posterior en la MISMA sesión (`handleSubmit`, `submitCombatAction`/`handleCombatTurnResolved`)
+sellaba su `LogEntry` local con ese mismo `fictionalDate` ya congelado, porque `/turn/narrate` nunca
+devolvía la hora nueva que el propio backend ya había calculado y persistido
+(`nuevaFictionalDateLabel`, `worldClock.ts`) — el dato bueno existía, pero no viajaba de vuelta al
+cliente. Esto por sí solo ya explica la "hora mal logeada" en vivo. Además, `recolectar.ts` (Minar/
+Talar/Desollar) nunca tocaba `WorldState.fictionalMinutes` en absoluto — esas acciones costaban CERO
+tiempo de ficción, agravando el mismo síntoma (el reloj se quedaba fijo más tiempo aún) y dejando sin
+sentido mecánico que recolectar/talar sean gratis en tiempo de juego.
+
+**Fix aplicado**:
+1. `narrateAndPersistTurn` (turnResolution.ts) devuelve ahora `timeLabel` (releído fresco de
+   `WorldState` tras el commit) en `NarrateAndPersistResult`; `turn.ts` lo incluye en el payload
+   `{type:'done'}` del streaming NDJSON.
+2. `GameView.tsx`: `handleSubmit`/`submitCombatAction`→`handleCombatTurnResolved` ahora leen ese
+   `timeLabel` de la respuesta (no el `fictionalDate` local obsoleto) para sellar la entrada de log
+   de ESE turno, y llaman a `setFictionalDate(...)` para que el resto de la sesión ya parta del valor
+   correcto.
+3. `recolectar.ts`: nueva función `minutosRecoleccionFor` (10 min para 1 unidad, +2 min por unidad
+   extra, tope 30 — petición explícita de la usuaria) que avanza `WorldState.fictionalMinutes` de
+   verdad dentro de la misma transacción cuando `touched.size > 0`, y sella el `LogEntry` con la
+   hora YA avanzada (antes usaba la hora de `save.worldState`, leída antes de la petición y nunca
+   tocada). `GameView.tsx` también refresca `fictionalDate` al recibir ese `logEntry`.
+
+**Pendiente para otra sesión** (fuera de alcance de esta ronda, no reportado explícitamente por la
+usuaria esta vez): el pop-up de "Cazar" limpio (`cazar.ts`, presa única sin combate) y el flujo de
+huida previa al combate (`/saves/:id/combat/flee`, session.ts) tampoco avanzan el reloj de ficción —
+el segundo es coherente con su propio diseño (tirada instantánea, sin coste de tiempo por decisión
+explícita 2026-07-24), el primero probablemente sí debería costar tiempo por el mismo criterio que
+Minar/Talar/Desollar, pero no se ha tocado todavía.
+
+**Estado**: FIJADO (los 3 síntomas reportados). `tsc -b` limpio en backend y frontend. 917 tests
+unitarios backend + 58+2+2 de integración + 22 tests frontend, todos en verde.
+
+## 2026-08-14 (continuación) — revisión centrada en narración: ataque a Múrgol narrado como si fuera contra Cruzavientos
+
+**Petición**: "revisa la partida antes de que reinicie revisando la narración" — pasada de nuevo sobre
+la misma partida ya auditada hoy (56 entradas, sin turnos nuevos), esta vez con foco explícito en
+prosa/coherencia narrativa, no en mecánica (ya cubierta en las entradas anteriores de hoy).
+
+**Síntoma**: turno `[Día 1, 08:39] (TÚ) "Salgo a cazar y ataco a 'Múrgol'."` resuelve con +25 XP (la
+mecánica sí registra un golpe válido), pero la narración generada no menciona a Múrgol en ningún
+momento: *"El Cruzavientos se mete en medio de la huida del matorral de cuerno, haciendo que las
+hojas caigan sobre su piel y dejando un vistazo frío al amanecer. Su cuchillo está a punto de afilar
+mientras se desplaza, listo para el próximo encuentro."* — habla de Cruzavientos y de "matorral de
+cuerno" (un recurso de recolección mencionado dos turnos antes), nunca del objetivo real del ataque.
+Turno relacionado, mismo tramo: `[Día 1, 08:38]` narra que, al huir, "Gorhorn... dejando que el
+Múrgol se escabulle entre las sombras" — pero Múrgol sigue en combate y es atacado/analizado/rematado
+en TODOS los turnos siguientes (08:39-08:47), contradiciendo que se hubiera escabullido.
+
+**Diagnóstico**: no es un bug de código — la capa determinista (quién recibe el golpe, cuánta XP, qué
+`NpcState` cambia) resolvió bien; el fallo es puramente de la prosa generada por el modelo, que se
+"distrajo" con otro elemento presente en la escena (Cruzavientos, ya mencionado en el turno anterior)
+en vez de nombrar al objetivo real de la acción del turno. Revisada la familia de validadores
+narración-vs-mecánica de `narrador.ts` (11 detectores en cascada, `hasFalseCombatHit`/
+`hasResurrectedDeadNpc`/etc.): ninguno cubre "la narración de un golpe resuelto nombra a un NPC
+distinto del objetivo real" — hueco real, no cubierto hasta ahora.
+
+**Estado**: PENDIENTE. No se ha aplicado ningún fix — reportado a la usuaria con la propuesta de un
+detector nuevo (mismo patrón que los 11 ya existentes: comprobar que, cuando hay un intercambio
+mecánico resuelto contra un objetivo concreto Y hay más de un NPC/fauna real en escena, el texto
+generado nombre al objetivo correcto en vez de a otro presente) a la espera de luz verde.

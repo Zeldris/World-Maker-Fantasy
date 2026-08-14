@@ -207,23 +207,39 @@ function EnemyFicha({
                 </>
               ) : atributoRecomendado ? (
                 <>
-                  <p className="flex items-center gap-1.5 text-xs text-wood-300">
+                  {/* Tarjeta propia, no solo texto suelto (petición explícita, 2026-08-14: "se ve
+                      algo mal") — mismo tratamiento que la rejilla de atributos/habilidades de
+                      abajo, para que el resultado principal del análisis no quede desnudo frente
+                      al resto de bloques ya recuadrados de esta pestaña. */}
+                  <p
+                    className={`flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs ${attributeColorClasses[atributoRecomendado].border} ${attributeColorClasses[atributoRecomendado].bg}`}
+                  >
                     <span className={`h-2 w-2 shrink-0 rounded-full ${attributeColorClasses[atributoRecomendado].dot}`} aria-hidden="true" />
-                    <span className="font-semibold uppercase tracking-[0.08em] text-wood-500">Atributo recomendado:</span>{' '}
-                    {attributeLabels[atributoRecomendado]}
+                    <span className="font-semibold uppercase tracking-[0.08em] text-wood-400">Atributo recomendado</span>
+                    <span className={`ml-auto font-semibold ${attributeColorClasses[atributoRecomendado].text}`}>
+                      {attributeLabels[atributoRecomendado]}
+                    </span>
                   </p>
                   {/* Atributos + habilidades del rival (2026-08-13, petición explícita: "al
                       analizar al enemigo no sale ni sus attrs ni sus habilidades") — solo se
                       revelan aquí, tras un análisis con éxito, nunca antes (mismo criterio que el
                       atributo recomendado de arriba). */}
                   {target.attributes && (
-                    <div className="grid grid-cols-3 gap-x-3 gap-y-1 rounded-lg border border-iron-800 bg-wood-950/40 p-2">
-                      {(Object.entries(target.attributes) as [keyof typeof attributeLabels, number][]).map(([attr, value]) => (
-                        <p key={attr} className={`flex items-center gap-1 text-2xs ${attributeColorClasses[attr].text}`}>
-                          <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${attributeColorClasses[attr].dot}`} aria-hidden="true" />
-                          {attributeAbbr[attr]} <span className="font-mono text-wood-300">{value}</span>
-                        </p>
-                      ))}
+                    <div className="grid grid-cols-3 gap-x-3 gap-y-1.5 rounded-lg border border-iron-800 bg-wood-950/40 p-2.5">
+                      {/* Orden fijo (petición explícita, 2026-08-14: "se ve algo mal") — antes
+                          `Object.entries` seguía el orden de inserción del JSON tal cual llegaba
+                          del backend, que no coincide con el resto de la app (AttributeBars.tsx,
+                          etc.): la rejilla salía revuelta (ARC/FUE/CAR, DES/VOL/CON, INT...) en
+                          vez de en el mismo orden reconocible de siempre. */}
+                      {(Object.keys(attributeLabels) as (keyof typeof attributeLabels)[])
+                        .filter((attr) => target.attributes![attr] !== undefined)
+                        .map((attr) => (
+                          <p key={attr} className={`flex items-center gap-1.5 text-2xs ${attributeColorClasses[attr].text}`}>
+                            <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${attributeColorClasses[attr].dot}`} aria-hidden="true" />
+                            <span className="text-wood-400">{attributeAbbr[attr]}</span>
+                            <span className="font-mono font-semibold text-wood-200">{target.attributes![attr]}</span>
+                          </p>
+                        ))}
                     </div>
                   )}
                   {target.abilities.length > 0 && (
