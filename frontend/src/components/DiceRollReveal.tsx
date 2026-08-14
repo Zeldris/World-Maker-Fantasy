@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import type { CombatExchangeInfo, CombatExchangeSideInfo } from '../types'
 import { attributeLabels } from '../lib/dice'
-import { gradoOf, formatMultiplier } from './CombatExchangeBadge'
+import { gradoOf, formatMultiplier, difficultyLabelFor } from './CombatExchangeBadge'
+import { TooltipAnchor } from './TooltipAnchor'
 
 /// Animación de dados en paralelo (petición explícita, 2026-08-15: "que veas los resultados
 /// sacados por ambos... mientras la narración se genera") — el backend manda el intercambio de
@@ -109,6 +110,15 @@ function DiceSide({ label, side, startDelayMs }: { label: string; side: CombatEx
         )}
       </span>
       <span className="text-2xs text-wood-500">{attributeLabels[side.attribute]}</span>
+      {/* Dificultad necesaria (petición explícita, 2026-08-15: "añadir en algún lado el mínimo
+          necesario que necesitas sacar") — visible desde el principio, no solo al aterrizar: es
+          un dato fijo que no depende de la tirada, mismo criterio y mismo texto/tooltip que ya usa
+          CombatExchangeBadge ("necesitaba X") para no inventar una segunda forma de explicarlo. */}
+      <TooltipAnchor text={`Dificultad fija según tu nivel frente al del rival — no es la tirada del otro lado. Umbral real: ${side.difficulty}.`}>
+        <span className="font-mono text-2xs text-wood-600 underline decoration-dotted decoration-wood-700 underline-offset-2">
+          necesitas {difficultyLabelFor(side.difficulty)} ({side.difficulty})
+        </span>
+      </TooltipAnchor>
     </div>
   )
 }

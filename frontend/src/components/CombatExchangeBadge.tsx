@@ -7,8 +7,9 @@ import { TooltipAnchor } from './TooltipAnchor'
 // lado, así que se reconstruye el nombre por umbral en vez de por diferencia (mismo criterio ya
 // usado en `combatDifficulty.ts` para el aviso previo a "Combatir"). Petición explícita,
 // 2026-08-14, tras preguntar qué significaba "necesitaba 15": un número pelado sin más contexto
-// no explica de dónde sale ni que es fijo (no depende de la tirada del rival).
-function difficultyLabelFor(difficulty: number): string {
+// no explica de dónde sale ni que es fijo (no depende de la tirada del rival). Exportada
+// (2026-08-15) — DiceRollReveal.tsx la reutiliza para mostrar la misma dificultad en vivo.
+export function difficultyLabelFor(difficulty: number): string {
   if (difficulty <= 12) return 'Fácil'
   if (difficulty <= 15) return 'Media'
   if (difficulty <= 18) return 'Difícil'
