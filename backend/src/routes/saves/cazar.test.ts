@@ -171,7 +171,9 @@ describe('GET /saves/:id/cazar', () => {
     const res = await app.inject({ method: 'GET', url: '/saves/save1/cazar' });
     const { candidates, puedeExplorar } = res.json();
     expect(puedeExplorar).toBe(false);
-    expect(candidates).toEqual([{ slug: 'murgol', name: 'Múrgol', level: 1, debil: true, avistados: avistadosFor(80, 50) }]);
+    expect(candidates).toEqual([
+      { slug: 'murgol', name: 'Múrgol', level: 1, debil: true, avistados: avistadosFor(80, 50), dificultad: 12, dificultadLabel: 'Fácil (12)' },
+    ]);
   });
 
   it('no ofrece nada ni "Explorar" si la región no tiene distribución real (bug de artículo ya cubierto en population.ts)', async () => {
@@ -208,7 +210,9 @@ describe('POST /saves/:id/cazar/explorar', () => {
     const app = await buildApp();
     const res = await app.inject({ method: 'POST', url: '/saves/save1/cazar/explorar' });
     const { candidates } = res.json();
-    expect(candidates).toEqual([{ slug: 'murgol', name: 'Múrgol', level: 1, debil: true, avistados: avistadosFor(80, 50) }]);
+    expect(candidates).toEqual([
+      { slug: 'murgol', name: 'Múrgol', level: 1, debil: true, avistados: avistadosFor(80, 50), dificultad: 12, dificultadLabel: 'Fácil (12)' },
+    ]);
     expect(appendSessionFacts).toHaveBeenCalledWith('save1', [], [expect.stringContaining('Múrgol')]);
   });
 

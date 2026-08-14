@@ -52,6 +52,11 @@ export interface HuntCandidate {
   level: number
   debil: boolean
   avistados: number
+  /// Dificultad real de enfrentarse a esta presa (petición explícita, 2026-08-14: fondo verde/
+  /// amarillo/rojo según dificultad + hover con el texto) — mismo `difficultyHintFor` que calibra
+  /// la tirada de ataque normal (backend/src/services/npcScene.ts), nunca recalculado en el cliente.
+  dificultad: number
+  dificultadLabel: string
 }
 
 /// Roster ESTÁTICO de recetas de oficio (rediseño de profesiones, 2026-08-07) — GET /profession-recipes,

@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { prisma } from '../../lib/prisma.js';
 import { decrementPopulationOnDeath, stripRegionArticle } from '../../services/population.js';
-import { scopeFor, pickAmbientEncounterCandidate } from '../../services/npcScene.js';
+import { scopeFor, pickAmbientEncounterCandidate, difficultyHintFor } from '../../services/npcScene.js';
 import { detectHarvestSourcesInScene } from '../../services/harvest.js';
 import { loadSessionFacts, appendSessionFacts } from '../../services/worldFacts.js';
 import { recordEntityDiscoveries } from '../../services/entityDiscovery.js';
@@ -80,10 +80,25 @@ interface SightedHuntCandidate {
   level: number;
   debil: boolean;
   avistados: number;
+  /// Dificultad real de enfrentarse a esta presa (petición explícita, 2026-08-14: "las presas
+  /// listadas deberían salir en verde, amarillo o rojo según su dificultad... hover indicando la
+  /// dificultad") — mismo `difficultyHintFor` que ya calibra la tirada de ataque normal
+  /// (npcScene.ts), nunca un cálculo aparte a mano en el frontend.
+  dificultad: number;
+  dificultadLabel: string;
 }
 
-function toSighted(c: HuntCandidate): SightedHuntCandidate {
-  return { slug: c.slug, name: c.name, level: c.level, debil: c.debil, avistados: avistadosFor(c.capturablePct, c.poblacion) };
+function toSighted(c: HuntCandidate, playerLevel: number): SightedHuntCandidate {
+  const { dificultad, label } = difficultyHintFor(c.level, playerLevel);
+  return {
+    slug: c.slug,
+    name: c.name,
+    level: c.level,
+    debil: c.debil,
+    avistados: avistadosFor(c.capturablePct, c.poblacion),
+    dificultad,
+    dificultadLabel: label,
+  };
 }
 
 async function candidateFaunaFor(worldId: string, region: string | null, playerLevel: number): Promise<HuntCandidate[]> {
@@ -179,7 +194,7 @@ export async function cazarRoutes(app: FastifyInstance) {
       candidates.map((c) => c.slug),
     );
     const sighted = candidates.filter((c) => localizados.includes(c.slug));
-    return { candidates: sighted.map(toSighted), puedeExplorar: sighted.length === 0 };
+    return { candidates: sighted.map((c) => toSighted(c, save.level)), puedeExplorar: sighted.length === 0 };
   });
 
   // Determinista, sin gastar turno ni pasar por Ollama (mismo criterio que recolectar.ts) — pero,
@@ -196,7 +211,7 @@ export async function cazarRoutes(app: FastifyInstance) {
     const sighted = rollSightings(candidates);
     if (sighted.length === 0) return { candidates: [] };
 
-    const sightedInfo = sighted.map(toSighted);
+    const sightedInfo = sighted.map((c) => toSighted(c, save.level));
     const text = `${save.characterName} detecta señales de fauna cerca: ${sightedInfo.map((c) => `${c.avistados} ${c.name}`).join(', ')}.`;
     const sessionFacts = await loadSessionFacts(save.id);
     await appendSessionFacts(save.id, sessionFacts, [text]);

@@ -2,6 +2,17 @@ import { useEffect, useState } from 'react'
 import type { HuntCandidate, NpcInSceneInfo } from '../types'
 import { getCazarCandidatos, explorarCaza, confirmarCaza } from '../lib/api'
 
+/// Color de fondo por dificultad (petición explícita, 2026-08-14: "verde, amarillo o rojo según su
+/// dificultad") — mismos 3 tokens semánticos que ya usa el resto del juego para lo mismo (moss=
+/// éxito/fácil, quest=amarillo, danger=fallo/peligro), nunca colores nuevos sueltos. `dificultad`
+/// viene ya calculada por `difficultyHintFor` (backend/src/services/npcScene.ts) — Fácil(12)→verde,
+/// Media(15)→amarillo, Difícil(18)/Muy difícil(22)→rojo.
+function difficultyRowClasses(dificultad: number): string {
+  if (dificultad <= 12) return 'border-moss-600/40 bg-moss-500/10'
+  if (dificultad <= 15) return 'border-quest-600/40 bg-quest-500/10'
+  return 'border-danger-600/40 bg-danger-500/10'
+}
+
 interface HuntSelectionModalProps {
   saveId: string
   onResuelto: (
@@ -126,7 +137,11 @@ export function HuntSelectionModal({ saveId, onResuelto, onCancel }: HuntSelecti
         ) : (
           <div className="space-y-1.5">
             {candidates.map((c) => (
-              <div key={c.slug} className="rounded-lg border border-iron-700 bg-wood-950/40 p-2.5 text-xs text-wood-300">
+              <div
+                key={c.slug}
+                title={`Dificultad: ${c.dificultadLabel}`}
+                className={`rounded-lg border p-2.5 text-xs text-wood-300 ${difficultyRowClasses(c.dificultad)}`}
+              >
                 <label className="flex cursor-pointer items-center justify-between gap-2">
                   <span className="flex items-center gap-2">
                     <input type="checkbox" checked={selected.has(c.slug)} onChange={() => toggle(c.slug)} className="accent-accent-500" />
