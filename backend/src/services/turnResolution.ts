@@ -3828,7 +3828,31 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
       // al derrotar (bloque de arriba), aquí suma. Si el NPC cae derrotado en ESTE MISMO turno,
       // ese bloque ya resta por su cuenta — no sumar también aquí.
       if (narration.questProgress.status === 'COMPLETADA') {
+        // Bug real jugando en vivo (auditoría "revisar partida", 2026-08-15: "he acabado con el
+        // orco y no ha saltado la narración en amarillo con la recompensa... no tengo el mapa") —
+        // este camino (el modelo propone el cierre directamente, `questProgress`, en vez de que
+        // el sistema determinista lo cierre solo al derrotar al objetivo) cambiaba `status` a
+        // COMPLETADA pero nunca llamaba a `grantQuestRewardItems` ni narraba nada — a diferencia
+        // de `completeNpcTargetQuests` (el camino "normal", derrotar a X), que sí hace las dos
+        // cosas. Mismo criterio aquí: cualquier misión que se cierre COMPLETADA por esta vía
+        // también concede de verdad sus `rewardItems`/`rewardXp` y deja una LogEntry real.
         for (const quest of matchingQuests) {
+          const grantedItems = await grantQuestRewardItems(tx, saveId, worldId, quest.rewardItems);
+          if (grantedItems.length > 0 || quest.rewardXp) {
+            const rewardText = questRewardNarrationFor(quest.title, grantedItems, quest.rewardXp);
+            const rewardEntry = await tx.logEntry.create({
+              data: {
+                saveId,
+                channel: 'CHARACTER',
+                text: rewardText,
+                isPlayerAction: false,
+                timeLabel: nuevaFictionalDateLabel,
+                fictionalMinutes: nuevoFictionalMinutes,
+                ...(nextAfterMainLogCreatedAt ? { createdAt: nextAfterMainLogCreatedAt() } : {}),
+              },
+            });
+            questCompletedInfo = { logEntryId: rewardEntry.id, text: rewardText, title: quest.title, grantedItems, rewardXp: quest.rewardXp ?? 0 };
+          }
           if (!quest.targetNpcId) continue;
           const npc = await tx.npc.findUnique({ where: { id: quest.targetNpcId } });
           if (!npc?.faction) continue;

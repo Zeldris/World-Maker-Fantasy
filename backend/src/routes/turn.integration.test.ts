@@ -1786,6 +1786,82 @@ describe('Decapitar cierra una misión "derrotar a X" con rewardItems y entrega 
   }, 20_000);
 });
 
+// Bug real jugando en vivo (auditoría "revisar partida", 2026-08-15: "he acabado con el orco y no
+// ha saltado la narración en amarillo con la recompensa de la misión... y no tengo el mapa") —
+// distinto del describe de arriba (ahí el sistema determinista cierra la misión al derrotar al
+// objetivo, `completeNpcTargetQuests`). Aquí es el MODELO quien propone el cierre directamente vía
+// "questProgress" — ese camino cambiaba `status` a COMPLETADA pero nunca llamaba a
+// `grantQuestRewardItems` ni narraba nada.
+describe('questProgress: el modelo cierra una misión directamente también concede recompensa y narra', () => {
+  let saveId: string;
+
+  beforeAll(async () => {
+    const userId = await getDefaultUserId();
+    const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
+    const hondonada = await prisma.location.findFirstOrThrow({ where: { worldId: world.id, slug: 'hondonada-del-eco' } });
+    const save = await prisma.save.create({
+      data: {
+        userId,
+        worldId: world.id,
+        characterName: 'Gorhorn de prueba 19',
+        characterArchetype: 'guerrero',
+        characterOrigin: 'Clan Maktor',
+        characterMotivation: 'x',
+        attributes: ATTRS,
+        portraitInitial: 'G',
+        currentLocationId: hondonada.id,
+      },
+    });
+    saveId = save.id;
+    await prisma.worldState.create({ data: { saveId } });
+    await prisma.quest.create({
+      data: {
+        saveId,
+        title: 'Misión de prueba questProgress',
+        description: 'x',
+        status: 'ACTIVA',
+        rewardXp: 100,
+        rewardItems: ['Mapa de las Llanuras (prueba questProgress)'],
+      },
+    });
+    classifyAction.mockResolvedValue({
+      requiereTirada: false, atributo: 'fuerza', dificultad: 8, razon: 'x', banda: 'instantanea', duracionEstimadaMinutos: 0,
+    });
+  });
+
+  afterAll(async () => {
+    await prisma.save.delete({ where: { id: saveId } });
+  });
+
+  it('concede rewardItems/rewardXp de verdad y narra la recompensa, no solo cambia el status', async () => {
+    narrateAction.mockResolvedValueOnce({
+      narration: 'Gorhorn da la misión por concluida.',
+      newFacts: [],
+      questProgress: { title: 'Misión de prueba questProgress', status: 'COMPLETADA' },
+    });
+    const res = await doTurn(saveId, 'Doy la misión por terminada.');
+
+    const quest = await prisma.quest.findFirstOrThrow({ where: { saveId, title: 'Misión de prueba questProgress' } });
+    expect(quest.status).toBe('COMPLETADA');
+
+    const item = await prisma.inventoryItem.findFirst({ where: { saveId, name: 'Mapa de las Llanuras (prueba questProgress)' } });
+    expect(item).not.toBeNull();
+
+    const rewardLog = await prisma.logEntry.findFirst({ where: { saveId, text: { contains: 'Mapa de las Llanuras (prueba questProgress)' } } });
+    expect(rewardLog).not.toBeNull();
+    expect(rewardLog!.text).toContain('+100 XP');
+
+    const done = lastNdjsonLine(res.payload);
+    expect(done.questCompletedInfo).toEqual({
+      logEntryId: rewardLog!.id,
+      text: rewardLog!.text,
+      title: 'Misión de prueba questProgress',
+      grantedItems: ['Mapa de las Llanuras (prueba questProgress)'],
+      rewardXp: 100,
+    });
+  }, 15_000);
+});
+
 // Bug real jugando en vivo (2026-08-13, "el efecto del mapa no está funcionando y sale en el
 // inventario como objeto sin categorizar... y me deja ponerlo en cualquier ranura de equipo"):
 // `grantQuestRewardItems` creaba la InventoryItem con solo nombre/descripción genérica, sin
