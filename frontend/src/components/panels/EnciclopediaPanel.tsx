@@ -54,6 +54,7 @@ type EnciclopediaCategory =
   | 'facciones'
   | 'historia'
   | 'crafteo'
+  | 'combate'
 
 interface EnciclopediaPanelProps {
   /// Datos crudos de la Enciclopedia (auditoría 2026-08-13, dedupe de doble fetch): antes este
@@ -424,6 +425,7 @@ const CATEGORY_TABS: { id: EnciclopediaCategory; label: string; icon: string }[]
   { id: 'construction', label: 'Construcciones', icon: '🏗️' },
   { id: 'crafteo', label: 'Crafteo', icon: '🔨' },
   { id: 'attributes', label: 'Atributos', icon: '📊' },
+  { id: 'combate', label: 'Combate', icon: '⚔️' },
 ]
 
 // Enciclopedia consultable del mundo (roadmap 2026-07-21, petición explícita de la usuaria):
@@ -450,6 +452,7 @@ export function EnciclopediaPanel({ data, loading, recipesStatus, onInsert, onDe
   const craftingRecipes = data?.craftingRecipes ?? []
   const factions = data?.factions ?? []
   const historia = data?.historia ?? []
+  const combate = data?.combate ?? []
   // Colapsables de clase (2026-07-22, petición explícita: "que cada clase sea un colapsable que al
   // pulsarlo veas el árbol de habilidades") — Set en vez de un solo string porque no hay razón
   // para que abrir una cierre la otra, a diferencia de las pestañas de arriba (sí exclusivas).
@@ -1130,6 +1133,34 @@ export function EnciclopediaPanel({ data, loading, recipesStatus, onInsert, onDe
                 )}
               </div>
             )}
+
+            {/* "Combate" (petición explícita, 2026-08-15: "expliquemos con claridad... las
+                mecánicas de las tiradas y cómo funcionan los combates... explicada para el
+                jugador que juega") — filas simples, título siempre visible y corto (no "texto
+                cargado" de fondo), la explicación completa vive en la ficha de detalle al pulsar,
+                mismo `DetailTarget` genérico 'info' que ya usa Atributos justo arriba: no hace
+                falta EntryCard (pensado para nombres cortos tipo "Fuerza", no para títulos largos
+                como "El intercambio: dos tiradas, no una") ni un mapper propio en
+                enciclopediaTargets.ts para 8 entradas estáticas sin imagen. */}
+            {category === 'combate' &&
+              (combate.length === 0 ? (
+                <PanelEmptyState icon="⚔️" title="Sin reglas de combate catalogadas" hint="Todavía no hay ninguna documentada." />
+              ) : (
+                <PanelSection title="Cómo funciona el combate">
+                  <div className="flex flex-col gap-2">
+                    {combate.map((entry) => (
+                      <button
+                        key={entry.slug}
+                        onClick={() => onDetail({ kind: 'info', icon: entry.icon, name: entry.title, description: entry.text })}
+                        className="tactile flex items-center gap-3 rounded-lg border border-iron-800 bg-wood-950/40 px-3 py-2.5 text-left transition-colors hover:border-accent2-600/40 hover:bg-accent2-500/5"
+                      >
+                        <span className="text-xl leading-none">{entry.icon}</span>
+                        <span className="text-sm text-wood-200">{entry.title}</span>
+                      </button>
+                    ))}
+                  </div>
+                </PanelSection>
+              ))}
           </>
         )}
       </div>

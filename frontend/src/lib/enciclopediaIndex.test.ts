@@ -78,6 +78,7 @@ function emptyResponse(overrides: Partial<EnciclopediaResponse> = {}): Enciclope
     craftingRecipes: [],
     factions: [],
     historia: [],
+    combate: [],
     ...overrides,
   }
 }

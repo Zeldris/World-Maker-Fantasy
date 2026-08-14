@@ -12,6 +12,7 @@ import { generateImagePrompt, type ImagePromptEntityType, type ImagePromptSizePr
 import { loreContextFor } from '../services/imagePromptContext.js';
 import { imageUrlsFor } from '../lib/imageAssets.js';
 import { BERIG_RAZAS, BERIG_PERSONAJES } from '../services/berigLore.js';
+import { COMBAT_LORE_SECTIONS } from '../services/combatLore.js';
 import { baseAttackFor } from '../services/baseAttack.js';
 import {
   FAUNA_SEXO_VARIANTES,
@@ -236,6 +237,14 @@ function buildRazasSection(ctx: EnciclopediaBuildContext) {
       variantesSexo: ctx.variantesSexoFor('raza', v.slug, RAZA_VARIANTE_SEXO_VARIANTES),
     })),
   }));
+}
+
+// Combate (Enciclopedia § "Combate", 2026-08-15, petición explícita: "expliquemos con claridad...
+// las mecánicas de las tiradas y cómo funcionan los combates") — contenido estático puro, mismo
+// criterio que Razas/Clases: documentación de reglas, no lore de mundo ni secreto narrativo, así
+// que nunca lleva gateo de descubrimiento ni depende del contexto (`ctx`) de esta petición.
+function buildCombateSection() {
+  return COMBAT_LORE_SECTIONS;
 }
 
 function buildPersonajesSection(ctx: EnciclopediaBuildContext) {
@@ -518,6 +527,7 @@ export async function worldRoutes(app: FastifyInstance) {
       craftingRecipes: buildCraftingRecipesSection(ctx),
       factions: buildFactionsSection(factionRows, ctx),
       historia: buildHistoriaSection(historiaRows, ctx),
+      combate: buildCombateSection(),
     };
   });
 

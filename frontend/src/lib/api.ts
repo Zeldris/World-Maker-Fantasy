@@ -1031,6 +1031,16 @@ export interface EnciclopediaHistoriaInfo {
   imageUrls: EnciclopediaImageUrls
 }
 
+/// Enciclopedia § "Combate" (2026-08-15, petición explícita: "expliquemos con claridad las
+/// mecánicas de las tiradas y cómo funcionan los combates") — mismo patrón que Razas/Clases:
+/// contenido estático, sin gateo de descubrimiento (documentación de reglas, no lore secreto).
+export interface EnciclopediaCombateInfo {
+  slug: string
+  icon: string
+  title: string
+  text: string
+}
+
 export interface EnciclopediaResponse {
   npcs: EnciclopediaNpcInfo[]
   items: EnciclopediaItemInfo[]
@@ -1043,6 +1053,7 @@ export interface EnciclopediaResponse {
   craftingRecipes: EnciclopediaCraftingRecipe[]
   factions: EnciclopediaFaccionInfo[]
   historia: EnciclopediaHistoriaInfo[]
+  combate: EnciclopediaCombateInfo[]
 }
 
 /// `saveId` (2026-07-23, enciclopedia progresiva) — gatea NPCs/fauna/flora/objetos/lugares por lo

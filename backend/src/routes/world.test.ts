@@ -97,6 +97,14 @@ describe('GET /world/:slug/enciclopedia', () => {
     expect(body.constructionRecipes.length).toBeGreaterThan(0);
     // Crafteo (2026-08-06): mismo criterio, contenido estático (crafting.ts), no depende de la BD.
     expect(body.craftingRecipes.length).toBeGreaterThan(0);
+    // Combate (2026-08-15): mismo criterio, contenido estático (combatLore.ts), no depende de la BD.
+    expect(body.combate.length).toBeGreaterThan(0);
+    for (const seccion of body.combate) {
+      expect(typeof seccion.slug).toBe('string');
+      expect(typeof seccion.icon).toBe('string');
+      expect(typeof seccion.title).toBe('string');
+      expect(typeof seccion.text).toBe('string');
+    }
   });
 
   it('cada raza con variantes regionales expone su propio sexo cruzado con región', async () => {
