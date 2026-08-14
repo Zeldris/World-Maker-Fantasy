@@ -94,7 +94,9 @@ function winnerSide(exchange: CombatExchangeInfo): 'jugador' | 'enemigo' | 'empa
 
 // 2 decimales como mucho, sin ceros de sobra (1.5 en vez de 1.50; 0.67 en vez de 0.666666...) —
 // `typeMultiplierFor` (attributeWheel.ts) devuelve fracciones exactas tipo 1/1.15 en desventaja.
-function formatMultiplier(m: number): string {
+// Exportada (2026-08-15) — DiceRollReveal.tsx la reutiliza para mostrar el mismo multiplicador
+// junto al dado en vivo, en vez de duplicar el formateo.
+export function formatMultiplier(m: number): string {
   return (Math.round(m * 100) / 100).toString()
 }
 
