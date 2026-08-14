@@ -44,8 +44,22 @@ const SIDE_LABEL: Record<'claro' | 'con_coste' | 'fallo', string> = {
 // círculo en vez de repetir un genérico.
 function outcomeLabelFor(exchange: CombatExchangeInfo, nombreAtacante: string, nombreDefensor: string): string {
   const { atacante, defensor } = exchange
+  // Detecta un desenlace DEGRADADO (petición explícita, 2026-08-15: "saco menos pero he ganado el
+  // turno?... este resultado no se entiende" — bug real: Gorhorn 20 [necesitaba 15] vs Orco 21
+  // [necesitaba 12] narraba "supera con más margen" cuando en realidad el grado de éxito de los
+  // DOS era idéntico [claro] — el verdadero desenlace era golpes_mutuos, degradado a golpe_normal
+  // solo porque "Esquivar" no es una habilidad de contragolpe, ver effectiveExchangeOutcome en el
+  // backend). La tabla real (OUTCOME_TABLE, combatExchange.ts) nunca produce golpe_normal con los
+  // dos grados IGUALES, ni ataque_falla con el defensor en 'claro' — si eso pasa aquí, es que el
+  // resultado crudo era golpes_mutuos/defensor_contragolpea y se degradó; frase distinta para no
+  // hablar de un "margen" que no fue lo que decidió el turno.
+  const gradoAtacante = gradoOf(atacante)
+  const gradoDefensor = gradoOf(defensor)
   switch (exchange.resultado) {
     case 'ataque_falla':
+      if (gradoDefensor === 'claro') {
+        return `El ataque de ${nombreAtacante} (${atacante.result}) no alcanza la dificultad que necesitaba (${atacante.difficulty}) — y aunque la defensa de ${nombreDefensor} (${defensor.result}) fue excelente, su habilidad no es de contragolpe, así que no llega ningún golpe de vuelta.`
+      }
       return `El ataque de ${nombreAtacante} (${atacante.result}) no alcanza la dificultad que necesitaba (${atacante.difficulty}) — no llega a tocar a ${nombreDefensor}.`
     case 'defensor_contragolpea':
       return `El ataque de ${nombreAtacante} (${atacante.result}) no alcanza la dificultad que necesitaba (${atacante.difficulty}), pero la defensa de ${nombreDefensor} (${defensor.result}) supera la suya (${defensor.difficulty}) de sobra — responde con un golpe propio.`
@@ -54,6 +68,9 @@ function outcomeLabelFor(exchange: CombatExchangeInfo, nombreAtacante: string, n
     case 'golpes_mutuos':
       return `${nombreAtacante} y ${nombreDefensor} superan cada uno su propia dificultad de forma pareja — los dos acusan algo.`
     case 'golpe_normal':
+      if (gradoAtacante === gradoDefensor) {
+        return `${nombreAtacante} (${atacante.result}) y ${nombreDefensor} (${defensor.result}) superan cada uno su propia dificultad de forma igual de clara — pero la habilidad de ${nombreDefensor} no es de contragolpe, así que solo el golpe de ${nombreAtacante} llega a conectar.`
+      }
       return `El ataque de ${nombreAtacante} (${atacante.result}) supera su dificultad (${atacante.difficulty}) con más margen que la defensa de ${nombreDefensor} la suya (${defensor.difficulty}) — el golpe conecta.`
     case 'golpe_pleno':
       return `El ataque de ${nombreAtacante} (${atacante.result}) supera de sobra su dificultad (${atacante.difficulty}), y la defensa de ${nombreDefensor} falla del todo — el golpe conecta de lleno.`
