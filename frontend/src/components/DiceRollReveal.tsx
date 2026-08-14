@@ -98,12 +98,13 @@ function DiceSide({ label, side, startDelayMs }: { label: string; side: CombatEx
   return (
     <div className="flex flex-col items-center gap-1">
       <span className="max-w-[6rem] truncate text-2xs uppercase tracking-wide text-wood-500">{label}</span>
-      {/* Sin el total "=resultado" (petición explícita, 2026-08-15: "no quiero que se vea el
-          total, eso ya se ve en la resolución final") — CombatExchangeBadge ya lo muestra en
-          cuanto el turno termina de resolverse, aquí solo hace falta el dado + el bono. Mismo
-          `gap-x` generoso que separa los dos dados entre sí (petición explícita: "la misma
-          separación"), no el `gap-1.5` apretado de antes. */}
-      <span className="flex flex-wrap items-baseline justify-center gap-x-3 gap-y-0.5">
+      {/* Dos filas separadas en vez de una sola apretada (petición explícita, 2026-08-15: "las
+          separaciones de los números no están alineadas... que la tirada salga arriba y debajo
+          el attr por el multiplicador"): arriba el dado + su bono (lo que de verdad se está
+          tirando), abajo el atributo con su multiplicador de tipo si aplica (por qué el bono es
+          ese). Sin el total "=resultado" (petición explícita previa) — CombatExchangeBadge ya lo
+          muestra al terminar el turno. */}
+      <span className="flex items-baseline justify-center gap-2">
         <span className="flex items-center gap-1">
           <span aria-hidden="true">🎲</span>
           <span
@@ -112,18 +113,18 @@ function DiceSide({ label, side, startDelayMs }: { label: string; side: CombatEx
             {display ?? '?'}
           </span>
         </span>
-        <span className="font-mono text-sm text-wood-500">
-          +{bono}
-          {/* Multiplicador de la rueda de debilidades (petición explícita, 2026-08-15) — mismo dato
-              y mismo criterio de color que ya usa CombatExchangeBadge (verde si favorece a este
-              lado, siempre verde con turnos nuevos desde el rediseño "solo premia, nunca penaliza"
-              del mismo día — ver `typeMultiplierFor`, attributeWheel.ts). */}
-          {side.multiplicador != null && side.multiplicador !== 1 && (
-            <span className={side.multiplicador > 1 ? 'text-moss-400' : 'text-danger-400'}>×{formatMultiplier(side.multiplicador)}</span>
-          )}
-        </span>
+        <span className="font-mono text-sm text-wood-500">+{bono}</span>
       </span>
-      <span className="text-2xs text-wood-500">{attributeLabels[side.attribute]}</span>
+      <span className="text-2xs text-wood-500">
+        {attributeLabels[side.attribute]}
+        {/* Multiplicador de la rueda de debilidades (petición explícita, 2026-08-15) — mismo dato
+            y mismo criterio de color que ya usa CombatExchangeBadge (verde si favorece a este
+            lado, siempre verde con turnos nuevos desde el rediseño "solo premia, nunca penaliza"
+            del mismo día — ver `typeMultiplierFor`, attributeWheel.ts). */}
+        {side.multiplicador != null && side.multiplicador !== 1 && (
+          <span className={`ml-1 font-mono ${side.multiplicador > 1 ? 'text-moss-400' : 'text-danger-400'}`}>×{formatMultiplier(side.multiplicador)}</span>
+        )}
+      </span>
       {/* Dificultad necesaria (petición explícita, 2026-08-15: "añadir en algún lado el mínimo
           necesario que necesitas sacar") — visible desde el principio, no solo al aterrizar: es
           un dato fijo que no depende de la tirada, mismo criterio y mismo texto/tooltip que ya usa
