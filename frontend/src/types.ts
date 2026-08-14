@@ -183,6 +183,11 @@ export interface CombatExchangeSideInfo extends RollInfo {
   /// de verdad: LogEntry.combatExchange persistidas ANTES de este campo no lo traen — el JSON
   /// guardado en BD nunca se migra retroactivamente, solo los turnos nuevos lo incluyen.
   multiplicador?: number
+  /// Resta al atributo crudo por condición física (petición explícita, 2026-08-15) — 0/2/5/10
+  /// según ILESO/HERIDO/GRAVE/INCAPACITADO, ver combatExchange.ts (backend). Mismo criterio de
+  /// opcional que `multiplicador`: ausente en LogEntry.combatExchange persistidas antes de este
+  /// campo.
+  malus?: number
 }
 
 // 'independiente' (bug real, 2026-08-13: faltaba en este type — el backend YA lo manda para

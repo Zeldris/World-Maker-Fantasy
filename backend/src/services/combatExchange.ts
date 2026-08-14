@@ -91,6 +91,13 @@ export interface ExchangeSideResult extends RollResult {
   /// exactamente 1 = sin relación en la rueda O en desventaja de tipo (solo premia, nunca
   /// penaliza — ver el comentario largo de `typeMultiplierFor`, attributeWheel.ts).
   multiplicador: number;
+  /// Resta al atributo crudo por condición física (petición explícita, 2026-08-15: "cuando
+  /// mostramos el attr hay que indicar también la resta que tiene por el estado... en el
+  /// resultado" — nunca en la animación de dados, solo aquí) — `condicionMalus` (death.ts):
+  /// 0/2/5/10 según ILESO/HERIDO/GRAVE/INCAPACITADO. Ya estaba aplicado en silencio dentro de
+  /// `valorEfectivo` desde siempre, pero nunca viajaba expuesto — sin esto, un bono más bajo de
+  /// lo esperado por estar herido no tenía explicación visible.
+  malus: number;
 }
 
 export type ExchangeOutcome =
@@ -150,6 +157,7 @@ function rollSide(self: ExchangeParticipant, opponentAttribute: Attribute, tree:
     value: self.attributes[self.attribute],
     valorEfectivo,
     multiplicador,
+    malus: condicionMalus(self.condicionFisica),
     roll,
     result,
     difficulty: self.difficulty,

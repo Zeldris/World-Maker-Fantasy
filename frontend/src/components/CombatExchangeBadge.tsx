@@ -162,6 +162,17 @@ function SideRow({ label, side, isWinner, withTopBorder }: { label: string; side
             {difficultyLabelFor(side.difficulty)} ({side.difficulty})
           </span>
         </TooltipAnchor>
+        {/* Resta por condición física (petición explícita, 2026-08-15: "hay que indicar también
+            la resta que tiene por el estado... en el resultado", nunca en la animación de dados)
+            — aparte de la fila de arriba a propósito, no encadenada con el "+bono" real: mostrarla
+            ahí como "+8 -2" leería como una resta pendiente sobre el total ya mostrado, cuando en
+            realidad ya se restó ANTES de calcular ese bono (rollSide, combatExchange.ts) — esto es
+            solo la explicación de por qué salió más bajo, no una operación más que hacer a mano. */}
+        {!!side.malus && (
+          <TooltipAnchor text={`Tu condición física actual te resta al atributo antes de la tirada: -${side.malus}. Ya está descontado del bono de arriba.`}>
+            <span className="ml-1 font-mono text-danger-400 underline decoration-dotted decoration-wood-700 underline-offset-2">−{side.malus} salud</span>
+          </TooltipAnchor>
+        )}
       </span>
       <span className={`whitespace-nowrap py-1.5 pr-2.5 text-right font-sans font-semibold ${GRADE_TEXT[grado]} ${border}`}>
         {SIDE_LABEL[grado]}

@@ -170,6 +170,19 @@ describe('resolveExchange', () => {
     expect(resultHerido.atacante.valorEfectivo).toBeLessThan(BASE_ATTRIBUTES.fuerza);
     expect(resultGrave.atacante.valorEfectivo).toBeLessThan(resultHerido.atacante.valorEfectivo);
   });
+
+  // Malus expuesto aparte del valorEfectivo ya rebajado (petición explícita, 2026-08-15: "hay que
+  // indicar también la resta que tiene por el estado... en el resultado") — antes solo se veía el
+  // efecto (un valorEfectivo más bajo), nunca el número real de la resta en sí.
+  it('expone el malus real por condición física, 0 en ILESO', () => {
+    mockRolls(R_FOR_ROLL_10, R_FOR_ROLL_10);
+    const ileso: ExchangeParticipant = { attributes: BASE_ATTRIBUTES, attribute: 'fuerza', difficulty: 15, condicionFisica: 'ILESO', rol: 'defensa' };
+    const herido: ExchangeParticipant = { attributes: BASE_ATTRIBUTES, attribute: 'fuerza', difficulty: 15, condicionFisica: 'HERIDO', rol: 'ataque' };
+    const grave: ExchangeParticipant = { attributes: BASE_ATTRIBUTES, attribute: 'fuerza', difficulty: 15, condicionFisica: 'GRAVE', rol: 'ataque' };
+    expect(resolveExchange(herido, ileso).atacante.malus).toBe(2);
+    expect(resolveExchange(grave, ileso).atacante.malus).toBe(5);
+    expect(resolveExchange(ileso, ileso).atacante.malus).toBe(0);
+  });
 });
 
 describe('resolveIndependentExchange', () => {

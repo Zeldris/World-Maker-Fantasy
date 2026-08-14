@@ -65,7 +65,7 @@ Si tu habilidad usa un atributo con ventaja sobre el que usa tu rival este inter
     slug: 'condicion-fisica',
     icon: '❤️',
     title: 'La condición física: de ileso a algo peor',
-    text: `Tu estado en combate no es solo un número de vida — pasa por etapas: ileso, herido, grave, incapacitado y, en el peor de los casos, muerto. Cada etapa por debajo de ileso te penaliza un poco más en tus propias tiradas, así que un combate largo se pone cuesta arriba de verdad si no consigues resolverlo pronto.
+    text: `Tu estado en combate no es solo un número de vida — pasa por etapas: ileso, herido, grave, incapacitado y, en el peor de los casos, muerto. Cada etapa por debajo de ileso resta directamente al atributo que uses en tu próxima tirada, antes de tirar el dado: herido resta 2, grave resta 5, incapacitado resta 10 — así que un combate largo se pone cuesta arriba de verdad si no consigues resolverlo pronto, no solo narrativamente, también en tus propios números. El resultado de cada intercambio te enseña esa resta exacta cuando te afecta, para que sepas por qué tu tirada salió más floja de lo normal.
 
 Si caes incapacitado (no muerto), tu personaje sobrevive pero queda fuera de la pelea — respawnea y sigue la partida. Un enemigo incapacitado, en cambio, se queda tirado en el sitio: si nadie lo remata, con el tiempo se recupera solo hasta quedar herido y puede volver a suponer una amenaza. Un enemigo muerto de verdad, en cambio, desaparece del mundo pasado un tiempo.`,
   },
