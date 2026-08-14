@@ -98,7 +98,12 @@ function DiceSide({ label, side, startDelayMs }: { label: string; side: CombatEx
   return (
     <div className="flex flex-col items-center gap-1">
       <span className="max-w-[6rem] truncate text-2xs uppercase tracking-wide text-wood-500">{label}</span>
-      <span className="flex flex-wrap items-baseline justify-center gap-x-1.5 gap-y-0.5">
+      {/* Sin el total "=resultado" (petición explícita, 2026-08-15: "no quiero que se vea el
+          total, eso ya se ve en la resolución final") — CombatExchangeBadge ya lo muestra en
+          cuanto el turno termina de resolverse, aquí solo hace falta el dado + el bono. Mismo
+          `gap-x` generoso que separa los dos dados entre sí (petición explícita: "la misma
+          separación"), no el `gap-1.5` apretado de antes. */}
+      <span className="flex flex-wrap items-baseline justify-center gap-x-3 gap-y-0.5">
         <span className="flex items-center gap-1">
           <span aria-hidden="true">🎲</span>
           <span
@@ -117,9 +122,6 @@ function DiceSide({ label, side, startDelayMs }: { label: string; side: CombatEx
             <span className={side.multiplicador > 1 ? 'text-moss-400' : 'text-danger-400'}>×{formatMultiplier(side.multiplicador)}</span>
           )}
         </span>
-        {/* El total solo tiene sentido en cuanto el dado real ya aterrizó — antes de eso `display`
-            es un número al azar del giro, sumarle el bono daría un total falso. */}
-        {landed && <span className="font-mono text-sm text-wood-200">={side.result}</span>}
       </span>
       <span className="text-2xs text-wood-500">{attributeLabels[side.attribute]}</span>
       {/* Dificultad necesaria (petición explícita, 2026-08-15: "añadir en algún lado el mínimo
