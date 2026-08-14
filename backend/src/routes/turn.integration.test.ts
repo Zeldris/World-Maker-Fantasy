@@ -1924,6 +1924,79 @@ describe('Desaparición de un cadáver tras 48h de ficción (docs/19 pieza 2)', 
   }, 20_000);
 });
 
+// Auditoría 2026-08-14 (bug real jugando en vivo, reinicio de partida: "Brazalete trenzado del
+// Clan Maktor"/"Pañuelo de luto Serhu"/"Tótem de clan roto" aparecieron ya en el PRIMERÍSIMO
+// "Exploro la zona", en La Hondonada del Eco, sin relación real con dónde cayó el Clan Maktor).
+// `harvestSourceHomeLocationSlug` (worldCatalog.ts) liga estas fuentes a una Location EXACTA; bug
+// real encontrado verificando el fix a mano: el fallback "nunca devuelvas vacío" de
+// `selectDiscoveries` (discovery.ts) resucitaba igual los objetos ligados en cualquier otro sitio
+// en cuanto TODO el bucket PASIVO quedaba ligado (como pasa hoy: son los únicos 6 yields PASIVO
+// del catálogo) — corregido cortando el candado ANTES de calcular el fallback, no dentro de él.
+describe('Objetos narrativos "PASIVO" ligados a su Location exacta (auditoría 2026-08-14)', () => {
+  const MAKTOR_ITEMS = ['Brazalete trenzado del Clan Maktor', 'Tótem de clan roto', 'Tablilla quemada', 'Juguete de hueso tallado'];
+  const OFRENDAS_ITEMS = ['Pañuelo de luto Serhu', 'Hueso marcado de primera cacería'];
+
+  async function saveAt(locationSlug: string, name: string) {
+    const userId = await getDefaultUserId();
+    const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
+    const location = await prisma.location.findFirstOrThrow({ where: { worldId: world.id, slug: locationSlug } });
+    const save = await prisma.save.create({
+      data: {
+        userId, worldId: world.id, characterName: name, characterArchetype: 'guerrero', characterOrigin: 'Clan Maktor',
+        characterMotivation: 'x', attributes: ATTRS, portraitInitial: 'G', currentLocationId: location.id,
+      },
+    });
+    await prisma.worldState.create({ data: { saveId: save.id } });
+    return save.id;
+  }
+
+  beforeAll(() => {
+    classifyAction.mockResolvedValue({
+      requiereTirada: false, atributo: 'destreza', dificultad: 8, razon: 'x', banda: 'corta', duracionEstimadaMinutos: 5,
+    });
+  });
+
+  it('en La Hondonada del Eco, explorar nunca revela objetos ligados a Restos de Maktor/Túmulos del Honor', async () => {
+    const saveId = await saveAt('hondonada-del-eco', 'Gorhorn de prueba (discovery hondonada)');
+    const app = await buildApp();
+    for (let i = 0; i < 5; i++) {
+      const res = await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action: 'Exploro la zona', enCombate: false } });
+      const { discoveries } = res.json();
+      const names = (discoveries ?? []).map((d: { name: string }) => d.name);
+      expect(names.filter((n: string) => MAKTOR_ITEMS.includes(n) || OFRENDAS_ITEMS.includes(n))).toEqual([]);
+    }
+    await prisma.save.delete({ where: { id: saveId } });
+  }, 20_000);
+
+  it('en Los Restos de Maktor, explorar SÍ puede revelar los objetos de Maktor', async () => {
+    const saveId = await saveAt('restos-de-maktor', 'Gorhorn de prueba (discovery restos maktor)');
+    const app = await buildApp();
+    const foundNames = new Set<string>();
+    for (let i = 0; i < 8; i++) {
+      const res = await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action: 'Exploro la zona', enCombate: false } });
+      const { discoveries } = res.json();
+      for (const d of discoveries ?? []) foundNames.add(d.name);
+    }
+    expect([...foundNames].some((n) => MAKTOR_ITEMS.includes(n))).toBe(true);
+    expect([...foundNames].some((n) => OFRENDAS_ITEMS.includes(n))).toBe(false);
+    await prisma.save.delete({ where: { id: saveId } });
+  }, 20_000);
+
+  it('en Los Túmulos del Honor, explorar SÍ puede revelar las ofrendas', async () => {
+    const saveId = await saveAt('tumulos-del-honor', 'Gorhorn de prueba (discovery tumulos)');
+    const app = await buildApp();
+    const foundNames = new Set<string>();
+    for (let i = 0; i < 8; i++) {
+      const res = await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action: 'Exploro la zona', enCombate: false } });
+      const { discoveries } = res.json();
+      for (const d of discoveries ?? []) foundNames.add(d.name);
+    }
+    expect([...foundNames].some((n) => OFRENDAS_ITEMS.includes(n))).toBe(true);
+    expect([...foundNames].some((n) => MAKTOR_ITEMS.includes(n))).toBe(false);
+    await prisma.save.delete({ where: { id: saveId } });
+  }, 20_000);
+});
+
 // Bug real jugando en vivo (2026-08-04, "ronda larga de pruebas" — el propio combate contra el
 // Orco Enfurecido en la Hondonada del Eco redirigió el golpe a Gistera Koh, un PNJ nunca hostil,
 // en cuanto el segundo turno de ataque dejó de citar su nombre entre comillas). Confirmado en

@@ -58,6 +58,19 @@ describe('recordEntityDiscoveries', () => {
     });
   });
 
+  // Cobertura nueva (auditoría 2026-08-14, mismo hallazgo real que en npcScene.ts — Sella Marn,
+  // NPC de una región fuera del núcleo jugable, no debería poder desbloquearse en la Enciclopedia
+  // por un match de alias corto sin relación real con ella).
+  it('un NPC con nucleoJugable: false nunca se descubre, aunque su alias haga match', async () => {
+    const client = fakeClient({
+      npc: { findMany: vi.fn(() => Promise.resolve([{ slug: 'sella-marn', name: 'Sella Marn', aliases: ['sella'], nucleoJugable: false }])) },
+    });
+
+    await recordEntityDiscoveries({ saveId: 's1', worldId: 'w1', mentionedText: 'Sella Marn te observa desde la sombra.' }, client as never);
+
+    expect(client.discoveredEntity.createMany).not.toHaveBeenCalled();
+  });
+
   it('un Npc que también es fauna cazable cuenta como "fauna", nunca como "npc" (sin duplicar)', async () => {
     const client = fakeClient({
       npc: { findMany: vi.fn(() => Promise.resolve([{ slug: 'jabali-de-espinas', name: 'Jabalí de espinas', aliases: [] }])) },

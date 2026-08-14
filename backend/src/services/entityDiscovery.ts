@@ -49,6 +49,10 @@ export async function recordEntityDiscoveries(
 
     for (const npc of npcs) {
       if (faunaSlugs.has(npc.slug)) continue;
+      // Mismo hallazgo que npcScene.ts (auditoría 2026-08-14, Sella Marn) — un NPC de una región
+      // fuera del núcleo jugable no debería poder desbloquearse en la Enciclopedia por un match
+      // de alias corto ("sella") en texto que no tiene nada que ver con él.
+      if (npc.nucleoJugable === false) continue;
       const aliases = [npc.name, ...npc.aliases];
       if (aliases.some((a) => matchesAliasBoundary(normalized, normalizeText(a)))) {
         discovered.push({ entityType: 'npc', entitySlug: npc.slug });

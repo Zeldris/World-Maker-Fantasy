@@ -436,7 +436,7 @@ export function buildNarrationPrompt(ctx: TurnContext & { roll?: RollResult }): 
   const combatBlock = ctx.enCombate
     ? `ESTÁS DENTRO DE UN COMBATE (docs/14-combate-y-muerte.md § 2.3): narra en 1-2 frases, corto y directo, el intercambio de ESTE turno — nada de ambientación de relleno, es el ritmo de un choque, no una escena. Puedes proponer "condicionFisica" si el personaje sale herido de este intercambio (nunca lo cures aquí salvo que la acción sea explícitamente curarse).${
         ctx.npcFallsUnconsciousThisTurn
-          ? ' Este golpe deja al rival INCAPACITADO o MUERTO — tu narración de este turno tiene que describir explícitamente ese momento (cae inconsciente, se desploma sin sentido, muere...), no dejarlo implícito ni solo insinuado.'
+          ? ' Este golpe deja al rival INCAPACITADO o MUERTO — tu narración de este turno tiene que describir explícitamente ese momento, no dejarlo implícito ni solo insinuado. Si queda INCAPACITADO (no MUERTO): sigue consciente, solo sin fuerzas para seguir luchando — cae de rodillas, se desploma malherido, tambalea sin poder levantarse... NUNCA lo narres inconsciente/desmayado/sin sentido (un rival inconsciente de verdad no podría seguir combatiendo si el jugador no lo remata ya mismo, y el juego permite que la pelea continúe). Si MUERE, ahí sí es el final.'
           : ''
       }`
     : `Fuera de combate nunca empeores "condicionFisica" — solo puedes proponerla si el personaje se cura o descansa de verdad (mejora), o déjala en null. ${

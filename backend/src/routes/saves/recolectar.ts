@@ -9,6 +9,7 @@ import { effectiveInventorySlotsBonus } from '../../services/equipment.js';
 import { stripRegionArticle } from '../../services/population.js';
 import { quantityOf } from '../../services/ingredients.js';
 import { closeItemQuests } from '../../services/questResolution.js';
+import { recordEntityDiscoveries } from '../../services/entityDiscovery.js';
 import type { AttributeBlock } from '../../services/dice.js';
 import type { MetodoObtencion } from '@prisma/client';
 
@@ -446,6 +447,12 @@ export async function recolectarRoutes(app: FastifyInstance) {
       if (touched.touched.size > 0) {
         const sessionFacts = await loadSessionFacts(save.id);
         await appendSessionFacts(save.id, sessionFacts, [touched.logEntry!.text]);
+        // Bug real (2026-08-14, petición explícita: "las cosas que recojo con profesiones... no se
+        // están marcando como descubiertas en la enciclopedia") — este endpoint determinista nunca
+        // pasaba por `narrateAndPersistTurn` (turnResolution.ts), el único sitio que hasta ahora
+        // llamaba a `recordEntityDiscoveries`, así que un objeto conseguido por Minar/Talar/
+        // Desollar podía quedar en el inventario sin desbloquear nunca su ficha de Enciclopedia.
+        await recordEntityDiscoveries({ saveId: save.id, worldId: save.worldId, mentionedText: touched.logEntry!.text });
       }
 
       // Materia prima cruda — siempre tipo RECURSO por diseño (nunca EQUIPABLE ni ESPECIAL), mismo

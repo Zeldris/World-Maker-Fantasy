@@ -38,6 +38,8 @@ export function toFrontendLogEntry(entry: {
   combate?: boolean;
   travelInterrupted?: boolean;
   combatExchange?: unknown;
+  npcAbilityUsed?: unknown;
+  playerAbilityUsed?: unknown;
 }) {
   return {
     id: entry.id,
@@ -48,6 +50,11 @@ export function toFrontendLogEntry(entry: {
     // Bug real jugando en vivo (2026-08-13) — sin esto, recargar la partida perdía el lado
     // "Enemigo" del intercambio de combate (ver comentario de la columna en schema.prisma).
     combatExchange: entry.combatExchange ?? undefined,
+    // Bug gemelo del de arriba (2026-08-14) — mismo motivo, mismo fix: sin esto, recargar perdía
+    // el badge de "NPC ataca/se defiende con..." y "Usas..." y (nuevo) el nombre real del NPC en
+    // CombatExchangeBadge, que cae a "el enemigo" sin `npcAbilityUsed.npcName`.
+    npcAbilityUsed: entry.npcAbilityUsed ?? undefined,
+    playerAbilityUsed: entry.playerAbilityUsed ?? undefined,
     isPlayerAction: entry.isPlayerAction || undefined,
     xpDelta: entry.xpDelta ?? undefined,
     // Persistencia de banners de entidad (rework 2026-07-24) — solo la referencia (tipo+slug); el

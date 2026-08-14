@@ -117,6 +117,32 @@ describe('GET /saves/:id', () => {
     expect(res.json().quests[0].targetLocationSlug).toBe('hondonada-del-eco');
   });
 
+  // Cobertura nueva (2026-08-14, barra de atributos jugables con tramo de bonus de equipo aparte
+  // de la base — petición explícita: "en color claro la parte de los attr base y en más oscuro
+  // lo que aumentan lo que llevas equipado").
+  it('attributeBonuses viaja vacío sin equipo puesto', async () => {
+    findUniqueSave.mockResolvedValue(baseSave());
+    const app = await buildApp();
+    const res = await app.inject({ method: 'GET', url: '/saves/save1' });
+    expect(res.json().attributeBonuses).toEqual({});
+  });
+
+  it('attributeBonuses suma solo el bonus de objetos EQUIPADOS, sin tocar attributes (la base)', async () => {
+    findUniqueSave.mockResolvedValue(
+      baseSave({
+        inventoryItems: [
+          { id: 'i1', name: 'Amuleto de fuerza', slot: 'ANILLO_1', statBonuses: { fuerza: 3 } },
+          { id: 'i2', name: 'Poción en la mochila', slot: null, statBonuses: { fuerza: 99 } },
+        ],
+      }),
+    );
+    const app = await buildApp();
+    const res = await app.inject({ method: 'GET', url: '/saves/save1' });
+    const body = res.json();
+    expect(body.attributeBonuses).toEqual({ fuerza: 3 });
+    expect(body.attributes).toEqual(ATTRS); // la base nunca se toca
+  });
+
   it('sin target de ningún tipo, targetLocationSlug es null', async () => {
     findUniqueSave.mockResolvedValue(
       baseSave({ quests: [{ id: 'q1', title: 'Libre', description: 'd', status: 'ACTIVA', objetivo: null, rewardXp: null, rewardItems: [], targetLocationId: null, targetNpcId: null }] }),

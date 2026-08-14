@@ -5,7 +5,7 @@ import { energiaMaxFor } from '../../services/energy.js';
 import { destinationsFrom } from '../../services/travel.js';
 import { type Requisitos } from '../../services/requisitos.js';
 import { scopeFor } from '../../services/npcScene.js';
-import { effectiveAttributes, effectiveSecondaryAttributes, type StatBonusMap } from '../../services/equipment.js';
+import { effectiveAttributes, effectiveSecondaryAttributes, attributeBonusesFromEquipment, type StatBonusMap } from '../../services/equipment.js';
 import { imageUrlsFor } from '../../lib/imageAssets.js';
 import type { AttributeBlock } from '../../services/dice.js';
 import { normalizeSecondaryAttributes } from '../../services/secondaryAttributes.js';
@@ -146,6 +146,13 @@ export async function detailRoutes(app: FastifyInstance) {
       characterOrigin: save.characterOrigin,
       characterMotivation: save.characterMotivation,
       attributes: save.attributes,
+      // Desglose base/equipo (2026-08-14, petición explícita: barra de atributos jugables con
+      // tramo claro=base y tramo oscuro=bonus de equipo, con tooltip "Base: X · Equipo: +Y") — a
+      // diferencia de `secondaryAttributes` de abajo, aquí SÍ hace falta mandar el bonus aparte
+      // porque `attributes` ya viaja como el base puro (ver comentario histórico de
+      // `effectiveAttributes` más abajo, línea ~289: nunca se expuso el efectivo de los 7
+      // jugables en esta ficha, solo se usaba internamente para energiaMax).
+      attributeBonuses: attributeBonusesFromEquipment(equippedItems),
       secondaryAttributes: effectiveSecondaryAttributes(normalizeSecondaryAttributes(save.secondaryAttributes), equippedItems),
       portraitInitial: save.portraitInitial,
       fictionalDateLabel: save.worldState?.fictionalDateLabel ?? 'Día 1, mañana',

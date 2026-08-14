@@ -413,6 +413,13 @@ model LogEntry {
   /// partida perdía el lado del enemigo y el badge de dos filas colapsaba al de una sola tirada
   /// (`roll`, que solo guarda el lado del jugador). null si el turno no tuvo intercambio real.
   combatExchange Json?
+  /// { npcName, abilityName, rol } / { name, icon, description, rol } (turnResolution.ts) — mismo
+  /// bug gemelo que `combatExchange` de arriba (2026-08-14, encontrado al pedir que
+  /// CombatExchangeBadge mostrara el nombre real del NPC en vez de "el enemigo": tras recargar,
+  /// el nombre desaparecía porque estos dos campos nunca se guardaban, solo viajaban en la
+  /// respuesta HTTP del turno recién resuelto) — null si el turno no tuvo intercambio real.
+  npcAbilityUsed    Json?
+  playerAbilityUsed Json?
   createdAt      DateTime   @default(now())
 
   @@index([saveId, createdAt])
@@ -1031,6 +1038,14 @@ model Npc {
   domesticablePct  Int @default(0)
   capturablePct    Int @default(0)
   cortejablePct    Int @default(0)
+  /// Núcleo jugable actual (auditoría 2026-08-14, bug real jugando en vivo: "Sella Marn" — Nabieus
+  /// de El Margen Silencioso, región marcada "fuera del núcleo jugable actual" en decenas de
+  /// sitios del catálogo, pero solo como texto — apareció en combate real de todas formas).
+  /// `npcScene.ts` da por candidato de escena a CUALQUIER NPC `kind: PRINCIPAL` sin mirar región
+  /// ("personajes únicos pueden aparecer en cualquier sitio por guion"); este campo es lo que ese
+  /// filtro comprueba ahora para las excepciones. Default `true` — solo se pone `false` en
+  /// PRINCIPAL de regiones todavía no jugables (worldCatalog.ts).
+  nucleoJugable Boolean @default(true)
 
   items     NpcItem[]
   npcStates NpcState[]

@@ -305,10 +305,18 @@ export async function detectNpcsInScene(params: {
   // ambiental, turnResolution.ts), o cuyo `homeLocationSlug` cae en la ubicación/región actual.
   // Sin ubicación resuelta este turno (p.ej. viajando), no se puede acotar — se deja sin filtrar
   // en vez de arriesgarse a perder a alguien real (mismo límite que ya documenta discovery.ts).
+  //
+  // `nucleoJugable` (auditoría 2026-08-14, bug real jugando en vivo: Sella Marn —Nabieus de una
+  // región marcada "fuera del núcleo jugable actual"— apareció en combate real igualmente) — quest
+  // activa y "ya establecido antes" se comprueban ANTES y siguen ganando siempre (si una misión de
+  // verdad apunta a alguien, o ya se le conoció en esta partida, no tiene sentido hacerlo
+  // desaparecer). Pero ni "es PRINCIPAL" ni "itinerante sin homeLocationSlug" (los dos casos de
+  // Sella Marn a la vez) deben poder saltarse la marca de núcleo — antes sí podían.
   const candidateNpcs = npcs.filter((npc) => {
-    if (npc.kind === 'PRINCIPAL') return true;
     if (questTargetIds.has(npc.id)) return true;
     if (encounteredIds.has(npc.id)) return true;
+    if (npc.nucleoJugable === false) return false;
+    if (npc.kind === 'PRINCIPAL') return true;
     if (npc.homeLocationSlug === null) return true;
     if (!currentLocation) return true;
     if (npc.homeLocationSlug === currentLocation.slug) return true;

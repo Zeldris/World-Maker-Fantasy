@@ -875,6 +875,15 @@ export interface NpcInput {
   domesticablePct?: number;
   capturablePct?: number;
   cortejablePct?: number;
+  /// Núcleo jugable actual (auditoría 2026-08-14, bug real jugando en vivo: "Sella Marn" —
+  /// Nabieus de El Margen Silencioso, región marcada "fuera del núcleo jugable actual" en
+  /// decenas de sitios de este catálogo, pero solo como texto/comentario — apareció en combate
+  /// real de todas formas). `npcScene.ts` da por candidato a CUALQUIER NPC `kind: 'PRINCIPAL'`
+  /// sin mirar región ("personajes únicos pueden aparecer en cualquier sitio por guion"), y hasta
+  /// ahora no había ningún campo real que ese filtro pudiera comprobar para las excepciones.
+  /// Default `true` (omitido = sí, es del núcleo) — solo se pone `false` explícitamente en los
+  /// PRINCIPAL de regiones todavía no jugables (Berig, El Margen Silencioso...).
+  nucleoJugable?: boolean;
 }
 
 /// Fauna cazable (roadmap 2026-07-19, prioridad 1: "despiece exige presa previa"): antes el
@@ -1527,6 +1536,9 @@ export const npcs: NpcInput[] = [
     slug: 'yovenne-tal',
     name: 'Archimagistrada Yovenne Tal',
     kind: 'PRINCIPAL',
+    // Meseta del Orden — "Fuera del núcleo jugable actual... Gorhorn no ha estado aquí" (ver su
+    // entrada de región más arriba). Auditoría 2026-08-14, ver comentario de `nucleoJugable`.
+    nucleoJugable: false,
     aliases: ['yovenne tal', 'archimagistrada yovenne tal', 'archimagistrada tal'],
     faction: 'Concordia de Hierro (facción moderada)',
     genero: 'F', // Título ya en femenino ("Archimagistrada", no "Archimagistrado") — misma auditoría de género, 2026-08-08.
@@ -1552,6 +1564,8 @@ export const npcs: NpcInput[] = [
     slug: 'vrask-ombra',
     name: 'General Vrask Ombra',
     kind: 'PRINCIPAL',
+    // Meseta del Orden — fuera del núcleo jugable actual, mismo motivo que Yovenne Tal arriba.
+    nucleoJugable: false,
     aliases: ['vrask ombra', 'general ombra', 'general vrask ombra'],
     faction: 'Concordia de Hierro',
     role: 'Mando militar de la Concordia de Hierro',
@@ -1571,6 +1585,8 @@ export const npcs: NpcInput[] = [
     slug: 'kael-dorn',
     name: 'Kael Dorn',
     kind: 'PRINCIPAL',
+    // Meseta del Orden / Berig — fuera del núcleo jugable actual, mismo motivo que Yovenne Tal.
+    nucleoJugable: false,
     aliases: ['kael dorn', 'kael'],
     faction: null,
     // Bio explícita en masculino ("el hombre más buscado de Berig") — misma auditoría de género,
@@ -1597,6 +1613,9 @@ export const npcs: NpcInput[] = [
     slug: 'hagar',
     name: 'Hagar',
     kind: 'PRINCIPAL',
+    // "Vive fuera del grafo v1 (Cristal Helado)... si la partida lo trae, no debe improvisársele
+    // números" — ya documentado como fuera de núcleo en su propia bio, ahora también como dato.
+    nucleoJugable: false,
     aliases: ['hagar'],
     faction: 'Clan Helsig',
     genero: 'M', // Bio explícita en masculino ("Orco del Clan Helsig") — misma auditoría de género, 2026-08-08.
@@ -1627,6 +1646,10 @@ export const npcs: NpcInput[] = [
     slug: 'sella-marn',
     name: 'Sella Marn',
     kind: 'PRINCIPAL',
+    // El Margen Silencioso, Nabieus — el hallazgo real que motivó este campo (auditoría 2026-08-14,
+    // "creo que el nabierus era... Sella Marn" — apareció en combate pese a ser de una región
+    // marcada "fuera del núcleo jugable actual" en todo el catálogo).
+    nucleoJugable: false,
     aliases: ['sella marn', 'sella'],
     faction: null,
     role: 'Traficante de información independiente',
@@ -3643,19 +3666,24 @@ export const harvestYields: HarvestYieldInput[] = [
 
   // --- Ofrendas de los Túmulos del Honor ---
 
-  { 
-    sourceSlug: 'ofrendas-tumulos-honor', 
+  // `PASIVO`, no `EXTRACCION` (auditoría 2026-08-14, petición explícita: "solo deberían salir
+  // hierbas en recolectar y salieron todos los objetos narrativos") — no son plantas, son objetos
+  // de recuerdo/ofrenda; con `EXTRACCION` se colaban en el pop-up de Herborista junto a hierbas de
+  // verdad. `PASIVO` los deja donde tienen sentido narrativo: solo salen al "Explorar la zona"
+  // genérico (discovery.ts), nunca ligados a un oficio concreto.
+  {
+    sourceSlug: 'ofrendas-tumulos-honor',
     sourceName: 'Ofrendas de los Túmulos del Honor',
-    metodoObtencion: 'EXTRACCION', 
-    itemSlug: 'panuelo-luto-serhu', 
-    cantidad: 1 
+    metodoObtencion: 'PASIVO',
+    itemSlug: 'panuelo-luto-serhu',
+    cantidad: 1
   },
 
-  { 
-    sourceSlug: 'ofrendas-tumulos-honor', 
+  {
+    sourceSlug: 'ofrendas-tumulos-honor',
     sourceName: 'Ofrendas de los Túmulos del Honor',
-    metodoObtencion: 'EXTRACCION', 
-    itemSlug: 'hueso-marcado-primer-caceria', 
+    metodoObtencion: 'PASIVO',
+    itemSlug: 'hueso-marcado-primer-caceria',
     cantidad: 1
   },
 
@@ -3673,25 +3701,27 @@ export const harvestYields: HarvestYieldInput[] = [
   // --- Restos personales de Maktor ---
 
   // --- Tier 0, ronda 2 de objetos (roadmap 2026-07-20) ---
-  { sourceSlug: 'restos-personales-maktor', 
+  // `PASIVO`, no `EXTRACCION` — mismo motivo que "Ofrendas de los Túmulos del Honor" arriba,
+  // objetos de recuerdo del clan de Gorhorn, no hierbas (auditoría 2026-08-14).
+  { sourceSlug: 'restos-personales-maktor',
     sourceName: 'Restos personales de Maktor',
-    metodoObtencion: 'EXTRACCION', 
-    itemSlug: 'juguete-hueso-maktor', 
-    cantidad: 1 
-  },
-
-  { 
-    sourceSlug: 'restos-personales-maktor', 
-    sourceName: 'Restos personales de Maktor',
-    metodoObtencion: 'EXTRACCION', 
-    itemSlug: 'brazalete-trenzado-maktor', 
-    cantidad: 1 
+    metodoObtencion: 'PASIVO',
+    itemSlug: 'juguete-hueso-maktor',
+    cantidad: 1
   },
 
   {
     sourceSlug: 'restos-personales-maktor',
     sourceName: 'Restos personales de Maktor',
-    metodoObtencion: 'EXTRACCION',
+    metodoObtencion: 'PASIVO',
+    itemSlug: 'brazalete-trenzado-maktor',
+    cantidad: 1
+  },
+
+  {
+    sourceSlug: 'restos-personales-maktor',
+    sourceName: 'Restos personales de Maktor',
+    metodoObtencion: 'PASIVO',
     itemSlug: 'tablilla-quemada-maktor',
     cantidad: 1
   },
@@ -3702,7 +3732,7 @@ export const harvestYields: HarvestYieldInput[] = [
   {
     sourceSlug: 'restos-personales-maktor',
     sourceName: 'Restos personales de Maktor',
-    metodoObtencion: 'EXTRACCION',
+    metodoObtencion: 'PASIVO',
     itemSlug: 'totem-clan-roto',
     cantidad: 1,
   },
@@ -3917,6 +3947,25 @@ export const harvestSourcesThatAreFaunaWithoutNpc = new Set(['cornante', 'espina
 /// Troncal) y `hielo-silice` (Cristal Helado) solo como documentación — ya estaban marcadas "fuera
 /// del núcleo jugable actual" en su propio `condicion`/descripción, así que no llevan fila nueva
 /// en `WorldPopulation` (añadir población ahí sería inventar contenido inalcanzable hoy).
+/// Fuentes PASIVAS ligadas a una Location CONCRETA, no solo a su región (auditoría 2026-08-14,
+/// petición explícita tras reiniciar partida: "los elementos pasivos deberían estar en zonas
+/// concretas y específicas... los relacionados con Maktor que se encuentren en los restos de
+/// Maktor... y el resto repartidos por las zonas donde más encaje" — bug real confirmado: al
+/// reiniciar, "Brazalete trenzado del Clan Maktor"/"Pañuelo de luto Serhu"/"Tótem de clan roto"
+/// salían ya en el PRIMER "Exploro la zona", en La Hondonada del Eco, sin ninguna relación real
+/// con dónde vivió/cayó el Clan Maktor). El propio comentario original de estas dos fuentes
+/// (2026-07-20) ya decía "ligadas a Location, no a fauna/flora" — nunca se llegó a construir esa
+/// parte, solo la de región (`harvestSourceRegion` de abajo). `selectDiscoveries` (discovery.ts)
+/// exige coincidencia EXACTA de `Location.slug` para cualquier fuente listada aquí, no solo de
+/// región — a diferencia de `harvestSourceRegion`, que sigue siendo "en cualquier sitio de la
+/// región". Las dos ubicaciones ya existían en el catálogo con nombre/descripción que encajan
+/// solos: `restos-de-maktor` ("último asentamiento del Clan Maktor... antes de su aniquilación") y
+/// `tumulos-del-honor` ("donde los clanes... entierran a quienes murieron con honor").
+export const harvestSourceHomeLocationSlug: Record<string, string> = {
+  'restos-personales-maktor': 'restos-de-maktor',
+  'ofrendas-tumulos-honor': 'tumulos-del-honor',
+};
+
 export const harvestSourceRegion: Record<string, string> = {
   'arena-iman': 'Llanuras del Viento Rojo',
   'aullador-rojo': 'Llanuras del Viento Rojo',

@@ -292,6 +292,45 @@ describe('detectNpcsInScene — acotar el candidato por escena', () => {
     expect(result.map((n) => n.id)).toEqual(['lurker']);
   });
 
+  // Cobertura nueva (auditoría 2026-08-14, bug real jugando en vivo: Sella Marn —Nabieus de una
+  // región marcada "fuera del núcleo jugable actual"— apareció en combate real. `kind: PRINCIPAL`
+  // Y `homeLocationSlug: null` (itinerante) a la vez, las dos rutas que antes se saltaban CUALQUIER
+  // filtro de región — `nucleoJugable: false` tiene que bloquear ambas.
+  it('un PRINCIPAL fuera del núcleo jugable (nucleoJugable: false) NO es candidato, aunque sea itinerante', async () => {
+    findManyNpc.mockResolvedValue([baseNpc({ id: 'sella', kind: 'PRINCIPAL', homeLocationSlug: null, nucleoJugable: false })]);
+    findUniqueLocation.mockResolvedValue(HONDONADA);
+    findManyLocation.mockResolvedValue([]);
+
+    const result = await detectNpcsInScene({
+      action: 'Busco presas por la zona', worldId: 'w1', sessionFacts: [], saveId: 's1', currentLocationId: 'loc-hondonada',
+    });
+    expect(result).toEqual([]);
+  });
+
+  it('un PRINCIPAL fuera del núcleo jugable SÍ sigue siendo candidato si una misión activa lo apunta de verdad', async () => {
+    findManyNpc.mockResolvedValue([baseNpc({ id: 'sella', kind: 'PRINCIPAL', homeLocationSlug: null, nucleoJugable: false })]);
+    findUniqueLocation.mockResolvedValue(HONDONADA);
+    findManyLocation.mockResolvedValue([]);
+    findManyQuest.mockResolvedValue([{ targetNpcId: 'sella' }]);
+
+    const result = await detectNpcsInScene({
+      action: 'Busco presas por la zona', worldId: 'w1', sessionFacts: [], saveId: 's1', currentLocationId: 'loc-hondonada',
+    });
+    expect(result.map((n) => n.id)).toEqual(['sella']);
+  });
+
+  it('un PRINCIPAL fuera del núcleo jugable SÍ sigue siendo candidato si ya se estableció antes en esta partida (no desaparece retroactivamente)', async () => {
+    findManyNpc.mockResolvedValue([baseNpc({ id: 'sella', kind: 'PRINCIPAL', homeLocationSlug: null, nucleoJugable: false })]);
+    findUniqueLocation.mockResolvedValue(HONDONADA);
+    findManyLocation.mockResolvedValue([]);
+    findManyNpcState.mockResolvedValue([{ npcId: 'sella' }]);
+
+    const result = await detectNpcsInScene({
+      action: 'Busco presas por la zona', worldId: 'w1', sessionFacts: [], saveId: 's1', currentLocationId: 'loc-hondonada',
+    });
+    expect(result.map((n) => n.id)).toEqual(['sella']);
+  });
+
   it('el objetivo de una misión activa es candidato en cualquier escena', async () => {
     findManyNpc.mockResolvedValue([baseNpc()]);
     findUniqueLocation.mockResolvedValue(HONDONADA);

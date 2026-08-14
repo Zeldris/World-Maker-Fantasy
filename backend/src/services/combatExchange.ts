@@ -1,7 +1,7 @@
 import type { Attribute, AttributeBlock, GradoExito, RollResult } from './dice.js';
 import type { AbilityEffect, CondicionFisica } from '@prisma/client';
 import { gradoExitoFor } from './dice.js';
-import { effectiveAttributeValue, type CombatTree } from './attributeWheel.js';
+import { effectiveAttributeValue, typeMultiplierFor, type CombatTree } from './attributeWheel.js';
 import { condicionMalus } from './death.js';
 
 /// Ataque de NPC ya decidido (oculto al frontend) — se persiste en `Save.pendingNpcAttack`
@@ -84,6 +84,12 @@ export interface ExchangeSideResult extends RollResult {
   /// Valor de atributo YA con el multiplicador de tipo aplicado — el que de verdad entró en la
   /// tirada, distinto del `value` crudo que ya trae `RollResult`.
   valorEfectivo: number;
+  /// El multiplicador de la rueda de debilidades en sí, SIN aplicar (petición explícita,
+  /// 2026-08-14: "los multiplicadores aplicados por las debilidades, dando el resultado final" —
+  /// antes solo se veía `valorEfectivo` ya multiplicado, sin poder distinguir si un bono alto
+  /// venía de un atributo alto o de tener ventaja de tipo contra el rival). >1 = ventaja de tipo,
+  /// <1 = desventaja, exactamente 1 = sin relación en la rueda (attributeWheel.ts).
+  multiplicador: number;
 }
 
 export type ExchangeOutcome =
@@ -133,6 +139,7 @@ export interface CombatExchangeDisplay {
 /// d20+bono, grado de éxito) sin cruzar `OUTCOME_TABLE` después.
 function rollSide(self: ExchangeParticipant, opponentAttribute: Attribute, tree: CombatTree): ExchangeSideResult {
   const valorCrudo = Math.max(1, self.attributes[self.attribute] - condicionMalus(self.condicionFisica));
+  const multiplicador = typeMultiplierFor(self.attribute, opponentAttribute, tree);
   const valorEfectivo = effectiveAttributeValue(valorCrudo, self.attribute, opponentAttribute, tree);
   const roll = Math.floor(Math.random() * 20) + 1;
   const result = roll + Math.floor(valorEfectivo / 2);
@@ -141,6 +148,7 @@ function rollSide(self: ExchangeParticipant, opponentAttribute: Attribute, tree:
     attribute: self.attribute,
     value: self.attributes[self.attribute],
     valorEfectivo,
+    multiplicador,
     roll,
     result,
     difficulty: self.difficulty,

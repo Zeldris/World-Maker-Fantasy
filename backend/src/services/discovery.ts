@@ -1,5 +1,6 @@
 import { prisma } from '../lib/prisma.js';
 import { normalizeText } from './travel.js';
+import { harvestSourceHomeLocationSlug } from '../scripts/worldCatalog.js';
 
 /// Revelado progresivo (docs/14-combate-y-muerte.md § 3.1): para una búsqueda/recolección
 /// GENÉRICA (sin especie concreta mencionada — eso lo cubre harvest.ts), el backend decide
@@ -69,15 +70,29 @@ export function coreRegionOf(text: string | null | undefined): string | null {
 /// `homeLocationSlug`, o un `lugarOrigen` sin ninguna región reconocible) se queda sin filtrar en
 /// vez de inventar una región — mismo límite ya documentado en `harvest.ts`.
 export async function selectDiscoveries(worldId: string, currentLocationId: string | null): Promise<DiscoveryItem[]> {
-  const [yields, currentLocation] = await Promise.all([
+  const [allYields, currentLocation] = await Promise.all([
     // Solo PASIVO (2026-07-29, bug real jugando: "al explorar la zona me saca recursos que no
     // tiene sentido obtener directamente") — antes esta consulta traía TODA la tabla, fauna
     // incluida, así que pieles/huesos/colmillos (que exigen cazar+desollar) podían "aparecer"
     // solos al explorar. Lo que exige caza/tala/minería/extracción deliberada nunca sale aquí,
     // solo por harvest.ts nombrando la fuente y usando el verbo correcto.
     prisma.harvestYield.findMany({ where: { worldId, metodoObtencion: 'PASIVO' }, include: { item: true } }),
-    currentLocationId ? prisma.location.findUnique({ where: { id: currentLocationId }, select: { region: true } }) : Promise.resolve(null),
+    currentLocationId ? prisma.location.findUnique({ where: { id: currentLocationId }, select: { region: true, slug: true } }) : Promise.resolve(null),
   ]);
+  if (allYields.length === 0) return [];
+
+  // Fuentes ligadas a una Location CONCRETA (auditoría 2026-08-14, "restos-personales-maktor"/
+  // "ofrendas-tumulos-honor" — un mero acuerdo de región las dejaba salir en cualquier sitio de Las
+  // Llanuras, incluida la primerísima escena) — se descarta ANTES de calcular `candidates` más
+  // abajo, no dentro de su filtro: el fallback "si no queda nada, no filtres" de más abajo existe
+  // para no devolver la lista vacía nunca, pero eso mismo anulaba el candado por completo en
+  // cuanto TODO el bucket PASIVO quedaba ligado a un sitio (como pasa ahora mismo: hoy son los
+  // únicos 6 yields PASIVO que existen) — sin este corte antes, el fallback los devolvía igual en
+  // cualquier otro lado. Cortado aquí, ni el fallback puede resucitarlos fuera de su sitio.
+  const yields = allYields.filter((y) => {
+    const lockedLocationSlug = harvestSourceHomeLocationSlug[y.sourceSlug];
+    return !lockedLocationSlug || currentLocation?.slug === lockedLocationSlug;
+  });
   if (yields.length === 0) return [];
 
   let candidates = yields;
@@ -98,6 +113,9 @@ export async function selectDiscoveries(worldId: string, currentLocationId: stri
     );
 
     candidates = yields.filter((y) => {
+      // Ya ligadas a su Location exacta arriba — si sobrevivieron el corte de `yields`, ya están
+      // en el sitio correcto, dejarlas pasar de largo el resto de reglas (región/lugarOrigen).
+      if (harvestSourceHomeLocationSlug[y.sourceSlug]) return true;
       const faunaRegion = regionBySourceSlug.get(y.sourceSlug);
       if (faunaRegion) return faunaRegion === currentLocation.region;
       const mentioned = y.item.lugarOrigen ? regionsMentionedIn(y.item.lugarOrigen) : [];

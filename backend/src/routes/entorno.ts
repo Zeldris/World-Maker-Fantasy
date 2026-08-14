@@ -1,6 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { generateSurroundings } from '../services/entorno.js';
 import { prisma } from '../lib/prisma.js';
+import { recordEntityDiscoveries } from '../services/entityDiscovery.js';
 
 interface EntornoBody {
   saveId: string;
@@ -64,6 +65,13 @@ export async function entornoRoutes(app: FastifyInstance) {
     const worldLogEntry = await prisma.logEntry.create({
       data: { saveId, channel: 'WORLD', text: result.description, timeLabel, fictionalMinutes: save.worldState?.fictionalMinutes ?? 480 },
     });
+
+    // Bug real (2026-08-14, petición explícita: "lo que se menciona en el log de mundo" no se
+    // marcaba como descubierto en la Enciclopedia) — este endpoint nunca llamaba a
+    // `recordEntityDiscoveries`, a diferencia del canal CHARACTER (turnResolution.ts), así que
+    // cualquier NPC/fauna/ubicación citado solo en la ambientación de "El mundo" se quedaba sin
+    // desbloquear su ficha aunque el jugador ya lo hubiera "visto" en el texto.
+    await recordEntityDiscoveries({ saveId, worldId: save.worldId, mentionedText: result.description });
 
     return { ...result, logEntryId: worldLogEntry.id };
   });

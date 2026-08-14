@@ -3169,6 +3169,12 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
       nextAfterMainLogCreatedAt,
     });
     if (combatExchangeResult.questCompletedInfo) questCompletedInfo = combatExchangeResult.questCompletedInfo;
+    // Bug real (auditoría "revisar partida" 2026-08-14): la recompensa de misión se narraba
+    // ("+100 XP" en el texto de `completeNpcTargetQuests`) pero nunca se sumaba al XP real del
+    // turno — a diferencia del camino de saqueo (más abajo, `lootResult.questRewardXp`), que sí lo
+    // hacía bien. Cerrar la misión matando/incapacitando al objetivo (el camino más común) daba XP
+    // fantasma: el jugador veía el número pero `Save.xp` nunca subía.
+    questRewardXp += combatExchangeResult.questCompletedInfo?.rewardXp ?? 0;
 
     // "Decapitar" (petición explícita, 2026-07-30) — ver `applyExecuteTargets` más arriba.
     const executeResult = await applyExecuteTargets({
@@ -3183,6 +3189,8 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
       nextAfterMainLogCreatedAt,
     });
     if (executeResult.questCompletedInfo) questCompletedInfo = executeResult.questCompletedInfo;
+    // Mismo bug gemelo que arriba, para el cierre de misión vía "Decapitar"/"Matar".
+    questRewardXp += executeResult.questCompletedInfo?.rewardXp ?? 0;
 
     // Despiece/recolección (§ 3.3) — ver `applyHarvest` más arriba.
     const harvestResult = await applyHarvest({ tx, harvestMatch, harvestOutcome, roll, saveId, currentLocationId, characterName });
@@ -3873,6 +3881,11 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
         // Bug real jugando en vivo (2026-08-13): sin persistir esto, recargar la partida perdía
         // el lado "Enemigo" del intercambio — `roll` de arriba solo guarda el lado del jugador.
         combatExchange: combatExchangeDisplay ? (combatExchangeDisplay as unknown as Prisma.InputJsonValue) : undefined,
+        // Bug gemelo del de arriba (2026-08-14, encontrado al pedir que CombatExchangeBadge
+        // mostrara el nombre real del NPC en vez de "el enemigo" — tras recargar, caía al
+        // genérico porque esto tampoco se guardaba, solo viajaba en la respuesta HTTP del turno).
+        npcAbilityUsed: npcAbilityUsed ? (npcAbilityUsed as unknown as Prisma.InputJsonValue) : undefined,
+        playerAbilityUsed: playerAbilityUsed ? (playerAbilityUsed as unknown as Prisma.InputJsonValue) : undefined,
         timeLabel,
         xpDelta: xpTurno > 0 ? xpTurno : undefined,
         fictionalMinutes: nuevoFictionalMinutes,

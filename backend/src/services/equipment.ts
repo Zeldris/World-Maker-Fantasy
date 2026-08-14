@@ -47,6 +47,22 @@ export function effectiveAttributes(base: AttributeBlock, equippedItems: Equippe
   return result;
 }
 
+/// Solo el bonus de equipo, SIN sumar la base (2026-08-14, petición explícita: "la barra debería
+/// verse en color claro la parte de los attr base y en más oscuro lo que aumentan lo que llevas
+/// equipado") — mismo bucle que `effectiveAttributes` pero partiendo de cero, para que el
+/// frontend pueda pintar los dos tramos por separado en vez de solo el total ya sumado. Mismo
+/// criterio de "solo lo equipado cuenta" que el resto de funciones de este archivo.
+export function attributeBonusesFromEquipment(equippedItems: EquippedStatBonus[]): Partial<AttributeBlock> {
+  const result: Partial<AttributeBlock> = {};
+  for (const item of equippedItems) {
+    for (const [attribute, amount] of Object.entries(asStatBonusMap(item.statBonuses))) {
+      if (!amount || !isAttribute(attribute)) continue;
+      result[attribute] = (result[attribute] ?? 0) + amount;
+    }
+  }
+  return result;
+}
+
 /// Simétrico a `effectiveAttributes`, pero para los 9 atributos secundarios (2026-08-03, hueco
 /// real encontrado tras construir el mapa de bonus múltiple: la petición explícita de la usuaria
 /// —"cosméticos... bonus especiales de attrs secundarios"— nunca llegó a tener ningún sitio que la

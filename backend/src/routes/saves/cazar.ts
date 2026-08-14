@@ -4,6 +4,7 @@ import { decrementPopulationOnDeath, stripRegionArticle } from '../../services/p
 import { scopeFor, pickAmbientEncounterCandidate } from '../../services/npcScene.js';
 import { detectHarvestSourcesInScene } from '../../services/harvest.js';
 import { loadSessionFacts, appendSessionFacts } from '../../services/worldFacts.js';
+import { recordEntityDiscoveries } from '../../services/entityDiscovery.js';
 import type { AttributeBlock } from '../../services/dice.js';
 
 /// Caza (revisión de partida 2026-08-08, "buscar presas... eso no va, sale un pequeño raposa que
@@ -264,6 +265,10 @@ export async function cazarRoutes(app: FastifyInstance) {
 
       const sessionFacts = await loadSessionFacts(save.id);
       await appendSessionFacts(save.id, sessionFacts, [text]);
+      // Bug real (2026-08-14, mismo hallazgo que en recolectar.ts) — la caza limpia sin combate
+      // tampoco pasa por `narrateAndPersistTurn`, así que la presa cazada podía quedar sin
+      // desbloquear su ficha de Enciclopedia pese a estar ya nombrada en el texto determinista.
+      await recordEntityDiscoveries({ saveId: save.id, worldId: save.worldId, mentionedText: text });
 
       return {
         resuelveSinCombate: true,

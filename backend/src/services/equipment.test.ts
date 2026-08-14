@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { effectiveAttributes, effectiveSecondaryAttributes, effectiveDefense, equippedWeaponNames } from './equipment.js';
+import { effectiveAttributes, effectiveSecondaryAttributes, effectiveDefense, equippedWeaponNames, attributeBonusesFromEquipment } from './equipment.js';
 import type { AttributeBlock } from './dice.js';
 import { EMPTY_SECONDARY_ATTRIBUTES } from './secondaryAttributes.js';
 
@@ -52,6 +52,35 @@ describe('effectiveAttributes', () => {
     const base = { ...BASE };
     effectiveAttributes(base, [{ statBonuses: { fuerza: 3 } }]);
     expect(base.fuerza).toBe(10);
+  });
+});
+
+// Cobertura nueva (2026-08-14, barra de atributos jugables en dos tramos: base claro + bonus de
+// equipo oscuro, con tooltip "Base: X · Equipo: +Y") — el frontend necesita el bonus AISLADO de
+// la base, no ya sumado como hace effectiveAttributes.
+describe('attributeBonusesFromEquipment', () => {
+  it('sin objetos equipados, no hay bonus para ningún atributo', () => {
+    expect(attributeBonusesFromEquipment([])).toEqual({});
+  });
+
+  it('devuelve solo el bonus, sin la base', () => {
+    const result = attributeBonusesFromEquipment([{ statBonuses: { fuerza: 3 } }]);
+    expect(result).toEqual({ fuerza: 3 });
+  });
+
+  it('varios objetos apilan sobre el mismo atributo', () => {
+    const result = attributeBonusesFromEquipment([{ statBonuses: { destreza: 2 } }, { statBonuses: { destreza: 1 } }]);
+    expect(result.destreza).toBe(3);
+  });
+
+  it('un solo objeto puede sumar a varios atributos jugables a la vez', () => {
+    const result = attributeBonusesFromEquipment([{ statBonuses: { fuerza: 2, destreza: 1 } }]);
+    expect(result).toEqual({ fuerza: 2, destreza: 1 });
+  });
+
+  it('ignora la clave "defensa" y objetos sin bonificador', () => {
+    const result = attributeBonusesFromEquipment([{ statBonuses: { defensa: 5, fuerza: 1 } }, { statBonuses: null }]);
+    expect(result).toEqual({ fuerza: 1 });
   });
 });
 

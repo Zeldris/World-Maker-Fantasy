@@ -82,6 +82,12 @@ Cada entrada: fecha, qué se detectó (cita textual si es narración), causa ra�
 - [continuación: palabra en inglés colada en narración española ("small clearing")](#2026-08-13-continuación-palabra-en-inglés-colada-en-narración-española-small-clearing)
 - [continuación: aportes en vivo de la usuaria, 6 puntos (habilidad no-daño, crafteo, tiempo, energía, recolección, viaje/caza)](#2026-08-13-continuación-aportes-en-vivo-de-la-usuaria-6-puntos-habilidad-no-daño-crafteo-tiempo-energía-recolección-viajecaza)
 
+**2026-08-14**
+- [XP de recompensa de misión se narra pero no se aplica a `Save.xp` al completarse matando/decapitando al NPC objetivo](#2026-08-14-xp-de-recompensa-de-misión-se-narra-pero-no-se-aplica-a-savexp-al-completarse-matandodecapitando-al-npc-objetivo)
+- [continuación: ronda de 6 hallazgos en vivo tras "revisar partida" (persistencia de ability-used, descubrimientos de Enciclopedia, categoría de Herborista, narración "inconsciente", renombrado Decapitar→Matar, Sella Marn/núcleo jugable)](#2026-08-14-continuación-ronda-de-hallazgos-en-vivo-tras-revisar-partida-6-puntos)
+- [continuación: objetos narrativos "PASIVO" salían en cualquier sitio de la región, incluida la primerísima escena](#2026-08-14-continuación-objetos-narrativos-pasivo-salían-en-cualquier-sitio-de-la-región-incluida-la-primerísima-escena)
+- [continuación: objetos recolectados de verdad descubiertos en BD, pero invisibles en la Enciclopedia (frontend nunca la refrescaba)](#2026-08-14-continuación-objetos-recolectados-de-verdad-descubiertos-en-bd-pero-invisibles-en-la-enciclopedia-frontend-nunca-la-refrescaba)
+
 ---
 
 ## 2026-08-01 — descansar no curaba + objeto médico narrado sin usarse
@@ -1953,3 +1959,187 @@ runbook. Tests nuevos en `combatExchange.test.ts`.
 
 **Estado**: FIJADO. `tsc` limpio, 877 tests backend (incluye los 2 nuevos), 3 integration test
 files en verde por separado.
+
+## 2026-08-14 — XP de recompensa de misión se narra pero no se aplica a `Save.xp` al completarse matando/decapitando al NPC objetivo
+
+**Síntoma**: ejecutado `npx tsx src/scripts/auditSave.ts` (runbook "revisar partida") sobre la
+partida real de Gorhorn. El log muestra:
+```
+[08:24] (PJ) Misión completada: "Acabar con el Orco Enfurecido" — consigue Mapa de las Llanuras, +100 XP.
+```
+y `Save.xp` en la BD es **180**. Sumando a mano todo el XP narrado del log (25+25+25+5+25+50+25
+del combate/huida, **más** los 100 de la misión) da 280 — 100 de más sobre lo persistido. Sumando
+SOLO el XP de combate/huida (sin la misión) da exactamente 180: el XP de la misión nunca llegó a
+`Save.xp`, pese a que la narración y el `LogEntry` de recompensa dicen que sí.
+
+**Causa raíz confirmada leyendo el código**: `completeNpcTargetQuests` (`questResolution.ts:130`)
+crea el `LogEntry` de recompensa con `questRewardNarrationFor(...)` (puro texto, "+N XP" ahí es
+solo un string) y devuelve `rewardXp` dentro de `QuestCompletedInfo` — pero NUNCA toca `Save.xp`,
+eso le toca al caller. Sus dos callers en `turnResolution.ts` (`applyCombatExchangeToNpcState`,
+línea ~1317, para el golpe que deja INCAPACITADO/MUERTO en ataque normal; `applyExecuteTargets`,
+línea ~1402, para "Decapitar") solo hacen `questCompletedInfo = result.questCompletedInfo` — ninguno
+de los dos suma `result.questCompletedInfo.rewardXp` a `questRewardXp` (el acumulador que sí
+alimenta `xpTurno`/`applyXp`/`Save.xp`, línea 3844). Comparar con el camino de saqueo (línea 1223,
+dentro de la función de loot), que sí hace `questRewardXp += rewardQuest.rewardXp!` correctamente
+— y con el caso especial "misión ya resuelta antes de aceptarla" (línea 3709), que también lo suma
+bien. Es decir: **el XP de misión "derrotar a X" solo se aplica de verdad si se cierra por saqueo o
+por el caso especial de apertura — nunca si se cierra al asestar el golpe que incapacita/mata, ni
+al decapitar**, que son los dos caminos más comunes de cerrar este tipo de misión.
+
+**Alcance**: cualquier `Quest` con `targetNpcId` + `rewardXp` en el catálogo se ve afectada — no es
+solo la misión de Gistera Koh/Orco Enfurecido de esta partida, es el mecanismo genérico.
+
+**Fix propuesto (no aplicado todavía, pendiente de luz verde)**: en `turnResolution.ts`, sumar
+`combatExchangeResult.questCompletedInfo?.rewardXp ?? 0` y `executeResult.questCompletedInfo?.rewardXp ?? 0`
+a `questRewardXp` justo donde ya se asigna `questCompletedInfo = ...` en cada uno de los dos sitios
+(líneas ~3171 y ~3185) — mismo patrón ya usado en el camino de saqueo. Cubrir con un test de
+integración real (turno que incapacita/mata al NPC objetivo de una misión con `rewardXp`, comprobar
+`Save.xp` tras el turno) para que no se repita en otro camino nuevo el día de mañana.
+
+**Estado**: FIJADO (2026-08-14, "vamos con todos los hallazgos"). Añadido
+`questRewardXp += combatExchangeResult.questCompletedInfo?.rewardXp ?? 0` y el mismo para
+`executeResult` — exactamente el fix propuesto arriba. `tsc` limpio, 1888 tests backend (incluye
+los nuevos), 3 integration test files en verde por separado.
+
+## 2026-08-14 (continuación) — ronda de hallazgos en vivo tras "revisar partida": 6 puntos
+
+Sesión de juego real inmediatamente después de la auditoría de arriba — la usuaria fue reportando
+en vivo mientras jugaba. Registrados juntos por brevedad, todos FIJADOS en el mismo commit.
+
+**1. `npcAbilityUsed`/`playerAbilityUsed` no se persistían** — bug gemelo del ya fijado el
+2026-08-13 para `combatExchange`/`roll`, pero que se quedó fuera de aquel fix. Sin guardarlos,
+recargar la partida perdía el badge "NPC ataca/se defiende con..." y el nombre real del NPC en el
+nuevo `CombatExchangeBadge` (caía al genérico "el enemigo"). Añadidas las columnas `LogEntry.
+npcAbilityUsed`/`playerAbilityUsed` (`Json?`), persistidas en `mainLogEntry` y pasadas por
+`toFrontendLogEntry`.
+
+**2. Descubrimientos de Enciclopedia no se marcaban desde Minar/Talar/Desollar/Cazar ni desde "El
+mundo"** — `recordEntityDiscoveries` solo se llamaba desde el turno normal narrado
+(`turnResolution.ts`), nunca desde los endpoints deterministas de profesión (`recolectar.ts`/
+`cazar.ts`) ni desde la ambientación de mundo (`entorno.ts`). Añadida la llamada en los 3 sitios.
+
+**3. Herborista ofrecía objetos narrativos, no solo hierbas** — "Restos personales de Maktor" y
+"Ofrendas de los Túmulos del Honor" estaban etiquetados `metodoObtencion: EXTRACCION`, el mismo
+método que las hierbas reales (raíz de fuego, salvia del polvo) — sin ninguna etiqueta específica
+para "hallazgo narrativo", el pop-up de Herborista los ofrecía igual. Reclasificados a `PASIVO`
+(solo aparecen al "Explorar la zona" genérico, sin oficio) — encajan mejor narrativamente y ya no
+se mezclan con hierbas de verdad.
+
+**4. Narración de "cae inconsciente" contradecía que el combate pudiera continuar** — el hint de
+`narrador.ts` para el golpe que deja INCAPACITADO sugería "cae inconsciente, se desploma sin
+sentido" — pero el jugador puede seguir recibiendo/dando golpes contra ese mismo NPC (o rematarlo)
+en turnos siguientes, algo que alguien de verdad inconsciente no podría sufrir de forma coherente.
+Reescrito el hint: INCAPACITADO (no MUERTO) ahora se pide explícitamente "consciente, sin fuerzas
+para seguir luchando" (cae de rodillas, malherido, tambalea), nunca inconsciente/desmayado — MUERTO
+sigue siendo el final real.
+
+**5. "Decapitar" renombrado a "Matar"** — cambio de texto puro en los 4 sitios visibles (botón,
+título del modal de selección, confirmLabel) — petición explícita, sin motivo de bug.
+
+**6. NPC "fuera del núcleo jugable" podía aparecer en combate real — Sella Marn (Nabieus)** — la
+usuaria reportó "un combate sin sentido contra un npc nabierus" justo después de rematar al Orco
+Enfurecido; confirmado con datos reales: `NpcState` de su partida tenía una fila de "Sella Marn"
+(`HERIDO`) sin ningún `LogEntry` que la mencionara por nombre — coherente con haber entrado en
+escena por un match de alias corto ("sella") en texto que no tenía relación con ella.
+
+**Causa raíz**: Sella Marn es `kind: PRINCIPAL` y Nabieus de "El Margen Silencioso", región marcada
+"fuera del núcleo jugable actual" en decenas de sitios del catálogo — pero solo como texto
+descriptivo, nunca como dato. `npcScene.ts` (`detectNpcsInScene`) daba por candidato de escena a
+CUALQUIER NPC `kind: PRINCIPAL` sin comprobar región ("personajes únicos pueden aparecer en
+cualquier sitio por guion") — Sella Marn además no tiene `homeLocationSlug`, así que también
+colaba por la rama de itinerantes. Dos rutas distintas, la misma NPC se saltaba las dos.
+
+**Alcance real, confirmado revisando los 9 NPC `PRINCIPAL` del catálogo**: además de Sella Marn,
+4 más estaban en la misma situación sin que nada lo impidiera — Archimagistrada Yovenne Tal,
+General Vrask Ombra y Kael Dorn (los 3 de "La Meseta del Orden", también "fuera del núcleo jugable
+actual... Gorhorn no ha estado aquí"), y Hagar ("vive fuera del grafo v1", ya documentado así en su
+propia bio). Los 4 restantes (Gistera Koh, Kort'ikar Torgash, Terk'ikar Ulkha, Orco Enfurecido) son
+todos de Las Llanuras del Viento Rojo, el núcleo real — no afectados.
+
+**Fix aplicado**: nuevo campo `Npc.nucleoJugable` (`Boolean @default(true)`, migración
+`20260814100000_npc_nucleo_jugable`), marcado `false` a mano en los 5 PRINCIPAL confirmados fuera
+de núcleo (`worldCatalog.ts`). `detectNpcsInScene` reordenado: el bypass de misión activa y "ya
+establecido antes en esta partida" siguen ganando SIEMPRE (no hacer desaparecer retroactivamente a
+alguien que la propia partida ya trajo a escena, aunque fuera por este bug), pero ni "es PRINCIPAL"
+ni "itinerante sin homeLocationSlug" pueden ya saltarse `nucleoJugable === false`. Mismo gate
+añadido en `recordEntityDiscoveries` (entityDiscovery.ts) — un NPC fuera de núcleo tampoco debería
+poder desbloquearse en la Enciclopedia por el mismo tipo de match de alias corto.
+
+**Estado**: FIJADO. `tsc` limpio, 1888 tests backend (6 nuevos: 3 en `npcScene.test.ts`, 1 en
+`entityDiscovery.test.ts`, cubriendo exclusión + los dos bypass legítimos), 3 integration test
+files en verde por separado. Catálogo resembrado (`seed-catalog.ts`), verificado contra la BD real
+que los 5 quedaron en `false` y los 4 de Las Llanuras en `true`.
+
+## 2026-08-14 (continuación) — objetos narrativos "PASIVO" salían en cualquier sitio de la región, incluida la primerísima escena
+
+**Síntoma**: la usuaria reinició la partida y, en el primerísimo "Exploro la zona" (en La Hondonada
+del Eco, la escena de apertura), el panel "Has encontrado" ofreció "Brazalete trenzado del Clan
+Maktor", "Pañuelo de luto Serhu" y "Tótem de clan roto" — objetos de recuerdo del clan aniquilado de
+Gorhorn, sin ninguna relación real con dónde está parado. Petición explícita: que los objetos ligados
+a Maktor salgan en Los Restos de Maktor (o donde cayó el clan), y "el resto" (Ofrendas de los
+Túmulos) en la zona que más encaje.
+
+**Causa raíz**: la reclasificación de estas 6 fuentes de `EXTRACCION` a `PASIVO` (hallazgo anterior
+de esta misma ronda, punto 3) las hizo salir por `selectDiscoveries` (discovery.ts), que solo
+filtraba por REGIÓN (`Llanuras del Viento Rojo` entera), nunca por Location concreta — el propio
+comentario original de estas dos fuentes (2026-07-20) ya decía "ligadas a Location, no a fauna/
+flora", pero esa parte nunca se construyó. Las ubicaciones ya existían en el catálogo con nombre/
+descripción que encajan solas: `restos-de-maktor` ("último asentamiento del Clan Maktor... antes de
+su aniquilación") y `tumulos-del-honor` ("donde los clanes... entierran a quienes murieron con
+honor").
+
+**Bug real de segunda vuelta, encontrado verificando el fix a mano contra la BD real**: el primer
+intento (filtrar por Location exacta dentro del cálculo de `candidates`) NO bastaba — el propio
+fallback de `selectDiscoveries` ("si el filtro deja `candidates` vacío, no filtres, muestra todo")
+resucitaba los objetos ligados en cualquier otro sitio en cuanto se disparaba, y hoy SIEMPRE se
+dispara fuera de esos dos sitios: estas 6 filas son las ÚNICAS `HarvestYield` con `metodoObtencion:
+PASIVO` que existen en todo el catálogo, así que en cualquier otra ubicación el filtro las dejaba
+todas fuera → `candidates.length === 0` → fallback → vuelven a aparecer sin filtrar.
+
+**Fix aplicado**: nuevo mapa `harvestSourceHomeLocationSlug` (worldCatalog.ts, sourceSlug → slug de
+Location exacto) con las 2 fuentes. `selectDiscoveries` corta estas fuentes de la lista base
+`yields` ANTES de calcular `candidates` (no dentro de su filtro), así el fallback nunca puede
+resucitarlas fuera de su sitio — en La Hondonada del Eco (y cualquier otro sitio sin contenido
+PASIVO propio), "Explorar la zona" ahora puede legítimamente no encontrar nada pasivo, en vez de
+ofrecer siempre estos 6 objetos por defecto.
+
+**Estado**: FIJADO. Verificado a mano contra la BD real (8 rondas en Hondonada: vacío; en Restos de
+Maktor: solo objetos de Maktor; en Los Túmulos: solo ofrendas) y con 3 tests de integración nuevos
+en `turn.integration.test.ts` (vía `POST /turn/classify` real, no mocks) — 57/57 en verde en ese
+archivo, 1891 tests backend en total, 3 integration test files en verde por separado. **Pendiente
+para otra sesión** (fuera de alcance de esta ronda): la usuaria pidió también repartir "el resto" de
+los recursos PASIVO por zonas concretas donde más encajen — hoy no hay ningún otro recurso PASIVO en
+el catálogo (todo lo demás es EXTRACCION/MINERIA/TALA/CAZA), así que no hay nada más que mover
+todavía; queda anotado para cuando se amplíe el catálogo con más hallazgos ambientales.
+
+## 2026-08-14 (continuación) — objetos recolectados de verdad descubiertos en BD, pero invisibles en la Enciclopedia (frontend nunca la refrescaba)
+
+**Síntoma**: la usuaria recolectó Piedra/Mena de hierro/Leña de matorral de cuerno/Manojo de salvia
+del polvo (vía Minar/Talar/Herborista, el fix del punto 2 de la ronda anterior) y reportó "todo eso
+no está saliendo en la enciclopedia".
+
+**Verificado contra la BD real primero** (antes de asumir que el fix de backend había fallado):
+`DiscoveredEntity` de su partida SÍ tenía las 7 filas esperadas (`mena-de-hierro`,
+`manojo-salvia-polvo`, `piedra`, `lena-matorral-cuerno` + la fauna asociada), con `discoveredAt`
+posterior al fix del punto 2 — el backend funcionaba bien de verdad, el hallazgo está en el frontend.
+
+**Causa raíz**: `useEnciclopedia` (hooks/useEnciclopedia.ts) pide `GET /world/:slug/enciclopedia`
+UNA sola vez, en un `useEffect` con deps `[worldSlug, saveId]` — valores que no cambian en toda la
+sesión. Hasta el 2026-08-13 esto se compensaba porque `EnciclopediaPanel.tsx` volvía a pedir por su
+cuenta cada vez que se abría la pestaña — un "dedupe de doble fetch" de esa fecha quitó ese refetch
+(razonable: dos hooks pidiendo lo mismo sin motivo), pero sin darle a `useEnciclopedia` ninguna forma
+de refrescarse después, dejó la Enciclopedia entera congelada en el estado del momento de cargar la
+partida durante el resto de la sesión — cualquier descubrimiento nuevo (recolectar, cazar, combate,
+misión...) quedaba invisible hasta recargar la página entera. Regresión real de aquel refactor, no
+detectada hasta ahora.
+
+**Fix aplicado**: `useEnciclopedia` expone `refetch()` (mismo fetch de siempre, disparado por un
+contador en vez de por las deps de `[worldSlug, saveId]`; la carga inicial sigue poniendo
+"Cargando...", un refetch en segundo plano no). GameView.tsx lo llama en un `useEffect` que observa
+`activePanel === 'enciclopedia'` — se refresca justo al abrir la pestaña, en vez de enganchar una
+llamada en cada sitio que puede descubrir algo (recolectar/cazar/crafteo/narración normal — demasiados
+sitios, fácil dejarse uno, que es exactamente como se coló este bug la primera vez).
+
+**Estado**: FIJADO. `tsc -b` limpio, 22 tests frontend en verde (sin cambios, esta ruta no tenía
+cobertura de test antes ni la tiene ahora — es un hook simple sin lógica de negocio propia más allá
+de "pedir de nuevo").
