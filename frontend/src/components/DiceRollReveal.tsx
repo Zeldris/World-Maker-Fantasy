@@ -34,15 +34,19 @@ const ROLL_DURATION_MS = 5000
 /// Cadencia de la tirada (ms entre cada número al azar que se enseña) — arranca rápida y se va
 /// frenando antes de aterrizar, la sensación clásica de "el dado pierde impulso", sin física real
 /// ni librería de animación: generada para sumar justo `ROLL_DURATION_MS`, en vez de una lista
-/// corta fija (antes ~700ms de giro total, ahora 5s completos).
+/// corta fija. Petición explícita, segunda vuelta (2026-08-15): "que en esos 5 segundos el roll
+/// vaya mucho más rápido y muestre más números" — el primer ajuste frenaba demasiado pronto (tope
+/// de 450ms alcanzado a los ~2,7s, dejando el resto del giro casi quieto). Arranque más rápido
+/// (30ms), crecimiento más suave (×1.06) y tope más bajo (180ms) — el doble largo de números
+/// visibles en los mismos 5 segundos, sin dejar de notarse el frenado final.
 function buildRollTickDelays(totalMs: number): number[] {
   const delays: number[] = []
   let elapsed = 0
-  let delay = 55
+  let delay = 30
   while (elapsed + delay < totalMs) {
     delays.push(delay)
     elapsed += delay
-    delay = Math.min(450, Math.round(delay * 1.18))
+    delay = Math.min(180, Math.round(delay * 1.06))
   }
   return delays
 }
@@ -105,7 +109,7 @@ export function DiceRollReveal({ exchange, playerName, enemyName }: { exchange: 
   const enemigoDelayMs = exchange.atacanteEsJugador ? ROLL_DURATION_MS : 0
 
   return (
-    <div className="animate-entry-in mt-2 flex items-center justify-center gap-6 rounded-lg border border-dashed border-iron-700 bg-wood-950/30 px-3 py-3">
+    <div className="animate-entry-in mt-2 flex items-center justify-center gap-14 rounded-lg border border-dashed border-iron-700 bg-wood-950/30 px-3 py-3">
       <DiceSide label={playerName ?? 'Tú'} side={jugador} startDelayMs={jugadorDelayMs} />
       <span className="text-xs text-wood-600">vs</span>
       <DiceSide label={enemyName ?? 'el enemigo'} side={enemigo} startDelayMs={enemigoDelayMs} />
