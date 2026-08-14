@@ -1909,7 +1909,12 @@ export function GameView() {
         />
       ) : (
         <>
-          <SuggestionBar suggestions={suggestions} onPick={(text) => composerRef.current?.setText(text)} />
+          {/* Petición explícita, 2026-08-15: "si se detecta combate: true que no saque
+              sugerencias" — sin `!combateIniciado`, la barra seguía saliendo con el aviso
+              "⚔️ Combatir / 🏃 Huir" ya en pantalla (combate detectado pero el popup todavía sin
+              abrir, `combatOpen` false): mismo criterio que ya usa `composerDisabled`/el propio
+              banner de arriba para esa combinación exacta de estados. */}
+          {!combateIniciado && <SuggestionBar suggestions={suggestions} onPick={(text) => composerRef.current?.setText(text)} />}
           <ChatComposer
             ref={composerRef}
             onChange={setInput}
