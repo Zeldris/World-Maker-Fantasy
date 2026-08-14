@@ -1,7 +1,8 @@
 import { memo, useEffect, useRef, useState } from 'react'
-import type { LogEntry } from '../types'
+import type { CombatExchangeInfo, LogEntry } from '../types'
 import { RollBadge } from './RollBadge'
 import { CombatExchangeBadge } from './CombatExchangeBadge'
+import { DiceRollReveal } from './DiceRollReveal'
 import { PanelRivets } from './Rivet'
 import { EnciclopediaLinkedText } from './EnciclopediaLinkedText'
 import { useEnciclopediaLink } from '../context/useEnciclopediaLink'
@@ -34,6 +35,11 @@ interface LogPanelProps {
   /// personaje que ganó el turno") — reenviado tal cual a CombatExchangeBadge; el nombre del NPC
   /// rival viaja YA en cada `entry.npcAbilityUsed.npcName`, no hace falta pasarlo aparte aquí.
   characterName?: string
+  /// Animación de dados en paralelo (petición explícita, 2026-08-15) — intercambio de combate ya
+  /// resuelto que llega ANTES que el texto de narración (ver DiceRollReveal.tsx); se pinta dentro
+  /// de la propia tarjeta de "pensando" mientras la narración se sigue generando debajo. `null`/
+  /// ausente = turno sin intercambio de combate, la tarjeta de "pensando" sigue igual que siempre.
+  diceReveal?: { exchange: CombatExchangeInfo; npcName: string | null } | null
 }
 
 const accentClasses = {
@@ -72,7 +78,21 @@ const accentClasses = {
 // mientras narra el canal de personaje (ni `worldLog` ni `worldFlavor` cambian en ese momento),
 // así que memo() le evita re-renderizar (y volver a montar cada LogEntry) sin ninguna razón real
 // — el panel que SÍ está narrando sigue re-renderizando igual, sus props sí cambian de verdad.
-export const LogPanel = memo(function LogPanel({ title, subtitle, entries, accent, isThinking, thinkingText, streaming, emptyHint, combate, onCollapse, collapseIcon, characterName }: LogPanelProps) {
+export const LogPanel = memo(function LogPanel({
+  title,
+  subtitle,
+  entries,
+  accent,
+  isThinking,
+  thinkingText,
+  streaming,
+  emptyHint,
+  combate,
+  onCollapse,
+  collapseIcon,
+  characterName,
+  diceReveal,
+}: LogPanelProps) {
   const { enciclopediaIndex, onEntityDetail, onEntityQuickInsert } = useEnciclopediaLink()
   const scrollRef = useRef<HTMLDivElement>(null)
   const classes = accentClasses[accent]
@@ -285,6 +305,9 @@ export const LogPanel = memo(function LogPanel({ title, subtitle, entries, accen
                 {combate ? 'Resolviendo combate' : classes.thinkingRail}
               </p>
             </div>
+            {diceReveal && (
+              <DiceRollReveal exchange={diceReveal.exchange} playerName={characterName} enemyName={diceReveal.npcName ?? undefined} />
+            )}
             {thinkingText &&
               (streaming ? (
                 <p className="mt-2 text-xs leading-relaxed text-wood-200">{thinkingText}</p>

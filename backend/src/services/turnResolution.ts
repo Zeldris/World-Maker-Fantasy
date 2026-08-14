@@ -195,6 +195,17 @@ interface NarrateAndPersistParams {
   /// esperando), presentes en el turno síncrono de /turn/narrate.
   onNarrationChunk?: (delta: string) => void;
   onNarrationReset?: () => void;
+  /// Animación de dados en paralelo (petición explícita, 2026-08-15: "que veas los resultados
+  /// sacados por ambos... mientras la narración se genera") — el intercambio de combate (dos
+  /// tiradas + desenlace) ya está resuelto del todo ANTES de llamar a `narrateAction` (se le pasa
+  /// como contexto "YA RESUELTO, no lo cambies"), pero hasta ahora el frontend no se enteraba de
+  /// nada hasta el `{type:'done'}` final, streaming de narración incluido — toda esa espera real
+  /// del modelo local quedaba como tiempo muerto sin nada que mostrar. Se dispara UNA vez, justo
+  /// antes de narrar, con el mismo `CombatExchangeDisplay` que después viaja también en la
+  /// respuesta final (nunca dos cálculos distintos). `undefined` en turnos sin intercambio de
+  /// combate — nunca se llama. `npcName` viaja aparte (no vive dentro de `CombatExchangeDisplay`)
+  /// para que el frontend pueda etiquetar el dado del rival sin esperar al `npcAbilityUsed` final.
+  onExchangeResolved?: (exchange: CombatExchangeDisplay, npcName: string | null) => void;
   /// Mecánica real de habilidades de clase (checklist 2026-07-21/22, puntos 1-2): id de la
   /// SavedAction pulsada en CombatModal.tsx, si la hay. Cuando resuelve a una con `effect` no
   /// nulo, ese efecto GANA sobre los regex de npcScene.ts (detectsAttackIntent) para decidir si
@@ -1777,6 +1788,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     enCombate,
     onNarrationChunk,
     onNarrationReset,
+    onExchangeResolved,
     savedActionId,
     isItemUse,
     transitIdToFinalize,
@@ -2749,6 +2761,13 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   // ramas deterministas de abajo (Gistera guionizada/saqueo/construcción/cosecha) nunca llaman a
   // narrateAction, así que no hay ningún prompt/respuesta real que capturar para el profesor cloud.
   const wasLlmNarrated = !(gisteraSePresentaEsteTurno || lootMode || buildMode || harvestOutcome);
+
+  // Animación de dados en paralelo (ver comentario de `onExchangeResolved` en
+  // NarrateAndPersistParams) — justo antes de narrar, nunca antes: `combatExchangeDisplay` ya
+  // está fijado en este punto para cualquier turno con intercambio real, y esto es lo más cerca
+  // posible del arranque real de `narrateAction` (la parte lenta) sin adelantarse a ningún guard
+  // de arriba que todavía pudiera descartar el turno entero.
+  if (combatExchangeDisplay) onExchangeResolved?.(combatExchangeDisplay, npcAbilityUsed?.npcName ?? null);
 
   const narration: NarrationResult = gisteraSePresentaEsteTurno
     ? {

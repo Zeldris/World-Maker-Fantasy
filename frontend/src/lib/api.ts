@@ -269,6 +269,14 @@ export interface TurnNarrateHandlers {
   /// Hubo que descartar el texto transmitido hasta ahora (el intento 1 se coló o dio un
   /// resultado inválido) — limpiar cualquier texto parcial ya mostrado.
   onReset?: () => void
+  /// Animación de dados en paralelo (petición explícita, 2026-08-15) — el intercambio de combate
+  /// (las dos tiradas + desenlace) ya está resuelto del todo ANTES de que empiece a llegar
+  /// `onChunk`, así que este evento siempre llega primero cuando hay combate — el frontend puede
+  /// animar los dados mientras la narración todavía se está generando, en vez de esperar al
+  /// resultado final. Nunca se llama en turnos sin intercambio de combate real. `npcName` viaja
+  /// aparte (no vive dentro de `CombatExchangeInfo`) — nombre real del rival para etiquetar su
+  /// dado sin esperar al `npcAbilityUsed` del resultado final.
+  onExchangeResolved?: (exchange: CombatExchangeInfo, npcName: string | null) => void
 }
 
 export async function requestTurnNarrate(
@@ -318,6 +326,7 @@ export async function requestTurnNarrate(
     | { type: 'chunk'; text: string }
     | { type: 'reset' }
     | { type: 'error'; message: string }
+    | { type: 'exchange'; exchange: CombatExchangeInfo; npcName: string | null }
     | ({ type: 'done' } & NarrateResponse)
 
   const reader = response.body.getReader()
@@ -342,6 +351,8 @@ export async function requestTurnNarrate(
           handlers?.onReset?.()
         } else if (event.type === 'error') {
           throw new Error(event.message)
+        } else if (event.type === 'exchange') {
+          handlers?.onExchangeResolved?.(event.exchange, event.npcName)
         } else {
           const { type: _type, ...rest } = event
           result = rest

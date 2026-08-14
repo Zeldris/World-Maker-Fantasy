@@ -76,7 +76,9 @@ const WINNER_SIDE: Record<CombatExchangeOutcome, 'atacante' | 'defensor' | 'empa
   independiente: null,
 }
 
-function gradoOf(side: CombatExchangeSideInfo): 'claro' | 'con_coste' | 'fallo' {
+// Exportada (2026-08-15) — DiceRollReveal.tsx la reutiliza para colorear el dado en vivo con el
+// mismo criterio exacto que este badge usa después, en vez de duplicar la lógica.
+export function gradoOf(side: CombatExchangeSideInfo): 'claro' | 'con_coste' | 'fallo' {
   return side.gradoExito ?? (side.success ? 'claro' : 'fallo')
 }
 

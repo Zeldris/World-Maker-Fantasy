@@ -870,6 +870,10 @@ export async function turnRoutes(app: FastifyInstance) {
         lootItemNames,
         onNarrationChunk: (delta) => writeLine({ type: 'chunk', text: delta }),
         onNarrationReset: () => writeLine({ type: 'reset' }),
+        // Animación de dados en paralelo (2026-08-15) — ver el mismo comentario en
+        // NarrateAndPersistParams.onExchangeResolved: un evento NDJSON más, mismo patrón que
+        // 'chunk'/'reset', disparado ANTES de que empiece a llegar texto de narración.
+        onExchangeResolved: (exchange, npcName) => writeLine({ type: 'exchange', exchange, npcName }),
       });
 
       writeLine({

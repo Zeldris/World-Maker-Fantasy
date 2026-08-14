@@ -128,6 +128,11 @@ export function GameView() {
   const [secondaryAttributes, setSecondaryAttributes] = useState<SecondaryAttributeBlock | null>(null)
   const [characterLog, setCharacterLog] = useState<LogEntry[]>([])
   const [worldLog, setWorldLog] = useState<LogEntry[]>([])
+  // Animación de dados en paralelo (petición explícita, 2026-08-15) — el intercambio de combate ya
+  // resuelto (dos tiradas + desenlace) llega ANTES que el texto de narración (ver
+  // TurnNarrateHandlers.onExchangeResolved, api.ts); null en cuanto el turno termina de resolverse
+  // del todo (éxito o error), para que nunca sobreviva al siguiente turno sin intercambio.
+  const [diceReveal, setDiceReveal] = useState<{ exchange: CombatExchangeInfo; npcName: string | null } | null>(null)
   const [inventory, setInventory] = useState<InventoryItemInfo[]>([])
   // Pop-up de recolección (rediseño de profesiones, 2026-08-07) — null = cerrado.
   const [harvestModal, setHarvestModal] = useState<{ oficio: string; label: string } | null>(null)
@@ -426,17 +431,20 @@ export function GameView() {
         deathCount: updatedDeathCount,
         factionsStatus: updatedFactionsStatus,
         professionProgress: updatedProfessionProgress,
-      } = await requestTurnNarrate({
-        saveId,
-        action,
-        classification,
-        roll,
-        enCombate: true,
-        savedActionId: opts.savedActionId,
-        npcsInScene: classifyResult.npcsInScene,
-        lootItemNames: opts.lootItemNames,
-        isItemUse: opts.isItemUse,
-      })
+      } = await requestTurnNarrate(
+        {
+          saveId,
+          action,
+          classification,
+          roll,
+          enCombate: true,
+          savedActionId: opts.savedActionId,
+          npcsInScene: classifyResult.npcsInScene,
+          lootItemNames: opts.lootItemNames,
+          isItemUse: opts.isItemUse,
+        },
+        { onExchangeResolved: (exchange, npcName) => setDiceReveal({ exchange, npcName }) },
+      )
       // Auditoría 2026-07-28: antes había aquí un downgrade optimista de la condición del NPC
       // basado en `roll.success` (la tirada tabulada de classify) — desde que el intercambio real
       // se decide en resolveExchange (turnResolution.ts), esa tirada ya no tiene relación con si
@@ -499,6 +507,7 @@ export function GameView() {
     } finally {
       setCombatBusy(false)
       setCharacterThinking(false)
+      setDiceReveal(null)
     }
   }
 
@@ -1354,6 +1363,7 @@ export function GameView() {
         {
           onChunk: (delta) => setStreamingNarration((prev) => (prev ?? '') + delta),
           onReset: () => setStreamingNarration(null),
+          onExchangeResolved: (exchange, npcName) => setDiceReveal({ exchange, npcName }),
         },
       )
       setStreamingNarration(null)
@@ -1488,6 +1498,7 @@ export function GameView() {
       setCharacterThinking(false)
       setTimedThinkingText(null)
       setStreamingNarration(null)
+      setDiceReveal(null)
     }
   }
 
@@ -1728,6 +1739,7 @@ export function GameView() {
               thinkingText={streamingNarration ?? timedThinkingText ?? characterFlavor}
               streaming={!!streamingNarration}
               combate={combatOpen}
+              diceReveal={diceReveal}
               emptyHint="Aquí aparecerá lo que le ocurra a tu personaje."
               onCollapse={() => setCollapsedSide('character')}
               collapseIcon="‹"
