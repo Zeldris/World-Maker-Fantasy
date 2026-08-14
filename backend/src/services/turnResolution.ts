@@ -37,6 +37,7 @@ import {
   resolveIndependentExchange,
   rollInitiative,
   exchangeContextBlock,
+  effectiveExchangeOutcome,
   independentExchangeContextBlock,
   type PendingNpcAttack,
   type InitiativeResult,
@@ -785,7 +786,12 @@ function resolveCombatExchangePhase(input: CombatExchangePhaseInput): CombatExch
         exchangeNarrationBlock = `${npcParaIntercambio.name} ataca con "${pendingNpcAttack.abilityName}" (${pendingNpcAttack.abilityDescription || 'sin descripción propia'}). ${exchangeContextBlock(exchange, npcParaIntercambio.name, characterName, jugadorPuedeContragolpear)}`;
         combatExchangeRoll = exchange.defensor;
         npcAbilityUsed = { npcName: npcParaIntercambio.name, abilityName: pendingNpcAttack.abilityName, rol: 'ataque' };
-        combatExchangeDisplay = { atacanteEsJugador: false, atacante: exchange.atacante, defensor: exchange.defensor, resultado: exchange.resultado };
+        combatExchangeDisplay = {
+          atacanteEsJugador: false,
+          atacante: exchange.atacante,
+          defensor: exchange.defensor,
+          resultado: effectiveExchangeOutcome(exchange.resultado, jugadorPuedeContragolpear),
+        };
         if (input.selectedAbility) playerAbilityUsed = { ...input.selectedAbility, rol: 'defensa' };
         exchangeHappened = true;
         // El NPC atacó este intercambio con la habilidad ya elegida el turno anterior — su coste/
@@ -936,7 +942,12 @@ function resolveCombatExchangePhase(input: CombatExchangePhaseInput): CombatExch
         exchangeNarrationBlock = `${npcParaIntercambio.name} se defiende con "${npcDefensa.name}" (${npcDefensa.description}). ${exchangeContextBlock(exchange, characterName, npcParaIntercambio.name, npcPuedeContragolpear)}`;
         combatExchangeRoll = exchange.atacante;
         npcAbilityUsed = { npcName: npcParaIntercambio.name, abilityName: npcDefensa.name, rol: 'defensa' };
-        combatExchangeDisplay = { atacanteEsJugador: true, atacante: exchange.atacante, defensor: exchange.defensor, resultado: exchange.resultado };
+        combatExchangeDisplay = {
+          atacanteEsJugador: true,
+          atacante: exchange.atacante,
+          defensor: exchange.defensor,
+          resultado: effectiveExchangeOutcome(exchange.resultado, npcPuedeContragolpear),
+        };
         if (input.selectedAbility) playerAbilityUsed = { ...input.selectedAbility, rol: 'ataque' };
         exchangeHappened = true;
         // El NPC se defendió este intercambio con la habilidad recién elegida — su coste/regen

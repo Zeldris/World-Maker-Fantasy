@@ -1,5 +1,12 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { resolveExchange, resolveIndependentExchange, rollInitiative, exchangeContextBlock, type ExchangeParticipant } from './combatExchange.js';
+import {
+  resolveExchange,
+  resolveIndependentExchange,
+  rollInitiative,
+  exchangeContextBlock,
+  effectiveExchangeOutcome,
+  type ExchangeParticipant,
+} from './combatExchange.js';
 import type { AttributeBlock } from './dice.js';
 
 const BASE_ATTRIBUTES: AttributeBlock = { fuerza: 10, destreza: 10, constitucion: 10, inteligencia: 10, voluntad: 10, carisma: 10, arcano: 10 };
@@ -75,6 +82,30 @@ describe('resolveExchange', () => {
     mockRolls(R_FOR_ROLL_20, R_FOR_ROLL_20);
     const exchange = resolveExchange(atacanteBase, defensorBase);
     expect(exchangeContextBlock(exchange, 'Orco', 'Gorhorn')).toContain('AMBOS acaban acusando algo');
+  });
+
+  // Bug real de tercera vuelta (2026-08-15, "hay mensaje antiguo de golpes mutuos" — `CombatExchangeDisplay`,
+  // lo que ve la jugadora en el badge de combate, seguía mandando el `resultado` crudo sin pasar
+  // por el mismo downgrade que ya tenía `exchangeContextBlock`, así que el badge decía "Empate ·
+  // Golpes mutuos" pese a que solo un lado había recibido daño de verdad). Misma función que ahora
+  // usan los dos consumidores (turnResolution.ts).
+  describe('effectiveExchangeOutcome', () => {
+    it('degrada defensor_contragolpea a ataque_falla si el defensor no puede contragolpear', () => {
+      expect(effectiveExchangeOutcome('defensor_contragolpea', false)).toBe('ataque_falla');
+    });
+    it('degrada golpes_mutuos a golpe_normal si el defensor no puede contragolpear', () => {
+      expect(effectiveExchangeOutcome('golpes_mutuos', false)).toBe('golpe_normal');
+    });
+    it('deja el resto de desenlaces intactos aunque el defensor no pueda contragolpear', () => {
+      expect(effectiveExchangeOutcome('golpe_normal', false)).toBe('golpe_normal');
+      expect(effectiveExchangeOutcome('golpe_pleno', false)).toBe('golpe_pleno');
+      expect(effectiveExchangeOutcome('ataque_falla', false)).toBe('ataque_falla');
+      expect(effectiveExchangeOutcome('parada_en_seco', false)).toBe('parada_en_seco');
+    });
+    it('nunca degrada nada si el defensor SÍ puede contragolpear', () => {
+      expect(effectiveExchangeOutcome('defensor_contragolpea', true)).toBe('defensor_contragolpea');
+      expect(effectiveExchangeOutcome('golpes_mutuos', true)).toBe('golpes_mutuos');
+    });
   });
 
   it('atacante falla + defensor con_coste → el ataque simplemente falla', () => {

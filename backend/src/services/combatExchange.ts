@@ -242,6 +242,21 @@ const OUTCOME_NARRATION_HINT: Record<ExchangeOutcome, (atacante: string, defenso
 /// intercambio es el mismo en los dos casos). Downgrade a `golpe_normal` (el ataque SÍ conecta,
 /// solo el golpe de vuelta del defensor queda anulado), no a `ataque_falla` — a diferencia de
 /// `defensor_contragolpea` (el ataque ya había fallado del todo ahí), aquí el atacante sí acertó.
+/// Desenlace REAL del intercambio, tras aplicar el gate de "solo las de ataque hacen daño" (bug
+/// real jugando en vivo, 2026-08-13/2026-08-14) — extraído de `exchangeContextBlock` (bug real de
+/// segunda vuelta, 2026-08-15: "hay mensaje antiguo de golpes mutuos" — `CombatExchangeDisplay`,
+/// lo que el frontend pinta como badge de combate, seguía mandando el `exchange.resultado` CRUDO
+/// sin pasar por este downgrade, así que el jugador veía "Empate · Golpes mutuos — los dos acusan
+/// algo" en pantalla pese a que las barras de vida (correctas) mostraban que solo un lado había
+/// recibido daño de verdad). Única fuente de verdad para ambos consumidores — el texto del
+/// Narrador y el badge — nunca dos copias del mismo cálculo.
+export function effectiveExchangeOutcome(resultado: ExchangeOutcome, defensorPuedeContragolpear: boolean): ExchangeOutcome {
+  if (defensorPuedeContragolpear) return resultado;
+  if (resultado === 'defensor_contragolpea') return 'ataque_falla';
+  if (resultado === 'golpes_mutuos') return 'golpe_normal';
+  return resultado;
+}
+
 export function exchangeContextBlock(
   exchange: ExchangeResult,
   atacanteNombre: string,
@@ -249,12 +264,7 @@ export function exchangeContextBlock(
   defensorPuedeContragolpear: boolean = true,
 ): string {
   const grados = `${atacanteNombre} tira ${exchange.atacante.result} (${exchange.atacante.gradoExito}) vs dificultad ${exchange.atacante.difficulty} · ${defensorNombre} tira ${exchange.defensor.result} (${exchange.defensor.gradoExito}) vs dificultad ${exchange.defensor.difficulty}.`;
-  const resultadoEfectivo =
-    !defensorPuedeContragolpear && exchange.resultado === 'defensor_contragolpea'
-      ? 'ataque_falla'
-      : !defensorPuedeContragolpear && exchange.resultado === 'golpes_mutuos'
-        ? 'golpe_normal'
-        : exchange.resultado;
+  const resultadoEfectivo = effectiveExchangeOutcome(exchange.resultado, defensorPuedeContragolpear);
   return `RESULTADO DEL INTERCAMBIO — YA RESUELTO, no lo cambies: ${grados} ${OUTCOME_NARRATION_HINT[resultadoEfectivo](atacanteNombre, defensorNombre)}`;
 }
 
