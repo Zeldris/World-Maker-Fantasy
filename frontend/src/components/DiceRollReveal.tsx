@@ -25,10 +25,28 @@ const GRADE_LAND_ANIM: Record<'claro' | 'con_coste' | 'fallo', string> = {
   fallo: 'animate-shake-no',
 }
 
+/// Duración de la caída de UN dado (petición explícita, 2026-08-15: "que el primer dado tarde 5
+/// segundos... y que el otro tarde 5 segs al acabar el otro de mostrarse, para que no sea tan
+/// rápida la animación") — SECUENCIAL, no en paralelo con un pequeño desfase: el segundo dado ni
+/// empieza a girar hasta que el primero ya aterrizó del todo, así que la espera total son ~10s.
+const ROLL_DURATION_MS = 5000
+
 /// Cadencia de la tirada (ms entre cada número al azar que se enseña) — arranca rápida y se va
 /// frenando antes de aterrizar, la sensación clásica de "el dado pierde impulso", sin física real
-/// ni librería de animación: solo una lista de retrasos crecientes. ~700ms de giro total.
-const ROLL_TICK_DELAYS_MS = [50, 50, 55, 65, 80, 100, 130, 170, 220]
+/// ni librería de animación: generada para sumar justo `ROLL_DURATION_MS`, en vez de una lista
+/// corta fija (antes ~700ms de giro total, ahora 5s completos).
+function buildRollTickDelays(totalMs: number): number[] {
+  const delays: number[] = []
+  let elapsed = 0
+  let delay = 55
+  while (elapsed + delay < totalMs) {
+    delays.push(delay)
+    elapsed += delay
+    delay = Math.min(450, Math.round(delay * 1.18))
+  }
+  return delays
+}
+const ROLL_TICK_DELAYS_MS = buildRollTickDelays(ROLL_DURATION_MS)
 
 /// Un lado del intercambio, cayendo (petición explícita: solo el NÚMERO gira, el 🎲 se queda
 /// fijo — más simple, y coincide con cómo ya se muestran las tiradas resueltas en todo el juego).
@@ -55,7 +73,7 @@ function DiceSide({ label, side, startDelayMs }: { label: string; side: CombatEx
         if (cancelled) return
         setDisplay(side.roll)
         setLanded(true)
-      }, elapsed + 100),
+      }, startDelayMs + ROLL_DURATION_MS),
     )
     return () => {
       cancelled = true
@@ -81,9 +99,10 @@ export function DiceRollReveal({ exchange, playerName, enemyName }: { exchange: 
   const jugador = exchange.atacanteEsJugador ? exchange.atacante : exchange.defensor
   const enemigo = exchange.atacanteEsJugador ? exchange.defensor : exchange.atacante
   // Orden de iniciativa (petición explícita: "dependiendo de la iniciativa") — quien tiene la
-  // iniciativa este intercambio (el atacante) cae primero, el otro un instante después.
-  const jugadorDelayMs = exchange.atacanteEsJugador ? 0 : 300
-  const enemigoDelayMs = exchange.atacanteEsJugador ? 300 : 0
+  // iniciativa este intercambio (el atacante) cae primero; el otro no empieza a girar hasta que
+  // el primero ya aterrizó del todo (secuencial, ver ROLL_DURATION_MS), no en paralelo.
+  const jugadorDelayMs = exchange.atacanteEsJugador ? 0 : ROLL_DURATION_MS
+  const enemigoDelayMs = exchange.atacanteEsJugador ? ROLL_DURATION_MS : 0
 
   return (
     <div className="animate-entry-in mt-2 flex items-center justify-center gap-6 rounded-lg border border-dashed border-iron-700 bg-wood-950/30 px-3 py-3">
