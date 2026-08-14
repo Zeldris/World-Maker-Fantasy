@@ -398,6 +398,10 @@ export interface SaveDetail {
   characterOrigin: string
   characterMotivation: string
   attributes: AttributeBlock
+  /// Bonus de equipo por atributo jugable, SIN sumar la base (2026-08-14) — `attributes` de
+  /// arriba ya es el base puro; esto permite pintar la barra en dos tramos (claro=base,
+  /// oscuro=equipo) en vez de solo el total ya sumado.
+  attributeBonuses: Partial<AttributeBlock>
   secondaryAttributes: SecondaryAttributeBlock
   portraitInitial: string
   fictionalDateLabel: string

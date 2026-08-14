@@ -24,6 +24,16 @@ interface LogPanelProps {
   /// renderiza (sin key-remount por cada carácter nuevo, que si no repetiría el fade-in en bucle).
   streaming?: boolean
   emptyHint: string
+  /// Colapsar este panel (2026-08-14, petición explícita: "que pueda colapsar el log de
+  /// personaje... y que el de mundo ocupe todo") — sin `onCollapse`, no sale ningún botón (mismo
+  /// patrón opcional que el resto de callbacks de esta interfaz). `collapseIcon` decide el
+  /// glifo: GameView.tsx pasa uno que apunta hacia el borde de pantalla más cercano a este panel.
+  onCollapse?: () => void
+  collapseIcon?: string
+  /// Nombre real del personaje (2026-08-14, petición explícita: "poner la mención al npc o
+  /// personaje que ganó el turno") — reenviado tal cual a CombatExchangeBadge; el nombre del NPC
+  /// rival viaja YA en cada `entry.npcAbilityUsed.npcName`, no hace falta pasarlo aparte aquí.
+  characterName?: string
 }
 
 const accentClasses = {
@@ -62,7 +72,7 @@ const accentClasses = {
 // mientras narra el canal de personaje (ni `worldLog` ni `worldFlavor` cambian en ese momento),
 // así que memo() le evita re-renderizar (y volver a montar cada LogEntry) sin ninguna razón real
 // — el panel que SÍ está narrando sigue re-renderizando igual, sus props sí cambian de verdad.
-export const LogPanel = memo(function LogPanel({ title, subtitle, entries, accent, isThinking, thinkingText, streaming, emptyHint, combate }: LogPanelProps) {
+export const LogPanel = memo(function LogPanel({ title, subtitle, entries, accent, isThinking, thinkingText, streaming, emptyHint, combate, onCollapse, collapseIcon, characterName }: LogPanelProps) {
   const { enciclopediaIndex, onEntityDetail, onEntityQuickInsert } = useEnciclopediaLink()
   const scrollRef = useRef<HTMLDivElement>(null)
   const classes = accentClasses[accent]
@@ -88,10 +98,19 @@ export const LogPanel = memo(function LogPanel({ title, subtitle, entries, accen
       <PanelRivets />
       <header className="relative flex items-center gap-2.5 px-4 py-3">
         <span className={isThinking ? `${classes.gem} animate-gem-breathe` : classes.gem} />
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1">
           <h2 className={`font-serif text-sm tracking-wide ${classes.heading}`}>{title}</h2>
           <p className="text-2xs text-wood-400">{subtitle}</p>
         </div>
+        {onCollapse && (
+          <button
+            onClick={onCollapse}
+            title={`Colapsar "${title}"`}
+            className="tactile relative shrink-0 rounded-md border border-iron-700 px-1.5 py-1 text-xs text-wood-400 transition-colors hover:border-accent-600/60 hover:text-accent-300"
+          >
+            {collapseIcon}
+          </button>
+        )}
         <div className={`absolute inset-x-0 bottom-0 overflow-hidden ${classes.hairline}`}>
           {tollTick > 0 && (
             <span key={tollTick} aria-hidden="true" className={`animate-hairline-toll absolute inset-0 ${classes.tollGradient}`} />
@@ -192,8 +211,16 @@ export const LogPanel = memo(function LogPanel({ title, subtitle, entries, accen
                   onQuickInsert={(t) => onEntityQuickInsert?.(t)}
                 />
               </p>
-              {entry.roll && <RollBadge roll={entry.roll} />}
-              {entry.combatExchange && <CombatExchangeBadge exchange={entry.combatExchange} />}
+              {/* Bug real (2026-08-14, petición explícita: "ahora hay 3" — la tirada del jugador
+                  salía dos veces, aquí y dentro de CombatExchangeBadge más abajo): el backend
+                  copia la tirada del jugador de un intercambio al campo genérico `roll` por
+                  compatibilidad con otros sitios que solo lo leen a él (turnResolution.ts,
+                  `combatExchangeRoll ?? roll`) — cuando hay `combatExchange`, ese mismo número ya
+                  se muestra ahí (fila "Tú"), con más contexto (el lado del enemigo, quién gana). */}
+              {entry.roll && !entry.combatExchange && <RollBadge roll={entry.roll} />}
+              {entry.combatExchange && (
+                <CombatExchangeBadge exchange={entry.combatExchange} playerName={characterName} enemyName={entry.npcAbilityUsed?.npcName} />
+              )}
               {entry.newQuest && (
                 <div className="mt-2 rounded-lg border border-quest-600/50 bg-quest-500/10 px-2.5 py-2">
                   <p className="flex items-center gap-1.5 text-2xs font-semibold uppercase tracking-[0.1em] text-quest-400">

@@ -9,6 +9,7 @@ import { EnergyBar } from '../EnergyBar'
 
 interface EstadisticasPanelProps {
   attributes: AttributeBlock
+  attributeBonuses: Partial<AttributeBlock>
   secondaryAttributes: SecondaryAttributeBlock
   level: number
   xp: number
@@ -25,6 +26,7 @@ interface EstadisticasPanelProps {
 
 export function EstadisticasPanel({
   attributes,
+  attributeBonuses,
   secondaryAttributes,
   level,
   xp,
@@ -85,7 +87,7 @@ export function EstadisticasPanel({
       )}
 
       <PanelSection title="Atributos jugables">
-        <AttributeBars attributes={attributes} labels={attributeLabels} colors={attributeColorClasses} />
+        <AttributeBars attributes={attributes} bonuses={attributeBonuses} labels={attributeLabels} colors={attributeColorClasses} />
       </PanelSection>
 
       <PanelSection title="Atributos secundarios">

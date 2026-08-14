@@ -48,7 +48,7 @@ export function PostCombatInteractionModal({ target, busy, onSalir, onSaquear, o
               disabled={busy}
               className="tactile w-full rounded-lg border border-danger-600 bg-danger-600/20 px-3.5 py-2 text-xs font-bold uppercase tracking-wide text-danger-300 transition-colors hover:bg-danger-600/35 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              Decapitar
+              Matar
             </button>
           )}
           <button

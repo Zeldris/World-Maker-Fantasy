@@ -66,6 +66,11 @@ interface CombatPanelProps {
   onAbilityDetail: (ability: SavedActionInfo) => void
   onItemDetail: (item: InventoryItemInfo) => void
   enciclopedia: EnciclopediaResponse | null
+  /// Colapsar este panel (2026-08-14, petición explícita: "lo mismo con las de combate" — el
+  /// mismo colapsar/expandir de los logs de personaje/mundo, también cuando este panel sustituye
+  /// al de "El mundo" durante un combate). Sin `onCollapse`, no sale ningún botón.
+  onCollapse?: () => void
+  collapseIcon?: string
 }
 
 /// Ficha de un enemigo — imagen, rol/facción/nivel, bio y (solo si ya se analizó) el atributo
@@ -298,6 +303,8 @@ export function CombatPanel({
   onAbilityDetail,
   onItemDetail,
   enciclopedia,
+  onCollapse,
+  collapseIcon,
 }: CombatPanelProps) {
   // Modales de selección (petición explícita, 2026-07-30, tras probar en vivo el "Decapitar"/
   // "Saquear todo" de un solo clic: "tienes que marcar todos aquellos que quieras... un popup
@@ -352,11 +359,22 @@ export function CombatPanel({
           <span className="gem animate-gem-breathe" />
           <h2 className="font-serif text-sm tracking-wide text-danger-400">⚔️ Combate</h2>
         </div>
-        {!ended && !awaitingDefense && (
-          <button onClick={onHuir} disabled={busy} className="text-2xs text-wood-400 transition-colors hover:text-accent-300 disabled:opacity-50">
-            Huir
-          </button>
-        )}
+        <div className="flex items-center gap-2">
+          {!ended && !awaitingDefense && (
+            <button onClick={onHuir} disabled={busy} className="text-2xs text-wood-400 transition-colors hover:text-accent-300 disabled:opacity-50">
+              Huir
+            </button>
+          )}
+          {onCollapse && (
+            <button
+              onClick={onCollapse}
+              title='Colapsar "Combate"'
+              className="tactile rounded-md border border-iron-700 px-1.5 py-1 text-xs text-wood-400 transition-colors hover:border-accent-600/60 hover:text-accent-300"
+            >
+              {collapseIcon}
+            </button>
+          )}
+        </div>
       </header>
 
       {/* Barra de estado persistente (2026-07-29, "nunca queda claro el estado del enemigo...
@@ -433,7 +451,7 @@ export function CombatPanel({
                   disabled={busy}
                   className="tactile flex-1 rounded-lg border border-danger-600 bg-danger-600/20 px-3.5 py-2 text-xs font-bold uppercase tracking-wide text-danger-300 transition-colors hover:bg-danger-600/35 disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  Decapitar
+                  Matar
                 </button>
               )}
               {quedaAlgoPorSaquear && (
@@ -541,7 +559,7 @@ export function CombatPanel({
                             }}
                             className="inline-block text-2xs text-danger-300 underline"
                           >
-                            Decapitar
+                            Matar
                           </span>
                         </span>
                       )}
@@ -821,10 +839,10 @@ export function CombatPanel({
 
       {decapitarModalOpen && (
         <CombatSelectionModal
-          title="¿A quién decapitar?"
+          title="¿A quién matar?"
           description="Un golpe de gracia definitivo, sin tirada — no pueden resistir."
           options={incapacitados.map((npc) => ({ id: npc.slug, label: npc.name }))}
-          confirmLabel="Decapitar"
+          confirmLabel="Matar"
           tone="danger"
           busy={busy}
           onCancel={() => setDecapitarModalOpen(false)}

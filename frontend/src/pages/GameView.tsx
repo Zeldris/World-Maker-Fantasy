@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useSession } from '../context/useSession'
 import { LogPanel } from '../components/LogPanel'
+import { CollapsedRail } from '../components/CollapsedRail'
 import { ChatComposer, type ChatComposerHandle } from '../components/ChatComposer'
 import { SideNav } from '../components/SideNav'
 import { characterTabs, worldTabs, type PanelId } from '../components/NavTabs'
@@ -28,6 +29,7 @@ import { CombatComposer, type CombatNpcDisplay } from '../components/CombatCompo
 import { CombatPanel } from '../components/CombatPanel'
 import { combatDifficultyFor } from '../lib/combatDifficulty'
 import { HealthBar } from '../components/HealthBar'
+import { EnergyBar } from '../components/EnergyBar'
 import { KingdomFoundingModal } from '../components/KingdomFoundingModal'
 import { HarvestSelectionModal } from '../components/HarvestSelectionModal'
 import { REINO_ABILITY_RECIPE_KEY } from '../data/reinoRecipes'
@@ -119,6 +121,10 @@ export function GameView() {
   const [characterName, setCharacterName] = useState<string | null>(null)
   const [characterMotivation, setCharacterMotivation] = useState<string | null>(null)
   const [characterAttributes, setCharacterAttributes] = useState<AttributeBlock | null>(null)
+  // Bonus de equipo por atributo, aparte de la base (2026-08-14) — solo cambia al equipar/quitar
+  // (syncFromSave), nunca al gastar puntos de atributo ni al resolver un turno, así que no hace
+  // falta tocarlo en esos otros sitios donde se actualiza characterAttributes.
+  const [characterAttributeBonuses, setCharacterAttributeBonuses] = useState<Partial<AttributeBlock>>({})
   const [secondaryAttributes, setSecondaryAttributes] = useState<SecondaryAttributeBlock | null>(null)
   const [characterLog, setCharacterLog] = useState<LogEntry[]>([])
   const [worldLog, setWorldLog] = useState<LogEntry[]>([])
@@ -195,6 +201,11 @@ export function GameView() {
   const [cancelingTransit, setCancelingTransit] = useState(false)
   const [nowTick, setNowTick] = useState(() => Date.now())
   const [activePanel, setActivePanel] = useState<PanelId | null>(null)
+  // Colapsar logs (2026-08-14, petición explícita: "que pueda colapsar el log de personaje a la
+  // izquierda y que el de mundo ocupe todo... y al revés... lo mismo con las de combate") — un
+  // solo estado tri-valuado en vez de dos booleanos independientes, para que nunca puedan quedar
+  // los dos colapsados a la vez (no habría nada que ver).
+  const [collapsedSide, setCollapsedSide] = useState<'character' | 'world' | null>(null)
   const [personajeSubTab, setPersonajeSubTab] = useState<PersonajeSubTab>('equipo')
   const [detailTarget, setDetailTarget] = useState<DetailTarget | null>(null)
   // Solo se usa para el detalle de la Enciclopedia (kind: 'info') — guarda el callback concreto
@@ -207,7 +218,19 @@ export function GameView() {
     index: enciclopediaIndex,
     raw: enciclopediaData,
     loading: enciclopediaLoading,
+    refetch: refetchEnciclopedia,
   } = useEnciclopedia(worldIdSlug, saveId, recipesStatus)
+  // Bug real (2026-08-14, "todo eso no está saliendo en la enciclopedia" — objetos recolectados de
+  // verdad descubiertos en BD, ver `recordEntityDiscoveries` en el backend, pero invisibles en la
+  // UI): tras el dedupe de doble fetch del 2026-08-13, la Enciclopedia se pedía UNA sola vez al
+  // montar la partida y nunca más. En vez de enganchar un refetch en cada sitio que puede descubrir
+  // algo (recolectar, cazar, crafteo, narración normal — demasiados, fácil dejarse uno), se
+  // refresca aquí, al abrir la propia pestaña: garantiza datos frescos justo cuando de verdad se
+  // van a ver, sin repetir la petición mientras el panel sigue cerrado.
+  useEffect(() => {
+    if (activePanel === 'enciclopedia') refetchEnciclopedia()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activePanel])
   // Banner de elemento citado bajo la narración (petición explícita de la usuaria, 2026-07-24) —
   // ver src/hooks/useEntityBanner.ts para la lógica completa (ventana de "no repetir", reconstrucción
   // de banners persistidos al cargar la Enciclopedia).
@@ -714,6 +737,7 @@ export function GameView() {
     setCharacterName(save.characterName)
     setCharacterMotivation(save.characterMotivation)
     setCharacterAttributes(save.attributes)
+    setCharacterAttributeBonuses(save.attributeBonuses)
     setSecondaryAttributes(save.secondaryAttributes)
     setFictionalDate(save.fictionalDateLabel)
     setCharacterLog(save.characterLog)
@@ -1647,6 +1671,7 @@ export function GameView() {
             )}
           </button>
           <HealthBar condicionFisica={condicionFisica} />
+          <EnergyBar energia={energia} energiaMax={energiaMax} />
           {dificultad !== 'NOVATO' && (
             // Indicador de muerte permanente (2026-07-19, auditoría de frontend): docs/14 § 4.2
             // ya tiene un límite real de muertes por dificultad, pero el jugador no tenía ninguna
@@ -1680,19 +1705,37 @@ export function GameView() {
           disabledIds={combatOpen ? COMBAT_DISABLED_CHARACTER_TABS : undefined}
           onSelect={(id) => setActivePanel((prev) => (prev === id ? null : id))}
         />
-        <div className="grid min-h-0 flex-1 grid-cols-1 gap-2 overflow-hidden lg:grid-cols-2">
-          <LogPanel
-            title="Tu personaje"
-            subtitle="Lo que haces, dices y percibes"
-            entries={characterLog}
-            accent="accent"
-            isThinking={characterThinking}
-            thinkingText={streamingNarration ?? timedThinkingText ?? characterFlavor}
-            streaming={!!streamingNarration}
-            combate={combatOpen}
-            emptyHint="Aquí aparecerá lo que le ocurra a tu personaje."
-          />
-          {combatOpen && combateIniciado ? (
+        <div
+          className={`grid min-h-0 flex-1 grid-cols-1 gap-2 overflow-hidden ${
+            collapsedSide === 'character' ? 'lg:grid-cols-[2.75rem_1fr]' : collapsedSide === 'world' ? 'lg:grid-cols-[1fr_2.75rem]' : 'lg:grid-cols-2'
+          }`}
+        >
+          {collapsedSide === 'character' ? (
+            <CollapsedRail label="Tu personaje" icon="›" accentClass="text-accent-300" onExpand={() => setCollapsedSide(null)} />
+          ) : (
+            <LogPanel
+              title="Tu personaje"
+              subtitle="Lo que haces, dices y percibes"
+              entries={characterLog}
+              accent="accent"
+              isThinking={characterThinking}
+              thinkingText={streamingNarration ?? timedThinkingText ?? characterFlavor}
+              streaming={!!streamingNarration}
+              combate={combatOpen}
+              emptyHint="Aquí aparecerá lo que le ocurra a tu personaje."
+              onCollapse={() => setCollapsedSide('character')}
+              collapseIcon="‹"
+              characterName={characterName ?? undefined}
+            />
+          )}
+          {collapsedSide === 'world' ? (
+            <CollapsedRail
+              label={combatOpen && combateIniciado ? 'Combate' : 'El mundo'}
+              icon="‹"
+              accentClass={combatOpen && combateIniciado ? 'text-danger-400' : 'text-accent2-300'}
+              onExpand={() => setCollapsedSide(null)}
+            />
+          ) : combatOpen && combateIniciado ? (
             // Rediseño de la vista de combate (2026-07-28, petición explícita: "quiero que la
             // sección de combate salga sustituyendo a los logs de mundo") — el panel "El mundo"
             // se sustituye por CombatPanel mientras dura el combate; el log de mundo en sí sigue
@@ -1739,6 +1782,8 @@ export function GameView() {
               onAbilityDetail={handleAbilityDetail}
               onItemDetail={handleItemDetail}
               enciclopedia={enciclopediaData}
+              onCollapse={() => setCollapsedSide('world')}
+              collapseIcon="›"
             />
           ) : (
             <LogPanel
@@ -1749,6 +1794,9 @@ export function GameView() {
               isThinking={worldThinking}
               thinkingText={worldFlavor}
               emptyHint="El mundo todavía no ha mostrado sus cartas."
+              onCollapse={() => setCollapsedSide('world')}
+              collapseIcon="›"
+              characterName={characterName ?? undefined}
             />
           )}
         </div>
@@ -1923,6 +1971,7 @@ export function GameView() {
               items={inventory}
               onSlotClick={handleSlotClick}
               attributes={characterAttributes}
+              attributeBonuses={characterAttributeBonuses}
               secondaryAttributes={secondaryAttributes}
               level={level}
               xp={xp}

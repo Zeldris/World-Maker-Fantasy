@@ -173,6 +173,11 @@ export interface RollInfo {
 /// del `value` crudo, que es el que se ve en la ficha de personaje).
 export interface CombatExchangeSideInfo extends RollInfo {
   valorEfectivo: number
+  /// Multiplicador de la rueda de debilidades SIN aplicar (2026-08-14) — >1 ventaja de tipo, <1
+  /// desventaja, 1 sin relación. Ver comentario homónimo en combatExchange.ts (backend). Opcional
+  /// de verdad: LogEntry.combatExchange persistidas ANTES de este campo no lo traen — el JSON
+  /// guardado en BD nunca se migra retroactivamente, solo los turnos nuevos lo incluyen.
+  multiplicador?: number
 }
 
 // 'independiente' (bug real, 2026-08-13: faltaba en este type — el backend YA lo manda para

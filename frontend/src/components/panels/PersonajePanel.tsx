@@ -29,6 +29,7 @@ interface PersonajePanelProps {
   onSlotClick: (slot: EquipSlot, equipped: InventoryItemInfo | undefined) => void
 
   attributes: AttributeBlock
+  attributeBonuses: Partial<AttributeBlock>
   secondaryAttributes: SecondaryAttributeBlock
   level: number
   xp: number
@@ -47,6 +48,7 @@ export function PersonajePanel({
   items,
   onSlotClick,
   attributes,
+  attributeBonuses,
   secondaryAttributes,
   level,
   xp,
@@ -80,6 +82,7 @@ export function PersonajePanel({
       {activeSubTab === 'estadisticas' && (
         <EstadisticasPanel
           attributes={attributes}
+          attributeBonuses={attributeBonuses}
           secondaryAttributes={secondaryAttributes}
           level={level}
           xp={xp}
