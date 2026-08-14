@@ -87,27 +87,39 @@ function DiceSide({ label, side, startDelayMs }: { label: string; side: CombatEx
     // eslint-disable-next-line react-hooks/exhaustive-deps -- solo debe arrancar una vez por intercambio, `side`/`startDelayMs` son estables durante la vida de este componente
   }, [])
 
+  // Bono real que se SUMA al dado (petición explícita, 2026-08-15: "saqué un 4 y eso se le sumará
+  // a tus 11 de destreza, que se vea para que se entienda que eso después se suma") — mismo cálculo
+  // exacto que ya usa CombatExchangeBadge (`Math.floor(valorEfectivo / 2)`, NO el atributo crudo:
+  // bug real ya cerrado una vez ahí, 2026-08-09, mostrar el crudo en vez del ya multiplicado nunca
+  // cuadraba con el resultado final cuando la rueda de debilidades aplicaba). Es un número fijo,
+  // conocido de antemano — no depende del dado — así que se muestra desde YA, no solo al aterrizar.
+  const bono = Math.floor(side.valorEfectivo / 2)
+
   return (
     <div className="flex flex-col items-center gap-1">
       <span className="max-w-[6rem] truncate text-2xs uppercase tracking-wide text-wood-500">{label}</span>
-      <span className="flex items-center gap-2">
-        <span aria-hidden="true">🎲</span>
-        <span
-          className={`font-mono text-2xl font-bold tabular-nums ${landed ? `${GRADE_COLOR[grado]} ${GRADE_LAND_ANIM[grado]}` : 'text-wood-300'}`}
-        >
-          {display ?? '?'}
-        </span>
-        {/* Multiplicador de la rueda de debilidades (petición explícita, 2026-08-15) — mismo dato
-            y mismo criterio de color que ya usa CombatExchangeBadge (verde si favorece a este
-            lado, siempre verde con turnos nuevos desde el rediseño "solo premia, nunca penaliza"
-            del mismo día — ver `typeMultiplierFor`, attributeWheel.ts): solo se muestra al
-            aterrizar, junto al número real, nunca durante el giro (sería ruido mientras el número
-            todavía no significa nada). */}
-        {landed && side.multiplicador != null && side.multiplicador !== 1 && (
-          <span className={`font-mono text-sm font-semibold ${side.multiplicador > 1 ? 'text-moss-400' : 'text-danger-400'}`}>
-            ×{formatMultiplier(side.multiplicador)}
+      <span className="flex flex-wrap items-baseline justify-center gap-x-1.5 gap-y-0.5">
+        <span className="flex items-center gap-1">
+          <span aria-hidden="true">🎲</span>
+          <span
+            className={`font-mono text-2xl font-bold tabular-nums ${landed ? `${GRADE_COLOR[grado]} ${GRADE_LAND_ANIM[grado]}` : 'text-wood-300'}`}
+          >
+            {display ?? '?'}
           </span>
-        )}
+        </span>
+        <span className="font-mono text-sm text-wood-500">
+          +{bono}
+          {/* Multiplicador de la rueda de debilidades (petición explícita, 2026-08-15) — mismo dato
+              y mismo criterio de color que ya usa CombatExchangeBadge (verde si favorece a este
+              lado, siempre verde con turnos nuevos desde el rediseño "solo premia, nunca penaliza"
+              del mismo día — ver `typeMultiplierFor`, attributeWheel.ts). */}
+          {side.multiplicador != null && side.multiplicador !== 1 && (
+            <span className={side.multiplicador > 1 ? 'text-moss-400' : 'text-danger-400'}>×{formatMultiplier(side.multiplicador)}</span>
+          )}
+        </span>
+        {/* El total solo tiene sentido en cuanto el dado real ya aterrizó — antes de eso `display`
+            es un número al azar del giro, sumarle el bono daría un total falso. */}
+        {landed && <span className="font-mono text-sm text-wood-200">={side.result}</span>}
       </span>
       <span className="text-2xs text-wood-500">{attributeLabels[side.attribute]}</span>
       {/* Dificultad necesaria (petición explícita, 2026-08-15: "añadir en algún lado el mínimo
