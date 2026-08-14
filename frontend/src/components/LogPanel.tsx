@@ -102,7 +102,12 @@ export const LogPanel = memo(function LogPanel({
     // thinkingText en la dependencia (roadmap de velocidad, 2026-07-20): con streaming, la
     // tarjeta "pensando" crece de tamaño en vivo — sin esto, el scroll no la sigue mientras narra.
     // Los chunks llegan cada ~200-300ms en este hardware (3-4,5 tok/s medido), no cada frame.
-  }, [entries.length, isThinking, thinkingText])
+    // diceReveal (petición explícita, 2026-08-15: "asegurarse de que hace bien el focus a la parte
+    // final de la narración... en combate") — el intercambio resuelto llega y monta
+    // `DiceRollReveal` ANTES de que empiece a narrar (ver onExchangeResolved), creciendo la
+    // tarjeta de "pensando" de golpe; sin esto en la dependencia, la vista se quedaba donde
+    // estaba mientras los dados giraban, sin bajar a mostrarlos.
+  }, [entries.length, isThinking, thinkingText, diceReveal])
 
   // Campanada silenciosa: un barrido único del hairline al pasar isThinking true→false —
   // anuncia que la respuesta llegó, sin sonido ni bucle (roadmap de animaciones 2026-07-20).
