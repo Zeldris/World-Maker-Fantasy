@@ -129,8 +129,12 @@ function SideRow({ label, side, isWinner, withTopBorder }: { label: string; side
           real va en negrita/claro, el resto apagado; "vs" pasa a "necesitaba" para que la
           dificultad no se lea como la tirada del rival (petición explícita, 2026-08-14: "parece
           que se están tirando los dados 4 veces y no 2"). El multiplicador solo se muestra cuando
-          de verdad hace algo (≠1): en verde si favorece a este lado, en rojo si lo perjudica —
-          así se ve de un vistazo si la rueda de debilidades ayudó o no, sin tener que calcularlo.
+          de verdad hace algo (≠1) — siempre en verde con turnos nuevos, ya que la rueda de
+          debilidades solo premia, nunca penaliza (rediseño 2026-08-15, ver el comentario largo de
+          `typeMultiplierFor`, attributeWheel.ts): un multiplicador real por debajo de 1 ya no
+          puede salir de un turno resuelto hoy. La rama roja se queda a propósito, sin borrar —
+          sigue siendo la lectura correcta de cualquier `LogEntry.combatExchange` YA PERSISTIDA de
+          antes de este rediseño, que conserva el multiplicador desfavorable real de aquel turno.
       */}
       <span className={`flex flex-wrap items-baseline gap-1 py-1.5 font-mono tabular-nums ${border}`}>
         <span className="font-bold text-wood-100">🎲{side.roll}</span>

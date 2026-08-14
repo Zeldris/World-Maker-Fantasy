@@ -92,6 +92,9 @@ Cada entrada: fecha, qué se detectó (cita textual si es narración), causa ra�
 - [continuación: combate "sin sentido" con Cruzavientos + reloj de mundo congelado en recolección](#2026-08-14-continuación-combate-sin-sentido-con-cruzavientos-reloj-de-mundo-congelado-en-recolección)
 - [continuación: revisión centrada en narración — ataque a Múrgol narrado como si fuera contra Cruzavientos](#2026-08-14-continuación-revisión-centrada-en-narración-ataque-a-múrgol-narrado-como-si-fuera-contra-cruzavientos)
 
+**2026-08-15**
+- [rediseño de balance: la rueda de debilidades solo premia, nunca penaliza](#2026-08-15-rediseño-de-balance-la-rueda-de-debilidades-solo-premia-nunca-penaliza)
+
 ---
 
 ## 2026-08-01 — descansar no curaba + objeto médico narrado sin usarse
@@ -2261,3 +2264,43 @@ distinto del objetivo real" — hueco real, no cubierto hasta ahora.
 detector nuevo (mismo patrón que los 11 ya existentes: comprobar que, cuando hay un intercambio
 mecánico resuelto contra un objetivo concreto Y hay más de un NPC/fauna real en escena, el texto
 generado nombre al objetivo correcto en vez de a otro presente) a la espera de luz verde.
+
+## 2026-08-15 — rediseño de balance: la rueda de debilidades solo premia, nunca penaliza
+
+**Contexto**: al construir la animación de dados en paralelo (`DiceRollReveal.tsx`), la usuaria vio
+un intercambio real en partida — "Destreza (Gorhorn) 20 vs Fuerza (Orco enfurecido) 5" — y preguntó
+por qué salía tan descompensado. Explicando el cálculo salió a la luz el diseño real: la rueda de
+debilidades (`attributeWheel.ts`, `typeMultiplierFor`) multiplicaba el valor efectivo de quien
+tenía ventaja de tipo por `magnitude` (p. ej. ×1.5) Y AL MISMO TIEMPO dividía el de quien tenía
+desventaja por ese mismo `magnitude` (×0.67) — la diferencia real entre los dos lados de un mismo
+intercambio no era ×1.5, era ×1.5×1.5 ≈ ×2.25. La usuaria: "lo que tenemos está mal... si no es muy
+injusto... si lo hacemos en los dos extremos siempre saldrán diferencias demasiado notables".
+
+**Decisión** (opción elegida de 3 propuestas): la rueda de debilidades pasa a SOLO PREMIAR, NUNCA
+PENALIZAR — quien tiene ventaja de tipo sigue sacando su multiplicador normal (×1.5/×1.15 según
+distancia en el anillo), pero quien tiene desventaja se queda en ×1 (neutro), exactamente igual que
+si no hubiera ninguna relación en la rueda. El tipo de atributo pasa de ser algo que te pueden
+quitar a ser un extra que solo puedes ganar.
+
+**Fix aplicado**: `typeMultiplierFor` (`backend/src/services/attributeWheel.ts`) — el lado que
+pierde la comparación de tipo devuelve `1` en vez de `1 / magnitude`. Mismo cambio replicado en el
+puerto del frontend (`frontend/src/lib/attributeWheel.ts`, usado por "Analizar rival"). Barrido
+completo de referencias para no dejar ningún punto de información desactualizado (petición
+explícita: "revisa bien no dejar ningún punto de información que haga referencia a esto"):
+- Comentarios en `attributeWheel.ts`/`combatExchange.ts` (backend y frontend) que describían el
+  multiplicador como ">1 ventaja, <1 desventaja".
+- `CombatExchangeBadge.tsx`/`DiceRollReveal.tsx` — el multiplicador coloreado verde/rojo se queda
+  con la rama roja a propósito (sigue siendo correcta para `LogEntry.combatExchange` YA
+  PERSISTIDA de antes de este rediseño), pero el comentario ahora aclara que ningún turno nuevo
+  puede producir ya un multiplicador por debajo de 1.
+- Enciclopedia § "Combate" (`combatLore.ts`, entrada "Ventajas entre atributos") — reescrita para
+  no prometer que la desventaja "penaliza".
+- Enciclopedia § "Atributos" → "Árbol de debilidades" (`EnciclopediaPanel.tsx`,
+  `AttributeWheelDiagram`) — el texto explicativo y la tabla mostraban literalmente "×1.5 / ÷1.5"
+  y "usarlo al revés lo divide"; corregidos a "×1.5 (solo quien gana)" y "no te penaliza".
+- `attributeWheel.test.ts` reescrito entero (la vieja prueba "es antisimétrico... A gana, B pierde
+  en la misma proporción" ya no es cierta por diseño) + 2 aserciones en `combatExchange.test.ts`
+  que esperaban `valorEfectivo` reducido para el lado perdedor.
+
+**Estado**: FIJADO. `tsc -b` limpio en backend y frontend. 922 tests unitarios backend (antes 921,
++1 neto por la reescritura de `attributeWheel.test.ts`) + 22 tests frontend, todos en verde.

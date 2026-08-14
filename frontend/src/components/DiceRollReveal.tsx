@@ -98,8 +98,10 @@ function DiceSide({ label, side, startDelayMs }: { label: string; side: CombatEx
         </span>
         {/* Multiplicador de la rueda de debilidades (petición explícita, 2026-08-15) — mismo dato
             y mismo criterio de color que ya usa CombatExchangeBadge (verde si favorece a este
-            lado, rojo si lo perjudica): solo se muestra al aterrizar, junto al número real, nunca
-            durante el giro (sería ruido mientras el número todavía no significa nada). */}
+            lado, siempre verde con turnos nuevos desde el rediseño "solo premia, nunca penaliza"
+            del mismo día — ver `typeMultiplierFor`, attributeWheel.ts): solo se muestra al
+            aterrizar, junto al número real, nunca durante el giro (sería ruido mientras el número
+            todavía no significa nada). */}
         {landed && side.multiplicador != null && side.multiplicador !== 1 && (
           <span className={`font-mono text-sm font-semibold ${side.multiplicador > 1 ? 'text-moss-400' : 'text-danger-400'}`}>
             ×{formatMultiplier(side.multiplicador)}

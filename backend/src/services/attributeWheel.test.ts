@@ -3,14 +3,19 @@ import { typeMultiplierFor, effectiveAttributeValue, ATTRIBUTE_RING } from './at
 import type { Attribute } from './dice.js';
 
 describe('typeMultiplierFor', () => {
-  it('destreza le gana a fuerza (contrario directo, distancia 1) — bonus/penalización simétrica', () => {
+  // Solo premia, nunca penaliza (rediseño 2026-08-15, bug real "muy injusto" jugando en vivo:
+  // Destreza 20 vs Fuerza 5 en el mismo intercambio — antes ganar de tipo multiplicaba TU valor
+  // Y AL MISMO TIEMPO dividía el del rival, así que la diferencia real era ×magnitude² (p. ej.
+  // ×1.5×1.5≈×2.25), no solo ×1.5). Ahora el lado en desventaja de tipo se queda en 1 (neutro),
+  // exactamente igual que si no hubiera ninguna relación en la rueda.
+  it('destreza le gana a fuerza (contrario directo, distancia 1) — solo bonus para quien gana, nunca penalización para quien pierde', () => {
     expect(typeMultiplierFor('destreza', 'fuerza', 'ataque')).toBe(1.5);
-    expect(typeMultiplierFor('fuerza', 'destreza', 'ataque')).toBeCloseTo(1 / 1.5);
+    expect(typeMultiplierFor('fuerza', 'destreza', 'ataque')).toBe(1);
   });
 
   it('fuerza le gana a carisma (cierra el ciclo del anillo, distancia 1 en sentido inverso)', () => {
     expect(typeMultiplierFor('fuerza', 'carisma', 'ataque')).toBe(1.5);
-    expect(typeMultiplierFor('carisma', 'fuerza', 'ataque')).toBeCloseTo(1 / 1.5);
+    expect(typeMultiplierFor('carisma', 'fuerza', 'ataque')).toBe(1);
   });
 
   it('sin relación en el extremo del anillo (distancia 3, anillo de 7 impar — dos por lado) — multiplicador neutro', () => {
@@ -26,42 +31,39 @@ describe('typeMultiplierFor', () => {
     expect(typeMultiplierFor('destreza', 'fuerza', 'defensa')).toBe(typeMultiplierFor('destreza', 'fuerza', 'ataque'));
   });
 
-  it('es antisimétrico para cualquier par: si A gana a B, B pierde contra A en la misma proporción', () => {
+  it('nunca devuelve un multiplicador por debajo de 1, para ningún par de atributos', () => {
     for (const a of ATTRIBUTE_RING) {
       for (const b of ATTRIBUTE_RING) {
-        if (a === b) continue;
-        const ab = typeMultiplierFor(a, b, 'ataque');
-        const ba = typeMultiplierFor(b, a, 'ataque');
-        expect(ab * ba).toBeCloseTo(1, 5);
+        expect(typeMultiplierFor(a, b, 'ataque')).toBeGreaterThanOrEqual(1);
+        expect(typeMultiplierFor(a, b, 'defensa')).toBeGreaterThanOrEqual(1);
       }
     }
   });
 
-  it('cada atributo tiene exactamente un contrario directo (distancia 1) y uno al que gana', () => {
-    // Con 7 atributos en el anillo (impar, sin antípoda exacta), cada uno tiene multiplicador 1.5
-    // con otros dos (a quien le gana y quien le gana a él), 1.15 con otros dos, y 1 (neutro) con
-    // los 2 restantes — a diferencia de un anillo par, aquí no hay un único "opuesto", los dos de
-    // distancia máxima (3) caen ambos en neutro.
+  it('cada atributo gana a exactamente uno (distancia 1) y a otro con menos fuerza (distancia 2) — el resto queda neutro, ninguno penaliza', () => {
+    // Con 7 atributos en el anillo (impar, sin antípoda exacta): cada uno gana ×1.5 contra
+    // exactamente uno, ×1.15 contra otro, y queda neutro (×1) contra los 4 restantes — los 2 que
+    // antes perdían distancia 1/2 (ahora neutros, ya no ×0.67/×0.87) más los 2 de distancia 3.
     for (const a of ATTRIBUTE_RING) {
       const multipliers = ATTRIBUTE_RING.filter((b) => b !== a).map((b) => typeMultiplierFor(a, b, 'ataque'));
-      const strong = multipliers.filter((m) => m === 1.5 || Math.abs(m - 1 / 1.5) < 1e-9);
-      const mild = multipliers.filter((m) => m === 1.15 || Math.abs(m - 1 / 1.15) < 1e-9);
-      const neutral = multipliers.filter((m) => m === 1);
-      expect(strong.length).toBe(2);
-      expect(mild.length).toBe(2);
-      expect(neutral.length).toBe(2);
+      expect(multipliers.filter((m) => m === 1.5)).toHaveLength(1);
+      expect(multipliers.filter((m) => m === 1.15)).toHaveLength(1);
+      expect(multipliers.filter((m) => m === 1)).toHaveLength(4);
     }
   });
 });
 
 describe('effectiveAttributeValue', () => {
-  it('aplica el multiplicador y redondea', () => {
+  it('aplica el multiplicador de quien gana y redondea', () => {
     expect(effectiveAttributeValue(10, 'destreza', 'fuerza', 'ataque')).toBe(15);
-    expect(effectiveAttributeValue(10, 'fuerza', 'destreza', 'ataque')).toBe(7); // 10/1.5 = 6.67 -> redondeado a 7
   });
 
-  it('nunca deja el valor efectivo por debajo de 1, aunque el atributo crudo sea bajo y el multiplicador desfavorable', () => {
-    expect(effectiveAttributeValue(1, 'fuerza', 'destreza', 'ataque')).toBeGreaterThanOrEqual(1);
+  it('no penaliza a quien pierde de tipo — se queda en el valor crudo, sin dividir', () => {
+    expect(effectiveAttributeValue(10, 'fuerza', 'destreza', 'ataque')).toBe(10);
+  });
+
+  it('nunca deja el valor efectivo por debajo de 1, aunque el atributo crudo sea 0', () => {
+    expect(effectiveAttributeValue(0, 'fuerza', 'destreza', 'ataque')).toBeGreaterThanOrEqual(1);
   });
 });
 

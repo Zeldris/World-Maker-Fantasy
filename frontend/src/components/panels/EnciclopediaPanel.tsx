@@ -130,9 +130,11 @@ const WEAKNESS_RING_COLOR: Record<Attribute, string> = {
 
 // Rediseño del turno de combate (2026-07-28, petición explícita: "un tab para ver el árbol de
 // debilidades") — visualiza el anillo de attributeWheel.ts: cada flecha apunta a quien tiene
-// ventaja de tipo directa (distancia 1, ×1.5/÷1.5 en ambos árboles de ataque y defensa); saltarse
+// ventaja de tipo directa (distancia 1, ×1.5 en ambos árboles de ataque y defensa); saltarse
 // un nodo (distancia 2) es un efecto más suave, mostrado solo en la tabla de debajo, no como
-// flecha, para no saturar el dibujo con las 15 combinaciones posibles.
+// flecha, para no saturar el dibujo con las 15 combinaciones posibles. Solo premia, nunca
+// penaliza (rediseño 2026-08-15, ver el comentario largo de `typeMultiplierFor` en el backend):
+// usar el tipo perdedor no divide nada, se queda en ×1 neutro.
 function AttributeWheelDiagram() {
   const size = 260
   const center = size / 2
@@ -196,8 +198,8 @@ function AttributeWheelDiagram() {
       </svg>
       <p className="max-w-sm text-center text-xs leading-relaxed text-wood-400">
         Cada flecha apunta a quien tiene ventaja directa (distancia 1 en el anillo): usar ese tipo contra el anterior
-        multiplica tu atributo efectivo en la tirada; usarlo al revés lo divide. Aplica por separado a la tirada de ataque
-        y a la de defensa.
+        multiplica tu atributo efectivo en la tirada. Usarlo al revés no te penaliza — tu tirada sigue siendo la
+        normal, sin ningún descuento. Aplica por separado a la tirada de ataque y a la de defensa.
       </p>
       <div className="w-full overflow-x-auto">
         <table className="w-full min-w-[280px] border-collapse text-xs">
@@ -205,19 +207,19 @@ function AttributeWheelDiagram() {
             <tr className="border-b border-iron-800 text-wood-500">
               <th className="py-1 text-left font-medium">Distancia en el anillo</th>
               <th className="py-1 text-left font-medium">Ejemplo</th>
-              <th className="py-1 text-right font-medium">Multiplicador</th>
+              <th className="py-1 text-right font-medium">Multiplicador (solo quien gana)</th>
             </tr>
           </thead>
           <tbody className="text-wood-300">
             <tr className="border-b border-iron-900">
               <td className="py-1.5">1 · contrario directo</td>
               <td className="py-1.5">Destreza vs Fuerza</td>
-              <td className="py-1.5 text-right">×1.5 / ÷1.5</td>
+              <td className="py-1.5 text-right">×1.5</td>
             </tr>
             <tr className="border-b border-iron-900">
               <td className="py-1.5">2 · salta un nodo</td>
               <td className="py-1.5">Inteligencia vs Fuerza</td>
-              <td className="py-1.5 text-right">×1.15 / ÷1.15</td>
+              <td className="py-1.5 text-right">×1.15</td>
             </tr>
             <tr>
               <td className="py-1.5">3 · máxima distancia (anillo de 7, sin antípoda exacta)</td>

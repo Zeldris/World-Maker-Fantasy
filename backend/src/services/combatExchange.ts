@@ -88,7 +88,8 @@ export interface ExchangeSideResult extends RollResult {
   /// 2026-08-14: "los multiplicadores aplicados por las debilidades, dando el resultado final" —
   /// antes solo se veía `valorEfectivo` ya multiplicado, sin poder distinguir si un bono alto
   /// venía de un atributo alto o de tener ventaja de tipo contra el rival). >1 = ventaja de tipo,
-  /// <1 = desventaja, exactamente 1 = sin relación en la rueda (attributeWheel.ts).
+  /// exactamente 1 = sin relación en la rueda O en desventaja de tipo (solo premia, nunca
+  /// penaliza — ver el comentario largo de `typeMultiplierFor`, attributeWheel.ts).
   multiplicador: number;
 }
 

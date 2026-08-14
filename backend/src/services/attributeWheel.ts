@@ -57,7 +57,16 @@ const TYPE_MULTIPLIER_BY_DISTANCE: Record<CombatTree, Record<number, number>> = 
 /// Multiplicador a aplicar al VALOR del atributo (nunca a la dificultad ni al resultado del
 /// dado — palabras textuales de la usuaria: "te reduce valor en tirada de dados") de quien usa
 /// `tipoPropio` contra alguien que responde/expone `tipoRival`, en el árbol `arbol`. >1 = tiene
-/// ventaja de tipo, <1 = la usa en desventaja, exactamente 1 = sin relación o mismo atributo.
+/// ventaja de tipo, exactamente 1 = sin relación, mismo atributo, O en desventaja de tipo.
+///
+/// SOLO PREMIA, NUNCA PENALIZA (rediseño 2026-08-15, petición explícita tras revisar un caso real
+/// en partida: Destreza 20 vs Fuerza 5 en el mismo intercambio se sintió "muy injusto" — antes,
+/// tener ventaja de tipo multiplicaba tu valor por `magnitude` (p. ej. ×1.5) Y AL MISMO TIEMPO
+/// dividía el del rival por ese mismo `magnitude` (×0.67), así que la diferencia real entre los
+/// dos lados no era ×1.5, era ×1.5×1.5 ≈ ×2.25 — el tipo de atributo podía pesar más que la
+/// propia tirada de dados. Ahora el lado en desventaja de tipo se queda neutro (×1, igual que si
+/// no hubiera relación en la rueda): el tipo de atributo es un extra que se puede GANAR, nunca
+/// algo que te puedan QUITAR.
 export function typeMultiplierFor(tipoPropio: Attribute, tipoRival: Attribute, arbol: CombatTree): number {
   if (tipoPropio === tipoRival) return 1;
   const distance = ringDistance(tipoPropio, tipoRival);
@@ -66,15 +75,17 @@ export function typeMultiplierFor(tipoPropio: Attribute, tipoRival: Attribute, a
   // ¿Quién tiene ventaja? Si `tipoRival` está a `distance` pasos HACIA ADELANTE de `tipoPropio`
   // (el camino corto en ese sentido), `tipoRival` gana — igual que en el ejemplo de la usuaria,
   // Destreza (1 paso por delante de Fuerza) le gana a Fuerza. Si el camino corto es hacia atrás,
-  // es `tipoPropio` quien tiene la ventaja.
+  // es `tipoPropio` quien tiene la ventaja. Solo el lado ganador se multiplica — el perdedor se
+  // queda en 1, nunca en `1 / magnitude`.
   const forward = ringForwardSteps(tipoPropio, tipoRival);
   const tipoPropioGana = forward > ATTRIBUTE_RING.length - forward;
-  return tipoPropioGana ? magnitude : 1 / magnitude;
+  return tipoPropioGana ? magnitude : 1;
 }
 
 /// Aplica el multiplicador de tipo al valor crudo del atributo — lo que de verdad entra en
 /// `rollCheck` en vez del valor sin ajustar. `Math.max(1, ...)` evita un valor efectivo de 0 o
-/// negativo con atributos ya bajos y un multiplicador desfavorable.
+/// negativo con atributos ya bajos (el multiplicador de tipo ya nunca es desfavorable, ver
+/// comentario de `typeMultiplierFor` — esto sigue protegiendo contra un atributo crudo de 0).
 export function effectiveAttributeValue(valorCrudo: number, tipoPropio: Attribute, tipoRival: Attribute, arbol: CombatTree): number {
   return Math.max(1, Math.round(valorCrudo * typeMultiplierFor(tipoPropio, tipoRival, arbol)));
 }

@@ -153,9 +153,11 @@ describe('resolveExchange', () => {
     const atacante: ExchangeParticipant = { attributes: BASE_ATTRIBUTES, attribute: 'destreza', difficulty: 15, condicionFisica: 'ILESO', rol: 'ataque' };
     const defensor: ExchangeParticipant = { attributes: BASE_ATTRIBUTES, attribute: 'fuerza', difficulty: 15, condicionFisica: 'ILESO', rol: 'defensa' };
     const result = resolveExchange(atacante, defensor);
-    // Destreza contra Fuerza: el atacante tiene ventaja de tipo (×1.5), el defensor la desventaja.
+    // Destreza contra Fuerza: el atacante tiene ventaja de tipo (×1.5) — solo premia, nunca
+    // penaliza (rediseño 2026-08-15): el defensor en desventaja se queda en su valor crudo, sin
+    // dividir.
     expect(result.atacante.valorEfectivo).toBeGreaterThan(result.atacante.value);
-    expect(result.defensor.valorEfectivo).toBeLessThan(result.defensor.value);
+    expect(result.defensor.valorEfectivo).toBe(result.defensor.value);
   });
 
   it('un participante HERIDO/GRAVE tira con un valor efectivo menor que uno ILESO (malus por condición)', () => {
@@ -206,13 +208,13 @@ describe('resolveIndependentExchange', () => {
     expect(result.atacante.efectoAplica).toBe(true);
   });
 
-  it('sigue aplicando el multiplicador de la rueda de debilidades al valorEfectivo de cada lado', () => {
+  it('sigue aplicando el multiplicador de la rueda de debilidades al valorEfectivo de cada lado (solo premia, nunca penaliza)', () => {
     mockRolls(R_FOR_ROLL_10, R_FOR_ROLL_10);
     const atacanteDestreza: ExchangeParticipant = { attributes: BASE_ATTRIBUTES, attribute: 'destreza', difficulty: 15, condicionFisica: 'ILESO', rol: 'ataque' };
     const defensorFuerza: ExchangeParticipant = { attributes: BASE_ATTRIBUTES, attribute: 'fuerza', difficulty: 15, condicionFisica: 'ILESO', rol: 'utilidad' };
     const result = resolveIndependentExchange(atacanteDestreza, defensorFuerza);
     expect(result.atacante.valorEfectivo).toBeGreaterThan(result.atacante.value);
-    expect(result.defensor.valorEfectivo).toBeLessThan(result.defensor.value);
+    expect(result.defensor.valorEfectivo).toBe(result.defensor.value);
   });
 });
 
