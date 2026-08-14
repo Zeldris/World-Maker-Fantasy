@@ -10,6 +10,7 @@ import Fastify from 'fastify';
 const findUniqueSave = vi.fn();
 const findFirstHarvestYield = vi.fn();
 const findManyHarvestYield = vi.fn();
+const findManyWorldPopulation = vi.fn();
 const updateManyWorldPopulation = vi.fn();
 const createInventoryItem = vi.fn();
 const createManyInventoryItem = vi.fn();
@@ -44,6 +45,7 @@ vi.mock('../../lib/prisma.js', () => ({
   prisma: {
     save: { findUnique: (...args: unknown[]) => findUniqueSave(...args) },
     harvestYield: { findMany: (...args: unknown[]) => findManyHarvestYield(...args) },
+    worldPopulation: { findMany: (...args: unknown[]) => findManyWorldPopulation(...args) },
     $transaction: (...args: unknown[]) => transaction(...args),
   },
 }));
@@ -539,6 +541,7 @@ describe('GET /saves/:id/recolectar/:oficio', () => {
   beforeEach(() => {
     findUniqueSave.mockReset();
     findManyHarvestYield.mockReset().mockResolvedValue([]);
+    findManyWorldPopulation.mockReset().mockResolvedValue([]);
     detectNpcsInScene.mockReset().mockResolvedValue([]);
     findUniqueSave.mockResolvedValue({
       id: 'save1',
@@ -625,5 +628,51 @@ describe('GET /saves/:id/recolectar/:oficio', () => {
     const res = await app.inject({ method: 'GET', url: '/saves/nope/recolectar/minero-llanuras' });
 
     expect(res.statusCode).toBe(404);
+  });
+
+  // Filtro por terreno de la zona (petición explícita, 2026-08-14: "en una misma zona me sale
+  // todo esto al recolectar... en zonas aridas no deberia haber muchas plantas") — Roca de Los
+  // Pilares Rotos está catalogada de afinidad 'rocoso' (worldCatalog.ts § harvestSourceTerrainTag).
+  // Se comprueba vía /explorar (no GET): GET exige que la fuente ya esté "localizada" en hechos de
+  // sesión, un filtro aparte que no es el que se está probando aquí — /explorar devuelve
+  // `candidateSourcesFor` directamente, sin esa capa extra.
+  it('en una zona húmeda catalogada, una fuente de minería con afinidad rocoso queda fuera al explorar', async () => {
+    findUniqueSave.mockResolvedValue({
+      id: 'save1',
+      worldId: 'world1',
+      currentLocationId: 'loc-pozo',
+      currentLocation: { region: 'Las Llanuras del Viento Rojo', slug: 'pozo-cauce-viejo' },
+    });
+    findManyHarvestYield.mockResolvedValue([
+      { sourceSlug: 'roca-pilares-rotos', sourceName: 'Roca de Los Pilares Rotos', item: { slug: 'piedra', name: 'Piedra' }, cantidad: 3 },
+    ]);
+    findManyWorldPopulation.mockResolvedValue([
+      { targetSlug: 'roca-pilares-rotos', poblacion: 40, distribucion: { 'Llanuras del Viento Rojo': 1 }, lastHarvestedAt: null, lastHarvestedLocationId: null },
+    ]);
+    const app = await buildApp();
+
+    const res = await app.inject({ method: 'POST', url: '/saves/save1/recolectar/minero-llanuras/explorar' });
+
+    expect(JSON.parse(res.body).sources).toEqual([]);
+  });
+
+  it('en una zona árida/rocosa catalogada, esa misma fuente de minería sí aparece al explorar', async () => {
+    findUniqueSave.mockResolvedValue({
+      id: 'save1',
+      worldId: 'world1',
+      currentLocationId: 'loc-agujas',
+      currentLocation: { region: 'Las Llanuras del Viento Rojo', slug: 'agujas-iman' },
+    });
+    findManyHarvestYield.mockResolvedValue([
+      { sourceSlug: 'roca-pilares-rotos', sourceName: 'Roca de Los Pilares Rotos', item: { slug: 'piedra', name: 'Piedra' }, cantidad: 3 },
+    ]);
+    findManyWorldPopulation.mockResolvedValue([
+      { targetSlug: 'roca-pilares-rotos', poblacion: 40, distribucion: { 'Llanuras del Viento Rojo': 1 }, lastHarvestedAt: null, lastHarvestedLocationId: null },
+    ]);
+    const app = await buildApp();
+
+    const res = await app.inject({ method: 'POST', url: '/saves/save1/recolectar/minero-llanuras/explorar' });
+
+    expect(JSON.parse(res.body).sources).toHaveLength(1);
   });
 });

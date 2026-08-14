@@ -7,6 +7,8 @@ import { loadSessionFacts, appendSessionFacts } from '../../services/worldFacts.
 import { inventoryCapacityFor, totalInventoryUnits } from '../../services/inventoryCapacity.js';
 import { effectiveInventorySlotsBonus } from '../../services/equipment.js';
 import { stripRegionArticle } from '../../services/population.js';
+import { pasaFiltroTerreno } from '../../services/terrain.js';
+import { locationTerrainTags, harvestSourceTerrainTag } from '../../scripts/worldCatalog.js';
 import { quantityOf } from '../../services/ingredients.js';
 import { closeItemQuests } from '../../services/questResolution.js';
 import { recordEntityDiscoveries } from '../../services/entityDiscovery.js';
@@ -78,6 +80,7 @@ async function candidateSourcesFor(
   metodo: MetodoObtencion,
   region: string | null,
   locationId: string | null,
+  locationSlug: string | null,
 ): Promise<{ candidates: SourceCandidate[]; anyOnCooldown: boolean }> {
   const rows = await prisma.harvestYield.findMany({ where: { worldId, metodoObtencion: metodo }, include: { item: true } });
   if (rows.length === 0) return { candidates: [], anyOnCooldown: false };
@@ -103,6 +106,10 @@ async function candidateSourcesFor(
     // bug real encontrado jugando en vivo 2026-08-07).
     const distribucion = pop.distribucion as Record<string, number>;
     if (!(distribucion[stripRegionArticle(region)] > 0)) continue;
+    // Filtro por terreno de la zona (petición explícita, 2026-08-14: "en zonas aridas no deberia
+    // haber muchas plantas y en zonas humedas deberias haber mas") — mismo punto que el filtro de
+    // región de arriba, ver terrain.ts.
+    if (!pasaFiltroTerreno(locationSlug ? locationTerrainTags[locationSlug] : undefined, harvestSourceTerrainTag[pop.targetSlug])) continue;
     const sourceRows = bySlug.get(pop.targetSlug) ?? [];
     if (sourceRows.length === 0) continue;
     const sameLocation = locationId !== null && pop.lastHarvestedLocationId === locationId;
@@ -177,7 +184,13 @@ export async function recolectarRoutes(app: FastifyInstance) {
       return { sources, puedeExplorar: false, enCooldown: false };
     }
 
-    const { candidates, anyOnCooldown } = await candidateSourcesFor(save.worldId, metodo, save.currentLocation?.region ?? null, save.currentLocationId);
+    const { candidates, anyOnCooldown } = await candidateSourcesFor(
+      save.worldId,
+      metodo,
+      save.currentLocation?.region ?? null,
+      save.currentLocationId,
+      save.currentLocation?.slug ?? null,
+    );
     if (candidates.length === 0) return { sources: [], puedeExplorar: false, enCooldown: anyOnCooldown };
 
     const sessionFacts = await loadSessionFacts(save.id);
@@ -201,7 +214,13 @@ export async function recolectarRoutes(app: FastifyInstance) {
     const save = await prisma.save.findUnique({ where: { id: request.params.id }, include: { currentLocation: true } });
     if (!save) return reply.status(404).send({ error: 'Partida no encontrada' });
 
-    const { candidates, anyOnCooldown } = await candidateSourcesFor(save.worldId, metodo, save.currentLocation?.region ?? null, save.currentLocationId);
+    const { candidates, anyOnCooldown } = await candidateSourcesFor(
+      save.worldId,
+      metodo,
+      save.currentLocation?.region ?? null,
+      save.currentLocationId,
+      save.currentLocation?.slug ?? null,
+    );
     if (candidates.length === 0) return { sources: [], enCooldown: anyOnCooldown };
 
     const sessionFacts = await loadSessionFacts(save.id);

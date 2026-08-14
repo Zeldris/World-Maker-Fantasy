@@ -7,6 +7,7 @@
 import type { Attribute, AttributeBlock } from '../services/dice.js';
 import type { Requisitos } from '../services/requisitos.js';
 import type { EquipSlot, ItemTipo, MetodoObtencion, WeaponCategory } from '@prisma/client';
+import type { TerrainTag } from '../services/terrain.js';
 
 export interface LocationInput {
   slug: string;
@@ -504,6 +505,40 @@ export const locations: LocationInput[] = [
     aliases: ['refugio sin nombre', 'el refugio', 'enclave nabieus'],
   },
 ];
+
+/// Terreno de cada Location, leído a mano de su propia `description` de arriba (filtro de
+/// recolección/caza por zona, ver `terrain.ts`) — solo las Locations de Las Llanuras del Viento
+/// Rojo, la única región con núcleo jugable real hoy; el resto queda fuera del diccionario a
+/// propósito (`pasaFiltroTerreno` no filtra nada para una Location no catalogada, así que no hace
+/// falta "neutralizarla" explícitamente). Una Location sin tags claros en su prosa se deja fuera
+/// del diccionario en vez de forzar una categoría dudosa.
+export const locationTerrainTags: Record<string, TerrainTag[]> = {
+  'agujas-iman': ['arido', 'rocoso'],
+  'filo-de-las-brasas': ['rocoso', 'arido'],
+  'hondonada-del-eco': ['rocoso', 'arido'],
+  manaderos: ['humedo'],
+  'pastos-de-la-deriva': ['vegetacion'],
+  'pilares-rotos': ['rocoso'],
+  'pozo-cauce-viejo': ['humedo'],
+  'restos-de-maktor': ['arido'],
+  'tumulos-del-honor': ['rocoso'],
+  'oasis-de-juncos-rojos': ['humedo', 'vegetacion'],
+  'desembocadura-callada': ['humedo'],
+  'playa-de-ceniza-blanca': ['humedo'],
+  'acantilados-partidos': ['rocoso', 'humedo'],
+  'pozas-de-marea': ['humedo'],
+  'embarcadero-de-ceniza': ['humedo'],
+  'fosa-horadada': ['arido'],
+  'dunas-ahogadas': ['arido'],
+  'vientre-del-engano': ['arido'],
+  'laberinto-de-canones': ['arido', 'rocoso'],
+  'fumarolas-negras': ['rocoso'],
+  'paso-de-los-huesos': ['rocoso'],
+  'sabana-alta': ['vegetacion'],
+  'vergel-de-kegi': ['vegetacion'],
+  'grieta-cantora': ['rocoso'],
+  'campo-yermo': ['arido'],
+};
 
 export interface LocationLinkInput {
   fromSlug: string;
@@ -4057,4 +4092,40 @@ export const harvestSourceDescriptions: Record<string, string> = {
     'Árbol oscuro de corteza casi negra que rezuma una resina densa de vetas doradas al partirla — forma la mayor parte de la Ciénaga Troncal.',
   'veta-hierro-pilares-rotos':
     'Vetas oscuras de óxido rojizo visibles entre las grietas de la roca erosionada de Los Pilares Rotos — hay que picar de verdad para sacar la mena, no basta con recoger cascotes sueltos.',
+};
+
+/// Afinidad de terreno de cada fuente EXTRACCION/MINERIA/TALA (filtro por zona, ver `terrain.ts`)
+/// — una sola etiqueta por fuente, leída de su propia `harvestSourceDescriptions`/`condicion` de
+/// arriba. `undefined` (fuente no listada aquí) = sin afinidad marcada, nunca se filtra por
+/// terreno (mismo criterio "solo premia, nunca penaliza" de `attributeWheel.ts`).
+export const harvestSourceTerrainTag: Record<string, TerrainTag> = {
+  'cardo-brujula': 'arido',
+  'bulbo-del-cauce': 'humedo',
+  'liquen-del-cauce': 'humedo',
+  'espiga-roja': 'vegetacion',
+  'flor-de-ceniza': 'rocoso',
+  'salvia-del-polvo': 'arido',
+  'raiz-de-fuego': 'rocoso',
+  'arena-iman': 'arido',
+  'roca-pilares-rotos': 'rocoso',
+  'veta-hierro-pilares-rotos': 'rocoso',
+  'matorral-de-cuerno': 'vegetacion',
+  // Fuera del núcleo jugable hoy (ver harvestSourceRegion) — tagueadas igual por completitud, sin
+  // efecto real hasta que esas regiones tengan Locations jugables catalogadas.
+  'hierba-del-hierro': 'rocoso',
+  'trepador-ocaso': 'humedo',
+};
+
+/// Afinidad de hábitat de cada especie cazable (filtro por zona, ver `terrain.ts`) — leída de su
+/// propia `bio` en el array `fauna` de arriba. Especies sin terreno claro en su bio (aéreas,
+/// itinerantes, o ligadas al comportamiento más que al suelo) se dejan fuera del diccionario:
+/// nunca se penalizan, se ven en cualquier zona de la región igual que hoy.
+export const faunaTerrainTag: Record<string, TerrainTag> = {
+  'aullador-rojo': 'arido',
+  'corredor-de-cauce': 'humedo',
+  corretolvas: 'vegetacion',
+  cruzavientos: 'rocoso', // anida en Los Pilares Rotos
+  'gargantua-de-ceniza': 'rocoso',
+  murgol: 'vegetacion',
+  'salamandra-de-escoria': 'rocoso', // homeLocationSlug: filo-de-las-brasas
 };

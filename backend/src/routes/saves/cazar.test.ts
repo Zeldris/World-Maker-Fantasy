@@ -182,6 +182,23 @@ describe('GET /saves/:id/cazar', () => {
     const res = await app.inject({ method: 'GET', url: '/saves/save1/cazar' });
     expect(res.json()).toEqual({ candidates: [], puedeExplorar: false });
   });
+
+  // Filtro por hábitat de zona (petición explícita, 2026-08-14: "con la de peleteria en caza pues
+  // dependiendo del habita de cada fauna") — Las Agujas Imán está catalogada árido/rocoso
+  // (worldCatalog.ts § locationTerrainTags): Cruzavientos (rocoso, anida en Los Pilares Rotos)
+  // encaja, Múrgol (vegetación, pasta en los Pastos de la Deriva) no.
+  it('en una zona árida/rocosa catalogada, la fauna de hábitat vegetación queda fuera aunque esté localizada', async () => {
+    findUniqueSave.mockResolvedValue({ ...SAVE_BASE, currentLocation: { id: 'loc-agujas', region: 'Las Llanuras del Viento Rojo', slug: 'agujas-iman' } });
+    loadSessionFacts.mockResolvedValue(['Gorhorn detecta señales de fauna cerca: 5 Múrgol. Gorhorn detecta señales de fauna cerca: 2 Cruzavientos.']);
+    // El mock de `npc.findMany` no simula el `where: { slug: { in: [...] } }` real de Prisma — se
+    // deja solo el NPC que de verdad pasaría el filtro de terreno, para que el test no dependa de
+    // una fidelidad de mock que no existe (mismo motivo que el resto de mocks de este archivo).
+    findManyNpc.mockResolvedValue([CRUZAVIENTOS_NPC]);
+    const app = await buildApp();
+    const res = await app.inject({ method: 'GET', url: '/saves/save1/cazar' });
+    const { candidates } = res.json();
+    expect(candidates.map((c: { slug: string }) => c.slug)).toEqual(['cruzavientos']);
+  });
 });
 
 describe('POST /saves/:id/cazar/explorar', () => {

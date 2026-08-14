@@ -1,6 +1,8 @@
 import type { FastifyInstance } from 'fastify';
 import { prisma } from '../../lib/prisma.js';
 import { decrementPopulationOnDeath, stripRegionArticle } from '../../services/population.js';
+import { pasaFiltroTerreno } from '../../services/terrain.js';
+import { locationTerrainTags, faunaTerrainTag } from '../../scripts/worldCatalog.js';
 import { scopeFor, pickAmbientEncounterCandidate, difficultyHintFor } from '../../services/npcScene.js';
 import { detectHarvestSourcesInScene } from '../../services/harvest.js';
 import { loadSessionFacts, appendSessionFacts } from '../../services/worldFacts.js';
@@ -101,14 +103,18 @@ function toSighted(c: HuntCandidate, playerLevel: number): SightedHuntCandidate 
   };
 }
 
-async function candidateFaunaFor(worldId: string, region: string | null, playerLevel: number): Promise<HuntCandidate[]> {
+async function candidateFaunaFor(worldId: string, region: string | null, playerLevel: number, locationSlug: string | null): Promise<HuntCandidate[]> {
   if (!region) return [];
   const populations = await prisma.worldPopulation.findMany({
     where: { worldId, targetType: 'FAUNA', poblacion: { gt: 0 } },
   });
   const withRegion = populations.filter((pop) => {
     const distribucion = pop.distribucion as Record<string, number>;
-    return (distribucion[stripRegionArticle(region)] ?? 0) > 0;
+    if (!((distribucion[stripRegionArticle(region)] ?? 0) > 0)) return false;
+    // Filtro por hábitat de la zona (petición explícita, 2026-08-14: "con la de peleteria en caza
+    // pues dependiendo del habita de cada fauna") — mismo criterio que candidateSourcesFor
+    // (recolectar.ts), ver terrain.ts.
+    return pasaFiltroTerreno(locationSlug ? locationTerrainTags[locationSlug] : undefined, faunaTerrainTag[pop.targetSlug]);
   });
   if (withRegion.length === 0) return [];
 
@@ -185,7 +191,7 @@ export async function cazarRoutes(app: FastifyInstance) {
     const save = await prisma.save.findUnique({ where: { id: request.params.id }, include: { currentLocation: true } });
     if (!save) return reply.status(404).send({ error: 'Partida no encontrada' });
 
-    const candidates = await candidateFaunaFor(save.worldId, save.currentLocation?.region ?? null, save.level);
+    const candidates = await candidateFaunaFor(save.worldId, save.currentLocation?.region ?? null, save.level, save.currentLocation?.slug ?? null);
     if (candidates.length === 0) return { candidates: [], puedeExplorar: false };
 
     const sessionFacts = await loadSessionFacts(save.id);
@@ -205,7 +211,7 @@ export async function cazarRoutes(app: FastifyInstance) {
     const save = await prisma.save.findUnique({ where: { id: request.params.id }, include: { currentLocation: true } });
     if (!save) return reply.status(404).send({ error: 'Partida no encontrada' });
 
-    const candidates = await candidateFaunaFor(save.worldId, save.currentLocation?.region ?? null, save.level);
+    const candidates = await candidateFaunaFor(save.worldId, save.currentLocation?.region ?? null, save.level, save.currentLocation?.slug ?? null);
     if (candidates.length === 0) return { candidates: [] };
 
     const sighted = rollSightings(candidates);
@@ -233,7 +239,7 @@ export async function cazarRoutes(app: FastifyInstance) {
 
     const region = save.currentLocation?.region ?? null;
     const uniqueSlugs = [...new Set(slugs)];
-    const candidates = await candidateFaunaFor(save.worldId, region, save.level);
+    const candidates = await candidateFaunaFor(save.worldId, region, save.level, save.currentLocation?.slug ?? null);
     const selected = uniqueSlugs
       .map((slug) => candidates.find((c) => c.slug === slug))
       .filter((c): c is HuntCandidate => !!c);
