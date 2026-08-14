@@ -71,6 +71,13 @@ export interface NarrationResult {
   /// docs/14-combate-y-muerte.md § 1: opcional, el backend valida con nextCondicionFisica()
   /// antes de aplicarla — nunca confía en este valor a ciegas.
   condicionFisica?: CondicionFisica | null;
+  /// Sugerencias de próxima acción (petición explícita, 2026-08-15: "que no obligue siempre al
+  /// usuario a escribir... 3 posibles sugerencias que el usuario puede elegir y añadir a su
+  /// prompt"): exactamente 3 frases cortas en primera persona, propuestas por el modelo para ESTA
+  /// escena concreta — el jugador las usa solo para rellenar el composer (nunca se envían solas,
+  /// siempre editables/opcionales). Vacío en las 4 ramas deterministas de turnResolution.ts
+  /// (saqueo/construcción/cosecha/Gistera guionizada), que nunca llaman a `narrateAction`.
+  suggestions?: string[];
 }
 
 interface TurnContext {
@@ -482,6 +489,8 @@ export function buildNarrationPrompt(ctx: TurnContext & { roll?: RollResult }): 
 Progresión: si este turno logra algo significativo que no sea solo superar la tirada (un descubrimiento importante, cerrar un objetivo menor, cerrar un objetivo mayor/misión larga), rellena "hito" con "descubrimiento", "objetivo_menor" u "objetivo_mayor" — en caso contrario, null. Esto es poco frecuente, no pasa en cada turno.
 
 Misiones: solo si la escena establece de verdad un objetivo narrativo concreto con entidad propia (no cualquier intención pasajera del jugador), rellena "newQuest" con un título corto y su descripción — en caso contrario, null. Si esta acción resuelve (con éxito o fracaso definitivo) una misión que ya existía, rellena "questProgress" con el título EXACTO de esa misión y "COMPLETADA" o "FALLIDA" — en caso contrario, null. Ambos muy poco frecuentes, nunca en el mismo turno que se crea la misión.
+
+Sugerencias: rellena SIEMPRE "suggestions" con exactamente 3 posibles próximas acciones del jugador, en primera persona ("Ataco a...", "Le pregunto por...", "Registro..."), cortas (una frase cada una), concretas para ESTA escena exacta (nunca genéricas tipo "explorar" o "descansar" si no encajan aquí) y distintas entre sí — nunca las escribas dentro de "narration" (esa regla de arriba sigue igual, la prosa nunca ofrece opciones al jugador), son un campo aparte que el jugador puede usar o ignorar.
 ${
     // Roadmap de velocidad (Fable, 2026-07-19): este párrafo (y los 3 campos del schema que
     // describe) solo se ofrece cuando la propia acción del jugador sugiere Reino/gobierno —
@@ -607,8 +616,9 @@ Responde solo con el JSON pedido, nada más.`;
           },
         },
       },
+      suggestions: { type: 'array', items: { type: 'string' } },
     },
-    required: ['narration', 'newFacts'],
+    required: ['narration', 'newFacts', 'suggestions'],
   };
 
   return { prompt, format, backgroundLoreBlock };
@@ -815,6 +825,7 @@ export function deterministicFallbackNarration(ctx: { action: string; roll?: Rol
     newQuest: null,
     questProgress: null,
     condicionFisica: null,
+    suggestions: [],
     combateIniciado: null,
   };
 }

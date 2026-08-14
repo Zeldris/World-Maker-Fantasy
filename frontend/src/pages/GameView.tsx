@@ -4,6 +4,7 @@ import { useSession } from '../context/useSession'
 import { LogPanel } from '../components/LogPanel'
 import { CollapsedRail } from '../components/CollapsedRail'
 import { ChatComposer, type ChatComposerHandle } from '../components/ChatComposer'
+import { SuggestionBar } from '../components/SuggestionBar'
 import { SideNav } from '../components/SideNav'
 import { characterTabs, worldTabs, type PanelId } from '../components/NavTabs'
 import { PanelDrawer } from '../components/PanelDrawer'
@@ -133,6 +134,9 @@ export function GameView() {
   // TurnNarrateHandlers.onExchangeResolved, api.ts); null en cuanto el turno termina de resolverse
   // del todo (éxito o error), para que nunca sobreviva al siguiente turno sin intercambio.
   const [diceReveal, setDiceReveal] = useState<{ exchange: CombatExchangeInfo; npcName: string | null } | null>(null)
+  // Sugerencias de próxima acción (petición explícita, 2026-08-15) — 3 frases del último turno
+  // narrado, solo fuera de combate (ver SuggestionBar.tsx); [] = barra oculta.
+  const [suggestions, setSuggestions] = useState<string[]>([])
   const [inventory, setInventory] = useState<InventoryItemInfo[]>([])
   // Pop-up de recolección (rediseño de profesiones, 2026-08-07) — null = cerrado.
   const [harvestModal, setHarvestModal] = useState<{ oficio: string; label: string } | null>(null)
@@ -1371,6 +1375,7 @@ export function GameView() {
       setEnergia(newEnergia)
       setEnergiaMax(newEnergiaMax)
       setFictionalDate(newTimeLabel)
+      setSuggestions(narration.suggestions ?? [])
       setQuests(updatedQuests)
       // Bug real (auditoría de deuda técnica 2026-08-04): construir/mejorar/fundar un edificio de
       // verdad en la DB no se veía en el mapa ni en el panel de Reino hasta recargar la partida
@@ -1903,12 +1908,15 @@ export function GameView() {
           ended={combatEnded}
         />
       ) : (
-        <ChatComposer
-          ref={composerRef}
-          onChange={setInput}
-          onSubmit={handleSubmit}
-          disabled={characterThinking || !!busyUntil || (!!combateIniciado && !combatOpen)}
-        />
+        <>
+          <SuggestionBar suggestions={suggestions} onPick={(text) => composerRef.current?.setText(text)} />
+          <ChatComposer
+            ref={composerRef}
+            onChange={setInput}
+            onSubmit={handleSubmit}
+            disabled={characterThinking || !!busyUntil || (!!combateIniciado && !combatOpen)}
+          />
+        </>
       )}
 
       {detailTarget && (

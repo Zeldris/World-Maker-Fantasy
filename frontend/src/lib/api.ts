@@ -165,6 +165,10 @@ export interface NarrateResponse {
     newFacts: string[]
     newItem?: { name: string; description: string } | null
     newCompanion?: { name: string; role: string; notes: string } | null
+    /// Sugerencias de próxima acción (petición explícita, 2026-08-15) — 3 frases cortas en primera
+    /// persona propuestas por el modelo para esta escena, solo para rellenar el composer (nunca se
+    /// envían solas). Vacío en las ramas deterministas (saqueo/construcción/cosecha/Gistera).
+    suggestions?: string[]
   }
   progression: ProgressionResult
   condicionFisica: CondicionFisica

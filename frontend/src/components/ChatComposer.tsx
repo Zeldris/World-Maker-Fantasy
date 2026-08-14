@@ -4,6 +4,12 @@ import type { ComposerChip } from '../types'
 export interface ChatComposerHandle {
   insertChip: (chip: ComposerChip) => void
   clear: () => void
+  /// Sugerencias de próxima acción (petición explícita, 2026-08-15) — a diferencia de `insertChip`
+  /// (un elemento fijo tipo chip, pensado para referenciar una entidad concreta), esto REEMPLAZA
+  /// todo el contenido por texto plano libre y editable: la jugadora eligió una sugerencia como
+  /// punto de partida, pero tiene que poder seguir escribiendo/corrigiéndola como si la hubiera
+  /// tecleado ella misma.
+  setText: (text: string) => void
 }
 
 interface ChatComposerProps {
@@ -163,6 +169,21 @@ export const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(fu
       if (!el) return
       el.innerHTML = ''
       savedRangeRef.current = null
+      handleInput()
+    },
+    setText(text: string) {
+      const el = editorRef.current
+      if (!el) return
+      el.innerHTML = ''
+      el.appendChild(document.createTextNode(text))
+      el.focus()
+      const range = document.createRange()
+      range.selectNodeContents(el)
+      range.collapse(false)
+      const sel = window.getSelection()
+      sel?.removeAllRanges()
+      sel?.addRange(range)
+      savedRangeRef.current = range.cloneRange()
       handleInput()
     },
   }))
