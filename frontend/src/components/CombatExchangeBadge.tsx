@@ -74,8 +74,25 @@ function outcomeLabelFor(exchange: CombatExchangeInfo, nombreAtacante: string, n
       return `El ataque de ${nombreAtacante} (${atacante.result}) supera su dificultad (${atacante.difficulty}) con más margen que la defensa de ${nombreDefensor} la suya (${defensor.difficulty}) — el golpe conecta.`
     case 'golpe_pleno':
       return `El ataque de ${nombreAtacante} (${atacante.result}) supera de sobra su dificultad (${atacante.difficulty}), y la defensa de ${nombreDefensor} falla del todo — el golpe conecta de lleno.`
-    case 'independiente':
-      return 'Cada lado se juzga por su cuenta — no hay un bando que "gane" el intercambio.'
+    case 'independiente': {
+      // Bug real jugando en vivo (2026-08-15, "éxito y éxito son confusos... le hice daño y pone
+      // que no"): el mensaje genérico de antes no decía si el golpe de cada lado conectaba de
+      // verdad — con los dos en "Éxito" (p. ej. jugador atacando y un NPC defendiéndose con una
+      // habilidad de UTILIDAD, no de defensa real, como "Carroña"), el jugador no podía saber si
+      // su ataque había hecho daño o no solo con "no hay un bando que gane". Aquí SÍ hubo daño real
+      // (comprobado en partida: la condición del rival cambió) — el mensaje ahora lo dice explícito
+      // para cada lado por separado, sin comparar uno contra el otro (eso es justo lo que significa
+      // "independiente").
+      const atacanteTexto =
+        gradoAtacante === 'fallo'
+          ? `El intento de ${nombreAtacante} (${atacante.result}) no alcanza lo que necesitaba (${atacante.difficulty}) — no consigue nada real este turno.`
+          : `${nombreAtacante} (${atacante.result}) supera lo que necesitaba (${atacante.difficulty}) — su acción sí surte efecto de verdad.`
+      const defensorTexto =
+        gradoDefensor === 'fallo'
+          ? `${nombreDefensor} (${defensor.result}) tampoco alcanza lo que necesitaba (${defensor.difficulty}).`
+          : `${nombreDefensor} (${defensor.result}) sí supera lo que necesitaba (${defensor.difficulty}).`
+      return `Cada lado se juzga por su cuenta, sin comparar uno contra el otro. ${atacanteTexto} ${defensorTexto}`
+    }
   }
 }
 
@@ -133,6 +150,12 @@ function SideRow({ label, side, isWinner, withTopBorder }: { label: string; side
   // el atributo crudo (`value`) en vez del ya multiplicado por el árbol de debilidades
   // (`valorEfectivo`) — el número en pantalla nunca cuadraba con `result` cuando el árbol aplicaba
   // un multiplicador de verdad.
+  //
+  // "(valorEfectivo/2)" en gris junto al bono (petición explícita, 2026-08-15: "en vez de poner
+  // +9 solo entre paréntesis debería aparecer en gris (18/2)... hay que explicar bien por qué el
+  // bono es la mitad del atributo") — el número mostrado aquí ya lleva descontado el malus por
+  // condición (ver el badge "−N salud" más abajo, que explica POR QUÉ es más bajo si aplica),
+  // nunca el atributo crudo — mismo criterio que el comentario de arriba.
   const bono = Math.floor(side.valorEfectivo / 2)
   const colors = attributeColorClasses[side.attribute]
   const border = withTopBorder ? 'border-t border-iron-800/60' : ''
@@ -157,7 +180,7 @@ function SideRow({ label, side, isWinner, withTopBorder }: { label: string; side
       <span className={`flex flex-wrap items-baseline gap-1 py-1.5 font-mono tabular-nums ${border}`}>
         <span className="font-bold text-wood-100">🎲{side.roll}</span>
         <span className="text-wood-500">
-          +{bono}
+          +{bono} <span className="text-wood-600">({side.valorEfectivo}/2)</span>
           {/* Bug real (2026-08-14): entradas de LogEntry persistidas ANTES de que `multiplicador`
               existiera en combatExchange.ts no lo traen (`undefined`) — `!= null` evita "(×NaN)"
               en partidas ya en curso; los turnos nuevos siempre lo traen. */}

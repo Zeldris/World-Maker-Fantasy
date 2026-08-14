@@ -2,7 +2,7 @@ import type { Attribute, AttributeBlock, GradoExito, RollResult } from './dice.j
 import type { AbilityEffect, CondicionFisica } from '@prisma/client';
 import { gradoExitoFor } from './dice.js';
 import { effectiveAttributeValue, typeMultiplierFor, type CombatTree } from './attributeWheel.js';
-import { condicionMalus } from './death.js';
+import { condicionMalus, saludBandFor } from './death.js';
 
 /// Ataque de NPC ya decidido (oculto al frontend) — se persiste en `Save.pendingNpcAttack`
 /// cuando la iniciativa de un intercambio favorece al NPC, y se consume/limpia al resolver la
@@ -286,4 +286,17 @@ export function exchangeContextBlock(
 export function independentExchangeContextBlock(result: IndependentExchangeResult, atacanteNombre: string, defensorNombre: string): string {
   const grados = `${atacanteNombre} tira ${result.atacante.result} (${result.atacante.gradoExito}) vs dificultad ${result.atacante.difficulty} · ${defensorNombre} tira ${result.defensor.result} (${result.defensor.gradoExito}) vs dificultad ${result.defensor.difficulty}.`;
   return `RESULTADO DEL INTERCAMBIO — YA RESUELTO, no lo cambies: ${grados} Cada tirada se juzga por separado, no hay un "quién gana" conjunto.`;
+}
+
+/// Calibra la severidad del golpe en el camino independiente (bug real jugando en vivo, 2026-08-15:
+/// "clava su maza en el cráneo... atravesándolo de lado a lado... antes de caer al suelo, inerte"
+/// para un golpe que en realidad solo bajó a la víctima de HERIDO a GRAVE — sigue consciente y en
+/// pie, ni incapacitada ni muerta). `independentExchangeContextBlock` solo da los números crudos,
+/// sin decir qué tan fuerte narrar el golpe — a diferencia del camino cruzado (`resolveExchange`),
+/// que sí tiene `OUTCOME_NARRATION_HINT`/`npcFallsUnconsciousThisTurn` calibrando esto. `nuevaCondicion`
+/// null = el golpe no conectó (efectoAplica false), nada que narrar como daño.
+export function hitSeverityHint(nombreObjetivo: string, nuevaCondicion: CondicionFisica | null): string {
+  if (!nuevaCondicion) return `El golpe no conecta — no hay ningún daño real que narrar en ${nombreObjetivo}.`;
+  if (nuevaCondicion === 'INCAPACITADO' || nuevaCondicion === 'MUERTO') return '';
+  return `El golpe SÍ conecta y empeora la condición de ${nombreObjetivo} a ${saludBandFor(nuevaCondicion)} — pero sigue consciente, en pie y capaz de seguir luchando. NUNCA lo narres cayendo inerte, desmayado o muerto: eso sería adelantar un desenlace que todavía no ha pasado.`;
 }

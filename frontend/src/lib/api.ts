@@ -165,10 +165,6 @@ export interface NarrateResponse {
     newFacts: string[]
     newItem?: { name: string; description: string } | null
     newCompanion?: { name: string; role: string; notes: string } | null
-    /// Sugerencias de próxima acción (petición explícita, 2026-08-15) — 3 frases cortas en primera
-    /// persona propuestas por el modelo para esta escena, solo para rellenar el composer (nunca se
-    /// envían solas). Vacío en las ramas deterministas (saqueo/construcción/cosecha/Gistera).
-    suggestions?: string[]
   }
   progression: ProgressionResult
   condicionFisica: CondicionFisica
@@ -641,6 +637,14 @@ export async function confirmarRecoleccion(
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ selections }),
   })
+}
+
+/// Sugerencias de próxima acción bajo demanda (petición explícita, 2026-08-15) — botón junto a
+/// "Actuar", llamada aparte del turno normal (ver comentario de cabecera de `generateSuggestions`,
+/// backend narrador.ts). Sin body: el backend reúne el contexto (log reciente + NPCs en escena) él
+/// solo a partir del `saveId`.
+export async function requestSuggestions(saveId: string): Promise<{ suggestions: string[] }> {
+  return fetchJson(`${API_URL}/saves/${saveId}/suggestions`, { method: 'POST' })
 }
 
 /// Habilidad "Cazar" (revisión de partida 2026-08-08) — fauna YA LOCALIZADA en la zona ahora

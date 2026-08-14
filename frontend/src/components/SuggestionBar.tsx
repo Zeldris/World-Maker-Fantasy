@@ -2,36 +2,51 @@ import { useEffect, useState } from 'react'
 
 /// Sugerencias de próxima acción (petición explícita, 2026-08-15: "no obligar siempre al usuario a
 /// escribir... 3 posibles sugerencias que el usuario puede elegir y añadir a su prompt") — barra
-/// colapsada por defecto entre el log y el composer (petición explícita, preocupación de espacio:
-/// "puede ocupar bastante... una barra... que al pulsarlo despliega en cards... una vez la elijas
-/// se colapsa"), nunca envía nada por su cuenta: elegir una sugerencia solo RELLENA el composer
-/// (`ChatComposer.setText`), la jugadora sigue pudiendo editarla o borrarla antes de mandarla.
-export function SuggestionBar({ suggestions, onPick }: { suggestions: string[]; onPick: (text: string) => void }) {
+/// colapsada por defecto entre el log y el composer, nunca envía nada por su cuenta: elegir una
+/// sugerencia solo RELLENA el composer (`ChatComposer.setText`), la jugadora sigue pudiendo
+/// editarla o borrarla antes de mandarla.
+///
+/// Movido a llamada aparte bajo demanda (petición explícita, 2026-08-15, ver comentario de
+/// cabecera de `generateSuggestions` en el backend): antes las sugerencias llegaban solas tras
+/// CADA turno (de ahí el auto-colapso al cambiar `suggestions`, para no sorprender con una barra ya
+/// desplegada de un turno viejo); ahora solo llegan cuando la jugadora pulsa el botón "Sugerir" —
+/// el pedido es explícito, así que la barra se auto-EXPANDE en cuanto llega la respuesta en vez de
+/// colapsarse.
+export function SuggestionBar({
+  suggestions,
+  onPick,
+  loading = false,
+}: {
+  suggestions: string[]
+  onPick: (text: string) => void
+  loading?: boolean
+}) {
   const [expanded, setExpanded] = useState(false)
 
-  // Se colapsa sola en cuanto llegan sugerencias de un turno nuevo — sin esto, quedarían
-  // desplegadas las de un turno ya viejo si la jugadora no las había cerrado a mano.
   useEffect(() => {
-    setExpanded(false)
+    if (suggestions.length > 0) setExpanded(true)
   }, [suggestions])
 
-  if (suggestions.length === 0) return null
+  if (suggestions.length === 0 && !loading) return null
 
   return (
     <div className="border-t border-iron-800 bg-wood-950/70 px-4 pt-2.5">
       <button
         onClick={() => setExpanded((e) => !e)}
-        className="tactile flex w-full items-center justify-between rounded-lg border border-iron-700 bg-wood-950/40 px-3 py-1.5 text-xs text-wood-300 transition-colors hover:border-accent-600/60 hover:text-accent-300"
+        disabled={loading}
+        className="tactile flex w-full items-center justify-between rounded-lg border border-iron-700 bg-wood-950/40 px-3 py-1.5 text-xs text-wood-300 transition-colors hover:border-accent-600/60 hover:text-accent-300 disabled:cursor-not-allowed"
       >
         <span className="flex items-center gap-1.5">
           <span aria-hidden="true">💡</span>
-          <span className="font-semibold uppercase tracking-wide">Sugerencias</span>
+          <span className="font-semibold uppercase tracking-wide">{loading ? 'Pensando sugerencias...' : 'Sugerencias'}</span>
         </span>
-        <span aria-hidden="true" className={`transition-transform ${expanded ? 'rotate-180' : ''}`}>
-          ▾
-        </span>
+        {!loading && (
+          <span aria-hidden="true" className={`transition-transform ${expanded ? 'rotate-180' : ''}`}>
+            ▾
+          </span>
+        )}
       </button>
-      {expanded && (
+      {expanded && !loading && (
         <div className="animate-entry-in grid grid-cols-1 gap-2 py-2.5 sm:grid-cols-3">
           {suggestions.map((s, i) => (
             <button

@@ -440,6 +440,20 @@ describe('npcSceneBlockFor', () => {
     expect(block).toContain('PERSONAJE EN ESCENA: Gistera Koh —');
   });
 
+  // Bug real jugando en vivo (2026-08-15, "revisar partida"): el Buitre Cenizo (fauna, sin habla)
+  // dio una réplica completa entre comillas y llamó "humano" al jugador — nada en el prompt le
+  // impedía inventar diálogo para un animal. `ataqueNatural !== null` es el mismo marcador ya
+  // usado en todo el proyecto para "esto es fauna" (ver carcassCandidatesFor, recolectar.ts).
+  it('fauna (ataqueNatural no nulo): añade la instrucción explícita de que no puede hablar', () => {
+    const block = npcSceneBlockFor(npcFixture({ ataqueNatural: 'Picotea y araña con sus garras curvas.' }), 1);
+    expect(block).toContain('ES UN ANIMAL, NO PUEDE HABLAR');
+  });
+
+  it('NPC sintiente (ataqueNatural null): no añade la instrucción de fauna', () => {
+    const block = npcSceneBlockFor(npcFixture({ ataqueNatural: null }), 1);
+    expect(block).not.toContain('ES UN ANIMAL, NO PUEDE HABLAR');
+  });
+
   // Bug real jugando (2026-07-30): Gistera Koh, nombre propio femenino ("Orca" ya en su bio),
   // narrada como "el orco" al referirse a ella de forma genérica en vez de por su nombre —
   // `articulo` no ayuda aquí (su NOMBRE no lleva artículo, el problema es la prosa libre).

@@ -5,6 +5,11 @@ import {
   stripNonLatinScript,
   deterministicFallbackNarration,
   isTooSimilarToLast,
+  sanitizeSuggestions,
+  hasFalseCombatMiss,
+  dropSuggestionsTargetingDownedNpc,
+  npcsKnownFromLog,
+  dropSuggestionsReferencingPlayerByName,
   hasEnglishLeak,
   hasFalseCombatHit,
   hasPrematureCombatResolution,
@@ -85,6 +90,97 @@ describe('isTooSimilarToLast', () => {
   });
 });
 
+describe('sanitizeSuggestions', () => {
+  it('deja pasar 3 sugerencias genuinamente distintas tal cual', () => {
+    const suggestions = ['Ataco al Orco Enfurecido', 'Le pregunto al Orco Enfurecido por su clan', 'Reviso si hay alguien más cerca'];
+    expect(sanitizeSuggestions(suggestions)).toEqual(suggestions);
+  });
+
+  it('descarta una variante casi idéntica a otra ya aceptada, quedándose con la primera', () => {
+    const suggestions = ['Sigo explorando la zona', 'Continúo explorando la zona', 'Le pregunto a Gistera por el Clan Serhu'];
+    expect(sanitizeSuggestions(suggestions)).toEqual(['Sigo explorando la zona', 'Le pregunto a Gistera por el Clan Serhu']);
+  });
+
+  it('quita vacíos o solo espacios', () => {
+    expect(sanitizeSuggestions(['Ataco al orco', '   ', ''])).toEqual(['Ataco al orco']);
+  });
+
+  it('undefined (el modelo no rellenó el campo) da un array vacío, nunca lanza', () => {
+    expect(sanitizeSuggestions(undefined)).toEqual([]);
+  });
+
+  it('nunca rellena de vuelta hasta 3 — puede devolver menos si hay duplicados', () => {
+    const suggestions = ['Ataco al orco', 'Golpeo al orco', 'Le doy un golpe al orco'];
+    expect(sanitizeSuggestions(suggestions).length).toBeLessThan(3);
+  });
+});
+
+describe('dropSuggestionsTargetingDownedNpc', () => {
+  it('bug real reportado en captura (2026-08-15): descarta "Ataco a X" cuando X ya está incapacitado', () => {
+    const suggestions = ['Ataco a Orco Enfurecido', 'Registro el cuerpo del Orco Enfurecido', 'Sigo mi camino'];
+    expect(dropSuggestionsTargetingDownedNpc(suggestions, ['Orco Enfurecido'])).toEqual([
+      'Registro el cuerpo del Orco Enfurecido',
+      'Sigo mi camino',
+    ]);
+  });
+
+  it('no descarta "Remato a X" ni "Registro a X" para un NPC ya caído — siguen siendo coherentes', () => {
+    const suggestions = ['Remato al Orco Enfurecido', 'Registro el cuerpo del Orco Enfurecido'];
+    expect(dropSuggestionsTargetingDownedNpc(suggestions, ['Orco Enfurecido'])).toEqual(suggestions);
+  });
+
+  it('no toca nada si no hay NPCs caídos', () => {
+    const suggestions = ['Ataco al Orco Enfurecido'];
+    expect(dropSuggestionsTargetingDownedNpc(suggestions, [])).toEqual(suggestions);
+  });
+
+  it('no filtra un ataque a OTRO NPC distinto del que está caído', () => {
+    const suggestions = ['Ataco al Cruzavientos que sobrevuela la escena'];
+    expect(dropSuggestionsTargetingDownedNpc(suggestions, ['Orco Enfurecido'])).toEqual(suggestions);
+  });
+});
+
+describe('npcsKnownFromLog', () => {
+  it('bug real reportado en captura (2026-08-15): descarta a un NPC cuyo nombre real todavía no aparece en el historial (encuentro guionizado sin presentar)', () => {
+    const npcs = [{ name: 'Gistera Koh', condicionFisica: 'ILESO' as const }];
+    const recentLog = [
+      'Una sombra se acerca a gran velocidad por la llanura. En cuanto la tiene a la vista, distingue que es una orca con la marca del Clan Serhu — se acerca a toda prisa, sin aliento, mirando constantemente hacia atrás, como si algo la persiguiera.',
+    ];
+    expect(npcsKnownFromLog(npcs, recentLog)).toEqual([]);
+  });
+
+  it('deja pasar a un NPC cuyo nombre SÍ aparece ya en el historial', () => {
+    const npcs = [{ name: 'Gistera Koh', condicionFisica: 'ILESO' as const }];
+    const recentLog = ['Gistera Koh se presenta a toda prisa, sin dejar de mirar hacia atrás.'];
+    expect(npcsKnownFromLog(npcs, recentLog)).toEqual(npcs);
+  });
+
+  it('un NPC activo en combate tiene su nombre por todo el log, así que nunca se filtra', () => {
+    const npcs = [{ name: 'Orco Enfurecido', condicionFisica: 'INCAPACITADO' as const }];
+    const recentLog = ['Gorhorn ataca al Orco Enfurecido.', 'Gorhorn hunde su hacha en el hombro del Orco Enfurecido, dejándolo inmóvil.'];
+    expect(npcsKnownFromLog(npcs, recentLog)).toEqual(npcs);
+  });
+});
+
+describe('dropSuggestionsReferencingPlayerByName', () => {
+  it('bug real jugando en vivo (2026-08-15), reincidente pese a la instrucción del prompt: descarta una sugerencia que trata al propio personaje como si fuera otra persona', () => {
+    const suggestions = [
+      'Ataco a la orca para acabar con esta presencia',
+      'Comienzo a caminar hacia Gorhorn, intentando descubrir si hay algo más que pueda ayudarme',
+    ];
+    expect(dropSuggestionsReferencingPlayerByName(suggestions, 'Gorhorn')).toEqual(['Ataco a la orca para acabar con esta presencia']);
+  });
+
+  it('no toca sugerencias que no mencionan el nombre del jugador', () => {
+    const suggestions = ['Ataco a la orca', 'Le pregunto por el Clan Serhu'];
+    expect(dropSuggestionsReferencingPlayerByName(suggestions, 'Gorhorn')).toEqual(suggestions);
+  });
+
+  it('no revienta si el nombre del personaje tiene caracteres especiales de regex', () => {
+    expect(dropSuggestionsReferencingPlayerByName(['Ataco al enemigo'], 'Gor+horn (el Roto)')).toEqual(['Ataco al enemigo']);
+  });
+});
+
 describe('hasEnglishLeak', () => {
   it('bug real probando en vivo (2026-07-31): detecta una palabra inglesa suelta en medio de una frase en español', () => {
     expect(hasEnglishLeak('el eco de su own pisadas en el polvo rojizo')).toBe(true);
@@ -141,6 +237,49 @@ describe('hasFalseCombatHit', () => {
 
   it('bug real jugando en vivo (2026-08-08): detecta el gerundio "atravesando", no solo pasado/presente ("atravesó"/"atraviesa")', () => {
     expect(hasFalseCombatHit('Gorhorn da un fuerte golpe, atravesando el cuello del ave con una precisión sorprendente.', true)).toBe(true);
+  });
+
+  it('bug real jugando en vivo (2026-08-15): detecta "golpea" en presente + "herida" (hueco de vocabulario — la lista solo cubría "golpeó"/"golpeo", nunca "golpea")', () => {
+    const narration =
+      'Gorhorn alza su Maza orca y la estrella con fuerza hacia el Buitre Cenizo, quien intenta esquivarla pero falla en el último instante. La maza golpea fuertemente el costado del Buitre Cenizo, dejando una herida visible antes de que este se desvanezca en el viento.';
+    expect(hasFalseCombatHit(narration, true)).toBe(true);
+  });
+
+  it('bug real jugando en vivo (2026-08-15): detecta "se desploma al suelo" tras un golpe narrado', () => {
+    const narration =
+      'Gorhorn clava su Maza orca en el cuello del Buitre Cenizo, rebotando un instante antes de clavarse firmemente. El ave grita y se desploma al suelo.';
+    expect(hasFalseCombatHit(narration, true)).toBe(true);
+  });
+
+  it('sigue sin disparar con "golpea el aire" — el caso genuino de fallo que motivó excluir "golpea" en origen', () => {
+    expect(hasFalseCombatHit('Gorhorn golpea el aire con fuerza, fallando por completo.', true)).toBe(false);
+  });
+});
+
+describe('hasFalseCombatMiss', () => {
+  it('bug real jugando en vivo (2026-08-15): detecta una esquiva narrada cuando el intercambio resolvió golpe_pleno (Éxito claro del jugador vs Fallo de la defensa)', () => {
+    const narration =
+      'Gorhorn levanta su hacha de guerra rota y la envía con toda la fuerza hacia el Orco enfurecido. La maza rasga el aire, pero el enemigo se mueve con una rapidez sorprendente, esquivándola por un pelo.';
+    expect(hasFalseCombatMiss(narration, true)).toBe(true);
+  });
+
+  it('no dispara si el intercambio no tuvo ningún golpe real (combatRealHitLanded=false)', () => {
+    const narration = 'El orco esquiva por un pelo el hachazo de Gorhorn.';
+    expect(hasFalseCombatMiss(narration, false)).toBe(false);
+  });
+
+  it('no dispara fuera de combate (combatRealHitLanded undefined)', () => {
+    expect(hasFalseCombatMiss('El orco esquiva por un pelo.', undefined)).toBe(false);
+  });
+
+  it('no dispara con una narración de golpe real genuina, aunque combatRealHitLanded sea true', () => {
+    const narration = 'Gorhorn descarga su hacha con toda su fuerza y esta vez sí conecta de lleno contra el hombro del orco.';
+    expect(hasFalseCombatMiss(narration, true)).toBe(false);
+  });
+
+  it('no dispara con un fallo parcial de UN lado en golpes_mutuos/defensor_contragolpea, mientras el otro sí conecta', () => {
+    const narration = 'El orco falla su zarpazo por poco margen, pero el hacha de Gorhorn sí encuentra su hombro con fuerza.';
+    expect(hasFalseCombatMiss(narration, true)).toBe(false);
   });
 });
 

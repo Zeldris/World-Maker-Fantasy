@@ -93,6 +93,12 @@ function DiceSide({ label, side, startDelayMs }: { label: string; side: CombatEx
   // bug real ya cerrado una vez ahí, 2026-08-09, mostrar el crudo en vez del ya multiplicado nunca
   // cuadraba con el resultado final cuando la rueda de debilidades aplicaba). Es un número fijo,
   // conocido de antemano — no depende del dado — así que se muestra desde YA, no solo al aterrizar.
+  //
+  // "(valorEfectivo/2)" en gris junto al bono (petición explícita, 2026-08-15: "en vez de poner
+  // +9 solo entre paréntesis debería aparecer en gris (18/2)") — la jugadora esperaba que el bono
+  // fuera el atributo entero, no la mitad; mostrar la propia división deja claro de un vistazo de
+  // dónde sale el número, sin tener que preguntarlo. Sigue sin mostrar el malus aquí (eso queda
+  // para el resultado final, ver CombatExchangeBadge) — solo la aritmética del bono en sí.
   const bono = Math.floor(side.valorEfectivo / 2)
 
   return (
@@ -113,7 +119,9 @@ function DiceSide({ label, side, startDelayMs }: { label: string; side: CombatEx
             {display ?? '?'}
           </span>
         </span>
-        <span className="font-mono text-sm text-wood-500">+{bono}</span>
+        <span className="font-mono text-sm text-wood-500">
+          +{bono} <span className="text-wood-600">({side.valorEfectivo}/2)</span>
+        </span>
       </span>
       <span className="text-2xs text-wood-500">
         {attributeLabels[side.attribute]}

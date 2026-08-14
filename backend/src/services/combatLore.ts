@@ -21,7 +21,9 @@ export const COMBAT_LORE_SECTIONS: CombatLoreSection[] = [
     slug: 'las-tiradas',
     icon: '🎲',
     title: 'Las tiradas: cómo se decide todo',
-    text: `Casi cualquier cosa arriesgada que intentes — golpear, esquivar, convencer, colarte, aguantar un golpe — se resuelve con una tirada: un dado de 20 caras más un bono que depende de tu atributo (Fuerza, Destreza, Voluntad...), comparado contra una dificultad.
+    text: `Casi cualquier cosa arriesgada que intentes — golpear, esquivar, convencer, colarte, aguantar un golpe — se resuelve con una tirada: un dado de 20 caras más un bono fijo, comparado contra una dificultad.
+
+Ese bono es la mitad de tu atributo relevante (Fuerza, Destreza, Voluntad...), redondeada hacia abajo — no el atributo entero. Es así a propósito: si el bono fuera el atributo completo, el dado dejaría de importar casi nada y un atributo alto convertiría cualquier tirada en un trámite garantizado. Con la mitad, el dado sigue pesando de verdad — un atributo alto te da una ventaja real, pero la suerte del momento sigue pudiendo decidir.
 
 Hay tres resultados posibles. Si te quedas muy por debajo de la dificultad, es un fallo — no pasa. Si la alcanzas o la superas por poco, es un éxito con coste — lo consigues, pero algo se tuerce o te cuesta más de lo esperado. Si la superas con margen de sobra, es un éxito claro — sale exactamente como querías, sin pegas.
 

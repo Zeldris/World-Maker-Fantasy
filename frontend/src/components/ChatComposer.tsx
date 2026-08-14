@@ -16,6 +16,12 @@ interface ChatComposerProps {
   onChange?: (text: string) => void
   onSubmit: (text: string) => void
   disabled?: boolean
+  /// Botón secundario "Sugerir" (petición explícita, 2026-08-15) — llamada aparte que genera
+  /// sugerencias bajo demanda, ver `SuggestionBar.tsx`/`GameView.tsx`. Solo se renderiza si
+  /// `GameView.tsx` pasa este callback (p. ej. nunca durante combate) — `ChatComposer` no sabe nada
+  /// de sugerencias más allá de disparar el callback y mostrar el estado de carga.
+  onRequestSuggestions?: () => void
+  suggestionsLoading?: boolean
 }
 
 // Dos datasets separados a propósito: `chipLabel` marca "esto es un chip" y sirve de display;
@@ -72,7 +78,7 @@ function serialize(root: HTMLElement): string {
 }
 
 export const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(function ChatComposer(
-  { onChange, onSubmit, disabled },
+  { onChange, onSubmit, disabled, onRequestSuggestions, suggestionsLoading },
   ref,
 ) {
   const editorRef = useRef<HTMLDivElement>(null)
@@ -205,6 +211,15 @@ export const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(fu
               disabled ? 'opacity-50' : ''
             }`}
           />
+          {onRequestSuggestions && (
+            <button
+              onClick={onRequestSuggestions}
+              disabled={disabled || suggestionsLoading}
+              className="tactile shrink-0 rounded-lg border border-iron-700 bg-wood-950/50 px-3 py-2 text-xs font-semibold text-wood-300 transition-colors hover:border-accent-600/60 hover:text-accent-300 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {suggestionsLoading ? 'Pensando...' : '💡 Sugerir'}
+            </button>
+          )}
           <button
             onClick={triggerSubmit}
             disabled={!canSubmit}

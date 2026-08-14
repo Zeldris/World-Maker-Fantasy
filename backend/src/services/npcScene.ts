@@ -680,7 +680,16 @@ export function npcSceneBlockFor(npc: NpcInScene, playerLevel: number): string {
     return `PERSONAJE MENCIONADO, YA RESUELTO: ${displayName(npc)} — ${npc.role}${npc.faction ? `, ${npc.faction}` : ''}. Ya está ${estado}${loot}. NO lo narres como una amenaza activa: no ataca, no persigue, no "aparece de la nada" — si la escena lo menciona, es solo un cadáver ya visto, un recuerdo o una referencia al pasado, nunca un encuentro nuevo.${generoHintFor(npc)}`;
   }
   const { label } = difficultyHintFor(npc.level, playerLevel);
-  return `PERSONAJE EN ESCENA: ${displayName(npc)} — ${npc.role}${npc.faction ? `, ${npc.faction}` : ''}, nivel ${npc.level} (acciones directas contra él/ella tienden a ${label}).${generoHintFor(npc)}
+  // Bug real jugando en vivo (2026-08-15, "revisar partida" — el Buitre Cenizo, fauna sin habla,
+  // dio una réplica completa entre comillas y encima llamó "humano" al jugador): el bloque de
+  // diálogo (`generateNpcReply`, más arriba en narrador.ts) ya evita esto para el camino de
+  // conversación fuera de combate, pero en pleno combate el modelo narra libremente y nada le
+  // impedía inventar diálogo para un animal. `ataqueNatural !== null` es el mismo marcador ya
+  // usado en todo el proyecto para "esto es fauna, no un personaje sintiente" (ver
+  // `carcassCandidatesFor`, recolectar.ts) — instrucción explícita en vez de confiar en que el
+  // modelo lo infiera solo de la bio/personalidad.
+  const faunaSinHablaHint = npc.ataqueNatural !== null ? ` ES UN ANIMAL, NO PUEDE HABLAR: nunca le pongas diálogo entre comillas ni palabras humanas — solo comportamiento animal (gruñidos, chillidos, gestos, movimientos).` : '';
+  return `PERSONAJE EN ESCENA: ${displayName(npc)} — ${npc.role}${npc.faction ? `, ${npc.faction}` : ''}, nivel ${npc.level} (acciones directas contra él/ella tienden a ${label}).${generoHintFor(npc)}${faunaSinHablaHint}
 Descripción/hechos ya establecidos (nunca los contradigas): ${npc.bio}
 Personalidad: ${npc.personality}
 LLEVA ENCIMA: ${itemsLine(npc.items)}. Si es derrotado, registrado o comercia, lo que lleva encima es TODO lo que puede aparecer — no existe ningún otro objeto.`;

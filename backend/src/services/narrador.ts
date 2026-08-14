@@ -71,13 +71,6 @@ export interface NarrationResult {
   /// docs/14-combate-y-muerte.md § 1: opcional, el backend valida con nextCondicionFisica()
   /// antes de aplicarla — nunca confía en este valor a ciegas.
   condicionFisica?: CondicionFisica | null;
-  /// Sugerencias de próxima acción (petición explícita, 2026-08-15: "que no obligue siempre al
-  /// usuario a escribir... 3 posibles sugerencias que el usuario puede elegir y añadir a su
-  /// prompt"): exactamente 3 frases cortas en primera persona, propuestas por el modelo para ESTA
-  /// escena concreta — el jugador las usa solo para rellenar el composer (nunca se envían solas,
-  /// siempre editables/opcionales). Vacío en las 4 ramas deterministas de turnResolution.ts
-  /// (saqueo/construcción/cosecha/Gistera guionizada), que nunca llaman a `narrateAction`.
-  suggestions?: string[];
 }
 
 interface TurnContext {
@@ -143,6 +136,15 @@ interface TurnContext {
   /// NINGÚN lado conecta un golpe de verdad. Si la narración describe contacto/daño de todos
   /// modos, es una alucinación del modelo, no una licencia narrativa — se reintenta.
   combatBothMissed?: boolean;
+  /// Ver `hasFalseCombatMiss` más abajo — inverso de `combatBothMissed` (petición explícita,
+  /// 2026-08-15, bug real jugando en vivo: tirada 30 vs Media(15) del jugador con Éxito claro
+  /// contra la Voluntad(11) del NPC con Fallo — 'golpe_pleno' por OUTCOME_TABLE, `exchangeContextBlock`
+  /// ya dice explícitamente "el ataque conecta de lleno, narra el golpe con toda su fuerza" — pero
+  /// la narración describió al NPC esquivando "por un pelo"). True cuando el intercambio de este
+  /// turno resolvió en un golpe real para algún lado (`golpe_normal`/`golpe_pleno`/`golpes_mutuos`/
+  /// `defensor_contragolpea` cuando de verdad contragolpea) — si la narración describe una esquiva o
+  /// bloqueo limpio de todos modos, es una alucinación, no una licencia narrativa — se reintenta.
+  combatRealHitLanded?: boolean;
   /// Ver `hasPrematureCombatResolution` más abajo — true cuando hay un NPC real en escena pero
   /// NINGÚN intercambio de combate se ha resuelto todavía este turno (ni ataque ni "Decapitar"),
   /// típicamente un turno de aceptación/promesa verbal ("Yo me ocupo de tu perseguidor"). Si la
@@ -155,6 +157,14 @@ interface TurnContext {
   /// en vez de dejarlo implícito (hoy el panel de victoria puede aparecer sin que la propia
   /// narración del golpe final lo haya descrito).
   npcFallsUnconsciousThisTurn?: boolean;
+  /// True cuando ESTE intercambio incluye un golpe de vuelta real contra el jugador (petición
+  /// explícita, 2026-08-15, bug real jugando en vivo: "acabé con el buitre pero se resistió al
+  /// final dándome un golpe... la narración no lo ha explicado" — un contragolpe/golpes_mutuos en
+  /// el mismo turno que remata al rival tiende a perderse porque `npcFallsUnconsciousThisTurn` ya
+  /// dirige toda la atención del modelo hacia narrar la muerte/caída del rival, sin recordarle que
+  /// TAMBIÉN pasó algo real del otro lado). Mismo criterio que `npcFallsUnconsciousThisTurn`: un
+  /// hecho mecánico ya resuelto que la narración tiene que reflejar, no una opción.
+  jugadorRecibeGolpeEsteTurno?: boolean;
   /// Ver `hasFalseItemUse` más abajo — nombres reales de objetos médicos/de energía que el
   /// personaje lleva encima PERO que este turno no se detectó que usara de verdad (ni
   /// `detectMedicalItemUse` ni `detectEnergyItemUse` los reconocieron en la acción del jugador).
@@ -346,6 +356,160 @@ Responde solo con el JSON pedido, nada más.`;
   }
 }
 
+/// Sugerencias de próxima acción — llamada Ollama APARTE de `narrateAction` (petición explícita,
+/// 2026-08-15: "quizás estoy valorando añadir un botón al lado de actuar... que al darle las
+/// genere mirando los logs"). Antes vivían dentro de `narrateAction` (schema/prompt ya recortados
+/// de ahí), compitiendo por atención con ~15 instrucciones más — y ni siquiera quedaban ancladas
+/// al resultado mecánico real del turno (bug real jugando en vivo: tras narrar que el "Orco
+/// Enfurecido" quedaba inmóvil de un golpe, una sugerencia fue "Ataco a Orco Enfurecido"). Mismo
+/// patrón que `classifyAction` de arriba: prompt corto, sin `worldFacts`/RAG de lore (esta tarea
+/// depende del historial inmediato, no del lore general del mundo), modelo pequeño, un solo
+/// reintento — nunca un "agente" nuevo, es la misma familia de llamadas pequeñas ya establecida.
+export interface SuggestionsContext {
+  characterName: string;
+  /// Últimos `LogEntry.text` de la partida, en orden CRONOLÓGICO (el más antiguo primero) — el
+  /// caller (`routes/saves/suggestions.ts`) ya los trae en ese orden.
+  recentLog: string[];
+  /// NPCs realmente en escena ahora mismo con su condición física real — el caller ya los calcula
+  /// con `detectNpcsInScene` (mismo mecanismo que recolectar.ts/cazar.ts), esta función no hace
+  /// ninguna consulta a la BD por su cuenta (mismo criterio que `classifyAction`/`narrateAction`:
+  /// reciben el contexto ya resuelto, no acceden a Prisma directamente).
+  npcsEnEscena: { name: string; condicionFisica: CondicionFisica }[];
+  /// Misiones ACTIVAS de la partida con su objetivo corto y accionable (petición explícita,
+  /// 2026-08-15: "hay una misión y debería buscar hacer los pasos para que la misión se active")
+  /// — para que una sugerencia pueda empujar hacia el siguiente paso real, no solo reaccionar al
+  /// último turno.
+  activeQuests: { title: string; objetivo: string | null }[];
+  /// Banda de salud/energía del propio jugador (petición explícita: "descansar si tienes poca
+  /// energía") — nunca el número exacto (mismo criterio que `saludBandFor`/ESTADO ACTUAL DEL
+  /// PERSONAJE en `narrateAction`), solo una etiqueta cualitativa.
+  saludJugador: string;
+  energiaJugador: string;
+  /// Últimos hechos de sesión (petición explícita: "interactuar con algo que se detectó en el
+  /// ambiente") — el caller ya los carga con `loadSessionFacts` (misma llamada que ya necesita
+  /// para `detectNpcsInScene`), aquí solo se reutiliza una porción reciente. Incluye cosas como
+  /// "Gorhorn localiza Cardo Brújula en la zona" — recursos/fauna ya detectados pero sin usar
+  /// todavía.
+  ambiente: string[];
+}
+
+const SUGGESTIONS_EXAMPLE_AND_RULES = `EJEMPLO 1, combate ya resuelto (referencia de forma, no de contenido — NUNCA copies ningún nombre de aquí, esto no existe en tu partida real): historial reciente "Gorhorn derriba a su rival de un golpe certero, dejándolo tendido en el suelo, incapaz de seguir luchando." → sugerencias ["Remato a mi rival caído para acabar con esto", "Registro su cuerpo en busca de algo útil", "Aparto la vista de él para ver si hay alguien más cerca"] — ninguna lo trata como si pudiera seguir defendiéndose (ya está incapacitado: rematarlo/registrarlo es coherente, "atacarlo" o "enfrentarlo" no). Nota cómo NINGUNA sugerencia inventa un nombre propio para el rival — usa solo lo que el historial de TU partida real te da.
+
+EJEMPLO 2, un NPC te acaba de hablar/pedir algo (misma referencia de forma, NUNCA copies ningún nombre de aquí): historial reciente termina con alguien desconocido diciendo entre comillas "¿No quieres ayudarme? Empieza por quien me persigue — hazlo antes de que sea tarde." → sugerencias ["Acepto ayudarla y voy a por quien la persigue", "Le pregunto por qué la persiguen antes de decidir nada", "Me niego a ayudarla y sigo mi camino"] — LAS TRES responden de verdad a lo que acaba de pedir; ninguna lo ignora para hablar de otra cosa (nada de "registro la zona"/"busco huellas": eso ignoraría que alguien te está hablando ahora mismo).
+
+Reglas: exactamente 3 sugerencias, en primera persona ("Ataco a...", "Le pregunto por...", "Registro..." — nunca "su"/"él"/"ella" refiriéndote al propio personaje del jugador), cortas (una frase cada una), distintas entre sí. Cada una tiene que nombrar algo CONCRETO ya mencionado en el historial de abajo — nunca un genérico que serviría igual para cualquier turno del juego ("sigo explorando", "espero a ver qué pasa").
+
+REGLA MÁS IMPORTANTE 1, sin excepciones (ver EJEMPLO 2): si el historial reciente TERMINA con un personaje dirigiéndose directamente al jugador — una pregunta, una petición, un diálogo en curso — al menos UNA sugerencia tiene que ser una respuesta directa a eso (aceptar, rechazar, preguntar algo más). Nunca las 3 pueden ignorarlo para hablar de otra cosa.
+
+REGLA MÁS IMPORTANTE 2, sin excepciones (ver EJEMPLO 1): si en "PERSONAJES EN ESCENA" se lista a alguien como INCAPACITADO o MUERTO, NUNCA sugieras atacarlo, enfrentarlo o combatir contra él.
+
+Si además hay MISIÓN ACTIVA con un objetivo concreto alcanzable desde aquí, SALUD/ENERGÍA baja del jugador, o algo en AMBIENTE sin usar todavía, puede que una tercera sugerencia (nunca a costa de saltarte la regla 1) apunte a eso — solo cuando de verdad encaje con la escena, nunca forzado.`;
+
+export async function generateSuggestions(ctx: SuggestionsContext): Promise<string[]> {
+  const system =
+    'Eres un asistente que propone posibles próximas acciones para el jugador de un juego de rol de mesa, basándote en lo que acaba de pasar. No inventas hechos nuevos, solo sugieres reacciones coherentes a lo ya ocurrido.';
+
+  // Evita spoilear el nombre real de un NPC que el propio personaje del jugador TODAVÍA no conoce
+  // en la ficción (petición explícita, 2026-08-15: "menciona a Gistera antes de que nosotros la
+  // descubramos") — ver `npcsKnownFromLog` más abajo.
+  const knownNpcs = npcsKnownFromLog(ctx.npcsEnEscena, ctx.recentLog);
+  const npcsBlock = knownNpcs.length > 0 ? `\nPERSONAJES EN ESCENA:\n${knownNpcs.map((n) => `- ${n.name}: ${n.condicionFisica}`).join('\n')}\n` : '';
+  const questsBlock =
+    ctx.activeQuests.length > 0
+      ? `\nMISIÓN ACTIVA:\n${ctx.activeQuests.map((q) => `- ${q.title}${q.objetivo ? `: ${q.objetivo}` : ''}`).join('\n')}\n`
+      : '';
+  const ambienteBlock = ctx.ambiente.length > 0 ? `\nAMBIENTE:\n${ctx.ambiente.map((f) => `- ${f}`).join('\n')}\n` : '';
+
+  const prompt = `${SUGGESTIONS_EXAMPLE_AND_RULES}
+
+PERSONAJE DEL JUGADOR: ${ctx.characterName} — eres TÚ. El historial de abajo lo narra en tercera persona por su nombre (así se narra todo el juego), pero las sugerencias son SIEMPRE lo que ${ctx.characterName} hace o dice a continuación, en primera persona. Si "${ctx.characterName}" aparece en el historial, ESO ERES TÚ MISMO — nunca lo trates como si fuera otro personaje que te habla o te pide algo; solo un nombre DISTINTO al tuyo puede hacer eso (regla 1 de arriba).
+ESTADO DEL PERSONAJE: salud ${ctx.saludJugador}; energía ${ctx.energiaJugador}.
+
+HISTORIAL RECIENTE:
+${ctx.recentLog.map((l) => `- ${l}`).join('\n')}
+${npcsBlock}${questsBlock}${ambienteBlock}
+Responde solo con el JSON pedido, nada más.`;
+
+  const format = {
+    type: 'object',
+    properties: {
+      suggestions: { type: 'array', items: { type: 'string' } },
+    },
+    required: ['suggestions'],
+  };
+
+  // Mismo modelo/parámetros que `classifyAction` (keepAlive '0', un solo reintento) — a validar
+  // jugando: si la calidad sigue floja con el modelo pequeño, cambiar a env.ollamaModelNarrador es
+  // un cambio de una línea, sigue siendo una llamada aparte de narrateAction.
+  const callOllama = () =>
+    ollamaGenerate({
+      temperature: 0.4,
+      model: env.ollamaModelCronista,
+      system,
+      prompt,
+      format,
+      keepAlive: '0',
+      timeoutMs: 90_000,
+    });
+
+  let text: string;
+  try {
+    ({ text } = await callOllama());
+  } catch (err) {
+    console.warn(`[sugerencias] intento 1/2 falló, reintentando: ${err instanceof Error ? err.message : err}`);
+    ({ text } = await callOllama());
+  }
+
+  const parsed = JSON.parse(text) as { suggestions?: string[] };
+  const downedNpcNames = knownNpcs.filter((n) => n.condicionFisica === 'INCAPACITADO' || n.condicionFisica === 'MUERTO').map((n) => n.name);
+  const withoutDowned = dropSuggestionsTargetingDownedNpc(sanitizeSuggestions(parsed.suggestions), downedNpcNames);
+  return dropSuggestionsReferencingPlayerByName(withoutDowned, ctx.characterName);
+}
+
+/// Red de seguridad determinista (no confiar solo en la instrucción del prompt, mismo criterio que
+/// `hasFalseCombatMiss`) — bug real jugando en vivo (2026-08-15, reincidente pese a la instrucción
+/// explícita ya añadida en el prompt: "Comienzo a caminar hacia Gorhorn, intentando descubrir..."
+/// tratando al propio personaje del jugador como si fuera otra persona a la que acercarse). Un
+/// modelo de 1.5B no sigue esa instrucción de forma fiable el 100% de las veces — mismo motivo por
+/// el que el resto de reglas de esta familia (`hasFalseCombatHit`, `hasAnachronism`...) nunca
+/// confían solo en el texto del prompt. Corte simple y sin matices: una sugerencia nunca necesita
+/// nombrar al propio personaje del jugador (ya está implícito en la primera persona), así que
+/// cualquiera que lo mencione se descarta entera, sin intentar salvar la frase.
+export function dropSuggestionsReferencingPlayerByName(suggestions: string[], characterName: string): string[] {
+  const escaped = characterName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const nameRegex = new RegExp(`\\b${escaped}\\b`, 'i');
+  return suggestions.filter((s) => !nameRegex.test(s));
+}
+
+/// Filtro determinista contra spoilers de identidad (petición explícita, 2026-08-15: "menciona a
+/// Gistera antes de que nosotros la descubramos... no ser tan específico hasta que ella se
+/// presente") — `detectNpcsInScene` (el caller de esta función) ya resuelve el roster COMPLETO de
+/// la escena con nombre real, incluidos encuentros guionizados que el motor conoce desde el primer
+/// instante aunque el personaje del jugador todavía no se haya presentado con ellos en la ficción
+/// (p. ej. Gistera Koh, descrita al principio solo como "una sombra"/"una orca con la marca del
+/// Clan Serhu"). Un NPC solo cuenta como "conocido" para las sugerencias si su nombre aparece de
+/// verdad en el propio historial reciente — un NPC activamente en escena (p. ej. en pleno combate)
+/// va a tener su nombre por todo el log de sobra, así que esto no les afecta.
+export function npcsKnownFromLog<T extends { name: string }>(npcs: T[], recentLog: string[]): T[] {
+  const logText = recentLog.join(' ').toLowerCase();
+  return npcs.filter((n) => logText.includes(n.name.toLowerCase()));
+}
+
+/// Red de seguridad determinista (no confiar solo en la instrucción del prompt, mismo criterio que
+/// `hasFalseCombatMiss`) para el bug real de referencia: descarta cualquier sugerencia que combine
+/// el nombre de un NPC YA incapacitado/muerto con un verbo de INICIO de combate — "remato a X"/
+/// "registro a X"/"me alejo de X" siguen siendo coherentes con alguien ya caído y NO se tocan, solo
+/// se filtra la variante que lo trata como si pudiera seguir defendiéndose.
+const COMBAT_INITIATION_VERB_REGEX = /\b(atac[oa]|atacar|enfrent[oa]|enfrentar|pele[oa]|pelear|combat[oe]|combatir)\b/i;
+
+export function dropSuggestionsTargetingDownedNpc(suggestions: string[], downedNpcNames: string[]): string[] {
+  if (downedNpcNames.length === 0) return suggestions;
+  return suggestions.filter((s) => {
+    const mentionsDownedNpc = downedNpcNames.some((name) => s.toLowerCase().includes(name.toLowerCase()));
+    return !(mentionsDownedNpc && COMBAT_INITIATION_VERB_REGEX.test(s));
+  });
+}
+
 export interface NpcReplyContext {
   npc: { name: string; personality: string; bio: string; role: string };
   characterName: string;
@@ -445,6 +609,10 @@ export function buildNarrationPrompt(ctx: TurnContext & { roll?: RollResult }): 
         ctx.npcFallsUnconsciousThisTurn
           ? ' Este golpe deja al rival INCAPACITADO o MUERTO — tu narración de este turno tiene que describir explícitamente ese momento, no dejarlo implícito ni solo insinuado. Si queda INCAPACITADO (no MUERTO): sigue consciente, solo sin fuerzas para seguir luchando — cae de rodillas, se desploma malherido, tambalea sin poder levantarse... NUNCA lo narres inconsciente/desmayado/sin sentido (un rival inconsciente de verdad no podría seguir combatiendo si el jugador no lo remata ya mismo, y el juego permite que la pelea continúe). Si MUERE, ahí sí es el final.'
           : ''
+      }${
+        ctx.jugadorRecibeGolpeEsteTurno
+          ? ' ADEMÁS, en este MISMO intercambio tú también recibes un golpe de vuelta — tu narración tiene que reflejar los DOS lados del choque (lo que le pasa al rival Y lo que te pasa a ti), nunca solo uno de los dos como si el otro no hubiera ocurrido.'
+          : ''
       }`
     : `Fuera de combate nunca empeores "condicionFisica" — solo puedes proponerla si el personaje se cura o descansa de verdad (mejora), o déjala en null. ${
         hostileEngagement
@@ -490,7 +658,6 @@ Progresión: si este turno logra algo significativo que no sea solo superar la t
 
 Misiones: solo si la escena establece de verdad un objetivo narrativo concreto con entidad propia (no cualquier intención pasajera del jugador), rellena "newQuest" con un título corto y su descripción — en caso contrario, null. Si esta acción resuelve (con éxito o fracaso definitivo) una misión que ya existía, rellena "questProgress" con el título EXACTO de esa misión y "COMPLETADA" o "FALLIDA" — en caso contrario, null. Ambos muy poco frecuentes, nunca en el mismo turno que se crea la misión.
 
-Sugerencias: rellena SIEMPRE "suggestions" con exactamente 3 posibles próximas acciones del jugador, en primera persona ("Ataco a...", "Le pregunto por...", "Registro..."), cortas (una frase cada una), concretas para ESTA escena exacta (nunca genéricas tipo "explorar" o "descansar" si no encajan aquí) y distintas entre sí — nunca las escribas dentro de "narration" (esa regla de arriba sigue igual, la prosa nunca ofrece opciones al jugador), son un campo aparte que el jugador puede usar o ignorar.
 ${
     // Roadmap de velocidad (Fable, 2026-07-19): este párrafo (y los 3 campos del schema que
     // describe) solo se ofrece cuando la propia acción del jugador sugiere Reino/gobierno —
@@ -616,9 +783,8 @@ Responde solo con el JSON pedido, nada más.`;
           },
         },
       },
-      suggestions: { type: 'array', items: { type: 'string' } },
     },
-    required: ['narration', 'newFacts', 'suggestions'],
+    required: ['narration', 'newFacts'],
   };
 
   return { prompt, format, backgroundLoreBlock };
@@ -737,6 +903,7 @@ export async function narrateAction(ctx: TurnContext & { roll?: RollResult }): P
         { check: () => isTooSimilarToLast(parsed.narration, ctx.lastNarrationText), reason: 'repetir casi verbatim el turno anterior' },
         { check: () => hasEnglishLeak(parsed.narration), reason: 'fuga de inglés' },
         { check: () => hasFalseCombatHit(parsed.narration, ctx.combatBothMissed), reason: 'narrar un golpe que no conectó (ataque_falla/parada_en_seco)' },
+        { check: () => hasFalseCombatMiss(parsed.narration, ctx.combatRealHitLanded), reason: 'narrar una esquiva/bloqueo limpio cuando el golpe sí conectó (golpe_normal/golpe_pleno/golpes_mutuos)' },
         {
           check: () => hasPrematureCombatResolution(parsed.narration, ctx.combatNotYetResolved),
           reason: 'narrar un combate ya resuelto sin ningún intercambio mecánico este turno',
@@ -825,7 +992,6 @@ export function deterministicFallbackNarration(ctx: { action: string; roll?: Rol
     newQuest: null,
     questProgress: null,
     condicionFisica: null,
-    suggestions: [],
     combateIniciado: null,
   };
 }
@@ -912,6 +1078,33 @@ export function isTooSimilarToLast(narration: string, lastNarrationText?: string
   return similarity(narration, lastNarrationText) >= REPEAT_SIMILARITY_THRESHOLD;
 }
 
+/// Umbral MÁS BAJO que `REPEAT_SIMILARITY_THRESHOLD` a propósito (petición explícita, 2026-08-15:
+/// "las sugerencias no están siendo muy buenas") — `similarity()` es solapamiento de palabras
+/// entre/máximo, y en frases muy cortas (5-10 palabras, lo normal en una sugerencia) compartir el
+/// nombre del NPC de la escena y un par de palabras de función ya empuja la similitud a 0.5-0.6
+/// aunque las dos acciones sean claramente distintas ("Ataco al Orco Enfurecido" vs "Le pregunto
+/// al Orco Enfurecido por su clan") — un umbral pensado para prosa larga las dejaría pasar siempre
+/// como duplicadas. 0.55 sigue cazando el caso real que importa: dos variantes de la MISMA idea
+/// con las palabras de contenido casi iguales ("Sigo explorando la zona" / "Continúo explorando la
+/// zona").
+const SUGGESTION_SIMILARITY_THRESHOLD = 0.55;
+
+/// Sanea "suggestions" tras el parseo (mismo criterio que `isTooSimilarToLast`: no confiar solo en
+/// la instrucción del prompt, comprobar el texto ya generado) — quita vacíos/espacios de sobra y
+/// descarta cualquier sugerencia demasiado parecida a otra ya aceptada, quedándose con la primera
+/// de cada grupo de duplicados. Nunca rellena de vuelta hasta 3: mejor devolver 1-2 sugerencias
+/// buenas y distintas que 3 con dos casi idénticas.
+export function sanitizeSuggestions(suggestions: string[] | undefined): string[] {
+  const kept: string[] = [];
+  for (const raw of suggestions ?? []) {
+    const s = raw.trim();
+    if (!s) continue;
+    if (kept.some((k) => similarity(s, k) >= SUGGESTION_SIMILARITY_THRESHOLD)) continue;
+    kept.push(s);
+  }
+  return kept;
+}
+
 /// Narración-vs-mecánica, red de seguridad determinista (2026-07-31, bug real jugando en vivo:
 /// "la maza pesada golpea el cuello del orco, dejando un rastro de sangre" narrado en un turno
 /// donde `resolveExchange` (combatExchange.ts) resolvió 'ataque_falla' — la condición del NPC no
@@ -934,12 +1127,41 @@ export function isTooSimilarToLast(narration: string, lastNarrationText?: string
 // sin ningún intercambio mecánico todavía) se coló porque la lista solo cubría las formas en
 // pasado/presente de cada verbo (`atraves[oó]`/`atraviesa`), nunca el gerundio — el mismo hueco
 // existe en potencia para cualquier otro verbo de la lista ("golpeando", "hiriendo", "rebanando").
+// "golpea" (presente) añadido (dos bugs reales seguidos jugando en vivo, 2026-08-15): "la maza
+// golpea fuertemente el costado del Buitre Cenizo, dejando una herida visible" en un turno resuelto
+// 'ataque_falla' — el comentario original excluía "golpea" a propósito por "golpea el aire"/
+// "intenta golpear" (fallo genuino), pero eso dejaba pasar TAMBIÉN "golpea [al objetivo real]"
+// (acierto falso) — se reintroduce con una excepción explícita solo para "golpea el aire", el caso
+// concreto que motivó la exclusión, en vez de excluir la palabra entera.
+// "herida"/"se desploma" añadidos (mismos dos bugs, 2026-08-15): "dejando una herida visible" y,
+// en un segundo turno idéntico en su fondo, "el ave grita y se desploma al suelo" tras "clava su
+// maza en el cuello" — ninguno de los dos disparaba nada, mismo hueco de vocabulario que las rondas
+// anteriores (rastro de sangre, atravesando...), no de lógica.
 const COMBAT_HIT_LEAK_REGEX =
-  /\b(golpe[oó]|golpeando|impact[oó]|impactando|hiri[oó]|hiere|hiriendo|atraves[oó]|atraviesa|atravesando|reban[oó]|rebanando|degüell[oa]|hace sangrar|rastro de sangre|l[ií]nea de sangre|sangrando|sangra por)\b/i;
+  /\b(golpe[oó]|golpea(?!\s+el\s+aire)|golpeando|impact[oó]|impactando|hiri[oó]|hiere|hiriendo|herida|atraves[oó]|atraviesa|atravesando|reban[oó]|rebanando|degüell[oa]|hace sangrar|rastro de sangre|l[ií]nea de sangre|sangrando|sangra por|se desploma|desplom[oó]|desplomándose)\b/i;
 
 export function hasFalseCombatHit(narration: string, combatBothMissed?: boolean): boolean {
   if (!combatBothMissed) return false;
   return COMBAT_HIT_LEAK_REGEX.test(narration);
+}
+
+/// Inverso de `COMBAT_HIT_LEAK_REGEX`/`hasFalseCombatHit` (ver `combatRealHitLanded` en
+/// `TurnContext`) — vocabulario de esquiva/bloqueo LIMPIO, sin contacto alguno. Deliberadamente
+/// más corto y específico que una lista de "cualquier palabra de fallo" a propósito: en
+/// `golpes_mutuos`/`defensor_contragolpea` la narración legítimamente describe que UN lado falla
+/// su golpe mientras el otro sí conecta ("el orco falla su zarpazo, pero el hacha de Gorhorn sí
+/// encuentra su hombro") — un detector centrado en "falla"/"no consigue" a secas dispararía ahí
+/// sin necesidad. Esto solo caza esquiva/bloqueo CLARO y sin matices ("por un pelo", "en seco",
+/// "por completo"), la misma clase de frase que el bug real de referencia usó.
+// "por poco" a secas se probó y se quitó a propósito: "falla su zarpazo por poco margen" (un
+// fallo genuino de UN lado en golpes_mutuos/defensor_contragolpea, mientras el otro sí conecta)
+// también lo contiene — "por un pelo" es igual de idiomático para una esquiva limpia y no choca.
+const COMBAT_MISS_LEAK_REGEX =
+  /\b(esquiv[oa]|esquivando|esquiv[aá]ndol[oa]|elude|eludiendo|evade|evita el golpe|sortea|sorteando|por un pelo|ni siquiera (roza|toca)|sin (rozarlo|rozarla|tocarlo|tocarla)|detiene el golpe en seco|para en seco|se aparta a tiempo|bloquea por completo)\b/i;
+
+export function hasFalseCombatMiss(narration: string, combatRealHitLanded?: boolean): boolean {
+  if (!combatRealHitLanded) return false;
+  return COMBAT_MISS_LEAK_REGEX.test(narration);
 }
 
 /// Narración-vs-mecánica, mismo patrón que `hasFalseCombatHit` (2026-08-02, bug real jugando en

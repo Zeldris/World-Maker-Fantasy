@@ -5,6 +5,7 @@ import {
   rollInitiative,
   exchangeContextBlock,
   effectiveExchangeOutcome,
+  hitSeverityHint,
   type ExchangeParticipant,
 } from './combatExchange.js';
 import type { AttributeBlock } from './dice.js';
@@ -245,5 +246,25 @@ describe('rollInitiative', () => {
   it('un empate favorece al jugador (nunca deja la iniciativa sin decidir)', () => {
     mockRolls(R_FOR_ROLL_10, R_FOR_ROLL_10);
     expect(rollInitiative(BASE_ATTRIBUTES, BASE_ATTRIBUTES)).toEqual({ ganador: 'jugador', jugadorTirada: 15, npcTirada: 15 });
+  });
+});
+
+describe('hitSeverityHint', () => {
+  it('bug real jugando en vivo (2026-08-15): un golpe que solo baja a GRAVE no debe narrarse como si dejara al objetivo inerte/muerto', () => {
+    const hint = hitSeverityHint('Buitre Cenizo', 'GRAVE');
+    expect(hint).toContain('sigue consciente, en pie y capaz de seguir luchando');
+    expect(hint).toContain('NUNCA lo narres cayendo inerte, desmayado o muerto');
+  });
+
+  it('no añade nada si el golpe deja al objetivo INCAPACITADO — eso ya lo cubre npcFallsUnconsciousThisTurn', () => {
+    expect(hitSeverityHint('Buitre Cenizo', 'INCAPACITADO')).toBe('');
+  });
+
+  it('no añade nada si el golpe deja al objetivo MUERTO — mismo motivo', () => {
+    expect(hitSeverityHint('Buitre Cenizo', 'MUERTO')).toBe('');
+  });
+
+  it('deja claro que no hubo ningún daño real si el golpe no conectó (nuevaCondicion null)', () => {
+    expect(hitSeverityHint('Buitre Cenizo', null)).toBe('El golpe no conecta — no hay ningún daño real que narrar en Buitre Cenizo.');
   });
 });

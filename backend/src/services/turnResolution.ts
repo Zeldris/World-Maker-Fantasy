@@ -39,6 +39,7 @@ import {
   exchangeContextBlock,
   effectiveExchangeOutcome,
   independentExchangeContextBlock,
+  hitSeverityHint,
   type PendingNpcAttack,
   type InitiativeResult,
   type CombatExchangeDisplay,
@@ -908,7 +909,7 @@ function resolveCombatExchangePhase(input: CombatExchangePhaseInput): CombatExch
           }
         }
         exchangeNarrationBlock =
-          `${npcParaIntercambio.name} se defiende con "${npcDefensa.name}" (${npcDefensa.description}). ${independentExchangeContextBlock(independent, characterName, npcParaIntercambio.name)} ${utilityNarrationJugador} ${utilityNarrationNpc}`.trim();
+          `${npcParaIntercambio.name} se defiende con "${npcDefensa.name}" (${npcDefensa.description}). ${independentExchangeContextBlock(independent, characterName, npcParaIntercambio.name)} ${hitSeverityHint(npcParaIntercambio.name, npcTargetNewCondicion)} ${utilityNarrationJugador} ${utilityNarrationNpc}`.trim();
         combatExchangeRoll = independent.atacante;
         npcAbilityUsed = { npcName: npcParaIntercambio.name, abilityName: npcDefensa.name, rol: 'defensa' };
         combatExchangeDisplay = { atacanteEsJugador: true, atacante: independent.atacante, defensor: independent.defensor, resultado: 'independiente' };
@@ -2106,6 +2107,13 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   // AMBOS lados sin golpe — cualquier otro (`golpe_normal`/`golpe_pleno`/`golpes_mutuos`/
   // `defensor_contragolpea`) sí tiene un golpe real en algún lado, así que no aplica la red.
   const combatBothMissed = exchangeHappened && !npcAttackHits && !jugadorRecibeGolpe;
+  // Ver `hasFalseCombatMiss` (narrador.ts) — inverso del bug de arriba, bug real jugando en vivo
+  // (2026-08-15, captura: tirada 30 (Éxito) vs 11 (Fallo), 'golpe_pleno' por OUTCOME_TABLE, pero la
+  // narración describió al NPC "esquivándola por un pelo"). `npcAttackHits`/`jugadorRecibeGolpe` ya
+  // cubren entre los dos CUALQUIER golpe real que haya conectado en este intercambio, en cualquiera
+  // de las ramas de arriba (jugador ataca, NPC ataca, o contragolpe) — no hace falta recalcular
+  // nada nuevo, solo leer la misma señal desde el otro lado.
+  const combatRealHitLanded = exchangeHappened && (npcAttackHits || jugadorRecibeGolpe);
 
   // Narrar inconsciencia (docs/19-post-combate-y-recompensas-mision.md, pieza 1) — true SOLO en
   // el turno exacto en que el NPC pasa a INCAPACITADO/MUERTO (no si ya estaba así de antes), para
@@ -2115,6 +2123,12 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     (npcTargetNewCondicion === 'INCAPACITADO' || npcTargetNewCondicion === 'MUERTO') &&
     npcParaIntercambio?.condicionFisica !== 'INCAPACITADO' &&
     npcParaIntercambio?.condicionFisica !== 'MUERTO';
+
+  // Ver `jugadorRecibeGolpeEsteTurno` (narrador.ts) — bug real jugando en vivo, 2026-08-15: "acabé
+  // con el buitre pero se resistió al final dándome un golpe... la narración no lo ha explicado".
+  // Sin esto, un contragolpe/golpes_mutuos en el MISMO turno que remata al rival se pierde porque
+  // toda la atención del prompt ya se dirige a narrar la caída del rival (ver el bloque de arriba).
+  const jugadorRecibeGolpeEsteTurno = exchangeHappened && jugadorRecibeGolpe;
 
   // Anti-repetición de vocabulario/imágenes (ver comentario de `lastNarration` más arriba).
   if (lastNarration) {
@@ -2743,7 +2757,9 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     criticalFactsCount: contextBlocks.length,
     lastNarrationText: lastNarration?.text,
     combatBothMissed,
+    combatRealHitLanded,
     npcFallsUnconsciousThisTurn,
+    jugadorRecibeGolpeEsteTurno,
     combatNotYetResolved,
     possiblyFalseItemUseNames,
     possiblyResurrectedNpcNames,

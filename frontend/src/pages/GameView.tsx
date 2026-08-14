@@ -55,6 +55,7 @@ import {
   setItemSlot,
   getProfessionRecipes,
   getRecipesStatus,
+  requestSuggestions,
   type SaveDetail,
   type ClassifyResponse,
 } from '../lib/api'
@@ -134,9 +135,11 @@ export function GameView() {
   // TurnNarrateHandlers.onExchangeResolved, api.ts); null en cuanto el turno termina de resolverse
   // del todo (éxito o error), para que nunca sobreviva al siguiente turno sin intercambio.
   const [diceReveal, setDiceReveal] = useState<{ exchange: CombatExchangeInfo; npcName: string | null } | null>(null)
-  // Sugerencias de próxima acción (petición explícita, 2026-08-15) — 3 frases del último turno
-  // narrado, solo fuera de combate (ver SuggestionBar.tsx); [] = barra oculta.
+  // Sugerencias de próxima acción bajo demanda (petición explícita, 2026-08-15) — llamada aparte
+  // disparada por el botón "Sugerir" (ChatComposer.tsx), no dentro del turno normal (ver
+  // comentario de cabecera de `generateSuggestions`, backend narrador.ts); [] = barra oculta.
   const [suggestions, setSuggestions] = useState<string[]>([])
+  const [suggestionsLoading, setSuggestionsLoading] = useState(false)
   const [inventory, setInventory] = useState<InventoryItemInfo[]>([])
   // Pop-up de recolección (rediseño de profesiones, 2026-08-07) — null = cerrado.
   const [harvestModal, setHarvestModal] = useState<{ oficio: string; label: string } | null>(null)
@@ -1189,6 +1192,23 @@ export function GameView() {
     }
   }
 
+  // Sugerencias de próxima acción bajo demanda (petición explícita, 2026-08-15) — llamada aparte
+  // del turno normal, ver comentario de `suggestions` más arriba.
+  async function handleRequestSuggestions() {
+    if (!saveId || suggestionsLoading) return
+    setSuggestionsLoading(true)
+    try {
+      const { suggestions: newSuggestions } = await requestSuggestions(saveId)
+      setSuggestions(newSuggestions)
+    } catch {
+      // Sin sugerencias esta vez — la jugadora sigue pudiendo escribir su acción a mano, mismo
+      // criterio que `handleFleeAttempt` de arriba (fallo de la llamada en sí, no algo que romper
+      // el resto de la UI).
+    } finally {
+      setSuggestionsLoading(false)
+    }
+  }
+
   useEffect(() => {
     let cancelled = false
 
@@ -1375,7 +1395,10 @@ export function GameView() {
       setEnergia(newEnergia)
       setEnergiaMax(newEnergiaMax)
       setFictionalDate(newTimeLabel)
-      setSuggestions(narration.suggestions ?? [])
+      // Las sugerencias del turno anterior ya no aplican a la escena nueva — se limpian aquí
+      // (bajo demanda ahora, ver comentario de `suggestions` más arriba: se piden con su propio
+      // botón, no llegan solas con cada narración).
+      setSuggestions([])
       setQuests(updatedQuests)
       // Bug real (auditoría de deuda técnica 2026-08-04): construir/mejorar/fundar un edificio de
       // verdad en la DB no se veía en el mapa ni en el panel de Reino hasta recargar la partida
@@ -1912,12 +1935,16 @@ export function GameView() {
               "⚔️ Combatir / 🏃 Huir" ya en pantalla (combate detectado pero el popup todavía sin
               abrir, `combatOpen` false): mismo criterio que ya usa `composerDisabled`/el propio
               banner de arriba para esa combinación exacta de estados. */}
-          {!combateIniciado && <SuggestionBar suggestions={suggestions} onPick={(text) => composerRef.current?.setText(text)} />}
+          {!combateIniciado && (
+            <SuggestionBar suggestions={suggestions} onPick={(text) => composerRef.current?.setText(text)} loading={suggestionsLoading} />
+          )}
           <ChatComposer
             ref={composerRef}
             onChange={setInput}
             onSubmit={handleSubmit}
             disabled={characterThinking || !!busyUntil || (!!combateIniciado && !combatOpen)}
+            onRequestSuggestions={combateIniciado ? undefined : handleRequestSuggestions}
+            suggestionsLoading={suggestionsLoading}
           />
         </>
       )}
