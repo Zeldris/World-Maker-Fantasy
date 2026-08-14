@@ -89,10 +89,13 @@ function DiceSide({ label, side, startDelayMs }: { label: string; side: CombatEx
   return (
     <div className="flex flex-col items-center gap-1">
       <span className="max-w-[6rem] truncate text-2xs uppercase tracking-wide text-wood-500">{label}</span>
-      <span
-        className={`font-mono text-2xl font-bold tabular-nums ${landed ? `${GRADE_COLOR[grado]} ${GRADE_LAND_ANIM[grado]}` : 'text-wood-300'}`}
-      >
-        🎲{display ?? '?'}
+      <span className="flex items-center gap-2">
+        <span aria-hidden="true">🎲</span>
+        <span
+          className={`font-mono text-2xl font-bold tabular-nums ${landed ? `${GRADE_COLOR[grado]} ${GRADE_LAND_ANIM[grado]}` : 'text-wood-300'}`}
+        >
+          {display ?? '?'}
+        </span>
       </span>
       <span className="text-2xs text-wood-500">{attributeLabels[side.attribute]}</span>
     </div>
