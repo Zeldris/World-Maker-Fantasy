@@ -33,14 +33,32 @@ const SIDE_LABEL: Record<'claro' | 'con_coste' | 'fallo', string> = {
 // motor determinista, esto solo la explica en una frase (revisión de partida 2026-08-08, petición
 // explícita: "por qué perdiste o ganaste la tirada"). 'independiente' añadido 2026-08-13 (bug real:
 // faltaba, se veía en blanco para cualquier habilidad de utilidad/ANALISIS).
-const OUTCOME_LABEL: Record<CombatExchangeOutcome, string> = {
-  defensor_contragolpea: 'El ataque falla del todo, y la defensa responde con un golpe propio.',
-  ataque_falla: 'El ataque falla del todo.',
-  parada_en_seco: 'Parada en seco — bloqueado sin daño.',
-  golpes_mutuos: 'Golpes mutuos — los dos acusan algo.',
-  golpe_normal: 'El ataque conecta.',
-  golpe_pleno: 'Golpe pleno — conecta de lleno.',
-  independiente: 'Cada lado se juzga por su cuenta — no hay un bando que "gane" el intercambio.',
+//
+// Convertida a función con los números reales (bug real jugando en vivo, 2026-08-15: "he sacado yo
+// más y he perdido... esto está mal explicado" — la frase estática "El ataque falla del todo." no
+// decía POR QUÉ, así que un jugador con la tirada bruta más alta (13 vs 8) no entendía cómo había
+// "perdido" el intercambio contra un número menor; la clave es que cada lado compara su propio
+// resultado contra SU PROPIA dificultad, nunca contra el número del rival). Ahora cita los mismos
+// resultado/dificultad que ya se ven en las filas de abajo, para que la frase final cierre el
+// círculo en vez de repetir un genérico.
+function outcomeLabelFor(exchange: CombatExchangeInfo, nombreAtacante: string, nombreDefensor: string): string {
+  const { atacante, defensor } = exchange
+  switch (exchange.resultado) {
+    case 'ataque_falla':
+      return `El ataque de ${nombreAtacante} (${atacante.result}) no alcanza la dificultad que necesitaba (${atacante.difficulty}) — no llega a tocar a ${nombreDefensor}.`
+    case 'defensor_contragolpea':
+      return `El ataque de ${nombreAtacante} (${atacante.result}) no alcanza la dificultad que necesitaba (${atacante.difficulty}), pero la defensa de ${nombreDefensor} (${defensor.result}) supera la suya (${defensor.difficulty}) de sobra — responde con un golpe propio.`
+    case 'parada_en_seco':
+      return `${nombreDefensor} (${defensor.result}) supera de sobra la dificultad que necesitaba (${defensor.difficulty}) — bloquea o esquiva el ataque de ${nombreAtacante} sin daño.`
+    case 'golpes_mutuos':
+      return `${nombreAtacante} y ${nombreDefensor} superan cada uno su propia dificultad de forma pareja — los dos acusan algo.`
+    case 'golpe_normal':
+      return `El ataque de ${nombreAtacante} (${atacante.result}) supera su dificultad (${atacante.difficulty}) con más margen que la defensa de ${nombreDefensor} la suya (${defensor.difficulty}) — el golpe conecta.`
+    case 'golpe_pleno':
+      return `El ataque de ${nombreAtacante} (${atacante.result}) supera de sobra su dificultad (${atacante.difficulty}), y la defensa de ${nombreDefensor} falla del todo — el golpe conecta de lleno.`
+    case 'independiente':
+      return 'Cada lado se juzga por su cuenta — no hay un bando que "gane" el intercambio.'
+  }
 }
 
 // Rediseño (2026-08-13, petición explícita: "que salga más claro, attr vs attr, tirada de un att,
@@ -163,6 +181,8 @@ export function CombatExchangeBadge({ exchange, playerName, enemyName }: { excha
   const winnerIsJugador = ganador === 'jugador'
   const winnerIsEnemigo = ganador === 'enemigo'
   const winnerText = ganador === 'jugador' ? `Gana ${nombreJugador}` : ganador === 'enemigo' ? `Gana ${nombreEnemigo}` : ganador === 'empate' ? 'Empate' : null
+  const nombreAtacante = exchange.atacanteEsJugador ? nombreJugador : nombreEnemigo
+  const nombreDefensor = exchange.atacanteEsJugador ? nombreEnemigo : nombreJugador
   return (
     <div className="animate-stamp-in mt-2 overflow-hidden rounded-lg border border-iron-700 bg-wood-950/40 text-2xs">
       <div className="flex flex-wrap items-baseline justify-center gap-x-1.5 gap-y-0.5 border-b border-iron-800 px-2.5 py-1.5 font-sans font-semibold text-wood-500">
@@ -179,7 +199,14 @@ export function CombatExchangeBadge({ exchange, playerName, enemyName }: { excha
           <span className="font-normal text-wood-500">({nombreJugador})</span>{' '}
           <span className={winnerIsJugador ? 'font-bold text-wood-100' : 'font-mono'}>{jugador.result}</span>
         </span>
-        <span className="text-wood-600">vs</span>
+        {/* Aclaración explícita (bug real jugando en vivo, 2026-08-15: "he sacado yo más y he
+            perdido... esto está mal explicado") — el "13 vs 8" de arriba parece un cara a cara
+            directo, pero cada lado compite contra SU PROPIA dificultad (ver "necesitaba" en las
+            filas de abajo), no contra el número del rival: puedes sacar más que el otro lado y
+            aun así fallar tu propia dificultad, o sacar menos y aun así superar la tuya. */}
+        <TooltipAnchor text="Cada lado compara su tirada con su propia dificultad (ver 'necesitaba' abajo) — nunca directamente con el número del rival.">
+          <span className="text-wood-600 underline decoration-dotted decoration-wood-700 underline-offset-2">vs</span>
+        </TooltipAnchor>
         <span className={winnerIsEnemigo ? '' : 'opacity-70'}>
           <span className={attributeColorClasses[enemigo.attribute].text}>{attributeLabels[enemigo.attribute]}</span>{' '}
           <span className="font-normal text-wood-500">({nombreEnemigo})</span>{' '}
@@ -196,7 +223,7 @@ export function CombatExchangeBadge({ exchange, playerName, enemyName }: { excha
       </div>
       <p className="border-t border-iron-800 px-2.5 py-1.5 text-center font-sans text-wood-500">
         {winnerText && <span className="font-semibold text-wood-300">{winnerText} · </span>}
-        {OUTCOME_LABEL[exchange.resultado]}
+        {outcomeLabelFor(exchange, nombreAtacante, nombreDefensor)}
       </p>
     </div>
   )
