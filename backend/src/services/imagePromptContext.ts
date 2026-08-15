@@ -187,8 +187,10 @@ export async function loreContextFor(worldId: string, entityType: ImagePromptEnt
 
   if (entityType === 'construccion') {
     // Contenido estático en código (construction.ts), sin fila de BD — mismo patrón que 'ability'
-    // más abajo: se busca por `key`, el mismo slug que ya expone /world/:slug/enciclopedia.
-    const recipe = CONSTRUCTION_RECIPES.find((r) => r.key === entitySlug);
+    // más abajo: se busca por `key` (o por `imageSlug` si la receta define uno propio para
+    // imágenes, ver comentario del campo en construction.ts), el mismo slug que ya expone
+    // /world/:slug/enciclopedia.
+    const recipe = CONSTRUCTION_RECIPES.find((r) => r.key === entitySlug || r.imageSlug === entitySlug);
     if (!recipe) return null;
     return { name: recipe.name, loreContext: recipe.description };
   }

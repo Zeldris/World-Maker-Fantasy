@@ -33,6 +33,7 @@ const {
   findFuzzyStemMatch,
   resolveTravel,
   matchesAliasBoundary,
+  cardinalDirectionBetween,
 } = await import('./travel.js');
 type LocationNode = import('./travel.js').LocationNode;
 type LinkEdge = import('./travel.js').LinkEdge;
@@ -272,5 +273,49 @@ describe('resolveTravel — fallback de movimiento vago (sin destino nombrado)',
 
     const result = await resolveTravel({ action: 'Voy hacia la zona b', worldId: 'w1', currentLocationId: 'loc-a', attributes: ATTRS });
     expect(result?.toLocationId).toBe('loc-b');
+  });
+});
+
+describe('cardinalDirectionBetween', () => {
+  const ORIGIN = { x: 0, y: 0 };
+
+  it('este puro (dx>0, dy=0)', () => {
+    expect(cardinalDirectionBetween(ORIGIN, { x: 10, y: 0 })).toBe('este');
+  });
+
+  it('norte puro (dx=0, dy>0)', () => {
+    expect(cardinalDirectionBetween(ORIGIN, { x: 0, y: 10 })).toBe('norte');
+  });
+
+  it('oeste puro (dx<0, dy=0)', () => {
+    expect(cardinalDirectionBetween(ORIGIN, { x: -10, y: 0 })).toBe('oeste');
+  });
+
+  it('sur puro (dx=0, dy<0)', () => {
+    expect(cardinalDirectionBetween(ORIGIN, { x: 0, y: -10 })).toBe('sur');
+  });
+
+  it('noreste (dx>0, dy>0, diagonal exacta)', () => {
+    expect(cardinalDirectionBetween(ORIGIN, { x: 10, y: 10 })).toBe('noreste');
+  });
+
+  it('sureste (dx>0, dy<0, diagonal exacta)', () => {
+    expect(cardinalDirectionBetween(ORIGIN, { x: 10, y: -10 })).toBe('sureste');
+  });
+
+  it('suroeste (dx<0, dy<0, diagonal exacta)', () => {
+    expect(cardinalDirectionBetween(ORIGIN, { x: -10, y: -10 })).toBe('suroeste');
+  });
+
+  it('noroeste (dx<0, dy>0, diagonal exacta)', () => {
+    expect(cardinalDirectionBetween(ORIGIN, { x: -10, y: 10 })).toBe('noroeste');
+  });
+
+  it('un poco al norte de la diagonal noreste sigue siendo noreste (dentro del sector de 45°)', () => {
+    expect(cardinalDirectionBetween(ORIGIN, { x: 10, y: 12 })).toBe('noreste');
+  });
+
+  it('no depende del origen ser (0,0) — mismo desplazamiento relativo, mismo resultado', () => {
+    expect(cardinalDirectionBetween({ x: 5, y: 5 }, { x: 15, y: 5 })).toBe('este');
   });
 });

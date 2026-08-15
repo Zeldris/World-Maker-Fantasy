@@ -46,7 +46,8 @@ import {
 } from './combatExchange.js';
 import { npcCombatAbilitiesFor, chooseNpcAbility } from './npcCombatAbilities.js';
 import { detectHarvest, type HarvestMatch } from './harvest.js';
-import { detectItemReference, detectMedicalItemUse, detectEnergyItemUse, missingItemBlockFor } from './itemReference.js';
+import { detectItemReference, detectMedicalItemUse, detectEnergyItemUse, detectsCompassUse, missingItemBlockFor } from './itemReference.js';
+import { compassNarrationText, type CompassLinkInfo } from './compassNarration.js';
 import { energiaMaxFor, nextEnergia } from './energy.js';
 import { WEAPON_ABILITY_LEVEL_AVANZADA, dualWieldAdjustedDifficulty, weaponCategoryForRealAbilityName, type EquippedWeaponSlot } from './weaponAbilities.js';
 import { syncDynamicCombatAbilities } from './dynamicAbilities.js';
@@ -84,6 +85,7 @@ import {
   matchDestination,
   detectsTravelIntent,
   detectsVagueMovementIntent,
+  cardinalDirectionBetween,
   type TravelResolution,
 } from './travel.js';
 import { detectsRestIntent, type Produccion } from './timedActions.js';
@@ -2101,6 +2103,11 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   // cuando hubo intención de viaje real pero `travel` no se resolvió.
   let phantomTravelLocationNames: string[] = [];
 
+  // Texto determinista de "usar la Aguja de Cardo Brújula" (2026-08-15) — calculado más abajo, en
+  // cuanto se sabe `compassMatch`/`inventoryRows`, y se inserta como LogEntry aparte dentro de la
+  // transacción (mismo patrón que `questRewardNarrationFor`), nunca a través del Narrador.
+  let compassNarrationLine: string | null = null;
+
   // Ver `hasFalseCombatHit` (narrador.ts) — bug real jugando en vivo (2026-07-31, "sigo sin
   // hacerle daño al enemigo"): el intercambio resolvió 'ataque_falla' (ningún lado conecta) pero
   // la narración describió un golpe limpio de todos modos. Solo estos dos resultados dejan a
@@ -2383,6 +2390,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
           curaEnergia: true,
           equipSlot: true,
           effectKey: true,
+          aliases: true,
         },
       })
     : [];
@@ -2398,6 +2406,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
         curaEnergia: c.curaEnergia,
         equipSlot: c.equipSlot,
         effectKey: c.effectKey,
+        aliases: c.aliases,
       },
     ]),
   );
@@ -2462,6 +2471,41 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     .filter((i): i is { id: string; name: string; curaEnergia: number } => i.curaEnergia !== null);
   const energyItemMatch = detectEnergyItemUse(action, energyItemsInInventory);
   const energyItemRestoreAmount = energyItemMatch?.curaEnergia ?? null;
+  // Brújula (2026-08-15, feature de exploración): NO se consume al usarla (es una herramienta
+  // equipable, no un consumible) — solo dispara la narración determinista de rumbos más abajo, ver
+  // compassNarrationLine. Único objeto con este comportamiento hoy, así que se filtra por su propio
+  // catalogSlug en vez de un campo nuevo en ItemCatalog para un caso de uno solo.
+  const compassItemsInInventory = inventoryRows
+    .filter((i) => i.catalogSlug === 'aguja-cardo-brujula')
+    .map((i) => ({ id: i.id, name: i.name, aliases: catalogBySlug.get(i.catalogSlug!)?.aliases ?? [] }));
+  const compassMatch = detectsCompassUse(action, compassItemsInInventory);
+  if (compassMatch && !travel && currentLocationId) {
+    // Coordenadas reales (docs/13-escala-del-mundo.md, ver comentario de LocationInput en
+    // worldCatalog.ts) — sin ellas aquí o en el destino, ese camino simplemente no participa
+    // (falla cerrado; `compassNarrationText([])` ya da la frase de reserva si no queda ninguno).
+    const compassOrigin = await prisma.location.findUnique({ where: { id: currentLocationId }, select: { x: true, y: true } });
+    const linkRows =
+      compassOrigin?.x != null && compassOrigin?.y != null
+        ? await prisma.locationLink.findMany({
+            where: { OR: [{ fromId: currentLocationId }, { toId: currentLocationId }] },
+            include: { from: true, to: true },
+          })
+        : [];
+    const compassLinks: CompassLinkInfo[] = linkRows.flatMap((link) => {
+      const dest = link.fromId === currentLocationId ? link.to : link.from;
+      if (dest.x == null || dest.y == null || compassOrigin?.x == null || compassOrigin?.y == null) return [];
+      return [
+        {
+          direction: cardinalDirectionBetween({ x: compassOrigin.x, y: compassOrigin.y }, { x: dest.x, y: dest.y }),
+          toName: dest.name,
+          terreno: link.terreno,
+          minutosBase: link.minutosBase,
+        },
+      ];
+    });
+    const hasMap = inventoryRows.some((i) => i.catalogSlug === 'mapa-de-las-llanuras');
+    compassNarrationLine = compassNarrationText(compassLinks, hasMap);
+  }
   // Bug real jugando en vivo (2026-08-07, "he consumido una ración de comida y no ha desaparecido
   // del inventario" — también en combate): el efecto mecánico se aplicaba pero la fila de
   // InventoryItem nunca se tocaba. Consumido de verdad más abajo, DENTRO de la transacción (mismo
@@ -4005,6 +4049,24 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
         combate: !!enCombate,
       },
     });
+
+    if (compassNarrationLine) {
+      // Brújula (2026-08-15) — LogEntry aparte, construido a mano, NUNCA pasado por el Narrador:
+      // todo el contenido (dirección/destino/terreno) ya se sabe con certeza mecánica. Mismo
+      // patrón que la recompensa de misión de arriba, orden garantizado tras `mainLogEntry` vía
+      // `nextAfterMainLogCreatedAt`.
+      await tx.logEntry.create({
+        data: {
+          saveId,
+          channel: 'CHARACTER',
+          text: compassNarrationLine,
+          isPlayerAction: false,
+          timeLabel,
+          fictionalMinutes: nuevoFictionalMinutes,
+          createdAt: nextAfterMainLogCreatedAt(),
+        },
+      });
+    }
 
     if (result.leveledUp) {
       const attributeNote =

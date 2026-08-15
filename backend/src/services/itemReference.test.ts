@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { detectItemReference, detectMedicalItemUse, detectEnergyItemUse, detectsOwnedItemQuote } from './itemReference.js';
+import { detectItemReference, detectMedicalItemUse, detectEnergyItemUse, detectsOwnedItemQuote, detectsCompassUse } from './itemReference.js';
 
 describe('detectItemReference', () => {
   it('detecta un objeto de la lista curada que el personaje NO tiene', () => {
@@ -56,6 +56,30 @@ describe('detectEnergyItemUse', () => {
   it('matchea aunque la pila tenga sufijo de cantidad en el nombre', () => {
     const items = [{ id: 'item-racion', name: 'Ración de carne ahumada (3)', curaEnergia: 30 }];
     expect(detectEnergyItemUse("Uso 'Ración de carne ahumada'", items)).toEqual({ id: 'item-racion', curaEnergia: 30 });
+  });
+});
+
+describe('detectsCompassUse', () => {
+  const COMPASS_ITEMS = [{ id: 'item-aguja', name: 'Aguja de Cardo Brújula', aliases: ['aguja de cardo', 'brújula', 'cardo brújula'] }];
+
+  it('detecta el nombre completo del objeto', () => {
+    expect(detectsCompassUse('Uso mi aguja de cardo brújula', COMPASS_ITEMS)).toEqual({ id: 'item-aguja' });
+  });
+
+  it('detecta solo "brújula", el alias corto más natural', () => {
+    expect(detectsCompassUse('Consulto la brújula', COMPASS_ITEMS)).toEqual({ id: 'item-aguja' });
+  });
+
+  it('detecta el otro alias corto "aguja de cardo"', () => {
+    expect(detectsCompassUse('Saco la aguja de cardo', COMPASS_ITEMS)).toEqual({ id: 'item-aguja' });
+  });
+
+  it('sin ninguna mención del objeto, devuelve null', () => {
+    expect(detectsCompassUse('Sigo caminando', COMPASS_ITEMS)).toBeNull();
+  });
+
+  it('sin el objeto en la lista (no lo lleva encima), devuelve null aunque se mencione', () => {
+    expect(detectsCompassUse('Uso la brújula', [])).toBeNull();
   });
 });
 

@@ -92,7 +92,7 @@ describe('PATCH /saves/:id/inventario/:itemId — ranura compatible', () => {
   });
 
   it('rechaza un objeto con catálogo real pero SIN equipSlot asignado (no es equipable en absoluto)', async () => {
-    findFirstInventoryItem.mockResolvedValue({ id: 'item1', name: 'Cataplasma de salvia del polvo', catalogSlug: 'cataplasma-salvia', slot: null });
+    findFirstInventoryItem.mockResolvedValue({ id: 'item1', name: 'Cataplasma de salvia del polvo', catalogSlug: 'cataplasma-salvia-polvo', slot: null });
     findUniqueItemCatalog.mockResolvedValue({ equipSlot: null, requisitos: null });
     const app = await buildApp();
 

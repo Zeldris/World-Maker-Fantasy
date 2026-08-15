@@ -133,6 +133,24 @@ export function matchDestination(action: string, locations: LocationNode[], excl
   return candidates[0]?.loc;
 }
 
+export type CardinalDirection = 'norte' | 'noreste' | 'este' | 'sureste' | 'sur' | 'suroeste' | 'oeste' | 'noroeste';
+
+const CARDINAL_SECTORS: CardinalDirection[] = ['este', 'noreste', 'norte', 'noroeste', 'oeste', 'suroeste', 'sur', 'sureste'];
+
+/// Dirección cardinal (8 sectores de 45°) del punto `to` visto desde `from`, en coordenadas
+/// x=este/y=norte (petición explícita, 2026-08-15, para la Aguja de Cardo Brújula). `atan2(dy,dx)`
+/// da el ángulo en radianes desde el eje este (0°) girando hacia el norte (90°); se desplaza medio
+/// sector (22.5°) antes de dividir entre los 8 sectores para que cada uno quede centrado en su
+/// dirección exacta en vez de empezar en ella.
+export function cardinalDirectionBetween(from: { x: number; y: number }, to: { x: number; y: number }): CardinalDirection {
+  const dx = to.x - from.x;
+  const dy = to.y - from.y;
+  const angleDeg = (Math.atan2(dy, dx) * 180) / Math.PI;
+  const normalizedDeg = (angleDeg + 360) % 360;
+  const sectorIndex = Math.floor((normalizedDeg + 22.5) / 45) % 8;
+  return CARDINAL_SECTORS[sectorIndex];
+}
+
 export interface LinkEdge {
   fromId: string;
   toId: string;

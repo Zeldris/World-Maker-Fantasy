@@ -120,7 +120,7 @@ export const ANTIDOTE_RECIPE: CraftingRecipe = {
   location: null,
   ingredients: [
     { match: { kind: 'exact', catalogSlug: 'manojo-salvia-polvo' }, cantidad: 1, label: 'manojo de salvia del polvo' },
-    { match: { kind: 'exact', catalogSlug: 'petalos-flor-ceniza' }, cantidad: 1, label: 'pétalos de Flor de Ceniza' },
+    { match: { kind: 'exact', catalogSlug: 'infusion-petalos-flor-ceniza' }, cantidad: 1, label: 'pétalos de Flor de Ceniza' },
   ],
   resultName: 'Contraveneno de salvia y ceniza',
   resultCatalogSlug: 'contraveneno-salvia-ceniza',
@@ -169,9 +169,12 @@ const FIELD_TORCH_RECIPE: CraftingRecipe = {
 export const IRON_INGOT_RECIPE: CraftingRecipe = {
   key: 'ironIngot',
   verbRegex: /fund|forj|refin|derret/,
-  nounRegex: /lingote.*hierro|hierro.*lingote/,
+  // Excluye "imantado" (2026-08-15, evita ambigüedad con MAGNETIZED_IRON_INGOT_RECIPE de abajo —
+  // sin esto, "quiero forjar el lingote de hierro imantado" disparaba las dos recetas a la vez,
+  // cada una comprobando sus propios ingredientes por separado).
+  nounRegex: /^(?!.*imantad).*(?:lingote.*hierro|hierro.*lingote)/,
   location: 'campamento-serhu',
-  ingredients: [{ match: { kind: 'exact', catalogSlug: 'mena-de-hierro' }, cantidad: 4, label: 'mena de hierro' }],
+  ingredients: [{ match: { kind: 'exact', catalogSlug: 'mena-hierro-llanuras' }, cantidad: 4, label: 'mena de hierro' }],
   resultName: 'Lingote de hierro',
   resultCatalogSlug: 'lingote-de-hierro',
   resultDescription: 'Metal fundido en la fragua del campamento y colado en un molde sencillo — listo para forjar.',
@@ -182,6 +185,91 @@ export const IRON_INGOT_RECIPE: CraftingRecipe = {
     'El personaje quiere fundir mena de hierro en un lingote, pero no puede hacerlo ahora mismo (hace falta estar en el Campamento del Clan Serhu y llevar al menos 4 fragmentos de mena de hierro) — narra que lo intenta o lo considera, pero no que lo funde de verdad.',
   narrationDo:
     'El personaje funde su mena de hierro en la fragua del campamento, colándola en un molde sencillo hasta que enfría en un lingote — narra la escena (el calor, el fuelle, el metal al rojo) con el peso que merece. El objeto ya se gestiona automáticamente por el backend.',
+};
+
+// Tres recetas nuevas (2026-08-15, petición explícita: "estos 3 no deberían ser extraibles sino
+// crafteables" — la Aguja de Cardo Brújula y el Saquito de arena imán, que antes salían directos
+// de extraer Cardo Brújula/Arena Imán, ver docs de HarvestYield en worldCatalog.ts). La Esquirla
+// celeste caída se queda como extracción rara tal cual estaba, no forma parte de este cambio.
+
+// Lingote de hierro imantado — paso intermedio para la Aguja, misma fragua/oficio que el lingote de
+// hierro normal (IRON_INGOT_RECIPE), solo que fundido junto a arena imán. `orMatch` (2026-08-15,
+// petición explícita: "el saquito... sirve como si fueran 4 montones de imán pero ocupando solo 1
+// slot") — 4 Puñado de arena imán o, más cómodo, 1 Saquito de arena imán ya crafteado.
+export const MAGNETIZED_IRON_INGOT_RECIPE: CraftingRecipe = {
+  key: 'magnetizedIronIngot',
+  verbRegex: /fund|forj|refin|derret/,
+  nounRegex: /lingote.*imantad|imantad.*lingote|hierro imantado/,
+  location: 'campamento-serhu',
+  ingredients: [
+    { match: { kind: 'exact', catalogSlug: 'mena-hierro-llanuras' }, cantidad: 1, label: 'mena de hierro' },
+    {
+      match: { kind: 'exact', catalogSlug: 'punado-arena-iman' },
+      cantidad: 4,
+      label: 'puñado de arena imán',
+      orMatch: { match: { kind: 'exact', catalogSlug: 'saquito-arena-iman' }, unitsPerMatch: 4 },
+    },
+  ],
+  resultName: 'Lingote de hierro imantado',
+  resultCatalogSlug: 'lingote-hierro-imantado',
+  resultDescription: 'Mena de hierro fundida junto a arena imán en la fragua del campamento — conserva un tirón magnético débil pero constante.',
+  tier: 2,
+  requisitos: { fuerza: 8 },
+  oficio: 'herrero-orco-llanuras',
+  narrationWant:
+    'El personaje quiere fundir un lingote de hierro imantado, pero no puede hacerlo ahora mismo (hace falta estar en el Campamento del Clan Serhu, llevar mena de hierro y 4 puñados de arena imán —o un saquito ya hecho— encima) — narra que lo intenta o lo considera, pero no que lo funde de verdad.',
+  narrationDo:
+    'El personaje funde su mena de hierro junto a la arena imán en la fragua del campamento, colándola en un molde sencillo — narra la escena (el calor, el tirón magnético al enfriar) con el peso que merece. El objeto ya se gestiona automáticamente por el backend.',
+};
+
+// Aguja de Cardo Brújula — 2 Cardo Brújula + 1 Lingote de hierro imantado, misma fragua/oficio que
+// el lingote (petición explícita confirmada, 2026-08-15: trabajo de precisión sobre metal, no
+// alquimia). Antes salía directa de extraer Cardo Brújula; ahora la extracción solo da la planta en
+// bruto (ver HarvestYield 'cardo-brujula' en worldCatalog.ts).
+export const COMPASS_NEEDLE_RECIPE: CraftingRecipe = {
+  key: 'compassNeedle',
+  verbRegex: /forj|fabric|monta|tall|crear|creo/,
+  nounRegex: /aguja.*cardo|cardo.*aguja|aguja.*brujula|brujula.*aguja/,
+  location: 'campamento-serhu',
+  ingredients: [
+    { match: { kind: 'exact', catalogSlug: 'cardo-brujula' }, cantidad: 2, label: 'Cardo Brújula' },
+    { match: { kind: 'exact', catalogSlug: 'lingote-hierro-imantado' }, cantidad: 1, label: 'lingote de hierro imantado' },
+  ],
+  resultName: 'Aguja de Cardo Brújula',
+  resultCatalogSlug: 'aguja-cardo-brujula',
+  resultDescription: 'Aguja imantada natural montada a mano en la fragua del campamento: colgada de un hilo señala siempre el mismo rumbo, incluso en plena tormenta.',
+  tier: 2,
+  requisitos: { destreza: 8 },
+  oficio: 'herrero-orco-llanuras',
+  narrationWant:
+    'El personaje quiere forjar una Aguja de Cardo Brújula, pero no puede hacerlo ahora mismo (hace falta estar en el Campamento del Clan Serhu y llevar 2 Cardo Brújula y un lingote de hierro imantado encima) — narra que lo intenta o lo considera, pero no que la forja de verdad.',
+  narrationDo:
+    'El personaje monta la Aguja de Cardo Brújula en la fragua del campamento, tallando el cardo alrededor del lingote imantado hasta dejarla colgada de un hilo — narra la escena con el peso que merece. El objeto ya se gestiona automáticamente por el backend.',
+};
+
+// Saquito de arena imán — oficio de peletería (petición explícita, 2026-08-15: "el saquito se hace
+// con peletería de los orcos de las llanuras" → curtidor-orcos-llanuras, el oficio real de
+// peletería). Ingrediente de cuero por CATEGORÍA (no exacto): no existe un "Cuero" genérico en el
+// catálogo, cualquier piel en bruto sirve (mismo criterio que STONE_BLOCK_RECIPE con "piedra").
+export const SAND_POUCH_RECIPE: CraftingRecipe = {
+  key: 'sandPouch',
+  verbRegex: /cos[eo]|confeccion|fabric|prepar|crear|creo/,
+  nounRegex: /saquito.*aren|aren.*saquito|saquito imant/,
+  location: 'campamento-serhu',
+  ingredients: [
+    { match: { kind: 'category', tipo: 'RECURSO', category: 'piel' }, cantidad: 1, label: 'piel curtida' },
+    { match: { kind: 'exact', catalogSlug: 'punado-arena-iman' }, cantidad: 2, label: 'puñado de arena imán' },
+  ],
+  resultName: 'Saquito de arena imán',
+  resultCatalogSlug: 'saquito-arena-iman',
+  resultDescription: 'Saquito de cuero curtido cosido a mano y relleno de arena imán — los herreros goirntes pagan bien por uno.',
+  tier: 1,
+  requisitos: { destreza: 6 },
+  oficio: 'curtidor-orcos-llanuras',
+  narrationWant:
+    'El personaje quiere coser un saquito de arena imán, pero no puede hacerlo ahora mismo (hace falta estar en el Campamento del Clan Serhu y llevar una piel curtida y 2 puñados de arena imán encima) — narra que lo intenta o lo considera, pero no que lo cose de verdad.',
+  narrationDo:
+    'El personaje cose el saquito de cuero curtido y lo rellena con su arena imán aquí mismo, en el Campamento del Clan Serhu — narra la escena con naturalidad. El objeto ya se gestiona automáticamente por el backend.',
 };
 
 // Receta de refinado nueva (2026-07-29, petición explícita, ejemplo dado por la usuaria:
@@ -224,7 +312,7 @@ export const FIRST_AID_BANDAGE_RECIPE: CraftingRecipe = {
   location: null,
   ingredients: [{ match: { kind: 'exact', catalogSlug: 'manojo-salvia-polvo' }, cantidad: 1, label: 'manojo de salvia del polvo' }],
   resultName: 'Vendaje improvisado',
-  resultCatalogSlug: 'vendaje-improvisado',
+  resultCatalogSlug: 'vendaje-improvisado-orcos-llanuras',
   resultDescription: 'Tiras de tela atadas sobre un manojo machacado de salvia del polvo — primeros auxilios de campaña, lo justo para dejar de desangrarse.',
   tier: 1,
   oficio: 'primeros-auxilios-orcos-llanuras',
@@ -258,7 +346,7 @@ export const BASIC_POULTICE_RECIPE: CraftingRecipe = {
   location: null,
   ingredients: [
     { match: { kind: 'exact', catalogSlug: 'manojo-salvia-polvo' }, cantidad: 1, label: 'manojo de salvia del polvo' },
-    { match: { kind: 'exact', catalogSlug: 'petalos-flor-ceniza' }, cantidad: 1, label: 'pétalos de Flor de Ceniza' },
+    { match: { kind: 'exact', catalogSlug: 'infusion-petalos-flor-ceniza' }, cantidad: 1, label: 'pétalos de Flor de Ceniza' },
   ],
   resultName: 'Cataplasma básica de salvia',
   resultCatalogSlug: 'cataplasma-basica-salvia',
@@ -278,7 +366,7 @@ export const COMPLETE_POULTICE_RECIPE: CraftingRecipe = {
   location: null,
   ingredients: [
     { match: { kind: 'exact', catalogSlug: 'manojo-salvia-polvo' }, cantidad: 2, label: 'manojo de salvia del polvo' },
-    { match: { kind: 'exact', catalogSlug: 'petalos-flor-ceniza' }, cantidad: 1, label: 'pétalos de Flor de Ceniza' },
+    { match: { kind: 'exact', catalogSlug: 'infusion-petalos-flor-ceniza' }, cantidad: 1, label: 'pétalos de Flor de Ceniza' },
   ],
   resultName: 'Cataplasma completa de salvia y ceniza',
   resultCatalogSlug: 'cataplasma-completa-salvia-ceniza',
@@ -372,6 +460,9 @@ export const CRAFTING_RECIPES: CraftingRecipe[] = [
   ANTIDOTE_RECIPE,
   FIELD_TORCH_RECIPE,
   IRON_INGOT_RECIPE,
+  MAGNETIZED_IRON_INGOT_RECIPE,
+  COMPASS_NEEDLE_RECIPE,
+  SAND_POUCH_RECIPE,
   STONE_BLOCK_RECIPE,
   FIRST_AID_BANDAGE_RECIPE,
   RED_SPIKE_INFUSION_RECIPE,

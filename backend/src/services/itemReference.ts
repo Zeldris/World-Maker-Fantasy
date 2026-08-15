@@ -111,6 +111,22 @@ export function detectEnergyItemUse(action: string, energyItems: { id: string; n
   return { id: best.id, curaEnergia: best.curaEnergia };
 }
 
+export interface CompassItemMatch {
+  id: string;
+}
+
+/// Detecta si la acción usa de verdad la Aguja de Cardo Brújula (2026-08-15, feature de
+/// exploración: narración determinista de rumbos, ver turnResolution.ts). Mismo patrón que
+/// `detectEnergyItemUse` (nombre real del objeto equipado/en inventario, normalizeText +
+/// baseNameOf), pero además contra los ALIASES del catálogo (mismo criterio que
+/// `detectItemReference`) — el nombre completo "Aguja de Cardo Brújula" es largo, y el jugador
+/// dirá simplemente "uso la brújula" mucho más a menudo que el nombre entero.
+export function detectsCompassUse(action: string, compassItems: { id: string; name: string; aliases: string[] }[]): CompassItemMatch | null {
+  const normalized = normalizeText(action);
+  const match = compassItems.find((item) => [baseNameOf(item.name), ...item.aliases].some((candidate) => normalized.includes(normalizeText(candidate))));
+  return match ? { id: match.id } : null;
+}
+
 /// Detecta si la acción cita, entre comillas simples, el nombre EXACTO de un objeto que el
 /// personaje ya lleva en su inventario — mismo patrón que `explicitTarget` (turn.ts/
 /// turnResolution.ts) para NPCs objetivo. Bug real (auditoría 2026-07-30, "revisar partida"):

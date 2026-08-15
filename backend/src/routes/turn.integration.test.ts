@@ -875,13 +875,13 @@ describe('Construcción determinista: campamento', () => {
 
     expect(narrateAction).not.toHaveBeenCalled();
     const body = lastNdjsonLine(narrateRes.payload);
-    expect(body.narration).toEqual({ narration: expect.stringContaining('campamento'), newFacts: [] });
+    expect(body.narration).toEqual({ narration: expect.stringContaining('Campamento'), newFacts: [] });
 
     const building = await prisma.building.findFirstOrThrow({ where: { saveId } });
     expect(building.recipeKey).toBe('campamento');
     expect(building.locationId).toBe(locationId);
     expect(building.status).toBe('ACTIVO');
-    expect(building.name).toBe('un campamento base');
+    expect(building.name).toBe('Campamento Base Orco de las Llanuras');
 
     // Los 3 materiales se consumieron EXACTOS (20/10/5, sin remanente) — no debe quedar nada.
     const inventoryAfter = await prisma.inventoryItem.findMany({ where: { saveId } });

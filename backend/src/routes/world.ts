@@ -288,16 +288,20 @@ function buildClassesSection(ctx: EnciclopediaBuildContext) {
 // (HabilidadesPanel.tsx), así que la Enciclopedia pasa a ser el único sitio que enseña el roster
 // completo con su requisito de nivel.
 function buildConstructionRecipesSection(ctx: EnciclopediaBuildContext) {
-  return CONSTRUCTION_RECIPES.map(({ key, name, description, raza, oficio, tier, requirements }) => ({
-    key,
+  return CONSTRUCTION_RECIPES.map(({ key, imageSlug, name, description, raza, oficio, tier, requirements }) => ({
+    // `imageSlug ?? key` a propósito (2026-08-15): el frontend usa este `key` tanto para pedir la
+    // imagen ya subida como para pedir generar un prompt nuevo — los dos caminos tienen que usar
+    // el MISMO slug o "Regenerar" en la Enciclopedia crearía una fila de ImagePrompt bajo un slug
+    // distinto al que `imageUrlsFor` mira de verdad.
+    key: imageSlug ?? key,
     name,
     description,
     raza: raza ?? null,
     oficio: oficio ?? null,
     tier: tier ?? null,
     requirements,
-    imagePrompts: ctx.imagePromptsFor('construccion', key),
-    imageUrls: imageUrlsFor('construccion', key),
+    imagePrompts: ctx.imagePromptsFor('construccion', imageSlug ?? key),
+    imageUrls: imageUrlsFor('construccion', imageSlug ?? key),
   }));
 }
 

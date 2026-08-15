@@ -23,6 +23,9 @@ const gargantuaArmor = recipe('gargantuaArmor');
 const antidote = recipe('antidote');
 const fieldTorch = recipe('fieldTorch');
 const ironIngot = recipe('ironIngot');
+const magnetizedIronIngot = recipe('magnetizedIronIngot');
+const compassNeedle = recipe('compassNeedle');
+const sandPouch = recipe('sandPouch');
 const stoneBlock = recipe('stoneBlock');
 const firstAidBandage = recipe('firstAidBandage');
 const redSpikeInfusion = recipe('redSpikeInfusion');
@@ -42,15 +45,19 @@ const catalogBySlug = new Map<string, CatalogLookup>([
   ['placa-osea-gargantua', { tipo: 'RECURSO', category: 'hueso' }],
   ['cuerda-tendon', { tipo: 'EQUIPABLE', category: 'herramienta' }],
   ['manojo-salvia-polvo', { tipo: 'CONSUMIBLE', category: 'medicinal' }],
-  ['petalos-flor-ceniza', { tipo: 'CONSUMIBLE', category: 'medicinal' }],
+  ['infusion-petalos-flor-ceniza', { tipo: 'CONSUMIBLE', category: 'medicinal' }],
   ['lena-matorral-cuerno', { tipo: 'RECURSO', category: 'madera' }],
   ['resina-trepador-ocaso', { tipo: 'RECURSO', category: 'resina' }],
-  ['mena-de-hierro', { tipo: 'RECURSO', category: 'mena' }],
+  ['mena-hierro-llanuras', { tipo: 'RECURSO', category: 'mena' }],
   ['piedra', { tipo: 'RECURSO', category: 'piedra' }],
   ['odre-agua', { tipo: 'EQUIPABLE', category: 'herramienta' }],
   ['grano-espiga-roja', { tipo: 'CONSUMIBLE', category: 'consumible' }],
   ['piel-gargantua', { tipo: 'RECURSO', category: 'piel' }],
   ['totem-clan-roto', { tipo: 'NARRATIVO', category: 'cosmetico' }],
+  ['punado-arena-iman', { tipo: 'RECURSO', category: 'piedra' }],
+  ['saquito-arena-iman', { tipo: 'NARRATIVO', category: 'valor' }],
+  ['cardo-brujula', { tipo: 'RECURSO', category: 'hierba' }],
+  ['lingote-hierro-imantado', { tipo: 'MATERIAL', category: 'metal' }],
 ]);
 
 function row(id: string, catalogSlug: string, cantidad?: number): InventoryRowLike {
@@ -58,7 +65,7 @@ function row(id: string, catalogSlug: string, cantidad?: number): InventoryRowLi
 }
 
 describe('CRAFTING_RECIPES', () => {
-  it('tiene las 14 recetas esperadas, cada una con una clave única', () => {
+  it('tiene las 17 recetas esperadas, cada una con una clave única', () => {
     expect(CRAFTING_RECIPES.map((r) => r.key)).toEqual([
       'axeRepair',
       'smokeMeat',
@@ -66,6 +73,9 @@ describe('CRAFTING_RECIPES', () => {
       'antidote',
       'fieldTorch',
       'ironIngot',
+      'magnetizedIronIngot',
+      'compassNeedle',
+      'sandPouch',
       'stoneBlock',
       'firstAidBandage',
       'redSpikeInfusion',
@@ -119,6 +129,29 @@ describe('detectsCraftIntent', () => {
     expect(detectsCraftIntent(ironIngot, 'Fundo mi mena en un lingote de hierro')).toBe(true);
     expect(detectsCraftIntent(ironIngot, 'Quiero forjar el lingote de hierro')).toBe(true);
     expect(detectsCraftIntent(ironIngot, 'Fundo mi peto')).toBe(false);
+  });
+
+  it('detecta intención de fundir un lingote de hierro imantado, distinto del normal (2026-08-15)', () => {
+    expect(detectsCraftIntent(magnetizedIronIngot, 'Fundo un lingote de hierro imantado')).toBe(true);
+    expect(detectsCraftIntent(magnetizedIronIngot, 'Quiero forjar el hierro imantado')).toBe(true);
+    expect(detectsCraftIntent(magnetizedIronIngot, 'Fundo mi mena en un lingote de hierro')).toBe(false);
+  });
+
+  it('"lingote de hierro imantado" ya NO dispara la receta normal (nounRegex excluye "imantado" a propósito, evita ambigüedad)', () => {
+    expect(detectsCraftIntent(ironIngot, 'Fundo un lingote de hierro imantado')).toBe(false);
+    expect(detectsCraftIntent(ironIngot, 'Fundo mi mena en un lingote de hierro')).toBe(true);
+  });
+
+  it('detecta intención de forjar la Aguja de Cardo Brújula (2026-08-15)', () => {
+    expect(detectsCraftIntent(compassNeedle, 'Forjo una aguja de cardo brújula')).toBe(true);
+    expect(detectsCraftIntent(compassNeedle, 'Quiero montar la aguja de cardo')).toBe(true);
+    expect(detectsCraftIntent(compassNeedle, 'Forjo un hacha')).toBe(false);
+  });
+
+  it('detecta intención de coser el Saquito de arena imán (2026-08-15)', () => {
+    expect(detectsCraftIntent(sandPouch, 'Coso un saquito de arena imán')).toBe(true);
+    expect(detectsCraftIntent(sandPouch, 'Confecciono el saquito imantado')).toBe(true);
+    expect(detectsCraftIntent(sandPouch, 'Coso un peto')).toBe(false);
   });
 
   it('detecta intención de tallar un bloque de piedra', () => {
@@ -190,7 +223,7 @@ describe('canCraft — ingrediente exacto (catalogSlug concreto)', () => {
   });
   it('no exige ubicación en recetas sin condición de sitio', () => {
     expect(canCraft(smokeMeat, 'cualquier-sitio', [row('1', 'racion-carne')], catalogBySlug, attrs, secondary)).toBe(true);
-    expect(canCraft(antidote, null, [row('1', 'manojo-salvia-polvo'), row('2', 'petalos-flor-ceniza')], catalogBySlug, attrs, secondary)).toBe(true);
+    expect(canCraft(antidote, null, [row('1', 'manojo-salvia-polvo'), row('2', 'infusion-petalos-flor-ceniza')], catalogBySlug, attrs, secondary)).toBe(true);
     expect(
       canCraft(fieldTorch, null, [row('1', 'lena-matorral-cuerno'), row('2', 'resina-trepador-ocaso')], catalogBySlug, attrs, secondary),
     ).toBe(true);
@@ -220,17 +253,17 @@ describe('canCraft — recetas de primeros auxilios (2026-08-13)', () => {
   });
   it('cataplasma básica exige 1 manojo de salvia + 1 pétalos de Flor de Ceniza', () => {
     expect(
-      canCraft(basicPoultice, null, [row('1', 'manojo-salvia-polvo'), row('2', 'petalos-flor-ceniza')], catalogBySlug, attrs, secondary),
+      canCraft(basicPoultice, null, [row('1', 'manojo-salvia-polvo'), row('2', 'infusion-petalos-flor-ceniza')], catalogBySlug, attrs, secondary),
     ).toBe(true);
     expect(canCraft(basicPoultice, null, [row('1', 'manojo-salvia-polvo')], catalogBySlug, attrs, secondary)).toBe(false);
   });
   it('cataplasma completa exige 2 manojos de salvia + 1 pétalos de Flor de Ceniza — la receta final, más exigente', () => {
     expect(
-      canCraft(completePoultice, null, [row('1', 'manojo-salvia-polvo', 2), row('2', 'petalos-flor-ceniza')], catalogBySlug, attrs, secondary),
+      canCraft(completePoultice, null, [row('1', 'manojo-salvia-polvo', 2), row('2', 'infusion-petalos-flor-ceniza')], catalogBySlug, attrs, secondary),
     ).toBe(true);
     // Solo 1 manojo (lo que basta para la básica) no llega para la completa.
     expect(
-      canCraft(completePoultice, null, [row('1', 'manojo-salvia-polvo', 1), row('2', 'petalos-flor-ceniza')], catalogBySlug, attrs, secondary),
+      canCraft(completePoultice, null, [row('1', 'manojo-salvia-polvo', 1), row('2', 'infusion-petalos-flor-ceniza')], catalogBySlug, attrs, secondary),
     ).toBe(false);
   });
 });
@@ -241,17 +274,61 @@ describe('canCraft — ingrediente fungible por categoría (bloque de piedra)', 
     expect(canCraft(stoneBlock, null, [row('1', 'piedra', 4)], catalogBySlug, attrs, secondary)).toBe(false);
   });
   it('un ingrediente exacto de otra receta (mena de hierro) no cuenta como piedra', () => {
-    expect(canCraft(stoneBlock, null, [row('1', 'mena-de-hierro', 5)], catalogBySlug, attrs, secondary)).toBe(false);
+    expect(canCraft(stoneBlock, null, [row('1', 'mena-hierro-llanuras', 5)], catalogBySlug, attrs, secondary)).toBe(false);
   });
 });
 
 describe('canCraft — ironIngot exige mena de hierro exacta y la fragua del campamento', () => {
   it('funde el lingote con 4 de mena en el campamento', () => {
-    expect(canCraft(ironIngot, 'campamento-serhu', [row('1', 'mena-de-hierro', 4)], catalogBySlug, attrs, secondary)).toBe(true);
+    expect(canCraft(ironIngot, 'campamento-serhu', [row('1', 'mena-hierro-llanuras', 4)], catalogBySlug, attrs, secondary)).toBe(true);
   });
   it('no funde fuera del campamento ni con menos de 4', () => {
-    expect(canCraft(ironIngot, 'hondonada-del-eco', [row('1', 'mena-de-hierro', 4)], catalogBySlug, attrs, secondary)).toBe(false);
-    expect(canCraft(ironIngot, 'campamento-serhu', [row('1', 'mena-de-hierro', 3)], catalogBySlug, attrs, secondary)).toBe(false);
+    expect(canCraft(ironIngot, 'hondonada-del-eco', [row('1', 'mena-hierro-llanuras', 4)], catalogBySlug, attrs, secondary)).toBe(false);
+    expect(canCraft(ironIngot, 'campamento-serhu', [row('1', 'mena-hierro-llanuras', 3)], catalogBySlug, attrs, secondary)).toBe(false);
+  });
+});
+
+describe('canCraft — lingote de hierro imantado, aguja de cardo brújula y saquito de arena imán (2026-08-15)', () => {
+  it('lingote imantado: 1 mena + 4 puñados de arena imán, en el campamento', () => {
+    const rows = [row('1', 'mena-hierro-llanuras'), row('2', 'punado-arena-iman', 4)];
+    expect(canCraft(magnetizedIronIngot, 'campamento-serhu', rows, catalogBySlug, attrs, secondary)).toBe(true);
+    expect(canCraft(magnetizedIronIngot, 'hondonada-del-eco', rows, catalogBySlug, attrs, secondary)).toBe(false);
+    expect(canCraft(magnetizedIronIngot, 'campamento-serhu', [row('1', 'mena-hierro-llanuras'), row('2', 'punado-arena-iman', 3)], catalogBySlug, attrs, secondary)).toBe(false);
+  });
+  it('lingote imantado: 1 saquito de arena imán (orMatch) equivale a los 4 puñados', () => {
+    const rows = [row('1', 'mena-hierro-llanuras'), row('2', 'saquito-arena-iman')];
+    expect(canCraft(magnetizedIronIngot, 'campamento-serhu', rows, catalogBySlug, attrs, secondary)).toBe(true);
+  });
+  it('aguja de cardo brújula: 2 Cardo Brújula + 1 lingote imantado, en el campamento', () => {
+    const rows = [row('1', 'cardo-brujula', 2), row('2', 'lingote-hierro-imantado')];
+    expect(canCraft(compassNeedle, 'campamento-serhu', rows, catalogBySlug, attrs, secondary)).toBe(true);
+    expect(canCraft(compassNeedle, 'hondonada-del-eco', rows, catalogBySlug, attrs, secondary)).toBe(false);
+    expect(canCraft(compassNeedle, 'campamento-serhu', [row('1', 'cardo-brujula', 1), row('2', 'lingote-hierro-imantado')], catalogBySlug, attrs, secondary)).toBe(false);
+  });
+  it('saquito de arena imán: 1 piel (cualquiera, por categoría) + 2 puñados de arena imán, en el campamento', () => {
+    const rows = [row('1', 'piel-gargantua'), row('2', 'punado-arena-iman', 2)];
+    expect(canCraft(sandPouch, 'campamento-serhu', rows, catalogBySlug, attrs, secondary)).toBe(true);
+    expect(canCraft(sandPouch, 'hondonada-del-eco', rows, catalogBySlug, attrs, secondary)).toBe(false);
+    expect(canCraft(sandPouch, 'campamento-serhu', [row('1', 'piel-gargantua'), row('2', 'punado-arena-iman', 1)], catalogBySlug, attrs, secondary)).toBe(false);
+  });
+});
+
+describe('planCraftConsumption — orMatch del lingote imantado (2026-08-15)', () => {
+  it('con un saquito ya completo disponible, lo consume entero en vez de fraccionar puñados sueltos', () => {
+    const rows = [row('row-mena', 'mena-hierro-llanuras'), row('row-punado', 'punado-arena-iman', 4), row('row-saquito', 'saquito-arena-iman')];
+    const plans = planCraftConsumption(magnetizedIronIngot, rows, catalogBySlug);
+    expect(plans).toEqual([
+      { deleteIds: ['row-mena'], updateRemainder: null },
+      { deleteIds: ['row-saquito'], updateRemainder: null },
+    ]);
+  });
+  it('sin saquito disponible, consume del puñado normal como siempre', () => {
+    const rows = [row('row-mena', 'mena-hierro-llanuras'), row('row-punado', 'punado-arena-iman', 4)];
+    const plans = planCraftConsumption(magnetizedIronIngot, rows, catalogBySlug);
+    expect(plans).toEqual([
+      { deleteIds: ['row-mena'], updateRemainder: null },
+      { deleteIds: ['row-punado'], updateRemainder: null },
+    ]);
   });
 });
 

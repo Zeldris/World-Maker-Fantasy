@@ -247,6 +247,11 @@ model Location {
   /// Nombres con los que un jugador se refiere de verdad al sitio ("los pilares", "el pozo") —
   /// para que el matcher DETERMINISTA de destinos resuelva sin pasar por el modelo
   aliases     String[]
+  /// Coordenadas cartográficas reales en km, origen Los Pilares Rotos, +x=este/+y=norte (2026-08-15,
+  /// necesarias para que la Aguja de Cardo Brújula calcule dirección cardinal). Opcionales: no toda
+  /// Location las tiene todavía — ver comentario de LocationInput en worldCatalog.ts.
+  x           Float?
+  y           Float?
   createdAt   DateTime @default(now())
 
   linksFrom LocationLink[] @relation("linkFrom")

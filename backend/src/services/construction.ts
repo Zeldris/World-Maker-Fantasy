@@ -22,6 +22,13 @@ export type ResourceRequirement = IngredientRequirement;
 export interface ConstructionRecipe {
   key: string;
   name: string;
+  /// Slug alternativo SOLO para buscar/generar la imagen de la Enciclopedia (petición explícita,
+  /// 2026-08-15: "ajustar los nombres de las construcciones... con los nombres que tengo ahí en
+  /// las imágenes") — undefined = usa `key` tal cual (comportamiento de siempre). Separado de
+  /// `key` a propósito: `key` es el identificador estable que ya vive en `Building.recipeKey` de
+  /// partidas reales (cambiarlo huérfana cualquier edificio ya construido); el nombre/slug visible
+  /// puede afinarse sin ese riesgo.
+  imageSlug?: string;
   /// Descripción física real de la construcción terminada — estructura, materiales, forma
   /// (2026-07-23, para poder generarle un prompt de imagen real en la Enciclopedia; antes esta
   /// receta no tenía NINGÚN texto descriptivo más allá del propio `name`, mismo punto ciego que
@@ -143,7 +150,11 @@ export function detectsBuildIntent(recipe: ConstructionRecipe, action: string): 
 // ya cosechables, "Piel de" las cubre todas).
 export const CAMPAMENTO_RECIPE: ConstructionRecipe = {
   key: 'campamento',
-  name: 'un campamento base',
+  // Nombre ajustado (petición explícita, 2026-08-15, referencia: imagen ya subida
+  // "campamento-base-orco-llanuras-banner.png") — `imageSlug` apunta a ese mismo slug para que la
+  // imagen ya generada se enganche sin renombrar el archivo.
+  name: 'Campamento Base Orco de las Llanuras',
+  imageSlug: 'campamento-base-orco-llanuras',
   description:
     'Un cerco improvisado y rápido de levantar: un anillo de piedras apiladas para contener el fuego, un poste central de leña clavada en la tierra, y pieles tensadas a modo de toldo bajo contra el viento. Protege lo justo para pasar la noche — no aguanta una tormenta fuerte ni un asedio.',
   nounRegex: /campamento/,
@@ -167,7 +178,11 @@ export const CAMPAMENTO_RECIPE: ConstructionRecipe = {
 // cerramiento, huesos largos como postes/armazón, tendón para atar en vez de clavos.
 export const CHOZA_RECIPE: ConstructionRecipe = {
   key: 'choza',
-  name: 'una choza de piel y hueso',
+  // Nombre ajustado (petición explícita, 2026-08-15, referencia: imagen ya subida
+  // "choza-basica-orco-llanuras-banner.png") — `imageSlug` apunta a ese mismo slug para que la
+  // imagen ya generada se enganche sin renombrar el archivo.
+  name: 'Choza Básica Orco de las Llanuras',
+  imageSlug: 'choza-basica-orco-llanuras',
   // Caracterizada como construcción ORCA (2026-07-23, petición explícita: "por ahora clasifica
   // esta como construcciones orcas y caracterízalas como tal") — mismo respeto por el hueso de
   // gargantúa ya establecido en el Osario de la Manada (worldCatalog.ts): no se profana, se

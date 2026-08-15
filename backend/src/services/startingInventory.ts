@@ -93,7 +93,7 @@ const GORHORN_STARTING_INVENTORY: StartingInventoryItem[] = [
     origin: 'inicial',
     // Petición explícita (2026-07-29, "para las pruebas") — objeto médico real (curaHasta: HERIDO
     // en ItemCatalog), para poder probar las reglas de curación sin tener que craftearlo primero.
-    catalogSlug: 'cataplasma-salvia',
+    catalogSlug: 'cataplasma-salvia-polvo',
   },
 ];
 

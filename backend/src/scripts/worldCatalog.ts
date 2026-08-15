@@ -16,6 +16,18 @@ export interface LocationInput {
   kind: string;
   description: string;
   aliases: string[];
+  /// Coordenadas cartográficas reales en km, origen Los Pilares Rotos, +x=este/+y=norte (petición
+  /// explícita, 2026-08-15: la Aguja de Cardo Brújula necesita decir en qué dirección cardinal
+  /// queda cada camino conocido desde aquí). Copiadas TAL CUAL de las coordenadas ya MEDIDAS/
+  /// confirmadas de `docs/13-escala-del-mundo.md` (§1.1/§2.2bis para el núcleo original, §2.2ter
+  /// para la tercera ampliación) — NUNCA de `frontend/src/data/map.ts` a secas: ese archivo tiene
+  /// varios nodos (hondonada-del-eco, tumulos-del-honor, osario-de-la-manada, manaderos,
+  /// cruce-de-las-cenizas) con posición ajustada SOLO para que los iconos no se pisen en el mapa,
+  /// desacoplada a propósito de la posición mecánica real — usar esas habría dado direcciones
+  /// cardinales incorrectas. Opcionales: una Location sin coordenadas simplemente no participa en
+  /// el cálculo de dirección (falla cerrado, nunca inventa una).
+  x?: number;
+  y?: number;
 }
 
 export const locations: LocationInput[] = [
@@ -35,6 +47,8 @@ export const locations: LocationInput[] = [
     // partía "Avanzo a las Agujas Imán" en pin("Las Agujas Imán") + "Iman" suelto repetido detrás,
     // porque el alias corto ganaba por posición sobre el más específico.
     aliases: ['las agujas iman', 'las agujas imán'],
+    x: -7,
+    y: 8.3,
   },
 
   {
@@ -55,6 +69,8 @@ export const locations: LocationInput[] = [
     // catálogo del juego — hallazgo de la propia usuaria jugando ("juraría que le habíamos puesto
     // un alias").
     aliases: ['campamento del clan serhu', 'karot veku', 'colmillo ceniza'],
+    x: 21,
+    y: -5,
   },
 
   {
@@ -65,6 +81,8 @@ export const locations: LocationInput[] = [
     description:
       'El punto donde el camino que viene de la Meseta del Orden se bifurca en la llanura — zona de paso habitual de patrullas de la Concordia de Hierro. Se asienta en una muesca de la frontera donde El Margen Silencioso se adentra en la llanura: mirando al sur, ya se distingue el Puesto Rabioso del Márgen al otro lado.',
     aliases: ['el cruce de las cenizas'],
+    x: 0,
+    y: -18,
   },
 
   {
@@ -75,6 +93,8 @@ export const locations: LocationInput[] = [
     description:
       'Una cresta de roca oscura al noreste de Los Restos de Maktor, donde la estepa empieza a ceder ante la tierra volcánica — el primer lugar del núcleo jugable desde el que los volcanes activos que solo se veían "a lo lejos" se distinguen de verdad, con su calima de calor y ceniza en el aire. Territorio real de la Salamandra de Escoria, que antes solo aparecía aquí como avanzadilla ocasional.',
     aliases: ['el filo de las brasas'],
+    x: 16,
+    y: 31,
   },
 
   {
@@ -85,6 +105,8 @@ export const locations: LocationInput[] = [
     description:
       'Una depresión profunda en la tierra rojiza, con paredes de arcilla endurecida que cortan el viento y amortiguan el sonido — la voz rebota dentro, de ahí el nombre. Varias bocas de cueva se abren en las paredes, a distintas alturas. Refugio real contra el viento y las tormentas de arena magnética, buen lugar para acampar, descansar o pasar la noche. Único riesgo: al estar hundida, no se ve quién se acerca por arriba hasta que es tarde.',
     aliases: ['la hondonada del eco'],
+    x: 5,
+    y: 7.5,
   },
 
   {
@@ -95,6 +117,8 @@ export const locations: LocationInput[] = [
     description:
       'Donde la corriente subterránea aflora en charcas estacionales entre juncos rojizos — otro punto de la misma corriente que alimenta el Pozo de Cauce Viejo, no su origen ni su final. Aquí paren las hembras de Corredor de Cauce; cazar crías ofende la costumbre orca.',
     aliases: ['manaderos', 'los manaderos'],
+    x: 18.1,
+    y: 2.8,
   },
 
   // --- Puntos de interés nuevos dentro del núcleo ya cartografiado (roadmap 2026-07-20,
@@ -109,6 +133,8 @@ export const locations: LocationInput[] = [
     description:
       'El esqueleto de una Gargantúa de Ceniza muerta hace décadas, costillas como arcos blanqueados visibles desde lejos. Los orcos lo tratan con respeto: se toma hueso, no se profana — la única fuente conocida de placas óseas y hueso largo de gargantúa sin necesidad de cacería ritual.',
     aliases: ['el osario de la manada'],
+    x: 10.95,
+    y: 7.6,
   },
 
   // --- Ampliación del núcleo medido (checklist 2026-07-21/22, punto 6 — "Puerta 2" de
@@ -124,6 +150,8 @@ export const locations: LocationInput[] = [
     description:
       'Praderas abiertas al este de Los Manaderos, donde la hierba dura más tiempo que en el núcleo del clan — hasta aquí siguen las manadas de Corredores de Cauce su migración, y hasta aquí llevan los Serhu a sus múrgoles cuando el pasto cercano se agota. Sin asentamiento fijo: se ocupa por temporadas, se abandona el resto del año.',
     aliases: ['los pastos de la deriva'],
+    x: 30,
+    y: -1,
   },
 
   {
@@ -134,6 +162,8 @@ export const locations: LocationInput[] = [
     description:
       'Tres columnas erosionadas de lo que en tiempos remotos fue una formación rocosa mucho más alta, unidas entre sí por puentes colgantes y con pequeños estandartes clavados en lo alto de cada una — visibles desde casi cualquier punto de la llanura, el punto de referencia que usa cualquiera para orientarse aquí. Su sombra da algo de resguardo del sol a mediodía, pero es terreno abierto y no defendible.',
     aliases: ['los pilares rotos'],
+    x: 0,
+    y: 0,
   },
 
   {
@@ -144,6 +174,8 @@ export const locations: LocationInput[] = [
     description:
       'Uno de los pocos puntos de agua permanentes de la región, sobre la corriente subterránea que siguen los Corredores de Cauce — cruce de viajeros para bien o para mal.',
     aliases: ['el pozo de cauce viejo'],
+    x: 13.5,
+    y: 0,
   },
 
   {
@@ -164,6 +196,8 @@ export const locations: LocationInput[] = [
     // conversación, solo porque se presentaba con su apellido. Las formas multi-palabra que quedan
     // ("restos de maktor", "los restos", "ruinas de maktor") ya son inequívocas por sí solas.
     aliases: ['los restos de maktor', 'ruinas de maktor'],
+    x: 10,
+    y: 20.5,
   },
 
   {
@@ -174,6 +208,8 @@ export const locations: LocationInput[] = [
     description:
       'Campo de túmulos de piedra donde los clanes de las Llanuras entierran a quienes murieron con honor: duelos aceptados, cacerías rituales. Terreno neutral sagrado — ni Serhu ni Maktor pelearon jamás aquí.',
     aliases: ['los tumulos del honor', 'los túmulos del honor'],
+    x: 6.2,
+    y: 5.6,
   },
 
   // --- Tercera ampliación del núcleo (checklist, sesión "ampliamos lore" 2026-08-05): sabana,
@@ -193,6 +229,8 @@ export const locations: LocationInput[] = [
     description:
       'Agua en superficie de verdad, alimentada por la misma corriente subterránea que sigue Los Manaderos — un punto verde real en medio del polvo rojo, disputado entre clanes, fauna y cualquiera que necesite descansar de la travesía.',
     aliases: ['el oasis de juncos rojos', 'oasis de juncos rojos'],
+    x: 24.3,
+    y: 14.9,
   },
 
   {
@@ -203,6 +241,8 @@ export const locations: LocationInput[] = [
     description:
       'El punto donde la corriente subterránea que alimenta El Pozo de Cauce Viejo y Los Manaderos aflora por fin al mar, en una marisma salobre de juncos y barro — cierra el recorrido completo del agua de las Llanuras, desde su nacimiento tierra adentro hasta el mar.',
     aliases: ['la desembocadura callada', 'desembocadura callada'],
+    x: -2,
+    y: 42,
   },
 
   {
@@ -213,6 +253,8 @@ export const locations: LocationInput[] = [
     description:
       'Franja de arena clara entre dos brazos bajos de roca — la zona costera más accesible y menos hostil de toda la región, el único punto donde el mar se alcanza y se usa sin escalar ni cruzar marisma.',
     aliases: ['playa de ceniza blanca', 'la playa de ceniza blanca'],
+    x: -20,
+    y: 22,
   },
 
   {
@@ -223,6 +265,8 @@ export const locations: LocationInput[] = [
     description:
       'Pared costera vertical partida por grietas profundas, oleaje violento rompiendo abajo y nidos de aves marinas en las cornisas más altas — bello y letal, un mal paso aquí no perdona.',
     aliases: ['los acantilados partidos', 'acantilados partidos'],
+    x: -21,
+    y: 44,
   },
 
   {
@@ -233,6 +277,8 @@ export const locations: LocationInput[] = [
     description:
       'Costa baja de roca plana, salpicada de charcas que la marea llena y vacía dos veces al día — vida propia y contenida en cada poza, zona de recolección tranquila entre dos extremos más hostiles de la costa.',
     aliases: ['las pozas de marea', 'pozas de marea'],
+    x: -20,
+    y: 36,
   },
 
   {
@@ -243,6 +289,8 @@ export const locations: LocationInput[] = [
     description:
       'Puesto avanzado del Clan Serhu en la costa norte, botes de fondo plano varados sobre travesaños de madera y redes tendidas a secar — primer contacto real del clan con el mar. Pesca y transporte de corta distancia a lo largo de la costa; ningún Serhu se aventura mar adentro.',
     aliases: ['el embarcadero de ceniza', 'embarcadero de ceniza'],
+    x: -21,
+    y: 54,
   },
 
   {
@@ -253,6 +301,8 @@ export const locations: LocationInput[] = [
     description:
       'Un sumidero amplio y profundo, paredes de arena compactada perforadas por decenas de bocas de túnel — la mayor madriguera conocida de Espina del Viento de toda la región. Bajar es una decisión, no un accidente: la red se extiende bajo tierra mucho más de lo que sugiere la boca del pozo.',
     aliases: ['la fosa horadada', 'fosa horadada'],
+    x: -16,
+    y: -16,
   },
 
   {
@@ -263,6 +313,8 @@ export const locations: LocationInput[] = [
     description:
       'Fragmentos de piedra tallada y metal ennegrecido asomando entre dunas rojas que el viento cubre y descubre sin patrón fijo — la única prueba visible de que un reino entero, el de los Nabierus, sigue enterrado debajo.',
     aliases: ['las dunas ahogadas', 'dunas ahogadas'],
+    x: -24,
+    y: -28,
   },
 
   {
@@ -273,6 +325,8 @@ export const locations: LocationInput[] = [
     description:
       'Una hondonada seca y estéril donde nada crece, y donde nacen —según los pastores— todas las tormentas de arena magnética de la región. El punto exacto, aunque nadie vivo lo sepa ya, donde las hijas de Madre desataron sin saberlo la sequía y el viento que sepultaron el Reino Nabierus.',
     aliases: ['el vientre del engaño', 'vientre del engaño'],
+    x: -10,
+    y: -40,
   },
 
   {
@@ -283,6 +337,8 @@ export const locations: LocationInput[] = [
     description:
       'Badlands de paredes de arcilla estrecha y sinuosa, fácil perderse, ecos que engañan al oído — terreno de emboscada tanto para depredadores como para quien conoce sus atajos.',
     aliases: ['el laberinto de cañones', 'laberinto de cañones'],
+    x: 6,
+    y: -42,
   },
 
   {
@@ -293,6 +349,8 @@ export const locations: LocationInput[] = [
     description:
       'Campo de grietas humeantes y vidrio volcánico negro más allá de El Filo de las Brasas — más hostil y menos transitado que el propio Filo, donde el calor sale directo de la tierra.',
     aliases: ['las fumarolas negras', 'fumarolas negras'],
+    x: 19,
+    y: 42,
   },
 
   {
@@ -303,6 +361,8 @@ export const locations: LocationInput[] = [
     description:
       "Cañón estrecho tapizado de restos óseos de migraciones fallidas de Corredores de Cauce — paso obligado natural hacia La Sabana Alta, y recordatorio de que ni la propia migración sagrada de los orcos sale siempre bien.",
     aliases: ['el paso de los huesos', 'paso de los huesos'],
+    x: 41,
+    y: 2,
   },
 
   {
@@ -313,6 +373,8 @@ export const locations: LocationInput[] = [
     description:
       'Praderas de hierba roja que llega a la cintura, mucho más alta y densa que la hierba rasa del resto de la llanura — el viento la mueve en oleadas visibles desde lejos. Refugio y coto de caza de manadas de Corredores de Cauce que no se ven en otras zonas del núcleo.',
     aliases: ['la sabana alta', 'sabana alta'],
+    x: 54,
+    y: -10,
   },
 
   {
@@ -323,6 +385,8 @@ export const locations: LocationInput[] = [
     description:
       'Coto de caza y comercio de los Faerus de la llanura, más allá de su poblado de Kegi — el punto donde su artesanía en pieles y su relación con los orcos se pone a prueba cara a cara.',
     aliases: ['el vergel de kegi', 'vergel de kegi'],
+    x: -8,
+    y: -175,
   },
 
   {
@@ -333,6 +397,8 @@ export const locations: LocationInput[] = [
     description:
       'Formación rocosa donde el viento, al colarse por sus grietas, produce un sonido propio y constante — el contraste exacto con El Margen Silencioso, donde el sonido se apaga: aquí el viento canta.',
     aliases: ['la grieta cantora', 'grieta cantora'],
+    x: 6,
+    y: -100,
   },
 
   {
@@ -343,6 +409,8 @@ export const locations: LocationInput[] = [
     description:
       "Llanura marcada por huesos viejos y metal oxidado que nadie ha reclamado nunca del todo — posible escenario de la guerra interna entre Maktor y Serhu de hace más de mil años, el \"primer golpe\" que dejó al Clan Maktor maltrecho durante un milenio.",
     aliases: ['el campo yermo', 'campo yermo'],
+    x: 19,
+    y: 22,
   },
 
   // ══════════════════════════════════════════════════════════════════════════
@@ -1338,7 +1406,7 @@ export const npcs: NpcInput[] = [
       { itemSlug: 'lanza-hueso-gargantua' },
       { itemSlug: 'amuleto-hueso', notas: 'Colmillos de corredor de su primera cacería' },
       { itemSlug: 'racion-viaje', cantidad: 3 },
-      { itemSlug: 'raiz-de-fuego', cantidad: 1 },
+      { itemSlug: 'ascuas-raiz-fuego', cantidad: 1 },
       { itemSlug: 'odre-agua' },
     ],
   },
@@ -1558,7 +1626,7 @@ export const npcs: NpcInput[] = [
       { itemSlug: 'amuleto-hueso', notas: 'Vértebras de gargantúa — símbolo de su comunión' },
       { itemSlug: 'sal-trueque', cantidad: 2 },
       { itemSlug: 'odre-agua' },
-      { itemSlug: 'cataplasma-salvia', cantidad: 2 },
+      { itemSlug: 'cataplasma-salvia-polvo', cantidad: 2 },
       { itemSlug: 'cataplasma-flor-ceniza', cantidad: 2 },
     ],
   },
@@ -1987,13 +2055,17 @@ export const items: ItemCatalogInput[] = [
 
   // --- herramienta ---
 
-  { 
-    slug: 'aguja-de-cardo', 
-    name: 'Aguja de Cardo Brújula', 
-    aliases: ['aguja de cardo'], 
+  {
+    // Slug ajustado (petición explícita, 2026-08-15: "renombrases el slug con el nombre del
+    // archivo" — imagen ya subida "aguja-cardo-brujula-banner.png").
+    slug: 'aguja-cardo-brujula',
+    name: 'Aguja de Cardo Brújula',
+    // 'brújula'/'cardo brújula' añadidos (2026-08-15, feature de exploración) — así se reconoce
+    // "uso la brújula" en detectsCompassUse (itemReference.ts) sin exigir el nombre completo.
+    aliases: ['aguja de cardo', 'brújula', 'cardo brújula'],
     category: 'herramienta',
-    tipo: 'EQUIPABLE', 
-    equipSlot: 'ACCESORIO', 
+    tipo: 'EQUIPABLE',
+    equipSlot: 'ACCESORIO',
     description: 'Aguja imantada natural: colgada de un hilo señala siempre el mismo rumbo, incluso en plena tormenta.',
     dimensiones: 'Aguja de 4 cm, colgada de un hilo de 20 cm.',
     lugarOrigen: 'Las Agujas Imán, Llanuras del Viento Rojo.',
@@ -2528,8 +2600,12 @@ export const items: ItemCatalogInput[] = [
   },
 
   {
-    slug: 'raiz-de-fuego',
-    name: 'Raíz de fuego',
+    // Slug ajustado (petición explícita, 2026-08-15: "renombrases el slug con el nombre del
+    // archivo" — imagen ya subida "ascuas-raiz-fuego-banner.png"). Distinto de la FUENTE
+    // (`sourceSlug: 'raiz-de-fuego'`, harvestSourceAliases/harvestSourceRegion/etc. más abajo, que
+    // sigue igual — esto es solo el objeto ya recolectado, no la planta).
+    slug: 'ascuas-raiz-fuego',
+    name: 'Ascuas de Raíz de Fuego',
     category: 'consumible',
     tipo: 'CONSUMIBLE',
     equipSlot: 'CONSUMIBLE_1',
@@ -2561,15 +2637,18 @@ export const items: ItemCatalogInput[] = [
     dimensiones: 'Emplasto de 8x8 cm.',
     // Corregido (auditoría de catálogo, 2026-08-13): prometía curar en su propia descripción pero
     // no tenía ningún efecto mecánico real — mismo patrón crudo→preparado que salvia (HERIDO→ILESO,
-    // manojo-salvia-polvo/cataplasma-salvia): pétalos-flor-ceniza (crudo) ya cura hasta GRAVE, la
+    // manojo-salvia-polvo/cataplasma-salvia-polvo): pétalos-flor-ceniza (crudo) ya cura hasta GRAVE, la
     // forma preparada sube un escalón, igual que su hermana de salvia.
     curaHasta: 'HERIDO',
   },
 
-  { 
-    slug: 'cataplasma-salvia', 
-    name: 'Cataplasma de salvia del polvo', 
-    aliases: ['cataplasma de salvia'], 
+  {
+    // Slug ajustado (petición explícita, 2026-08-15: "renombrases el slug con el nombre del
+    // archivo", sin preposiciones — "eso es fallo mío" al nombrar el archivo, pero el `name` sí
+    // las lleva) — imagen ya subida "cataplasma-salvia-polvo-banner.png".
+    slug: 'cataplasma-salvia-polvo',
+    name: 'Cataplasma de salvia del polvo',
+    aliases: ['cataplasma de salvia'],
     category: 'medicinal',
     tipo: 'CONSUMIBLE', 
     equipSlot: 'CONSUMIBLE_1', 
@@ -2605,8 +2684,10 @@ export const items: ItemCatalogInput[] = [
   },
 
   {
-    slug: 'petalos-flor-ceniza',
-    name: 'Pétalos de Flor de Ceniza',
+    // Slug ajustado (petición explícita, 2026-08-15: "renombrases el slug con el nombre del
+    // archivo" — imagen ya subida "infusion-petalos-flor-ceniza-banner.png").
+    slug: 'infusion-petalos-flor-ceniza',
+    name: 'Infusión de Pétalos de Flor de Ceniza',
     aliases: ['pétalos de flor de ceniza'],
     category: 'medicinal',
     tipo: 'CONSUMIBLE', 
@@ -2622,11 +2703,14 @@ export const items: ItemCatalogInput[] = [
   // objetos escalonados (curaUnPaso: true, ver crafting.ts § oficio 'primeros-auxilios-orcos-
   // llanuras') más uno de energía pura, todos crafteados a partir de lo que ya recolecta
   // herborista en Llanuras. Deliberadamente MÁS débiles objeto a objeto que 'manojo-salvia-polvo'/
-  // 'petalos-flor-ceniza' en crudo (que ya curan HERIDO/GRAVE de golpe sin craftear nada) — el
-  // profesión existe para el escalón final (HERIDO→ILESO), no para competir con la materia prima.
+  // 'infusion-petalos-flor-ceniza' en crudo (que ya curan HERIDO/GRAVE de golpe sin craftear nada)
+  // — el profesión existe para el escalón final (HERIDO→ILESO), no para competir con la materia
+  // prima.
   {
-    slug: 'vendaje-improvisado',
-    name: 'Vendaje improvisado',
+    // Slug ajustado (petición explícita, 2026-08-15: "renombrases el slug con el nombre del
+    // archivo", sin preposiciones) — imagen ya subida "vendaje-improvisado-orcos-llanuras-banner.png".
+    slug: 'vendaje-improvisado-orcos-llanuras',
+    name: 'Vendaje improvisado orco de las Llanuras',
     category: 'medicinal',
     tipo: 'CONSUMIBLE',
     equipSlot: 'CONSUMIBLE_1',
@@ -2708,6 +2792,18 @@ export const items: ItemCatalogInput[] = [
     dimensiones: 'Lingote de 20x5x5 cm.',
   },
 
+  // Receta nueva (2026-08-15) — variante imantada del lingote de hierro, paso intermedio para
+  // forjar la Aguja de Cardo Brújula (mena de hierro + arena imán fundidas juntas en la fragua).
+  {
+    slug: 'lingote-hierro-imantado',
+    name: 'Lingote de hierro imantado',
+    aliases: ['lingote imantado'],
+    category: 'metal',
+    tipo: 'MATERIAL',
+    description: 'Lingote de hierro fundido junto a arena imán — conserva un tirón magnético débil pero constante, notable si se acerca a otro metal.',
+    dimensiones: 'Lingote de 20x5x5 cm.',
+  },
+
   // ══════════════════════════════════════════════════════════════════════════
   // TIPO: RECURSO
   // ══════════════════════════════════════════════════════════════════════════
@@ -2725,6 +2821,22 @@ export const items: ItemCatalogInput[] = [
     description: 'Hojas grisáceas extremadamente duras y ricas en minerales — materia prima de las aleaciones goirntes, sin procesar todavía.',
     dimensiones: 'Hojas de 20 a 30 cm.',
     lugarOrigen: 'Meseta del Orden.',
+  },
+
+  // Materia prima nueva (2026-08-15, petición explícita: "estos 3 no deberían ser extraibles sino
+  // crafteables") — el Cardo Brújula recolectado en bruto, antes de tallarlo en la Aguja de Cardo
+  // Brújula (ver CraftingRecipe en crafting.ts). Mismo slug que harvestSourceAliases/
+  // harvestSourceRegion/harvestSourceDescriptions/harvestSourceTerrainTag ('cardo-brujula', más
+  // abajo) a propósito — son tablas distintas (sourceSlug vs. ItemCatalog.slug), mismo patrón ya
+  // usado por raiz-de-fuego/ascuas-raiz-fuego.
+  {
+    slug: 'cardo-brujula',
+    name: 'Cardo Brújula',
+    category: 'hierba',
+    tipo: 'RECURSO',
+    description: 'Tallo espinoso rematado en una flor cerrada de un morado apagado, que siempre gira despacio hasta señalar el mismo rumbo — sin tallar todavía tiene curiosidad, pero ningún uso práctico.',
+    dimensiones: 'Tallo de 25 cm.',
+    lugarOrigen: 'Las Agujas Imán, Llanuras del Viento Rojo.',
   },
 
   // --- hueso ---
@@ -2787,8 +2899,10 @@ export const items: ItemCatalogInput[] = [
   // --- mena ---
 
   {
-    slug: 'mena-de-hierro',
-    name: 'Mena de hierro',
+    // Slug ajustado (petición explícita, 2026-08-15: "renombrases el slug con el nombre del
+    // archivo" — imagen ya subida "mena-hierro-llanuras-banner.png").
+    slug: 'mena-hierro-llanuras',
+    name: 'Mena de Hierro de las Llanuras',
     category: 'mena',
     tipo: 'RECURSO',
     description: 'Roca oscura veteada de óxido rojizo, pesada para su tamaño — hierro sin refinar, todavía sin ninguna utilidad hasta pasar por la fragua.',
@@ -2820,13 +2934,28 @@ export const items: ItemCatalogInput[] = [
     lugarOrigen: 'Cristal Helado.',
   },
 
-  { 
+  {
     slug: 'piedra',
-    name: 'Piedra', 
+    name: 'Piedra',
     category: 'piedra',
-    tipo: 'RECURSO', 
-    description: 'Bloques y cascotes de roca erosionada — sirven para levantar muros, cimientos o un campamento.', 
-    dimensiones: 'Bloques de 20 a 30 cm.' 
+    tipo: 'RECURSO',
+    description: 'Bloques y cascotes de roca erosionada — sirven para levantar muros, cimientos o un campamento.',
+    dimensiones: 'Bloques de 20 a 30 cm.'
+  },
+
+  // Materia prima nueva (2026-08-15, mismo cambio que Cardo Brújula arriba) — la arena imán en
+  // bruto, antes de embolsarla en un Saquito de arena imán o fundirla en un Lingote de hierro
+  // imantado (ver crafting.ts). Slug distinto del narrativo 'saquito-arena-iman' a propósito: son
+  // objetos mecánicamente distintos, no un simple rename.
+  {
+    slug: 'punado-arena-iman',
+    name: 'Puñado de arena imán',
+    aliases: ['arena imán', 'limaduras'],
+    category: 'piedra',
+    tipo: 'RECURSO',
+    description: 'Arena oscura y fina, cargada de limaduras magnéticas que dejan las tormentas — se pega a cualquier cosa de hierro que se le acerque.',
+    dimensiones: 'Puñado de unos 100 g.',
+    lugarOrigen: 'Las Agujas Imán, Llanuras del Viento Rojo.',
   },
 
   // --- piel ---
@@ -3077,7 +3206,7 @@ export const items: ItemCatalogInput[] = [
   // --- Tier 0, ronda 2 de objetos (roadmap 2026-07-20, ver memoria
   // project_tarkor_roadmap_objetos_2.md) — cierra 7 huecos reales del catálogo: Restos de Maktor
   // y Túmulos del Honor sin objeto propio, rareza cósmica del Origen Azul, comercio goirntes
-  // ampliado, y dos formas preparadas más (mismo patrón que cataplasma-salvia).
+  // ampliado, y dos formas preparadas más (mismo patrón que cataplasma-salvia-polvo).
   { 
     slug: 'juguete-hueso-maktor', 
     name: 'Juguete de hueso tallado', 
@@ -3140,9 +3269,11 @@ export const items: ItemCatalogInput[] = [
     dimensiones: 'Bloques de 8x5 cm.',
   },
 
-  { 
-    slug: 'arena-magnetica', 
-    name: 'Saquito de arena imán', 
+  {
+    // Slug ajustado (petición explícita, 2026-08-15: "renombrases el slug con el nombre del
+    // archivo" — imagen ya subida "saquito-arena-iman-banner.png").
+    slug: 'saquito-arena-iman',
+    name: 'Saquito de arena imán',
     aliases: ['arena imán'], 
     category: 'valor',
     tipo: 'NARRATIVO', 
@@ -3350,10 +3481,13 @@ export const harvestYields: HarvestYieldInput[] = [
   // --- Arena Imán ---
 
   {
+    // itemSlug cambiado de 'saquito-arena-iman' a 'punado-arena-iman' (2026-08-15, petición
+    // explícita: "estos 3 no deberían ser extraibles sino crafteables") — el Saquito ya solo se
+    // consigue crafteando (peletería orco de las Llanuras), la extracción da la arena en bruto.
     sourceSlug: 'arena-iman',
     sourceName: 'Arena Imán',
     metodoObtencion: 'EXTRACCION',
-    itemSlug: 'arena-magnetica',
+    itemSlug: 'punado-arena-iman',
     cantidad: 1,
     condicion: 'solo tras una tormenta de arena magnética reciente',
   },
@@ -3456,12 +3590,14 @@ export const harvestYields: HarvestYieldInput[] = [
   // --- Cardo Brújula ---
 
   {
+    // itemSlug cambiado de 'aguja-cardo-brujula' a 'cardo-brujula' (2026-08-15, petición explícita:
+    // "estos 3 no deberían ser extraibles sino crafteables") — la Aguja ya solo se consigue
+    // crafteando (herrería orco de las Llanuras), la extracción da la planta en bruto.
     sourceSlug: 'cardo-brujula',
     sourceName: 'Cardo Brújula',
     metodoObtencion: 'EXTRACCION',
-    itemSlug: 'aguja-de-cardo',
+    itemSlug: 'cardo-brujula',
     cantidad: 1,
-    condicion: 'cortarlo sin quebrar la fibra central (destreza, Media 15 — falla = fibra rota, inservible)',
   },
 
   // --- Cornante ---
@@ -3582,7 +3718,7 @@ export const harvestYields: HarvestYieldInput[] = [
     sourceSlug: 'flor-de-ceniza',
     sourceName: 'Flor de Ceniza',
     metodoObtencion: 'EXTRACCION',
-    itemSlug: 'petalos-flor-ceniza',
+    itemSlug: 'infusion-petalos-flor-ceniza',
     cantidad: 1,
     condicion: 'solo en suelo de ceniza — borde norte del núcleo y zona volcánica',
   },
@@ -3728,7 +3864,7 @@ export const harvestYields: HarvestYieldInput[] = [
     sourceSlug: 'raiz-de-fuego',
     sourceName: 'Raíz de Fuego',
     metodoObtencion: 'EXTRACCION',
-    itemSlug: 'raiz-de-fuego',
+    itemSlug: 'ascuas-raiz-fuego',
     cantidad: 1,
     condicion: 'extracción con cuidado (destreza, Media 15 — falla = se inflama)',
   },
@@ -3883,7 +4019,7 @@ export const harvestYields: HarvestYieldInput[] = [
     sourceSlug: 'veta-hierro-pilares-rotos',
     sourceName: 'Veta de hierro de Los Pilares Rotos',
     metodoObtencion: 'MINERIA',
-    itemSlug: 'mena-de-hierro',
+    itemSlug: 'mena-hierro-llanuras',
     cantidad: 2,
     condicion: 'requiere pico de minero — vetas visibles entre las grietas de la roca erosionada',
   },
