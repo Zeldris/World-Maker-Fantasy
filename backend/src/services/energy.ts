@@ -13,8 +13,14 @@ export function energiaMaxFor(constitucion: number): number {
 /// Coste fijo por tramo (petición explícita: "fijo por tramo", no variable por habilidad ni por
 /// efecto) — el mismo para cualquier habilidad básica (racial, de clase) o avanzada (arma nivel
 /// máximo). 'general' se queda en 0.
-export const ENERGY_COST_BASICA = 15;
-export const ENERGY_COST_AVANZADA = 25;
+export const ENERGY_RECOVER_BASICA = 10;
+export const ENERGY_RECOVER_MEDIA = 20;
+export const ENERGY_RECOVER_AVANZADA = 40;
+export const ENERGY_RECOVER_EXPERTA = 70;
+export const ENERGY_COST_BASICA = 10;
+export const ENERGY_COST_MEDIA = 15;
+export const ENERGY_COST_AVANZADA = 30;
+export const ENERGY_COST_EXPERTA = 50;
 /// Rediseño 2026-07-31 ("ataque básico... son acciones que tienen todos los personajes... si usa
 /// ataque básico cuesta solo 5 de energía") — Ataque Básico deja de costar lo mismo que una
 /// habilidad real (antes caía en ENERGY_COST_BASICA=15 al ser tier 'basica' de arma) y pasa a un

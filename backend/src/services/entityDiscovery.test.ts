@@ -6,6 +6,9 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 /// test pese a no ser trivial.
 vi.mock('../scripts/worldCatalog.js', () => ({
   harvestSourceAliases: { 'jabali-de-espinas': ['jabalí espinoso'] },
+  // Stub fiel al real (worldCatalog.ts): nombre del Npc si lo hay, si no el slug tal cual — ninguno
+  // de estos tests depende de `harvestSourceDisplayName` (el diccionario de fallback real).
+  sourceDisplayNameFor: (slug: string, npcName?: string | null) => npcName ?? slug,
 }));
 
 const { recordEntityDiscoveries } = await import('./entityDiscovery.js');

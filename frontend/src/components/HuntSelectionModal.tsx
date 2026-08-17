@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { HuntCandidate, NpcInSceneInfo } from '../types'
 import { getCazarCandidatos, explorarCaza, confirmarCaza } from '../lib/api'
+import { SelectionModalShell, confirmButtonClasses } from './SelectionModalShell'
 
 /// Color de fondo por dificultad (petición explícita, 2026-08-14: "verde, amarillo o rojo según su
 /// dificultad") — mismos 3 tokens semánticos que ya usa el resto del juego para lo mismo (moss=
@@ -108,106 +109,91 @@ export function HuntSelectionModal({ saveId, onResuelto, onCancel }: HuntSelecti
   }
 
   return (
-    <div className="animate-overlay-in fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4" onClick={onCancel}>
-      <div
-        className="plank-panel animate-combat-enter relative flex max-h-[85vh] w-full max-w-md flex-col gap-4 overflow-y-auto rounded-xl p-5"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <h3 className="font-serif text-lg text-wood-100">Cazar</h3>
-
-        {loading ? (
-          <p className="text-xs text-wood-500">Buscando fauna en la zona...</p>
-        ) : error && candidates.length === 0 ? (
-          <p className="text-xs text-red-400">{error}</p>
-        ) : candidates.length === 0 ? (
-          puedeExplorar ? (
-            <div className="flex flex-col items-start gap-2">
-              <p className="text-xs text-wood-400">No has localizado ninguna presa todavía en esta zona.</p>
-              <button
-                onClick={handleExplorar}
-                disabled={exploring}
-                className="tactile rounded-lg border border-accent-600/60 px-3 py-1.5 text-xs text-accent-300 transition-colors hover:bg-accent-500/10 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {exploring ? 'Explorando...' : '🔍 Explorar'}
-              </button>
-            </div>
-          ) : (
-            <p className="text-xs text-wood-500">No hay fauna real en esta región ahora mismo.</p>
-          )
-        ) : (
-          <div className="space-y-1.5">
-            {candidates.map((c) => (
-              <div
-                key={c.slug}
-                title={`Dificultad: ${c.dificultadLabel}`}
-                className={`rounded-lg border p-2.5 text-xs text-wood-300 ${difficultyRowClasses(c.dificultad)}`}
-              >
-                <label className="flex cursor-pointer items-center justify-between gap-2">
-                  <span className="flex items-center gap-2">
-                    <input type="checkbox" checked={selected.has(c.slug)} onChange={() => toggle(c.slug)} className="accent-accent-500" />
-                    {c.name} <span className="text-wood-500">×{c.avistados}</span>
-                  </span>
-                  {c.debil && <span className="text-2xs uppercase tracking-wide text-accent-400">presa débil</span>}
-                </label>
-                {selected.has(c.slug) && c.avistados > 1 && (
-                  <div className="mt-2 flex items-center justify-between gap-2 pl-6">
-                    <span className="text-2xs text-wood-500">Combatir contra:</span>
-                    <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => setCantidad(c.slug, c.avistados, -1)}
-                        disabled={(cantidades[c.slug] ?? c.avistados) <= 1}
-                        className="tactile h-6 w-6 rounded border border-iron-700 text-wood-300 disabled:cursor-not-allowed disabled:opacity-40"
-                      >
-                        −
-                      </button>
-                      <span className="w-4 text-center font-mono text-wood-100">{cantidades[c.slug] ?? c.avistados}</span>
-                      <button
-                        type="button"
-                        onClick={() => setCantidad(c.slug, c.avistados, 1)}
-                        disabled={(cantidades[c.slug] ?? c.avistados) >= c.avistados}
-                        className="tactile h-6 w-6 rounded border border-iron-700 text-wood-300 disabled:cursor-not-allowed disabled:opacity-40"
-                      >
-                        +
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-
-        {candidates.length > 0 && (
-          <p className="text-2xs text-wood-500">
-            {selected.size === 0
-              ? 'Elige una o varias presas.'
-              : cazaLimpiaDisponible
-                ? 'Presa débil y sola — puede caer sin pelear, según tu destreza.'
-                : 'Combate obligatorio contra todas las seleccionadas — con varios avistados, puede que se comprometan menos o más de los que marques.'}
-          </p>
-        )}
-        {error && candidates.length > 0 && <p className="text-xs text-red-400">{error}</p>}
-
-        <div className="flex gap-2">
-          <button
-            onClick={onCancel}
-            disabled={confirming}
-            className="tactile flex-1 rounded-lg border border-iron-700 bg-wood-950/50 px-3.5 py-2 text-xs font-bold uppercase tracking-wide text-wood-300 transition-colors hover:border-accent-600/60 hover:text-accent-300 disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            Cancelar
+    <SelectionModalShell
+      title="Cazar"
+      onCancel={onCancel}
+      cancelDisabled={confirming}
+      footer={
+        candidates.length > 0 && (
+          <button onClick={handleConfirmar} disabled={confirming || selected.size === 0} className={confirmButtonClasses('accent')}>
+            {confirming ? 'Cazando...' : 'Cazar'}
           </button>
-          {candidates.length > 0 && (
+        )
+      }
+    >
+      {loading ? (
+        <p className="text-xs text-wood-500">Buscando fauna en la zona...</p>
+      ) : error && candidates.length === 0 ? (
+        <p className="text-xs text-red-400">{error}</p>
+      ) : candidates.length === 0 ? (
+        puedeExplorar ? (
+          <div className="flex flex-col items-start gap-2">
+            <p className="text-xs text-wood-400">No has localizado ninguna presa todavía en esta zona.</p>
             <button
-              onClick={handleConfirmar}
-              disabled={confirming || selected.size === 0}
-              className="tactile flex-1 rounded-lg border border-accent-600 bg-gradient-to-b from-accent-400 to-accent-600 px-3.5 py-2 text-xs font-bold uppercase tracking-wide text-wood-950 transition-colors disabled:cursor-not-allowed disabled:border-iron-700 disabled:from-wood-700 disabled:to-wood-700 disabled:text-wood-500"
+              onClick={handleExplorar}
+              disabled={exploring}
+              className="tactile rounded-lg border border-accent-600/60 px-3 py-1.5 text-xs text-accent-300 transition-colors hover:bg-accent-500/10 disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {confirming ? 'Cazando...' : 'Cazar'}
+              {exploring ? 'Explorando...' : '🔍 Explorar'}
             </button>
-          )}
+          </div>
+        ) : (
+          <p className="text-xs text-wood-500">No hay fauna real en esta región ahora mismo.</p>
+        )
+      ) : (
+        <div className="space-y-1.5">
+          {candidates.map((c) => (
+            <div
+              key={c.slug}
+              title={`Dificultad: ${c.dificultadLabel}`}
+              className={`rounded-lg border p-2.5 text-xs text-wood-300 ${difficultyRowClasses(c.dificultad)}`}
+            >
+              <label className="flex cursor-pointer items-center justify-between gap-2">
+                <span className="flex items-center gap-2">
+                  <input type="checkbox" checked={selected.has(c.slug)} onChange={() => toggle(c.slug)} className="accent-accent-500" />
+                  {c.name} <span className="text-wood-500">×{c.avistados}</span>
+                </span>
+                {c.debil && <span className="text-2xs uppercase tracking-wide text-accent-400">presa débil</span>}
+              </label>
+              {selected.has(c.slug) && c.avistados > 1 && (
+                <div className="mt-2 flex items-center justify-between gap-2 pl-6">
+                  <span className="text-2xs text-wood-500">Combatir contra:</span>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setCantidad(c.slug, c.avistados, -1)}
+                      disabled={(cantidades[c.slug] ?? c.avistados) <= 1}
+                      className="tactile h-6 w-6 rounded border border-iron-700 text-wood-300 disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                      −
+                    </button>
+                    <span className="w-4 text-center font-mono text-wood-100">{cantidades[c.slug] ?? c.avistados}</span>
+                    <button
+                      type="button"
+                      onClick={() => setCantidad(c.slug, c.avistados, 1)}
+                      disabled={(cantidades[c.slug] ?? c.avistados) >= c.avistados}
+                      className="tactile h-6 w-6 rounded border border-iron-700 text-wood-300 disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                      +
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          ))}
         </div>
-      </div>
-    </div>
+      )}
+
+      {candidates.length > 0 && (
+        <p className="text-2xs text-wood-500">
+          {selected.size === 0
+            ? 'Elige una o varias presas.'
+            : cazaLimpiaDisponible
+              ? 'Presa débil y sola — puede caer sin pelear, según tu destreza.'
+              : 'Combate obligatorio contra todas las seleccionadas — con varios avistados, puede que se comprometan menos o más de los que marques.'}
+        </p>
+      )}
+      {error && candidates.length > 0 && <p className="text-xs text-red-400">{error}</p>}
+    </SelectionModalShell>
   )
 }

@@ -8,16 +8,34 @@ import type { EquipSlot, WeaponCategory } from '@prisma/client';
 /// habilidad de ataque (o de defensa, si es un escudo) con ese atributo. No hay un movimiento
 /// distinto por arma exacta (hacha vs maza), solo por el grupo al que pertenece — mismo tope de
 /// contenido con mucha más variedad real que escribir un moveset por arma.
+// Categorías de arma ampliadas (2026-08-15): HACHA/MAZA/GARROTE/ESPADA se dividieron en variantes
+// _1_MANO/_2_MANO (mismo atributo que la categoría base, la mano no cambia qué atributo usa) y se
+// añadieron arcos/honda/ballesta/báculo/bastón/grimorio/guantes/red. Criterio: armas de fuerza
+// bruta → fuerza; armas de precisión/puntería (incluidas las de proyectil) → destreza; armas de
+// canalización arcana → arcano. Sin mecánica propia todavía más allá de qué atributo usan.
 export const WEAPON_CATEGORY_ATTRIBUTE: Record<WeaponCategory, Attribute> = {
-  HACHA: 'fuerza',
-  MAZA: 'fuerza',
-  GARROTE: 'fuerza',
+  HACHA_1_MANO: 'fuerza',
+  HACHA_2_MANO: 'fuerza',
+  MAZA_1_MANO: 'fuerza',
+  MAZA_2_MANO: 'fuerza',
+  GARROTE_1_MANO: 'fuerza',
+  GARROTE_2_MANO: 'fuerza',
   PICA: 'fuerza',
   LANZA: 'fuerza',
   CUCHILLO: 'destreza',
   DAGA: 'destreza',
-  ESPADA: 'destreza',
+  ESPADA_1_MANO: 'destreza',
+  ESPADA_2_MANO: 'destreza',
   ESCUDO: 'constitucion',
+  ARCO_CORTO: 'destreza',
+  ARCO_LARGO: 'destreza',
+  HONDA: 'destreza',
+  BALLESTA: 'destreza',
+  RED: 'destreza',
+  GUANTES: 'destreza',
+  BACULO: 'arcano',
+  BASTON: 'arcano',
+  GRIMORIO: 'arcano',
 };
 
 export type WeaponRole = 'ataque' | 'defensa';
@@ -120,25 +138,48 @@ const WEAPON_ABILITY_AVANZADA_CONTENT: Record<'fuerza' | 'destreza', WeaponAbili
 /// el sistema de armas. Aprendida desde nivel 1 (`WEAPON_ABILITY_LEVEL_BASICA`), igual que Ataque
 /// Básico, pero NO genérica — cuesta ENERGY_COST_BASICA como cualquier habilidad de clase/racial
 /// (ver dynamicAbilities.ts). Nombres de HACHA/LANZA/MAZA/CUCHILLO dados por la usuaria; el resto
-/// (GARROTE/PICA/DAGA/ESPADA) propuestos siguiendo el mismo tono, pendientes de su visto bueno.
-const WEAPON_REAL_ATAQUE_CONTENT: Record<'HACHA' | 'MAZA' | 'GARROTE' | 'PICA' | 'LANZA' | 'CUCHILLO' | 'DAGA' | 'ESPADA', WeaponAbilityContent> = {
-  HACHA: {
+/// propuestos siguiendo el mismo tono, pendientes de su visto bueno. Ampliado (2026-08-15,
+/// WeaponCategory dividido en variantes _1_MANO/_2_MANO + categorías nuevas de proyectil/arcanas):
+/// las 4 categorías que se dividieron mantienen su sabor de una mano tal cual (mismo nombre/texto
+/// de siempre) y ganan una variante a dos manos, más pesada; PICA/LANZA/CUCHILLO/DAGA no cambian
+/// (nunca tuvieron variante de mano). Sin entrada de ESCUDO a propósito — genera la habilidad de
+/// DEFENSA del hueco, nunca de ataque (ver `weaponRoleFor`).
+const WEAPON_REAL_ATAQUE_CONTENT: Record<Exclude<WeaponCategory, 'ESCUDO'>, WeaponAbilityContent> = {
+  HACHA_1_MANO: {
     name: 'Tajo Horizontal',
     icon: '🪓',
     description: 'Un tajo amplio, en horizontal, buscando cortar con todo el filo del hacha a la vez.',
     promptText: 'Lanzo un tajo amplio en horizontal, buscando cortar con todo el filo de mi hacha.',
   },
-  MAZA: {
+  HACHA_2_MANO: {
+    name: 'Hachazo Partidor',
+    icon: '🪓',
+    description: 'Un hachazo vertical con las dos manos en el mango, todo el peso del cuerpo cayendo detrás del filo.',
+    promptText: 'Descargo un hachazo vertical a dos manos, dejando caer todo mi peso detrás del filo.',
+  },
+  MAZA_1_MANO: {
     name: 'Golpe Devastador',
     icon: '🔨',
     description: 'Un golpe vertical con todo el peso de la maza detrás, buscando aplastar más que cortar.',
     promptText: 'Descargo un golpe vertical con todo el peso de mi maza, buscando aplastar más que cortar.',
   },
-  GARROTE: {
+  MAZA_2_MANO: {
+    name: 'Machacón a Dos Manos',
+    icon: '🔨',
+    description: 'Un mazazo de arriba abajo con las dos manos, pensado para aplastar guardia y hueso por igual.',
+    promptText: 'Alzo mi maza a dos manos y la dejo caer con todo mi peso, buscando aplastar cualquier guardia.',
+  },
+  GARROTE_1_MANO: {
     name: 'Golpe Contundente',
     icon: '🪵',
     description: 'Un mazazo directo y sin sutileza, puro impacto contundente.',
     promptText: 'Descargo un mazazo directo y sin sutileza, puro impacto contundente.',
+  },
+  GARROTE_2_MANO: {
+    name: 'Barrido de Garrote',
+    icon: '🪵',
+    description: 'Un barrido amplio a dos manos, ganando alcance e impacto a costa de precisión.',
+    promptText: 'Barro con mi garrote a dos manos en un arco amplio, buscando impacto antes que precisión.',
   },
   PICA: {
     name: 'Embestida de Pica',
@@ -164,11 +205,71 @@ const WEAPON_REAL_ATAQUE_CONTENT: Record<'HACHA' | 'MAZA' | 'GARROTE' | 'PICA' |
     description: 'Un corte rápido y calculado, buscando el punto exacto antes que la fuerza bruta.',
     promptText: 'Lanzo un corte rápido y calculado, buscando el punto exacto antes que la fuerza.',
   },
-  ESPADA: {
+  ESPADA_1_MANO: {
     name: 'Tajo Preciso',
     icon: '⚔️',
     description: 'Un tajo limpio y bien calculado, con la precisión por delante de la fuerza.',
     promptText: 'Lanzo un tajo limpio y bien calculado, con la precisión por delante de la fuerza.',
+  },
+  ESPADA_2_MANO: {
+    name: 'Mandoble Amplio',
+    icon: '⚔️',
+    description: 'Un mandoble amplio con las dos manos en la empuñadura, todo el filo describiendo un arco largo.',
+    promptText: 'Trazo un mandoble amplio con las dos manos en la empuñadura, dejando que todo el filo describa el arco.',
+  },
+  ARCO_CORTO: {
+    name: 'Disparo Rápido',
+    icon: '🏹',
+    description: 'Una flecha soltada rápido, sin apenas apuntar, aprovechando la cercanía del blanco.',
+    promptText: 'Suelto una flecha rápida, apenas apuntando, aprovechando que lo tengo cerca.',
+  },
+  ARCO_LARGO: {
+    name: 'Flecha Certera',
+    icon: '🏹',
+    description: 'Una flecha soltada tras tensar a fondo, buscando precisión a distancia antes que velocidad.',
+    promptText: 'Tenso el arco a fondo y suelto una flecha certera, apuntando con calma antes de disparar.',
+  },
+  HONDA: {
+    name: 'Pedrada Zumbante',
+    icon: '🪨',
+    description: 'Una piedra lanzada tras varias vueltas de honda, silbando antes de conectar.',
+    promptText: 'Hago girar mi honda varias vueltas y suelto la piedra, que zumba en el aire antes de conectar.',
+  },
+  BALLESTA: {
+    name: 'Virote Perforante',
+    icon: '🏹',
+    description: 'Un virote disparado a bocajarro, con la fuerza de la cuerda tensada por detrás.',
+    promptText: 'Disparo un virote de mi ballesta, con toda la fuerza de la cuerda tensada por detrás.',
+  },
+  BACULO: {
+    name: 'Golpe de Báculo Canalizado',
+    icon: '🪄',
+    description: 'Un golpe directo con la punta del báculo, canalizando algo más que fuerza bruta en el impacto.',
+    promptText: 'Descargo un golpe directo con la punta de mi báculo, canalizando algo más que fuerza en el impacto.',
+  },
+  BASTON: {
+    name: 'Barrido de Bastón',
+    icon: '🥢',
+    description: 'Un barrido rápido a media altura, más marcial que arcano, buscando desequilibrar antes que herir.',
+    promptText: 'Barro con mi bastón a media altura, buscando desequilibrar a mi rival antes que herirlo.',
+  },
+  GRIMORIO: {
+    name: 'Palabra de Poder',
+    icon: '📖',
+    description: 'Una palabra leída en voz alta del grimorio abierto, el poder de la página descargándose de golpe.',
+    promptText: 'Leo en voz alta una palabra de poder de mi grimorio abierto, dejando que descargue de golpe.',
+  },
+  GUANTES: {
+    name: 'Puño Directo',
+    icon: '👊',
+    description: 'Un puñetazo directo y seco, sin más arma que el propio golpe reforzado.',
+    promptText: 'Lanzo un puñetazo directo y seco, sin más arma que mi propio golpe reforzado.',
+  },
+  RED: {
+    name: 'Lanzamiento de Red',
+    icon: '🕸️',
+    description: 'Una red lanzada en un giro amplio, buscando enredar antes que herir.',
+    promptText: 'Lanzo mi red en un giro amplio, buscando enredar a mi rival antes que herirlo.',
   },
 };
 

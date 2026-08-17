@@ -1,5 +1,8 @@
 import type { StartingAbility } from './startingAbilities.js';
-import { ENERGY_COST_BASICA } from './energy.js';
+import { 
+  ENERGY_COST_BASICA, ENERGY_COST_MEDIA,ENERGY_COST_AVANZADA, ENERGY_COST_EXPERTA,
+  ENERGY_RECOVER_BASICA, ENERGY_RECOVER_MEDIA, ENERGY_RECOVER_AVANZADA, ENERGY_RECOVER_EXPERTA
+ } from './energy.js';
 
 /// Habilidades de COMBATE por CLASE (rediseño 2026-07-29, tope de 10 habilidades de combate
 /// activas — "en vez de tener muchas habilidades usables a la vez... podamos variar sencillamente
@@ -31,22 +34,10 @@ export interface ClassAbilityUnlock {
   ability: StartingAbility;
 }
 
+// `effects` es una lista (2026-08-15) — una habilidad puede combinar varios AbilityEffect a la
+// vez (turnResolution.ts comprueba cada uno de forma independiente). Ninguna de las 7 de abajo
+// usa más de uno todavía, pero ya se puede.
 const CLASS_ABILITIES: ClassAbilityUnlock[] = [
-  {
-    level: 1,
-    clase: 'Guerrero',
-    ability: {
-      name: 'Contraataque',
-      icon: '✊',
-      description: 'Aguanta cualquier golpe entrante sin retroceder ni un paso — si el rival ataca de verdad, responde de inmediato con un golpe propio.',
-      promptText: 'Aprieto los dientes, aguanto el golpe entrante sin ceder terreno, listo para responder en el instante en que ataque de verdad.',
-      category: 'combate',
-      effect: 'ATAQUE',
-      rol: 'utilidad',
-      preferredAttribute: 'voluntad',
-      energyCost: ENERGY_COST_BASICA,
-    },
-  },
   {
     level: 1,
     clase: 'Guerrero',
@@ -54,42 +45,109 @@ const CLASS_ABILITIES: ClassAbilityUnlock[] = [
       name: 'Grito de Guerra',
       icon: '📢',
       description: 'Un grito que quiebra el nervio del enemigo justo antes del choque — si llega a atacar de verdad, el golpe se le queda a medias y pierde la iniciativa.',
-      promptText: 'Suelto un grito de guerra que retumba antes del choque, buscando quebrar el nervio de mi enemigo justo cuando ataque.',
+      promptText: 'Suelto un grito de guerra que retumba antes del choque, buscando quebrar la concentración de mi enemigo justo cuando ataque.',
       category: 'combate',
-      effect: 'INTIMIDACION',
+      effects: ['INTIMIDACION'],
       rol: 'utilidad',
       preferredAttribute: 'carisma',
       energyCost: ENERGY_COST_BASICA,
     },
   },
   {
-    level: 1,
-    clase: 'Cazador',
+    level: 4,
+    clase: 'Guerrero',
     ability: {
-      name: 'Analizar rival',
+      name: 'Detectar Puntos Débiles',
       icon: '🔍',
       description: 'Estudia al rival un instante, leyendo su punto débil — revela qué atributo conviene usar contra él, nunca inflige daño por sí sola.',
       promptText: 'Estudio a mi enemigo un instante, leyendo su punto débil antes de moverme.',
       category: 'combate',
-      effect: 'ANALISIS',
+      effects: ['ANALISIS'],
       rol: 'utilidad',
       preferredAttribute: 'inteligencia',
       energyCost: ENERGY_COST_BASICA,
     },
   },
   {
+    level: 6,
+    clase: 'Guerrero',
+    ability: {
+      name: 'Grito tenebroso',
+      icon: '✊',
+      description: 'Un grito tenebroso que quiebra el nervio del enemigo reduciendo su fuerza y su destreza',
+      // `promptText` vacío corregido (auditoría de documentación/lore 2026-08-18): a diferencia de
+      // "Compañero cazador" (rol:'pasiva', nunca se invoca con texto), esta es rol:'utilidad' —
+      // igual que "Grito de Guerra"/"Contraataque"/"Detectar Puntos Débiles" arriba, necesita algo
+      // real que mandar al Narrador en primera persona al usarla.
+      promptText: 'Suelto un grito tenebroso, cargado de rabia contenida, buscando minar la fuerza y la destreza de mi enemigo antes de que pueda reaccionar.',
+      category: 'combate',
+      effects: ['DEBILIDAD'],
+      rol: 'utilidad',
+      preferredAttribute: 'carisma',
+      energyCost: ENERGY_COST_MEDIA,
+    },
+  },
+  {
+    level: 8,
+    clase: 'Guerrero',
+    ability: {
+      name: 'Contraataque',
+      icon: '✊',
+      description: 'Aguanta cualquier golpe entrante sin retroceder ni un paso — si el rival ataca de verdad, responde de inmediato con un golpe propio.',
+      promptText: 'Aprieto los dientes, aguanto el golpe entrante sin ceder terreno, listo para responder en el instante en que ataque de verdad.',
+      category: 'combate',
+      effects: ['ATAQUE'],
+      rol: 'utilidad',
+      preferredAttribute: 'destreza',
+      energyCost: ENERGY_COST_AVANZADA,
+    },
+  },
+  {
     level: 1,
     clase: 'Cazador',
     ability: {
-      name: 'Instinto Salvaje',
+      name: 'Analisis Salvaje',
+      icon: '🔍',
+      description: 'Estudia al rival un instante, leyendo su punto débil — revela qué atributo conviene usar contra él, nunca inflige daño por sí sola.',
+      promptText: 'Estudio a mi enemigo un instante, leyendo su punto débil antes de moverme.',
+      category: 'combate',
+      effects: ['ANALISIS'],
+      rol: 'utilidad',
+      preferredAttribute: 'inteligencia',
+      energyCost: ENERGY_COST_BASICA,
+    },
+  },
+  {
+    level: 4,
+    clase: 'Cazador',
+    ability: {
+      name: 'Barrido Salvaje',
       icon: '🌀',
-      description: 'Un arrebato de instinto puro y salvaje — si el rival ataca de verdad, lo desorienta lo justo para robarle la iniciativa, sin llegar a herirlo.',
+      description: 'Evade el golpe y desestabiliza a su openente con una patada baja a las piernas — si el rival ataca de verdad, lo desorienta permitiendole ganar la iniciativa en los dos siguientes turnos, sin llegar a herirlo.',
       promptText: 'Dejo que un arrebato de instinto puro y salvaje tome el control por un instante, listo para desorientar a mi rival en cuanto ataque.',
       category: 'combate',
-      effect: 'ATURDIMIENTO',
-      rol: 'utilidad',
-      preferredAttribute: 'arcano',
+      effects: ['ATURDIMIENTO'],
+      rol: 'defensa',
+      preferredAttribute: 'destreza',
       energyCost: ENERGY_COST_BASICA,
+    },
+  },
+  {
+    level: 8,
+    clase: 'Cazador',
+    ability: {
+      name: 'Compañero cazador',
+      icon: '🐺',
+      description: 'Te permite llevar como compañero a una bestia de la fauna que tengas bajo tu control.',
+      // Pasiva (2026-08-15) — nunca se invoca con texto libre ni entra al roster de combate
+      // (npcCombatAbilitiesFor la filtra), siempre está activa por su cuenta en cuanto se
+      // desbloquea. promptText vacío a propósito, mismo criterio que el resto de pasivas.
+      promptText: '',
+      category: 'combate',
+      effects: ['COMPANERO'],
+      rol: 'pasiva',
+      preferredAttribute: 'inteligencia',
+      energyCost: 0,
     },
   },
 ];

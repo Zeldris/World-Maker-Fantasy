@@ -37,6 +37,10 @@ const findUniqueNpcStateTx = vi.fn();
 // les prestan atención no revienten si closeItemQuests llega a consultarlos.
 const findManyQuestTx = vi.fn();
 const updateQuestTx = vi.fn();
+// Herramienta requerida por oficio (2026-08-17) — el despiece (metodoObtencion CAZA = desollador)
+// ahora comprueba, dentro de la misma transacción, si el inventario trae algo marcado como
+// herramienta de desollador antes de dejar tocar NpcState.
+const findManyItemCatalogTx = vi.fn();
 // Coste de tiempo de recolección (petición explícita, 2026-08-14) — la ruta ahora avanza
 // `WorldState.fictionalMinutes` dentro de la misma transacción cuando se consigue algo de verdad.
 const updateWorldStateTx = vi.fn();
@@ -58,10 +62,17 @@ vi.mock('../../services/worldFacts.js', () => ({
   appendSessionFacts: (...args: unknown[]) => appendSessionFacts(...args),
 }));
 
-vi.mock('../../services/npcScene.js', () => ({
-  detectNpcsInScene: (...args: unknown[]) => detectNpcsInScene(...args),
-  scopeFor: (...args: unknown[]) => scopeFor(...args),
-}));
+vi.mock('../../services/npcScene.js', async (importOriginal) => {
+  // `hasPendingLoot` (auditoría de deuda técnica 2026-08-18) — se deja la implementación REAL en
+  // vez de mockearla: es lógica pura sin dependencias externas, y así este mock nunca se
+  // desincroniza si su criterio cambia.
+  const actual = await importOriginal<typeof import('../../services/npcScene.js')>();
+  return {
+    detectNpcsInScene: (...args: unknown[]) => detectNpcsInScene(...args),
+    scopeFor: (...args: unknown[]) => scopeFor(...args),
+    hasPendingLoot: actual.hasPendingLoot,
+  };
+});
 
 const { recolectarRoutes } = await import('./recolectar.js');
 
@@ -92,6 +103,7 @@ describe('POST /saves/:id/recolectar/confirmar', () => {
     findManyQuestTx.mockReset().mockResolvedValue([]);
     updateQuestTx.mockReset();
     updateWorldStateTx.mockReset();
+    findManyItemCatalogTx.mockReset().mockResolvedValue([]);
     findUniqueSave.mockResolvedValue({
       id: 'save1',
       worldId: 'world1',
@@ -122,9 +134,19 @@ describe('POST /saves/:id/recolectar/confirmar', () => {
           findMany: (...args: unknown[]) => findManyQuestTx(...args),
           update: (...args: unknown[]) => updateQuestTx(...args),
         },
+        itemCatalog: { findMany: (...args: unknown[]) => findManyItemCatalogTx(...args) },
       }),
     );
   });
+
+  /// Helper (2026-08-17) — deja el inventario mockeado con el cuchillo de hielo sílice (arma Y
+  /// herramienta de desollador/curtidor a la vez), para los tests de despiece (CAZA) que SÍ deben
+  /// poder completarse. Sin llamar a esto, `findManyInventoryItem` sigue en `[]` por defecto y el
+  /// despiece se bloquea por falta de herramienta (mismo criterio que canCraft, crafting.ts).
+  function mockPlayerHasDesolladorTool() {
+    findManyInventoryItem.mockResolvedValue([{ id: 'tool1', name: 'Cuchillo de hielo sílice', catalogSlug: 'cuchillo-hielo-silice' }]);
+    findManyItemCatalogTx.mockResolvedValue([{ slug: 'cuchillo-hielo-silice', tipo: 'EQUIPABLE', category: 'arma', herramientaParaOficio: ['curtidor', 'desollador'] }]);
+  }
 
   it('ignora una selección cuyo itemSlug no es un HarvestYield real de ese sourceSlug (bug real, sin validar antes)', async () => {
     findFirstHarvestYield.mockResolvedValue(null);
@@ -325,7 +347,9 @@ describe('POST /saves/:id/recolectar/confirmar', () => {
     findFirstHarvestYield.mockResolvedValue({ cantidad: 3, item: { slug: 'piedra', name: 'Piedra' } });
     updateManyWorldPopulation.mockResolvedValue({ count: 1 });
     createInventoryItem.mockResolvedValue({ id: 'item1' });
-    findManyQuestTx.mockResolvedValue([{ id: 'quest1', title: 'Conseguir piedra', targetItemName: 'Piedra', rewardItems: [], rewardXp: null }]);
+    findManyQuestTx.mockResolvedValue([
+      { id: 'quest1', title: 'Conseguir piedra', targetItemName: 'Piedra', rewardItems: [], rewardXp: null, rewardRecipeKeys: [], rewardCompanion: null },
+    ]);
     const app = await buildApp();
 
     const res = await app.inject({
@@ -397,6 +421,7 @@ describe('POST /saves/:id/recolectar/confirmar', () => {
   // NpcState.saqueado de forma atómica (mismo guard-en-el-where que ya usa saqueo de NPCs con
   // nombre), y el texto determinista dice "despieza" en vez de "recolecta".
   it('un yield de método CAZA marca NpcState.saqueado en vez de tocar WorldPopulation', async () => {
+    mockPlayerHasDesolladorTool();
     findFirstHarvestYield.mockResolvedValue({ cantidad: 1, metodoObtencion: 'CAZA', item: { slug: 'piel-corretolvas', name: 'Piel de Corretolvas' } });
     findUniqueNpcTx.mockResolvedValue({ id: 'npc1', kind: 'PLANTILLA' });
     scopeFor.mockReturnValue('loc1');
@@ -421,6 +446,26 @@ describe('POST /saves/:id/recolectar/confirmar', () => {
     });
   });
 
+  it('sin ninguna herramienta de desollador en el inventario, el despiece no da nada (mismo criterio que canCraft)', async () => {
+    findFirstHarvestYield.mockResolvedValue({ cantidad: 1, metodoObtencion: 'CAZA', item: { slug: 'piel-corretolvas', name: 'Piel de Corretolvas' } });
+    findUniqueNpcTx.mockResolvedValue({ id: 'npc1', kind: 'PLANTILLA' });
+    scopeFor.mockReturnValue('loc1');
+    updateManyNpcStateTx.mockResolvedValue({ count: 1 });
+    createInventoryItem.mockResolvedValue({ id: 'item1' });
+    const app = await buildApp();
+
+    const res = await app.inject({
+      method: 'POST',
+      url: '/saves/save1/recolectar/confirmar',
+      payload: { selections: [{ sourceSlug: 'corretolvas', itemSlug: 'piel-corretolvas', cantidad: 1 }] },
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(JSON.parse(res.body).items).toEqual([]);
+    expect(updateManyNpcStateTx).not.toHaveBeenCalled();
+    expect(createInventoryItem).not.toHaveBeenCalled();
+  });
+
   it('un cadáver ya despiezado (saqueado:true) no da nada — el guard atómico lo bloquea', async () => {
     findFirstHarvestYield.mockResolvedValue({ cantidad: 1, metodoObtencion: 'CAZA', item: { slug: 'piel-corretolvas', name: 'Piel de Corretolvas' } });
     findUniqueNpcTx.mockResolvedValue({ id: 'npc1', kind: 'PLANTILLA' });
@@ -440,6 +485,7 @@ describe('POST /saves/:id/recolectar/confirmar', () => {
   });
 
   it('dos yields del mismo cadáver en una sola petición solo reclaman NpcState.saqueado una vez', async () => {
+    mockPlayerHasDesolladorTool();
     findFirstHarvestYield.mockImplementation(({ where }: { where: { item: { slug: string } } }) =>
       Promise.resolve(
         where.item.slug === 'piel-corretolvas'
@@ -474,6 +520,7 @@ describe('POST /saves/:id/recolectar/confirmar', () => {
   // un individuo solitario.
   describe('Caza en grupo: despiece consume corpsesLooted/groupDefeated en vez de saqueado', () => {
     it('con cadáveres reales disponibles (groupDefeated > corpsesLooted), reclama uno y NO toca saqueado', async () => {
+      mockPlayerHasDesolladorTool();
       findFirstHarvestYield.mockResolvedValue({ cantidad: 1, metodoObtencion: 'CAZA', item: { slug: 'piel-corretolvas', name: 'Piel de Corretolvas' } });
       findUniqueNpcTx.mockResolvedValue({ id: 'npc1', kind: 'PLANTILLA' });
       scopeFor.mockReturnValue('loc1');
@@ -567,7 +614,7 @@ describe('GET /saves/:id/recolectar/:oficio', () => {
       { slug: 'corretolvas', name: 'Corretolvas', ataqueNatural: 'Muerde', condicionFisica: 'MUERTO', saqueado: false },
     ]);
     findManyHarvestYield.mockResolvedValue([
-      { sourceSlug: 'corretolvas', item: { slug: 'piel-corretolvas', name: 'Piel de Corretolvas' }, cantidad: 1 },
+      { sourceSlug: 'corretolvas', sourceCategory: 'fauna', item: { slug: 'piel-corretolvas', name: 'Piel de Corretolvas' }, cantidad: 1 },
     ]);
     const app = await buildApp();
 
@@ -576,7 +623,11 @@ describe('GET /saves/:id/recolectar/:oficio', () => {
     expect(res.statusCode).toBe(200);
     const body = JSON.parse(res.body);
     expect(body.sources).toEqual([
-      { sourceSlug: 'corretolvas', sourceName: 'Corretolvas', disponible: 1, yields: [{ itemSlug: 'piel-corretolvas', itemName: 'Piel de Corretolvas', cantidadMaxima: 1 }] },
+      {
+        sourceCategory: 'fauna',
+        sourceCategoryName: 'Fauna',
+        yields: [{ sourceSlug: 'corretolvas', itemSlug: 'piel-corretolvas', itemName: 'Piel de Corretolvas', cantidadMaxima: 1, disponible: 1 }],
+      },
     ]);
     // Nunca "Explorar" para desuello: o el cadáver ya está en escena, o no hay nada que buscar.
     expect(body.puedeExplorar).toBe(false);
@@ -644,7 +695,7 @@ describe('GET /saves/:id/recolectar/:oficio', () => {
       currentLocation: { region: 'Las Llanuras del Viento Rojo', slug: 'pozo-cauce-viejo' },
     });
     findManyHarvestYield.mockResolvedValue([
-      { sourceSlug: 'roca-pilares-rotos', sourceName: 'Roca de Los Pilares Rotos', item: { slug: 'piedra', name: 'Piedra' }, cantidad: 3 },
+      { sourceSlug: 'roca-pilares-rotos', sourceCategory: 'mineral', item: { slug: 'piedra', name: 'Piedra' }, cantidad: 3 },
     ]);
     findManyWorldPopulation.mockResolvedValue([
       { targetSlug: 'roca-pilares-rotos', poblacion: 40, distribucion: { 'Llanuras del Viento Rojo': 1 }, lastHarvestedAt: null, lastHarvestedLocationId: null },
@@ -664,7 +715,7 @@ describe('GET /saves/:id/recolectar/:oficio', () => {
       currentLocation: { region: 'Las Llanuras del Viento Rojo', slug: 'agujas-iman' },
     });
     findManyHarvestYield.mockResolvedValue([
-      { sourceSlug: 'roca-pilares-rotos', sourceName: 'Roca de Los Pilares Rotos', item: { slug: 'piedra', name: 'Piedra' }, cantidad: 3 },
+      { sourceSlug: 'roca-pilares-rotos', sourceCategory: 'mineral', item: { slug: 'piedra', name: 'Piedra' }, cantidad: 3 },
     ]);
     findManyWorldPopulation.mockResolvedValue([
       { targetSlug: 'roca-pilares-rotos', poblacion: 40, distribucion: { 'Llanuras del Viento Rojo': 1 }, lastHarvestedAt: null, lastHarvestedLocationId: null },
@@ -674,5 +725,37 @@ describe('GET /saves/:id/recolectar/:oficio', () => {
     const res = await app.inject({ method: 'POST', url: '/saves/save1/recolectar/minero-llanuras/explorar' });
 
     expect(JSON.parse(res.body).sources).toHaveLength(1);
+  });
+
+  // Agrupado automático por categoría (2026-08-15, petición explícita: "que sea automático, lo que
+  // meta en el enum y lo que linke en el item... que aparezcan los items categorizados en el front
+  // bajo esa categoría nueva") — dos sourceSlug DISTINTOS que comparten sourceCategory salen bajo
+  // una sola tarjeta, cada yield conservando su propio sourceSlug/disponible para poder
+  // seleccionarlo y consumirlo correctamente después.
+  it('agrupa automáticamente dos fuentes distintas de la misma categoría bajo una sola tarjeta', async () => {
+    loadSessionFacts.mockResolvedValue(['Gorhorn ve piedra y una veta de hierro cerca.']);
+    findManyHarvestYield.mockResolvedValue([
+      { sourceSlug: 'roca-pilares-rotos', sourceCategory: 'mineral', item: { slug: 'piedra', name: 'Piedra' }, cantidad: 3 },
+      { sourceSlug: 'veta-hierro-pilares-rotos', sourceCategory: 'mineral', item: { slug: 'mena-de-hierro', name: 'Mena de hierro' }, cantidad: 2 },
+    ]);
+    findManyWorldPopulation.mockResolvedValue([
+      { targetSlug: 'roca-pilares-rotos', poblacion: 40, distribucion: { 'Llanuras del Viento Rojo': 1 }, lastHarvestedAt: null, lastHarvestedLocationId: null },
+      { targetSlug: 'veta-hierro-pilares-rotos', poblacion: 10, distribucion: { 'Llanuras del Viento Rojo': 1 }, lastHarvestedAt: null, lastHarvestedLocationId: null },
+    ]);
+    const app = await buildApp();
+
+    const res = await app.inject({ method: 'GET', url: '/saves/save1/recolectar/minero-llanuras' });
+
+    expect(res.statusCode).toBe(200);
+    expect(JSON.parse(res.body).sources).toEqual([
+      {
+        sourceCategory: 'mineral',
+        sourceCategoryName: 'Mineral',
+        yields: [
+          { sourceSlug: 'roca-pilares-rotos', itemSlug: 'piedra', itemName: 'Piedra', cantidadMaxima: 3, disponible: 40 },
+          { sourceSlug: 'veta-hierro-pilares-rotos', itemSlug: 'mena-de-hierro', itemName: 'Mena de hierro', cantidadMaxima: 2, disponible: 10 },
+        ],
+      },
+    ]);
   });
 });

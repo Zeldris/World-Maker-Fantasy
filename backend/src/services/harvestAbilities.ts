@@ -15,7 +15,7 @@ import type { StartingAbility } from './startingAbilities.js';
 /// minero/talador, su "ya localizado en la zona" (2026-08-09, petición explícita: "que al usar la
 /// habilidad de profesión de desollar funcione como el resto y explore la zona con los cadáveres
 /// derrotados") no mira `WorldPopulation` ni tiene "Explorar" propio — mira qué fauna en escena
-/// (`detectNpcsInScene`, npcScene.ts) ya está derrotada (INCAPACITADO/MUERTO) y sin despiezar
+/// (`detectNpcsInScene`, npcScene.ts) ya está derrotada (CONVALECIENTE/MUERTO) y sin despiezar
 /// todavía (`carcassCandidatesFor`, recolectar.ts): solo puedes desollar lo que ya has vencido en
 /// combate (y rematado o no) o lo que la propia narración ya ha descrito como cadáver en la zona.
 export interface HarvestAbilityUnlock {

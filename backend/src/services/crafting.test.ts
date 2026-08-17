@@ -11,10 +11,10 @@ function recipe(key: string): CraftingRecipe {
 }
 
 // Atributos de prueba que SÍ cumplen los requisitos reales de todas las recetas base (fuerza 12
-// de axeRepair, fuerza 10 de gargantuaArmor, inteligencia 8 de antidote, fuerza 8 de ironIngot,
-// fuerza 6 de stoneBlock) — para que los tests de materiales/ubicación de más abajo prueben SOLO
-// eso, sin toparse con el umbral de atributo.
-const attrs: AttributeBlock = { fuerza: 12, destreza: 10, constitucion: 10, inteligencia: 10, voluntad: 10, carisma: 10, arcano: 10 };
+// de axeRepair, fuerza 18 de gargantuaArmor —subido de 10 el 2026-08-15—, inteligencia 8 de
+// antidote, fuerza 8 de ironIngot, fuerza 6 de stoneBlock) — para que los tests de materiales/
+// ubicación de más abajo prueben SOLO eso, sin toparse con el umbral de atributo.
+const attrs: AttributeBlock = { fuerza: 18, destreza: 10, constitucion: 10, inteligencia: 10, voluntad: 10, carisma: 10, arcano: 10 };
 const secondary = { ...EMPTY_SECONDARY_ATTRIBUTES, inteligencia: 8 };
 
 const axeRepair = recipe('axeRepair');
@@ -33,7 +33,6 @@ const basicPoultice = recipe('basicPoultice');
 const completePoultice = recipe('completePoultice');
 const club = recipe('club');
 const gargantuaLegArmor = recipe('gargantuaLegArmor');
-const maktorClanTotem = recipe('maktorClanTotem');
 
 // catalogSlug de cada fila → tipo/categoría real del catálogo (2026-07-29, refactor de
 // ingredientes: crafting.ts ya no matchea por prefijo de nombre, matchea por catalogSlug/tipo/
@@ -53,11 +52,11 @@ const catalogBySlug = new Map<string, CatalogLookup>([
   ['odre-agua', { tipo: 'EQUIPABLE', category: 'herramienta' }],
   ['grano-espiga-roja', { tipo: 'CONSUMIBLE', category: 'consumible' }],
   ['piel-gargantua', { tipo: 'RECURSO', category: 'piel' }],
-  ['totem-clan-roto', { tipo: 'NARRATIVO', category: 'cosmetico' }],
   ['punado-arena-iman', { tipo: 'RECURSO', category: 'piedra' }],
   ['saquito-arena-iman', { tipo: 'NARRATIVO', category: 'valor' }],
   ['cardo-brujula', { tipo: 'RECURSO', category: 'hierba' }],
   ['lingote-hierro-imantado', { tipo: 'MATERIAL', category: 'metal' }],
+  ['cuchillo-hielo-silice', { tipo: 'EQUIPABLE', category: 'arma', herramientaParaOficio: ['curtidor', 'desollador'] }],
 ]);
 
 function row(id: string, catalogSlug: string, cantidad?: number): InventoryRowLike {
@@ -65,7 +64,7 @@ function row(id: string, catalogSlug: string, cantidad?: number): InventoryRowLi
 }
 
 describe('CRAFTING_RECIPES', () => {
-  it('tiene las 17 recetas esperadas, cada una con una clave única', () => {
+  it('tiene las 16 recetas esperadas, cada una con una clave única', () => {
     expect(CRAFTING_RECIPES.map((r) => r.key)).toEqual([
       'axeRepair',
       'smokeMeat',
@@ -83,7 +82,6 @@ describe('CRAFTING_RECIPES', () => {
       'completePoultice',
       'club',
       'gargantuaLegArmor',
-      'maktorClanTotem',
     ]);
   });
 });
@@ -193,12 +191,6 @@ describe('detectsCraftIntent', () => {
     expect(detectsCraftIntent(gargantuaLegArmor, 'Curto un faldar de piel de gargantúa')).toBe(true);
     expect(detectsCraftIntent(gargantuaLegArmor, 'Confecciono un peto')).toBe(false);
   });
-
-  it('detecta intención de reparar el tótem de clan roto', () => {
-    expect(detectsCraftIntent(maktorClanTotem, 'Reparo el tótem de clan roto')).toBe(true);
-    expect(detectsCraftIntent(maktorClanTotem, 'Intento restaurar el tótem')).toBe(true);
-    expect(detectsCraftIntent(maktorClanTotem, 'Miro el tótem con cariño')).toBe(false);
-  });
 });
 
 describe('canCraft — ingrediente exacto (catalogSlug concreto)', () => {
@@ -305,8 +297,11 @@ describe('canCraft — lingote de hierro imantado, aguja de cardo brújula y saq
     expect(canCraft(compassNeedle, 'hondonada-del-eco', rows, catalogBySlug, attrs, secondary)).toBe(false);
     expect(canCraft(compassNeedle, 'campamento-serhu', [row('1', 'cardo-brujula', 1), row('2', 'lingote-hierro-imantado')], catalogBySlug, attrs, secondary)).toBe(false);
   });
+  // Herramienta requerida (2026-08-17, oficio curtidor) — el cuchillo de hielo sílice de Gorhorn
+  // cuenta como herramienta de peletería; sin él en las filas, `canCraft` da false aunque el resto
+  // de requisitos se cumplan (ver test dedicado más abajo, describe "herramienta requerida...").
   it('saquito de arena imán: 1 piel (cualquiera, por categoría) + 2 puñados de arena imán, en el campamento', () => {
-    const rows = [row('1', 'piel-gargantua'), row('2', 'punado-arena-iman', 2)];
+    const rows = [row('1', 'piel-gargantua'), row('2', 'punado-arena-iman', 2), row('3', 'cuchillo-hielo-silice')];
     expect(canCraft(sandPouch, 'campamento-serhu', rows, catalogBySlug, attrs, secondary)).toBe(true);
     expect(canCraft(sandPouch, 'hondonada-del-eco', rows, catalogBySlug, attrs, secondary)).toBe(false);
     expect(canCraft(sandPouch, 'campamento-serhu', [row('1', 'piel-gargantua'), row('2', 'punado-arena-iman', 1)], catalogBySlug, attrs, secondary)).toBe(false);
@@ -338,18 +333,47 @@ describe('canCraft — 3 objetos antes inalcanzables (auditoría de catálogo, 2
     expect(canCraft(club, null, [row('1', 'lena-matorral-cuerno', 1)], catalogBySlug, attrs, secondary)).toBe(false);
   });
   it('faldar de piel de gargantúa: 2 pieles, solo en el campamento del clan', () => {
-    expect(canCraft(gargantuaLegArmor, 'campamento-serhu', [row('1', 'piel-gargantua', 2)], catalogBySlug, attrs, secondary)).toBe(true);
+    expect(canCraft(gargantuaLegArmor, 'campamento-serhu', [row('1', 'piel-gargantua', 2), row('2', 'cuchillo-hielo-silice')], catalogBySlug, attrs, secondary)).toBe(true);
     expect(canCraft(gargantuaLegArmor, 'hondonada-del-eco', [row('1', 'piel-gargantua', 2)], catalogBySlug, attrs, secondary)).toBe(false);
     expect(canCraft(gargantuaLegArmor, 'campamento-serhu', [row('1', 'piel-gargantua', 1)], catalogBySlug, attrs, secondary)).toBe(false);
   });
-  it('tótem del Clan Maktor: el tótem roto, solo en Los Restos de Maktor', () => {
-    expect(canCraft(maktorClanTotem, 'restos-de-maktor', [row('1', 'totem-clan-roto')], catalogBySlug, attrs, secondary)).toBe(true);
-    expect(canCraft(maktorClanTotem, 'hondonada-del-eco', [row('1', 'totem-clan-roto')], catalogBySlug, attrs, secondary)).toBe(false);
-    expect(canCraft(maktorClanTotem, 'restos-de-maktor', [], catalogBySlug, attrs, secondary)).toBe(false);
+});
+
+// Herramienta requerida por oficio (2026-08-17, petición explícita: "cada profesión dependerá de
+// tener la herramienta para poder usar esa profesión") — solo bloquea los oficios que de verdad
+// tienen alguna herramienta dada de alta en el catálogo (curtidor/desollador hoy); el resto de
+// oficios (herrería, minería...) sigue exactamente igual que antes, sin gate.
+describe('canCraft — herramienta requerida por oficio (2026-08-17)', () => {
+  it('sin ninguna herramienta de curtidor en las filas, una receta con oficio curtidor no se puede craftear aunque sobren ingredientes/atributos', () => {
+    const rows = [row('1', 'piel-gargantua', 2)];
+    expect(canCraft(gargantuaLegArmor, 'campamento-serhu', rows, catalogBySlug, attrs, secondary)).toBe(false);
   });
-  it('el requisito de Carisma del tótem se exige de verdad', () => {
-    const pocoCarismatico: AttributeBlock = { ...attrs, carisma: 4 };
-    expect(canCraft(maktorClanTotem, 'restos-de-maktor', [row('1', 'totem-clan-roto')], catalogBySlug, pocoCarismatico, secondary)).toBe(false);
+  it('con el cuchillo de hielo sílice en las filas (arma Y herramienta de curtidor a la vez), sí se puede craftear', () => {
+    const rows = [row('1', 'piel-gargantua', 2), row('2', 'cuchillo-hielo-silice')];
+    expect(canCraft(gargantuaLegArmor, 'campamento-serhu', rows, catalogBySlug, attrs, secondary)).toBe(true);
+  });
+  it('un oficio SIN ninguna herramienta registrada en el catálogo (herrero) nunca se bloquea por esto — axeRepair sigue funcionando sin ningún objeto de categoría herramienta', () => {
+    const rows = [row('1', 'hacha-guerra-maktor-rota'), row('2', 'sal-trueque')];
+    expect(canCraft(axeRepair, 'campamento-serhu', rows, catalogBySlug, attrs, secondary)).toBe(true);
+  });
+});
+
+// Recetas desbloqueables por misión (2026-08-17) — receta de prueba a mano, ninguna de las 16
+// reales lleva requiresUnlock todavía (no rompe nada de lo que ya existe).
+describe('canCraft — requiresUnlock (2026-08-17, recompensa de misión no-objeto)', () => {
+  const lockedRecipe: CraftingRecipe = { ...axeRepair, key: 'testLockedRecipe', requiresUnlock: true, location: null, requisitos: undefined, oficio: undefined };
+  it('sin la clave en unlockedRecipeKeys, se bloquea aunque sobren ingredientes/atributos', () => {
+    const rows = [row('1', 'hacha-guerra-maktor-rota'), row('2', 'sal-trueque')];
+    expect(canCraft(lockedRecipe, null, rows, catalogBySlug, attrs, secondary, 0, [])).toBe(false);
+    expect(canCraft(lockedRecipe, null, rows, catalogBySlug, attrs, secondary, 0, ['otra-receta'])).toBe(false);
+  });
+  it('con la clave real en unlockedRecipeKeys, se puede craftear', () => {
+    const rows = [row('1', 'hacha-guerra-maktor-rota'), row('2', 'sal-trueque')];
+    expect(canCraft(lockedRecipe, null, rows, catalogBySlug, attrs, secondary, 0, ['testLockedRecipe'])).toBe(true);
+  });
+  it('sin requiresUnlock (todas las recetas reales de hoy), unlockedRecipeKeys nunca importa', () => {
+    const rows = [row('1', 'hacha-guerra-maktor-rota'), row('2', 'sal-trueque')];
+    expect(canCraft(axeRepair, 'campamento-serhu', rows, catalogBySlug, attrs, secondary, 0, [])).toBe(true);
   });
 });
 

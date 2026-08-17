@@ -4,20 +4,20 @@ import type { CondicionFisica, Dificultad, AbilityEffect } from '@prisma/client'
 /// sin IA: el modelo nunca decide si el fin de partida se dispara ni qué susurra la Entidad,
 /// igual que nunca decide si una tirada tiene éxito (mismo espíritu que progression.ts).
 
-const CONDICION_ORDER: CondicionFisica[] = ['ILESO', 'HERIDO', 'GRAVE', 'INCAPACITADO', 'MUERTO'];
+const CONDICION_ORDER: CondicionFisica[] = ['ILESO', 'HERIDO', 'GRAVE', 'CONVALECIENTE', 'MUERTO'];
 
 /// Malus mecánico por condición física en combate (2026-07-29, "cómo es posible que alguien
-/// incapacitado reaccione igual" — hasta ahora `condicionFisica` no afectaba ninguna tirada, solo
+/// convaleciente reaccione igual" — hasta ahora `condicionFisica` no afectaba ninguna tirada, solo
 /// paraba a quien ya había caído). Se resta al valor CRUDO del atributo antes del multiplicador
 /// de tipo (combatExchange.ts), para cualquiera de los dos lados y cualquier rol (atacar o
 /// defender) — HERIDO se nota poco, GRAVE cuesta de verdad.
 ///
-/// Bug real jugando en vivo (2026-07-31, "he ganado la batalla estando yo incapacitado y el
-/// enemigo herido"): el comentario original de aquí asumía que un jugador INCAPACITADO "ya para
+/// Bug real jugando en vivo (2026-07-31, "he ganado la batalla estando yo convaleciente y el
+/// enemigo herido"): el comentario original de aquí asumía que un jugador CONVALECIENTE "ya para
 /// de actuar antes de llegar aquí" — falso, nada en turnResolution.ts detiene al jugador (a
-/// diferencia del NPC, que sí queda excluido del intercambio si está INCAPACITADO/MUERTO, ver
-/// `npcParaIntercambio.condicionFisica !== 'INCAPACITADO'`). Con malus 0 (igual que ILESO), un
-/// jugador incapacitado seguía peleando exactamente igual de bien que uno sano — así terminó
+/// diferencia del NPC, que sí queda excluido del intercambio si está CONVALECIENTE/MUERTO, ver
+/// `npcParaIntercambio.condicionFisica !== 'CONVALECIENTE'`). Con malus 0 (igual que ILESO), un
+/// jugador convaleciente seguía peleando exactamente igual de bien que uno sano — así terminó
 /// "ganando" un combate donde en realidad los dos habían caído a la vez. Decisión explícita de la
 /// usuaria: sigue pudiendo intentarlo, pero MUY penalizado — no un tope duro (eso lo pidió para
 /// otra cosa), un malus real. MUERTO se queda en 0: no llega a pelear otro turno (ver
@@ -27,14 +27,14 @@ const CONDICION_ORDER: CondicionFisica[] = ['ILESO', 'HERIDO', 'GRAVE', 'INCAPAC
 /// `condicionFisica` (`NpcState.condicionFisicaSinceMinutes`, en minutos de FICCIÓN, no reales) y
 /// el minuto de ficción actual, decide si toca revertir/despachar. La escritura real en DB vive en
 /// turnResolution.ts (necesita `tx`), esto solo decide el "¿toca ya?".
-const RECOVERY_INCAPACITADO_MINUTES = 6 * 60;
+const RECOVERY_CONVALECIENTE_MINUTES = 6 * 60;
 const DESPAWN_MUERTO_MINUTES = 48 * 60;
 
-/// INCAPACITADO sin decapitar durante 6h de ficción → se recupera a HERIDO (no GRAVE ni ILESO —
+/// CONVALECIENTE sin decapitar durante 6h de ficción → se recupera a HERIDO (no GRAVE ni ILESO —
 /// decisión explícita de la usuaria, corrige la primera propuesta de este mismo documento).
-export function npcRecoversFromIncapacitado(sinceMinutes: number | null, nowMinutes: number): boolean {
+export function npcRecoversFromConvaleciente(sinceMinutes: number | null, nowMinutes: number): boolean {
   if (sinceMinutes === null) return false;
-  return nowMinutes - sinceMinutes >= RECOVERY_INCAPACITADO_MINUTES;
+  return nowMinutes - sinceMinutes >= RECOVERY_CONVALECIENTE_MINUTES;
 }
 
 /// MUERTO durante 48h de ficción → el cadáver desaparece del mundo (se borra su NpcState — mismo
@@ -50,7 +50,7 @@ const CONDICION_MALUS: Record<CondicionFisica, number> = {
   ILESO: 0,
   HERIDO: 2,
   GRAVE: 5,
-  INCAPACITADO: 10,
+  CONVALECIENTE: 10,
   MUERTO: 0,
 };
 
@@ -60,7 +60,7 @@ export function condicionMalus(condicion: CondicionFisica): number {
 
 /// Techo real de mejora este turno (2026-07-29, reglas de curación: "si descansas o comes solo
 /// puedes volver a Herido... si usas material médico sí puedes curarte a Ileso... si sales de un
-/// combate Incapacitado, tendrás que usar objetos específicos"). Sin causa real (ni descanso ni
+/// combate Convaleciente, tendrás que usar objetos específicos"). Sin causa real (ni descanso ni
 /// objeto médico), no hay mejora posible — cierra el hueco de que el modelo mejorara la condición
 /// "porque sí" narrativamente, sin que nada en el turno lo justificara.
 ///
@@ -69,7 +69,7 @@ export function condicionMalus(condicion: CondicionFisica): number {
 /// usuaria): `restAttempted` (el jugador intentó descansar, EN CUALQUIER SITIO, con éxito
 /// mecánico) topa como mucho en GRAVE — un vivac improvisado ayuda, pero poco. `restInValidLocation`
 /// (además, el sitio es un refugio/asentamiento real) topa en HERIDO — sigue sin bastar desde
-/// INCAPACITADO, que necesita objeto médico sí o sí, pero SÍ mejora a GRAVE igual que el descanso
+/// CONVALECIENTE, que necesita objeto médico sí o sí, pero SÍ mejora a GRAVE igual que el descanso
 /// improvisado (antes no hacía nada en absoluto). `restInValidLocation` implica `restAttempted`
 /// (nunca al revés) — es el mismo caller quien garantiza esa relación (turnResolution.ts).
 ///
@@ -105,9 +105,9 @@ export function healCeilingFor(
       const medicalIdx = CONDICION_ORDER.indexOf(medicalCuraHasta);
       ceiling = CONDICION_ORDER[Math.max(currentIdx - 1, medicalIdx)];
     } else {
-      ceiling = medicalCuraHasta; // el objeto manda, rompe el tope incluso desde INCAPACITADO
+      ceiling = medicalCuraHasta; // el objeto manda, rompe el tope incluso desde CONVALECIENTE
     }
-  } else if (restInValidLocation && current !== 'INCAPACITADO' && current !== 'MUERTO') {
+  } else if (restInValidLocation && current !== 'CONVALECIENTE' && current !== 'MUERTO') {
     ceiling = 'HERIDO';
   } else if (restAttempted && current !== 'MUERTO') {
     ceiling = 'GRAVE';
@@ -157,11 +157,12 @@ export function oneStepWorseThan(current: CondicionFisica): CondicionFisica {
   return CONDICION_ORDER[Math.min(idx + 1, CONDICION_ORDER.length - 1)];
 }
 
-/// Mecánica real de habilidades de clase (checklist 2026-07-21/22, puntos 1-2): REMATE solo
-/// aporta el golpe de gracia si el NPC objetivo YA está GRAVE/INCAPACITADO — contra uno sano se
-/// comporta como un ATAQUE normal (un escalón), sin penalizar probarlo pronto en la pelea.
-export function nextCondicionForAttack(effect: AbilityEffect | null | undefined, current: CondicionFisica): CondicionFisica {
-  if (effect === 'REMATE' && (current === 'GRAVE' || current === 'INCAPACITADO')) return 'MUERTO';
+/// Mecánica real de habilidades de clase (checklist 2026-07-21/22, puntos 1-2, fusionada en LETAL
+/// el 2026-08-15 — sustituye a REMATE, que exigía que el objetivo ya estuviera GRAVE/CONVALECIENTE):
+/// LETAL mata de un golpe a CUALQUIER rival que reciba el golpe, sin condición previa sobre su
+/// condición física actual — confirmado explícitamente con la usuaria.
+export function nextCondicionForAttack(effects: AbilityEffect[], current: CondicionFisica): CondicionFisica {
+  if (effects.includes('LETAL')) return 'MUERTO';
   return oneStepWorseThan(current);
 }
 
@@ -183,7 +184,7 @@ const SALUD_POR_CONDICION: Record<CondicionFisica, number> = {
   ILESO: 100,
   HERIDO: 75,
   GRAVE: 50,
-  INCAPACITADO: 25,
+  CONVALECIENTE: 25,
   MUERTO: 0,
 };
 

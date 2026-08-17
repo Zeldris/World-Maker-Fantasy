@@ -48,6 +48,15 @@ export async function detailRoutes(app: FastifyInstance) {
       return reply.status(404).send({ error: 'Partida no encontrada' });
     }
 
+    // Log de Reino SIN ventana de 24h (auditoría de código 2026-08-17: `save.logEntries` de arriba
+    // ya viene recortado por `logWindowStart`, pensado para el feed continuo de personaje/mundo —
+    // los hitos de Reino (fundar/mejorar Ayuntamiento, levantar Campamento) son raros y deberían
+    // seguir visibles como buildings/territories, no desaparecer del panel a las 24h de juego).
+    const kingdomLogEntries = await prisma.logEntry.findMany({
+      where: { saveId: save.id, channel: 'KINGDOM' },
+      orderBy: { createdAt: 'asc' },
+    });
+
     // Tier/requisitos de equipar (sesión de diseño 2026-07-23) — viven en ItemCatalog, no en la
     // fila de InventoryItem; se resuelven aquí por `catalogSlug` para no repetir la consulta por
     // objeto. Objetos sin `catalogSlug` (narrativos sueltos, `newItem` del modelo) quedan sin tier.
@@ -161,6 +170,11 @@ export async function detailRoutes(app: FastifyInstance) {
       factionsStatus: (save.worldState?.factionsStatus as Record<string, number> | null) ?? {},
       characterLog: save.logEntries.filter((e) => e.channel === 'CHARACTER').map(toFrontendLogEntry),
       worldLog: save.logEntries.filter((e) => e.channel === 'WORLD').map(toFrontendLogEntry),
+      // Log de Reino (2026-08-17) — canal aparte, alternable con el de mundo en el frontend (uno u
+      // otro, nunca los dos a la vez): eventos de fundar/mejorar el Ayuntamiento y levantar
+      // construcciones de reino, ver dónde se escribe en turnResolution.ts. Consulta propia sin
+      // ventana de 24h (`kingdomLogEntries`, arriba) — no `save.logEntries.filter(...)`.
+      kingdomLog: kingdomLogEntries.map(toFrontendLogEntry),
       inventory: save.inventoryItems.map((i) => {
         const catalogItem = i.catalogSlug ? catalogItemBySlug.get(i.catalogSlug) : undefined;
         return {
@@ -184,6 +198,13 @@ export async function detailRoutes(app: FastifyInstance) {
           // siempre la definición ACTUAL del catálogo, nunca una foto congelada en InventoryItem.
           effectKey: catalogItem?.effectKey ?? null,
           effectDescription: catalogItem?.effectDescription ?? null,
+          // Datos de curación (2026-08-17, panel "Curar" — startingAbilities.ts) — expuestos para
+          // que el frontend pueda mostrar qué hace cada curativo ANTES de elegirlo, mismo criterio
+          // que el resto de campos de catálogo de aquí arriba (siempre la definición ACTUAL, nunca
+          // una foto congelada). Ver comentario de los campos homónimos en schema.prisma.
+          curaHasta: catalogItem?.curaHasta ?? null,
+          curaUnPaso: catalogItem?.curaUnPaso ?? false,
+          curaEnergia: catalogItem?.curaEnergia ?? null,
           // Imagen real de la Enciclopedia (petición explícita de la usuaria, 2026-07-24: "las
           // imágenes no salen" al ver un objeto desde Inventario/Equipo) — `DetailModal.tsx`
           // (kind:'item') nunca recibía esto, así que solo mostraba el emoji genérico aunque la

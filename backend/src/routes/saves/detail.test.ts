@@ -13,6 +13,7 @@ const findManyItemCatalog = vi.fn();
 const findManyLocation = vi.fn();
 const findManyNpc = vi.fn();
 const findManyNpcState = vi.fn();
+const findManyLogEntry = vi.fn();
 
 vi.mock('../../lib/prisma.js', () => ({
   prisma: {
@@ -22,6 +23,7 @@ vi.mock('../../lib/prisma.js', () => ({
     location: { findMany: (...args: unknown[]) => findManyLocation(...args) },
     npc: { findMany: (...args: unknown[]) => findManyNpc(...args) },
     npcState: { findMany: (...args: unknown[]) => findManyNpcState(...args) },
+    logEntry: { findMany: (...args: unknown[]) => findManyLogEntry(...args) },
   },
 }));
 
@@ -86,6 +88,7 @@ describe('GET /saves/:id', () => {
     findManyLocation.mockReset().mockResolvedValue([]);
     findManyNpc.mockReset().mockResolvedValue([]);
     findManyNpcState.mockReset().mockResolvedValue([]);
+    findManyLogEntry.mockReset().mockResolvedValue([]);
   });
 
   it('404 si la partida no existe', async () => {
@@ -168,7 +171,7 @@ describe('GET /saves/:id', () => {
     expect(res.json().combateIniciado).toBeNull();
   });
 
-  it('un NPC INCAPACITADO/MUERTO todavía sin saquear del todo sí reabre combateIniciado, con lootedItemNames', async () => {
+  it('un NPC CONVALECIENTE/MUERTO todavía sin saquear del todo sí reabre combateIniciado, con lootedItemNames', async () => {
     findUniqueSave.mockResolvedValue(baseSave({ pendingCombatNpcSlugs: ['orco-enfurecido-hondonada'] }));
     findManyNpc.mockResolvedValue([{ id: 'npc1', slug: 'orco-enfurecido-hondonada', name: 'Orco Enfurecido', kind: 'SECUNDARIO' }]);
     findManyNpcState.mockResolvedValue([{ npcId: 'npc1', scope: 'itinerante', condicionFisica: 'MUERTO', saqueado: false, lootedItemNames: ['Maza orca'] }]);

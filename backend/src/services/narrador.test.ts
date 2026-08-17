@@ -116,7 +116,7 @@ describe('sanitizeSuggestions', () => {
 });
 
 describe('dropSuggestionsTargetingDownedNpc', () => {
-  it('bug real reportado en captura (2026-08-15): descarta "Ataco a X" cuando X ya está incapacitado', () => {
+  it('bug real reportado en captura (2026-08-15): descarta "Ataco a X" cuando X ya está convaleciente', () => {
     const suggestions = ['Ataco a Orco Enfurecido', 'Registro el cuerpo del Orco Enfurecido', 'Sigo mi camino'];
     expect(dropSuggestionsTargetingDownedNpc(suggestions, ['Orco Enfurecido'])).toEqual([
       'Registro el cuerpo del Orco Enfurecido',
@@ -156,7 +156,7 @@ describe('npcsKnownFromLog', () => {
   });
 
   it('un NPC activo en combate tiene su nombre por todo el log, así que nunca se filtra', () => {
-    const npcs = [{ name: 'Orco Enfurecido', condicionFisica: 'INCAPACITADO' as const }];
+    const npcs = [{ name: 'Orco Enfurecido', condicionFisica: 'CONVALECIENTE' as const }];
     const recentLog = ['Gorhorn ataca al Orco Enfurecido.', 'Gorhorn hunde su hacha en el hombro del Orco Enfurecido, dejándolo inmóvil.'];
     expect(npcsKnownFromLog(npcs, recentLog)).toEqual(npcs);
   });
@@ -373,7 +373,7 @@ describe('hasResurrectedDeadNpc', () => {
     expect(hasResurrectedDeadNpc(narration, ['Orco Enfurecido'])).toBe(true);
   });
 
-  it('no dispara si la lista viene vacía (ningún NPC incapacitado/muerto en escena este turno)', () => {
+  it('no dispara si la lista viene vacía (ningún NPC convaleciente/muerto en escena este turno)', () => {
     const narration = 'Gorhorn reconoce el paso de un orco entre la maleza.';
     expect(hasResurrectedDeadNpc(narration, [])).toBe(false);
     expect(hasResurrectedDeadNpc(narration, undefined)).toBe(false);
@@ -597,11 +597,11 @@ describe('buildNarrationPrompt — narrar inconsciencia (docs/19-post-combate-y-
 
   it('pide explícitamente narrar el momento de caer inconsciente/morir cuando este golpe termina el combate', () => {
     const { prompt } = buildNarrationPrompt({ ...baseCtx, npcFallsUnconsciousThisTurn: true });
-    expect(prompt).toMatch(/INCAPACITADO o MUERTO/);
+    expect(prompt).toMatch(/CONVALECIENTE o MUERTO/);
   });
 
   it('no añade esa instrucción en un turno de combate normal', () => {
     const { prompt } = buildNarrationPrompt({ ...baseCtx, npcFallsUnconsciousThisTurn: false });
-    expect(prompt).not.toMatch(/INCAPACITADO o MUERTO/);
+    expect(prompt).not.toMatch(/CONVALECIENTE o MUERTO/);
   });
 });

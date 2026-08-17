@@ -15,11 +15,13 @@ interface DiarioPanelProps {
 const channelLabel: Record<DiarioEntry['channel'], string> = {
   character: 'Personaje',
   world: 'Mundo',
+  kingdom: 'Reino',
 }
 
 const channelClasses: Record<DiarioEntry['channel'], string> = {
   character: 'gem',
   world: 'gem2',
+  kingdom: 'gem2',
 }
 
 /// Registro completo de la partida (rework 2026-07-24: "el log de personaje solo muestre 24h del

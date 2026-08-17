@@ -31,6 +31,12 @@ interface LogPanelProps {
   /// glifo: GameView.tsx pasa uno que apunta hacia el borde de pantalla más cercano a este panel.
   onCollapse?: () => void
   collapseIcon?: string
+  /// Alternar de canal (2026-08-17, log de Reino que se alterna con el de mundo, uno u otro,
+  /// nunca los dos a la vez) — sin `onToggleView`, no sale ningún botón (mismo patrón opcional
+  /// que `onCollapse`). `toggleViewLabel` es el texto del botón (apunta a la vista A LA QUE SE
+  /// CAMBIARÍA, no a la actual — p.ej. "Reino" mientras se ve "El mundo").
+  onToggleView?: () => void
+  toggleViewLabel?: string
   /// Nombre real del personaje (2026-08-14, petición explícita: "poner la mención al npc o
   /// personaje que ganó el turno") — reenviado tal cual a CombatExchangeBadge; el nombre del NPC
   /// rival viaja YA en cada `entry.npcAbilityUsed.npcName`, no hace falta pasarlo aparte aquí.
@@ -90,6 +96,8 @@ export const LogPanel = memo(function LogPanel({
   combate,
   onCollapse,
   collapseIcon,
+  onToggleView,
+  toggleViewLabel,
   characterName,
   diceReveal,
 }: LogPanelProps) {
@@ -127,6 +135,15 @@ export const LogPanel = memo(function LogPanel({
           <h2 className={`font-serif text-sm tracking-wide ${classes.heading}`}>{title}</h2>
           <p className="text-2xs text-wood-400">{subtitle}</p>
         </div>
+        {onToggleView && (
+          <button
+            onClick={onToggleView}
+            title={`Ver "${toggleViewLabel}"`}
+            className="tactile relative shrink-0 rounded-md border border-iron-700 px-1.5 py-1 text-2xs text-wood-400 transition-colors hover:border-accent-600/60 hover:text-accent-300"
+          >
+            {toggleViewLabel}
+          </button>
+        )}
         {onCollapse && (
           <button
             onClick={onCollapse}

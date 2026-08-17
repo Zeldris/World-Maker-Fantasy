@@ -35,47 +35,47 @@ sale herido" — no exige explícitamente narrar el momento en que el enemigo ca
 ese es justo el golpe que termina el combate. Resultado: el panel de victoria puede aparecer sin
 que la propia narración del último golpe lo haya descrito con claridad.
 **Alcance**: instrucción de prompt nueva, condicionada a "este golpe deja al NPC en
-INCAPACITADO/MUERTO" (dato ya disponible en `turnResolution.ts` en el momento de construir el
+CONVALECIENTE/MUERTO" (dato ya disponible en `turnResolution.ts` en el momento de construir el
 prompt). Bajo riesgo, un solo archivo.
 
 **Implementado y verificado (2026-08-13)**: nuevo `npcFallsUnconsciousThisTurn` calculado en
 `turnResolution.ts` justo al lado de `combatBothMissed` (mismo patrón) — true solo el turno EXACTO
-en que `npcTargetNewCondicion` pasa a INCAPACITADO/MUERTO viniendo de un estado distinto (nunca si
+en que `npcTargetNewCondicion` pasa a CONVALECIENTE/MUERTO viniendo de un estado distinto (nunca si
 ya estaba así de antes). Viaja por `TurnContext.npcFallsUnconsciousThisTurn` (narrador.ts) hasta
 `combatBlock` en `buildNarrationPrompt`, que añade una frase explícita pidiendo narrar ese momento
 concreto cuando aplica. Tests: 2 nuevos en `narrador.test.ts` (con/sin la instrucción en el
 prompt).
 
-### 2. Recuperación tras 6h (INCAPACITADO) / desaparición tras 48h (MUERTO) + panel de interacción
+### 2. Recuperación tras 6h (CONVALECIENTE) / desaparición tras 48h (MUERTO) + panel de interacción
 
 **No existe ningún mecanismo de este tipo hoy** — confirmado por grep en `death.ts` y el resto de
 `services/*.ts`: cero código que revierta `condicionFisica` con el paso del tiempo, ni que borre/
 oculte un cadáver. Diseño confirmado con la usuaria (2026-08-13), más amplio que el esbozo inicial:
 
-**a) Recuperación de INCAPACITADO** — a las 6h de tiempo de ficción sin decapitar, vuelve a
+**a) Recuperación de CONVALECIENTE** — a las 6h de tiempo de ficción sin decapitar, vuelve a
 **HERIDO** (no GRAVE ni ILESO — decisión explícita de la usuaria, corrige la recomendación inicial
 de este documento). Si se le ataca de nuevo a mitad de la recuperación, **combate normal, sin caso
-especial**: si se remata, MUERTO; si no, sigue INCAPACITADO y el conteo de 6h se reinicia solo
-(nueva marca de tiempo al volver a dejarlo INCAPACITADO), sin lógica aparte que mantener.
+especial**: si se remata, MUERTO; si no, sigue CONVALECIENTE y el conteo de 6h se reinicia solo
+(nueva marca de tiempo al volver a dejarlo CONVALECIENTE), sin lógica aparte que mantener.
 
 **b) Desaparición de un cadáver (MUERTO)** — a las 48h de tiempo de ficción (no tiempo real), el
 cadáver desaparece del mundo.
 
 **c) Panel de interacción fuera de combate (pieza nueva, no estaba en el esbozo inicial)** —
-interactuar con un NPC/fauna incapacitado o un cadáver (sin estar en combate activo) abre una
+interactuar con un NPC/fauna convaleciente o un cadáver (sin estar en combate activo) abre una
 vista tipo "Victoria" de `CombatPanel.tsx` pero SIN el texto de victoria: la ficha del NPC/fauna
 (igual que en combate) + botones:
-- **INCAPACITADO**: Salir · Saquear (solo si `!saqueado`) · Decapitar.
+- **CONVALECIENTE**: Salir · Saquear (solo si `!saqueado`) · Decapitar.
 - **MUERTO**: Salir · Saquear (solo si `!saqueado` — sin Decapitar, ya está muerto).
 
 Necesita, además del mecanismo de tiempo:
-- Nuevos campos en `NpcState`: marca de tiempo de ficción de cuándo quedó INCAPACITADO (para la
+- Nuevos campos en `NpcState`: marca de tiempo de ficción de cuándo quedó CONVALECIENTE (para la
   regla a) y de cuándo quedó MUERTO (para la regla b) — requiere migración de schema (SQL a mano,
   nunca `prisma migrate dev`, ver docs/15-instalacion.md).
 - Comprobación en cada turno/tick contra `fictionalMinutes` actual (mismo tipo de chequeo que ya
   hace `worldTick.ts` para tránsitos) — candidato natural: el mismo sitio que ya recorre NPCs en
   escena, o un paso nuevo en `worldTick.ts`.
-- Detección de "el jugador quiere interactuar con un NPC/fauna incapacitado o muerto que ya
+- Detección de "el jugador quiere interactuar con un NPC/fauna convaleciente o muerto que ya
   conoce" fuera de combate — probablemente reutilizando `detectNpcsInScene` + comprobar
   `condicionFisica`, similar en espíritu al validador de grounding de hoy pero para el caso
   contrario (SÍ existe y SÍ está aquí, solo que inconsciente/muerto).
@@ -90,7 +90,7 @@ Necesita, además del mecanismo de tiempo:
 **Implementado y verificado (2026-08-13)**:
 - Backend: `detectsPostCombatInteraction` (nuevo `services/postCombatInteraction.ts`) — reutiliza
   la lista de `detectNpcsInScene` ya calculada para el validador de grounding (sin consulta nueva),
-  filtra por `condicionFisica` INCAPACITADO/MUERTO y comprueba que el jugador nombra a ese NPC por
+  filtra por `condicionFisica` CONVALECIENTE/MUERTO y comprueba que el jugador nombra a ese NPC por
   su nombre en la propia acción (no solo por hechos de sesión antiguos, mismo cuidado que el bug de
   resurrección de esta misma sesión). Cableado en `POST /turn/classify`, solo fuera de combate
   (`!enCombate`), antes de `classifyAction` — devuelve `{ postCombatInteraction: {...} }` en vez de
@@ -122,7 +122,7 @@ recompensa determinista de misión que describe la usuaria no existe todavía** 
   looteó del cadáver).
 - Para el caso concreto del mapa: decisión de diseño de la usuaria — quitarlo del `loadout` del
   Orco Enfurecido en el catálogo y entregarlo SOLO como recompensa de misión (ligado a
-  INCAPACITADO/MUERTO, no a saquear el cuerpo), para que quede desacoplado del saqueo normal.
+  CONVALECIENTE/MUERTO, no a saquear el cuerpo), para que quede desacoplado del saqueo normal.
 
 **Implementado y verificado (2026-08-13)** — junto con la pieza 5 (narración), en el mismo commit:
 - `grantQuestRewardItems` (nueva, privada) — crea de verdad los `InventoryItem` de `rewardItems`
@@ -135,7 +135,7 @@ recompensa determinista de misión que describe la usuaria no existe todavía** 
   (Minar/Talar/Desollar), ambos call sites actualizados.
 - `completeNpcTargetQuests` (nueva, privada) — extraída para no duplicar el mismo bloque (cerrar +
   recompensar + narrar) entre un ataque normal y "Decapitar", los dos caminos que pueden dejar a
-  un NPC INCAPACITADO/MUERTO.
+  un NPC CONVALECIENTE/MUERTO.
 - El mapa se quitó de verdad del `loadout` del Orco Enfurecido (`worldCatalog.ts`) y su
   `rewardItems` pasó de `['Mapa de las Llanuras', 'Maza orca']` a solo `['Mapa de las Llanuras']`
   — "Maza orca"/"Amuleto de hueso" siguen viniendo del loot normal (seguían en el `loadout`);
@@ -154,6 +154,24 @@ recompensa determinista de misión que describe la usuaria no existe todavía** 
 - Tests: 1 nuevo de integración real (Decapitar + misión con `rewardItems` → objeto creado + log),
   1 extendido (rama `orcoYaResuelto`), 2 tests de `recolectar.test.ts` corregidos (mocks
   desactualizados por el cambio de firma de `closeItemQuests`).
+
+### 3bis. Recompensa de misión no-objeto: recetas y compañero (2026-08-17)
+
+Ampliación de la pieza 3 — no toda recompensa de misión es un `InventoryItem`. `Quest` ganó dos
+campos nuevos en `schema.prisma`: `rewardRecipeKeys: string[]` (recetas de crafteo que se
+desbloquean, comprobadas contra `Save.unlockedRecipeKeys` y el flag opcional
+`CraftingRecipe.requiresUnlock` en `crafting.ts`) y `rewardCompanion: Json?` (forma
+`{name, role, notes}`, tipo compartido `QuestRewardCompanion` en `questResolution.ts`). Pasivas
+temporales ("+5 fuerza durante 24h") quedan fuera a propósito — necesitarían un sistema de duración
+que todavía no existe en ningún sitio del motor.
+
+`grantQuestRewardRecipesAndCompanion` (nueva, `questResolution.ts`) concede ambas cosas: la receta
+se añade a `unlockedRecipeKeys` sin duplicar si ya estaba; el compañero se crea respetando el mismo
+tope real de plazas que cualquier otro (`companionSlotsForRecipeKey`) — si no hay hueco, se omite
+en silencio, el resto de la recompensa (XP/objetos/recetas) se concede igual. Llamada desde los
+mismos dos sitios que `grantQuestRewardItems` (`closeItemQuests`/`completeNpcTargetQuests`), y
+narrada en el mismo texto determinista (`questRewardNarrationFor`, ampliado con "aprende N
+receta(s) nueva(s)"/"se une {nombre}").
 
 ### 4. Fondo amarillo al completar una misión (UI)
 

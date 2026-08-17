@@ -32,6 +32,7 @@ const GORHORN_STARTING_INVENTORY: StartingInventoryItem[] = [
     slot: 'ARMA_PRINCIPAL',
     catalogSlug: 'hacha-guerra-maktor-rota',
   },
+  //este item debe ser arma y herramientas. Esto viene a que cada profesion dependera de tener la herramienta para poder usar esa profesion. Asi que este cuchillo vale como arma y tambien para poder hacer crafteos con peleteria o usar la recoleccion de desuello.
   {
     name: 'Cuchillo de hielo sílice',
     description: 'Filo mineral tallado, no forjado — comercio con el Clan Helsig, regalo de Hagar.',
@@ -63,13 +64,6 @@ const GORHORN_STARTING_INVENTORY: StartingInventoryItem[] = [
     origin: 'inicial',
     slot: 'ARMADURA_INFERIOR',
     catalogSlug: 'pantalones-piel',
-  },
-  {
-    name: 'Capa de piel de gargantúa',
-    description: 'Con plumas de Sombras de Kroj, decorativas — atada a modo de falda, se usa en zonas frías durante los viajes largos.',
-    origin: 'inicial',
-    slot: 'ACCESORIO',
-    catalogSlug: 'capa-piel-gargantua',
   },
   {
     name: 'Raciones de viaje',

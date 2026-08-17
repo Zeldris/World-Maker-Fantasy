@@ -15,14 +15,14 @@ describe('dynamicCombatAbilitiesFor (sistema de fatiga)', () => {
   });
 
   it('la de arma básica ("Ataque Básico") cuesta ENERGY_COST_ATAQUE_BASICO, no ENERGY_COST_BASICA — la real ("Tajo Horizontal") cuesta ENERGY_COST_BASICA como una habilidad de clase', () => {
-    const abilities = dynamicCombatAbilitiesFor(null, WEAPON_ABILITY_LEVEL_BASICA, [{ slot: 'ARMA_PRINCIPAL', tipoArma: 'HACHA' }]);
+    const abilities = dynamicCombatAbilitiesFor(null, WEAPON_ABILITY_LEVEL_BASICA, [{ slot: 'ARMA_PRINCIPAL', tipoArma: 'HACHA_1_MANO' }]);
     expect(abilities).toHaveLength(2); // Ataque Básico (genérico) + "Tajo Horizontal" (real, 2026-07-31)
     expect(abilities.find((a) => a.isGeneric)).toMatchObject({ name: 'Ataque Básico', energyCost: ENERGY_COST_ATAQUE_BASICO });
     expect(abilities.find((a) => !a.isGeneric)).toMatchObject({ name: 'Tajo Horizontal', energyCost: ENERGY_COST_BASICA, dualWield: false });
   });
 
   it('al cruzar el nivel de arma avanzada, la nueva habilidad cuesta ENERGY_COST_AVANZADA (la básica y la real se quedan igual)', () => {
-    const abilities = dynamicCombatAbilitiesFor(null, WEAPON_ABILITY_LEVEL_AVANZADA, [{ slot: 'ARMA_PRINCIPAL', tipoArma: 'HACHA' }]);
+    const abilities = dynamicCombatAbilitiesFor(null, WEAPON_ABILITY_LEVEL_AVANZADA, [{ slot: 'ARMA_PRINCIPAL', tipoArma: 'HACHA_1_MANO' }]);
     expect(abilities).toHaveLength(3); // Ataque Básico + "Tajo Horizontal" (real) + "Golpe Sísmico" (avanzada)
     expect(abilities.find((a) => a.energyCost === ENERGY_COST_ATAQUE_BASICO)).toMatchObject({ name: 'Ataque Básico', isGeneric: true });
     expect(abilities.find((a) => a.name === 'Tajo Horizontal')).toMatchObject({ energyCost: ENERGY_COST_BASICA, isGeneric: false });
@@ -32,7 +32,7 @@ describe('dynamicCombatAbilitiesFor (sistema de fatiga)', () => {
   it('sin raza ni arma equipada, cae al ataque desarmado como única dinámica (2026-07-30: nunca sin ninguna habilidad de ataque real) — ahora se llama "Ataque Básico" (rediseño 2026-07-31)', () => {
     const abilities = dynamicCombatAbilitiesFor(null, 1, []);
     expect(abilities).toHaveLength(1);
-    expect(abilities[0]).toMatchObject({ name: 'Ataque Básico', preferredAttribute: 'fuerza', effect: 'ATAQUE', isGeneric: true });
+    expect(abilities[0]).toMatchObject({ name: 'Ataque Básico', preferredAttribute: 'fuerza', effects: ['ATAQUE'], isGeneric: true });
   });
 
   // Rediseño de combate (2026-08-09) — WeaponAbility.rol ya existía (weaponAbilities.ts), pero se
@@ -60,7 +60,7 @@ describe('resolveEquippedWeaponSlots (deuda técnica 2026-07-30, extraído de 3 
 
   it('resuelve el tipoArma real de cada arma equipada desde el catálogo', async () => {
     const findMany = vi.fn().mockResolvedValue([
-      { slug: 'hacha-guerra-maktor-rota', tipoArma: 'HACHA' },
+      { slug: 'hacha-guerra-maktor-rota', tipoArma: 'HACHA_1_MANO' },
       { slug: 'cuchillo-hielo-silice', tipoArma: 'CUCHILLO' },
     ]);
     const tx = { itemCatalog: { findMany } };
@@ -69,7 +69,7 @@ describe('resolveEquippedWeaponSlots (deuda técnica 2026-07-30, extraído de 3 
       { slot: 'ARMA_SECUNDARIA', catalogSlug: 'cuchillo-hielo-silice' },
     ]);
     expect(result).toEqual([
-      { slot: 'ARMA_PRINCIPAL', tipoArma: 'HACHA' },
+      { slot: 'ARMA_PRINCIPAL', tipoArma: 'HACHA_1_MANO' },
       { slot: 'ARMA_SECUNDARIA', tipoArma: 'CUCHILLO' },
     ]);
     expect(findMany).toHaveBeenCalledWith({

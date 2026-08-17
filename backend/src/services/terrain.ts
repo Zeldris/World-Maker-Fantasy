@@ -6,7 +6,7 @@
 /// misma región (p. ej. las 8 hierbas de Las Llanuras) salían siempre juntas sin importar la zona
 /// exacta. Parche deliberadamente simple (petición explícita: "hagámoslo así", se afinará cuando
 /// haya más lore) — match/no-match categórico, sin pesos ni fórmulas.
-export type TerrainTag = 'arido' | 'humedo' | 'vegetacion' | 'rocoso';
+export type TerrainTag = 'arido' | 'humedo' | 'vegetacion' | 'rocoso' | 'tundra' | 'helado' | 'costero' | 'volcanico' | 'acuatico' | 'magnetico' | 'enfermo' | 'corrupto';
 
 /// `locationTags` viene de `locationTerrainTags` (worldCatalog.ts): `undefined` si la Location no
 /// está catalogada todavía (regiones sin lore desarrollado, o Locations nuevas sin taguear) —

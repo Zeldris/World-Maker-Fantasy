@@ -35,7 +35,10 @@ export interface ProfessionProgressInfo {
 /// mundo para esta fuente ahora mismo (tope real, no decorativo).
 export interface HarvestSourceCandidate {
   sourceSlug: string
-  sourceName: string
+  /// Categoría amplia de la fuente (2026-08-15, sustituye a sourceName) — lo que de verdad se
+  /// pinta como cabecera de esta tarjeta ("Mineral", "Fauna"...), no el nombre de la especie
+  /// concreta. Ver SOURCE_CATEGORY_NAMES en el backend (worldCatalog.ts).
+  sourceCategoryName: string
   disponible: number
   yields: { itemSlug: string; itemName: string; cantidadMaxima: number }[]
 }
@@ -155,7 +158,7 @@ export interface Character {
   introWorldText?: string
 }
 
-export type LogChannel = 'character' | 'world'
+export type LogChannel = 'character' | 'world' | 'kingdom'
 
 export interface RollInfo {
   attribute: Attribute
@@ -184,7 +187,7 @@ export interface CombatExchangeSideInfo extends RollInfo {
   /// guardado en BD nunca se migra retroactivamente, solo los turnos nuevos lo incluyen.
   multiplicador?: number
   /// Resta al atributo crudo por condición física (petición explícita, 2026-08-15) — 0/2/5/10
-  /// según ILESO/HERIDO/GRAVE/INCAPACITADO, ver combatExchange.ts (backend). Mismo criterio de
+  /// según ILESO/HERIDO/GRAVE/CONVALECIENTE, ver combatExchange.ts (backend). Mismo criterio de
   /// opcional que `multiplicador`: ausente en LogEntry.combatExchange persistidas antes de este
   /// campo.
   malus?: number
@@ -341,6 +344,10 @@ export interface InventoryItemInfo {
   /// 2026-07-24: "las imágenes no salen" al ver un objeto desde Inventario/Equipo) — solo
   /// presente si `catalogSlug` existe y hay un banner subido de verdad (ver imageAssets.ts).
   imageUrls?: { thumbnail: string | null; banner: string | null }
+  /// Datos de curación (2026-08-17, panel "Curar") — null/false/null en objetos que no curan.
+  curaHasta?: 'GRAVE' | 'HERIDO' | 'ILESO' | null
+  curaUnPaso?: boolean
+  curaEnergia?: number | null
 }
 
 export interface CompanionInfo {
@@ -482,16 +489,16 @@ export interface SavedActionInfo {
   rol: 'ataque' | 'defensa' | 'utilidad' | null
 }
 
-export type CondicionFisica = 'ILESO' | 'HERIDO' | 'GRAVE' | 'INCAPACITADO' | 'MUERTO'
+export type CondicionFisica = 'ILESO' | 'HERIDO' | 'GRAVE' | 'CONVALECIENTE' | 'MUERTO'
 export type Dificultad = 'NOVATO' | 'MEDIO' | 'AVANZADO'
 
-/// Interacción con un NPC/fauna ya incapacitado o muerto, fuera de combate (docs/19-post-combate-
+/// Interacción con un NPC/fauna ya convaleciente o muerto, fuera de combate (docs/19-post-combate-
 /// y-recompensas-mision.md pieza 2) — lo que devuelve /turn/classify en vez de la clasificación
 /// normal cuando el jugador nombra a alguien ya resuelto que sigue en escena.
 export interface PostCombatInteractionInfo {
   slug: string
   name: string
-  condicionFisica: 'INCAPACITADO' | 'MUERTO'
+  condicionFisica: 'CONVALECIENTE' | 'MUERTO'
   saqueado: boolean
 }
 

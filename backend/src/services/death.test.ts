@@ -8,7 +8,7 @@ import {
   isValidRestLocationKind,
   healCeilingFor,
   condicionMalus,
-  npcRecoversFromIncapacitado,
+  npcRecoversFromConvaleciente,
   npcCorpseShouldDespawn,
 } from './death.js';
 
@@ -65,14 +65,14 @@ describe('nextCondicionFisica', () => {
     expect(nextCondicionFisica('GRAVE', 'ILESO', false, 'HERIDO')).toBe('HERIDO');
   });
   it('con objeto médico (healCeiling = el curaHasta del objeto), la mejora puede llegar a ILESO', () => {
-    expect(nextCondicionFisica('INCAPACITADO', 'ILESO', false, 'ILESO')).toBe('ILESO');
+    expect(nextCondicionFisica('CONVALECIENTE', 'ILESO', false, 'ILESO')).toBe('ILESO');
   });
   it('en combate empeora, pero tope de un escalón por turno', () => {
     expect(nextCondicionFisica('ILESO', 'HERIDO', true, 'ILESO')).toBe('HERIDO');
     expect(nextCondicionFisica('ILESO', 'MUERTO', true, 'ILESO')).toBe('HERIDO'); // nunca dos escalones de golpe
   });
-  it('en combate, desde INCAPACITADO sí puede llegar a MUERTO (un solo escalón)', () => {
-    expect(nextCondicionFisica('INCAPACITADO', 'MUERTO', true, 'INCAPACITADO')).toBe('MUERTO');
+  it('en combate, desde CONVALECIENTE sí puede llegar a MUERTO (un solo escalón)', () => {
+    expect(nextCondicionFisica('CONVALECIENTE', 'MUERTO', true, 'CONVALECIENTE')).toBe('MUERTO');
   });
   it('sin propuesta del modelo y sin causa real de mejora (healCeiling = current), se queda igual', () => {
     expect(nextCondicionFisica('HERIDO', null, true, 'HERIDO')).toBe('HERIDO');
@@ -82,7 +82,7 @@ describe('nextCondicionFisica', () => {
   it('bug real jugando en vivo (2026-07-31, "descansar no curó nada"): sin propuesta del modelo, un descanso/objeto médico válido (healCeiling mejor que current) SÍ cura igual', () => {
     expect(nextCondicionFisica('GRAVE', null, false, 'HERIDO')).toBe('HERIDO');
     expect(nextCondicionFisica('GRAVE', undefined, false, 'HERIDO')).toBe('HERIDO');
-    expect(nextCondicionFisica('INCAPACITADO', null, false, 'ILESO')).toBe('ILESO'); // objeto médico fuerte
+    expect(nextCondicionFisica('CONVALECIENTE', null, false, 'ILESO')).toBe('ILESO'); // objeto médico fuerte
   });
 });
 
@@ -98,19 +98,19 @@ describe('healCeilingFor', () => {
   // curaba en refugio/asentamiento" — aclarado con la usuaria: sí cura en cualquier sitio, pero
   // tope GRAVE; solo un refugio/asentamiento real llega a HERIDO).
   it('descansar en CUALQUIER sitio (sin refugio válido) topa en GRAVE, no en HERIDO', () => {
-    expect(healCeilingFor('INCAPACITADO', true, false, null)).toBe('GRAVE');
+    expect(healCeilingFor('CONVALECIENTE', true, false, null)).toBe('GRAVE');
     expect(healCeilingFor('GRAVE', true, false, null)).toBe('GRAVE');
   });
   it('un vivac sin refugio válido no hace nada si ya se está mejor que GRAVE (nunca empeora)', () => {
     expect(healCeilingFor('HERIDO', true, false, null)).toBe('HERIDO');
     expect(healCeilingFor('ILESO', true, false, null)).toBe('ILESO');
   });
-  it('descansar en un refugio válido NO llega a HERIDO desde INCAPACITADO — hace falta objeto médico para eso, pero SÍ mejora a GRAVE (antes no hacía nada en absoluto)', () => {
-    expect(healCeilingFor('INCAPACITADO', true, true, null)).toBe('GRAVE');
+  it('descansar en un refugio válido NO llega a HERIDO desde CONVALECIENTE — hace falta objeto médico para eso, pero SÍ mejora a GRAVE (antes no hacía nada en absoluto)', () => {
+    expect(healCeilingFor('CONVALECIENTE', true, true, null)).toBe('GRAVE');
   });
-  it('un objeto médico manda por encima de todo, incluso desde INCAPACITADO', () => {
-    expect(healCeilingFor('INCAPACITADO', false, false, 'HERIDO')).toBe('HERIDO');
-    expect(healCeilingFor('INCAPACITADO', false, false, 'ILESO')).toBe('ILESO');
+  it('un objeto médico manda por encima de todo, incluso desde CONVALECIENTE', () => {
+    expect(healCeilingFor('CONVALECIENTE', false, false, 'HERIDO')).toBe('HERIDO');
+    expect(healCeilingFor('CONVALECIENTE', false, false, 'ILESO')).toBe('ILESO');
     expect(healCeilingFor('GRAVE', true, true, 'ILESO')).toBe('ILESO');
   });
   it('el techo nunca es PEOR que la condición actual (bug real, auditoría 2026-07-30: un ILESO descansando con éxito se veía "curado" hasta HERIDO)', () => {
@@ -119,12 +119,12 @@ describe('healCeilingFor', () => {
     expect(healCeilingFor('ILESO', false, false, 'HERIDO')).toBe('ILESO');
   });
 
-  // Primeros auxilios (2026-08-13, petición explícita: "si es incapacitado solo hay un item que te
+  // Primeros auxilios (2026-08-13, petición explícita: "si es convaleciente solo hay un item que te
   // lleva a grave... luego otro que mejora el estado al siguiente, de grave a herido y de herido a
   // ileso" — cada objeto sube COMO MUCHO un escalón, nunca de golpe hasta su curaHasta).
   describe('curaUnPaso (objetos de primeros auxilios, un escalón como mucho)', () => {
-    it('objeto tier 1 (tope GRAVE) usado desde INCAPACITADO sube exactamente a GRAVE', () => {
-      expect(healCeilingFor('INCAPACITADO', false, false, 'GRAVE', true)).toBe('GRAVE');
+    it('objeto tier 1 (tope GRAVE) usado desde CONVALECIENTE sube exactamente a GRAVE', () => {
+      expect(healCeilingFor('CONVALECIENTE', false, false, 'GRAVE', true)).toBe('GRAVE');
     });
     it('objeto tier 1 (tope GRAVE) usado desde GRAVE no hace nada más — es su propio techo', () => {
       expect(healCeilingFor('GRAVE', false, false, 'GRAVE', true)).toBe('GRAVE');
@@ -138,17 +138,17 @@ describe('healCeilingFor', () => {
     });
     // El caso clave que distingue esto del objeto "de techo" normal: usado desde MÁS de un
     // escalón por debajo de su tope, solo sube UNO — nunca salta directo a su curaHasta.
-    it('objeto tier 2 (tope HERIDO) usado desde INCAPACITADO solo sube UN escalón, a GRAVE — no salta a HERIDO', () => {
-      expect(healCeilingFor('INCAPACITADO', false, false, 'HERIDO', true)).toBe('GRAVE');
+    it('objeto tier 2 (tope HERIDO) usado desde CONVALECIENTE solo sube UN escalón, a GRAVE — no salta a HERIDO', () => {
+      expect(healCeilingFor('CONVALECIENTE', false, false, 'HERIDO', true)).toBe('GRAVE');
     });
     it('objeto tier 3 (tope ILESO, la receta final) usado desde HERIDO sube exactamente a ILESO', () => {
       expect(healCeilingFor('HERIDO', false, false, 'ILESO', true)).toBe('ILESO');
     });
-    it('objeto tier 3 (tope ILESO) usado desde INCAPACITADO solo sube UN escalón, a GRAVE — no salta a ILESO', () => {
-      expect(healCeilingFor('INCAPACITADO', false, false, 'ILESO', true)).toBe('GRAVE');
+    it('objeto tier 3 (tope ILESO) usado desde CONVALECIENTE solo sube UN escalón, a GRAVE — no salta a ILESO', () => {
+      expect(healCeilingFor('CONVALECIENTE', false, false, 'ILESO', true)).toBe('GRAVE');
     });
     it('el mismo objeto con curaUnPaso false (comportamiento normal) sí rompe el tope de golpe, para contraste', () => {
-      expect(healCeilingFor('INCAPACITADO', false, false, 'ILESO', false)).toBe('ILESO');
+      expect(healCeilingFor('CONVALECIENTE', false, false, 'ILESO', false)).toBe('ILESO');
     });
   });
 });
@@ -160,31 +160,34 @@ describe('condicionMalus', () => {
     expect(condicionMalus('GRAVE')).toBeGreaterThan(condicionMalus('HERIDO'));
   });
 
-  it('bug real jugando en vivo (2026-07-31, "he ganado estando yo incapacitado"): INCAPACITADO tiene malus real, mayor que GRAVE — antes era 0, igual que ILESO, y el jugador seguía peleando como si nada', () => {
-    expect(condicionMalus('INCAPACITADO')).toBeGreaterThan(condicionMalus('GRAVE'));
+  it('bug real jugando en vivo (2026-07-31, "he ganado estando yo convaleciente"): CONVALECIENTE tiene malus real, mayor que GRAVE — antes era 0, igual que ILESO, y el jugador seguía peleando como si nada', () => {
+    expect(condicionMalus('CONVALECIENTE')).toBeGreaterThan(condicionMalus('GRAVE'));
   });
 });
 
 describe('nextCondicionForAttack', () => {
-  it('ATAQUE normal (o sin effect) siempre empeora un solo escalón', () => {
-    expect(nextCondicionForAttack('ATAQUE', 'ILESO')).toBe('HERIDO');
-    expect(nextCondicionForAttack(null, 'HERIDO')).toBe('GRAVE');
-    expect(nextCondicionForAttack(undefined, 'GRAVE')).toBe('INCAPACITADO');
+  it('ATAQUE normal (o sin efectos) siempre empeora un solo escalón', () => {
+    expect(nextCondicionForAttack(['ATAQUE'], 'ILESO')).toBe('HERIDO');
+    expect(nextCondicionForAttack([], 'HERIDO')).toBe('GRAVE');
+    expect(nextCondicionForAttack([], 'GRAVE')).toBe('CONVALECIENTE');
   });
 
-  it('REMATE contra un NPC sano (ILESO/HERIDO) se comporta como ATAQUE normal', () => {
-    expect(nextCondicionForAttack('REMATE', 'ILESO')).toBe('HERIDO');
-    expect(nextCondicionForAttack('REMATE', 'HERIDO')).toBe('GRAVE');
+  // LETAL sustituye a REMATE (2026-08-15, confirmado explícitamente): ya no exige que el rival
+  // esté GRAVE/CONVALECIENTE — mata de un golpe a cualquiera, sin condición previa.
+  it('LETAL mata directo sin importar la condición actual del rival, ni siquiera ILESO', () => {
+    expect(nextCondicionForAttack(['LETAL'], 'ILESO')).toBe('MUERTO');
+    expect(nextCondicionForAttack(['LETAL'], 'HERIDO')).toBe('MUERTO');
+    expect(nextCondicionForAttack(['LETAL'], 'GRAVE')).toBe('MUERTO');
+    expect(nextCondicionForAttack(['LETAL'], 'CONVALECIENTE')).toBe('MUERTO');
   });
 
-  it('REMATE contra un NPC ya GRAVE o INCAPACITADO remata directamente a MUERTO', () => {
-    expect(nextCondicionForAttack('REMATE', 'GRAVE')).toBe('MUERTO');
-    expect(nextCondicionForAttack('REMATE', 'INCAPACITADO')).toBe('MUERTO');
+  it('una habilidad con varios efectos a la vez, si incluye LETAL, mata igual', () => {
+    expect(nextCondicionForAttack(['ATAQUE', 'LETAL', 'LIMITADA'], 'ILESO')).toBe('MUERTO');
   });
 
   it('otros efectos (ATURDIMIENTO/INTIMIDACION/AGUANTE) no cambian el escalonado normal', () => {
-    expect(nextCondicionForAttack('ATURDIMIENTO', 'ILESO')).toBe('HERIDO');
-    expect(nextCondicionForAttack('INTIMIDACION', 'HERIDO')).toBe('GRAVE');
+    expect(nextCondicionForAttack(['ATURDIMIENTO'], 'ILESO')).toBe('HERIDO');
+    expect(nextCondicionForAttack(['INTIMIDACION'], 'HERIDO')).toBe('GRAVE');
   });
 });
 
@@ -199,16 +202,16 @@ describe('isValidRestLocationKind', () => {
   });
 });
 
-describe('npcRecoversFromIncapacitado', () => {
+describe('npcRecoversFromConvaleciente', () => {
   it('no se recupera antes de las 6h', () => {
-    expect(npcRecoversFromIncapacitado(0, 6 * 60 - 1)).toBe(false);
+    expect(npcRecoversFromConvaleciente(0, 6 * 60 - 1)).toBe(false);
   });
   it('se recupera justo a las 6h o más', () => {
-    expect(npcRecoversFromIncapacitado(0, 6 * 60)).toBe(true);
-    expect(npcRecoversFromIncapacitado(100, 100 + 6 * 60)).toBe(true);
+    expect(npcRecoversFromConvaleciente(0, 6 * 60)).toBe(true);
+    expect(npcRecoversFromConvaleciente(100, 100 + 6 * 60)).toBe(true);
   });
   it('sin marca de tiempo previa (null), no dispara', () => {
-    expect(npcRecoversFromIncapacitado(null, 999_999)).toBe(false);
+    expect(npcRecoversFromConvaleciente(null, 999_999)).toBe(false);
   });
 });
 

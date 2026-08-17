@@ -10,7 +10,12 @@ import { condicionMalus, saludBandFor } from './death.js';
 export interface PendingNpcAttack {
   npcId: string;
   attribute: Attribute;
-  effect: AbilityEffect | null;
+  /// Lista (2026-08-15, "que una habilidad pueda tener múltiples AbilityEffects") — [] si la
+  /// habilidad no lleva ningún efecto mecánico.
+  effects: AbilityEffect[];
+  /// Tope de usos por combate de la habilidad que dio pie a este ataque pendiente (2026-08-15,
+  /// AbilityEffect.LIMITADA) — null/undefined = sin tope.
+  maxUsesPerCombat?: number | null;
   /// Rediseño de combate (2026-08-09) — en la práctica SIEMPRE 'ataque': `chooseNpcAbility('ataque',
   /// ...)` (npcCombatAbilities.ts) ya filtra a solo `rol==='ataque'` antes de decidir el ataque
   /// pendiente de un NPC. Se persiste igual (en vez de asumirlo a ciegas en turnResolution.ts) para
@@ -94,7 +99,7 @@ export interface ExchangeSideResult extends RollResult {
   /// Resta al atributo crudo por condición física (petición explícita, 2026-08-15: "cuando
   /// mostramos el attr hay que indicar también la resta que tiene por el estado... en el
   /// resultado" — nunca en la animación de dados, solo aquí) — `condicionMalus` (death.ts):
-  /// 0/2/5/10 según ILESO/HERIDO/GRAVE/INCAPACITADO. Ya estaba aplicado en silencio dentro de
+  /// 0/2/5/10 según ILESO/HERIDO/GRAVE/CONVALECIENTE. Ya estaba aplicado en silencio dentro de
   /// `valorEfectivo` desde siempre, pero nunca viajaba expuesto — sin esto, un bono más bajo de
   /// lo esperado por estar herido no tenía explicación visible.
   malus: number;
@@ -291,12 +296,12 @@ export function independentExchangeContextBlock(result: IndependentExchangeResul
 /// Calibra la severidad del golpe en el camino independiente (bug real jugando en vivo, 2026-08-15:
 /// "clava su maza en el cráneo... atravesándolo de lado a lado... antes de caer al suelo, inerte"
 /// para un golpe que en realidad solo bajó a la víctima de HERIDO a GRAVE — sigue consciente y en
-/// pie, ni incapacitada ni muerta). `independentExchangeContextBlock` solo da los números crudos,
+/// pie, ni convaleciente ni muerta). `independentExchangeContextBlock` solo da los números crudos,
 /// sin decir qué tan fuerte narrar el golpe — a diferencia del camino cruzado (`resolveExchange`),
 /// que sí tiene `OUTCOME_NARRATION_HINT`/`npcFallsUnconsciousThisTurn` calibrando esto. `nuevaCondicion`
 /// null = el golpe no conectó (efectoAplica false), nada que narrar como daño.
 export function hitSeverityHint(nombreObjetivo: string, nuevaCondicion: CondicionFisica | null): string {
   if (!nuevaCondicion) return `El golpe no conecta — no hay ningún daño real que narrar en ${nombreObjetivo}.`;
-  if (nuevaCondicion === 'INCAPACITADO' || nuevaCondicion === 'MUERTO') return '';
+  if (nuevaCondicion === 'CONVALECIENTE' || nuevaCondicion === 'MUERTO') return '';
   return `El golpe SÍ conecta y empeora la condición de ${nombreObjetivo} a ${saludBandFor(nuevaCondicion)} — pero sigue consciente, en pie y capaz de seguir luchando. NUNCA lo narres cayendo inerte, desmayado o muerto: eso sería adelantar un desenlace que todavía no ha pasado.`;
 }

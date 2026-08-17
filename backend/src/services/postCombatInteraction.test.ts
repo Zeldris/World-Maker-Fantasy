@@ -2,16 +2,16 @@ import { describe, it, expect } from 'vitest';
 import { detectsPostCombatInteraction } from './postCombatInteraction.js';
 
 const npcsInScene = [
-  { slug: 'orco-enfurecido-hondonada', name: 'Orco enfurecido', condicionFisica: 'INCAPACITADO', saqueado: false },
+  { slug: 'orco-enfurecido-hondonada', name: 'Orco enfurecido', condicionFisica: 'CONVALECIENTE', saqueado: false },
   { slug: 'gistera-koh', name: 'Gistera Koh', condicionFisica: 'ILESO', saqueado: false },
 ];
 
 describe('detectsPostCombatInteraction', () => {
-  it('detecta nombrar a un NPC incapacitado en escena', () => {
+  it('detecta nombrar a un NPC convaleciente en escena', () => {
     expect(detectsPostCombatInteraction('Reviso al Orco enfurecido de cerca.', npcsInScene)).toEqual({
       slug: 'orco-enfurecido-hondonada',
       name: 'Orco enfurecido',
-      condicionFisica: 'INCAPACITADO',
+      condicionFisica: 'CONVALECIENTE',
       saqueado: false,
     });
   });

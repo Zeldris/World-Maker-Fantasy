@@ -78,6 +78,7 @@ async function main() {
         curaEnergia: item.curaEnergia ?? null,
         effectKey: item.effectKey ?? null,
         effectDescription: item.effectDescription ?? null,
+        herramientaParaOficio: item.herramientaParaOficio ?? [],
       },
       create: { worldId, ...item },
     });
@@ -226,7 +227,7 @@ async function main() {
       data: {
         worldId,
         sourceSlug: yieldRow.sourceSlug,
-        sourceName: yieldRow.sourceName,
+        sourceCategory: yieldRow.sourceCategory,
         metodoObtencion: yieldRow.metodoObtencion,
         itemId,
         cantidad: yieldRow.cantidad,

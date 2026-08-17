@@ -76,7 +76,7 @@ El jugador no elige de un menú ("Sigilo vs Dificultad 12") — escribe texto li
 
 Dado el alcance genérico (sección 0), el estado del personaje no es solo "salud" — incluye reputación, qué posee, a quién gobierna, qué ha construido, relaciones, etc. Se decidió un modelo híbrido:
 
-- **Un campo estructurado ligero para la condición física** (`ileso` → `herido` → `grave` → `incapacitado` → `muerto`), fácil de mostrar en la ficha de personaje del frontend.
+- **Un campo estructurado ligero para la condición física** (`ileso` → `herido` → `grave` → `convaleciente` → `muerto`), fácil de mostrar en la ficha de personaje del frontend.
 - **Todo lo demás como hechos libres** en `WorldState.facts` — sin campos fijos para reputación, posesiones, gobierno, construcciones, etc. Máxima flexibilidad para un juego de alcance tan abierto.
 
 ---

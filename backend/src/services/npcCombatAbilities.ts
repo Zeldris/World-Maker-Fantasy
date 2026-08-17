@@ -18,16 +18,20 @@ export interface NpcCombatAbility {
   /// "Ataque base" — el caso más grave y más frecuente.
   description: string;
   attribute: Attribute;
-  /// null para Ataque base y habilidades raciales (siempre puramente descriptivas, nunca leídas
+  /// [] para Ataque base y habilidades raciales (siempre puramente descriptivas, nunca leídas
   /// como mecánica de combate — ver comentario de `Npc.habilidadesRaciales` en schema.prisma) —
-  /// solo las de clase tienen un `AbilityEffect` real.
-  effect: AbilityEffect | null;
+  /// solo las de clase tienen `AbilityEffect` real. Lista, no valor único (2026-08-15, "que una
+  /// habilidad pueda tener múltiples AbilityEffects").
+  effects: AbilityEffect[];
   /// Rediseño de combate (2026-08-09) — ver `enum AbilityRol` (schema.prisma). Ataque base
   /// siempre 'ataque'; de clase toma el `rol` ya asignado en classAbilities.ts (hoy las 4 son
   /// 'utilidad'); racial humanoide ataque/defensa trivial según el slot; racial de fauna toma
   /// `categoria` tal cual (ya existía en worldCatalog.ts, antes descartado aquí); Esquivar/
-  /// Defenderse genéricos 'defensa'.
-  rol: AbilityRol;
+  /// Defenderse genéricos 'defensa'. Deliberadamente MÁS ESTRECHO que el `AbilityRol` de Prisma
+  /// (2026-08-15, tras añadirse 'pasiva' al enum para habilidades como "Compañero cazador"): esta
+  /// lista es "lo que un NPC puede ELEGIR usar en un intercambio de combate" — una pasiva no es una
+  /// acción de turno, nunca debería llegar aquí (ver el filtro en `npcCombatAbilitiesFor` de abajo).
+  rol: 'ataque' | 'defensa' | 'utilidad';
   /// Sistema de fatiga simétrico (2026-07-30, deuda técnica: "los NPC siguen eligiendo habilidad
   /// sin restricción de energía") — mismo coste fijo por tramo que el jugador (energy.ts):
   /// ENERGY_COST_ATAQUE_BASICO para el Ataque base (2026-07-31, antes 0/gratis — ver comentario
@@ -39,6 +43,9 @@ export interface NpcCombatAbility {
   /// energía que RECUPERA usar esta habilidad en un intercambio real. Esquivar/Defenderse
   /// genéricos regeneran (5/10); el resto, incluido Ataque base, se queda en 0.
   energyRegen: number;
+  /// Tope de usos por combate (2026-08-15, AbilityEffect.LIMITADA) — undefined/null = sin tope.
+  /// Solo las de clase pueden traerlo (classAbilities.ts); Ataque base/raciales/genéricas nunca.
+  maxUsesPerCombat?: number | null;
 }
 
 export interface NpcForCombatAbilities {
@@ -69,7 +76,7 @@ export function npcCombatAbilitiesFor(npc: NpcForCombatAbilities, weaponNames: s
     name: ataqueBase.name,
     description: ataqueBase.description,
     attribute: ataqueBase.preferredAttribute,
-    effect: null,
+    effects: [],
     rol: 'ataque',
     energyCost: ENERGY_COST_ATAQUE_BASICO,
     energyRegen: 0,
@@ -78,14 +85,21 @@ export function npcCombatAbilitiesFor(npc: NpcForCombatAbilities, weaponNames: s
   if (npc.clase) {
     for (const unlock of classAbilityUnlocksForClase(npc.clase as Clase)) {
       if (unlock.level > npc.level) continue;
+      // Pasivas (2026-08-15, "Compañero cazador" — nivel 8 Cazador) nunca entran al roster de
+      // combate: no son una acción de turno, se quedan siempre activas por sí solas. Sin este
+      // filtro, un Cazador NPC de nivel 8+ tendría una "habilidad" sin comportamiento real de
+      // intercambio (chooseNpcAbility ya la ignoraría en la práctica, pero el tipo de `rol` deja
+      // de ser el estrecho 'ataque'/'defensa'/'utilidad' que exige el resto del motor de combate).
+      if (unlock.ability.rol === 'pasiva') continue;
       abilities.push({
         name: unlock.ability.name,
         description: unlock.ability.description,
         attribute: unlock.ability.preferredAttribute ?? 'fuerza',
-        effect: unlock.ability.effect ?? null,
+        effects: unlock.ability.effects ?? [],
         rol: unlock.ability.rol ?? 'ataque',
         energyCost: ENERGY_COST_BASICA,
         energyRegen: 0,
+        maxUsesPerCombat: unlock.ability.maxUsesPerCombat,
       });
     }
   }
@@ -97,7 +111,7 @@ export function npcCombatAbilitiesFor(npc: NpcForCombatAbilities, weaponNames: s
         name: raza.habilidadesRaciales.ataque.name,
         description: raza.habilidadesRaciales.ataque.description,
         attribute: raza.habilidadesRaciales.ataque.preferredAttribute,
-        effect: null,
+        effects: [],
         rol: 'ataque',
         energyCost: ENERGY_COST_BASICA,
         energyRegen: 0,
@@ -106,7 +120,7 @@ export function npcCombatAbilitiesFor(npc: NpcForCombatAbilities, weaponNames: s
         name: raza.habilidadesRaciales.defensa.name,
         description: raza.habilidadesRaciales.defensa.description,
         attribute: raza.habilidadesRaciales.defensa.preferredAttribute,
-        effect: null,
+        effects: [],
         rol: 'defensa',
         energyCost: ENERGY_COST_BASICA,
         energyRegen: 0,
@@ -119,7 +133,7 @@ export function npcCombatAbilitiesFor(npc: NpcForCombatAbilities, weaponNames: s
       name: racial.name,
       description: racial.description,
       attribute: racial.preferredAttribute,
-      effect: null,
+      effects: [],
       // `categoria` ya existía en worldCatalog.ts (ataque/defensa/utilidad) — antes se leía y se
       // descartaba aquí mismo, así que un Corretolvas podía "atacar" con "Fuga audaz" (utilidad,
       // huir) y hacer daño real. Ahora se respeta tal cual.
@@ -140,23 +154,36 @@ export function npcCombatAbilitiesFor(npc: NpcForCombatAbilities, weaponNames: s
   // que ya usa el jugador para las mismas dos acciones, coherencia entre los dos lados.
   abilities.push({
     name: 'Esquivar',
-    description: 'Se aparta del golpe confiando solo en sus reflejos.',
+    description: 'Se aparta del golpe confiando en sus reflejos y destreza.',
     attribute: 'destreza',
-    effect: 'AGUANTE',
+    effects: ['AGUANTE'],
     rol: 'defensa',
-    energyCost: 0,
-    energyRegen: 5,
+    energyCost: 5,
+    energyRegen: 0,
   });
   abilities.push({
     name: 'Defenderse',
     description: 'Se planta y aguanta el golpe con pura resistencia física.',
     attribute: 'constitucion',
-    effect: 'AGUANTE',
+    effects: ['AGUANTE'],
     rol: 'defensa',
     energyCost: 0,
-    energyRegen: 10,
+    energyRegen: 5,
   });
-
+  // Descansar (2026-08-17) — tercera opción defensiva genérica, junto a Esquivar/Defenderse:
+  // regenera mucho más energía (15 en vez de los 5 de Defenderse) a cambio de no defender mejor
+  // que ella. "Te defiendes con el valor de la constitución /2" ya es exactamente la fórmula
+  // estándar de cualquier tirada (`attributes[attribute] / 2`, ver combatExchange.ts) — no hace
+  // falta ningún divisor especial, `attribute: 'constitucion'` ya lo cubre tal cual.
+  abilities.push({
+    name: 'Descansar',
+    description: 'Se toma un respiro breve en plena pelea, recuperando el aliento a costa de no buscar ninguna ventaja real.',
+    attribute: 'constitucion',
+    effects: ['AGUANTE'],
+    rol: 'defensa',
+    energyCost: 0,
+    energyRegen: 15,
+  });
   return abilities;
 }
 
@@ -187,8 +214,15 @@ export function chooseNpcAbility(
   side: 'ataque' | 'defensa',
   energiaDisponible: number,
   random: () => number = Math.random,
+  // Tope de usos por combate (2026-08-15, AbilityEffect.LIMITADA/maxUsesPerCombat) — mapa
+  // `nombre de habilidad → veces usada` en el encuentro actual (NpcState.abilityUsesThisEncounter).
+  // Mismo criterio que `energyCost`: una habilidad que ya agotó su tope se descarta del roster
+  // elegible, nunca se ofrece de nuevo hasta que el contador se resetee (vuelta a ILESO).
+  usageCounts: Record<string, number> = {},
 ): NpcCombatAbility {
-  const usable = abilities.filter((a) => a.effect !== 'ANALISIS');
+  const usable = abilities.filter(
+    (a) => !a.effects.includes('ANALISIS') && (a.maxUsesPerCombat == null || (usageCounts[a.name] ?? 0) < a.maxUsesPerCombat),
+  );
   const affordable = usable.filter((a) => a.energyCost <= energiaDisponible);
   if (side === 'defensa') {
     const defensivas = affordable.filter((a) => a.rol === 'defensa' || a.rol === 'utilidad');

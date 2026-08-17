@@ -1,5 +1,6 @@
 import { normalizeText } from './travel.js';
 import { Prisma } from '@prisma/client';
+import { companionSlotsForRecipeKey } from './construction.js';
 
 /// Movido desde turnResolution.ts (refactor de deuda técnica 2026-08-13) — cierre y recompensa de
 /// misiones es lógica de dominio propia, no de orquestación de turno.
@@ -61,14 +62,80 @@ export async function grantQuestRewardItems(tx: Prisma.TransactionClient, saveId
   return toGrant;
 }
 
+/// Forma real de `Quest.rewardCompanion` (`Json?` en schema.prisma) — único punto de verdad
+/// (auditoría de deuda técnica 2026-08-18: este shape estaba definido por su cuenta en 3 sitios —
+/// aquí, en `startingQuests.ts` y repetido en cada cast de más abajo — con el riesgo real de tocar
+/// uno y olvidar los otros dos).
+export interface QuestRewardCompanion {
+  name: string;
+  role: string;
+  notes: string;
+}
+
+/// Valida en tiempo de ejecución la forma de `Quest.rewardCompanion` antes de usarlo — nunca
+/// confiar ciegamente en un campo `Json` de Prisma (auditoría de deuda técnica 2026-08-18, mismo
+/// criterio que ya se aplica en otros sitios del motor). `null` si el campo está vacío o el JSON
+/// persistido no tiene la forma esperada (dato corrupto/a medio migrar), en vez de reventar.
+export function parseRewardCompanion(value: Prisma.JsonValue | null | undefined): QuestRewardCompanion | null {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  const obj = value as Record<string, unknown>;
+  if (typeof obj.name !== 'string' || typeof obj.role !== 'string' || typeof obj.notes !== 'string') return null;
+  return { name: obj.name, role: obj.role, notes: obj.notes };
+}
+
+/// Recompensa no-objeto (2026-08-17, petición explícita: "añadir un reward que no sea item
+/// solo, sino también recetas, compañeros o pasivas temporales") — recetas: unión simple contra
+/// `Save.unlockedRecipeKeys` (sin duplicados); compañero: mismo tope real de slots que cualquier
+/// otro compañero (`companionSlotsForRecipeKey`) — si no hay hueco, no se crea, el resto de la
+/// recompensa (XP/objetos/recetas) se concede igual, nunca se pierde en bloque por esto. Pasivas
+/// temporales quedan fuera a propósito (necesitan un sistema de duración que todavía no existe).
+export async function grantQuestRewardRecipesAndCompanion(
+  tx: Prisma.TransactionClient,
+  saveId: string,
+  rewardRecipeKeys: string[],
+  rewardCompanion: QuestRewardCompanion | null,
+): Promise<{ grantedRecipeKeys: string[]; grantedCompanionName: string | null }> {
+  let grantedRecipeKeys: string[] = [];
+  if (rewardRecipeKeys.length > 0) {
+    const save = await tx.save.findUniqueOrThrow({ where: { id: saveId }, select: { unlockedRecipeKeys: true } });
+    const already = new Set(save.unlockedRecipeKeys);
+    grantedRecipeKeys = rewardRecipeKeys.filter((k) => !already.has(k));
+    if (grantedRecipeKeys.length > 0) {
+      await tx.save.update({ where: { id: saveId }, data: { unlockedRecipeKeys: [...save.unlockedRecipeKeys, ...grantedRecipeKeys] } });
+    }
+  }
+  let grantedCompanionName: string | null = null;
+  if (rewardCompanion) {
+    const [companionCount, companionBuildings] = await Promise.all([
+      tx.companion.count({ where: { saveId } }),
+      tx.building.findMany({ where: { saveId, status: 'ACTIVO' }, select: { recipeKey: true } }),
+    ]);
+    const maxCompanions = companionBuildings.reduce((sum, b) => sum + companionSlotsForRecipeKey(b.recipeKey), 0);
+    if (companionCount < maxCompanions) {
+      await tx.companion.create({ data: { saveId, name: rewardCompanion.name, role: rewardCompanion.role, notes: rewardCompanion.notes } });
+      grantedCompanionName = rewardCompanion.name;
+    }
+  }
+  return { grantedRecipeKeys, grantedCompanionName };
+}
+
 /// Narración determinista de recompensa (docs/19 pieza 5) — mismo criterio de "nunca lo decide el
 /// modelo" que ya rige saqueo/despiece/crafteo. Solo se llama cuando hay algo real que anunciar
-/// (objetos concedidos de verdad esta vez, o XP) — nunca para una misión ya recompensada antes.
+/// (objetos/recetas/compañero concedidos de verdad esta vez, o XP) — nunca para una misión ya
+/// recompensada antes.
 /// Exportada por el mismo motivo que `grantQuestRewardItems` (caso especial del Orco Enfurecido en
 /// turnResolution.ts).
-export function questRewardNarrationFor(questTitle: string, grantedItems: string[], rewardXp: number | null): string {
+export function questRewardNarrationFor(
+  questTitle: string,
+  grantedItems: string[],
+  rewardXp: number | null,
+  grantedRecipeKeys: string[] = [],
+  grantedCompanionName: string | null = null,
+): string {
   const parts: string[] = [];
   if (grantedItems.length > 0) parts.push(`consigue ${grantedItems.join(', ')}`);
+  if (grantedRecipeKeys.length > 0) parts.push(`aprende ${grantedRecipeKeys.length} receta(s) nueva(s)`);
+  if (grantedCompanionName) parts.push(`se une ${grantedCompanionName}`);
   if (rewardXp) parts.push(`+${rewardXp} XP`);
   return `Misión completada: "${questTitle}"${parts.length > 0 ? ` — ${parts.join(', ')}` : ''}.`;
 }
@@ -104,12 +171,18 @@ export async function closeItemQuests(params: {
     if (conseguido) {
       await tx.quest.update({ where: { id: quest.id }, data: { status: 'COMPLETADA' } });
       const grantedItems = await grantQuestRewardItems(tx, saveId, worldId, quest.rewardItems);
-      if (grantedItems.length > 0 || quest.rewardXp) {
+      const { grantedRecipeKeys, grantedCompanionName } = await grantQuestRewardRecipesAndCompanion(
+        tx,
+        saveId,
+        quest.rewardRecipeKeys,
+        parseRewardCompanion(quest.rewardCompanion),
+      );
+      if (grantedItems.length > 0 || quest.rewardXp || grantedRecipeKeys.length > 0 || grantedCompanionName) {
         await tx.logEntry.create({
           data: {
             saveId,
             channel: 'CHARACTER',
-            text: questRewardNarrationFor(quest.title, grantedItems, quest.rewardXp),
+            text: questRewardNarrationFor(quest.title, grantedItems, quest.rewardXp, grantedRecipeKeys, grantedCompanionName),
             isPlayerAction: false,
             timeLabel,
             fictionalMinutes,
@@ -124,8 +197,8 @@ export async function closeItemQuests(params: {
 /// Cierre determinista de misión "derrotar a X" (`Quest.targetNpcId`) + recompensa real (docs/19
 /// pieza 3) — extraído para no duplicar el mismo bloque (buscar quests activas por `targetNpcId`,
 /// cerrarlas, conceder `rewardItems`/`rewardXp`, narrar) entre el ataque normal y "Decapitar", los
-/// dos caminos que pueden dejar a un NPC INCAPACITADO/MUERTO. `condicionAlcanzada` decide el verbo
-/// de la narración de recompensa (mismo criterio que `npcFallsUnconsciousThisTurn` — INCAPACITADO
+/// dos caminos que pueden dejar a un NPC CONVALECIENTE/MUERTO. `condicionAlcanzada` decide el verbo
+/// de la narración de recompensa (mismo criterio que `npcFallsUnconsciousThisTurn` — CONVALECIENTE
 /// y MUERTO cuentan igual como "derrotado" para efectos de misión).
 export async function completeNpcTargetQuests(
   tx: Prisma.TransactionClient,
@@ -146,8 +219,14 @@ export async function completeNpcTargetQuests(
   for (const quest of activeQuestsWithNpc) {
     await tx.quest.update({ where: { id: quest.id }, data: { status: 'COMPLETADA' } });
     const grantedItems = await grantQuestRewardItems(tx, saveId, worldId, quest.rewardItems);
-    if (grantedItems.length > 0 || quest.rewardXp) {
-      const rewardText = questRewardNarrationFor(quest.title, grantedItems, quest.rewardXp);
+    const { grantedRecipeKeys, grantedCompanionName } = await grantQuestRewardRecipesAndCompanion(
+      tx,
+      saveId,
+      quest.rewardRecipeKeys,
+      parseRewardCompanion(quest.rewardCompanion),
+    );
+    if (grantedItems.length > 0 || quest.rewardXp || grantedRecipeKeys.length > 0 || grantedCompanionName) {
+      const rewardText = questRewardNarrationFor(quest.title, grantedItems, quest.rewardXp, grantedRecipeKeys, grantedCompanionName);
       const rewardEntry = await tx.logEntry.create({
         data: {
           saveId,

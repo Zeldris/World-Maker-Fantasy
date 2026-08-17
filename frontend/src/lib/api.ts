@@ -96,7 +96,7 @@ export interface ClassifyResponse {
   // encima) y ya persistió una frase determinista en el log. El turno queda resuelto aquí mismo:
   // no hace falta (ni se debe) llamar a /turn/narrate.
   blocked?: { narration: string }
-  // Interacción con un NPC/fauna ya incapacitado o muerto, fuera de combate (docs/19-post-combate-
+  // Interacción con un NPC/fauna ya convaleciente o muerto, fuera de combate (docs/19-post-combate-
   // y-recompensas-mision.md pieza 2) — el turno tampoco llega a /turn/narrate aquí, pero a
   // diferencia de `blocked` no es una violación: el frontend abre el panel mecánico (Saquear/
   // Decapitar/Salir) en vez de mostrar ningún texto.
@@ -424,6 +424,9 @@ export interface SaveDetail {
   fictionalDateLabel: string
   characterLog: LogEntry[]
   worldLog: LogEntry[]
+  /// Log de Reino (2026-08-17) — canal alternable con `worldLog` en el frontend, nunca los dos a
+  /// la vez (ver LogPanel/GameView.tsx).
+  kingdomLog: LogEntry[]
   inventory: InventoryItemInfo[]
   companions: CompanionInfo[]
   level: number
@@ -652,6 +655,37 @@ export async function requestSuggestions(saveId: string): Promise<{ suggestions:
 /// localizado todavía en esta visita, mismo patrón de dos pasos que recolección.
 export async function getCazarCandidatos(saveId: string): Promise<{ candidates: HuntCandidate[]; puedeExplorar: boolean }> {
   return fetchJson(`${API_URL}/saves/${saveId}/cazar`)
+}
+
+/// Paneles nuevos (2026-08-17, comentarios de startingAbilities.ts): "Volver al campamento",
+/// "Viajar" y "Saquear" fuera de combate — cada uno solo LISTA candidatos, la acción real sigue
+/// pasando por el turno normal (ver comentario de cabecera de panels.ts).
+export interface CampInfo {
+  locationSlug: string
+  locationName: string
+  region: string
+}
+export async function getCampamentos(saveId: string): Promise<{ camps: CampInfo[] }> {
+  return fetchJson(`${API_URL}/saves/${saveId}/campamentos`)
+}
+
+export interface TravelDestinationInfo {
+  locationSlug: string
+  locationName: string
+  region: string
+}
+export async function getDestinosViaje(saveId: string): Promise<{ hasMap: boolean; destinations: TravelDestinationInfo[] }> {
+  return fetchJson(`${API_URL}/saves/${saveId}/destinos-viaje`)
+}
+
+/// Candidato de "Saquear zona" — igual que `NpcInSceneInfo` pero con `items` (el backend manda el
+/// `NpcInScene` completo, ver panels.ts § buildNpcInScene; el modal solo necesita nombre/cantidad
+/// de cada objeto para las casillas de selección).
+export interface LootZoneCandidate extends NpcInSceneInfo {
+  items: { name: string; cantidad: number }[]
+}
+export async function getSaquearZona(saveId: string): Promise<{ candidates: LootZoneCandidate[] }> {
+  return fetchJson(`${API_URL}/saves/${saveId}/saquear-zona`)
 }
 
 /// Botón "Explorar" del pop-up de caza — determinista, sin gastar turno, pero con una tirada real

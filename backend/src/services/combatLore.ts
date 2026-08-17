@@ -67,17 +67,17 @@ Si tu habilidad usa un atributo con ventaja sobre el que usa tu rival este inter
     slug: 'condicion-fisica',
     icon: '❤️',
     title: 'La condición física: de ileso a algo peor',
-    text: `Tu estado en combate no es solo un número de vida — pasa por etapas: ileso, herido, grave, incapacitado y, en el peor de los casos, muerto. Cada etapa por debajo de ileso resta directamente al atributo que uses en tu próxima tirada, antes de tirar el dado: herido resta 2, grave resta 5, incapacitado resta 10 — así que un combate largo se pone cuesta arriba de verdad si no consigues resolverlo pronto, no solo narrativamente, también en tus propios números. El resultado de cada intercambio te enseña esa resta exacta cuando te afecta, para que sepas por qué tu tirada salió más floja de lo normal.
+    text: `Tu estado en combate no es solo un número de vida — pasa por etapas: ileso, herido, grave, convaleciente y, en el peor de los casos, muerto. Cada etapa por debajo de ileso resta directamente al atributo que uses en tu próxima tirada, antes de tirar el dado: herido resta 2, grave resta 5, convaleciente resta 10 — así que un combate largo se pone cuesta arriba de verdad si no consigues resolverlo pronto, no solo narrativamente, también en tus propios números. El resultado de cada intercambio te enseña esa resta exacta cuando te afecta, para que sepas por qué tu tirada salió más floja de lo normal.
 
-Si caes incapacitado (no muerto), tu personaje sobrevive pero queda fuera de la pelea — respawnea y sigue la partida. Un enemigo incapacitado, en cambio, se queda tirado en el sitio: si nadie lo remata, con el tiempo se recupera solo hasta quedar herido y puede volver a suponer una amenaza. Un enemigo muerto de verdad, en cambio, desaparece del mundo pasado un tiempo.`,
+Si caes convaleciente (no muerto), tu personaje sobrevive pero queda fuera de la pelea — respawnea y sigue la partida. Un enemigo convaleciente, en cambio, se queda tirado en el sitio: si nadie lo remata, con el tiempo se recupera solo hasta quedar herido y puede volver a suponer una amenaza. Un enemigo muerto de verdad, en cambio, desaparece del mundo pasado un tiempo.`,
   },
   {
     slug: 'rematar-y-saquear',
     icon: '💀',
     title: 'Rematar y saquear a un enemigo caído',
-    text: `Solo puedes registrar el cuerpo de un enemigo — quedarte con lo que lleva encima — cuando está incapacitado o muerto de verdad, nunca antes. Mientras siga en pie, por muy herido que esté, no hay nada que saquear.
+    text: `Solo puedes registrar el cuerpo de un enemigo — quedarte con lo que lleva encima — cuando está convaleciente o muerto de verdad, nunca antes. Mientras siga en pie, por muy herido que esté, no hay nada que saquear.
 
-Contra un enemigo ya incapacitado tienes la opción de "Matar": un golpe de gracia que no necesita ninguna tirada, porque ya no puede defenderse — simplemente decides acabar con él (o dejarlo con vida, incapacitado, si prefieres no rematarlo).`,
+Contra un enemigo ya convaleciente tienes la opción de "Matar": un golpe de gracia que no necesita ninguna tirada, porque ya no puede defenderse — simplemente decides acabar con él (o dejarlo con vida, convaleciente, si prefieres no rematarlo).`,
   },
   {
     slug: 'huir',

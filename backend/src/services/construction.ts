@@ -216,6 +216,37 @@ export const CHOZA_RECIPE: ConstructionRecipe = {
   requiresAyuntamiento: true,
 };
 
+// Tótem del Clan Maktor (2026-08-15, petición explícita: "eso no es un objeto, es una
+// construcción... que requiere materiales, entre ellos el tótem que lleva Gorhorn, que es el
+// componente principal de la receta") — movido desde crafting.ts (antes CraftingRecipe
+// 'maktorClanTotem', producía el objeto NARRATIVO `totem-del-clan-maktor`, ya retirado del
+// catálogo). Restaura `totem-clan-roto` (fragmento encontrado en Los Restos de Maktor) usando el
+// propio tótem personal de Gorhorn (equipo inicial, `totem-maktor`, "único, el de Gorhorn") como
+// material principal — a diferencia del diseño anterior (que los mantenía deliberadamente
+// separados), aquí Gorhorn renuncia a su tótem personal para reconstruir el del clan entero.
+// `requiresAyuntamiento` (petición explícita, 2026-08-15, corrigiendo un intento anterior de
+// atarlo a Los Restos de Maktor a secas): se levanta donde esté el Ayuntamiento de la facción que
+// funde Gorhorn, no en una Location fija — mismo mecanismo que la choza de arriba.
+export const MAKTOR_CLAN_TOTEM_RECIPE: ConstructionRecipe = {
+  key: 'totem-clan-maktor',
+  name: 'Tótem del Clan Maktor',
+  description:
+    'El fragmento roto del tótem del clan, restaurado sobre el propio tótem personal de Gorhorn — un monumento íntegro con la marca del Clan Maktor, símbolo de que quien lo llevaba no fue el único superviviente. Ya no es una posesión personal: es del clan entero.',
+  raza: 'orcos',
+  // Requiere "clan" o "maktor" junto a "tótem" (no basta "tótem" a secas, para no confundirse con
+  // una mención cualquiera del tótem personal de Gorhorn que no sea intención de construir esto).
+  nounRegex: /t[oó]tem.*(clan|maktor)|(clan|maktor).*t[oó]tem/,
+  requirements: [
+    { match: { kind: 'exact', catalogSlug: 'totem-clan-roto' }, cantidad: 1, label: 'tótem de clan roto' },
+    { match: { kind: 'exact', catalogSlug: 'totem-maktor' }, cantidad: 1, label: 'tótem personal de Gorhorn' },
+  ],
+  // Mismo criterio que antes en crafting.ts: acto de memoria, no de destreza — solo Carisma, sin
+  // oficio.
+  tier: 2,
+  requisitos: { carisma: 8 },
+  requiresAyuntamiento: true,
+};
+
 // Ayuntamiento (2026-08-04, renombrado desde "Atalaya de vigía" — docs/17-reglas-construcciones-
 // reino.md): funda el reino y desbloquea construir edificios de tipo reino (choza, futuro "puesto
 // avanzado") a su alrededor. 3 niveles NO acumulables — mejorar es actualizar el mismo `Building`,
@@ -257,7 +288,7 @@ export const AYUNTAMIENTO_MEDIANO_RECIPE: ConstructionRecipe = {
     { match: { kind: 'category', tipo: 'RECURSO', category: 'piedra' }, cantidad: 30, label: 'piedra' },
     { match: { kind: 'category', tipo: 'RECURSO', category: 'madera' }, cantidad: 25, label: 'leña' },
   ],
-  requisitos: { carisma: 14 },
+  requisitos: { carisma: 18 },
   upgradesRecipeKey: 'ayuntamiento',
   ayuntamientoNivel: 2,
   reinoBuildingCapacity: 25,
@@ -275,7 +306,7 @@ export const AYUNTAMIENTO_GRANDE_RECIPE: ConstructionRecipe = {
     { match: { kind: 'category', tipo: 'RECURSO', category: 'madera' }, cantidad: 50, label: 'leña' },
     { match: { kind: 'category', tipo: 'RECURSO', category: 'mena' }, cantidad: 15, label: 'mena de hierro' },
   ],
-  requisitos: { carisma: 18 },
+  requisitos: { carisma: 22 },
   upgradesRecipeKey: 'ayuntamiento',
   ayuntamientoNivel: 3,
   reinoBuildingCapacity: 60,
@@ -287,6 +318,7 @@ export const AYUNTAMIENTO_GRANDE_RECIPE: ConstructionRecipe = {
 export const CONSTRUCTION_RECIPES: ConstructionRecipe[] = [
   CAMPAMENTO_RECIPE,
   CHOZA_RECIPE,
+  MAKTOR_CLAN_TOTEM_RECIPE,
   AYUNTAMIENTO_GRANDE_RECIPE,
   AYUNTAMIENTO_MEDIANO_RECIPE,
   AYUNTAMIENTO_PEQUENO_RECIPE,

@@ -36,6 +36,10 @@ import { HarvestSelectionModal } from '../components/HarvestSelectionModal'
 import { REINO_ABILITY_RECIPE_KEY } from '../data/reinoRecipes'
 import { PostCombatInteractionModal } from '../components/PostCombatInteractionModal'
 import { HuntSelectionModal } from '../components/HuntSelectionModal'
+import { CampSelectionModal } from '../components/CampSelectionModal'
+import { TravelDestinationModal } from '../components/TravelDestinationModal'
+import { SaquearZonaModal } from '../components/SaquearZonaModal'
+import { HealSelectionModal } from '../components/HealSelectionModal'
 import { inventoryCapacityFor, totalInventoryUnits } from '../lib/inventoryCapacity'
 import {
   requestTurnClassify,
@@ -130,6 +134,9 @@ export function GameView() {
   const [secondaryAttributes, setSecondaryAttributes] = useState<SecondaryAttributeBlock | null>(null)
   const [characterLog, setCharacterLog] = useState<LogEntry[]>([])
   const [worldLog, setWorldLog] = useState<LogEntry[]>([])
+  // Log de Reino (2026-08-17) — canal aparte, alternable con el de mundo, nunca los dos a la vez.
+  const [kingdomLog, setKingdomLog] = useState<LogEntry[]>([])
+  const [worldLogView, setWorldLogView] = useState<'world' | 'kingdom'>('world')
   // Animación de dados en paralelo (petición explícita, 2026-08-15) — el intercambio de combate ya
   // resuelto (dos tiradas + desenlace) llega ANTES que el texto de narración (ver
   // TurnNarrateHandlers.onExchangeResolved, api.ts); null en cuanto el turno termina de resolverse
@@ -144,7 +151,15 @@ export function GameView() {
   // Pop-up de recolección (rediseño de profesiones, 2026-08-07) — null = cerrado.
   const [harvestModal, setHarvestModal] = useState<{ oficio: string; label: string } | null>(null)
   const [huntModalOpen, setHuntModalOpen] = useState(false)
-  // Interacción con un NPC/fauna ya incapacitado o muerto, fuera de combate (docs/19-post-combate-
+  // Paneles nuevos (2026-08-17, comentarios de startingAbilities.ts): "Volver al campamento",
+  // "Viajar", "Saquear" y "Curar" — mismo patrón que huntModalOpen. Los 3 primeros comparten el
+  // mismo `onSelect`/`onCancel` de un único texto de acción (ver `handleSimpleModalSelect` más
+  // abajo), así que se colapsan en un único estado (auditoría de deuda técnica 2026-08-18, antes
+  // 3 booleanos casi idénticos) — "Saquear" se queda aparte porque su confirmación manda
+  // `lootItemNames` además del texto, una forma distinta de verdad.
+  const [simpleModal, setSimpleModal] = useState<'camp' | 'travel' | 'heal' | null>(null)
+  const [saquearZonaModalOpen, setSaquearZonaModalOpen] = useState(false)
+  // Interacción con un NPC/fauna ya convaleciente o muerto, fuera de combate (docs/19-post-combate-
   // y-recompensas-mision.md pieza 2) — null = cerrado. `/turn/classify` lo detecta y corta el
   // turno antes de narrar; este panel deja Saquear/Decapitar/Salir sin gastar generación.
   const [postCombatTarget, setPostCombatTarget] = useState<PostCombatInteractionInfo | null>(null)
@@ -262,11 +277,11 @@ export function GameView() {
   // saqueado) vivía dentro de CombatModal.tsx, remontado limpio cada vez que el popup se abría.
   // Ahora que no hay popup (el composer normal se sustituye por CombatComposer en el mismo sitio),
   // este estado vive aquí y se inicializa a mano en `openCombat()` cada vez que arranca una pelea.
-  // 'MUERTO' añadido (2026-07-30, botón "Decapitar") — antes esta lista se topaba en INCAPACITADO
+  // 'MUERTO' añadido (2026-07-30, botón "Decapitar") — antes esta lista se topaba en CONVALECIENTE
   // a propósito porque nada en combate podía mostrar MUERTO; ahora que sí puede pasar, tiene que
   // seguir siendo el peor escalón de todos para que la fusión "nunca empeora sin razón real" de
   // `handleCombatTurnResolved` (más abajo) siga funcionando igual.
-  const CONDICION_ORDER: CondicionFisica[] = ['ILESO', 'HERIDO', 'GRAVE', 'INCAPACITADO', 'MUERTO']
+  const CONDICION_ORDER: CondicionFisica[] = ['ILESO', 'HERIDO', 'GRAVE', 'CONVALECIENTE', 'MUERTO']
   const [combatNpcStates, setCombatNpcStates] = useState<CombatNpcDisplay[]>([])
   const [combatBusy, setCombatBusy] = useState(false)
   const [combatEnded, setCombatEnded] = useState(false)
@@ -315,11 +330,11 @@ export function GameView() {
   // Bug real (2026-07-25, "revisar partida"): `combatEnded` solo se marcaba con `finDePartida` o
   // la muerte del PROPIO personaje — nunca cuando el enemigo quedaba derrotado. Un NPC en GRAVE ya
   // se puede saquear (ver "Registrar" en CombatComposer), así que saquearlo es la señal real de
-  // "esto ya terminó" aunque nunca llegue a INCAPACITADO — sin esto, la pantalla de combate se
+  // "esto ya terminó" aunque nunca llegue a CONVALECIENTE — sin esto, la pantalla de combate se
   // quedaba encallada para siempre tras looter a un enemigo que no llegó a caer del todo.
   useEffect(() => {
     if (!combatOpen || combatEnded || combatNpcsDisplay.length === 0) return
-    const allResolved = combatNpcsDisplay.every((n) => n.condicion === 'INCAPACITADO' || n.condicion === 'MUERTO' || n.yaSaqueado)
+    const allResolved = combatNpcsDisplay.every((n) => n.condicion === 'CONVALECIENTE' || n.condicion === 'MUERTO' || n.yaSaqueado)
     if (allResolved) setCombatEnded(true)
   }, [combatOpen, combatEnded, combatNpcsDisplay])
 
@@ -542,7 +557,7 @@ export function GameView() {
   }
 
   // Botón "Decapitar" (petición explícita, 2026-07-30: "un botón que solo sale cuando está
-  // incapacitado para matarlo") — golpe de gracia determinista contra un enemigo YA incapacitado,
+  // convaleciente para matarlo") — golpe de gracia determinista contra un enemigo YA convaleciente,
   // sin tirada (ver `detectsExecuteIntent`/`executeTarget` en turnResolution.ts). Comillas
   // alrededor del nombre, mismo motivo que `handleCombatRegistrar`: sin ellas, el backend podría
   // rematar a cualquier otro enemigo derrotado en escena, no solo al pulsado aquí.
@@ -559,7 +574,7 @@ export function GameView() {
     const nombres = npcs.map((n) => n.name).join(', ')
     const ok = await submitCombatAction(`Remato a ${nombres}, asestándoles el golpe de gracia final.`, { allowAfterEnded: true })
     if (!ok) {
-      setCombatNpcStates((prev) => prev.map((n) => (npcs.some((p) => p.slug === n.slug) ? { ...n, condicion: 'INCAPACITADO' } : n)))
+      setCombatNpcStates((prev) => prev.map((n) => (npcs.some((p) => p.slug === n.slug) ? { ...n, condicion: 'CONVALECIENTE' } : n)))
       return
     }
     // Rediseño 2026-07-31 (petición explícita: "solo salir o decapitar cierran el combate") —
@@ -603,7 +618,7 @@ export function GameView() {
   // `lootedItemNames` aquí mismo, con lo que el propio modal ya seleccionó — no hace falta esperar
   // al servidor para saber esto: el backend nunca rechaza un objeto real de su loadout.
   async function handleSaquearSeleccion(itemNames: string[], fullyLootedSlugs: string[], itemNamesByNpc: Record<string, string[]>) {
-    const porSaquear = combatNpcsDisplay.filter((n) => (n.condicion === 'INCAPACITADO' || n.condicion === 'MUERTO') && !n.yaSaqueado)
+    const porSaquear = combatNpcsDisplay.filter((n) => (n.condicion === 'CONVALECIENTE' || n.condicion === 'MUERTO') && !n.yaSaqueado)
     if (porSaquear.length > 0) {
       setCombatNpcStates((prev) =>
         prev.map((n) => {
@@ -760,6 +775,7 @@ export function GameView() {
     setFictionalDate(save.fictionalDateLabel)
     setCharacterLog(save.characterLog)
     setWorldLog(save.worldLog)
+    setKingdomLog(save.kingdomLog)
     setInventory(save.inventory)
     setCompanions(save.companions)
     setLevel(save.level)
@@ -951,6 +967,16 @@ export function GameView() {
     'Recolectar hierbas': 'herborista',
   }
 
+  // Paneles nuevos (2026-08-17) — mismo patrón que HARVEST_ABILITY_OFICIO: pop-up de selección
+  // real en vez del `promptText` incompleto que llevaban estas 3 habilidades desde su alta
+  // original. "Saquear" no está aquí porque su confirmación es una forma distinta (manda
+  // `lootItemNames` además del texto), ver `saquearZonaModalOpen`.
+  const SIMPLE_MODAL_ABILITY: Record<string, 'camp' | 'travel' | 'heal'> = {
+    'Volver al campamento': 'camp',
+    Viajar: 'travel',
+    Curar: 'heal',
+  }
+
   function handleAttachAbility(ability: SavedActionInfo) {
     const oficio = HARVEST_ABILITY_OFICIO[ability.name]
     if (oficio) {
@@ -965,8 +991,30 @@ export function GameView() {
       setActivePanel(null)
       return
     }
+    const simpleModalKind = SIMPLE_MODAL_ABILITY[ability.name]
+    if (simpleModalKind) {
+      setSimpleModal(simpleModalKind)
+      setActivePanel(null)
+      return
+    }
+    if (ability.name === 'Saquear') {
+      setSaquearZonaModalOpen(true)
+      setActivePanel(null)
+      return
+    }
     composerRef.current?.insertChip({ icon: ability.icon, label: ability.name, description: ability.description, value: ability.promptText })
     setActivePanel(null)
+  }
+
+  // Cierre + envío compartidos por los 3 modales de `simpleModal` (auditoría de deuda técnica
+  // 2026-08-18) — los tres resuelven igual: un único texto de acción que pasa por el turno normal.
+  function handleSimpleModalSelect(actionText: string) {
+    setSimpleModal(null)
+    handleSubmit(actionText)
+  }
+
+  function closeSimpleModal() {
+    setSimpleModal(null)
   }
 
   // Resolución del pop-up de caza (revisión de partida 2026-08-08): una única presa débil puede
@@ -1342,7 +1390,7 @@ export function GameView() {
       }
 
       if (classifyResult.postCombatInteraction) {
-        // Interacción con un NPC/fauna ya incapacitado o muerto, fuera de combate (docs/19 pieza
+        // Interacción con un NPC/fauna ya convaleciente o muerto, fuera de combate (docs/19 pieza
         // 2) — el backend no persistió nada (no fue una acción de verdad, solo abrió el menú), así
         // que hay que deshacer el "TÚ: ..." optimista que se metió arriba antes de llamar a
         // classify, o quedaría una entrada fantasma en el log que nunca existió en el backend.
@@ -1831,15 +1879,19 @@ export function GameView() {
             />
           ) : (
             <LogPanel
-              title="El mundo"
-              subtitle="Lo que ocurre más allá de tu personaje"
-              entries={worldLog}
+              title={worldLogView === 'world' ? 'El mundo' : 'Reino'}
+              subtitle={worldLogView === 'world' ? 'Lo que ocurre más allá de tu personaje' : 'Lo que ocurre en tu reino'}
+              entries={worldLogView === 'world' ? worldLog : kingdomLog}
               accent="accent2"
-              isThinking={worldThinking}
+              isThinking={worldLogView === 'world' && worldThinking}
               thinkingText={worldFlavor}
-              emptyHint="El mundo todavía no ha mostrado sus cartas."
+              emptyHint={worldLogView === 'world' ? 'El mundo todavía no ha mostrado sus cartas.' : 'Todavía no ha pasado nada en tu reino.'}
               onCollapse={() => setCollapsedSide('world')}
               collapseIcon="›"
+              // Alternar Mundo/Reino (2026-08-17) — solo tiene sentido ofrecerlo una vez hay reino
+              // fundado, o si ya quedó alguna entrada de reino de cuando lo hubo.
+              onToggleView={kingdomName || kingdomLog.length > 0 ? () => setWorldLogView((v) => (v === 'world' ? 'kingdom' : 'world')) : undefined}
+              toggleViewLabel={worldLogView === 'world' ? 'Reino' : 'Mundo'}
               characterName={characterName ?? undefined}
             />
           )}
@@ -2003,6 +2055,27 @@ export function GameView() {
 
       {huntModalOpen && saveId && (
         <HuntSelectionModal saveId={saveId} onResuelto={handleHuntResolved} onCancel={() => setHuntModalOpen(false)} />
+      )}
+
+      {simpleModal === 'camp' && saveId && (
+        <CampSelectionModal saveId={saveId} onSelect={handleSimpleModalSelect} onCancel={closeSimpleModal} />
+      )}
+      {simpleModal === 'travel' && saveId && (
+        <TravelDestinationModal saveId={saveId} onSelect={handleSimpleModalSelect} onCancel={closeSimpleModal} />
+      )}
+      {simpleModal === 'heal' && (
+        <HealSelectionModal inventory={inventory} condicionFisica={condicionFisica} onSelect={handleSimpleModalSelect} onCancel={closeSimpleModal} />
+      )}
+
+      {saquearZonaModalOpen && saveId && (
+        <SaquearZonaModal
+          saveId={saveId}
+          onConfirm={(actionText, lootItemNames) => {
+            setSaquearZonaModalOpen(false)
+            submitCombatAction(actionText, { lootItemNames, allowAfterEnded: true })
+          }}
+          onCancel={() => setSaquearZonaModalOpen(false)}
+        />
       )}
 
       {postCombatTarget && (

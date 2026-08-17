@@ -121,7 +121,7 @@ huecosHabilidad(nivel) = 3 + floor(nivel / 2)
 
 ### 4.4 Lo que subir de nivel NO hace
 
-- **No cura ni interactúa con la condición física** (`ileso→herido→grave→incapacitado→muerto`). No hay puntos de golpe: la escalera es narrativa y se recupera descansando (acciones por tiempo, banda extendida/larga), igual a nivel 1 que a nivel 20. Un nivel 20 `grave` está tan mal como un nivel 1 `grave`.
+- **No cura ni interactúa con la condición física** (`ileso→herido→grave→convaleciente→muerto`). No hay puntos de golpe: la escalera es narrativa y se recupera descansando (acciones por tiempo, banda extendida/larga), igual a nivel 1 que a nivel 20. Un nivel 20 `grave` está tan mal como un nivel 1 `grave`.
 - **No atenúa el riesgo de `arcano`** (decisión 6): el coste narrativo de la magia salvaje es un rasgo del contrato de mundo de Helek Sirik, no una impericia que se entrene. Subir `arcano` con puntos ASI mejora la tirada como con cualquier atributo, pero el Narrador sigue pudiendo cobrar su precio incluso en éxito.
 - **No desbloquea acciones**: en Tarkor se puede intentar cualquier cosa a cualquier nivel (decisión 0). El nivel mejora las probabilidades y el cupo de habilidades, nunca es una puerta.
 

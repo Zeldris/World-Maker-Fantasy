@@ -1,7 +1,7 @@
 import type { Prisma } from '@prisma/client';
 import { prisma } from '../lib/prisma.js';
 import { normalizeText, matchesAliasBoundary } from './travel.js';
-import { harvestSourceAliases } from '../scripts/worldCatalog.js';
+import { harvestSourceAliases, sourceDisplayNameFor } from '../scripts/worldCatalog.js';
 
 /// Enciclopedia progresiva (sesión de diseño 2026-07-23, petición explícita de la usuaria: "en vez
 /// de tener todo descubierto desde el inicio... los npcs, fauna, flora, etc... solo se verá una
@@ -65,9 +65,9 @@ export async function recordEntityDiscoveries(
       }
     }
 
-    const sourceNameBySlug = new Map<string, string>();
-    for (const y of yields) sourceNameBySlug.set(y.sourceSlug, y.sourceName);
-    for (const [sourceSlug, sourceName] of sourceNameBySlug) {
+    const npcNameBySlug = new Map(npcs.map((n) => [n.slug, n.name]));
+    for (const sourceSlug of faunaSlugs) {
+      const sourceName = sourceDisplayNameFor(sourceSlug, npcNameBySlug.get(sourceSlug));
       const aliases = [sourceName, ...(harvestSourceAliases[sourceSlug] ?? [])];
       if (aliases.some((a) => matchesAliasBoundary(normalized, normalizeText(a)))) {
         discovered.push({ entityType: 'fauna', entitySlug: sourceSlug });

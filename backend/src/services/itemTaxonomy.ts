@@ -7,9 +7,9 @@ import type { ItemTipo } from '@prisma/client';
 /// para distinguir recurso crudo de material ya procesado (antes todo caía en un único
 /// `category: 'material'` genérico).
 export const CATEGORY_VOCAB_BY_TIPO: Record<ItemTipo, string[]> = {
-  RECURSO: ['piel', 'hueso', 'madera', 'piedra', 'mena', 'hierba', 'pluma', 'quitina', 'resina'],
+  RECURSO: ['piel', 'hueso', 'madera', 'piedra', 'mena', 'hierba', 'pluma', 'quitina', 'resina', 'fibras','tendon','quitina','escamas','semilla'],
   MATERIAL: ['metal', 'bloque'],
-  EQUIPABLE: ['arma', 'herramienta', 'ropa'],
+  EQUIPABLE: ['arma', 'herramienta', 'ropa','accesorio','armadura'],
   CONSUMIBLE: ['consumible', 'medicinal'],
   // 'cosmetico' añadido 2026-08-03 (petición explícita: "crear... una categoría que es
   // cosméticos") — mismo bucket NARRATIVO que 'valor' (equipable por sabor, sin bonus por

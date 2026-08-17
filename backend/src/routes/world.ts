@@ -1,7 +1,13 @@
 import type { FastifyInstance } from 'fastify';
 import type { AttributeBlock, Attribute } from '../services/dice.js';
 import { prisma } from '../lib/prisma.js';
-import { harvestSourceAliases, harvestSourceDescriptions, harvestSourcesThatAreFaunaWithoutNpc, harvestSourceRegion } from '../scripts/worldCatalog.js';
+import {
+  harvestSourceAliases,
+  harvestSourceDescriptions,
+  harvestSourcesThatAreFaunaWithoutNpc,
+  harvestSourceRegion,
+  sourceDisplayNameFor,
+} from '../scripts/worldCatalog.js';
 import { coreRegionOf } from '../services/discovery.js';
 import { classAbilityUnlocksForClase } from '../services/classAbilities.js';
 import { CONSTRUCTION_RECIPES } from '../services/construction.js';
@@ -52,7 +58,7 @@ interface EnciclopediaBuildContext {
   npcBySlug: Map<string, Npc>;
   npcSlugs: Set<string>;
   yieldsBySource: Map<string, { itemName: string; cantidad: number; condicion: string | null }[]>;
-  sourceNameBySlug: Map<string, string>;
+  sourceDisplayNameBySlug: Map<string, string>;
   /// Loadout saqueable (petición explícita, 2026-07-30: "que al saquear pueda marcar los objetos
   /// que me quiero quedar") — antes deliberadamente NUNCA se exponía este dato crudo al frontend
   /// (ver comentario histórico de `npcItems` más abajo); el modal de saqueo lo necesita para
@@ -113,7 +119,7 @@ function buildItemsSection(items: Awaited<ReturnType<typeof prisma.itemCatalog.f
 // cosechables — el bio real vivía en el Npc (fauna cazable) o en harvestSourceDescriptions
 // (flora/mineral sin Npc propio, ver worldCatalog.ts) pero nunca llegaba al frontend.
 function buildFaunaFloraSection(ctx: EnciclopediaBuildContext) {
-  return Array.from(ctx.sourceNameBySlug.entries()).map(([sourceSlug, sourceName]) => ({
+  return Array.from(ctx.sourceDisplayNameBySlug.entries()).map(([sourceSlug, sourceName]) => ({
     sourceSlug,
     sourceName,
     aliases: harvestSourceAliases[sourceSlug] ?? [],
@@ -472,7 +478,7 @@ export async function worldRoutes(app: FastifyInstance) {
     const npcBySlug = new Map(npcs.map((n) => [n.slug, n]));
     const locationBySlug = new Map(locations.map((l) => [l.slug, l]));
     const yieldsBySource = new Map<string, { itemName: string; cantidad: number; condicion: string | null }[]>();
-    const sourceNameBySlug = new Map<string, string>();
+    const sourceDisplayNameBySlug = new Map<string, string>();
     // Zona de origen por fuente (2026-07-29, colapsables de fauna/flora por zona en la
     // Enciclopedia) — mismo criterio ya validado en discovery.ts: región real de su
     // `homeLocationSlug` si es fauna con Npc propio, o `lugarOrigen` del primer objeto que da si
@@ -480,7 +486,7 @@ export async function worldRoutes(app: FastifyInstance) {
     // itinerante sin hogar fijo, o un lugarOrigen sin ninguna región reconocible).
     const lugarOrigenBySource = new Map<string, string>();
     for (const y of yields) {
-      sourceNameBySlug.set(y.sourceSlug, y.sourceName);
+      sourceDisplayNameBySlug.set(y.sourceSlug, sourceDisplayNameFor(y.sourceSlug, npcBySlug.get(y.sourceSlug)?.name));
       const list = yieldsBySource.get(y.sourceSlug) ?? [];
       list.push({ itemName: y.item.name, cantidad: y.cantidad, condicion: y.condicion });
       yieldsBySource.set(y.sourceSlug, list);
@@ -503,7 +509,7 @@ export async function worldRoutes(app: FastifyInstance) {
     // que a una persona — pero eso hacía que la Enciclopedia listara cada animal DOS veces (en
     // "NPCs" con su ficha de personaje y en "Fauna y flora" con sus recursos). La pestaña NPCs
     // se queda solo con los que no tienen ninguna fuente de cosecha propia.
-    const npcsForEncyclopedia = npcs.filter((n) => !sourceNameBySlug.has(n.slug));
+    const npcsForEncyclopedia = npcs.filter((n) => !sourceDisplayNameBySlug.has(n.slug));
 
     const ctx: EnciclopediaBuildContext = {
       imagePromptsFor,
@@ -515,7 +521,7 @@ export async function worldRoutes(app: FastifyInstance) {
       npcBySlug,
       npcSlugs,
       yieldsBySource,
-      sourceNameBySlug,
+      sourceDisplayNameBySlug,
       lootableItemsByNpcId,
     };
 

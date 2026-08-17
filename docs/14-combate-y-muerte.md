@@ -16,7 +16,7 @@ enum CondicionFisica {
   ILESO
   HERIDO
   GRAVE
-  INCAPACITADO
+  CONVALECIENTE
   MUERTO
 }
 ```
@@ -25,7 +25,7 @@ En `Save`: `condicionFisica CondicionFisica @default(ILESO)`.
 
 - La narración de combate (§ 2) es la vía principal para cambiarla — el JSON de narración gana un campo opcional `condicionFisica?: CondicionFisica` que el backend valida (nunca deja que suba dos escalones de golpe salvo excepción explícita del Narrador, nunca la baja el modelo fuera de combate).
 - Curar/descansar (§ 4) es la vía principal para mejorarla.
-- `INCAPACITADO` no es lo mismo que `MUERTO`: incapacitado significa fuera de la acción actual (inconsciente, inmovilizado) pero recuperable sin la intervención de la Entidad; `MUERTO` es lo que dispara § 4.
+- `CONVALECIENTE` no es lo mismo que `MUERTO`: convaleciente significa fuera de la acción actual (inconsciente, inmovilizado) pero recuperable sin la intervención de la Entidad; `MUERTO` es lo que dispara § 4.
 
 ---
 
@@ -47,6 +47,43 @@ Contenido:
 
 ### 2.3 Turno de combate
 
+**Superado (2026-07-28 en adelante, este documento describía el diseño v1): el turno dentro del
+popup sigue siendo un turno normal (`/turn/classify` + `/turn/narrate` con `enCombate: true`), pero
+la resolución del intercambio en sí ya no es "el jugador siempre ataca primero, el NPC contraataca
+con una tirada abstracta"** — es un sistema de iniciativa e intercambio propio
+(`backend/src/services/combatExchange.ts`), resumido:
+
+- **Iniciativa** (`rollInitiative`): al inicio de cada intercambio se contrastan las tiradas de
+  destreza de jugador y NPC — quien gana ataca primero. Si gana el NPC, su ataque queda decidido y
+  OCULTO en `Save.pendingNpcAttack` (qué habilidad/atributo usa, contra qué NPC) hasta que el
+  jugador someta su siguiente acción, que se resuelve como **defensa a ciegas** contra ese ataque ya
+  fijado — nunca ve de antemano qué le va a golpear.
+- **Roles**: cada habilidad de combate lleva `rol: 'ataque' | 'defensa' | 'utilidad'`. Un ataque
+  contra una defensa/utilidad se resuelve por comparación directa de grados de éxito
+  (`ExchangeOutcome`, 6 desenlaces posibles: `golpe_pleno`, `golpe_normal`, `golpes_mutuos`,
+  `defensor_contragolpea`, `parada_en_seco`, `ataque_falla`) — solo el lado cuya habilidad activa
+  lleva de verdad `effects: ['ATAQUE']` puede hacer daño en un contragolpe o en golpes mutuos, nunca
+  una habilidad puramente defensiva. Habilidades de `rol: 'utilidad'` (Analizar rival, Grito de
+  Guerra, Contraataque, Instinto Salvaje...) se resuelven de forma independiente (no comparan tirada
+  contra tirada) y pueden combinar varios `AbilityEffect` a la vez sobre el mismo intercambio
+  (ATURDIMIENTO roba iniciativa, INTIMIDACION cancela el golpe entrante, RECUPERACION da energía
+  extra...), con un tope opcional de usos por combate (`AbilityEffect.LIMITADA` +
+  `maxUsesPerCombat`, contador en `NpcState.abilityUsesThisEncounter`, se resetea al volver a
+  `ILESO`).
+- **Rueda de ventajas por tipo de atributo** (`attributeWheel.ts`, 2026-08-09): quien tiene ventaja
+  de tipo en el atributo enfrentado saca un multiplicador extra a su valor efectivo; desde el
+  rediseño de balance del 2026-08-15 la rueda SOLO premia, nunca penaliza — quien tiene desventaja
+  se queda neutro (×1), nunca peor que si no hubiera relación en la rueda.
+- **Energía como recurso**: cada habilidad tiene `energyCost`/`energyRegen` propios; sin energía
+  suficiente, no se puede elegir. Se resuelve en el mismo intercambio que el daño (`nextEnergia`,
+  turnResolution.ts).
+- **`LETAL`** (fusión de la antigua `REMATE`, 2026-08-15): mata de un golpe a cualquier rival que
+  reciba el golpe, sin exigir ninguna condición física previa.
+
+La clasificación de dificultad sigue usando la calibración por nivel de NPC de `docs/12` § 2.2 —
+eso no cambió. Queda el párrafo original abajo por historial, describía correctamente el v1 antes
+del rediseño de iniciativa.
+
 Cada turno dentro del popup es un turno normal (`/turn/classify` + `/turn/narrate`) con un flag `enCombate: true` añadido al contexto: cambia el estilo de la instrucción de narración (más corta, más directa, sin ambientación de relleno — el ritmo de un intercambio, no una escena) y activa la lectura/escritura de `condicionFisica` en cada resolución. La clasificación de dificultad usa la calibración por nivel de NPC ya diseñada en `docs/12` § 2.2.
 
 ### 2.4 Condición física en combate — por bando
@@ -62,7 +99,7 @@ Un combate puede tener varios NPCs; cada uno lleva su propia condición física 
 **Superado (2026-08-13, este documento contradecía el código actual): el modelo nuevo SÍ llegó a
 hacer falta y SÍ se construyó — `NpcState`** (uno por NPC×partida, no descartado al terminar el
 combate). Persiste condición física real entre turnos y sobrevive a recargar la página; además
-recupera de `INCAPACITADO` a `HERIDO` tras 6h de ficción y el cadáver desaparece tras 48h (ver
+recupera de `CONVALECIENTE` a `HERIDO` tras 6h de ficción y el cadáver desaparece tras 48h (ver
 `docs/19-post-combate-y-recompensas-mision.md`). Es la pieza que hace posible saquear/decapitar
 más tarde sin pasar por combate (`postCombatInteraction.ts`). Queda el razonamiento original abajo
 por historial — en el momento en que se escribió, era correcto que nadie lo había pedido todavía.
@@ -201,7 +238,7 @@ endedAt DateTime?
 2. ~~**Selector de dificultad en la creación de partida**~~ — **hecho**: `SessionContext` guarda `selectedDificultad`, seleccionable en `CharacterSaves.tsx` (Novato/Medio/Avanzado con frase corta) justo antes de "+ Nueva partida"; se manda en `POST /saves`.
 3. ~~**Detección de descanso válido**~~ — **hecho**: `detectsRestIntent()` (movido a `timedActions.ts`, mismo regex que ya usaba `computeDuration`) + `isValidRestLocationKind()` en `death.ts`, enganchado en `turnResolution.ts` — verificado en vivo: descansar en La Hondonada del Eco (kind refugio) fija `lastRestLocationId` correctamente.
 4. ~~**Flujo de muerte determinista**~~ — **hecho**: `backend/src/services/death.ts` (`limiteMuertes`, `resolveDeathOutcome`, `whisperText`, `nextCondicionFisica`, `isValidRestLocationKind`), enganchado en `turnResolution.ts` donde `condicionFisica` pasa a `MUERTO`. Verificado con pruebas unitarias puras (los 3 niveles de dificultad, avisos de última oportunidad, fin de partida) — todas correctas.
-5. ~~**Combate**~~ — **hecho**: `combateIniciado`/`condicionFisica` en el JSON de `narrateAction` (enriquecido con nombres de NPC antes de llegar al frontend), composer propio (habilidades de categoría combate + NPCs clicables + Huir), flag `enCombate` que cambia el tono del prompt y las reglas de `nextCondicionFisica`. **Desfasado (no una errata menor, señalado aquí):** el componente original `CombatModal.tsx` fue rediseñado y renombrado a `CombatPanel.tsx` (sesión 2026-08-12); y la "simplificación v1 explícita" de abajo ya no es cierta — desde `NpcState` (§ 2.4-2.5 de este documento la descartaban a propósito) la condición física de cada NPC SÍ se persiste de verdad por partida (recupera de `INCAPACITADO` a `HERIDO` tras 6h de ficción, el cadáver desaparece a las 48h, `docs/19-post-combate-y-recompensas-mision.md`), no un heurístico visual descartado al cerrar el combate. § 2.4/2.5 de este documento describen el diseño v1 histórico, ya superado.
+5. ~~**Combate**~~ — **hecho**: `combateIniciado`/`condicionFisica` en el JSON de `narrateAction` (enriquecido con nombres de NPC antes de llegar al frontend), composer propio (habilidades de categoría combate + NPCs clicables + Huir), flag `enCombate` que cambia el tono del prompt y las reglas de `nextCondicionFisica`. **Desfasado (no una errata menor, señalado aquí):** el componente original `CombatModal.tsx` fue rediseñado y renombrado a `CombatPanel.tsx` (sesión 2026-08-12); y la "simplificación v1 explícita" de abajo ya no es cierta — desde `NpcState` (§ 2.4-2.5 de este documento la descartaban a propósito) la condición física de cada NPC SÍ se persiste de verdad por partida (recupera de `CONVALECIENTE` a `HERIDO` tras 6h de ficción, el cadáver desaparece a las 48h, `docs/19-post-combate-y-recompensas-mision.md`), no un heurístico visual descartado al cerrar el combate. § 2.4/2.5 de este documento describen el diseño v1 histórico, ya superado. **Tampoco** es ya "el jugador siempre ataca primero" — desde el 2026-07-28 hay iniciativa real, defensa a ciegas y una tabla de 6 desenlaces posibles por intercambio, ver la nota "Superado" de § 2.3.
 6. ~~**`ComposerAttachment` ampliado**~~ — **hecho**: variantes `discoveredItem`/`npc` + plantilla verbo+objetivo en `buildActionText` (`GameView.tsx`) — empareja habilidad+objetivo por índice, con fallback para hallazgos sueltos ("Recojo...") y NPCs sueltos.
 7. ~~**Revelado progresivo**~~ — **hecho**: `backend/src/services/discovery.ts` (detector de búsqueda genérica + selección de 2-4 hallazgos desde `HarvestYield`, calculado en `/turn/classify` para que el frontend arranque el contador de inmediato) + `DiscoveryReveal.tsx` (revelado con temporizador comprimido, hallazgos clicables).
 8. ~~**`CharacterSaves.tsx`**~~ — **hecho**: partidas con `endedAt` se muestran como "Partida terminada" (no navegables, pero reiniciables/borrables), badge de dificultad visible en cada partida.

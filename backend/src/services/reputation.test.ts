@@ -60,15 +60,23 @@ describe('effectiveTemperamento', () => {
 });
 
 describe('resolveFoundingOutcome', () => {
-  it('región sin facción dueña conocida (Ciénaga Troncal, El Margen Silencioso): sin dueño', () => {
-    expect(resolveFoundingOutcome('Ciénaga Troncal', {})).toBe('SIN_DUENO');
+  // Ciénaga Troncal ganó dueña (Clan Goshg) el 2026-08-15 — ya no vale como ejemplo de región sin
+  // dueño, El Margen Silencioso sigue sin ninguna.
+  it('región sin facción dueña conocida (El Margen Silencioso): sin dueño', () => {
     expect(resolveFoundingOutcome('El Margen Silencioso', {})).toBe('SIN_DUENO');
     expect(resolveFoundingOutcome(null, {})).toBe('SIN_DUENO');
   });
 
-  it('región con dueña y reputación neutra o mejor (sin fila = default 2500): fundación pacífica', () => {
-    expect(resolveFoundingOutcome('Las Llanuras del Viento Rojo', {})).toBe('PACIFICA');
-    expect(resolveFoundingOutcome('Las Llanuras del Viento Rojo', { 'Clan Serhu': 4000 })).toBe('PACIFICA');
+  // Renombrado de PACIFICA a CONQUISTADA (2026-08-15, confirmado) — mismo criterio (reputación
+  // neutra o mejor con la(s) facción(es) dueña), solo cambia el nombre del resultado.
+  it('región con dueña y reputación neutra o mejor (sin fila = default 2500): fundación conquistada, sin conflicto', () => {
+    expect(resolveFoundingOutcome('Las Llanuras del Viento Rojo', {})).toBe('CONQUISTADA');
+    expect(resolveFoundingOutcome('Las Llanuras del Viento Rojo', { 'Clan Serhu': 4000 })).toBe('CONQUISTADA');
+  });
+
+  it('Ciénaga Troncal ahora tiene dueña (Clan Goshg) — ya no sale SIN_DUENO', () => {
+    expect(resolveFoundingOutcome('Ciénaga Troncal', {})).toBe('CONQUISTADA');
+    expect(resolveFoundingOutcome('Ciénaga Troncal', { 'Clan Goshg': 1000 })).toBe('CONFLICTO');
   });
 
   it('región con dueña y reputación por debajo del neutro: conflicto', () => {

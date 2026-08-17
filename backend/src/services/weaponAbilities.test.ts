@@ -31,7 +31,7 @@ describe('weaponRoleFor', () => {
 describe('weaponAbilitiesFor', () => {
   it('Ataque Básico (genérico) SIEMPRE sale de la mano PRINCIPAL, aunque la secundaria lleve otra categoría distinta', () => {
     const equipped: EquippedWeaponSlot[] = [
-      { slot: 'ARMA_PRINCIPAL', tipoArma: 'HACHA' },
+      { slot: 'ARMA_PRINCIPAL', tipoArma: 'HACHA_1_MANO' },
       { slot: 'ARMA_SECUNDARIA', tipoArma: 'DAGA' },
     ];
     const result = weaponAbilitiesFor(equipped, 1);
@@ -42,7 +42,7 @@ describe('weaponAbilitiesFor', () => {
 
   it('arma en principal + escudo en secundaria: 1 ataque genérico + 1 real de la principal + 1 defensa', () => {
     const equipped: EquippedWeaponSlot[] = [
-      { slot: 'ARMA_PRINCIPAL', tipoArma: 'ESPADA' },
+      { slot: 'ARMA_PRINCIPAL', tipoArma: 'ESPADA_1_MANO' },
       { slot: 'ARMA_SECUNDARIA', tipoArma: 'ESCUDO' },
     ];
     const result = weaponAbilitiesFor(equipped, 1);
@@ -93,7 +93,7 @@ describe('weaponAbilitiesFor', () => {
   });
 
   it('con un arma real en la principal, NO añade el fallback desarmado de propina (ni su avanzada, "Puño Demoledor")', () => {
-    const equipped: EquippedWeaponSlot[] = [{ slot: 'ARMA_PRINCIPAL', tipoArma: 'HACHA' }];
+    const equipped: EquippedWeaponSlot[] = [{ slot: 'ARMA_PRINCIPAL', tipoArma: 'HACHA_1_MANO' }];
     const result = weaponAbilitiesFor(equipped, 20);
     const ataques = result.filter((a) => a.rol === 'ataque');
     expect(ataques).toHaveLength(3); // genérica + real ("Tajo Horizontal") + avanzada, ninguna desarmada
@@ -112,13 +112,13 @@ describe('weaponAbilitiesFor', () => {
   });
 
   it('por debajo del nivel básico (imposible en la práctica, nivel mínimo es 1) no da habilidades', () => {
-    const equipped: EquippedWeaponSlot[] = [{ slot: 'ARMA_PRINCIPAL', tipoArma: 'HACHA' }];
+    const equipped: EquippedWeaponSlot[] = [{ slot: 'ARMA_PRINCIPAL', tipoArma: 'HACHA_1_MANO' }];
     expect(weaponAbilitiesFor(equipped, 0)).toHaveLength(0);
   });
 
   it('a nivel máximo se suma la avanzada SIN perder la básica ni la real (5 huecos, no un reemplazo)', () => {
     const equipped: EquippedWeaponSlot[] = [
-      { slot: 'ARMA_PRINCIPAL', tipoArma: 'ESPADA' },
+      { slot: 'ARMA_PRINCIPAL', tipoArma: 'ESPADA_1_MANO' },
       { slot: 'ARMA_SECUNDARIA', tipoArma: 'ESCUDO' },
     ];
     const result = weaponAbilitiesFor(equipped, 20);
@@ -142,7 +142,7 @@ describe('weaponAbilitiesFor', () => {
     expect(desarmado.description).toMatch(/puños|garras/);
     expect(desarmado.promptText).toMatch(/puños|garras/);
 
-    const armado = weaponAbilitiesFor([{ slot: 'ARMA_PRINCIPAL', tipoArma: 'HACHA' }], 1)[0];
+    const armado = weaponAbilitiesFor([{ slot: 'ARMA_PRINCIPAL', tipoArma: 'HACHA_1_MANO' }], 1)[0];
     expect(armado.name).toBe('Ataque Básico');
     expect(armado.description).not.toMatch(/puños|garras/);
   });
@@ -155,8 +155,8 @@ describe('weaponAbilitiesFor', () => {
 describe('weaponAbilitiesFor — habilidad real por categoría exacta de arma', () => {
   it('2 armas de la MISMA categoría (2 hachas) colapsan en 1 sola habilidad real, marcada dualWield', () => {
     const equipped: EquippedWeaponSlot[] = [
-      { slot: 'ARMA_PRINCIPAL', tipoArma: 'HACHA' },
-      { slot: 'ARMA_SECUNDARIA', tipoArma: 'HACHA' },
+      { slot: 'ARMA_PRINCIPAL', tipoArma: 'HACHA_1_MANO' },
+      { slot: 'ARMA_SECUNDARIA', tipoArma: 'HACHA_1_MANO' },
     ];
     const result = weaponAbilitiesFor(equipped, 1);
     const reales = result.filter((a) => a.tier === 'real');
@@ -166,7 +166,7 @@ describe('weaponAbilitiesFor — habilidad real por categoría exacta de arma', 
 
   it('2 armas de categorías DISTINTAS (hacha + cuchillo) dan las 2 habilidades reales por separado, ninguna dualWield', () => {
     const equipped: EquippedWeaponSlot[] = [
-      { slot: 'ARMA_PRINCIPAL', tipoArma: 'HACHA' },
+      { slot: 'ARMA_PRINCIPAL', tipoArma: 'HACHA_1_MANO' },
       { slot: 'ARMA_SECUNDARIA', tipoArma: 'CUCHILLO' },
     ];
     const result = weaponAbilitiesFor(equipped, 1);
@@ -177,7 +177,7 @@ describe('weaponAbilitiesFor — habilidad real por categoría exacta de arma', 
   });
 
   it('1 sola arma equipada: 1 habilidad real, nunca dualWield', () => {
-    const result = weaponAbilitiesFor([{ slot: 'ARMA_PRINCIPAL', tipoArma: 'MAZA' }], 1);
+    const result = weaponAbilitiesFor([{ slot: 'ARMA_PRINCIPAL', tipoArma: 'MAZA_1_MANO' }], 1);
     const reales = result.filter((a) => a.tier === 'real');
     expect(reales).toHaveLength(1);
     expect(reales[0]).toMatchObject({ name: 'Golpe Devastador', attribute: 'fuerza', dualWield: false });

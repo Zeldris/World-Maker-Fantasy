@@ -386,12 +386,13 @@ function npcFixture(overrides: Partial<NpcInScene> = {}): NpcInScene {
     id: 'orco', slug: 'orco-enfurecido', name: 'Orco enfurecido', articulo: 'el', genero: null, kind: 'PRINCIPAL',
     level: 1, role: 'Guerrero deshonrado', faction: null, personality: 'Errático', bio: 'x',
     items: [
-      { name: 'Maza orca', cantidad: 1, notas: 'Astillada', description: 'x', equipSlot: 'ARMA_PRINCIPAL', statBonuses: { fuerza: 2 }, catalogSlug: 'maza-orca', effectKey: null, category: 'arma', tipoArma: 'MAZA', tipo: 'EQUIPABLE' },
+      { name: 'Maza orca', cantidad: 1, notas: 'Astillada', description: 'x', equipSlot: 'ARMA_PRINCIPAL', statBonuses: { fuerza: 2 }, catalogSlug: 'maza-orca', effectKey: null, category: 'arma', tipoArma: 'MAZA_1_MANO', tipo: 'EQUIPABLE' },
     ],
     attributes: { fuerza: 11, destreza: 10, constitucion: 9, inteligencia: 4, voluntad: 7, carisma: 2, arcano: 2 },
     raza: 'orcos', clase: 'Guerrero', ataqueNatural: null, habilidadesRaciales: [],
     temperamento: 'AGRESIVO', condicionFisica: 'ILESO', saqueado: false, lootedItemNames: [], energia: null, analizado: false,
-    groupSize: null, groupDefeated: 0,
+    groupSize: null, groupDefeated: 0, corpsesLooted: 0,
+    abilityUsesThisEncounter: {},
     ...overrides,
   };
 }
@@ -403,21 +404,21 @@ describe('npcSceneBlockFor', () => {
     expect(block).toContain('PERSONAJE EN ESCENA');
   });
 
-  it('incapacitado pero SIN saquear todavía: sigue listando su equipo real, para que el saqueo de este turno no se lo invente', () => {
-    const block = npcSceneBlockFor(npcFixture({ condicionFisica: 'INCAPACITADO', saqueado: false }), 1);
+  it('convaleciente pero SIN saquear todavía: sigue listando su equipo real, para que el saqueo de este turno no se lo invente', () => {
+    const block = npcSceneBlockFor(npcFixture({ condicionFisica: 'CONVALECIENTE', saqueado: false }), 1);
     expect(block).toContain('YA RESUELTO');
     expect(block).toContain('Maza orca');
     expect(block).not.toMatch(/no hay botín que ofrecer/);
   });
 
-  it('incapacitado Y YA saqueado: no lista ningún equipo, dice explícitamente que no queda botín', () => {
-    const block = npcSceneBlockFor(npcFixture({ condicionFisica: 'INCAPACITADO', saqueado: true }), 1);
+  it('convaleciente Y YA saqueado: no lista ningún equipo, dice explícitamente que no queda botín', () => {
+    const block = npcSceneBlockFor(npcFixture({ condicionFisica: 'CONVALECIENTE', saqueado: true }), 1);
     expect(block).toContain('YA RESUELTO');
     expect(block).not.toContain('Maza orca');
     expect(block).toMatch(/no hay botín que ofrecer/);
   });
 
-  it('muerto sin saquear: mismo criterio que incapacitado', () => {
+  it('muerto sin saquear: mismo criterio que convaleciente', () => {
     const block = npcSceneBlockFor(npcFixture({ condicionFisica: 'MUERTO', saqueado: false }), 1);
     expect(block).toContain('Maza orca');
   });
@@ -431,7 +432,7 @@ describe('npcSceneBlockFor', () => {
   });
 
   it('con articulo, presenta el nombre con el artículo delante (ya resuelto)', () => {
-    const block = npcSceneBlockFor(npcFixture({ articulo: 'el', condicionFisica: 'INCAPACITADO', saqueado: false }), 1);
+    const block = npcSceneBlockFor(npcFixture({ articulo: 'el', condicionFisica: 'CONVALECIENTE', saqueado: false }), 1);
     expect(block).toContain('YA RESUELTO: el Orco enfurecido —');
   });
 
@@ -511,7 +512,7 @@ describe('buildNpcInScene', () => {
           equipSlot: 'ARMA_PRINCIPAL',
           statBonuses: null,
           category: 'arma',
-          tipoArma: 'MAZA',
+          tipoArma: 'MAZA_1_MANO',
           // Bug real jugando (2026-08-06): "Mapa de las Llanuras" saqueado en pleno turno no
           // activaba los puntos del mapa hasta recargar — effectKey no viajaba desde aquí.
           effectKey: 'reveal-map-llanuras',
@@ -539,7 +540,7 @@ describe('buildNpcInScene', () => {
         catalogSlug: 'maza-orca',
         effectKey: 'reveal-map-llanuras',
         category: 'arma',
-        tipoArma: 'MAZA',
+        tipoArma: 'MAZA_1_MANO',
       },
     ]);
   });
@@ -547,11 +548,11 @@ describe('buildNpcInScene', () => {
   it('con NpcState existente, usa el estado real persistido en vez de los defaults', () => {
     const state = {
       id: 'state-1', saveId: 'save-1', npcId: 'orco-1', scope: 'loc-x',
-      condicionFisica: 'INCAPACITADO', energia: 5, saqueado: true, lootedItemNames: ['Maza orca'],
+      condicionFisica: 'CONVALECIENTE', energia: 5, saqueado: true, lootedItemNames: ['Maza orca'],
       updatedAt: new Date(),
     } as unknown as Parameters<typeof buildNpcInScene>[1];
     const result = buildNpcInScene(NPC_WITH_ITEMS, state);
-    expect(result.condicionFisica).toBe('INCAPACITADO');
+    expect(result.condicionFisica).toBe('CONVALECIENTE');
     expect(result.saqueado).toBe(true);
     expect(result.lootedItemNames).toEqual(['Maza orca']);
     expect(result.energia).toBe(5);
@@ -586,7 +587,7 @@ describe('detectsLootIntent', () => {
 });
 
 // Cobertura nueva (2026-07-30, botón "Decapitar" — petición explícita: "un botón que solo sale
-// cuando está incapacitado para matarlo").
+// cuando está convaleciente para matarlo").
 describe('detectsExecuteIntent', () => {
   it('detecta "remato"/"decapito"/"ejecuto"/"degüello"', () => {
     expect(detectsExecuteIntent("Remato a 'Orco enfurecido', asestándole el golpe de gracia.")).toBe(true);

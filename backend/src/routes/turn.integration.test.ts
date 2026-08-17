@@ -5,6 +5,7 @@ import { prisma } from '../lib/prisma.js';
 import { getDefaultUserId } from '../lib/defaultUser.js';
 import { resolveDueTransits, startEagerTransitResolution } from '../workers/worldTick.js';
 import { recolectarRoutes } from './saves/recolectar.js';
+import { panelsRoutes } from './saves/panels.js';
 import { minutosConDestreza, bandaForMinutos } from '../services/travel.js';
 import type { NarrationResult } from '../services/narrador.js';
 import { hasFalseTravelClaim, hasFalsePhantomTravel } from '../services/narrador.js';
@@ -130,7 +131,7 @@ describe('Misión de apertura: combate contra el Orco Enfurecido (integración r
     await prisma.save.delete({ where: { id: saveId } });
   });
 
-  it('atacar repetidamente reduce la condición física del NPC hasta INCAPACITADO, sin llamar a Ollama (camino tabulado)', async () => {
+  it('atacar repetidamente reduce la condición física del NPC hasta CONVALECIENTE, sin llamar a Ollama (camino tabulado)', async () => {
     const app = await buildApp();
     const action = "Descargo un golpe directo con todo el peso de mi arma detrás 'Orco enfurecido'.";
 
@@ -152,13 +153,13 @@ describe('Misión de apertura: combate contra el Orco Enfurecido (integración r
       expect(narrateRes.statusCode).toBe(200);
 
       const state = await prisma.npcState.findFirst({ where: { saveId, npcId } });
-      if (state?.condicionFisica === 'INCAPACITADO') break;
+      if (state?.condicionFisica === 'CONVALECIENTE') break;
     }
 
     expect(classifyAction).not.toHaveBeenCalled();
 
     const finalState = await prisma.npcState.findFirst({ where: { saveId, npcId } });
-    expect(finalState?.condicionFisica).toBe('INCAPACITADO');
+    expect(finalState?.condicionFisica).toBe('CONVALECIENTE');
     expect(finalState?.saqueado).toBe(false); // nunca se saquea solo por incapacitarlo
 
     // `golpes_mutuos` (ambos lados conectan con dados pinchados al máximo) — pero Gorhorn siempre
@@ -176,7 +177,7 @@ describe('Misión de apertura: combate contra el Orco Enfurecido (integración r
   it('el `/turn/narrate` de después de incapacitar no vuelve a bajar la condición ni permite un segundo saqueo automático', async () => {
     const app = await buildApp();
     const stateBefore = await prisma.npcState.findFirst({ where: { saveId, npcId } });
-    expect(stateBefore?.condicionFisica).toBe('INCAPACITADO');
+    expect(stateBefore?.condicionFisica).toBe('CONVALECIENTE');
 
     const classifyRes = await app.inject({
       method: 'POST',
@@ -191,7 +192,7 @@ describe('Misión de apertura: combate contra el Orco Enfurecido (integración r
     });
 
     const stateAfter = await prisma.npcState.findFirst({ where: { saveId, npcId } });
-    expect(stateAfter?.condicionFisica).toBe('INCAPACITADO'); // nunca "mejora" ni cambia por saquear
+    expect(stateAfter?.condicionFisica).toBe('CONVALECIENTE'); // nunca "mejora" ni cambia por saquear
   }, 15_000);
 
   // Cobertura nueva (2026-07-31, petición explícita: "si no saqueas todo el botón sigue para poder
@@ -272,7 +273,7 @@ describe('Misión de apertura: combate contra el Orco Enfurecido (integración r
   // `agresivoSlugsInScene`/`shouldForceCombat` (turnResolution.ts) no miraban `condicionFisica` —
   // un NPC ya MUERTO seguía contando como amenaza (su temperamento de catálogo no cambia al
   // morir) si volvía a matchear en escena vía un hecho de sesión, aunque la acción del turno no
-  // tuviera nada que ver con él. Decapita al orco (ya INCAPACITADO+saqueado de las dos pruebas de
+  // tuviera nada que ver con él. Decapita al orco (ya CONVALECIENTE+saqueado de las dos pruebas de
   // arriba) para dejarlo MUERTO de verdad, deja un hecho de sesión que lo siga mencionando (mismo
   // mecanismo real por el que un NPC sigue siendo "candidato" de detectNpcsInScene mucho después
   // de la pelea) y confirma que un turno sin ninguna relación con él no reabre combate.
@@ -310,6 +311,212 @@ describe('Misión de apertura: combate contra el Orco Enfurecido (integración r
     const saveAfter = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
     expect(saveAfter.pendingCombatNpcSlugs).toEqual([]);
   }, 30_000);
+});
+
+// "Saquear" general (2026-08-17, petición explícita: "que funcione igual que saquear de un
+// combate, detectando los npcs muertos/convalecientes de la zona") — el nuevo
+// GET /saves/:id/saquear-zona encuentra al orco convaleciente sin que el jugador lo nombre. El
+// saqueo en sí se manda con `enCombate: true` (mismo criterio EXACTO que ya usa
+// `handleSaquearSeleccion` en combate, incluso cuando el combate ya terminó de verdad — "Registrar/
+// Decapitar/Saquear son justo las acciones que la pantalla de combate YA terminado ofrece") — evita
+// el atajo de `detectsPostCombatInteraction` (turn.ts, solo para `!enCombate`), que está pensado
+// para UN único objetivo citado en texto libre, no para un barrido de varios a la vez. Fixture
+// propio (no reutiliza el describe de arriba) para no interferir con su secuencia de saqueo.
+describe('Saquear zona: GET /saves/:id/saquear-zona + saqueo fuera del panel de combate', () => {
+  let saveId: string;
+  let npcId: string;
+
+  beforeAll(async () => {
+    vi.spyOn(Math, 'random').mockReturnValue(0.99);
+    const userId = await getDefaultUserId();
+    const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
+    const npc = await prisma.npc.findFirstOrThrow({ where: { worldId: world.id, slug: 'orco-enfurecido-hondonada' } });
+    npcId = npc.id;
+    const location = await prisma.location.findFirstOrThrow({ where: { worldId: world.id, slug: 'hondonada-del-eco' } });
+    const save = await prisma.save.create({
+      data: {
+        userId,
+        worldId: world.id,
+        characterName: 'Gorhorn de prueba (saquear zona)',
+        characterArchetype: 'guerrero',
+        characterOrigin: 'Clan Maktor',
+        characterMotivation: 'x',
+        attributes: ATTRS,
+        portraitInitial: 'G',
+        currentLocationId: location.id,
+      },
+    });
+    saveId = save.id;
+    await prisma.worldState.create({ data: { saveId } });
+    // Convaleciente de entrada, sin pasar por un combate real — mismo atajo que usan otros
+    // describe de este archivo para dejar el NpcState en el estado exacto que hace falta probar.
+    await prisma.npcState.create({ data: { saveId, npcId, scope: '', condicionFisica: 'CONVALECIENTE', saqueado: false } });
+  });
+
+  afterAll(async () => {
+    vi.restoreAllMocks();
+    await prisma.save.delete({ where: { id: saveId } });
+  });
+
+  it('GET /saves/:id/saquear-zona encuentra al orco convaleciente, y el saqueo funciona con lootItemNames', async () => {
+    const panelsApp = Fastify();
+    await panelsApp.register(panelsRoutes);
+    const zonaRes = await panelsApp.inject({ method: 'GET', url: `/saves/${saveId}/saquear-zona` });
+    expect(zonaRes.statusCode).toBe(200);
+    const { candidates } = zonaRes.json() as { candidates: { slug: string; name: string; condicionFisica: string }[] };
+    expect(candidates).toHaveLength(1);
+    expect(candidates[0].slug).toBe('orco-enfurecido-hondonada');
+    expect(candidates[0].condicionFisica).toBe('CONVALECIENTE');
+
+    classifyAction.mockResolvedValue({
+      requiereTirada: false, atributo: 'destreza', dificultad: 8, razon: 'x', banda: 'instantanea', duracionEstimadaMinutos: 0,
+    });
+    const app = await buildApp();
+    const action = 'Registro los cuerpos de: Orco enfurecido.';
+    const classifyRes = await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action, enCombate: true } });
+    const { classification, roll } = classifyRes.json();
+    const narrateRes = await app.inject({
+      method: 'POST',
+      url: '/turn/narrate',
+      payload: { saveId, action, classification, roll, enCombate: true, lootItemNames: ['Maza orca'] },
+    });
+    expect(narrateRes.statusCode).toBe(200);
+
+    const inventoryAfter = await prisma.inventoryItem.findMany({ where: { saveId } });
+    expect(inventoryAfter.map((i) => i.name)).toContain('Maza orca');
+
+    // Saqueado parcial (solo Maza orca) — sigue apareciendo en el barrido, con el resto de su
+    // loadout todavía disponible.
+    const zonaRes2 = await panelsApp.inject({ method: 'GET', url: `/saves/${saveId}/saquear-zona` });
+    const { candidates: candidates2 } = zonaRes2.json() as { candidates: { slug: string }[] };
+    expect(candidates2).toHaveLength(1);
+  }, 15_000);
+
+  // Rama sin cubrir hasta ahora (auditoría de deuda técnica 2026-08-18): el predicado de la línea
+  // `hasPendingLoot` (npcScene.ts) tiene una rama de `groupSize` que ya causó un bug real
+  // (2026-08-17, "Saquear" marcaba `saqueado:true` de golpe en una presa cazada en grupo) — hasta
+  // ahora ningún test de `/saquear-zona` la ejercitaba, solo el camino `!saqueado` de un NPC
+  // solitario (el orco de arriba).
+  it('caza en grupo: sigue apareciendo mientras corpsesLooted < groupDefeated, y desaparece en cuanto se iguala', async () => {
+    const userId = await getDefaultUserId();
+    const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
+    const location = await prisma.location.findFirstOrThrow({ where: { worldId: world.id, slug: 'hondonada-del-eco' } });
+    const corretolvas = await prisma.npc.findFirstOrThrow({ where: { worldId: world.id, slug: 'corretolvas' } });
+    const groupSave = await prisma.save.create({
+      data: {
+        userId,
+        worldId: world.id,
+        characterName: 'Gorhorn de prueba (saquear zona, grupo)',
+        characterArchetype: 'guerrero',
+        characterOrigin: 'Clan Maktor',
+        characterMotivation: 'x',
+        attributes: ATTRS,
+        portraitInitial: 'G',
+        currentLocationId: location.id,
+      },
+    });
+    try {
+      // 3 individuos, 2 ya caídos, solo 1 despiezado — aún queda un cadáver real por saquear.
+      await prisma.npcState.create({
+        data: {
+          saveId: groupSave.id,
+          npcId: corretolvas.id,
+          scope: location.id,
+          condicionFisica: 'MUERTO',
+          groupSize: 3,
+          groupDefeated: 2,
+          corpsesLooted: 1,
+        },
+      });
+      const panelsApp = Fastify();
+      await panelsApp.register(panelsRoutes);
+      const res = await panelsApp.inject({ method: 'GET', url: `/saves/${groupSave.id}/saquear-zona` });
+      expect(res.statusCode).toBe(200);
+      const { candidates } = res.json() as { candidates: { slug: string }[] };
+      expect(candidates.map((c) => c.slug)).toContain('corretolvas');
+
+      // Se iguala corpsesLooted a groupDefeated (despiezado el último cadáver real disponible) —
+      // ya no queda nada pendiente de ESTE grupo, deja de listarse.
+      await prisma.npcState.update({
+        where: { saveId_npcId_scope: { saveId: groupSave.id, npcId: corretolvas.id, scope: location.id } },
+        data: { corpsesLooted: 2 },
+      });
+      const res2 = await panelsApp.inject({ method: 'GET', url: `/saves/${groupSave.id}/saquear-zona` });
+      const { candidates: candidates2 } = res2.json() as { candidates: { slug: string }[] };
+      expect(candidates2.map((c) => c.slug)).not.toContain('corretolvas');
+    } finally {
+      await prisma.save.delete({ where: { id: groupSave.id } });
+    }
+  }, 15_000);
+});
+
+// "Volver al campamento"/"Viajar" (2026-08-17, comentarios de startingAbilities.ts) — ambos
+// paneles solo LISTAN candidatos; viajar de verdad sigue pasando por el motor de turno normal
+// (`resolveTravel`), no probado aquí (ya tiene su propia cobertura en travel.test.ts).
+describe('GET /saves/:id/campamentos y /saves/:id/destinos-viaje', () => {
+  let saveId: string;
+
+  beforeAll(async () => {
+    const userId = await getDefaultUserId();
+    const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
+    const hondonada = await prisma.location.findFirstOrThrow({ where: { worldId: world.id, slug: 'hondonada-del-eco' } });
+    const pozo = await prisma.location.findFirstOrThrow({ where: { worldId: world.id, slug: 'pozo-cauce-viejo' } });
+    const save = await prisma.save.create({
+      data: {
+        userId,
+        worldId: world.id,
+        characterName: 'Gorhorn de prueba (paneles)',
+        characterArchetype: 'guerrero',
+        characterOrigin: 'Clan Maktor',
+        characterMotivation: 'x',
+        attributes: ATTRS,
+        portraitInitial: 'G',
+        currentLocationId: hondonada.id,
+      },
+    });
+    saveId = save.id;
+    await prisma.worldState.create({ data: { saveId } });
+    await prisma.building.create({
+      data: { saveId, locationId: hondonada.id, recipeKey: 'campamento', name: 'un campamento base', kind: 'campamento', description: 'x', status: 'ACTIVO' },
+    });
+    await prisma.locationVisit.create({ data: { saveId, locationId: pozo.id } });
+  });
+
+  afterAll(async () => {
+    await prisma.save.delete({ where: { id: saveId } });
+  });
+
+  it('lista el campamento activo con su Location real', async () => {
+    const app = Fastify();
+    await app.register(panelsRoutes);
+    const res = await app.inject({ method: 'GET', url: `/saves/${saveId}/campamentos` });
+    expect(res.statusCode).toBe(200);
+    const { camps } = res.json() as { camps: { locationSlug: string; locationName: string; region: string }[] };
+    expect(camps).toEqual([expect.objectContaining({ locationSlug: 'hondonada-del-eco', locationName: 'La Hondonada del Eco' })]);
+  });
+
+  it('sin mapa, solo lista ubicaciones ya visitadas (nunca la actual)', async () => {
+    const app = Fastify();
+    await app.register(panelsRoutes);
+    const res = await app.inject({ method: 'GET', url: `/saves/${saveId}/destinos-viaje` });
+    expect(res.statusCode).toBe(200);
+    const { hasMap, destinations } = res.json() as { hasMap: boolean; destinations: { locationSlug: string }[] };
+    expect(hasMap).toBe(false);
+    expect(destinations).toEqual([expect.objectContaining({ locationSlug: 'pozo-cauce-viejo' })]);
+  });
+
+  it('con el mapa de las Llanuras en el inventario, lista TODAS las ubicaciones de esa región, visitadas o no', async () => {
+    await prisma.inventoryItem.create({
+      data: { saveId, name: 'Mapa de las Llanuras', description: 'x', catalogSlug: 'mapa-de-las-llanuras', origin: 'partida' },
+    });
+    const app = Fastify();
+    await app.register(panelsRoutes);
+    const res = await app.inject({ method: 'GET', url: `/saves/${saveId}/destinos-viaje` });
+    const { hasMap, destinations } = res.json() as { hasMap: boolean; destinations: { locationSlug: string }[] };
+    expect(hasMap).toBe(true);
+    expect(destinations.length).toBeGreaterThan(1); // más que solo el Pozo ya visitado
+    expect(destinations.map((d) => d.locationSlug)).not.toContain('hondonada-del-eco'); // nunca la ubicación actual
+  });
 });
 
 // Cobertura nueva (2026-08-01, "revisar partida" — bug real jugando en vivo: con hacha en
@@ -469,7 +676,7 @@ describe('Rediseño de combate: habilidades de utilidad reactivas y consumibles 
           name: 'Contraataque',
           promptText: 'Aprieto los dientes, aguanto el golpe entrante sin ceder terreno.',
           category: 'combate',
-          effect: 'ATAQUE',
+          effects: ['ATAQUE'],
           rol: 'utilidad',
           preferredAttribute: 'voluntad',
         },
@@ -482,7 +689,7 @@ describe('Rediseño de combate: habilidades de utilidad reactivas y consumibles 
           name: 'Grito de Guerra',
           promptText: 'Suelto un grito de guerra que retumba antes del choque.',
           category: 'combate',
-          effect: 'INTIMIDACION',
+          effects: ['INTIMIDACION'],
           rol: 'utilidad',
           preferredAttribute: 'carisma',
         },
@@ -495,7 +702,7 @@ describe('Rediseño de combate: habilidades de utilidad reactivas y consumibles 
           name: 'Analizar rival',
           promptText: 'Estudio a mi enemigo un instante, leyendo su punto débil.',
           category: 'combate',
-          effect: 'ANALISIS',
+          effects: ['ANALISIS'],
           rol: 'utilidad',
           preferredAttribute: 'inteligencia',
         },
@@ -518,7 +725,7 @@ describe('Rediseño de combate: habilidades de utilidad reactivas y consumibles 
         pendingNpcAttack: {
           npcId,
           attribute: 'fuerza',
-          effect: 'ATAQUE',
+          effects: ['ATAQUE'],
           rol: 'ataque',
           abilityName: 'Ataque base',
           abilityDescription: 'Golpe improvisado.',
@@ -559,7 +766,7 @@ describe('Rediseño de combate: habilidades de utilidad reactivas y consumibles 
         pendingNpcAttack: {
           npcId,
           attribute: 'fuerza',
-          effect: 'ATAQUE',
+          effects: ['ATAQUE'],
           rol: 'ataque',
           abilityName: 'Ataque base',
           abilityDescription: 'Golpe improvisado.',
@@ -649,6 +856,178 @@ describe('Rediseño de combate: habilidades de utilidad reactivas y consumibles 
     // resultado de la tirada del NPC contra el jugador, nunca al revés).
     const npcState = await prisma.npcState.findFirst({ where: { saveId, npcId } });
     expect(npcState?.condicionFisica ?? 'ILESO').toBe('ILESO');
+  }, 15_000);
+
+  // Multi-efecto (2026-08-15, "que una habilidad pueda tener múltiples AbilityEffects"): una
+  // habilidad con effects: ['ATAQUE', 'ATURDIMIENTO'] dispara los DOS efectos en el mismo
+  // intercambio — antes del rediseño solo el primero de la cascada (else-if) se aplicaba. Mismo
+  // montaje que el test de Contraataque de arriba (pendingNpcAttack rol:'ataque', dados pinchados
+  // al máximo con Math.random=0.99), pero comprobando ambas consecuencias mecánicas a la vez.
+  it('una habilidad con effects: [ATAQUE, ATURDIMIENTO] devuelve el golpe Y se queda con la iniciativa, las dos cosas en el mismo intercambio', async () => {
+    await prisma.npcState.deleteMany({ where: { saveId, npcId } });
+    await prisma.save.update({
+      where: { id: saveId },
+      data: {
+        condicionFisica: 'ILESO',
+        pendingCombatNpcSlugs: [npcSlug],
+        pendingNpcAttack: {
+          npcId,
+          attribute: 'fuerza',
+          effects: ['ATAQUE'],
+          rol: 'ataque',
+          abilityName: 'Ataque base',
+          abilityDescription: 'Golpe improvisado.',
+          energyCost: 5,
+          energyRegen: 0,
+        },
+      },
+    });
+    const golpeAturdidorId = (
+      await prisma.savedAction.create({
+        data: {
+          saveId,
+          name: 'Golpe Aturdidor',
+          promptText: 'Aprovecho la apertura para golpear y desequilibrarlo del todo.',
+          category: 'combate',
+          effects: ['ATAQUE', 'ATURDIMIENTO'],
+          rol: 'utilidad',
+          preferredAttribute: 'voluntad',
+        },
+      })
+    ).id;
+
+    const app = await buildApp();
+    const action = "Aprovecho la apertura para golpear y desequilibrarlo del todo 'Orco enfurecido'.";
+    const classifyRes = await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action, enCombate: true, savedActionId: golpeAturdidorId } });
+    const { classification, roll } = classifyRes.json();
+    const narrateRes = await app.inject({
+      method: 'POST',
+      url: '/turn/narrate',
+      payload: { saveId, action, classification, roll, enCombate: true, savedActionId: golpeAturdidorId },
+    });
+    expect(narrateRes.statusCode).toBe(200);
+
+    // Efecto ATAQUE: el NPC también acusa un golpe de vuelta (igual que Contraataque arriba).
+    const npcState = await prisma.npcState.findFirst({ where: { saveId, npcId } });
+    expect(npcState?.condicionFisica).not.toBe('ILESO');
+    // Efecto ATURDIMIENTO, EN EL MISMO intercambio: el jugador se queda con la iniciativa
+    // siguiente — no queda un pendingNpcAttack nuevo esperando defensa (igual que Grito de
+    // Guerra arriba).
+    const done = lastNdjsonLine(narrateRes.payload);
+    expect(done.esperandoDefensaJugador).toBe(false);
+    const saveAfter = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
+    expect(saveAfter.pendingNpcAttack).toBeNull();
+  }, 15_000);
+
+  // maxUsesPerCombat/LIMITADA (2026-08-17): una habilidad con tope de usos se cuenta en
+  // NpcState.abilityUsesThisEncounter la primera vez, y en cuanto se agota, el segundo intento
+  // dentro del MISMO combate se trata mecánicamente como si no se hubiera pulsado ningún botón
+  // (cae al Narrador con un aviso explícito) — sin volver a incrementar el contador.
+  it('Golpe Preciso (maxUsesPerCombat: 1): se cuenta la primera vez; la segunda, en el mismo combate, se bloquea y no se recuenta', async () => {
+    await prisma.npcState.deleteMany({ where: { saveId, npcId } });
+    await prisma.save.update({ where: { id: saveId }, data: { condicionFisica: 'ILESO', pendingCombatNpcSlugs: [], pendingNpcAttack: Prisma.JsonNull } });
+    const golpePrecisoId = (
+      await prisma.savedAction.create({
+        data: {
+          saveId,
+          name: 'Golpe Preciso',
+          promptText: 'Busco el hueco exacto en su guardia para un solo golpe limpio.',
+          category: 'combate',
+          effects: ['LIMITADA'],
+          maxUsesPerCombat: 1,
+          rol: 'utilidad',
+          preferredAttribute: 'destreza',
+        },
+      })
+    ).id;
+
+    const app = await buildApp();
+    const action = "Busco el hueco exacto en su guardia para un solo golpe limpio 'Orco enfurecido'.";
+
+    const classifyRes1 = await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action, enCombate: true, savedActionId: golpePrecisoId } });
+    const { classification: c1, roll: r1 } = classifyRes1.json();
+    const narrateRes1 = await app.inject({
+      method: 'POST',
+      url: '/turn/narrate',
+      payload: { saveId, action, classification: c1, roll: r1, enCombate: true, savedActionId: golpePrecisoId },
+    });
+    expect(narrateRes1.statusCode).toBe(200);
+    const npcStateAfterFirst = await prisma.npcState.findFirst({ where: { saveId, npcId } });
+    expect(npcStateAfterFirst?.abilityUsesThisEncounter).toEqual({ 'Golpe Preciso': 1 });
+
+    const classifyRes2 = await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action, enCombate: true, savedActionId: golpePrecisoId } });
+    const { classification: c2, roll: r2 } = classifyRes2.json();
+    const narrateRes2 = await app.inject({
+      method: 'POST',
+      url: '/turn/narrate',
+      payload: { saveId, action, classification: c2, roll: r2, enCombate: true, savedActionId: golpePrecisoId },
+    });
+    expect(narrateRes2.statusCode).toBe(200);
+
+    // Nunca se recuenta más allá de su propio tope, aunque se haya vuelto a pulsar.
+    const npcStateAfterSecond = await prisma.npcState.findFirst({ where: { saveId, npcId } });
+    expect(npcStateAfterSecond?.abilityUsesThisEncounter).toEqual({ 'Golpe Preciso': 1 });
+
+    // El segundo intento avisa al Narrador de que la habilidad ya está agotada este combate.
+    const narrateCallArgs = narrateAction.mock.calls.at(-1)?.[0] as { worldFacts?: string[] };
+    expect(narrateCallArgs.worldFacts?.some((f) => f.includes('ya agotó sus 1 uso(s) de este combate'))).toBe(true);
+  }, 20_000);
+
+  // RECUPERACION (2026-08-17, primera mecánica real de los ~19 AbilityEffect que solo tenían
+  // nombre + comentario) — reactiva a un ataque del NPC (mismo montaje que Contraataque), recupera
+  // un extra de energía (RECUPERACION_ENERGY_BONUS=15) aparte del `energyRegen` propio de la
+  // habilidad (aquí puesto a 0 para que la diferencia observada sea SOLO el bonus).
+  it('una habilidad con effects: [RECUPERACION] recupera energía extra al dispararse, aparte de su propio energyRegen', async () => {
+    await prisma.npcState.deleteMany({ where: { saveId, npcId } });
+    const saveBefore = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
+    await prisma.save.update({
+      where: { id: saveId },
+      data: {
+        condicionFisica: 'ILESO',
+        energia: 0,
+        pendingCombatNpcSlugs: [npcSlug],
+        pendingNpcAttack: {
+          npcId,
+          attribute: 'fuerza',
+          effects: ['ATAQUE'],
+          rol: 'ataque',
+          abilityName: 'Ataque base',
+          abilityDescription: 'Golpe improvisado.',
+          energyCost: 5,
+          energyRegen: 0,
+        },
+      },
+    });
+    const respiroId = (
+      await prisma.savedAction.create({
+        data: {
+          saveId,
+          name: 'Respiro táctico',
+          promptText: 'Me concentro un momento en plena guardia, buscando recobrar fuerzas.',
+          category: 'combate',
+          effects: ['RECUPERACION'],
+          rol: 'utilidad',
+          preferredAttribute: 'voluntad',
+          energyCost: 0,
+          energyRegen: 0,
+        },
+      })
+    ).id;
+
+    const app = await buildApp();
+    const action = "Me concentro un momento en plena guardia, buscando recobrar fuerzas 'Orco enfurecido'.";
+    const classifyRes = await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action, enCombate: true, savedActionId: respiroId } });
+    const { classification, roll } = classifyRes.json();
+    const narrateRes = await app.inject({
+      method: 'POST',
+      url: '/turn/narrate',
+      payload: { saveId, action, classification, roll, enCombate: true, savedActionId: respiroId },
+    });
+    expect(narrateRes.statusCode).toBe(200);
+
+    const saveAfter = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
+    expect(saveAfter.energia).toBe(15); // 0 (energyCost/energyRegen propios) + 15 del bonus de RECUPERACION
+    expect(saveBefore.energia).not.toBe(saveAfter.energia);
   }, 15_000);
 });
 
@@ -936,7 +1315,7 @@ describe('Construcción determinista: campamento', () => {
   }, 15_000);
 });
 
-const ATTRS_CARISMATICO = { ...ATTRS, carisma: 14 };
+const ATTRS_CARISMATICO = { ...ATTRS, carisma: 18 };
 
 async function giveMaterials(saveId: string, items: { name: string; catalogSlug: string }[]) {
   await prisma.inventoryItem.createMany({
@@ -1071,7 +1450,7 @@ describe('Ayuntamiento: fundación, desbloqueo de reino y mejora in-place', () =
     expect(body.newKingdomFounded).toEqual({
       title: 'un pequeño ayuntamiento',
       region: 'Las Llanuras del Viento Rojo',
-      outcome: 'PACIFICA',
+      outcome: 'CONQUISTADA',
       suggestedName: null,
       nameLocked: false,
     });
@@ -1359,7 +1738,7 @@ describe('Descansar en cualquier sitio cura, pero topa en GRAVE (solo refugio/as
         attributes: ATTRS,
         portraitInitial: 'G',
         currentLocationId: pilares.id,
-        condicionFisica: 'INCAPACITADO',
+        condicionFisica: 'CONVALECIENTE',
       },
     });
     saveId = save.id;
@@ -1373,7 +1752,7 @@ describe('Descansar en cualquier sitio cura, pero topa en GRAVE (solo refugio/as
     await prisma.save.delete({ where: { id: saveId } });
   });
 
-  it('descansar en un hito (sin refugio válido) mejora INCAPACITADO hasta GRAVE, nunca hasta HERIDO', async () => {
+  it('descansar en un hito (sin refugio válido) mejora CONVALECIENTE hasta GRAVE, nunca hasta HERIDO', async () => {
     await doTurn(saveId, 'Descanso aquí mismo un rato para recuperar fuerzas.');
     const save = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
     expect(save.condicionFisica).toBe('GRAVE');
@@ -1481,12 +1860,12 @@ describe('Respawn tras morir: vuelve al último campamento, no se queda donde mu
     expect(savedAfterRest.lastRestLocationId).toBe(hondonadaId);
 
     // El personaje se aleja del campamento y llega a las puertas de la muerte estando en OTRO
-    // sitio — `condicionFisica` a INCAPACITADO (un escalón antes de MUERTO: `nextCondicionFisica`
+    // sitio — `condicionFisica` a CONVALECIENTE (un escalón antes de MUERTO: `nextCondicionFisica`
     // solo empeora un escalón por turno, incluso en combate) para que un solo turno de combate
     // baste para morir.
     await prisma.save.update({
       where: { id: saveId },
-      data: { currentLocationId: pilaresId, condicionFisica: 'INCAPACITADO' },
+      data: { currentLocationId: pilaresId, condicionFisica: 'CONVALECIENTE' },
     });
     classifyAction.mockResolvedValueOnce({
       requiereTirada: true, atributo: 'fuerza', dificultad: 18, razon: 'x', banda: 'instantanea', duracionEstimadaMinutos: 0,
@@ -1642,7 +2021,7 @@ describe('Saqueo: condición de carrera en turnos concurrentes (auditoría 2026-
 // Cobertura nueva (auditoría de deuda técnica AMPLIA 2026-08-04, bug real de condición de carrera
 // — mismo patrón exacto ya cerrado hoy varias veces): `executeTargets` (Decapitar) sale de
 // `npcsInScene`, leído con `prisma` ANTES de la transacción — dos "decapito a X" casi simultáneos
-// contra el mismo NPC ya INCAPACITADO podían pasar ambos el filtro con la misma foto obsoleta y
+// contra el mismo NPC ya CONVALECIENTE podían pasar ambos el filtro con la misma foto obsoleta y
 // aplicar la muerte DOS veces: población mundial restada dos veces por una sola baja. Arreglado
 // revalidando `NpcState.condicionFisica` fresco con `tx` justo antes de aplicar los efectos.
 describe('Decapitar: condición de carrera en turnos concurrentes (auditoría 2026-08-04)', () => {
@@ -1670,8 +2049,8 @@ describe('Decapitar: condición de carrera en turnos concurrentes (auditoría 20
     });
     saveId = save.id;
     await prisma.worldState.create({ data: { saveId } });
-    // PRINCIPAL → scope siempre ''. INCAPACITADO (no MUERTO) para que `executeTargets` lo recoja.
-    await prisma.npcState.create({ data: { saveId, npcId, scope: '', condicionFisica: 'INCAPACITADO' } });
+    // PRINCIPAL → scope siempre ''. CONVALECIENTE (no MUERTO) para que `executeTargets` lo recoja.
+    await prisma.npcState.create({ data: { saveId, npcId, scope: '', condicionFisica: 'CONVALECIENTE' } });
     classifyAction.mockResolvedValue({
       requiereTirada: false, atributo: 'fuerza', dificultad: 8, razon: 'x', banda: 'instantanea', duracionEstimadaMinutos: 0,
     });
@@ -1728,7 +2107,7 @@ describe('Decapitar cierra una misión "derrotar a X" con rewardItems y entrega 
     });
     saveId = save.id;
     await prisma.worldState.create({ data: { saveId } });
-    await prisma.npcState.create({ data: { saveId, npcId, scope: '', condicionFisica: 'INCAPACITADO' } });
+    await prisma.npcState.create({ data: { saveId, npcId, scope: '', condicionFisica: 'CONVALECIENTE' } });
     await prisma.quest.create({
       data: {
         saveId,
@@ -1895,7 +2274,7 @@ describe('La recompensa de misión enlaza con ItemCatalog cuando el nombre coinc
     });
     saveId = save.id;
     await prisma.worldState.create({ data: { saveId } });
-    await prisma.npcState.create({ data: { saveId, npcId, scope: '', condicionFisica: 'INCAPACITADO' } });
+    await prisma.npcState.create({ data: { saveId, npcId, scope: '', condicionFisica: 'CONVALECIENTE' } });
     await prisma.quest.create({
       data: {
         saveId,
@@ -1923,11 +2302,11 @@ describe('La recompensa de misión enlaza con ItemCatalog cuando el nombre coinc
   }, 20_000);
 });
 
-// docs/19-post-combate-y-recompensas-mision.md pieza 2 (2026-08-13) — recuperación de INCAPACITADO
+// docs/19-post-combate-y-recompensas-mision.md pieza 2 (2026-08-13) — recuperación de CONVALECIENTE
 // a las 6h de ficción y desaparición de un cadáver a las 48h. `applyCondicionTimeouts` se dispara
 // dentro de CUALQUIER turno resuelto (mismo punto que avanza `fictionalMinutes`), así que un turno
 // cualquiera basta para comprobarlo — no hace falta que la acción tenga nada que ver con el NPC.
-describe('Recuperación de INCAPACITADO tras 6h de ficción (docs/19 pieza 2)', () => {
+describe('Recuperación de CONVALECIENTE tras 6h de ficción (docs/19 pieza 2)', () => {
   let saveId: string;
   let npcId: string;
 
@@ -1954,7 +2333,7 @@ describe('Recuperación de INCAPACITADO tras 6h de ficción (docs/19 pieza 2)', 
     // fictionalMinutes por defecto (480) - condicionFisicaSinceMinutes (0) = 8h > umbral de 6h —
     // cualquier turno, sin importar cuánto avance el reloj él solo, ya cruza el umbral.
     await prisma.worldState.create({ data: { saveId } });
-    await prisma.npcState.create({ data: { saveId, npcId, scope: '', condicionFisica: 'INCAPACITADO', condicionFisicaSinceMinutes: 0 } });
+    await prisma.npcState.create({ data: { saveId, npcId, scope: '', condicionFisica: 'CONVALECIENTE', condicionFisicaSinceMinutes: 0 } });
     classifyAction.mockResolvedValue({
       requiereTirada: false, atributo: 'destreza', dificultad: 8, razon: 'x', banda: 'instantanea', duracionEstimadaMinutos: 0,
     });
@@ -2310,6 +2689,10 @@ describe('Caza en grupo: el individuo actual "resucita" a ILESO mientras queden 
     await prisma.npcState.create({
       data: { saveId, npcId: corretolvasId, scope: hondonadaId, condicionFisica: 'GRAVE', groupSize: 2, groupDefeated: 0, corpsesLooted: 0 },
     });
+    // Herramienta requerida por oficio (2026-08-17) — este personaje de prueba no se llama
+    // 'Gorhorn' exacto, así que no hereda su cuchillo de hielo sílice de serie (arma Y herramienta
+    // de desollador); sin él, el despiece de más abajo se bloquearía por falta de herramienta.
+    await giveMaterials(saveId, [{ name: 'Cuchillo de hielo sílice', catalogSlug: 'cuchillo-hielo-silice' }]);
   });
 
   afterAll(async () => {
@@ -2348,9 +2731,9 @@ describe('Caza en grupo: el individuo actual "resucita" a ILESO mientras queden 
     expect(state.corpsesLooted).toBe(1); // consumió el único cadáver real disponible
   }, 20_000);
 
-  it('cae el ÚLTIMO individuo del grupo: el NpcState se queda en INCAPACITADO/MUERTO de verdad — el grupo entero está resuelto', async () => {
+  it('cae el ÚLTIMO individuo del grupo: el NpcState se queda en CONVALECIENTE/MUERTO de verdad — el grupo entero está resuelto', async () => {
     // Adelanta a mano el individuo ACTUAL (ya "resucitado" a ILESO) hasta GRAVE, para que el
-    // siguiente golpe decisivo (dados al máximo) lo deje INCAPACITADO — el último del grupo.
+    // siguiente golpe decisivo (dados al máximo) lo deje CONVALECIENTE — el último del grupo.
     await prisma.npcState.update({
       where: { saveId_npcId_scope: { saveId, npcId: corretolvasId, scope: hondonadaId } },
       data: { condicionFisica: 'GRAVE' },
@@ -2366,7 +2749,7 @@ describe('Caza en grupo: el individuo actual "resucita" a ILESO mientras queden 
     expect(res.statusCode).toBe(200);
 
     const state = await prisma.npcState.findUniqueOrThrow({ where: { saveId_npcId_scope: { saveId, npcId: corretolvasId, scope: hondonadaId } } });
-    expect(state.condicionFisica).toBe('INCAPACITADO'); // NO resucita: era el último
+    expect(state.condicionFisica).toBe('CONVALECIENTE'); // NO resucita: era el último
     expect(state.groupDefeated).toBe(2);
   }, 20_000);
 });

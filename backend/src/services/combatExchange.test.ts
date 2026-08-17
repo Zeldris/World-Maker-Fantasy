@@ -256,8 +256,8 @@ describe('hitSeverityHint', () => {
     expect(hint).toContain('NUNCA lo narres cayendo inerte, desmayado o muerto');
   });
 
-  it('no añade nada si el golpe deja al objetivo INCAPACITADO — eso ya lo cubre npcFallsUnconsciousThisTurn', () => {
-    expect(hitSeverityHint('Buitre Cenizo', 'INCAPACITADO')).toBe('');
+  it('no añade nada si el golpe deja al objetivo CONVALECIENTE — eso ya lo cubre npcFallsUnconsciousThisTurn', () => {
+    expect(hitSeverityHint('Buitre Cenizo', 'CONVALECIENTE')).toBe('');
   });
 
   it('no añade nada si el golpe deja al objetivo MUERTO — mismo motivo', () => {

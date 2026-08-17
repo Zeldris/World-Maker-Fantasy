@@ -9,10 +9,10 @@ interface PostCombatInteractionModalProps {
   onDecapitar: () => void
 }
 
-/// Interacción con un NPC/fauna ya incapacitado o muerto, fuera de combate (docs/19-post-combate-
+/// Interacción con un NPC/fauna ya convaleciente o muerto, fuera de combate (docs/19-post-combate-
 /// y-recompensas-mision.md pieza 2) — misma carcasa de overlay que CombatSelectionModal.tsx, pero
 /// sin checkboxes: un solo objetivo ya resuelto, solo hace falta elegir qué hacer con él.
-/// "Decapitar" solo si sigue INCAPACITADO (un cadáver ya no hace falta rematarlo); "Saquear" solo
+/// "Decapitar" solo si sigue CONVALECIENTE (un cadáver ya no hace falta rematarlo); "Saquear" solo
 /// si `!saqueado` — mismo criterio que ya usa CombatPanel.tsx para el mismo botón en combate.
 export function PostCombatInteractionModal({ target, busy, onSalir, onSaquear, onDecapitar }: PostCombatInteractionModalProps) {
   return (
@@ -26,7 +26,7 @@ export function PostCombatInteractionModal({ target, busy, onSalir, onSaquear, o
           <p className="mt-1 text-2xs uppercase tracking-[0.2em] text-wood-500">{CONDICION_LABEL[target.condicionFisica]}</p>
         </div>
         <p className="text-xs leading-relaxed text-wood-400">
-          {target.condicionFisica === 'INCAPACITADO'
+          {target.condicionFisica === 'CONVALECIENTE'
             ? 'Sigue inconsciente, a tu merced — no puede oponer resistencia.'
             : target.saqueado
               ? 'El cuerpo ya está registrado — no queda nada más que llevarse.'
@@ -42,7 +42,7 @@ export function PostCombatInteractionModal({ target, busy, onSalir, onSaquear, o
               Saquear
             </button>
           )}
-          {target.condicionFisica === 'INCAPACITADO' && (
+          {target.condicionFisica === 'CONVALECIENTE' && (
             <button
               onClick={onDecapitar}
               disabled={busy}

@@ -23,7 +23,7 @@ import type { NarrationResult, buildNarrationPrompt } from '../../services/narra
 type ValidationCtx = Parameters<typeof buildNarrationPrompt>[0];
 
 const HITO_VALUES = ['descubrimiento', 'objetivo_menor', 'objetivo_mayor'];
-const CONDICION_VALUES = ['ILESO', 'HERIDO', 'GRAVE', 'INCAPACITADO', 'MUERTO'];
+const CONDICION_VALUES = ['ILESO', 'HERIDO', 'GRAVE', 'CONVALECIENTE', 'MUERTO'];
 const QUEST_STATUS_VALUES = ['COMPLETADA', 'FALLIDA'];
 
 /// Validación de slugs/enums — la red de seguridad que Ollama garantiza por gramática y que un

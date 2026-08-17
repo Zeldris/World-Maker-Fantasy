@@ -1,3 +1,5 @@
+import type { QuestRewardCompanion } from './questResolution.js';
+
 export interface StartingQuest {
   title: string;
   description: string;
@@ -11,6 +13,12 @@ export interface StartingQuest {
   /// Recompensa estática (petición explícita, 2026-07-25) — nunca decidida por el modelo.
   rewardXp?: number;
   rewardItems?: string[];
+  /// Recompensa no-objeto (2026-08-17) — ver Quest.rewardRecipeKeys/rewardCompanion en
+  /// schema.prisma y grantQuestRewardRecipesAndCompanion (questResolution.ts). Pasivas temporales
+  /// (ej. "+5 fuerza durante 24h") quedan fuera a propósito — necesitan un sistema de duración que
+  /// todavía no existe en ningún sitio del motor.
+  rewardRecipeKeys?: string[];
+  rewardCompanion?: QuestRewardCompanion;
 }
 
 /// Misiones "de serie" de Gorhorn (petición explícita, 2026-07-23) — se siembran al crear partida

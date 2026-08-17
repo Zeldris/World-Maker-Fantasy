@@ -72,8 +72,8 @@ Resta 1, sin bajar de 0 (`Math.max(0, poblacion - 1)`). No dispara nada si no en
 (`populationTargetSlugFor` devolvió `null`) — mismo criterio de "no bloquear el turno si el dato no
 existe" que el resto del motor.
 
-**No se descuenta en `INCAPACITADO`** — solo en `MUERTO`: quedar inconsciente no reduce la
-población, coherente con que solo `INCAPACITADO`/`MUERTO` son saqueables pero solo `MUERTO` es
+**No se descuenta en `CONVALECIENTE`** — solo en `MUERTO`: quedar inconsciente no reduce la
+población, coherente con que solo `CONVALECIENTE`/`MUERTO` son saqueables pero solo `MUERTO` es
 una baja real (ver memoria de progresión de condición).
 
 ### 3.3 Crecimiento — prorrateado por tiempo real, no por tick
@@ -142,6 +142,23 @@ diferencia está en cómo se depleciona: no viene de matar a un NPC, viene de re
   para no permitir ni un objeto que no sea un yield real de esa fuente ni una cantidad por encima
   del máximo real por recolección (`HarvestYield.cantidad` — bug real de la auditoría de código
   completa 2026-08-07, ver memoria de esa auditoría: antes solo topaba por población total).
+
+**Herramienta requerida por oficio (añadido 2026-08-17, sin cubrir hasta ahora en este documento):**
+el despiece de fauna (método CAZA, oficio desollador) exige llevar un objeto marcado como
+herramienta de ese oficio (`ItemCatalog.herramientaParaOficio`, comprobado con `hasToolForOficio`
+en `crafting.ts` y enganchado tanto en `canCraft` como en el confirmar de `recolectar.ts`) — sin
+ella, el desuello no da nada. Whitelist explícita (`OFICIOS_CON_HERRAMIENTA_REQUERIDA`), hoy solo
+curtidor/desollador: los oficios sin ninguna herramienta registrada nunca se ven afectados.
+
+### 3.6 Filtro adicional por terreno de la `Location` concreta (añadido 2026-08-14/15)
+
+§ 3.4/3.5 de arriba filtran por REGIÓN — desde `pasaFiltroTerreno` (`services/terrain.ts`) hay una
+capa más, por el terreno descrito de la ubicación exacta donde está el personaje (no toda la
+región tiene el mismo terreno). `Location.locationTerrainTags`, `HarvestYield.harvestSourceTerrainTag`
+y `Npc.faunaTerrainTag` (worldCatalog.ts) etiquetan cada uno con su terreno de afinidad; el match es
+categórico (un tag coincide o no, sin ponderar) y `undefined`/`null` en cualquiera de los dos lados
+significa "sin filtrar" — no bloquea nada por falta de dato. `recolectar.ts`/`cazar.ts` aplican este
+filtro ADEMÁS del de región/población de arriba, nunca en su lugar.
 
 ## 4. Fuera de alcance a propósito
 

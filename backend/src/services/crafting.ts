@@ -42,6 +42,12 @@ export interface CraftingRecipe {
   tier?: number;
   requisitos?: Requisitos;
   oficio?: string;
+  /// Receta bloqueada hasta desbloquearla (2026-08-17, recompensa de misión no-objeto — ver
+  /// Quest.rewardRecipeKeys/Save.unlockedRecipeKeys en schema.prisma) — omitido/false = disponible
+  /// para cualquiera que cumpla el resto de requisitos, exactamente como todas las recetas de hoy
+  /// (ninguna de las 16 existentes lleva `true`, esto no cambia nada de lo que ya funciona). true =
+  /// además hace falta `recipe.key` en `Save.unlockedRecipeKeys`.
+  requiresUnlock?: boolean;
   /// Pista de narración cuando el jugador lo quiere pero no se puede materializar todavía.
   narrationWant: string;
   /// Pista de narración cuando sí se materializa este turno.
@@ -101,11 +107,11 @@ export const GARGANTUA_ARMOR_RECIPE: CraftingRecipe = {
   resultName: 'Peto de placas óseas de gargantúa',
   resultCatalogSlug: 'peto-placas-gargantua',
   resultDescription: 'Armadura pesada montada a mano en el campamento del clan, con placas óseas y tendón de gargantúa.',
-  statBonuses: { defensa: 2 },
+  statBonuses: { constitucion: 6 },
   // Sesión de diseño 2026-07-23: montar armadura pesada de placas óseas exige fuerza — mismo
   // oficio 'herrero' que el hacha (misma fragua del campamento, no hace falta un oficio aparte).
   tier: 3,
-  requisitos: { fuerza: 10 },
+  requisitos: { fuerza: 18 },
   oficio: 'herrero-orco-llanuras',
   narrationWant:
     'El personaje quiere fabricar un peto de placas óseas de gargantúa, pero no puede hacerlo ahora mismo (hace falta estar en el Campamento del Clan Serhu y tener placas óseas de gargantúa y cuerda de tendón) — narra que lo intenta o lo considera, pero no que lo fabrica de verdad.',
@@ -296,7 +302,7 @@ export const STONE_BLOCK_RECIPE: CraftingRecipe = {
 };
 
 // Primeros auxilios (2026-08-13, petición explícita: "una profesión que sea primeros-auxilios que
-// tenga pocas recetas de objetos básicos... si es incapacitado solo hay un item que te lleva a
+// tenga pocas recetas de objetos básicos... si es convaleciente solo hay un item que te lleva a
 // grave... luego otro que mejora al siguiente, de grave a herido y de herido a ileso") — oficio
 // nuevo 'primeros-auxilios-orcos-llanuras' (distinto de 'alquimista', reservado para objetos
 // mejores más adelante). Los 3 objetos de condición usan `curaUnPaso: true` (ver ItemCatalog/
@@ -426,33 +432,6 @@ export const GARGANTUA_LEG_ARMOR_RECIPE: CraftingRecipe = {
     'El personaje curte y cose su piel de gargantúa aquí mismo, en el Campamento del Clan Serhu, dejando las placas óseas pequeñas cosidas al cuero — narra la escena con naturalidad. El objeto ya se gestiona automáticamente por el backend.',
 };
 
-// Tótem del Clan Maktor (auditoría de catálogo, 2026-08-13, petición explícita: "el tótem que se
-// pueda reparar en las construcciones... de momento llevar el totem equipado da +1 de carisma") —
-// repara `totem-clan-roto` (fragmento roto encontrado en Los Restos de Maktor, "gancho de un
-// posible superviviente Maktor") en un tótem íntegro nuevo, DISTINTO del `totem-maktor` personal
-// de Gorhorn (su propio tótem, equipo inicial, "único, el de Gorhorn") — este es el de un clan que
-// se creía sin nadie más, restaurado como monumento, no una posesión personal. Ubicación Los
-// Restos de Maktor a propósito ("en las construcciones" — se repara en las propias ruinas del
-// clan, no en cualquier sitio) — construcción especial ligada a Gorhorn/Maktor, no un oficio
-// genérico: sin requisito de oficio, solo de Carisma (es un acto de memoria, no de destreza).
-export const MAKTOR_CLAN_TOTEM_RECIPE: CraftingRecipe = {
-  key: 'maktorClanTotem',
-  verbRegex: /repar|restaur|reconstru/,
-  nounRegex: /t[oó]tem/,
-  location: 'restos-de-maktor',
-  ingredients: [{ match: { kind: 'exact', catalogSlug: 'totem-clan-roto' }, cantidad: 1, label: 'tótem de clan roto' }],
-  resultName: 'Tótem del Clan Maktor',
-  resultCatalogSlug: 'totem-del-clan-maktor',
-  resultDescription: 'El fragmento roto, restaurado — un tótem íntegro con la marca del Clan Maktor, símbolo de que quien lo llevaba no fue el único superviviente. No es el tótem de Gorhorn: es el del clan entero.',
-  statBonuses: { carisma: 1 },
-  tier: 2,
-  requisitos: { carisma: 8 },
-  narrationWant:
-    'El personaje quiere reparar el tótem de clan roto, pero no puede hacerlo ahora mismo (hace falta estar en Los Restos de Maktor y llevar el tótem de clan roto encima) — narra que lo intenta o lo considera, pero no que lo repara de verdad.',
-  narrationDo:
-    'El personaje repara el tótem de clan roto aquí mismo, entre las ruinas de Los Restos de Maktor, devolviéndole su forma íntegra — narra la escena (el peso del hallazgo, la marca del clan reapareciendo) con el peso que merece. El objeto ya se gestiona automáticamente por el backend.',
-};
-
 export const CRAFTING_RECIPES: CraftingRecipe[] = [
   AXE_REPAIR_RECIPE,
   SMOKE_MEAT_RECIPE,
@@ -470,12 +449,34 @@ export const CRAFTING_RECIPES: CraftingRecipe[] = [
   COMPLETE_POULTICE_RECIPE,
   CLUB_RECIPE,
   GARGANTUA_LEG_ARMOR_RECIPE,
-  MAKTOR_CLAN_TOTEM_RECIPE,
 ];
 
 export function detectsCraftIntent(recipe: CraftingRecipe, action: string): boolean {
   const normalized = normalizeText(action);
   return recipe.verbRegex.test(normalized) && recipe.nounRegex.test(normalized);
+}
+
+/// Oficios (prefijo sin raza/región) que de verdad tienen alguna herramienta dada de alta en el
+/// catálogo (2026-08-17, ver ItemCatalog.herramientaParaOficio en schema.prisma) — solo estos
+/// bloquean por falta de herramienta; el resto de oficios (herrería, minería, tala, carpintería,
+/// construcción, herboristería...) se quedan exactamente como antes, sin gate, hasta que también
+/// tengan una herramienta real registrada. Evita que añadir el campo deje sin querer inutilizables
+/// oficios que hoy funcionan sin ninguna herramienta física.
+export const OFICIOS_CON_HERRAMIENTA_REQUERIDA = ['curtidor', 'desollador'];
+
+function matchesOficioPrefix(oficio: string, prefix: string): boolean {
+  return oficio === prefix || oficio.startsWith(`${prefix}-`);
+}
+
+/// Puro: ¿tiene el personaje, en las filas de inventario dadas, algún objeto marcado como
+/// herramienta para este oficio? Solo relevante si `oficio` está en
+/// `OFICIOS_CON_HERRAMIENTA_REQUERIDA` — para el resto, se considera siempre cumplido (llamarlo de
+/// todos modos no hace daño, pero el caller ya filtra por esa lista antes).
+export function hasToolForOficio(oficio: string, rows: InventoryRowLike[], catalogBySlug: Map<string, CatalogLookup>): boolean {
+  return rows.some((row) => {
+    const info = row.catalogSlug ? catalogBySlug.get(row.catalogSlug) : undefined;
+    return !!info?.herramientaParaOficio?.some((prefix) => matchesOficioPrefix(oficio, prefix));
+  });
 }
 
 /// Puro: dado el slug de la ubicación actual, las filas de inventario disponibles y los
@@ -489,10 +490,18 @@ export function canCraft(
   attributes: AttributeBlock,
   secondaryAttributes: SecondaryAttributeBlock,
   alivio = 0,
+  // Recetas desbloqueables por misión (2026-08-17) — trailing y con default `[]` a propósito: no
+  // rompe ningún caller existente, y ninguna receta de hoy lleva `requiresUnlock`, así que ni
+  // siquiera hace falta pasarlo salvo que de verdad se use.
+  unlockedRecipeKeys: string[] = [],
 ): boolean {
   if (recipe.location && currentLocationSlug !== recipe.location) return false;
+  if (recipe.requiresUnlock && !unlockedRecipeKeys.includes(recipe.key)) return false;
   const hasIngredients = recipe.ingredients.every((ing) => totalQuantity(rows, ing, catalogBySlug) >= ing.cantidad);
   if (!hasIngredients) return false;
+  if (recipe.oficio && OFICIOS_CON_HERRAMIENTA_REQUERIDA.some((p) => matchesOficioPrefix(recipe.oficio!, p)) && !hasToolForOficio(recipe.oficio, rows, catalogBySlug)) {
+    return false;
+  }
   return craftRequisitoShortfalls(recipe, attributes, secondaryAttributes, alivio).length === 0;
 }
 

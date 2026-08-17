@@ -7,7 +7,7 @@ const SALUD_POR_CONDICION: Record<CondicionFisica, number> = {
   ILESO: 100,
   HERIDO: 75,
   GRAVE: 50,
-  INCAPACITADO: 25,
+  CONVALECIENTE: 25,
   MUERTO: 0,
 }
 
@@ -20,6 +20,6 @@ export const CONDICION_LABEL: Record<CondicionFisica, string> = {
   ILESO: 'Ileso',
   HERIDO: 'Herido',
   GRAVE: 'Grave',
-  INCAPACITADO: 'Incapacitado',
+  CONVALECIENTE: 'Convaleciente',
   MUERTO: 'Muerto',
 }

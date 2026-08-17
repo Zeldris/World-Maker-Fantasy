@@ -191,7 +191,7 @@ async function resolveClassificationForTurn(params: {
       // adivinado o reutilizado por error de una habilidad ajena podía prestar su
       // efecto/atributo preferido a un personaje que nunca la desbloqueó de verdad.
       const selectedAbility = savedActionId
-        ? await prisma.savedAction.findFirst({ where: { id: savedActionId, saveId }, select: { effect: true, preferredAttribute: true } })
+        ? await prisma.savedAction.findFirst({ where: { id: savedActionId, saveId }, select: { effects: true, preferredAttribute: true } })
         : null;
       // Paleta de verbos + clasificación tabulada (roadmap de velocidad, 2026-07-19, prioridad 2):
       // un ataque dentro del popup de combate contra un NPC ya en escena es 100% determinista
@@ -238,7 +238,7 @@ async function resolveClassificationForTurn(params: {
       // no depende de que la LLM lo adivine bien.
       const tabulatedTarget =
         npcsInScene.length > 0 &&
-        ((enCombate && (detectsAttackIntent(action) || !!selectedAbility?.effect || !!pendingNpcAttack)) ||
+        ((enCombate && (detectsAttackIntent(action) || !!selectedAbility?.effects?.length || !!pendingNpcAttack)) ||
           (!enCombate && detectsHostileSearchIntent(action) && !detectsVerbalAcceptanceIntent(action)))
           ? (explicitTarget ?? ongoingCombatTarget ?? npcsInScene[0])
           : null;
@@ -525,7 +525,7 @@ export async function turnRoutes(app: FastifyInstance) {
       return resolveBlockedTurn(fabricatedHarvestSourceNarrationFor(fabricatedHarvestSourceClaim.quotedName));
     }
 
-    // Interacción con un NPC/fauna ya incapacitado o muerto, FUERA de combate (docs/19 pieza 2) —
+    // Interacción con un NPC/fauna ya convaleciente o muerto, FUERA de combate (docs/19 pieza 2) —
     // no es una violación (no usa `resolveBlockedTurn`, no gasta ningún LogEntry): es un atajo
     // mecánico legítimo. No hay nada nuevo que narrar sobre alguien ya resuelto, así que el turno
     // no llega ni a `classifyAction` — el frontend recibe la ficha y decide Saquear/Decapitar/Salir
@@ -845,6 +845,7 @@ export async function turnRoutes(app: FastifyInstance) {
         defensa,
         equippedWeapons,
         equippedItems,
+        unlockedRecipeKeys: save.unlockedRecipeKeys,
         raza: save.raza,
         currentLocationId: save.currentLocationId,
         travel,

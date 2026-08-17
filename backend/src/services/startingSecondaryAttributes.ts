@@ -11,14 +11,14 @@ import type { SecondaryAttributeBlock } from './secondaryAttributes.js';
 /// seguía sembrando el valor equivocado bajo la clave equivocada. Ver secondaryAttributes.ts.
 const GORHORN_SECONDARY_ATTRIBUTES: SecondaryAttributeBlock = {
   sigilo: 5,
-  magia: 3,
-  poderSemilla: 4,
+  magia: 6,
+  poderSemilla: 0,
   moral: 12,
   resistenciaFisica: 10,
-  resistenciaMagica: 7,
+  resistenciaMagica: 14,
   resistenciaSemilla: 4,
   resistenciaFrio: 6,
-  resistenciaCalor: 14,
+  resistenciaCalor: 18,
 };
 
 export function startingSecondaryAttributesFor(characterName: string): SecondaryAttributeBlock | null {

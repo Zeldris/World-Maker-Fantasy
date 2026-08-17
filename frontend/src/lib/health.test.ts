@@ -9,12 +9,12 @@ describe('saludForCondicion', () => {
     expect(saludForCondicion('ILESO')).toBe(100)
     expect(saludForCondicion('HERIDO')).toBe(75)
     expect(saludForCondicion('GRAVE')).toBe(50)
-    expect(saludForCondicion('INCAPACITADO')).toBe(25)
+    expect(saludForCondicion('CONVALECIENTE')).toBe(25)
     expect(saludForCondicion('MUERTO')).toBe(0)
   })
 
   it('empeora estrictamente en el mismo orden que CONDICION_LABEL declara', () => {
-    const orden: (keyof typeof CONDICION_LABEL)[] = ['ILESO', 'HERIDO', 'GRAVE', 'INCAPACITADO', 'MUERTO']
+    const orden: (keyof typeof CONDICION_LABEL)[] = ['ILESO', 'HERIDO', 'GRAVE', 'CONVALECIENTE', 'MUERTO']
     const saludes = orden.map(saludForCondicion)
     for (let i = 1; i < saludes.length; i++) {
       expect(saludes[i]).toBeLessThan(saludes[i - 1])

@@ -24,6 +24,11 @@ En vez de páginas nuevas (que sacarían al jugador de `GameView`, perdiendo el 
 
 Al tocar un icono, un panel sube desde abajo (o se abre en modal en pantallas grandes) mostrando esa sección. Cerrar vuelve exactamente a donde estabas.
 
+**Añadido real, no en el diseño original (2026-08-17):** el panel "El mundo" tiene un tercer canal
+alternable, "Reino" (`LogChannel.KINGDOM`) — un botón lo cambia entre el log de mundo y el de reino
+(fundar/mejorar el Ayuntamiento, levantar un Campamento), nunca los dos a la vez, y solo se ofrece
+una vez existe reino o ya hay alguna entrada de ese canal.
+
 ## 2. Las pestañas, una por una
 
 **Estado a 2026-07-18: las 9 pestañas están construidas, incluida Misiones.** Tabla original (diseño) conservada por historial; el estado real de cada una está en la última columna.
@@ -33,7 +38,7 @@ Al tocar un icono, un panel sube desde abajo (o se abre en modal en pantallas gr
 | **Mapa** | Regiones de Berig, punto actual, puntos de interés. | `frontend/src/data/map.ts` (SVG de regiones, estático) + `InteractiveMap.tsx` (clicable) + `MapaPanel.tsx`, que ya recibe `currentLocation`/`destinations` reales del backend (`Save.currentLocationId`, `docs/12` § 1) — "aquí ahora" y los destinos con tiempo de viaje ya ajustado a destreza dejaron de estar hardcodeados (corregido 2026-08-02, ver `docs/12` § 7 punto 10). | **Hecho** (posición dinámica real). |
 | **Inventario** | Objetos que lleva el personaje, clicables para adjuntar a una acción. | `InventoryItem`, poblado por `newItem` del Narrador (sin catálogo cerrado todavía — ver `docs/12` § 4 para loot determinista). | **Hecho.** |
 | **Estadísticas** | 6 atributos + nivel/XP + reparto de puntos ASI. | `Save.attributes`/`level`/`xp`. | **Hecho.** |
-| **Diario** | Registro cronológico completo (personaje + mundo mezclados). | `LogEntry`. | **Hecho.** |
+| **Diario** | Registro cronológico completo (personaje + mundo mezclados, sin importar el canal). | `LogEntry`. | **Hecho.** |
 | **Misiones** | Objetivos activos/completados/fallidos. | `Quest`, poblado por `newQuest`/`questProgress` del Narrador (mismo patrón que Reino). | **Hecho** (2026-07-18). |
 | **Compañeros** | Aliados que viajan con el personaje, poblados por `newCompanion` del Narrador. | `Companion`. | **Hecho.** |
 | **Reino** | Súbditos, edificios, territorios — estado vacío tratado como narrativo, no bloqueado (la usuaria priorizó construirlo ya, contra la recomendación original de § 5). | `Territory`/`Building`/`Subject`. | **Hecho.** |

@@ -114,6 +114,14 @@ export interface NpcInScene {
   /// null = encuentro solitario de siempre.
   groupSize: number | null;
   groupDefeated: number;
+  /// Cadáveres del grupo ya despiezados (schema.prisma § NpcState.corpsesLooted) — para
+  /// `groupSize` no nulo, ES el criterio real de "ya no queda nada que ofrecer" (`saqueado` no
+  /// tiene sentido por individuo en un grupo, ver comentario del propio campo en el schema).
+  corpsesLooted: number;
+  /// Tope de usos por combate (2026-08-15, AbilityEffect.LIMITADA/maxUsesPerCombat) — ver
+  /// comentario completo en schema.prisma § NpcState.abilityUsesThisEncounter. `{}` si todavía no
+  /// existe fila o no se ha usado ninguna habilidad limitada en este encuentro.
+  abilityUsesThisEncounter: Record<string, number>;
 }
 
 interface NpcWithAliases {
@@ -166,6 +174,8 @@ export function buildNpcInScene(npc: NpcWithItems, state: NpcState | undefined):
     analizado: state?.analizado ?? false,
     groupSize: state?.groupSize ?? null,
     groupDefeated: state?.groupDefeated ?? 0,
+    corpsesLooted: state?.corpsesLooted ?? 0,
+    abilityUsesThisEncounter: (state?.abilityUsesThisEncounter as Record<string, number> | undefined) ?? {},
   };
 }
 
@@ -186,6 +196,9 @@ export function buildNpcInScene(npc: NpcWithItems, state: NpcState | undefined):
 // Si se añade un NPC nuevo cuyo alias corto choque con una palabra de uso normal, añadirla aquí
 // en vez de tocar la tolerancia a erratas en general (sigue haciendo falta para erratas reales).
 const NPC_ALIAS_FUZZY_EXCLUSIONS = new Set([
+  // Restaurado (2026-08-15) — se había borrado sin comentario, reabriendo el bug real ya
+  // documentado: "este lugar ha cambiado" dispara a Hagar por tolerancia a erratas
+  // (Levenshtein("lugar","hagar")=2). Confirmado con la usuaria que fue un borrado accidental.
   'lugar',
   'remato',
   'remata',
@@ -208,6 +221,42 @@ const NPC_ALIAS_FUZZY_EXCLUSIONS = new Set([
   'bajar',
   'pagar',
   'negar',
+  'niego',
+  'comerciar',
+  'comerciamos',
+  'reclutar',
+  'recluto',
+  'capturar',
+  'capturo',
+  'asesinar',
+  'informar',
+  'torturar',
+  'torturo',
+  'besar',
+  'beso',
+  'acariciar',
+  'acaricio',
+  'elogiar',
+  'invitar',
+  'señalar',
+  'señalo',
+  'negociar',
+  'negociamos',
+  'vender',
+  'vendo',
+  'comprar',
+  'compro',
+  'regalar',
+  'susurrar',
+  'gritar',
+  'curar',
+  'curamos',
+  'curo',
+  'sanar',
+  'sano',
+  'sanamos',
+  'confia',
+  'patrullar'
 ]);
 
 /// Puro: dado un texto y una lista de NPCs con sus aliases, devuelve los ids que matchean.
@@ -252,6 +301,21 @@ export function matchNpcAliases(text: string, npcs: NpcWithAliases[]): string[] 
 /// como derrotado/saqueado para siempre tras la primera vez que se encuentra en cualquier sitio.
 export function scopeFor(npcKind: NpcKind, currentLocationId: string | null): string {
   return npcKind === 'PRINCIPAL' ? '' : (currentLocationId ?? 'itinerante');
+}
+
+/// "¿queda algo por saquear/despiezar de este NPC AHORA MISMO?" (auditoría de deuda técnica
+/// 2026-08-18) — único punto de verdad para un criterio que se repetía a mano, casi idéntico, en
+/// `panels.ts` § saquear-zona, `recolectar.ts` § carcassCandidatesFor y `harvest.ts` §
+/// yaDespiezada (con la polaridad invertida en este último). Caza en grupo (`groupSize` no nulo,
+/// ver schema.prisma § NpcState.groupSize): `saqueado` no tiene sentido por individuo, el criterio
+/// real es `corpsesLooted < groupDefeated` — aún quedan cadáveres reales del grupo sin saquear.
+/// Encuentro solitario (`groupSize` null): `saqueado` a secas. `null`/`undefined` (nunca ha
+/// existido fila de estado para este NPC) = nada que saquear todavía.
+export function hasPendingLoot(
+  state: { groupSize: number | null; groupDefeated: number; corpsesLooted: number; saqueado: boolean } | null | undefined,
+): boolean {
+  if (!state) return false;
+  return state.groupSize ? state.corpsesLooted < state.groupDefeated : !state.saqueado;
 }
 
 /// Busca NPCs en escena a partir del texto de la acción Y de los hechos ya establecidos de la
@@ -390,7 +454,7 @@ const ATTACK_INTENT_REGEX = /atac|cargo contra|golpe|asalt|hachazo|apunal|dispar
 // Auditoría de typo-tolerance (roadmap 2026-07-19, P0.4 de Fable): mismo patrón que
 // matchNpcAliases — solo los stems literales de 5+ letras entran en la tolerancia a erratas;
 // "atac" (4) y la frase "cargo contra" se quedan con la coincidencia exacta del regex.
-const ATTACK_INTENT_STEMS = ['asalt', 'golpe', 'hachazo', 'apunal', 'dispar', 'arremet', 'hiere', 'hiero'];
+const ATTACK_INTENT_STEMS = ['asalt', 'golpe', 'hachazo', 'apunal', 'dispar', 'arremet', 'hiere', 'hiero', 'amputo','lacer','asesin','espadazo'];
 
 // Auditoría 2026-07-29 (tras el bug real de "ataque"~"saque" en turnResolution.ts § LOOT_INTENT):
 // "hierro" está a distancia 1-2 de "hiero"/"hiere" — un material/nombre de habilidad normal
@@ -526,8 +590,8 @@ export function detectsLootIntent(action: string): boolean {
   return !!findFuzzyStemMatch(words, LOOT_INTENT_STEMS, LOOT_FUZZY_EXCLUSIONS);
 }
 
-// "Decapitar" (petición explícita, 2026-07-30: "un botón que solo sale cuando está incapacitado
-// para matarlo") — golpe de gracia determinista contra un enemigo YA incapacitado, sin tirada (no
+// "Decapitar" (petición explícita, 2026-07-30: "un botón que solo sale cuando está convaleciente
+// para matarlo") — golpe de gracia determinista contra un enemigo YA convaleciente, sin tirada (no
 // puede resistir, ver `executeTargets` en turnResolution.ts). Palabras de 5+ letras, mismo
 // criterio de tolerancia a erratas que el resto de detectores de este archivo.
 const EXECUTE_INTENT_REGEX = /remat|decapit|degoll|ejecut/;
@@ -632,13 +696,13 @@ function itemsLine(items: NpcItemInScene[]): string {
 /// mismo principio que el resto del motor: dale el hecho real en vez de esperar que no invente.
 // Bug real (2026-07-25, "revisar partida"): esta función describía a CUALQUIER NPC detectado en
 // escena como presente y con todo su equipo disponible, sin mirar nunca su condicionFisica/
-// saqueado real — un NPC ya INCAPACITADO/MUERTO/saqueado (el Orco Enfurecido, derrotado y
+// saqueado real — un NPC ya CONVALECIENTE/MUERTO/saqueado (el Orco Enfurecido, derrotado y
 // registrado hace turnos) "emergía de la oscuridad" con un rugido en cuanto su nombre volvía a
 // mencionarse, como si nunca hubiera caído. `detectNpcsInScene` ya consultaba el estado real —
 // simplemente no llegaba a usarse aquí. Mismo patrón que la clase de fallo "NPCs que resucitan"
 // ya documentada en docs/revisar-partida.md.
 function npcYaResuelto(npc: NpcInScene): boolean {
-  return npc.condicionFisica === 'INCAPACITADO' || npc.condicionFisica === 'MUERTO' || npc.saqueado;
+  return npc.condicionFisica === 'CONVALECIENTE' || npc.condicionFisica === 'MUERTO' || npc.saqueado;
 }
 
 /// Refuerza el género/artículo correcto de un nombre descriptivo directamente en cómo se presenta
@@ -667,8 +731,8 @@ function generoHintFor(npc: NpcInScene): string {
 
 export function npcSceneBlockFor(npc: NpcInScene, playerLevel: number): string {
   if (npcYaResuelto(npc)) {
-    const estado = npc.condicionFisica === 'MUERTO' ? 'muerto' : 'incapacitado';
-    // Bug real jugando en vivo (2026-07-31): un cuerpo INCAPACITADO/MUERTO todavía sin saquear
+    const estado = npc.condicionFisica === 'MUERTO' ? 'muerto' : 'convaleciente';
+    // Bug real jugando en vivo (2026-07-31): un cuerpo CONVALECIENTE/MUERTO todavía sin saquear
     // dejaba de listar su equipo aquí (correcto, para no describirlo como amenaza activa) — pero
     // eso significa que en el turno EXACTO de saquearlo, el Narrador no tenía ni idea de qué había
     // encima, e inventaba objetos que no existen ("monedas de cobre", material prohibido incluido)

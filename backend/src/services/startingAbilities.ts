@@ -16,12 +16,17 @@ export interface StartingAbility {
   category: 'combate' | 'general' | 'profesion' | 'reino';
   /// Mecánica real de habilidades de clase (checklist 2026-07-21/22, puntos 1-2) — solo relevante
   /// para category:'combate'. Gana sobre la heurística de palabra clave de npcScene.ts
-  /// (tabulatedAttackAttribute) cuando el turno manda el savedActionId de esta habilidad.
-  effect?: AbilityEffect;
+  /// (tabulatedAttackAttribute) cuando el turno manda el savedActionId de esta habilidad. Lista,
+  /// no valor único (2026-08-15, petición explícita: "que una habilidad pueda tener múltiples
+  /// AbilityEffects") — undefined/[] = sin efecto mecánico (general/profesión/reino).
+  effects?: AbilityEffect[];
   /// Rediseño de combate (2026-08-09) — ver `enum AbilityRol` (schema.prisma). Solo relevante
-  /// para category:'combate', igual que `effect`/`preferredAttribute`.
+  /// para category:'combate', igual que `effects`/`preferredAttribute`.
   rol?: AbilityRol;
   preferredAttribute?: Attribute;
+  /// Tope de usos por combate (2026-08-15, junto a AbilityEffect.LIMITADA) — independiente de qué
+  /// efectos lleve la habilidad: undefined = sin tope.
+  maxUsesPerCombat?: number;
   /// Sistema de fatiga (2026-07-29) — coste de energía fijo por tramo (energy.ts). Solo relevante
   /// para category:'combate'; las generales se quedan en 0/undefined (siempre gratis).
   energyCost?: number;
@@ -47,25 +52,23 @@ export interface StartingAbility {
 /// bestias, ni siquiera es utilidad: es una acción de combate/captura disfrazada). Sustituidas por
 /// utilidades de verdad genéricas, usables en cualquier situación: viajar, descansar donde sea
 /// (sin necesitar volver a un sitio conocido) y saquear/despiezar lo que tengas delante.
-const GORHORN_STARTING_ABILITIES: StartingAbility[] = [
-  {
-    name: 'Buscar provisiones',
-    icon: '🌿',
-    description: 'Busca comida, agua o cualquier recurso útil en los alrededores — el resultado puede ser cualquier cosa aprovechable de la zona.',
-    promptText: 'Recorro la zona con atención, buscando comida, agua o cualquier recurso que me pueda servir.',
-    category: 'general',
-  },
+const GORHORN_GENERAL_ABILITIES: StartingAbility[] = [
+  // Panel de selección (2026-08-17, mismo patrón que Cazar/HuntSelectionModal) — lista los
+  // campamentos ya construidos, agrupados por región, para volver a uno sin tener que escribirlo
+  // de memoria (CampSelectionModal.tsx).
   {
     name: 'Volver al campamento',
     icon: '🏕️',
-    description: 'Deja lo que está haciendo y regresa a un lugar seguro que ya conoce para descansar.',
-    promptText: 'Dejo lo que estoy haciendo y vuelvo a un lugar seguro que ya conozco para descansar.',
+    description: 'Te permite elegir entre tus campamentos construidos para volver a uno de ellos.',
+    promptText: 'Me pongo en camino al campamento en la region de ',
     category: 'general',
   },
+  // Panel de selección (2026-08-17) — regiones descubiertas si no llevas mapa; todas las que
+  // muestra el mapa poseído si sí lo llevas (TravelDestinationModal.tsx).
   {
     name: 'Viajar',
     icon: '🧭',
-    description: 'Emprende camino hacia un destino conocido — completa el nombre del lugar justo después de insertarla en el mensaje.',
+    description: 'Siempre que lleves un mapa en tu inventario, te listará las zonas disponibles para viajar y podras seleccionar una para iniciar tu viaje.',
     promptText: 'Me pongo en marcha hacia ',
     category: 'general',
   },
@@ -80,6 +83,9 @@ const GORHORN_STARTING_ABILITIES: StartingAbility[] = [
     promptText: 'Me detengo aquí mismo, monto un vivac breve y descanso para recuperar fuerzas antes de seguir.',
     category: 'general',
   },
+  // Fuera de combate (2026-08-17): detecta NPCs muertos/convalecientes sin saquear en la zona
+  // actual y reutiliza el mismo flujo de saqueo que ya existe al final de un combate
+  // (postCombatInteraction.ts) — mismo comportamiento en los dos sitios, sin duplicar lógica.
   {
     name: 'Saquear',
     icon: '🏺',
@@ -87,6 +93,11 @@ const GORHORN_STARTING_ABILITIES: StartingAbility[] = [
     promptText: 'Registro y saqueo el cuerpo que tengo delante, sea un enemigo derrotado o una presa cazada, en busca de todo lo que pueda aprovechar.',
     category: 'general',
   },
+  // Decisión (2026-08-17): se queda como habilidad general, no se convierte en profesión —
+  // cerrar el acceso a cazar tras un oficio es un cambio de balance/economía mayor que lo que
+  // pide resolver este comentario. Si en el futuro se quiere diferenciar cazadores buenos de
+  // malos, mejor un bonus de oficio sobre la tirada (mismo criterio que el resto de oficios) que
+  // restringir quién puede cazar en absoluto.
   {
     name: 'Cazar',
     icon: '🏹',
@@ -102,13 +113,29 @@ const GORHORN_STARTING_ABILITIES: StartingAbility[] = [
     promptText: 'Salgo a cazar por la zona.',
     category: 'general',
   },
-  // Edificios sin oficio (2026-08-13, petición explícita: "hay que añadir también los edificios
-  // como habilidades de construcción, al igual que el resto de elementos de profesiones") —
-  // Campamento y los 3 niveles de Ayuntamiento no llevan `oficio` en construction.ts a propósito
-  // ("cualquiera puede intentarlo, no hace falta un gremio"), así que van aquí en vez de en
-  // professionAbilities.ts (que exige oficio+tier). Categoría 'reino' (pestaña propia, 2026-08-13,
-  // petición explícita: "hay que añadir un tab en habilidades para las habilidades de reino"), no
-  // 'general' — misma pestaña que la Choza, que sí tiene oficio y vive en professionAbilities.ts.
+  // Panel de selección (2026-08-17, mismo patrón que Cazar) — lista los curativos del inventario
+  // con vista previa acumulada del resultado final antes de confirmar (HealSelectionModal.tsx);
+  // bloqueado si ya estás ILESO — no deja seguir gastando objetos sin necesidad.
+  {
+    name: 'Curar',
+    icon: '🌿',
+    description: 'Registra el inventario y te permite seleccionar uno o varios items curativos, viendo el resultado final antes de confirmar, para sanarte.',
+    promptText: 'Reviso el inventario y me curo con ',
+    category: 'general',
+  },
+];
+
+// Edificios sin oficio (2026-08-13, petición explícita: "hay que añadir también los edificios
+// como habilidades de construcción, al igual que el resto de elementos de profesiones") —
+// Campamento y los 3 niveles de Ayuntamiento no llevan `oficio` en construction.ts a propósito
+// ("cualquiera puede intentarlo, no hace falta un gremio"), así que van aquí en vez de en
+// professionAbilities.ts (que exige oficio+tier). Categoría 'reino' (pestaña propia, 2026-08-13,
+// petición explícita: "hay que añadir un tab en habilidades para las habilidades de reino"), no
+// 'general' — misma pestaña que la Choza, que sí tiene oficio y vive en professionAbilities.ts.
+// Separado en su propia const (2026-08-17, "revisar si separar este bloque en otra var para no
+// liarnos con las generales") — mismo array final vía startingAbilitiesFor, solo separado en el
+// código fuente.
+const GORHORN_REINO_ABILITIES: StartingAbility[] = [
   {
     name: 'Construir campamento',
     icon: '🏕️',
@@ -140,6 +167,6 @@ const GORHORN_STARTING_ABILITIES: StartingAbility[] = [
 ];
 
 export function startingAbilitiesFor(characterName: string): StartingAbility[] {
-  if (characterName === 'Gorhorn') return GORHORN_STARTING_ABILITIES;
+  if (characterName === 'Gorhorn') return [...GORHORN_GENERAL_ABILITIES, ...GORHORN_REINO_ABILITIES];
   return [];
 }

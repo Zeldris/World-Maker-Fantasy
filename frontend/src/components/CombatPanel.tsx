@@ -45,10 +45,10 @@ interface CombatPanelProps {
   onActuar: () => void
   onRegistrar: (npc: CombatNpcDisplay) => void
   /// Botón "Decapitar" (petición explícita, 2026-07-30, ajustado tras probarlo en vivo: "de los
-  /// enemigos incapacitados tienes que marcar todos aquellos que quieras decapitar... un popup
+  /// enemigos convalecientes tienes que marcar todos aquellos que quieras decapitar... un popup
   /// donde marcando con checkbox puedas elegir a quien decapitar y confirmarlo o cancelarlo") —
   /// se llama con la lista YA confirmada desde el modal de selección (ver más abajo), nunca por
-  /// NPC suelto. Golpe de gracia determinista, solo sobre los que siguen INCAPACITADO.
+  /// NPC suelto. Golpe de gracia determinista, solo sobre los que siguen CONVALECIENTE.
   onDecapitarSeleccion: (npcs: CombatNpcDisplay[]) => void
   onHuir: () => void
   onContinue: () => void
@@ -323,9 +323,9 @@ export function CombatPanel({
   const [decapitarModalOpen, setDecapitarModalOpen] = useState(false)
   const [saquearModalOpen, setSaquearModalOpen] = useState(false)
 
-  const incapacitados = npcs.filter((n) => n.condicion === 'INCAPACITADO')
+  const convalecientes = npcs.filter((n) => n.condicion === 'CONVALECIENTE')
   // Resumen de combate (2026-07-30) — solo se ofrece "Saquear todo" si de verdad queda algo sin
-  // saquear (INCAPACITADO o MUERTO — un enemigo decapitado se puede saquear igual); si ya se
+  // saquear (CONVALECIENTE o MUERTO — un enemigo decapitado se puede saquear igual); si ya se
   // registró todo uno a uno durante la pelea, el resumen solo ofrece salir.
   //
   // Bug real (auditoría 2026-08-06): sin el filtro `enciclopedia?.npcs.some(...)`, un enemigo de
@@ -336,7 +336,7 @@ export function CombatPanel({
   // un modal sin ninguna opción que marcar — y como `fullyLootedSlugs` sale de `lootOptions`, esa
   // fauna nunca podía marcarse `yaSaqueado`, así que el botón reaparecía para siempre.
   const lootables = npcs.filter(
-    (n) => (n.condicion === 'INCAPACITADO' || n.condicion === 'MUERTO') && !n.yaSaqueado && enciclopedia?.npcs.some((e) => e.slug === n.slug),
+    (n) => (n.condicion === 'CONVALECIENTE' || n.condicion === 'MUERTO') && !n.yaSaqueado && enciclopedia?.npcs.some((e) => e.slug === n.slug),
   )
   const quedaAlgoPorSaquear = lootables.length > 0
 
@@ -419,27 +419,27 @@ export function CombatPanel({
           // quiero una vista de victoria más vistosa y que no muestre el contenido del combate").
           // Sustituye TODO lo de abajo (Enemigos/Ficha/habilidades/Actuar) — ya no hace falta
           // nada de eso una vez la pelea terminó de verdad, solo el resultado y qué hacer después.
-          // Bug real jugando en vivo (2026-07-31, "he ganado la batalla estando yo incapacitado
+          // Bug real jugando en vivo (2026-07-31, "he ganado la batalla estando yo convaleciente
           // y el enemigo herido"): antes esta pantalla siempre decía "¡Victoria!" en cuanto el
           // ÚLTIMO enemigo caía, sin mirar si TÚ también habías caído en el proceso — un doble
-          // K.O. se veía idéntico a una victoria limpia. Ahora distingue el caso: incapacitado
+          // K.O. se veía idéntico a una victoria limpia. Ahora distingue el caso: convaleciente
           // de verdad no es "victoria", aunque el enemigo también haya caído.
           <div
             className={`flex flex-col items-center gap-4 rounded-xl border p-5 text-center ${
-              playerCondicion === 'INCAPACITADO'
+              playerCondicion === 'CONVALECIENTE'
                 ? 'border-danger-500/40 bg-gradient-to-b from-danger-500/10 via-wood-950/20 to-transparent'
                 : 'border-accent-500/40 bg-gradient-to-b from-accent-500/10 via-wood-950/20 to-transparent'
             }`}
           >
             <span className="animate-gem-breathe text-5xl" aria-hidden="true">
-              {playerCondicion === 'INCAPACITADO' ? '⚠️' : '🏆'}
+              {playerCondicion === 'CONVALECIENTE' ? '⚠️' : '🏆'}
             </span>
             <div>
-              <h3 className={`font-serif text-2xl tracking-wide ${playerCondicion === 'INCAPACITADO' ? 'text-danger-300' : 'text-accent-300'}`}>
-                {playerCondicion === 'INCAPACITADO' ? 'Combate terminado' : '¡Victoria!'}
+              <h3 className={`font-serif text-2xl tracking-wide ${playerCondicion === 'CONVALECIENTE' ? 'text-danger-300' : 'text-accent-300'}`}>
+                {playerCondicion === 'CONVALECIENTE' ? 'Combate terminado' : '¡Victoria!'}
               </h3>
               <p className="mt-1 text-2xs uppercase tracking-[0.2em] text-wood-500">
-                {playerCondicion === 'INCAPACITADO' ? 'Sales incapacitado de la pelea' : 'Combate terminado'}
+                {playerCondicion === 'CONVALECIENTE' ? 'Sales convaleciente de la pelea' : 'Combate terminado'}
               </p>
             </div>
             <ul className="w-full space-y-1.5">
@@ -464,7 +464,7 @@ export function CombatPanel({
               >
                 Salir
               </button>
-              {incapacitados.length > 0 && (
+              {convalecientes.length > 0 && (
                 <button
                   onClick={() => setDecapitarModalOpen(true)}
                   disabled={busy}
@@ -486,13 +486,13 @@ export function CombatPanel({
           </div>
         ) : (
           <>
-        {playerCondicion === 'INCAPACITADO' && (
+        {playerCondicion === 'CONVALECIENTE' && (
           // Petición explícita de la usuaria (2026-07-31, tras el bug del malus a 0 — ver
-          // death.ts § CONDICION_MALUS): puedes seguir intentándolo estando incapacitado, pero
+          // death.ts § CONDICION_MALUS): puedes seguir intentándolo estando convaleciente, pero
           // muy penalizado — y ahora se avisa con claridad en vez de dejarlo solo en la barra de
           // vida, fácil de pasar por alto en pleno combate.
           <div className="rounded-lg border border-danger-600/50 bg-danger-500/10 px-3 py-2 text-xs text-danger-200">
-            ⚠️ Estás incapacitado — puedes seguir intentándolo, pero muy penalizado.
+            ⚠️ Estás convaleciente — puedes seguir intentándolo, pero muy penalizado.
           </div>
         )}
 
@@ -566,7 +566,7 @@ export function CombatPanel({
                           checkbox para elegir a quien decapitar") siempre abre el modal de
                           selección compartido, nunca actúa directo sobre este NPC en concreto —
                           por eso el enlace es el mismo aquí y en el resumen de victoria. */}
-                      {npc.condicion === 'INCAPACITADO' && (
+                      {npc.condicion === 'CONVALECIENTE' && (
                         <span className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5">
                           {npc.yaSaqueado ? (
                             <span className="text-2xs text-wood-500">Ya saqueado</span>
@@ -874,13 +874,13 @@ export function CombatPanel({
         <CombatSelectionModal
           title="¿A quién matar?"
           description="Un golpe de gracia definitivo, sin tirada — no pueden resistir."
-          options={incapacitados.map((npc) => ({ id: npc.slug, label: npc.name }))}
+          options={convalecientes.map((npc) => ({ id: npc.slug, label: npc.name }))}
           confirmLabel="Matar"
           tone="danger"
           busy={busy}
           onCancel={() => setDecapitarModalOpen(false)}
           onConfirm={(selectedIds) => {
-            onDecapitarSeleccion(incapacitados.filter((npc) => selectedIds.includes(npc.slug)))
+            onDecapitarSeleccion(convalecientes.filter((npc) => selectedIds.includes(npc.slug)))
             setDecapitarModalOpen(false)
           }}
         />

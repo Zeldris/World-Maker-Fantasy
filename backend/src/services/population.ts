@@ -21,6 +21,12 @@ export const GROWTH_RATE_PER_DAY: Record<PopulationTargetType, number> = {
   // raza (crece muy despacio): una veta/matorral no se "reproduce", pero sí se repone con el
   // tiempo (vetas nuevas expuestas por erosión, rebrote de matorral) — cifra de partida, ajustable.
   RECURSO: 0.01,
+  // FLORA/FACCION (2026-08-15, valores nuevos del enum, todavía sin ninguna fila sembrada) —
+  // mismo criterio que RECURSO para flora (se repone con el tiempo, no "se reproduce") y que RAZA
+  // para facciones (población militar/civil, crece muy despacio). Cifras de partida, ajustables
+  // cuando haya datos reales que las usen.
+  FLORA: 0.01,
+  FACCION: 0.003,
 };
 
 /// Bug real jugando en vivo (2026-08-07, "no aparece ningún recurso en la Hondonada"): las claves
@@ -67,7 +73,7 @@ type TxClient = Pick<PrismaClient, 'worldPopulation'> | Prisma.TransactionClient
 
 /// Resta 1 (sin bajar de 0) a la fila de población que corresponda a este NPC, dentro de la MISMA
 /// transacción que resuelve el turno (docs/16 § 3.2) — llamado solo cuando un NPC pasa de verdad a
-/// MUERTO (combate letal o Decapitar), nunca en INCAPACITADO. No hace nada si no hay fila que
+/// MUERTO (combate letal o Decapitar), nunca en CONVALECIENTE. No hace nada si no hay fila que
 /// corresponda (mismo criterio de "no bloquear el turno si el dato no existe" que el resto del
 /// motor).
 export async function decrementPopulationOnDeath(

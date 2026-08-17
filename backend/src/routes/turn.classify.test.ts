@@ -220,9 +220,9 @@ describe('POST /turn/classify — camino tabulado de combate (sin Ollama)', () =
   });
 });
 
-// Interacción con un NPC ya incapacitado/muerto fuera de combate (docs/19 pieza 2) — atajo
+// Interacción con un NPC ya convaleciente/muerto fuera de combate (docs/19 pieza 2) — atajo
 // mecánico legítimo, no una violación: no llama a classifyAction, no persiste ningún LogEntry.
-describe('POST /turn/classify — interacción con un NPC ya incapacitado, fuera de combate (docs/19 pieza 2)', () => {
+describe('POST /turn/classify — interacción con un NPC ya convaleciente, fuera de combate (docs/19 pieza 2)', () => {
   beforeEach(() => {
     findUniqueSave.mockReset();
     findManyNpc.mockReset().mockResolvedValue([
@@ -247,7 +247,7 @@ describe('POST /turn/classify — interacción con un NPC ya incapacitado, fuera
       },
     ]);
     findManyNpcState.mockReset().mockResolvedValue([
-      { npcId: 'npc1', scope: '', condicionFisica: 'INCAPACITADO', saqueado: false, energia: null, lootedItemNames: [], analizado: false },
+      { npcId: 'npc1', scope: '', condicionFisica: 'CONVALECIENTE', saqueado: false, energia: null, lootedItemNames: [], analizado: false },
     ]);
     findUniqueLocation.mockReset().mockResolvedValue(null);
     findManyLocation.mockReset().mockResolvedValue([]);
@@ -256,7 +256,7 @@ describe('POST /turn/classify — interacción con un NPC ya incapacitado, fuera
     classifyAction.mockReset();
   });
 
-  it('nombrar a un NPC incapacitado en escena, fuera de combate, devuelve la ficha sin llamar a classifyAction ni persistir nada', async () => {
+  it('nombrar a un NPC convaleciente en escena, fuera de combate, devuelve la ficha sin llamar a classifyAction ni persistir nada', async () => {
     findUniqueSave.mockResolvedValue({
       id: 'save1',
       worldId: 'world1',
@@ -282,7 +282,7 @@ describe('POST /turn/classify — interacción con un NPC ya incapacitado, fuera
     expect(body.postCombatInteraction).toEqual({
       slug: 'orco-enfurecido',
       name: 'Orco Enfurecido',
-      condicionFisica: 'INCAPACITADO',
+      condicionFisica: 'CONVALECIENTE',
       saqueado: false,
     });
     expect(classifyAction).not.toHaveBeenCalled();

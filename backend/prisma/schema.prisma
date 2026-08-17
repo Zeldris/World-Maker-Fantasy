@@ -24,13 +24,16 @@ enum Lethality {
   ALTA
 }
 
-/// docs/14-combate-y-muerte.md § 1. INCAPACITADO != MUERTO: incapacitado es "fuera de la acción
+/// docs/14-combate-y-muerte.md § 1. CONVALECIENTE != MUERTO: convaleciente es "fuera de la acción
 /// actual" (inconsciente, inmovilizado) pero recuperable sin la Entidad; MUERTO dispara § 4.
+/// Renombrado desde INCAPACITADO (2026-08-17, petición explícita, "cambiar INCAPACITADO a
+/// CONVALECIENTE") — mismo valor semántico, solo cambia el nombre. Ortografía corregida a
+/// CONVALECIENTE (con N): "combaleciente" no es una palabra real en castellano.
 enum CondicionFisica {
   ILESO
   HERIDO
   GRAVE
-  INCAPACITADO
+  CONVALECIENTE
   MUERTO
 }
 
@@ -45,6 +48,8 @@ enum Dificultad {
 enum LogChannel {
   CHARACTER
   WORLD
+  // Log que podremos alternar con el de mundo, siendo posible revisar o uno u otro, nunca los dos a la vez
+  KINGDOM
 }
 
 /// Decisión de producto 2 (02-decisiones.md): sin login real por ahora,
@@ -151,7 +156,7 @@ model Save {
   /// descansar/curar la vía principal para mejorarla — el modelo nunca la baja fuera de combate.
   condicionFisica CondicionFisica @default(ILESO)
   /// Salud/PV visible (0-100), instrucción explícita de la usuaria 2026-07-19 — v1 conservador:
-  /// se DERIVA de `condicionFisica` (ILESO=100, HERIDO=75, GRAVE=50, INCAPACITADO=25, MUERTO=0,
+  /// se DERIVA de `condicionFisica` (ILESO=100, HERIDO=75, GRAVE=50, CONVALECIENTE=25, MUERTO=0,
   /// ver saludForCondicion en death.ts), no cambia el motor de combate ya calibrado, solo lo
   /// expone como número/barra en vez de solo una etiqueta. Sin daño variable todavía (v2).
   salud           Int             @default(100)
@@ -194,6 +199,11 @@ model Save {
   /// "Combatir"). Se sobrescribe en cada turno (vacío si no hay combate ese turno), para que
   /// `GET /saves/:id` pueda reconstruir el mismo aviso de combate tras cualquier resincronización.
   pendingCombatNpcSlugs Json @default("[]")
+
+  /// Recetas de crafteo desbloqueadas por recompensa de misión (2026-08-17, ver
+  /// Quest.rewardRecipeKeys) — solo importa para recetas marcadas `requiresUnlock: true`
+  /// (crafting.ts); el resto del catálogo sigue disponible para cualquiera sin este campo.
+  unlockedRecipeKeys String[] @default([])
 
   /// Rediseño del turno de combate (2026-07-28, petición explícita: "se tiran dados y se ve
   /// quien ataca primero... el otro entra en un turno de defensa"). Cuando la iniciativa de un
@@ -588,17 +598,83 @@ model LoreChunk {
 /// `promptText` (mismo error ya pagado con matchNpcAliases/erratas): el motor necesita un switch
 /// determinista para decidir REMATE/ATURDIMIENTO/INTIMIDACION/AGUANTE, no adivinarlo del texto.
 enum AbilityEffect {
+  // Hace daño
   ATAQUE
+  // Deja aturdido/dormido al enemigo 1 turno.
   ATURDIMIENTO
-  REMATE
+  // Tiene la posibilidad de cancelar la accion del enemigo.
   INTIMIDACION
+  // Te defiende de un ataque
   AGUANTE
-  /// Rediseño de combate (2026-08-09, "Analizar rival"/"Lectura de Presa" reconvertida): revela
-  /// el atributo recomendado contra el rival analizado — nunca hace daño, nunca reutiliza ATAQUE
-  /// (eso haría que una tirada de análisis con éxito bajara condicionFisica vía
-  /// nextCondicionForAttack, justo lo que este rediseño evita para cualquier rol distinto de
-  /// 'ataque').
+  // Analiza al enemigo para ofrecer sus habilidades y stats
   ANALISIS
+  /// PENDIENTES en bloque (2026-08-17, auditoría de comentarios "para hacer cambios" — RECUPERACION
+  /// arriba es el único de este lote ya implementado, ver su comentario): INVOCACION/CONTROL/
+  /// MULTIPLE/DESVIAR/ATENCION/OCULTACION/COMPANERO exigen combate multi-objetivo (hoy es
+  /// estrictamente 1v1); RETIRAR/CANALIZAR/CURAZION/REFLEJAR/EXPULSAR exigen efectos con duración
+  /// real (turnos que se cuentan y expiran) — ninguna de las dos infraestructuras existe todavía en
+  /// el motor. Nombre + comentario de diseño se quedan tal cual hasta que se aborden aparte.
+  //Invocar ser o seres que duran una cantidad de turnos determinada y luego desaparecen. Apoyos en el combate, sin equipo
+  INVOCACION
+  //Sangrados, venenos, maldiciones o discapacidades. Reduce tus attrs temporalmente
+  /// PENDIENTE (2026-08-17) — "temporalmente" implica varios turnos, y hoy no existe ningún
+  /// sistema de duración/expiración en el motor (ver PENDIENTE de AUMENTO, mismo motivo).
+  DEBILIDAD
+  //Habilidades que aumentan los attrs temporalmente
+  /// PENDIENTE (2026-08-17, evaluado y descartado por ahora) — a diferencia de ATAQUE/
+  /// INTIMIDACION/ATURDIMIENTO (consecuencias DESPUÉS de una tirada ya resuelta), un bonus de
+  /// atributo tendría que aplicarse ANTES de tirar — cronología distinta al resto de efectos de
+  /// utilidad, que exige tocar dónde se llama a `resolveIndependentExchange`, no solo el bloque de
+  /// consecuencias — y sigue sin resolver la duración real de "temporalmente" (no hay sistema de
+  /// turnos/expiración). Se deja para una pasada aparte, no a medias.
+  AUMENTO
+  //Permite retirarse del combate a un punto seguro
+  RETIRAR
+  //Efecto de habilidad que requiere de un turno de recarga para utilizar su efecto
+  CANALIZAR
+  //Proporciona efectos de curacion y recupera estados
+  CURAZION
+  //Efecto que es capaz de reflejar el efecto de una habilidad, no refleja las de daño ni las de defensa..solo las de utilidad.
+  REFLEJAR
+  //Efecto de habilidad que es capaz de hacer que un enemigo se retire del combate
+  EXPULSAR
+  //Efecto de habilidad que permite "controlar" al rival haciando que actue sobre el resto de enemigos durante los turnos que indique la habilidad
+  CONTROL
+  //Efecto que permite aplicar la habilidad sobre un enemigo y que su efecto se replique en otros enemigos
+  MULTIPLE
+  //Efecto que permite eliminar a un rival de 1 golpe
+  LETAL
+  //Efecto que permite desviar la habilidad de un enemigo sobre otro de tu eleccion
+  DESVIAR
+  //Efecto que obliga a el/los enemigo/enemigos seleccionados a atacarte los turnos que indique la habilidad
+  ATENCION
+  //Efecto que permite que durante los turnos que diga la habilidad no se le podra atacar, si no es el unico enemigo/aliado
+  OCULTACION
+  //Efecto que refleja el daño fisico
+  /// PENDIENTE (2026-08-17) — el motor no distingue tipos de daño (físico/mágico), solo qué
+  /// atributo se usó en la tirada; CONTRA y REFRACTAR serían mecánicamente idénticos hoy sin ese
+  /// concepto. Se deja para cuando exista una noción real de tipo de daño.
+  CONTRA
+  //Efecto que refleja el daño magico o de semilla
+  /// PENDIENTE (2026-08-17) — mismo motivo que CONTRA.
+  REFRACTAR
+  //Efecto que sirve para recuperar la energia indicada por la habilidad
+  /// IMPLEMENTADO (2026-08-17) — bonus de energía este intercambio (RECUPERACION_ENERGY_BONUS,
+  /// turnResolution.ts) cuando el efecto se dispara, mismo patrón que ATAQUE/INTIMIDACION/
+  /// ATURDIMIENTO/ANALISIS (ver UTILITY_EFFECT_NARRATION).
+  RECUPERACION
+  //Efecto que sirve para limpiarse las debilidades o efectos negativos
+  /// PENDIENTE (2026-08-17) — encaja de forma natural en el mismo camino de curación que ya usan
+  /// descanso/objetos médicos (healCeilingFor/nextCondicionFisica, death.ts), pero esa vía tiene
+  /// mucho historial real de bugs de combinación (ver comentarios de condicionPropuestaCombinada,
+  /// turnResolution.ts) — se deja para una pasada dedicada solo a eso, con sus propios tests.
+  PURIFICAR
+  //Permite convertir fauna en compañeros, desbloquea slots de compañero que no contabilizan sobre los slots de compañero...es decir desbloquea un slot o slots donde iran nuestra "mascota" o compañeros de fauna
+  COMPANERO
+  // Marca que la habilidad tiene un tope de usos por combate (ver maxUsesPerCombat en el propio
+  // dato de la habilidad, y NpcState.abilityUsesThisEncounter para el contador real) — se combina
+  // con cualquier otro efecto de la lista, p.ej. [LETAL, LIMITADA] con maxUsesPerCombat: 1.
+  LIMITADA
 }
 
 /// Rol mecánico de una habilidad (rediseño de combate, 2026-08-09, petición explícita: "una
@@ -616,6 +692,7 @@ enum AbilityRol {
   ataque
   defensa
   utilidad
+  pasiva
 }
 
 /// Categorización mecánica de objetos (2026-07-29, petición explícita: "separar los items por
@@ -646,17 +723,28 @@ enum ItemTipo {
 /// QUÉ atributo usa la habilidad de ataque/defensa que ese hueco de equipo genera — ver
 /// WEAPON_CATEGORY_ATTRIBUTE en weaponAbilities.ts. Solo con sentido en objetos `category: 'arma'`.
 enum WeaponCategory {
-  HACHA
-  MAZA
-  GARROTE
+  HACHA_1_MANO
+  HACHA_2_MANO
+  MAZA_1_MANO
+  MAZA_2_MANO
+  GARROTE_1_MANO
+  GARROTE_2_MANO
   PICA
   LANZA
   CUCHILLO
   DAGA
-  ESPADA
-  /// Objeto defensivo de mano secundaria (escudo) — en vez de generar una 2ª habilidad de
-  /// ataque, genera la habilidad de defensa del hueco.
+  ESPADA_1_MANO
+  ESPADA_2_MANO
   ESCUDO
+  ARCO_CORTO
+  ARCO_LARGO
+  HONDA
+  BALLESTA
+  BACULO
+  BASTON
+  GRIMORIO
+  GUANTES
+  RED
 }
 
 /// Qué acción/verbo exige `harvest.ts` para dar este recurso concreto (2026-07-29, petición
@@ -729,12 +817,18 @@ model SavedAction {
   /// Como en cualquier RPG: la barra de fuera de combate no es la misma que la de dentro.
   category    String   @default("general")
   /// Solo relevante para category:'combate' (nunca en habilidades creadas a mano por la
-  /// jugadora — esas siguen siendo 'general', ver POST /saves/:id/abilities). Null en partidas
-  /// ya en curso hasta que se reinicien o suba de nivel de nuevo (mismo patrón aditivo/nullable
-  /// que el resto del proyecto).
-  effect             AbilityEffect?
+  /// jugadora — esas siguen siendo 'general', ver POST /saves/:id/abilities). Array vacío en
+  /// partidas ya en curso hasta que se reinicien o suba de nivel de nuevo (mismo patrón
+  /// aditivo/nullable que el resto del proyecto). Lista, no valor único (2026-08-15, petición
+  /// explícita: "que una habilidad pueda tener múltiples AbilityEffects") — cada efecto de la
+  /// lista se comprueba de forma independiente al resolver el intercambio (turnResolution.ts).
+  effects            AbilityEffect[] @default([])
+  /// Tope de usos por combate (2026-08-15, junto a AbilityEffect.LIMITADA) — independiente de qué
+  /// efectos lleve: null/undefined = sin tope. Ver NpcState.abilityUsesThisEncounter para el
+  /// contador real.
+  maxUsesPerCombat   Int?
   /// Rediseño de combate (2026-08-09) — ver comentario completo en `enum AbilityRol`. Mismo
-  /// criterio nullable/aditivo que `effect`: solo relevante para category:'combate', null hasta
+  /// criterio nullable/aditivo que `effects`: solo relevante para category:'combate', null hasta
   /// que la partida se resincronice.
   rol                AbilityRol?
   /// Atributo con el que se resuelve la tirada de esta habilidad — gana sobre la heurística de
@@ -793,7 +887,7 @@ model Quest {
   /// misión se detecta como "derrotar a X" al crearse (match contra los NPCs del mundo, mismo
   /// matcher de npcScene.ts), aquí queda el id del Npc objetivo — sin FK real a propósito (mismo
   /// patrón laxo que CharacterTransit.zoneContext), porque un Npc de catálogo no pertenece a
-  /// ninguna partida. En cuanto su NpcState pase a INCAPACITADO/MUERTO en ESTA partida, el
+  /// ninguna partida. En cuanto su NpcState pase a CONVALECIENTE/MUERTO en ESTA partida, el
   /// backend cierra la misión solo, sin depender de que el modelo repita el título EXACTO en
   /// "questProgress".
   targetNpcId String?
@@ -822,6 +916,18 @@ model Quest {
   /// entrega real de esos objetos concretos sigue pasando por el mecanismo de loot/crafteo normal
   /// que ya exista; este campo no crea InventoryItem por sí solo, ver comentario de rewardXp).
   rewardItems String[] @default([])
+  /// Recompensa no-objeto (2026-08-17, petición explícita: "añadir un reward que no sea item
+  /// solo, sino también recetas, compañeros o pasivas temporales") — claves de `CraftingRecipe`
+  /// (crafting.ts) que se desbloquean al completarse esta misión. Solo tiene efecto real en
+  /// recetas marcadas `requiresUnlock: true` (ver comentario del campo en crafting.ts) — las 16
+  /// recetas ya existentes no lo llevan, siguen disponibles para cualquiera exactamente como hoy.
+  /// Entrega real en `grantQuestRewardRecipesAndCompanion` (questResolution.ts).
+  rewardRecipeKeys String[] @default([])
+  /// Compañero de recompensa (2026-08-17) — plantilla fija {name, role, notes}, mismo shape que
+  /// `Companion` sin el `id`/`saveId`. Sujeto al mismo tope real de slots que cualquier otro
+  /// compañero (companionSlotsForRecipeKey) — si no hay hueco al completarse la misión, no se
+  /// crea (nunca se pierde silenciosamente el resto de la recompensa por esto).
+  rewardCompanion Json?
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
 
@@ -1158,9 +1264,17 @@ model NpcState {
   /// `attributes`, no cambia entre encuentros). Gatea qué muestra la ficha del rival en combate
   /// (CombatPanel.tsx § EnemyFicha) — sin analizar, ni estadísticas ni habilidades.
   analizado       Boolean         @default(false)
+  /// Tope de usos por combate (2026-08-15, AbilityEffect.LIMITADA/maxUsesPerCombat) — mapa `nombre
+  /// de habilidad → veces usada`, cuenta tanto lo que el JUGADOR ha usado contra este NPC como lo
+  /// que este NPC ha usado contra el jugador en el encuentro actual (un solo contador compartido:
+  /// hoy solo hay un jugador). No existe un concepto propio de "sesión de combate" persistido —
+  /// se reutiliza la vuelta a `condicionFisica: ILESO` (descanso/curación entre combates, nunca
+  /// durante uno) como frontera real para resetear a `{}`, mismo punto donde ya se limpian
+  /// `saqueado`/`analizado`.
+  abilityUsesThisEncounter Json @default("{}")
   /// docs/19-post-combate-y-recompensas-mision.md pieza 2 (2026-08-13) — `fictionalMinutes` (no
   /// tiempo real, el reloj del mundo se pausa cuando el backend está parado) del momento en que
-  /// `condicionFisica` pasó a su valor ACTUAL. Solo se usa cuando el valor actual es INCAPACITADO
+  /// `condicionFisica` pasó a su valor ACTUAL. Solo se usa cuando el valor actual es CONVALECIENTE
   /// (recupera a HERIDO a las 6h) o MUERTO (el cadáver desaparece a las 48h) — se rellena siempre
   /// que cambia por simplicidad, aunque para ILESO/HERIDO/GRAVE no se lea nunca.
   condicionFisicaSinceMinutes Int?
@@ -1203,6 +1317,15 @@ model ItemCatalog {
   /// Categorización mecánica real (2026-07-29) — ver comentario del enum ItemTipo. `category`
   /// (arriba) sigue siendo el subtipo fino DENTRO de este tipo, no se sustituye.
   tipo        ItemTipo
+  /// Oficios (prefijo sin raza/región, p.ej. "curtidor", "desollador" — mismo criterio de prefijo
+  /// que `matchesOficioPrefix`, harvestAbilities.ts) para los que este objeto cuenta como
+  /// herramienta requerida (2026-08-17, petición explícita: "cada profesión dependerá de tener la
+  /// herramienta para poder usar esa profesión"). Un objeto puede servir para varios oficios a la
+  /// vez (p.ej. un cuchillo vale como arma Y como herramienta de peletería/desuello). Solo bloquea
+  /// de verdad los oficios que de hecho tienen algún objeto dado de alta aquí — ver
+  /// OFICIOS_CON_HERRAMIENTA_REQUERIDA en crafting.ts: un oficio sin ninguna herramienta
+  /// registrada en todo el catálogo se queda sin gate, igual que siempre.
+  herramientaParaOficio String[] @default([])
   /// Solo en armas/escudos (2026-07-29, sistema de habilidades por arma) — decide qué habilidad
   /// de ataque/defensa genera este objeto al equiparlo, ver weaponAbilities.ts. Null en el resto
   /// del catálogo (herramientas, ropa, consumibles...).
@@ -1248,8 +1371,8 @@ model ItemCatalog {
   /// Tope real de curación al usar este objeto (2026-07-29, "si sales de un combate Incapacitado,
   /// tendrás que usar objetos específicos para volver a Herido o pasar directo a Ileso"): solo
   /// tiene sentido en objetos `category: "medicinal"` — descansar/comer SIN objeto solo llega a
-  /// HERIDO y no hace nada si ya estás INCAPACITADO (ver death.ts § healCeilingFor); un objeto
-  /// médico con este campo puesto rompe ese tope, incluso desde INCAPACITADO. Null = el objeto no
+  /// HERIDO y no hace nada si ya estás CONVALECIENTE (ver death.ts § healCeilingFor); un objeto
+  /// médico con este campo puesto rompe ese tope, incluso desde CONVALECIENTE. Null = el objeto no
   /// cura condición física (la inmensa mayoría del catálogo, incluido el resto de "medicinal" que
   /// no cura de verdad, como el contraveneno).
   curaHasta   CondicionFisica?
@@ -1258,7 +1381,7 @@ model ItemCatalog {
   /// normales) — con esto en `true`, `curaHasta` deja de ser un tope absoluto y pasa a ser el
   /// MEJOR resultado posible con este objeto (nunca peor que un escalón por encima de la
   /// condición actual). Ver `healCeilingFor` (death.ts) para la fórmula real. `false`/`null` =
-  /// comportamiento de siempre (rompe el tope de golpe, incluso desde INCAPACITADO) — el resto
+  /// comportamiento de siempre (rompe el tope de golpe, incluso desde CONVALECIENTE) — el resto
   /// del catálogo (alquimista y superiores) sigue así a propósito.
   curaUnPaso  Boolean          @default(false)
   /// Cantidad de energía que restaura al usarlo (2026-07-29, sistema de fatiga) — mismo criterio
@@ -1309,7 +1432,11 @@ model HarvestYield {
   world      World       @relation(fields: [worldId], references: [id], onDelete: Cascade)
   /// Clave de la especie ("corredor-de-cauce", "salvia-del-polvo") — string, no FK
   sourceSlug String
-  sourceName String
+  /// Categoría amplia de la fuente (2026-08-15, sustituye a sourceName — ver comentario de
+  /// HarvestYieldInput en worldCatalog.ts): agrupa varias fuentes bajo el mismo bucket en el front.
+  /// Clave de SOURCE_CATEGORY_NAMES (worldCatalog.ts) — el nombre legible se resuelve ahí
+  /// (sourceCategoryNameFor), no se guarda repetido en cada fila.
+  sourceCategory String
   itemId     String
   item       ItemCatalog @relation(fields: [itemId], references: [id], onDelete: Cascade)
   /// Cantidad FIJA por pieza/planta — la variación ya la puso la tirada de caza previa
@@ -1344,6 +1471,8 @@ enum PopulationTargetType {
   /// `HarvestYield.sourceSlug`. Permite saber determinísticamente qué hay disponible en la región
   /// del jugador al pulsar "Explorar" en una habilidad de recolección, sin pasar por el Narrador.
   RECURSO
+  FLORA
+  FACCION
 }
 
 /// Dos ejes DELIBERADAMENTE separados (decisión de diseño explícita de la usuaria, 2026-07-29):
@@ -1416,7 +1545,7 @@ model SessionSummary {
 /// punto 7). Primera pasada: solo TEXTO del prompt, sin renderizar nada todavía (decisión
 /// explícita de la usuaria) — tabla genérica por (worldId, entityType, entitySlug, sizeProfile) en
 /// vez de una columna por modelo (Npc/ItemCatalog/etc.) porque fauna/flora no tiene tabla propia
-/// (vive como sourceSlug/sourceName repetido en HarvestYield) y las habilidades de clase son
+/// (vive como sourceSlug repetido en HarvestYield) y las habilidades de clase son
 /// contenido estático en código (classAbilities.ts/startingAbilities.ts, sin fila de BD) — una
 /// tabla aparte cubre los cuatro tipos sin tocar cada modelo.
 model ImagePrompt {

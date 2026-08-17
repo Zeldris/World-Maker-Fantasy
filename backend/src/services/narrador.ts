@@ -152,7 +152,7 @@ interface TurnContext {
   /// alucinación adelantada del combate, no una licencia narrativa — se reintenta.
   combatNotYetResolved?: boolean;
   /// docs/19-post-combate-y-recompensas-mision.md, pieza 1 — true SOLO en el turno exacto en que
-  /// el NPC objetivo pasa a INCAPACITADO/MUERTO (no si ya estaba así de antes). Usado en
+  /// el NPC objetivo pasa a CONVALECIENTE/MUERTO (no si ya estaba así de antes). Usado en
   /// `combatBlock` para pedir explícitamente que se narre el momento de caer inconsciente/morir,
   /// en vez de dejarlo implícito (hoy el panel de victoria puede aparecer sin que la propia
   /// narración del golpe final lo haya descrito).
@@ -174,7 +174,7 @@ interface TurnContext {
   /// falta comprobar nada este turno (algún objeto SÍ se usó de verdad, o no hay ninguno médico/
   /// de energía en el inventario).
   possiblyFalseItemUseNames?: string[];
-  /// Ver `hasResurrectedDeadNpc` más abajo — nombres reales de NPCs INCAPACITADO/MUERTO presentes
+  /// Ver `hasResurrectedDeadNpc` más abajo — nombres reales de NPCs CONVALECIENTE/MUERTO presentes
   /// este turno (ver `npcSceneBlockFor`, npcScene.ts: ya reciben la instrucción explícita "no lo
   /// narres como una amenaza activa... nunca un encuentro nuevo"). Bug documentado en el propio
   /// runbook del proyecto (docs/revisar-partida.md § "NPCs que resucitan") — un modelo pequeño a
@@ -393,7 +393,7 @@ export interface SuggestionsContext {
   ambiente: string[];
 }
 
-const SUGGESTIONS_EXAMPLE_AND_RULES = `EJEMPLO 1, combate ya resuelto (referencia de forma, no de contenido — NUNCA copies ningún nombre de aquí, esto no existe en tu partida real): historial reciente "Gorhorn derriba a su rival de un golpe certero, dejándolo tendido en el suelo, incapaz de seguir luchando." → sugerencias ["Remato a mi rival caído para acabar con esto", "Registro su cuerpo en busca de algo útil", "Aparto la vista de él para ver si hay alguien más cerca"] — ninguna lo trata como si pudiera seguir defendiéndose (ya está incapacitado: rematarlo/registrarlo es coherente, "atacarlo" o "enfrentarlo" no). Nota cómo NINGUNA sugerencia inventa un nombre propio para el rival — usa solo lo que el historial de TU partida real te da.
+const SUGGESTIONS_EXAMPLE_AND_RULES = `EJEMPLO 1, combate ya resuelto (referencia de forma, no de contenido — NUNCA copies ningún nombre de aquí, esto no existe en tu partida real): historial reciente "Gorhorn derriba a su rival de un golpe certero, dejándolo tendido en el suelo, incapaz de seguir luchando." → sugerencias ["Remato a mi rival caído para acabar con esto", "Registro su cuerpo en busca de algo útil", "Aparto la vista de él para ver si hay alguien más cerca"] — ninguna lo trata como si pudiera seguir defendiéndose (ya está convaleciente: rematarlo/registrarlo es coherente, "atacarlo" o "enfrentarlo" no). Nota cómo NINGUNA sugerencia inventa un nombre propio para el rival — usa solo lo que el historial de TU partida real te da.
 
 EJEMPLO 2, un NPC te acaba de hablar/pedir algo (misma referencia de forma, NUNCA copies ningún nombre de aquí): historial reciente termina con alguien desconocido diciendo entre comillas "¿No quieres ayudarme? Empieza por quien me persigue — hazlo antes de que sea tarde." → sugerencias ["Acepto ayudarla y voy a por quien la persigue", "Le pregunto por qué la persiguen antes de decidir nada", "Me niego a ayudarla y sigo mi camino"] — LAS TRES responden de verdad a lo que acaba de pedir; ninguna lo ignora para hablar de otra cosa (nada de "registro la zona"/"busco huellas": eso ignoraría que alguien te está hablando ahora mismo).
 
@@ -401,7 +401,7 @@ Reglas: exactamente 3 sugerencias, en primera persona ("Ataco a...", "Le pregunt
 
 REGLA MÁS IMPORTANTE 1, sin excepciones (ver EJEMPLO 2): si el historial reciente TERMINA con un personaje dirigiéndose directamente al jugador — una pregunta, una petición, un diálogo en curso — al menos UNA sugerencia tiene que ser una respuesta directa a eso (aceptar, rechazar, preguntar algo más). Nunca las 3 pueden ignorarlo para hablar de otra cosa.
 
-REGLA MÁS IMPORTANTE 2, sin excepciones (ver EJEMPLO 1): si en "PERSONAJES EN ESCENA" se lista a alguien como INCAPACITADO o MUERTO, NUNCA sugieras atacarlo, enfrentarlo o combatir contra él.
+REGLA MÁS IMPORTANTE 2, sin excepciones (ver EJEMPLO 1): si en "PERSONAJES EN ESCENA" se lista a alguien como CONVALECIENTE o MUERTO, NUNCA sugieras atacarlo, enfrentarlo o combatir contra él.
 
 Si además hay MISIÓN ACTIVA con un objetivo concreto alcanzable desde aquí, SALUD/ENERGÍA baja del jugador, o algo en AMBIENTE sin usar todavía, puede que una tercera sugerencia (nunca a costa de saltarte la regla 1) apunte a eso — solo cuando de verdad encaje con la escena, nunca forzado.`;
 
@@ -461,7 +461,7 @@ Responde solo con el JSON pedido, nada más.`;
   }
 
   const parsed = JSON.parse(text) as { suggestions?: string[] };
-  const downedNpcNames = knownNpcs.filter((n) => n.condicionFisica === 'INCAPACITADO' || n.condicionFisica === 'MUERTO').map((n) => n.name);
+  const downedNpcNames = knownNpcs.filter((n) => n.condicionFisica === 'CONVALECIENTE' || n.condicionFisica === 'MUERTO').map((n) => n.name);
   const withoutDowned = dropSuggestionsTargetingDownedNpc(sanitizeSuggestions(parsed.suggestions), downedNpcNames);
   return dropSuggestionsReferencingPlayerByName(withoutDowned, ctx.characterName);
 }
@@ -497,7 +497,7 @@ export function npcsKnownFromLog<T extends { name: string }>(npcs: T[], recentLo
 
 /// Red de seguridad determinista (no confiar solo en la instrucción del prompt, mismo criterio que
 /// `hasFalseCombatMiss`) para el bug real de referencia: descarta cualquier sugerencia que combine
-/// el nombre de un NPC YA incapacitado/muerto con un verbo de INICIO de combate — "remato a X"/
+/// el nombre de un NPC YA convaleciente/muerto con un verbo de INICIO de combate — "remato a X"/
 /// "registro a X"/"me alejo de X" siguen siendo coherentes con alguien ya caído y NO se tocan, solo
 /// se filtra la variante que lo trata como si pudiera seguir defendiéndose.
 const COMBAT_INITIATION_VERB_REGEX = /\b(atac[oa]|atacar|enfrent[oa]|enfrentar|pele[oa]|pelear|combat[oe]|combatir)\b/i;
@@ -607,7 +607,7 @@ export function buildNarrationPrompt(ctx: TurnContext & { roll?: RollResult }): 
   const combatBlock = ctx.enCombate
     ? `ESTÁS DENTRO DE UN COMBATE (docs/14-combate-y-muerte.md § 2.3): narra en 1-2 frases, corto y directo, el intercambio de ESTE turno — nada de ambientación de relleno, es el ritmo de un choque, no una escena. Puedes proponer "condicionFisica" si el personaje sale herido de este intercambio (nunca lo cures aquí salvo que la acción sea explícitamente curarse).${
         ctx.npcFallsUnconsciousThisTurn
-          ? ' Este golpe deja al rival INCAPACITADO o MUERTO — tu narración de este turno tiene que describir explícitamente ese momento, no dejarlo implícito ni solo insinuado. Si queda INCAPACITADO (no MUERTO): sigue consciente, solo sin fuerzas para seguir luchando — cae de rodillas, se desploma malherido, tambalea sin poder levantarse... NUNCA lo narres inconsciente/desmayado/sin sentido (un rival inconsciente de verdad no podría seguir combatiendo si el jugador no lo remata ya mismo, y el juego permite que la pelea continúe). Si MUERE, ahí sí es el final.'
+          ? ' Este golpe deja al rival CONVALECIENTE o MUERTO — tu narración de este turno tiene que describir explícitamente ese momento, no dejarlo implícito ni solo insinuado. Si queda CONVALECIENTE (no MUERTO): sigue consciente, solo sin fuerzas para seguir luchando — cae de rodillas, se desploma malherido, tambalea sin poder levantarse... NUNCA lo narres inconsciente/desmayado/sin sentido (un rival inconsciente de verdad no podría seguir combatiendo si el jugador no lo remata ya mismo, y el juego permite que la pelea continúe). Si MUERE, ahí sí es el final.'
           : ''
       }${
         ctx.jugadorRecibeGolpeEsteTurno
@@ -772,7 +772,7 @@ Responde solo con el JSON pedido, nada más.`;
       },
       condicionFisica: {
         type: ['string', 'null'],
-        enum: ['ILESO', 'HERIDO', 'GRAVE', 'INCAPACITADO', 'MUERTO', null],
+        enum: ['ILESO', 'HERIDO', 'GRAVE', 'CONVALECIENTE', 'MUERTO', null],
       },
       combateIniciado: {
         type: ['object', 'null'],
@@ -911,7 +911,7 @@ export async function narrateAction(ctx: TurnContext & { roll?: RollResult }): P
         { check: () => hasFalseItemUse(parsed.narration, ctx.possiblyFalseItemUseNames), reason: 'narrar el uso de un objeto que no se consumió de verdad' },
         {
           check: () => hasResurrectedDeadNpc(parsed.narration, ctx.possiblyResurrectedNpcNames),
-          reason: 'narrar a un NPC incapacitado/muerto como si siguiera activo',
+          reason: 'narrar a un NPC convaleciente/muerto como si siguiera activo',
         },
         {
           check: () => hasGisteraReencuentroSinNombrar(parsed.narration, ctx.gisteraSeHaMarchado),
@@ -1255,7 +1255,7 @@ export function hasFalseEquipmentChangeClaim(narration: string, equippableItemNa
 }
 
 /// Narración-vs-mecánica, mismo patrón que `hasFalseCombatHit` (2026-08-01, bug real jugando en
-/// vivo: descansar tras quedar INCAPACITADO no cura solo por descansar — hace falta un objeto
+/// vivo: descansar tras quedar CONVALECIENTE no cura solo por descansar — hace falta un objeto
 /// médico real, ver healCeilingFor/death.ts — pero la narración dijo "agarra la cataplasma de
 /// salvia del polvo y aplica una fina capa en una herida abierta", aunque el jugador nunca la
 /// nombró en su acción y el objeto seguía intacto en el inventario después). El prompt YA deja
@@ -1298,7 +1298,7 @@ export function hasFalseItemUse(narration: string, possiblyFalseItemUseNames?: s
 /// reconoce el paso de un orco — probablemente el Orco Enfurecido" — implicando que sigue vivo y
 /// merodeando. `npcSceneBlockFor` (npcScene.ts) YA le da al modelo la instrucción explícita de
 /// tratarlo solo como "un cadáver ya visto, un recuerdo... nunca un encuentro nuevo" cuando está
-/// INCAPACITADO/MUERTO, pero un modelo pequeño la ignora bajo la misma presión creativa que el
+/// CONVALECIENTE/MUERTO, pero un modelo pequeño la ignora bajo la misma presión creativa que el
 /// resto de esta lista. Vocabulario centrado en SEÑALES DE PRESENCIA RECIENTE/ACTIVA (huellas
 /// frescas, "sigue vivo", reaparece...) — deliberadamente no cualquier mención del nombre, para no
 /// disparar con un recuerdo legítimo en pasado ("recordó cuando luchó contra el Orco Enfurecido").

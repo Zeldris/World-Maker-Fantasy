@@ -24,6 +24,10 @@ export interface IngredientRequirement {
 export interface CatalogLookup {
   tipo: ItemTipo;
   category: string;
+  /// Herramienta requerida por oficio (2026-08-17) — opcional: no todos los callers de
+  /// `CatalogLookup` lo rellenan (solo hace falta donde se comprueba `CraftingRecipe.oficio`, ver
+  /// `hasToolForOficio` en crafting.ts). Undefined = "sin dato", tratado igual que `[]`.
+  herramientaParaOficio?: string[];
 }
 
 export interface InventoryRowLike {

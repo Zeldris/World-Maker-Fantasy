@@ -2,14 +2,15 @@ import type { FastifyInstance } from 'fastify';
 import { prisma } from '../../lib/prisma.js';
 import { metodoForOficio } from '../../services/harvestAbilities.js';
 import { detectHarvestSourcesInScene } from '../../services/harvest.js';
-import { detectNpcsInScene, scopeFor } from '../../services/npcScene.js';
+import { detectNpcsInScene, scopeFor, hasPendingLoot } from '../../services/npcScene.js';
 import { loadSessionFacts, appendSessionFacts } from '../../services/worldFacts.js';
 import { inventoryCapacityFor, totalInventoryUnits } from '../../services/inventoryCapacity.js';
 import { effectiveInventorySlotsBonus } from '../../services/equipment.js';
 import { stripRegionArticle } from '../../services/population.js';
 import { pasaFiltroTerreno } from '../../services/terrain.js';
-import { locationTerrainTags, harvestSourceTerrainTag } from '../../scripts/worldCatalog.js';
+import { locationTerrainTags, harvestSourceTerrainTag, sourceCategoryNameFor } from '../../scripts/worldCatalog.js';
 import { quantityOf } from '../../services/ingredients.js';
+import { hasToolForOficio, OFICIOS_CON_HERRAMIENTA_REQUERIDA } from '../../services/crafting.js';
 import { closeItemQuests } from '../../services/questResolution.js';
 import { recordEntityDiscoveries } from '../../services/entityDiscovery.js';
 import { advanceFictionalMinutes, formatFictionalDate } from '../../services/worldClock.js';
@@ -24,7 +25,7 @@ import type { MetodoObtencion } from '@prisma/client';
 /// Desuello (CAZA, petición explícita 2026-08-09: "que al usar la habilidad de profesión de
 /// desollar funcione como el resto y explore la zona con los cadáveres derrotados en la zona")
 /// funciona distinto al resto de recolectoras: no hay `WorldPopulation` tipo RECURSO ni
-/// "Explorar" propio — sus "fuentes" son fauna YA vencida en combate (INCAPACITADO/MUERTO,
+/// "Explorar" propio — sus "fuentes" son fauna YA vencida en combate (CONVALECIENTE/MUERTO,
 /// decapitada o no) que la propia escena ya reconoce (`detectNpcsInScene`, mismo mecanismo
 /// determinista que saqueo/decapitar) y que todavía no se ha despiezado. Ver
 /// `carcassCandidatesFor` más abajo.
@@ -59,9 +60,50 @@ function minutosRecoleccionFor(totalUnidades: number): number {
 
 interface SourceCandidate {
   sourceSlug: string;
-  sourceName: string;
+  sourceCategory: string;
   disponible: number;
   yields: { itemSlug: string; itemName: string; cantidadMaxima: number }[];
+}
+
+interface CategoryYield {
+  /// Fuente real de la que viene ESTE yield concreto (2026-08-15, agrupado por categoría) — el
+  /// frontend lo necesita para mandar la selección correcta a /confirmar, aunque visualmente varias
+  /// fuentes distintas ahora compartan una sola tarjeta.
+  sourceSlug: string;
+  itemSlug: string;
+  itemName: string;
+  cantidadMaxima: number;
+  /// Población real de LA FUENTE de este yield (no un tope compartido de todo el grupo) — dos
+  /// fuentes de la misma categoría pueden tener poblaciones distintas.
+  disponible: number;
+}
+
+interface CategoryCandidate {
+  sourceCategory: string;
+  sourceCategoryName: string;
+  yields: CategoryYield[];
+}
+
+/// Agrupa candidatos individuales (uno por `sourceSlug`) en tarjetas por categoría amplia
+/// (2026-08-15, petición explícita: "que sea automático, lo que meta en el enum y lo que linke en
+/// el item... que aparezcan los items categorizados en el front bajo esa categoría nueva") — dar de
+/// alta una categoría nueva en `SOURCE_CATEGORY_NAMES` (worldCatalog.ts) y enlazarla desde una fila
+/// de `HarvestYield` basta para que aparezca agrupada aquí, sin tocar este archivo. El cooldown/
+/// consumo real sigue siendo por `sourceSlug` individual (cada yield agrupado conserva el suyo) —
+/// el agrupado es puramente de presentación.
+function groupByCategory(rawCandidates: SourceCandidate[]): CategoryCandidate[] {
+  const yieldsByCategory = new Map<string, CategoryYield[]>();
+  for (const c of rawCandidates) {
+    if (!yieldsByCategory.has(c.sourceCategory)) yieldsByCategory.set(c.sourceCategory, []);
+    yieldsByCategory.get(c.sourceCategory)!.push(
+      ...c.yields.map((y) => ({ sourceSlug: c.sourceSlug, itemSlug: y.itemSlug, itemName: y.itemName, cantidadMaxima: y.cantidadMaxima, disponible: c.disponible })),
+    );
+  }
+  return [...yieldsByCategory.entries()].map(([sourceCategory, yields]) => ({
+    sourceCategory,
+    sourceCategoryName: sourceCategoryNameFor(sourceCategory),
+    yields,
+  }));
 }
 
 /// Fuentes candidatas para `oficio` en la región actual: las que tienen HarvestYield con el
@@ -119,7 +161,7 @@ async function candidateSourcesFor(
     }
     candidates.push({
       sourceSlug: pop.targetSlug,
-      sourceName: sourceRows[0].sourceName,
+      sourceCategory: sourceRows[0].sourceCategory,
       disponible: pop.poblacion,
       yields: sourceRows.map((r) => ({ itemSlug: r.item.slug, itemName: r.item.name, cantidadMaxima: r.cantidad })),
     });
@@ -129,16 +171,18 @@ async function candidateSourcesFor(
 
 /// Desuello (2026-08-09, ver comentario de cabecera) — "candidatos" son fauna ya en escena
 /// (`detectNpcsInScene`, mismo mecanismo determinista que ya usan saqueo/decapitar) que está
-/// vencida (`condicionFisica` INCAPACITADO o MUERTO — se pueda o no rematar/decapitar, no hace
-/// falta que esté MUERTA en concreto) y que todavía no se ha despiezado (`!saqueado`, mismo campo
-/// que ya reutiliza harvest.ts § `detectHarvest` para "yaDespiezada"). Solo cuenta fauna real
-/// (`ataqueNatural` no nulo — humanoides no se desuellan) con al menos una fila HarvestYield de
-/// método CAZA para su slug. Sin cooldown ni "Explorar": no hay nada que redescubrir, o el cadáver
-/// sigue en escena o no.
+/// vencida (`condicionFisica` CONVALECIENTE o MUERTO — se pueda o no rematar/decapitar, no hace
+/// falta que esté MUERTA en concreto) y que todavía no se ha despiezado del todo
+/// (`hasPendingLoot`, npcScene.ts — único punto de verdad, auditoría de deuda técnica 2026-08-18,
+/// compartido con `harvest.ts` § `yaDespiezada`/`panels.ts` § `saquear-zona`; antes esta función
+/// comparaba `!saqueado` a secas, sin la rama de `groupSize`, lo que bloqueaba el desuello del
+/// resto de un grupo cazado — bug real ya corregido). Solo cuenta fauna real (`ataqueNatural` no
+/// nulo — humanoides no se desuellan) con al menos una fila HarvestYield de método CAZA para su
+/// slug. Sin cooldown ni "Explorar": no hay nada que redescubrir, o el cadáver sigue en escena o no.
 async function carcassCandidatesFor(worldId: string, saveId: string, currentLocationId: string | null, sessionFacts: string[]): Promise<SourceCandidate[]> {
   const npcsInScene = await detectNpcsInScene({ action: '', worldId, sessionFacts, saveId, currentLocationId });
   const carcasses = npcsInScene.filter(
-    (n) => n.ataqueNatural !== null && !n.saqueado && (n.condicionFisica === 'INCAPACITADO' || n.condicionFisica === 'MUERTO'),
+    (n) => n.ataqueNatural !== null && hasPendingLoot(n) && (n.condicionFisica === 'CONVALECIENTE' || n.condicionFisica === 'MUERTO'),
   );
   if (carcasses.length === 0) return [];
 
@@ -158,7 +202,10 @@ async function carcassCandidatesFor(worldId: string, saveId: string, currentLoca
       const yieldRows = bySlug.get(c.slug)!;
       return {
         sourceSlug: c.slug,
-        sourceName: c.name,
+        // 2026-08-15: ahora sí se agrupa por categoría (fauna), igual que el resto de fuentes —
+        // dos cadáveres distintos en la misma escena se ven bajo la misma tarjeta "Fauna" en vez
+        // de una tarjeta por cadáver.
+        sourceCategory: yieldRows[0].sourceCategory,
         // A diferencia de RECURSO (`disponible` = población real, un tope compartido entre
         // yields), un cadáver da CADA yield una sola vez, entero — `disponible` aquí solo existe
         // para no truncar `Math.min(cantidadMaxima, disponible)` en el modal, así que se fija al
@@ -180,8 +227,8 @@ export async function recolectarRoutes(app: FastifyInstance) {
 
     if (metodo === 'CAZA') {
       const sessionFacts = await loadSessionFacts(save.id);
-      const sources = await carcassCandidatesFor(save.worldId, save.id, save.currentLocationId, sessionFacts);
-      return { sources, puedeExplorar: false, enCooldown: false };
+      const rawCandidates = await carcassCandidatesFor(save.worldId, save.id, save.currentLocationId, sessionFacts);
+      return { sources: groupByCategory(rawCandidates), puedeExplorar: false, enCooldown: false };
     }
 
     const { candidates, anyOnCooldown } = await candidateSourcesFor(
@@ -198,7 +245,7 @@ export async function recolectarRoutes(app: FastifyInstance) {
       sessionFacts,
       candidates.map((c) => c.sourceSlug),
     );
-    const sources = candidates.filter((c) => localizados.includes(c.sourceSlug));
+    const sources = groupByCategory(candidates.filter((c) => localizados.includes(c.sourceSlug)));
     return { sources, puedeExplorar: sources.length === 0, enCooldown: sources.length === 0 && anyOnCooldown };
   });
 
@@ -224,12 +271,15 @@ export async function recolectarRoutes(app: FastifyInstance) {
     if (candidates.length === 0) return { sources: [], enCooldown: anyOnCooldown };
 
     const sessionFacts = await loadSessionFacts(save.id);
+    // Una frase por categoría DISTINTA descubierta (2026-08-15, ya no por sourceSlug) — evita
+    // repetir "localiza mineral en la zona" dos veces si hay dos fuentes minerales a la vez.
+    const distinctCategories = [...new Set(candidates.map((c) => c.sourceCategory))];
     await appendSessionFacts(
       save.id,
       sessionFacts,
-      candidates.map((c) => `${save.characterName} localiza ${c.sourceName.toLowerCase()} en la zona.`),
+      distinctCategories.map((cat) => `${save.characterName} localiza ${sourceCategoryNameFor(cat).toLowerCase()} en la zona.`),
     );
-    return { sources: candidates };
+    return { sources: groupByCategory(candidates) };
   });
 
   app.post<{ Params: { id: string }; Body: { selections: { sourceSlug: string; itemSlug: string; cantidad: number }[] } }>(
@@ -286,6 +336,22 @@ export async function recolectarRoutes(app: FastifyInstance) {
         // se añaden esas 3 (mismo criterio de "coger lo que se pueda" que el resto de este motor).
         let unitsRemaining = Math.max(0, capacity - totalInventoryUnits(currentItems));
 
+        // Herramienta requerida (2026-08-17, "usar la recolección de desuello" depende de tener
+        // la herramienta encima) — comprobado UNA vez para toda la petición, no por selección:
+        // metodoObtencion 'CAZA' aquí es siempre desuello (despiece de una presa ya derrotada, ver
+        // comentario de cabecera), nunca la caza de una presa viva (eso vive en otra ruta).
+        const hasDesolladorTool = OFICIOS_CON_HERRAMIENTA_REQUERIDA.includes('desollador')
+          ? await (async () => {
+              const toolRows = await tx.inventoryItem.findMany({ where: { saveId: save.id }, select: { id: true, name: true, catalogSlug: true } });
+              const toolCatalogSlugs = [...new Set(toolRows.map((r) => r.catalogSlug).filter((s): s is string => Boolean(s)))];
+              const toolCatalogRows = toolCatalogSlugs.length
+                ? await tx.itemCatalog.findMany({ where: { worldId: save.worldId, slug: { in: toolCatalogSlugs } }, select: { slug: true, tipo: true, category: true, herramientaParaOficio: true } })
+                : [];
+              const toolCatalogBySlug = new Map(toolCatalogRows.map((c) => [c.slug, c]));
+              return hasToolForOficio('desollador', toolRows, toolCatalogBySlug);
+            })()
+          : true;
+
         // Acumula en la pila ya existente en vez de crear siempre una fila nueva (bug real jugando
         // en vivo, 2026-08-07: "Piedra (3)" + "Piedra (3)" sueltas en vez de "Piedra (6)") — mismo
         // patrón de cantidad-en-el-nombre que ya usa crafteo/construcción (`quantityOf`/
@@ -322,6 +388,7 @@ export async function recolectarRoutes(app: FastifyInstance) {
           const cantidad = Math.min(sel.cantidad, yieldRow.cantidad, unitsRemaining);
 
           if (yieldRow.metodoObtencion === 'CAZA') {
+            if (!hasDesolladorTool) continue;
             // Desuello (2026-08-09): no hay `WorldPopulation` que depletar — el "recurso" es la
             // presa misma, ya reducida al morir en combate. Claim atómico sobre `NpcState.saqueado`
             // (mismo guard-en-el-where que ya usa el saqueo de NPCs con nombre): una única fuente

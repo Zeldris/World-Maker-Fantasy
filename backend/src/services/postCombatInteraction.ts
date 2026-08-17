@@ -1,4 +1,4 @@
-/// Interacción con un NPC/fauna ya incapacitado o muerto, FUERA de un combate activo (docs/19-post-
+/// Interacción con un NPC/fauna ya convaleciente o muerto, FUERA de un combate activo (docs/19-post-
 /// combate-y-recompensas-mision.md pieza 2, decisión explícita de la usuaria, 2026-08-13) — a
 /// diferencia del validador de grounding (playerActionValidation.ts), esto no rechaza nada: es un
 /// atajo mecánico legítimo. Si el jugador nombra específicamente en su acción a alguien ya resuelto
@@ -17,7 +17,7 @@ export interface PostCombatInteractionCandidate {
 export interface PostCombatInteractionTarget {
   slug: string;
   name: string;
-  condicionFisica: 'INCAPACITADO' | 'MUERTO';
+  condicionFisica: 'CONVALECIENTE' | 'MUERTO';
   saqueado: boolean;
 }
 
@@ -27,8 +27,8 @@ export interface PostCombatInteractionTarget {
 export function detectsPostCombatInteraction(action: string, npcsInScene: PostCombatInteractionCandidate[]): PostCombatInteractionTarget | null {
   const normalizedAction = normalizeText(action);
   const target = npcsInScene.find(
-    (n) => (n.condicionFisica === 'INCAPACITADO' || n.condicionFisica === 'MUERTO') && matchesAliasBoundary(normalizedAction, normalizeText(n.name)),
+    (n) => (n.condicionFisica === 'CONVALECIENTE' || n.condicionFisica === 'MUERTO') && matchesAliasBoundary(normalizedAction, normalizeText(n.name)),
   );
   if (!target) return null;
-  return { slug: target.slug, name: target.name, condicionFisica: target.condicionFisica as 'INCAPACITADO' | 'MUERTO', saqueado: target.saqueado };
+  return { slug: target.slug, name: target.name, condicionFisica: target.condicionFisica as 'CONVALECIENTE' | 'MUERTO', saqueado: target.saqueado };
 }

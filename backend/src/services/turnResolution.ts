@@ -57,6 +57,8 @@ import {
   canCraft,
   craftRequisitoShortfalls,
   planCraftConsumption,
+  hasToolForOficio,
+  OFICIOS_CON_HERRAMIENTA_REQUERIDA,
 } from './crafting.js';
 import {
   detectsBuildIntent,
@@ -98,12 +100,11 @@ import {
   whisperText,
   isValidRestLocationKind,
   isCondicionDowngrade,
-  oneStepWorseThan,
   nextCondicionForAttack,
   saludForCondicion,
   saludBandFor,
   healCeilingFor,
-  npcRecoversFromIncapacitado,
+  npcRecoversFromConvaleciente,
   npcCorpseShouldDespawn,
 } from './death.js';
 import { continentForRegion, oppositeContinent } from '../lib/continent.js';
@@ -148,6 +149,11 @@ interface NarrateAndPersistParams {
   classification: ClassificationResult;
   roll?: RollResult;
   attributes: AttributeBlock;
+  /// Recetas de crafteo desbloqueadas por recompensa de misión (2026-08-17) — ver
+  /// CraftingRecipe.requiresUnlock (crafting.ts) y Save.unlockedRecipeKeys (schema.prisma).
+  /// Opcional (default `[]`): el turno diferido de worldTick.ts todavía no lo pasa — sin ninguna
+  /// receta `requiresUnlock:true` hoy, el efecto es idéntico a no pasarlo nunca.
+  unlockedRecipeKeys?: string[];
   /// Sesión de diseño 2026-07-23: nunca se pasa a rollCheck — solo alimenta comprobaciones de
   /// UMBRAL (requisitos de crafteo/construcción, ver requisitos.ts).
   secondaryAttributes: SecondaryAttributeBlock;
@@ -418,7 +424,7 @@ export interface NarrateAndPersistResult {
   /// narración libre del modelo no garantizaba mencionar qué habilidad usó el NPC — este campo
   /// da al frontend el nombre real, ya resuelto, de la habilidad de ataque/defensa que el NPC
   /// acaba de usar en el intercambio de ESTE turno. null si no hubo intercambio de combate.
-  npcAbilityUsed: { npcName: string; abilityName: string; rol: 'ataque' | 'defensa' } | null;
+  npcAbilityUsed: { npcName: string; abilityName: string; rol: 'ataque' | 'defensa'; maxUsesPerCombat?: number | null } | null;
   /// Revisión de partida 2026-08-08, petición explícita: "que aparezca el resultado de las
   /// tiradas... qué atributo y valor sacó [el jugador] y el del enemigo y por qué perdió o ganó" —
   /// las dos tiradas reales del intercambio de ESTE turno (ver `CombatExchangeDisplay`,
@@ -494,9 +500,11 @@ export interface CombatExchangePhaseInput {
   attributes: AttributeBlock;
   defensa: number;
   characterName: string;
-  abilityEffect: AbilityEffect | null;
+  /// Lista (2026-08-15, "que una habilidad pueda tener múltiples AbilityEffects") — [] en texto
+  /// libre sin botón o si la habilidad elegida no lleva ningún efecto mecánico.
+  abilityEffects: AbilityEffect[];
   /// Rediseño de combate (2026-08-09) — rol de la habilidad elegida por el jugador este turno,
-  /// paralelo a `abilityEffect` (mismo criterio: null en texto libre sin botón). Decide si este
+  /// paralelo a `abilityEffects` (mismo criterio: null en texto libre sin botón). Decide si este
   /// intercambio se resuelve por `resolveExchange` (ataque-vs-defensa, tabla cruzada) o por
   /// `resolveIndependentExchange` (en cuanto CUALQUIER lado es 'utilidad' — tiradas independientes,
   /// ver combatExchange.ts) y si el gate de daño incondicional (`countsAsAttack` más abajo) se
@@ -527,11 +535,11 @@ export interface CombatExchangePhaseResult {
   npcAttackHits: boolean;
   npcTargetNewCondicion: CondicionFisica | null;
   jugadorRecibeGolpe: boolean;
-  jugadorGolpeEfecto: AbilityEffect | null;
+  jugadorGolpeEfectos: AbilityEffect[];
   nuevoPendingNpcAttack: PendingNpcAttack | null;
   exchangeNarrationBlock: string | null;
   combatExchangeRoll: RollResult | null;
-  npcAbilityUsed: { npcName: string; abilityName: string; rol: 'ataque' | 'defensa' } | null;
+  npcAbilityUsed: { npcName: string; abilityName: string; rol: 'ataque' | 'defensa'; maxUsesPerCombat?: number | null } | null;
   /// Cara visible de las dos tiradas del intercambio (jugador y NPC), ver
   /// `CombatExchangeDisplay` (combatExchange.ts) — null si no hubo intercambio real este turno.
   combatExchangeDisplay: CombatExchangeDisplay | null;
@@ -546,7 +554,7 @@ export interface CombatExchangePhaseResult {
   /// tienen mucho sentido con la narración... no queda claro si la estás usando") — a diferencia
   /// del golpe/fallo normal (que ya tiene su bloque `exchangeNarrationBlock`), el efecto real de
   /// ATURDIMIENTO/INTIMIDACION (quién gana la iniciativa siguiente) y REMATE (mata solo si el
-  /// objetivo ya estaba GRAVE/INCAPACITADO) se decidía puramente en memoria y nunca se le
+  /// objetivo ya estaba GRAVE/CONVALECIENTE) se decidía puramente en memoria y nunca se le
   /// mencionaba al Narrador — el modelo solo veía golpea/falla, nunca "esto además lo aturdió" o
   /// "el remate no bastó para matarlo". Null salvo cuando el jugador ataca (tiene la iniciativa)
   /// con una de estas 3 habilidades.
@@ -556,6 +564,11 @@ export interface CombatExchangePhaseResult {
   /// rival). El caller (narrateAndPersistTurn) escribe `NpcState.analizado = true` cuando esto es
   /// cierto, mismo criterio idempotente que el resto de NpcState.
   analizarRivalExito: boolean;
+  /// RECUPERACION (2026-08-17) — bonus de energía del jugador este intercambio, aparte del
+  /// `energyRegen` propio de la habilidad; el bonus del lado NPC ya se suma dentro de esta función
+  /// a `npcNuevaEnergia` directamente (no necesita salir aparte). El caller lo suma a su propio
+  /// cálculo de `nuevaEnergia` (fuera de esta función, no tiene acceso a `energiaMax` del jugador).
+  jugadorRecuperacionExtra: number;
 }
 
 /// Rediseño de combate (2026-08-09) — ¿se dispara el efecto reactivo de una habilidad
@@ -571,40 +584,54 @@ export interface CombatExchangePhaseResult {
 ///   reaccionar, así que nunca se dispara).
 function utilityTriggered(
   ownRol: 'ataque' | 'defensa' | 'utilidad',
-  ownEffect: AbilityEffect | null,
+  ownEffects: AbilityEffect[],
   ownEfectoAplica: boolean,
   opponentRol: 'ataque' | 'defensa' | 'utilidad',
 ): boolean {
   if (ownRol !== 'utilidad' || !ownEfectoAplica) return false;
-  if (ownEffect === 'ANALISIS') return true;
+  if (ownEffects.includes('ANALISIS')) return true;
   return opponentRol === 'ataque';
 }
 
-/// Frase "YA RESUELTO" para el Narrador sobre el efecto concreto de una habilidad de utilidad
-/// (rediseño de combate, 2026-08-09) — companion de `utilityTriggered`, misma lista de 4 efectos.
+/// Frase "YA RESUELTO" para el Narrador sobre CADA efecto concreto de una habilidad de utilidad
+/// (rediseño de combate, 2026-08-09; multi-efecto 2026-08-15, "que una habilidad pueda tener
+/// múltiples AbilityEffects") — companion de `utilityTriggered`. Una habilidad con varios efectos
+/// reconocidos aquí concatena una frase por cada uno; un efecto no reconocido (la mayoría de los
+/// ~19 nuevos siguen sin mecánica propia, ver schema.prisma § AbilityEffect — RECUPERACION es el
+/// primero implementado, 2026-08-17) simplemente no añade nada, no revienta.
 /// `userName`/`rivalName` son de quién usó la utilidad y contra quién, en ese orden (funciona
 /// igual si es el jugador o el NPC quien la usó — el caller decide el orden de los nombres).
-function utilityNarrationHint(effect: AbilityEffect | null, triggered: boolean, userName: string, rivalName: string): string {
-  switch (effect) {
-    case 'ATAQUE': // Contraataque
-      return triggered
-        ? `El contraataque de ${userName} responde de vuelta contra ${rivalName} — narra el golpe de respuesta, aparte del ataque original.`
-        : `${userName} se prepara para contraatacar, pero no llega a responder de verdad esta vez (o ${rivalName} no atacó con daño) — no hay golpe de respuesta que narrar.`;
-    case 'INTIMIDACION': // Grito de Guerra
-      return triggered
-        ? `El grito de ${userName} quiebra por completo el ataque de ${rivalName} — su golpe NO llega a conectar en absoluto, y ${userName} se queda con la iniciativa del próximo intercambio. Narra el ataque frustrado, nunca un golpe que sí llega.`
-        : `El grito de ${userName} no consigue nada especial esta vez (${rivalName} no atacó con daño, o el intento falla) — narra sin ningún efecto añadido.`;
-    case 'ATURDIMIENTO': // Instinto Salvaje
-      return triggered
-        ? `El arrebato de ${userName} desorienta a ${rivalName} — ${userName} se queda con la iniciativa del próximo intercambio (el golpe de ${rivalName}, si conecta, sigue haciéndolo igual). Narra el desconcierto, sin que esto por sí solo hiera a nadie.`
-        : `El arrebato de ${userName} no consigue desorientar a nadie esta vez (${rivalName} no atacó con daño, o el intento falla).`;
-    case 'ANALISIS': // Analizar rival
-      return triggered
-        ? `${userName} lee con éxito el punto débil de ${rivalName} — narra el instante de estudio, nunca un golpe.`
-        : `${userName} intenta leer a ${rivalName} pero no consigue sacar nada útil esta vez — narra el intento fallido, nunca un golpe.`;
-    default:
-      return '';
-  }
+const UTILITY_EFFECT_NARRATION: Partial<Record<AbilityEffect, (triggered: boolean, userName: string, rivalName: string) => string>> = {
+  ATAQUE: (triggered, userName, rivalName) => // Contraataque
+    triggered
+      ? `El contraataque de ${userName} responde de vuelta contra ${rivalName} — narra el golpe de respuesta, aparte del ataque original.`
+      : `${userName} se prepara para contraatacar, pero no llega a responder de verdad esta vez (o ${rivalName} no atacó con daño) — no hay golpe de respuesta que narrar.`,
+  INTIMIDACION: (triggered, userName, rivalName) => // Grito de Guerra
+    triggered
+      ? `El grito de ${userName} quiebra por completo el ataque de ${rivalName} — su golpe NO llega a conectar en absoluto, y ${userName} se queda con la iniciativa del próximo intercambio. Narra el ataque frustrado, nunca un golpe que sí llega.`
+      : `El grito de ${userName} no consigue nada especial esta vez (${rivalName} no atacó con daño, o el intento falla) — narra sin ningún efecto añadido.`,
+  ATURDIMIENTO: (triggered, userName, rivalName) => // Instinto Salvaje/Barrido Salvaje
+    triggered
+      ? `El arrebato de ${userName} desorienta a ${rivalName} — ${userName} se queda con la iniciativa del próximo intercambio (el golpe de ${rivalName}, si conecta, sigue haciéndolo igual). Narra el desconcierto, sin que esto por sí solo hiera a nadie.`
+      : `El arrebato de ${userName} no consigue desorientar a nadie esta vez (${rivalName} no atacó con daño, o el intento falla).`,
+  ANALISIS: (triggered, userName, rivalName) => // Analizar rival
+    triggered
+      ? `${userName} lee con éxito el punto débil de ${rivalName} — narra el instante de estudio, nunca un golpe.`
+      : `${userName} intenta leer a ${rivalName} pero no consigue sacar nada útil esta vez — narra el intento fallido, nunca un golpe.`,
+  // RECUPERACION (2026-08-17, primera mecánica real de los ~19 efectos que la usuaria dejó solo
+  // como nombre + comentario) — recupera energía de más allá del `energyRegen` propio de la
+  // habilidad (ver RECUPERACION_ENERGY_BONUS más arriba), sin cancelar ni añadir ningún golpe.
+  RECUPERACION: (triggered, userName) =>
+    triggered
+      ? `${userName} recupera un extra de aliento con este movimiento — narra el respiro, sin que afecte al golpe en sí.`
+      : `${userName} intenta recuperar aliento con este movimiento, pero no llega a conseguirlo esta vez.`,
+};
+
+function utilityNarrationHint(effects: AbilityEffect[], triggered: boolean, userName: string, rivalName: string): string {
+  return effects
+    .map((effect) => UTILITY_EFFECT_NARRATION[effect]?.(triggered, userName, rivalName))
+    .filter((text): text is string => !!text)
+    .join(' ');
 }
 
 /// Rediseño del turno de combate (2026-07-28, extraído a función propia en la auditoría de
@@ -616,7 +643,7 @@ function utilityNarrationHint(effect: AbilityEffect | null, triggered: boolean, 
 /// iniciativa del PRÓXIMO intercambio. Puro respecto a la base de datos (no escribe nada); quien
 /// llama decide qué persistir con el resultado.
 function resolveCombatExchangePhase(input: CombatExchangePhaseInput): CombatExchangePhaseResult {
-  const { npcParaIntercambio, pendingNpcAttack, pendingNpcStillHere, attributes, defensa, characterName, abilityEffect, abilityRol } = input;
+  const { npcParaIntercambio, pendingNpcAttack, pendingNpcStillHere, attributes, defensa, characterName, abilityEffects, abilityRol } = input;
 
   let npcAttackTarget: NpcInScene | null = null;
   let npcAttackHits = false;
@@ -625,7 +652,16 @@ function resolveCombatExchangePhase(input: CombatExchangePhaseInput): CombatExch
   // iniciativa (ataque directo), o incluso atacando él mismo, si su ataque falla del todo y la
   // defensa del NPC es tan buena que de propina replica (`defensor_contragolpea`).
   let jugadorRecibeGolpe = false;
-  let jugadorGolpeEfecto: AbilityEffect | null = null;
+  let jugadorGolpeEfectos: AbilityEffect[] = [];
+  // RECUPERACION (2026-08-17, "sirve para recuperar la energia indicada por la habilidad") — bonus
+  // de energía aparte del `energyRegen` propio de la habilidad, solo cuando el efecto de verdad se
+  // dispara (mismo `jugadorDisparo`/`npcDisparo` que ya gatea ATAQUE/INTIMIDACION/ATURDIMIENTO).
+  // Cifra fija (2026-08-17): no hay ningún dato en el catálogo hoy que exprese "cuánta energía
+  // recupera" por separado del `energyRegen` normal — mismo criterio que el resto de cifras nuevas
+  // de esta pasada (documentado, ajustable si hace falta).
+  const RECUPERACION_ENERGY_BONUS = 15;
+  let jugadorRecuperacionExtra = 0;
+  let npcRecuperacionExtra = 0;
   // Ataque de NPC para el PRÓXIMO intercambio, si la iniciativa lo favorece — se persiste en
   // Save.pendingNpcAttack (ver tx.save.update más abajo) para que el jugador lo defienda a
   // ciegas en su siguiente sumisión.
@@ -650,7 +686,7 @@ function resolveCombatExchangePhase(input: CombatExchangePhaseInput): CombatExch
   // Nombre real de la habilidad de ataque/defensa que usó el NPC en el intercambio de este turno
   // (2026-07-29, ver NarrateAndPersistResult.npcAbilityUsed) — se rellena en cada una de las dos
   // ramas de abajo, siempre que haya intercambio.
-  let npcAbilityUsed: { npcName: string; abilityName: string; rol: 'ataque' | 'defensa' } | null = null;
+  let npcAbilityUsed: { npcName: string; abilityName: string; rol: 'ataque' | 'defensa'; maxUsesPerCombat?: number | null } | null = null;
   // Tirada real de iniciativa que decide QUIÉN actúa en el próximo intercambio (2026-07-29, "quiero
   // que sea más claro cuando es turno de ataque... indicándome qué salió en los dados") — null
   // cuando la iniciativa se fuerza sin dados (aturdimiento/intimidación del turno anterior, ver
@@ -722,32 +758,49 @@ function resolveCombatExchangePhase(input: CombatExchangePhaseInput): CombatExch
         // independiente (resolveExchange). Una utilidad reactiva puede anular esto más abajo
         // (Grito de Guerra) o dejarlo tal cual (Instinto Salvaje/Contraataque).
         jugadorRecibeGolpe = pendingNpcAttack.rol === 'ataque' && independent.atacante.efectoAplica;
-        jugadorGolpeEfecto = pendingNpcAttack.effect;
+        // `?? []` (auditoría de código 2026-08-17): un `pendingNpcAttack` persistido de antes del
+        // rediseño a `effects: AbilityEffect[]` (2026-08-15) no tiene este campo — sin el
+        // fallback, `nextCondicionForAttack` revienta con `effects.includes(...)` sobre
+        // `undefined` en cuanto ese golpe conecte.
+        jugadorGolpeEfectos = pendingNpcAttack.effects ?? [];
         let utilityNarration = '';
         if (defensorRol === 'utilidad') {
-          const jugadorDisparo = utilityTriggered(defensorRol, abilityEffect, independent.defensor.efectoAplica, pendingNpcAttack.rol);
-          utilityNarration = utilityNarrationHint(abilityEffect, jugadorDisparo, characterName, npcParaIntercambio.name);
+          const jugadorDisparo = utilityTriggered(defensorRol, abilityEffects, independent.defensor.efectoAplica, pendingNpcAttack.rol);
+          utilityNarration = utilityNarrationHint(abilityEffects, jugadorDisparo, characterName, npcParaIntercambio.name);
           if (jugadorDisparo) {
-            if (abilityEffect === 'INTIMIDACION') {
+            // Independientes (2026-08-15, "que una habilidad pueda tener múltiples AbilityEffects")
+            // — cada efecto reconocido se aplica por su cuenta, no es un else-if: una habilidad con
+            // varios de estos a la vez dispara todos.
+            if (abilityEffects.includes('INTIMIDACION')) {
               // Grito de Guerra: cancela el golpe entrante del todo + roba iniciativa.
               jugadorRecibeGolpe = false;
               iniciativaForzadaPorUtilidad = 'jugador';
-            } else if (abilityEffect === 'ATURDIMIENTO') {
+            }
+            if (abilityEffects.includes('ATURDIMIENTO')) {
               // Instinto Salvaje: roba iniciativa, nunca cancela ni añade daño.
               iniciativaForzadaPorUtilidad = 'jugador';
-            } else if (abilityEffect === 'ATAQUE') {
+            }
+            if (abilityEffects.includes('ATAQUE')) {
               // Contraataque: además del golpe base (si lo hubo), devuelve un golpe propio al NPC.
+              // `nextCondicionForAttack(abilityEffects, ...)` (auditoría 2026-08-17), no
+              // `oneStepWorseThan` a secas — si esta misma habilidad también lleva `LETAL`
+              // (schema.prisma ya lo da como ejemplo real: `[LETAL, LIMITADA]`), el contragolpe
+              // debe matar igual que lo haría un ataque primario con ese efecto.
               npcAttackHits = true;
-              npcTargetNewCondicion = oneStepWorseThan(npcParaIntercambio.condicionFisica);
-            } else if (abilityEffect === 'ANALISIS') {
+              npcTargetNewCondicion = nextCondicionForAttack(abilityEffects, npcParaIntercambio.condicionFisica);
+            }
+            if (abilityEffects.includes('ANALISIS')) {
               analizarRivalExito = true;
+            }
+            if (abilityEffects.includes('RECUPERACION')) {
+              jugadorRecuperacionExtra = RECUPERACION_ENERGY_BONUS;
             }
           }
         }
         exchangeNarrationBlock =
           `${npcParaIntercambio.name} ataca con "${pendingNpcAttack.abilityName}" (${pendingNpcAttack.abilityDescription || 'sin descripción propia'}). ${independentExchangeContextBlock(independent, npcParaIntercambio.name, characterName)} ${utilityNarration}`.trim();
         combatExchangeRoll = independent.defensor;
-        npcAbilityUsed = { npcName: npcParaIntercambio.name, abilityName: pendingNpcAttack.abilityName, rol: 'ataque' };
+        npcAbilityUsed = { npcName: npcParaIntercambio.name, abilityName: pendingNpcAttack.abilityName, rol: 'ataque', maxUsesPerCombat: pendingNpcAttack.maxUsesPerCombat };
         combatExchangeDisplay = { atacanteEsJugador: false, atacante: independent.atacante, defensor: independent.defensor, resultado: 'independiente' };
         if (input.selectedAbility) playerAbilityUsed = { ...input.selectedAbility, rol: 'defensa' };
         exchangeHappened = true;
@@ -790,16 +843,23 @@ function resolveCombatExchangePhase(input: CombatExchangePhaseInput): CombatExch
         // AGUANTE o sin efecto). El primer fix solo cubrió `defensor_contragolpea`; `golpes_mutuos`
         // (el NPC ataca, el jugador se defiende bien Y encima "contragolpea") se quedó sin el mismo
         // gate — mismo booleano de capacidad, comprobado en los dos desenlaces.
-        const jugadorPuedeContragolpear = abilityEffect === 'ATAQUE';
+        const jugadorPuedeContragolpear = abilityEffects.includes('ATAQUE');
         const jugadorContragolpeaAplica = exchange.resultado === 'defensor_contragolpea' && jugadorPuedeContragolpear;
         jugadorRecibeGolpe = exchange.resultado === 'golpe_pleno' || exchange.resultado === 'golpe_normal' || exchange.resultado === 'golpes_mutuos';
-        jugadorGolpeEfecto = pendingNpcAttack.effect;
+        // `?? []` (auditoría de código 2026-08-17): un `pendingNpcAttack` persistido de antes del
+        // rediseño a `effects: AbilityEffect[]` (2026-08-15) no tiene este campo — sin el
+        // fallback, `nextCondicionForAttack` revienta con `effects.includes(...)` sobre
+        // `undefined` en cuanto ese golpe conecte.
+        jugadorGolpeEfectos = pendingNpcAttack.effects ?? [];
         npcAttackHits =
           jugadorContragolpeaAplica || (exchange.resultado === 'golpes_mutuos' && jugadorPuedeContragolpear);
-        npcTargetNewCondicion = npcAttackHits ? oneStepWorseThan(npcParaIntercambio.condicionFisica) : null;
+        // `nextCondicionForAttack(abilityEffects, ...)` (auditoría 2026-08-17), no
+        // `oneStepWorseThan` a secas — mismo criterio que el camino independiente: si la habilidad
+        // de defensa del jugador lleva también `LETAL`, el contragolpe debe matar.
+        npcTargetNewCondicion = npcAttackHits ? nextCondicionForAttack(abilityEffects, npcParaIntercambio.condicionFisica) : null;
         exchangeNarrationBlock = `${npcParaIntercambio.name} ataca con "${pendingNpcAttack.abilityName}" (${pendingNpcAttack.abilityDescription || 'sin descripción propia'}). ${exchangeContextBlock(exchange, npcParaIntercambio.name, characterName, jugadorPuedeContragolpear)}`;
         combatExchangeRoll = exchange.defensor;
-        npcAbilityUsed = { npcName: npcParaIntercambio.name, abilityName: pendingNpcAttack.abilityName, rol: 'ataque' };
+        npcAbilityUsed = { npcName: npcParaIntercambio.name, abilityName: pendingNpcAttack.abilityName, rol: 'ataque', maxUsesPerCombat: pendingNpcAttack.maxUsesPerCombat };
         combatExchangeDisplay = {
           atacanteEsJugador: false,
           atacante: exchange.atacante,
@@ -825,7 +885,7 @@ function resolveCombatExchangePhase(input: CombatExchangePhaseInput): CombatExch
     } else {
       // CASO ATAQUE: el jugador tiene la iniciativa — el NPC decide su defensa ahora mismo,
       // oculta, nunca se le enseña al jugador qué eligió.
-      const npcDefensa = chooseNpcAbility(npcAbilities, 'defensa', npcEnergiaActual);
+      const npcDefensa = chooseNpcAbility(npcAbilities, 'defensa', npcEnergiaActual, undefined, npcParaIntercambio.abilityUsesThisEncounter);
       // Doble arma (2026-07-31, ver dualWieldAdjustedDifficulty) — con la real de ataque colapsada
       // por llevar la misma categoría en las dos manos, la dificultad del jugador baja (nunca
       // dobla el intercambio).
@@ -864,56 +924,68 @@ function resolveCombatExchangePhase(input: CombatExchangePhaseInput): CombatExch
         // tuvo éxito — si el jugador usó una de utilidad (p.ej. Analizar rival), nunca hay golpe
         // base que aplicar, gane o pierda su tirada.
         npcAttackHits = jugadorRol === 'ataque' && independent.atacante.efectoAplica;
-        npcTargetNewCondicion = npcAttackHits ? nextCondicionForAttack(abilityEffect, npcParaIntercambio.condicionFisica) : null;
+        npcTargetNewCondicion = npcAttackHits ? nextCondicionForAttack(abilityEffects, npcParaIntercambio.condicionFisica) : null;
         jugadorRecibeGolpe = false;
-        jugadorGolpeEfecto = null;
+        jugadorGolpeEfectos = [];
         let utilityNarrationJugador = '';
         let utilityNarrationNpc = '';
         if (jugadorRol === 'utilidad') {
-          const jugadorDisparo = utilityTriggered(jugadorRol, abilityEffect, independent.atacante.efectoAplica, npcDefensa.rol);
-          utilityNarrationJugador = utilityNarrationHint(abilityEffect, jugadorDisparo, characterName, npcParaIntercambio.name);
-          if (jugadorDisparo && abilityEffect === 'ANALISIS') analizarRivalExito = true;
+          const jugadorDisparo = utilityTriggered(jugadorRol, abilityEffects, independent.atacante.efectoAplica, npcDefensa.rol);
+          utilityNarrationJugador = utilityNarrationHint(abilityEffects, jugadorDisparo, characterName, npcParaIntercambio.name);
+          if (jugadorDisparo && abilityEffects.includes('ANALISIS')) analizarRivalExito = true;
           // Contraataque/Grito de Guerra/Instinto Salvaje elegidos como acción OFENSIVA (no como
           // defensa a ciegas) son un uso atípico — su gancho reactivo exige que el RIVAL haya
           // atacado con daño, y aquí es el jugador quien tiene la iniciativa — pero la condición
           // se evalúa exactamente igual, sin caso especial (si `npcDefensa.rol` fuese 'ataque', lo
           // que chooseNpcAbility sí puede elegir como defensa, se dispararía igual que en CASO
-          // DEFENSA).
-          if (jugadorDisparo && abilityEffect === 'ATAQUE') {
+          // DEFENSA). Independientes (2026-08-15): cada efecto reconocido se aplica por su cuenta.
+          if (jugadorDisparo && abilityEffects.includes('ATAQUE')) {
             npcAttackHits = true;
-            npcTargetNewCondicion = oneStepWorseThan(npcParaIntercambio.condicionFisica);
+            // `nextCondicionForAttack(abilityEffects, ...)` (auditoría 2026-08-17), no
+            // `oneStepWorseThan` a secas — misma razón que el resto de contraataques reactivos.
+            npcTargetNewCondicion = nextCondicionForAttack(abilityEffects, npcParaIntercambio.condicionFisica);
           }
-          if (jugadorDisparo && abilityEffect === 'INTIMIDACION') {
+          if (jugadorDisparo && abilityEffects.includes('INTIMIDACION')) {
             iniciativaForzadaPorUtilidad = 'jugador';
             npcAttackHits = false;
             npcTargetNewCondicion = null;
           }
-          if (jugadorDisparo && abilityEffect === 'ATURDIMIENTO') {
+          if (jugadorDisparo && abilityEffects.includes('ATURDIMIENTO')) {
             iniciativaForzadaPorUtilidad = 'jugador';
+          }
+          if (jugadorDisparo && abilityEffects.includes('RECUPERACION')) {
+            jugadorRecuperacionExtra = RECUPERACION_ENERGY_BONUS;
           }
         }
         if (npcDefensa.rol === 'utilidad') {
-          const npcDisparo = utilityTriggered(npcDefensa.rol, npcDefensa.effect, independent.defensor.efectoAplica, jugadorRol);
-          utilityNarrationNpc = utilityNarrationHint(npcDefensa.effect, npcDisparo, npcParaIntercambio.name, characterName);
+          const npcDisparo = utilityTriggered(npcDefensa.rol, npcDefensa.effects, independent.defensor.efectoAplica, jugadorRol);
+          utilityNarrationNpc = utilityNarrationHint(npcDefensa.effects, npcDisparo, npcParaIntercambio.name, characterName);
           if (npcDisparo) {
-            if (npcDefensa.effect === 'ATAQUE') {
+            if (npcDefensa.effects.includes('ATAQUE')) {
               // Contraataque del NPC: además del golpe base (si lo hubo), el jugador recibe un
-              // golpe de vuelta.
+              // golpe de vuelta. `npcDefensa.effects` completo (auditoría 2026-08-17), no
+              // `['ATAQUE']` hardcodeado — si la habilidad de defensa del NPC también lleva
+              // `LETAL`, el contragolpe debe matar, no solo bajar un escalón.
               jugadorRecibeGolpe = true;
-              jugadorGolpeEfecto = 'ATAQUE';
-            } else if (npcDefensa.effect === 'INTIMIDACION') {
+              jugadorGolpeEfectos = npcDefensa.effects;
+            }
+            if (npcDefensa.effects.includes('INTIMIDACION')) {
               iniciativaForzadaPorUtilidad = 'npc';
               npcAttackHits = false;
               npcTargetNewCondicion = null;
-            } else if (npcDefensa.effect === 'ATURDIMIENTO') {
+            }
+            if (npcDefensa.effects.includes('ATURDIMIENTO')) {
               iniciativaForzadaPorUtilidad = 'npc';
+            }
+            if (npcDefensa.effects.includes('RECUPERACION')) {
+              npcRecuperacionExtra = RECUPERACION_ENERGY_BONUS;
             }
           }
         }
         exchangeNarrationBlock =
           `${npcParaIntercambio.name} se defiende con "${npcDefensa.name}" (${npcDefensa.description}). ${independentExchangeContextBlock(independent, characterName, npcParaIntercambio.name)} ${hitSeverityHint(npcParaIntercambio.name, npcTargetNewCondicion)} ${utilityNarrationJugador} ${utilityNarrationNpc}`.trim();
         combatExchangeRoll = independent.atacante;
-        npcAbilityUsed = { npcName: npcParaIntercambio.name, abilityName: npcDefensa.name, rol: 'defensa' };
+        npcAbilityUsed = { npcName: npcParaIntercambio.name, abilityName: npcDefensa.name, rol: 'defensa', maxUsesPerCombat: npcDefensa.maxUsesPerCombat };
         combatExchangeDisplay = { atacanteEsJugador: true, atacante: independent.atacante, defensor: independent.defensor, resultado: 'independiente' };
         if (input.selectedAbility) playerAbilityUsed = { ...input.selectedAbility, rol: 'ataque' };
         exchangeHappened = true;
@@ -947,15 +1019,17 @@ function resolveCombatExchangePhase(input: CombatExchangePhaseInput): CombatExch
         // "defensor" — su golpe de propina SOLO cuenta si SU habilidad de defensa tiene de verdad
         // `effect: 'ATAQUE'` (hoy ninguna la tiene, ver npcCombatAbilities.ts). Mismo booleano de
         // capacidad para los dos desenlaces, igual que en el CASO DEFENSA.
-        const npcPuedeContragolpear = npcDefensa.effect === 'ATAQUE';
+        const npcPuedeContragolpear = npcDefensa.effects.includes('ATAQUE');
         const npcContragolpeaAplica = exchange.resultado === 'defensor_contragolpea' && npcPuedeContragolpear;
         npcAttackHits = exchange.resultado === 'golpe_pleno' || exchange.resultado === 'golpe_normal' || exchange.resultado === 'golpes_mutuos';
-        npcTargetNewCondicion = npcAttackHits ? nextCondicionForAttack(abilityEffect, npcParaIntercambio.condicionFisica) : null;
+        npcTargetNewCondicion = npcAttackHits ? nextCondicionForAttack(abilityEffects, npcParaIntercambio.condicionFisica) : null;
         jugadorRecibeGolpe = npcContragolpeaAplica || (exchange.resultado === 'golpes_mutuos' && npcPuedeContragolpear);
-        jugadorGolpeEfecto = jugadorRecibeGolpe ? 'ATAQUE' : null;
+        // `npcDefensa.effects` completo (auditoría 2026-08-17), no `['ATAQUE']` hardcodeado —
+        // mismo criterio que el camino independiente.
+        jugadorGolpeEfectos = jugadorRecibeGolpe ? npcDefensa.effects : [];
         exchangeNarrationBlock = `${npcParaIntercambio.name} se defiende con "${npcDefensa.name}" (${npcDefensa.description}). ${exchangeContextBlock(exchange, characterName, npcParaIntercambio.name, npcPuedeContragolpear)}`;
         combatExchangeRoll = exchange.atacante;
-        npcAbilityUsed = { npcName: npcParaIntercambio.name, abilityName: npcDefensa.name, rol: 'defensa' };
+        npcAbilityUsed = { npcName: npcParaIntercambio.name, abilityName: npcDefensa.name, rol: 'defensa', maxUsesPerCombat: npcDefensa.maxUsesPerCombat };
         combatExchangeDisplay = {
           atacanteEsJugador: true,
           atacante: exchange.atacante,
@@ -987,23 +1061,23 @@ function resolveCombatExchangePhase(input: CombatExchangePhaseInput): CombatExch
       // de cada rama, arriba) sustituye por completo al viejo `jugadorAturdioAlNpc`/
       // `npcAturdioAlJugador`, que ya no podían dispararse.
       //
-      // Ver comentario de `abilityEffectHint` en CombatExchangePhaseResult — REMATE sigue siendo
-      // rol:'ataque', el único efecto que todavía pasa por aquí (solo cuando el jugador ataca,
-      // nunca en la defensa a ciegas).
-      if (!pendingNpcStillHere && abilityEffect === 'REMATE') {
-        const rematado = npcAttackHits && npcTargetNewCondicion === 'MUERTO';
-        abilityEffectHint = rematado
-          ? `EFECTO DE HABILIDAD — YA RESUELTO: el golpe de gracia contra ${npcParaIntercambio.name} conecta y remata de verdad — muere en el acto. Narra el golpe final, no una herida más.`
-          : `EFECTO DE HABILIDAD — YA RESUELTO: el intento de rematar a ${npcParaIntercambio.name} no consigue matarlo (${npcAttackHits ? 'conecta, pero no estaba lo bastante debilitado para morir' : 'ni siquiera conecta'}) — narra un golpe más, nunca su muerte.`;
+      // Ver comentario de `abilityEffectHint` en CombatExchangePhaseResult — LETAL (fusión de
+      // REMATE, 2026-08-15: ya no exige que el objetivo esté GRAVE/CONVALECIENTE, mata de un golpe
+      // a cualquiera) sigue siendo rol:'ataque', el único efecto que todavía pasa por aquí (solo
+      // cuando el jugador ataca, nunca en la defensa a ciegas).
+      if (!pendingNpcStillHere && abilityEffects.includes('LETAL')) {
+        abilityEffectHint = npcAttackHits
+          ? `EFECTO DE HABILIDAD — YA RESUELTO: el golpe letal contra ${npcParaIntercambio.name} conecta y lo mata en el acto, sin importar en qué estado estuviera antes — narra el golpe final, no una herida más.`
+          : `EFECTO DE HABILIDAD — YA RESUELTO: el golpe letal no llega a conectar esta vez — narra el intento fallido, nunca su muerte.`;
       }
 
       // Caza en grupo (2026-08-13, petición explícita: "que el narrador prometa nada que no se
-      // realice por acción") — si este golpe deja al individuo ACTUAL incapacitado/muerto y el
+      // realice por acción") — si este golpe deja al individuo ACTUAL convaleciente/muerto y el
       // grupo tiene más miembros, el combate sigue: se le dice al modelo explícitamente que NO
       // narre el grupo entero como derrotado, solo a este individuo. Si era el último, lo
       // contrario — evita que el modelo alargue el combate más de la cuenta o lo cierre antes de
       // tiempo, mismo criterio "YA RESUELTO, no lo cambies" que el resto de hints de combate.
-      if (npcAttackHits && npcTargetNewCondicion && (npcTargetNewCondicion === 'INCAPACITADO' || npcTargetNewCondicion === 'MUERTO') && npcParaIntercambio.groupSize) {
+      if (npcAttackHits && npcTargetNewCondicion && (npcTargetNewCondicion === 'CONVALECIENTE' || npcTargetNewCondicion === 'MUERTO') && npcParaIntercambio.groupSize) {
         const restantes = npcParaIntercambio.groupSize - npcParaIntercambio.groupDefeated - 1;
         const groupHint =
           restantes > 0
@@ -1026,16 +1100,17 @@ function resolveCombatExchangePhase(input: CombatExchangePhaseInput): CombatExch
         // habilidad se resuelva el turno siguiente, pero anticipar esa regen exacta aquí no
         // compensa la complejidad frente al mismo criterio "suficientemente determinista, no
         // perfecto" del resto del sistema.
-        const npcAtaque = chooseNpcAbility(npcAbilities, 'ataque', npcEnergiaActual);
+        const npcAtaque = chooseNpcAbility(npcAbilities, 'ataque', npcEnergiaActual, undefined, npcParaIntercambio.abilityUsesThisEncounter);
         nuevoPendingNpcAttack = {
           npcId: npcParaIntercambio.id,
           attribute: npcAtaque.attribute,
-          effect: npcAtaque.effect,
+          effects: npcAtaque.effects,
           rol: npcAtaque.rol,
           abilityName: npcAtaque.name,
           abilityDescription: npcAtaque.description,
           energyCost: npcAtaque.energyCost,
           energyRegen: npcAtaque.energyRegen,
+          maxUsesPerCombat: npcAtaque.maxUsesPerCombat,
         };
       }
     }
@@ -1046,7 +1121,7 @@ function resolveCombatExchangePhase(input: CombatExchangePhaseInput): CombatExch
     npcAttackHits,
     npcTargetNewCondicion,
     jugadorRecibeGolpe,
-    jugadorGolpeEfecto,
+    jugadorGolpeEfectos,
     nuevoPendingNpcAttack,
     exchangeNarrationBlock,
     combatExchangeRoll,
@@ -1056,10 +1131,52 @@ function resolveCombatExchangePhase(input: CombatExchangePhaseInput): CombatExch
     nextInitiativeRoll,
     exchangeHappened,
     npcEnergiaMax,
-    npcNuevaEnergia,
+    // RECUPERACION (2026-08-17) — sumado aquí mismo (topado al máximo real del NPC), a diferencia
+    // del lado jugador cuyo tope solo conoce el caller.
+    npcNuevaEnergia: npcNuevaEnergia !== null && npcEnergiaMax !== null ? Math.min(npcEnergiaMax, npcNuevaEnergia + npcRecuperacionExtra) : npcNuevaEnergia,
     abilityEffectHint,
     analizarRivalExito,
+    jugadorRecuperacionExtra,
   };
+}
+
+/// Tope de usos por combate del lado JUGADOR (2026-08-15, AbilityEffect.LIMITADA/
+/// maxUsesPerCombat), extraído de `narrateAndPersistTurn` (auditoría de deuda técnica 2026-08-18:
+/// vivía repartido en dos mitades de la misma función, ~1250 líneas de distancia — el chequeo aquí,
+/// el incremento junto a `applyCombatExchangeToNpcState`). El contador vive en el `NpcState` del
+/// rival (mismo campo que ya cuenta lo que el NPC ha usado contra el jugador, ver comentario en
+/// schema.prisma). Si la habilidad pulsada ya agotó sus usos este encuentro, el caller trata el
+/// turno como si no se hubiera pulsado ningún botón SOLO de cara al efecto mecánico —
+/// `countsAsAttack`/`combateActivo`/`tomaAccionDeCombate` ya se calculan con el `abilityRol` real:
+/// intentar un "ultimate" en cooldown sigue contando como acción de combate (cae a ataque/defensa
+/// normal), nunca como no hacer nada.
+function playerAbilityUsageGate(
+  selectedAbilityData: { name: string; maxUsesPerCombat?: number | null } | null | undefined,
+  usesThisEncounter: Record<string, number> | undefined,
+): { blocked: boolean; hint: string | null } {
+  const blocked =
+    !!selectedAbilityData?.maxUsesPerCombat && (usesThisEncounter?.[selectedAbilityData.name] ?? 0) >= selectedAbilityData.maxUsesPerCombat;
+  const hint = blocked
+    ? `El personaje intenta usar "${selectedAbilityData!.name}", pero ya agotó sus ${selectedAbilityData!.maxUsesPerCombat} uso(s) de este combate — narra que lo intenta o recurre a otra cosa, nunca que el efecto especial de esa habilidad se dispara de verdad.`
+    : null;
+  return { blocked, hint };
+}
+
+/// Nombres de habilidad de ESTE intercambio que llevan `maxUsesPerCombat` y de verdad se usaron —
+/// la del NPC (si `npcAbilityUsed` trae tope) y la del jugador (si estaba seleccionada, llevaba
+/// tope, Y no se bloqueó ya por haberlo agotado, ver `playerAbilityUsageGate` arriba). Extraído
+/// junto a esa función por el mismo motivo (auditoría de deuda técnica 2026-08-18) — son las dos
+/// mitades del mismo mecanismo, antes separadas ~1250 líneas dentro de `narrateAndPersistTurn`.
+function abilityNamesToIncrementFor(
+  exchangeHappened: boolean,
+  npcAbilityUsed: { abilityName: string; maxUsesPerCombat?: number | null } | null,
+  playerAbilityUsageBlocked: boolean,
+  selectedAbilityData: { name: string; maxUsesPerCombat?: number | null } | null | undefined,
+): string[] {
+  const names: string[] = [];
+  if (exchangeHappened && npcAbilityUsed?.maxUsesPerCombat) names.push(npcAbilityUsed.abilityName);
+  if (exchangeHappened && !playerAbilityUsageBlocked && selectedAbilityData?.maxUsesPerCombat) names.push(selectedAbilityData.name);
+  return names;
 }
 
 /// Crafteo v1 — bloque de detección/aviso PRE-transacción, extraído de `narrateAndPersistTurn`
@@ -1075,19 +1192,31 @@ function resolveCraftIntentContext(
   attributes: AttributeBlock,
   secondaryAttributes: SecondaryAttributeBlock,
   alivioFor: (oficio: string | undefined) => number,
+  unlockedRecipeKeys: string[],
 ): { craftPossibleByKey: Record<string, boolean>; blocks: string[] } {
   const craftPossibleByKey: Record<string, boolean> = {};
   const blocks: string[] = [];
   for (const recipe of CRAFTING_RECIPES) {
     const wants = detectsCraftIntent(recipe, action);
     const alivio = alivioFor(recipe.oficio);
-    const possible = wants && canCraft(recipe, currentLocationSlug, inventoryRows, catalogBySlug, attributes, secondaryAttributes, alivio);
+    const possible = wants && canCraft(recipe, currentLocationSlug, inventoryRows, catalogBySlug, attributes, secondaryAttributes, alivio, unlockedRecipeKeys);
     craftPossibleByKey[recipe.key] = possible;
     if (wants && !possible) {
       blocks.push(recipe.narrationWant);
       const shortfalls = craftRequisitoShortfalls(recipe, attributes, secondaryAttributes, alivio);
       if (shortfalls.length > 0) {
         blocks.push(`Además, al personaje todavía le falta: ${shortfalls.map(shortfallLabel).join(', ')} para poder craftear ${recipe.resultName}.`);
+      }
+      // Herramienta requerida (2026-08-17) — pista aparte de los shortfalls de atributo, mismo
+      // criterio: solo aparece si de verdad es la causa real del bloqueo.
+      if (recipe.oficio && OFICIOS_CON_HERRAMIENTA_REQUERIDA.some((p) => recipe.oficio === p || recipe.oficio!.startsWith(`${p}-`)) && !hasToolForOficio(recipe.oficio, inventoryRows, catalogBySlug)) {
+        blocks.push(`Además, al personaje le falta encima una herramienta adecuada para poder craftear ${recipe.resultName}.`);
+      }
+      // Receta bloqueada por misión (2026-08-17) — igual que arriba, solo si es de verdad la
+      // causa (una receta desbloqueada por recompensa también puede fallar por materiales, y en
+      // ese caso el hint de materiales ya basta).
+      if (recipe.requiresUnlock && !unlockedRecipeKeys.includes(recipe.key)) {
+        blocks.push(`Además, el personaje todavía no conoce cómo craftear ${recipe.resultName} — hace falta descubrirlo primero.`);
       }
     } else if (possible) {
       blocks.push(recipe.narrationDo);
@@ -1147,19 +1276,51 @@ async function resolveBuildIntentContext(params: {
   return { buildRecipe, buildRecipeCheck, buildBlockedReason, buildMode, blocks };
 }
 
-/// Recuperación de INCAPACITADO tras 6h de ficción / desaparición de un cadáver tras 48h (docs/19
+/// Log de Reino (2026-08-17), extraído de `narrateAndPersistTurn` (auditoría de deuda técnica
+/// 2026-08-18) — canal aparte, alternable con el de mundo en el frontend: solo las 4 recetas de
+/// categoría 'reino' (startingAbilities.ts: Campamento + los 3 niveles de Ayuntamiento), nunca
+/// Choza/Tótem (esas tienen oficio propio y viven conceptualmente como "profesión", no como hito
+/// de reino). Se escribe pase lo que pase (fundación, mejora o primera construcción), con el mismo
+/// texto sintético que ya se usa para narrar el turno.
+async function writeKingdomLogForBuild(
+  tx: Prisma.TransactionClient,
+  params: {
+    buildValidNow: boolean;
+    buildRecipe: ConstructionRecipe | undefined;
+    saveId: string;
+    characterName: string;
+    timeLabel: string;
+    fictionalMinutes: number;
+  },
+): Promise<void> {
+  const { buildValidNow, buildRecipe, saveId, characterName, timeLabel, fictionalMinutes } = params;
+  const esRecetaDeReino = buildValidNow && buildRecipe && ['campamento', 'ayuntamiento', 'ayuntamiento-mediano', 'ayuntamiento-grande'].includes(buildRecipe.key);
+  if (!esRecetaDeReino) return;
+  await tx.logEntry.create({
+    data: {
+      saveId,
+      channel: 'KINGDOM',
+      text: `${characterName} termina de construir ${buildRecipe!.name}. ${buildRecipe!.description}`,
+      isPlayerAction: false,
+      timeLabel,
+      fictionalMinutes,
+    },
+  });
+}
+
+/// Recuperación de CONVALECIENTE tras 6h de ficción / desaparición de un cadáver tras 48h (docs/19
 /// pieza 2, 2026-08-13) — se llama una vez por turno resuelto de verdad (`narrateAndPersistTurn`
 /// es el único punto de convergencia entre el turno síncrono y la resolución diferida de un
 /// `CharacterTransit`, así que cubre los dos caminos por los que puede avanzar `fictionalMinutes`
-/// sin duplicar el cableado). Barre TODOS los `NpcState` INCAPACITADO/MUERTO de esta partida — en
+/// sin duplicar el cableado). Barre TODOS los `NpcState` CONVALECIENTE/MUERTO de esta partida — en
 /// la práctica siempre son pocas filas, no vale la pena acotar por escena.
 async function applyCondicionTimeouts(tx: Prisma.TransactionClient, saveId: string, nowMinutes: number): Promise<void> {
   const affected = await tx.npcState.findMany({
-    where: { saveId, condicionFisica: { in: ['INCAPACITADO', 'MUERTO'] } },
+    where: { saveId, condicionFisica: { in: ['CONVALECIENTE', 'MUERTO'] } },
     select: { id: true, condicionFisica: true, condicionFisicaSinceMinutes: true },
   });
   for (const state of affected) {
-    if (state.condicionFisica === 'INCAPACITADO' && npcRecoversFromIncapacitado(state.condicionFisicaSinceMinutes, nowMinutes)) {
+    if (state.condicionFisica === 'CONVALECIENTE' && npcRecoversFromConvaleciente(state.condicionFisicaSinceMinutes, nowMinutes)) {
       await tx.npcState.update({
         where: { id: state.id },
         data: { condicionFisica: 'HERIDO', condicionFisicaSinceMinutes: nowMinutes },
@@ -1277,7 +1438,7 @@ async function applyLootMode(params: {
 /// deuda técnica 2026-08-13). Sistema de fatiga simétrico (2026-07-30): `npcNuevaEnergia` viaja
 /// en el MISMO upsert que la condición física en vez de uno aparte, porque los dos pueden cambiar
 /// en el mismo intercambio (un golpe que además gasta energía) y un NPC solo tiene una fila
-/// NpcState por scope. Si el golpe deja al NPC INCAPACITADO/MUERTO, cierra también su misión
+/// NpcState por scope. Si el golpe deja al NPC CONVALECIENTE/MUERTO, cierra también su misión
 /// asociada, resta reputación de facción y decrementa población — mismo criterio que
 /// `applyExecuteTargets` para "Decapitar".
 async function applyCombatExchangeToNpcState(params: {
@@ -1287,6 +1448,11 @@ async function applyCombatExchangeToNpcState(params: {
   npcAttackHits: boolean;
   npcTargetNewCondicion: CondicionFisica | null;
   analizarRivalExito: boolean;
+  /// Tope de usos por combate (2026-08-15, AbilityEffect.LIMITADA/maxUsesPerCombat) — nombres de
+  /// habilidad (jugador y/o NPC) que se usaron DE VERDAD este intercambio y llevan tope; cada
+  /// nombre sube +1 en `NpcState.abilityUsesThisEncounter`. El caller ya descarta aquí cualquier
+  /// intento bloqueado por haber agotado el tope (nunca se cuenta dos veces).
+  abilityNamesToIncrement: string[];
   saveId: string;
   worldId: string;
   currentLocationId: string | null;
@@ -1304,6 +1470,7 @@ async function applyCombatExchangeToNpcState(params: {
     npcAttackHits,
     npcTargetNewCondicion,
     analizarRivalExito,
+    abilityNamesToIncrement,
     saveId,
     worldId,
     currentLocationId,
@@ -1313,18 +1480,30 @@ async function applyCombatExchangeToNpcState(params: {
     nextAfterMainLogCreatedAt,
   } = params;
   let questCompletedInfo: QuestCompletedInfo | null = null;
-  if (!npcAttackTarget || !(npcNuevaEnergia !== null || (npcAttackHits && npcTargetNewCondicion) || analizarRivalExito)) {
+  if (
+    !npcAttackTarget ||
+    !(npcNuevaEnergia !== null || (npcAttackHits && npcTargetNewCondicion) || analizarRivalExito || abilityNamesToIncrement.length > 0)
+  ) {
     return { questCompletedInfo };
   }
   const scope = scopeFor(npcAttackTarget.kind, currentLocationId);
-  const esGolpeDeMuerte = npcAttackHits && npcTargetNewCondicion && (npcTargetNewCondicion === 'INCAPACITADO' || npcTargetNewCondicion === 'MUERTO');
+  const esGolpeDeMuerte = npcAttackHits && npcTargetNewCondicion && (npcTargetNewCondicion === 'CONVALECIENTE' || npcTargetNewCondicion === 'MUERTO');
   // Caza en grupo (2026-08-13) — ver el hint gemelo en `resolveCombatExchangePhase` (misma
   // condición exacta, `npcAttackTarget.groupSize`/`.groupDefeated` ya leídos en el mismo turno
   // ANTES de narrar, para que lo que se escribe aquí coincida con lo que se le pidió narrar al
   // modelo). Si quedan más miembros, el individuo ACTUAL "resucita" a ILESO para el siguiente en
-  // vez de quedarse en INCAPACITADO/MUERTO — misma fila, `groupDefeated` sube uno.
+  // vez de quedarse en CONVALECIENTE/MUERTO — misma fila, `groupDefeated` sube uno.
   const grupoContinua = !!(esGolpeDeMuerte && npcAttackTarget.groupSize && npcAttackTarget.groupDefeated + 1 < npcAttackTarget.groupSize);
   const condicionAEscribir = grupoContinua ? 'ILESO' : npcTargetNewCondicion;
+  // Tope de usos por combate (2026-08-15) — se resetea a `{}` en cuanto el NPC vuelve a ILESO
+  // (descanso/curación real entre combates, nunca durante uno; mismo criterio ya documentado en
+  // schema.prisma § NpcState.abilityUsesThisEncounter), y suma +1 por cada nombre usado este
+  // intercambio que lleve tope. Solo se escribe si de verdad cambia algo, mismo criterio que el
+  // resto de este upsert.
+  const abilityUsesReset = condicionAEscribir === 'ILESO';
+  const abilityUsesNext = abilityUsesReset ? {} : { ...npcAttackTarget.abilityUsesThisEncounter };
+  for (const name of abilityNamesToIncrement) abilityUsesNext[name] = (abilityUsesNext[name] ?? 0) + 1;
+  const abilityUsesChanged = abilityUsesReset || abilityNamesToIncrement.length > 0;
   await tx.npcState.upsert({
     where: { saveId_npcId_scope: { saveId, npcId: npcAttackTarget.id, scope } },
     create: {
@@ -1337,6 +1516,7 @@ async function applyCombatExchangeToNpcState(params: {
       // partida, nunca se vuelve a poner en false (mismo criterio idempotente que `saqueado`).
       ...(analizarRivalExito ? { analizado: true } : {}),
       ...(esGolpeDeMuerte && npcAttackTarget.groupSize ? { groupDefeated: 1, corpsesLooted: 0 } : {}),
+      ...(abilityUsesChanged ? { abilityUsesThisEncounter: abilityUsesNext } : {}),
     },
     update: {
       ...(npcAttackHits && npcTargetNewCondicion
@@ -1344,6 +1524,7 @@ async function applyCombatExchangeToNpcState(params: {
         : {}),
       ...(npcNuevaEnergia !== null ? { energia: npcNuevaEnergia } : {}),
       ...(analizarRivalExito ? { analizado: true } : {}),
+      ...(abilityUsesChanged ? { abilityUsesThisEncounter: abilityUsesNext } : {}),
     },
   });
 
@@ -1380,7 +1561,7 @@ async function applyCombatExchangeToNpcState(params: {
     }
 
     // Población dinámica (docs/16-poblacion-dinamica.md): solo MUERTO resta población de verdad
-    // — INCAPACITADO es solo derrotado, no una baja real de la especie/raza.
+    // — CONVALECIENTE es solo derrotado, no una baja real de la especie/raza.
     if (npcTargetNewCondicion === 'MUERTO') {
       await decrementPopulationOnDeath(tx, worldId, npcAttackTarget.raza, npcAttackTarget.slug, activeRegion);
     }
@@ -1390,10 +1571,10 @@ async function applyCombatExchangeToNpcState(params: {
 
 /// "Decapitar" (petición explícita, 2026-07-30), extraído de la transacción de
 /// `narrateAndPersistTurn` (refactor de deuda técnica 2026-08-13) — sin tirada: un enemigo ya
-/// incapacitado no puede resistir el golpe de gracia. Uno por uno porque el modal puede marcar
+/// convaleciente no puede resistir el golpe de gracia. Uno por uno porque el modal puede marcar
 /// varios a la vez (checkbox). Mismo cierre de misión/reputación de facción/población que un
 /// golpe normal que deja MUERTO al objetivo — en la práctica la misión ya se cerró al quedar
-/// INCAPACITADO, esto solo cubre el caso raro de que no lo hiciera.
+/// CONVALECIENTE, esto solo cubre el caso raro de que no lo hiciera.
 async function applyExecuteTargets(params: {
   tx: Prisma.TransactionClient;
   executeTargets: NpcInScene[];
@@ -1413,7 +1594,7 @@ async function applyExecuteTargets(params: {
     // Revalidación anti-carrera (auditoría de deuda técnica 2026-08-04, mismo patrón ya cerrado
     // para construcción/crafteo/despiece/saqueo): `executeTargets` sale de `npcsInScene`, leído
     // con `prisma` ANTES de esta transacción — dos "decapito a X" casi simultáneos podían pasar
-    // ambos el filtro `condicionFisica === 'INCAPACITADO'` con la misma foto obsoleta y aplicar
+    // ambos el filtro `condicionFisica === 'CONVALECIENTE'` con la misma foto obsoleta y aplicar
     // la muerte DOS veces: población mundial restada dos veces por una sola baja, y penalización
     // de reputación de facción duplicada. La escritura de `condicionFisica: 'MUERTO'` en sí es
     // idempotente, pero sus efectos secundarios no lo son — se saltan enteros si el NPC ya
@@ -1436,7 +1617,7 @@ async function applyExecuteTargets(params: {
       },
     });
     // Mismo cierre + recompensa real que un golpe normal que deja MUERTO al objetivo — en la
-    // práctica la misión ya se cerró al quedar INCAPACITADO, esto solo cubre el caso raro de que
+    // práctica la misión ya se cerró al quedar CONVALECIENTE, esto solo cubre el caso raro de que
     // no lo hiciera.
     const completedByExecute = await completeNpcTargetQuests(
       tx,
@@ -1598,7 +1779,7 @@ async function resolveCombatSlugsAndPersist(params: {
   // Bug real jugando en vivo (2026-08-01, "el orco que metí volvió a aparecer" — auditoría a fondo
   // de "revisa bien en todos los sitios que pendingCombatNpcSlugs se actualiza bien"): TODO este
   // bloque decide con quién se fuerza/persiste combate, y hasta ahora ninguna de sus piezas miraba
-  // `condicionFisica` — un NPC ya INCAPACITADO/MUERTO seguía siendo candidato de
+  // `condicionFisica` — un NPC ya CONVALECIENTE/MUERTO seguía siendo candidato de
   // `detectNpcsInScene` (tiene `NpcState` propio) y podía matchear en escena vía `sessionFacts`
   // durante turnos sin ninguna relación con él (p.ej. "Exploro la zona"). Su temperamento de
   // catálogo (AGRESIVO/ENEMIGO) no desaparece al morir, así que `agresivoSlugsInScene` lo seguía
@@ -1677,11 +1858,11 @@ async function resolveCombatSlugsAndPersist(params: {
   //
   // Bug real (2026-08-01, misma auditoría de `npcsInSceneVivos` de arriba): `explicitTarget` no
   // mira `condicionFisica` (a propósito, lo necesita loot/decapitar para citar a un NPC ya
-  // derrotado) — pero si el jugador cita entre comillas a alguien YA muerto/incapacitado y esta
+  // derrotado) — pero si el jugador cita entre comillas a alguien YA muerto/convaleciente y esta
   // acción además dispara `shouldForceCombat` por cualquier otro motivo, no tiene sentido "forzar
   // combate" contra un cadáver. Se comprueba aquí, solo para esta decisión.
   const explicitTargetVivo =
-    explicitTarget && explicitTarget.condicionFisica !== 'INCAPACITADO' && explicitTarget.condicionFisica !== 'MUERTO' ? explicitTarget : null;
+    explicitTarget && explicitTarget.condicionFisica !== 'CONVALECIENTE' && explicitTarget.condicionFisica !== 'MUERTO' ? explicitTarget : null;
   const forcedCombatSlugs = explicitTargetVivo
     ? [explicitTargetVivo.slug]
     : agresivoSlugsInScene.length > 0
@@ -1782,6 +1963,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     defensa,
     equippedWeapons,
     equippedItems,
+    unlockedRecipeKeys = [],
     raza,
     currentLocationId,
     travel,
@@ -1821,17 +2003,18 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     savedActionId
       ? prisma.savedAction.findFirst({
           where: { id: savedActionId, saveId },
-          select: { name: true, icon: true, description: true, effect: true, rol: true, energyCost: true, energyRegen: true, dualWield: true },
+          select: { name: true, icon: true, description: true, effects: true, rol: true, energyCost: true, energyRegen: true, dualWield: true, maxUsesPerCombat: true },
         })
       : Promise.resolve<{
           name: string;
           icon: string;
           description: string;
-          effect: AbilityEffect | null;
+          effects: AbilityEffect[];
           rol: AbilityRol | null;
           energyCost: number;
           energyRegen: number;
           dualWield: boolean;
+          maxUsesPerCombat: number | null;
         } | null>(null),
     regionLocationId ? prisma.location.findUnique({ where: { id: regionLocationId }, select: { region: true, name: true } }) : Promise.resolve(null),
     // Auditoría de rendimiento 2026-07-28 ("rascar segundos"): si el caller (turn.ts) ya trae el
@@ -1896,10 +2079,15 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   const gisteraYaPresentada = sessionFacts.some((f) => f.includes('Gistera Koh')) || !!gisteraQuestYaExiste;
   const gisteraSeHaMarchado = !!gisteraQuestYaExiste || (gisteraYaPresentada && detectsVerbalAcceptanceIntent(action));
   const npcsInScene = gisteraSeHaMarchado ? npcsInSceneWithInterruption.filter((n) => n.slug !== 'gistera-koh') : npcsInSceneWithInterruption;
-  const abilityEffect = selectedAbilityData?.effect ?? null;
-  // Rediseño de combate (2026-08-09) — rol de la habilidad pulsada, paralelo a `abilityEffect`.
-  // null en texto libre sin botón (mismo criterio de siempre).
-  const abilityRol = selectedAbilityData?.rol ?? null;
+  const abilityEffects = selectedAbilityData?.effects ?? [];
+  // Rediseño de combate (2026-08-09) — rol de la habilidad pulsada, paralelo a `abilityEffects`.
+  // null en texto libre sin botón (mismo criterio de siempre). Normalizado (2026-08-15): el motor
+  // de intercambio solo sabe resolver ataque/defensa/utilidad — 'pasiva' (y cualquier rol futuro
+  // sin comportamiento de turno definido) se trata igual que si no se hubiera pulsado ningún botón,
+  // nunca revienta el tipo aguas abajo. En la práctica no debería llegar aquí nunca (las pasivas no
+  // se ofrecen como botón de combate), pero falla cerrado si algún día se cuela una.
+  const rawAbilityRol = selectedAbilityData?.rol ?? null;
+  const abilityRol = rawAbilityRol === 'ataque' || rawAbilityRol === 'defensa' || rawAbilityRol === 'utilidad' ? rawAbilityRol : null;
   // Coste de energía de la habilidad pulsada (2026-07-29, sistema de fatiga) — 0 si la acción no
   // usa ninguna SavedAction con coste (ataque a mano, Defenderse/Esquivar genéricas, habilidades
   // 'general', o partidas anteriores a este campo).
@@ -1970,24 +2158,24 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
 
   // Bug real (auditoría 2026-07-28, "revisar partida"): el saqueo no comprobaba condicionFisica en
   // absoluto (se podía "registrar" a un NPC en ILESO/HERIDO/GRAVE, cuando la progresión de combate
-  // ya establecida dice que solo INCAPACITADO/MUERTO son saqueables) y además saqueaba TODOS los
+  // ya establecida dice que solo CONVALECIENTE/MUERTO son saqueables) y además saqueaba TODOS los
   // npcsInScene a la vez, no solo al objetivo — un aliado ileso de pie al lado del enemigo derrotado
   // (p. ej. Gistera Koh junto al Orco Enfurecido) se saqueaba igual sin que el jugador lo pidiera.
   // Mismo patrón que `explicitTarget` para el ataque: si la acción cita un nombre entre comillas, el
   // saqueo se limita a ese NPC; si no, se limita a los NPCs realmente derrotados en escena.
   const lootTargets = (explicitTarget ? [explicitTarget] : npcsInScene).filter(
-    (n) => n.condicionFisica === 'INCAPACITADO' || n.condicionFisica === 'MUERTO',
+    (n) => n.condicionFisica === 'CONVALECIENTE' || n.condicionFisica === 'MUERTO',
   );
   // "Decapitar" (petición explícita, 2026-07-30, modal con checkbox: "marcar todos aquellos que
-  // quieras decapitar") — golpe de gracia determinista contra CADA enemigo YA incapacitado que
+  // quieras decapitar") — golpe de gracia determinista contra CADA enemigo YA convaleciente que
   // el modal marcó, sin tirada (no puede resistir). Igual que `lootTargets` "sin objetivo
   // explícito": el modal manda un único prompt mencionando los nombres elegidos (sin comillas),
   // y `npcsInScene` (detectado por alias más arriba) ya queda acotado a justo esos — aquí solo
-  // hace falta filtrar por quién de ellos sigue INCAPACITADO (nunca ya MUERTO, no hay nada que
+  // hace falta filtrar por quién de ellos sigue CONVALECIENTE (nunca ya MUERTO, no hay nada que
   // rematar dos veces).
-  const executeTargets = !!enCombate && detectsExecuteIntent(action) ? npcsInScene.filter((n) => n.condicionFisica === 'INCAPACITADO') : [];
+  const executeTargets = !!enCombate && detectsExecuteIntent(action) ? npcsInScene.filter((n) => n.condicionFisica === 'CONVALECIENTE') : [];
   // Bug real (auditoría 2026-07-28): sin comprobar condicionFisica, "atacar" a un NPC ya
-  // INCAPACITADO/MUERTO seguía contando como golpe válido cada turno — oneStepWorseThan() se topa
+  // CONVALECIENTE/MUERTO seguía contando como golpe válido cada turno — oneStepWorseThan() se topa
   // en MUERTO (se queda igual), pero el bloque de cierre de misión/reputación de más abajo solo
   // mira si la condición NUEVA es terminal, no si YA lo era antes de este turno, así que repetía
   // el descuento de reputación de facción sin límite contra un enemigo ya derrotado. Mismo criterio
@@ -2003,7 +2191,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     ? (npcsInScene.find((n) => pendingCombatNpcSlugs.includes(n.slug)) ?? null)
     : null;
   // `npcsInScene` (detectado por alias, sin filtrar) sigue conteniendo a cualquier NPC ya
-  // MUERTO/INCAPACITADO que el alias siga matcheando en hechos de sesión antiguos (un cadáver no
+  // MUERTO/CONVALECIENTE que el alias siga matcheando en hechos de sesión antiguos (un cadáver no
   // deja de "estar en escena" nunca, ver comentario completo de `npcsInSceneVivos` más abajo,
   // donde se define esta misma lista para las decisiones de forzar combate). Adelantada aquí
   // (bug real jugando en vivo, 2026-08-07, auditoría "revisa la partida" en directo): un
@@ -2014,7 +2202,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   // real contra la corretolva (sin NpcState creado, sin XP de combate real, sin nada saqueable
   // después) — "el primer golpe de un encuentro nuevo" (comentario original de este fallback) casi
   // nunca es, de hecho, un cadáver ya resuelto.
-  const npcsInSceneVivos = npcsInScene.filter((n) => n.condicionFisica !== 'INCAPACITADO' && n.condicionFisica !== 'MUERTO');
+  const npcsInSceneVivos = npcsInScene.filter((n) => n.condicionFisica !== 'CONVALECIENTE' && n.condicionFisica !== 'MUERTO');
   const candidateAttackTarget = explicitTarget ?? ongoingCombatTarget ?? npcsInSceneVivos[0] ?? npcsInScene[0] ?? null;
   // Rediseño del turno de combate (2026-07-28, petición explícita: "primero se tiran dados y se
   // ve quien ataca primero... el otro entra en un turno de defensa... con su propia tirada de
@@ -2044,16 +2232,24 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     !lootMode &&
     npcsInScene.length > 0 &&
     npcParaIntercambio &&
-    npcParaIntercambio.condicionFisica !== 'INCAPACITADO' &&
+    npcParaIntercambio.condicionFisica !== 'CONVALECIENTE' &&
     npcParaIntercambio.condicionFisica !== 'MUERTO' &&
     (!!pendingNpcStillHere || tomaAccionDeCombate);
+
+  // `playerAbilityUsageGate` (auditoría de deuda técnica 2026-08-18) — ver su doc comment arriba.
+  const { blocked: playerAbilityUsageBlocked, hint: playerAbilityUsageBlockedHint } = playerAbilityUsageGate(
+    selectedAbilityData,
+    npcParaIntercambio?.abilityUsesThisEncounter,
+  );
+  const abilityEffectsForExchange = playerAbilityUsageBlocked ? [] : abilityEffects;
+  const abilityRolForExchange = playerAbilityUsageBlocked ? null : abilityRol;
 
   const {
     npcAttackTarget,
     npcAttackHits,
     npcTargetNewCondicion,
     jugadorRecibeGolpe,
-    jugadorGolpeEfecto,
+    jugadorGolpeEfectos,
     nuevoPendingNpcAttack,
     exchangeNarrationBlock,
     combatExchangeRoll,
@@ -2065,6 +2261,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     combatExchangeDisplay,
     playerAbilityUsed,
     analizarRivalExito,
+    jugadorRecuperacionExtra,
   } = resolveCombatExchangePhase({
     combateActivo,
     npcParaIntercambio,
@@ -2077,8 +2274,8 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     attributes,
     defensa,
     characterName,
-    abilityEffect,
-    abilityRol,
+    abilityEffects: abilityEffectsForExchange,
+    abilityRol: abilityRolForExchange,
     countsAsAttack,
     dualWieldBonus,
     selectedAbility: selectedAbilityData ? { name: selectedAbilityData.name, icon: selectedAbilityData.icon, description: selectedAbilityData.description } : null,
@@ -2090,6 +2287,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   const contextBlocks: string[] = [];
   if (exchangeNarrationBlock) contextBlocks.push(exchangeNarrationBlock);
   if (abilityEffectHint) contextBlocks.push(abilityEffectHint);
+  if (playerAbilityUsageBlockedHint) contextBlocks.push(playerAbilityUsageBlockedHint);
   // Ver `hasFalseTravelClaim` (narrador.ts) — nombres reales de los destinos ambiguos, rellenado
   // solo en el mismo `if` de más abajo que ya decide forzar la pregunta ("EL PERSONAJE QUIERE
   // SEGUIR ADELANTE PERO HAY MÁS DE UN CAMINO POSIBLE").
@@ -2123,12 +2321,12 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   const combatRealHitLanded = exchangeHappened && (npcAttackHits || jugadorRecibeGolpe);
 
   // Narrar inconsciencia (docs/19-post-combate-y-recompensas-mision.md, pieza 1) — true SOLO en
-  // el turno exacto en que el NPC pasa a INCAPACITADO/MUERTO (no si ya estaba así de antes), para
+  // el turno exacto en que el NPC pasa a CONVALECIENTE/MUERTO (no si ya estaba así de antes), para
   // pedirle al Narrador que describa ese momento concreto en vez de dejarlo implícito — hoy el
   // panel de victoria puede aparecer sin que la propia narración del golpe final lo haya narrado.
   const npcFallsUnconsciousThisTurn =
-    (npcTargetNewCondicion === 'INCAPACITADO' || npcTargetNewCondicion === 'MUERTO') &&
-    npcParaIntercambio?.condicionFisica !== 'INCAPACITADO' &&
+    (npcTargetNewCondicion === 'CONVALECIENTE' || npcTargetNewCondicion === 'MUERTO') &&
+    npcParaIntercambio?.condicionFisica !== 'CONVALECIENTE' &&
     npcParaIntercambio?.condicionFisica !== 'MUERTO';
 
   // Ver `jugadorRecibeGolpeEsteTurno` (narrador.ts) — bug real jugando en vivo, 2026-08-15: "acabé
@@ -2260,7 +2458,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   // y merodeando. `npcSceneBlockFor` (arriba) ya le da al modelo la instrucción de tratarlo solo
   // como recuerdo, pero puede ignorarla igual que el resto de instrucciones "no hagas X" de esta
   // sesión — mismo criterio: comprobar el texto ya generado, no confiar solo en la instrucción.
-  const possiblyResurrectedNpcNames = npcsInScene.filter((n) => n.condicionFisica === 'INCAPACITADO' || n.condicionFisica === 'MUERTO').map((n) => n.name);
+  const possiblyResurrectedNpcNames = npcsInScene.filter((n) => n.condicionFisica === 'CONVALECIENTE' || n.condicionFisica === 'MUERTO').map((n) => n.name);
 
   // Réplica de NPC en su propia llamada dedicada (sesión de diseño 2026-07-23, tercer intento —
   // ver `generateNpcReply` en narrador.ts para la explicación completa): pedirle a la MISMA
@@ -2336,13 +2534,13 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     );
   }
 
-  // "Decapitar" (2026-07-30) — los enemigos ya están incapacitados y no pueden resistir; se le
+  // "Decapitar" (2026-07-30) — los enemigos ya están convalecientes y no pueden resistir; se le
   // dice al modelo tal cual para que narre un golpe de gracia definitivo por cada uno, nunca una
   // pelea o resistencia que ya no existe mecánicamente.
   if (executeTargets.length > 0) {
     const nombres = executeTargets.map((n) => n.name).join(', ');
     contextBlocks.push(
-      `${characterName} remata a ${nombres}, que yacen incapacitados en el suelo y no pueden oponer ninguna resistencia — describe un golpe de gracia definitivo para cada uno, nunca una pelea o un intento de defensa por su parte.`,
+      `${characterName} remata a ${nombres}, que yacen convalecientes en el suelo y no pueden oponer ninguna resistencia — describe un golpe de gracia definitivo para cada uno, nunca una pelea o un intento de defensa por su parte.`,
     );
     // Caza en grupo (2026-08-13) — mismo hint gemelo que combate normal, ver comentario en
     // resolveCombatExchangePhase. Aquí puede haber varios objetivos a la vez (checkbox), cada uno
@@ -2391,6 +2589,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
           equipSlot: true,
           effectKey: true,
           aliases: true,
+          herramientaParaOficio: true,
         },
       })
     : [];
@@ -2407,6 +2606,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
         equipSlot: c.equipSlot,
         effectKey: c.effectKey,
         aliases: c.aliases,
+        herramientaParaOficio: c.herramientaParaOficio,
       },
     ]),
   );
@@ -2513,7 +2713,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   // sola vez aquí aunque cure Y restaure energía a la vez (p. ej. una ración completa).
   const consumedItemIds = [...new Set([medicalItemMatch?.id, energyItemMatch?.id].filter((id): id is string => !!id))];
   // Ver `hasFalseItemUse` (narrador.ts) — bug real jugando en vivo (2026-08-01, "descansar no
-  // curó, y encima consumió un objeto sin pedirlo"): descansar mientras INCAPACITADO no basta por
+  // curó, y encima consumió un objeto sin pedirlo"): descansar mientras CONVALECIENTE no basta por
   // sí solo (healCeilingFor exige un objeto médico real), pero la narración igualmente describió
   // usar la cataplasma — objeto que ni el jugador nombró en su acción ni se detectó consumido
   // aquí. Solo se manda la lista cuando NINGÚN objeto se detectó de verdad este turno: si alguno
@@ -2656,6 +2856,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     attributes,
     secondaryAttributes,
     alivioFor,
+    unlockedRecipeKeys,
   );
   contextBlocks.push(...craftBlocks);
 
@@ -2915,7 +3116,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     narration.newBuilding = null;
   }
 
-  // "Revisar partida" 2026-07-30 (queja explícita: el jugador terminó INCAPACITADO sin que la
+  // "Revisar partida" 2026-07-30 (queja explícita: el jugador terminó CONVALECIENTE sin que la
   // narración reflejara ningún golpe recibido más allá del primero) — cuando el jugador ataca y
   // el intercambio resulta en `golpes_mutuos`/`defensor_contragolpea`, ya se le avisa al modelo
   // vía `abilityEffectHint`/`exchangeNarrationBlock` que narre que AMBOS acusan algo, pero un
@@ -3038,7 +3239,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   // sin combinar. Sin exchange (fuera de combate, o combate sin intercambio resuelto este turno)
   // sigue confiando en la propuesta del modelo tal cual, como siempre.
   const condicionPropuestaCombinada = exchangeHappened
-    ? (jugadorRecibeGolpe ? nextCondicionForAttack(jugadorGolpeEfecto, params.condicionFisica) : null)
+    ? (jugadorRecibeGolpe ? nextCondicionForAttack(jugadorGolpeEfectos, params.condicionFisica) : null)
     : narration.condicionFisica;
   // `restAttempted` (cualquier sitio) vs `restSucceeds` (además, refugio/asentamiento real) —
   // auditoría 2026-08-11, "la ficha de Descansar promete curar en cualquier sitio pero la
@@ -3062,16 +3263,22 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   // habilidad (2026-07-31, ya no por rol), descanso válido restaura al tope, objeto consumido
   // suma su restauración.
   const energiaMax = energiaMaxFor(attributes.constitucion);
-  const nuevaEnergia = nextEnergia({
-    current: params.energia,
-    max: energiaMax,
-    abilityEnergyCost,
-    abilityEnergyRegen,
-    exchangeHappened,
-    restSucceeds,
-    restAttempted,
-    itemRestoreAmount: energyItemRestoreAmount,
-  });
+  // RECUPERACION (2026-08-17) — topado al máximo real aparte, DESPUÉS de `nextEnergia` (que ya
+  // topa el resto de fuentes): sumarlo dentro de `abilityEnergyRegen` habría dejado que
+  // `itemRestoreAmount`/regen normal lo pisaran en algún combinación rara de `nextEnergia`.
+  const nuevaEnergia = Math.min(
+    energiaMax,
+    nextEnergia({
+      current: params.energia,
+      max: energiaMax,
+      abilityEnergyCost,
+      abilityEnergyRegen,
+      exchangeHappened,
+      restSucceeds,
+      restAttempted,
+      itemRestoreAmount: energyItemRestoreAmount,
+    }) + jugadorRecuperacionExtra,
+  );
 
   // Reloj ficticio (worldClock.ts): avanza siempre, aunque este turno no traiga hechos nuevos —
   // antes "fictionalDateLabel" era un placeholder fijo que nunca se tocaba.
@@ -3147,7 +3354,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
       if (finalized.count === 0) throw new TransitCancelledError();
     }
 
-    // docs/19-post-combate-y-recompensas-mision.md pieza 2 — recuperación de INCAPACITADO a las 6h
+    // docs/19-post-combate-y-recompensas-mision.md pieza 2 — recuperación de CONVALECIENTE a las 6h
     // de ficción / desaparición de un cadáver a las 48h. Antes de nada más este turno, con el
     // `fictionalMinutes` ya avanzado: cualquier NPC afectado debe verse ya actualizado en el resto
     // de este mismo turno (p. ej. si vuelve a estar HERIDO, `npcsInScene` de este turno ya debería
@@ -3230,7 +3437,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
 
     // Loot (docs/12 § 4.5) — la ÚNICA fuente de botín es lo que el NPC lleva encima (NpcItem),
     // nunca una invención del modelo. `lootTargets` (ver más arriba) ya filtra por objetivo
-    // explícito y por condicionFisica INCAPACITADO/MUERTO — aquí ya no hace falta volver a
+    // explícito y por condicionFisica CONVALECIENTE/MUERTO — aquí ya no hace falta volver a
     // comprobar nada de eso.
     //
     // Saqueo selectivo (2026-07-30, sustituye la decisión original de "copiar siempre todo el
@@ -3269,6 +3476,10 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
       if (lootResult.narrationOverride) narration.narration = lootResult.narrationOverride;
     }
 
+    // `abilityNamesToIncrementFor` (auditoría de deuda técnica 2026-08-18) — ver su doc comment
+    // junto a `playerAbilityUsageGate`.
+    const abilityNamesToIncrement = abilityNamesToIncrementFor(exchangeHappened, npcAbilityUsed, playerAbilityUsageBlocked, selectedAbilityData);
+
     // Sistema de fatiga simétrico (2026-07-30) — `npcNuevaEnergia` viaja aquí en el MISMO upsert
     // que la condición física en vez de uno aparte: los dos pueden cambiar en el mismo intercambio
     // (un golpe que además gasta energía) y un NPC solo tiene una fila NpcState por scope.
@@ -3281,6 +3492,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
       npcAttackHits,
       npcTargetNewCondicion,
       analizarRivalExito,
+      abilityNamesToIncrement,
       saveId,
       worldId,
       currentLocationId,
@@ -3638,6 +3850,16 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     // conocida, igual de válido, solo sin icono. Gate real `buildValidNow` (no `buildMode`, ver
     // comentario junto a su cálculo más arriba) — si se pierde la carrera contra otro turno
     // concurrente, este bloque entero se salta sin crear/mejorar nada.
+    // `writeKingdomLogForBuild` (auditoría de deuda técnica 2026-08-18) — ver su doc comment.
+    await writeKingdomLogForBuild(tx, {
+      buildValidNow,
+      buildRecipe,
+      saveId,
+      characterName,
+      timeLabel: nuevaFictionalDateLabel,
+      fictionalMinutes: nuevoFictionalMinutes,
+    });
+
     if (buildValidNow && buildRecipe) {
       if (buildRecipe.upgradesRecipeKey) {
         // Mejora de Ayuntamiento (2026-08-04): actualiza el MISMO `Building.id`, nunca crea uno
@@ -3752,7 +3974,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     if (narration.newQuest) {
       // Cierre detectable por backend (roadmap 2026-07-19, mecánicas): si el título/descripción
       // menciona a un NPC ya confirmado en npcsInScene, se guarda como objetivo — en cuanto ese
-      // NPC caiga (INCAPACITADO/MUERTO, ver npcAttackTarget más abajo), la misión se cierra sola,
+      // NPC caiga (CONVALECIENTE/MUERTO, ver npcAttackTarget más abajo), la misión se cierra sola,
       // sin depender de que el modelo repita el título EXACTO en "questProgress".
       const questText = normalizeText(`${narration.newQuest.title} ${narration.newQuest.description}`);
       let targetNpcId = npcsInScene.find((npc) => questText.includes(normalizeText(npc.name)))?.id;
@@ -3820,7 +4042,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
         const orcoState = orcoEnfurecido
           ? await tx.npcState.findUnique({ where: { saveId_npcId_scope: { saveId, npcId: orcoEnfurecido.id, scope: '' } } })
           : null;
-        const orcoYaResuelto = orcoState?.condicionFisica === 'INCAPACITADO' || orcoState?.condicionFisica === 'MUERTO';
+        const orcoYaResuelto = orcoState?.condicionFisica === 'CONVALECIENTE' || orcoState?.condicionFisica === 'MUERTO';
         await tx.quest.create({
           data: {
             saveId,
@@ -3919,12 +4141,12 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
           const derrotadoEsteTurno =
             npcAttackTarget?.id === quest.targetNpcId &&
             npcAttackHits &&
-            (npcTargetNewCondicion === 'INCAPACITADO' || npcTargetNewCondicion === 'MUERTO');
+            (npcTargetNewCondicion === 'CONVALECIENTE' || npcTargetNewCondicion === 'MUERTO');
           if (derrotadoEsteTurno) continue;
           const state = await tx.npcState.findUnique({
             where: { saveId_npcId_scope: { saveId, npcId: npc.id, scope: scopeFor(npc.kind, currentLocationId) } },
           });
-          const yaDerrotado = state?.condicionFisica === 'INCAPACITADO' || state?.condicionFisica === 'MUERTO';
+          const yaDerrotado = state?.condicionFisica === 'CONVALECIENTE' || state?.condicionFisica === 'MUERTO';
           if (yaDerrotado) continue;
           const currentWorldState = await tx.worldState.findUnique({ where: { saveId }, select: { factionsStatus: true } });
           const updatedFactionsStatus = applyFactionRepDelta(
@@ -4098,9 +4320,12 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
               description: ability.description,
               category: ability.category,
               isStarting: true,
-              effect: ability.effect ?? null,
+              effects: ability.effects ?? [],
+              rol: ability.rol ?? null,
               preferredAttribute: ability.preferredAttribute ?? null,
               energyCost: ability.energyCost ?? 0,
+              energyRegen: ability.energyRegen ?? 0,
+              maxUsesPerCombat: ability.maxUsesPerCombat ?? null,
             },
           });
           await tx.logEntry.create({

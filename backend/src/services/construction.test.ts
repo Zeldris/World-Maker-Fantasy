@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   CAMPAMENTO_RECIPE,
   CHOZA_RECIPE,
+  MAKTOR_CLAN_TOTEM_RECIPE,
   AYUNTAMIENTO_PEQUENO_RECIPE,
   AYUNTAMIENTO_MEDIANO_RECIPE,
   AYUNTAMIENTO_GRANDE_RECIPE,
@@ -31,6 +32,8 @@ const catalogBySlug = new Map<string, CatalogLookup>([
   ['hueso-largo-gargantua', { tipo: 'RECURSO', category: 'hueso' }],
   ['cuerda-tendon', { tipo: 'EQUIPABLE', category: 'herramienta' }],
   ['mena-de-hierro', { tipo: 'RECURSO', category: 'mena' }],
+  ['totem-clan-roto', { tipo: 'NARRATIVO', category: 'cosmetico' }],
+  ['totem-maktor', { tipo: 'EQUIPABLE', category: 'ropa' }],
 ]);
 
 function row(id: string, catalogSlug: string, cantidad?: number): InventoryRowLike {
@@ -130,6 +133,15 @@ describe('detectsBuildIntent', () => {
     expect(detectsBuildIntent(CAMPAMENTO_RECIPE, 'Levanto una choza de piel y hueso junto al pozo')).toBe(false);
   });
 
+  it('detecta reconstruir el Tótem del Clan Maktor, sin confundirse con una mención cualquiera de "tótem"', () => {
+    expect(detectsBuildIntent(MAKTOR_CLAN_TOTEM_RECIPE, 'Reconstruyo el tótem del clan')).toBe(true);
+    expect(detectsBuildIntent(MAKTOR_CLAN_TOTEM_RECIPE, 'Construyo el tótem de Maktor sobre el mío')).toBe(true);
+    // Verbo de construcción sin mencionar "clan"/"maktor" junto a "tótem": no dispara.
+    expect(detectsBuildIntent(MAKTOR_CLAN_TOTEM_RECIPE, 'Monto mi tótem en la mochila')).toBe(false);
+    // Mención de "tótem" sin verbo de construcción: no dispara (mismo criterio que el resto).
+    expect(detectsBuildIntent(MAKTOR_CLAN_TOTEM_RECIPE, 'Miro el tótem del clan con cariño')).toBe(false);
+  });
+
   it('detecta construir un ayuntamiento (pequeño), distinto de las otras dos', () => {
     expect(detectsBuildIntent(AYUNTAMIENTO_PEQUENO_RECIPE, 'Levanto un ayuntamiento en el cruce')).toBe(true);
     expect(detectsBuildIntent(CAMPAMENTO_RECIPE, 'Levanto un ayuntamiento en el cruce')).toBe(false);
@@ -168,6 +180,16 @@ describe('checkRecipe — recetas nuevas', () => {
     expect(checkRecipe(CHOZA_RECIPE, rows, catalogBySlug, attrs, secondary)).toEqual({ met: true, missing: [] });
   });
 
+  it('tótem del Clan Maktor: cumplido con el tótem roto + el tótem personal de Gorhorn', () => {
+    const rows = [row('1', 'totem-clan-roto'), row('2', 'totem-maktor')];
+    expect(checkRecipe(MAKTOR_CLAN_TOTEM_RECIPE, rows, catalogBySlug, attrs, secondary)).toEqual({ met: true, missing: [] });
+  });
+
+  it('tótem del Clan Maktor: falta si solo tienes uno de los dos materiales', () => {
+    expect(checkRecipe(MAKTOR_CLAN_TOTEM_RECIPE, [row('1', 'totem-clan-roto')], catalogBySlug, attrs, secondary).met).toBe(false);
+    expect(checkRecipe(MAKTOR_CLAN_TOTEM_RECIPE, [row('1', 'totem-maktor')], catalogBySlug, attrs, secondary).met).toBe(false);
+  });
+
   it('ayuntamiento pequeño: cumplido con piedra/leña suficientes', () => {
     const rows = [row('1', 'piedra', 15), row('2', 'lena-matorral-cuerno', 10)];
     expect(checkRecipe(AYUNTAMIENTO_PEQUENO_RECIPE, rows, catalogBySlug, attrs, secondary)).toEqual({ met: true, missing: [] });
@@ -175,7 +197,7 @@ describe('checkRecipe — recetas nuevas', () => {
 
   it('ayuntamiento grande: cumplido con piedra/leña/mena de hierro suficientes y carisma alto', () => {
     const rows = [row('1', 'piedra', 60), row('2', 'lena-matorral-cuerno', 50), row('3', 'mena-de-hierro', 15)];
-    const carismatico: AttributeBlock = { ...attrs, carisma: 18 };
+    const carismatico: AttributeBlock = { ...attrs, carisma: 22 };
     expect(checkRecipe(AYUNTAMIENTO_GRANDE_RECIPE, rows, catalogBySlug, carismatico, secondary)).toEqual({ met: true, missing: [] });
   });
 });
@@ -189,6 +211,14 @@ describe('Campos de reglas de reino en las recetas (2026-08-04)', () => {
   it('choza: 2 slots de compañero, exige Ayuntamiento', () => {
     expect(CHOZA_RECIPE.companionSlots).toBe(2);
     expect(CHOZA_RECIPE.requiresAyuntamiento).toBe(true);
+  });
+
+  // 2026-08-15: corrección tras un primer intento de atarlo a una Location fija (Los Restos de
+  // Maktor) — la usuaria pidió en su lugar el mismo mecanismo que la choza, ligado a dónde esté
+  // el Ayuntamiento de la facción que funde Gorhorn, no a un sitio concreto del mapa.
+  it('tótem del Clan Maktor: sin slots de compañero (monumento, no infraestructura habitable), exige Ayuntamiento', () => {
+    expect(MAKTOR_CLAN_TOTEM_RECIPE.companionSlots).toBeUndefined();
+    expect(MAKTOR_CLAN_TOTEM_RECIPE.requiresAyuntamiento).toBe(true);
   });
 
   it('las 3 recetas de Ayuntamiento comparten key y suben de nivel/capacidad', () => {

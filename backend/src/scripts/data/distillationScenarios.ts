@@ -79,6 +79,8 @@ function npcInSceneFromCatalog(npc: NpcInput, overrides: Partial<NpcInScene> = {
     analizado: false,
     groupSize: null,
     groupDefeated: 0,
+    corpsesLooted: 0,
+    abilityUsesThisEncounter: {},
     ...overrides,
   };
 }

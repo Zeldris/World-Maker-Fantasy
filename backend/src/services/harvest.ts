@@ -1,7 +1,7 @@
 import { prisma } from '../lib/prisma.js';
 import { normalizeText, fuzzyMatchCandidates, fuzzyMatchesAnyStem } from './travel.js';
-import { harvestSourceAliases } from '../scripts/worldCatalog.js';
-import { scopeFor } from './npcScene.js';
+import { harvestSourceAliases, sourceDisplayNameFor } from '../scripts/worldCatalog.js';
+import { scopeFor, hasPendingLoot } from './npcScene.js';
 import type { NpcKind, MetodoObtencion } from '@prisma/client';
 
 /// Despiece/recolección (docs/12-mundo-estructurado.md § 3.3): el modelo narra, nunca decide qué
@@ -115,6 +115,7 @@ export async function detectHarvest(params: {
   // Fauna cazable (mismo slug que su Npc en worldCatalog.ts): sin haberla derrotado en esta
   // partida, no hay presa que despiezar — antes esto era repetible infinito sin cazar nada.
   const faunaNpc = await prisma.npc.findUnique({ where: { worldId_slug: { worldId: params.worldId, slug: sourceSlug } } });
+  const sourceName = sourceDisplayNameFor(sourceSlug, faunaNpc?.name);
   if (faunaNpc) {
     const scope = scopeFor(faunaNpc.kind, params.currentLocationId);
     const state = await prisma.npcState.findUnique({ where: { saveId_npcId_scope: { saveId: params.saveId, npcId: faunaNpc.id, scope } } });
@@ -123,21 +124,23 @@ export async function detectHarvest(params: {
     // applyCombatExchangeToNpcState, turnResolution.ts) aunque YA haya cadáveres reales caídos
     // (`groupDefeated > 0`) esperando despiece — `condicionFisica` sola ya no basta para decidir
     // si hay presa que despiezar.
-    const derrotada = state?.condicionFisica === 'INCAPACITADO' || state?.condicionFisica === 'MUERTO' || !!state?.groupDefeated;
+    const derrotada = state?.condicionFisica === 'CONVALECIENTE' || state?.condicionFisica === 'MUERTO' || !!state?.groupDefeated;
     if (!derrotada) {
-      return { sourceSlug, sourceName: rows[0].sourceName, yields: [], requierePresaPrevia: true };
+      return { sourceSlug, sourceName, yields: [], requierePresaPrevia: true };
     }
     // Bug real (auditoría 2026-07-28): sin esto, el mismo cadáver ya derrotado se podía despiezar
     // una y otra vez sin límite — `saqueado` (individuo solitario) o `corpsesLooted` (grupo, ver
     // comentario del campo en schema.prisma) marcan "esto ya no tiene nada más que dar AHORA
     // MISMO" — un grupo puede volver a tener presa real más adelante si cae otro individuo más.
-    const yaDespiezada = state?.groupSize ? state.corpsesLooted >= state.groupDefeated : !!state?.saqueado;
+    // `!hasPendingLoot(state)` (npcScene.ts, auditoría de deuda técnica 2026-08-18) — único punto
+    // de verdad del mismo criterio, compartido con `recolectar.ts`/`panels.ts`.
+    const yaDespiezada = !hasPendingLoot(state);
     if (yaDespiezada) {
-      return { sourceSlug, sourceName: rows[0].sourceName, yields: [], yaDespiezada: true };
+      return { sourceSlug, sourceName, yields: [], yaDespiezada: true };
     }
     return {
       sourceSlug,
-      sourceName: rows[0].sourceName,
+      sourceName,
       yields: rows.map((r) => ({ itemName: r.item.name, cantidad: r.cantidad, condicion: r.condicion, itemSlug: r.item.slug })),
       npcId: faunaNpc.id,
       npcKind: faunaNpc.kind,
@@ -146,7 +149,7 @@ export async function detectHarvest(params: {
 
   return {
     sourceSlug,
-    sourceName: rows[0].sourceName,
+    sourceName,
     yields: rows.map((r) => ({ itemName: r.item.name, cantidad: r.cantidad, condicion: r.condicion, itemSlug: r.item.slug })),
   };
 }

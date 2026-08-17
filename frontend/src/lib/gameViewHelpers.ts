@@ -65,7 +65,7 @@ export function formatFictionalDuration(duracionMinutos: number): string {
 
 /// Mapeo puro reutilizado en los 3 sitios de GameView.tsx que construyen el estado de combate de
 /// un NPC a partir de lo que trae el backend (`combateIniciado.npcs`) — botón "Decapitar"
-/// (2026-07-30): el estado en pantalla ya no colapsa MUERTO a INCAPACITADO, ver
+/// (2026-07-30): el estado en pantalla ya no colapsa MUERTO a CONVALECIENTE, ver
 /// `CombatNpcDisplay.condicion`.
 export function npcInSceneToCombatDisplay(npc: NpcInSceneInfo): CombatNpcDisplay {
   return {

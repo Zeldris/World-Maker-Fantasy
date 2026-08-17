@@ -1,5 +1,5 @@
 import { prisma } from '../lib/prisma.js';
-import { harvestSourceAliases, harvestSourceDescriptions } from '../scripts/worldCatalog.js';
+import { harvestSourceAliases, harvestSourceDescriptions, sourceDisplayNameFor } from '../scripts/worldCatalog.js';
 import { CONSTRUCTION_RECIPES } from './construction.js';
 import { CRAFTING_RECIPES } from './crafting.js';
 import { allClassAbilityUnlocks } from './classAbilities.js';
@@ -102,7 +102,7 @@ export async function loreContextFor(worldId: string, entityType: ImagePromptEnt
       description ? ` ${description}` : ''
     }${aliases.length ? ` También conocido como: ${aliases.join(', ')}.` : ''}`;
     return {
-      name: yieldRow.sourceName,
+      name: sourceDisplayNameFor(baseSlug, npc?.name),
       loreContext: sexoMatch ? withSexoVariante(general, FAUNA_SEXO_VARIANTES, baseSlug, sexoMatch.sexo) : general,
     };
   }

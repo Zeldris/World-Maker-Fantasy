@@ -35,7 +35,10 @@ export interface DynamicAbilityData {
   description: string;
   promptText: string;
   preferredAttribute: string;
-  effect: AbilityEffect;
+  /// Lista (2026-08-15, mismo motivo que StartingAbility.effects) — siempre 1 elemento hoy
+  /// (raciales/de arma nunca combinan más de un efecto), pero el tipo ya es consistente con el
+  /// resto del motor.
+  effects: AbilityEffect[];
   /// Rediseño de combate (2026-08-09) — ver `enum AbilityRol` (schema.prisma). Las raciales son
   /// trivialmente 'ataque'/'defensa' según el slot del que vienen; las de arma ya traían su
   /// propio `WeaponAbility.rol` (weaponAbilities.ts), antes descartado al llegar aquí.
@@ -62,8 +65,8 @@ export function dynamicCombatAbilitiesFor(raza: string | null, level: number, eq
     const razaInfo = BERIG_RAZAS.find((r) => r.slug === raza);
     if (razaInfo) {
       const { ataque, defensa } = razaInfo.habilidadesRaciales;
-      abilities.push({ ...ataque, preferredAttribute: ataque.preferredAttribute, effect: 'ATAQUE', rol: 'ataque', energyCost: ENERGY_COST_BASICA, energyRegen: 0, isGeneric: false, dualWield: false });
-      abilities.push({ ...defensa, preferredAttribute: defensa.preferredAttribute, effect: 'AGUANTE', rol: 'defensa', energyCost: ENERGY_COST_BASICA, energyRegen: 0, isGeneric: false, dualWield: false });
+      abilities.push({ ...ataque, preferredAttribute: ataque.preferredAttribute, effects: ['ATAQUE'], rol: 'ataque', energyCost: ENERGY_COST_BASICA, energyRegen: 0, isGeneric: false, dualWield: false });
+      abilities.push({ ...defensa, preferredAttribute: defensa.preferredAttribute, effects: ['AGUANTE'], rol: 'defensa', energyCost: ENERGY_COST_BASICA, energyRegen: 0, isGeneric: false, dualWield: false });
     }
   }
 
@@ -74,7 +77,7 @@ export function dynamicCombatAbilitiesFor(raza: string | null, level: number, eq
       description: w.description,
       promptText: w.promptText,
       preferredAttribute: w.attribute,
-      effect: w.rol === 'defensa' ? 'AGUANTE' : 'ATAQUE',
+      effects: [w.rol === 'defensa' ? 'AGUANTE' : 'ATAQUE'],
       rol: w.rol,
       energyCost: w.isGeneric ? ENERGY_COST_ATAQUE_BASICO : w.tier === 'avanzada' ? ENERGY_COST_AVANZADA : ENERGY_COST_BASICA,
       energyRegen: w.energyRegen,
@@ -109,7 +112,7 @@ export async function syncDynamicCombatAbilities(
       category: 'combate',
       isStarting: true,
       isDynamic: true,
-      effect: a.effect,
+      effects: a.effects,
       rol: a.rol,
       preferredAttribute: a.preferredAttribute,
       energyCost: a.energyCost,

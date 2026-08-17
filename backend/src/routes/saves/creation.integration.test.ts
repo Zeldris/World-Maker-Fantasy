@@ -34,7 +34,7 @@ describe('POST /saves/:id/restart limpia el combate pendiente de la partida ante
         characterMotivation: 'x',
         attributes: { fuerza: 10, destreza: 10, constitucion: 10, inteligencia: 10, voluntad: 10, carisma: 10, arcano: 10 },
         portraitInitial: 'G',
-        condicionFisica: 'INCAPACITADO',
+        condicionFisica: 'CONVALECIENTE',
         // Simula justo lo que se encontró en la partida real: un combate que nunca llegó a
         // cerrarse (el slug de un NPC ya derrotado/saqueado, atascado desde la sesión anterior).
         pendingCombatNpcSlugs: ['orco-enfurecido-hondonada'],

@@ -67,7 +67,7 @@ describe('POST /saves/:id/suggestions', () => {
       { text: 'Gorhorn ataca al Orco Enfurecido.' },
     ]);
     findManyQuest.mockReset().mockResolvedValue([{ title: 'Ayudar a Gistera Koh', objetivo: 'Derrotar al Orco Enfurecido' }]);
-    detectNpcsInScene.mockReset().mockResolvedValue([{ name: 'Orco Enfurecido', condicionFisica: 'INCAPACITADO' }]);
+    detectNpcsInScene.mockReset().mockResolvedValue([{ name: 'Orco Enfurecido', condicionFisica: 'CONVALECIENTE' }]);
     loadSessionFacts.mockReset().mockResolvedValue(['Gorhorn localiza Cardo Brújula en la zona.']);
     generateSuggestions.mockReset().mockResolvedValue(['Remato al Orco Enfurecido', 'Registro su cuerpo', 'Sigo mi camino']);
   });
@@ -82,7 +82,7 @@ describe('POST /saves/:id/suggestions', () => {
     expect(generateSuggestions).toHaveBeenCalledWith({
       characterName: 'Gorhorn',
       recentLog: ['Gorhorn ataca al Orco Enfurecido.', 'Gorhorn hunde su hacha en el hombro del Orco Enfurecido, dejándolo inmóvil.'],
-      npcsEnEscena: [{ name: 'Orco Enfurecido', condicionFisica: 'INCAPACITADO' }],
+      npcsEnEscena: [{ name: 'Orco Enfurecido', condicionFisica: 'CONVALECIENTE' }],
       activeQuests: [{ title: 'Ayudar a Gistera Koh', objetivo: 'Derrotar al Orco Enfurecido' }],
       saludJugador: 'herido, ~75/100',
       energiaJugador: 'baja (20/80)',

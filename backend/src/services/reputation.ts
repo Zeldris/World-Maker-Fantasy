@@ -56,9 +56,13 @@ export const REGION_OWNING_FACTIONS: Record<string, string[]> = {
   'Las Llanuras del Viento Rojo': ['Clan Serhu'],
   'La Meseta del Orden': ['Concordia de Hierro'],
   'Cristal Helado': ['Clan Helsig'],
+  // Corregido (2026-08-15): la clave se había escrito sin tilde ("Cienaga"), pero
+  // `Location.region` real siempre lleva "Ciénaga Troncal" (worldCatalog.ts) — la fila quedaba
+  // silenciosamente sin efecto (el lookup por string exacto nunca coincidía).
+  'Ciénaga Troncal': ['Clan Goshg'],
 };
 
-export type FoundingOutcome = 'SIN_DUENO' | 'PACIFICA' | 'CONFLICTO';
+export type FoundingOutcome = 'SIN_DUENO' | 'CONQUISTADA' | 'CONFLICTO';
 
 /// Puro — decide qué pasa al fundar un Ayuntamiento (tier 1) en esta región, según tu reputación
 /// con SUS facciones dueñas. `SIN_DUENO` (ninguna facción conocida reclama la región) y
@@ -69,5 +73,5 @@ export function resolveFoundingOutcome(region: string | null, factionsStatus: Re
   const owners = (region && REGION_OWNING_FACTIONS[region]) || [];
   if (owners.length === 0) return 'SIN_DUENO';
   const hostile = owners.some((faction) => factionRepFor(factionsStatus, faction) < FACTION_REP_DEFAULT);
-  return hostile ? 'CONFLICTO' : 'PACIFICA';
+  return hostile ? 'CONFLICTO' : 'CONQUISTADA';
 }

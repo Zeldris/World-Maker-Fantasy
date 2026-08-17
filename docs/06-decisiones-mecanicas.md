@@ -44,7 +44,7 @@ ventajas por atributo), [10-niveles-xp-reino.md](10-niveles-xp-reino.md) (nivele
 
 ### 3. Modelo de estado del personaje — **2026-07-16**
 
-**Decisión:** modelo híbrido — **un campo estructurado ligero para la condición física** (`ileso` → `herido` → `grave` → `incapacitado` → `muerto`), y **todo lo demás (reputación, posesiones, a quién gobierna, qué ha construido, relaciones...) como hechos libres** en `WorldState.facts`, sin campos fijos.
+**Decisión:** modelo híbrido — **un campo estructurado ligero para la condición física** (`ileso` → `herido` → `grave` → `convaleciente` → `muerto`), y **todo lo demás (reputación, posesiones, a quién gobierna, qué ha construido, relaciones...) como hechos libres** en `WorldState.facts`, sin campos fijos.
 
 **Por qué:** dado el alcance genérico (decisión 0), el estado del personaje es mucho más que salud. Un campo fijo solo para la condición física mantiene algo mostrable en la ficha de personaje del frontend (que ya tiene ese hueco en el diseño), mientras que todo lo demás necesita la flexibilidad de hechos libres porque puede ser literalmente cualquier cosa (gobernar una región, poseer una granja, tener mala reputación con una facción...) y no tiene sentido intentar tabular de antemano todos los campos posibles.
 
@@ -85,7 +85,7 @@ ventajas por atributo), [10-niveles-xp-reino.md](10-niveles-xp-reino.md) (nivele
 *(Actualizado 2026-08-02 — todo lo de abajo salvo el punto 5 lleva meses hecho; se deja tachado por
 historial. Desfase de documentación arrastrado desde la auditoría de `docs/archivo/11-roadmap-historico.md` 2026-07-18.)*
 
-1. ~~Añadir el campo de condición física~~ — **hecho**, `Save.condicionFisica` (enum `ILESO→HERIDO→GRAVE→INCAPACITADO→MUERTO`), junto con todo el sistema de combate/muerte/descanso de [14-combate-y-muerte.md](14-combate-y-muerte.md).
+1. ~~Añadir el campo de condición física~~ — **hecho**, `Save.condicionFisica` (enum `ILESO→HERIDO→GRAVE→CONVALECIENTE→MUERTO`), junto con todo el sistema de combate/muerte/descanso de [14-combate-y-muerte.md](14-combate-y-muerte.md).
 2. ~~Construir el servicio de tiradas~~ — hecho, `backend/src/services/dice.ts`.
 3. ~~Construir la orquestación de turno~~ — hecho, `backend/src/routes/turn.ts` + `backend/src/services/turnResolution.ts` (clasificar → tirar → narrar, dividido en `/turn/classify` + `/turn/narrate` desde `docs/08-acciones-por-tiempo.md`).
 4. ~~Diseñar los prompts del Narrador~~ — hecho, `backend/src/services/narrador.ts` + `backend/Modelfile`.

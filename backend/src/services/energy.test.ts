@@ -25,8 +25,8 @@ describe('nextEnergia', () => {
   });
 
   it('usar una habilidad con coste la descuenta y no regenera nada ese turno (regen 0)', () => {
-    expect(nextEnergia({ ...BASE, abilityEnergyCost: ENERGY_COST_BASICA, exchangeHappened: true })).toBe(35);
-    expect(nextEnergia({ ...BASE, abilityEnergyCost: ENERGY_COST_AVANZADA, exchangeHappened: true })).toBe(25);
+    expect(nextEnergia({ ...BASE, abilityEnergyCost: ENERGY_COST_BASICA, exchangeHappened: true })).toBe(40);
+    expect(nextEnergia({ ...BASE, abilityEnergyCost: ENERGY_COST_AVANZADA, exchangeHappened: true })).toBe(20);
   });
 
   it('rediseño 2026-07-31: Ataque Básico cuesta 5 y no regenera nada', () => {
