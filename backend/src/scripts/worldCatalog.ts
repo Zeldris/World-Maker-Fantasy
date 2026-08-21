@@ -1375,6 +1375,340 @@ export const fauna: NpcInput[] = [
       { icon: '💨', name: 'Silbido de Vapor', description: 'Hincha la garganta y silba con fuerza antes de cargar — el aviso basta para hacer dudar a cualquiera.', categoria: 'utilidad', preferredAttribute: 'carisma' },
     ],
   },
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // Ampliación de lore 2026-08-21 — repaso "zona por zona" de Las Llanuras del Viento Rojo
+  // (docs/ampliar-lore.md § 1.5, docs/rpgtarkor/flora-fauna.md). 12 fauna nuevas, ver el .md para
+  // el detalle narrativo completo de cada una.
+  // ══════════════════════════════════════════════════════════════════════════
+
+  {
+    slug: 'gesgurio',
+    name: 'Gesgurio',
+    kind: 'PLANTILLA',
+    aliases: ['gesgurio', 'gesgurios'],
+    faction: null,
+    role: 'Insecto carroñero de emboscada de La Hondonada del Eco',
+    articulo: 'el',
+    level: 1,
+    levelMax: 3,
+    attributes: { fuerza: 4, destreza: 9, constitucion: 6, inteligencia: 3, voluntad: 5, carisma: 1, arcano: 0 },
+    bio: 'Insecto de 5 a 20 cm, caparazón quitinoso color arcilla roja con púas más oscuras que lo camuflan contra las paredes de la Hondonada, patas dentadas bajo el caparazón para agarrarse a la roca. Come huesos de quien no logra cruzar la Hondonada; sin huesos, sigue de lejos, sin ser detectado, cualquier señal de vida —sobre todo moribundos o convalecientes— esperando a que perezcan.',
+    personality: 'Paciente y sigiloso, nunca ataca a algo con fuerzas — el equivalente terrestre del Buitre Cenizo.',
+    homeLocationSlug: 'hondonada-del-eco',
+    loadout: [],
+    ataqueNatural: 'Muerde con mandíbulas pequeñas pero constantes, buscando puntos ya heridos.',
+    temperamento: 'CAUTELOSO',
+    habilidadesRaciales: [
+      { icon: '🦴', name: 'Emboscada camuflada', description: 'Ataca desde el camuflaje contra la roca, sin que la presa lo vea venir.', categoria: 'ataque', preferredAttribute: 'destreza' },
+      { icon: '🛡️', name: 'Caparazón de arcilla', description: 'El caparazón absorbe golpes directos casi tan bien como la propia roca a la que imita.', categoria: 'defensa', preferredAttribute: 'constitucion' },
+      { icon: '👁️', name: 'Acecho paciente', description: 'Sigue de lejos a una presa débil sin que lo detecte, esperando el momento.', categoria: 'utilidad', preferredAttribute: 'inteligencia' },
+    ],
+  },
+
+  {
+    slug: 'kirelon-arenoso',
+    name: 'Kirelon Arenoso',
+    kind: 'PLANTILLA',
+    aliases: ['kirelon', 'kirelon arenoso', 'kirelones'],
+    faction: null,
+    role: 'Depredador nocturno ciego de La Hondonada del Eco',
+    articulo: 'el',
+    level: 8,
+    levelMax: 14,
+    attributes: { fuerza: 17, destreza: 10, constitucion: 16, inteligencia: 6, voluntad: 10, carisma: 2, arcano: 1 },
+    bio: 'Reptil ciego de 2 a 4 metros, escama negra, cabeza gigante, se guía por olfato y vibración. Cuatro patas con garras de Yerreo para excavar y romper roca, hocico largo y achatado como el de un cocodrilo, hilera de dientes en sierra salvo dos colmillos superiores y dos inferiores al final de la fila, de punta cuadrada en vez de afilada, membranas entre las extremidades como un faldón. Pasa el día bajo tierra descansando; solo emerge de noche o con temperaturas bajas a cazar. Si se ve amenazado, puede desprenderse de una extremidad desmagnetizada para distraer y huir — alta capacidad regenerativa, recupera el miembro en pocos días.',
+    personality: 'Paciente bajo tierra, letal y directo una vez emerge — no juega con la presa.',
+    homeLocationSlug: 'hondonada-del-eco',
+    loadout: [],
+    ataqueNatural: 'Embiste con el hocico y cierra la sierra de dientes sobre el punto que ha localizado por vibración.',
+    temperamento: 'AGRESIVO',
+    habilidadesRaciales: [
+      { icon: '🌑', name: 'Caza por vibración', description: 'No necesita ver — localiza a su presa por el más mínimo movimiento en la arena.', categoria: 'ataque', preferredAttribute: 'inteligencia' },
+      { icon: '🦷', name: 'Sierra de dientes', description: 'Cierra la mandíbula en sierra sobre el punto débil ya localizado.', categoria: 'ataque', preferredAttribute: 'fuerza' },
+      { icon: '🦴', name: 'Extremidad desmagnetizada', description: 'Se desprende de una pata quitándole la imantación al detectar peligro real — distrae y huye, la regenera en días.', categoria: 'utilidad', preferredAttribute: 'constitucion' },
+    ],
+  },
+
+  {
+    slug: 'ruptidar',
+    name: 'Ruptidar',
+    kind: 'PLANTILLA',
+    aliases: ['ruptidar', 'ruptidares'],
+    faction: null,
+    role: 'Limpiador de arena, sin amenaza, presente en cualquier zona arenosa',
+    articulo: 'el',
+    level: 1,
+    levelMax: 1,
+    attributes: { fuerza: 1, destreza: 4, constitucion: 3, inteligencia: 1, voluntad: 2, carisma: 1, arcano: 0 },
+    bio: 'Reptil serpentiforme de 30 a 60 cm, se desliza bajo la arena filtrando materia orgánica descompuesta y dejando limpia la arena superficial. Cuerpo seco y duro como piedra en vida, coraza inerte que sostienen sus propios órganos; al morir, esa coraza se deshace en arena. Presente en cualquier zona arenosa de la región, no solo en un único punto.',
+    personality: 'Totalmente inofensivo, indiferente a cualquier presencia.',
+    loadout: [],
+    ataqueNatural: 'No ataca.',
+    temperamento: 'INOFENSIVO',
+    habilidadesRaciales: [],
+  },
+
+  {
+    slug: 'ferike',
+    name: 'Ferike',
+    kind: 'PLANTILLA',
+    aliases: ['ferike', 'ferikes'],
+    faction: null,
+    role: 'Depredador ágil del borde de la selva del Margen Silencioso',
+    articulo: 'el',
+    level: 10,
+    levelMax: 16,
+    attributes: { fuerza: 15, destreza: 17, constitucion: 12, inteligencia: 7, voluntad: 10, carisma: 3, arcano: 0 },
+    bio: 'Bestia de 1,5 a 3 metros, cuatro patas, pelaje espeso —raíz negra, rastas verde oscuro que arrastran por el suelo—, garras curvas y anchas capaces de desgarrar y escalar árboles, ojos violeta oscuro brillantes, dientes tan largos que no le permiten cerrar la boca del todo. Cuerpo musculoso y esbelto, muy ágil pese a que el pelaje la hace parecer más grande de lo que es. Cazan a cualquiera que se adentre en la sombra de la espesura; temen solo a los Faerus. Los machos tienen cola de espigas de pelo negro que pueden "apretar" para usarla como maza —barridos, golpes al suelo, también ritual de cortejo—; las hembras no tienen cola, pero desarrollan dientes y garras más fuertes: son ellas las cazadoras y alfas de la manada.',
+    personality: 'Territorial y decidido — no ataca por sorpresa, avisa con un gruñido bajo antes de cargar.',
+    homeLocationSlug: 'cruce-de-las-cenizas',
+    loadout: [],
+    ataqueNatural: 'Zarpazo con las garras curvas, buscando desgarrar antes que morder.',
+    temperamento: 'AGRESIVO',
+    habilidadesRaciales: [
+      { icon: '🐾', name: 'Zarpazo desgarrador', description: 'Ataca con las garras anchas, pensadas para desgarrar tanto carne como corteza de árbol.', categoria: 'ataque', preferredAttribute: 'fuerza' },
+      { icon: '🌿', name: 'Maza de cola', description: 'Solo los machos: aprieta los pelos de la cola en forma de maza y golpea en barrido — puede alcanzar varias extremidades.', categoria: 'ataque', preferredAttribute: 'destreza' },
+      { icon: '💨', name: 'Agilidad esbelta', description: 'Pese al pelaje voluminoso, el cuerpo real es esbelto y muy ágil — esquiva mejor de lo que aparenta.', categoria: 'defensa', preferredAttribute: 'destreza' },
+    ],
+  },
+
+  {
+    slug: 'guchapo',
+    name: 'Guchapo',
+    kind: 'PLANTILLA',
+    aliases: ['guchapo', 'guchapos', 'sapo gigante'],
+    faction: null,
+    role: 'Sapo gigante de las charcas de El Pozo de Cauce Viejo',
+    articulo: 'el',
+    level: 2,
+    levelMax: 4,
+    attributes: { fuerza: 8, destreza: 4, constitucion: 12, inteligencia: 3, voluntad: 6, carisma: 2, arcano: 0 },
+    bio: 'Sapos de 120 a 210 cm, redondos y gordos —almacenan agua en grandes cantidades, piel tersa por la presión—, con lengua larga y viscosa dividida en tres puntas, ojos colocados de forma extraña bajo la boca, frente corta e hinchada llena de verrugas. Cazan insectos, viven en las charcas más profundas y salen poco. Colores marrón/verde; el alfa de cada grupo es rojo, el más grande y el único agresivo, solo si se invade su charca.',
+    personality: 'Muy asustadizo salvo el alfa, que defiende la charca sin dudar.',
+    homeLocationSlug: 'pozo-cauce-viejo',
+    loadout: [],
+    ataqueNatural: 'Lengua viscosa trifurcada que atrapa y arrastra, o embestida directa el alfa.',
+    temperamento: 'CAUTELOSO',
+    domesticablePct: 10,
+    habilidadesRaciales: [
+      { icon: '👅', name: 'Lengua trifurcada', description: 'Lanza la lengua dividida en tres puntas para atrapar a un insecto o distraer a un agresor.', categoria: 'ataque', preferredAttribute: 'destreza' },
+      { icon: '💧', name: 'Piel tersa', description: 'La piel, tensa por el agua acumulada, amortigua golpes menores como un colchón.', categoria: 'defensa', preferredAttribute: 'constitucion' },
+      { icon: '😨', name: 'Huida al agua', description: 'Se sumerge en la charca más profunda al primer sobresalto, casi imposible de seguir.', categoria: 'utilidad', preferredAttribute: 'destreza' },
+    ],
+  },
+
+  {
+    slug: 'lebude',
+    name: 'Lebude',
+    kind: 'PLANTILLA',
+    aliases: ['lebude', 'lebudes'],
+    faction: null,
+    role: 'Avispa-luciérnaga venenosa en colmena, El Pozo de Cauce Viejo',
+    articulo: 'el',
+    level: 3,
+    levelMax: 7,
+    attributes: { fuerza: 5, destreza: 14, constitucion: 6, inteligencia: 5, voluntad: 7, carisma: 2, arcano: 0 },
+    bio: 'Híbrido luciérnaga-avispa, 5 a 15 cm, negro con rayas gris ceniza, ojos blancos de libélula, aguijón grande — su veneno no es mortal pero deja mermado a quien pica (-50% de estadísticas durante un tiempo). Colmenas en forma de pequeñas montañas unidas entre sí, junto a los Telda Común. Comida favorita: Guchapos y Escorantes. Cazan en manada, con bajas reales cuando se enfrentan a un Escorante.',
+    personality: 'Coordinado y agresivo en manada, tímido en solitario.',
+    homeLocationSlug: 'pozo-cauce-viejo',
+    loadout: [],
+    ataqueNatural: 'Clava el aguijón cargado de veneno debilitante.',
+    temperamento: 'AGRESIVO',
+    habilidadesRaciales: [
+      { icon: '🐝', name: 'Aguijón debilitante', description: 'El veneno no mata, pero merma a fondo las capacidades de quien pica durante un tiempo.', categoria: 'ataque', preferredAttribute: 'destreza' },
+      { icon: '🕸️', name: 'Caza en manada', description: 'Coordina el ataque con el resto de la colmena, rodeando a la presa.', categoria: 'ataque', preferredAttribute: 'inteligencia' },
+      { icon: '💡', name: 'Vuelo errático luminoso', description: 'El vuelo parpadeante y errático dificulta seguirlo o alcanzarlo.', categoria: 'defensa', preferredAttribute: 'destreza' },
+    ],
+  },
+
+  {
+    slug: 'escorante',
+    name: 'Escorante',
+    kind: 'PLANTILLA',
+    aliases: ['escorante', 'escorantes'],
+    faction: null,
+    role: 'Escarabajo acorazado herbívoro de El Pozo de Cauce Viejo',
+    articulo: 'el',
+    level: 2,
+    levelMax: 5,
+    attributes: { fuerza: 10, destreza: 5, constitucion: 14, inteligencia: 4, voluntad: 9, carisma: 1, arcano: 0 },
+    bio: 'Escarabajo de 40 a 60 cm, caparazón oscuro y amarillo con detalles arcillosos/rojos, cuerno frontal en forma de pala para cavar y enterrarse en zonas húmedas. Herbívoro cauteloso, se alimenta del Musgo Arcilla. Diminutos pinchos en el caparazón segregan un líquido de sabor muy desagradable, disuade a los Guchapos. Su depredador real son los Lebudes, que cazan en manada.',
+    personality: 'Cauteloso, prefiere enterrarse a huir corriendo.',
+    homeLocationSlug: 'pozo-cauce-viejo',
+    loadout: [],
+    ataqueNatural: 'Embiste con el cuerno frontal en forma de pala.',
+    temperamento: 'CAUTELOSO',
+    habilidadesRaciales: [
+      { icon: '🛡️', name: 'Cuerno excavador', description: 'Embiste con el cuerno usado normalmente para cavar — más fuerza que precisión.', categoria: 'ataque', preferredAttribute: 'fuerza' },
+      { icon: '🦠', name: 'Pinchos repelentes', description: 'Los pinchos del caparazón segregan un líquido tan desagradable que disuade a la mayoría de depredadores.', categoria: 'defensa', preferredAttribute: 'constitucion' },
+      { icon: '🕳️', name: 'Enterrarse', description: 'Se entierra en terreno húmedo en segundos, casi invisible una vez oculto.', categoria: 'utilidad', preferredAttribute: 'constitucion' },
+    ],
+  },
+
+  {
+    slug: 'jusha-esmeralda',
+    name: 'Jusha Esmeralda',
+    kind: 'PLANTILLA',
+    aliases: ['jusha', 'jusha esmeralda', 'jushas'],
+    faction: null,
+    role: 'Pez de las charcas profundas de Los Manaderos',
+    articulo: 'la',
+    level: 1,
+    levelMax: 2,
+    attributes: { fuerza: 3, destreza: 6, constitucion: 5, inteligencia: 2, voluntad: 3, carisma: 1, arcano: 0 },
+    bio: 'Pez de 20-30 cm, escamas verde musgo con brillos azul oscuro, aleta dorsal espinosa sin membrana, cola amplia, hocico redondo, dientes planos para raspar algas del fondo. Población baja, en las charcas más profundas. Sabor amargo pero comestible. Puede saltar de charca en charca por zonas de barro, rara vez, solo si su charca se ve amenazada o en sequía severa.',
+    personality: 'Esquivo, población escasa — se ve poco.',
+    homeLocationSlug: 'manaderos',
+    loadout: [],
+    ataqueNatural: 'No ataca, huye.',
+    temperamento: 'INOFENSIVO',
+    habilidadesRaciales: [
+      { icon: '💦', name: 'Salto de charca', description: 'Salta entre charcas por el barro cuando su charca se ve amenazada o en sequía.', categoria: 'utilidad', preferredAttribute: 'destreza' },
+    ],
+  },
+
+  {
+    slug: 'miruina',
+    name: 'Miruina',
+    kind: 'PLANTILLA',
+    aliases: ['miruina', 'miruinas'],
+    faction: null,
+    role: 'Roedor nocturno nadador de Los Manaderos, caza Jusha en manada',
+    articulo: 'el',
+    level: 4,
+    levelMax: 8,
+    attributes: { fuerza: 9, destreza: 13, constitucion: 9, inteligencia: 6, voluntad: 6, carisma: 2, arcano: 0 },
+    bio: 'Roedor nocturno de 100 a 120 cm, escamas de las que brota pelo, nadador experto, pelaje impermeable bajo el agua, negro con mechas blancas. Incisivos orientados en varias direcciones para rasgar escamas de Jusha (su presa favorita), ojos más de pez que de roedor, muy pequeños, no soportan la luz del día. Caza en manada de noche, descansa en las charcas tras comer. De día amplía sus madrigueras bajo el agua, con un túnel que sube hasta la superficie para respirar.',
+    personality: 'Coordinado y persistente en manada, ciego de día.',
+    homeLocationSlug: 'manaderos',
+    loadout: [],
+    ataqueNatural: 'Muerde y rasga con los incisivos multidireccionales.',
+    temperamento: 'AGRESIVO',
+    habilidadesRaciales: [
+      { icon: '🌙', name: 'Caza nocturna en manada', description: 'Coordina el ataque con el resto de la manada al abrigo de la noche.', categoria: 'ataque', preferredAttribute: 'destreza' },
+      { icon: '🦫', name: 'Incisivos rasgadores', description: 'Los incisivos multidireccionales rasgan escamas y piel con facilidad.', categoria: 'ataque', preferredAttribute: 'fuerza' },
+      { icon: '🕳️', name: 'Madriguera con respiradero', description: 'Puede retirarse a su madriguera bajo el agua, con salida de aire propia, y desaparecer.', categoria: 'defensa', preferredAttribute: 'constitucion' },
+    ],
+  },
+
+  {
+    slug: 'quio',
+    name: 'Quio',
+    kind: 'PLANTILLA',
+    aliases: ['quio', 'quios'],
+    faction: null,
+    role: 'Gusano filtrador de las orillas de Los Manaderos',
+    articulo: 'el',
+    level: 1,
+    levelMax: 1,
+    attributes: { fuerza: 1, destreza: 3, constitucion: 3, inteligencia: 1, voluntad: 2, carisma: 1, arcano: 0 },
+    bio: 'Gusano de 10 a 20 cm, blanco con manchas marronas, tipo oruga con boca de filtro (sin dientes, pelos que retienen y filtran, como las barbas de una ballena). Vive en el fango de las orillas, se alimenta de restos orgánicos — el "limpiador"/carroñero de la zona.',
+    personality: 'Totalmente inofensivo, indiferente a cualquier presencia.',
+    homeLocationSlug: 'manaderos',
+    loadout: [],
+    ataqueNatural: 'No ataca.',
+    temperamento: 'INOFENSIVO',
+    habilidadesRaciales: [],
+  },
+
+  {
+    slug: 'tura-jusha',
+    name: 'Tura Jusha',
+    kind: 'PLANTILLA',
+    aliases: ['tura jusha', 'tura', 'turas jusha'],
+    faction: null,
+    role: 'Ave sin vuelo de Los Manaderos, caza crías de Jusha de día',
+    articulo: 'la',
+    level: 3,
+    levelMax: 6,
+    attributes: { fuerza: 6, destreza: 12, constitucion: 7, inteligencia: 4, voluntad: 5, carisma: 2, arcano: 0 },
+    bio: 'Ave de patas larguísimas que se ensanchan hacia el pie, terminado en una garra tipo dinosaurio con uñas retráctiles negras, escamas grises. No vuela — alas cortas y anchas para planear o saltar dentro/fuera de las charcas. Plumaje alborotado, pico ancho que almacena agua. Caza de día, especializada en crías de Jusha desorientadas.',
+    personality: 'Activa y oportunista de día, discreta.',
+    homeLocationSlug: 'manaderos',
+    loadout: [],
+    ataqueNatural: 'Picotazo rápido con el pico ancho, o zarpazo con la garra retráctil.',
+    temperamento: 'CAUTELOSO',
+    habilidadesRaciales: [
+      { icon: '🦶', name: 'Garra retráctil', description: 'Zarpazo con la garra tipo dinosaurio de la pata, retráctil hasta el último momento.', categoria: 'ataque', preferredAttribute: 'destreza' },
+      { icon: '💦', name: 'Salto entre charcas', description: 'Planea o salta brevemente para entrar y salir de las charcas sin mojarse del todo.', categoria: 'utilidad', preferredAttribute: 'destreza' },
+    ],
+  },
+
+  {
+    slug: 'cuernahoja',
+    name: 'Cuernahoja',
+    kind: 'PLANTILLA',
+    aliases: ['cuernahoja', 'cuernahojas'],
+    faction: null,
+    role: 'Gacela de manada de Los Pastos de la Deriva',
+    articulo: 'la',
+    level: 2,
+    levelMax: 5,
+    attributes: { fuerza: 7, destreza: 12, constitucion: 8, inteligencia: 3, voluntad: 7, carisma: 2, arcano: 0 },
+    bio: 'Fauna de 120-180 cm, tipo gacela con cuernos finos y largos de cabra montesa (sin apenas espiral), cuello ancho, pelaje muy corto rojo por arriba y blanco por el vientre. Come pasto y hojas altas gracias al cuello largo. Manada, inofensiva salvo que se le ataque. Dimorfismo: las hembras llevan más rojo que los machos y cuernos más anchos — son ellas las que defienden la manada ante una amenaza.',
+    personality: 'Tranquila y de manada; las hembras se plantan de inmediato ante cualquier amenaza real.',
+    homeLocationSlug: 'pastos-de-la-deriva',
+    loadout: [],
+    ataqueNatural: 'Embiste con los cuernos, más las hembras que los machos.',
+    temperamento: 'CAUTELOSO',
+    domesticablePct: 20,
+    habilidadesRaciales: [
+      { icon: '🦌', name: 'Embestida de cuernos', description: 'Carga y embiste con los cuernos — las hembras, más anchos, golpean con más fuerza.', categoria: 'ataque', preferredAttribute: 'fuerza' },
+      { icon: '👑', name: 'Alfa defensora', description: 'La hembra alfa se interpone entre la manada y la amenaza, ganando tiempo para que el resto huya.', categoria: 'defensa', preferredAttribute: 'voluntad' },
+      { icon: '💨', name: 'Estampida de manada', description: 'Toda la manada huye a la vez en estampida, difícil de seguir o aislar a una sola.', categoria: 'utilidad', preferredAttribute: 'destreza' },
+    ],
+  },
+
+  {
+    slug: 'imanio',
+    name: 'Imanio',
+    kind: 'PLANTILLA',
+    aliases: ['imanio', 'imanios'],
+    faction: null,
+    role: 'Insecto cubierto de rocas imantadas, Las Agujas Imán',
+    articulo: 'el',
+    level: 3,
+    levelMax: 6,
+    attributes: { fuerza: 9, destreza: 3, constitucion: 14, inteligencia: 2, voluntad: 8, carisma: 1, arcano: 2 },
+    bio: 'Insecto largo y fino, tipo bicho palo, de quitina que atrae rocas imantadas flotantes formando una armadura de piedra a su alrededor — muy lento pero fuerte una vez cubierto, puede doblar su tamaño real (80-180 cm sin contar rocas). Cuerpo blanco con tonos azules, casi invisible bajo las rocas, que se van deformando con el tiempo a la forma de su cuerpo. Se alimenta de Arena Imán, vaga por la zona buscándola. Inofensivo salvo que se le ataque.',
+    personality: 'Lento, pacífico, defensivo cuando no queda otra salida.',
+    homeLocationSlug: 'agujas-iman',
+    loadout: [],
+    ataqueNatural: 'Golpea con el peso de las rocas que lo cubren.',
+    temperamento: 'CAUTELOSO',
+    habilidadesRaciales: [
+      { icon: '🪨', name: 'Coraza de piedra', description: 'La armadura de rocas imantadas absorbe la mayor parte de cualquier golpe directo.', categoria: 'defensa', preferredAttribute: 'constitucion' },
+      { icon: '🦵', name: 'Extremidad desmagnetizada', description: 'Se desprende de una parte del cuerpo, quitándole la imantación, para distraer a un depredador y huir — regenera en días.', categoria: 'utilidad', preferredAttribute: 'constitucion' },
+    ],
+  },
+
+  {
+    slug: 'nuente',
+    name: 'Nuente',
+    kind: 'PLANTILLA',
+    aliases: ['nuente', 'nuentes'],
+    faction: null,
+    role: 'Depredador nocturno que ve magnetismo, Las Agujas Imán',
+    articulo: 'el',
+    level: 5,
+    levelMax: 9,
+    attributes: { fuerza: 8, destreza: 14, constitucion: 7, inteligencia: 9, voluntad: 8, carisma: 2, arcano: 3 },
+    bio: 'Bestia nocturna de 80-120 cm, mezcla deliberada casi alienígena — cuerpo de rana, alas de murciélago, cabeza tipo golem con forma de búho, halos en los ojos, orejas puntiagudas y finas (no necesita oír), pelaje blanco acabado en mechas azul marino. En vez de ecolocalización por sonido, "ve" el magnetismo de las cosas — se mueve con total agilidad en la oscuridad total. Solo sale de noche; caza Imanios. Garras afiladas y boca preparada para sorber los fluidos de su presa.',
+    personality: 'Silencioso y calculador, no agresivo hacia quien no lo busca.',
+    homeLocationSlug: 'agujas-iman',
+    loadout: [],
+    ataqueNatural: 'Sorbe los fluidos de su presa con la boca preparada para ello.',
+    temperamento: 'CAUTELOSO',
+    // Efecto pasivo confirmado con la usuaria (2026-08-21): -2 a la tirada de ataque del jugador
+    // si usa arma de hierro/metal contra el Nuente — pendiente de enganchar en combatExchange.ts
+    // (comprobar tipoArma/material del arma equipada), no hay campo hoy para representarlo aquí.
+    habilidadesRaciales: [
+      { icon: '🩸', name: 'Succión vital', description: 'Sorbe los fluidos de su presa con la boca preparada para ello.', categoria: 'ataque', preferredAttribute: 'destreza' },
+      { icon: '🧲', name: 'Onda Magnética', description: 'Deflecta metal e inmoviliza brevemente a un Imanio con una onda magnética dirigida.', categoria: 'utilidad', preferredAttribute: 'arcano' },
+      { icon: '🦉', name: 'Vuelo errático nocturno', description: 'Vuela con total agilidad en la oscuridad total, casi imposible de seguir.', categoria: 'defensa', preferredAttribute: 'destreza' },
+    ],
+  },
 ];
 
 export const npcs: NpcInput[] = [
@@ -3093,6 +3427,474 @@ export const items: ItemCatalogInput[] = [
     dimensiones: 'Mechones de 10 a 20 cm.',
   },
 
+  // ══════════════════════════════════════════════════════════════════════════
+  // Ampliación de lore 2026-08-21 — repaso "zona por zona" de Las Llanuras del Viento Rojo.
+  // Ver docs/rpgtarkor/flora-fauna.md/items.md para el detalle narrativo completo.
+  // ══════════════════════════════════════════════════════════════════════════
+
+  {
+    slug: 'fibra-enredaderas-llanuras',
+    name: 'Fibra de Enredaderas de las Llanuras',
+    aliases: ['fibra vegetal', 'fibra de enredadera'],
+    category: 'fibra',
+    tipo: 'RECURSO',
+    description: 'Tallos fibrosos de las enredaderas que trepan por sombra en la Hondonada del Eco y la base de Los Pilares Rotos — material base de crafteo ligero.',
+    dimensiones: 'Fibras de 30 a 60 cm.',
+  },
+
+  {
+    slug: 'mena-yerreo',
+    name: 'Mena de Yerreo',
+    aliases: ['yerreo', 'mena de yerreo'],
+    category: 'mena',
+    tipo: 'RECURSO',
+    description: 'Mineral con la apariencia del hierro pero de vetas rojas y brillos anaranjados — muy difícil de encontrar y en cantidades mínimas donde aparece.',
+    dimensiones: 'Fragmentos de 5 a 10 cm.',
+    tier: 4,
+    lugarOrigen: 'La Hondonada del Eco, Llanuras del Viento Rojo.',
+  },
+
+  {
+    slug: 'lingote-yerreo',
+    name: 'Lingote de Yerreo',
+    aliases: ['lingote de yerreo'],
+    category: 'metal',
+    tipo: 'MATERIAL',
+    description: 'Yerreo fundido en lingote — se obtiene fundiendo su mena, o directamente de las garras del Kirelon Arenoso si el cazador es herrero con fragua a mano.',
+    dimensiones: 'Lingote de 15 cm.',
+    tier: 4,
+  },
+
+  {
+    slug: 'lingote-hiyerro',
+    name: 'Lingote de Hiyerro',
+    aliases: ['hiyerro', 'lingote de hiyerro'],
+    category: 'metal',
+    tipo: 'MATERIAL',
+    // Distinto a propósito de 'lingote-hierro-imantado' (ya existente, hierro + arena imán, para
+    // la Aguja de Cardo Brújula) — nombre parecido, aleación distinta y muy superior: aquí entra
+    // Yerreo, no solo arena imán. Alias sin solape con "hierro imantado" para que el detector no
+    // confunda las dos recetas.
+    description: 'La mejor aleación orca de las Llanuras — hierro, Yerreo y Arena Imán fundidos juntos. Material de las armas de mayor tier que un herrero de la región puede forjar. No debe confundirse con el Lingote de hierro imantado (aleación mucho más simple, sin Yerreo).',
+    dimensiones: 'Lingote de 15 cm.',
+    tier: 7,
+  },
+
+  {
+    slug: 'trozo-quitina-roja',
+    name: 'Trozo de quitina roja',
+    aliases: ['quitina roja', 'trozo de quitina'],
+    category: 'quitina',
+    tipo: 'RECURSO',
+    description: 'Fragmento del caparazón de un Gesgurio, color arcilla roja con púas más oscuras.',
+    dimensiones: 'Fragmento de 3 a 6 cm.',
+  },
+
+  {
+    slug: 'pieza-quitina-roja',
+    name: 'Pieza de quitina roja',
+    aliases: ['pieza de quitina'],
+    category: 'quitina',
+    tipo: 'MATERIAL',
+    description: 'Varios trozos de quitina roja de Gesgurio, trabajados hasta formar una pieza completa lista para crafteo.',
+    dimensiones: 'Pieza de 10 cm.',
+    tier: 2,
+  },
+
+  {
+    slug: 'hueso-kirelon',
+    name: 'Hueso de Kirelon',
+    aliases: ['hueso de kirelon'],
+    category: 'hueso',
+    tipo: 'RECURSO',
+    description: 'Hueso macizo del Kirelon Arenoso, depredador ciego de La Hondonada del Eco.',
+    dimensiones: 'Hueso de 40 a 60 cm.',
+    tier: 3,
+  },
+
+  {
+    slug: 'craneo-kirelon',
+    name: 'Cráneo de Kirelon',
+    aliases: ['craneo de kirelon', 'cráneo de kirelon'],
+    category: 'hueso',
+    tipo: 'RECURSO',
+    description: 'Cráneo alargado del Kirelon Arenoso, hocico achatado y dientes en sierra todavía visibles.',
+    dimensiones: 'Cráneo de 50 cm.',
+    tier: 4,
+  },
+
+  {
+    slug: 'piel-kirelon',
+    name: 'Piel de escamas de Kirelon',
+    aliases: ['piel de kirelon'],
+    category: 'piel',
+    tipo: 'RECURSO',
+    description: 'Escamas negras del Kirelon Arenoso, resistentes y flexibles pese a su grosor.',
+    dimensiones: 'Piel de 1 a 2 m².',
+    tier: 4,
+  },
+
+  {
+    slug: 'garras-kirelon',
+    name: 'Garras de Kirelon',
+    aliases: ['garras de kirelon'],
+    category: 'hueso',
+    tipo: 'RECURSO',
+    description: 'Garras del Kirelon Arenoso, compuestas en su mayoría de Yerreo — un herrero con fragua a mano puede fundirlas directo en 2 Lingotes de Yerreo.',
+    dimensiones: 'Garras de 12 cm.',
+    tier: 5,
+  },
+
+  {
+    slug: 'madera-lucre-blanco',
+    name: 'Madera de Lucre Blanco',
+    aliases: ['madera de lucre'],
+    category: 'madera',
+    tipo: 'RECURSO',
+    description: 'Tronco claro y muy resistente de los árboles de Lucre Blanco, en las cumbres de Los Pilares Rotos.',
+    dimensiones: 'Tablones de 1 m.',
+    tier: 6,
+  },
+
+  {
+    slug: 'resina-lucre-blanco',
+    name: 'Resina de Lucre Blanco',
+    aliases: ['resina de lucre'],
+    category: 'resina',
+    tipo: 'RECURSO',
+    description: 'Resina blanca translúcida del Lucre Blanco — pegamento muy resistente.',
+    dimensiones: 'Bloques de 8x5 cm.',
+    tier: 5,
+  },
+
+  {
+    slug: 'musgo-rojo',
+    name: 'Musgo Rojo',
+    aliases: ['musgo arcilla', 'musgo rojo'],
+    category: 'planta',
+    tipo: 'RECURSO',
+    description: 'Musgo rojo como pelaje, recogido del Musgo Arcilla que crece pegado a la roca en zonas húmedas — material de construcción para tejados orcos.',
+    dimensiones: 'Puñados de 200 g.',
+  },
+
+  {
+    slug: 'madera-telda',
+    name: 'Madera de Telda',
+    aliases: ['madera de telda comun', 'madera de telda ceniza'],
+    category: 'madera',
+    tipo: 'RECURSO',
+    description: 'Madera clara de los árboles Telda —Común en El Pozo de Cauce Viejo, Ceniza en El Cruce de las Cenizas, misma especie y mismo recurso.',
+    dimensiones: 'Tablones de 80 cm.',
+  },
+
+  {
+    slug: 'resina-telda-gris',
+    name: 'Resina Telda Gris',
+    aliases: ['resina de telda'],
+    category: 'resina',
+    tipo: 'RECURSO',
+    description: 'Resina gris de los árboles Telda — pegamento de uso general.',
+    dimensiones: 'Bloques de 8x5 cm.',
+    tier: 2,
+  },
+
+  {
+    slug: 'hojas-telda',
+    name: 'Hojas de Telda',
+    aliases: ['hojas de telda'],
+    category: 'planta',
+    tipo: 'RECURSO',
+    description: 'Hojas grandes de los árboles Telda, de 30 a 50 cm — material de tejados y cobertizos orcos.',
+    dimensiones: 'Hojas de 30 a 50 cm.',
+  },
+
+  {
+    slug: 'piel-guchapo',
+    name: 'Piel de Guchapo',
+    aliases: ['piel de guchapo'],
+    category: 'piel',
+    tipo: 'RECURSO',
+    description: 'Piel tersa de Guchapo, tensa por el agua que el animal acumula en vida.',
+    dimensiones: 'Piel de 1 m².',
+    tier: 3,
+  },
+
+  {
+    slug: 'cera-lebude',
+    name: 'Cera Lebude',
+    aliases: ['cera de lebude'],
+    category: 'cera',
+    tipo: 'RECURSO',
+    description: 'Cera de las colmenas de Lebude, en forma de pequeñas montañas junto a los Telda — material de construcción.',
+    dimensiones: 'Bloques de 10x10 cm.',
+    tier: 3,
+  },
+
+  {
+    slug: 'miel-lebude',
+    name: 'Miel Lebude',
+    aliases: ['miel de lebude'],
+    category: 'alimento',
+    tipo: 'RECURSO',
+    description: 'Miel de las colmenas de Lebude — ingrediente de cocina.',
+    dimensiones: 'Tarro de 200 g.',
+    tier: 2,
+  },
+
+  {
+    slug: 'quitina-escorante',
+    name: 'Quitina Escorante',
+    aliases: ['quitina de escorante'],
+    category: 'quitina',
+    tipo: 'RECURSO',
+    description: 'Fragmento del caparazón acorazado del Escorante, con los diminutos pinchos que segregan su líquido repelente.',
+    dimensiones: 'Fragmento de 8 cm.',
+    tier: 3,
+  },
+
+  {
+    slug: 'piel-ferike',
+    name: 'Piel de Ferike',
+    aliases: ['piel de ferike'],
+    category: 'piel',
+    tipo: 'RECURSO',
+    description: 'Pelaje espeso de Ferike, raíz negra y puntas verde oscuro — material para abalorios de tier alto.',
+    dimensiones: 'Piel de 1,5 m².',
+    tier: 6,
+  },
+
+  {
+    slug: 'garras-ferike',
+    name: 'Garras Ferike',
+    aliases: ['garras de ferike'],
+    category: 'hueso',
+    tipo: 'RECURSO',
+    description: 'Garras curvas y anchas del Ferike, capaces de desgarrar y escalar árboles.',
+    dimensiones: 'Garras de 15 cm.',
+    tier: 6,
+  },
+
+  {
+    slug: 'melena-cola-ferike',
+    name: 'Melena de cola Ferike',
+    aliases: ['melena de ferike', 'melena de cola'],
+    category: 'pelo',
+    tipo: 'RECURSO',
+    description: 'Espigas de pelo negro de la cola-maza de un Ferike macho — objeto especial, muy baja probabilidad de loot, ingrediente del crafteo de mayor calidad de su tier.',
+    dimensiones: 'Mechón de 40 cm.',
+    tier: 7,
+  },
+
+  {
+    slug: 'leche-murgol',
+    name: 'Leche de Múrgol',
+    aliases: ['leche de murgol'],
+    category: 'alimento',
+    tipo: 'RECURSO',
+    description: 'Leche del recinto de Múrgol domados del Campamento del Clan Serhu.',
+    dimensiones: 'Odre de 1 litro.',
+  },
+
+  {
+    slug: 'fragmento-gargantua',
+    name: 'Fragmento de Gargantúa',
+    aliases: ['fragmentos de gargantua'],
+    category: 'hueso',
+    tipo: 'RECURSO',
+    description: 'Trozo pequeño del esqueleto de la Gargantúa de Ceniza de El Osario de la Manada.',
+    dimensiones: 'Fragmento de 10 a 20 cm.',
+    tier: 2,
+  },
+
+  {
+    slug: 'hueso-gargantua-construccion',
+    name: 'Huesos de Gargantúa',
+    aliases: ['huesos de gargantua'],
+    category: 'hueso',
+    tipo: 'RECURSO',
+    description: 'Piezas grandes del esqueleto de El Osario de la Manada — material de construcción, distinto del Hueso largo (materia prima de lanzas) y la Placa ósea (armadura).',
+    dimensiones: 'Huesos de 60 a 100 cm.',
+  },
+
+  {
+    slug: 'boungo',
+    name: 'Boungo',
+    aliases: ['boungo', 'seta boungo'],
+    category: 'alimento',
+    tipo: 'RECURSO',
+    description: 'Seta de sombrero marrón oscuro con manchas rojas, tallo fino beis, aspecto seco — crece en otoño en El Osario de la Manada, en cúmulos apretados.',
+    dimensiones: 'Setas de 5 a 30 cm.',
+  },
+
+  {
+    slug: 'verdileas-acuaticas',
+    name: 'Verdileas Acuáticas',
+    aliases: ['verdileas', 'algas de manaderos'],
+    category: 'planta',
+    tipo: 'RECURSO',
+    description: 'Alga de Los Manaderos, base de la cadena trófica de la charca — alimento de la Jusha Esmeralda.',
+    dimensiones: 'Mata de 20 cm.',
+  },
+
+  {
+    slug: 'juncos-rojizos',
+    name: 'Juncos Rojizos',
+    aliases: ['juncos', 'juncos de los manaderos'],
+    category: 'planta',
+    tipo: 'RECURSO',
+    description: 'Juncos rojizos de las charcas de Los Manaderos — material de tejido y techado.',
+    dimensiones: 'Tallos de 80 cm a 1,2 m.',
+  },
+
+  {
+    slug: 'carne-jusha',
+    name: 'Carne de Jusha',
+    aliases: ['carne de jusha'],
+    category: 'alimento',
+    tipo: 'RECURSO',
+    description: 'Carne de Jusha Esmeralda, sabor amargo pero comestible — ingrediente de cocinero-orco-llanuras.',
+    dimensiones: 'Filetes de 100 g.',
+  },
+
+  {
+    slug: 'escama-jusha',
+    name: 'Escama de Jusha',
+    aliases: ['escama de jusha'],
+    category: 'escama',
+    tipo: 'RECURSO',
+    description: 'Escama verde musgo con brillos azul oscuro de la Jusha Esmeralda.',
+    dimensiones: 'Escamas de 1 a 2 cm.',
+    tier: 2,
+  },
+
+  {
+    slug: 'piel-miruina',
+    name: 'Piel de Miruina',
+    aliases: ['piel de miruina'],
+    category: 'piel',
+    tipo: 'RECURSO',
+    description: 'Piel impermeable del Miruina, roedor nadador nocturno de Los Manaderos.',
+    dimensiones: 'Piel de 1 m².',
+    tier: 3,
+  },
+
+  {
+    slug: 'filtro-quio',
+    name: 'Filtro de Quio',
+    aliases: ['filtro de quio'],
+    category: 'filtro',
+    tipo: 'RECURSO',
+    description: 'Boca filtradora del Quio, pelos finos que retienen y filtran como las barbas de una ballena.',
+    dimensiones: 'Filtro de 3 cm.',
+  },
+
+  {
+    slug: 'plumas-tura-jusha',
+    name: 'Plumas de Tura Jusha',
+    aliases: ['plumas de tura jusha'],
+    category: 'pluma',
+    tipo: 'RECURSO',
+    description: 'Plumas del plumaje alborotado de la Tura Jusha.',
+    dimensiones: 'Plumas de 10 a 15 cm.',
+    tier: 2,
+  },
+
+  {
+    slug: 'garra-tura-jusha',
+    name: 'Garra retráctil de Tura Jusha',
+    aliases: ['garra de tura jusha'],
+    category: 'hueso',
+    tipo: 'RECURSO',
+    description: 'Garra tipo dinosaurio, con uña retráctil negra, de la pata de la Tura Jusha.',
+    dimensiones: 'Garra de 8 cm.',
+    tier: 2,
+  },
+
+  {
+    slug: 'pasto-solar',
+    name: 'Pasto Solar',
+    aliases: ['pasto solar', 'hierba comun'],
+    category: 'hierba',
+    tipo: 'RECURSO',
+    description: 'Hierba amarilla, el pasto base de toda la llanura allí donde crece vegetación.',
+    dimensiones: 'Manojo de 200 g.',
+  },
+
+  {
+    slug: 'fibra-gradias',
+    name: 'Fibra de Gradias',
+    aliases: ['gradias', 'fibra de gradias'],
+    category: 'fibra',
+    tipo: 'RECURSO',
+    description: 'Ramas fibrosas del arbusto Gradias — sus hojas anchas sueltan toda su agua acumulada al triturarlas.',
+    dimensiones: 'Ramas de 30 cm.',
+  },
+
+  {
+    slug: 'petalos-flor-salvatura',
+    name: 'Pétalos de Flor Salvatura',
+    aliases: ['flor salvatura', 'petalos de salvatura'],
+    category: 'medicinal',
+    tipo: 'RECURSO',
+    description: 'Pétalos verdes con tono azulado de la Flor Salvatura, planta negra de aspecto muerto — ingrediente base de alquimia para varias recetas de pociones curativas.',
+    dimensiones: 'Pétalos de 4 cm.',
+    tier: 3,
+  },
+
+  {
+    slug: 'piel-cuernahoja',
+    name: 'Piel de Cuernahoja',
+    aliases: ['piel de cuernahoja'],
+    category: 'piel',
+    tipo: 'RECURSO',
+    description: 'Pelaje corto y ligero de Cuernahoja, rojo por arriba y blanco por el vientre.',
+    dimensiones: 'Piel de 1 m².',
+  },
+
+  {
+    slug: 'cuerno-cuernahoja',
+    name: 'Cuerno de Cuernahoja',
+    aliases: ['cuerno de cuernahoja'],
+    category: 'cuerno',
+    tipo: 'RECURSO',
+    description: 'Cuerno fino y largo de Cuernahoja, sin apenas espiral — el de las hembras, más ancho, es la variante de mayor calidad.',
+    dimensiones: 'Cuerno de 30 a 40 cm.',
+    tier: 2,
+  },
+
+  {
+    slug: 'volcanita',
+    name: 'Volcanita',
+    aliases: ['volcanita'],
+    category: 'mena',
+    tipo: 'RECURSO',
+    description: 'Mineral volcánico de El Filo de las Brasas, veta común de la zona.',
+    dimensiones: 'Fragmentos de 8 cm.',
+    tier: 3,
+  },
+
+  {
+    slug: 'rovalnica',
+    name: 'Rovalnica',
+    aliases: ['rovalnica'],
+    category: 'piedra',
+    tipo: 'RECURSO',
+    description: 'Roca de construcción negra con vetas rojas, de El Filo de las Brasas.',
+    dimensiones: 'Bloques de 20 cm.',
+    tier: 2,
+  },
+
+  {
+    slug: 'fercaneo',
+    name: 'Fercaneo',
+    aliases: ['fercaneo'],
+    category: 'mena',
+    tipo: 'RECURSO',
+    description: 'Mineral casi imposible de encontrar, solo cerca de cráteres y lava en El Filo de las Brasas —más probable en Las Fumarolas Negras—, protegido por las propias Salamandras de Escoria.',
+    dimensiones: 'Fragmentos de 5 cm.',
+    tier: 5,
+  },
+
   {
     slug: 'piel-corredor',
     name: 'Piel de Corredor de Cauce',
@@ -3840,6 +4642,393 @@ export const harvestYields: HarvestYieldInput[] = [
     itemSlug: 'piel-gargantua',
     cantidad: 1,
     condicion: 'SOLO cadáver ya muerto o cacería ritual de clan — nunca loot casual',
+  },
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // Ampliación de lore 2026-08-21 — repaso "zona por zona" de Las Llanuras del Viento Rojo.
+  // ══════════════════════════════════════════════════════════════════════════
+
+  // --- El Osario de la Manada (hallazgo: la zona ya decía en el lore "única fuente conocida de
+  // placas óseas y hueso largo de gargantúa sin necesidad de cacería ritual", pero nunca tuvo un
+  // sourceSlug propio — hueso-largo-gargantua/placa-osea-gargantua solo salían de CAZA directa a
+  // una Gargantúa de Ceniza viva. Inconsistencia preexistente, no de esta pasada; resuelta aquí de
+  // paso para los 2 recursos nuevos, sin tocar los 2 ya existentes) ---
+
+  {
+    sourceSlug: 'osario-de-la-manada',
+    sourceCategory: 'objeto',
+    metodoObtencion: 'PASIVO',
+    itemSlug: 'fragmento-gargantua',
+    cantidad: 2,
+  },
+
+  {
+    sourceSlug: 'osario-de-la-manada',
+    sourceCategory: 'objeto',
+    metodoObtencion: 'PASIVO',
+    itemSlug: 'hueso-gargantua-construccion',
+    cantidad: 1,
+  },
+
+  // --- Enredaderas de las Llanuras (La Hondonada del Eco, base de Los Pilares Rotos) ---
+
+  {
+    sourceSlug: 'enredaderas-llanuras',
+    sourceCategory: 'planta',
+    metodoObtencion: 'PASIVO',
+    itemSlug: 'fibra-enredaderas-llanuras',
+    cantidad: 2,
+  },
+
+  // --- Yerreo (La Hondonada del Eco) ---
+
+  {
+    sourceSlug: 'yerreo',
+    sourceCategory: 'mineral',
+    metodoObtencion: 'MINERIA',
+    itemSlug: 'mena-yerreo',
+    cantidad: 1,
+    condicion: 'veta rarísima, muy pocas unidades donde aparece — requiere pico de minero',
+  },
+
+  // --- Gesgurio ---
+
+  {
+    sourceSlug: 'gesgurio',
+    sourceCategory: 'fauna',
+    metodoObtencion: 'CAZA',
+    itemSlug: 'trozo-quitina-roja',
+    cantidad: 3,
+  },
+
+  // --- Kirelon Arenoso ---
+
+  {
+    sourceSlug: 'kirelon-arenoso',
+    sourceCategory: 'fauna',
+    metodoObtencion: 'CAZA',
+    itemSlug: 'hueso-kirelon',
+    cantidad: 2,
+  },
+
+  {
+    sourceSlug: 'kirelon-arenoso',
+    sourceCategory: 'fauna',
+    metodoObtencion: 'CAZA',
+    itemSlug: 'craneo-kirelon',
+    cantidad: 1,
+  },
+
+  {
+    sourceSlug: 'kirelon-arenoso',
+    sourceCategory: 'fauna',
+    metodoObtencion: 'CAZA',
+    itemSlug: 'piel-kirelon',
+    cantidad: 1,
+  },
+
+  {
+    sourceSlug: 'kirelon-arenoso',
+    sourceCategory: 'fauna',
+    metodoObtencion: 'CAZA',
+    itemSlug: 'garras-kirelon',
+    cantidad: 1,
+    condicion: 'un herrero con fragua a mano puede fundirlas directo en 2 Lingotes de Yerreo',
+  },
+
+  // --- Lucre Blanco (cumbres de Los Pilares Rotos) ---
+
+  {
+    sourceSlug: 'lucre-blanco',
+    sourceCategory: 'planta',
+    metodoObtencion: 'TALA',
+    itemSlug: 'madera-lucre-blanco',
+    cantidad: 2,
+  },
+
+  {
+    sourceSlug: 'resina-lucre-blanco-fuente',
+    sourceCategory: 'planta',
+    metodoObtencion: 'EXTRACCION',
+    itemSlug: 'resina-lucre-blanco',
+    cantidad: 1,
+  },
+
+  // --- Musgo Arcilla (El Pozo de Cauce Viejo) ---
+
+  {
+    sourceSlug: 'musgo-arcilla',
+    sourceCategory: 'planta',
+    metodoObtencion: 'PASIVO',
+    itemSlug: 'musgo-rojo',
+    cantidad: 2,
+  },
+
+  // --- Telda Común (El Pozo de Cauce Viejo) y Telda Ceniza (El Cruce de las Cenizas) ---
+
+  {
+    sourceSlug: 'telda-comun',
+    sourceCategory: 'planta',
+    metodoObtencion: 'TALA',
+    itemSlug: 'madera-telda',
+    cantidad: 2,
+  },
+
+  {
+    sourceSlug: 'telda-ceniza',
+    sourceCategory: 'planta',
+    metodoObtencion: 'TALA',
+    itemSlug: 'madera-telda',
+    cantidad: 2,
+  },
+
+  {
+    sourceSlug: 'resina-telda-fuente',
+    sourceCategory: 'planta',
+    metodoObtencion: 'EXTRACCION',
+    itemSlug: 'resina-telda-gris',
+    cantidad: 1,
+  },
+
+  {
+    sourceSlug: 'hojas-telda-fuente',
+    sourceCategory: 'planta',
+    metodoObtencion: 'PASIVO',
+    itemSlug: 'hojas-telda',
+    cantidad: 3,
+  },
+
+  // --- Guchapo, Lebude, Escorante (El Pozo de Cauce Viejo) ---
+
+  {
+    sourceSlug: 'guchapo',
+    sourceCategory: 'fauna',
+    metodoObtencion: 'CAZA',
+    itemSlug: 'piel-guchapo',
+    cantidad: 1,
+  },
+
+  {
+    sourceSlug: 'guchapo',
+    sourceCategory: 'fauna',
+    metodoObtencion: 'CAZA',
+    itemSlug: 'racion-carne',
+    cantidad: 1,
+  },
+
+  {
+    sourceSlug: 'lebude',
+    sourceCategory: 'fauna',
+    metodoObtencion: 'CAZA',
+    itemSlug: 'cera-lebude',
+    cantidad: 1,
+    condicion: 'de la colmena, no del individuo cazado',
+  },
+
+  {
+    sourceSlug: 'lebude',
+    sourceCategory: 'fauna',
+    metodoObtencion: 'CAZA',
+    itemSlug: 'miel-lebude',
+    cantidad: 1,
+    condicion: 'de la colmena, no del individuo cazado',
+  },
+
+  {
+    sourceSlug: 'escorante',
+    sourceCategory: 'fauna',
+    metodoObtencion: 'CAZA',
+    itemSlug: 'quitina-escorante',
+    cantidad: 2,
+  },
+
+  // --- Ferike (El Cruce de las Cenizas) ---
+
+  {
+    sourceSlug: 'ferike',
+    sourceCategory: 'fauna',
+    metodoObtencion: 'CAZA',
+    itemSlug: 'piel-ferike',
+    cantidad: 1,
+  },
+
+  {
+    sourceSlug: 'ferike',
+    sourceCategory: 'fauna',
+    metodoObtencion: 'CAZA',
+    itemSlug: 'garras-ferike',
+    cantidad: 2,
+  },
+
+  {
+    sourceSlug: 'ferike',
+    sourceCategory: 'fauna',
+    metodoObtencion: 'CAZA',
+    itemSlug: 'melena-cola-ferike',
+    cantidad: 1,
+    condicion: 'objeto especial, muy baja probabilidad de loot — solo machos, tienen cola',
+  },
+
+  // --- Boungo (El Osario de la Manada) ---
+
+  {
+    sourceSlug: 'boungo',
+    sourceCategory: 'planta',
+    metodoObtencion: 'PASIVO',
+    itemSlug: 'boungo',
+    cantidad: 3,
+    condicion: 'crece en otoño',
+  },
+
+  // --- Imanio, Nuente (Las Agujas Imán) ---
+  // Sin loot: el Imanio no lleva nada crafteable propio (solo rocas imantadas, ver Fase 2
+  // pendiente de diseño) y el Nuente tampoco tiene loot descrito — ambos entran en combate/
+  // encuentro sin dar recursos, igual que Ruptidar/Quio.
+
+  // --- Verdileas Acuáticas, Juncos Rojizos (Los Manaderos) ---
+
+  {
+    sourceSlug: 'verdileas-acuaticas',
+    sourceCategory: 'planta',
+    metodoObtencion: 'PASIVO',
+    itemSlug: 'verdileas-acuaticas',
+    cantidad: 2,
+  },
+
+  {
+    sourceSlug: 'juncos-rojizos',
+    sourceCategory: 'planta',
+    metodoObtencion: 'PASIVO',
+    itemSlug: 'juncos-rojizos',
+    cantidad: 2,
+  },
+
+  // --- Jusha Esmeralda, Miruina, Tura Jusha (Los Manaderos) ---
+
+  {
+    sourceSlug: 'jusha-esmeralda',
+    sourceCategory: 'fauna',
+    metodoObtencion: 'CAZA',
+    itemSlug: 'carne-jusha',
+    cantidad: 1,
+  },
+
+  {
+    sourceSlug: 'jusha-esmeralda',
+    sourceCategory: 'fauna',
+    metodoObtencion: 'CAZA',
+    itemSlug: 'escama-jusha',
+    cantidad: 2,
+  },
+
+  {
+    sourceSlug: 'miruina',
+    sourceCategory: 'fauna',
+    metodoObtencion: 'CAZA',
+    itemSlug: 'piel-miruina',
+    cantidad: 1,
+  },
+
+  {
+    sourceSlug: 'miruina',
+    sourceCategory: 'fauna',
+    metodoObtencion: 'CAZA',
+    itemSlug: 'racion-carne',
+    cantidad: 1,
+  },
+
+  {
+    sourceSlug: 'tura-jusha',
+    sourceCategory: 'fauna',
+    metodoObtencion: 'CAZA',
+    itemSlug: 'plumas-tura-jusha',
+    cantidad: 2,
+  },
+
+  {
+    sourceSlug: 'tura-jusha',
+    sourceCategory: 'fauna',
+    metodoObtencion: 'CAZA',
+    itemSlug: 'garra-tura-jusha',
+    cantidad: 1,
+  },
+
+  // --- Pasto Solar, Gradias, Cuernahoja, Flor Salvatura (Los Pastos de la Deriva) ---
+
+  {
+    sourceSlug: 'pasto-solar',
+    sourceCategory: 'planta',
+    metodoObtencion: 'PASIVO',
+    itemSlug: 'pasto-solar',
+    cantidad: 2,
+  },
+
+  {
+    sourceSlug: 'gradias',
+    sourceCategory: 'planta',
+    metodoObtencion: 'PASIVO',
+    itemSlug: 'fibra-gradias',
+    cantidad: 2,
+  },
+
+  {
+    sourceSlug: 'flor-salvatura',
+    sourceCategory: 'planta',
+    metodoObtencion: 'EXTRACCION',
+    itemSlug: 'petalos-flor-salvatura',
+    cantidad: 1,
+  },
+
+  {
+    sourceSlug: 'cuernahoja',
+    sourceCategory: 'fauna',
+    metodoObtencion: 'CAZA',
+    itemSlug: 'piel-cuernahoja',
+    cantidad: 1,
+  },
+
+  {
+    sourceSlug: 'cuernahoja',
+    sourceCategory: 'fauna',
+    metodoObtencion: 'CAZA',
+    itemSlug: 'cuerno-cuernahoja',
+    cantidad: 1,
+    condicion: 'el de hembra (más ancho) es la variante de mayor calidad',
+  },
+
+  {
+    sourceSlug: 'cuernahoja',
+    sourceCategory: 'fauna',
+    metodoObtencion: 'CAZA',
+    itemSlug: 'racion-carne',
+    cantidad: 1,
+  },
+
+  // --- Volcanita, Rovalnica, Fercaneo (El Filo de las Brasas / Las Fumarolas Negras) ---
+
+  {
+    sourceSlug: 'volcanita',
+    sourceCategory: 'mineral',
+    metodoObtencion: 'MINERIA',
+    itemSlug: 'volcanita',
+    cantidad: 1,
+  },
+
+  {
+    sourceSlug: 'rovalnica',
+    sourceCategory: 'mineral',
+    metodoObtencion: 'MINERIA',
+    itemSlug: 'rovalnica',
+    cantidad: 1,
+  },
+
+  {
+    sourceSlug: 'fercaneo',
+    sourceCategory: 'mineral',
+    metodoObtencion: 'MINERIA',
+    itemSlug: 'fercaneo',
+    cantidad: 1,
+    condicion: 'casi imposible de encontrar, protegido por Salamandras de Escoria — más probable en Las Fumarolas Negras que en el resto de El Filo de las Brasas (pendiente: el motor no distingue hoy probabilidad por Location dentro del mismo sourceSlug)',
   },
 
   // --- Hielo Sílice ---
