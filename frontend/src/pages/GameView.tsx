@@ -21,6 +21,7 @@ import { useReconnectionPolling } from '../hooks/useReconnectionPolling'
 import { useSurroundingsPolling } from '../hooks/useSurroundingsPolling'
 import { useRecipesData } from '../hooks/useRecipesData'
 import { useCombatFlow } from '../hooks/useCombatFlow'
+import { useTransitPolling } from '../hooks/useTransitPolling'
 import type { EnciclopediaLinkTarget } from '../lib/enciclopediaIndex'
 import { EnciclopediaLinkProvider } from '../context/EnciclopediaLinkContext'
 import { CompanerosPanel } from '../components/panels/CompanerosPanel'
@@ -50,7 +51,6 @@ import {
   getSave,
   pauseSave,
   resumeSave,
-  cancelTransit,
   spendAttributePoint,
   createSavedAction,
   deleteSavedAction,
@@ -196,8 +196,6 @@ export function GameView() {
   const [busyUntil, setBusyUntil] = useState<string | null>(null)
   const [busyActivity, setBusyActivity] = useState<string | null>(null)
   const [busyDuracionMinutos, setBusyDuracionMinutos] = useState<number | null>(null)
-  const [cancelingTransit, setCancelingTransit] = useState(false)
-  const [nowTick, setNowTick] = useState(() => Date.now())
   const [activePanel, setActivePanel] = useState<PanelId | null>(null)
   // Colapsar logs (2026-08-14, petición explícita: "que pueda colapsar el log de personaje a la
   // izquierda y que el de mundo ocupe todo... y al revés... lo mismo con las de combate") — un
@@ -410,20 +408,6 @@ export function GameView() {
       // verdad que ya usa el backend para decidir quién actúa en el próximo intercambio.
       const lastInitiativeEntry = [...save.characterLog].reverse().find((e) => e.initiativeRoll)
       setLastInitiativeRoll(lastInitiativeEntry?.initiativeRoll ?? null)
-    }
-  }
-
-  async function handleCancelTransit() {
-    if (!saveId || cancelingTransit) return
-    setCancelingTransit(true)
-    try {
-      await cancelTransit(saveId)
-      const save = await getSave(saveId)
-      syncFromSave(save)
-    } catch {
-      // Si falla (p. ej. ya se resolvió justo antes), el sondeo de 30s ya en marcha lo reflejará.
-    } finally {
-      setCancelingTransit(false)
     }
   }
 
@@ -1072,36 +1056,10 @@ export function GameView() {
     }
   }
 
-  // Mientras el personaje está en una acción por tiempo (extendida/larga), sondea la partida
-  // cada 30s para detectar cuándo el worldTick la resuelve — en ese momento `transit` desaparece
-  // y syncFromSave trae ya la narración diferida que se generó en el worker.
-  useEffect(() => {
-    if (!saveId || !busyUntil) return
-    let cancelled = false
-
-    const interval = setInterval(async () => {
-      try {
-        const save = await getSave(saveId)
-        if (cancelled) return
-        if (!save.transit) syncFromSave(save)
-      } catch {
-        // Se reintenta en el siguiente sondeo.
-      }
-    }, 30_000)
-
-    return () => {
-      cancelled = true
-      clearInterval(interval)
-    }
-  }, [saveId, busyUntil])
-
-  // Reloj de la cuenta atrás (roadmap 2026-07-20): solo aritmética local, ningún request — el
-  // sondeo real que confirma la resolución sigue siendo el de 30s de arriba.
-  useEffect(() => {
-    if (!busyUntil) return
-    const tick = setInterval(() => setNowTick(Date.now()), 1_000)
-    return () => clearInterval(tick)
-  }, [busyUntil])
+  // Bloque de transit/busy (deuda técnica 2026-08-21) — ver src/hooks/useTransitPolling.ts.
+  // `busyUntil`/`busyActivity`/`busyDuracionMinutos` los siguen escribiendo `syncFromSave`
+  // (arriba) y `handleSubmit` (abajo, en el catch de `isBusyError`), fuera del hook.
+  const { cancelingTransit, nowTick, handleCancelTransit } = useTransitPolling({ saveId, busyUntil, syncFromSave })
 
   if (notFound || (!saveId && id !== 'nueva')) {
     return (
