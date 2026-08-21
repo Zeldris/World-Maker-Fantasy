@@ -16,13 +16,9 @@ import { EMPTY_SECONDARY_ATTRIBUTES } from '../../services/secondaryAttributes.j
 import { initialLocationSlugFor } from '../../services/travel.js';
 import { formatFictionalDate } from '../../services/worldClock.js';
 import { recordEntityDiscoveries } from '../../services/entityDiscovery.js';
-import type { AttributeBlock, Attribute } from '../../services/dice.js';
+import type { AttributeBlock } from '../../services/dice.js';
 import { Prisma, type Dificultad } from '@prisma/client';
-import { buildStartingQuestsData } from './shared.js';
-
-/// Mismas 7 claves que `progression.ts` § VALID_ATTRIBUTES (duplicado a propósito, mismo criterio
-/// ya establecido en ese archivo — no hay un módulo compartido de validación de atributos todavía).
-const VALID_ATTRIBUTES: Attribute[] = ['fuerza', 'destreza', 'constitucion', 'inteligencia', 'voluntad', 'carisma', 'arcano'];
+import { buildStartingQuestsData, VALID_ATTRIBUTES } from './shared.js';
 
 /// Auditoría 2026-08-11 ("pruebas por API"): el guard de la ruta solo cubría 3 de los ~10 campos
 /// `string` no opcionales de `CreateSaveBody` — faltar cualquier otro (p. ej. `characterOrigin`)

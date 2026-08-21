@@ -254,6 +254,21 @@ export function reinoIntentDetected(action: string): boolean {
   return !!findFuzzyStemMatch(fuzzyMatchCandidates(normalized), REINO_INTENT_STEMS);
 }
 
+/// Reintento único de red (auditoría de deuda técnica 2026-08-21): mismo patrón que aparecía
+/// duplicado en `classifyAction` y en el `attempt` interno de `generateSuggestions` — llama una
+/// vez, si falla loguea y reintenta UNA sola vez más (sin try/catch en el segundo intento: si
+/// también falla, se propaga tal cual, cortando el turno). No es la cascada de 3 intentos con
+/// fallback de `narrateAction` (ahí hay modelo grande + fallback determinista) — aquí solo se
+/// amortigua un hipo puntual de Ollama en llamadas al modelo pequeño.
+async function ollamaCallWithOneRetry<T>(label: string, call: () => Promise<T>): Promise<T> {
+  try {
+    return await call();
+  } catch (err) {
+    console.warn(`[${label}] llamada al modelo falló, reintentando: ${err instanceof Error ? err.message : err}`);
+    return call();
+  }
+}
+
 /// Paso 1 del turno (decisión de mecánicas 2, docs/06-decisiones-mecanicas.md): decide si la
 /// acción libre del jugador necesita tirada y con qué atributo/dificultad, ANTES de narrar nada.
 /// Usa el modelo pequeño (env.ollamaModelCronista): es una tarea de clasificación estructurada,
@@ -346,14 +361,8 @@ Responde solo con el JSON pedido, nada más.`;
   // oportunidad. Un solo reintento con los mismos parámetros basta para el caso común (hipo
   // transitorio); no se replica la cascada completa de narrateAction porque aquí no hay un
   // modelo "grande" del que caer — clasificar siempre usa el mismo modelo pequeño.
-  try {
-    const { text } = await callOllama();
-    return JSON.parse(text) as ClassificationResult;
-  } catch (err) {
-    console.warn(`[clasificar] intento 1/2 falló, reintentando: ${err instanceof Error ? err.message : err}`);
-    const { text } = await callOllama();
-    return JSON.parse(text) as ClassificationResult;
-  }
+  const { text } = await ollamaCallWithOneRetry('clasificar', callOllama);
+  return JSON.parse(text) as ClassificationResult;
 }
 
 /// Sugerencias de próxima acción — llamada Ollama APARTE de `narrateAction` (petición explícita,
@@ -509,13 +518,7 @@ Responde solo con el JSON pedido, nada más.`;
   async function attempt(
     temperature: number,
   ): Promise<{ final: string[]; rawCount: number; copiedExampleVerbatim: boolean; droppedOnlyAcceptCandidate: boolean }> {
-    let text: string;
-    try {
-      ({ text } = await callOllama(temperature));
-    } catch (err) {
-      console.warn(`[sugerencias] llamada al modelo falló, reintentando: ${err instanceof Error ? err.message : err}`);
-      ({ text } = await callOllama(temperature));
-    }
+    const { text } = await ollamaCallWithOneRetry('sugerencias', () => callOllama(temperature));
     const parsed = JSON.parse(text) as { suggestions?: string[] };
     const afterSanitize = sanitizeSuggestions(parsed.suggestions);
     const afterCopyExample = dropSuggestionsCopyingExample(afterSanitize);

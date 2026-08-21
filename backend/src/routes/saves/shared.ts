@@ -1,5 +1,13 @@
 import { prisma } from '../../lib/prisma.js';
 import { startingQuestsFor } from '../../services/startingQuests.js';
+import type { Attribute } from '../../services/dice.js';
+
+/// Único punto de verdad para los 7 atributos válidos (deuda técnica 2026-08-21: `creation.ts` §
+/// `validationErrorFor` y `progression.ts` § `/saves/:id/attribute-points` mantenían cada una su
+/// propia copia idéntica de este array — duplicación real, reconocida a propósito en un comentario
+/// de creation.ts ("no hay un módulo compartido de validación de atributos todavía"). Ahora sí lo
+/// hay: las dos rutas importan esta misma constante.
+export const VALID_ATTRIBUTES: Attribute[] = ['fuerza', 'destreza', 'constitucion', 'inteligencia', 'voluntad', 'carisma', 'arcano'];
 
 /// Resuelve `targetNpcSlug` (startingQuests.ts) al id real del Npc de catálogo de este mundo —
 /// mismo mecanismo que narrador.ts usa para misiones propuestas en juego (Quest.targetNpcId),

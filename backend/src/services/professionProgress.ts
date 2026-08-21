@@ -36,19 +36,4 @@ export function alivioForLevel(nivel: number): number {
   return Math.max(0, nivel - 1);
 }
 
-export interface ProfessionProgressResult {
-  xpDelta: number;
-  newXp: number;
-  newLevel: number;
-  leveledUp: boolean;
-}
-
-/// Aplica un delta de XP de oficio. No toca la base de datos — el caller decide cómo persistir
-/// (ProfessionProgress.xp/nivel), mismo patrón que applyXp (progression.ts).
-export function applyProfessionXp(currentXp: number, currentLevel: number, xpDelta: number): ProfessionProgressResult {
-  const newXp = currentXp + xpDelta;
-  const newLevel = professionLevelForXp(newXp);
-  return { xpDelta, newXp, newLevel, leveledUp: newLevel > currentLevel };
-}
-
 export { MAX_PROFESSION_LEVEL };

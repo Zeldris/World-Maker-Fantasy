@@ -19,6 +19,14 @@ import { harvestSourceRegion } from '../scripts/worldCatalog.js';
 import { CONSTRUCTION_RECIPES } from './construction.js';
 import { prisma } from '../lib/prisma.js';
 
+/// Elección aleatoria simple (auditoría de deuda técnica 2026-08-21): el mismo `Math.floor(Math.random()
+/// * lines.length)]` se repetía en las 7 funciones `xxxNarrationFor` de este archivo, una por pool
+/// de líneas. Centralizado en un solo helper genérico — el criterio de selección (uniforme, sin
+/// anti-repetición consecutiva) sigue siendo el mismo documentado en `WRONG_WEAPON_LINES`.
+function pickRandomLine<T>(lines: T[]): T {
+  return lines[Math.floor(Math.random() * lines.length)];
+}
+
 /// Anacronismo en el propio texto del JUGADOR ("me monto en mi nave espacial") — reutiliza
 /// `ANACHRONISM_REGEX` (narrador.ts), la misma fuente de verdad que ya protege la salida del
 /// Narrador, en vez de mantener una segunda lista de términos prohibidos que desincronizarse de
@@ -40,7 +48,7 @@ const ANACHRONISM_LINES: string[] = [
 ];
 
 export function anachronismNarrationFor(): string {
-  return ANACHRONISM_LINES[Math.floor(Math.random() * ANACHRONISM_LINES.length)];
+  return pickRandomLine(ANACHRONISM_LINES);
 }
 
 /// Sustantivos de categoría de arma en español coloquial (mismo enum `WeaponCategory` de Prisma:
@@ -107,7 +115,7 @@ const WRONG_WEAPON_LINES: ((armaReal: string) => string)[] = [
 ];
 
 export function wrongWeaponNarrationFor(armaReal: string): string {
-  const line = WRONG_WEAPON_LINES[Math.floor(Math.random() * WRONG_WEAPON_LINES.length)];
+  const line = pickRandomLine(WRONG_WEAPON_LINES);
   return line(armaReal);
 }
 
@@ -147,7 +155,7 @@ const ABSENT_NPC_LINES: ((nombre: string) => string)[] = [
 ];
 
 export function absentSceneNpcNarrationFor(nombre: string): string {
-  const line = ABSENT_NPC_LINES[Math.floor(Math.random() * ABSENT_NPC_LINES.length)];
+  const line = pickRandomLine(ABSENT_NPC_LINES);
   return line(nombre);
 }
 
@@ -210,7 +218,7 @@ const FABRICATED_NPC_LINES: ((nombre: string) => string)[] = [
 ];
 
 export function fabricatedNpcNarrationFor(nombre: string): string {
-  const line = FABRICATED_NPC_LINES[Math.floor(Math.random() * FABRICATED_NPC_LINES.length)];
+  const line = pickRandomLine(FABRICATED_NPC_LINES);
   return line(nombre);
 }
 
@@ -253,7 +261,7 @@ const WRONG_REGION_HARVEST_LINES: ((nombre: string) => string)[] = [
 ];
 
 export function wrongRegionHarvestNarrationFor(nombre: string): string {
-  const line = WRONG_REGION_HARVEST_LINES[Math.floor(Math.random() * WRONG_REGION_HARVEST_LINES.length)];
+  const line = pickRandomLine(WRONG_REGION_HARVEST_LINES);
   return line(nombre);
 }
 
@@ -288,7 +296,7 @@ const FABRICATED_HARVEST_SOURCE_LINES: ((nombre: string) => string)[] = [
 ];
 
 export function fabricatedHarvestSourceNarrationFor(nombre: string): string {
-  const line = FABRICATED_HARVEST_SOURCE_LINES[Math.floor(Math.random() * FABRICATED_HARVEST_SOURCE_LINES.length)];
+  const line = pickRandomLine(FABRICATED_HARVEST_SOURCE_LINES);
   return line(nombre);
 }
 
@@ -320,5 +328,5 @@ const UNKNOWN_CONSTRUCTION_LINES: string[] = [
 ];
 
 export function unknownConstructionNarrationFor(): string {
-  return UNKNOWN_CONSTRUCTION_LINES[Math.floor(Math.random() * UNKNOWN_CONSTRUCTION_LINES.length)];
+  return pickRandomLine(UNKNOWN_CONSTRUCTION_LINES);
 }

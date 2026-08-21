@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { professionLevelForXp, xpForCraftSuccess, alivioForLevel, applyProfessionXp, MAX_PROFESSION_LEVEL } from './professionProgress.js';
+import { professionLevelForXp, xpForCraftSuccess, alivioForLevel, MAX_PROFESSION_LEVEL } from './professionProgress.js';
 
 describe('professionLevelForXp', () => {
   it('nivel 1 con 0 XP', () => {
@@ -34,17 +34,5 @@ describe('alivioForLevel', () => {
   it('cada nivel siguiente resta 1 al requisito exigido', () => {
     expect(alivioForLevel(3)).toBe(2);
     expect(alivioForLevel(MAX_PROFESSION_LEVEL)).toBe(MAX_PROFESSION_LEVEL - 1);
-  });
-});
-
-describe('applyProfessionXp', () => {
-  it('acumula XP y detecta subida de nivel', () => {
-    const result = applyProfessionXp(0, 1, 60);
-    expect(result).toEqual({ xpDelta: 60, newXp: 60, newLevel: 2, leveledUp: true });
-  });
-  it('no sube de nivel si la XP no llega al umbral', () => {
-    const result = applyProfessionXp(0, 1, 10);
-    expect(result.newLevel).toBe(1);
-    expect(result.leveledUp).toBe(false);
   });
 });

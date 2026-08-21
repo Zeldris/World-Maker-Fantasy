@@ -2,6 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import { prisma } from '../../lib/prisma.js';
 import { MAX_ATTRIBUTE } from '../../services/progression.js';
 import type { AttributeBlock, Attribute } from '../../services/dice.js';
+import { VALID_ATTRIBUTES } from './shared.js';
 
 /// Progresión "manual" del personaje (deuda técnica 2026-07-30, split de saves.ts): repartir un
 /// punto de atributo ganado por nivel — decisión puntual de la jugadora sobre su propio personaje,
@@ -24,7 +25,6 @@ export async function progressionRoutes(app: FastifyInstance) {
       // (`attributes[attribute]` da `undefined`, y `undefined >= MAX_ATTRIBUTE` es `false`) y
       // `attributes[attribute] + 1` = `NaN` se persistía como clave espuria en el JSON de
       // atributos, consumiendo un punto de ascenso sin dar ningún beneficio real.
-      const VALID_ATTRIBUTES: Attribute[] = ['fuerza', 'destreza', 'constitucion', 'inteligencia', 'voluntad', 'carisma', 'arcano'];
       if (!VALID_ATTRIBUTES.includes(attribute)) {
         return reply.status(400).send({ error: `Atributo no válido: "${attribute}"` });
       }

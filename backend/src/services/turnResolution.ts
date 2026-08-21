@@ -138,6 +138,13 @@ function minutesLabel(minutos: number): string {
   return horas < 24 ? `~${horas.toFixed(1)}h` : `~${(horas / 24).toFixed(1)}d`;
 }
 
+/// `WorldState.factionsStatus` es un `Json` de Prisma (sin esquema propio en BD) — este mismo
+/// cast repetía 6 veces en este archivo (auditoría de deuda técnica 2026-08-21), uno por cada
+/// sitio que lee el campo. Centralizado en un solo helper para no repetir la aserción de tipo.
+function parseFactionsStatus(raw: Prisma.JsonValue | null | undefined): Record<string, number> {
+  return (raw as Record<string, number> | null) ?? {};
+}
+
 interface NarrateAndPersistParams {
   saveId: string;
   worldId: string;
@@ -1579,7 +1586,7 @@ async function applyCombatExchangeToNpcState(params: {
     if (npcAttackTarget.faction) {
       const currentWorldState = await tx.worldState.findUnique({ where: { saveId }, select: { factionsStatus: true } });
       const updatedFactionsStatus = applyFactionRepDelta(
-        (currentWorldState?.factionsStatus as Record<string, number> | null) ?? {},
+        parseFactionsStatus(currentWorldState?.factionsStatus),
         npcAttackTarget.faction,
         FACTION_REP_ATTACK_DELTA,
       );
@@ -1658,7 +1665,7 @@ async function applyExecuteTargets(params: {
     if (executeTarget.faction) {
       const currentWorldState = await tx.worldState.findUnique({ where: { saveId }, select: { factionsStatus: true } });
       const updatedFactionsStatus = applyFactionRepDelta(
-        (currentWorldState?.factionsStatus as Record<string, number> | null) ?? {},
+        parseFactionsStatus(currentWorldState?.factionsStatus),
         executeTarget.faction,
         FACTION_REP_ATTACK_DELTA,
       );
@@ -2087,7 +2094,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     // Reputación de facción (2026-07-29) — necesaria YA aquí (no solo al persistir el delta más
     // abajo) para calcular el temperamento EFECTIVO de cada NPC en escena antes de decidir
     // shouldForceCombat (ver reputation.ts § effectiveTemperamento).
-    prisma.worldState.findUnique({ where: { saveId }, select: { factionsStatus: true } }).then((r) => (r?.factionsStatus as Record<string, number> | null) ?? {}),
+    prisma.worldState.findUnique({ where: { saveId }, select: { factionsStatus: true } }).then((r) => parseFactionsStatus(r?.factionsStatus)),
     // Anti-repetición (2026-07-30, auditoría "revisar partida" — queja explícita: "redundancias
     // con la palabra sombra o cosas de este estilo"): el Narrador nunca veía su propia narración
     // de turnos anteriores, solo `sessionFacts` (hechos discretos, nunca prosa) — sin eso, no
@@ -4134,7 +4141,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
         // `narration.newTerritory` de abajo (primer Territory = primera vez que "hay reino").
         if (buildRecipe.key === 'ayuntamiento') {
           const worldStateForFounding = await tx.worldState.findUnique({ where: { saveId }, select: { factionsStatus: true } });
-          const foundingFactionsStatus = (worldStateForFounding?.factionsStatus as Record<string, number> | null) ?? {};
+          const foundingFactionsStatus = parseFactionsStatus(worldStateForFounding?.factionsStatus);
           const outcome = resolveFoundingOutcome(activeRegion, foundingFactionsStatus);
           const existingTerritoriesForFounding = await tx.territory.count({ where: { saveId } });
           const founded = await tx.territory.create({
@@ -4392,7 +4399,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
           if (yaDerrotado) continue;
           const currentWorldState = await tx.worldState.findUnique({ where: { saveId }, select: { factionsStatus: true } });
           const updatedFactionsStatus = applyFactionRepDelta(
-            (currentWorldState?.factionsStatus as Record<string, number> | null) ?? {},
+            parseFactionsStatus(currentWorldState?.factionsStatus),
             npc.faction,
             FACTION_REP_PEACE_DELTA,
           );
@@ -4891,7 +4898,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     prisma.worldState.findUnique({ where: { saveId }, select: { factionsStatus: true, fictionalDateLabel: true } }),
     prisma.professionProgress.findMany({ where: { saveId } }),
   ]);
-  const freshFactionsStatus = (freshWorldState?.factionsStatus as Record<string, number> | null) ?? {};
+  const freshFactionsStatus = parseFactionsStatus(freshWorldState?.factionsStatus);
   const professionProgress = freshProfessionProgress.map((p) => ({ professionId: p.professionId, nivel: p.nivel, xp: p.xp }));
   const territories = territoryRows.map((t) => ({
     id: t.id,

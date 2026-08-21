@@ -310,6 +310,19 @@ export function InteractiveMap({
               const buildingIcon = buildingIconBySlug?.get(node.slug)
               const nodeOptions = getNodeOptions?.(node.slug) ?? []
               const isExpanded = expandedNodeSlug === node.slug
+              // Paleta de puntos (2026-08-04): con 1 sola cosa anclada se abre directo, como
+              // siempre; con 2+ se despliega el abanico de satélites en vez de decidir en silencio
+              // cuál mostrar. Un solo cuerpo (auditoría de deuda técnica 2026-08-21) — antes vivía
+              // duplicado literal entre onClick/onKeyDown de este mismo nodo.
+              const selectThisNode = () => {
+                setSelectedNodeSlug(node.slug)
+                if (nodeOptions.length <= 1) {
+                  setExpandedNodeSlug(null)
+                  nodeOptions[0]?.onSelect()
+                } else {
+                  setExpandedNodeSlug((prev) => (prev === node.slug ? null : node.slug))
+                }
+              }
               return (
                 <g
                   // Roadmap de mapa (Fable 2026-07-20, Nivel 2): la key incluye si es el nodo
@@ -331,27 +344,12 @@ export function InteractiveMap({
                   style={{ transformBox: 'fill-box', transformOrigin: 'center' } as React.CSSProperties}
                   onClick={(e) => {
                     e.stopPropagation()
-                    setSelectedNodeSlug(node.slug)
-                    // Paleta de puntos (2026-08-04): con 1 sola cosa anclada se abre directo, como
-                    // siempre; con 2+ se despliega el abanico de satélites en vez de decidir en
-                    // silencio cuál mostrar.
-                    if (nodeOptions.length <= 1) {
-                      setExpandedNodeSlug(null)
-                      nodeOptions[0]?.onSelect()
-                    } else {
-                      setExpandedNodeSlug((prev) => (prev === node.slug ? null : node.slug))
-                    }
+                    selectThisNode()
                   }}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' || e.key === ' ') {
                       e.preventDefault()
-                      setSelectedNodeSlug(node.slug)
-                      if (nodeOptions.length <= 1) {
-                        setExpandedNodeSlug(null)
-                        nodeOptions[0]?.onSelect()
-                      } else {
-                        setExpandedNodeSlug((prev) => (prev === node.slug ? null : node.slug))
-                      }
+                      selectThisNode()
                     }
                   }}
                 >

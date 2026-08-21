@@ -215,6 +215,16 @@ export function MapZoomModal({
                   const buildingIcon = buildingIconBySlug?.get(node.slug)
                   const nodeOptions = getNodeOptions?.(node.slug) ?? []
                   const isExpanded = expandedNodeSlug === node.slug
+                  // Mismo criterio que InteractiveMap.tsx (auditoría de deuda técnica 2026-08-21) —
+                  // un solo cuerpo compartido por onClick/onKeyDown, antes duplicado literal.
+                  const selectThisNode = () => {
+                    if (nodeOptions.length <= 1) {
+                      setExpandedNodeSlug(null)
+                      nodeOptions[0]?.onSelect()
+                    } else {
+                      setExpandedNodeSlug((prev) => (prev === node.slug ? null : node.slug))
+                    }
+                  }
                   return (
                     <g
                       key={node.slug}
@@ -224,22 +234,12 @@ export function MapZoomModal({
                       onPointerDown={(e) => e.stopPropagation()}
                       onClick={(e) => {
                         e.stopPropagation()
-                        if (nodeOptions.length <= 1) {
-                          setExpandedNodeSlug(null)
-                          nodeOptions[0]?.onSelect()
-                        } else {
-                          setExpandedNodeSlug((prev) => (prev === node.slug ? null : node.slug))
-                        }
+                        selectThisNode()
                       }}
                       onKeyDown={(e) => {
                         if (e.key === 'Enter' || e.key === ' ') {
                           e.preventDefault()
-                          if (nodeOptions.length <= 1) {
-                            setExpandedNodeSlug(null)
-                            nodeOptions[0]?.onSelect()
-                          } else {
-                            setExpandedNodeSlug((prev) => (prev === node.slug ? null : node.slug))
-                          }
+                          selectThisNode()
                         }
                       }}
                     >
