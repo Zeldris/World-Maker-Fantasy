@@ -684,7 +684,10 @@ export const locations: LocationInput[] = [
 /// del diccionario en vez de forzar una categoría dudosa.
 export const locationTerrainTags: Record<string, TerrainTag[]> = {
   'agujas-iman': ['arido', 'rocoso'],
-  'filo-de-las-brasas': ['rocoso', 'arido'],
+  // 'volcanico' añadido 2026-08-22 (análisis de réplica): sin él, Volcanita/Rovalnica/Fercaneo
+  // habrían pasado a aparecer en TODA la región en cuanto se les diera población (ver
+  // harvestSourceTerrainTag) — justo lo contrario de "casi imposible de encontrar salvo aquí".
+  'filo-de-las-brasas': ['rocoso', 'arido', 'volcanico'],
   'hondonada-del-eco': ['rocoso', 'arido'],
   'manaderos': ['humedo', 'vegetacion'],
   'pastos-de-la-deriva': ['vegetacion'],
@@ -702,7 +705,7 @@ export const locationTerrainTags: Record<string, TerrainTag[]> = {
   'dunas-ahogadas': ['arido'],
   'vientre-del-engano': ['arido'],
   'laberinto-de-canones': ['arido', 'rocoso'],
-  'fumarolas-negras': ['rocoso'],
+  'fumarolas-negras': ['rocoso', 'volcanico'],
   'paso-de-los-huesos': ['rocoso','arido'],
   'sabana-alta-colmillar': ['vegetacion','arido'],
   'vergel-de-kegi': ['vegetacion','humedo'],
@@ -3834,6 +3837,10 @@ export const items: ItemCatalogInput[] = [
     tipo: 'RECURSO',
     description: 'Hierba amarilla, el pasto base de toda la llanura allí donde crece vegetación.',
     dimensiones: 'Manojo de 200 g.',
+    // Sin candado de Location única (ver harvestSourceHomeLocationSlug) desde 2026-08-22 — sin
+    // lugarOrigen, el fallback de región de `selectDiscoveries` (discovery.ts) lo habría dejado
+    // sin filtrar ni siquiera por región, no solo por zona.
+    lugarOrigen: 'Llanuras del Viento Rojo.',
   },
 
   {
@@ -5443,7 +5450,13 @@ export const harvestSourceHomeLocationSlug: Record<string, string> = {
   'jusha-esmeralda': 'manaderos',
   miruina: 'manaderos',
   'tura-jusha': 'manaderos',
-  'pasto-solar': 'pastos-de-la-deriva',
+  // 'pasto-solar' quitado de aquí a propósito (2026-08-22, análisis de réplica): para un
+  // `HarvestYield` PASIVO, esta entrada es un candado real de zona única en `discovery.ts`
+  // (`selectDiscoveries`), no solo flavor — con él, Pasto Solar SOLO podía "descubrirse" en Los
+  // Pastos de la Deriva pese a que su propia bio ya dice "la hierba base de TODA la llanura" y el
+  // candidato #3 del checklist pedía justo confirmarlo en cualquier pradera/estepa (La Sabana Alta
+  // entre ellas). Sin candado, cae en el filtro de región más permisivo del propio
+  // `selectDiscoveries` (por `lugarOrigen`/región), que ya cubre toda Las Llanuras.
   gradias: 'pastos-de-la-deriva',
   'flor-salvatura': 'pastos-de-la-deriva',
   cuernahoja: 'pastos-de-la-deriva',
@@ -5657,6 +5670,25 @@ export const harvestSourceTerrainTag: Record<string, TerrainTag> = {
   // efecto real hasta que esas regiones tengan Locations jugables catalogadas.
   'hierba-del-hierro': 'rocoso',
   'trepador-ocaso': 'humedo',
+  // Añadidas 2026-08-22 al aplicar el análisis de réplica entre zonas (checklist, "NO replicar sin
+  // más"): sin `WorldPopulation` propio hasta ahora (bug real encontrado y corregido en la misma
+  // pasada, ver worldPopulation.ts), así que nunca habían llegado a filtrarse por terreno. Sin esta
+  // etiqueta, en cuanto tuvieran población pasarían a aparecer en TODA la región (comportamiento
+  // por defecto sin tag) — justo lo contrario de "deliberadamente único de su zona".
+  yerreo: 'rocoso', // mismo tag que su Location (Hondonada del Eco); no hay categoría más fina
+  // que la aísle del resto de zonas rocosas — imprecisión conocida, no bloqueante (ver checklist).
+  volcanita: 'volcanico', // Filo de las Brasas / Fumarolas Negras, ver locationTerrainTags
+  rovalnica: 'volcanico',
+  fercaneo: 'volcanico',
+  'lucre-blanco': 'rocoso', // Los Pilares Rotos (altas cumbres)
+  'resina-lucre-blanco-fuente': 'rocoso',
+  'telda-comun': 'humedo', // El Pozo de Cauce Viejo
+  // Telda Ceniza es la misma especie que Telda Común con corteza distinta (El Cruce de las
+  // Cenizas) — comparte resina/hojas con ella, mismo tag por coherencia (Cruce de las Cenizas no
+  // tiene locationTerrainTags propio todavía, así que hoy no filtra de todos modos).
+  'telda-ceniza': 'humedo',
+  'resina-telda-fuente': 'humedo',
+  'flor-salvatura': 'vegetacion', // Los Pastos de la Deriva
 };
 
 /// Afinidad de hábitat de cada especie cazable (filtro por zona, ver `terrain.ts`) — leída de su
@@ -5665,10 +5697,23 @@ export const harvestSourceTerrainTag: Record<string, TerrainTag> = {
 /// nunca se penalizan, se ven en cualquier zona de la región igual que hoy.
 export const faunaTerrainTag: Record<string, TerrainTag> = {
   'aullador-rojo': 'arido',
-  'corredor-de-cauce': 'humedo',
+  // Cambiado de 'humedo' a 'vegetacion' (2026-08-22, análisis de réplica entre zonas): con
+  // 'humedo' aparecía en zonas costeras sin ninguna conexión de lore (Playa de Ceniza Blanca,
+  // Acantilados Partidos, Pozas de Marea, Embarcadero de Ceniza) y NO aparecía en La Sabana Alta,
+  // pese a que areas.md la describe explícitamente como "refugio y coto de caza de manadas de
+  // Corredores de Cauce que no se ven en otras zonas del núcleo". 'vegetacion' ancla de verdad el
+  // corredor migratorio real: Los Manaderos (nacen) → Los Pastos de la Deriva (pastan) → La
+  // Sabana Alta (refugio/caza) — las 3 únicas Locations con ese tag hoy.
+  'corredor-de-cauce': 'vegetacion',
   corretolvas: 'vegetacion',
   cruzavientos: 'rocoso', // anida en Los Pilares Rotos
   'gargantua-de-ceniza': 'rocoso',
   murgol: 'vegetacion',
   'salamandra-de-escoria': 'rocoso', // homeLocationSlug: filo-de-las-brasas
+  // Añadido 2026-08-22 (análisis de réplica): sin tag aparecía en TODA la región (playas
+  // incluidas) pese a que su propia bio ya dice "presente en cualquier zona arenosa" — 'arido' es
+  // justo esa etiqueta, cubre Hondonada del Eco, Pilares Rotos, Restos de Maktor, Túmulos del
+  // Honor, Filo de las Brasas, Sabana Alta, Paso de los Huesos, Dunas Ahogadas, Vientre del
+  // Engaño, Fosa Horadada, Campo Yermo — exactamente "cualquier zona arenosa", sin inventar nada.
+  ruptidar: 'arido',
 };

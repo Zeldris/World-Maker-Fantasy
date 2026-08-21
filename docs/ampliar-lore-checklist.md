@@ -27,45 +27,72 @@ todavía (ver pendiente de código de arriba).
 ## Propuestas de réplica entre zonas (análisis pedido por la usuaria al pausar, 2026-08-21)
 
 De todo lo añadido en las 13 zonas de esta sesión, esto es lo que tiene sentido real replicar en
-otras zonas/regiones por tránsito, caza o encaje de recursos — no son decisiones tomadas, son
-candidatos a revisar con la usuaria en la próxima sesión (de lore o de código, según toque):
+otras zonas/regiones por tránsito, caza o encaje de recursos.
 
-- **Corredor migratorio real de Corredores de Cauce**: nacen en Los Manaderos, pastan en Los
-  Pastos de la Deriva, se refugian/cazan mejor en La Sabana Alta (hierba alta, sigilo del Aullador
-  Rojo) y El Paso de los Huesos ya está descrito literalmente como "cañón... tapizado de restos
-  óseos de migraciones fallidas de Corredores de Cauce" — las 4 zonas ya cuentan la misma historia
-  por separado sin estar conectadas como una ruta única. Merece la pena anclarlas explícitamente
-  como el recorrido real de la migración (mismo criterio que ya usa el juego para "de paso" en El
-  Cruce de las Cenizas).
-- **Ruptidar ("cualquier zona arenosa")**: ya está definido como fauna de terreno, no de zona
-  única — encaja de forma directa en Las Dunas Ahogadas, El Vientre del Engaño y La Fosa Horadada
-  (todas ya descritas como arena/desierto), sin inventar nada nuevo, solo confirmar la etiqueta de
-  terreno cuando se lleve a código.
-- **Pasto Solar ("toda la llanura donde crece vegetación")**: mismo caso — ya nace región-wide por
-  diseño, solo falta confirmarlo explícitamente en cualquier zona con pradera/estepa que se cubra
-  más adelante (Sabana Alta, la próxima, es la candidata más obvia).
-- **Rondador de Brasas ("donde hay brasas hay carne")**: ya confirmado en El Filo de las Brasas;
-  con el mismo criterio, Las Fumarolas Negras (más calor todavía, ya cubierta) y cualquier zona
-  futura con actividad volcánica/calor directo son candidatas naturales.
+**Aplicado en código el 2026-08-22** (los 4 candidatos que eran puramente mecánicos, sin lore
+nuevo que inventar):
+- **Corredor migratorio real de Corredores de Cauce** — RESUELTO. `faunaTerrainTag['corredor-de-
+  cauce']` cambiado de `'humedo'` a `'vegetacion'` (`worldCatalog.ts`): ahora solo aparece en Los
+  Manaderos (nace), Los Pastos de la Deriva (pasta) y La Sabana Alta (refugio/caza del Aullador
+  Rojo) — antes, con `'humedo'`, aparecía también en 4 zonas costeras sin ninguna conexión de lore
+  y NUNCA en La Sabana Alta pese a que `areas.md` la nombra explícitamente. El Paso de los Huesos
+  se queda solo con los restos óseos ya descritos (no necesita encuentro vivo, es lore de
+  migraciones ya fallidas). Anotado también en `areas.md` § Los Manaderos.
+- **Ruptidar ("cualquier zona arenosa")** — RESUELTO. `faunaTerrainTag['ruptidar'] = 'arido'`
+  añadido (antes no tenía tag y aparecía en TODA la región, playas incluidas). Cubre automáticamente
+  Las Dunas Ahogadas, El Vientre del Engaño, La Fosa Horadada y el resto de zonas áridas, sin
+  inventar nada nuevo — coincide exactamente con su propia bio ("cualquier zona arenosa").
+- **Pasto Solar ("toda la llanura donde crece vegetación")** — RESUELTO, y con un hallazgo real de
+  paso: tenía un candado de `Location` única en `harvestSourceHomeLocationSlug` (Los Pastos de la
+  Deriva) que SÍ bloqueaba de verdad su aparición en cualquier otra zona (es un recurso PASIVO,
+  ver `discovery.ts`) — contradecía su propia descripción ("la hierba base de TODA la llanura").
+  Candado quitado + `lugarOrigen: 'Llanuras del Viento Rojo.'` añadido al ítem para que caiga en el
+  filtro de región normal en vez de quedar sin filtrar del todo. Ya aparece en La Sabana Alta y
+  cualquier otra zona de la región.
+- **Rondador de Brasas ("donde hay brasas hay carne")** — ya cumplido sin tocar nada: nunca tuvo
+  `faunaTerrainTag` propio, así que ya aparecía sin filtro en toda la región (Las Fumarolas Negras
+  incluidas). Confirmado, no requería cambio.
+
+**Hallazgo real no anticipado, encontrado al verificar lo de arriba (2026-08-22)**: 10 de los
+recursos MINERIA/TALA/EXTRACCION añadidos en la pasada de código del 2026-08-21 (Lucre Blanco,
+su Resina, Telda Común, Telda Ceniza, Resina Telda Gris, Flor Salvatura, Volcanita, Rovalnica,
+Fercaneo, Yerreo) tenían `HarvestYield` pero NINGUNA fila en `worldPopulation.ts` —
+`candidateSourcesFor` (recolectar.ts) exige una fila `WorldPopulation` con `poblacion > 0` para
+poder ofrecer una fuente como candidata; sin ella, esos 10 recursos no podían recolectarse en
+NINGUNA zona, con independencia de terreno. (Los recursos PASIVO de la misma pasada —Boungo,
+Gradias, Musgo Rojo, Juncos Rojizos, Verdileas Acuáticas, Hojas de Telda, Osario de la Manada—
+usan `discovery.ts`, no `WorldPopulation`, y ya funcionaban bien vía `harvestSourceHomeLocationSlug`.)
+Añadidas las 10 filas que faltaban + etiquetas de terreno nuevas (`volcanico` para Volcanita/
+Rovalnica/Fercaneo — con `'volcanico'` añadido también a `locationTerrainTags` de Filo de las
+Brasas/Fumarolas Negras, antes ningún sitio lo usaba; `rocoso` para Yerreo/Lucre Blanco/su resina;
+`humedo` para Telda Común/Ceniza/su resina; `vegetacion` para Flor Salvatura) — sin esas etiquetas,
+arreglar solo la población los habría hecho aparecer en TODA la región de golpe, justo lo contrario
+de "casi imposible de encontrar salvo aquí". Verificado con un script de integridad ad-hoc: cero
+`sourceSlug` MINERIA/TALA/EXTRACCION sin `WorldPopulation` en el núcleo jugable tras el fix.
+
+**Siguen pendientes de decisión de lore, no son solo código** (candidatos que si se aplican sin
+más calcarían contenido en vez de darle variante propia, cosa que la propia usuaria pidió evitar):
 - **Ecosistema de charca (Musgo Arcilla/Telda/Guchapos/Lebudes/Escorantes, de El Pozo de Cauce
-  Viejo)**: El Oasis de Juncos Rojos se describe ya como "agua en superficie de verdad... un punto
-  verde real en medio del polvo rojo" — mismo tipo de biomasa que justificó la densidad de El Pozo.
-  Candidata fuerte para una variante (no necesariamente las mismas 5 especies calcadas) del mismo
-  ecosistema de charca.
-- **Ecosistema de Los Manaderos (Jusha/Miruina/Quio/Tura Jusha)**: La Desembocadura Callada es
-  "marisma salobre" — agua salobre, no dulce, así que no son las mismas especies literales, pero es
-  el mismo tipo de nicho (pez pequeño + depredador día/noche + carroñero) en una variante de agua
-  salada. Buena plantilla para darle vida propia en vez de dejarla solo como punto de cierre del
-  recorrido del agua.
-- **Enredaderas de las Llanuras (fibra, "trepan por sombra")**: candidata a aparecer también en El
-  Laberinto de Cañones (paredes de arcilla estrecha, sombra constante) y La Fosa Horadada (sumidero,
-  túneles) — mismo criterio de sombra/humedad relativa que ya la justifica en Hondonada/Pilares.
-- **Telda Común/Ceniza**: candidata en El Vergel de Kegi (coto de caza/comercio Faerus, junto al
-  poblado — zona previsiblemente más verde por su propio nombre) — a confirmar con la usuaria si
-  tiene sentido o si prefiere flora propia de esa zona por ser ya territorio Faerus, no orco.
+  Viejo) → El Oasis de Juncos Rojos**: candidata fuerte para una VARIANTE (no las mismas 5 especies
+  calcadas) del mismo ecosistema — necesita nombres/fauna propios, sesión de lore.
+- **Ecosistema de Los Manaderos (Jusha/Miruina/Quio/Tura Jusha) → La Desembocadura Callada**:
+  misma idea, pero en variante de agua salobre en vez de dulce — necesita sesión de lore.
+- **Telda Común/Ceniza → El Vergel de Kegi**: sin decidir si tiene sentido (más verde por ser
+  territorio Faerus) o si la usuaria prefiere flora propia de ese punto, no orca — pendiente de
+  preguntarle directamente.
+- **Enredaderas de las Llanuras → El Laberinto de Cañones / La Fosa Horadada**: candidata técnica
+  (mismo criterio de sombra/humedad relativa), pero de baja prioridad — hoy Enredaderas no tiene
+  `faunaTerrainTag`/`harvestSourceTerrainTag` propio (aparece sin filtrar en toda la región, lo que
+  YA incluye estas dos zonas), así que no bloquea nada; solo quedaría pendiente si se decide
+  taguearla con más precisión más adelante.
 - **NO replicar sin más**: Yerreo/Hiyerro, Rocas Imanidas, Fercaneo y las 22 fichas de NPC del
   Campamento Serhu son deliberadamente ÚNICOS de su zona (escasez/unicidad es parte del diseño) —
-  aparecer en más de un sitio les quitaría el sentido.
+  aparecer en más de un sitio les quitaría el sentido. Nota honesta: la exclusividad de Yerreo
+  hoy solo llega hasta 'rocoso' (comparte tag con 8 zonas rocosas más) — el sistema de terreno
+  actual no tiene una categoría lo bastante fina para aislarlo a una única `Location`; lograrlo de
+  verdad exigiría que `candidateSourcesFor` empezara a mirar `harvestSourceHomeLocationSlug` como
+  filtro real (hoy es solo flavor/Enciclopedia fuera del bucket PASIVO) — cambio de motor aparte,
+  no de catálogo, mismo criterio que el resto de "pendiente de diseño".
 
 ---
 

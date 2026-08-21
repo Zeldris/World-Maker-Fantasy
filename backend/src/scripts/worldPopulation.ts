@@ -464,4 +464,95 @@ export const worldPopulations: WorldPopulationInput[] = [
     poblacionMax: 600,
     distribucion: { 'Llanuras del Viento Rojo': 1 },
   },
+  // --- Recursos MINERIA/TALA/EXTRACCION de la sesión de lore 2026-08-21, hallazgo real al aplicar
+  // el análisis de réplica entre zonas (2026-08-22): estos 10 `sourceSlug` ya tenían HarvestYield
+  // en worldCatalog.ts pero ninguna fila aquí — a diferencia del bucket PASIVO (discovery.ts, que
+  // no necesita `WorldPopulation`), MINERIA/TALA/EXTRACCION pasan por `candidateSourcesFor`
+  // (recolectar.ts), que solo ofrece una fuente si existe una fila `WorldPopulation` con
+  // `poblacion > 0` — sin ella, estos 10 recursos nunca podían salir como candidatos en NINGUNA
+  // zona, con independencia de terreno o región (ver harvestSourceTerrainTag para las etiquetas
+  // añadidas en la misma pasada). Cifras calibradas contra las ya existentes de esta misma lista
+  // (roca-pilares-rotos 4000, veta-hierro-pilares-rotos 600, matorral-de-cuerno 400/500, arena-iman
+  // 500/750): madera en volumen alto, resina/flor de extracción más baja, minerales de tier 5+
+  // (Yerreo, Fercaneo) deliberadamente los más escasos de toda la lista.
+  {
+    targetType: 'RECURSO',
+    targetSlug: 'lucre-blanco',
+    label: 'Madera de Lucre Blanco (Los Pilares Rotos)',
+    poblacion: 260,
+    poblacionMax: 380,
+    distribucion: { 'Llanuras del Viento Rojo': 1 },
+  },
+  {
+    targetType: 'RECURSO',
+    targetSlug: 'resina-lucre-blanco-fuente',
+    label: 'Resina de Lucre Blanco',
+    poblacion: 90,
+    poblacionMax: 150,
+    distribucion: { 'Llanuras del Viento Rojo': 1 },
+  },
+  {
+    targetType: 'RECURSO',
+    targetSlug: 'telda-comun',
+    label: 'Madera de Telda (El Pozo de Cauce Viejo)',
+    poblacion: 300,
+    poblacionMax: 450,
+    distribucion: { 'Llanuras del Viento Rojo': 1 },
+  },
+  {
+    targetType: 'RECURSO',
+    targetSlug: 'telda-ceniza',
+    label: 'Madera de Telda (El Cruce de las Cenizas)',
+    poblacion: 260,
+    poblacionMax: 400,
+    distribucion: { 'Llanuras del Viento Rojo': 1 },
+  },
+  {
+    targetType: 'RECURSO',
+    targetSlug: 'resina-telda-fuente',
+    label: 'Resina Telda Gris',
+    poblacion: 90,
+    poblacionMax: 150,
+    distribucion: { 'Llanuras del Viento Rojo': 1 },
+  },
+  {
+    targetType: 'RECURSO',
+    targetSlug: 'flor-salvatura',
+    label: 'Flor Salvatura',
+    poblacion: 100,
+    poblacionMax: 170,
+    distribucion: { 'Llanuras del Viento Rojo': 1 },
+  },
+  {
+    targetType: 'RECURSO',
+    targetSlug: 'volcanita',
+    label: 'Volcanita',
+    poblacion: 220,
+    poblacionMax: 340,
+    distribucion: { 'Llanuras del Viento Rojo': 1 },
+  },
+  {
+    targetType: 'RECURSO',
+    targetSlug: 'rovalnica',
+    label: 'Rovalnica',
+    poblacion: 260,
+    poblacionMax: 400,
+    distribucion: { 'Llanuras del Viento Rojo': 1 },
+  },
+  {
+    targetType: 'RECURSO',
+    targetSlug: 'fercaneo',
+    label: 'Fercaneo',
+    poblacion: 35,
+    poblacionMax: 60,
+    distribucion: { 'Llanuras del Viento Rojo': 1 },
+  },
+  {
+    targetType: 'RECURSO',
+    targetSlug: 'yerreo',
+    label: 'Mena de Yerreo (La Hondonada del Eco)',
+    poblacion: 40,
+    poblacionMax: 70,
+    distribucion: { 'Llanuras del Viento Rojo': 1 },
+  },
 ];
