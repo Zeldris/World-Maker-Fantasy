@@ -1338,6 +1338,10 @@ export const fauna: NpcInput[] = [
     attributes: { fuerza: 14, destreza: 11, constitucion: 11, inteligencia: 8, voluntad: 9, carisma: 2, arcano: 3 },
     bio: 'Carroñero-cazador nocturno de complexión robusta y pelaje ceniciento, mandíbula pesada y lomo encorvado con una hilera de púas óseas asomando entre el pelo — ojos que brillan en un dorado intenso en la oscuridad, visibles antes que el resto del cuerpo. No teme al fuego: lo busca — ha aprendido que donde hay brasas hay carne, cazada o dormida. Ronda el borde de la luz durante horas antes de decidirse. Solitario; ver dos juntos es señal de un cadáver grande cerca.',
     personality: 'Paciente y silencioso; se retira ante un grupo despierto, ataca a lo aislado o dormido.',
+    // Confirmado 2026-08-21 (ampliación de lore): también residente de El Filo de las Brasas, el
+    // único punto realmente volcánico del núcleo — no teme al fuego, "busca ascuas". No le quita
+    // su presencia general en campamentos del resto de la región (ancla narrativa, no exclusiva).
+    homeLocationSlug: 'filo-de-las-brasas',
     loadout: [],
     ataqueNatural: 'Cierra su pesada mandíbula de un mordisco certero, tras horas acechando en la sombra.',
     temperamento: 'AGRESIVO',
@@ -5404,6 +5408,36 @@ export const harvestSourcesThatAreFaunaWithoutNpc = new Set(['cornante', 'espina
 export const harvestSourceHomeLocationSlug: Record<string, string> = {
   'restos-personales-maktor': 'restos-de-maktor',
   'ofrendas-tumulos-honor': 'tumulos-del-honor',
+
+  // Ampliación de lore 2026-08-21 — mismo criterio que arriba, ligado a Location concreta.
+  'osario-de-la-manada': 'osario-de-la-manada',
+  yerreo: 'hondonada-del-eco',
+  gesgurio: 'hondonada-del-eco',
+  'kirelon-arenoso': 'hondonada-del-eco',
+  'lucre-blanco': 'pilares-rotos',
+  'resina-lucre-blanco-fuente': 'pilares-rotos',
+  'musgo-arcilla': 'pozo-cauce-viejo',
+  'telda-comun': 'pozo-cauce-viejo',
+  'resina-telda-fuente': 'pozo-cauce-viejo',
+  'hojas-telda-fuente': 'pozo-cauce-viejo',
+  guchapo: 'pozo-cauce-viejo',
+  lebude: 'pozo-cauce-viejo',
+  escorante: 'pozo-cauce-viejo',
+  'telda-ceniza': 'cruce-de-las-cenizas',
+  ferike: 'cruce-de-las-cenizas',
+  boungo: 'osario-de-la-manada',
+  'verdileas-acuaticas': 'manaderos',
+  'juncos-rojizos': 'manaderos',
+  'jusha-esmeralda': 'manaderos',
+  miruina: 'manaderos',
+  'tura-jusha': 'manaderos',
+  'pasto-solar': 'pastos-de-la-deriva',
+  gradias: 'pastos-de-la-deriva',
+  'flor-salvatura': 'pastos-de-la-deriva',
+  cuernahoja: 'pastos-de-la-deriva',
+  volcanita: 'filo-de-las-brasas',
+  rovalnica: 'filo-de-las-brasas',
+  fercaneo: 'filo-de-las-brasas',
 };
 
 export const harvestSourceRegion: Record<string, string> = {
@@ -5455,6 +5489,38 @@ export const harvestSourceRegion: Record<string, string> = {
   // Misma formación rocosa que 'roca-pilares-rotos' (ya en Llanuras arriba) — le faltaba su propia
   // entrada aunque ya tuviera fila de `WorldPopulation` sembrada (inconsistencia real, 2026-08-13).
   'veta-hierro-pilares-rotos': 'Llanuras del Viento Rojo',
+
+  // Ampliación de lore 2026-08-21 — todas las zonas cubiertas en esta pasada están dentro del
+  // núcleo jugable, Llanuras del Viento Rojo.
+  'osario-de-la-manada': 'Llanuras del Viento Rojo',
+  'enredaderas-llanuras': 'Llanuras del Viento Rojo',
+  yerreo: 'Llanuras del Viento Rojo',
+  gesgurio: 'Llanuras del Viento Rojo',
+  'kirelon-arenoso': 'Llanuras del Viento Rojo',
+  'lucre-blanco': 'Llanuras del Viento Rojo',
+  'resina-lucre-blanco-fuente': 'Llanuras del Viento Rojo',
+  'musgo-arcilla': 'Llanuras del Viento Rojo',
+  'telda-comun': 'Llanuras del Viento Rojo',
+  'telda-ceniza': 'Llanuras del Viento Rojo',
+  'resina-telda-fuente': 'Llanuras del Viento Rojo',
+  'hojas-telda-fuente': 'Llanuras del Viento Rojo',
+  guchapo: 'Llanuras del Viento Rojo',
+  lebude: 'Llanuras del Viento Rojo',
+  escorante: 'Llanuras del Viento Rojo',
+  ferike: 'Llanuras del Viento Rojo',
+  boungo: 'Llanuras del Viento Rojo',
+  'verdileas-acuaticas': 'Llanuras del Viento Rojo',
+  'juncos-rojizos': 'Llanuras del Viento Rojo',
+  'jusha-esmeralda': 'Llanuras del Viento Rojo',
+  miruina: 'Llanuras del Viento Rojo',
+  'tura-jusha': 'Llanuras del Viento Rojo',
+  'pasto-solar': 'Llanuras del Viento Rojo',
+  gradias: 'Llanuras del Viento Rojo',
+  'flor-salvatura': 'Llanuras del Viento Rojo',
+  cuernahoja: 'Llanuras del Viento Rojo',
+  volcanita: 'Llanuras del Viento Rojo',
+  rovalnica: 'Llanuras del Viento Rojo',
+  fercaneo: 'Llanuras del Viento Rojo',
 };
 
 /// Categorías amplias de fuente recolectable (2026-08-15, petición explícita: "tener un enum con
