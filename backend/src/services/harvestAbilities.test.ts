@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { harvestAbilityUnlocksFor, metodoForOficio, allHarvestAbilityUnlocks } from './harvestAbilities.js';
+import { harvestAbilityUnlocksFor, metodoForOficio } from './harvestAbilities.js';
 
 describe('harvestAbilityUnlocksFor', () => {
   it('desbloquea Minar/Talar/Desollar a nivel 1 por prefijo de oficio, con o sin variante raza+región', () => {
@@ -35,11 +35,5 @@ describe('metodoForOficio', () => {
   it('null para un oficio creador o inexistente', () => {
     expect(metodoForOficio('herrero-orco-llanuras')).toBeNull();
     expect(metodoForOficio('no-existe')).toBeNull();
-  });
-});
-
-describe('allHarvestAbilityUnlocks', () => {
-  it('incluye las 4 habilidades recolectoras (minero/talador/desollador/herborista)', () => {
-    expect(allHarvestAbilityUnlocks().map((u) => u.oficio).sort()).toEqual(['desollador', 'herborista', 'minero', 'talador']);
   });
 });

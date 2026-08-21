@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import type { HarvestSourceCandidate, InventoryItemInfo } from '../types'
 import { getRecolectarLocalizado, explorarRecolectar, confirmarRecoleccion } from '../lib/api'
 import { SelectionModalShell, confirmButtonClasses } from './SelectionModalShell'
+import { useAsyncModalData } from '../hooks/useAsyncModalData'
 
 interface HarvestSelectionModalProps {
   saveId: string
@@ -22,7 +23,6 @@ type SelectionKey = string // `${sourceSlug}:${itemSlug}`
 /// por lo que de verdad queda (`disponible`/`cantidadMaxima`) como por el espacio libre real de
 /// inventario (Parte D).
 export function HarvestSelectionModal({ saveId, oficio, oficioLabel, inventoryUsed, inventoryCapacity, onConfirm, onCancel }: HarvestSelectionModalProps) {
-  const [loading, setLoading] = useState(true)
   const [exploring, setExploring] = useState(false)
   const [confirming, setConfirming] = useState(false)
   const [sources, setSources] = useState<HarvestSourceCandidate[]>([])
@@ -32,19 +32,16 @@ export function HarvestSelectionModal({ saveId, oficio, oficioLabel, inventoryUs
   // ahora", para no invitar a "Explorar" algo que ya se sabe que sigue en cooldown.
   const [enCooldown, setEnCooldown] = useState(false)
   const [selections, setSelections] = useState<Record<SelectionKey, number>>({})
-  const [error, setError] = useState<string | null>(null)
-
-  useEffect(() => {
-    getRecolectarLocalizado(saveId, oficio)
-      .then((res) => {
-        setSources(res.sources)
-        setPuedeExplorar(res.puedeExplorar)
-        setEnCooldown(!!res.enCooldown)
-      })
-      .catch(() => setError('No se pudo comprobar qué hay en la zona.'))
-      .finally(() => setLoading(false))
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [saveId, oficio])
+  const { loading, error, setError } = useAsyncModalData(
+    () => getRecolectarLocalizado(saveId, oficio),
+    (res) => {
+      setSources(res.sources)
+      setPuedeExplorar(res.puedeExplorar)
+      setEnCooldown(!!res.enCooldown)
+    },
+    'No se pudo comprobar qué hay en la zona.',
+    [saveId, oficio],
+  )
 
   async function handleExplorar() {
     setExploring(true)

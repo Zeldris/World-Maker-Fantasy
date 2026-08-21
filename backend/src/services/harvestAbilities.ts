@@ -93,10 +93,6 @@ export function harvestAbilityUnlocksFor(oficio: string, nivel: number): Startin
   return HARVEST_ABILITIES.filter((u) => matchesOficioPrefix(oficio, u.oficio)).map((u) => u.ability);
 }
 
-export function allHarvestAbilityUnlocks(): HarvestAbilityUnlock[] {
-  return HARVEST_ABILITIES;
-}
-
 /// A qué MetodoObtencion corresponde un oficio recolector — null si `oficio` no es recolector
 /// (o no existe). Usado por el endpoint de "Explorar"/localizado para saber qué buscar.
 export function metodoForOficio(oficio: string): MetodoObtencion | null {

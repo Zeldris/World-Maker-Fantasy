@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { getSaquearZona, type LootZoneCandidate } from '../lib/api'
 import { SelectionModalShell, confirmButtonClasses } from './SelectionModalShell'
+import { useAsyncModalData } from '../hooks/useAsyncModalData'
 
 interface SaquearZonaModalProps {
   saveId: string
@@ -18,18 +19,15 @@ interface SaquearZonaModalProps {
 /// CombatPanel.tsx, aplanado aquí a un único listado (sin la UI de turnos/ataque que no aplica
 /// fuera de combate).
 export function SaquearZonaModal({ saveId, onConfirm, onCancel }: SaquearZonaModalProps) {
-  const [loading, setLoading] = useState(true)
   const [candidates, setCandidates] = useState<LootZoneCandidate[]>([])
   const [selected, setSelected] = useState<Set<string>>(new Set()) // `${npcSlug}::${itemName}` (o `${npcSlug}::__marcar__` para un NPC sin objetos)
-  const [error, setError] = useState<string | null>(null)
   const [confirming, setConfirming] = useState(false)
-
-  useEffect(() => {
-    getSaquearZona(saveId)
-      .then((res) => setCandidates(res.candidates))
-      .catch(() => setError('No se pudo comprobar qué hay que saquear en la zona.'))
-      .finally(() => setLoading(false))
-  }, [saveId])
+  const { loading, error } = useAsyncModalData(
+    () => getSaquearZona(saveId),
+    (res) => setCandidates(res.candidates),
+    'No se pudo comprobar qué hay que saquear en la zona.',
+    [saveId],
+  )
 
   function toggle(npcSlug: string, itemName: string) {
     const key = `${npcSlug}::${itemName}`

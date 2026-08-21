@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import type { HuntCandidate, NpcInSceneInfo } from '../types'
 import { getCazarCandidatos, explorarCaza, confirmarCaza } from '../lib/api'
 import { SelectionModalShell, confirmButtonClasses } from './SelectionModalShell'
+import { useAsyncModalData } from '../hooks/useAsyncModalData'
 
 /// Color de fondo por dificultad (petición explícita, 2026-08-14: "verde, amarillo o rojo según su
 /// dificultad") — mismos 3 tokens semánticos que ya usa el resto del juego para lo mismo (moss=
@@ -40,24 +41,21 @@ interface HuntSelectionModalProps {
 /// distinto (menos o más), nunca es un número garantizado — se avisa aquí mismo para que no
 /// sorprenda.
 export function HuntSelectionModal({ saveId, onResuelto, onCancel }: HuntSelectionModalProps) {
-  const [loading, setLoading] = useState(true)
   const [exploring, setExploring] = useState(false)
   const [confirming, setConfirming] = useState(false)
   const [candidates, setCandidates] = useState<HuntCandidate[]>([])
   const [puedeExplorar, setPuedeExplorar] = useState(false)
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [cantidades, setCantidades] = useState<Record<string, number>>({})
-  const [error, setError] = useState<string | null>(null)
-
-  useEffect(() => {
-    getCazarCandidatos(saveId)
-      .then((res) => {
-        setCandidates(res.candidates)
-        setPuedeExplorar(res.puedeExplorar)
-      })
-      .catch(() => setError('No se pudo comprobar qué fauna hay en la zona.'))
-      .finally(() => setLoading(false))
-  }, [saveId])
+  const { loading, error, setError } = useAsyncModalData(
+    () => getCazarCandidatos(saveId),
+    (res) => {
+      setCandidates(res.candidates)
+      setPuedeExplorar(res.puedeExplorar)
+    },
+    'No se pudo comprobar qué fauna hay en la zona.',
+    [saveId],
+  )
 
   async function handleExplorar() {
     setExploring(true)

@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { getCampamentos, type CampInfo } from '../lib/api'
 import { SelectionModalShell } from './SelectionModalShell'
+import { useAsyncModalData } from '../hooks/useAsyncModalData'
 
 interface CampSelectionModalProps {
   saveId: string
@@ -14,16 +15,13 @@ interface CampSelectionModalProps {
 /// resolver un viaje real a CUALQUIER Location del mundo por nombre, no solo destinos adyacentes,
 /// así que no hace falta ninguna lógica de viaje nueva aquí.
 export function CampSelectionModal({ saveId, onSelect, onCancel }: CampSelectionModalProps) {
-  const [loading, setLoading] = useState(true)
   const [camps, setCamps] = useState<CampInfo[]>([])
-  const [error, setError] = useState<string | null>(null)
-
-  useEffect(() => {
-    getCampamentos(saveId)
-      .then((res) => setCamps(res.camps))
-      .catch(() => setError('No se pudo comprobar qué campamentos tienes construidos.'))
-      .finally(() => setLoading(false))
-  }, [saveId])
+  const { loading, error } = useAsyncModalData(
+    () => getCampamentos(saveId),
+    (res) => setCamps(res.camps),
+    'No se pudo comprobar qué campamentos tienes construidos.',
+    [saveId],
+  )
 
   return (
     <SelectionModalShell title="Volver al campamento" onCancel={onCancel}>
