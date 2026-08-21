@@ -153,6 +153,28 @@ export const ANTIDOTE_RECIPE: CraftingRecipe = {
   narrationDo: 'El personaje prepara un contraveneno mezclando su salvia del polvo con pétalos de Flor de Ceniza — narra la escena con naturalidad. El objeto ya se gestiona automáticamente por el backend.',
 };
 
+// Ampliación de lore 2026-08-21 — primer oficio nuevo desde el rediseño de profesiones
+// (2026-08-07): cocinero-orco-llanuras. Su NPC-profesor (Maestro Cocinero Serhu, ver
+// docs/rpgtarkor/areas.md § Campamento del Clan Serhu) todavía no tiene forma de enseñarlo de
+// verdad (mecanismo "aprender oficio de un NPC" sin construir, ver docs/ampliar-lore-checklist.md)
+// — igual que 'alquimista-orcos-llanuras', esta receta ya existe aunque el oficio en sí no esté
+// en el kit inicial de nadie todavía.
+export const BOUNGO_ROAST_RECIPE: CraftingRecipe = {
+  key: 'boungoRoast',
+  verbRegex: /as|cocin|prepar|tuest/,
+  nounRegex: /boungo/,
+  location: null,
+  ingredients: [{ match: { kind: 'exact', catalogSlug: 'boungo' }, cantidad: 2, label: 'Boungo' }],
+  resultName: 'Boungo asado',
+  resultCatalogSlug: 'boungo-asado',
+  resultDescription: 'Boungo asado sobre brasas — sencillo, pero la primera receta real del oficio de cocinero-orco-llanuras.',
+  tier: 1,
+  oficio: 'cocinero-orco-llanuras',
+  narrationWant:
+    'El personaje quiere asar Boungo, pero no lleva encima al menos 2 setas Boungo — narra que lo intenta o lo considera, pero no que las asa de verdad.',
+  narrationDo: 'El personaje asa sus Boungo sobre brasas — narra la escena con naturalidad. El objeto ya se gestiona automáticamente por el backend.',
+};
+
 const FIELD_TORCH_RECIPE: CraftingRecipe = {
   key: 'fieldTorch',
   verbRegex: /fabric|monta|prepar|\bata|\bato|crear|creo/,
@@ -452,6 +474,7 @@ export const CRAFTING_RECIPES: CraftingRecipe[] = [
   COMPLETE_POULTICE_RECIPE,
   CLUB_RECIPE,
   GARGANTUA_LEG_ARMOR_RECIPE,
+  BOUNGO_ROAST_RECIPE,
 ];
 
 export function detectsCraftIntent(recipe: CraftingRecipe, action: string): boolean {

@@ -3731,6 +3731,18 @@ export const items: ItemCatalogInput[] = [
   },
 
   {
+    slug: 'boungo-asado',
+    name: 'Boungo asado',
+    aliases: ['boungo asado', 'setas asadas'],
+    category: 'consumible',
+    tipo: 'CONSUMIBLE',
+    equipSlot: 'CONSUMIBLE_1',
+    description: 'Boungo asado sobre brasas por un cocinero orco — la primera receta real del oficio de cocinero-orco-llanuras, más allá de las raciones reasignadas.',
+    dimensiones: 'Ración de 150 g.',
+    curaEnergia: 12,
+  },
+
+  {
     slug: 'verdileas-acuaticas',
     name: 'Verdileas Acuáticas',
     aliases: ['verdileas', 'algas de manaderos'],
