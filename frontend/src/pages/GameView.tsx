@@ -351,16 +351,27 @@ export function GameView() {
   const COMBAT_DISABLED_CHARACTER_TABS: PanelId[] = ['inventario', 'companeros', 'reino']
   const COMBAT_DISABLED_WORLD_TABS: PanelId[] = ['mapa', 'diario', 'misiones']
 
-  function openCombat() {
-    if (!combateIniciado) return
+  // `combatOverride` (bug real, auditoría de bugs 2026-08-21): "Cazar" resolviendo una presa
+  // débil SIN combate (`handleHuntResolved`) hace `setCombateIniciado(result.combate)` y llama a
+  // `openCombat()` en la misma sincronía — sin este parámetro, la función leía `combateIniciado`
+  // del cierre de ESTE render (el `setState` de la línea anterior todavía no se había aplicado),
+  // que en ese flujo es siempre `null` porque "Cazar" solo se ofrece fuera de combate. `openCombat`
+  // devolvía sin hacer nada: el panel de combate nunca se abría, y el aviso "⚔️ Combatir" salía
+  // en su lugar la vez siguiente que algo repintara — reabrirlo desde ahí sí funcionaba (ya con el
+  // estado actualizado), pero mostraba los controles normales de ataque un instante antes de que
+  // el `useEffect` de `allResolved` lo cerrara solo, en vez de abrir directo el resumen "ya
+  // resuelto, solo queda saquear" que pedía el diseño original de esta pantalla.
+  function openCombat(combatOverride?: { npcs: NpcInSceneInfo[] } | null) {
+    const combate = combatOverride ?? combateIniciado
+    if (!combate) return
     // Bug real (auditoría 2026-07-30): un turno puede traer a la vez un hallazgo (`discoveries`)
     // Y una emboscada (`combateIniciado`) — sin esto, el aviso de "hallazgo descubierto" se quedaba
     // solapado visualmente por encima del popup de combate recién abierto.
     setDiscoveries([])
-    setCombatNpcStates(combateIniciado.npcs.map(npcInSceneToCombatDisplay))
+    setCombatNpcStates(combate.npcs.map(npcInSceneToCombatDisplay))
     setCombatEnded(false)
     // Mismo reinicio que antes hacía el `useState` inicial de CombatComposer al montarse.
-    setCombatSelectedNpcSlug(combateIniciado.npcs[0]?.slug ?? null)
+    setCombatSelectedNpcSlug(combate.npcs[0]?.slug ?? null)
     setCombatSelectedAbilityId(null)
     setCombatSelectedItemId(null)
     setCombatFreeText('')
@@ -858,7 +869,7 @@ export function GameView() {
     setKingdomFoundedInfo({
       title: ayuntamiento.name,
       region: territory?.region ?? '',
-      outcome: territory?.control === 'DISPUTADO' ? 'CONFLICTO' : 'PACIFICA',
+      outcome: territory?.control === 'DISPUTADO' ? 'CONFLICTO' : 'CONQUISTADA',
       suggestedName: characterName === 'Gorhorn' ? 'Maktor' : null,
       nameLocked: characterName === 'Gorhorn',
     })
@@ -1055,7 +1066,10 @@ export function GameView() {
     if (result.resuelveSinCombate) {
       setCharacterLog((prev) => [...prev, { ...result.logEntry, channel: 'character' }])
       setCombateIniciado(result.combate)
-      openCombat()
+      // `result.combate` explícito (ver comentario de `openCombat`) — `combateIniciado` todavía no
+      // se ha actualizado en este mismo tick, así que confiar en el estado aquí abriría un panel
+      // de combate vacío.
+      openCombat(result.combate)
       return
     }
     handleSubmit(result.actionText)
@@ -1971,7 +1985,12 @@ export function GameView() {
           )}
           <div className="flex items-center justify-center gap-2">
             <button
-              onClick={openCombat}
+              // `() => openCombat()` explícito, no `openCombat` a secas (bug real introducido al
+              // añadir `combatOverride`, auditoría 2026-08-21): un handler de `onClick` pasado
+              // directo recibe el `MouseEvent` como primer argumento — con `openCombat` aceptando
+              // ahora un parámetro opcional, ese evento se habría colado como `combatOverride`
+              // (truthy, sin `.npcs`) y reventado en `combate.npcs.map(...)`.
+              onClick={() => openCombat()}
               disabled={fleeingPreCombat}
               className="animate-alert-pulse rounded-lg border border-red-700 bg-danger-500/10 px-3 py-1.5 text-xs font-bold uppercase tracking-wide text-danger-400 shadow-[0_0_14px_-4px_color-mix(in_srgb,var(--color-danger-500)_70%,transparent)] transition-colors hover:bg-danger-500/20 disabled:opacity-50"
             >

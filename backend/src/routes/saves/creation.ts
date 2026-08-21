@@ -321,6 +321,17 @@ export async function creationRoutes(app: FastifyInstance) {
         // sobrevivían a "reiniciar", igual de incoherente que el NpcState de arriba antes de aquel fix.
         await tx.professionProgress.deleteMany({ where: { saveId: save.id } });
         await tx.kingdomStats.deleteMany({ where: { saveId: save.id } });
+        // Bug real (auditoría de bugs, 2026-08-21): `Faction` (fundar reino, reino.ts) es
+        // `saveId`-scoped igual que el resto de filas de arriba, pero nunca se borraba aquí — el
+        // reinicio ya deja `Save.kingdomName: null` (más abajo), así que la partida reiniciada
+        // parece "sin reino" de nuevo, pero la fila `Faction` de la partida anterior seguía viva en
+        // la base de datos con el mismo `saveId`. Reproducible: fundar un reino, reiniciar, fundar
+        // OTRO reino con el mismo nombre exacto — `factionSlug = slugify(nombre)-${save.id}` choca
+        // contra el `@@unique([worldId, slug])` de la fila fantasma y `POST /reino/fundar` responde
+        // "Ya has fundado tu reino" (P2002, ver reino.ts) para una partida que en realidad empieza
+        // de cero. `DiscoveredEntity` de la Faction vieja ya se borra abajo junto con el resto —
+        // sin borrar la propia `Faction`, quedaba huérfana pero seguía bloqueando el slug.
+        await tx.faction.deleteMany({ where: { saveId: save.id } });
         // Enciclopedia progresiva (2026-07-23): reiniciar vuelve a Día 1 también en lo que ya se
         // "conoce" — sin esto, la Enciclopedia de una partida recién reiniciada seguiría mostrando
         // NPCs/fauna/objetos de la partida anterior como ya descubiertos.

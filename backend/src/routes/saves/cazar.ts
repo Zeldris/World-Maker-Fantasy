@@ -210,6 +210,13 @@ export async function cazarRoutes(app: FastifyInstance) {
   app.post<{ Params: { id: string } }>('/saves/:id/cazar/explorar', async (request, reply) => {
     const save = await prisma.save.findUnique({ where: { id: request.params.id }, include: { currentLocation: true } });
     if (!save) return reply.status(404).send({ error: 'Partida no encontrada' });
+    // Bug real (auditoría de bugs, 2026-08-21): a diferencia de /turn/classify y /combat/flee
+    // (session.ts), ninguna ruta de caza comprobaba `save.endedAt` — con la partida ya terminada
+    // por muerte definitiva (docs/14-combate-y-muerte.md § 4.4), el composer principal queda
+    // bloqueado en el frontend, pero el panel de Habilidades/Cazar sigue accesible y permitía
+    // seguir cazando (mutando `WorldPopulation`/`NpcState` de verdad) para un personaje que la
+    // propia partida ya da por definitivamente muerto.
+    if (save.endedAt) return reply.status(409).send({ error: 'Esta partida ha terminado', endedAt: save.endedAt });
 
     const candidates = await candidateFaunaFor(save.worldId, save.currentLocation?.region ?? null, save.level, save.currentLocation?.slug ?? null);
     if (candidates.length === 0) return { candidates: [] };
@@ -233,6 +240,8 @@ export async function cazarRoutes(app: FastifyInstance) {
 
     const save = await prisma.save.findUnique({ where: { id: request.params.id }, include: { currentLocation: true, worldState: true } });
     if (!save) return reply.status(404).send({ error: 'Partida no encontrada' });
+    // Bug real (auditoría de bugs, 2026-08-21) — ver comentario de /cazar/explorar arriba.
+    if (save.endedAt) return reply.status(409).send({ error: 'Esta partida ha terminado', endedAt: save.endedAt });
     if (Array.isArray(save.pendingCombatNpcSlugs) && save.pendingCombatNpcSlugs.length > 0) {
       return reply.status(400).send({ error: 'Ya hay un combate en curso — resuélvelo antes de salir a cazar.' });
     }

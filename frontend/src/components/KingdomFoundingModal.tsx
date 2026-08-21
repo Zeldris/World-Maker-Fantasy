@@ -9,13 +9,13 @@ interface KingdomFoundingModalProps {
 
 const OUTCOME_LABEL: Record<KingdomFoundedInfo['outcome'], string> = {
   SIN_DUENO: 'Esta región no tenía ninguna facción dueña conocida — pasa a ser tuya sin oposición.',
-  PACIFICA: 'Tu reputación con la(s) facción(es) de la región es buena — fundación pacífica.',
+  CONQUISTADA: 'Tu reputación con la(s) facción(es) de la región es buena — fundación pacífica.',
   CONFLICTO: 'Tu reputación con la(s) facción(es) de la región es mala — la región queda en conflicto, con más de una facción ocupando el mismo territorio.',
 }
 
 const OUTCOME_TONE: Record<KingdomFoundedInfo['outcome'], string> = {
   SIN_DUENO: 'border-iron-700 bg-wood-950/40 text-wood-300',
-  PACIFICA: 'border-accent2-600/50 bg-accent2-600/10 text-accent2-300',
+  CONQUISTADA: 'border-accent2-600/50 bg-accent2-600/10 text-accent2-300',
   CONFLICTO: 'border-danger-600/50 bg-danger-600/10 text-danger-300',
 }
 

@@ -63,6 +63,20 @@ describe('POST /saves/:id/reino/fundar', () => {
     expect(updateSave).not.toHaveBeenCalled();
   });
 
+  // Bug real (auditoría de bugs, 2026-08-21): esta ruta nunca comprobaba `save.endedAt` — con la
+  // partida ya terminada por muerte definitiva, seguía dejando fundar un reino nuevo (mutación
+  // real: Save.kingdomName + Faction + DiscoveredEntity) para un personaje que la propia partida
+  // ya da por definitivamente muerto.
+  it('409 si la partida ya ha terminado (endedAt)', async () => {
+    findUniqueSave.mockResolvedValue({ id: 'save1', characterName: 'Gorhorn de prueba', endedAt: new Date('2026-08-21T12:00:00Z') });
+    const app = await buildApp();
+
+    const res = await app.inject({ method: 'POST', url: '/saves/save1/reino/fundar', payload: { kingdomName: 'x' } });
+
+    expect(res.statusCode).toBe(409);
+    expect(updateSave).not.toHaveBeenCalled();
+  });
+
   it('400 si todavía no ha construido ningún Ayuntamiento', async () => {
     findUniqueSave.mockResolvedValue({ id: 'save1', characterName: 'Gorhorn de prueba' });
     findFirstBuilding.mockResolvedValue(null);

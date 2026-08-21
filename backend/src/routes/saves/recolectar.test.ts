@@ -148,6 +148,29 @@ describe('POST /saves/:id/recolectar/confirmar', () => {
     findManyItemCatalogTx.mockResolvedValue([{ slug: 'cuchillo-hielo-silice', tipo: 'EQUIPABLE', category: 'arma', herramientaParaOficio: ['curtidor', 'desollador'] }]);
   }
 
+  // Bug real (auditoría de bugs, 2026-08-21): esta ruta nunca comprobaba `save.endedAt` — con la
+  // partida ya terminada por muerte definitiva, seguía dejando recolectar (mutar WorldPopulation/
+  // inventario de verdad) para un personaje que la propia partida ya da por definitivamente muerto.
+  it('rechaza con 409 si la partida ya ha terminado (endedAt)', async () => {
+    findUniqueSave.mockResolvedValue({
+      id: 'save1',
+      worldId: 'world1',
+      characterName: 'Gorhorn',
+      currentLocationId: 'loc1',
+      attributes: { fuerza: 10, constitucion: 10 },
+      worldState: { fictionalDateLabel: 'Día 1, mañana', fictionalMinutes: 480 },
+      endedAt: new Date('2026-08-07T12:00:00Z'),
+    });
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/saves/save1/recolectar/confirmar',
+      payload: { selections: [{ sourceSlug: 'roca-pilares-rotos', itemSlug: 'piedra', cantidad: 1 }] },
+    });
+    expect(res.statusCode).toBe(409);
+    expect(transaction).not.toHaveBeenCalled();
+  });
+
   it('ignora una selección cuyo itemSlug no es un HarvestYield real de ese sourceSlug (bug real, sin validar antes)', async () => {
     findFirstHarvestYield.mockResolvedValue(null);
     const app = await buildApp();

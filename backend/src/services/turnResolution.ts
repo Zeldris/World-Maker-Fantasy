@@ -28,6 +28,7 @@ import {
   scopeFor,
   pickAmbientEncounterCandidate,
   buildNpcInScene,
+  hasPendingLoot,
   type NpcInScene,
   type NpcWithItems,
 } from './npcScene.js';
@@ -1689,14 +1690,21 @@ async function applyHarvest(params: {
   const createdItemNames: string[] = [];
   // Solo aplica a fauna (`npcId` presente, el único caso con tope real); los recursos
   // vegetales/minerales no tienen límite de por sí (renovables, por diseño — ver harvest.ts).
-  const harvestStillValid =
+  // Bug real (auditoría de bugs 2026-08-21): este guard solo miraba `.saqueado` — para caza en
+  // grupo (`NpcState.groupSize` no nulo), `saqueado` nunca se marca por esta vía (ver más abajo,
+  // que ahora incrementa `corpsesLooted` en su lugar, mismo criterio que `recolectar.ts`), así que
+  // `harvestStillValid` salía SIEMPRE `true` para un grupo — el despiece narrado por texto libre
+  // (a diferencia del panel dedicado "Despiece", que sí usa `corpsesLooted`/`groupDefeated` desde
+  // el principio) podía repetirse turno tras turno sobre el mismo cadáver ya aprovechado,
+  // duplicando materiales sin límite. `hasPendingLoot` (npcScene.ts) es el único punto de verdad
+  // ya compartido por recolectar.ts/harvest.ts/panels.ts para este mismo criterio.
+  const freshHarvestState =
     harvestMatch?.npcId && harvestMatch.npcKind
-      ? !(
-          await tx.npcState.findUnique({
-            where: { saveId_npcId_scope: { saveId, npcId: harvestMatch.npcId, scope: scopeFor(harvestMatch.npcKind, currentLocationId) } },
-          })
-        )?.saqueado
-      : true;
+      ? await tx.npcState.findUnique({
+          where: { saveId_npcId_scope: { saveId, npcId: harvestMatch.npcId, scope: scopeFor(harvestMatch.npcKind, currentLocationId) } },
+        })
+      : null;
+  const harvestStillValid = harvestMatch?.npcId && harvestMatch.npcKind ? hasPendingLoot(freshHarvestState) : true;
   if (harvestMatch && (!roll || roll.success) && harvestStillValid) {
     for (const y of harvestMatch.yields) {
       const created = await tx.inventoryItem.create({
@@ -1714,15 +1722,25 @@ async function applyHarvest(params: {
       createdItemNames.push(created.name);
     }
     // Bug real (auditoría 2026-07-28): sin esto, el mismo cadáver de fauna ya derrotada se podía
-    // despiezar sin límite — marca este NpcState como ya aprovechado (mismo campo `saqueado` que
-    // cierra el saqueo de NPCs con nombre), para que harvest.ts lo bloquee la próxima vez.
+    // despiezar sin límite — marca este NpcState como ya aprovechado, para que harvest.ts lo
+    // bloquee la próxima vez. Caza en grupo (auditoría 2026-08-21, ver comentario de
+    // `harvestStillValid` arriba): un grupo (`groupSize` no nulo) reclama el cadáver actual subiendo
+    // `corpsesLooted` en vez de `saqueado` (booleano, solo tiene sentido para 1 individuo) — mismo
+    // criterio exacto que ya usa `recolectar.ts` para el panel dedicado de Despiece.
     if (harvestMatch.npcId && harvestMatch.npcKind && harvestMatch.yields.length > 0) {
       const scope = scopeFor(harvestMatch.npcKind, currentLocationId);
-      await tx.npcState.upsert({
-        where: { saveId_npcId_scope: { saveId, npcId: harvestMatch.npcId, scope } },
-        create: { saveId, npcId: harvestMatch.npcId, scope, saqueado: true },
-        update: { saqueado: true },
-      });
+      if (freshHarvestState?.groupSize) {
+        await tx.npcState.updateMany({
+          where: { saveId, npcId: harvestMatch.npcId, scope, corpsesLooted: { lt: freshHarvestState.groupDefeated } },
+          data: { corpsesLooted: { increment: 1 } },
+        });
+      } else {
+        await tx.npcState.upsert({
+          where: { saveId_npcId_scope: { saveId, npcId: harvestMatch.npcId, scope } },
+          create: { saveId, npcId: harvestMatch.npcId, scope, saqueado: true },
+          update: { saqueado: true },
+        });
+      }
     }
   }
   // Narración mentirosa si se pierde la carrera (auditoría 2026-08-06, mismo patrón que loot/

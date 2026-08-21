@@ -115,13 +115,25 @@ export function DetailModal({ target, onClose, onUnequip, onEquip, onSaveAbility
   // cumplen los requisitos de atributo, hace falta poder mostrar POR QUÉ, en vez de que el objeto
   // "se desequipe solo" en silencio (GameView.tsx hace rollback optimista sin explicación).
   const [actionError, setActionError] = useState<string | null>(null)
+  // Bug real (auditoría de bugs, 2026-08-21): ningún botón de aquí se deshabilitaba mientras la
+  // petición estaba en vuelo — un doble clic rápido en "Quitar" o en dos candidatos de equipar
+  // distintos disparaba dos `runEquipAction` concurrentes, cada uno con su propio rollback
+  // optimista en GameView.tsx (`previous = inventory` capturado en closures distintos), lo que
+  // podía dejar el inventario en un estado inconsistente o disparar `getSave` dos veces seguidas.
+  // Mismo patrón de `busy` que ya usan AbilityForm.tsx y CharacterSaves.tsx (deletingId/restartingId)
+  // en el resto de la app — este modal era la única pieza de este tipo sin él.
+  const [busy, setBusy] = useState(false)
   async function runEquipAction(action: () => Promise<void>) {
+    if (busy) return
     setActionError(null)
+    setBusy(true)
     try {
       await action()
       onClose()
     } catch (err) {
       setActionError(err instanceof Error ? err.message : 'No se pudo completar la acción.')
+    } finally {
+      setBusy(false)
     }
   }
   // Selector de variante regional (2026-07-22, "al pulsar orcos aun pudiese elegir el tipo según
@@ -199,7 +211,8 @@ export function DetailModal({ target, onClose, onUnequip, onEquip, onSaveAbility
             {target.item.slot && onUnequip && (
               <button
                 onClick={() => runEquipAction(() => onUnequip(target.item))}
-                className="tactile self-start rounded-lg border border-iron-700 px-3 py-1.5 text-xs text-wood-300 transition-colors hover:border-accent-600/60 hover:text-wood-100"
+                disabled={busy}
+                className="tactile self-start rounded-lg border border-iron-700 px-3 py-1.5 text-xs text-wood-300 transition-colors hover:border-accent-600/60 hover:text-wood-100 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 Quitar
               </button>
@@ -319,7 +332,8 @@ export function DetailModal({ target, onClose, onUnequip, onEquip, onSaveAbility
                     {onUnequip && (
                       <button
                         onClick={() => runEquipAction(() => onUnequip(target.equipped!))}
-                        className="tactile rounded-lg border border-iron-700 px-3 py-1.5 text-xs text-wood-300 transition-colors hover:border-accent-600/60 hover:text-wood-100"
+                        disabled={busy}
+                        className="tactile rounded-lg border border-iron-700 px-3 py-1.5 text-xs text-wood-300 transition-colors hover:border-accent-600/60 hover:text-wood-100 disabled:cursor-not-allowed disabled:opacity-50"
                       >
                         Quitar
                       </button>
@@ -346,7 +360,8 @@ export function DetailModal({ target, onClose, onUnequip, onEquip, onSaveAbility
                           <TooltipAnchor text={item.description} className="min-w-0 flex-1">
                             <button
                               onClick={() => onEquip && runEquipAction(() => onEquip(item, target.slot))}
-                              className="tactile flex w-full flex-col items-start gap-1 text-left text-sm text-wood-200"
+                              disabled={busy}
+                              className="tactile flex w-full flex-col items-start gap-1 text-left text-sm text-wood-200 disabled:cursor-not-allowed disabled:opacity-50"
                             >
                               <span className="flex w-full items-center justify-between gap-2">
                                 <span className="truncate">{item.name}</span>

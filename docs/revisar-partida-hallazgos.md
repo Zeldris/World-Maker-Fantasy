@@ -97,6 +97,14 @@ Cada entrada: fecha, qué se detectó (cita textual si es narración), causa ra�
 
 **2026-08-20**
 - [escena de Gistera Koh: figura sin resolver en el acantilado, diálogo mal atribuido, Orco Enfurecido con caballo/armadura inventados](#2026-08-20-escena-de-gistera-koh-figura-sin-resolver-en-el-acantilado-diálogo-mal-atribuido-orco-enfurecido-con-caballoarmadura-inventados)
+
+**2026-08-21 — auditoría de código (sin partida jugada, 5 agentes en paralelo back+front)**
+- [despiece narrado por texto libre duplicaba botín en fauna cazada en grupo](#2026-08-21-despiece-narrado-por-texto-libre-duplicaba-botín-en-fauna-cazada-en-grupo)
+- [cazar/recolectar/fundar reino seguían funcionando tras una muerte definitiva](#2026-08-21-continuación-cazarrecolectarfundar-reino-seguían-funcionando-tras-una-muerte-definitiva)
+- [reiniciar partida dejaba una `Faction` fantasma que bloqueaba refundar el reino](#2026-08-21-continuación-reiniciar-partida-dejaba-una-faction-fantasma-que-bloqueaba-refundar-el-reino)
+- [doble submit al equipar/desequipar objetos desde el modal de detalle](#2026-08-21-continuación-doble-submit-al-equiparsequipar-objetos-desde-el-modal-de-detalle)
+- [panel de combate no se abría tras resolver una caza sin combate](#2026-08-21-continuación-panel-de-combate-no-se-abría-tras-resolver-una-caza-sin-combate)
+- [renombrado PACIFICA→CONQUISTADA (reputation.ts, 2026-08-15) nunca propagado al frontend](#2026-08-21-continuación-renombrado-pacificaconquistada-reputationts-2026-08-15-nunca-propagado-al-frontend)
 - [continuación: diálogo del jugador entre comillas bloqueado como "NPC inventado"](#2026-08-20-continuación-diálogo-del-jugador-entre-comillas-bloqueado-como-npc-inventado)
 - [continuación: el "perseguidor" de Gistera Koh nunca se detecta en escena si no se le nombra "Orco enfurecido"](#2026-08-20-continuación-el-perseguidor-de-gistera-koh-nunca-se-detecta-en-escena-si-no-se-le-nombra-orco-enfurecido)
 - [continuación: sugerencia "Acepto ayudarla y busco al que me persigue" — REGLA 4 comprimida + pronombre equivocado, y un bug propio de raíz verbal](#2026-08-20-continuación-sugerencia-acepto-ayudarla-y-busco-al-que-me-persigue-regla-4-comprimida-pronombre-equivocado-y-un-bug-propio-de-raíz-verbal-descubierto-al-arreglarlo)
@@ -2645,3 +2653,134 @@ probar/restaurar: sin el fix, `LogEntry.initiativeRoll` queda `null` tras un int
 **Estado**: FIJADO. `tsc -b` limpio en backend y frontend. 1065/1065 tests unitarios backend + 76/76
 de `turn.integration.test.ts` en solitario (+1) + 4/4 del resto de integración + 31/31 frontend,
 todos en verde.
+
+## 2026-08-21 — despiece narrado por texto libre duplicaba botín en fauna cazada en grupo
+
+**Contexto**: sin partida jugada activa (sin `dev-server.log` reciente) se sustituyó el runbook
+habitual de "revisar partida" por una auditoría de código: 5 agentes en paralelo, cada uno acotado a
+una zona de archivos backend/frontend sin solapes, buscando bugs reales de comportamiento (no deuda
+técnica ni lore — esas son las auditorías 2 y 3 del mismo día). Verificación final propia (no solo el
+autoinforme de cada agente): `rm -rf dist` + `tsc -b` en ambos paquetes + suite completa (2213 tests
+backend + 31 frontend) + los 3 `*.integration.test.ts` en solitario, todos en verde tras aplicar los
+6 fixes de abajo.
+
+**Síntoma**: ninguno reportado por la usuaria — encontrado por lectura de código. `applyHarvest`
+(camino de despiece cuando el jugador escribe la acción a mano, p. ej. "despiezo al corretolvas",
+paralelo al endpoint dedicado del panel "Despiece") marcaba `NpcState.saqueado: true` tras cada
+despiece, sin tocar `corpsesLooted`. Para fauna cazada en grupo (`NpcState.groupSize` no nulo) el
+criterio real de "¿queda algo por despiezar?" es `corpsesLooted < groupDefeated`
+(`hasPendingLoot`, `npcScene.ts`) — `saqueado` no distingue individuos dentro de un grupo. El panel
+dedicado (`recolectar.ts`) ya usaba el criterio correcto; solo el camino narrado tenía el bug.
+
+**Causa raíz**: `applyHarvest` (`turnResolution.ts`) nunca incrementaba `corpsesLooted`, así que
+`detectHarvest` seguía viendo "presa pendiente" indefinidamente por esta vía — permitiendo despiezar
+el mismo cadáver del grupo una y otra vez, duplicando materiales sin límite.
+
+**Fix aplicado**: `applyHarvest` usa ahora `hasPendingLoot` (import de `npcScene.js`) para el guard
+anti-carrera, e incrementa `corpsesLooted` (acotado por `groupDefeated`) igual que `recolectar.ts`
+cuando el NPC tiene `groupSize`; sin grupo, se mantiene `saqueado: true` como antes.
+
+**Estado**: FIJADO. `routes/turn.integration.test.ts` (76/76) + suite no-integración (2213/2213) en
+verde tras el cambio.
+
+## 2026-08-21 (continuación) — cazar/recolectar/fundar reino seguían funcionando tras una muerte definitiva
+
+**Síntoma**: ninguno reportado — encontrado por lectura de código, comparando `turn.ts`/`combat/flee`
+(que sí comprueban `save.endedAt` y devuelven 409 "Esta partida ha terminado") contra el resto de
+rutas de acción.
+
+**Causa raíz**: `saves/cazar.ts` (`/explorar`, `/confirmar`), `saves/recolectar.ts` (`GET /:oficio`,
+`/explorar`, `/confirmar`) y `saves/reino.ts` (`/fundar`) no comprobaban `endedAt` en absoluto. El
+frontend solo desactiva el composer principal cuando `endedAt` está puesto, pero el panel lateral
+"Habilidades" (Cazar/Minar/Talar/Desollar) seguía accesible sin guard — tras una muerte definitiva se
+podía seguir depleccionando `WorldPopulation`, creando `NpcState`, añadiendo inventario, o incluso
+fundando un reino nuevo, todo en una partida que la propia UI ya da por terminada para siempre.
+
+**Fix aplicado**: mismo guard 409 que ya usan `turn.ts`/`combat/flee`, añadido a las tres rutas.
+Alcance deliberadamente parcial: `inventario.ts` (equipar), `progression.ts`
+(`/attribute-points`) y `habilidades.ts` (CRUD de `SavedAction`) tienen el mismo hueco pero solo
+mutan datos propios de la partida ya terminada, sin efecto en recursos compartidos del mundo — se
+deja como PENDIENTE, pregunta de producto (¿debería bloquearse igual por consistencia, o es
+aceptable "ordenar la mochila" tras game-over?).
+
+**Estado**: FIJADO (los 3 endpoints con efecto en recursos compartidos). Tests nuevos en
+`cazar.test.ts`/`recolectar.test.ts`/`reino.test.ts`, suite completa en verde.
+
+## 2026-08-21 (continuación) — reiniciar partida dejaba una `Faction` fantasma que bloqueaba refundar el reino
+
+**Síntoma**: reproducible pero no visto aún en partida real — encontrado auditando `creation.ts`.
+Secuencia: fundar un reino, reiniciar la partida (`POST /saves/:id/restart`), fundar OTRO reino con
+el mismo nombre exacto → `POST /reino/fundar` responde "Ya has fundado tu reino" (P2002) para una
+partida que en realidad vuelve a Día 1.
+
+**Causa raíz**: `Faction` es `saveId`-scoped, con `onDelete: Cascade` solo si se borra la fila `Save`
+— cosa que `/restart` no hace (reutiliza el mismo id). El reset dejaba `Save.kingdomName: null` y
+borraba `DiscoveredEntity`, pero nunca borraba la fila `Faction` en sí, así que
+`factionSlug = slugify(nombre)-${save.id}` chocaba contra `@@unique([worldId, slug])` de la fila
+huérfana.
+
+**Fix aplicado**: `tx.faction.deleteMany({ where: { saveId: save.id } })` dentro de la transacción de
+`/restart` (`creation.ts`).
+
+**Estado**: FIJADO. Test de integración nuevo en `creation.integration.test.ts` (reproduce el
+síntoma sin el fix, pasa con él) verificado contra Postgres real.
+
+## 2026-08-21 (continuación) — doble submit al equipar/desequipar objetos desde el modal de detalle
+
+**Síntoma**: ninguno reportado — encontrado por lectura de código. `DetailModal.tsx` era el único
+sitio del proyecto con el patrón equipar/desequipar que no seguía el guardado `busy`/`disabled` que
+ya usan `AbilityForm.tsx` y `CharacterSaves.tsx` en el resto de la app.
+
+**Causa raíz**: `runEquipAction` no tenía guardado de "ya en curso" ni deshabilitaba los tres botones
+(equipar/desequipar/sustituir) mientras la petición estaba en vuelo. Un doble clic rápido disparaba
+dos llamadas concurrentes a `onEquip`/`onUnequip`, cada una con su propia foto del inventario en
+closure, pudiendo dejar el inventario visualmente inconsistente.
+
+**Fix aplicado**: estado `busy` con early-return si ya hay una acción en curso, `disabled={busy}` en
+los tres botones. Sin cambio de comportamiento en el caso de un solo clic.
+
+**Estado**: FIJADO. Sin test dedicado (el proyecto no tiene infraestructura de test de componentes
+React); verificado con `tsc -b` + `vitest run` en verde.
+
+## 2026-08-21 (continuación) — panel de combate no se abría tras resolver una caza sin combate
+
+**Síntoma**: ninguno reportado — encontrado por lectura de código. Tras cazar una presa débil que se
+resuelve sin combate mecánico (`resuelveSinCombate: true`), el panel de combate nunca se abría; el
+jugador veía en su lugar el banner "⚔️ Combatir" (pensado para emboscadas reales) durante un instante,
+antes de que el auto-cierre por combate-ya-resuelto lo quitara.
+
+**Causa raíz**: `handleHuntResolved` hacía `setCombateIniciado(result.combate)` seguido
+inmediatamente de `openCombat()` — `openCombat()` leía `combateIniciado` del cierre del render
+actual, donde el `setState` de la línea anterior aún no se había aplicado (siempre `null`, porque
+"Cazar" solo se ofrece fuera de combate), así que su guard `if (!combateIniciado) return` cortaba
+la apertura del panel.
+
+**Fix aplicado**: `openCombat` acepta ahora un `combatOverride` opcional (`combatOverride ??
+combateIniciado`); `handleHuntResolved` le pasa `result.combate` explícitamente. De paso, corregido
+el `onClick={openCombat}` del botón del banner "Combatir" (con el nuevo parámetro opcional, el
+`MouseEvent` del clic se habría colado como `combatOverride`) a `onClick={() => openCombat()}`.
+
+**Estado**: FIJADO. `tsc -b` limpio, 31/31 tests frontend en verde (sin test unitario propio — el
+proyecto verifica este tipo de flujo de `GameView.tsx` jugando en vivo, no con test unitario).
+
+## 2026-08-21 (continuación) — renombrado PACIFICA→CONQUISTADA (`reputation.ts`, 2026-08-15) nunca propagado al frontend
+
+**Síntoma**: detectado por un agente de la auditoría (fuera de su zona de archivos, así que quedó
+anotado en vez de arreglado hasta esta pasada final) — ninguno reportado en partida real, pero
+afectaría a la UI clave del momento de fundar el primer Ayuntamiento.
+
+**Causa raíz**: `backend/src/services/reputation.ts` renombró el resultado de fundación de reino de
+`'PACIFICA'` a `'CONQUISTADA'` el 2026-08-15 (confirmado por comentario en `reputation.test.ts`), y
+`turnResolution.ts` manda ese valor tal cual al frontend. Pero `frontend/src/types.ts`
+(`KingdomFoundedInfo['outcome']`), `KingdomFoundingModal.tsx` (`OUTCOME_LABEL`/`OUTCOME_TONE`) y
+`GameView.tsx` (`handleReabrirFundacionReino`, reconstrucción del popup tras recarga) seguían
+esperando `'PACIFICA'` — ninguno de los 5 agentes de la auditoría tenía `types.ts` en su zona
+exclusiva de edición, así que quedó huérfano hasta la verificación final.
+
+**Efecto real**: al fundar una región reclamada sin hostilidad (el caso más común de fundación no
+conflictiva en territorio con dueño), el popup de fundación de reino se quedaba sin etiqueta ni color
+(`OUTCOME_LABEL`/`OUTCOME_TONE` devolvían `undefined` para `'CONQUISTADA'`).
+
+**Fix aplicado**: renombrado `'PACIFICA'` → `'CONQUISTADA'` en los tres sitios.
+
+**Estado**: FIJADO. `tsc -b` limpio en frontend tras el cambio.

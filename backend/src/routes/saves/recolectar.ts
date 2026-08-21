@@ -260,6 +260,13 @@ export async function recolectarRoutes(app: FastifyInstance) {
     }
     const save = await prisma.save.findUnique({ where: { id: request.params.id }, include: { currentLocation: true } });
     if (!save) return reply.status(404).send({ error: 'Partida no encontrada' });
+    // Bug real (auditoría de bugs, 2026-08-21): a diferencia de /turn/classify y /combat/flee
+    // (session.ts), ninguna ruta de recolección comprobaba `save.endedAt` — con la partida ya
+    // terminada por muerte definitiva, el composer principal queda bloqueado en el frontend, pero
+    // el panel de Habilidades/Minar-Talar-Desollar sigue accesible y permitía seguir recolectando
+    // (mutando `WorldPopulation`/inventario de verdad) para un personaje que la propia partida ya
+    // da por definitivamente muerto.
+    if (save.endedAt) return reply.status(409).send({ error: 'Esta partida ha terminado', endedAt: save.endedAt });
 
     const { candidates, anyOnCooldown } = await candidateSourcesFor(
       save.worldId,
@@ -292,6 +299,8 @@ export async function recolectarRoutes(app: FastifyInstance) {
 
       const save = await prisma.save.findUnique({ where: { id: request.params.id }, include: { worldState: true } });
       if (!save) return reply.status(404).send({ error: 'Partida no encontrada' });
+      // Bug real (auditoría de bugs, 2026-08-21) — ver comentario de /recolectar/:oficio/explorar arriba.
+      if (save.endedAt) return reply.status(409).send({ error: 'Esta partida ha terminado', endedAt: save.endedAt });
 
       interface TouchedStack {
         id: string;

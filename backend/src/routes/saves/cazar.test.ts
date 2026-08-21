@@ -277,6 +277,18 @@ describe('POST /saves/:id/cazar/confirmar', () => {
     expect(transaction).not.toHaveBeenCalled();
   });
 
+  // Bug real (auditoría de bugs, 2026-08-21): esta ruta nunca comprobaba `save.endedAt` — con la
+  // partida ya terminada por muerte definitiva, seguía dejando cazar (mutar WorldPopulation/
+  // NpcState de verdad) para un personaje que la propia partida ya da por definitivamente muerto.
+  it('rechaza con 409 si la partida ya ha terminado (endedAt)', async () => {
+    const endedAt = new Date('2026-08-08T12:00:00Z');
+    findUniqueSave.mockResolvedValue({ ...SAVE_BASE, endedAt });
+    const app = await buildApp();
+    const res = await app.inject({ method: 'POST', url: '/saves/save1/cazar/confirmar', payload: { slugs: ['murgol'] } });
+    expect(res.statusCode).toBe(409);
+    expect(transaction).not.toHaveBeenCalled();
+  });
+
   it('varias presas seleccionadas: combate obligatorio, nunca pasa por $transaction (la narración real lo abre) — pero SÍ pre-crea el grupo de Múrgol (8 avistados)', async () => {
     const app = await buildApp();
     const res = await app.inject({

@@ -21,6 +21,14 @@ export async function reinoRoutes(app: FastifyInstance) {
       if (!save) {
         return reply.status(404).send({ error: 'Partida no encontrada' });
       }
+      // Bug real (auditoría de bugs, 2026-08-21): a diferencia de /turn/classify y /combat/flee
+      // (session.ts), esta ruta nunca comprobaba `save.endedAt` — con la partida ya terminada por
+      // muerte definitiva, el composer principal queda bloqueado en el frontend, pero el panel de
+      // Reino sigue accesible y permitía fundar un reino nuevo para un personaje que la propia
+      // partida ya da por definitivamente muerto.
+      if (save.endedAt) {
+        return reply.status(409).send({ error: 'Esta partida ha terminado', endedAt: save.endedAt });
+      }
 
       const ayuntamiento = await prisma.building.findFirst({ where: { saveId: save.id, recipeKey: 'ayuntamiento' } });
       if (!ayuntamiento) {

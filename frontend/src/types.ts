@@ -400,7 +400,7 @@ export interface TerritoryInfo {
 export interface KingdomFoundedInfo {
   title: string
   region: string
-  outcome: 'SIN_DUENO' | 'PACIFICA' | 'CONFLICTO'
+  outcome: 'SIN_DUENO' | 'CONQUISTADA' | 'CONFLICTO'
   /// "Maktor" precargado si el personaje es Gorhorn, si no null (formulario en blanco).
   suggestedName: string | null
   /// true solo para Gorhorn — el campo de nombre del popup queda bloqueado.
