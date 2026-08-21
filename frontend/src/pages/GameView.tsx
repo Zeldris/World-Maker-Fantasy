@@ -18,6 +18,8 @@ import { DetailModal, type DetailTarget } from '../components/DetailModal'
 import { useEnciclopedia } from '../hooks/useEnciclopedia'
 import { useEntityBanner } from '../hooks/useEntityBanner'
 import { useReconnectionPolling } from '../hooks/useReconnectionPolling'
+import { useSurroundingsPolling } from '../hooks/useSurroundingsPolling'
+import { useRecipesData } from '../hooks/useRecipesData'
 import type { EnciclopediaLinkTarget } from '../lib/enciclopediaIndex'
 import { EnciclopediaLinkProvider } from '../context/EnciclopediaLinkContext'
 import { CompanerosPanel } from '../components/panels/CompanerosPanel'
@@ -44,7 +46,6 @@ import { inventoryCapacityFor, totalInventoryUnits } from '../lib/inventoryCapac
 import {
   requestTurnClassify,
   requestTurnNarrate,
-  requestSurroundings,
   requestFlee,
   createSave,
   getSave,
@@ -57,8 +58,6 @@ import {
   updateSavedAction,
   fundarReino,
   setItemSlot,
-  getProfessionRecipes,
-  getRecipesStatus,
   requestSuggestions,
   type SaveDetail,
   type ClassifyResponse,
@@ -94,10 +93,8 @@ import type {
   NpcInSceneInfo,
   PostCombatInteractionInfo,
   ProfessionProgressInfo,
-  ProfessionRecipeInfo,
   ProgressionResult,
   QuestInfo,
-  RecipeStatusInfo,
   SavedActionCategory,
   SavedActionInfo,
   SecondaryAttributeBlock,
@@ -180,47 +177,20 @@ export function GameView() {
   const [factionsStatus, setFactionsStatus] = useState<Record<string, number>>({})
   const [kingdomStats, setKingdomStats] = useState<KingdomStatsInfo | null>(null)
   const [professionProgress, setProfessionProgress] = useState<ProfessionProgressInfo[]>([])
-  // Roster estático de recetas de oficio (rediseño de profesiones, 2026-08-07) — independiente de
-  // partida, se pide una sola vez al montar (no cambia mientras se juega). Habilidades > Profesiones
-  // lo usa para mostrar TODAS las recetas de una profesión creadora, bloqueadas o no.
-  const [professionRecipes, setProfessionRecipes] = useState<ProfessionRecipeInfo[]>([])
-  useEffect(() => {
-    getProfessionRecipes()
-      .then(setProfessionRecipes)
-      .catch(() => {
-        // Si falla, Habilidades > Profesiones simplemente no muestra el roster bloqueado — no
-        // rompe nada más, no hace falta reintentar agresivamente.
-      })
-  }, [])
   const [deathCount, setDeathCount] = useState(0)
   const [dificultad, setDificultad] = useState<Dificultad>('NOVATO')
   const [savedActions, setSavedActions] = useState<SavedActionInfo[]>([])
   const [combatSlots, setCombatSlots] = useState(3)
   const [fictionalDate, setFictionalDate] = useState('Día 1, mañana')
   const [currentLocation, setCurrentLocation] = useState<CurrentLocationInfo | null>(null)
-  // Estado real de cada receta EN ESTA PARTIDA (2026-08-13, petición explícita: "que salgan
-  // deshabilitadas si no cumples las condiciones... el hover con... 5/10") — depende del
-  // inventario/atributos/ubicación reales, así que se recarga cada vez que cualquiera de los tres
-  // cambia. Bug real de auditoría (2026-08-13): al depender solo de `[saveId, inventory]`, subir
-  // un punto de atributo (handleSpendAttributePoint) o viajar a la ubicación que pedía una receta
-  // (ej. Campamento del Clan Serhu) no refrescaba nada — las tarjetas se quedaban mostrando "Falta:
-  // Fuerza" o "Debes estar en X" aunque el jugador ya cumpliera la condición, hasta que algo no
-  // relacionado tocara el inventario.
-  const [recipesStatus, setRecipesStatus] = useState<RecipeStatusInfo[]>([])
-  useEffect(() => {
-    if (!saveId) return
-    getRecipesStatus(saveId)
-      .then((res) => setRecipesStatus(res.recipes))
-      .catch(() => {
-        // Si falla, las tarjetas de Habilidades/Enciclopedia simplemente no se deshabilitan por
-        // esto — no rompe nada más.
-      })
-  }, [saveId, inventory, characterAttributes, currentLocation])
+  // Roster estático de recetas de oficio + estado real de cada receta EN ESTA PARTIDA — ver
+  // src/hooks/useRecipesData.ts para la lógica completa (por qué dos fetches independientes, de
+  // qué depende cada uno).
+  const { professionRecipes, recipesStatus } = useRecipesData(saveId, inventory, characterAttributes, currentLocation)
   const [destinations, setDestinations] = useState<DestinationInfo[]>([])
   const [input, setInput] = useState('')
   const composerRef = useRef<ChatComposerHandle>(null)
   const [characterThinking, setCharacterThinking] = useState(false)
-  const [worldThinking, setWorldThinking] = useState(false)
   const [timedThinkingText, setTimedThinkingText] = useState<string | null>(null)
   // Streaming (roadmap de velocidad, 2026-07-20, punto 13): la narración crece en vivo mientras
   // el Narrador la genera, en vez de aparecer entera al final — null mientras dura el prefill
@@ -730,31 +700,20 @@ export function GameView() {
     }
   }, [deathCount])
 
+  // Sondeo de ambientación cada 10 min reales — ver src/hooks/useSurroundingsPolling.ts para la
+  // lógica completa (por qué usa refs internos, por qué se corta durante un turno/combate en
+  // curso; mismo patrón que useReconnectionPolling/useEntityBanner).
+  const { worldThinking } = useSurroundingsPolling({
+    saveId,
+    characterThinking,
+    combatActive: !!combateIniciado,
+    fictionalDate,
+    buildEntityBanner,
+    setWorldLog,
+  })
+
   const characterFlavor = useRotatingFlavor(characterThinking, combatOpen ? combatWaitingFlavor : characterWaitingFlavor)
   const worldFlavor = useRotatingFlavor(worldThinking, worldWaitingFlavor)
-
-  // El temporizador de alrededores vive en un efecto aparte que no se reinicia en cada render
-  // (ver más abajo) — necesita leer el valor más reciente de estos, no el de cuando arrancó.
-  const characterThinkingRef = useRef(characterThinking)
-  const fictionalDateRef = useRef(fictionalDate)
-  // Bug real encontrado auditando la partida de Gorhorn (2026-07-23, "revisar partida" — petición
-  // explícita de la usuaria: "la AI del narrador esta generando un prompt fuera de responder a
-  // que yo le ponga... nos esta haciendo mas bien que mal"): el sondeo de ambientación cada 5 min
-  // ya evitaba solaparse con un turno en curso o un gancho sin responder, pero no con un combate
-  // pendiente/abierto — un evento ambiental ("¿Qué haces?" con el mismo NPC ya atacando) llegó a
-  // dispararse en mitad de un intercambio de golpes real, muy confuso. `combateIniciado` (no solo
-  // `combatOpen`) cubre también la ventana entre "se marcó el combate" y "el jugador pulsa
-  // Combatir", que es tan real como el propio popup abierto.
-  const combatActiveRef = useRef(false)
-  useEffect(() => {
-    characterThinkingRef.current = characterThinking
-  }, [characterThinking])
-  useEffect(() => {
-    combatActiveRef.current = !!combateIniciado
-  }, [combateIniciado])
-  useEffect(() => {
-    fictionalDateRef.current = fictionalDate
-  }, [fictionalDate])
 
   // Sondeo de reconexión tras un turno que no confirmó a tiempo — ver
   // src/hooks/useReconnectionPolling.ts para la lógica completa (intervalos, tope de intentos,
@@ -1629,55 +1588,6 @@ export function GameView() {
       // Silencioso: el botón se puede reintentar, no bloquea la partida.
     }
   }
-
-  // Panel "El mundo" v1: ambientación del entorno inmediato cada 10 minutos reales (subido de 5,
-  // petición explícita de la usuaria, 2026-07-23), puramente descriptiva — nunca toca el chat de
-  // personaje ni propone eventos (ver comentario de `tickSurroundings` más abajo).
-  useEffect(() => {
-    if (!saveId) return
-
-    let cancelled = false
-    let inFlight = false
-
-    async function tickSurroundings() {
-      // No competir con un turno de jugador ya en curso — el backend solo procesa una
-      // llamada a Ollama a la vez, y amontonar peticiones fue lo que causó fallos reales
-      // en pruebas (una narración forzada a cortarse por falta de margen). Se reintenta
-      // en el siguiente tick. Tampoco durante un combate pendiente/abierto (`combatActiveRef`,
-      // bug real 2026-07-23): un evento ambiental reintroduciendo al mismo NPC que ya está
-      // atacando es puro ruido confuso en mitad de una pelea.
-      if (inFlight || characterThinkingRef.current || combatActiveRef.current) return
-      inFlight = true
-      setWorldThinking(true)
-      try {
-        const timeLabel = fictionalDateRef.current
-        // Puramente descriptivo (petición explícita de la usuaria, 2026-07-23: "el sondeo
-        // ambiental solo tiene que lanzarse en el chat de mundo... no tiene que preguntar que
-        // hace, solo exponer que hay a tu alrededor") — ya nunca toca el chat de PERSONAJE.
-        const { description, logEntryId } = await requestSurroundings({ saveId: saveId! })
-        if (cancelled) return
-        const nowIso = new Date().toISOString()
-        const entityBanner = buildEntityBanner(description, logEntryId)
-        setWorldLog((prev) => [...prev, { id: logEntryId, channel: 'world', text: description, timeLabel, createdAt: nowIso, entityBanner }])
-      } catch {
-        // Ambientación fallida no bloquea la partida — se reintenta en el siguiente tick.
-      } finally {
-        inFlight = false
-        if (!cancelled) setWorldThinking(false)
-      }
-    }
-
-    const interval = setInterval(tickSurroundings, 10 * 60_000)
-    return () => {
-      cancelled = true
-      clearInterval(interval)
-    }
-    // Deliberadamente solo `saveId`: `buildEntityBanner` no está memoizada (nueva referencia cada
-    // render) pero lee todo lo reactivo que necesita de refs (enciclopediaIndexRef,
-    // recentlyShownEntitiesRef, entityBannerTurnRef) — incluirla aquí recrearía el intervalo de
-    // 10 minutos en cada render, rompiendo la cadencia real del sondeo.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [saveId])
 
   // Mientras el personaje está en una acción por tiempo (extendida/larga), sondea la partida
   // cada 30s para detectar cuándo el worldTick la resuelve — en ese momento `transit` desaparece

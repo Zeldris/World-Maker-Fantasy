@@ -14,7 +14,7 @@ export const UMBRAL_MINIMO_REPRODUCCION = 4;
 /// Tasas de partida, por día real transcurrido — no un cierre definitivo, fácilmente ajustables.
 /// La fauna se reproduce categóricamente más rápido que las razas de NPC (petición explícita:
 /// "lógicamente la fauna en general tiene más posibilidades de reproducirse que una raza de npc").
-export const GROWTH_RATE_PER_DAY: Record<PopulationTargetType, number> = {
+const GROWTH_RATE_PER_DAY: Record<PopulationTargetType, number> = {
   FAUNA: 0.02,
   RAZA: 0.003,
   // Recursos de recolección (rediseño de profesiones, 2026-08-07) — entre fauna (se reproduce) y

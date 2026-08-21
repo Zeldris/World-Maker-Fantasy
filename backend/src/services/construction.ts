@@ -79,7 +79,7 @@ export interface ConstructionRecipe {
 /// travel.ts) entre un edificio de tipo reino y el Ayuntamiento del que depende — bastante para
 /// cubrir el núcleo medido de una región (docs/13-escala-del-mundo.md § 1.1: la mayoría de tramos
 /// entre nodos del núcleo de Llanuras rondan 60-150 min) sin llegar a otra región.
-export const MAX_MINUTOS_DESDE_AYUNTAMIENTO = 600;
+const MAX_MINUTOS_DESDE_AYUNTAMIENTO = 600;
 
 export interface RequirementShortfall {
   label: string;
@@ -327,7 +327,7 @@ export const CONSTRUCTION_RECIPES: ConstructionRecipe[] = [
 /// `key` de las recetas que dependen de tener un Ayuntamiento (choza, futuro "puesto avanzado") —
 /// para contar cuántas hay activas contra la capacidad del Ayuntamiento sin hardcodear 'choza' en
 /// turnResolution.ts.
-export const REINO_BUILDING_RECIPE_KEYS: string[] = CONSTRUCTION_RECIPES.filter((r) => r.requiresAyuntamiento).map((r) => r.key);
+const REINO_BUILDING_RECIPE_KEYS: string[] = CONSTRUCTION_RECIPES.filter((r) => r.requiresAyuntamiento).map((r) => r.key);
 
 /// Slots de compañero que da una construcción, por su `recipeKey` guardada en `Building` — 0 para
 /// construcciones libres del modelo (`recipeKey: null`) o cualquier clave que no matchee ninguna
@@ -338,7 +338,7 @@ export function companionSlotsForRecipeKey(recipeKey: string | null): number {
 
 /// Capacidad de edificios de reino según el nivel actual del Ayuntamiento (`Building.tier`) —
 /// deriva de las 3 recetas en vez de repetir los números 10/25/60 sueltos en turnResolution.ts.
-export function reinoBuildingCapacityForTier(tier: number): number {
+function reinoBuildingCapacityForTier(tier: number): number {
   const recipe = [AYUNTAMIENTO_PEQUENO_RECIPE, AYUNTAMIENTO_MEDIANO_RECIPE, AYUNTAMIENTO_GRANDE_RECIPE].find(
     (r) => r.ayuntamientoNivel === tier,
   );
