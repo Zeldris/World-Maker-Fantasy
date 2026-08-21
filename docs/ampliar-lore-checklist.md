@@ -7,8 +7,193 @@ tareas de una conversación no sobrevive al cierre de la sesión, este archivo s
 
 ---
 
+## En curso — repaso "zona por zona" de Las Llanuras del Viento Rojo (empezado 2026-08-21)
+
+Modo de trabajo nuevo, ver `docs/ampliar-lore.md` § 1.5. **13 zonas cubiertas esta sesión, en este
+orden** (ver "Sesión 2026-08-21 (duodécima pasada)" más abajo para el detalle completo de cada
+una): 1. La Hondonada del Eco, 2. Los Pilares Rotos, 3. El Pozo de Cauce Viejo, 4. El Cruce de las
+Cenizas, 5. Los Restos de Maktor (retirada), 6. El Campamento del Clan Serhu, 7. El Osario de la
+Manada, 8. Las Agujas Imán, 9. Los Manaderos, 10. Los Túmulos del Honor (sin cambios), 11. Los
+Pastos de la Deriva, 12. El Filo de las Brasas, 13. Las Fumarolas Negras.
+
+**Parada aquí — la próxima zona es la 14: La Sabana Alta.** Después quedan, en el mismo orden que
+`areas.md`: Playa de Ceniza Blanca, Los Acantilados Partidos, La Desembocadura Callada, Las Pozas
+de Marea, El Embarcadero de Ceniza, Las Dunas Ahogadas, El Vientre del Engaño, El Laberinto de
+Cañones, Las Fumarolas Negras *(ya cubierta, saltar)*, El Paso de los Huesos, El Vergel de Kegi,
+El Campo Yermo, La Grieta Cantora, El Oasis de Juncos Rojos. Las 3 ruinas Nabierus (Ciudad
+Hundida/Archivo Cegado/Observatorio Roto) siguen fuera del grafo jugable, no entran en este repaso
+todavía (ver pendiente de código de arriba).
+
+## Propuestas de réplica entre zonas (análisis pedido por la usuaria al pausar, 2026-08-21)
+
+De todo lo añadido en las 13 zonas de esta sesión, esto es lo que tiene sentido real replicar en
+otras zonas/regiones por tránsito, caza o encaje de recursos — no son decisiones tomadas, son
+candidatos a revisar con la usuaria en la próxima sesión (de lore o de código, según toque):
+
+- **Corredor migratorio real de Corredores de Cauce**: nacen en Los Manaderos, pastan en Los
+  Pastos de la Deriva, se refugian/cazan mejor en La Sabana Alta (hierba alta, sigilo del Aullador
+  Rojo) y El Paso de los Huesos ya está descrito literalmente como "cañón... tapizado de restos
+  óseos de migraciones fallidas de Corredores de Cauce" — las 4 zonas ya cuentan la misma historia
+  por separado sin estar conectadas como una ruta única. Merece la pena anclarlas explícitamente
+  como el recorrido real de la migración (mismo criterio que ya usa el juego para "de paso" en El
+  Cruce de las Cenizas).
+- **Ruptidar ("cualquier zona arenosa")**: ya está definido como fauna de terreno, no de zona
+  única — encaja de forma directa en Las Dunas Ahogadas, El Vientre del Engaño y La Fosa Horadada
+  (todas ya descritas como arena/desierto), sin inventar nada nuevo, solo confirmar la etiqueta de
+  terreno cuando se lleve a código.
+- **Pasto Solar ("toda la llanura donde crece vegetación")**: mismo caso — ya nace región-wide por
+  diseño, solo falta confirmarlo explícitamente en cualquier zona con pradera/estepa que se cubra
+  más adelante (Sabana Alta, la próxima, es la candidata más obvia).
+- **Rondador de Brasas ("donde hay brasas hay carne")**: ya confirmado en El Filo de las Brasas;
+  con el mismo criterio, Las Fumarolas Negras (más calor todavía, ya cubierta) y cualquier zona
+  futura con actividad volcánica/calor directo son candidatas naturales.
+- **Ecosistema de charca (Musgo Arcilla/Telda/Guchapos/Lebudes/Escorantes, de El Pozo de Cauce
+  Viejo)**: El Oasis de Juncos Rojos se describe ya como "agua en superficie de verdad... un punto
+  verde real en medio del polvo rojo" — mismo tipo de biomasa que justificó la densidad de El Pozo.
+  Candidata fuerte para una variante (no necesariamente las mismas 5 especies calcadas) del mismo
+  ecosistema de charca.
+- **Ecosistema de Los Manaderos (Jusha/Miruina/Quio/Tura Jusha)**: La Desembocadura Callada es
+  "marisma salobre" — agua salobre, no dulce, así que no son las mismas especies literales, pero es
+  el mismo tipo de nicho (pez pequeño + depredador día/noche + carroñero) en una variante de agua
+  salada. Buena plantilla para darle vida propia en vez de dejarla solo como punto de cierre del
+  recorrido del agua.
+- **Enredaderas de las Llanuras (fibra, "trepan por sombra")**: candidata a aparecer también en El
+  Laberinto de Cañones (paredes de arcilla estrecha, sombra constante) y La Fosa Horadada (sumidero,
+  túneles) — mismo criterio de sombra/humedad relativa que ya la justifica en Hondonada/Pilares.
+- **Telda Común/Ceniza**: candidata en El Vergel de Kegi (coto de caza/comercio Faerus, junto al
+  poblado — zona previsiblemente más verde por su propio nombre) — a confirmar con la usuaria si
+  tiene sentido o si prefiere flora propia de esa zona por ser ya territorio Faerus, no orco.
+- **NO replicar sin más**: Yerreo/Hiyerro, Rocas Imanidas, Fercaneo y las 22 fichas de NPC del
+  Campamento Serhu son deliberadamente ÚNICOS de su zona (escasez/unicidad es parte del diseño) —
+  aparecer en más de un sitio les quitaría el sentido.
+
+---
+
 ## Pendiente de código (acumulado, revisar antes de cerrar cada pasada)
 
+- **Sesión 2026-08-21 (fauna/flora/minerales de La Hondonada del Eco, ver más abajo)** — nada de
+  esto está en `worldCatalog.ts` todavía: `NpcInput` nuevos para Gesgurio (PLANTILLA, insecto
+  carroñero de emboscada), Kirelon Arenoso (PLANTILLA, reptil ciego nocturno 2-4m, nivel/atributos
+  altos — pensar bien su nivel dado que da acceso a Yerreo) y Ruptidar (PLANTILLA, sin loadout,
+  temperamento INOFENSIVO, sin loot — terreno arenoso en general, no solo Hondonada, así que
+  probablemente `faunaTerrainTag` en vez de `homeLocationSlug` fijo a `hondonada-del-eco`);
+  `ItemCatalogInput` nuevos: fibra vegetal (Enredaderas de las Llanuras), mena de Yerreo, Lingote
+  de Yerreo, Lingote de Hiyerro (tier 5-7, receta hierro+Yerreo+Arena Imán), trozo/pieza de quitina
+  roja (Gesgurio, receta 10:1), hueso/cráneo/piel de escamas/garras de Kirelon (garras → 2 Lingote
+  de Yerreo directo, requiere herrero + fragua); nuevos `HarvestYield` para las 2 fauna con loot +
+  la veta de Yerreo (mineral muy escaso — cantidad baja, quizá con cooldown/probabilidad de
+  aparición distinta al resto de vetas); fila(s) nuevas en `worldPopulation.ts`. Además, renombrar
+  (solo documentación/lore, el `ItemCatalog` de `piedra` ya es genérico) el source
+  `roca-pilares-rotos` → concepto "Piedra de las Llanuras Rojas" si se quiere reflejar también en
+  el slug/comentarios del catálogo técnico (no urgente, cosmético).
+- **Los Pilares Rotos (misma sesión)**: `ItemCatalogInput` nuevos para Madera de Lucre Blanco
+  (tier 5-7) y Resina de Lucre Blanco (tier 4-7, `category` tipo pegamento/adhesivo); `HarvestYield`
+  nuevo con `sourceSlug` propio para el árbol de Lucre Blanco (metodoObtencion TALA probablemente,
+  a decidir); Enredaderas de las Llanuras reutiliza el `sourceSlug`/`ItemCatalog` ya pendiente de
+  La Hondonada del Eco, solo añadir este `Location` a donde aparece (o a `harvestSourceRegion` si
+  se queda a nivel de región, ver nota de diseño pendiente sobre anclaje por zona).
+- **El Pozo de Cauce Viejo (misma sesión)**: `NpcInput` nuevos para Guchapos (PLANTILLA, alfa rojo
+  agresivo vs. resto INOFENSIVO — pensar si eso pide 2 filas de catálogo distintas o un único
+  `temperamento` con matiz solo narrativo), Lebudes (PLANTILLA, ataque con veneno que reduce
+  atributos temporalmente — mismo tipo de efecto que ya usa el sistema de combate, revisar cuál) y
+  Escorantes (PLANTILLA, herbívoro cauteloso). `ItemCatalogInput` nuevos: Musgo Rojo, Madera de
+  Telda, Resina Telda Gris, Hojas de Telda, Piel de Guchapo, Cera Lebude, Miel Lebude (sin
+  profesión de cocina que la consuma todavía — solo el ítem, no la receta), Quitina Escorante.
+  `HarvestYield` nuevos para las 2 flora + loot de las 3 fauna (Guchapo reutiliza `racion-carne`
+  ya existente). Musgo Rojo/Hojas de Telda/Cera Lebude son materiales de construcción para
+  edificaciones orcas de tier 1/3-4 que todavía no existen como sistema — dejar el ítem listo, sin
+  receta de construcción hasta que se diseñe.
+- **El Cruce de las Cenizas (misma sesión)**: renombrar `Telda Húmeda` → `Telda Común` en cualquier
+  sitio de código que la referencie (todavía ninguno, sigue solo en `.md` — no hay nada que migrar
+  en `worldCatalog.ts` de momento). `ItemCatalogInput` nuevo: Telda Ceniza reutiliza los MISMOS
+  `ItemCatalogInput` que Telda Común (madera/resina/hojas) — solo necesita su propio `HarvestYield`/
+  `sourceSlug` de árbol distinto (misma especie, apariencia distinta, dos fuentes de recolección).
+  `NpcInput` nuevo para Ferike (PLANTILLA, tier de loot 6-7, tener en cuenta el dimorfismo sexual —
+  probablemente 2 filas de catálogo, macho con cola/maza y hembra sin cola pero con
+  habilidad racial de ataque más fuerte, en vez de una sola ficha genérica). `ItemCatalogInput`
+  nuevos: Piel de Ferike, Garras Ferike (tier 6-7), Melena de cola Ferike (tier 7, probabilidad de
+  loot muy baja — objeto "especial"). Hueso reutiliza `hueso-ligero` (default sin confirmar del
+  todo con la usuaria — decirlo si prefiere un hueso propio dado que el resto del loot es tier 6-7)
+  y carne reutiliza `racion-carne`, ambos ya existentes.
+- **Los Restos de Maktor (misma sesión) — RETIRADA, no adición**: quitar de `worldCatalog.ts` los
+  3 `ItemCatalogInput` (Brazalete trenzado del Clan Maktor, Pañuelo de luto Serhu, Tótem de clan
+  roto) y las 4 filas de `HarvestYield` con `sourceSlug: 'restos-personales-maktor'`, más su
+  entrada en `harvestSourceAliases`/`harvestSourceHomeLocationSlug`/`harvestSourceRegion`/
+  `harvestSourceDisplayName` (buscar `restos-personales-maktor` — 2026-08-21 confirmó que ninguno
+  de los 3 ítems se usa en ningún otro sitio, seguro borrarlos del todo). Comprobar que no queda
+  fila huérfana en `WorldPopulation` para este `targetSlug` tampoco. `docs/12-mundo-estructurado.md`
+  § 4.3 ya tachada (no borrada) con la fecha de esta decisión.
+- **El Campamento del Clan Serhu (misma sesión) — el pendiente más grande de esta ronda**:
+  `ItemCatalogInput` nuevo Leche de Múrgol; nuevo oficio `cocinero-orco-llanuras` en
+  `startingProfessions.ts`/`professionAbilities.ts`/`crafting.ts` (asignar `oficio` a las recetas
+  ya existentes de `racion-carne-ahumada` y `racion-viaje` si las tienen, o crearlas si no) —
+  **decidir si Gorhorn empieza con este oficio de serie o si SOLO se puede aprender del Maestro**
+  (a diferencia del resto de `GORHORN_STARTING_PROFESSIONS`, no se mencionó que lo lleve de
+  fábrica). 22 `NpcInput` nuevos en el campamento (11 oficios × Maestro/trabajador) — los 11
+  Maestros PRINCIPAL con `capturablePct`/`reclutablePct` bajos o 0 a propósito; los 11 trabajadores
+  PLANTILLA con esos mismos campos altos, pensados para una mecánica de "Reino" que TODAVÍA NO
+  EXISTE (asignar NPC capturado/reclutado como productor pasivo de recursos) — el catálogo puede
+  ir por delante, pero el propio sistema de asignación a Reino es un bloque de trabajo aparte, no
+  solo llevar esto a `worldCatalog.ts`. El requisito "reputación mínima + misión" de cada Maestro
+  también queda sin diseñar (qué misión, qué umbral de reputación, cómo se mide hoy la reputación
+  con un clan concreto).
+- **El Osario de la Manada (misma sesión)**: `ItemCatalogInput` nuevos Fragmentos de Gargantúa
+  (tier 1-2) y Huesos de Gargantúa (construcción tier 1) — DISTINTOS de los ya existentes Hueso
+  largo de gargantúa/Placa ósea de gargantúa, no los sustituyen (a confirmar con la usuaria si
+  esto es lo que quería o si en realidad buscaba consolidar/renombrar los 2 ya existentes).
+  `HarvestYield` nuevos con `metodoObtencion: RECOLECCION` (no caza, es un esqueleto ya muerto) para
+  ambos. `ItemCatalogInput` nuevo Boungo (flora, seta comestible) + receta de cocinero-orco-llanuras
+  para un consumible de energía tier 1 que la use. Gesgurio/Cruzavientos no necesitan `NpcInput`
+  nuevo, solo aparecer en la tabla de encuentros de esta `Location` (o su `faunaTerrainTag`/región,
+  según se resuelva el pendiente de diseño de anclaje por zona).
+- **Las Agujas Imán (misma sesión) — el pendiente MÁS complejo de toda esta ronda, requiere
+  diseño propio antes de ser solo catálogo**: `NpcInput` nuevos para Imanio (PLANTILLA, temperamento
+  INOFENSIVO salvo si se le ataca, con la habilidad de desprender una extremidad desmagnetizada
+  para huir — regenera en unos días) y Nuente (PLANTILLA, nocturno, `habilidadesRaciales` Succión
+  vital/Onda Magnética/Vuelo errático, y un **efecto pasivo confirmado con la usuaria: -2 a la
+  tirada de ataque del jugador si usa arma de hierro/metal contra él** — necesita poder consultar
+  el material/`tipoArma` del arma equipada del jugador desde `combatExchange.ts` o donde se calcule
+  la tirada, algo que hoy no se comprueba para ningún NPC). `ItemCatalogInput` nuevo Saco de Arena
+  Imán (contenedor). Rocas Imanidas: recolectable con **calidad variable** ("cuánto flota" determina
+  cuánta Arena Imán da al procesarla) — el motor no tiene hoy ningún concepto de calidad variable
+  de recolección, hace falta diseñarlo (¿un roll al recolectar? ¿una etiqueta baja/media/alta en el
+  propio `HarvestYield`?). Solo se puede refinar a Arena Imán FUERA de esta `Location` — necesita
+  lógica de recolección/crafteo condicionada por ubicación, que tampoco existe hoy. Y el efecto más
+  nuevo de todos: **entrar en esta `Location` con Arena Imán suelta en el inventario (sin Saco) hace
+  que se pierda** — el motor no tiene ningún precedente de "efecto de pérdida de inventario por
+  entrar en una zona concreta"; antes de tocar `worldCatalog.ts` esto necesita decidirse como
+  mecánica de verdad (¿se dispara en `syncFromSave`? ¿en el primer turno tras cambiar de Location?
+  ¿aviso previo al jugador o pérdida silenciosa?).
+- **Los Manaderos (misma sesión)**: `NpcInput` nuevos para Jusha Esmeralda (PLANTILLA, fauna
+  acuática — primer pez del catálogo, revisar si el motor de caza/pesca actual ya contempla fuentes
+  `metodoObtencion` en agua o si hace falta alguna adaptación), Miruina (PLANTILLA, nocturno, caza
+  en manada) y Tura Jusha (PLANTILLA, diurno, sin vuelo). Quio (PLANTILLA, INOFENSIVO, sin loot de
+  combate — recolección directa de Filtro de Quio, no caza). `ItemCatalogInput` nuevos: Verdileas
+  Acuáticas, Juncos Rojizos (`HarvestYield` nuevo aunque el `ItemCatalog`/flavor ya existía como
+  texto suelto en `areas.md`, nunca en catálogo), Carne de Jusha (receta cocinero-orco-llanuras),
+  Escama de Jusha, Piel de Miruina, Filtro de Quio, Plumas de Tura Jusha, Garra retráctil de Tura
+  Jusha. Liquen del Cauce/Bulbo del Cauce (ya existentes) necesitan `Location`/región también
+  ligada a `manaderos`, no solo a la corriente en general.
+- **Los Pastos de la Deriva (misma sesión)**: `ItemCatalogInput` nuevos Pasto Solar (el pasto base
+  de toda la región — pensar si esto reemplaza/formaliza el "pastan" ya asumido por Múrgol/
+  Corredores en su lore, o se queda solo como ítem de recolección nuevo sin tocar nada existente),
+  Gradias (fibra), Flor Salvatura (alquimia, varias recetas tier 2-5 del mismo ingrediente — revisar
+  cuántas recetas nuevas hacen falta en `crafting.ts`), Piel/Cuerno de Cuernahoja (cuerno de hembra
+  como variante de tier más alto, a decidir si es una fila de `ItemCatalog` distinta o un modificador
+  sobre la misma). `NpcInput` nuevo Cuernahoja (PLANTILLA, manada, temperamento INOFENSIVO salvo
+  ataque, dimorfismo sexual en `attributes`/loot igual que Ferike).
+- **El Filo de las Brasas (misma sesión)**: añadir `homeLocationSlug: 'filo-de-las-brasas'` (o
+  equivalente por terreno) también al Rondador de Brasas, sin quitarle su presencia general de
+  campamentos en el resto de la región — no es una retirada, es una segunda ubicación.
+- **El Filo de las Brasas + Las Fumarolas Negras (misma sesión)**: `ItemCatalogInput` nuevos
+  Volcanita (tier 3-4), Rovalnica (construcción tier 2-4, renombrada de "Vorcanenta" — la usuaria
+  la cambió al vuelo tras el aviso de colisión con Volcanita; ya no hay riesgo real de confusión
+  entre las dos). Fercaneo (tier 5-6, muy escaso). `HarvestYield` de Fercaneo con probabilidad más
+  alta en `fumarolas-negras` que en `filo-de-las-brasas` (misma especie de mineral, dos
+  probabilidades de aparición distintas por `Location` — comprobar si el sistema de recolección ya
+  soporta eso hoy o si hace falta añadirlo). Vincular también el Fercaneo a la presencia de
+  Salamandra de Escoria de alguna forma narrativa/de riesgo si se quiere que "protegido por
+  Salamandras" tenga peso real y no sea solo texto.
 - **3 zonas de las ruinas Nabierus siguen sin `Location`** (La Ciudad Hundida, El Archivo Cegado,
   El Observatorio Roto) — contenido futuro explícito (tras un terremoto sin fecha fijada aún), no
   deben entrar al grafo hasta que se decida cuándo ocurre ese evento. Las otras 16 zonas de la
@@ -41,6 +226,26 @@ de notable, se anota aquí (qué cambió y desde qué sesión) — no implica re
 inmediato, solo dejar constancia para cuando se decida.
 
 Sin entradas todavía.
+
+---
+
+## Pendiente de diseño (decisiones de lore/mecánica aún sin cerrar con la usuaria)
+
+*(Sección nueva 2026-08-21.)* A diferencia de "Pendiente de código" (ya decidido, falta trasladarlo)
+esto es lore/mecánica que todavía no se ha decidido cómo funciona.
+
+- **Sistema de estaciones por mes/región en Helek Sirik** (detectado 2026-08-21 al fijar que el
+  Kirelon Arenoso sale "de noche o en los largos inviernos" — el motor ya tiene franjas horarias
+  reales día/noche, `entorno.ts`, pero ningún concepto de estación ni temperatura). Falta
+  establecer con la usuaria cómo funcionan las estaciones por región (¿un único calendario global,
+  o desfasado por región/hemisferio del mapa? ¿afecta a fauna/flora, a rutas, a ambas?) antes de
+  que cualquier condición futura "solo en invierno" tenga sentido mecánico, no solo narrativo.
+- **Fauna/flora/recursos anclados a "Llanuras del Viento Rojo" en conjunto en vez de a zonas
+  concretas** (`harvestSourceRegion`, la práctica totalidad del catálogo salvo Salamandra de
+  Escoria) — señalado por la usuaria 2026-08-21 como un error de diseño ("debería ser por
+  región... eso lo miramos si no en otro momento"). No es una tarea de código suelta: implica
+  decidir cómo se reparte lo ya existente entre las ~26 zonas nombradas de la región antes de
+  tocar nada, así que queda aquí como pendiente de diseño, no de código.
 
 ---
 
@@ -492,3 +697,213 @@ el padre asignado a ciegas originalmente) para encontrar la conexión geométric
   ciegas original (superseded), ahora documenta las coordenadas VISUALES reales confirmadas
   (iguales a `map.ts`, sin desacople para estas 16 zonas) y los minutos ya corregidos, con el
   historial de las 3 versiones por las que pasó esta tabla en la misma sesión.
+
+---
+
+## Sesión 2026-08-21 (duodécima pasada) — fauna/flora/minerales de La Hondonada del Eco, primera zona de un repaso región por región
+
+Arranque de un repaso sistemático "1 a 1" de las zonas de Las Llanuras del Viento Rojo (motivado
+por necesitar fauna/flora/recursos de tier alto antes de poder justificar objetos de tier alto) —
+esta pasada cubre solo la primera zona, La Hondonada del Eco; el resto queda para sesiones
+siguientes con el mismo formato.
+
+- **Piedra de las Llanuras Rojas** (mineral, renombrado — antes conceptualmente "de los Pilares
+  Rotos"): mismo material de siempre, solo se corrige que no es exclusivo de un punto.
+- **Enredaderas de las Llanuras** (flora nueva): fibra vegetal, crafteo tier 1-2.
+- **Yerreo** (mineral nuevo, muy escaso): veta rojiza/anaranjada, mena → Lingote de Yerreo; con
+  hierro + Arena Imán da **Lingote de Hiyerro**, la mejor aleación orca de la región (armas tier
+  5-7). Confirmado con la usuaria: además de minar la veta (rarísima), las garras del Kirelon
+  Arenoso se funden directo en 2 Lingotes de Yerreo si el cazador es herrero con fragua a mano.
+- **Gesgurio** (fauna nueva): insecto carroñero de emboscada, camuflado contra las paredes de
+  arcilla de la Hondonada — sigue de lejos a moribundos/convalecientes. Loot: quitina roja.
+- **Kirelon Arenoso** (fauna nueva, la más peligrosa de las tres): reptil ciego de 2-4m, caza por
+  vibración, solo emerge de noche o con temperaturas bajas. Convierte la Hondonada en zona segura
+  de día, real amenaza de noche. Loot: hueso, cráneo, piel, garras (ver Yerreo arriba).
+- **Ruptidar** (fauna nueva, ambiental): reptil serpentiforme inofensivo de 30-60cm, "limpiador"
+  de materia orgánica en CUALQUIER zona arenosa de la región, no solo la Hondonada — sin material
+  de caza ni amenaza. Primer caso real de fauna anclada por terreno en vez de por región completa.
+- **Confirmado con la usuaria, sin cerrar todavía**: el condicional "o en los largos inviernos" del
+  Kirelon queda como narrativa pura por ahora — no hay sistema de estaciones/temperatura en el
+  motor (ver "Pendiente de diseño" arriba, nueva entrada de esta sesión).
+- **Hallazgo de la usuaria, sin resolver esta sesión**: casi toda la fauna/flora/recursos ya
+  existentes de la región están anclados a "Llanuras del Viento Rojo" en conjunto
+  (`harvestSourceRegion`) en vez de a zonas concretas — considerado un error de diseño a revisar
+  más adelante, no en esta pasada (ver "Pendiente de diseño" arriba).
+
+**Pendiente de código**: ver entrada nueva en la sección de arriba (`worldCatalog.ts`: 3 `NpcInput`,
+varios `ItemCatalogInput`, `HarvestYield` nuevos, filas de `WorldPopulation`).
+
+**Segunda zona: Los Pilares Rotos**
+
+- **Lucre Blanco** (flora nueva): árboles de 5-10m en las cumbres, dan la sombra donde de verdad
+  anidan los Cruzavientos (ya establecido desde antes de esta pasada). Madera tier 5-7, Resina
+  tier 4-7 (pegamento resistente) — segunda pareja de recursos de tier alto de esta sesión, esta
+  vez de madera/resina en vez de mineral (Yerreo/Hiyerro de la Hondonada).
+  - **Segunda vía de tier alto confirmada en esta pasada**: no todo el contenido de tier 5-7 tiene
+    que salir de minerales — variedad real de rutas de crafteo.
+- **Enredaderas de las Llanuras reutilizadas** en la base en sombra de los pilares — mismo recurso
+  que en La Hondonada del Eco, no una variante nueva.
+- **Sin fauna propia, a propósito**: zona de paso; el Cruzavientos reside pero caza lejos (vuela
+  zonas enormes), no cuenta como fauna "de aquí" en el mismo sentido que Gesgurio/Kirelon en la
+  Hondonada.
+
+**Pendiente de código**: ver entrada nueva en la sección de arriba.
+
+**Tercera zona: El Pozo de Cauce Viejo**
+
+- **Musgo Arcilla + Telda Común** (flora nueva, Telda renombrada más tarde en esta misma sesión —
+  antes "Telda Húmeda", ver zona 4): Musgo Rojo (construcción tier 1) y tres recursos de Telda
+  (madera tier 1-2, resina tier 2-3, hojas de construcción tier 1) — cubren tiers bajos que apenas
+  existían en el catálogo hasta esta sesión.
+- **Guchapos** (fauna nueva): sapos gigantes de 120-210cm, inofensivos salvo el alfa rojo de cada
+  grupo. Piel tier 3, carne reutiliza `racion-carne` ya existente (confirmado que no hacía falta
+  ítem nuevo).
+- **Lebudes y Escorantes** (fauna nueva, cadena trófica propia): Lebudes (avispa-luciérnaga
+  venenosa en colmena, veneno no letal que reduce stats un 50% temporalmente) cazan Escorantes
+  (escarabajo acorazado, come Musgo Arcilla — confirmado con la usuaria tras preguntarlo, cierra
+  el ecosistema del lugar) con bajas reales en la manada a cambio de un botín grande para la
+  colmena. Cera/Miel de colmena (construcción tier 3-4 / futura cocina) y Quitina Escorante
+  (tier 2-4).
+- **Primer ecosistema de charca completo de la región** — más denso que las dos zonas anteriores a
+  propósito: es el único punto de agua permanente del núcleo, justifica mayor biodiversidad que el
+  resto.
+
+**Pendiente de código**: ver entrada nueva en la sección de arriba.
+
+**Cuarta zona: El Cruce de las Cenizas**
+
+- **Telda Ceniza** (variante nueva de Telda, misma especie/recursos/tiers que la Telda Común de
+  El Pozo de Cauce Viejo, solo apariencia distinta) marca visualmente la frontera con la selva.
+  **Telda Húmeda renombrada a Telda Común** en el mismo movimiento, para dejar sitio al nombre de
+  variante ("Ceniza") sin ambigüedad.
+- **Fauna dividida por lado, a propósito**: lado llanura = solo fauna de paso ya existente
+  (Corredores de Cauce, Buitres Cenizos), sin nada nuevo. Lado selva = **Ferikes**, depredador
+  ágil de 1,5-3m que solo teme a los Faerus — dimorfismo sexual real (machos con cola-maza
+  usada también en cortejo; hembras sin cola pero alfas/cazadoras del grupo, dientes y garras más
+  fuertes). Mismo patrón de liderazgo femenino que ya tiene la cultura orca (Terk'ikar), extendido
+  aquí a la fauna sin que se pidiera explícitamente — coherencia de tono, no una regla impuesta.
+  Loot: Piel/Garras Ferike (tier 6-7), Melena de cola Ferike (tier 7, probabilidad de loot muy
+  baja — objeto especial para el crafteo de mayor calidad de ese tier). Hueso/carne reutilizan
+  ítems ya existentes (`hueso-ligero`, `racion-carne`).
+
+**Pendiente de código**: ver entrada nueva en la sección de arriba.
+
+**Quinta zona: Los Restos de Maktor — la primera retirada de contenido de esta ronda**
+
+- La usuaria corrigió los 3 objetos de recuerdo ya existentes (Brazalete trenzado del Clan Maktor,
+  Pañuelo de luto Serhu, Tótem de clan roto) por no encajar con una zona verdaderamente muerta —
+  "los restos oxidados son inservibles... solo el viejo recuerdo de lo que pudo ser". Zona sin
+  recursos ni fauna/flora, a propósito: agrietada, atormentada por tormentas de arena, sin vida.
+  Un evento futuro sin fecha desbloqueará cambios reales — hasta entonces se queda tal cual.
+- **Contradicción real detectada y resuelta con la usuaria antes de tocar nada** (mismo patrón del
+  runbook): el Tótem de clan roto era el disparador documentado del gancho de aventura "Un Maktor
+  superviviente inesperado" (`docs/12-mundo-estructurado.md` § 4.3, `personajes.md` § Ganchos de
+  aventura) y ya había aparecido en una partida real jugada (`docs/revisar-partida-hallazgos.md`).
+  Preguntado antes de decidir — la usuaria eligió quitar los 3 sin excepción; el gancho sigue vivo
+  solo por rumor/diálogo de NPC, nunca por objeto físico. Fila de `docs/12-mundo-estructurado.md`
+  tachada con fecha, no borrada (regla del propio runbook de lore).
+
+**Pendiente de código**: ver entrada nueva en la sección de arriba (esta vez es una RETIRADA).
+
+**Sexta zona: El Campamento del Clan Serhu**
+
+- **Geografía y sociedad**: circular, empalizada de Telda Común atada con fibra de Enredaderas
+  (reutiliza los recursos de las 3 zonas anteriores), brecha económica real entre leales a Ketg
+  (mejor equipados, guardia/ejército) y el resto bajo el miedo ya documentado de la casta de Ketg
+  — primera vez que esa política tiene cara visible dentro del propio campamento. Recinto de
+  Múrgol domados fuera de la empalizada (Leche de Múrgol, nueva; Lana de Múrgol, ya existía en
+  catálogo). Pilares de hueso de Gargantúa del Osario de la Manada; trofeos de piel de Corredor de
+  Cauce ligados al rito de caza ya establecido ("El camino a guerrero").
+- **Un Maestro y un trabajador por cada uno de los 11 oficios de orco de las Llanuras** (el hallazgo
+  más grande de esta zona): **Maestro `<Oficio>` Serhu** enseña el oficio vía reputación + misión
+  (ambas por definir); **`<Oficio>` Serhu** es un trabajador PLANTILLA sin nada que enseñar, pensado
+  para darle uso real a `capturablePct`/`reclutablePct` (campos que ya existían en el catálogo desde
+  hace semanas sin ninguna mecánica que los consumiera) — capturado o reclutado, pasaría a producir
+  ese recurso de forma pasiva para el Reino del jugador. La mecánica de asignación a Reino en sí NO
+  existe todavía, es diseño a futuro; el catálogo de NPCs puede adelantarse.
+- **Nuevo oficio: cocinero-orco-llanuras**, con Maestro propio en este campamento — reasigna
+  Ración de carne ahumada y Ración de viaje (ya existentes) como sus productos, deja fuera a
+  propósito la Ración de carne fresca (caza sin cocinar).
+
+**Pendiente de código**: ver entrada nueva en la sección de arriba.
+
+**Séptima zona: El Osario de la Manada**
+
+- **Fragmentos de Gargantúa** (tier 1-2) y **Huesos de Gargantúa** (construcción tier 1) — nuevos,
+  distintos del Hueso largo/Placa ósea de gargantúa ya existentes (a confirmar con la usuaria en
+  la pasada de código si de verdad quería 4 objetos de gargantúa distintos o consolidar).
+- **Boungo**: seta comestible, primer ingrediente propio (no ración reasignada) del oficio de
+  cocinero-orco-llanuras. Crece en otoño — segunda criatura/flora de la sesión que ya asume un
+  sistema de estaciones todavía sin diseñar (ver Kirelon Arenoso, zona 1).
+- Fauna solo de paso, reutilizada sin cambios: Gesgurio (Hondonada) y Cruzavientos.
+
+**Pendiente de código**: ver entrada nueva en la sección de arriba.
+
+**Octava zona: Las Agujas Imán — la más ambiciosa mecánicamente de la sesión**
+
+- **Imanio**: insecto lento cubierto de rocas imantadas flotantes como armadura, inofensivo salvo
+  que se le ataque; se desprende de una extremidad desmagnetizada para huir/distraer, regenera en
+  días.
+- **Nuente**: depredador nocturno que "ve" magnetismo en vez de oír — primera criatura de la sesión
+  que convierte el propio fenómeno ambiental ya establecido (desorientación magnética) en ventaja
+  evolutiva real. Efecto pasivo confirmado: -2 al ataque del jugador si usa arma de metal contra él
+  (más simple de implementar que la "onda activa" que se planteó primero, mismo resultado temático).
+- **Rocas Imanidas / Saco de Arena Imán — sistema nuevo, no solo contenido**: se recolectan
+  flotando (no se minan), calidad variable según cuánto floten, solo se refinan a Arena Imán fuera
+  de la zona, y la propia zona hace perder cualquier Arena Imán suelta del inventario salvo que
+  vaya en el Saco. Tres piezas de motor que no existen hoy (calidad variable de recolección, lógica
+  condicionada por ubicación, pérdida de inventario al entrar en una zona) — marcado explícitamente
+  para diseño propio en la pasada de código, no una fila más de catálogo.
+
+**Pendiente de código**: ver entrada nueva en la sección de arriba (la más grande de la sesión).
+
+**Novena zona: Los Manaderos — el ecosistema más completo de la sesión**
+
+- Cadena trófica de 5 especies: Verdileas Acuáticas → Jusha Esmeralda → Miruina (nocturno, en
+  manada) y Tura Jusha (diurna, crías desorientadas) sin pisarse el nicho pese a compartir presa;
+  Quio como carroñero/filtrador aparte.
+- **Juncos Rojizos formalizados**: ya estaban mencionados en el propio texto de `areas.md` desde
+  el origen de la zona, nunca habían llegado a ser un recurso real.
+- **Liquen del Cauce/Bulbo del Cauce reconfirmados como propios también de aquí** (ya existían,
+  ligados a "la misma corriente subterránea" en general, sin `Location` concreta hasta ahora).
+- Recursos decididos a discreción de Claude, aprobados sin cambios por la usuaria: Carne/Escama de
+  Jusha, Piel de Miruina (impermeable), Filtro de Quio (sin loot de combate, solo recolección),
+  Plumas/Garra de Tura Jusha.
+
+**Pendiente de código**: ver entrada nueva en la sección de arriba.
+
+**Décima zona: Los Túmulos del Honor** — sin cambios, terreno sagrado neutral, la usuaria no
+encontró nada que añadir; se queda deliberadamente sin recursos propios, como Los Restos de Maktor.
+
+**Undécima zona: Los Pastos de la Deriva**
+
+- **Pasto Solar**: primer ítem real para la hierba base de toda la región, hasta ahora solo
+  asumida en el lore de Múrgol/Corredores sin ningún recurso detrás.
+- **Cuernahoja**: gacela de manada, dimorfismo con hembras defensoras de cuernos más anchos —
+  cuarta vez que aparece el patrón de liderazgo femenino en la sesión (Terk'ikar, Ferike,
+  Cuernahoja — nadie lo pidió cada vez, es tono ya asentado de la región).
+  Recursos a discreción de Claude, aprobados sin cambios.
+- **Flor Salvatura**: primer ingrediente de alquimia multi-receta de la sesión (tier 2-5 con la
+  misma planta base, confirmado con la usuaria) en vez de un objeto de tier fijo único.
+
+**Pendiente de código**: ver entrada nueva en la sección de arriba.
+
+**Duodécima zona: El Filo de las Brasas**
+
+- Sin fauna/flora nueva — solo confirmado que el Rondador de Brasas (ya existente, "no teme al
+  fuego... busca ascuas") es también residente de aquí, no solo merodeador de campamentos en
+  general. La usuaria lo recordaba como "aullador", corregido a Rondador de Brasas (el Aullador
+  Rojo es una especie distinta, depredador de jauría de Corredores de Cauce).
+
+**Pendiente de código**: ver entrada nueva en la sección de arriba.
+
+**Decimotercera zona: El Filo de las Brasas (minerales) + Las Fumarolas Negras**
+
+- Segunda gran zona de materiales de tier alto de la sesión: Volcanita (tier 3-4), Rovalnica
+  (construcción tier 2-4), Fercaneo (tier 5-6, casi imposible de encontrar, protegido por las
+  Salamandras de Escoria ya establecidas en esta misma zona — les da un motivo real más allá de
+  territorio). Las Fumarolas Negras (dentro del mismo borde volcánico, más hostil) tienen mejor
+  probabilidad de Fercaneo que el resto del Filo — respuesta directa a la pregunta abierta sobre
+  qué añadir ahí.
+
+**Pendiente de código**: ver entrada nueva en la sección de arriba.

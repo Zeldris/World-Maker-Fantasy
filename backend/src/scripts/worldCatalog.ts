@@ -3301,17 +3301,7 @@ export const items: ItemCatalogInput[] = [
     dimensiones: 'Cordel de 40 cm con piezas de 2 a 3 cm.',
   },
 
-  { 
-    slug: 'brazalete-trenzado-maktor', 
-    name: 'Brazalete trenzado del Clan Maktor', 
-    aliases: ['brazalete trenzado'], 
-    category: 'valor',
-    tipo: 'NARRATIVO', 
-    description: 'Tiras de cuero trenzado con cuentas de hueso, el trenzado propio del clan.', 
-    dimensiones: 'Brazalete de 18 cm.', lugarOrigen: 'Clan Maktor.' 
-  },
-
-  { slug: 'esquirla-celeste-caida', 
+  { slug: 'esquirla-celeste-caida',
     name: 'Esquirla celeste caída', 
     aliases: ['esquirla celeste'], 
     category: 'valor',
@@ -3345,17 +3335,6 @@ export const items: ItemCatalogInput[] = [
   // project_tarkor_roadmap_objetos_2.md) — cierra 7 huecos reales del catálogo: Restos de Maktor
   // y Túmulos del Honor sin objeto propio, rareza cósmica del Origen Azul, comercio goirntes
   // ampliado, y dos formas preparadas más (mismo patrón que cataplasma-salvia-polvo).
-  { 
-    slug: 'juguete-hueso-maktor', 
-    name: 'Juguete de hueso tallado', 
-    aliases: ['juguete de hueso'], 
-    category: 'valor',
-    tipo: 'NARRATIVO', 
-    description: 'Una figurita infantil tallada en hueso, medio enterrada entre los cimientos quemados — de algún niño del Clan Maktor que no llegó a crecer.', 
-    dimensiones: 'Figurita de 6 cm.', 
-    lugarOrigen: 'Ciénaga Troncal, Clan Maktor.' 
-  },
-
   {
     slug: 'marca-de-clan',
     name: 'Marca de clan',
@@ -3429,7 +3408,7 @@ export const items: ItemCatalogInput[] = [
     category: 'valor',
     tipo: 'NARRATIVO', 
     description: 'Pequeño silbato tallado en hueso pulido — señales de caza Serhu.', 
-    dimensiones: 'Silbato de 5 cm.', lugarOrigen: 'Clan Serhu, Llanuras del Viento Rojo.' 
+    dimensiones: 'Silbato de 5 cm.', lugarOrigen: 'Clan Serhu, Llanuras del Viento Rojo.'
   },
 
   {
@@ -3442,12 +3421,9 @@ export const items: ItemCatalogInput[] = [
     statBonuses: { carisma: 1 },
     description: 'Fragmento de madera de ciénaga tallada, roto por la mitad, con restos de un símbolo de clan irreconocible — gancho de un posible superviviente Maktor.',
     dimensiones: 'Fragmento de 15 cm.',
-    // Corregido (auditoría de catálogo, 2026-08-13): decía "Ciénaga Troncal", región fuera del
-    // núcleo jugable hoy (sus 3 ubicaciones están marcadas explícitamente "fuera del núcleo
-    // jugable actual") — el objeto quedaba inalcanzable en la práctica. La madera de ciénaga
-    // tallada sigue siendo de dónde viene el material (el propio Clan Goshg talla tótems con esa
-    // misma madera, ver `territorios-clan-goshg`), pero el HALLAZGO real ahora es entre los restos
-    // del propio Clan Maktor — coherente con ser "gancho de un posible superviviente Maktor".
+    // Se queda tras la ampliación de lore 2026-08-21 (a diferencia del Juguete/Brazalete, sí
+    // retirados): es ingrediente real de `MAKTOR_CLAN_TOTEM_RECIPE` (construction.ts), pendiente
+    // de confirmar con la usuaria si se mantiene o si prefiere retirar también esa receta.
     lugarOrigen: 'Los Restos de Maktor, Llanuras del Viento Rojo (madera de ciénaga, de origen distante).',
   },
 ];
@@ -3988,21 +3964,14 @@ export const harvestYields: HarvestYieldInput[] = [
   // --- Tier 0, ronda 2 de objetos (roadmap 2026-07-20) ---
   // `PASIVO`, no `EXTRACCION` — mismo motivo que "Ofrendas de los Túmulos del Honor" arriba,
   // objetos de recuerdo del clan de Gorhorn, no hierbas (auditoría 2026-08-14).
-  { sourceSlug: 'restos-personales-maktor',
-    sourceCategory: 'objeto',
-    metodoObtencion: 'PASIVO',
-    itemSlug: 'juguete-hueso-maktor',
-    cantidad: 1
-  },
-
-  {
-    sourceSlug: 'restos-personales-maktor',
-    sourceCategory: 'objeto',
-    metodoObtencion: 'PASIVO',
-    itemSlug: 'brazalete-trenzado-maktor',
-    cantidad: 1
-  },
-
+  //
+  // Ampliación de lore 2026-08-21 ("zona sin vida, agrietada... solo el recuerdo de lo que pudo
+  // ser, no loot real"): quitados Juguete de hueso tallado y Brazalete trenzado del Clan Maktor
+  // (trofeos sin más, sin ninguna otra dependencia). `totem-clan-roto` y Tablilla quemada se
+  // quedan PENDIENTES de confirmar con la usuaria — el tótem es ingrediente real de
+  // `MAKTOR_CLAN_TOTEM_RECIPE` (construction.ts, receta de Reino ya implementada, con tests
+  // propios) y la tablilla es el documento legible "La caída del Clan Maktor" — ninguno de los dos
+  // es un trofeo suelto como los dos ya retirados.
   {
     sourceSlug: 'restos-personales-maktor',
     sourceCategory: 'objeto',
@@ -4011,9 +3980,6 @@ export const harvestYields: HarvestYieldInput[] = [
     cantidad: 1
   },
 
-  // Auditoría de catálogo, 2026-08-13: `totem-clan-roto` existía en ItemCatalog sin ninguna vía
-  // real de conseguirlo — misma fuente que el resto de restos personales de Maktor (mismo cuarto
-  // yield posible de la misma tirada, no un sourceSlug nuevo).
   {
     sourceSlug: 'restos-personales-maktor',
     sourceCategory: 'objeto',

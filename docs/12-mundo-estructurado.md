@@ -521,7 +521,7 @@ Todo lo que ya existe en `rpgtarkor/items.md` § Armamento y loot + el inventari
 | `amuleto-hueso` | Amuleto de hueso | valor | Vértebras/colmillos de presa importante |
 | `abalorios` | Abalorios variados | valor | Trueque menor |
 | `marca-de-clan` | Marca de clan | valor | El clan concreto va en `notas` |
-| `totem-clan-roto` | Tótem de clan roto | valor | Gancho "Maktor superviviente" |
+| `totem-clan-roto` | Tótem de clan roto | valor | Gancho "Maktor superviviente" — **también ingrediente real de `MAKTOR_CLAN_TOTEM_RECIPE` (construction.ts)**, hallazgo de la ampliación de lore 2026-08-21 que hizo revertir su retirada inicial (ver `areas.md`, pendiente de confirmar con la usuaria si se mantiene tal cual) |
 | `totem-maktor` | Tótem del Clan Maktor | valor | ÚNICO — el de Gorhorn; en catálogo para que su nombre sea estable en hechos y narración |
 
 ### 4.4 Equipo fijo de los NPCs principales

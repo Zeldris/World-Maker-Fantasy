@@ -66,6 +66,39 @@ Para cualquier cálculo de tasa/generaciones, usar `python3 -c "..."` vía Bash 
 cabeza — esta sesión encontró un error propio (28 generaciones cuando parecía razonable a ojo,
 resultó ser menos que la estimación humana más rápida) que a ojo no se habría visto tan claro.
 
+## 1.5. Modo "zona por zona" (añadido 2026-08-21)
+
+Variante del flujo general de arriba, para cuando la usuaria quiere recorrer una región entera de
+forma sistemática en vez de dar indicaciones sueltas por tema. Se activa con algo como "vamos a ir
+diciéndome 1 a 1 las regiones/zonas de X, citando ya los recursos que tiene, y yo voy ampliando".
+
+1. Recorrer las `Location`/puntos de interés de la región en el MISMO orden en que aparecen en
+   `areas.md` (orden geográfico ya establecido, no alfabético ni aleatorio).
+2. Por cada zona: nombrarla, dar 1-2 líneas de recordatorio de lo que ya es, y citar EXACTAMENTE lo
+   que ya está anclado ahí — mirando `harvestSourceHomeLocationSlug`/`homeLocationSlug` (fauna) para
+   lo verdaderamente específico de ese punto, y siendo explícito cuando algo solo existe a nivel de
+   región completa (`harvestSourceRegion`), no de esta zona en concreto.
+3. La usuaria añade fauna/flora/recursos nuevos para esa zona — a veces en un solo mensaje denso, a
+   veces en varios turnos con correcciones sobre la marcha (nombres, mecánicas, resources que deja a
+   discreción de Claude). Revisar cada bloque como cualquier ampliación de lore normal: contradicción
+   con lo ya escrito, coherencia ecológica/de nombres (colisión de alias por edición cercana, como
+   "Volcanita"/"Vorcanenta" — avisar, la usuaria puede renombrar al vuelo), y confirmar antes de
+   escribir cuando haya algo genuinamente ambiguo (p.ej. si un recurso reemplaza o convive con uno ya
+   existente).
+4. Escribir a los `.md` afectados (normalmente `flora-fauna.md` + `areas.md` + `items.md` si hay
+   loot/equipo) Y al checklist (pendiente de código + resumen de la zona en el registro de sesión)
+   ANTES de pasar a la siguiente zona — no acumular varias zonas sin escribir, la usuaria puede
+   cortar la sesión en cualquier momento (motivo real la primera vez: "no sé si nos llegarán los
+   tokens de sesión").
+5. Mecánicas que se salen de "solo catálogo" (ej. Rocas Imanidas/Saco de Arena Imán: recolección de
+   calidad variable + pérdida de inventario por ubicación) se marcan explícitamente como diseño
+   propio en el pendiente de código, no se mezclan con las filas normales de `worldCatalog.ts`.
+6. Al cerrar la sesión (o pausarla): dejar anotado en el checklist EXACTAMENTE en qué zona se quedó
+   (para retomar ahí la próxima vez, sin repetir zonas ya cubiertas) y, si la usuaria lo pide, un
+   análisis de qué contenido nuevo tiene sentido REPLICAR en otras zonas/regiones por tránsito
+   migratorio, tipo de caza o encaje de recursos — ver sección "Propuestas de réplica" en el
+   checklist para el formato de esa entrega.
+
 ## 3. Qué NO hacer
 
 - No editar `docs/12-mundo-estructurado.md` como si el pasado se pudiera reescribir — si una
