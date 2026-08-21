@@ -183,6 +183,23 @@ Cuatro clanes conocidos hasta ahora:
 
 *(Lista abierta — el objetivo no es cubrir cada metro cuadrado, es tener suficientes anclas concretas para que las acciones de viajar, refugiarse u orientarse tengan algo real de lo que partir. Se amplía con lo que surja jugando, igual que el resto del lore de esta región.)*
 
+## Puntos de interés — Cristal Helado (añadido 2026-08-21, auditoría de lore)
+
+*Igual que en Las Llanuras del Viento Rojo, estos hitos ya existían con descripción completa en el catálogo técnico (`worldCatalog.ts`) pero nunca se habían trasladado aquí — la región solo tenía descripción de conjunto (terreno, Clan Helsig, La Veta Helada). Fuera del núcleo jugable actual (sin `LocationLink` ni coordenadas de mapa): son anclas de la Enciclopedia, no destinos alcanzables todavía.*
+
+- **La Red Profunda Final**: red de túneles bajo las grandes montañas del norte de Cristal Helado, de origen desconocido. Casi inexplorada, con vegetación y fauna adaptada a la oscuridad y el frío extremo; rica en minerales pero rara vez se aventura nadie por el peligro que representa — de ahí el nombre, "quien entra es para ver su final".
+- **El Lago Cristalice**: lago congelado que deja ver en el fondo una veta gigante de hielo sílice, creando un reflejo del cielo en las noches oscuras. Rico en hielo sílice.
+- **El Pico Escarcha**: la cumbre más alta de la cordillera, cubierta de una capa de escarcha que nunca llega a derretirse del todo. Desde su ladera se ve toda La Veta Helada extenderse hacia el sur.
+- **El Pico Ocaso Negro**: roca negra desnuda que apenas retiene nieve — al ponerse el sol, la piedra oscura absorbe la última luz y la cumbre parece arder un instante antes de apagarse del todo. El Clan Helsig evita acercarse tras el ocaso; dicen que es entonces cuando la montaña "respira".
+- **El Pico Tundra Negra**: vigía de piedra oscura sobre la propia Tundra Negra Refleja, más bajo pero más escarpado que sus vecinos — da nombre a la tundra que se extiende a sus pies.
+- **La Tundra Negra Refleja**: llanura helada de roca volcánica pulida por siglos de viento y hielo, tan lisa que en noches despejadas devuelve el reflejo entero del cielo estrellado. Traicionera bajo los pies: el hielo que cubre la roca negra es casi invisible hasta que ya se ha resbalado.
+- **La Tundra Polvo Nocturno**: nieve fina y ceniza volcánica arrastrada desde el Pico Ocaso Negro que de noche se levanta con el viento en remolinos oscuros; de día es tundra silenciosa y despejada como cualquier otra.
+- **La Costa Celeste Agitada**: el límite norte de Cristal Helado, donde la tundra se rompe en acantilados sobre un mar azul intenso, agitado por corrientes frías que nunca amainan del todo. Los témpanos que se desprenden arrastran vetas visibles de hielo sílice mar adentro.
+- **La Cascada Cristal Tres Aguas**: punto donde tres arroyos nacidos en el deshielo de otros tantos glaciares se juntan y caen por un único salto de roca con escarcha permanente — el agua, cargada de polvo de hielo sílice, brilla como ningún otro salto de la región.
+- **Los Desfiladeros de Bruma**: red de gargantas estrechas entre paredes de roca helada donde el aire frío de los picos y el más templado de los valles se encuentran y generan una bruma espesa casi permanente — fácil perder el rumbo ahí dentro sin algo que marque el camino.
+
+**Nota abierta (auditoría de lore 2026-08-21)**: el catálogo técnico separa "La Veta Helada" en dos entidades distintas — una Location `kind: 'region'` con ese mismo nombre que describe la tundra general y sus yacimientos, y un asentamiento aparte para el propio campamento minero del Clan Helsig con un nombre nativo, "Helske Tugh", que no aparece en ningún documento de lore. Lo mismo ocurre con "Makut Silh" para El Cerco de los Pilotes del Clan Goshg (Ciénaga Troncal) y con "Los Trepaderes Humededos" como nombre de la región de Ciénaga Troncal en conjunto — tres nombres que solo existen en `worldCatalog.ts`, sin origen documentado aquí ni en ningún otro `.md`. Este documento sigue usando "La Veta Helada" tal y como estaba (el propio campamento minero fortificado del Clan Helsig, sin nombre nativo) — no se ha tocado ninguno de los dos lados a la espera de que la usuaria decida si esos tres nombres son lore real que faltaba canonizar aquí, o contenido a limpiar del catálogo.
+
 ---
 
 **Ver también:** [Cronología mítica](cronologia-mitica.md) · [Cronología](cronologia.md) · [Génesis y Formación](genesis.md) · [Historia y presente](historia.md) · [Razas](razas.md) · [Flora y fauna](flora-fauna.md) · [Items](items.md) · [Personajes](personajes.md) · [NPCs](npcs.md)

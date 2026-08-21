@@ -11,13 +11,14 @@
 *Igual que el inventario (decisión de mecánicas 6, [06-decisiones-mecanicas.md](../06-decisiones-mecanicas.md)), esto es contexto narrativo para el Narrador — nada de esto lleva bonificadores numéricos. Sirve para responder con concreción cuando Gorhorn (u otro orco de esta región) fabrica, encuentra o comercia algo.*
 
 **Armamento orco típico:**
-- **Hachas de guerra y mazas**: el arma por excelencia — pesadas, poco elegantes, pensadas para el combate cuerpo a cuerpo directo que valora la cultura orca. La de Gorhorn está rota y la usa como maza, algo habitual entre quienes no tienen acceso a un herrero de clan.
+- **Hachas de guerra y mazas**: el arma por excelencia — pesadas, poco elegantes, pensadas para el combate cuerpo a cuerpo directo que valora la cultura orca. La de Gorhorn está rota y la usa como maza, algo habitual entre quienes no tienen acceso a un herrero de clan — reforjarla (cabeza reasentada, filo devuelto) es posible mediante crafteo y la deja como lo único del Clan Maktor que ha vuelto a estar entero.
 - **Cuchillos de hielo sílice**: filo de mineral en vez de metal, típico de quien ha comerciado con el Clan Helsig (como Gorhorn con Hagar) — más frágil que el acero pero no requiere fragua, solo tallado paciente.
 - **Lanzas de hueso de Gargantúa**: usadas en las cacerías rituales de Corredores de Cauce y en la caza de Gargantúas de Ceniza adultas; también un arma de duelo de honor cuando se quiere dejar clara la distancia y el respeto (menos "sucio" que un hacha).
 - **Amuletos y abalorios de hueso**: no son armas, pero son casi universales — vértebras, colmillos o garras de una presa importante, llevados como trofeo/recordatorio, igual que las trenzas de Gorhorn.
 
 **Loot potencial explorando o cazando en la región:**
 - **Veneno de Espina del Viento** (del aguijón): si se extrae con cuidado, alterador de percepción del dolor — valioso para un sanador o peligroso en manos equivocadas.
+- **Caparazón de Espina del Viento**: placa de quitina oscura y brillante, dura como el cuerno — segundo loot de la misma cacería, junto al veneno.
 - **Pieles de Corredor de Cauce**: ligeras, resistentes al calor, se usan para ropa de viaje — el arnés y los pantalones de Gorhorn son de un material similar.
 - **Placas óseas de Gargantúa de Ceniza**: solo tras una cacería exitosa (o un cadáver ya viejo) — material de construcción/armadura pesado, poco práctico para un viajero solo.
 - **Restos de campamento de la Concordia**: raciones, correspondencia sellada, a veces armas de manufactura Goirntes (más refinadas que las orcas) — si Gorhorn se cruza con la patrulla del gancho de aventura "Rezagados de la Concordia" (ver [personajes.md](personajes.md#ganchos-de-aventura--llanuras-del-viento-rojo-gorhorn)).
@@ -38,6 +39,7 @@
 **Equipo adicional de un oficial:**
 - **Manoplas de aleación articuladas en los nudillos**, daga corta de reserva, talabarte de cuero con la hebilla de la Concordia y un anillo de sello o disco de patrulla que acredita —o incrimina— a quien lo lleva.
 - **Correspondencia sellada**: rollos de pergamino con el emblema de la Concordia que un oficial lleva de puesto en puesto — pueden saber demasiado si caen en manos equivocadas.
+- **Croquis de rutas de patrulla**: mano alzada sobre cuero fino, rutas marcadas con tinta desvaída — saber por dónde no pasar.
 - **Lingotes de aleación goirnte**: moneda de comercio serio de la Meseta del Orden, a veces usada como paga o soborno.
 
 *(Mismo principio que el resto de este documento: nada de esto lleva bonificadores numéricos, es contexto para el Narrador cuando Gorhorn se cruza con una patrulla o registra a un caído — ver el gancho "Rezagados de la Concordia" más arriba.)*

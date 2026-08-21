@@ -367,12 +367,17 @@ export const locations: LocationInput[] = [
 
   {
     slug: 'sabana-alta-colmillar',
-    name: 'La Sabana Alta Colmillar',
+    // Nombre corregido (auditoría de lore 2026-08-21): 'Colmillar' no aparece en ningún documento
+    // de lore — areas.md, docs/13-escala-del-mundo.md § 2.2ter y docs/ampliar-lore-checklist.md
+    // coinciden en llamarla simplemente "La Sabana Alta" (incluso la propia descripción de
+    // 'paso-de-los-huesos' más arriba, en este mismo archivo, ya la nombra así sin "Colmillar").
+    // Slug sin tocar (referenciado por locationTerrainTags y locationLinks más abajo).
+    name: 'La Sabana Alta',
     region: 'Las Llanuras del Viento Rojo',
     kind: 'pradera',
     description:
       'Praderas de hierba roja que llega a la cintura, mucho más alta y densa que la hierba rasa del resto de la llanura — el viento la mueve en oleadas visibles desde lejos. Refugio y coto de caza de manadas de Corredores de Cauce que no se ven en otras zonas del núcleo.',
-    aliases: ['la sabana alta colmillar', 'sabana alta colmillar'],
+    aliases: ['la sabana alta', 'sabana alta', 'la sabana alta colmillar', 'sabana alta colmillar'],
     x: 54,
     y: -10,
   },
@@ -503,12 +508,14 @@ export const locations: LocationInput[] = [
   },
   {
     slug: 'pico-ocaso-negro',
-    name: 'El Pico Ocason Negro',
+    // Nombre corregido (auditoría de lore 2026-08-21): typo interno, "Ocason" no es una palabra —
+    // el propio slug ya decía 'ocaso' correctamente; el nombre y el alias no coincidían con él.
+    name: 'El Pico Ocaso Negro',
     region: 'Cristal Helado',
     kind: 'region',
     description:
       "Roca negra desnuda, sin apenas nieve que se le pegue — al ponerse el sol, la piedra oscura absorbe la última luz y la cumbre entera parece arder un instante antes de apagarse del todo. Los orcos del Clan Helsig evitan acercarse tras el ocaso; dicen que es entonces cuando la montaña 'respira'.",
-    aliases: ['pico ocason negro'],
+    aliases: ['pico ocaso negro', 'pico ocason negro'],
   },
   {
     slug: 'pico-tundra-negra',
@@ -2010,7 +2017,13 @@ export const items: ItemCatalogInput[] = [
     dimensiones: 'Palo de 60 cm.',
     tier: 1,
     requisitos: { fuerza: 6, destreza: 4 },
-    lugarOrigen: 'Manufactura goirnte, Meseta del Orden.',
+    // Corregido (auditoría de lore/catálogo, 2026-08-21): decía "Manufactura goirnte, Meseta del
+    // Orden" — copiado por error de la plantilla de armas goirntes de más arriba, contradice tanto
+    // la propia descripción ("tallada a mano — la primera arma para quien no tiene ninguna") como
+    // la receta de crafteo real (crafting.ts, tallado a mano con leña de matorral de cuerno) y el
+    // origen geográfico de esa leña (harvestSourceRegion['matorral-de-cuerno'] = Llanuras del
+    // Viento Rojo, no Meseta del Orden).
+    lugarOrigen: 'Llanuras del Viento Rojo.',
     tipoArma: 'GARROTE_1_MANO',
   },
 
@@ -3477,7 +3490,7 @@ export const factions: FactionInput[] = [
     name: 'Clan Goshg',
     raza: 'orcos',
     description:
-      'Tribu orca de las zonas humedas de Cienaga Troncal.',
+      'Dos tribus pequeñas de orcos en las zonas húmedas de Ciénaga Troncal, hermanadas por nombre y parentesco — se reúnen en El Cerco de los Pilotes (empalizadas de madera oscura sobre pilotes, unidas por pasarelas y canoas) en la estación de las crecidas, y casan a sus jóvenes entre sí. Gobernadas por la Terk\'ikar Doshka; su hermano menor, el Kort\'ikar Dulgren, lidera la guerra. Viven de cazar Cornantes y de los Trepadores Ocaso — canoas, empalizadas, antorchas de resina, madera de ciénaga para tótems. Zona rica en alimento pero pobre en minerales. Mantienen, como los Helsig, un perfil neutral y defensivo ante los Goirntes.',
   },
   {
     slug: 'concordia-de-hierro',
@@ -3556,7 +3569,7 @@ export const historiaEntries: HistoriaEntryInput[] = [
     title: 'La caída del Clan Maktor',
     era: 'comun',
     year: 4000,
-    text: 'Un fragmento de tablilla de arcilla cocida, ennegrecido por el fuego que arrasó el asentamiento del Clan Maktor. Lo poco que se distingue basta para reconstruir lo esencial: cien años después de un primer golpe que ya había dejado al clan maltrecho, una revuelta contra el yugo Serhu terminó en una incursión Goirnte orquestada para desprestigiar a los propios Serhu — que no intervinieron. El clan fue aniquilado casi por completo aquel día. Solo se tiene noticia de un superviviente, un niño de diez años que logró escapar.',
+    text: 'Un fragmento de tablilla de arcilla cocida, ennegrecido por el fuego que arrasó el asentamiento del Clan Maktor. Lo poco que se distingue basta para reconstruir lo esencial: más de mil años después de un primer golpe que ya había dejado al clan maltrecho, una revuelta contra el yugo Serhu terminó en una incursión Goirnte orquestada para desprestigiar a los propios Serhu — que no intervinieron. El clan fue aniquilado casi por completo aquel día. Solo se tiene noticia de un superviviente, un niño de diez años que logró escapar.',
     documentoItemSlug: 'tablilla-quemada-maktor',
   },
 ];

@@ -73,7 +73,7 @@ export const BERIG_RAZAS: RazaInfo[] = [
     name: 'Goirntes — Los del Orden',
     icon: '⚖️',
     rasgoFisico:
-      'Piel casi mineral y quitinosa, gris y tensa sobre huesos angulosos — se endurece y deja ver un tenue brillo metálico cuando se concentran o se esfuerzan. Ojos de un negro obsidiana frío.',
+      'Piel casi mineral y quitinosa, gris y tensa sobre huesos angulosos — se endurece y deja ver un tenue brillo metálico cuando se concentran o se esfuerzan. Ojos de un negro obsidiana frío; mentón ancho en los machos, algo más leve en las hembras.',
     rasgoCaracter: 'Fríos, calculadores; el orden y la ley ante todo — el desorden les produce una incomodidad física real.',
     description:
       'En la Meseta del Orden cada Goirnte nace hacia una casta de función y cada objeto tiene un lugar asignado — herencia directa de Goirme. Trabajan la Hierba del Hierro y presumen, con razón, de la mejor metalurgia de Helek Sirik. Su tabú cotidiano es lo inacabado: dejar una tarea a medias o un juramento sin cumplir es casi obsceno. Para la mayoría, la guerra de la Concordia de Hierro es un procedimiento más — órdenes que bajan, se cumplen y se archivan; la facción radical la dirige, la moderada intenta frenarla desde dentro. Elige una variante regional abajo para ver cómo cambia el cuerpo Goirnte según su cercanía a la frontera norte.',
@@ -105,7 +105,7 @@ export const BERIG_RAZAS: RazaInfo[] = [
         name: 'Goirntes de la Meseta del Orden',
         shortLabel: 'Meseta del Orden',
         rasgoFisico:
-          'Piel casi mineral y quitinosa, gris y tensa sobre huesos angulosos — se endurece y deja ver un tenue brillo metálico cuando se concentran o se esfuerzan. Ojos de un negro obsidiana frío.',
+          'Piel casi mineral y quitinosa, gris y tensa sobre huesos angulosos — se endurece y deja ver un tenue brillo metálico cuando se concentran o se esfuerzan. Ojos de un negro obsidiana frío; mentón ancho en los machos, algo más leve en las hembras.',
         description:
           'La población base, en el corazón de la Meseta — se dedican casi en exclusiva a la forja y transformación de minerales, la mejor metalurgia de Helek Sirik.',
       },
@@ -125,7 +125,7 @@ export const BERIG_RAZAS: RazaInfo[] = [
     name: 'Orcos — Hijos del Estallido',
     icon: '🪓',
     rasgoFisico:
-      'Rasgos tribales; corpulentos, hembras más inteligentes y fuertes, machos más fieros. El cuerpo entero se adapta al clima de cada clan, no solo el color de piel: los Maktor y Serhu de las Llanuras tienen piel beige/arcilla y complexión de músculo largo hecha para el calor y la carrera; los Helsig de Cristal Helado, piel pálida azulada, cuerpo más recio y compacto con más grasa para retener calor; los Goshg de la Ciénaga Troncal, piel verde musgo veteada de rojo pálido y pies/manos anchos que no se hunden en el barro.',
+      'Rasgos tribales; corpulentos, hembras más inteligentes y fuertes, machos más fieros y anchos. El cuerpo entero se adapta al clima de cada clan, no solo el color de piel: los Maktor y Serhu de las Llanuras tienen piel beige/arcilla y complexión de músculo largo hecha para el calor y la carrera; los Helsig de Cristal Helado, piel pálida azulada, cuerpo más recio y compacto con más grasa para retener calor; los Goshg de la Ciénaga Troncal, piel verde musgo veteada de rojo pálido y pies/manos anchos que no se hunden en el barro.',
     rasgoCaracter: "Orgullo, fuerza, honor. Clanes regidos por la Terk'ikar (Jefa) y el Kort'ikar (Jefe de Guerra).",
     description:
       'Nacidos de la magia salvaje de Tarkor, sin Semilla creadora propia. El día a día orco es pastoreo, caza y camino: seguir a los Corredores de Cauce, recolectar Raíz de Fuego con cuidado, migrar cuando la Terk\'ikar pacta con una Gargantúa de Ceniza el transporte del clan entero. Las hembras gobiernan la vida y los machos la guerra — costumbre, no ley. A los recién nacidos se les susurra: "Con ira nos quemaron, con honor nos rebelamos, y aún así nadie domó nuestros caminos". Dos tabúes prácticos: interrumpir un duelo de honor ya aceptado, y tocar el tótem de un clan ajeno sin permiso. Los clanes están divididos ante la guerra — el Clan Maktor, usado como carne de cañón hasta la aniquilación, es el precio más caro que ya se ha pagado. Elige una variante regional abajo para ver cómo cambia el cuerpo orco de clan a clan.',
@@ -181,9 +181,13 @@ export const BERIG_RAZAS: RazaInfo[] = [
     name: 'Nabieus — Los que silencian',
     icon: '🌑',
     rasgoFisico: 'Cuerpos delgados, piel gris que no refleja luz, casi sin voz audible.',
-    rasgoCaracter: 'Inquietantes por su ausencia, sigilo absoluto.',
+    // rasgoCaracter ampliado (auditoría de lore 2026-08-21) — razas.md ya tenía consolidado este
+    // rasgo (curiosidad fría, fascinación con la muerte/descomposición/enfermedad como "recursos"
+    // en vez de horrores) y esta ficha solo se quedaba con la mitad más corta de la frase.
+    rasgoCaracter:
+      'Inquietantes por su ausencia, sigilo absoluto. Curiosos y fríos, poco sociables con el resto de razas sin llegar a ser agresivos — ven la muerte como un regalo, la descomposición como transformación y la enfermedad como oportunidad: seres científicos y observadores.',
     description:
-      'En la mitad oriental del Margen Silencioso, donde hasta el sonido se apaga de forma antinatural, los silencios tienen sintaxis: hay pausas que afirman, niegan o advierten. Su voz casi inaudible obliga a acercarse, y esa cercanía forzada es para ellos la medida de la confianza; levantar la voz es su tabú — gritar es violencia, se grite lo que se grite. Perseguidos durante el Yugo de Hierro por "operar en la sombra sin autorización del orden", fueron el corazón de la Purga Silenciosa. Integrados en la Concordia de Hierro por presión, sirven hoy como mensajeros, correos y ojos desde El Refugio sin Nombre, su enclave más estable, con presencia dispersa hasta el borde de Ciénaga Troncal. Elige una variante regional abajo para ver cómo cambia el cuerpo Nabieus según dónde se críen.',
+      'En la mitad oriental del Margen Silencioso, donde hasta el sonido se apaga de forma antinatural, los silencios tienen sintaxis: hay pausas que afirman, niegan o advierten. Su voz casi inaudible obliga a acercarse, y esa cercanía forzada es para ellos la medida de la confianza; levantar la voz es su tabú — gritar es violencia, se grite lo que se grite. Perseguidos durante el Yugo de Hierro por "operar en la sombra sin autorización del orden", fueron el corazón de la Purga Silenciosa. Alquimistas profesionales, entre los más avanzados de Helek Sirik en el estudio y la escritura. Integrados en la Concordia de Hierro por presión, sirven hoy como mensajeros, correos y ojos desde El Refugio sin Nombre, su enclave más estable, con presencia dispersa hasta el borde de Ciénaga Troncal. Elige una variante regional abajo para ver cómo cambia el cuerpo Nabieus según dónde se críen.',
     habilidadesRaciales: {
       // Nueva (2026-07-29) — "ausencia hecha carne": el propio vacío que los envuelve puede
       // usarse como arma, no solo para desaparecer.
@@ -232,7 +236,7 @@ export const BERIG_RAZAS: RazaInfo[] = [
     rasgoFisico: 'Piel de hojas finas, cuerpo fibroso y resistente, postura de 2 a 4 patas.',
     rasgoCaracter: 'Instintivos y bestiales, pero sumamente inteligentes; cazadores.',
     description:
-      'Ocupan la mayor parte de la mitad occidental del Margen Silencioso, con pequeños puestos avanzados más allá de la frontera oeste, ya en las Llanuras del Viento Rojo. La manada es la única institución Faerus: se caza junto, se come junto —la primera pieza de cada caza se comparte siempre— y se muere junto; abandonar a un herido de la manada es el tabú que no se perdona. Su olfato lee estados de ánimo: un Faerus sabe si tienes miedo antes que tú. Bajo la apariencia bestial hay una inteligencia fría y observadora. Sin escritura, y sin nada parecido a las ciudades-fortaleza Goirntes: sus dos únicos asentamientos, Hashma (en la selva, junto a la costa) y Kegi (en la frontera con las Llanuras), son poblados modestos construidos por y para la manada — además de El Claro de la Manada, un punto de encuentro estacional sin construcción propia para las manadas que no viven en ninguno de los dos poblados. No pertenecen a ninguna alianza — nadie los invitó y ellos no habrían ido; la magia salvaje liberada tras la ruptura ya devastó territorios de manada, y esa es la única parte del conflicto que de verdad les concierne. Elige una variante regional abajo para ver cómo cambia el pelaje Faerus según dónde vive la manada.',
+      'Ocupan la mayor parte de la mitad occidental del Margen Silencioso, con pequeños puestos avanzados más allá de la frontera oeste, ya en las Llanuras del Viento Rojo. La manada es la única institución Faerus: se caza junto, se come junto —la primera pieza de cada caza se comparte siempre— y se muere junto; abandonar a un herido de la manada es el tabú que no se perdona. Su olfato lee estados de ánimo: un Faerus sabe si tienes miedo antes que tú. Bajo la apariencia bestial hay una inteligencia fría y observadora. Pese a su carácter salvaje, sienten cierta afinidad con los orcos y mantienen comercio abierto con ellos. Sin escritura, y sin nada parecido a las ciudades-fortaleza Goirntes: sus dos únicos asentamientos, Hashma (en la selva, junto a la costa) y Kegi (en la frontera con las Llanuras), son poblados modestos construidos por y para la manada — además de El Claro de la Manada, un punto de encuentro estacional sin construcción propia para las manadas que no viven en ninguno de los dos poblados. No pertenecen a ninguna alianza — nadie los invitó y ellos no habrían ido; la magia salvaje liberada tras la ruptura ya devastó territorios de manada, y esa es la única parte del conflicto que de verdad les concierne. Elige una variante regional abajo para ver cómo cambia el pelaje Faerus según dónde vive la manada.',
     habilidadesRaciales: {
       ataque: {
         icon: '👃',
@@ -301,8 +305,15 @@ export const BERIG_PERSONAJES: PersonajeInfo[] = [
       'Orgulloso pero no arrogante — su honor es la única moneda que le queda. Pese a su apariencia tosca es inteligente, quizás el orco macho que más se acerca a la inteligencia de las hembras. Justo pero bárbaro, con una personalidad afable sorprendente para un orco — aunque la paciencia no es su punto fuerte, y cuando la pierde se ve al "verdadero orco" que hay en él.',
     facultades:
       'Fuerza física colosal, instinto de combate devastador a corta distancia y alta resistencia al dolor. Comunión especial con la naturaleza que le permite, con esfuerzo, domar a las criaturas más poderosas de su territorio.',
+    // Historia resincronizada (auditoría de lore 2026-08-21) — esta ficha aún tenía la versión
+    // descartada ("el padre muere al nacer Gorhorn, en duelo contra el Clan Serhu"), reemplazada
+    // en personajes.md/areas.md/worldCatalog.ts desde 2026-08-03 por la versión canónica: el padre
+    // sobrevive al parto y muere 10 años después liderando una revuelta contra el yugo Serhu (ver
+    // areas.md#historia-profunda-de-los-cuatro-primeros-orcos-a-gorhorn-añadido-2026-08-03, nota
+    // editorial explícita de sustitución). No es una contradicción abierta: la decisión ya está
+    // tomada y documentada, solo faltaba propagarla aquí.
     historia:
-      'Nació en las llanuras de arena roja. Su madre murió al darle a luz; su padre murió poco después, retando al antiguo jefe del Clan Serhu por el honor de su tribu. A los 7 años partió a explorar el continente y sirvió como trabajador para otras razas, casi como un esclavo. A los 14 volvió a su tierra y fue entrenado como guerrero durante 4 años — por fin feliz y tratado con respeto. A los 18 fue enviado a la Concordia de Hierro como contingente obligatorio; su clan fue aniquilado en las escaramuzas fronterizas, usado como carne de cañón. Sobrevivió a duras penas y ahora lucha de forma independiente para que esa muerte no sea en vano y para restaurar el nombre de los Maktor.',
+      'Nació en las llanuras de arena roja. Su madre murió al darle a luz; su padre sobrevivió, pero a los 10 años de Gorhorn lideró una revuelta contra el yugo que el Clan Serhu llevaba generaciones imponiendo a los Maktor — los Goirntes, buscando desprestigiar a los Serhu, orquestaron una incursión que aniquiló al Clan Maktor por completo. Su padre murió en ella; los Serhu se quedaron mirando sin intervenir. Gorhorn escapó, quizás el único superviviente, con el hacha rota de su padre y un trozo del gran tótem del clan, y pasó los 10 años siguientes de ayudante de comerciantes, esclavo de los Goirntes, conviviendo con los Faerus y trabajando para las tribus orcas de la ciénaga y de Cristal Helado —donde perdió un colmillo y forjó la amistad con Hagar—. Ahora lucha de forma independiente para que la muerte de su clan no sea en vano y para restaurar el nombre de los Maktor.',
     voz: 'Habla poco, en frases cortas y directas — su honor se demuestra con hechos, no con palabras. Cuando pierde la paciencia, el silencio se rompe de golpe.',
   },
   {
