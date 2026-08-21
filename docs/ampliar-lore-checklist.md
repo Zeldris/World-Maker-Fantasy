@@ -69,7 +69,48 @@ candidatos a revisar con la usuaria en la próxima sesión (de lore o de código
 
 ---
 
-## Pendiente de código (acumulado, revisar antes de cerrar cada pasada)
+## Pasada de código de la sesión 2026-08-21 (mismo día, tras la ronda de lore)
+
+**La mayor parte de "Pendiente de código" de abajo ya está hecha** — llevada a `worldCatalog.ts`/
+`worldPopulation.ts`/`crafting.ts` en 4 commits el mismo día (`b92d1ba`, `4ed9f09`, `064ac57`,
+`5727f2c`): retirada de Los Restos de Maktor (Juguete/Brazalete fuera; Tótem/Tablilla dentro, ver
+hallazgo abajo), 14 `NpcInput` de fauna nueva con nivel/atributos/habilidades propios, 42
+`ItemCatalogInput`, ~65 `HarvestYield`, `harvestSourceRegion`/`harvestSourceHomeLocationSlug` para
+~28 fuentes nuevas, 14 filas de `worldPopulation.ts`, `homeLocationSlug` del Rondador de Brasas en
+El Filo de las Brasas, y el oficio `cocinero-orco-llanuras` con su primera receta real (Boungo
+asado). Verificado en cada commit: `tsc -b` limpio + suite completa (1129/1129, excluidos los 2
+archivos de integración con problemas de entorno preexistentes ya confirmados).
+
+**Hallazgos reales durante la pasada de código, no anticipados en la sesión de lore**:
+- El Tótem de clan roto NO se pudo retirar del todo como se había decidido primero — es ingrediente
+  real de `MAKTOR_CLAN_TOTEM_RECIPE` (construction.ts), una receta de Reino ya implementada. Se
+  revirtió su retirada; la Tablilla quemada (documento "La caída del Clan Maktor") tampoco se quitó,
+  por el mismo motivo de no ser un trofeo suelto. Ver `docs/12-mundo-estructurado.md` § 4.3.
+- El Pañuelo de luto Serhu nunca fue de Los Restos de Maktor — es de Los Túmulos del Honor. Error
+  de una nota anterior, ya corregido en `areas.md`.
+- El Osario de la Manada llevaba semanas de lore diciendo ser fuente de hueso/placa ósea "sin
+  cacería" sin tener nunca un `sourceSlug` propio — resuelto de paso para los 2 recursos nuevos.
+- Ya existía "Lingote de hierro imantado" (hierro + arena imán) y "Saquito de arena imán" (trofeo
+  narrativo) — el nuevo Lingote de Hiyerro y el futuro Saco de Arena Imán (Fase 2) quedan con alias
+  cuidadosamente distintos para no colisionar con ninguno de los dos.
+
+**Sigue pendiente, genuinamente aparcado** (no solo relleno de catálogo — necesita diseño de motor
+antes de escribir código, mismo criterio que ya se aplicó al sistema de niveles):
+- **Fase 2 completa** (Rocas Imanidas de calidad variable + pérdida de inventario por zona + Saco
+  de Arena Imán; sistema de "Reino" que consuma `capturablePct`/`reclutablePct`) — sin tocar.
+- **Los 22 NPC del Campamento del Clan Serhu** (11 Maestro + 11 trabajador) — bloqueados de verdad
+  en dos mecánicas que no existen: "aprender oficio de un NPC" (ni el cocinero recién creado ni
+  alquimista, su precedente, tienen ninguna vía de aprendizaje hoy) y el propio sistema de Reino de
+  arriba. Crear los 22 NPC sin ninguna de las dos mecánicas sería trabajo a medias — mejor esperar.
+- **Pasivo de los Nuentes** (-2 al ataque del jugador con arma de metal) — no enganchado todavía en
+  `combatExchange.ts`; el `NpcInput` de Nuente ya lleva un comentario marcando dónde debería vivir.
+- `harvestSourceAliases`/`harvestSourceDisplayName`/`harvestSourceDescriptions` de los ~28
+  `sourceSlug` nuevos — sin ellos, esos recursos tienen el mismo hueco que ya tenía `canizor` desde
+  antes de esta sesión (fauna real, sin alias propio en este mapa) — no bloquea que existan, pero
+  limita cuánto los reconoce el detector de intención por texto libre. No urgente, mismo patrón que
+  un hueco ya preexistente en el catálogo, no una regresión de esta pasada.
+
+## Pendiente de código (histórico de la sesión de lore, detalle bruto por zona — ver resumen arriba)
 
 - **Sesión 2026-08-21 (fauna/flora/minerales de La Hondonada del Eco, ver más abajo)** — nada de
   esto está en `worldCatalog.ts` todavía: `NpcInput` nuevos para Gesgurio (PLANTILLA, insecto
