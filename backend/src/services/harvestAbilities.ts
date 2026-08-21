@@ -29,7 +29,9 @@ export interface HarvestAbilityUnlock {
   ability: StartingAbility;
 }
 
-function matchesOficioPrefix(oficio: string, prefix: string): boolean {
+/// Compartida con `crafting.ts` § `hasToolForOficio`/`canCraft` (deuda técnica 2026-08-21: mismo
+/// cuerpo de 2 líneas duplicado literal en ambos archivos).
+export function matchesOficioPrefix(oficio: string, prefix: string): boolean {
   return oficio === prefix || oficio.startsWith(`${prefix}-`);
 }
 

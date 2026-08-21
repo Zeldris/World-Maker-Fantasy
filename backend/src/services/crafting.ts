@@ -5,6 +5,7 @@ import type { SecondaryAttributeBlock } from './secondaryAttributes.js';
 import { checkRequisitos, type Requisitos, type RequisitoShortfall } from './requisitos.js';
 import { totalQuantity, planConsumption, type IngredientRequirement, type CatalogLookup, type InventoryRowLike } from './ingredients.js';
 import { alivioForLevel } from './professionProgress.js';
+import { matchesOficioPrefix } from './harvestAbilities.js';
 
 /// Crafteo v1 (roadmap 2026-07-20, propuesta de Fable): determinista, sin sistema nuevo — un
 /// intercambio 1:1 de filas de inventario, con o sin condición de ubicación. El crafteo ES la
@@ -549,10 +550,6 @@ export async function detectDeterministicCraft(params: {
 /// tengan una herramienta real registrada. Evita que añadir el campo deje sin querer inutilizables
 /// oficios que hoy funcionan sin ninguna herramienta física.
 export const OFICIOS_CON_HERRAMIENTA_REQUERIDA = ['curtidor', 'desollador'];
-
-function matchesOficioPrefix(oficio: string, prefix: string): boolean {
-  return oficio === prefix || oficio.startsWith(`${prefix}-`);
-}
 
 /// Puro: ¿tiene el personaje, en las filas de inventario dadas, algún objeto marcado como
 /// herramienta para este oficio? Solo relevante si `oficio` está en

@@ -32,6 +32,13 @@ export async function progressionRoutes(app: FastifyInstance) {
       if (!save) {
         return reply.status(404).send({ error: 'Partida no encontrada' });
       }
+      // Mismo guard que turn.ts/combat/flee/cazar/recolectar/reino (auditoría de bugs 2026-08-21
+      // + decisión explícita de la usuaria al cerrar la ronda de preguntas abiertas): repartir
+      // puntos de atributo tras una muerte definitiva no debería seguir permitido, aunque no
+      // toque ningún recurso compartido del mundo.
+      if (save.endedAt) {
+        return reply.status(409).send({ error: 'Esta partida ha terminado', endedAt: save.endedAt });
+      }
 
       // Bug real (auditoría 2026-08-06): `Save.attributes` es un único Json — sin bloquear la fila,
       // dos POST casi simultáneos (doble clic, dos pestañas) leían el mismo `attributes` desde

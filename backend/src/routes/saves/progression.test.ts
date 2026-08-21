@@ -132,6 +132,20 @@ describe('POST /saves/:id/attribute-points', () => {
     expect(attributes.fuerza).toBe(12);
   });
 
+  // Bug real (auditoría de bugs, 2026-08-21 + decisión explícita al cerrar la ronda de preguntas
+  // abiertas): esta ruta nunca comprobaba `save.endedAt` — con la partida ya terminada por muerte
+  // definitiva, seguía dejando repartir puntos de atributo.
+  it('409 si la partida ya ha terminado (endedAt)', async () => {
+    findUniqueSave.mockResolvedValue({ id: 'save1', endedAt: new Date('2026-08-21T12:00:00Z') });
+    const app = await buildApp();
+
+    const res = await app.inject({ method: 'POST', url: '/saves/save1/attribute-points', payload: { attribute: 'fuerza' } });
+
+    expect(res.statusCode).toBe(409);
+    expect(queryRawSave).not.toHaveBeenCalled();
+    expect(updateSave).not.toHaveBeenCalled();
+  });
+
   it('404 si la partida no existe', async () => {
     findUniqueSave.mockResolvedValue(null);
     const app = await buildApp();

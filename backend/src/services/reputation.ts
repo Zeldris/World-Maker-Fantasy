@@ -66,7 +66,7 @@ export type FoundingOutcome = 'SIN_DUENO' | 'CONQUISTADA' | 'CONFLICTO';
 
 /// Puro — decide qué pasa al fundar un Ayuntamiento (tier 1) en esta región, según tu reputación
 /// con SUS facciones dueñas. `SIN_DUENO` (ninguna facción conocida reclama la región) y
-/// `PACIFICA` (reputación ≥ neutral con TODAS las dueñas) resultan en territorio tuyo sin más;
+/// `CONQUISTADA` (reputación ≥ neutral con TODAS las dueñas) resultan en territorio tuyo sin más;
 /// `CONFLICTO` (peor que neutral con alguna) dice que la región queda en disputa — más de una
 /// facción ocupando el mismo territorio.
 export function resolveFoundingOutcome(region: string | null, factionsStatus: Record<string, number>): FoundingOutcome {

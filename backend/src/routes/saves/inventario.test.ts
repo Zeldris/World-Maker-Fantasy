@@ -138,4 +138,18 @@ describe('PATCH /saves/:id/inventario/:itemId — ranura compatible', () => {
     expect(res.statusCode).toBe(200);
     expect(findUniqueItemCatalog).not.toHaveBeenCalled();
   });
+
+  // Bug real (auditoría de bugs, 2026-08-21 + decisión explícita al cerrar la ronda de preguntas
+  // abiertas): esta ruta nunca comprobaba `save.endedAt` — con la partida ya terminada por muerte
+  // definitiva, seguía dejando equipar/desequipar objetos.
+  it('409 si la partida ya ha terminado (endedAt)', async () => {
+    findFirstInventoryItem.mockResolvedValue({ id: 'item1', name: 'Yelmo de patrulla goirntes', catalogSlug: 'yelmo-patrulla-goirntes', slot: null });
+    findUniqueSave.mockResolvedValue({ worldId: 'world1', attributes: {}, secondaryAttributes: {}, raza: null, level: 1, endedAt: new Date('2026-08-21T12:00:00Z') });
+    const app = await buildApp();
+
+    const res = await app.inject({ method: 'PATCH', url: '/saves/save1/inventario/item1', payload: { slot: 'CASCO' } });
+
+    expect(res.statusCode).toBe(409);
+    expect(updateInventoryItem).not.toHaveBeenCalled();
+  });
 });

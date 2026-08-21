@@ -73,6 +73,19 @@ describe('POST /saves/:id/habilidades', () => {
     expect(createSavedAction).not.toHaveBeenCalled();
   });
 
+  // Bug real (auditoría de bugs, 2026-08-21 + decisión explícita al cerrar la ronda de preguntas
+  // abiertas): esta ruta nunca comprobaba `save.endedAt` — con la partida ya terminada por muerte
+  // definitiva, seguía dejando crear habilidades.
+  it('409 si la partida ya ha terminado (endedAt)', async () => {
+    findUniqueSave.mockResolvedValue({ id: 'save1', endedAt: new Date('2026-08-21T12:00:00Z') });
+    const app = await buildApp();
+
+    const res = await app.inject({ method: 'POST', url: '/saves/save1/habilidades', payload: { name: 'Silbido', promptText: 'x' } });
+
+    expect(res.statusCode).toBe(409);
+    expect(createSavedAction).not.toHaveBeenCalled();
+  });
+
   it('crea la habilidad como category "general", siempre, aunque no se pida otra', async () => {
     findUniqueSave.mockResolvedValue({ id: 'save1' });
     createSavedAction.mockResolvedValue({
@@ -94,6 +107,20 @@ describe('DELETE /saves/:id/habilidades/:habilidadId', () => {
   beforeEach(() => {
     findFirstSavedAction.mockReset();
     deleteManySavedAction.mockReset();
+    findUniqueSave.mockReset();
+  });
+
+  // Bug real (auditoría de bugs, 2026-08-21 + decisión explícita al cerrar la ronda de preguntas
+  // abiertas): esta ruta nunca comprobaba `save.endedAt`.
+  it('409 si la partida ya ha terminado (endedAt)', async () => {
+    findFirstSavedAction.mockResolvedValue({ id: 'a1', isStarting: false, isDynamic: false });
+    findUniqueSave.mockResolvedValue({ endedAt: new Date('2026-08-21T12:00:00Z') });
+    const app = await buildApp();
+
+    const res = await app.inject({ method: 'DELETE', url: '/saves/save1/habilidades/a1' });
+
+    expect(res.statusCode).toBe(409);
+    expect(deleteManySavedAction).not.toHaveBeenCalled();
   });
 
   it('rechaza borrar una habilidad isStarting (kit inicial/clase)', async () => {
@@ -143,6 +170,20 @@ describe('PATCH /saves/:id/habilidades/:habilidadId', () => {
   beforeEach(() => {
     findFirstSavedAction.mockReset();
     updateSavedAction.mockReset();
+    findUniqueSave.mockReset();
+  });
+
+  // Bug real (auditoría de bugs, 2026-08-21 + decisión explícita al cerrar la ronda de preguntas
+  // abiertas): esta ruta nunca comprobaba `save.endedAt`.
+  it('409 si la partida ya ha terminado (endedAt)', async () => {
+    findFirstSavedAction.mockResolvedValue({ id: 'a1', isStarting: false, isDynamic: false });
+    findUniqueSave.mockResolvedValue({ endedAt: new Date('2026-08-21T12:00:00Z') });
+    const app = await buildApp();
+
+    const res = await app.inject({ method: 'PATCH', url: '/saves/save1/habilidades/a1', payload: { name: 'Otro nombre' } });
+
+    expect(res.statusCode).toBe(409);
+    expect(updateSavedAction).not.toHaveBeenCalled();
   });
 
   it('rechaza editar una habilidad isStarting', async () => {

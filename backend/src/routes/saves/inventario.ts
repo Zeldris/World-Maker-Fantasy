@@ -32,6 +32,15 @@ export async function inventarioRoutes(app: FastifyInstance) {
         return reply.status(404).send({ error: 'Objeto no encontrado' });
       }
 
+      // Mismo guard que turn.ts/combat/flee/cazar/recolectar/reino (auditoría de bugs 2026-08-21
+      // + decisión explícita de la usuaria al cerrar la ronda de preguntas abiertas): una partida
+      // terminada por muerte definitiva no debería permitir seguir ajustando el equipo del
+      // personaje, aunque no toque ningún recurso compartido del mundo.
+      const saveForEndedAt = await prisma.save.findUnique({ where: { id: request.params.id }, select: { endedAt: true } });
+      if (saveForEndedAt?.endedAt) {
+        return reply.status(409).send({ error: 'Esta partida ha terminado', endedAt: saveForEndedAt.endedAt });
+      }
+
       // Requisitos de equipar (sesión de diseño 2026-07-23) + ranura compatible (2026-07-30,
       // petición explícita: "categorizarlos por ranura para que no pueda poner un casco en los
       // pies") — ambos UMBRAL puro, solo al EQUIPAR (slot !== null; desequipar siempre está
