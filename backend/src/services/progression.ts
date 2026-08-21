@@ -2,16 +2,66 @@
 /// Todo determinista, sin IA: el modelo nunca decide cuánta XP se gana, igual que nunca decide
 /// si una tirada tiene éxito.
 import { WEAPON_ABILITY_LEVEL_AVANZADA } from './weaponAbilities.js';
+import type { Attribute, AttributeBlock } from './dice.js';
+import type { Clase } from './classAbilities.js';
 
-/// Tabla de XP por nivel — valores exactos de D&D 5e (§ 2), nivel máximo 20.
-const LEVEL_THRESHOLDS: number[] = [
+/// Rediseño de escalado por nivel (2026-08-21, "quiero afinar el tema de los niveles... como el
+/// wow: ampliaremos los niveles según saquemos zonas nuevas"): tope real HOY, no un límite de
+/// diseño — sube este número sin más cuando haya lore/zonas para sostenerlo (objetivo declarado:
+/// 100). La curva de XP/ASI/tope de atributo se extiende sola a partir de aquí (ver
+/// `buildLevelThresholds`/`buildAsiLevels`/`attributeCapForLevel`), nunca hace falta tocarlas a
+/// mano al subir este tope.
+const MAX_LEVEL = 40;
+
+/// Tabla de XP por nivel 1-20 — valores EXACTOS de D&D 5e (§ 2), sin tocar: cambiar estos números
+/// desplazaría de nivel a partidas ya en curso. Más allá del 20 no hay tabla D&D que copiar (ahí
+/// termina el juego base), así que la extensión (`buildLevelThresholds`) es una curva propia.
+const DND_LEVEL_THRESHOLDS: number[] = [
   0, 300, 900, 2700, 6500, 14000, 23000, 34000, 48000, 64000, 85000, 100000, 120000, 140000,
   165000, 195000, 225000, 265000, 305000, 355000,
 ];
 
-const MAX_LEVEL = LEVEL_THRESHOLDS.length;
-const ASI_LEVELS = new Set([4, 8, 12, 16, 19]);
-const MAX_ATTRIBUTE = 18;
+/// Continúa la tabla D&D más allá del nivel 20 con un incremento que crece de forma lineal
+/// (delta 60000 en el 21, +10000 por nivel) — mantiene el mismo tipo de curva "cada vez cuesta
+/// más" que ya tenía la tabla original, sin necesidad de inventar un umbral a mano por nivel cada
+/// vez que se sube `MAX_LEVEL`.
+function buildLevelThresholds(maxLevel: number): number[] {
+  const thresholds = [...DND_LEVEL_THRESHOLDS];
+  for (let level = thresholds.length + 1; level <= maxLevel; level++) {
+    const delta = 50000 + (level - 20) * 10000;
+    thresholds.push(thresholds[thresholds.length - 1] + delta);
+  }
+  return thresholds.slice(0, maxLevel);
+}
+
+const LEVEL_THRESHOLDS: number[] = buildLevelThresholds(MAX_LEVEL);
+
+/// Niveles de ascenso de atributo (ASI) — 4/8/12/16/19 son la tabla D&D original (el hueco de 19
+/// a 20, no 20 a 24, es una rareza real de esa tabla, se deja tal cual). Más allá del 20 seguimos
+/// el mismo ritmo "cada 4 niveles" que el resto de la tabla (decisión explícita de la usuaria:
+/// "mismo ritmo, cada 4 niveles" → 24/28/32/36/40...).
+function buildAsiLevels(maxLevel: number): Set<number> {
+  const levels = new Set([4, 8, 12, 16, 19]);
+  for (let level = 24; level <= maxLevel; level += 4) levels.add(level);
+  return levels;
+}
+
+const ASI_LEVELS = buildAsiLevels(MAX_LEVEL);
+
+/// Tope de atributo alcanzable con los 5 ascensos originales (niveles 4-19) — igual que antes del
+/// rediseño, ningún personaje por debajo del nivel 24 ve cambiar su tope real de 18.
+const BASE_ATTRIBUTE_CAP = 18;
+
+/// Tope de atributo por nivel (decisión explícita: "sube junto al nivel") — cada ascenso ASI más
+/// allá del original (24/28/32/36/40...) sube el tope en 1, para que los puntos de ascenso de
+/// niveles altos sigan teniendo un sitio útil donde ir en vez de topar siempre en 18.
+function attributeCapForLevel(level: number): number {
+  let extraAsiEvents = 0;
+  for (const asiLevel of ASI_LEVELS) {
+    if (asiLevel > 19 && asiLevel <= level) extraAsiEvents++;
+  }
+  return BASE_ATTRIBUTE_CAP + extraAsiEvents;
+}
 
 export function levelForXp(xp: number): number {
   let level = 1;
@@ -85,4 +135,82 @@ export function applyXp(currentXp: number, currentLevel: number, xpDelta: number
   return { xpDelta, newXp, newLevel, leveledUp, attributePointsGained };
 }
 
-export { MAX_ATTRIBUTE, MAX_LEVEL };
+/// Puntos de ASI ganados subiendo de `fromLevel` (exclusivo) a `toLevel` (inclusivo) — misma
+/// cuenta que hace `applyXp` para el PJ, extraída aparte para reutilizarla también al escalar
+/// atributos de NPC (§ escalado de niveles, 2026-08-21).
+function asiPointsBetweenLevels(fromLevel: number, toLevel: number): number {
+  let points = 0;
+  for (let lvl = fromLevel + 1; lvl <= toLevel; lvl++) {
+    if (ASI_LEVELS.has(lvl)) points += 2;
+  }
+  return points;
+}
+
+/// Reparto de puntos de ASI por clase para NPC (2026-08-21, petición explícita: "en el caso de
+/// los npc repartiremos nosotros los puntos según la clase" — a diferencia del PJ, que elige, un
+/// NPC no tiene jugadora detrás decidiendo dónde van sus puntos). Pesos relativos (suman 1 por
+/// clase), no absolutos — deciden el ORDEN de prioridad de reparto, no cuántos puntos exactos caen
+/// en cada atributo (eso lo hace `allocateAttributePoints` de más abajo, punto a punto, respetando
+/// el tope real). Solo Guerrero/Cazador existen hoy (`Clase`, classAbilities.ts); una clase nueva
+/// solo necesita una fila aquí.
+const NPC_CLASS_ATTRIBUTE_WEIGHTS: Record<Clase, Partial<Record<Attribute, number>>> = {
+  Guerrero: { fuerza: 0.35, constitucion: 0.3, voluntad: 0.15, destreza: 0.1, inteligencia: 0.05, carisma: 0.03, arcano: 0.02 },
+  Cazador: { destreza: 0.35, inteligencia: 0.2, constitucion: 0.15, voluntad: 0.15, fuerza: 0.1, carisma: 0.03, arcano: 0.02 },
+};
+
+/// Reparte `points` entre los atributos de `weights` (normalizados a su suma real, no hace falta
+/// que sumen 1 de entrada — el reparto proporcional a partir de atributos base crudos de fauna
+/// también pasa por aquí) sin pasarse nunca del tope real (`cap`). Dos pasadas: primero la parte
+/// entera proporcional a cada peso (garantiza que hasta el atributo secundario de una clase reciba
+/// su parte si hay puntos suficientes, no solo el de más peso), luego el resto de redondeo se
+/// reparte de uno en uno por prioridad — si el de más peso ya está topado, el punto cae en el
+/// siguiente en vez de perderse en silencio.
+function allocateAttributePoints(base: AttributeBlock, weights: Partial<Record<Attribute, number>>, points: number, cap: number): AttributeBlock {
+  const entries = (Object.entries(weights) as [Attribute, number][]).filter(([, weight]) => weight > 0);
+  const totalWeight = entries.reduce((sum, [, weight]) => sum + weight, 0);
+  const result: AttributeBlock = { ...base };
+  if (totalWeight <= 0 || points <= 0) return result;
+
+  const priority = [...entries].sort((a, b) => b[1] - a[1]).map(([attribute]) => attribute);
+  const share = new Map<Attribute, number>(priority.map((attribute) => [attribute, 0]));
+
+  let allocated = 0;
+  for (const [attribute, weight] of entries) {
+    const room = Math.max(0, cap - result[attribute]);
+    const proportional = Math.min(room, Math.floor((points * weight) / totalWeight));
+    share.set(attribute, proportional);
+    allocated += proportional;
+  }
+
+  let remaining = points - allocated;
+  while (remaining > 0) {
+    const target = priority.find((attribute) => result[attribute] + (share.get(attribute) ?? 0) < cap);
+    if (!target) break; // todos los atributos con peso ya están topados — el resto se pierde (no hay dónde meterlo)
+    share.set(target, (share.get(target) ?? 0) + 1);
+    remaining -= 1;
+  }
+
+  for (const [attribute, amount] of share) result[attribute] += amount;
+  return result;
+}
+
+/// Escala el bloque de atributos de un NPC (siempre nivel 1 de catálogo, decisión explícita:
+/// "primero los stats ya establecidos son de nivel 1") hasta `targetLevel`, con el MISMO ritmo de
+/// puntos que el PJ (`asiPointsBetweenLevels`) — "para que no sea injusto contra el pj". Un NPC no
+/// elige dónde van sus puntos: `clase` (humanoide con Guerrero/Cazador/futuras) reparte por la
+/// tabla de prioridad de esa clase; sin clase (fauna, que no porta clase de combate) reparte
+/// proporcional al perfil de atributos que ya tiene en nivel 1 — el atributo que ya destaca en el
+/// bicho sigue destacando al subir, sin tabla nueva por especie.
+export function npcAttributesForLevel(baseAttributes: AttributeBlock, targetLevel: number, clase: Clase | null): AttributeBlock {
+  const points = asiPointsBetweenLevels(1, targetLevel);
+  if (points === 0) return baseAttributes;
+
+  const weights: Partial<Record<Attribute, number>> =
+    clase && NPC_CLASS_ATTRIBUTE_WEIGHTS[clase]
+      ? NPC_CLASS_ATTRIBUTE_WEIGHTS[clase]
+      : Object.fromEntries((Object.entries(baseAttributes) as [Attribute, number][]).map(([attribute, value]) => [attribute, value])) as Partial<Record<Attribute, number>>;
+
+  return allocateAttributePoints(baseAttributes, weights, points, attributeCapForLevel(targetLevel));
+}
+
+export { attributeCapForLevel, MAX_LEVEL };

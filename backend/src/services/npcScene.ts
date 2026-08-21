@@ -2,6 +2,8 @@ import { prisma } from '../lib/prisma.js';
 import { normalizeText, fuzzyMatchCandidates, fuzzyMatchesAnyStem, findFuzzyStemMatch, matchesAliasBoundary } from './travel.js';
 import type { NpcKind, CondicionFisica, Temperamento, WeaponCategory, EquipSlot, ItemTipo, Prisma, NpcState } from '@prisma/client';
 import type { Attribute, AttributeBlock } from './dice.js';
+import type { Clase } from './classAbilities.js';
+import { npcAttributesForLevel } from './progression.js';
 
 /// Detección determinista de "NPC en escena" (docs/12-mundo-estructurado.md § 2.5) — sin llamada
 /// extra a Ollama: se busca Npc.aliases (normalizados) en el texto de la acción y en los hechos
@@ -161,7 +163,12 @@ export function buildNpcInScene(npc: NpcWithItems, state: NpcState | undefined):
       tipoArma: i.item.tipoArma,
       tipo: i.item.tipo,
     })),
-    attributes: npc.attributes as NpcInScene['attributes'],
+    // Escalado por nivel (2026-08-21, "quiero afinar cómo funciona el tema de los niveles"): el
+    // bloque `attributes` de catálogo es siempre nivel 1 — aquí se proyecta hasta `npc.level` con
+    // el mismo ritmo de puntos que el PJ (ver npcAttributesForLevel, progression.ts). `raza`/
+    // `clase` solo existen en humanoides; la fauna (sin clase) reparte proporcional a su propio
+    // perfil de nivel 1 en vez de por tabla de clase.
+    attributes: npcAttributesForLevel(npc.attributes as AttributeBlock, npc.level, npc.clase as Clase | null) as NpcInScene['attributes'],
     raza: npc.raza,
     clase: npc.clase,
     ataqueNatural: npc.ataqueNatural,

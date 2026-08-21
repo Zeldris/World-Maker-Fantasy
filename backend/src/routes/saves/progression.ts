@@ -1,6 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import { prisma } from '../../lib/prisma.js';
-import { MAX_ATTRIBUTE } from '../../services/progression.js';
+import { attributeCapForLevel } from '../../services/progression.js';
 import type { AttributeBlock, Attribute } from '../../services/dice.js';
 import { VALID_ATTRIBUTES } from './shared.js';
 
@@ -47,6 +47,7 @@ export async function progressionRoutes(app: FastifyInstance) {
       // consumiendo 2 puntos, pero `attributes` solo subía +1 — un punto de ascenso se perdía en
       // silencio. `SELECT ... FOR UPDATE` bloquea la fila hasta que la primera transacción
       // termina, así la segunda ve ya el `attributes` actualizado antes de calcular el suyo.
+      const attributeCap = attributeCapForLevel(save.level);
       let outcome: { kind: 'ok'; attributes: AttributeBlock; pendingAttributePoints: number } | { kind: 'no-points' } | { kind: 'at-max' };
       try {
         outcome = await prisma.$transaction(async (tx) => {
@@ -54,7 +55,7 @@ export async function progressionRoutes(app: FastifyInstance) {
             SELECT "pendingAttributePoints", attributes FROM "Save" WHERE id = ${save.id} FOR UPDATE
           `;
           if (locked.pendingAttributePoints <= 0) return { kind: 'no-points' };
-          if (locked.attributes[attribute] >= MAX_ATTRIBUTE) return { kind: 'at-max' };
+          if (locked.attributes[attribute] >= attributeCap) return { kind: 'at-max' };
           const updated = await tx.save.update({
             where: { id: save.id },
             data: {
@@ -72,7 +73,7 @@ export async function progressionRoutes(app: FastifyInstance) {
         return reply.status(400).send({ error: 'No quedan puntos de atributo pendientes' });
       }
       if (outcome.kind === 'at-max') {
-        return reply.status(400).send({ error: `${attribute} ya está en el máximo (${MAX_ATTRIBUTE})` });
+        return reply.status(400).send({ error: `${attribute} ya está en el máximo (${attributeCap})` });
       }
       return { attributes: outcome.attributes, pendingAttributePoints: outcome.pendingAttributePoints };
     },

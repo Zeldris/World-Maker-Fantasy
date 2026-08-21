@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { levelForXp, maxCombatAbilitiesFor, xpForRollSuccess, xpForHitos, applyXp } from './progression.js';
+import { levelForXp, maxCombatAbilitiesFor, xpForRollSuccess, xpForHitos, applyXp, attributeCapForLevel, npcAttributesForLevel, MAX_LEVEL } from './progression.js';
 
 describe('levelForXp', () => {
   it('nivel 1 con 0 XP', () => {
@@ -9,8 +9,58 @@ describe('levelForXp', () => {
     expect(levelForXp(299)).toBe(1);
     expect(levelForXp(300)).toBe(2);
   });
-  it('tope en nivel 20 aunque sobre XP', () => {
-    expect(levelForXp(10_000_000)).toBe(20);
+  it('respeta la tabla D&D original sin tocar en el tramo 1-20 (umbral nivel 19 = 305000)', () => {
+    expect(levelForXp(304_999)).toBe(18);
+    expect(levelForXp(305_000)).toBe(19);
+  });
+  it(`tope en nivel máximo (${MAX_LEVEL}) aunque sobre XP`, () => {
+    expect(levelForXp(100_000_000)).toBe(MAX_LEVEL);
+  });
+  it('la curva extendida más allá del nivel 20 sigue siendo estrictamente creciente', () => {
+    expect(levelForXp(3_204_999)).toBe(38);
+    expect(levelForXp(3_205_000)).toBe(39);
+    expect(levelForXp(3_455_000)).toBe(40);
+  });
+});
+
+describe('attributeCapForLevel', () => {
+  it('18 por debajo del primer ASI extendido (nivel 24) — igual que antes del rediseño', () => {
+    expect(attributeCapForLevel(1)).toBe(18);
+    expect(attributeCapForLevel(19)).toBe(18);
+    expect(attributeCapForLevel(23)).toBe(18);
+  });
+  it('sube en 1 por cada ASI extendido cruzado (24/28/32/36/40)', () => {
+    expect(attributeCapForLevel(24)).toBe(19);
+    expect(attributeCapForLevel(27)).toBe(19);
+    expect(attributeCapForLevel(28)).toBe(20);
+    expect(attributeCapForLevel(40)).toBe(23);
+  });
+});
+
+describe('npcAttributesForLevel', () => {
+  const base = { fuerza: 6, destreza: 10, constitucion: 7, inteligencia: 8, voluntad: 6, carisma: 6, arcano: 0 };
+
+  it('nivel 1 devuelve el bloque base sin cambios (sin puntos ASI que repartir)', () => {
+    expect(npcAttributesForLevel(base, 1, null)).toEqual(base);
+  });
+
+  it('sin clase (fauna), reparte proporcional al perfil ya existente — el atributo que más destaca sigue creciendo más', () => {
+    const scaled = npcAttributesForLevel(base, 4, null); // nivel 4 = primer ASI, 2 puntos
+    expect(scaled.destreza).toBeGreaterThan(base.destreza); // ya era el atributo más alto
+    const totalGained = Object.keys(base).reduce((sum, k) => sum + (scaled[k as keyof typeof base] - base[k as keyof typeof base]), 0);
+    expect(totalGained).toBe(2);
+  });
+
+  it('con clase Guerrero, prioriza fuerza/constitución sobre el resto', () => {
+    const scaled = npcAttributesForLevel(base, 8, 'Guerrero'); // nivel 8 = 2 ASI, 4 puntos
+    expect(scaled.fuerza).toBeGreaterThan(base.fuerza);
+    expect(scaled.constitucion).toBeGreaterThan(base.constitucion);
+  });
+
+  it('nunca supera el tope de atributo real para ese nivel', () => {
+    const highBase = { fuerza: 17, destreza: 5, constitucion: 5, inteligencia: 5, voluntad: 5, carisma: 5, arcano: 5 };
+    const scaled = npcAttributesForLevel(highBase, 19, 'Guerrero'); // 5 ASI = 10 puntos, todos priorizarían fuerza
+    expect(scaled.fuerza).toBeLessThanOrEqual(attributeCapForLevel(19));
   });
 });
 
