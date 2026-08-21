@@ -7,6 +7,7 @@ import {
   nextCondicionForAttack,
   isValidRestLocationKind,
   healCeilingFor,
+  applySequentialHeals,
   condicionMalus,
   npcRecoversFromConvaleciente,
   npcCorpseShouldDespawn,
@@ -150,6 +151,43 @@ describe('healCeilingFor', () => {
     it('el mismo objeto con curaUnPaso false (comportamiento normal) sí rompe el tope de golpe, para contraste', () => {
       expect(healCeilingFor('CONVALECIENTE', false, false, 'ILESO', false)).toBe('ILESO');
     });
+  });
+});
+
+// Panel "Curar" con varios objetos/usos a la vez (petición explícita, 2026-08-18).
+describe('applySequentialHeals', () => {
+  it('sin usos, se queda igual', () => {
+    expect(applySequentialHeals('CONVALECIENTE', [])).toBe('CONVALECIENTE');
+  });
+
+  it('un único uso da el mismo resultado que llamar a healCeilingFor directamente', () => {
+    expect(applySequentialHeals('CONVALECIENTE', [{ curaHasta: 'ILESO', curaUnPaso: true }])).toBe(
+      healCeilingFor('CONVALECIENTE', false, false, 'ILESO', true),
+    );
+  });
+
+  it('dos usos del mismo objeto curaUnPaso encadenan un escalón cada uno: CONVALECIENTE → GRAVE → HERIDO', () => {
+    const uso = { curaHasta: 'ILESO' as const, curaUnPaso: true };
+    expect(applySequentialHeals('CONVALECIENTE', [uso, uso])).toBe('HERIDO');
+  });
+
+  it('tres usos seguidos del mismo objeto llegan hasta ILESO, nunca más allá', () => {
+    const uso = { curaHasta: 'ILESO' as const, curaUnPaso: true };
+    expect(applySequentialHeals('CONVALECIENTE', [uso, uso, uso])).toBe('ILESO');
+    expect(applySequentialHeals('CONVALECIENTE', [uso, uso, uso, uso])).toBe('ILESO'); // un 4º uso no empeora ni rompe nada
+  });
+
+  it('EL ORDEN IMPORTA: objeto débil (tope GRAVE) primero y fuerte (tope ILESO) después llega más lejos que al revés', () => {
+    const debil = { curaHasta: 'GRAVE' as const, curaUnPaso: true };
+    const fuerte = { curaHasta: 'ILESO' as const, curaUnPaso: true };
+    expect(applySequentialHeals('CONVALECIENTE', [debil, fuerte])).toBe('HERIDO');
+    expect(applySequentialHeals('CONVALECIENTE', [fuerte, debil])).toBe('GRAVE');
+  });
+
+  it('mezcla de curaUnPaso y objeto normal (rompe el tope de golpe) en la misma lista', () => {
+    const unPaso = { curaHasta: 'GRAVE' as const, curaUnPaso: true };
+    const normal = { curaHasta: 'ILESO' as const, curaUnPaso: false };
+    expect(applySequentialHeals('CONVALECIENTE', [unPaso, normal])).toBe('ILESO');
   });
 });
 

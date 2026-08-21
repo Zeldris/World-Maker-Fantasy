@@ -11,7 +11,7 @@ import { MediaSlot } from './ImagePromptDisplay'
 import { TooltipAnchor } from './TooltipAnchor'
 import { CombatSelectionModal } from './CombatSelectionModal'
 import type { CombatNpcDisplay } from './CombatComposer'
-import type { AttributeBlock, CondicionFisica, InventoryItemInfo, SavedActionInfo } from '../types'
+import type { AttributeBlock, CondicionFisica, InitiativeRollInfo, InventoryItemInfo, SavedActionInfo } from '../types'
 
 interface CombatPanelProps {
   playerCondicion: CondicionFisica
@@ -41,7 +41,7 @@ interface CombatPanelProps {
   /// Rediseño del turno de combate (2026-07-29, "quiero que sea más claro cuando es turno de
   /// ataque... indicándome qué salió en los dados para saber por qué ataco primero") — tirada real
   /// de iniciativa del último turno resuelto; null si se forzó sin dados o aún no hay ninguna.
-  lastInitiativeRoll: { ganador: 'jugador' | 'npc'; jugadorTirada: number; npcTirada: number } | null
+  lastInitiativeRoll: InitiativeRollInfo | null
   onActuar: () => void
   onRegistrar: (npc: CombatNpcDisplay) => void
   /// Botón "Decapitar" (petición explícita, 2026-07-30, ajustado tras probarlo en vivo: "de los
@@ -382,15 +382,26 @@ export function CombatPanel({
         </div>
         <div className="flex items-center gap-2">
           {!ended && !awaitingDefense && (
-            <button onClick={onHuir} disabled={busy} className="text-2xs text-wood-400 transition-colors hover:text-accent-300 disabled:opacity-50">
-              Huir
+            <button
+              onClick={onHuir}
+              disabled={busy}
+              // Contraste real (petición explícita, 2026-08-18: "hay que mejorar para que sea más
+              // claro el botón Huir" — antes solo texto apagado sin fondo, igual de invisible que
+              // el botón de colapsar antes de arreglarlo). Tono ámbar (cost-*) a propósito, para
+              // no confundirse con el chip rojo de colapsar que tiene justo al lado.
+              className="tactile flex items-center gap-1 rounded-full border border-cost-500/60 bg-cost-500/20 px-3 py-1.5 text-2xs font-bold uppercase tracking-wide text-cost-400 shadow-[0_0_8px_-2px_var(--color-cost-500)] transition-colors hover:border-cost-400 hover:bg-cost-500/35 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <span aria-hidden="true">🏃</span> Huir
             </button>
           )}
           {onCollapse && (
             <button
               onClick={onCollapse}
               title='Colapsar "Combate"'
-              className="tactile rounded-md border border-iron-700 px-1.5 py-1 text-xs text-wood-400 transition-colors hover:border-accent-600/60 hover:text-accent-300"
+              // Mismo chip con relleno de color que LogPanel.tsx (petición explícita, 2026-08-18:
+              // "los botones para colapsar los logs no se ven nada claros" — un fondo casi tan
+              // oscuro como el propio panel no basta, hace falta color real).
+              className="tactile flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-danger-500/60 bg-danger-500/20 text-base text-danger-400 shadow-[0_0_8px_-2px_var(--color-danger-500)] transition-colors hover:border-danger-400 hover:bg-danger-500/35"
             >
               {collapseIcon}
             </button>

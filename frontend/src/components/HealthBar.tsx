@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import type { CondicionFisica } from '../types'
-import { saludForCondicion, CONDICION_LABEL } from '../lib/health'
+import { saludForCondicion, CONDICION_LABEL, CONDICION_ORDER } from '../lib/health'
 
 // Roadmap de diseño CSS (Fable, 2026-07-20): GRAVE/CONVALECIENTE usan los tokens danger/cost —
 // MUERTO se queda en red-950/800 de Tailwind a propósito (más oscuro que el propio token
@@ -12,9 +12,6 @@ const BAR_COLOR: Record<CondicionFisica, string> = {
   CONVALECIENTE: 'from-red-800 to-danger-500',
   MUERTO: 'from-red-950 to-red-800',
 }
-
-// Peor a mejor, de izquierda a derecha en severidad — para saber si un cambio es golpe o mejora.
-const CONDICION_ORDER: CondicionFisica[] = ['ILESO', 'HERIDO', 'GRAVE', 'CONVALECIENTE', 'MUERTO']
 
 export function HealthBar({ condicionFisica }: { condicionFisica: CondicionFisica }) {
   const salud = saludForCondicion(condicionFisica)

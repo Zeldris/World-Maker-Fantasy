@@ -6,6 +6,7 @@ import { getDefaultUserId } from '../lib/defaultUser.js';
 import { resolveDueTransits, startEagerTransitResolution } from '../workers/worldTick.js';
 import { recolectarRoutes } from './saves/recolectar.js';
 import { panelsRoutes } from './saves/panels.js';
+import { sessionRoutes } from './saves/session.js';
 import { minutosConDestreza, bandaForMinutos } from '../services/travel.js';
 import type { NarrationResult } from '../services/narrador.js';
 import { hasFalseTravelClaim, hasFalsePhantomTravel } from '../services/narrador.js';
@@ -503,6 +504,20 @@ describe('GET /saves/:id/campamentos y /saves/:id/destinos-viaje', () => {
     const { hasMap, destinations } = res.json() as { hasMap: boolean; destinations: { locationSlug: string }[] };
     expect(hasMap).toBe(false);
     expect(destinations).toEqual([expect.objectContaining({ locationSlug: 'pozo-cauce-viejo' })]);
+  });
+
+  // Tiempo de juego real hasta cada destino (petición explícita, 2026-08-18) — mismo grafo/fórmula
+  // que `resolveTravel` de verdad (buildAdjacency + shortestPath + minutosConDestreza), no una
+  // estimación aparte.
+  it('cada destino con camino real por el grafo trae minutos/banda ya ajustados a destreza', async () => {
+    const app = Fastify();
+    await app.register(panelsRoutes);
+    const res = await app.inject({ method: 'GET', url: `/saves/${saveId}/destinos-viaje` });
+    const { destinations } = res.json() as { destinations: { locationSlug: string; minutos: number | null; banda: string | null }[] };
+    const pozo = destinations.find((d) => d.locationSlug === 'pozo-cauce-viejo');
+    expect(pozo).toBeDefined();
+    expect(pozo!.minutos).toBeGreaterThan(0);
+    expect(['corta', 'extendida', 'larga']).toContain(pozo!.banda);
   });
 
   it('con el mapa de las Llanuras en el inventario, lista TODAS las ubicaciones de esa región, visitadas o no', async () => {
@@ -2471,7 +2486,16 @@ describe('Objetos narrativos "PASIVO" ligados a su Location exacta (auditoría 2
 // (qué se crea, qué se consume) ya era determinista desde 2026-07-22, pero el TEXTO que veía la
 // jugadora seguía siendo lo que devolviera el mock/LLM de narrador.js. Ahora se sustituye siempre,
 // mismo criterio que ya usan loot/harvest.
-describe('Crafteo: la narración final es la frase determinista, no la del modelo', () => {
+// Crafteo con espera real (rediseño 2026-08-20, petición explícita: "no habíamos quedado que los
+// crafteos eran deterministas?... quiero tener para esta parte algo similar a los viajes, que
+// salga que estás crafteando y que lleve un tiempo real con la opción a cancelarlo") — el resultado
+// sigue siendo determinista (nunca lo decide el modelo), pero ya NO se resuelve en la misma
+// respuesta de /turn/classify: crea un CharacterTransit (mismo mecanismo que un viaje largo) con
+// `busyUntil` a `craftDurationSecondsFor(recipe)` segundos reales vista — aquí Vendaje improvisado
+// es tier 1 → 5s. Mismo patrón de test ya establecido para viaje en este archivo (líneas de arriba,
+// "el viaje se trunca..."): crear vía /turn/classify, comprobar el CharacterTransit directamente,
+// adelantar `busyUntil` al pasado y llamar a resolveDueTransits() en vez de esperar de verdad.
+describe('Crafteo con espera real (2026-08-20): transit con busyUntil, resolución diferida y frase determinista', () => {
   let saveId: string;
 
   beforeAll(async () => {
@@ -2482,7 +2506,7 @@ describe('Crafteo: la narración final es la frase determinista, no la del model
       data: {
         userId,
         worldId: world.id,
-        characterName: 'Gorhorn de prueba (crafteo determinista)',
+        characterName: 'Gorhorn de prueba (crafteo con espera real)',
         characterArchetype: 'guerrero',
         characterOrigin: 'Clan Maktor',
         characterMotivation: 'x',
@@ -2502,19 +2526,79 @@ describe('Crafteo: la narración final es la frase determinista, no la del model
     await prisma.save.delete({ where: { id: saveId } });
   });
 
-  it('craftear un Vendaje improvisado sustituye la prosa del modelo por la frase fija, y consume/crea de verdad', async () => {
+  it('craftear NO resuelve al instante: crea un CharacterTransit con busyUntil ~5s vista (tier 1), sin consumir/crear nada todavía', async () => {
     await giveMaterials(saveId, [{ name: 'Manojo de salvia del polvo', catalogSlug: 'manojo-salvia-polvo' }]);
 
-    const res = await doTurn(saveId, 'Ato un vendaje con mi manojo de salvia del polvo.');
+    const app = await buildApp();
+    const before = Date.now();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/turn/classify',
+      payload: { saveId, action: 'Ato un vendaje con mi manojo de salvia del polvo.', enCombate: false },
+    });
     expect(res.statusCode).toBe(200);
-    const body = lastNdjsonLine(res.payload) as { narration: { narration: string } };
-    expect(body.narration.narration).toBe('Gorhorn de prueba (crafteo determinista) craftea: Vendaje improvisado.');
-    expect(body.narration.narration).not.toContain('El golpe conecta'); // no es el texto del mock del LLM
+    const body = res.json() as { transit?: { busyUntil: string } };
+    expect(body.transit).toBeDefined();
+
+    const transit = await prisma.characterTransit.findUniqueOrThrow({ where: { saveId } });
+    const msVista = new Date(transit.busyUntil).getTime() - before;
+    expect(msVista).toBeGreaterThan(0);
+    expect(msVista).toBeLessThanOrEqual(6_000); // tier 1 → 5s, con margen corto para el propio test
+
+    // Nada aplicado todavía — ni consumido el ingrediente ni creado el resultado.
+    const inventory = await prisma.inventoryItem.findMany({ where: { saveId } });
+    expect(inventory.some((i) => i.name === 'Vendaje improvisado')).toBe(false);
+    expect(inventory.some((i) => i.name.startsWith('Manojo de salvia del polvo'))).toBe(true);
+  });
+
+  it('al resolverse el tránsito, la narración es la frase determinista (no la del modelo) y consume/crea de verdad', async () => {
+    // El tránsito ya existe (test anterior, mismo saveId) — se adelanta busyUntil al pasado para
+    // que resolveDueTransits() lo recoja de inmediato, sin esperar los segundos reales de verdad.
+    await prisma.characterTransit.update({ where: { saveId }, data: { busyUntil: new Date(Date.now() - 1000) } });
+    await resolveDueTransits();
+
+    const transitAfter = await prisma.characterTransit.findUnique({ where: { saveId } });
+    expect(transitAfter).toBeNull(); // resuelto y borrado
+
+    // `take: 3`, no solo la última (bug real al escribir este test: el ascenso de nivel de oficio
+    // que dispara `awardProfessionXp` añade su PROPIA entrada de "desbloquea la habilidad de
+    // oficio..." justo después de la de crafteo, así que la última entrada no siempre es la del
+    // crafteo en sí).
+    const entries = await prisma.logEntry.findMany({ where: { saveId }, orderBy: { createdAt: 'desc' }, take: 3 });
+    const craftEntry = entries.find((e) => e.text.includes('craftea:'));
+    expect(craftEntry?.text).toBe('Gorhorn de prueba (crafteo con espera real) craftea: Vendaje improvisado.');
+    expect(craftEntry?.text).not.toContain('El golpe conecta'); // no es el texto del mock del LLM
 
     const inventory = await prisma.inventoryItem.findMany({ where: { saveId } });
     expect(inventory.some((i) => i.name === 'Vendaje improvisado')).toBe(true);
     expect(inventory.some((i) => i.name.startsWith('Manojo de salvia del polvo'))).toBe(false); // ingrediente consumido
   }, 20_000);
+
+  it('cancelar mientras todavía falta tiempo real deshace el intento — sin crear ni consumir nada (a diferencia de un viaje, aquí SÍ hay ventana real para cancelar)', async () => {
+    await giveMaterials(saveId, [{ name: 'Manojo de salvia del polvo', catalogSlug: 'manojo-salvia-polvo' }]);
+    // Recuento ANTES, no presencia a secas (mismo saveId que el test anterior — ya hay un Vendaje
+    // improvisado de verdad en el inventario desde entonces; lo que importa es que cancelar no
+    // añada uno MÁS ni consuma este nuevo manojo de salvia).
+    const vendajesAntes = (await prisma.inventoryItem.findMany({ where: { saveId } })).filter((i) => i.name === 'Vendaje improvisado').length;
+
+    const app = await buildApp();
+    await app.register(sessionRoutes);
+    const classifyRes = await app.inject({
+      method: 'POST',
+      url: '/turn/classify',
+      payload: { saveId, action: 'Ato un vendaje con mi manojo de salvia del polvo.', enCombate: false },
+    });
+    expect(classifyRes.statusCode).toBe(200);
+    expect(await prisma.characterTransit.findUnique({ where: { saveId } })).not.toBeNull();
+
+    const cancelRes = await app.inject({ method: 'POST', url: `/saves/${saveId}/transit/cancel` });
+    expect(cancelRes.statusCode).toBe(204);
+    expect(await prisma.characterTransit.findUnique({ where: { saveId } })).toBeNull();
+
+    const inventory = await prisma.inventoryItem.findMany({ where: { saveId } });
+    expect(inventory.filter((i) => i.name === 'Vendaje improvisado').length).toBe(vendajesAntes); // ninguno nuevo
+    expect(inventory.some((i) => i.name.startsWith('Manojo de salvia del polvo'))).toBe(true); // sin consumir
+  });
 });
 
 // Bug real jugando en vivo (2026-08-04, "ronda larga de pruebas" — el propio combate contra el
@@ -2810,6 +2894,222 @@ describe('combatSlugsFromModel no se fía de una propuesta de combate del LLM co
     expect(save.pendingCombatNpcSlugs).toEqual([]);
     const gisteraState = await prisma.npcState.findFirst({ where: { saveId } });
     expect(gisteraState).toBeNull(); // nunca se le creó estado, nunca entró en combate
+  }, 20_000);
+});
+
+// Bug real jugando en vivo (2026-08-20): el jugador aceptó ayudar a Gistera Koh eligiendo una
+// sugerencia totalmente pacífica ("Ofrezco mi ayuda, aunque no entienda completamente su
+// urgencia") — sin `combateIniciado` del modelo, sin ningún verbo hostil en la acción — pero el
+// turno abrió combate igual. `allNpcsInSceneArePacificos` solo contaba AMIGABLE/INOFENSIVO como
+// "no pudo haber sido él" — Gistera es CAUTELOSO (por definición de catálogo, "depende de la
+// acción del jugador", nunca inicia nada por su cuenta), así que quedaba fuera de esa lista pese a
+// no ser hostil, y bastaba con que el modelo devolviera un `condicionFisica` de bajada en su JSON
+// (aunque la narración fuera cortés) para forzar combate vía `shouldForceCombat`.
+describe('shouldForceCombat no abre combate contra un PNJ CAUTELOSO por una bajada de condición ambigua del modelo (bug real 2026-08-20)', () => {
+  let saveId: string;
+
+  beforeAll(async () => {
+    const userId = await getDefaultUserId();
+    const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
+    const hondonada = await prisma.location.findFirstOrThrow({ where: { worldId: world.id, slug: 'hondonada-del-eco' } });
+    const save = await prisma.save.create({
+      data: {
+        userId,
+        worldId: world.id,
+        characterName: 'Gorhorn de prueba (CAUTELOSO no fuerza combate)',
+        characterArchetype: 'guerrero',
+        characterOrigin: 'Clan Maktor',
+        characterMotivation: 'x',
+        attributes: ATTRS,
+        portraitInitial: 'G',
+        currentLocationId: hondonada.id,
+      },
+    });
+    saveId = save.id;
+    await prisma.worldState.create({ data: { saveId } });
+    // Mismo atajo que el test de arriba (línea ~1081) para que Gistera Koh cuente como "en
+    // escena" (CAUTELOSO) sin tener que pasar por todo su gancho de presentación de fase-1.
+    await prisma.$executeRaw`
+      INSERT INTO "SessionFact" (id, "saveId", text, embedding, "createdAt")
+      VALUES (${crypto.randomUUID()}, ${saveId}, 'Gistera Koh, una orca expulsada del Clan Serhu, pidió ayuda.', NULL, ${new Date()})
+    `;
+    classifyAction.mockResolvedValue({
+      requiereTirada: false, atributo: 'voluntad', dificultad: 8, razon: 'x', banda: 'instantanea', duracionEstimadaMinutos: 0,
+    });
+  });
+
+  afterAll(async () => {
+    await prisma.save.delete({ where: { id: saveId } });
+  });
+
+  it('ofrecer ayuda de forma pacífica no abre combate aunque el modelo devuelva una bajada de condición ambigua', async () => {
+    narrateAction.mockResolvedValueOnce({
+      narration: 'Gorhorn asume un aire serio y se acerca a la figura orca, preguntando en tono cortés pero firme qué es lo que ocurre.',
+      newFacts: [],
+      condicionFisica: 'HERIDO', // bajada respecto al ILESO por defecto — justo lo ambiguo del bug real
+    });
+    const app = await buildApp();
+    const action = 'Ofrezco mi ayuda, aunque no entienda completamente su urgencia.';
+    const classifyRes = await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action, enCombate: false } });
+    const { classification, roll } = classifyRes.json();
+    const narrateRes = await app.inject({
+      method: 'POST',
+      url: '/turn/narrate',
+      payload: { saveId, action, classification, roll, enCombate: false },
+    });
+
+    expect(lastNdjsonLine(narrateRes.payload).combateIniciado).toBeNull();
+    const save = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
+    expect(save.pendingCombatNpcSlugs).toEqual([]);
+  }, 20_000);
+});
+
+// Petición explícita de la usuaria (2026-08-20, jugando en vivo): "el tema de que el Orco
+// Enfurecido aunque lo busque como 'perseguidor' no aparezca" — la escena de Gistera Koh lo
+// mantiene a propósito sin nombrar, así que `detectNpcsInScene` (solo compara contra name/aliases
+// reales de catálogo) nunca lo detectaba si el jugador buscaba con vocabulario de "perseguidor" en
+// vez de su nombre real. Ver el bloque nuevo en `turnResolution.ts` (justo después de
+// `travelInterruptionNpcId`) para la inyección determinista acotada a esta misión.
+describe('el "perseguidor" de Gistera Koh se detecta en escena sin nombrarlo, mientras la misión sigue activa (bug real 2026-08-20)', () => {
+  let saveId: string;
+
+  beforeAll(async () => {
+    const userId = await getDefaultUserId();
+    const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
+    const hondonada = await prisma.location.findFirstOrThrow({ where: { worldId: world.id, slug: 'hondonada-del-eco' } });
+    const save = await prisma.save.create({
+      data: {
+        userId,
+        worldId: world.id,
+        characterName: 'Gorhorn de prueba (perseguidor sin nombrar)',
+        characterArchetype: 'guerrero',
+        characterOrigin: 'Clan Maktor',
+        characterMotivation: 'x',
+        attributes: ATTRS,
+        portraitInitial: 'G',
+        currentLocationId: hondonada.id,
+      },
+    });
+    saveId = save.id;
+    await prisma.worldState.create({ data: { saveId } });
+    // La propia misión (creada al aceptar ayudar a Gistera Koh, fase 3 de turnResolution.ts) es la
+    // única señal que gatea la inyección — no hace falta reproducir todo el gancho de presentación.
+    await prisma.quest.create({
+      data: { saveId, title: 'Acabar con el Orco Enfurecido', description: 'Derrotar al guerrero que persigue a Gistera Koh.', status: 'ACTIVA' },
+    });
+    classifyAction.mockResolvedValue({
+      requiereTirada: false, atributo: 'destreza', dificultad: 8, razon: 'x', banda: 'instantanea', duracionEstimadaMinutos: 0,
+    });
+  });
+
+  afterAll(async () => {
+    await prisma.save.delete({ where: { id: saveId } });
+  });
+
+  it('buscar al "perseguidor" (sin nombrarlo) lo detecta en escena y abre combate, igual que si se nombrara "Orco enfurecido"', async () => {
+    narrateAction.mockResolvedValueOnce({
+      narration: 'Gorhorn inspecciona atentamente la hondonada, escrutando cada sombra y sonido.',
+      newFacts: [],
+    });
+    const app = await buildApp();
+    const action = 'Reviso los alrededores buscando al perseguidor.';
+    const classifyRes = await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action, enCombate: false } });
+    const { classification, roll } = classifyRes.json();
+    const narrateRes = await app.inject({
+      method: 'POST',
+      url: '/turn/narrate',
+      payload: { saveId, action, classification, roll, enCombate: false },
+    });
+
+    // AGRESIVO de catálogo — una vez detectado en escena, `shouldForceCombat` abre combate contra
+    // él solo, sin depender del verbo del jugador (mismo criterio que cualquier otro NPC agresivo
+    // ya detectado por nombre real, ver turnResolution.ts).
+    const { combateIniciado } = lastNdjsonLine(narrateRes.payload) as { combateIniciado: { npcs: { slug: string }[] } | null };
+    expect(combateIniciado?.npcs.map((n) => n.slug)).toEqual(['orco-enfurecido-hondonada']);
+    const save = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
+    expect(save.pendingCombatNpcSlugs).toEqual(['orco-enfurecido-hondonada']);
+
+    // Bug real jugando en vivo (2026-08-20, encontrado justo tras confirmar que el combate se
+    // abría): el combate se abría de verdad, pero la narración libre (mockeada arriba, "sigue
+    // buscando") nunca explicaba contra quién — el reveal determinista tiene que garantizarlo,
+    // sin depender de que el modelo lo narre por su cuenta.
+    const { narration } = lastNdjsonLine(narrateRes.payload) as { narration: { narration: string } };
+    expect(narration.narration).toContain('Orco Enfurecido');
+  }, 20_000);
+
+  it('una mención de pasada sin intención real de buscar/atacar NO lo detecta ni abre combate ("me contó que fue perseguida")', async () => {
+    const save2 = await prisma.save.create({
+      data: {
+        userId: (await getDefaultUserId()),
+        worldId: (await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } })).id,
+        characterName: 'Gorhorn de prueba (mención pasajera)',
+        characterArchetype: 'guerrero',
+        characterOrigin: 'Clan Maktor',
+        characterMotivation: 'x',
+        attributes: ATTRS,
+        portraitInitial: 'G',
+        currentLocationId: (await prisma.location.findFirstOrThrow({ where: { slug: 'hondonada-del-eco' } })).id,
+      },
+    });
+    await prisma.worldState.create({ data: { saveId: save2.id } });
+    await prisma.quest.create({
+      data: { saveId: save2.id, title: 'Acabar con el Orco Enfurecido', description: 'x', status: 'ACTIVA' },
+    });
+    narrateAction.mockResolvedValueOnce({
+      narration: 'Gorhorn recuerda cómo Gistera Koh llegó sin aliento, perseguida y asustada.',
+      newFacts: [],
+    });
+    const app = await buildApp();
+    const action = 'Pienso en lo perseguida que llegó Gistera ayer.';
+    const classifyRes = await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId: save2.id, action, enCombate: false } });
+    const { classification, roll } = classifyRes.json();
+    const narrateRes = await app.inject({
+      method: 'POST',
+      url: '/turn/narrate',
+      payload: { saveId: save2.id, action, classification, roll, enCombate: false },
+    });
+
+    expect(lastNdjsonLine(narrateRes.payload).combateIniciado).toBeNull();
+    const save2After = await prisma.save.findUniqueOrThrow({ where: { id: save2.id } });
+    expect(save2After.pendingCombatNpcSlugs).toEqual([]);
+    await prisma.save.delete({ where: { id: save2.id } });
+  }, 20_000);
+
+  it('bug propio encontrado minutos después del fix anterior (2026-08-20): "persigue" (verbo en presente, raíz "persig-") también se detecta, no solo "perseguidor" (sustantivo, raíz "persegu-")', async () => {
+    const save3 = await prisma.save.create({
+      data: {
+        userId: await getDefaultUserId(),
+        worldId: (await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } })).id,
+        characterName: 'Gorhorn de prueba (verbo persigue)',
+        characterArchetype: 'guerrero',
+        characterOrigin: 'Clan Maktor',
+        characterMotivation: 'x',
+        attributes: ATTRS,
+        portraitInitial: 'G',
+        currentLocationId: (await prisma.location.findFirstOrThrow({ where: { slug: 'hondonada-del-eco' } })).id,
+      },
+    });
+    await prisma.worldState.create({ data: { saveId: save3.id } });
+    await prisma.quest.create({
+      data: { saveId: save3.id, title: 'Acabar con el Orco Enfurecido', description: 'x', status: 'ACTIVA' },
+    });
+    narrateAction.mockResolvedValueOnce({
+      narration: 'Gorhorn busca con atención, siguiendo cualquier rastro.',
+      newFacts: [],
+    });
+    const app = await buildApp();
+    const action = 'Busco a quien me persigue.';
+    const classifyRes = await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId: save3.id, action, enCombate: false } });
+    const { classification, roll } = classifyRes.json();
+    const narrateRes = await app.inject({
+      method: 'POST',
+      url: '/turn/narrate',
+      payload: { saveId: save3.id, action, classification, roll, enCombate: false },
+    });
+
+    const { combateIniciado } = lastNdjsonLine(narrateRes.payload) as { combateIniciado: { npcs: { slug: string }[] } | null };
+    expect(combateIniciado?.npcs.map((n) => n.slug)).toEqual(['orco-enfurecido-hondonada']);
+    await prisma.save.delete({ where: { id: save3.id } });
   }, 20_000);
 });
 
@@ -3463,4 +3763,146 @@ describe('Espera de viaje precalculada: notBefore retiene el commit sin retener 
     const logEntry = await prisma.logEntry.findFirst({ where: { saveId, channel: 'CHARACTER', isPlayerAction: false }, orderBy: { createdAt: 'desc' } });
     expect(logEntry?.text).toBe('El golpe conecta.'); // texto fijo del mock de narrateAction
   }, 10_000);
+});
+
+// Panel "Curar" con varios objetos/usos a la vez (petición explícita, 2026-08-18) — camino
+// EXPLÍCITO nuevo (`healItemUses`), en paralelo al de texto libre de siempre (`detectMedicalItemUse`,
+// ya cubierto en otros tests/unitarios). El orden importa de verdad para curaUnPaso (ver
+// applySequentialHeals.test en death.test.ts) — este test usa el mismo par exacto (objeto débil,
+// tope HERIDO, seguido del fuerte, tope ILESO) para comprobarlo end-to-end contra Postgres real.
+describe('Curar: varios objetos a la vez con healItemUses (2026-08-18)', () => {
+  let saveId: string;
+
+  beforeAll(async () => {
+    const userId = await getDefaultUserId();
+    const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
+    const hondonada = await prisma.location.findFirstOrThrow({ where: { worldId: world.id, slug: 'hondonada-del-eco' } });
+    const save = await prisma.save.create({
+      data: {
+        userId,
+        worldId: world.id,
+        characterName: 'Gorhorn de prueba (curar)',
+        characterArchetype: 'guerrero',
+        characterOrigin: 'Clan Maktor',
+        characterMotivation: 'x',
+        attributes: ATTRS,
+        portraitInitial: 'G',
+        currentLocationId: hondonada.id,
+        condicionFisica: 'CONVALECIENTE',
+      },
+    });
+    saveId = save.id;
+    await prisma.worldState.create({ data: { saveId } });
+    await giveMaterials(saveId, [
+      { name: 'Agua hervida de liquen', catalogSlug: 'agua-hervida-liquen' }, // débil, tope HERIDO
+      { name: 'Cataplasma de salvia del polvo', catalogSlug: 'cataplasma-salvia-polvo' }, // fuerte, tope ILESO
+    ]);
+  });
+
+  afterAll(async () => {
+    vi.restoreAllMocks();
+    await prisma.save.delete({ where: { id: saveId } });
+  });
+
+  it('débil primero, fuerte después: CONVALECIENTE → HERIDO (nunca ILESO), narración determinista, las dos unidades consumidas', async () => {
+    classifyAction.mockResolvedValue({
+      requiereTirada: false, atributo: 'voluntad', dificultad: 8, razon: 'x', banda: 'instantanea', duracionEstimadaMinutos: 0,
+    });
+    const agua = await prisma.inventoryItem.findFirstOrThrow({ where: { saveId, catalogSlug: 'agua-hervida-liquen' } });
+    const cataplasma = await prisma.inventoryItem.findFirstOrThrow({ where: { saveId, catalogSlug: 'cataplasma-salvia-polvo' } });
+
+    const app = await buildApp();
+    const action = 'Reviso mi inventario y me curo con lo que llevo encima.';
+    const classifyRes = await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action, enCombate: false } });
+    const { classification, roll } = classifyRes.json();
+    const narrateRes = await app.inject({
+      method: 'POST',
+      url: '/turn/narrate',
+      payload: {
+        saveId,
+        action,
+        classification,
+        roll,
+        enCombate: false,
+        healItemUses: [
+          { itemId: agua.id, quantity: 1 },
+          { itemId: cataplasma.id, quantity: 1 },
+        ],
+      },
+    });
+    expect(narrateRes.statusCode).toBe(200);
+
+    const saveAfter = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
+    expect(saveAfter.condicionFisica).toBe('HERIDO');
+
+    // Las dos eran unidad única (sin sufijo de cantidad) — las dos filas desaparecen del todo.
+    const inventoryAfter = await prisma.inventoryItem.findMany({ where: { saveId } });
+    expect(inventoryAfter).toHaveLength(0);
+
+    const logEntry = await prisma.logEntry.findFirst({ where: { saveId, channel: 'CHARACTER', isPlayerAction: false }, orderBy: { createdAt: 'desc' } });
+    // "Agua hervida de liquen" también restaura energía (curaEnergia:30 en el catálogo) — la
+    // narración determinista lo menciona además de la condición resultante.
+    expect(logEntry?.text).toBe(
+      'Gorhorn de prueba (curar) se cura con Agua hervida de liquen, Cataplasma de salvia del polvo — pasa a estar herido y recupera energía.',
+    );
+  });
+});
+
+// Petición explícita de la usuaria (2026-08-21, jugando en vivo): "la primera vez que se abre el
+// combate y al recargar la página se está perdiendo el mensaje de la iniciativa y la tirada de los
+// dados" — mismo bug gemelo que `combatExchange`/`npcAbilityUsed` (LogEntry, 2026-08-13/14): la
+// tirada de iniciativa para el próximo intercambio se calculaba pero solo viajaba en la respuesta
+// HTTP del turno, nunca se guardaba.
+describe('LogEntry.initiativeRoll sobrevive a una recarga tras un intercambio de combate (bug real 2026-08-21)', () => {
+  let saveId: string;
+  let npcId: string;
+
+  beforeAll(async () => {
+    // Mismo criterio que el describe de arriba: dados pinchados al máximo para que cualquier
+    // intercambio resuelva de verdad (golpes_mutuos), garantizando que se calcule la iniciativa
+    // del próximo intercambio.
+    vi.spyOn(Math, 'random').mockReturnValue(0.99);
+    const userId = await getDefaultUserId();
+    const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
+    const npc = await prisma.npc.findFirstOrThrow({ where: { worldId: world.id, slug: 'orco-enfurecido-hondonada' } });
+    npcId = npc.id;
+    const location = await prisma.location.findFirstOrThrow({ where: { worldId: world.id, slug: 'hondonada-del-eco' } });
+    const save = await prisma.save.create({
+      data: {
+        userId,
+        worldId: world.id,
+        characterName: 'Gorhorn de prueba (iniciativa persistida)',
+        characterArchetype: 'guerrero',
+        characterOrigin: 'Clan Maktor',
+        characterMotivation: 'x',
+        attributes: ATTRS,
+        portraitInitial: 'G',
+        currentLocationId: location.id,
+      },
+    });
+    saveId = save.id;
+    await prisma.worldState.create({ data: { saveId } });
+  });
+
+  afterAll(async () => {
+    vi.restoreAllMocks();
+    await prisma.save.delete({ where: { id: saveId } });
+  });
+
+  it('el intercambio de combate persiste initiativeRoll en el LogEntry, no solo en la respuesta HTTP del turno', async () => {
+    const app = await buildApp();
+    const action = "Descargo un golpe directo con todo el peso de mi arma detrás 'Orco enfurecido'.";
+    const classifyRes = await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action, enCombate: true } });
+    const { classification, roll } = classifyRes.json();
+    const narrateRes = await app.inject({ method: 'POST', url: '/turn/narrate', payload: { saveId, action, classification, roll, enCombate: true } });
+    expect(narrateRes.statusCode).toBe(200);
+
+    const state = await prisma.npcState.findFirst({ where: { saveId, npcId } });
+    // Confirma que de verdad hubo un intercambio mecánico real este turno (no solo narración) —
+    // sin esto, `initiativeRoll` estaría null por diseño (no hay "próximo intercambio" que decidir).
+    expect(state).not.toBeNull();
+
+    const logEntry = await prisma.logEntry.findFirst({ where: { saveId, channel: 'CHARACTER', combate: true }, orderBy: { createdAt: 'desc' } });
+    expect(logEntry?.initiativeRoll).toMatchObject({ ganador: expect.stringMatching(/^(jugador|npc)$/), jugadorTirada: expect.any(Number), npcTirada: expect.any(Number) });
+  }, 15_000);
 });

@@ -298,6 +298,10 @@ export async function requestTurnNarrate(
     /// Rediseño de combate (2026-08-09) — ver el mismo campo en turnResolution.ts
     /// (NarrateAndPersistParams.isItemUse).
     isItemUse?: boolean
+    /// Panel "Curar" con varios objetos/usos a la vez (petición explícita, 2026-08-18) — ver el
+    /// mismo campo en turnResolution.ts (NarrateAndPersistParams.healItemUses). Lista ORDENADA —
+    /// el orden en que se seleccionaron los objetos cambia el resultado real.
+    healItemUses?: { itemId: string; quantity: number }[]
   },
   handlers?: TurnNarrateHandlers,
 ): Promise<NarrateResponse> {
@@ -673,6 +677,13 @@ export interface TravelDestinationInfo {
   locationSlug: string
   locationName: string
   region: string
+  /// Tiempo de juego real hasta este destino por el grafo de viaje (petición explícita,
+  /// 2026-08-18: "tiempo de juego que nos llevaría llegar... no tiempo real") — ya ajustado a
+  /// destreza, mismo cálculo exacto que usaría `resolveTravel` de verdad al confirmar el viaje.
+  /// `null` si el destino no tiene camino real por el grafo desde donde estás ahora (visitado por
+  /// otro medio, o revelado por mapa pero nunca enlazado) — se lista igual, solo sin tiempo.
+  minutos: number | null
+  banda: 'corta' | 'extendida' | 'larga' | null
 }
 export async function getDestinosViaje(saveId: string): Promise<{ hasMap: boolean; destinations: TravelDestinationInfo[] }> {
   return fetchJson(`${API_URL}/saves/${saveId}/destinos-viaje`)
@@ -986,8 +997,8 @@ export interface EnciclopediaAbilityInfo {
   category: 'combate' | 'general'
   imagePrompts: EnciclopediaImagePrompts
   imageUrls: EnciclopediaImageUrls
-  /// Rediseño del turno de combate (2026-07-28) — "tipo" de la habilidad para la rueda de
-  /// debilidades (attributeWheel.ts, backend) y su color en la UI.
+  /// Rediseño del turno de combate (2026-07-28) — "tipo" de la habilidad para el árbol de
+  /// ventajas (attributeWheel.ts, backend) y su color en la UI.
   preferredAttribute: Attribute
 }
 

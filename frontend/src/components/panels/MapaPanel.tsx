@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { beriRegions, llanurasNodePositions, CONSTRUCTION_RECIPE_ICONS, type LlanurasEdge, type LlanurasNode, type MapNodeOption } from '../../data/map'
 import { getEnciclopedia, getWorldLocations, type EnciclopediaConstructionRecipe, type WorldLocationInfo } from '../../lib/api'
+import { formatMinutos } from '../../lib/gameViewHelpers'
 import { InteractiveMap } from './InteractiveMap'
 import type { BuildingInfo, CurrentLocationInfo, DestinationInfo, InventoryItemInfo, QuestInfo } from '../../types'
 import { PanelSection } from '../PanelSection'
@@ -17,12 +18,6 @@ function recipeKeyForBuilding(b: { recipeKey?: string | null; tier?: number | nu
   if (b.recipeKey === 'ayuntamiento' && b.tier === 2) return 'ayuntamiento-mediano'
   if (b.recipeKey === 'ayuntamiento' && b.tier === 3) return 'ayuntamiento-grande'
   return b.recipeKey ?? null
-}
-
-function formatMinutos(minutos: number): string {
-  if (minutos < 60) return `~${minutos} min`
-  const horas = minutos / 60
-  return horas < 24 ? `~${horas.toFixed(1)}h` : `~${(horas / 24).toFixed(1)}d`
 }
 
 interface MapaPanelProps {

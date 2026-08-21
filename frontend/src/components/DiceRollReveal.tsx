@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { CombatExchangeInfo, CombatExchangeSideInfo } from '../types'
-import { attributeLabels } from '../lib/dice'
-import { gradoOf, formatMultiplier, difficultyLabelFor } from './CombatExchangeBadge'
+import { attributeLabels, attributeColorClasses } from '../lib/dice'
+import { gradoOf, formatMultiplier, difficultyLabelFor, esCheckOpuesto } from './CombatExchangeBadge'
 import { TooltipAnchor } from './TooltipAnchor'
 
 /// Animación de dados en paralelo (petición explícita, 2026-08-15: "que veas los resultados
@@ -55,7 +55,17 @@ const ROLL_TICK_DELAYS_MS = buildRollTickDelays(ROLL_DURATION_MS)
 
 /// Un lado del intercambio, cayendo (petición explícita: solo el NÚMERO gira, el 🎲 se queda
 /// fijo — más simple, y coincide con cómo ya se muestran las tiradas resueltas en todo el juego).
-function DiceSide({ label, side, startDelayMs }: { label: string; side: CombatExchangeSideInfo; startDelayMs: number }) {
+function DiceSide({
+  label,
+  side,
+  startDelayMs,
+  showDifficulty,
+}: {
+  label: string
+  side: CombatExchangeSideInfo
+  startDelayMs: number
+  showDifficulty: boolean
+}) {
   const [display, setDisplay] = useState<number | null>(null)
   const [landed, setLanded] = useState(false)
   const grado = gradoOf(side)
@@ -91,14 +101,16 @@ function DiceSide({ label, side, startDelayMs }: { label: string; side: CombatEx
   // a tus 11 de destreza, que se vea para que se entienda que eso después se suma") — mismo cálculo
   // exacto que ya usa CombatExchangeBadge (`Math.floor(valorEfectivo / 2)`, NO el atributo crudo:
   // bug real ya cerrado una vez ahí, 2026-08-09, mostrar el crudo en vez del ya multiplicado nunca
-  // cuadraba con el resultado final cuando la rueda de debilidades aplicaba). Es un número fijo,
+  // cuadraba con el resultado final cuando la árbol de ventajas aplicaba). Es un número fijo,
   // conocido de antemano — no depende del dado — así que se muestra desde YA, no solo al aterrizar.
   //
-  // "(valorEfectivo/2)" en gris junto al bono (petición explícita, 2026-08-15: "en vez de poner
-  // +9 solo entre paréntesis debería aparecer en gris (18/2)") — la jugadora esperaba que el bono
-  // fuera el atributo entero, no la mitad; mostrar la propia división deja claro de un vistazo de
-  // dónde sale el número, sin tener que preguntarlo. Sigue sin mostrar el malus aquí (eso queda
-  // para el resultado final, ver CombatExchangeBadge) — solo la aritmética del bono en sí.
+  // "(valorCrudo×mult≈valorEfectivo/2)" en gris junto al bono (petición explícita, 2026-08-15;
+  // revisado 2026-08-18 y de nuevo 2026-08-20, mismo criterio y mismo motivo que
+  // CombatExchangeBadge.tsx: el ×mult vive DENTRO del numerador de la fracción, resuelto antes del
+  // "/2" — sacarlo fuera de la fracción, como antes, se leía como una multiplicación todavía
+  // pendiente sobre el total de arriba. `side.valorEfectivo` es el mismo número que ya calculó el
+  // backend para `bono` — se reutiliza tal cual, nunca se recalcula aparte.
+  const valorCrudo = Math.max(1, side.value - (side.malus || 0))
   const bono = Math.floor(side.valorEfectivo / 2)
 
   return (
@@ -119,29 +131,46 @@ function DiceSide({ label, side, startDelayMs }: { label: string; side: CombatEx
             {display ?? '?'}
           </span>
         </span>
-        <span className="font-mono text-sm text-wood-500">
-          +{bono} <span className="text-wood-600">({side.valorEfectivo}/2)</span>
+        {/* Dos colores deliberadamente distintos (petición explícita, 2026-08-20: "que los que
+            suman estén en un color y lo del paréntesis en otro"), mismo criterio que
+            CombatExchangeBadge.tsx — `wood-100` cálido para el bono que de verdad se suma al
+            dado, `accent2` frío para la fracción que solo explica de dónde sale ese número. */}
+        <span className="flex items-baseline gap-1.5 font-mono text-sm">
+          <span className="font-bold text-wood-100">+{bono}</span>
+          <span className="text-accent2-400">
+            ({valorCrudo}
+            {/* El ×mult se resuelve AQUÍ DENTRO, antes del "/2" — mismo criterio y mismo motivo
+                que CombatExchangeBadge.tsx (bug real, 2026-08-20). */}
+            {side.multiplicador != null && side.multiplicador !== 1 && (
+              <>
+                <span className={side.multiplicador > 1 ? 'text-moss-400' : 'text-danger-400'}>×{formatMultiplier(side.multiplicador)}</span>
+                ≈{side.valorEfectivo}
+              </>
+            )}
+            /2)
+          </span>
         </span>
       </span>
-      <span className="text-2xs text-wood-500">
-        {attributeLabels[side.attribute]}
-        {/* Multiplicador de la rueda de debilidades (petición explícita, 2026-08-15) — mismo dato
-            y mismo criterio de color que ya usa CombatExchangeBadge (verde si favorece a este
-            lado, siempre verde con turnos nuevos desde el rediseño "solo premia, nunca penaliza"
-            del mismo día — ver `typeMultiplierFor`, attributeWheel.ts). */}
-        {side.multiplicador != null && side.multiplicador !== 1 && (
-          <span className={`ml-1 font-mono ${side.multiplicador > 1 ? 'text-moss-400' : 'text-danger-400'}`}>×{formatMultiplier(side.multiplicador)}</span>
-        )}
-      </span>
+      {/* Color por atributo (petición explícita, 2026-08-20) — mismo `attributeColorClasses` que
+          ya usa CombatExchangeBadge.tsx en la cabecera "Atr vs Atr", así el nombre del atributo se
+          reconoce de un vistazo también mientras el dado todavía está cayendo. */}
+      <span className={`text-2xs font-semibold ${attributeColorClasses[side.attribute].text}`}>{attributeLabels[side.attribute]}</span>
       {/* Dificultad necesaria (petición explícita, 2026-08-15: "añadir en algún lado el mínimo
           necesario que necesitas sacar") — visible desde el principio, no solo al aterrizar: es
           un dato fijo que no depende de la tirada, mismo criterio y mismo texto/tooltip que ya usa
-          CombatExchangeBadge ("necesitaba X") para no inventar una segunda forma de explicarlo. */}
-      <TooltipAnchor text={`Dificultad fija según tu nivel frente al del rival — no es la tirada del otro lado. Umbral real: ${side.difficulty}.`}>
-        <span className="font-mono text-2xs text-wood-600 underline decoration-dotted decoration-wood-700 underline-offset-2">
-          necesitas {difficultyLabelFor(side.difficulty)} ({side.difficulty})
-        </span>
-      </TooltipAnchor>
+          CombatExchangeBadge ("necesitaba X") para no inventar una segunda forma de explicarlo.
+          Rediseño a check opuesto (2026-08-21): en un turno NUEVO esta dificultad ya no decide
+          nada — el desenlace sale de comparar los dos totales entre sí, no contra este umbral —
+          así que mostrarla aquí sería directamente engañoso; se oculta (CombatExchangeBadge, ya
+          aterrizado el turno, es quien explica el margen real). Solo se mantiene para turnos
+          `resolveIndependentExchange` (`!showDifficulty` es falso solo cuando SÍ aplica). */}
+      {showDifficulty && (
+        <TooltipAnchor text={`Dificultad fija según tu nivel frente al del rival — no es la tirada del otro lado. Umbral real: ${side.difficulty}.`}>
+          <span className="font-mono text-2xs text-wood-600 underline decoration-dotted decoration-wood-700 underline-offset-2">
+            necesitas {difficultyLabelFor(side.difficulty)} ({side.difficulty})
+          </span>
+        </TooltipAnchor>
+      )}
     </div>
   )
 }
@@ -154,12 +183,13 @@ export function DiceRollReveal({ exchange, playerName, enemyName }: { exchange: 
   // el primero ya aterrizó del todo (secuencial, ver ROLL_DURATION_MS), no en paralelo.
   const jugadorDelayMs = exchange.atacanteEsJugador ? 0 : ROLL_DURATION_MS
   const enemigoDelayMs = exchange.atacanteEsJugador ? ROLL_DURATION_MS : 0
+  const showDifficulty = !esCheckOpuesto(exchange)
 
   return (
     <div className="animate-entry-in mt-2 flex items-center justify-center gap-14 rounded-lg border border-dashed border-iron-700 bg-wood-950/30 px-3 py-3">
-      <DiceSide label={playerName ?? 'Tú'} side={jugador} startDelayMs={jugadorDelayMs} />
+      <DiceSide label={playerName ?? 'Tú'} side={jugador} startDelayMs={jugadorDelayMs} showDifficulty={showDifficulty} />
       <span className="text-xs text-wood-600">vs</span>
-      <DiceSide label={enemyName ?? 'el enemigo'} side={enemigo} startDelayMs={enemigoDelayMs} />
+      <DiceSide label={enemyName ?? 'el enemigo'} side={enemigo} startDelayMs={enemigoDelayMs} showDifficulty={showDifficulty} />
     </div>
   )
 }

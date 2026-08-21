@@ -1,5 +1,6 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState, type KeyboardEvent } from 'react'
 import type { ComposerChip } from '../types'
+import type { EnciclopediaIndex } from '../lib/enciclopediaIndex'
 
 export interface ChatComposerHandle {
   insertChip: (chip: ComposerChip) => void
@@ -10,6 +11,11 @@ export interface ChatComposerHandle {
   /// punto de partida, pero tiene que poder seguir escribiendo/corrigiéndola como si la hubiera
   /// tecleado ella misma.
   setText: (text: string) => void
+  /// Igual que `setText`, pero además convierte cada mención reconocida (mismo índice que
+  /// `EnciclopediaLinkedText` usa para narración/diario) en un chip real de verdad, con su ⓘ a la
+  /// Enciclopedia — petición explícita, 2026-08-20: "al pegar la sugerencia al prompt las palabras
+  /// clave se sustituyan por links". El resto del texto sigue siendo editable como siempre.
+  setTextWithChips: (text: string, index: EnciclopediaIndex) => void
 }
 
 interface ChatComposerProps {
@@ -182,6 +188,42 @@ export const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(fu
       if (!el) return
       el.innerHTML = ''
       el.appendChild(document.createTextNode(text))
+      el.focus()
+      const range = document.createRange()
+      range.selectNodeContents(el)
+      range.collapse(false)
+      const sel = window.getSelection()
+      sel?.removeAllRanges()
+      sel?.addRange(range)
+      savedRangeRef.current = range.cloneRange()
+      handleInput()
+    },
+    // Mismo criterio de coincidencia que EnciclopediaLinkedText.tsx (el índice ya viene ordenado
+    // largo-a-corto en su regex, así que "gana" siempre la mención más específica) — aquí, en vez
+    // de un <button> clicable de navegación, cada mención reconocida se inserta como el mismo chip
+    // real que ya usa insertChip (icono + nombre canónico + tooltip), para que sea indistinguible
+    // de haberla insertado a mano desde la barra lateral.
+    setTextWithChips(text: string, index: EnciclopediaIndex) {
+      const el = editorRef.current
+      if (!el) return
+      el.innerHTML = ''
+      if (!index.regex) {
+        el.appendChild(document.createTextNode(text))
+      } else {
+        let cursor = 0
+        for (const match of text.matchAll(index.regex)) {
+          const start = match.index ?? 0
+          const matchedText = match[0]
+          const target = index.entries.get(matchedText.toLowerCase())
+          if (!target) continue
+          if (start > cursor) el.appendChild(document.createTextNode(text.slice(cursor, start)))
+          const chipNode = buildChipNode({ icon: target.icon, label: target.name, description: target.description })
+          el.appendChild(chipNode)
+          el.appendChild(document.createTextNode(CHIP_SPACER))
+          cursor = start + matchedText.length
+        }
+        if (cursor < text.length) el.appendChild(document.createTextNode(text.slice(cursor)))
+      }
       el.focus()
       const range = document.createRange()
       range.selectNodeContents(el)

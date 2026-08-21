@@ -207,6 +207,12 @@ describe('detectsFabricatedNpcClaim', () => {
     const result = await detectsFabricatedNpcClaim("Ataco a 'X'.", 'world1');
     expect(result).toBeNull();
   });
+
+  it('bug real jugando en vivo (2026-08-20): no dispara con diálogo del propio jugador entre comillas, aunque la réplica no coincida con ningún NPC del catálogo', async () => {
+    const result = await detectsFabricatedNpcClaim("Me acerco a ella y digo: 'Quien eres y a donde vas con tanta prisa?'", 'world1');
+    expect(result).toBeNull();
+    expect(findManyNpc).not.toHaveBeenCalled();
+  });
 });
 
 describe('fabricatedNpcNarrationFor', () => {

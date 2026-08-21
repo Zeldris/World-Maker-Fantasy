@@ -62,7 +62,17 @@ const FACT_STOPWORDS = new Set([
 /// cualquier hecho, dejan de dominar la similitud; lo que sobrevive es el contenido real.
 /// Verificado contra los 3 casos reales ya conocidos (bug del Orco Enfurecido, "orcos"~"oca",
 /// "el puente está/quedó destruido") — siguen detectándose como duplicado con el mismo umbral.
-function factSimilarity(a: string, b: string): number {
+///
+/// Exportada (bug real, 2026-08-20: "al darle a sugerir no me está dando ninguna sugerencia") —
+/// `dropSuggestionsCopyingExample`/`sanitizeSuggestions` (narrador.ts) reusaban `similarity()`
+/// (plana) para comparar sugerencias CORTAS de 5-10 palabras contra los ejemplos fijos del
+/// prompt — exactamente el mismo problema que motivó esta función: dos sugerencias sobre temas
+/// totalmente distintos ("Le pregunto por qué la persiguen..." / "Le pregunto por su nombre
+/// antes de acercarme...") comparten solo palabras de función ("le", "pregunto", "por", "antes",
+/// "de") y ya cruzan el umbral con `similarity()` plana, así que se descartaban las 3 sugerencias
+/// generadas sin que ninguna copiara nada de verdad — devolviendo `[]` sin ningún error visible.
+/// Este Jaccard con stopwords filtradas es exactamente el remedio ya calibrado para ese patrón.
+export function factSimilarity(a: string, b: string): number {
   const wordsA = new Set(normalize(a).split(' ').filter((w) => w && !FACT_STOPWORDS.has(w)));
   const wordsB = new Set(normalize(b).split(' ').filter((w) => w && !FACT_STOPWORDS.has(w)));
   if (!wordsA.size || !wordsB.size) return 0;

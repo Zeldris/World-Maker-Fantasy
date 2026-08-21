@@ -11,6 +11,12 @@ export const env = {
   ollamaBaseUrl: process.env.OLLAMA_BASE_URL ?? 'http://localhost:11434',
   ollamaModelNarrador: process.env.OLLAMA_MODEL_NARRADOR ?? 'tarkor-narrador',
   ollamaModelCronista: process.env.OLLAMA_MODEL_CRONISTA ?? 'qwen2.5:1.5b-instruct',
+  /// Modelo propio para "Sugerir" (petición explícita, 2026-08-21: "el 4b solo para sugerencias no
+  /// puede ser una opción?") — separado a propósito de `ollamaModelNarrador`, que sigue siendo el
+  /// único que narra turnos reales. Verificado en vivo el mismo día contra la partida real: calidad
+  /// comparable al 7B en esta tarea concreta, con `think: false` (ollama.ts) evitando que el modo
+  /// de razonamiento de la familia qwen3.5 se coma el timeout entero sin responder.
+  ollamaModelSugerencias: process.env.OLLAMA_MODEL_SUGERENCIAS ?? 'qwen3.5:4b',
   ollamaModelEmbeddings: process.env.OLLAMA_MODEL_EMBEDDINGS ?? 'nomic-embed-text',
   ollamaKeepAlive: process.env.OLLAMA_KEEP_ALIVE ?? '5m',
 

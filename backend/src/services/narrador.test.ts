@@ -8,8 +8,14 @@ import {
   sanitizeSuggestions,
   hasFalseCombatMiss,
   dropSuggestionsTargetingDownedNpc,
+  dropSuggestionsAttackingHelpRequester,
+  dropSuggestionsCompressingAcceptance,
+  dropSuggestionsWrongGrammaticalPerson,
   npcsKnownFromLog,
   dropSuggestionsReferencingPlayerByName,
+  lastLogHasDirectSpeech,
+  dropSuggestionsCopyingExample,
+  dropSuggestionsNamingStaleNpc,
   hasEnglishLeak,
   hasFalseCombatHit,
   hasPrematureCombatResolution,
@@ -110,7 +116,10 @@ describe('sanitizeSuggestions', () => {
   });
 
   it('nunca rellena de vuelta hasta 3 — puede devolver menos si hay duplicados', () => {
-    const suggestions = ['Ataco al orco', 'Golpeo al orco', 'Le doy un golpe al orco'];
+    // Contenido de verdad compartido ("orco enfurecido", "mi hacha"), no solo palabras de función
+    // (petición explícita, 2026-08-20, ver comentario de `SUGGESTION_SIMILARITY_THRESHOLD`) — con
+    // `factSimilarity` el único verbo distinto no basta para salvar la segunda de ser duplicado.
+    const suggestions = ['Ataco al orco enfurecido con mi hacha', 'Golpeo al orco enfurecido con mi hacha', 'Reviso mi equipo'];
     expect(sanitizeSuggestions(suggestions).length).toBeLessThan(3);
   });
 });
@@ -140,6 +149,45 @@ describe('dropSuggestionsTargetingDownedNpc', () => {
   });
 });
 
+describe('dropSuggestionsAttackingHelpRequester', () => {
+  const recentLog = [
+    'Gistera Koh se presenta a toda prisa: "Soy Gistera Koh, del Clan Serhu. Empieza por quien me persigue — hazlo antes de que sea tarde."',
+  ];
+
+  it('bug real jugando en vivo (2026-08-20, "ahora funciona pero...muy mal"), primera variante: descarta "Remato a X" cuando X está ILESA pidiendo ayuda, sin combate de por medio', () => {
+    const knownNpcs = [{ name: 'Gistera Koh', condicionFisica: 'ILESO' }];
+    const suggestions = ['Remato a Gistera Koh para evitar su pérdida', 'Le pregunto quién la persigue', 'Acepto ayudarla'];
+    expect(dropSuggestionsAttackingHelpRequester(suggestions, knownNpcs, recentLog)).toEqual(['Le pregunto quién la persigue', 'Acepto ayudarla']);
+  });
+
+  it('segunda variante del mismo bug, reincidente: descarta también "Ataco a X" contra la misma peticionaria', () => {
+    const knownNpcs = [{ name: 'Gistera Koh', condicionFisica: 'ILESO' }];
+    const suggestions = ['Ataco a Gistera Koh para acabar con su presencia', 'Le pregunto por qué se acelera tanto', 'Sigo explorando la zona'];
+    expect(dropSuggestionsAttackingHelpRequester(suggestions, knownNpcs, recentLog)).toEqual([
+      'Le pregunto por qué se acelera tanto',
+      'Sigo explorando la zona',
+    ]);
+  });
+
+  it('no descarta un ataque contra un NPC sano que NO es quien acaba de hablar (enemigo normal en pleno combate)', () => {
+    const knownNpcs = [{ name: 'Orco Enfurecido', condicionFisica: 'ILESO' }];
+    const suggestions = ['Ataco al Orco Enfurecido con mi hacha'];
+    expect(dropSuggestionsAttackingHelpRequester(suggestions, knownNpcs, ['Gorhorn ataca al Orco Enfurecido.'])).toEqual(suggestions);
+  });
+
+  it('no descarta "Remato a X" cuando X SÍ está convaleciente/muerta — sigue siendo coherente', () => {
+    const knownNpcs = [{ name: 'Gistera Koh', condicionFisica: 'CONVALECIENTE' }];
+    const suggestions = ['Remato a Gistera Koh'];
+    expect(dropSuggestionsAttackingHelpRequester(suggestions, knownNpcs, recentLog)).toEqual(suggestions);
+  });
+
+  it('no toca nada si la última entrada no tiene diálogo directo', () => {
+    const knownNpcs = [{ name: 'Gistera Koh', condicionFisica: 'ILESO' }];
+    const suggestions = ['Ataco a Gistera Koh'];
+    expect(dropSuggestionsAttackingHelpRequester(suggestions, knownNpcs, ['Gistera Koh se acerca corriendo, sin aliento.'])).toEqual(suggestions);
+  });
+});
+
 describe('npcsKnownFromLog', () => {
   it('bug real reportado en captura (2026-08-15): descarta a un NPC cuyo nombre real todavía no aparece en el historial (encuentro guionizado sin presentar)', () => {
     const npcs = [{ name: 'Gistera Koh', condicionFisica: 'ILESO' as const }];
@@ -162,6 +210,99 @@ describe('npcsKnownFromLog', () => {
   });
 });
 
+describe('dropSuggestionsCompressingAcceptance', () => {
+  it('bug real reincidente jugando en vivo (2026-08-20): descarta "Acepto ayudarla y..." — dos beats comprimidos en una frase, pese a que REGLA 4 ya lo prohíbe en el prompt', () => {
+    const suggestions = [
+      'Acepto ayudarla y busco al que me persigue',
+      'Le pregunto por qué los Serhu se han vuelto contra su propio clan',
+      'Me niego a ayudarla hasta que me explique mejor la situación',
+    ];
+    expect(dropSuggestionsCompressingAcceptance(suggestions)).toEqual([
+      'Le pregunto por qué los Serhu se han vuelto contra su propio clan',
+      'Me niego a ayudarla hasta que me explique mejor la situación',
+    ]);
+  });
+
+  it('descarta las variantes reales ya vistas ("voy a por", "ataco a", "decido ayudarla y", "ayudar a + nombre")', () => {
+    const suggestions = [
+      'Acepto ayudarla y voy a por quien la persigue',
+      'Acepto ayudarla y ataco al que me persigue',
+      'Decido ayudarla y me preparo para enfrentar al Orco Enfurecido',
+      'Acepto ayudar a Gistera Koh y me giro para ver quién nos persigue.',
+    ];
+    expect(dropSuggestionsCompressingAcceptance(suggestions)).toEqual([]);
+  });
+
+  it('descarta también la variante con PUNTO en vez de "y" uniendo la segunda frase ("Acepto ayudarte, Gistera Koh. Debo enfrentarme al que te persigue primero.")', () => {
+    const suggestions = [
+      'Acepto ayudarte, Gistera Koh. Debo enfrentarme al que te persigue primero.',
+      'Le pregunto por qué le persiguen antes de tomar una decisión',
+    ];
+    expect(dropSuggestionsCompressingAcceptance(suggestions)).toEqual(['Le pregunto por qué le persiguen antes de tomar una decisión']);
+  });
+
+  it('"Acepto ayudarla" sola, sin nada detrás, es justo la forma correcta y se mantiene', () => {
+    const suggestions = ['Acepto ayudarla', 'Acepto ayudarte, Gistera'];
+    expect(dropSuggestionsCompressingAcceptance(suggestions)).toEqual(suggestions);
+  });
+
+  it('no descarta una aceptación CON CONDICIÓN legítima solo porque tenga una "y" más adelante en la frase', () => {
+    const suggestions = [
+      'Acepto ayudarla, pero solo si me cuentas todo lo que sabes sobre los Serhu y por qué están en guerra con nosotros.',
+      'Acepto ayudarla si me explica bien la situación y me parece razonable.',
+    ];
+    expect(dropSuggestionsCompressingAcceptance(suggestions)).toEqual(suggestions);
+  });
+
+  it('no toca sugerencias sin verbo de aceptar', () => {
+    const suggestions = ['Le pregunto por qué la persiguen antes de decidir nada', 'Observo la orca detenidamente'];
+    expect(dropSuggestionsCompressingAcceptance(suggestions)).toEqual(suggestions);
+  });
+});
+
+describe('dropSuggestionsWrongGrammaticalPerson', () => {
+  it('bug real reincidente jugando en vivo (2026-08-20, 2 de 2 veces seguidas): descarta "Examinó"/"Examine" — tercera persona/imperativo, nunca "Examino" (primera persona presente, la forma correcta)', () => {
+    const suggestions = [
+      'Examinó el terreno en busca de cualquier señal o trampa que pudiera indicar la dirección del perseguidor.',
+      'Examine el terreno alrededor, buscando algún peligro que nos rodea.',
+      'Le pregunto por qué los Serhu la han expulsado del clan antes de tomar una decisión.',
+    ];
+    expect(dropSuggestionsWrongGrammaticalPerson(suggestions)).toEqual([
+      'Le pregunto por qué los Serhu la han expulsado del clan antes de tomar una decisión.',
+    ]);
+  });
+
+  it('descarta el resto de verbos de la misma familia semántica (revisa/busca/inspecciona/observa/explora/registra, en sus 3 formas equivocadas)', () => {
+    const suggestions = [
+      'Revisa el campamento en busca de pistas',
+      'Buscó rastros del perseguidor',
+      'Inspeccione el terreno con cuidado',
+      'Observa a la orca desde lejos',
+      'Exploró la zona rocosa',
+      'Registre el cuerpo caído',
+    ];
+    expect(dropSuggestionsWrongGrammaticalPerson(suggestions)).toEqual([]);
+  });
+
+  it('mantiene la forma correcta de primera persona ("Examino"/"Reviso"/"Busco"/"Inspecciono"/"Observo"/"Exploro"/"Registro")', () => {
+    const suggestions = [
+      'Examino el terreno en busca de cualquier señal',
+      'Reviso los alrededores buscando al perseguidor',
+      'Busco rastros del que persigue a Gistera',
+      'Inspecciono la zona con cuidado',
+      'Observo a la orca desde lejos',
+      'Exploro la hondonada',
+      'Registro el cuerpo caído',
+    ];
+    expect(dropSuggestionsWrongGrammaticalPerson(suggestions)).toEqual(suggestions);
+  });
+
+  it('solo mira la PRIMERA palabra — no descarta una frase que use esos verbos más adelante en otra persona dentro de una subordinada', () => {
+    const suggestions = ['Le pregunto si ella examina el terreno también'];
+    expect(dropSuggestionsWrongGrammaticalPerson(suggestions)).toEqual(suggestions);
+  });
+});
+
 describe('dropSuggestionsReferencingPlayerByName', () => {
   it('bug real jugando en vivo (2026-08-15), reincidente pese a la instrucción del prompt: descarta una sugerencia que trata al propio personaje como si fuera otra persona', () => {
     const suggestions = [
@@ -178,6 +319,99 @@ describe('dropSuggestionsReferencingPlayerByName', () => {
 
   it('no revienta si el nombre del personaje tiene caracteres especiales de regex', () => {
     expect(dropSuggestionsReferencingPlayerByName(['Ataco al enemigo'], 'Gor+horn (el Roto)')).toEqual(['Ataco al enemigo']);
+  });
+});
+
+describe('lastLogHasDirectSpeech', () => {
+  it('bug real jugando en vivo (2026-08-18): un NPC acercándose sin haber dicho nada todavía NO cuenta como diálogo', () => {
+    const recentLog = [
+      'Una sombra se acerca a gran velocidad por la llanura. En cuanto la tiene a la vista, distingue que es una orca con la marca del Clan Serhu — se acerca a toda prisa, sin aliento, mirando constantemente hacia atrás, como si algo la persiguiera.',
+    ];
+    expect(lastLogHasDirectSpeech(recentLog)).toBe(false);
+  });
+
+  it('una réplica real entre comillas en la última entrada sí cuenta', () => {
+    const recentLog = ['Gistera Koh se presenta a toda prisa: "Soy Gistera Koh, del Clan Serhu, aunque ya no. Empieza por el que me persigue."'];
+    expect(lastLogHasDirectSpeech(recentLog)).toBe(true);
+  });
+
+  it('solo mira la ÚLTIMA entrada — una réplica de turnos anteriores ya está resuelta', () => {
+    const recentLog = ['Gistera Koh dice: "Ayúdame."', 'Gorhorn asiente y empieza a caminar hacia el borde de la hondonada.'];
+    expect(lastLogHasDirectSpeech(recentLog)).toBe(false);
+  });
+
+  it('historial vacío no revienta', () => {
+    expect(lastLogHasDirectSpeech([])).toBe(false);
+  });
+});
+
+describe('dropSuggestionsCopyingExample', () => {
+  it('bug real reportado en captura (2026-08-18): descarta un fragmento casi calcado de EJEMPLO 1/2 del prompt (rediseño a fragmentos cortos, 2026-08-20)', () => {
+    const suggestions = ['Registro su cuerpo', 'Sigo mi camino sin decir nada', 'Miro alrededor buscando cobijo'];
+    const kept = dropSuggestionsCopyingExample(suggestions);
+    expect(kept).not.toContain('Registro su cuerpo');
+  });
+
+  it('no toca sugerencias genuinas de la partida real, aunque compartan alguna palabra suelta con el ejemplo', () => {
+    const suggestions = ['Ataco al Orco Enfurecido con mi hacha', 'Le pregunto a Gistera Koh sobre sus planes y motivaciones'];
+    expect(dropSuggestionsCopyingExample(suggestions)).toEqual(suggestions);
+  });
+
+  it('bug real jugando en vivo (2026-08-20, "al darle a sugerir no me está dando ninguna sugerencia"): no descarta una sugerencia sobre un tema totalmente distinto solo por compartir el mismo arranque de frase ("Le pregunto por...") que EJEMPLO 2 — con `similarity()` plana (antes del fix) esto cruzaba el umbral y se descartaban las 3 sugerencias generadas sin que ninguna copiara nada de verdad, devolviendo [] sin ningún error visible', () => {
+    const suggestions = ['Le pregunto por su nombre antes de acercarme más', 'Reviso mi equipo antes de seguir', 'Sigo caminando hacia el norte'];
+    expect(dropSuggestionsCopyingExample(suggestions)).toEqual(suggestions);
+  });
+});
+
+describe('dropSuggestionsNamingStaleNpc', () => {
+  it('bug real reportado en captura (2026-08-18): Gistera pide ayuda contra "uno de los suyos" sin nombrarlo — descarta la sugerencia que rellena el hueco con un NPC conocido de antes pero no nombrado ahora', () => {
+    const knownNpcs = [
+      { name: 'Gistera Koh', condicionFisica: 'ILESO' as const },
+      { name: 'Orco Enfurecido', condicionFisica: 'ILESO' as const },
+    ];
+    const recentLog = [
+      'Gorhorn se planta frente a la figura y le exige que hable. Con la respiración entrecortada, se presenta a toda prisa: "Soy Gistera Koh... del Clan Serhu, aunque ya no. No tengo tiempo para explicarte más — uno de los suyos me pisa los talones y quiere verme muerta. Empieza por el que me persigue."',
+    ];
+    const suggestions = [
+      'Repite tu pregunta para asegurarte de que Gistera Koh entiende tu mensaje',
+      'Mira hacia atrás en busca de una huella o rastro del Orco Enfurecido',
+      'Preguntas a Gistera Koh sobre sus planes y motivaciones',
+    ];
+    expect(dropSuggestionsNamingStaleNpc(suggestions, knownNpcs, recentLog)).toEqual([
+      'Repite tu pregunta para asegurarte de que Gistera Koh entiende tu mensaje',
+      'Preguntas a Gistera Koh sobre sus planes y motivaciones',
+    ]);
+  });
+
+  it('no filtra un NPC cuyo nombre SÍ aparece en la última entrada', () => {
+    const knownNpcs = [{ name: 'Gistera Koh', condicionFisica: 'ILESO' as const }];
+    const recentLog = ['Gistera Koh dice: "Ayúdame."'];
+    const suggestions = ['Le pregunto a Gistera Koh qué necesita'];
+    expect(dropSuggestionsNamingStaleNpc(suggestions, knownNpcs, recentLog)).toEqual(suggestions);
+  });
+
+  it('sin NPCs conocidos, no toca nada', () => {
+    const suggestions = ['Sigo explorando la zona'];
+    expect(dropSuggestionsNamingStaleNpc(suggestions, [], ['Algo pasa.'])).toEqual(suggestions);
+  });
+
+  it('bug reincidente jugando en vivo (2026-08-20): descarta también un NPC que el motor detecta en escena pero que JAMÁS ha aparecido en el historial (ni siquiera en una entrada anterior a la última) — antes solo se recibía `knownNpcs` (ya filtrado por `npcsKnownFromLog`), así que este caso quedaba completamente fuera de la red de seguridad', () => {
+    const npcsEnEscena = [
+      { name: 'Gistera Koh', condicionFisica: 'ILESO' as const },
+      { name: 'Orco Enfurecido', condicionFisica: 'ILESO' as const },
+    ];
+    const recentLog = [
+      'Gorhorn se planta frente a la figura y le exige que hable. Con la respiración entrecortada, se presenta a toda prisa: "Soy Gistera Koh... del Clan Serhu, aunque ya no. No tengo tiempo para explicarte más — uno de los suyos me pisa los talones y quiere verme muerta. Empieza por el que me persigue."',
+    ];
+    const suggestions = [
+      'Le pregunto por qué su clan se volvió contra los Maktor y cómo puedo ayudarla.',
+      'Inspecciono a la orca en busca de alguna señal o debilidad para el Orco Enfurecido que persigue a Gistera.',
+      'Me niego a ayudarla hasta que me explique mejor por qué debe matar a uno de los suyos.',
+    ];
+    expect(dropSuggestionsNamingStaleNpc(suggestions, npcsEnEscena, recentLog)).toEqual([
+      'Le pregunto por qué su clan se volvió contra los Maktor y cómo puedo ayudarla.',
+      'Me niego a ayudarla hasta que me explique mejor por qué debe matar a uno de los suyos.',
+    ]);
   });
 });
 

@@ -116,6 +116,22 @@ export function healCeilingFor(
   return CONDICION_ORDER[Math.min(currentIdx, ceilingIdx)];
 }
 
+/// Varios usos de objeto médico en el mismo turno (petición explícita, 2026-08-18: panel "Curar"
+/// con cantidad + varios objetos a la vez, en vez de uno solo) — pliega `healCeilingFor` SIN
+/// MODIFICARLA sobre una lista ORDENADA de usos, siempre con `restAttempted`/`restInValidLocation`
+/// en `false` (este camino es solo objetos, nunca "descansar"). El ORDEN importa de verdad para
+/// los objetos `curaUnPaso` (verificado a mano): desde CONVALECIENTE, un objeto de tope GRAVE
+/// seguido de uno de tope ILESO deja en HERIDO; el mismo par al revés deja en GRAVE — usar primero
+/// el objeto más débil "gasta" menos margen del más fuerte. El caller decide el orden (mismo orden
+/// en que la jugadora seleccionó cada objeto en el panel).
+export function applySequentialHeals(current: CondicionFisica, uses: { curaHasta: CondicionFisica; curaUnPaso: boolean }[]): CondicionFisica {
+  let condicion = current;
+  for (const use of uses) {
+    condicion = healCeilingFor(condicion, false, false, use.curaHasta, use.curaUnPaso);
+  }
+  return condicion;
+}
+
 /// Aplica la propuesta de condición física del Narrador con las reglas de § 1: empeorar fuera de
 /// combate nunca se acepta; en combate empeora como mucho un escalón por turno (nunca "de ILESO a
 /// MUERTO" de golpe). Mejorar (2026-07-29) ya no se acepta sin más — se topa en `healCeiling`

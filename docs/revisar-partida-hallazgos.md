@@ -95,6 +95,17 @@ Cada entrada: fecha, qué se detectó (cita textual si es narración), causa ra�
 **2026-08-15**
 - [rediseño de balance: la rueda de debilidades solo premia, nunca penaliza](#2026-08-15-rediseño-de-balance-la-rueda-de-debilidades-solo-premia-nunca-penaliza)
 
+**2026-08-20**
+- [escena de Gistera Koh: figura sin resolver en el acantilado, diálogo mal atribuido, Orco Enfurecido con caballo/armadura inventados](#2026-08-20-escena-de-gistera-koh-figura-sin-resolver-en-el-acantilado-diálogo-mal-atribuido-orco-enfurecido-con-caballoarmadura-inventados)
+- [continuación: diálogo del jugador entre comillas bloqueado como "NPC inventado"](#2026-08-20-continuación-diálogo-del-jugador-entre-comillas-bloqueado-como-npc-inventado)
+- [continuación: el "perseguidor" de Gistera Koh nunca se detecta en escena si no se le nombra "Orco enfurecido"](#2026-08-20-continuación-el-perseguidor-de-gistera-koh-nunca-se-detecta-en-escena-si-no-se-le-nombra-orco-enfurecido)
+- [continuación: sugerencia "Acepto ayudarla y busco al que me persigue" — REGLA 4 comprimida + pronombre equivocado, y un bug propio de raíz verbal](#2026-08-20-continuación-sugerencia-acepto-ayudarla-y-busco-al-que-me-persigue-regla-4-comprimida-pronombre-equivocado-y-un-bug-propio-de-raíz-verbal-descubierto-al-arreglarlo)
+- [continuación: reintento cuando la ÚNICA aceptación se descarta + segundo bug de raíz verbal en "Examina"/"Examinó"](#2026-08-20-continuación-reintento-cuando-la-única-aceptación-se-descarta-segundo-bug-de-raíz-verbal-en-examinaexaminó)
+- [continuación: rediseño a sugerencias cortas + investigación 9B/4B (modelos qwen3.5 de "razonamiento")](#2026-08-2021-continuación-rediseño-a-sugerencias-cortas-investigación-9b4b-modelos-qwen35-de-razonamiento)
+
+**2026-08-21**
+- [mensaje de iniciativa + tirada de dados perdidos al recargar tras abrir combate](#2026-08-21-mensaje-de-iniciativa-tirada-de-dados-perdidos-al-recargar-tras-abrir-combate)
+
 ---
 
 ## 2026-08-01 — descansar no curaba + objeto médico narrado sin usarse
@@ -2304,3 +2315,333 @@ explícita: "revisa bien no dejar ningún punto de información que haga referen
 
 **Estado**: FIJADO. `tsc -b` limpio en backend y frontend. 922 tests unitarios backend (antes 921,
 +1 neto por la reescritura de `attributeWheel.test.ts`) + 22 tests frontend, todos en verde.
+
+## 2026-08-20 — escena de Gistera Koh: figura sin resolver en el acantilado, diálogo mal atribuido, Orco Enfurecido con caballo/armadura inventados
+
+**Petición**: "revisa la partida, muchos errores en la narración... está inventando muchas cosas" —
+tras una sesión larga arreglando el sistema de sugerencias y el bug de combate falso con Gistera
+Koh (ver conversación de la misma fecha), la usuaria rejugó la escena desde el principio y pidió
+revisión. `auditSave.ts` sobre `cms82odjc000qri0up7n1msni` (11 entradas de log en ese momento);
+`logs/backend.log` sin líneas `[turno]`/`[lint]` útiles porque el proceso se había reiniciado
+después de jugar estos turnos concretos (el `nohup ... > backend.log` de `iniciar-tarkor.sh` trunca
+el log en cada arranque).
+
+**Síntoma 1 — figura en el acantilado que nunca se resuelve**: turno `08:00`, acción "Exploro la
+zona". La narración introduce DOS entidades separadas en el mismo párrafo: *"ve una figura
+inquietante agazapada en lo alto de un acantilado cercano. La figura no hace ningún movimiento..."*
+y, aparte, *"Una sombra se acerca a gran velocidad por la llanura... es una orca con la marca del
+Clan Serhu"* (Gistera, ya prevista por el encuentro guionizado). La "figura del acantilado" no
+corresponde a ningún NPC del catálogo ni al propio Orco Enfurecido (que unos turnos después aparece
+"a unos kilómetros... a caballo", geografía incompatible con "agazapada en un acantilado cercano") —
+invención pura del modelo, sin base en ningún hecho de sesión ni roster real. Se coló además como
+`WorldState.facts` real ("Gorhorn se percata de la presencia potencialmente hostil en los
+acantilados aledaños"), y no se vuelve a mencionar ni resolver en ningún turno posterior — cabo
+suelto permanente.
+
+**Síntoma 2 — diálogo mal atribuido**: turno `08:16`, tras la réplica de Gorhorn ("¿Debería ayudarte
+a huir de él? Pero no tengo tiempo para aliados."), sigue sin ninguna acotación de cambio de
+interlocutor: *"Porque mi padre fue traicionado por sus propios compañeros. Y sí, necesito ayuda
+para acabar con el que me persigue."* Por el contenido, encaja con la historia real de Gistera Koh
+(su padre adoptivo, Uhuld Koh, fue asesinado por encargo — bio de `orco-enfurecido-hondonada` en
+`worldCatalog.ts`), así que probablemente es SU réplica — pero al no marcar el cambio de hablante,
+se lee como si Gorhorn hablara de un padre suyo nunca establecido en su propia historia (la suya es
+la caída del Clan Maktor). Misma familia ya documentada el 2026-08-01/2026-08-14 (atribución de
+diálogo) — no hay ninguna "palabra equivocada" que un detector determinista pueda cazar, es la
+estructura completa de el turno la que falla.
+
+**Síntoma 3 — Orco Enfurecido con caballo y "armadura reluciente"**: turno `08:17`, tras "Yo me
+encargo de tu perseguidor": *"un orco a caballo corre sin cesar en su dirección, armadura reluciente
+bajo el sol matutino."* La bio de catálogo (`orco-enfurecido-hondonada`, `worldCatalog.ts`) no
+menciona caballo ni armadura en ningún momento — *"calvo y de complexión corpulenta, piel beige
+agrietada, sin pintura de clan visible"* es casi lo contrario de "armadura reluciente". Invención
+visual sin base en su ficha.
+
+**Diagnóstico**: los 3 son de la misma familia que la entrada del 2026-08-14 (Cruzavientos/Múrgol) —
+fallos de PROSA, no de mecánica (`condicionFisica`/XP/quest se resolvieron bien en los 3 turnos,
+confirmado en `auditSave.ts`). No hay detector determinista razonable para ninguno de los 3 (no son
+"palabra prohibida", son invención de contenido nuevo sin base). Camino de mejora: reforzar el
+prompt de `narrateAction` con una instrucción explícita de "no inventes entidades/amenazas nuevas
+que no estén ya en la escena real, ni rasgos físicos que contradigan la bio del catálogo del NPC" —
+mismo criterio que ya se usa para las reglas de sugerencias (`narrador.ts`), nunca aplicado antes al
+lado de la narración normal (`turnResolution.ts`/`contextBlocks`).
+
+**Fix aplicado**: la usuaria confirmó ("si") — pero el sitio correcto no era `contextBlocks`
+(instrucción por turno, `turnResolution.ts`) sino el propio `Modelfile` (SYSTEM prompt horneado en
+el modelo Ollama `tarkor-narrador`, `FROM qwen2.5:7b`): la regla que ya existía ("no inventes
+fauna/flora/personajes con nombre... pero SÍ puedes NPCs sin nombre") era precisamente la que abría
+la puerta al síntoma 1 (la "figura del acantilado" es un NPC sin nombre, permitido tal cual por esa
+misma frase). Reescrita esa regla para acotar la licencia: los NPCs sin nombre solo valen como
+detalle de ambientación PASAJERO, nunca como amenaza/entidad nueva que quede sin resolver. Añadidas
+dos reglas nuevas: no dar rasgos físicos/equipo a un NPC con ficha propia que contradigan lo ya
+establecido (síntoma 3), y marcar siempre con acotación quién habla cuando dos personajes tienen
+diálogo en el mismo turno (síntoma 2). Reconstruido el modelo real (`ollama create tarkor-narrador
+-f Modelfile` vía `flatpak-spawn --host`, binario en `~/.local/ollama/bin/ollama`, no en el PATH
+del sandbox) y forzada su recarga (`ollama stop tarkor-narrador`, seguía cargado en memoria con el
+system prompt viejo) — no hace falta reiniciar el backend, es un artefacto de Ollama aparte.
+Verificado con una llamada de prueba directa a `/api/generate` tras la recarga: narración coherente,
+sin entidad nueva inventada.
+
+**Estado**: FIJADO (a nivel de prompt — sigue siendo la misma familia "tono/prosa" sin detector
+determinista posible, ver diagnóstico de arriba, así que "fijado" aquí significa reforzado en el
+Modelfile y verificado una vez, no blindado al 100%). Pendiente de confirmación jugando en vivo.
+
+## 2026-08-20 (continuación) — diálogo del jugador entre comillas bloqueado como "NPC inventado"
+
+**Petición**: "revisa la partida" de nuevo, sobre una partida nueva de la misma escena de Gistera
+Koh (para comprobar en vivo el fix del Modelfile de la entrada anterior). `auditSave.ts` sobre
+`cms82odjc000qri0up7n1msni` (12 entradas de log en ese momento).
+
+**Síntoma**: turno `08:15`, acción del jugador `"Me acerco a ella y digo: 'Quien eres y a donde vas
+con tanta prisa?'"` — el turno entero se bloqueó con: *"El nombre de Quien eres y a donde vas con
+tanta prisa? no le suena a nada — ni persona, ni bestia, ni nada que camine sobre Helek Sirik que
+Gorhorn sepa."* Ni siquiera llegó a `classifyAction`/`narrateAction` (frase determinista, sin IA).
+El jugador repitió la MISMA acción sin comillas alrededor de toda la frase en el turno siguiente y
+funcionó con normalidad (Gistera responde).
+
+**Causa raíz**: `detectsFabricatedNpcClaim` (Fase 3 de `docs/18-validacion-accion-jugador.md`,
+`playerActionValidation.ts`) extrae CUALQUIER texto entre comillas simples (`QUOTED_NAME_REGEX`) y
+lo valida contra el catálogo de NPCs — pero disparaba con tres intenciones distintas como gatillo:
+ataque, búsqueda hostil, **y diálogo**. El diseño original (`ver docs/18 § Fase 3`) pensaba en
+"ataco a 'el Dragón de Fuego Eterno'" (comillas = nombre de un objetivo concreto), pero con
+intención de DIÁLOGO las comillas casi siempre significan justo lo contrario: la réplica hablada
+completa del propio jugador (convención ya usada en todo el resto del motor), no el nombre de a
+quién se la dice. El regex agarra la PRIMERA cadena entre comillas de toda la acción sin distinguir
+los dos casos, así que cualquier "digo: '...'" con una frase que no coincide con ningún NPC real
+(prácticamente siempre, una pregunta no es un nombre) dispara el bloqueo. Bug de diseño real en una
+pieza deliberada y ya completada (2026-08-13) — no un caso límite raro: bloquea una de las formas
+más naturales de escribir diálogo en el juego.
+
+**Fix aplicado**: quitado `detectsDialogueIntent` de la condición de disparo de
+`detectsFabricatedNpcClaim` — sigue disparando con ataque/búsqueda hostil (donde comillas SÍ suelen
+señalar un objetivo concreto), nunca con diálogo puro (mismo criterio "más vale dejar pasar que
+bloquear con dudas" que ya usa el resto de esta familia). `detectsAbsentSceneNpcClaim` (función
+hermana, Fase 1, un caso distinto: NPC real que existe pero no está en escena) mantiene intacto su
+propio disparador con diálogo incluido — un `sed` de más lo tocó por error a mitad del proceso de
+verificación y se revirtió antes de dar el fix por bueno; `git diff` final confirma que solo cambió
+`detectsFabricatedNpcClaim`. Test de regresión añadido en `playerActionValidation.test.ts`
+reproduciendo la acción real exacta; verificado con el protocolo de revertir/probar/restaurar
+(revertido con `sed`, el test nuevo falla con el síntoma real reproducido, restaurado, vuelve a
+pasar).
+
+**Estado**: FIJADO. `tsc -b` limpio. 1055/1055 tests unitarios backend (antes 1054, +1 por el test
+nuevo) + 72/72 de `turn.integration.test.ts` en solitario, todos en verde.
+
+## 2026-08-20 (continuación) — el "perseguidor" de Gistera Koh nunca se detecta en escena si no se le nombra "Orco enfurecido"
+
+**Petición**: tras la ronda anterior, la usuaria preguntó explícitamente: "y el tema de que el Orco
+enfurecido aunque lo busque como 'perseguidor' no aparezca?" — señal de un turno real donde "Reviso
+lo alreddores buscando al perseguidor" solo narró "un rastro fresco de botas", sin detectarlo de
+verdad.
+
+**Causa raíz**: `detectNpcsInScene` (`npcScene.ts`) compara el texto de la acción contra
+`name`/`aliases` reales de catálogo — `orco-enfurecido-hondonada` solo tiene registrado `'orco
+enfurecido'`. La propia escena de Gistera Koh lo mantiene A PROPÓSITO sin nombrar ("uno de los
+suyos me pisa los talones", "quien la persigue" tras el fix de la entrada de arriba), así que el
+jugador nunca tiene forma de escribir su nombre real para que el motor lo reconozca — un choque
+directo entre dos piezas de diseño ya existentes, cada una correcta por separado.
+
+**Decisión de diseño** (consultada con la usuaria vía pregunta explícita antes de implementar):
+NO añadir "perseguidor" como alias global de catálogo — es NPC `PRINCIPAL` (candidato en CUALQUIER
+escena del juego, ver `candidateNpcs` en `npcScene.ts`), así que cualquier futura trama con un
+"perseguidor" genérico lo detectaría por error. En su lugar, inyección determinista ACOTADA a esta
+misión concreta (mismo patrón ya usado para `travelInterruptionNpcId`, `turnResolution.ts`).
+
+**Fix aplicado**: nuevo bloque en `turnResolution.ts` (tras la inyección de
+`travelInterruptionNpcId`) — mientras la misión "Acabar con el Orco Enfurecido" sigue `ACTIVA` (ni
+antes de aceptarla ni tras completarla/fallarla) Y la acción combina vocabulario real de
+"perseguidor" (`persegu\w*` o el idiomatismo "pisa(n) los talones" que la propia Gistera usa) CON
+una intención real de buscar/atacar (`detectsSearchIntent` de `discovery.ts`, o
+`detectsAttackIntent`/`detectsHostileSearchIntent` ya existentes) — nunca con una mención de pasada
+sin verbo activo ("Gistera me contó que fue perseguida" no dispara) — se inyecta al Orco Enfurecido
+en `npcsInScene` igual que si se le hubiera nombrado. Su temperamento es `AGRESIVO`, así que una vez
+detectado `shouldForceCombat` abre combate solo, sin depender del verbo exacto del jugador (mismo
+criterio que ya rige cualquier otro NPC agresivo detectado por nombre real) — de ahí la exigencia
+extra de intención real: una inyección demasiado floja habría abierto combate por una mención
+puramente narrativa, un problema peor que el original.
+
+Dos tests de integración nuevos en `turn.integration.test.ts`: buscar al "perseguidor" sin nombrarlo
+abre combate contra `orco-enfurecido-hondonada` (verificado con el protocolo revertir/probar/
+restaurar: sin el fix, `npcsInScene` queda vacío y el test reproduce el síntoma real), y una mención
+de pasada sin intención real NO lo detecta ni abre combate.
+
+**Estado**: FIJADO, con una segunda vuelta (jugando en vivo justo después de este fix): el combate SÍ
+se abría de verdad, pero la narración libre seguía describiendo solo la búsqueda ("un rastro de
+sudor y miedo... desviándose hacia una boca de cueva"), sin explicar contra quién — `npcSceneBlockFor`
+le da al modelo la ficha del Orco Enfurecido como contexto informativo, pero nada le decía que ESTE
+es el turno exacto en que se le descubre. Añadido un reveal determinista (mismo patrón que las fases
+de Gistera Koh: nunca dejar un reveal narrativo crítico a que el modelo lo infiera solo del
+contexto) que se dispara con `pursuerRevealedThisTurn` — rasgos físicos tomados tal cual de su bio
+de catálogo, aquí SÍ se revela su nombre real. Test ampliado para comprobar que la narración final
+menciona "Orco Enfurecido"; verificado también con revertir/probar/restaurar.
+
+`tsc -b` limpio. 1055/1055 tests unitarios backend + 74/74 de `turn.integration.test.ts` en solitario
+(antes 72, +2 nuevos) + 4/4 del resto de integración, todos en verde.
+
+## 2026-08-20 (continuación) — sugerencia "Acepto ayudarla y busco al que me persigue": REGLA 4 comprimida + pronombre equivocado, y un bug propio de raíz verbal descubierto al arreglarlo
+
+**Síntoma**: la usuaria, probando la sugerencia con chips nueva, señaló: "la primera sugerencia en
+primera persona, debería se[r] le pe[r]sigue" — la sugerencia decía "Acepto ayudarla y busco al que
+ME persigue", afirmando (por error) que a Gorhorn le persiguen a él, cuando en realidad es a Gistera
+Koh. Además viola REGLA 4 (dos beats en una frase: aceptar + una segunda acción ya decidida) — el
+modelo copió "me persigue" literal de la voz de Gistera (que sí habla en primera persona de sí
+misma) sin adaptar el pronombre al punto de vista del jugador.
+
+**Fix aplicado**: en vez de intentar corregir el pronombre (frágil), se descarta la sugerencia
+entera — `dropSuggestionsCompressingAcceptance` (`narrador.ts`), dos reglas: (1) "y" en el tramo
+inmediato tras el verbo de aceptar, sin condición de por medio (protege una aceptación CON
+condición legítima, que sí puede tener una "y" más adelante en la frase); (2) contenido — si la
+sugerencia empieza aceptando ayudar y en cualquier parte menciona al perseguidor, es casi con toda
+seguridad la misma compresión, cazando también la variante con PUNTO en vez de "y" ("Acepto
+ayudarte, Gistera Koh. Debo enfrentarme al que te persigue primero.", encontrada en la propia
+verificación en vivo minutos después del primer fix).
+
+**Bug propio encontrado durante la verificación**: al construir el filtro (2), la primera versión
+usaba `persegu\w*` — la MISMA raíz ya usada en el fix anterior (`PURSUER_REFERENCE_REGEX`,
+turnResolution.ts) para detectar al perseguidor por vocabulario. "Perseguir" cambia de raíz en
+presente (persigo/persigues/**persigue**/**persiguen**/persiguiendo/persiguió usan "persig-", no
+"persegu-") — justo las formas MÁS usadas en esta escena real ("el que la persigue", "quien me
+persigue"). `persegu\w*` a secas solo cazaba el sustantivo "perseguidor" y las formas de
+infinitivo/imperfecto (perseguir, perseguía), dejando fuera el verbo en presente casi siempre —
+significa que el fix anterior (detectar al perseguidor buscándolo) tenía el mismo hueco sin que
+nadie lo hubiera notado todavía (su verificación en vivo usó "buscando al perseguidor", el
+sustantivo, que sí matcheaba por casualidad). Corregido en los DOS sitios a `pers[ei]g\w*`. Test de
+regresión nuevo en `turn.integration.test.ts` con la acción "Busco a quien me persigue" (verbo, no
+sustantivo) para blindar contra la reincidencia.
+
+**Estado**: FIJADO. `tsc -b` limpio. 1061/1061 tests unitarios backend (+6 sobre la entrada anterior)
++ 75/75 de `turn.integration.test.ts` en solitario (+1) + 4/4 del resto de integración, todos en
+verde.
+
+## 2026-08-20 (continuación) — reintento cuando la ÚNICA aceptación se descarta + segundo bug de raíz verbal en "Examina"/"Examinó"
+
+**Petición**: "las sugerencias no me convencen,,,," — captura mostrando solo 2 sugerencias (ninguna
+aceptaba), tras el fix anterior de la misma tarde.
+
+**Causa raíz 1**: `dropSuggestionsCompressingAcceptance` (recién añadido) acertaba descartando la
+sugerencia mala, pero era la ÚNICA que aceptaba — el resultado final se quedaba con solo pregunta +
+"exploro el entorno", reproduciendo la queja original de REGLA 1 por un camino nuevo: el modelo SÍ
+intentó aceptar, solo que mal, y el filtro (correctamente) se lo comió. **Fix**: extendido el
+reintento ya existente (antes solo cubría "el modelo copió el ejemplo literal") — si el diálogo
+pendiente necesita respuesta Y la única aceptación se descartó por comprimir dos beats, reintenta
+una vez a 0.8. Verificado en vivo (3 llamadas directas): el reintento se dispara de verdad, aunque
+no siempre logra una aceptación limpia — límite real del modelo de 7B en este hardware, no un bug
+de código adicional.
+
+**Causa raíz 2, encontrada en la MISMA verificación**: la sugerencia de "explorar el entorno" salía
+como "Examinó el terreno..."/"Examine el terreno..." — tercera persona de pretérito o imperativo,
+2 de 2 veces seguidas, nunca "Examino" (primera persona presente correcta). Nueva red de seguridad
+`dropSuggestionsWrongGrammaticalPerson` — vocabulario cerrado de la misma familia semántica
+(examinar/revisar/buscar/inspeccionar/observar/explorar/registrar) en sus formas equivocadas.
+Gotcha encontrado al escribir el test: el mismo problema de `\b` con vocales acentuadas ya
+documentado en `enciclopediaIndex.ts` (frontend) — "Buscó"/"Exploró" nunca matcheaban con `\b` (JS
+no trata "ó" como letra), arreglado con `(?![\p{L}\p{N}])` + flag `u`, mismo patrón ya establecido.
+
+**Estado**: FIJADO. `tsc -b` limpio. 1065/1065 tests unitarios backend (+4) + 75/75 de
+`turn.integration.test.ts` en solitario + 4/4 del resto de integración, todos en verde (un fallo
+falso de 7 tests visto de pasada, por contención de Postgres al correr el script de verificación en
+vivo A LA VEZ que la suite — desaparece al correr solo, gotcha ya conocido).
+
+**Nota honesta para la usuaria**: verificado con 9 llamadas reales seguidas contra la partida real —
+los filtros funcionan correctamente (nunca dejan pasar una compresión ni una persona gramatical
+equivocada), pero el modelo de 7B sigue intentando comprimir "aceptar" con una segunda acción con
+bastante frecuencia, así que en algunos turnos el resultado final se queda en 1-2 sugerencias en vez
+de 3. No es un bug pendiente — es el techo real de fiabilidad de este modelo local en esta tarea
+concreta; forzar 3 siempre exigiría rellenar con algo peor solo por completar el cupo.
+
+## 2026-08-20/21 (continuación) — rediseño a sugerencias cortas + investigación 9B/4B (modelos qwen3.5 de "razonamiento")
+
+**Contexto**: "pues esto cada vez va a peor" — captura con una única sugerencia y un dato inventado
+("sus compañeros quieren verla muerta", plural, cuando Gistera dijo "uno de los suyos", singular).
+Sexto bug real distinto de la misma tarde en la MISMA frase de Gistera Koh. Antes de otro parche
+puntual, la usuaria preguntó por qué era tan difícil "si cualquier IA ya hace esto" y si el problema
+era RAG. Diagnóstico honesto (no es RAG — `generateSuggestions` no llama a `retrieveLore` en
+absoluto): sostener a la vez persona gramatical, número, pronombre, no-compresión y cobertura
+aceptar/rechazar EN UNA FRASE LARGA es mucho para un modelo de 7B sin autocrítica en un solo
+intento — la brecha real es de capacidad del modelo (comparado con un modelo de datacenter de
+cientos de miles de millones de parámetros), no de prompt mal escrito.
+
+**Decisión** (consultada, no aplicada a ciegas): rediseño de sugerencias de frase narrativa completa
+a FRAGMENTOS CORTOS de 3-6 palabras ("Acepto ayudarla", "Pregunto por el perseguidor" — etiquetas de
+acción, no párrafos). Menos palabras = menos superficie para que persona/número/pronombre se
+tuerzan o se comprima una segunda acción — ataca la causa, no otro síntoma. `SUGGESTIONS_BASE_RULES`/
+EJEMPLO 1/EJEMPLO 2 reescritos; `EXAMPLE_SUGGESTION_TEXTS` (anti-copia) actualizado a fragmentos
+cortos equivalentes.
+
+**Bug propio encontrado en la primera verificación**: `EXAMPLE_SUGGESTION_TEXTS` incluía "Pregunto
+por el perseguidor" — con solo 2 palabras de contenido, CUALQUIER sugerencia real y correcta que
+mencionara "perseguidor" (la respuesta obvia para esta escena) compartía el 100% y se descartaba
+igual, por la misma familia de bug ya fijada el 2026-08-20 con `similarity()` plana. Quitado de la
+lista anti-copia (se queda solo en el EJEMPLO ilustrativo del prompt, donde no hace daño).
+
+**Resultado verificado** (6 llamadas reales tras el fix, save `cms82odjc000qri0up7n1msni`): "Acepto
+ayudarla" sobrevive 6/6 veces — el problema de fondo de toda la tarde (ninguna aceptación limpia)
+queda resuelto. "Pregunto por el/su perseguidor" sobrevive también. La tercera sugerencia (acción de
+entorno) sigue fallando en persona gramatical con frecuencia, pero `dropSuggestionsWrongGrammaticalPerson`
+la caza siempre — resultado estable de 2-3/3 sugerencias correctas, nunca una equivocada mostrada.
+
+**Investigación 9B/4B** (petición explícita: "quizás será mejor con el modelo 9B?" / "prueba tambien
+contra el 4b"): `qwen3.5:9b` y `qwen3.5:4b` ya estaban descargados en el Ollama compartido (del otro
+proyecto). Primer intento con 9B: cargó (5.6GB GPU) pero ni terminó de generar "di hola" en 90s —
+inviable en este hardware por RAM (solo 659MB libres con el modelo cargado). Con 4B: mismo síntoma.
+Causa raíz encontrada: la familia qwen3.5 es de RAZONAMIENTO — sin `think: false` en la petición a
+Ollama, genera un monólogo interno larguísimo (campo `thinking`) antes de la respuesta real,
+agotando el timeout sin llegar nunca al JSON pedido. Con `think: false` añadido a
+`buildRequestBody` (`lib/ollama.ts`, aplica a TODAS las llamadas, inofensivo para qwen2.5 —
+verificado sin regresión): qwen3.5:4b sí responde en ~25s, calidad comparable al 7B actual en esta
+tarea concreta de sugerencias (misma tanda de aciertos/fallos). qwen3.5:9b se queda sin probar en
+profundidad (mismo problema de RAM que antes, aunque ahora con `think: false` probablemente cargaría
+más rápido — pendiente si se quiere retomar).
+
+**Pendiente, no decidido todavía**: `OLLAMA_MODEL_NARRADOR` sigue apuntando a `tarkor-narrador`
+(qwen2.5:7b) — NO se ha cambiado el modelo de la narración principal ni de las sugerencias. Probar
+4B para sugerencias es una cosa; usarlo para la narración normal (`narrateAction`, el camino que más
+importa) es una decisión distinta y más grande, sin probar todavía (anacronismos, coherencia de
+combate, atribución de diálogo...) — necesitaría su propia ronda de verificación antes de tocar
+`env.ollamaModelNarrador` de verdad.
+
+**Estado**: FIJADO (rediseño a fragmentos cortos) + `think: false` añadido de forma permanente
+(mejora real, sin coste). `tsc -b` limpio. 1065/1065 tests unitarios backend + 75/75 de
+`turn.integration.test.ts` en solitario + 4/4 del resto de integración, todos en verde.
+
+**Actualización inmediata**: "el 4b solo para sugerencias no puede ser una opción?" — sí, y de hecho
+ya era trivial: `generateSuggestions` ya tenía su propia llamada a Ollama separada de
+`narrateAction`. Nueva variable `OLLAMA_MODEL_SUGERENCIAS` (`env.ts`, `.env`/`.env.example`,
+default `qwen3.5:4b`) usada SOLO en `generateSuggestions` — `env.ollamaModelNarrador` (la narración
+real de cada turno) sigue intacto, sin tocar. Verificado en vivo contra la partida real con la
+variable ya activa por defecto (sin overrides manuales): 3 llamadas seguidas, "Acepto ayudarla"/
+"Acepto ayudarte" + "Pregunto por su/tu perseguidor" correctas las 3 veces, ~24-26s por llamada
+(algo más rápido que el 7B). `docs/15-instalacion.md` actualizado con el cuarto modelo a descargar
+(`ollama pull qwen3.5:4b`).
+
+## 2026-08-21 — mensaje de iniciativa + tirada de dados perdidos al recargar tras abrir combate
+
+**Síntoma**: "la primera vez que se abre el combate y al recargar la página se está perdiendo el
+mensaje de la iniciativa y la tirada de los dados". Captura mostrando el panel de combate ya abierto
+tras encontrar al Orco Enfurecido (bug del "perseguidor" ya fijado, confirmado funcionando bien en
+vivo de paso).
+
+**Causa raíz** (investigado con un subagente Explore, verificado a mano antes de tocar código):
+tercer bug GEMELO de dos ya fijados (`combatExchange` 2026-08-13, `npcAbilityUsed`/`playerAbilityUsed`
+2026-08-14, ver comentarios de esas columnas en `schema.prisma`) — `nextInitiativeRoll`
+(`InitiativeResult`, quién actúa primero en el PRÓXIMO intercambio) se calcula en
+`resolveCombatExchangePhase` (`turnResolution.ts:1111`) pero solo viajaba en la respuesta NDJSON del
+turno recién resuelto (`routes/turn.ts:911,993`) — nunca se guardaba en ningún `LogEntry`.
+`lastInitiativeRoll` en el frontend (`GameView.tsx`) era puro estado de React, reseteado a `null` en
+cada `openCombat()` y sin ningún fallback a datos recargados — al volver a montar la página, sencillamente no había manera de recuperarlo.
+
+**Fix aplicado**: mismo patrón exacto que los dos bugs gemelos —
+- Migración `20260821000000_log_entry_initiative_roll` — `LogEntry.initiativeRoll Json?` nueva.
+- `turnResolution.ts` (`mainLogEntry.create`) persiste `nextInitiativeRoll` ahí.
+- `routes/saves/shared.ts` (`toFrontendLogEntry`, compartida por GET /saves/:id y GET /saves/:id/diario) lo reenvía al frontend.
+- `frontend/src/types.ts` — nuevo `InitiativeRollInfo` (sustituye el tipo anónimo repetido 3 veces).
+- `GameView.tsx` — al recargar, si `save.combateIniciado` sigue activo, busca el último `LogEntry`
+  con `initiativeRoll` en `characterLog` y rehidrata `lastInitiativeRoll` desde ahí, en vez de
+  quedarse en `null` para siempre.
+
+Test de integración nuevo (`turn.integration.test.ts`) verificado con el protocolo de revertir/
+probar/restaurar: sin el fix, `LogEntry.initiativeRoll` queda `null` tras un intercambio real
+(reproduce el síntoma), con el fix pasa.
+
+**Estado**: FIJADO. `tsc -b` limpio en backend y frontend. 1065/1065 tests unitarios backend + 76/76
+de `turn.integration.test.ts` en solitario (+1) + 4/4 del resto de integración + 31/31 frontend,
+todos en verde.

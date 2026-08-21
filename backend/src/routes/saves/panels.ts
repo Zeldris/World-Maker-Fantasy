@@ -1,6 +1,8 @@
 import type { FastifyInstance } from 'fastify';
 import { prisma } from '../../lib/prisma.js';
 import { buildNpcInScene, scopeFor, hasPendingLoot, type NpcInScene } from '../../services/npcScene.js';
+import { buildAdjacency, shortestPath, minutosConDestreza, bandaForMinutos } from '../../services/travel.js';
+import type { AttributeBlock } from '../../services/dice.js';
 
 /// Paneles de habilidades generales nuevos (2026-08-17, comentarios dejados en
 /// startingAbilities.ts): "Volver al campamento", "Viajar" y "Saquear" (fuera de combate). Cada
@@ -36,7 +38,7 @@ export async function panelsRoutes(app: FastifyInstance) {
   app.get<{ Params: { id: string } }>('/saves/:id/destinos-viaje', async (request, reply) => {
     const save = await prisma.save.findUnique({
       where: { id: request.params.id },
-      select: { id: true, worldId: true, currentLocationId: true, inventoryItems: { select: { catalogSlug: true } } },
+      select: { id: true, worldId: true, currentLocationId: true, attributes: true, inventoryItems: { select: { catalogSlug: true } } },
     });
     if (!save) return reply.status(404).send({ error: 'Partida no encontrada' });
 
@@ -64,9 +66,32 @@ export async function panelsRoutes(app: FastifyInstance) {
       }
     }
 
+    // Tiempo de juego real hasta cada destino (petición explícita, 2026-08-18: "quiero que salga
+    // con el tiempo de juego que nos llevaría llegar... tiempo de juego no tiempo real") — mismo
+    // grafo/fórmula que ya usa `resolveTravel` de verdad al confirmar el viaje (`buildAdjacency` +
+    // `shortestPath`, multi-tramo real, + `minutosConDestreza` para el ajuste por destreza) — no
+    // se inventa una estimación aparte, es EXACTAMENTE lo que costaría el viaje si se confirma
+    // ahora mismo. Sin `currentLocationId` (personaje en tránsito) no hay origen desde el que
+    // calcular — se listan los destinos igual, solo sin tiempo. Un destino sin camino real por el
+    // grafo (visitado por otro medio, o revelado por mapa pero nunca enlazado) se lista igual,
+    // solo sin tiempo — nunca se oculta por esto.
+    const minutosById = new Map<string, number>();
+    if (save.currentLocationId && destinationsById.size > 0) {
+      const links = await prisma.locationLink.findMany({ where: { from: { worldId: save.worldId } } });
+      const adjacency = buildAdjacency(links);
+      const attributes = save.attributes as AttributeBlock;
+      for (const destId of destinationsById.keys()) {
+        const path = shortestPath(adjacency, save.currentLocationId, destId);
+        if (path) minutosById.set(destId, minutosConDestreza(path.totalMinutos, attributes));
+      }
+    }
+
     return {
       hasMap: hasLlanurasMap,
-      destinations: [...destinationsById.values()].map((l) => ({ locationSlug: l.slug, locationName: l.name, region: l.region })),
+      destinations: [...destinationsById.values()].map((l) => {
+        const minutos = minutosById.get(l.id) ?? null;
+        return { locationSlug: l.slug, locationName: l.name, region: l.region, minutos, banda: minutos != null ? bandaForMinutos(minutos) : null };
+      }),
     };
   });
 

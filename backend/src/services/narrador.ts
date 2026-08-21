@@ -3,7 +3,7 @@ import { extractStreamingNarration } from './narrationStream.js';
 import { env } from '../config/env.js';
 import { normalizeText, fuzzyMatchCandidates, findFuzzyStemMatch } from './travel.js';
 import { detectsAttackIntent, detectsHostileSearchIntent } from './npcScene.js';
-import { similarity } from './worldFacts.js';
+import { similarity, factSimilarity } from './worldFacts.js';
 import type { Attribute, RollResult } from './dice.js';
 import type { CondicionFisica } from '@prisma/client';
 
@@ -393,17 +393,54 @@ export interface SuggestionsContext {
   ambiente: string[];
 }
 
-const SUGGESTIONS_EXAMPLE_AND_RULES = `EJEMPLO 1, combate ya resuelto (referencia de forma, no de contenido — NUNCA copies ningún nombre de aquí, esto no existe en tu partida real): historial reciente "Gorhorn derriba a su rival de un golpe certero, dejándolo tendido en el suelo, incapaz de seguir luchando." → sugerencias ["Remato a mi rival caído para acabar con esto", "Registro su cuerpo en busca de algo útil", "Aparto la vista de él para ver si hay alguien más cerca"] — ninguna lo trata como si pudiera seguir defendiéndose (ya está convaleciente: rematarlo/registrarlo es coherente, "atacarlo" o "enfrentarlo" no). Nota cómo NINGUNA sugerencia inventa un nombre propio para el rival — usa solo lo que el historial de TU partida real te da.
+const SUGGESTIONS_EXAMPLE_1 = `EJEMPLO 1, combate ya resuelto (referencia de FORMATO, no de contenido — NUNCA copies estos fragmentos tal cual ni ningún nombre de aquí, esto no existe en tu partida real): historial reciente "Gorhorn derriba a su rival de un golpe certero, dejándolo tendido en el suelo, incapaz de seguir luchando." → sugerencias ["Remato al rival caído", "Registro su cuerpo", "Miro si hay alguien más"] — ninguna lo trata como si pudiera seguir defendiéndose (ya está convaleciente: rematarlo/registrarlo es coherente, "atacarlo" o "enfrentarlo" no). Nota cómo NINGUNA sugerencia inventa un nombre propio para el rival — usa solo lo que el historial de TU partida real te da. Aunque tu escena real se parezca a esta, tus 3 sugerencias tienen que ser fragmentos NUEVOS sobre TU historial, nunca estos mismos fragmentos copiados.`;
 
-EJEMPLO 2, un NPC te acaba de hablar/pedir algo (misma referencia de forma, NUNCA copies ningún nombre de aquí): historial reciente termina con alguien desconocido diciendo entre comillas "¿No quieres ayudarme? Empieza por quien me persigue — hazlo antes de que sea tarde." → sugerencias ["Acepto ayudarla y voy a por quien la persigue", "Le pregunto por qué la persiguen antes de decidir nada", "Me niego a ayudarla y sigo mi camino"] — LAS TRES responden de verdad a lo que acaba de pedir; ninguna lo ignora para hablar de otra cosa (nada de "registro la zona"/"busco huellas": eso ignoraría que alguien te está hablando ahora mismo).
+/// Solo se incluye en el prompt cuando `lastLogHasDirectSpeech` es true (ver `generateSuggestions`)
+/// — bug real jugando en vivo (2026-08-18, "las sugerencias siguen pareciendo que adivinan el
+/// futuro"): con un NPC simplemente ACERCÁNDOSE, sin aliento, mirando hacia atrás (ninguna réplica
+/// entre comillas todavía), el modelo devolvió casi textualmente las 3 sugerencias de ESTE mismo
+/// ejemplo — "voy a por quien la persigue" copiado casi literal de "quien me persigue" — como si
+/// ya le hubiera pedido ayuda, adelantándose a un diálogo que el jugador ni siquiera ha
+/// presenciado. Antes esta regla/ejemplo estaban SIEMPRE en el prompt, activos o no; ahora solo
+/// entran cuando de verdad hay algo que responder (ver `SUGGESTIONS_NO_DIRECT_SPEECH_OVERRIDE`
+/// para el caso contrario, y `dropSuggestionsCopyingExample` como red de seguridad determinista
+/// por si el modelo pequeño lo ignora igual).
+const SUGGESTIONS_EXAMPLE_2_AND_REGLA_1 = `EJEMPLO 2, un NPC te acaba de hablar/pedir algo (misma referencia de FORMATO, NUNCA copies estos fragmentos tal cual ni ningún nombre de aquí): historial reciente termina con alguien desconocido diciendo entre comillas "¿No quieres ayudarme? Empieza por quien me persigue — hazlo antes de que sea tarde." → sugerencias ["Acepto ayudarla", "Pregunto por el perseguidor", "Me niego, por ahora"] — LAS TRES responden de verdad a lo que acaba de pedir; ninguna lo ignora para hablar de otra cosa (nada de "registro la zona"/"busco huellas": eso ignoraría que alguien te está hablando ahora mismo). Fíjate que "Acepto ayudarla" se PARA ahí — no sigue con "y voy a por quien la persigue" ni con "y lo encuentro": ese siguiente paso es OTRO turno, con su propia decisión y su propia sugerencia, no algo que dar ya por hecho en este mismo fragmento (ver REGLA 4). Si tu escena real se parece a esta (alguien pidiéndote ayuda contra un perseguidor), NO copies estos 3 fragmentos — la petición real de tu historial puede ser sobre algo totalmente distinto, y aunque coincida, tienes que redactarla de nuevo con las palabras y el contexto de TU escena, nunca reusar esta literalmente.
 
-Reglas: exactamente 3 sugerencias, en primera persona ("Ataco a...", "Le pregunto por...", "Registro..." — nunca "su"/"él"/"ella" refiriéndote al propio personaje del jugador), cortas (una frase cada una), distintas entre sí. Cada una tiene que nombrar algo CONCRETO ya mencionado en el historial de abajo — nunca un genérico que serviría igual para cualquier turno del juego ("sigo explorando", "espero a ver qué pasa").
+REGLA MÁS IMPORTANTE 1, sin excepciones (ver EJEMPLO 2; reforzada 2026-08-20, bug real jugando en vivo: comprobado con logging directo contra la partida real que el modelo, 3 de 3 veces seguidas, sustituía el hueco de "pregunta" por una acción de puro entorno — "reviso mi entorno en busca de peligros", "inspecciono la zona" — dejando la decisión real sin cubrir; la usuaria lo notó de inmediato: "ninguna es una respuesta directa a la petición... la única la de negarse"): si el historial reciente TERMINA con un personaje pidiéndote algo en concreto (ayuda, una decisión, una respuesta a una petición directa) — de las 3 sugerencias, DOS tienen que cubrir las dos caras reales de esa decisión: una que ACEPTA (o se inclina a aceptar) y otra que RECHAZA (o pone condiciones antes de aceptar). La tercera es libre (una pregunta sobre ESTA MISMA situación, o una acción física relacionada), pero ninguna de las 3 puede ser una acción de entorno que ignore por completo que alguien te acaba de hablar y espera algo de ti ("reviso mi entorno", "busco peligros", "inspecciono la zona" NUNCA cuentan como respuesta, aunque mencionen a la persona que habla de pasada). Si el diálogo es solo una pregunta abierta sin una decisión clara que tomar (no un "¿me ayudas o no?"), aplica la versión simple: al menos UNA sugerencia responde de verdad, nunca las 3 la ignoran.`;
 
-REGLA MÁS IMPORTANTE 1, sin excepciones (ver EJEMPLO 2): si el historial reciente TERMINA con un personaje dirigiéndose directamente al jugador — una pregunta, una petición, un diálogo en curso — al menos UNA sugerencia tiene que ser una respuesta directa a eso (aceptar, rechazar, preguntar algo más). Nunca las 3 pueden ignorarlo para hablar de otra cosa.
+/// Inverso de la regla de arriba — se incluye SOLO cuando NO hay diálogo real en el historial
+/// reciente, para que el modelo no tenga ningún ejemplo tentador de "responder a una petición" que
+/// invitaría a inventar una que no existe.
+const SUGGESTIONS_NO_DIRECT_SPEECH_OVERRIDE = `El historial reciente de abajo NO termina con nadie hablándote entre comillas — nadie te ha pedido nada en voz alta todavía, aunque algo se esté acercando o algo esté pasando. NO inventes una petición, una pregunta o un diálogo que no está ahí — eso sería adivinar lo que va a pasar, no reaccionar a lo que ya pasó. Las 3 sugerencias (fragmentos cortos) tienen que responder solo a lo que de verdad ya ocurrió (acercarte, observar, prepararte, hablar tú primero...), nunca a algo que alguien todavía no ha dicho.`;
+
+/// Rediseño a fragmentos cortos (petición explícita, 2026-08-20 — la usuaria, tras una tarde entera
+/// de bugs reales de gramática/coherencia en sugerencias de frase completa, preguntó por qué era
+/// tan difícil si "cualquier IA ya hace esto"; la causa raíz no es el prompt ni RAG (`generateSuggestions`
+/// no usa `retrieveLore` en absoluto) — es que sostener a la vez persona gramatical, número,
+/// pronombre, no-compresión y cobertura aceptar/rechazar en UNA FRASE LARGA es mucho para un
+/// modelo de 7B en un solo intento sin autocrítica, confirmado en vivo esa misma tarde con 6+
+/// fallos reales distintos en la misma frase de Gistera Koh). Un fragmento de 3-6 palabras da mucho
+/// menos superficie para que la persona/número/pronombre se tuerzan o para comprimir dos acciones —
+/// no arregla el techo de capacidad del modelo, pero reduce drásticamente cuántas formas hay de
+/// fallar en cada intento.
+const SUGGESTIONS_BASE_RULES = `Reglas: exactamente 3 sugerencias. Cada una es un FRAGMENTO CORTO de 3 a 6 palabras — nunca una frase narrativa completa ni una oración con varias cláusulas. Piensa en cada una como una etiqueta de acción ("Acepto ayudarla", "Ataco al orco", "Pregunto por el perseguidor"), no un párrafo. Primera persona, presente — el verbo termina en "-o" ("Examino", "Reviso", "Busco", "Acepto" — NUNCA "Examina"/"Examinó"/"Examine", esas son otra persona gramatical, aunque parezcan sinónimos válidos; nunca "su"/"él"/"ella" refiriéndote al propio personaje del jugador). Distintas entre sí. Cada una tiene que apuntar a algo CONCRETO ya mencionado en el historial de abajo — nunca un genérico que serviría igual para cualquier turno del juego ("sigo explorando", "espero a ver qué pasa").
 
 REGLA MÁS IMPORTANTE 2, sin excepciones (ver EJEMPLO 1): si en "PERSONAJES EN ESCENA" se lista a alguien como CONVALECIENTE o MUERTO, NUNCA sugieras atacarlo, enfrentarlo o combatir contra él.
 
-Si además hay MISIÓN ACTIVA con un objetivo concreto alcanzable desde aquí, SALUD/ENERGÍA baja del jugador, o algo en AMBIENTE sin usar todavía, puede que una tercera sugerencia (nunca a costa de saltarte la regla 1) apunte a eso — solo cuando de verdad encaje con la escena, nunca forzado.`;
+REGLA MÁS IMPORTANTE 3, sin excepciones (bug real jugando en vivo, 2026-08-18): si el historial reciente deja algo A PROPÓSITO sin nombre ("uno de los suyos me pisa los talones", "alguien me persigue", "quien me busca"...), NUNCA rellenes ese hueco con el nombre de un NPC de "PERSONAJES EN ESCENA" a menos que el propio historial YA lo haya nombrado ahí mismo como esa persona en concreto. Que un NPC esté en PERSONAJES EN ESCENA solo significa que el jugador YA LO CONOCE de antes — no que sea la respuesta a cada pregunta sin resolver de la escena actual. Adivinar de quién se trata antes de que la ficción lo confirme es tan grave como inventar una petición que nadie ha hecho (regla 1).
+
+REGLA MÁS IMPORTANTE 4, sin excepciones (bug real jugando en vivo, 2026-08-20: "Gorhorn no responde como tal, sino que ya adelanta hechos, haciendo la interacción mucho más corta" — ver EJEMPLO 2, "Acepto ayudarla" se para ahí): cada sugerencia es UN solo paso inmediato — la reacción de AHORA MISMO, no una cadena de pasos futuros comprimida en un fragmento. Nunca dés por hecho el resultado de una decisión que tu personaje ni siquiera ha tomado todavía: "Acepto ayudarla" sí, "Acepto ayudarla y encuentro a quien la persigue" no (eso son dos turnos, el segundo con un desenlace que el propio juego todavía no ha resuelto). Si dudas, pregúntate: ¿este fragmento describe SOLO lo que pasa a continuación, o también cómo acaba? Si acaba, es demasiado.
+
+Si además hay MISIÓN ACTIVA con un objetivo concreto alcanzable desde aquí, SALUD/ENERGÍA baja del jugador, o algo en AMBIENTE sin usar todavía, puede que una tercera sugerencia apunte a eso — solo cuando de verdad encaje con la escena, nunca forzado.`;
+
+/// Solo mira la ÚLTIMA entrada del historial reciente (no todas — una réplica de hace varios
+/// turnos ya está resuelta, no es "ahora mismo") — mismo estilo de diálogo que usa el resto del
+/// motor (`narrador.ts`, "Escribe SOLO tu réplica hablada... entre comillas"): comillas rectas.
+export function lastLogHasDirectSpeech(recentLog: string[]): boolean {
+  const last = recentLog[recentLog.length - 1] ?? '';
+  return /"[^"]+"/.test(last);
+}
 
 export async function generateSuggestions(ctx: SuggestionsContext): Promise<string[]> {
   const system =
@@ -420,7 +457,14 @@ export async function generateSuggestions(ctx: SuggestionsContext): Promise<stri
       : '';
   const ambienteBlock = ctx.ambiente.length > 0 ? `\nAMBIENTE:\n${ctx.ambiente.map((f) => `- ${f}`).join('\n')}\n` : '';
 
-  const prompt = `${SUGGESTIONS_EXAMPLE_AND_RULES}
+  // EJEMPLO 2/REGLA 1 solo entran cuando de verdad hay diálogo real que responder — ver doc
+  // comment de `SUGGESTIONS_EXAMPLE_2_AND_REGLA_1`.
+  const hasDirectSpeech = lastLogHasDirectSpeech(ctx.recentLog);
+  const examplesAndRules = hasDirectSpeech
+    ? `${SUGGESTIONS_EXAMPLE_1}\n\n${SUGGESTIONS_EXAMPLE_2_AND_REGLA_1}\n\n${SUGGESTIONS_BASE_RULES}`
+    : `${SUGGESTIONS_EXAMPLE_1}\n\n${SUGGESTIONS_BASE_RULES}\n\n${SUGGESTIONS_NO_DIRECT_SPEECH_OVERRIDE}`;
+
+  const prompt = `${examplesAndRules}
 
 PERSONAJE DEL JUGADOR: ${ctx.characterName} — eres TÚ. El historial de abajo lo narra en tercera persona por su nombre (así se narra todo el juego), pero las sugerencias son SIEMPRE lo que ${ctx.characterName} hace o dice a continuación, en primera persona. Si "${ctx.characterName}" aparece en el historial, ESO ERES TÚ MISMO — nunca lo trates como si fuera otro personaje que te habla o te pide algo; solo un nombre DISTINTO al tuyo puede hacer eso (regla 1 de arriba).
 ESTADO DEL PERSONAJE: salud ${ctx.saludJugador}; energía ${ctx.energiaJugador}.
@@ -438,13 +482,19 @@ Responde solo con el JSON pedido, nada más.`;
     required: ['suggestions'],
   };
 
-  // Mismo modelo/parámetros que `classifyAction` (keepAlive '0', un solo reintento) — a validar
-  // jugando: si la calidad sigue floja con el modelo pequeño, cambiar a env.ollamaModelNarrador es
-  // un cambio de una línea, sigue siendo una llamada aparte de narrateAction.
-  const callOllama = () =>
+  // Cambiado de `ollamaModelCronista` (1.5B) a `ollamaModelNarrador` (bug real jugando en vivo,
+  // 2026-08-20: tres fallos de contenido seguidos en la misma escena real — copiar el ejemplo
+  // literal, sugerir violencia contra quien pedía ayuda, y por último ninguna de las 3 respondía
+  // de verdad a esa petición pese a REGLA MÁS IMPORTANTE 1 — el modelo pequeño no seguía la regla
+  // de forma fiable por más que se afinara el prompt/los filtros). Y de ahí a `ollamaModelSugerencias`
+  // propio (mismo día, "el 4b solo para sugerencias no puede ser una opción?"): separado de
+  // `ollamaModelNarrador` a propósito — la narración real de cada turno sigue en el modelo grande
+  // sin tocar; solo "Sugerir" (bajo demanda, no bloquea el resto del turno) usa el más pequeño,
+  // verificado con calidad comparable en esta tarea concreta y bastante más rápido.
+  const callOllama = (temperature: number) =>
     ollamaGenerate({
-      temperature: 0.4,
-      model: env.ollamaModelCronista,
+      temperature,
+      model: env.ollamaModelSugerencias,
       system,
       prompt,
       format,
@@ -452,18 +502,69 @@ Responde solo con el JSON pedido, nada más.`;
       timeoutMs: 90_000,
     });
 
-  let text: string;
-  try {
-    ({ text } = await callOllama());
-  } catch (err) {
-    console.warn(`[sugerencias] intento 1/2 falló, reintentando: ${err instanceof Error ? err.message : err}`);
-    ({ text } = await callOllama());
+  const downedNpcNames = knownNpcs.filter((n) => n.condicionFisica === 'CONVALECIENTE' || n.condicionFisica === 'MUERTO').map((n) => n.name);
+
+  // Un intento completo: llama al modelo (con su propio reintento de RED aparte, `attemptNumber`
+  // solo decide la temperatura) y aplica toda la cadena de filtros deterministas.
+  async function attempt(
+    temperature: number,
+  ): Promise<{ final: string[]; rawCount: number; copiedExampleVerbatim: boolean; droppedOnlyAcceptCandidate: boolean }> {
+    let text: string;
+    try {
+      ({ text } = await callOllama(temperature));
+    } catch (err) {
+      console.warn(`[sugerencias] llamada al modelo falló, reintentando: ${err instanceof Error ? err.message : err}`);
+      ({ text } = await callOllama(temperature));
+    }
+    const parsed = JSON.parse(text) as { suggestions?: string[] };
+    const afterSanitize = sanitizeSuggestions(parsed.suggestions);
+    const afterCopyExample = dropSuggestionsCopyingExample(afterSanitize);
+    const withoutDowned = dropSuggestionsTargetingDownedNpc(afterCopyExample, downedNpcNames);
+    const withoutAttackingRequester = dropSuggestionsAttackingHelpRequester(withoutDowned, knownNpcs, ctx.recentLog);
+    const withoutCompressedAccept = dropSuggestionsCompressingAcceptance(withoutAttackingRequester);
+    const withoutStaleNpc = dropSuggestionsNamingStaleNpc(withoutCompressedAccept, ctx.npcsEnEscena, ctx.recentLog);
+    const withoutWrongPerson = dropSuggestionsWrongGrammaticalPerson(withoutStaleNpc);
+    const final = dropSuggestionsReferencingPlayerByName(withoutWrongPerson, ctx.characterName);
+    return {
+      final,
+      rawCount: afterSanitize.length,
+      copiedExampleVerbatim: afterSanitize.length > 0 && afterCopyExample.length === 0,
+      // Bug real jugando en vivo (2026-08-20, mismo turno en que se confirmó el filtro de arriba):
+      // `dropSuggestionsCompressingAcceptance` acertó descartando "Acepto ayudarla y..." — pero era
+      // la ÚNICA sugerencia que aceptaba, así que el resultado final se quedó con solo pregunta +
+      // "exploro el entorno", reproduciendo la queja original ("ninguna es una respuesta directa...
+      // la única la de negarse") por un camino distinto: no porque el modelo no aceptara, sino
+      // porque la única vez que lo hizo, lo hizo mal y se descartó. Señal para el reintento de abajo.
+      droppedOnlyAcceptCandidate: withoutAttackingRequester.length > withoutCompressedAccept.length && !withoutCompressedAccept.some((s) => ACCEPT_PHRASE_REGEX.test(s)),
+    };
   }
 
-  const parsed = JSON.parse(text) as { suggestions?: string[] };
-  const downedNpcNames = knownNpcs.filter((n) => n.condicionFisica === 'CONVALECIENTE' || n.condicionFisica === 'MUERTO').map((n) => n.name);
-  const withoutDowned = dropSuggestionsTargetingDownedNpc(sanitizeSuggestions(parsed.suggestions), downedNpcNames);
-  return dropSuggestionsReferencingPlayerByName(withoutDowned, ctx.characterName);
+  const first = await attempt(0.4);
+  const shouldRetry = (first.final.length === 0 && first.copiedExampleVerbatim) || (hasDirectSpeech && first.droppedOnlyAcceptCandidate);
+  if (!shouldRetry) return first.final;
+
+  // Reintento determinista (bug real jugando en vivo, 2026-08-20: "al darle a sugerir no me está
+  // dando ninguna sugerencia" — encontrado con logging directo contra la partida real: el modelo
+  // devolvía las 3 frases de EJEMPLO 2 CASI VERBATIM, {"suggestions":[]} tras el filtro de copia,
+  // sin ningún error — el filtro hacía justo su trabajo, pero no quedaba nada que mostrar). Mismo
+  // patrón ya establecido en este archivo (comprobación post-hoc + reintento, no solo confiar en
+  // el prompt): si TODO lo generado se descartó por copiar el ejemplo literal, un segundo intento
+  // con más temperatura (0.4→0.8) rompe la tendencia a repetir la continuación más "obvia" — igual
+  // que `callOllama`'s propio reintento de red, nunca se reintenta más de una vez.
+  //
+  // Segunda causa de reintento añadida el mismo día (`droppedOnlyAcceptCandidate`): con diálogo
+  // real pendiente, `dropSuggestionsCompressingAcceptance` acertó descartando la única sugerencia
+  // que aceptaba (comprimía dos beats) — el resultado se quedó con solo pregunta + acción de
+  // entorno, reproduciendo la queja original de REGLA 1 ("ninguna es una respuesta directa") por un
+  // camino nuevo: el modelo SÍ intentó aceptar, solo que mal. Mismo remedio: más temperatura para
+  // romper la tendencia a la misma redacción comprimida.
+  console.warn(
+    first.copiedExampleVerbatim
+      ? '[sugerencias] el modelo copió el ejemplo casi literal, reintentando con más temperatura'
+      : '[sugerencias] la única aceptación se descartó por comprimir dos beats, reintentando con más temperatura',
+  );
+  const retry = await attempt(0.8);
+  return retry.final;
 }
 
 /// Red de seguridad determinista (no confiar solo en la instrucción del prompt, mismo criterio que
@@ -508,6 +609,160 @@ export function dropSuggestionsTargetingDownedNpc(suggestions: string[], downedN
     const mentionsDownedNpc = downedNpcNames.some((name) => s.toLowerCase().includes(name.toLowerCase()));
     return !(mentionsDownedNpc && COMBAT_INITIATION_VERB_REGEX.test(s));
   });
+}
+
+/// Complementario al de arriba (bug real jugando en vivo, 2026-08-20: "ahora funciona pero...muy
+/// mal" — dos variantes seguidas del mismo fallo, "Remato a Gistera Koh para evitar su pérdida" y
+/// después "Ataco a Gistera Koh para acabar con su presencia", justo cuando ella acababa de
+/// presentarse ILESA pidiendo ayuda contra un tercero, sin combate de por medio). Un verbo de
+/// violencia (incluido "rematar", golpe de gracia que solo tiene sentido contra alguien ya
+/// convaleciente/muerto) NUNCA es coherente contra el NPC que ACABA de dirigirse al jugador con
+/// una pregunta o petición real — eso es justo lo contrario de REGLA MÁS IMPORTANTE 1 (responder
+/// de verdad a lo que pide, no atacarlo). Deliberadamente NO se aplica a cualquier NPC sano
+/// (rompería la sugerencia normal de "Ataco a X" contra un enemigo sano en pleno combate) — solo a
+/// quien es AMBAS cosas a la vez: sano Y quien habló en la última entrada del historial.
+const VIOLENCE_VERB_REGEX = /\b(atac[oa]|atacar|enfrent[oa]|enfrentar|pele[oa]|pelear|combat[oe]|combatir|remat[oa]|rematar)\b/i;
+
+export function dropSuggestionsAttackingHelpRequester<T extends { name: string; condicionFisica: string }>(
+  suggestions: string[],
+  knownNpcs: T[],
+  recentLog: string[],
+): string[] {
+  if (!lastLogHasDirectSpeech(recentLog)) return suggestions;
+  const lastEntry = (recentLog[recentLog.length - 1] ?? '').toLowerCase();
+  const requesterNames = knownNpcs
+    .filter((n) => n.condicionFisica !== 'CONVALECIENTE' && n.condicionFisica !== 'MUERTO')
+    .map((n) => n.name)
+    .filter((name) => lastEntry.includes(name.toLowerCase()));
+  if (requesterNames.length === 0) return suggestions;
+  return suggestions.filter((s) => {
+    const mentionsRequester = requesterNames.some((name) => s.toLowerCase().includes(name.toLowerCase()));
+    return !(mentionsRequester && VIOLENCE_VERB_REGEX.test(s));
+  });
+}
+
+/// Red de seguridad determinista para REGLA MÁS IMPORTANTE 4 (bug real reincidente jugando en vivo,
+/// 2026-08-20 — la propia REGLA 4 y EJEMPLO 2 del prompt YA prohíben esto explícitamente, "Acepto
+/// ayudarla" tiene que pararse ahí, pero el modelo lo sigue comprimiendo con cierta frecuencia
+/// real): "Acepto ayudarla y busco al que me persigue" — dos beats en una frase (aceptar + una
+/// segunda acción ya decidida), y de paso arrastra un error de pronombre (copia "me persigue" de
+/// la voz de Gistera en primera persona, cuando desde el punto de vista del jugador tendría que ser
+/// "LA persigue" — a ella, no a él). En vez de intentar arreglar el pronombre (frágil, un solo caso
+/// más de una familia potencialmente más amplia), se descarta la sugerencia entera: "Acepto
+/// ayudarla"/"Decido ayudarla" sin nada más detrás es la forma correcta, cualquier " y " con más
+/// contenido detrás de esas dos frases es la compresión que la regla ya prohíbe.
+/// Acotado a "y" en el tramo INMEDIATO tras el verbo de aceptar (hasta 40 caracteres, ni una
+/// palabra de condición de por medio) — no "cualquier 'y' en toda la frase", que daría falso
+/// positivo con una aceptación CON CONDICIÓN legítima ("Acepto ayudarla, pero solo si me cuentas
+/// todo lo que sabes sobre los Serhu y por qué están en guerra con nosotros" — buena, ver REGLA 1 —
+/// tiene una "y" bien entrada en la frase, sin relación con esto). El lookahead negativo corta el
+/// tramo en seco en cuanto aparece "pero"/"si"/"aunque"/"cuando"/"solo" — justo las palabras que
+/// introducen una condición legítima, nunca una segunda acción ya decidida. Sin `\b` tras "ayudar"
+/// a propósito: el pronombre enclítico se pega sin espacio ("ayudarla"/"ayudarle"/"ayudarte"), y
+/// "ayudar a Gistera Koh" (objeto con nombre en vez de pronombre, variante real ya vista) también
+/// tiene que matchear.
+const COMPRESSED_ACCEPT_REGEX = /^(acepto|decido|accedo)\s+ayudar(?:(?!\b(?:pero|si|aunque|cuando|solo)\b)[^,.!?]){0,40}?,?\s+y\s+\S/i;
+/// Reconoce CUALQUIER aceptación (comprimida o no) — usada en `generateSuggestions` para saber si
+/// ya sobrevivió una aceptación de verdad tras el filtro de arriba, o si hace falta reintentar.
+const ACCEPT_PHRASE_REGEX = /^(acepto|decido|accedo)\s+ayudar/i;
+/// Segunda variante real (misma sesión, verificada con logging directo minutos después de la
+/// primera): "Acepto ayudarte, Gistera Koh. Debo enfrentarme al que te persigue primero." — la
+/// misma compresión de dos beats, pero con PUNTO en vez de "y" uniendo la segunda frase, así que
+/// `COMPRESSED_ACCEPT_REGEX` (acotado a "y") no la cazaba. Heurística de contenido en vez de
+/// estructura: si la sugerencia EMPIEZA aceptando ayudar Y en cualquier parte del resto del texto
+/// menciona al perseguidor (`pers[ei]g\w*`, no `persegu\w*` — mismo cambio de raíz en presente que
+/// `PURSUER_REFERENCE_REGEX`, turnResolution.ts: "persigue"/"persiguen" usan "persig-", no
+/// "persegu-", y son justo las formas más usadas en esta escena), es casi con toda seguridad la misma compresión —
+/// "Acepto ayudarla" sola, la forma correcta que pide REGLA 4, nunca necesita mencionar al
+/// perseguidor en absoluto (ver EJEMPLO 2 del prompt). Riesgo aceptado, mismo criterio que el resto
+/// de esta familia de filtros: alguna aceptación legítima que exprese incertidumbre sobre quién
+/// persigue ("Acepto ayudarla, aunque no sé aún quién la persigue") también se descartaría — perder
+/// una sugerencia de más pesa menos que dejar pasar la compresión ya confirmada dos veces.
+const ACCEPT_THEN_PURSUER_MENTION_REGEX = /^(acepto|decido|accedo)\s+ayudar[\s\S]*\bpers[ei]g\w*/i;
+export function dropSuggestionsCompressingAcceptance(suggestions: string[]): string[] {
+  return suggestions.filter((s) => {
+    const trimmed = s.trim();
+    return !COMPRESSED_ACCEPT_REGEX.test(trimmed) && !ACCEPT_THEN_PURSUER_MENTION_REGEX.test(trimmed);
+  });
+}
+
+/// Red de seguridad determinista para la instrucción de persona gramatical de SUGGESTIONS_BASE_RULES
+/// ("en primera persona... nunca 'su'/'él'/'ella'") — bug real jugando en vivo, reproducido 2 de 2
+/// veces seguidas en la misma sesión (2026-08-20, verificado con logging directo): la sugerencia de
+/// "explorar el entorno" salía como "Examinó el terreno..."/"Examine el terreno..." — tercera
+/// persona de pretérito o imperativo/subjuntivo, nunca "Examino" (primera persona presente, la
+/// forma correcta). El prompt YA pide primera persona explícitamente; esto es la comprobación
+/// post-hoc de siempre, acotada a un vocabulario cerrado de los verbos de "explorar/revisar" ya
+/// vistos fallar (mismo criterio que `WEAPON_CATEGORY_NOUNS`: lista cerrada de un campo semántico
+/// concreto, no un intento de conjugador genérico de español). Solo mira la PRIMERA palabra — el
+/// resto de la frase puede usar cualquier persona en subordinadas sin que sea señal de nada.
+/// `(?![\\p{L}\\p{N}])` en vez de `\b` (mismo gotcha ya documentado en enciclopediaIndex.ts,
+/// frontend): `\b` de JS trata las vocales acentuadas como "no letra" — sin este cambio, "Buscó"/
+/// "Exploró" (terminan en vocal acentuada) nunca llegaban a matchear, el límite de palabra se
+/// rompía justo ahí.
+const WRONG_PERSON_FIRST_WORD_REGEX =
+  /^(examina|examinó|examine|revisa|revisó|revise|busca|buscó|inspecciona|inspeccionó|inspeccione|observa|observó|observe|explora|exploró|explore|registra|registró|registre)(?![\p{L}\p{N}])/iu;
+export function dropSuggestionsWrongGrammaticalPerson(suggestions: string[]): string[] {
+  return suggestions.filter((s) => !WRONG_PERSON_FIRST_WORD_REGEX.test(s.trim()));
+}
+
+/// Fragmentos EXACTOS de EJEMPLO 1/EJEMPLO 2 (referencia de forma en el prompt, NUNCA debería
+/// aparecer en la partida real de nadie) — bug real jugando en vivo (2026-08-18, "las sugerencias
+/// siguen pareciendo que adivinan el futuro"): con un NPC solo acercándose sin haber dicho nada
+/// todavía, el modelo devolvió "Acepto ayudarla y voy a por quien la persigue" casi textual al
+/// ejemplo, pese a la instrucción explícita "NUNCA copies ningún nombre de aquí". Red de seguridad
+/// determinista (no confiar solo en esa instrucción, mismo criterio que el resto de esta familia)
+/// — compara cada sugerencia generada contra estos fragmentos de ejemplo. Deliberadamente SIN
+/// "Acepto ayudarla" (rediseño a fragmentos cortos, 2026-08-20): esa es justo la forma CORRECTA que
+/// pide REGLA 4 cuando el jugador de verdad acepta — incluirla aquí penalizaría al modelo por
+/// acertar, no por copiar. Tampoco "Pregunto por el perseguidor" (mismo motivo, encontrado minutos
+/// después verificando en vivo): con solo 2 palabras de contenido ("pregunto"+"perseguidor"),
+/// cualquier variante genuina y correcta ("Pregunto por su perseguidor", "Pregunto por su
+/// persecutor"...) comparte el 100% y se descartaba igual — la pregunta sobre el perseguidor es la
+/// respuesta obvia y correcta a esta escena concreta, no una señal de estar copiando el ejemplo.
+///
+/// `factSimilarity` (worldFacts.ts), NO `similarity()` plana (bug real, 2026-08-20: "al darle a
+/// sugerir no me está dando ninguna sugerencia") — con fragmentos tan cortos como estos (3-6
+/// palabras) y encima con el mismo verbo que el propio prompt pide usar ("Pregunto por...",
+/// "Registro...", ver SUGGESTIONS_BASE_RULES), dos sugerencias sobre temas totalmente distintos ya
+/// comparten suficientes palabras de función para cruzar el umbral con `similarity()` plana — las
+/// 3 sugerencias generadas se descartaban enteras sin que ninguna copiara nada de verdad,
+/// devolviendo `[]` sin ningún error visible en el front. `factSimilarity` filtra antes las
+/// palabras de función y usa Jaccard real, exactamente calibrado para este mismo patrón (ver su
+/// comentario en worldFacts.ts) — una copia con 1-2 palabras cambiadas sigue cazándose.
+const EXAMPLE_SUGGESTION_TEXTS = ['Remato al rival caído', 'Registro su cuerpo', 'Miro si hay alguien más', 'Me niego, por ahora'];
+const EXAMPLE_COPY_SIMILARITY_THRESHOLD = 0.5;
+
+export function dropSuggestionsCopyingExample(suggestions: string[]): string[] {
+  return suggestions.filter((s) => !EXAMPLE_SUGGESTION_TEXTS.some((ex) => factSimilarity(s, ex) >= EXAMPLE_COPY_SIMILARITY_THRESHOLD));
+}
+
+/// Red de seguridad determinista para REGLA MÁS IMPORTANTE 3 (bug real jugando en vivo,
+/// 2026-08-18): Gistera Koh pidiendo ayuda contra "uno de los suyos" — sin nombrarlo — bastó para
+/// que una sugerencia rellenara el hueco con "el Orco Enfurecido" (un NPC que el jugador SÍ conoce
+/// de antes, de ahí que pasara `npcsKnownFromLog`, pero que la escena actual nunca conectó con
+/// quien persigue a Gistera). Corte simple: un NPC "conocido" solo puede nombrarse en una
+/// sugerencia si su nombre aparece en la ÚLTIMA entrada del historial — conocerlo de turnos
+/// anteriores no basta para que sea la respuesta a una pregunta sin resolver de AHORA MISMO.
+///
+/// Recibe el roster COMPLETO de la escena (`ctx.npcsEnEscena`), no solo `knownNpcs` (bug
+/// reincidente, 2026-08-20: la misma "Orco Enfurecido" volvió a colarse en una sugerencia real
+/// aunque nunca se nombró en el historial ni en PERSONAJES EN ESCENA — la causa raíz de ESE caso
+/// concreto era otra, ver turnResolution.ts fase 2 de Gistera Koh, pero este filtro tenía el mismo
+/// hueco por diseño: como `npcsKnownFromLog` ya lo excluía de `knownNpcs` por no aparecer en el
+/// log, tampoco entraba en `staleNames` — quedaba completamente fuera de esta red de seguridad,
+/// justo el caso que más la necesita). Un NPC detectado en escena por el motor pero que el modelo
+/// menciona por su cuenta sin que el propio historial lo respalde es siempre sospechoso, esté o no
+/// en `knownNpcs`.
+export function dropSuggestionsNamingStaleNpc<T extends { name: string }>(
+  suggestions: string[],
+  npcsEnEscena: T[],
+  recentLog: string[],
+): string[] {
+  const lastEntry = (recentLog[recentLog.length - 1] ?? '').toLowerCase();
+  const staleNames = npcsEnEscena.map((n) => n.name).filter((name) => !lastEntry.includes(name.toLowerCase()));
+  if (staleNames.length === 0) return suggestions;
+  return suggestions.filter((s) => !staleNames.some((name) => new RegExp(`\\b${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i').test(s)));
 }
 
 export interface NpcReplyContext {
@@ -1078,16 +1333,16 @@ export function isTooSimilarToLast(narration: string, lastNarrationText?: string
   return similarity(narration, lastNarrationText) >= REPEAT_SIMILARITY_THRESHOLD;
 }
 
-/// Umbral MÁS BAJO que `REPEAT_SIMILARITY_THRESHOLD` a propósito (petición explícita, 2026-08-15:
-/// "las sugerencias no están siendo muy buenas") — `similarity()` es solapamiento de palabras
-/// entre/máximo, y en frases muy cortas (5-10 palabras, lo normal en una sugerencia) compartir el
-/// nombre del NPC de la escena y un par de palabras de función ya empuja la similitud a 0.5-0.6
-/// aunque las dos acciones sean claramente distintas ("Ataco al Orco Enfurecido" vs "Le pregunto
-/// al Orco Enfurecido por su clan") — un umbral pensado para prosa larga las dejaría pasar siempre
-/// como duplicadas. 0.55 sigue cazando el caso real que importa: dos variantes de la MISMA idea
-/// con las palabras de contenido casi iguales ("Sigo explorando la zona" / "Continúo explorando la
-/// zona").
-const SUGGESTION_SIMILARITY_THRESHOLD = 0.55;
+/// `factSimilarity` (worldFacts.ts), NO `similarity()` plana (bug real, 2026-08-20: "al darle a
+/// sugerir no me está dando ninguna sugerencia" — mismo motivo exacto que el cambio en
+/// `dropSuggestionsCopyingExample`, ver su comentario: frases tan cortas como una sugerencia
+/// comparten palabras de función de sobra para cruzar cualquier umbral con `similarity()` plana
+/// sin ser la misma idea de verdad). Petición explícita previa, 2026-08-15: "las sugerencias no
+/// están siendo muy buenas" — ya se había bajado el umbral una vez para paliar el mismo síntoma
+/// sin cambiar de métrica; con Jaccard+stopwords el umbral vuelve a 0.5 (el propio caso de
+/// ejemplo de abajo, "Sigo explorando la zona"/"Continúo explorando la zona", da exactamente 0.5
+/// con la nueva métrica — verificado en el test).
+const SUGGESTION_SIMILARITY_THRESHOLD = 0.5;
 
 /// Sanea "suggestions" tras el parseo (mismo criterio que `isTooSimilarToLast`: no confiar solo en
 /// la instrucción del prompt, comprobar el texto ya generado) — quita vacíos/espacios de sobra y
@@ -1099,7 +1354,7 @@ export function sanitizeSuggestions(suggestions: string[] | undefined): string[]
   for (const raw of suggestions ?? []) {
     const s = raw.trim();
     if (!s) continue;
-    if (kept.some((k) => similarity(s, k) >= SUGGESTION_SIMILARITY_THRESHOLD)) continue;
+    if (kept.some((k) => factSimilarity(s, k) >= SUGGESTION_SIMILARITY_THRESHOLD)) continue;
     kept.push(s);
   }
   return kept;

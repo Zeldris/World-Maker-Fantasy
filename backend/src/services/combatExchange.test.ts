@@ -16,6 +16,9 @@ const BASE_ATTRIBUTES: AttributeBlock = { fuerza: 10, destreza: 10, constitucion
 const R_FOR_ROLL_5 = 0.2; // floor(0.2*20)+1 = 5
 const R_FOR_ROLL_10 = 0.45; // floor(0.45*20)+1 = 10
 const R_FOR_ROLL_20 = 0.95; // floor(0.95*20)+1 = 20
+// Cualquier roll exacto 1-20, para los tests de margen (rediseño a check opuesto, 2026-08-21) —
+// más directo que ir buscando constantes nombradas para cada valor límite que hace falta probar.
+const rFor = (roll: number) => (roll - 1) / 20 + 0.001;
 
 function mockRolls(atacanteR: number, defensorR: number) {
   vi.spyOn(Math, 'random').mockReturnValueOnce(atacanteR).mockReturnValueOnce(defensorR);
@@ -32,12 +35,63 @@ describe('resolveExchange', () => {
   const atacanteBase: ExchangeParticipant = { attributes: BASE_ATTRIBUTES, attribute: 'fuerza', difficulty: 15, condicionFisica: 'ILESO', rol: 'ataque' };
   const defensorBase: ExchangeParticipant = { attributes: BASE_ATTRIBUTES, attribute: 'fuerza', difficulty: 15, condicionFisica: 'ILESO', rol: 'defensa' };
 
-  it('atacante falla + defensor claro → el defensor contragolpea', () => {
-    mockRolls(R_FOR_ROLL_5, R_FOR_ROLL_20);
+  // Rediseño a check opuesto de D&D (2026-08-21, petición explícita de la usuaria: "en D&D que tu
+  // saques un 22 y el enemigo un 24, no quiere decir que el 24 sea el que gana?" — antes cada lado
+  // tiraba contra su PROPIA dificultad y se cruzaban los dos grados en una tabla de 9
+  // combinaciones; ahora se comparan los dos totales DIRECTAMENTE). `margen = atacante.result -
+  // defensor.result` decide el desenlace por magnitud, `DECISIVE_MARGIN = 10` es el umbral entre
+  // "golpe/parada normal" y "golpe pleno/contragolpe" — primer valor, recalibrable jugando.
+  it('margen muy negativo (≤-10) → el defensor contragolpea', () => {
+    mockRolls(R_FOR_ROLL_5, R_FOR_ROLL_20); // 10 vs 25, margen -15
     const result = resolveExchange(atacanteBase, defensorBase);
-    expect(result.atacante.gradoExito).toBe('fallo');
-    expect(result.defensor.gradoExito).toBe('claro');
+    expect(result.margen).toBe(-15);
     expect(result.resultado).toBe('defensor_contragolpea');
+    expect(result.atacante.success).toBe(false);
+    expect(result.defensor.success).toBe(true);
+  });
+
+  it('margen exactamente -10 (el umbral) → todavía cuenta como contragolpe, no como parada normal', () => {
+    mockRolls(rFor(10), R_FOR_ROLL_20); // 15 vs 25, margen -10
+    expect(resolveExchange(atacanteBase, defensorBase).resultado).toBe('defensor_contragolpea');
+  });
+
+  it('margen -9 (justo por debajo del umbral) → parada en seco, no contragolpe', () => {
+    mockRolls(rFor(11), R_FOR_ROLL_20); // 16 vs 25, margen -9
+    expect(resolveExchange(atacanteBase, defensorBase).resultado).toBe('parada_en_seco');
+  });
+
+  it('empate exacto → gana el defensor, el golpe no conecta (petición explícita)', () => {
+    mockRolls(R_FOR_ROLL_10, R_FOR_ROLL_10); // 15 vs 15, margen 0
+    const result = resolveExchange(atacanteBase, defensorBase);
+    expect(result.margen).toBe(0);
+    expect(result.resultado).toBe('ataque_falla');
+    expect(result.atacante.success).toBe(false);
+    expect(result.defensor.success).toBe(true); // el empate cuenta como éxito del defensor
+  });
+
+  it('margen 1 (el atacante gana por el mínimo) → golpe normal', () => {
+    mockRolls(rFor(11), R_FOR_ROLL_10); // 16 vs 15, margen 1
+    const result = resolveExchange(atacanteBase, defensorBase);
+    expect(result.resultado).toBe('golpe_normal');
+    expect(result.atacante.success).toBe(true);
+  });
+
+  it('margen 9 (justo por debajo del umbral) → golpe normal, no pleno', () => {
+    mockRolls(R_FOR_ROLL_20, rFor(11)); // 25 vs 16, margen 9
+    expect(resolveExchange(atacanteBase, defensorBase).resultado).toBe('golpe_normal');
+  });
+
+  it('margen exactamente 10 (el umbral) → golpe pleno', () => {
+    mockRolls(R_FOR_ROLL_20, R_FOR_ROLL_10); // 25 vs 15, margen 10
+    expect(resolveExchange(atacanteBase, defensorBase).resultado).toBe('golpe_pleno');
+  });
+
+  it('margen muy positivo → golpe pleno, el peor caso', () => {
+    mockRolls(R_FOR_ROLL_20, R_FOR_ROLL_5); // 25 vs 10, margen 15
+    const result = resolveExchange(atacanteBase, defensorBase);
+    expect(result.resultado).toBe('golpe_pleno');
+    expect(result.atacante.success).toBe(true);
+    expect(result.defensor.success).toBe(false);
   });
 
   // Bug real jugando en vivo (2026-08-13, petición explícita: "solo si la habilidad especifica
@@ -62,40 +116,18 @@ describe('resolveExchange', () => {
     expect(exchangeContextBlock(exchange, 'Orco', 'Gorhorn')).toContain('de propina consigue tocar');
   });
 
-  // Bug real de segunda vuelta (2026-08-14, "me hizo daño con una habilidad defensiva" — "Lana
-  // Espesa", una defensiva sin `effect:'ATAQUE'`, seguía hiriendo al jugador vía `golpes_mutuos`):
-  // el mismo gate de arriba se aplicó a `defensor_contragolpea` pero se dejó fuera `golpes_mutuos`,
-  // el otro desenlace donde el defensor también hace daño de vuelta. Downgrade a `golpe_normal`
-  // (el ataque SÍ conecta, solo el golpe de vuelta del defensor queda anulado) — a diferencia de
-  // `defensor_contragolpea` (ahí el ataque ya había fallado del todo).
-  it('exchangeContextBlock narra golpes_mutuos como un golpe normal (solo atacante) si el defensor no puede contragolpear', () => {
-    mockRolls(R_FOR_ROLL_20, R_FOR_ROLL_20);
+  it('exchangeContextBlock incluye el margen real en el texto para el Narrador', () => {
+    mockRolls(R_FOR_ROLL_20, R_FOR_ROLL_5); // 25 vs 10, margen 15
     const exchange = resolveExchange(atacanteBase, defensorBase);
-    expect(exchange.resultado).toBe('golpes_mutuos');
-    const conBonus = exchangeContextBlock(exchange, 'Orco', 'Gorhorn', true);
-    const sinBonus = exchangeContextBlock(exchange, 'Orco', 'Gorhorn', false);
-    expect(conBonus).toContain('AMBOS acaban acusando algo');
-    expect(sinBonus).not.toContain('AMBOS acaban acusando algo');
-    expect(sinBonus).toContain('alcanza a Gorhorn con normalidad');
+    const texto = exchangeContextBlock(exchange, 'Orco', 'Gorhorn');
+    expect(texto).toContain('Orco tira 25');
+    expect(texto).toContain('Gorhorn tira 10');
+    expect(texto).toContain('Orco supera a Gorhorn por 15');
   });
 
-  it('exchangeContextBlock sigue narrando golpes mutuos cuando el defensor SÍ puede contragolpear (parámetro por defecto true)', () => {
-    mockRolls(R_FOR_ROLL_20, R_FOR_ROLL_20);
-    const exchange = resolveExchange(atacanteBase, defensorBase);
-    expect(exchangeContextBlock(exchange, 'Orco', 'Gorhorn')).toContain('AMBOS acaban acusando algo');
-  });
-
-  // Bug real de tercera vuelta (2026-08-15, "hay mensaje antiguo de golpes mutuos" — `CombatExchangeDisplay`,
-  // lo que ve la jugadora en el badge de combate, seguía mandando el `resultado` crudo sin pasar
-  // por el mismo downgrade que ya tenía `exchangeContextBlock`, así que el badge decía "Empate ·
-  // Golpes mutuos" pese a que solo un lado había recibido daño de verdad). Misma función que ahora
-  // usan los dos consumidores (turnResolution.ts).
   describe('effectiveExchangeOutcome', () => {
     it('degrada defensor_contragolpea a ataque_falla si el defensor no puede contragolpear', () => {
       expect(effectiveExchangeOutcome('defensor_contragolpea', false)).toBe('ataque_falla');
-    });
-    it('degrada golpes_mutuos a golpe_normal si el defensor no puede contragolpear', () => {
-      expect(effectiveExchangeOutcome('golpes_mutuos', false)).toBe('golpe_normal');
     });
     it('deja el resto de desenlaces intactos aunque el defensor no pueda contragolpear', () => {
       expect(effectiveExchangeOutcome('golpe_normal', false)).toBe('golpe_normal');
@@ -105,48 +137,20 @@ describe('resolveExchange', () => {
     });
     it('nunca degrada nada si el defensor SÍ puede contragolpear', () => {
       expect(effectiveExchangeOutcome('defensor_contragolpea', true)).toBe('defensor_contragolpea');
-      expect(effectiveExchangeOutcome('golpes_mutuos', true)).toBe('golpes_mutuos');
     });
   });
 
-  it('atacante falla + defensor con_coste → el ataque simplemente falla', () => {
-    mockRolls(R_FOR_ROLL_5, R_FOR_ROLL_10);
-    expect(resolveExchange(atacanteBase, defensorBase).resultado).toBe('ataque_falla');
-  });
-
-  it('atacante falla + defensor falla → el ataque simplemente falla (nunca llega, gane o no la defensa)', () => {
-    mockRolls(R_FOR_ROLL_5, R_FOR_ROLL_5);
-    expect(resolveExchange(atacanteBase, defensorBase).resultado).toBe('ataque_falla');
-  });
-
-  it('atacante con_coste + defensor claro → parada en seco', () => {
-    mockRolls(R_FOR_ROLL_10, R_FOR_ROLL_20);
-    expect(resolveExchange(atacanteBase, defensorBase).resultado).toBe('parada_en_seco');
-  });
-
-  it('atacante con_coste + defensor con_coste → golpes mutuos', () => {
-    mockRolls(R_FOR_ROLL_10, R_FOR_ROLL_10);
-    expect(resolveExchange(atacanteBase, defensorBase).resultado).toBe('golpes_mutuos');
-  });
-
-  it('atacante con_coste + defensor falla → golpe normal', () => {
-    mockRolls(R_FOR_ROLL_10, R_FOR_ROLL_5);
-    expect(resolveExchange(atacanteBase, defensorBase).resultado).toBe('golpe_normal');
-  });
-
-  it('atacante claro + defensor claro → golpes mutuos (un choque duro)', () => {
-    mockRolls(R_FOR_ROLL_20, R_FOR_ROLL_20);
-    expect(resolveExchange(atacanteBase, defensorBase).resultado).toBe('golpes_mutuos');
-  });
-
-  it('atacante claro + defensor con_coste → golpe normal', () => {
-    mockRolls(R_FOR_ROLL_20, R_FOR_ROLL_10);
-    expect(resolveExchange(atacanteBase, defensorBase).resultado).toBe('golpe_normal');
-  });
-
-  it('atacante claro + defensor falla → golpe pleno, el peor caso', () => {
-    mockRolls(R_FOR_ROLL_20, R_FOR_ROLL_5);
-    expect(resolveExchange(atacanteBase, defensorBase).resultado).toBe('golpe_pleno');
+  // Petición explícita (2026-08-21, tras confirmar quitar la protección por nivel del defensor):
+  // "súmalo a la tirada de defensa" — el bono de equipo de defensa se suma directo al resultado
+  // del defensor, como cualquier modificador normal de D&D, en vez de reducir su dificultad propia
+  // (que ya no decide nada).
+  it('bonoTirada del defensor se suma a su resultado y puede cambiar quién gana el contraste', () => {
+    mockRolls(rFor(11), rFor(11)); // 16 vs 16 sin bono — empate, ganaría el defensor de todos modos
+    const defensorConBono: ExchangeParticipant = { ...defensorBase, bonoTirada: 5 };
+    const result = resolveExchange(atacanteBase, defensorConBono);
+    expect(result.defensor.result).toBe(21); // 16 + 5
+    expect(result.margen).toBe(-5);
+    expect(result.resultado).toBe('parada_en_seco');
   });
 
   it('aplica el multiplicador de la rueda de debilidades al valor efectivo de cada lado', () => {

@@ -7,7 +7,7 @@ export interface ResolvedAbility {
   icon: string
   name: string
   description: string
-  /// Rediseño del turno de combate (2026-07-28) — "tipo" de la habilidad (rueda de debilidades
+  /// Rediseño del turno de combate (2026-07-28) — "tipo" de la habilidad (árbol de ventajas
   /// en el backend, color en la UI aquí).
   preferredAttribute: Attribute
   /// Rediseño de la vista de combate (2026-07-28, petición explícita: "un icono... para

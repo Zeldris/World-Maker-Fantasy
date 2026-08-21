@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { CRAFTING_RECIPES, detectsCraftIntent, canCraft, craftRequisitoShortfalls, planCraftConsumption, type CraftingRecipe } from './crafting.js';
+import { CRAFTING_RECIPES, detectsCraftIntent, canCraft, craftRequisitoShortfalls, planCraftConsumption, craftDurationSecondsFor, type CraftingRecipe } from './crafting.js';
 import type { AttributeBlock } from './dice.js';
 import { EMPTY_SECONDARY_ATTRIBUTES } from './secondaryAttributes.js';
 import type { CatalogLookup, InventoryRowLike } from './ingredients.js';
@@ -400,5 +400,23 @@ describe('planCraftConsumption', () => {
     const rows = [row('row-stone', 'piedra', 10)];
     const plans = planCraftConsumption(stoneBlock, rows, catalogBySlug);
     expect(plans).toEqual([{ deleteIds: [], updateRemainder: { id: 'row-stone', newQuantity: 5 } }]);
+  });
+});
+
+describe('craftDurationSecondsFor (espera real, 2026-08-20)', () => {
+  it('escala con el tier de la receta, de 5 a 60 segundos reales', () => {
+    expect(craftDurationSecondsFor({ ...axeRepair, tier: 1 })).toBe(5);
+    expect(craftDurationSecondsFor({ ...axeRepair, tier: 2 })).toBe(20);
+    expect(craftDurationSecondsFor({ ...axeRepair, tier: 3 })).toBe(35);
+    expect(craftDurationSecondsFor({ ...axeRepair, tier: 4 })).toBe(50);
+    expect(craftDurationSecondsFor({ ...axeRepair, tier: 5 })).toBe(60);
+  });
+  it('cae al mínimo (5s) para recetas sin tier — smokeMeat, "habilidad de supervivencia básica"', () => {
+    expect(smokeMeat.tier).toBeUndefined();
+    expect(craftDurationSecondsFor(smokeMeat)).toBe(5);
+  });
+  it('coincide con el tier real ya tabulado en las recetas base', () => {
+    expect(craftDurationSecondsFor(axeRepair)).toBe(35); // tier 3
+    expect(craftDurationSecondsFor(antidote)).toBe(20); // tier 2
   });
 });

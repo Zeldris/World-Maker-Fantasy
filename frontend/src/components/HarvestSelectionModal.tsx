@@ -125,12 +125,18 @@ export function HarvestSelectionModal({ saveId, oficio, oficioLabel, inventoryUs
       ) : (
         <div className="space-y-3">
           {sources.map((source) => (
-            <div key={source.sourceSlug} className="rounded-lg border border-iron-700 bg-wood-950/40 p-3">
+            <div key={source.sourceCategoryName} className="rounded-lg border border-iron-700 bg-wood-950/40 p-3">
               <p className="mb-1.5 text-sm font-medium text-wood-100">{source.sourceCategoryName}</p>
               <div className="space-y-1.5">
                 {source.yields.map((y) => {
-                  const key = `${source.sourceSlug}:${y.itemSlug}`
-                  const max = Math.min(y.cantidadMaxima, source.disponible)
+                  // `y.sourceSlug`/`y.disponible`, NUNCA `source.*` (bug real, 2026-08-20: "0/NaN"
+                  // en el modal, y una segunda rotura más grave detrás — la clave de selección
+                  // usaba `source.sourceSlug`, inexistente desde el agrupado por categoría de
+                  // 2026-08-15, así que al confirmar se mandaba `sourceSlug: "undefined"` al
+                  // backend. Una tarjeta de categoría agrupa yields de VARIAS fuentes distintas —
+                  // cada una lleva su propio `sourceSlug`/`disponible`, nunca uno compartido.
+                  const key = `${y.sourceSlug}:${y.itemSlug}`
+                  const max = Math.min(y.cantidadMaxima, y.disponible)
                   const value = selections[key] ?? 0
                   return (
                     <div key={key} className="flex items-center justify-between gap-2 text-xs text-wood-300">

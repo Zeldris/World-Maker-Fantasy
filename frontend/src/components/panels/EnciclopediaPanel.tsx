@@ -116,9 +116,15 @@ const ATTRIBUTES_INFO: { key: Attribute; icon: string; description: string }[] =
 // Mismo orden que `ATTRIBUTE_RING` en backend/src/services/attributeWheel.ts — se duplica aquí
 // porque es una constante de diseño (no contenido de partida servido por la API); si cambia
 // allí, hay que actualizar este array a mano.
-const WEAKNESS_RING: Attribute[] = ['fuerza', 'destreza', 'inteligencia', 'arcano', 'constitucion', 'voluntad', 'carisma']
+//
+// Renombrado de "árbol/anillo de DEBILIDADES" a "árbol de VENTAJAS" (petición explícita,
+// 2026-08-20: "ya que ahora solo multiplicamos y no dividimos") — el nombre viejo venía de un
+// diseño anterior donde el tipo perdedor SÍ dividía su atributo (una desventaja real); desde el
+// rediseño de combate de 2026-08-15 (`typeMultiplierFor`, backend) el lado que no tiene ventaja
+// se queda en ×1 neutro, nunca en malus — "debilidades" describía un castigo que ya no existe.
+const ADVANTAGE_RING: Attribute[] = ['fuerza', 'destreza', 'inteligencia', 'arcano', 'constitucion', 'voluntad', 'carisma']
 
-const WEAKNESS_RING_COLOR: Record<Attribute, string> = {
+const ADVANTAGE_RING_COLOR: Record<Attribute, string> = {
   fuerza: 'var(--color-fuerza-500)',
   destreza: 'var(--color-destreza-500)',
   constitucion: 'var(--color-constitucion-500)',
@@ -129,19 +135,20 @@ const WEAKNESS_RING_COLOR: Record<Attribute, string> = {
 }
 
 // Rediseño del turno de combate (2026-07-28, petición explícita: "un tab para ver el árbol de
-// debilidades") — visualiza el anillo de attributeWheel.ts: cada flecha apunta a quien tiene
+// ventajas") — visualiza el anillo de attributeWheel.ts: cada flecha apunta a quien tiene
 // ventaja de tipo directa (distancia 1, ×1.5 en ambos árboles de ataque y defensa); saltarse
 // un nodo (distancia 2) es un efecto más suave, mostrado solo en la tabla de debajo, no como
 // flecha, para no saturar el dibujo con las 15 combinaciones posibles. Solo premia, nunca
 // penaliza (rediseño 2026-08-15, ver el comentario largo de `typeMultiplierFor` en el backend):
-// usar el tipo perdedor no divide nada, se queda en ×1 neutro.
-function AttributeWheelDiagram() {
+// usar el tipo perdedor no divide nada, se queda en ×1 neutro — de ahí el renombrado de
+// "debilidades" a "ventajas" (petición explícita, 2026-08-20).
+function AttributeAdvantageDiagram() {
   const size = 260
   const center = size / 2
   const radius = 92
   const nodeRadius = 28
-  const points = WEAKNESS_RING.map((attr, i) => {
-    const angle = -Math.PI / 2 + (i * 2 * Math.PI) / WEAKNESS_RING.length
+  const points = ADVANTAGE_RING.map((attr, i) => {
+    const angle = -Math.PI / 2 + (i * 2 * Math.PI) / ADVANTAGE_RING.length
     return { attr, x: center + radius * Math.cos(angle), y: center + radius * Math.sin(angle) }
   })
 
@@ -149,27 +156,35 @@ function AttributeWheelDiagram() {
     <div className="flex flex-col items-center gap-4">
       <svg viewBox={`0 0 ${size} ${size}`} className="w-full max-w-xs">
         <defs>
-          <marker id="weakness-ring-arrow" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto">
+          <marker id="advantage-ring-arrow" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto">
             <path d="M0,0 L8,4 L0,8 Z" fill="var(--color-wood-500)" />
           </marker>
         </defs>
         {points.map((p, i) => {
+          // Flecha invertida (bug real, 2026-08-20: "las flechas están al revés") — `next` es
+          // quien GANA la ventaja directa sobre `p` (confirmado en attributeWheel.test.ts:
+          // `typeMultiplierFor('destreza', 'fuerza', 'ataque') === 1.5`, con 'destreza' como
+          // "next" de 'fuerza' en ADVANTAGE_RING). La convención habitual de estos diagramas es
+          // que la flecha SALGA de quien gana y APUNTE a quien vence — la versión anterior hacía
+          // justo lo contrario (línea de `p` a `next`, punta en `next`, el propio ganador), lo
+          // que se lee como "p vence a next" cuando es al revés. Ahora la línea va de `next` a
+          // `p`, con la punta en `p` — "next vence a p".
           const next = points[(i + 1) % points.length]
-          const dx = next.x - p.x
-          const dy = next.y - p.y
+          const dx = p.x - next.x
+          const dy = p.y - next.y
           const dist = Math.hypot(dx, dy)
           const ux = dx / dist
           const uy = dy / dist
           return (
             <line
               key={`edge-${p.attr}`}
-              x1={p.x + ux * nodeRadius}
-              y1={p.y + uy * nodeRadius}
-              x2={next.x - ux * (nodeRadius + 8)}
-              y2={next.y - uy * (nodeRadius + 8)}
+              x1={next.x + ux * nodeRadius}
+              y1={next.y + uy * nodeRadius}
+              x2={p.x - ux * (nodeRadius + 8)}
+              y2={p.y - uy * (nodeRadius + 8)}
               stroke="var(--color-wood-500)"
               strokeWidth={1.5}
-              markerEnd="url(#weakness-ring-arrow)"
+              markerEnd="url(#advantage-ring-arrow)"
             />
           )
         })}
@@ -181,9 +196,9 @@ function AttributeWheelDiagram() {
                 cx={p.x}
                 cy={p.y}
                 r={nodeRadius}
-                fill={WEAKNESS_RING_COLOR[p.attr]}
+                fill={ADVANTAGE_RING_COLOR[p.attr]}
                 fillOpacity={0.18}
-                stroke={WEAKNESS_RING_COLOR[p.attr]}
+                stroke={ADVANTAGE_RING_COLOR[p.attr]}
                 strokeWidth={2}
               />
               <text x={p.x} y={p.y - 3} textAnchor="middle" style={{ fontSize: 15 }}>
@@ -196,10 +211,16 @@ function AttributeWheelDiagram() {
           )
         })}
       </svg>
+      {/* Reordenado (petición explícita, 2026-08-20: "dale una pensada para que sea más claro
+          aún") — "solo premia, nunca penaliza" pasa a ser la PRIMERA frase, no la segunda: es
+          justo la idea que motivó el cambio de nombre (de "debilidades" a "ventajas"), así que
+          debe ser lo primero que se lee, no algo que aclara un malentendido ya sembrado por leer
+          "multiplica" antes sin saber que el otro lado nunca divide. */}
       <p className="max-w-sm text-center text-xs leading-relaxed text-wood-400">
-        Cada flecha apunta a quien tiene ventaja directa (distancia 1 en el anillo): usar ese tipo contra el anterior
-        multiplica tu atributo efectivo en la tirada. Usarlo al revés no te penaliza — tu tirada sigue siendo la
-        normal, sin ningún descuento. Aplica por separado a la tirada de ataque y a la de defensa.
+        Solo premia, nunca penaliza: si tu tipo tiene ventaja sobre el del rival, tu atributo se multiplica en la
+        tirada; si no la tienes, tiras con tu atributo normal, sin ningún descuento — el árbol nunca resta. Cada
+        flecha SALE del tipo que gana la ventaja directa y APUNTA al que vence (distancia 1 en el anillo). Se
+        aplica por separado a la tirada de ataque y a la de defensa.
       </p>
       <div className="w-full overflow-x-auto">
         <table className="w-full min-w-[280px] border-collapse text-xs">
@@ -468,9 +489,9 @@ export function EnciclopediaPanel({ data, loading, recipesStatus, onInsert, onDe
   const [expandedFaccionRazas, toggleFaccionRaza] = useToggleSet()
   const [expandedHistoriaPeriodos, toggleHistoriaPeriodo] = useToggleSet()
   // Sub-tabs de la categoría "Atributos" (2026-07-28, petición explícita: "mete un tab para ver
-  // los atributos y otro para ver el árbol de debilidades") — exclusivas entre sí, a diferencia
+  // los atributos y otro para ver el árbol de ventajas") — exclusivas entre sí, a diferencia
   // de `expandedClasses` de arriba.
-  const [attributesSubTab, setAttributesSubTab] = useState<'lista' | 'debilidades'>('lista')
+  const [attributesSubTab, setAttributesSubTab] = useState<'lista' | 'ventajas'>('lista')
   // Sub-tabs de "Historia" (2026-08-06, petición explícita: "la enciclopedia colocadas por años
   // cronologicamente en rangos de 500 años... antes de el año 0 no hay escritos en lengua común")
   // — mismo patrón que attributesSubTab, exclusivas entre sí.
@@ -1082,7 +1103,7 @@ export function EnciclopediaPanel({ data, loading, recipesStatus, onInsert, onDe
                   {(
                     [
                       { id: 'lista', label: 'Atributos' },
-                      { id: 'debilidades', label: 'Árbol de debilidades' },
+                      { id: 'ventajas', label: 'Árbol de ventajas' },
                     ] as const
                   ).map((tab) => (
                     <button
@@ -1129,8 +1150,8 @@ export function EnciclopediaPanel({ data, loading, recipesStatus, onInsert, onDe
                     </PanelSection>
                   </>
                 ) : (
-                  <PanelSection title="Árbol de debilidades (combate)">
-                    <AttributeWheelDiagram />
+                  <PanelSection title="Árbol de ventajas (combate)">
+                    <AttributeAdvantageDiagram />
                   </PanelSection>
                 )}
               </div>

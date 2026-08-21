@@ -49,6 +49,7 @@ import {
 import { harvestSourceAliases } from '../scripts/worldCatalog.js';
 import { detectsPostCombatInteraction } from '../services/postCombatInteraction.js';
 import { startEagerTransitResolution } from '../workers/worldTick.js';
+import { detectDeterministicCraft, detectsCraftIntent, CRAFTING_RECIPES } from '../services/crafting.js';
 
 interface ClassifyBody {
   saveId: string;
@@ -88,6 +89,11 @@ interface NarrateBody {
   /// Rediseño de combate (2026-08-09) — reenviado tal cual a `narrateAndPersistTurn`, ver el
   /// comentario de `NarrateAndPersistParams.isItemUse` en turnResolution.ts.
   isItemUse?: boolean;
+  /// Panel "Curar" con varios objetos/usos a la vez (petición explícita, 2026-08-18) — reenviado
+  /// tal cual a `narrateAndPersistTurn`, ver el comentario de `NarrateAndPersistParams.healItemUses`
+  /// en turnResolution.ts. Mismo criterio que `lootItemNames`: lista ORDENADA (el orden en que la
+  /// jugadora los seleccionó SÍ cambia el resultado, ver `applySequentialHeals`, death.ts).
+  healItemUses?: { itemId: string; quantity: number }[];
 }
 
 interface ClassificationResolution {
@@ -540,6 +546,9 @@ export async function turnRoutes(app: FastifyInstance) {
     // Estadísticas de objetos (2026-07-19): la tirada usa los atributos EFECTIVOS (base + lo
     // que sume el equipo puesto), nunca los atributos crudos guardados en el personaje.
     const attributes = effectiveAttributes(save.attributes as AttributeBlock, save.inventoryItems);
+    // Necesarios para el precheck de crafteo determinista de más abajo (`detectDeterministicCraft`
+    // espera exactamente los mismos inputs que `canCraft` ya usa dentro de `narrateAndPersistTurn`).
+    const secondaryAttributes = effectiveSecondaryAttributes(normalizeSecondaryAttributes(save.secondaryAttributes), save.inventoryItems);
     const timeLabel = save.worldState?.fictionalDateLabel ?? 'Día 1, mañana';
     const characterSummary = characterSummaryFor(save, {
       timeLabel,
@@ -578,6 +587,85 @@ export async function turnRoutes(app: FastifyInstance) {
         duracionMinutos: minutos,
         produccion: produccion ? `${produccion.cantidad} de ${produccion.itemName}` : undefined,
       };
+    }
+
+    // Crafteo con espera real (petición explícita, 2026-08-20: "quiero tener para esta parte algo
+    // similar a los viajes, que salga que estás crafteando y que lleve un tiempo real con la
+    // opción a cancelarlo... entre 5 segs y 60 segs" — antes el crafteo determinista resolvía
+    // síncrono en la misma respuesta, y encima esperaba de balde la generación completa del
+    // Narrador solo para tirarla, ver `craftMode`/`wasLlmNarrated` en turnResolution.ts). Chequeo
+    // barato primero (regex sin consultas, mismo criterio que el resto de detecciones de esta
+    // ruta, líneas de arriba) — el inventario completo/catálogo/progreso de oficios solo se pagan
+    // si de verdad podría tratarse de un intento de crafteo.
+    const mightBeCraftAttempt = CRAFTING_RECIPES.some((recipe) => detectsCraftIntent(recipe, action));
+    const craftAttempt = mightBeCraftAttempt
+      ? await detectDeterministicCraft({
+          action,
+          worldId: save.worldId,
+          saveId,
+          currentLocationSlug: currentLocationForSummary?.slug ?? null,
+          inventoryRows: await prisma.inventoryItem.findMany({ where: { saveId }, select: { id: true, name: true, catalogSlug: true } }),
+          attributes,
+          secondaryAttributes,
+          unlockedRecipeKeys: save.unlockedRecipeKeys,
+        })
+      : null;
+
+    if (craftAttempt) {
+      const busyUntil = new Date(Date.now() + craftAttempt.durationSeconds * 1000);
+      const startText = `${save.characterName} se pone a preparar ${craftAttempt.resultNames.join(', ')}...`;
+
+      // Mismo desempate de `createdAt` que el bloque de viaje de abajo (bug real, 2026-07-24: sin
+      // esto, el orden entre el LogEntry de la acción y el de "se pone a ello" no está garantizado
+      // dentro de la misma transacción).
+      const playerActionAt = new Date();
+      const startTextAt = new Date(playerActionAt.getTime() + 1);
+      const [, , transitRow] = await prisma.$transaction([
+        prisma.logEntry.create({
+          data: {
+            saveId,
+            channel: 'CHARACTER',
+            text: action,
+            isPlayerAction: true,
+            timeLabel,
+            fictionalMinutes: save.worldState?.fictionalMinutes ?? 480,
+            createdAt: playerActionAt,
+          },
+        }),
+        prisma.logEntry.create({
+          data: {
+            saveId,
+            channel: 'CHARACTER',
+            text: startText,
+            timeLabel,
+            fictionalMinutes: save.worldState?.fictionalMinutes ?? 480,
+            createdAt: startTextAt,
+          },
+        }),
+        prisma.characterTransit.upsert({
+          where: { saveId },
+          create: { saveId, activity: action, busyUntil, zoneContext: { action, classification, roll, travel: null } as object },
+          update: { activity: action, busyUntil, zoneContext: { action, classification, roll, travel: null } as object },
+        }),
+        prisma.save.update({ where: { id: saveId }, data: { lastPlayedAt: new Date() } }),
+      ]);
+
+      // Reclamo DELIBERADAMENTE retrasado hasta `busyUntil` — a diferencia de viaje (que llama a
+      // `startEagerTransitResolution` ya mismo, para solapar la espera con la generación lenta del
+      // Narrador): crafteo se la salta entera (`craftMode`, turnResolution.ts), así que no hay nada
+      // que precomputar por adelantado. Si se reclamara ya, `POST /transit/cancel` (que se niega en
+      // cuanto ve `zoneContext.claimedAt`) quedaría bloqueado durante casi toda la espera real —
+      // retrasando la llamada, el jugador puede cancelar mientras "Cancelar acción" siga visible,
+      // tal como se pidió. Si el proceso se reinicia antes de que este `setTimeout` dispare, el
+      // barrido periódico de `resolveDueTransits` (worldTick.ts) recoge la fila igual en cuanto
+      // venza `busyUntil` — mismo colchón de siempre.
+      setTimeout(() => {
+        void startEagerTransitResolution(transitRow.id, busyUntil).catch((err) =>
+          console.error(`[turn] error en la resolución del crafteo diferido ${transitRow.id}:`, err),
+        );
+      }, craftAttempt.durationSeconds * 1000);
+
+      return { classification, roll, transit: { busyUntil, duracionMinutos: minutos }, travel: null };
     }
 
     if (classification.banda === 'extendida' || classification.banda === 'larga') {
@@ -717,7 +805,7 @@ export async function turnRoutes(app: FastifyInstance) {
   });
 
   app.post<{ Body: NarrateBody }>('/turn/narrate', async (request, reply) => {
-    const { saveId, action, classification, roll, travel, enCombate, savedActionId, npcsInScene, lootItemNames, isItemUse } = request.body;
+    const { saveId, action, classification, roll, travel, enCombate, savedActionId, npcsInScene, lootItemNames, isItemUse, healItemUses } = request.body;
     if (!saveId || !action || !classification) {
       return reply.status(400).send({ error: 'Faltan campos: saveId, action, classification' });
     }
@@ -869,6 +957,7 @@ export async function turnRoutes(app: FastifyInstance) {
         pendingNpcAttack: save.pendingNpcAttack as unknown as PendingNpcAttack | null,
         pendingCombatNpcSlugs: (save.pendingCombatNpcSlugs as string[] | null) ?? [],
         lootItemNames,
+        healItemUses,
         onNarrationChunk: (delta) => writeLine({ type: 'chunk', text: delta }),
         onNarrationReset: () => writeLine({ type: 'reset' }),
         // Animación de dados en paralelo (2026-08-15) — ver el mismo comentario en

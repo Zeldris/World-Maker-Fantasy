@@ -60,6 +60,11 @@ const accentClasses = {
     thinkingDot: 'bg-accent-400',
     thinkingRail: 'El Narrador escribe',
     tollGradient: 'bg-[linear-gradient(90deg,transparent,var(--color-accent-300),transparent)]',
+    // Botones de colapsar/alternar (2026-08-18, "los botones para colapsar los logs no se ven
+    // nada claros" — el primer intento con fondo iron-800 seguía siendo casi tan oscuro como el
+    // propio panel): chip con relleno de color y resplandor propio, no solo texto apagado.
+    controlButton:
+      'border-accent-500/60 bg-accent-500/20 text-accent-300 shadow-[0_0_8px_-2px_var(--color-accent-500)] hover:border-accent-400 hover:bg-accent-500/35',
   },
   accent2: {
     gem: 'gem2',
@@ -75,6 +80,8 @@ const accentClasses = {
     thinkingDot: 'bg-accent2-400',
     thinkingRail: 'El mundo se mueve',
     tollGradient: 'bg-[linear-gradient(90deg,transparent,var(--color-accent2-300),transparent)]',
+    controlButton:
+      'border-accent2-500/60 bg-accent2-500/20 text-accent2-300 shadow-[0_0_8px_-2px_var(--color-accent2-500)] hover:border-accent2-400 hover:bg-accent2-500/35',
   },
 }
 
@@ -139,7 +146,7 @@ export const LogPanel = memo(function LogPanel({
           <button
             onClick={onToggleView}
             title={`Ver "${toggleViewLabel}"`}
-            className="tactile relative shrink-0 rounded-md border border-iron-700 px-1.5 py-1 text-2xs text-wood-400 transition-colors hover:border-accent-600/60 hover:text-accent-300"
+            className={`tactile relative shrink-0 rounded-full border px-2.5 py-1 text-2xs font-bold uppercase tracking-wide transition-colors ${classes.controlButton}`}
           >
             {toggleViewLabel}
           </button>
@@ -148,7 +155,7 @@ export const LogPanel = memo(function LogPanel({
           <button
             onClick={onCollapse}
             title={`Colapsar "${title}"`}
-            className="tactile relative shrink-0 rounded-md border border-iron-700 px-1.5 py-1 text-xs text-wood-400 transition-colors hover:border-accent-600/60 hover:text-accent-300"
+            className={`tactile relative flex h-8 w-8 shrink-0 items-center justify-center rounded-full border text-base transition-colors ${classes.controlButton}`}
           >
             {collapseIcon}
           </button>

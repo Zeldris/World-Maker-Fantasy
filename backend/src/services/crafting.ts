@@ -1,8 +1,10 @@
+import { prisma } from '../lib/prisma.js';
 import { normalizeText } from './travel.js';
 import type { Attribute, AttributeBlock } from './dice.js';
 import type { SecondaryAttributeBlock } from './secondaryAttributes.js';
 import { checkRequisitos, type Requisitos, type RequisitoShortfall } from './requisitos.js';
 import { totalQuantity, planConsumption, type IngredientRequirement, type CatalogLookup, type InventoryRowLike } from './ingredients.js';
+import { alivioForLevel } from './professionProgress.js';
 
 /// Crafteo v1 (roadmap 2026-07-20, propuesta de Fable): determinista, sin sistema nuevo — un
 /// intercambio 1:1 de filas de inventario, con o sin condición de ubicación. El crafteo ES la
@@ -454,6 +456,90 @@ export const CRAFTING_RECIPES: CraftingRecipe[] = [
 export function detectsCraftIntent(recipe: CraftingRecipe, action: string): boolean {
   const normalized = normalizeText(action);
   return recipe.verbRegex.test(normalized) && recipe.nounRegex.test(normalized);
+}
+
+/// Espera REAL (no de ficción) de craftear, según `tier` (petición explícita, 2026-08-20: "que
+/// lleve un tiempo real... dependiendo de la dificultad del crafteo le asignamos un valor entre 5
+/// segs y 60 segs") — `tier` (1-5, "nivel de rareza/dificultad") es el único campo de dificultad
+/// ya tabulado; recetas sin `tier` (ej. SMOKE_MEAT_RECIPE, "habilidad de supervivencia básica")
+/// caen al mínimo.
+const CRAFT_TIER_DURATION_SECONDS: Record<number, number> = { 1: 5, 2: 20, 3: 35, 4: 50, 5: 60 };
+export function craftDurationSecondsFor(recipe: CraftingRecipe): number {
+  return CRAFT_TIER_DURATION_SECONDS[recipe.tier ?? 1] ?? 5;
+}
+
+/// Precheck barato, de solo lectura, callable ANTES de montar todo lo que `narrateAndPersistTurn`
+/// necesita para un turno completo (petición explícita, 2026-08-20: espera real con barra de
+/// "estás crafteando" + cancelar, igual que los viajes) — `turn.ts` lo usa para decidir, en el
+/// mismo sitio donde ya decide si un viaje necesita convertirse en `CharacterTransit`, si esta
+/// acción es un crafteo determinista de verdad y cuánto debería tardar. Monta `catalogBySlug`/
+/// `alivioFor` con el MISMO criterio exacto que `narrateAndPersistTurn` (turnResolution.ts) ya usa
+/// para lo mismo — reimplementado aquí en vez de exportado de allí porque ese archivo monta mucho
+/// más contexto (misiones, compañeros, NPCs en escena...) que este precheck no necesita.
+export async function detectDeterministicCraft(params: {
+  action: string;
+  worldId: string;
+  saveId: string;
+  currentLocationSlug: string | null;
+  inventoryRows: InventoryRowLike[];
+  attributes: AttributeBlock;
+  secondaryAttributes: SecondaryAttributeBlock;
+  unlockedRecipeKeys: string[];
+}): Promise<{ recipeKeys: string[]; resultNames: string[]; durationSeconds: number } | null> {
+  const { action, worldId, saveId, currentLocationSlug, inventoryRows, attributes, secondaryAttributes, unlockedRecipeKeys } = params;
+  const catalogSlugs = [...new Set(inventoryRows.map((i) => i.catalogSlug).filter((s): s is string => Boolean(s)))];
+  const [catalogRows, professionProgressRows] = await Promise.all([
+    catalogSlugs.length
+      ? prisma.itemCatalog.findMany({
+          where: { worldId, slug: { in: catalogSlugs } },
+          select: {
+            slug: true,
+            tipo: true,
+            category: true,
+            curaHasta: true,
+            curaUnPaso: true,
+            tipoArma: true,
+            curaEnergia: true,
+            equipSlot: true,
+            effectKey: true,
+            aliases: true,
+            herramientaParaOficio: true,
+          },
+        })
+      : Promise.resolve([]),
+    prisma.professionProgress.findMany({ where: { saveId } }),
+  ]);
+  const catalogBySlug: Map<string, CatalogLookup> = new Map(
+    catalogRows.map((c) => [
+      c.slug,
+      {
+        tipo: c.tipo,
+        category: c.category,
+        curaHasta: c.curaHasta,
+        curaUnPaso: c.curaUnPaso,
+        tipoArma: c.tipoArma,
+        curaEnergia: c.curaEnergia,
+        equipSlot: c.equipSlot,
+        effectKey: c.effectKey,
+        aliases: c.aliases,
+        herramientaParaOficio: c.herramientaParaOficio,
+      },
+    ]),
+  );
+  const oficioNivelById = new Map(professionProgressRows.map((p) => [p.professionId, p.nivel]));
+  const alivioFor = (oficio: string | undefined) => (oficio ? alivioForLevel(oficioNivelById.get(oficio) ?? 1) : 0);
+
+  const fired = CRAFTING_RECIPES.filter(
+    (recipe) =>
+      detectsCraftIntent(recipe, action) &&
+      canCraft(recipe, currentLocationSlug, inventoryRows, catalogBySlug, attributes, secondaryAttributes, alivioFor(recipe.oficio), unlockedRecipeKeys),
+  );
+  if (fired.length === 0) return null;
+  return {
+    recipeKeys: fired.map((r) => r.key),
+    resultNames: fired.map((r) => r.resultName),
+    durationSeconds: Math.max(...fired.map(craftDurationSecondsFor)),
+  };
 }
 
 /// Oficios (prefijo sin raza/región) que de verdad tienen alguna herramienta dada de alta en el

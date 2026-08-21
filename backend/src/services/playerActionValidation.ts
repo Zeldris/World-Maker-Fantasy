@@ -173,12 +173,26 @@ const MIN_QUOTED_NAME_LENGTH = 3;
 /// sin comillas no dispara — prosa descriptiva legítima que solo SUENA a nombre propio no debe
 /// bloquearse; las comillas son la señal deliberada de "esto es un nombre concreto", el mismo
 /// criterio que ya usa el resto del motor para elegir un objetivo explícito de combate.
+///
+/// `detectsDialogueIntent` EXCLUIDA a propósito de este trigger (bug real jugando en vivo,
+/// 2026-08-20: "Me acerco a ella y digo: 'Quien eres y a donde vas con tanta prisa?'" bloqueó el
+/// turno entero con "El nombre de Quien eres y a donde vas con tanta prisa? no le suena a nada" —
+/// las comillas ahí no nombran a nadie, son la réplica hablada del propio jugador, la MISMA
+/// convención que usa el resto del motor para diálogo ("Escribe tu réplica entre comillas"). A
+/// diferencia de un objetivo de ataque/búsqueda hostil (donde citar un nombre entre comillas es
+/// casi siempre "esto es lo que ataco/busco"), en una acción de diálogo el contenido entre comillas
+/// es casi siempre la frase completa que el jugador dice, nunca el nombre de a quién se la dice —
+/// no hay forma fiable de distinguir "cito el nombre de un NPC inventado" de "cito mis propias
+/// palabras" solo con esta señal, así que se prefiere el falso negativo (dejar pasar un NPC
+/// inventado nombrado en diálogo) al falso positivo (bloquear cualquier diálogo normal con
+/// comillas) — mismo criterio ya usado en el resto de esta familia de detectores ("más vale dejar
+/// pasar que bloquear con dudas", ver `detectsWrongRegionHarvestClaim`).
 export async function detectsFabricatedNpcClaim(action: string, worldId: string): Promise<FabricatedNpcClaim | null> {
   const quotedMatch = action.match(QUOTED_NAME_REGEX);
   if (!quotedMatch) return null;
   const quotedName = quotedMatch[1].trim();
   if (quotedName.length < MIN_QUOTED_NAME_LENGTH) return null;
-  if (!detectsAttackIntent(action) && !detectsDialogueIntent(action) && !detectsHostileSearchIntent(action)) return null;
+  if (!detectsAttackIntent(action) && !detectsHostileSearchIntent(action)) return null;
   const allNpcs = await prisma.npc.findMany({ where: { worldId }, select: { slug: true, name: true, aliases: true } });
   const matchable = allNpcs.map((n) => ({ id: n.slug, aliases: [n.name, ...n.aliases] }));
   const matched = matchNpcAliases(quotedName, matchable);

@@ -435,6 +435,14 @@ model LogEntry {
   /// respuesta HTTP del turno recién resuelto) — null si el turno no tuvo intercambio real.
   npcAbilityUsed    Json?
   playerAbilityUsed Json?
+  /// InitiativeResult (combatExchange.ts): { ganador, jugadorTirada, npcTirada } — tercer bug
+  /// gemelo de la misma familia que `combatExchange`/`npcAbilityUsed` de arriba (2026-08-21,
+  /// jugando en vivo: "al recargar la página se está perdiendo el mensaje de la iniciativa y la
+  /// tirada de los dados"). `turnResolution.ts` ya calculaba esta tirada para decidir quién actúa
+  /// en el PRÓXIMO intercambio, pero solo viajaba en la respuesta HTTP del turno recién resuelto
+  /// (routes/turn.ts) — nunca se guardaba, así que recargar la partida durante un combate abierto
+  /// perdía el banner de iniciativa por completo. null si el turno no tuvo intercambio real.
+  initiativeRoll Json?
   createdAt      DateTime   @default(now())
 
   @@index([saveId, createdAt])

@@ -30,7 +30,7 @@ DIRECT_URL="postgresql://tarkor:tarkor@localhost:5432/tarkor"
 
 Resto de variables:
 - `PORT=3001`
-- `OLLAMA_BASE_URL="http://localhost:11434"`, `OLLAMA_MODEL_NARRADOR="tarkor-narrador"`, `OLLAMA_MODEL_CRONISTA="qwen2.5:1.5b-instruct"`, `OLLAMA_KEEP_ALIVE="5m"`
+- `OLLAMA_BASE_URL="http://localhost:11434"`, `OLLAMA_MODEL_NARRADOR="tarkor-narrador"`, `OLLAMA_MODEL_CRONISTA="qwen2.5:1.5b-instruct"`, `OLLAMA_MODEL_SUGERENCIAS="qwen3.5:4b"`, `OLLAMA_KEEP_ALIVE="5m"`
 - `PACING_MIN_MS=1000`, `PACING_MAX_MS=5000` (bajados desde 3000/10000 originales — sin fecha exacta registrada, `.env.example` se quedó con los valores viejos)
 - `WORLD_TICK_INTERVAL_MINUTES=1` (bajado de 2 a 1 el 2026-08-07, junto con `TRANSIT_MAX_REAL_MINUTES` de abajo — ver comentario en `.env`)
 - `TRANSIT_MAX_REAL_MINUTES=5` (bajado de 10 a 5 el 2026-08-07, el rendimiento del motor mejoró bastante desde que se fijó el 10 original)
@@ -92,12 +92,13 @@ Las imágenes ya subidas (`backend/uploads/images/`) SÍ están versionadas en e
 
 ## 6. Modelos de Ollama
 
-Tres modelos distintos, cada uno con su rol (ver `docs/03-arquitectura.md` § 4.3):
+Cuatro modelos distintos, cada uno con su rol (ver `docs/03-arquitectura.md` § 4.3):
 
 | Uso | Modelo | Cómo se obtiene |
 |---|---|---|
 | Narrador (narración principal) | `tarkor-narrador` (modelo propio, `FROM qwen2.5:7b`) | `ollama pull qwen2.5:7b` y luego, desde `backend/`: `ollama create tarkor-narrador -f Modelfile` |
 | Cronista (clasificación de acciones) | `qwen2.5:1.5b-instruct` | `ollama pull qwen2.5:1.5b-instruct` |
+| Sugerencias ("Sugerir" bajo demanda, separado del Narrador desde 2026-08-21) | `qwen3.5:4b` | `ollama pull qwen3.5:4b` |
 | Embeddings (RAG de lore) | `nomic-embed-text` | `ollama pull nomic-embed-text` |
 
 Si se cambia el `Modelfile` en el futuro, hay que reconstruir `tarkor-narrador` con el mismo comando `ollama create` de arriba.

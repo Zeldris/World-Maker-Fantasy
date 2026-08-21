@@ -86,6 +86,7 @@ import type {
   Dificultad,
   DiscoveryItem,
   EquipSlot,
+  InitiativeRollInfo,
   InventoryItemInfo,
   KingdomFoundedInfo,
   KingdomStatsInfo,
@@ -152,13 +153,16 @@ export function GameView() {
   const [harvestModal, setHarvestModal] = useState<{ oficio: string; label: string } | null>(null)
   const [huntModalOpen, setHuntModalOpen] = useState(false)
   // Paneles nuevos (2026-08-17, comentarios de startingAbilities.ts): "Volver al campamento",
-  // "Viajar", "Saquear" y "Curar" — mismo patrón que huntModalOpen. Los 3 primeros comparten el
-  // mismo `onSelect`/`onCancel` de un único texto de acción (ver `handleSimpleModalSelect` más
-  // abajo), así que se colapsan en un único estado (auditoría de deuda técnica 2026-08-18, antes
-  // 3 booleanos casi idénticos) — "Saquear" se queda aparte porque su confirmación manda
-  // `lootItemNames` además del texto, una forma distinta de verdad.
-  const [simpleModal, setSimpleModal] = useState<'camp' | 'travel' | 'heal' | null>(null)
+  // "Viajar", "Saquear" y "Curar" — mismo patrón que huntModalOpen. "Volver al campamento"/"Viajar"
+  // comparten el mismo `onSelect`/`onCancel` de un único texto de acción (ver
+  // `handleSimpleModalSelect` más abajo), así que se colapsan en un único estado (auditoría de
+  // deuda técnica 2026-08-18, antes 3 booleanos casi idénticos) — "Saquear" y "Curar" se quedan
+  // aparte, cada uno con su propio estado: sus confirmaciones mandan algo más que el texto
+  // (`lootItemNames`/`healItemUses`), una forma distinta de verdad (mismo motivo por el que
+  // "Curar" salió del trío el 2026-08-18, rediseño de varios objetos/usos a la vez).
+  const [simpleModal, setSimpleModal] = useState<'camp' | 'travel' | null>(null)
   const [saquearZonaModalOpen, setSaquearZonaModalOpen] = useState(false)
+  const [healModalOpen, setHealModalOpen] = useState(false)
   // Interacción con un NPC/fauna ya convaleciente o muerto, fuera de combate (docs/19-post-combate-
   // y-recompensas-mision.md pieza 2) — null = cerrado. `/turn/classify` lo detecta y corta el
   // turno antes de narrar; este panel deja Saquear/Decapitar/Salir sin gastar generación.
@@ -297,7 +301,7 @@ export function GameView() {
   // Rediseño del turno de combate (2026-07-29, "quiero que sea más claro cuando es turno de
   // ataque... indicándome qué salió en los dados") — tirada real de iniciativa del último turno
   // resuelto, para que CombatPanel explique CON NÚMEROS por qué le toca atacar/defender ahora.
-  const [lastInitiativeRoll, setLastInitiativeRoll] = useState<{ ganador: 'jugador' | 'npc'; jugadorTirada: number; npcTirada: number } | null>(null)
+  const [lastInitiativeRoll, setLastInitiativeRoll] = useState<InitiativeRollInfo | null>(null)
   const [combatSelectedNpcSlug, setCombatSelectedNpcSlug] = useState<string | null>(null)
   const [combatSelectedAbilityId, setCombatSelectedAbilityId] = useState<string | null>(null)
   const [combatSelectedItemId, setCombatSelectedItemId] = useState<string | null>(null)
@@ -806,7 +810,17 @@ export function GameView() {
     // Bug real (2026-07-23, "revisar partida"): antes `combateIniciado` solo se fijaba con la
     // respuesta directa de `/turn/narrate` — cualquier resincronización (sondeo de reconexión,
     // recarga de página) perdía el aviso de combate aunque el backend lo hubiera calculado bien.
-    if (save.combateIniciado && save.combateIniciado.npcs.length > 0) setCombateIniciado(save.combateIniciado)
+    if (save.combateIniciado && save.combateIniciado.npcs.length > 0) {
+      setCombateIniciado(save.combateIniciado)
+      // Bug real (2026-08-21, jugando en vivo: "al recargar la página se está perdiendo el mensaje
+      // de la iniciativa y la tirada de los dados") — mismo criterio que `combatExchange`/
+      // `npcAbilityUsed` (LogPanel): `lastInitiativeRoll` solo vivía en memoria del turno recién
+      // jugado (`handleCombatTurnResolved`), nunca se rehidrataba al recargar. El último LogEntry
+      // con `initiativeRoll` persistido (ver InitiativeRollInfo, types.ts) es la misma fuente de
+      // verdad que ya usa el backend para decidir quién actúa en el próximo intercambio.
+      const lastInitiativeEntry = [...save.characterLog].reverse().find((e) => e.initiativeRoll)
+      setLastInitiativeRoll(lastInitiativeEntry?.initiativeRoll ?? null)
+    }
   }
 
   async function handleCancelTransit() {
@@ -968,13 +982,12 @@ export function GameView() {
   }
 
   // Paneles nuevos (2026-08-17) — mismo patrón que HARVEST_ABILITY_OFICIO: pop-up de selección
-  // real en vez del `promptText` incompleto que llevaban estas 3 habilidades desde su alta
-  // original. "Saquear" no está aquí porque su confirmación es una forma distinta (manda
-  // `lootItemNames` además del texto), ver `saquearZonaModalOpen`.
-  const SIMPLE_MODAL_ABILITY: Record<string, 'camp' | 'travel' | 'heal'> = {
+  // real en vez del `promptText` incompleto que llevaban estas 2 habilidades desde su alta
+  // original. "Saquear"/"Curar" no están aquí porque su confirmación es una forma distinta (manda
+  // `lootItemNames`/`healItemUses` además del texto), ver `saquearZonaModalOpen`/`healModalOpen`.
+  const SIMPLE_MODAL_ABILITY: Record<string, 'camp' | 'travel'> = {
     'Volver al campamento': 'camp',
     Viajar: 'travel',
-    Curar: 'heal',
   }
 
   function handleAttachAbility(ability: SavedActionInfo) {
@@ -999,6 +1012,11 @@ export function GameView() {
     }
     if (ability.name === 'Saquear') {
       setSaquearZonaModalOpen(true)
+      setActivePanel(null)
+      return
+    }
+    if (ability.name === 'Curar') {
+      setHealModalOpen(true)
       setActivePanel(null)
       return
     }
@@ -1120,7 +1138,7 @@ export function GameView() {
     npcAbilityUsed: { npcName: string; abilityName: string; rol: 'ataque' | 'defensa' } | null
     playerAbilityUsed: { name: string; icon: string; description: string; rol: 'ataque' | 'defensa' } | null
     combatExchangeDisplay: CombatExchangeInfo | null
-    nextInitiativeRoll: { ganador: 'jugador' | 'npc'; jugadorTirada: number; npcTirada: number } | null
+    nextInitiativeRoll: InitiativeRollInfo | null
     newQuestInfo?: { title: string; objetivo: string } | null
     questCompletedInfo?: { logEntryId: string; text: string; title: string; grantedItems: string[]; rewardXp: number } | null
   }) {
@@ -1248,10 +1266,14 @@ export function GameView() {
     try {
       const { suggestions: newSuggestions } = await requestSuggestions(saveId)
       setSuggestions(newSuggestions)
-    } catch {
+    } catch (err) {
       // Sin sugerencias esta vez — la jugadora sigue pudiendo escribir su acción a mano, mismo
       // criterio que `handleFleeAttempt` de arriba (fallo de la llamada en sí, no algo que romper
-      // el resto de la UI).
+      // el resto de la UI). `console.error` sí se deja (bug real, 2026-08-20: "le doy a sugerir...
+      // pienso pero no las veo" — antes esto era un `catch {}` totalmente mudo, así que un fallo
+      // real de la llamada y un array vacío legítimo se veían IGUAL en pantalla: nada. Con esto al
+      // menos queda rastro en la consola de si de verdad falló la petición o si volvió vacía.
+      console.error('[sugerencias] no se pudieron obtener:', err)
     } finally {
       setSuggestionsLoading(false)
     }
@@ -1340,7 +1362,12 @@ export function GameView() {
     }
   }, [saveId])
 
-  async function handleSubmit(action: string) {
+  async function handleSubmit(
+    action: string,
+    // Panel "Curar" con varios objetos/usos a la vez (petición explícita, 2026-08-18) — reenviado
+    // tal cual a requestTurnNarrate, mismo criterio que `lootItemNames` en submitCombatAction.
+    extras?: { healItemUses?: { itemId: string; quantity: number }[] },
+  ) {
     if (!action || !saveId || busyUntil || endedAt) return
     composerRef.current?.clear()
     setInput('')
@@ -1431,7 +1458,7 @@ export function GameView() {
         factionsStatus: updatedFactionsStatus,
         professionProgress: updatedProfessionProgress,
       } = await requestTurnNarrate(
-        { saveId, action, classification, roll, travel, npcsInScene: classifyResult.npcsInScene },
+        { saveId, action, classification, roll, travel, npcsInScene: classifyResult.npcsInScene, healItemUses: extras?.healItemUses },
         {
           onChunk: (delta) => setStreamingNarration((prev) => (prev ?? '') + delta),
           onReset: () => setStreamingNarration(null),
@@ -1988,7 +2015,11 @@ export function GameView() {
               abrir, `combatOpen` false): mismo criterio que ya usa `composerDisabled`/el propio
               banner de arriba para esa combinación exacta de estados. */}
           {!combateIniciado && (
-            <SuggestionBar suggestions={suggestions} onPick={(text) => composerRef.current?.setText(text)} loading={suggestionsLoading} />
+            <SuggestionBar
+              suggestions={suggestions}
+              onPick={(text) => composerRef.current?.setTextWithChips(text, enciclopediaIndex)}
+              loading={suggestionsLoading}
+            />
           )}
           <ChatComposer
             ref={composerRef}
@@ -2063,8 +2094,16 @@ export function GameView() {
       {simpleModal === 'travel' && saveId && (
         <TravelDestinationModal saveId={saveId} onSelect={handleSimpleModalSelect} onCancel={closeSimpleModal} />
       )}
-      {simpleModal === 'heal' && (
-        <HealSelectionModal inventory={inventory} condicionFisica={condicionFisica} onSelect={handleSimpleModalSelect} onCancel={closeSimpleModal} />
+      {healModalOpen && (
+        <HealSelectionModal
+          inventory={inventory}
+          condicionFisica={condicionFisica}
+          onConfirm={(actionText, healItemUses) => {
+            setHealModalOpen(false)
+            handleSubmit(actionText, { healItemUses })
+          }}
+          onCancel={() => setHealModalOpen(false)}
+        />
       )}
 
       {saquearZonaModalOpen && saveId && (

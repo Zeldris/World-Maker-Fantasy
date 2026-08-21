@@ -42,6 +42,13 @@ export function isTurnLockedError(err: unknown): err is TurnLockedError {
 export function formatCountdown(busyUntilIso: string, nowMs: number): string {
   const remainingMs = new Date(busyUntilIso).getTime() - nowMs
   if (remainingMs <= 0) return 'resolviendo...'
+  // Tramo de segundos (crafteo con espera real, petición explícita 2026-08-20: "que lleve un
+  // tiempo real... entre 5 segs y 60 segs") — redondear a MINUTOS enteros (rama de abajo, la de
+  // siempre) dejaría cualquier resto por debajo de 60s clavado en "~1 min" sin moverse durante
+  // toda la espera, sin sensación real de cuenta atrás. Inofensivo para viaje/descanso: su espera
+  // real comprimida siempre está muy por encima de 60s (`TRANSIT_MAX_REAL_MINUTES`).
+  const totalSeconds = Math.ceil(remainingMs / 1000)
+  if (totalSeconds < 60) return `~${totalSeconds}s`
   const totalMinutes = Math.ceil(remainingMs / 60_000)
   if (totalMinutes < 60) return `~${totalMinutes} min`
   const horas = Math.floor(totalMinutes / 60)
@@ -93,4 +100,29 @@ export function questCompletedLogEntry(
     createdAt: new Date().toISOString(),
     questCompleted: { title: info.title, grantedItems: info.grantedItems, rewardXp: info.rewardXp },
   }
+}
+
+/// Tiempo de JUEGO (nunca tiempo real) — extraída de MapaPanel.tsx (auditoría de código
+/// 2026-08-18: promovida aquí para compartirla también con TravelDestinationModal.tsx, que la
+/// necesita para el mismo dato exacto — minutos de ficción ya ajustados a destreza, no una
+/// estimación aparte).
+export function formatMinutos(minutos: number): string {
+  if (minutos < 60) return `~${minutos} min`
+  const horas = minutos / 60
+  return horas < 24 ? `~${horas.toFixed(1)}h` : `~${(horas / 24).toFixed(1)}d`
+}
+
+const QUANTITY_SUFFIX_REGEX = /\((\d+)\)\s*$/
+
+/// Espejo exacto de quantityOf/baseNameOf (ingredients.ts, backend) — cuántas unidades reales lleva
+/// una fila de inventario apilada (el patrón ya establecido mete la cantidad en el propio nombre,
+/// ej. "Leña (60)"). Necesario para el panel "Curar" (2026-08-18, varios usos a la vez): el stepper
+/// de cantidad no puede dejar elegir más de lo que la jugadora lleva encima de verdad.
+export function quantityOf(name: string): number {
+  const match = name.match(QUANTITY_SUFFIX_REGEX)
+  return match ? Number(match[1]) : 1
+}
+
+export function baseNameOf(name: string): string {
+  return name.replace(QUANTITY_SUFFIX_REGEX, '').trim()
 }

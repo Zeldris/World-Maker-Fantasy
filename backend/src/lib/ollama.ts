@@ -49,6 +49,14 @@ function buildRequestBody(options: OllamaGenerateOptions, stream: boolean) {
     system: options.system,
     prompt: options.prompt,
     format: options.format,
+    // `think: false` (encontrado probando qwen3.5:4b/9b en vivo, 2026-08-20 — "quizás será mejor
+    // con el modelo 9B?"): la familia qwen3.5 es de "razonamiento" — sin esto, genera un monólogo
+    // interno larguísimo (campo `thinking` de la respuesta) ANTES de la respuesta real, y se come
+    // el `timeoutMs`/`maxTokens` enteros sin llegar nunca a producir el JSON pedido ("di hola" solo
+    // no terminó en 90s). Inofensivo para los modelos actuales (familia qwen2.5, sin razonamiento —
+    // ignoran el campo) — verificado sin regresión tras añadirlo. Sin esto, cualquier futuro cambio
+    // a un modelo de razonamiento rompería en silencio con timeouts, no con un error claro.
+    think: false,
     stream,
     keep_alive: options.keepAlive ?? env.ollamaKeepAlive,
     options: {

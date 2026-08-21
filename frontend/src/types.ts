@@ -31,16 +31,18 @@ export interface ProfessionProgressInfo {
 }
 
 /// Fuente recolectable "ya localizada" o recién "explorada" (rediseño de profesiones, 2026-08-07)
-/// — GET/POST /saves/:id/recolectar/:oficio[/explorar]. `disponible` es la población real del
-/// mundo para esta fuente ahora mismo (tope real, no decorativo).
+/// — GET/POST /saves/:id/recolectar/:oficio[/explorar].
 export interface HarvestSourceCandidate {
-  sourceSlug: string
   /// Categoría amplia de la fuente (2026-08-15, sustituye a sourceName) — lo que de verdad se
   /// pinta como cabecera de esta tarjeta ("Mineral", "Fauna"...), no el nombre de la especie
   /// concreta. Ver SOURCE_CATEGORY_NAMES en el backend (worldCatalog.ts).
   sourceCategoryName: string
-  disponible: number
-  yields: { itemSlug: string; itemName: string; cantidadMaxima: number }[]
+  /// `disponible` vive DENTRO de cada yield, no aquí arriba (bug real, 2026-08-20: "0/NaN" en el
+  /// modal — el agrupado por categoría de 2026-08-15 movió `disponible` al nivel de yield, porque
+  /// dos fuentes de la misma categoría pueden tener poblaciones distintas, pero este tipo se quedó
+  /// con un `disponible` de nivel superior que la respuesta real del backend ya no manda, así que
+  /// `source.disponible` era `undefined` en tiempo de ejecución sin que TypeScript lo detectara).
+  yields: { sourceSlug: string; itemSlug: string; itemName: string; cantidadMaxima: number; disponible: number }[]
 }
 
 /// Fauna real YA LOCALIZADA en la zona (revisión de partida 2026-08-08, habilidad "Cazar") —
@@ -177,11 +179,11 @@ export interface RollInfo {
 /// Un lado del intercambio de combate (revisión de partida 2026-08-08, petición explícita: "que
 /// aparezca el resultado de las tiradas... indicando qué atributo y valor sacaste tú y el del
 /// enemigo, y por qué perdiste o ganaste la tirada"). Mismo shape que `RollInfo` + `valorEfectivo`
-/// (el valor de atributo YA con el multiplicador de la rueda de debilidades aplicado — distinto
+/// (el valor de atributo YA con el multiplicador de la árbol de ventajas aplicado — distinto
 /// del `value` crudo, que es el que se ve en la ficha de personaje).
 export interface CombatExchangeSideInfo extends RollInfo {
   valorEfectivo: number
-  /// Multiplicador de la rueda de debilidades SIN aplicar (2026-08-14) — >1 ventaja de tipo, <1
+  /// Multiplicador de la árbol de ventajas SIN aplicar (2026-08-14) — >1 ventaja de tipo, <1
   /// desventaja, 1 sin relación. Ver comentario homónimo en combatExchange.ts (backend). Opcional
   /// de verdad: LogEntry.combatExchange persistidas ANTES de este campo no lo traen — el JSON
   /// guardado en BD nunca se migra retroactivamente, solo los turnos nuevos lo incluyen.
@@ -196,6 +198,14 @@ export interface CombatExchangeSideInfo extends RollInfo {
 // 'independiente' (bug real, 2026-08-13: faltaba en este type — el backend YA lo manda para
 // cualquier habilidad de utilidad/ANALISIS, combatExchange.ts § resolveIndependentExchange, pero
 // como no estaba declarado aquí el mapa de etiquetas del badge lo pintaba en blanco).
+//
+// `'golpes_mutuos'` eliminado (rediseño a check opuesto de D&D, 2026-08-21, petición explícita:
+// "en D&D que tu saques un 22 y el enemigo un 24, no quiere decir que el 24 sea el que gana?") —
+// con los dos totales comparados DIRECTAMENTE (margen positivo/negativo/cero), ya no puede pasar
+// que "los dos ganen a la vez". Partidas con turnos de combate ANTERIORES a este cambio pueden
+// seguir teniendo esta cadena persistida en `LogEntry.combatExchange` (el JSON guardado nunca se
+// migra retroactivamente) — `CombatExchangeBadge`/`outcomeLabelFor` necesitan seguir aceptándola
+// como valor de entrada válido aunque ya no se genere nunca más.
 export type CombatExchangeOutcome =
   | 'defensor_contragolpea'
   | 'ataque_falla'
@@ -213,6 +223,20 @@ export interface CombatExchangeInfo {
   atacante: CombatExchangeSideInfo
   defensor: CombatExchangeSideInfo
   resultado: CombatExchangeOutcome
+  /// `atacante.result - defensor.result` (rediseño a check opuesto, 2026-08-21) — lo que de verdad
+  /// decide el desenlace ahora. Opcional de verdad: turnos de combate persistidos ANTES de este
+  /// campo no lo traen, mismo criterio que `multiplicador`/`malus` de arriba.
+  margen?: number
+}
+
+/// Tirada de iniciativa para el PRÓXIMO intercambio de combate (backend, combatExchange.ts §
+/// InitiativeResult) — presente solo si hubo intercambio mecánico real este turno. Persistida en
+/// LogEntry.initiativeRoll (2026-08-21, bug real jugando en vivo: "al recargar la página se está
+/// perdiendo el mensaje de la iniciativa y la tirada de los dados").
+export interface InitiativeRollInfo {
+  ganador: 'jugador' | 'npc'
+  jugadorTirada: number
+  npcTirada: number
 }
 
 /// Banner de elemento citado bajo la narración (petición explícita de la usuaria, 2026-07-24) —
@@ -264,6 +288,8 @@ export interface LogEntry {
   /// Las dos tiradas reales de este intercambio de combate — ver `CombatExchangeInfo`. Presente
   /// solo si hubo intercambio mecánico real este turno.
   combatExchange?: CombatExchangeInfo
+  /// Tercer bug gemelo de `combatExchange`/`npcAbilityUsed` (2026-08-21) — ver `InitiativeRollInfo`.
+  initiativeRoll?: InitiativeRollInfo
   /// Notificación de misión aceptada (2026-07-31, petición explícita: "que aparezca en la
   /// narración del personaje el título de la misión y el objetivo") — presente solo en el turno
   /// EXACTO en que se crea una misión nueva; LogPanel la pinta con fondo/borde amarillo y una
@@ -465,7 +491,7 @@ export interface SavedActionInfo {
   /// compatibilidad con las habilidades de oficio ya existentes antes de sumar 'construccion'
   /// 2026-08-13) — ver DetailModal.tsx.
   recipeCategory?: 'crafteo' | 'construccion'
-  /// Rediseño del turno de combate (2026-07-28) — "tipo" para la rueda de debilidades (backend)
+  /// Rediseño del turno de combate (2026-07-28) — "tipo" para la árbol de ventajas (backend)
   /// y el color del chip (UI). Null en habilidades 'general' o en partidas de antes de este campo.
   preferredAttribute: Attribute | null
   /// Sistema de fatiga (2026-07-29) — coste de energía fijo por tramo. Ver CombatPanel.tsx.

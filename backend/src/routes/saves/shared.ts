@@ -40,6 +40,7 @@ export function toFrontendLogEntry(entry: {
   combatExchange?: unknown;
   npcAbilityUsed?: unknown;
   playerAbilityUsed?: unknown;
+  initiativeRoll?: unknown;
 }) {
   return {
     id: entry.id,
@@ -55,6 +56,9 @@ export function toFrontendLogEntry(entry: {
     // CombatExchangeBadge, que cae a "el enemigo" sin `npcAbilityUsed.npcName`.
     npcAbilityUsed: entry.npcAbilityUsed ?? undefined,
     playerAbilityUsed: entry.playerAbilityUsed ?? undefined,
+    // Tercer bug gemelo (2026-08-21) — ver comentario de la columna en schema.prisma: sin esto,
+    // recargar durante un combate abierto perdía el banner de iniciativa por completo.
+    initiativeRoll: entry.initiativeRoll ?? undefined,
     isPlayerAction: entry.isPlayerAction || undefined,
     xpDelta: entry.xpDelta ?? undefined,
     // Persistencia de banners de entidad (rework 2026-07-24) — solo la referencia (tipo+slug); el
