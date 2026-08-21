@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useSession } from '../context/useSession'
 import { LogPanel } from '../components/LogPanel'
@@ -20,6 +20,7 @@ import { useEntityBanner } from '../hooks/useEntityBanner'
 import { useReconnectionPolling } from '../hooks/useReconnectionPolling'
 import { useSurroundingsPolling } from '../hooks/useSurroundingsPolling'
 import { useRecipesData } from '../hooks/useRecipesData'
+import { useCombatFlow } from '../hooks/useCombatFlow'
 import type { EnciclopediaLinkTarget } from '../lib/enciclopediaIndex'
 import { EnciclopediaLinkProvider } from '../context/EnciclopediaLinkContext'
 import { CompanerosPanel } from '../components/panels/CompanerosPanel'
@@ -28,9 +29,8 @@ import { MisionesPanel } from '../components/panels/MisionesPanel'
 import { HabilidadesPanel } from '../components/panels/HabilidadesPanel'
 import { playerActionEntry } from '../lib/simulateAI'
 import { DiscoveryReveal } from '../components/DiscoveryReveal'
-import { CombatComposer, type CombatNpcDisplay } from '../components/CombatComposer'
+import { CombatComposer } from '../components/CombatComposer'
 import { CombatPanel } from '../components/CombatPanel'
-import { combatDifficultyFor } from '../lib/combatDifficulty'
 import { HealthBar } from '../components/HealthBar'
 import { EnergyBar } from '../components/EnergyBar'
 import { KingdomFoundingModal } from '../components/KingdomFoundingModal'
@@ -46,7 +46,6 @@ import { inventoryCapacityFor, totalInventoryUnits } from '../lib/inventoryCapac
 import {
   requestTurnClassify,
   requestTurnNarrate,
-  requestFlee,
   createSave,
   getSave,
   pauseSave,
@@ -70,7 +69,6 @@ import {
   formatCountdown,
   formatFictionalDuration,
   applyInventoryDelta,
-  npcInSceneToCombatDisplay,
   questCompletedLogEntry,
 } from '../lib/gameViewHelpers'
 import type {
@@ -93,7 +91,6 @@ import type {
   NpcInSceneInfo,
   PostCombatInteractionInfo,
   ProfessionProgressInfo,
-  ProgressionResult,
   QuestInfo,
   SavedActionCategory,
   SavedActionInfo,
@@ -245,72 +242,11 @@ export function GameView() {
   const [energiaMax, setEnergiaMax] = useState(100)
   const [endedAt, setEndedAt] = useState<string | null>(null)
   const [combateIniciado, setCombateIniciado] = useState<{ npcs: NpcInSceneInfo[] } | null>(null)
-  const [combatOpen, setCombatOpen] = useState(false)
-  const [fleeingPreCombat, setFleeingPreCombat] = useState(false)
-  // Rework de combate in-place (2026-07-24): antes este estado (condición heurística por NPC,
-  // saqueado) vivía dentro de CombatModal.tsx, remontado limpio cada vez que el popup se abría.
-  // Ahora que no hay popup (el composer normal se sustituye por CombatComposer en el mismo sitio),
-  // este estado vive aquí y se inicializa a mano en `openCombat()` cada vez que arranca una pelea.
-  // 'MUERTO' añadido (2026-07-30, botón "Decapitar") — antes esta lista se topaba en CONVALECIENTE
-  // a propósito porque nada en combate podía mostrar MUERTO; ahora que sí puede pasar, tiene que
-  // seguir siendo el peor escalón de todos para que la fusión "nunca empeora sin razón real" de
-  // `handleCombatTurnResolved` (más abajo) siga funcionando igual.
-  const CONDICION_ORDER: CondicionFisica[] = ['ILESO', 'HERIDO', 'GRAVE', 'CONVALECIENTE', 'MUERTO']
-  const [combatNpcStates, setCombatNpcStates] = useState<CombatNpcDisplay[]>([])
-  const [combatBusy, setCombatBusy] = useState(false)
-  const [combatEnded, setCombatEnded] = useState(false)
-  // Rediseño de la vista de combate (2026-07-28): este estado vivía dentro de CombatComposer.tsx,
-  // remontado limpio cada vez que el combate se abría/cerraba (era un componente condicional).
-  // Ahora vive aquí porque lo comparten dos sitios distintos del layout a la vez (CombatPanel,
-  // arriba en el panel derecho, y el input de texto libre recortado, abajo) — `openCombat()` lo
-  // reinicia a mano, igual que antes hacía el `useState` inicial de aquel componente.
-  // Rediseño del turno de combate (2026-07-28) — true entre "el NPC ganó la iniciativa" y "el
-  // jugador ya eligió su defensa a ciegas"; gatea el sub-modo de CombatPanel (oculta objetivos/
-  // Huir/objetos, cambia "Actuar" por "Defenderte").
-  const [combatAwaitingDefense, setCombatAwaitingDefense] = useState(false)
   // Rediseño del turno de combate (2026-07-29, "quiero que sea más claro cuando es turno de
   // ataque... indicándome qué salió en los dados") — tirada real de iniciativa del último turno
   // resuelto, para que CombatPanel explique CON NÚMEROS por qué le toca atacar/defender ahora.
+  // Escrita también por `syncFromSave` (al recargar), así que se queda aquí y no en useCombatFlow.
   const [lastInitiativeRoll, setLastInitiativeRoll] = useState<InitiativeRollInfo | null>(null)
-  const [combatSelectedNpcSlug, setCombatSelectedNpcSlug] = useState<string | null>(null)
-  const [combatSelectedAbilityId, setCombatSelectedAbilityId] = useState<string | null>(null)
-  const [combatSelectedItemId, setCombatSelectedItemId] = useState<string | null>(null)
-  const [combatFreeText, setCombatFreeText] = useState('')
-  // Auditoría de rendimiento 2026-07-28 ("rascar segundos"): memoizado — sin esto, `.map()`
-  // devolvía una referencia NUEVA en cada render de GameView (cada chunk de narración en
-  // streaming, cada tecla del composer...), y el useEffect de más abajo depende de este array
-  // entero: sin una referencia estable, se disparaba en cada uno de esos renders, no solo cuando
-  // el combate realmente cambia.
-  const combatNpcsDisplay: CombatNpcDisplay[] = useMemo(
-    () =>
-      (combateIniciado?.npcs ?? []).map(
-        (n) => combatNpcStates.find((s) => s.slug === n.slug) ?? npcInSceneToCombatDisplay(n),
-      ),
-    [combateIniciado, combatNpcStates],
-  )
-
-  // Indicador de dificultad antes de pulsar "Combatir" (2026-07-29, petición explícita: "que
-  // aparezca un texto en color... que me indique la dificultad según los niveles"). Usa el NPC de
-  // mayor nivel del encuentro (el peor caso, no un promedio que escondiera al más peligroso del
-  // grupo) — mismo criterio de diferencia de nivel que `difficultyHintFor` en el backend.
-  const combatDifficulty = useMemo(() => {
-    if (!combateIniciado || !enciclopediaData) return null
-    const levels = combateIniciado.npcs
-      .map((n) => enciclopediaData.npcs.find((e) => e.slug === n.slug)?.level ?? enciclopediaData.faunaFlora.find((f) => f.sourceSlug === n.slug)?.level)
-      .filter((l): l is number => typeof l === 'number')
-    if (levels.length === 0) return null
-    return combatDifficultyFor(Math.max(...levels) - level)
-  }, [combateIniciado, enciclopediaData, level])
-  // Bug real (2026-07-25, "revisar partida"): `combatEnded` solo se marcaba con `finDePartida` o
-  // la muerte del PROPIO personaje — nunca cuando el enemigo quedaba derrotado. Un NPC en GRAVE ya
-  // se puede saquear (ver "Registrar" en CombatComposer), así que saquearlo es la señal real de
-  // "esto ya terminó" aunque nunca llegue a CONVALECIENTE — sin esto, la pantalla de combate se
-  // quedaba encallada para siempre tras looter a un enemigo que no llegó a caer del todo.
-  useEffect(() => {
-    if (!combatOpen || combatEnded || combatNpcsDisplay.length === 0) return
-    const allResolved = combatNpcsDisplay.every((n) => n.condicion === 'CONVALECIENTE' || n.condicion === 'MUERTO' || n.yaSaqueado)
-    if (allResolved) setCombatEnded(true)
-  }, [combatOpen, combatEnded, combatNpcsDisplay])
 
   // Tabs que no tienen sentido en pleno combate (petición explícita, 2026-07-24) — Estadísticas,
   // Equipo, Habilidades y Enciclopedia se dejan libres a propósito ("no fuerces nada, ya lo
@@ -321,362 +257,46 @@ export function GameView() {
   const COMBAT_DISABLED_CHARACTER_TABS: PanelId[] = ['inventario', 'companeros', 'reino']
   const COMBAT_DISABLED_WORLD_TABS: PanelId[] = ['mapa', 'diario', 'misiones']
 
-  // `combatOverride` (bug real, auditoría de bugs 2026-08-21): "Cazar" resolviendo una presa
-  // débil SIN combate (`handleHuntResolved`) hace `setCombateIniciado(result.combate)` y llama a
-  // `openCombat()` en la misma sincronía — sin este parámetro, la función leía `combateIniciado`
-  // del cierre de ESTE render (el `setState` de la línea anterior todavía no se había aplicado),
-  // que en ese flujo es siempre `null` porque "Cazar" solo se ofrece fuera de combate. `openCombat`
-  // devolvía sin hacer nada: el panel de combate nunca se abría, y el aviso "⚔️ Combatir" salía
-  // en su lugar la vez siguiente que algo repintara — reabrirlo desde ahí sí funcionaba (ya con el
-  // estado actualizado), pero mostraba los controles normales de ataque un instante antes de que
-  // el `useEffect` de `allResolved` lo cerrara solo, en vez de abrir directo el resumen "ya
-  // resuelto, solo queda saquear" que pedía el diseño original de esta pantalla.
-  function openCombat(combatOverride?: { npcs: NpcInSceneInfo[] } | null) {
-    const combate = combatOverride ?? combateIniciado
-    if (!combate) return
-    // Bug real (auditoría 2026-07-30): un turno puede traer a la vez un hallazgo (`discoveries`)
-    // Y una emboscada (`combateIniciado`) — sin esto, el aviso de "hallazgo descubierto" se quedaba
-    // solapado visualmente por encima del popup de combate recién abierto.
-    setDiscoveries([])
-    setCombatNpcStates(combate.npcs.map(npcInSceneToCombatDisplay))
-    setCombatEnded(false)
-    // Mismo reinicio que antes hacía el `useState` inicial de CombatComposer al montarse.
-    setCombatSelectedNpcSlug(combate.npcs[0]?.slug ?? null)
-    setCombatSelectedAbilityId(null)
-    setCombatSelectedItemId(null)
-    setCombatFreeText('')
-    // Bug real (auditoría 2026-07-30): NO se resetea `combatAwaitingDefense` aquí a propósito.
-    // `handleCombatHuir` cierra el popup de inmediato sin esperar la resolución real (fire-and-
-    // forget) — si la huida falla y el NPC contraataca, `handleCombatTurnResolved` deja
-    // `combatAwaitingDefense=true` (turno real, correcto) mientras el popup sigue cerrado y
-    // reaparece el aviso "⚔️ Combatir". Si `openCombat()` lo reseteaba aquí sin más, reabrir el
-    // popup mostraba los controles de ataque en vez del prompt de "Defenderte", aunque el backend
-    // (`Save.pendingNpcAttack`) siga esperando esa defensa de todos modos — confuso aunque no
-    // rompía la mecánica real. El combate SÍ termina en `false` cuando de verdad termina, ver
-    // `onContinue`/`handleCombatHuir`/`finDePartida` en handleCombatTurnResolved.
-    setLastInitiativeRoll(null)
-    if (activePanel && (COMBAT_DISABLED_CHARACTER_TABS.includes(activePanel) || COMBAT_DISABLED_WORLD_TABS.includes(activePanel))) {
-      setActivePanel(null)
-    }
-    setCombatOpen(true)
-  }
-
-  async function submitCombatAction(
-    action: string,
-    opts: { savedActionId?: string; lootItemNames?: string[]; allowAfterEnded?: boolean; isItemUse?: boolean },
-  ): Promise<boolean> {
-    // Bug real jugando en vivo (2026-07-31, "al decapitarlo no se ha cerrado el combate... el
-    // saqueo listaba las 3 cosas en vez de 1"): este guard bloqueaba CUALQUIER acción en cuanto
-    // `combatEnded` era true — correcto para "Actuar"/Huir (no tiene sentido seguir peleando una
-    // vez resuelto), pero Registrar/Decapitar/Saquear son justo las acciones que la pantalla de
-    // combate YA terminado ofrece, y hoy dejaron de cerrar el combate por su cuenta (saqueo parcial,
-    // ver handleSaquearSeleccion) — sin `allowAfterEnded`, esas tres llamadas nunca llegaban ni a
-    // hacer la petición: `handleSaquearSeleccion`/`handleDecapitarSeleccion` marcaban optimistamente
-    // el estado local y luego `submitCombatAction` devolvía `false` en silencio, sin tocar el
-    // backend — el modal de saqueo volvía a mostrar todo porque NADA se había persistido de verdad.
-    if (!action.trim() || combatBusy || (combatEnded && !opts.allowAfterEnded) || !saveId) return false
-    setCombatBusy(true)
-    // Bug real (2026-07-29, "no veo el cuadro rojo del narrador generando el texto" en combate):
-    // combatBusy solo bloquea los botones de CombatPanel — nunca activaba `characterThinking`,
-    // así que el LogPanel de "Tu personaje" nunca mostraba la tarjeta de "pensando" mientras se
-    // esperaba la narración de este turno, aunque sí lo hace fuera de combate (ver handleSubmit).
-    setCharacterThinking(true)
-    try {
-      const classifyResult = await requestTurnClassify({ saveId, action, enCombate: true, savedActionId: opts.savedActionId })
-      const { classification, roll } = classifyResult
-      if (classifyResult.blocked) {
-        // Validador de "grounding" (docs/18-validacion-accion-jugador.md) — el backend ya
-        // persistió la acción y la respuesta determinista en el log, así que basta con recargar
-        // la partida para reflejarlas, en vez de sintetizar un mensaje local (a diferencia del
-        // aviso de `transit` de abajo, que sí es puramente informativo del cliente).
-        const save = await getSave(saveId)
-        syncFromSave(save)
-        return false
-      }
-      if (classifyResult.transit) {
-        // Salvaguarda (auditoría 2026-07-28): el backend ya fuerza banda "instantánea" para
-        // cualquier acción de combate (turn.ts), así que esto no debería pasar nunca — pero si
-        // pasara, seguir a narrate igualmente resolvería el turno DOS veces (ahora y otra vez al
-        // vencer ese transit, esta vez sin `enCombate`/`pendingNpcAttack`, perdiendo un ataque de
-        // NPC pendiente sin que el jugador llegue a defenderse). Se corta aquí en vez de arriesgar
-        // una doble resolución silenciosa.
-        setCharacterLog((prev) => [
-          ...prev,
-          {
-            id: `combat-err-${Date.now()}`,
-            channel: 'character',
-            text: 'Esta acción tardaría demasiado para resolverse en mitad de un combate — prueba con algo más directo.',
-            timeLabel: fictionalDate,
-            createdAt: new Date().toISOString(),
-            combate: true,
-          },
-        ])
-        return false
-      }
-      const {
-        narration,
-        progression,
-        condicionFisica,
-        energia,
-        energiaMax,
-        timeLabel: newTimeLabel,
-        combateIniciado: combate,
-        finDePartida,
-        justDied,
-        newInventoryItems,
-        removedInventoryItemIds,
-        updatedInventoryItems,
-        logEntryId,
-        quests: updatedQuests,
-        newQuestInfo,
-        questCompletedInfo,
-        esperandoDefensaJugador,
-        npcAbilityUsed,
-        playerAbilityUsed,
-        combatExchangeDisplay,
-        nextInitiativeRoll,
-        deathCount: updatedDeathCount,
-        factionsStatus: updatedFactionsStatus,
-        professionProgress: updatedProfessionProgress,
-      } = await requestTurnNarrate(
-        {
-          saveId,
-          action,
-          classification,
-          roll,
-          enCombate: true,
-          savedActionId: opts.savedActionId,
-          npcsInScene: classifyResult.npcsInScene,
-          lootItemNames: opts.lootItemNames,
-          isItemUse: opts.isItemUse,
-        },
-        { onExchangeResolved: (exchange, npcName) => setDiceReveal({ exchange, npcName }) },
-      )
-      // Auditoría 2026-07-28: antes había aquí un downgrade optimista de la condición del NPC
-      // basado en `roll.success` (la tirada tabulada de classify) — desde que el intercambio real
-      // se decide en resolveExchange (turnResolution.ts), esa tirada ya no tiene relación con si
-      // el golpe conectó de verdad, así que podía mostrar al NPC más herido de lo que estaba y
-      // quedarse así para siempre (el merge de `combate.npcs` de abajo nunca corrige hacia atrás).
-      // El backend ya devuelve la condición fresca del NPC golpeado en la misma respuesta —
-      // `handleCombatTurnResolved` es la única fuente de verdad ahora.
-      setQuests(updatedQuests)
-      // Bug real (auditoría 2026-08-06): matar/decapitar a un NPC de facción en combate cambia
-      // `factionsStatus` en el acto (reputation.ts), y morir en combate cambia `deathCount` — sin
-      // esto, Personaje → Reputación/Profesiones y el contador de muertes se quedaban con el valor
-      // de antes del combate hasta recargar la partida entera.
-      setDeathCount(updatedDeathCount)
-      setFactionsStatus(updatedFactionsStatus)
-      setProfessionProgress(updatedProfessionProgress)
-      handleCombatTurnResolved({
-        narration: narration.narration,
-        progression,
-        condicionFisica,
-        energia,
-        energiaMax,
-        timeLabel: newTimeLabel,
-        finDePartida,
-        newInventoryItems,
-        removedInventoryItemIds,
-        updatedInventoryItems,
-        logEntryId,
-        combate,
-        esperandoDefensaJugador,
-        npcAbilityUsed,
-        playerAbilityUsed,
-        combatExchangeDisplay,
-        nextInitiativeRoll,
-        newQuestInfo,
-        questCompletedInfo,
-      })
-      // Bug real (2026-07-29, "si muero no hace lo que fijamos que haría"): `condicionFisica` ya
-      // llega resuelta a ILESO tras un respawn sobrevivible (nunca MUERTO) — sin `justDied` este
-      // chequeo nunca se cumplía salvo fin de partida, y el combate seguía igual tras morir.
-      if (finDePartida || justDied) setCombatEnded(true)
-      return true
-    } catch (err) {
-      // Candado de turno (auditoría de código completa, 2026-08-07) — este intercambio se
-      // rechazó de raíz (ya había uno en curso para esta partida), mensaje propio en vez del
-      // genérico de abajo para que quede claro que no fue un fallo real.
-      setCharacterLog((prev) => [
-        ...prev,
-        {
-          id: `combat-err-${Date.now()}`,
-          channel: 'character',
-          text: isTurnLockedError(err)
-            ? 'Todavía se está resolviendo tu turno anterior — espera un momento e inténtalo de nuevo.'
-            : 'No se pudo resolver este turno de combate.',
-          timeLabel: fictionalDate,
-          createdAt: new Date().toISOString(),
-          combate: true,
-        },
-      ])
-      return false
-    } finally {
-      setCombatBusy(false)
-      setCharacterThinking(false)
-      setDiceReveal(null)
-    }
-  }
-
-  function handleCombatHuir() {
-    // Fire-and-forget + cierre inmediato (mismo comportamiento que tenía CombatModal.handleHuir):
-    // no se espera el resultado narrativo para volver al modo normal.
-    submitCombatAction('Intento huir de este combate, alejándome como pueda.', {})
-    setCombatOpen(false)
-    setCombateIniciado(null)
-    setCombatAwaitingDefense(false)
-  }
-
-  async function handleCombatRegistrar(npc: CombatNpcDisplay) {
-    setCombatNpcStates((prev) => prev.map((n) => (n.slug === npc.slug ? { ...n, yaSaqueado: true } : n)))
-    // Comillas alrededor del nombre (bug real, auditoría 2026-07-28): igual que handleAttack ya
-    // hace para que el backend resuelva `explicitTarget` — sin ellas, el saqueo podía alcanzar a
-    // cualquier otro NPC derrotado que estuviera también en escena, no solo al pulsado aquí.
-    const ok = await submitCombatAction(`Registro el cuerpo de '${npc.name}'.`, { allowAfterEnded: true })
-    // Rollback (bug real, auditoría 2026-07-28): si el turno falla, el saqueo optimista de arriba
-    // dejaba al NPC marcado como saqueado en la UI para siempre, aunque el backend nunca llegó a
-    // aplicarlo — el botón de registrar desaparecía sin que el saqueo hubiera ocurrido de verdad.
-    if (!ok) {
-      setCombatNpcStates((prev) => prev.map((n) => (n.slug === npc.slug ? { ...n, yaSaqueado: false } : n)))
-    }
-  }
-
-  // Botón "Decapitar" (petición explícita, 2026-07-30: "un botón que solo sale cuando está
-  // convaleciente para matarlo") — golpe de gracia determinista contra un enemigo YA convaleciente,
-  // sin tirada (ver `detectsExecuteIntent`/`executeTarget` en turnResolution.ts). Comillas
-  // alrededor del nombre, mismo motivo que `handleCombatRegistrar`: sin ellas, el backend podría
-  // rematar a cualquier otro enemigo derrotado en escena, no solo al pulsado aquí.
-  //
-  // Ajustado tras probarlo en vivo (2026-07-30: "tienes que marcar todos aquellos que quieras
-  // decapitar... un popup con checkbox... y confirmarlo") — recibe la selección YA confirmada
-  // desde el modal (CombatSelectionModal en CombatPanel.tsx), nunca un solo NPC. UN único prompt
-  // mencionando a todos por nombre, SIN comillas — mismo motivo que `handleSaquearSeleccion` más
-  // abajo: con comillas, `explicitTarget` (el regex `'([^']+)'`) solo extrae UN nombre, así que
-  // varios seleccionados a la vez solo rematarían al primero.
-  async function handleDecapitarSeleccion(npcs: CombatNpcDisplay[]) {
-    if (npcs.length === 0) return
-    setCombatNpcStates((prev) => prev.map((n) => (npcs.some((p) => p.slug === n.slug) ? { ...n, condicion: 'MUERTO' } : n)))
-    const nombres = npcs.map((n) => n.name).join(', ')
-    const ok = await submitCombatAction(`Remato a ${nombres}, asestándoles el golpe de gracia final.`, { allowAfterEnded: true })
-    if (!ok) {
-      setCombatNpcStates((prev) => prev.map((n) => (npcs.some((p) => p.slug === n.slug) ? { ...n, condicion: 'CONVALECIENTE' } : n)))
-      return
-    }
-    // Rediseño 2026-07-31 (petición explícita: "solo salir o decapitar cierran el combate") —
-    // decapitar es un cierre deliberado, a diferencia de saquear (que se queda abierto por si
-    // dejaste algo sin recoger, ver `handleSaquearSeleccion`). Mismo cierre que "Salir".
-    setCombatOpen(false)
-    setCombateIniciado(null)
-    setCombatAwaitingDefense(false)
-  }
-
-  // Resumen de combate (petición explícita, 2026-07-30: "no se entiende que vencí... quiero que
-  // cuando acabes te saque una vista... con un botón salir y un botón saquear que lance un prompt
-  // ya directamente en personaje para saquear a todos los enemigos derrotados"), ajustado tras
-  // probarlo en vivo ("que pueda marcar los que me quiero quedar") — recibe los NOMBRES de
-  // objetos YA confirmados desde el modal de selección; el backend (`lootItemNames`, ver
-  // turnResolution.ts) solo copia esos, no el loadout entero. UN solo prompt mencionando a cada
-  // enemigo por su nombre real, SIN comillas (mismo motivo que arriba: con comillas solo se
-  // saquearía al primero).
-  //
-  // Bug real (probado en vivo, 2026-07-30): la primera versión de este prompt no nombraba a NADIE
-  // — sin ningún alias de NPC en el texto, `detectNpcsInScene` (turnResolution.ts) nunca los
-  // detectaba "en escena" para este turno, así que `lootMode` nunca se activaba: no aparecía nada
-  // en el inventario y el estado de combate del servidor (`pendingCombatNpcSlugs`) nunca se
-  // tocaba, así que al recargar la página el popup de combate volvía a aparecer como si nada
-  // hubiera pasado.
-  // Saqueo parcial (2026-07-31, petición explícita: "que no cierre la pestaña de combate... si no
-  // saqueas todo el botón sigue para poder saquear lo que dejaste") — a diferencia de Decapitar/
-  // Salir, saquear NUNCA cierra el combate por su cuenta: `quedaAlgoPorSaquear` (CombatPanel.tsx)
-  // ya reacciona solo al estado real de `yaSaqueado` de cada NPC, así que el botón desaparece o
-  // sigue sin necesitar ningún cierre explícito aquí. Solo se marca `yaSaqueado` en los NPC de
-  // `fullyLootedSlugs` (los que tuvieron el 100% de sus objetos marcados en el modal) — el
-  // backend (`NpcState.lootedItemNames`) es quien de verdad decide esto; el resto se queda tal
-  // cual hasta la respuesta real del turno.
-  //
-  // Bug real (2026-08-01, "saqueé 2 de 3 y me volvía a listar los 3"): antes esto solo marcaba
-  // `yaSaqueado` de forma optimista y confiaba en que la respuesta del turno (`combate.npcs`, ver
-  // el merge de `handleCombatTurnResolved`) trajera `lootedItemNames` frescos — pero el saqueo ya
-  // no genera ningún `combateIniciado` en la respuesta (no hay intercambio de combate ni el modelo
-  // narra un slug que copiar), así que ese merge nunca se disparaba y el modal seguía ofreciendo
-  // TODO el loadout la próxima vez, aunque el backend ya lo tuviera bien registrado. Se marca
-  // `lootedItemNames` aquí mismo, con lo que el propio modal ya seleccionó — no hace falta esperar
-  // al servidor para saber esto: el backend nunca rechaza un objeto real de su loadout.
-  async function handleSaquearSeleccion(itemNames: string[], fullyLootedSlugs: string[], itemNamesByNpc: Record<string, string[]>) {
-    const porSaquear = combatNpcsDisplay.filter((n) => (n.condicion === 'CONVALECIENTE' || n.condicion === 'MUERTO') && !n.yaSaqueado)
-    if (porSaquear.length > 0) {
-      setCombatNpcStates((prev) =>
-        prev.map((n) => {
-          const added = itemNamesByNpc[n.slug]
-          // `undefined` = este NPC no formaba parte de esta ronda de saqueo, se deja igual. Un
-          // array VACÍO sí es una respuesta real (auditoría 2026-08-07: NPC con loadout vacío en
-          // catálogo, nada que añadir pero SÍ puede quedar marcado como saqueado del todo) — antes
-          // se trataba igual que "no tocado" y `yaSaqueado` nunca se ponía a `true` en la sesión
-          // en curso (solo se corregía tras recargar la partida).
-          if (added === undefined) return n
-          return {
-            ...n,
-            yaSaqueado: fullyLootedSlugs.includes(n.slug) ? true : n.yaSaqueado,
-            lootedItemNames: added.length > 0 ? [...new Set([...n.lootedItemNames, ...added])] : n.lootedItemNames,
-          }
-        }),
-      )
-      const nombres = porSaquear.map((n) => n.name).join(', ')
-      await submitCombatAction(`Registro los cuerpos de los enemigos derrotados en este combate: ${nombres}.`, { lootItemNames: itemNames, allowAfterEnded: true })
-    }
-  }
-
-  // Rediseño de la vista de combate (2026-07-28): mismos handlers que antes vivían dentro de
-  // CombatComposer.tsx (handleAttack/handleUseItem/resetSelection), movidos aquí porque el estado
-  // de selección que usan ahora se comparte entre CombatPanel (arriba) y el input de texto libre
-  // recortado (abajo).
-  function resetCombatSelection() {
-    setCombatSelectedAbilityId(null)
-    setCombatSelectedItemId(null)
-    setCombatFreeText('')
-  }
-
-  function handleCombatAttack() {
-    const selectedAbility = savedActions.find((a) => a.id === combatSelectedAbilityId)
-    if (!selectedAbility) return
-    // Defensa a ciegas (rediseño del turno de combate, 2026-07-28): reactiva, sin objetivo propio
-    // que elegir — el backend ya sabe que toca resolver la defensa pendiente del NPC por su
-    // propio `Save.pendingNpcAttack`, así que el texto no menciona ningún NPC.
-    if (combatAwaitingDefense) {
-      submitCombatAction(selectedAbility.promptText, { savedActionId: selectedAbility.id })
-      resetCombatSelection()
-      return
-    }
-    const selectedNpc = combatNpcsDisplay.find((n) => n.slug === combatSelectedNpcSlug) ?? null
-    const base = selectedAbility.promptText.trim().replace(/\.+$/, '')
-    const action = selectedNpc ? `${base} '${selectedNpc.name}'.` : selectedAbility.promptText
-    submitCombatAction(action, { savedActionId: selectedAbility.id })
-    resetCombatSelection()
-  }
-
-  // Objetos consumibles (petición explícita, 2026-07-22): siempre de uso propio, nunca contra un
-  // NPC objetivo. Rediseño de combate (2026-08-09, "si uso un consumible el rival también puede
-  // actuar") — `isItemUse: true` deja que el backend active el intercambio de verdad (el NPC
-  // puede actuar este turno) sin que consumir cuente nunca como golpe propio.
-  function handleCombatUseItem() {
-    const selectedItem = inventory.find((i) => i.id === combatSelectedItemId)
-    if (!selectedItem) return
-    submitCombatAction(`Uso '${selectedItem.name}'.`, { isItemUse: true })
-    resetCombatSelection()
-  }
-
-  function handleCombatActuar() {
-    if (combatSelectedAbilityId) handleCombatAttack()
-    else if (combatSelectedItemId) handleCombatUseItem()
-  }
-
-  function handleCombatFreeSubmit() {
-    if (!combatFreeText.trim()) return
-    submitCombatAction(combatFreeText, {})
-    resetCombatSelection()
-  }
   const [quests, setQuests] = useState<QuestInfo[]>([])
   const [chapters, setChapters] = useState<SessionSummaryInfo[]>([])
+
+  // Bloque de combate (deuda técnica 2026-08-21) — ver src/hooks/useCombatFlow.ts para la lógica
+  // completa. `combateIniciado`/`lastInitiativeRoll` siguen viviendo aquí (los escribe también
+  // `syncFromSave`/`handleSubmit`/`handleHuntResolved`, fuera del combate en sí); todo lo demás
+  // (combatOpen, selección de NPC/habilidad/objeto, texto libre, huida previa...) es interno al
+  // hook.
+  const combat = useCombatFlow({
+    saveId,
+    fictionalDate,
+    level,
+    savedActions,
+    inventory,
+    setInventory,
+    enciclopediaData,
+    buildEntityBanner,
+    combateIniciado,
+    setCombateIniciado,
+    setLastInitiativeRoll,
+    setDiscoveries,
+    activePanel,
+    setActivePanel,
+    combatDisabledTabs: [...COMBAT_DISABLED_CHARACTER_TABS, ...COMBAT_DISABLED_WORLD_TABS],
+    setCharacterThinking,
+    setCharacterLog,
+    setQuests,
+    setDeathCount,
+    setFactionsStatus,
+    setProfessionProgress,
+    setXp,
+    setLevel,
+    setPendingAttributePoints,
+    setCondicionFisica,
+    setEnergia,
+    setEnergiaMax,
+    setFictionalDate,
+    setEndedAt,
+    setDiceReveal,
+  })
 
   // Pop del botón "Nivel X" solo en una subida real, nunca al cargar la partida (roadmap de
   // animaciones 2026-07-20, item 7) — mismo patrón que HealthBar: comparar contra un ref, no
@@ -712,7 +332,7 @@ export function GameView() {
     setWorldLog,
   })
 
-  const characterFlavor = useRotatingFlavor(characterThinking, combatOpen ? combatWaitingFlavor : characterWaitingFlavor)
+  const characterFlavor = useRotatingFlavor(characterThinking, combat.combatOpen ? combatWaitingFlavor : characterWaitingFlavor)
   const worldFlavor = useRotatingFlavor(worldThinking, worldWaitingFlavor)
 
   // Sondeo de reconexión tras un turno que no confirmó a tiempo — ver
@@ -728,7 +348,7 @@ export function GameView() {
   // respuesta cruda del preview (evita el riesgo de perder "discoveries"/"transit" del envío real).
   useEffect(() => {
     const action = input.trim()
-    const composerDisabled = characterThinking || !!busyUntil || !!endedAt || (!!combateIniciado && !combatOpen)
+    const composerDisabled = characterThinking || !!busyUntil || !!endedAt || (!!combateIniciado && !combat.combatOpen)
     if (!action || !saveId || composerDisabled) return
 
     const timer = setTimeout(() => {
@@ -736,7 +356,7 @@ export function GameView() {
     }, 1500)
 
     return () => clearTimeout(timer)
-  }, [input, saveId, characterThinking, busyUntil, endedAt, combateIniciado, combatOpen])
+  }, [input, saveId, characterThinking, busyUntil, endedAt, combateIniciado, combat.combatOpen])
 
   // Vuelca un SaveDetail completo en el estado local — usado al cargar la partida y al
   // resincronizar tras resolverse una acción por tiempo en diferido (CharacterTransit).
@@ -1028,7 +648,7 @@ export function GameView() {
       // `result.combate` explícito (ver comentario de `openCombat`) — `combateIniciado` todavía no
       // se ha actualizado en este mismo tick, así que confiar en el estado aquí abriría un panel
       // de combate vacío.
-      openCombat(result.combate)
+      combat.openCombat(result.combate)
       return
     }
     handleSubmit(result.actionText)
@@ -1092,143 +712,6 @@ export function GameView() {
 
   function handleAttachDiscovery(discovery: DiscoveryItem) {
     composerRef.current?.insertChip({ icon: '✨', label: discovery.name })
-  }
-
-  function handleCombatTurnResolved(params: {
-    narration: string
-    progression: ProgressionResult
-    condicionFisica: CondicionFisica
-    energia: number
-    energiaMax: number
-    timeLabel: string
-    finDePartida: boolean
-    newInventoryItems: InventoryItemInfo[]
-    removedInventoryItemIds: string[]
-    updatedInventoryItems: { id: string; name: string }[]
-    logEntryId: string
-    combate?: { npcs: NpcInSceneInfo[] } | null
-    esperandoDefensaJugador: boolean
-    npcAbilityUsed: { npcName: string; abilityName: string; rol: 'ataque' | 'defensa' } | null
-    playerAbilityUsed: { name: string; icon: string; description: string; rol: 'ataque' | 'defensa' } | null
-    combatExchangeDisplay: CombatExchangeInfo | null
-    nextInitiativeRoll: InitiativeRollInfo | null
-    newQuestInfo?: { title: string; objetivo: string } | null
-    questCompletedInfo?: { logEntryId: string; text: string; title: string; grantedItems: string[]; rewardXp: number } | null
-  }) {
-    // `buildEntityBanner` se calcula FUERA del updater (bug real, 2026-07-24, "sigue sin salir la
-    // imagen" pese a candidatos válidos): StrictMode invoca dos veces en dev cualquier función
-    // pasada a `setState`, y `buildEntityBanner` muta `recentlyShownEntitiesRef` como efecto
-    // secundario — la primera invocación (de prueba, descartada) marcaba la entidad como "ya
-    // mostrada", así que la segunda (la que React realmente usa) la encontraba deduplicada y
-    // devolvía `undefined` siempre. Calcularlo una sola vez, antes de `setCharacterLog`, evita la
-    // doble ejecución por completo.
-    const entityBanner = buildEntityBanner(params.narration, params.logEntryId)
-    setCharacterLog((prev) => {
-      const next = [
-        ...prev,
-        {
-          id: params.logEntryId,
-          channel: 'character' as const,
-          text: params.narration,
-          timeLabel: params.timeLabel,
-          createdAt: new Date().toISOString(),
-          entityBanner,
-          combate: true,
-          npcAbilityUsed: params.npcAbilityUsed ?? undefined,
-          playerAbilityUsed: params.playerAbilityUsed ?? undefined,
-          combatExchange: params.combatExchangeDisplay ?? undefined,
-          newQuest: params.newQuestInfo ?? undefined,
-        },
-      ]
-      // Misión completada (2026-08-13) — LogEntry REAL aparte (id/texto de verdad, ya persistida
-      // por el backend vía questRewardNarrationFor), nunca fusionada con la narración principal de
-      // arriba: el combate puede cerrar una misión en el mismo golpe que la mata, pero son dos
-      // filas distintas en la DB.
-      if (params.questCompletedInfo) next.push(questCompletedLogEntry(params.questCompletedInfo, params.timeLabel))
-      return next
-    })
-    if (params.newInventoryItems.length > 0 || params.removedInventoryItemIds.length > 0 || params.updatedInventoryItems.length > 0) {
-      setInventory((prev) =>
-        applyInventoryDelta(prev, params.newInventoryItems, params.removedInventoryItemIds, params.updatedInventoryItems),
-      )
-    }
-    setXp(params.progression.newXp)
-    if (params.progression.leveledUp) {
-      setLevel(params.progression.newLevel)
-      setPendingAttributePoints((prev) => prev + params.progression.attributePointsGained)
-    }
-    setCondicionFisica(params.condicionFisica)
-    setEnergia(params.energia)
-    setEnergiaMax(params.energiaMax)
-    setFictionalDate(params.timeLabel)
-    setCombatAwaitingDefense(params.esperandoDefensaJugador)
-    setLastInitiativeRoll(params.nextInitiativeRoll)
-    // Bug real (auditoría 2026-07-28): esta función (la que resuelve CADA turno mientras el
-    // combate ya está abierto) nunca aplicaba el `combateIniciado` de la respuesta — a diferencia
-    // de fuera de combate (ver más abajo), donde sí se hace. Un NPC nuevo añadido a media pelea
-    // quedaba invisible en CombatComposer, y si la condición real del backend avanzaba más de lo
-    // que reflejaba el estado local, el botón "Registrar" podía no aparecer nunca para un NPC ya
-    // derrotado de verdad en el servidor.
-    if (params.combate && params.combate.npcs.length > 0) {
-      setCombateIniciado(params.combate)
-      setCombatNpcStates((prev) => {
-        const bySlug = new Map(prev.map((n) => [n.slug, n]))
-        for (const n of params.combate!.npcs) {
-          const real: CombatNpcDisplay = npcInSceneToCombatDisplay(n)
-          const local = bySlug.get(n.slug)
-          if (!local) {
-            bySlug.set(n.slug, real)
-            continue
-          }
-          // El backend manda: solo se sustituye el estado local si el real ha avanzado más (nunca
-          // "resucita" a alguien que el propio jugador ya vio caer más allá, por si acaso llega
-          // desordenado).
-          const avanza = CONDICION_ORDER.indexOf(real.condicion) > CONDICION_ORDER.indexOf(local.condicion)
-          if (avanza || (real.yaSaqueado && !local.yaSaqueado) || (real.analizado && !local.analizado)) {
-            bySlug.set(n.slug, real)
-          } else if (real.lootedItemNames.length > local.lootedItemNames.length) {
-            // Saqueo parcial (2026-07-31): `lootedItemNames` solo crece, aunque `condicion`/
-            // `yaSaqueado` no hayan cambiado este turno — sin esto, la lista de "qué te falta por
-            // llevarte" se quedaba congelada en lo que había al abrir el combate.
-            bySlug.set(n.slug, { ...local, lootedItemNames: n.lootedItemNames })
-          }
-        }
-        return Array.from(bySlug.values())
-      })
-    }
-    if (params.finDePartida) {
-      setEndedAt(new Date().toISOString())
-      setCombatOpen(false)
-      setCombateIniciado(null)
-      setCombatAwaitingDefense(false)
-    }
-  }
-
-  // Huir ANTES de entrar al combate (petición explícita de la usuaria, 2026-07-24): botón junto al
-  // aviso de "⚔️ Combatir" — una sola tirada determinista en el backend (sin IA, ver
-  // `/saves/:id/combat/flee`), así que no hay hueco de tiempo en el que una recarga pueda revivir
-  // un combate del que ya se huyó (el bug real de carrera que sí tiene el "Huir" de dentro del
-  // popup, que pasa por classify+narrate). Si falla, se abre el popup normal para pelear de verdad.
-  async function handleFleeAttempt() {
-    if (!saveId || fleeingPreCombat) return
-    setFleeingPreCombat(true)
-    try {
-      const { escaped, text } = await requestFlee(saveId)
-      setCharacterLog((prev) => [
-        ...prev,
-        { id: `flee-${Date.now()}`, channel: 'character', text, timeLabel: fictionalDate, createdAt: new Date().toISOString() },
-      ])
-      if (escaped) {
-        setCombateIniciado(null)
-      } else {
-        openCombat()
-      }
-    } catch {
-      // Si falla la llamada en sí (no la tirada), se deja el aviso de "Combatir" tal cual —
-      // la jugadora puede reintentar huir o entrar al combate normalmente.
-    } finally {
-      setFleeingPreCombat(false)
-    }
   }
 
   // Sugerencias de próxima acción bajo demanda (petición explícita, 2026-08-15) — llamada aparte
@@ -1746,7 +1229,7 @@ export function GameView() {
           active={activePanel}
           align="left"
           dimmed={!!activePanel}
-          disabledIds={combatOpen ? COMBAT_DISABLED_CHARACTER_TABS : undefined}
+          disabledIds={combat.combatOpen ? COMBAT_DISABLED_CHARACTER_TABS : undefined}
           onSelect={(id) => setActivePanel((prev) => (prev === id ? null : id))}
         />
         <div
@@ -1765,7 +1248,7 @@ export function GameView() {
               isThinking={characterThinking}
               thinkingText={streamingNarration ?? timedThinkingText ?? characterFlavor}
               streaming={!!streamingNarration}
-              combate={combatOpen}
+              combate={combat.combatOpen}
               diceReveal={diceReveal}
               emptyHint="Aquí aparecerá lo que le ocurra a tu personaje."
               onCollapse={() => setCollapsedSide('character')}
@@ -1775,12 +1258,12 @@ export function GameView() {
           )}
           {collapsedSide === 'world' ? (
             <CollapsedRail
-              label={combatOpen && combateIniciado ? 'Combate' : 'El mundo'}
+              label={combat.combatOpen && combateIniciado ? 'Combate' : 'El mundo'}
               icon="‹"
-              accentClass={combatOpen && combateIniciado ? 'text-danger-400' : 'text-accent2-300'}
+              accentClass={combat.combatOpen && combateIniciado ? 'text-danger-400' : 'text-accent2-300'}
               onExpand={() => setCollapsedSide(null)}
             />
-          ) : combatOpen && combateIniciado ? (
+          ) : combat.combatOpen && combateIniciado ? (
             // Rediseño de la vista de combate (2026-07-28, petición explícita: "quiero que la
             // sección de combate salga sustituyendo a los logs de mundo") — el panel "El mundo"
             // se sustituye por CombatPanel mientras dura el combate; el log de mundo en sí sigue
@@ -1788,40 +1271,31 @@ export function GameView() {
             <CombatPanel
               playerCondicion={condicionFisica}
               energia={energia}
-              npcs={combatNpcsDisplay}
-              selectedNpcSlug={combatSelectedNpcSlug}
-              onSelectNpc={setCombatSelectedNpcSlug}
+              npcs={combat.combatNpcsDisplay}
+              selectedNpcSlug={combat.combatSelectedNpcSlug}
+              onSelectNpc={combat.setCombatSelectedNpcSlug}
               combatAbilities={savedActions.filter((a) => a.category === 'combate')}
-              selectedAbilityId={combatSelectedAbilityId}
-              onSelectAbility={setCombatSelectedAbilityId}
+              selectedAbilityId={combat.combatSelectedAbilityId}
+              onSelectAbility={combat.setCombatSelectedAbilityId}
               // Consumibles de combate (2026-07-30, petición explícita: "raciones y cataplasma
               // catalogalo como Consumible que tendrá 6 slots en equipo donde podrás añadir los
               // consumibles que quieres usar en el combate") — antes CUALQUIER objeto sin ranura
               // (mochila entera, incluidos documentos/materiales) contaba como "usable" en
               // combate; ahora solo lo que el jugador equipó a propósito en una de las 6 ranuras.
               combatItems={inventory.filter((i) => isConsumibleSlot(i.slot))}
-              selectedItemId={combatSelectedItemId}
-              onSelectItem={setCombatSelectedItemId}
+              selectedItemId={combat.combatSelectedItemId}
+              onSelectItem={combat.setCombatSelectedItemId}
               playerAttributes={characterAttributes}
-              busy={combatBusy}
-              ended={combatEnded}
-              awaitingDefense={combatAwaitingDefense}
+              busy={combat.combatBusy}
+              ended={combat.combatEnded}
+              awaitingDefense={combat.combatAwaitingDefense}
               lastInitiativeRoll={lastInitiativeRoll}
-              onActuar={handleCombatActuar}
-              onRegistrar={handleCombatRegistrar}
-              onDecapitarSeleccion={handleDecapitarSeleccion}
-              onHuir={handleCombatHuir}
-              onContinue={() => {
-                setCombatOpen(false)
-                setCombateIniciado(null)
-                // Este combate ya terminó de verdad (todos los NPCs resueltos, ver `combatEnded`
-                // más arriba) — mismo criterio que `openCombat()` ya no puede asumir por su
-                // cuenta: aquí sí es seguro limpiar `combatAwaitingDefense`, para que el PRÓXIMO
-                // combate (uno nuevo, sin relación) no herede por error un "toca defender" de
-                // este que ya se cerró.
-                setCombatAwaitingDefense(false)
-              }}
-              onSaquearSeleccion={handleSaquearSeleccion}
+              onActuar={combat.handleCombatActuar}
+              onRegistrar={combat.handleCombatRegistrar}
+              onDecapitarSeleccion={combat.handleDecapitarSeleccion}
+              onHuir={combat.handleCombatHuir}
+              onContinue={combat.closeCombat}
+              onSaquearSeleccion={combat.handleSaquearSeleccion}
               onAbilityDetail={handleAbilityDetail}
               onItemDetail={handleItemDetail}
               enciclopedia={enciclopediaData}
@@ -1852,7 +1326,7 @@ export function GameView() {
           active={activePanel}
           align="right"
           dimmed={!!activePanel}
-          disabledIds={combatOpen ? COMBAT_DISABLED_WORLD_TABS : undefined}
+          disabledIds={combat.combatOpen ? COMBAT_DISABLED_WORLD_TABS : undefined}
           onSelect={(id) => setActivePanel((prev) => (prev === id ? null : id))}
         />
       </div>
@@ -1886,32 +1360,32 @@ export function GameView() {
         </div>
       )}
 
-      {combateIniciado && !combatOpen && !endedAt && (
+      {combateIniciado && !combat.combatOpen && !endedAt && (
         <div className="flex flex-col items-center gap-1.5 border-t border-iron-800 bg-wood-950/90 px-4 py-2 text-center">
-          {combatDifficulty && (
-            <p className={`text-2xs font-semibold uppercase tracking-[0.1em] ${combatDifficulty.colorClass}`}>
-              Dificultad: {combatDifficulty.label}
+          {combat.combatDifficulty && (
+            <p className={`text-2xs font-semibold uppercase tracking-[0.1em] ${combat.combatDifficulty.colorClass}`}>
+              Dificultad: {combat.combatDifficulty.label}
             </p>
           )}
           <div className="flex items-center justify-center gap-2">
             <button
-              // `() => openCombat()` explícito, no `openCombat` a secas (bug real introducido al
-              // añadir `combatOverride`, auditoría 2026-08-21): un handler de `onClick` pasado
-              // directo recibe el `MouseEvent` como primer argumento — con `openCombat` aceptando
-              // ahora un parámetro opcional, ese evento se habría colado como `combatOverride`
-              // (truthy, sin `.npcs`) y reventado en `combate.npcs.map(...)`.
-              onClick={() => openCombat()}
-              disabled={fleeingPreCombat}
+              // `() => combat.openCombat()` explícito, no `combat.openCombat` a secas (bug real
+              // introducido al añadir `combatOverride`, auditoría 2026-08-21): un handler de
+              // `onClick` pasado directo recibe el `MouseEvent` como primer argumento — con
+              // `openCombat` aceptando ahora un parámetro opcional, ese evento se habría colado
+              // como `combatOverride` (truthy, sin `.npcs`) y reventado en `combate.npcs.map(...)`.
+              onClick={() => combat.openCombat()}
+              disabled={combat.fleeingPreCombat}
               className="animate-alert-pulse rounded-lg border border-red-700 bg-danger-500/10 px-3 py-1.5 text-xs font-bold uppercase tracking-wide text-danger-400 shadow-[0_0_14px_-4px_color-mix(in_srgb,var(--color-danger-500)_70%,transparent)] transition-colors hover:bg-danger-500/20 disabled:opacity-50"
             >
               ⚔️ Combatir
             </button>
             <button
-              onClick={handleFleeAttempt}
-              disabled={fleeingPreCombat}
+              onClick={combat.handleFleeAttempt}
+              disabled={combat.fleeingPreCombat}
               className="tactile rounded-lg border border-iron-700 bg-wood-950/50 px-3 py-1.5 text-xs font-bold uppercase tracking-wide text-wood-300 transition-colors hover:border-accent-600/60 hover:text-accent-300 disabled:opacity-50"
             >
-              {fleeingPreCombat ? 'Huyendo...' : '🏃 Huir'}
+              {combat.fleeingPreCombat ? 'Huyendo...' : '🏃 Huir'}
             </button>
           </div>
         </div>
@@ -1925,16 +1399,16 @@ export function GameView() {
             "Sus partidas".
           </p>
         </div>
-      ) : combatOpen && combateIniciado ? (
+      ) : combat.combatOpen && combateIniciado ? (
         // Rework 2026-07-24, recortado en el rediseño de la vista de combate (2026-07-28): sigue
         // sustituyendo al ChatComposer normal en el mismo sitio, pero ahora solo es el input de
         // texto libre — enemigos/ficha/habilidades/objetos/Actuar viven en CombatPanel, arriba.
         <CombatComposer
-          freeText={combatFreeText}
-          onFreeTextChange={setCombatFreeText}
-          onSubmit={handleCombatFreeSubmit}
-          busy={combatBusy}
-          ended={combatEnded}
+          freeText={combat.combatFreeText}
+          onFreeTextChange={combat.setCombatFreeText}
+          onSubmit={combat.handleCombatFreeSubmit}
+          busy={combat.combatBusy}
+          ended={combat.combatEnded}
         />
       ) : (
         <>
@@ -1954,7 +1428,7 @@ export function GameView() {
             ref={composerRef}
             onChange={setInput}
             onSubmit={handleSubmit}
-            disabled={characterThinking || !!busyUntil || (!!combateIniciado && !combatOpen)}
+            disabled={characterThinking || !!busyUntil || (!!combateIniciado && !combat.combatOpen)}
             onRequestSuggestions={combateIniciado ? undefined : handleRequestSuggestions}
             suggestionsLoading={suggestionsLoading}
           />
@@ -2040,7 +1514,7 @@ export function GameView() {
           saveId={saveId}
           onConfirm={(actionText, lootItemNames) => {
             setSaquearZonaModalOpen(false)
-            submitCombatAction(actionText, { lootItemNames, allowAfterEnded: true })
+            combat.submitCombatAction(actionText, { lootItemNames, allowAfterEnded: true })
           }}
           onCancel={() => setSaquearZonaModalOpen(false)}
         />
