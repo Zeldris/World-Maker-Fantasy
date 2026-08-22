@@ -254,19 +254,21 @@ function AttributeAdvantageDiagram() {
   )
 }
 
-// Atributos secundarios (sesión de diseño 2026-07-23) — faltaban en esta pestaña aunque ya
-// existían en la ficha de personaje: nunca mueven una tirada (dice.ts), solo comprueban umbrales
-// de requisitos (craftear/equipar/construir/nivel de oficio, ver requisitos.ts en el backend).
+// Atributos secundarios (sesión de diseño 2026-07-23, remodelados 2026-08-22) — nunca mueven una
+// tirada (dice.ts), solo comprueban umbrales de requisitos (craftear/equipar/construir/nivel de
+// oficio, ver requisitos.ts en el backend) o son color narrativo puro. Sigilo salió de aquí (pasa
+// a ser habilidad activa de Destreza); Resistencia física/mágica/de semilla se eliminaron
+// (duplicaban a Constitución); Magia/Poder de Semilla se quedan como reserva narrativa para un
+// futuro sistema de magia jugable (Poder de Semilla, además, se ramificará por Semilla creadora
+// el día que se diseñe eso de verdad); Suerte/Honor son nuevos.
 const SECONDARY_ATTRIBUTES_INFO: { key: SecondaryAttribute; icon: string; description: string }[] = [
-  { key: 'sigilo', icon: '🕵️', description: 'Discreción — moverse sin ser visto/oído, detectar rastros. Narrativo/de umbral, ya no mueve tiradas de combate.' },
-  { key: 'magia', icon: '✨', description: 'Afinidad narrativa con las escuelas de magia del mundo (elementos/oscura/purificadora/naturaleza/dominio) — distinta de Arcano, el único poder que hoy tira dados.' },
-  { key: 'poderSemilla', icon: '🌱', description: 'Fuerza de la conexión innata con la Semilla creadora de tu raza — los Orcos, nacidos del Estallido sin Semilla propia, lo tienen más bajo y errático.' },
+  { key: 'magia', icon: '✨', description: 'Afinidad narrativa con las escuelas de magia del mundo (elementos/oscura/purificadora/naturaleza/dominio) — distinta de Arcano, el único poder que hoy tira dados. Reservado: base de un futuro atributo con tirada real, incluso en combate, cuando exista magia jugable de verdad.' },
+  { key: 'poderSemilla', icon: '🌱', description: 'Fuerza de la conexión innata con la Semilla creadora de tu raza — los Orcos, nacidos del Estallido sin Semilla propia, lo tienen más bajo y errático. Reservado: se ramificará en una rama por Semilla el día que exista magia jugable, igual que Magia.' },
   { key: 'moral', icon: '🕊️', description: 'Entereza pasiva ante el horror, la pérdida o el miedo — no quebrarse por dentro (distinta de Voluntad, que es aguantar presión activa).' },
-  { key: 'resistenciaFisica', icon: '💪', description: 'Capacidad de aguantar daño físico directo.' },
-  { key: 'resistenciaMagica', icon: '🔮', description: 'Capacidad de aguantar efectos de magia salvaje.' },
-  { key: 'resistenciaSemilla', icon: '🌿', description: 'Capacidad de aguantar efectos ligados al poder de una Semilla.' },
   { key: 'resistenciaFrio', icon: '❄️', description: 'Capacidad de aguantar frío extremo — relevante en Cristal Helado.' },
   { key: 'resistenciaCalor', icon: '🔥', description: 'Capacidad de aguantar calor extremo — relevante en las Llanuras del Viento Rojo.' },
+  { key: 'suerte', icon: '🍀', description: 'Fortuna narrativa pura — una coincidencia, un hallazgo fortuito. Nunca mueve una tirada.' },
+  { key: 'honor', icon: '⚔️', description: 'Peso del honor y la palabra dada — deudas de honor, reputación ganada. Narrativo puro, muy presente en la cultura orca (el Signeran, la casta de Ketg).' },
 ]
 
 // Roadmap de rediseño (Fable, 2026-07-21): la Enciclopedia es contenido de REFERENCIA ("lo que

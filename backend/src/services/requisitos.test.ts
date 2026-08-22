@@ -8,15 +8,13 @@ import type { SecondaryAttributeBlock } from './secondaryAttributes.js';
 
 const ATTRS: AttributeBlock = { fuerza: 10, destreza: 8, constitucion: 10, inteligencia: 10, voluntad: 10, carisma: 10, arcano: 10 };
 const SECONDARY: SecondaryAttributeBlock = {
-  sigilo: 5,
   magia: 0,
   poderSemilla: 0,
   moral: 5,
-  resistenciaFisica: 0,
-  resistenciaMagica: 0,
-  resistenciaSemilla: 0,
   resistenciaFrio: 0,
   resistenciaCalor: 0,
+  suerte: 5,
+  honor: 0,
 };
 
 describe('checkRequisitos', () => {
@@ -32,9 +30,9 @@ describe('checkRequisitos', () => {
     expect(checkRequisitos({ destreza: 12 }, ATTRS, SECONDARY)).toEqual([{ atributo: 'destreza', tienes: 8, necesitas: 12 }]);
   });
 
-  it('lee también atributos secundarios, sin colisión de nombres con los jugables (p.ej. moral, sigilo)', () => {
+  it('lee también atributos secundarios, sin colisión de nombres con los jugables (p.ej. moral, suerte)', () => {
     expect(checkRequisitos({ moral: 8 }, ATTRS, SECONDARY)).toEqual([{ atributo: 'moral', tienes: 5, necesitas: 8 }]);
-    expect(checkRequisitos({ sigilo: 8 }, ATTRS, SECONDARY)).toEqual([{ atributo: 'sigilo', tienes: 5, necesitas: 8 }]);
+    expect(checkRequisitos({ suerte: 8 }, ATTRS, SECONDARY)).toEqual([{ atributo: 'suerte', tienes: 5, necesitas: 8 }]);
   });
 
   it('un requisito de Inteligencia (jugable, ver crafting.ts § contraveneno) lee el atributo jugable, nunca el secundario', () => {

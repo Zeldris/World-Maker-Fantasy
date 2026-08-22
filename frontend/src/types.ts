@@ -7,18 +7,14 @@ export type Attribute = 'fuerza' | 'destreza' | 'constitucion' | 'inteligencia' 
 
 export type AttributeBlock = Record<Attribute, number>
 
-/// Atributos secundarios de PJ (sesión de diseño 2026-07-23) — nunca alimentan una tirada
-/// (dice.ts), solo comprobaciones de umbral (requisitos de objetos/construcciones/oficios).
-export type SecondaryAttribute =
-  | 'sigilo'
-  | 'magia'
-  | 'poderSemilla'
-  | 'moral'
-  | 'resistenciaFisica'
-  | 'resistenciaMagica'
-  | 'resistenciaSemilla'
-  | 'resistenciaFrio'
-  | 'resistenciaCalor'
+/// Atributos secundarios de PJ (sesión de diseño 2026-07-23, remodelados 2026-08-22) — nunca
+/// alimentan una tirada (dice.ts), solo comprobaciones de umbral (requisitos de objetos/
+/// construcciones/oficios). Ver el comentario completo en el backend (secondaryAttributes.ts)
+/// para el porqué de cada uno: `sigilo` salió de aquí (pasa a ser habilidad activa de Destreza,
+/// no un rasgo aparte); `resistenciaFisica`/`resistenciaMagica`/`resistenciaSemilla` se
+/// eliminaron (duplicaban el papel de Constitución); `magia`/`poderSemilla` se quedan como
+/// reserva narrativa para un futuro sistema de magia jugable; `suerte`/`honor` son nuevos.
+export type SecondaryAttribute = 'moral' | 'magia' | 'poderSemilla' | 'resistenciaFrio' | 'resistenciaCalor' | 'suerte' | 'honor'
 
 export type SecondaryAttributeBlock = Record<SecondaryAttribute, number>
 

@@ -117,22 +117,22 @@ describe('effectiveSecondaryAttributes', () => {
   });
 
   it('suma el bonificador de un cosmético equipado al atributo secundario real', () => {
-    const result = effectiveSecondaryAttributes(EMPTY_SECONDARY_ATTRIBUTES, [{ statBonuses: { sigilo: 2 } }]);
-    expect(result.sigilo).toBe(2);
+    const result = effectiveSecondaryAttributes(EMPTY_SECONDARY_ATTRIBUTES, [{ statBonuses: { suerte: 2 } }]);
+    expect(result.suerte).toBe(2);
     expect(result.moral).toBe(0); // el resto no se toca
   });
 
   it('un solo objeto puede sumar a varios atributos secundarios a la vez', () => {
-    const result = effectiveSecondaryAttributes(EMPTY_SECONDARY_ATTRIBUTES, [{ statBonuses: { sigilo: 1, moral: 3 } }]);
-    expect(result.sigilo).toBe(1);
+    const result = effectiveSecondaryAttributes(EMPTY_SECONDARY_ATTRIBUTES, [{ statBonuses: { suerte: 1, moral: 3 } }]);
+    expect(result.suerte).toBe(1);
     expect(result.moral).toBe(3);
   });
 
   it('ignora claves que no son un atributo secundario real (p.ej. "fuerza" o "defensa")', () => {
-    // Un mismo objeto puede dar fuerza (jugable) Y sigilo (secundario) a la vez — cada función
+    // Un mismo objeto puede dar fuerza (jugable) Y suerte (secundario) a la vez — cada función
     // solo toca lo suyo, sin pisarse (mismo criterio que effectiveAttributes con 'defensa').
-    const result = effectiveSecondaryAttributes(EMPTY_SECONDARY_ATTRIBUTES, [{ statBonuses: { fuerza: 5, defensa: 2, sigilo: 1 } }]);
-    expect(result.sigilo).toBe(1);
+    const result = effectiveSecondaryAttributes(EMPTY_SECONDARY_ATTRIBUTES, [{ statBonuses: { fuerza: 5, defensa: 2, suerte: 1 } }]);
+    expect(result.suerte).toBe(1);
     expect(Object.keys(result)).not.toContain('fuerza');
   });
 

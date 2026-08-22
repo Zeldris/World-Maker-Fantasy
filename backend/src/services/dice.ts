@@ -43,3 +43,11 @@ export function rollCheck(attributes: AttributeBlock, attribute: Attribute, diff
   const gradoExito = gradoExitoFor(result, difficulty)
   return { attribute, value, roll, result, difficulty, success: gradoExito !== 'fallo', gradoExito }
 }
+
+/// Percepción pasiva (remodelado de atributos secundarios, 2026-08-22) — mismo criterio que D&D
+/// (10 + modificador de Sabiduría, sin tirada): vigilancia de fondo, nunca una tirada activa.
+/// Voluntad es el equivalente de Sabiduría del proyecto (ver comentario de `Attribute` arriba),
+/// así que se deriva de ahí en vez de guardar un campo propio en `secondaryAttributes.ts`.
+export function percepcionPasivaFor(voluntad: number): number {
+  return 10 + Math.floor(voluntad / 2)
+}

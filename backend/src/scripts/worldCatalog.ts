@@ -2828,10 +2828,11 @@ export const items: ItemCatalogInput[] = [
     dimensiones: 'Cota hasta la cadera, anillas de 1 cm de diámetro.',
     lugarOrigen: 'Manufactura goirnte, Meseta del Orden.',
     // Sesión de diseño 2026-07-23: aguantar el peso de una cota completa toda una jornada exige
-    // resistencia física real (atributo secundario, no fuerza pura) — primer ejemplo de requisito
-    // de equipar sobre un atributo distinto a los 6 jugables.
+    // resistencia física real. Requisito movido de 'resistenciaFisica' (atributo secundario) a
+    // Constitución (2026-08-22, remodelado de atributos secundarios): resistenciaFisica se
+    // eliminó por duplicar el papel que ya cumple Constitución entre los 7 primarios.
     tier: 2,
-    requisitos: { resistenciaFisica: 8 },
+    requisitos: { constitucion: 8 },
   },
 
   { 

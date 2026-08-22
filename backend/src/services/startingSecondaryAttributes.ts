@@ -1,24 +1,22 @@
 import type { SecondaryAttributeBlock } from './secondaryAttributes.js';
 
-/// Valores iniciales de atributos secundarios (sesión de diseño 2026-07-23) — copiados tal cual
-/// de la tabla ya calculada en docs/rpgtarkor/personajes.md § "Atributos jugables" (fila Gorhorn),
-/// mismo patrón que startingAbilitiesFor/startingInventoryFor: se siembran al crear partida y al
-/// reiniciarla, nunca se inventan en tiempo de ejecución.
+/// Valores iniciales de atributos secundarios (sesión de diseño 2026-07-23, remodelados
+/// 2026-08-22 — ver secondaryAttributes.ts) — mismo patrón que startingAbilitiesFor/
+/// startingInventoryFor: se siembran al crear partida y al reiniciarla, nunca se inventan en
+/// tiempo de ejecución.
 ///
-/// `sigilo: 5` (no `inteligencia: 10`) — fix 2026-08-03: la tabla de personajes.md da Sigilo=5 e
-/// Inteligencia=10 para Gorhorn, pero desde el rediseño de atributos a 7 (2026-07-29) Inteligencia
-/// es jugable (`Save.attributes`, no aquí) y Sigilo es el que quedó secundario — este archivo
-/// seguía sembrando el valor equivocado bajo la clave equivocada. Ver secondaryAttributes.ts.
+/// Tras el remodelado: `sigilo`/`resistenciaFisica`/`resistenciaMagica`/`resistenciaSemilla` ya
+/// no existen aquí (ver secondaryAttributes.ts para el porqué). `suerte`/`honor` son nuevos —
+/// Gorhorn no ha tenido una vida especialmente afortunada (esclavitud, clan aniquilado), suerte
+/// baja; el honor es central en su arco (la deuda con Kekta, la redención), alto.
 const GORHORN_SECONDARY_ATTRIBUTES: SecondaryAttributeBlock = {
-  sigilo: 5,
   magia: 6,
   poderSemilla: 0,
   moral: 12,
-  resistenciaFisica: 10,
-  resistenciaMagica: 14,
-  resistenciaSemilla: 4,
   resistenciaFrio: 6,
   resistenciaCalor: 18,
+  suerte: 5,
+  honor: 15,
 };
 
 export function startingSecondaryAttributesFor(characterName: string): SecondaryAttributeBlock | null {

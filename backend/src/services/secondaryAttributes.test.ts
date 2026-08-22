@@ -14,19 +14,19 @@ describe('normalizeSecondaryAttributes', () => {
   });
 
   it('respeta los valores ya presentes y rellena solo lo que falta', () => {
-    const result = normalizeSecondaryAttributes({ sigilo: 5, moral: 15 });
-    expect(result.sigilo).toBe(5);
+    const result = normalizeSecondaryAttributes({ honor: 5, moral: 15 });
+    expect(result.honor).toBe(5);
     expect(result.moral).toBe(15);
     expect(result.magia).toBe(0);
   });
 
-  it('un `inteligencia` residual en el JSON (partidas anteriores al fix de 2026-08-03) se ignora, no revienta', () => {
-    const result = normalizeSecondaryAttributes({ inteligencia: 10, sigilo: 5 } as never);
-    expect(result.sigilo).toBe(5);
-    expect(result).not.toHaveProperty('inteligencia');
+  it('claves residuales de antes del remodelado 2026-08-22 (sigilo/resistenciaFisica...) se ignoran, no revientan', () => {
+    const result = normalizeSecondaryAttributes({ sigilo: 10, honor: 5 } as never);
+    expect(result.honor).toBe(5);
+    expect(result).not.toHaveProperty('sigilo');
   });
 
-  it('devuelve las 9 claves de SECONDARY_ATTRIBUTES, ninguna de más ni de menos', () => {
+  it('devuelve las 7 claves de SECONDARY_ATTRIBUTES, ninguna de más ni de menos', () => {
     const result = normalizeSecondaryAttributes({});
     expect(Object.keys(result).sort()).toEqual([...SECONDARY_ATTRIBUTES].sort());
   });
