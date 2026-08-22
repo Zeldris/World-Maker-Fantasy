@@ -2566,7 +2566,10 @@ describe('Crafteo con espera real (2026-08-20): transit con busyUntil, resoluci�
     // crafteo en sí).
     const entries = await prisma.logEntry.findMany({ where: { saveId }, orderBy: { createdAt: 'desc' }, take: 3 });
     const craftEntry = entries.find((e) => e.text.includes('craftea:'));
-    expect(craftEntry?.text).toBe('Gorhorn de prueba (crafteo con espera real) craftea: Vendaje improvisado.');
+    // Prefijo exacto, no texto completo (adorno de ramas deterministas, 2026-08-22): tras la frase
+    // mecánica fija se añade una de varias frases de color elegidas al azar (turnResolution.ts §
+    // CRAFT_FLAVOR/pickFlavor) — el prefijo es lo único que de verdad importa comprobar aquí.
+    expect(craftEntry?.text).toMatch(/^Gorhorn de prueba \(crafteo con espera real\) craftea: Vendaje improvisado\. /);
     expect(craftEntry?.text).not.toContain('El golpe conecta'); // no es el texto del mock del LLM
 
     const inventory = await prisma.inventoryItem.findMany({ where: { saveId } });
@@ -3797,6 +3800,17 @@ describe('Curar: varios objetos a la vez con healItemUses (2026-08-18)', () => {
       { name: 'Agua hervida de liquen', catalogSlug: 'agua-hervida-liquen' }, // débil, tope HERIDO
       { name: 'Cataplasma de salvia del polvo', catalogSlug: 'cataplasma-salvia-polvo' }, // fuerte, tope ILESO
     ]);
+    // Turno de relleno (bug real destapado por el fix de determinismo de Curar, 2026-08-22): el
+    // encuentro guionizado de Gistera Koh (turnResolution.ts § gisteraKoh) se dispara en el
+    // PRIMER turno de cualquier partida, siempre, sin depender de la acción — antes quedaba
+    // silenciosamente borrado en turnos de Curar porque el override viejo pisaba `narration.narration`
+    // DESPUÉS de este añadido; ahora que Curar ya no llama a narrateAction ni se pisa nada, ese
+    // mismo encuentro sí sobrevive (correcto, mismo comportamiento que loot/build/craft siempre
+    // tuvieron) — así que este test necesita que el turno de Curar NO sea el primero de la partida
+    // para poder comprobar solo su propia narración, sin acoplarla a un hook no relacionado.
+    await prisma.logEntry.create({
+      data: { saveId, channel: 'CHARACTER', text: 'Gorhorn de prueba (curar) llega a la hondonada.', isPlayerAction: true, timeLabel: 'Día 1, mañana' },
+    });
   });
 
   afterAll(async () => {
@@ -3811,6 +3825,13 @@ describe('Curar: varios objetos a la vez con healItemUses (2026-08-18)', () => {
     const agua = await prisma.inventoryItem.findFirstOrThrow({ where: { saveId, catalogSlug: 'agua-hervida-liquen' } });
     const cataplasma = await prisma.inventoryItem.findFirstOrThrow({ where: { saveId, catalogSlug: 'cataplasma-salvia-polvo' } });
 
+    // Encuentro ambiental (25% de probabilidad, turnResolution.ts:2538) fijado a "nunca" — desde
+    // que Curar se volvió determinista de verdad (2026-08-22), su texto ya NO se pisa después por
+    // el override viejo, así que un encuentro ambiental real (antes silenciosamente descartado por
+    // ese mismo override, efecto colateral no intencionado) ahora sí sobreviviría al log — no es lo
+    // que este test comprueba, se fija el dado para que la narración quede solo con la plantilla.
+    vi.spyOn(Math, 'random').mockReturnValue(0.99);
+    narrateAction.mockClear();
     const app = await buildApp();
     const action = 'Reviso mi inventario y me curo con lo que llevo encima.';
     const classifyRes = await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action, enCombate: false } });
@@ -3831,6 +3852,10 @@ describe('Curar: varios objetos a la vez con healItemUses (2026-08-18)', () => {
       },
     });
     expect(narrateRes.statusCode).toBe(200);
+    // Determinista de verdad (bug real, petición explícita 2026-08-22: "la habilidad genérica de
+    // curar debería ser determinista no narrada") — antes SÍ se llamaba a narrateAction (Ollama)
+    // para este turno y su respuesta se tiraba a la basura, pisada por la plantilla de abajo.
+    expect(narrateAction).not.toHaveBeenCalled();
 
     const saveAfter = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
     expect(saveAfter.condicionFisica).toBe('HERIDO');
@@ -3841,9 +3866,12 @@ describe('Curar: varios objetos a la vez con healItemUses (2026-08-18)', () => {
 
     const logEntry = await prisma.logEntry.findFirst({ where: { saveId, channel: 'CHARACTER', isPlayerAction: false }, orderBy: { createdAt: 'desc' } });
     // "Agua hervida de liquen" también restaura energía (curaEnergia:30 en el catálogo) — la
-    // narración determinista lo menciona además de la condición resultante.
-    expect(logEntry?.text).toBe(
-      'Gorhorn de prueba (curar) se cura con Agua hervida de liquen, Cataplasma de salvia del polvo — pasa a estar herido y recupera energía.',
+    // narración determinista lo menciona además de la condición resultante. Prefijo exacto, no
+    // texto completo (adorno de ramas deterministas, 2026-08-22): tras la frase mecánica fija se
+    // añade una de varias frases de color elegidas al azar (turnResolution.ts § HEAL_FLAVOR/
+    // pickFlavor).
+    expect(logEntry?.text).toMatch(
+      /^Gorhorn de prueba \(curar\) se cura con Agua hervida de liquen, Cataplasma de salvia del polvo — pasa a estar herido y recupera energía\. /,
     );
   });
 });
@@ -3905,4 +3933,97 @@ describe('LogEntry.initiativeRoll sobrevive a una recarga tras un intercambio de
     const logEntry = await prisma.logEntry.findFirst({ where: { saveId, channel: 'CHARACTER', combate: true }, orderBy: { createdAt: 'desc' } });
     expect(logEntry?.initiativeRoll).toMatchObject({ ganador: expect.stringMatching(/^(jugador|npc)$/), jugadorTirada: expect.any(Number), npcTirada: expect.any(Number) });
   }, 15_000);
+});
+
+// Petición explícita de la usuaria (2026-08-22, "¿entonces el primer turno siempre empiezo
+// atacando yo?"): confirmado que sí, hasta ahora — sin `pendingNpcAttack` previo el primer
+// intercambio de cualquier combate nuevo entraba SIEMPRE por el CASO ATAQUE del jugador, aunque
+// `ambushHint` (narrador.ts) hubiera narrado "el NPC te sorprende a ti" en el turno de apertura
+// (con `enCombate:false` todavía, sin ningún efecto mecánico real). Ahora un `gradoExito:'fallo'`
+// en ESE turno siembra un `pendingNpcAttack` de verdad, para que el primer intercambio dentro del
+// panel llegue como defensa a ciegas — coherente con lo que la narración ya decía.
+describe('Emboscada real del turno de apertura: fallo siembra pendingNpcAttack (petición explícita, 2026-08-22)', () => {
+  let saveId: string;
+  let npcId: string;
+
+  beforeAll(async () => {
+    // Peor tirada posible siempre (roll=1) — garantiza gradoExito:'fallo' en el turno de apertura
+    // sea cual sea el atributo/dificultad tabulados para un ataque directo.
+    vi.spyOn(Math, 'random').mockReturnValue(0);
+    const userId = await getDefaultUserId();
+    const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
+    const npc = await prisma.npc.findFirstOrThrow({ where: { worldId: world.id, slug: 'orco-enfurecido-hondonada' } });
+    npcId = npc.id;
+    const location = await prisma.location.findFirstOrThrow({ where: { worldId: world.id, slug: 'hondonada-del-eco' } });
+    const save = await prisma.save.create({
+      data: {
+        userId,
+        worldId: world.id,
+        characterName: 'Gorhorn de prueba (emboscada real)',
+        characterArchetype: 'guerrero',
+        characterOrigin: 'Clan Maktor',
+        characterMotivation: 'x',
+        attributes: ATTRS,
+        portraitInitial: 'G',
+        currentLocationId: location.id,
+      },
+    });
+    saveId = save.id;
+    await prisma.worldState.create({ data: { saveId } });
+  });
+
+  afterAll(async () => {
+    vi.restoreAllMocks();
+    await prisma.save.delete({ where: { id: saveId } });
+  });
+
+  it('turno de apertura con fallo → pendingNpcAttack real; el siguiente intercambio llega como defensa a ciegas, no como ataque propio', async () => {
+    const app = await buildApp();
+
+    // Turno A: abre combate, todavía enCombate:false — fuera de combate la tabla solo salta
+    // classifyAction/Ollama para intención HOSTIL declarada (detectsHostileSearchIntent), no para
+    // un verbo de ataque directo (detectsAttackIntent, solo válido con enCombate:true ya puesto —
+    // ver turn.ts § tabulatedTarget, línea ~247).
+    const openingAction = "Voy a luchar contra 'Orco enfurecido'.";
+    const classifyOpen = await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action: openingAction, enCombate: false } });
+    const { classification: classificationOpen, roll: rollOpen } = classifyOpen.json();
+    expect(rollOpen.gradoExito).toBe('fallo');
+    const narrateOpen = await app.inject({
+      method: 'POST',
+      url: '/turn/narrate',
+      payload: { saveId, action: openingAction, classification: classificationOpen, roll: rollOpen, enCombate: false },
+    });
+    expect(narrateOpen.statusCode).toBe(200);
+    expect(lastNdjsonLine(narrateOpen.payload).esperandoDefensaJugador).toBe(true);
+
+    const saveAfterOpening = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
+    expect(saveAfterOpening.pendingNpcAttack).toMatchObject({ npcId });
+    // El turno de apertura no toca condición ni HP — solo decide QUIÉN actúa primero después.
+    expect(await prisma.npcState.findFirst({ where: { saveId, npcId } })).toBeNull();
+
+    // Turno B: ya dentro del panel, enCombate:true — cualquier acción del jugador aquí es su
+    // defensa a ciegas contra el ataque ya decidido, no su propio golpe.
+    classifyAction.mockResolvedValueOnce({
+      requiereTirada: true,
+      atributo: 'destreza',
+      dificultad: 15,
+      razon: 'x',
+      banda: 'instantanea',
+      duracionEstimadaMinutos: 0,
+    });
+    // Cita expresa del NPC (mismo criterio que el resto de este archivo, p.ej. el describe de
+    // "iniciativa persistida" arriba) — no depende de que la detección de escena arrastre sola al
+    // orco de un turno a otro, que es un mecanismo aparte no relacionado con lo que este test
+    // comprueba.
+    const defenseAction = "Me cubro con el escudo frente a 'Orco enfurecido'.";
+    const classifyDefense = await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action: defenseAction, enCombate: true } });
+    const { classification: classificationDefense, roll: rollDefense } = classifyDefense.json();
+    const narrateDefense = await app.inject({
+      method: 'POST',
+      url: '/turn/narrate',
+      payload: { saveId, action: defenseAction, classification: classificationDefense, roll: rollDefense, enCombate: true },
+    });
+    expect(narrateDefense.statusCode).toBe(200);
+    expect((lastNdjsonLine(narrateDefense.payload).combatExchangeDisplay as { atacanteEsJugador?: boolean } | null)?.atacanteEsJugador).toBe(false);
+  }, 20_000);
 });

@@ -157,6 +157,22 @@ interface TurnContext {
   /// en vez de dejarlo implícito (hoy el panel de victoria puede aparecer sin que la propia
   /// narración del golpe final lo haya descrito).
   npcFallsUnconsciousThisTurn?: boolean;
+  /// Igual que `npcFallsUnconsciousThisTurn`, pero SOLO cuando el desenlace de este turno es
+  /// CONVALECIENTE (nunca MUERTO) — bug real jugando en vivo, 2026-08-22, "he matado a un buitre
+  /// pero..." (revisando el log completo: un turno ANTES del remate real, con el rival todavía
+  /// CONVALECIENTE, la narración dijo "cae hacia atrás, cayendo inerte sobre el polvo" — justo el
+  /// "inconsciente/desmayado/sin sentido" que `combatBlock` ya prohíbe explícitamente para este
+  /// caso, sin ningún guard post-generación que lo pillara si el modelo lo ignoraba). Ver
+  /// `hasFalseUnconsciousNarration` más abajo.
+  npcFallsConvalecienteThisTurn?: boolean;
+  /// Ver `hasFalseDeathClaim` más abajo — bug real jugando en vivo (auditoría 2026-08-22, "¿no
+  /// queda nada más al revisar la partida?"): un golpe real que solo dejó al rival GRAVE (no
+  /// CONVALECIENTE/MUERTO, así que `npcFallsUnconsciousThisTurn` no protege nada aquí) se narró en
+  /// prosa honesta ("se desploma hacia atrás, dejando una mancha de sangre") pero escribió en
+  /// `newFacts` "Buitre Cenizo ha sido derrotado y muerto." — un SessionFact falso persistido para
+  /// siempre. True en cualquier turno con un golpe real contra el NPC que NO lo deja MUERTO de
+  /// verdad — el caso contrario a `npcFallsUnconsciousThisTurn`/`npcFallsConvalecienteThisTurn`.
+  combatNoRealDeathThisTurn?: boolean;
   /// True cuando ESTE intercambio incluye un golpe de vuelta real contra el jugador (petición
   /// explícita, 2026-08-15, bug real jugando en vivo: "acabé con el buitre pero se resistió al
   /// final dándome un golpe... la narración no lo ha explicado" — un contragolpe/golpes_mutuos en
@@ -848,24 +864,48 @@ export function buildNarrationPrompt(ctx: TurnContext & { roll?: RollResult }): 
 
   const npcSlugs = ctx.npcSlugsInScene ?? [];
   const reinoActive = reinoIntentDetected(ctx.action);
-  // Emboscada determinista (bug real jugando, 2026-07-22): antes quién golpea primero era libre
+  // Emboscada determinista (bug real jugando, 2026-07-22): antes quién actúa primero era libre
   // albedrío total del modelo, incluso cuando ya existía una tirada resuelta para ESTA misma
   // acción de acercamiento/búsqueda hostil — se reutiliza su gradoExito en vez de inventar una
   // señal nueva o dejarlo a la prosa. Ver detectsHostileSearchIntent (npcScene.ts) para el hueco
   // real que esto tapa: "busco a X en busca de pelea" no lleva verbo de ataque literal.
+  //
+  // Contradicción real encontrada (bug jugando en vivo, 2026-08-22, "Salgo a cazar y ataco a
+  // 'Buitre Cenizo'." narró un golpe conectado y la reacción de dolor del ave, en el turno que
+  // INICIA combate, sin ningún intercambio mecánico todavía): la rama `gradoExito === 'claro'`
+  // decía literalmente "actúa/golpea primero" — la palabra "golpea" implica contacto ya resuelto,
+  // justo lo que `combatNotYetResolved` (turnResolution.ts, mismo prompt, más abajo en
+  // `combatBlock`) prohíbe explícitamente para este mismo turno ("NUNCA un golpe que conecta"). Y
+  // no es un choque ocasional: `hostileEngagement` (arriba) exige `!ctx.enCombate`, y
+  // mecánicamente `exchangeHappened` SIEMPRE es false mientras `enCombate` (el flag que manda el
+  // frontend) siga en false — así que esta rama de `ambushHint` y `combatNotYetResolved` se
+  // activan SIEMPRE juntas, nunca por separado, para cualquier primer ataque libre contra un NPC
+  // virgen. El propio regex de seguridad (`PREMATURE_COMBAT_REGEX` más abajo) se amplió para
+  // pillar esta narración concreta, pero la causa de raíz era esta instrucción contradictoria
+  // dentro del mismo prompt — se reescribe para hablar de VENTAJA DE POSICIÓN/INICIATIVA, nunca
+  // de un golpe ya conectado ni de la reacción física del objetivo a él.
   const hostileEngagement = !ctx.enCombate && npcSlugs.length > 0 && (detectsAttackIntent(ctx.action) || detectsHostileSearchIntent(ctx.action));
   const ambushHint =
     hostileEngagement && ctx.roll
       ? ctx.roll.gradoExito === 'claro'
-        ? ' Tu personaje SORPRENDE al NPC — actúa/golpea primero, el NPC no llega a reaccionar en este turno.'
+        ? ' Tu personaje SORPRENDE al NPC — se mueve/actúa primero, con clara ventaja de posición. Pero NO describas ningún golpe ya conectado, herida, ni ninguna reacción de dolor o huida del NPC a un golpe: si conecta o no, y qué le pasa al NPC, se decide en el combate que empieza ahora, no en esta narración.'
         : ctx.roll.gradoExito === 'fallo'
-          ? ' El NPC te SORPRENDE A TI — actúa primero, tu personaje reacciona tarde.'
-          : ' Ninguno sorprende al otro — ambos se preparan a la vez, en igualdad de condiciones.'
+          ? ' El NPC te SORPRENDE A TI — nota tu presencia y reacciona primero, con ventaja sobre ti. Pero NO describas ningún golpe ya recibido por tu personaje: eso se decide en el combate que empieza ahora, no en esta narración.'
+          : ' Ninguno sorprende al otro — ambos se preparan a la vez, en igualdad de condiciones, sin que el enfrentamiento en sí (quién golpea, quién sale herido) se resuelva todavía en esta narración.'
       : '';
   const combatBlock = ctx.enCombate
     ? `ESTÁS DENTRO DE UN COMBATE (docs/14-combate-y-muerte.md § 2.3): narra en 1-2 frases, corto y directo, el intercambio de ESTE turno — nada de ambientación de relleno, es el ritmo de un choque, no una escena. Puedes proponer "condicionFisica" si el personaje sale herido de este intercambio (nunca lo cures aquí salvo que la acción sea explícitamente curarse).${
         ctx.npcFallsUnconsciousThisTurn
-          ? ' Este golpe deja al rival CONVALECIENTE o MUERTO — tu narración de este turno tiene que describir explícitamente ese momento, no dejarlo implícito ni solo insinuado. Si queda CONVALECIENTE (no MUERTO): sigue consciente, solo sin fuerzas para seguir luchando — cae de rodillas, se desploma malherido, tambalea sin poder levantarse... NUNCA lo narres inconsciente/desmayado/sin sentido (un rival inconsciente de verdad no podría seguir combatiendo si el jugador no lo remata ya mismo, y el juego permite que la pelea continúe). Si MUERE, ahí sí es el final.'
+          ? ctx.npcFallsConvalecienteThisTurn
+            ? // Grupo que continúa (auditoría 2026-08-22, "revisa la partida otra vez"): este mismo
+              // individuo NO se queda tirado y rematable — la fila vuelve a ILESO para el siguiente
+              // miembro en este mismo turno (ver `grupoContinuaEsteTurno` en turnResolution.ts), así
+              // que no hay ocasión real de rematarlo después. `npcFallsConvalecienteThisTurn` ya
+              // excluye ese caso, así que aquí SIEMPRE es un CONVALECIENTE "de verdad" (sigue vivo,
+              // rematable, quizá se recupere solo con el tiempo) — la instrucción de abajo puede
+              // seguir prometiendo eso sin mentir.
+              ' Este golpe deja al rival CONVALECIENTE (no MUERTO) — tu narración de este turno tiene que describir explícitamente ese momento, no dejarlo implícito ni solo insinuado: sigue consciente, solo sin fuerzas para seguir luchando — cae de rodillas, se desploma malherido, tambalea sin poder levantarse... NUNCA lo narres inconsciente/desmayado/sin sentido (un rival inconsciente de verdad no podría seguir combatiendo si el jugador no lo remata ya mismo, y el juego permite que la pelea continúe).'
+            : ' Este golpe acaba con este rival para siempre — tu narración de este turno tiene que describir explícitamente ese momento, no dejarlo implícito ni solo insinuado: es el final para él, no un simple tropiezo del que pueda recuperarse.'
           : ''
       }${
         ctx.jugadorRecibeGolpeEsteTurno
@@ -1156,15 +1196,37 @@ export async function narrateAction(ctx: TurnContext & { roll?: RollResult }): P
       // un `if` casi idéntico por validador, copiado 11 veces. El ORDEN importa (es observable: el
       // primer validador que falla es el que se reporta y el que decide si hay reintento), así que
       // se recorre en el mismo orden que antes con un solo bucle interno.
+      // Bug real jugando en vivo (auditoría 2026-08-22, "¿no queda nada más al revisar la
+      // partida?"): un turno cuya PROSA era honesta ("se desploma hacia atrás, dejando una
+      // mancha de sangre" — un golpe de verdad, pero ni de lejos una muerte) escribió de todos
+      // modos "Buitre Cenizo ha sido derrotado y muerto." en `newFacts` — un SessionFact falso
+      // que ninguno de los guards de abajo pilló porque todos comprobaban solo `parsed.narration`,
+      // nunca `newFacts`. Ese hecho falso queda persistido para siempre (`appendSessionFacts`) y
+      // contamina la RAG de turnos futuros, mucho más grave que una frase suelta mal elegida —
+      // mismo patrón que ya usan `hasFalseTravelClaim`/`hasFalsePhantomTravel` (comprueban prosa Y
+      // `newFacts` juntos). Los 4 guards de honestidad narración-vs-mecánica de combate ahora
+      // comprueban el mismo texto combinado.
+      const narrationAndFacts = [parsed.narration, ...parsed.newFacts].join(' ');
       const rejection = [
         { check: () => hasAnachronism(parsed.narration), reason: 'anacronismo' },
         { check: () => isTooSimilarToLast(parsed.narration, ctx.lastNarrationText), reason: 'repetir casi verbatim el turno anterior' },
         { check: () => hasEnglishLeak(parsed.narration), reason: 'fuga de inglés' },
-        { check: () => hasFalseCombatHit(parsed.narration, ctx.combatBothMissed), reason: 'narrar un golpe que no conectó (ataque_falla/parada_en_seco)' },
-        { check: () => hasFalseCombatMiss(parsed.narration, ctx.combatRealHitLanded), reason: 'narrar una esquiva/bloqueo limpio cuando el golpe sí conectó (golpe_normal/golpe_pleno/golpes_mutuos)' },
+        { check: () => hasFalseCombatHit(narrationAndFacts, ctx.combatBothMissed), reason: 'narrar (en prosa o en newFacts) un golpe que no conectó (ataque_falla/parada_en_seco)' },
         {
-          check: () => hasPrematureCombatResolution(parsed.narration, ctx.combatNotYetResolved),
-          reason: 'narrar un combate ya resuelto sin ningún intercambio mecánico este turno',
+          check: () => hasFalseCombatMiss(narrationAndFacts, ctx.combatRealHitLanded),
+          reason: 'narrar (en prosa o en newFacts) una esquiva/bloqueo limpio cuando el golpe sí conectó (golpe_normal/golpe_pleno/golpes_mutuos)',
+        },
+        {
+          check: () => hasPrematureCombatResolution(narrationAndFacts, ctx.combatNotYetResolved),
+          reason: 'narrar (en prosa o en newFacts) un combate ya resuelto sin ningún intercambio mecánico este turno',
+        },
+        {
+          check: () => hasFalseUnconsciousNarration(narrationAndFacts, ctx.npcFallsConvalecienteThisTurn),
+          reason: 'narrar (en prosa o en newFacts) al rival inconsciente/desmayado/inerte cuando queda CONVALECIENTE (sigue consciente, solo sin fuerzas)',
+        },
+        {
+          check: () => hasFalseDeathClaim(narrationAndFacts, ctx.combatNoRealDeathThisTurn),
+          reason: 'reclamar (en prosa o en newFacts) la muerte del rival cuando el golpe de este turno no lo deja MUERTO de verdad',
         },
         { check: () => hasFalseItemUse(parsed.narration, ctx.possiblyFalseItemUseNames), reason: 'narrar el uso de un objeto que no se consumió de verdad' },
         {
@@ -1395,8 +1457,16 @@ export function sanitizeSuggestions(suggestions: string[] | undefined): string[]
 // en un segundo turno idéntico en su fondo, "el ave grita y se desploma al suelo" tras "clava su
 // maza en el cuello" — ninguno de los dos disparaba nada, mismo hueco de vocabulario que las rondas
 // anteriores (rastro de sangre, atravesando...), no de lógica.
+// "muerte instantánea"/"corta la garganta"/"corta el cuello"/"derramando sangre" añadidos (bug real
+// jugando en vivo, auditoría 2026-08-22 "revisa la partida otra vez"): un "Remato a 'Buitre
+// Cenizo'..." resolvió 'parada_en_seco' (el buitre atacó y falló, Gorhorn lo bloqueó — nadie
+// conectó ningún golpe, mucho menos uno mortal), pero el modelo narró "Gorhorn propina un potente
+// zarpazo que corta la garganta del Buitre Cenizo, derramando una gran cantidad de sangre y
+// causándole la muerte instantánea" — un golpe de muerte completo, inventado de la nada. Mismo
+// hueco de vocabulario que las rondas anteriores: la lista no cubría ninguna de estas frases de
+// remate/muerte, aunque la lógica (combatBothMissed) ya era correcta.
 const COMBAT_HIT_LEAK_REGEX =
-  /\b(golpe[oó]|golpea(?!\s+el\s+aire)|golpeando|impact[oó]|impactando|hiri[oó]|hiere|hiriendo|herida|atraves[oó]|atraviesa|atravesando|reban[oó]|rebanando|degüell[oa]|hace sangrar|rastro de sangre|l[ií]nea de sangre|sangrando|sangra por|se desploma|desplom[oó]|desplomándose)\b/i;
+  /\b(golpe[oó]|golpea(?!\s+el\s+aire)|golpeando|impact[oó]|impactando|hiri[oó]|hiere|hiriendo|herida|atraves[oó]|atraviesa|atravesando|reban[oó]|rebanando|degüell[oa]|hace sangrar|rastro de sangre|l[ií]nea de sangre|sangrando|sangra por|se desploma|desplom[oó]|desplomándose|muerte instantánea|corta la garganta|corta el cuello|derram\w* (una gran cantidad de )?sangre)\b/i;
 
 export function hasFalseCombatHit(narration: string, combatBothMissed?: boolean): boolean {
   if (!combatBothMissed) return false;
@@ -1444,12 +1514,58 @@ export function hasFalseCombatMiss(narration: string, combatRealHitLanded?: bool
 // pero igual de "ya resuelto sin intercambio mecánico" — mismo criterio que el resto de esta lista.
 // Mismo hueco de gerundios que COMBAT_HIT_LEAK_REGEX (bug real jugando en vivo, revisión de
 // partida 2026-08-08) — "atravesando" en un turno de caza sin combate mecánico todavía.
+// Variante nueva (bug real jugando en vivo, 2026-08-22, "Salgo a cazar y ataco a 'Buitre
+// Cenizo'." — primer turno, sin intercambio mecánico todavía): la narración evitó todo el
+// vocabulario de arriba (nunca dice "golpea"/"hiere"/"acierta") pero describió el mismo desenlace
+// ya decidido de otra forma — "...ataca la pierna del Buitre Cenizo, haciendo que el carroñero
+// chillé gigantesco y se lance hacia atrás en un intento de escapar": un ataque dirigido a una
+// parte del cuerpo concreta ("ataca la/el/los/las X", a diferencia de "ataca A [NPC]", que solo
+// declara intención de enfrentarse) seguido de la REACCIÓN de dolor/susto del objetivo (chillido,
+// retroceso, intento de huida) es la misma alucinación con palabras distintas — el objetivo no
+// puede "reaccionar" a un golpe que el sistema todavía no ha decidido si conecta.
 const PREMATURE_COMBAT_REGEX =
-  /\b(golpe[oó]|golpeando|impact[oó]|impactando|hiri[oó]|hiere|hiriendo|atraves[oó]|atraviesa|atravesando|reban[oó]|rebanando|degüell[oa]|acierta|huye (cojeando|malherid[oa]|herid[oa])|cojeando|atrap[oa]|atrapad[oa]|inmoviliz[oa]|inmovilizad[oa]|captur[oa]|capturad[oa])\b/i;
+  /\b(golpe[oó]|golpeando|impact[oó]|impactando|hiri[oó]|hiere|hiriendo|atraves[oó]|atraviesa|atravesando|reban[oó]|rebanando|degüell[oa]|acierta|huye (cojeando|malherid[oa]|herid[oa])|cojeando|atrap[oa]|atrapad[oa]|inmoviliz[oa]|inmovilizad[oa]|captur[oa]|capturad[oa]|ataca (la|el|los|las) \w+|chill\w*|intent[ao] de escapar|se (lanz|abalanz|retroced|retir|salt|tambale)\w*( \w+)? hacia atrás)\b/i;
 
 export function hasPrematureCombatResolution(narration: string, combatNotYetResolved?: boolean): boolean {
   if (!combatNotYetResolved) return false;
   return PREMATURE_COMBAT_REGEX.test(narration);
+}
+
+/// Narración-vs-mecánica (bug real jugando en vivo, 2026-08-22, "he matado a un buitre pero
+/// desollar no detecta el cadáver" — revisando el log completo de la partida se encontró OTRO
+/// problema aparte: el turno justo antes del remate real, con el Buitre Cenizo todavía
+/// CONVALECIENTE de verdad, la narración dijo "cae hacia atrás, cayendo inerte sobre el polvo" —
+/// el propio `combatBlock` (más arriba, `npcFallsUnconsciousThisTurn`) ya prohíbe explícitamente
+/// "inconsciente/desmayado/sin sentido" para CONVALECIENTE ("un rival inconsciente de verdad no
+/// podría seguir combatiendo si el jugador no lo remata ya mismo"), pero no tenía ningún guard
+/// post-generación que lo pillara si un modelo pequeño la ignoraba bajo presión narrativa — mismo
+/// hueco que ya se cerró para `hasFalseCombatHit`/`hasPrematureCombatResolution`. Deliberadamente
+/// SOLO se dispara para CONVALECIENTE (`npcFallsConvalecienteThisTurn`), nunca para MUERTO — ahí
+/// "inerte"/"sin vida" es la descripción correcta.
+const UNCONSCIOUS_LEAK_REGEX = /inconsciente|desmayad[oa]|sin sentido|inerte|se desvanece|desvanecid[oa]|pierde el conocimiento/i;
+
+export function hasFalseUnconsciousNarration(narration: string, npcFallsConvalecienteThisTurn?: boolean): boolean {
+  if (!npcFallsConvalecienteThisTurn) return false;
+  return UNCONSCIOUS_LEAK_REGEX.test(narration);
+}
+
+/// Narración-vs-mecánica, el caso INVERSO de `hasFalseUnconsciousNarration`/`hasFalseCombatHit`
+/// (bug real jugando en vivo, auditoría 2026-08-22, "¿no queda nada más al revisar la partida?"):
+/// un golpe real que solo dejó al rival GRAVE (no CONVALECIENTE/MUERTO, así que ningún guard
+/// gateado por `npcFallsUnconsciousThisTurn` protegía nada aquí) tuvo una PROSA honesta ("se
+/// desploma hacia atrás, dejando una mancha de sangre en el suelo" — un golpe real, ni de lejos
+/// una muerte) pero escribió en `newFacts` "Buitre Cenizo ha sido derrotado y muerto." — un
+/// SessionFact falso que queda persistido para siempre (`appendSessionFacts`) y contamina la RAG
+/// de turnos futuros. Se llama con `parsed.narration` + `parsed.newFacts` combinados (ver el
+/// call site en `narrateTurn`), no solo la prosa — este es justo el guard que necesitaba mirar
+/// ambos. Vocabulario deliberadamente centrado en finalidad INEQUÍVOCA de muerte (nunca "cae"/
+/// "se desploma" a secas, que también describen un golpe fuerte no mortal): el riesgo real es un
+/// reintento de más, no dejar pasar la alucinación.
+const DEATH_CLAIM_LEAK_REGEX = /muri[oó]|muere\b|ha muerto|cae muert[oa]|sin vida|derrotad[oa] y muert[oa]|muerte (instantánea|definitiva)/i;
+
+export function hasFalseDeathClaim(narration: string, combatNoRealDeathThisTurn?: boolean): boolean {
+  if (!combatNoRealDeathThisTurn) return false;
+  return DEATH_CLAIM_LEAK_REGEX.test(narration);
 }
 
 /// Narración-vs-mecánica, mismo patrón que `hasFalseItemUse` pero de EXCLUSIVIDAD, no de uso

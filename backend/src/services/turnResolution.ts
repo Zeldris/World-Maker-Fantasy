@@ -112,7 +112,7 @@ import {
 import { continentForRegion, oppositeContinent } from '../lib/continent.js';
 import { advanceFictionalMinutes, formatFictionalDate } from './worldClock.js';
 import { prisma } from '../lib/prisma.js';
-import type { RollResult, AttributeBlock, Attribute } from './dice.js';
+import type { RollResult, AttributeBlock, Attribute, GradoExito } from './dice.js';
 import type { SecondaryAttributeBlock } from './secondaryAttributes.js';
 import { Prisma } from '@prisma/client';
 import type { CondicionFisica, Dificultad, AbilityEffect, AbilityRol } from '@prisma/client';
@@ -542,6 +542,19 @@ export interface CombatExchangePhaseInput {
   /// descripción, para que así sepamos que usamos" — mismo hueco que ya se cerró para el NPC
   /// (`npcAbilityUsed`) nunca se cerró para el propio jugador.
   selectedAbility: { name: string; icon: string; description: string } | null;
+  /// Emboscada real (petición explícita, 2026-08-22: "¿siempre empiezo atacando yo?" — sí, hasta
+  /// ahora: sin `pendingNpcAttack` previo el primer intercambio de cualquier combate nuevo entraba
+  /// SIEMPRE por el CASO ATAQUE del jugador, aunque `ambushHint` (narrador.ts) narrara "el NPC te
+  /// sorprende a ti" en el turno de apertura — la narración no tenía ningún efecto mecánico real).
+  /// `openingAmbush` = mismo criterio que `hostileEngagement` de narrador.ts (`!enCombate &&
+  /// npcsInScene.length > 0 && (detectsAttackIntent || detectsHostileSearchIntent)`), calculado
+  /// por el caller ANTES de saber `combateActivo` (que en este turno concreto es siempre false).
+  openingAmbush: boolean;
+  /// `roll.gradoExito` de la tirada tabulada de ESTE turno de apertura — 'fallo' siembra un
+  /// `pendingNpcAttack` real (ver bloque nuevo antes de `combateActivo`), para que el próximo
+  /// intercambio (ya dentro del panel) llegue como defensa a ciegas del jugador, coherente con lo
+  /// que la narración ya decía. `null` fuera de este escenario (sin roll, o turno normal).
+  rollGradoExito: GradoExito | null;
 }
 
 export interface CombatExchangePhaseResult {
@@ -735,6 +748,32 @@ function resolveCombatExchangePhase(input: CombatExchangePhaseInput): CombatExch
   // `rollInitiative` — sustituye a `jugadorAturdioAlNpc`/`npcAturdioAlJugador` (más abajo) para el
   // camino independiente, mismo espíritu ('quien aturde/intimida se garantiza la iniciativa').
   let iniciativaForzadaPorUtilidad: 'jugador' | 'npc' | null = null;
+
+  // Emboscada real del turno de apertura (2026-08-22, ver comentario de `openingAmbush` arriba) —
+  // deliberadamente FUERA del `if (input.combateActivo...)` de abajo: este turno concreto nunca
+  // tiene `combateActivo` true (el frontend todavía no manda `enCombate:true`), así que sin esto
+  // ningún intercambio real llega a correr aquí. Solo siembra `nuevoPendingNpcAttack` — nada más
+  // de este resultado se toca (`exchangeHappened` se queda en false, `npcAttackHits`/
+  // `npcTargetNewCondicion` en sus valores por defecto): no hay ningún golpe ni cambio de
+  // condición este turno, solo se decide QUIÉN actuará primero en el próximo intercambio real.
+  if (!input.combateActivo && input.openingAmbush && input.rollGradoExito === 'fallo' && npcParaIntercambio) {
+    const npcWeaponNames = npcParaIntercambio.items.filter((i) => i.category === 'arma').map((i) => i.name);
+    const npcAbilities = npcCombatAbilitiesFor(npcParaIntercambio, npcWeaponNames);
+    const npcEnergiaMaxAmbush = energiaMaxFor(npcParaIntercambio.attributes.constitucion);
+    const npcEnergiaActualAmbush = npcParaIntercambio.energia ?? npcEnergiaMaxAmbush;
+    const npcAtaque = chooseNpcAbility(npcAbilities, 'ataque', npcEnergiaActualAmbush, undefined, npcParaIntercambio.abilityUsesThisEncounter);
+    nuevoPendingNpcAttack = {
+      npcId: npcParaIntercambio.id,
+      attribute: npcAtaque.attribute,
+      effects: npcAtaque.effects,
+      rol: npcAtaque.rol,
+      abilityName: npcAtaque.name,
+      abilityDescription: npcAtaque.description,
+      energyCost: npcAtaque.energyCost,
+      energyRegen: npcAtaque.energyRegen,
+      maxUsesPerCombat: npcAtaque.maxUsesPerCombat,
+    };
+  }
 
   if (input.combateActivo && npcParaIntercambio) {
     npcAttackTarget = npcParaIntercambio;
@@ -1460,8 +1499,8 @@ async function applyLootMode(params: {
   const narrationOverride =
     actualLootedNames.length !== lootPreviewCount
       ? actualLootedNames.length > 0
-        ? `${characterName} rebusca entre los restos y se hace con lo siguiente: ${actualLootedNames.join(', ')}.`
-        : `${characterName} rebusca entre los restos, pero alguien se le ha adelantado — no queda nada que llevarse.`
+        ? `${characterName} rebusca entre los restos y se hace con lo siguiente: ${actualLootedNames.join(', ')}. ${pickFlavor(LOOT_FLAVOR_SUCCESS)}`
+        : `${characterName} rebusca entre los restos, pero alguien se le ha adelantado — no queda nada que llevarse. ${pickFlavor(LOOT_FLAVOR_EMPTY)}`
       : null;
   return { actualLootedNames, newInventoryItems, createdItemNames, partiallyLootedSlugs, questRewardXp, narrationOverride };
 }
@@ -1757,7 +1796,7 @@ async function applyHarvest(params: {
   // el jugador vería en su Diario un botín que nunca recibió.
   const narrationOverride =
     harvestOutcome === 'exito' && harvestMatch && !harvestStillValid
-      ? `${characterName} rebusca en los restos de ${harvestMatch.sourceName}, pero ya se llevó antes todo lo aprovechable.`
+      ? `${characterName} rebusca en los restos de ${harvestMatch.sourceName}, pero ya se llevó antes todo lo aprovechable. ${pickFlavor(HARVEST_FLAVOR_YA_DESPIEZADA)}`
       : null;
   return { newInventoryItems, createdItemNames, narrationOverride };
 }
@@ -2003,6 +2042,51 @@ async function resolveCombatSlugsAndPersist(params: {
 
   return { combatSlugs, combateIniciado };
 }
+
+/// "Adorno" de las ramas deterministas (petición explícita, 2026-08-22: "darle una pasada a todos
+/// los prompts deterministas... para adornarlas con texto para que sean mas atractivas... en la
+/// partida y en las posteriores narraciones"). Decisión explícita de la usuaria tras preguntarle
+/// (justo se acababa de sacar a Curar del LLM para evitar coste/latencia/alucinaciones): NUNCA
+/// pasar estos turnos por `narrateAction` — la frase mecánica de siempre (QUÉ pasó, con qué
+/// objetos/cantidades EXACTAS) no cambia ni una palabra, sigue siendo puro dato determinista y va
+/// SIEMPRE primero; solo se le añade una segunda frase de color/atmósfera de un puñado ya escrito
+/// a mano, elegida al azar (nunca generada por IA) — mismo criterio de siempre ("nunca lo decide
+/// el modelo"), solo que ahora hay variedad en vez de la misma frase fija turno tras turno. La
+/// frase de color persiste en `LogEntry.text`, así que también alimenta `sessionFacts`/narraciones
+/// futuras, no es solo cosmética de este turno.
+function pickFlavor(variants: readonly string[], random: () => number = Math.random): string {
+  return variants[Math.floor(random() * variants.length)];
+}
+
+const LOOT_FLAVOR_SUCCESS = [
+  'Nada llamativo, pero útil.',
+  'El polvo y la sangre seca cubren cada hallazgo.',
+  'Guarda cada pieza sin perder tiempo, atento a la zona.',
+  'El silencio del lugar hace que cada movimiento se sienta más pesado.',
+] as const;
+const LOOT_FLAVOR_EMPTY = ['Solo quedan jirones y polvo.', 'Alguien —o algo— se le adelantó.', 'El lugar ya está limpio de todo valor.'] as const;
+const BUILD_FLAVOR = [
+  'El esfuerzo se nota en cada tabla y cada piedra bien encajada.',
+  'Un paso más hacia dejar huella en esta tierra.',
+  'El trabajo ha llevado su tiempo, pero el resultado se sostiene firme.',
+] as const;
+const HARVEST_FLAVOR_SIN_PRESA = ['Solo encuentra tierra removida y silencio.', 'Nada que despiezar, al menos por ahora.'] as const;
+const HARVEST_FLAVOR_YA_DESPIEZADA = [
+  'No queda ni un jirón que merezca la pena.',
+  'Los restos, ya vacíos, no tienen nada más que ofrecer.',
+] as const;
+const HARVEST_FLAVOR_FALLO = ['El material se resiste más de lo esperado.', 'Puede que con más calma o mejor herramienta salga distinto.'] as const;
+const HARVEST_FLAVOR_EXITO = [
+  'Un trabajo limpio, sin desperdiciar nada aprovechable.',
+  'Cada pieza queda bien guardada antes de seguir camino.',
+  'El esfuerzo merece la pena.',
+] as const;
+const CRAFT_FLAVOR = [
+  'El resultado queda listo para usarse de inmediato.',
+  'Manos firmes y trabajo bien hecho.',
+  'Otra pieza más añadida a lo que ya sabe hacer.',
+] as const;
+const HEAL_FLAVOR = ['El alivio es inmediato.', 'El cuerpo agradece el descanso, aunque sea breve.', 'Un respiro necesario antes de seguir.'] as const;
 
 /// Narra (retrieval + narrateAction) y persiste el resultado de un turno — hechos, XP/nivel,
 /// inventario/compañeros, eventos de Reino, posición/NPCs/despiece (docs/12), condición física
@@ -2352,6 +2436,11 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     npcParaIntercambio.condicionFisica !== 'MUERTO' &&
     (!!pendingNpcStillHere || tomaAccionDeCombate);
 
+  // Emboscada real del turno de apertura (2026-08-22) — mismo criterio EXACTO que
+  // `hostileEngagement` de narrador.ts (`ambushHint`): sin esto, la narración podía decir "el NPC
+  // te sorprende a ti" sin que tuviera ningún efecto mecánico real en el primer intercambio.
+  const openingAmbush = !enCombate && npcsInScene.length > 0 && (detectsAttackIntent(action) || detectsHostileSearchIntent(action));
+
   // `playerAbilityUsageGate` (auditoría de deuda técnica 2026-08-18) — ver su doc comment arriba.
   const { blocked: playerAbilityUsageBlocked, hint: playerAbilityUsageBlockedHint } = playerAbilityUsageGate(
     selectedAbilityData,
@@ -2395,6 +2484,8 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     countsAsAttack,
     dualWieldBonus,
     selectedAbility: selectedAbilityData ? { name: selectedAbilityData.name, icon: selectedAbilityData.icon, description: selectedAbilityData.description } : null,
+    openingAmbush,
+    rollGradoExito: roll?.gradoExito ?? null,
   });
 
   // Bloque de posición (docs/12 § 1.5): en un turno de viaje, la narración recibe la llegada al
@@ -2445,12 +2536,46 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     (npcTargetNewCondicion === 'CONVALECIENTE' || npcTargetNewCondicion === 'MUERTO') &&
     npcParaIntercambio?.condicionFisica !== 'CONVALECIENTE' &&
     npcParaIntercambio?.condicionFisica !== 'MUERTO';
+  // Igual que arriba, pero acotado a CONVALECIENTE (nunca MUERTO) — bug real jugando en vivo,
+  // 2026-08-22, ver `hasFalseUnconsciousNarration` (narrador.ts): "inerte"/"sin vida" sí es
+  // correcto para MUERTO, nunca para CONVALECIENTE (sigue consciente, solo sin fuerzas).
+  //
+  // Excepción de grupo (mismo bug, segunda vuelta — auditoría "revisa la partida otra vez",
+  // 2026-08-22): en caza en grupo, si quedan más miembros (`grupoContinua`, ver el gemelo exacto
+  // en `resolveCombatExchangePhase` línea ~1152 y en `applyNpcConditionUpdate` línea ~1568), este
+  // individuo concreto NO se queda "convaleciente y rematable" — la fila vuelve a ILESO para el
+  // siguiente miembro EN ESTE MISMO TURNO, así que nunca hay ocasión real de rematarlo después.
+  // Forzar aquí el "sigue vivo, no lo narres muerto" es la instrucción equivocada: el jugador que
+  // le crea y pide "Remato a X" un turno más tarde no encuentra a nadie que rematar (ya es el
+  // individuo siguiente, ILESO) y el intercambio normal que se resuelve en su lugar puede acabar
+  // narrado como si sí hubiera rematado — ver `hasFalseCombatHit` (narrador.ts), mismo bug real
+  // ("corta la garganta... muerte instantánea" sobre un 'parada_en_seco'). Para un grupo que
+  // continúa, este individuo cae para siempre — se narra igual que MUERTO, no CONVALECIENTE.
+  const grupoContinuaEsteTurno =
+    !!npcParaIntercambio?.groupSize && npcParaIntercambio.groupDefeated + 1 < npcParaIntercambio.groupSize;
+  const npcFallsConvalecienteThisTurn =
+    npcTargetNewCondicion === 'CONVALECIENTE' &&
+    !grupoContinuaEsteTurno &&
+    npcParaIntercambio?.condicionFisica !== 'CONVALECIENTE' &&
+    npcParaIntercambio?.condicionFisica !== 'MUERTO';
 
   // Ver `jugadorRecibeGolpeEsteTurno` (narrador.ts) — bug real jugando en vivo, 2026-08-15: "acabé
   // con el buitre pero se resistió al final dándome un golpe... la narración no lo ha explicado".
   // Sin esto, un contragolpe/golpes_mutuos en el MISMO turno que remata al rival se pierde porque
   // toda la atención del prompt ya se dirige a narrar la caída del rival (ver el bloque de arriba).
   const jugadorRecibeGolpeEsteTurno = exchangeHappened && jugadorRecibeGolpe;
+
+  // Ver `hasFalseDeathClaim` (narrador.ts) — bug real jugando en vivo (auditoría 2026-08-22, "¿no
+  // queda nada más al revisar la partida?"): un golpe real (`npcAttackHits`) que solo dejó al
+  // rival GRAVE (no CONVALECIENTE/MUERTO, así que `npcFallsUnconsciousThisTurn` sale false y no
+  // protege nada aquí) se narró con prosa honesta ("se desploma hacia atrás, dejando una mancha de
+  // sangre en el suelo") pero escribió en `newFacts` "Buitre Cenizo ha sido derrotado y muerto." —
+  // un hecho de sesión falso que queda persistido para siempre (`appendSessionFacts`) sin que
+  // ningún guard existente lo comprobara (todos estaban gateados por `npcFallsUnconsciousThisTurn`/
+  // `npcFallsConvalecienteThisTurn`, que exigen que la muerte SÍ haya pasado este turno — el hueco
+  // real es el caso contrario, cuando NO ha pasado y el modelo la reclama de todos modos). True en
+  // cualquier turno con un golpe real contra el NPC que NO lo deja MUERTO de verdad.
+  const combatNoRealDeathThisTurn = exchangeHappened && !!npcAttackHits && npcTargetNewCondicion !== 'MUERTO';
 
   // Anti-repetición de vocabulario/imágenes (ver comentario de `lastNarration` más arriba).
   if (lastNarration) {
@@ -2481,8 +2606,16 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     const ruta = travel.segments
       .map((s) => `${s.fromName} → ${s.toName} (${s.terreno}${s.riesgo ? `, riesgo conocido: ${s.riesgo}` : ''})`)
       .join('; ');
+    // Bug real jugando en vivo (auditoría 2026-08-22, "¿y lo de viajar al pozo pero justo después
+    // de una narración de una hondonada?"): un viaje real desde La Hondonada del Eco hasta El Pozo
+    // de Cauce Viejo (punto de agua, pozo del clan serhu) se narró entero como "Gorhorn se adentra
+    // en la hondonada, pasando entre las rocas resquebrajadas... el eco de su respiración" — puro
+    // sabor de RUTA (el origen, una hondonada) sin mencionar nunca el destino real. El bloque ya
+    // pasaba ambos datos (LLEGADA A / RUTA RECORRIDA) pero sin pedir explícitamente que la escena
+    // TERMINE anclada en el destino — un modelo pequeño bajo presión de longitud corta puede
+    // gastar toda la frase en la imagen más vívida del camino y nunca llegar de verdad.
     contextBlocks.push(
-      `LLEGADA A ${travel.toLocationName}: ${destination?.description ?? ''}\nRUTA RECORRIDA: ${ruta}`,
+      `LLEGADA A ${travel.toLocationName}: ${destination?.description ?? ''}\nRUTA RECORRIDA: ${ruta}\nLa narración de este turno tiene que TERMINAR con el personaje ya en ${travel.toLocationName}, mencionando algo concreto y propio de este lugar (no solo del paisaje del camino) — puedes describir brevemente el trayecto, pero nunca a costa de dejar la llegada implícita o sin situar.`,
     );
   } else if (currentLocationId) {
     const location = await prisma.location.findUnique({ where: { id: currentLocationId } });
@@ -3124,6 +3257,60 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
           : 'exito'
     : null;
 
+  // Narración final de cada rama determinista, con su frase de color ya elegida (ver
+  // `pickFlavor`/pools más arriba) — precomputadas aquí, junto a `lootPreview`/`harvestOutcome`,
+  // en vez de inline dentro del switch de `narration` más abajo (que ya es un árbol de ternarios
+  // profundo de sobra).
+  const lootNarration = lootMode
+    ? lootPreview.length > 0
+      ? `${characterName} rebusca entre los restos y se hace con lo siguiente: ${lootPreview.map((item) => item.name).join(', ')}. ${pickFlavor(LOOT_FLAVOR_SUCCESS)}`
+      : `${characterName} rebusca entre los restos, pero no queda nada más que llevarse. ${pickFlavor(LOOT_FLAVOR_EMPTY)}`
+    : null;
+  const buildNarration = buildMode ? `${characterName} termina de construir ${buildRecipe!.name}. ${buildRecipe!.description} ${pickFlavor(BUILD_FLAVOR)}` : null;
+  const harvestNarration = harvestOutcome
+    ? harvestOutcome === 'sin_presa'
+      ? `${characterName} busca algo que aprovechar de ${harvestMatch!.sourceName}, pero no hay ningún cadáver o presa derrotada de la que sacar nada. ${pickFlavor(HARVEST_FLAVOR_SIN_PRESA)}`
+      : harvestOutcome === 'ya_despiezada'
+        ? `${characterName} rebusca en los restos de ${harvestMatch!.sourceName}, pero ya se llevó antes todo lo aprovechable. ${pickFlavor(HARVEST_FLAVOR_YA_DESPIEZADA)}`
+        : harvestOutcome === 'fallo'
+          ? `${characterName} lo intenta, pero no logra sacar nada de provecho de ${harvestMatch!.sourceName} esta vez. ${pickFlavor(HARVEST_FLAVOR_FALLO)}`
+          : `${characterName} despieza/recolecta ${harvestMatch!.sourceName} y consigue: ${harvestMatch!.yields.map((y) => (y.cantidad > 1 ? `${y.itemName} (${y.cantidad})` : y.itemName)).join(', ')}. ${pickFlavor(HARVEST_FLAVOR_EXITO)}`
+    : null;
+  const craftNarration = craftMode ? `${characterName} craftea: ${craftedRecipeResultNames.join(', ')}. ${pickFlavor(CRAFT_FLAVOR)}` : null;
+
+  // Curación determinista de verdad (petición explícita, 2026-08-22: "la habilidad genérica de
+  // curar debería ser determinista no narrada") — el panel "Curar" ya sabía exactamente qué se usó
+  // y a qué condición se llega (ver el bloque `usingExplicitHealList` más abajo, que hasta ahora
+  // recalculaba esto mismo DESPUÉS de narrar solo para pisar `narration.narration`), pero
+  // `wasLlmNarrated` nunca incluyó este turno en la lista de ramas deterministas — a diferencia de
+  // Saquear/Construir/Cosechar/Craftear, un turno de Curar SÍ llamaba a `narrateAction` (coste y
+  // latencia real de Ollama) y tiraba la respuesta a la basura. Mismo principio que `lootPreview`/
+  // `harvestOutcome` de arriba: se calcula aquí, de solo lectura, ANTES de narrar, lo mismo que ya
+  // calculaba el bloque de persistencia real más abajo — con `condicionPropuesta` limitado a lo que
+  // ya se sabe sin narración (el intercambio de combate resuelto, si lo hay; nunca `narration.*`,
+  // que en esta rama nunca se llega a generar).
+  const healPreview = usingExplicitHealList
+    ? (() => {
+        const healCeiling = applySequentialHeals(
+          params.condicionFisica,
+          healItemUsesValidated
+            .filter((u): u is typeof u & { curaHasta: CondicionFisica } => u.curaHasta !== null)
+            .flatMap((u) => Array.from({ length: u.quantity }, () => ({ curaHasta: u.curaHasta, curaUnPaso: u.curaUnPaso }))),
+        );
+        const condicionPropuesta = exchangeHappened ? (jugadorRecibeGolpe ? nextCondicionForAttack(jugadorGolpeEfectos, params.condicionFisica) : null) : undefined;
+        const proposedCondicion = nextCondicionFisica(params.condicionFisica, condicionPropuesta, !!enCombate, healCeiling);
+        const energyRestore = healItemUsesValidated.reduce((sum, u) => sum + u.curaEnergia * u.quantity, 0);
+        const itemsTexto = healItemUsesValidated.map((u) => (u.quantity > 1 ? `${baseNameOf(u.name)} ×${u.quantity}` : baseNameOf(u.name))).join(', ');
+        const huboMedico = healItemUsesValidated.some((u) => u.curaHasta !== null);
+        const partes: string[] = [];
+        if (huboMedico) partes.push(`pasa a estar ${CONDICION_NARRATION_LABEL[proposedCondicion]}`);
+        if (energyRestore > 0) partes.push('recupera energía');
+        return {
+          narration: `${characterName} se cura con ${itemsTexto}${partes.length > 0 ? ` — ${partes.join(' y ')}` : ''}. ${pickFlavor(HEAL_FLAVOR)}`,
+        };
+      })()
+    : null;
+
   // Escena de Gistera Koh, fase 2 — solución limpia (auditoría 2026-07-30, "revisar partida",
   // tras encontrarlo fallando EN VIVO por segunda vez: la primera vez inventó "Múrgol" como
   // nombre alternativo — 2026-07-24 —, esta vez "Lyria de la Tormenta Negra", llamándola además
@@ -3179,6 +3366,8 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     combatBothMissed,
     combatRealHitLanded,
     npcFallsUnconsciousThisTurn,
+    npcFallsConvalecienteThisTurn,
+    combatNoRealDeathThisTurn,
     jugadorRecibeGolpeEsteTurno,
     combatNotYetResolved,
     possiblyFalseItemUseNames,
@@ -3193,11 +3382,11 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     onNarrationReset,
   };
 
-  // Turno narrado de verdad por el LLM local (2026-08-11, captura en vivo de pares DPO) — las 5
-  // ramas deterministas de abajo (Gistera guionizada/saqueo/construcción/cosecha/crafteo) nunca
-  // llaman a narrateAction, así que no hay ningún prompt/respuesta real que capturar para el
-  // profesor cloud.
-  const wasLlmNarrated = !(gisteraSePresentaEsteTurno || lootMode || buildMode || harvestOutcome || craftMode);
+  // Turno narrado de verdad por el LLM local (2026-08-11, captura en vivo de pares DPO) — las 6
+  // ramas deterministas de abajo (Gistera guionizada/saqueo/construcción/cosecha/crafteo/curación
+  // explícita) nunca llaman a narrateAction, así que no hay ningún prompt/respuesta real que
+  // capturar para el profesor cloud.
+  const wasLlmNarrated = !(gisteraSePresentaEsteTurno || lootMode || buildMode || harvestOutcome || craftMode || usingExplicitHealList);
 
   // Animación de dados en paralelo (ver comentario de `onExchangeResolved` en
   // NarrateAndPersistParams) — justo antes de narrar, nunca antes: `combatExchangeDisplay` ya
@@ -3212,36 +3401,16 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
         newFacts: [],
       }
     : lootMode
-      ? {
-          narration:
-            lootPreview.length > 0
-              ? `${characterName} rebusca entre los restos y se hace con lo siguiente: ${lootPreview.map((item) => item.name).join(', ')}.`
-              : `${characterName} rebusca entre los restos, pero no queda nada más que llevarse.`,
-          newFacts: [],
-        }
+      ? { narration: lootNarration!, newFacts: [] }
       : buildMode
-        ? {
-            narration: `${characterName} termina de construir ${buildRecipe!.name}. ${buildRecipe!.description}`,
-            newFacts: [],
-          }
+        ? { narration: buildNarration!, newFacts: [] }
         : harvestOutcome
-          ? {
-              narration:
-                harvestOutcome === 'sin_presa'
-                  ? `${characterName} busca algo que aprovechar de ${harvestMatch!.sourceName}, pero no hay ningún cadáver o presa derrotada de la que sacar nada.`
-                  : harvestOutcome === 'ya_despiezada'
-                    ? `${characterName} rebusca en los restos de ${harvestMatch!.sourceName}, pero ya se llevó antes todo lo aprovechable.`
-                    : harvestOutcome === 'fallo'
-                      ? `${characterName} lo intenta, pero no logra sacar nada de provecho de ${harvestMatch!.sourceName} esta vez.`
-                      : `${characterName} despieza/recolecta ${harvestMatch!.sourceName} y consigue: ${harvestMatch!.yields.map((y) => (y.cantidad > 1 ? `${y.itemName} (${y.cantidad})` : y.itemName)).join(', ')}.`,
-              newFacts: [],
-            }
+          ? { narration: harvestNarration!, newFacts: [] }
           : craftMode
-            ? {
-                narration: `${characterName} craftea: ${craftedRecipeResultNames.join(', ')}.`,
-                newFacts: [],
-              }
-            : await narrateAction(narrationCtx);
+            ? { narration: craftNarration!, newFacts: [] }
+            : usingExplicitHealList
+              ? { narration: healPreview!.narration, newFacts: [] }
+              : await narrateAction(narrationCtx);
   // Streaming (2026-07-30): la rama determinista de arriba nunca llama a `onNarrationChunk` (no
   // hay generación en vivo que transmitir) — se manda de una vez aquí para que el frontend siga
   // viendo el mismo patrón de un "chunk" seguido de "done", en vez de quedarse sin nada hasta el
@@ -3474,17 +3643,12 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   // orden no importa: cada objeto restaura lo suyo, `nextEnergia` (energy.ts) ya topa el resultado
   // final al máximo real.
   const explicitHealEnergyRestore = usingExplicitHealList ? healItemUsesValidated.reduce((sum, u) => sum + u.curaEnergia * u.quantity, 0) : 0;
-  // Narración determinista (petición explícita, 2026-08-18) — mismo criterio "nunca lo decide el
-  // modelo" que ya usan saqueo/despiece/crafteo: el panel "Curar" sabe exactamente qué se usó y a
-  // qué condición se llega, no hace falta que el Narrador lo adivine de un `actionText` genérico.
-  if (usingExplicitHealList) {
-    const itemsTexto = healItemUsesValidated.map((u) => (u.quantity > 1 ? `${baseNameOf(u.name)} ×${u.quantity}` : baseNameOf(u.name))).join(', ');
-    const huboMedico = healItemUsesValidated.some((u) => u.curaHasta !== null);
-    const partes: string[] = [];
-    if (huboMedico) partes.push(`pasa a estar ${CONDICION_NARRATION_LABEL[proposedCondicion]}`);
-    if (explicitHealEnergyRestore > 0) partes.push('recupera energía');
-    narration.narration = `${characterName} se cura con ${itemsTexto}${partes.length > 0 ? ` — ${partes.join(' y ')}` : ''}.`;
-  }
+  // El texto de narración YA se fijó de forma determinista arriba, en el propio switch de
+  // `narration` (`healPreview`, rediseño 2026-08-22) — antes se pisaba aquí, DESPUÉS de haber
+  // llamado igualmente a `narrateAction` para nada (ver comentario de `wasLlmNarrated`). Este
+  // bloque solo queda para la persistencia real (`healCeiling`/`proposedCondicion`/
+  // `explicitHealEnergyRestore`, ambos arriba), coherente por construcción con `healPreview`: la
+  // misma fórmula, sobre los mismos datos ya validados.
 
   // Sistema de fatiga (2026-07-29) — gasto/regen de energía de este turno, siempre determinista
   // (ver energy.ts § nextEnergia): coste de la habilidad pulsada, regen propio de esa misma
@@ -3947,7 +4111,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     // `harvestResult.narrationOverride`: nunca dejar que el modelo "cuente" algo que ya se decidió
     // por código, ni con matices que la mecánica no respalda.
     if (craftedResultNames.length > 0) {
-      narration.narration = `${characterName} craftea: ${craftedResultNames.join(', ')}.`;
+      narration.narration = `${characterName} craftea: ${craftedResultNames.join(', ')}. ${pickFlavor(CRAFT_FLAVOR)}`;
     }
 
     // Construcción (roadmap 2026-07-20/21, ampliado 2026-07-22): a diferencia del resto de

@@ -19,6 +19,8 @@ import {
   hasEnglishLeak,
   hasFalseCombatHit,
   hasPrematureCombatResolution,
+  hasFalseUnconsciousNarration,
+  hasFalseDeathClaim,
   hasFalseItemUse,
   hasFalseInventoryReview,
   hasResurrectedDeadNpc,
@@ -488,6 +490,12 @@ describe('hasFalseCombatHit', () => {
   it('sigue sin disparar con "golpea el aire" — el caso genuino de fallo que motivó excluir "golpea" en origen', () => {
     expect(hasFalseCombatHit('Gorhorn golpea el aire con fuerza, fallando por completo.', true)).toBe(false);
   });
+
+  it('bug real jugando en vivo (2026-08-22, "revisa la partida otra vez"): detecta un golpe de muerte completo narrado sobre un "parada_en_seco" (nadie conectó nada) — texto real de esa partida', () => {
+    const narration =
+      'Gorhorn propina un potente zarpazo que corta la garganta del Buitre Cenizo, derramando una gran cantidad de sangre y causándole la muerte instantánea.';
+    expect(hasFalseCombatHit(narration, true)).toBe(true);
+  });
 });
 
 describe('hasFalseCombatMiss', () => {
@@ -548,6 +556,76 @@ describe('hasPrematureCombatResolution', () => {
     const narration =
       'Gorhorn, sin perder tiempo, da un fuerte golpe con la hacha, atravesando el cuello del ave con una precisión sorprendente. El buitrón cae al suelo, con su plumaje negro ensangrentado.';
     expect(hasPrematureCombatResolution(narration, true)).toBe(true);
+  });
+
+  it('bug real jugando en vivo (2026-08-22, "Salgo a cazar y ataco a \'Buitre Cenizo\'."): detecta un ataque a una parte del cuerpo seguido de la reacción de dolor/huida del objetivo, sin usar ningún verbo de contacto de la lista de arriba', () => {
+    const narration =
+      'Con un rápido movimiento, ataca la pierna del Buitre Cenizo, haciendo que el carroñero chillé gigantesco y se lance hacia atrás en un intento de escapar.';
+    expect(hasPrematureCombatResolution(narration, true)).toBe(true);
+  });
+
+  it('no dispara con "ataca a" + NPC (declara intención de enfrentarse, no un golpe a una parte del cuerpo)', () => {
+    expect(hasPrematureCombatResolution('Gorhorn ataca al Buitre Cenizo, arma en mano.', true)).toBe(false);
+  });
+});
+
+describe('hasFalseUnconsciousNarration', () => {
+  it('bug real jugando en vivo (2026-08-22, "he matado a un buitre pero..."): detecta "cayendo inerte" el turno en que el rival queda CONVALECIENTE (no MUERTO) — texto real de esa partida', () => {
+    const narration =
+      'Gorhorn apuñala al Buitre Cenizo justo en la base del pico, dejando un rastro de sangre en su plumaje negro. El carroñero chirría y cae hacia atrás, cayendo inerte sobre el polvo.';
+    expect(hasFalseUnconsciousNarration(narration, true)).toBe(true);
+  });
+
+  it('detecta "inconsciente"/"desmayado"/"sin sentido" además de "inerte"', () => {
+    expect(hasFalseUnconsciousNarration('El orco queda inconsciente tras el golpe.', true)).toBe(true);
+    expect(hasFalseUnconsciousNarration('El orco cae desmayado al suelo.', true)).toBe(true);
+    expect(hasFalseUnconsciousNarration('El orco queda sin sentido y se desploma.', true)).toBe(true);
+    expect(hasFalseUnconsciousNarration('El orco pierde el conocimiento y se desploma.', true)).toBe(true);
+  });
+
+  it('no dispara con una narración correcta de CONVALECIENTE (sigue consciente, sin fuerzas)', () => {
+    const narration = 'El orco cae de rodillas, malherido, sin fuerzas para seguir luchando.';
+    expect(hasFalseUnconsciousNarration(narration, true)).toBe(false);
+  });
+
+  it('no dispara para MUERTO ("inerte"/"sin vida" sí es correcto ahí) — npcFallsConvalecienteThisTurn false', () => {
+    const narration = 'El golpe final corta la garganta del orco, dejándolo inerte sobre el polvo.';
+    expect(hasFalseUnconsciousNarration(narration, false)).toBe(false);
+  });
+
+  it('no dispara fuera de este escenario concreto (npcFallsConvalecienteThisTurn undefined)', () => {
+    expect(hasFalseUnconsciousNarration('El orco queda inconsciente.', undefined)).toBe(false);
+  });
+});
+
+describe('hasFalseDeathClaim', () => {
+  // Bug real jugando en vivo (2026-08-22, "¿no queda nada más al revisar la partida?"): la PROSA
+  // de este turno era honesta (un golpe real, no una muerte) — el hueco real estaba en `newFacts`,
+  // no en `narration`. El call site real (narrador.ts) le pasa `[narration, ...newFacts].join(' ')`
+  // a este guard, así que el test reproduce justo eso: el texto combinado.
+  it('bug real jugando en vivo: la prosa dice "se desploma" (golpe real, GRAVE) pero newFacts reclama la muerte — texto real de esa partida', () => {
+    const narration = 'Gorhorn clava su hacha rota en Buitre Cenizo, atravesándole un ala. El carroñero chirría y se desploma hacia atrás, dejando una mancha de sangre en el suelo.';
+    const newFact = 'Buitre Cenizo ha sido derrotado y muerto.';
+    expect(hasFalseDeathClaim(`${narration} ${newFact}`, true)).toBe(true);
+  });
+
+  it('detecta "muere"/"ha muerto"/"sin vida"/"cae muerto" además de "derrotado y muerto"', () => {
+    expect(hasFalseDeathClaim('El orco muere en el acto.', true)).toBe(true);
+    expect(hasFalseDeathClaim('El orco ha muerto.', true)).toBe(true);
+    expect(hasFalseDeathClaim('El orco queda sin vida sobre la arena.', true)).toBe(true);
+    expect(hasFalseDeathClaim('El orco cae muerto al instante.', true)).toBe(true);
+  });
+
+  it('no dispara con un golpe real que no reclama muerte ("se desploma"/"cae" a secas)', () => {
+    expect(hasFalseDeathClaim('El orco se desploma hacia atrás, dejando una mancha de sangre.', true)).toBe(false);
+  });
+
+  it('no dispara si el golpe de este turno SÍ deja al rival MUERTO de verdad (combatNoRealDeathThisTurn=false)', () => {
+    expect(hasFalseDeathClaim('El golpe final corta la garganta del orco, que muere en el acto.', false)).toBe(false);
+  });
+
+  it('no dispara fuera de este escenario concreto (combatNoRealDeathThisTurn undefined)', () => {
+    expect(hasFalseDeathClaim('El orco muere.', undefined)).toBe(false);
   });
 });
 
@@ -829,13 +907,59 @@ describe('deterministicFallbackNarration', () => {
 describe('buildNarrationPrompt — narrar inconsciencia (docs/19-post-combate-y-recompensas-mision.md, pieza 1)', () => {
   const baseCtx = { worldFacts: [], characterSummary: 'Gorhorn', action: 'Ataco', enCombate: true };
 
-  it('pide explícitamente narrar el momento de caer inconsciente/morir cuando este golpe termina el combate', () => {
-    const { prompt } = buildNarrationPrompt({ ...baseCtx, npcFallsUnconsciousThisTurn: true });
-    expect(prompt).toMatch(/CONVALECIENTE o MUERTO/);
+  it('pide explícitamente narrarlo CONVALECIENTE (vivo, rematable) cuando npcFallsConvalecienteThisTurn es true', () => {
+    const { prompt } = buildNarrationPrompt({ ...baseCtx, npcFallsUnconsciousThisTurn: true, npcFallsConvalecienteThisTurn: true });
+    expect(prompt).toMatch(/CONVALECIENTE \(no MUERTO\)/);
+    expect(prompt).toMatch(/NUNCA lo narres inconsciente/);
   });
 
-  it('no añade esa instrucción en un turno de combate normal', () => {
+  // Grupo que continúa (auditoría 2026-08-22, "revisa la partida otra vez"): `npcFallsConvalecienteThisTurn`
+  // ya sale false para un individuo de grupo que auto-continúa a ILESO este mismo turno (ver
+  // `grupoContinuaEsteTurno` en turnResolution.ts) — no hay ocasión real de rematarlo después, así
+  // que aquí (igual que en MUERTO real) se narra como definitivo, nunca como "sigue con vida".
+  it('pide narrarlo como definitivo (nunca "sigue vivo") cuando npcFallsConvalecienteThisTurn es false — cubre tanto MUERTO real como un individuo de grupo que auto-continúa', () => {
+    const { prompt } = buildNarrationPrompt({ ...baseCtx, npcFallsUnconsciousThisTurn: true, npcFallsConvalecienteThisTurn: false });
+    expect(prompt).toMatch(/acaba con este rival para siempre/);
+    expect(prompt).not.toMatch(/NUNCA lo narres inconsciente/);
+  });
+
+  it('no añade ninguna instrucción especial en un turno de combate normal', () => {
     const { prompt } = buildNarrationPrompt({ ...baseCtx, npcFallsUnconsciousThisTurn: false });
-    expect(prompt).not.toMatch(/CONVALECIENTE o MUERTO/);
+    expect(prompt).not.toMatch(/CONVALECIENTE \(no MUERTO\)/);
+    expect(prompt).not.toMatch(/acaba con este rival para siempre/);
+  });
+});
+
+// Contradicción real encontrada jugando en vivo (2026-08-22, "Salgo a cazar y ataco a 'Buitre
+// Cenizo'." narró un golpe conectado en el turno que INICIA combate): `ambushHint` (gradoExito
+// 'claro') decía "actúa/golpea primero" en el MISMO prompt donde `combatNotYetResolved` prohíbe
+// explícitamente narrar un golpe conectado — y ambas condiciones se activan siempre juntas para
+// cualquier primer ataque libre contra un NPC todavía sin combate mecánico abierto (`enCombate`
+// false). Se reescribió para hablar de ventaja de posición/iniciativa, nunca de contacto ya
+// resuelto.
+describe('buildNarrationPrompt — emboscada (ambushHint) ya no contradice a combatNotYetResolved (2026-08-22)', () => {
+  const hostileCtx = {
+    worldFacts: [],
+    characterSummary: 'Gorhorn',
+    action: "Salgo a cazar y ataco a 'Buitre Cenizo'.",
+    enCombate: false,
+    npcSlugsInScene: ['buitre-cenizo'],
+    roll: { attribute: 'destreza' as const, value: 12, roll: 19, result: 25, difficulty: 15, success: true, gradoExito: 'claro' as const },
+  };
+
+  it('con gradoExito claro, ya no dice "golpea primero" — habla de ventaja de posición y prohíbe explícitamente narrar contacto', () => {
+    const { prompt } = buildNarrationPrompt(hostileCtx);
+    expect(prompt).not.toMatch(/golpea primero/);
+    expect(prompt).toMatch(/NO describas ningún golpe ya conectado/);
+  });
+
+  it('con gradoExito fallo, ya no implica que el NPC ya actuó/golpeó — prohíbe explícitamente narrar un golpe ya recibido', () => {
+    const { prompt } = buildNarrationPrompt({ ...hostileCtx, roll: { ...hostileCtx.roll, result: 10, gradoExito: 'fallo' as const } });
+    expect(prompt).toMatch(/NO describas ningún golpe ya recibido/);
+  });
+
+  it('fuera de un enfrentamiento hostil (sin NPC en escena), no añade ningún hint de emboscada', () => {
+    const { prompt } = buildNarrationPrompt({ ...hostileCtx, npcSlugsInScene: [] });
+    expect(prompt).not.toMatch(/SORPRENDE/);
   });
 });
