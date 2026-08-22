@@ -9,20 +9,21 @@ tareas de una conversación no sobrevive al cierre de la sesión, este archivo s
 
 ## En curso — repaso "zona por zona" de Las Llanuras del Viento Rojo (empezado 2026-08-21)
 
-Modo de trabajo nuevo, ver `docs/ampliar-lore.md` § 1.5. **13 zonas cubiertas esta sesión, en este
-orden** (ver "Sesión 2026-08-21 (duodécima pasada)" más abajo para el detalle completo de cada
-una): 1. La Hondonada del Eco, 2. Los Pilares Rotos, 3. El Pozo de Cauce Viejo, 4. El Cruce de las
-Cenizas, 5. Los Restos de Maktor (retirada), 6. El Campamento del Clan Serhu, 7. El Osario de la
-Manada, 8. Las Agujas Imán, 9. Los Manaderos, 10. Los Túmulos del Honor (sin cambios), 11. Los
-Pastos de la Deriva, 12. El Filo de las Brasas, 13. Las Fumarolas Negras.
+Modo de trabajo nuevo, ver `docs/ampliar-lore.md` § 1.5. **14 zonas cubiertas hasta ahora, en este
+orden** (ver "Sesión 2026-08-21 (duodécima pasada)" y "Sesión 2026-08-22 (decimotercera pasada)"
+más abajo para el detalle completo de cada una): 1. La Hondonada del Eco, 2. Los Pilares Rotos,
+3. El Pozo de Cauce Viejo, 4. El Cruce de las Cenizas, 5. Los Restos de Maktor (retirada), 6. El
+Campamento del Clan Serhu, 7. El Osario de la Manada, 8. Las Agujas Imán, 9. Los Manaderos, 10. Los
+Túmulos del Honor (sin cambios), 11. Los Pastos de la Deriva, 12. El Filo de las Brasas, 13. Las
+Fumarolas Negras, 14. La Sabana Alta.
 
-**Parada aquí — la próxima zona es la 14: La Sabana Alta.** Después quedan, en el mismo orden que
-`areas.md`: Playa de Ceniza Blanca, Los Acantilados Partidos, La Desembocadura Callada, Las Pozas
-de Marea, El Embarcadero de Ceniza, Las Dunas Ahogadas, El Vientre del Engaño, El Laberinto de
-Cañones, Las Fumarolas Negras *(ya cubierta, saltar)*, El Paso de los Huesos, El Vergel de Kegi,
-El Campo Yermo, La Grieta Cantora, El Oasis de Juncos Rojos. Las 3 ruinas Nabierus (Ciudad
-Hundida/Archivo Cegado/Observatorio Roto) siguen fuera del grafo jugable, no entran en este repaso
-todavía (ver pendiente de código de arriba).
+**Parada aquí — la próxima zona es la 15: Playa de Ceniza Blanca.** Después quedan, en el mismo
+orden que `areas.md`: Los Acantilados Partidos, La Desembocadura Callada, Las Pozas de Marea, El
+Embarcadero de Ceniza, Las Dunas Ahogadas, El Vientre del Engaño, El Laberinto de Cañones, Las
+Fumarolas Negras *(ya cubierta, saltar)*, El Paso de los Huesos, El Vergel de Kegi, El Campo Yermo,
+La Grieta Cantora, El Oasis de Juncos Rojos. Las 3 ruinas Nabierus (Ciudad Hundida/Archivo Cegado/
+Observatorio Roto) siguen fuera del grafo jugable, no entran en este repaso todavía (ver pendiente
+de código de arriba).
 
 ## Propuestas de réplica entre zonas (análisis pedido por la usuaria al pausar, 2026-08-21)
 
@@ -314,6 +315,12 @@ esto es lore/mecánica que todavía no se ha decidido cómo funciona.
   región... eso lo miramos si no en otro momento"). No es una tarea de código suelta: implica
   decidir cómo se reparte lo ya existente entre las ~26 zonas nombradas de la región antes de
   tocar nada, así que queda aquí como pendiente de diseño, no de código.
+- **Oficio de agricultura de Las Llanuras, único que se aprende por misión y no por NPC**
+  (detectado 2026-08-22 al añadir el Trigo Escarlata de La Sabana Alta) — la propia usuaria lo
+  aparcó explícitamente hasta que exista el sistema de Reino: qué misión, qué requisitos, y cómo
+  convive con el resto de oficios (todos aprendidos de un Maestro hoy). Mismo bloque de diseño que
+  el sistema de "trabajador de Reino" que ya bloquea a los 22 NPC del Campamento Serhu — probable
+  que ambos se resuelvan juntos cuando se diseñe el sistema de Reino de verdad.
 
 ---
 
@@ -973,5 +980,59 @@ encontró nada que añadir; se queda deliberadamente sin recursos propios, como 
   territorio). Las Fumarolas Negras (dentro del mismo borde volcánico, más hostil) tienen mejor
   probabilidad de Fercaneo que el resto del Filo — respuesta directa a la pregunta abierta sobre
   qué añadir ahí.
+
+---
+
+## Sesión 2026-08-22 (decimotercera pasada) — el análisis de réplica entre zonas, aplicado, + La Sabana Alta
+
+Retomado el repaso "zona por zona" tras el análisis de réplica de la sesión anterior. Antes de la
+zona nueva, se aplicó el propio análisis pendiente (ver `docs/rpgtarkor/areas.md`/`flora-fauna.md`
+para el detalle narrativo, y "Propuestas de réplica entre zonas" más arriba en este mismo archivo
+para el detalle técnico completo) — resumen: Corredor de Cauce/Ruptidar/Pasto Solar quedan anclados
+de verdad por terreno/región, y se corrige un hallazgo real no buscado (10 recursos de la pasada
+2026-08-21 tenían `HarvestYield` pero ninguna fila en `worldPopulation.ts`, así que no podían
+recolectarse en ninguna zona). Llevado a código y verificado el mismo día (`tsc -b` limpio + suite
+completa) antes de continuar con la zona nueva.
+
+**Decimocuarta zona: La Sabana Alta**
+
+- Confirmado que Múrgol, Corretolvas, Buitre Cenizo y Aullador Rojo ya son fauna real de la zona
+  (la mayoría gracias al propio ajuste de terreno de arriba) — la usuaria describió la zona como
+  "prácticamente toda la fauna de la llanura" y el motor ya lo refleja sin tocar nada más.
+- **Pasto de Sangre**: la hierba roja de la zona tiene nombre propio — misma raza que el Pasto
+  Solar, teñida de rojo por la mineralización (también roja) del agua local.
+- **Towrgu**: depredador solitario de emboscada, 120-160 cm, caza aprovechando el sigilo del Pasto
+  de Sangre igual que el Aullador Rojo con los Corredores de Cauce. Nivel 4-12, agresivo, loot tier
+  4-6 (piel/garras/colmillos).
+- **Coracelo**: roedor constructor de madrigueras fortificadas, 40-100 cm, manos desarrolladas que
+  usa como herramienta, cola-maza de escamas duras como el hierro para partir roca. Nivel 2-8,
+  cauteloso, loot tier 2-4 — la Cola de Coracelo no es material de construcción, es el ingrediente
+  real de una maza craftada por herrero-orco-llanuras (`CORACELO_MACE_RECIPE`, nueva).
+- **Telda Atardecer**: misma especie que Telda Común/Ceniza, madera y resina rojas de tier más alto
+  (tier 4/3) — "la mejor madera de todas las Telda". Las hojas siguen siendo las mismas Hojas de
+  Telda de siempre, compartidas por las tres variantes (de paso, se corrigió un candado de zona
+  única preexistente que ya impedía encontrarlas también en El Cruce de las Cenizas).
+- **Trigo Escarlata**: grano salvaje, base de harina — los orcos de las Llanuras nunca han logrado
+  cultivarlo de verdad (presión Goirnte + terreno), razón real de que el clan nunca se haya
+  expandido como civilización asentada (nuevo párrafo en `razas.md` § Oficios por clan). Cuando
+  exista un oficio de agricultura, el de esta región será el único que no se aprenda de un NPC —
+  hará falta una misión especial ligada al futuro sistema de Reino (mismo criterio que el resto de
+  profesiones de trabajador capturado del Campamento Serhu, deliberadamente aparcado, ver abajo).
+- **Roca Luclara** (renombrada en vivo de "Roca Lucero" tras aviso de colisión leve con Lucre
+  Blanco): piedra clara de construcción tier alto (tier 6), donde los Towrgu excavan sus nidos.
+
+**Llevado a código el mismo día**: los 2 `NpcInput`, 12 `ItemCatalogInput` (incluida la Maza de
+Coracelo, equipable) + su `CraftingRecipe` en `crafting.ts`, ~11 `HarvestYield`, entradas en
+`harvestSourceRegion`/`harvestSourceHomeLocationSlug`/`harvestSourceTerrainTag`/`faunaTerrainTag`,
+5 filas nuevas en `worldPopulation.ts` (2 FAUNA + 3 RECURSO). Verificado: `tsc -b` limpio, suite
+completa en verde (solo los 2 archivos de integración con el flake de entorno preexistente,
+confirmado también en el código sin tocar vía `git stash`), y un script de integridad ad-hoc sin
+hallazgos (slugs duplicados, `itemSlug` huérfanos, conflictos de `metodoObtencion`, recursos sin
+`WorldPopulation`).
+
+**Pendiente de diseño (no de código)**: el oficio de agricultura de Las Llanuras y su vía de
+aprendizaje por misión especial — la propia usuaria lo dejó explícitamente para cuando se
+desarrolle el sistema de Reino, mismo criterio que el resto de mecánicas de "trabajador capturado"
+del Campamento del Clan Serhu (ver "Pasada de código de la sesión 2026-08-21" arriba).
 
 **Pendiente de código**: ver entrada nueva en la sección de arriba.

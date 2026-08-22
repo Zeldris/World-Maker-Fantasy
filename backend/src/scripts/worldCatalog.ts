@@ -1716,6 +1716,55 @@ export const fauna: NpcInput[] = [
       { icon: '🦉', name: 'Vuelo errático nocturno', description: 'Vuela con total agilidad en la oscuridad total, casi imposible de seguir.', categoria: 'defensa', preferredAttribute: 'destreza' },
     ],
   },
+
+  {
+    slug: 'towrgu',
+    name: 'Towrgu',
+    kind: 'PLANTILLA',
+    aliases: ['towrgu', 'towrgus'],
+    faction: null,
+    role: 'Depredador solitario de emboscada, La Sabana Alta',
+    articulo: 'el',
+    level: 4,
+    levelMax: 12,
+    attributes: { fuerza: 10, destreza: 14, constitucion: 9, inteligencia: 4, voluntad: 7, carisma: 2, arcano: 0 },
+    bio: 'Bestia de 120 a 160 cm, pelaje en tonos de rojo con manchas, corto y erizado, ojos ámbar, garras curvas que le permiten trepar y desgarrar con la misma facilidad. Musculado, dientes cortos y afilados en una boca extremadamente grande que se abre casi hasta las orejas. Bigotes espesos y curvados por su propio peso, cola larga negra rematada en un mechón rojo. Caza al acecho, aprovechando el sigilo que da el Pasto de Sangre para emboscar desde la hierba alta, igual que hace el Aullador Rojo con los Corredores de Cauce.',
+    personality: 'Solitario y territorial, ataca sin previo aviso desde la cobertura de la hierba.',
+    homeLocationSlug: 'sabana-alta-colmillar',
+    loadout: [],
+    ataqueNatural: 'Zarpazo de garras curvas seguido de una mordida de boca extremadamente grande.',
+    temperamento: 'AGRESIVO',
+    habilidadesRaciales: [
+      { icon: '🐾', name: 'Emboscada del pasto rojo', description: 'Aprovecha el sigilo de la hierba alta del Pasto de Sangre para atacar por sorpresa desde la cobertura.', categoria: 'ataque', preferredAttribute: 'destreza' },
+      { icon: '🦷', name: 'Mordida desgarradora', description: 'Abre su boca enorme casi hasta las orejas para una mordida directa y brutal.', categoria: 'ataque', preferredAttribute: 'fuerza' },
+      { icon: '🧗', name: 'Trepa de garras curvas', description: 'Sus garras curvas le permiten trepar con la misma facilidad con la que desgarran, útil para perseguir o huir.', categoria: 'utilidad', preferredAttribute: 'destreza' },
+    ],
+  },
+
+  {
+    slug: 'coracelo',
+    name: 'Coracelo',
+    kind: 'PLANTILLA',
+    aliases: ['coracelo', 'coracelos'],
+    faction: null,
+    role: 'Roedor constructor de madrigueras fortificadas, La Sabana Alta',
+    articulo: 'el',
+    level: 2,
+    levelMax: 8,
+    attributes: { fuerza: 7, destreza: 6, constitucion: 10, inteligencia: 6, voluntad: 5, carisma: 2, arcano: 0 },
+    bio: 'Roedor de 40 a 100 cm, pelaje espeso y largo —ceniza claro o marrón claro— que arrastra un poco por el suelo y oculta casi por completo ojos y extremidades. Manos muy desarrolladas que le permiten usar piedras y madera como herramientas para levantar madrigueras fortificadas donde refugiarse de los depredadores. Sus zarpas traseras, más grandes y con garras, son las que usa para defenderse, junto con dos largos colmillos inferiores cuadrados. La cola termina en una especie de bulto de escamas duras —equiparable en resistencia al hierro— que usa para golpear y partir rocas hasta encajarlas en su construcción.',
+    personality: 'Cauteloso y esquivo, prefiere huir a su madriguera antes que enfrentarse a nada.',
+    homeLocationSlug: 'sabana-alta-colmillar',
+    loadout: [],
+    ataqueNatural: 'Zarpazo de las patas traseras o golpe directo con la cola-maza de escamas, casi siempre solo para defenderse.',
+    temperamento: 'CAUTELOSO',
+    domesticablePct: 10,
+    habilidadesRaciales: [
+      { icon: '🦴', name: 'Cola-maza de escamas', description: 'Golpea con el bulto de escamas duras del final de su cola, capaz de partir roca —resistencia equiparable al hierro.', categoria: 'ataque', preferredAttribute: 'fuerza' },
+      { icon: '🖐️', name: 'Manos hábiles', description: 'Usa piedras y madera como herramientas para levantar y reforzar su madriguera.', categoria: 'utilidad', preferredAttribute: 'inteligencia' },
+      { icon: '🕳️', name: 'Madriguera fortificada', description: 'Se retira a su propia madriguera reforzada con roca, casi imposible de forzar desde fuera.', categoria: 'defensa', preferredAttribute: 'constitucion' },
+    ],
+  },
 ];
 
 export const npcs: NpcInput[] = [
@@ -2483,6 +2532,24 @@ export const items: ItemCatalogInput[] = [
     lugarOrigen: 'Manufactura orca.',
     tier: 1,
     requisitos: { fuerza: 6, destreza: 4, constitucion: 4 },
+    tipoArma: 'MAZA_1_MANO',
+  },
+
+  {
+    // Crafteada por herrero-orco-llanuras a partir de Cola de Coracelo (ver crafting.ts,
+    // CORACELO_MACE_RECIPE) — no es objeto de loot suelto, no aparece en ningún HarvestYield.
+    slug: 'maza-coracelo',
+    name: 'Maza de Coracelo',
+    aliases: ['maza de coracelo'],
+    category: 'arma',
+    tipo: 'EQUIPABLE',
+    equipSlot: 'ARMA_PRINCIPAL',
+    description: 'Maza corta rematada con el bulto de escamas de la cola de un Coracelo, resistencia equiparable al hierro — remachada a un mango de madera por un herrero orco.',
+    statBonuses: { fuerza: 2, constitucion: 1 },
+    dimensiones: 'Mango de 45 cm, cabeza de escamas de 15 cm.',
+    lugarOrigen: 'Manufactura orca, La Sabana Alta.',
+    tier: 3,
+    requisitos: { fuerza: 9, destreza: 5, constitucion: 5 },
     tipoArma: 'MAZA_1_MANO',
   },
 
@@ -3611,8 +3678,9 @@ export const items: ItemCatalogInput[] = [
     aliases: ['hojas de telda'],
     category: 'planta',
     tipo: 'RECURSO',
-    description: 'Hojas grandes de los árboles Telda, de 30 a 50 cm — material de tejados y cobertizos orcos.',
+    description: 'Hojas grandes de los árboles Telda, de 30 a 50 cm — material de tejados y cobertizos orcos. Misma hoja para Telda Común, Telda Ceniza y Telda Atardecer, solo cambian tronco/resina entre variantes.',
     dimensiones: 'Hojas de 30 a 50 cm.',
+    lugarOrigen: 'Llanuras del Viento Rojo.',
   },
 
   {
@@ -3916,6 +3984,126 @@ export const items: ItemCatalogInput[] = [
     description: 'Mineral casi imposible de encontrar, solo cerca de cráteres y lava en El Filo de las Brasas —más probable en Las Fumarolas Negras—, protegido por las propias Salamandras de Escoria.',
     dimensiones: 'Fragmentos de 5 cm.',
     tier: 5,
+  },
+
+  {
+    slug: 'pasto-de-sangre',
+    name: 'Pasto de Sangre',
+    aliases: ['pasto de sangre', 'hierba roja'],
+    category: 'hierba',
+    tipo: 'RECURSO',
+    description: 'Hierba roja de La Sabana Alta, más alta y densa que el Pasto Solar del que desciende — el tono rojo viene de la mezcla de esa raza de pasto con la mineralización, también roja, del agua de la zona.',
+    dimensiones: 'Manojo de 200 g.',
+    lugarOrigen: 'La Sabana Alta, Llanuras del Viento Rojo.',
+  },
+
+  {
+    slug: 'madera-telda-atardecer',
+    name: 'Madera de Telda Atardecer',
+    aliases: ['madera de telda atardecer', 'telda atardecer'],
+    category: 'madera',
+    tipo: 'RECURSO',
+    description: 'Madera de la misma especie que la Telda Común y la Telda Ceniza, pero con tronco y hojas de tonos rojos — la mejor madera de todas las variantes de Telda conocidas, propia de La Sabana Alta.',
+    dimensiones: 'Tablones de 80 cm.',
+    tier: 4,
+  },
+
+  {
+    slug: 'resina-telda-atardecer',
+    name: 'Resina de Telda Atardecer',
+    aliases: ['resina de telda atardecer'],
+    category: 'resina',
+    tipo: 'RECURSO',
+    description: 'Resina roja de los árboles de Telda Atardecer — pegamento más fino que la Resina Telda Gris común.',
+    dimensiones: 'Bloques de 8x5 cm.',
+    tier: 3,
+  },
+
+  {
+    slug: 'trigo-escarlata',
+    name: 'Trigo Escarlata',
+    aliases: ['trigo escarlata'],
+    category: 'alimento',
+    tipo: 'RECURSO',
+    description: 'Espigas de un rojo intenso, base para harinas — crece salvaje en La Sabana Alta. Los orcos de las Llanuras nunca han logrado cultivarlo de verdad: la presión Goirnte y el terreno que ocupan no les han dejado desarrollar una agricultura propia, una de las razones reales de que el clan nunca se haya expandido como civilización.',
+    dimensiones: 'Espigas de 25 cm.',
+  },
+
+  {
+    slug: 'roca-luclara',
+    name: 'Roca Luclara',
+    aliases: ['roca luclara'],
+    category: 'piedra',
+    tipo: 'RECURSO',
+    description: 'Piedra clara, casi blanca, similar al mármol — los Towrgu excavan en ella sus propios nidos. Material de construcción de tier alto para edificaciones de Las Llanuras.',
+    dimensiones: 'Bloques de 25 cm.',
+    tier: 6,
+  },
+
+  {
+    slug: 'piel-towrgu',
+    name: 'Piel de Towrgu',
+    aliases: ['piel de towrgu'],
+    category: 'piel',
+    tipo: 'RECURSO',
+    description: 'Pelaje corto y erizado de Towrgu, en tonos de rojo con manchas.',
+    dimensiones: 'Piel de 1,3 m².',
+    tier: 4,
+  },
+
+  {
+    slug: 'garras-towrgu',
+    name: 'Garras de Towrgu',
+    aliases: ['garras de towrgu'],
+    category: 'garra',
+    tipo: 'RECURSO',
+    description: 'Garras curvas de Towrgu, tan afiladas para trepar como para desgarrar.',
+    dimensiones: 'Garras de 6 a 8 cm.',
+    tier: 5,
+  },
+
+  {
+    slug: 'colmillos-towrgu',
+    name: 'Colmillos de Towrgu',
+    aliases: ['colmillos de towrgu', 'dientes de towrgu'],
+    category: 'hueso',
+    tipo: 'RECURSO',
+    description: 'Dientes cortos y afilados de una boca capaz de abrirse casi hasta las orejas.',
+    dimensiones: 'Colmillos de 3 a 5 cm.',
+    tier: 6,
+  },
+
+  {
+    slug: 'piel-coracelo',
+    name: 'Piel de Coracelo',
+    aliases: ['piel de coracelo'],
+    category: 'piel',
+    tipo: 'RECURSO',
+    description: 'Pelaje espeso y largo de Coracelo, en tonos ceniza claro o marrón claro.',
+    dimensiones: 'Piel de 80 cm.',
+    tier: 2,
+  },
+
+  {
+    slug: 'colmillos-coracelo',
+    name: 'Colmillos de Coracelo',
+    aliases: ['colmillos de coracelo'],
+    category: 'hueso',
+    tipo: 'RECURSO',
+    description: 'Los dos largos colmillos inferiores, cuadrados, de un Coracelo.',
+    dimensiones: 'Colmillos de 8 a 12 cm.',
+    tier: 3,
+  },
+
+  {
+    slug: 'cola-coracelo',
+    name: 'Cola de Coracelo',
+    aliases: ['cola de coracelo'],
+    category: 'escama',
+    tipo: 'RECURSO',
+    description: 'El bulto de escamas duras del final de la cola de un Coracelo, que el animal usa en vida para partir roca — resistencia equiparable al hierro. Material crudo para crafteos que no son de construcción.',
+    dimensiones: 'Bulto de 15 cm.',
+    tier: 4,
   },
 
   {
@@ -5054,6 +5242,97 @@ export const harvestYields: HarvestYieldInput[] = [
     condicion: 'casi imposible de encontrar, protegido por Salamandras de Escoria — más probable en Las Fumarolas Negras que en el resto de El Filo de las Brasas (pendiente: el motor no distingue hoy probabilidad por Location dentro del mismo sourceSlug)',
   },
 
+  // --- La Sabana Alta (Pasto de Sangre, Telda Atardecer, Trigo Escarlata, Roca Luclara, Towrgu,
+  // Coracelo) — zona 14 del repaso "zona por zona", añadido 2026-08-22. ---
+
+  {
+    sourceSlug: 'pasto-de-sangre',
+    sourceCategory: 'planta',
+    metodoObtencion: 'PASIVO',
+    itemSlug: 'pasto-de-sangre',
+    cantidad: 2,
+  },
+
+  {
+    sourceSlug: 'telda-atardecer',
+    sourceCategory: 'planta',
+    metodoObtencion: 'TALA',
+    itemSlug: 'madera-telda-atardecer',
+    cantidad: 1,
+  },
+
+  {
+    sourceSlug: 'resina-telda-atardecer-fuente',
+    sourceCategory: 'planta',
+    metodoObtencion: 'EXTRACCION',
+    itemSlug: 'resina-telda-atardecer',
+    cantidad: 1,
+  },
+
+  {
+    sourceSlug: 'trigo-escarlata',
+    sourceCategory: 'planta',
+    metodoObtencion: 'PASIVO',
+    itemSlug: 'trigo-escarlata',
+    cantidad: 2,
+  },
+
+  {
+    sourceSlug: 'roca-luclara',
+    sourceCategory: 'mineral',
+    metodoObtencion: 'MINERIA',
+    itemSlug: 'roca-luclara',
+    cantidad: 1,
+  },
+
+  {
+    sourceSlug: 'towrgu',
+    sourceCategory: 'fauna',
+    metodoObtencion: 'CAZA',
+    itemSlug: 'piel-towrgu',
+    cantidad: 1,
+  },
+
+  {
+    sourceSlug: 'towrgu',
+    sourceCategory: 'fauna',
+    metodoObtencion: 'CAZA',
+    itemSlug: 'garras-towrgu',
+    cantidad: 1,
+  },
+
+  {
+    sourceSlug: 'towrgu',
+    sourceCategory: 'fauna',
+    metodoObtencion: 'CAZA',
+    itemSlug: 'colmillos-towrgu',
+    cantidad: 1,
+  },
+
+  {
+    sourceSlug: 'coracelo',
+    sourceCategory: 'fauna',
+    metodoObtencion: 'CAZA',
+    itemSlug: 'piel-coracelo',
+    cantidad: 1,
+  },
+
+  {
+    sourceSlug: 'coracelo',
+    sourceCategory: 'fauna',
+    metodoObtencion: 'CAZA',
+    itemSlug: 'colmillos-coracelo',
+    cantidad: 1,
+  },
+
+  {
+    sourceSlug: 'coracelo',
+    sourceCategory: 'fauna',
+    metodoObtencion: 'CAZA',
+    itemSlug: 'cola-coracelo',
+    cantidad: 1,
+  },
+
   // --- Hielo Sílice ---
 
   // --- Fauna/flora de otras regiones de Berig (2026-07-22, "incluye de momento solo todo lo que
@@ -5438,7 +5717,10 @@ export const harvestSourceHomeLocationSlug: Record<string, string> = {
   'musgo-arcilla': 'pozo-cauce-viejo',
   'telda-comun': 'pozo-cauce-viejo',
   'resina-telda-fuente': 'pozo-cauce-viejo',
-  'hojas-telda-fuente': 'pozo-cauce-viejo',
+  // 'hojas-telda-fuente' quitado de aquí (2026-08-22, misma corrección que 'pasto-solar' arriba):
+  // Hojas de Telda es la misma hoja para las 3 variantes de Telda (Común/Ceniza/Atardecer), pero
+  // el candado a una única Location la dejaba indetectable en El Cruce de las Cenizas y ahora
+  // también en La Sabana Alta — hueco real preexistente, no solo de esta pasada.
   guchapo: 'pozo-cauce-viejo',
   lebude: 'pozo-cauce-viejo',
   escorante: 'pozo-cauce-viejo',
@@ -5463,6 +5745,15 @@ export const harvestSourceHomeLocationSlug: Record<string, string> = {
   volcanita: 'filo-de-las-brasas',
   rovalnica: 'filo-de-las-brasas',
   fercaneo: 'filo-de-las-brasas',
+
+  // La Sabana Alta (zona 14, añadido 2026-08-22).
+  'pasto-de-sangre': 'sabana-alta-colmillar',
+  'telda-atardecer': 'sabana-alta-colmillar',
+  'resina-telda-atardecer-fuente': 'sabana-alta-colmillar',
+  'trigo-escarlata': 'sabana-alta-colmillar',
+  'roca-luclara': 'sabana-alta-colmillar',
+  towrgu: 'sabana-alta-colmillar',
+  coracelo: 'sabana-alta-colmillar',
 };
 
 export const harvestSourceRegion: Record<string, string> = {
@@ -5546,6 +5837,13 @@ export const harvestSourceRegion: Record<string, string> = {
   volcanita: 'Llanuras del Viento Rojo',
   rovalnica: 'Llanuras del Viento Rojo',
   fercaneo: 'Llanuras del Viento Rojo',
+  'pasto-de-sangre': 'Llanuras del Viento Rojo',
+  'telda-atardecer': 'Llanuras del Viento Rojo',
+  'resina-telda-atardecer-fuente': 'Llanuras del Viento Rojo',
+  'trigo-escarlata': 'Llanuras del Viento Rojo',
+  'roca-luclara': 'Llanuras del Viento Rojo',
+  towrgu: 'Llanuras del Viento Rojo',
+  coracelo: 'Llanuras del Viento Rojo',
 };
 
 /// Categorías amplias de fuente recolectable (2026-08-15, petición explícita: "tener un enum con
@@ -5689,6 +5987,10 @@ export const harvestSourceTerrainTag: Record<string, TerrainTag> = {
   'telda-ceniza': 'humedo',
   'resina-telda-fuente': 'humedo',
   'flor-salvatura': 'vegetacion', // Los Pastos de la Deriva
+  // La Sabana Alta (zona 14, añadido 2026-08-22).
+  'telda-atardecer': 'vegetacion',
+  'resina-telda-atardecer-fuente': 'vegetacion',
+  'roca-luclara': 'arido', // pradera árida, no rocosa — misma imprecisión conocida que 'yerreo'
 };
 
 /// Afinidad de hábitat de cada especie cazable (filtro por zona, ver `terrain.ts`) — leída de su
@@ -5716,4 +6018,7 @@ export const faunaTerrainTag: Record<string, TerrainTag> = {
   // Honor, Filo de las Brasas, Sabana Alta, Paso de los Huesos, Dunas Ahogadas, Vientre del
   // Engaño, Fosa Horadada, Campo Yermo — exactamente "cualquier zona arenosa", sin inventar nada.
   ruptidar: 'arido',
+  // La Sabana Alta (zona 14, añadido 2026-08-22).
+  towrgu: 'vegetacion',
+  coracelo: 'vegetacion',
 };

@@ -175,6 +175,28 @@ export const BOUNGO_ROAST_RECIPE: CraftingRecipe = {
   narrationDo: 'El personaje asa sus Boungo sobre brasas — narra la escena con naturalidad. El objeto ya se gestiona automáticamente por el backend.',
 };
 
+export const CORACELO_MACE_RECIPE: CraftingRecipe = {
+  key: 'coraceloMace',
+  verbRegex: /forj|fabric|monta|crear|creo/,
+  nounRegex: /maza/,
+  location: 'campamento-serhu',
+  ingredients: [{ match: { kind: 'exact', catalogSlug: 'cola-coracelo' }, cantidad: 1, label: 'cola de Coracelo' }],
+  resultName: 'Maza de Coracelo',
+  resultCatalogSlug: 'maza-coracelo',
+  resultDescription: 'Maza corta rematada con el bulto de escamas de la cola de un Coracelo, remachada a un mango de madera en la fragua del campamento.',
+  statBonuses: { fuerza: 2, constitucion: 1 },
+  // Sesión de lore 2026-08-22 (La Sabana Alta): la cola del Coracelo es "dura como el hierro" —
+  // mismo oficio 'herrero' que el resto de armamento orco tosco (maza-orca, hacha reforjada),
+  // requiere fragua real, no crafteo de campo.
+  tier: 3,
+  requisitos: { fuerza: 9, destreza: 5, constitucion: 5 },
+  oficio: 'herrero-orco-llanuras',
+  narrationWant:
+    'El personaje quiere forjar una maza con la cola de un Coracelo, pero no puede hacerlo ahora mismo (hace falta estar en el Campamento del Clan Serhu y tener al menos una cola de Coracelo) — narra que lo intenta o lo considera, pero no que la forja de verdad.',
+  narrationDo:
+    'El personaje forja una Maza de Coracelo aquí mismo, en el Campamento del Clan Serhu, remachando el bulto de escamas de la cola a un mango de madera — narra la escena con el peso que merece. El objeto ya se gestiona automáticamente por el backend.',
+};
+
 const FIELD_TORCH_RECIPE: CraftingRecipe = {
   key: 'fieldTorch',
   verbRegex: /fabric|monta|prepar|\bata|\bato|crear|creo/,
@@ -475,6 +497,7 @@ export const CRAFTING_RECIPES: CraftingRecipe[] = [
   CLUB_RECIPE,
   GARGANTUA_LEG_ARMOR_RECIPE,
   BOUNGO_ROAST_RECIPE,
+  CORACELO_MACE_RECIPE,
 ];
 
 export function detectsCraftIntent(recipe: CraftingRecipe, action: string): boolean {

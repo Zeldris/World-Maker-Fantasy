@@ -64,7 +64,7 @@ function row(id: string, catalogSlug: string, cantidad?: number): InventoryRowLi
 }
 
 describe('CRAFTING_RECIPES', () => {
-  it('tiene las 17 recetas esperadas, cada una con una clave única', () => {
+  it('tiene las 18 recetas esperadas, cada una con una clave única', () => {
     expect(CRAFTING_RECIPES.map((r) => r.key)).toEqual([
       'axeRepair',
       'smokeMeat',
@@ -83,6 +83,7 @@ describe('CRAFTING_RECIPES', () => {
       'club',
       'gargantuaLegArmor',
       'boungoRoast',
+      'coraceloMace',
     ]);
   });
 });
