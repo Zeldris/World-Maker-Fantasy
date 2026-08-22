@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { projectLlanurasNodes, type LlanurasEdge, type LlanurasNode, type MapNodeOption, type MapRegion } from '../../data/map'
+import { projectLlanurasNodes, type LlanurasEdge, type LlanurasNode, type CristalHeladoNode, type MapNodeOption, type MapRegion } from '../../data/map'
 import berigMapUrl from '../../assets/maps/helek-sirik-berig.png'
 import { MapZoomModal } from './MapZoomModal'
 
@@ -91,6 +91,17 @@ const LLANURAS_PATH_D = SHAPES.find((s) => s.name === 'Las Llanuras del Viento R
 // núcleo ya no necesita inferirse — es una constante confirmada por la propia barra de Azgaar.
 const LLANURAS_SCALE_BAR_KM = 15
 
+// Cristal Helado (añadido 2026-08-22) — mismo `d` real de SHAPES, sin duplicar la cadena de
+// puntos. Bbox calculado del propio path (min/max de cada coordenada), no medido a mano como el
+// de Llanuras (`LLANURAS_SHAPE_BBOX`, triangulado contra `LocationLink`) — aquí no hay ningún
+// dato real que triangular todavía. Sin barra de escala a propósito: sin coordenadas km reales
+// (ver data/map.ts) mostrar un "~X km" sería inventar precisión que no existe.
+const CRISTAL_HELADO_PATH_D = SHAPES.find((s) => s.name === 'Cristal Helado')?.d ?? ''
+const CRISTAL_HELADO_SHAPE_BBOX = { x0: 501, y0: 18, x1: 708, y1: 139 }
+// Cristal Helado no tiene `LocationLink` todavía (ver data/map.ts) — array estable fuera del
+// render para no crear una identidad nueva en cada pasada.
+const NO_EDGES: LlanurasEdge[] = []
+
 interface InteractiveMapProps {
   regions: MapRegion[]
   currentRegion: string
@@ -98,6 +109,10 @@ interface InteractiveMapProps {
   /// tiene coordenadas medidas (docs/13 § 1.1); el resto del continente sigue siendo solo formas.
   llanurasNodes?: LlanurasNode[]
   llanurasEdges?: LlanurasEdge[]
+  /// Cristal Helado (añadido 2026-08-22): mismo patrón que Llanuras, pero ya en espacio de
+  /// píxeles del lienzo (sin proyección, ver data/map.ts) y sin aristas — la región no tiene
+  /// grafo de viaje real todavía, solo lectura visual/Enciclopedia.
+  cristalHeladoNodes?: CristalHeladoNode[]
   currentLocationSlug?: string | null
   /// Qué hay anclado en este nodo (2026-08-04, reemplaza `onNodeDetail`): puede ser tu posición,
   /// la ubicación en sí, y/o una o más construcciones — con 1 sola opción se abre directo (mismo
@@ -114,6 +129,8 @@ interface InteractiveMapProps {
   /// los puntos de ubicación concretos — mismo patrón pensado para el resto de Berig cuando tenga
   /// coordenadas propias.
   hasLlanurasMap: boolean
+  /// Cristal Helado (añadido 2026-08-22) — mismo patrón que `hasLlanurasMap`.
+  hasCristalHeladoMap: boolean
   /// Punto 3 del diseño de Gistera Koh (2026-07-23, antes deferido a propósito): slug de la
   /// Location donde marcar el objetivo de la misión activa con un "!" rojo oscuro — null si la
   /// misión activa no tiene objetivo geográfico conocido, o si aún no coincide con ningún nodo
@@ -126,10 +143,12 @@ export function InteractiveMap({
   currentRegion,
   llanurasNodes,
   llanurasEdges,
+  cristalHeladoNodes,
   currentLocationSlug,
   getNodeOptions,
   buildingIconBySlug,
   hasLlanurasMap,
+  hasCristalHeladoMap,
   questTargetLocationSlug,
 }: InteractiveMapProps) {
   const [selectedName, setSelectedName] = useState(currentRegion)
@@ -147,10 +166,11 @@ export function InteractiveMap({
   }, [currentRegion])
   const selected = regions.find((r) => r.name === selectedName) ?? null
   const [selectedNodeSlug, setSelectedNodeSlug] = useState<string | null>(null)
-  const selectedNode = llanurasNodes?.find((n) => n.slug === selectedNodeSlug) ?? null
+  const selectedNode = llanurasNodes?.find((n) => n.slug === selectedNodeSlug) ?? cristalHeladoNodes?.find((n) => n.slug === selectedNodeSlug) ?? null
 
   const nodePositions = useMemo(() => (llanurasNodes ? projectLlanurasNodes(llanurasNodes) : null), [llanurasNodes])
   const showLlanurasGraph = hasLlanurasMap && selectedName === 'Las Llanuras del Viento Rojo' && nodePositions && llanurasNodes && llanurasEdges
+  const showCristalHeladoGraph = hasCristalHeladoMap && selectedName === 'Cristal Helado' && cristalHeladoNodes
   // Visor ampliable (roadmap "atlas Azgaar", 2026-07-22): el panel pequeño va bien para elegir
   // región/nodo, pero a este tamaño la imagen real de Azgaar nunca se ve con detalle de verdad —
   // ver MapZoomModal.tsx para el motivo (resolución fija del PNG, no un bug de renderizado).
@@ -198,7 +218,10 @@ export function InteractiveMap({
           {SHAPES.map((shape) => {
             const isCurrent = shape.name === currentRegion
             const isSelected = selectedName === shape.name
-            const isLlanurasWithGraph = shape.name === 'Las Llanuras del Viento Rojo' && showLlanurasGraph
+            // Generalizado 2026-08-22 (antes solo comprobaba Llanuras) — cualquier región con su
+            // propio grafo de nodos visible oculta la insignia decorativa de "aquí ahora" sobre
+            // la propia forma, igual que ya hacía Llanuras.
+            const isLlanurasWithGraph = (shape.name === 'Las Llanuras del Viento Rojo' && showLlanurasGraph) || (shape.name === 'Cristal Helado' && showCristalHeladoGraph)
             // El color/textura de terreno ya vienen en la imagen — aquí solo se resalta el
             // borde (y un tinte muy leve) al pasar el ratón, seleccionar o estar en la región
             // actual; nunca se tapa el arte real con un relleno sólido.
@@ -258,6 +281,9 @@ export function InteractiveMap({
           <clipPath id="llanuras-clip">
             <path d={LLANURAS_PATH_D} />
           </clipPath>
+          <clipPath id="cristal-helado-clip">
+            <path d={CRISTAL_HELADO_PATH_D} />
+          </clipPath>
 
           {/* Placa de contraste (roadmap "atlas Azgaar", 2026-07-21/22): el grafo de nodos ahora
               vive encima del arte real de Azgaar, mucho más recargado que el relleno plano de
@@ -272,6 +298,18 @@ export function InteractiveMap({
               fill="var(--color-wood-950)"
               opacity={0.30}
               clipPath="url(#llanuras-clip)"
+              className="pointer-events-none"
+            />
+          )}
+          {showCristalHeladoGraph && (
+            <rect
+              x={CRISTAL_HELADO_SHAPE_BBOX.x0 - 4}
+              y={CRISTAL_HELADO_SHAPE_BBOX.y0 - 4}
+              width={CRISTAL_HELADO_SHAPE_BBOX.x1 - CRISTAL_HELADO_SHAPE_BBOX.x0 + 8}
+              height={CRISTAL_HELADO_SHAPE_BBOX.y1 - CRISTAL_HELADO_SHAPE_BBOX.y0 + 8}
+              fill="var(--color-wood-950)"
+              opacity={0.3}
+              clipPath="url(#cristal-helado-clip)"
               className="pointer-events-none"
             />
           )}
@@ -292,6 +330,29 @@ export function InteractiveMap({
                   // hacía el stroke inválido y las líneas de ruta llevaban invisibles desde que se
                   // construyó esta función, no algo específico de las zonas nuevas (2026-08-05,
                   // encontrado jugando: "no veo ninguna línea de ruta en el mapa").
+                  stroke="var(--color-wood-300)"
+                  strokeWidth={0.6}
+                  strokeDasharray={edge.riesgo ? '2 1.5' : undefined}
+                  opacity={0.75}
+                />
+              )
+            })}
+
+          {/* Cristal Helado no tiene `LocationLink` todavía — `NO_EDGES` está siempre vacío, este
+              bloque no dibuja nada hoy, solo deja el sitio listo para cuando exista un grafo de
+              viaje real (mismo criterio de código que el bloque de Llanuras de arriba). */}
+          {showCristalHeladoGraph &&
+            NO_EDGES.map((edge) => {
+              const from = cristalHeladoNodes!.find((n) => n.slug === edge.fromSlug)
+              const to = cristalHeladoNodes!.find((n) => n.slug === edge.toSlug)
+              if (!from || !to) return null
+              return (
+                <line
+                  key={`${edge.fromSlug}-${edge.toSlug}`}
+                  x1={from.x}
+                  y1={from.y}
+                  x2={to.x}
+                  y2={to.y}
                   stroke="var(--color-wood-300)"
                   strokeWidth={0.6}
                   strokeDasharray={edge.riesgo ? '2 1.5' : undefined}
@@ -448,6 +509,97 @@ export function InteractiveMap({
               )
             })}
 
+          {/* Cristal Helado (añadido 2026-08-22) — mismo dibujado que Llanuras, con dos
+              diferencias: `pos` es el propio nodo (ya en espacio de píxeles, sin proyección) y no
+              hay insignia de misión/construcción todavía (ninguna misión ni Reino apunta aquí). */}
+          {showCristalHeladoGraph &&
+            cristalHeladoNodes.map((node) => {
+              const pos = node
+              const isCurrentNode = node.slug === currentLocationSlug
+              const isSelectedNode = node.slug === selectedNodeSlug
+              const nodeOptions = getNodeOptions?.(node.slug) ?? []
+              const isExpanded = expandedNodeSlug === node.slug
+              const selectThisNode = () => {
+                setSelectedNodeSlug(node.slug)
+                if (nodeOptions.length <= 1) {
+                  setExpandedNodeSlug(null)
+                  nodeOptions[0]?.onSelect()
+                } else {
+                  setExpandedNodeSlug((prev) => (prev === node.slug ? null : node.slug))
+                }
+              }
+              return (
+                <g
+                  key={`${node.slug}-${isCurrentNode}`}
+                  role="button"
+                  tabIndex={0}
+                  className={`tactile cursor-pointer outline-none${isCurrentNode ? ' animate-pop-once' : ''}`}
+                  style={{ transformBox: 'fill-box', transformOrigin: 'center' } as React.CSSProperties}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    selectThisNode()
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault()
+                      selectThisNode()
+                    }
+                  }}
+                >
+                  <title>{isCurrentNode ? 'Estás aquí' : node.name}</title>
+                  {isCurrentNode ? (
+                    <g>
+                      <clipPath id={`current-node-badge-clip-${node.slug}`}>
+                        <circle cx={pos.x} cy={pos.y} r={2.61} />
+                      </clipPath>
+                      <circle cx={pos.x} cy={pos.y} r={2.61} fill="#d4af37" stroke="white" strokeWidth={0.57} />
+                      <g clipPath={`url(#current-node-badge-clip-${node.slug})`}>
+                        <circle cx={pos.x} cy={pos.y - 0.86} r={0.9} fill="white" />
+                        <circle cx={pos.x} cy={pos.y + 2.7} r={1.89} fill="white" />
+                      </g>
+                    </g>
+                  ) : (
+                    <>
+                      <circle cx={pos.x} cy={pos.y} r={2.0} fill="rgba(10,8,6,0.55)" />
+                      <circle
+                        cx={pos.x}
+                        cy={pos.y}
+                        r={1.35}
+                        fill={isSelectedNode ? 'var(--color-accent2-600)' : 'var(--color-wood-300)'}
+                        stroke="var(--color-iron-700)"
+                        strokeWidth={0.5}
+                      />
+                    </>
+                  )}
+                  {isExpanded &&
+                    nodeOptions.map((opt, i) => {
+                      const offset = paletteOffsets(nodeOptions.length)[i]
+                      const ox = pos.x + offset.x
+                      const oy = pos.y + offset.y
+                      return (
+                        <g
+                          key={opt.id}
+                          className="tactile cursor-pointer outline-none"
+                          style={{ transformBox: 'fill-box', transformOrigin: 'center' } as React.CSSProperties}
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setExpandedNodeSlug(null)
+                            opt.onSelect()
+                          }}
+                        >
+                          <title>{opt.label}</title>
+                          <line x1={pos.x} y1={pos.y} x2={ox} y2={oy} stroke="var(--color-accent2-500)" strokeWidth={0.35} opacity={0.6} />
+                          <circle cx={ox} cy={oy} r={2.4} fill="var(--color-wood-950)" stroke="var(--color-accent2-500)" strokeWidth={0.5} />
+                          <text x={ox} y={oy} textAnchor="middle" dominantBaseline="central" style={{ fontSize: 2.4 }}>
+                            {opt.icon}
+                          </text>
+                        </g>
+                      )
+                    })}
+                </g>
+              )
+            })}
+
           {/* Barra de escala del núcleo — escala real 1:1 confirmada por la propia barra de
               Azgaar (docs/map), ya no una escala inferida por estiramiento. */}
           {showLlanurasGraph && (
@@ -515,6 +667,7 @@ export function InteractiveMap({
           onClose={() => setShowZoomModal(false)}
           llanurasNodes={hasLlanurasMap ? llanurasNodes : undefined}
           llanurasEdges={hasLlanurasMap ? llanurasEdges : undefined}
+          cristalHeladoNodes={hasCristalHeladoMap ? cristalHeladoNodes : undefined}
           currentLocationSlug={currentLocationSlug}
           questTargetLocationSlug={questTargetLocationSlug}
           getNodeOptions={getNodeOptions}

@@ -185,3 +185,40 @@ export const llanurasNodePositions: Record<string, { x: number; y: number }> = {
   'grieta-cantora': { x: 6, y: -100 }, // confirmado correcto 2026-08-05
   'campo-yermo': { x: 19, y: 22 }, // confirmado correcto 2026-08-05
 }
+
+export interface CristalHeladoNode {
+  slug: string
+  name: string
+  description: string
+  x: number
+  y: number
+}
+
+export type CristalHeladoEdge = LlanurasEdge
+
+// Cristal Helado (añadido 2026-08-22, petición explícita: "solo visual... no viajable de verdad
+// todavía") — a diferencia de Llanuras, esta región no tiene coordenadas km reales
+// (`LocationInput.x`/`y` en worldCatalog.ts) ni `LocationLink` triangulados: sigue siendo
+// contenido de Enciclopedia sin grafo de viaje (ver docs/rpgtarkor/areas.md § Cristal Helado).
+// Sin un ancla real como tuvo Llanuras (campamento-serhu contra el .map de Azgaar), estas
+// coordenadas viven DIRECTAMENTE en el mismo espacio de píxeles del lienzo (800×600) — no hace
+// falta ninguna proyección tipo `projectLlanurasNodes`.
+//
+// PROVISIONAL: rejilla neutra de partida dentro del contorno real de Cristal Helado (bbox
+// x:501-708, y:18-139, calculado del propio path de `SHAPES` en InteractiveMap.tsx) — ninguna
+// posición está confirmada todavía. Pendiente: colocarlas una a una viendo el render real,
+// mismo criterio que ya se usó para calibrar Llanuras (nunca mover nodos a ciegas).
+export const cristalHeladoNodePositions: Record<string, { x: number; y: number }> = {
+  'campamento-clan-helsig': { x: 538, y: 48 },
+  'veta-helada': { x: 583, y: 48 },
+  'red-profunda-final': { x: 627, y: 48 },
+  'lago-cristalice': { x: 671, y: 48 },
+  'pico-escarcha': { x: 538, y: 79 },
+  'pico-ocaso-negro': { x: 583, y: 79 },
+  'pico-tundra-negra': { x: 627, y: 79 },
+  'tundra-negra-refleja': { x: 671, y: 79 },
+  'tundra-polvo-nocturno': { x: 538, y: 109 },
+  'costa-celeste-agitada': { x: 583, y: 109 },
+  'cascada-cristal-tres-aguas': { x: 627, y: 109 },
+  'desfiladeros-bruma': { x: 671, y: 109 },
+}

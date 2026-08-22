@@ -1,5 +1,14 @@
 import { useEffect, useMemo, useState } from 'react'
-import { beriRegions, llanurasNodePositions, CONSTRUCTION_RECIPE_ICONS, type LlanurasEdge, type LlanurasNode, type MapNodeOption } from '../../data/map'
+import {
+  beriRegions,
+  llanurasNodePositions,
+  cristalHeladoNodePositions,
+  CONSTRUCTION_RECIPE_ICONS,
+  type LlanurasEdge,
+  type LlanurasNode,
+  type CristalHeladoNode,
+  type MapNodeOption,
+} from '../../data/map'
 import { getEnciclopedia, getWorldLocations, type EnciclopediaConstructionRecipe, type WorldLocationInfo } from '../../lib/api'
 import { formatMinutos } from '../../lib/gameViewHelpers'
 import { InteractiveMap } from './InteractiveMap'
@@ -38,14 +47,23 @@ interface MapaPanelProps {
 // desbloquea ver los puntos de ubicación de Llanuras en el mapa. Ya no se rompe si el objeto se
 // renombra en un saqueo/regalo personalizado, a diferencia de comparar por `name`.
 const REVEAL_MAP_LLANURAS_EFFECT_KEY = 'reveal-map-llanuras'
+// Cristal Helado (añadido 2026-08-22) — mismo patrón de `effectKey` que Llanuras, pero SOLO
+// visual: a diferencia de Llanuras, poseer este item no desbloquea destinos de viaje reales
+// (`/saves/:id/destinos-viaje` sigue sin tocar, sigue mirando solo 'reveal-map-llanuras') —
+// decisión explícita de la usuaria, la región no tiene grafo de viaje (`LocationLink`) todavía.
+const REVEAL_MAP_CRISTAL_HELADO_EFFECT_KEY = 'reveal-map-cristal-helado'
 
-// Catálogo real de ubicaciones de Llanuras, combinado con la geometría medida a mano (el backend
-// no guarda coordenadas de mapa) — ver comentario en data/map.ts. Se pide una sola vez por mundo,
-// no en cada render.
-function useLlanurasGraph(worldSlug: string | null) {
-  const [nodes, setNodes] = useState<LlanurasNode[] | undefined>(undefined)
-  const [edges, setEdges] = useState<LlanurasEdge[] | undefined>(undefined)
-  const [poiFallback, setPoiFallback] = useState<{ name: string; description: string }[]>([])
+// Catálogo real de ubicaciones combinado con la geometría medida/estimada a mano (el backend no
+// guarda coordenadas de mapa) — ver comentario en data/map.ts. Un solo fetch por mundo para
+// ambas regiones (antes solo existía Llanuras); se pide una sola vez, no en cada render.
+function useMapGraphs(worldSlug: string | null) {
+  const [llanurasNodes, setLlanurasNodes] = useState<LlanurasNode[] | undefined>(undefined)
+  const [llanurasEdges, setLlanurasEdges] = useState<LlanurasEdge[] | undefined>(undefined)
+  const [llanurasPoiFallback, setLlanurasPoiFallback] = useState<{ name: string; description: string }[]>([])
+  // Cristal Helado no tiene `LocationLink` todavía (sin grafo de viaje real, ver data/map.ts) —
+  // por eso no hay `cristalHeladoEdges` aquí, a diferencia de Llanuras.
+  const [cristalHeladoNodes, setCristalHeladoNodes] = useState<CristalHeladoNode[] | undefined>(undefined)
+  const [cristalHeladoPoiFallback, setCristalHeladoPoiFallback] = useState<{ name: string; description: string }[]>([])
   // Ubicaciones completas por slug (petición explícita, 2026-07-22: "cuando pulso alguno de los
   // puntos debería abrirme su entrada en la enciclopedia") — `nodes` solo lleva slug/nombre/
   // descripción/posición (lo que pide el dibujado del SVG), pero `locationToDetailTarget` necesita
@@ -58,33 +76,45 @@ function useLlanurasGraph(worldSlug: string | null) {
     getWorldLocations(worldSlug)
       .then(({ locations, links }) => {
         if (cancelled) return
-        const withPosition = locations.filter((l) => l.slug in llanurasNodePositions)
-        setNodes(
-          withPosition.map((l) => ({
+        setLocationsBySlug(new Map(locations.map((l) => [l.slug, l])))
+
+        const llanuras = locations.filter((l) => l.slug in llanurasNodePositions)
+        setLlanurasNodes(
+          llanuras.map((l) => ({
             slug: l.slug,
             name: l.name,
             description: l.description,
             ...llanurasNodePositions[l.slug],
           })),
         )
-        setLocationsBySlug(new Map(locations.map((l) => [l.slug, l])))
-        setPoiFallback(withPosition.map((l) => ({ name: l.name, description: l.description })))
-        const slugs = new Set(withPosition.map((l) => l.slug))
-        setEdges(
+        setLlanurasPoiFallback(llanuras.map((l) => ({ name: l.name, description: l.description })))
+        const llanurasSlugs = new Set(llanuras.map((l) => l.slug))
+        setLlanurasEdges(
           links
-            .filter((link) => slugs.has(link.fromSlug) && slugs.has(link.toSlug))
+            .filter((link) => llanurasSlugs.has(link.fromSlug) && llanurasSlugs.has(link.toSlug))
             .map((link) => ({ fromSlug: link.fromSlug, toSlug: link.toSlug, riesgo: link.riesgo !== null })),
         )
+
+        const cristalHelado = locations.filter((l) => l.slug in cristalHeladoNodePositions)
+        setCristalHeladoNodes(
+          cristalHelado.map((l) => ({
+            slug: l.slug,
+            name: l.name,
+            description: l.description,
+            ...cristalHeladoNodePositions[l.slug],
+          })),
+        )
+        setCristalHeladoPoiFallback(cristalHelado.map((l) => ({ name: l.name, description: l.description })))
       })
       .catch(() => {
-        // Sin conexión al backend: el mapa se queda sin grafo de Llanuras en vez de romper el panel.
+        // Sin conexión al backend: el mapa se queda sin grafo en vez de romper el panel.
       })
     return () => {
       cancelled = true
     }
   }, [worldSlug])
 
-  return { nodes, edges, poiFallback, locationsBySlug }
+  return { llanurasNodes, llanurasEdges, llanurasPoiFallback, cristalHeladoNodes, cristalHeladoPoiFallback, locationsBySlug }
 }
 
 // Ficha del protagonista (petición explícita, 2026-07-23: "si lo clicko me lleva a la enciclopedia
@@ -119,10 +149,17 @@ function useProtagonistaYConstrucciones(worldSlug: string | null) {
 }
 
 export function MapaPanel({ worldSlug, currentLocation, destinations, inventory, quests, buildings }: MapaPanelProps) {
-  const { nodes: llanurasNodes, edges: llanurasEdges, poiFallback: llanurasPuntosDeInteres, locationsBySlug } = useLlanurasGraph(worldSlug)
+  const {
+    llanurasNodes,
+    llanurasEdges,
+    llanurasPoiFallback: llanurasPuntosDeInteres,
+    cristalHeladoNodes,
+    locationsBySlug,
+  } = useMapGraphs(worldSlug)
   const { protagonistaTarget, constructionsByKey } = useProtagonistaYConstrucciones(worldSlug)
   const { onEntityDetail } = useEnciclopediaLink()
   const hasLlanurasMap = inventory.some((i) => i.effectKey === REVEAL_MAP_LLANURAS_EFFECT_KEY)
+  const hasCristalHeladoMap = inventory.some((i) => i.effectKey === REVEAL_MAP_CRISTAL_HELADO_EFFECT_KEY)
   const questTargetLocationSlug = quests.find((q) => q.status === 'ACTIVA' && q.targetLocationSlug)?.targetLocationSlug ?? null
 
   // "El campamento" (2026-08-04): Building.locationId es un id real de Location, pero el mapa
@@ -191,15 +228,17 @@ export function MapaPanel({ worldSlug, currentLocation, destinations, inventory,
           currentRegion={currentLocation?.region ?? 'Las Llanuras del Viento Rojo'}
           llanurasNodes={llanurasNodes}
           llanurasEdges={llanurasEdges}
+          cristalHeladoNodes={cristalHeladoNodes}
           currentLocationSlug={currentLocation?.slug ?? null}
           hasLlanurasMap={hasLlanurasMap}
+          hasCristalHeladoMap={hasCristalHeladoMap}
           questTargetLocationSlug={questTargetLocationSlug}
           getNodeOptions={getNodeOptions}
           buildingIconBySlug={buildingIconBySlug}
         />
-        {!hasLlanurasMap && (
+        {!hasLlanurasMap && !hasCristalHeladoMap && (
           <p className="mt-2 text-xs italic text-wood-500">
-            Sin un mapa de la región, solo se ve el contorno — consigue el "Mapa de las Llanuras" para ver sus puntos de interés.
+            Sin un mapa de la región, solo se ve el contorno — consigue el "Mapa de las Llanuras" o el "Mapa de Cristal Helado" para ver sus puntos de interés.
           </p>
         )}
       </PanelSection>

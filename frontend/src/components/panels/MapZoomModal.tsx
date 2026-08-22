@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from 'react'
 import berigMapUrl from '../../assets/maps/helek-sirik-berig.png'
-import { projectLlanurasNodes, type LlanurasEdge, type LlanurasNode, type MapNodeOption } from '../../data/map'
+import { projectLlanurasNodes, type LlanurasEdge, type LlanurasNode, type CristalHeladoNode, type MapNodeOption } from '../../data/map'
 
 interface MapZoomModalProps {
   onClose: () => void
@@ -9,6 +9,9 @@ interface MapZoomModalProps {
   /// poder usar el visor ampliado como herramienta real de consulta de todas las ubicaciones.
   llanurasNodes?: LlanurasNode[]
   llanurasEdges?: LlanurasEdge[]
+  /// Cristal Helado (añadido 2026-08-22) — ya en espacio de píxeles (sin proyección, ver
+  /// data/map.ts) y sin aristas: la región no tiene grafo de viaje real todavía.
+  cristalHeladoNodes?: CristalHeladoNode[]
   currentLocationSlug?: string | null
   /// Punto 3 del diseño de Gistera Koh (2026-07-23) — mismo dato que ya recibe el mapa pequeño
   /// (InteractiveMap.tsx), para que el "!" de misión también se vea en el visor ampliado.
@@ -65,6 +68,7 @@ export function MapZoomModal({
   onClose,
   llanurasNodes,
   llanurasEdges,
+  cristalHeladoNodes,
   currentLocationSlug,
   questTargetLocationSlug,
   getNodeOptions,
@@ -78,6 +82,7 @@ export function MapZoomModal({
 
   const nodePositions = useMemo(() => (llanurasNodes ? projectLlanurasNodes(llanurasNodes) : null), [llanurasNodes])
   const showGraph = nodePositions && llanurasNodes && llanurasEdges
+  const showCristalHeladoGraph = !!cristalHeladoNodes
 
   function clampScale(s: number) {
     return Math.min(MAX_SCALE, Math.max(MIN_SCALE, s))
@@ -185,9 +190,9 @@ export function MapZoomModal({
                 `object-contain`) para que ambos coincidan pixel a pixel. Los radios se dividen
                 entre `scale` para que el tamaño EN PANTALLA no crezca con el zoom (a diferencia
                 del resto del mapa, que sí escala junto con la imagen). */}
-            {showGraph && (
+            {(showGraph || showCristalHeladoGraph) && (
               <svg viewBox="0 0 800 600" className="pointer-events-none absolute inset-0 h-full w-full">
-                {llanurasEdges.map((edge) => {
+                {showGraph && llanurasEdges.map((edge) => {
                   const from = nodePositions.get(edge.fromSlug)
                   const to = nodePositions.get(edge.toSlug)
                   if (!from || !to) return null
@@ -207,7 +212,7 @@ export function MapZoomModal({
                     />
                   )
                 })}
-                {llanurasNodes.map((node) => {
+                {showGraph && llanurasNodes.map((node) => {
                   const pos = nodePositions.get(node.slug)
                   if (!pos) return null
                   const isCurrentNode = node.slug === currentLocationSlug
@@ -358,6 +363,103 @@ export function MapZoomModal({
                     </g>
                   )
                 })}
+                {/* Cristal Helado (añadido 2026-08-22) — mismo dibujado que Llanuras arriba, sin
+                    aristas (sin LocationLink todavía) y sin insignias de misión/construcción
+                    (ninguna apunta aquí hoy). `pos` es el propio nodo, ya en espacio de píxeles. */}
+                {showCristalHeladoGraph &&
+                  cristalHeladoNodes!.map((node) => {
+                    const pos = node
+                    const isCurrentNode = node.slug === currentLocationSlug
+                    const nodeOptions = getNodeOptions?.(node.slug) ?? []
+                    const isExpanded = expandedNodeSlug === node.slug
+                    const selectThisNode = () => {
+                      if (nodeOptions.length <= 1) {
+                        setExpandedNodeSlug(null)
+                        nodeOptions[0]?.onSelect()
+                      } else {
+                        setExpandedNodeSlug((prev) => (prev === node.slug ? null : node.slug))
+                      }
+                    }
+                    return (
+                      <g
+                        key={node.slug}
+                        role="button"
+                        tabIndex={0}
+                        className="pointer-events-auto cursor-pointer outline-none"
+                        onPointerDown={(e) => e.stopPropagation()}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          selectThisNode()
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault()
+                            selectThisNode()
+                          }
+                        }}
+                      >
+                        <title>{isCurrentNode ? 'Estás aquí' : node.name}</title>
+                        <circle cx={pos.x} cy={pos.y} r={NODE_HIT_R / scale} fill="transparent" />
+                        {isCurrentNode ? (
+                          <g>
+                            <clipPath id={`zoom-current-node-clip-${node.slug}`}>
+                              <circle cx={pos.x} cy={pos.y} r={NODE_HALO_R_CURRENT / scale} />
+                            </clipPath>
+                            <circle cx={pos.x} cy={pos.y} r={NODE_HALO_R_CURRENT / scale} fill="#d4af37" stroke="white" strokeWidth={0.9 / scale} />
+                            <g clipPath={`url(#zoom-current-node-clip-${node.slug})`}>
+                              <circle cx={pos.x} cy={pos.y - 1.4 / scale} r={1.5 / scale} fill="white" />
+                              <circle cx={pos.x} cy={pos.y + 4.4 / scale} r={3.1 / scale} fill="white" />
+                            </g>
+                          </g>
+                        ) : (
+                          <>
+                            <circle cx={pos.x} cy={pos.y} r={NODE_HALO_R / scale} fill="rgba(10,8,6,0.55)" />
+                            <circle
+                              cx={pos.x}
+                              cy={pos.y}
+                              r={NODE_R / scale}
+                              fill="var(--color-wood-300)"
+                              stroke="var(--color-iron-700)"
+                              strokeWidth={0.8 / scale}
+                            />
+                          </>
+                        )}
+                        {isExpanded &&
+                          nodeOptions.map((opt, i) => {
+                            const offset = paletteOffsets(nodeOptions.length)[i]
+                            const ox = pos.x + offset.x / scale
+                            const oy = pos.y + offset.y / scale
+                            return (
+                              <g
+                                key={opt.id}
+                                className="pointer-events-auto cursor-pointer outline-none"
+                                onPointerDown={(e) => e.stopPropagation()}
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  setExpandedNodeSlug(null)
+                                  opt.onSelect()
+                                }}
+                              >
+                                <title>{opt.label}</title>
+                                <line
+                                  x1={pos.x}
+                                  y1={pos.y}
+                                  x2={ox}
+                                  y2={oy}
+                                  stroke="var(--color-accent2-500)"
+                                  strokeWidth={0.9 / scale}
+                                  opacity={0.6}
+                                />
+                                <circle cx={ox} cy={oy} r={6.5 / scale} fill="var(--color-wood-950)" stroke="var(--color-accent2-500)" strokeWidth={1 / scale} />
+                                <text x={ox} y={oy} textAnchor="middle" dominantBaseline="central" style={{ fontSize: 6.5 / scale }}>
+                                  {opt.icon}
+                                </text>
+                              </g>
+                            )
+                          })}
+                      </g>
+                    )
+                  })}
               </svg>
             )}
           </div>
