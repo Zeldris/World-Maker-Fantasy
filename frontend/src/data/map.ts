@@ -204,21 +204,24 @@ export type CristalHeladoEdge = LlanurasEdge
 // coordenadas viven DIRECTAMENTE en el mismo espacio de píxeles del lienzo (800×600) — no hace
 // falta ninguna proyección tipo `projectLlanurasNodes`.
 //
-// PROVISIONAL: rejilla neutra de partida dentro del contorno real de Cristal Helado (bbox
-// x:501-708, y:18-139, calculado del propio path de `SHAPES` en InteractiveMap.tsx) — ninguna
-// posición está confirmada todavía. Pendiente: colocarlas una a una viendo el render real,
-// mismo criterio que ya se usó para calibrar Llanuras (nunca mover nodos a ciegas).
+// Calibración en vivo 2026-08-22 (primera pasada, "un nodo a la vez", mismo criterio que
+// Llanuras): 11 de las 12 posiciones ya se ajustaron viendo el render real contra el PNG y quedan
+// confirmadas como grupo apretado dentro del contorno (la usuaria: "listo así quedaría") — solo
+// falta 'cascada-cristal-tres-aguas', que se queda en su valor de rejilla de partida hasta la
+// próxima sesión. A diferencia de Llanuras, ninguna se movió a ciegas: cada valor salió de una
+// ronda de prueba/captura de pantalla con la usuaria, no de una fórmula.
 export const cristalHeladoNodePositions: Record<string, { x: number; y: number }> = {
-  'campamento-clan-helsig': { x: 538, y: 48 },
-  'veta-helada': { x: 583, y: 48 },
-  'red-profunda-final': { x: 627, y: 48 },
-  'lago-cristalice': { x: 671, y: 48 },
-  'pico-escarcha': { x: 538, y: 79 },
-  'pico-ocaso-negro': { x: 583, y: 79 },
-  'pico-tundra-negra': { x: 627, y: 79 },
-  'tundra-negra-refleja': { x: 671, y: 79 },
-  'tundra-polvo-nocturno': { x: 538, y: 109 },
-  'costa-celeste-agitada': { x: 583, y: 109 },
+  'campamento-clan-helsig': { x: 603, y: 112 }, // confirmado correcto 2026-08-22
+  'veta-helada': { x: 598, y: 98 }, // confirmado correcto 2026-08-22
+  'red-profunda-final': { x: 627, y: 38 }, // confirmado correcto 2026-08-22
+  'lago-cristalice': { x: 652, y: 84 }, // confirmado correcto 2026-08-22
+  'pico-escarcha': { x: 566, y: 71 }, // confirmado correcto 2026-08-22
+  'pico-ocaso-negro': { x: 588, y: 69 }, // confirmado correcto 2026-08-22
+  'pico-tundra-negra': { x: 606, y: 61 }, // confirmado correcto 2026-08-22
+  'tundra-negra-refleja': { x: 682, y: 82 }, // confirmado correcto 2026-08-22
+  'tundra-polvo-nocturno': { x: 600, y: 49 }, // confirmado correcto 2026-08-22
+  'costa-celeste-agitada': { x: 522, y: 74 }, // confirmado correcto 2026-08-22
+  // PENDIENTE: sin calibrar todavía, sigue en la rejilla de partida — próxima sesión.
   'cascada-cristal-tres-aguas': { x: 627, y: 109 },
-  'desfiladeros-bruma': { x: 671, y: 109 },
+  'desfiladeros-bruma': { x: 654, y: 42 }, // confirmado correcto 2026-08-22
 }
