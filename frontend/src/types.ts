@@ -26,6 +26,23 @@ export interface ProfessionProgressInfo {
   xp: number
 }
 
+/// Tirada visible de Explorar/Desollar (rediseño de recolección, 2026-08-22, backend dice.ts §
+/// `rollGathering`) — deliberadamente NO extiende `RollInfo` (más abajo, el de combate): no tiene
+/// `difficulty`/`success` propios (el resultado se compara contra la dificultad de CADA recurso
+/// candidato por separado, no una sola), y puede traer uno o dos d20 en `rolls` según hubo o no
+/// ventaja por Suerte.
+export interface GatheringRollInfo {
+  attribute: Attribute
+  value: number
+  bonusOficio: number
+  /// Un elemento si no hubo ventaja, dos (los dos d20 tirados) si sí la hubo — el descartado (el
+  /// que no es `usedRoll`) se anima tachado.
+  rolls: number[]
+  usedRoll: number
+  result: number
+  advantage: boolean
+}
+
 /// Fuente recolectable "ya localizada" o recién "explorada" (rediseño de profesiones, 2026-08-07)
 /// — GET/POST /saves/:id/recolectar/:oficio[/explorar].
 export interface HarvestSourceCandidate {

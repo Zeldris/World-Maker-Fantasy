@@ -214,6 +214,17 @@ model Save {
   /// sobrevive más de un turno sin resolverse.
   pendingNpcAttack Json?
 
+  /// Tirada de Explorar/Desollar YA congelada (rediseño de recolección, 2026-08-22, petición
+  /// explícita de la usuaria: "para poder ver algo siempre deberías pasar por esta tirada... al
+  /// menos una vez y ya se guarda" — sin esto, reabrir el pop-up tras localizar algo enseñaba la
+  /// lista cruda sin recortar por grado, ignorando la tirada por completo, y Desollar volvía a
+  /// tirar en CADA apertura del panel, dejando "pescar" un resultado mejor cerrando y reabriendo).
+  /// `{ oficio, locationId, sources }` — `sources` es el resultado YA filtrado/recortado por
+  /// `applyGatheringRoll` (recolectar.ts), nunca los candidatos crudos. Solo válida mientras
+  /// `locationId` coincida con `Save.currentLocationId`; cambiar de zona la vuelve irrelevante sin
+  /// necesidad de borrarla a mano (mismo criterio laxo que otros campos "pending" de este modelo).
+  harvestRollCache Json?
+
   worldState       WorldState?
   logEntries       LogEntry[]
   characterTransit CharacterTransit?

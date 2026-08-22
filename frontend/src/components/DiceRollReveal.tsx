@@ -30,7 +30,10 @@ const GRADE_LAND_ANIM: Record<'claro' | 'con_coste' | 'fallo', string> = {
 /// segundos... y que el otro tarde 5 segs al acabar el otro de mostrarse, para que no sea tan
 /// rápida la animación") — SECUENCIAL, no en paralelo con un pequeño desfase: el segundo dado ni
 /// empieza a girar hasta que el primero ya aterrizó del todo, así que la espera total son ~10s.
-const ROLL_DURATION_MS = 5000
+/// Exportadas (2026-08-22) para que `GatheringDiceReveal.tsx` (tirada de Explorar/Desollar) use la
+/// misma cadencia de caída sin duplicar la lista — un solo dado ahí, dos si hay ventaja por Suerte,
+/// pero el mismo "impulso perdiéndose" que ya se siente en combate.
+export const ROLL_DURATION_MS = 5000
 
 /// Cadencia de la tirada (ms entre cada número al azar que se enseña) — arranca rápida y se va
 /// frenando antes de aterrizar, la sensación clásica de "el dado pierde impulso", sin física real
@@ -51,7 +54,7 @@ function buildRollTickDelays(totalMs: number): number[] {
   }
   return delays
 }
-const ROLL_TICK_DELAYS_MS = buildRollTickDelays(ROLL_DURATION_MS)
+export const ROLL_TICK_DELAYS_MS = buildRollTickDelays(ROLL_DURATION_MS)
 
 /// Un lado del intercambio, cayendo (petición explícita: solo el NÚMERO gira, el 🎲 se queda
 /// fijo — más simple, y coincide con cómo ya se muestran las tiradas resueltas en todo el juego).

@@ -8,6 +8,7 @@ import Fastify from 'fastify';
 /// podía pedir cualquier itemSlug para cualquier sourceSlug, y `cantidad` no tenía más tope que la
 /// población total (cientos de unidades), saltándose el máximo real ("3 piedras por recolección").
 const findUniqueSave = vi.fn();
+const updateSave = vi.fn();
 const findFirstHarvestYield = vi.fn();
 const findManyHarvestYield = vi.fn();
 const findManyWorldPopulation = vi.fn();
@@ -47,7 +48,7 @@ const updateWorldStateTx = vi.fn();
 
 vi.mock('../../lib/prisma.js', () => ({
   prisma: {
-    save: { findUnique: (...args: unknown[]) => findUniqueSave(...args) },
+    save: { findUnique: (...args: unknown[]) => findUniqueSave(...args), update: (...args: unknown[]) => updateSave(...args) },
     harvestYield: { findMany: (...args: unknown[]) => findManyHarvestYield(...args) },
     worldPopulation: { findMany: (...args: unknown[]) => findManyWorldPopulation(...args) },
     $transaction: (...args: unknown[]) => transaction(...args),
@@ -104,6 +105,7 @@ describe('POST /saves/:id/recolectar/confirmar', () => {
     updateQuestTx.mockReset();
     updateWorldStateTx.mockReset();
     findManyItemCatalogTx.mockReset().mockResolvedValue([]);
+    updateSave.mockReset().mockResolvedValue({});
     findUniqueSave.mockResolvedValue({
       id: 'save1',
       worldId: 'world1',
@@ -613,11 +615,20 @@ describe('GET /saves/:id/recolectar/:oficio', () => {
     findManyHarvestYield.mockReset().mockResolvedValue([]);
     findManyWorldPopulation.mockReset().mockResolvedValue([]);
     detectNpcsInScene.mockReset().mockResolvedValue([]);
+    updateSave.mockReset().mockResolvedValue({});
     findUniqueSave.mockResolvedValue({
       id: 'save1',
       worldId: 'world1',
       currentLocationId: 'loc1',
       currentLocation: { region: 'Las Llanuras del Viento Rojo' },
+      // Tirada de Explorar/Desollar (rediseño de recolección, 2026-08-22): fuerza/destreza a 20
+      // garantiza grado 'claro' o mejor incluso con el peor d20 posible (1 + floor(20/2) + 0 = 11,
+      // igual a la dificultad por defecto de un yield sin tier, 10+1), así que estos tests no
+      // dependen del azar de `Math.random`.
+      attributes: { fuerza: 20, destreza: 20, constitucion: 10, inteligencia: 10, voluntad: 10, carisma: 10, arcano: 10 },
+      secondaryAttributes: { suerte: 0 },
+      inventoryItems: [],
+      professionProgress: [],
     });
   });
 
@@ -654,6 +665,32 @@ describe('GET /saves/:id/recolectar/:oficio', () => {
     ]);
     // Nunca "Explorar" para desuello: o el cadáver ya está en escena, o no hay nada que buscar.
     expect(body.puedeExplorar).toBe(false);
+    // Tirada visible (rediseño de recolección, 2026-08-22) — Destreza es el atributo de desollador.
+    expect(body.roll.attribute).toBe('destreza');
+  });
+
+  it('desollador (CAZA): un despiece con dificultad inalcanzable ni con el mejor d20 posible no aparece (fallo)', async () => {
+    detectNpcsInScene.mockResolvedValue([
+      { slug: 'corretolvas', name: 'Corretolvas', ataqueNatural: 'Muerde', condicionFisica: 'MUERTO', saqueado: false },
+    ]);
+    findManyHarvestYield.mockResolvedValue([
+      { sourceSlug: 'corretolvas', sourceCategory: 'fauna', item: { slug: 'piel-corretolvas', name: 'Piel de Corretolvas', tier: 20 }, cantidad: 1 },
+    ]);
+    findUniqueSave.mockResolvedValue({
+      id: 'save1',
+      worldId: 'world1',
+      currentLocationId: 'loc1',
+      currentLocation: { region: 'Las Llanuras del Viento Rojo' },
+      attributes: { fuerza: 0, destreza: 0, constitucion: 10, inteligencia: 10, voluntad: 10, carisma: 10, arcano: 10 },
+      secondaryAttributes: { suerte: 0 },
+      inventoryItems: [],
+      professionProgress: [],
+    });
+    const app = await buildApp();
+
+    const res = await app.inject({ method: 'GET', url: '/saves/save1/recolectar/desollador-orcos-llanuras' });
+
+    expect(JSON.parse(res.body).sources).toEqual([]);
   });
 
   it('desollador (CAZA) ignora fauna todavía viva (condicionFisica ILESO/HERIDO/GRAVE)', async () => {
@@ -665,6 +702,40 @@ describe('GET /saves/:id/recolectar/:oficio', () => {
     const res = await app.inject({ method: 'GET', url: '/saves/save1/recolectar/desollador-orcos-llanuras' });
 
     expect(JSON.parse(res.body).sources).toEqual([]);
+  });
+
+  // Bug real jugando en vivo (2026-08-22, "he matado a un buitre pero desollar no detecta el
+  // cadáver"): en caza en grupo, `condicionFisica` sigue ILESO (refleja al individuo siguiente del
+  // grupo, no a los ya caídos) aunque `groupDefeated > corpsesLooted` diga que sí hay un cadáver
+  // real sin despiezar — antes esto se descartaba solo por mirar `condicionFisica`.
+  it('desollador (CAZA) SÍ detecta un cadáver de un grupo con condicionFisica todavía ILESO (groupDefeated > corpsesLooted)', async () => {
+    // Grado 'claro' garantizado (mismo criterio que otros tests de esta tirada) — la cantidad
+    // exacta no es lo que se comprueba aquí, solo que el cadáver aparece en absoluto.
+    vi.spyOn(Math, 'random').mockReturnValue(0.99);
+    detectNpcsInScene.mockResolvedValue([
+      {
+        slug: 'buitre-cenizo',
+        name: 'Buitre Cenizo',
+        ataqueNatural: 'Picotea y araña',
+        condicionFisica: 'ILESO',
+        saqueado: false,
+        groupSize: 5,
+        groupDefeated: 1,
+        corpsesLooted: 0,
+      },
+    ]);
+    findManyHarvestYield.mockResolvedValue([
+      { sourceSlug: 'buitre-cenizo', sourceCategory: 'fauna', item: { slug: 'pluma-buitre-cenizo', name: 'Pluma de Buitre Cenizo' }, cantidad: 2 },
+    ]);
+    const app = await buildApp();
+
+    const res = await app.inject({ method: 'GET', url: '/saves/save1/recolectar/desollador-orcos-llanuras' });
+
+    expect(res.statusCode).toBe(200);
+    const body = JSON.parse(res.body);
+    expect(body.sources).toHaveLength(1);
+    expect(body.sources[0].yields).toEqual([{ sourceSlug: 'buitre-cenizo', itemSlug: 'pluma-buitre-cenizo', itemName: 'Pluma de Buitre Cenizo', cantidadMaxima: 2, disponible: 2 }]);
+    vi.restoreAllMocks();
   });
 
   it('desollador (CAZA) ignora un cadáver ya despiezado (saqueado:true)', async () => {
@@ -736,6 +807,10 @@ describe('GET /saves/:id/recolectar/:oficio', () => {
       worldId: 'world1',
       currentLocationId: 'loc-agujas',
       currentLocation: { region: 'Las Llanuras del Viento Rojo', slug: 'agujas-iman' },
+      attributes: { fuerza: 20, destreza: 20, constitucion: 10, inteligencia: 10, voluntad: 10, carisma: 10, arcano: 10 },
+      secondaryAttributes: { suerte: 0 },
+      inventoryItems: [],
+      professionProgress: [],
     });
     findManyHarvestYield.mockResolvedValue([
       { sourceSlug: 'roca-pilares-rotos', sourceCategory: 'mineral', item: { slug: 'piedra', name: 'Piedra' }, cantidad: 3 },
@@ -750,21 +825,248 @@ describe('GET /saves/:id/recolectar/:oficio', () => {
     expect(JSON.parse(res.body).sources).toHaveLength(1);
   });
 
+  // Tirada visible (rediseño de recolección, 2026-08-22, petición explícita: "para los recursos
+  // que obtenemos por región cuando exploras, hay que añadirle una tirada visual con dado").
+  describe('tirada de rollGathering en /explorar', () => {
+    it('el resultado de la tirada viaja en la respuesta, no solo los sources', async () => {
+      findUniqueSave.mockResolvedValue({
+        id: 'save1',
+        worldId: 'world1',
+        currentLocationId: 'loc1',
+        currentLocation: { region: 'Las Llanuras del Viento Rojo' },
+        attributes: { fuerza: 20, destreza: 20, constitucion: 10, inteligencia: 10, voluntad: 10, carisma: 10, arcano: 10 },
+        secondaryAttributes: { suerte: 0 },
+        inventoryItems: [],
+        professionProgress: [],
+      });
+      findManyHarvestYield.mockResolvedValue([
+        { sourceSlug: 'roca-pilares-rotos', sourceCategory: 'mineral', item: { slug: 'piedra', name: 'Piedra', tier: 1 }, cantidad: 3 },
+      ]);
+      findManyWorldPopulation.mockResolvedValue([
+        { targetSlug: 'roca-pilares-rotos', poblacion: 40, distribucion: { 'Llanuras del Viento Rojo': 1 }, lastHarvestedAt: null, lastHarvestedLocationId: null },
+      ]);
+      const app = await buildApp();
+
+      const res = await app.inject({ method: 'POST', url: '/saves/save1/recolectar/minero-llanuras/explorar' });
+
+      const body = JSON.parse(res.body);
+      expect(body.roll.attribute).toBe('fuerza');
+      expect(body.roll.result).toBeGreaterThanOrEqual(1);
+      expect(typeof body.roll.advantage).toBe('boolean');
+    });
+
+    it('un recurso con dificultad inalcanzable ni con el mejor d20 posible no aparece (fallo)', async () => {
+      // fuerza 0 + bonusOficio 0 + mejor d20 (20) = 20, dificultad = 10+tier(20) = 30 — nunca llega,
+      // determinista sin necesidad de mockear Math.random.
+      findUniqueSave.mockResolvedValue({
+        id: 'save1',
+        worldId: 'world1',
+        currentLocationId: 'loc1',
+        currentLocation: { region: 'Las Llanuras del Viento Rojo' },
+        attributes: { fuerza: 0, destreza: 0, constitucion: 10, inteligencia: 10, voluntad: 10, carisma: 10, arcano: 10 },
+        secondaryAttributes: { suerte: 0 },
+        inventoryItems: [],
+        professionProgress: [],
+      });
+      findManyHarvestYield.mockResolvedValue([
+        { sourceSlug: 'roca-pilares-rotos', sourceCategory: 'mineral', item: { slug: 'piedra', name: 'Piedra', tier: 20 }, cantidad: 3 },
+      ]);
+      findManyWorldPopulation.mockResolvedValue([
+        { targetSlug: 'roca-pilares-rotos', poblacion: 40, distribucion: { 'Llanuras del Viento Rojo': 1 }, lastHarvestedAt: null, lastHarvestedLocationId: null },
+      ]);
+      const app = await buildApp();
+
+      const res = await app.inject({ method: 'POST', url: '/saves/save1/recolectar/minero-llanuras/explorar' });
+
+      const body = JSON.parse(res.body);
+      expect(body.sources).toEqual([]);
+      expect(body.roll.result).toBeLessThan(30);
+    });
+
+    it('el nivel del oficio (alivioForLevel) llega correctamente al roll de la respuesta', async () => {
+      // fuerza 20 garantiza éxito con el peor d20 posible (ver comentario del beforeEach); lo que
+      // se comprueba aquí es que el nivel 5 de professionProgress (alivioForLevel = 4) se plumbea
+      // de verdad hasta `roll.bonusOficio` — la aritmética exacta de la suma ya la cubre
+      // dice.test.ts § rollGathering sin depender de una petición HTTP completa.
+      findUniqueSave.mockResolvedValue({
+        id: 'save1',
+        worldId: 'world1',
+        currentLocationId: 'loc1',
+        currentLocation: { region: 'Las Llanuras del Viento Rojo' },
+        attributes: { fuerza: 20, destreza: 20, constitucion: 10, inteligencia: 10, voluntad: 10, carisma: 10, arcano: 10 },
+        secondaryAttributes: { suerte: 0 },
+        inventoryItems: [],
+        professionProgress: [{ professionId: 'minero-llanuras', nivel: 5 }],
+      });
+      findManyHarvestYield.mockResolvedValue([
+        { sourceSlug: 'roca-pilares-rotos', sourceCategory: 'mineral', item: { slug: 'piedra', name: 'Piedra', tier: 1 }, cantidad: 3 },
+      ]);
+      findManyWorldPopulation.mockResolvedValue([
+        { targetSlug: 'roca-pilares-rotos', poblacion: 40, distribucion: { 'Llanuras del Viento Rojo': 1 }, lastHarvestedAt: null, lastHarvestedLocationId: null },
+      ]);
+      const app = await buildApp();
+
+      const res = await app.inject({ method: 'POST', url: '/saves/save1/recolectar/minero-llanuras/explorar' });
+
+      const body = JSON.parse(res.body);
+      expect(body.roll.bonusOficio).toBe(4);
+      expect(body.sources).toHaveLength(1);
+    });
+
+    it('Suerte por encima del umbral tira con ventaja (dos d20 en la respuesta)', async () => {
+      findUniqueSave.mockResolvedValue({
+        id: 'save1',
+        worldId: 'world1',
+        currentLocationId: 'loc1',
+        currentLocation: { region: 'Las Llanuras del Viento Rojo' },
+        attributes: { fuerza: 20, destreza: 20, constitucion: 10, inteligencia: 10, voluntad: 10, carisma: 10, arcano: 10 },
+        secondaryAttributes: { suerte: 12 },
+        inventoryItems: [],
+        professionProgress: [],
+      });
+      findManyHarvestYield.mockResolvedValue([
+        { sourceSlug: 'roca-pilares-rotos', sourceCategory: 'mineral', item: { slug: 'piedra', name: 'Piedra', tier: 1 }, cantidad: 3 },
+      ]);
+      findManyWorldPopulation.mockResolvedValue([
+        { targetSlug: 'roca-pilares-rotos', poblacion: 40, distribucion: { 'Llanuras del Viento Rojo': 1 }, lastHarvestedAt: null, lastHarvestedLocationId: null },
+      ]);
+      const app = await buildApp();
+
+      const res = await app.inject({ method: 'POST', url: '/saves/save1/recolectar/minero-llanuras/explorar' });
+
+      const body = JSON.parse(res.body);
+      expect(body.roll.advantage).toBe(true);
+      expect(body.roll.rolls).toHaveLength(2);
+    });
+
+    // Tirada congelada (petición explícita, 2026-08-22: "para poder ver algo siempre deberías
+    // pasar por esta tirada... al menos una vez y ya se guarda") — /explorar persiste el resultado
+    // YA recortado en Save.harvestRollCache, para que reabrir el panel no ofrezca una oportunidad
+    // gratis de volver a tirar por un resultado mejor.
+    it('congela el resultado en Save.harvestRollCache tras explorar, con la cantidad ya recortada', async () => {
+      // d20 al máximo (20) — grado 'claro' garantizado (resultado 30 vs dificultad 11), para que
+      // `cantidadMaxima` sea determinista (completa, no la mitad de un 'con_coste').
+      vi.spyOn(Math, 'random').mockReturnValue(0.99);
+      findManyHarvestYield.mockResolvedValue([
+        { sourceSlug: 'roca-pilares-rotos', sourceCategory: 'mineral', item: { slug: 'piedra', name: 'Piedra', tier: 1 }, cantidad: 3 },
+      ]);
+      findManyWorldPopulation.mockResolvedValue([
+        { targetSlug: 'roca-pilares-rotos', poblacion: 40, distribucion: { 'Llanuras del Viento Rojo': 1 }, lastHarvestedAt: null, lastHarvestedLocationId: null },
+      ]);
+      const app = await buildApp();
+
+      await app.inject({ method: 'POST', url: '/saves/save1/recolectar/minero-llanuras/explorar' });
+
+      expect(updateSave).toHaveBeenCalledWith({
+        where: { id: 'save1' },
+        data: {
+          harvestRollCache: {
+            oficio: 'minero-llanuras',
+            locationId: 'loc1',
+            sources: [
+              {
+                sourceSlug: 'roca-pilares-rotos',
+                sourceCategory: 'mineral',
+                disponible: 40,
+                yields: [{ itemSlug: 'piedra', itemName: 'Piedra', cantidadMaxima: 3, tier: 1 }],
+              },
+            ],
+          },
+        },
+      });
+      vi.restoreAllMocks();
+    });
+  });
+
+  // Tirada congelada, lado de lectura (mismo rediseño de arriba) — un GET con caché válida para
+  // este oficio/ubicación devuelve la foto ya tirada SIN volver a consultar `HarvestYield`/
+  // `WorldPopulation`: reabrir el panel no debe poder re-tirar.
+  it('GET con caché válida devuelve la foto ya tirada sin recalcular candidatos ni tirar de nuevo', async () => {
+    findUniqueSave.mockResolvedValue({
+      id: 'save1',
+      worldId: 'world1',
+      currentLocationId: 'loc1',
+      currentLocation: { region: 'Las Llanuras del Viento Rojo' },
+      attributes: { fuerza: 20, destreza: 20, constitucion: 10, inteligencia: 10, voluntad: 10, carisma: 10, arcano: 10 },
+      secondaryAttributes: { suerte: 0 },
+      inventoryItems: [],
+      professionProgress: [],
+      harvestRollCache: {
+        oficio: 'minero-llanuras',
+        locationId: 'loc1',
+        sources: [{ sourceSlug: 'roca-pilares-rotos', sourceCategory: 'mineral', disponible: 40, yields: [{ itemSlug: 'piedra', itemName: 'Piedra', cantidadMaxima: 2, tier: 1 }] }],
+      },
+    });
+    const app = await buildApp();
+
+    const res = await app.inject({ method: 'GET', url: '/saves/save1/recolectar/minero-llanuras' });
+
+    const body = JSON.parse(res.body);
+    expect(body.puedeExplorar).toBe(false);
+    expect(body.sources).toEqual([
+      { sourceCategory: 'mineral', sourceCategoryName: 'Mineral', yields: [{ sourceSlug: 'roca-pilares-rotos', itemSlug: 'piedra', itemName: 'Piedra', cantidadMaxima: 2, disponible: 40 }] },
+    ]);
+    // Ni se consultó la fuente de verdad ni se escribió una tirada nueva — se sirvió la caché tal cual.
+    expect(findManyHarvestYield).not.toHaveBeenCalled();
+    expect(findManyWorldPopulation).not.toHaveBeenCalled();
+    expect(updateSave).not.toHaveBeenCalled();
+  });
+
+  // Caché de una UBICACIÓN/oficio distintos no debe filtrarse a otro — mismo criterio location-
+  // aware que ya usa el cooldown real de `candidateSourcesFor`.
+  it('la caché de otra ubicación no se reutiliza — se recalcula desde cero', async () => {
+    findUniqueSave.mockResolvedValue({
+      id: 'save1',
+      worldId: 'world1',
+      currentLocationId: 'loc2',
+      currentLocation: { region: 'Las Llanuras del Viento Rojo' },
+      attributes: { fuerza: 20, destreza: 20, constitucion: 10, inteligencia: 10, voluntad: 10, carisma: 10, arcano: 10 },
+      secondaryAttributes: { suerte: 0 },
+      inventoryItems: [],
+      professionProgress: [],
+      harvestRollCache: { oficio: 'minero-llanuras', locationId: 'loc1', sources: [{ sourceSlug: 'x', sourceCategory: 'mineral', disponible: 1, yields: [] }] },
+    });
+    const app = await buildApp();
+
+    const res = await app.inject({ method: 'GET', url: '/saves/save1/recolectar/minero-llanuras' });
+
+    const body = JSON.parse(res.body);
+    expect(body.sources).toEqual([]);
+    expect(body.puedeExplorar).toBe(false); // sin candidatos reales (mocks a vacío por defecto)
+    expect(findManyHarvestYield).toHaveBeenCalled();
+  });
+
   // Agrupado automático por categoría (2026-08-15, petición explícita: "que sea automático, lo que
   // meta en el enum y lo que linke en el item... que aparezcan los items categorizados en el front
   // bajo esa categoría nueva") — dos sourceSlug DISTINTOS que comparten sourceCategory salen bajo
   // una sola tarjeta, cada yield conservando su propio sourceSlug/disponible para poder
-  // seleccionarlo y consumirlo correctamente después.
+  // seleccionarlo y consumirlo correctamente después. "Ya localizado" ahora es "ya tirado, en
+  // caché" (rediseño de recolección, 2026-08-22) — ya no depende de `loadSessionFacts`, se
+  // comprueba directamente mockeando `Save.harvestRollCache`.
   it('agrupa automáticamente dos fuentes distintas de la misma categoría bajo una sola tarjeta', async () => {
-    loadSessionFacts.mockResolvedValue(['Gorhorn ve piedra y una veta de hierro cerca.']);
-    findManyHarvestYield.mockResolvedValue([
-      { sourceSlug: 'roca-pilares-rotos', sourceCategory: 'mineral', item: { slug: 'piedra', name: 'Piedra' }, cantidad: 3 },
-      { sourceSlug: 'veta-hierro-pilares-rotos', sourceCategory: 'mineral', item: { slug: 'mena-de-hierro', name: 'Mena de hierro' }, cantidad: 2 },
-    ]);
-    findManyWorldPopulation.mockResolvedValue([
-      { targetSlug: 'roca-pilares-rotos', poblacion: 40, distribucion: { 'Llanuras del Viento Rojo': 1 }, lastHarvestedAt: null, lastHarvestedLocationId: null },
-      { targetSlug: 'veta-hierro-pilares-rotos', poblacion: 10, distribucion: { 'Llanuras del Viento Rojo': 1 }, lastHarvestedAt: null, lastHarvestedLocationId: null },
-    ]);
+    findUniqueSave.mockResolvedValue({
+      id: 'save1',
+      worldId: 'world1',
+      currentLocationId: 'loc1',
+      currentLocation: { region: 'Las Llanuras del Viento Rojo' },
+      attributes: { fuerza: 20, destreza: 20, constitucion: 10, inteligencia: 10, voluntad: 10, carisma: 10, arcano: 10 },
+      secondaryAttributes: { suerte: 0 },
+      inventoryItems: [],
+      professionProgress: [],
+      harvestRollCache: {
+        oficio: 'minero-llanuras',
+        locationId: 'loc1',
+        sources: [
+          { sourceSlug: 'roca-pilares-rotos', sourceCategory: 'mineral', disponible: 40, yields: [{ itemSlug: 'piedra', itemName: 'Piedra', cantidadMaxima: 3, tier: null }] },
+          {
+            sourceSlug: 'veta-hierro-pilares-rotos',
+            sourceCategory: 'mineral',
+            disponible: 10,
+            yields: [{ itemSlug: 'mena-de-hierro', itemName: 'Mena de hierro', cantidadMaxima: 2, tier: null }],
+          },
+        ],
+      },
+    });
     const app = await buildApp();
 
     const res = await app.inject({ method: 'GET', url: '/saves/save1/recolectar/minero-llanuras' });

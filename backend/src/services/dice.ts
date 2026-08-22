@@ -51,3 +51,74 @@ export function rollCheck(attributes: AttributeBlock, attribute: Attribute, diff
 export function percepcionPasivaFor(voluntad: number): number {
   return 10 + Math.floor(voluntad / 2)
 }
+
+/// Tirada de Explorar/Desollar (rediseño de recolección, 2026-08-22, petición explícita: "para los
+/// recursos que obtenemos por región cuando exploras, hay que añadirle una tirada visual... segun
+/// tu tirada tienes 1. la probabilidad de que el objeto salga en el listado 2. La probabilidad
+/// segun lo que has sacado de que aparezca mas cantidad de ese item"). Deliberadamente SEPARADA de
+/// `rollCheck`/`gradoExitoFor` — nunca se toca la fórmula de combate para esto. `bonusOficio` es
+/// `alivioForLevel` del nivel de oficio (professionProgress.ts), el equivalente D&D de bono de
+/// competencia: subir de nivel el oficio ya sube esta tirada, sin inventar un número nuevo.
+///
+/// Suerte da VENTAJA, nunca un modificador numérico (así es como D&D trata la suerte de verdad:
+/// rasgo Lucky de Halfling / dote Lucky = repetir tirada o tirar con ventaja, jamás sumar un bonus
+/// fijo como haría un atributo primario) — confirmado explícitamente con la usuaria tras revisar
+/// el precedente real, y a propósito NUNCA tocando `rollCheck`: los atributos secundarios se
+/// remodelaron (commit `1080c90`) precisamente para separarlos de toda tirada de combate, Suerte
+/// con ventaja solo pesa aquí. Umbral y toda la escala de dificultad/cantidad son cifras de
+/// partida, ajustables tras jugarlo — no un cierre definitivo.
+export const SUERTE_VENTAJA_UMBRAL = 12
+
+export interface GatheringRollResult {
+  attribute: Attribute
+  value: number
+  bonusOficio: number
+  /// Un elemento si no hubo ventaja, dos (los dos d20 tirados) si sí la hubo — el frontend anima
+  /// ambos y tacha el descartado.
+  rolls: number[]
+  usedRoll: number
+  result: number
+  advantage: boolean
+}
+
+export function rollGathering(
+  attributes: AttributeBlock,
+  attribute: Attribute,
+  bonusOficio: number,
+  suerte: number,
+  random: () => number = Math.random,
+): GatheringRollResult {
+  const value = attributes[attribute]
+  const advantage = suerte >= SUERTE_VENTAJA_UMBRAL
+  const rollOnce = () => Math.floor(random() * 20) + 1
+  const rolls = advantage ? [rollOnce(), rollOnce()] : [rollOnce()]
+  const usedRoll = Math.max(...rolls)
+  const result = usedRoll + Math.floor(value / 2) + bonusOficio
+  return { attribute, value, bonusOficio, rolls, usedRoll, result, advantage }
+}
+
+export type GradoRecurso = 'fallo' | 'con_coste' | 'claro'
+
+/// Mismos tres tramos que `gradoExitoFor` (margen +5 = claro), pero como tipo propio: un recurso
+/// que "falla" aquí no es un fallo narrativo de la acción, solo no aparece este intento — mezclarlo
+/// con `GradoExito`/`success` de combate confundiría ambos sistemas.
+export function gradoForRecurso(result: number, dificultad: number): GradoRecurso {
+  if (result >= dificultad + 5) return 'claro'
+  if (result >= dificultad) return 'con_coste'
+  return 'fallo'
+}
+
+/// Dificultad de un recurso = 10 + su tier de `ItemCatalog` (1-7 en la práctica, omitido = 1 común
+/// — mismo default que ya usa `requisitos.ts` para tier ausente). Reutiliza un campo que ya existía
+/// para equipo/requisitos en vez de añadir uno nuevo por recurso.
+export function dificultadForTier(tier: number | null | undefined): number {
+  return 10 + (tier ?? 1)
+}
+
+/// `con_coste` da la mitad (redondeo arriba, mínimo 1 — nunca 0 si el recurso sí apareció),
+/// `claro` da el máximo de siempre (`HarvestYield.cantidad`).
+export function cantidadForGrado(grado: GradoRecurso, cantidadMaxima: number): number {
+  if (grado === 'fallo') return 0
+  if (grado === 'con_coste') return Math.max(1, Math.ceil(cantidadMaxima / 2))
+  return cantidadMaxima
+}

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { harvestAbilityUnlocksFor, metodoForOficio } from './harvestAbilities.js';
+import { harvestAbilityUnlocksFor, metodoForOficio, attributeForOficio } from './harvestAbilities.js';
 
 describe('harvestAbilityUnlocksFor', () => {
   it('desbloquea Minar/Talar/Desollar a nivel 1 por prefijo de oficio, con o sin variante raza+región', () => {
@@ -35,5 +35,23 @@ describe('metodoForOficio', () => {
   it('null para un oficio creador o inexistente', () => {
     expect(metodoForOficio('herrero-orco-llanuras')).toBeNull();
     expect(metodoForOficio('no-existe')).toBeNull();
+  });
+});
+
+// Atributo que mueve rollGathering (rediseño de recolección, 2026-08-22): minero/talador →
+// esfuerzo físico (Fuerza), herborista → percepción/paciencia (Voluntad), desollador → precisión
+// al despiezar (Destreza). Nunca Sigilo ni un atributo secundario — ver comentario en
+// harvestAbilities.ts § HarvestAbilityUnlock.attribute.
+describe('attributeForOficio', () => {
+  it('resuelve el atributo primario real de cada oficio recolector, incluido herborista', () => {
+    expect(attributeForOficio('minero-llanuras')).toBe('fuerza');
+    expect(attributeForOficio('talador-cristal')).toBe('fuerza');
+    expect(attributeForOficio('desollador-orcos-llanuras')).toBe('destreza');
+    expect(attributeForOficio('herborista-orcos-llanuras')).toBe('voluntad');
+  });
+
+  it('null para un oficio creador o inexistente', () => {
+    expect(attributeForOficio('herrero-orco-llanuras')).toBeNull();
+    expect(attributeForOficio('no-existe')).toBeNull();
   });
 });

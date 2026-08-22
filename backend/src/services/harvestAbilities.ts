@@ -1,4 +1,5 @@
 import type { MetodoObtencion } from '@prisma/client';
+import type { Attribute } from './dice.js';
 import type { StartingAbility } from './startingAbilities.js';
 
 /// Habilidades BASE de oficio recolector (rediseño de profesiones, 2026-08-07) — a diferencia de
@@ -26,6 +27,12 @@ export interface HarvestAbilityUnlock {
   /// `matchesOficioPrefix` más abajo), nunca por igualdad exacta.
   oficio: string;
   metodo: MetodoObtencion;
+  /// Atributo primario que mueve la tirada de "Explorar"/"Desollar" (rediseño de recolección,
+  /// 2026-08-22, `rollGathering` en dice.ts): minero/talador → Fuerza (esfuerzo físico),
+  /// herborista → Voluntad (percepción/paciencia, el equivalente de Sabiduría del proyecto),
+  /// desollador → Destreza (precisión al despiezar). Nunca Sigilo ni ningún atributo secundario —
+  /// esos se remodelaron justo para separarlos de toda tirada real (commit `1080c90`).
+  attribute: Attribute;
   ability: StartingAbility;
 }
 
@@ -39,6 +46,7 @@ const HARVEST_ABILITIES: HarvestAbilityUnlock[] = [
   {
     oficio: 'minero',
     metodo: 'MINERIA',
+    attribute: 'fuerza',
     ability: {
       name: 'Minar',
       icon: '⛏️',
@@ -50,6 +58,7 @@ const HARVEST_ABILITIES: HarvestAbilityUnlock[] = [
   {
     oficio: 'talador',
     metodo: 'TALA',
+    attribute: 'fuerza',
     ability: {
       name: 'Talar',
       icon: '🪓',
@@ -61,6 +70,7 @@ const HARVEST_ABILITIES: HarvestAbilityUnlock[] = [
   {
     oficio: 'desollador',
     metodo: 'CAZA',
+    attribute: 'destreza',
     ability: {
       name: 'Desollar',
       icon: '🔪',
@@ -76,6 +86,7 @@ const HARVEST_ABILITIES: HarvestAbilityUnlock[] = [
   {
     oficio: 'herborista',
     metodo: 'EXTRACCION',
+    attribute: 'voluntad',
     ability: {
       name: 'Recolectar hierbas',
       icon: '🌿',
@@ -97,4 +108,10 @@ export function harvestAbilityUnlocksFor(oficio: string, nivel: number): Startin
 /// (o no existe). Usado por el endpoint de "Explorar"/localizado para saber qué buscar.
 export function metodoForOficio(oficio: string): MetodoObtencion | null {
   return HARVEST_ABILITIES.find((u) => matchesOficioPrefix(oficio, u.oficio))?.metodo ?? null;
+}
+
+/// Atributo primario que mueve `rollGathering` para este oficio recolector — mismo emparejamiento
+/// por prefijo que `metodoForOficio` (ver comentario de `attribute` en `HarvestAbilityUnlock`).
+export function attributeForOficio(oficio: string): Attribute | null {
+  return HARVEST_ABILITIES.find((u) => matchesOficioPrefix(oficio, u.oficio))?.attribute ?? null;
 }

@@ -17,6 +17,7 @@ import type {
   LogEntry,
   NpcInSceneInfo,
   HarvestSourceCandidate,
+  GatheringRollInfo,
   HuntCandidate,
   PostCombatInteractionInfo,
   ProfessionProgressInfo,
@@ -615,15 +616,25 @@ export async function getRecipesStatus(saveId: string): Promise<{ recipes: Recip
 }
 
 /// Pop-up de recolección (rediseño de profesiones, 2026-08-07) — "ya localizado en la zona".
+/// `roll` (rediseño de recolección, 2026-08-22) solo viene relleno para desollador: no hay
+/// "Explorar" propio para desuello (los cadáveres ya están en escena), así que la tirada visible
+/// se calcula aquí mismo — reabrir el panel vuelve a tirar, simplificación consciente (ver
+/// backend recolectar.ts).
 export async function getRecolectarLocalizado(
   saveId: string,
   oficio: string,
-): Promise<{ sources: HarvestSourceCandidate[]; puedeExplorar: boolean; enCooldown?: boolean }> {
+): Promise<{ sources: HarvestSourceCandidate[]; puedeExplorar: boolean; enCooldown?: boolean; roll?: GatheringRollInfo }> {
   return fetchJson(`${API_URL}/saves/${saveId}/recolectar/${oficio}`)
 }
 
-/// Botón "Explorar" del pop-up — determinista, sin gastar turno.
-export async function explorarRecolectar(saveId: string, oficio: string): Promise<{ sources: HarvestSourceCandidate[]; enCooldown?: boolean }> {
+/// Botón "Explorar" del pop-up — determinista en QUÉ hay (WorldPopulation/terreno/región), pero
+/// desde el rediseño de recolección (2026-08-22) su margen sobre la dificultad de cada recurso
+/// decide si aparece y con cuánta cantidad — `roll` solo falta si no había ningún candidato real
+/// que tirar (nada que descubrir, ni con suerte).
+export async function explorarRecolectar(
+  saveId: string,
+  oficio: string,
+): Promise<{ sources: HarvestSourceCandidate[]; enCooldown?: boolean; roll?: GatheringRollInfo }> {
   return fetchJson(`${API_URL}/saves/${saveId}/recolectar/${oficio}/explorar`, { method: 'POST' })
 }
 

@@ -1,11 +1,10 @@
 import type { FastifyInstance } from 'fastify';
 import { prisma } from '../../lib/prisma.js';
-import { metodoForOficio } from '../../services/harvestAbilities.js';
-import { detectHarvestSourcesInScene } from '../../services/harvest.js';
+import { metodoForOficio, attributeForOficio } from '../../services/harvestAbilities.js';
 import { detectNpcsInScene, scopeFor, hasPendingLoot } from '../../services/npcScene.js';
 import { loadSessionFacts, appendSessionFacts } from '../../services/worldFacts.js';
 import { inventoryCapacityFor, totalInventoryUnits } from '../../services/inventoryCapacity.js';
-import { effectiveInventorySlotsBonus } from '../../services/equipment.js';
+import { effectiveAttributes, effectiveInventorySlotsBonus, effectiveSecondaryAttributes } from '../../services/equipment.js';
 import { stripRegionArticle } from '../../services/population.js';
 import { pasaFiltroTerreno } from '../../services/terrain.js';
 import { locationTerrainTags, harvestSourceTerrainTag, sourceCategoryNameFor } from '../../scripts/worldCatalog.js';
@@ -14,7 +13,11 @@ import { hasToolForOficio, OFICIOS_CON_HERRAMIENTA_REQUERIDA } from '../../servi
 import { closeItemQuests } from '../../services/questResolution.js';
 import { recordEntityDiscoveries } from '../../services/entityDiscovery.js';
 import { advanceFictionalMinutes, formatFictionalDate } from '../../services/worldClock.js';
-import type { AttributeBlock } from '../../services/dice.js';
+import { alivioForLevel } from '../../services/professionProgress.js';
+import { normalizeSecondaryAttributes } from '../../services/secondaryAttributes.js';
+import { rollGathering, dificultadForTier, gradoForRecurso, cantidadForGrado } from '../../services/dice.js';
+import type { GatheringRollResult, AttributeBlock } from '../../services/dice.js';
+import { Prisma } from '@prisma/client';
 import type { MetodoObtencion } from '@prisma/client';
 
 /// Recolección (rediseño de profesiones, 2026-08-07) — lado "recolectora" (minero/talador/
@@ -62,7 +65,10 @@ interface SourceCandidate {
   sourceSlug: string;
   sourceCategory: string;
   disponible: number;
-  yields: { itemSlug: string; itemName: string; cantidadMaxima: number }[];
+  /// `tier` (rediseño de recolección, 2026-08-22) solo se usa para calcular la dificultad de
+  /// `rollGathering` dentro de esta misma ruta — nunca sale hacia `groupByCategory`/el frontend
+  /// (`CategoryYield` no lo declara, así que se descarta sin más al agrupar).
+  yields: { itemSlug: string; itemName: string; cantidadMaxima: number; tier: number | null }[];
 }
 
 interface CategoryYield {
@@ -163,7 +169,7 @@ async function candidateSourcesFor(
       sourceSlug: pop.targetSlug,
       sourceCategory: sourceRows[0].sourceCategory,
       disponible: pop.poblacion,
-      yields: sourceRows.map((r) => ({ itemSlug: r.item.slug, itemName: r.item.name, cantidadMaxima: r.cantidad })),
+      yields: sourceRows.map((r) => ({ itemSlug: r.item.slug, itemName: r.item.name, cantidadMaxima: r.cantidad, tier: r.item.tier })),
     });
   }
   return { candidates, anyOnCooldown };
@@ -179,10 +185,17 @@ async function candidateSourcesFor(
 /// resto de un grupo cazado — bug real ya corregido). Solo cuenta fauna real (`ataqueNatural` no
 /// nulo — humanoides no se desuellan) con al menos una fila HarvestYield de método CAZA para su
 /// slug. Sin cooldown ni "Explorar": no hay nada que redescubrir, o el cadáver sigue en escena o no.
+///
+/// `|| !!n.groupDefeated` (bug real jugando en vivo, 2026-08-22, "he matado a un buitre pero
+/// desollar no detecta el cadáver" — caza en grupo, `groupSize:5, groupDefeated:1`): en un grupo,
+/// `condicionFisica` refleja al individuo ACTUAL/siguiente (sigue ILESO mientras queden más del
+/// grupo por enfrentar), nunca a los ya caídos — un cadáver real y sin despiezar de un grupo se
+/// quedaba invisible para Desollar aunque `hasPendingLoot` ya lo diera por pendiente. Mismo
+/// criterio que `derrotada` en `harvest.ts` (`yaDespiezada`), que ya lo hacía bien — aquí faltaba.
 async function carcassCandidatesFor(worldId: string, saveId: string, currentLocationId: string | null, sessionFacts: string[]): Promise<SourceCandidate[]> {
   const npcsInScene = await detectNpcsInScene({ action: '', worldId, sessionFacts, saveId, currentLocationId });
   const carcasses = npcsInScene.filter(
-    (n) => n.ataqueNatural !== null && hasPendingLoot(n) && (n.condicionFisica === 'CONVALECIENTE' || n.condicionFisica === 'MUERTO'),
+    (n) => n.ataqueNatural !== null && hasPendingLoot(n) && (n.condicionFisica === 'CONVALECIENTE' || n.condicionFisica === 'MUERTO' || !!n.groupDefeated),
   );
   if (carcasses.length === 0) return [];
 
@@ -211,9 +224,75 @@ async function carcassCandidatesFor(worldId: string, saveId: string, currentLoca
         // para no truncar `Math.min(cantidadMaxima, disponible)` en el modal, así que se fija al
         // mayor `cantidad` de sus propios yields (nunca el cuello de botella real).
         disponible: Math.max(1, ...yieldRows.map((r) => r.cantidad)),
-        yields: yieldRows.map((r) => ({ itemSlug: r.item.slug, itemName: r.item.name, cantidadMaxima: r.cantidad })),
+        yields: yieldRows.map((r) => ({ itemSlug: r.item.slug, itemName: r.item.name, cantidadMaxima: r.cantidad, tier: r.item.tier })),
       };
     });
+}
+
+/// Save con los datos mínimos para calcular `rollGathering` (equipo puesto para bonus de
+/// atributos/secundarios + nivel del oficio concreto que se está usando) — un único shape
+/// compartido por `/explorar` y el GET de desollador en vez de repetir el cálculo dos veces.
+interface GatheringRollInputs {
+  attributes: AttributeBlock;
+  secondaryAttributesJson: unknown;
+  inventoryItems: { statBonuses: unknown }[];
+  professionProgress: { professionId: string; nivel: number }[];
+}
+
+/// Una sola tirada por acción de Explorar/Desollar (rediseño de recolección, 2026-08-22) —
+/// aplicada luego contra la dificultad de CADA recurso candidato (`applyGatheringRoll` más abajo),
+/// nunca una tirada por recurso: el margen de un único resultado ya decide a la vez qué aparece y
+/// cuánta cantidad, igual que un único chequeo de Supervivencia en D&D revela más cuanto mejor se
+/// tira. `oficio` es el `professionId` exacto pulsado (ej. "minero-llanuras"), no un prefijo.
+function gatheringRollFor(save: GatheringRollInputs, oficio: string): GatheringRollResult {
+  const attributes = effectiveAttributes(save.attributes, save.inventoryItems);
+  const secondaryAttributes = effectiveSecondaryAttributes(normalizeSecondaryAttributes(save.secondaryAttributesJson), save.inventoryItems);
+  const nivelOficio = save.professionProgress.find((p) => p.professionId === oficio)?.nivel ?? 1;
+  // Ya validado más arriba (metodoForOficio no fue null): attributeForOficio busca el mismo
+  // prefijo y siempre encuentra pareja.
+  const attribute = attributeForOficio(oficio)!;
+  return rollGathering(attributes, attribute, alivioForLevel(nivelOficio), secondaryAttributes.suerte);
+}
+
+/// Aplica el resultado de `gatheringRollFor` a una lista de candidatos: cada yield individual (no
+/// la fuente entera, una misma fuente puede dar varios objetos de distinto tier) se filtra/recorta
+/// según su propio grado — una fuente que se queda sin ningún yield tras esto desaparece del todo
+/// del listado (fallo total de la tirada para ese recurso concreto).
+function applyGatheringRoll(candidates: SourceCandidate[], roll: GatheringRollResult): SourceCandidate[] {
+  return candidates
+    .map((c) => ({
+      ...c,
+      yields: c.yields
+        .map((y) => ({ ...y, cantidadMaxima: cantidadForGrado(gradoForRecurso(roll.result, dificultadForTier(y.tier)), y.cantidadMaxima) }))
+        .filter((y) => y.cantidadMaxima > 0),
+    }))
+    .filter((c) => c.yields.length > 0);
+}
+
+/// Tirada congelada (petición explícita, 2026-08-22: "para poder ver algo siempre deberías pasar
+/// por esta tirada... al menos una vez y ya se guarda" — sin esto, reabrir el pop-up tras localizar
+/// algo enseñaba la lista CRUDA sin recortar por grado (ignorando la tirada por completo), y
+/// Desollar volvía a tirar en cada apertura del panel, dejando "pescar" un resultado mejor cerrando
+/// y reabriendo). `Save.harvestRollCache` (Json) guarda el resultado YA filtrado por
+/// `applyGatheringRoll` — nunca los candidatos crudos — junto al oficio/ubicación en que se tiró,
+/// para saber si sigue siendo válido. Reemplaza por completo el viejo mecanismo de
+/// `detectHarvestSourcesInScene` para "ya localizado" en este archivo (Cazar, ruta aparte, sigue
+/// usando ese mecanismo — fuera del alcance de este cambio).
+interface HarvestRollCache {
+  oficio: string;
+  locationId: string | null;
+  sources: SourceCandidate[];
+}
+
+function cachedRollFor(save: { harvestRollCache: unknown }, oficio: string, locationId: string | null): SourceCandidate[] | null {
+  const cache = save.harvestRollCache as HarvestRollCache | null;
+  if (!cache || cache.oficio !== oficio || cache.locationId !== locationId) return null;
+  return cache.sources;
+}
+
+function saveRollCache(saveId: string, oficio: string, locationId: string | null, sources: SourceCandidate[]) {
+  const cache: HarvestRollCache = { oficio, locationId, sources };
+  return prisma.save.update({ where: { id: saveId }, data: { harvestRollCache: cache as unknown as Prisma.InputJsonValue } });
 }
 
 export async function recolectarRoutes(app: FastifyInstance) {
@@ -222,14 +301,42 @@ export async function recolectarRoutes(app: FastifyInstance) {
     if (!metodo) {
       return reply.status(400).send({ error: `"${request.params.oficio}" no es un oficio recolector` });
     }
-    const save = await prisma.save.findUnique({ where: { id: request.params.id }, include: { currentLocation: true } });
+    const save = await prisma.save.findUnique({
+      where: { id: request.params.id },
+      include: {
+        currentLocation: true,
+        inventoryItems: { where: { slot: { not: null } }, select: { statBonuses: true } },
+        professionProgress: { select: { professionId: true, nivel: true } },
+      },
+    });
     if (!save) return reply.status(404).send({ error: 'Partida no encontrada' });
 
     if (metodo === 'CAZA') {
+      // Tirada congelada (rediseño de recolección, 2026-08-22) — antes se tiraba de nuevo en CADA
+      // apertura del panel (simplificación consciente original, ya descartada): dejaba "pescar" un
+      // resultado mejor cerrando y reabriendo. Ahora, si ya se tiró para este oficio en esta misma
+      // ubicación, se devuelve tal cual, sin tirar otra vez.
+      const cachedSources = cachedRollFor(save, request.params.oficio, save.currentLocationId);
+      if (cachedSources) return { sources: groupByCategory(cachedSources), puedeExplorar: false, enCooldown: false };
+
       const sessionFacts = await loadSessionFacts(save.id);
       const rawCandidates = await carcassCandidatesFor(save.worldId, save.id, save.currentLocationId, sessionFacts);
-      return { sources: groupByCategory(rawCandidates), puedeExplorar: false, enCooldown: false };
+      if (rawCandidates.length === 0) return { sources: [], puedeExplorar: false, enCooldown: false };
+      const roll = gatheringRollFor(
+        { attributes: save.attributes as AttributeBlock, secondaryAttributesJson: save.secondaryAttributes, inventoryItems: save.inventoryItems, professionProgress: save.professionProgress },
+        request.params.oficio,
+      );
+      const filtered = applyGatheringRoll(rawCandidates, roll);
+      await saveRollCache(save.id, request.params.oficio, save.currentLocationId, filtered);
+      return { sources: groupByCategory(filtered), roll, puedeExplorar: false, enCooldown: false };
     }
+
+    // Tirada congelada (mismo criterio que arriba) — reemplaza por completo el viejo
+    // `detectHarvestSourcesInScene`: "ya localizado" ahora significa "ya se tiró aquí", nunca "la
+    // narración lo mencionó", así que ver algo SIEMPRE implica haber pasado por una tirada real
+    // (en /explorar) al menos una vez.
+    const cachedSources = cachedRollFor(save, request.params.oficio, save.currentLocationId);
+    if (cachedSources) return { sources: groupByCategory(cachedSources), puedeExplorar: false, enCooldown: false };
 
     const { candidates, anyOnCooldown } = await candidateSourcesFor(
       save.worldId,
@@ -239,14 +346,7 @@ export async function recolectarRoutes(app: FastifyInstance) {
       save.currentLocation?.slug ?? null,
     );
     if (candidates.length === 0) return { sources: [], puedeExplorar: false, enCooldown: anyOnCooldown };
-
-    const sessionFacts = await loadSessionFacts(save.id);
-    const localizados = detectHarvestSourcesInScene(
-      sessionFacts,
-      candidates.map((c) => c.sourceSlug),
-    );
-    const sources = groupByCategory(candidates.filter((c) => localizados.includes(c.sourceSlug)));
-    return { sources, puedeExplorar: sources.length === 0, enCooldown: sources.length === 0 && anyOnCooldown };
+    return { sources: [], puedeExplorar: true, enCooldown: false };
   });
 
   // Determinista, sin gastar turno ni pasar por Ollama (decisión de diseño, 2026-08-07: ya existe
@@ -258,7 +358,14 @@ export async function recolectarRoutes(app: FastifyInstance) {
     if (!metodo || metodo === 'CAZA') {
       return reply.status(400).send({ error: `"${request.params.oficio}" no es un oficio recolector con exploración` });
     }
-    const save = await prisma.save.findUnique({ where: { id: request.params.id }, include: { currentLocation: true } });
+    const save = await prisma.save.findUnique({
+      where: { id: request.params.id },
+      include: {
+        currentLocation: true,
+        inventoryItems: { where: { slot: { not: null } }, select: { statBonuses: true } },
+        professionProgress: { select: { professionId: true, nivel: true } },
+      },
+    });
     if (!save) return reply.status(404).send({ error: 'Partida no encontrada' });
     // Bug real (auditoría de bugs, 2026-08-21): a diferencia de /turn/classify y /combat/flee
     // (session.ts), ninguna ruta de recolección comprobaba `save.endedAt` — con la partida ya
@@ -277,16 +384,36 @@ export async function recolectarRoutes(app: FastifyInstance) {
     );
     if (candidates.length === 0) return { sources: [], enCooldown: anyOnCooldown };
 
+    // Tirada visible (rediseño de recolección, 2026-08-22, petición explícita: "cuando le das a
+    // explorar") — una sola por pulsación de "Explorar", su margen decide a la vez qué recurso de
+    // los candidatos aparece y con cuánta cantidad (`applyGatheringRoll`). Un roll malo puede dejar
+    // `filteredCandidates` vacío pese a haber candidatos reales: se devuelve igualmente `roll` para
+    // que el frontend anime el dado y explique "no encontraste nada esta vez", en vez de mentir con
+    // el mensaje de "no hay nada aquí" que usa `anyOnCooldown`.
+    const roll = gatheringRollFor(
+      { attributes: save.attributes as AttributeBlock, secondaryAttributesJson: save.secondaryAttributes, inventoryItems: save.inventoryItems, professionProgress: save.professionProgress },
+      request.params.oficio,
+    );
+    const filteredCandidates = applyGatheringRoll(candidates, roll);
+    // Congela el resultado (rediseño de recolección, 2026-08-22) — incluso si salió vacío (mala
+    // suerte): reabrir el panel debe ver SIEMPRE lo mismo, nunca una oportunidad gratis de volver
+    // a tirar por un resultado mejor. Se guarda antes de nada más, para que sobreviva aunque el
+    // resto del turno (hechos de sesión) falle por cualquier motivo.
+    await saveRollCache(save.id, request.params.oficio, save.currentLocationId, filteredCandidates);
+
     const sessionFacts = await loadSessionFacts(save.id);
     // Una frase por categoría DISTINTA descubierta (2026-08-15, ya no por sourceSlug) — evita
-    // repetir "localiza mineral en la zona" dos veces si hay dos fuentes minerales a la vez.
-    const distinctCategories = [...new Set(candidates.map((c) => c.sourceCategory))];
-    await appendSessionFacts(
-      save.id,
-      sessionFacts,
-      distinctCategories.map((cat) => `${save.characterName} localiza ${sourceCategoryNameFor(cat).toLowerCase()} en la zona.`),
-    );
-    return { sources: groupByCategory(candidates) };
+    // repetir "localiza mineral en la zona" dos veces si hay dos fuentes minerales a la vez. Solo
+    // por lo que la tirada de verdad reveló, no por todos los candidatos crudos.
+    const distinctCategories = [...new Set(filteredCandidates.map((c) => c.sourceCategory))];
+    if (distinctCategories.length > 0) {
+      await appendSessionFacts(
+        save.id,
+        sessionFacts,
+        distinctCategories.map((cat) => `${save.characterName} localiza ${sourceCategoryNameFor(cat).toLowerCase()} en la zona.`),
+      );
+    }
+    return { sources: groupByCategory(filteredCandidates), roll };
   });
 
   app.post<{ Params: { id: string }; Body: { selections: { sourceSlug: string; itemSlug: string; cantidad: number }[] } }>(
@@ -577,6 +704,11 @@ export async function recolectarRoutes(app: FastifyInstance) {
         // llamaba a `recordEntityDiscoveries`, así que un objeto conseguido por Minar/Talar/
         // Desollar podía quedar en el inventario sin desbloquear nunca su ficha de Enciclopedia.
         await recordEntityDiscoveries({ saveId: save.id, worldId: save.worldId, mentionedText: touched.logEntry!.text });
+        // Tirada congelada (2026-08-22) — el mundo real cambió (población depletada/cadáver
+        // despiezado), así que la foto guardada por `saveRollCache` ya no refleja lo que queda.
+        // Se limpia el slot entero (un único caché por partida, no por oficio) para que la próxima
+        // apertura del panel/Explorar recalcule desde cero, con una tirada nueva.
+        await prisma.save.update({ where: { id: save.id }, data: { harvestRollCache: Prisma.JsonNull } });
       }
 
       // Materia prima cruda — siempre tipo RECURSO por diseño (nunca EQUIPABLE ni ESPECIAL), mismo
