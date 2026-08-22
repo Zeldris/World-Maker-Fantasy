@@ -29,19 +29,32 @@ export function useTransitPolling({ saveId, busyUntil, syncFromSave }: UseTransi
     if (!saveId || !busyUntil) return
     let cancelled = false
 
-    const interval = setInterval(async () => {
+    async function pollOnce() {
       try {
-        const save = await getSave(saveId)
+        const save = await getSave(saveId!)
         if (cancelled) return
         if (!save.transit) syncFromSave(save)
       } catch {
         // Se reintenta en el siguiente sondeo.
       }
-    }, 30_000)
+    }
+
+    const interval = setInterval(pollOnce, 30_000)
+
+    // Sondeo puntual justo cuando se espera que la acción termine (bug real jugando en vivo,
+    // 2026-08-22: "al craftear se queda mucho tiempo en resolviendo...pero si es determinista...
+    // porque tarda tanto?" — un crafteo tier 1 tarda 5s de verdad en el backend, pero sin esto el
+    // frontend podía quedarse hasta 25s de más en "resolviendo..." esperando al próximo tick de
+    // 30s). +500ms de margen para que la resolución anticipada del backend (`startEagerTransitResolution`,
+    // turn.ts) ya haya comprometido su transacción. Si `busyUntil` ya pasó al montar (reconexión a
+    // mitad de resolución), dispara casi de inmediato en vez de esperar el intervalo completo.
+    const remainingMs = new Date(busyUntil).getTime() - Date.now()
+    const timeout = setTimeout(pollOnce, Math.max(0, remainingMs) + 500)
 
     return () => {
       cancelled = true
       clearInterval(interval)
+      clearTimeout(timeout)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [saveId, busyUntil])
