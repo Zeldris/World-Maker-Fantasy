@@ -204,12 +204,10 @@ export type CristalHeladoEdge = LlanurasEdge
 // coordenadas viven DIRECTAMENTE en el mismo espacio de píxeles del lienzo (800×600) — no hace
 // falta ninguna proyección tipo `projectLlanurasNodes`.
 //
-// Calibración en vivo 2026-08-22 (primera pasada, "un nodo a la vez", mismo criterio que
-// Llanuras): 11 de las 12 posiciones ya se ajustaron viendo el render real contra el PNG y quedan
-// confirmadas como grupo apretado dentro del contorno (la usuaria: "listo así quedaría") — solo
-// falta 'cascada-cristal-tres-aguas', que se queda en su valor de rejilla de partida hasta la
-// próxima sesión. A diferencia de Llanuras, ninguna se movió a ciegas: cada valor salió de una
-// ronda de prueba/captura de pantalla con la usuaria, no de una fórmula.
+// Calibración en vivo 2026-08-22 ("un nodo a la vez", mismo criterio que Llanuras): las 12
+// posiciones están confirmadas por la usuaria viendo el render real contra el PNG, agrupadas
+// dentro del contorno real de la región. A diferencia de Llanuras, ninguna se movió a ciegas: cada
+// valor salió de una ronda de prueba/captura de pantalla con la usuaria, no de una fórmula.
 export const cristalHeladoNodePositions: Record<string, { x: number; y: number }> = {
   'campamento-clan-helsig': { x: 603, y: 112 }, // confirmado correcto 2026-08-22
   'veta-helada': { x: 598, y: 98 }, // confirmado correcto 2026-08-22
@@ -221,7 +219,6 @@ export const cristalHeladoNodePositions: Record<string, { x: number; y: number }
   'tundra-negra-refleja': { x: 682, y: 82 }, // confirmado correcto 2026-08-22
   'tundra-polvo-nocturno': { x: 600, y: 49 }, // confirmado correcto 2026-08-22
   'costa-celeste-agitada': { x: 522, y: 74 }, // confirmado correcto 2026-08-22
-  // PENDIENTE: sin calibrar todavía, sigue en la rejilla de partida — próxima sesión.
-  'cascada-cristal-tres-aguas': { x: 627, y: 109 },
+  'cascada-cristal-tres-aguas': { x: 634, y: 116 }, // confirmado correcto 2026-08-22
   'desfiladeros-bruma': { x: 654, y: 42 }, // confirmado correcto 2026-08-22
 }
