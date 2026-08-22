@@ -140,6 +140,17 @@ antes de escribir código, mismo criterio que ya se aplicó al sistema de nivele
 
 ## Pendiente de código (histórico de la sesión de lore, detalle bruto por zona — ver resumen arriba)
 
+> **RESUELTO (verificado en la auditoría de lore del 2026-08-23)** — toda la lista de abajo, zona
+> por zona, ya está implementada en `worldCatalog.ts`/`worldPopulation.ts`/`crafting.ts` (mismo
+> trabajo que ya resume "Pasada de código de la sesión 2026-08-21" arriba). Se deja el detalle
+> bruto sin borrar como registro histórico, pero **no hace falta leerlo para saber qué falta** — lo
+> que sigue genuinamente pendiente es SOLO lo que ya lista "Sigue pendiente, genuinamente aparcado"
+> unas líneas más arriba (Fase 2 de Las Agujas Imán — Rocas Imanidas/Saco de Arena Imán/pérdida de
+> inventario por zona —, sistema de Reino + los 22 NPC del Campamento del Clan Serhu, pasivo de los
+> Nuentes en `combatExchange.ts`, y los alias/nombres de display de los ~28 `sourceSlug` nuevos).
+> Confirmado también por dos agentes de auditoría independientes (zonas Objetos y Fauna/Flora) que
+> hicieron `grep` contra el catálogo real antes de dar por bueno cada ítem.
+
 - **Sesión 2026-08-21 (fauna/flora/minerales de La Hondonada del Eco, ver más abajo)** — nada de
   esto está en `worldCatalog.ts` todavía: `NpcInput` nuevos para Gesgurio (PLANTILLA, insecto
   carroñero de emboscada), Kirelon Arenoso (PLANTILLA, reptil ciego nocturno 2-4m, nivel/atributos

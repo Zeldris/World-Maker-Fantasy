@@ -52,7 +52,7 @@ export const loreChunks: LoreChunkInput[] = [
   {
     type: 'CULTURA',
     title: 'El Estallido y el nacimiento de los Orcos',
-    text: 'Las razas "diseñadas" (Kelife, Goirntes, Kalisar, Jusaly, Ilvenar) nacieron del trabajo deliberado de todas las Semillas. Cuando Tarkor regresó transformado, su magia salvaje se derramó sin control sobre Helek Sirik — de esa erupción nacieron los Orcos y otras razas y criaturas salvajes, que se multiplican con una facilidad que ninguna Semilla fiel había previsto.',
+    text: 'Las razas "diseñadas" (primero Kelife, Goirntes, Kalisar, Jusaly e Ilvenar; ya avanzada la era, Nabieus y Faerus) nacieron del trabajo deliberado de todas las Semillas. Cuando Tarkor regresó transformado, su magia salvaje se derramó sin control sobre Helek Sirik — de esa erupción nacieron los Orcos y otras razas y criaturas salvajes, que se multiplican con una facilidad que ninguna Semilla fiel había previsto.',
     tags: ['orcos', 'magia-salvaje', 'estallido'],
     sourceDoc: 'genesis.md',
   },
@@ -194,7 +194,7 @@ export const loreChunks: LoreChunkInput[] = [
   {
     type: 'CULTURA',
     title: 'Tótems y rito funerario orco',
-    text: 'Cada orco caído con honor —duelo aceptado, cacería ritual— se quema y se marca con su tótem tallado en madera oscura de ciénaga, levantado sobre un montículo de piedra en Los Túmulos del Honor. El tamaño del tótem no lo decide el tipo de muerte, sino el juicio colectivo de la tribu sobre si esa vida se vivió con honor. Negar el rito —hacer desaparecer el cuerpo sin velarlo ni recordarlo— es un castigo real que solo se ve en el Clan Serhu, arma de la casta de Ketg contra quien la desafía.',
+    text: 'Al morir cualquier orco, su cuerpo se quema y se marca con un tótem tallado en madera oscura de ciénaga, levantado sobre un montículo de piedra en Los Túmulos del Honor. El tamaño del tótem no lo decide el tipo de muerte —un Signeran no da por sí solo derecho a uno mayor—, sino el juicio colectivo de la tribu, después, sobre si esa vida se vivió con honor. Negar el rito —hacer desaparecer el cuerpo sin velarlo ni recordarlo— es un castigo real que solo se ve en el Clan Serhu, arma de la casta de Ketg contra quien la desafía.',
     tags: ['totem', 'rito-funerario', 'tumulos-del-honor', 'clanes'],
     sourceDoc: 'razas.md',
   },
@@ -366,23 +366,33 @@ export const loreChunks: LoreChunkInput[] = [
   // siempre por Npc/NpcItem (vía determinista), nunca por RAG, para que nunca puedan desincronizarse.
   {
     type: 'NPC',
-    title: "Kort'ikar Torgash, del Clan Serhu",
-    text: 'Torgash es el Kort\'ikar (Jefe de Guerra) del Clan Serhu, vecino y rival histórico del extinto Clan Maktor de Gorhorn. Veterano de las escaramuzas fronterizas, ascendió al puesto cuando su predecesor murió en el frente. Carga en silencio con el peso de la incursión Goirnte que aniquiló al Clan Maktor mientras su propio clan se quedaba mirando sin intervenir — no fue decisión suya, era joven y sin mando entonces. Busca, en silencio y contra la costumbre, unificar a los clanes orcos para retirarlos de la guerra de la Concordia de Hierro: los Serhu vieron de cerca lo que la Concordia hizo con los Maktor y no quieren ser los siguientes. Es grave, económico con las palabras, y pragmático hasta rozar la herejía cultural — prefiere pactar a duelar. Detesta a la Concordia en silencio. Se le encuentra en el Campamento del Clan Serhu, o en ruta si algo lo saca de allí.',
-    tags: ['torgash', 'kortikar', 'clan-serhu', 'npc-principal'],
+    // Apellido "Ketg" añadido (auditoría de lore 2026-08-22) — ya propagado a worldCatalog.ts
+    // (slug torgash-ketg) y npcs.md #8 en la auditoría de lore 2026-08-21, pero este chunk se
+    // quedó atrás sin el apellido; mismo patrón exacto que el bug de la biografía de Gorhorn en
+    // berigLore.ts detectado ese mismo día.
+    title: "Kort'ikar Torgash Ketg, del Clan Serhu",
+    text: 'Torgash Ketg es el Kort\'ikar (Jefe de Guerra) del Clan Serhu, vecino y rival histórico del extinto Clan Maktor de Gorhorn. Veterano de las escaramuzas fronterizas, ascendió al puesto cuando su predecesor murió en el frente. Carga en silencio con el peso de la incursión Goirnte que aniquiló al Clan Maktor mientras su propio clan se quedaba mirando sin intervenir — no fue decisión suya, era joven y sin mando entonces. Busca, en silencio y contra la costumbre, unificar a los clanes orcos para retirarlos de la guerra de la Concordia de Hierro: los Serhu vieron de cerca lo que la Concordia hizo con los Maktor y no quieren ser los siguientes. Es grave, económico con las palabras, y pragmático hasta rozar la herejía cultural — prefiere pactar a duelar. Detesta a la Concordia en silencio. Se le encuentra en el Campamento del Clan Serhu, o en ruta si algo lo saca de allí.',
+    tags: ['torgash', 'torgash-ketg', 'kortikar', 'clan-serhu', 'npc-principal'],
     sourceDoc: 'npcs.md',
   },
   {
     type: 'NPC',
-    title: "Terk'ikar Ulkha, del Clan Serhu",
-    text: 'Ulkha es la Terk\'ikar (Jefa) del Clan Serhu — gobierna el asentamiento, el pastoreo y las migraciones. Fue ella quien decidió no acoger a los supervivientes del Clan Maktor tras su aniquilación: no por crueldad, sino por cálculo de supervivencia — acogerlos habría puesto una diana sobre su propio clan, con la Concordia todavía buscando rezagados. Que Gorhorn siga vivo la enfrenta de nuevo a esa decisión. Es fría en el cálculo y cálida en el trato, en ese orden; comulga con las Gargantúas de Ceniza durante las migraciones, como es costumbre entre las Terk\'ikar. Se le encuentra en el Campamento del Clan Serhu.',
-    tags: ['ulkha', 'terkikar', 'clan-serhu', 'npc-principal'],
+    // Apellido "Ketg" añadido (auditoría de lore 2026-08-22) — mismo motivo que Torgash arriba:
+    // ya en worldCatalog.ts (slug ulkha-ketg) y npcs.md #11 desde la auditoría 2026-08-21, sin
+    // propagar a este chunk.
+    title: "Terk'ikar Ulkha Ketg, del Clan Serhu",
+    text: 'Ulkha Ketg es la Terk\'ikar (Jefa) del Clan Serhu — gobierna el asentamiento, el pastoreo y las migraciones. Fue ella quien decidió no acoger a los supervivientes del Clan Maktor tras su aniquilación: no por crueldad, sino por cálculo de supervivencia — acogerlos habría puesto una diana sobre su propio clan, con la Concordia todavía buscando rezagados. Que Gorhorn siga vivo la enfrenta de nuevo a esa decisión. Es fría en el cálculo y cálida en el trato, en ese orden; comulga con las Gargantúas de Ceniza durante las migraciones, como es costumbre entre las Terk\'ikar. Se le encuentra en el Campamento del Clan Serhu.',
+    tags: ['ulkha', 'ulkha-ketg', 'terkikar', 'clan-serhu', 'npc-principal'],
     sourceDoc: 'npcs.md',
   },
   {
     type: 'NPC',
-    title: 'Hagar, del Clan Helsig (amigo de Gorhorn)',
-    text: 'Hagar es un orco del Clan Helsig, de Cristal Helado, minero de hielo sílice. Gorhorn trabajó tres meses codo con codo con él en las minas y forjaron una amistad real — Hagar es leal, ruidoso y de risa fácil, el opuesto exacto del Gorhorn callado de aquellos años, y por eso encajaron. Vive lejos de las Llanuras del Viento Rojo, en Cristal Helado, pero sigue siendo el vínculo personal vivo de Gorhorn: un mensaje, un viaje o un rumor pueden traerlo de vuelta a la historia en cualquier momento.',
-    tags: ['hagar', 'clan-helsig', 'gorhorn', 'npc-principal'],
+    // Apellido "Kiugh" añadido (auditoría de lore 2026-08-22) — mismo motivo que Torgash/Ulkha
+    // arriba: ya en el `name` de worldCatalog.ts (slug hagar-kiugh) y ahora en npcs.md #12, sin
+    // propagar antes a este chunk.
+    title: 'Hagar Kiugh, del Clan Helsig (amigo de Gorhorn)',
+    text: 'Hagar Kiugh es un orco del Clan Helsig, de Cristal Helado, minero de hielo sílice. Gorhorn trabajó tres meses codo con codo con él en las minas y forjaron una amistad real — Hagar es leal, ruidoso y de risa fácil, el opuesto exacto del Gorhorn callado de aquellos años, y por eso encajaron. Vive lejos de las Llanuras del Viento Rojo, en Cristal Helado, pero sigue siendo el vínculo personal vivo de Gorhorn: un mensaje, un viaje o un rumor pueden traerlo de vuelta a la historia en cualquier momento.',
+    tags: ['hagar', 'hagar-kiugh', 'clan-helsig', 'gorhorn', 'npc-principal'],
     sourceDoc: 'npcs.md',
   },
   {

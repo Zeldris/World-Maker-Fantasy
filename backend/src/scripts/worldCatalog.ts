@@ -57,7 +57,7 @@ export const locations: LocationInput[] = [
     region: 'Las Llanuras del Viento Rojo',
     kind: 'asentamiento',
     description:
-      'El asentamiento del Clan Serhu, cerca del Pozo de Cauce Viejo del que dependen para el agua — empalizada de estacas afiladas rodeando chozas de techo cónico, con vigías apostados en las torres de la entrada. Hogar de la Terk\'ikar Ulkha y el Kort\'ikar Torgash. Se llega visto desde lejos por los vigías del clan.',
+      'El asentamiento del Clan Serhu, cerca del Pozo de Cauce Viejo del que dependen para el agua — empalizada de estacas afiladas rodeando chozas de techo cónico, con vigías apostados en las torres de la entrada. Hogar de la Terk\'ikar Ulkha Ketg y el Kort\'ikar Torgash Ketg. Se llega visto desde lejos por los vigías del clan.',
     // 'clan serhu'/'los serhu' quitados a propósito (auditoría 2026-08-02, "revisar partida"): se
     // usan todo el rato para describir la AFILIACIÓN de un personaje ("una orca marcada del Clan
     // Serhu"), no el sitio — el enlazador de texto clicable (enciclopediaIndex.ts) los enlazaba
@@ -102,8 +102,11 @@ export const locations: LocationInput[] = [
     name: 'La Hondonada del Eco',
     region: 'Las Llanuras del Viento Rojo',
     kind: 'refugio',
+    // Auditoría de lore 2026-08-22/23: el "único riesgo" contradecía a areas.md (aquí decía
+    // emboscada/visibilidad, areas.md dice tormentas por acumulación de viento). Confirmado con la
+    // usuaria: se queda el de areas.md.
     description:
-      'Una depresión profunda en la tierra rojiza, con paredes de arcilla endurecida que cortan el viento y amortiguan el sonido — la voz rebota dentro, de ahí el nombre. Varias bocas de cueva se abren en las paredes, a distintas alturas. Refugio real contra el viento y las tormentas de arena magnética, buen lugar para acampar, descansar o pasar la noche. Único riesgo: al estar hundida, no se ve quién se acerca por arriba hasta que es tarde.',
+      'Una depresión profunda en la tierra rojiza, con paredes de arcilla endurecida que cortan el viento y amortiguan el sonido — la voz rebota dentro, de ahí el nombre. Varias bocas de cueva se abren en las paredes, a distintas alturas. Refugio real contra el viento y las tormentas de arena magnética, buen lugar para acampar, descansar o pasar la noche. Único riesgo: al estar hundida, el propio viento se acumula dentro y puede crear tormentas de arena momentáneas.',
     aliases: ['la hondonada del eco'],
     x: 5,
     y: 7.5,
@@ -158,7 +161,11 @@ export const locations: LocationInput[] = [
     slug: 'pilares-rotos',
     name: 'Paso de los Pilares Rotos',
     region: 'Las Llanuras del Viento Rojo',
-    kind: 'paso que conecta regiones',
+    // 'kind' corregido (auditoría de lore 2026-08-22): decía "paso que conecta regiones", pero
+    // areas.md lo describe como cruce interno de las Llanuras ("transitar de forma facil entre
+    // los diferentes puntos de las Llanuras de Viento Rojo") y sus 5 locationLinks de abajo
+    // conectan únicamente con otros nodos de esta misma región — ninguno cruza a otra región.
+    kind: 'paso que conecta puntos de las Llanuras',
     description:
       'Tres columnas erosionadas de lo que en tiempos remotos fue una formación rocosa mucho más alta, unidas entre sí por puentes colgantes y con pequeños estandartes clavados en lo alto de cada una — visibles desde casi cualquier punto de la llanura, el punto de referencia que usa cualquiera para orientarse aquí. Su sombra da algo de resguardo del sol a mediodía, pero es terreno abierto y no defendible.',
     aliases: ['los pilares rotos'],
@@ -476,7 +483,7 @@ export const locations: LocationInput[] = [
     region: 'Cristal Helado',
     kind: 'region',
     description:
-      "Region de tundra congelada, con grances yacimientos de hielo sílice en las profundidades del hielo, amplia zona de roca negra oscura cubierta de nieve y amplios lagos congelados con gritas que deja ver en el fondo el brillo del hielo sílice. La zona es rica en minerales y fauna adaptada al frío extremo, pero pobre en vegetación.",
+      "Region de tundra congelada, con grandes yacimientos de hielo sílice en las profundidades del hielo, amplia zona de roca negra oscura cubierta de nieve y amplios lagos congelados con grietas que deja ver en el fondo el brillo del hielo sílice. La zona es rica en minerales y fauna adaptada al frío extremo, pero pobre en vegetación.",
     aliases: ['veta helada'],
   },
   {
@@ -485,7 +492,7 @@ export const locations: LocationInput[] = [
     region: 'Cristal Helado',
     kind: 'region',
     description:
-      "Red de tuneles que recorre la parte norte de Crital helado, las cuales van por debajo de las grandes montañas. Creados antiguamente sin saber exactamente quien los creo. Actualmente es una zona casi inexplorada con vegetación y fauna adaptada a la oscuridad y el frio extremo. La zona es rica en minerales pero pocas veces alguien se aventura a explorarla por el peligro que representa. De ahi el nombre de la zona, ya que se dice que quien entra es para ver su final.",
+      "Red de tuneles que recorre la parte norte de Cristal Helado, las cuales van por debajo de las grandes montañas. Creados antiguamente sin saber exactamente quien los creo. Actualmente es una zona casi inexplorada con vegetación y fauna adaptada a la oscuridad y el frio extremo. La zona es rica en minerales pero pocas veces alguien se aventura a explorarla por el peligro que representa. De ahi el nombre de la zona, ya que se dice que quien entra es para ver su final.",
     aliases: ['la red profunda final'],
   },
   {
@@ -494,7 +501,7 @@ export const locations: LocationInput[] = [
     region: 'Cristal Helado',
     kind: 'region',
     description:
-      "Lago congelado que deja ver en el fondo una veta gigante de hielo sílice anlcada en las profundidades del lago creando asi un efecto de luz en las noches oscuras reflejando el brillo del cielo. La zona es rica en hielo silice.",
+      "Lago congelado que deja ver en el fondo una veta gigante de hielo sílice anclada en las profundidades del lago creando asi un efecto de luz en las noches oscuras reflejando el brillo del cielo. La zona es rica en hielo silice.",
     aliases: ['lago cristalice'],
   },
   {
@@ -1257,7 +1264,11 @@ export const fauna: NpcInput[] = [
     levelMax: 10,
     attributes: { fuerza: 14, destreza: 10, constitucion: 10, inteligencia: 6, voluntad: 7, carisma: 2, arcano: 2 },
     bio: 'Planeadora grande de alas rígidas que cabalga los frentes de viento. Vuela alto y en círculos con buen tiempo; cuando cruza baja y en línea recta, los pastores saben que viene tormenta de arena magnética. Anida en lo alto de los Pilares Rotos. Cazarla es dificilísimo salvo en nido o con trampa cebada.',
-    personality: 'Esquiva, jamás se posa cerca de nada que se mueva.',
+    // Auditoría de lore 2026-08-22/23: `personality` contradecía `temperamento: 'AGRESIVO'` (decía
+    // puramente esquiva, nunca atacaba). Confirmado con la usuaria que el ave SÍ es agresiva de
+    // verdad — se reescribe para reflejarlo; la dificultad de caza es de PUNTERÍA/captura en el
+    // combate ya iniciado (vuelo errático), no de que evite el enfrentamiento.
+    personality: 'Agresiva con cualquiera que se acerque a su territorio de anidación — se lanza en picado sin dudarlo. Una vez en el aire, su vuelo errático la hace endemoniadamente difícil de acertar o de dar caza de verdad.',
     loadout: [],
     ataqueNatural: 'Golpe de garras rápidas y afiladas desde el aire.',
     temperamento: 'AGRESIVO',
@@ -1283,10 +1294,15 @@ export const fauna: NpcInput[] = [
     levelMax: 12,
     attributes: { fuerza: 20, destreza: 6, constitucion: 22, inteligencia: 4, voluntad: 9, carisma: 2, arcano: 0 },
     bio: 'Bestia grande y pesada, de piel gris ceniza curtida bajo una coraza natural de placas óseas gruesas y blanquecinas que se solapan como escamas — costillas visibles bajo la piel cuando respira hondo, andar lento y pisadas que tiemblan en el suelo. Solo se caza de adulta con lanzas de hueso, en cacerías serias, no en un enfrentamiento casual.',
-    personality: 'Territorial y peligrosa si se la acorrala, pero no busca presas activamente.',
+    // Auditoría de lore 2026-08-22/23: `temperamento: 'AGRESIVO'` forzaba combate en CUALQUIER
+    // encuentro, contradiciendo "no busca presas activamente" y el trato de respeto ritual que le
+    // dan las Terk'ikar. Confirmado con la usuaria: CAUTELOSO (no fuerza combate solo — mismo
+    // patrón que Guchapo/Cuernahoja/Imanio — pero sí pelea de verdad si el jugador se acerca
+    // demasiado/la provoca, que es justo lo que ya hace CAUTELOSO cuando el jugador ataca).
+    personality: 'Territorial y peligrosa si se la acorrala o se le ataca, pero no busca presas activamente — no dudará en embestir si el jugador se acerca demasiado o la provoca.',
     loadout: [],
     ataqueNatural: 'Embiste con todo su peso, aplastando lo que se interponga en su camino.',
-    temperamento: 'AGRESIVO',
+    temperamento: 'CAUTELOSO',
     domesticablePct: 5,
     capturablePct: 10,
     habilidadesRaciales: [
@@ -5999,7 +6015,13 @@ export const harvestSourceTerrainTag: Record<string, TerrainTag> = {
 /// itinerantes, o ligadas al comportamiento más que al suelo) se dejan fuera del diccionario:
 /// nunca se penalizan, se ven en cualquier zona de la región igual que hoy.
 export const faunaTerrainTag: Record<string, TerrainTag> = {
-  'aullador-rojo': 'arido',
+  // Cambiado de 'arido' a 'vegetacion' (auditoría de lore fauna/flora, 2026-08-22): su propia bio
+  // dice "Sigue a las manadas de Corredores de Cauce en migración, cobrándose a los rezagados"
+  // (mismo texto en flora-fauna.md) — con 'arido' nunca coincidía con Corredor de Cauce, que el
+  // comentario de abajo ya retaggeó a 'vegetacion' justo para anclar su corredor migratorio real
+  // (Los Manaderos → Los Pastos de la Deriva → La Sabana Alta). Sin este cambio, el depredador y
+  // la única presa que la propia ficha le atribuye casi nunca aparecían en la misma zona.
+  'aullador-rojo': 'vegetacion',
   // Cambiado de 'humedo' a 'vegetacion' (2026-08-22, análisis de réplica entre zonas): con
   // 'humedo' aparecía en zonas costeras sin ninguna conexión de lore (Playa de Ceniza Blanca,
   // Acantilados Partidos, Pozas de Marea, Embarcadero de Ceniza) y NO aparecía en La Sabana Alta,
