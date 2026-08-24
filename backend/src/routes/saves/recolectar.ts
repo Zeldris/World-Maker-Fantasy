@@ -12,13 +12,13 @@ import { quantityOf } from '../../services/ingredients.js';
 import { hasToolForOficio, OFICIOS_CON_HERRAMIENTA_REQUERIDA } from '../../services/crafting.js';
 import { closeItemQuests } from '../../services/questResolution.js';
 import { recordEntityDiscoveries } from '../../services/entityDiscovery.js';
-import { advanceFictionalMinutes, formatFictionalDate } from '../../services/worldClock.js';
+import { advanceFictionalMinutes, formatFictionalDate, estacionFor } from '../../services/worldClock.js';
 import { alivioForLevel } from '../../services/professionProgress.js';
 import { normalizeSecondaryAttributes } from '../../services/secondaryAttributes.js';
 import { rollGathering, dificultadForTier, gradoForRecurso, cantidadForGrado } from '../../services/dice.js';
 import type { GatheringRollResult, AttributeBlock } from '../../services/dice.js';
 import { Prisma } from '@prisma/client';
-import type { MetodoObtencion } from '@prisma/client';
+import type { Estacion, MetodoObtencion } from '@prisma/client';
 
 /// Recolección (rediseño de profesiones, 2026-08-07) — lado "recolectora" (minero/talador/
 /// desollador): a diferencia de las de oficio creador (crafting.ts, un solo objeto por texto
@@ -59,6 +59,15 @@ const RECOLECCION_MINUTOS_POR_UNIDAD_EXTRA = 2;
 function minutosRecoleccionFor(totalUnidades: number): number {
   if (totalUnidades <= 0) return 0;
   return Math.min(RECOLECCION_MINUTOS_TOPE, RECOLECCION_MINUTOS_BASE + (totalUnidades - 1) * RECOLECCION_MINUTOS_POR_UNIDAD_EXTRA);
+}
+
+/// Gate real de estación (2026-08-24, Grupo 3 § Sistema de estaciones, ver
+/// docs/rpgtarkor/estaciones.md) — `null` = disponible todo el año, igual que hoy la mayoría del
+/// catálogo. A diferencia de `sinTirada`/`requiereHerramienta` (que afectan a la tirada o al
+/// resultado), esto filtra ANTES de tirar, mismo punto que `pasaFiltroTerreno`: fuera de su
+/// estación, el recurso no cuenta como candidato en absoluto, no solo "sale con cantidad 0".
+function pasaFiltroEstacion(estacionRequerida: Estacion | null, estacionActual: Estacion): boolean {
+  return !estacionRequerida || estacionRequerida === estacionActual;
 }
 
 interface SourceCandidate {
@@ -131,6 +140,7 @@ async function candidateSourcesFor(
   region: string | null,
   locationId: string | null,
   locationSlug: string | null,
+  estacionActual: Estacion,
 ): Promise<{ candidates: SourceCandidate[]; anyOnCooldown: boolean }> {
   const rows = await prisma.harvestYield.findMany({ where: { worldId, metodoObtencion: metodo }, include: { item: true } });
   if (rows.length === 0) return { candidates: [], anyOnCooldown: false };
@@ -160,7 +170,7 @@ async function candidateSourcesFor(
     // haber muchas plantas y en zonas humedas deberias haber mas") — mismo punto que el filtro de
     // región de arriba, ver terrain.ts.
     if (!pasaFiltroTerreno(locationSlug ? locationTerrainTags[locationSlug] : undefined, harvestSourceTerrainTag[pop.targetSlug])) continue;
-    const sourceRows = bySlug.get(pop.targetSlug) ?? [];
+    const sourceRows = (bySlug.get(pop.targetSlug) ?? []).filter((r) => pasaFiltroEstacion(r.estacionRequerida, estacionActual));
     if (sourceRows.length === 0) continue;
     const sameLocation = locationId !== null && pop.lastHarvestedLocationId === locationId;
     if (pop.lastHarvestedAt && pop.lastHarvestedAt.getTime() > cooldownCutoff && sameLocation) {
@@ -194,7 +204,13 @@ async function candidateSourcesFor(
 /// grupo por enfrentar), nunca a los ya caídos — un cadáver real y sin despiezar de un grupo se
 /// quedaba invisible para Desollar aunque `hasPendingLoot` ya lo diera por pendiente. Mismo
 /// criterio que `derrotada` en `harvest.ts` (`yaDespiezada`), que ya lo hacía bien — aquí faltaba.
-async function carcassCandidatesFor(worldId: string, saveId: string, currentLocationId: string | null, sessionFacts: string[]): Promise<SourceCandidate[]> {
+async function carcassCandidatesFor(
+  worldId: string,
+  saveId: string,
+  currentLocationId: string | null,
+  sessionFacts: string[],
+  estacionActual: Estacion,
+): Promise<SourceCandidate[]> {
   const npcsInScene = await detectNpcsInScene({ action: '', worldId, sessionFacts, saveId, currentLocationId });
   const carcasses = npcsInScene.filter(
     (n) => n.ataqueNatural !== null && hasPendingLoot(n) && (n.condicionFisica === 'CONVALECIENTE' || n.condicionFisica === 'MUERTO' || !!n.groupDefeated),
@@ -212,9 +228,9 @@ async function carcassCandidatesFor(worldId: string, saveId: string, currentLoca
   }
 
   return carcasses
-    .filter((c) => bySlug.has(c.slug))
-    .map((c) => {
-      const yieldRows = bySlug.get(c.slug)!;
+    .map((c) => ({ c, yieldRows: (bySlug.get(c.slug) ?? []).filter((r) => pasaFiltroEstacion(r.estacionRequerida, estacionActual)) }))
+    .filter(({ yieldRows }) => yieldRows.length > 0)
+    .map(({ c, yieldRows }) => {
       return {
         sourceSlug: c.slug,
         // 2026-08-15: ahora sí se agrupa por categoría (fauna), igual que el resto de fuentes —
@@ -311,9 +327,14 @@ export async function recolectarRoutes(app: FastifyInstance) {
         currentLocation: true,
         inventoryItems: { where: { slot: { not: null } }, select: { statBonuses: true } },
         professionProgress: { select: { professionId: true, nivel: true } },
+        worldState: { select: { fictionalMinutes: true } },
       },
     });
     if (!save) return reply.status(404).send({ error: 'Partida no encontrada' });
+    // Gate de estación (2026-08-24, Grupo 3 § Sistema de estaciones) — sin `worldState` sembrado
+    // todavía (partida recién creada), el reloj de ficción empieza en 0, mismo Día 1 = Ur'gathek
+    // que ve cualquier partida nueva.
+    const estacionActual = estacionFor(save.worldState?.fictionalMinutes ?? 0);
 
     if (metodo === 'CAZA') {
       // Tirada congelada (rediseño de recolección, 2026-08-22) — antes se tiraba de nuevo en CADA
@@ -324,7 +345,7 @@ export async function recolectarRoutes(app: FastifyInstance) {
       if (cachedSources) return { sources: groupByCategory(cachedSources), puedeExplorar: false, enCooldown: false };
 
       const sessionFacts = await loadSessionFacts(save.id);
-      const rawCandidates = await carcassCandidatesFor(save.worldId, save.id, save.currentLocationId, sessionFacts);
+      const rawCandidates = await carcassCandidatesFor(save.worldId, save.id, save.currentLocationId, sessionFacts, estacionActual);
       if (rawCandidates.length === 0) return { sources: [], puedeExplorar: false, enCooldown: false };
       const roll = gatheringRollFor(
         { attributes: save.attributes as AttributeBlock, secondaryAttributesJson: save.secondaryAttributes, inventoryItems: save.inventoryItems, professionProgress: save.professionProgress },
@@ -348,6 +369,7 @@ export async function recolectarRoutes(app: FastifyInstance) {
       save.currentLocation?.region ?? null,
       save.currentLocationId,
       save.currentLocation?.slug ?? null,
+      estacionActual,
     );
     if (candidates.length === 0) return { sources: [], puedeExplorar: false, enCooldown: anyOnCooldown };
     return { sources: [], puedeExplorar: true, enCooldown: false };
@@ -368,6 +390,7 @@ export async function recolectarRoutes(app: FastifyInstance) {
         currentLocation: true,
         inventoryItems: { where: { slot: { not: null } }, select: { statBonuses: true } },
         professionProgress: { select: { professionId: true, nivel: true } },
+        worldState: { select: { fictionalMinutes: true } },
       },
     });
     if (!save) return reply.status(404).send({ error: 'Partida no encontrada' });
@@ -385,6 +408,7 @@ export async function recolectarRoutes(app: FastifyInstance) {
       save.currentLocation?.region ?? null,
       save.currentLocationId,
       save.currentLocation?.slug ?? null,
+      estacionFor(save.worldState?.fictionalMinutes ?? 0),
     );
     if (candidates.length === 0) return { sources: [], enCooldown: anyOnCooldown };
 

@@ -234,6 +234,7 @@ async function main() {
         condicion: yieldRow.condicion,
         sinTirada: yieldRow.sinTirada ?? false,
         requiereHerramienta: yieldRow.requiereHerramienta ?? false,
+        estacionRequerida: yieldRow.estacionRequerida ?? null,
       },
     });
   }

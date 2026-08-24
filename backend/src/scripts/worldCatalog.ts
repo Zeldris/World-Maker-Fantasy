@@ -6,7 +6,7 @@
 
 import type { Attribute, AttributeBlock } from '../services/dice.js';
 import type { Requisitos } from '../services/requisitos.js';
-import type { EquipSlot, ItemTipo, MetodoObtencion, WeaponCategory } from '@prisma/client';
+import type { Estacion, EquipSlot, ItemTipo, MetodoObtencion, WeaponCategory } from '@prisma/client';
 import type { TerrainTag } from '../services/terrain.js';
 
 export interface LocationInput {
@@ -4660,6 +4660,11 @@ export interface HarvestYieldInput {
   /// sin que el resto del oficio la necesite — hoy solo minero, contra `pico-minero`. Omitido =
   /// `false`.
   requiereHerramienta?: boolean;
+  /// Gate real de estación (2026-08-24, Grupo 3 § Sistema de estaciones, ver
+  /// docs/rpgtarkor/estaciones.md) — para yields cuya `condicion` ya describe una estación en
+  /// texto ("crece en otoño") sin que el motor la respetara. Omitido = disponible todo el año,
+  /// igual que el resto del catálogo.
+  estacionRequerida?: Estacion;
 }
 
 export const harvestYields: HarvestYieldInput[] = [
@@ -5172,6 +5177,9 @@ export const harvestYields: HarvestYieldInput[] = [
     itemSlug: 'boungo',
     cantidad: 3,
     condicion: 'crece en otoño',
+    // Gate real de estación (2026-08-24, Grupo 3 § Sistema de estaciones) — antes esta
+    // `condicion` era pura documentación sin efecto en el motor.
+    estacionRequerida: 'OTONO',
   },
 
   // --- Imanio, Nuente (Las Agujas Imán) ---

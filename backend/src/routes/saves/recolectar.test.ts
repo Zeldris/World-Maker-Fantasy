@@ -972,6 +972,61 @@ describe('GET /saves/:id/recolectar/:oficio', () => {
       expect(body.sources[0].yields[0].cantidadMaxima).toBe(1);
     });
 
+    // Gate de estación (2026-08-24, Grupo 3 § Sistema de estaciones, ver
+    // docs/rpgtarkor/estaciones.md) — filtra ANTES de la tirada, distinto de sinTirada: fuera de
+    // su estación, el recurso ni siquiera cuenta como candidato.
+    it('un yield con estacionRequerida distinta a la actual no aparece, aunque la tirada sea buena', async () => {
+      findUniqueSave.mockResolvedValue({
+        id: 'save1',
+        worldId: 'world1',
+        currentLocationId: 'loc1',
+        currentLocation: { region: 'Las Llanuras del Viento Rojo' },
+        attributes: { fuerza: 20, destreza: 20, constitucion: 10, inteligencia: 10, voluntad: 10, carisma: 10, arcano: 10 },
+        secondaryAttributes: { suerte: 0 },
+        inventoryItems: [],
+        professionProgress: [],
+        worldState: { fictionalMinutes: 0 }, // Día 1 = Ur'gathek (Primavera)
+      });
+      findManyHarvestYield.mockResolvedValue([
+        { sourceSlug: 'boungo', sourceCategory: 'planta', item: { slug: 'boungo', name: 'Boungo', tier: 1 }, cantidad: 3, estacionRequerida: 'OTONO' },
+      ]);
+      findManyWorldPopulation.mockResolvedValue([
+        { targetSlug: 'boungo', poblacion: 40, distribucion: { 'Llanuras del Viento Rojo': 1 }, lastHarvestedAt: null, lastHarvestedLocationId: null },
+      ]);
+      const app = await buildApp();
+
+      const res = await app.inject({ method: 'POST', url: '/saves/save1/recolectar/herborista-llanuras/explorar' });
+
+      expect(JSON.parse(res.body).sources).toEqual([]);
+    });
+
+    it('un yield con estacionRequerida que coincide con la actual sí aparece', async () => {
+      findUniqueSave.mockResolvedValue({
+        id: 'save1',
+        worldId: 'world1',
+        currentLocationId: 'loc1',
+        currentLocation: { region: 'Las Llanuras del Viento Rojo' },
+        // herborista tira por Voluntad, no Fuerza (attributeForOficio) — con 20 aquí, el peor d20
+        // posible (1) da 1+10+0 = 11, igual a la dificultad (10+tier(1)), éxito garantizado.
+        attributes: { fuerza: 10, destreza: 10, constitucion: 10, inteligencia: 10, voluntad: 20, carisma: 10, arcano: 10 },
+        secondaryAttributes: { suerte: 0 },
+        inventoryItems: [],
+        professionProgress: [],
+        worldState: { fictionalMinutes: 1440 * 60 }, // Día 61 = Vungrat (Otoño)
+      });
+      findManyHarvestYield.mockResolvedValue([
+        { sourceSlug: 'boungo', sourceCategory: 'planta', item: { slug: 'boungo', name: 'Boungo', tier: 1 }, cantidad: 3, estacionRequerida: 'OTONO' },
+      ]);
+      findManyWorldPopulation.mockResolvedValue([
+        { targetSlug: 'boungo', poblacion: 40, distribucion: { 'Llanuras del Viento Rojo': 1 }, lastHarvestedAt: null, lastHarvestedLocationId: null },
+      ]);
+      const app = await buildApp();
+
+      const res = await app.inject({ method: 'POST', url: '/saves/save1/recolectar/herborista-llanuras/explorar' });
+
+      expect(JSON.parse(res.body).sources).not.toEqual([]);
+    });
+
     it('el nivel del oficio (alivioForLevel) llega correctamente al roll de la respuesta', async () => {
       // fuerza 20 garantiza éxito con el peor d20 posible (ver comentario del beforeEach); lo que
       // se comprueba aquí es que el nivel 5 de professionProgress (alivioForLevel = 4) se plumbea

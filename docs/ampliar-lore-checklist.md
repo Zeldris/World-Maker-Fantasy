@@ -349,12 +349,12 @@ inmediato, solo dejar constancia para cuando se decida.
 *(Sección nueva 2026-08-21.)* A diferencia de "Pendiente de código" (ya decidido, falta trasladarlo)
 esto es lore/mecánica que todavía no se ha decidido cómo funciona.
 
-- **Sistema de estaciones por mes/región en Helek Sirik** (detectado 2026-08-21 al fijar que el
-  Kirelon Arenoso sale "de noche o en los largos inviernos" — el motor ya tiene franjas horarias
-  reales día/noche, `entorno.ts`, pero ningún concepto de estación ni temperatura). Falta
-  establecer con la usuaria cómo funcionan las estaciones por región (¿un único calendario global,
-  o desfasado por región/hemisferio del mapa? ¿afecta a fauna/flora, a rutas, a ambas?) antes de
-  que cualquier condición futura "solo en invierno" tenga sentido mecánico, no solo narrativo.
+- [x] ~~**Sistema de estaciones por mes/región en Helek Sirik**~~ — cerrado y APLICADO al motor
+  2026-08-24, ver [rpgtarkor/estaciones.md](rpgtarkor/estaciones.md): calendario único global (120
+  días/año, 30 por estación), `estacionFor`/`estacionNombreFor` en `worldClock.ts`, gate real en
+  `HarvestYield.estacionRequerida` (`boungo` ya lo usa). El Kirelon Arenoso sigue narrativa pura —
+  su "largos inviernos" es tasa de aparición, no un `HarvestYield.condicion`, sistema aparte sin
+  diseñar (encuentros ambientales por estación).
 - **Fauna/flora/recursos anclados a "Llanuras del Viento Rojo" en conjunto en vez de a zonas
   concretas** (`harvestSourceRegion`, la práctica totalidad del catálogo salvo Salamandra de
   Escoria) — señalado por la usuaria 2026-08-21 como un error de diseño ("debería ser por
@@ -899,9 +899,11 @@ siguientes con el mismo formato.
 - **Ruptidar** (fauna nueva, ambiental): reptil serpentiforme inofensivo de 30-60cm, "limpiador"
   de materia orgánica en CUALQUIER zona arenosa de la región, no solo la Hondonada — sin material
   de caza ni amenaza. Primer caso real de fauna anclada por terreno en vez de por región completa.
-- **Confirmado con la usuaria, sin cerrar todavía**: el condicional "o en los largos inviernos" del
-  Kirelon queda como narrativa pura por ahora — no hay sistema de estaciones/temperatura en el
-  motor (ver "Pendiente de diseño" arriba, nueva entrada de esta sesión).
+- **Actualización 2026-08-24**: el sistema de estaciones ya existe (ver
+  [rpgtarkor/estaciones.md](rpgtarkor/estaciones.md)), pero el condicional "o en los largos
+  inviernos" del Kirelon sigue como narrativa pura — es tasa de APARICIÓN, no un
+  `HarvestYield.condicion` (sus 4 filas de loot no llevan ninguna condición de estación), así que
+  no había nada mecánico que conectar aquí sin diseñar antes encuentros ambientales por estación.
 - **Hallazgo de la usuaria, sin resolver esta sesión**: casi toda la fauna/flora/recursos ya
   existentes de la región están anclados a "Llanuras del Viento Rojo" en conjunto
   (`harvestSourceRegion`) en vez de a zonas concretas — considerado un error de diseño a revisar
@@ -1010,8 +1012,8 @@ varios `ItemCatalogInput`, `HarvestYield` nuevos, filas de `WorldPopulation`).
   distintos del Hueso largo/Placa ósea de gargantúa ya existentes (a confirmar con la usuaria en
   la pasada de código si de verdad quería 4 objetos de gargantúa distintos o consolidar).
 - **Boungo**: seta comestible, primer ingrediente propio (no ración reasignada) del oficio de
-  cocinero-orco-llanuras. Crece en otoño — segunda criatura/flora de la sesión que ya asume un
-  sistema de estaciones todavía sin diseñar (ver Kirelon Arenoso, zona 1).
+  cocinero-orco-llanuras. Crece en Vungrat (otoño) — gate real desde 2026-08-24, ver
+  [rpgtarkor/estaciones.md](rpgtarkor/estaciones.md).
 - Fauna solo de paso, reutilizada sin cambios: Gesgurio (Hondonada) y Cruzavientos.
 
 **Pendiente de código**: ver entrada nueva en la sección de arriba.

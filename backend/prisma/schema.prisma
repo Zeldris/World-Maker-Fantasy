@@ -1477,8 +1477,26 @@ model HarvestYield {
   /// OFICIOS_CON_HERRAMIENTA_REQUERIDA (crafting.ts, bloquea un oficio entero), esto bloquea solo
   /// ESTE yield concreto sin herramienta. `false` = no exige nada, igual que el resto.
   requiereHerramienta Boolean @default(false)
+  /// Gate real de estación POR YIELD (2026-08-24, Grupo 3 § Sistema de estaciones, ver
+  /// docs/rpgtarkor/estaciones.md) — a diferencia de `sinTirada`/`requiereHerramienta`, la
+  /// mayoría del catálogo no tiene ninguna restricción de estación: null = disponible todo el
+  /// año, igual que hoy. Hoy solo `boungo` ("crece en otoño") la usa, con `OTONO`. Comparado
+  /// contra `estacionFor(fictionalMinutes)` (worldClock.ts), nunca contra el nombre narrado
+  /// (que cambia según la raza del personaje jugable).
+  estacionRequerida Estacion?
 
   @@index([worldId, sourceSlug])
+}
+
+/// Las 4 estaciones del calendario único y global de Tarkor (2026-08-24, Grupo 3 § Sistema de
+/// estaciones, diseño completo en docs/rpgtarkor/estaciones.md) — 120 días de ficción por año,
+/// 30 días por estación. El nombre mostrado al narrar cambia según la raza del personaje jugable
+/// (`estacionNombreFor`, worldClock.ts); estos 4 valores son la clave mecánica interna, estable.
+enum Estacion {
+  PRIMAVERA
+  VERANO
+  OTONO
+  INVIERNO
 }
 
 /// Control de vida del mundo (2026-07-29, petición explícita: "establecer la población para

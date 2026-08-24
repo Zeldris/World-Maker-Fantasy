@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { advanceFictionalMinutes, dayForFictionalMinutes, formatFictionalDate } from './worldClock.js';
+import { advanceFictionalMinutes, dayForFictionalMinutes, formatFictionalDate, estacionFor, estacionNombreFor } from './worldClock.js';
 
 // Cobertura nueva (auditoría 2026-08-03, "análisis completo backend/frontend"): el reloj ficticio
 // no tenía ningún test pese a ser aritmética con varios puntos donde un signo o un módulo mal
@@ -53,5 +53,48 @@ describe('formatFictionalDate', () => {
     // no debe producir "Día 0, -5:00" ni nada por el estilo.
     const result = formatFictionalDate(-5);
     expect(result).not.toMatch(/-/);
+  });
+});
+
+// Sistema de estaciones (2026-08-24, Grupo 3 § Sistema de estaciones, ver
+// docs/rpgtarkor/estaciones.md) — calendario único de 120 días/año, 30 por estación. Día 1 = Ur'gathek.
+describe('estacionFor', () => {
+  it('Día 1 empieza en Primavera', () => {
+    expect(estacionFor(0)).toBe('PRIMAVERA');
+  });
+
+  it('cada estación dura 30 días exactos', () => {
+    expect(estacionFor(1440 * 29)).toBe('PRIMAVERA'); // Día 30, último de Primavera
+    expect(estacionFor(1440 * 30)).toBe('VERANO'); // Día 31, primero de Verano
+    expect(estacionFor(1440 * 59)).toBe('VERANO'); // Día 60, último de Verano
+    expect(estacionFor(1440 * 60)).toBe('OTONO'); // Día 61, primero de Otoño
+    expect(estacionFor(1440 * 89)).toBe('OTONO'); // Día 90, último de Otoño
+    expect(estacionFor(1440 * 90)).toBe('INVIERNO'); // Día 91, primero de Invierno
+    expect(estacionFor(1440 * 119)).toBe('INVIERNO'); // Día 120, último del año
+  });
+
+  it('el año se repite: el Día 121 vuelve a Primavera', () => {
+    expect(estacionFor(1440 * 120)).toBe('PRIMAVERA');
+  });
+
+  it('un año y medio después, misma estación que a mitad del primer año', () => {
+    expect(estacionFor(1440 * (120 + 60))).toBe('OTONO');
+  });
+});
+
+describe('estacionNombreFor', () => {
+  it('para un personaje orco, usa el nombre Kektira', () => {
+    expect(estacionNombreFor('PRIMAVERA', 'orcos')).toBe("Ur'gathek");
+    expect(estacionNombreFor('VERANO', 'orcos')).toBe('Sohkar');
+    expect(estacionNombreFor('OTONO', 'orcos')).toBe('Vungrat');
+    expect(estacionNombreFor('INVIERNO', 'orcos')).toBe('Krenoth');
+  });
+
+  it('para cualquier otra raza, usa la glosa en lengua común', () => {
+    expect(estacionNombreFor('OTONO', 'goirntes')).toBe('la estación de la cosecha');
+  });
+
+  it('con raza desconocida (null), también usa la glosa en lengua común', () => {
+    expect(estacionNombreFor('INVIERNO', null)).toBe('la estación larga');
   });
 });

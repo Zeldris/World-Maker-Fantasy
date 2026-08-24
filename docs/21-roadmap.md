@@ -119,10 +119,15 @@ resumen de trabajo real, agrupado por tamaño.
   `07-mundo-helek-sirik.md` tenía una nota "sigue pendiente" que se quedó desactualizada el mismo
   día que se cerró la decisión real (`clases.md § Atributo Magia`) — las 7 escuelas y las 12 ramas
   de Semilla ya tiran todas con el mismo atributo Magia, sin dado propio por escuela. Reconciliado.
-- [ ] **Sistema de estaciones por mes/región** (`ampliar-lore-checklist.md`) — el motor ya tiene
-  franjas día/noche pero ningún concepto de estación ni temperatura; hace falta decidir el diseño
-  (calendario único vs. desfasado por región) antes de que tenga sentido cualquier condición "solo
-  en invierno" (bloquea `boungo`, "crece en otoño").
+- [x] ~~**Sistema de estaciones**~~ — cerrado 2026-08-24, APLICADO al motor. Calendario único y
+  global (120 días/año, 30 por estación), diseño completo en
+  [estaciones.md](rpgtarkor/estaciones.md): `estacionFor`/`estacionNombreFor` puras (`worldClock.ts`),
+  enum `Estacion` + `HarvestYield.estacionRequerida` nuevo, filtrado antes de la tirada en
+  `recolectar.ts`. Nombres Kektira (Ur'gathek/Sohkar/Vungrat/Krenoth) porque el personaje jugable
+  es orco, con glosa en lengua común como fallback para otras razas. `boungo` ya exige Vungrat
+  (Otoño) de verdad. **Pendiente de tu lado**: aplicar la migración nueva contra tu Postgres +
+  reseed del catálogo. El Kirelon Arenoso ("largos inviernos") queda fuera — es tasa de aparición,
+  no `HarvestYield.condicion`, sistema distinto sin tocar.
 - [ ] **Eventos de clima puntuales** (encontrado cerrando `HarvestYield.condicion`, 2026-08-24) —
   distinto de estaciones: `punado-arena-iman`/`esquirla-celeste-caida` solo deberían aparecer "tras
   una tormenta de arena magnética reciente", y no existe ningún concepto de evento climático
