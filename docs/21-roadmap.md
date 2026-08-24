@@ -207,9 +207,12 @@ resumen de trabajo real, agrupado por tamaño.
 
 ### No es Grupo 3 — categorías aparte, para no confundir al leer esta lista
 
-- **Bugs reales** (`recolectar.ts`/`rollGathering` 500, "profesiones tiran dado siempre", Cruzavientos
-  nunca narrado) — viven en sus propias memorias/`revisar-partida-hallazgos.md`, no compiten por
-  prioridad con las features de arriba.
+- **Bugs reales** ("profesiones tiran dado siempre" sin confirmar, Cruzavientos nunca narrado) —
+  viven en sus propias memorias/`revisar-partida-hallazgos.md`, no compiten por prioridad con las
+  features de arriba. `recolectar.ts`/`rollGathering` 500 — **cerrado 2026-08-25**: eran 4
+  migraciones sin aplicar contra Postgres real, no un bug de código; de paso, correr los 3 archivos
+  de integración contra DB real por primera vez destapó una regresión de test genuina en "Ayuntamiento
+  mediano" (fixture sin `ProfessionProgress`, invisible en el sandbox sin DB) — arreglada.
 - **Huecos de lore puro** (Riko sin desarrollar, Kael Dorn↔Ithren sin cerrar del todo, Kalisar sin
   NPC propio) — trabajo de escritura, no de código; ya trackeados en
   `ampliar-lore-checklist.md § Pendiente de diseño`.
