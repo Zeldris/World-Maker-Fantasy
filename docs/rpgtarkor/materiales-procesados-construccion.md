@@ -82,14 +82,14 @@ precedente real de `bloque-piedra-tallada` (categoría `bloque`, nueva y propia,
 crudo) — más consistente para poder pedir "procesado" como su propio requisito, separado del
 crudo, en cualquier receta futura:
 
-| Recurso crudo (categoría) | Material procesado (propuesto) | Categoría procesada | Oficio que lo produce |
-|---|---|---|---|
-| Piedra (`piedra`) | Bloque de piedra tallada | `bloque` | `constructor-orcos-llanuras` **(ya existe)** |
-| Leña (`madera`) | Viga de madera tallada *(nueva)* | `viga` | `carpintero-orcos-llanuras` |
-| Hueso (`hueso`) | Columna de hueso *(nueva)* | `columna` | `constructor-orcos-llanuras` |
-| Mena (`mena`) | Lingote de hierro (`lingote-de-hierro`, **ya existe**) | `metal` *(inconsistente, ver arriba — no tocado a propósito, es un item ya en uso)* | `herrero-orco-llanuras` |
-| Resina (`resina`) | Sin material procesado — se queda cruda incluso en tiers altos (una resina no se "tal la", se usa tal cual como sellante/adhesivo) | — | — |
-| Fibra (`fibras`) | Cordaje trenzado *(nueva)* | `cordaje` | `curtidor-orcos-llanuras` |
+| Recurso crudo (categoría) | Material procesado (propuesto) | Categoría procesada | Oficio que lo produce | Ratio crudo→procesado |
+|---|---|---|---|---|
+| Piedra (`piedra`) | Bloque de piedra tallada | `bloque` | `constructor-orcos-llanuras` **(ya existe)** | 5:1 **(ya existe, `STONE_BLOCK_RECIPE`)** |
+| Leña (`madera`) | Viga de madera tallada *(nueva)* | `viga` | `carpintero-orcos-llanuras` | 4:1 *(propuesto)* |
+| Hueso (`hueso`) | Columna de hueso *(nueva)* | `columna` | `constructor-orcos-llanuras` | 3:1 *(propuesto)* |
+| Mena (`mena`) | Lingote de hierro (`lingote-de-hierro`, **ya existe**) | `metal` *(inconsistente, ver arriba — no tocado a propósito, es un item ya en uso)* | `herrero-orco-llanuras` | 4:1 **(ya existe)** |
+| Resina (`resina`) | Sin material procesado — se queda cruda incluso en tiers altos (una resina no se "talla", se usa tal cual como sellante/adhesivo) | — | — | — |
+| Fibra (`fibras`) | Cordaje trenzado *(nueva)* | `cordaje` | `curtidor-orcos-llanuras` | 4:1 *(propuesto)* |
 
 *(Resina sin procesado es una decisión de esta pasada, no una limitación técnica — si más
 adelante se le encuentra un uso procesado real, se añade igual que el resto.)*
@@ -110,12 +110,25 @@ todavía (nivel de entrada, cualquiera con la Carisma que ya pide puede intentar
 | Fibra | 8 |
 | Piedra | 14 |
 
-**Mediano y grande — sin cifras cerradas todavía.** Necesitan, además de la cantidad, decidir la
-MEZCLA cruda/procesada real (ej. "mediano: mitad de la piedra en Bloques ya tallados, mitad
-cruda; grande: toda la piedra en Bloques, nada crudo") — **a afinar en la siguiente pasada**,
-cifra de partida como el resto de números pendientes del proyecto. `oficio:
-'constructor-orcos-llanuras'` sí debería exigirse ya desde el mediano en adelante (el pequeño se
-queda accesible sin oficio, coherente con ser "nada imponente todavía").
+**Mediano y grande — cerrado (2026-08-24).** Regla dada por la usuaria: mediano ≈75% procesado /
+25% crudo por categoría procesable; grande 100% procesado en todo lo procesable — "así es difícil
+de ampliar" (a propósito: el grande exige tener los 4 oficios de procesado — constructor/herrero/
+carpintero/curtidor — a buen nivel A LA VEZ, no solo más cantidad de lo mismo). La resina nunca
+tiene versión procesada (ver tabla de arriba), así que se queda fuera de la regla 75/25 — sigue
+siendo 100% crudo en los tres niveles, solo crece en cantidad.
+
+| Categoría | Pequeño (100% crudo) | Mediano (~75% procesado / 25% crudo) | Grande (100% procesado) |
+|---|---|---|---|
+| Piedra | 14 | 3 Bloques + 5 Piedra cruda | 8 Bloques |
+| Metal (mena) | 2 | 1 Lingote + 1 Mena cruda | 4 Lingotes |
+| Madera | 6 | 2 Vigas + 3 Leña cruda | 5 Vigas |
+| Hueso | 6 | 2 Columnas + 2 Hueso crudo | 5 Columnas |
+| Fibra | 8 | 2 Cordajes + 3 Fibra cruda | 5 Cordajes |
+| Resina | 8 | 12 (crudo, siempre) | 20 (crudo, siempre) |
+
+`oficio: 'constructor-orcos-llanuras'` se exige (bloqueo real, no solo alivio — ver § gap arriba)
+desde el mediano en adelante; el pequeño se queda accesible sin oficio, coherente con ser "nada
+imponente todavía".
 
 ---
 
@@ -128,7 +141,9 @@ queda accesible sin oficio, coherente con ser "nada imponente todavía").
   construcción reales por primera vez — hoy ninguna construcción los pide.
 - `ConstructionRecipe.oficio` necesita pasar de "solo alivio" a bloqueo real para las recetas que
   lo declaren — lista explícita nueva, mismo patrón que `OFICIOS_CON_HERRAMIENTA_REQUERIDA`.
-- Cifras exactas de mediano/grande (cantidad + mezcla crudo/procesado) sin cerrar.
+- Actualizar `AYUNTAMIENTO_PEQUENO/MEDIANO/GRANDE_RECIPE` (`construction.ts`) con las cifras ya
+  cerradas de la tabla de arriba — nada de esto se ha aplicado al motor todavía, a diferencia del
+  Campamento.
 - Cuando se diseñen construcciones de otras razas/regiones (Goirntes/Meseta, Nabieus/Margen,
   Faerus/Bosque...), cada una necesitará sus propios oficios regionales y quizá sus propios
   materiales procesados — este documento solo cierra el caso orco/Llanuras, el patrón general
