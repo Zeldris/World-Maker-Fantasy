@@ -8,22 +8,36 @@ Semilla como los dos caminos de la clase Mago, y el sistema de armas a una/dos m
 Documento en curso — algunas especializaciones tienen ya identidad y ejemplos de habilidad
 concretos, otras solo nombre.*
 
-**APLICADO al motor (2026-08-24, Grupo 3 § Sistema de clases)** — hasta donde llegaba el repaso a
-fondo en ese momento (Guerrero/Cazador/Chamán completos; Arquero y el resto siguen en diseño puro,
-sin tocar): `Npc.clase`/`Npc.especializacion`/`Save.clase`/`Save.especializacion` pasan a ser
-enums reales (antes `clase` era texto libre); `classAbilities.ts` reescrito con tronco común +
-especializaciones reales para esas 3 clases — solo los huecos marcados "✅ lista" en este documento
-Y verificados efecto a efecto contra el motor real (algunas filas de Convocador/Opresor estaban mal
-marcadas en el propio doc, corregido en el código, no aquí). Domador/Totémico se quedan como
-especialización válida sin ninguna habilidad real (0/8, bloqueadas por completo por compañeros/
-invocación). Nuevo: enum `AbilityEffect.CONVERSION` (se resuelve entero por `preferredAttribute`,
-sin infraestructura de duración) y `StartingAbility.attributeBonus`/`SavedAction.attributeBonus`
-(el "bonus de atributo fijo" de "Habilidad de daño vs ataque básico" — pieza que tampoco existía,
+**APLICADO al motor (2026-08-24, Grupo 3 § Sistema de clases)** — primera pasada, solo Guerrero/
+Cazador/Chamán (lo único repasado a fondo en ese momento): `Npc.clase`/`Npc.especializacion`/
+`Save.clase`/`Save.especializacion` pasan a ser enums reales (antes `clase` era texto libre);
+`classAbilities.ts` reescrito con tronco común + especializaciones reales para esas 3 clases — solo
+los huecos marcados "✅ lista" en este documento Y verificados efecto a efecto contra el motor real
+(algunas filas de Convocador/Opresor estaban mal marcadas en el propio doc, corregido en el código,
+no aquí). Nuevo: enum `AbilityEffect.CONVERSION` (se resuelve entero por `preferredAttribute`, sin
+infraestructura de duración) y `StartingAbility.attributeBonus`/`SavedAction.attributeBonus` (el
+"bonus de atributo fijo" de "Habilidad de daño vs ataque básico" — pieza que tampoco existía,
 construida en la misma pasada). Restricción de armas por clase (`WeaponCategory.VARA` nuevo,
-`weaponPoolFor` en weaponAbilities.ts) aplicada de verdad al equipar, solo para estas 3 clases.
+`weaponPoolFor` en weaponAbilities.ts) aplicada de verdad al equipar, solo para estas 3 clases (el
+resto sigue sin pool diseñado — ver § Restricción de armas por clase, más abajo, sin cambios).
+
+**SEGUNDA PASADA, mismo día — el resto de clases ("aplícalo ya todo y ya lo cambiaremos en el
+futuro si hago cambios en las clases")**: con las 9 clases ya cerradas de diseño (ver § Fase de
+diseño cerrada, más abajo), se aplicaron también Arquero/Caballero/Segador/Asesino/Druida —
+`classAbilities.ts` pasa de 33 a **136 huecos reales**, las 8 clases con tabla (MAGO se queda sin
+tocar, sigue siendo solo identidad narrativa sin tronco ni tabla de niveles). Mismo criterio de
+verificación efecto a efecto que la primera pasada: Maestro Arquero/Maestro Ballestero pasan de
+"7/8" en este documento a **1/8 real** cada uno (el resto de filas usa DEBILIDAD/AUMENTO/CONTRA/
+MULTIPLE pese a estar marcadas "✅" aquí) — mismo tipo de error que ya se había encontrado en
+Convocador/Opresor. El resto de clases sí coincide con el recuento que da este documento. La
+Enciclopedia (`buildClassesSection`, `routes/world.ts`) muestra ya las 8 clases construidas.
+Domador/Totémico (dentro de Cazador/Chamán) y Aullador (Druida, misma familia de bloqueo) se
+quedan como especialización válida casi sin ninguna habilidad real — dependen por completo de
+`INVOCACION`/`COMPANERO`, combate multi-objetivo sin construir.
+
 Los 15 NPC humanoides del catálogo tienen clase/especialización asignada — ver
 `tarkor_sistema_clases_aplicado_2026-08-24` en la memoria del proyecto para el detalle completo.
-**Pendiente de tu lado**: aplicar las 2 migraciones nuevas contra tu Postgres real + `npm run
+**Pendiente de tu lado**: aplicar las migraciones nuevas contra tu Postgres real + `npm run
 seed-catalog` para que las clases/especializaciones de los NPC lleguen a tu mundo ya sembrado.
 
 *Todas las menciones de "combate multi-objetivo"/`MULTIPLE`/`INVOCACION`/`COMPANERO`/`CONTROL`/
@@ -1223,6 +1237,16 @@ documentación pura): Oficial/Soldado de la Concordia pasarían de Guerrero a Ca
 Vrask Ombra pasarían de sin clase a Chamán/Caballero respectivamente. El typo `'Cazadora'` de
 Cazadora Serhu es un bug real menor (hoy la deja sin ninguna habilidad de clase en combate) — no
 corregido a propósito, fuera del alcance de "cambiar ya" que solo cubre a Gorhorn.
+
+**Superado por una pasada posterior (2026-08-24, Grupo 3 § Sistema de clases, "todos los NPC deben
+tener una clase asignada al acabar esta implementación")**: esta tabla es la recomendación previa a
+esa instrucción explícita — la pasada real que se aplicó fue más estricta (los 15 NPC humanoides
+del catálogo SÍ tienen clase/especialización real hoy, incluidos los que esta tabla marcaba "no
+combatiente, correcto dejarlo así": Mercader de paso, Peregrino de los Túmulos, Kael Dorn, Hagar
+Kiugh, Yovenne Tal y Sella Marn) y en varios casos difiere de la especialización sugerida aquí
+(razonada de nuevo contra la bio/personality real de cada NPC en el momento de aplicarla, no
+copiada de esta tabla) — ver `tarkor_sistema_clases_aplicado_2026-08-24` en la memoria del proyecto
+para el detalle NPC a NPC realmente aplicado. El typo `'Cazadora'` SÍ se corrigió en esa pasada.
 
 ## Gorhorn deja de ser dual-clase (2026-08-24, APLICADO al motor)
 

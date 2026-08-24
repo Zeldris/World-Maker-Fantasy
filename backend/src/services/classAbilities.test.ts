@@ -34,12 +34,18 @@ describe('classAbilityUnlocksFor', () => {
 });
 
 describe('allClassAbilityUnlocks', () => {
-  it('devuelve el roster completo (33 huecos: 11 Guerrero + 14 Cazador + 8 Chamán)', () => {
+  it('devuelve el roster completo (136 huecos: 8 clases con tabla real, MAGO sin tocar)', () => {
     const all = allClassAbilityUnlocks();
-    expect(all).toHaveLength(33);
+    expect(all).toHaveLength(136);
     expect(all.filter((u) => u.clase === 'GUERRERO')).toHaveLength(11);
     expect(all.filter((u) => u.clase === 'CAZADOR')).toHaveLength(14);
     expect(all.filter((u) => u.clase === 'CHAMAN')).toHaveLength(8);
+    expect(all.filter((u) => u.clase === 'ARQUERO')).toHaveLength(6);
+    expect(all.filter((u) => u.clase === 'CABALLERO')).toHaveLength(20);
+    expect(all.filter((u) => u.clase === 'SEGADOR')).toHaveLength(19);
+    expect(all.filter((u) => u.clase === 'ASESINO')).toHaveLength(28);
+    expect(all.filter((u) => u.clase === 'DRUIDA')).toHaveLength(30);
+    expect(all.filter((u) => u.clase === 'MAGO')).toHaveLength(0);
   });
 });
 

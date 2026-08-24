@@ -264,20 +264,26 @@ function buildPersonajesSection(ctx: EnciclopediaBuildContext) {
 // Clases (roadmap 2026-07-21, separadas en dos el 2026-07-22 — petición explícita: "Guerrero es
 // una clase y Cazador es otra con sus propias habilidades! Gorhorn es una variante especial que
 // le permite aprender las habilidades de ambas"): contenido de diseño estático, no depende del
-// mundo en la base de datos. Ampliado a Chamán (2026-08-24, Grupo 3 § Sistema de clases) — las 3
-// únicas con `ClassAbilityUnlock` real construida hoy. Muestra TODOS los huecos de la clase
-// (tronco + las N especializaciones), no el roster de una especialización concreta — para eso
-// está `classAbilityUnlocksForClase(clase, especializacion)`, pensado para el motor de turnos/un
-// NPC en particular, no para esta vista de referencia.
+// mundo en la base de datos. Ampliado a las 9 clases (2026-08-24, Grupo 3 § Sistema de clases,
+// segunda pasada el mismo día — "aplícalo ya todo") salvo MAGO, que sigue siendo solo identidad
+// narrativa sin tabla de niveles en clases.md. Muestra TODOS los huecos de la clase (tronco + las
+// N especializaciones), no el roster de una especialización concreta — para eso está
+// `classAbilityUnlocksForClase(clase, especializacion)`, pensado para el motor de turnos/un NPC en
+// particular, no para esta vista de referencia.
 function buildClassesSection(ctx: EnciclopediaBuildContext) {
-  return (['GUERRERO', 'CAZADOR', 'CHAMAN'] as const).map((clase) => ({
+  const DESCRIPTIONS: Record<string, string> = {
+    GUERRERO: 'Fuerza bruta y aguante en primera línea — golpea directo, encaja el golpe y no cede terreno.',
+    CAZADOR: 'Reflejos, puntería a distancia e instinto de rastreo — hiere antes de ser visto y remata sin errar.',
+    CHAMAN: 'El equivalente orco a un Mago — nunca lanza la magia directamente, la canaliza siempre a través de un tótem o una runa.',
+    ARQUERO: 'Precisión a distancia con arco o ballesta — el equivalente al Guerrero pero sin gritos, todo puntería.',
+    CABALLERO: 'La disciplina militar Goirnte hecha clase — honor, orden y una defensa que no cede.',
+    SEGADOR: 'La clase exclusiva Nabieus — succión de vida, debilidades, remates y lectura del destino.',
+    ASESINO: 'Precisión letal, veneno y movilidad — golpea antes de que el rival sepa que está en peligro.',
+    DRUIDA: 'La clase exclusiva Faerus — se transforma en fauna real de su territorio, vínculo de manada y furia feral.',
+  };
+  return (['GUERRERO', 'CAZADOR', 'CHAMAN', 'ARQUERO', 'CABALLERO', 'SEGADOR', 'ASESINO', 'DRUIDA'] as const).map((clase) => ({
     name: clase,
-    description:
-      clase === 'GUERRERO'
-        ? 'Fuerza bruta y aguante en primera línea — golpea directo, encaja el golpe y no cede terreno.'
-        : clase === 'CAZADOR'
-          ? 'Reflejos, puntería a distancia e instinto de rastreo — hiere antes de ser visto y remata sin errar.'
-          : 'El equivalente orco a un Mago — nunca lanza la magia directamente, la canaliza siempre a través de un tótem o una runa.',
+    description: DESCRIPTIONS[clase],
     unlocks: allClassAbilityUnlocks()
       .filter((u) => u.clase === clase)
       .map((u) => ({

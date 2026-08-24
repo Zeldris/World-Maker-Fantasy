@@ -74,23 +74,31 @@ resumen de trabajo real, agrupado por tamaño.
 
 ### Los 3 sistemas grandes diseñados esta sesión (documentación completa)
 
-- [x] ~~**Sistema de clases y especializaciones** (Guerrero/Cazador/Chamán)~~ — parcialmente
-  APLICADO al motor 2026-08-24: `Npc`/`Save` con `clase`/`especializacion` reales (enums, ya no
-  texto libre), `classAbilities.ts` con tronco + especializaciones para las 3 clases con repaso a
-  fondo (33 huecos "✅ lista", verificados efecto a efecto, con correcciones reales sobre lo que el
-  propio doc marcaba mal en Convocador/Opresor). Construido de paso, no estaba planeado: el "bonus
-  de atributo fijo" de habilidad (`StartingAbility.attributeBonus`/`SavedAction.attributeBonus`,
-  aplicado en `combatExchange.ts`) — sin él ninguna habilidad se diferenciaba mecánicamente de un
-  Ataque Básico. `CONVERSION` dado de alta (se resuelve sin infraestructura de duración). Categoría
-  de arma `VARA` + restricción de armas por clase aplicada al equipar (`weaponPoolFor`,
-  weaponAbilities.ts), solo para estas 3 clases. Los 15 NPC humanoides del catálogo tienen clase/
-  especialización asignada. **Sigue pendiente**: Arquero/Caballero/Mago/Segador/Asesino/Druida (sin
-  repaso a fondo todavía — ella sigue editando clases.md), y toda la infraestructura de duración por
-  turnos (`AUMENTO`/`DEBILIDAD`/`CANALIZAR`/`RETIRAR`/`CURAZION`/`REFLEJAR`/`REFRACTAR`/`PURIFICAR`/
-  `PROVOCACION`/`CONTRA`) + combate multi-objetivo (`INVOCACION`/`CONTROL`/`MULTIPLE`/`OCULTACION`/
-  `DESVIAR`/`COMPANERO`) + `MARCAR` (nuevo, solo Domador) + restricción de armadura por peso —
-  ninguna de estas piezas se ha tocado, sigue bloqueando la mayoría de huecos de las 12
-  especializaciones de las 3 clases ya construidas.
+- [x] ~~**Sistema de clases y especializaciones** (8 de 9 clases)~~ — APLICADO al motor 2026-08-24
+  en dos pasadas el mismo día. Primera pasada: Guerrero/Cazador/Chamán (las 3 con repaso a fondo en
+  ese momento). Segunda pasada, tras cerrarse el diseño de las 9 clases ("aplícalo ya todo y ya lo
+  cambiaremos en el futuro si hago cambios en las clases"): + Arquero/Caballero/Segador/Asesino/
+  Druida — `classAbilities.ts` pasa de 33 a **136 huecos "✅ lista"**, verificados efecto a efecto
+  contra el motor real (no solo Convocador/Opresor: Maestro Arquero/Maestro Ballestero también
+  estaban mal marcados en el doc, "7/8" ahí vs. 1/8 real). MAGO se queda sin tocar — sigue siendo
+  solo identidad narrativa, sin tronco ni tabla de niveles en clases.md. `Npc`/`Save` con `clase`/
+  `especializacion` reales (enums, ya no texto libre). Construido de paso en la primera pasada, no
+  estaba planeado: el "bonus de atributo fijo" de habilidad (`StartingAbility.attributeBonus`/
+  `SavedAction.attributeBonus`, aplicado en `combatExchange.ts`) — sin él ninguna habilidad se
+  diferenciaba mecánicamente de un Ataque Básico. `CONVERSION` dado de alta (se resuelve sin
+  infraestructura de duración). Categoría de arma `VARA` + restricción de armas por clase aplicada
+  al equipar (`weaponPoolFor`, weaponAbilities.ts) — **solo Guerrero/Cazador/Chamán**, el resto de
+  clases sigue sin pool de armas diseñado en clases.md. Los 15 NPC humanoides del catálogo tienen
+  clase/especialización real asignada (incluidos los "no combatientes" — instrucción explícita de
+  cobertura total). Enciclopedia (`buildClassesSection`) muestra las 8 clases construidas.
+  **Sigue pendiente**: toda la infraestructura de duración por turnos (`AUMENTO`/`DEBILIDAD`/
+  `CANALIZAR`/`RETIRAR`/`CURAZION`/`REFLEJAR`/`REFRACTAR`/`PURIFICAR`/`PROVOCACION`/`CONTRA`) +
+  combate multi-objetivo (`INVOCACION`/`CONTROL`/`MULTIPLE`/`OCULTACION`/`DESVIAR`/`COMPANERO`) +
+  `MARCAR` (nuevo, solo Domador) + restricción de armadura por peso (documentada para las 9 clases,
+  necesita infraestructura nueva — `PesoArmadura` enum + `ItemCatalog.pesoArmadura`, sin construir)
+  + pool de armas para las 6 clases sin diseñar — ninguna de estas piezas se ha tocado, sigue
+  bloqueando la mayoría de huecos de las 30 especializaciones ya construidas. Cambios futuros que
+  ella haga en clases.md (edición en curso) se portarán al motor en una pasada aparte, no ahora.
 - [ ] **Combate múltiple** (`docs/rpgtarkor/combate-multiple.md`) — iniciativa individual N-way, tope
   4v4 con sub-combates deterministas, modo autónomo/reporte, retira el truco `groupSize`. Desbloquea
   `MULTIPLE`/`INVOCACION`/`COMPANERO`/`CONTROL`/`EXPULSAR` de arriba.
