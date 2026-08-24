@@ -138,7 +138,18 @@ resumen de trabajo real, agrupado por tamaño.
 
 ### Ajuste de números, no features nuevas (pero sin cerrar)
 
-- [ ] Rebalanceo de coste de Campamento/Ayuntamiento — deferido a "mañana" el 23/08, sin retomar.
+- [x] ~~Campamento~~ — cerrado 2026-08-24 (APLICADO al motor): 6 leña + 8 piedra + 2 piel (antes
+  20/10/5), `construction.ts`. Tests actualizados, `tsc -b` limpio.
+- [ ] **Ayuntamiento — resultó ser mucho más grande de lo que parecía.** Al cerrar el pequeño, la
+  usuaria señaló un problema de diseño real: los recursos base son fungibles sin región ("cualquier
+  piedra vale"), y construir debería depender de materiales PROCESADOS (bloques, lingotes,
+  columnas) por oficio regional, no de recursos crudos directamente — más procesado cuanto más
+  alto el tier. Diseño completo nuevo en
+  [materiales-procesados-construccion.md](rpgtarkor/materiales-procesados-construccion.md)
+  (encontró que parte ya existía sin conectar: `bloque-piedra-tallada`/`lingote-de-hierro`
+  huérfanos desde 2026-07-29). Pequeño del Ayuntamiento con cifras ya dadas (6 madera + 6 hueso +
+  8 resina + 2 metal + 8 fibra + 14 piedra, crudo); mediano/grande sin cifras ni mezcla
+  crudo/procesado todavía.
 - [ ] 8 items completamente huérfanos + 65 de 79 RECURSO/MATERIAL sin receta que los use — decidir
   darles uso o retirarlos (`ampliar-lore-checklist.md § Pendiente de diseño`).
 

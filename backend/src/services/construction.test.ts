@@ -58,13 +58,13 @@ describe('checkRecipe', () => {
   });
 
   it('reporta exactamente qué falta y cuánto', () => {
-    const rows = [row('1', 'lena-matorral-cuerno', 8)];
+    const rows = [row('1', 'lena-matorral-cuerno', 2)];
     const result = checkRecipe(CAMPAMENTO_RECIPE, rows, catalogBySlug, attrs, secondary);
     expect(result.met).toBe(false);
     expect(result.missing).toEqual([
-      { label: 'leña', tienes: 8, necesitas: 20 },
-      { label: 'piedra', tienes: 0, necesitas: 10 },
-      { label: 'piel', tienes: 0, necesitas: 5 },
+      { label: 'leña', tienes: 2, necesitas: 6 },
+      { label: 'piedra', tienes: 0, necesitas: 8 },
+      { label: 'piel', tienes: 0, necesitas: 2 },
     ]);
   });
 
@@ -91,7 +91,11 @@ describe('checkRecipe', () => {
 });
 
 describe('planConsumption', () => {
-  const ingredient = CAMPAMENTO_RECIPE.requirements.find((r) => r.label === 'leña')!;
+  // Ingrediente propio en vez de leer CAMPAMENTO_RECIPE.requirements (rebalanceo 2026-08-24,
+  // Grupo 3 § Campamento/Ayuntamiento) — planConsumption es lógica pura de consumo, no debería
+  // depender de qué cantidad exacta pida el Campamento hoy, que ya cambió una vez y puede volver
+  // a cambiar.
+  const ingredient = { ...CAMPAMENTO_RECIPE.requirements.find((r) => r.label === 'leña')!, cantidad: 20 };
 
   it('borra filas completas hasta cubrir la cantidad exacta, sin remanente', () => {
     const rows = [row('1', 'lena-matorral-cuerno', 12), row('2', 'lena-matorral-cuerno', 8)];

@@ -6,6 +6,11 @@ población). Este documento es la fuente de verdad de las reglas; el checklist a
 se va tachando según se implementa. Si la sesión se corta a mitad, seguir desde el primer punto sin
 tachar.
 
+**Ver también (2026-08-24)**:
+[rpgtarkor/materiales-procesados-construccion.md](rpgtarkor/materiales-procesados-construccion.md)
+— qué materiales pide cada construcción (crudo vs. procesado por oficio regional), diseño nuevo
+sin aplicar todavía, complementario a las reglas de aquí.
+
 ## Reglas acordadas
 
 ### Campamento

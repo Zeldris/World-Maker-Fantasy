@@ -1224,13 +1224,14 @@ describe('Construcción determinista: campamento', () => {
     });
     saveId = save.id;
     await prisma.worldState.create({ data: { saveId } });
-    // Materiales EXACTOS que pide CAMPAMENTO_RECIPE (construction.ts): 20 madera, 10 piedra, 5
-    // piel — catalogSlugs reales de worldCatalog.ts, cada uno con su categoría correcta.
+    // Materiales EXACTOS que pide CAMPAMENTO_RECIPE (construction.ts, rebalanceo 2026-08-24): 6
+    // madera, 8 piedra, 2 piel — catalogSlugs reales de worldCatalog.ts, cada uno con su
+    // categoría correcta.
     await prisma.inventoryItem.createMany({
       data: [
-        { saveId, name: 'Leña de matorral de cuerno (20)', description: 'x', catalogSlug: 'lena-matorral-cuerno', origin: 'partida' },
-        { saveId, name: 'Piedra (10)', description: 'x', catalogSlug: 'piedra', origin: 'partida' },
-        { saveId, name: 'Lana de múrgol (5)', description: 'x', catalogSlug: 'lana-murgol', origin: 'partida' },
+        { saveId, name: 'Leña de matorral de cuerno (6)', description: 'x', catalogSlug: 'lena-matorral-cuerno', origin: 'partida' },
+        { saveId, name: 'Piedra (8)', description: 'x', catalogSlug: 'piedra', origin: 'partida' },
+        { saveId, name: 'Lana de múrgol (2)', description: 'x', catalogSlug: 'lana-murgol', origin: 'partida' },
       ],
     });
   });
@@ -1277,7 +1278,7 @@ describe('Construcción determinista: campamento', () => {
     expect(building.status).toBe('ACTIVO');
     expect(building.name).toBe('Campamento Base Orco de las Llanuras');
 
-    // Los 3 materiales se consumieron EXACTOS (20/10/5, sin remanente) — no debe quedar nada.
+    // Los 3 materiales se consumieron EXACTOS (6/8/2, sin remanente) — no debe quedar nada.
     const inventoryAfter = await prisma.inventoryItem.findMany({ where: { saveId } });
     expect(inventoryAfter).toEqual([]);
   }, 30_000);

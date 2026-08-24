@@ -160,10 +160,13 @@ export const CAMPAMENTO_RECIPE: ConstructionRecipe = {
   description:
     'Un cerco improvisado y rápido de levantar: un anillo de piedras apiladas para contener el fuego, un poste central de leña clavada en la tierra, y pieles tensadas a modo de toldo bajo contra el viento. Protege lo justo para pasar la noche — no aguanta una tormenta fuerte ni un asedio.',
   nounRegex: /campamento/,
+  // Rebalanceo (2026-08-24, Grupo 3 § Campamento/Ayuntamiento, petición explícita): antes 20
+  // leña + 10 piedra + 5 piel (35 unidades) — la usuaria lo consideraba demasiado caro para lo
+  // rápido/improvisado que es narrativamente. Cifras exactas dadas por ella, no "mitad" literal.
   requirements: [
-    { match: { kind: 'category', tipo: 'RECURSO', category: 'madera' }, cantidad: 20, label: 'leña' },
-    { match: { kind: 'category', tipo: 'RECURSO', category: 'piedra' }, cantidad: 10, label: 'piedra' },
-    { match: { kind: 'category', tipo: 'RECURSO', category: 'piel' }, cantidad: 5, label: 'piel' },
+    { match: { kind: 'category', tipo: 'RECURSO', category: 'madera' }, cantidad: 6, label: 'leña' },
+    { match: { kind: 'category', tipo: 'RECURSO', category: 'piedra' }, cantidad: 8, label: 'piedra' },
+    { match: { kind: 'category', tipo: 'RECURSO', category: 'piel' }, cantidad: 2, label: 'piel' },
   ],
   // Sin tier/requisitos/oficio a propósito (2026-07-23): un campamento base es lo mínimo que
   // cualquiera puede levantar solo, sin necesitar ningún oficio.
