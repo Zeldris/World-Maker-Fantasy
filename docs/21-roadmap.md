@@ -94,9 +94,24 @@ resumen de trabajo real, agrupado por tamaño.
 - [x] ~~`WorldState.agenda`~~ — cerrado 2026-08-24 (ver Historial arriba): `worldAgenda.ts`, un
   hito real (conflicto Serhu-Concordia vs. Helsig/Goshg) que avanza por etapas cada 7 días de
   ficción y deplecia población real si nadie interviene.
-- [ ] Sin triar aún construir/quitar: `comerciablePct`/`reclutablePct`/`cortejablePct` (nota:
-  `domesticablePct` ya tiene destino claro, es la pieza central del tameo de arriba), `Npc.levelMax`,
-  `percepcionPasivaFor`, `Territory.control`, `Building.status`, `KingdomStats.felicidad`.
+- [x] ~~`Territory.control`~~ / ~~`Building.status`~~ / ~~`KingdomStats.felicidad`~~ — **corrección
+  2026-08-24: ya estaban construidos**, hecho en la parte de esta misma sesión previa a la
+  compactación de contexto que nunca llegó a reflejarse en este checklist. `kingdomTick.ts`
+  (rachas `diasFelicidadAlta`/`diasFelicidadBaja`) + `turnResolution.ts` (bloque `diasCruzados`)
+  ya conectan felicidad sostenida con `CONSOLIDADO`/`PERDIDO` de verdad, y perder un territorio ya
+  pone sus edificios en `ABANDONADO`. `EN_CONSTRUCCION` real desde que construir lleva tiempo
+  (`turn.ts`/`construction.ts`). Único hueco menor: `DANADO` se lee (respawn) pero nada lo
+  produce todavía — no bloqueante, anotado por si se retoma.
+- [x] ~~`reclutablePct`~~ — cerrado 2026-08-24 (documentación): conectado como la dificultad base de
+  la tirada de persuasión de NPC en `companeros-y-supervivencia.md § 3` — mismo destino que
+  `domesticablePct` para el tameo de fauna.
+- [ ] `comerciablePct`/`cortejablePct` — sin sistema real detrás todavía (comerciar sigue siendo
+  narrativo libre, cortejo no existe como mecánica); la usuaria confirmó que se quedan, pendientes
+  de diseño propio, no se retiran.
+- [ ] `Npc.levelMax` (rango de nivel para tiradas opuestas) y `percepcionPasivaFor` (percepción
+  pasiva D&D-style, sin consumidor) — se quedan en cola, pendientes de diseño; `percepcionPasivaFor`
+  tiene un hueco natural con detectar una emboscada antes de que ocurra, o con los efectos
+  `OCULTACION`/`ATENCION` ya pendientes de `clases.md`.
 
 ### Encontrado en esta revisión (2026-08-24), repasando todos los .md activos
 

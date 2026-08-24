@@ -117,6 +117,11 @@ tirada opuesta que la fauna:
   del NPC**, fijo en su ficha de catálogo — coherente con su personalidad ya escrita (un NPC
   orgulloso se resiste con Fuerza/Carisma, uno cauteloso con Inteligencia), calibrado a mano igual
   que `domesticablePct` en fauna.
+- **`Npc.reclutablePct` (ya sembrado, sin consumidor hasta hoy) es la dificultad base de esta
+  tirada** (2026-08-24) — mismo destino que `domesticablePct` para el tameo de fauna arriba: un NPC
+  con `reclutablePct` alto parte de una dificultad más baja de convencer, uno con `reclutablePct`
+  bajo (ej. Torgash Ketg, `reclutablePct: 5`) casi nunca cede por persuasión sola, coherente con su
+  ficha ya escrita.
 - Ganas → sube Felicidad. Pierdes → baja Felicidad.
 - Al superar el umbral de Felicidad: eliges que sea **Companion**, o (si hay Reino) que se **una al
   Reino** en vez de ser compañero personal.
