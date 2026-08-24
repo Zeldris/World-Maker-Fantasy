@@ -1515,12 +1515,21 @@ describe('Ayuntamiento: fundación, desbloqueo de reino y mejora in-place', () =
   }, 15_000);
 
   // Materiales procesados (2026-08-24, Grupo 3 § materiales procesados de construcción) — antes
-  // solo 30 piedra + 25 leña crudas; ahora ~75% procesado/25% crudo por categoría. Gorhorn ya
-  // empieza con `constructor-orcos-llanuras` (GORHORN_STARTING_PROFESSIONS,
-  // startingProfessions.ts), así que el nuevo bloqueo real de oficio no lo afecta aquí.
+  // solo 30 piedra + 25 leña crudas; ahora ~75% procesado/25% crudo por categoría. La suposición
+  // original de que este save "ya empieza con constructor-orcos-llanuras" era falsa (ver comentario
+  // real dentro del test, corregido 2026-08-25) — se siembra a mano ahí.
   it('mejora el Ayuntamiento a mediano IN-PLACE — mismo Building.id, sin duplicar Territory', async () => {
     const before = await prisma.building.findFirstOrThrow({ where: { saveId, recipeKey: 'ayuntamiento' } });
     const territoriesBefore = await prisma.territory.count({ where: { saveId } });
+    // Bug real encontrado con Postgres real (2026-08-25): el comentario de arriba asumía que este
+    // save "empieza con constructor-orcos-llanuras" (GORHORN_STARTING_PROFESSIONS), pero esa lista
+    // solo se siembra en el flujo real de creación de partida (creation.ts) — este save se crea a
+    // mano con `prisma.save.create` en el `beforeAll` de este describe, sin pasar por ahí, así que
+    // nunca tuvo ninguna fila de ProfessionProgress. Desde que mediano/grande exigen oficio de
+    // verdad (OFICIOS_CONSTRUCCION_REQUERIDOS, construction.ts), este test fallaba en silencio en
+    // cualquier corrida contra Postgres real — invisible en el sandbox sin DB, donde este archivo
+    // nunca llega a ejecutarse de verdad.
+    await prisma.professionProgress.create({ data: { saveId, professionId: 'constructor-orcos-llanuras', nivel: 1 } });
     await giveMaterials(saveId, [
       { name: 'Bloque de piedra tallada (3)', catalogSlug: 'bloque-piedra-tallada' },
       { name: 'Piedra (5)', catalogSlug: 'piedra' },
