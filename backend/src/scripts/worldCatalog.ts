@@ -1883,6 +1883,10 @@ export const npcs: NpcInput[] = [
       { itemSlug: 'racion-viaje', cantidad: 2 },
       { itemSlug: 'guantes-piel-corredor' },
       { itemSlug: 'bandolera-de-caza' },
+      // silbato-hueso-caza (auditoría de items sin uso, 2026-08-24): huérfano en ItemCatalog
+      // desde antes de esta sesión — "señales de caza Serhu" encaja literal con una cazadora
+      // Serhu de verdad saliendo a cazar, no con un NPC cualquiera.
+      { itemSlug: 'silbato-hueso-caza' },
     ],
   },
 
@@ -1909,6 +1913,10 @@ export const npcs: NpcInput[] = [
       { itemSlug: 'hacha-guerra-orca', notas: 'Con la marca del Clan Serhu grabada en la cabeza' },
       { itemSlug: 'lanza-hueso-gargantua' },
       { itemSlug: 'amuleto-hueso', notas: 'Colmillos de corredor de su primera cacería' },
+      // marca-de-clan (auditoría de items sin uso, 2026-08-24): huérfana en ItemCatalog desde
+      // antes de esta sesión — el propio Kort'ikar del Clan Serhu es el portador natural del
+      // símbolo tallado de su clan, no un objeto suelto de mercado.
+      { itemSlug: 'marca-de-clan', notas: 'El símbolo tallado del Clan Serhu, como corresponde a su Kort\'ikar' },
       { itemSlug: 'racion-viaje', cantidad: 3 },
       { itemSlug: 'ascuas-raiz-fuego', cantidad: 1 },
       { itemSlug: 'odre-agua' },

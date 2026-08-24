@@ -33,6 +33,11 @@ const basicPoultice = recipe('basicPoultice');
 const completePoultice = recipe('completePoultice');
 const club = recipe('club');
 const gargantuaLegArmor = recipe('gargantuaLegArmor');
+const corredorVertebraRing = recipe('corredorVertebraRing');
+const gargantuaCape = recipe('gargantuaCape');
+const corredorHood = recipe('corredorHood');
+const trophyBelt = recipe('trophyBelt');
+const handAxe = recipe('handAxe');
 
 // catalogSlug de cada fila → tipo/categoría real del catálogo (2026-07-29, refactor de
 // ingredientes: crafting.ts ya no matchea por prefijo de nombre, matchea por catalogSlug/tipo/
@@ -57,6 +62,10 @@ const catalogBySlug = new Map<string, CatalogLookup>([
   ['cardo-brujula', { tipo: 'RECURSO', category: 'hierba' }],
   ['lingote-hierro-imantado', { tipo: 'MATERIAL', category: 'metal' }],
   ['cuchillo-hielo-silice', { tipo: 'EQUIPABLE', category: 'arma', herramientaParaOficio: ['curtidor', 'desollador'] }],
+  ['piel-corredor', { tipo: 'RECURSO', category: 'piel' }],
+  ['colmillo-aullador', { tipo: 'RECURSO', category: 'hueso' }],
+  ['garra-rondador', { tipo: 'NARRATIVO', category: 'valor' }],
+  ['lingote-de-hierro', { tipo: 'MATERIAL', category: 'metal' }],
 ]);
 
 function row(id: string, catalogSlug: string, cantidad?: number): InventoryRowLike {
@@ -64,7 +73,7 @@ function row(id: string, catalogSlug: string, cantidad?: number): InventoryRowLi
 }
 
 describe('CRAFTING_RECIPES', () => {
-  it('tiene las 18 recetas esperadas, cada una con una clave única', () => {
+  it('tiene las 23 recetas esperadas, cada una con una clave única', () => {
     expect(CRAFTING_RECIPES.map((r) => r.key)).toEqual([
       'axeRepair',
       'smokeMeat',
@@ -84,6 +93,14 @@ describe('CRAFTING_RECIPES', () => {
       'gargantuaLegArmor',
       'boungoRoast',
       'coraceloMace',
+      // 5 nuevas (2026-08-24, Grupo 3 § auditoría de items sin uso) — cierran el hueco de
+      // hacha-de-mano-orca/anillo-vertebra-corredor/capa-piel-gargantua/capucha-piel-corredor/
+      // cinturon-de-trofeos, huérfanos en ItemCatalog desde antes.
+      'corredorVertebraRing',
+      'gargantuaCape',
+      'corredorHood',
+      'trophyBelt',
+      'handAxe',
     ]);
   });
 });
@@ -193,6 +210,37 @@ describe('detectsCraftIntent', () => {
     expect(detectsCraftIntent(gargantuaLegArmor, 'Curto un faldar de piel de gargantúa')).toBe(true);
     expect(detectsCraftIntent(gargantuaLegArmor, 'Confecciono un peto')).toBe(false);
   });
+
+  // 5 recetas nuevas (2026-08-24, Grupo 3 § auditoría de items sin uso).
+  it('detecta intención de tallar el anillo de vértebra de corredor', () => {
+    expect(detectsCraftIntent(corredorVertebraRing, 'Tallo un anillo de vértebra con mi piel de corredor')).toBe(true);
+    expect(detectsCraftIntent(corredorVertebraRing, 'Confecciono un anillo de vértebra')).toBe(true);
+    expect(detectsCraftIntent(corredorVertebraRing, 'Tallo un anillo cualquiera')).toBe(false);
+  });
+
+  it('detecta intención de confeccionar la capa de piel de gargantúa, distinta del faldar/peto', () => {
+    expect(detectsCraftIntent(gargantuaCape, 'Confecciono una capa de piel de gargantúa')).toBe(true);
+    expect(detectsCraftIntent(gargantuaCape, 'Curto una capa de gargantúa')).toBe(true);
+    expect(detectsCraftIntent(gargantuaCape, 'Confecciono un faldar')).toBe(false);
+  });
+
+  it('detecta intención de confeccionar la capucha de piel de corredor', () => {
+    expect(detectsCraftIntent(corredorHood, 'Confecciono una capucha con mi piel de corredor')).toBe(true);
+    expect(detectsCraftIntent(corredorHood, 'Curto una capucha')).toBe(true);
+    expect(detectsCraftIntent(corredorHood, 'Confecciono una capa')).toBe(false);
+  });
+
+  it('detecta intención de confeccionar el cinturón de trofeos', () => {
+    expect(detectsCraftIntent(trophyBelt, 'Confecciono un cinturón de trofeos con mi colmillo y mi garra')).toBe(true);
+    expect(detectsCraftIntent(trophyBelt, 'Coso un cinturón de trofeos')).toBe(true);
+    expect(detectsCraftIntent(trophyBelt, 'Confecciono un cinturón cualquiera')).toBe(false);
+  });
+
+  it('detecta intención de forjar el hacha de mano', () => {
+    expect(detectsCraftIntent(handAxe, 'Forjo un hacha de mano con mi lingote')).toBe(true);
+    expect(detectsCraftIntent(handAxe, 'Fabrico un hacha de mano')).toBe(true);
+    expect(detectsCraftIntent(handAxe, 'Forjo un hacha de guerra')).toBe(false);
+  });
 });
 
 describe('canCraft — ingrediente exacto (catalogSlug concreto)', () => {
@@ -298,6 +346,34 @@ describe('canCraft — lingote de hierro imantado, aguja de cardo brújula y saq
     expect(canCraft(compassNeedle, 'campamento-serhu', rows, catalogBySlug, attrs, secondary)).toBe(true);
     expect(canCraft(compassNeedle, 'hondonada-del-eco', rows, catalogBySlug, attrs, secondary)).toBe(false);
     expect(canCraft(compassNeedle, 'campamento-serhu', [row('1', 'cardo-brujula', 1), row('2', 'lingote-hierro-imantado')], catalogBySlug, attrs, secondary)).toBe(false);
+  });
+  // 5 recetas nuevas (2026-08-24) — las 4 de curtidor necesitan también la herramienta del oficio
+  // (cuchillo-hielo-silice), igual que gargantuaLegArmor/sandPouch de arriba; handAxe es herrero,
+  // sin ese gate.
+  it('anillo de vértebra de corredor: piel + tendón + herramienta de curtidor, en el campamento', () => {
+    const rows = [row('1', 'piel-corredor'), row('2', 'cuerda-tendon'), row('3', 'cuchillo-hielo-silice')];
+    expect(canCraft(corredorVertebraRing, 'campamento-serhu', rows, catalogBySlug, attrs, secondary)).toBe(true);
+    expect(canCraft(corredorVertebraRing, 'hondonada-del-eco', rows, catalogBySlug, attrs, secondary)).toBe(false);
+  });
+  it('capa de piel de gargantúa: 3 piel + 1 placa ósea + herramienta de curtidor', () => {
+    const rows = [row('1', 'piel-gargantua', 3), row('2', 'placa-osea-gargantua'), row('3', 'cuchillo-hielo-silice')];
+    expect(canCraft(gargantuaCape, 'campamento-serhu', rows, catalogBySlug, attrs, secondary)).toBe(true);
+    expect(canCraft(gargantuaCape, 'campamento-serhu', [row('1', 'piel-gargantua', 2), row('2', 'placa-osea-gargantua'), row('3', 'cuchillo-hielo-silice')], catalogBySlug, attrs, secondary)).toBe(false);
+  });
+  it('capucha de piel de corredor: 2 piel de corredor + herramienta de curtidor', () => {
+    const rows = [row('1', 'piel-corredor', 2), row('2', 'cuchillo-hielo-silice')];
+    expect(canCraft(corredorHood, 'campamento-serhu', rows, catalogBySlug, attrs, secondary)).toBe(true);
+    expect(canCraft(corredorHood, 'campamento-serhu', [row('1', 'piel-corredor', 1), row('2', 'cuchillo-hielo-silice')], catalogBySlug, attrs, secondary)).toBe(false);
+  });
+  it('cinturón de trofeos: piel + colmillo + garra + herramienta de curtidor', () => {
+    const rows = [row('1', 'piel-corredor'), row('2', 'colmillo-aullador'), row('3', 'garra-rondador'), row('4', 'cuchillo-hielo-silice')];
+    expect(canCraft(trophyBelt, 'campamento-serhu', rows, catalogBySlug, attrs, secondary)).toBe(true);
+    expect(canCraft(trophyBelt, 'campamento-serhu', [row('1', 'piel-corredor'), row('2', 'colmillo-aullador'), row('3', 'cuchillo-hielo-silice')], catalogBySlug, attrs, secondary)).toBe(false);
+  });
+  it('hacha de mano: lingote + leña, en el campamento — herrero, sin gate de herramienta', () => {
+    const rows = [row('1', 'lingote-de-hierro'), row('2', 'lena-matorral-cuerno', 2)];
+    expect(canCraft(handAxe, 'campamento-serhu', rows, catalogBySlug, attrs, secondary)).toBe(true);
+    expect(canCraft(handAxe, 'hondonada-del-eco', rows, catalogBySlug, attrs, secondary)).toBe(false);
   });
   // Herramienta requerida (2026-08-17, oficio curtidor) — el cuchillo de hielo sílice de Gorhorn
   // cuenta como herramienta de peletería; sin él en las filas, `canCraft` da false aunque el resto

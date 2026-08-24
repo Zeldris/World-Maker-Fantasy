@@ -155,8 +155,14 @@ resumen de trabajo real, agrupado por tamaño.
   mediano/grande)**: 3
   items + 3 recetas nuevas, conectar bloque/lingote a construcción, y que `ConstructionRecipe.oficio`
   pase de "solo alivio" a bloqueo real.
-- [ ] 8 items completamente huérfanos + 65 de 79 RECURSO/MATERIAL sin receta que los use — decidir
-  darles uso o retirarlos (`ampliar-lore-checklist.md § Pendiente de diseño`).
+- [x] ~~8 items completamente huérfanos~~ — cerrado 2026-08-24, APLICADO al motor: 5 con
+  `CraftingRecipe` nueva (herrero/curtidor orcos-llanuras), `trampa-de-lazo` conectada como la
+  cuerda de captura de `companeros-y-supervivencia.md` (sin item nuevo), `marca-de-clan`/
+  `silbato-hueso-caza` en loadout de NPC reales (Torgash Ketg/Cazadora Serhu). Ninguno se retiró.
+  Tests nuevos en `crafting.test.ts`, `tsc -b` limpio, sin regresiones.
+- [ ] 65 de 79 RECURSO/MATERIAL sin ninguna receta que los use — sin decidir todavía si merece la
+  pena diseñar más recetas o aceptarlo como fase de contenido adelantada a su propia mecánica
+  (`ampliar-lore-checklist.md § Pendiente de diseño`).
 
 ### No es Grupo 3 — categorías aparte, para no confundir al leer esta lista
 

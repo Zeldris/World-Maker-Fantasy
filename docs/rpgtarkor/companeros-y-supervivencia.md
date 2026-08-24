@@ -44,9 +44,12 @@ completo de esa pieza (necesita atributos/vida propios, hoy `Companion` es puram
 verdad, nunca un chollo gratis por sorpresa. Coherente con que solo esos dos estados son "tocables"
 en el resto del motor.
 
-**Objeto nuevo necesario**: una cuerda de captura (`ItemCatalog`, categoría herramienta/consumible,
-nombre a decidir al escribirla en catálogo) — sin ella equipada/en inventario, no se puede intentar
-atar a nadie, ni fauna ni NPC. Un ataque/habilidad normal nunca captura por sí solo.
+**Objeto ya existe, no hace falta crear uno nuevo** (2026-08-24, auditoría de items sin uso):
+`trampa-de-lazo` ("Trampa de lazo de tendón" — "lazo trenzado de tendón anclado a una estaca de
+madera, para cazar sin necesidad de perseguir") ya está en `ItemCatalog`, huérfana desde antes de
+esta sesión — es exactamente la cuerda de captura que hacía falta. Sin ella equipada/en inventario,
+no se puede intentar atar a nadie, ni fauna ni NPC. Un ataque/habilidad normal nunca captura por sí
+solo.
 
 Al atar con éxito:
 - **Fauna** → pasa a esperar en una **jaula** (ver § 2) mientras se intenta tamear.
@@ -211,7 +214,8 @@ trabajadores", es un orden editable por ti.
 
 ## 7. Infraestructura nueva necesaria (nada de esto existe hoy — resumen para cuando toque construirlo)
 
-- Item "cuerda de captura" nuevo en `ItemCatalog`.
+- ~~Item "cuerda de captura" nuevo en `ItemCatalog`~~ — ya existe (`trampa-de-lazo`), no hace falta
+  crear nada, ver § 1.
 - `Jaula`: tipo de construcción nuevo (pequeña/mediana/grande), en `construction.ts` — igual que
   Ayuntamiento tiene 3 tamaños con receta propia.
 - Campo de "atributo de resistencia" nuevo, tanto en catálogo de fauna como en NPCs reclutables.

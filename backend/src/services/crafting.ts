@@ -479,6 +479,115 @@ export const GARGANTUA_LEG_ARMOR_RECIPE: CraftingRecipe = {
     'El personaje curte y cose su piel de gargantúa aquí mismo, en el Campamento del Clan Serhu, dejando las placas óseas pequeñas cosidas al cuero — narra la escena con naturalidad. El objeto ya se gestiona automáticamente por el backend.',
 };
 
+// 5 recetas nuevas (2026-08-24, Grupo 3 § auditoría de items sin uso): estos 5 objetos existían en
+// ItemCatalog desde antes pero sin ninguna vía real de conseguirlos — mismo hueco exacto que ya se
+// cerró para faldar-piel-gargantua (ver su comentario arriba, "existía... sin ninguna vía real de
+// conseguirlo"), nunca cerrado para estos 5 hasta ahora.
+
+export const CORREDOR_VERTEBRA_RING_RECIPE: CraftingRecipe = {
+  key: 'corredorVertebraRing',
+  verbRegex: /tall|confeccion|fabric|prepar|crear|creo/,
+  nounRegex: /anillo.*v[eé]rtebra|v[eé]rtebra.*anillo/,
+  location: 'campamento-serhu',
+  ingredients: [
+    { match: { kind: 'exact', catalogSlug: 'piel-corredor' }, cantidad: 1, label: 'piel de Corredor de Cauce' },
+    { match: { kind: 'exact', catalogSlug: 'cuerda-tendon' }, cantidad: 1, label: 'cuerda de tendón' },
+  ],
+  resultName: 'Anillo de vértebra de corredor',
+  resultCatalogSlug: 'anillo-vertebra-corredor',
+  resultDescription: 'Anillo tallado a mano de una presa propia, pulido hasta sacarle brillo — recuerdo de una cacería real, no un objeto de mercado.',
+  tier: 2,
+  requisitos: { destreza: 6 },
+  oficio: 'curtidor-orcos-llanuras',
+  narrationWant:
+    'El personaje quiere tallar un anillo de vértebra de corredor, pero no lleva encima piel de Corredor de Cauce y cuerda de tendón a la vez (o no está en el Campamento del Clan Serhu) — narra que lo intenta o lo considera, pero no que lo talla de verdad.',
+  narrationDo:
+    'El personaje talla y pule el anillo aquí mismo, en el Campamento del Clan Serhu, con la piel y el tendón de su propia presa — narra la escena con naturalidad. El objeto ya se gestiona automáticamente por el backend.',
+};
+
+export const GARGANTUA_CAPE_RECIPE: CraftingRecipe = {
+  key: 'gargantuaCape',
+  verbRegex: /confeccion|cos[eo]|curt|prepar|fabric|crear|creo/,
+  nounRegex: /capa.*gargant|gargant.*capa/,
+  location: 'campamento-serhu',
+  ingredients: [
+    { match: { kind: 'exact', catalogSlug: 'piel-gargantua' }, cantidad: 3, label: 'piel de gargantúa' },
+    { match: { kind: 'exact', catalogSlug: 'placa-osea-gargantua' }, cantidad: 1, label: 'placa ósea de gargantúa' },
+  ],
+  resultName: 'Capa de piel de gargantúa',
+  resultCatalogSlug: 'capa-piel-gargantua',
+  resultDescription: 'Capa gruesa de piel gris ceniza de gargantúa, con pequeñas placas óseas cosidas al cuero — más pesada y protectora que el faldar, hermana mayor del mismo oficio.',
+  tier: 3,
+  requisitos: { destreza: 10 },
+  oficio: 'curtidor-orcos-llanuras',
+  narrationWant:
+    'El personaje quiere confeccionar una capa de piel de gargantúa, pero no lleva encima suficiente piel de gargantúa y una placa ósea de gargantúa a la vez (o no está en el Campamento del Clan Serhu) — narra que lo intenta o lo considera, pero no que la confecciona de verdad.',
+  narrationDo:
+    'El personaje curte y cose la capa aquí mismo, en el Campamento del Clan Serhu, dejando las placas óseas cosidas al cuero — narra la escena con naturalidad. El objeto ya se gestiona automáticamente por el backend.',
+};
+
+export const CORREDOR_HOOD_RECIPE: CraftingRecipe = {
+  key: 'corredorHood',
+  verbRegex: /confeccion|cos[eo]|curt|prepar|fabric|crear|creo/,
+  nounRegex: /capucha/,
+  location: 'campamento-serhu',
+  ingredients: [{ match: { kind: 'exact', catalogSlug: 'piel-corredor' }, cantidad: 2, label: 'piel de Corredor de Cauce' }],
+  resultName: 'Capucha de piel de corredor',
+  resultCatalogSlug: 'capucha-piel-corredor',
+  resultDescription: 'Capucha de piel rojiza ajustada a la cabeza, curtida a mano en el campamento del clan — protege del sol y de la arena magnética.',
+  tier: 1,
+  requisitos: { destreza: 5 },
+  oficio: 'curtidor-orcos-llanuras',
+  narrationWant:
+    'El personaje quiere confeccionar una capucha de piel de corredor, pero no lleva encima suficiente piel de Corredor de Cauce (hacen falta al menos 2) o no está en el Campamento del Clan Serhu — narra que lo intenta o lo considera, pero no que la confecciona de verdad.',
+  narrationDo:
+    'El personaje curte y ajusta la capucha aquí mismo, en el Campamento del Clan Serhu — narra la escena con naturalidad. El objeto ya se gestiona automáticamente por el backend.',
+};
+
+export const TROPHY_BELT_RECIPE: CraftingRecipe = {
+  key: 'trophyBelt',
+  verbRegex: /confeccion|cos[eo]|curt|prepar|fabric|crear|creo/,
+  nounRegex: /cintur[oó]n.*trofeo|trofeo.*cintur[oó]n/,
+  location: 'campamento-serhu',
+  ingredients: [
+    { match: { kind: 'exact', catalogSlug: 'piel-corredor' }, cantidad: 1, label: 'piel curtida' },
+    { match: { kind: 'exact', catalogSlug: 'colmillo-aullador' }, cantidad: 1, label: 'colmillo de Aullador Rojo' },
+    { match: { kind: 'exact', catalogSlug: 'garra-rondador' }, cantidad: 1, label: 'garra de Rondador de Brasas' },
+  ],
+  resultName: 'Cinturón de trofeos de hueso',
+  resultCatalogSlug: 'cinturon-de-trofeos',
+  resultDescription: 'Colmillos y garras de presas reales cosidos al cuero — entre orcos, respeto a la vista, nunca comprado.',
+  tier: 2,
+  requisitos: { destreza: 6 },
+  oficio: 'curtidor-orcos-llanuras',
+  narrationWant:
+    'El personaje quiere confeccionar un cinturón de trofeos, pero no lleva encima piel curtida, un colmillo de Aullador Rojo y una garra de Rondador de Brasas a la vez (o no está en el Campamento del Clan Serhu) — narra que lo intenta o lo considera, pero no que lo confecciona de verdad.',
+  narrationDo:
+    'El personaje cose colmillo y garra al cuero curtido aquí mismo, en el Campamento del Clan Serhu — narra la escena con naturalidad. El objeto ya se gestiona automáticamente por el backend.',
+};
+
+export const HAND_AXE_RECIPE: CraftingRecipe = {
+  key: 'handAxe',
+  verbRegex: /forj|fabric|monta|crear|creo/,
+  nounRegex: /hacha.*mano|mano.*hacha/,
+  location: 'campamento-serhu',
+  ingredients: [
+    { match: { kind: 'exact', catalogSlug: 'lingote-de-hierro' }, cantidad: 1, label: 'lingote de hierro' },
+    { match: { kind: 'category', tipo: 'RECURSO', category: 'madera' }, cantidad: 2, label: 'leña' },
+  ],
+  resultName: 'Hacha de mano orca',
+  resultCatalogSlug: 'hacha-de-mano-orca',
+  resultDescription: 'Hacha pequeña de cabeza de hierro y mango corto, forjada en la fragua del campamento — versión ligera de una mano, para la mano secundaria.',
+  statBonuses: { fuerza: 3 },
+  tier: 2,
+  requisitos: { fuerza: 8, destreza: 6 },
+  oficio: 'herrero-orco-llanuras',
+  narrationWant:
+    'El personaje quiere forjar un hacha de mano, pero no puede hacerlo ahora mismo (hace falta estar en el Campamento del Clan Serhu y llevar un lingote de hierro y leña encima) — narra que lo intenta o lo considera, pero no que la forja de verdad.',
+  narrationDo:
+    'El personaje forja el hacha de mano aquí mismo, en el Campamento del Clan Serhu, remachando la cabeza de hierro a un mango corto — narra la escena con el peso que merece. El objeto ya se gestiona automáticamente por el backend.',
+};
+
 export const CRAFTING_RECIPES: CraftingRecipe[] = [
   AXE_REPAIR_RECIPE,
   SMOKE_MEAT_RECIPE,
@@ -498,6 +607,11 @@ export const CRAFTING_RECIPES: CraftingRecipe[] = [
   GARGANTUA_LEG_ARMOR_RECIPE,
   BOUNGO_ROAST_RECIPE,
   CORACELO_MACE_RECIPE,
+  CORREDOR_VERTEBRA_RING_RECIPE,
+  GARGANTUA_CAPE_RECIPE,
+  CORREDOR_HOOD_RECIPE,
+  TROPHY_BELT_RECIPE,
+  HAND_AXE_RECIPE,
 ];
 
 export function detectsCraftIntent(recipe: CraftingRecipe, action: string): boolean {

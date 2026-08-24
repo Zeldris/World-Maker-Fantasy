@@ -376,11 +376,20 @@ esto es lore/mecánica que todavía no se ha decidido cómo funciona.
   completamente huérfanos** (cero menciones en todo `backend/src` fuera de su propia definición —
   ni receta, ni loadout de NPC, ni recolección, ni inventario inicial, ni misión): `hacha-de-mano-orca`,
   `trampa-de-lazo`, `anillo-vertebra-corredor`, `capa-piel-gargantua`, `capucha-piel-corredor`,
-  `cinturon-de-trofeos`, `marca-de-clan`, `silbato-hueso-caza`. Pendiente decidir con la usuaria:
-  revisar los 8 huérfanos uno a uno (dar receta/loot real o retirarlos), y si merece la pena diseñar
-  más recetas que consuman los 65 materiales sin uso o aceptarlo como fase de contenido adelantada a
-  su propia mecánica. Corrección colateral ya aplicada arriba: Yerreo/Hiyerro nunca tuvo receta real
-  pese a que una nota anterior de este mismo checklist lo daba por resuelto.
+  `cinturon-de-trofeos`, `marca-de-clan`, `silbato-hueso-caza`.
+
+  **Los 8 cerrados (2026-08-24, APLICADO al motor)** — ninguno se retiró, todos con uso real:
+  `hacha-de-mano-orca`/`anillo-vertebra-corredor`/`capa-piel-gargantua`/`capucha-piel-corredor`/
+  `cinturon-de-trofeos` con `CraftingRecipe` nueva cada uno (`crafting.ts`, herrero/curtidor
+  orcos-llanuras, materiales de caza ya existentes); `trampa-de-lazo` resultó ser exactamente la
+  "cuerda de captura" que el diseño de `companeros-y-supervivencia.md` inventaba desde cero —
+  conectado ahí, sin item nuevo; `marca-de-clan` en el loadout de Torgash Ketg (Kort'ikar del Clan
+  Serhu, portador natural del símbolo de su clan); `silbato-hueso-caza` en el loadout de Cazadora
+  Serhu ("señales de caza Serhu" encaja literal). Sigue pendiente: si merece la pena diseñar más
+  recetas que consuman los 65 materiales sin uso o aceptarlo como fase de contenido adelantada a su
+  propia mecánica — no decidido, fuera de alcance de esta pasada (solo los 8 huérfanos exactos).
+  Corrección colateral ya aplicada arriba: Yerreo/Hiyerro nunca tuvo receta real pese a que una nota
+  anterior de este mismo checklist lo daba por resuelto.
 - **Rebalanceo de coste de Campamento/Ayuntamiento** (pedido 2026-08-23, revisión de partida —
   "lo vemos juntas mañana", solo anotar por ahora): la usuaria jugando en vivo con `CAMPAMENTO_RECIPE`/
   `AYUNTAMIENTO_*_RECIPE` (`backend/src/services/construction.ts`) considera que:
