@@ -115,9 +115,10 @@ resumen de trabajo real, agrupado por tamaño.
 
 ### Encontrado en esta revisión (2026-08-24), repasando todos los .md activos
 
-- [ ] **Magia de 7 escuelas — ¿atributos independientes o sabores narrativos de un único `arcano`/
-  Magia?** (`07-mundo-helek-sirik.md`) — decisión técnica sin cerrar, directamente ligada al
-  renombrado Arcano→Magia ya documentado en `clases.md`.
+- [x] ~~**Magia de 7 escuelas**~~ — cerrado 2026-08-24: no era una pregunta abierta de verdad,
+  `07-mundo-helek-sirik.md` tenía una nota "sigue pendiente" que se quedó desactualizada el mismo
+  día que se cerró la decisión real (`clases.md § Atributo Magia`) — las 7 escuelas y las 12 ramas
+  de Semilla ya tiran todas con el mismo atributo Magia, sin dado propio por escuela. Reconciliado.
 - [ ] **Sistema de estaciones por mes/región** (`ampliar-lore-checklist.md`) — el motor ya tiene
   franjas día/noche pero ningún concepto de estación ni temperatura; hace falta decidir el diseño
   (calendario único vs. desfasado por región) antes de que tenga sentido cualquier condición "solo
