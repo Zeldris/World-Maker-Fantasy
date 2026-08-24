@@ -8,6 +8,7 @@ import { characterSummaryFor } from '../services/characterSummary.js';
 import { loadSessionFacts } from '../services/worldFacts.js';
 import { claimTurnInFlight, releaseTurnInFlight } from '../services/turnLock.js';
 import { growAllPopulations } from '../services/population.js';
+import { advanceWorldAgenda } from '../services/worldAgenda.js';
 import type { ClassificationResult } from '../services/narrador.js';
 import type { RollResult, AttributeBlock } from '../services/dice.js';
 import type { TravelResolution } from '../services/travel.js';
@@ -239,6 +240,9 @@ async function tick(): Promise<void> {
   // Población dinámica (docs/16-poblacion-dinamica.md) — `WorldPopulation` es del World, no de
   // una Save concreta, así que crece en el mismo tick de fondo en vez de en el turno síncrono.
   await growAllPopulations(prisma).catch((err) => console.error('[worldTick] error creciendo población:', err));
+  // Agenda de mundo (Grupo 3, 2026-08-24, ver worldAgenda.ts) — mismo criterio que arriba: hitos
+  // que avanzan con el tiempo de ficción, no con el turno síncrono.
+  await advanceWorldAgenda(prisma).catch((err) => console.error('[worldTick] error avanzando agenda de mundo:', err));
 }
 
 let intervalHandle: NodeJS.Timeout | null = null;

@@ -351,12 +351,12 @@ model WorldState {
   /// tener que tocar los muchos sitios que ya lo leen como string. Año todavía sin implementar
   /// (pendiente de que el flujo día/hora se demuestre estable jugando).
   fictionalMinutes    Int     @default(480)
-  /// Eventos pendientes de la agenda del mundo (facciones, NPCs) que el Cronista puede hacer "vencer"
-  /// — quitado en la auditoría de elementos desconectados 2026-08-23 por no tener ningún productor
-  /// (sigue creándose vacío), RESTAURADO el mismo día a petición explícita de la usuaria: sí hay
-  /// valor real aquí (un mundo que avanza solo con el tiempo, más allá de la ambientación pasiva de
-  /// `entorno.ts` — ej. escalada de la guerra Alianza/Concordia si nadie interviene), queda en cola
-  /// como feature real de diseño propio, todavía sin construir.
+  /// Hitos de mundo que avanzan solos con el tiempo de ficción (2026-08-24, ver worldAgenda.ts) —
+  /// más allá de la ambientación pasiva de `entorno.ts`. Quitado en la auditoría de elementos
+  /// desconectados 2026-08-23 por no tener productor, restaurado el mismo día y construido de
+  /// verdad al día siguiente: el tick de fondo (`worldTick.ts`) siembra y avanza
+  /// `AgendaEntry[]` (worldAgenda.ts) — hoy un único hito, el conflicto Serhu-Concordia contra
+  /// Helsig/Goshg, que deplete población real de esos dos clanes si nadie interviene.
   agenda              Json    @default("[]")
   factionsStatus      Json    @default("{}")
 

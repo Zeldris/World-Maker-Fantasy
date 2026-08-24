@@ -52,6 +52,17 @@ arena magnética reciente") que no existe en el motor; `boungo` depende del sist
 ("crece en otoño"), ya en la cola de Grupo 3. Ninguno de los dos es solo "sistema de estaciones" —
 clima puntual (tormentas) y estación (mes del año) son dos conceptos distintos, ambos sin diseñar.
 
+**`WorldState.agenda` (2026-08-24) — construido desde cero, no había nada detrás.** Diseño cerrado
+con la usuaria: el Clan Serhu, alineado en la sombra con la Concordia de Hierro, presiona a Helsig
+y Goshg (que resisten) — hoy solo "pequeños conflictos", sin guerra abierta. `worldAgenda.ts` (4
+funciones puras + 1 orquestadora) siembra este hito y lo avanza por etapas cada 7 días de ficción
+si nadie interviene; cada etapa cruzada deplecia 20 población real de Helsig y de Goshg
+(`WorldPopulation`, ya trackeada por clan) y añade un hecho narrativo que el Narrador puede citar.
+Enganchado al mismo tick de fondo que ya hace crecer población (`worldTick.ts`). Se siembra solo
+para la partida jugable real (`characterName: 'Gorhorn'`) — su partida en curso, con `agenda: []`
+hoy, lo sembrará sola en el próximo tick tras reiniciar el backend. Tests: 11 nuevos en
+`worldAgenda.test.ts`, `tsc -b` limpio.
+
 ---
 
 ## Pendiente — Grupo 3 (features nuevas, diseño cerrado, sin construir)
@@ -80,7 +91,9 @@ resumen de trabajo real, agrupado por tamaño.
 
 - [x] ~~`HarvestYield.condicion`~~ — cerrado 2026-08-24 (ver Historial arriba), salvo 2 sub-casos que
   dependen de clima/estaciones, ahora en "Encontrado en esta revisión" de abajo.
-- [ ] `WorldState.agenda` — eventos de mundo que avanzan solos con el tiempo.
+- [x] ~~`WorldState.agenda`~~ — cerrado 2026-08-24 (ver Historial arriba): `worldAgenda.ts`, un
+  hito real (conflicto Serhu-Concordia vs. Helsig/Goshg) que avanza por etapas cada 7 días de
+  ficción y deplecia población real si nadie interviene.
 - [ ] Sin triar aún construir/quitar: `comerciablePct`/`reclutablePct`/`cortejablePct` (nota:
   `domesticablePct` ya tiene destino claro, es la pieza central del tameo de arriba), `Npc.levelMax`,
   `percepcionPasivaFor`, `Territory.control`, `Building.status`, `KingdomStats.felicidad`.
