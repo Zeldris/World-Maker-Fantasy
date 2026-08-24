@@ -3014,6 +3014,81 @@ export const items: ItemCatalogInput[] = [
     requisitos: { fuerza: 12, destreza: 6, constitucion: 12, voluntad: 8 },
   },
 
+  // 5 equipables nuevos (2026-08-24, Grupo 3 § 27 recursos/materiales sin receta que los use —
+  // ver docs/21-roadmap.md) — cierran el destino real de items recolectables desde el 2026-08-23
+  // que hasta ahora no servían para nada.
+  {
+    slug: 'armadura-quitina-roja',
+    name: 'Armadura de quitina roja',
+    aliases: ['armadura de quitina'],
+    category: 'ropa',
+    tipo: 'EQUIPABLE',
+    equipSlot: 'ARMADURA_SUPERIOR',
+    description: 'Placas de quitina roja de Gesgurio cosidas sobre un refuerzo de caparazón de Espina del Viento y quitina de Escorante — ligera, pero resiste bien el corte.',
+    statBonuses: { constitucion: 4 },
+    dimensiones: 'Cubre el torso completo.',
+    lugarOrigen: 'La Hondonada del Eco, Llanuras del Viento Rojo.',
+    tier: 3,
+    requisitos: { destreza: 10 },
+  },
+  {
+    slug: 'zarpas-towrgu',
+    name: 'Zarpas de Towrgu',
+    aliases: ['zarpas', 'guantelete de garras'],
+    category: 'arma',
+    tipo: 'EQUIPABLE',
+    equipSlot: 'ARMA_SECUNDARIA',
+    tipoArma: 'DAGA',
+    description: 'Garras de Towrgu montadas sobre un guantelete de cuero — arma de cercanía, tan rápida como brutal.',
+    statBonuses: { destreza: 3 },
+    dimensiones: 'Guantelete con 4 garras de 15 cm.',
+    lugarOrigen: 'La Sabana Alta, Llanuras del Viento Rojo.',
+    tier: 5,
+    requisitos: { destreza: 14 },
+  },
+  {
+    slug: 'placas-escama-jusha',
+    name: 'Placas de escama de Jusha',
+    aliases: ['placas de escama'],
+    category: 'ropa',
+    tipo: 'EQUIPABLE',
+    equipSlot: 'ARMADURA_SUPERIOR',
+    description: 'Escamas de Jusha Esmeralda cosidas en hilera sobre cuero fino — armadura ligera, se mueve con quien la lleva.',
+    statBonuses: { destreza: 2, constitucion: 2 },
+    dimensiones: 'Cubre el torso completo.',
+    lugarOrigen: 'Los Manaderos, Llanuras del Viento Rojo.',
+    tier: 2,
+    requisitos: { destreza: 8 },
+  },
+  {
+    slug: 'tocado-plumas',
+    name: 'Tocado de plumas',
+    aliases: ['tocado', 'penacho de plumas'],
+    category: 'ropa',
+    tipo: 'EQUIPABLE',
+    equipSlot: 'CASCO',
+    description: 'Plumas rojizas de Corretolvas y plumas de Tura Jusha trenzadas en un tocado ceremonial — más presencia que protección.',
+    statBonuses: { carisma: 2 },
+    dimensiones: 'Tocado de 40 cm de alto.',
+    lugarOrigen: 'Llanuras del Viento Rojo.',
+    tier: 1,
+    requisitos: { destreza: 6 },
+  },
+  {
+    slug: 'capa-melena-ferike',
+    name: 'Capa de melena de Ferike',
+    aliases: ['capa de ferike'],
+    category: 'ropa',
+    tipo: 'EQUIPABLE',
+    equipSlot: 'ARMADURA_SUPERIOR',
+    description: 'Capa cosida con la melena de la cola de un Ferike macho — objeto de prestigio real, casi nadie ha visto una de cerca.',
+    statBonuses: { carisma: 5 },
+    dimensiones: 'Capa hasta media pierna.',
+    lugarOrigen: 'El Cruce de las Cenizas, Llanuras del Viento Rojo.',
+    tier: 7,
+    requisitos: { destreza: 16 },
+  },
+
   // ══════════════════════════════════════════════════════════════════════════
   // TIPO: CONSUMIBLE
   // ══════════════════════════════════════════════════════════════════════════
@@ -3329,6 +3404,109 @@ export const items: ItemCatalogInput[] = [
     dimensiones: 'Cuenco de 250 ml.',
     lugarOrigen: 'Llanuras del Viento Rojo.',
     curaEnergia: 40,
+  },
+
+  // 8 consumibles nuevos (2026-08-24, Grupo 3 § 27 recursos/materiales sin receta) — mismo
+  // criterio que boungo-asado (2026-07-29), primera receta real de varios oficios que ya
+  // existían pero no tenían ningún objeto propio más allá de su primer ejemplo.
+  {
+    slug: 'carne-jusha-ahumada',
+    name: 'Carne de Jusha ahumada',
+    aliases: ['carne ahumada de jusha'],
+    category: 'consumible',
+    tipo: 'CONSUMIBLE',
+    equipSlot: 'CONSUMIBLE_1',
+    description: 'Carne de Jusha Esmeralda ahumada sobre brasas — se conserva mejor que cruda y rinde más energía.',
+    dimensiones: 'Ración de 200 g.',
+    lugarOrigen: 'Los Manaderos, Llanuras del Viento Rojo.',
+    curaEnergia: 14,
+  },
+  {
+    slug: 'pan-trigo-escarlata',
+    name: 'Pan de trigo escarlata',
+    aliases: ['pan de trigo'],
+    category: 'consumible',
+    tipo: 'CONSUMIBLE',
+    equipSlot: 'CONSUMIBLE_1',
+    description: 'Trigo escarlata molido y horneado sobre piedra caliente — pan denso, poco habitual entre los orcos de las Llanuras.',
+    dimensiones: 'Hogaza de 300 g.',
+    lugarOrigen: 'La Sabana Alta, Llanuras del Viento Rojo.',
+    curaEnergia: 10,
+  },
+  {
+    slug: 'panal-endulzado',
+    name: 'Panal endulzado',
+    aliases: ['panal de miel'],
+    category: 'consumible',
+    tipo: 'CONSUMIBLE',
+    equipSlot: 'CONSUMIBLE_1',
+    description: 'Panal de Lebude prensado y endulzado — dulce concentrado, poco cuerpo pero mucha energía rápida.',
+    dimensiones: 'Trozo de 100 g.',
+    lugarOrigen: 'El Pozo de Cauce Viejo, Llanuras del Viento Rojo.',
+    curaEnergia: 8,
+  },
+  {
+    slug: 'cuajada-murgol',
+    name: 'Cuajada de múrgol',
+    aliases: ['cuajada'],
+    category: 'consumible',
+    tipo: 'CONSUMIBLE',
+    equipSlot: 'CONSUMIBLE_1',
+    description: 'Leche de los múrgoles domados del Campamento del Clan Serhu, cuajada y prensada — de las pocas cosas que se producen dentro de la propia empalizada, no se cazan ni se recolectan.',
+    dimensiones: 'Cuña de 150 g.',
+    lugarOrigen: 'Karot Veku - Campamento del Clan Serhu, Llanuras del Viento Rojo.',
+    curaEnergia: 10,
+  },
+  {
+    slug: 'cataplasma-musgo',
+    name: 'Cataplasma de musgo',
+    aliases: ['cataplasma de musgo rojo'],
+    category: 'medicinal',
+    tipo: 'CONSUMIBLE',
+    equipSlot: 'CONSUMIBLE_1',
+    description: 'Musgo rojo machacado en una pasta simple, aplicada directamente sobre la herida — primeros auxilios de campaña, sin más pretensión.',
+    dimensiones: 'Emplasto de 10x10 cm.',
+    lugarOrigen: 'El Pozo de Cauce Viejo, Llanuras del Viento Rojo.',
+    curaHasta: 'HERIDO',
+    curaUnPaso: true,
+  },
+  {
+    slug: 'filtro-salvatura',
+    name: 'Filtro de Salvatura',
+    aliases: ['filtro de salvatura'],
+    category: 'medicinal',
+    tipo: 'CONSUMIBLE',
+    equipSlot: 'CONSUMIBLE_1',
+    description: 'Pétalos de Flor Salvatura hervidos junto a pasto de sangre y pasto solar — primera poción real de la alquimia orca de las Llanuras más allá del contraveneno.',
+    dimensiones: 'Frasco de 100 ml.',
+    lugarOrigen: 'La Sabana Alta / Los Pastos de la Deriva, Llanuras del Viento Rojo.',
+    curaHasta: 'HERIDO',
+    curaUnPaso: true,
+    tier: 2,
+  },
+  {
+    slug: 'filtro-claridad-quio',
+    name: 'Filtro de claridad de Quio',
+    aliases: ['filtro de claridad'],
+    category: 'medicinal',
+    tipo: 'CONSUMIBLE',
+    equipSlot: 'CONSUMIBLE_1',
+    description: 'El filtro natural de Quio, destilado en un frasco pequeño — despeja la cabeza tras un golpe fuerte.',
+    dimensiones: 'Frasco de 50 ml.',
+    lugarOrigen: 'Los Manaderos, Llanuras del Viento Rojo.',
+    curaEnergia: 6,
+  },
+  {
+    slug: 'estera-junco-trenzado',
+    name: 'Estera de junco trenzado',
+    aliases: ['estera de junco', 'estera'],
+    category: 'consumible',
+    tipo: 'CONSUMIBLE',
+    equipSlot: 'CONSUMIBLE_1',
+    description: 'Juncos rojizos, verdileas acuáticas y hojas de Telda trenzados en una estera para dormir — un descanso de verdad, no solo suelo desnudo.',
+    dimensiones: 'Estera de 180x60 cm.',
+    lugarOrigen: 'Los Manaderos, Llanuras del Viento Rojo.',
+    curaEnergia: 6,
   },
 
   // ══════════════════════════════════════════════════════════════════════════
@@ -4547,6 +4725,29 @@ export const items: ItemCatalogInput[] = [
     // de confirmar con la usuaria si se mantiene o si prefiere retirar también esa receta.
     lugarOrigen: 'Los Restos de Maktor, Llanuras del Viento Rojo (madera de ciénaga, de origen distante).',
   },
+
+  // 2 trofeos nuevos (2026-08-24, Grupo 3 § 27 recursos/materiales sin receta) — mismo patrón que
+  // garra-rondador/sal-trueque: curiosidad/valor real, sin mecánica de equipo.
+  {
+    slug: 'cuerno-caza-tallado',
+    name: 'Cuerno de caza tallado',
+    aliases: ['cuerno tallado', 'cuerno de caza'],
+    category: 'valor',
+    tipo: 'NARRATIVO',
+    description: 'Cuerno de Cuernahoja vaciado y tallado con motivos de caza — suena bajo y largo, se oye a kilómetros en la llanura abierta.',
+    dimensiones: 'Cuerno de 35 cm.',
+    lugarOrigen: 'Los Pastos de la Deriva, Llanuras del Viento Rojo.',
+  },
+  {
+    slug: 'vela-cera-lebude',
+    name: 'Vela de cera de Lebude',
+    aliases: ['vela de cera'],
+    category: 'valor',
+    tipo: 'NARRATIVO',
+    description: 'Cera de la colmena de Lebude moldeada en una vela gruesa — arde más limpio y más tiempo que la resina, apreciada por quienes pasan la noche fuera del campamento.',
+    dimensiones: 'Vela de 15 cm.',
+    lugarOrigen: 'El Pozo de Cauce Viejo, Llanuras del Viento Rojo.',
+  },
 ];
 
 // ══════════════════════════════════════════════════════════════════════════
@@ -5562,12 +5763,27 @@ export const harvestYields: HarvestYieldInput[] = [
     condicion: 'cuchillo' 
   },
 
-  { 
+  {
     sourceSlug: 'murgol',
     sourceCategory: 'fauna',
-    metodoObtencion: 'CAZA', 
-    itemSlug: 'hueso-ligero', 
-    cantidad: 4 
+    metodoObtencion: 'CAZA',
+    itemSlug: 'hueso-ligero',
+    cantidad: 4
+  },
+
+  // --- Múrgoles domados (Campamento del Clan Serhu) ---
+
+  // sourceSlug DISTINTO de 'murgol' a propósito (2026-08-24, Grupo 3 § 27 recursos/materiales sin
+  // receta) — la invariante de HarvestYield exige que todas las filas de un mismo sourceSlug
+  // compartan metodoObtencion (validado en seed-catalog.ts), y 'murgol' ya es CAZA (fauna
+  // salvaje). Esto es leche de los múrgoles YA domados dentro del campamento — PASIVO, nunca se
+  // caza. `leche-murgol` no tenía ninguna HarvestYield antes de esto, era huérfano total.
+  {
+    sourceSlug: 'murgoles-domados-campamento',
+    sourceCategory: 'fauna',
+    metodoObtencion: 'PASIVO',
+    itemSlug: 'leche-murgol',
+    cantidad: 3,
   },
 
   // --- Ofrendas de los Túmulos del Honor ---
@@ -5764,6 +5980,7 @@ export const harvestYields: HarvestYieldInput[] = [
 /// existente, no por inspección. Si se añade una fuente nueva cuyo alias comparta palabra con otra
 /// ya existente, la que se quiera priorizar va ANTES.
 export const harvestSourceAliases: Record<string, string[]> = {
+  'murgoles-domados-campamento': ['múrgoles domados', 'murgoles domados', 'recinto de múrgol'],
   'corredor-de-cauce': ['corredor de cauce', 'corredor', 'corredores de cauce'],
   'gargantua-de-ceniza': ['gargantúa', 'gargantua', 'gargantúa de ceniza', 'gargantua de ceniza'],
   'espina-del-viento': ['espina del viento', 'espina', 'espinas del viento'],
@@ -6002,10 +6219,16 @@ export const harvestSourceHomeLocationSlug: Record<string, string> = {
   'roca-luclara': 'sabana-alta-colmillar',
   towrgu: 'sabana-alta-colmillar',
   coracelo: 'sabana-alta-colmillar',
+
+  // Múrgoles domados del propio campamento (2026-08-24, Grupo 3 § 27 recursos/materiales sin
+  // receta) — a diferencia de la fauna salvaje de arriba, esta fuente vive dentro de la
+  // empalizada, no en el mapa exterior.
+  'murgoles-domados-campamento': 'campamento-serhu',
 };
 
 export const harvestSourceRegion: Record<string, string> = {
   'arena-iman': 'Llanuras del Viento Rojo',
+  'murgoles-domados-campamento': 'Llanuras del Viento Rojo',
   'aullador-rojo': 'Llanuras del Viento Rojo',
   'buitre-cenizo': 'Llanuras del Viento Rojo',
   'bulbo-del-cauce': 'Llanuras del Viento Rojo',
@@ -6124,6 +6347,7 @@ export function sourceCategoryNameFor(category: string): string {
 /// repetirlo aquí. Los valores son los mismos `sourceName` que tenía cada fuente en `harvestYields`
 /// antes de este cambio, solo movidos aquí.
 export const harvestSourceDisplayName: Record<string, string> = {
+  'murgoles-domados-campamento': 'Múrgoles domados',
   'arena-iman': 'Arena Imán',
   'bulbo-del-cauce': 'Bulbo del Cauce',
   'cardo-brujula': 'Cardo Brújula',
@@ -6181,6 +6405,8 @@ export function sourceDisplayNameFor(sourceSlug: string, npcName?: string | null
 }
 
 export const harvestSourceDescriptions: Record<string, string> = {
+  'murgoles-domados-campamento':
+    'El pequeño recinto de múrgoles domados dentro de la empalizada del Campamento del Clan Serhu — de las pocas cosas que el clan produce sin cazar ni recolectar.',
   'arena-iman':
     'Limaduras oscuras y finas que las tormentas de arena magnética dejan acumuladas a sotavento de las rocas, brillo metálico apagado bajo el sol, se pegan a cualquier hoja de metal cercana.',
   'bulbo-del-cauce':

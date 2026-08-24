@@ -174,9 +174,16 @@ resumen de trabajo real, agrupado por tamaño.
   cuerda de captura de `companeros-y-supervivencia.md` (sin item nuevo), `marca-de-clan`/
   `silbato-hueso-caza` en loadout de NPC reales (Torgash Ketg/Cazadora Serhu). Ninguno se retiró.
   Tests nuevos en `crafting.test.ts`, `tsc -b` limpio, sin regresiones.
-- [ ] 65 de 79 RECURSO/MATERIAL sin ninguna receta que los use — sin decidir todavía si merece la
-  pena diseñar más recetas o aceptarlo como fase de contenido adelantada a su propia mecánica
-  (`ampliar-lore-checklist.md § Pendiente de diseño`).
+- [x] ~~65 de 79 RECURSO/MATERIAL sin ninguna receta que los use~~ — cifra desactualizada: la
+  cifra REAL el 2026-08-24 era 27 de 82 (el trabajo de ayer/hoy ya había cerrado 38). Cerrado y
+  APLICADO al motor el mismo día: 18 `CraftingRecipe` nuevas cubren 25 de los 27 (9 items
+  equipables/consumibles/materiales nuevos + `leche-murgol`, que no tenía NINGUNA `HarvestYield` —
+  nuevo `sourceSlug: 'murgoles-domados-campamento'`, PASIVO, en el propio Campamento del Clan
+  Serhu, con su `WorldPopulation` propia). 2 quedan sin receta a propósito:
+  `lingote-aleacion-goirntes` (ya tiene uso real como paga/soborno de un NPC goirnte) y
+  `hierba-del-hierro` (su `HarvestYield.condicion` ya dice "fuera del núcleo jugable actual" —
+  Meseta del Orden no es jugable hoy). Tests nuevos en `crafting.test.ts` (44 recetas en total),
+  `tsc -b` limpio, sin regresiones.
 
 ### No es Grupo 3 — categorías aparte, para no confundir al leer esta lista
 

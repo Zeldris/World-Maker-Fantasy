@@ -41,6 +41,24 @@ const handAxe = recipe('handAxe');
 const woodBeam = recipe('woodBeam');
 const boneColumn = recipe('boneColumn');
 const braidedCordage = recipe('braidedCordage');
+const yerreoIngot = recipe('yerreoIngot');
+const hiyerroAlloy = recipe('hiyerroAlloy');
+const quitinaPlates = recipe('quitinaPlates');
+const quitinaArmor = recipe('quitinaArmor');
+const jushaSmokedMeat = recipe('jushaSmokedMeat');
+const scarletWheatBread = recipe('scarletWheatBread');
+const sweetHoneycomb = recipe('sweetHoneycomb');
+const murgolCurd = recipe('murgolCurd');
+const mossPoultice = recipe('mossPoultice');
+const salvaturaFilter = recipe('salvaturaFilter');
+const quioClarityFilter = recipe('quioClarityFilter');
+const reedMat = recipe('reedMat');
+const featherHeaddress = recipe('featherHeaddress');
+const carvedHorn = recipe('carvedHorn');
+const towrguClaws = recipe('towrguClaws');
+const jushaScalePlates = recipe('jushaScalePlates');
+const lebudeCandle = recipe('lebudeCandle');
+const ferikeCape = recipe('ferikeCape');
 
 // catalogSlug de cada fila → tipo/categoría real del catálogo (2026-07-29, refactor de
 // ingredientes: crafting.ts ya no matchea por prefijo de nombre, matchea por catalogSlug/tipo/
@@ -78,7 +96,7 @@ function row(id: string, catalogSlug: string, cantidad?: number): InventoryRowLi
 }
 
 describe('CRAFTING_RECIPES', () => {
-  it('tiene las 26 recetas esperadas, cada una con una clave única', () => {
+  it('tiene las 44 recetas esperadas, cada una con una clave única', () => {
     expect(CRAFTING_RECIPES.map((r) => r.key)).toEqual([
       'axeRepair',
       'smokeMeat',
@@ -95,6 +113,26 @@ describe('CRAFTING_RECIPES', () => {
       'woodBeam',
       'boneColumn',
       'braidedCordage',
+      // 18 nuevas (2026-08-24, Grupo 3 § 27 recursos/materiales sin receta que los use) — cierran
+      // el destino real de items recolectables desde el 2026-08-23 que no servían para nada.
+      'yerreoIngot',
+      'hiyerroAlloy',
+      'quitinaPlates',
+      'quitinaArmor',
+      'jushaSmokedMeat',
+      'scarletWheatBread',
+      'sweetHoneycomb',
+      'murgolCurd',
+      'mossPoultice',
+      'salvaturaFilter',
+      'quioClarityFilter',
+      'reedMat',
+      'featherHeaddress',
+      'carvedHorn',
+      'towrguClaws',
+      'jushaScalePlates',
+      'lebudeCandle',
+      'ferikeCape',
       'firstAidBandage',
       'redSpikeInfusion',
       'basicPoultice',
@@ -270,6 +308,49 @@ describe('detectsCraftIntent', () => {
     expect(detectsCraftIntent(braidedCordage, 'Tejo una cuerda trenzada')).toBe(true);
     expect(detectsCraftIntent(braidedCordage, 'Trenzo mi pelo')).toBe(false);
   });
+
+  // 18 nuevas (2026-08-24, Grupo 3 § 27 recursos/materiales sin receta que los use).
+  it('detecta intención de fundir Yerreo/Hiyerro', () => {
+    expect(detectsCraftIntent(yerreoIngot, 'Fundo mi mena de Yerreo en un lingote')).toBe(true);
+    expect(detectsCraftIntent(yerreoIngot, 'Fundo un lingote de hierro')).toBe(false);
+    expect(detectsCraftIntent(hiyerroAlloy, 'Forjo un lingote de Hiyerro con mi mena')).toBe(true);
+    expect(detectsCraftIntent(hiyerroAlloy, 'Fundo un lingote de Yerreo')).toBe(false);
+  });
+
+  it('detecta intención de trabajar/coser quitina roja', () => {
+    expect(detectsCraftIntent(quitinaPlates, 'Trabajo mi quitina roja en una pieza')).toBe(true);
+    expect(detectsCraftIntent(quitinaArmor, 'Confecciono una armadura de quitina')).toBe(true);
+    expect(detectsCraftIntent(quitinaArmor, 'Trabajo una pieza de quitina')).toBe(false);
+  });
+
+  it('detecta intención de cocinar carne de Jusha/pan/panal/cuajada', () => {
+    expect(detectsCraftIntent(jushaSmokedMeat, 'Ahumo mi carne de Jusha')).toBe(true);
+    expect(detectsCraftIntent(scarletWheatBread, 'Horneo pan de trigo escarlata')).toBe(true);
+    expect(detectsCraftIntent(sweetHoneycomb, 'Preparo un panal endulzado')).toBe(true);
+    expect(detectsCraftIntent(murgolCurd, 'Preparo una cuajada con mi leche de múrgol')).toBe(true);
+  });
+
+  it('detecta intención de preparar cataplasma de musgo/filtros', () => {
+    expect(detectsCraftIntent(mossPoultice, 'Preparo una cataplasma de musgo')).toBe(true);
+    expect(detectsCraftIntent(salvaturaFilter, 'Preparo un filtro de Salvatura')).toBe(true);
+    expect(detectsCraftIntent(quioClarityFilter, 'Destilo un filtro de claridad')).toBe(true);
+    expect(detectsCraftIntent(quioClarityFilter, 'Preparo un filtro de Salvatura')).toBe(false);
+  });
+
+  it('detecta intención de trenzar estera/tocado', () => {
+    expect(detectsCraftIntent(reedMat, 'Trenzo una estera de junco')).toBe(true);
+    expect(detectsCraftIntent(featherHeaddress, 'Trenzo un tocado de plumas')).toBe(true);
+    expect(detectsCraftIntent(reedMat, 'Trenzo un tocado')).toBe(false);
+  });
+
+  it('detecta intención de tallar/montar objetos de caza (cuerno/zarpas/escamas/vela/capa)', () => {
+    expect(detectsCraftIntent(carvedHorn, 'Tallo un cuerno de caza con mi cuerno de Cuernahoja')).toBe(true);
+    expect(detectsCraftIntent(towrguClaws, 'Fabrico mis zarpas de Towrgu')).toBe(true);
+    expect(detectsCraftIntent(jushaScalePlates, 'Coso placas de escama de Jusha')).toBe(true);
+    expect(detectsCraftIntent(lebudeCandle, 'Moldeo una vela de cera')).toBe(true);
+    expect(detectsCraftIntent(ferikeCape, 'Coso una capa con la melena del Ferike')).toBe(true);
+    expect(detectsCraftIntent(ferikeCape, 'Fabrico mis zarpas de Towrgu')).toBe(false);
+  });
 });
 
 describe('canCraft — ingrediente exacto (catalogSlug concreto)', () => {
@@ -436,6 +517,105 @@ describe('canCraft — lingote de hierro imantado, aguja de cardo brújula y saq
     expect(canCraft(sandPouch, 'campamento-serhu', rows, catalogBySlug, attrs, secondary)).toBe(true);
     expect(canCraft(sandPouch, 'hondonada-del-eco', rows, catalogBySlug, attrs, secondary)).toBe(false);
     expect(canCraft(sandPouch, 'campamento-serhu', [row('1', 'piel-gargantua'), row('2', 'punado-arena-iman', 1)], catalogBySlug, attrs, secondary)).toBe(false);
+  });
+});
+
+// 18 recetas nuevas (2026-08-24, Grupo 3 § 27 recursos/materiales sin receta que los use).
+describe('canCraft — 18 recetas nuevas (2026-08-24, Grupo 3 § 27 recursos/materiales sin receta)', () => {
+  it('lingote de Yerreo: 4 mena de Yerreo, en el campamento', () => {
+    const rows = [row('1', 'mena-yerreo', 4)];
+    expect(canCraft(yerreoIngot, 'campamento-serhu', rows, catalogBySlug, attrs, secondary)).toBe(true);
+    expect(canCraft(yerreoIngot, 'hondonada-del-eco', rows, catalogBySlug, attrs, secondary)).toBe(false);
+    expect(canCraft(yerreoIngot, 'campamento-serhu', [row('1', 'mena-yerreo', 3)], catalogBySlug, attrs, secondary)).toBe(false);
+  });
+
+  it('lingote de Hiyerro: mena de hierro + mena de Yerreo + arena imán, exige Fuerza 14, en el campamento', () => {
+    const rows = [row('1', 'mena-hierro-llanuras', 2), row('2', 'mena-yerreo', 2), row('3', 'punado-arena-iman', 2)];
+    expect(canCraft(hiyerroAlloy, 'campamento-serhu', rows, catalogBySlug, attrs, secondary)).toBe(true); // attrs.fuerza = 18
+    const debil: AttributeBlock = { ...attrs, fuerza: 10 };
+    expect(canCraft(hiyerroAlloy, 'campamento-serhu', rows, catalogBySlug, debil, secondary)).toBe(false);
+    expect(canCraft(hiyerroAlloy, 'campamento-serhu', [row('1', 'mena-hierro-llanuras', 1), row('2', 'mena-yerreo', 2), row('3', 'punado-arena-iman', 2)], catalogBySlug, attrs, secondary)).toBe(
+      false,
+    );
+  });
+
+  it('pieza de quitina roja + armadura de quitina roja: encadenadas, ambas exigen herramienta de curtidor y el campamento', () => {
+    const rowsPlates = [row('1', 'trozo-quitina-roja', 3), row('2', 'cuchillo-hielo-silice')];
+    expect(canCraft(quitinaPlates, 'campamento-serhu', rowsPlates, catalogBySlug, attrs, secondary)).toBe(true);
+    expect(canCraft(quitinaPlates, 'campamento-serhu', [row('1', 'trozo-quitina-roja', 3)], catalogBySlug, attrs, secondary)).toBe(false);
+
+    const rowsArmor = [row('1', 'pieza-quitina-roja', 2), row('2', 'quitina-escorante'), row('3', 'caparazon-espina'), row('4', 'cuchillo-hielo-silice')];
+    expect(canCraft(quitinaArmor, 'campamento-serhu', rowsArmor, catalogBySlug, attrs, secondary)).toBe(true);
+    expect(canCraft(quitinaArmor, 'hondonada-del-eco', rowsArmor, catalogBySlug, attrs, secondary)).toBe(false);
+  });
+
+  it('cocina: carne de Jusha ahumada / pan de trigo escarlata / panal endulzado, en cualquier sitio', () => {
+    expect(canCraft(jushaSmokedMeat, 'hondonada-del-eco', [row('1', 'carne-jusha', 2)], catalogBySlug, attrs, secondary)).toBe(true);
+    expect(canCraft(jushaSmokedMeat, 'hondonada-del-eco', [row('1', 'carne-jusha', 1)], catalogBySlug, attrs, secondary)).toBe(false);
+    expect(canCraft(scarletWheatBread, 'hondonada-del-eco', [row('1', 'trigo-escarlata', 3)], catalogBySlug, attrs, secondary)).toBe(true);
+    expect(canCraft(sweetHoneycomb, 'hondonada-del-eco', [row('1', 'miel-lebude', 2)], catalogBySlug, attrs, secondary)).toBe(true);
+  });
+
+  it('cuajada de múrgol: 2 leche de múrgol, en el campamento (donde están los múrgoles domados)', () => {
+    const rows = [row('1', 'leche-murgol', 2)];
+    expect(canCraft(murgolCurd, 'campamento-serhu', rows, catalogBySlug, attrs, secondary)).toBe(true);
+    expect(canCraft(murgolCurd, 'hondonada-del-eco', rows, catalogBySlug, attrs, secondary)).toBe(false);
+  });
+
+  it('cataplasma de musgo: 3 musgo rojo, en cualquier sitio, sin herramienta (primeros-auxilios)', () => {
+    expect(canCraft(mossPoultice, 'hondonada-del-eco', [row('1', 'musgo-rojo', 3)], catalogBySlug, attrs, secondary)).toBe(true);
+    expect(canCraft(mossPoultice, 'hondonada-del-eco', [row('1', 'musgo-rojo', 2)], catalogBySlug, attrs, secondary)).toBe(false);
+  });
+
+  it('filtro de Salvatura: 3 hierbas a la vez, exige Inteligencia (alquimista)', () => {
+    const rows = [row('1', 'petalos-flor-salvatura', 2), row('2', 'pasto-de-sangre', 2), row('3', 'pasto-solar', 2)];
+    expect(canCraft(salvaturaFilter, 'hondonada-del-eco', rows, catalogBySlug, attrs, secondary)).toBe(true); // attrs.inteligencia = 10
+    const pocoInteligente: AttributeBlock = { ...attrs, inteligencia: 0 };
+    expect(canCraft(salvaturaFilter, 'hondonada-del-eco', rows, catalogBySlug, pocoInteligente, secondary)).toBe(false);
+  });
+
+  it('filtro de claridad de Quio: 2 filtro de Quio, en cualquier sitio', () => {
+    expect(canCraft(quioClarityFilter, 'hondonada-del-eco', [row('1', 'filtro-quio', 2)], catalogBySlug, attrs, secondary)).toBe(true);
+    expect(canCraft(quioClarityFilter, 'hondonada-del-eco', [row('1', 'filtro-quio', 1)], catalogBySlug, attrs, secondary)).toBe(false);
+  });
+
+  it('estera de junco / tocado de plumas: exigen herramienta de curtidor, en cualquier sitio', () => {
+    const rowsMat = [row('1', 'juncos-rojizos', 2), row('2', 'verdileas-acuaticas', 2), row('3', 'hojas-telda', 2), row('4', 'cuchillo-hielo-silice')];
+    expect(canCraft(reedMat, 'hondonada-del-eco', rowsMat, catalogBySlug, attrs, secondary)).toBe(true);
+    expect(canCraft(reedMat, 'hondonada-del-eco', rowsMat.slice(0, 3), catalogBySlug, attrs, secondary)).toBe(false);
+
+    const rowsTocado = [row('1', 'plumas-rojizas', 2), row('2', 'plumas-tura-jusha', 2), row('3', 'cuchillo-hielo-silice')];
+    expect(canCraft(featherHeaddress, 'hondonada-del-eco', rowsTocado, catalogBySlug, attrs, secondary)).toBe(true);
+  });
+
+  it('cuerno de caza tallado: 1 cuerno de Cuernahoja, en cualquier sitio (carpintero, sin gate de herramienta)', () => {
+    expect(canCraft(carvedHorn, 'hondonada-del-eco', [row('1', 'cuerno-cuernahoja')], catalogBySlug, attrs, secondary)).toBe(true);
+    expect(canCraft(carvedHorn, 'hondonada-del-eco', [], catalogBySlug, attrs, secondary)).toBe(false);
+  });
+
+  it('zarpas de Towrgu: exige Destreza 14 y herramienta de curtidor, en el campamento', () => {
+    const rows = [row('1', 'garras-towrgu', 2), row('2', 'cuchillo-hielo-silice')];
+    const destro: AttributeBlock = { ...attrs, destreza: 14 };
+    expect(canCraft(towrguClaws, 'campamento-serhu', rows, catalogBySlug, destro, secondary)).toBe(true);
+    expect(canCraft(towrguClaws, 'campamento-serhu', rows, catalogBySlug, attrs, secondary)).toBe(false);
+  });
+
+  it('placas de escama de Jusha: 3 escama de Jusha + herramienta de curtidor, en el campamento', () => {
+    const rows = [row('1', 'escama-jusha', 3), row('2', 'cuchillo-hielo-silice')];
+    expect(canCraft(jushaScalePlates, 'campamento-serhu', rows, catalogBySlug, attrs, secondary)).toBe(true);
+    expect(canCraft(jushaScalePlates, 'hondonada-del-eco', rows, catalogBySlug, attrs, secondary)).toBe(false);
+  });
+
+  it('vela de cera de Lebude: 2 cera de Lebude, en cualquier sitio, sin oficio', () => {
+    expect(canCraft(lebudeCandle, 'hondonada-del-eco', [row('1', 'cera-lebude', 2)], catalogBySlug, attrs, secondary)).toBe(true);
+    expect(canCraft(lebudeCandle, 'hondonada-del-eco', [row('1', 'cera-lebude', 1)], catalogBySlug, attrs, secondary)).toBe(false);
+  });
+
+  it('capa de melena de Ferike: exige Destreza 16 y herramienta de curtidor, en el campamento', () => {
+    const rows = [row('1', 'melena-cola-ferike'), row('2', 'cuchillo-hielo-silice')];
+    const destro: AttributeBlock = { ...attrs, destreza: 16 };
+    expect(canCraft(ferikeCape, 'campamento-serhu', rows, catalogBySlug, destro, secondary)).toBe(true);
+    expect(canCraft(ferikeCape, 'campamento-serhu', rows, catalogBySlug, attrs, secondary)).toBe(false);
   });
 });
 

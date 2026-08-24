@@ -647,6 +647,350 @@ export const HAND_AXE_RECIPE: CraftingRecipe = {
     'El personaje forja el hacha de mano aquí mismo, en el Campamento del Clan Serhu, remachando la cabeza de hierro a un mango corto — narra la escena con el peso que merece. El objeto ya se gestiona automáticamente por el backend.',
 };
 
+// 18 recetas nuevas (2026-08-24, Grupo 3 § 27 recursos/materiales sin receta que los use, ver
+// docs/21-roadmap.md) — cierran el destino real de items recolectables desde el 2026-08-23 que
+// hasta ahora no servían para nada. Grounding real hecho antes de diseñar: 82 RECURSO/MATERIAL en
+// el catálogo, 27 sin ningún consumidor; de esos, `lingote-aleacion-goirntes` se queda fuera a
+// propósito (ya tiene uso real como paga/soborno de un NPC goirnte, no hay oficio goirnte en el
+// motor) y `hierba-del-hierro` también (su propia `HarvestYield.condicion` dice "fuera del núcleo
+// jugable actual" — Meseta del Orden no es jugable hoy, una receta real para algo inalcanzable no
+// aporta nada).
+
+export const YERREO_INGOT_RECIPE: CraftingRecipe = {
+  key: 'yerreoIngot',
+  verbRegex: /fund|forj|refin|derret/,
+  nounRegex: /lingote.*yerreo|yerreo.*lingote/,
+  location: 'campamento-serhu',
+  ingredients: [{ match: { kind: 'exact', catalogSlug: 'mena-yerreo' }, cantidad: 4, label: 'mena de Yerreo' }],
+  resultName: 'Lingote de Yerreo',
+  resultCatalogSlug: 'lingote-yerreo',
+  resultDescription: 'Yerreo fundido en la fragua del campamento y colado en un molde sencillo — metal más denso y valioso que el hierro común.',
+  tier: 4,
+  requisitos: { fuerza: 10 },
+  oficio: 'herrero-orco-llanuras',
+  narrationWant:
+    'El personaje quiere fundir mena de Yerreo en un lingote, pero no puede hacerlo ahora mismo (hace falta estar en el Campamento del Clan Serhu y llevar al menos 4 mena de Yerreo) — narra que lo intenta o lo considera, pero no que lo funde de verdad.',
+  narrationDo:
+    'El personaje funde su mena de Yerreo en la fragua del campamento, colándola en un molde sencillo — narra la escena con el peso que merece. El objeto ya se gestiona automáticamente por el backend.',
+};
+
+export const HIYERRO_ALLOY_RECIPE: CraftingRecipe = {
+  key: 'hiyerroAlloy',
+  verbRegex: /fund|forj|refin|derret|aleac/,
+  nounRegex: /lingote.*hiyerro|hiyerro.*lingote/,
+  location: 'campamento-serhu',
+  ingredients: [
+    { match: { kind: 'exact', catalogSlug: 'mena-hierro-llanuras' }, cantidad: 2, label: 'mena de hierro' },
+    { match: { kind: 'exact', catalogSlug: 'mena-yerreo' }, cantidad: 2, label: 'mena de Yerreo' },
+    { match: { kind: 'exact', catalogSlug: 'punado-arena-iman' }, cantidad: 2, label: 'puñado de arena imán' },
+  ],
+  resultName: 'Lingote de Hiyerro',
+  resultCatalogSlug: 'lingote-hiyerro',
+  resultDescription: 'La mejor aleación orca — hierro, Yerreo y arena imán fundidos juntos en la fragua del campamento hasta formar un único lingote.',
+  tier: 7,
+  requisitos: { fuerza: 14 },
+  oficio: 'herrero-orco-llanuras',
+  narrationWant:
+    'El personaje quiere fundir hierro, Yerreo y arena imán juntos en un lingote de Hiyerro, pero no puede hacerlo ahora mismo (hace falta estar en el Campamento del Clan Serhu y llevar 2 mena de hierro, 2 mena de Yerreo y 2 puñados de arena imán encima) — narra que lo intenta o lo considera, pero no que lo funde de verdad.',
+  narrationDo:
+    'El personaje funde hierro, Yerreo y arena imán juntos en la fragua del campamento, colando la mezcla en un único lingote — narra la escena con el peso que merece, es la mejor aleación que conoce su pueblo. El objeto ya se gestiona automáticamente por el backend.',
+};
+
+export const QUITINA_PLATES_RECIPE: CraftingRecipe = {
+  key: 'quitinaPlates',
+  verbRegex: /tall|labr|trab|prepar|fabric/,
+  nounRegex: /pieza.*quitina|quitina.*pieza/,
+  location: 'campamento-serhu',
+  ingredients: [{ match: { kind: 'exact', catalogSlug: 'trozo-quitina-roja' }, cantidad: 3, label: 'trozo de quitina roja' }],
+  resultName: 'Pieza de quitina roja',
+  resultCatalogSlug: 'pieza-quitina-roja',
+  resultDescription: 'Varios trozos de quitina roja de Gesgurio trabajados hasta formar una pieza completa, lista para crafteo.',
+  tier: 2,
+  requisitos: { destreza: 8 },
+  oficio: 'curtidor-orcos-llanuras',
+  narrationWant:
+    'El personaje quiere trabajar quitina roja en una pieza completa, pero no lleva encima suficiente quitina roja en bruto (hacen falta al menos 3 trozos) — narra que lo intenta o lo considera, pero no que la pieza queda terminada.',
+  narrationDo:
+    'El personaje trabaja varios trozos de quitina roja hasta unirlos en una única pieza completa — narra la escena con naturalidad. El objeto ya se gestiona automáticamente por el backend.',
+};
+
+export const QUITINA_ARMOR_RECIPE: CraftingRecipe = {
+  key: 'quitinaArmor',
+  verbRegex: /cos[eo]|confeccion|monta|fabric|prepar/,
+  nounRegex: /armadura.*quitina|quitina.*armadura/,
+  location: 'campamento-serhu',
+  ingredients: [
+    { match: { kind: 'exact', catalogSlug: 'pieza-quitina-roja' }, cantidad: 2, label: 'pieza de quitina roja' },
+    { match: { kind: 'exact', catalogSlug: 'quitina-escorante' }, cantidad: 1, label: 'quitina de Escorante' },
+    { match: { kind: 'exact', catalogSlug: 'caparazon-espina' }, cantidad: 1, label: 'caparazón de Espina del Viento' },
+  ],
+  resultName: 'Armadura de quitina roja',
+  resultCatalogSlug: 'armadura-quitina-roja',
+  resultDescription: 'Placas de quitina roja cosidas sobre un refuerzo de caparazón de Espina del Viento y quitina de Escorante — ligera, pero resiste bien el corte.',
+  statBonuses: { constitucion: 4 },
+  tier: 3,
+  requisitos: { destreza: 10 },
+  oficio: 'curtidor-orcos-llanuras',
+  narrationWant:
+    'El personaje quiere confeccionar una armadura de quitina roja, pero no puede hacerlo ahora mismo (hace falta estar en el Campamento del Clan Serhu y llevar 2 piezas de quitina roja, quitina de Escorante y un caparazón de Espina del Viento encima) — narra que lo intenta o lo considera, pero no que la termina de verdad.',
+  narrationDo:
+    'El personaje cose las piezas de quitina roja sobre el refuerzo de caparazón y quitina de Escorante hasta formar una armadura ligera — narra la escena con naturalidad. El objeto ya se gestiona automáticamente por el backend.',
+};
+
+export const JUSHA_SMOKED_MEAT_RECIPE: CraftingRecipe = {
+  key: 'jushaSmokedMeat',
+  verbRegex: /as|cocin|prepar|tuest|ahum/,
+  nounRegex: /carne.*jusha|jusha.*carne/,
+  location: null,
+  ingredients: [{ match: { kind: 'exact', catalogSlug: 'carne-jusha' }, cantidad: 2, label: 'carne de Jusha' }],
+  resultName: 'Carne de Jusha ahumada',
+  resultCatalogSlug: 'carne-jusha-ahumada',
+  resultDescription: 'Carne de Jusha Esmeralda ahumada sobre brasas — se conserva mejor que cruda y rinde más energía.',
+  tier: 1,
+  oficio: 'cocinero-orco-llanuras',
+  narrationWant:
+    'El personaje quiere ahumar carne de Jusha, pero no lleva encima al menos 2 raciones de carne de Jusha — narra que lo intenta o lo considera, pero no que la ahuma de verdad.',
+  narrationDo: 'El personaje ahuma su carne de Jusha sobre brasas — narra la escena con naturalidad. El objeto ya se gestiona automáticamente por el backend.',
+};
+
+export const SCARLET_WHEAT_BREAD_RECIPE: CraftingRecipe = {
+  key: 'scarletWheatBread',
+  verbRegex: /horne|cocin|prepar|amas/,
+  nounRegex: /pan.*trigo|trigo.*pan/,
+  location: null,
+  ingredients: [{ match: { kind: 'exact', catalogSlug: 'trigo-escarlata' }, cantidad: 3, label: 'trigo escarlata' }],
+  resultName: 'Pan de trigo escarlata',
+  resultCatalogSlug: 'pan-trigo-escarlata',
+  resultDescription: 'Trigo escarlata molido y horneado sobre piedra caliente — pan denso, poco habitual entre los orcos de las Llanuras.',
+  tier: 1,
+  oficio: 'cocinero-orco-llanuras',
+  narrationWant:
+    'El personaje quiere hornear pan de trigo escarlata, pero no lleva encima suficiente trigo escarlata (hacen falta al menos 3) — narra que lo intenta o lo considera, pero no que el pan queda hecho.',
+  narrationDo: 'El personaje muele y hornea su trigo escarlata sobre piedra caliente — narra la escena con naturalidad. El objeto ya se gestiona automáticamente por el backend.',
+};
+
+export const SWEET_HONEYCOMB_RECIPE: CraftingRecipe = {
+  key: 'sweetHoneycomb',
+  verbRegex: /prepar|prens|cocin/,
+  nounRegex: /panal/,
+  location: null,
+  ingredients: [{ match: { kind: 'exact', catalogSlug: 'miel-lebude' }, cantidad: 2, label: 'miel de Lebude' }],
+  resultName: 'Panal endulzado',
+  resultCatalogSlug: 'panal-endulzado',
+  resultDescription: 'Panal de Lebude prensado y endulzado — dulce concentrado, poco cuerpo pero mucha energía rápida.',
+  tier: 1,
+  oficio: 'cocinero-orco-llanuras',
+  narrationWant:
+    'El personaje quiere prensar un panal endulzado, pero no lleva encima suficiente miel de Lebude (hacen falta al menos 2) — narra que lo intenta o lo considera, pero no que el panal queda terminado.',
+  narrationDo: 'El personaje prensa su miel de Lebude en un panal denso y dulce — narra la escena con naturalidad. El objeto ya se gestiona automáticamente por el backend.',
+};
+
+export const MURGOL_CURD_RECIPE: CraftingRecipe = {
+  key: 'murgolCurd',
+  verbRegex: /cuaj|prens|prepar|cocin/,
+  nounRegex: /cuajada/,
+  location: 'campamento-serhu',
+  ingredients: [{ match: { kind: 'exact', catalogSlug: 'leche-murgol' }, cantidad: 2, label: 'leche de múrgol' }],
+  resultName: 'Cuajada de múrgol',
+  resultCatalogSlug: 'cuajada-murgol',
+  resultDescription: 'Leche de los múrgoles domados del campamento, cuajada y prensada — de las pocas cosas que se producen dentro de la propia empalizada.',
+  tier: 1,
+  oficio: 'cocinero-orco-llanuras',
+  narrationWant:
+    'El personaje quiere cuajar leche de múrgol, pero no lleva encima suficiente leche de múrgol (hacen falta al menos 2) — narra que lo intenta o lo considera, pero no que la cuajada queda terminada.',
+  narrationDo:
+    'El personaje cuaja y prensa su leche de múrgol aquí mismo, en el Campamento del Clan Serhu — narra la escena con naturalidad. El objeto ya se gestiona automáticamente por el backend.',
+};
+
+export const MOSS_POULTICE_RECIPE: CraftingRecipe = {
+  key: 'mossPoultice',
+  verbRegex: /prepar|machac|hac|crear|creo/,
+  nounRegex: /cataplasma.*musgo|musgo.*cataplasma/,
+  location: null,
+  ingredients: [{ match: { kind: 'exact', catalogSlug: 'musgo-rojo' }, cantidad: 3, label: 'musgo rojo' }],
+  resultName: 'Cataplasma de musgo',
+  resultCatalogSlug: 'cataplasma-musgo',
+  resultDescription: 'Musgo rojo machacado en una pasta simple, aplicada directamente sobre la herida — primeros auxilios de campaña, sin más pretensión.',
+  tier: 1,
+  oficio: 'primeros-auxilios-orcos-llanuras',
+  narrationWant:
+    'El personaje quiere preparar una cataplasma de musgo, pero no lleva encima suficiente musgo rojo (hacen falta al menos 3) — narra que lo intenta o lo considera, pero no que la prepara de verdad.',
+  narrationDo:
+    'El personaje machaca su musgo rojo hasta formar una pasta simple — narra la escena con naturalidad. El objeto ya se gestiona automáticamente por el backend.',
+};
+
+export const SALVATURA_FILTER_RECIPE: CraftingRecipe = {
+  key: 'salvaturaFilter',
+  verbRegex: /prepar|mezcl|hierv|hac|crear|creo/,
+  nounRegex: /filtro.*salvatura|salvatura.*filtro/,
+  location: null,
+  ingredients: [
+    { match: { kind: 'exact', catalogSlug: 'petalos-flor-salvatura' }, cantidad: 2, label: 'pétalos de Flor Salvatura' },
+    { match: { kind: 'exact', catalogSlug: 'pasto-de-sangre' }, cantidad: 2, label: 'pasto de sangre' },
+    { match: { kind: 'exact', catalogSlug: 'pasto-solar' }, cantidad: 2, label: 'pasto solar' },
+  ],
+  resultName: 'Filtro de Salvatura',
+  resultCatalogSlug: 'filtro-salvatura',
+  resultDescription: 'Pétalos de Flor Salvatura hervidos junto a pasto de sangre y pasto solar — primera poción real de la alquimia orca de las Llanuras más allá del contraveneno.',
+  tier: 2,
+  requisitos: { inteligencia: 8 },
+  oficio: 'alquimista-orcos-llanuras',
+  narrationWant:
+    'El personaje quiere preparar un Filtro de Salvatura, pero no puede hacerlo ahora mismo (hacen falta 2 pétalos de Flor Salvatura, 2 pasto de sangre y 2 pasto solar a la vez) — narra que lo intenta o lo considera, pero no que lo prepara de verdad.',
+  narrationDo:
+    'El personaje hierve juntos los pétalos de Flor Salvatura, el pasto de sangre y el pasto solar hasta reducirlos a un filtro claro — narra la escena con naturalidad. El objeto ya se gestiona automáticamente por el backend.',
+};
+
+export const QUIO_CLARITY_FILTER_RECIPE: CraftingRecipe = {
+  key: 'quioClarityFilter',
+  verbRegex: /destil|prepar|hac|crear|creo/,
+  nounRegex: /filtro.*claridad|claridad.*filtro|filtro.*quio/,
+  location: null,
+  ingredients: [{ match: { kind: 'exact', catalogSlug: 'filtro-quio' }, cantidad: 2, label: 'filtro de Quio' }],
+  resultName: 'Filtro de claridad de Quio',
+  resultCatalogSlug: 'filtro-claridad-quio',
+  resultDescription: 'El filtro natural de Quio, destilado en un frasco pequeño — despeja la cabeza tras un golpe fuerte.',
+  tier: 1,
+  oficio: 'alquimista-orcos-llanuras',
+  narrationWant:
+    'El personaje quiere destilar un filtro de claridad de Quio, pero no lleva encima suficiente filtro de Quio (hacen falta al menos 2) — narra que lo intenta o lo considera, pero no que lo destila de verdad.',
+  narrationDo:
+    'El personaje destila su filtro de Quio en un frasco pequeño — narra la escena con naturalidad. El objeto ya se gestiona automáticamente por el backend.',
+};
+
+export const REED_MAT_RECIPE: CraftingRecipe = {
+  key: 'reedMat',
+  verbRegex: /trenz|tej|fabric|prepar/,
+  nounRegex: /estera/,
+  location: null,
+  ingredients: [
+    { match: { kind: 'exact', catalogSlug: 'juncos-rojizos' }, cantidad: 2, label: 'juncos rojizos' },
+    { match: { kind: 'exact', catalogSlug: 'verdileas-acuaticas' }, cantidad: 2, label: 'verdileas acuáticas' },
+    { match: { kind: 'exact', catalogSlug: 'hojas-telda' }, cantidad: 2, label: 'hojas de Telda' },
+  ],
+  resultName: 'Estera de junco trenzado',
+  resultCatalogSlug: 'estera-junco-trenzado',
+  resultDescription: 'Juncos rojizos, verdileas acuáticas y hojas de Telda trenzados en una estera para dormir — un descanso de verdad, no solo suelo desnudo.',
+  tier: 1,
+  oficio: 'curtidor-orcos-llanuras',
+  narrationWant:
+    'El personaje quiere trenzar una estera de junco, pero no puede hacerlo ahora mismo (hacen falta 2 juncos rojizos, 2 verdileas acuáticas y 2 hojas de Telda a la vez) — narra que lo intenta o lo considera, pero no que la termina de verdad.',
+  narrationDo:
+    'El personaje trenza juncos rojizos, verdileas acuáticas y hojas de Telda hasta formar una estera — narra la escena con naturalidad. El objeto ya se gestiona automáticamente por el backend.',
+};
+
+export const FEATHER_HEADDRESS_RECIPE: CraftingRecipe = {
+  key: 'featherHeaddress',
+  verbRegex: /trenz|monta|confeccion|fabric|prepar/,
+  nounRegex: /tocado/,
+  location: null,
+  ingredients: [
+    { match: { kind: 'exact', catalogSlug: 'plumas-rojizas' }, cantidad: 2, label: 'plumas rojizas' },
+    { match: { kind: 'exact', catalogSlug: 'plumas-tura-jusha' }, cantidad: 2, label: 'plumas de Tura Jusha' },
+  ],
+  resultName: 'Tocado de plumas',
+  resultCatalogSlug: 'tocado-plumas',
+  resultDescription: 'Plumas rojizas de Corretolvas y plumas de Tura Jusha trenzadas en un tocado ceremonial — más presencia que protección.',
+  statBonuses: { carisma: 2 },
+  tier: 1,
+  requisitos: { destreza: 6 },
+  oficio: 'curtidor-orcos-llanuras',
+  narrationWant:
+    'El personaje quiere trenzar un tocado de plumas, pero no lleva encima suficientes plumas rojizas y de Tura Jusha (hacen falta 2 de cada) — narra que lo intenta o lo considera, pero no que lo termina de verdad.',
+  narrationDo:
+    'El personaje trenza sus plumas rojizas y de Tura Jusha en un tocado ceremonial — narra la escena con naturalidad. El objeto ya se gestiona automáticamente por el backend.',
+};
+
+export const CARVED_HORN_RECIPE: CraftingRecipe = {
+  key: 'carvedHorn',
+  verbRegex: /tall|vaci|labr|fabric|prepar/,
+  nounRegex: /cuerno.*tallad|tallad.*cuerno|cuerno.*caza/,
+  location: null,
+  ingredients: [{ match: { kind: 'exact', catalogSlug: 'cuerno-cuernahoja' }, cantidad: 1, label: 'cuerno de Cuernahoja' }],
+  resultName: 'Cuerno de caza tallado',
+  resultCatalogSlug: 'cuerno-caza-tallado',
+  resultDescription: 'Cuerno de Cuernahoja vaciado y tallado con motivos de caza — suena bajo y largo, se oye a kilómetros en la llanura abierta.',
+  tier: 2,
+  requisitos: { destreza: 8 },
+  oficio: 'carpintero-orcos-llanuras',
+  narrationWant:
+    'El personaje quiere tallar un cuerno de caza, pero no lleva encima ningún cuerno de Cuernahoja — narra que lo intenta o lo considera, pero no que lo talla de verdad.',
+  narrationDo: 'El personaje vacía y talla su cuerno de Cuernahoja con motivos de caza — narra la escena con naturalidad. El objeto ya se gestiona automáticamente por el backend.',
+};
+
+export const TOWRGU_CLAWS_RECIPE: CraftingRecipe = {
+  key: 'towrguClaws',
+  verbRegex: /monta|confeccion|fabric|prepar/,
+  nounRegex: /zarpas|guantelete.*garra/,
+  location: 'campamento-serhu',
+  ingredients: [{ match: { kind: 'exact', catalogSlug: 'garras-towrgu' }, cantidad: 2, label: 'garras de Towrgu' }],
+  resultName: 'Zarpas de Towrgu',
+  resultCatalogSlug: 'zarpas-towrgu',
+  resultDescription: 'Garras de Towrgu montadas sobre un guantelete de cuero — arma de cercanía, tan rápida como brutal.',
+  statBonuses: { destreza: 3 },
+  tier: 5,
+  requisitos: { destreza: 14 },
+  oficio: 'curtidor-orcos-llanuras',
+  narrationWant:
+    'El personaje quiere montar unas zarpas de Towrgu, pero no lleva encima suficientes garras de Towrgu (hacen falta al menos 2) y además hace falta estar en el Campamento del Clan Serhu — narra que lo intenta o lo considera, pero no que las termina de verdad.',
+  narrationDo:
+    'El personaje monta sus garras de Towrgu sobre un guantelete de cuero grueso — narra la escena con el peso que merece. El objeto ya se gestiona automáticamente por el backend.',
+};
+
+export const JUSHA_SCALE_PLATES_RECIPE: CraftingRecipe = {
+  key: 'jushaScalePlates',
+  verbRegex: /cos[eo]|confeccion|monta|fabric|prepar/,
+  nounRegex: /placas.*escama|escama.*placas/,
+  location: 'campamento-serhu',
+  ingredients: [{ match: { kind: 'exact', catalogSlug: 'escama-jusha' }, cantidad: 3, label: 'escama de Jusha' }],
+  resultName: 'Placas de escama de Jusha',
+  resultCatalogSlug: 'placas-escama-jusha',
+  resultDescription: 'Escamas de Jusha Esmeralda cosidas en hilera sobre cuero fino — armadura ligera, se mueve con quien la lleva.',
+  statBonuses: { destreza: 2, constitucion: 2 },
+  tier: 2,
+  requisitos: { destreza: 8 },
+  oficio: 'curtidor-orcos-llanuras',
+  narrationWant:
+    'El personaje quiere coser placas de escama de Jusha, pero no lleva encima suficientes escamas de Jusha (hacen falta al menos 3) y además hace falta estar en el Campamento del Clan Serhu — narra que lo intenta o lo considera, pero no que las termina de verdad.',
+  narrationDo:
+    'El personaje cose sus escamas de Jusha en hilera sobre cuero fino — narra la escena con naturalidad. El objeto ya se gestiona automáticamente por el backend.',
+};
+
+export const LEBUDE_CANDLE_RECIPE: CraftingRecipe = {
+  key: 'lebudeCandle',
+  verbRegex: /mold|prepar|fabric|hac/,
+  nounRegex: /vela/,
+  location: null,
+  ingredients: [{ match: { kind: 'exact', catalogSlug: 'cera-lebude' }, cantidad: 2, label: 'cera de Lebude' }],
+  resultName: 'Vela de cera de Lebude',
+  resultCatalogSlug: 'vela-cera-lebude',
+  resultDescription: 'Cera de la colmena de Lebude moldeada en una vela gruesa — arde más limpio y más tiempo que la resina.',
+  tier: 1,
+  // Sin `oficio` a propósito: moldear una vela no exige ningún gremio, cualquiera puede hacerlo.
+  narrationWant:
+    'El personaje quiere moldear una vela de cera de Lebude, pero no lleva encima suficiente cera de Lebude (hacen falta al menos 2) — narra que lo intenta o lo considera, pero no que la termina de verdad.',
+  narrationDo: 'El personaje moldea su cera de Lebude en una vela gruesa — narra la escena con naturalidad. El objeto ya se gestiona automáticamente por el backend.',
+};
+
+export const FERIKE_CAPE_RECIPE: CraftingRecipe = {
+  key: 'ferikeCape',
+  verbRegex: /cos[eo]|confeccion|monta|fabric|prepar/,
+  nounRegex: /capa.*ferike|ferike.*capa|capa.*melena/,
+  location: 'campamento-serhu',
+  ingredients: [{ match: { kind: 'exact', catalogSlug: 'melena-cola-ferike' }, cantidad: 1, label: 'melena de la cola del Ferike' }],
+  resultName: 'Capa de melena de Ferike',
+  resultCatalogSlug: 'capa-melena-ferike',
+  resultDescription: 'Capa cosida con la melena de la cola de un Ferike macho — objeto de prestigio real, casi nadie ha visto una de cerca.',
+  statBonuses: { carisma: 5 },
+  tier: 7,
+  requisitos: { destreza: 16 },
+  oficio: 'curtidor-orcos-llanuras',
+  narrationWant:
+    'El personaje quiere coser una capa con la melena de la cola de un Ferike, pero no lleva encima ninguna melena de Ferike y además hace falta estar en el Campamento del Clan Serhu — narra que lo intenta o lo considera, pero no que la termina de verdad.',
+  narrationDo:
+    'El personaje cose la melena de la cola del Ferike en una capa de prestigio — narra la escena con el peso que merece, es un objeto que casi nadie ha visto de cerca. El objeto ya se gestiona automáticamente por el backend.',
+};
+
 export const CRAFTING_RECIPES: CraftingRecipe[] = [
   AXE_REPAIR_RECIPE,
   SMOKE_MEAT_RECIPE,
@@ -661,6 +1005,24 @@ export const CRAFTING_RECIPES: CraftingRecipe[] = [
   WOOD_BEAM_RECIPE,
   BONE_COLUMN_RECIPE,
   BRAIDED_CORDAGE_RECIPE,
+  YERREO_INGOT_RECIPE,
+  HIYERRO_ALLOY_RECIPE,
+  QUITINA_PLATES_RECIPE,
+  QUITINA_ARMOR_RECIPE,
+  JUSHA_SMOKED_MEAT_RECIPE,
+  SCARLET_WHEAT_BREAD_RECIPE,
+  SWEET_HONEYCOMB_RECIPE,
+  MURGOL_CURD_RECIPE,
+  MOSS_POULTICE_RECIPE,
+  SALVATURA_FILTER_RECIPE,
+  QUIO_CLARITY_FILTER_RECIPE,
+  REED_MAT_RECIPE,
+  FEATHER_HEADDRESS_RECIPE,
+  CARVED_HORN_RECIPE,
+  TOWRGU_CLAWS_RECIPE,
+  JUSHA_SCALE_PLATES_RECIPE,
+  LEBUDE_CANDLE_RECIPE,
+  FERIKE_CAPE_RECIPE,
   FIRST_AID_BANDAGE_RECIPE,
   RED_SPIKE_INFUSION_RECIPE,
   BASIC_POULTICE_RECIPE,

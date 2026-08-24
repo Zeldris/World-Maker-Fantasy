@@ -262,6 +262,17 @@ export const worldPopulations: WorldPopulationInput[] = [
     poblacionMax: 750,
     distribucion: { 'Llanuras del Viento Rojo': 1 },
   },
+  // Múrgoles domados del Campamento del Clan Serhu (2026-08-24, Grupo 3 § 27 recursos/materiales
+  // sin receta) — cifra pequeña a propósito: es un recinto real dentro de la empalizada, no una
+  // población salvaje (mismo eje separado del `murgol` FAUNA de arriba, 2800/4000).
+  {
+    targetType: 'RECURSO',
+    targetSlug: 'murgoles-domados-campamento',
+    label: 'Múrgoles domados (Campamento del Clan Serhu)',
+    poblacion: 20,
+    poblacionMax: 30,
+    distribucion: { 'Llanuras del Viento Rojo': 1 },
+  },
   {
     targetType: 'RECURSO',
     targetSlug: 'bulbo-del-cauce',
