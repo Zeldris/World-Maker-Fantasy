@@ -38,6 +38,9 @@ const gargantuaCape = recipe('gargantuaCape');
 const corredorHood = recipe('corredorHood');
 const trophyBelt = recipe('trophyBelt');
 const handAxe = recipe('handAxe');
+const woodBeam = recipe('woodBeam');
+const boneColumn = recipe('boneColumn');
+const braidedCordage = recipe('braidedCordage');
 
 // catalogSlug de cada fila → tipo/categoría real del catálogo (2026-07-29, refactor de
 // ingredientes: crafting.ts ya no matchea por prefijo de nombre, matchea por catalogSlug/tipo/
@@ -66,6 +69,8 @@ const catalogBySlug = new Map<string, CatalogLookup>([
   ['colmillo-aullador', { tipo: 'RECURSO', category: 'hueso' }],
   ['garra-rondador', { tipo: 'NARRATIVO', category: 'valor' }],
   ['lingote-de-hierro', { tipo: 'MATERIAL', category: 'metal' }],
+  ['hueso-largo-gargantua', { tipo: 'RECURSO', category: 'hueso' }],
+  ['fibra-enredaderas-llanuras', { tipo: 'RECURSO', category: 'fibras' }],
 ]);
 
 function row(id: string, catalogSlug: string, cantidad?: number): InventoryRowLike {
@@ -73,7 +78,7 @@ function row(id: string, catalogSlug: string, cantidad?: number): InventoryRowLi
 }
 
 describe('CRAFTING_RECIPES', () => {
-  it('tiene las 23 recetas esperadas, cada una con una clave única', () => {
+  it('tiene las 26 recetas esperadas, cada una con una clave única', () => {
     expect(CRAFTING_RECIPES.map((r) => r.key)).toEqual([
       'axeRepair',
       'smokeMeat',
@@ -85,6 +90,11 @@ describe('CRAFTING_RECIPES', () => {
       'compassNeedle',
       'sandPouch',
       'stoneBlock',
+      // 3 nuevas (2026-08-24, Grupo 3 § materiales procesados de construcción) — consumidas por
+      // primera vez por el Ayuntamiento mediano/grande (construction.ts).
+      'woodBeam',
+      'boneColumn',
+      'braidedCordage',
       'firstAidBandage',
       'redSpikeInfusion',
       'basicPoultice',
@@ -241,6 +251,25 @@ describe('detectsCraftIntent', () => {
     expect(detectsCraftIntent(handAxe, 'Fabrico un hacha de mano')).toBe(true);
     expect(detectsCraftIntent(handAxe, 'Forjo un hacha de guerra')).toBe(false);
   });
+
+  // 3 nuevas (2026-08-24, Grupo 3 § materiales procesados de construcción).
+  it('detecta intención de tallar una viga de madera', () => {
+    expect(detectsCraftIntent(woodBeam, 'Tallo una viga de madera con mi leña')).toBe(true);
+    expect(detectsCraftIntent(woodBeam, 'Escuadro una viga tallada')).toBe(true);
+    expect(detectsCraftIntent(woodBeam, 'Tallo un bloque de piedra')).toBe(false);
+  });
+
+  it('detecta intención de trabar una columna de hueso', () => {
+    expect(detectsCraftIntent(boneColumn, 'Trabo una columna de hueso')).toBe(true);
+    expect(detectsCraftIntent(boneColumn, 'Tallo una columna de hueso con mis huesos')).toBe(true);
+    expect(detectsCraftIntent(boneColumn, 'Trabo un anillo cualquiera')).toBe(false);
+  });
+
+  it('detecta intención de trenzar cordaje', () => {
+    expect(detectsCraftIntent(braidedCordage, 'Trenzo cordaje con mi fibra')).toBe(true);
+    expect(detectsCraftIntent(braidedCordage, 'Tejo una cuerda trenzada')).toBe(true);
+    expect(detectsCraftIntent(braidedCordage, 'Trenzo mi pelo')).toBe(false);
+  });
 });
 
 describe('canCraft — ingrediente exacto (catalogSlug concreto)', () => {
@@ -374,6 +403,30 @@ describe('canCraft — lingote de hierro imantado, aguja de cardo brújula y saq
     const rows = [row('1', 'lingote-de-hierro'), row('2', 'lena-matorral-cuerno', 2)];
     expect(canCraft(handAxe, 'campamento-serhu', rows, catalogBySlug, attrs, secondary)).toBe(true);
     expect(canCraft(handAxe, 'hondonada-del-eco', rows, catalogBySlug, attrs, secondary)).toBe(false);
+  });
+  // 3 nuevas (2026-08-24, Grupo 3 § materiales procesados de construcción) — `location: null`
+  // igual que stoneBlock, sin gate de ubicación ni de herramienta.
+  it('viga de madera tallada: 4 leña (cualquiera, por categoría), en cualquier sitio', () => {
+    const rows = [row('1', 'lena-matorral-cuerno', 4)];
+    expect(canCraft(woodBeam, 'campamento-serhu', rows, catalogBySlug, attrs, secondary)).toBe(true);
+    expect(canCraft(woodBeam, 'hondonada-del-eco', rows, catalogBySlug, attrs, secondary)).toBe(true);
+    expect(canCraft(woodBeam, 'campamento-serhu', [row('1', 'lena-matorral-cuerno', 3)], catalogBySlug, attrs, secondary)).toBe(false);
+  });
+  it('columna de hueso: 3 hueso (cualquiera, por categoría), en cualquier sitio', () => {
+    const rows = [row('1', 'colmillo-aullador'), row('2', 'placa-osea-gargantua'), row('3', 'hueso-largo-gargantua')];
+    expect(canCraft(boneColumn, 'hondonada-del-eco', rows, catalogBySlug, attrs, secondary)).toBe(true);
+    expect(canCraft(boneColumn, 'hondonada-del-eco', [row('1', 'colmillo-aullador'), row('2', 'placa-osea-gargantua')], catalogBySlug, attrs, secondary)).toBe(false);
+  });
+  // curtidor-orcos-llanuras SÍ está en OFICIOS_CON_HERRAMIENTA_REQUERIDA (a diferencia de
+  // constructor/carpintero) — exige también el cuchillo de hielo sílice, igual que sandPouch/las
+  // 4 recetas de trofeos de arriba.
+  it('cordaje trenzado: 4 fibra (cualquiera, por categoría) + herramienta de curtidor, en cualquier sitio', () => {
+    const rows = [row('1', 'fibra-enredaderas-llanuras', 4), row('2', 'cuchillo-hielo-silice')];
+    expect(canCraft(braidedCordage, 'campamento-serhu', rows, catalogBySlug, attrs, secondary)).toBe(true);
+    expect(canCraft(braidedCordage, 'campamento-serhu', [row('1', 'fibra-enredaderas-llanuras', 3), row('2', 'cuchillo-hielo-silice')], catalogBySlug, attrs, secondary)).toBe(
+      false,
+    );
+    expect(canCraft(braidedCordage, 'campamento-serhu', [row('1', 'fibra-enredaderas-llanuras', 4)], catalogBySlug, attrs, secondary)).toBe(false);
   });
   // Herramienta requerida (2026-08-17, oficio curtidor) — el cuchillo de hielo sílice de Gorhorn
   // cuenta como herramienta de peletería; sin él en las filas, `canCraft` da false aunque el resto

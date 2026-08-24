@@ -1514,12 +1514,25 @@ describe('Ayuntamiento: fundación, desbloqueo de reino y mejora in-place', () =
     expect(await prisma.building.count({ where: { saveId, recipeKey: 'choza', status: 'ACTIVO' } })).toBe(1);
   }, 15_000);
 
+  // Materiales procesados (2026-08-24, Grupo 3 § materiales procesados de construcción) — antes
+  // solo 30 piedra + 25 leña crudas; ahora ~75% procesado/25% crudo por categoría. Gorhorn ya
+  // empieza con `constructor-orcos-llanuras` (GORHORN_STARTING_PROFESSIONS,
+  // startingProfessions.ts), así que el nuevo bloqueo real de oficio no lo afecta aquí.
   it('mejora el Ayuntamiento a mediano IN-PLACE — mismo Building.id, sin duplicar Territory', async () => {
     const before = await prisma.building.findFirstOrThrow({ where: { saveId, recipeKey: 'ayuntamiento' } });
     const territoriesBefore = await prisma.territory.count({ where: { saveId } });
     await giveMaterials(saveId, [
-      { name: 'Piedra (30)', catalogSlug: 'piedra' },
-      { name: 'Leña de matorral de cuerno (25)', catalogSlug: 'lena-matorral-cuerno' },
+      { name: 'Bloque de piedra tallada (3)', catalogSlug: 'bloque-piedra-tallada' },
+      { name: 'Piedra (5)', catalogSlug: 'piedra' },
+      { name: 'Lingote de hierro (1)', catalogSlug: 'lingote-de-hierro' },
+      { name: 'Mena de hierro (1)', catalogSlug: 'mena-de-hierro' },
+      { name: 'Viga de madera tallada (2)', catalogSlug: 'viga-madera-tallada' },
+      { name: 'Leña de matorral de cuerno (3)', catalogSlug: 'lena-matorral-cuerno' },
+      { name: 'Columna de hueso (2)', catalogSlug: 'columna-hueso' },
+      { name: 'Hueso largo de gargantúa (2)', catalogSlug: 'hueso-largo-gargantua' },
+      { name: 'Cordaje trenzado (2)', catalogSlug: 'cordaje-trenzado' },
+      { name: 'Fibra de enredaderas (3)', catalogSlug: 'fibra-enredaderas-llanuras' },
+      { name: 'Resina de trepador del ocaso (12)', catalogSlug: 'resina-trepador-ocaso' },
     ]);
     narrateAction.mockClear();
     const res = await doTurn(saveId, 'Mejoro mi ayuntamiento a mediano.');

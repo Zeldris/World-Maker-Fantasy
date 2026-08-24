@@ -3381,6 +3381,46 @@ export const items: ItemCatalogInput[] = [
     dimensiones: 'Lingote de 20x5x5 cm.',
   },
 
+  // --- viga ---
+
+  // 3 materiales procesados nuevos (2026-08-24, Grupo 3 § materiales procesados de construcción,
+  // ver docs/rpgtarkor/materiales-procesados-construccion.md) — mismo patrón que
+  // bloque-piedra-tallada/lingote-de-hierro arriba: crudo → material procesado por oficio
+  // regional, consumido por el Ayuntamiento mediano/grande a partir de ahora.
+  {
+    slug: 'viga-madera-tallada',
+    name: 'Viga de madera tallada',
+    aliases: ['viga de madera', 'viga tallada'],
+    category: 'viga',
+    tipo: 'MATERIAL',
+    description: 'Tronco desbastado y escuadrado en una viga recta de sección uniforme — lista para sostener un techo o un muro de verdad, ya no sirve solo de leña.',
+    dimensiones: 'Viga de 200x15x15 cm.',
+  },
+
+  // --- columna ---
+
+  {
+    slug: 'columna-hueso',
+    name: 'Columna de hueso',
+    aliases: ['columna de hueso', 'columna osea'],
+    category: 'columna',
+    tipo: 'MATERIAL',
+    description: 'Varios huesos largos trabados y reforzados en un único puntal rígido — técnica orca de aprovechar lo que caza la propia tierra en vez de depender solo de piedra o madera.',
+    dimensiones: 'Columna de 180x10x10 cm.',
+  },
+
+  // --- cordaje ---
+
+  {
+    slug: 'cordaje-trenzado',
+    name: 'Cordaje trenzado',
+    aliases: ['cordaje', 'cuerda trenzada'],
+    category: 'cordaje',
+    tipo: 'MATERIAL',
+    description: 'Fibra vegetal trenzada en cabos gruesos y resistentes — ata vigas, tensa pieles de techo, asegura lo que un edificio grande no puede confiar solo al peso.',
+    dimensiones: 'Rollo de cordaje de 10 m.',
+  },
+
   // ══════════════════════════════════════════════════════════════════════════
   // TIPO: RECURSO
   // ══════════════════════════════════════════════════════════════════════════

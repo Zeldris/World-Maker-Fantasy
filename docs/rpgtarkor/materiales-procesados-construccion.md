@@ -1,4 +1,4 @@
-# Helek Sirik — Materiales procesados y oficios regionales de construcción
+# Helek Sirik — Materiales procesados y oficios regionales de construcción — APLICADO al motor
 
 [← Volver al índice del mundo](../07-mundo-helek-sirik.md)
 
@@ -6,8 +6,9 @@
 rebalanceo de coste de Campamento/Ayuntamiento: la usuaria señaló que pedir recursos base
 fungibles ("cualquier piedra vale") está mal — un edificio debería depender de qué oficio
 REGIONAL tienes aprendido, y de materiales PROCESADOS (bloques, lingotes, columnas...), no de
-recursos crudos directos, cada vez más según sube el tier del edificio. **Documentación de
-diseño — parte ya existía sin conectar, el resto está sin implementar todavía.***
+recursos crudos directos, cada vez más según sube el tier del edificio. Diseño cerrado el mismo
+día; el mediano/grande del Ayuntamiento se aplicó al motor en una pasada posterior, ver
+§ "Aplicado al motor" más abajo.*
 
 ---
 
@@ -134,19 +135,37 @@ imponente todavía".
 
 ---
 
-## Infraestructura nueva necesaria (resumen)
+## Aplicado al motor (2026-08-24)
 
-- 3 items nuevos en `ItemCatalog`: Viga de madera tallada (`viga`), Columna de hueso (`columna`),
-  Cordaje trenzado (`cordaje`).
-- 3 `CraftingRecipe` nuevas (crudo → procesado), cada una gateada por su oficio regional real.
-- Conectar `bloque-piedra-tallada` (ya existe) y `lingote-de-hierro` (ya existe) a las recetas de
-  construcción reales por primera vez — hoy ninguna construcción los pide.
-- `ConstructionRecipe.oficio` necesita pasar de "solo alivio" a bloqueo real para las recetas que
-  lo declaren — lista explícita nueva, mismo patrón que `OFICIOS_CON_HERRAMIENTA_REQUERIDA`.
-- Actualizar `AYUNTAMIENTO_PEQUENO/MEDIANO/GRANDE_RECIPE` (`construction.ts`) con las cifras ya
-  cerradas de la tabla de arriba — nada de esto se ha aplicado al motor todavía, a diferencia del
-  Campamento.
-- Cuando se diseñen construcciones de otras razas/regiones (Goirntes/Meseta, Nabieus/Margen,
-  Faerus/Bosque...), cada una necesitará sus propios oficios regionales y quizá sus propios
-  materiales procesados — este documento solo cierra el caso orco/Llanuras, el patrón general
-  queda documentado para repetirlo.
+- 3 items nuevos en `ItemCatalog` (`worldCatalog.ts`): Viga de madera tallada (`viga`), Columna de
+  hueso (`columna`), Cordaje trenzado (`cordaje`).
+- 3 `CraftingRecipe` nuevas (`crafting.ts`): `WOOD_BEAM_RECIPE` (4 madera → 1 viga, oficio
+  `carpintero-orcos-llanuras`), `BONE_COLUMN_RECIPE` (3 hueso → 1 columna, oficio
+  `constructor-orcos-llanuras`), `BRAIDED_CORDAGE_RECIPE` (4 fibra → 1 cordaje, oficio
+  `curtidor-orcos-llanuras` — este SÍ exige también la herramienta de curtidor,
+  `OFICIOS_CON_HERRAMIENTA_REQUERIDA` ya lo incluía). Mismo patrón que `STONE_BLOCK_RECIPE`:
+  ingrediente por categoría (cualquier leña/hueso/fibra sirve), `location: null`.
+- `bloque-piedra-tallada` y `lingote-de-hierro` conectados a construcción real por primera vez —
+  ambos consumidos ahora por el Ayuntamiento mediano/grande.
+- `ConstructionRecipe.oficio` pasa de "solo alivio" a bloqueo real: `OFICIOS_CONSTRUCCION_REQUERIDOS`
+  nuevo en `construction.ts` (hoy solo `['constructor']`), `checkRecipe` gana un 7º parámetro
+  `tieneOficio` (default `true`, no rompe callers existentes) que añade un `RequirementShortfall`
+  binario ("el oficio de X") si la receta lo exige y el personaje no lo ha aprendido en absoluto —
+  distingue "nivel 1 por no tenerlo" de "no lo tiene". Hilado por `turnResolution.ts`
+  (`tieneOficioFor`, mismo patrón que `alivioFor`) y `construction.ts` (`planDeterministicBuild`).
+- `AYUNTAMIENTO_MEDIANO_RECIPE`/`AYUNTAMIENTO_GRANDE_RECIPE` actualizadas con las cifras cerradas de
+  la tabla de arriba, ambas con `oficio: 'constructor-orcos-llanuras'` (bloqueo real desde mediano
+  en adelante; el pequeño se queda sin exigirlo).
+- Tests: `construction.test.ts` (mediano/grande con la mezcla nueva + describe dedicado del
+  bloqueo de oficio), `crafting.test.ts` (3 recetas nuevas, 26 en total),
+  `turn.integration.test.ts` (giveMaterials del test "mejora a mediano" actualizado). `tsc -b`
+  limpio, sin regresiones nuevas.
+
+**Pendiente de tu lado** (no gestiono tu Postgres): aplicar la migración de `Estacion`/`EstadoClima`
+no aplica aquí (esta pasada no toca el schema), pero SÍ hace falta `npm run seed-catalog` para que
+los 3 items/3 recetas nuevas lleguen a tu mundo ya sembrado.
+
+Cuando se diseñen construcciones de otras razas/regiones (Goirntes/Meseta, Nabieus/Margen,
+Faerus/Bosque...), cada una necesitará sus propios oficios regionales y quizá sus propios
+materiales procesados — este documento solo cierra el caso orco/Llanuras, el patrón general queda
+documentado para repetirlo.

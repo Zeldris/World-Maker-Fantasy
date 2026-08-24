@@ -5,6 +5,7 @@ import { checkRequisitos, type Requisitos } from './requisitos.js';
 import { totalQuantity, planConsumption, type IngredientRequirement, type CatalogLookup, type InventoryRowLike } from './ingredients.js';
 import { prisma } from '../lib/prisma.js';
 import { alivioForLevel } from './professionProgress.js';
+import { matchesOficioPrefix } from './harvestAbilities.js';
 import type { Prisma } from '@prisma/client';
 
 export { quantityOf, baseNameOf, planConsumption } from './ingredients.js';
@@ -94,9 +95,23 @@ export interface RecipeCheck {
   missing: RequirementShortfall[];
 }
 
+/// Oficios de construcción (prefijo sin raza/región) que de verdad BLOQUEAN si no se han
+/// aprendido — mismo patrón que `OFICIOS_CON_HERRAMIENTA_REQUERIDA` (crafting.ts): una lista
+/// explícita, en vez de cambiar el comportamiento por defecto de golpe para todas las recetas
+/// existentes. Gap real cerrado (2026-08-24, Grupo 3 § materiales procesados, ver
+/// docs/rpgtarkor/materiales-procesados-construccion.md): antes `ConstructionRecipe.oficio` solo
+/// daba un alivio de requisito (`alivioForLevel`), nunca bloqueaba — hoy nada impedía construir un
+/// Ayuntamiento orco sin haber aprendido `constructor-orcos-llanuras` en absoluto. El Ayuntamiento
+/// pequeño y el Campamento se quedan fuera a propósito (nivel de entrada, sin oficio exigido);
+/// mediano/grande sí lo declaran.
+export const OFICIOS_CONSTRUCCION_REQUERIDOS = ['constructor'];
+
 /// Puro: dadas las filas de inventario reales y los atributos del PJ, decide si la receta se
-/// puede completar ahora mismo y qué falta si no (materiales Y/O atributos, mismo shape para
-/// poder narrar ambos con el mismo texto). `alivio` = nivel de oficio si la receta lo tiene.
+/// puede completar ahora mismo y qué falta si no (materiales Y/O atributos Y/O oficio, mismo shape
+/// para poder narrar los tres con el mismo texto). `alivio` = nivel de oficio si la receta lo
+/// tiene. `tieneOficio` = si el personaje ha aprendido AL MENOS UN NIVEL de `recipe.oficio` (solo
+/// importa si ese oficio está en `OFICIOS_CONSTRUCCION_REQUERIDOS`) — default `true` para no
+/// romper ningún caller/test existente que no pase este dato.
 export function checkRecipe(
   recipe: ConstructionRecipe,
   rows: InventoryRowLike[],
@@ -104,6 +119,7 @@ export function checkRecipe(
   attributes: AttributeBlock,
   secondaryAttributes: SecondaryAttributeBlock,
   alivio = 0,
+  tieneOficio = true,
 ): RecipeCheck {
   const missingMaterials = recipe.requirements
     .map((req) => ({ label: req.label, tienes: totalQuantity(rows, req, catalogBySlug), necesitas: req.cantidad }))
@@ -113,7 +129,11 @@ export function checkRecipe(
     tienes: s.tienes,
     necesitas: s.necesitas,
   }));
-  const missing = [...missingMaterials, ...missingRequisitos];
+  const missingOficio: RequirementShortfall[] =
+    recipe.oficio && !tieneOficio && OFICIOS_CONSTRUCCION_REQUERIDOS.some((p) => matchesOficioPrefix(recipe.oficio!, p))
+      ? [{ label: `el oficio de ${recipe.oficio}`, tienes: 0, necesitas: 1 }]
+      : [];
+  const missing = [...missingMaterials, ...missingRequisitos, ...missingOficio];
   return { met: missing.length === 0, missing };
 }
 
@@ -297,11 +317,27 @@ export const AYUNTAMIENTO_MEDIANO_RECIPE: ConstructionRecipe = {
   // el pequeño (`AYUNTAMIENTO_PEQUENO_RECIPE.nounRegex` matchea "ayuntamiento" solo) ni con el
   // grande. El orden en CONSTRUCTION_RECIPES (más abajo) ya pone este antes que el pequeño.
   nounRegex: /(?=.*ayuntamiento)(?=.*median)/,
+  // Materiales procesados (2026-08-24, Grupo 3 § materiales procesados — ver
+  // docs/rpgtarkor/materiales-procesados-construccion.md): antes solo 30 piedra + 25 leña crudas.
+  // Regla cerrada con la usuaria: ~75% procesado / 25% crudo por categoría procesable — la resina
+  // nunca tiene versión procesada, se queda 100% crudo en cualquier nivel.
   requirements: [
-    { match: { kind: 'category', tipo: 'RECURSO', category: 'piedra' }, cantidad: 30, label: 'piedra' },
-    { match: { kind: 'category', tipo: 'RECURSO', category: 'madera' }, cantidad: 25, label: 'leña' },
+    { match: { kind: 'exact', catalogSlug: 'bloque-piedra-tallada' }, cantidad: 3, label: 'bloque de piedra tallada' },
+    { match: { kind: 'category', tipo: 'RECURSO', category: 'piedra' }, cantidad: 5, label: 'piedra' },
+    { match: { kind: 'exact', catalogSlug: 'lingote-de-hierro' }, cantidad: 1, label: 'lingote de hierro' },
+    { match: { kind: 'category', tipo: 'RECURSO', category: 'mena' }, cantidad: 1, label: 'mena' },
+    { match: { kind: 'exact', catalogSlug: 'viga-madera-tallada' }, cantidad: 2, label: 'viga de madera tallada' },
+    { match: { kind: 'category', tipo: 'RECURSO', category: 'madera' }, cantidad: 3, label: 'leña' },
+    { match: { kind: 'exact', catalogSlug: 'columna-hueso' }, cantidad: 2, label: 'columna de hueso' },
+    { match: { kind: 'category', tipo: 'RECURSO', category: 'hueso' }, cantidad: 2, label: 'hueso' },
+    { match: { kind: 'exact', catalogSlug: 'cordaje-trenzado' }, cantidad: 2, label: 'cordaje trenzado' },
+    { match: { kind: 'category', tipo: 'RECURSO', category: 'fibras' }, cantidad: 3, label: 'fibra' },
+    { match: { kind: 'category', tipo: 'RECURSO', category: 'resina' }, cantidad: 12, label: 'resina' },
   ],
   requisitos: { carisma: 18 },
+  // Bloqueo real (2026-08-24, ver `OFICIOS_CONSTRUCCION_REQUERIDOS` arriba) — a diferencia del
+  // pequeño, mediano en adelante SÍ exige haber aprendido constructor-orcos-llanuras de verdad.
+  oficio: 'constructor-orcos-llanuras',
   upgradesRecipeKey: 'ayuntamiento',
   ayuntamientoNivel: 2,
   reinoBuildingCapacity: 25,
@@ -314,12 +350,19 @@ export const AYUNTAMIENTO_GRANDE_RECIPE: ConstructionRecipe = {
     'La capital de verdad: piedra maciza, un salón de consejo lo bastante grande para reunir a súbditos y visitantes de varios asentamientos a la vez, y refuerzos de mena de hierro en los puntos de carga. Un reino que ha llegado hasta aquí ya no depende de la voluntad de una sola persona para sostenerse.',
   raza: 'orcos',
   nounRegex: /(?=.*ayuntamiento)(?=.*grande)/,
+  // Materiales procesados (2026-08-24) — 100% procesado en todo lo procesable, "así es difícil de
+  // ampliar" a propósito: exige tener constructor/herrero/carpintero/curtidor a buen nivel A LA
+  // VEZ, no solo más cantidad de lo mismo. La resina se queda cruda (nunca tiene procesado).
   requirements: [
-    { match: { kind: 'category', tipo: 'RECURSO', category: 'piedra' }, cantidad: 60, label: 'piedra' },
-    { match: { kind: 'category', tipo: 'RECURSO', category: 'madera' }, cantidad: 50, label: 'leña' },
-    { match: { kind: 'category', tipo: 'RECURSO', category: 'mena' }, cantidad: 15, label: 'mena de hierro' },
+    { match: { kind: 'exact', catalogSlug: 'bloque-piedra-tallada' }, cantidad: 8, label: 'bloque de piedra tallada' },
+    { match: { kind: 'exact', catalogSlug: 'lingote-de-hierro' }, cantidad: 4, label: 'lingote de hierro' },
+    { match: { kind: 'exact', catalogSlug: 'viga-madera-tallada' }, cantidad: 5, label: 'viga de madera tallada' },
+    { match: { kind: 'exact', catalogSlug: 'columna-hueso' }, cantidad: 5, label: 'columna de hueso' },
+    { match: { kind: 'exact', catalogSlug: 'cordaje-trenzado' }, cantidad: 5, label: 'cordaje trenzado' },
+    { match: { kind: 'category', tipo: 'RECURSO', category: 'resina' }, cantidad: 20, label: 'resina' },
   ],
   requisitos: { carisma: 22 },
+  oficio: 'constructor-orcos-llanuras',
   upgradesRecipeKey: 'ayuntamiento',
   ayuntamientoNivel: 3,
   reinoBuildingCapacity: 60,
@@ -518,8 +561,9 @@ export async function planDeterministicBuild(params: {
   );
   const oficioNivelById = new Map(professionProgressRows.map((p) => [p.professionId, p.nivel]));
   const alivio = buildRecipe.oficio ? alivioForLevel(oficioNivelById.get(buildRecipe.oficio) ?? 1) : 0;
+  const tieneOficio = buildRecipe.oficio ? oficioNivelById.has(buildRecipe.oficio) : true;
 
-  const check = checkRecipe(buildRecipe, inventoryRows, catalogBySlug, attributes, secondaryAttributes, alivio);
+  const check = checkRecipe(buildRecipe, inventoryRows, catalogBySlug, attributes, secondaryAttributes, alivio, tieneOficio);
   if (!check.met) return null;
   const blockedReason = await computeBuildBlockedReason({
     db: prisma,

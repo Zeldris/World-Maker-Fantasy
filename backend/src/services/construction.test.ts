@@ -208,10 +208,73 @@ describe('checkRecipe — recetas nuevas', () => {
     expect(checkRecipe(AYUNTAMIENTO_PEQUENO_RECIPE, rows, catalogBySlug, attrs, secondary)).toEqual({ met: true, missing: [] });
   });
 
-  it('ayuntamiento grande: cumplido con piedra/leña/mena de hierro suficientes y carisma alto', () => {
-    const rows = [row('1', 'piedra', 60), row('2', 'lena-matorral-cuerno', 50), row('3', 'mena-de-hierro', 15)];
+  // Materiales procesados (2026-08-24, Grupo 3 § materiales procesados de construcción) — mediano
+  // ~75% procesado/25% crudo, grande 100% procesado (salvo resina, siempre cruda). `tieneOficio`
+  // por defecto `true` (checkRecipe) — estos tests solo prueban materiales, no el gate de oficio
+  // (ver describe aparte más abajo).
+  it('ayuntamiento mediano: cumplido con la mezcla de materiales procesados + crudo, carisma alto', () => {
+    const rows = [
+      row('1', 'bloque-piedra-tallada', 3),
+      row('2', 'piedra', 5),
+      row('3', 'lingote-de-hierro', 1),
+      row('4', 'mena-de-hierro', 1),
+      row('5', 'viga-madera-tallada', 2),
+      row('6', 'lena-matorral-cuerno', 3),
+      row('7', 'columna-hueso', 2),
+      row('8', 'hueso-largo-gargantua', 2),
+      row('9', 'cordaje-trenzado', 2),
+      row('10', 'fibra-enredaderas-llanuras', 3),
+      row('11', 'resina-trepador-ocaso', 12),
+    ];
+    const carismatico: AttributeBlock = { ...attrs, carisma: 18 };
+    expect(checkRecipe(AYUNTAMIENTO_MEDIANO_RECIPE, rows, catalogBySlug, carismatico, secondary)).toEqual({ met: true, missing: [] });
+  });
+
+  it('ayuntamiento grande: cumplido 100% procesado (salvo resina, siempre cruda) y carisma alto', () => {
+    const rows = [
+      row('1', 'bloque-piedra-tallada', 8),
+      row('2', 'lingote-de-hierro', 4),
+      row('3', 'viga-madera-tallada', 5),
+      row('4', 'columna-hueso', 5),
+      row('5', 'cordaje-trenzado', 5),
+      row('6', 'resina-trepador-ocaso', 20),
+    ];
     const carismatico: AttributeBlock = { ...attrs, carisma: 22 };
     expect(checkRecipe(AYUNTAMIENTO_GRANDE_RECIPE, rows, catalogBySlug, carismatico, secondary)).toEqual({ met: true, missing: [] });
+  });
+});
+
+describe('checkRecipe — bloqueo real de oficio de construcción (2026-08-24)', () => {
+  const rowsGrande = [
+    row('1', 'bloque-piedra-tallada', 8),
+    row('2', 'lingote-de-hierro', 4),
+    row('3', 'viga-madera-tallada', 5),
+    row('4', 'columna-hueso', 5),
+    row('5', 'cordaje-trenzado', 5),
+    row('6', 'resina-trepador-ocaso', 20),
+  ];
+  const carismatico: AttributeBlock = { ...attrs, carisma: 22 };
+
+  it('sin tieneOficio (mediano/grande), aunque sobren materiales y carisma, no está cumplida', () => {
+    const result = checkRecipe(AYUNTAMIENTO_GRANDE_RECIPE, rowsGrande, catalogBySlug, carismatico, secondary, 0, false);
+    expect(result.met).toBe(false);
+    expect(result.missing).toEqual([{ label: 'el oficio de constructor-orcos-llanuras', tienes: 0, necesitas: 1 }]);
+  });
+
+  it('con tieneOficio true, la misma combinación sí está cumplida', () => {
+    expect(checkRecipe(AYUNTAMIENTO_GRANDE_RECIPE, rowsGrande, catalogBySlug, carismatico, secondary, 0, true)).toEqual({ met: true, missing: [] });
+  });
+
+  it('el pequeño no exige el oficio (nivel de entrada) — tieneOficio false no lo bloquea', () => {
+    const rows = [
+      row('1', 'piedra', 14),
+      row('2', 'lena-matorral-cuerno', 6),
+      row('3', 'hueso-largo-gargantua', 6),
+      row('4', 'resina-trepador-ocaso', 8),
+      row('5', 'mena-de-hierro', 2),
+      row('6', 'fibra-enredaderas-llanuras', 8),
+    ];
+    expect(checkRecipe(AYUNTAMIENTO_PEQUENO_RECIPE, rows, catalogBySlug, attrs, secondary, 0, false)).toEqual({ met: true, missing: [] });
   });
 });
 

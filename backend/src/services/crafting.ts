@@ -348,6 +348,65 @@ export const STONE_BLOCK_RECIPE: CraftingRecipe = {
     'El personaje talla su piedra en bloques a golpes de maza y cincel, desbastando cada cara hasta dejarla plana — narra la escena (el polvo, el ritmo del golpe, las esquirlas saltando) con naturalidad. El objeto ya se gestiona automáticamente por el backend.',
 };
 
+// 3 recetas de refinado nuevas (2026-08-24, Grupo 3 § materiales procesados de construcción, ver
+// docs/rpgtarkor/materiales-procesados-construccion.md) — mismo patrón que STONE_BLOCK_RECIPE
+// arriba (ingrediente por CATEGORÍA, no exacto: cualquier leña/hueso/fibra en bruto sirve),
+// consumidas por primera vez por el Ayuntamiento mediano/grande (construction.ts).
+
+export const WOOD_BEAM_RECIPE: CraftingRecipe = {
+  key: 'woodBeam',
+  verbRegex: /tall|labr|escuadr|desbast|fabric|prepar/,
+  nounRegex: /viga.*madera|madera.*viga|viga.*tallad|tallad.*viga/,
+  location: null,
+  ingredients: [{ match: { kind: 'category', tipo: 'RECURSO', category: 'madera' }, cantidad: 4, label: 'leña' }],
+  resultName: 'Viga de madera tallada',
+  resultCatalogSlug: 'viga-madera-tallada',
+  resultDescription: 'Tronco desbastado y escuadrado en una viga recta de sección uniforme — lista para sostener un techo o un muro de verdad.',
+  tier: 1,
+  requisitos: { destreza: 6 },
+  oficio: 'carpintero-orcos-llanuras',
+  narrationWant:
+    'El personaje quiere tallar leña en una viga de madera, pero no lleva encima suficiente leña en bruto para hacerlo (hacen falta al menos 4) — narra que lo intenta o lo considera, pero no que talla la viga de verdad.',
+  narrationDo:
+    'El personaje escuadra su leña en una viga recta a golpes de hacha y azuela, desbastando cada cara hasta dejarla plana — narra la escena con naturalidad. El objeto ya se gestiona automáticamente por el backend.',
+};
+
+export const BONE_COLUMN_RECIPE: CraftingRecipe = {
+  key: 'boneColumn',
+  verbRegex: /tall|labr|trab|fabric|prepar/,
+  nounRegex: /columna.*hueso|hueso.*columna/,
+  location: null,
+  ingredients: [{ match: { kind: 'category', tipo: 'RECURSO', category: 'hueso' }, cantidad: 3, label: 'hueso' }],
+  resultName: 'Columna de hueso',
+  resultCatalogSlug: 'columna-hueso',
+  resultDescription: 'Varios huesos largos trabados y reforzados en un único puntal rígido — técnica orca de aprovechar lo que caza la propia tierra.',
+  tier: 1,
+  requisitos: { fuerza: 6 },
+  oficio: 'constructor-orcos-llanuras',
+  narrationWant:
+    'El personaje quiere trabar hueso en una columna, pero no lleva encima suficiente hueso en bruto para hacerlo (hacen falta al menos 3) — narra que lo intenta o lo considera, pero no que la columna queda terminada.',
+  narrationDo:
+    'El personaje traba varios huesos largos entre sí hasta dejarlos rígidos como un único puntal — narra la escena con naturalidad. El objeto ya se gestiona automáticamente por el backend.',
+};
+
+export const BRAIDED_CORDAGE_RECIPE: CraftingRecipe = {
+  key: 'braidedCordage',
+  verbRegex: /trenz|tej|fabric|prepar/,
+  nounRegex: /cordaje|cuerda.*trenzad|trenzad.*cuerda/,
+  location: null,
+  ingredients: [{ match: { kind: 'category', tipo: 'RECURSO', category: 'fibras' }, cantidad: 4, label: 'fibra' }],
+  resultName: 'Cordaje trenzado',
+  resultCatalogSlug: 'cordaje-trenzado',
+  resultDescription: 'Fibra vegetal trenzada en cabos gruesos y resistentes — ata vigas, tensa pieles de techo, asegura lo que un edificio grande no puede confiar solo al peso.',
+  tier: 1,
+  requisitos: { destreza: 6 },
+  oficio: 'curtidor-orcos-llanuras',
+  narrationWant:
+    'El personaje quiere trenzar fibra en cordaje, pero no lleva encima suficiente fibra en bruto para hacerlo (hacen falta al menos 4) — narra que lo intenta o lo considera, pero no que el cordaje queda terminado.',
+  narrationDo:
+    'El personaje trenza su fibra en cabos gruesos y resistentes — narra la escena con naturalidad. El objeto ya se gestiona automáticamente por el backend.',
+};
+
 // Primeros auxilios (2026-08-13, petición explícita: "una profesión que sea primeros-auxilios que
 // tenga pocas recetas de objetos básicos... si es convaleciente solo hay un item que te lleva a
 // grave... luego otro que mejora al siguiente, de grave a herido y de herido a ileso") — oficio
@@ -599,6 +658,9 @@ export const CRAFTING_RECIPES: CraftingRecipe[] = [
   COMPASS_NEEDLE_RECIPE,
   SAND_POUCH_RECIPE,
   STONE_BLOCK_RECIPE,
+  WOOD_BEAM_RECIPE,
+  BONE_COLUMN_RECIPE,
+  BRAIDED_CORDAGE_RECIPE,
   FIRST_AID_BANDAGE_RECIPE,
   RED_SPIKE_INFUSION_RECIPE,
   BASIC_POULTICE_RECIPE,

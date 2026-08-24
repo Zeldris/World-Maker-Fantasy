@@ -162,10 +162,13 @@ resumen de trabajo real, agrupado por tamaño.
   (encontró que parte ya existía sin conectar: `bloque-piedra-tallada`/`lingote-de-hierro`
   huérfanos desde 2026-07-29). Cifras cerradas: pequeño 100% crudo, mediano ~75% procesado/25%
   crudo, grande 100% procesado (salvo resina, sin versión procesada nunca) — "así es difícil de
-  ampliar" a propósito, exige los 4 oficios de procesado a la vez. **Pendiente de aplicar (solo
-  mediano/grande)**: 3
-  items + 3 recetas nuevas, conectar bloque/lingote a construcción, y que `ConstructionRecipe.oficio`
-  pase de "solo alivio" a bloqueo real.
+  ampliar" a propósito, exige los 4 oficios de procesado a la vez.
+  **Mediano/grande — APLICADO al motor 2026-08-24**: 3 items nuevos (viga de madera tallada,
+  columna de hueso, cordaje trenzado), 3 `CraftingRecipe` nuevas, `bloque-piedra-tallada`/
+  `lingote-de-hierro` conectados a construcción por primera vez, y
+  `ConstructionRecipe.oficio` pasa de "solo alivio" a bloqueo real (`OFICIOS_CONSTRUCCION_REQUERIDOS`,
+  mismo patrón que `OFICIOS_CON_HERRAMIENTA_REQUERIDA`) desde el mediano en adelante. Diseño
+  completo en [materiales-procesados-construccion.md](rpgtarkor/materiales-procesados-construccion.md).
 - [x] ~~8 items completamente huérfanos~~ — cerrado 2026-08-24, APLICADO al motor: 5 con
   `CraftingRecipe` nueva (herrero/curtidor orcos-llanuras), `trampa-de-lazo` conectada como la
   cuerda de captura de `companeros-y-supervivencia.md` (sin item nuevo), `marca-de-clan`/

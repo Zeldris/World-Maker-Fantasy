@@ -1336,11 +1336,13 @@ async function resolveBuildIntentContext(params: {
   attributes: AttributeBlock;
   secondaryAttributes: SecondaryAttributeBlock;
   alivioFor: (oficio: string | undefined) => number;
+  tieneOficioFor: (oficio: string | undefined) => boolean;
 }): Promise<BuildIntentContext> {
-  const { action, saveId, worldId, activeRegion, currentLocationRecord, inventoryRows, catalogBySlug, attributes, secondaryAttributes, alivioFor } = params;
+  const { action, saveId, worldId, activeRegion, currentLocationRecord, inventoryRows, catalogBySlug, attributes, secondaryAttributes, alivioFor, tieneOficioFor } =
+    params;
   const buildRecipe: ConstructionRecipe | undefined = CONSTRUCTION_RECIPES.find((r) => detectsBuildIntent(r, action));
   const buildRecipeCheck: RecipeCheck | null = buildRecipe
-    ? checkRecipe(buildRecipe, inventoryRows, catalogBySlug, attributes, secondaryAttributes, alivioFor(buildRecipe.oficio))
+    ? checkRecipe(buildRecipe, inventoryRows, catalogBySlug, attributes, secondaryAttributes, alivioFor(buildRecipe.oficio), tieneOficioFor(buildRecipe.oficio))
     : null;
   const buildBlockedReason: string | null =
     buildRecipe && buildRecipeCheck?.met && currentLocationRecord
@@ -3028,6 +3030,10 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   // relaja los requisitos de recetas de ESE oficio, nunca la tirada general (ver requisitos.ts).
   const oficioNivelById = new Map(professionProgressRows.map((p) => [p.professionId, p.nivel]));
   const alivioFor = (oficio: string | undefined) => (oficio ? alivioForLevel(oficioNivelById.get(oficio) ?? 1) : 0);
+  // Bloqueo real de oficio de construcción (2026-08-24, Grupo 3 § materiales procesados, ver
+  // OFICIOS_CONSTRUCCION_REQUERIDOS en construction.ts) — a diferencia de `alivioFor` (que solo
+  // relaja el requisito), esto distingue "no tiene el oficio en absoluto" de "lo tiene a nivel 1".
+  const tieneOficioFor = (oficio: string | undefined) => (oficio ? oficioNivelById.has(oficio) : true);
   if (activeQuests.length) {
     contextBlocks.push(
       `MISIONES ACTIVAS (usa el título EXACTO en "questProgress" si esta escena la cierra):\n${activeQuests
@@ -3205,6 +3211,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     attributes,
     secondaryAttributes,
     alivioFor,
+    tieneOficioFor,
   });
   contextBlocks.push(...buildBlocks);
 
