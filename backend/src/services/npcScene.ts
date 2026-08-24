@@ -90,6 +90,9 @@ export interface NpcInScene {
   attributes: AttributeBlock;
   raza: string | null;
   clase: string | null;
+  /// Especialización dentro de `clase` (2026-08-24, Grupo 3 § Sistema de clases) — null = solo
+  /// tronco común, o clase sin especialización asignada. Mismo criterio nullable que `clase`.
+  especializacion: string | null;
   ataqueNatural: string | null;
   habilidadesRaciales: NpcHabilidadRacialInScene[];
   /// Disposición al combate (schema.prisma § Temperamento, 2026-07-29) — gate determinista en
@@ -171,6 +174,7 @@ export function buildNpcInScene(npc: NpcWithItems, state: NpcState | undefined):
     attributes: npcAttributesForLevel(npc.attributes as AttributeBlock, npc.level, npc.clase as Clase | null) as NpcInScene['attributes'],
     raza: npc.raza,
     clase: npc.clase,
+    especializacion: npc.especializacion,
     ataqueNatural: npc.ataqueNatural,
     habilidadesRaciales: (npc.habilidadesRaciales as unknown as NpcHabilidadRacialInScene[]) ?? [],
     temperamento: npc.temperamento,

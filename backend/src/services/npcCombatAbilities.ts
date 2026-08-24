@@ -1,7 +1,7 @@
 import type { Attribute, AttributeBlock } from './dice.js';
 import type { AbilityEffect, AbilityRol } from '@prisma/client';
 import { baseAttackFor } from './baseAttack.js';
-import { classAbilityUnlocksForClase, type Clase } from './classAbilities.js';
+import { classAbilityUnlocksForClase, type Clase, type Especializacion } from './classAbilities.js';
 import { BERIG_RAZAS } from './berigLore.js';
 import type { NpcHabilidadRacialInScene } from './npcScene.js';
 import { ENERGY_COST_BASICA, ENERGY_COST_ATAQUE_BASICO } from './energy.js';
@@ -18,6 +18,9 @@ export interface NpcCombatAbility {
   /// "Ataque base" — el caso más grave y más frecuente.
   description: string;
   attribute: Attribute;
+  /// Bonus de atributo fijo (2026-08-24, ver comentario de `ExchangeParticipant.attributeBonus`,
+  /// combatExchange.ts) — solo las de clase lo llevan, igual que `effects`/`maxUsesPerCombat`.
+  attributeBonus?: number;
   /// [] para Ataque base y habilidades raciales (siempre puramente descriptivas, nunca leídas
   /// como mecánica de combate — ver comentario de `Npc.habilidadesRaciales` en schema.prisma) —
   /// solo las de clase tienen `AbilityEffect` real. Lista, no valor único (2026-08-15, "que una
@@ -53,6 +56,9 @@ export interface NpcForCombatAbilities {
   attributes: AttributeBlock;
   raza: string | null;
   clase: string | null;
+  /// Especialización dentro de `clase` (2026-08-24, Grupo 3 § Sistema de clases) — null/undefined
+  /// = solo tronco común, o clase sin especialización asignada.
+  especializacion?: string | null;
   ataqueNatural: string | null;
   habilidadesRaciales: NpcHabilidadRacialInScene[];
 }
@@ -83,7 +89,7 @@ export function npcCombatAbilitiesFor(npc: NpcForCombatAbilities, weaponNames: s
   });
 
   if (npc.clase) {
-    for (const unlock of classAbilityUnlocksForClase(npc.clase as Clase)) {
+    for (const unlock of classAbilityUnlocksForClase(npc.clase as Clase, npc.especializacion as Especializacion | null)) {
       if (unlock.level > npc.level) continue;
       // Pasivas (2026-08-15, "Compañero cazador" — nivel 8 Cazador) nunca entran al roster de
       // combate: no son una acción de turno, se quedan siempre activas por sí solas. Sin este
@@ -95,6 +101,7 @@ export function npcCombatAbilitiesFor(npc: NpcForCombatAbilities, weaponNames: s
         name: unlock.ability.name,
         description: unlock.ability.description,
         attribute: unlock.ability.preferredAttribute ?? 'fuerza',
+        attributeBonus: unlock.ability.attributeBonus,
         effects: unlock.ability.effects ?? [],
         rol: unlock.ability.rol ?? 'ataque',
         energyCost: ENERGY_COST_BASICA,

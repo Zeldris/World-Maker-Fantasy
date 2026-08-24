@@ -1,5 +1,5 @@
 import type { Attribute } from './dice.js';
-import type { EquipSlot, WeaponCategory } from '@prisma/client';
+import type { EquipSlot, WeaponCategory, Clase, Especializacion } from '@prisma/client';
 
 /// Sistema de habilidades por arma (2026-07-29, referencia Guild Wars 2 — "dependiendo el arma
 /// que lleves las habilidades se adapten... en vez de tener muchas habilidades usables a la vez
@@ -36,6 +36,9 @@ export const WEAPON_CATEGORY_ATTRIBUTE: Record<WeaponCategory, Attribute> = {
   BACULO: 'arcano',
   BASTON: 'arcano',
   GRIMORIO: 'arcano',
+  // Nuevo (2026-08-24, Grupo 3 § Sistema de clases) — primer hueco de arma-Voluntad del motor,
+  // ver comentario de `VARA` en schema.prisma.
+  VARA: 'voluntad',
 };
 
 export type WeaponRole = 'ataque' | 'defensa';
@@ -271,6 +274,14 @@ const WEAPON_REAL_ATAQUE_CONTENT: Record<Exclude<WeaponCategory, 'ESCUDO'>, Weap
     description: 'Una red lanzada en un giro amplio, buscando enredar antes que herir.',
     promptText: 'Lanzo mi red en un giro amplio, buscando enredar a mi rival antes que herirlo.',
   },
+  // VARA (2026-08-24, Grupo 3 § Sistema de clases) — arma física de golpear, sin canalización
+  // arcana (no confundir con BACULO/BASTON). Voluntad, no fuerza ni destreza.
+  VARA: {
+    name: 'Golpe de Vara',
+    icon: '🥢',
+    description: 'Un golpe seco y controlado con la vara — disciplina y precisión, no fuerza bruta.',
+    promptText: 'Golpeo con mi vara, seco y controlado, con disciplina antes que fuerza.',
+  },
 };
 
 /// Camino inverso de `WEAPON_REAL_ATAQUE_CONTENT` (2026-08-01, bug real jugando en vivo: "Tajo
@@ -424,4 +435,48 @@ export function weaponAbilitiesFor(equipped: EquippedWeaponSlot[], level: number
   abilities.push(...seenDefensa.values());
 
   return abilities;
+}
+
+/// Restricción de armas por clase (2026-08-24, Grupo 3 § Sistema de clases, clases.md §
+/// "Restricción de armas por clase" — petición explícita, "como en el WoW"). Alcance de esta
+/// pasada: SOLO Guerrero/Cazador/Chamán (las únicas 3 con habilidades ya revisadas a fondo) — el
+/// resto de clases se queda sin restricción todavía, se añadirá cuando les toque su propio repaso.
+/// Guerrero y Chamán comparten el mismo pool para sus 4 especializaciones; Cazador varía por
+/// especialización (Tirador es el único a distancia). Sin armadura por peso todavía (pieza de
+/// infraestructura aparte, documentada pero sin aplicar, ver clases.md).
+const GUERRERO_WEAPONS: WeaponCategory[] = [
+  'HACHA_1_MANO',
+  'HACHA_2_MANO',
+  'MAZA_1_MANO',
+  'MAZA_2_MANO',
+  'GARROTE_1_MANO',
+  'GARROTE_2_MANO',
+  'PICA',
+  'LANZA',
+  'CUCHILLO',
+  'DAGA',
+  'ESPADA_1_MANO',
+  'ESPADA_2_MANO',
+  'ESCUDO',
+];
+
+const CHAMAN_WEAPONS: WeaponCategory[] = ['MAZA_1_MANO', 'HACHA_1_MANO', 'BACULO', 'BASTON', 'ESCUDO', 'GRIMORIO'];
+
+// Cazador varía por especialización — sin especialización elegida todavía (nivel <10, o sin
+// flujo in-game para elegirla, ver classAbilities.ts), no hay pool que aplicar: se queda sin
+// restricción hasta que la tenga (`weaponPoolFor` devuelve null en ese caso).
+const CAZADOR_WEAPONS_BY_ESPECIALIZACION: Partial<Record<Especializacion, WeaponCategory[]>> = {
+  TIRADOR: ['ARCO_CORTO', 'ARCO_LARGO'],
+  DOMADOR: ['RED', 'HACHA_1_MANO', 'VARA', 'CUCHILLO', 'DAGA', 'LANZA'],
+  SUPERVIVENCIA: ['RED', 'HACHA_1_MANO', 'VARA', 'CUCHILLO', 'DAGA', 'LANZA'],
+  INSTINTIVO: ['ESPADA_1_MANO', 'HACHA_1_MANO', 'MAZA_1_MANO', 'LANZA'],
+};
+
+/// Pool de categorías de arma permitidas para esta clase/especialización — null = sin
+/// restricción todavía (clase fuera de las 3 construidas, o Cazador sin especialización elegida).
+export function weaponPoolFor(clase: Clase | null, especializacion: Especializacion | null): WeaponCategory[] | null {
+  if (clase === 'GUERRERO') return GUERRERO_WEAPONS;
+  if (clase === 'CHAMAN') return CHAMAN_WEAPONS;
+  if (clase === 'CAZADOR' && especializacion) return CAZADOR_WEAPONS_BY_ESPECIALIZACION[especializacion] ?? null;
+  return null;
 }

@@ -128,6 +128,15 @@ model Save {
   /// nunca se le mostraba, solo se calculaba para NPCs. Null = personaje sin raza asignada
   /// todavía (partidas previas a este campo).
   raza String?
+  /// Clase de combate (2026-08-24, Grupo 3 § Sistema de clases, ver docs/rpgtarkor/clases.md) —
+  /// mismo `Clase` que `Npc.clase`, ahora un enum real en vez de string libre. Null = sin clase
+  /// asignada todavía. No hay ningún flujo in-game para elegirla — se sigue leyendo por
+  /// `characterName` en `classAbilityUnlocksFor` (classAbilities.ts) hasta que exista.
+  clase Clase?
+  /// Especialización dentro de `clase`, elegida a nivel 10 (ver clases.md § Cómo funciona el
+  /// sistema). Null = tronco común todavía, o clase sin especialización elegida. Sin flujo
+  /// in-game para elegirla, igual que `clase` — de partida.
+  especializacion Especializacion?
 
   createdAt    DateTime @default(now())
   lastPlayedAt DateTime @default(now())
@@ -688,6 +697,11 @@ enum AbilityEffect {
   // dato de la habilidad, y NpcState.abilityUsesThisEncounter para el contador real) — se combina
   // con cualquier otro efecto de la lista, p.ej. [LETAL, LIMITADA] con maxUsesPerCombat: 1.
   LIMITADA
+  /// Nuevo (2026-08-24, Grupo 3 § Sistema de clases, clases.md § Chamán) — el ataque de ESTE
+  /// turno pasa a usar el atributo Magia en vez del que le tocaría normalmente (arma/rol). A
+  /// diferencia de AUMENTO/DEBILIDAD, no depende de duración por turnos: se resuelve entero
+  /// dentro del mismo intercambio, igual que ATAQUE/ATURDIMIENTO — solo hacía falta darlo de alta.
+  CONVERSION
 }
 
 /// Rol mecánico de una habilidad (rediseño de combate, 2026-08-09, petición explícita: "una
@@ -758,6 +772,12 @@ enum WeaponCategory {
   GRIMORIO
   GUANTES
   RED
+  /// Nuevo (2026-08-24, Grupo 3 § Sistema de clases, clases.md § Restricción de armas) — bastón
+  /// de combate cuerpo a cuerpo, el "bo" de las artes marciales (Domador/Supervivencia de
+  /// Cazador). NO confundir con `BACULO`/`BASTON` (focos MÁGICOS, atributo arcano/Magia) — VARA
+  /// es un arma física de golpear, sin canalización arcana. Primer hueco de arma-Voluntad del
+  /// motor (`WEAPON_CATEGORY_ATTRIBUTE`, weaponAbilities.ts).
+  VARA
 }
 
 /// Qué acción/verbo exige `harvest.ts` para dar este recurso concreto (2026-07-29, petición
@@ -853,6 +873,12 @@ model SavedAction {
   /// Atributo con el que se resuelve la tirada de esta habilidad — gana sobre la heurística de
   /// palabra clave de npcScene.ts (tabulatedAttackAttribute) cuando el turno manda `savedActionId`.
   preferredAttribute String?
+  /// Bonus de atributo fijo (2026-08-24, Grupo 3 § Sistema de clases, clases.md § "Habilidad de
+  /// daño vs ataque básico") — se suma al valor CRUDO de `preferredAttribute` antes del
+  /// multiplicador de tipo al resolver el intercambio (`ExchangeParticipant.attributeBonus`,
+  /// combatExchange.ts), nunca un bono plano a la tirada. Null = sin bonus (Ataque Básico y el
+  /// resto de habilidades genéricas).
+  attributeBonus     Int?
   /// Habilidad racial/de arma recalculada automáticamente (2026-07-29, sistema de habilidades por
   /// arma) — a diferencia de `isStarting` (fija de por vida), estas se BORRAN y se vuelven a crear
   /// cada vez que cambia el equipo o el nivel, para reflejar siempre el arma que llevas puesta
@@ -1068,6 +1094,65 @@ enum Temperamento {
   ENEMIGO // reputación pésima — fuerza combate igual que AGRESIVO; casi irrecuperable (ver reputation.ts)
 }
 
+/// Clase de combate (2026-08-24, Grupo 3 § Sistema de clases, diseño completo en
+/// docs/rpgtarkor/clases.md) — 9 clases, 4 exclusivas de una raza jugable concreta (Chamán=orcos,
+/// Caballero=goirntes, Segador=nabieus, Druida=faerus), el resto disponibles para cualquiera.
+/// Esta pasada (2026-08-24) solo construye habilidades reales para GUERRERO/CAZADOR/CHAMAN — el
+/// resto del enum existe porque sus nombres ya están cerrados en el doc, pero sus especializaciones
+/// se quedan sin ninguna `ClassAbilityUnlock` todavía (mismo criterio "scaffolding sin habilidad"
+/// que Domador/Totémico dentro de las 3 clases sí construidas, ver Especializacion abajo).
+enum Clase {
+  GUERRERO
+  CAZADOR
+  CHAMAN
+  ARQUERO
+  CABALLERO
+  MAGO
+  SEGADOR
+  ASESINO
+  DRUIDA
+}
+
+/// Especialización dentro de una `Clase`, elegida a nivel 10 (clases.md § Cómo funciona el
+/// sistema). De las 31 aquí, solo 12 tienen alguna `ClassAbilityUnlock` real construida esta
+/// pasada (Berserker/Guardián/Lancero/Especialista de Guerrero; Domador/Supervivencia/Tirador/
+/// Instintivo de Cazador; Totémico/Rúnico/Convocador/Opresor de Chamán) — y de esas 12, Domador y
+/// Totémico se quedan en 0 habilidades reales (bloqueadas por completo por compañeros/invocación,
+/// infraestructura de combate multi-objetivo que todavía no existe, ver combate-multiple.md).
+enum Especializacion {
+  BERSERKER
+  GUARDIAN
+  LANCERO
+  ESPECIALISTA
+  DOMADOR
+  SUPERVIVENCIA
+  TIRADOR
+  INSTINTIVO
+  TOTEMICO
+  RUNICO
+  CONVOCADOR
+  OPRESOR
+  MAESTRO_ARQUERO
+  MAESTRO_BALLESTERO
+  CABALLERO_DEL_ORDEN
+  CABALLERO_DEL_VALOR
+  CABALLERO_DEL_DOLOR
+  PODER_MAGIA
+  PODER_SEMILLA
+  PARCA
+  MALDITO
+  ILUSTRADO
+  TRANSMUTADOR
+  MAESTRO_ASESINO
+  ASESINO_TOXICO
+  ASESINO_DANZANTE
+  ASESINO_SELECTO
+  CAMBIAFORMAS
+  AULLADOR
+  SALVAJE
+  ADAPTADO
+}
+
 /// NPC del catálogo de mundo (no estado de partida — qué ha hecho un NPC en UNA partida
 /// sigue viviendo en WorldState.facts, igual que hasta ahora). Sembrado desde
 /// worldCatalog.ts; la prosa larga vive en docs/rpgtarkor/npcs.md y en lore chunks SIN números.
@@ -1131,9 +1216,9 @@ model Npc {
   /// - `raza`: slug de `BERIG_RAZAS` (goirntes/orcos/nabieus/faerus) — solo humanoides. Un NPC
   ///   humanoide tiene como mucho 1 habilidad racial, la de `BERIG_RAZAS[raza].habilidadRacial`
   ///   (compartida por toda su raza, no duplicada por fila).
-  /// - `clase`: 'Guerrero' | 'Cazador' (mismo `Clase` de classAbilities.ts) — solo "seres
-  ///   inteligentes que pueden portar equipo". Sus habilidades salen de
-  ///   `classAbilityUnlocksForClase(clase)` filtradas por `level`.
+  /// - `clase`: enum `Clase` (2026-08-24, antes `String?` libre) — solo "seres inteligentes que
+  ///   pueden portar equipo". Sus habilidades salen de `classAbilityUnlocksForClase(clase)`
+  ///   filtradas por `level` y, desde el sistema de especializaciones, por `especializacion`.
   ///
   /// Nota: se descartó a propósito una tercera taxonomía de "habilidades de profesión" en la
   /// ficha de combate — resultó ser un concepto distinto (recetas de crafteo tipo "Crear cuchillo
@@ -1141,7 +1226,13 @@ model Npc {
   /// panel de Habilidades, no 'combate'), aplazado a otra sesión. `Npc` no necesita ningún campo
   /// para eso.
   raza  String?
-  clase String?
+  /// Clase de combate (2026-08-24, Grupo 3 § Sistema de clases, ver docs/rpgtarkor/clases.md) —
+  /// antes `String?` libre (comentario de arriba ya avisaba que "debería" ser esto). Solo
+  /// humanoides con equipo real la llevan, igual que antes.
+  clase Clase?
+  /// Especialización dentro de `clase`, ver comentario de `Save.especializacion`. Null = sin
+  /// especialización asignada (tronco común, o clase sin especializaciones construidas todavía).
+  especializacion Especializacion?
   /// Fauna/monstruos (sin `raza` — cada fila de fauna en worldCatalog.ts YA es una especie
   /// entera, no un individuo, así que su racial vive aquí en vez de en un catálogo aparte):
   /// hasta 6 habilidades raciales propias, `{ icon, name, description, categoria:

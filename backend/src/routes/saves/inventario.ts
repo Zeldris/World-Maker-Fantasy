@@ -4,6 +4,7 @@ import { syncDynamicCombatAbilities, resolveEquippedWeaponSlots } from '../../se
 import { normalizeSecondaryAttributes } from '../../services/secondaryAttributes.js';
 import { checkRequisitos, shortfallLabel, type Requisitos } from '../../services/requisitos.js';
 import { equipSlotFamily, effectiveAttributes, effectiveSecondaryAttributes } from '../../services/equipment.js';
+import { weaponPoolFor } from '../../services/weaponAbilities.js';
 import type { AttributeBlock } from '../../services/dice.js';
 import { EquipSlot } from '@prisma/client';
 
@@ -70,6 +71,19 @@ export async function inventarioRoutes(app: FastifyInstance) {
               ? `"${item.name}" no se puede equipar ahí — va en ${catalogItem.equipSlot}, no en ${slot}.`
               : `"${item.name}" no es un objeto equipable.`,
           });
+        }
+
+        // Restricción de armas por clase (2026-08-24, Grupo 3 § Sistema de clases, ver
+        // `weaponPoolFor` en weaponAbilities.ts) — solo aplica a armas de verdad (`tipoArma` real)
+        // en un hueco de mano; `weaponPoolFor` devuelve null (sin restricción) para clases fuera
+        // de Guerrero/Cazador/Chamán o un Cazador sin especialización elegida todavía.
+        if ((slot === 'ARMA_PRINCIPAL' || slot === 'ARMA_SECUNDARIA') && catalogItem?.tipoArma) {
+          const pool = weaponPoolFor(save.clase, save.especializacion);
+          if (pool && !pool.includes(catalogItem.tipoArma)) {
+            return reply.status(400).send({
+              error: `"${item.name}" no encaja con tu clase — ${save.clase ?? 'tu clase'}${save.especializacion ? ` (${save.especializacion})` : ''} no puede equipar armas de tipo ${catalogItem.tipoArma}.`,
+            });
+          }
         }
 
         // Efectivos, no base (2026-08-03, hueco real encontrado de paso: esta comprobación de

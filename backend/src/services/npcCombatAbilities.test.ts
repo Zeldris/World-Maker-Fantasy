@@ -40,43 +40,43 @@ describe('npcCombatAbilitiesFor', () => {
     expect(abilities.find((a) => a.name === 'Defenderse')).toMatchObject({ energyCost: 0, energyRegen: 5 });
   });
 
-  // Roster de clase ampliado (2026-08-15): de 2 a nivel 1 a 4 (Guerrero)/3 (Cazador) repartidas
-  // por nivel — a nivel 1 exacto, Guerrero solo tiene "Grito de Guerra" (Contraataque es nivel 8).
-  it('a nivel 1 solo tiene la primera habilidad de su clase (Grito de Guerra), nunca las de la otra clase ni las de nivel superior', () => {
-    const npc: NpcForCombatAbilities = { level: 1, attributes: ATTRS, raza: null, clase: 'Guerrero', ataqueNatural: null, habilidadesRaciales: [] };
+  // Tronco común por especialización (rediseño 2026-08-24, Grupo 3 § Sistema de clases) — a nivel
+  // 1 exacto, Guerrero solo tiene "Firmeza Férrea" (Instinto Guerrero es nivel 4).
+  it('a nivel 1 solo tiene la primera habilidad de su clase (Firmeza Férrea), nunca las de la otra clase ni las de nivel superior', () => {
+    const npc: NpcForCombatAbilities = { level: 1, attributes: ATTRS, raza: null, clase: 'GUERRERO', ataqueNatural: null, habilidadesRaciales: [] };
     const abilities = npcCombatAbilitiesFor(npc, []);
-    expect(abilities.some((a) => a.name === 'Grito de Guerra')).toBe(true);
-    expect(abilities.some((a) => a.name === 'Contraataque')).toBe(false); // nivel 8, todavía no
+    expect(abilities.some((a) => a.name === 'Firmeza Férrea')).toBe(true);
+    expect(abilities.some((a) => a.name === 'Instinto Guerrero')).toBe(false); // nivel 4, todavía no
     expect(abilities.some((a) => a.name === 'Analisis Salvaje')).toBe(false); // Cazador
   });
 
-  it('a nivel 8, un Guerrero ya tiene las 4 (incluida Contraataque)', () => {
-    const npc: NpcForCombatAbilities = { level: 8, attributes: ATTRS, raza: null, clase: 'Guerrero', ataqueNatural: null, habilidadesRaciales: [] };
+  it('a nivel 8, un Guerrero sin especialización tiene las 3 de tronco (el hueco de nivel 8 se quedó bloqueado, sin desbloqueo)', () => {
+    const npc: NpcForCombatAbilities = { level: 8, attributes: ATTRS, raza: null, clase: 'GUERRERO', ataqueNatural: null, habilidadesRaciales: [] };
     const abilities = npcCombatAbilitiesFor(npc, []);
-    expect(abilities.some((a) => a.name === 'Grito de Guerra')).toBe(true);
-    expect(abilities.some((a) => a.name === 'Detectar Puntos Débiles')).toBe(true);
-    expect(abilities.some((a) => a.name === 'Grito tenebroso')).toBe(true);
-    expect(abilities.some((a) => a.name === 'Contraataque')).toBe(true);
+    expect(abilities.some((a) => a.name === 'Firmeza Férrea')).toBe(true);
+    expect(abilities.some((a) => a.name === 'Instinto Guerrero')).toBe(true);
+    expect(abilities.some((a) => a.name === 'Segundo Aliento')).toBe(true);
   });
 
-  // Pasivas (2026-08-15) nunca entran al roster de combate — "Compañero cazador" (Cazador, nivel
-  // 8, rol:'pasiva') se filtra antes de llegar aquí.
-  it('un Cazador de nivel 8 nunca tiene "Compañero cazador" en el roster de combate (es pasiva)', () => {
-    const npc: NpcForCombatAbilities = { level: 8, attributes: ATTRS, raza: null, clase: 'Cazador', ataqueNatural: null, habilidadesRaciales: [] };
+  // "Compañero cazador" (antes tronco nivel 8 de Cazador) desapareció del todo — se reasignó a
+  // Domador en clases.md, pero Domador se queda en 0 huecos reales (bloqueada por COMPANERO, sin
+  // implementar), así que hoy no vive en ningún sitio del roster. El nivel 8 de tronco de Cazador
+  // ahora es "Golpe Certero" (rol:'ataque', real).
+  it('un Cazador de nivel 8 sin especialización tiene el tronco completo, "Compañero cazador" ya no existe en ningún sitio', () => {
+    const npc: NpcForCombatAbilities = { level: 8, attributes: ATTRS, raza: null, clase: 'CAZADOR', ataqueNatural: null, habilidadesRaciales: [] };
     const abilities = npcCombatAbilitiesFor(npc, []);
     expect(abilities.some((a) => a.name === 'Compañero cazador')).toBe(false);
     expect(abilities.some((a) => a.name === 'Analisis Salvaje')).toBe(true);
     expect(abilities.some((a) => a.name === 'Barrido Salvaje')).toBe(true);
+    expect(abilities.some((a) => a.name === 'Instinto de Supervivencia')).toBe(true);
+    expect(abilities.some((a) => a.name === 'Golpe Certero')).toBe(true);
   });
 
-  // Rediseño de combate (2026-08-09): las habilidades de clase pasan a rol:'utilidad' salvo
-  // Barrido Salvaje (rol:'defensa', 2026-08-15) — un NPC con clase hereda el rol tal cual (mismo
-  // mecanismo por el que ya hereda effects/atributo).
-  it('las habilidades de clase heredadas llevan el rol asignado (reactivas, nunca atacan por su cuenta)', () => {
-    const npc: NpcForCombatAbilities = { level: 8, attributes: ATTRS, raza: null, clase: 'Guerrero', ataqueNatural: null, habilidadesRaciales: [] };
+  it('las habilidades de clase heredadas llevan el rol asignado (Instinto Guerrero utilidad, Firmeza Férrea defensa)', () => {
+    const npc: NpcForCombatAbilities = { level: 8, attributes: ATTRS, raza: null, clase: 'GUERRERO', ataqueNatural: null, habilidadesRaciales: [] };
     const abilities = npcCombatAbilitiesFor(npc, []);
-    expect(abilities.find((a) => a.name === 'Contraataque')?.rol).toBe('utilidad');
-    expect(abilities.find((a) => a.name === 'Grito de Guerra')?.rol).toBe('utilidad');
+    expect(abilities.find((a) => a.name === 'Instinto Guerrero')?.rol).toBe('utilidad');
+    expect(abilities.find((a) => a.name === 'Firmeza Férrea')?.rol).toBe('defensa');
   });
 
   it('añade la habilidad racial humanoide cuando tiene raza asignada', () => {
@@ -119,18 +119,18 @@ describe('npcCombatAbilitiesFor', () => {
 
 describe('chooseNpcAbility', () => {
   const abilities: NpcCombatAbility[] = npcCombatAbilitiesFor(
-    { level: 3, attributes: ATTRS, raza: null, clase: 'Guerrero', ataqueNatural: null, habilidadesRaciales: [] },
+    { level: 3, attributes: ATTRS, raza: null, clase: 'GUERRERO', ataqueNatural: null, habilidadesRaciales: [] },
     [],
   );
 
   // energía sobrada (999) en todos estos casos — no es lo que se está probando aquí, ver el
   // describe de abajo para el filtro por energía disponible.
   //
-  // Rediseño de combate (2026-08-09): con las 4 de clase ahora rol:'utilidad' (antes 2 de ellas
-  // eran effect:'AGUANTE'), el roster de un Guerrero solo tiene UNA habilidad rol:'ataque'
-  // (Ataque base) — la exclusión real (defensa/utilidad nunca atacan) se prueba mejor con un
-  // roster construido a mano que mezcle los 3 roles, ver el siguiente test.
-  it('atacando, con las 4 de clase (todas rol:\'utilidad\'), solo queda Ataque base en el pool — nunca elige una defensiva/utilidad aunque el random señale otra', () => {
+  // A nivel 3, un Guerrero solo tiene su primera de tronco (Firmeza Férrea, rol:'defensa') — el
+  // roster solo tiene UNA habilidad rol:'ataque' (Ataque base) — la exclusión real (defensa/
+  // utilidad nunca atacan) se prueba mejor con un roster construido a mano que mezcle los 3
+  // roles, ver el siguiente test.
+  it('atacando, con solo una de clase (rol:\'defensa\'), solo queda Ataque base en el pool — nunca elige una defensiva/utilidad aunque el random señale otra', () => {
     const result = chooseNpcAbility(abilities, 'ataque', 999, () => 0.99);
     expect(result.name).toBe('Ataque base');
     expect(result.rol).toBe('ataque');
@@ -184,7 +184,7 @@ describe('chooseNpcAbility', () => {
 
 describe('chooseNpcAbility — sistema de fatiga simétrico (2026-07-30)', () => {
   const abilities: NpcCombatAbility[] = npcCombatAbilitiesFor(
-    { level: 3, attributes: ATTRS, raza: null, clase: 'Guerrero', ataqueNatural: null, habilidadesRaciales: [] },
+    { level: 3, attributes: ATTRS, raza: null, clase: 'GUERRERO', ataqueNatural: null, habilidadesRaciales: [] },
     [],
   );
 
@@ -207,7 +207,7 @@ describe('chooseNpcAbility — sistema de fatiga simétrico (2026-07-30)', () =>
     // 0 — ver npcCombatAbilities.ts). Ataque base tampoco es gratis desde el rediseño 2026-07-31.
     const affordable = abilities.filter((a) => a.energyCost === 0);
     expect(affordable).toHaveLength(2);
-    const result = chooseNpcAbility(abilities, 'defensa', 10, () => 0.9); // Grito de Guerra cuesta ENERGY_COST_BASICA (10), no alcanza
+    const result = chooseNpcAbility(abilities, 'defensa', 10, () => 0.9); // Firmeza Férrea cuesta ENERGY_COST_BASICA (10), no alcanza
     expect(result.energyCost).toBe(0);
   });
 

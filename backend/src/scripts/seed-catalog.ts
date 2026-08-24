@@ -129,6 +129,7 @@ async function main() {
         homeLocationSlug: npcData.homeLocationSlug,
         raza: npcData.raza,
         clase: npcData.clase,
+        especializacion: npcData.especializacion,
         ataqueNatural: npcData.ataqueNatural,
         habilidadesRaciales: habilidadesRacialesJson,
         temperamento: npcData.temperamento,

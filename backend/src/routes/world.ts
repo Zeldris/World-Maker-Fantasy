@@ -9,7 +9,7 @@ import {
   sourceDisplayNameFor,
 } from '../scripts/worldCatalog.js';
 import { coreRegionOf } from '../services/discovery.js';
-import { classAbilityUnlocksForClase } from '../services/classAbilities.js';
+import { allClassAbilityUnlocks } from '../services/classAbilities.js';
 import { CONSTRUCTION_RECIPES } from '../services/construction.js';
 import { CRAFTING_RECIPES } from '../services/crafting.js';
 import { allProfessionAbilityUnlocks } from '../services/professionAbilities.js';
@@ -264,24 +264,31 @@ function buildPersonajesSection(ctx: EnciclopediaBuildContext) {
 // Clases (roadmap 2026-07-21, separadas en dos el 2026-07-22 — petición explícita: "Guerrero es
 // una clase y Cazador es otra con sus propias habilidades! Gorhorn es una variante especial que
 // le permite aprender las habilidades de ambas"): contenido de diseño estático, no depende del
-// mundo en la base de datos. Cada clase expone solo SU roster (`classAbilityUnlocksForClase`) —
-// Gorhorn sigue aprendiendo de las dos (ver `classAbilityUnlocksFor` en el motor de turnos, sin
-// cambios), pero la Enciclopedia ya puede mostrarlas como dos árboles independientes.
+// mundo en la base de datos. Ampliado a Chamán (2026-08-24, Grupo 3 § Sistema de clases) — las 3
+// únicas con `ClassAbilityUnlock` real construida hoy. Muestra TODOS los huecos de la clase
+// (tronco + las N especializaciones), no el roster de una especialización concreta — para eso
+// está `classAbilityUnlocksForClase(clase, especializacion)`, pensado para el motor de turnos/un
+// NPC en particular, no para esta vista de referencia.
 function buildClassesSection(ctx: EnciclopediaBuildContext) {
-  return (['Guerrero', 'Cazador'] as const).map((clase) => ({
+  return (['GUERRERO', 'CAZADOR', 'CHAMAN'] as const).map((clase) => ({
     name: clase,
     description:
-      clase === 'Guerrero'
+      clase === 'GUERRERO'
         ? 'Fuerza bruta y aguante en primera línea — golpea directo, encaja el golpe y no cede terreno.'
-        : 'Reflejos, puntería a distancia e instinto de rastreo — hiere antes de ser visto y remata sin errar.',
-    unlocks: classAbilityUnlocksForClase(clase).map((u) => ({
-      level: u.level,
-      ability: {
-        ...u.ability,
-        imagePrompts: ctx.imagePromptsFor('ability', slugify(u.ability.name)),
-        imageUrls: imageUrlsFor('ability', slugify(u.ability.name)),
-      },
-    })),
+        : clase === 'CAZADOR'
+          ? 'Reflejos, puntería a distancia e instinto de rastreo — hiere antes de ser visto y remata sin errar.'
+          : 'El equivalente orco a un Mago — nunca lanza la magia directamente, la canaliza siempre a través de un tótem o una runa.',
+    unlocks: allClassAbilityUnlocks()
+      .filter((u) => u.clase === clase)
+      .map((u) => ({
+        level: u.level,
+        especializacion: u.especializacion ?? null,
+        ability: {
+          ...u.ability,
+          imagePrompts: ctx.imagePromptsFor('ability', slugify(u.ability.name)),
+          imageUrls: imageUrlsFor('ability', slugify(u.ability.name)),
+        },
+      })),
   }));
 }
 

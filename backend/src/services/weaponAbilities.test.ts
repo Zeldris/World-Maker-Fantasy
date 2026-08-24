@@ -5,6 +5,7 @@ import {
   WEAPON_CATEGORY_ATTRIBUTE,
   DUAL_WIELD_DIFFICULTY_BONUS,
   dualWieldAdjustedDifficulty,
+  weaponPoolFor,
   type EquippedWeaponSlot,
 } from './weaponAbilities.js';
 
@@ -216,5 +217,51 @@ describe('dualWieldAdjustedDifficulty', () => {
   it('con dualWield, nunca baja de 8 (mismo suelo que contraataqueDifficultyFor)', () => {
     expect(dualWieldAdjustedDifficulty(8, true)).toBe(8);
     expect(dualWieldAdjustedDifficulty(9, true)).toBe(8);
+  });
+});
+
+// Restricción de armas por clase (2026-08-24, Grupo 3 § Sistema de clases, clases.md §
+// "Restricción de armas por clase") — solo Guerrero/Cazador/Chamán tienen pool construido.
+describe('weaponPoolFor', () => {
+  it('Guerrero: mismo pool cuerpo a cuerpo puro para las 4 especializaciones, nada de distancia ni magia', () => {
+    const pool = weaponPoolFor('GUERRERO', 'BERSERKER');
+    expect(pool).toContain('HACHA_1_MANO');
+    expect(pool).toContain('ESCUDO');
+    expect(pool).not.toContain('ARCO_CORTO');
+    expect(pool).not.toContain('GRIMORIO');
+    // Sin especialización elegida, el pool es el mismo (no depende de la rama).
+    expect(weaponPoolFor('GUERRERO', null)).toEqual(pool);
+  });
+
+  it('Chamán: hacha/maza a una mano + focos mágicos, mismo pool para las 4 especializaciones', () => {
+    const pool = weaponPoolFor('CHAMAN', 'OPRESOR');
+    expect(pool).toContain('BACULO');
+    expect(pool).toContain('GRIMORIO');
+    expect(pool).not.toContain('HACHA_2_MANO'); // solo la variante a una mano, deja la otra libre para el foco
+  });
+
+  it('Cazador Tirador: solo arcos, sin honda ni ballesta (reservadas a la futura clase Arquero)', () => {
+    const pool = weaponPoolFor('CAZADOR', 'TIRADOR');
+    expect(pool).toEqual(['ARCO_CORTO', 'ARCO_LARGO']);
+  });
+
+  it('Cazador Domador/Supervivencia: mismo pool para las dos, incluye la VARA nueva', () => {
+    expect(weaponPoolFor('CAZADOR', 'DOMADOR')).toEqual(weaponPoolFor('CAZADOR', 'SUPERVIVENCIA'));
+    expect(weaponPoolFor('CAZADOR', 'DOMADOR')).toContain('VARA');
+  });
+
+  it('Cazador Instintivo: cuerpo a cuerpo, solo variantes de una mano', () => {
+    const pool = weaponPoolFor('CAZADOR', 'INSTINTIVO')!;
+    expect(pool).toContain('ESPADA_1_MANO');
+    expect(pool).not.toContain('ESPADA_2_MANO');
+  });
+
+  it('Cazador sin especialización elegida: sin restricción todavía (null)', () => {
+    expect(weaponPoolFor('CAZADOR', null)).toBeNull();
+  });
+
+  it('una clase fuera de las 3 construidas: sin restricción (null)', () => {
+    expect(weaponPoolFor('ASESINO', 'MAESTRO_ASESINO')).toBeNull();
+    expect(weaponPoolFor(null, null)).toBeNull();
   });
 });

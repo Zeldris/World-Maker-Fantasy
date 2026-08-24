@@ -92,7 +92,11 @@ describe('GET /world/:slug/enciclopedia', () => {
     expect(body.razas.length).toBeGreaterThan(0);
     expect(body.personajes.length).toBeGreaterThan(0);
     expect(body.classes).toEqual(
-      expect.arrayContaining([expect.objectContaining({ name: 'Guerrero' }), expect.objectContaining({ name: 'Cazador' })]),
+      expect.arrayContaining([
+        expect.objectContaining({ name: 'GUERRERO' }),
+        expect.objectContaining({ name: 'CAZADOR' }),
+        expect.objectContaining({ name: 'CHAMAN' }),
+      ]),
     );
     expect(body.constructionRecipes.length).toBeGreaterThan(0);
     // Crafteo (2026-08-06): mismo criterio, contenido estático (crafting.ts), no depende de la BD.

@@ -153,3 +153,89 @@ describe('PATCH /saves/:id/inventario/:itemId — ranura compatible', () => {
     expect(updateInventoryItem).not.toHaveBeenCalled();
   });
 });
+
+// Restricción de armas por clase (2026-08-24, Grupo 3 § Sistema de clases, ver weaponPoolFor en
+// weaponAbilities.ts) — solo Guerrero/Cazador/Chamán tienen pool construido.
+describe('PATCH /saves/:id/inventario/:itemId — restricción de armas por clase', () => {
+  beforeEach(() => {
+    findFirstInventoryItem.mockReset();
+    findUniqueSave.mockReset();
+    findUniqueItemCatalog.mockReset();
+    updateInventoryItem.mockReset();
+    updateManyInventoryItem.mockReset();
+    findManyInventoryItem.mockReset().mockResolvedValue([]);
+    transaction.mockReset().mockImplementation((ops: unknown[]) => Promise.all(ops));
+  });
+
+  it('un Guerrero no puede equipar un arco (fuera de su pool cuerpo a cuerpo)', async () => {
+    findUniqueSave.mockResolvedValue({ worldId: 'world1', attributes: {}, secondaryAttributes: {}, raza: null, level: 1, clase: 'GUERRERO', especializacion: 'BERSERKER' });
+    findFirstInventoryItem.mockResolvedValue({ id: 'item1', name: 'Arco corto', catalogSlug: 'arco-corto', slot: null });
+    findUniqueItemCatalog.mockResolvedValue({ equipSlot: 'ARMA_PRINCIPAL', requisitos: null, tipoArma: 'ARCO_CORTO' });
+    const app = await buildApp();
+
+    const res = await app.inject({ method: 'PATCH', url: '/saves/save1/inventario/item1', payload: { slot: 'ARMA_PRINCIPAL' } });
+
+    expect(res.statusCode).toBe(400);
+    expect(JSON.parse(res.body).error).toMatch(/no encaja con tu clase/);
+    expect(updateInventoryItem).not.toHaveBeenCalled();
+  });
+
+  it('un Guerrero SÍ puede equipar un hacha (dentro de su pool)', async () => {
+    findUniqueSave.mockResolvedValue({ worldId: 'world1', attributes: {}, secondaryAttributes: {}, raza: null, level: 1, clase: 'GUERRERO', especializacion: 'BERSERKER' });
+    findFirstInventoryItem.mockResolvedValue({ id: 'item1', name: 'Hacha de guerra orca', catalogSlug: 'hacha-guerra-orca', slot: null });
+    findUniqueItemCatalog.mockResolvedValue({ equipSlot: 'ARMA_PRINCIPAL', requisitos: null, tipoArma: 'HACHA_1_MANO' });
+    updateInventoryItem.mockResolvedValue({});
+    const app = await buildApp();
+
+    const res = await app.inject({ method: 'PATCH', url: '/saves/save1/inventario/item1', payload: { slot: 'ARMA_PRINCIPAL' } });
+
+    expect(res.statusCode).toBe(200);
+  });
+
+  it('un Cazador Tirador solo puede equipar arcos, no un hacha', async () => {
+    findUniqueSave.mockResolvedValue({ worldId: 'world1', attributes: {}, secondaryAttributes: {}, raza: null, level: 12, clase: 'CAZADOR', especializacion: 'TIRADOR' });
+    findFirstInventoryItem.mockResolvedValue({ id: 'item1', name: 'Hacha de guerra orca', catalogSlug: 'hacha-guerra-orca', slot: null });
+    findUniqueItemCatalog.mockResolvedValue({ equipSlot: 'ARMA_PRINCIPAL', requisitos: null, tipoArma: 'HACHA_1_MANO' });
+    const app = await buildApp();
+
+    const res = await app.inject({ method: 'PATCH', url: '/saves/save1/inventario/item1', payload: { slot: 'ARMA_PRINCIPAL' } });
+
+    expect(res.statusCode).toBe(400);
+  });
+
+  it('un Cazador SIN especialización elegida todavía no tiene restricción de armas (puede equipar cualquier cosa)', async () => {
+    findUniqueSave.mockResolvedValue({ worldId: 'world1', attributes: {}, secondaryAttributes: {}, raza: null, level: 1, clase: 'CAZADOR', especializacion: null });
+    findFirstInventoryItem.mockResolvedValue({ id: 'item1', name: 'Arco corto', catalogSlug: 'arco-corto', slot: null });
+    findUniqueItemCatalog.mockResolvedValue({ equipSlot: 'ARMA_PRINCIPAL', requisitos: null, tipoArma: 'ARCO_CORTO' });
+    updateInventoryItem.mockResolvedValue({});
+    const app = await buildApp();
+
+    const res = await app.inject({ method: 'PATCH', url: '/saves/save1/inventario/item1', payload: { slot: 'ARMA_PRINCIPAL' } });
+
+    expect(res.statusCode).toBe(200);
+  });
+
+  it('una clase fuera de las 3 construidas no tiene restricción de armas todavía', async () => {
+    findUniqueSave.mockResolvedValue({ worldId: 'world1', attributes: {}, secondaryAttributes: {}, raza: null, level: 1, clase: 'ASESINO', especializacion: 'MAESTRO_ASESINO' });
+    findFirstInventoryItem.mockResolvedValue({ id: 'item1', name: 'Arco corto', catalogSlug: 'arco-corto', slot: null });
+    findUniqueItemCatalog.mockResolvedValue({ equipSlot: 'ARMA_PRINCIPAL', requisitos: null, tipoArma: 'ARCO_CORTO' });
+    updateInventoryItem.mockResolvedValue({});
+    const app = await buildApp();
+
+    const res = await app.inject({ method: 'PATCH', url: '/saves/save1/inventario/item1', payload: { slot: 'ARMA_PRINCIPAL' } });
+
+    expect(res.statusCode).toBe(200);
+  });
+
+  it('la restricción no toca objetos fuera de las manos (un casco pasa igual)', async () => {
+    findUniqueSave.mockResolvedValue({ worldId: 'world1', attributes: {}, secondaryAttributes: {}, raza: null, level: 1, clase: 'GUERRERO', especializacion: 'BERSERKER' });
+    findFirstInventoryItem.mockResolvedValue({ id: 'item1', name: 'Yelmo de patrulla goirntes', catalogSlug: 'yelmo-patrulla-goirntes', slot: null });
+    findUniqueItemCatalog.mockResolvedValue({ equipSlot: 'CASCO', requisitos: null });
+    updateInventoryItem.mockResolvedValue({});
+    const app = await buildApp();
+
+    const res = await app.inject({ method: 'PATCH', url: '/saves/save1/inventario/item1', payload: { slot: 'CASCO' } });
+
+    expect(res.statusCode).toBe(200);
+  });
+});

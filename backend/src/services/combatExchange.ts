@@ -10,6 +10,10 @@ import { condicionMalus, saludBandFor } from './death.js';
 export interface PendingNpcAttack {
   npcId: string;
   attribute: Attribute;
+  /// Bonus de atributo fijo de la habilidad de clase elegida por el NPC (2026-08-24, ver
+  /// comentario de `ExchangeParticipant.attributeBonus` más abajo) — undefined/null en Ataque
+  /// base/racial/genéricas, que no llevan ninguno.
+  attributeBonus?: number | null;
   /// Lista (2026-08-15, "que una habilidad pueda tener múltiples AbilityEffects") — [] si la
   /// habilidad no lleva ningún efecto mecánico.
   effects: AbilityEffect[];
@@ -87,6 +91,14 @@ export interface ExchangeParticipant {
   /// la CA). Hoy solo lo usa el jugador defendiéndose (equipo real, `Save.defensa`); los NPC nunca
   /// lo tuvieron (siempre pasaban `0`), así que por defecto es `0` para todos los demás casos.
   bonoTirada?: number;
+  /// Bonus de atributo fijo de la habilidad elegida (2026-08-24, Grupo 3 § Sistema de clases,
+  /// clases.md § "Habilidad de daño vs ataque básico") — a diferencia de `bonoTirada` (se suma
+  /// directo al resultado final, después de todo), esto se suma al valor CRUDO del atributo ANTES
+  /// del multiplicador de tipo (`rollSide`, abajo) — sube el mismo modificador que subiría el
+  /// atributo en sí ("Tajo Horizontal +2 de fuerza" es +2 de fuerza de verdad para esta tirada, no
+  /// un +2 plano al resultado). `undefined`/`0` = comportamiento de siempre (Ataque Básico y el
+  /// resto de habilidades sin bonus propio).
+  attributeBonus?: number;
   /// Rediseño de combate (2026-08-09) — rol de la habilidad elegida por este lado ESTE
   /// intercambio. Decide qué función usa el caller (turnResolution.ts § resolveCombatExchangePhase):
   /// ataque-vs-defensa/ataque sigue resolviéndose por `resolveExchange`; en cuanto CUALQUIER lado
@@ -180,7 +192,7 @@ export interface CombatExchangeDisplay {
 /// pueda reusar exactamente la misma mecánica (malus por condición, multiplicador de tipo,
 /// d20+bono, grado de éxito) sin decidir todavía cómo se cruza contra el rival.
 function rollSide(self: ExchangeParticipant, opponentAttribute: Attribute, tree: CombatTree): ExchangeSideResult {
-  const valorCrudo = Math.max(1, self.attributes[self.attribute] - condicionMalus(self.condicionFisica));
+  const valorCrudo = Math.max(1, self.attributes[self.attribute] + (self.attributeBonus ?? 0) - condicionMalus(self.condicionFisica));
   const multiplicador = typeMultiplierFor(self.attribute, opponentAttribute, tree);
   const valorEfectivo = effectiveAttributeValue(valorCrudo, self.attribute, opponentAttribute, tree);
   const roll = Math.floor(Math.random() * 20) + 1;

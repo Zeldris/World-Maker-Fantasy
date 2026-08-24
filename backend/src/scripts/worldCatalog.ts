@@ -6,7 +6,7 @@
 
 import type { Attribute, AttributeBlock } from '../services/dice.js';
 import type { Requisitos } from '../services/requisitos.js';
-import type { Estacion, EstadoClima, EquipSlot, ItemTipo, MetodoObtencion, WeaponCategory } from '@prisma/client';
+import type { Estacion, EstadoClima, EquipSlot, ItemTipo, MetodoObtencion, WeaponCategory, Clase, Especializacion } from '@prisma/client';
 import type { TerrainTag } from '../services/terrain.js';
 
 export interface LocationInput {
@@ -1078,7 +1078,16 @@ export interface NpcInput {
   /// combatiente (mercader, peregrino...) puede no tener `clase`, y un NPC de apoyo fuera del
   /// grafo de las Llanuras puede no tener ninguno de los dos.
   raza?: string;
-  clase?: string;
+  /// Clase de combate (2026-08-24, Grupo 3 § Sistema de clases, docs/rpgtarkor/clases.md) — antes
+  /// `string` libre (dejó pasar el typo real "Cazadora" en cazadora-serhu, ya corregido). Todos
+  /// los NPC humanoides de este catálogo llevan una desde esta pasada — fauna se queda sin ella,
+  /// nunca la tuvo (ver comentario de arriba).
+  clase?: Clase;
+  /// Especialización dentro de `clase`, ver Especializacion (schema.prisma). Solo Guerrero/
+  /// Cazador/Chamán tienen alguna `ClassAbilityUnlock` real construida hoy — el resto de clases
+  /// se asigna igual (scaffolding, mismo criterio que Domador/Totémico dentro de esas 3), sin
+  /// ninguna habilidad real detrás todavía.
+  especializacion?: Especializacion;
   /// Solo fauna (sin `raza`/`clase`: no son "seres inteligentes que portan equipo") — frase corta
   /// de su ataque natural (alimenta baseAttack.ts) y hasta 6 habilidades raciales propias,
   /// categorizadas (2 ataque, 2 defensa, 2 utilidad como máximo orientativo, no un mínimo fijo).
@@ -1814,7 +1823,10 @@ export const npcs: NpcInput[] = [
     personality: 'Aguda y pragmática, mide cada palabra antes de gastarla — no tiene tiempo ni margen para el orgullo que se permiten los guerreros con clan.',
     homeLocationSlug: 'hondonada-del-eco',
     raza: 'orcos',
-    clase: 'Cazador',
+    // Clase/especialización asignada (2026-08-24, Grupo 3 § Sistema de clases) — Supervivencia
+    // encaja con una fugitiva sola, sin manada ni compañero, que sobrevive por su cuenta.
+    clase: 'CAZADOR',
+    especializacion: 'SUPERVIVENCIA',
     temperamento: 'CAUTELOSO',
     comerciablePct: 15,
     reclutablePct: 55,
@@ -1846,7 +1858,10 @@ export const npcs: NpcInput[] = [
     bio: 'Orco corpulento de piel beige y parda, curtida como la propia estepa de las Llanuras — cualquier pintura o marca de clan que llevara se ha desdibujado bajo meses de polvo y mala vida. Guerrero sin clan visible, separado de los suyos por la guerra o la desgracia — arquetipo instanciable, no un individuo con historia propia.',
     personality: 'Desconfiado, a la defensiva, impredecible según cómo se le aborde.',
     raza: 'orcos',
-    clase: 'Guerrero',
+    // Especialista (2026-08-24, Grupo 3 § Sistema de clases) — "arquetipo instanciable, no un
+    // individuo con historia propia", coherente con el generalista de Guerrero.
+    clase: 'GUERRERO',
+    especializacion: 'ESPECIALISTA',
     temperamento: 'CAUTELOSO',
     comerciablePct: 10,
     reclutablePct: 15,
@@ -1872,7 +1887,12 @@ export const npcs: NpcInput[] = [
     personality: 'Curioso, algo fanfarrón, todavía sin la reserva de los guerreros veteranos.',
     homeLocationSlug: 'campamento-serhu',
     raza: 'orcos',
-    clase: 'Cazadora',
+    // "Cazadora" corregido a la clase real (2026-08-24, Grupo 3 § Sistema de clases — typo de
+    // género que ya rompía cualquier filtro exacto por 'Cazador'). Instintivo: joven, "algo
+    // fanfarrón", todavía sin la reserva de un veterano — encaja con la rama de iniciativa/
+    // velocidad de la clase.
+    clase: 'CAZADOR',
+    especializacion: 'INSTINTIVO',
     temperamento: 'CAUTELOSO',
     comerciablePct: 20,
     reclutablePct: 25,
@@ -1904,7 +1924,10 @@ export const npcs: NpcInput[] = [
     personality: 'Grave, económico con las palabras, pragmático hasta rozar la herejía cultural (prefiere pactar a duelar). Detesta a la Concordia en silencio.',
     homeLocationSlug: 'campamento-serhu',
     raza: 'orcos',
-    clase: 'Guerrero',
+    // Guardián (2026-08-24, Grupo 3 § Sistema de clases) — Kort'ikar que lidera en la guerra y
+    // "busca unificar los clanes", el tanque social más que el bruiser rabioso.
+    clase: 'GUERRERO',
+    especializacion: 'GUARDIAN',
     temperamento: 'CAUTELOSO',
     comerciablePct: 20,
     reclutablePct: 5,
@@ -1938,6 +1961,11 @@ export const npcs: NpcInput[] = [
     bio: 'Orco sin clan — hace años cambió la lanza por la balanza de trueque, algo que pocos orcos entienden y menos aún respetan —, piel curtida por soles de media docena de regiones distintas, más delgado que un guerrero de su edad. Comerciante itinerante que cruza las rutas de la región con mercancía de trueque.',
     personality: 'Locuaz, siempre calculando el precio de todo, evita el conflicto directo.',
     raza: 'orcos',
+    // Clase asignada (2026-08-24, Grupo 3 § Sistema de clases, "todos los NPC deben tener clase")
+    // — "cambió la lanza por la balanza de trueque": fue guerrero, generalista sin identidad de
+    // combate fuerte, coherente con haberlo dejado casi del todo.
+    clase: 'GUERRERO',
+    especializacion: 'ESPECIALISTA',
     temperamento: 'INOFENSIVO',
     comerciablePct: 90,
     reclutablePct: 10,
@@ -1972,7 +2000,12 @@ export const npcs: NpcInput[] = [
     // Mismo motivo que soldado-concordia (ver su comentario) — ancla a la frontera real.
     homeLocationSlug: 'cruce-de-las-cenizas',
     raza: 'goirntes',
-    clase: 'Guerrero',
+    // Caballero, exclusiva goirnte (2026-08-24, Grupo 3 § Sistema de clases) — reasignado desde
+    // Guerrero, más fiel a la restricción de raza del diseño. Caballero del Valor: "más peligroso
+    // en el trato que en el combate directo", encaja con la rama de utilidad/maniobra política
+    // más que con el tanque puro (Orden) o el bruiser (Dolor).
+    clase: 'CABALLERO',
+    especializacion: 'CABALLERO_DEL_VALOR',
     temperamento: 'CAUTELOSO',
     comerciablePct: 30,
     reclutablePct: 10,
@@ -2027,7 +2060,11 @@ export const npcs: NpcInput[] = [
     personality: 'Errático y violento con cualquiera, obsesivo con ella — ataca al primer contacto sin intentar hablar.',
     homeLocationSlug: 'hondonada-del-eco',
     raza: 'orcos',
-    clase: 'Guerrero',
+    // Berserker (2026-08-24, Grupo 3 § Sistema de clases) — "errático y violento, ataca al primer
+    // contacto sin intentar hablar", obsesivo y a punto de quebrarse: la rama de rabia/miedo, no
+    // el tanque ni el generalista.
+    clase: 'GUERRERO',
+    especializacion: 'BERSERKER',
     temperamento: 'AGRESIVO',
     capturablePct: 0,
     // "Mapa de las Llanuras" quitado del loadout a propósito (2026-08-13, petición explícita:
@@ -2059,6 +2096,11 @@ export const npcs: NpcInput[] = [
     bio: 'Orco de un clan cualquiera de las Llanuras, piel en el tono beige o pardo propio de esas tribus, cuerpo delgado y marcado más por el camino que por la guerra. Lleva una tira de tela oscura anudada al brazo, señal de luto que cualquier clan reconoce. Sin prisa ni destino más allá de Los Túmulos del Honor — lleva algo que dejar en la tumba de alguien que murió con honor. No busca compañía ni pelea; si se le trata con respeto, agradece la charla en el camino.',
     personality: 'Callado y ensimismado, cortés si se le habla primero; el duelo, no el miedo, es lo que le hace evitar el contacto.',
     raza: 'orcos',
+    // Chamán / Totémico (2026-08-24, Grupo 3 § Sistema de clases) — peregrino de luto ritual,
+    // encaja con la rama espiritual/de invocación más que con cualquier especialización de
+    // combate — scaffolding sin habilidades reales todavía (0/8, bloqueada por invocación).
+    clase: 'CHAMAN',
+    especializacion: 'TOTEMICO',
     temperamento: 'INOFENSIVO',
     comerciablePct: 10,
     reclutablePct: 5,
@@ -2094,7 +2136,11 @@ export const npcs: NpcInput[] = [
     // escondido y natal de Gorhorn, bien al interior).
     homeLocationSlug: 'cruce-de-las-cenizas',
     raza: 'goirntes',
-    clase: 'Guerrero',
+    // Caballero, exclusiva goirnte (2026-08-24, ver comentario de oficial-concordia arriba) —
+    // Orden: "disciplinado, sigue órdenes sin cuestionar", el rango y fila de la misma doctrina
+    // militar.
+    clase: 'CABALLERO',
+    especializacion: 'CABALLERO_DEL_ORDEN',
     temperamento: 'CAUTELOSO',
     comerciablePct: 5,
     reclutablePct: 5,
@@ -2128,6 +2174,11 @@ export const npcs: NpcInput[] = [
     personality: 'Fría en el cálculo y cálida en el trato, en ese orden. Comulga con las Gargantúas en las migraciones.',
     homeLocationSlug: 'campamento-serhu',
     raza: 'orcos',
+    // Chamán / Rúnico (2026-08-24, Grupo 3 § Sistema de clases) — "comulga con las Gargantúas",
+    // liderazgo espiritual/diplomático más que guerrero de primera línea; Rúnico es la rama de
+    // utilidad (buffar/debilitar), no la de invocación (Totémico) ni la de daño (Convocador).
+    clase: 'CHAMAN',
+    especializacion: 'RUNICO',
     temperamento: 'CAUTELOSO',
     comerciablePct: 25,
     reclutablePct: 10,
@@ -2163,6 +2214,11 @@ export const npcs: NpcInput[] = [
     bio: 'Goirnte de la Meseta del Orden — piel gris que se nota tensarse incluso al hablar de leyes, señal de una mente que nunca deja de calcular el orden de las cosas. Intenta frenar a la facción radical desde la política interna, pero la ley le exige pruebas presentadas "en orden" de la traición del sello que nadie puede presentarle todavía por canal legítimo.',
     personality: 'Cita de memoria las leyes de los obeliscos, artículo y línea; jamás improvisa un argumento que no pueda sostener por escrito.',
     raza: 'goirntes',
+    // Mago (2026-08-24, Grupo 3 § Sistema de clases) — "Archimagistrada" ya es su propio título;
+    // Poder Magia (no Poder Semilla, sin vínculo con ninguna Semilla concreta en su bio) —
+    // scaffolding sin habilidades reales todavía, Mago no está construido esta pasada.
+    clase: 'MAGO',
+    especializacion: 'PODER_MAGIA',
     temperamento: 'CAUTELOSO',
     comerciablePct: 10,
     reclutablePct: 20,
@@ -2189,6 +2245,10 @@ export const npcs: NpcInput[] = [
     bio: 'Goirnte de la Meseta del Orden — piel gris severa, tensa incluso en reposo, curtida por años de mando. Ejecuta órdenes radicales en público, pero en privado sospecha que la versión oficial es mentira, y busca con discreción —sin poder confiar en sus propios canales— testigos de la noche de la ruptura del sello.',
     personality: 'Habla poco y en tono bajo; cuanto más tranquilo suena, más peligroso es el momento. Jamás repite una orden.',
     raza: 'goirntes',
+    // Caballero del Orden (2026-08-24, Grupo 3 § Sistema de clases) — "mando militar", disciplina
+    // de casta, misma doctrina que oficial/soldado de la Concordia.
+    clase: 'CABALLERO',
+    especializacion: 'CABALLERO_DEL_ORDEN',
     temperamento: 'CAUTELOSO',
     comerciablePct: 10,
     reclutablePct: 5,
@@ -2213,6 +2273,11 @@ export const npcs: NpcInput[] = [
     bio: 'Goirnte de la Meseta del Orden — piel gris apagada, más floja y menos tensa de lo normal en los suyos, como si hubiera dejado de concentrarse en nada desde hace tiempo. Exmiembro de la facción radical que ayudó a romper el sello. Vive escondido y consumido por la culpa — es la única prueba viviente de la traición interna, lo que lo convierte en el hombre más buscado de Berig por dos motivos opuestos: los radicales quieren silenciarlo; quienes sospechan la verdad lo necesitan vivo.',
     personality: 'Habla en círculos y nunca termina las frases que rozan "esa noche"; sobresalta con los ruidos de metal.',
     raza: 'goirntes',
+    // Cazador / Supervivencia (2026-08-24, Grupo 3 § Sistema de clases) — fugitivo escondido, ya
+    // rompió con la disciplina militar goirnte (dejó la facción radical), no encaja como
+    // Caballero. Cazador no está ligado a ninguna raza — Supervivencia por vivir escondido.
+    clase: 'CAZADOR',
+    especializacion: 'SUPERVIVENCIA',
     temperamento: 'INOFENSIVO',
     comerciablePct: 15,
     reclutablePct: 35,
@@ -2240,6 +2305,11 @@ export const npcs: NpcInput[] = [
     bio: 'Orco del Clan Helsig, de las tribus orcas de Cristal Helado — piel de un pálido azulado propio de los orcos de zonas nevadas, curtida por el viento de la montaña más que por el sol. Manos gruesas y llenas de callos de picar hielo sílice, cara ancha y siempre a punto de reírse, el contrapunto exacto del Gorhorn callado que conoció en las minas. Amigo de Gorhorn del Clan Helsig, de las minas de hielo sílice en Cristal Helado. Vive fuera del grafo v1 (Cristal Helado), pero es el vínculo personal vivo de Gorhorn — si la partida lo trae, no debe improvisársele números.',
     personality: 'Leal, ruidoso, de risa fácil — el opuesto exacto del Gorhorn callado de las minas, por eso encajaron.',
     raza: 'orcos',
+    // Guerrero / Especialista (2026-08-24, Grupo 3 § Sistema de clases) — minero, no un
+    // combatiente de identidad marcada; generalista de bajo perfil, coherente con "de risa fácil"
+    // más que con ninguna rama agresiva.
+    clase: 'GUERRERO',
+    especializacion: 'ESPECIALISTA',
     temperamento: 'INOFENSIVO',
     comerciablePct: 30,
     reclutablePct: 60,
@@ -2273,6 +2343,11 @@ export const npcs: NpcInput[] = [
     bio: 'Nabieus del Margen Silencioso — piel gris apagada que no refleja ni absorbe la luz, cuerpo delgado y casi sin peso, como el resto de los suyos. Compra y vende información a ambas alianzas por igual, sin lealtades — ha olido que lo que Yerin Slaad recuerda de cierta entrega vale más que todo su inventario.',
     personality: 'Habla más alto que cualquier otro Nabieus — deliberadamente, un gesto casi obsceno entre los suyos que usa para incomodar y marcar distancia con su propio pueblo.',
     raza: 'nabieus',
+    // Segador, exclusiva nabieus / Ilustrado (2026-08-24, Grupo 3 § Sistema de clases) — "traficante
+    // de información independiente" es literalmente la identidad de Ilustrado ("lee el destino/
+    // probabilidades, ventaja de información") — encaje temático directo.
+    clase: 'SEGADOR',
+    especializacion: 'ILUSTRADO',
     temperamento: 'CAUTELOSO',
     comerciablePct: 85,
     reclutablePct: 20,

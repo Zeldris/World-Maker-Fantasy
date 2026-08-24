@@ -52,14 +52,14 @@ describe('npcAttributesForLevel', () => {
   });
 
   it('con clase Guerrero, prioriza fuerza/constitución sobre el resto', () => {
-    const scaled = npcAttributesForLevel(base, 8, 'Guerrero'); // nivel 8 = 2 ASI, 4 puntos
+    const scaled = npcAttributesForLevel(base, 8, 'GUERRERO'); // nivel 8 = 2 ASI, 4 puntos
     expect(scaled.fuerza).toBeGreaterThan(base.fuerza);
     expect(scaled.constitucion).toBeGreaterThan(base.constitucion);
   });
 
   it('nunca supera el tope de atributo real para ese nivel', () => {
     const highBase = { fuerza: 17, destreza: 5, constitucion: 5, inteligencia: 5, voluntad: 5, carisma: 5, arcano: 5 };
-    const scaled = npcAttributesForLevel(highBase, 19, 'Guerrero'); // 5 ASI = 10 puntos, todos priorizarían fuerza
+    const scaled = npcAttributesForLevel(highBase, 19, 'GUERRERO'); // 5 ASI = 10 puntos, todos priorizarían fuerza
     expect(scaled.fuerza).toBeLessThanOrEqual(attributeCapForLevel(19));
   });
 });

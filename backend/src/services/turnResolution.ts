@@ -549,6 +549,10 @@ export interface CombatExchangePhaseInput {
   /// habilidad elegida ESTE turno (savedActionId) lo es. Solo se aplica en el CASO ATAQUE (el
   /// jugador tiene la iniciativa) — reduce la dificultad de SU tirada, nunca dobla el intercambio.
   dualWieldBonus: boolean;
+  /// Bonus de atributo fijo de la habilidad elegida por el jugador este turno (2026-08-24, ver
+  /// comentario de `ExchangeParticipant.attributeBonus`, combatExchange.ts) — 0 en texto libre sin
+  /// botón o si la habilidad elegida no lleva ninguno.
+  abilityAttributeBonus: number;
   /// Habilidad elegida por el jugador este turno (savedActionId ya resuelto contra SavedAction,
   /// ver el caller) — null en texto libre sin botón. Revisión de partida 2026-08-08, petición
   /// explícita: "falta que cuando seleccione una habilidad esta se refleje en la narración con su
@@ -778,6 +782,7 @@ function resolveCombatExchangePhase(input: CombatExchangePhaseInput): CombatExch
     nuevoPendingNpcAttack = {
       npcId: npcParaIntercambio.id,
       attribute: npcAtaque.attribute,
+      attributeBonus: npcAtaque.attributeBonus ?? null,
       effects: npcAtaque.effects,
       rol: npcAtaque.rol,
       abilityName: npcAtaque.name,
@@ -818,6 +823,7 @@ function resolveCombatExchangePhase(input: CombatExchangePhaseInput): CombatExch
           {
             attributes: npcParaIntercambio.attributes,
             attribute: pendingNpcAttack.attribute,
+            attributeBonus: pendingNpcAttack.attributeBonus ?? 0,
             difficulty: difficultyHintFor(input.currentLevel, npcParaIntercambio.level).dificultad,
             condicionFisica: npcParaIntercambio.condicionFisica,
             rol: pendingNpcAttack.rol,
@@ -825,6 +831,7 @@ function resolveCombatExchangePhase(input: CombatExchangePhaseInput): CombatExch
           {
             attributes,
             attribute: input.classificationAtributo,
+            attributeBonus: input.abilityAttributeBonus,
             difficulty: difficultyHintFor(npcParaIntercambio.level, input.currentLevel).dificultad,
             condicionFisica: input.condicionFisicaJugador,
             // Bono de equipo de defensa (rediseño a check opuesto, 2026-08-21) — antes reducía la
@@ -904,6 +911,7 @@ function resolveCombatExchangePhase(input: CombatExchangePhaseInput): CombatExch
           {
             attributes: npcParaIntercambio.attributes,
             attribute: pendingNpcAttack.attribute,
+            attributeBonus: pendingNpcAttack.attributeBonus ?? 0,
             difficulty: difficultyHintFor(input.currentLevel, npcParaIntercambio.level).dificultad,
             condicionFisica: npcParaIntercambio.condicionFisica,
             rol: pendingNpcAttack.rol,
@@ -911,6 +919,7 @@ function resolveCombatExchangePhase(input: CombatExchangePhaseInput): CombatExch
           {
             attributes,
             attribute: input.classificationAtributo,
+            attributeBonus: input.abilityAttributeBonus,
             difficulty: difficultyHintFor(npcParaIntercambio.level, input.currentLevel).dificultad,
             condicionFisica: input.condicionFisicaJugador,
             bonoTirada: defensa,
@@ -996,10 +1005,18 @@ function resolveCombatExchangePhase(input: CombatExchangePhaseInput): CombatExch
       const esIndependiente = jugadorRol !== 'ataque' || npcDefensa.rol === 'utilidad';
       if (esIndependiente) {
         const independent = resolveIndependentExchange(
-          { attributes, attribute: input.classificationAtributo, difficulty: dificultadAtacante, condicionFisica: input.condicionFisicaJugador, rol: jugadorRol },
+          {
+            attributes,
+            attribute: input.classificationAtributo,
+            attributeBonus: input.abilityAttributeBonus,
+            difficulty: dificultadAtacante,
+            condicionFisica: input.condicionFisicaJugador,
+            rol: jugadorRol,
+          },
           {
             attributes: npcParaIntercambio.attributes,
             attribute: npcDefensa.attribute,
+            attributeBonus: npcDefensa.attributeBonus ?? 0,
             difficulty: difficultyHintFor(input.currentLevel, npcParaIntercambio.level).dificultad,
             condicionFisica: npcParaIntercambio.condicionFisica,
             rol: npcDefensa.rol,
@@ -1086,10 +1103,18 @@ function resolveCombatExchangePhase(input: CombatExchangePhaseInput): CombatExch
         });
       } else {
         const exchange = resolveExchange(
-          { attributes, attribute: input.classificationAtributo, difficulty: dificultadAtacante, condicionFisica: input.condicionFisicaJugador, rol: jugadorRol },
+          {
+            attributes,
+            attribute: input.classificationAtributo,
+            attributeBonus: input.abilityAttributeBonus,
+            difficulty: dificultadAtacante,
+            condicionFisica: input.condicionFisicaJugador,
+            rol: jugadorRol,
+          },
           {
             attributes: npcParaIntercambio.attributes,
             attribute: npcDefensa.attribute,
+            attributeBonus: npcDefensa.attributeBonus ?? 0,
             difficulty: difficultyHintFor(input.currentLevel, npcParaIntercambio.level).dificultad,
             condicionFisica: npcParaIntercambio.condicionFisica,
             rol: npcDefensa.rol,
@@ -1189,6 +1214,7 @@ function resolveCombatExchangePhase(input: CombatExchangePhaseInput): CombatExch
         nuevoPendingNpcAttack = {
           npcId: npcParaIntercambio.id,
           attribute: npcAtaque.attribute,
+          attributeBonus: npcAtaque.attributeBonus ?? null,
           effects: npcAtaque.effects,
           rol: npcAtaque.rol,
           abilityName: npcAtaque.name,
@@ -2166,7 +2192,18 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     savedActionId
       ? prisma.savedAction.findFirst({
           where: { id: savedActionId, saveId },
-          select: { name: true, icon: true, description: true, effects: true, rol: true, energyCost: true, energyRegen: true, dualWield: true, maxUsesPerCombat: true },
+          select: {
+            name: true,
+            icon: true,
+            description: true,
+            effects: true,
+            rol: true,
+            energyCost: true,
+            energyRegen: true,
+            dualWield: true,
+            maxUsesPerCombat: true,
+            attributeBonus: true,
+          },
         })
       : Promise.resolve<{
           name: string;
@@ -2178,6 +2215,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
           energyRegen: number;
           dualWield: boolean;
           maxUsesPerCombat: number | null;
+          attributeBonus: number | null;
         } | null>(null),
     regionLocationId ? prisma.location.findUnique({ where: { id: regionLocationId }, select: { region: true, name: true } }) : Promise.resolve(null),
     // Auditoría de rendimiento 2026-07-28 ("rascar segundos"): si el caller (turn.ts) ya trae el
@@ -2315,6 +2353,13 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   // Doble arma (2026-07-31) — la habilidad pulsada colapsó por llevar la misma categoría de arma
   // en las dos manos, ver DUAL_WIELD_DIFFICULTY_BONUS/resolveCombatExchangePhase.
   const dualWieldBonus = selectedAbilityData?.dualWield ?? false;
+  // Bonus de atributo fijo por habilidad (2026-08-24, Grupo 3 § Sistema de clases, clases.md §
+  // "Habilidad de daño vs ataque básico") — antes ninguna habilidad se diferenciaba mecánicamente
+  // de un Ataque Básico salvo el atributo/multiplicador de tipo. Se suma al valor CRUDO del
+  // atributo antes del multiplicador de tipo (ver `ExchangeParticipant.attributeBonus`,
+  // combatExchange.ts) — sube el mismo modificador que subiría el atributo en sí, no un bono
+  // plano a la tirada como `bonoTirada` (equipo de defensa).
+  const abilityAttributeBonus = selectedAbilityData?.attributeBonus ?? 0;
   const faunaSlugs = new Set(faunaSources.map((y) => y.sourceSlug));
 
   // Excluye lore del continente contrario al de la ubicación actual — mismo bug de contaminación
@@ -2464,6 +2509,9 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   );
   const abilityEffectsForExchange = playerAbilityUsageBlocked ? [] : abilityEffects;
   const abilityRolForExchange = playerAbilityUsageBlocked ? null : abilityRol;
+  // Mismo gate que effects/rol de arriba (2026-08-24) — una habilidad que ya agotó su
+  // `maxUsesPerCombat` no debería seguir dando su bonus de atributo tampoco.
+  const abilityAttributeBonusForExchange = playerAbilityUsageBlocked ? 0 : abilityAttributeBonus;
 
   const {
     npcAttackTarget,
@@ -2499,6 +2547,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     abilityRol: abilityRolForExchange,
     countsAsAttack,
     dualWieldBonus,
+    abilityAttributeBonus: abilityAttributeBonusForExchange,
     selectedAbility: selectedAbilityData ? { name: selectedAbilityData.name, icon: selectedAbilityData.icon, description: selectedAbilityData.description } : null,
     openingAmbush,
     rollGradoExito: roll?.gradoExito ?? null,
@@ -4816,6 +4865,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
               effects: ability.effects ?? [],
               rol: ability.rol ?? null,
               preferredAttribute: ability.preferredAttribute ?? null,
+              attributeBonus: ability.attributeBonus ?? null,
               energyCost: ability.energyCost ?? 0,
               energyRegen: ability.energyRegen ?? 0,
               maxUsesPerCombat: ability.maxUsesPerCombat ?? null,

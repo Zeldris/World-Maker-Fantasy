@@ -1,77 +1,69 @@
 import { describe, it, expect } from 'vitest';
 import { classAbilityUnlocksFor, allClassAbilityUnlocks, classAbilityUnlocksForClase } from './classAbilities.js';
 
-// Cobertura nueva (auditoría 2026-08-03, "análisis completo backend/frontend"). Actualizada
-// 2026-08-15: el roster pasó de 4 habilidades (todas a nivel 1) a 7, repartidas por nivel
-// (Guerrero: 1/4/6/8, Cazador: 1/4/8) — ver classAbilities.ts. Actualizada 2026-08-24: Gorhorn
-// deja de ser "variante especial de ambas clases" y pasa a Cazador puro (petición explícita de la
-// usuaria) — pierde las 4 de Guerrero, se queda solo con las 3 de Cazador.
+// Cobertura nueva (auditoría 2026-08-03, "análisis completo backend/frontend"). Reescrita
+// 2026-08-24 (Grupo 3 § Sistema de clases, docs/rpgtarkor/clases.md): el roster pasa de listas
+// planas por clase (4 Guerrero + 3 Cazador, todo tronco) a tronco común + especializaciones reales
+// para GUERRERO/CAZADOR/CHAMAN — 33 huecos en total, los únicos "✅ lista" del doc verificados
+// efecto a efecto contra el motor real. "Compañero cazador" (antes nivel 8 de Cazador) desaparece
+// del todo: se reasignó a Domador en el doc, pero Domador se queda en 0 huecos reales (bloqueada
+// por COMPANERO, sin implementar), así que hoy no vive en ningún sitio del roster.
 
 describe('classAbilityUnlocksFor', () => {
-  it('Gorhorn aprende solo la de Cazador a nivel 1 (ya no es dual-clase)', () => {
-    const result = classAbilityUnlocksFor('Gorhorn', 1);
-    expect(result.map((a) => a.name)).toEqual(['Analisis Salvaje']);
+  it('Gorhorn (Cazador, sin especialización) aprende el tronco común por nivel', () => {
+    expect(classAbilityUnlocksFor('Gorhorn', 1).map((a) => a.name)).toEqual(['Analisis Salvaje']);
+    expect(classAbilityUnlocksFor('Gorhorn', 4).map((a) => a.name)).toEqual(['Barrido Salvaje']);
+    expect(classAbilityUnlocksFor('Gorhorn', 6).map((a) => a.name)).toEqual(['Instinto de Supervivencia']);
+    expect(classAbilityUnlocksFor('Gorhorn', 8).map((a) => a.name)).toEqual(['Golpe Certero']);
   });
 
-  it('a nivel 4 desbloquea solo la de Cazador', () => {
-    const result = classAbilityUnlocksFor('Gorhorn', 4);
-    expect(result.map((a) => a.name)).toEqual(['Barrido Salvaje']);
-  });
-
-  it('a nivel 6 no desbloquea nada (esa habilidad era de Guerrero, ya no aplica)', () => {
-    const result = classAbilityUnlocksFor('Gorhorn', 6);
-    expect(result).toEqual([]);
-  });
-
-  it('a nivel 8 desbloquea la pasiva de Cazador, ya no Contraataque (Guerrero)', () => {
-    const result = classAbilityUnlocksFor('Gorhorn', 8);
-    expect(result.map((a) => a.name)).toEqual(['Compañero cazador']);
-  });
-
-  // Rediseño de combate (2026-08-09): la mayoría son rol:'utilidad' — nunca hacen daño
-  // incondicional por su cuenta, solo reaccionan si el rival ataca con una de rol:'ataque'.
-  // Excepciones confirmadas (2026-08-15): Barrido Salvaje es rol:'defensa', Compañero cazador
-  // (pasiva, nivel 8 Cazador) es rol:'pasiva' — nunca entra al motor de turnos.
-  it('todas las de nivel 1 son rol:\'utilidad\'', () => {
-    const result = classAbilityUnlocksFor('Gorhorn', 1);
-    expect(result.every((a) => a.rol === 'utilidad')).toBe(true);
-  });
-
-  it('Barrido Salvaje (nivel 4 Cazador) es rol:\'defensa\', no \'utilidad\'', () => {
-    const barrido = classAbilityUnlocksFor('Gorhorn', 4).find((a) => a.name === 'Barrido Salvaje');
-    expect(barrido?.rol).toBe('defensa');
-  });
-
-  it('Compañero cazador (nivel 8 Cazador) es rol:\'pasiva\'', () => {
-    const companero = classAbilityUnlocksFor('Gorhorn', 8).find((a) => a.name === 'Compañero cazador');
-    expect(companero?.rol).toBe('pasiva');
+  it('sin especialización elegida, no aprende ningún hueco de especialización (12+)', () => {
+    // Gorhorn no tiene especialización asignada in-game todavía (sin flujo de elección) —
+    // `classAbilityUnlocksFor` filtra tronco puro, nunca huecos de Tirador/Instintivo/etc.
+    expect(classAbilityUnlocksFor('Gorhorn', 12)).toEqual([]);
+    expect(classAbilityUnlocksFor('Gorhorn', 16)).toEqual([]);
   });
 
   it('otro personaje sin clase asignada no aprende ninguna (fuera de alcance v1)', () => {
     expect(classAbilityUnlocksFor('Sael Vhorn', 1)).toEqual([]);
   });
 
-  it('a niveles sin ningún desbloqueo (2, 3, 5, 7...) no hay nada nuevo', () => {
+  it('a niveles sin ningún desbloqueo de tronco (2, 3, 5, 7...) no hay nada nuevo', () => {
     expect(classAbilityUnlocksFor('Gorhorn', 2)).toEqual([]);
   });
 });
 
 describe('allClassAbilityUnlocks', () => {
-  it('devuelve el roster completo (7: 4 de Guerrero + 3 de Cazador), para la Enciclopedia', () => {
-    expect(allClassAbilityUnlocks()).toHaveLength(7);
+  it('devuelve el roster completo (33 huecos: 11 Guerrero + 14 Cazador + 8 Chamán)', () => {
+    const all = allClassAbilityUnlocks();
+    expect(all).toHaveLength(33);
+    expect(all.filter((u) => u.clase === 'GUERRERO')).toHaveLength(11);
+    expect(all.filter((u) => u.clase === 'CAZADOR')).toHaveLength(14);
+    expect(all.filter((u) => u.clase === 'CHAMAN')).toHaveLength(8);
   });
 });
 
 describe('classAbilityUnlocksForClase', () => {
-  it('Guerrero tiene 4 habilidades propias', () => {
-    const result = classAbilityUnlocksForClase('Guerrero');
-    expect(result).toHaveLength(4);
-    expect(result.every((u) => u.clase === 'Guerrero')).toBe(true);
+  it('sin especialización, solo devuelve el tronco común de la clase', () => {
+    expect(classAbilityUnlocksForClase('GUERRERO')).toHaveLength(3);
+    expect(classAbilityUnlocksForClase('CAZADOR')).toHaveLength(4);
+    expect(classAbilityUnlocksForClase('CHAMAN')).toHaveLength(3);
   });
 
-  it('Cazador tiene 3 habilidades propias, distintas de las de Guerrero', () => {
-    const result = classAbilityUnlocksForClase('Cazador');
-    expect(result).toHaveLength(3);
-    expect(result.every((u) => u.clase === 'Cazador')).toBe(true);
+  it('con especialización, devuelve tronco + los huecos reales de esa rama', () => {
+    // Berserker: 3 tronco + 1 propio (19, único listo de 8) = 4
+    expect(classAbilityUnlocksForClase('GUERRERO', 'BERSERKER')).toHaveLength(4);
+    // Tirador: 4 tronco + 5 propios (12/16/19/28/32) = 9
+    expect(classAbilityUnlocksForClase('CAZADOR', 'TIRADOR')).toHaveLength(9);
+    // Domador: 4 tronco + 0 propios (bloqueada por completo, sin COMPANERO/INVOCACION) = 4
+    expect(classAbilityUnlocksForClase('CAZADOR', 'DOMADOR')).toHaveLength(4);
+    // Totémico: 3 tronco + 0 propios (bloqueada por completo, sin INVOCACION) = 3
+    expect(classAbilityUnlocksForClase('CHAMAN', 'TOTEMICO')).toHaveLength(3);
+  });
+
+  it('una especialización de otra clase no se cuela en el roster', () => {
+    const berserker = classAbilityUnlocksForClase('GUERRERO', 'BERSERKER');
+    expect(berserker.every((u) => u.clase === 'GUERRERO')).toBe(true);
+    expect(berserker.some((u) => u.especializacion === 'TIRADOR')).toBe(false);
   });
 });

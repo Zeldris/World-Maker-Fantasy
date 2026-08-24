@@ -151,11 +151,20 @@ function asiPointsBetweenLevels(fromLevel: number, toLevel: number): number {
 /// NPC no tiene jugadora detrás decidiendo dónde van sus puntos). Pesos relativos (suman 1 por
 /// clase), no absolutos — deciden el ORDEN de prioridad de reparto, no cuántos puntos exactos caen
 /// en cada atributo (eso lo hace `allocateAttributePoints` de más abajo, punto a punto, respetando
-/// el tope real). Solo Guerrero/Cazador existen hoy (`Clase`, classAbilities.ts); una clase nueva
-/// solo necesita una fila aquí.
+/// el tope real). Ampliado a las 9 clases (2026-08-24, Grupo 3 § Sistema de clases) — antes solo
+/// Guerrero/Cazador tenían fila; las 7 nuevas son un primer borrador coherente con su identidad de
+/// clases.md, sin repaso a fondo de habilidades todavía (mismo criterio que el resto del reparto:
+/// cifra de partida, ajustable jugando).
 const NPC_CLASS_ATTRIBUTE_WEIGHTS: Record<Clase, Partial<Record<Attribute, number>>> = {
-  Guerrero: { fuerza: 0.35, constitucion: 0.3, voluntad: 0.15, destreza: 0.1, inteligencia: 0.05, carisma: 0.03, arcano: 0.02 },
-  Cazador: { destreza: 0.35, inteligencia: 0.2, constitucion: 0.15, voluntad: 0.15, fuerza: 0.1, carisma: 0.03, arcano: 0.02 },
+  GUERRERO: { fuerza: 0.35, constitucion: 0.3, voluntad: 0.15, destreza: 0.1, inteligencia: 0.05, carisma: 0.03, arcano: 0.02 },
+  CAZADOR: { destreza: 0.35, inteligencia: 0.2, constitucion: 0.15, voluntad: 0.15, fuerza: 0.1, carisma: 0.03, arcano: 0.02 },
+  CHAMAN: { arcano: 0.3, constitucion: 0.25, voluntad: 0.2, fuerza: 0.15, inteligencia: 0.05, destreza: 0.03, carisma: 0.02 },
+  ARQUERO: { destreza: 0.4, inteligencia: 0.2, constitucion: 0.15, fuerza: 0.15, voluntad: 0.06, carisma: 0.02, arcano: 0.02 },
+  CABALLERO: { fuerza: 0.3, constitucion: 0.3, voluntad: 0.2, carisma: 0.1, destreza: 0.06, inteligencia: 0.02, arcano: 0.02 },
+  MAGO: { arcano: 0.45, inteligencia: 0.25, voluntad: 0.15, constitucion: 0.08, destreza: 0.04, carisma: 0.02, fuerza: 0.01 },
+  SEGADOR: { destreza: 0.3, inteligencia: 0.25, voluntad: 0.2, fuerza: 0.15, constitucion: 0.06, carisma: 0.02, arcano: 0.02 },
+  ASESINO: { destreza: 0.45, inteligencia: 0.2, voluntad: 0.15, fuerza: 0.1, constitucion: 0.06, carisma: 0.02, arcano: 0.02 },
+  DRUIDA: { constitucion: 0.3, voluntad: 0.25, fuerza: 0.2, destreza: 0.15, arcano: 0.06, inteligencia: 0.02, carisma: 0.02 },
 };
 
 /// Reparte `points` entre los atributos de `weights` (normalizados a su suma real, no hace falta

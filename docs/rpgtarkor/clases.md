@@ -6,9 +6,25 @@
 2-4 especializaciones elegidas a nivel 10, más las 7 escuelas de Magia y las 12 ramas de Poder de
 Semilla como los dos caminos de la clase Mago, y el sistema de armas a una/dos manos + escudo.
 Documento en curso — algunas especializaciones tienen ya identidad y ejemplos de habilidad
-concretos, otras solo nombre. **Nada de esto está implementado en el motor todavía**: hoy solo
-existen Guerrero/Cazador (`backend/src/services/classAbilities.ts`), como lista plana de
-habilidades por nivel, sin ningún concepto de especialización.*
+concretos, otras solo nombre.*
+
+**APLICADO al motor (2026-08-24, Grupo 3 § Sistema de clases)** — hasta donde llegaba el repaso a
+fondo en ese momento (Guerrero/Cazador/Chamán completos; Arquero y el resto siguen en diseño puro,
+sin tocar): `Npc.clase`/`Npc.especializacion`/`Save.clase`/`Save.especializacion` pasan a ser
+enums reales (antes `clase` era texto libre); `classAbilities.ts` reescrito con tronco común +
+especializaciones reales para esas 3 clases — solo los huecos marcados "✅ lista" en este documento
+Y verificados efecto a efecto contra el motor real (algunas filas de Convocador/Opresor estaban mal
+marcadas en el propio doc, corregido en el código, no aquí). Domador/Totémico se quedan como
+especialización válida sin ninguna habilidad real (0/8, bloqueadas por completo por compañeros/
+invocación). Nuevo: enum `AbilityEffect.CONVERSION` (se resuelve entero por `preferredAttribute`,
+sin infraestructura de duración) y `StartingAbility.attributeBonus`/`SavedAction.attributeBonus`
+(el "bonus de atributo fijo" de "Habilidad de daño vs ataque básico" — pieza que tampoco existía,
+construida en la misma pasada). Restricción de armas por clase (`WeaponCategory.VARA` nuevo,
+`weaponPoolFor` en weaponAbilities.ts) aplicada de verdad al equipar, solo para estas 3 clases.
+Los 15 NPC humanoides del catálogo tienen clase/especialización asignada — ver
+`tarkor_sistema_clases_aplicado_2026-08-24` en la memoria del proyecto para el detalle completo.
+**Pendiente de tu lado**: aplicar las 2 migraciones nuevas contra tu Postgres real + `npm run
+seed-catalog` para que las clases/especializaciones de los NPC lleguen a tu mundo ya sembrado.
 
 *Todas las menciones de "combate multi-objetivo"/`MULTIPLE`/`INVOCACION`/`COMPANERO`/`CONTROL`/
 `EXPULSAR` como bloqueadas en este documento se refieren a la misma pieza de infraestructura,
@@ -698,14 +714,14 @@ bloqueada que Totémico:
 
 | Nivel | Habilidad | Atributo | Efecto | Estado |
 |---|---|---|---|---|
-| 12 | Runa de Fuerza | Magia | `AUMENTO` (a ti mismo) | ⚠️ bloqueada |
-| 16 | Runa de Debilidad | Magia | `DEBILIDAD` (a un rival concreto) | ⚠️ bloqueada |
-| 19 | Runa Ilusoria | Inteligencia | `AGUANTE` — confunde al rival y evita su ataque | ✅ lista |
-| 24 | Runa de Resistencia | Voluntad | `AGUANTE` | ✅ lista |
-| 28 | Runa de Cólera | Magia | `AUMENTO` (a ti mismo, más agresiva que la de nv.12) | ⚠️ bloqueada |
-| 32 | Marca Rúnica | Carisma | `DEBILIDAD` — maldición que marca a un rival concreto | ⚠️ bloqueada |
-| 36 | Runa Reveladora | Inteligencia | `ANALISIS` (más profunda) | ✅ lista |
-| 40 | Intelecto Rúnico *(capstone)* | Magia | `ATAQUE` — una runa predice el ataque del rival; te anticipas con un golpe básico del tipo que tiene ventaja contra él | ✅ lista |
+| 12 | Runa de Fuerza | Magia | `AUMENTO` (a ti mismo) | ⚠️ bloqueada | Aumenta la fueza en +6 durante 1 turno
+| 16 | Golpe Runa de Debilidad | Magia | ATAQUE + `DEBILIDAD` (a un rival concreto) | ⚠️ bloqueada | Ataque que aumenta +5 la Magia, si la diferencia es de 5 entonces le resta -2 de todos los stats al enemigo
+| 19 | Runa Ilusoria | Inteligencia | INVOCACION + `AGUANTE` + PROVOCACION  | ⚠️ bloqueada | Invoca una ilusion con una runa que tiene 1 de vida y que para el ataque de un enemigo
+| 24 | Runa de Resistencia | Voluntad | `AGUANTE` | ✅ lista | Te defiendes con Voluntad aumentandola e +5
+| 28 | Golpe Runa de Cólera | Magia | ATAQUE + `AUMENTO`  | ⚠️ bloqueada | Ataqye que aumenta tu Magia en +5, si la diferencia es 10, el +5 en magia se mantiene para el siguiente turno
+| 32 | Control Rúnico | Magia | CONTROL + `DEBILIDAD` — maldición que marca a un rival concreto | ⚠️ bloqueada | Debilita a un rival restandole -4 de fuerza si la diferencia es de 6 controla al rival un turno
+| 36 | Runa de Rayo Cadena| Inteligencia | `ATAQUE` + MULTIPLE  | ✅ lista | ⚠️ bloqueada
+| 40 | Intelecto Rúnico *(capstone)* | Magia | `ATAQUE` + LIMITADA — una runa predice el ataque del rival; te anticipas con un golpe básico del tipo que tiene ventaja contra él | ✅ lista | LImitada a 4 usos
 
 **4 de 8 listas** (19/24/36/40) — la mejor proporción de las especializaciones bloqueadas hasta
 ahora. Magia sigue siendo mayoría (4/8: 12/16/28/40) con inteligencia/voluntad/carisma repartidas
@@ -718,14 +734,14 @@ invocaciones que persistan en la escena, así que apenas toca la infraestructura
 
 | Nivel | Habilidad | Atributo | Efecto | Estado |
 |---|---|---|---|---|
-| 12 | Filo Elemental | Magia | `ATAQUE` — imbuye tu arma con un elemento para el golpe | ✅ lista |
-| 16 | Armadura de Piedra | Constitución | `AGUANTE` — invoca tierra sobre tu propio equipo | ✅ lista |
-| 19 | Golpe de Trueno | Fuerza | `ATAQUE` — descarga eléctrica concentrada en un golpe físico | ✅ lista |
-| 24 | Escudo de Escarcha | Constitución | `AUMENTO` — el hielo refuerza tu resistencia unos turnos | ⚠️ bloqueada |
-| 28 | Puño Ígneo | Magia | `ATAQUE` — golpe de fuego consecutivo | ✅ lista |
-| 32 | Vórtice Menor | Destreza | `AGUANTE` — un torbellino te ayuda a esquivar | ✅ lista |
-| 36 | Cuerpo Elemental | Magia | `AUMENTO` — te conviertes brevemente en un ser elemental | ⚠️ bloqueada |
-| 40 | Furia de los Elementos *(capstone)* | Magia | `ATAQUE` — combina los 4 elementos en un golpe devastador final | ✅ lista |
+| 12 | Filo Elemental | Magia | `ATAQUE` + AUMENTO — imbuye tu arma con un elemento para el golpe | ✅ lista | Ataque que aumenta tu magia en +3 y que si la diferencia es de 6 aumenta tu magia en +4 en el siguiente turno
+| 16 | Armadura de Piedra | Constitución | `AGUANTE` + DEBILIDAD — invoca tierra sobre tu propio equipo | ✅ lista | Te defiendes si la tirada tiene una diferencia de mas de 4 entonces le aplica -4 de destreza
+| 19 | Golpe de Trueno | Fuerza | `ATAQUE` + MULTIPLE — descarga eléctrica concentrada en un golpe físico | ✅ lista | Ataca sumando +4 de fuerza y si la tirada se diferencia en mas de 10 entonces hace daño en area 
+| 24 | Escudo de Escarcha | Constitución | `AGUANTE` + DEBILIDAD  — el hielo refuerza tu resistencia unos turnos | ⚠️ bloqueada | Te dfientes de un ataque aumentando +4 la constitucion y restas -3 de destreza a quien te ataca si ganas la tirada
+| 28 | Puño Ígneo | Magia | `ATAQUE` + ATURDIMIENTO — golpe de fuego consecutivo | ✅ lista | ATaca sumando +4 a la magi ay si la diferencia es de 8 o mas etonces aurde al enemigo 1 turno
+| 32 | Vórtice Menor | Destreza | `AGUANTE` + CONTRA — un torbellino te ayuda a esquivar | ✅ lista | Aumenta la destreza en +4 para defenderte y si la diferencia es de 6 contrataca
+| 36 | Cuerpo Elemental | Magia | AGUANTE + ATAQUE +`AUMENTO` — te conviertes brevemente en un ser elemental | ⚠️ bloqueada | Si se usa en turno de ataque aumenta la magia en +3, si ganas el turno se guarda el +3 2 turnos, si es en defensa aumenta la magia +3  y si ganas te da +3 de fueza 1 turno
+| 40 | Furia de los Elementos *(capstone)* | Magia | `ATAQUE` + CANALIZAR + LETAL + LIMITADO — combina los 4 elementos en un golpe devastador final | ✅ lista | Ataque que see canaliza sumandote +6 en el turno de uso, si la diferencia es de 8 es letal. Solo un uso por combate.
 
 **6 de 8 listas** (12/16/19/28/32/40) — la más desbloqueada de las 4 especializaciones de Chamán.
 Magia sigue siendo mayoría (4/8) con constitución/fuerza/destreza repartidas en el resto.
@@ -736,12 +752,12 @@ Magia sigue siendo mayoría (4/8) con constitución/fuerza/destreza repartidas e
 |---|---|---|---|---|
 | 12 | Grillete Rúnico | Magia | `ATURDIMIENTO` — una runa te retiene un turno | ✅ lista |
 | 16 | Opresión Mental | Magia | `CONTROL` — tomas el control del rival durante 2 turnos | ⛔⚠️ mecánica de control + duración |
-| 19 | Cadena de Sombras | Magia | `DEBILIDAD` — runas oscuras atan y debilitan al rival | ⚠️ bloqueada |
-| 24 | Golpe Sometedor | Fuerza | `ATURDIMIENTO` — golpe físico que aturde | ✅ lista |
-| 28 | Voz que Doblega | Carisma | `DEBILIDAD` — tu voz impone temor y desorienta | ⚠️ bloqueada |
-| 32 | Runa de Sujeción | Voluntad | `ATURDIMIENTO` — inmoviliza brevemente al rival | ✅ lista |
-| 36 | Grieta de Voluntad | Magia | `DEBILIDAD` — quiebra la voluntad del rival | ⚠️ bloqueada |
-| 40 | Sometimiento Total *(capstone)* | Magia | `ATURDIMIENTO` + `DEBILIDAD` — un golpe rúnico definitivo que aturde y debilita a la vez | ⚠️ bloqueada |
+| 19 | Cadena de Sombras | Magia | ATAQUE + `DEBILIDAD` — runas oscuras atan y debilitan al rival | ⚠️ bloqueada | Ataque que si hay 6 de diferencia resta -4 a la destreza un turno
+| 24 | Golpe Sometedor | Fuerza | ATAQUE + `ATURDIMIENTO` — golpe físico que aturde | ✅ lista | Ataca aumentando tu magia en +3 y si la diferencia es de 6 aplica aturdimiento 1 turno
+| 28 | Voz que Doblega | Carisma | `MULTIPLE` + CONTROL — tu voz impone temor y desorienta | ⚠️ bloqueada | COntrolas a 2 enemigos aletoriamente que ese turno atacan a sus aliados, de preferencia a los enemigos de los cuales seas objetivo, sino aleatoriamente.
+| 32 | Runa de Sujeción | Voluntad | 'MULTIPLE' + `ATURDIMIENTO` — inmoviliza brevemente al rival | ✅ lista | Inmovilza a todos los rivales un turno
+| 36 | Grieta de Voluntad | Magia | MULTIPLE + `DEBILIDAD` — quiebra la voluntad del rival | ⚠️ bloqueada | Resta -6 a todos los rivales e voluntad 2 tunos
+| 40 | Sometimiento Total *(capstone)* | Magia | 'ATAQUE' + `MULTIPLE` + 'CONTROL' + `DEBILIDAD` + LIMITADO — un golpe rúnico definitivo que aturde y debilita a la vez | ⚠️ bloqueada | Ataque que aunmenta la magia en +6, si la diferencia es de 6 aplica -3 a todos los stats a todos los enemgios, si es diferencia de 12 controlas a 3 enemigos aleatorios 1 turno. Limitada a 2 usos
 
 **3 de 8 listas** (12/24/32). Magia sube a 5/8 (12/16/19/36/40) — más concentrado que el resto de
 especializaciones, pero coherente con que Opresor es la más "mental/rúnica pura" de las 4.
@@ -762,22 +778,22 @@ se apila encima, igual que con Guerrero.
 | Nivel | Habilidad | Atributo | Efecto | Estado |
 |---|---|---|---|---|
 | 1 | Vista de Halcón | Inteligencia | `ANALISIS` | ✅ lista |
-| 4 | Reflejos de Cazador | Destreza | `AGUANTE` | ✅ lista |
-| 6 | Aliento Estable | Voluntad | `RECUPERACION` | ✅ lista |
-| 8 | Tiro de Precisión | Destreza | `ATAQUE` (reactiva, tipo Contraataque) | ✅ lista |
+| 4 | Reflejos de Cazador | Destreza | `AGUANTE` | ✅ lista | aumenta la desteza +2 y te defiendes
+| 6 | Tiro de Aliento Estable | Voluntad | ATAQUE + `RECUPERACION` | ✅ lista | Atqiue con voluntad que si tiene una diferencia de 4 recuera la enerigia gastada por esta habilidad + 10
+| 8 | Tiro de Precisión | Destreza | `ATAQUE` (reactiva, tipo Contraataque) | ✅ lista | ataque que aumenta +4 de destreza
 
 ### Maestro Arquero — completa, casi sin bloqueos
 
 | Nivel | Habilidad | Atributo | Efecto | Estado |
 |---|---|---|---|---|
-| 12 | Flecha Certera | Destreza | `ATAQUE` | ✅ lista |
-| 16 | Tiro Inmovilizador | Destreza | `ATURDIMIENTO` — clava al rival en el sitio | ✅ lista |
-| 19 | Cálculo de Viento | Inteligencia | `ATAQUE` — corrige distancia y viento para un tiro preciso | ✅ lista |
-| 24 | Postura de Tirador | Constitución | `AGUANTE` | ✅ lista |
-| 28 | Disparo Perforante | Fuerza | `ATAQUE` — tensa el arco al máximo, tiro de fuerza bruta | ✅ lista |
-| 32 | Segundo Aliento del Cazador | Voluntad | `RECUPERACION` | ✅ lista |
-| 36 | Tiro en Cadena | Destreza | `AUMENTO` — concentración que mejora la precisión varios turnos | ⚠️ bloqueada |
-| 40 | Flecha del Ocaso *(capstone)* | Destreza | `ATAQUE` — el tiro definitivo, máximo daño posible | ✅ lista |
+| 12 | Flecha Certera | Destreza | `ATAQUE` + DEBILIDAD | ✅ lista |
+| 16 | Tiro Inmovilizador | Destreza | ATAQUE + `ATURDIMIENTO` — clava al rival en el sitio | ✅ lista |
+| 19 | Paso calculado | Inteligencia | `AGUANTE` + CONTRA — corrige distancia y viento para un tiro preciso | ✅ lista |
+| 24 | Postura de Tirador | Constitución | `ATAQUE` + AUMENTO | ✅ lista |
+| 28 | Disparo Perforante | Fuerza | `ATAQUE` + DEBILIDAD — tensa el arco al máximo, tiro de fuerza bruta | ✅ lista |
+| 32 | Tiro multiple | Destreza | `ATAQUE` + MULTIPLE | ✅ lista |
+| 36 | Tiro en Cadena | Destreza | ATAQUE + `AUMENTO` — concentración que mejora la precisión varios turnos | ⚠️ bloqueada |
+| 40 | Flecha del Ocaso *(capstone)* | Destreza | `ATAQUE` + CANLIZAR + LETAL — el tiro definitivo, máximo daño posible | ✅ lista |
 
 **7 de 8 listas** — la especialización menos bloqueada de toda la sesión hasta ahora. Destreza
 mayoría (4/8) con inteligencia/constitución/fuerza/voluntad repartidas.

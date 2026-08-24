@@ -74,11 +74,23 @@ resumen de trabajo real, agrupado por tamaño.
 
 ### Los 3 sistemas grandes diseñados esta sesión (documentación completa)
 
-- [ ] **Sistema de clases y especializaciones** (`docs/rpgtarkor/clases.md`). Incluye: infraestructura
-  de duración por turnos (`AUMENTO`/`DEBILIDAD`/`CANALIZAR`/`RETIRAR`/`CURAZION`/`REFLEJAR`/
-  `REFRACTAR`/`PURIFICAR`/`ATENCION`/`OCULTACION`/`CONTRA`/`DESVIAR`); dar de alta 3 efectos nuevos
-  (`PROVOCACION`/`CONVERSION`/`MARCAR`); restricción de armas por clase (categoría nueva `VARA`);
-  restricción de armadura por peso (ligero/medio/pesado, campo nuevo en `ItemCatalog`).
+- [x] ~~**Sistema de clases y especializaciones** (Guerrero/Cazador/Chamán)~~ — parcialmente
+  APLICADO al motor 2026-08-24: `Npc`/`Save` con `clase`/`especializacion` reales (enums, ya no
+  texto libre), `classAbilities.ts` con tronco + especializaciones para las 3 clases con repaso a
+  fondo (33 huecos "✅ lista", verificados efecto a efecto, con correcciones reales sobre lo que el
+  propio doc marcaba mal en Convocador/Opresor). Construido de paso, no estaba planeado: el "bonus
+  de atributo fijo" de habilidad (`StartingAbility.attributeBonus`/`SavedAction.attributeBonus`,
+  aplicado en `combatExchange.ts`) — sin él ninguna habilidad se diferenciaba mecánicamente de un
+  Ataque Básico. `CONVERSION` dado de alta (se resuelve sin infraestructura de duración). Categoría
+  de arma `VARA` + restricción de armas por clase aplicada al equipar (`weaponPoolFor`,
+  weaponAbilities.ts), solo para estas 3 clases. Los 15 NPC humanoides del catálogo tienen clase/
+  especialización asignada. **Sigue pendiente**: Arquero/Caballero/Mago/Segador/Asesino/Druida (sin
+  repaso a fondo todavía — ella sigue editando clases.md), y toda la infraestructura de duración por
+  turnos (`AUMENTO`/`DEBILIDAD`/`CANALIZAR`/`RETIRAR`/`CURAZION`/`REFLEJAR`/`REFRACTAR`/`PURIFICAR`/
+  `PROVOCACION`/`CONTRA`) + combate multi-objetivo (`INVOCACION`/`CONTROL`/`MULTIPLE`/`OCULTACION`/
+  `DESVIAR`/`COMPANERO`) + `MARCAR` (nuevo, solo Domador) + restricción de armadura por peso —
+  ninguna de estas piezas se ha tocado, sigue bloqueando la mayoría de huecos de las 12
+  especializaciones de las 3 clases ya construidas.
 - [ ] **Combate múltiple** (`docs/rpgtarkor/combate-multiple.md`) — iniciativa individual N-way, tope
   4v4 con sub-combates deterministas, modo autónomo/reporte, retira el truco `groupSize`. Desbloquea
   `MULTIPLE`/`INVOCACION`/`COMPANERO`/`CONTROL`/`EXPULSAR` de arriba.

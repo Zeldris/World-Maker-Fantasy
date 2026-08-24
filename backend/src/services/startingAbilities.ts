@@ -24,6 +24,11 @@ export interface StartingAbility {
   /// para category:'combate', igual que `effects`/`preferredAttribute`.
   rol?: AbilityRol;
   preferredAttribute?: Attribute;
+  /// Bonus de atributo fijo (2026-08-24, Grupo 3 § Sistema de clases, clases.md § "Habilidad de
+  /// daño vs ataque básico") — se suma al valor CRUDO del atributo antes del multiplicador de tipo
+  /// al usar esta habilidad (`ExchangeParticipant.attributeBonus`, combatExchange.ts), no un bono
+  /// plano a la tirada. undefined = sin bonus (Ataque Básico y el resto de habilidades genéricas).
+  attributeBonus?: number;
   /// Tope de usos por combate (2026-08-15, junto a AbilityEffect.LIMITADA) — independiente de qué
   /// efectos lleve la habilidad: undefined = sin tope.
   maxUsesPerCombat?: number;
