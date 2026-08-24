@@ -32,6 +32,8 @@ const catalogBySlug = new Map<string, CatalogLookup>([
   ['hueso-largo-gargantua', { tipo: 'RECURSO', category: 'hueso' }],
   ['cuerda-tendon', { tipo: 'EQUIPABLE', category: 'herramienta' }],
   ['mena-de-hierro', { tipo: 'RECURSO', category: 'mena' }],
+  ['resina-trepador-ocaso', { tipo: 'RECURSO', category: 'resina' }],
+  ['fibra-enredaderas-llanuras', { tipo: 'RECURSO', category: 'fibras' }],
   ['totem-clan-roto', { tipo: 'NARRATIVO', category: 'cosmetico' }],
   ['totem-maktor', { tipo: 'EQUIPABLE', category: 'ropa' }],
 ]);
@@ -194,8 +196,15 @@ describe('checkRecipe — recetas nuevas', () => {
     expect(checkRecipe(MAKTOR_CLAN_TOTEM_RECIPE, [row('1', 'totem-maktor')], catalogBySlug, attrs, secondary).met).toBe(false);
   });
 
-  it('ayuntamiento pequeño: cumplido con piedra/leña suficientes', () => {
-    const rows = [row('1', 'piedra', 15), row('2', 'lena-matorral-cuerno', 10)];
+  it('ayuntamiento pequeño: cumplido con las 6 categorías suficientes (rebalanceo 2026-08-24)', () => {
+    const rows = [
+      row('1', 'piedra', 14),
+      row('2', 'lena-matorral-cuerno', 6),
+      row('3', 'hueso-largo-gargantua', 6),
+      row('4', 'resina-trepador-ocaso', 8),
+      row('5', 'mena-de-hierro', 2),
+      row('6', 'fibra-enredaderas-llanuras', 8),
+    ];
     expect(checkRecipe(AYUNTAMIENTO_PEQUENO_RECIPE, rows, catalogBySlug, attrs, secondary)).toEqual({ met: true, missing: [] });
   });
 

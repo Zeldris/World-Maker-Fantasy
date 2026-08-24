@@ -98,8 +98,10 @@ adelante se le encuentra un uso procesado real, se añade igual que el resto.)*
 
 ## Ayuntamiento — números de partida (2026-08-24)
 
-**Pequeño** — cifras dadas por la usuaria, mayormente crudo, sin oficio de construcción exigido
-todavía (nivel de entrada, cualquiera con la Carisma que ya pide puede intentarlo):
+**Pequeño — APLICADO al motor** (`AYUNTAMIENTO_PEQUENO_RECIPE`, `construction.ts`; tests
+actualizados en `construction.test.ts`/`turn.integration.test.ts`). Cifras dadas por la usuaria,
+100% crudo, sin oficio de construcción exigido (nivel de entrada, cualquiera con la Carisma que ya
+pide puede intentarlo). Mediano y grande de abajo siguen siendo solo diseño.
 
 | Recurso | Cantidad |
 |---|---|

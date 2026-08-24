@@ -140,16 +140,19 @@ resumen de trabajo real, agrupado por tamaño.
 
 - [x] ~~Campamento~~ — cerrado 2026-08-24 (APLICADO al motor): 6 leña + 8 piedra + 2 piel (antes
   20/10/5), `construction.ts`. Tests actualizados, `tsc -b` limpio.
-- [x] ~~**Ayuntamiento — diseño cerrado**~~ (2026-08-24, documentación, NO aplicado al motor
-  todavía) — resultó ser mucho más grande de lo que parecía. Al cerrar el pequeño, la usuaria
-  señaló un problema de diseño real: los recursos base son fungibles sin región ("cualquier piedra
-  vale"), y construir debería depender de materiales PROCESADOS (bloques, lingotes, columnas) por
-  oficio regional, no de recursos crudos directamente. Diseño completo en
+- [x] ~~**Ayuntamiento pequeño**~~ — **APLICADO al motor** 2026-08-24 (`construction.ts`, 6
+  categorías: 14 piedra + 6 leña + 6 hueso + 8 resina + 2 mena + 8 fibra, sin oficio exigido).
+  Mediano/grande se quedan solo diseño a propósito ("código real solo el pequeño"). Resultó ser
+  mucho más grande de lo que parecía. Al cerrar el pequeño, la usuaria señaló un problema de
+  diseño real: los recursos base son fungibles sin región ("cualquier piedra vale"), y construir
+  debería depender de materiales PROCESADOS (bloques, lingotes, columnas) por oficio regional, no
+  de recursos crudos directamente. Diseño completo en
   [materiales-procesados-construccion.md](rpgtarkor/materiales-procesados-construccion.md)
   (encontró que parte ya existía sin conectar: `bloque-piedra-tallada`/`lingote-de-hierro`
   huérfanos desde 2026-07-29). Cifras cerradas: pequeño 100% crudo, mediano ~75% procesado/25%
   crudo, grande 100% procesado (salvo resina, sin versión procesada nunca) — "así es difícil de
-  ampliar" a propósito, exige los 4 oficios de procesado a la vez. **Pendiente de aplicar**: 3
+  ampliar" a propósito, exige los 4 oficios de procesado a la vez. **Pendiente de aplicar (solo
+  mediano/grande)**: 3
   items + 3 recetas nuevas, conectar bloque/lingote a construcción, y que `ConstructionRecipe.oficio`
   pase de "solo alivio" a bloqueo real.
 - [ ] 8 items completamente huérfanos + 65 de 79 RECURSO/MATERIAL sin receta que los use — decidir

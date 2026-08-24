@@ -266,9 +266,17 @@ export const AYUNTAMIENTO_PEQUENO_RECIPE: ConstructionRecipe = {
     'El primer asiento de mando de un reino naciente: una sala de consejo modesta, de piedra apilada y vigas de leña trabada, con un único fuego central alrededor del que se reúnen quienes juran lealtad. Nada imponente todavía, pero suficiente para que un liderazgo real empiece a echar raíces en la región.',
   raza: 'orcos',
   nounRegex: /ayuntamiento/,
+  // Rebalanceo (2026-08-24, Grupo 3 § Campamento/Ayuntamiento — ver
+  // docs/rpgtarkor/materiales-procesados-construccion.md): antes solo 15 piedra + 10 leña (2
+  // categorías). El pequeño se queda 100% crudo a propósito (mediano/grande pasan a materiales
+  // procesados por oficio regional, sin implementar todavía) — cifras dadas por la usuaria.
   requirements: [
-    { match: { kind: 'category', tipo: 'RECURSO', category: 'piedra' }, cantidad: 15, label: 'piedra' },
-    { match: { kind: 'category', tipo: 'RECURSO', category: 'madera' }, cantidad: 10, label: 'leña' },
+    { match: { kind: 'category', tipo: 'RECURSO', category: 'piedra' }, cantidad: 14, label: 'piedra' },
+    { match: { kind: 'category', tipo: 'RECURSO', category: 'madera' }, cantidad: 6, label: 'leña' },
+    { match: { kind: 'category', tipo: 'RECURSO', category: 'hueso' }, cantidad: 6, label: 'hueso' },
+    { match: { kind: 'category', tipo: 'RECURSO', category: 'resina' }, cantidad: 8, label: 'resina' },
+    { match: { kind: 'category', tipo: 'RECURSO', category: 'mena' }, cantidad: 2, label: 'mena' },
+    { match: { kind: 'category', tipo: 'RECURSO', category: 'fibras' }, cantidad: 8, label: 'fibra' },
   ],
   // Carisma, no fuerza ni voluntad (2026-08-04): fundar un liderazgo real es una cuestión de
   // autoridad, no de músculo ni de aguante — sin oficio a propósito, cualquiera con suficiente

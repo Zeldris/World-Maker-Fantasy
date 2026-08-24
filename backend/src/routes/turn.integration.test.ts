@@ -1454,9 +1454,15 @@ describe('Ayuntamiento: fundación, desbloqueo de reino y mejora in-place', () =
   }, 15_000);
 
   it('funda el Ayuntamiento (tier 1) — reputación neutra con Clan Serhu = fundación pacífica, crea Territory RECLAMADO', async () => {
+    // Materiales del pequeño tras el rebalanceo 2026-08-24 (6 categorías, ver
+    // AYUNTAMIENTO_PEQUENO_RECIPE): 14 piedra, 6 leña, 6 hueso, 8 resina, 2 mena, 8 fibra.
     await giveMaterials(saveId, [
-      { name: 'Piedra (15)', catalogSlug: 'piedra' },
-      { name: 'Leña de matorral de cuerno (10)', catalogSlug: 'lena-matorral-cuerno' },
+      { name: 'Piedra (14)', catalogSlug: 'piedra' },
+      { name: 'Leña de matorral de cuerno (6)', catalogSlug: 'lena-matorral-cuerno' },
+      { name: 'Hueso largo de gargantúa (6)', catalogSlug: 'hueso-largo-gargantua' },
+      { name: 'Resina de trepador del ocaso (8)', catalogSlug: 'resina-trepador-ocaso' },
+      { name: 'Mena de hierro (2)', catalogSlug: 'mena-de-hierro' },
+      { name: 'Fibra de enredaderas (8)', catalogSlug: 'fibra-enredaderas-llanuras' },
     ]);
     narrateAction.mockClear();
     const res = await doTurn(saveId, 'Construyo un ayuntamiento aquí mismo.');
@@ -1482,8 +1488,12 @@ describe('Ayuntamiento: fundación, desbloqueo de reino y mejora in-place', () =
 
   it('un segundo Ayuntamiento NUEVO (no una mejora) se rechaza — máximo 1 por continente', async () => {
     await giveMaterials(saveId, [
-      { name: 'Piedra (15)', catalogSlug: 'piedra' },
-      { name: 'Leña de matorral de cuerno (10)', catalogSlug: 'lena-matorral-cuerno' },
+      { name: 'Piedra (14)', catalogSlug: 'piedra' },
+      { name: 'Leña de matorral de cuerno (6)', catalogSlug: 'lena-matorral-cuerno' },
+      { name: 'Hueso largo de gargantúa (6)', catalogSlug: 'hueso-largo-gargantua' },
+      { name: 'Resina de trepador del ocaso (8)', catalogSlug: 'resina-trepador-ocaso' },
+      { name: 'Mena de hierro (2)', catalogSlug: 'mena-de-hierro' },
+      { name: 'Fibra de enredaderas (8)', catalogSlug: 'fibra-enredaderas-llanuras' },
     ]);
     narrateAction.mockClear();
     await doTurn(saveId, 'Construyo un ayuntamiento aquí mismo.');
@@ -1677,8 +1687,12 @@ describe('Construcción: condición de carrera en turnos concurrentes (auditorí
 
   it('dos "fundo un ayuntamiento" simultáneos con materiales para uno solo crean como mucho 1 Building + 1 Territory', async () => {
     await giveMaterials(saveId, [
-      { name: 'Piedra (15)', catalogSlug: 'piedra' },
-      { name: 'Leña de matorral de cuerno (10)', catalogSlug: 'lena-matorral-cuerno' },
+      { name: 'Piedra (14)', catalogSlug: 'piedra' },
+      { name: 'Leña de matorral de cuerno (6)', catalogSlug: 'lena-matorral-cuerno' },
+      { name: 'Hueso largo de gargantúa (6)', catalogSlug: 'hueso-largo-gargantua' },
+      { name: 'Resina de trepador del ocaso (8)', catalogSlug: 'resina-trepador-ocaso' },
+      { name: 'Mena de hierro (2)', catalogSlug: 'mena-de-hierro' },
+      { name: 'Fibra de enredaderas (8)', catalogSlug: 'fibra-enredaderas-llanuras' },
     ]);
     narrateAction.mockClear();
     const [resA, resB] = await Promise.all([
