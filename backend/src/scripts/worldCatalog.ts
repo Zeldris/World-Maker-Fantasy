@@ -3045,8 +3045,11 @@ export const items: ItemCatalogInput[] = [
     category: 'consumible',
     tipo: 'CONSUMIBLE', 
     equipSlot: 'CONSUMIBLE_1', 
-    description: 'Bolsa membranosa de un rojo anaranjado, caliente al tacto — iniciador de fuego potente, pariente animal de la Raíz de Fuego.', 
-    dimensiones: 'Bolsa de 6 cm.' 
+    description: 'Bolsa membranosa de un rojo anaranjado, caliente al tacto — iniciador de fuego potente, pariente animal de la Raíz de Fuego.',
+    dimensiones: 'Bolsa de 6 cm.',
+    // tier 5 (Grupo 3 § HarvestYield.condicion, 2026-08-24): mismo caso que veneno-espina/
+    // ascuas-raiz-fuego — "extracción con cuidado (destreza, Media 15 — falla = se inflama)".
+    tier: 5,
   },
 
   {
@@ -3156,6 +3159,10 @@ export const items: ItemCatalogInput[] = [
     equipSlot: 'CONSUMIBLE_1',
     description: 'Tallo nudoso y oscuro de Raíz de Fuego, caliente al tacto incluso recién cortado — iniciador de fuego, potencialmente explosivo.',
     dimensiones: 'Tallo de unos 20 cm.',
+    // tier 5 (Grupo 3 § HarvestYield.condicion, 2026-08-24): mismo caso que veneno-espina —
+    // "extracción con cuidado (destreza, Media 15 — falla = se inflama)" en texto sin dificultad
+    // real detrás; tier 5 da la dificultad 15 que el texto prometía.
+    tier: 5,
   },
 
   // --- medicinal ---
@@ -3169,6 +3176,10 @@ export const items: ItemCatalogInput[] = [
     equipSlot: 'CONSUMIBLE_1',
     description: 'Aguijón oscuro extraído con cuidado, todavía con una gota espesa de veneno en la punta — altera la percepción del dolor.',
     dimensiones: 'Aguijón de 6 cm.',
+    // tier 5 (Grupo 3 § HarvestYield.condicion, 2026-08-24): el propio HarvestYield de este item
+    // decía "extracción cuidadosa (destreza, Media 15)" en texto sin que el motor lo respetara —
+    // dificultadForTier(tier) = 10 + tier, tier 5 da la dificultad 15 real que el texto prometía.
+    tier: 5,
   },
 
   {
@@ -4345,8 +4356,13 @@ export const items: ItemCatalogInput[] = [
     aliases: ['esquirla celeste'], 
     category: 'valor',
     tipo: 'NARRATIVO', 
-    description: 'Fragmento diminuto y frío al tacto, caído del cielo durante una tormenta — nadie en las Llanuras sabe explicar de dónde viene el Origen Azul, solo que a veces deja esto atrás.', 
-    dimensiones: 'Fragmento de 2 cm.' 
+    description: 'Fragmento diminuto y frío al tacto, caído del cielo durante una tormenta — nadie en las Llanuras sabe explicar de dónde viene el Origen Azul, solo que a veces deja esto atrás.',
+    dimensiones: 'Fragmento de 2 cm.',
+    // tier 9 (Grupo 3 § HarvestYield.condicion, 2026-08-24): el propio HarvestYield lo describe
+    // "extremadamente rara — tratar como añadido narrativo ocasional... nunca drop garantizado",
+    // más raro que fercaneo (tier 5, "casi imposible") y melena-cola-ferike (tier 7, "muy baja
+    // probabilidad") — el tier más alto del catálogo hasta hoy, a propósito.
+    tier: 9,
   },
 
   {

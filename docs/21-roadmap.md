@@ -33,6 +33,25 @@ fondo). NPCs existentes con stats reales asignados a clase (nueva sección en `c
 `classAbilityUnlocksFor` ya filtra por `clase: 'Cazador'`, no da más las 4 habilidades de Guerrero.
 Tests actualizados, `tsc -b` limpio.
 
+**`HarvestYield.condicion` (2026-08-24) — cerrado, más pequeño de lo que parecía.** Al auditar las
+40 filas con `condicion` de verdad, la mayoría ya estaba resuelta por trabajo previo de esta misma
+sesión que no se había reflejado en el checklist: `sinTirada`/`requiereHerramienta` ya cubrían
+reconocimiento trivial y minero; el gate de cuchillo/deshuello ya es un bloqueo de oficio entero
+(`OFICIOS_CON_HERRAMIENTA_REQUERIDA`), no necesita flag por yield; "SOLO cadáver ya muerto" ya es
+así por construcción (`metodoObtencion: 'CAZA'` en este sistema siempre es despiece de una presa ya
+derrotada). Lo único que de verdad faltaba: 3 items con "extracción cuidadosa (destreza, Media 15)"
+en texto (`veneno-espina`/`ascuas-raiz-fuego`/`glandula-ignea`) no tenían `tier` puesto — por
+defecto caían en dificultad 11, no 15 — corregido a `tier: 5`. `esquirla-celeste-caida`
+("extremadamente rara... nunca drop garantizado") tampoco tenía tier — ahora `tier: 9`, el más alto
+del catálogo. **Requiere `npm run seed-catalog` contra tu Postgres real para que el cambio de tier
+llegue a las filas ya sembradas** — no lo he corrido yo (no gestiono tu DB).
+
+**Quedan 2 sub-casos de `HarvestYield.condicion` genuinamente bloqueados, sin construir**:
+`punado-arena-iman`/`esquirla-celeste-caida` dependen de un evento de clima ("tras una tormenta de
+arena magnética reciente") que no existe en el motor; `boungo` depende del sistema de estaciones
+("crece en otoño"), ya en la cola de Grupo 3. Ninguno de los dos es solo "sistema de estaciones" —
+clima puntual (tormentas) y estación (mes del año) son dos conceptos distintos, ambos sin diseñar.
+
 ---
 
 ## Pendiente — Grupo 3 (features nuevas, diseño cerrado, sin construir)
@@ -59,7 +78,8 @@ resumen de trabajo real, agrupado por tamaño.
 
 ### De la auditoría original (23/08)
 
-- [ ] `HarvestYield.condicion` — ~30 filas de rareza/requisitos en texto que el motor ignora.
+- [x] ~~`HarvestYield.condicion`~~ — cerrado 2026-08-24 (ver Historial arriba), salvo 2 sub-casos que
+  dependen de clima/estaciones, ahora en "Encontrado en esta revisión" de abajo.
 - [ ] `WorldState.agenda` — eventos de mundo que avanzan solos con el tiempo.
 - [ ] Sin triar aún construir/quitar: `comerciablePct`/`reclutablePct`/`cortejablePct` (nota:
   `domesticablePct` ya tiene destino claro, es la pieza central del tameo de arriba), `Npc.levelMax`,
@@ -73,7 +93,11 @@ resumen de trabajo real, agrupado por tamaño.
 - [ ] **Sistema de estaciones por mes/región** (`ampliar-lore-checklist.md`) — el motor ya tiene
   franjas día/noche pero ningún concepto de estación ni temperatura; hace falta decidir el diseño
   (calendario único vs. desfasado por región) antes de que tenga sentido cualquier condición "solo
-  en invierno".
+  en invierno" (bloquea `boungo`, "crece en otoño").
+- [ ] **Eventos de clima puntuales** (encontrado cerrando `HarvestYield.condicion`, 2026-08-24) —
+  distinto de estaciones: `punado-arena-iman`/`esquirla-celeste-caida` solo deberían aparecer "tras
+  una tormenta de arena magnética reciente", y no existe ningún concepto de evento climático
+  puntual en el motor, solo franjas día/noche. Sin diseñar todavía.
 - [ ] **"Trabajador de Reino"** — bloquea hoy a los 22 NPC del Campamento Serhu y al oficio de
   agricultura de Las Llanuras (pensado para aprenderse por misión, no por NPC-maestro). Mismo
   bloque de diseño que el Almacén de Reino/roles guardia-trabajador-productor de
