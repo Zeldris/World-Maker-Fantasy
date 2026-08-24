@@ -128,10 +128,16 @@ resumen de trabajo real, agrupado por tamaño.
   (Otoño) de verdad. **Pendiente de tu lado**: aplicar la migración nueva contra tu Postgres +
   reseed del catálogo. El Kirelon Arenoso ("largos inviernos") queda fuera — es tasa de aparición,
   no `HarvestYield.condicion`, sistema distinto sin tocar.
-- [ ] **Eventos de clima puntuales** (encontrado cerrando `HarvestYield.condicion`, 2026-08-24) —
-  distinto de estaciones: `punado-arena-iman`/`esquirla-celeste-caida` solo deberían aparecer "tras
-  una tormenta de arena magnética reciente", y no existe ningún concepto de evento climático
-  puntual en el motor, solo franjas día/noche. Sin diseñar todavía.
+- [x] ~~**Eventos de clima puntuales**~~ — cerrado 2026-08-24, APLICADO al motor. Distinto de
+  estaciones: diseño completo en [clima-tormentas.md](rpgtarkor/clima-tormentas.md). Hallazgo real
+  al abrirlo: `arena-iman` ya tenía `WorldPopulation` sembrada, así que hoy aparecía SIEMPRE —
+  la `condicion` de texto no bloqueaba nada. Se convirtió en la caracterización real del clima de
+  Las Llanuras (petición explícita de la usuaria): de 120 días, 40 de gran tormenta (Rokthar), 40
+  de vientos fuertes (Sek'tar), solo 40 llevables (Ghurmek) — "duro vivir aquí". 1 de cada 3 días
+  de tormenta es Extrema (Rok'ithek), la única que además puede dar la esquirla. `climaFor`/
+  `HarvestYield.climaRequerido` (umbral de severidad mínima, no igualdad exacta), por región desde
+  el principio (hoy solo Las Llanuras tiene números reales). **Pendiente de tu lado**: aplicar la
+  migración nueva + reseed del catálogo.
 - [ ] **"Trabajador de Reino"** — bloquea hoy a los 22 NPC del Campamento Serhu y al oficio de
   agricultura de Las Llanuras (pensado para aprenderse por misión, no por NPC-maestro). Mismo
   bloque de diseño que el Almacén de Reino/roles guardia-trabajador-productor de

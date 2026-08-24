@@ -1,4 +1,4 @@
-import type { Estacion } from '@prisma/client';
+import type { Estacion, EstadoClima } from '@prisma/client';
 
 /// Reloj ficticio de la partida — hasta ahora `fictionalDateLabel` era un placeholder fijo
 /// ("Día 1, mañana", ver el comentario que había en turn.ts) que nunca avanzaba. Puro y
@@ -47,6 +47,66 @@ const ESTACION_GLOSA_COMUN: Record<Estacion, string> = {
 
 export function estacionNombreFor(estacion: Estacion, raza: string | null): string {
   return raza === 'orcos' ? ESTACION_NOMBRE_KEKTIRA[estacion] : ESTACION_GLOSA_COMUN[estacion];
+}
+
+/// Clima real de Las Llanuras del Viento Rojo (2026-08-24, Grupo 3 § Eventos de clima puntuales,
+/// diseño completo en docs/rpgtarkor/clima-tormentas.md) — eje de tiempo DISTINTO de `Estacion`,
+/// por región desde el principio (a diferencia del calendario único de estaciones): hoy solo Las
+/// Llanuras tiene números reales, cualquier otra región da `null` (nunca bloquea, mismo criterio
+/// que `pasaFiltroTerreno` sin dato). Mismo año de 120 días que `estacionFor` (`DIAS_POR_ANO`,
+/// reutilizado). Ciclo repetido de 3 días (Tormenta/Viento/Calma) da exactamente 40 días de cada
+/// uno en el año; 1 de cada 3 días de tormenta es Extrema (petición explícita de la usuaria: de
+/// 120 días, 40 de gran tormenta, 40 de vientos fuertes, solo 40 llevables — "duro vivir aquí").
+const LLANURAS_REGION = 'Las Llanuras del Viento Rojo';
+const CICLO_CLIMA_DIAS = 3;
+
+export function climaFor(totalMinutes: number, region: string | null): EstadoClima | null {
+  if (region !== LLANURAS_REGION) return null;
+  const dia = dayForFictionalMinutes(totalMinutes);
+  const diaDelAno = (dia - 1) % DIAS_POR_ANO;
+  const posicionCiclo = diaDelAno % CICLO_CLIMA_DIAS;
+  if (posicionCiclo === 1) return 'VIENTO_FUERTE';
+  if (posicionCiclo === 2) return 'CLIMA_LLEVABLE';
+  const numeroTormenta = Math.floor(diaDelAno / CICLO_CLIMA_DIAS);
+  return numeroTormenta % 3 === 0 ? 'TORMENTA_EXTREMA' : 'TORMENTA_GRANDE';
+}
+
+/// Orden de severidad, de menos a más — `HarvestYield.climaRequerido` compara "al menos esta
+/// severidad", nunca por igualdad exacta (a diferencia de `estacionRequerida`): un día de
+/// Tormenta Extrema también satisface un yield que solo pide Tormenta Grande. `climaActual: null`
+/// (región sin clima diseñado) nunca satisface ningún `climaRequerido` — fallo cerrado, mismo
+/// criterio que "sin región conocida, ninguna fuente es candidata" en recolectar.ts.
+const ESTADO_CLIMA_SEVERIDAD: Record<EstadoClima, number> = {
+  CLIMA_LLEVABLE: 0,
+  VIENTO_FUERTE: 1,
+  TORMENTA_GRANDE: 2,
+  TORMENTA_EXTREMA: 3,
+};
+
+export function climaSeveridadAlMenos(climaActual: EstadoClima | null, climaRequerido: EstadoClima): boolean {
+  if (!climaActual) return false;
+  return ESTADO_CLIMA_SEVERIDAD[climaActual] >= ESTADO_CLIMA_SEVERIDAD[climaRequerido];
+}
+
+/// Nombre Kektira (mismo patrón que `estacionNombreFor`) — `Rok'ithek` deriva a propósito de
+/// `Rokthar` (misma raíz, terminación distinta): es la versión intensificada de la misma
+/// tormenta, no un fenómeno narrativo aparte.
+const CLIMA_NOMBRE_KEKTIRA: Record<EstadoClima, string> = {
+  CLIMA_LLEVABLE: 'Ghurmek',
+  VIENTO_FUERTE: "Sek'tar",
+  TORMENTA_GRANDE: 'Rokthar',
+  TORMENTA_EXTREMA: "Rok'ithek",
+};
+
+const CLIMA_GLOSA_COMUN: Record<EstadoClima, string> = {
+  CLIMA_LLEVABLE: 'el respiro',
+  VIENTO_FUERTE: 'el viento cortante',
+  TORMENTA_GRANDE: 'la gran tormenta',
+  TORMENTA_EXTREMA: 'la ira del viento',
+};
+
+export function climaNombreFor(estado: EstadoClima, raza: string | null): string {
+  return raza === 'orcos' ? CLIMA_NOMBRE_KEKTIRA[estado] : CLIMA_GLOSA_COMUN[estado];
 }
 
 export function advanceFictionalMinutes(current: number, deltaMinutos: number): number {

@@ -1027,6 +1027,59 @@ describe('GET /saves/:id/recolectar/:oficio', () => {
       expect(JSON.parse(res.body).sources).not.toEqual([]);
     });
 
+    // Gate de clima (2026-08-24, Grupo 3 § Eventos de clima puntuales, ver
+    // docs/rpgtarkor/clima-tormentas.md) — umbral de severidad MÍNIMA, distinto de estación
+    // (igualdad exacta): filtra ANTES de la tirada, mismo punto que el gate de estación.
+    it('un yield con climaRequerido por encima del clima actual no aparece', async () => {
+      findUniqueSave.mockResolvedValue({
+        id: 'save1',
+        worldId: 'world1',
+        currentLocationId: 'loc1',
+        currentLocation: { region: 'Las Llanuras del Viento Rojo' },
+        attributes: { fuerza: 20, destreza: 20, constitucion: 10, inteligencia: 10, voluntad: 10, carisma: 10, arcano: 10 },
+        secondaryAttributes: { suerte: 0 },
+        inventoryItems: [],
+        professionProgress: [],
+        worldState: { fictionalMinutes: 1440 * 1 }, // Día 2 = Sek'tar (Viento Fuerte)
+      });
+      findManyHarvestYield.mockResolvedValue([
+        { sourceSlug: 'arena-iman', sourceCategory: 'mineral', item: { slug: 'punado-arena-iman', name: 'Puñado de arena imán', tier: 1 }, cantidad: 1, climaRequerido: 'TORMENTA_GRANDE' },
+      ]);
+      findManyWorldPopulation.mockResolvedValue([
+        { targetSlug: 'arena-iman', poblacion: 500, distribucion: { 'Llanuras del Viento Rojo': 1 }, lastHarvestedAt: null, lastHarvestedLocationId: null },
+      ]);
+      const app = await buildApp();
+
+      const res = await app.inject({ method: 'POST', url: '/saves/save1/recolectar/minero-llanuras/explorar' });
+
+      expect(JSON.parse(res.body).sources).toEqual([]);
+    });
+
+    it('con un clima igual o por encima del requerido sí aparece (umbral "al menos", no igualdad exacta)', async () => {
+      findUniqueSave.mockResolvedValue({
+        id: 'save1',
+        worldId: 'world1',
+        currentLocationId: 'loc1',
+        currentLocation: { region: 'Las Llanuras del Viento Rojo' },
+        attributes: { fuerza: 20, destreza: 20, constitucion: 10, inteligencia: 10, voluntad: 10, carisma: 10, arcano: 10 },
+        secondaryAttributes: { suerte: 0 },
+        inventoryItems: [],
+        professionProgress: [],
+        worldState: { fictionalMinutes: 1440 * 9 }, // Día 10 = Rok'ithek (Tormenta Extrema), por encima de Tormenta Grande
+      });
+      findManyHarvestYield.mockResolvedValue([
+        { sourceSlug: 'arena-iman', sourceCategory: 'mineral', item: { slug: 'punado-arena-iman', name: 'Puñado de arena imán', tier: 1 }, cantidad: 1, climaRequerido: 'TORMENTA_GRANDE' },
+      ]);
+      findManyWorldPopulation.mockResolvedValue([
+        { targetSlug: 'arena-iman', poblacion: 500, distribucion: { 'Llanuras del Viento Rojo': 1 }, lastHarvestedAt: null, lastHarvestedLocationId: null },
+      ]);
+      const app = await buildApp();
+
+      const res = await app.inject({ method: 'POST', url: '/saves/save1/recolectar/minero-llanuras/explorar' });
+
+      expect(JSON.parse(res.body).sources).not.toEqual([]);
+    });
+
     it('el nivel del oficio (alivioForLevel) llega correctamente al roll de la respuesta', async () => {
       // fuerza 20 garantiza éxito con el peor d20 posible (ver comentario del beforeEach); lo que
       // se comprueba aquí es que el nivel 5 de professionProgress (alivioForLevel = 4) se plumbea

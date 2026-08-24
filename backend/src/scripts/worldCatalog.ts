@@ -6,7 +6,7 @@
 
 import type { Attribute, AttributeBlock } from '../services/dice.js';
 import type { Requisitos } from '../services/requisitos.js';
-import type { Estacion, EquipSlot, ItemTipo, MetodoObtencion, WeaponCategory } from '@prisma/client';
+import type { Estacion, EstadoClima, EquipSlot, ItemTipo, MetodoObtencion, WeaponCategory } from '@prisma/client';
 import type { TerrainTag } from '../services/terrain.js';
 
 export interface LocationInput {
@@ -4665,6 +4665,11 @@ export interface HarvestYieldInput {
   /// texto ("crece en otoño") sin que el motor la respetara. Omitido = disponible todo el año,
   /// igual que el resto del catálogo.
   estacionRequerida?: Estacion;
+  /// Gate real de clima (2026-08-24, Grupo 3 § Eventos de clima puntuales, ver
+  /// docs/rpgtarkor/clima-tormentas.md) — umbral de severidad MÍNIMA (`climaSeveridadAlMenos`,
+  /// worldClock.ts), no igualdad exacta como `estacionRequerida`. Omitido = sin restricción de
+  /// clima, igual que el resto del catálogo.
+  climaRequerido?: EstadoClima;
 }
 
 export const harvestYields: HarvestYieldInput[] = [
@@ -4680,6 +4685,9 @@ export const harvestYields: HarvestYieldInput[] = [
     itemSlug: 'punado-arena-iman',
     cantidad: 1,
     condicion: 'solo tras una tormenta de arena magnética reciente',
+    // Gate real de clima (2026-08-24, Grupo 3 § Eventos de clima puntuales) — antes esta
+    // `condicion` era pura documentación sin efecto en el motor.
+    climaRequerido: 'TORMENTA_GRANDE',
   },
 
   {
@@ -4689,6 +4697,7 @@ export const harvestYields: HarvestYieldInput[] = [
     itemSlug: 'esquirla-celeste-caida',
     cantidad: 1,
     condicion: 'extremadamente rara — tratar como añadido narrativo ocasional tras una tormenta fuerte, nunca drop garantizado',
+    climaRequerido: 'TORMENTA_EXTREMA',
   },
 
   // --- Aullador Rojo ---

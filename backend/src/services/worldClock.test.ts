@@ -1,5 +1,14 @@
 import { describe, it, expect } from 'vitest';
-import { advanceFictionalMinutes, dayForFictionalMinutes, formatFictionalDate, estacionFor, estacionNombreFor } from './worldClock.js';
+import {
+  advanceFictionalMinutes,
+  dayForFictionalMinutes,
+  formatFictionalDate,
+  estacionFor,
+  estacionNombreFor,
+  climaFor,
+  climaSeveridadAlMenos,
+  climaNombreFor,
+} from './worldClock.js';
 
 // Cobertura nueva (auditoría 2026-08-03, "análisis completo backend/frontend"): el reloj ficticio
 // no tenía ningún test pese a ser aritmética con varios puntos donde un signo o un módulo mal
@@ -96,5 +105,59 @@ describe('estacionNombreFor', () => {
 
   it('con raza desconocida (null), también usa la glosa en lengua común', () => {
     expect(estacionNombreFor('INVIERNO', null)).toBe('la estación larga');
+  });
+});
+
+// Clima de Las Llanuras (2026-08-24, Grupo 3 § Eventos de clima puntuales, ver
+// docs/rpgtarkor/clima-tormentas.md) — eje de tiempo distinto de estacionFor, por región.
+describe('climaFor', () => {
+  it('fuera de Las Llanuras del Viento Rojo, siempre null (sin diseño en otras regiones)', () => {
+    expect(climaFor(0, 'Cristal Helado')).toBeNull();
+    expect(climaFor(0, null)).toBeNull();
+  });
+
+  it('ciclo de 3 días (Tormenta/Viento/Calma) para Las Llanuras', () => {
+    const region = 'Las Llanuras del Viento Rojo';
+    expect(climaFor(1440 * 0, region)).toBe('TORMENTA_EXTREMA'); // Día 1, tormenta nº0 (0%3=0)
+    expect(climaFor(1440 * 1, region)).toBe('VIENTO_FUERTE'); // Día 2
+    expect(climaFor(1440 * 2, region)).toBe('CLIMA_LLEVABLE'); // Día 3
+    expect(climaFor(1440 * 3, region)).toBe('TORMENTA_GRANDE'); // Día 4, tormenta nº1 (1%3≠0)
+    expect(climaFor(1440 * 6, region)).toBe('TORMENTA_GRANDE'); // Día 7, tormenta nº2
+    expect(climaFor(1440 * 9, region)).toBe('TORMENTA_EXTREMA'); // Día 10, tormenta nº3 (3%3=0)
+  });
+
+  it('el año se repite: el Día 121 vuelve a dar el mismo clima que el Día 1', () => {
+    const region = 'Las Llanuras del Viento Rojo';
+    expect(climaFor(1440 * 120, region)).toBe('TORMENTA_EXTREMA');
+  });
+});
+
+describe('climaSeveridadAlMenos', () => {
+  it('sin clima conocido (null), nunca satisface ningún requisito (fallo cerrado)', () => {
+    expect(climaSeveridadAlMenos(null, 'CLIMA_LLEVABLE')).toBe(false);
+  });
+
+  it('una tormenta extrema satisface un requisito de tormenta grande (severidad mayor)', () => {
+    expect(climaSeveridadAlMenos('TORMENTA_EXTREMA', 'TORMENTA_GRANDE')).toBe(true);
+  });
+
+  it('viento fuerte NO satisface un requisito de tormenta grande (severidad menor)', () => {
+    expect(climaSeveridadAlMenos('VIENTO_FUERTE', 'TORMENTA_GRANDE')).toBe(false);
+  });
+
+  it('un clima satisface exactamente su propio umbral', () => {
+    expect(climaSeveridadAlMenos('CLIMA_LLEVABLE', 'CLIMA_LLEVABLE')).toBe(true);
+  });
+});
+
+describe('climaNombreFor', () => {
+  it('para un personaje orco, usa el nombre Kektira', () => {
+    expect(climaNombreFor('TORMENTA_GRANDE', 'orcos')).toBe('Rokthar');
+    expect(climaNombreFor('TORMENTA_EXTREMA', 'orcos')).toBe("Rok'ithek");
+  });
+
+  it('para cualquier otra raza o raza desconocida, usa la glosa en lengua común', () => {
+    expect(climaNombreFor('VIENTO_FUERTE', 'goirntes')).toBe('el viento cortante');
+    expect(climaNombreFor('CLIMA_LLEVABLE', null)).toBe('el respiro');
   });
 });

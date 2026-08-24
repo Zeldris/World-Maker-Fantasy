@@ -235,6 +235,7 @@ async function main() {
         sinTirada: yieldRow.sinTirada ?? false,
         requiereHerramienta: yieldRow.requiereHerramienta ?? false,
         estacionRequerida: yieldRow.estacionRequerida ?? null,
+        climaRequerido: yieldRow.climaRequerido ?? null,
       },
     });
   }

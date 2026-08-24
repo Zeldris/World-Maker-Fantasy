@@ -1484,6 +1484,13 @@ model HarvestYield {
   /// contra `estacionFor(fictionalMinutes)` (worldClock.ts), nunca contra el nombre narrado
   /// (que cambia según la raza del personaje jugable).
   estacionRequerida Estacion?
+  /// Gate real de clima POR YIELD (2026-08-24, Grupo 3 § Eventos de clima puntuales, ver
+  /// docs/rpgtarkor/clima-tormentas.md) — a diferencia de `estacionRequerida` (igualdad exacta),
+  /// esto es un umbral de severidad MÍNIMA: `climaFor(...) >= climaRequerido` (orden de
+  /// `EstadoClima`, `climaSeveridadAlMenos` en worldClock.ts). Null = no exige clima concreto,
+  /// igual que hoy la mayoría del catálogo. Hoy solo `punado-arena-iman` (TORMENTA_GRANDE) y
+  /// `esquirla-celeste-caida` (TORMENTA_EXTREMA) la usan.
+  climaRequerido EstadoClima?
 
   @@index([worldId, sourceSlug])
 }
@@ -1497,6 +1504,19 @@ enum Estacion {
   VERANO
   OTONO
   INVIERNO
+}
+
+/// Clima real de Las Llanuras del Viento Rojo (2026-08-24, Grupo 3 § Eventos de clima puntuales,
+/// diseño completo en docs/rpgtarkor/clima-tormentas.md) — eje de tiempo DISTINTO de `Estacion`,
+/// calculado por región (`climaFor`, worldClock.ts; hoy solo Las Llanuras tiene números reales,
+/// cualquier otra región da `null`, nunca bloquea). Orden de severidad estable, de menos a más:
+/// CLIMA_LLEVABLE < VIENTO_FUERTE < TORMENTA_GRANDE < TORMENTA_EXTREMA — `HarvestYield.climaRequerido`
+/// compara "al menos", nunca por igualdad exacta.
+enum EstadoClima {
+  CLIMA_LLEVABLE
+  VIENTO_FUERTE
+  TORMENTA_GRANDE
+  TORMENTA_EXTREMA
 }
 
 /// Control de vida del mundo (2026-07-29, petición explícita: "establecer la población para

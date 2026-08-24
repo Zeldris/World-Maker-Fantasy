@@ -12,13 +12,13 @@ import { quantityOf } from '../../services/ingredients.js';
 import { hasToolForOficio, OFICIOS_CON_HERRAMIENTA_REQUERIDA } from '../../services/crafting.js';
 import { closeItemQuests } from '../../services/questResolution.js';
 import { recordEntityDiscoveries } from '../../services/entityDiscovery.js';
-import { advanceFictionalMinutes, formatFictionalDate, estacionFor } from '../../services/worldClock.js';
+import { advanceFictionalMinutes, formatFictionalDate, estacionFor, climaFor, climaSeveridadAlMenos } from '../../services/worldClock.js';
 import { alivioForLevel } from '../../services/professionProgress.js';
 import { normalizeSecondaryAttributes } from '../../services/secondaryAttributes.js';
 import { rollGathering, dificultadForTier, gradoForRecurso, cantidadForGrado } from '../../services/dice.js';
 import type { GatheringRollResult, AttributeBlock } from '../../services/dice.js';
 import { Prisma } from '@prisma/client';
-import type { Estacion, MetodoObtencion } from '@prisma/client';
+import type { Estacion, EstadoClima, MetodoObtencion } from '@prisma/client';
 
 /// Recolección (rediseño de profesiones, 2026-08-07) — lado "recolectora" (minero/talador/
 /// desollador): a diferencia de las de oficio creador (crafting.ts, un solo objeto por texto
@@ -68,6 +68,13 @@ function minutosRecoleccionFor(totalUnidades: number): number {
 /// estación, el recurso no cuenta como candidato en absoluto, no solo "sale con cantidad 0".
 function pasaFiltroEstacion(estacionRequerida: Estacion | null, estacionActual: Estacion): boolean {
   return !estacionRequerida || estacionRequerida === estacionActual;
+}
+
+/// Gate real de clima (2026-08-24, Grupo 3 § Eventos de clima puntuales, ver
+/// docs/rpgtarkor/clima-tormentas.md) — umbral de severidad MÍNIMA, no igualdad exacta como
+/// `pasaFiltroEstacion`. Mismo punto de filtrado que estación/terreno: ANTES de tirar.
+function pasaFiltroClima(climaRequerido: EstadoClima | null, climaActual: EstadoClima | null): boolean {
+  return !climaRequerido || climaSeveridadAlMenos(climaActual, climaRequerido);
 }
 
 interface SourceCandidate {
@@ -141,6 +148,7 @@ async function candidateSourcesFor(
   locationId: string | null,
   locationSlug: string | null,
   estacionActual: Estacion,
+  climaActual: EstadoClima | null,
 ): Promise<{ candidates: SourceCandidate[]; anyOnCooldown: boolean }> {
   const rows = await prisma.harvestYield.findMany({ where: { worldId, metodoObtencion: metodo }, include: { item: true } });
   if (rows.length === 0) return { candidates: [], anyOnCooldown: false };
@@ -170,7 +178,9 @@ async function candidateSourcesFor(
     // haber muchas plantas y en zonas humedas deberias haber mas") — mismo punto que el filtro de
     // región de arriba, ver terrain.ts.
     if (!pasaFiltroTerreno(locationSlug ? locationTerrainTags[locationSlug] : undefined, harvestSourceTerrainTag[pop.targetSlug])) continue;
-    const sourceRows = (bySlug.get(pop.targetSlug) ?? []).filter((r) => pasaFiltroEstacion(r.estacionRequerida, estacionActual));
+    const sourceRows = (bySlug.get(pop.targetSlug) ?? []).filter(
+      (r) => pasaFiltroEstacion(r.estacionRequerida, estacionActual) && pasaFiltroClima(r.climaRequerido, climaActual),
+    );
     if (sourceRows.length === 0) continue;
     const sameLocation = locationId !== null && pop.lastHarvestedLocationId === locationId;
     if (pop.lastHarvestedAt && pop.lastHarvestedAt.getTime() > cooldownCutoff && sameLocation) {
@@ -210,6 +220,7 @@ async function carcassCandidatesFor(
   currentLocationId: string | null,
   sessionFacts: string[],
   estacionActual: Estacion,
+  climaActual: EstadoClima | null,
 ): Promise<SourceCandidate[]> {
   const npcsInScene = await detectNpcsInScene({ action: '', worldId, sessionFacts, saveId, currentLocationId });
   const carcasses = npcsInScene.filter(
@@ -228,7 +239,12 @@ async function carcassCandidatesFor(
   }
 
   return carcasses
-    .map((c) => ({ c, yieldRows: (bySlug.get(c.slug) ?? []).filter((r) => pasaFiltroEstacion(r.estacionRequerida, estacionActual)) }))
+    .map((c) => ({
+      c,
+      yieldRows: (bySlug.get(c.slug) ?? []).filter(
+        (r) => pasaFiltroEstacion(r.estacionRequerida, estacionActual) && pasaFiltroClima(r.climaRequerido, climaActual),
+      ),
+    }))
     .filter(({ yieldRows }) => yieldRows.length > 0)
     .map(({ c, yieldRows }) => {
       return {
@@ -335,6 +351,7 @@ export async function recolectarRoutes(app: FastifyInstance) {
     // todavía (partida recién creada), el reloj de ficción empieza en 0, mismo Día 1 = Ur'gathek
     // que ve cualquier partida nueva.
     const estacionActual = estacionFor(save.worldState?.fictionalMinutes ?? 0);
+    const climaActual = climaFor(save.worldState?.fictionalMinutes ?? 0, save.currentLocation?.region ?? null);
 
     if (metodo === 'CAZA') {
       // Tirada congelada (rediseño de recolección, 2026-08-22) — antes se tiraba de nuevo en CADA
@@ -345,7 +362,7 @@ export async function recolectarRoutes(app: FastifyInstance) {
       if (cachedSources) return { sources: groupByCategory(cachedSources), puedeExplorar: false, enCooldown: false };
 
       const sessionFacts = await loadSessionFacts(save.id);
-      const rawCandidates = await carcassCandidatesFor(save.worldId, save.id, save.currentLocationId, sessionFacts, estacionActual);
+      const rawCandidates = await carcassCandidatesFor(save.worldId, save.id, save.currentLocationId, sessionFacts, estacionActual, climaActual);
       if (rawCandidates.length === 0) return { sources: [], puedeExplorar: false, enCooldown: false };
       const roll = gatheringRollFor(
         { attributes: save.attributes as AttributeBlock, secondaryAttributesJson: save.secondaryAttributes, inventoryItems: save.inventoryItems, professionProgress: save.professionProgress },
@@ -370,6 +387,7 @@ export async function recolectarRoutes(app: FastifyInstance) {
       save.currentLocationId,
       save.currentLocation?.slug ?? null,
       estacionActual,
+      climaActual,
     );
     if (candidates.length === 0) return { sources: [], puedeExplorar: false, enCooldown: anyOnCooldown };
     return { sources: [], puedeExplorar: true, enCooldown: false };
@@ -409,6 +427,7 @@ export async function recolectarRoutes(app: FastifyInstance) {
       save.currentLocationId,
       save.currentLocation?.slug ?? null,
       estacionFor(save.worldState?.fictionalMinutes ?? 0),
+      climaFor(save.worldState?.fictionalMinutes ?? 0, save.currentLocation?.region ?? null),
     );
     if (candidates.length === 0) return { sources: [], enCooldown: anyOnCooldown };
 
