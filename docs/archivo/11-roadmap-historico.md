@@ -6,6 +6,9 @@ el diseño vigente de cada sistema vive en su propio doc numerado (05-19). Movid
 para que deje de leerse como "el roadmap activo" del proyecto. Se conserva sin tocar por valor de
 historial — no es fuente de verdad de nada a día de hoy.
 
+**Continuación (2026-08-24):** el roadmap activo a partir de aquí es
+[../21-roadmap.md](../21-roadmap.md).
+
 **Actualización (2026-08-13):** todo lo anotado el día anterior, implementado y verificado en una
 sola sesión ("sigue e implementa todas las fases que sacamos ayer al roadmap"): validador de
 grounding completo (Fase 0 + Fase 1 + Fase 2, docs/18) y las 5 piezas de post-combate/recompensas

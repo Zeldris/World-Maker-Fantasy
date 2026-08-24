@@ -12,6 +12,10 @@ export interface KingdomStatsBlock {
   soldados: number;
   trabajadores: number;
   visitantes: number;
+  /// Rachas de días consecutivos en banda alta/baja de felicidad (2026-08-23, Grupo 3 §
+  /// Territory.control) — ver comentario del campo homónimo en schema.prisma.
+  diasFelicidadAlta: number;
+  diasFelicidadBaja: number;
 }
 
 export const DEFAULT_KINGDOM_STATS: KingdomStatsBlock = {
@@ -23,6 +27,8 @@ export const DEFAULT_KINGDOM_STATS: KingdomStatsBlock = {
   soldados: 0,
   trabajadores: 0,
   visitantes: 0,
+  diasFelicidadAlta: 0,
+  diasFelicidadBaja: 0,
 };
 
 const FELICIDAD_MIN = 0;
@@ -35,6 +41,20 @@ const COMIDA_POR_TRABAJADOR = 2;
 const RIQUEZA_POR_TRABAJADOR = 1;
 const CONSUMO_POR_BOCA = 1;
 const MANTENIMIENTO_POR_SOLDADO = 1;
+
+/// Bandas de felicidad que alimentan Territory.control/population (2026-08-23, Grupo 3 —
+/// docs/10-niveles-xp-reino.md § 5.4 ya reservaba 300 XP para "Territory pasa a CONSOLIDADO" y
+/// preveía PERDIDO por "bajas de población", pero nunca se conectó con nada real). Todo cifra de
+/// partida, primera pasada ajustable jugando — igual criterio que el resto de constantes de este
+/// archivo.
+export const FELICIDAD_ALTA_UMBRAL = 70;
+export const FELICIDAD_BAJA_UMBRAL = 20;
+/// Días seguidos en la banda alta/baja antes de consolidar/perder un territorio — ver el bloque de
+/// `diasCruzados` en turnResolution.ts, que lee estos contadores tras cada `tickKingdom`.
+export const DIAS_PARA_CONSOLIDAR = 7;
+export const DIAS_PARA_REBELION = 7;
+const TERRITORIO_POBLACION_CRECE_POR_DIA = 2;
+const TERRITORIO_POBLACION_DECRECE_POR_DIA = 3;
 
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
@@ -52,14 +72,29 @@ export function tickKingdomOneDay(stats: KingdomStatsBlock): KingdomStatsBlock {
   const hayDeficit = comidaNeta < 0 || bebidaNeta < 0;
   const haySuperavit = !hayDeficit && bocas > 0 && comidaNeta > bocas && bebidaNeta > bocas;
   const felicidadDelta = hayDeficit ? -5 : haySuperavit ? 2 : 0;
+  const nuevaFelicidad = clamp(stats.felicidad + felicidadDelta, FELICIDAD_MIN, FELICIDAD_MAX);
 
   return {
     ...stats,
     comida: Math.max(0, comidaNeta),
     bebida: Math.max(0, bebidaNeta),
     riqueza: Math.max(0, riquezaNeta),
-    felicidad: clamp(stats.felicidad + felicidadDelta, FELICIDAD_MIN, FELICIDAD_MAX),
+    felicidad: nuevaFelicidad,
+    // Racha rota en cuanto se sale de la banda — sin premio parcial por días sueltos no
+    // consecutivos, mismo criterio "todo o nada" que el resto de umbrales de este archivo.
+    diasFelicidadAlta: nuevaFelicidad >= FELICIDAD_ALTA_UMBRAL ? stats.diasFelicidadAlta + 1 : 0,
+    diasFelicidadBaja: nuevaFelicidad <= FELICIDAD_BAJA_UMBRAL ? stats.diasFelicidadBaja + 1 : 0,
   };
+}
+
+/// Puro: cuánto crece/decrece la población anónima de CADA territorio del reino tras `dias` días,
+/// según la felicidad ya tickeada (2026-08-23) — mismo criterio de bandas que arriba, nunca un
+/// porcentaje (a diferencia de WorldPopulation.growAllPopulations): partiendo de una población
+/// inicial pequeña, un crecimiento porcentual se queda pegado a 0 durante demasiado tiempo.
+export function territoryPopulationDelta(felicidad: number, dias: number): number {
+  if (felicidad >= FELICIDAD_ALTA_UMBRAL) return TERRITORIO_POBLACION_CRECE_POR_DIA * dias;
+  if (felicidad <= FELICIDAD_BAJA_UMBRAL) return -TERRITORIO_POBLACION_DECRECE_POR_DIA * dias;
+  return 0;
 }
 
 /// Puro: aplica N días de golpe (un viaje largo o un descanso extendido puede cruzar más de un

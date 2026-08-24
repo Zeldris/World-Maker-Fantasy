@@ -8,6 +8,11 @@ import { HealthBar } from '../HealthBar'
 import { EnergyBar } from '../EnergyBar'
 
 interface EstadisticasPanelProps {
+  // Bug real (auditoría de elementos desconectados, 2026-08-23): el backend ya mandaba estos dos
+  // campos en cada carga de partida, pero el frontend los descartaba sin mostrarlos nunca fuera de
+  // la pantalla de creación de personaje.
+  characterArchetype: string | null
+  characterOrigin: string | null
   attributes: AttributeBlock
   attributeBonuses: Partial<AttributeBlock>
   secondaryAttributes: SecondaryAttributeBlock
@@ -25,6 +30,8 @@ interface EstadisticasPanelProps {
 }
 
 export function EstadisticasPanel({
+  characterArchetype,
+  characterOrigin,
   attributes,
   attributeBonuses,
   secondaryAttributes,
@@ -41,6 +48,11 @@ export function EstadisticasPanel({
 
   return (
     <div className="flex flex-col gap-5">
+      {(characterArchetype || characterOrigin) && (
+        <p className="-mb-1 truncate text-xs text-wood-500">
+          {[characterArchetype, characterOrigin].filter(Boolean).join(' · ')}
+        </p>
+      )}
       <div>
         <div className="mb-2 flex items-center justify-between">
           <p className="flex items-center gap-2 font-serif text-sm tracking-wide text-wood-100">

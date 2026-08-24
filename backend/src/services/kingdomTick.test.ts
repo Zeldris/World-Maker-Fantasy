@@ -1,5 +1,14 @@
 import { describe, it, expect } from 'vitest';
-import { tickKingdomOneDay, tickKingdom, daysCrossed, DEFAULT_KINGDOM_STATS, type KingdomStatsBlock } from './kingdomTick.js';
+import {
+  tickKingdomOneDay,
+  tickKingdom,
+  daysCrossed,
+  territoryPopulationDelta,
+  DEFAULT_KINGDOM_STATS,
+  FELICIDAD_ALTA_UMBRAL,
+  FELICIDAD_BAJA_UMBRAL,
+  type KingdomStatsBlock,
+} from './kingdomTick.js';
 
 describe('tickKingdomOneDay', () => {
   it('sin población ni trabajadores, no cambia nada (reino recién fundado)', () => {
@@ -38,6 +47,49 @@ describe('tickKingdomOneDay', () => {
     const stats: KingdomStatsBlock = { ...DEFAULT_KINGDOM_STATS, soldados: 3, riqueza: 10 };
     const result = tickKingdomOneDay(stats);
     expect(result.riqueza).toBe(7);
+  });
+
+  // Rachas de felicidad (2026-08-23, Grupo 3 § Territory.control) — alimentan directamente si un
+  // territorio se consolida o cae en rebelión, ver turnResolution.ts.
+  describe('rachas diasFelicidadAlta/diasFelicidadBaja', () => {
+    it('felicidad ya en banda alta suma un día más a la racha', () => {
+      const stats: KingdomStatsBlock = { ...DEFAULT_KINGDOM_STATS, felicidad: FELICIDAD_ALTA_UMBRAL, diasFelicidadAlta: 3 };
+      expect(tickKingdomOneDay(stats).diasFelicidadAlta).toBe(4);
+    });
+
+    it('felicidad ya en banda baja suma un día más a la racha', () => {
+      const stats: KingdomStatsBlock = { ...DEFAULT_KINGDOM_STATS, poblacion: 10, felicidad: FELICIDAD_BAJA_UMBRAL, comida: 0, bebida: 0, diasFelicidadBaja: 2 };
+      expect(tickKingdomOneDay(stats).diasFelicidadBaja).toBe(3);
+    });
+
+    it('salir de la banda alta rompe la racha (sin premio parcial)', () => {
+      // población consume sin producción, la felicidad baja de 70 a 65 — sale de la banda alta.
+      const stats: KingdomStatsBlock = { ...DEFAULT_KINGDOM_STATS, poblacion: 1, comida: 0, bebida: 100, felicidad: FELICIDAD_ALTA_UMBRAL, diasFelicidadAlta: 5 };
+      const result = tickKingdomOneDay(stats);
+      expect(result.felicidad).toBeLessThan(FELICIDAD_ALTA_UMBRAL);
+      expect(result.diasFelicidadAlta).toBe(0);
+    });
+
+    it('las dos rachas nunca suben a la vez (bandas mutuamente excluyentes)', () => {
+      const result = tickKingdomOneDay({ ...DEFAULT_KINGDOM_STATS, felicidad: 50 });
+      expect(result.diasFelicidadAlta).toBe(0);
+      expect(result.diasFelicidadBaja).toBe(0);
+    });
+  });
+});
+
+describe('territoryPopulationDelta', () => {
+  it('felicidad alta hace crecer la población, proporcional a los días', () => {
+    expect(territoryPopulationDelta(FELICIDAD_ALTA_UMBRAL, 3)).toBeGreaterThan(0);
+    expect(territoryPopulationDelta(FELICIDAD_ALTA_UMBRAL, 3)).toBe(territoryPopulationDelta(FELICIDAD_ALTA_UMBRAL, 1) * 3);
+  });
+
+  it('felicidad baja hace decrecer la población', () => {
+    expect(territoryPopulationDelta(FELICIDAD_BAJA_UMBRAL, 1)).toBeLessThan(0);
+  });
+
+  it('felicidad en la banda neutral no cambia la población', () => {
+    expect(territoryPopulationDelta(50, 5)).toBe(0);
   });
 });
 

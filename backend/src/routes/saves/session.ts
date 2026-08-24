@@ -85,6 +85,16 @@ export async function sessionRoutes(app: FastifyInstance) {
       return reply.status(409).send({ error: 'La acción ya se estaba resolviendo, no se pudo cancelar' });
     }
 
+    // Building.status EN_CONSTRUCCION real (2026-08-23, Grupo 3 § Building.status) — si lo que se
+    // canceló era una construcción determinista, la fila ya existía (turn.ts,
+    // planDeterministicBuild) desde antes de este cancel; se borra aquí en vez de dejarla
+    // huérfana para siempre en EN_CONSTRUCCION. Guard de status por si acaso, aunque el `if` de
+    // `claimedAt` de arriba ya descarta que se esté resolviendo de verdad a la vez.
+    const buildingId = (save.characterTransit.zoneContext as { buildingId?: string | null } | null)?.buildingId;
+    if (buildingId) {
+      await prisma.building.deleteMany({ where: { id: buildingId, status: 'EN_CONSTRUCCION' } });
+    }
+
     await prisma.logEntry.create({
       data: {
         saveId: save.id,

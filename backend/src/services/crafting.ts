@@ -591,10 +591,16 @@ export async function detectDeterministicCraft(params: {
 
 /// Oficios (prefijo sin raza/región) que de verdad tienen alguna herramienta dada de alta en el
 /// catálogo (2026-08-17, ver ItemCatalog.herramientaParaOficio en schema.prisma) — solo estos
-/// bloquean por falta de herramienta; el resto de oficios (herrería, minería, tala, carpintería,
-/// construcción, herboristería...) se quedan exactamente como antes, sin gate, hasta que también
-/// tengan una herramienta real registrada. Evita que añadir el campo deje sin querer inutilizables
-/// oficios que hoy funcionan sin ninguna herramienta física.
+/// bloquean por falta de herramienta EN TODO EL OFICIO; el resto de oficios (herrería, tala,
+/// carpintería, construcción, herboristería, minería...) se quedan exactamente como antes, sin
+/// gate, hasta que también tengan una herramienta real registrada. Evita que añadir el campo deje
+/// sin querer inutilizables oficios que hoy funcionan sin ninguna herramienta física.
+///
+/// 'minero' NO entra aquí a propósito (2026-08-23, Grupo 3 § HarvestYield.condicion, corregido
+/// tras un bug real: bloquear todo el oficio dejaba sin poder minar ni Piedra común, cuando la
+/// condición solo pide "pico de minero" para 2 vetas concretas y raras — Mena de Yerreo, Mena de
+/// hierro de Los Pilares Rotos). Ese gate es POR YIELD, no por oficio — ver
+/// `HarvestYield.requiereHerramienta` y el chequeo de `hasMineroTool` en recolectar.ts.
 export const OFICIOS_CON_HERRAMIENTA_REQUERIDA = ['curtidor', 'desollador'];
 
 /// Puro: ¿tiene el personaje, en las filas de inventario dadas, algún objeto marcado como

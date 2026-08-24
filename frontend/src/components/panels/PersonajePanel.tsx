@@ -25,6 +25,9 @@ interface PersonajePanelProps {
   activeSubTab: PersonajeSubTab
   onSubTabChange: (tab: PersonajeSubTab) => void
 
+  characterArchetype: string | null
+  characterOrigin: string | null
+
   items: InventoryItemInfo[]
   onSlotClick: (slot: EquipSlot, equipped: InventoryItemInfo | undefined) => void
 
@@ -45,6 +48,8 @@ interface PersonajePanelProps {
 export function PersonajePanel({
   activeSubTab,
   onSubTabChange,
+  characterArchetype,
+  characterOrigin,
   items,
   onSlotClick,
   attributes,
@@ -81,6 +86,8 @@ export function PersonajePanel({
       {activeSubTab === 'equipo' && <EquipoPanel items={items} onSlotClick={onSlotClick} />}
       {activeSubTab === 'estadisticas' && (
         <EstadisticasPanel
+          characterArchetype={characterArchetype}
+          characterOrigin={characterOrigin}
           attributes={attributes}
           attributeBonuses={attributeBonuses}
           secondaryAttributes={secondaryAttributes}

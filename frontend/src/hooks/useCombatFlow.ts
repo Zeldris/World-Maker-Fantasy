@@ -560,6 +560,7 @@ export function useCombatFlow(params: UseCombatFlowParams) {
     combatBusy,
     combatEnded,
     combatAwaitingDefense,
+    setCombatAwaitingDefense,
     combatSelectedNpcSlug,
     setCombatSelectedNpcSlug,
     combatSelectedAbilityId,

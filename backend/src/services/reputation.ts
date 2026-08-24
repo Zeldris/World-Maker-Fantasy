@@ -49,9 +49,11 @@ export function effectiveTemperamento(catalogTemperamento: Temperamento, faction
 /// Fundación de reino (2026-08-04, docs/17-reglas-construcciones-reino.md) — qué facción(es) son
 /// dueñas de cada región de Berig según el lore (docs/rpgtarkor/areas.md), seedeado a mano: no
 /// existe ninguna tabla real de "región → facción" en la base de datos, solo `Npc.faction` (libre
-/// por NPC) y `World.factions` (catálogo suelto). Ciénaga Troncal y El Margen Silencioso quedan
-/// sin entrada a propósito — sus clanes de lore (Goshg, Nabieus/Faerus) todavía no tienen ningún
-/// NPC seedeado con ese `faction` exacto, así que mecánicamente hoy son "sin dueño".
+/// por NPC) — `World.factions` (catálogo suelto sin relación con esto) se quitó del schema en la
+/// auditoría de elementos desconectados 2026-08-23, nunca lo leyó nadie. Ciénaga Troncal y El
+/// Margen Silencioso quedan sin entrada a propósito — sus clanes de lore (Goshg, Nabieus/Faerus)
+/// todavía no tienen ningún NPC seedeado con ese `faction` exacto, así que mecánicamente hoy son
+/// "sin dueño".
 const REGION_OWNING_FACTIONS: Record<string, string[]> = {
   'Las Llanuras del Viento Rojo': ['Clan Serhu'],
   'La Meseta del Orden': ['Concordia de Hierro'],

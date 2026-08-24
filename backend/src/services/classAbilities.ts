@@ -152,13 +152,15 @@ const CLASS_ABILITIES: ClassAbilityUnlock[] = [
   },
 ];
 
-/// Qué habilidades de clase tiene un personaje — hoy solo Gorhorn es jugable, y es la "variante
-/// especial" que aprende de AMBAS clases (Guerrero y Cazador), de ahí que no filtre por `clase`.
-/// Un futuro personaje de una sola clase necesitaría filtrar también por `clase` aquí. Sin
-/// parámetro de nivel: las 4 se conceden de golpe a nivel 1 (ver comentario de cabecera).
+/// Qué habilidades de clase tiene un personaje — hoy solo Gorhorn es jugable. Hasta 2026-08-24 era
+/// una "variante especial" que aprendía de AMBAS clases (Guerrero y Cazador) sin filtrar por
+/// `clase`; petición explícita de la usuaria ese día ("Gorhorn deja de tener doble clase y pasa a
+/// ser Cazador solo, voy a probarlo por la rama de domador" — ver `docs/rpgtarkor/clases.md`, la
+/// rama Domador en sí sigue siendo solo diseño, no aplicada al motor) — ahora filtra por
+/// `clase: 'Cazador'` como cualquier personaje de una sola clase futuro.
 export function classAbilityUnlocksFor(characterName: string, level: number): StartingAbility[] {
   if (characterName !== 'Gorhorn') return [];
-  return CLASS_ABILITIES.filter((u) => u.level === level).map((u) => u.ability);
+  return CLASS_ABILITIES.filter((u) => u.level === level && u.clase === 'Cazador').map((u) => u.ability);
 }
 
 /// Roster completo (todos los niveles) — para la Enciclopedia, no para el motor de turnos.

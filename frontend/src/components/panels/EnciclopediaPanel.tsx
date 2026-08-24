@@ -109,7 +109,7 @@ const ATTRIBUTES_INFO: { key: Attribute; icon: string; description: string }[] =
   {
     key: 'arcano',
     icon: '🔮',
-    description: 'El poder salvaje nacido de Tarkor — usarlo siempre conlleva un pequeño riesgo, incluso cuando sale bien.',
+    description: 'Fuerza destructiva pura de Tarkor, sin ningún matiz añadido — una de las 7 ramas en las que se divide su magia. Usarlo siempre conlleva un pequeño riesgo, incluso cuando sale bien.',
   },
 ]
 
@@ -262,7 +262,7 @@ function AttributeAdvantageDiagram() {
 // futuro sistema de magia jugable (Poder de Semilla, además, se ramificará por Semilla creadora
 // el día que se diseñe eso de verdad); Suerte/Honor son nuevos.
 const SECONDARY_ATTRIBUTES_INFO: { key: SecondaryAttribute; icon: string; description: string }[] = [
-  { key: 'magia', icon: '✨', description: 'Afinidad narrativa con las escuelas de magia del mundo (elementos/oscura/purificadora/naturaleza/dominio) — distinta de Arcano, el único poder que hoy tira dados. Reservado: base de un futuro atributo con tirada real, incluso en combate, cuando exista magia jugable de verdad.' },
+  { key: 'magia', icon: '✨', description: 'Afinidad narrativa con las otras 6 escuelas de magia del mundo (elementos/oscura/purificadora/naturaleza/dominio/salvaje) — distinta de Arcano, el único poder que hoy tira dados. Reservado: base de un futuro atributo con tirada real, incluso en combate, cuando exista magia jugable de verdad.' },
   { key: 'poderSemilla', icon: '🌱', description: 'Fuerza de la conexión innata con la Semilla creadora de tu raza — los Orcos, nacidos del Estallido sin Semilla propia, lo tienen más bajo y errático. Reservado: se ramificará en una rama por Semilla el día que exista magia jugable, igual que Magia.' },
   { key: 'moral', icon: '🕊️', description: 'Entereza pasiva ante el horror, la pérdida o el miedo — no quebrarse por dentro (distinta de Voluntad, que es aguantar presión activa).' },
   { key: 'resistenciaFrio', icon: '❄️', description: 'Capacidad de aguantar frío extremo — relevante en Cristal Helado.' },

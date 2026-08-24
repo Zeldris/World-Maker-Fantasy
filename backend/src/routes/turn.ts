@@ -50,6 +50,7 @@ import { harvestSourceAliases } from '../scripts/worldCatalog.js';
 import { detectsPostCombatInteraction } from '../services/postCombatInteraction.js';
 import { startEagerTransitResolution } from '../workers/worldTick.js';
 import { detectDeterministicCraft, detectsCraftIntent, CRAFTING_RECIPES } from '../services/crafting.js';
+import { planDeterministicBuild, detectsBuildIntent, CONSTRUCTION_RECIPES } from '../services/construction.js';
 
 interface ClassifyBody {
   saveId: string;
@@ -668,6 +669,26 @@ export async function turnRoutes(app: FastifyInstance) {
       return { classification, roll, transit: { busyUntil, duracionMinutos: minutos }, travel: null };
     }
 
+    // Building.status EN_CONSTRUCCION real (2026-08-23, Grupo 3 § Building.status — ver el
+    // comentario de cabecera de `planDeterministicBuild`, construction.ts). A diferencia del
+    // crafteo de arriba (transit propio, con su propia espera real corta), construcción SIEMPRE
+    // pasa por el tramo genérico de "banda larga" de más abajo — aquí solo se detecta si aplica,
+    // para que ese tramo pueda crear la fila de `Building` YA, dentro de la misma transacción que
+    // el `CharacterTransit`, en vez de esperar a que la construcción termine de resolverse.
+    const mightBeBuildAttempt = CONSTRUCTION_RECIPES.some((r) => detectsBuildIntent(r, action));
+    const buildAttempt = mightBeBuildAttempt && currentLocationForSummary
+      ? await planDeterministicBuild({
+          action,
+          worldId: save.worldId,
+          saveId,
+          currentLocationId: currentLocationForSummary.id,
+          activeRegion: currentLocationForSummary.region,
+          inventoryRows: await prisma.inventoryItem.findMany({ where: { saveId }, select: { id: true, name: true, catalogSlug: true } }),
+          attributes,
+          secondaryAttributes,
+        })
+      : null;
+
     if (classification.banda === 'extendida' || classification.banda === 'larga') {
       // Eventos de viaje interactivos (2026-08-05, petición explícita: "que las esperas entre los
       // movimientos de zonas sean más dinámicas"): decidido AQUÍ, al iniciar el viaje, no al
@@ -705,8 +726,12 @@ export async function turnRoutes(app: FastifyInstance) {
       // `createdAt` explícito con +1ms fuerza el orden real sin depender del default compartido.
       const playerActionAt = new Date();
       const startTextAt = new Date(playerActionAt.getTime() + 1);
-      const [, , transitRow] = await prisma.$transaction([
-        prisma.logEntry.create({
+      // Interactiva en vez de array plano (2026-08-23, Grupo 3 § Building.status) — hace falta
+      // poder crear la fila de `Building` EN_CONSTRUCCION condicionalmente (solo si `buildAttempt`)
+      // y leer su id antes de montar `zoneContext`, algo que el form-array de siempre no permite
+      // limpiamente sin desincronizar posiciones. Misma atomicidad de antes.
+      const transitRow = await prisma.$transaction(async (tx) => {
+        await tx.logEntry.create({
           data: {
             saveId,
             channel: 'CHARACTER',
@@ -716,8 +741,8 @@ export async function turnRoutes(app: FastifyInstance) {
             fictionalMinutes: save.worldState?.fictionalMinutes ?? 480,
             createdAt: playerActionAt,
           },
-        }),
-        prisma.logEntry.create({
+        });
+        await tx.logEntry.create({
           data: {
             saveId,
             channel: 'CHARACTER',
@@ -726,39 +751,44 @@ export async function turnRoutes(app: FastifyInstance) {
             fictionalMinutes: save.worldState?.fictionalMinutes ?? 480,
             createdAt: startTextAt,
           },
-        }),
-        prisma.characterTransit.upsert({
+        });
+        // Building.status EN_CONSTRUCCION real (2026-08-23) — la fila se crea YA, dentro de la
+        // misma transacción que el CharacterTransit, en vez de esperar a que la construcción se
+        // resuelva del todo (ver comentario de cabecera de `planDeterministicBuild`,
+        // construction.ts). Se completa a ACTIVO (o se borra si la construcción falla al
+        // resolver por una carrera de última hora) en turnResolution.ts — ver `earlyBuildingId`.
+        const earlyBuilding = buildAttempt
+          ? await tx.building.create({
+              data: {
+                saveId,
+                locationId: currentLocationForSummary!.id,
+                recipeKey: buildAttempt.key,
+                name: buildAttempt.name,
+                kind: buildAttempt.key,
+                description: buildAttempt.description,
+                status: 'EN_CONSTRUCCION',
+                tier: buildAttempt.ayuntamientoNivel ?? undefined,
+              },
+            })
+          : null;
+        const zoneContext = {
+          action,
+          classification,
+          roll,
+          travel: effectiveTravel,
+          duracionMinutos: effectiveMinutos,
+          travelInterruptionNpcId: interruption?.npcId ?? null,
+          travelInterruptionOriginalDestinationName: interruptedOriginalDestinationName,
+          buildingId: earlyBuilding?.id ?? null,
+        } as object;
+        const transit = await tx.characterTransit.upsert({
           where: { saveId },
-          create: {
-            saveId,
-            activity: action,
-            busyUntil,
-            zoneContext: {
-              action,
-              classification,
-              roll,
-              travel: effectiveTravel,
-              duracionMinutos: effectiveMinutos,
-              travelInterruptionNpcId: interruption?.npcId ?? null,
-              travelInterruptionOriginalDestinationName: interruptedOriginalDestinationName,
-            } as object,
-          },
-          update: {
-            activity: action,
-            busyUntil,
-            zoneContext: {
-              action,
-              classification,
-              roll,
-              travel: effectiveTravel,
-              duracionMinutos: effectiveMinutos,
-              travelInterruptionNpcId: interruption?.npcId ?? null,
-              travelInterruptionOriginalDestinationName: interruptedOriginalDestinationName,
-            } as object,
-          },
-        }),
-        prisma.save.update({ where: { id: saveId }, data: { lastPlayedAt: new Date() } }),
-      ]);
+          create: { saveId, activity: action, busyUntil, zoneContext },
+          update: { activity: action, busyUntil, zoneContext },
+        });
+        await tx.save.update({ where: { id: saveId }, data: { lastPlayedAt: new Date() } });
+        return transit;
+      });
 
       // Espera de viaje precalculada (2026-08-13, petición explícita: "si no hay eventos con las
       // esperas... no hay que esperar los mins y luego lanzar el prompt... el prompt se lanza ya

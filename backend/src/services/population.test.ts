@@ -81,7 +81,7 @@ describe('growAllPopulations', () => {
     const prisma = {
       worldPopulation: {
         findMany: vi.fn().mockResolvedValue([
-          { id: 'r1', targetType: 'FAUNA', poblacion: UMBRAL_MINIMO_REPRODUCCION - 1, updatedAt: new Date(Date.now() - 30 * DAY_MS) },
+          { id: 'r1', targetType: 'FAUNA', poblacion: UMBRAL_MINIMO_REPRODUCCION - 1, poblacionMax: 1000, updatedAt: new Date(Date.now() - 30 * DAY_MS) },
         ]),
         update,
       },
@@ -96,7 +96,7 @@ describe('growAllPopulations', () => {
     const prisma = {
       worldPopulation: {
         // FAUNA a 0.02/día: con solo 1 hora transcurrida, el delta es una fracción muy pequeña de 100.
-        findMany: vi.fn().mockResolvedValue([{ id: 'r1', targetType: 'FAUNA', poblacion: 100, updatedAt: new Date(Date.now() - 60 * 60_000) }]),
+        findMany: vi.fn().mockResolvedValue([{ id: 'r1', targetType: 'FAUNA', poblacion: 100, poblacionMax: 1000, updatedAt: new Date(Date.now() - 60 * 60_000) }]),
         update,
       },
     };
@@ -110,7 +110,7 @@ describe('growAllPopulations', () => {
     const prisma = {
       worldPopulation: {
         // FAUNA, 1000 individuos, 0.02/día, 30 días transcurridos => delta = floor(1000*0.02*30) = 600.
-        findMany: vi.fn().mockResolvedValue([{ id: 'r1', targetType: 'FAUNA', poblacion: 1000, updatedAt: new Date(Date.now() - 30 * DAY_MS) }]),
+        findMany: vi.fn().mockResolvedValue([{ id: 'r1', targetType: 'FAUNA', poblacion: 1000, poblacionMax: 10_000, updatedAt: new Date(Date.now() - 30 * DAY_MS) }]),
         update,
       },
     };
@@ -124,11 +124,41 @@ describe('growAllPopulations', () => {
     const prisma = {
       worldPopulation: {
         // RAZA, 1000 individuos, 0.003/día, 30 días => delta = floor(1000*0.003*30) = 90.
-        findMany: vi.fn().mockResolvedValue([{ id: 'r1', targetType: 'RAZA', poblacion: 1000, updatedAt: new Date(Date.now() - 30 * DAY_MS) }]),
+        findMany: vi.fn().mockResolvedValue([{ id: 'r1', targetType: 'RAZA', poblacion: 1000, poblacionMax: 10_000, updatedAt: new Date(Date.now() - 30 * DAY_MS) }]),
         update,
       },
     };
     await growAllPopulations(prisma as any);
     expect(update).toHaveBeenCalledWith({ where: { id: 'r1' }, data: { poblacion: { increment: 90 } } });
+  });
+
+  // Auditoría de elementos desconectados (2026-08-23): `poblacionMax` se sembraba desde el
+  // principio pero `growAllPopulations` nunca lo leía — crecimiento sin límite real. Estos dos
+  // tests son la regresión de ese fix.
+  it('el crecimiento se recorta al llegar al techo de poblacionMax, en vez de superarlo', async () => {
+    const update = vi.fn().mockResolvedValue({});
+    const prisma = {
+      worldPopulation: {
+        // FAUNA, delta sin tope = floor(1000*0.02*30) = 600, pero solo caben 50 hasta el techo (1050).
+        findMany: vi.fn().mockResolvedValue([{ id: 'r1', targetType: 'FAUNA', poblacion: 1000, poblacionMax: 1050, updatedAt: new Date(Date.now() - 30 * DAY_MS) }]),
+        update,
+      },
+    };
+    const result = await growAllPopulations(prisma as any);
+    expect(update).toHaveBeenCalledWith({ where: { id: 'r1' }, data: { poblacion: { increment: 50 } } });
+    expect(result.updated).toBe(1);
+  });
+
+  it('no toca la fila si ya está en el techo o por encima (poblacion >= poblacionMax)', async () => {
+    const update = vi.fn();
+    const prisma = {
+      worldPopulation: {
+        findMany: vi.fn().mockResolvedValue([{ id: 'r1', targetType: 'FAUNA', poblacion: 1000, poblacionMax: 1000, updatedAt: new Date(Date.now() - 30 * DAY_MS) }]),
+        update,
+      },
+    };
+    const result = await growAllPopulations(prisma as any);
+    expect(update).not.toHaveBeenCalled();
+    expect(result.updated).toBe(0);
   });
 });

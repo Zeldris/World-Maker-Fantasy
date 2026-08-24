@@ -3,6 +3,8 @@ import type { AttributeBlock } from './dice.js';
 import type { SecondaryAttributeBlock } from './secondaryAttributes.js';
 import { checkRequisitos, type Requisitos } from './requisitos.js';
 import { totalQuantity, planConsumption, type IngredientRequirement, type CatalogLookup, type InventoryRowLike } from './ingredients.js';
+import { prisma } from '../lib/prisma.js';
+import { alivioForLevel } from './professionProgress.js';
 import type { Prisma } from '@prisma/client';
 
 export { quantityOf, baseNameOf, planConsumption } from './ingredients.js';
@@ -406,7 +408,10 @@ export async function computeBuildBlockedReason(params: {
     }
   }
   if (buildRecipe.upgradesRecipeKey) {
-    const target = await db.building.findFirst({ where: { saveId, recipeKey: buildRecipe.upgradesRecipeKey } });
+    // `status: 'ACTIVO'` (2026-08-23, Grupo 3 § Building.status): antes de que EN_CONSTRUCCION
+    // fuera alcanzable de verdad, esta fila SIEMPRE era ACTIVO, así que el filtro no hacía falta —
+    // ahora sí, para no dejar mejorar un Ayuntamiento que todavía se está terminando de levantar.
+    const target = await db.building.findFirst({ where: { saveId, recipeKey: buildRecipe.upgradesRecipeKey, status: 'ACTIVO' } });
     const expectedCurrentTier = (buildRecipe.ayuntamientoNivel ?? 1) - 1;
     if (!target) {
       return 'no tiene ningún Ayuntamiento que mejorar todavía';
@@ -425,4 +430,94 @@ export async function computeBuildBlockedReason(params: {
     }
   }
   return null;
+}
+
+/// Building.status EN_CONSTRUCCION real (2026-08-23, Grupo 3 — auditoría de elementos
+/// desconectados, 2026-08-23: "EN_CONSTRUCCION/DANADO/ABANDONADO son todos inalcanzables, todo se
+/// crea directamente como ACTIVO"). Hasta ahora, la fila de `Building` no existía en absoluto
+/// hasta que la construcción ya estaba terminada (se crea dentro de `narrateAndPersistTurn`, solo
+/// al resolverse el `CharacterTransit` de la acción larga) — no había ningún momento intermedio
+/// visible en la partida donde "existe pero se está construyendo".
+///
+/// Llamada desde `turn.ts` en el mismo instante en que se crea ese `CharacterTransit` (chequeo
+/// barato de intención primero, mismo criterio que `detectDeterministicCraft`), para poder crear
+/// la fila YA con `status: 'EN_CONSTRUCCION'` — el propio panel de Reino ya sabía pintar esa
+/// etiqueta, solo esperaba a que el motor la produjera alguna vez. El chequeo de aquí es "mejor
+/// esfuerzo" (con `prisma`, no `tx`) exactamente igual que `resolveBuildIntentContext`
+/// (turnResolution.ts): la revalidación real y obligatoria sigue pasando dentro de la transacción
+/// al resolver, que puede seguir rechazando la construcción si algo cambió mientras tanto — ver
+/// `earlyBuildingId` en turnResolution.ts para cómo se borra esa fila a medias si eso pasa.
+///
+/// Acotado a construcción NUEVA (`!buildRecipe.upgradesRecipeKey`): una mejora de Ayuntamiento
+/// sigue resolviéndose síncrona como siempre, sin fila EN_CONSTRUCCION propia — el edificio base
+/// ya existe y sigue ACTIVO mientras dura la mejora, no hace falta un estado intermedio nuevo para
+/// eso (alcance acordado con la usuaria, primera pasada).
+export async function planDeterministicBuild(params: {
+  action: string;
+  worldId: string;
+  saveId: string;
+  currentLocationId: string;
+  activeRegion: string | null;
+  inventoryRows: InventoryRowLike[];
+  attributes: AttributeBlock;
+  secondaryAttributes: SecondaryAttributeBlock;
+}): Promise<ConstructionRecipe | null> {
+  const { action, worldId, saveId, currentLocationId, activeRegion, inventoryRows, attributes, secondaryAttributes } = params;
+  const buildRecipe = CONSTRUCTION_RECIPES.find((r) => detectsBuildIntent(r, action));
+  if (!buildRecipe || buildRecipe.upgradesRecipeKey) return null;
+
+  const catalogSlugs = [...new Set(inventoryRows.map((i) => i.catalogSlug).filter((s): s is string => Boolean(s)))];
+  const [catalogRows, professionProgressRows] = await Promise.all([
+    catalogSlugs.length
+      ? prisma.itemCatalog.findMany({
+          where: { worldId, slug: { in: catalogSlugs } },
+          select: {
+            slug: true,
+            tipo: true,
+            category: true,
+            curaHasta: true,
+            curaUnPaso: true,
+            tipoArma: true,
+            curaEnergia: true,
+            equipSlot: true,
+            effectKey: true,
+            aliases: true,
+            herramientaParaOficio: true,
+          },
+        })
+      : Promise.resolve([]),
+    prisma.professionProgress.findMany({ where: { saveId } }),
+  ]);
+  const catalogBySlug: Map<string, CatalogLookup> = new Map(
+    catalogRows.map((c) => [
+      c.slug,
+      {
+        tipo: c.tipo,
+        category: c.category,
+        curaHasta: c.curaHasta,
+        curaUnPaso: c.curaUnPaso,
+        tipoArma: c.tipoArma,
+        curaEnergia: c.curaEnergia,
+        equipSlot: c.equipSlot,
+        effectKey: c.effectKey,
+        aliases: c.aliases,
+        herramientaParaOficio: c.herramientaParaOficio,
+      },
+    ]),
+  );
+  const oficioNivelById = new Map(professionProgressRows.map((p) => [p.professionId, p.nivel]));
+  const alivio = buildRecipe.oficio ? alivioForLevel(oficioNivelById.get(buildRecipe.oficio) ?? 1) : 0;
+
+  const check = checkRecipe(buildRecipe, inventoryRows, catalogBySlug, attributes, secondaryAttributes, alivio);
+  if (!check.met) return null;
+  const blockedReason = await computeBuildBlockedReason({
+    db: prisma,
+    saveId,
+    worldId,
+    buildRecipe,
+    activeRegion,
+    currentLocationRecord: { id: currentLocationId },
+  });
+  if (blockedReason) return null;
+  return buildRecipe;
 }

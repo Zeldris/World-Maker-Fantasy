@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeAll, afterAll } from 'vitest';
+import { describe, it, expect, vi, beforeAll, afterAll, afterEach } from 'vitest';
 import Fastify from 'fastify';
 import { Prisma } from '@prisma/client';
 import { prisma } from '../lib/prisma.js';
@@ -1522,6 +1522,117 @@ describe('Ayuntamiento: fundación, desbloqueo de reino y mejora in-place', () =
     expect(await prisma.building.count({ where: { saveId, recipeKey: 'ayuntamiento' } })).toBe(1);
     expect(await prisma.territory.count({ where: { saveId } })).toBe(territoriesBefore);
   }, 15_000);
+});
+
+// Cobertura nueva (2026-08-23, Grupo 3 § Territory.control/population — docs/10-niveles-xp-reino.md
+// § 5.4, diseñado desde 2026-07-23 pero nunca conectado hasta ahora). Territory/KingdomStats se
+// siembran DIRECTO por Prisma (no fundando de verdad) para controlar la felicidad exacta desde el
+// primer día — lo que se prueba aquí es el enganche real dentro de turnResolution.ts, no el propio
+// tick puro (eso ya lo cubre kingdomTick.test.ts a fondo). Un solo turno con `duracionEstimadaMinutos`
+// enorme cruza los 7 días de golpe (mismo patrón ya usado por el resto de este archivo con
+// construcciones "banda larga"), evitando 7 turnos reales por test.
+describe('Territory.control/population: felicidad sostenida consolida o rebela (Grupo 3, 2026-08-23)', () => {
+  let saveId: string;
+  let territoryId: string;
+  let buildingId: string;
+
+  async function setUp(felicidadFija: number) {
+    const userId = await getDefaultUserId();
+    const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
+    const hondonada = await prisma.location.findFirstOrThrow({ where: { worldId: world.id, slug: 'hondonada-del-eco' } });
+    const save = await prisma.save.create({
+      data: {
+        userId,
+        worldId: world.id,
+        characterName: `Gorhorn de prueba reino ${felicidadFija}`,
+        characterArchetype: 'guerrero',
+        characterOrigin: 'Clan Maktor',
+        characterMotivation: 'x',
+        attributes: ATTRS_CARISMATICO,
+        portraitInitial: 'G',
+        currentLocationId: hondonada.id,
+      },
+    });
+    saveId = save.id;
+    await prisma.worldState.create({ data: { saveId } });
+    const territory = await prisma.territory.create({
+      data: { saveId, name: 'Territorio de prueba', region: 'Las Llanuras del Viento Rojo', description: 'x', control: 'RECLAMADO', population: 15 },
+    });
+    territoryId = territory.id;
+    const building = await prisma.building.create({
+      data: { saveId, territoryId, name: 'Choza de prueba', kind: 'choza', recipeKey: 'choza', description: 'x', status: 'ACTIVO' },
+    });
+    buildingId = building.id;
+    // Felicidad fija: `poblacion`/`soldados`/`visitantes` en 0 → `bocas` = 0 → sin déficit/superávit
+    // real que la mueva sola, se queda plana durante los 7 días (aísla la racha de lo que ya
+    // cubren los tests de tickKingdomOneDay).
+    await prisma.kingdomStats.create({ data: { saveId, felicidad: felicidadFija } });
+    classifyAction.mockResolvedValue({
+      requiereTirada: false, atributo: 'voluntad', dificultad: 15, razon: 'x', banda: 'larga', duracionEstimadaMinutos: 7 * 1440 + 60,
+    });
+  }
+
+  afterEach(async () => {
+    await prisma.save.delete({ where: { id: saveId } });
+  });
+
+  // `doTurn` (definido más abajo) fuerza `enCombate: true` en las dos llamadas — un guard real de
+  // turn.ts ("acción de combate clasificada como banda larga... forzada a instantánea") colapsa
+  // entonces la banda 'larga' mockeada a 'instantanea' cuando la escena trae cualquier NPC (aquí,
+  // el gancho de sesión de Hondonada del Eco), rompiendo el salto de 7 días de golpe que necesita
+  // este test. "Espero aquí" no es una acción de combate — `enCombate: false` es lo correcto Y
+  // evita el guard.
+  async function doPassiveTurn(action: string) {
+    const app = await buildApp();
+    const classifyRes = await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action, enCombate: false } });
+    const { classification, roll } = classifyRes.json();
+    return app.inject({ method: 'POST', url: '/turn/narrate', payload: { saveId, action, classification, roll, enCombate: false } });
+  }
+
+  it('felicidad ≥70 sostenida 7 días consolida el territorio y da 300 XP de Reino', async () => {
+    await setUp(70);
+    const xpAntes = (await prisma.save.findUniqueOrThrow({ where: { id: saveId } })).xp;
+    narrateAction.mockClear();
+    // A diferencia de las construcciones deterministas (Ayuntamiento, más abajo), "esperar" SÍ es
+    // una acción narrada por el LLM de verdad (mockeado) — no hay atajo determinista que la evite,
+    // así que aquí no se comprueba si `narrateAction` se llamó o no, solo el resultado mecánico
+    // real de Territory/KingdomStats tras el salto de 7 días.
+    const res = await doPassiveTurn('Espero aquí, dejando pasar los días tranquilamente.');
+
+    const territory = await prisma.territory.findUniqueOrThrow({ where: { id: territoryId } });
+    expect(territory.control).toBe('CONSOLIDADO');
+    expect(territory.population).toBeGreaterThan(15); // felicidad alta también hace crecer la población
+
+    const save = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
+    expect(save.xp - xpAntes).toBe(300);
+    expect(lastNdjsonLine(res.payload)).toBeTruthy();
+  }, 20_000);
+
+  it('felicidad ≤20 sostenida 7 días pierde el territorio (población a 0) y abandona sus edificios', async () => {
+    await setUp(20);
+    narrateAction.mockClear();
+    await doPassiveTurn('Espero aquí, dejando pasar los días tranquilamente.');
+
+    const territory = await prisma.territory.findUniqueOrThrow({ where: { id: territoryId } });
+    expect(territory.control).toBe('PERDIDO');
+    expect(territory.population).toBe(0);
+
+    const building = await prisma.building.findUniqueOrThrow({ where: { id: buildingId } });
+    expect(building.status).toBe('ABANDONADO');
+  }, 20_000);
+
+  it('felicidad neutral (50) no consolida ni rebela — el territorio se queda RECLAMADO', async () => {
+    await setUp(50);
+    narrateAction.mockClear();
+    await doPassiveTurn('Espero aquí, dejando pasar los días tranquilamente.');
+
+    const territory = await prisma.territory.findUniqueOrThrow({ where: { id: territoryId } });
+    expect(territory.control).toBe('RECLAMADO');
+    expect(territory.population).toBe(15); // ni crece ni decrece en la banda neutral
+
+    const building = await prisma.building.findUniqueOrThrow({ where: { id: buildingId } });
+    expect(building.status).toBe('ACTIVO');
+  }, 20_000);
 });
 
 // Cobertura nueva (auditoría de deuda técnica 2026-08-04, bug real de condición de carrera):

@@ -7,8 +7,19 @@ import type { ItemTipo } from '@prisma/client';
 /// para distinguir recurso crudo de material ya procesado (antes todo caía en un único
 /// `category: 'material'` genérico).
 export const CATEGORY_VOCAB_BY_TIPO: Record<ItemTipo, string[]> = {
-  RECURSO: ['piel', 'hueso', 'madera', 'piedra', 'mena', 'hierba', 'pluma', 'quitina', 'resina', 'fibras','tendon','quitina','escamas','semilla'],
-  MATERIAL: ['metal', 'bloque'],
+  // Auditoría 2026-08-23 (Grupo 3, al descubrir que `seed-catalog` llevaba rota — 19 objetos de
+  // varias sesiones de lore usaban categorías nunca dadas de alta aquí): 'planta'/'cera'/
+  // 'alimento'/'pelo'/'filtro'/'medicinal'/'cuerno'/'garra' añadidas — vocabulario ya en uso real
+  // y consistente en el catálogo, solo faltaba aquí. No son sinónimos de nada existente (a
+  // diferencia de 'fibra'/'escama', normalizadas a sus plurales ya válidos en los propios objetos).
+  RECURSO: [
+    'piel', 'hueso', 'madera', 'piedra', 'mena', 'hierba', 'pluma', 'quitina', 'resina', 'fibras', 'tendon', 'escamas', 'semilla',
+    'planta', 'cera', 'alimento', 'pelo', 'filtro', 'medicinal', 'cuerno', 'garra',
+  ],
+  // 'quitina' (2026-08-23): forma YA PROCESADA ("pieza de quitina roja... trabajados hasta formar
+  // una pieza completa lista para crafteo") — mismo criterio que 'metal'/'bloque', su versión
+  // cruda vive en RECURSO.
+  MATERIAL: ['metal', 'bloque', 'quitina'],
   EQUIPABLE: ['arma', 'herramienta', 'ropa','accesorio','armadura'],
   CONSUMIBLE: ['consumible', 'medicinal'],
   // 'cosmetico' añadido 2026-08-03 (petición explícita: "crear... una categoría que es

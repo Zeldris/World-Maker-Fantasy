@@ -3,27 +3,29 @@ import { classAbilityUnlocksFor, allClassAbilityUnlocks, classAbilityUnlocksForC
 
 // Cobertura nueva (auditoría 2026-08-03, "análisis completo backend/frontend"). Actualizada
 // 2026-08-15: el roster pasó de 4 habilidades (todas a nivel 1) a 7, repartidas por nivel
-// (Guerrero: 1/4/6/8, Cazador: 1/4/8) — ver classAbilities.ts.
+// (Guerrero: 1/4/6/8, Cazador: 1/4/8) — ver classAbilities.ts. Actualizada 2026-08-24: Gorhorn
+// deja de ser "variante especial de ambas clases" y pasa a Cazador puro (petición explícita de la
+// usuaria) — pierde las 4 de Guerrero, se queda solo con las 3 de Cazador.
 
 describe('classAbilityUnlocksFor', () => {
-  it('Gorhorn aprende 1 de cada clase a nivel 1 (variante especial: ambas clases)', () => {
+  it('Gorhorn aprende solo la de Cazador a nivel 1 (ya no es dual-clase)', () => {
     const result = classAbilityUnlocksFor('Gorhorn', 1);
-    expect(result.map((a) => a.name).sort()).toEqual(['Analisis Salvaje', 'Grito de Guerra'].sort());
+    expect(result.map((a) => a.name)).toEqual(['Analisis Salvaje']);
   });
 
-  it('a nivel 4 desbloquea 1 más de cada clase', () => {
+  it('a nivel 4 desbloquea solo la de Cazador', () => {
     const result = classAbilityUnlocksFor('Gorhorn', 4);
-    expect(result.map((a) => a.name).sort()).toEqual(['Barrido Salvaje', 'Detectar Puntos Débiles'].sort());
+    expect(result.map((a) => a.name)).toEqual(['Barrido Salvaje']);
   });
 
-  it('a nivel 6 solo desbloquea la de Guerrero (Cazador no tiene nada a ese nivel)', () => {
+  it('a nivel 6 no desbloquea nada (esa habilidad era de Guerrero, ya no aplica)', () => {
     const result = classAbilityUnlocksFor('Gorhorn', 6);
-    expect(result.map((a) => a.name)).toEqual(['Grito tenebroso']);
+    expect(result).toEqual([]);
   });
 
-  it('a nivel 8 desbloquea la última de cada clase, incluida la pasiva de Cazador', () => {
+  it('a nivel 8 desbloquea la pasiva de Cazador, ya no Contraataque (Guerrero)', () => {
     const result = classAbilityUnlocksFor('Gorhorn', 8);
-    expect(result.map((a) => a.name).sort()).toEqual(['Compañero cazador', 'Contraataque'].sort());
+    expect(result.map((a) => a.name)).toEqual(['Compañero cazador']);
   });
 
   // Rediseño de combate (2026-08-09): la mayoría son rol:'utilidad' — nunca hacen daño

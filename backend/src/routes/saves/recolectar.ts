@@ -67,8 +67,10 @@ interface SourceCandidate {
   disponible: number;
   /// `tier` (rediseño de recolección, 2026-08-22) solo se usa para calcular la dificultad de
   /// `rollGathering` dentro de esta misma ruta — nunca sale hacia `groupByCategory`/el frontend
-  /// (`CategoryYield` no lo declara, así que se descarta sin más al agrupar).
-  yields: { itemSlug: string; itemName: string; cantidadMaxima: number; tier: number | null }[];
+  /// (`CategoryYield` no lo declara, así que se descarta sin más al agrupar). `sinTirada`
+  /// (2026-08-23) igual: solo lo lee `applyGatheringRoll` para saltarse el filtro de grado en
+  /// este mismo yield, nunca sale hacia el frontend.
+  yields: { itemSlug: string; itemName: string; cantidadMaxima: number; tier: number | null; sinTirada: boolean }[];
 }
 
 interface CategoryYield {
@@ -169,7 +171,7 @@ async function candidateSourcesFor(
       sourceSlug: pop.targetSlug,
       sourceCategory: sourceRows[0].sourceCategory,
       disponible: pop.poblacion,
-      yields: sourceRows.map((r) => ({ itemSlug: r.item.slug, itemName: r.item.name, cantidadMaxima: r.cantidad, tier: r.item.tier })),
+      yields: sourceRows.map((r) => ({ itemSlug: r.item.slug, itemName: r.item.name, cantidadMaxima: r.cantidad, tier: r.item.tier, sinTirada: r.sinTirada })),
     });
   }
   return { candidates, anyOnCooldown };
@@ -224,7 +226,7 @@ async function carcassCandidatesFor(worldId: string, saveId: string, currentLoca
         // para no truncar `Math.min(cantidadMaxima, disponible)` en el modal, así que se fija al
         // mayor `cantidad` de sus propios yields (nunca el cuello de botella real).
         disponible: Math.max(1, ...yieldRows.map((r) => r.cantidad)),
-        yields: yieldRows.map((r) => ({ itemSlug: r.item.slug, itemName: r.item.name, cantidadMaxima: r.cantidad, tier: r.item.tier })),
+        yields: yieldRows.map((r) => ({ itemSlug: r.item.slug, itemName: r.item.name, cantidadMaxima: r.cantidad, tier: r.item.tier, sinTirada: r.sinTirada })),
       };
     });
 }
@@ -262,8 +264,10 @@ function applyGatheringRoll(candidates: SourceCandidate[], roll: GatheringRollRe
   return candidates
     .map((c) => ({
       ...c,
+      // `sinTirada` (2026-08-23): reconocimiento trivial, pasa intacto sin comparar contra
+      // ninguna dificultad — nunca se recorta ni desaparece por un mal resultado.
       yields: c.yields
-        .map((y) => ({ ...y, cantidadMaxima: cantidadForGrado(gradoForRecurso(roll.result, dificultadForTier(y.tier)), y.cantidadMaxima) }))
+        .map((y) => (y.sinTirada ? y : { ...y, cantidadMaxima: cantidadForGrado(gradoForRecurso(roll.result, dificultadForTier(y.tier)), y.cantidadMaxima) }))
         .filter((y) => y.cantidadMaxima > 0),
     }))
     .filter((c) => c.yields.length > 0);
@@ -473,20 +477,26 @@ export async function recolectarRoutes(app: FastifyInstance) {
         let unitsRemaining = Math.max(0, capacity - totalInventoryUnits(currentItems));
 
         // Herramienta requerida (2026-08-17, "usar la recolección de desuello" depende de tener
-        // la herramienta encima) — comprobado UNA vez para toda la petición, no por selección:
-        // metodoObtencion 'CAZA' aquí es siempre desuello (despiece de una presa ya derrotada, ver
-        // comentario de cabecera), nunca la caza de una presa viva (eso vive en otra ruta).
-        const hasDesolladorTool = OFICIOS_CON_HERRAMIENTA_REQUERIDA.includes('desollador')
-          ? await (async () => {
-              const toolRows = await tx.inventoryItem.findMany({ where: { saveId: save.id }, select: { id: true, name: true, catalogSlug: true } });
-              const toolCatalogSlugs = [...new Set(toolRows.map((r) => r.catalogSlug).filter((s): s is string => Boolean(s)))];
-              const toolCatalogRows = toolCatalogSlugs.length
-                ? await tx.itemCatalog.findMany({ where: { worldId: save.worldId, slug: { in: toolCatalogSlugs } }, select: { slug: true, tipo: true, category: true, herramientaParaOficio: true } })
-                : [];
-              const toolCatalogBySlug = new Map(toolCatalogRows.map((c) => [c.slug, c]));
-              return hasToolForOficio('desollador', toolRows, toolCatalogBySlug);
-            })()
-          : true;
+        // la herramienta encima; ampliado 2026-08-23 a minero, ver OFICIOS_CON_HERRAMIENTA_REQUERIDA
+        // en crafting.ts) — comprobado UNA vez para toda la petición, no por selección. La misma
+        // foto de inventario sirve para ambos oficios: `hasToolFor` decide por `metodoObtencion` de
+        // cada `yieldRow` dentro del bucle (CAZA aquí es siempre desuello — despiece de una presa
+        // ya derrotada, ver comentario de cabecera — nunca la caza de una presa viva, que vive en
+        // otra ruta; MINERIA es siempre minero).
+        const [toolRows, toolCatalogBySlug] = await (async () => {
+          const rows = await tx.inventoryItem.findMany({ where: { saveId: save.id }, select: { id: true, name: true, catalogSlug: true } });
+          const catalogSlugs = [...new Set(rows.map((r) => r.catalogSlug).filter((s): s is string => Boolean(s)))];
+          const catalogRows = catalogSlugs.length
+            ? await tx.itemCatalog.findMany({ where: { worldId: save.worldId, slug: { in: catalogSlugs } }, select: { slug: true, tipo: true, category: true, herramientaParaOficio: true } })
+            : [];
+          return [rows, new Map(catalogRows.map((c) => [c.slug, c]))] as const;
+        })();
+        const hasDesolladorTool = OFICIOS_CON_HERRAMIENTA_REQUERIDA.includes('desollador') ? hasToolForOficio('desollador', toolRows, toolCatalogBySlug) : true;
+        // Minero (2026-08-23, Grupo 3 § HarvestYield.condicion) NO está en
+        // OFICIOS_CON_HERRAMIENTA_REQUERIDA a propósito (bloquear el oficio entero impedía minar
+        // hasta Piedra común) — este check se computa siempre, y solo se aplica más abajo a los
+        // yields concretos marcados `requiereHerramienta` (mena de Yerreo, mena de hierro).
+        const hasMineroTool = hasToolForOficio('minero', toolRows, toolCatalogBySlug);
 
         // Acumula en la pila ya existente en vez de crear siempre una fila nueva (bug real jugando
         // en vivo, 2026-08-07: "Piedra (3)" + "Piedra (3)" sueltas en vez de "Piedra (6)") — mismo
@@ -561,6 +571,9 @@ export async function recolectarRoutes(app: FastifyInstance) {
             }
             anyCaza = true;
           } else {
+            // Pico de minero (2026-08-23) — igual que el guard de CAZA arriba, comprobado antes
+            // de tocar población: sin herramienta, esta selección concreta no se materializa.
+            if (yieldRow.requiereHerramienta && !hasMineroTool) continue;
             // Depleción atómica (mismo patrón que decrementPopulationOnDeath, population.ts) — el
             // guard `poblacion: { gte: cantidad }` evita bajar de 0 sin necesitar releer nada antes.
             // Cooldown real (bug real jugando en vivo, 2026-08-07: "minar indefinidamente sin

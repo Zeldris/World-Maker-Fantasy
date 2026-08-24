@@ -491,6 +491,66 @@ describe('POST /saves/:id/recolectar/confirmar', () => {
     expect(createInventoryItem).not.toHaveBeenCalled();
   });
 
+  // Pico de minero (2026-08-23, Grupo 3 § HarvestYield.condicion) — a diferencia de desollador
+  // (gate por OFICIO ENTERO), minero es un gate POR YIELD (`requiereHerramienta`): bloquear todo
+  // el oficio dejaba sin poder minar ni Piedra común (bug real encontrado en
+  // recolectar.integration.test.ts). Estos dos yields SÍ lo llevan (mena de Yerreo).
+  it('sin pico de minero en el inventario, un yield con requiereHerramienta no da nada', async () => {
+    findFirstHarvestYield.mockResolvedValue({ cantidad: 2, metodoObtencion: 'MINERIA', requiereHerramienta: true, item: { slug: 'mena-yerreo', name: 'Mena de Yerreo' } });
+    updateManyWorldPopulation.mockResolvedValue({ count: 1 });
+    const app = await buildApp();
+
+    const res = await app.inject({
+      method: 'POST',
+      url: '/saves/save1/recolectar/confirmar',
+      payload: { selections: [{ sourceSlug: 'yerreo', itemSlug: 'mena-yerreo', cantidad: 1 }] },
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(JSON.parse(res.body).items).toEqual([]);
+    expect(updateManyWorldPopulation).not.toHaveBeenCalled();
+    expect(createInventoryItem).not.toHaveBeenCalled();
+  });
+
+  it('con el pico de minero en el inventario, un yield con requiereHerramienta sí da el objeto', async () => {
+    findManyInventoryItem.mockResolvedValue([{ id: 'tool1', name: 'Pico de minero', catalogSlug: 'pico-minero' }]);
+    findManyItemCatalogTx.mockResolvedValue([{ slug: 'pico-minero', tipo: 'EQUIPABLE', category: 'herramienta', herramientaParaOficio: ['minero'] }]);
+    findFirstHarvestYield.mockResolvedValue({ cantidad: 2, metodoObtencion: 'MINERIA', requiereHerramienta: true, item: { slug: 'mena-yerreo', name: 'Mena de Yerreo' } });
+    updateManyWorldPopulation.mockResolvedValue({ count: 1 });
+    createInventoryItem.mockResolvedValue({ id: 'item1' });
+    const app = await buildApp();
+
+    const res = await app.inject({
+      method: 'POST',
+      url: '/saves/save1/recolectar/confirmar',
+      payload: { selections: [{ sourceSlug: 'yerreo', itemSlug: 'mena-yerreo', cantidad: 1 }] },
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(JSON.parse(res.body).items).not.toEqual([]);
+    expect(updateManyWorldPopulation).toHaveBeenCalled();
+  });
+
+  // Guard directo del bug real de arriba (auditoría 2026-08-23, confirmado en
+  // recolectar.integration.test.ts): un yield de minero SIN requiereHerramienta (Piedra común)
+  // tiene que seguir dando sin ninguna herramienta en el inventario.
+  it('un yield de minero SIN requiereHerramienta (ej. Piedra) da sin ninguna herramienta en el inventario', async () => {
+    findFirstHarvestYield.mockResolvedValue({ cantidad: 3, metodoObtencion: 'MINERIA', requiereHerramienta: false, item: { slug: 'piedra', name: 'Piedra' } });
+    updateManyWorldPopulation.mockResolvedValue({ count: 1 });
+    createInventoryItem.mockResolvedValue({ id: 'item1' });
+    const app = await buildApp();
+
+    const res = await app.inject({
+      method: 'POST',
+      url: '/saves/save1/recolectar/confirmar',
+      payload: { selections: [{ sourceSlug: 'roca-pilares-rotos', itemSlug: 'piedra', cantidad: 3 }] },
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(JSON.parse(res.body).items).not.toEqual([]);
+    expect(updateManyWorldPopulation).toHaveBeenCalled();
+  });
+
   it('un cadáver ya despiezado (saqueado:true) no da nada — el guard atómico lo bloquea', async () => {
     findFirstHarvestYield.mockResolvedValue({ cantidad: 1, metodoObtencion: 'CAZA', item: { slug: 'piel-corretolvas', name: 'Piel de Corretolvas' } });
     findUniqueNpcTx.mockResolvedValue({ id: 'npc1', kind: 'PLANTILLA' });
@@ -881,6 +941,35 @@ describe('GET /saves/:id/recolectar/:oficio', () => {
       const body = JSON.parse(res.body);
       expect(body.sources).toEqual([]);
       expect(body.roll.result).toBeLessThan(30);
+    });
+
+    // sinTirada (2026-08-23, Grupo 3 § HarvestYield.condicion) — mismo montaje que el test de
+    // arriba (fuerza 0 + tier 20 = fallo garantizado con cualquier d20), pero con sinTirada:true
+    // el yield debe aparecer igualmente, sin comparar contra la dificultad.
+    it('un yield con sinTirada:true aparece siempre, aunque la dificultad sea inalcanzable', async () => {
+      findUniqueSave.mockResolvedValue({
+        id: 'save1',
+        worldId: 'world1',
+        currentLocationId: 'loc1',
+        currentLocation: { region: 'Las Llanuras del Viento Rojo' },
+        attributes: { fuerza: 0, destreza: 0, constitucion: 10, inteligencia: 10, voluntad: 10, carisma: 10, arcano: 10 },
+        secondaryAttributes: { suerte: 0 },
+        inventoryItems: [],
+        professionProgress: [],
+      });
+      findManyHarvestYield.mockResolvedValue([
+        { sourceSlug: 'salvia-del-polvo', sourceCategory: 'planta', item: { slug: 'manojo-salvia-polvo', name: 'Manojo de salvia del polvo', tier: 20 }, cantidad: 1, sinTirada: true },
+      ]);
+      findManyWorldPopulation.mockResolvedValue([
+        { targetSlug: 'salvia-del-polvo', poblacion: 40, distribucion: { 'Llanuras del Viento Rojo': 1 }, lastHarvestedAt: null, lastHarvestedLocationId: null },
+      ]);
+      const app = await buildApp();
+
+      const res = await app.inject({ method: 'POST', url: '/saves/save1/recolectar/herborista-llanuras/explorar' });
+
+      const body = JSON.parse(res.body);
+      expect(body.sources).not.toEqual([]);
+      expect(body.sources[0].yields[0].cantidadMaxima).toBe(1);
     });
 
     it('el nivel del oficio (alivioForLevel) llega correctamente al roll de la respuesta', async () => {

@@ -37,13 +37,13 @@ Mientras Tarkor completa su arco (en paralelo, no necesariamente después), el r
 - **Goirme** dispone cada cosa en su sitio — la simetría antinatural de La Meseta del Orden es obra suya.
 - **Sezix** fija los límites de lo que termina, y la Niebla del Estrecho.
 - **Berd** construye las herramientas con las que sus hermanas afinan sus propios poderes.
-- **El que Brota** y **El que Nace** (Semillas neutrales sin nombre revelado) levantan entre ambas la flora y fauna salvajes, en equilibrio, anteriores al Estallido.
+- **Florial** ("El que Brota") y **Ferios** ("El que Nace") *(nombradas 2026-08-23, ver [genesis.md § Las Semillas](genesis.md))* — Semillas neutrales, levantan entre ambas la flora y fauna salvajes, en equilibrio, anteriores al Estallido.
 
 ## (sin fechar, pero en este orden) Las razas "diseñadas"
 
 De este proceso deliberado nacen, en dos oleadas:
 1. **Primera oleada**: Kelife, Goirntes, Kalisar, Jusaly, Ilvenar.
-2. **Segunda oleada, "ya avanzada la era"**: los Nabieus (de Kroj) y los Faerus (de El que Nace) — **los últimos en asentarse** de las razas diseñadas (ver [razas.md](razas.md#faerus--los-furiosos) y [genesis.md § Las razas diseñadas](genesis.md#las-razas-diseñadas)).
+2. **Segunda oleada, "ya avanzada la era"**: los Nabieus (de Kroj) y los Faerus (de Ferios, "El que Nace") — **los últimos en asentarse** de las razas diseñadas (ver [razas.md](razas.md#faerus--los-furiosos) y [genesis.md § Las razas diseñadas](genesis.md#las-razas-diseñadas)).
 
 **Resuelto (2026-08-03)**: el año 0 marca el **final** de esta era, no el principio — el momento en que los Faerus, última raza diseñada en asentarse, terminan de hacerlo y se cierra el reparto de razas de Madre. Confirmado por la usuaria contra la duda inicial de si "primera vida inteligente que pobló Helek Sirik" quería decir literalmente la primera en el tiempo (no: los Faerus siguen siendo los últimos en asentarse de las razas diseñadas, tal y como ya decía este documento).
 

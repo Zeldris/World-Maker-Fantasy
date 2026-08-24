@@ -114,6 +114,15 @@ Cada entrada: fecha, qué se detectó (cita textual si es narración), causa ra�
 **2026-08-21**
 - [mensaje de iniciativa + tirada de dados perdidos al recargar tras abrir combate](#2026-08-21-mensaje-de-iniciativa-tirada-de-dados-perdidos-al-recargar-tras-abrir-combate)
 
+**2026-08-23**
+- [Quio narrado en 3 ubicaciones distintas el mismo día](#2026-08-23-quio-narrado-en-3-ubicaciones-distintas-el-mismo-día)
+- [Cruzavientos ataca repetidamente y nunca se narra quién es (reportado en vivo por la usuaria)](#2026-08-23-cruzavientos-ataca-repetidamente-y-nunca-se-narra-quién-es-reportado-en-vivo-por-la-usuaria)
+- [Ruptidar "ataca" en combate pese a ser INOFENSIVO/"No ataca"](#2026-08-23-ruptidar-ataca-en-combate-pese-a-ser-inofensivono-ataca)
+- [Ruptidar descrito como "insecto" con "alas rotas" (es un reptil sin alas)](#2026-08-23-ruptidar-descrito-como-insecto-con-alas-rotas-es-un-reptil-sin-alas)
+- [continuación: "several pasos", inglés colado en narración española (2ª vez)](#2026-08-23-continuación-several-pasos-inglés-colado-en-narración-española-2ª-vez)
+- [continuación: "reptil reptilise"/"reptil reptil reptil", errores gramaticales del modelo](#2026-08-23-continuación-reptil-reptilisereptil-reptil-reptil-errores-gramaticales-del-modelo)
+- [XP de capítulo (+500×2) verificado — NO ES BUG](#2026-08-23-xp-de-capítulo-500×2-verificado--no-es-bug)
+
 ---
 
 ## 2026-08-01 — descansar no curaba + objeto médico narrado sin usarse
@@ -2784,3 +2793,135 @@ conflictiva en territorio con dueño), el popup de fundación de reino se quedab
 **Fix aplicado**: renombrado `'PACIFICA'` → `'CONQUISTADA'` en los tres sitios.
 
 **Estado**: FIJADO. `tsc -b` limpio en frontend tras el cambio.
+
+## 2026-08-23 — Quio narrado en 3 ubicaciones distintas el mismo día
+
+**Síntoma**: la partida de Gorhorn (save `cms82odjc000qri0up7n1msni`) narra a "el Quio" como fauna
+ambiental presente en tres escenas del mismo Día 1, en tres lugares muy alejados entre sí:
+La Hondonada del Eco (08:16, combate de apertura contra el Orco Enfurecido — *"El Quio reacciona
+con un gruñido bajo"*), el Paso de los Pilares Rotos (10:46/11:38, dos intentos de huida —
+*"el Quio, unido a su rutina diaria, no parece prestarle atención"*), y por fin Los Manaderos
+(14:16 — *"El Quio lo observa desde la orilla del manadero"*), que es su hogar real.
+
+**Confirmado por la usuaria en directo**: reporta el mismo síntoma con sus propias palabras ("meter
+al gusano por todas partes") sin haber visto todavía este hallazgo — coincide de forma independiente.
+
+**Causa raíz (confirmada, ligada a un pendiente de diseño YA CONOCIDO desde 2026-08-21)**: `quio`
+no tiene ninguna fila en `faunaTerrainTag` ni `harvestSourceHomeLocationSlug` (confirmado por grep
+en `worldCatalog.ts`) que lo ancle a Los Manaderos — y esto no es un descuido aislado, es la
+práctica totalidad del catálogo (`harvestSourceRegion` ancla case todo a "Llanuras del Viento Rojo"
+en conjunto, no a zonas concretas), un pendiente de diseño que la propia usuaria ya señaló el
+2026-08-21 y aparcó explícitamente ("eso lo miramos si no en otro momento" — ver
+`ampliar-lore-checklist.md` § Pendiente de diseño). Esta partida es la primera evidencia real
+jugando de que ese aparcamiento tiene coste de inmersión real, no solo teórico.
+
+**Estado**: PENDIENTE — ligado directamente al pendiente de diseño de anclaje por zona ya abierto,
+subida de prioridad anotada ahí. Candidato de arreglo rápido y parcial: darle a `quio` un
+`faunaTerrainTag` (`'humedo'`, coherente con sus vecinos de Los Manaderos), pero el arreglo real y
+completo pasa por la decisión de diseño más amplia (anclar TODO el catálogo por zona, no solo Quio).
+
+## 2026-08-23 — Cruzavientos ataca repetidamente y nunca se narra quién es (reportado en vivo por la usuaria)
+
+**Síntoma reportado por la usuaria**: "un cruzavientos me lleva atacando y he tenido que huir de él
+como 10 veces y no se narra en ningún lado" — confirmó que TODOS los "Intento huir de este combate"
+del log (ver entrada de Quio arriba) son en realidad contra el Cruzavientos, "en todas las zonas por
+las que he pasado y varias veces" — no solo cerca de Los Pilares Rotos, donde anida según su lore.
+
+**Investigación**: el `Save` real (`cms82odjc000qri0up7n1msni`) NO tiene ningún `NpcState` de
+Cruzavientos, ni `pendingNpcAttack`, ni `pendingCombatNpcSlugs` con nada dentro — no hay ningún
+rastro persistido en la base de datos de que Cruzavientos haya sido nunca el antagonista mecánico
+real de estos combates. Esto encaja con que la narración de cada "huida" (leída en el log completo)
+nunca lo menciona por nombre — en su lugar describe a Quio ("el Quio... no parece prestarle
+atención") o solo el entorno, nunca al propio atacante.
+
+**Teoría más probable (no confirmada del todo, sin `dev-server.log` con diagnóstico `[turno]`
+disponible para esta partida)**: mismo pendiente de diseño de anclaje por zona que el hallazgo de
+Quio de arriba — si la selección de fauna "en escena"/de encuentro no filtra por ubicación real,
+Cruzavientos (que sí vuela sobre gran parte de la región, pero anida solo en Pilares Rotos) puede
+estar disparándose como amenaza en zonas donde no pintaría nada, y el propio texto de la huida no
+recibe el nombre real del atacante como contexto — de ahí que la usuaria solo sepa que es él por lo
+que ve en la interfaz (banner de combate), nunca por la prosa.
+
+**Estado**: PENDIENTE, sin causa raíz de código confirmada al 100%. Para cerrarlo de verdad hace
+falta reproducirlo con `dev-server.log` activo (ver runbook § 2) y mirar la línea `[turno]` del
+momento exacto de un "Intento huir" contra Cruzavientos — ver qué `npcsInScene` devuelve y si el
+nombre del atacante real llega o no al contexto de `narrateAction`. Recomendado para la próxima
+sesión de juego real.
+
+## 2026-08-23 — Ruptidar "ataca" en combate pese a ser INOFENSIVO/"No ataca"
+
+**Síntoma**: en la misma partida, la caza de Ruptidar (11:40-11:46) se narra como combate real de
+varios asaltos con golpes recibidos: *"Gorhorn se mantiene firme, conteniendo la sacudida del
+ataque de Ruptidar..."* — pero la ficha real de Ruptidar en `worldCatalog.ts` dice
+`ataqueNatural: 'No ataca.'` y `temperamento: 'INOFENSIVO'`.
+
+**Causa raíz**: no investigada a fondo. Puede ser puramente narrativo (el modelo dramatiza un
+combate donde mecánicamente no hay ningún ataque real del NPC) o puede que el flujo de "Salgo a
+cazar y ataco a X" trate a Ruptidar igual que cualquier fauna de combate normal sin comprobar
+`temperamento`/`ataqueNatural` antes de generar la narración de intercambio — a diferencia del flujo
+de Desollar/recolección, que sí distingue caza de combate real.
+
+**Estado**: PENDIENTE. A revisar: si el motor realmente permite que un `INOFENSIVO` sin
+`ataqueNatural` inflija daño mecánico real al jugador (grave, sería un bug de reglas) o si es solo
+narración sin consecuencia mecánica (menos grave, solo inmersión). No se pudo diferenciar sin log de
+turno — recomendado comprobar en la próxima partida jugada con `dev-server.log` activo.
+
+## 2026-08-23 — Ruptidar descrito como "insecto" con "alas rotas" (es un reptil sin alas)
+
+**Síntoma**: el golpe de gracia a Ruptidar narra: *"El insecto se desploma con un lastimoso chirrido
+de sus alas rotas."* — pero la `bio` real en `worldCatalog.ts` es explícita: *"Reptil serpentiforme
+de 30 a 60 cm... coraza inerte..."*, sin alas ni relación con insectos.
+
+**Causa raíz**: alucinación pura del modelo — la `bio` correcta SÍ existe en el catálogo (confirmado
+por grep), así que si estaba en el contexto del prompt para ese turno, el modelo la ignoró. Mismo
+tipo de fallo que otros ya vistos de "detalle físico inventado sin anclaje real", pero esta es la
+primera vez que afecta a la especie/categoría entera de la criatura (insecto vs. reptil), no solo un
+detalle suelto.
+
+**Estado**: PENDIENTE, primer caso de este subtipo — a vigilar si se repite con otra fauna nueva.
+
+## 2026-08-23 (continuación) — "several pasos", inglés colado en narración española (2ª vez)
+
+**Síntoma**: dos turnos del mismo combate (08:53 y 08:54) narran *"hace que retroceda **several
+pasos**"* y *"haciendo que tropiece **several pasos** atrás"* — palabra inglesa suelta en medio de
+narración española, la misma familia que el caso de "small clearing" (2026-08-13).
+
+**Causa raíz**: misma ya registrada — calidad de redacción del modelo local, sin detector
+determinista barato (ver 2026-08-13 arriba).
+
+**Estado**: PENDIENTE — segunda vez que se ve el patrón exacto de "palabra en inglés completa", y
+esta vez repetido DOS veces en el mismo combate (no un caso aislado). Sigue sin proponerse un
+corrector genérico, pero la recurrencia empieza a acumularse — a tener en cuenta si aparece una
+tercera vez.
+
+## 2026-08-23 (continuación) — "reptil reptilise"/"reptil reptil reptil", errores gramaticales del modelo
+
+**Síntoma**: mismo combate contra Ruptidar, tres turnos seguidos con palabras rotas o repetidas:
+*"hace que el reptil **reptilise** por el impacto"* (11:41), *"haciendo que el reptil **reptilise**
+y tropieze hacia atrás"* (11:42, con "tropieze" también mal escrito), y *"deja al reptil **reptil
+reptil** jadeante"* (11:45, palabra triplicada).
+
+**Causa raíz**: misma familia que "errores gramaticales sueltos del modelo" (2026-08-08, PENDIENTE).
+"Reptilise" no es una palabra española real — probablemente el modelo intentó un verbo a partir de
+"reptil" ("reptar"/"replegarse") y falló de forma consistente las 2 veces que lo intentó en el mismo
+combate, además de la repetición literal de "reptil reptil" en un tercer turno.
+
+**Estado**: PENDIENTE, mismo criterio que el resto de esta familia — no se propone corrector
+genérico todavía, pero 3 fallos en un solo combate de 5 turnos es una densidad alta a tener en
+cuenta.
+
+## 2026-08-23 — XP de capítulo (+500×2) verificado — NO ES BUG
+
+**Síntoma investigado**: dos entradas del log dan `[+500 XP]` por acciones aparentemente triviales
+("monto un vivac breve y descanso", "Viajo hacia Los Manaderos"), una de ellas provocando subida de
+nivel — a primera vista parecía el bug histórico de "capitulo alucinado por el modelo" (2026-08-08,
+ver `turnResolution.ts:4683-4694`).
+
+**Verificación**: NO es ese bug. `HITOS_QUE_PUEDE_PROPONER_EL_MODELO` ya excluye `'capitulo'` de lo
+que el modelo puede alucinar — el único camino real es `chapterDue` (determinista, backend). Los
+`+500 XP` coinciden exactamente con los 2 capítulos reales que sí existen en `=== CAPÍTULOS ===`
+(Cap. 1 y Cap. 2) — el sistema de XP por capítulo está funcionando exactamente como se diseñó, el
+turno en el que cae `chapterDue` no tiene por qué coincidir con un momento narrativamente "grande".
+
+**Estado**: NO ES BUG. Confirmado leyendo el propio comentario de `turnResolution.ts`, que documenta
+el fix histórico de este exacto problema.

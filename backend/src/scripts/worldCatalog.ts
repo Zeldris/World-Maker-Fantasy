@@ -134,7 +134,7 @@ export const locations: LocationInput[] = [
     region: 'Las Llanuras del Viento Rojo',
     kind: 'hito',
     description:
-      'Un cementerio de esqueletos de una Gargantúa de Ceniza gigantes muertas hace décadas, costillas como arcos blanqueados visibles desde lejos. Los orcos lo tratan con respeto: se toma hueso, no se profana — la única fuente conocida de placas óseas y hueso largo de gargantúa sin necesidad de cacería ritual.',
+      'El esqueleto de una Gargantúa de Ceniza muerta hace décadas, costillas como arcos blanqueados visibles desde lejos. Los orcos lo tratan con respeto: se toma hueso, no se profana — la única fuente conocida de placas óseas y hueso largo de gargantúa sin necesidad de cacería ritual.',
     aliases: ['el osario de la manada'],
     x: 10.95,
     y: 7.6,
@@ -590,7 +590,7 @@ export const locations: LocationInput[] = [
     kind: 'asentamiento',
     description:
       "El mayor de los dos poblados del Clan Goshg — empalizadas de madera oscura levantadas sobre pilotes por encima del agua, unidas por pasarelas y canoas. Aquí se reúnen las dos tribus Goshg en la estación de las crecidas. Hogar de la Terk'ikar Doshka, que gobierna la tribu, y su hermano menor, el Kort'ikar Dulgren, que lidera la guerra. Fuera del núcleo jugable actual.",
-    aliases: ['cerco de los pilotes', 'el cerco', 'pilotes', 'poblado goshg'],
+    aliases: ['cerco de los pilotes', 'el cerco', 'pilotes', 'poblado goshg', 'makut silh'],
   },
 
   {
@@ -702,6 +702,10 @@ export const locationTerrainTags: Record<string, TerrainTag[]> = {
   'pozo-cauce-viejo': ['humedo'],
   'restos-de-maktor': ['arido'],
   'tumulos-del-honor': ['arido'],
+  // Añadidas 2026-08-23 (auditoría lore↔código, faltaban pese a tener fauna/flora ancladas y ser
+  // del mismo `kind: 'hito'` que sus vecinas de arriba, que sí tienen tag):
+  'cruce-de-las-cenizas': ['arido', 'vegetacion'],
+  'osario-de-la-manada': ['arido'],
   'oasis-de-juncos-rojos': ['humedo', 'vegetacion'],
   'desembocadura-callada': ['humedo','vegetacion','rocoso'],
   'playa-de-ceniza-blanca': ['humedo','arido'],
@@ -2673,6 +2677,11 @@ export const items: ItemCatalogInput[] = [
     description: 'Pico de cabeza de hierro pesado y mango largo de madera, punta desgastada de golpear roca y hielo — herramienta de minería de hielo sílice.',
     dimensiones: 'Cabeza de 25 cm, mango de 90 cm.',
     lugarOrigen: 'Cristal Helado.',
+    // Herramienta real de minero (2026-08-23, Grupo 3): existía el objeto (loadout de Hagar
+    // Kiugh) pero sin esta etiqueta no contaba para `hasToolForOficio`/
+    // `OFICIOS_CON_HERRAMIENTA_REQUERIDA` — mismo mecanismo que ya usa el cuchillo de hielo
+    // sílice para curtidor/desollador.
+    herramientaParaOficio: ['minero'],
   },
 
   {
@@ -3527,7 +3536,7 @@ export const items: ItemCatalogInput[] = [
     slug: 'fibra-enredaderas-llanuras',
     name: 'Fibra de Enredaderas de las Llanuras',
     aliases: ['fibra vegetal', 'fibra de enredadera'],
-    category: 'fibra',
+    category: 'fibras',
     tipo: 'RECURSO',
     description: 'Tallos fibrosos de las enredaderas que trepan por sombra en la Hondonada del Eco y la base de Los Pilares Rotos — material base de crafteo ligero.',
     dimensiones: 'Fibras de 30 a 60 cm.',
@@ -3864,7 +3873,7 @@ export const items: ItemCatalogInput[] = [
     slug: 'escama-jusha',
     name: 'Escama de Jusha',
     aliases: ['escama de jusha'],
-    category: 'escama',
+    category: 'escamas',
     tipo: 'RECURSO',
     description: 'Escama verde musgo con brillos azul oscuro de la Jusha Esmeralda.',
     dimensiones: 'Escamas de 1 a 2 cm.',
@@ -3932,7 +3941,7 @@ export const items: ItemCatalogInput[] = [
     slug: 'fibra-gradias',
     name: 'Fibra de Gradias',
     aliases: ['gradias', 'fibra de gradias'],
-    category: 'fibra',
+    category: 'fibras',
     tipo: 'RECURSO',
     description: 'Ramas fibrosas del arbusto Gradias — sus hojas anchas sueltan toda su agua acumulada al triturarlas.',
     dimensiones: 'Ramas de 30 cm.',
@@ -4116,7 +4125,7 @@ export const items: ItemCatalogInput[] = [
     slug: 'cola-coracelo',
     name: 'Cola de Coracelo',
     aliases: ['cola de coracelo'],
-    category: 'escama',
+    category: 'escamas',
     tipo: 'RECURSO',
     description: 'El bulto de escamas duras del final de la cola de un Coracelo, que el animal usa en vida para partir roca — resistencia equiparable al hierro. Material crudo para crafteos que no son de construcción.',
     dimensiones: 'Bulto de 15 cm.',
@@ -4442,6 +4451,24 @@ export const items: ItemCatalogInput[] = [
   },
 
   {
+    // Añadido 2026-08-23 (auditoría lore↔código): `startingInventory.ts` y
+    // `MAKTOR_CLAN_TOTEM_RECIPE` (construction.ts) llevaban desde 2026-08-15 referenciando este
+    // slug por string, sin que existiera fila real aquí — el equipo inicial de Gorhorn funcionaba
+    // en juego (el matching de receta/inventario es por `catalogSlug`, no por FK), pero el tótem
+    // era invisible en la Enciclopedia/`entityDiscovery.ts`. Sin `statBonuses` a propósito: es
+    // cosmético puro, decisión ya cerrada (ver comentario en `startingInventory.ts`).
+    slug: 'totem-maktor',
+    name: 'Tótem Maktor',
+    aliases: ['tótem maktor', 'tótem de gorhorn', 'tótem personal'],
+    category: 'cosmetico',
+    tipo: 'NARRATIVO',
+    equipSlot: 'COSMETICO_ESPALDA',
+    description: 'El tótem del Clan Maktor, atado con cuerdas a la espalda — el objeto más importante de Gorhorn, lo único que le queda de sus ancestros.',
+    dimensiones: 'Talla de madera de unos 40 cm, tallada a mano.',
+    lugarOrigen: 'Gran tótem de la plaza del Clan Maktor — fragmento que Gorhorn arrancó al huir de la incursión que aniquiló al clan.',
+  },
+
+  {
     slug: 'totem-clan-roto',
     name: 'Tótem de clan roto',
     aliases: ['tótem de clan roto'],
@@ -4595,6 +4622,20 @@ export interface HarvestYieldInput {
   itemSlug: string;
   cantidad: number;
   condicion?: string;
+  /// Bypass real de `rollGathering` (2026-08-23, Grupo 3 § HarvestYield.condicion) — para recursos
+  /// que el propio `condicion` ya describe como reconocimiento trivial ("los orcos de las Llanuras
+  /// lo conocen de niños", "para Gorhorn no requiere tirada"): antes ese texto era pura
+  /// documentación sin efecto real, el motor tiraba igual que para cualquier otro recurso. Con esto
+  /// en `true`, `applyGatheringRoll` (recolectar.ts) deja pasar el yield intacto, cantidad máxima
+  /// siempre, sin comparar contra ninguna dificultad. Omitido = `false`.
+  sinTirada?: boolean;
+  /// Gate real de herramienta POR YIELD (2026-08-23, Grupo 3 § HarvestYield.condicion, corregido
+  /// tras un bug real: usar OFICIOS_CON_HERRAMIENTA_REQUERIDA — crafting.ts — bloqueaba TODO el
+  /// oficio de minero, hasta la Piedra común, cuando solo 2 vetas concretas exigen herramienta).
+  /// Marca yields cuya `condicion` ya pide una herramienta específica ("requiere pico de minero")
+  /// sin que el resto del oficio la necesite — hoy solo minero, contra `pico-minero`. Omitido =
+  /// `false`.
+  requiereHerramienta?: boolean;
 }
 
 export const harvestYields: HarvestYieldInput[] = [
@@ -4917,6 +4958,7 @@ export const harvestYields: HarvestYieldInput[] = [
     itemSlug: 'mena-yerreo',
     cantidad: 1,
     condicion: 'veta rarísima, muy pocas unidades donde aparece — requiere pico de minero',
+    requiereHerramienta: true,
   },
 
   // --- Gesgurio ---
@@ -5111,7 +5153,9 @@ export const harvestYields: HarvestYieldInput[] = [
   // --- Imanio, Nuente (Las Agujas Imán) ---
   // Sin loot: el Imanio no lleva nada crafteable propio (solo rocas imantadas, ver Fase 2
   // pendiente de diseño) y el Nuente tampoco tiene loot descrito — ambos entran en combate/
-  // encuentro sin dar recursos, igual que Ruptidar/Quio.
+  // encuentro sin dar recursos, igual que Ruptidar. Corrección 2026-08-23 (auditoría lore↔código):
+  // Quio SÍ tiene recurso propio (Filtro de Quio, `flora-fauna.md`) — este comentario lo agrupaba
+  // aquí por error; su fila real vive más abajo, junto al resto de fauna de Los Manaderos.
 
   // --- Verdileas Acuáticas, Juncos Rojizos (Los Manaderos) ---
 
@@ -5162,6 +5206,17 @@ export const harvestYields: HarvestYieldInput[] = [
     sourceCategory: 'fauna',
     metodoObtencion: 'CAZA',
     itemSlug: 'racion-carne',
+    cantidad: 1,
+  },
+
+  {
+    // Añadido 2026-08-23 (auditoría lore↔código): `filtro-quio` existía como item desde antes
+    // pero sin ninguna fila de HarvestYield que lo conectara a `quio` — recurso huérfano,
+    // inalcanzable en juego pese a estar descrito en flora-fauna.md.
+    sourceSlug: 'quio',
+    sourceCategory: 'fauna',
+    metodoObtencion: 'CAZA',
+    itemSlug: 'filtro-quio',
     cantidad: 1,
   },
 
@@ -5384,6 +5439,7 @@ export const harvestYields: HarvestYieldInput[] = [
     itemSlug: 'liquen-humedo',
     cantidad: 1,
     condicion: 'reconocerlo (los pastores de las Llanuras lo conocen — para Gorhorn no requiere tirada)',
+    sinTirada: true,
   },
 
   {
@@ -5575,6 +5631,7 @@ export const harvestYields: HarvestYieldInput[] = [
     itemSlug: 'manojo-salvia-polvo',
     cantidad: 1,
     condicion: 'reconocerla (los orcos de las Llanuras la conocen de niños — para Gorhorn no requiere tirada)',
+    sinTirada: true,
   },
 
   // --- Sombra de Kroj ---
@@ -5610,6 +5667,7 @@ export const harvestYields: HarvestYieldInput[] = [
     itemSlug: 'mena-hierro-llanuras',
     cantidad: 2,
     condicion: 'requiere pico de minero — vetas visibles entre las grietas de la roca erosionada',
+    requiereHerramienta: true,
   },
 ];
 
@@ -5629,10 +5687,27 @@ export const harvestSourceAliases: Record<string, string[]> = {
   'gargantua-de-ceniza': ['gargantúa', 'gargantua', 'gargantúa de ceniza', 'gargantua de ceniza'],
   'espina-del-viento': ['espina del viento', 'espina', 'espinas del viento'],
   'raiz-de-fuego': ['raíz de fuego', 'raiz de fuego'],
+  // 'musgo-arcilla' colocado justo después de 'raiz-de-fuego' a propósito (2026-08-23, auditoría
+  // lore↔código) — NO antes: "musgo" está a distancia de edición 2 de "fuego" (m-u-s-g-o vs
+  // f-u-e-g-o, 2 sustituciones), dentro del umbral de `fuzzyMatchesAnyStem`, y esa colisión es
+  // simétrica — cualquiera de las dos entradas que se compruebe primero "roba" a la otra. Se prioriza
+  // 'raiz-de-fuego' (fuente establecida desde hace tiempo) sobre 'musgo-arcilla' (fuente nueva de
+  // hoy): con este orden, "musgo arcilla"/"musgo" sueltos pueden, en el peor caso, malinterpretarse
+  // como Raíz de Fuego — colisión de fondo del propio algoritmo de tolerancia a erratas, no
+  // resoluble solo reordenando; pendiente de decidir con la usuaria si se quiere tocar el
+  // matcher (`fuzzyMatchesAnyStem`, travel.ts) o vivir con ella.
+  'musgo-arcilla': ['musgo arcilla', 'musgo rojo', 'musgo'],
   corretolvas: ['corretolva', 'corretolvas'],
   'salvia-del-polvo': ['salvia del polvo', 'salvia'],
   'espiga-roja': ['espiga roja', 'espiga'],
   'matorral-de-cuerno': ['matorral de cuerno', 'matorral', 'leña'],
+  // 'roca-luclara' y 'yerreo' colocados ANTES de 'roca-pilares-rotos'/'veta-hierro-pilares-rotos'
+  // a propósito (2026-08-23, resolviendo colisión detectada en la auditoría lore↔código de esa
+  // fecha): sus propios alias contienen las palabras genéricas "roca"/"mena" que las dos entradas
+  // de abajo también reclaman — si se comprobaran después, cualquier mención de Roca Luclara o
+  // Yerreo se malinterpretaría como la roca/veta genérica de Los Pilares Rotos.
+  'roca-luclara': ['roca luclara'],
+  yerreo: ['yerreo', 'mena de yerreo'],
   'roca-pilares-rotos': ['roca', 'rocas', 'piedra', 'piedras', 'canto rodado', 'pedrusco', 'pilares rotos'],
   // Alias distintos a propósito de 'roca-pilares-rotos' de arriba (2026-07-29) — "mena"/"veta" no
   // deben coincidir nunca con "piedra"/"roca" genéricas, para que picar piedra suelta y minar la
@@ -5651,7 +5726,7 @@ export const harvestSourceAliases: Record<string, string[]> = {
   'buitre-cenizo': ['buitre', 'buitres', 'buitre cenizo', 'buitres cenizos', 'carroneras', 'carroñeras'],
   // Flora/mineral nueva
   'cardo-brujula': ['cardo', 'cardo brújula', 'cardo brujula', 'cardos'],
-  'liquen-del-cauce': ['liquen', 'liquen del cauce', 'musgo'],
+  'liquen-del-cauce': ['liquen', 'liquen del cauce'],
   'bulbo-del-cauce': ['bulbo', 'bulbos', 'bulbo del cauce', 'tuberculo', 'tubérculo'],
   'flor-de-ceniza': ['flor de ceniza', 'flores de ceniza', 'amapola'],
   // "arena magnética" es una frase ya muy usada en la prosa de tormentas (roadmap 2026-07-20,
@@ -5666,6 +5741,81 @@ export const harvestSourceAliases: Record<string, string[]> = {
   'trepador-ocaso': ['trepador ocaso', 'trepadores ocaso', 'trepador del ocaso'],
   cornante: ['cornante', 'cornantes'],
   'sombra-de-kroj': ['sombra de kroj', 'sombras de kroj'],
+
+  // Fauna/flora añadida 2026-08-23 (auditoría lore↔código, tabla desactualizada desde 2026-08-03):
+  // 17 fauna y 23 flora/mineral con `HarvestYield`/`Npc` real (ampliación de lore 2026-08-21/22)
+  // que nunca llegaron a esta tabla — invisibles/rotos en el matcher de despiece/recolección real.
+  //
+  // 'flor-salvatura' colocada aquí arriba a propósito, fuera del bloque de flora de abajo: su
+  // alias 'flor salvatura'/'flor de salvatura' contiene la palabra 'tura', alias también de
+  // 'tura-jusha' más abajo — si 'tura-jusha' se comprobara primero (recorrido de
+  // `Object.entries`, ver comentario de cabecera de esta tabla), cualquier mención de Flor
+  // Salvatura se malinterpretaría como Tura Jusha.
+  'flor-salvatura': ['flor salvatura', 'flor de salvatura', 'flores de salvatura'],
+
+  // Fauna nueva (mismos aliases que los del Npc correspondiente, ver array `fauna` arriba).
+  canizor: ['canizor', 'canizores', "makt'orik"],
+  gesgurio: ['gesgurio', 'gesgurios'],
+  'kirelon-arenoso': ['kirelon', 'kirelon arenoso', 'kirelones'],
+  ruptidar: ['ruptidar', 'ruptidares'],
+  ferike: ['ferike', 'ferikes'],
+  guchapo: ['guchapo', 'guchapos', 'sapo gigante'],
+  lebude: ['lebude', 'lebudes'],
+  escorante: ['escorante', 'escorantes'],
+  // Corrección 2026-08-23 (verificación propia tras el pase inicial del agente, que había puesto
+  // 'tura-jusha' primero): esa versión arreglaba "tura jusha"/"turas jusha" pero rompía POR
+  // COMPLETO 'jusha-esmeralda' — cualquier mención de "jusha"/"jusha esmeralda"/"jushas" pasaba a
+  // resolver siempre a Tura Jusha, porque `fuzzyMatchCandidates` extrae "jusha" como stem
+  // independiente de la propia frase "tura jusha", sin relación con el orden de comprobación. No
+  // hay ningún orden que arregle las dos direcciones a la vez (colisión simétrica, misma familia
+  // que 'musgo-arcilla'/'raiz-de-fuego' más arriba): "jusha" es sustring literal de "tura jusha",
+  // así que cualquiera que se compruebe primero se queda también con la frase completa del otro.
+  // Se prioriza aquí 'jusha-esmeralda' (nombre propio real, con receta de cocina real detrás) sobre
+  // 'tura-jusha' (nombre compuesto) — el único caso que queda roto es la frase completa "tura
+  // jusha"/"turas jusha" (el alias corto y más natural, bare 'tura', sigue funcionando bien: no
+  // contiene "jusha" y no tiene 5+ letras para colisionar).
+  'jusha-esmeralda': ['jusha', 'jusha esmeralda', 'jushas'],
+  'tura-jusha': ['tura jusha', 'tura', 'turas jusha'],
+  miruina: ['miruina', 'miruinas'],
+  quio: ['quio', 'quios'],
+  cuernahoja: ['cuernahoja', 'cuernahojas'],
+  imanio: ['imanio', 'imanios'],
+  nuente: ['nuente', 'nuentes'],
+  towrgu: ['towrgu', 'towrgus'],
+  coracelo: ['coracelo', 'coracelos'],
+
+  // Flora/mineral nueva (aliases derivados del nombre real, ver `items`/`harvestYields` arriba).
+  boungo: ['boungo', 'seta boungo', 'setas boungo'],
+  // Sin 'llanuras' como palabra suelta a propósito (bug real detectado por el test existente de
+  // `matchHarvestSource`, 2026-08-23): 'llanuras'/'llanura' es palabra de 5+ letras y
+  // `fuzzyMatchesAnyStem` (distancia de edición ≤2) la confundía con CUALQUIER mención genérica de
+  // "la llanura" en texto sin relación alguna con esta planta — 'enredaderas'/'enredadera' bastan,
+  // son palabras distintivas sin colisión conocida.
+  'enredaderas-llanuras': ['enredaderas', 'enredadera'],
+  fercaneo: ['fercaneo', 'fercaneos'],
+  gradias: ['gradias', 'arbusto gradias', 'arbusto de gradias'],
+  'hojas-telda-fuente': ['hojas de telda', 'hoja de telda'],
+  'juncos-rojizos': ['juncos rojizos', 'juncos', 'juncos de los manaderos'],
+  // 'resina-lucre-blanco-fuente' antes que 'lucre-blanco' a propósito: 'resina de lucre blanco'
+  // contiene literalmente 'lucre blanco' — si 'lucre-blanco' se comprobara primero, cualquier
+  // mención de la resina se malinterpretaría como la madera.
+  'resina-lucre-blanco-fuente': ['resina de lucre blanco', 'resina de lucre'],
+  'lucre-blanco': ['lucre blanco', 'arbol de lucre blanco', 'lucres blancos'],
+  'pasto-de-sangre': ['pasto de sangre', 'hierba roja'],
+  'pasto-solar': ['pasto solar', 'hierba comun', 'hierba común'],
+  // 'resina-telda-atardecer-fuente' antes que 'telda-atardecer' Y que 'resina-telda-fuente' a
+  // propósito: 'resina de telda atardecer' contiene literalmente 'telda atardecer' y también
+  // 'resina de telda' — si cualquiera de las otras dos se comprobara antes, las menciones de esta
+  // resina se malinterpretarían.
+  'resina-telda-atardecer-fuente': ['resina de telda atardecer', 'resina telda atardecer'],
+  'telda-atardecer': ['telda atardecer', 'teldas atardecer'],
+  'resina-telda-fuente': ['resina de telda', 'resina telda gris'],
+  'telda-ceniza': ['telda ceniza', 'teldas ceniza'],
+  'telda-comun': ['telda comun', 'telda común', 'teldas comunes'],
+  'trigo-escarlata': ['trigo escarlata', 'trigos escarlata'],
+  rovalnica: ['rovalnica', 'rovalnicas'],
+  'verdileas-acuaticas': ['verdileas acuaticas', 'verdileas', 'algas de manaderos'],
+  volcanita: ['volcanita', 'volcanitas'],
 };
 
 /// Descripción física/visual de cada fuente de flora o mineral SIN fila Npc propia (2026-07-22,
@@ -5912,6 +6062,32 @@ export const harvestSourceDisplayName: Record<string, string> = {
   'sombra-de-kroj': 'Sombra de Kroj',
   'trepador-ocaso': 'Trepador Ocaso',
   'veta-hierro-pilares-rotos': 'Veta de hierro de Los Pilares Rotos',
+
+  // Flora/mineral añadida 2026-08-23 (auditoría lore↔código, tabla desactualizada desde
+  // 2026-08-03) — nombres reales tomados del `ItemCatalogInput` correspondiente en `items` arriba.
+  boungo: 'Boungo',
+  'enredaderas-llanuras': 'Enredaderas de las Llanuras',
+  fercaneo: 'Fercaneo',
+  'flor-salvatura': 'Flor Salvatura',
+  gradias: 'Gradias',
+  'hojas-telda-fuente': 'Hojas de Telda',
+  'juncos-rojizos': 'Juncos Rojizos',
+  'lucre-blanco': 'Lucre Blanco',
+  'musgo-arcilla': 'Musgo Arcilla',
+  'pasto-de-sangre': 'Pasto de Sangre',
+  'pasto-solar': 'Pasto Solar',
+  'resina-lucre-blanco-fuente': 'Resina de Lucre Blanco',
+  'resina-telda-atardecer-fuente': 'Resina de Telda Atardecer',
+  'resina-telda-fuente': 'Resina de Telda',
+  'roca-luclara': 'Roca Luclara',
+  rovalnica: 'Rovalnica',
+  'telda-atardecer': 'Telda Atardecer',
+  'telda-ceniza': 'Telda Ceniza',
+  'telda-comun': 'Telda Común',
+  'trigo-escarlata': 'Trigo Escarlata',
+  'verdileas-acuaticas': 'Verdileas Acuáticas',
+  volcanita: 'Volcanita',
+  yerreo: 'Yerreo',
 };
 
 /// Nombre real de una fuente (2026-08-15) — helper compartido para no repetir el mismo fallback
@@ -5963,6 +6139,56 @@ export const harvestSourceDescriptions: Record<string, string> = {
     'Árbol oscuro de corteza casi negra que rezuma una resina densa de vetas doradas al partirla — forma la mayor parte de la Ciénaga Troncal.',
   'veta-hierro-pilares-rotos':
     'Vetas oscuras de óxido rojizo visibles entre las grietas de la roca erosionada de Los Pilares Rotos — hay que picar de verdad para sacar la mena, no basta con recoger cascotes sueltos.',
+
+  // Flora/mineral añadida 2026-08-23 (auditoría lore↔código, tabla desactualizada desde
+  // 2026-08-03) — descripciones adaptadas de la `description` real del `ItemCatalogInput`
+  // correspondiente en `items` arriba, sin inventar datos nuevos.
+  boungo:
+    'Seta de sombrero marrón oscuro con manchas rojas, tallo fino beis, aspecto seco — crece en otoño en El Osario de la Manada, en cúmulos apretados.',
+  'enredaderas-llanuras':
+    'Tallos fibrosos de enredaderas que trepan por sombra en la Hondonada del Eco y la base de Los Pilares Rotos.',
+  fercaneo:
+    'Mineral casi imposible de encontrar, solo cerca de cráteres y lava en El Filo de las Brasas —más probable en Las Fumarolas Negras—, protegido por las propias Salamandras de Escoria.',
+  'flor-salvatura':
+    'Planta negra de aspecto muerto con pétalos verdes de tono azulado — ingrediente base de alquimia para varias pociones curativas.',
+  gradias:
+    'Arbusto de ramas fibrosas y hojas anchas que sueltan toda su agua acumulada al triturarlas.',
+  'hojas-telda-fuente':
+    'Hojas grandes de los árboles Telda, de 30 a 50 cm — la misma hoja para Telda Común, Telda Ceniza y Telda Atardecer, solo cambian tronco y resina entre variantes.',
+  'juncos-rojizos':
+    'Juncos rojizos de las charcas de Los Manaderos, tallos de 80 cm a 1,2 m — material de tejido y techado.',
+  'lucre-blanco':
+    'Árbol de tronco claro y madera muy resistente que crece en las cumbres de Los Pilares Rotos.',
+  'musgo-arcilla':
+    'Musgo rojo como pelaje, crece pegado a la roca en zonas húmedas de El Pozo de Cauce Viejo — material de construcción para tejados orcos.',
+  'pasto-de-sangre':
+    'Hierba roja de La Sabana Alta, más alta y densa que el Pasto Solar del que desciende — el tono rojo viene de la mineralización, también roja, del agua de la zona.',
+  'pasto-solar':
+    'Hierba amarilla, el pasto base de toda la llanura allí donde crece vegetación.',
+  'resina-lucre-blanco-fuente':
+    'Resina blanca translúcida que exuda el árbol de Lucre Blanco — pegamento muy resistente.',
+  'resina-telda-atardecer-fuente':
+    'Resina roja que exuda el árbol de Telda Atardecer, más fina que la Resina Telda Gris común, propia de La Sabana Alta.',
+  'resina-telda-fuente':
+    'Resina gris que exudan los árboles Telda, Común o Ceniza — pegamento de uso general.',
+  'roca-luclara':
+    'Piedra clara, casi blanca, similar al mármol — los Towrgu excavan en ella sus propios nidos, material de construcción de tier alto.',
+  rovalnica:
+    'Roca de construcción negra con vetas rojas, de El Filo de las Brasas.',
+  'telda-atardecer':
+    'Árbol de la misma especie que la Telda Común y la Telda Ceniza, pero de tronco y hojas de tonos rojos — la mejor madera de las variantes de Telda, propia de La Sabana Alta.',
+  'telda-ceniza':
+    'Árbol Telda de El Cruce de las Cenizas, misma especie y mismo recurso que la Telda Común de El Pozo de Cauce Viejo.',
+  'telda-comun':
+    'Árbol de madera clara que crece en El Pozo de Cauce Viejo.',
+  'trigo-escarlata':
+    'Espigas de un rojo intenso que crecen salvajes en La Sabana Alta, base para harinas — los orcos de las Llanuras nunca han logrado cultivarlo de verdad.',
+  'verdileas-acuaticas':
+    'Alga de Los Manaderos, base de la cadena trófica de la charca — alimento de la Jusha Esmeralda.',
+  volcanita:
+    'Mineral volcánico de El Filo de las Brasas, la veta más común de la zona.',
+  yerreo:
+    'Mineral con la apariencia del hierro pero de vetas rojas y brillos anaranjados, muy difícil de encontrar y en cantidades mínimas donde aparece, en La Hondonada del Eco.',
 };
 
 /// Afinidad de terreno de cada fuente EXTRACCION/MINERIA/TALA (filtro por zona, ver `terrain.ts`)
@@ -6008,6 +6234,20 @@ export const harvestSourceTerrainTag: Record<string, TerrainTag> = {
   'telda-atardecer': 'vegetacion',
   'resina-telda-atardecer-fuente': 'vegetacion',
   'roca-luclara': 'arido', // pradera árida, no rocosa — misma imprecisión conocida que 'yerreo'
+
+  // Flora/mineral añadida 2026-08-23 (auditoría lore↔código, tabla desactualizada desde
+  // 2026-08-03) — mismo tag que otras fuentes ya ancladas al mismo `homeLocationSlug`
+  // (`harvestSourceHomeLocationSlug` arriba) vía `locationTerrainTags`. Skips documentados en el
+  // resumen de la tarea: 'boungo' (osario-de-la-manada, sin fila en locationTerrainTags ni
+  // precedente), 'enredaderas-llanuras' y 'hojas-telda-fuente' (sin homeLocationSlug fijo a
+  // propósito, ver comentario junto a esa tabla) y 'pasto-solar' (candado quitado a propósito
+  // 2026-08-22, ver mismo sitio).
+  gradias: 'vegetacion', // Los Pastos de la Deriva, mismo tag que flor-salvatura/cuernahoja
+  'juncos-rojizos': 'humedo', // Los Manaderos
+  'musgo-arcilla': 'humedo', // El Pozo de Cauce Viejo, mismo tag que telda-comun/resina-telda-fuente
+  'pasto-de-sangre': 'vegetacion', // La Sabana Alta
+  'trigo-escarlata': 'vegetacion', // La Sabana Alta
+  'verdileas-acuaticas': 'humedo', // Los Manaderos
 };
 
 /// Afinidad de hábitat de cada especie cazable (filtro por zona, ver `terrain.ts`) — leída de su
@@ -6044,4 +6284,24 @@ export const faunaTerrainTag: Record<string, TerrainTag> = {
   // La Sabana Alta (zona 14, añadido 2026-08-22).
   towrgu: 'vegetacion',
   coracelo: 'vegetacion',
+
+  // Fauna añadida 2026-08-23 (auditoría lore↔código, tabla desactualizada desde 2026-08-03) —
+  // mismo tag que otras fuentes ya ancladas al mismo `homeLocationSlug` (Npc.homeLocationSlug o
+  // `harvestSourceHomeLocationSlug` arriba) vía `locationTerrainTags`. Skip documentado en el
+  // resumen de la tarea: 'canizor' (fiera solitaria e itinerante, sin homeLocationSlug fijo).
+  gesgurio: 'rocoso', // La Hondonada del Eco, mismo tag que yerreo
+  'kirelon-arenoso': 'rocoso', // La Hondonada del Eco
+  ferike: 'humedo', // El Cruce de las Cenizas, mismo tag que telda-ceniza (sin locationTerrainTags
+  // propio todavía, ver comentario de harvestSourceTerrainTag — mismo criterio de "coherencia" ya
+  // aplicado ahí)
+  guchapo: 'humedo', // El Pozo de Cauce Viejo, mismo tag que telda-comun/musgo-arcilla
+  lebude: 'humedo',
+  escorante: 'humedo',
+  'jusha-esmeralda': 'humedo', // Los Manaderos
+  miruina: 'humedo',
+  quio: 'humedo',
+  'tura-jusha': 'humedo',
+  cuernahoja: 'vegetacion', // Los Pastos de la Deriva, mismo tag que flor-salvatura/gradias
+  imanio: 'rocoso', // Las Agujas Iman (formación rocosa, ver bio: "armadura de rocas imantadas")
+  nuente: 'rocoso', // Las Agujas Iman, mismo territorio que su presa (Imanio)
 };

@@ -6,6 +6,10 @@ Thumbs.db
 # Logs de arranque de dev-server lanzado desde la raíz — artefacto local, no fuente.
 logs/
 
+# node_modules suelto a nivel raíz (no hay package.json aquí — artefacto de alguna herramienta
+# lanzada desde la raíz, no del proyecto en sí; backend/frontend tienen el suyo propio arriba).
+/node_modules/
+
 # Configuración local de Claude Code (permisos de sesión, locks) — específica de esta máquina,
 # no del proyecto.
 .claude/

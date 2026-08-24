@@ -70,12 +70,10 @@ model World {
   synopsis   String
   tone       String
   lethality  Lethality
-  factions   String[]
   /// Tema de color por mundo (accent300-600, accent2 300-600) — mismo shape que WorldTheme en el frontend.
   theme      Json
   createdAt  DateTime  @default(now())
 
-  pregeneratedCharacters PregeneratedCharacter[]
   saves                  Save[]
   loreChunks             LoreChunk[]
   locations              Location[]
@@ -88,20 +86,6 @@ model World {
   historiaEntries        HistoriaEntry[]
 }
 
-/// Personajes preseleccionables asociados a un mundo (plantilla, no instancia jugada).
-model PregeneratedCharacter {
-  id              String @id @default(cuid())
-  worldId         String
-  world           World  @relation(fields: [worldId], references: [id], onDelete: Cascade)
-  name            String
-  archetype       String
-  origin          String
-  motivation      String
-  /// AttributeBlock: { fuerza, destreza, sigilo, voluntad, carisma, arcano }
-  attributes      Json
-  portraitInitial String
-}
-
 /// Una partida: mundo elegido + personaje (copia editable, no referencia viva a la plantilla) + su WorldState.
 model Save {
   id                       String    @id @default(cuid())
@@ -109,6 +93,11 @@ model Save {
   user                     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   worldId                  String
   world                    World     @relation(fields: [worldId], references: [id])
+  /// Id suelto (String, sin FK real) del personaje pregenerado que el FRONTEND ofreció al crear —
+  /// referencia su propia lista hardcodeada (`frontend/src/data/mock.ts`), nunca la tabla
+  /// `PregeneratedCharacter` que existió en este schema (quitada en la auditoría de elementos
+  /// desconectados, 2026-08-23: cero filas sembradas, cero consumidores). Se escribe al crear la
+  /// partida, nunca se vuelve a leer.
   pregeneratedCharacterId  String?
 
   characterName       String
@@ -363,6 +352,11 @@ model WorldState {
   /// (pendiente de que el flujo día/hora se demuestre estable jugando).
   fictionalMinutes    Int     @default(480)
   /// Eventos pendientes de la agenda del mundo (facciones, NPCs) que el Cronista puede hacer "vencer"
+  /// — quitado en la auditoría de elementos desconectados 2026-08-23 por no tener ningún productor
+  /// (sigue creándose vacío), RESTAURADO el mismo día a petición explícita de la usuaria: sí hay
+  /// valor real aquí (un mundo que avanza solo con el tiempo, más allá de la ambientación pasiva de
+  /// `entorno.ts` — ej. escalada de la guerra Alianza/Concordia si nadie interviene), queda en cola
+  /// como feature real de diseño propio, todavía sin construir.
   agenda              Json    @default("[]")
   factionsStatus      Json    @default("{}")
 
@@ -666,7 +660,7 @@ enum AbilityEffect {
   //Efecto que permite desviar la habilidad de un enemigo sobre otro de tu eleccion
   DESVIAR
   //Efecto que obliga a el/los enemigo/enemigos seleccionados a atacarte los turnos que indique la habilidad
-  ATENCION
+  PROVOCACION
   //Efecto que permite que durante los turnos que diga la habilidad no se le podra atacar, si no es el unico enemigo/aliado
   OCULTACION
   //Efecto que refleja el daño fisico
@@ -674,7 +668,7 @@ enum AbilityEffect {
   /// atributo se usó en la tirada; CONTRA y REFRACTAR serían mecánicamente idénticos hoy sin ese
   /// concepto. Se deja para cuando exista una noción real de tipo de daño.
   CONTRA
-  //Efecto que refleja el daño magico o de semilla
+  //Efecto que refleja el daño magico
   /// PENDIENTE (2026-08-17) — mismo motivo que CONTRA.
   REFRACTAR
   //Efecto que sirve para recuperar la energia indicada por la habilidad
@@ -813,6 +807,12 @@ model KingdomStats {
   soldados     Int      @default(0)
   trabajadores Int      @default(0)
   visitantes   Int      @default(0)
+  /// Rachas de días consecutivos de felicidad alta/baja (2026-08-23, Grupo 3 § Territory.control) —
+  /// puro estado interno del tick, nunca se serializa al frontend. Se resetea a 0 en cuanto la
+  /// felicidad sale de su banda (ver `tickKingdomOneDay`, kingdomTick.ts). Cruzar el umbral de días
+  /// dispara consolidar/perder territorios — ver el bloque de `diasCruzados` en turnResolution.ts.
+  diasFelicidadAlta Int @default(0)
+  diasFelicidadBaja Int @default(0)
   updatedAt    DateTime @updatedAt
 }
 
@@ -1185,11 +1185,12 @@ model Npc {
 
 /// Facción/clan que el jugador puede descubrir (sección "Facciones" de la Enciclopedia,
 /// 2026-08-06) — formaliza en tabla lo que hasta ahora era solo `Npc.faction` (string libre, sin
-/// FK) y el catálogo suelto `World.factions` (String[], sin relación con esto). `raza` es también
-/// texto libre (uno de BERIG_RAZAS, berigLore.ts — NO es una tabla, igual que `Npc.raza`), no una
-/// FK real. El enganche con `Npc.faction` es por IGUALDAD EXACTA de `name` (ver
-/// entityDiscovery.ts) — no hay FK entre Npc y Faction a propósito, mismo criterio que el resto
-/// del catálogo (Npc.raza tampoco referencia BERIG_RAZAS con FK).
+/// FK; el catálogo suelto `World.factions`, sin relación con esto, se quitó del schema en la
+/// auditoría de elementos desconectados 2026-08-23). `raza` es también texto libre (uno de
+/// BERIG_RAZAS, berigLore.ts — NO es una tabla, igual que `Npc.raza`), no una FK real. El enganche
+/// con `Npc.faction` es por IGUALDAD EXACTA de `name` (ver entityDiscovery.ts) — no hay FK entre
+/// Npc y Faction a propósito, mismo criterio que el resto del catálogo (Npc.raza tampoco
+/// referencia BERIG_RAZAS con FK).
 ///
 /// `saveId` (2026-08-06, "fundar tu reino ya fundaba tu facción, solo faltaba conectarlo" — ver
 /// reino.ts): null = fila de catálogo de mundo (las sembradas en worldCatalog.ts, compartidas por
@@ -1467,6 +1468,15 @@ model HarvestYield {
   /// enum MetodoObtencion. Invariante: todas las filas de un mismo sourceSlug comparten método
   /// (validado en seed-catalog.ts).
   metodoObtencion MetodoObtencion
+  /// Bypass real de `rollGathering` (2026-08-23, ver comentario de HarvestYieldInput.sinTirada en
+  /// worldCatalog.ts) — recursos de reconocimiento trivial que la propia `condicion` ya describía
+  /// como "no requiere tirada" sin que el motor lo respetara. `false` = tira igual que el resto.
+  sinTirada  Boolean     @default(false)
+  /// Gate real de herramienta POR YIELD (2026-08-23, ver comentario de
+  /// HarvestYieldInput.requiereHerramienta en worldCatalog.ts) — a diferencia de
+  /// OFICIOS_CON_HERRAMIENTA_REQUERIDA (crafting.ts, bloquea un oficio entero), esto bloquea solo
+  /// ESTE yield concreto sin herramienta. `false` = no exige nada, igual que el resto.
+  requiereHerramienta Boolean @default(false)
 
   @@index([worldId, sourceSlug])
 }
@@ -1518,8 +1528,9 @@ model WorldPopulation {
   label String
 
   poblacion    Int
-  /// Techo de referencia para cálculos futuros de crecimiento/sobrepoblación — no es un límite
-  /// duro hoy, solo el punto contra el que comparar `poblacion`.
+  /// Techo real de `poblacion` — `growAllPopulations` (population.ts) nunca crece una fila por
+  /// encima de esto (auditoría de elementos desconectados, 2026-08-23: hasta entonces se leía y
+  /// sembraba pero jamás se aplicaba, crecimiento sin límite real).
   poblacionMax Int
 
   /// Pesos relativos por región ({ "Llanuras del Viento Rojo": 0.7, "Cristal Helado": 0.3, ... },

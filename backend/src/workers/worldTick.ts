@@ -23,6 +23,12 @@ interface TransitZoneContext {
   /// Nombre del destino que el jugador pidió de verdad, antes de truncar — solo para el aviso
   /// determinista de "tu viaje se interrumpió" (turnResolution.ts), nunca se lo pasa al Narrador.
   travelInterruptionOriginalDestinationName?: string | null;
+  /// Building.status EN_CONSTRUCCION real (2026-08-23, Grupo 3 § Building.status, ver
+  /// planDeterministicBuild en construction.ts) — id de la fila creada YA al iniciar una
+  /// construcción determinista, para que `narrateAndPersistTurn` la complete (o la borre si la
+  /// construcción falla al resolver) en vez de crear una fila nueva. null/ausente = esta acción
+  /// larga no es una construcción determinista (viaje, descanso, crafteo con transit propio...).
+  buildingId?: string | null;
   /// Marca de reclamo (auditoría 2026-08-06, bug real): antes, el único indicio de "esto ya se
   /// está narrando" era `busyUntil` empujado `CLAIM_BUFFER_MS` al futuro — el mismo campo que
   /// `POST /saves/:id/transit/cancel` usa para decidir "esto sigue esperando, se puede cancelar".
@@ -38,16 +44,15 @@ interface TransitZoneContext {
 /// Se pausa solo con el proceso del backend — no hay "recuperación al arrancar" (decisión de
 /// producto 4, revisada): el mundo retoma justo donde lo dejó la última vez que corrió.
 ///
-/// `WorldState.agenda` (revisado 2026-07-18, auditoría de docs/11-roadmap.md § 2.6): el diseño
-/// original (docs/01-analisis-producto.md, 03-arquitectura.md) preveía una agenda estructurada
-/// de eventos de facciones/NPCs que el Cronista resolvería aquí al vencer. En la práctica, el
-/// panel "El mundo" (`services/entorno.ts`) ya cubre esa necesidad con un mecanismo más simple
-/// — ambientación periódica + evento probabilístico (25%) — sin que nada llegara a escribir
-/// nunca en `agenda` (sigue creándose vacío en `POST /saves` y `/restart`). No se construye la
-/// maquinaria de resolución de una cola que no tiene productor: si en el futuro se diseña
-/// contenido real de agenda (ej. eventos de facciones en la guerra Alianza/Concordia), retomar
-/// aquí; hasta entonces, el campo queda como reservado sin uso, igual que `PregeneratedCharacter`/
-/// `SessionSummary`.
+/// `WorldState.agenda` (revisado 2026-07-18, auditoría de docs/11-roadmap.md § 2.6; auditoría de
+/// elementos desconectados 2026-08-23 confirmó que sigue sin ningún productor real — el panel "El
+/// mundo", `services/entorno.ts`, cubre "que el mundo se sienta vivo" con algo más simple:
+/// ambientación periódica + evento probabilístico 25%, sin relación con esta cola). Petición
+/// explícita de la usuaria el mismo día ("me gusta, quiero construirlo de verdad"): SÍ hay valor
+/// real aquí, más allá de lo que ya cubre `entorno.ts` — un mundo que avanza con hitos propios con
+/// el tiempo (ej. escalada de la guerra Alianza/Concordia si nadie interviene), no solo
+/// ambientación pasiva. Diseño e implementación todavía pendientes — el campo sigue vacío hasta
+/// entonces, esta vez a propósito como cola en espera de su feature, no como dato abandonado.
 /// Colchón de reclamo (roadmap 2026-07-20, bug real encontrado con la partida de verdad de
 /// Gorhorn): sin esto, dos ejecuciones solapadas de `resolveDueTransits` (el siguiente tick del
 /// worker disparándose mientras la narración del anterior seguía en marcha — nada raro en este
@@ -92,7 +97,7 @@ async function resolveClaimedTransit(transit: DueTransit, notBefore?: Date): Pro
   if (!claimTurnInFlight(transit.save.id)) return;
 
   try {
-    const { action, classification, roll, travel, travelInterruptionNpcId, travelInterruptionOriginalDestinationName } =
+    const { action, classification, roll, travel, travelInterruptionNpcId, travelInterruptionOriginalDestinationName, buildingId } =
       transit.zoneContext as unknown as TransitZoneContext;
     const save = transit.save;
     const sessionFacts = await loadSessionFacts(save.id);
@@ -152,6 +157,7 @@ async function resolveClaimedTransit(transit: DueTransit, notBefore?: Date): Pro
       transitIdToFinalize: transit.id,
       travelInterruptionNpcId,
       travelInterruptionOriginalDestinationName,
+      earlyBuildingId: buildingId ?? undefined,
       notBefore,
     });
   } catch (err) {

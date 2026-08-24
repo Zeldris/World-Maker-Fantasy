@@ -232,6 +232,8 @@ async function main() {
         itemId,
         cantidad: yieldRow.cantidad,
         condicion: yieldRow.condicion,
+        sinTirada: yieldRow.sinTirada ?? false,
+        requiereHerramienta: yieldRow.requiereHerramienta ?? false,
       },
     });
   }

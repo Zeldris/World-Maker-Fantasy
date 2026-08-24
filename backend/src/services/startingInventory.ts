@@ -40,6 +40,20 @@ const GORHORN_STARTING_INVENTORY: StartingInventoryItem[] = [
     slot: 'ARMA_SECUNDARIA',
     catalogSlug: 'cuchillo-hielo-silice',
   },
+  // Herramienta de minero real (2026-08-23, Grupo 3 § HarvestYield.condicion: "requiere pico de
+  // minero" en mena de Yerreo/veta de hierro de Los Pilares Rotos, ambas del núcleo jugable) —
+  // el objeto de catálogo (`pico-minero`) solo aparecía en el loadout de Hagar Kiugh, fuera del
+  // grafo v1 (Cristal Helado), así que sin esto minero quedaba con gate real de herramienta
+  // (OFICIOS_CON_HERRAMIENTA_REQUERIDA) pero sin ninguna vía real de conseguirla. Mismo criterio
+  // que Hagar aprendió minería junto a Gorhorn en esas mismas minas de Cristal Helado — se lo
+  // trajo consigo. Sin `slot`: no ocupa ARMA_SECUNDARIA (ya la lleva el cuchillo de hielo
+  // sílice) — `hasToolForOficio` no exige que la herramienta esté equipada, solo en inventario.
+  {
+    name: 'Pico de minero',
+    description: 'Pico de cabeza de hierro pesado y mango largo de madera, punta desgastada de golpear roca y hielo — se lo trajo de las minas de Cristal Helado.',
+    origin: 'inicial',
+    catalogSlug: 'pico-minero',
+  },
   {
     name: 'Tótem Maktor',
     description: 'El tótem del Clan Maktor, atado con cuerdas a la espalda — el objeto más importante de Gorhorn, lo único que le queda de sus ancestros.',
@@ -47,8 +61,10 @@ const GORHORN_STARTING_INVENTORY: StartingInventoryItem[] = [
     slot: 'COSMETICO_ESPALDA',
     // Sin statBonus* (2026-08-03, corregido — este archivo tenía +1 voluntad puesto a mano, algo
     // que la usuaria nunca pidió y que contradecía directamente su propia decisión de diseño: "es
-    // cosmético, no un objeto equipable" con efecto real. El objeto de ItemCatalog ya estaba bien
-    // (sin bonus); solo esta materialización inicial lo llevaba pegado por fuera.
+    // cosmético, no un objeto equipable" con efecto real.
+    // Corrección 2026-08-23: la nota de aquí decía "el objeto de ItemCatalog ya estaba bien" —
+    // era falso, `totem-maktor` no existía en absoluto en `worldCatalog.ts` (detectado en
+    // auditoría lore↔código). Ya tiene fila real, sin bonus, coherente con esta decisión.
     catalogSlug: 'totem-maktor',
   },
   {

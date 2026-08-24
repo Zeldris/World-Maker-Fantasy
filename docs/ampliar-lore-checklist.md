@@ -132,11 +132,20 @@ antes de escribir código, mismo criterio que ya se aplicó al sistema de nivele
   arriba. Crear los 22 NPC sin ninguna de las dos mecánicas sería trabajo a medias — mejor esperar.
 - **Pasivo de los Nuentes** (-2 al ataque del jugador con arma de metal) — no enganchado todavía en
   `combatExchange.ts`; el `NpcInput` de Nuente ya lleva un comentario marcando dónde debería vivir.
-- `harvestSourceAliases`/`harvestSourceDisplayName`/`harvestSourceDescriptions` de los ~28
-  `sourceSlug` nuevos — sin ellos, esos recursos tienen el mismo hueco que ya tenía `canizor` desde
-  antes de esta sesión (fauna real, sin alias propio en este mapa) — no bloquea que existan, pero
-  limita cuánto los reconoce el detector de intención por texto libre. No urgente, mismo patrón que
-  un hueco ya preexistente en el catálogo, no una regresión de esta pasada.
+  *(Confirmado sin cambios en la auditoría del 2026-08-23 — sigue sin ningún caller real, sigue
+  genuinamente pendiente.)*
+- ~~`harvestSourceAliases`/`harvestSourceDisplayName`/`harvestSourceDescriptions` de los ~28
+  `sourceSlug` nuevos~~ — **RESUELTO 2026-08-23**, misma auditoría lore↔código que confirmó todo lo
+  demás de esta sección: rellenadas para ~40 slugs (los ~28 de aquí más los que se sumaron después,
+  Ferike/Towrgu/Coracelo/etc.), incluidas las 3 tablas de `harvestSourceTerrainTag`/
+  `faunaTerrainTag` que tampoco existían. Efecto colateral real detectado en la propia corrección:
+  `canizor` (el hueco preexistente que ya predecía esta nota) tiene una colisión de fondo con
+  `buitre-cenizo` en el matcher de tolerancia a erratas (`fuzzyMatchesAnyStem`, "canizor"~"cenizo" a
+  distancia de edición 2) que NINGÚN orden de tabla arregla — documentado en el propio código, junto
+  a 2-3 colisiones más de la misma familia (algunas ya existían antes de hoy: cardo/roca-pilares-
+  rotos, hielo-sílice/veta-hierro, etc.). El propio algoritmo de tolerancia a erratas es demasiado
+  permisivo (umbral distancia ≤2 sobre palabras de 5+ letras) — pendiente de diseño propio si se
+  quiere cerrar del todo, no arreglable alias por alias.
 
 ## Pendiente de código (histórico de la sesión de lore, detalle bruto por zona — ver resumen arriba)
 
@@ -146,10 +155,12 @@ antes de escribir código, mismo criterio que ya se aplicó al sistema de nivele
 > bruto sin borrar como registro histórico, pero **no hace falta leerlo para saber qué falta** — lo
 > que sigue genuinamente pendiente es SOLO lo que ya lista "Sigue pendiente, genuinamente aparcado"
 > unas líneas más arriba (Fase 2 de Las Agujas Imán — Rocas Imanidas/Saco de Arena Imán/pérdida de
-> inventario por zona —, sistema de Reino + los 22 NPC del Campamento del Clan Serhu, pasivo de los
-> Nuentes en `combatExchange.ts`, y los alias/nombres de display de los ~28 `sourceSlug` nuevos).
-> Confirmado también por dos agentes de auditoría independientes (zonas Objetos y Fauna/Flora) que
-> hicieron `grep` contra el catálogo real antes de dar por bueno cada ítem.
+> inventario por zona —, sistema de Reino + los 22 NPC del Campamento del Clan Serhu, y el pasivo de
+> los Nuentes en `combatExchange.ts`). Confirmado también por dos agentes de auditoría independientes
+> (zonas Objetos y Fauna/Flora) que hicieron `grep` contra el catálogo real antes de dar por bueno
+> cada ítem. **Actualización 2026-08-23**: los alias/nombres de display que esta nota SÍ dejaba
+> pendientes quedaron resueltos en una auditoría lore↔código posterior el mismo día — ver la entrada
+> justo arriba de esta para el detalle y el hallazgo colateral de colisiones del matcher.
 
 - **Sesión 2026-08-21 (fauna/flora/minerales de La Hondonada del Eco, ver más abajo)** — nada de
   esto está en `worldCatalog.ts` todavía: `NpcInput` nuevos para Gesgurio (PLANTILLA, insecto
@@ -164,6 +175,14 @@ antes de escribir código, mismo criterio que ya se aplicó al sistema de nivele
   la veta de Yerreo (mineral muy escaso — cantidad baja, quizá con cooldown/probabilidad de
   aparición distinta al resto de vetas); fila(s) nuevas en `worldPopulation.ts`. Además, renombrar
   (solo documentación/lore, el `ItemCatalog` de `piedra` ya es genérico) el source
+  **Corrección 2026-08-23 (auditoría de items/materiales "¿todos tienen uso?")**: el `RESUELTO` de
+  arriba es cierto para los `ItemCatalogInput`/`HarvestYield` (existen, se pueden recolectar), pero
+  **la receta en sí nunca se implementó** — `mena-yerreo`/`lingote-yerreo`/`lingote-hiyerro`/
+  `pieza-quitina-roja` no aparecen ni una sola vez en `crafting.ts` ni en ningún otro archivo de
+  `backend/src/services`/`routes` fuera de su propia definición y un test suelto. Se puede minar
+  Mena de Yerreo, pero no hay forma de fundirla en Lingote de Yerreo ni de combinarlo con hierro +
+  Arena Imán para Lingote de Hiyerro — la receta descrita en `items.md`/`flora-fauna.md` es pura
+  prosa todavía, sin `CraftingRecipe` real detrás.
   `roca-pilares-rotos` → concepto "Piedra de las Llanuras Rojas" si se quiere reflejar también en
   el slug/comentarios del catálogo técnico (no urgente, cosmético).
 - **Los Pilares Rotos (misma sesión)**: `ItemCatalogInput` nuevos para Madera de Lucre Blanco
@@ -286,13 +305,12 @@ antes de escribir código, mismo criterio que ya se aplicó al sistema de nivele
   corría solo), el de las líneas de ruta invisibles, y el de `seed-catalog` sin `delete` de rutas
   viejas (undécima pasada). Este entorno de Claude Code sigue sin Node/DB propios, pero eso ya no
   bloquea nada: la propia usuaria cierra el ciclo de verificación jugando.
-- **Tono de Ulkha/Torgash frente a "la casta de Ketg" (detectado en la sexta pasada, sin resolver)**:
-  sus bios/chunks los describen como personalmente razonables ("fría en el cálculo y cálida en el
-  trato", "prefiere pactar a duelar"), mientras que el lore de gobierno de Serhu (añadido
-  2026-08-05) describe la casta de Ketg —de la que ambos son miembros confirmados— como un régimen
-  de miedo sin exilio ni compasión. Se ha dejado así a propósito (institución opresiva, individuos
-  con matices) en vez de decidir en silencio que hay que endurecerlos — revisar con la usuaria si
-  el tono actual sigue encajando o si conviene ensombrecerlos.
+- ~~**Tono de Ulkha/Torgash frente a "la casta de Ketg"** (detectado en la sexta pasada, sin
+  resolver)~~ — **RESUELTO 2026-08-23**: la usuaria confirmó dejarlo tal cual — el contraste entre
+  personas razonables atrapadas en un sistema cruel es el punto, no un descuido de tono. Sus bios
+  siguen describiéndolos como personalmente razonables ("fría en el cálculo y cálida en el trato",
+  "prefiere pactar a duelar") pese a ser miembros confirmados de un régimen de miedo sin exilio —
+  matiz deliberado, cerrado.
 
 ---
 
@@ -305,7 +323,24 @@ el mundo actual, sin que nada lo avise solo. Cuando una sesión de "ampliamos lo
 de notable, se anota aquí (qué cambió y desde qué sesión) — no implica regenerar el dataset de
 inmediato, solo dejar constancia para cuando se decida.
 
-Sin entradas todavía.
+- **Sesión 2026-08-23 — el cambio de vocabulario más grande desde que existe esta sección**:
+  - Renombre de Semillas: "El que Brota"/"El que Nace" → **Florial**/**Ferios** (nombre propio).
+  - Las 3 Semillas Perdidas sin nombre → **Nemuey**, **Biur**, **Crout**, con dominio/personalidad
+    propios.
+  - `Arcano` deja de describirse como "el poder salvaje nacido de Tarkor" — pasa a ser 1 de **7**
+    ramas de su magia (Arcano/Elemental/Oscuro/Purificador/Naturaleza/Dominio/**Salvaje**, esta
+    última nueva como concepto nombrado).
+  - Lore nuevo de los orcos y la Magia: no son magos, canalizan vía Chamán (tótems/runas) — párrafo
+    nuevo en `razas.md`.
+  - Diseño completo (documentado, NO aplicado al motor) de 9 clases de combate y 34
+    especializaciones en `clases.md` — decenas de nombres de habilidad nuevos (Grito de Guerra,
+    Tótem de Guerra, Runa Ilusoria, etc.) que un futuro dataset de ejemplos de combate debería
+    conocer si se entrena sobre esa vía.
+  - Fauna nueva de El Margen Silencioso: **Hetris**, **Mekiosi**, **Vistue** (a desarrollar más
+    adelante) y **Vaeth, el Eco de la Manada** (espíritu, no fauna cazable).
+
+  No implica regenerar el dataset ahora — el Modelfile actual del Narrador seguirá dando la versión
+  vieja de estos nombres/conceptos hasta que se decida una pasada de reentrenamiento.
 
 ---
 
@@ -326,12 +361,59 @@ esto es lore/mecánica que todavía no se ha decidido cómo funciona.
   región... eso lo miramos si no en otro momento"). No es una tarea de código suelta: implica
   decidir cómo se reparte lo ya existente entre las ~26 zonas nombradas de la región antes de
   tocar nada, así que queda aquí como pendiente de diseño, no de código.
+  **Evidencia real de partida (2026-08-23, revisión de partida)**: esto ya no es solo un problema
+  teórico — Quio (hogar real: Los Manaderos) aparece narrado como fauna ambiental en La Hondonada
+  del Eco y en el Paso de los Pilares Rotos, zonas lejanas donde no debería estar, en la partida
+  real de Gorhorn. Consistente con que Quio (y la mayoría del catálogo) no tiene `faunaTerrainTag`
+  propio que lo restrinja — sube la prioridad de este pendiente, ya no es solo una inconsistencia
+  de diseño en abstracto, es un bug de inmersión real y confirmado jugando ("meter al gusano por
+  todas partes", cita textual de la usuaria).
+- **Auditoría de items/materiales sin uso** (pedida 2026-08-23, revisión completa hecha a mano tras
+  fallo repetido de agentes por límite de sesión/semanal): el sistema de crafteo tiene solo 17
+  `CraftingRecipe` frente a 79 materiales/recursos (`tipo: RECURSO`/`MATERIAL`) en el catálogo — 65
+  de esos 79 se pueden recolectar pero ninguna receta los consume (no es un caso aislado, es escala
+  de diseño: el catálogo de materiales creció mucho más rápido que las recetas). Además, **8 items
+  completamente huérfanos** (cero menciones en todo `backend/src` fuera de su propia definición —
+  ni receta, ni loadout de NPC, ni recolección, ni inventario inicial, ni misión): `hacha-de-mano-orca`,
+  `trampa-de-lazo`, `anillo-vertebra-corredor`, `capa-piel-gargantua`, `capucha-piel-corredor`,
+  `cinturon-de-trofeos`, `marca-de-clan`, `silbato-hueso-caza`. Pendiente decidir con la usuaria:
+  revisar los 8 huérfanos uno a uno (dar receta/loot real o retirarlos), y si merece la pena diseñar
+  más recetas que consuman los 65 materiales sin uso o aceptarlo como fase de contenido adelantada a
+  su propia mecánica. Corrección colateral ya aplicada arriba: Yerreo/Hiyerro nunca tuvo receta real
+  pese a que una nota anterior de este mismo checklist lo daba por resuelto.
+- **Rebalanceo de coste de Campamento/Ayuntamiento** (pedido 2026-08-23, revisión de partida —
+  "lo vemos juntas mañana", solo anotar por ahora): la usuaria jugando en vivo con `CAMPAMENTO_RECIPE`/
+  `AYUNTAMIENTO_*_RECIPE` (`backend/src/services/construction.ts`) considera que:
+  - **Campamento** debería costar la MITAD de recursos para construirlo. Coste actual: 20 leña
+    (madera) + 10 piedra + 5 piel = 35 unidades, 3 categorías.
+  - **Ayuntamiento** debería pedir MÁS recursos y de MÁS TIPOS distintos (no solo piedra+leña).
+    Costes actuales: pequeño 15 piedra + 10 leña (25, 2 categorías); mediano 30 piedra + 25 leña
+    (55, 2 categorías); grande 60 piedra + 50 leña + 15 mena de hierro (125, 3 categorías — el
+    único de los 3 que ya varía de categoría).
+  Sin decidir todavía: la fórmula exacta ni qué categorías nuevas debería pedir el Ayuntamiento
+  (¿piel para el pequeño, como el Campamento? ¿madera Y piedra Y algo más específico por nivel?).
 - **Oficio de agricultura de Las Llanuras, único que se aprende por misión y no por NPC**
   (detectado 2026-08-22 al añadir el Trigo Escarlata de La Sabana Alta) — la propia usuaria lo
   aparcó explícitamente hasta que exista el sistema de Reino: qué misión, qué requisitos, y cómo
   convive con el resto de oficios (todos aprendidos de un Maestro hoy). Mismo bloque de diseño que
   el sistema de "trabajador de Reino" que ya bloquea a los 22 NPC del Campamento Serhu — probable
   que ambos se resuelvan juntos cuando se diseñe el sistema de Reino de verdad.
+- **Riko, "de la Manada Rota"** (detectado 2026-08-23, auditoría lore↔código de personajes no-Gorhorn)
+  — el nombre de su manada de origen aparece una única vez en `personajes.md` y nunca se desarrolla:
+  sin ubicación, sin qué le pasó, sin miembros. Candidato natural para un pase de identidad como el
+  que se hizo hoy con Nemuey/Biur/Crout, pendiente de que la usuaria lo pida.
+- **Kael Dorn ↔ Ithren, hilo atado solo por un lado** (mismo detectado 2026-08-23): `npcs.md` dice
+  que Ithren es de quienes "necesitan vivo" a Kael Dorn, pero ninguno de los 3 ganchos de aventura
+  propios de Ithren en `personajes.md` menciona esa conexión. No es contradicción, es un hueco de
+  desarrollo — falta añadir la mención en la ficha de Ithren si se quiere cerrar el hilo.
+- **Kalisar sin NPC de apoyo propio** (mismo detectado 2026-08-23): Kelife, Goirntes, Nabieus e
+  Ilvenar tienen al menos un NPC de su propia raza en `npcs.md` que conecta con la trama; Kalisar
+  (raza de Ithren) no tiene ninguno — único punto de contacto Kalisar en toda la doc es el propio
+  Ithren. Candidato a un NPC nuevo cuando se retome lore de Vaelira.
+- **Ilvenar, la raza menos desarrollada de las 5 no-núcleo** (mismo detectado 2026-08-23): un solo
+  párrafo, el más corto de Kelife/Kalisar/Jusaly/Ilvenar. Confirmado que NO es lore olvidado —
+  Vaelira entera sigue fuera del núcleo jugable (solo Gorhorn/Berig en producción), así que es
+  esperable, no un error. Anotado por si se retoma Vaelira más adelante.
 
 ---
 

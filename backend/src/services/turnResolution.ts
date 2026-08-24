@@ -3,7 +3,7 @@ import { narrateAction, generateNpcReply, hasFalseTravelClaim, hasFalsePhantomTr
 import { retrieveLore, formatLoreForPrompt, isWeaklyGrounded } from './retrieval.js';
 import { xpForRollSuccess, xpForHitos, applyXp, type ProgressionResult, type HitoTipo } from './progression.js';
 import { alivioForLevel, xpForCraftSuccess, professionLevelForXp } from './professionProgress.js';
-import { tickKingdom, daysCrossed, DEFAULT_KINGDOM_STATS } from './kingdomTick.js';
+import { tickKingdom, daysCrossed, DEFAULT_KINGDOM_STATS, territoryPopulationDelta, DIAS_PARA_CONSOLIDAR, DIAS_PARA_REBELION } from './kingdomTick.js';
 import { appendSessionFacts, selectRelevantFacts } from './worldFacts.js';
 import { closeItemQuests, completeNpcTargetQuests, grantQuestRewardItems, questRewardNarrationFor, type QuestCompletedInfo } from './questResolution.js';
 import {
@@ -117,7 +117,11 @@ import type { SecondaryAttributeBlock } from './secondaryAttributes.js';
 import { Prisma } from '@prisma/client';
 import type { CondicionFisica, Dificultad, AbilityEffect, AbilityRol } from '@prisma/client';
 
-const REINO_XP = { territory: 150, buildingActive: 100, firstSubject: 100, subject: 25 } as const;
+const REINO_XP = { territory: 150, buildingActive: 100, firstSubject: 100, subject: 25, consolidado: 300 } as const;
+/// Población anónima con la que arranca todo Territory nuevo (2026-08-23, Grupo 3) — un puñado de
+/// gente ya vivía ahí o se instala al fundar, nunca 0 en seco. Misma cifra para RECLAMADO/DISPUTADO
+/// — primera pasada, ajustable jugando.
+const TERRITORIO_POBLACION_INICIAL = 15;
 
 // Bug real (auditoría 2026-07-28): race entre worldTick.ts resolviendo un CharacterTransit vencido
 // y POST /saves/:id/transit/cancel — el worker "reclama" el tránsito moviendo busyUntil al futuro
@@ -247,6 +251,15 @@ interface NarrateAndPersistParams {
   /// mientras se narraba), el borrado afecta 0 filas y toda la transacción se aborta sin aplicar
   /// nada — ver TransitCancelledError.
   transitIdToFinalize?: string;
+  /// Building.status EN_CONSTRUCCION real (2026-08-23, Grupo 3 § Building.status) — id de la fila
+  /// que `turn.ts` ya creó EN_CONSTRUCCION al iniciar una construcción determinista (ver
+  /// `planDeterministicBuild`, construction.ts, y `TransitZoneContext.buildingId`, worldTick.ts).
+  /// Presente SOLO cuando esta llamada resuelve esa misma construcción — si `buildValidNow` sigue
+  /// siendo true al llegar aquí, esta fila se completa a ACTIVO en vez de crearse una nueva; si la
+  /// construcción pierde la carrera (`buildMode && !buildValidNow`, ver más abajo), se borra en
+  /// vez de quedarse huérfana en EN_CONSTRUCCION para siempre. Nunca presente en el turno síncrono
+  /// de /turn/narrate (ahí no hay `CharacterTransit`/`zoneContext` de por medio).
+  earlyBuildingId?: string;
   /// Espera de viaje precalculada (2026-08-13, petición explícita: "el prompt se lanza ya en
   /// medio de la espera... dejandolo calculado" — no apilar la latencia del modelo DESPUÉS de la
   /// espera visual, solapar las dos). Presente SOLO cuando `turn.ts` arranca esta narración de
@@ -2123,6 +2136,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     savedActionId,
     isItemUse,
     transitIdToFinalize,
+    earlyBuildingId,
     notBefore,
     pendingNpcAttack,
     npcsInScene: npcsInScenePrecomputed,
@@ -3799,6 +3813,10 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     // más arriba) — se rellena solo al construir el Ayuntamiento tier 1 desde cero (nunca en una
     // mejora de tier), para que el frontend abra el popup de fundación de facción.
     let newKingdomFounded: KingdomFoundedInfo | null = null;
+    // Consolidación de territorio (2026-08-23, Grupo 3 § Territory.control) — capturado aquí,
+    // antes de que exista `reinoXp` (se declara mucho más abajo), para poder sumarle sus 300 XP
+    // (docs/10-niveles-xp-reino.md § 5.4) en el mismo punto que el resto de eventos de Reino.
+    let territoryConsolidatedThisTurn = false;
     // Compañero REALMENTE creado este turno (2026-08-04, ver el tope de slots más abajo) — null
     // si no hubo ninguna propuesta o si se rechazó por falta de hueco. El frontend debe usar esto,
     // nunca `narration.newCompanion` directo, para no mostrar en la UI a alguien que el backend
@@ -3821,9 +3839,44 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     if (diasCruzados > 0) {
       const kingdomStats = await tx.kingdomStats.findUnique({ where: { saveId } });
       if (kingdomStats) {
-        const { poblacion, felicidad, comida, bebida, riqueza, soldados, trabajadores, visitantes } = kingdomStats;
-        const ticked = tickKingdom({ poblacion, felicidad, comida, bebida, riqueza, soldados, trabajadores, visitantes }, diasCruzados);
+        const { poblacion, felicidad, comida, bebida, riqueza, soldados, trabajadores, visitantes, diasFelicidadAlta, diasFelicidadBaja } = kingdomStats;
+        const ticked = tickKingdom(
+          { poblacion, felicidad, comida, bebida, riqueza, soldados, trabajadores, visitantes, diasFelicidadAlta, diasFelicidadBaja },
+          diasCruzados,
+        );
         await tx.kingdomStats.update({ where: { saveId }, data: ticked });
+
+        // Territory.control/population (2026-08-23, Grupo 3 — docs/10-niveles-xp-reino.md § 5.4,
+        // nunca implementado hasta ahora) — misma cadencia que el tick de arriba, felicidad
+        // sostenida decide si el reino se asienta o se rebela. Rebelión primero: si un territorio
+        // se pierde ESTE mismo tick, su población cae a 0 de golpe (huida, no decadencia gradual)
+        // y sus edificios quedan fuera del reparto de crecimiento de abajo.
+        const territories = await tx.territory.findMany({ where: { saveId } });
+        if (territories.length > 0) {
+          let perdiendoIds: string[] = [];
+          if (ticked.diasFelicidadBaja >= DIAS_PARA_REBELION) {
+            perdiendoIds = territories.filter((t) => t.control !== 'PERDIDO').map((t) => t.id);
+            if (perdiendoIds.length > 0) {
+              // Se conserva la fila (docs/10 § 5.4: "es historia del reino") — nunca se borra.
+              await tx.territory.updateMany({ where: { id: { in: perdiendoIds } }, data: { control: 'PERDIDO', population: 0 } });
+              await tx.building.updateMany({ where: { territoryId: { in: perdiendoIds }, status: 'ACTIVO' }, data: { status: 'ABANDONADO' } });
+            }
+          } else if (ticked.diasFelicidadAlta >= DIAS_PARA_CONSOLIDAR) {
+            const { count } = await tx.territory.updateMany({ where: { saveId, control: { in: ['RECLAMADO', 'DISPUTADO'] } }, data: { control: 'CONSOLIDADO' } });
+            territoryConsolidatedThisTurn = count > 0;
+          }
+
+          const popDelta = territoryPopulationDelta(ticked.felicidad, diasCruzados);
+          if (popDelta !== 0) {
+            for (const t of territories) {
+              if (perdiendoIds.includes(t.id)) continue; // ya en 0 por la rebelión de arriba
+              const nuevaPoblacion = Math.max(0, t.population + popDelta);
+              if (nuevaPoblacion !== t.population) {
+                await tx.territory.update({ where: { id: t.id }, data: { population: nuevaPoblacion } });
+              }
+            }
+          }
+        }
       }
     }
 
@@ -4147,6 +4200,12 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     // guardado siempre es honesto aunque el hueco de streaming, rarísimo, no lo sea por un instante.
     if (buildMode && buildRecipe && !buildValidNow) {
       narration.narration = `${characterName} lo intenta, pero justo en ese instante se da cuenta de que ya no dispone de lo necesario para terminarlo.`;
+      // La fila EN_CONSTRUCCION ya existía (turn.ts, planDeterministicBuild) — si la carrera se
+      // pierde aquí, se borra en vez de dejarla huérfana para siempre en ese estado (guard de
+      // status por si acaso, aunque nada más pueda haberla completado ya a estas alturas).
+      if (earlyBuildingId) {
+        await tx.building.deleteMany({ where: { id: earlyBuildingId, status: 'EN_CONSTRUCCION' } });
+      }
     }
     if (buildRecipe && buildValidNow) {
       for (const plan of buildRecipeConsumptionPlans!) {
@@ -4212,7 +4271,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
 
     // Eventos de Reino (docs/10-niveles-xp-reino.md § 5) — necesitan enlazar por nombre de
     // territorio y contar súbditos existentes, por eso van en la transacción interactiva.
-    let reinoXp = 0;
+    let reinoXp = territoryConsolidatedThisTurn ? REINO_XP.consolidado : 0;
     let territoryId: string | undefined;
 
     // Contador para nudges deterministas de KingdomStats (abajo) — increment-only, se salta en
@@ -4236,6 +4295,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
           name: narration.newTerritory.name,
           region: narration.newTerritory.region,
           description: narration.newTerritory.description,
+          population: TERRITORIO_POBLACION_INICIAL,
         },
       });
       territoryId = territory.id;
@@ -4287,18 +4347,25 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
           });
         }
       } else {
-        const created = await tx.building.create({
-          data: {
-            saveId,
-            locationId: currentLocationId ?? undefined,
-            recipeKey: buildRecipe.key,
-            name: buildRecipe.name,
-            kind: buildRecipe.key,
-            description: buildRecipe.description,
-            status: 'ACTIVO',
-            tier: buildRecipe.ayuntamientoNivel ?? undefined,
-          },
-        });
+        // Completa la fila EN_CONSTRUCCION ya creada en turn.ts en vez de crear una nueva
+        // (2026-08-23, Grupo 3 § Building.status) — `earlyBuildingId` solo falta si esta
+        // construcción se resolvió por el turno síncrono de /turn/narrate (nunca pasa hoy, todas
+        // las recetas son banda larga, pero se cubre el caso por si acaso) o si `turn.ts` no llegó
+        // a detectarla a tiempo (mismo "mejor esfuerzo" que el resto de esta revalidación).
+        const created = earlyBuildingId
+          ? await tx.building.update({ where: { id: earlyBuildingId }, data: { status: 'ACTIVO' } })
+          : await tx.building.create({
+              data: {
+                saveId,
+                locationId: currentLocationId ?? undefined,
+                recipeKey: buildRecipe.key,
+                name: buildRecipe.name,
+                kind: buildRecipe.key,
+                description: buildRecipe.description,
+                status: 'ACTIVO',
+                tier: buildRecipe.ayuntamientoNivel ?? undefined,
+              },
+            });
         // Fundación de reino (2026-08-04): solo al construir el Ayuntamiento tier 1 desde cero,
         // nunca en una mejora (esa rama ni pasa por aquí). Resuelve contra la(s) facción(es) dueña
         // de la región (reputation.ts) y crea el Territory correspondiente — mismo criterio que
@@ -4315,6 +4382,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
               region: activeRegion,
               description: `Territorio fundado al construir ${buildRecipe.name}.`,
               control: outcome === 'CONFLICTO' ? 'DISPUTADO' : 'RECLAMADO',
+              population: TERRITORIO_POBLACION_INICIAL,
             },
           });
           await tx.building.update({ where: { id: created.id }, data: { territoryId: founded.id } });

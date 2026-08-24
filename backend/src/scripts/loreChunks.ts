@@ -38,7 +38,7 @@ export const loreChunks: LoreChunkInput[] = [
   {
     type: 'CULTURA',
     title: 'Las 13 Semillas',
-    text: 'Madre creó 13 Semillas. 6 Fieles la sirven sin cuestionarla (Liania, transformación de la materia; Sezix, la muerte y el vacío; Tharlia, ordena los designios; Kroj, dominio desconocido; Goirme, el orden; Lerox, misterioso). 3 Neutrales tienen libre albedrío (Aquello que Brota, origen de los Jusaly; Aquello que Nace, creador de los Faerus; Berd, la información y la tecnología). 4 Perdidas desaparecieron tras conflictos con Madre, la más notable es Tarkor.',
+    text: 'Madre creó 13 Semillas. 6 Fieles la sirven sin cuestionarla (Liania, transformación de la materia; Sezix, la muerte y el vacío; Tharlia, ordena los designios; Kroj, dominio desconocido; Goirme, el orden; Lerox, misterioso). 3 Neutrales tienen libre albedrío (Florial, "El que Brota", origen de los Jusaly; Ferios, "El que Nace", creador de los Faerus; Berd, la información y la tecnología). 4 Perdidas desaparecieron tras conflictos con Madre: Tarkor (la más notable, ver arco propio), Nemuey (retiene la memoria de la muerte, origen del Mago Nigromante), Biur (afable pero el más destructivo, hace desaparecer la materia, "el barrendero", origen del Mago Vacío), Crout (ignora límites y fronteras, origen del Mago Irruptor).',
     tags: ['semillas', 'liania', 'sezix', 'tharlia', 'kroj', 'goirme', 'berd'],
     sourceDoc: 'genesis.md',
   },
@@ -268,7 +268,7 @@ export const loreChunks: LoreChunkInput[] = [
   {
     type: 'PERSONAJE',
     title: 'Las 8 razas jugables de Helek Sirik',
-    text: 'Kelife (Vaelira, Semilla Liania): piel cristalina, cercanos a lo humano. Goirntes (Berig, Semilla Goirme): piel gris, fríos y calculadores. Kalisar (Vaelira, Semilla Sezix): piel azabache, sufren la luz, afables pese a fama de asesinos. Jusaly (Vaelira, "Aquello que Brota"): elementos vegetales, agrarios y longevos. Orcos (Berig, Tarkor/magia salvaje): corpulentos, honor y fuerza, clanes con Terk\'ikar y Kort\'ikar. Nabieus (Berig, Semilla Kroj): ausencia hecha carne, sigilo absoluto. Faerus (Berig, "Aquello que Nace"): bípedos/cuadrúpedos, instintivos pero muy inteligentes. Ilvenar (Vaelira, Semilla Berd): archivistas de memoria perfecta, neutrales.',
+    text: 'Kelife (Vaelira, Semilla Liania): piel cristalina, cercanos a lo humano. Goirntes (Berig, Semilla Goirme): piel gris, fríos y calculadores. Kalisar (Vaelira, Semilla Sezix): piel azabache, sufren la luz, afables pese a fama de asesinos. Jusaly (Vaelira, Semilla Florial, "El que Brota"): elementos vegetales, agrarios y longevos. Orcos (Berig, Tarkor/magia salvaje): corpulentos, honor y fuerza, clanes con Terk\'ikar y Kort\'ikar. Nabieus (Berig, Semilla Kroj): ausencia hecha carne, sigilo absoluto. Faerus (Berig, Semilla Ferios, "El que Nace"): bípedos/cuadrúpedos, instintivos pero muy inteligentes. Ilvenar (Vaelira, Semilla Berd): archivistas de memoria perfecta, neutrales.',
     tags: ['razas', 'kelife', 'goirntes', 'kalisar', 'jusaly', 'orcos', 'nabieus', 'faerus', 'ilvenar'],
     sourceDoc: 'razas.md',
   },
@@ -308,7 +308,7 @@ export const loreChunks: LoreChunkInput[] = [
   {
     type: 'CONTRATO',
     title: 'Contrato de mundo: tono, letalidad, magia, tecnología',
-    text: 'Tono épico y trágico: pueblos que se creen en lo correcto libran una guerra sobre una verdad que nadie tiene completa, en un mundo tan pequeño (máximo ~6.000 habitantes en la mayor civilización) que cada muerte deja cicatriz. Letalidad media: la muerte de un personaje con nombre es rara y con peso, nunca casual. Magia (arcano y otras 5 escuelas: elementos, oscura, purificadora, naturaleza, dominio) siempre conlleva un pequeño riesgo narrativo incluso en éxito. Tecnología medieval-fantástica, sin pólvora; Berig con metalurgia algo más avanzada.',
+    text: 'Tono épico y trágico: pueblos que se creen en lo correcto libran una guerra sobre una verdad que nadie tiene completa, en un mundo tan pequeño (máximo ~6.000 habitantes en la mayor civilización) que cada muerte deja cicatriz. Letalidad media: la muerte de un personaje con nombre es rara y con peso, nunca casual. Magia: 7 escuelas en las que se divide la magia de Tarkor (arcano, fuerza destructiva pura; elementos; oscura; purificadora; naturaleza; dominio; salvaje, la rama que dio origen a los orcos y otras razas sin Semilla) — siempre conlleva un pequeño riesgo narrativo incluso en éxito. Tecnología medieval-fantástica, sin pólvora; Berig con metalurgia algo más avanzada.',
     tags: ['contrato', 'tono', 'letalidad', 'magia', 'tecnologia'],
     sourceDoc: '07-mundo-helek-sirik.md',
   },

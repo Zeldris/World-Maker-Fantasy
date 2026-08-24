@@ -9,12 +9,14 @@ import Fastify from 'fastify';
 const findUniqueSave = vi.fn();
 const deleteManyTransit = vi.fn();
 const createLogEntry = vi.fn();
+const deleteManyBuilding = vi.fn();
 
 vi.mock('../../lib/prisma.js', () => ({
   prisma: {
     save: { findUnique: (...args: unknown[]) => findUniqueSave(...args) },
     characterTransit: { deleteMany: (...args: unknown[]) => deleteManyTransit(...args) },
     logEntry: { create: (...args: unknown[]) => createLogEntry(...args) },
+    building: { deleteMany: (...args: unknown[]) => deleteManyBuilding(...args) },
   },
 }));
 
@@ -31,6 +33,7 @@ describe('POST /saves/:id/transit/cancel', () => {
     findUniqueSave.mockReset();
     deleteManyTransit.mockReset();
     createLogEntry.mockReset().mockResolvedValue({});
+    deleteManyBuilding.mockReset().mockResolvedValue({ count: 1 });
   });
 
   it('404 si no hay ningún tránsito pendiente', async () => {
@@ -56,6 +59,28 @@ describe('POST /saves/:id/transit/cancel', () => {
 
     expect(res.statusCode).toBe(204);
     expect(createLogEntry).toHaveBeenCalled();
+    expect(deleteManyBuilding).not.toHaveBeenCalled();
+  });
+
+  // Building.status EN_CONSTRUCCION real (2026-08-23, Grupo 3 § Building.status) — cancelar una
+  // construcción determinista ya en marcha (turn.ts la creó EN_CONSTRUCCION al iniciar el
+  // CharacterTransit) no debe dejarla huérfana en ese estado para siempre.
+  it('cancelar una construcción determinista en curso borra también la fila Building EN_CONSTRUCCION', async () => {
+    findUniqueSave.mockResolvedValue({
+      id: 'save1',
+      characterName: 'Gorhorn',
+      characterTransit: {
+        busyUntil: new Date(Date.now() + 60_000),
+        zoneContext: { action: 'Construyo un ayuntamiento aquí mismo.', buildingId: 'building1' },
+      },
+    });
+    deleteManyTransit.mockResolvedValue({ count: 1 });
+    const app = await buildApp();
+
+    const res = await app.inject({ method: 'POST', url: '/saves/save1/transit/cancel' });
+
+    expect(res.statusCode).toBe(204);
+    expect(deleteManyBuilding).toHaveBeenCalledWith({ where: { id: 'building1', status: 'EN_CONSTRUCCION' } });
   });
 
   it('409 si worldTick ya reclamó el tránsito (claimedAt presente) — antes esto se cancelaba igualmente, tirando la narración ya generada', async () => {
@@ -73,5 +98,6 @@ describe('POST /saves/:id/transit/cancel', () => {
     expect(res.statusCode).toBe(409);
     expect(deleteManyTransit).not.toHaveBeenCalled();
     expect(createLogEntry).not.toHaveBeenCalled();
+    expect(deleteManyBuilding).not.toHaveBeenCalled();
   });
 });

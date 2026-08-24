@@ -120,7 +120,14 @@ export async function growAllPopulations(prisma: Pick<PrismaClient, 'worldPopula
     if (row.poblacion < UMBRAL_MINIMO_REPRODUCCION) continue;
     const elapsedDays = (now - row.updatedAt.getTime()) / MS_POR_DIA;
     if (elapsedDays <= 0) continue;
-    const delta = Math.floor(row.poblacion * GROWTH_RATE_PER_DAY[row.targetType] * elapsedDays);
+    const deltaSinTope = Math.floor(row.poblacion * GROWTH_RATE_PER_DAY[row.targetType] * elapsedDays);
+    // Techo real (auditoría de elementos desconectados, 2026-08-23): `poblacionMax` llevaba
+    // sembrado desde el principio como "techo de referencia para cálculos futuros", pero nunca se
+    // aplicaba — el crecimiento era literalmente ilimitado. Se acota aquí, mismo criterio de
+    // aproximación ya aceptado por el resto de la función (basado en el `row.poblacion` ya leído
+    // en este ciclo, no en una relectura atómica — la carrera con una muerte/crecimiento
+    // concurrente ya es un riesgo asumido, ver comentario de `decrementPopulationOnDeath` arriba).
+    const delta = Math.min(deltaSinTope, Math.max(0, row.poblacionMax - row.poblacion));
     if (delta < 1) continue;
 
     // Bug real (auditoría 2026-08-06, ver comentario de decrementPopulationOnDeath arriba): mismo

@@ -121,6 +121,11 @@ export function GameView() {
   const [worldName, setWorldName] = useState<string | null>(null)
   const [characterName, setCharacterName] = useState<string | null>(null)
   const [characterMotivation, setCharacterMotivation] = useState<string | null>(null)
+  // Bug real (auditoría de elementos desconectados, 2026-08-23): el backend ya mandaba estos dos
+  // campos en CADA carga de partida (SaveDetail), pero `syncFromSave` los tiraba sin más — solo se
+  // usaban al CREAR el personaje, nunca se volvían a mostrar durante la partida ya en marcha.
+  const [characterArchetype, setCharacterArchetype] = useState<string | null>(null)
+  const [characterOrigin, setCharacterOrigin] = useState<string | null>(null)
   const [characterAttributes, setCharacterAttributes] = useState<AttributeBlock | null>(null)
   // Bonus de equipo por atributo, aparte de la base (2026-08-14) — solo cambia al equipar/quitar
   // (syncFromSave), nunca al gastar puntos de atributo ni al resolver un turno, así que no hace
@@ -361,6 +366,8 @@ export function GameView() {
   function syncFromSave(save: SaveDetail) {
     setCharacterName(save.characterName)
     setCharacterMotivation(save.characterMotivation)
+    setCharacterArchetype(save.characterArchetype)
+    setCharacterOrigin(save.characterOrigin)
     setCharacterAttributes(save.attributes)
     setCharacterAttributeBonuses(save.attributeBonuses)
     setSecondaryAttributes(save.secondaryAttributes)
@@ -880,6 +887,7 @@ export function GameView() {
         energiaMax: newEnergiaMax,
         timeLabel: newTimeLabel,
         combateIniciado: combate,
+        esperandoDefensaJugador,
         finDePartida,
         newInventoryItems,
         removedInventoryItemIds,
@@ -933,6 +941,14 @@ export function GameView() {
         setInventory((prev) => applyInventoryDelta(prev, newInventoryItems, removedInventoryItemIds, updatedInventoryItems))
       }
       if (combate && combate.npcs.length > 0) setCombateIniciado(combate)
+      // Bug real (auditoría de elementos desconectados, 2026-08-23): este turno (el que ABRE
+      // combate/emboscada) nunca leía `esperandoDefensaJugador` — solo `handleCombatTurnResolved`
+      // (useCombatFlow.ts, turnos DENTRO de un panel ya abierto) lo hacía. Tras el fix de
+      // `pendingNpcAttack` en la emboscada real (2026-08-22), un fallo en el turno de apertura ya
+      // hace que el NPC ataque primero de verdad — pero la UI nunca pasaba a mostrar "Defensa" en
+      // ese primer intercambio, el jugador seguía viendo "Ataque" pese a que mecánicamente le tocaba
+      // defenderse.
+      combat.setCombatAwaitingDefense(esperandoDefensaJugador)
       if (finDePartida) setEndedAt(new Date().toISOString())
 
       if (travel) {
@@ -1502,6 +1518,8 @@ export function GameView() {
             <PersonajePanel
               activeSubTab={personajeSubTab}
               onSubTabChange={setPersonajeSubTab}
+              characterArchetype={characterArchetype}
+              characterOrigin={characterOrigin}
               items={inventory}
               onSlotClick={handleSlotClick}
               attributes={characterAttributes}

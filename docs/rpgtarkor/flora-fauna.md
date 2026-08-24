@@ -85,6 +85,38 @@
 - **Ferikes** *(del lado de la selva, junto a posibles ataques Faerus)*: bestia de 1,5 a 3 metros, cuatro patas, pelaje espeso —raíz negra, rastas verde oscuro que arrastran por el suelo—, garras curvas y anchas capaces de desgarrar y escalar árboles, ojos violeta oscuro brillantes, dientes tan largos que no le permiten cerrar la boca del todo. Cuerpo musculoso y esbelto, muy ágil pese a que el pelaje la hace parecer más grande de lo que es. Cazan a cualquiera que se adentre en la sombra de la espesura; temen solo a los Faerus. Los machos tienen cola de espigas de pelo negro que pueden "apretar" para usarla como maza —barridos, golpes al suelo, también ritual de cortejo—; las hembras no tienen cola, pero desarrollan dientes y garras más fuertes: son ellas las cazadoras y alfas de la manada. Recursos: Piel de Ferike y Garras Ferike (abalorios tier 6-7), Melena de cola Ferike (tier 7, muy baja probabilidad de loot — objeto especial para el objeto de mayor calidad de ese tier), hueso (reutiliza Hueso ligero) y carne (reutiliza Ración de carne fresca).
 - **Escorantes**: escarabajo de 40 a 60 cm, caparazón oscuro y amarillo con detalles arcillosos/rojos, cuerno frontal en forma de pala para cavar y enterrarse en zonas húmedas. Herbívoro cauteloso, se alimenta del Musgo Arcilla. Diminutos pinchos en el caparazón segregan un líquido de sabor muy desagradable —disuade a los Guchapos, que igualmente lo siguen intentando por hambre sin mucho criterio. Su depredador real son los Lebudes, que cazan en manada, inyectan veneno y lo desorientan para comérselo por dentro desde la parte inferior, dejando solo el caparazón vacío — cazar un Escorante cuesta bajas reales entre los Lebudes, pero es un botín grande para la colmena. Recurso: Quitina Escorante (tier 2-4).
 
+**Fauna — El Margen Silencioso, interior de la selva (añadido 2026-08-23)** — hasta ahora solo el
+borde con Las Llanuras (Ferikes, ver Cruce de las Cenizas arriba) tenía fauna propia; estas tres
+viven ya dentro del laberinto de selva/pantano/coníferas de madera negra, territorio Faerus, y dan
+cuerpo real a las formas de Cambiaformas/Aullador (Druida) que las nombran:
+
+- **Hetris**: felino-simio arbóreo de 80-120 cm, cuerpo esbelto y extremidades largas con garras
+  curvas, cola prensil casi tan larga como el cuerpo, pelaje corto gris verdoso que se funde con la
+  corteza húmeda del Margen. Vive en el dosel alto, rara vez baja al suelo — caza acechando desde
+  las ramas y dejándose caer sobre la presa antes de que perciba el peligro; el golpe inicial casi
+  siempre decide la caza. Solitario y territorial, evita a los Ferikes (que sí cazan en el suelo)
+  por instinto más que por miedo. Recursos: Piel de Hetris (tier 3), Garras de Hetris (tier 4).
+- **Mekiosi**: bestia de 200-250 cm, complexión pesada y musculosa, piel gruesa de tonos pardos y
+  verdes que imita el musgo y la corteza podrida del suelo del Margen, patas cortas y robustas,
+  cabeza ancha con mandíbula capaz de partir hueso. Aguanta inmóvil horas, casi como una raíz
+  cubierta de musgo, esperando a que una presa se acerque lo suficiente antes de cargar con todo su
+  peso en una sola embestida. Solitario, territorio amplio, no necesita manada. Recursos: Piel de
+  Mekiosi (tier 4), Colmillos de Mekiosi (tier 5).
+- **Vistue**: corredor de manada de 130-170 cm, cuerpo alargado y patas largas hechas para la
+  carrera sostenida, pelaje corto oscuro con una franja más clara a lo largo del lomo, hocico
+  estrecho, orejas grandes que regulan su temperatura en carreras largas. Caza en manadas de 5 a 8,
+  no por fuerza bruta sino por resistencia — persiguen a una presa durante horas, turnándose en
+  cabeza, hasta que esta se rinde de puro agotamiento. Poco peligroso en solitario, mucho en
+  manada. Recursos: Piel de Vistue (tier 3), carne (reutiliza `racion-carne`).
+- **Vaeth, el Eco de la Manada**: no es fauna cazable — un espíritu ligado al propio fenómeno del
+  Margen Silencioso, donde "el sonido parece apagarse de forma antinatural" (ver descripción de la
+  región). Los Faerus lo veneran más que lo temen: se dice que es el eco de todas las manadas que
+  alguna vez vivieron y murieron en el laberinto de selva, un aullido sin cuerpo que solo se deja
+  oír — nunca ver del todo — cuando una manada real está a punto de perder a los suyos. Es lo que
+  invoca un Aullador Druida en su habilidad definitiva, "Invocación del Ancestro" (ver
+  [clases.md](clases.md#aullador--vínculo-de-manada-tan-bloqueada-como-domador)), no como bestia de
+  combate sino como presencia que fortalece a toda la manada a su alrededor.
+
 **Fauna y flora — El Osario de la Manada (añadido 2026-08-21)** — el esqueleto de la Gargantúa de Ceniza muerta hace décadas ya daba hueso largo y placa ósea (recolección, sin cacería); esta pasada añade fragmentos más pequeños, fauna de paso y la primera flora comestible pensada para el nuevo oficio de cocinero.
 
 - **Fragmentos de Gargantúa** *(nuevo, recolección)*: trozos pequeños del mismo esqueleto — tier 1-2, distinto del Hueso largo de gargantúa (materia prima de lanzas) y la Placa ósea de gargantúa (armadura/construcción pesada) ya existentes.
