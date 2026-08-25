@@ -1,20 +1,34 @@
 import type { Prisma, CondicionFisica, Npc } from '@prisma/client';
 import type { AttributeBlock } from './dice.js';
-import { rollInitiativeMultiple, retargetBando, objetivosValidos, type CombatienteIniciativa, type Bando, type ObjetivoCandidato } from './combateMultiple.js';
+import {
+  rollInitiativeMultiple,
+  retargetBando,
+  objetivosValidos,
+  resolverIntercambioCompleto,
+  type CombatienteIniciativa,
+  type Bando,
+  type ObjetivoCandidato,
+  type HabilidadParaIntercambio,
+} from './combateMultiple.js';
 import { npcCombatAbilitiesFor, chooseNpcAbility, type NpcCombatAbility, type NpcForCombatAbilities } from './npcCombatAbilities.js';
-import { resolveExchange, exchangeContextBlock, type ExchangeParticipant } from './combatExchange.js';
-import { nextCondicionForAttack } from './death.js';
 import { narrarTurnoCombateMultiple } from './combateMultipleNarracion.js';
 import type { NpcHabilidadRacialInScene } from './npcScene.js';
+import { energiaMaxFor, nextEnergia } from './energy.js';
+import { saludForCondicion } from './death.js';
 
 /// Grupo 3 § Combate múltiple (2026-08-25) — orquestación con estado real (crea/avanza un
-/// `CombatEncounter`). Deliberadamente ACOTADO en esta pasada: resuelve turnos autónomos de NPC/
-/// COMPANION (sin intervención de la jugadora) de principio a fin — mecánica + condición física/
-/// energía real + narración — pero TODAVÍA no engancha XP/cierre de misión/loot al matar (eso
-/// vive hoy en `applyCombatExchangeToNpcState`, turnResolution.ts, profundamente atado al resto
-/// del turno síncrono) ni resuelve el turno de la propia jugadora (eso sigue siendo
-/// `resolveCombatExchangePhase` de siempre hasta la pasada de integración real). Construido y
-/// probado aislado a propósito, antes de tocar el motor de combate en uso.
+/// `CombatEncounter`). Fase A/B: resuelve turnos autónomos de NPC/COMPANION (sin intervención de
+/// la jugadora) de principio a fin — mecánica + condición física/energía real + narración —
+/// construida y probada aislada a propósito, antes de tocar el motor de combate en uso.
+///
+/// Integración real (2026-08-25, "paridad completa desde ya"): `resolverTurnoJugador` resuelve
+/// también el turno de la JUGADORA cuando hay un `CombatEncounter` activo — la mecánica de cada
+/// intercambio (ambos casos) pasa por `resolverIntercambioCompleto` (combateMultiple.ts § 4), que
+/// SÍ tiene paridad con `resolveCombatExchangePhase` (utilidades reactivas, doble arma, LETAL).
+/// TODAVÍA no engancha XP/cierre de misión/loot al matar dentro de un `CombatEncounter` (eso sigue
+/// viviendo en `applyCombatExchangeToNpcState`, turnResolution.ts, para el combate 1v1 clásico) —
+/// el enganche a esa parte pasa por el punto de integración en `narrateAndPersistTurn`, no por
+/// este archivo.
 
 export interface CombatienteInicial {
   bando: Bando;
@@ -104,6 +118,11 @@ interface DatosCombatiente {
 /// Resuelve los datos EN VIVO de un combatiente — nunca duplicados en `CombatParticipant`, ver
 /// comentario del modelo en schema.prisma. `NpcState` se crea perezosa (mismo criterio que el
 /// resto del motor: un NPC nunca tocado no tiene fila propia todavía).
+/// Roster defensivo mínimo garantizado (mismo "Esquivar" que `npcCombatAbilitiesFor` añade siempre
+/// al final de CUALQUIER NPC, npcCombatAbilities.ts) — la jugadora lo usa como último recurso si
+/// no tiene ninguna `SavedAction` de defensa/utilidad todavía (personaje recién creado).
+const ESQUIVAR_GENERICO: NpcCombatAbility = { name: 'Esquivar', description: 'Esquiva el golpe entrante.', attribute: 'destreza', effects: [], rol: 'defensa', energyCost: 0, energyRegen: 15 };
+
 async function datosVivosDe(
   tx: Prisma.TransactionClient,
   worldId: string,
@@ -111,6 +130,41 @@ async function datosVivosDe(
   participant: ParticipantRef,
   weaponNames: string[],
 ): Promise<DatosCombatiente | null> {
+  if (participant.tipo === 'JUGADOR') {
+    // La jugadora en un CombatEncounter real (2026-08-25) — a diferencia de NPC/COMPANION, en su
+    // propio turno ELIGE la habilidad de ataque explícitamente (ver `resolverTurnoJugador`, no
+    // usa `chooseNpcAbility`); el roster que se devuelve aquí solo hace falta para cuando actúa
+    // como DEFENSORA en el turno de otro combatiente — auto-elegido igual que un NPC, entre sus
+    // propias `SavedAction` de defensa/utilidad reales (simplificación consciente: no se pide su
+    // reacción en directo en cada ataque enemigo dentro de una resolución en grupo, mismo criterio
+    // "resuelve autónomo hasta que le toca a la jugadora" del resto de este archivo).
+    const save = await tx.save.findUniqueOrThrow({ where: { id: saveId } });
+    const savedActions = await tx.savedAction.findMany({ where: { saveId, rol: { in: ['defensa', 'utilidad'] } } });
+    const abilities: NpcCombatAbility[] = savedActions
+      .filter((a): a is typeof a & { preferredAttribute: string; rol: 'defensa' | 'utilidad' } => !!a.preferredAttribute && (a.rol === 'defensa' || a.rol === 'utilidad'))
+      .map((a) => ({
+        name: a.name,
+        description: a.description,
+        attribute: a.preferredAttribute as NpcCombatAbility['attribute'],
+        attributeBonus: a.attributeBonus ?? undefined,
+        effects: a.effects,
+        rol: a.rol,
+        energyCost: a.energyCost,
+        energyRegen: a.energyRegen,
+        maxUsesPerCombat: a.maxUsesPerCombat,
+      }));
+    return {
+      nombre: save.characterName,
+      attributes: save.attributes as unknown as AttributeBlock,
+      condicionFisica: save.condicionFisica,
+      energia: save.energia,
+      abilities: abilities.length > 0 ? abilities : [ESQUIVAR_GENERICO],
+      // Tope de usos por combate NO se enforce para la jugadora dentro de un CombatEncounter en
+      // esta pasada (simplificación documentada, mismo espíritu que `esGrupo`) — su
+      // `NpcState.abilityUsesThisEncounter` equivalente no existe en `Save`.
+      usageCounts: {},
+    };
+  }
   if (participant.tipo === 'NPC' && participant.npcId) {
     const npc = await tx.npc.findUnique({ where: { id: participant.npcId } });
     if (!npc) return null;
@@ -185,6 +239,16 @@ async function escribirCondicionYEnergia(
     if (condicionFisica) await tx.combatParticipant.update({ where: { id: participant.id }, data: { condicionFisicaGrupo: condicionFisica } });
     return;
   }
+  if (participant.tipo === 'JUGADOR') {
+    await tx.save.update({
+      where: { id: saveId },
+      data: {
+        ...(condicionFisica ? { condicionFisica, salud: saludForCondicion(condicionFisica) } : {}),
+        ...(energia !== null ? { energia } : {}),
+      },
+    });
+    return;
+  }
   if (participant.tipo === 'NPC' && participant.npcId) {
     await tx.npcState.upsert({
       where: { saveId_npcId_scope: { saveId, npcId: participant.npcId, scope: participant.npcScope } },
@@ -217,10 +281,102 @@ export interface TurnoAutonomoResultado {
   encounterTerminado: boolean;
 }
 
+/// Núcleo compartido por `resolverTurnoAutonomo` (atacante NPC/COMPANION) y `resolverTurnoJugador`
+/// (atacante la propia jugadora, 2026-08-25): resuelve el intercambio completo (paridad real vía
+/// `resolverIntercambioCompleto`, combateMultiple.ts § 4), escribe condición/energía de AMBOS
+/// lados (el atacante también puede recibir un contragolpe, a diferencia del 1v1 donde quien tiene
+/// la iniciativa casi nunca recibe daño en el mismo intercambio), narra y avanza el encuentro.
+async function ejecutarIntercambioYAvanzar(
+  tx: Prisma.TransactionClient,
+  worldId: string,
+  saveId: string,
+  encounterId: string,
+  encounter: { turnoActual: number; ordenIniciativa: string[]; participantes: (ParticipantRef & { bando: Bando })[] },
+  actual: ParticipantRef,
+  datosAtacante: DatosCombatiente,
+  habilidadAtaque: HabilidadParaIntercambio,
+  atacanteRol: 'ataque' | 'defensa' | 'utilidad',
+  dualWieldBonus: boolean,
+  defensor: ParticipantRef,
+  weaponNamesPorDefecto: string[],
+  narrarFn: typeof narrarTurnoCombateMultiple,
+): Promise<TurnoAutonomoResultado> {
+  const datosDefensor = await datosVivosDe(tx, worldId, saveId, defensor, weaponNamesPorDefecto);
+  if (!datosDefensor || datosDefensor.condicionFisica === 'CONVALECIENTE' || datosDefensor.condicionFisica === 'MUERTO') {
+    return avanzarSinAtacar(tx, encounterId, encounter);
+  }
+  const habilidadDefensa = chooseNpcAbility(datosDefensor.abilities, 'defensa', datosDefensor.energia, Math.random, datosDefensor.usageCounts);
+
+  const resultado = resolverIntercambioCompleto(
+    { nombre: datosAtacante.nombre, attributes: datosAtacante.attributes, condicionFisica: datosAtacante.condicionFisica },
+    habilidadAtaque,
+    atacanteRol,
+    15,
+    { nombre: datosDefensor.nombre, attributes: datosDefensor.attributes, condicionFisica: datosDefensor.condicionFisica },
+    habilidadDefensa,
+    15,
+    dualWieldBonus,
+  );
+
+  const nuevaEnergiaAtacante = nextEnergia({
+    current: datosAtacante.energia,
+    max: energiaMaxFor(datosAtacante.attributes.constitucion),
+    abilityEnergyCost: habilidadAtaque.energyCost,
+    abilityEnergyRegen: habilidadAtaque.energyRegen + resultado.atacanteRecuperacionExtra,
+    exchangeHappened: true,
+    restSucceeds: false,
+    restAttempted: false,
+    itemRestoreAmount: null,
+  });
+  const nuevaEnergiaDefensor = nextEnergia({
+    current: datosDefensor.energia,
+    max: energiaMaxFor(datosDefensor.attributes.constitucion),
+    abilityEnergyCost: habilidadDefensa.energyCost,
+    abilityEnergyRegen: habilidadDefensa.energyRegen + resultado.defensorRecuperacionExtra,
+    exchangeHappened: true,
+    restSucceeds: false,
+    restAttempted: false,
+    itemRestoreAmount: null,
+  });
+
+  await escribirCondicionYEnergia(
+    tx,
+    saveId,
+    defensor,
+    resultado.defensorRecibeGolpe ? resultado.nuevaCondicionDefensor : null,
+    nuevaEnergiaDefensor,
+    habilidadDefensa.name,
+    datosDefensor.usageCounts,
+  );
+  await escribirCondicionYEnergia(
+    tx,
+    saveId,
+    actual,
+    resultado.atacanteRecibeGolpe ? resultado.nuevaCondicionAtacante : null,
+    nuevaEnergiaAtacante,
+    habilidadAtaque.name,
+    datosAtacante.usageCounts,
+  );
+
+  const narracion = await narrarFn({
+    atacanteNombre: datosAtacante.nombre,
+    defensorNombre: datosDefensor.nombre,
+    habilidadNombre: habilidadAtaque.name,
+    exchangeBlock: resultado.exchangeBlock,
+    combatBothMissed: resultado.combatBothMissed,
+    combatRealHitLanded: resultado.combatRealHitLanded,
+    defensorQuedaConvalecienteEsteTurno: resultado.defensorRecibeGolpe && resultado.nuevaCondicionDefensor === 'CONVALECIENTE',
+    defensorMuereEsteTurno: resultado.defensorRecibeGolpe && resultado.nuevaCondicionDefensor === 'MUERTO',
+  });
+
+  const encounterTerminado = await avanzarYComprobarFin(tx, worldId, saveId, encounterId, encounter, weaponNamesPorDefecto);
+  return { narracion, atacanteNombre: datosAtacante.nombre, defensorNombre: datosDefensor.nombre, encounterTerminado };
+}
+
 /// Resuelve el turno del combatiente ACTUAL de la cola de iniciativa — solo si es NPC/COMPANION
-/// (nunca JUGADOR, ver comentario de cabecera: el turno de la jugadora sigue el camino de
-/// siempre). Avanza `turnoActual`, retarget si hace falta tras una baja, y marca el encuentro
-/// RESUELTO si un bando entero se queda sin objetivos válidos.
+/// (nunca JUGADOR, ver `resolverTurnoJugador` para ese caso). Avanza `turnoActual`, retarget si
+/// hace falta tras una baja, y marca el encuentro RESUELTO si un bando entero se queda sin
+/// objetivos válidos.
 ///
 /// `narrarFn` inyectable (por defecto la llamada real a Ollama) — cada llamada real cuesta
 /// 30-220s (narrador.ts), así que los tests pasan un doble rápido en vez de esperar de verdad;
@@ -248,60 +404,69 @@ export async function resolverTurnoAutonomo(
   const defensorId = actual.objetivoActualId;
   const defensor = defensorId ? encounter.participantes.find((p) => p.id === defensorId) : null;
   if (!defensor) return avanzarSinAtacar(tx, encounterId, encounter);
-  const datosDefensor = await datosVivosDe(tx, worldId, saveId, defensor, weaponNamesPorDefecto);
-  if (!datosDefensor || datosDefensor.condicionFisica === 'CONVALECIENTE' || datosDefensor.condicionFisica === 'MUERTO') {
+
+  const habilidadAtaque = chooseNpcAbility(datosAtacante.abilities, 'ataque', datosAtacante.energia, Math.random, datosAtacante.usageCounts);
+  return ejecutarIntercambioYAvanzar(tx, worldId, saveId, encounterId, encounter, actual, datosAtacante, habilidadAtaque, 'ataque', false, defensor, weaponNamesPorDefecto, narrarFn);
+}
+
+export interface AccionJugadorCombate {
+  /// `CombatParticipant.id` del objetivo — resuelto por el caller (turnResolution.ts) con el
+  /// mismo criterio "nombre citado entre comillas" que ya usa el resto del turno (npcsInScene),
+  /// más "primer individuo vivo de esa especie" si hay varios miembros de un mismo grupo con el
+  /// mismo nombre — no hace falta que el frontend distinga individuos por ahora, son mecánicamente
+  /// intercambiables (mismo roster de habilidades, misma especie).
+  targetParticipantId: string;
+  /// Habilidad ya elegida por la jugadora (botón pulsado o fallback determinista), construida por
+  /// el caller a partir de su `SavedAction` real — mismo patrón que `selectedAbility`/
+  /// `abilityEffects`/`abilityRol` en turnResolution.ts, nunca recalculado aquí.
+  habilidad: HabilidadParaIntercambio;
+  dualWieldBonus?: boolean;
+}
+
+/// Resuelve el turno de la JUGADORA cuando le toca en la cola de iniciativa de un `CombatEncounter`
+/// real — equivalente exacto de `resolverTurnoAutonomo` pero con la habilidad y el objetivo
+/// decididos por ella (nunca `chooseNpcAbility`). `null` si no es su turno todavía (el caller debe
+/// seguir resolviendo turnos autónomos hasta que sí lo sea, ver el bucle de integración en
+/// turnResolution.ts).
+export async function resolverTurnoJugador(
+  tx: Prisma.TransactionClient,
+  worldId: string,
+  saveId: string,
+  encounterId: string,
+  accion: AccionJugadorCombate,
+  weaponNamesPorDefecto: string[] = [],
+  narrarFn: typeof narrarTurnoCombateMultiple = narrarTurnoCombateMultiple,
+): Promise<TurnoAutonomoResultado | null> {
+  const encounter = await tx.combatEncounter.findUniqueOrThrow({ where: { id: encounterId }, include: { participantes: true } });
+  if (encounter.estado === 'RESUELTO' || encounter.ordenIniciativa.length === 0) return null;
+
+  const actualId = encounter.ordenIniciativa[encounter.turnoActual % encounter.ordenIniciativa.length];
+  const actual = encounter.participantes.find((p) => p.id === actualId);
+  if (!actual || actual.tipo !== 'JUGADOR') return null;
+
+  const datosAtacante = await datosVivosDe(tx, worldId, saveId, actual, weaponNamesPorDefecto);
+  if (!datosAtacante || objetivosValidos([{ participantId: actual.id, condicionFisica: datosAtacante.condicionFisica }]).length === 0) {
     return avanzarSinAtacar(tx, encounterId, encounter);
   }
 
-  const habilidadAtaque = chooseNpcAbility(datosAtacante.abilities, 'ataque', datosAtacante.energia, Math.random, datosAtacante.usageCounts);
-  const habilidadDefensa = chooseNpcAbility(datosDefensor.abilities, 'defensa', datosDefensor.energia, Math.random, datosDefensor.usageCounts);
+  const defensor = encounter.participantes.find((p) => p.id === accion.targetParticipantId);
+  if (!defensor) return avanzarSinAtacar(tx, encounterId, encounter);
 
-  const atacanteExchange: ExchangeParticipant = {
-    attributes: datosAtacante.attributes,
-    attribute: habilidadAtaque.attribute,
-    attributeBonus: habilidadAtaque.attributeBonus,
-    difficulty: 15,
-    condicionFisica: datosAtacante.condicionFisica,
-    rol: 'ataque',
-  };
-  const defensorExchange: ExchangeParticipant = {
-    attributes: datosDefensor.attributes,
-    attribute: habilidadDefensa.attribute,
-    attributeBonus: habilidadDefensa.attributeBonus,
-    difficulty: 15,
-    condicionFisica: datosDefensor.condicionFisica,
-    rol: 'defensa',
-  };
-  const exchange = resolveExchange(atacanteExchange, defensorExchange);
-  const defensorHitOutcomes = new Set(['golpe_normal', 'golpe_pleno']);
-  const defensorFueGolpeado = defensorHitOutcomes.has(exchange.resultado);
-  const nuevaCondicionDefensor = defensorFueGolpeado ? nextCondicionForAttack(habilidadAtaque.effects, datosDefensor.condicionFisica) : datosDefensor.condicionFisica;
-
-  await escribirCondicionYEnergia(
+  return ejecutarIntercambioYAvanzar(
     tx,
+    worldId,
     saveId,
+    encounterId,
+    encounter,
+    actual,
+    datosAtacante,
+    accion.habilidad,
+    accion.habilidad.rol,
+    accion.dualWieldBonus ?? false,
     defensor,
-    defensorFueGolpeado ? nuevaCondicionDefensor : null,
-    null,
-    habilidadDefensa.name,
-    datosDefensor.usageCounts,
+    weaponNamesPorDefecto,
+    narrarFn,
   );
-  await escribirCondicionYEnergia(tx, saveId, actual, null, null, habilidadAtaque.name, datosAtacante.usageCounts);
-
-  const exchangeBlock = exchangeContextBlock(exchange, datosAtacante.nombre, datosDefensor.nombre, habilidadDefensa.effects.includes('ATAQUE'));
-  const narracion = await narrarFn({
-    atacanteNombre: datosAtacante.nombre,
-    defensorNombre: datosDefensor.nombre,
-    habilidadNombre: habilidadAtaque.name,
-    exchangeBlock,
-    combatBothMissed: !defensorFueGolpeado && exchange.resultado !== 'defensor_contragolpea',
-    combatRealHitLanded: defensorFueGolpeado,
-    defensorQuedaConvalecienteEsteTurno: defensorFueGolpeado && nuevaCondicionDefensor === 'CONVALECIENTE',
-    defensorMuereEsteTurno: defensorFueGolpeado && nuevaCondicionDefensor === 'MUERTO',
-  });
-
-  const encounterTerminado = await avanzarYComprobarFin(tx, worldId, saveId, encounterId, encounter, weaponNamesPorDefecto);
-  return { narracion, atacanteNombre: datosAtacante.nombre, defensorNombre: datosDefensor.nombre, encounterTerminado };
 }
 
 async function avanzarSinAtacar(

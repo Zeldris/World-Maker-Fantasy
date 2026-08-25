@@ -40,6 +40,7 @@ import {
   effectiveExchangeOutcome,
   independentExchangeContextBlock,
   hitSeverityHint,
+  utilityTriggered,
   type PendingNpcAttack,
   type InitiativeResult,
   type CombatExchangeDisplay,
@@ -613,28 +614,6 @@ export interface CombatExchangePhaseResult {
   /// a `npcNuevaEnergia` directamente (no necesita salir aparte). El caller lo suma a su propio
   /// cálculo de `nuevaEnergia` (fuera de esta función, no tiene acceso a `energiaMax` del jugador).
   jugadorRecuperacionExtra: number;
-}
-
-/// Rediseño de combate (2026-08-09) — ¿se dispara el efecto reactivo de una habilidad
-/// `rol:'utilidad'` este intercambio? Dos reglas, según el propio `effect`:
-/// - `ANALISIS` (Analizar rival): NO reactiva — solo depende de la propia tirada, nunca de qué
-///   eligió el rival (petición explícita: revela el atributo recomendado con solo usarla y
-///   acertar tu tirada, no hace falta que el rival ataque).
-/// - Cualquier otro (`ATAQUE`=Contraataque, `INTIMIDACION`=Grito de Guerra, `ATURDIMIENTO`=
-///   Instinto Salvaje): reactiva de verdad — exige AMBAS cosas a la vez: la tirada PROPIA tuvo
-///   éxito (`ownEfectoAplica`, independiente de la tirada del rival, ver
-///   `resolveIndependentExchange`) Y la habilidad que el RIVAL eligió este mismo intercambio es
-///   `rol:'ataque'` (si el rival se defendió o usó utilidad, no hay ataque de daño al que
-///   reaccionar, así que nunca se dispara).
-function utilityTriggered(
-  ownRol: 'ataque' | 'defensa' | 'utilidad',
-  ownEffects: AbilityEffect[],
-  ownEfectoAplica: boolean,
-  opponentRol: 'ataque' | 'defensa' | 'utilidad',
-): boolean {
-  if (ownRol !== 'utilidad' || !ownEfectoAplica) return false;
-  if (ownEffects.includes('ANALISIS')) return true;
-  return opponentRol === 'ataque';
 }
 
 /// Etiqueta en prosa, minúscula, de cada `CondicionFisica` — para la narración determinista del

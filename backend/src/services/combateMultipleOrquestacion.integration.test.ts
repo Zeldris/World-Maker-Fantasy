@@ -1,7 +1,8 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { prisma } from '../lib/prisma.js';
 import { getDefaultUserId } from '../lib/defaultUser.js';
-import { iniciarCombatEncounter, resolverTurnoAutonomo } from './combateMultipleOrquestacion.js';
+import { iniciarCombatEncounter, resolverTurnoAutonomo, resolverTurnoJugador } from './combateMultipleOrquestacion.js';
+import type { HabilidadParaIntercambio } from './combateMultiple.js';
 
 /// Grupo 3 § Combate múltiple (2026-08-25) — harness de integración real (mismo criterio que
 /// turn.integration.test.ts): la narración pasa un doble rápido (`narrarFn` inyectable) en vez de
@@ -101,5 +102,56 @@ describe('combate múltiple: orquestación real contra Postgres', () => {
     const estados = await prisma.npcState.findMany({ where: { saveId } });
     const algunoFueraDeCombate = estados.some((s) => s.condicionFisica === 'CONVALECIENTE' || s.condicionFisica === 'MUERTO');
     expect(algunoFueraDeCombate).toBe(true);
+  }, 30_000);
+
+  it('con la jugadora en persona en un bando — resolverTurnoJugador ataca, resolverTurnoAutonomo cubre el resto', async () => {
+    const enemigo = await prisma.npc.findFirstOrThrow({ where: { worldId, slug: 'aullador-rojo' } });
+    const { encounterId } = await prisma.$transaction((tx) =>
+      iniciarCombatEncounter(tx, saveId, [
+        { bando: 'JUGADOR', tipo: 'JUGADOR', destreza: 10, inteligencia: 10 },
+        { bando: 'ENEMIGO', tipo: 'NPC', npcId: enemigo.id, npcScope: 'itinerante-jugadora', destreza: 10, inteligencia: 6 },
+      ]),
+    );
+
+    const habilidadBasica: HabilidadParaIntercambio = {
+      name: 'Ataque Básico',
+      description: '',
+      attribute: 'fuerza',
+      effects: [],
+      rol: 'ataque',
+      energyCost: 5,
+      energyRegen: 0,
+    };
+
+    let terminado = false;
+    for (let i = 0; i < 60 && !terminado; i++) {
+      const encounter = await prisma.combatEncounter.findUniqueOrThrow({ where: { id: encounterId }, include: { participantes: true } });
+      if (encounter.estado === 'RESUELTO') {
+        terminado = true;
+        break;
+      }
+      const actualId = encounter.ordenIniciativa[encounter.turnoActual % encounter.ordenIniciativa.length];
+      const actual = encounter.participantes.find((p) => p.id === actualId)!;
+      if (actual.tipo === 'JUGADOR') {
+        const objetivo = encounter.participantes.find((p) => p.bando === 'ENEMIGO')!;
+        const resultado = await prisma.$transaction((tx) =>
+          resolverTurnoJugador(tx, worldId, saveId, encounterId, { targetParticipantId: objetivo.id, habilidad: habilidadBasica }, [], dobleNarracionRapida),
+        );
+        if (resultado?.encounterTerminado) terminado = true;
+      } else {
+        const resultado = await prisma.$transaction((tx) => resolverTurnoAutonomo(tx, worldId, saveId, encounterId, [], dobleNarracionRapida));
+        if (resultado?.encounterTerminado) terminado = true;
+      }
+    }
+    expect(terminado).toBe(true);
+
+    const encounterFinal = await prisma.combatEncounter.findUniqueOrThrow({ where: { id: encounterId } });
+    expect(encounterFinal.estado).toBe('RESUELTO');
+
+    // La jugadora participó de verdad vía `Save` (nunca `NpcState`/`CombatParticipant` para ella)
+    // — lo que prueba esto es que el combate terminó escribiendo en Save sin reventar, no un valor
+    // concreto de condición (depende de tiradas reales, sin mockear Math.random en este test).
+    const saveFinal = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
+    expect(['ILESO', 'HERIDO', 'GRAVE', 'CONVALECIENTE', 'MUERTO']).toContain(saveFinal.condicionFisica);
   }, 30_000);
 });

@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import {
   rollInitiativeMultiple,
   elegirObjetivo,
@@ -6,11 +6,14 @@ import {
   retargetBando,
   particionarEnSubCombates,
   subCombateJugable,
+  resolverIntercambioCompleto,
   INTELIGENCIA_TACTICA_UMBRAL,
   MAX_COMBATIENTES_POR_BANDO,
   type CombatienteIniciativa,
   type ObjetivoCandidato,
   type CombatienteParticion,
+  type CombatienteParaIntercambio,
+  type HabilidadParaIntercambio,
 } from './combateMultiple.js';
 
 function sequence(values: number[]): () => number {
@@ -119,5 +122,132 @@ describe('particionarEnSubCombates', () => {
 
   it('un bando vacío no produce ningún sub-combate', () => {
     expect(particionarEnSubCombates([{ participantId: 'yo', bando: 'JUGADOR', esJugador: true }])).toEqual([]);
+  });
+});
+
+// § 4 — resolverIntercambioCompleto (2026-08-25, paridad completa con resolveCombatExchangePhase)
+describe('resolverIntercambioCompleto', () => {
+  const rFor = (roll: number) => (roll - 1) / 20 + 0.001;
+
+  function mockRolls(atacanteR: number, defensorR: number) {
+    vi.spyOn(Math, 'random').mockReturnValueOnce(atacanteR).mockReturnValueOnce(defensorR);
+  }
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  const combatiente = (overrides: Partial<CombatienteParaIntercambio> = {}): CombatienteParaIntercambio => ({
+    nombre: 'Combatiente',
+    attributes: { fuerza: 10, destreza: 10, constitucion: 10, inteligencia: 10, voluntad: 10, carisma: 10, arcano: 10 },
+    condicionFisica: 'ILESO',
+    ...overrides,
+  });
+
+  const habilidad = (overrides: Partial<HabilidadParaIntercambio> = {}): HabilidadParaIntercambio => ({
+    name: 'Habilidad',
+    description: '',
+    attribute: 'fuerza',
+    effects: [],
+    rol: 'ataque',
+    energyCost: 0,
+    energyRegen: 0,
+    ...overrides,
+  });
+
+  it('golpe normal básico: margen decisivo empeora la condición del defensor un escalón', () => {
+    mockRolls(rFor(15), rFor(1)); // atacante 20 vs defensor 6, margen 14 -> golpe_pleno
+    const resultado = resolverIntercambioCompleto(
+      combatiente({ nombre: 'Gorhorn' }),
+      habilidad({ rol: 'ataque' }),
+      'ataque',
+      13,
+      combatiente({ nombre: 'Lobo' }),
+      habilidad({ rol: 'defensa' }),
+      13,
+    );
+    expect(resultado.defensorRecibeGolpe).toBe(true);
+    expect(resultado.nuevaCondicionDefensor).toBe('HERIDO');
+    expect(resultado.atacanteRecibeGolpe).toBe(false);
+    expect(resultado.combatRealHitLanded).toBe(true);
+  });
+
+  it('LETAL mata de un golpe sin importar la condición previa del defensor', () => {
+    mockRolls(rFor(15), rFor(1));
+    const resultado = resolverIntercambioCompleto(
+      combatiente({ nombre: 'Gorhorn' }),
+      habilidad({ rol: 'ataque', effects: ['LETAL'] }),
+      'ataque',
+      13,
+      combatiente({ nombre: 'Lobo', condicionFisica: 'ILESO' }),
+      habilidad({ rol: 'defensa' }),
+      13,
+    );
+    expect(resultado.nuevaCondicionDefensor).toBe('MUERTO');
+    expect(resultado.exchangeBlock).toContain('golpe letal');
+  });
+
+  it('doble arma reduce la dificultad del atacante — decide un intercambio independiente al límite', () => {
+    // roll=7, fuerza 10 sin bonus -> result 12. Dificultad base 13 (falla) vs con doble arma 10 (éxito).
+    mockRolls(rFor(7), rFor(10));
+    const sinDobleArma = resolverIntercambioCompleto(
+      combatiente({ nombre: 'Gorhorn' }),
+      habilidad({ rol: 'utilidad', effects: ['ANALISIS'] }),
+      'utilidad',
+      13,
+      combatiente({ nombre: 'Lobo' }),
+      habilidad({ rol: 'defensa' }),
+      13,
+      false,
+    );
+    expect(sinDobleArma.analizarRivalExito).toBe(false);
+
+    mockRolls(rFor(7), rFor(10));
+    const conDobleArma = resolverIntercambioCompleto(
+      combatiente({ nombre: 'Gorhorn' }),
+      habilidad({ rol: 'utilidad', effects: ['ANALISIS'] }),
+      'utilidad',
+      13,
+      combatiente({ nombre: 'Lobo' }),
+      habilidad({ rol: 'defensa' }),
+      13,
+      true,
+    );
+    expect(conDobleArma.analizarRivalExito).toBe(true);
+  });
+
+  it('contraataque del defensor (utilidad + efecto ATAQUE) golpea de vuelta al atacante', () => {
+    // atacante falla su ataque (roll 1, dificultad 15) — aísla el contragolpe del golpe base.
+    // defensor acierta su propia tirada de utilidad (roll 15, dificultad 10) -> se dispara.
+    mockRolls(rFor(1), rFor(15));
+    const resultado = resolverIntercambioCompleto(
+      combatiente({ nombre: 'Gorhorn' }),
+      habilidad({ rol: 'ataque' }),
+      'ataque',
+      15,
+      combatiente({ nombre: 'Lobo' }),
+      habilidad({ rol: 'utilidad', effects: ['ATAQUE'] }),
+      10,
+    );
+    expect(resultado.defensorRecibeGolpe).toBe(false);
+    expect(resultado.atacanteRecibeGolpe).toBe(true);
+    expect(resultado.nuevaCondicionAtacante).toBe('HERIDO');
+  });
+
+  it('Grito de Guerra del defensor (utilidad + INTIMIDACION) cancela el golpe entrante del todo', () => {
+    // atacante acierta de sobra (roll 15, dificultad 10) — sin el grito, golpearía.
+    // defensor también acierta su propia tirada (roll 15, dificultad 10) -> el grito se dispara.
+    mockRolls(rFor(15), rFor(15));
+    const resultado = resolverIntercambioCompleto(
+      combatiente({ nombre: 'Gorhorn' }),
+      habilidad({ rol: 'ataque' }),
+      'ataque',
+      10,
+      combatiente({ nombre: 'Lobo' }),
+      habilidad({ rol: 'utilidad', effects: ['INTIMIDACION'] }),
+      10,
+    );
+    expect(resultado.defensorRecibeGolpe).toBe(false);
+    expect(resultado.nuevaCondicionDefensor).toBe('ILESO');
   });
 });

@@ -1,4 +1,8 @@
-import type { CondicionFisica } from '@prisma/client';
+import type { AbilityEffect, CondicionFisica } from '@prisma/client';
+import type { Attribute, AttributeBlock } from './dice.js';
+import { resolveExchange, resolveIndependentExchange, exchangeContextBlock, independentExchangeContextBlock, utilityTriggered, type ExchangeParticipant } from './combatExchange.js';
+import { nextCondicionForAttack } from './death.js';
+import { dualWieldAdjustedDifficulty } from './weaponAbilities.js';
 
 /// Grupo 3 § Combate múltiple (2026-08-25, diseño completo en docs/rpgtarkor/combate-multiple.md)
 /// — Fase A: piezas puras (iniciativa N-way, emparejamiento/retargeting por Inteligencia,
@@ -148,4 +152,185 @@ export function particionarEnSubCombates(combatientes: CombatienteParticion[]): 
 export function subCombateJugable(subCombates: CombatienteParticion[][]): number | null {
   const index = subCombates.findIndex((sc) => sc.some((c) => c.esJugador));
   return index === -1 ? null : index;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// § 4 — Intercambio con paridad completa (2026-08-25, integración real con el turno de la
+// jugadora, tras confirmar explícitamente "paridad completa desde ya"): generaliza la rama "CASO
+// ATAQUE" de `resolveCombatExchangePhase` (turnResolution.ts) — utilidades reactivas (Contraataque/
+// Grito de Guerra/Instinto Salvaje/Analizar/Recuperación), doble arma y LETAL — a un par
+// atacante/defensor CUALQUIERA (jugadora, compañero o NPC en cualquier combinación), no solo
+// jugadora-vs-NPC-único. El modelo de turnos de Combate múltiple (iniciativa N-way, cada
+// participante resuelve su turno en orden, §1/§2) ya NO tiene la ping-pong "ataque pendiente
+// oculto" del 1v1 clásico — cada intercambio se resuelve al momento, así que solo hace falta
+// portar la rama "CASO ATAQUE" (turnResolution.ts:979-1163), nunca "CASO DEFENSA": aquí no existe
+// nunca un ataque pendiente que defender a ciegas.
+//
+// Simplificación consciente (documentada, no un cierre definitivo): `iniciativaForzada`
+// (ATURDIMIENTO/INTIMIDACION "roban la iniciativa siguiente" en el 1v1) no se traduce a este
+// modelo — la cola de iniciativa (`ordenIniciativa`) es fija desde el inicio del encuentro, robar
+// el turno siguiente exigiría reordenar la cola en caliente, fuera de alcance de esta pasada. El
+// EFECTO mecánico real de cada utilidad (cancelar el golpe entrante de Grito de Guerra, golpe de
+// vuelta de Contraataque, revelar con Analizar, energía extra de Recuperación) sí se porta entero
+// — `iniciativaForzada` en el resultado es solo informativo, el caller puede ignorarlo.
+// ═══════════════════════════════════════════════════════════════════════════
+
+/// Shape mínima de una habilidad elegida (ataque, defensa o utilidad) para un intercambio —
+/// coincide a propósito con `NpcCombatAbility` (npcCombatAbilities.ts) para poder pasar esa misma
+/// interfaz sin conversión; el turno de la jugadora construye una de estas a partir de su
+/// `SavedAction` elegida (ver comentario de integración en turnResolution.ts).
+export interface HabilidadParaIntercambio {
+  name: string;
+  description: string;
+  attribute: Attribute;
+  attributeBonus?: number;
+  effects: AbilityEffect[];
+  rol: 'ataque' | 'defensa' | 'utilidad';
+  energyCost: number;
+  energyRegen: number;
+  maxUsesPerCombat?: number | null;
+}
+
+export interface CombatienteParaIntercambio {
+  nombre: string;
+  attributes: AttributeBlock;
+  condicionFisica: CondicionFisica;
+}
+
+export interface ResultadoIntercambioCompleto {
+  /// Texto "YA RESUELTO" para el Narrador — ya incluye el hint de LETAL si aplica, mismo criterio
+  /// que `abilityEffectHint` en turnResolution.ts, pero concatenado en un único bloque en vez de
+  /// viajar aparte (más simple de pasar a `narrarTurnoCombateMultiple`).
+  exchangeBlock: string;
+  defensorRecibeGolpe: boolean;
+  nuevaCondicionDefensor: CondicionFisica;
+  /// Contragolpe (defensor con `effect:'ATAQUE'` en su habilidad de defensa/utilidad) — a
+  /// diferencia del 1v1 (donde el "atacante" siempre es quien tiene la iniciativa y rara vez
+  /// recibe daño de vuelta en el mismo intercambio), aquí SÍ hace falta escribir la condición del
+  /// propio atacante tras su turno.
+  atacanteRecibeGolpe: boolean;
+  nuevaCondicionAtacante: CondicionFisica;
+  /// Informativo únicamente — ver comentario de cabecera de esta sección (§4).
+  iniciativaForzada: 'atacante' | 'defensor' | null;
+  analizarRivalExito: boolean;
+  atacanteRecuperacionExtra: number;
+  defensorRecuperacionExtra: number;
+  combatBothMissed: boolean;
+  combatRealHitLanded: boolean;
+}
+
+/// Mismo valor fijo que `RECUPERACION_ENERGY_BONUS` en turnResolution.ts (2026-08-17) — no hay
+/// ningún dato en el catálogo hoy que exprese "cuánta energía recupera" por separado del
+/// `energyRegen` normal de la habilidad.
+const RECUPERACION_ENERGY_BONUS = 15;
+
+export function resolverIntercambioCompleto(
+  atacante: CombatienteParaIntercambio,
+  atacanteHabilidad: HabilidadParaIntercambio,
+  atacanteRol: 'ataque' | 'defensa' | 'utilidad',
+  dificultadAtacante: number,
+  defensor: CombatienteParaIntercambio,
+  defensorHabilidad: HabilidadParaIntercambio,
+  dificultadDefensor: number,
+  dualWieldBonus: boolean = false,
+): ResultadoIntercambioCompleto {
+  const dificultadAtacanteAjustada = dualWieldAdjustedDifficulty(dificultadAtacante, dualWieldBonus);
+  const atacanteExch: ExchangeParticipant = {
+    attributes: atacante.attributes,
+    attribute: atacanteHabilidad.attribute,
+    attributeBonus: atacanteHabilidad.attributeBonus ?? 0,
+    difficulty: dificultadAtacanteAjustada,
+    condicionFisica: atacante.condicionFisica,
+    rol: atacanteRol,
+  };
+  const defensorExch: ExchangeParticipant = {
+    attributes: defensor.attributes,
+    attribute: defensorHabilidad.attribute,
+    attributeBonus: defensorHabilidad.attributeBonus ?? 0,
+    difficulty: dificultadDefensor,
+    condicionFisica: defensor.condicionFisica,
+    rol: defensorHabilidad.rol,
+  };
+
+  let defensorRecibeGolpe: boolean;
+  let nuevaCondicionDefensor = defensor.condicionFisica;
+  let atacanteRecibeGolpe = false;
+  let nuevaCondicionAtacante = atacante.condicionFisica;
+  let iniciativaForzada: 'atacante' | 'defensor' | null = null;
+  let analizarRivalExito = false;
+  let atacanteRecuperacionExtra = 0;
+  let defensorRecuperacionExtra = 0;
+  let exchangeBlock: string;
+
+  const esIndependiente = atacanteRol !== 'ataque' || defensorHabilidad.rol === 'utilidad';
+
+  if (esIndependiente) {
+    const independent = resolveIndependentExchange(atacanteExch, defensorExch);
+    defensorRecibeGolpe = atacanteRol === 'ataque' && independent.atacante.efectoAplica;
+    if (defensorRecibeGolpe) nuevaCondicionDefensor = nextCondicionForAttack(atacanteHabilidad.effects, defensor.condicionFisica);
+
+    if (atacanteRol === 'utilidad') {
+      const disparo = utilityTriggered('utilidad', atacanteHabilidad.effects, independent.atacante.efectoAplica, defensorHabilidad.rol);
+      if (disparo) {
+        if (atacanteHabilidad.effects.includes('ANALISIS')) analizarRivalExito = true;
+        if (atacanteHabilidad.effects.includes('ATAQUE')) {
+          defensorRecibeGolpe = true;
+          nuevaCondicionDefensor = nextCondicionForAttack(atacanteHabilidad.effects, defensor.condicionFisica);
+        }
+        if (atacanteHabilidad.effects.includes('INTIMIDACION')) {
+          iniciativaForzada = 'atacante';
+          defensorRecibeGolpe = false;
+          nuevaCondicionDefensor = defensor.condicionFisica;
+        }
+        if (atacanteHabilidad.effects.includes('ATURDIMIENTO')) iniciativaForzada = 'atacante';
+        if (atacanteHabilidad.effects.includes('RECUPERACION')) atacanteRecuperacionExtra = RECUPERACION_ENERGY_BONUS;
+      }
+    }
+    if (defensorHabilidad.rol === 'utilidad') {
+      const disparo = utilityTriggered('utilidad', defensorHabilidad.effects, independent.defensor.efectoAplica, atacanteRol);
+      if (disparo) {
+        if (defensorHabilidad.effects.includes('ATAQUE')) {
+          atacanteRecibeGolpe = true;
+          nuevaCondicionAtacante = nextCondicionForAttack(defensorHabilidad.effects, atacante.condicionFisica);
+        }
+        if (defensorHabilidad.effects.includes('INTIMIDACION')) {
+          iniciativaForzada = 'defensor';
+          defensorRecibeGolpe = false;
+          nuevaCondicionDefensor = defensor.condicionFisica;
+        }
+        if (defensorHabilidad.effects.includes('ATURDIMIENTO')) iniciativaForzada = 'defensor';
+        if (defensorHabilidad.effects.includes('RECUPERACION')) defensorRecuperacionExtra = RECUPERACION_ENERGY_BONUS;
+      }
+    }
+    exchangeBlock = independentExchangeContextBlock(independent, atacante.nombre, defensor.nombre);
+  } else {
+    const exchange = resolveExchange(atacanteExch, defensorExch);
+    const defensorPuedeContragolpear = defensorHabilidad.effects.includes('ATAQUE');
+    const defensorContragolpeaAplica = exchange.resultado === 'defensor_contragolpea' && defensorPuedeContragolpear;
+    defensorRecibeGolpe = exchange.resultado === 'golpe_pleno' || exchange.resultado === 'golpe_normal';
+    if (defensorRecibeGolpe) nuevaCondicionDefensor = nextCondicionForAttack(atacanteHabilidad.effects, defensor.condicionFisica);
+    atacanteRecibeGolpe = defensorContragolpeaAplica;
+    if (atacanteRecibeGolpe) nuevaCondicionAtacante = nextCondicionForAttack(defensorHabilidad.effects, atacante.condicionFisica);
+    exchangeBlock = exchangeContextBlock(exchange, atacante.nombre, defensor.nombre, defensorPuedeContragolpear);
+  }
+
+  if (atacanteHabilidad.effects.includes('LETAL')) {
+    exchangeBlock += defensorRecibeGolpe
+      ? ` EFECTO DE HABILIDAD — YA RESUELTO: el golpe letal contra ${defensor.nombre} conecta y lo mata en el acto, sin importar en qué estado estuviera antes — narra el golpe final, no una herida más.`
+      : ` EFECTO DE HABILIDAD — YA RESUELTO: el golpe letal no llega a conectar esta vez — narra el intento fallido, nunca su muerte.`;
+  }
+
+  return {
+    exchangeBlock,
+    defensorRecibeGolpe,
+    nuevaCondicionDefensor,
+    atacanteRecibeGolpe,
+    nuevaCondicionAtacante,
+    iniciativaForzada,
+    analizarRivalExito,
+    atacanteRecuperacionExtra,
+    defensorRecuperacionExtra,
+    combatBothMissed: !defensorRecibeGolpe && !atacanteRecibeGolpe,
+    combatRealHitLanded: defensorRecibeGolpe,
+  };
 }

@@ -365,6 +365,32 @@ export function independentExchangeContextBlock(result: IndependentExchangeResul
 /// sin decir qué tan fuerte narrar el golpe — a diferencia del camino cruzado (`resolveExchange`),
 /// que sí tiene `OUTCOME_NARRATION_HINT`/`npcFallsUnconsciousThisTurn` calibrando esto. `nuevaCondicion`
 /// null = el golpe no conectó (efectoAplica false), nada que narrar como daño.
+/// Rediseño de combate (2026-08-09) — ¿se dispara el efecto reactivo de una habilidad
+/// `rol:'utilidad'` este intercambio? Dos reglas, según el propio `effect`:
+/// - `ANALISIS` (Analizar rival): NO reactiva — solo depende de la propia tirada, nunca de qué
+///   eligió el rival (petición explícita: revela el atributo recomendado con solo usarla y
+///   acertar tu tirada, no hace falta que el rival ataque).
+/// - Cualquier otro (`ATAQUE`=Contraataque, `INTIMIDACION`=Grito de Guerra, `ATURDIMIENTO`=
+///   Instinto Salvaje): reactiva de verdad — exige AMBAS cosas a la vez: la tirada PROPIA tuvo
+///   éxito (`ownEfectoAplica`, independiente de la tirada del rival, ver
+///   `resolveIndependentExchange`) Y la habilidad que el RIVAL eligió este mismo intercambio es
+///   `rol:'ataque'` (si el rival se defendió o usó utilidad, no hay ataque de daño al que
+///   reaccionar, así que nunca se dispara).
+///
+/// Vive aquí (no en `turnResolution.ts`, donde nació) desde Combate múltiple (2026-08-25): pieza
+/// pura reutilizada tanto por el 1v1 de siempre como por `combateMultiple.ts` § 4 — moverla evita
+/// un import circular (turnResolution.ts → combateMultiple*.ts → turnResolution.ts).
+export function utilityTriggered(
+  ownRol: 'ataque' | 'defensa' | 'utilidad',
+  ownEffects: AbilityEffect[],
+  ownEfectoAplica: boolean,
+  opponentRol: 'ataque' | 'defensa' | 'utilidad',
+): boolean {
+  if (ownRol !== 'utilidad' || !ownEfectoAplica) return false;
+  if (ownEffects.includes('ANALISIS')) return true;
+  return opponentRol === 'ataque';
+}
+
 export function hitSeverityHint(nombreObjetivo: string, nuevaCondicion: CondicionFisica | null): string {
   if (!nuevaCondicion) return `El golpe no conecta — no hay ningún daño real que narrar en ${nombreObjetivo}.`;
   if (nuevaCondicion === 'CONVALECIENTE' || nuevaCondicion === 'MUERTO') return '';
