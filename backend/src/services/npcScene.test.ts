@@ -35,7 +35,7 @@ vi.mock('../lib/prisma.js', () => ({
   },
 }));
 
-const { detectNpcsInScene } = await import('./npcScene.js');
+const { detectNpcsInScene, candidateNpcNamesNotInScene } = await import('./npcScene.js');
 
 describe('matchNpcAliases', () => {
   it('coincide con el alias exacto', () => {
@@ -374,6 +374,57 @@ describe('detectNpcsInScene — acotar el candidato por escena', () => {
       action: 'Busco presas por la zona', worldId: 'w1', sessionFacts: [], saveId: 's1', currentLocationId: null,
     });
     expect(result.map((n) => n.id)).toEqual(['lurker']);
+  });
+});
+
+// Grupo 3 § Mundo determinista, Capa 3, pieza B (2026-08-25) — mismo filtro geográfico que
+// `detectNpcsInScene — acotar el candidato por escena` (arriba), pero devolviendo nombres en vez
+// de `NpcInScene[]`, y excluyendo explícitamente a quienes ya están autorizados este turno.
+describe('candidateNpcNamesNotInScene', () => {
+  beforeEach(() => {
+    findManyNpc.mockReset();
+    findUniqueLocation.mockReset();
+    findManyLocation.mockReset();
+    findManyQuest.mockReset();
+    findManyNpcState.mockReset();
+    findManyQuest.mockResolvedValue([]);
+    findManyNpcState.mockResolvedValue([]);
+  });
+
+  it('un candidato plausible por región, no autorizado este turno, sale en la lista', async () => {
+    findManyNpc.mockResolvedValue([baseNpc()]);
+    findUniqueLocation.mockResolvedValue(CIENAGA_CAMPAMENTO);
+    findManyLocation.mockResolvedValue([CIENAGA_CAMPAMENTO]);
+
+    const result = await candidateNpcNamesNotInScene('w1', 's1', 'loc-cienaga', new Set());
+    expect(result).toEqual(['Acechador de Brasas']);
+  });
+
+  it('un candidato ya autorizado este turno (en excludeIds) no sale en la lista', async () => {
+    findManyNpc.mockResolvedValue([baseNpc()]);
+    findUniqueLocation.mockResolvedValue(CIENAGA_CAMPAMENTO);
+    findManyLocation.mockResolvedValue([CIENAGA_CAMPAMENTO]);
+
+    const result = await candidateNpcNamesNotInScene('w1', 's1', 'loc-cienaga', new Set(['lurker']));
+    expect(result).toEqual([]);
+  });
+
+  it('un NPC de otra región no es candidato — mismo filtro que detectNpcsInScene', async () => {
+    findManyNpc.mockResolvedValue([baseNpc()]); // vive en Ciénaga Troncal
+    findUniqueLocation.mockResolvedValue(HONDONADA); // jugador en Llanuras
+    findManyLocation.mockResolvedValue([CIENAGA_CAMPAMENTO]);
+
+    const result = await candidateNpcNamesNotInScene('w1', 's1', 'loc-hondonada', new Set());
+    expect(result).toEqual([]);
+  });
+
+  it('un PRINCIPAL fuera del núcleo jugable (nucleoJugable: false) nunca es candidato', async () => {
+    findManyNpc.mockResolvedValue([baseNpc({ id: 'sella', kind: 'PRINCIPAL', homeLocationSlug: null, nucleoJugable: false })]);
+    findUniqueLocation.mockResolvedValue(HONDONADA);
+    findManyLocation.mockResolvedValue([]);
+
+    const result = await candidateNpcNamesNotInScene('w1', 's1', 'loc-hondonada', new Set());
+    expect(result).toEqual([]);
   });
 });
 

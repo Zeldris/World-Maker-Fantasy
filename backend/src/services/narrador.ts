@@ -196,6 +196,11 @@ interface TurnContext {
   /// runbook del proyecto (docs/revisar-partida.md § "NPCs que resucitan") — un modelo pequeño a
   /// veces la ignora igual que ignoraba el resto de instrucciones "no hagas X" de esta lista.
   possiblyResurrectedNpcNames?: string[];
+  /// Ver `hasFalseNpcAppearance` más abajo (Grupo 3 § Mundo determinista, Capa 3, 2026-08-25) —
+  /// nombres reales de NPCs geográficamente plausibles aquí (`candidateNpcNamesNotInScene`,
+  /// npcScene.ts) que NINGÚN mecanismo determinista puso en escena este turno concreto. Vacío = no
+  /// hay ningún candidato plausible que pueda "colarse" (p.ej. zona sin nadie más en el catálogo).
+  possiblyUnauthorizedNpcNames?: string[];
   /// Ver `hasFalseTravelClaim` más abajo — nombres reales de los 2+ destinos posibles cuando
   /// `resolveTravel` (travel.ts) no pudo auto-resolver un "avanzo"/"continúo" sin destino nombrado
   /// (turnResolution.ts ya le pide al modelo explícitamente que pregunte cuál elige, en vez de
@@ -1234,6 +1239,10 @@ export async function narrateAction(ctx: TurnContext & { roll?: RollResult }): P
           reason: 'narrar a un NPC convaleciente/muerto como si siguiera activo',
         },
         {
+          check: () => hasFalseNpcAppearance(narrationAndFacts, ctx.possiblyUnauthorizedNpcNames),
+          reason: 'hacer aparecer (en prosa o en newFacts) a un NPC que ningún mecanismo determinista puso en escena este turno',
+        },
+        {
           check: () => hasGisteraReencuentroSinNombrar(parsed.narration, ctx.gisteraSeHaMarchado),
           reason: 'reintroducir a Gistera Koh sin nombrarla pese a haberse marchado para siempre',
         },
@@ -1690,6 +1699,25 @@ export function hasResurrectedDeadNpc(narration: string, possiblyResurrectedNpcN
   if (!possiblyResurrectedNpcNames || possiblyResurrectedNpcNames.length === 0) return false;
   const normalizedNames = possiblyResurrectedNpcNames.map(normalizeText);
   return sentenceMatchesRegexAndName(narration, RESURRECTION_LEAK_REGEX, normalizedNames);
+}
+
+/// Grupo 3 § Mundo determinista, Capa 3, pieza B (docs/rpgtarkor/mundo-determinista.md, 2026-08-25)
+/// — mismo problema de fondo que `hasResurrectedDeadNpc`, pero para una aparición NUEVA en vez de
+/// una resurrección: el modelo puede mencionar a un NPC real del catálogo, plausible geográficamente
+/// (`candidateNpcNamesNotInScene`, npcScene.ts) pero que ningún mecanismo determinista puso en
+/// escena este turno, y "hacerlo aparecer" con vocabulario de presencia activa — el hueco real que
+/// investigó esta sesión (`sessionFacts` sin control de población/terreno). Mismo vocabulario base
+/// que `RESURRECTION_LEAK_REGEX` (comparte varias frases — "se lanza hacia", "embiste"...) más
+/// verbos propios de una PRIMERA aparición (aparece, surge, emerge, sale al paso...), deliberadamente
+/// NO cualquier mención del nombre — "recordó cuando luchó contra X" no debe disparar, mismo criterio
+/// de frase-a-frase que el resto de esta familia de guards.
+const NPC_APPEARANCE_LEAK_REGEX =
+  /\b(aparece|reaparece|surge|emerge|irrumpe|asoma|se materializa|sale\s+(a tu paso|al paso|de entre|de repente)|llega\s+(de repente|corriendo|hasta [a-záéíóúñ]+)|te (encuentras|topas) con|cruza (tu|su) camino|se acerca (de nuevo|otra vez|sigiloso)|se (lanza|abalanza|arroja)\s+(hacia|sobre|contra)|se (da la vuelta|gira|vuelve)\s+bruscamente|embiste|carga contra|arremete\s+(hacia|contra))\b/i;
+
+export function hasFalseNpcAppearance(narration: string, possiblyUnauthorizedNpcNames?: string[]): boolean {
+  if (!possiblyUnauthorizedNpcNames || possiblyUnauthorizedNpcNames.length === 0) return false;
+  const normalizedNames = possiblyUnauthorizedNpcNames.map(normalizeText);
+  return sentenceMatchesRegexAndName(narration, NPC_APPEARANCE_LEAK_REGEX, normalizedNames);
 }
 
 /// Narración-vs-mecánica, variante de `hasResurrectedDeadNpc` (bug real jugando en vivo, visto ya

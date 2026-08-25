@@ -416,6 +416,54 @@ export async function detectNpcsInScene(params: {
   );
 }
 
+/// Grupo 3 § Mundo determinista, Capa 3, pieza B (docs/rpgtarkor/mundo-determinista.md, 2026-08-25)
+/// — nombres de NPC "candidatos plausibles aquí" (mismo filtro geográfico que `detectNpcsInScene`
+/// usa internamente: PRINCIPAL/quest activa/ya encontrado antes/itinerante/región coincidente)
+/// pero EXCLUYENDO a quienes ya están autorizados en la escena de ESTE turno (`excludeIds`) —
+/// pensado para que un guard de honestidad (`narrador.ts`) pueda comprobar si la narración libre
+/// "hace aparecer" a alguien que ningún mecanismo determinista puso ahí. Consulta propia y ligera
+/// (solo los campos que hacen falta), no reutiliza `detectNpcsInScene` para no tocar su contrato ya
+/// probado — mismo criterio de filtro, duplicado a propósito en vez de compartido.
+export async function candidateNpcNamesNotInScene(
+  worldId: string,
+  saveId: string,
+  currentLocationId: string | null,
+  excludeIds: Set<string>,
+): Promise<string[]> {
+  const [npcs, currentLocation, activeQuestTargets, encounteredStates] = await Promise.all([
+    prisma.npc.findMany({
+      where: { worldId },
+      select: { id: true, name: true, kind: true, homeLocationSlug: true, nucleoJugable: true },
+    }),
+    currentLocationId ? prisma.location.findUnique({ where: { id: currentLocationId }, select: { slug: true, region: true } }) : Promise.resolve(null),
+    prisma.quest.findMany({ where: { saveId, status: 'ACTIVA', targetNpcId: { not: null } }, select: { targetNpcId: true } }),
+    prisma.npcState.findMany({ where: { saveId }, select: { npcId: true } }),
+  ]);
+  if (npcs.length === 0) return [];
+
+  const questTargetIds = new Set(activeQuestTargets.map((q) => q.targetNpcId!));
+  const encounteredIds = new Set(encounteredStates.map((s) => s.npcId));
+  const homeSlugs = [...new Set(npcs.map((n) => n.homeLocationSlug).filter((s): s is string => !!s))];
+  const homeLocations = homeSlugs.length
+    ? await prisma.location.findMany({ where: { worldId, slug: { in: homeSlugs } }, select: { slug: true, region: true } })
+    : [];
+  const regionByHomeSlug = new Map(homeLocations.map((l) => [l.slug, l.region]));
+
+  return npcs
+    .filter((npc) => !excludeIds.has(npc.id))
+    .filter((npc) => {
+      if (questTargetIds.has(npc.id)) return true;
+      if (encounteredIds.has(npc.id)) return true;
+      if (npc.nucleoJugable === false) return false;
+      if (npc.kind === 'PRINCIPAL') return true;
+      if (npc.homeLocationSlug === null) return true;
+      if (!currentLocation) return true;
+      if (npc.homeLocationSlug === currentLocation.slug) return true;
+      return regionByHomeSlug.get(npc.homeLocationSlug) === currentLocation.region;
+    })
+    .map((npc) => npc.name);
+}
+
 /// Escala de calibración de dificultad por diferencia de nivel (§ 2.2) — el backend calcula la
 /// diferencia y le pasa al clasificador la frase ya masticada; el modelo conecta, no aritmetiza.
 export function difficultyHintFor(npcLevel: number, playerLevel: number): { dificultad: number; label: string } {

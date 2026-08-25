@@ -24,6 +24,7 @@ import {
   hasFalseItemUse,
   hasFalseInventoryReview,
   hasResurrectedDeadNpc,
+  hasFalseNpcAppearance,
   hasGisteraReencuentroSinNombrar,
   hasFalseGisteraNamedReturn,
   hasFalseTravelClaim,
@@ -709,6 +710,34 @@ describe('hasResurrectedDeadNpc', () => {
     const narration =
       'El orco enfurecido se da la vuelta bruscamente, vislumbrando una sombra fugaz entre los áridos montículos de tierra. Antes de que Gorhorn pueda reaccionar, el orco se lanza hacia él con un rugido atronador.';
     expect(hasResurrectedDeadNpc(narration, ['Orco enfurecido'])).toBe(true);
+  });
+});
+
+describe('hasFalseNpcAppearance', () => {
+  it('Grupo 3 § Mundo determinista (2026-08-25): detecta a un NPC no autorizado "apareciendo" con vocabulario de presencia activa', () => {
+    const narration = 'Gorhorn sigue explorando la hondonada cuando, de entre las sombras, aparece Hagar Kiugh y se acerca con paso decidido.';
+    expect(hasFalseNpcAppearance(narration, ['Hagar Kiugh'])).toBe(true);
+  });
+
+  it('no dispara si la lista viene vacía (ningún candidato plausible sin autorizar este turno)', () => {
+    const narration = 'Gorhorn sigue explorando la hondonada.';
+    expect(hasFalseNpcAppearance(narration, [])).toBe(false);
+    expect(hasFalseNpcAppearance(narration, undefined)).toBe(false);
+  });
+
+  it('no dispara con una mención de pasada, sin ningún verbo de presencia activa', () => {
+    const narration = 'Gorhorn recuerda a Hagar Kiugh, su viejo amigo de las minas de Cristal Helado.';
+    expect(hasFalseNpcAppearance(narration, ['Hagar Kiugh'])).toBe(false);
+  });
+
+  it('no dispara si el verbo de presencia está en la misma frase pero de otra persona/NPC', () => {
+    const narration = 'De entre las sombras aparece un viajero desconocido. Gorhorn recuerda que Hagar Kiugh trabaja en las minas.';
+    expect(hasFalseNpcAppearance(narration, ['Hagar Kiugh'])).toBe(false);
+  });
+
+  it('detecta también en newFacts, no solo en la prosa (mismo criterio que el resto de guards de esta familia)', () => {
+    const textoCombinado = ['Gorhorn no nota nada raro.', 'Kael Dorn se lanza hacia Gorhorn desde la maleza.'].join(' ');
+    expect(hasFalseNpcAppearance(textoCombinado, ['Kael Dorn'])).toBe(true);
   });
 });
 

@@ -29,6 +29,7 @@ import {
   pickAmbientEncounterCandidate,
   buildNpcInScene,
   hasPendingLoot,
+  candidateNpcNamesNotInScene,
   type NpcInScene,
   type NpcWithItems,
 } from './npcScene.js';
@@ -2784,6 +2785,19 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   // sesión — mismo criterio: comprobar el texto ya generado, no confiar solo en la instrucción.
   const possiblyResurrectedNpcNames = npcsInScene.filter((n) => n.condicionFisica === 'CONVALECIENTE' || n.condicionFisica === 'MUERTO').map((n) => n.name);
 
+  // Ver `hasFalseNpcAppearance` (narrador.ts) — Grupo 3 § Mundo determinista, Capa 3, pieza B
+  // (2026-08-25): candidatos geográficamente plausibles (mismo filtro que `detectNpcsInScene`)
+  // que NINGÚN mecanismo determinista puso en `npcsInScene` este turno — si el modelo los hace
+  // "aparecer" en prosa o en `newFacts`, es exactamente el hueco sin control que investigó esta
+  // sesión (`newFacts` libre → `sessionFacts` → detectado en un turno futuro sin ningún gatillo
+  // real de juego).
+  const possiblyUnauthorizedNpcNames = await candidateNpcNamesNotInScene(
+    worldId,
+    saveId,
+    currentLocationId,
+    new Set(npcsInScene.map((n) => n.id)),
+  );
+
   // Réplica de NPC en su propia llamada dedicada (sesión de diseño 2026-07-23, tercer intento —
   // ver `generateNpcReply` en narrador.ts para la explicación completa): pedirle a la MISMA
   // llamada de narración que a la vez narre la escena, decida tirada/objetos/misiones/hechos Y
@@ -3451,6 +3465,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     combatNotYetResolved,
     possiblyFalseItemUseNames,
     possiblyResurrectedNpcNames,
+    possiblyUnauthorizedNpcNames,
     possiblyFalseTravelDestinationNames,
     phantomTravelLocationNames,
     possiblyFalseInventoryReviewNames,
