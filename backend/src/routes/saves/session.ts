@@ -5,6 +5,7 @@ import { contraataqueDifficultyFor } from '../../services/npcScene.js';
 import { effectiveAttributes, effectiveDefense } from '../../services/equipment.js';
 import { rollCheck } from '../../services/dice.js';
 import type { AttributeBlock } from '../../services/dice.js';
+import { rejectIfEnded } from './shared.js';
 
 /// Control del estado de una partida EN CURSO (deuda técnica 2026-07-30, split de saves.ts):
 /// pausar/reanudar, cancelar una acción por tiempo, y huir antes de que un combate llegue a
@@ -123,9 +124,7 @@ export async function sessionRoutes(app: FastifyInstance) {
     if (!save) {
       return reply.status(404).send({ error: 'Partida no encontrada' });
     }
-    if (save.endedAt) {
-      return reply.status(409).send({ error: 'Esta partida ha terminado', endedAt: save.endedAt });
-    }
+    if (rejectIfEnded(save, reply)) return;
 
     const pendingSlugs = (save.pendingCombatNpcSlugs as string[] | null) ?? [];
     if (pendingSlugs.length === 0) {

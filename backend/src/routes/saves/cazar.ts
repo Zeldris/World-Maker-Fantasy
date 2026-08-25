@@ -9,6 +9,7 @@ import { loadSessionFacts, appendSessionFacts } from '../../services/worldFacts.
 import { recordEntityDiscoveries } from '../../services/entityDiscovery.js';
 import type { AttributeBlock } from '../../services/dice.js';
 import { iniciarCombatEncounter } from '../../services/combateMultipleOrquestacion.js';
+import { rejectIfEnded } from './shared.js';
 
 /// Caza (revisión de partida 2026-08-08, "buscar presas... eso no va, sale un pequeño raposa que
 /// desaparece sin más" + diseño consultado con la usuaria): el texto libre nunca conectaba de
@@ -217,7 +218,7 @@ export async function cazarRoutes(app: FastifyInstance) {
     // bloqueado en el frontend, pero el panel de Habilidades/Cazar sigue accesible y permitía
     // seguir cazando (mutando `WorldPopulation`/`NpcState` de verdad) para un personaje que la
     // propia partida ya da por definitivamente muerto.
-    if (save.endedAt) return reply.status(409).send({ error: 'Esta partida ha terminado', endedAt: save.endedAt });
+    if (rejectIfEnded(save, reply)) return;
 
     const candidates = await candidateFaunaFor(save.worldId, save.currentLocation?.region ?? null, save.level, save.currentLocation?.slug ?? null);
     if (candidates.length === 0) return { candidates: [] };
@@ -242,7 +243,7 @@ export async function cazarRoutes(app: FastifyInstance) {
     const save = await prisma.save.findUnique({ where: { id: request.params.id }, include: { currentLocation: true, worldState: true } });
     if (!save) return reply.status(404).send({ error: 'Partida no encontrada' });
     // Bug real (auditoría de bugs, 2026-08-21) — ver comentario de /cazar/explorar arriba.
-    if (save.endedAt) return reply.status(409).send({ error: 'Esta partida ha terminado', endedAt: save.endedAt });
+    if (rejectIfEnded(save, reply)) return;
     if (Array.isArray(save.pendingCombatNpcSlugs) && save.pendingCombatNpcSlugs.length > 0) {
       return reply.status(400).send({ error: 'Ya hay un combate en curso — resuélvelo antes de salir a cazar.' });
     }

@@ -7,6 +7,7 @@ import { equipSlotFamily, effectiveAttributes, effectiveSecondaryAttributes } fr
 import { weaponPoolFor } from '../../services/weaponAbilities.js';
 import type { AttributeBlock } from '../../services/dice.js';
 import { EquipSlot } from '@prisma/client';
+import { rejectIfEnded } from './shared.js';
 
 /// Asignar/quitar un hueco de equipo (deuda técnica 2026-07-30, split de saves.ts) — decisión
 /// manual de la jugadora, el modelo nunca la toma (mismo criterio narrativo-sin-mecánica que el
@@ -38,9 +39,7 @@ export async function inventarioRoutes(app: FastifyInstance) {
       // terminada por muerte definitiva no debería permitir seguir ajustando el equipo del
       // personaje, aunque no toque ningún recurso compartido del mundo.
       const saveForEndedAt = await prisma.save.findUnique({ where: { id: request.params.id }, select: { endedAt: true } });
-      if (saveForEndedAt?.endedAt) {
-        return reply.status(409).send({ error: 'Esta partida ha terminado', endedAt: saveForEndedAt.endedAt });
-      }
+      if (saveForEndedAt && rejectIfEnded(saveForEndedAt, reply)) return;
 
       // Requisitos de equipar (sesión de diseño 2026-07-23) + ranura compatible (2026-07-30,
       // petición explícita: "categorizarlos por ranura para que no pueda poner un casco en los

@@ -1,3 +1,4 @@
+import type { FastifyReply } from 'fastify';
 import { prisma } from '../../lib/prisma.js';
 import { startingQuestsFor } from '../../services/startingQuests.js';
 import type { Attribute } from '../../services/dice.js';
@@ -8,6 +9,21 @@ import type { Attribute } from '../../services/dice.js';
 /// de creation.ts ("no hay un módulo compartido de validación de atributos todavía"). Ahora sí lo
 /// hay: las dos rutas importan esta misma constante.
 export const VALID_ATTRIBUTES: Attribute[] = ['fuerza', 'destreza', 'constitucion', 'inteligencia', 'voluntad', 'carisma', 'arcano'];
+
+/// Guard de `save.endedAt` (deuda técnica, auditoría 2026-08-25) — el mismo bloque de 3 líneas
+/// estaba copiado literalmente en 8+ archivos de `routes/saves/` (`recolectar.ts`, `cazar.ts`,
+/// `companeros.ts`, `habilidades.ts`, `inventario.ts`, `progression.ts`, `reino.ts`, `session.ts`),
+/// cada uno con su propio comentario reconociendo la duplicación pero sin extraerla nunca. No
+/// sustituye el `prisma.save.findUnique` de cada ruta (cada una necesita su propio `select`/
+/// `include`) — solo el guard en sí, una vez que la ruta ya tiene el `save` en la mano. Devuelve
+/// `true` si ya respondió el 409 (el caller debe hacer `if (rejectIfEnded(save, reply)) return;`).
+export function rejectIfEnded(save: { endedAt: Date | null }, reply: FastifyReply): boolean {
+  if (save.endedAt) {
+    reply.status(409).send({ error: 'Esta partida ha terminado', endedAt: save.endedAt });
+    return true;
+  }
+  return false;
+}
 
 /// Resuelve `targetNpcSlug` (startingQuests.ts) al id real del Npc de catálogo de este mundo —
 /// mismo mecanismo que narrador.ts usa para misiones propuestas en juego (Quest.targetNpcId),

@@ -1,5 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import { prisma } from '../../lib/prisma.js';
+import { rejectIfEnded } from './shared.js';
 
 /// CRUD de habilidades 'general' creadas a mano por la jugadora (deuda técnica 2026-07-30, split
 /// de saves.ts) — las de combate (isStarting/isDynamic) son fijas por clase/raza/arma y nunca
@@ -29,9 +30,7 @@ export async function habilidadesRoutes(app: FastifyInstance) {
       // Mismo guard que turn.ts/combat/flee/cazar/recolectar/reino (auditoría de bugs 2026-08-21
       // + decisión explícita de la usuaria al cerrar la ronda de preguntas abiertas): crear/borrar/
       // editar habilidades tras una muerte definitiva no debería seguir permitido.
-      if (save.endedAt) {
-        return reply.status(409).send({ error: 'Esta partida ha terminado', endedAt: save.endedAt });
-      }
+      if (rejectIfEnded(save, reply)) return;
 
       const created = await prisma.savedAction.create({
         data: {
@@ -83,9 +82,7 @@ export async function habilidadesRoutes(app: FastifyInstance) {
       // Mismo guard que turn.ts/combat/flee/cazar/recolectar/reino (auditoría de bugs 2026-08-21
       // + decisión explícita de la usuaria al cerrar la ronda de preguntas abiertas).
       const saveForEndedAt = await prisma.save.findUnique({ where: { id: request.params.id }, select: { endedAt: true } });
-      if (saveForEndedAt?.endedAt) {
-        return reply.status(409).send({ error: 'Esta partida ha terminado', endedAt: saveForEndedAt.endedAt });
-      }
+      if (saveForEndedAt && rejectIfEnded(saveForEndedAt, reply)) return;
       await prisma.savedAction.deleteMany({ where: { id: request.params.habilidadId, saveId: request.params.id } });
       return reply.status(204).send();
     },
@@ -111,9 +108,7 @@ export async function habilidadesRoutes(app: FastifyInstance) {
     // Mismo guard que turn.ts/combat/flee/cazar/recolectar/reino (auditoría de bugs 2026-08-21 +
     // decisión explícita de la usuaria al cerrar la ronda de preguntas abiertas).
     const saveForEndedAt = await prisma.save.findUnique({ where: { id: request.params.id }, select: { endedAt: true } });
-    if (saveForEndedAt?.endedAt) {
-      return reply.status(409).send({ error: 'Esta partida ha terminado', endedAt: saveForEndedAt.endedAt });
-    }
+    if (saveForEndedAt && rejectIfEnded(saveForEndedAt, reply)) return;
 
     const { name, promptText, icon, description } = request.body;
     if (name !== undefined && !name.trim()) {

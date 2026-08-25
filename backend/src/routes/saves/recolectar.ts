@@ -19,6 +19,7 @@ import { rollGathering, dificultadForTier, gradoForRecurso, cantidadForGrado } f
 import type { GatheringRollResult, AttributeBlock } from '../../services/dice.js';
 import { Prisma } from '@prisma/client';
 import type { Estacion, EstadoClima, MetodoObtencion } from '@prisma/client';
+import { rejectIfEnded } from './shared.js';
 
 /// Recolección (rediseño de profesiones, 2026-08-07) — lado "recolectora" (minero/talador/
 /// desollador): a diferencia de las de oficio creador (crafting.ts, un solo objeto por texto
@@ -453,7 +454,7 @@ export async function recolectarRoutes(app: FastifyInstance) {
     // el panel de Habilidades/Minar-Talar-Desollar sigue accesible y permitía seguir recolectando
     // (mutando `WorldPopulation`/inventario de verdad) para un personaje que la propia partida ya
     // da por definitivamente muerto.
-    if (save.endedAt) return reply.status(409).send({ error: 'Esta partida ha terminado', endedAt: save.endedAt });
+    if (rejectIfEnded(save, reply)) return;
 
     const { candidates, anyOnCooldown } = await candidateSourcesFor(
       save.worldId,
@@ -509,7 +510,7 @@ export async function recolectarRoutes(app: FastifyInstance) {
       const save = await prisma.save.findUnique({ where: { id: request.params.id }, include: { worldState: true } });
       if (!save) return reply.status(404).send({ error: 'Partida no encontrada' });
       // Bug real (auditoría de bugs, 2026-08-21) — ver comentario de /recolectar/:oficio/explorar arriba.
-      if (save.endedAt) return reply.status(409).send({ error: 'Esta partida ha terminado', endedAt: save.endedAt });
+      if (rejectIfEnded(save, reply)) return;
 
       interface TouchedStack {
         id: string;

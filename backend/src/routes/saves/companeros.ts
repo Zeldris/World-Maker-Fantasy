@@ -4,6 +4,7 @@ import { scopeFor } from '../../services/npcScene.js';
 import { equipSlotFamily, effectiveAttributes } from '../../services/equipment.js';
 import type { AttributeBlock, Attribute } from '../../services/dice.js';
 import { companionSlotsForRecipeKey } from '../../services/construction.js';
+import { rejectIfEnded } from './shared.js';
 import {
   esDomador,
   felicidadUmbralFor,
@@ -68,7 +69,7 @@ export async function companerosRoutes(app: FastifyInstance) {
   app.post<{ Params: { id: string; npcSlug: string } }>('/saves/:id/capturar/:npcSlug', async (request, reply) => {
     const save = await prisma.save.findUnique({ where: { id: request.params.id }, select: { id: true, worldId: true, currentLocationId: true, endedAt: true } });
     if (!save) return reply.status(404).send({ error: 'Partida no encontrada' });
-    if (save.endedAt) return reply.status(409).send({ error: 'Esta partida ha terminado', endedAt: save.endedAt });
+    if (rejectIfEnded(save, reply)) return;
     if (!save.currentLocationId) return reply.status(400).send({ error: 'Sin ubicación actual' });
 
     const tieneTrampaDeLazo = await prisma.inventoryItem.findFirst({ where: { saveId: save.id, catalogSlug: 'trampa-de-lazo' }, select: { id: true } });
@@ -168,7 +169,7 @@ export async function companerosRoutes(app: FastifyInstance) {
         include: { inventoryItems: { where: { slot: { not: null } } } },
       });
       if (!save) return reply.status(404).send({ error: 'Partida no encontrada' });
-      if (save.endedAt) return reply.status(409).send({ error: 'Esta partida ha terminado', endedAt: save.endedAt });
+      if (rejectIfEnded(save, reply)) return;
 
       const npc = await prisma.npc.findUnique({ where: { worldId_slug: { worldId: save.worldId, slug: request.params.npcSlug } } });
       if (!npc || !npc.atributoResistencia) return reply.status(404).send({ error: 'Objetivo no encontrado' });
@@ -204,7 +205,7 @@ export async function companerosRoutes(app: FastifyInstance) {
     async (request, reply) => {
       const save = await prisma.save.findUnique({ where: { id: request.params.id }, select: { id: true, worldId: true, clase: true, especializacion: true, endedAt: true } });
       if (!save) return reply.status(404).send({ error: 'Partida no encontrada' });
-      if (save.endedAt) return reply.status(409).send({ error: 'Esta partida ha terminado', endedAt: save.endedAt });
+      if (rejectIfEnded(save, reply)) return;
 
       const npc = await prisma.npc.findUnique({ where: { worldId_slug: { worldId: save.worldId, slug: request.params.npcSlug } } });
       if (!npc) return reply.status(404).send({ error: 'Objetivo no encontrado' });

@@ -2,7 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import { prisma } from '../../lib/prisma.js';
 import { attributeCapForLevel } from '../../services/progression.js';
 import type { AttributeBlock, Attribute } from '../../services/dice.js';
-import { VALID_ATTRIBUTES } from './shared.js';
+import { VALID_ATTRIBUTES, rejectIfEnded } from './shared.js';
 
 /// Progresión "manual" del personaje (deuda técnica 2026-07-30, split de saves.ts): repartir un
 /// punto de atributo ganado por nivel — decisión puntual de la jugadora sobre su propio personaje,
@@ -36,9 +36,7 @@ export async function progressionRoutes(app: FastifyInstance) {
       // + decisión explícita de la usuaria al cerrar la ronda de preguntas abiertas): repartir
       // puntos de atributo tras una muerte definitiva no debería seguir permitido, aunque no
       // toque ningún recurso compartido del mundo.
-      if (save.endedAt) {
-        return reply.status(409).send({ error: 'Esta partida ha terminado', endedAt: save.endedAt });
-      }
+      if (rejectIfEnded(save, reply)) return;
 
       // Bug real (auditoría 2026-08-06): `Save.attributes` es un único Json — sin bloquear la fila,
       // dos POST casi simultáneos (doble clic, dos pestañas) leían el mismo `attributes` desde
