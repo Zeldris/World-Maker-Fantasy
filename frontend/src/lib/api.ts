@@ -1,4 +1,5 @@
 import type {
+  AlmacenItemInfo,
   Attribute,
   AttributeBlock,
   BuildingInfo,
@@ -20,6 +21,7 @@ import type {
   GatheringRollInfo,
   HuntCandidate,
   PostCombatInteractionInfo,
+  PlantillaEquipoInfo,
   ProfessionProgressInfo,
   ProfessionRecipeInfo,
   ProgressionResult,
@@ -441,6 +443,12 @@ export interface SaveDetail {
   territories: TerritoryInfo[]
   buildings: BuildingInfo[]
   subjects: SubjectInfo[]
+  /// Grupo 3 § Compañeros y supervivencia (2026-08-25) — Almacén de Reino/Plantillas (§6-7) y
+  /// Hambre/Sed del propio personaje (§5, derivadas en vivo, igual que Comida/Agua de compañero).
+  almacenItems: AlmacenItemInfo[]
+  plantillasEquipo: PlantillaEquipoInfo[]
+  hambre: number
+  sed: number
   transit: { activity: string; busyUntil: string; duracionMinutos?: number | null } | null
   savedActions: SavedActionInfo[]
   habilidadSlots: number

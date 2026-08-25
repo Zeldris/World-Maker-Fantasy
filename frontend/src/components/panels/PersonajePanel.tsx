@@ -41,6 +41,8 @@ interface PersonajePanelProps {
   condicionFisica: CondicionFisica
   energia: number
   energiaMax: number
+  hambre: number
+  sed: number
 
   factionsStatus: Record<string, number>
 }
@@ -62,6 +64,8 @@ export function PersonajePanel({
   condicionFisica,
   energia,
   energiaMax,
+  hambre,
+  sed,
   factionsStatus,
 }: PersonajePanelProps) {
   return (
@@ -98,6 +102,8 @@ export function PersonajePanel({
           condicionFisica={condicionFisica}
           energia={energia}
           energiaMax={energiaMax}
+          hambre={hambre}
+          sed={sed}
         />
       )}
       {activeSubTab === 'reputacion' && <ReputacionPanel factionsStatus={factionsStatus} />}

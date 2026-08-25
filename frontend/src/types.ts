@@ -389,11 +389,36 @@ export interface InventoryItemInfo {
   curaEnergia?: number | null
 }
 
+/// Grupo 3 § Compañeros y supervivencia (2026-08-25) — `felicidad: null` = compañero de quest/
+/// narración libre, sin capa mecánica (comportamiento de siempre, sin barras que mostrar).
 export interface CompanionInfo {
   id: string
   name: string
   role: string
   notes: string
+  tipo: 'FAUNA' | 'NPC'
+  felicidad: number | null
+  comida: number | null
+  agua: number | null
+  esSlotDomador: boolean
+  rolReino: string | null
+  plantillaEquipoId: string | null
+}
+
+export interface AlmacenItemInfo {
+  id: string
+  name: string
+  description: string
+  catalogSlug: string | null
+}
+
+export interface PlantillaEquipoInfo {
+  id: string
+  name: string
+  personalizada: boolean
+  rol: string
+  slots: Record<string, { catalogSlug?: string; category?: string }>
+  prioridad: number
 }
 
 export type TerritoryControl = 'RECLAMADO' | 'DISPUTADO' | 'CONSOLIDADO' | 'PERDIDO'
@@ -444,6 +469,7 @@ export interface SubjectInfo {
   name: string
   role: string
   notes: string
+  plantillaEquipoId: string | null
 }
 
 export interface SessionSummaryInfo {

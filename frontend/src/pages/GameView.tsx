@@ -243,6 +243,12 @@ export function GameView() {
   // partida y se actualiza con cada respuesta de turno.
   const [energia, setEnergia] = useState(100)
   const [energiaMax, setEnergiaMax] = useState(100)
+  // Hambre/Sed (Grupo 3 § Compañeros y supervivencia, 2026-08-25) — a diferencia de condicionFisica/
+  // energia, no viaja en la respuesta de turno (avanzan solas en el worldTick de fondo, no con
+  // cada acción) — se resincroniza cada vez que se recarga la partida (loadSave), igual que el
+  // resto del estado "lento" (kingdomStats, subjects...).
+  const [hambre, setHambre] = useState(100)
+  const [sed, setSed] = useState(100)
   const [endedAt, setEndedAt] = useState<string | null>(null)
   const [combateIniciado, setCombateIniciado] = useState<{ npcs: NpcInSceneInfo[] } | null>(null)
   // Rediseño del turno de combate (2026-07-29, "quiero que sea más claro cuando es turno de
@@ -397,6 +403,8 @@ export function GameView() {
     setCondicionFisica(save.condicionFisica)
     setEnergia(save.energia)
     setEnergiaMax(save.energiaMax)
+    setHambre(save.hambre)
+    setSed(save.sed)
     setDeathCount(save.deathCount)
     setDificultad(save.dificultad)
     setEndedAt(save.endedAt)
@@ -1532,6 +1540,8 @@ export function GameView() {
               condicionFisica={condicionFisica}
               energia={energia}
               energiaMax={energiaMax}
+              hambre={hambre}
+              sed={sed}
               factionsStatus={factionsStatus}
             />
           )}

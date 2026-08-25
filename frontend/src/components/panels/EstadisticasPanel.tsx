@@ -27,6 +27,11 @@ interface EstadisticasPanelProps {
   condicionFisica: CondicionFisica
   energia: number
   energiaMax: number
+  /// Hambre/Sed (Grupo 3 § Compañeros y supervivencia, 2026-08-25) — 0-100, derivadas en vivo del
+  /// reloj de ficción. Por debajo de 25% empieza el desgaste real (docs/rpgtarkor/
+  /// companeros-y-supervivencia.md § 5).
+  hambre: number
+  sed: number
 }
 
 export function EstadisticasPanel({
@@ -42,6 +47,8 @@ export function EstadisticasPanel({
   condicionFisica,
   energia,
   energiaMax,
+  hambre,
+  sed,
 }: EstadisticasPanelProps) {
   const progress = xpProgress(level, xp)
   const percent = progress.span > 0 ? Math.min(100, (progress.current / progress.span) * 100) : 100
@@ -74,6 +81,37 @@ export function EstadisticasPanel({
         <div className="flex flex-wrap items-center gap-2.5">
           <HealthBar condicionFisica={condicionFisica} />
           <EnergyBar energia={energia} energiaMax={energiaMax} />
+        </div>
+      </PanelSection>
+
+      <PanelSection title="Hambre / Sed">
+        <div className="flex flex-col gap-2">
+          {([
+            ['🍖 Comida', hambre],
+            ['💧 Agua', sed],
+          ] as const).map(([label, pct]) => (
+            <div key={label}>
+              <div className="mb-1 flex items-center justify-between text-2xs text-wood-400">
+                <span>{label}</span>
+                <span className="font-mono tabular-nums">{pct}%</span>
+              </div>
+              <div className="h-1.5 overflow-hidden rounded-full bg-iron-800">
+                <div
+                  className={`h-full rounded-full transition-[width] duration-500 ${
+                    pct < 25 ? 'bg-red-500' : pct < 50 ? 'bg-amber-500' : 'bg-emerald-500'
+                  }`}
+                  style={{ width: `${pct}%` }}
+                />
+              </div>
+            </div>
+          ))}
+          {(hambre < 25 || sed < 25) && (
+            <p className="text-2xs italic text-red-400">
+              {hambre <= 0 && sed <= 0
+                ? 'Ni comes ni bebes desde hace demasiado — la vida sigue bajando sin suelo mientras siga así.'
+                : 'Llevas demasiado sin comer o beber — el desgaste ya es real, busca comida o agua pronto.'}
+            </p>
+          )}
         </div>
       </PanelSection>
 
