@@ -3187,6 +3187,9 @@ que compruebe que la prosa no contradiga el resultado real:
    la jugadora — puede seguir leyendo una escena de construcción completada aunque mecánicamente no
    se construyó nada.
 
-**Estado**: PENDIENTE de decisión (¿vale la pena un guard nuevo para cada categoría, o se acepta el
-riesgo porque son casos raros?). Candidato a la próxima ronda de la auditoría de código o a
-deuda técnica, según prioridad que decida la usuaria.
+**Estado**: FIJADO (commit `fcd8246`, 2026-08-25) — las 3 categorías cerradas: `hasFalseHealingClaim`
+(nuevo guard, dispara si la prosa promete recuperación completa cuando `healCeilingFor` real queda
+por debajo de ILESO), `hasFalseNewItemClaim` (nuevo guard, caso inverso de `hasFalseItemUse` — la
+prosa no puede afirmar posesión de un objeto que no coincide con ningún `ItemCatalog` real), y la
+construcción rechazada ahora también corrige `narration.narration` (mismo criterio que los guards de
+viaje ya existentes), no solo `newFacts`/`newBuilding`.
