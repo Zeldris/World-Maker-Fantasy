@@ -426,6 +426,15 @@ export function GameView() {
     }
   }
 
+  // Grupo 3 § Compañeros y supervivencia (2026-08-25) — resincroniza la partida entera tras una
+  // mutación que crea un Companion (confirmar tameo/persuasión), mismo patrón ya usado al equipar
+  // (ver comentario de `handleSlotClick`).
+  async function refreshSave() {
+    if (!saveId) return
+    const save = await getSave(saveId)
+    syncFromSave(save)
+  }
+
   async function handleFundarReino(name: string, description?: string) {
     if (!saveId) return
     const result = await fundarReino(saveId, name, description)
@@ -1560,7 +1569,9 @@ export function GameView() {
               onDetail={handleItemDetail}
             />
           )}
-          {activePanel === 'companeros' && <CompanerosPanel companions={companions} />}
+          {activePanel === 'companeros' && saveId && (
+            <CompanerosPanel saveId={saveId} companions={companions} onRefreshSave={refreshSave} />
+          )}
           {activePanel === 'misiones' && <MisionesPanel quests={quests} />}
           {activePanel === 'reino' && (
             <ReinoPanel

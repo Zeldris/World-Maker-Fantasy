@@ -724,6 +724,65 @@ export async function explorarCaza(saveId: string): Promise<{ candidates: HuntCa
   return fetchJson(`${API_URL}/saves/${saveId}/cazar/explorar`, { method: 'POST' })
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// Grupo 3 § Compañeros y supervivencia (2026-08-25, docs/rpgtarkor/companeros-y-supervivencia.md)
+// ═══════════════════════════════════════════════════════════════════════════
+
+export interface CapturableCandidate {
+  npcSlug: string
+  name: string
+  tipo: 'FAUNA' | 'NPC'
+}
+export async function getCapturables(saveId: string): Promise<{ candidates: CapturableCandidate[]; tieneTrampaDeLazo: boolean }> {
+  return fetchJson(`${API_URL}/saves/${saveId}/capturables`)
+}
+export async function postCapturar(saveId: string, npcSlug: string): Promise<{ npcSlug: string; tipo: 'FAUNA' | 'NPC'; jaulaBuildingId: string | null }> {
+  return fetchJson(`${API_URL}/saves/${saveId}/capturar/${npcSlug}`, { method: 'POST' })
+}
+
+export interface TameoPendiente {
+  npcSlug: string
+  name: string
+  tipo: 'FAUNA' | 'NPC'
+  felicidad: number
+  umbral: number
+  atributoResistencia: Attribute | null
+  enJaula: boolean
+}
+export async function getTameoPendientes(saveId: string): Promise<{ pendientes: TameoPendiente[] }> {
+  return fetchJson(`${API_URL}/saves/${saveId}/tameo-pendientes`)
+}
+
+export interface OpposedRollInfo {
+  playerAttribute: Attribute
+  playerValue: number
+  playerRoll: number
+  playerResult: number
+  resistenciaAttribute: Attribute
+  resistenciaValue: number
+  resistenciaRoll: number
+  resistenciaResult: number
+  margen: number
+  gano: boolean
+}
+export async function postIntentarTameo(
+  saveId: string,
+  npcSlug: string,
+  attribute: Attribute,
+): Promise<{ roll: OpposedRollInfo; felicidad: number; umbral: number; umbralCompletado: boolean }> {
+  return fetchJson(`${API_URL}/saves/${saveId}/tameo-pendientes/${npcSlug}/intentar`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ attribute }),
+  })
+}
+export async function postConfirmarTameo(saveId: string, npcSlug: string): Promise<{ companion: CompanionInfo }> {
+  return fetchJson(`${API_URL}/saves/${saveId}/tameo-pendientes/${npcSlug}/confirmar`, { method: 'POST' })
+}
+export async function postSoltarTameo(saveId: string, npcSlug: string): Promise<{ ok: boolean }> {
+  return fetchJson(`${API_URL}/saves/${saveId}/tameo-pendientes/${npcSlug}/soltar`, { method: 'POST' })
+}
+
 /// Confirmar selección del pop-up de caza. Con una única presa débil puede resolverse sin combate
 /// (`resuelveSinCombate: true`, ver `combate`) — en cualquier otro caso (varias presas, una sola
 /// no lo bastante débil, o la propia tirada de caza limpia falla) esta llamada NO abre combate ni
