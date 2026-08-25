@@ -1621,44 +1621,63 @@ async function applyCombatExchangeToNpcState(params: {
   });
 
   if (esGolpeDeMuerte) {
-    // Cierre detectable por backend (roadmap 2026-07-19, mecánicas): si alguna misión ACTIVA
-    // apuntaba a este NPC (Quest.targetNpcId, ver newQuest más arriba), derrotarlo la cierra sola
-    // en cuanto cae — el modelo nunca tiene que acertar el título EXACTO vía questProgress para
-    // el caso más común de misión de combate ("derrotar a X"). También concede rewardItems/
-    // rewardXp de verdad y narra la recompensa (docs/19 pieza 3).
-    const completedHere = await completeNpcTargetQuests(
+    questCompletedInfo = await applyKillSideEffects({
       tx,
+      npc: npcAttackTarget,
+      nuevaCondicion: npcTargetNewCondicion,
       saveId,
       worldId,
-      npcAttackTarget.id,
-      nuevaFictionalDateLabel,
       nuevoFictionalMinutes,
+      nuevaFictionalDateLabel,
+      activeRegion,
       nextAfterMainLogCreatedAt,
-    );
-    if (completedHere) questCompletedInfo = completedHere;
-
-    // Reputación de facción determinista (roadmap 2026-07-19, prioridad 4): reutiliza
-    // `WorldState.factionsStatus` (gauge 0-5000 por facción, ver reputation.ts — reemplaza el
-    // viejo ±1 sin límite). Atacar a un NPC de una facción concreta resta bastante más de lo que
-    // se recupera resolviendo algo en paz (deltas asimétricos, "pozo real" para ENEMIGO); sin
-    // facción (fauna, NPCs independientes) no afecta a nada.
-    if (npcAttackTarget.faction) {
-      const currentWorldState = await tx.worldState.findUnique({ where: { saveId }, select: { factionsStatus: true } });
-      const updatedFactionsStatus = applyFactionRepDelta(
-        parseFactionsStatus(currentWorldState?.factionsStatus),
-        npcAttackTarget.faction,
-        FACTION_REP_ATTACK_DELTA,
-      );
-      await tx.worldState.update({ where: { saveId }, data: { factionsStatus: updatedFactionsStatus } });
-    }
-
-    // Población dinámica (docs/16-poblacion-dinamica.md): solo MUERTO resta población de verdad
-    // — CONVALECIENTE es solo derrotado, no una baja real de la especie/raza.
-    if (npcTargetNewCondicion === 'MUERTO') {
-      await decrementPopulationOnDeath(tx, worldId, npcAttackTarget.raza, npcAttackTarget.slug, activeRegion);
-    }
+    });
   }
   return { questCompletedInfo };
+}
+
+/// Extraído de `applyCombatExchangeToNpcState` (Combate múltiple, 2026-08-25) — cierre de
+/// misión/reputación de facción/población dinámica al caer un NPC, separado de la ESCRITURA de
+/// `NpcState` (que `applyCombatExchangeToNpcState` sigue haciendo justo antes de llamar a esto).
+/// Reutilizado también por el enganche de `CombatEncounter` más abajo: un individuo real de grupo
+/// NUNCA escribe `NpcState` (su condición vive en `CombatParticipant.condicionFisicaGrupo`, ver
+/// schema.prisma), pero SÍ necesita este mismo cierre de misión/reputación/población al caer.
+async function applyKillSideEffects(params: {
+  tx: Prisma.TransactionClient;
+  npc: { id: string; raza: string | null; slug: string; faction: string | null };
+  nuevaCondicion: CondicionFisica;
+  saveId: string;
+  worldId: string;
+  nuevoFictionalMinutes: number;
+  nuevaFictionalDateLabel: string;
+  activeRegion: string | null;
+  nextAfterMainLogCreatedAt?: () => Date;
+}): Promise<QuestCompletedInfo | null> {
+  const { tx, npc, nuevaCondicion, saveId, worldId, nuevoFictionalMinutes, nuevaFictionalDateLabel, activeRegion, nextAfterMainLogCreatedAt } = params;
+  // Cierre detectable por backend (roadmap 2026-07-19, mecánicas): si alguna misión ACTIVA
+  // apuntaba a este NPC (Quest.targetNpcId, ver newQuest más arriba), derrotarlo la cierra sola
+  // en cuanto cae — el modelo nunca tiene que acertar el título EXACTO vía questProgress para
+  // el caso más común de misión de combate ("derrotar a X"). También concede rewardItems/
+  // rewardXp de verdad y narra la recompensa (docs/19 pieza 3).
+  const questCompletedInfo = await completeNpcTargetQuests(tx, saveId, worldId, npc.id, nuevaFictionalDateLabel, nuevoFictionalMinutes, nextAfterMainLogCreatedAt);
+
+  // Reputación de facción determinista (roadmap 2026-07-19, prioridad 4): reutiliza
+  // `WorldState.factionsStatus` (gauge 0-5000 por facción, ver reputation.ts — reemplaza el
+  // viejo ±1 sin límite). Atacar a un NPC de una facción concreta resta bastante más de lo que
+  // se recupera resolviendo algo en paz (deltas asimétricos, "pozo real" para ENEMIGO); sin
+  // facción (fauna, NPCs independientes) no afecta a nada.
+  if (npc.faction) {
+    const currentWorldState = await tx.worldState.findUnique({ where: { saveId }, select: { factionsStatus: true } });
+    const updatedFactionsStatus = applyFactionRepDelta(parseFactionsStatus(currentWorldState?.factionsStatus), npc.faction, FACTION_REP_ATTACK_DELTA);
+    await tx.worldState.update({ where: { saveId }, data: { factionsStatus: updatedFactionsStatus } });
+  }
+
+  // Población dinámica (docs/16-poblacion-dinamica.md): solo MUERTO resta población de verdad —
+  // CONVALECIENTE es solo derrotado, no una baja real de la especie/raza.
+  if (nuevaCondicion === 'MUERTO') {
+    await decrementPopulationOnDeath(tx, worldId, npc.raza, npc.slug, activeRegion);
+  }
+  return questCompletedInfo;
 }
 
 /// "Decapitar" (petición explícita, 2026-07-30), extraído de la transacción de

@@ -101,7 +101,31 @@ resumen de trabajo real, agrupado por tamaño.
   ella haga en clases.md (edición en curso) se portarán al motor en una pasada aparte, no ahora.
 - [ ] **Combate múltiple** (`docs/rpgtarkor/combate-multiple.md`) — iniciativa individual N-way, tope
   4v4 con sub-combates deterministas, modo autónomo/reporte, retira el truco `groupSize`. Desbloquea
-  `MULTIPLE`/`INVOCACION`/`COMPANERO`/`CONTROL`/`EXPULSAR` de arriba.
+  `MULTIPLE`/`INVOCACION`/`COMPANERO`/`CONTROL`/`EXPULSAR` de arriba. **Avance real 2026-08-25**:
+  Fases A-C construidas y commiteadas (`5e63c27`/`419d7af`/`82793ab`) — iniciativa/retargeting/
+  partición puros, narración ligera por LLM, orquestación con estado real (`CombatEncounter`/
+  `CombatParticipant`) probada aislada contra Postgres. `condicionFisicaGrupo` (`d92df45`) da a cada
+  individuo real de un grupo cazado su propia condición sin tocar el modelo de escena compartido.
+  `resolverIntercambioCompleto`/`resolverTurnoJugador` (`81e810c`) dan paridad completa de mecánicas
+  (utilidades/doble arma/LETAL) y resuelven el turno de la propia jugadora — todo aditivo, cero
+  cambios al combate 1v1 en uso. **Bloqueado en el disparo real**: conectar esto al juego en vivo
+  (`cazar.ts`, `narrateAndPersistTurn`) exige antes cerrar la Capa 3-4 de
+  [mundo-determinista.md](rpgtarkor/mundo-determinista.md) — el disparador actual de combate
+  (`combateIniciado.npcSlugs`, propuesto libremente por el modelo) es justo lo que ese documento
+  sustituye por algo determinista.
+- [ ] **Mundo determinista: zonas, eventos y narración que solo narra**
+  (`docs/rpgtarkor/mundo-determinista.md`, diseño 2026-08-25) — generaliza "el modelo nunca decide,
+  solo narra" (ya probado en combate) a aparición de NPC/fauna, eventos de mundo y creación de
+  misiones/objetos/compañeros/territorios. 4 capas en orden de dependencia: zonas navegables con
+  posición real (fundación — no hay nada reutilizable hoy, ni siquiera el Mapa de Cristal Helado,
+  que resultó ser solo píxeles hardcodeados en el frontend) → cola de eventos por tiempo/posición
+  (extiende `worldTick.ts`) → determinismo de aparición en turno libre (rompe el ciclo real
+  `newFacts`→`sessionFacts`→`npcsInScene` sin ningún control de población) → disparo real de
+  Combate múltiple vía `iniciarCombatEncounter`. Más 5 hallazgos independientes, atacables ya sin
+  esperar a las 4 capas: Log de Mundo desconectado de los hechos reales de `worldAgenda.ts`/
+  `WorldPopulation` (quick-win, ya es 100% determinista, solo le falta cable), y `newQuest`/`newItem`/
+  `newCompanion`/`newTerritory`/`newSubject` sin ningún guard de código (a diferencia de `newBuilding`,
+  que ya demuestra el patrón correcto).
 - [x] ~~**Compañeros y supervivencia**~~ — backend completo APLICADO al motor 2026-08-25 (alcance
   íntegro, incluido Almacén de Reino, confirmado explícitamente: "todo, incluido Almacén de
   Reino"). `Companion`/`Subject` con Felicidad/Comida/Agua/plantilla reales; `NpcState.capturado`/
