@@ -4283,45 +4283,74 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     }
 
     if (narration.newItem && !lootMode && !harvestMatch) {
-      const created = await tx.inventoryItem.create({
-        data: { saveId, name: narration.newItem.name, description: narration.newItem.description, origin: 'partida' },
+      // Guard real (Grupo 3 § Mundo determinista, docs/rpgtarkor/mundo-determinista.md, 2026-08-25):
+      // hasta ahora se creaba un `InventoryItem` real por CUALQUIER `newItem` que el modelo
+      // propusiera, sin `catalogSlug`, fuera del `ItemCatalog` que usa el resto del juego
+      // (recolección/combate/crafteo) — un objeto de nombre libre, imposible de tipar. Ahora exige
+      // que el nombre coincida con un item REAL del catálogo del mundo — el modelo puede seguir
+      // proponiendo "consigues un Cuchillo de Hielo Sílice", pero solo se materializa si ese
+      // nombre existe de verdad, y en ese caso hereda su `equipSlot`/`effectKey`/`tipo` reales,
+      // igual que cualquier otro objeto del juego (antes siempre salían `null`, aunque el nombre
+      // coincidiera con catálogo por pura casualidad).
+      const catalogMatch = await tx.itemCatalog.findFirst({
+        where: { worldId, name: { equals: narration.newItem.name, mode: 'insensitive' } },
       });
-      createdItemNames.push(created.name);
-      // Bug real (auditoría de deuda técnica 2026-08-04, mismo patrón que companionCreated): a
-      // diferencia de los otros 4 sitios que crean InventoryItem en este archivo (saqueo,
-      // despiece, producción, crafteo/construcción), este era el único que no empujaba a
-      // `newInventoryItems` — el frontend solo se enteraba vía `narration.newItem` (name+
-      // description sueltos del LLM, sin id real) y se veía obligado a inventarse un id de
-      // cliente (`item-${Date.now()}`) que el backend no reconoce, rompiendo equipar ese objeto
-      // hasta la siguiente recarga completa. Objeto libre, sin catalogSlug de por medio →
-      // equipSlot/effectKey/tipo siempre null, mismo criterio que el resto de creaciones sin catálogo.
-      newInventoryItems.push({ ...created, slot: null, equipSlot: null, effectKey: null, tipo: null });
-    }
-    if (narration.newCompanion) {
-      // Tope real de slots (2026-08-04, ver el aviso de contextBlocks más arriba) — reconsultado
-      // fresco dentro de la transacción, mismo criterio que `freshInventoryRows`: el modelo puede
-      // ignorar el aviso, esto es lo que garantiza que nunca se cree un compañero sin hueco.
-      const [freshCompanionCount, freshCompanionBuildings] = await Promise.all([
-        // `esSlotDomador: false` (Grupo 3 § Compañeros y supervivencia, 2026-08-25) — el slot
-        // garantizado del Domador nunca compite con el cupo de edificio.
-        tx.companion.count({ where: { saveId, esSlotDomador: false } }),
-        tx.building.findMany({ where: { saveId, status: 'ACTIVO' }, select: { recipeKey: true } }),
-      ]);
-      const freshMaxCompanions = freshCompanionBuildings.reduce((sum, b) => sum + companionSlotsForRecipeKey(b.recipeKey), 0);
-      if (freshCompanionCount < freshMaxCompanions) {
-        const created = await tx.companion.create({
+      if (catalogMatch) {
+        const created = await tx.inventoryItem.create({
           data: {
             saveId,
-            name: narration.newCompanion.name,
-            role: narration.newCompanion.role,
-            notes: narration.newCompanion.notes,
+            name: catalogMatch.name,
+            description: narration.newItem.description || catalogMatch.description,
+            origin: 'partida',
+            statBonuses: catalogMatch.statBonuses ?? Prisma.JsonNull,
+            catalogSlug: catalogMatch.slug,
           },
         });
-        // Bug real introducido por el tope de arriba (2026-08-04): el frontend añadía
-        // `narration.newCompanion` a su lista de compañeros de forma optimista, sin saber que el
-        // backend podía rechazarlo en silencio por falta de hueco — devolver el registro REAL
-        // (o null si se rechazó) es lo único fiable, mismo criterio que `newInventoryItems`.
-        companionCreated = created;
+        createdItemNames.push(created.name);
+        newInventoryItems.push({ ...created, slot: null, equipSlot: catalogMatch.equipSlot, effectKey: catalogMatch.effectKey, tipo: catalogMatch.tipo });
+      }
+    }
+    if (narration.newCompanion) {
+      // Guard real (Grupo 3 § Mundo determinista, docs/rpgtarkor/mundo-determinista.md, 2026-08-25):
+      // hasta ahora el único freno era el cupo de slots (abajo) — el modelo podía "ganar un
+      // aliado" de la nada, sin ningún NPC real detrás ni ningún umbral de relación. Ahora exige
+      // que el nombre coincida con un NPC de verdad presente en la escena Y que su temperamento
+      // EFECTIVO (mismo `effectiveTemperamento` que ya decide si un NPC es hostil en combate,
+      // ajustado por reputación de facción) sea AMIGABLE o INOFENSIVO — nunca CAUTELOSO/AGRESIVO/
+      // ENEMIGO. AMIGABLE a secas se descartó al comprobar el catálogo real: NINGÚN NPC nace con
+      // ese temperamento (`worldCatalog.ts`, 0 ocurrencias) — exigirlo habría hecho el reclutamiento
+      // libre imposible en la práctica salvo con reputación de facción al máximo.
+      const companionNpcMatch = npcsInScene.find((n) => normalizeText(n.name) === normalizeText(narration.newCompanion!.name));
+      const companionNpcTemperamentoOk = companionNpcMatch
+        ? ['AMIGABLE', 'INOFENSIVO'].includes(effectiveTemperamento(companionNpcMatch.temperamento, companionNpcMatch.faction, factionsStatus))
+        : false;
+
+      if (companionNpcTemperamentoOk) {
+        // Tope real de slots (2026-08-04, ver el aviso de contextBlocks más arriba) — reconsultado
+        // fresco dentro de la transacción, mismo criterio que `freshInventoryRows`: el modelo puede
+        // ignorar el aviso, esto es lo que garantiza que nunca se cree un compañero sin hueco.
+        const [freshCompanionCount, freshCompanionBuildings] = await Promise.all([
+          // `esSlotDomador: false` (Grupo 3 § Compañeros y supervivencia, 2026-08-25) — el slot
+          // garantizado del Domador nunca compite con el cupo de edificio.
+          tx.companion.count({ where: { saveId, esSlotDomador: false } }),
+          tx.building.findMany({ where: { saveId, status: 'ACTIVO' }, select: { recipeKey: true } }),
+        ]);
+        const freshMaxCompanions = freshCompanionBuildings.reduce((sum, b) => sum + companionSlotsForRecipeKey(b.recipeKey), 0);
+        if (freshCompanionCount < freshMaxCompanions) {
+          const created = await tx.companion.create({
+            data: {
+              saveId,
+              name: narration.newCompanion.name,
+              role: narration.newCompanion.role,
+              notes: narration.newCompanion.notes,
+            },
+          });
+          // Bug real introducido por el tope de arriba (2026-08-04): el frontend añadía
+          // `narration.newCompanion` a su lista de compañeros de forma optimista, sin saber que el
+          // backend podía rechazarlo en silencio por falta de hueco — devolver el registro REAL
+          // (o null si se rechazó) es lo único fiable, mismo criterio que `newInventoryItems`.
+          companionCreated = created;
+        }
       }
     }
 
@@ -4343,13 +4372,18 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
       });
     }
 
+    // Guard real (Grupo 3 § Mundo determinista, docs/rpgtarkor/mundo-determinista.md, 2026-08-25):
+    // antes `region` salía del texto libre del modelo, que podía reclamar una región distinta de
+    // donde el personaje está de pie. Ahora `region` SIEMPRE sale de `regionLocation` (la ubicación
+    // real, ya resuelta de forma determinista) — el modelo nunca decide dónde se planta el
+    // territorio, solo puede proponer que se funde uno aquí.
     if (narration.newTerritory) {
       const existingTerritories = await tx.territory.count({ where: { saveId } });
       const territory = await tx.territory.create({
         data: {
           saveId,
           name: narration.newTerritory.name,
-          region: narration.newTerritory.region,
+          region: regionLocation?.region ?? null,
           description: narration.newTerritory.description,
           population: TERRITORIO_POBLACION_INICIAL,
         },
@@ -4482,27 +4516,34 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     }
 
     if (narration.newSubject) {
-      const existingSubjects = await tx.subject.count({ where: { saveId } });
-      await tx.subject.create({
-        data: {
-          saveId,
-          territoryId: await resolveTerritoryId(narration.newSubject.territoryName),
-          name: narration.newSubject.name,
-          role: narration.newSubject.role,
-          notes: narration.newSubject.notes,
-        },
-      });
-      reinoXp = Math.max(reinoXp, existingSubjects === 0 ? REINO_XP.firstSubject : REINO_XP.subject);
-      // Nudge determinista por palabra clave (sesión de diseño 2026-07-23) — todo súbdito con
-      // nombre cuenta como población; su rol libre decide además si suma a soldados/visitantes/
-      // trabajadores (mano de obra por defecto si no matchea ninguna palabra clave concreta).
-      const roleNormalized = normalizeText(narration.newSubject.role);
-      if (/soldad|guerrer|guardia|centinela|vigia/.test(roleNormalized)) {
-        await bumpKingdomStats({ poblacion: 1, soldados: 1 });
-      } else if (/visitante|viajero|huesped|forastero/.test(roleNormalized)) {
-        await bumpKingdomStats({ poblacion: 1, visitantes: 1 });
-      } else {
-        await bumpKingdomStats({ poblacion: 1, trabajadores: 1 });
+      // Guard real (Grupo 3 § Mundo determinista, 2026-08-25): antes se creaba el `Subject` igual
+      // aunque `territoryName` no matcheara ningún `Territory` real (o no viniera dado en
+      // absoluto) — un súbdito flotante, sin reino real al que pertenecer. Exige un territorio
+      // real ya resuelto (el recién fundado este mismo turno cuenta, ver `resolveTerritoryId`).
+      const resolvedTerritoryId = await resolveTerritoryId(narration.newSubject.territoryName);
+      if (resolvedTerritoryId) {
+        const existingSubjects = await tx.subject.count({ where: { saveId } });
+        await tx.subject.create({
+          data: {
+            saveId,
+            territoryId: resolvedTerritoryId,
+            name: narration.newSubject.name,
+            role: narration.newSubject.role,
+            notes: narration.newSubject.notes,
+          },
+        });
+        reinoXp = Math.max(reinoXp, existingSubjects === 0 ? REINO_XP.firstSubject : REINO_XP.subject);
+        // Nudge determinista por palabra clave (sesión de diseño 2026-07-23) — todo súbdito con
+        // nombre cuenta como población; su rol libre decide además si suma a soldados/visitantes/
+        // trabajadores (mano de obra por defecto si no matchea ninguna palabra clave concreta).
+        const roleNormalized = normalizeText(narration.newSubject.role);
+        if (/soldad|guerrer|guardia|centinela|vigia/.test(roleNormalized)) {
+          await bumpKingdomStats({ poblacion: 1, soldados: 1 });
+        } else if (/visitante|viajero|huesped|forastero/.test(roleNormalized)) {
+          await bumpKingdomStats({ poblacion: 1, visitantes: 1 });
+        } else {
+          await bumpKingdomStats({ poblacion: 1, trabajadores: 1 });
+        }
       }
     }
 
@@ -4539,19 +4580,28 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
       const worldItems = await tx.itemCatalog.findMany({ where: { worldId } });
       const targetItemName = worldItems.find((item) => questText.includes(normalizeText(item.name)))?.name;
 
-      await tx.quest.create({
-        data: {
-          saveId,
-          title: narration.newQuest.title,
-          description: narration.newQuest.description,
-          targetNpcId,
-          targetLocationId,
-          targetItemName,
-        },
-      });
-      // Este camino nunca rellena `objetivo` (solo la misión determinista de abajo lo hace) — cae
-      // a `description`, para que la notificación siempre tenga algo real que mostrar.
-      newQuestInfo = { title: narration.newQuest.title, objetivo: narration.newQuest.description };
+      // Guard real (Grupo 3 § Mundo determinista, docs/rpgtarkor/mundo-determinista.md, 2026-08-25):
+      // hasta ahora se creaba una `Quest` real por CUALQUIER `newQuest` que el modelo propusiera,
+      // sin ningún anclaje a nada real del mundo — título y descripción 100% libres. Exigir al
+      // menos UNO de los tres anclajes ya resueltos arriba (NPC/Location/Item reales) no es una
+      // solución completa (eso exige un catálogo de misiones propio, fuera de alcance de esta
+      // pasada — ver el documento), pero cierra el caso más grave: una misión completamente
+      // inventada, sin ninguna conexión con el mundo real, que ni siquiera podría cerrarse sola.
+      if (targetNpcId || targetLocationId || targetItemName) {
+        await tx.quest.create({
+          data: {
+            saveId,
+            title: narration.newQuest.title,
+            description: narration.newQuest.description,
+            targetNpcId,
+            targetLocationId,
+            targetItemName,
+          },
+        });
+        // Este camino nunca rellena `objetivo` (solo la misión determinista de abajo lo hace) —
+        // cae a `description`, para que la notificación siempre tenga algo real que mostrar.
+        newQuestInfo = { title: narration.newQuest.title, objetivo: narration.newQuest.description };
+      }
     }
 
     // Misión determinista de "acabar con el Orco Enfurecido" (segunda vuelta de diseño,

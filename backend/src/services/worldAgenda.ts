@@ -1,6 +1,12 @@
 import type { Prisma, PrismaClient } from '@prisma/client';
 import { appendSessionFacts, loadSessionFacts } from './worldFacts.js';
 
+/// Canal WORLD (Grupo 3 § Mundo determinista, docs/rpgtarkor/mundo-determinista.md, 2026-08-25):
+/// hasta ahora `STAGE_FACTS` solo alimentaba `sessionFacts` (contexto invisible del Narrador) — el
+/// panel "El mundo" que la jugadora sí ve (`entorno.ts`, canal `LogEntry.WORLD`) nunca se enteraba
+/// de que la agenda había avanzado, pese a depletar población real. Ya es texto determinista escrito
+/// a mano (`STAGE_FACTS`), cero coste añadido de LLM — solo hacía falta el cable.
+
 /// `WorldState.agenda` (Grupo 3, docs/21-roadmap.md) — hitos de mundo que avanzan solos con el
 /// tiempo de ficción si nadie interviene, más allá de la ambientación pasiva de `entorno.ts`.
 /// Diseño cerrado con la usuaria (2026-08-24): un solo hito de partida, el conflicto entre el Clan
@@ -107,7 +113,7 @@ async function depleteClanPopulation(tx: TxClient, worldId: string, targetSlug: 
 export async function advanceWorldAgenda(prisma: PrismaClient): Promise<{ statesAdvanced: number; stagesCrossed: number }> {
   const states = await prisma.worldState.findMany({
     where: { save: { characterName: 'Gorhorn', endedAt: null } },
-    select: { id: true, saveId: true, agenda: true, fictionalMinutes: true, save: { select: { worldId: true } } },
+    select: { id: true, saveId: true, agenda: true, fictionalMinutes: true, fictionalDateLabel: true, save: { select: { worldId: true } } },
   });
 
   let statesAdvanced = 0;
@@ -145,6 +151,14 @@ export async function advanceWorldAgenda(prisma: PrismaClient): Promise<{ states
       await tx.worldState.update({ where: { id: state.id }, data: { agenda: nextAgenda as unknown as Prisma.InputJsonValue } });
       await depleteClanPopulation(tx, state.save.worldId, HELSIG_TARGET_SLUG, helsigLoss);
       await depleteClanPopulation(tx, state.save.worldId, GOSHG_TARGET_SLUG, goshgLoss);
+      // Canal WORLD (ver comentario de cabecera) — una fila por etapa cruzada, mismo texto ya
+      // escrito a mano que recibe sessionFacts, para que el panel "El mundo" cuente lo mismo que ya
+      // sabe el Narrador.
+      for (const fact of facts) {
+        await tx.logEntry.create({
+          data: { saveId: state.saveId, channel: 'WORLD', text: fact, timeLabel: state.fictionalDateLabel, fictionalMinutes: state.fictionalMinutes },
+        });
+      }
     });
 
     if (facts.length > 0) {

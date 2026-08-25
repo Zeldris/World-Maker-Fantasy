@@ -1144,13 +1144,13 @@ describe('newQuestInfo: notificación de misión aceptada', () => {
   }, 30_000);
 });
 
-// Cobertura nueva (auditoría de deuda técnica AMPLIA 2026-08-04, bug real): `narration.newItem`
-// (objeto narrativo libre propuesto por el LLM) era el ÚNICO de los 5 sitios de este archivo que
-// crea InventoryItem sin empujar también a `newInventoryItems` — el frontend se veía obligado a
-// fiarse de `narration.newItem` a pelo, con un id inventado en el cliente que el backend nunca
-// reconoce (rompía "equipar" hasta la siguiente recarga). Ahora también viaja en
-// `newInventoryItems`, con el id REAL de la fila creada de verdad.
-describe('newInventoryItems: narration.newItem viaja con id real, no solo narration', () => {
+// Cobertura (auditoría de deuda técnica AMPLIA 2026-08-04 + guard de catálogo 2026-08-25, Grupo 3
+// § Mundo determinista): `narration.newItem` (objeto narrativo libre propuesto por el LLM) ya no
+// crea un `InventoryItem` sin más — desde 2026-08-25 exige que el nombre coincida con un item REAL
+// del `ItemCatalog` del mundo (antes cualquier nombre inventado se creaba igual, sin
+// `catalogSlug`, con `equipSlot`/`effectKey`/`tipo` siempre `null`). Si coincide, hereda esos
+// campos reales del catálogo — si no, se descarta sin crear nada.
+describe('newInventoryItems: narration.newItem exige catálogo real (Grupo 3 § Mundo determinista)', () => {
   let saveId: string;
 
   beforeAll(async () => {
@@ -1181,19 +1181,34 @@ describe('newInventoryItems: narration.newItem viaja con id real, no solo narrat
     await prisma.save.delete({ where: { id: saveId } });
   });
 
-  it('el objeto propuesto por el LLM llega en newInventoryItems con el id real de la fila creada', async () => {
+  it('un nombre que coincide con el catálogo se crea de verdad, con equipSlot/tipo reales heredados', async () => {
+    narrateAction.mockResolvedValueOnce({
+      narration: 'Gorhorn encuentra un cuchillo de hielo sílice entre las rocas.',
+      newFacts: [],
+      newItem: { name: 'Cuchillo de hielo sílice', description: 'Tallado a mano, sin adornos.' },
+    });
+    const res = await doTurn(saveId, 'Busco entre las rocas.');
+    const body = lastNdjsonLine(res.payload);
+
+    const row = await prisma.inventoryItem.findFirstOrThrow({ where: { saveId, name: 'Cuchillo de hielo sílice' } });
+    expect(row.catalogSlug).toBe('cuchillo-hielo-silice');
+    expect(body.newInventoryItems).toEqual([
+      expect.objectContaining({ id: row.id, name: 'Cuchillo de hielo sílice', slot: null, equipSlot: 'ARMA_PRINCIPAL', tipo: 'EQUIPABLE' }),
+    ]);
+  }, 20_000);
+
+  it('un nombre inventado, sin catálogo real detrás, no crea ningún objeto', async () => {
     narrateAction.mockResolvedValueOnce({
       narration: 'Gorhorn talla un amuleto tosco con el hueso que encontró.',
       newFacts: [],
-      newItem: { name: 'Amuleto tosco de hueso', description: 'Tallado a mano, sin adornos.' },
+      newItem: { name: 'Amuleto tosco de hueso inventado sin catálogo', description: 'Tallado a mano, sin adornos.' },
     });
     const res = await doTurn(saveId, 'Tallo un amuleto con este hueso que encontré.');
     const body = lastNdjsonLine(res.payload);
 
-    const row = await prisma.inventoryItem.findFirstOrThrow({ where: { saveId, name: 'Amuleto tosco de hueso' } });
-    expect(body.newInventoryItems).toEqual([
-      expect.objectContaining({ id: row.id, name: 'Amuleto tosco de hueso', slot: null, equipSlot: null }),
-    ]);
+    const row = await prisma.inventoryItem.findFirst({ where: { saveId, name: 'Amuleto tosco de hueso inventado sin catálogo' } });
+    expect(row).toBeNull();
+    expect(body.newInventoryItems).toEqual([]);
   }, 20_000);
 });
 
@@ -1735,11 +1750,16 @@ describe('Construcción: condición de carrera en turnos concurrentes (auditorí
   }, 20_000);
 });
 
-// Cobertura nueva (2026-08-04): slots de compañero — 0 de base, cada construcción propia ACTIVA
-// da los suyos. `newCompanion` del LLM (mockeado aquí, a diferencia del resto del archivo) solo se
-// materializa de verdad si hay hueco.
+// Cobertura (2026-08-04, guard de temperamento 2026-08-25 — Grupo 3 § Mundo determinista): slots
+// de compañero — 0 de base, cada construcción propia ACTIVA da los suyos. `newCompanion` del LLM
+// (mockeado aquí, a diferencia del resto del archivo) solo se materializa de verdad si hay hueco
+// Y el NPC propuesto es real, está en escena y su temperamento efectivo es AMIGABLE/INOFENSIVO
+// (nunca un nombre inventado sin más) — Hagar Kiugh/Kael Dorn son NPC reales del catálogo,
+// `faction: null`/`temperamento: 'INOFENSIVO'`, así que pasan el guard sin necesitar reputación.
 describe('Slots de compañero: tope real por construcciones propias', () => {
   let saveId: string;
+  let hagarId: string;
+  let kaelId: string;
 
   beforeAll(async () => {
     const userId = await getDefaultUserId();
@@ -1760,6 +1780,15 @@ describe('Slots de compañero: tope real por construcciones propias', () => {
     });
     saveId = save.id;
     await prisma.worldState.create({ data: { saveId } });
+    const hagar = await prisma.npc.findFirstOrThrow({ where: { worldId: world.id, slug: 'hagar-kiugh' } });
+    const kael = await prisma.npc.findFirstOrThrow({ where: { worldId: world.id, slug: 'kael-dorn' } });
+    hagarId = hagar.id;
+    kaelId = kael.id;
+    // NpcState ya establecido (mismo atajo que otros describe de este archivo) — así
+    // `detectNpcsInScene` los detecta pase lo que pase con `nucleoJugable`/región, igual que si ya
+    // se hubieran cruzado antes en la partida.
+    await prisma.npcState.create({ data: { saveId, npcId: hagarId, scope: '', condicionFisica: 'ILESO' } });
+    await prisma.npcState.create({ data: { saveId, npcId: kaelId, scope: '', condicionFisica: 'ILESO' } });
     classifyAction.mockResolvedValue({
       requiereTirada: false, atributo: 'carisma', dificultad: 8, razon: 'x', banda: 'instantanea', duracionEstimadaMinutos: 0,
     });
@@ -1771,11 +1800,11 @@ describe('Slots de compañero: tope real por construcciones propias', () => {
 
   it('sin ninguna construcción propia (0 slots): el LLM propone un compañero pero no se crea', async () => {
     narrateAction.mockResolvedValueOnce({
-      narration: 'Un viajero se une a tu causa.',
+      narration: 'Hagar Kiugh se une a tu causa.',
       newFacts: [],
-      newCompanion: { name: 'Ulkha', role: 'guerrera', notes: 'x' },
+      newCompanion: { name: 'Hagar Kiugh', role: 'guerrera', notes: 'x' },
     });
-    await doTurn(saveId, 'Le pido a la viajera que se una a mí.');
+    await doTurn(saveId, "Le pido a 'Hagar Kiugh' que se una a mí.");
     expect(await prisma.companion.count({ where: { saveId } })).toBe(0);
   }, 15_000);
 
@@ -1793,20 +1822,21 @@ describe('Slots de compañero: tope real por construcciones propias', () => {
     expect(narrateAction).not.toHaveBeenCalled(); // determinista, ver describe de campamento
 
     narrateAction.mockResolvedValueOnce({
-      narration: 'Un viajero se une a tu causa.',
+      narration: 'Hagar Kiugh se une a tu causa.',
       newFacts: [],
-      newCompanion: { name: 'Ulkha', role: 'guerrera', notes: 'x' },
+      newCompanion: { name: 'Hagar Kiugh', role: 'guerrera', notes: 'x' },
     });
-    await doTurn(saveId, 'Le pido a la viajera que se una a mí.');
+    await doTurn(saveId, "Le pido a 'Hagar Kiugh' que se una a mí.");
     expect(await prisma.companion.count({ where: { saveId } })).toBe(1);
 
-    // Con el único slot ya ocupado, un SEGUNDO compañero propuesto tampoco se materializa.
+    // Con el único slot ya ocupado, un SEGUNDO compañero propuesto (también real, también con
+    // temperamento válido) tampoco se materializa — el guard nuevo no sustituye el tope de slots.
     narrateAction.mockResolvedValueOnce({
-      narration: 'Otro viajero se ofrece.',
+      narration: 'Kael Dorn se ofrece.',
       newFacts: [],
-      newCompanion: { name: 'Torgash hijo', role: 'guerrero', notes: 'x' },
+      newCompanion: { name: 'Kael Dorn', role: 'guerrero', notes: 'x' },
     });
-    await doTurn(saveId, 'Le pido a otro viajero que se una a mí.');
+    await doTurn(saveId, "Le pido a 'Kael Dorn' que se una a mí.");
     expect(await prisma.companion.count({ where: { saveId } })).toBe(1);
   }, 20_000);
 });

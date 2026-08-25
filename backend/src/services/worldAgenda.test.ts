@@ -70,13 +70,18 @@ describe('advanceWorldAgenda', () => {
   function makePrisma(states: unknown[]) {
     const worldStateUpdate = vi.fn();
     const worldPopulationUpdateMany = vi.fn().mockResolvedValue({ count: 1 });
-    const tx = { worldState: { update: worldStateUpdate }, worldPopulation: { updateMany: worldPopulationUpdateMany } };
+    const logEntryCreate = vi.fn();
+    const tx = {
+      worldState: { update: worldStateUpdate },
+      worldPopulation: { updateMany: worldPopulationUpdateMany },
+      logEntry: { create: logEntryCreate },
+    };
     const $transaction = vi.fn((fn: (tx: unknown) => Promise<void>) => fn(tx));
     const prisma = {
       worldState: { findMany: vi.fn().mockResolvedValue(states) },
       $transaction,
     };
-    return { prisma, worldStateUpdate, worldPopulationUpdateMany };
+    return { prisma, worldStateUpdate, worldPopulationUpdateMany, logEntryCreate };
   }
 
   it('siembra la agenda inicial si está vacía, sin depleciones ni hechos (etapa 0 es silenciosa)', async () => {
@@ -102,8 +107,8 @@ describe('advanceWorldAgenda', () => {
 
   it('al cruzar una etapa, deplecia Helsig Y Goshg y añade el hecho narrativo de esa etapa', async () => {
     const agenda = [{ id: 'conflicto-serhu-concordia-vs-helsig-goshg', title: 't', stage: 0, maxStage: 4, nextStageAtMinutes: 500 }];
-    const { prisma, worldPopulationUpdateMany } = makePrisma([
-      { id: 'ws1', saveId: 'save1', agenda, fictionalMinutes: 500, save: { worldId: 'world1' } },
+    const { prisma, worldPopulationUpdateMany, logEntryCreate } = makePrisma([
+      { id: 'ws1', saveId: 'save1', agenda, fictionalMinutes: 500, fictionalDateLabel: 'Día 8, mañana', save: { worldId: 'world1' } },
     ]);
     await advanceWorldAgenda(prisma as never);
     expect(worldPopulationUpdateMany).toHaveBeenCalledWith({
@@ -118,6 +123,13 @@ describe('advanceWorldAgenda', () => {
     const facts = appendSessionFacts.mock.calls[0]?.[2] as string[];
     expect(facts).toHaveLength(1);
     expect(facts[0]).toContain('Serhu');
+
+    // Canal WORLD (Grupo 3 § Mundo determinista, 2026-08-25) — el mismo hecho, visible en el panel
+    // "El mundo", no solo en el contexto invisible del Narrador.
+    expect(logEntryCreate).toHaveBeenCalledTimes(1);
+    expect(logEntryCreate).toHaveBeenCalledWith({
+      data: { saveId: 'save1', channel: 'WORLD', text: expect.stringContaining('Serhu'), timeLabel: 'Día 8, mañana', fictionalMinutes: 500 },
+    });
   });
 
   it('solo mira partidas de Gorhorn no terminadas (filtro ya en el where de la query)', async () => {
