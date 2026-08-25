@@ -961,6 +961,7 @@ export async function turnRoutes(app: FastifyInstance) {
         deathCount,
         factionsStatus,
         professionProgress,
+        combatEncounterLootSummary,
       } = await narrateAndPersistTurn({
         saveId,
         worldId: save.worldId,
@@ -1043,6 +1044,7 @@ export async function turnRoutes(app: FastifyInstance) {
         deathCount,
         factionsStatus,
         professionProgress,
+        combatEncounterLootSummary,
       });
     } catch (err) {
       // Bug real (auditoría 2026-07-28): este catch mandaba `err.message` crudo al cliente,

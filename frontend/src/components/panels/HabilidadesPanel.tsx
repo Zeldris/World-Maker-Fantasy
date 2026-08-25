@@ -49,6 +49,15 @@ function readinessTooltip(description: string, status: RecipeStatusInfo | undefi
 // — solo cambiaban la lista de origen y, en las pestañas de combate (sin receta real detrás), el
 // que la tarjeta abriera el detalle en vez de ejecutar la habilidad. `statusFor` queda fuera a
 // propósito (undefined): esas pestañas nunca deshabilitan ni añaden el aviso de materiales.
+// Desollar pasa a pasiva (2026-08-25, petición explícita: "la habilidad de desollar debe pasar a
+// pasiva") — al reutilizar el saqueo/desuello clásico para los caídos de un CombatEncounter (ver
+// turnResolution.ts), tener un botón activo aparte se volvió redundante: los cadáveres (de
+// combate o narrativos) ya avisan solos en la escena (GameView.tsx § carcassPending). Solo esta
+// habilidad concreta, mismo criterio de nombre-fijo que ya usa `HARVEST_ABILITY_OFICIO` en
+// GameView.tsx para el resto de oficios recolectores.
+const PASSIVE_ABILITY_NAMES = new Set(['Desollar'])
+const PASSIVE_TOOLTIP_SUFFIX = ' Pasiva: no se pulsa — los cadáveres pendientes avisan solos en la escena.'
+
 function AbilityGrid({
   abilities,
   onUse,
@@ -64,15 +73,18 @@ function AbilityGrid({
     <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
       {abilities.map((a) => {
         const status = statusFor?.(a.name)
+        const passive = PASSIVE_ABILITY_NAMES.has(a.name)
+        const baseTooltip = statusFor ? readinessTooltip(a.description, status) : a.description
         return (
           <IconCard
             key={a.id}
             icon={a.icon}
             name={a.name}
-            tooltip={statusFor ? readinessTooltip(a.description, status) : a.description}
+            tooltip={passive ? `${baseTooltip}${PASSIVE_TOOLTIP_SUFFIX}` : baseTooltip}
             onUse={() => onUse(a)}
             onDetail={() => onDetail(a)}
-            disabled={status && !status.met}
+            disabled={passive || (status && !status.met)}
+            badge={passive ? <span className="absolute -left-1 -top-1 rounded-full border border-iron-700 bg-wood-950 px-1 text-[9px] text-wood-400">Pasiva</span> : undefined}
           />
         )
       })}

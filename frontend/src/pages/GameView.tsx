@@ -59,6 +59,7 @@ import {
   fundarReino,
   setItemSlot,
   requestSuggestions,
+  getRecolectarLocalizado,
   type SaveDetail,
   type ClassifyResponse,
 } from '../lib/api'
@@ -153,6 +154,12 @@ export function GameView() {
   const [inventory, setInventory] = useState<InventoryItemInfo[]>([])
   // Pop-up de recolección (rediseño de profesiones, 2026-08-07) — null = cerrado.
   const [harvestModal, setHarvestModal] = useState<{ oficio: string; label: string } | null>(null)
+  // Desollar pasa a pasiva (2026-08-25, petición explícita: "la habilidad de desollar debe pasar
+  // a pasiva") — ya no es un botón en Habilidades, aparece solo cuando hay cadáveres reales
+  // pendientes (narrativos o los que deja un CombatEncounter resuelto), reutilizando el mismo GET
+  // que antes solo pedía el botón (`carcassCandidatesFor`, backend). null = todavía sin comprobar
+  // esta escena; false/true = ya se comprobó.
+  const [carcassPending, setCarcassPending] = useState<boolean | null>(null)
   const [huntModalOpen, setHuntModalOpen] = useState(false)
   // Paneles nuevos (2026-08-17, comentarios de startingAbilities.ts): "Volver al campamento",
   // "Viajar", "Saquear" y "Curar" — mismo patrón que huntModalOpen. "Volver al campamento"/"Viajar"
@@ -196,6 +203,21 @@ export function GameView() {
   // qué depende cada uno).
   const { professionRecipes, recipesStatus } = useRecipesData(saveId, inventory, characterAttributes, currentLocation)
   const [destinations, setDestinations] = useState<DestinationInfo[]>([])
+  // Desollar pasiva (2026-08-25) — se comprueba al entrar a una escena nueva, best-effort (mismo
+  // criterio que la resincronización de viaje más abajo: si falla, el próximo cambio de ubicación
+  // o turno ya lo vuelve a intentar, no hay error puntual que mostrar por esto).
+  useEffect(() => {
+    if (!saveId || !currentLocation) return
+    let cancelled = false
+    getRecolectarLocalizado(saveId, 'desollador')
+      .then(({ sources }) => {
+        if (!cancelled) setCarcassPending(sources.length > 0)
+      })
+      .catch(() => {})
+    return () => {
+      cancelled = true
+    }
+  }, [saveId, currentLocation])
   const [input, setInput] = useState('')
   const composerRef = useRef<ChatComposerHandle>(null)
   const [characterThinking, setCharacterThinking] = useState(false)
@@ -311,6 +333,7 @@ export function GameView() {
     setFictionalDate,
     setEndedAt,
     setDiceReveal,
+    setCarcassPending,
   })
 
   // Pop del botón "Nivel X" solo en una subida real, nunca al cargar la partida (roadmap de
@@ -580,10 +603,12 @@ export function GameView() {
   // "Recolectar hierbas" (herborista) sumado 2026-08-13 — bug real jugando en vivo: la habilidad
   // existía en backend (harvestAbilities.ts) pero, al faltar aquí, caía al chip de texto libre en
   // vez de abrir el mismo pop-up de selección que el resto de recolectoras.
+  // Desollar pasa a pasiva (2026-08-25, ver comentario completo junto a `carcassPending` arriba) —
+  // ya no abre este pop-up desde un clic en Habilidades, así que sale de este mapa; el mismo
+  // `HarvestSelectionModal` se sigue reutilizando tal cual, ahora abierto desde el aviso de escena.
   const HARVEST_ABILITY_OFICIO: Record<string, string> = {
     Minar: 'minero',
     Talar: 'talador',
-    Desollar: 'desollador',
     'Recolectar hierbas': 'herborista',
   }
 
@@ -930,6 +955,7 @@ export function GameView() {
         deathCount: updatedDeathCount,
         factionsStatus: updatedFactionsStatus,
         professionProgress: updatedProfessionProgress,
+        combatEncounterLootSummary,
       } = await requestTurnNarrate(
         { saveId, action, classification, roll, travel, npcsInScene: classifyResult.npcsInScene, healItemUses: extras?.healItemUses },
         {
@@ -962,6 +988,10 @@ export function GameView() {
       setDeathCount(updatedDeathCount)
       setFactionsStatus(updatedFactionsStatus)
       setProfessionProgress(updatedProfessionProgress)
+      // Desollar pasiva (2026-08-25) — este turno resolvió un CombatEncounter con caídos reales;
+      // se marca de inmediato en vez de esperar al próximo cambio de ubicación (el combate ya
+      // pasó en la escena actual, la ubicación no cambia).
+      if (combatEncounterLootSummary && combatEncounterLootSummary.length > 0) setCarcassPending(true)
       if (newInventoryItems.length > 0 || removedInventoryItemIds.length > 0 || updatedInventoryItems.length > 0) {
         setInventory((prev) => applyInventoryDelta(prev, newInventoryItems, removedInventoryItemIds, updatedInventoryItems))
       }
@@ -1418,6 +1448,19 @@ export function GameView() {
               "⚔️ Combatir / 🏃 Huir" ya en pantalla (combate detectado pero el popup todavía sin
               abrir, `combatOpen` false): mismo criterio que ya usa `composerDisabled`/el propio
               banner de arriba para esa combinación exacta de estados. */}
+          {!combateIniciado && carcassPending && (
+            // Desollar pasiva (2026-08-25) — sustituye al botón que había en Habilidades: aparece
+            // solo mientras hay cadáveres reales pendientes en la escena actual (narrativos o los
+            // que deja un CombatEncounter resuelto), abre el mismo pop-up de siempre.
+            <button
+              type="button"
+              onClick={() => setHarvestModal({ oficio: 'desollador', label: 'Desollar' })}
+              className="tactile mx-4 mb-2 flex items-center gap-2 rounded-lg border border-accent-700/60 bg-accent-500/10 px-3 py-2 text-left text-sm text-accent-200 hover:bg-accent-500/20"
+            >
+              <span className="text-lg leading-none">🔪</span>
+              <span>Hay presas caídas sin desollar en esta zona.</span>
+            </button>
+          )}
           {!combateIniciado && (
             <SuggestionBar
               suggestions={suggestions}
@@ -1481,6 +1524,13 @@ export function GameView() {
               // valor congelado que ya causaba "se logea mal la hora") se quedaba atrás del propio
               // `timeLabel` que este turno acaba de sellar en su LogEntry.
               setFictionalDate(logEntry.timeLabel)
+            }
+            // Desollar pasiva (2026-08-25) — tras confirmar, puede que ya no quede nada pendiente
+            // (o solo una parte, si había varias presas) — se recomprueba en vez de asumir false.
+            if (harvestModal?.oficio === 'desollador' && saveId) {
+              getRecolectarLocalizado(saveId, 'desollador')
+                .then(({ sources }) => setCarcassPending(sources.length > 0))
+                .catch(() => {})
             }
             setHarvestModal(null)
           }}

@@ -74,7 +74,12 @@ const HARVEST_ABILITIES: HarvestAbilityUnlock[] = [
     ability: {
       name: 'Desollar',
       icon: '🔪',
-      description: 'Busca presas ya derrotadas en la zona (cazadas por ti o descritas como cadáver) para desollarlas y aprovechar sus materiales.',
+      // Pasa a pasiva (2026-08-25, petición explícita) — deja de ser un botón: los cadáveres
+      // pendientes (cazados por ti, descritos como cadáver, o los que deja un Combate múltiple
+      // real al resolverse) avisan solos en la escena, sin pulsar nada. `promptText` se queda sin
+      // uso real (el frontend nunca la manda al composer, ver AbilityGrid/PASSIVE_ABILITY_NAMES),
+      // pero no se quita — sigue siendo la acción determinista que dispara el saqueo real.
+      description: 'Pasiva: si hay presas derrotadas sin desollar en la zona, avisa solo — no hace falta pulsarla.',
       promptText: 'Despiezo y desuello la presa que tengo delante.',
       category: 'profesion',
     },

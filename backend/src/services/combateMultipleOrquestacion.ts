@@ -548,11 +548,20 @@ async function avanzarYComprobarFin(
   worldId: string,
   saveId: string,
   encounterId: string,
-  encounter: { turnoActual: number; ordenIniciativa: string[]; participantes: (ParticipantRef & { bando: Bando })[] },
+  encounter: { turnoActual: number; ordenIniciativa: string[] },
   weaponNamesPorDefecto: string[],
 ): Promise<boolean> {
+  // Bug real (2026-08-25, cazado cerrando saqueo/desuello de CombatEncounter): antes se usaba el
+  // `encounter.participantes` que el CALLER ya traía cargado desde ANTES del intercambio que
+  // acaba de resolverse — para un miembro de GRUPO, `datosVivosDe` lee su condición DIRECTAMENTE
+  // de `participant.condicionFisicaGrupo` (nunca vuelve a tocar la DB, a diferencia de un
+  // solitario, que sí relee `NpcState` fresco) — así que el golpe que acababa de dejarlo
+  // CONVALECIENTE/MUERTO, ya escrito por `escribirCondicionYEnergia` unas líneas antes en la MISMA
+  // transacción, nunca se veía aquí: el combate podía quedarse EN_CURSO para siempre con un grupo
+  // entero ya derrotado. Releído fresco de `CombatParticipant` en vez de confiar en el snapshot.
+  const participantesFrescos = await tx.combatParticipant.findMany({ where: { encounterId } });
   const condiciones = await Promise.all(
-    encounter.participantes.map(async (p) => ({ p, datos: await datosVivosDe(tx, worldId, saveId, p, weaponNamesPorDefecto) })),
+    participantesFrescos.map(async (p) => ({ p, datos: await datosVivosDe(tx, worldId, saveId, p, weaponNamesPorDefecto) })),
   );
   const candidatosPorBando = (bando: Bando): ObjetivoCandidato[] =>
     condiciones.filter(({ p }) => p.bando === bando).map(({ p, datos }) => ({ participantId: p.id, condicionFisica: datos?.condicionFisica ?? 'MUERTO' }));
@@ -572,7 +581,7 @@ async function avanzarYComprobarFin(
   const targetsEnemigo = retargetBando(atacantesEnemigo, vivosJugador);
 
   await Promise.all(
-    encounter.participantes.map((p) => {
+    participantesFrescos.map((p) => {
       const objetivo = p.bando === 'JUGADOR' ? targetsJugador[p.id] : targetsEnemigo[p.id];
       return tx.combatParticipant.update({ where: { id: p.id }, data: { objetivoActualId: objetivo ?? null } });
     }),

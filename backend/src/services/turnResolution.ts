@@ -506,6 +506,13 @@ export interface NarrateAndPersistResult {
   deathCount: number;
   factionsStatus: Record<string, number>;
   professionProgress: { professionId: string; nivel: number; xp: number }[];
+  /// Saqueo/desuello de CombatEncounter (2026-08-25, Grupo 3 § Mundo determinista, Capa 4) —
+  /// especies que quedaron caídas al RESOLVERSE ESTE turno un `CombatEncounter` real (`null` en la
+  /// inmensa mayoría de turnos, que no cierran ningún combate múltiple). El frontend lo usa para
+  /// mostrar el resumen de combate con el saqueo/desuello ya precargado — los datos reales (qué
+  /// objetos hay de verdad) siguen viniendo del mismo `GET /saves/:id/recolectar/desollador` de
+  /// siempre, este campo solo avisa de que hay algo nuevo que mirar y qué especie/cuántos.
+  combatEncounterLootSummary: { npcId: string; slug: string; name: string; cantidad: number }[] | null;
 }
 
 async function resolveInitialLocationId(
@@ -3498,6 +3505,11 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   let combatEncounterTerminado = false;
   let combatEncounterCaidos: { tipo: string; npcId: string | null; nuevaCondicion: CondicionFisica }[] = [];
   let combatEncounterId: string | null = null;
+  // Saqueo/desuello de CombatEncounter (2026-08-25, ver comentario completo más abajo, junto al
+  // materializado real) — resumen de qué especies quedaron caídas al RESOLVERSE el encuentro, para
+  // que `/turn/narrate` se lo pueda devolver al frontend (pantalla de resumen tras combate) y para
+  // nombrar a cada una en un hecho de sesión nuevo, fuera de la transacción principal.
+  let combatEncounterLootSummary: { npcId: string; slug: string; name: string; cantidad: number }[] = [];
   // Condición/energía REALES de la jugadora tras la resolución (`escribirCondicionYEnergia`, ya
   // escritas en `Save` dentro de las transacciones del motor de combate múltiple, más abajo) — el
   // resto de esta función calcula `proposedCondicion`/`nuevaEnergia` a partir del intercambio 1v1
@@ -3529,9 +3541,23 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
       const enemigoNpcIds = enemigos.filter((p) => p.npcId).map((p) => p.npcId!);
       const enemigoNpcs = enemigoNpcIds.length ? await prisma.npc.findMany({ where: { id: { in: enemigoNpcIds } }, select: { id: true, name: true } }) : [];
       const nombreByNpcId = new Map(enemigoNpcs.map((n) => [n.id, n.name]));
+      // Bug real (2026-08-25, cazado al cerrar saqueo/desuello): un grupo puede tener varios
+      // individuos con el MISMO nombre citado, algunos ya CONVALECIENTE/MUERTO — sin este filtro,
+      // `.find()` podía emparejar el primero del array (orden de creación, no de vida), dejando a
+      // la jugadora "atacando" a un cadáver que ya no cuenta como intercambio real, sin ningún
+      // aviso — el turno se resolvía sin que pasara nada mecánicamente.
+      const soloEnemigoNpcIds = enemigos.filter((p) => p.condicionFisicaGrupo === null && p.npcId).map((p) => p.npcId!);
+      const soloEnemigoStates = soloEnemigoNpcIds.length
+        ? await prisma.npcState.findMany({ where: { saveId, npcId: { in: soloEnemigoNpcIds } }, select: { npcId: true, condicionFisica: true } })
+        : [];
+      const soloCondicionByNpcId = new Map(soloEnemigoStates.map((s) => [s.npcId, s.condicionFisica]));
+      const enemigosVivos = enemigos.filter((p) => {
+        const condicion = p.condicionFisicaGrupo ?? soloCondicionByNpcId.get(p.npcId ?? '') ?? 'ILESO';
+        return condicion !== 'CONVALECIENTE' && condicion !== 'MUERTO';
+      });
       const quotedMatch = action.match(/'([^']+)'/);
       const targetPorNombre = quotedMatch
-        ? enemigos.find((p) => p.npcId && normalizeText(nombreByNpcId.get(p.npcId) ?? '') === normalizeText(quotedMatch[1]))
+        ? enemigosVivos.find((p) => p.npcId && normalizeText(nombreByNpcId.get(p.npcId) ?? '') === normalizeText(quotedMatch[1]))
         : undefined;
       const jugadorParticipant = participantesVivos.find((p) => p.tipo === 'JUGADOR');
       const targetParticipantId = targetPorNombre?.id ?? jugadorParticipant?.objetivoActualId ?? null;
@@ -4189,6 +4215,54 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
         if (killQuestInfo) {
           questCompletedInfo = killQuestInfo;
           questRewardXp += killQuestInfo.rewardXp ?? 0;
+        }
+      }
+    }
+
+    // Saqueo/desuello de CombatEncounter (2026-08-25, Grupo 3 § Mundo determinista, Capa 4) —
+    // decisión explícita tras valorarlo con la usuaria: en vez de un mecanismo nuevo, se reutiliza
+    // el pipeline de saqueo/desuello CLÁSICO tal cual (`carcassCandidatesFor`/`applyLootMode`,
+    // recolectar.ts), sin tocar su código. Solo al RESOLVERSE el encuentro entero (nunca a mitad de
+    // combate, petición explícita: "saquear al final del combate"). Dos piezas:
+    // (1) Un miembro de GRUPO solo tenía su condición real en `CombatParticipant.condicionFisicaGrupo`
+    // — nunca en `NpcState` (esa fila la comparten todos los individuos de la especie). Se
+    // materializa aquí en `NpcState.groupSize`/`groupDefeated` (los mismos campos que ya lee
+    // `carcassCandidatesFor`), sustituyendo lo que antes pre-escribía `cazar.ts` al INICIAR la caza
+    // (ya no lo hace, ver `iniciarCombatEncounter`). Los solitarios ya tienen su `NpcState` real y
+    // correcto (escrito por `escribirCondicionYEnergia` durante el propio combate) — no necesitan
+    // materializado, solo entrar en el resumen si cayeron.
+    // (2) `combatEncounterLootSummary` viaja fuera de la tx para el hecho de sesión (más abajo,
+    // junto al resto de `appendSessionFacts` — nunca dentro de una transacción, llama a Ollama).
+    if (combatEncounterTerminado && combatEncounterId) {
+      const participantesFinal = await tx.combatParticipant.findMany({ where: { encounterId: combatEncounterId, tipo: 'NPC' } });
+      const npcIds = [...new Set(participantesFinal.filter((p) => p.npcId).map((p) => p.npcId!))];
+      const npcRowsFinal = npcIds.length ? await tx.npc.findMany({ where: { id: { in: npcIds } } }) : [];
+      const npcRowById = new Map(npcRowsFinal.map((n) => [n.id, n]));
+      const participantesPorNpc = new Map<string, typeof participantesFinal>();
+      for (const p of participantesFinal) {
+        if (!p.npcId) continue;
+        if (!participantesPorNpc.has(p.npcId)) participantesPorNpc.set(p.npcId, []);
+        participantesPorNpc.get(p.npcId)!.push(p);
+      }
+      for (const [npcId, participantesDeEsteNpc] of participantesPorNpc) {
+        const npcRow = npcRowById.get(npcId);
+        if (!npcRow) continue;
+        const esGrupo = participantesDeEsteNpc.some((p) => p.condicionFisicaGrupo !== null);
+        const scope = scopeFor(npcRow.kind, currentLocationId);
+        if (esGrupo) {
+          const caidosCount = participantesDeEsteNpc.filter((p) => p.condicionFisicaGrupo === 'CONVALECIENTE' || p.condicionFisicaGrupo === 'MUERTO').length;
+          if (caidosCount === 0) continue;
+          await tx.npcState.upsert({
+            where: { saveId_npcId_scope: { saveId, npcId, scope } },
+            create: { saveId, npcId, scope, condicionFisica: 'ILESO', groupSize: participantesDeEsteNpc.length, groupDefeated: caidosCount, corpsesLooted: 0, saqueado: false, lootedItemNames: [] },
+            update: { groupSize: participantesDeEsteNpc.length, groupDefeated: caidosCount, corpsesLooted: 0, saqueado: false, lootedItemNames: [] },
+          });
+          combatEncounterLootSummary.push({ npcId, slug: npcRow.slug, name: npcRow.name, cantidad: caidosCount });
+        } else {
+          const state = await tx.npcState.findUnique({ where: { saveId_npcId_scope: { saveId, npcId, scope } } });
+          if (state?.condicionFisica === 'CONVALECIENTE' || state?.condicionFisica === 'MUERTO') {
+            combatEncounterLootSummary.push({ npcId, slug: npcRow.slug, name: npcRow.name, cantidad: 1 });
+          }
         }
       }
     }
@@ -5316,6 +5390,17 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   if (narration.newFacts.length) {
     await appendSessionFacts(saveId, sessionFacts, narration.newFacts);
   }
+  // Saqueo/desuello de CombatEncounter (2026-08-25) — hecho de sesión determinista, mismo criterio
+  // que la Pieza A de la Capa 3 (mundo-determinista.md): sin nombrar aquí a cada caído,
+  // `detectNpcsInScene` (con `action: ''` en el GET de Desollar) nunca los volvería a encontrar
+  // tras cerrarse este turno, aunque su `NpcState` ya diga MUERTO/`groupDefeated` > 0.
+  if (combatEncounterLootSummary.length > 0) {
+    await appendSessionFacts(
+      saveId,
+      sessionFacts,
+      combatEncounterLootSummary.map((c) => `${c.name} ${c.cantidad > 1 ? `(${c.cantidad} caídos)` : 'cae derrotado'} tras el combate.`),
+    );
+  }
 
   // Grupo 3 § Mundo determinista, Capa 4 (2026-08-25) — un `CombatEncounter` real es un canal de
   // combate aparte del 1v1 clásico (`resolveCombatSlugsAndPersist` de abajo, que solo sabe de
@@ -5323,17 +5408,29 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   // participantes YA REALES del encuentro, y se persiste `pendingCombatNpcSlugs` a mano para que
   // el frontend (que hoy solo sabe leer ese campo, no `CombatParticipant`) siga mostrando el panel
   // de combate mientras el encuentro sigue EN_CURSO. `saqueado`/`lootedItemNames`/`analizado`
-  // quedan en su valor por defecto — el saqueo/desuello de un `CombatEncounter` real no está
-  // enganchado todavía (hueco documentado, mismo criterio que el resto de piezas "primer corte"
-  // de esta sesión).
+  // quedan en su valor por defecto — mientras el encuentro sigue EN_CURSO nadie ha podido saquear
+  // nada todavía (petición explícita: solo se puede saquear/desollar al RESOLVERSE del todo, ver
+  // `combatEncounterLootSummary` arriba). Este display es solo para el popup DURANTE el combate.
   const combateIniciado = combatEncounterMode
     ? await (async () => {
         const participantesFinal = await prisma.combatParticipant.findMany({ where: { encounterId: combatEncounterId! } });
         const enemigoNpcIds = participantesFinal.filter((p) => p.tipo === 'NPC' && p.npcId).map((p) => p.npcId!);
         const enemigoNpcRows = enemigoNpcIds.length
-          ? await prisma.npc.findMany({ where: { id: { in: enemigoNpcIds } }, select: { id: true, slug: true, name: true } })
+          ? await prisma.npc.findMany({ where: { id: { in: enemigoNpcIds } }, select: { id: true, slug: true, name: true, kind: true } })
           : [];
         const npcRowById = new Map(enemigoNpcRows.map((n) => [n.id, n]));
+        // Bug real de display (2026-08-25, hallado al cerrar saqueo/desuello): un participante
+        // SOLITARIO siempre tiene `condicionFisicaGrupo: null` (ver comentario del campo en
+        // schema.prisma — solo lo usan los miembros de grupo) así que `?? 'ILESO'` lo mostraba
+        // "ileso" en el popup aunque ya estuviera MUERTO de verdad en su `NpcState` real.
+        const soloNpcIds = participantesFinal.filter((p) => p.tipo === 'NPC' && p.npcId && p.condicionFisicaGrupo === null).map((p) => p.npcId!);
+        const soloStates = soloNpcIds.length
+          ? await prisma.npcState.findMany({
+              where: { saveId, npcId: { in: soloNpcIds } },
+              select: { npcId: true, scope: true, condicionFisica: true },
+            })
+          : [];
+        const soloCondicionByNpcId = new Map(soloStates.map((s) => [s.npcId, s.condicionFisica]));
         const npcs = participantesFinal
           .filter((p) => p.tipo === 'NPC' && p.npcId && npcRowById.has(p.npcId))
           .map((p) => {
@@ -5341,7 +5438,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
             return {
               slug: npcRow.slug,
               name: npcRow.name,
-              condicionFisica: p.condicionFisicaGrupo ?? 'ILESO',
+              condicionFisica: p.condicionFisicaGrupo ?? soloCondicionByNpcId.get(p.npcId!) ?? 'ILESO',
               saqueado: false,
               lootedItemNames: [] as string[],
               analizado: false,
@@ -5532,5 +5629,6 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     deathCount: finalDeathCountResult,
     factionsStatus: freshFactionsStatus,
     professionProgress,
+    combatEncounterLootSummary: combatEncounterLootSummary.length > 0 ? combatEncounterLootSummary : null,
   };
 }

@@ -13,6 +13,7 @@ import { hasFalseTravelClaim, hasFalsePhantomTravel } from '../services/narrador
 import type { TravelResolution } from '../services/travel.js';
 import type { TravelInterruption } from '../services/travelInterruption.js';
 import type { AttributeBlock } from '../services/dice.js';
+import { iniciarCombatEncounter } from '../services/combateMultipleOrquestacion.js';
 
 /// Harness de integración de la misión de apertura (2026-07-31, "checklist de mejoras de
 /// narración" — acordado al principio de la sesión de replanteamiento de arquitectura y retomado
@@ -37,6 +38,18 @@ vi.mock('../services/narrador.js', async (importOriginal) => {
     narrateAction: (ctx: Parameters<typeof narrateAction>[0]) => narrateAction(ctx),
   };
 });
+
+// Combate múltiple (Grupo 3 § Mundo determinista, Capa 4, 2026-08-25) — mismo motivo que el mock
+// de narrador.js arriba: `narrarTurnoCombateMultiple` (Ollama real) corre DENTRO de la propia
+// `prisma.$transaction` de cada intercambio (`combateMultipleOrquestacion.ts`), y una llamada real
+// lenta revienta el timeout de 5s de la transacción interactiva de Prisma — mismo motivo por el
+// que `combateMultipleOrquestacion.integration.test.ts` inyecta un `narrarFn` rápido al llamar
+// directamente a sus funciones. Aquí no hay forma de inyectarlo (el turno real pasa por
+// `narrateAndPersistTurn` → `resolverTurnoJugador`/`resolverTurnosAutonomosHastaJugadora`, que
+// siempre usan el default del módulo), así que se mockea el módulo entero.
+vi.mock('../services/combateMultipleNarracion.js', () => ({
+  narrarTurnoCombateMultiple: async () => 'Narración de prueba.',
+}));
 
 // Eventos de viaje interactivos (2026-08-05) — SOLO la selección de candidato se mockea aquí
 // (`pickTravelInterruption`), no `truncateTravelResolution`/`bandaForMinutos` (que siguen siendo
@@ -3016,6 +3029,123 @@ describe('Caza en grupo: el individuo actual "resucita" a ILESO mientras queden 
     const state = await prisma.npcState.findUniqueOrThrow({ where: { saveId_npcId_scope: { saveId, npcId: corretolvasId, scope: hondonadaId } } });
     expect(state.condicionFisica).toBe('CONVALECIENTE'); // NO resucita: era el último
     expect(state.groupDefeated).toBe(2);
+  }, 20_000);
+});
+
+// Grupo 3 § Mundo determinista, Capa 4 (2026-08-25): al RESOLVERSE un CombatEncounter real (motor
+// de Combate múltiple), se reutiliza el pipeline de saqueo/desuello CLÁSICO tal cual — decisión
+// explícita tras valorarlo con la usuaria ("mismo mecanismo", "saquear al final del combate"), en
+// vez de un mecanismo nuevo. Este test cubre exactamente lo que turnResolution.ts materializa al
+// terminar: NpcState.groupSize/groupDefeated para el grupo (antes vivía solo en
+// CombatParticipant.condicionFisicaGrupo), y que el solitario (ya con NpcState real y correcto,
+// escrito por el propio motor durante el combate) también entra en el resumen — y que, tras eso,
+// el GET clásico de Desollar (sin pasar por ningún botón, ahora pasivo) ya los encuentra solo.
+describe('Saqueo/desuello de CombatEncounter: se materializa en NpcState real al resolverse (Grupo 3 § Mundo determinista, Capa 4)', () => {
+  let saveId: string;
+  let hondonadaId: string;
+  let corretolvasId: string;
+  let auladorId: string;
+  let encounterId: string;
+
+  beforeAll(async () => {
+    vi.spyOn(Math, 'random').mockReturnValue(0.99); // garantiza que el golpe final de la jugadora conecte
+    const userId = await getDefaultUserId();
+    const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
+    const worldId = world.id;
+    const hondonada = await prisma.location.findFirstOrThrow({ where: { worldId, slug: 'hondonada-del-eco' } });
+    hondonadaId = hondonada.id;
+    const corretolvas = await prisma.npc.findFirstOrThrow({ where: { worldId, slug: 'corretolvas' } });
+    corretolvasId = corretolvas.id;
+    const aullador = await prisma.npc.findFirstOrThrow({ where: { worldId, slug: 'aullador-rojo' } });
+    auladorId = aullador.id;
+
+    const save = await prisma.save.create({
+      data: {
+        userId,
+        worldId,
+        characterName: 'Gorhorn de prueba (saqueo CombatEncounter)',
+        characterArchetype: 'guerrero',
+        characterOrigin: 'Clan Maktor',
+        characterMotivation: 'x',
+        attributes: ATTRS,
+        portraitInitial: 'G',
+        currentLocationId: hondonada.id,
+      },
+    });
+    saveId = save.id;
+    await prisma.worldState.create({ data: { saveId } });
+    await giveMaterials(saveId, [{ name: 'Cuchillo de hielo sílice', catalogSlug: 'cuchillo-hielo-silice' }]);
+
+    // Encuentro real: la jugadora contra 3 Corretolvas de grupo (esGrupo) + 1 Aullador Rojo
+    // solitario, mismo `iniciarCombatEncounter` real que dispara cazar.ts hoy.
+    const { encounterId: eid } = await prisma.$transaction((tx) =>
+      iniciarCombatEncounter(tx, saveId, [
+        { bando: 'JUGADOR', tipo: 'JUGADOR', destreza: ATTRS.destreza, inteligencia: ATTRS.inteligencia },
+        { bando: 'ENEMIGO', tipo: 'NPC', npcId: corretolvasId, npcScope: hondonadaId, destreza: 8, inteligencia: 4, esGrupo: true },
+        { bando: 'ENEMIGO', tipo: 'NPC', npcId: corretolvasId, npcScope: hondonadaId, destreza: 8, inteligencia: 4, esGrupo: true },
+        { bando: 'ENEMIGO', tipo: 'NPC', npcId: corretolvasId, npcScope: hondonadaId, destreza: 8, inteligencia: 4, esGrupo: true },
+        { bando: 'ENEMIGO', tipo: 'NPC', npcId: auladorId, npcScope: hondonadaId, destreza: 10, inteligencia: 6 },
+      ]),
+    );
+    encounterId = eid;
+
+    // Adelanta a mano (mismo criterio que "Caza en grupo" arriba): 2 de los 3 Corretolvas ya
+    // MUERTOS y el Aullador solitario ya MUERTO de verdad en su NpcState real — deja SOLO un
+    // Corretolvas con vida para que el turno real de la jugadora decida el final del encuentro.
+    const participantes = await prisma.combatParticipant.findMany({ where: { encounterId } });
+    const corretolvasParticipantes = participantes.filter((p) => p.npcId === corretolvasId);
+    await prisma.combatParticipant.update({ where: { id: corretolvasParticipantes[0].id }, data: { condicionFisicaGrupo: 'MUERTO' } });
+    await prisma.combatParticipant.update({ where: { id: corretolvasParticipantes[1].id }, data: { condicionFisicaGrupo: 'MUERTO' } });
+    // El último con vida se deja en GRAVE (no ILESO): un solo golpe, aunque sea decisivo, no baja
+    // a un combatiente sano directo a CONVALECIENTE/MUERTO — mismo criterio que "Caza en grupo"
+    // arriba, que necesita el mismo ajuste manual para el golpe de gracia.
+    const ultimoConVida = corretolvasParticipantes[2].id;
+    await prisma.combatParticipant.update({ where: { id: ultimoConVida }, data: { condicionFisicaGrupo: 'GRAVE' } });
+    await prisma.npcState.create({ data: { saveId, npcId: auladorId, scope: hondonadaId, condicionFisica: 'MUERTO' } });
+
+    // Objetivo del ataque de la jugadora: el último Corretolvas con vida (mismo criterio de
+    // targeting por nombre citado que usa turnResolution.ts en modo CombatEncounter).
+    await prisma.combatParticipant.updateMany({ where: { encounterId, tipo: 'JUGADOR' }, data: { objetivoActualId: ultimoConVida } });
+  });
+
+  afterAll(async () => {
+    vi.restoreAllMocks();
+    await prisma.combatEncounter.deleteMany({ where: { saveId } });
+    await prisma.npcState.deleteMany({ where: { saveId } });
+    await prisma.save.delete({ where: { id: saveId } });
+  });
+
+  it('el turno que remata al último Corretolvas resuelve el encuentro, materializa NpcState.groupSize/groupDefeated y avisa en combatEncounterLootSummary', async () => {
+    const res = await doTurn(saveId, "Ataco a 'Corretolvas' con todas mis fuerzas.");
+    expect(res.statusCode).toBe(200);
+    const body = lastNdjsonLine(res.payload);
+    expect(body.combatEncounterLootSummary).not.toBeNull();
+    const bySlug = new Map((body.combatEncounterLootSummary as { slug: string; cantidad: number }[]).map((c) => [c.slug, c.cantidad]));
+    expect(bySlug.get('corretolvas')).toBe(3);
+    expect(bySlug.get('aullador-rojo')).toBe(1);
+
+    const encounter = await prisma.combatEncounter.findUniqueOrThrow({ where: { id: encounterId } });
+    expect(encounter.estado).toBe('RESUELTO');
+
+    // Materializado real (antes solo vivía en CombatParticipant.condicionFisicaGrupo) — mismos
+    // campos que ya usa el saqueo/desuello clásico (carcassCandidatesFor, recolectar.ts).
+    const corretolvasState = await prisma.npcState.findUniqueOrThrow({
+      where: { saveId_npcId_scope: { saveId, npcId: corretolvasId, scope: hondonadaId } },
+    });
+    expect(corretolvasState.groupSize).toBe(3);
+    expect(corretolvasState.groupDefeated).toBe(3);
+    expect(corretolvasState.corpsesLooted).toBe(0);
+  }, 30_000);
+
+  it('el saqueo/desuello clásico (GET /saves/:id/recolectar/desollador) ya encuentra a los caídos sin pasar por ningún botón', async () => {
+    const app = Fastify();
+    await app.register(recolectarRoutes);
+    const res = await app.inject({ method: 'GET', url: `/saves/${saveId}/recolectar/desollador` });
+    expect(res.statusCode).toBe(200);
+    const body = res.json() as { sources: { yields: { sourceSlug: string }[] }[] };
+    const slugs = new Set(body.sources.flatMap((cat) => cat.yields.map((y) => y.sourceSlug)));
+    expect(slugs.has('corretolvas')).toBe(true);
+    expect(slugs.has('aullador-rojo')).toBe(true);
   }, 20_000);
 });
 

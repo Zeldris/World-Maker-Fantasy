@@ -53,6 +53,10 @@ interface UseCombatFlowParams {
   setFictionalDate: Dispatch<SetStateAction<string>>
   setEndedAt: Dispatch<SetStateAction<string | null>>
   setDiceReveal: Dispatch<SetStateAction<{ exchange: CombatExchangeInfo; npcName: string | null } | null>>
+  /// Desollar pasiva (2026-08-25) — un turno DENTRO del popup de combate (mismo `CombatEncounter`
+  /// ya abierto, a diferencia del primer turno que lo abre, ver GameView.tsx) también puede ser el
+  /// que lo resuelve del todo, con caídos reales que desollar.
+  setCarcassPending: Dispatch<SetStateAction<boolean | null>>
 }
 
 /// Bloque de combate de GameView.tsx (deuda técnica 2026-08-21) — extraído tras confirmar que
@@ -96,6 +100,7 @@ export function useCombatFlow(params: UseCombatFlowParams) {
     setFictionalDate,
     setEndedAt,
     setDiceReveal,
+    setCarcassPending,
   } = params
 
   const [combatOpen, setCombatOpen] = useState(false)
@@ -233,6 +238,7 @@ export function useCombatFlow(params: UseCombatFlowParams) {
         deathCount: updatedDeathCount,
         factionsStatus: updatedFactionsStatus,
         professionProgress: updatedProfessionProgress,
+        combatEncounterLootSummary,
       } = await requestTurnNarrate(
         {
           saveId,
@@ -254,6 +260,8 @@ export function useCombatFlow(params: UseCombatFlowParams) {
       setDeathCount(updatedDeathCount)
       setFactionsStatus(updatedFactionsStatus)
       setProfessionProgress(updatedProfessionProgress)
+      // Desollar pasiva (2026-08-25) — ver mismo comentario en GameView.tsx.
+      if (combatEncounterLootSummary && combatEncounterLootSummary.length > 0) setCarcassPending(true)
       handleCombatTurnResolved({
         narration: narration.narration,
         progression,

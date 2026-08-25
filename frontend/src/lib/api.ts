@@ -262,6 +262,12 @@ export interface NarrateResponse {
   deathCount: number
   factionsStatus: Record<string, number>
   professionProgress: ProfessionProgressInfo[]
+  /// Saqueo/desuello de CombatEncounter (2026-08-25, Grupo 3 § Mundo determinista, Capa 4) —
+  /// especies caídas al RESOLVERSE este turno un combate múltiple real. `null` en la inmensa
+  /// mayoría de turnos. El frontend lo usa solo como aviso de "hay algo nuevo que desollar" — los
+  /// datos reales (qué objetos hay) se piden con `getRecolectarLocalizado(saveId, 'desollador')`,
+  /// la misma ruta de siempre.
+  combatEncounterLootSummary: { npcId: string; slug: string; name: string; cantidad: number }[] | null
 }
 
 export interface TurnNarrateHandlers {
