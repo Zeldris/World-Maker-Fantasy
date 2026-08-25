@@ -95,7 +95,8 @@ candidato del Almacén de Reino se auto-equipa y la llaman 4 handlers de rutas
 `condicionPorSupervivencia`/`resolverIntento`/`felicidadUmbralFor`) sí está bien cubierto — el hueco
 es específico de estas 3.
 
-**Estado**: PENDIENTE.
+**Estado**: FIJADO (commit `0a9d970`, 2026-08-25) — `companionSupervivencia.integration.test.ts`
+nuevo, 5 tests contra Postgres real.
 
 ## 2026-08-25 — Menores agrupados — services/
 
