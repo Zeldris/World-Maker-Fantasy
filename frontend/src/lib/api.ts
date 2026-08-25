@@ -783,6 +783,58 @@ export async function postSoltarTameo(saveId: string, npcSlug: string): Promise<
   return fetchJson(`${API_URL}/saves/${saveId}/tameo-pendientes/${npcSlug}/soltar`, { method: 'POST' })
 }
 
+/// Equipo de compañero (§6) — mismo patrón que `setItemSlot` (equipo del jugador), scopeado a un
+/// `companionId` concreto.
+export async function setCompanionItemSlot(
+  saveId: string,
+  companionId: string,
+  itemId: string,
+  slot: EquipSlot | null,
+): Promise<{ id: string; slot: EquipSlot | null; companionId: string | null }> {
+  return fetchJson(`${API_URL}/saves/${saveId}/companeros/${companionId}/equipo/${itemId}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ slot }),
+  })
+}
+
+/// Almacén de Reino (§7).
+export async function depositarEnAlmacen(saveId: string, itemId: string): Promise<{ ok: boolean; autoEquipados: number }> {
+  return fetchJson(`${API_URL}/saves/${saveId}/almacen/depositar/${itemId}`, { method: 'POST' })
+}
+export async function retirarDeAlmacen(saveId: string, almacenItemId: string): Promise<{ ok: boolean }> {
+  return fetchJson(`${API_URL}/saves/${saveId}/almacen/retirar/${almacenItemId}`, { method: 'POST' })
+}
+
+/// Plantillas de equipo (§7).
+export async function crearPlantilla(
+  saveId: string,
+  params: { name: string; rol: string; personalizada?: boolean; slots: PlantillaEquipoInfo['slots']; prioridad?: number },
+): Promise<PlantillaEquipoInfo> {
+  return fetchJson(`${API_URL}/saves/${saveId}/plantillas`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(params),
+  })
+}
+export async function borrarPlantilla(saveId: string, plantillaId: string): Promise<{ ok: boolean }> {
+  return fetchJson(`${API_URL}/saves/${saveId}/plantillas/${plantillaId}`, { method: 'DELETE' })
+}
+export async function asignarPlantillaCompanion(saveId: string, companionId: string, plantillaEquipoId: string | null, rolReino?: string): Promise<{ ok: boolean }> {
+  return fetchJson(`${API_URL}/saves/${saveId}/companeros/${companionId}/plantilla`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ plantillaEquipoId, rolReino }),
+  })
+}
+export async function asignarPlantillaSubject(saveId: string, subjectId: string, plantillaEquipoId: string | null): Promise<{ ok: boolean }> {
+  return fetchJson(`${API_URL}/saves/${saveId}/subjects/${subjectId}/plantilla`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ plantillaEquipoId }),
+  })
+}
+
 /// Confirmar selección del pop-up de caza. Con una única presa débil puede resolverse sin combate
 /// (`resuelveSinCombate: true`, ver `combate`) — en cualquier otro caso (varias presas, una sola
 /// no lo bastante débil, o la propia tirada de caza limpia falla) esta llamada NO abre combate ni

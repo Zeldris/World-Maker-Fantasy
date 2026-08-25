@@ -72,6 +72,7 @@ import {
   questCompletedLogEntry,
 } from '../lib/gameViewHelpers'
 import type {
+  AlmacenItemInfo,
   Attribute,
   AttributeBlock,
   BuildingInfo,
@@ -89,6 +90,7 @@ import type {
   KingdomStatsInfo,
   LogEntry,
   NpcInSceneInfo,
+  PlantillaEquipoInfo,
   PostCombatInteractionInfo,
   ProfessionProgressInfo,
   QuestInfo,
@@ -176,6 +178,9 @@ export function GameView() {
   const [territories, setTerritories] = useState<TerritoryInfo[]>([])
   const [buildings, setBuildings] = useState<BuildingInfo[]>([])
   const [subjects, setSubjects] = useState<SubjectInfo[]>([])
+  // Grupo 3 § Compañeros y supervivencia (2026-08-25) — Almacén de Reino + Plantillas de equipo.
+  const [almacenItems, setAlmacenItems] = useState<AlmacenItemInfo[]>([])
+  const [plantillasEquipo, setPlantillasEquipo] = useState<PlantillaEquipoInfo[]>([])
   const [factionsStatus, setFactionsStatus] = useState<Record<string, number>>({})
   const [kingdomStats, setKingdomStats] = useState<KingdomStatsInfo | null>(null)
   const [professionProgress, setProfessionProgress] = useState<ProfessionProgressInfo[]>([])
@@ -390,6 +395,8 @@ export function GameView() {
     setTerritories(save.territories)
     setBuildings(save.buildings)
     setSubjects(save.subjects)
+    setAlmacenItems(save.almacenItems)
+    setPlantillasEquipo(save.plantillasEquipo)
     setFactionsStatus(save.factionsStatus)
     setKingdomStats(save.kingdomStats)
     setProfessionProgress(save.professionProgress)
@@ -1570,18 +1577,24 @@ export function GameView() {
             />
           )}
           {activePanel === 'companeros' && saveId && (
-            <CompanerosPanel saveId={saveId} companions={companions} onRefreshSave={refreshSave} />
+            <CompanerosPanel saveId={saveId} companions={companions} inventory={inventory} onRefreshSave={refreshSave} />
           )}
           {activePanel === 'misiones' && <MisionesPanel quests={quests} />}
-          {activePanel === 'reino' && (
+          {activePanel === 'reino' && saveId && (
             <ReinoPanel
+              saveId={saveId}
               kingdomName={kingdomName}
               characterMotivation={characterMotivation}
               territories={territories}
               buildings={buildings}
               subjects={subjects}
+              companions={companions}
               kingdomStats={kingdomStats}
               onFundarReino={handleReabrirFundacionReino}
+              inventory={inventory}
+              almacenItems={almacenItems}
+              plantillasEquipo={plantillasEquipo}
+              onRefreshSave={refreshSave}
             />
           )}
           {activePanel === 'enciclopedia' && (

@@ -213,6 +213,11 @@ export async function detailRoutes(app: FastifyInstance) {
           // (kind:'item') nunca recibía esto, así que solo mostraba el emoji genérico aunque la
           // misma entidad ya tuviera banner real subido y visible desde la Enciclopedia.
           imageUrls: i.catalogSlug ? imageUrlsFor('item', i.catalogSlug) : undefined,
+          // Grupo 3 § Compañeros y supervivencia (2026-08-25) — ambos null = equipado en el propio
+          // personaje o sin equipar (comportamiento de siempre); el frontend los usa para saber
+          // qué objetos están ya puestos en QUÉ compañero/súbdito concreto.
+          companionId: i.companionId,
+          subjectId: i.subjectId,
         };
       }),
       // Felicidad/Comida/Agua (Grupo 3 § Compañeros y supervivencia, 2026-08-25) — `felicidad:

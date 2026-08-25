@@ -387,6 +387,11 @@ export interface InventoryItemInfo {
   curaHasta?: 'GRAVE' | 'HERIDO' | 'ILESO' | null
   curaUnPaso?: boolean
   curaEnergia?: number | null
+  /// Grupo 3 § Compañeros y supervivencia (2026-08-25) — ambos null = equipado en el propio
+  /// personaje o sin equipar (comportamiento de siempre); con valor = equipado en ESE compañero/
+  /// súbdito, nunca los dos a la vez.
+  companionId?: string | null
+  subjectId?: string | null
 }
 
 /// Grupo 3 § Compañeros y supervivencia (2026-08-25) — `felicidad: null` = compañero de quest/

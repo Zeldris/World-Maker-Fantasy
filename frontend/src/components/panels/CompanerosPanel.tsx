@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react'
-import type { CompanionInfo } from '../../types'
+import type { CompanionInfo, InventoryItemInfo } from '../../types'
 import { getTameoPendientes, type TameoPendiente } from '../../lib/api'
 import { PanelEmptyState } from '../PanelEmptyState'
 import { PanelSection } from '../PanelSection'
 import { CapturaModal } from '../CapturaModal'
 import { TameoModal } from '../TameoModal'
+import { CompanionEquipModal } from '../CompanionEquipModal'
 
 // Grupo 3 § Compañeros y supervivencia (2026-08-25, docs/rpgtarkor/companeros-y-supervivencia.md)
 // — `felicidad: null` = compañero de quest/narración libre (comportamiento de siempre, sin capa
@@ -28,16 +29,18 @@ function MiniBar({ label, pct }: { label: string; pct: number }) {
 interface CompanerosPanelProps {
   saveId: string
   companions: CompanionInfo[]
-  /// Tras confirmar un tameo/persuasión, el nuevo Companion viene del backend — se resincroniza
-  /// la partida entera (mismo patrón que equipar, ver GameView.tsx § syncFromSave) en vez de
-  /// intentar reconstruir la fila a mano aquí.
+  inventory: InventoryItemInfo[]
+  /// Tras confirmar un tameo/persuasión (o equipar), el estado real viene del backend — se
+  /// resincroniza la partida entera (mismo patrón que equipar, ver GameView.tsx § syncFromSave)
+  /// en vez de intentar reconstruir la fila a mano aquí.
   onRefreshSave: () => Promise<void>
 }
 
-export function CompanerosPanel({ saveId, companions, onRefreshSave }: CompanerosPanelProps) {
+export function CompanerosPanel({ saveId, companions, inventory, onRefreshSave }: CompanerosPanelProps) {
   const [capturaOpen, setCapturaOpen] = useState(false)
   const [pendientes, setPendientes] = useState<TameoPendiente[]>([])
   const [tameoAbierto, setTameoAbierto] = useState<TameoPendiente | null>(null)
+  const [equipoAbierto, setEquipoAbierto] = useState<CompanionInfo | null>(null)
 
   async function refreshPendientes() {
     try {
@@ -111,6 +114,12 @@ export function CompanerosPanel({ saveId, companions, onRefreshSave }: Companero
               {companion.rolReino && (
                 <p className="mt-1.5 text-2xs italic text-wood-500">Integrado en el Reino como {companion.rolReino}.</p>
               )}
+              <button
+                onClick={() => setEquipoAbierto(companion)}
+                className="tactile mt-2 rounded border border-iron-700 px-2 py-1 text-2xs text-wood-400 transition-colors hover:border-accent-600/60 hover:text-accent-300"
+              >
+                Equipo
+              </button>
             </div>
           ))}
         </div>
@@ -141,6 +150,16 @@ export function CompanerosPanel({ saveId, companions, onRefreshSave }: Companero
             refreshPendientes()
           }}
           onCancel={() => setTameoAbierto(null)}
+        />
+      )}
+
+      {equipoAbierto && (
+        <CompanionEquipModal
+          saveId={saveId}
+          companion={equipoAbierto}
+          inventory={inventory}
+          onClose={() => setEquipoAbierto(null)}
+          onChanged={onRefreshSave}
         />
       )}
     </div>
