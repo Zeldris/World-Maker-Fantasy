@@ -161,14 +161,12 @@ export function condicionPorSupervivencia(comida: number, agua: number, actual: 
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Slots de compañero — el garantizado del Domador (`esSlotDomador`) NUNCA cuenta contra
-// `companionSlotsForRecipeKey` (Campamento/Choza). Ver questResolution.ts/turnResolution.ts,
-// ambos actualizados para excluir `esSlotDomador: true` del recuento.
-// ═══════════════════════════════════════════════════════════════════════════
-
-export function companionCountsAgainstBuildingSlots(esSlotDomador: boolean): boolean {
-  return !esSlotDomador;
-}
-
+// `companionSlotsForRecipeKey` (Campamento/Choza). `questResolution.ts`/`turnResolution.ts`/
+// `routes/saves/companeros.ts` aplican esta regla directo como filtro Prisma
+// (`tx.companion.count({ where: { esSlotDomador: false } })`) — una función JS aparte no sirve de
+// mucho para una condición de una línea que se necesita a nivel de query, no de predicado por fila
+// (deuda técnica, auditoría 2026-08-25: había una `companionCountsAgainstBuildingSlots` exportada
+// que ningún caller llamaba nunca — código muerto retirado, la regla real vive en los 3 filtros).
 // ═══════════════════════════════════════════════════════════════════════════
 // World tick — barridos periódicos (mismo patrón que population.ts/worldAgenda.ts, llamados
 // desde workers/worldTick.ts)
