@@ -2251,11 +2251,19 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   ]);
 
   // Eventos de viaje interactivos (2026-08-05): si este turno resuelve un viaje truncado por una
-  // interrupción (turn.ts, pickTravelInterruption), el NPC elegido entra en escena de forma
-  // DETERMINISTA — a diferencia del resto de `npcsInScene` (detectado por texto vía
-  // detectNpcsInScene), este no depende de que el Narrador narre su nombre. Se resuelve antes del
-  // filtro de Gistera para que shouldForceCombat/npcSceneBlockFor/dialogueTarget más abajo lo
-  // traten exactamente igual que a cualquier otro NPC ya detectado.
+  // interrupción (turn.ts, pickTravelInterruption/pickStationaryInterruption), el NPC elegido
+  // entra en escena de forma DETERMINISTA — a diferencia del resto de `npcsInScene` (detectado
+  // por texto vía detectNpcsInScene), este no depende de que el Narrador narre su nombre. Se
+  // resuelve antes del filtro de Gistera para que shouldForceCombat/npcSceneBlockFor/
+  // dialogueTarget más abajo lo traten exactamente igual que a cualquier otro NPC ya detectado.
+  //
+  // Grupo 3 § Mundo determinista, Capa 3, pieza A (2026-08-25) — `upsert` en vez de `findUnique`:
+  // hasta ahora esto solo LEÍA el `NpcState`, nunca lo creaba — si el turno no incluía golpe/
+  // saqueo real contra este NPC (p.ej. el jugador dialoga, huye, o simplemente ignora el
+  // encuentro), la fila nunca llegaba a existir, y la única forma de que este NPC "siguiera en
+  // escena" turnos después era que el modelo lo repitiera en `newFacts` — exactamente el mecanismo
+  // sin control que esta sesión está cerrando. Mismo patrón ya probado en `cazar.ts` (caza en
+  // grupo, upsert a ILESO antes de cualquier combate real).
   let npcsInSceneWithInterruption = npcsInSceneRaw;
   if (travelInterruptionNpcId && !npcsInSceneRaw.some((n) => n.id === travelInterruptionNpcId)) {
     const interruptionNpc: NpcWithItems | null = await prisma.npc.findUnique({
@@ -2264,10 +2272,13 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     });
     if (interruptionNpc) {
       const interruptionLocationId = travel?.toLocationId ?? currentLocationId;
-      const interruptionState = await prisma.npcState.findUnique({
-        where: { saveId_npcId_scope: { saveId, npcId: interruptionNpc.id, scope: scopeFor(interruptionNpc.kind, interruptionLocationId) } },
+      const interruptionScope = scopeFor(interruptionNpc.kind, interruptionLocationId);
+      const interruptionState = await prisma.npcState.upsert({
+        where: { saveId_npcId_scope: { saveId, npcId: interruptionNpc.id, scope: interruptionScope } },
+        create: { saveId, npcId: interruptionNpc.id, scope: interruptionScope, condicionFisica: 'ILESO' },
+        update: {},
       });
-      npcsInSceneWithInterruption = [...npcsInSceneRaw, buildNpcInScene(interruptionNpc, interruptionState ?? undefined)];
+      npcsInSceneWithInterruption = [...npcsInSceneRaw, buildNpcInScene(interruptionNpc, interruptionState)];
     }
   }
 
