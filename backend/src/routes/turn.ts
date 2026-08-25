@@ -20,8 +20,7 @@ import {
   tabulatedAttackAttribute,
   type NpcInScene,
 } from '../services/npcScene.js';
-import { matchHarvestSource } from '../services/harvest.js';
-import { detectsSearchIntent, selectDiscoveries, type DiscoveryItem } from '../services/discovery.js';
+import { detectsSearchIntent } from '../services/discovery.js';
 import { normalizeText } from '../services/travel.js';
 import { detectsOwnedItemQuote } from '../services/itemReference.js';
 import { prisma } from '../lib/prisma.js';
@@ -833,20 +832,11 @@ export async function turnRoutes(app: FastifyInstance) {
       data: { saveId, channel: 'CHARACTER', text: action, isPlayerAction: true, timeLabel },
     });
 
-    // Revelado progresivo (docs/14-combate-y-muerte.md § 3.1): solo para búsquedas/recolección
-    // GENÉRICAS de banda corta (sin especie concreta mencionada — eso ya lo resuelve harvest.ts
-    // en narrate) y con la tirada ya superada (o sin tirada). El backend decide QUÉ se encuentra
-    // aquí mismo, en classify, para que el frontend pueda arrancar ya el contador con revelado.
-    let discoveries: DiscoveryItem[] = [];
-    if (!travel && classification.banda === 'corta' && (!roll || roll.success) && !matchHarvestSource(action) && detectsSearchIntent(action)) {
-      discoveries = await selectDiscoveries(save.worldId, save.currentLocationId);
-    }
-
     const produccionLabel = produccion ? `${produccion.cantidad} de ${produccion.itemName}` : undefined;
     // Auditoría de rendimiento 2026-07-28 ("rascar segundos"): `npcsInScene` viaja tal cual hasta
     // el frontend para que /turn/narrate lo reciba de vuelta y no tenga que recalcularlo — ver
     // NarrateBody.npcsInScene más abajo y el mismo comentario en turnResolution.ts.
-    return { classification, roll, duracionMinutos: minutos, produccion: produccionLabel, travel, discoveries, npcsInScene };
+    return { classification, roll, duracionMinutos: minutos, produccion: produccionLabel, travel, npcsInScene };
   });
 
   app.post<{ Body: NarrateBody }>('/turn/narrate', async (request, reply) => {

@@ -30,7 +30,6 @@ import { ReinoPanel } from '../components/panels/ReinoPanel'
 import { MisionesPanel } from '../components/panels/MisionesPanel'
 import { HabilidadesPanel } from '../components/panels/HabilidadesPanel'
 import { playerActionEntry } from '../lib/simulateAI'
-import { DiscoveryReveal } from '../components/DiscoveryReveal'
 import { CombatComposer } from '../components/CombatComposer'
 import { CombatPanel } from '../components/CombatPanel'
 import { HealthBar } from '../components/HealthBar'
@@ -84,7 +83,6 @@ import type {
   CurrentLocationInfo,
   DestinationInfo,
   Dificultad,
-  DiscoveryItem,
   EquipSlot,
   InitiativeRollInfo,
   InventoryItemInfo,
@@ -265,7 +263,6 @@ export function GameView() {
   // de banners persistidos al cargar la Enciclopedia).
   const { buildEntityBanner } = useEntityBanner(saveId, enciclopediaIndex, setCharacterLog, setWorldLog)
   const [notFound, setNotFound] = useState(false)
-  const [discoveries, setDiscoveries] = useState<DiscoveryItem[]>([])
   const [condicionFisica, setCondicionFisica] = useState<CondicionFisica>('ILESO')
   // Sistema de fatiga (2026-07-29) — mismo patrón que condicionFisica: se sincroniza al cargar la
   // partida y se actualiza con cada respuesta de turno.
@@ -314,7 +311,6 @@ export function GameView() {
     combateIniciado,
     setCombateIniciado,
     setLastInitiativeRoll,
-    setDiscoveries,
     activePanel,
     setActivePanel,
     combatDisabledTabs: [...COMBAT_DISABLED_CHARACTER_TABS, ...COMBAT_DISABLED_WORLD_TABS],
@@ -610,6 +606,7 @@ export function GameView() {
     Minar: 'minero',
     Talar: 'talador',
     'Recolectar hierbas': 'herborista',
+    Recoger: 'recolector-general',
   }
 
   // Paneles nuevos (2026-08-17) — mismo patrón que HARVEST_ABILITY_OFICIO: pop-up de selección
@@ -751,10 +748,6 @@ export function GameView() {
     }
   }
 
-  function handleAttachDiscovery(discovery: DiscoveryItem) {
-    composerRef.current?.insertChip({ icon: '✨', label: discovery.name })
-  }
-
   // Sugerencias de próxima acción bajo demanda (petición explícita, 2026-08-15) — llamada aparte
   // del turno normal, ver comentario de `suggestions` más arriba.
   async function handleRequestSuggestions() {
@@ -868,7 +861,6 @@ export function GameView() {
     if (!action || !saveId || busyUntil || endedAt) return
     composerRef.current?.clear()
     setInput('')
-    setDiscoveries([])
     // Bug real (2026-07-23, "al cambiar de pestaña el narrador da error de localhost"): el stream
     // de /turn/narrate no tiene AbortController ni timeout — si el navegador corta la conexión de
     // fondo (típico al cambiar de pestaña con una narración larga en curso), `reader.read()` falla
@@ -886,12 +878,11 @@ export function GameView() {
     try {
       // El prefetch de arriba (preview:true) ya precalentó la caché del backend con este mismo
       // texto si no cambió desde entonces — esta llamada sigue siendo la real (persiste log/
-      // transit/discoveries como siempre), pero el propio backend se salta Ollama/tabla si
-      // encuentra la caché, sin que el frontend tenga que decidir nada ni arriesgar quedarse sin
-      // "discoveries"/"transit" por reutilizar la respuesta cruda del preview.
+      // transit como siempre), pero el propio backend se salta Ollama/tabla si encuentra la
+      // caché, sin que el frontend tenga que decidir nada ni arriesgar quedarse sin "transit" por
+      // reutilizar la respuesta cruda del preview.
       const classifyResult: ClassifyResponse = await requestTurnClassify({ saveId, action })
       const { classification, roll, travel } = classifyResult
-      setDiscoveries(classifyResult.discoveries ?? [])
 
       if (classifyResult.blocked) {
         // Validador de "grounding" de la acción del jugador (docs/18-validacion-accion-jugador.md)
@@ -1382,12 +1373,6 @@ export function GameView() {
           >
             {cancelingTransit ? 'Cancelando...' : 'Cancelar acción'}
           </button>
-        </div>
-      )}
-
-      {discoveries.length > 0 && !endedAt && (
-        <div className="border-t border-iron-800 bg-wood-950/90 px-4">
-          <DiscoveryReveal discoveries={discoveries} onAttach={handleAttachDiscovery} />
         </div>
       )}
 

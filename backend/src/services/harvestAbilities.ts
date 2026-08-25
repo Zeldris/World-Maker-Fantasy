@@ -100,6 +100,26 @@ const HARVEST_ABILITIES: HarvestAbilityUnlock[] = [
       category: 'profesion',
     },
   },
+  // "Recoger" (2026-08-25, retira el descubrimiento de texto libre — ver discovery.ts) — a
+  // diferencia de los cuatro anteriores, NO es un oficio real de `professions.ts`: esta entrada
+  // solo existe para que `metodoForOficio`/`attributeForOficio` sepan resolver
+  // 'recolector-general' → PASIVO al pedir `GET /saves/:id/recolectar/recolector-general`. La
+  // habilidad en sí NUNCA se concede por `harvestAbilityUnlocksFor` (nadie tiene asignado el
+  // "oficio" 'recolector-general' de verdad) — vive como habilidad general universal en
+  // `GORHORN_GENERAL_ABILITIES` (startingAbilities.ts), mismo criterio que Saquear/Curar/Cazar:
+  // objetos, no recursos de oficio (criterio explícito de la usuaria).
+  {
+    oficio: 'recolector-general',
+    metodo: 'PASIVO',
+    attribute: 'destreza',
+    ability: {
+      name: 'Recoger',
+      icon: '🖐️',
+      description: 'Recoge objetos que veas por la zona — sin tirada, solo si de verdad están ahí.',
+      promptText: 'Recojo lo que encuentro por la zona.',
+      category: 'general',
+    },
+  },
 ];
 
 /// Qué habilidad base recolectora se desbloquea al alcanzar nivel 1 en `oficio` — mismo criterio

@@ -128,6 +128,21 @@ const GORHORN_GENERAL_ABILITIES: StartingAbility[] = [
     promptText: 'Reviso el inventario y me curo con ',
     category: 'general',
   },
+  // "Recoger" (2026-08-25, retira el descubrimiento de texto libre — ver discovery.ts) — objetos
+  // narrativos, no recursos de oficio (criterio explícito de la usuaria: "si son recursos solo se
+  // puede recoger con profesiones, si son items entonces con este recoger"). Panel real
+  // (HarvestSelectionModal.tsx, mismo componente que Minar/Talar/Herborista), sin tirada — ver
+  // pasivoCandidatesFor (recolectar.ts). Mismo texto/icono que la entrada gemela en
+  // HARVEST_ABILITIES (harvestAbilities.ts) — esa solo existe para el enrutado de
+  // metodoForOficio/attributeForOficio, nunca concede la habilidad de verdad (no hay ningún
+  // "oficio" 'recolector-general' real que la desbloquee) — la concesión real es esta de aquí.
+  {
+    name: 'Recoger',
+    icon: '🖐️',
+    description: 'Recoge objetos que veas por la zona — sin tirada, solo si de verdad están ahí.',
+    promptText: 'Recojo lo que encuentro por la zona.',
+    category: 'general',
+  },
 ];
 
 // Edificios sin oficio (2026-08-13, petición explícita: "hay que añadir también los edificios

@@ -9,7 +9,6 @@ import type {
   CurrentLocationInfo,
   DestinationInfo,
   Dificultad,
-  DiscoveryItem,
   EquipSlot,
   InventoryItemInfo,
   ItemTipo,
@@ -90,9 +89,6 @@ export interface ClassifyResponse {
   transit?: { busyUntil: string; duracionMinutos?: number | null }
   // Presente cuando la acción se resolvió como un viaje por el grafo de ubicaciones.
   travel?: TravelResolution | null
-  // Revelado progresivo (docs/14-combate-y-muerte.md § 3.1) — 2-4 hallazgos ya decididos por el
-  // backend para búsquedas/recolección genéricas de banda corta; vacío si no aplica.
-  discoveries?: DiscoveryItem[]
   npcsInScene?: NpcSceneSnapshot
   // Validador de "grounding" de la acción del jugador (docs/18-validacion-accion-jugador.md) —
   // presente cuando el backend rechazó la acción de raíz (p. ej. reclamar un arma que no lleva

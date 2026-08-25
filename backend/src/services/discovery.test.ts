@@ -1,9 +1,10 @@
 import { describe, it, expect } from 'vitest';
 import { detectsSearchIntent, coreRegionOf, REGION_CORE_NAMES } from './discovery.js';
 
-// Cobertura nueva (auditoría 2026-08-03, "análisis completo backend/frontend") — solo las
-// funciones puras; `selectDiscoveries` depende de Prisma y queda cubierta indirectamente por los
-// tests de integración de turn.ts.
+// Cobertura nueva (auditoría 2026-08-03, "análisis completo backend/frontend") — `detectsSearchIntent`
+// sigue viva como red de seguridad de duración en turn.ts (2026-08-25, tras retirar el panel de
+// descubrimiento de texto libre que la usaba originalmente, ver comentario de cabecera en
+// discovery.ts).
 
 describe('detectsSearchIntent', () => {
   it('detecta buscar/explorar/rebuscar/recoger/recolectar/rastrear', () => {

@@ -572,12 +572,6 @@ export interface PostCombatInteractionInfo {
   saqueado: boolean
 }
 
-export interface DiscoveryItem {
-  itemCatalogSlug: string
-  name: string
-  cantidad: number
-}
-
 export interface NpcInSceneInfo {
   slug: string
   name: string

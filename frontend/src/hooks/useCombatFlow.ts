@@ -6,7 +6,6 @@ import { combatDifficultyFor, type CombatDifficulty } from '../lib/combatDifficu
 import type {
   CombatExchangeInfo,
   CondicionFisica,
-  DiscoveryItem,
   InitiativeRollInfo,
   InventoryItemInfo,
   LogEntry,
@@ -34,7 +33,6 @@ interface UseCombatFlowParams {
   combateIniciado: { npcs: NpcInSceneInfo[] } | null
   setCombateIniciado: Dispatch<SetStateAction<{ npcs: NpcInSceneInfo[] } | null>>
   setLastInitiativeRoll: Dispatch<SetStateAction<InitiativeRollInfo | null>>
-  setDiscoveries: Dispatch<SetStateAction<DiscoveryItem[]>>
   activePanel: PanelId | null
   setActivePanel: Dispatch<SetStateAction<PanelId | null>>
   combatDisabledTabs: PanelId[]
@@ -81,7 +79,6 @@ export function useCombatFlow(params: UseCombatFlowParams) {
     combateIniciado,
     setCombateIniciado,
     setLastInitiativeRoll,
-    setDiscoveries,
     activePanel,
     setActivePanel,
     combatDisabledTabs,
@@ -154,10 +151,6 @@ export function useCombatFlow(params: UseCombatFlowParams) {
   function openCombat(combatOverride?: { npcs: NpcInSceneInfo[] } | null) {
     const combate = combatOverride ?? combateIniciado
     if (!combate) return
-    // Bug real (auditoría 2026-07-30): un turno puede traer a la vez un hallazgo (`discoveries`)
-    // Y una emboscada (`combateIniciado`) — sin esto, el aviso de "hallazgo descubierto" se quedaba
-    // solapado visualmente por encima del popup de combate recién abierto.
-    setDiscoveries([])
     setCombatNpcStates(combate.npcs.map(npcInSceneToCombatDisplay))
     setCombatEnded(false)
     setCombatSelectedNpcSlug(combate.npcs[0]?.slug ?? null)

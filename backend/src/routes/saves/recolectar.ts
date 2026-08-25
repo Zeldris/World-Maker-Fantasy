@@ -7,7 +7,7 @@ import { inventoryCapacityFor, totalInventoryUnits } from '../../services/invent
 import { effectiveAttributes, effectiveInventorySlotsBonus, effectiveSecondaryAttributes } from '../../services/equipment.js';
 import { stripRegionArticle } from '../../services/population.js';
 import { pasaFiltroTerreno } from '../../services/terrain.js';
-import { locationTerrainTags, harvestSourceTerrainTag, sourceCategoryNameFor } from '../../scripts/worldCatalog.js';
+import { locationTerrainTags, harvestSourceTerrainTag, sourceCategoryNameFor, harvestSourceHomeLocationSlug } from '../../scripts/worldCatalog.js';
 import { quantityOf } from '../../services/ingredients.js';
 import { hasToolForOficio, OFICIOS_CON_HERRAMIENTA_REQUERIDA } from '../../services/crafting.js';
 import { closeItemQuests } from '../../services/questResolution.js';
@@ -263,6 +263,34 @@ async function carcassCandidatesFor(
     });
 }
 
+/// "Recoger" (2026-08-25, retira el descubrimiento de texto libre — ver discovery.ts, ya
+/// eliminado) — objetos narrativos ligados a una Location EXACTA (`harvestSourceHomeLocationSlug`,
+/// worldCatalog.ts): recuerdos de clan/ofrendas, nunca hierbas/minerales de verdad (esos son
+/// `sourceCategory: 'planta'`/`'mineral'` con `WorldPopulation` real, y pasan por MINERIA/TALA/
+/// EXTRACCION como cualquier otro recurso de oficio — criterio explícito de la usuaria: "si son
+/// recursos solo se puede recoger con profesiones, si son items entonces con este recoger"). Sin
+/// tirada (`rollGathering` no aplica aquí — no hay dificultad real que superar, o el objeto está
+/// a la vista en su sitio o no) y sin `WorldPopulation`/cooldown: se puede volver a recoger
+/// mientras siga en la escena, mismo comportamiento que ya tenía el descubrimiento libre retirado
+/// — no se modela agotamiento real para estos objetos (simplificación consciente, revisar si algún
+/// día se nota como problema jugando).
+async function pasivoCandidatesFor(worldId: string, currentLocationSlug: string | null): Promise<SourceCandidate[]> {
+  if (!currentLocationSlug) return [];
+  const rows = await prisma.harvestYield.findMany({ where: { worldId, metodoObtencion: 'PASIVO' }, include: { item: true } });
+  const bySlug = new Map<string, typeof rows>();
+  for (const row of rows) {
+    if (harvestSourceHomeLocationSlug[row.sourceSlug] !== currentLocationSlug) continue;
+    if (!bySlug.has(row.sourceSlug)) bySlug.set(row.sourceSlug, []);
+    bySlug.get(row.sourceSlug)!.push(row);
+  }
+  return [...bySlug.entries()].map(([sourceSlug, yieldRows]) => ({
+    sourceSlug,
+    sourceCategory: yieldRows[0].sourceCategory,
+    disponible: Math.max(1, ...yieldRows.map((r) => r.cantidad)),
+    yields: yieldRows.map((r) => ({ itemSlug: r.item.slug, itemName: r.item.name, cantidadMaxima: r.cantidad, tier: r.item.tier, sinTirada: true })),
+  }));
+}
+
 /// Save con los datos mínimos para calcular `rollGathering` (equipo puesto para bonus de
 /// atributos/secundarios + nivel del oficio concreto que se está usando) — un único shape
 /// compartido por `/explorar` y el GET de desollador en vez de repetir el cálculo dos veces.
@@ -371,6 +399,13 @@ export async function recolectarRoutes(app: FastifyInstance) {
       const filtered = applyGatheringRoll(rawCandidates, roll);
       await saveRollCache(save.id, request.params.oficio, save.currentLocationId, filtered);
       return { sources: groupByCategory(filtered), roll, puedeExplorar: false, enCooldown: false };
+    }
+
+    if (metodo === 'PASIVO') {
+      // "Recoger" (2026-08-25) — sin tirada ni caché que congelar (ver `pasivoCandidatesFor`):
+      // siempre la foto real de lo que hay en ESTA ubicación exacta ahora mismo.
+      const candidates = await pasivoCandidatesFor(save.worldId, save.currentLocation?.slug ?? null);
+      return { sources: groupByCategory(candidates), puedeExplorar: false, enCooldown: false };
     }
 
     // Tirada congelada (mismo criterio que arriba) — reemplaza por completo el viejo
@@ -613,6 +648,12 @@ export async function recolectarRoutes(app: FastifyInstance) {
               sourcesTouchedThisRequest.add(sel.sourceSlug);
             }
             anyCaza = true;
+          } else if (yieldRow.metodoObtencion === 'PASIVO') {
+            // "Recoger" (2026-08-25) — sin `WorldPopulation` ni cooldown que comprobar (ver
+            // `pasivoCandidatesFor`): si el candidato llegó hasta aquí es porque sigue en su
+            // Location exacta ahora mismo, se concede directo. Mismo verbo que el resto de
+            // no-CAZA en el texto final ("recolecta"), no hace falta una rama de texto aparte.
+            anyNonCaza = true;
           } else {
             // Pico de minero (2026-08-23) — igual que el guard de CAZA arriba, comprobado antes
             // de tocar población: sin herramienta, esta selección concreta no se materializa.

@@ -2602,13 +2602,14 @@ describe('Desaparición de un cadáver tras 48h de ficción (docs/19 pieza 2)', 
 // Auditoría 2026-08-14 (bug real jugando en vivo, reinicio de partida: "Brazalete trenzado del
 // Clan Maktor"/"Pañuelo de luto Serhu"/"Tótem de clan roto" aparecieron ya en el PRIMERÍSIMO
 // "Exploro la zona", en La Hondonada del Eco, sin relación real con dónde cayó el Clan Maktor).
-// `harvestSourceHomeLocationSlug` (worldCatalog.ts) liga estas fuentes a una Location EXACTA; bug
-// real encontrado verificando el fix a mano: el fallback "nunca devuelvas vacío" de
-// `selectDiscoveries` (discovery.ts) resucitaba igual los objetos ligados en cualquier otro sitio
-// en cuanto TODO el bucket PASIVO quedaba ligado (como pasa hoy: son los únicos 6 yields PASIVO
-// del catálogo) — corregido cortando el candado ANTES de calcular el fallback, no dentro de él.
-describe('Objetos narrativos "PASIVO" ligados a su Location exacta (auditoría 2026-08-14)', () => {
-  const MAKTOR_ITEMS = ['Brazalete trenzado del Clan Maktor', 'Tótem de clan roto', 'Tablilla quemada', 'Juguete de hueso tallado'];
+// `harvestSourceHomeLocationSlug` (worldCatalog.ts) liga estas fuentes a una Location EXACTA.
+// Reescrito 2026-08-25 (retirada la habilidad de descubrimiento de texto libre — ver comentario de
+// cabecera en discovery.ts): la misma garantía de candado por Location ahora se prueba contra la
+// habilidad general "Recoger" (`pasivoCandidatesFor`, recolectar.ts) — sin roll ni aleatoriedad
+// (a diferencia del viejo `selectDiscoveries`), así que una sola llamada por caso basta, nunca
+// hace falta repetir para "tener suerte" de que algo salga.
+describe('"Recoger": objetos narrativos "PASIVO" ligados a su Location exacta (auditoría 2026-08-14, reescrito 2026-08-25)', () => {
+  const MAKTOR_ITEMS = ['Tablilla quemada', 'Tótem de clan roto'];
   const OFRENDAS_ITEMS = ['Pañuelo de luto Serhu', 'Hueso marcado de primera cacería'];
 
   async function saveAt(locationSlug: string, name: string) {
@@ -2625,49 +2626,35 @@ describe('Objetos narrativos "PASIVO" ligados a su Location exacta (auditoría 2
     return save.id;
   }
 
-  beforeAll(() => {
-    classifyAction.mockResolvedValue({
-      requiereTirada: false, atributo: 'destreza', dificultad: 8, razon: 'x', banda: 'corta', duracionEstimadaMinutos: 5,
-    });
-  });
+  async function recogerSourcesFor(saveId: string): Promise<string[]> {
+    const app = Fastify();
+    await app.register(recolectarRoutes);
+    const res = await app.inject({ method: 'GET', url: `/saves/${saveId}/recolectar/recolector-general` });
+    expect(res.statusCode).toBe(200);
+    const body = res.json() as { sources: { yields: { itemName: string }[] }[] };
+    return body.sources.flatMap((cat) => cat.yields.map((y) => y.itemName));
+  }
 
-  it('en La Hondonada del Eco, explorar nunca revela objetos ligados a Restos de Maktor/Túmulos del Honor', async () => {
-    const saveId = await saveAt('hondonada-del-eco', 'Gorhorn de prueba (discovery hondonada)');
-    const app = await buildApp();
-    for (let i = 0; i < 5; i++) {
-      const res = await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action: 'Exploro la zona', enCombate: false } });
-      const { discoveries } = res.json();
-      const names = (discoveries ?? []).map((d: { name: string }) => d.name);
-      expect(names.filter((n: string) => MAKTOR_ITEMS.includes(n) || OFRENDAS_ITEMS.includes(n))).toEqual([]);
-    }
+  it('en La Hondonada del Eco, Recoger nunca ofrece objetos ligados a Restos de Maktor/Túmulos del Honor', async () => {
+    const saveId = await saveAt('hondonada-del-eco', 'Gorhorn de prueba (recoger hondonada)');
+    const names = await recogerSourcesFor(saveId);
+    expect(names.filter((n) => MAKTOR_ITEMS.includes(n) || OFRENDAS_ITEMS.includes(n))).toEqual([]);
     await prisma.save.delete({ where: { id: saveId } });
   }, 20_000);
 
-  it('en Los Restos de Maktor, explorar SÍ puede revelar los objetos de Maktor', async () => {
-    const saveId = await saveAt('restos-de-maktor', 'Gorhorn de prueba (discovery restos maktor)');
-    const app = await buildApp();
-    const foundNames = new Set<string>();
-    for (let i = 0; i < 8; i++) {
-      const res = await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action: 'Exploro la zona', enCombate: false } });
-      const { discoveries } = res.json();
-      for (const d of discoveries ?? []) foundNames.add(d.name);
-    }
-    expect([...foundNames].some((n) => MAKTOR_ITEMS.includes(n))).toBe(true);
-    expect([...foundNames].some((n) => OFRENDAS_ITEMS.includes(n))).toBe(false);
+  it('en Los Restos de Maktor, Recoger SÍ ofrece los objetos de Maktor (y nunca los de Ofrendas)', async () => {
+    const saveId = await saveAt('restos-de-maktor', 'Gorhorn de prueba (recoger restos maktor)');
+    const names = await recogerSourcesFor(saveId);
+    expect(MAKTOR_ITEMS.every((n) => names.includes(n))).toBe(true);
+    expect(names.some((n) => OFRENDAS_ITEMS.includes(n))).toBe(false);
     await prisma.save.delete({ where: { id: saveId } });
   }, 20_000);
 
-  it('en Los Túmulos del Honor, explorar SÍ puede revelar las ofrendas', async () => {
-    const saveId = await saveAt('tumulos-del-honor', 'Gorhorn de prueba (discovery tumulos)');
-    const app = await buildApp();
-    const foundNames = new Set<string>();
-    for (let i = 0; i < 8; i++) {
-      const res = await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action: 'Exploro la zona', enCombate: false } });
-      const { discoveries } = res.json();
-      for (const d of discoveries ?? []) foundNames.add(d.name);
-    }
-    expect([...foundNames].some((n) => OFRENDAS_ITEMS.includes(n))).toBe(true);
-    expect([...foundNames].some((n) => MAKTOR_ITEMS.includes(n))).toBe(false);
+  it('en Los Túmulos del Honor, Recoger SÍ ofrece las ofrendas (y nunca los objetos de Maktor)', async () => {
+    const saveId = await saveAt('tumulos-del-honor', 'Gorhorn de prueba (recoger tumulos)');
+    const names = await recogerSourcesFor(saveId);
+    expect(OFRENDAS_ITEMS.every((n) => names.includes(n))).toBe(true);
+    expect(names.some((n) => MAKTOR_ITEMS.includes(n))).toBe(false);
     await prisma.save.delete({ where: { id: saveId } });
   }, 20_000);
 });
