@@ -1103,6 +1103,10 @@ export interface NpcInput {
   domesticablePct?: number;
   capturablePct?: number;
   cortejablePct?: number;
+  /// Grupo 3 § Compañeros y supervivencia (2026-08-25) — cuál de los 7 atributos propios de este
+  /// NPC/fauna se usa como resistencia en la tirada opuesta de tameo/persuasión (companionSupervivencia.ts
+  /// § rollOpposed). Solo calibrado a mano donde domesticablePct/reclutablePct > 0.
+  atributoResistencia?: Attribute;
   /// Núcleo jugable actual (auditoría 2026-08-14, bug real jugando en vivo: "Sella Marn" —
   /// Nabieus de El Margen Silencioso, región marcada "fuera del núcleo jugable actual" en
   /// decenas de sitios de este catálogo, pero solo como texto/comentario — apareció en combate
@@ -1145,6 +1149,9 @@ export const fauna: NpcInput[] = [
     ataqueNatural: 'Clava sus colmillos curvos y amarillentos en los puntos débiles, exagerados para su tamaño.',
     temperamento: 'CAUTELOSO',
     domesticablePct: 20,
+    // Tameo (Grupo 3 § Compañeros y supervivencia, 2026-08-25) — depredador ágil, resiste por
+    // instinto de huida/ataque rápido, no por fuerza bruta.
+    atributoResistencia: 'destreza',
     capturablePct: 35,
     habilidadesRaciales: [
       { icon: '🐺', name: 'Posicion defensiva', description: 'Adopta una posición defensiva al enfrentar a sus enemigos y a la minima oportunidad contra ataca', categoria: 'defensa', preferredAttribute: 'destreza' },
@@ -1173,6 +1180,8 @@ export const fauna: NpcInput[] = [
     ataqueNatural: 'Picotea y araña con sus garras curvas, torpe y dudosa mientras su presa todavía respira.',
     temperamento: 'CAUTELOSO',
     domesticablePct: 25,
+    // Tameo (2026-08-25) — carroñero aéreo, resiste esquivando, no plantando cara.
+    atributoResistencia: 'destreza',
     capturablePct: 50,
     habilidadesRaciales: [
       { icon: '🐦', name: 'Plumaje ferreo', description: 'Aprrieta los musculos para protegerse de los ataques formando una malla resistente con su plumaje.', categoria: 'defensa', preferredAttribute: 'fuerza' },
@@ -1208,6 +1217,9 @@ export const fauna: NpcInput[] = [
     // shouldForceCombat) bloquearía la propia costumbre de doma que le da sentido narrativo.
     temperamento: 'CAUTELOSO',
     domesticablePct: 45,
+    // Tameo (2026-08-25) — "territorial y desconfiado... lealtad total una vez domado", resiste
+    // por pura voluntad territorial, no por fuerza o velocidad.
+    atributoResistencia: 'voluntad',
     capturablePct: 20,
     habilidadesRaciales: [
       { icon: '🐾', name: 'Zarpazo marcado', description: 'Ataca con las garras delanteras, dejando el mismo tipo de marca que lleva el emblema del Clan Maktor.', categoria: 'ataque', preferredAttribute: 'fuerza' },
@@ -1233,6 +1245,8 @@ export const fauna: NpcInput[] = [
     ataqueNatural: 'Embiste con la cabeza y las placas óseas del lomo, más para abrirse paso que para herir de verdad.',
     temperamento: 'INOFENSIVO',
     domesticablePct: 55,
+    // Tameo (2026-08-25) — "bestia veloz de seis patas", resiste huyendo, no plantando cara.
+    atributoResistencia: 'destreza',
     capturablePct: 60,
     habilidadesRaciales: [
       { icon: '🏃', name: 'Fuga audaz', description: 'Al primer sobresalto intenta huir siendo casi imposible pararlo.', categoria: 'utilidad', preferredAttribute: 'destreza' },
@@ -1258,6 +1272,8 @@ export const fauna: NpcInput[] = [
     ataqueNatural: 'Picotea y araña con sus garras negras, más por pánico que por intención real de herir.',
     temperamento: 'INOFENSIVO',
     domesticablePct: 40,
+    // Tameo (2026-08-25) — corredor incapaz de volar, resiste huyendo a la carrera.
+    atributoResistencia: 'destreza',
     capturablePct: 70,
     habilidadesRaciales: [
       { icon: '💥', name: 'Picoteo Incesante', description: 'En un ataque agil, ejecuta continuos picotazos en las partes mas debil de su agresor. Busca atacar las partes mas blandas y desprotegidas.', categoria: 'ataque', preferredAttribute: 'destreza' },
@@ -1286,6 +1302,9 @@ export const fauna: NpcInput[] = [
     ataqueNatural: 'Golpe de garras rápidas y afiladas desde el aire.',
     temperamento: 'AGRESIVO',
     domesticablePct: 5,
+    // Tameo (2026-08-25) — planeadora salvaje e independiente, resiste por puro instinto libre,
+    // casi nunca cede.
+    atributoResistencia: 'voluntad',
     capturablePct: 10,
     habilidadesRaciales: [
       { icon: '🌬️', name: 'Vuelo Errático', description: 'Despliega sus alas rígidas y se mueve rapido haciendo movimientos impredecibles siendo muy dificil alcanzarlo', categoria: 'utilidad', preferredAttribute: 'destreza' },
@@ -1317,6 +1336,8 @@ export const fauna: NpcInput[] = [
     ataqueNatural: 'Embiste con todo su peso, aplastando lo que se interponga en su camino.',
     temperamento: 'CAUTELOSO',
     domesticablePct: 5,
+    // Tameo (2026-08-25) — "bestia grande y pesada", resiste por pura masa/resistencia física.
+    atributoResistencia: 'constitucion',
     capturablePct: 10,
     habilidadesRaciales: [
       { icon: '🦴', name: 'Coraza de Placas', description: 'Las gruesas placas óseas que le cubren el lomo absorben buena parte de cualquier golpe directo.', categoria: 'defensa', preferredAttribute: 'fuerza' },
@@ -1350,6 +1371,8 @@ export const fauna: NpcInput[] = [
     ataqueNatural: 'Topetazo torpe con su cornamenta ramificada, casi siempre sin intención real de dañar.',
     temperamento: 'INOFENSIVO',
     domesticablePct: 90,
+    // Tameo (2026-08-25) — "dócil, gregario", ganado de los clanes, resiste poco y por pura masa.
+    atributoResistencia: 'constitucion',
     capturablePct: 80,
     habilidadesRaciales: [
       { icon: '💥', name: 'Embestida Sísmica', description: 'Carga con todo su peso y puede derribar a quien no logre apartarse a tiempo.', categoria: 'ataque', preferredAttribute: 'fuerza' },
@@ -1378,6 +1401,8 @@ export const fauna: NpcInput[] = [
     ataqueNatural: 'Cierra su pesada mandíbula de un mordisco certero, tras horas acechando en la sombra.',
     temperamento: 'AGRESIVO',
     domesticablePct: 10,
+    // Tameo (2026-08-25) — carroñero-cazador nocturno testarudo, resiste por puro instinto.
+    atributoResistencia: 'voluntad',
     capturablePct: 15,
     habilidadesRaciales: [
       { icon: '🌒', name: 'Acecho Nocturno', description: 'Ronda el borde de la luz sin ser visto — el primer golpe contra un objetivo que no lo ha notado cae con fuerza extra.', categoria: 'ataque', preferredAttribute: 'destreza' },
@@ -1404,6 +1429,8 @@ export const fauna: NpcInput[] = [
     ataqueNatural: 'Muerde y golpea de refilón con sus escamas al rojo vivo — quema con solo tocar.',
     temperamento: 'CAUTELOSO',
     domesticablePct: 15,
+    // Tameo (2026-08-25) — reptil de "complexión robusta", resiste por dureza física propia.
+    atributoResistencia: 'constitucion',
     capturablePct: 20,
     habilidadesRaciales: [
       { icon: '🔥', name: 'Piel Ardiente', description: 'Sus escamas retienen el calor de la lava — golpearla de cerca, cuerpo a cuerpo, también quema.', categoria: 'ataque', preferredAttribute: 'fuerza' },
@@ -1527,6 +1554,8 @@ export const fauna: NpcInput[] = [
     ataqueNatural: 'Lengua viscosa trifurcada que atrapa y arrastra, o embestida directa el alfa.',
     temperamento: 'CAUTELOSO',
     domesticablePct: 10,
+    // Tameo (2026-08-25) — sapo grande y voluminoso, resiste por pura masa/aguante.
+    atributoResistencia: 'constitucion',
     habilidadesRaciales: [
       { icon: '👅', name: 'Lengua trifurcada', description: 'Lanza la lengua dividida en tres puntas para atrapar a un insecto o distraer a un agresor.', categoria: 'ataque', preferredAttribute: 'destreza' },
       { icon: '💧', name: 'Piel tersa', description: 'La piel, tensa por el agua acumulada, amortigua golpes menores como un colchón.', categoria: 'defensa', preferredAttribute: 'constitucion' },
@@ -1689,6 +1718,8 @@ export const fauna: NpcInput[] = [
     ataqueNatural: 'Embiste con los cuernos, más las hembras que los machos.',
     temperamento: 'CAUTELOSO',
     domesticablePct: 20,
+    // Tameo (2026-08-25) — fauna de manada, esquiva/huye antes que plantar cara.
+    atributoResistencia: 'destreza',
     habilidadesRaciales: [
       { icon: '🦌', name: 'Embestida de cuernos', description: 'Carga y embiste con los cuernos — las hembras, más anchos, golpean con más fuerza.', categoria: 'ataque', preferredAttribute: 'fuerza' },
       { icon: '👑', name: 'Alfa defensora', description: 'La hembra alfa se interpone entre la manada y la amenaza, ganando tiempo para que el resto huya.', categoria: 'defensa', preferredAttribute: 'voluntad' },
@@ -1788,6 +1819,9 @@ export const fauna: NpcInput[] = [
     ataqueNatural: 'Zarpazo de las patas traseras o golpe directo con la cola-maza de escamas, casi siempre solo para defenderse.',
     temperamento: 'CAUTELOSO',
     domesticablePct: 10,
+    // Tameo (2026-08-25) — roedor que ya usa piedras/madera como herramienta, resiste con astucia
+    // propia, no fuerza ni velocidad.
+    atributoResistencia: 'inteligencia',
     habilidadesRaciales: [
       { icon: '🦴', name: 'Cola-maza de escamas', description: 'Golpea con el bulto de escamas duras del final de su cola, capaz de partir roca —resistencia equiparable al hierro.', categoria: 'ataque', preferredAttribute: 'fuerza' },
       { icon: '🖐️', name: 'Manos hábiles', description: 'Usa piedras y madera como herramientas para levantar y reforzar su madriguera.', categoria: 'utilidad', preferredAttribute: 'inteligencia' },
@@ -1830,6 +1864,9 @@ export const npcs: NpcInput[] = [
     temperamento: 'CAUTELOSO',
     comerciablePct: 15,
     reclutablePct: 55,
+    // Persuasión (2026-08-25) — "aguda y pragmática, mide cada palabra", resiste con la cabeza,
+    // no con orgullo ni fuerza.
+    atributoResistencia: 'inteligencia',
     capturablePct: 5,
     cortejablePct: 25,
     loadout: [
@@ -1865,6 +1902,8 @@ export const npcs: NpcInput[] = [
     temperamento: 'CAUTELOSO',
     comerciablePct: 10,
     reclutablePct: 15,
+    // Persuasión (2026-08-25) — "desconfiado, a la defensiva", resiste con pura voluntad recelosa.
+    atributoResistencia: 'voluntad',
     capturablePct: 20,
     loadout: [
       { itemSlug: 'maza-orca', notas: 'Mellada' },
@@ -1896,6 +1935,8 @@ export const npcs: NpcInput[] = [
     temperamento: 'CAUTELOSO',
     comerciablePct: 20,
     reclutablePct: 25,
+    // Persuasión (2026-08-25) — "curiosa, algo fanfarrona", cede por carisma/bravata, no por lógica.
+    atributoResistencia: 'carisma',
     capturablePct: 20,
     cortejablePct: 15,
     loadout: [
@@ -1931,6 +1972,9 @@ export const npcs: NpcInput[] = [
     temperamento: 'CAUTELOSO',
     comerciablePct: 20,
     reclutablePct: 5,
+    // Persuasión (2026-08-25) — "grave, pragmático... prefiere pactar a duelar", resiste con pura
+    // voluntad de líder, casi nunca cede por persuasión sola (reclutablePct 5).
+    atributoResistencia: 'voluntad',
     capturablePct: 5,
     loadout: [
       { itemSlug: 'hacha-guerra-orca', notas: 'Con la marca del Clan Serhu grabada en la cabeza' },
@@ -1969,6 +2013,8 @@ export const npcs: NpcInput[] = [
     temperamento: 'INOFENSIVO',
     comerciablePct: 90,
     reclutablePct: 10,
+    // Persuasión (2026-08-25) — "locuaz, siempre calculando el precio", resiste con labia propia.
+    atributoResistencia: 'carisma',
     capturablePct: 15,
     cortejablePct: 5,
     loadout: [
@@ -2009,6 +2055,8 @@ export const npcs: NpcInput[] = [
     temperamento: 'CAUTELOSO',
     comerciablePct: 30,
     reclutablePct: 10,
+    // Persuasión (2026-08-25) — "frío, calculador", resiste con la cabeza, no con el físico.
+    atributoResistencia: 'inteligencia',
     capturablePct: 25,
     loadout: [
       { itemSlug: 'espada-corta-goirntes' },
@@ -2104,6 +2152,9 @@ export const npcs: NpcInput[] = [
     temperamento: 'INOFENSIVO',
     comerciablePct: 10,
     reclutablePct: 5,
+    // Persuasión (2026-08-25) — "callado y ensimismado", resiste desde dentro, por voluntad
+    // espiritual propia, no por la razón ni la fuerza.
+    atributoResistencia: 'voluntad',
     capturablePct: 5,
     cortejablePct: 10,
     loadout: [
@@ -2144,6 +2195,9 @@ export const npcs: NpcInput[] = [
     temperamento: 'CAUTELOSO',
     comerciablePct: 5,
     reclutablePct: 5,
+    // Persuasión (2026-08-25) — "disciplinado, sigue órdenes sin cuestionar", resiste con
+    // constitución/disciplina física, no con inteligencia.
+    atributoResistencia: 'constitucion',
     capturablePct: 30,
     loadout: [
       { itemSlug: 'espada-corta-goirntes' },
@@ -2182,6 +2236,8 @@ export const npcs: NpcInput[] = [
     temperamento: 'CAUTELOSO',
     comerciablePct: 25,
     reclutablePct: 10,
+    // Persuasión (2026-08-25) — "fría en el cálculo", resiste razonando, no con orgullo ni fuerza.
+    atributoResistencia: 'inteligencia',
     capturablePct: 10,
     loadout: [
       { itemSlug: 'cuchillo-deshuello' },
@@ -2222,6 +2278,9 @@ export const npcs: NpcInput[] = [
     temperamento: 'CAUTELOSO',
     comerciablePct: 10,
     reclutablePct: 20,
+    // Persuasión (2026-08-25) — "cita de memoria las leyes... jamás improvisa", solo cede ante
+    // argumentos, nunca ante la fuerza ni el carisma.
+    atributoResistencia: 'inteligencia',
     capturablePct: 10,
     loadout: [],
   },
@@ -2252,6 +2311,9 @@ export const npcs: NpcInput[] = [
     temperamento: 'CAUTELOSO',
     comerciablePct: 10,
     reclutablePct: 5,
+    // Persuasión (2026-08-25) — "cuanto más tranquilo suena, más peligroso", resiste con la
+    // cabeza fría, no con el físico.
+    atributoResistencia: 'inteligencia',
     capturablePct: 10,
     loadout: [],
   },
@@ -2281,6 +2343,9 @@ export const npcs: NpcInput[] = [
     temperamento: 'INOFENSIVO',
     comerciablePct: 15,
     reclutablePct: 35,
+    // Persuasión (2026-08-25) — "sobresalta con los ruidos de metal", roto por dentro, resiste
+    // (poco) con voluntad frágil, no con la cabeza ni el físico.
+    atributoResistencia: 'voluntad',
     capturablePct: 40,
     loadout: [],
   },
@@ -2313,6 +2378,8 @@ export const npcs: NpcInput[] = [
     temperamento: 'INOFENSIVO',
     comerciablePct: 30,
     reclutablePct: 60,
+    // Persuasión (2026-08-25) — "leal, ruidoso, de risa fácil", cede fácil por carisma/afecto.
+    atributoResistencia: 'carisma',
     cortejablePct: 20,
     loadout: [
       { itemSlug: 'pico-minero' },
@@ -2351,6 +2418,8 @@ export const npcs: NpcInput[] = [
     temperamento: 'CAUTELOSO',
     comerciablePct: 85,
     reclutablePct: 20,
+    // Persuasión (2026-08-25) — traficante de información, resiste calculando, no con orgullo.
+    atributoResistencia: 'inteligencia',
     capturablePct: 15,
     cortejablePct: 10,
     loadout: [],

@@ -122,3 +122,51 @@ export function cantidadForGrado(grado: GradoRecurso, cantidadMaxima: number): n
   if (grado === 'con_coste') return Math.max(1, Math.ceil(cantidadMaxima / 2))
   return cantidadMaxima
 }
+
+/// Tirada opuesta (Grupo 3 § Compañeros y supervivencia, 2026-08-25, ver
+/// docs/rpgtarkor/companeros-y-supervivencia.md § 2/3: "eliges un atributo tuyo, compite contra el
+/// atributo propio de esa especie/NPC") — deliberadamente SEPARADA de `rollCheck`/`rollGathering`,
+/// mismo criterio que ambas: nunca tocar la fórmula de combate para esto, aunque la forma d20 +
+/// mitad de atributo sea la misma. Empate (margen 0) lo gana la resistencia, no el jugador — mismo
+/// criterio que `combatExchange.ts` (`margen > 0` para tener éxito, nunca `>= 0`).
+export interface OpposedRollResult {
+  playerAttribute: Attribute
+  playerValue: number
+  playerRoll: number
+  playerResult: number
+  resistenciaAttribute: Attribute
+  resistenciaValue: number
+  resistenciaRoll: number
+  resistenciaResult: number
+  margen: number
+  gano: boolean
+}
+
+export function rollOpposed(
+  playerAttributes: AttributeBlock,
+  playerAttribute: Attribute,
+  resistenciaAttributes: AttributeBlock,
+  resistenciaAttribute: Attribute,
+  random: () => number = Math.random,
+): OpposedRollResult {
+  const rollOnce = () => Math.floor(random() * 20) + 1
+  const playerValue = playerAttributes[playerAttribute]
+  const playerRoll = rollOnce()
+  const playerResult = playerRoll + Math.floor(playerValue / 2)
+  const resistenciaValue = resistenciaAttributes[resistenciaAttribute]
+  const resistenciaRoll = rollOnce()
+  const resistenciaResult = resistenciaRoll + Math.floor(resistenciaValue / 2)
+  const margen = playerResult - resistenciaResult
+  return {
+    playerAttribute,
+    playerValue,
+    playerRoll,
+    playerResult,
+    resistenciaAttribute,
+    resistenciaValue,
+    resistenciaRoll,
+    resistenciaResult,
+    margen,
+    gano: margen > 0,
+  }
+}

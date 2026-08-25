@@ -138,6 +138,7 @@ async function main() {
         domesticablePct: npcData.domesticablePct,
         capturablePct: npcData.capturablePct,
         cortejablePct: npcData.cortejablePct,
+        atributoResistencia: npcData.atributoResistencia,
         // Auditoría 2026-08-14 — ver comentario del campo en schema.prisma. Explícito en cada
         // reseed (no depender del default de columna, que solo aplica en `create`) para que
         // quitar la marca `false` de un NPC en worldCatalog.ts también se refleje al resembrar.

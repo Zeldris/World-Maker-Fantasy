@@ -223,6 +223,16 @@ model Save {
   /// necesidad de borrarla a mano (mismo criterio laxo que otros campos "pending" de este modelo).
   harvestRollCache Json?
 
+  /// Hambre/Sed del propio personaje (Grupo 3 § Compañeros y supervivencia, 2026-08-25, ver
+  /// docs/rpgtarkor/companeros-y-supervivencia.md § 5) — `WorldState.fictionalMinutes` de la
+  /// última vez que comió/bebió, mismo patrón "comparado en vivo contra el reloj" que
+  /// `Companion.lastFedAtMinutes`/`NpcState.condicionFisicaSinceMinutes` (nunca un contador que se
+  /// decrementa aparte). Null = todavía no ha comido/bebido nunca en esta partida — sembrado al
+  /// reloj de ficción inicial en la creación de personaje, para que un personaje recién creado no
+  /// arranque ya hambriento.
+  lastAteAtMinutes   Int?
+  lastDrankAtMinutes Int?
+
   worldState       WorldState?
   logEntries       LogEntry[]
   characterTransit CharacterTransit?
@@ -232,6 +242,8 @@ model Save {
   territories      Territory[]
   buildings        Building[]
   subjects         Subject[]
+  almacenItems     AlmacenItem[]
+  plantillasEquipo PlantillaEquipo[]
   savedActions     SavedAction[]
   quests           Quest[]
   npcStates        NpcState[]
@@ -552,14 +564,38 @@ model InventoryItem {
   /// final puede personalizarse en el saqueo/crafteo).
   catalogSlug String?
   createdAt   DateTime   @default(now())
+  /// Equipo de compañero/súbdito (Grupo 3 § Compañeros y supervivencia, 2026-08-25, ver
+  /// docs/rpgtarkor/companeros-y-supervivencia.md § 6) — ambos null = equipado en el propio
+  /// personaje (comportamiento de siempre) o sin equipar; como mucho UNO de los dos con valor,
+  /// nunca los dos a la vez (mismo campo `slot` reutilizado para las 3 posibilidades).
+  /// `onDelete: SetNull` en ambos — si el compañero/súbdito se pierde, el objeto no desaparece,
+  /// vuelve a la mochila sin equipar.
+  companionId String?
+  companion   Companion? @relation(fields: [companionId], references: [id], onDelete: SetNull)
+  /// Solo para el auto-equipo de súbditos por plantilla (§7) — nunca lo asigna la jugadora a mano
+  /// como con `companionId`.
+  subjectId   String?
+  subject     Subject?   @relation(fields: [subjectId], references: [id], onDelete: SetNull)
 
-  @@unique([saveId, slot])
+  // `@@unique([saveId, slot])` retirado (2026-08-25): con `companionId`/`subjectId`, "un objeto
+  // por hueco" ya no es un único par (saveId, slot) — el personaje Y cada compañero/súbdito
+  // tienen su propio hueco ARMA_PRINCIPAL/CASCO/etc a la vez. Se sigue garantizando "como mucho un
+  // objeto por hueco", pero a nivel de aplicación (mismo patrón `updateMany` + `update` en una
+  // sola transacción que YA usaba este índice como respaldo, nunca como única garantía real — ver
+  // PATCH /saves/:id/inventario/:itemId, inventario.ts), ahora también scopeado por el dueño real.
 
   @@index([saveId])
+  @@index([companionId])
+  @@index([subjectId])
 }
 
-/// Aliado, súbdito o acompañante del personaje. Igual que InventoryItem: estado narrativo
-/// persistido para que el Narrador no lo olvide entre turnos, sin capa mecánica propia todavía.
+/// Aliado, súbdito o acompañante del personaje. Hasta 2026-08-25 solo era estado narrativo (name/
+/// role/notes, sin capa mecánica) — Grupo 3 § Compañeros y supervivencia
+/// (docs/rpgtarkor/companeros-y-supervivencia.md) añade Felicidad/Comida/Agua reales para los que
+/// vienen de captura+tameo/persuasión de verdad. Los `Companion` creados por quest/narración libre
+/// (`newCompanion`, sin pasar por captura) se quedan con `tipo: NPC`/`sourceSlug: null` por
+/// defecto — siguen siendo válidos, simplemente sin Felicidad/Comida/Agua que trackear (no
+/// decaen, mismo comportamiento de siempre).
 model Companion {
   id        String   @id @default(cuid())
   saveId    String
@@ -570,7 +606,42 @@ model Companion {
   notes     String
   createdAt DateTime @default(now())
 
+  /// FAUNA = tameado (jaula + tirada opuesta de atributo). NPC = persuadido (atar + tirada
+  /// opuesta) O de quest/narración libre (`newCompanion`, comportamiento de siempre).
+  tipo CompanionTipo @default(NPC)
+  /// Slug del Npc de catálogo (fauna o humanoide) del que viene este compañero — null para los de
+  /// quest/narración libre, que no tienen una ficha de catálogo real detrás.
+  sourceSlug String?
+  /// 0-100, sube/baja por el resultado de cada tirada de tameo/persuasión (§2/3) y por descuido de
+  /// Comida/Agua (§4) — null para compañeros de quest/narración libre (sin capa mecánica).
+  felicidad Int?
+  /// `WorldState.fictionalMinutes` de la última vez que comió/bebió — null = recién capturado, sin
+  /// hambre/sed acumulada todavía (mismo criterio que dar de alta con reloj "a cero"). Comparado en
+  /// vivo contra el reloj actual para saber el estado (nunca se decrementa un contador aparte,
+  /// mismo patrón que `NpcState.condicionFisicaSinceMinutes`).
+  lastFedAtMinutes    Int?
+  lastWateredAtMinutes Int?
+  /// true = ocupa el slot de mascota GARANTIZADO del Domador (companeros-y-supervivencia.md § 2),
+  /// separado por completo de `companionSlotsForRecipeKey` — no compite contra Campamento/Choza.
+  esSlotDomador Boolean @default(false)
+  /// Integración en el Reino (§2/§6-7) — 'guardia'/'trabajador'/'productor' (convención libre,
+  /// mismo criterio que `role`), null = solo compañero personal, no integrado. Requiere Reino
+  /// (con o sin slot de Domador/edificio ya resuelto aparte); el rol concreto depende de la
+  /// especie, sin enum cerrado.
+  rolReino String?
+  /// Plantilla de equipo asignada (§7) — solo relevante si `rolReino` no es null. Null = sin
+  /// plantilla, se equipa a mano como cualquier compañero personal (`inventoryItems` abajo).
+  plantillaEquipoId String?
+  plantillaEquipo   PlantillaEquipo? @relation(fields: [plantillaEquipoId], references: [id], onDelete: SetNull)
+  inventoryItems    InventoryItem[]
+
   @@index([saveId])
+  @@index([plantillaEquipoId])
+}
+
+enum CompanionTipo {
+  FAUNA
+  NPC
 }
 
 enum LoreChunkType {
@@ -1062,10 +1133,64 @@ model Subject {
   territoryId String?
   territory   Territory? @relation(fields: [territoryId], references: [id], onDelete: SetNull)
   name        String
-  /// "capataz", "guerrera", "consejera", "granjero"... — libre
+  /// "capataz", "guerrera", "consejera", "granjero"... — libre. Grupo 3 § Compañeros y
+  /// supervivencia (2026-08-25) añade la convención 'guardia'/'trabajador'/'productor' para
+  /// súbditos con `plantillaEquipoId` — sigue siendo texto libre, sin enum cerrado.
   role        String
   notes       String
   createdAt   DateTime   @default(now())
+
+  /// Plantilla de equipo asignada (docs/rpgtarkor/companeros-y-supervivencia.md § 7) — null = sin
+  /// auto-equipo, este súbdito no recibe nada del Almacén de Reino automáticamente.
+  plantillaEquipoId String?
+  plantillaEquipo   PlantillaEquipo? @relation(fields: [plantillaEquipoId], references: [id], onDelete: SetNull)
+  inventoryItems    InventoryItem[]
+
+  @@index([saveId])
+  @@index([plantillaEquipoId])
+}
+
+/// Almacén de Reino (§6-7) — pool de objetos equipables a nivel de Reino, separado por completo
+/// de la mochila personal (`InventoryItem.saveId`, que sigue siendo solo del propio personaje).
+/// Solo entra por depósito manual (sin producción automática todavía) y solo sale por auto-equipo
+/// hacia un `Subject`/`Companion` con `PlantillaEquipo` asignada (ver `companionSupervivencia.ts`).
+model AlmacenItem {
+  id          String   @id @default(cuid())
+  saveId      String
+  save        Save     @relation(fields: [saveId], references: [id], onDelete: Cascade)
+  name        String
+  description String
+  /// Mismo shape que InventoryItem — se copian tal cual al depositar, y se restauran tal cual al
+  /// auto-equiparse en un Subject/Companion (nunca se pierde el bonus real al pasar por el Almacén).
+  statBonuses Json?
+  catalogSlug String?
+  createdAt   DateTime @default(now())
+
+  @@index([saveId])
+}
+
+/// Plantilla de equipo (§7) — básica (`personalizada: false`, un puñado fijo por rol, no editable)
+/// o personalizada (creada por la jugadora). Define qué ranuras rellenar con qué tipo de objeto;
+/// el auto-equipo (`autoEquiparDesdeAlmacen`, companionSupervivencia.ts) la usa para decidir qué
+/// coger del Almacén para cada Subject/Companion que la tenga asignada.
+model PlantillaEquipo {
+  id            String    @id @default(cuid())
+  saveId        String
+  save          Save      @relation(fields: [saveId], references: [id], onDelete: Cascade)
+  name          String
+  personalizada Boolean   @default(true)
+  /// 'guardia' | 'trabajador' | 'productor' — mismo criterio de texto libre que Subject.role.
+  rol           String
+  /// Record<EquipSlot, { category?: string; catalogSlug?: string }> — un criterio de match por
+  /// ranura a rellenar, mismo shape que `IngredientRequirement.match` (ingredients.ts) para no
+  /// inventar un segundo lenguaje de matching.
+  slots         Json
+  /// Orden de servicio cuando el Almacén escasea y varias plantillas compiten por el mismo objeto
+  /// — menor número = se sirve antes. Editable por la jugadora, sin jerarquía fija de rol.
+  prioridad     Int       @default(0)
+  createdAt     DateTime  @default(now())
+  subjects      Subject[]
+  companions    Companion[]
 
   @@index([saveId])
 }
@@ -1259,6 +1384,14 @@ model Npc {
   domesticablePct  Int @default(0)
   capturablePct    Int @default(0)
   cortejablePct    Int @default(0)
+  /// Atributo de resistencia (Grupo 3 § Compañeros y supervivencia, 2026-08-25, ver
+  /// docs/rpgtarkor/companeros-y-supervivencia.md § 2/3) — CUÁL de los 7 atributos propios de este
+  /// NPC/fauna (`attributes`, ya sembrado) se usa como resistencia en la tirada opuesta de
+  /// tameo/persuasión. Reutiliza el valor YA existente en `attributes`, no un número nuevo
+  /// paralelo — coherente con "cada fauna ya tiene rasgos/personalidad propios en su ficha". Solo
+  /// calibrado a mano en NPC/fauna con `domesticablePct`/`reclutablePct` > 0; null en el resto
+  /// (nada que tamear/persuadir).
+  atributoResistencia String?
   /// Núcleo jugable actual (auditoría 2026-08-14, bug real jugando en vivo: "Sella Marn" — Nabieus
   /// de El Margen Silencioso, región marcada "fuera del núcleo jugable actual" en decenas de
   /// sitios del catálogo, pero solo como texto — apareció en combate real de todas formas).
@@ -1369,6 +1502,20 @@ model NpcState {
   /// (2026-07-31) — permite un saqueo parcial real: dejar algo sin marcar en el modal no lo
   /// pierde, una visita posterior solo ofrece lo que falta y nunca duplica lo ya tomado.
   lootedItemNames String[]        @default([])
+  /// Captura (Grupo 3 § Compañeros y supervivencia, 2026-08-25, ver
+  /// docs/rpgtarkor/companeros-y-supervivencia.md § 1-3) — mismo patrón de claim-atómico que
+  /// `saqueado`: true en cuanto se ata con éxito (trampa-de-lazo + GRAVE/CONVALECIENTE), bloquea
+  /// volver a intentar atar a esta misma instancia. `capturaFelicidad` acumula el resultado de
+  /// cada intento de alimentar (fauna, en jaula)/persuadir (NPC) — SOLO durante el proceso, antes
+  /// de convertirse en `Companion` real (que tiene su propia `felicidad`, independiente). Al
+  /// completar el tameo/persuasión con éxito y crear el `Companion`, estos 3 campos NO se limpian
+  /// — quedan como registro de que esta instancia concreta ya se procesó, mismo criterio que
+  /// `saqueado` nunca se resetea.
+  capturado             Boolean @default(false)
+  capturaFelicidad      Int     @default(0)
+  /// Solo fauna — qué Jaula la aloja durante el tameo. Null para NPC (no necesita jaula, solo
+  /// atado+persuasión) y para fauna todavía sin jaula asignada (recién atada).
+  capturaJaulaBuildingId String?
   /// Rediseño de combate (2026-08-09, "Analizar rival") — true en cuanto el jugador analiza con
   /// éxito a ESTE npc/scope concreto una vez, para siempre en esta partida (no hace falta
   /// repetirlo en el siguiente combate: el atributo recomendado es un dato fijo de sus
