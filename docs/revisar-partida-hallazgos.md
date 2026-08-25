@@ -2962,22 +2962,23 @@ funciona" es el mismo bug, no uno aparte: cualquier caza que abra un `CombatEnco
 solitario) puede reventar en cuanto la narración tarda más de 5 s, algo casi garantizado con Ollama
 local.
 
-**Arreglo propuesto (no aplicado todavía, tamaño de refactor real)**: mover la llamada a `narrarFn`
-FUERA de la transacción — el propio `resultado` de `resolverIntercambioCompleto` (puro, sin I/O) ya
-tiene todo lo necesario para construir el input de narración antes de escribir nada; la transacción
-debería limitarse a los `escribirCondicionYEnergia`/`avanzarYComprobarFin` de UN intercambio, y
-`resolverTurnosAutonomosHastaJugadora` debería abrir una transacción nueva POR INTERCAMBIO (no una
-sola para todo el bucle) narrando entre medias, fuera de cualquier transacción — mismo criterio que
-ya sigue `narrateAndPersistTurn` con `appendSessionFacts`/`captureLiveTeacherExample`. Toca
-`combateMultipleOrquestacion.ts` (`ejecutarIntercambioYAvanzar`, `resolverTurnoAutonomo`,
-`resolverTurnoJugador`, `resolverTurnosAutonomosHastaJugadora`), los 3 puntos de llamada en
-`turnResolution.ts` (líneas 3530/3580/3589), y `combateMultipleOrquestacion.integration.test.ts`
-(llama a estas funciones directamente). Candidato fuerte a primer punto de la auditoría de código.
+**Arreglo aplicado (2026-08-25, primer punto de la auditoría de código, commit `f34a9d9`)**: la
+llamada a `narrarFn` ya no vive dentro de ninguna transacción. `resolverTurnoAutonomo`/
+`resolverTurnoJugador`/`resolverTurnosAutonomosHastaJugadora` reciben ahora el `PrismaClient` real
+(no un `tx` heredado del caller) — cada intercambio (`ejecutarIntercambioYAvanzar`) abre DOS
+transacciones cortas de solo escritura (una para `escribirCondicionYEnergia` de ambos lados, otra
+para `avanzarYComprobarFin`) con la llamada a `narrarFn` sandwiched entre ellas, fuera de cualquier
+transacción — mismo criterio que ya sigue `narrateAndPersistTurn` con
+`appendSessionFacts`/`captureLiveTeacherExample`. Los 3 puntos de llamada en `turnResolution.ts`
+(antes envueltos en `prisma.$transaction`) ahora llaman directamente pasando `prisma`.
+`iniciarCombatEncounter` es la única función del archivo que sigue recibiendo un `tx` (no narra
+nada, crear el encuentro es atómico y rápido). Verificado: `tsc -b` limpio, 1318 tests unitarios en
+verde, los 4 archivos de integración en verde por separado (incluido `turn.integration.test.ts`
+83/83 dos veces seguidas, tras descartar un flake de arranque en frío de Ollama comparando contra el
+código pre-fix vía `git stash`).
 
-**Estado**: CONFIRMADO, causa raíz identificada, fix NO aplicado todavía (refactor real, se deja
-para la auditoría de código). Mitigación aplicada ya (ver entrada siguiente): guard nuevo en
-`cazar.ts` para que un crash no pueda apilar encuentros huérfanos, y limpieza manual del save real
-afectado (3 `CombatEncounter` huérfanos borrados, `pendingNpcAttack` corrupto limpiado).
+**Estado**: FIJADO. Mitigación previa (guard en `cazar.ts` contra encuentros huérfanos, ver entrada
+siguiente) sigue vigente como red de seguridad adicional, no se ha revertido.
 
 ## 2026-08-25 (continuación) — CombatEncounter huérfanos se apilaban al reintentar cazar tras el crash — cualquier turno posterior se enrutaba a un combate roto
 
