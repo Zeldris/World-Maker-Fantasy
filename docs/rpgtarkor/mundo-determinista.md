@@ -177,34 +177,36 @@ era un disparador limpio, y esa es exactamente la pieza que cierra esta capa.
 ## Hallazgos independientes — no dependen de las 4 capas, se pueden atajar por separado
 
 Encontrados durante la misma investigación; cada uno es una unidad de trabajo propia, sin esperar al
-resto del diseño.
+resto del diseño. **Los 5 cerrados y APLICADOS al motor el mismo día (2026-08-25, commit `1902c29`)**:
 
-1. **Log de Mundo → conectar a hechos reales.** Reutilizar el panel/polling/canal `WORLD` ya
-   existentes, pero narrar los deltas reales de `worldAgenda.ts`/`WorldPopulation` en vez de
-   ambientación reciclada. Cero coste de LLM añadido (ya es determinista), cero riesgo nuevo — el
-   quick-win más barato de toda esta lista, y una validación pequeña del principio rector antes de
-   tocar nada más grande.
-2. **`newQuest` necesita el mismo tratamiento que `newBuilding`.** Tabla/plantillas de misiones
-   reales (con NPC/Location/Item objetivo reales) de donde el modelo solo elige y viste, nunca
-   inventa desde cero.
-3. **`newItem` en narración libre probablemente sobra del todo.** Recolección/combate/crafteo ya
-   cubren cualquier forma legítima de conseguir un objeto real; es el único camino que crea objetos
-   fuera de `ItemCatalog` en todo el juego.
-4. **`newCompanion` debería usar el sistema de reputación de facción que ya existe** (`effectiveTemperamento`,
-   ya usado en combate) como umbral real de reclutamiento, no solo el cupo de slots.
-5. **`newTerritory`/`newSubject` merecen la misma cura que `newBuilding`** — la prueba de que el
-   patrón funciona ya está en el propio proyecto.
+1. [x] ~~**Log de Mundo → conectar a hechos reales.**~~ `advanceWorldAgenda` (`worldAgenda.ts`) ya
+   escribe una `LogEntry` de canal WORLD por cada etapa cruzada — mismo texto ya escrito a mano
+   (`STAGE_FACTS`) que antes solo alimentaba `sessionFacts`, cero coste de LLM añadido.
+2. [x] ~~**`newQuest` necesita el mismo tratamiento que `newBuilding`.**~~ Versión acotada, no el
+   catálogo completo de plantillas (fuera de alcance de esta pasada): exige al menos un anclaje real
+   ya resuelto (NPC/Location/Item) antes de crear la `Quest` — una misión sin ninguna conexión con
+   el mundo real ya no se crea.
+3. [x] ~~**`newItem` en narración libre probablemente sobra del todo.**~~ Decidido no quitarlo del
+   todo: exige coincidir con un `ItemCatalog` real del mundo — si coincide, hereda `equipSlot`/
+   `effectKey`/`tipo` reales (antes siempre `null`); si no, se descarta sin crear nada.
+4. [x] ~~**`newCompanion` debería usar el sistema de reputación de facción que ya existe.**~~ Exige
+   NPC real en escena + `effectiveTemperamento` AMIGABLE o INOFENSIVO. AMIGABLE a secas se descartó
+   al comprobar el catálogo real: 0 NPC nacen con ese temperamento — exigirlo solo habría hecho el
+   reclutamiento libre imposible en la práctica.
+5. [x] ~~**`newTerritory`/`newSubject` merecen la misma cura que `newBuilding`.**~~ `newTerritory` ya
+   no confía en la región que escriba el modelo — siempre usa la región real de la Location actual
+   (más fuerte que un guard: ni siquiera puede fallar la validación, la fuente de verdad cambió).
+   `newSubject` exige un `Territory` real ya resuelto.
 
 ---
 
 ## Estado y orden recomendado
 
-Todo diseño, nada construido — **excepto Combate múltiple**, que ya tiene avance real (Fases A-C +
-paridad completa de mecánicas + `resolverTurnoJugador`, commits `5e63c27`/`419d7af`/`82793ab`/`d92df45`/`81e810c`,
-2026-08-25) y solo le falta el disparador de la Capa 3-4 de este documento para conectarse al juego
-en vivo.
+**Los 5 hallazgos independientes: cerrados** (ver arriba). **Combate múltiple**: avance real (Fases
+A-C + paridad completa de mecánicas + `resolverTurnoJugador`, commits
+`5e63c27`/`419d7af`/`82793ab`/`d92df45`/`81e810c`, 2026-08-25) — solo le falta el disparador de la
+Capa 3-4 de este documento para conectarse al juego en vivo. **Las 4 capas: sin construir todavía**,
+diseño completo arriba.
 
-Orden recomendado: los 5 hallazgos independientes se pueden atacar en cualquier momento (el Log de
-Mundo es el más barato y el más ilustrativo). Las 4 capas dependen entre sí en el orden dado — Capa 1
-(zonas navegables) es la fundación real, y construir la Capa 3 antes que la 1 significaría rehacer
-trabajo.
+Orden recomendado para lo que queda: las 4 capas dependen entre sí en el orden dado — Capa 1 (zonas
+navegables) es la fundación real, y construir la Capa 3 antes que la 1 significaría rehacer trabajo.

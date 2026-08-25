@@ -121,11 +121,14 @@ resumen de trabajo real, agrupado por tamaño.
   que resultó ser solo píxeles hardcodeados en el frontend) → cola de eventos por tiempo/posición
   (extiende `worldTick.ts`) → determinismo de aparición en turno libre (rompe el ciclo real
   `newFacts`→`sessionFacts`→`npcsInScene` sin ningún control de población) → disparo real de
-  Combate múltiple vía `iniciarCombatEncounter`. Más 5 hallazgos independientes, atacables ya sin
-  esperar a las 4 capas: Log de Mundo desconectado de los hechos reales de `worldAgenda.ts`/
-  `WorldPopulation` (quick-win, ya es 100% determinista, solo le falta cable), y `newQuest`/`newItem`/
-  `newCompanion`/`newTerritory`/`newSubject` sin ningún guard de código (a diferencia de `newBuilding`,
-  que ya demuestra el patrón correcto).
+  Combate múltiple vía `iniciarCombatEncounter`. **Las 4 capas: sin construir, diseño completo.**
+  **Los 5 hallazgos independientes: cerrados el mismo día** (commit `1902c29`, ver
+  [mundo-determinista.md](rpgtarkor/mundo-determinista.md) para el detalle) — Log de Mundo conectado
+  a los hechos reales de `worldAgenda.ts` (LogEntry de canal WORLD por etapa cruzada, cero coste de
+  LLM); `newQuest` exige un anclaje real (NPC/Location/Item); `newItem` exige coincidir con
+  `ItemCatalog` real (hereda equipSlot/tipo reales); `newCompanion` exige NPC real en escena +
+  `effectiveTemperamento` AMIGABLE/INOFENSIVO; `newTerritory` ya no confía en la región que escriba
+  el modelo (siempre la real de la Location actual); `newSubject` exige un Territory real.
 - [x] ~~**Compañeros y supervivencia**~~ — backend completo APLICADO al motor 2026-08-25 (alcance
   íntegro, incluido Almacén de Reino, confirmado explícitamente: "todo, incluido Almacén de
   Reino"). `Companion`/`Subject` con Felicidad/Comida/Agua/plantilla reales; `NpcState.capturado`/
