@@ -129,6 +129,13 @@ Cada entrada: fecha, qué se detectó (cita textual si es narración), causa ra�
 - [la caché de tirada de recolección es un único slot por partida, no por oficio — cambiar de profesión sin confirmar la invalida](#2026-08-25-la-caché-de-tirada-de-recolección-es-un-único-slot-por-partida-no-por-oficio--cambiar-de-profesión-sin-confirmar-la-invalida)
 - [Roca Luclara minable en Hondonada del Eco pese a tener `harvestSourceHomeLocationSlug` distinto — `harvestSourceHomeLocationSlug` nunca se aplica a MINERIA/TALA/EXTRACCION, solo a PASIVO](#2026-08-25-roca-luclara-minable-en-hondonada-del-eco-pese-a-tener-harvestsourcehomelocationslug-distinto--harvestsourcehomelocationslug-nunca-se-aplica-a-mineriatalaextraccion-solo-a-pasivo)
 
+**2026-08-25 — auditoría de código (tras fijar el timeout de Prisma), 2 agentes en paralelo por zona**
+- [Condición de carrera: confirmar tameo puede superar el tope real de compañeros o duplicar un slot de domador gratis](#2026-08-25-condición-de-carrera-confirmar-tameo-puede-superar-el-tope-real-de-compañeros-o-duplicar-un-slot-de-domador-gratis)
+- [Condición de carrera: doble clic en "salgo a cazar" puede crear dos CombatEncounter activos a la vez](#2026-08-25-condición-de-carrera-doble-clic-en-salgo-a-cazar-puede-crear-dos-combatencounter-activos-a-la-vez)
+- [Condición de carrera: huir de combate puede pisar en silencio un pendingCombatNpcSlugs que un turno real está escribiendo en paralelo](#2026-08-25-condición-de-carrera-huir-de-combate-puede-pisar-en-silencio-un-pendingcombatnpcslugs-que-un-turno-real-está-escribiendo-en-paralelo)
+- [Huecos de vocabulario en guards de honestidad narración-vs-mecánica existentes](#2026-08-25-huecos-de-vocabulario-en-guards-de-honestidad-narración-vs-mecánica-existentes)
+- [Categorías mecánicas sin ningún guard de honestidad correspondiente](#2026-08-25-categorías-mecánicas-sin-ningún-guard-de-honestidad-correspondiente)
+
 ---
 
 ## 2026-08-01 — descansar no curaba + objeto médico narrado sin usarse
@@ -3056,3 +3063,122 @@ o (b) se acepta que solo aplica a objetos narrativos PASIVO por diseño, y las e
 consideran solo documentación de lore sin efecto mecánico real — en cuyo caso valdría la pena un
 comentario que lo aclare para no confundir a futuro. Candidato a preguntar a la usuaria en la
 auditoría de lore (¿debería Roca Luclara solo poder minarse cerca de la Sabana Alta del Colmillar?).
+
+## 2026-08-25 — Condición de carrera: confirmar tameo puede superar el tope real de compañeros o duplicar un slot de domador gratis
+
+**Hallazgo (auditoría de código, agente en paralelo, no reproducido en vivo todavía)**:
+`routes/saves/companeros.ts`, `POST /saves/:id/tameo-pendientes/:npcSlug/confirmar`. La ruta lee
+`companionCount` y `buildings` (líneas 225-229), calcula `maxCompanions` en memoria, y solo si
+`companionCount < maxCompanions` crea el `Companion` (línea 237) — sin transacción ni lock entre la
+lectura y el `create`. Dos confirmaciones casi simultáneas (dos capturas pendientes distintas, o
+doble clic) leen el mismo `companionCount` antes de que ninguna escriba, ambas pasan el check, y
+ambas crean — el reino termina con más compañeros que huecos reales de edificio. Mismo defecto en
+el sub-check de `esSlotDomador` (líneas 219-223): dos tameos de fauna concurrentes pueden marcar
+ambos `esSlotDomador: true`, dando un slot gratis de más.
+
+Esta ruta NO pasa por `claimTurnInFlight` (esa protección es exclusiva de `/turn/narrate`) — no hay
+ningún candado que la cubra.
+
+**Estado**: PENDIENTE. Arreglo natural: mover el check+create dentro de una transacción con
+`SELECT ... FOR UPDATE` (mismo patrón que ya usa `progression.ts` para `/attribute-points`), o un
+`WHERE companionCount < maxCompanions` atómico si el conteo se puede expresar como condición SQL.
+
+## 2026-08-25 — Condición de carrera: doble clic en "salgo a cazar" puede crear dos CombatEncounter activos a la vez
+
+**Hallazgo (auditoría de código, agente en paralelo, no reproducido en vivo todavía)**:
+`routes/saves/cazar.ts`, `POST /saves/:id/cazar/confirmar` (caza en grupo). El propio comentario del
+guard añadido el mismo día (líneas 249-256, ver entrada "continuación" más arriba) documenta el
+riesgo de fondo — "dos o más encuentros activos a la vez... cualquier turno futuro se enruta al
+primero que `findFirst` encuentre" — pero el fix de ese momento solo cierra el caso de una
+transacción de narración que revienta a mitad (el guard que SÍ se añadió). El propio check
+(`activeEncounter = findFirst(...)` en la línea 257, luego `iniciarCombatEncounter` en la línea 360)
+sigue siendo TOCTOU sin lock: dos peticiones a `/cazar/confirmar` casi simultáneas (doble clic en
+"Salgo a cazar") pasan ambas el `findFirst` con `activeEncounter === null` y ambas crean su propio
+`CombatEncounter`. Peor caso: el mismo síntoma real ya visto en el playtest (encuentro huérfano
+`EN_CURSO` para siempre, turnos futuros enrutados al equivocado) — pero disparado por doble clic en
+vez de por el crash de Prisma ya fijado.
+
+**Estado**: PENDIENTE. El guard existente (`findFirst` + comprobación) reduce la ventana pero no la
+cierra — necesitaría envolver lectura+creación en una única transacción, o un candado por saveId
+específico para esta ruta (mismo espíritu que `turnLock.ts`, pero esa ruta no pasa por
+`/turn/narrate`).
+
+## 2026-08-25 — Condición de carrera: huir de combate puede pisar en silencio un pendingCombatNpcSlugs que un turno real está escribiendo en paralelo
+
+**Hallazgo (auditoría de código, agente en paralelo, no reproducido en vivo todavía)**:
+`routes/saves/session.ts`, `POST /saves/:id/combat/flee` (líneas 118-153). Lee
+`pendingCombatNpcSlugs` al principio (línea 130), calcula la tirada de huida, y si tiene éxito
+escribe `pendingCombatNpcSlugs: []` (línea 149) sin comprobar que el valor siga siendo el mismo que
+se leyó. A diferencia de los otros dos hallazgos de esta tanda, aquí el riesgo no es solo doble
+clic: `/turn/narrate` (protegido por `claimTurnInFlight`) puede estar resolviendo un intercambio de
+combate real en paralelo y actualizar `pendingCombatNpcSlugs` (nuevo NPC entra en combate, o cambia
+el set) justo en la ventana entre la lectura y el `update` de `flee` — el resultado de esa escritura
+se pierde en silencio, dejando el combate en un estado inconsistente (la jugadora "huye" de un
+combate que el turno paralelo ya había mutado a otra cosa).
+
+**Estado**: PENDIENTE. Necesitaría releer `pendingCombatNpcSlugs` justo antes de escribir (dentro de
+una transacción corta), o comparar el valor leído contra el actual antes del `update` y abortar con
+409 si cambió entre medias (mismo criterio que el resto del proyecto usa para detectar staleness).
+
+## 2026-08-25 — Huecos de vocabulario en guards de honestidad narración-vs-mecánica existentes
+
+**Hallazgo (auditoría de código, agente en paralelo, no reproducido en vivo todavía)**: los guards
+`hasFalseXxx`/`hasResurrectedDeadNpc`/etc. (`services/narrador.ts:1377-1800`, invocados desde
+`turnResolution.ts`) siguen el mismo patrón de todas sus ampliaciones anteriores documentadas como
+"bug real": cubren el vocabulario visto en el caso concreto que las originó, pero no generalizan a
+sinónimos/conjugaciones igual de comunes en español. Cuatro huecos concretos encontrados:
+
+1. **`COMBAT_HIT_LEAK_REGEX`/`hasFalseCombatHit`** (`narrador.ts:1477-1483`): el patrón
+   `\bgolpe[oó]\b` solo matchea "golpeo"/"golpeó" (verbo), no el sustantivo suelto "golpe" — el uso
+   más común en español para narrar un impacto ("asesta un golpe", "conecta un golpe limpio").
+   Tampoco cubre "asesta"/"propina"/"conecta"/"atina"/"clava"/"ensarta"/"empala", ni sustantivos de
+   arma ("zarpazo"/"tajo"/"estocada"/"mandoble"). Ejemplo que se cuela con `combatBothMissed=true`:
+   *"Gorhorn asesta un golpe certero al orco, que retrocede dolorido."*
+2. **`DEATH_CLAIM_LEAK_REGEX`/`hasFalseDeathClaim`** (`narrador.ts:1573-1578`): cubre "murió/muere/
+   ha muerto/cae muerto/sin vida/muerte instantánea", pero no "fallece"/"expira"/"deja de respirar"/
+   "exhala su último aliento", ni "cadáver"/"despojos". Ejemplo con `combatNoRealDeathThisTurn=true`:
+   *"El orco fallece entre estertores, dejando solo un cadáver tendido en la arena."*
+3. **`RESURRECTION_LEAK_REGEX`/`hasResurrectedDeadNpc`** (`narrador.ts:1695-1702`): cubre
+   "reaparece"/"vuelve a atacar"/"se lanza hacia/sobre/contra", pero no verbos de "levantarse" tras
+   quedar CONVALECIENTE/MUERTO ("se incorpora"/"se levanta"/"se pone en pie"), ni "lanza un [arma]
+   contra" (solo matchea si "lanza/abalanza/arroja" va directamente seguido de hacia/sobre/contra).
+   Ejemplo con el NPC en `possiblyResurrectedNpcNames`: *"El Orco Enfurecido se incorpora pese a sus
+   heridas y lanza un hachazo brutal contra Gorhorn."*
+4. **`UNCONSCIOUS_LEAK_REGEX`/`hasFalseUnconsciousNarration`** (`narrador.ts:1554-1559`): cubre
+   "inconsciente/desmayado/inerte/se desvanece/pierde el conocimiento", pero no frases equivalentes
+   sin esas palabras clave: "no se mueve"/"no reacciona"/"queda tendido, inmóvil". Ejemplo con
+   `npcFallsConvalecienteThisTurn=true` (el NPC sigue vivo y puede actuar): *"El buitre cae al suelo
+   y no vuelve a moverse."*
+
+**Estado**: PENDIENTE. Mismo patrón de arreglo que las ampliaciones anteriores — sumar los términos
+que faltan a cada regex existente, sin tocar la lógica del guard en sí.
+
+## 2026-08-25 — Categorías mecánicas sin ningún guard de honestidad correspondiente
+
+**Hallazgo (auditoría de código, agente en paralelo, no reproducido en vivo todavía)**: además de los
+huecos de vocabulario (entrada anterior), hay 3 categorías mecánicas importantes sin ningún guard
+que compruebe que la prosa no contradiga el resultado real:
+
+1. **Curación por descanso libre (sin panel "Curar" explícito)**: `turnResolution.ts:3606-3610` deja
+   explícito que solo 7 ramas son 100% deterministas (combate múltiple, Gistera guionizada, saqueo,
+   construcción, cosecha, crafteo, `usingExplicitHealList`) — "descansar" normal pasa por
+   `narrateAction` (LLM libre), mientras el techo real de curación lo calcula `healCeilingFor` de
+   forma determinista (`turnResolution.ts:3848-3863`, p.ej. tope GRAVE en terreno salvaje, HERIDO
+   solo en refugio/asentamiento real). No existe ningún `hasFalseHealingClaim` que detecte que la
+   prosa diga "queda completamente sano, como nuevo" cuando el resultado mecánico real es peor.
+2. **Entrega de objeto (`newItem`) narrada sin materializarse**: `turnResolution.ts:4531-4553` (fix
+   2026-08-25) ya exige que `narration.newItem.name` coincida con un `ItemCatalog` real para
+   crearse — si no coincide, no se crea nada, sin ningún guard que avise. Es el caso inverso, sin
+   cubrir, de `hasFalseItemUse` (que sí protege el consumo falso): falta el equivalente para el
+   *regalo*/obtención falsa. Ejemplo: la prosa dice *"guarda la Daga de Hueso curtida en su cinto"*
+   pero el nombre no matchea catálogo — el inventario real no cambia y nadie lo detecta en pantalla.
+3. **Construcción rechazada: la prosa visible no se corrige, solo los campos estructurados**:
+   `turnResolution.ts:3671-3690` — cuando faltan materiales/requisitos, el código limpia `newFacts`
+   y `newBuilding` para proteger el estado persistido, pero a diferencia del caso de viaje
+   (`hasFalseTravelClaim`, que sí reescribe `narration.narration`), aquí no se toca el texto que ve
+   la jugadora — puede seguir leyendo una escena de construcción completada aunque mecánicamente no
+   se construyó nada.
+
+**Estado**: PENDIENTE de decisión (¿vale la pena un guard nuevo para cada categoría, o se acepta el
+riesgo porque son casos raros?). Candidato a la próxima ronda de la auditoría de código o a
+deuda técnica, según prioridad que decida la usuaria.
