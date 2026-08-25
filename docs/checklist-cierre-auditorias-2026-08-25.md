@@ -9,7 +9,7 @@ Y en su hallazgo de origen al cerrarse (FIJADO), con commit propio y verificaci�
 
 ## Bloque 1 — riesgo funcional real
 
-- [ ] 1. Combate múltiple: escalar atributos de NPC por nivel (`npcAttributesForLevel`, hoy en crudo)
+- [x] 1. Combate múltiple: escalar atributos de NPC por nivel (`npcAttributesForLevel`, hoy en crudo) — commit `66fb663`, incluyó arreglar `companion.attributes` nunca poblado
 - [ ] 2. Condición de carrera: confirmar tameo (tope de compañeros / slot domador duplicado)
 - [ ] 3. Condición de carrera: `cazar/confirmar` puede crear 2 `CombatEncounter`
 - [ ] 4. Condición de carrera: `combat/flee` pisa `pendingCombatNpcSlugs` en paralelo

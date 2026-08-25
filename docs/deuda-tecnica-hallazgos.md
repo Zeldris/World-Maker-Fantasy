@@ -45,9 +45,14 @@ No es solo estilo: `INTELIGENCIA_TACTICA_UMBRAL` (`combateMultiple.ts`) decide e
 inteligente sobre ese mismo bloque de atributos, así que un NPC de nivel alto en Combate múltiple
 lucha y decide con las stats de nivel 1 — más débil y más torpe de lo que debería.
 
-**Estado**: PENDIENTE. Es el hallazgo con más riesgo funcional real de toda esta ronda (bug de
-balance silencioso, no solo deuda de mantenibilidad) — buen candidato a subir de prioridad respecto
-al resto de esta lista si se decide arreglar algo pronto.
+**Estado**: FIJADO (commit `66fb663`, 2026-08-25) — las 3 ramas (NPC individual, NPC de grupo,
+compañero) ya pasan por `npcAttributesForLevel`. Investigando esta rama se encontró un bug más
+profundo: `Companion.attributes` nunca se rellenaba al confirmar un tameo/persuasión
+(`routes/saves/companeros.ts`), así que `datosVivosDe` descartaba SIEMPRE a cualquier compañero de
+un `CombatEncounter` — ningún compañero podía luchar nunca, no solo con stats de nivel 1. Arreglado
+en el mismo commit (se guarda el bloque crudo del Npc origen al confirmar, se escala por su nivel en
+el momento de combatir). Verificado: `tsc -b` limpio, 1318 tests unitarios + 4 archivos de
+integración en verde.
 
 ## 2026-08-25 — ENERGY_RECOVER_* declaradas como fuente de verdad pero sin ninguna referencia real
 
