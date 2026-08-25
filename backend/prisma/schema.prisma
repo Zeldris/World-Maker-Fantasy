@@ -244,6 +244,7 @@ model Save {
   subjects         Subject[]
   almacenItems     AlmacenItem[]
   plantillasEquipo PlantillaEquipo[]
+  combatEncounters CombatEncounter[]
   savedActions     SavedAction[]
   quests           Quest[]
   npcStates        NpcState[]
@@ -635,8 +636,97 @@ model Companion {
   plantillaEquipo   PlantillaEquipo? @relation(fields: [plantillaEquipoId], references: [id], onDelete: SetNull)
   inventoryItems    InventoryItem[]
 
+  /// Combate múltiple (Grupo 3, 2026-08-25, docs/rpgtarkor/combate-multiple.md § 5: "Companion
+  /// necesita atributos y vida propios") — null = compañero sin capa de combate todavía (de
+  /// quest/narración libre, `newCompanion`, nunca pasó por captura+tameo/persuasión real). Al
+  /// confirmar un tameo/persuasión (companeros.ts), se copia tal cual el `attributes` del `Npc`
+  /// de catálogo origen — un compañero de combate real nunca es más fuerte que el individuo del
+  /// que salió. AttributeBlock, mismo shape que `Save.attributes`/`Npc.attributes`.
+  attributes Json?
+  /// Mismo enum que Save/NpcState — participa en `resolveExchange` exactamente igual que el
+  /// jugador o un Npc. Arranca ILESO; nunca se inicializa junto a `attributes: null` (sin
+  /// atributos no hay combate posible, el valor por defecto de aquí es irrelevante en ese caso).
+  condicionFisica CondicionFisica @default(ILESO)
+  combatParticipants CombatParticipant[]
+
   @@index([saveId])
   @@index([plantillaEquipoId])
+}
+
+/// Combate múltiple (Grupo 3, 2026-08-25, diseño completo en docs/rpgtarkor/combate-multiple.md)
+/// — sesión de combate persistida de verdad, sustituyendo el estado repartido en campos sueltos
+/// (`Save.pendingNpcAttack`, el truco `NpcState.groupSize`/`groupDefeated`) que solo servía para
+/// 1v1. Tope duro de 4 combatientes por bando (§3) — un enfrentamiento mayor se PARTE en varios
+/// `CombatEncounter` (uno jugable, el resto resueltos deterministas de una sentada, ver
+/// `combateMultiple.ts` § resolverEncounterDeterminista).
+model CombatEncounter {
+  id              String                @id @default(cuid())
+  saveId          String
+  save            Save                  @relation(fields: [saveId], references: [id], onDelete: Cascade)
+  estado          CombatEncounterEstado @default(EN_CURSO)
+  ronda           Int                   @default(1)
+  /// Índice del combatiente actual DENTRO de `ordenIniciativa` — no el `CombatParticipant.id`
+  /// directamente, para poder avanzar con un simple `+1 % length` sin buscar posiciones.
+  turnoActual     Int                   @default(0)
+  /// `CombatParticipant.id[]` ya ordenados por iniciativa — recalculado solo al empezar el
+  /// encuentro (§1: "cada combatiente presente tira su propia iniciativa... se ordenan todos en
+  /// una única cola"), nunca se re-tira a media pelea.
+  ordenIniciativa String[]              @default([])
+  /// true = este es el sub-combate que la jugadora juega en directo (§3/§4) — los demás
+  /// (sub-combates 4v4 sobrantes de un choque más grande, o cualquier combate sin la jugadora
+  /// presente, p. ej. Reino defendiéndose) se resuelven deterministas de una sentada, sin turno a
+  /// turno real.
+  jugable         Boolean               @default(true)
+  createdAt       DateTime              @default(now())
+  resolvedAt      DateTime?
+  participantes   CombatParticipant[]
+
+  @@index([saveId])
+}
+
+enum CombatEncounterEstado {
+  EN_CURSO
+  RESUELTO
+}
+
+/// Un combatiente real dentro de un `CombatEncounter` — solo referencia (bando/tipo/a quién
+/// apunta), nunca duplica atributos/condición física: esos siguen viviendo en `Save`/`NpcState`/
+/// `Companion` (la fuente de verdad de siempre), leídos en vivo en cada turno. Evita el bug real
+/// de tener dos copias de "cuánta vida le queda a X" que puedan desincronizarse.
+model CombatParticipant {
+  id          String                @id @default(cuid())
+  encounterId String
+  encounter   CombatEncounter       @relation(fields: [encounterId], references: [id], onDelete: Cascade)
+  bando       CombatBando
+  tipo        CombatParticipantTipo
+  /// Exactamente uno de los 3 rellena según `tipo` — JUGADOR no necesita ninguno (ya es `save`,
+  /// vía `encounter.saveId`).
+  companionId String?
+  companion   Companion?            @relation(fields: [companionId], references: [id], onDelete: Cascade)
+  npcId       String?
+  npc         Npc?                  @relation(fields: [npcId], references: [id], onDelete: Cascade)
+  /// Scope real del Npc en ESTA escena (mismo criterio que `NpcState.scope`) — necesario para
+  /// resolver la fila `NpcState` correcta cuando el Npc es `PLANTILLA` (varias apariciones
+  /// posibles del mismo arquetipo). Vacío para JUGADOR/COMPANION.
+  npcScope    String                @default("")
+  /// Otro `CombatParticipant.id` del bando contrario — el emparejamiento vivo de cada turno (§2),
+  /// null si su bando contrario ya no tiene nadie vivo (combate a punto de cerrarse) o si el
+  /// jugador todavía no ha elegido objetivo esta ronda.
+  objetivoActualId String?
+  createdAt   DateTime              @default(now())
+
+  @@index([encounterId])
+}
+
+enum CombatBando {
+  JUGADOR
+  ENEMIGO
+}
+
+enum CombatParticipantTipo {
+  JUGADOR
+  COMPANION
+  NPC
 }
 
 enum CompanionTipo {
@@ -1403,6 +1493,7 @@ model Npc {
 
   items     NpcItem[]
   npcStates NpcState[]
+  combatParticipants CombatParticipant[]
 
   @@unique([worldId, slug])
 }
