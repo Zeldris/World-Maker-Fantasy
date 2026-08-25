@@ -8,6 +8,7 @@ import { detectHarvestSourcesInScene } from '../../services/harvest.js';
 import { loadSessionFacts, appendSessionFacts } from '../../services/worldFacts.js';
 import { recordEntityDiscoveries } from '../../services/entityDiscovery.js';
 import type { AttributeBlock } from '../../services/dice.js';
+import { iniciarCombatEncounter } from '../../services/combateMultipleOrquestacion.js';
 
 /// Caza (revisión de partida 2026-08-08, "buscar presas... eso no va, sale un pequeño raposa que
 /// desaparece sin más" + diseño consultado con la usuaria): el texto libre nunca conectaba de
@@ -308,33 +309,44 @@ export async function cazarRoutes(app: FastifyInstance) {
       };
     }
 
-    // Caza en grupo (2026-08-13) — solo tiene sentido para especies con más de un avistado; con 1
-    // avistado, el combate sigue exactamente igual que siempre (NpcState sin groupSize, creada
-    // fresca por el propio motor de turnos como cualquier encuentro solitario). Se resuelve AQUÍ,
-    // antes de devolver el actionText, para que el combate ya empiece contra el tamaño de grupo
-    // real — nunca decidido por el modelo, ver comentario de `rollGroupEngagement`.
+    // Caza en grupo — Grupo 3 § Mundo determinista, Capa 4 (docs/rpgtarkor/mundo-determinista.md,
+    // 2026-08-25): disparo real, `iniciarCombatEncounter` en vez del viejo truco `NpcState.groupSize`
+    // (varios individuos "resucitando" en la misma fila). Solo se crea un `CombatEncounter` real si
+    // AL MENOS una especie seleccionada tiene más de un avistado — con 1 avistado en TODAS, el
+    // combate sigue exactamente igual que siempre (detección normal por texto, `resolveCombatExchangePhase`
+    // 1v1 clásico), sin tocar nada de este bloque. Si hay un grupo real, TODAS las especies
+    // seleccionadas (incluidas las de un solo individuo) entran en el mismo encuentro — nunca mezclar
+    // un `CombatEncounter` real con NPC detectados por el sistema viejo en la misma escena.
     const npcsBySlug = new Map((await prisma.npc.findMany({ where: { worldId: save.worldId, slug: { in: selected.map((c) => c.slug) } } })).map((n) => [n.slug, n]));
     const currentLocationId = save.currentLocation?.id ?? null;
     const varianceClauses: string[] = [];
-    await Promise.all(
-      selected
-        .map((c) => ({ ...c, avistados: avistadosFor(c.capturablePct, c.poblacion) }))
-        .filter((c) => c.avistados > 1)
-        .map(async (c) => {
-          const npc = npcsBySlug.get(c.slug);
-          if (!npc) return;
+    const conAvistados = selected.map((c) => ({ ...c, avistados: avistadosFor(c.capturablePct, c.poblacion) }));
+    const hayGrupoReal = conAvistados.some((c) => c.avistados > 1);
+
+    if (hayGrupoReal) {
+      const jugadorAttrs = save.attributes as AttributeBlock;
+      const combatientes: (Parameters<typeof iniciarCombatEncounter>[2][number])[] = [
+        { bando: 'JUGADOR', tipo: 'JUGADOR', destreza: jugadorAttrs.destreza, inteligencia: jugadorAttrs.inteligencia },
+      ];
+      for (const c of conAvistados) {
+        const npc = npcsBySlug.get(c.slug);
+        if (!npc) continue;
+        const npcAttrs = npc.attributes as AttributeBlock;
+        const scope = scopeFor(npc.kind, currentLocationId);
+        if (c.avistados > 1) {
           const cantidadElegida = Math.max(1, Math.min(c.avistados, Math.round(cantidades?.[c.slug] ?? c.avistados)));
           const cantidadReal = rollGroupEngagement(cantidadElegida, c.avistados);
-          const scope = scopeFor(npc.kind, currentLocationId);
-          await prisma.npcState.upsert({
-            where: { saveId_npcId_scope: { saveId: save.id, npcId: npc.id, scope } },
-            create: { saveId: save.id, npcId: npc.id, scope, condicionFisica: 'ILESO', groupSize: cantidadReal, groupDefeated: 0, corpsesLooted: 0 },
-            update: { condicionFisica: 'ILESO', groupSize: cantidadReal, groupDefeated: 0, corpsesLooted: 0, saqueado: false, lootedItemNames: [] },
-          });
+          for (let i = 0; i < cantidadReal; i++) {
+            combatientes.push({ bando: 'ENEMIGO', tipo: 'NPC', npcId: npc.id, npcScope: scope, destreza: npcAttrs.destreza, inteligencia: npcAttrs.inteligencia, esGrupo: true });
+          }
           const clause = groupVarianceClause(cantidadElegida, cantidadReal);
           if (clause) varianceClauses.push(`Con '${c.name}', ${clause}.`);
-        }),
-    );
+        } else {
+          combatientes.push({ bando: 'ENEMIGO', tipo: 'NPC', npcId: npc.id, npcScope: scope, destreza: npcAttrs.destreza, inteligencia: npcAttrs.inteligencia });
+        }
+      }
+      await prisma.$transaction((tx) => iniciarCombatEncounter(tx, save.id, combatientes));
+    }
 
     const names = selected.map((c) => c.name);
     const actionText = [`Salgo a cazar y ataco a ${names.map((n) => `'${n}'`).join(', ')}.`, ...varianceClauses].join(' ');

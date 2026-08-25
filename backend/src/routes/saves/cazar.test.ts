@@ -21,6 +21,13 @@ const updateSave = vi.fn();
 const transaction = vi.fn();
 const loadSessionFacts = vi.fn();
 const appendSessionFacts = vi.fn();
+// Caza en grupo — Grupo 3 § Mundo determinista, Capa 4 (2026-08-25): iniciarCombatEncounter ya
+// no escribe NpcState.groupSize directo, crea un CombatEncounter/CombatParticipant real dentro de
+// la misma $transaction que antes solo usaba la caza limpia sin combate.
+const createCombatEncounter = vi.fn();
+const createCombatParticipant = vi.fn();
+const updateCombatParticipant = vi.fn();
+const updateCombatEncounter = vi.fn();
 
 vi.mock('../../lib/prisma.js', () => ({
   prisma: {
@@ -53,7 +60,7 @@ const SAVE_BASE = {
   worldId: 'world1',
   characterName: 'Gorhorn',
   level: 3,
-  attributes: { fuerza: 10, destreza: 12, constitucion: 10 },
+  attributes: { fuerza: 10, destreza: 12, constitucion: 10, inteligencia: 8 },
   pendingCombatNpcSlugs: [] as string[],
   currentLocation: { id: 'loc1', region: 'Las Llanuras del Viento Rojo' },
   worldState: { fictionalDateLabel: 'Día 1, mañana', fictionalMinutes: 480 },
@@ -65,7 +72,7 @@ const MURGOL_POP = {
   poblacion: 50,
   distribucion: { 'Llanuras del Viento Rojo': 1 },
 };
-const MURGOL_NPC = { id: 'npc-murgol', slug: 'murgol', name: 'Múrgol', level: 1, capturablePct: 80, kind: 'PLANTILLA' };
+const MURGOL_NPC = { id: 'npc-murgol', slug: 'murgol', name: 'Múrgol', level: 1, capturablePct: 80, kind: 'PLANTILLA', attributes: { destreza: 6, inteligencia: 2 } };
 
 const CRUZAVIENTOS_POP = {
   targetType: 'FAUNA',
@@ -73,7 +80,7 @@ const CRUZAVIENTOS_POP = {
   poblacion: 20,
   distribucion: { 'Llanuras del Viento Rojo': 1 },
 };
-const CRUZAVIENTOS_NPC = { id: 'npc-cruzavientos', slug: 'cruzavientos', name: 'Cruzavientos', level: 5, capturablePct: 10, kind: 'PLANTILLA' };
+const CRUZAVIENTOS_NPC = { id: 'npc-cruzavientos', slug: 'cruzavientos', name: 'Cruzavientos', level: 5, capturablePct: 10, kind: 'PLANTILLA', attributes: { destreza: 14, inteligencia: 4 } };
 
 describe('avistadosFor', () => {
   it('una especie común (capturablePct alto) muestra más avistados que una rara', () => {
@@ -255,12 +262,21 @@ describe('POST /saves/:id/cazar/confirmar', () => {
     updateSave.mockReset();
     loadSessionFacts.mockReset().mockResolvedValue([]);
     appendSessionFacts.mockReset().mockResolvedValue(undefined);
+    createCombatEncounter.mockReset().mockResolvedValue({ id: 'encounter1' });
+    let combatParticipantCounter = 0;
+    createCombatParticipant.mockReset().mockImplementation((args: { data: Record<string, unknown> }) =>
+      Promise.resolve({ id: `participant${++combatParticipantCounter}`, ...args.data }),
+    );
+    updateCombatParticipant.mockReset().mockResolvedValue({});
+    updateCombatEncounter.mockReset().mockResolvedValue({});
     transaction.mockReset().mockImplementation((cb: (tx: unknown) => unknown) =>
       cb({
         npcState: { upsert: (...args: unknown[]) => upsertNpcState(...args) },
         worldPopulation: { updateMany: (...args: unknown[]) => updateManyWorldPopulation(...args) },
         logEntry: { create: (...args: unknown[]) => createLogEntry(...args) },
         save: { update: (...args: unknown[]) => updateSave(...args) },
+        combatEncounter: { create: (...args: unknown[]) => createCombatEncounter(...args), update: (...args: unknown[]) => updateCombatEncounter(...args) },
+        combatParticipant: { create: (...args: unknown[]) => createCombatParticipant(...args), update: (...args: unknown[]) => updateCombatParticipant(...args) },
       }),
     );
   });
@@ -289,7 +305,8 @@ describe('POST /saves/:id/cazar/confirmar', () => {
     expect(transaction).not.toHaveBeenCalled();
   });
 
-  it('varias presas seleccionadas: combate obligatorio, nunca pasa por $transaction (la narración real lo abre) — pero SÍ pre-crea el grupo de Múrgol (8 avistados)', async () => {
+  it('varias presas seleccionadas: combate obligatorio, nunca pasa por upsertNpcStateDirect (la narración real lo abre) — pero SÍ pre-crea el CombatEncounter con el grupo de Múrgol (8 avistados)', async () => {
+    vi.spyOn(Math, 'random').mockReturnValue(0.5); // roll 4 -> delta 0 (rollGroupEngagement), grupo sin variación
     const app = await buildApp();
     const res = await app.inject({
       method: 'POST',
@@ -301,19 +318,24 @@ describe('POST /saves/:id/cazar/confirmar', () => {
     expect(body.resuelveSinCombate).toBe(false);
     expect(body.actionText).toContain("'Múrgol'");
     expect(body.actionText).toContain("'Cruzavientos'");
-    expect(transaction).not.toHaveBeenCalled();
-    // Múrgol: capturablePct 80, población 50 -> avistadosFor(80,50)=8 avistados, grupo real.
-    // Cruzavientos: capturablePct 10, población 20 -> avistadosFor(10,20)=1, sin grupo, sin upsert.
-    expect(upsertNpcStateDirect).toHaveBeenCalledTimes(1);
-    expect(upsertNpcStateDirect).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: { saveId_npcId_scope: { saveId: 'save1', npcId: 'npc-murgol', scope: 'loc1' } },
-        create: expect.objectContaining({ condicionFisica: 'ILESO', groupDefeated: 0, corpsesLooted: 0 }),
-      }),
-    );
+    expect(upsertNpcStateDirect).not.toHaveBeenCalled();
+    // Múrgol: capturablePct 80, población 50 -> avistadosFor(80,50)=8 avistados, grupo real ->
+    // dispara iniciarCombatEncounter (Capa 4, 2026-08-25). Cruzavientos: capturablePct 10,
+    // población 20 -> avistadosFor(10,20)=1, sin grupo, pero SÍ entra como participante solo en el
+    // MISMO encounter (regla de "no mezclar" caza en grupo + solo en una misma escena).
+    expect(transaction).toHaveBeenCalledTimes(1);
+    expect(createCombatEncounter).toHaveBeenCalledTimes(1);
+    const murgolCreates = createCombatParticipant.mock.calls.filter(([args]) => (args as { data: { npcId: string } }).data.npcId === 'npc-murgol');
+    expect(murgolCreates).toHaveLength(8);
+    for (const [args] of murgolCreates) {
+      expect((args as { data: Record<string, unknown> }).data).toMatchObject({ bando: 'ENEMIGO', tipo: 'NPC', condicionFisicaGrupo: 'ILESO' });
+    }
+    const cruzavientosCreates = createCombatParticipant.mock.calls.filter(([args]) => (args as { data: { npcId: string } }).data.npcId === 'npc-cruzavientos');
+    expect(cruzavientosCreates).toHaveLength(1);
+    expect((cruzavientosCreates[0][0] as { data: Record<string, unknown> }).data).toMatchObject({ bando: 'ENEMIGO', tipo: 'NPC', condicionFisicaGrupo: undefined });
   });
 
-  it('caza en grupo: cantidad elegida distinta de la resuelta añade la cláusula de variación al actionText, y el NpcState guarda el tamaño REAL del grupo', async () => {
+  it('caza en grupo: cantidad elegida distinta de la resuelta añade la cláusula de variación al actionText, y el CombatEncounter se crea con el tamaño REAL del grupo', async () => {
     // Dos especies a la vez (fuerza combate, sin pasar por la caza limpia de Múrgol solo).
     vi.spyOn(Math, 'random').mockReturnValue(0.99); // roll 6 -> delta +1 (rollGroupEngagement)
     const app = await buildApp();
@@ -325,9 +347,8 @@ describe('POST /saves/:id/cazar/confirmar', () => {
     const body = res.json();
     expect(body.actionText).toContain("Salgo a cazar y ataco a 'Múrgol', 'Cruzavientos'.");
     expect(body.actionText).toContain('otro más se suma de repente, sin previo aviso');
-    expect(upsertNpcStateDirect).toHaveBeenCalledWith(
-      expect.objectContaining({ create: expect.objectContaining({ groupSize: 3 }) }), // 2 elegidos + 1 del roll
-    );
+    const murgolCreates = createCombatParticipant.mock.calls.filter(([args]) => (args as { data: { npcId: string } }).data.npcId === 'npc-murgol');
+    expect(murgolCreates).toHaveLength(3); // 2 elegidos + 1 del roll
   });
 
   it('una sola presa pero NO débil (Cruzavientos, nivel 5 contra jugador nivel 3): combate obligatorio, sin escribir en la base de datos (1 solo avistado, sin grupo)', async () => {

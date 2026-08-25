@@ -274,11 +274,23 @@ async function escribirCondicionYEnergia(
   }
 }
 
+/// Grupo 3 § Mundo determinista, Capa 4 (docs/rpgtarkor/mundo-determinista.md, 2026-08-25) —
+/// participante que este intercambio deja CONVALECIENTE/MUERTO, para que el caller
+/// (turnResolution.ts) pueda enganchar XP/cierre de misión/reputación/población (mismo criterio
+/// que ya hace `applyCombatExchangeToNpcState` para el combate 1v1) — sin esto, un `CombatEncounter`
+/// real podía dejar NPCs muertos sin ningún efecto de juego más allá de la propia condición.
+export interface ParticipanteCaidoInfo {
+  tipo: string;
+  npcId: string | null;
+  nuevaCondicion: CondicionFisica;
+}
+
 export interface TurnoAutonomoResultado {
   narracion: string;
   atacanteNombre: string;
   defensorNombre: string;
   encounterTerminado: boolean;
+  caidos: ParticipanteCaidoInfo[];
 }
 
 /// Núcleo compartido por `resolverTurnoAutonomo` (atacante NPC/COMPANION) y `resolverTurnoJugador`
@@ -370,7 +382,14 @@ async function ejecutarIntercambioYAvanzar(
   });
 
   const encounterTerminado = await avanzarYComprobarFin(tx, worldId, saveId, encounterId, encounter, weaponNamesPorDefecto);
-  return { narracion, atacanteNombre: datosAtacante.nombre, defensorNombre: datosDefensor.nombre, encounterTerminado };
+
+  const caidos: ParticipanteCaidoInfo[] = [];
+  const defensorCae = resultado.defensorRecibeGolpe && (resultado.nuevaCondicionDefensor === 'CONVALECIENTE' || resultado.nuevaCondicionDefensor === 'MUERTO');
+  if (defensorCae) caidos.push({ tipo: defensor.tipo, npcId: defensor.npcId, nuevaCondicion: resultado.nuevaCondicionDefensor });
+  const atacanteCae = resultado.atacanteRecibeGolpe && (resultado.nuevaCondicionAtacante === 'CONVALECIENTE' || resultado.nuevaCondicionAtacante === 'MUERTO');
+  if (atacanteCae) caidos.push({ tipo: actual.tipo, npcId: actual.npcId, nuevaCondicion: resultado.nuevaCondicionAtacante });
+
+  return { narracion, atacanteNombre: datosAtacante.nombre, defensorNombre: datosDefensor.nombre, encounterTerminado, caidos };
 }
 
 /// Resuelve el turno del combatiente ACTUAL de la cola de iniciativa — solo si es NPC/COMPANION
@@ -469,13 +488,56 @@ export async function resolverTurnoJugador(
   );
 }
 
+/// Grupo 3 § Mundo determinista, Capa 4 (2026-08-25) — disparo real: resuelve turnos autónomos
+/// (NPC/COMPANION) en bucle hasta que le toca a la jugadora o el encuentro termina. El caller
+/// (turnResolution.ts) lo llama DOS veces por turno síncrono real: antes de la acción de la
+/// jugadora (por si quedaba algo pendiente de una ronda anterior — no debería, pero defensivo) y
+/// después (para que el resto de la ronda se resuelva "de una sentada" antes de devolverle el
+/// control, mismo criterio que el modo autónomo del propio diseño). `maxIteraciones` es un tope de
+/// seguridad real, no una cifra de diseño — con el límite de 4v4 nunca debería hacer falta tanto,
+/// pero evita un bucle infinito real si algo se rompe.
+export interface ResolucionRondaCombate {
+  narraciones: string[];
+  encounterTerminado: boolean;
+  caidos: ParticipanteCaidoInfo[];
+  /// true si el bucle paró porque le toca a la jugadora (o el encuentro sigue en curso y no hay
+  /// más turnos autónomos que resolver ahora) — false si terminó por resolverse del todo.
+  esperandoAccionJugadora: boolean;
+}
+
+export async function resolverTurnosAutonomosHastaJugadora(
+  tx: Prisma.TransactionClient,
+  worldId: string,
+  saveId: string,
+  encounterId: string,
+  weaponNamesPorDefecto: string[] = [],
+  narrarFn: typeof narrarTurnoCombateMultiple = narrarTurnoCombateMultiple,
+  maxIteraciones: number = 30,
+): Promise<ResolucionRondaCombate> {
+  const narraciones: string[] = [];
+  const caidos: ParticipanteCaidoInfo[] = [];
+  for (let i = 0; i < maxIteraciones; i++) {
+    const resultado = await resolverTurnoAutonomo(tx, worldId, saveId, encounterId, weaponNamesPorDefecto, narrarFn);
+    if (resultado === null) {
+      const encounter = await tx.combatEncounter.findUniqueOrThrow({ where: { id: encounterId } });
+      return { narraciones, encounterTerminado: encounter.estado === 'RESUELTO', caidos, esperandoAccionJugadora: encounter.estado !== 'RESUELTO' };
+    }
+    if (resultado.narracion) narraciones.push(resultado.narracion);
+    caidos.push(...resultado.caidos);
+    if (resultado.encounterTerminado) return { narraciones, encounterTerminado: true, caidos, esperandoAccionJugadora: false };
+  }
+  // Tope de seguridad alcanzado (2026-08-25) — no debería pasar nunca con el límite de 4v4, pero
+  // devuelve el control a la jugadora en vez de colgar la petición HTTP indefinidamente.
+  return { narraciones, encounterTerminado: false, caidos, esperandoAccionJugadora: true };
+}
+
 async function avanzarSinAtacar(
   tx: Prisma.TransactionClient,
   encounterId: string,
   encounter: { turnoActual: number; ordenIniciativa: string[] },
 ): Promise<TurnoAutonomoResultado> {
   await tx.combatEncounter.update({ where: { id: encounterId }, data: { turnoActual: (encounter.turnoActual + 1) % encounter.ordenIniciativa.length } });
-  return { narracion: '', atacanteNombre: '', defensorNombre: '', encounterTerminado: false };
+  return { narracion: '', atacanteNombre: '', defensorNombre: '', encounterTerminado: false, caidos: [] };
 }
 
 /// Avanza `turnoActual`, redecide el emparejamiento de ambos bandos (§2: se redecide en cada

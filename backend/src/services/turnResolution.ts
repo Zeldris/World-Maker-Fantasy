@@ -113,6 +113,8 @@ import {
 } from './death.js';
 import { continentForRegion, oppositeContinent } from '../lib/continent.js';
 import { advanceFictionalMinutes, formatFictionalDate } from './worldClock.js';
+import { resolverTurnoJugador, resolverTurnosAutonomosHastaJugadora, type AccionJugadorCombate } from './combateMultipleOrquestacion.js';
+import type { HabilidadParaIntercambio } from './combateMultiple.js';
 import { prisma } from '../lib/prisma.js';
 import type { RollResult, AttributeBlock, Attribute, GradoExito } from './dice.js';
 import type { SecondaryAttributeBlock } from './secondaryAttributes.js';
@@ -2251,6 +2253,14 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     prisma.quest.findFirst({ where: { saveId, title: { contains: 'Orco Enfurecido' } } }),
   ]);
 
+  // Grupo 3 § Mundo determinista, Capa 4 (docs/rpgtarkor/mundo-determinista.md, 2026-08-25) —
+  // disparo real: si esta partida tiene un `CombatEncounter` real EN_CURSO y jugable (Combate
+  // múltiple), el turno se resuelve por ese motor en vez del 1v1 clásico de siempre — ver el
+  // bloque de resolución más abajo (tras `abilityAttributeBonus`). Detectado aquí, pronto, para
+  // poder desactivar `lootMode`/`combateActivo` del sistema antiguo y que los dos motores nunca
+  // compitan por el mismo turno.
+  const activeCombatEncounter = await prisma.combatEncounter.findFirst({ where: { saveId, estado: 'EN_CURSO', jugable: true } });
+
   // Eventos de viaje interactivos (2026-08-05): si este turno resuelve un viaje truncado por una
   // interrupción (turn.ts, pickTravelInterruption/pickStationaryInterruption), el NPC elegido
   // entra en escena de forma DETERMINISTA — a diferencia del resto de `npcsInScene` (detectado
@@ -2399,7 +2409,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   // es que la acción venga del propio popup de combate (única vía real con el botón "Registrar",
   // que siempre manda `enCombate:true`) — fuera de combate, como mucho el modelo puede proponer
   // un `newItem` suelto en la narración normal, nunca el inventario completo de un NPC vivo.
-  const lootMode = !!enCombate && npcsInScene.length > 0 && detectsLootIntent(action);
+  const lootMode = !activeCombatEncounter && !!enCombate && npcsInScene.length > 0 && detectsLootIntent(action);
 
   // Ataque del jugador contra el NPC (NpcState, roadmap 2026-07-19): hasta ahora la condición
   // física del NPC nunca se persistía por partida, así que "Torgash resucita" cada vez que
@@ -2499,6 +2509,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   // decide si el turno "cuenta" para que el NPC responda.
   const tomaAccionDeCombate = countsAsAttack || abilityRol === 'defensa' || abilityRol === 'utilidad' || !!isItemUse;
   const combateActivo =
+    !activeCombatEncounter &&
     enCombate &&
     !lootMode &&
     npcsInScene.length > 0 &&
@@ -3476,11 +3487,98 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     onNarrationReset,
   };
 
-  // Turno narrado de verdad por el LLM local (2026-08-11, captura en vivo de pares DPO) — las 6
-  // ramas deterministas de abajo (Gistera guionizada/saqueo/construcción/cosecha/crafteo/curación
-  // explícita) nunca llaman a narrateAction, así que no hay ningún prompt/respuesta real que
-  // capturar para el profesor cloud.
-  const wasLlmNarrated = !(gisteraSePresentaEsteTurno || lootMode || buildMode || harvestOutcome || craftMode || usingExplicitHealList);
+  // Grupo 3 § Mundo determinista, Capa 4 (docs/rpgtarkor/mundo-determinista.md, 2026-08-25) —
+  // disparo real: si hay un `CombatEncounter` activo, este turno se resuelve por el motor de
+  // Combate múltiple (`combateMultipleOrquestacion.ts`) en vez del 1v1 clásico. Ruta determinista
+  // propia, mismo criterio que loot/build/harvest/craft de abajo: nunca llama a `narrateAction`
+  // (la narración ya sale de `narrarTurnoCombateMultiple`, un modelo más ligero, dentro del motor
+  // mismo) — llamar a los dos narradores para el mismo golpe sería redundante y podría contradecirse.
+  let combatEncounterMode = false;
+  let combatEncounterNarration = '';
+  let combatEncounterTerminado = false;
+  let combatEncounterCaidos: { tipo: string; npcId: string | null; nuevaCondicion: CondicionFisica }[] = [];
+  let combatEncounterId: string | null = null;
+  // Condición/energía REALES de la jugadora tras la resolución (`escribirCondicionYEnergia`, ya
+  // escritas en `Save` dentro de las transacciones del motor de combate múltiple, más abajo) — el
+  // resto de esta función calcula `proposedCondicion`/`nuevaEnergia` a partir del intercambio 1v1
+  // clásico (`resolveCombatExchangePhase`, que en este modo nunca corre de verdad), así que sin
+  // este override esos cálculos seguirían asumiendo "no pasó nada" y sobrescribirían lo que el
+  // motor de grupo ya dejó escrito.
+  let combatEncounterFinalCondicion: CondicionFisica | null = null;
+  let combatEncounterFinalEnergia: number | null = null;
+  if (activeCombatEncounter) {
+    combatEncounterMode = true;
+    const encounterId = activeCombatEncounter.id;
+    combatEncounterId = encounterId;
+    const narraciones: string[] = [];
+
+    // Turnos autónomos pendientes de una ronda anterior (defensivo — no debería hacer falta si el
+    // turno anterior ya dejó la cola apuntando a la jugadora, pero cubre el caso de un reinicio de
+    // backend a media ronda).
+    const antes = await prisma.$transaction((tx) => resolverTurnosAutonomosHastaJugadora(tx, worldId, saveId, encounterId));
+    narraciones.push(...antes.narraciones);
+    combatEncounterCaidos.push(...antes.caidos);
+    combatEncounterTerminado = antes.encounterTerminado;
+
+    if (!combatEncounterTerminado && antes.esperandoAccionJugadora) {
+      // Objetivo: nombre citado entre comillas (mismo criterio que el resto del turno) contra los
+      // participantes ENEMIGO vivos; sin cita real o sin match, cae al auto-targeting que el propio
+      // encuentro ya calculó (`objetivoActualId`, por Inteligencia — ver combateMultiple.ts § 2).
+      const participantesVivos = await prisma.combatParticipant.findMany({ where: { encounterId } });
+      const enemigos = participantesVivos.filter((p) => p.bando === 'ENEMIGO');
+      const enemigoNpcIds = enemigos.filter((p) => p.npcId).map((p) => p.npcId!);
+      const enemigoNpcs = enemigoNpcIds.length ? await prisma.npc.findMany({ where: { id: { in: enemigoNpcIds } }, select: { id: true, name: true } }) : [];
+      const nombreByNpcId = new Map(enemigoNpcs.map((n) => [n.id, n.name]));
+      const quotedMatch = action.match(/'([^']+)'/);
+      const targetPorNombre = quotedMatch
+        ? enemigos.find((p) => p.npcId && normalizeText(nombreByNpcId.get(p.npcId) ?? '') === normalizeText(quotedMatch[1]))
+        : undefined;
+      const jugadorParticipant = participantesVivos.find((p) => p.tipo === 'JUGADOR');
+      const targetParticipantId = targetPorNombre?.id ?? jugadorParticipant?.objetivoActualId ?? null;
+
+      if (targetParticipantId) {
+        // Misma habilidad ya resuelta arriba para el 1v1 clásico (botón pulsado o texto libre) —
+        // sin recalcular nada nuevo, solo repaquetada al shape que pide el motor de grupo.
+        const jugadorHabilidad: HabilidadParaIntercambio = {
+          name: selectedAbilityData?.name ?? 'Ataque Básico',
+          description: selectedAbilityData?.description ?? '',
+          attribute: classification.atributo,
+          attributeBonus: abilityAttributeBonus,
+          effects: abilityEffects,
+          rol: abilityRol ?? (detectsAttackIntent(action) ? 'ataque' : 'defensa'),
+          energyCost: abilityEnergyCost,
+          energyRegen: abilityEnergyRegen,
+          maxUsesPerCombat: selectedAbilityData?.maxUsesPerCombat ?? null,
+        };
+        const accion: AccionJugadorCombate = { targetParticipantId, habilidad: jugadorHabilidad, dualWieldBonus };
+        const turnoJugadora = await prisma.$transaction((tx) => resolverTurnoJugador(tx, worldId, saveId, encounterId, accion));
+        if (turnoJugadora) {
+          if (turnoJugadora.narracion) narraciones.push(turnoJugadora.narracion);
+          combatEncounterCaidos.push(...turnoJugadora.caidos);
+          combatEncounterTerminado = turnoJugadora.encounterTerminado;
+        }
+      }
+
+      if (!combatEncounterTerminado) {
+        const despues = await prisma.$transaction((tx) => resolverTurnosAutonomosHastaJugadora(tx, worldId, saveId, encounterId));
+        narraciones.push(...despues.narraciones);
+        combatEncounterCaidos.push(...despues.caidos);
+        combatEncounterTerminado = despues.encounterTerminado;
+      }
+    }
+
+    combatEncounterNarration = narraciones.filter(Boolean).join(' ') || `${characterName} se mantiene en guardia, pero el intercambio no llega a resolverse este turno.`;
+
+    const saveTrasEncuentro = await prisma.save.findUniqueOrThrow({ where: { id: saveId }, select: { condicionFisica: true, energia: true } });
+    combatEncounterFinalCondicion = saveTrasEncuentro.condicionFisica;
+    combatEncounterFinalEnergia = saveTrasEncuentro.energia;
+  }
+
+  // Turno narrado de verdad por el LLM local (2026-08-11, captura en vivo de pares DPO) — las 7
+  // ramas deterministas de abajo (combate múltiple/Gistera guionizada/saqueo/construcción/
+  // cosecha/crafteo/curación explícita) nunca llaman a narrateAction, así que no hay ningún
+  // prompt/respuesta real que capturar para el profesor cloud.
+  const wasLlmNarrated = !(combatEncounterMode || gisteraSePresentaEsteTurno || lootMode || buildMode || harvestOutcome || craftMode || usingExplicitHealList);
 
   // Animación de dados en paralelo (ver comentario de `onExchangeResolved` en
   // NarrateAndPersistParams) — justo antes de narrar, nunca antes: `combatExchangeDisplay` ya
@@ -3489,7 +3587,9 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   // de arriba que todavía pudiera descartar el turno entero.
   if (combatExchangeDisplay) onExchangeResolved?.(combatExchangeDisplay, npcAbilityUsed?.npcName ?? null);
 
-  const narration: NarrationResult = gisteraSePresentaEsteTurno
+  const narration: NarrationResult = combatEncounterMode
+    ? { narration: combatEncounterNarration, newFacts: [] }
+    : gisteraSePresentaEsteTurno
     ? {
         narration: `${characterName} se planta frente a la figura y le exige que hable, sin apartar la mirada.`,
         newFacts: [],
@@ -3732,7 +3832,11 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
           .flatMap((u) => Array.from({ length: u.quantity }, () => ({ curaHasta: u.curaHasta, curaUnPaso: u.curaUnPaso }))),
       )
     : healCeilingFor(params.condicionFisica, restAttempted, restSucceeds, medicalCuraHasta, medicalCuraUnPaso);
-  const proposedCondicion = nextCondicionFisica(params.condicionFisica, condicionPropuestaCombinada, !!enCombate, healCeiling);
+  // Grupo 3 § Mundo determinista, Capa 4 (2026-08-25) — en modo `CombatEncounter`, la condición
+  // real ya la escribió el motor de combate múltiple (ver `combatEncounterFinalCondicion` arriba)
+  // — `condicionPropuestaCombinada` de aquí siempre sería "nada pasó" (el 1v1 clásico nunca corrió
+  // de verdad este turno), así que nunca debe ganar.
+  const proposedCondicion = combatEncounterFinalCondicion ?? nextCondicionFisica(params.condicionFisica, condicionPropuestaCombinada, !!enCombate, healCeiling);
   // Suma total de energía de los objetos explícitos (2026-08-18) — a diferencia de curaHasta, el
   // orden no importa: cada objeto restaura lo suyo, `nextEnergia` (energy.ts) ya topa el resultado
   // final al máximo real.
@@ -3752,19 +3856,23 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   // RECUPERACION (2026-08-17) — topado al máximo real aparte, DESPUÉS de `nextEnergia` (que ya
   // topa el resto de fuentes): sumarlo dentro de `abilityEnergyRegen` habría dejado que
   // `itemRestoreAmount`/regen normal lo pisaran en algún combinación rara de `nextEnergia`.
-  const nuevaEnergia = Math.min(
-    energiaMax,
-    nextEnergia({
-      current: params.energia,
-      max: energiaMax,
-      abilityEnergyCost,
-      abilityEnergyRegen,
-      exchangeHappened,
-      restSucceeds,
-      restAttempted,
-      itemRestoreAmount: usingExplicitHealList ? explicitHealEnergyRestore || null : energyItemRestoreAmount,
-    }) + jugadorRecuperacionExtra,
-  );
+  // Mismo criterio que `proposedCondicion` arriba — en modo `CombatEncounter` la energía real ya
+  // la escribió el motor de combate múltiple.
+  const nuevaEnergia =
+    combatEncounterFinalEnergia ??
+    Math.min(
+      energiaMax,
+      nextEnergia({
+        current: params.energia,
+        max: energiaMax,
+        abilityEnergyCost,
+        abilityEnergyRegen,
+        exchangeHappened,
+        restSucceeds,
+        restAttempted,
+        itemRestoreAmount: usingExplicitHealList ? explicitHealEnergyRestore || null : energyItemRestoreAmount,
+      }) + jugadorRecuperacionExtra,
+    );
 
   // Reloj ficticio (worldClock.ts): avanza siempre, aunque este turno no traiga hechos nuevos —
   // antes "fictionalDateLabel" era un placeholder fijo que nunca se tocaba.
@@ -4049,6 +4157,41 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     if (executeResult.questCompletedInfo) questCompletedInfo = executeResult.questCompletedInfo;
     // Mismo bug gemelo que arriba, para el cierre de misión vía "Decapitar"/"Matar".
     questRewardXp += executeResult.questCompletedInfo?.rewardXp ?? 0;
+
+    // Grupo 3 § Mundo determinista, Capa 4 (2026-08-25) — cierre de misión/reputación/población
+    // para cada NPC real que este turno dejó CONVALECIENTE/MUERTO dentro de un `CombatEncounter`
+    // (mismo cierre que `applyCombatExchangeToNpcState`/`applyExecuteTargets` de arriba, nunca
+    // duplicado — `condicionFisicaGrupo` ya se escribió aparte, dentro del propio motor de
+    // combate múltiple). Pendiente a propósito, documentado como hueco conocido: XP por la propia
+    // tirada de combate (el motor nuevo no expone el resultado del dado hacia fuera todavía) —
+    // solo se engancha la recompensa de MISIÓN, el efecto de mayor impacto real de juego.
+    if (combatEncounterCaidos.length > 0) {
+      const npcCaidosIds = combatEncounterCaidos.filter((c) => c.tipo === 'NPC' && c.npcId).map((c) => c.npcId!);
+      const npcCaidosRows = npcCaidosIds.length
+        ? await tx.npc.findMany({ where: { id: { in: npcCaidosIds } }, select: { id: true, raza: true, slug: true, faction: true } })
+        : [];
+      const npcCaidoById = new Map(npcCaidosRows.map((n) => [n.id, n]));
+      for (const caido of combatEncounterCaidos) {
+        if (caido.tipo !== 'NPC' || !caido.npcId) continue;
+        const npcRow = npcCaidoById.get(caido.npcId);
+        if (!npcRow) continue;
+        const killQuestInfo = await applyKillSideEffects({
+          tx,
+          npc: npcRow,
+          nuevaCondicion: caido.nuevaCondicion,
+          saveId,
+          worldId,
+          nuevoFictionalMinutes,
+          nuevaFictionalDateLabel,
+          activeRegion,
+          nextAfterMainLogCreatedAt,
+        });
+        if (killQuestInfo) {
+          questCompletedInfo = killQuestInfo;
+          questRewardXp += killQuestInfo.rewardXp ?? 0;
+        }
+      }
+    }
 
     // Despiece/recolección (§ 3.3) — ver `applyHarvest` más arriba.
     const harvestResult = await applyHarvest({ tx, harvestMatch, harvestOutcome, roll, saveId, currentLocationId, characterName });
@@ -5174,29 +5317,61 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     await appendSessionFacts(saveId, sessionFacts, narration.newFacts);
   }
 
-  // Decide con qué NPCs se abre/persiste el popup de combate este turno — ver
-  // `resolveCombatSlugsAndPersist` más arriba (red de seguridad contra un `combateIniciado` que
-  // el modelo olvida o propone mal, temperamento AGRESIVO/ENEMIGO forzando combate solo,
-  // decapitar/saqueo parcial siempre incluidos, y la persistencia en `Save.pendingCombatNpcSlugs`
-  // para sobrevivir a una resincronización).
-  const { combateIniciado } = await resolveCombatSlugsAndPersist({
-    saveId,
-    action,
-    enCombate,
-    narration,
-    npcsInScene,
-    npcsInSceneVivos,
-    factionsStatus,
-    condicionFisicaJugador: params.condicionFisica,
-    explicitTarget,
-    exchangeHappened,
-    npcAttackTarget,
-    npcAttackHits,
-    npcTargetNewCondicion,
-    executeTargets,
-    partiallyLootedSlugs,
-    analizarRivalExito,
-  });
+  // Grupo 3 § Mundo determinista, Capa 4 (2026-08-25) — un `CombatEncounter` real es un canal de
+  // combate aparte del 1v1 clásico (`resolveCombatSlugsAndPersist` de abajo, que solo sabe de
+  // `NpcState`/`npcsInScene`) — se construye su propio `combateIniciado` a partir de los
+  // participantes YA REALES del encuentro, y se persiste `pendingCombatNpcSlugs` a mano para que
+  // el frontend (que hoy solo sabe leer ese campo, no `CombatParticipant`) siga mostrando el panel
+  // de combate mientras el encuentro sigue EN_CURSO. `saqueado`/`lootedItemNames`/`analizado`
+  // quedan en su valor por defecto — el saqueo/desuello de un `CombatEncounter` real no está
+  // enganchado todavía (hueco documentado, mismo criterio que el resto de piezas "primer corte"
+  // de esta sesión).
+  const combateIniciado = combatEncounterMode
+    ? await (async () => {
+        const participantesFinal = await prisma.combatParticipant.findMany({ where: { encounterId: combatEncounterId! } });
+        const enemigoNpcIds = participantesFinal.filter((p) => p.tipo === 'NPC' && p.npcId).map((p) => p.npcId!);
+        const enemigoNpcRows = enemigoNpcIds.length
+          ? await prisma.npc.findMany({ where: { id: { in: enemigoNpcIds } }, select: { id: true, slug: true, name: true } })
+          : [];
+        const npcRowById = new Map(enemigoNpcRows.map((n) => [n.id, n]));
+        const npcs = participantesFinal
+          .filter((p) => p.tipo === 'NPC' && p.npcId && npcRowById.has(p.npcId))
+          .map((p) => {
+            const npcRow = npcRowById.get(p.npcId!)!;
+            return {
+              slug: npcRow.slug,
+              name: npcRow.name,
+              condicionFisica: p.condicionFisicaGrupo ?? 'ILESO',
+              saqueado: false,
+              lootedItemNames: [] as string[],
+              analizado: false,
+            };
+          });
+        if (!combatEncounterTerminado) {
+          await prisma.save.update({ where: { id: saveId }, data: { pendingCombatNpcSlugs: npcs.map((n) => n.slug) } });
+        } else {
+          await prisma.save.update({ where: { id: saveId }, data: { pendingCombatNpcSlugs: [] } });
+        }
+        return { npcs };
+      })()
+    : (await resolveCombatSlugsAndPersist({
+        saveId,
+        action,
+        enCombate,
+        narration,
+        npcsInScene,
+        npcsInSceneVivos,
+        factionsStatus,
+        condicionFisicaJugador: params.condicionFisica,
+        explicitTarget,
+        exchangeHappened,
+        npcAttackTarget,
+        npcAttackHits,
+        npcTargetNewCondicion,
+        executeTargets,
+        partiallyLootedSlugs,
+        analizarRivalExito,
+      })).combateIniciado;
 
   // Log de diagnóstico por turno (roadmap 2026-07-20, prioridad P0 de Fable): una línea
   // estructurada con qué detectores dispararon y con qué resultado. Los 3 bugs reales de hoy
