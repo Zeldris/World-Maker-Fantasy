@@ -123,6 +123,12 @@ Cada entrada: fecha, qué se detectó (cita textual si es narración), causa ra�
 - [continuación: "reptil reptilise"/"reptil reptil reptil", errores gramaticales del modelo](#2026-08-23-continuación-reptil-reptilisereptil-reptil-reptil-errores-gramaticales-del-modelo)
 - [XP de capítulo (+500×2) verificado — NO ES BUG](#2026-08-23-xp-de-capítulo-500×2-verificado--no-es-bug)
 
+**2026-08-25 — playtest en vivo tras cerrar Combate múltiple/saqueo-desuello/Recoger**
+- [CRÍTICO: el narrador de Combate múltiple revienta el timeout de transacción de Prisma — combate y caza en grupo rotos de verdad](#2026-08-25-crítico-el-narrador-de-combate-múltiple-revienta-el-timeout-de-transacción-de-prisma--combate-y-caza-en-grupo-rotos-de-verdad)
+- [continuación: CombatEncounter huérfanos se apilaban al reintentar cazar tras el crash — cualquier turno posterior se enrutaba a un combate roto](#2026-08-25-continuación-combatencounter-huérfanos-se-apilaban-al-reintentar-cazar-tras-el-crash--cualquier-turno-posterior-se-enrutaba-a-un-combate-roto)
+- [la caché de tirada de recolección es un único slot por partida, no por oficio — cambiar de profesión sin confirmar la invalida](#2026-08-25-la-caché-de-tirada-de-recolección-es-un-único-slot-por-partida-no-por-oficio--cambiar-de-profesión-sin-confirmar-la-invalida)
+- [Roca Luclara minable en Hondonada del Eco pese a tener `harvestSourceHomeLocationSlug` distinto — `harvestSourceHomeLocationSlug` nunca se aplica a MINERIA/TALA/EXTRACCION, solo a PASIVO](#2026-08-25-roca-luclara-minable-en-hondonada-del-eco-pese-a-tener-harvestsourcehomelocationslug-distinto--harvestsourcehomelocationslug-nunca-se-aplica-a-mineriatalaextraccion-solo-a-pasivo)
+
 ---
 
 ## 2026-08-01 — descansar no curaba + objeto médico narrado sin usarse
@@ -2925,3 +2931,127 @@ turno en el que cae `chapterDue` no tiene por qué coincidir con un momento narr
 
 **Estado**: NO ES BUG. Confirmado leyendo el propio comentario de `turnResolution.ts`, que documenta
 el fix histórico de este exacto problema.
+
+## 2026-08-25 — CRÍTICO: el narrador de Combate múltiple revienta el timeout de transacción de Prisma — combate y caza en grupo rotos de verdad
+
+**Síntoma**: en la partida real de Gorhorn (`cms82odjc000qri0up7n1msni`), tres intentos seguidos de
+*"Salgo a cazar y ataco a 'Buitre Cenizo'."* (09:53) no produjeron NINGUNA respuesta narrada — los
+tres quedan en el log como (TÚ) sin ningún (PJ) después. El servidor (log pegado por la usuaria)
+muestra el error real:
+
+```
+PrismaClientKnownRequestError: Invalid `tx.combatParticipant.findMany()` invocation...
+Transaction API error: Transaction already closed: A query cannot be executed on an expired
+transaction. The timeout for this transaction was 5000 ms, however 25175 ms passed since the
+start of the transaction.
+```
+
+**Causa raíz confirmada**: `narrarTurnoCombateMultiple` (llamada real a Ollama, `combateMultipleNarracion.ts`)
+se invoca DESDE DENTRO de `ejecutarIntercambioYAvanzar` (`combateMultipleOrquestacion.ts:373`), que
+a su vez corre siempre dentro de un `prisma.$transaction(...)` — el timeout interactivo por defecto
+de Prisma es 5000 ms, y una llamada real a Ollama tarda 9-25 s en la práctica (confirmado dos veces
+en el log real, con `req-y`/`req-12`). En cuanto la transacción expira, la escritura de condición
+física YA hecha antes de narrar puede o no haberse comprometido según en qué punto exacto reviente,
+y el turno entero responde `{"type":"error","message":"Error narrando el turno"}` con
+`statusCode 200` (las cabeceras NDJSON ya se habían mandado) — el frontend ve un error genérico, sin
+pista de la causa real.
+
+Este mismo motor es el que dispara `cazar.ts` para caza en grupo (Capa 4 de
+[mundo-determinista.md](rpgtarkor/mundo-determinista.md), commit `f85d7e7`) — por eso "la caza no
+funciona" es el mismo bug, no uno aparte: cualquier caza que abra un `CombatEncounter` real (grupo o
+solitario) puede reventar en cuanto la narración tarda más de 5 s, algo casi garantizado con Ollama
+local.
+
+**Arreglo propuesto (no aplicado todavía, tamaño de refactor real)**: mover la llamada a `narrarFn`
+FUERA de la transacción — el propio `resultado` de `resolverIntercambioCompleto` (puro, sin I/O) ya
+tiene todo lo necesario para construir el input de narración antes de escribir nada; la transacción
+debería limitarse a los `escribirCondicionYEnergia`/`avanzarYComprobarFin` de UN intercambio, y
+`resolverTurnosAutonomosHastaJugadora` debería abrir una transacción nueva POR INTERCAMBIO (no una
+sola para todo el bucle) narrando entre medias, fuera de cualquier transacción — mismo criterio que
+ya sigue `narrateAndPersistTurn` con `appendSessionFacts`/`captureLiveTeacherExample`. Toca
+`combateMultipleOrquestacion.ts` (`ejecutarIntercambioYAvanzar`, `resolverTurnoAutonomo`,
+`resolverTurnoJugador`, `resolverTurnosAutonomosHastaJugadora`), los 3 puntos de llamada en
+`turnResolution.ts` (líneas 3530/3580/3589), y `combateMultipleOrquestacion.integration.test.ts`
+(llama a estas funciones directamente). Candidato fuerte a primer punto de la auditoría de código.
+
+**Estado**: CONFIRMADO, causa raíz identificada, fix NO aplicado todavía (refactor real, se deja
+para la auditoría de código). Mitigación aplicada ya (ver entrada siguiente): guard nuevo en
+`cazar.ts` para que un crash no pueda apilar encuentros huérfanos, y limpieza manual del save real
+afectado (3 `CombatEncounter` huérfanos borrados, `pendingNpcAttack` corrupto limpiado).
+
+## 2026-08-25 (continuación) — CombatEncounter huérfanos se apilaban al reintentar cazar tras el crash — cualquier turno posterior se enrutaba a un combate roto
+
+**Síntoma**: tras el crash de arriba, la base de datos real tenía **3 `CombatEncounter` distintos,
+los tres `EN_CURSO`, los tres 100% ILESO** (nunca llegó a resolverse ningún intercambio) — uno por
+cada uno de los 3 intentos de cazar al Buitre Cenizo. Con más de un encuentro `EN_CURSO` a la vez,
+`activeCombatEncounter = await prisma.combatEncounter.findFirst({where:{saveId, estado:'EN_CURSO'}})`
+(`turnResolution.ts`) coge uno cualquiera sin orden garantizado — así que turnos totalmente
+ajenos al combate (*"Descanso un poco y observo mis alrededores"*, *"hola?"*) también se enrutaron
+al motor de combate múltiple roto en vez de narrarse con normalidad, y tampoco dejaron ninguna
+entrada (PJ) en el log.
+
+**Causa raíz**: el guard existente en `cazar.ts` (*"Ya hay un combate en curso"*) comprobaba
+`Save.pendingCombatNpcSlugs`, un campo que solo se actualiza al FINAL de `narrateAndPersistTurn` —
+si el turno revienta ANTES de llegar ahí (exactamente lo que pasa con el bug de arriba), el
+`CombatEncounter` ya está creado en la base de datos pero `pendingCombatNpcSlugs` nunca se puso al
+día, así que el guard no detectaba nada y dejaba reintentar sin límite.
+
+**Arreglo aplicado**: `cazar.ts` ahora comprueba también, aparte, si hay un `CombatEncounter` real
+`EN_CURSO`/`jugable` para la partida antes de crear uno nuevo — rechaza con 400 si lo hay, sin
+importar el estado de `pendingCombatNpcSlugs`. Test nuevo en `cazar.test.ts`. Limpieza manual
+aplicada al save real afectado: los 3 `CombatEncounter` huérfanos borrados, `Save.pendingNpcAttack`
+(que además apuntaba a un `npcId` de una fila completamente distinta, corrupto de una sesión
+anterior) puesto a `null`.
+
+**Estado**: FIJADO el síntoma de apilamiento (guard nuevo, commiteado). La causa raíz de fondo (el
+timeout de transacción en sí, entrada anterior) sigue sin arreglar — este guard solo evita que un
+crash se convierta en un atasco permanente, no evita el crash.
+
+## 2026-08-25 — la caché de tirada de recolección es un único slot por partida, no por oficio — cambiar de profesión sin confirmar la invalida
+
+**Síntoma**: en la misma partida real, dos exploraciones de Minero en la misma ubicación (Hondonada
+del Eco) sin moverse dieron resultados completamente distintos — *"recolecta en la zona: Piedra
+(2)"* a las 09:05, y *"recolecta en la zona: Mena de Hierro de las Llanuras (2), Roca Luclara, Mena
+de Yerreo"* a las 09:53 — con exploraciones de Talador y Herborista de por medio (09:15/09:37).
+Encaja exactamente con lo reportado: *"profesiones que me deja usarlas varias veces y repite las
+tiradas mostrando items diferentes"*.
+
+**Causa raíz confirmada**: `Save.harvestRollCache` (`recolectar.ts`) es un ÚNICO slot JSON por
+partida, no una entrada por oficio — el propio comentario del código ya lo documenta
+("un único caché por partida, no por oficio", línea ~806). Cada `POST /recolectar/confirmar` con
+éxito limpia el slot ENTERO (`harvestRollCache: Prisma.JsonNull`), así que explorar CUALQUIER otro
+oficio (aunque sea solo mirar, sin confirmar nada) invalida la tirada congelada de todos los demás —
+volver a un oficio ya explorado antes fuerza una tirada nueva, con resultado distinto, exactamente
+como si el sistema de "tirada congelada" (2026-08-22) no existiera para el caso real de jugar
+alternando entre varias profesiones en la misma sesión.
+
+**Arreglo propuesto (no aplicado)**: `harvestRollCache` debería guardar un mapa `oficio → cache`
+(o una fila por oficio en vez de un único JSON), no un único slot que se pisa. Candidato para la
+auditoría de deuda técnica — cambio de forma del dato, no solo de lógica puntual.
+
+**Estado**: PENDIENTE, causa raíz confirmada leyendo el propio comentario del código + los tiempos
+reales del log de la partida. No arreglado en esta pasada.
+
+## 2026-08-25 — Roca Luclara minable en Hondonada del Eco pese a tener `harvestSourceHomeLocationSlug` distinto — `harvestSourceHomeLocationSlug` nunca se aplica a MINERIA/TALA/EXTRACCION, solo a PASIVO
+
+**Síntoma**: la misma exploración de Minero de la entrada anterior devolvió "Roca Luclara" estando
+en La Hondonada del Eco.
+
+**Investigación**: `harvestSourceHomeLocationSlug['roca-luclara'] = 'sabana-alta-colmillar'`
+(`worldCatalog.ts`) — un lugar de origen distinto de Hondonada del Eco. Pero `roca-luclara` tiene
+`metodoObtencion: 'MINERIA'`, y el camino mecánico real para MINERIA/TALA/EXTRACCION
+(`candidateSourcesFor`, `recolectar.ts`) NUNCA consulta `harvestSourceHomeLocationSlug` — solo
+`WorldPopulation`/región/terreno (`pasaFiltroTerreno`). Ese mapa solo lo aplica de verdad
+`pasivoCandidatesFor`/el viejo `selectDiscoveries`, exclusivo de objetos método PASIVO. Comprobado
+también "Mena de Yerreo" (misma exploración): su `harvestSourceHomeLocationSlug` SÍ es
+`hondonada-del-eco` — coincide con la ubicación real, así que ese caso concreto no es síntoma de
+nada roto, solo confirma que el mapa se declara para MINERIA aunque no se use.
+
+**Estado**: PENDIENTE de decisión de diseño (no está claro si es "bug" o una limitación conocida).
+Dos caminos: (a) `harvestSourceHomeLocationSlug` se generaliza para aplicarse también a MINERIA/
+TALA/EXTRACCION (minerales/plantas quedan atados a su sitio exacto, no solo a la región+terreno),
+o (b) se acepta que solo aplica a objetos narrativos PASIVO por diseño, y las entradas de
+`harvestSourceHomeLocationSlug` para fuentes MINERIA/TALA/EXTRACCION (como `roca-luclara`) se
+consideran solo documentación de lore sin efecto mecánico real — en cuyo caso valdría la pena un
+comentario que lo aclare para no confundir a futuro. Candidato a preguntar a la usuaria en la
+auditoría de lore (¿debería Roca Luclara solo poder minarse cerca de la Sabana Alta del Colmillar?).

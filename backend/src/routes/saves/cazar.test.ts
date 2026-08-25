@@ -28,6 +28,12 @@ const createCombatEncounter = vi.fn();
 const createCombatParticipant = vi.fn();
 const updateCombatParticipant = vi.fn();
 const updateCombatEncounter = vi.fn();
+// Bug real jugando en vivo (2026-08-25): guard nuevo contra reintentar "cazar" mientras ya hay un
+// CombatEncounter EN_CURSO de verdad (antes solo miraba `pendingCombatNpcSlugs`, que puede quedar
+// desactualizado si el turno que lo abrió reventó antes de llegar a actualizarlo) — ver comentario
+// completo en cazar.ts. Por defecto sin ninguno activo (null), cada test que sí lo necesite lo
+// sobrescribe.
+const findFirstCombatEncounter = vi.fn();
 
 vi.mock('../../lib/prisma.js', () => ({
   prisma: {
@@ -38,6 +44,7 @@ vi.mock('../../lib/prisma.js', () => ({
       findUnique: (...args: unknown[]) => findUniqueNpc(...args),
     },
     npcState: { upsert: (...args: unknown[]) => upsertNpcStateDirect(...args) },
+    combatEncounter: { findFirst: (...args: unknown[]) => findFirstCombatEncounter(...args) },
     $transaction: (...args: unknown[]) => transaction(...args),
   },
 }));
@@ -255,6 +262,7 @@ describe('POST /saves/:id/cazar/confirmar', () => {
     findManyWorldPopulation.mockReset().mockResolvedValue([MURGOL_POP, CRUZAVIENTOS_POP]);
     findManyNpc.mockReset().mockResolvedValue([MURGOL_NPC, CRUZAVIENTOS_NPC]);
     findUniqueNpc.mockReset().mockResolvedValue(MURGOL_NPC);
+    findFirstCombatEncounter.mockReset().mockResolvedValue(null);
     upsertNpcState.mockReset();
     upsertNpcStateDirect.mockReset();
     updateManyWorldPopulation.mockReset();
@@ -387,6 +395,14 @@ describe('POST /saves/:id/cazar/confirmar', () => {
     expect(body.resuelveSinCombate).toBe(false);
     expect(body.exito).toBe(false);
     expect(body.actionText).toContain("'Múrgol'");
+    expect(transaction).not.toHaveBeenCalled();
+  });
+
+  it('rechaza cazar si ya hay un CombatEncounter real EN_CURSO, aunque pendingCombatNpcSlugs esté vacío (bug real 2026-08-25: un turno que revienta antes de sincronizar ese campo dejaba reintentar y apilar encuentros huérfanos)', async () => {
+    findFirstCombatEncounter.mockResolvedValue({ id: 'encounter-huerfano', estado: 'EN_CURSO', jugable: true });
+    const app = await buildApp();
+    const res = await app.inject({ method: 'POST', url: '/saves/save1/cazar/confirmar', payload: { slugs: ['murgol', 'cruzavientos'] } });
+    expect(res.statusCode).toBe(400);
     expect(transaction).not.toHaveBeenCalled();
   });
 

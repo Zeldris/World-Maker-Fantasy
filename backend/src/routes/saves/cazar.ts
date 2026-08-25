@@ -246,6 +246,18 @@ export async function cazarRoutes(app: FastifyInstance) {
     if (Array.isArray(save.pendingCombatNpcSlugs) && save.pendingCombatNpcSlugs.length > 0) {
       return reply.status(400).send({ error: 'Ya hay un combate en curso — resuélvelo antes de salir a cazar.' });
     }
+    // Bug real jugando en vivo (2026-08-25): el guard de arriba mira `pendingCombatNpcSlugs`, que
+    // solo se actualiza al FINAL de `narrateAndPersistTurn` — si ese turno revienta antes de llegar
+    // ahí (p. ej. el narrador de combate múltiple tarda más que el timeout de la transacción de
+    // Prisma), el `CombatEncounter` ya quedó creado en la DB pero `pendingCombatNpcSlugs` nunca se
+    // puso al día. Reintentar "cazar" en ese estado creaba un SEGUNDO `CombatEncounter` completo,
+    // dejando el anterior huérfano en EN_CURSO para siempre — y con dos o más encuentros activos a
+    // la vez, cualquier turno futuro (aunque no tenga nada que ver con combate) se enruta sin querer
+    // al primero que `findFirst` encuentre. Comprobado aparte, directo contra `CombatEncounter`.
+    const activeEncounter = await prisma.combatEncounter.findFirst({ where: { saveId: save.id, estado: 'EN_CURSO', jugable: true } });
+    if (activeEncounter) {
+      return reply.status(400).send({ error: 'Ya hay un combate en curso — resuélvelo antes de salir a cazar.' });
+    }
 
     const region = save.currentLocation?.region ?? null;
     const uniqueSlugs = [...new Set(slugs)];
