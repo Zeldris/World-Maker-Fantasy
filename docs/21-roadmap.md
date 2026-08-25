@@ -228,6 +228,13 @@ resumen de trabajo real, agrupado por tamaño.
   haya un caso concreto, baja prioridad.
 - [ ] **Miel Lebude / futura profesión de cocina por raza-región** (`flora-fauna.md`) — idea suelta,
   apenas especificada, prioridad muy baja.
+- [ ] **Botones "Aceptar"/"Cancelar" cuando un NPC ofrece una misión** — idea suelta (2026-08-25):
+  en vez de depender de que la jugadora escriba texto libre para aceptar, que aparezcan los dos
+  botones al final de la narración donde el NPC ofrece la misión; "Aceptar" genera una narración
+  determinista de aceptación (sin esperar a que el LLM decida si acepta o no). El log donde
+  aparece el botón "Aceptar" debe pintarse de fondo amarillo, igual que ya se pinta el resto de
+  entradas de misión. Mismo espíritu que el resto de "mundo determinista" — la narración deja de
+  decidir si se acepta, solo lo describe una vez ya decidido por la jugadora.
 
 ### Ajuste de números, no features nuevas (pero sin cerrar)
 
