@@ -202,6 +202,10 @@ resumen de trabajo real, agrupado por tamaño.
   `ConstructionRecipe.oficio` pasa de "solo alivio" a bloqueo real (`OFICIOS_CONSTRUCCION_REQUERIDOS`,
   mismo patrón que `OFICIOS_CON_HERRAMIENTA_REQUERIDA`) desde el mediano en adelante. Diseño
   completo en [materiales-procesados-construccion.md](rpgtarkor/materiales-procesados-construccion.md).
+  **Bug real cerrado 2026-08-25**: los 3 items nuevos (`category: 'viga'/'columna'/'cordaje'`)
+  nunca se dieron de alta en `itemTaxonomy.ts` § `CATEGORY_VOCAB_BY_TIPO.MATERIAL` — `seed-catalog`
+  llevaba roto desde esta misma pasada, sin haberse vuelto a correr hasta que se corrió de verdad
+  el 2026-08-25 (Grupo 3 § Compañeros y supervivencia). Arreglado, catálogo sembrado limpio.
 - [x] ~~8 items completamente huérfanos~~ — cerrado 2026-08-24, APLICADO al motor: 5 con
   `CraftingRecipe` nueva (herrero/curtidor orcos-llanuras), `trampa-de-lazo` conectada como la
   cuerda de captura de `companeros-y-supervivencia.md` (sin item nuevo), `marca-de-clan`/
