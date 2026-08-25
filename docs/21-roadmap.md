@@ -113,11 +113,12 @@ resumen de trabajo real, agrupado por tamaño.
   deathCount que hoy solo vive dentro de un turno real, no de un tick de fondo, no se improvisa un
   segundo camino a medio verificar). Migración aplicada y probada contra Postgres real, suite
   completa sin regresiones (destapó de paso una regresión real en el test de Ayuntamiento mediano).
-  **Frontend solo lo pasivo** (Hambre/Sed, Felicidad/Comida/Agua de compañero ya visibles) — la UI
-  ACTIVA (capturar/alimentar-persuadir/confirmar, Almacén + editor de plantillas) queda pendiente,
-  pieza de UI propia aparte, no una extensión trivial. **Conecta con "trabajador de Reino" de
-  abajo** solo en la parte de roles/plantillas (ya construida) — los 22 NPC nuevos que ese punto
-  necesita siguen siendo trabajo de contenido aparte, no tocado aquí.
+  **Frontend, 2026-08-25 en dos pasadas**: lo pasivo (Hambre/Sed, Felicidad/Comida/Agua) más la UI
+  ACTIVA de capturar/tamear-persuadir (`CapturaModal`/`TameoModal`, botón en Compañeros) ya están.
+  **Sigue faltando solo**: equipo de compañero/súbdito y el panel de Almacén de Reino + editor de
+  plantillas — el backend entero ya existe (companeros.ts), es UI pura la que falta. **Conecta con
+  "trabajador de Reino" de abajo** solo en la parte de roles/plantillas (ya construida en backend)
+  — los 22 NPC nuevos que ese punto necesita siguen siendo trabajo de contenido aparte.
 
 ### De la auditoría original (23/08)
 
