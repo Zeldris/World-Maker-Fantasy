@@ -35,6 +35,16 @@ export interface IntentoResult {
   umbralCompletado: boolean;
 }
 
+/// Bug real (auditoría de lore 2026-08-25, decisión de la usuaria "hay que engancharlo"):
+/// `Npc.reclutablePct`/`domesticablePct` (schema.prisma, "% de que ESTA especie/individuo tenga la
+/// capacidad en absoluto") nunca se leían aquí — la tirada opuesta pura de atributos hacía a
+/// cualquier NPC/fauna igual de persuadible/domable con los atributos adecuados, sin importar su
+/// disposición de catálogo (Torgash Ketg, `reclutablePct: 5`, era tan fácil de convencer como uno
+/// con 95). Nunca se toca `rollOpposed`/dice.ts (primitivo compartido con combate) — la resistencia
+/// extra se suma aquí, sobre el resultado ya tirado, mismo criterio que el resto del proyecto de no
+/// mezclar dificultades ad hoc con los primitivos de dado. 100% de disposición = sin penalización
+/// (el resultado de `rollOpposed` no cambia); cada 10 puntos por debajo de 100 añaden +1 de
+/// resistencia — con 5%, +9 de resistencia efectiva, "casi nunca cede por persuasión sola".
 export function resolverIntento(
   playerAttributes: AttributeBlock,
   playerAttribute: Attribute,
@@ -42,9 +52,13 @@ export function resolverIntento(
   resistenciaAttribute: Attribute,
   felicidadActual: number,
   domador: boolean,
+  disposicionPct: number,
   random: () => number = Math.random,
 ): IntentoResult {
-  const roll = rollOpposed(playerAttributes, playerAttribute, resistenciaAttributes, resistenciaAttribute, random);
+  const rollBase = rollOpposed(playerAttributes, playerAttribute, resistenciaAttributes, resistenciaAttribute, random);
+  const resistenciaExtra = Math.floor((100 - disposicionPct) / 10);
+  const margen = rollBase.margen - resistenciaExtra;
+  const roll: OpposedRollResult = { ...rollBase, resistenciaResult: rollBase.resistenciaResult + resistenciaExtra, margen, gano: margen > 0 };
   const felicidadTras = Math.max(0, felicidadActual + (roll.gano ? FELICIDAD_GANANCIA : -FELICIDAD_PERDIDA));
   return { roll, felicidadTras, umbralCompletado: felicidadTras >= felicidadUmbralFor(domador) };
 }

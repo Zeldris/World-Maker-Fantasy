@@ -47,21 +47,41 @@ describe('resolverIntento', () => {
   const resistenciaAttrs: AttributeBlock = { fuerza: 2, destreza: 10, constitucion: 10, inteligencia: 10, voluntad: 10, carisma: 10, arcano: 0 };
 
   it('ganar sube Felicidad, el umbral general no se completa con un solo intento', () => {
-    const result = resolverIntento(playerAttrs, 'fuerza', resistenciaAttrs, 'fuerza', 0, false, () => 0.9);
+    const result = resolverIntento(playerAttrs, 'fuerza', resistenciaAttrs, 'fuerza', 0, false, 100, () => 0.9);
     expect(result.roll.gano).toBe(true);
     expect(result.felicidadTras).toBe(FELICIDAD_GANANCIA);
     expect(result.umbralCompletado).toBe(false);
   });
 
   it('perder resta Felicidad, nunca por debajo de 0', () => {
-    const result = resolverIntento(resistenciaAttrs, 'fuerza', playerAttrs, 'fuerza', 5, false, () => 0.5);
+    const result = resolverIntento(resistenciaAttrs, 'fuerza', playerAttrs, 'fuerza', 5, false, 100, () => 0.5);
     expect(result.roll.gano).toBe(false);
     expect(result.felicidadTras).toBe(0); // 5 - 10, topado en 0
   });
 
   it('el umbral se completa en cuanto la Felicidad acumulada lo alcanza', () => {
-    const result = resolverIntento(playerAttrs, 'fuerza', resistenciaAttrs, 'fuerza', FELICIDAD_UMBRAL_DOMADOR - 1, true, () => 0.9);
+    const result = resolverIntento(playerAttrs, 'fuerza', resistenciaAttrs, 'fuerza', FELICIDAD_UMBRAL_DOMADOR - 1, true, 100, () => 0.9);
     expect(result.umbralCompletado).toBe(true);
+  });
+
+  // Bug real (auditoría de lore 2026-08-25, decisión de la usuaria "hay que engancharlo"):
+  // disposicionPct bajo debe poder tumbar una tirada que con atributos puros habría ganado.
+  it('disposicionPct bajo puede convertir una victoria de atributos en derrota real (Torgash Ketg, reclutablePct 5)', () => {
+    // Con disposicionPct=100 este roll gana de sobra (margen amplio, playerAttrs muy por encima).
+    const ganaSinPenalizacion = resolverIntento(playerAttrs, 'fuerza', resistenciaAttrs, 'fuerza', 0, false, 100, () => 0.5);
+    expect(ganaSinPenalizacion.roll.gano).toBe(true);
+
+    // Con disposicionPct=5 (Torgash Ketg real, worldCatalog.ts) la resistencia extra (+9) tumba esa
+    // misma tirada.
+    const pierdeConPenalizacion = resolverIntento(playerAttrs, 'fuerza', resistenciaAttrs, 'fuerza', 0, false, 5, () => 0.5);
+    expect(pierdeConPenalizacion.roll.gano).toBe(false);
+  });
+
+  it('disposicionPct=100 no penaliza nada (mismo resultado que antes del enganche)', () => {
+    const result = resolverIntento(playerAttrs, 'fuerza', resistenciaAttrs, 'fuerza', 0, false, 100, () => 0.5);
+    // random fijo (0.5) -> roll 11 en ambos lados; resistenciaResult = 11 + floor(fuerza=2/2) = 12,
+    // sin ningún extra sumado por disposicionPct=100 (resistenciaExtra = floor((100-100)/10) = 0).
+    expect(result.roll.resistenciaResult).toBe(12);
   });
 });
 

@@ -178,6 +178,9 @@ export async function companerosRoutes(app: FastifyInstance) {
       const esFauna = npc.ataqueNatural !== null;
       const domador = esDomador(save.clase, save.especializacion) && esFauna;
       const playerAttributes = effectiveAttributes(save.attributes as AttributeBlock, save.inventoryItems);
+      // domesticablePct (fauna) / reclutablePct (NPC) — disposición real de catálogo, ver comentario
+      // completo en resolverIntento (companionSupervivencia.ts).
+      const disposicionPct = esFauna ? npc.domesticablePct : npc.reclutablePct;
       const intento = resolverIntento(
         playerAttributes,
         attribute,
@@ -185,6 +188,7 @@ export async function companerosRoutes(app: FastifyInstance) {
         npc.atributoResistencia as Attribute,
         state.capturaFelicidad,
         domador,
+        disposicionPct,
       );
 
       await prisma.npcState.update({ where: { id: state.id }, data: { capturaFelicidad: intento.felicidadTras } });
