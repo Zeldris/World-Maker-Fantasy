@@ -357,7 +357,23 @@ export async function cazarRoutes(app: FastifyInstance) {
           combatientes.push({ bando: 'ENEMIGO', tipo: 'NPC', npcId: npc.id, npcScope: scope, destreza: npcAttrs.destreza, inteligencia: npcAttrs.inteligencia });
         }
       }
-      await prisma.$transaction((tx) => iniciarCombatEncounter(tx, save.id, combatientes));
+      // Condición de carrera real (auditoría de código 2026-08-25): el guard de arriba (líneas
+      // ~246-260) es solo una comprobación temprana — entre esa lectura y este punto hay varias
+      // consultas async (`candidateFaunaFor`, `npc.findMany`), tiempo de sobra para que un doble
+      // clic en "salgo a cazar" pase el guard dos veces y cree dos `CombatEncounter`. Se relee
+      // `activeEncounter` DENTRO de una transacción con la fila de `Save` bloqueada
+      // (`SELECT ... FOR UPDATE`, mismo patrón que `progression.ts`/`companeros.ts`) justo antes de
+      // crear el encuentro — la segunda petición ve ya el encuentro que dejó la primera.
+      const creado = await prisma.$transaction(async (tx) => {
+        await tx.$queryRaw`SELECT id FROM "Save" WHERE id = ${save.id} FOR UPDATE`;
+        const activeEncounterFresco = await tx.combatEncounter.findFirst({ where: { saveId: save.id, estado: 'EN_CURSO', jugable: true } });
+        if (activeEncounterFresco) return false;
+        await iniciarCombatEncounter(tx, save.id, combatientes);
+        return true;
+      });
+      if (!creado) {
+        return reply.status(400).send({ error: 'Ya hay un combate en curso — resuélvelo antes de salir a cazar.' });
+      }
     }
 
     const names = selected.map((c) => c.name);

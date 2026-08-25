@@ -279,11 +279,21 @@ describe('POST /saves/:id/cazar/confirmar', () => {
     updateCombatEncounter.mockReset().mockResolvedValue({});
     transaction.mockReset().mockImplementation((cb: (tx: unknown) => unknown) =>
       cb({
+        // Condición de carrera real (auditoría de código 2026-08-25) — la creación del
+        // CombatEncounter ahora bloquea la fila de Save (`$queryRaw` ... FOR UPDATE) y relee
+        // `combatEncounter.findFirst` DENTRO de la misma transacción antes de crear; por defecto
+        // ningún test de este archivo tiene un encuentro activo ya (mismo valor por defecto que
+        // `findFirstCombatEncounter` fuera de la transacción).
+        $queryRaw: vi.fn().mockResolvedValue(undefined),
         npcState: { upsert: (...args: unknown[]) => upsertNpcState(...args) },
         worldPopulation: { updateMany: (...args: unknown[]) => updateManyWorldPopulation(...args) },
         logEntry: { create: (...args: unknown[]) => createLogEntry(...args) },
         save: { update: (...args: unknown[]) => updateSave(...args) },
-        combatEncounter: { create: (...args: unknown[]) => createCombatEncounter(...args), update: (...args: unknown[]) => updateCombatEncounter(...args) },
+        combatEncounter: {
+          create: (...args: unknown[]) => createCombatEncounter(...args),
+          update: (...args: unknown[]) => updateCombatEncounter(...args),
+          findFirst: (...args: unknown[]) => findFirstCombatEncounter(...args),
+        },
         combatParticipant: { create: (...args: unknown[]) => createCombatParticipant(...args), update: (...args: unknown[]) => updateCombatParticipant(...args) },
       }),
     );
