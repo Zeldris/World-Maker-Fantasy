@@ -1474,8 +1474,18 @@ export function sanitizeSuggestions(suggestions: string[] | undefined): string[]
 // causándole la muerte instantánea" — un golpe de muerte completo, inventado de la nada. Mismo
 // hueco de vocabulario que las rondas anteriores: la lista no cubría ninguna de estas frases de
 // remate/muerte, aunque la lógica (combatBothMissed) ya era correcta.
+// Vocabulario ampliado (auditoría de código 2026-08-25, sin reproducir en vivo todavía): el patrón
+// `\bgolpe[oó]\b` solo cazaba el VERBO "golpeo"/"golpeó", nunca el sustantivo suelto "golpe" — el
+// uso más común en español para narrar un impacto ya resuelto es "asesta/propina un golpe [certero/
+// limpio]", no el verbo. Se añade en forma de frase (verbo+golpe o golpe+adjetivo), nunca "golpe" a
+// secas, porque "esquiva/bloquea/detiene el golpe" (un golpe INTENTADO, no aterrizado) es fraseo de
+// FALLO legítimo y disparar ahí sería un falso positivo nuevo. Mismo criterio para
+// zarpazo/tajo/estocada/mandoble: solo cuentan con verbo de impacto o adjetivo de acierto delante/
+// detrás, nunca sueltos (un "mandoble que falla" sigue siendo un fallo real). "clava"/"ensarta"/
+// "empala" sí se añaden sueltos — a diferencia de "golpe", esos verbos ya implican contacto por
+// definición en español (no existe un "empala" fallido).
 const COMBAT_HIT_LEAK_REGEX =
-  /\b(golpe[oó]|golpea(?!\s+el\s+aire)|golpeando|impact[oó]|impactando|hiri[oó]|hiere|hiriendo|herida|atraves[oó]|atraviesa|atravesando|reban[oó]|rebanando|degüell[oa]|hace sangrar|rastro de sangre|l[ií]nea de sangre|sangrando|sangra por|se desploma|desplom[oó]|desplomándose|muerte instantánea|corta la garganta|corta el cuello|derram\w* (una gran cantidad de )?sangre)\b/i;
+  /\b(golpe[oó]|golpea(?!\s+el\s+aire)|golpeando|impact[oó]|impactando|hiri[oó]|hiere|hiriendo|herida|atraves[oó]|atraviesa|atravesando|reban[oó]|rebanando|degüell[oa]|hace sangrar|rastro de sangre|l[ií]nea de sangre|sangrando|sangra por|se desploma|desplom[oó]|desplomándose|muerte instantánea|corta la garganta|corta el cuello|derram\w* (una gran cantidad de )?sangre|asesta\s+\w*\s*(golpe|zarpazo|tajo|estocada|mandoble)|propina\s+\w*\s*(golpe|zarpazo|tajo|estocada|mandoble)|golpe\s+(certero|limpio|directo|contundente|mortal)|zarpazo\s+(certero|limpio|directo)|tajo\s+(certero|limpio|profundo)|estocada\s+(certera|limpia|directa)|ensarta|empala|clava\s+(su|el|un|la))\b/i;
 
 export function hasFalseCombatHit(narration: string, combatBothMissed?: boolean): boolean {
   if (!combatBothMissed) return false;
@@ -1551,7 +1561,11 @@ export function hasPrematureCombatResolution(narration: string, combatNotYetReso
 /// hueco que ya se cerró para `hasFalseCombatHit`/`hasPrematureCombatResolution`. Deliberadamente
 /// SOLO se dispara para CONVALECIENTE (`npcFallsConvalecienteThisTurn`), nunca para MUERTO — ahí
 /// "inerte"/"sin vida" es la descripción correcta.
-const UNCONSCIOUS_LEAK_REGEX = /inconsciente|desmayad[oa]|sin sentido|inerte|se desvanece|desvanecid[oa]|pierde el conocimiento/i;
+// Vocabulario ampliado (auditoría de código 2026-08-25, sin reproducir en vivo todavía): frases
+// equivalentes sin ninguna de las palabras clave originales — "no se mueve"/"no reacciona"/
+// "inmóvil"/"no vuelve a moverse" describen la misma inconsciencia falsa con otras palabras.
+const UNCONSCIOUS_LEAK_REGEX =
+  /inconsciente|desmayad[oa]|sin sentido|inerte|se desvanece|desvanecid[oa]|pierde el conocimiento|no se mueve|no reacciona|inm[oó]vil|no vuelve a moverse/i;
 
 export function hasFalseUnconsciousNarration(narration: string, npcFallsConvalecienteThisTurn?: boolean): boolean {
   if (!npcFallsConvalecienteThisTurn) return false;
@@ -1570,7 +1584,12 @@ export function hasFalseUnconsciousNarration(narration: string, npcFallsConvalec
 /// ambos. Vocabulario deliberadamente centrado en finalidad INEQUÍVOCA de muerte (nunca "cae"/
 /// "se desploma" a secas, que también describen un golpe fuerte no mortal): el riesgo real es un
 /// reintento de más, no dejar pasar la alucinación.
-const DEATH_CLAIM_LEAK_REGEX = /muri[oó]|muere\b|ha muerto|cae muert[oa]|sin vida|derrotad[oa] y muert[oa]|muerte (instantánea|definitiva)/i;
+// Vocabulario ampliado (auditoría de código 2026-08-25, sin reproducir en vivo todavía): "fallece"/
+// "expira"/"deja de respirar"/"exhala su último aliento" son sinónimos igual de comunes de "muere"
+// que la lista original no cazaba, más los sustantivos "cadáver"/"despojos" (una narración que ya
+// llama "cadáver" a alguien está afirmando su muerte tan claramente como el verbo).
+const DEATH_CLAIM_LEAK_REGEX =
+  /muri[oó]|muere\b|ha muerto|cae muert[oa]|sin vida|derrotad[oa] y muert[oa]|muerte (instantánea|definitiva)|fallece|expira\b|deja de respirar|exhala su último aliento|cadáver|despojos/i;
 
 export function hasFalseDeathClaim(narration: string, combatNoRealDeathThisTurn?: boolean): boolean {
   if (!combatNoRealDeathThisTurn) return false;
@@ -1692,8 +1711,13 @@ export function hasFalseItemUse(narration: string, possiblyFalseItemUseNames?: s
 // (huellas, "sigue vivo", "reaparece"...) no cubría una iniciativa de ataque directa como esta.
 // Verificado contra el texto real capturado en el log: la versión anterior de este regex devolvía
 // `false` para esta frase exacta, dejando pasar la resurrección sin reintento.
+// Vocabulario ampliado (auditoría de código 2026-08-25, sin reproducir en vivo todavía): (1) verbos
+// de "levantarse" tras quedar CONVALECIENTE/MUERTO ("se incorpora"/"se levanta"/"se pone en pie") —
+// un rival abatido de verdad no se pone en pie solo; (2) "lanza/abalanza/arroja" solo cazaba el
+// verbo pegado DIRECTAMENTE a hacia/sobre/contra ("se lanza hacia") — "lanza un hachazo brutal
+// contra Gorhorn" (verbo + objeto + preposición) se colaba entero.
 const RESURRECTION_LEAK_REGEX =
-  /\b(huellas?\s+(recien\w*|frescas?)|rastro\s+reciente|reconoce el paso de|acaba de pasar|sigue\s+(con vida|vivo)|todav[ií]a\s+(con vida|vivo)|reaparece|vuelve a (atacar|aparecer|acercarse)|se acerca (de nuevo|otra vez)|se (lanza|abalanza|arroja)\s+(hacia|sobre|contra)|se (da la vuelta|gira|vuelve)\s+bruscamente|embiste|carga contra|arremete\s+(hacia|contra))\b/i;
+  /\b(huellas?\s+(recien\w*|frescas?)|rastro\s+reciente|reconoce el paso de|acaba de pasar|sigue\s+(con vida|vivo)|todav[ií]a\s+(con vida|vivo)|reaparece|vuelve a (atacar|aparecer|acercarse)|se acerca (de nuevo|otra vez)|se (lanza|abalanza|arroja)\s+(\w+\s+){0,3}(hacia|sobre|contra)|se (da la vuelta|gira|vuelve)\s+bruscamente|se (incorpora|levanta|pone en pie)|embiste|carga contra|arremete\s+(hacia|contra))\b/i;
 
 export function hasResurrectedDeadNpc(narration: string, possiblyResurrectedNpcNames?: string[]): boolean {
   if (!possiblyResurrectedNpcNames || possiblyResurrectedNpcNames.length === 0) return false;

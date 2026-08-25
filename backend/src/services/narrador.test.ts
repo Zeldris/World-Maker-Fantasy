@@ -497,6 +497,22 @@ describe('hasFalseCombatHit', () => {
       'Gorhorn propina un potente zarpazo que corta la garganta del Buitre Cenizo, derramando una gran cantidad de sangre y causándole la muerte instantánea.';
     expect(hasFalseCombatHit(narration, true)).toBe(true);
   });
+
+  // Hueco de vocabulario encontrado en auditoría de código (2026-08-25, sin reproducir en vivo
+  // todavía): el sustantivo "golpe" a secas nunca disparaba nada, solo el verbo "golpeó"/"golpeo".
+  it('detecta "asesta un golpe certero" — el sustantivo "golpe" con verbo/adjetivo de acierto, nunca cazado hasta ahora', () => {
+    expect(hasFalseCombatHit('Gorhorn asesta un golpe certero al orco, que retrocede dolorido.', true)).toBe(true);
+  });
+
+  it('sigue sin disparar con "esquiva el golpe" — un golpe INTENTADO, no aterrizado, sigue siendo fraseo de fallo legítimo', () => {
+    expect(hasFalseCombatHit('El orco esquiva el golpe de Gorhorn en el último instante.', true)).toBe(false);
+  });
+
+  it('detecta "ensarta"/"empala" y "clava su [arma]" como verbos de contacto ya resuelto', () => {
+    expect(hasFalseCombatHit('Gorhorn ensarta al orco con su lanza.', true)).toBe(true);
+    expect(hasFalseCombatHit('Gorhorn empala a la bestia contra el suelo.', true)).toBe(true);
+    expect(hasFalseCombatHit('Gorhorn clava su daga en el costado del orco.', true)).toBe(true);
+  });
 });
 
 describe('hasFalseCombatMiss', () => {
@@ -597,6 +613,14 @@ describe('hasFalseUnconsciousNarration', () => {
   it('no dispara fuera de este escenario concreto (npcFallsConvalecienteThisTurn undefined)', () => {
     expect(hasFalseUnconsciousNarration('El orco queda inconsciente.', undefined)).toBe(false);
   });
+
+  // Hueco de vocabulario encontrado en auditoría de código (2026-08-25, sin reproducir en vivo
+  // todavía): frases equivalentes que evitan las palabras clave originales por completo.
+  it('detecta "no se mueve"/"no reacciona"/"inmóvil" — inconsciencia falsa sin ninguna de las palabras clave originales', () => {
+    expect(hasFalseUnconsciousNarration('El buitre cae al suelo y no vuelve a moverse.', true)).toBe(true);
+    expect(hasFalseUnconsciousNarration('El orco cae y no reacciona a nada.', true)).toBe(true);
+    expect(hasFalseUnconsciousNarration('El orco queda tendido, inmóvil.', true)).toBe(true);
+  });
 });
 
 describe('hasFalseDeathClaim', () => {
@@ -627,6 +651,13 @@ describe('hasFalseDeathClaim', () => {
 
   it('no dispara fuera de este escenario concreto (combatNoRealDeathThisTurn undefined)', () => {
     expect(hasFalseDeathClaim('El orco muere.', undefined)).toBe(false);
+  });
+
+  // Hueco de vocabulario encontrado en auditoría de código (2026-08-25, sin reproducir en vivo
+  // todavía): "fallece"/"cadáver" son sinónimos igual de comunes de "muere" que no se cazaban.
+  it('detecta "fallece"/"cadáver" además de "muere"/"ha muerto"', () => {
+    expect(hasFalseDeathClaim('El orco fallece entre estertores, dejando solo un cadáver tendido en la arena.', true)).toBe(true);
+    expect(hasFalseDeathClaim('El orco deja de respirar tras el golpe final.', true)).toBe(true);
   });
 });
 
@@ -710,6 +741,14 @@ describe('hasResurrectedDeadNpc', () => {
     const narration =
       'El orco enfurecido se da la vuelta bruscamente, vislumbrando una sombra fugaz entre los áridos montículos de tierra. Antes de que Gorhorn pueda reaccionar, el orco se lanza hacia él con un rugido atronador.';
     expect(hasResurrectedDeadNpc(narration, ['Orco enfurecido'])).toBe(true);
+  });
+
+  // Hueco de vocabulario encontrado en auditoría de código (2026-08-25, sin reproducir en vivo
+  // todavía): (1) verbos de "levantarse" tras quedar CONVALECIENTE/MUERTO; (2) "lanza [un arma]
+  // contra" — el verbo pegado a un objeto intermedio, no directamente a la preposición.
+  it('detecta "se incorpora" (levantarse tras caer) y "lanza un hachazo brutal contra" (verbo + objeto + preposición)', () => {
+    const narration = 'El Orco Enfurecido se incorpora pese a sus heridas y lanza un hachazo brutal contra Gorhorn.';
+    expect(hasResurrectedDeadNpc(narration, ['Orco Enfurecido'])).toBe(true);
   });
 });
 
