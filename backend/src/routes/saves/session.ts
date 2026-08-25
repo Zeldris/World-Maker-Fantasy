@@ -124,7 +124,7 @@ export async function sessionRoutes(app: FastifyInstance) {
       return reply.status(404).send({ error: 'Partida no encontrada' });
     }
     if (save.endedAt) {
-      return reply.status(409).send({ error: 'Esta partida ha terminado' });
+      return reply.status(409).send({ error: 'Esta partida ha terminado', endedAt: save.endedAt });
     }
 
     const pendingSlugs = (save.pendingCombatNpcSlugs as string[] | null) ?? [];
@@ -144,11 +144,30 @@ export async function sessionRoutes(app: FastifyInstance) {
       ? `${save.characterName} logra escapar antes de que el combate llegue a empezar de verdad — pero huir así, dejando la pelea sin dar la cara, es una mancha en su honor que no se borra sola.`
       : `${save.characterName} intenta escapar antes de que empiece la pelea, pero no lo consigue — no hay forma de zafarse de esto ahora mismo.`;
 
-    await prisma.$transaction([
-      prisma.logEntry.create({ data: { saveId: save.id, channel: 'CHARACTER', text, timeLabel } }),
-      ...(roll.success ? [prisma.save.update({ where: { id: save.id }, data: { pendingCombatNpcSlugs: [] } })] : []),
-    ]);
+    // Condición de carrera real (auditoría de código 2026-08-25): un turno real de `/turn/narrate`
+    // (protegido por `claimTurnInFlight`) puede estar resolviendo un intercambio de combate en
+    // paralelo y actualizando `pendingCombatNpcSlugs` (nuevo NPC entra en combate, o cambia el set)
+    // justo en la ventana entre la lectura de arriba y este `update` — sin bloquear la fila, esa
+    // escritura paralela se perdía en silencio bajo el `pendingCombatNpcSlugs: []` de huir. Se
+    // bloquea la fila de `Save` (`SELECT ... FOR UPDATE`, mismo patrón que `progression.ts`/
+    // `companeros.ts`/`cazar.ts`) y solo se limpia si el set sigue siendo EXACTAMENTE el mismo que
+    // se leyó al principio — si cambió entre medias, se aborta con 409 en vez de pisarlo.
+    const outcome = await prisma.$transaction(async (tx) => {
+      const [locked] = await tx.$queryRaw<{ pendingCombatNpcSlugs: string[] | null }[]>`
+        SELECT "pendingCombatNpcSlugs" FROM "Save" WHERE id = ${save.id} FOR UPDATE
+      `;
+      const freshSlugs = locked.pendingCombatNpcSlugs ?? [];
+      const mismoSet = freshSlugs.length === pendingSlugs.length && freshSlugs.every((s) => pendingSlugs.includes(s));
+      if (roll.success && !mismoSet) return { kind: 'cambiado' as const };
 
+      await tx.logEntry.create({ data: { saveId: save.id, channel: 'CHARACTER', text, timeLabel } });
+      if (roll.success) await tx.save.update({ where: { id: save.id }, data: { pendingCombatNpcSlugs: [] } });
+      return { kind: 'ok' as const };
+    });
+
+    if (outcome.kind === 'cambiado') {
+      return reply.status(409).send({ error: 'El combate cambió mientras intentabas huir — vuelve a intentarlo.' });
+    }
     return { escaped: roll.success, text };
   });
 }
