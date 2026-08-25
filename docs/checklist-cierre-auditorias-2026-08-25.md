@@ -17,7 +17,7 @@ Y en su hallazgo de origen al cerrarse (FIJADO), con commit propio y verificaci�
 
 ## Bloque 2 — guards de honestidad narración-vs-mecánica
 
-- [ ] 6. Ampliar vocabulario: `hasFalseCombatHit`, `hasFalseDeathClaim`, `hasResurrectedDeadNpc`, `hasFalseUnconsciousNarration`
+- [x] 6. Ampliar vocabulario: `hasFalseCombatHit`, `hasFalseDeathClaim`, `hasResurrectedDeadNpc`, `hasFalseUnconsciousNarration` — commit `ae32111`
 - [ ] 7. Guard nuevo: curación por descanso libre no puede prometer más de lo que da `healCeilingFor`
 - [ ] 8. Guard nuevo: entrega de objeto (`newItem`) narrada sin materializarse
 - [ ] 9. Guard nuevo: construcción rechazada — corregir también la prosa visible, no solo el estado

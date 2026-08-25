@@ -3156,8 +3156,10 @@ sinónimos/conjugaciones igual de comunes en español. Cuatro huecos concretos e
    `npcFallsConvalecienteThisTurn=true` (el NPC sigue vivo y puede actuar): *"El buitre cae al suelo
    y no vuelve a moverse."*
 
-**Estado**: PENDIENTE. Mismo patrón de arreglo que las ampliaciones anteriores — sumar los términos
-que faltan a cada regex existente, sin tocar la lógica del guard en sí.
+**Estado**: FIJADO (commit `ae32111`, 2026-08-25) — los 4 términos sumados a cada regex existente,
+sin tocar la lógica del guard en sí. Cuidado explícito en `hasFalseCombatHit` para no introducir un
+falso positivo nuevo: "golpe" solo cuenta acompañado de verbo/adjetivo de acierto (nunca a secas),
+así que "esquiva el golpe" (fallo legítimo) sigue sin disparar — verificado con test dedicado.
 
 ## 2026-08-25 — Categorías mecánicas sin ningún guard de honestidad correspondiente
 
