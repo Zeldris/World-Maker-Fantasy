@@ -121,7 +121,9 @@ endedAt: save.endedAt })` aparece calcado en `recolectar.ts:456,512`, `cazar.ts:
 turn.ts/combat/flee/cazar/recolectar/reino...") reconociendo la duplicación pero sin extraerla nunca
 a un helper compartido (p.ej. `requireActiveSave(save)` en `shared.ts`).
 
-**Estado**: PENDIENTE.
+**Estado**: FIJADO (commit `7104420`, 2026-08-25) — `rejectIfEnded(save, reply)` (`shared.ts`)
+reemplaza las 14 copias en 8 archivos. No toca el `prisma.save.findUnique` de cada ruta (cada una
+necesita su propio `select`/`include`), solo el guard en sí.
 
 ## 2026-08-25 — session.ts rompe el propio patrón del guard de endedAt — falta el campo en la respuesta 409
 
