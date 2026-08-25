@@ -229,12 +229,28 @@ sin necesitar reestructurar el detector.
     misión/reputación/población en cada muerte real dentro de un `CombatEncounter`, reutilizando
     `applyKillSideEffects` (mismo criterio que el 1v1 clásico).
   - **Huecos documentados a propósito, primer corte**: XP de la propia tirada de combate (el motor
-    no expone el resultado del dado hacia fuera todavía, solo el resultado de misión); saqueo/
-    desuello de NPCs caídos dentro de un `CombatEncounter` (queda en `saqueado: false` fijo);
-    objetivo individual entre miembros de un mismo grupo (mecánicamente intercambiables hoy — mismo
-    nombre de especie = mismo match, sin UI de frontend para distinguir individuos); sub-partición
-    en >4v4 (el límite `MAX_COMBATIENTES_POR_BANDO=4` de `combateMultiple.ts` no se ha probado en
-    vivo con una caza de grupo grande todavía).
+    no expone el resultado del dado hacia fuera todavía, solo el resultado de misión); objetivo
+    individual entre miembros de un mismo grupo (mecánicamente intercambiables hoy — mismo nombre
+    de especie = mismo match, sin UI de frontend para distinguir individuos); sub-partición en >4v4
+    (el límite `MAX_COMBATIENTES_POR_BANDO=4` de `combateMultiple.ts` no se ha probado en vivo con
+    una caza de grupo grande todavía).
+  - **Saqueo/desuello: CERRADO 2026-08-25** (commit `64b6911`, misma sesión). Decisión de diseño
+    explícita tras valorarlo con la usuaria ("mismo mecanismo", "saquear al final del combate"): en
+    vez de un pipeline nuevo (migración + rutas + frontend propios), al RESOLVERSE el encuentro se
+    reutiliza el saqueo/desuello CLÁSICO tal cual (`carcassCandidatesFor`/`applyLootMode`,
+    recolectar.ts, sin tocar su código) — se materializa `NpcState.groupSize`/`groupDefeated` para
+    especies de grupo (los solitarios ya tenían `NpcState` real y correcto) y se añade un hecho de
+    sesión nombrando a cada caído, para que `detectNpcsInScene` los siga encontrando sin depender
+    de que la acción del turno los mencione. Nuevo campo `combatEncounterLootSummary` en la
+    respuesta del turno. **Bug real cazado en el camino**: `avanzarYComprobarFin` comprobaba el fin
+    del combate contra un snapshot de participantes cargado ANTES del golpe decisivo — para un
+    miembro de grupo (condición solo en `CombatParticipant.condicionFisicaGrupo`, nunca releída de
+    la DB) esto significaba que un grupo entero derrotado en la MISMA transacción que la baja
+    decisiva podía quedarse `EN_CURSO` para siempre; corregido releyendo `CombatParticipant`
+    fresco. **Desollar pasa de activa a pasiva** (petición explícita, alcance completo: también
+    cadáveres narrativos fuera de combate) — ya no es un botón en Habilidades, un aviso nuevo en la
+    escena (`GameView.tsx`) aparece solo cuando hay cadáveres reales pendientes y abre el mismo
+    `HarvestSelectionModal` de siempre.
 
 ---
 
@@ -278,6 +294,5 @@ preveía la versión original. **Capa 4 (disparo real): construida** (commit `f8
 documentados arriba.
 
 **Pendiente real, fuera de esta pasada**: generalizar la Capa 1 más allá de La Hondonada del Eco;
-enganchar XP de la tirada de combate/saqueo-desuello dentro de un `CombatEncounter`; UI de frontend
-para elegir objetivo individual entre miembros de un mismo grupo; probar en vivo una caza de grupo
-que dispare la sub-partición >4v4.
+enganchar XP de la propia tirada de combate; UI de frontend para elegir objetivo individual entre
+miembros de un mismo grupo; probar en vivo una caza de grupo que dispare la sub-partición >4v4.
