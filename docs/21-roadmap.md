@@ -99,21 +99,21 @@ resumen de trabajo real, agrupado por tamaño.
   + pool de armas para las 6 clases sin diseñar — ninguna de estas piezas se ha tocado, sigue
   bloqueando la mayoría de huecos de las 30 especializaciones ya construidas. Cambios futuros que
   ella haga en clases.md (edición en curso) se portarán al motor en una pasada aparte, no ahora.
-- [ ] **Combate múltiple** (`docs/rpgtarkor/combate-multiple.md`) — iniciativa individual N-way, tope
-  4v4 con sub-combates deterministas, modo autónomo/reporte, retira el truco `groupSize`. Desbloquea
-  `MULTIPLE`/`INVOCACION`/`COMPANERO`/`CONTROL`/`EXPULSAR` de arriba. **Avance real 2026-08-25**:
-  Fases A-C construidas y commiteadas (`5e63c27`/`419d7af`/`82793ab`) — iniciativa/retargeting/
-  partición puros, narración ligera por LLM, orquestación con estado real (`CombatEncounter`/
-  `CombatParticipant`) probada aislada contra Postgres. `condicionFisicaGrupo` (`d92df45`) da a cada
-  individuo real de un grupo cazado su propia condición sin tocar el modelo de escena compartido.
+- [x] ~~**Combate múltiple**~~ (`docs/rpgtarkor/combate-multiple.md`) — iniciativa individual N-way,
+  tope 4v4 con sub-combates deterministas, modo autónomo/reporte, retira el truco `groupSize`.
+  Desbloquea `MULTIPLE`/`INVOCACION`/`COMPANERO`/`CONTROL`/`EXPULSAR` de arriba. Fases A-C
+  construidas y commiteadas (`5e63c27`/`419d7af`/`82793ab`) — iniciativa/retargeting/partición puros,
+  narración ligera por LLM, orquestación con estado real (`CombatEncounter`/`CombatParticipant`)
+  probada aislada contra Postgres. `condicionFisicaGrupo` (`d92df45`) da a cada individuo real de un
+  grupo cazado su propia condición sin tocar el modelo de escena compartido.
   `resolverIntercambioCompleto`/`resolverTurnoJugador` (`81e810c`) dan paridad completa de mecánicas
-  (utilidades/doble arma/LETAL) y resuelven el turno de la propia jugadora — todo aditivo, cero
-  cambios al combate 1v1 en uso. **Bloqueado en el disparo real**: conectar esto al juego en vivo
-  (`cazar.ts`, `narrateAndPersistTurn`) exige antes cerrar la Capa 3-4 de
-  [mundo-determinista.md](rpgtarkor/mundo-determinista.md) — el disparador actual de combate
-  (`combateIniciado.npcSlugs`, propuesto libremente por el modelo) es justo lo que ese documento
-  sustituye por algo determinista.
-- [ ] **Mundo determinista: zonas, eventos y narración que solo narra**
+  (utilidades/doble arma/LETAL). **Disparo real APLICADO al juego en vivo 2026-08-25** (commit
+  `f85d7e7`, Capa 4 de [mundo-determinista.md](rpgtarkor/mundo-determinista.md)): `cazar.ts` (caza en
+  grupo) y `narrateAndPersistTurn` ya crean/resuelven un `CombatEncounter` real en vez del viejo
+  `combateIniciado.npcSlugs`. Huecos documentados a propósito: XP de la propia tirada de combate,
+  saqueo/desuello de un `CombatEncounter`, objetivo individual entre miembros de un mismo grupo
+  (mecánicamente intercambiables hoy), y sub-partición >4v4 sin probar en vivo todavía.
+- [x] ~~**Mundo determinista: zonas, eventos y narración que solo narra**~~
   (`docs/rpgtarkor/mundo-determinista.md`, diseño 2026-08-25) — generaliza "el modelo nunca decide,
   solo narra" (ya probado en combate) a aparición de NPC/fauna, eventos de mundo y creación de
   misiones/objetos/compañeros/territorios. 4 capas en orden de dependencia: zonas navegables con
@@ -134,8 +134,11 @@ resumen de trabajo real, agrupado por tamaño.
   (dependen de él al 100%), así que se cerró con 2 piezas quirúrgicas en vez del rediseño completo
   original: persistir `NpcState` real al inyectar un NPC de interrupción (antes solo se leía, nunca
   se creaba) + guard `hasFalseNpcAppearance` (mismo patrón sentence-matching que
-  `hasResurrectedDeadNpc`) contra que la narración "haga aparecer" a alguien no autorizado. **Capa 4:
-  sin construir** — es lo único que falta para conectar Combate múltiple al juego en vivo.
+  `hasResurrectedDeadNpc`) contra que la narración "haga aparecer" a alguien no autorizado. **Capa 4
+  (disparo real) construida 2026-08-25** (commit `f85d7e7`) — cirugía completa dentro de
+  `narrateAndPersistTurn`, ver detalle y huecos documentados en la entrada de Combate múltiple arriba
+  y en [mundo-determinista.md](rpgtarkor/mundo-determinista.md). Pendiente real fuera de esta pasada:
+  generalizar la Capa 1 más allá de La Hondonada del Eco.
   **Los 5 hallazgos independientes: cerrados el mismo día** (commit `1902c29`, ver
   [mundo-determinista.md](rpgtarkor/mundo-determinista.md) para el detalle) — Log de Mundo conectado
   a los hechos reales de `worldAgenda.ts` (LogEntry de canal WORLD por etapa cruzada, cero coste de

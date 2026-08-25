@@ -209,12 +209,32 @@ sin necesitar reestructurar el detector.
 
 ### Capa 4 — Disparo real de Combate múltiple
 
-Ese mismo instante determinista de la Capa 3 (un NPC/grupo "se planta" de verdad en la escena) es
-el que dispara `iniciarCombatEncounter` (ya construido, ver [combate-multiple.md](combate-multiple.md))
-si aplica — sustituyendo por completo a `combateIniciado.npcSlugs` (propuesta libre del modelo) como
-mecanismo de apertura de combate. El turno de la jugadora contra ese `CombatEncounter` ya tiene
-motor real (`resolverTurnoJugador`, `combateMultipleOrquestacion.ts`, 2026-08-25) — lo que faltaba
-era un disparador limpio, y esa es exactamente la pieza que cierra esta capa.
+- [x] **CONSTRUIDA 2026-08-25** (commit `f85d7e7`). Cirugía completa dentro de
+  `narrateAndPersistTurn` (`turnResolution.ts`), confirmada explícitamente con la usuaria vía
+  AskUserQuestion ("ir a por la cirugía completa también", rechazando tanto "solo el disparador"
+  como "parar aquí"): reutiliza la misma cascada ternaria determinista ya usada por
+  Gistera/saqueo/construcción/cosecha/crafteo/curación (nunca llama a `narrateAction` cuando hay un
+  `CombatEncounter` activo) en vez de construir infraestructura nueva. Detecta
+  `activeCombatEncounter` (EN_CURSO + jugable) al principio del turno, resuelve
+  `resolverTurnosAutonomosHastaJugadora` antes/después del turno de la jugadora
+  (`resolverTurnoJugador`), narra con `narrarTurnoCombateMultiple` (motor ligero propio, no el
+  Narrador clásico), y reconstruye `combateIniciado`/`pendingCombatNpcSlugs` desde
+  `CombatParticipant` real en vez de `resolveCombatSlugsAndPersist`.
+  - `cazar.ts` (caza en grupo) ya no escribe `NpcState.groupSize` directo — llama a
+    `iniciarCombatEncounter` dentro de `prisma.$transaction` solo cuando al menos una especie
+    seleccionada tiene más de un avistado; si hay grupo real, TODAS las especies seleccionadas
+    (incluidas las de un individuo) entran en el mismo encuentro, para no mezclar el sistema nuevo
+    con el viejo en la misma escena.
+  - Nuevo `caidos[]`/`ParticipanteCaidoInfo` (`combateMultipleOrquestacion.ts`) engancha XP de
+    misión/reputación/población en cada muerte real dentro de un `CombatEncounter`, reutilizando
+    `applyKillSideEffects` (mismo criterio que el 1v1 clásico).
+  - **Huecos documentados a propósito, primer corte**: XP de la propia tirada de combate (el motor
+    no expone el resultado del dado hacia fuera todavía, solo el resultado de misión); saqueo/
+    desuello de NPCs caídos dentro de un `CombatEncounter` (queda en `saqueado: false` fijo);
+    objetivo individual entre miembros de un mismo grupo (mecánicamente intercambiables hoy — mismo
+    nombre de especie = mismo match, sin UI de frontend para distinguir individuos); sub-partición
+    en >4v4 (el límite `MAX_COMBATIENTES_POR_BANDO=4` de `combateMultiple.ts` no se ha probado en
+    vivo con una caza de grupo grande todavía).
 
 ---
 
@@ -246,17 +266,18 @@ resto del diseño. **Los 5 cerrados y APLICADOS al motor el mismo día (2026-08-
 
 ## Estado y orden recomendado
 
-**Los 5 hallazgos independientes: cerrados** (ver arriba). **Combate múltiple**: avance real (Fases
-A-C + paridad completa de mecánicas + `resolverTurnoJugador`, commits
-`5e63c27`/`419d7af`/`82793ab`/`d92df45`/`81e810c`, 2026-08-25) — solo le falta el disparador de la
-Capa 4 de este documento para conectarse al juego en vivo. **Capa 1 (zonas navegables): prototipo
-construido** (commit `098a3cf`) en La Hondonada del Eco. **Capa 2 (cola de eventos): construida**
-(commit `cf57dca`). **Capa 3 (aparición determinista): construida, replanteada tras investigar**
-(commits `55a732d`/`85fa6fb`) — dos piezas quirúrgicas (persistencia real + guard de honestidad) en
-vez del rediseño completo del detector que preveía la versión original. **Capa 4: sin construir**,
-diseño completo arriba — es lo único que falta para que Combate múltiple se dispare de verdad en el
-juego en vivo.
+**Las 4 capas y los 5 hallazgos independientes: todos construidos y verificados (2026-08-25).**
+**Combate múltiple**: avance real (Fases A-C + paridad completa de mecánicas + `resolverTurnoJugador`,
+commits `5e63c27`/`419d7af`/`82793ab`/`d92df45`/`81e810c`) + disparo real en vivo (Capa 4, commit
+`f85d7e7`) — YA conectado al juego en vivo, ciclo completo cerrado. **Capa 1 (zonas navegables):
+prototipo construido** (commit `098a3cf`) en La Hondonada del Eco — generalizar al resto de zonas
+sigue pendiente. **Capa 2 (cola de eventos): construida** (commit `cf57dca`). **Capa 3 (aparición
+determinista): construida, replanteada tras investigar** (commits `55a732d`/`85fa6fb`) — dos piezas
+quirúrgicas (persistencia real + guard de honestidad) en vez del rediseño completo del detector que
+preveía la versión original. **Capa 4 (disparo real): construida** (commit `f85d7e7`) — ver huecos
+documentados arriba.
 
-Orden recomendado para lo que queda: Capa 4 (disparo real de `iniciarCombatEncounter`) es la única
-pieza pendiente de las 4 — con las Capas 1-3 ya reales y verificadas, cierra el ciclo completo del
-documento.
+**Pendiente real, fuera de esta pasada**: generalizar la Capa 1 más allá de La Hondonada del Eco;
+enganchar XP de la tirada de combate/saqueo-desuello dentro de un `CombatEncounter`; UI de frontend
+para elegir objetivo individual entre miembros de un mismo grupo; probar en vivo una caza de grupo
+que dispare la sub-partición >4v4.
