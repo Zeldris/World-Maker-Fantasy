@@ -4304,7 +4304,9 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
       // fresco dentro de la transacción, mismo criterio que `freshInventoryRows`: el modelo puede
       // ignorar el aviso, esto es lo que garantiza que nunca se cree un compañero sin hueco.
       const [freshCompanionCount, freshCompanionBuildings] = await Promise.all([
-        tx.companion.count({ where: { saveId } }),
+        // `esSlotDomador: false` (Grupo 3 § Compañeros y supervivencia, 2026-08-25) — el slot
+        // garantizado del Domador nunca compite con el cupo de edificio.
+        tx.companion.count({ where: { saveId, esSlotDomador: false } }),
         tx.building.findMany({ where: { saveId, status: 'ACTIVO' }, select: { recipeKey: true } }),
       ]);
       const freshMaxCompanions = freshCompanionBuildings.reduce((sum, b) => sum + companionSlotsForRecipeKey(b.recipeKey), 0);

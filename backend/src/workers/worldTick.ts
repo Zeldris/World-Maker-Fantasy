@@ -9,6 +9,7 @@ import { loadSessionFacts } from '../services/worldFacts.js';
 import { claimTurnInFlight, releaseTurnInFlight } from '../services/turnLock.js';
 import { growAllPopulations } from '../services/population.js';
 import { advanceWorldAgenda } from '../services/worldAgenda.js';
+import { advanceCompanionSurvival, advancePlayerSurvival } from '../services/companionSupervivencia.js';
 import type { ClassificationResult } from '../services/narrador.js';
 import type { RollResult, AttributeBlock } from '../services/dice.js';
 import type { TravelResolution } from '../services/travel.js';
@@ -243,6 +244,12 @@ async function tick(): Promise<void> {
   // Agenda de mundo (Grupo 3, 2026-08-24, ver worldAgenda.ts) — mismo criterio que arriba: hitos
   // que avanzan con el tiempo de ficción, no con el turno síncrono.
   await advanceWorldAgenda(prisma).catch((err) => console.error('[worldTick] error avanzando agenda de mundo:', err));
+  // Compañeros y supervivencia (Grupo 3, 2026-08-25, ver companionSupervivencia.ts) — Comida/Agua
+  // se derivan en vivo (no necesitan tick), pero el DESCUIDO de Felicidad y la Hambre/Sed del
+  // propio personaje sí son mutaciones reales que hay que aplicar en algún punto — mismo criterio
+  // de fondo que población/agenda, nunca en el turno síncrono.
+  await advanceCompanionSurvival(prisma).catch((err) => console.error('[worldTick] error en supervivencia de compañeros:', err));
+  await advancePlayerSurvival(prisma).catch((err) => console.error('[worldTick] error en Hambre/Sed del personaje:', err));
 }
 
 let intervalHandle: NodeJS.Timeout | null = null;

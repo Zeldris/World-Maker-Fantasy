@@ -166,6 +166,11 @@ export async function creationRoutes(app: FastifyInstance) {
             currentLocationId: initialLocation?.id,
             dificultad: dificultad ?? 'MEDIO',
             raza: razaSlug,
+            // Hambre/Sed (Grupo 3 § Compañeros y supervivencia, 2026-08-25) — sembrado al reloj
+            // inicial (480 = Día 1, mañana, mismo valor que el resto de esta creación) para que un
+            // personaje recién creado no arranque ya hambriento.
+            lastAteAtMinutes: 480,
+            lastDrankAtMinutes: 480,
             worldState: { create: { fictionalDateLabel } },
             logEntries: {
               create: [
@@ -301,6 +306,10 @@ export async function creationRoutes(app: FastifyInstance) {
         await tx.inventoryItem.deleteMany({ where: { saveId: save.id } });
         await tx.companion.deleteMany({ where: { saveId: save.id } });
         await tx.subject.deleteMany({ where: { saveId: save.id } });
+        // Grupo 3 § Compañeros y supervivencia (2026-08-25) — Almacén de Reino/Plantillas también
+        // son progreso de ESTA partida, mismo criterio que Companion/Subject arriba.
+        await tx.almacenItem.deleteMany({ where: { saveId: save.id } });
+        await tx.plantillaEquipo.deleteMany({ where: { saveId: save.id } });
         await tx.building.deleteMany({ where: { saveId: save.id } });
         await tx.territory.deleteMany({ where: { saveId: save.id } });
         await tx.characterTransit.deleteMany({ where: { saveId: save.id } });
@@ -392,6 +401,10 @@ export async function creationRoutes(app: FastifyInstance) {
             // preferencia de la partida, no parte del progreso que "reiniciar" debe borrar).
             condicionFisica: 'ILESO',
             salud: 100,
+            // Hambre/Sed (Grupo 3 § Compañeros y supervivencia, 2026-08-25) — mismo criterio que
+            // el resto de este bloque: un reinicio también vuelve al Día 1 recién comido/bebido.
+            lastAteAtMinutes: 480,
+            lastDrankAtMinutes: 480,
             // Sistema de fatiga (2026-07-29) — mismo criterio que condicionFisica/salud: un
             // reinicio también restaura la energía al tope (Constitución no se resetea, así que
             // se recalcula sobre la misma, no un 100 fijo).

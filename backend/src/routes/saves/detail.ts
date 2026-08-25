@@ -10,6 +10,7 @@ import { imageUrlsFor } from '../../lib/imageAssets.js';
 import type { AttributeBlock } from '../../services/dice.js';
 import { normalizeSecondaryAttributes } from '../../services/secondaryAttributes.js';
 import { toFrontendLogEntry } from './shared.js';
+import { comidaPct, aguaPct } from '../../services/companionSupervivencia.js';
 
 export async function detailRoutes(app: FastifyInstance) {
   app.get<{ Params: { id: string } }>('/saves/:id', async (request, reply) => {
@@ -34,6 +35,8 @@ export async function detailRoutes(app: FastifyInstance) {
         territories: { orderBy: { acquiredAt: 'asc' } },
         buildings: { orderBy: { createdAt: 'asc' } },
         subjects: { orderBy: { createdAt: 'asc' } },
+        almacenItems: { orderBy: { createdAt: 'asc' } },
+        plantillasEquipo: { orderBy: { createdAt: 'asc' } },
         characterTransit: true,
         savedActions: { orderBy: { createdAt: 'asc' } },
         currentLocation: true,
@@ -212,7 +215,24 @@ export async function detailRoutes(app: FastifyInstance) {
           imageUrls: i.catalogSlug ? imageUrlsFor('item', i.catalogSlug) : undefined,
         };
       }),
-      companions: save.companions.map((c) => ({ id: c.id, name: c.name, role: c.role, notes: c.notes })),
+      // Felicidad/Comida/Agua (Grupo 3 § Compañeros y supervivencia, 2026-08-25) — `felicidad:
+      // null` = compañero de quest/narración libre, sin capa mecánica (comportamiento de siempre,
+      // `comida`/`agua`/`esSlotDomador`/`rolReino` se devuelven igual pero el frontend no debe
+      // mostrar barras para esos). El resto sí tiene Comida/Agua reales, derivadas en vivo del
+      // reloj de ficción — nunca un contador guardado aparte.
+      companions: save.companions.map((c) => ({
+        id: c.id,
+        name: c.name,
+        role: c.role,
+        notes: c.notes,
+        tipo: c.tipo,
+        felicidad: c.felicidad,
+        comida: c.felicidad !== null ? comidaPct(c.lastFedAtMinutes, save.worldState?.fictionalMinutes ?? 0) : null,
+        agua: c.felicidad !== null ? aguaPct(c.lastWateredAtMinutes, save.worldState?.fictionalMinutes ?? 0) : null,
+        esSlotDomador: c.esSlotDomador,
+        rolReino: c.rolReino,
+        plantillaEquipoId: c.plantillaEquipoId,
+      })),
       level: save.level,
       xp: save.xp,
       pendingAttributePoints: save.pendingAttributePoints,
@@ -242,7 +262,21 @@ export async function detailRoutes(app: FastifyInstance) {
         name: s.name,
         role: s.role,
         notes: s.notes,
+        plantillaEquipoId: s.plantillaEquipoId,
       })),
+      // Almacén de Reino + Plantillas de equipo (Grupo 3 § Compañeros y supervivencia § 6-7)
+      almacenItems: save.almacenItems.map((a) => ({ id: a.id, name: a.name, description: a.description, catalogSlug: a.catalogSlug })),
+      plantillasEquipo: save.plantillasEquipo.map((p) => ({
+        id: p.id,
+        name: p.name,
+        personalizada: p.personalizada,
+        rol: p.rol,
+        slots: p.slots,
+        prioridad: p.prioridad,
+      })),
+      // Hambre/Sed del propio personaje (§5) — derivadas en vivo, igual que Comida/Agua de compañero.
+      hambre: comidaPct(save.lastAteAtMinutes, save.worldState?.fictionalMinutes ?? 0),
+      sed: aguaPct(save.lastDrankAtMinutes, save.worldState?.fictionalMinutes ?? 0),
       // `duracionMinutos` (2026-07-30, petición explícita de la usuaria: mostrar tiempo real Y
       // ficticio juntos en la espera) — se lee de `zoneContext` (guardado por turn.ts al crear el
       // CharacterTransit) en vez de recalcularlo aquí; puede faltar en transits creados antes de

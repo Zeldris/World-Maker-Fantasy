@@ -106,8 +106,10 @@ export async function grantQuestRewardRecipesAndCompanion(
   }
   let grantedCompanionName: string | null = null;
   if (rewardCompanion) {
+    // `esSlotDomador: false` (Grupo 3 § Compañeros y supervivencia, 2026-08-25) — el compañero
+    // tameado que ocupa el slot GARANTIZADO del Domador nunca cuenta contra el cupo de edificio.
     const [companionCount, companionBuildings] = await Promise.all([
-      tx.companion.count({ where: { saveId } }),
+      tx.companion.count({ where: { saveId, esSlotDomador: false } }),
       tx.building.findMany({ where: { saveId, status: 'ACTIVO' }, select: { recipeKey: true } }),
     ]);
     const maxCompanions = companionBuildings.reduce((sum, b) => sum + companionSlotsForRecipeKey(b.recipeKey), 0);

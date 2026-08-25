@@ -368,9 +368,59 @@ export const AYUNTAMIENTO_GRANDE_RECIPE: ConstructionRecipe = {
   reinoBuildingCapacity: 60,
 };
 
+// Jaula (Grupo 3 § Compañeros y supervivencia, 2026-08-25, ver
+// docs/rpgtarkor/companeros-y-supervivencia.md § 2) — "el sitio físico donde se cuida al animal
+// DURANTE el proceso de tameo, no el slot final de compañero" — `companionSlots: 0` a propósito,
+// no compite con Campamento/Choza. Sin `requiresAyuntamiento`: capturar/tamear no depende de tener
+// Reino fundado, mismo criterio que el propio doc ("Reino NO es requisito"). Capacidad = 1 animal
+// por Jaula construida (cifra de partida, ajustable) — se comprueba contando
+// `NpcState.capturaJaulaBuildingId` apuntando a esa Jaula, no un campo nuevo en `Building`.
+// Tamaño requerido por especie calibrado a mano en `companionSupervivencia.ts` (sin campo nuevo en
+// el catálogo, mismo criterio que pide el propio doc). Materiales 100% crudos, escalados por
+// tamaño — igual que Campamento, sin oficio exigido: cualquiera puede levantar una jaula sencilla.
+export const JAULA_PEQUENA_RECIPE: ConstructionRecipe = {
+  key: 'jaula-pequena',
+  name: 'una jaula pequeña',
+  description: 'Una jaula sencilla de varas de madera clavadas en tierra y atadas con cuerda, del tamaño justo para un animal pequeño — pensada para sujetarlo mientras se intenta ganar su confianza, no para retenerlo para siempre.',
+  nounRegex: /(?=.*jaula)(?=.*pequen)/,
+  requirements: [
+    { match: { kind: 'category', tipo: 'RECURSO', category: 'madera' }, cantidad: 4, label: 'leña' },
+    { match: { kind: 'exact', catalogSlug: 'cuerda-tendon' }, cantidad: 2, label: 'cuerda de tendón' },
+  ],
+  companionSlots: 0,
+};
+
+export const JAULA_MEDIANA_RECIPE: ConstructionRecipe = {
+  key: 'jaula-mediana',
+  name: 'una jaula mediana',
+  description: 'Una jaula robusta de postes de madera reforzados con hueso, lo bastante amplia para un animal de tamaño medio — barras bien espaciadas para que respire y se mueva sin poder escapar.',
+  nounRegex: /(?=.*jaula)(?=.*median)/,
+  requirements: [
+    { match: { kind: 'category', tipo: 'RECURSO', category: 'madera' }, cantidad: 8, label: 'leña' },
+    { match: { kind: 'exact', catalogSlug: 'hueso-largo-gargantua' }, cantidad: 2, label: 'hueso largo de gargantúa' },
+    { match: { kind: 'exact', catalogSlug: 'cuerda-tendon' }, cantidad: 4, label: 'cuerda de tendón' },
+  ],
+  companionSlots: 0,
+};
+
+export const JAULA_GRANDE_RECIPE: ConstructionRecipe = {
+  key: 'jaula-grande',
+  name: 'una jaula grande',
+  description: 'Un cercado sólido de postes de madera y hueso largo de gargantúa, reforzado con piedra en la base — lo único capaz de contener a una bestia de verdadero tamaño mientras se intenta domarla.',
+  nounRegex: /(?=.*jaula)(?=.*grande)/,
+  requirements: [
+    { match: { kind: 'category', tipo: 'RECURSO', category: 'madera' }, cantidad: 14, label: 'leña' },
+    { match: { kind: 'exact', catalogSlug: 'hueso-largo-gargantua' }, cantidad: 5, label: 'hueso largo de gargantúa' },
+    { match: { kind: 'category', tipo: 'RECURSO', category: 'piedra' }, cantidad: 6, label: 'piedra' },
+    { match: { kind: 'exact', catalogSlug: 'cuerda-tendon' }, cantidad: 6, label: 'cuerda de tendón' },
+  ],
+  companionSlots: 0,
+};
+
 // Orden deliberado (2026-08-04): grande y mediano ANTES que pequeño — `CONSTRUCTION_RECIPES.find`
 // se queda con la primera receta cuya `nounRegex` matchea, y el texto "ayuntamiento mediano"
-// también matchea el patrón (más simple) del pequeño si ese se comprobara antes.
+// también matchea el patrón (más simple) del pequeño si ese se comprobara antes. Mismo criterio
+// aplicado a las 3 Jaulas nuevas.
 export const CONSTRUCTION_RECIPES: ConstructionRecipe[] = [
   CAMPAMENTO_RECIPE,
   CHOZA_RECIPE,
@@ -378,6 +428,9 @@ export const CONSTRUCTION_RECIPES: ConstructionRecipe[] = [
   AYUNTAMIENTO_GRANDE_RECIPE,
   AYUNTAMIENTO_MEDIANO_RECIPE,
   AYUNTAMIENTO_PEQUENO_RECIPE,
+  JAULA_GRANDE_RECIPE,
+  JAULA_MEDIANA_RECIPE,
+  JAULA_PEQUENA_RECIPE,
 ];
 
 /// `key` de las recetas que dependen de tener un Ayuntamiento (choza, futuro "puesto avanzado") —

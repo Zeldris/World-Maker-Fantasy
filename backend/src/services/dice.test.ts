@@ -6,6 +6,7 @@ import {
   dificultadForTier,
   cantidadForGrado,
   SUERTE_VENTAJA_UMBRAL,
+  rollOpposed,
   type AttributeBlock,
 } from './dice.js';
 
@@ -86,5 +87,45 @@ describe('cantidadForGrado', () => {
 
   it('claro da la cantidad máxima completa', () => {
     expect(cantidadForGrado('claro', 6)).toBe(6);
+  });
+});
+
+// Grupo 3 § Compañeros y supervivencia (2026-08-25) — tirada opuesta de tameo/persuasión,
+// deliberadamente separada de rollCheck/rollGathering (ver comentario de cabecera en dice.ts).
+function sequence(values: number[]): () => number {
+  let i = 0;
+  return () => values[i++ % values.length];
+}
+
+describe('rollOpposed', () => {
+  const playerAttrs: AttributeBlock = { fuerza: 10, destreza: 10, constitucion: 10, inteligencia: 10, voluntad: 10, carisma: 14, arcano: 0 };
+  const resistenciaAttrs: AttributeBlock = { fuerza: 10, destreza: 10, constitucion: 10, inteligencia: 10, voluntad: 8, carisma: 0, arcano: 0 };
+
+  it('gana el jugador si su resultado supera al de la resistencia', () => {
+    // playerRoll = floor(0.9*20)+1 = 19, resistenciaRoll = floor(0.1*20)+1 = 3
+    const result = rollOpposed(playerAttrs, 'carisma', resistenciaAttrs, 'voluntad', sequence([0.9, 0.1]));
+    expect(result.playerResult).toBe(19 + Math.floor(14 / 2)); // 26
+    expect(result.resistenciaResult).toBe(3 + Math.floor(8 / 2)); // 7
+    expect(result.margen).toBe(19);
+    expect(result.gano).toBe(true);
+  });
+
+  it('empate (margen 0) lo gana la resistencia, no el jugador', () => {
+    // Mismo resultado en ambos lados con estos atributos: playerRoll=5 (+7=12), resistenciaRoll=8 (+4=12)
+    const result = rollOpposed(
+      { ...playerAttrs, carisma: 14 },
+      'carisma',
+      { ...resistenciaAttrs, voluntad: 8 },
+      'voluntad',
+      sequence([0.2, 0.35]), // floor(0.2*20)+1=5, floor(0.35*20)+1=8
+    );
+    expect(result.margen).toBe(0);
+    expect(result.gano).toBe(false);
+  });
+
+  it('pierde el jugador si su resultado no alcanza al de la resistencia', () => {
+    const result = rollOpposed(playerAttrs, 'carisma', resistenciaAttrs, 'voluntad', sequence([0.05, 0.9]));
+    expect(result.margen).toBeLessThan(0);
+    expect(result.gano).toBe(false);
   });
 });
