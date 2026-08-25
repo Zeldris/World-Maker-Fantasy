@@ -13,10 +13,14 @@ export function energiaMaxFor(constitucion: number): number {
 /// Coste fijo por tramo (petición explícita: "fijo por tramo", no variable por habilidad ni por
 /// efecto) — el mismo para cualquier habilidad básica (racial, de clase) o avanzada (arma nivel
 /// máximo). 'general' se queda en 0.
-export const ENERGY_RECOVER_BASICA = 10;
-export const ENERGY_RECOVER_MEDIA = 20;
-export const ENERGY_RECOVER_AVANZADA = 40;
-export const ENERGY_RECOVER_EXPERTA = 70;
+///
+/// (Deuda técnica, auditoría 2026-08-25: existían `ENERGY_RECOVER_BASICA/MEDIA/AVANZADA/EXPERTA`
+/// — 10/20/40/70 — pensadas como el equivalente de regeneración por tramo, pero sin ningún caller
+/// real; el sistema de clases (`classAbilities.ts`, posterior a esto) acabó fijando
+/// `energyRegen` a mano por habilidad, no por tramo, y esas constantes nunca llegaron a
+/// conectarse. Retiradas en vez de conectadas: los valores reales de `classAbilities.ts` no siguen
+/// esa escala, así que reconectarlas habría exigido cambiar el balance de ~15 habilidades sin que
+/// nadie lo pidiera.)
 export const ENERGY_COST_BASICA = 10;
 export const ENERGY_COST_MEDIA = 15;
 export const ENERGY_COST_AVANZADA = 30;
