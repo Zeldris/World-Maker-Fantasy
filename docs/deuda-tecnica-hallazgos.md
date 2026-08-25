@@ -63,8 +63,10 @@ de `energyRegen` que sí se usan en `classAbilities.ts` están todos hardcodeado
 constantes que deberían documentar cuánto regenera cada tier de habilidad no están conectadas a
 ningún sitio real.
 
-**Estado**: PENDIENTE. Dos caminos: conectar `classAbilities.ts` a estas constantes (si los números
-"canónicos" siguen siendo los correctos), o borrarlas si ya quedaron obsoletas.
+**Estado**: FIJADO (commit `a7997b7`, 2026-08-25) — retiradas en vez de conectadas: los valores
+reales de `classAbilities.ts` no siguen esa escala (mayoría `energyRegen: 15` fijo por habilidad
+concreta, no por tramo), así que reconectarlas habría exigido cambiar el balance de ~15 habilidades
+sin que nadie lo pidiera.
 
 ## 2026-08-25 — companionCountsAgainstBuildingSlots exportada como si dos sitios la usaran — ninguno la llama
 
