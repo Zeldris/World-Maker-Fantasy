@@ -27,7 +27,7 @@ Y en su hallazgo de origen al cerrarse (FIJADO), con commit propio y verificaci�
 - [x] 10. Extraer helper `requireActiveSave` (guard de `endedAt` duplicado en 8+ archivos) + arreglar `session.ts` (falta `endedAt` en su respuesta 409) — commit `7104420` (helper llamado `rejectIfEnded`; la parte de `session.ts` ya se arregló en el commit `475ef52`, item 4)
 - [x] 11. `companionCountsAgainstBuildingSlots`: conectar de verdad en `questResolution.ts`/`turnResolution.ts` o borrarla — commit `373747d` (borrada, ambos callers ya usan el filtro Prisma directo, correcto para esta regla)
 - [x] 12. `ENERGY_RECOVER_*`: conectar a `classAbilities.ts` o borrar — commit `a7997b7` (borradas, los valores reales no siguen esa escala)
-- [ ] 13. `inventario.ts`/`habilidades.ts`: reducir los `findUnique` de `Save` redundantes
+- [x] 13. `inventario.ts`/`habilidades.ts`: reducir los `findUnique` de `Save` redundantes — commit `92d9763` (inventario.ts 3→1; habilidades.ts revisado, sin redundancia real que consolidar)
 - [ ] 14. Tests: `advanceCompanionSurvival`/`advancePlayerSurvival`/`autoEquiparDesdeAlmacen`
 - [ ] 15. Tests de ruta para `companeros.ts` (11 endpoints, hoy sin ninguno)
 

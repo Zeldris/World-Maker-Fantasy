@@ -150,7 +150,10 @@ que caben en una sola consulta inicial. `habilidades.ts` repite el mismo patrón
 handler en DELETE/PATCH). No es solo estilo: son viajes de red reales contra Postgres evitables en
 el camino caliente de una petición HTTP.
 
-**Estado**: PENDIENTE.
+**Estado**: FIJADO (commit `92d9763`, 2026-08-25) — `inventario.ts` reducido a una sola fila de
+`Save` completa, reutilizada en todo el handler. `habilidades.ts` revisado aparte: cada handler solo
+hace 1 `findFirst` de `SavedAction` + 1 `findUnique` de `Save` (tablas distintas, ambos necesarios)
+— no había redundancia real que consolidar ahí, el hallazgo original lo sobrestimó.
 
 ## 2026-08-25 — companeros.ts (409 líneas, el módulo más nuevo) sin ningún test de ruta
 
