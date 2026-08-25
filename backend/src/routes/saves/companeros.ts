@@ -214,49 +214,66 @@ export async function companerosRoutes(app: FastifyInstance) {
         return reply.status(400).send({ error: `Todavía no ha ganado suficiente confianza (${state.capturaFelicidad}/${umbral}).` });
       }
 
-      // Slot garantizado del Domador (§2) — solo para fauna con Domador real; el resto compite
-      // por `companionSlotsForRecipeKey` como cualquier compañero.
-      let esSlotDomador = false;
-      if (domador) {
-        const yaTieneSlotDomador = await prisma.companion.findFirst({ where: { saveId: save.id, esSlotDomador: true } });
-        esSlotDomador = !yaTieneSlotDomador;
-      }
-      if (!esSlotDomador) {
-        const [companionCount, buildings] = await Promise.all([
-          prisma.companion.count({ where: { saveId: save.id, esSlotDomador: false } }),
-          prisma.building.findMany({ where: { saveId: save.id, status: 'ACTIVO' }, select: { recipeKey: true } }),
-        ]);
-        const maxCompanions = buildings.reduce((sum, b) => sum + companionSlotsForRecipeKey(b.recipeKey), 0);
-        if (companionCount >= maxCompanions) {
-          // Sin hueco — se suelta (§2/§3), no se queda esperando.
-          await prisma.npcState.update({ where: { id: state.id }, data: { capturaJaulaBuildingId: null } });
-          return reply.status(409).send({ error: 'No tienes ningún slot de compañero libre — se suelta.' });
-        }
-      }
+      // Condición de carrera real (auditoría de código 2026-08-25): esta ruta no pasa por
+      // `claimTurnInFlight` (exclusivo de /turn/narrate), así que dos confirmaciones casi
+      // simultáneas (dos capturas pendientes distintas, o doble clic) leían el mismo
+      // `companionCount`/`esSlotDomador` antes de que ninguna escribiera, pasando ambas el check y
+      // creando ambas — el reino terminaba con más compañeros que huecos reales, o con dos slots de
+      // Domador "gratis". Mismo patrón que `progression.ts` (`/attribute-points`): se bloquea la
+      // fila de `Save` con `SELECT ... FOR UPDATE` para serializar confirmaciones de la MISMA
+      // partida — la segunda ve ya el estado que dejó la primera antes de decidir nada.
+      const outcome = await prisma.$transaction(async (tx) => {
+        await tx.$queryRaw`SELECT id FROM "Save" WHERE id = ${save.id} FOR UPDATE`;
 
-      const created = await prisma.companion.create({
-        data: {
-          saveId: save.id,
-          name: request.body.name ?? npc.name,
-          role: request.body.role ?? (esFauna ? 'mascota' : 'aliado'),
-          notes: request.body.notes ?? '',
-          tipo: esFauna ? 'FAUNA' : 'NPC',
-          sourceSlug: npc.slug,
-          felicidad: state.capturaFelicidad,
-          esSlotDomador,
-          // Bug real (auditoría de deuda técnica 2026-08-25): este campo nunca se rellenaba pese a
-          // que el comentario del modelo (schema.prisma) ya prometía "se copia tal cual el
-          // attributes del Npc de catálogo origen" — sin esto, `datosVivosDe`
-          // (combateMultipleOrquestacion.ts) descarta SIEMPRE a cualquier compañero de un
-          // CombatEncounter (`!companion.attributes` → null), así que ningún compañero podía luchar
-          // nunca. Se guarda el bloque CRUDO (nivel 1) — el escalado por nivel del Npc origen se
-          // aplica en el momento de combatir, no aquí.
-          attributes: npc.attributes as object,
-        },
+        // Slot garantizado del Domador (§2) — solo para fauna con Domador real; el resto compite
+        // por `companionSlotsForRecipeKey` como cualquier compañero.
+        let esSlotDomador = false;
+        if (domador) {
+          const yaTieneSlotDomador = await tx.companion.findFirst({ where: { saveId: save.id, esSlotDomador: true } });
+          esSlotDomador = !yaTieneSlotDomador;
+        }
+        if (!esSlotDomador) {
+          const [companionCount, buildings] = await Promise.all([
+            tx.companion.count({ where: { saveId: save.id, esSlotDomador: false } }),
+            tx.building.findMany({ where: { saveId: save.id, status: 'ACTIVO' }, select: { recipeKey: true } }),
+          ]);
+          const maxCompanions = buildings.reduce((sum, b) => sum + companionSlotsForRecipeKey(b.recipeKey), 0);
+          if (companionCount >= maxCompanions) {
+            // Sin hueco — se suelta (§2/§3), no se queda esperando.
+            await tx.npcState.update({ where: { id: state.id }, data: { capturaJaulaBuildingId: null } });
+            return { kind: 'sin-hueco' as const };
+          }
+        }
+
+        const created = await tx.companion.create({
+          data: {
+            saveId: save.id,
+            name: request.body.name ?? npc.name,
+            role: request.body.role ?? (esFauna ? 'mascota' : 'aliado'),
+            notes: request.body.notes ?? '',
+            tipo: esFauna ? 'FAUNA' : 'NPC',
+            sourceSlug: npc.slug,
+            felicidad: state.capturaFelicidad,
+            esSlotDomador,
+            // Bug real (auditoría de deuda técnica 2026-08-25): este campo nunca se rellenaba pese a
+            // que el comentario del modelo (schema.prisma) ya prometía "se copia tal cual el
+            // attributes del Npc de catálogo origen" — sin esto, `datosVivosDe`
+            // (combateMultipleOrquestacion.ts) descarta SIEMPRE a cualquier compañero de un
+            // CombatEncounter (`!companion.attributes` → null), así que ningún compañero podía luchar
+            // nunca. Se guarda el bloque CRUDO (nivel 1) — el escalado por nivel del Npc origen se
+            // aplica en el momento de combatir, no aquí.
+            attributes: npc.attributes as object,
+          },
+        });
+        // Libera la Jaula (si venía de fauna) — ya no está "en proceso", ahora es un Companion real.
+        if (state.capturaJaulaBuildingId) await tx.npcState.update({ where: { id: state.id }, data: { capturaJaulaBuildingId: null } });
+        return { kind: 'ok' as const, companion: created };
       });
-      // Libera la Jaula (si venía de fauna) — ya no está "en proceso", ahora es un Companion real.
-      if (state.capturaJaulaBuildingId) await prisma.npcState.update({ where: { id: state.id }, data: { capturaJaulaBuildingId: null } });
-      return { companion: created };
+
+      if (outcome.kind === 'sin-hueco') {
+        return reply.status(409).send({ error: 'No tienes ningún slot de compañero libre — se suelta.' });
+      }
+      return { companion: outcome.companion };
     },
   );
 
