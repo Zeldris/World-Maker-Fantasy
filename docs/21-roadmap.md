@@ -235,6 +235,14 @@ resumen de trabajo real, agrupado por tamaño.
   aparece el botón "Aceptar" debe pintarse de fondo amarillo, igual que ya se pinta el resto de
   entradas de misión. Mismo espíritu que el resto de "mundo determinista" — la narración deja de
   decidir si se acepta, solo lo describe una vez ya decidido por la jugadora.
+- [ ] **NPCs que aparecen en escena por narración no se marcan en la pestaña "Zona"** — bug/hueco
+  real señalado jugando (2026-08-25): cuando un NPC se presenta en la escena de forma determinista
+  (p. ej. Gistera Koh como perseguidora, o un NPC de interrupción de la Capa 2/3 de
+  [mundo-determinista.md](rpgtarkor/mundo-determinista.md)), no aparece como marcador en el panel
+  "Zona" (`ZonaPanel.tsx`, Capa 1 — hoy solo pinta los `ZonePoint` fijos precargados, ninguno
+  dinámico). La usuaria confirma explícitamente: "no aparecen en la zona y sí tienen que salir".
+  Conectado con "generalizar la Capa 1 más allá de La Hondonada del Eco" — probablemente la misma
+  pieza de trabajo, sin diseñar todavía.
 
 ### Ajuste de números, no features nuevas (pero sin cerrar)
 
