@@ -6,8 +6,11 @@ import type { HabilidadParaIntercambio } from './combateMultiple.js';
 
 /// Grupo 3 § Combate múltiple (2026-08-25) — harness de integración real (mismo criterio que
 /// turn.integration.test.ts): la narración pasa un doble rápido (`narrarFn` inyectable) en vez de
-/// llamar a Ollama de verdad (30-220s por llamada, ver combateMultipleNarracion.ts) — esto prueba
+/// llamar a Ollama de verdad (9-25s por llamada medido en partida real, 2026-08-25) — esto prueba
 /// la orquestación de estado real (CombatEncounter/CombatParticipant, NpcState), no la narración.
+/// Desde el arreglo del timeout de transacción (mismo día, ver cabecera de
+/// combateMultipleOrquestacion.ts), `resolverTurnoAutonomo`/`resolverTurnoJugador` reciben `prisma`
+/// directamente — ya NO se envuelven en `prisma.$transaction` desde este test.
 ///
 /// 2 vs. 2 con NPC reales del catálogo (aullador-rojo/corredor-de-cauce, PLANTILLA — sin
 /// entrelazado de misión, seguros de tocar) en ambos bandos vía `tipo: 'NPC'` (nunca `'JUGADOR'`
@@ -87,7 +90,7 @@ describe('combate múltiple: orquestación real contra Postgres', () => {
     // infinito falle el test en vez de colgarlo para siempre.
     let terminado = false;
     for (let i = 0; i < 60 && !terminado; i++) {
-      const resultado = await prisma.$transaction((tx) => resolverTurnoAutonomo(tx, worldId, saveId, encounterId, [], dobleNarracionRapida));
+      const resultado = await resolverTurnoAutonomo(prisma, worldId, saveId, encounterId, [], dobleNarracionRapida);
       if (resultado?.encounterTerminado) terminado = true;
     }
     expect(terminado).toBe(true);
@@ -134,12 +137,18 @@ describe('combate múltiple: orquestación real contra Postgres', () => {
       const actual = encounter.participantes.find((p) => p.id === actualId)!;
       if (actual.tipo === 'JUGADOR') {
         const objetivo = encounter.participantes.find((p) => p.bando === 'ENEMIGO')!;
-        const resultado = await prisma.$transaction((tx) =>
-          resolverTurnoJugador(tx, worldId, saveId, encounterId, { targetParticipantId: objetivo.id, habilidad: habilidadBasica }, [], dobleNarracionRapida),
+        const resultado = await resolverTurnoJugador(
+          prisma,
+          worldId,
+          saveId,
+          encounterId,
+          { targetParticipantId: objetivo.id, habilidad: habilidadBasica },
+          [],
+          dobleNarracionRapida,
         );
         if (resultado?.encounterTerminado) terminado = true;
       } else {
-        const resultado = await prisma.$transaction((tx) => resolverTurnoAutonomo(tx, worldId, saveId, encounterId, [], dobleNarracionRapida));
+        const resultado = await resolverTurnoAutonomo(prisma, worldId, saveId, encounterId, [], dobleNarracionRapida);
         if (resultado?.encounterTerminado) terminado = true;
       }
     }

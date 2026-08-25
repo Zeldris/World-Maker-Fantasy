@@ -3527,7 +3527,10 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     // Turnos autónomos pendientes de una ronda anterior (defensivo — no debería hacer falta si el
     // turno anterior ya dejó la cola apuntando a la jugadora, pero cubre el caso de un reinicio de
     // backend a media ronda).
-    const antes = await prisma.$transaction((tx) => resolverTurnosAutonomosHastaJugadora(tx, worldId, saveId, encounterId));
+    // Bug real de timeout de transacción (2026-08-25, ver comentario de cabecera en
+    // combateMultipleOrquestacion.ts) — esto YA NO va envuelto en `prisma.$transaction`: la propia
+    // función gestiona sus transacciones cortas internamente y llama a Ollama fuera de ellas.
+    const antes = await resolverTurnosAutonomosHastaJugadora(prisma, worldId, saveId, encounterId);
     narraciones.push(...antes.narraciones);
     combatEncounterCaidos.push(...antes.caidos);
     combatEncounterTerminado = antes.encounterTerminado;
@@ -3577,7 +3580,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
           maxUsesPerCombat: selectedAbilityData?.maxUsesPerCombat ?? null,
         };
         const accion: AccionJugadorCombate = { targetParticipantId, habilidad: jugadorHabilidad, dualWieldBonus };
-        const turnoJugadora = await prisma.$transaction((tx) => resolverTurnoJugador(tx, worldId, saveId, encounterId, accion));
+        const turnoJugadora = await resolverTurnoJugador(prisma, worldId, saveId, encounterId, accion);
         if (turnoJugadora) {
           if (turnoJugadora.narracion) narraciones.push(turnoJugadora.narracion);
           combatEncounterCaidos.push(...turnoJugadora.caidos);
@@ -3586,7 +3589,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
       }
 
       if (!combatEncounterTerminado) {
-        const despues = await prisma.$transaction((tx) => resolverTurnosAutonomosHastaJugadora(tx, worldId, saveId, encounterId));
+        const despues = await resolverTurnosAutonomosHastaJugadora(prisma, worldId, saveId, encounterId);
         narraciones.push(...despues.narraciones);
         combatEncounterCaidos.push(...despues.caidos);
         combatEncounterTerminado = despues.encounterTerminado;

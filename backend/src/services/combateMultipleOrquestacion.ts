@@ -1,4 +1,4 @@
-import type { Prisma, CondicionFisica, Npc } from '@prisma/client';
+import type { Prisma, PrismaClient, CondicionFisica, Npc } from '@prisma/client';
 import type { AttributeBlock } from './dice.js';
 import {
   rollInitiativeMultiple,
@@ -29,6 +29,14 @@ import { saludForCondicion } from './death.js';
 /// viviendo en `applyCombatExchangeToNpcState`, turnResolution.ts, para el combate 1v1 clásico) —
 /// el enganche a esa parte pasa por el punto de integración en `narrateAndPersistTurn`, no por
 /// este archivo.
+///
+/// Fronteras transaccionales (arreglado 2026-08-25 tras un `PrismaClientKnownRequestError` real en
+/// partida): las funciones orquestadoras (`resolverTurnoAutonomo`/`resolverTurnoJugador`/
+/// `resolverTurnosAutonomosHastaJugadora`) reciben el `PrismaClient` real, NUNCA un `tx` ya abierto
+/// por el caller — cada intercambio abre sus propias transacciones cortas (solo escritura) y llama
+/// a `narrarFn` (Ollama, 9-25s en vivo) fuera de cualquiera de ellas, ver comentario completo en
+/// `ejecutarIntercambioYAvanzar`. `iniciarCombatEncounter` es la excepción: no narra nada, así que
+/// sigue recibiendo un `tx` del caller (crear el encuentro completo es atómico y rápido).
 
 export interface CombatienteInicial {
   bando: Bando;
@@ -298,8 +306,17 @@ export interface TurnoAutonomoResultado {
 /// `resolverIntercambioCompleto`, combateMultiple.ts § 4), escribe condición/energía de AMBOS
 /// lados (el atacante también puede recibir un contragolpe, a diferencia del 1v1 donde quien tiene
 /// la iniciativa casi nunca recibe daño en el mismo intercambio), narra y avanza el encuentro.
+///
+/// Bug real (2026-08-25, cazado en partida real vía `PrismaClientKnownRequestError` de timeout):
+/// esta función solía recibir un `tx` ya abierto por el caller y hacía TODO dentro — incluida la
+/// llamada real a `narrarFn` (Ollama, 9-25s medidos en vivo). El timeout por defecto de una
+/// transacción interactiva de Prisma es 5000ms, así que cualquier combate real reventaba con la
+/// transacción ya cerrada. Ahora recibe el `PrismaClient` de verdad (no un `tx`) y abre DOS
+/// transacciones cortas propias (solo escritura, sin narración dentro) alrededor de la llamada a
+/// `narrarFn`, que corre fuera de cualquier transacción — mismo criterio que ya usa
+/// `narrateAndPersistTurn` para `appendSessionFacts`/`captureLiveTeacherExample`.
 async function ejecutarIntercambioYAvanzar(
-  tx: Prisma.TransactionClient,
+  prisma: PrismaClient,
   worldId: string,
   saveId: string,
   encounterId: string,
@@ -313,9 +330,9 @@ async function ejecutarIntercambioYAvanzar(
   weaponNamesPorDefecto: string[],
   narrarFn: typeof narrarTurnoCombateMultiple,
 ): Promise<TurnoAutonomoResultado> {
-  const datosDefensor = await datosVivosDe(tx, worldId, saveId, defensor, weaponNamesPorDefecto);
+  const datosDefensor = await datosVivosDe(prisma, worldId, saveId, defensor, weaponNamesPorDefecto);
   if (!datosDefensor || datosDefensor.condicionFisica === 'CONVALECIENTE' || datosDefensor.condicionFisica === 'MUERTO') {
-    return avanzarSinAtacar(tx, encounterId, encounter);
+    return avanzarSinAtacar(prisma, encounterId, encounter);
   }
   const habilidadDefensa = chooseNpcAbility(datosDefensor.abilities, 'defensa', datosDefensor.energia, Math.random, datosDefensor.usageCounts);
 
@@ -351,25 +368,31 @@ async function ejecutarIntercambioYAvanzar(
     itemRestoreAmount: null,
   });
 
-  await escribirCondicionYEnergia(
-    tx,
-    saveId,
-    defensor,
-    resultado.defensorRecibeGolpe ? resultado.nuevaCondicionDefensor : null,
-    nuevaEnergiaDefensor,
-    habilidadDefensa.name,
-    datosDefensor.usageCounts,
-  );
-  await escribirCondicionYEnergia(
-    tx,
-    saveId,
-    actual,
-    resultado.atacanteRecibeGolpe ? resultado.nuevaCondicionAtacante : null,
-    nuevaEnergiaAtacante,
-    habilidadAtaque.name,
-    datosAtacante.usageCounts,
-  );
+  // Transacción corta #1 — solo escritura, sin narración dentro: condición/energía de ambos lados
+  // quedan atómicas entre sí, pero la transacción se cierra antes de llamar a Ollama.
+  await prisma.$transaction(async (tx) => {
+    await escribirCondicionYEnergia(
+      tx,
+      saveId,
+      defensor,
+      resultado.defensorRecibeGolpe ? resultado.nuevaCondicionDefensor : null,
+      nuevaEnergiaDefensor,
+      habilidadDefensa.name,
+      datosDefensor.usageCounts,
+    );
+    await escribirCondicionYEnergia(
+      tx,
+      saveId,
+      actual,
+      resultado.atacanteRecibeGolpe ? resultado.nuevaCondicionAtacante : null,
+      nuevaEnergiaAtacante,
+      habilidadAtaque.name,
+      datosAtacante.usageCounts,
+    );
+  });
 
+  // Narración real (Ollama) FUERA de cualquier transacción — es la llamada lenta que reventaba el
+  // timeout de 5000ms cuando vivía dentro de la transacción de arriba.
   const narracion = await narrarFn({
     atacanteNombre: datosAtacante.nombre,
     defensorNombre: datosDefensor.nombre,
@@ -381,7 +404,8 @@ async function ejecutarIntercambioYAvanzar(
     defensorMuereEsteTurno: resultado.defensorRecibeGolpe && resultado.nuevaCondicionDefensor === 'MUERTO',
   });
 
-  const encounterTerminado = await avanzarYComprobarFin(tx, worldId, saveId, encounterId, encounter, weaponNamesPorDefecto);
+  // Transacción corta #2 — relee condición fresca de todos y decide fin de combate/retargeting.
+  const encounterTerminado = await prisma.$transaction((tx) => avanzarYComprobarFin(tx, worldId, saveId, encounterId, encounter, weaponNamesPorDefecto));
 
   const caidos: ParticipanteCaidoInfo[] = [];
   const defensorCae = resultado.defensorRecibeGolpe && (resultado.nuevaCondicionDefensor === 'CONVALECIENTE' || resultado.nuevaCondicionDefensor === 'MUERTO');
@@ -397,35 +421,40 @@ async function ejecutarIntercambioYAvanzar(
 /// hace falta tras una baja, y marca el encuentro RESUELTO si un bando entero se queda sin
 /// objetivos válidos.
 ///
-/// `narrarFn` inyectable (por defecto la llamada real a Ollama) — cada llamada real cuesta
-/// 30-220s (narrador.ts), así que los tests pasan un doble rápido en vez de esperar de verdad;
-/// mismo criterio de inyección que `random` en el resto de funciones puras de esta sesión.
+/// `narrarFn` inyectable (por defecto la llamada real a Ollama) — cada llamada real mide 9-25s en
+/// partida real (dev-server.log, 2026-08-25; la cifra de 30-220s de narrador.ts es de otro modelo),
+/// así que los tests pasan un doble rápido en vez de esperar de verdad; mismo criterio de
+/// inyección que `random` en el resto de funciones puras de esta sesión.
+///
+/// Recibe el `PrismaClient` de verdad, NO un `tx` — desde el bug de timeout de 2026-08-25 (ver
+/// comentario de `ejecutarIntercambioYAvanzar`), ningún turno autónomo vive dentro de una única
+/// transacción que abarque también la narración real.
 export async function resolverTurnoAutonomo(
-  tx: Prisma.TransactionClient,
+  prisma: PrismaClient,
   worldId: string,
   saveId: string,
   encounterId: string,
   weaponNamesPorDefecto: string[] = [],
   narrarFn: typeof narrarTurnoCombateMultiple = narrarTurnoCombateMultiple,
 ): Promise<TurnoAutonomoResultado | null> {
-  const encounter = await tx.combatEncounter.findUniqueOrThrow({ where: { id: encounterId }, include: { participantes: true } });
+  const encounter = await prisma.combatEncounter.findUniqueOrThrow({ where: { id: encounterId }, include: { participantes: true } });
   if (encounter.estado === 'RESUELTO' || encounter.ordenIniciativa.length === 0) return null;
 
   const actualId = encounter.ordenIniciativa[encounter.turnoActual % encounter.ordenIniciativa.length];
   const actual = encounter.participantes.find((p) => p.id === actualId);
   if (!actual || actual.tipo === 'JUGADOR') return null;
 
-  const datosAtacante = await datosVivosDe(tx, worldId, saveId, actual, weaponNamesPorDefecto);
+  const datosAtacante = await datosVivosDe(prisma, worldId, saveId, actual, weaponNamesPorDefecto);
   if (!datosAtacante || objetivosValidos([{ participantId: actual.id, condicionFisica: datosAtacante.condicionFisica }]).length === 0) {
-    return avanzarSinAtacar(tx, encounterId, encounter);
+    return avanzarSinAtacar(prisma, encounterId, encounter);
   }
 
   const defensorId = actual.objetivoActualId;
   const defensor = defensorId ? encounter.participantes.find((p) => p.id === defensorId) : null;
-  if (!defensor) return avanzarSinAtacar(tx, encounterId, encounter);
+  if (!defensor) return avanzarSinAtacar(prisma, encounterId, encounter);
 
   const habilidadAtaque = chooseNpcAbility(datosAtacante.abilities, 'ataque', datosAtacante.energia, Math.random, datosAtacante.usageCounts);
-  return ejecutarIntercambioYAvanzar(tx, worldId, saveId, encounterId, encounter, actual, datosAtacante, habilidadAtaque, 'ataque', false, defensor, weaponNamesPorDefecto, narrarFn);
+  return ejecutarIntercambioYAvanzar(prisma, worldId, saveId, encounterId, encounter, actual, datosAtacante, habilidadAtaque, 'ataque', false, defensor, weaponNamesPorDefecto, narrarFn);
 }
 
 export interface AccionJugadorCombate {
@@ -448,7 +477,7 @@ export interface AccionJugadorCombate {
 /// seguir resolviendo turnos autónomos hasta que sí lo sea, ver el bucle de integración en
 /// turnResolution.ts).
 export async function resolverTurnoJugador(
-  tx: Prisma.TransactionClient,
+  prisma: PrismaClient,
   worldId: string,
   saveId: string,
   encounterId: string,
@@ -456,23 +485,23 @@ export async function resolverTurnoJugador(
   weaponNamesPorDefecto: string[] = [],
   narrarFn: typeof narrarTurnoCombateMultiple = narrarTurnoCombateMultiple,
 ): Promise<TurnoAutonomoResultado | null> {
-  const encounter = await tx.combatEncounter.findUniqueOrThrow({ where: { id: encounterId }, include: { participantes: true } });
+  const encounter = await prisma.combatEncounter.findUniqueOrThrow({ where: { id: encounterId }, include: { participantes: true } });
   if (encounter.estado === 'RESUELTO' || encounter.ordenIniciativa.length === 0) return null;
 
   const actualId = encounter.ordenIniciativa[encounter.turnoActual % encounter.ordenIniciativa.length];
   const actual = encounter.participantes.find((p) => p.id === actualId);
   if (!actual || actual.tipo !== 'JUGADOR') return null;
 
-  const datosAtacante = await datosVivosDe(tx, worldId, saveId, actual, weaponNamesPorDefecto);
+  const datosAtacante = await datosVivosDe(prisma, worldId, saveId, actual, weaponNamesPorDefecto);
   if (!datosAtacante || objetivosValidos([{ participantId: actual.id, condicionFisica: datosAtacante.condicionFisica }]).length === 0) {
-    return avanzarSinAtacar(tx, encounterId, encounter);
+    return avanzarSinAtacar(prisma, encounterId, encounter);
   }
 
   const defensor = encounter.participantes.find((p) => p.id === accion.targetParticipantId);
-  if (!defensor) return avanzarSinAtacar(tx, encounterId, encounter);
+  if (!defensor) return avanzarSinAtacar(prisma, encounterId, encounter);
 
   return ejecutarIntercambioYAvanzar(
-    tx,
+    prisma,
     worldId,
     saveId,
     encounterId,
@@ -506,7 +535,7 @@ export interface ResolucionRondaCombate {
 }
 
 export async function resolverTurnosAutonomosHastaJugadora(
-  tx: Prisma.TransactionClient,
+  prisma: PrismaClient,
   worldId: string,
   saveId: string,
   encounterId: string,
@@ -517,9 +546,9 @@ export async function resolverTurnosAutonomosHastaJugadora(
   const narraciones: string[] = [];
   const caidos: ParticipanteCaidoInfo[] = [];
   for (let i = 0; i < maxIteraciones; i++) {
-    const resultado = await resolverTurnoAutonomo(tx, worldId, saveId, encounterId, weaponNamesPorDefecto, narrarFn);
+    const resultado = await resolverTurnoAutonomo(prisma, worldId, saveId, encounterId, weaponNamesPorDefecto, narrarFn);
     if (resultado === null) {
-      const encounter = await tx.combatEncounter.findUniqueOrThrow({ where: { id: encounterId } });
+      const encounter = await prisma.combatEncounter.findUniqueOrThrow({ where: { id: encounterId } });
       return { narraciones, encounterTerminado: encounter.estado === 'RESUELTO', caidos, esperandoAccionJugadora: encounter.estado !== 'RESUELTO' };
     }
     if (resultado.narracion) narraciones.push(resultado.narracion);
