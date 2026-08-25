@@ -102,10 +102,22 @@ resumen de trabajo real, agrupado por tamaño.
 - [ ] **Combate múltiple** (`docs/rpgtarkor/combate-multiple.md`) — iniciativa individual N-way, tope
   4v4 con sub-combates deterministas, modo autónomo/reporte, retira el truco `groupSize`. Desbloquea
   `MULTIPLE`/`INVOCACION`/`COMPANERO`/`CONTROL`/`EXPULSAR` de arriba.
-- [ ] **Compañeros y supervivencia** (`docs/rpgtarkor/companeros-y-supervivencia.md`) — captura con
-  cuerda, jaula, tameo con tirada opuesta, slot garantizado de Domador, Hambre/Sed del personaje,
-  Almacén de Reino + plantillas de equipo. **Conecta directo con el punto de "trabajador de Reino"
-  de abajo** — es probable que se resuelvan juntos.
+- [x] ~~**Compañeros y supervivencia**~~ — backend completo APLICADO al motor 2026-08-25 (alcance
+  íntegro, incluido Almacén de Reino, confirmado explícitamente: "todo, incluido Almacén de
+  Reino"). `Companion`/`Subject` con Felicidad/Comida/Agua/plantilla reales; `NpcState.capturado`/
+  `capturaFelicidad`/`capturaJaulaBuildingId` para el proceso de atar+tamear/persuadir;
+  `Npc.atributoResistencia` calibrado a mano en los 27 NPC/fauna con domesticablePct/reclutablePct
+  reales; `rollOpposed` nuevo en dice.ts; 3 recetas de Jaula; `AlmacenItem`/`PlantillaEquipo` +
+  auto-equipo por prioridad; Hambre/Sed del personaje topada en CONVALECIENTE vía worldTick (la
+  muerte real por inanición se deja fuera a propósito — exige el mismo pipeline de respawn/
+  deathCount que hoy solo vive dentro de un turno real, no de un tick de fondo, no se improvisa un
+  segundo camino a medio verificar). Migración aplicada y probada contra Postgres real, suite
+  completa sin regresiones (destapó de paso una regresión real en el test de Ayuntamiento mediano).
+  **Frontend solo lo pasivo** (Hambre/Sed, Felicidad/Comida/Agua de compañero ya visibles) — la UI
+  ACTIVA (capturar/alimentar-persuadir/confirmar, Almacén + editor de plantillas) queda pendiente,
+  pieza de UI propia aparte, no una extensión trivial. **Conecta con "trabajador de Reino" de
+  abajo** solo en la parte de roles/plantillas (ya construida) — los 22 NPC nuevos que ese punto
+  necesita siguen siendo trabajo de contenido aparte, no tocado aquí.
 
 ### De la auditoría original (23/08)
 
