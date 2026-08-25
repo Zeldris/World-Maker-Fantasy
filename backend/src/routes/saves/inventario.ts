@@ -34,12 +34,20 @@ export async function inventarioRoutes(app: FastifyInstance) {
         return reply.status(404).send({ error: 'Objeto no encontrado' });
       }
 
+      // Deuda técnica (auditoría 2026-08-25): esta ruta hacía hasta 3 `findUnique` de `Save`
+      // distintos en una sola petición (uno solo para `endedAt`, otro completo para requisitos/
+      // clase, otro más para el resync de habilidades de arma) — tres round-trips a Postgres para
+      // datos que caben en una sola consulta inicial. Una sola fila completa, reutilizada en todo
+      // el handler.
+      const save = await prisma.save.findUnique({ where: { id: request.params.id } });
+      if (!save) {
+        return reply.status(404).send({ error: 'Partida no encontrada' });
+      }
       // Mismo guard que turn.ts/combat/flee/cazar/recolectar/reino (auditoría de bugs 2026-08-21
       // + decisión explícita de la usuaria al cerrar la ronda de preguntas abiertas): una partida
       // terminada por muerte definitiva no debería permitir seguir ajustando el equipo del
       // personaje, aunque no toque ningún recurso compartido del mundo.
-      const saveForEndedAt = await prisma.save.findUnique({ where: { id: request.params.id }, select: { endedAt: true } });
-      if (saveForEndedAt && rejectIfEnded(saveForEndedAt, reply)) return;
+      if (rejectIfEnded(save, reply)) return;
 
       // Requisitos de equipar (sesión de diseño 2026-07-23) + ranura compatible (2026-07-30,
       // petición explícita: "categorizarlos por ranura para que no pueda poner un casco en los
@@ -48,10 +56,6 @@ export async function inventarioRoutes(app: FastifyInstance) {
       // no hay nada que comprobar en ninguno de los dos — se deja pasar, permisivo, igual que
       // siempre (no hay dato contra el que validar).
       if (slot && item.catalogSlug) {
-        const save = await prisma.save.findUnique({ where: { id: request.params.id } });
-        if (!save) {
-          return reply.status(404).send({ error: 'Partida no encontrada' });
-        }
         const catalogItem = await prisma.itemCatalog.findUnique({
           where: { worldId_slug: { worldId: save.worldId, slug: item.catalogSlug } },
         });
@@ -120,15 +124,12 @@ export async function inventarioRoutes(app: FastifyInstance) {
       // ahora mismo. Fuera de la transacción de arriba (recalcula sobre el estado YA guardado);
       // aceptable no ser 100% atómico aquí, es solo una resincronización determinista.
       if (slot === 'ARMA_PRINCIPAL' || slot === 'ARMA_SECUNDARIA' || item.slot === 'ARMA_PRINCIPAL' || item.slot === 'ARMA_SECUNDARIA') {
-        const save = await prisma.save.findUnique({ where: { id: request.params.id }, select: { raza: true, level: true, worldId: true } });
-        if (save) {
-          const equippedRows = await prisma.inventoryItem.findMany({
-            where: { saveId: request.params.id, slot: { in: ['ARMA_PRINCIPAL', 'ARMA_SECUNDARIA'] } },
-            select: { slot: true, catalogSlug: true },
-          });
-          const equippedWeaponSlots = await resolveEquippedWeaponSlots(prisma, save.worldId, equippedRows);
-          await syncDynamicCombatAbilities(prisma, request.params.id, save.raza, save.level, equippedWeaponSlots);
-        }
+        const equippedRows = await prisma.inventoryItem.findMany({
+          where: { saveId: request.params.id, slot: { in: ['ARMA_PRINCIPAL', 'ARMA_SECUNDARIA'] } },
+          select: { slot: true, catalogSlug: true },
+        });
+        const equippedWeaponSlots = await resolveEquippedWeaponSlots(prisma, save.worldId, equippedRows);
+        await syncDynamicCombatAbilities(prisma, request.params.id, save.raza, save.level, equippedWeaponSlots);
       }
 
       return { id: item.id, slot };
