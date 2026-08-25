@@ -76,8 +76,10 @@ como filtro Prisma (`{ esSlotDomador: false }`). Es a la vez código muerto y du
 regla de negocio en 2 sitios, con un comentario que ahora induce a error sobre cuál es la fuente de
 verdad real.
 
-**Estado**: PENDIENTE. Arreglo natural: hacer que los dos sitios llamen de verdad a la función
-exportada, o borrarla si se prefiere mantener el filtro Prisma inline en ambos.
+**Estado**: FIJADO (commit `373747d`, 2026-08-25) — función retirada (código muerto real, no tenía
+sentido llamarla desde un filtro Prisma de nivel de query). Comentario corregido para señalar los 3
+sitios reales donde vive la regla (`questResolution.ts`, `turnResolution.ts`,
+`routes/saves/companeros.ts`, este último no mencionado en el hallazgo original).
 
 ## 2026-08-25 — Sin tests: advanceCompanionSurvival/advancePlayerSurvival/autoEquiparDesdeAlmacen
 
