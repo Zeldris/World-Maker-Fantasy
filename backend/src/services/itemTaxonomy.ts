@@ -19,7 +19,11 @@ export const CATEGORY_VOCAB_BY_TIPO: Record<ItemTipo, string[]> = {
   // 'quitina' (2026-08-23): forma YA PROCESADA ("pieza de quitina roja... trabajados hasta formar
   // una pieza completa lista para crafteo") — mismo criterio que 'metal'/'bloque', su versión
   // cruda vive en RECURSO.
-  MATERIAL: ['metal', 'bloque', 'quitina'],
+  // 'viga'/'columna'/'cordaje' (bug real encontrado 2026-08-25 corriendo seed-catalog: los 3
+  // materiales procesados nuevos de la pasada de materiales-procesados-construccion.md, 2026-08-24,
+  // nunca se dieron de alta aquí — seed-catalog llevaba roto desde esa misma pasada sin haberse
+  // vuelto a correr hasta ahora, mismo tipo de gap ya encontrado una vez en 2026-08-23 arriba).
+  MATERIAL: ['metal', 'bloque', 'quitina', 'viga', 'columna', 'cordaje'],
   EQUIPABLE: ['arma', 'herramienta', 'ropa','accesorio','armadura'],
   CONSUMIBLE: ['consumible', 'medicinal'],
   // 'cosmetico' añadido 2026-08-03 (petición explícita: "crear... una categoría que es
