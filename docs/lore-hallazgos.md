@@ -150,11 +150,11 @@ Con el código tal cual está, Torgash Ketg es hoy igual de persuadible que un N
 real a por qué un NPC con `reclutablePct` bajo debería resistirse a la persuasión aunque sus
 atributos cuadren — no es una simplificación deliberada, es un hueco de implementación real.
 
-**Estado**: PENDIENTE de implementar (esto ES un hallazgo de código, no solo de lore, aunque haya
-salido de la auditoría de lore) — decisión de la usuaria en esta misma sesión: documentar y no tocar
-código todavía, igual que el resto de hallazgos de código/deuda técnica de hoy. Candidato claro a
-próxima ronda de trabajo: `resolverIntento`/la ruta de persuasión deberían incorporar
-`reclutablePct` como modificador o umbral adicional de dificultad, no solo la tirada de atributos.
+**Estado**: FIJADO (commit `a59f4e3`, 2026-08-25) — `resolverIntento` (companionSupervivencia.ts)
+añade una resistencia extra derivada del % (100 = sin penalización, cada 10 puntos por debajo suman
++1 de resistencia efectiva) sin tocar `rollOpposed`/dice.ts. Aplicado también a `domesticablePct`
+(fauna), mismo bug simétrico en la misma función compartida. Tests nuevos prueban el caso real
+citado por el doc: con `reclutablePct: 5`, una tirada que con atributos puros habría ganado, pierde.
 
 ## 2026-08-25 — Plantillas de equipo "básicas, no editables" prometidas por el .md no existen — toda plantilla es personalizada hoy
 

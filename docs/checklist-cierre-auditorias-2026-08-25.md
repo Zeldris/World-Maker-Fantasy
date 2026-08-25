@@ -13,7 +13,7 @@ Y en su hallazgo de origen al cerrarse (FIJADO), con commit propio y verificaci�
 - [x] 2. Condición de carrera: confirmar tameo (tope de compañeros / slot domador duplicado) — commit `6f99995`
 - [x] 3. Condición de carrera: `cazar/confirmar` puede crear 2 `CombatEncounter` — commit `9bcab7b`
 - [x] 4. Condición de carrera: `combat/flee` pisa `pendingCombatNpcSlugs` en paralelo — commit `475ef52` (de paso arregló la mitad del item 10: `endedAt` faltante en la respuesta de `session.ts`)
-- [ ] 5. `reclutablePct` enganchado a la tirada de persuasión (decidido: SÍ hace falta)
+- [x] 5. `reclutablePct` enganchado a la tirada de persuasión (decidido: SÍ hace falta) — commit `a59f4e3`, aplicado también a `domesticablePct` (fauna, mismo bug simétrico)
 
 ## Bloque 2 — guards de honestidad narración-vs-mecánica
 
