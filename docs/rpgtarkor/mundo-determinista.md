@@ -181,19 +181,31 @@ de las pruebas de integración contra Postgres — mismo perfil de riesgo que el
 lleva conviviendo con la suite desde 2026-08-05 sin problemas conocidos. Verificado con dos pasadas
 limpias de `turn.integration.test.ts` antes de dar por bueno.
 
-### Capa 3 — Determinismo de aparición en turno libre
+### Capa 3 — Determinismo de aparición en turno libre — CONSTRUIDA 2026-08-25 (commits `55a732d`/`85fa6fb`)
 
-Con las Capas 1-2 ya dando datos reales de "qué hay aquí y cuándo pasa algo", se cierra el ciclo
-del diagnóstico §1:
+**Replanteada tras investigar a fondo** (dos rondas de grounding, con la usuaria pidiendo
+explícitamente "investigar más antes de decidir"): quitar `sessionFacts` del todo de
+`detectNpcsInScene` habría roto Desollar y las sugerencias de narración, que dependen de él al
+100% (`action: ''`, sin ningún otro texto en el haystack). Se implementó en dos piezas más
+quirúrgicas que lo que decía la versión original de este documento:
 
-- `sessionFacts` deja de ser fuente de verdad para "quién está en escena" — sigue sirviendo para que
-  el jugador se refiera a alguien ya establecido ("ataco a 'X'"), nunca para que la mera mención del
-  modelo establezca su existencia.
-- El encuentro ambiental deja de ser un hint opcional de texto y pasa a ser forzado, mismo patrón que
-  Gistera Koh (§2 del diagnóstico): cuando la Capa 2 decide que algo aparece, el motor planta el
-  `NpcState` real y pega una frase ya fijada (plantilla, nunca libre) a la narración.
-- Un guard nuevo (mismo patrón que los 16 existentes) detecta si la narración menciona a un NPC de
-  catálogo NO autorizado en `npcsInScene` esta vez.
+- [x] **Pieza A — persistir el `NpcState` real en el momento de inyectar un NPC de interrupción**
+  (Capa 2). Hasta entonces solo se LEÍA (`findUnique`), nunca se creaba — si el turno no incluía
+  golpe/saqueo real, la fila nunca llegaba a existir, y la única forma de que el NPC "siguiera en
+  escena" turnos después era precisamente `sessionFacts` sin control. Ahora `upsert` a ILESO, mismo
+  patrón ya probado en `cazar.ts` (caza en grupo).
+- [x] **Pieza B — guard nuevo `hasFalseNpcAppearance`** (mismo patrón sentence-matching que
+  `hasResurrectedDeadNpc`): detecta si la narración (prosa o `newFacts`) "hace aparecer" con
+  vocabulario de presencia activa a un NPC geográficamente plausible
+  (`candidateNpcNamesNotInScene`, npcScene.ts — mismo filtro que usa `detectNpcsInScene`
+  internamente) que NINGÚN mecanismo determinista puso en escena este turno.
+
+**Lo que el diseño original preveía y NO se hizo, con motivo real**: `sessionFacts` NO dejó de ser
+fuente de verdad para "quién está en escena" (seguiría rompiendo Desollar/sugerencias); el
+encuentro ambiental de texto libre (`turnResolution.ts`, 25% opcional) tampoco se tocó — quedó
+fuera de esta pasada, sigue siendo un hint que el modelo puede ignorar. El guard B es la pieza que
+realmente cierra el riesgo (el modelo ya no puede sembrar una aparición futura sin que se detecte),
+sin necesitar reestructurar el detector.
 
 ### Capa 4 — Disparo real de Combate múltiple
 
@@ -237,12 +249,14 @@ resto del diseño. **Los 5 cerrados y APLICADOS al motor el mismo día (2026-08-
 **Los 5 hallazgos independientes: cerrados** (ver arriba). **Combate múltiple**: avance real (Fases
 A-C + paridad completa de mecánicas + `resolverTurnoJugador`, commits
 `5e63c27`/`419d7af`/`82793ab`/`d92df45`/`81e810c`, 2026-08-25) — solo le falta el disparador de la
-Capa 3-4 de este documento para conectarse al juego en vivo. **Capa 1 (zonas navegables): prototipo
+Capa 4 de este documento para conectarse al juego en vivo. **Capa 1 (zonas navegables): prototipo
 construido** (commit `098a3cf`) en La Hondonada del Eco. **Capa 2 (cola de eventos): construida**
-(commit `cf57dca`) — generaliza la interrupción de viaje ya existente a descansar/construir/crafteo.
-**Capas 3-4: sin construir todavía**, diseño completo arriba.
+(commit `cf57dca`). **Capa 3 (aparición determinista): construida, replanteada tras investigar**
+(commits `55a732d`/`85fa6fb`) — dos piezas quirúrgicas (persistencia real + guard de honestidad) en
+vez del rediseño completo del detector que preveía la versión original. **Capa 4: sin construir**,
+diseño completo arriba — es lo único que falta para que Combate múltiple se dispare de verdad en el
+juego en vivo.
 
-Orden recomendado para lo que queda: Capa 3 (aparición determinista en turno libre) es la siguiente
-pieza natural — con Capas 1-2 ya reales, cierra el ciclo `newFacts`→`sessionFacts`→`npcsInScene` sin
-control identificado en el diagnóstico, y deja lista la Capa 4 (disparo real de Combate múltiple)
-como último paso.
+Orden recomendado para lo que queda: Capa 4 (disparo real de `iniciarCombatEncounter`) es la única
+pieza pendiente de las 4 — con las Capas 1-3 ya reales y verificadas, cierra el ciclo completo del
+documento.

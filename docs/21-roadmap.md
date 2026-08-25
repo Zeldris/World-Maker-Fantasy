@@ -129,7 +129,13 @@ resumen de trabajo real, agrupado por tamaño.
   la interrupción de viaje ya existente (`travelInterruption.ts`, 2026-08-05) a descansar/construir/
   crafteo, reutilizando casi todo su mecanismo (mismo campo de `zoneContext`, misma inyección
   determinista de NPC en escena); solo dispara donde hay `ZonePoint` real (hoy solo Hondonada del
-  Eco). **Capas 3-4: sin construir.**
+  Eco). **Capa 3 (aparición determinista) construida el mismo día** (commits `55a732d`/`85fa6fb`) —
+  replanteada tras investigar: quitar `sessionFacts` del detector habría roto Desollar/sugerencias
+  (dependen de él al 100%), así que se cerró con 2 piezas quirúrgicas en vez del rediseño completo
+  original: persistir `NpcState` real al inyectar un NPC de interrupción (antes solo se leía, nunca
+  se creaba) + guard `hasFalseNpcAppearance` (mismo patrón sentence-matching que
+  `hasResurrectedDeadNpc`) contra que la narración "haga aparecer" a alguien no autorizado. **Capa 4:
+  sin construir** — es lo único que falta para conectar Combate múltiple al juego en vivo.
   **Los 5 hallazgos independientes: cerrados el mismo día** (commit `1902c29`, ver
   [mundo-determinista.md](rpgtarkor/mundo-determinista.md) para el detalle) — Log de Mundo conectado
   a los hechos reales de `worldAgenda.ts` (LogEntry de canal WORLD por etapa cruzada, cero coste de
