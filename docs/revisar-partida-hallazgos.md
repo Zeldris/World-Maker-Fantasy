@@ -3079,9 +3079,11 @@ ambos `esSlotDomador: true`, dando un slot gratis de más.
 Esta ruta NO pasa por `claimTurnInFlight` (esa protección es exclusiva de `/turn/narrate`) — no hay
 ningún candado que la cubra.
 
-**Estado**: PENDIENTE. Arreglo natural: mover el check+create dentro de una transacción con
-`SELECT ... FOR UPDATE` (mismo patrón que ya usa `progression.ts` para `/attribute-points`), o un
-`WHERE companionCount < maxCompanions` atómico si el conteo se puede expresar como condición SQL.
+**Estado**: FIJADO (commit `6f99995`, 2026-08-25) — check+create movidos dentro de una transacción
+con `SELECT ... FOR UPDATE` sobre la fila de `Save`, mismo patrón que `progression.ts`. Test de
+integración nuevo (`companeros.integration.test.ts`, el archivo no tenía ninguno) dispara dos
+confirmaciones reales a la vez contra Postgres y confirma que como mucho se crea 1 `Companion` con 1
+solo slot disponible.
 
 ## 2026-08-25 — Condición de carrera: doble clic en "salgo a cazar" puede crear dos CombatEncounter activos a la vez
 
@@ -3098,10 +3100,11 @@ sigue siendo TOCTOU sin lock: dos peticiones a `/cazar/confirmar` casi simultán
 `EN_CURSO` para siempre, turnos futuros enrutados al equivocado) — pero disparado por doble clic en
 vez de por el crash de Prisma ya fijado.
 
-**Estado**: PENDIENTE. El guard existente (`findFirst` + comprobación) reduce la ventana pero no la
-cierra — necesitaría envolver lectura+creación en una única transacción, o un candado por saveId
-específico para esta ruta (mismo espíritu que `turnLock.ts`, pero esa ruta no pasa por
-`/turn/narrate`).
+**Estado**: FIJADO (commit `9bcab7b`, 2026-08-25) — el guard se relee dentro de una transacción con
+la fila de `Save` bloqueada (`SELECT ... FOR UPDATE`) justo antes de `iniciarCombatEncounter`. Test
+de integración nuevo (`cazar.integration.test.ts`, el archivo no tenía ninguno) dispara dos
+confirmaciones reales a la vez contra Postgres con 'buitre-cenizo' (el mismo bicho del crash real
+que originó esta ronda) y confirma que como mucho se crea 1 `CombatEncounter` EN_CURSO.
 
 ## 2026-08-25 — Condición de carrera: huir de combate puede pisar en silencio un pendingCombatNpcSlugs que un turno real está escribiendo en paralelo
 
@@ -3116,9 +3119,12 @@ el set) justo en la ventana entre la lectura y el `update` de `flee` — el resu
 se pierde en silencio, dejando el combate en un estado inconsistente (la jugadora "huye" de un
 combate que el turno paralelo ya había mutado a otra cosa).
 
-**Estado**: PENDIENTE. Necesitaría releer `pendingCombatNpcSlugs` justo antes de escribir (dentro de
-una transacción corta), o comparar el valor leído contra el actual antes del `update` y abortar con
-409 si cambió entre medias (mismo criterio que el resto del proyecto usa para detectar staleness).
+**Estado**: FIJADO (commit `475ef52`, 2026-08-25) — se bloquea la fila de `Save` (`SELECT ... FOR
+UPDATE`) y se compara el set fresco contra el leído al principio antes de limpiar; si cambió entre
+medias, aborta con 409 en vez de pisarlo. De paso se arregló la inconsistencia ya detectada (esta
+ruta era la única de las 9 copias del guard de `endedAt` que omitía el campo en su respuesta 409).
+2 tests de integración nuevos (`session.ts` no tenía ninguno para `/combat/flee`), incluida la
+carrera real simulada con una transacción competidora que agarra el lock de `Save` primero.
 
 ## 2026-08-25 — Huecos de vocabulario en guards de honestidad narración-vs-mecánica existentes
 

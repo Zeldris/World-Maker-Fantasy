@@ -131,7 +131,9 @@ partida ha terminado' })`, sin `endedAt: save.endedAt`. Si algún cliente/fronte
 campo para mostrar la fecha, `/combat/flee` se lo niega sin motivo real — inconsistencia real de
 manejo de errores entre rutas equivalentes, no solo estilo.
 
-**Estado**: PENDIENTE. Se resolvería solo si se extrae el helper del hallazgo anterior.
+**Estado**: FIJADO (commit `475ef52`, 2026-08-25) — arreglado de paso al resolver la condición de
+carrera real de esta misma ruta (ver `revisar-partida-hallazgos.md`). El helper compartido
+`requireActiveSave` en sí (para las otras 8 copias del guard) sigue sin extraer.
 
 ## 2026-08-25 — inventario.ts hace hasta 4 findUnique de Save distintos en una sola petición
 
