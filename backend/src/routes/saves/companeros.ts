@@ -244,6 +244,14 @@ export async function companerosRoutes(app: FastifyInstance) {
           sourceSlug: npc.slug,
           felicidad: state.capturaFelicidad,
           esSlotDomador,
+          // Bug real (auditoría de deuda técnica 2026-08-25): este campo nunca se rellenaba pese a
+          // que el comentario del modelo (schema.prisma) ya prometía "se copia tal cual el
+          // attributes del Npc de catálogo origen" — sin esto, `datosVivosDe`
+          // (combateMultipleOrquestacion.ts) descarta SIEMPRE a cualquier compañero de un
+          // CombatEncounter (`!companion.attributes` → null), así que ningún compañero podía luchar
+          // nunca. Se guarda el bloque CRUDO (nivel 1) — el escalado por nivel del Npc origen se
+          // aplica en el momento de combatir, no aquí.
+          attributes: npc.attributes as object,
         },
       });
       // Libera la Jaula (si venía de fauna) — ya no está "en proceso", ahora es un Companion real.

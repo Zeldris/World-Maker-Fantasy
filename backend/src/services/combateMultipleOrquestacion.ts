@@ -1,4 +1,4 @@
-import type { Prisma, PrismaClient, CondicionFisica, Npc } from '@prisma/client';
+import type { Prisma, PrismaClient, CondicionFisica, Npc, Clase } from '@prisma/client';
 import type { AttributeBlock } from './dice.js';
 import {
   rollInitiativeMultiple,
@@ -15,6 +15,7 @@ import { narrarTurnoCombateMultiple } from './combateMultipleNarracion.js';
 import type { NpcHabilidadRacialInScene } from './npcScene.js';
 import { energiaMaxFor, nextEnergia } from './energy.js';
 import { saludForCondicion } from './death.js';
+import { npcAttributesForLevel } from './progression.js';
 
 /// Grupo 3 § Combate múltiple (2026-08-25) — orquestación con estado real (crea/avanza un
 /// `CombatEncounter`). Fase A/B: resuelve turnos autónomos de NPC/COMPANION (sin intervención de
@@ -182,7 +183,7 @@ async function datosVivosDe(
     if (participant.condicionFisicaGrupo !== null) {
       return {
         nombre: npc.name,
-        attributes: npc.attributes as unknown as AttributeBlock,
+        attributes: npcAttributesForLevel(npc.attributes as unknown as AttributeBlock, npc.level, npc.clase as Clase | null),
         condicionFisica: participant.condicionFisicaGrupo,
         energia: 100,
         abilities: npcCombatAbilitiesFor(toNpcForCombatAbilities(npc), weaponNames),
@@ -192,7 +193,7 @@ async function datosVivosDe(
     const state = await tx.npcState.findUnique({ where: { saveId_npcId_scope: { saveId, npcId: npc.id, scope: participant.npcScope } } });
     return {
       nombre: npc.name,
-      attributes: npc.attributes as unknown as AttributeBlock,
+      attributes: npcAttributesForLevel(npc.attributes as unknown as AttributeBlock, npc.level, npc.clase as Clase | null),
       condicionFisica: state?.condicionFisica ?? 'ILESO',
       energia: state?.energia ?? 100,
       abilities: npcCombatAbilitiesFor(toNpcForCombatAbilities(npc), weaponNames),
@@ -205,10 +206,15 @@ async function datosVivosDe(
     // Un compañero real de combate usa el roster del Npc de catálogo del que vino (§5 del doc:
     // "necesita atributos y vida propios", pero no un roster de habilidades propio — reutiliza el
     // de su origen, mismo criterio que sus atributos, copiados al confirmar el tameo/persuasión).
+    // `companion.attributes` guarda el bloque CRUDO (nivel 1) del Npc origen — se escala aquí igual
+    // que el resto de ramas, nunca se guarda ya escalado (fuente única de verdad: nivel del propio
+    // catálogo, que no cambia para un compañero).
     const npcOrigen = companion.sourceSlug ? await tx.npc.findFirst({ where: { worldId, slug: companion.sourceSlug } }) : null;
     return {
       nombre: companion.name,
-      attributes: companion.attributes as unknown as AttributeBlock,
+      attributes: npcOrigen
+        ? npcAttributesForLevel(companion.attributes as unknown as AttributeBlock, npcOrigen.level, npcOrigen.clase as Clase | null)
+        : (companion.attributes as unknown as AttributeBlock),
       condicionFisica: companion.condicionFisica,
       energia: 100,
       abilities: npcOrigen ? npcCombatAbilitiesFor(toNpcForCombatAbilities(npcOrigen), weaponNames) : [],
