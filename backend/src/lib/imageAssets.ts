@@ -29,3 +29,10 @@ export function imageUrlsFor(
     banner: findImage(entityType, entitySlug, 'banner'),
   };
 }
+
+/// Grupo 3 § Mundo determinista, Capa 1 (2026-08-25) — el mapa de zona usa su propio sizeProfile
+/// ('mapa', 800×600) en vez de thumbnail/banner, así que no encaja en `imageUrlsFor` de arriba
+/// (pensado para la pareja fija que usa la Enciclopedia). Mismo mecanismo de búsqueda por archivo.
+export function zoneMapImageUrl(locationSlug: string): string | null {
+  return findImage('zona', locationSlug, 'mapa');
+}

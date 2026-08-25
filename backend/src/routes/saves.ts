@@ -14,6 +14,7 @@ import { recipesStatusRoutes } from './saves/recipesStatus.js';
 import { suggestionsRoutes } from './saves/suggestions.js';
 import { panelsRoutes } from './saves/panels.js';
 import { companerosRoutes } from './saves/companeros.js';
+import { zonaRoutes } from './saves/zona.js';
 
 /// Rutas de persistencia real de partidas (decisión 2026-07-17: /turn y /entorno dejan de ser
 /// stateless — el frontend crea una partida una vez y a partir de ahí solo manda `saveId`).
@@ -38,4 +39,5 @@ export async function savesRoutes(app: FastifyInstance) {
   await app.register(suggestionsRoutes);
   await app.register(panelsRoutes);
   await app.register(companerosRoutes);
+  await app.register(zonaRoutes);
 }

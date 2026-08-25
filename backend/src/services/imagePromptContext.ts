@@ -168,6 +168,19 @@ export async function loreContextFor(worldId: string, entityType: ImagePromptEnt
     return { name: location.name, loreContext: `Región: ${location.region}. Tipo: ${location.kind}. ${location.description}` };
   }
 
+  if (entityType === 'zona') {
+    // Grupo 3 § Mundo determinista, Capa 1 (2026-08-25) — mismo Location que 'location' arriba,
+    // pero pensado para el mapa navegable de la zona (sizeProfile 'mapa'), no para un retrato
+    // ambiental. Se listan los puntos reales ya calibrados (ZonePoint) para que la imagen generada
+    // tenga referencias concretas de qué hay en cada rincón, no solo la descripción general.
+    const location = await prisma.location.findUnique({ where: { worldId_slug: { worldId, slug: entitySlug } }, include: { zonePoints: true } });
+    if (!location) return null;
+    const puntos = location.zonePoints.length
+      ? ` Elementos reales presentes en la zona (referencia, no listar como texto en la imagen): ${location.zonePoints.map((p) => p.label ?? p.targetSlug).join(', ')}.`
+      : '';
+    return { name: location.name, loreContext: `Región: ${location.region}. Tipo: ${location.kind}. ${location.description}${puntos}` };
+  }
+
   if (entityType === 'faction') {
     const faction = await prisma.faction.findUnique({ where: { worldId_slug: { worldId, slug: entitySlug } } });
     if (!faction) return null;

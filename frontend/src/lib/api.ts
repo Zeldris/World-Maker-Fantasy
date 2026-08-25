@@ -718,6 +718,29 @@ export async function getSaquearZona(saveId: string): Promise<{ candidates: Loot
   return fetchJson(`${API_URL}/saves/${saveId}/saquear-zona`)
 }
 
+/// Grupo 3 § Mundo determinista, Capa 1 (2026-08-25, docs/rpgtarkor/mundo-determinista.md) — zonas
+/// navegables, prototipo en una sola zona. `disponible: false` cuando la Location actual no tiene
+/// ningún ZonePoint sembrado todavía (el resto de zonas, hasta que se repita el prototipo) —
+/// el frontend debe ocultar el panel en ese caso, no mostrarlo vacío.
+export interface ZonePointInfo {
+  id: string
+  x: number
+  y: number
+  tipo: 'FAUNA' | 'RECURSO' | 'NPC'
+  targetSlug: string
+  nombre: string
+}
+export interface ZonaResponse {
+  disponible: boolean
+  locationSlug?: string
+  locationName?: string
+  imageUrl?: string | null
+  puntos: ZonePointInfo[]
+}
+export async function getZona(saveId: string): Promise<ZonaResponse> {
+  return fetchJson(`${API_URL}/saves/${saveId}/zona`)
+}
+
 /// Botón "Explorar" del pop-up de caza — determinista, sin gastar turno, pero con una tirada real
 /// de qué se encuentra: puede no salir nada, igual que explorar en busca de recursos.
 export async function explorarCaza(saveId: string): Promise<{ candidates: HuntCandidate[] }> {

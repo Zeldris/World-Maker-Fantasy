@@ -6756,3 +6756,29 @@ export const faunaTerrainTag: Record<string, TerrainTag> = {
   imanio: 'rocoso', // Las Agujas Iman (formación rocosa, ver bio: "armadura de rocas imantadas")
   nuente: 'rocoso', // Las Agujas Iman, mismo territorio que su presa (Imanio)
 };
+
+/// Grupo 3 § Mundo determinista (docs/rpgtarkor/mundo-determinista.md, 2026-08-25) — Capa 1: zonas
+/// navegables, PROTOTIPO en una sola zona (La Hondonada del Eco, `hondonada-del-eco`) antes de
+/// repetir en el resto — mismo criterio que el Mapa de Cristal Helado ("un nodo a la vez"). Los 3
+/// elementos reales ya documentados de esta zona (`harvestSourceHomeLocationSlug` arriba: yerreo/
+/// gesgurio/kirelon-arenoso, los únicos 3 con `homeLocationSlug: 'hondonada-del-eco'`).
+///
+/// Posiciones PROVISIONALES (lienzo 800×600 de referencia, sin PNG real generado todavía) — a
+/// recalibrar a mano contra la imagen real en cuanto exista, mismo proceso que ya se usó para
+/// Cristal Helado. Distribuidas según la propia bio de cada especie: el Kirelon Arenoso emerge de
+/// bocas de cueva en las paredes ("varias bocas de cueva abriéndose... a distintas alturas"), el
+/// Gesgurio se camufla contra las paredes de arcilla, el Yerreo es una veta mineral en la roca.
+export interface ZonePointInput {
+  locationSlug: string;
+  x: number;
+  y: number;
+  tipo: 'FAUNA' | 'RECURSO' | 'NPC';
+  targetSlug: string;
+  label?: string;
+}
+
+export const zonePoints: ZonePointInput[] = [
+  { locationSlug: 'hondonada-del-eco', x: 620, y: 180, tipo: 'FAUNA', targetSlug: 'kirelon-arenoso', label: 'Boca de cueva (Kirelon Arenoso)' },
+  { locationSlug: 'hondonada-del-eco', x: 260, y: 340, tipo: 'FAUNA', targetSlug: 'gesgurio', label: 'Pared de arcilla (Gesgurio)' },
+  { locationSlug: 'hondonada-del-eco', x: 400, y: 470, tipo: 'RECURSO', targetSlug: 'yerreo', label: 'Veta de Yerreo' },
+];

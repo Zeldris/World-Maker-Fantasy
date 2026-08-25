@@ -292,8 +292,44 @@ model Location {
   saves         Save[] @relation("CurrentLocation")
   restingSaves  Save[] @relation("LastRestLocation")
   buildings     Building[]
+  zonePoints    ZonePoint[]
 
   @@unique([worldId, slug])
+}
+
+/// Grupo 3 § Mundo determinista (docs/rpgtarkor/mundo-determinista.md, 2026-08-25) — Capa 1: zonas
+/// navegables. Prototipo en UNA sola zona (Hondonada del Eco) antes de repetir en el resto, mismo
+/// criterio que el Mapa de Cristal Helado ("un nodo a la vez, calibrado en vivo"). Posición LOCAL
+/// dentro del lienzo de la zona — no confundir con `Location.x`/`y`, que es la posición GLOBAL en
+/// km reales de la propia Location dentro del mundo (solo para la Brújula). Deliberadamente
+/// ACOTADO en esta pasada: solo representa DÓNDE vive algo dentro de la zona — no cambia todavía
+/// cómo se resuelve cazar/recolectar/combate (eso es trabajo de las Capas 2-3 del documento,
+/// construidas ENCIMA de esto, no aquí).
+model ZonePoint {
+  id         String        @id @default(cuid())
+  locationId String
+  location   Location      @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  /// Píxeles del lienzo de la zona (convención 800×600, misma que ya usa el mapa de mundo —
+  /// `frontend/src/data/map.ts` — para que el frontend pueda reutilizar el mismo sistema de
+  /// overlay SVG). Calibrado a mano contra el PNG real de la zona, no calculado.
+  x          Float
+  y          Float
+  tipo       ZonePointTipo
+  /// Slug del Npc (FAUNA/NPC) o de HarvestYield.sourceSlug (RECURSO) que puede aparecer aquí —
+  /// string libre, no FK (mismo criterio que el resto del catálogo: el contenido real vive en
+  /// worldCatalog.ts, esto solo referencia por slug).
+  targetSlug String
+  /// Etiqueta corta para el marcador del mapa — null = el frontend cae al nombre real de catálogo.
+  label      String?
+  createdAt  DateTime      @default(now())
+
+  @@index([locationId])
+}
+
+enum ZonePointTipo {
+  FAUNA
+  RECURSO
+  NPC
 }
 
 /// Ruta directa entre dos ubicaciones. Se guarda UNA fila por pareja y el grafo se trata

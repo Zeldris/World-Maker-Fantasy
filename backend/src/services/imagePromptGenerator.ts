@@ -15,9 +15,14 @@ export type ImagePromptEntityType =
   | 'construccion'
   | 'faction'
   | 'historia'
-  | 'crafteo';
+  | 'crafteo'
+  | 'zona';
 
-export type ImagePromptSizeProfile = 'thumbnail' | 'banner';
+/// `'mapa'` (Grupo 3 § Mundo determinista, 2026-08-25, Capa 1: zonas navegables) — lienzo fijo
+/// 800×600, misma convención que ya usa el mapa de mundo (`frontend/src/data/map.ts`) para que el
+/// overlay SVG de marcadores se pueda reutilizar tal cual. Distinto de `banner`/`thumbnail`
+/// (pensados para retrato/icono, no para una vista aérea navegable).
+export type ImagePromptSizeProfile = 'thumbnail' | 'banner' | 'mapa';
 
 // ============================================================
 // MAPEOS — ENTITY TYPE → HINT (sin cambios)
@@ -35,6 +40,7 @@ const ENTITY_TYPE_HINT: Record<ImagePromptEntityType, string> = {
   faction: 'a heraldic emblem/banner illustration representing this faction or clan (not a specific named character)',
   historia: 'an illustration of the historical scene or physical document described in this lore entry',
   crafteo: 'an item/prop illustration of this specific crafted result',
+  zona: 'a top-down aerial exploration map of this real place, illustrated terrain layout with distinct landmarks, in the style of a hand-drawn fantasy game map — NOT a scenic ground-level illustration',
 };
 
 // ============================================================
@@ -53,6 +59,7 @@ const ENTITY_TYPE_STYLE: Record<ImagePromptEntityType, string> = {
   faction: 'bold flat icon illustration, simple clean shapes, a single strong silhouette, minimal flat color palette, no fine texture or surface detail — must read clearly and instantly as a small icon; NEVER photorealistic',
   historia: 'painterly style with visible brushstrokes, rich impasto textures, atmospheric lighting, soft edges, oil painting aesthetic, fantasy art quality, historical scene',
   crafteo: 'hyperrealistic design with fantastic nuances, photorealistic rendering, cinematic detail, sharp focus on crafted materials and tool marks',
+  zona: 'hand-illustrated fantasy cartography style, painterly top-down map, muted natural color palette, clearly readable terrain features and landmarks, no text or labels',
 };
 
 // ============================================================
@@ -89,6 +96,7 @@ function inferToneFromLore(lore: string): string {
 const SIZE_PROFILE_DIMENSIONS: Record<ImagePromptSizeProfile, string> = {
   thumbnail: 'square 1:1 aspect ratio, 1024x1024px',
   banner: 'wide 2.5:1 aspect ratio, 1920x768px',
+  mapa: 'wide 4:3 aspect ratio, 800x600px',
 };
 
 // ============================================================
@@ -101,6 +109,8 @@ const HEADROOM_INSTRUCTION: Record<ImagePromptSizeProfile, string> = {
 
   banner:
     'clear headroom above the main subject — the top of the composition must have at least 15% of the image height as open sky, mist, or empty background before the subject begins, to allow safe cropping for UI overlays without cutting into the focal point; center horizontally or place slightly off-center, but always leave breathing room around it; never crop the top or any edge of the subject',
+  mapa:
+    'the entire navigable area must be visible within frame, evenly lit with no single dramatic focal point, consistent scale and perspective across the whole image so landmarks can be located precisely, no vignetting or heavy framing at the edges',
 };
 
 // ============================================================

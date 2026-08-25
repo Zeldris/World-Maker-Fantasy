@@ -1,0 +1,83 @@
+import { useEffect, useState } from 'react'
+import { getZona, resolveImageUrl, type ZonaResponse, type ZonePointInfo } from '../../lib/api'
+import { PanelEmptyState } from '../PanelEmptyState'
+
+interface ZonaPanelProps {
+  saveId: string
+}
+
+/// Grupo 3 § Mundo determinista, Capa 1 (2026-08-25, docs/rpgtarkor/mundo-determinista.md) —
+/// zonas navegables, PROTOTIPO en una sola zona (La Hondonada del Eco) antes de repetir en el
+/// resto. Deliberadamente simple: solo muestra DÓNDE vive algo dentro de la zona actual (posición
+/// real + nombre real de catálogo), nunca decide disponibilidad — eso es trabajo de las Capas 2-3
+/// del documento, construidas encima de esto. Lienzo 800×600, misma convención que el mapa de
+/// mundo (`InteractiveMap.tsx`) para poder reutilizar el mismo criterio de overlay SVG.
+const TIPO_COLOR: Record<ZonePointInfo['tipo'], string> = {
+  FAUNA: '#c0392b',
+  RECURSO: '#2e86c1',
+  NPC: '#d4af37',
+}
+
+const TIPO_LABEL: Record<ZonePointInfo['tipo'], string> = {
+  FAUNA: 'Fauna',
+  RECURSO: 'Recurso',
+  NPC: 'NPC',
+}
+
+export function ZonaPanel({ saveId }: ZonaPanelProps) {
+  const [loading, setLoading] = useState(true)
+  const [data, setData] = useState<ZonaResponse | null>(null)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    setLoading(true)
+    getZona(saveId)
+      .then(setData)
+      .catch(() => setError('No se pudo cargar la zona.'))
+      .finally(() => setLoading(false))
+  }, [saveId])
+
+  if (loading) return <p className="text-xs text-wood-500">Cargando la zona...</p>
+  if (error) return <p className="text-xs text-red-400">{error}</p>
+  if (!data?.disponible) {
+    return (
+      <PanelEmptyState
+        icon="🧭"
+        title="Sin datos de esta zona todavía"
+        hint="Las posiciones reales de fauna, recursos y NPCs solo existen hoy en La Hondonada del Eco — el resto de zonas llegarán más adelante."
+      />
+    )
+  }
+
+  const imageUrl = resolveImageUrl(data.imageUrl ?? null)
+
+  return (
+    <div className="flex flex-col gap-3">
+      <p className="text-sm font-medium text-wood-100">{data.locationName}</p>
+      <div className="overflow-hidden rounded-lg border border-iron-700 bg-wood-950/60">
+        <svg viewBox="0 0 800 600" className="h-auto w-full">
+          {imageUrl ? (
+            <image href={imageUrl} x={0} y={0} width={800} height={600} preserveAspectRatio="xMidYMid slice" />
+          ) : (
+            <rect x={0} y={0} width={800} height={600} fill="#1a1410" />
+          )}
+          {data.puntos.map((p) => (
+            <g key={p.id}>
+              <circle cx={p.x} cy={p.y} r={8} fill={TIPO_COLOR[p.tipo]} stroke="white" strokeWidth={1.5} />
+              <title>{`${p.nombre} (${TIPO_LABEL[p.tipo]})`}</title>
+            </g>
+          ))}
+        </svg>
+      </div>
+      <div className="flex flex-col gap-1.5">
+        {data.puntos.map((p) => (
+          <div key={p.id} className="flex items-center gap-2 rounded-lg border border-iron-700 bg-wood-950/40 px-3 py-1.5 text-xs">
+            <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: TIPO_COLOR[p.tipo] }} />
+            <span className="text-wood-100">{p.nombre}</span>
+            <span className="ml-auto text-2xs uppercase tracking-wide text-wood-500">{TIPO_LABEL[p.tipo]}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}

@@ -566,8 +566,9 @@ export async function worldRoutes(app: FastifyInstance) {
     'faction',
     'historia',
     'crafteo',
+    'zona',
   ];
-  const IMAGE_PROMPT_SIZE_PROFILES: ImagePromptSizeProfile[] = ['thumbnail', 'banner'];
+  const IMAGE_PROMPT_SIZE_PROFILES: ImagePromptSizeProfile[] = ['thumbnail', 'banner', 'mapa'];
 
   // Generación de prompts de imagen BAJO DEMANDA (checklist 2026-07-21/22, punto 7 — petición
   // explícita de la usuaria: "hay que pedir 1 a 1 la imagen en cada petición, no que genere todos

@@ -27,11 +27,13 @@ const SECTION_LABEL: Record<ImagePromptEntityType, string> = {
   faction: 'Facciones',
   historia: 'Historia',
   crafteo: 'Crafteo',
+  zona: 'Zonas navegables',
 };
 
 const SIZE_PROFILE_LABEL: Record<ImagePromptSizeProfile, string> = {
   thumbnail: 'Miniatura (icono cuadrado, cuadrícula)',
   banner: 'Banner (detalle, formato ancho)',
+  mapa: 'Mapa de zona (vista aérea navegable, 800x600)',
 };
 
 async function main() {

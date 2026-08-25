@@ -10,6 +10,7 @@ import { characterTabs, worldTabs, type PanelId } from '../components/NavTabs'
 import { PanelDrawer } from '../components/PanelDrawer'
 import { MapaPanel } from '../components/panels/MapaPanel'
 import { DiarioPanel } from '../components/panels/DiarioPanel'
+import { ZonaPanel } from '../components/panels/ZonaPanel'
 import { InventarioPanel } from '../components/panels/InventarioPanel'
 import { EnciclopediaPanel } from '../components/panels/EnciclopediaPanel'
 import { SLOT_LABEL, isCompatibleWithSlot, isConsumibleSlot } from '../lib/equipSlots'
@@ -269,7 +270,7 @@ export function GameView() {
   // 'profesiones' ya no es un PanelId de nivel superior (vive como sub-pestaña dentro de
   // PersonajePanel, que recibe `combatOpen` y deshabilita esa sub-pestaña por su cuenta).
   const COMBAT_DISABLED_CHARACTER_TABS: PanelId[] = ['inventario', 'companeros', 'reino']
-  const COMBAT_DISABLED_WORLD_TABS: PanelId[] = ['mapa', 'diario', 'misiones']
+  const COMBAT_DISABLED_WORLD_TABS: PanelId[] = ['mapa', 'zona', 'diario', 'misiones']
 
   const [quests, setQuests] = useState<QuestInfo[]>([])
   const [chapters, setChapters] = useState<SessionSummaryInfo[]>([])
@@ -1131,6 +1132,7 @@ export function GameView() {
     reino: 'Reino',
     habilidades: 'Habilidades',
     enciclopedia: 'Enciclopedia',
+    zona: 'Zona',
   }
   // Roadmap de diseño CSS (Fable, 2026-07-20, Nivel 3): el marco del cajón sigue la misma
   // partición que ya usan characterTabs/worldTabs (riel izquierdo "Tu personaje" vs derecho "El
@@ -1143,6 +1145,7 @@ export function GameView() {
     companeros: 'accent',
     reino: 'accent',
     mapa: 'accent2',
+    zona: 'accent2',
     diario: 'accent',
     misiones: 'accent2',
     enciclopedia: 'accent2',
@@ -1564,6 +1567,7 @@ export function GameView() {
           {activePanel === 'mapa' && (
             <MapaPanel worldSlug={worldIdSlug} currentLocation={currentLocation} destinations={destinations} inventory={inventory} quests={quests} buildings={buildings} />
           )}
+          {activePanel === 'zona' && saveId && <ZonaPanel saveId={saveId} />}
           {activePanel === 'diario' && saveId && <DiarioPanel saveId={saveId} chapters={chapters} />}
           {activePanel === 'inventario' && (
             <InventarioPanel
