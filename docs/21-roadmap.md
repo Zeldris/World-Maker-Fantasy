@@ -121,7 +121,11 @@ resumen de trabajo real, agrupado por tamaño.
   que resultó ser solo píxeles hardcodeados en el frontend) → cola de eventos por tiempo/posición
   (extiende `worldTick.ts`) → determinismo de aparición en turno libre (rompe el ciclo real
   `newFacts`→`sessionFacts`→`npcsInScene` sin ningún control de población) → disparo real de
-  Combate múltiple vía `iniciarCombatEncounter`. **Las 4 capas: sin construir, diseño completo.**
+  Combate múltiple vía `iniciarCombatEncounter`. **Capa 1 (zonas navegables): prototipo construido
+  el mismo día** (commit `098a3cf`) en La Hondonada del Eco — modelo `ZonePoint`, pipeline de imagen
+  extendido (entityType `zona`/sizeProfile `mapa`), endpoint `GET /saves/:id/zona`, pestaña "Zona"
+  en el frontend; solo en esa zona, posiciones provisionales sin PNG real todavía, sin conectar aún
+  a cazar/recolectar/combate (eso es trabajo de las Capas 2-4). **Capas 2-4: sin construir.**
   **Los 5 hallazgos independientes: cerrados el mismo día** (commit `1902c29`, ver
   [mundo-determinista.md](rpgtarkor/mundo-determinista.md) para el detalle) — Log de Mundo conectado
   a los hechos reales de `worldAgenda.ts` (LogEntry de canal WORLD por etapa cruzada, cero coste de

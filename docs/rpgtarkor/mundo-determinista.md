@@ -123,7 +123,7 @@ prompt → copiar fuera → subir archivo) ya está probado y en uso.
 
 Cada capa lee de la anterior. Construir en otro orden significa rehacer trabajo.
 
-### Capa 1 — Zonas navegables (fundación)
+### Capa 1 — Zonas navegables (fundación) — PROTOTIPO CONSTRUIDO 2026-08-25 (commit `098a3cf`)
 
 Cada `Location` relevante deja de ser un punto abstracto y pasa a tener un área real navegable, con
 posiciones internas propias donde viven fauna/NPCs/recursos concretos — en vez de una tirada de
@@ -131,14 +131,28 @@ probabilidad sobre un pool plano de "todo lo que hay en la zona a la vez" (el pr
 motivó esta capa: "en un campamento con muchos NPC, decidir al azar es ruidoso y no da lo que
 buscas").
 
-- Posiciones nuevas, locales a la Location (no confundir con `Location.x/y`, que sigue siendo la
-  posición GLOBAL para viajar entre zonas).
-- Imagen de zona generada con el pipeline de prompts ya existente (§6 del diagnóstico) — nuevo tipo
-  de entidad `zona`/`mapa-de-zona`, mismo flujo manual de subida que el resto del catálogo visual.
-  Generada una sola vez por zona, reutilizada siempre (mismo criterio que el Mapa de Cristal Helado:
-  calibrado una vez a mano, nunca regenerado cada turno).
-- Marcadores reales sobre esa imagen (fauna/NPC/recurso en su posición real) — hace visible al
-  jugador, de forma estructurada, lo que hoy solo puede saber si la prosa se lo cuenta bien.
+- [x] Posiciones nuevas, locales a la Location (no confundir con `Location.x/y`, que sigue siendo la
+  posición GLOBAL para viajar entre zonas) — modelo `ZonePoint`, lienzo 800×600.
+- [x] Imagen de zona generada con el pipeline de prompts ya existente (§6 del diagnóstico) — nuevo tipo
+  de entidad `zona` + sizeProfile `mapa` (800×600, distinto de thumbnail/banner), mismo flujo manual
+  de subida que el resto del catálogo visual.
+- [x] Marcadores reales sobre esa imagen (fauna/NPC/recurso en su posición real) — `GET /saves/:id/zona`
+  + pestaña "Zona" en el frontend (`ZonaPanel.tsx`), hace visible al jugador de forma estructurada lo
+  que hoy solo puede saber si la prosa se lo cuenta bien.
+
+**Alcance real del prototipo, confirmado con la usuaria** ("prototipo en 1 sola zona primero"): solo
+La Hondonada del Eco tiene `ZonePoint` sembrados (3, los únicos elementos con `homeLocationSlug` real
+ahí: yerreo/gesgurio/kirelon-arenoso) — el resto de zonas muestra el panel vacío hasta que se repita
+el proceso. Posiciones x/y **provisionales** (sin PNG real generado todavía) — a recalibrar a mano
+contra la imagen real en cuanto exista, mismo proceso que ya se usó para Cristal Helado ("un nodo a
+la vez"). **Deliberadamente NO conectado todavía a cazar/recolectar/combate** — esta capa solo
+representa DÓNDE vive algo; que la mecánica real LEA esa posición (en vez del pool por
+región+terreno de hoy) es trabajo de las Capas 2-3 de abajo, construidas encima de esta base, no
+parte de este prototipo.
+
+**Pendiente para generalizar a las ~15 zonas restantes** (fuera de esta pasada): generar/subir el PNG
+real de cada zona, poblar sus `ZonePoint` reales, y decidir si el criterio de selección (qué zonas
+tienen prototipo) se amplía zona por zona o de golpe.
 
 ### Capa 2 — Cola de eventos por tiempo/posición
 
@@ -205,8 +219,12 @@ resto del diseño. **Los 5 cerrados y APLICADOS al motor el mismo día (2026-08-
 **Los 5 hallazgos independientes: cerrados** (ver arriba). **Combate múltiple**: avance real (Fases
 A-C + paridad completa de mecánicas + `resolverTurnoJugador`, commits
 `5e63c27`/`419d7af`/`82793ab`/`d92df45`/`81e810c`, 2026-08-25) — solo le falta el disparador de la
-Capa 3-4 de este documento para conectarse al juego en vivo. **Las 4 capas: sin construir todavía**,
-diseño completo arriba.
+Capa 3-4 de este documento para conectarse al juego en vivo. **Capa 1 (zonas navegables): prototipo
+construido** (commit `098a3cf`, 2026-08-25) en La Hondonada del Eco — modelo de datos + pipeline de
+imagen + endpoint + panel, todos reales y verificados; falta generalizar al resto de zonas y
+generar/subir el PNG real. **Capas 2-4: sin construir todavía**, diseño completo arriba.
 
-Orden recomendado para lo que queda: las 4 capas dependen entre sí en el orden dado — Capa 1 (zonas
-navegables) es la fundación real, y construir la Capa 3 antes que la 1 significaría rehacer trabajo.
+Orden recomendado para lo que queda: Capa 2 (cola de eventos) y Capa 3 (aparición determinista en
+turno libre) dependen de que la Capa 1 exista — ya existe, aunque solo en una zona — así que pueden
+empezar a diseñarse/construirse ya, apoyadas en La Hondonada del Eco como caso real de prueba antes
+de generalizar.
