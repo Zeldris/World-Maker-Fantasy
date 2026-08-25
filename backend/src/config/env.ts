@@ -50,6 +50,13 @@ export const env = {
   /// conservador, ajustable sin tocar código.
   travelInterruptionProbabilityPerSegment: Number(process.env.TRAVEL_INTERRUPTION_PROBABILITY_PER_SEGMENT ?? 0.18),
 
+  /// Grupo 3 § Mundo determinista, Capa 2 (docs/rpgtarkor/mundo-determinista.md, 2026-08-25) —
+  /// mismo criterio que la de arriba pero para acciones largas SIN desplazamiento (descansar,
+  /// construir, crafteo): probabilidad, por cada bloque de tiempo de la acción, de que algo real
+  /// (fauna/NPC ya sembrado como `ZonePoint`, Capa 1) interrumpa — solo puede disparar en zonas con
+  /// `ZonePoint` real, hoy únicamente La Hondonada del Eco, ver stationaryInterruption.ts.
+  stationaryInterruptionProbabilityPerChunk: Number(process.env.STATIONARY_INTERRUPTION_PROBABILITY_PER_CHUNK ?? 0.18),
+
   /// API de prompts de imagen (checklist 2026-07-21/22, punto 7): rotación con failover entre
   /// proveedores cloud gratuitos (mismo patrón que AiOrchestrator de VeriNews_AI), con Ollama
   /// como último fallback local si ninguno tiene clave o todos fallan — la funcionalidad nunca

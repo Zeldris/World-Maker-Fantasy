@@ -4832,6 +4832,24 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
           travelInterrupted: true,
         },
       });
+    } else if (travelInterruptionNpcId && !travel) {
+      // Grupo 3 § Mundo determinista, Capa 2 (2026-08-25) — mismo aviso pero para una acción
+      // larga SIN desplazamiento (`pickStationaryInterruption`, turn.ts): no hay ningún destino
+      // que truncar, así que `travelInterruptionOriginalDestinationName` se queda null y este
+      // branch cubre el aviso equivalente. Reutiliza `travelInterrupted` (nombre heredado del
+      // caso de viaje, pero el frontend solo lo usa como "resalta esta entrada", no lee semántica
+      // de viaje en el campo) para el mismo fondo ámbar.
+      await tx.logEntry.create({
+        data: {
+          saveId,
+          channel: 'CHARACTER',
+          text: 'Algo te sale al paso mientras estás ocupado con esto.',
+          timeLabel,
+          fictionalMinutes: nuevoFictionalMinutes,
+          createdAt: nextBeforeMainLogCreatedAt(),
+          travelInterrupted: true,
+        },
+      });
     }
 
     const mainLogEntry = await tx.logEntry.create({

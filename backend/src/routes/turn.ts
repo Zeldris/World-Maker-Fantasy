@@ -7,6 +7,7 @@ import { narrateAndPersistTurn } from '../services/turnResolution.js';
 import type { PendingNpcAttack } from '../services/combatExchange.js';
 import { resolveTravel, bandaForMinutos, type TravelResolution } from '../services/travel.js';
 import { pickTravelInterruption } from '../services/travelInterruption.js';
+import { pickStationaryInterruption } from '../services/stationaryInterruption.js';
 import { effectiveAttributes, effectiveSecondaryAttributes, effectiveDefense, equippedWeaponNames, equippedItemsSummary } from '../services/equipment.js';
 import {
   detectNpcsInScene,
@@ -694,11 +695,19 @@ export async function turnRoutes(app: FastifyInstance) {
       // movimientos de zonas sean más dinámicas"): decidido AQUÍ, al iniciar el viaje, no al
       // resolverlo — si algún nodo intermedio de la ruta dispara, el viaje se trunca a ese punto
       // (llegada real, no la del destino pedido) y el candidato elegido entra en escena de verdad
-      // en cuanto se resuelva el tránsito (ver turnResolution.ts). Solo aplica a viajes de verdad
-      // (`travel` no nulo) — acciones largas sin desplazamiento (construir, descansar) no entran.
+      // en cuanto se resuelva el tránsito (ver turnResolution.ts).
       const interruption = travel
         ? await pickTravelInterruption(save.worldId, travel, env.travelInterruptionProbabilityPerSegment, attributes)
         : null;
+      // Grupo 3 § Mundo determinista, Capa 2 (2026-08-25) — generaliza lo de arriba a acciones
+      // largas SIN desplazamiento (descansar, construir, crafteo largo que llegue a pasar por aquí):
+      // hasta ahora estas quedaban fuera a propósito ("no hay ruta que interrumpir"). Solo puede
+      // disparar en zonas con `ZonePoint` real (Capa 1, hoy solo La Hondonada del Eco) — en
+      // cualquier otra zona `pickStationaryInterruption` siempre devuelve null, cero efecto.
+      const stationaryInterruption =
+        !travel && currentLocationForSummary
+          ? await pickStationaryInterruption(save.worldId, currentLocationForSummary.id, minutos, env.stationaryInterruptionProbabilityPerChunk)
+          : null;
       const effectiveTravel = interruption ? interruption.travel : travel;
       const effectiveMinutos = interruption ? interruption.travel.minutos : minutos;
       // Nombre del destino ORIGINAL pedido por el jugador (antes de truncar) — se guarda aparte
@@ -706,6 +715,12 @@ export async function turnRoutes(app: FastifyInstance) {
       // el aviso determinista de "tu viaje se interrumpió" al resolver (turnResolution.ts); el
       // Narrador nunca lo ve, para no forzarlo a explicar un destino al que no llegó.
       const interruptedOriginalDestinationName = interruption ? travel!.toLocationName : null;
+      // El mismo campo `travelInterruptionNpcId` sirve para los dos casos — la inyección
+      // determinista del NPC en escena (turnResolution.ts) ya cae a `currentLocationId` cuando no
+      // hay `travel`, sin necesitar ningún campo nuevo. Lo único que distingue el aviso al
+      // resolver es que `interruptedOriginalDestinationName` se queda `null` aquí (no hay destino
+      // que truncar en una acción estacionaria).
+      const interruptionNpcId = interruption?.npcId ?? stationaryInterruption?.npcId ?? null;
 
       // Compresión de tiempo (roadmap 2026-07-19): `minutos` es tiempo de FICCIÓN — mapearlo 1:1 a
       // espera real hacía matemáticamente imposible una sesión fluida (un viaje interno normal ya
@@ -777,7 +792,7 @@ export async function turnRoutes(app: FastifyInstance) {
           roll,
           travel: effectiveTravel,
           duracionMinutos: effectiveMinutos,
-          travelInterruptionNpcId: interruption?.npcId ?? null,
+          travelInterruptionNpcId: interruptionNpcId,
           travelInterruptionOriginalDestinationName: interruptedOriginalDestinationName,
           buildingId: earlyBuilding?.id ?? null,
         } as object;
