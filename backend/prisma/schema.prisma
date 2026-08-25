@@ -713,6 +713,16 @@ model CombatParticipant {
   /// null si su bando contrario ya no tiene nadie vivo (combate a punto de cerrarse) o si el
   /// jugador todavía no ha elegido objetivo esta ronda.
   objetivoActualId String?
+  /// ÚNICA excepción al criterio de arriba ("nunca duplica atributos/condición", ver comentario
+  /// del modelo) — solo para miembros reales de un grupo cazado (§3 de companeros-y-supervivencia
+  /// no aplica aquí, esto es combate múltiple de verdad, no el truco antiguo de
+  /// `NpcState.groupSize`/`groupDefeated` que este sistema sustituye). Varios lobos reales de la
+  /// misma especie comparten el mismo `(npcId, npcScope)` de `NpcState` — esa fila es 1 por
+  /// especie+ubicación, no puede guardar la condición de CADA individuo del grupo por separado.
+  /// null = combatiente normal (JUGADOR/COMPANION/NPC solitario), su condición real sigue viviendo
+  /// en Save/Companion/NpcState como siempre. Con valor = miembro de un grupo, este campo ES su
+  /// única fuente de verdad real (NpcState de un miembro de grupo se queda en ILESO, sin usar).
+  condicionFisicaGrupo CondicionFisica?
   createdAt   DateTime              @default(now())
 
   @@index([encounterId])

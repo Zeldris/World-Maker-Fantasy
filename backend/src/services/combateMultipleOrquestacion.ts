@@ -22,6 +22,13 @@ export interface CombatienteInicial {
   npcId?: string;
   npcScope?: string;
   companionId?: string;
+  /// true = miembro real de un grupo cazado (varios individuos comparten `npcId`+`npcScope`,
+  /// ver comentario de `CombatParticipant.condicionFisicaGrupo` en schema.prisma) — su condición
+  /// se trackea en el propio `CombatParticipant`, nunca en `NpcState` (esa fila la comparten
+  /// todos los miembros del grupo, no puede distinguirlos). Simplificación consciente: la energía
+  /// y el tope de usos por combate NO se trackean por individuo de grupo (siempre "fresca" cada
+  /// encuentro) — la fauna salvaje cazada en manada no usa rotaciones de habilidad complejas hoy.
+  esGrupo?: boolean;
 }
 
 /// Crea el `CombatEncounter` + sus `CombatParticipant`, tira iniciativa para todos (§1) y fija el
@@ -41,7 +48,15 @@ export async function iniciarCombatEncounter(
   const creados = await Promise.all(
     combatientes.map((c) =>
       tx.combatParticipant.create({
-        data: { encounterId: encounter.id, bando: c.bando, tipo: c.tipo, npcId: c.npcId, npcScope: c.npcScope ?? '', companionId: c.companionId },
+        data: {
+          encounterId: encounter.id,
+          bando: c.bando,
+          tipo: c.tipo,
+          npcId: c.npcId,
+          npcScope: c.npcScope ?? '',
+          companionId: c.companionId,
+          condicionFisicaGrupo: c.esGrupo ? 'ILESO' : undefined,
+        },
       }),
     ),
   );
@@ -65,6 +80,18 @@ export async function iniciarCombatEncounter(
   return { encounterId: encounter.id };
 }
 
+/// Shape mínima de `CombatParticipant` que necesitan `datosVivosDe`/`escribirCondicionYEnergia` —
+/// coincide con lo que Prisma devuelve de verdad, nombrado aparte para no repetir el mismo objeto
+/// literal en cada firma.
+interface ParticipantRef {
+  id: string;
+  tipo: string;
+  npcId: string | null;
+  npcScope: string;
+  companionId: string | null;
+  condicionFisicaGrupo: CondicionFisica | null;
+}
+
 interface DatosCombatiente {
   nombre: string;
   attributes: AttributeBlock;
@@ -81,12 +108,25 @@ async function datosVivosDe(
   tx: Prisma.TransactionClient,
   worldId: string,
   saveId: string,
-  participant: { tipo: string; npcId: string | null; npcScope: string; companionId: string | null },
+  participant: ParticipantRef,
   weaponNames: string[],
 ): Promise<DatosCombatiente | null> {
   if (participant.tipo === 'NPC' && participant.npcId) {
     const npc = await tx.npc.findUnique({ where: { id: participant.npcId } });
     if (!npc) return null;
+    // Miembro de grupo (condicionFisicaGrupo no nulo) — su condición real vive en el propio
+    // CombatParticipant, NUNCA en NpcState (esa fila la comparten todos los miembros del grupo).
+    // Energía/usageCounts se quedan "frescos" cada encuentro, ver comentario de `esGrupo` arriba.
+    if (participant.condicionFisicaGrupo !== null) {
+      return {
+        nombre: npc.name,
+        attributes: npc.attributes as unknown as AttributeBlock,
+        condicionFisica: participant.condicionFisicaGrupo,
+        energia: 100,
+        abilities: npcCombatAbilitiesFor(toNpcForCombatAbilities(npc), weaponNames),
+        usageCounts: {},
+      };
+    }
     const state = await tx.npcState.findUnique({ where: { saveId_npcId_scope: { saveId, npcId: npc.id, scope: participant.npcScope } } });
     return {
       nombre: npc.name,
@@ -131,7 +171,7 @@ function toNpcForCombatAbilities(npc: Npc): NpcForCombatAbilities {
 async function escribirCondicionYEnergia(
   tx: Prisma.TransactionClient,
   saveId: string,
-  participant: { tipo: string; npcId: string | null; npcScope: string; companionId: string | null },
+  participant: ParticipantRef,
   condicionFisica: CondicionFisica | null,
   energia: number | null,
   abilityNameUsada: string | null,
@@ -139,6 +179,12 @@ async function escribirCondicionYEnergia(
 ): Promise<void> {
   const nextUsageCounts = { ...usageCounts };
   if (abilityNameUsada) nextUsageCounts[abilityNameUsada] = (nextUsageCounts[abilityNameUsada] ?? 0) + 1;
+  if (participant.condicionFisicaGrupo !== null) {
+    // Miembro de grupo — su condición vive en el propio CombatParticipant (energía/usageCounts
+    // deliberadamente no persisten entre turnos, ver comentario de `esGrupo`).
+    if (condicionFisica) await tx.combatParticipant.update({ where: { id: participant.id }, data: { condicionFisicaGrupo: condicionFisica } });
+    return;
+  }
   if (participant.tipo === 'NPC' && participant.npcId) {
     await tx.npcState.upsert({
       where: { saveId_npcId_scope: { saveId, npcId: participant.npcId, scope: participant.npcScope } },
@@ -275,7 +321,7 @@ async function avanzarYComprobarFin(
   worldId: string,
   saveId: string,
   encounterId: string,
-  encounter: { turnoActual: number; ordenIniciativa: string[]; participantes: { id: string; bando: Bando; tipo: string; npcId: string | null; npcScope: string; companionId: string | null }[] },
+  encounter: { turnoActual: number; ordenIniciativa: string[]; participantes: (ParticipantRef & { bando: Bando })[] },
   weaponNamesPorDefecto: string[],
 ): Promise<boolean> {
   const condiciones = await Promise.all(
