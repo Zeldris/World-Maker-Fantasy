@@ -238,6 +238,18 @@ interface TurnContext {
   /// alucinación, sin depender de la intención de este turno). Vacío = no lleva ningún objeto
   /// equipable encima.
   equippableItemNames?: string[];
+  /// Ver `hasFalseHealingClaim` más abajo (auditoría de código 2026-08-25, categoría sin guard
+  /// hasta ahora) — true solo en un turno de "descansar" libre (sin panel "Curar" explícito) cuyo
+  /// techo mecánico real (`healCeilingFor`, death.ts) queda por DEBAJO de ILESO (terreno salvaje,
+  /// o refugio/asentamiento que solo llega a HERIDO). Si esto es true, la prosa no puede prometer
+  /// una recuperación completa — el resultado mecánico real es peor.
+  restHealCeilingBelowIleso?: boolean;
+  /// Ver `hasFalseNewItemClaim` más abajo (auditoría de código 2026-08-25, categoría sin guard
+  /// hasta ahora) — nombres reales (normalizados) de TODO `ItemCatalog` de este mundo. Un
+  /// `newItem` propuesto por el modelo solo se materializa de verdad si su nombre coincide con
+  /// uno de esta lista (turnResolution.ts, `catalogMatch`) — si no coincide, la prosa no puede
+  /// afirmar que el personaje se queda con/guarda el objeto, porque el inventario real no cambia.
+  worldItemCatalogNames?: string[];
 }
 
 interface ClassifyContext {
@@ -1270,6 +1282,14 @@ export async function narrateAction(ctx: TurnContext & { roll?: RollResult }): P
           check: () => hasFalseEquipmentChangeClaim(parsed.narration, ctx.equippableItemNames),
           reason: 'narrar un cambio de equipo (ponerse/quitarse/atarse algo) no pedido y sin reflejo real en InventoryItem.slot',
         },
+        {
+          check: () => hasFalseHealingClaim(parsed.narration, ctx.restHealCeilingBelowIleso),
+          reason: 'prometer una recuperación completa al descansar cuando el techo mecánico real queda por debajo de ILESO',
+        },
+        {
+          check: () => hasFalseNewItemClaim(parsed.narration, parsed.newItem?.name, ctx.worldItemCatalogNames),
+          reason: 'narrar que el personaje se queda con/guarda un objeto cuyo nombre no coincide con ningún ItemCatalog real (no se materializará)',
+        },
       ].find((validator) => validator.check());
 
       if (rejection) {
@@ -1654,6 +1674,37 @@ export function hasFalseEquipmentChangeClaim(narration: string, equippableItemNa
   if (!equippableItemNames || equippableItemNames.length === 0) return false;
   const normalizedNames = equippableItemNames.map(normalizeText);
   return sentenceMatchesRegexAndName(narration, EQUIP_CHANGE_VERB_REGEX, normalizedNames);
+}
+
+/// Narración-vs-mecánica, categoría sin ningún guard hasta ahora (auditoría de código 2026-08-25):
+/// "descansar" libre (sin panel "Curar" explícito, `usingExplicitHealList` false) pasa por el LLM,
+/// pero el techo real de curación lo calcula `healCeilingFor` (death.ts) de forma determinista —
+/// tope GRAVE en terreno salvaje, HERIDO solo en refugio/asentamiento real, nunca ILESO sin un
+/// objeto médico real. Nada comprobaba que la prosa no prometiera más salud de la que ese techo
+/// permite ("queda completamente sano, como nuevo" cuando el resultado mecánico real es peor).
+const FULL_HEAL_CLAIM_REGEX =
+  /completamente san[oa]|como nuev[oa]|se recupera (del todo|por completo)|totalmente recuperad[oa]|sana del todo|sin ninguna herida|como si nada hubiera pasado/i;
+
+export function hasFalseHealingClaim(narration: string, restHealCeilingBelowIleso?: boolean): boolean {
+  if (!restHealCeilingBelowIleso) return false;
+  return FULL_HEAL_CLAIM_REGEX.test(narration);
+}
+
+/// Narración-vs-mecánica, categoría sin ningún guard hasta ahora (auditoría de código 2026-08-25):
+/// caso INVERSO de `hasFalseItemUse` (protege el CONSUMO falso) — aquí protege la OBTENCIÓN falsa.
+/// `turnResolution.ts` solo materializa un `newItem` propuesto si su nombre coincide con un
+/// `ItemCatalog` real del mundo (`catalogMatch`); si no coincide, no se crea nada, pero la prosa
+/// puede seguir afirmando que el personaje se queda con el objeto. Vocabulario de posesión
+/// EXPLÍCITA (guardar/quedarse con/añadir al inventario) — una mención de pasada sin verbo de
+/// posesión no es una mentira, mismo criterio que el resto de esta familia de detectores.
+const ITEM_POSSESSION_CLAIM_REGEX =
+  /\bguarda\b|\bse queda con\b|añade a su inventario|mete en su (mochila|bolsa|zurr[oó]n)|guarda en su (cinto|bolsa|zurr[oó]n)/i;
+
+export function hasFalseNewItemClaim(narration: string, newItemName: string | null | undefined, worldItemCatalogNames?: string[]): boolean {
+  if (!newItemName || !worldItemCatalogNames) return false;
+  const normalizedNames = worldItemCatalogNames.map(normalizeText);
+  if (normalizedNames.includes(normalizeText(newItemName))) return false; // sí existe, se materializará de verdad
+  return ITEM_POSSESSION_CLAIM_REGEX.test(narration);
 }
 
 /// Narración-vs-mecánica, mismo patrón que `hasFalseCombatHit` (2026-08-01, bug real jugando en

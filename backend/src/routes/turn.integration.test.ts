@@ -3656,13 +3656,13 @@ describe('Construcción rechazada: no se graba un newFact falso de que sí se co
     });
 
     narrateAction.mockResolvedValueOnce({
-      narration: 'El trabajo es lento pero gradual.',
+      narration: 'El trabajo es lento pero gradual. Gorhorn termina de levantar el ayuntamiento, satisfecho con el resultado.',
       newFacts: ['Gorhorn está fundando un pequeño ayuntamiento en la Hondonada del Eco.'],
     });
     const action = 'Construyo un ayuntamiento aquí mismo.';
     const classifyRes = await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action, enCombate: true } });
     const { classification, roll } = classifyRes.json();
-    await app.inject({
+    const res = await app.inject({
       method: 'POST',
       url: '/turn/narrate',
       payload: { saveId, action, classification, roll, enCombate: true },
@@ -3675,6 +3675,13 @@ describe('Construcción rechazada: no se graba un newFact falso de que sí se co
     expect(facts.some((f) => f.text.includes('ayuntamiento'))).toBe(false);
     const buildings = await prisma.building.findMany({ where: { saveId } });
     expect(buildings).toEqual([]);
+
+    // Bug real (auditoría de código 2026-08-25): antes de este fix, la PROSA que ve la jugadora
+    // seguía siendo la del modelo ("termina de levantar el ayuntamiento") pese a que newFacts/
+    // newBuilding ya se limpiaban por debajo — ahora también se sustituye por una frase honesta.
+    const body = lastNdjsonLine(res.payload) as { narration: { narration: string } };
+    expect(body.narration.narration).not.toContain('termina de levantar');
+    expect(body.narration.narration).toContain('no tiene lo necesario');
   }, 20_000);
 });
 

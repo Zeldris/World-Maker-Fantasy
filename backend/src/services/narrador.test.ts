@@ -31,6 +31,8 @@ import {
   hasFalsePhantomTravel,
   hasFalseWeaponThrowClaim,
   hasFalseEquipmentChangeClaim,
+  hasFalseHealingClaim,
+  hasFalseNewItemClaim,
   hasAnachronism,
   buildNarrationPrompt,
 } from './narrador.js';
@@ -884,6 +886,51 @@ describe('hasFalseEquipmentChangeClaim', () => {
     const narration = 'Gorhorn arranca la capa de piel de gargantúa y la ata a su cintura.';
     expect(hasFalseEquipmentChangeClaim(narration, [])).toBe(false);
     expect(hasFalseEquipmentChangeClaim(narration, undefined)).toBe(false);
+  });
+});
+
+// Categoría nueva sin guard hasta ahora (auditoría de código 2026-08-25): "descansar" libre pasa
+// por el LLM, pero el techo real de curación lo calcula healCeilingFor de forma determinista.
+describe('hasFalseHealingClaim', () => {
+  it('detecta una recuperación completa prometida cuando el techo real queda por debajo de ILESO', () => {
+    expect(hasFalseHealingClaim('Gorhorn descansa un rato y queda completamente sano, como nuevo.', true)).toBe(true);
+    expect(hasFalseHealingClaim('Tras el descanso, se recupera del todo y sigue camino.', true)).toBe(true);
+    expect(hasFalseHealingClaim('Al despertar, sin ninguna herida en el cuerpo, sigue camino.', true)).toBe(true);
+  });
+
+  it('no dispara con una descripción honesta del descanso (mejora parcial, sigue con molestias)', () => {
+    const narration = 'Gorhorn descansa un rato junto al fuego y recupera algo de fuerza, aunque las heridas siguen ahí.';
+    expect(hasFalseHealingClaim(narration, true)).toBe(false);
+  });
+
+  it('no dispara fuera de este escenario concreto (restHealCeilingBelowIleso false/undefined — el techo real SÍ llega a ILESO, o no es un turno de descanso)', () => {
+    expect(hasFalseHealingClaim('Gorhorn queda completamente sano, como nuevo.', false)).toBe(false);
+    expect(hasFalseHealingClaim('Gorhorn queda completamente sano, como nuevo.', undefined)).toBe(false);
+  });
+});
+
+// Categoría nueva sin guard hasta ahora (auditoría de código 2026-08-25): caso inverso de
+// hasFalseItemUse — protege la OBTENCIÓN falsa de un objeto, no el consumo falso.
+describe('hasFalseNewItemClaim', () => {
+  const CATALOG = ['Cuchillo de hielo sílice', 'Tótem Maktor'];
+
+  it('detecta que el personaje se queda con/guarda un objeto cuyo nombre no coincide con ningún ItemCatalog real', () => {
+    expect(hasFalseNewItemClaim('Gorhorn guarda la Daga de Hueso curtida en su cinto.', 'Daga de Hueso curtida', CATALOG)).toBe(true);
+    expect(hasFalseNewItemClaim('Gorhorn se queda con el amuleto encontrado entre las rocas.', 'Amuleto de las rocas', CATALOG)).toBe(true);
+  });
+
+  it('no dispara si el nombre propuesto SÍ coincide con el catálogo real (se materializará de verdad)', () => {
+    expect(hasFalseNewItemClaim('Gorhorn guarda el cuchillo de hielo sílice en su cinto.', 'Cuchillo de hielo sílice', CATALOG)).toBe(false);
+  });
+
+  it('no dispara sin newItem propuesto, o sin lista de catálogo (turno sin newItem)', () => {
+    expect(hasFalseNewItemClaim('Gorhorn guarda la daga en su cinto.', null, CATALOG)).toBe(false);
+    expect(hasFalseNewItemClaim('Gorhorn guarda la daga en su cinto.', undefined, CATALOG)).toBe(false);
+    expect(hasFalseNewItemClaim('Gorhorn guarda la daga en su cinto.', 'Daga de Hueso curtida', undefined)).toBe(false);
+  });
+
+  it('no dispara con una mención de pasada, sin verbo de posesión explícito', () => {
+    expect(hasFalseNewItemClaim('Gorhorn observa la Daga de Hueso curtida, tirada entre las rocas.', 'Daga de Hueso curtida', CATALOG)).toBe(false);
   });
 });
 

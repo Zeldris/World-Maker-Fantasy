@@ -3453,6 +3453,22 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   // un cambio de equipo narrado es alucinación siempre. Solo objetos EQUIPABLES (con `equipSlot`
   // real en catálogo) — materia prima/recursos nunca se "visten", ver comentario del campo.
   const equippableItemNames = [...new Set(inventoryRows.filter((i) => i.catalogSlug && catalogBySlug.get(i.catalogSlug)?.equipSlot).map((i) => baseNameOf(i.name)))];
+  // Ver `hasFalseHealingClaim` (narrador.ts) — mismo cálculo que `restAttempted`/`restSucceeds`/
+  // `healCeiling` de más abajo (línea ~3856), duplicado aquí a propósito: sus inputs (roll/travel/
+  // currentLocationRecord/medicalCuraHasta/medicalCuraUnPaso) ya están disponibles en este punto,
+  // pero esas variables en sí se calculan más tarde, después de la llamada a `narrateAction` — no
+  // merece la pena reordenar ~400 líneas de la función solo para compartir 2 líneas de fórmula.
+  const restAttemptedForGuard = !!(!travel && currentLocationRecord && detectsRestIntent(action) && (!roll || roll.success));
+  const restSucceedsForGuard = !!(restAttemptedForGuard && isValidRestLocationKind(currentLocationRecord!.kind));
+  const restHealCeilingBelowIleso =
+    !usingExplicitHealList &&
+    restAttemptedForGuard &&
+    healCeilingFor(params.condicionFisica, restAttemptedForGuard, restSucceedsForGuard, medicalCuraHasta, medicalCuraUnPaso) !== 'ILESO';
+  // Ver `hasFalseNewItemClaim` (narrador.ts) — nombres reales de TODO el catálogo del mundo, no
+  // solo lo que el personaje ya lleva (a diferencia de `equippableItemNames`/`catalogBySlug`,
+  // acotados al inventario actual): un `newItem` propuesto puede ser cualquier objeto del mundo,
+  // no solo uno que la jugadora ya tenga.
+  const worldItemCatalogNames = (await prisma.itemCatalog.findMany({ where: { worldId }, select: { name: true } })).map((i) => i.name);
   const narrationCtx = {
     worldFacts: [...contextBlocks, ...(await selectRelevantFacts(action, saveId, sessionFacts))],
     // Separado de worldFacts (roadmap 2026-07-24, "revisar partida" — ver comentario en
@@ -3489,6 +3505,8 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     possiblyFalseInventoryReviewNames,
     equippedWeaponNamesInCombat,
     equippableItemNames,
+    restHealCeilingBelowIleso,
+    worldItemCatalogNames,
     gisteraSeHaMarchado,
     onNarrationChunk,
     onNarrationReset,
@@ -3679,6 +3697,14 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   // ya sabe que el intento fracasó, no hace falta confiar en que la prosa libre del modelo no lo
   // contradiga en un campo aparte que ni siquiera se lee al narrar.
   if (buildRecipe && !buildMode) {
+    // Bug real (auditoría de código 2026-08-25, categoría sin guard hasta ahora): los dos fixes de
+    // abajo (newFacts/newBuilding) protegen el ESTADO persistido, pero nunca corregían la PROSA
+    // visible — la jugadora podía seguir leyendo una escena de construcción completada ("Gorhorn
+    // termina de levantar el ayuntamiento...") aunque mecánicamente no se construyó nada y los
+    // materiales siguen intactos. Mismo criterio que los dos guards de viaje justo arriba
+    // (hasFalseTravelClaim/hasFalsePhantomTravel): sustituir `narration.narration` por una frase
+    // honesta en vez de confiar en que el modelo se corrija solo.
+    narration.narration = `${characterName} lo intenta, pero enseguida se da cuenta de que no tiene lo necesario para completar ${buildRecipe.name} — el intento queda a medias, sin gastar nada.`;
     narration.newFacts = [];
     // Bug real (auditoría 2026-08-06): el fix de arriba (newFacts) no bastaba — el modelo podía
     // seguir rellenando `newBuilding` (un campo estructurado APARTE que sí se lee y se actúa, ver
