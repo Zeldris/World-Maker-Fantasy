@@ -124,8 +124,12 @@ resumen de trabajo real, agrupado por tamaño.
   Combate múltiple vía `iniciarCombatEncounter`. **Capa 1 (zonas navegables): prototipo construido
   el mismo día** (commit `098a3cf`) en La Hondonada del Eco — modelo `ZonePoint`, pipeline de imagen
   extendido (entityType `zona`/sizeProfile `mapa`), endpoint `GET /saves/:id/zona`, pestaña "Zona"
-  en el frontend; solo en esa zona, posiciones provisionales sin PNG real todavía, sin conectar aún
-  a cazar/recolectar/combate (eso es trabajo de las Capas 2-4). **Capas 2-4: sin construir.**
+  en el frontend; solo en esa zona, posiciones provisionales sin PNG real todavía. **Capa 2 (cola de
+  eventos): construida el mismo día** (commit `cf57dca`) — `pickStationaryInterruption` generaliza
+  la interrupción de viaje ya existente (`travelInterruption.ts`, 2026-08-05) a descansar/construir/
+  crafteo, reutilizando casi todo su mecanismo (mismo campo de `zoneContext`, misma inyección
+  determinista de NPC en escena); solo dispara donde hay `ZonePoint` real (hoy solo Hondonada del
+  Eco). **Capas 3-4: sin construir.**
   **Los 5 hallazgos independientes: cerrados el mismo día** (commit `1902c29`, ver
   [mundo-determinista.md](rpgtarkor/mundo-determinista.md) para el detalle) — Log de Mundo conectado
   a los hechos reales de `worldAgenda.ts` (LogEntry de canal WORLD por etapa cruzada, cero coste de

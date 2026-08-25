@@ -154,14 +154,32 @@ parte de este prototipo.
 real de cada zona, poblar sus `ZonePoint` reales, y decidir si el criterio de selección (qué zonas
 tienen prototipo) se amplía zona por zona o de golpe.
 
-### Capa 2 — Cola de eventos por tiempo/posición
+### Capa 2 — Cola de eventos por tiempo/posición — CONSTRUIDA 2026-08-25 (commit `cf57dca`)
 
-Extiende el patrón YA real de `workers/worldTick.ts` (que hoy avanza población/agenda de mundo de
-forma puramente determinista) a sucesos de escena: mientras el jugador ejecuta acciones deterministas
-que consumen tiempo (curar, descansar, cazar, oficios...), el motor tira de antemano —según cuánto
-tiempo lleva en esa posición, qué hay realmente ahí (Capa 1), estado de facciones/clima/estación—
-qué sucede y cuándo, dejándolo resuelto en una cola. La narración solo dramatiza lo que la cola ya
-decidió, nunca inventa una sorpresa de la nada.
+Al investigar cómo construirla, apareció un mecanismo real ya existente y directamente
+generalizable: la **interrupción de viaje** (`travelInterruption.ts`, 2026-08-05) — una tirada
+determinista al INICIAR un viaje largo, por cada nodo intermedio de la ruta, que puede truncar el
+viaje con un encuentro real ya materializado (`NpcState`), nunca un simple hint narrativo. El propio
+código dejaba explícito que "acciones largas sin desplazamiento (construir, descansar) no entran" —
+exactamente el hueco que rellena esta capa, generalizando la misma mecánica en vez de construir algo
+nuevo desde cero.
+
+- [x] **`pickStationaryInterruption`** (`stationaryInterruption.ts`) — mismo patrón que
+  `pickTravelInterruption` pero sin ruta: tira una vez por cada bloque de 120 min de duración de la
+  acción larga (más tiempo = más oportunidades, mismo espíritu que "más nodos intermedios = más
+  tiradas"), contra los `ZonePoint` FAUNA/NPC reales de la Location actual (Capa 1).
+- [x] Reutiliza casi todo el mecanismo de viaje: el mismo campo `zoneContext.travelInterruptionNpcId`
+  (la inyección determinista del NPC en escena en `turnResolution.ts` ya caía a `currentLocationId`
+  cuando no hay `travel`, sin necesitar ningún cambio) y el mismo patrón de aviso determinista al
+  resolver, con texto propio (no hay destino que truncar en una acción estacionaria).
+- [x] **Solo puede disparar en zonas con `ZonePoint` real** (hoy únicamente La Hondonada del Eco,
+  Capa 1) — en cualquier otra zona, cero efecto, mismo criterio aditivo de toda la sesión.
+
+**Riesgo real identificado y aceptado, no un descuido**: igual que la interrupción de viaje ya
+existente, esto introduce una tirada real (`Math.random()`, sin mockear en tests) en turnos largos
+de las pruebas de integración contra Postgres — mismo perfil de riesgo que el mecanismo de viaje que
+lleva conviviendo con la suite desde 2026-08-05 sin problemas conocidos. Verificado con dos pasadas
+limpias de `turn.integration.test.ts` antes de dar por bueno.
 
 ### Capa 3 — Determinismo de aparición en turno libre
 
@@ -220,11 +238,11 @@ resto del diseño. **Los 5 cerrados y APLICADOS al motor el mismo día (2026-08-
 A-C + paridad completa de mecánicas + `resolverTurnoJugador`, commits
 `5e63c27`/`419d7af`/`82793ab`/`d92df45`/`81e810c`, 2026-08-25) — solo le falta el disparador de la
 Capa 3-4 de este documento para conectarse al juego en vivo. **Capa 1 (zonas navegables): prototipo
-construido** (commit `098a3cf`, 2026-08-25) en La Hondonada del Eco — modelo de datos + pipeline de
-imagen + endpoint + panel, todos reales y verificados; falta generalizar al resto de zonas y
-generar/subir el PNG real. **Capas 2-4: sin construir todavía**, diseño completo arriba.
+construido** (commit `098a3cf`) en La Hondonada del Eco. **Capa 2 (cola de eventos): construida**
+(commit `cf57dca`) — generaliza la interrupción de viaje ya existente a descansar/construir/crafteo.
+**Capas 3-4: sin construir todavía**, diseño completo arriba.
 
-Orden recomendado para lo que queda: Capa 2 (cola de eventos) y Capa 3 (aparición determinista en
-turno libre) dependen de que la Capa 1 exista — ya existe, aunque solo en una zona — así que pueden
-empezar a diseñarse/construirse ya, apoyadas en La Hondonada del Eco como caso real de prueba antes
-de generalizar.
+Orden recomendado para lo que queda: Capa 3 (aparición determinista en turno libre) es la siguiente
+pieza natural — con Capas 1-2 ya reales, cierra el ciclo `newFacts`→`sessionFacts`→`npcsInScene` sin
+control identificado en el diagnóstico, y deja lista la Capa 4 (disparo real de Combate múltiple)
+como último paso.
