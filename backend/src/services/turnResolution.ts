@@ -2515,10 +2515,20 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   // `countsAsAttack` sigue siendo el ÚNICO que decide si el jugador puede hacer daño, esto solo
   // decide si el turno "cuenta" para que el NPC responda.
   const tomaAccionDeCombate = countsAsAttack || abilityRol === 'defensa' || abilityRol === 'utilidad' || !!isItemUse;
+  // Bug real jugando en vivo (2026-08-26, revisión forense de partida): "Remato a X, asestándoles
+  // el golpe de gracia final." dispara `detectsExecuteIntent` (por "remat") PERO TAMBIÉN
+  // `detectsAttackIntent` (por "golpe") — X ya está CONVALECIENTE (excluido de `npcsInSceneVivos`
+  // más arriba), así que sin este guard el intercambio normal caía a `npcsInSceneVivos[0]`, que
+  // puede ser CUALQUIER otro NPC presente en la escena (un bicho de fondo sin relación con el
+  // remate) — dañándolo de verdad, sin narración, mientras `applyExecuteTargets` (más abajo,
+  // basado en condicionFisica, no en el nombre citado) remataba correctamente al enemigo real. Un
+  // "remato/decapito/degüello/ejecuto" ya lo resuelve entero `executeTargets` — el intercambio
+  // normal no tiene nada legítimo que hacer en el mismo turno.
   const combateActivo =
     !activeCombatEncounter &&
     enCombate &&
     !lootMode &&
+    executeTargets.length === 0 &&
     npcsInScene.length > 0 &&
     npcParaIntercambio &&
     npcParaIntercambio.condicionFisica !== 'CONVALECIENTE' &&

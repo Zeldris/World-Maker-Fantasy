@@ -3211,23 +3211,40 @@ honor..."* (`session.ts:143`). El `updatedAt` de `NpcState` de Quio (17:34:00.04
 milisegundo, con el turno del golpe de gracia contra OTRO NPC (Orco Enfurecido, 17:34:00.035-046Z) —
 no con la petición de huir (17:35:01Z, un minuto después).
 
-**Causa raíz**: sin confirmar al 100%. Hipótesis con más peso: el turno que remata a Orco Enfurecido
-(`turnResolution.ts`, motor de combate 1v1/texto libre — esta partida nunca llegó a pasar por
-`combateMultipleOrquestacion.ts`, el motor nuevo que sí trata explícitamente varios NPC a la vez) deja
-alguna escritura de `NpcState` de un NPC presente en escena pero NO elegido como `npcParaIntercambio`
-este turno — `resolveCombatExchangePhase`/`candidateAttackTarget` (línea ~2494) solo parecen tocar a
-un único NPC por turno, así que el punto exacto donde Quio recibe esta escritura no se ha localizado
-todavía leyendo el código; hace falta reproducirlo en vivo con instrumentación (o un save de prueba
-con 2 NPC hostiles en la misma escena) para confirmarlo, en vez de arriesgar un cambio a ciegas en el
-motor de combate.
+**Causa raíz, CONFIRMADA**: "Remato a Orco enfurecido, asestándoles el golpe de gracia final."
+dispara a la vez `detectsExecuteIntent` (por "remat", `npcScene.ts`) Y `detectsAttackIntent` (por
+"golpe") — dos mecanismos INDEPENDIENTES que corren en el mismo turno (`turnResolution.ts`):
 
-Conecta directamente con la sospecha ya apuntada en memoria (no en este documento): un turno de
-apertura fallido puede sembrar un ataque real de NPC sin narración — esta partida parece ser la
-primera confirmación en vivo con evidencia de base de datos.
+1. `applyExecuteTargets` resuelve correctamente el remate de Orco Enfurecido (ya CONVALECIENTE,
+   detectado por condición, no por nombre) → MUERTO. Esto es lo que ve la jugadora narrado.
+2. Pero el intercambio de combate NORMAL (`resolveCombatExchangePhase`) TAMBIÉN se dispara este
+   mismo turno, porque `detectsAttackIntent` es true. Como Orco Enfurecido ya está CONVALECIENTE
+   (excluido de `npcsInSceneVivos`, `turnResolution.ts:2493`), `candidateAttackTarget` (línea 2494)
+   cae al fallback `npcsInSceneVivos[0]` — CUALQUIER otro NPC "vivo" presente en la escena, sin
+   relación con el remate. Ahí es donde entra Quio: le aplica daño real, sin ningún hint al
+   Narrador sobre él, así que nunca se narra.
 
-**Estado**: PENDIENTE, causa raíz sin confirmar al 100% — necesita reproducción instrumentada antes
-de tocar el motor de combate. Prioridad alta (narración falsa sobre el propio estado del combate,
-además de una penalización de honor "no ganada").
+Reproducido de forma determinista en `turn.integration.test.ts` § "Remato a X: no debe dañar de
+refilón a otro NPC presente en la misma escena" — con Math.random() fijado al máximo (garantiza
+acierto), sin el fix el log interno mostraba `"npcAttackTarget":"quio"` y Quio quedaba HERIDO tras
+un turno que la jugadora nunca dirigió contra él.
+
+(Nota aparte, no resuelta: cómo llegó Quio en concreto a estar "en escena" en la partida real de la
+usuaria no se pudo determinar con certeza al 100% — ni sessionFacts ni el log mencionan su nombre en
+ningún punto de esa partida — pero es irrelevante para el fix: el mecanismo de refilón es real y
+está cerrado independientemente de cómo entrara Quio al candidato de escena ese turno.)
+
+La narración de `/combat/flee` ("escapa antes de que el combate llegue a empezar de verdad") sigue
+siendo la que corresponde a ESA acción en sí (huir antes de abrir el popup) — no es parte de este
+bug, solo quedó mal encajada encima del daño de refilón ya aplicado por el bug de arriba.
+
+**Fix aplicado**: `combateActivo` (`turnResolution.ts`) ahora exige `executeTargets.length === 0` —
+un turno que ya se resuelve entero como remate/decapitar/degollar/ejecutar no tiene ningún intercambio
+normal legítimo que resolver de refilón contra nadie más.
+
+**Estado**: FIJADO (commit pendiente, 2026-08-26) — test de regresión nuevo (verificado que falla sin
+el fix, reproduciendo el bug exacto de la partida real, y pasa con él), suite unitaria completa
+(2777/2777) + `turn.integration.test.ts` (84/84) + el resto de archivos de integración en verde.
 
 ### 2. "Ataque Básico" genera una frase sin sentido con el nombre del objetivo (bug de plantilla)
 

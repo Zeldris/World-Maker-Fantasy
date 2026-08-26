@@ -9,9 +9,11 @@ de las 3 auditorías".
   (frontend, `useCombatFlow.ts` + test nuevo en `useCombatFlow.test.tsx`)
 - [x] 2. Partida "Gorhorn" duplicada al crear personaje (React StrictMode monta el efecto dos veces)
   — commit `d2aa600` (frontend, `GameView.tsx`, `creatingSaveRef`)
-- [ ] 3. Combate real sin narración contra Quio + narración de "huir" que contradice el propio
-  estado persistido — PENDIENTE, causa raíz sin confirmar al 100%, necesita reproducción
-  instrumentada antes de tocar el motor de combate. El más serio de los 4.
+- [x] 3. Combate real sin narración contra Quio — causa raíz CONFIRMADA y arreglada (commit
+  pendiente): "Remato a X" dispara a la vez `detectsExecuteIntent` y `detectsAttackIntent`; el
+  intercambio normal caía a `npcsInSceneVivos[0]` (cualquier bystander) porque el objetivo real ya
+  estaba CONVALECIENTE. `combateActivo` ahora exige `executeTargets.length === 0`. Test de
+  regresión en `turn.integration.test.ts`, verificado que reproduce el bug exacto sin el fix.
 - [x] 4. Dos ejemplos nuevos de "errores gramaticales sueltos del modelo" ("lame", "cortejar la luz
   del sol") — solo documentados, mismo criterio que el resto de esa familia (sin corrector genérico)
 

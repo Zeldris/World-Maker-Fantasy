@@ -2286,6 +2286,80 @@ describe('Decapitar: condición de carrera en turnos concurrentes (auditoría 20
   }, 20_000);
 });
 
+// Bug real (revisión forense de partida real, 2026-08-26): "Remato a X, asestándoles el golpe de
+// gracia final." dispara `detectsExecuteIntent` (por "remat") Y TAMBIÉN `detectsAttackIntent` (por
+// "golpe") — con X ya CONVALECIENTE (excluido de `npcsInSceneVivos`), el intercambio de combate
+// NORMAL caía a `npcsInSceneVivos[0]`, que puede ser cualquier otro NPC presente en la escena sin
+// relación con el remate — dañándolo de verdad, sin ninguna narración. Confirmado en una partida
+// real: Quio quedó HERIDO tras rematar al Orco Enfurecido, sin que el log mencionara a Quio nunca.
+describe('Remato a X: no debe dañar de refilón a otro NPC presente en la misma escena', () => {
+  let saveId: string;
+  let orcoId: string;
+  let quioId: string;
+  let locationId: string;
+
+  beforeAll(async () => {
+    const userId = await getDefaultUserId();
+    const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
+    const hondonada = await prisma.location.findFirstOrThrow({ where: { worldId: world.id, slug: 'hondonada-del-eco' } });
+    const orco = await prisma.npc.findFirstOrThrow({ where: { worldId: world.id, slug: 'orco-enfurecido-hondonada' } });
+    const quio = await prisma.npc.findFirstOrThrow({ where: { worldId: world.id, slug: 'quio' } });
+    orcoId = orco.id;
+    quioId = quio.id;
+    locationId = hondonada.id;
+    const save = await prisma.save.create({
+      data: {
+        userId,
+        worldId: world.id,
+        characterName: 'Gorhorn de prueba 12',
+        characterArchetype: 'guerrero',
+        characterOrigin: 'Clan Maktor',
+        characterMotivation: 'x',
+        attributes: ATTRS,
+        portraitInitial: 'G',
+        currentLocationId: hondonada.id,
+      },
+    });
+    saveId = save.id;
+    await prisma.worldState.create({ data: { saveId } });
+    // Orco Enfurecido ya CONVALECIENTE (el remate no puede resistirse). Quio ya "encontrado antes"
+    // (NpcState propio, ver `detectNpcsInScene` § encounteredIds) e ILESO — un bystander cualquiera
+    // que solo hace falta que la acción/hechos de sesión mencionen para que entre en escena, igual
+    // que le pasó a Quio en la partida real.
+    await prisma.npcState.create({ data: { saveId, npcId: orcoId, scope: '', condicionFisica: 'CONVALECIENTE' } });
+    await prisma.npcState.create({ data: { saveId, npcId: quioId, scope: locationId, condicionFisica: 'ILESO' } });
+    await prisma.$executeRaw`
+      INSERT INTO "SessionFact" (id, "saveId", text, embedding, "createdAt")
+      VALUES (${crypto.randomUUID()}, ${saveId}, 'Un Quio se desliza por el fango cerca de la hondonada.', NULL, ${new Date()})
+    `;
+    classifyAction.mockResolvedValue({
+      requiereTirada: false, atributo: 'fuerza', dificultad: 8, razon: 'x', banda: 'instantanea', duracionEstimadaMinutos: 0,
+    });
+  });
+
+  afterAll(async () => {
+    await prisma.save.delete({ where: { id: saveId } });
+  });
+
+  it('rematar a Orco Enfurecido (sin comillas) deja a Quio intacto', async () => {
+    // Math.random()=0.99 garantiza el mejor resultado posible en CUALQUIER tirada (mismo criterio
+    // que el resto de este archivo) — si el bug estuviera de vuelta, el intercambio de refilón
+    // contra Quio conectaría siempre, no solo a veces, así que este test no puede colar en falso
+    // por una tirada de suerte.
+    vi.spyOn(Math, 'random').mockReturnValue(0.99);
+    narrateAction.mockClear();
+    const res = await doTurn(saveId, 'Remato a Orco enfurecido, asestándoles el golpe de gracia final.');
+    expect(res.statusCode).toBe(200);
+
+    const orcoState = await prisma.npcState.findUniqueOrThrow({ where: { saveId_npcId_scope: { saveId, npcId: orcoId, scope: '' } } });
+    expect(orcoState.condicionFisica).toBe('MUERTO');
+
+    const quioState = await prisma.npcState.findUniqueOrThrow({ where: { saveId_npcId_scope: { saveId, npcId: quioId, scope: locationId } } });
+    expect(quioState.condicionFisica).toBe('ILESO');
+    expect(quioState.energia).toBeNull();
+  }, 20_000);
+});
+
 // Recompensa determinista de misión (docs/19-post-combate-y-recompensas-mision.md, pieza 3) —
 // antes Quest.rewardItems era solo texto para el panel, nunca creaba el InventoryItem de verdad.
 describe('Decapitar cierra una misión "derrotar a X" con rewardItems y entrega el objeto de verdad', () => {
