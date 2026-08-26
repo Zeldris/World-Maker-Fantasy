@@ -85,6 +85,20 @@ describe('nextCondicionFisica', () => {
     expect(nextCondicionFisica('GRAVE', undefined, false, 'HERIDO')).toBe('HERIDO');
     expect(nextCondicionFisica('CONVALECIENTE', null, false, 'ILESO')).toBe('ILESO'); // objeto médico fuerte
   });
+
+  it('bug real jugando en vivo (2026-08-26, batida de pruebas: "curarme/descansar falla en silencio ~50% de las veces"): el modelo REPITE la condición actual (proposedIdx === currentIdx, ni mejora ni empeora) en vez de omitir el campo — debe curar igual que si no hubiera propuesto nada', () => {
+    expect(nextCondicionFisica('GRAVE', 'GRAVE', false, 'HERIDO')).toBe('HERIDO');
+    expect(nextCondicionFisica('CONVALECIENTE', 'CONVALECIENTE', false, 'ILESO')).toBe('ILESO');
+    // Sin causa real (healCeiling = current), repetir la condición sigue sin curar nada — coherente
+    // con el caso ya cubierto arriba de "una mejora propuesta sin más NO se acepta".
+    expect(nextCondicionFisica('GRAVE', 'GRAVE', false, 'GRAVE')).toBe('GRAVE');
+  });
+
+  it('una mejora GENUINA propuesta por el modelo sigue topándose en el techo mecánico real, nunca curando de más (distinto del caso de repetir la condición actual)', () => {
+    // El modelo narra una curación completa a ILESO, pero el descanso solo alcanza HERIDO — el
+    // techo real manda, igual que antes del fix de arriba.
+    expect(nextCondicionFisica('GRAVE', 'ILESO', false, 'HERIDO')).toBe('HERIDO');
+  });
 });
 
 describe('healCeilingFor', () => {

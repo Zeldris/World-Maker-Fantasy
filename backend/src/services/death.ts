@@ -156,7 +156,21 @@ export function nextCondicionFisica(
     return CONDICION_ORDER[Math.min(currentIdx, ceilingIdx)];
   }
   const proposedIdx = CONDICION_ORDER.indexOf(proposed);
-  if (proposedIdx <= currentIdx) {
+  // Bug real jugando en vivo (2026-08-26, batida de pruebas: "curarme/descansar falla en silencio
+  // ~50% de las veces"): cuando el modelo REPITE la condición actual en vez de omitir el campo
+  // (`proposedIdx === currentIdx`, ni mejora ni empeora — sin información real, igual que
+  // `!proposed` arriba), esto caía en la misma rama que una mejora real propuesta por el modelo
+  // (`proposedIdx < currentIdx`) y aplicaba `Math.max(proposedIdx, ceilingIdx)` — con
+  // `proposedIdx === currentIdx`, eso siempre "gana" sobre un techo mejor (`ceilingIdx` más bajo),
+  // descartando la curación real aunque el objeto/descanso ya se hubiera consumido. Ahora ese caso
+  // se trata igual que `!proposed` (`Math.min`, deja ganar al techo real). Cuando el modelo SÍ
+  // propone una mejora genuina (`proposedIdx < currentIdx`), `Math.max` sigue siendo el correcto:
+  // evita que la narración cure de más allá del techo mecánico real.
+  if (proposedIdx === currentIdx) {
+    const ceilingIdx = CONDICION_ORDER.indexOf(healCeiling);
+    return CONDICION_ORDER[Math.min(currentIdx, ceilingIdx)];
+  }
+  if (proposedIdx < currentIdx) {
     const ceilingIdx = CONDICION_ORDER.indexOf(healCeiling);
     return CONDICION_ORDER[Math.max(proposedIdx, ceilingIdx)];
   }
