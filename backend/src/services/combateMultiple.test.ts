@@ -4,6 +4,9 @@ import {
   elegirObjetivo,
   objetivosValidos,
   retargetBando,
+  resolverEnganchesRonda,
+  esDueloMutuo,
+  golpeaPrimeroEnDuelo,
   particionarEnSubCombates,
   subCombateJugable,
   resolverIntercambioCompleto,
@@ -85,6 +88,128 @@ describe('retargetBando', () => {
     const resultado = retargetBando(atacantes, defensores, () => 0.9);
     expect(resultado['atacante-listo']).toBe('debil'); // remata al más herido, sin importar el dado
     expect(resultado['atacante-torpe']).toBe('fuerte'); // random 0.9 * 2 candidatos -> índice 1
+  });
+});
+
+// Objetivo individual real (2026-08-26, diseño cerrado con la usuaria jugando en vivo contra 2
+// cuervos). Cada caso usa un `elegirObjetivoPara` fijo (mock, no IA real) para poder controlar
+// exactamente quién elige a quién en cada test — la IA real (`elegirObjetivo`) ya tiene su propia
+// cobertura arriba, aquí solo importa el ALGORITMO de enganche/duelo/golpe gratis en sí.
+describe('resolverEnganchesRonda', () => {
+  it('caso real que originó el diseño: 2 cuervos vs 1 jugadora — solo uno entra en duelo real, el otro pega gratis', () => {
+    // Orden de iniciativa: cuervoA primero, luego jugadora, luego cuervoB (el que se queda sin
+    // duelo real, exactamente como en la partida real de la usuaria).
+    const orden = ['cuervoA', 'jugadora', 'cuervoB'];
+    const combatientes = [
+      { participantId: 'cuervoA', bando: 'ENEMIGO' as const },
+      { participantId: 'jugadora', bando: 'JUGADOR' as const },
+      { participantId: 'cuervoB', bando: 'ENEMIGO' as const },
+    ];
+    // Ambos cuervos y la jugadora solo tienen un candidato posible cada uno (bando contrario de 1).
+    const elegir = (id: string) => (id === 'jugadora' ? 'cuervoA' : 'jugadora');
+    const resultado = resolverEnganchesRonda(orden, combatientes, elegir);
+
+    expect(resultado.get('cuervoA')).toBe('jugadora'); // primer reclamo sobre la jugadora, gana
+    expect(resultado.get('jugadora')).toBe('cuervoA'); // ya reclamada por cuervoA — defiende/duela contra él, no elige
+  });
+
+  it('caso real, versión completa con esDueloMutuo/golpeaPrimeroEnDuelo: cuervoA duela de verdad, cuervoB pega gratis', () => {
+    const orden = ['cuervoA', 'jugadora', 'cuervoB'];
+    const combatientes = [
+      { participantId: 'cuervoA', bando: 'ENEMIGO' as const },
+      { participantId: 'jugadora', bando: 'JUGADOR' as const },
+      { participantId: 'cuervoB', bando: 'ENEMIGO' as const },
+    ];
+    const elegir = (id: string) => (id === 'jugadora' ? 'cuervoA' : 'jugadora');
+    const resultado = resolverEnganchesRonda(orden, combatientes, elegir);
+
+    expect(esDueloMutuo(resultado, 'cuervoA', 'jugadora')).toBe(true);
+    expect(golpeaPrimeroEnDuelo(orden, 'cuervoA', 'jugadora')).toBe('cuervoA'); // más iniciativa
+
+    // cuervoB SÍ tiene objetivo (la jugadora), pero la jugadora no le devuelve la mirada — golpe gratis.
+    expect(resultado.get('cuervoB')).toBe('jugadora');
+    expect(esDueloMutuo(resultado, 'cuervoB', 'jugadora')).toBe(false);
+  });
+
+  it('petición explícita de la usuaria: "X eligió atacar a Y, luego es atacado por Z — pasa a ser X vs Z, el ataque de X ya no puede ir contra Y"', () => {
+    // X primero (más iniciativa), luego Y, luego Z (menos iniciativa, pero SÍ puede enganchar a X
+    // aunque X ya haya actuado antes — "un enemigo con menos iniciativa puede enganchar a alguien
+    // con más, que aun así golpea primero dentro de ese duelo").
+    const orden = ['x', 'y', 'z'];
+    const combatientes = [
+      { participantId: 'x', bando: 'JUGADOR' as const },
+      { participantId: 'y', bando: 'ENEMIGO' as const },
+      { participantId: 'z', bando: 'ENEMIGO' as const },
+    ];
+    const elegir = (id: string) => (id === 'x' ? 'y' : 'x'); // x elige y; z (el único que llega a elegir) elige x
+    const resultado = resolverEnganchesRonda(orden, combatientes, elegir);
+
+    expect(resultado.get('x')).toBe('z'); // cancelado su ataque a y, ahora duela con z
+    expect(resultado.get('z')).toBe('x');
+    expect(esDueloMutuo(resultado, 'x', 'z')).toBe(true);
+    expect(golpeaPrimeroEnDuelo(orden, 'x', 'z')).toBe('x'); // x tiene más iniciativa que z
+
+    // y se queda sin nadie atacándole esta ronda — ya había perdido su propio turno de elegir
+    // (estaba reclamado por x en ese momento) y no recupera una segunda oportunidad.
+    expect(resultado.get('y')).toBeNull();
+  });
+
+  it('sin candidatos válidos en el bando contrario: sin objetivo, no revienta', () => {
+    const orden = ['solo'];
+    const combatientes = [{ participantId: 'solo', bando: 'JUGADOR' as const }];
+    const resultado = resolverEnganchesRonda(orden, combatientes, () => null);
+    expect(resultado.get('solo')).toBeNull();
+  });
+
+  it('1 contra 1 normal: siempre acaba en duelo mutuo, quien tenga más iniciativa golpea primero', () => {
+    const orden = ['rapido', 'lento'];
+    const combatientes = [
+      { participantId: 'rapido', bando: 'JUGADOR' as const },
+      { participantId: 'lento', bando: 'ENEMIGO' as const },
+    ];
+    const elegir = (id: string) => (id === 'rapido' ? 'lento' : 'rapido');
+    const resultado = resolverEnganchesRonda(orden, combatientes, elegir);
+    expect(esDueloMutuo(resultado, 'rapido', 'lento')).toBe(true);
+    expect(golpeaPrimeroEnDuelo(orden, 'rapido', 'lento')).toBe('rapido');
+  });
+
+  it('grupo impar (3 enemigos vs 1 jugadora, ella con menos iniciativa que todos): solo el primero en reclamarla entra en duelo real, los otros 2 pegan gratis', () => {
+    // Jugadora AL FINAL de la cola a propósito — así nunca llega a elegir ella misma (los 3
+    // enemigos ya la reclaman antes de que le toque actuar), aislando el caso "varios pretenden
+    // el mismo objetivo" del caso de cancelación por elección propia (ya cubierto en el test de
+    // X/Y/Z de arriba).
+    const orden = ['e1', 'e2', 'e3', 'jugadora'];
+    const combatientes = [
+      { participantId: 'e1', bando: 'ENEMIGO' as const },
+      { participantId: 'e2', bando: 'ENEMIGO' as const },
+      { participantId: 'e3', bando: 'ENEMIGO' as const },
+      { participantId: 'jugadora', bando: 'JUGADOR' as const },
+    ];
+    const elegir = () => 'jugadora'; // los 3 enemigos solo tienen un candidato posible: la jugadora
+    const resultado = resolverEnganchesRonda(orden, combatientes, elegir);
+
+    expect(esDueloMutuo(resultado, 'jugadora', 'e1')).toBe(true); // e1 llegó primero, se queda el duelo
+    expect(golpeaPrimeroEnDuelo(orden, 'jugadora', 'e1')).toBe('e1'); // más iniciativa que la jugadora
+
+    expect(resultado.get('e2')).toBe('jugadora');
+    expect(esDueloMutuo(resultado, 'jugadora', 'e2')).toBe(false); // golpe gratis
+    expect(resultado.get('e3')).toBe('jugadora');
+    expect(esDueloMutuo(resultado, 'jugadora', 'e3')).toBe(false); // golpe gratis
+
+    // La jugadora, ya reclamada por e1 cuando le toca actuar, no elige por su cuenta.
+    expect(resultado.get('jugadora')).toBe('e1');
+  });
+
+  it('un participante fuera de la lista de combatientes (no debería pasar) se ignora sin reventar', () => {
+    const orden = ['fantasma', 'jugadora', 'enemigo'];
+    const combatientes = [
+      { participantId: 'jugadora', bando: 'JUGADOR' as const },
+      { participantId: 'enemigo', bando: 'ENEMIGO' as const },
+    ];
+    const elegir = (id: string) => (id === 'jugadora' ? 'enemigo' : 'jugadora');
+    const resultado = resolverEnganchesRonda(orden, combatientes, elegir);
+    expect(resultado.has('fantasma')).toBe(false); // ignorado del todo, ni siquiera null
+    expect(esDueloMutuo(resultado, 'jugadora', 'enemigo')).toBe(true);
   });
 });
 

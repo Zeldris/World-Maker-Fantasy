@@ -100,6 +100,97 @@ export function retargetBando(
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
+// § 2b — Objetivo individual real: "enganche" por ronda (2026-08-26, diseño cerrado con la
+// usuaria jugando en vivo contra 2 cuervos — "no puedo elegir objetivo... cuando ataco debería
+// ser yo vs mi objetivo y el otro enemigo tiene ataque gratis"). Sustituye `retargetBando` para
+// el modelo de ronda real: ahí CADA atacante vivo siempre recibía un objetivo válido y CADA
+// intercambio era una defensa real por igual — nunca existía "el otro me pega gratis porque no
+// era mi objetivo". Aquí, en cambio:
+//
+//   1. Se procesa `ordenIniciativa` UNA vez, de principio a fin (la cola ya calculada por
+//      `rollInitiativeMultiple`, nunca se re-tira).
+//   2. Quien TODAVÍA no sea objetivo de nadie, al llegarle su turno, ELIGE a quién atacar
+//      (`elegirObjetivoPara`, inyectado por el caller: IA de siempre para NPC/COMPANION vía
+//      `elegirObjetivo`, elección explícita para la jugadora). El PRIMER reclamo sobre un
+//      objetivo dado gana — un segundo/tercer atacante que también lo elija no le "roba" el
+//      duelo al primero, se queda con un golpe gratis contra ese mismo objetivo (ver más abajo).
+//   3. Quien YA es objetivo de alguien cuando le toca actuar NO elige — su turno pasa a ser
+//      defender/duelar contra quien lo reclamó (regla 2 de la usuaria: "si te han elegido ya
+//      como objetivo... no puedes elegir objetivo").
+//   4. Si ese quien-ya-eligió-antes es reclamado DESPUÉS por otro (X eligió Y, luego Z eligió X)
+//      su elección anterior se cancela — "el ataque de X ya no puede ir contra Y" — X pasa a
+//      duelar contra Z. Y, que ya se había resignado a defender de X, se queda sin nadie
+//      atacándolo esta ronda (perdió su propio turno de elegir cuando fue reclamado, y no
+//      recupera una segunda oportunidad solo porque su reclamante cambió de objetivo).
+//
+// El resultado tiene la MISMA forma que `objetivoActualId`/`retargetBando` (mapa participante →
+// objetivo o null) — el caller decide si un objetivo concreto es un DUELO real o un GOLPE
+// GRATIS comparando ambos lados: si `resultado.get(A) === B` Y `resultado.get(B) === A`, es un
+// duelo mutuo (dentro de él, golpea primero quien tenga más iniciativa — ver posición en
+// `ordenIniciativa`, no hace falta guardar nada más). Cualquier otro caso donde A SÍ tiene
+// objetivo pero ese objetivo no le devuelve la mirada es un golpe gratis, sin oposición real
+// (`AGUANTE`+`MULTIPLE` es la única forma de defenderse de verdad de uno de estos, ver
+// combateMultipleOrquestacion.ts).
+export function resolverEnganchesRonda(
+  ordenIniciativa: string[],
+  combatientes: { participantId: string; bando: Bando }[],
+  elegirObjetivoPara: (participantId: string, candidatos: string[]) => string | null,
+): Map<string, string | null> {
+  const bandoDe = new Map(combatientes.map((c) => [c.participantId, c.bando]));
+  // target → primer atacante que lo reclamó — first-come, nunca se sobreescribe con un reclamo
+  // nuevo (eso es justo lo que produce el golpe gratis del segundo/tercer pretendiente).
+  const reclamadoPor = new Map<string, string>();
+  // atacante → objetivo elegido — provisional: se borra en la limpieza si el propio atacante
+  // acaba reclamado por alguien más tarde en la misma pasada.
+  const objetivoProvisional = new Map<string, string>();
+
+  for (const id of ordenIniciativa) {
+    if (!bandoDe.has(id)) continue; // participante fuera de este encuentro (no debería pasar)
+    if (reclamadoPor.has(id)) continue; // ya reclamado por alguien antes — no elige (regla 3)
+
+    const bando = bandoDe.get(id)!;
+    const candidatos = combatientes.filter((c) => c.bando !== bando).map((c) => c.participantId);
+    const elegido = elegirObjetivoPara(id, candidatos);
+    if (elegido === null) continue; // sin nadie a quien atacar (bando contrario agotado)
+
+    objetivoProvisional.set(id, elegido);
+    if (!reclamadoPor.has(elegido)) reclamadoPor.set(elegido, id);
+  }
+
+  // Limpieza (regla 4): un atacante con elección propia que ADEMÁS acabó reclamado por otro
+  // pierde esa elección — su objetivo original queda libre otra vez (aunque ya nadie más vaya a
+  // reclamarlo esta ronda, ver comentario de cabecera).
+  for (const [atacante, objetivoElegido] of objetivoProvisional) {
+    if (!reclamadoPor.has(atacante)) continue;
+    objetivoProvisional.delete(atacante);
+    if (reclamadoPor.get(objetivoElegido) === atacante) reclamadoPor.delete(objetivoElegido);
+  }
+
+  const resultado = new Map<string, string | null>();
+  for (const id of ordenIniciativa) {
+    if (!bandoDe.has(id)) continue; // mismo filtro que la fase de elección, ver comentario de arriba
+    if (reclamadoPor.has(id)) resultado.set(id, reclamadoPor.get(id)!);
+    else if (objetivoProvisional.has(id)) resultado.set(id, objetivoProvisional.get(id)!);
+    else resultado.set(id, null);
+  }
+  return resultado;
+}
+
+/// ¿Es esto un duelo real (mutuo) o un golpe gratis? Ver comentario de cabecera de
+/// `resolverEnganchesRonda` — un duelo es simétrico (A→B y B→A), cualquier otra cosa donde A sí
+/// tiene objetivo es golpe gratis sin oposición real.
+export function esDueloMutuo(enganches: Map<string, string | null>, a: string, b: string): boolean {
+  return enganches.get(a) === b && enganches.get(b) === a;
+}
+
+/// Dentro de un duelo mutuo, quien tenga más iniciativa golpea primero — mismo criterio que la
+/// propia cola `ordenIniciativa` ya establece (posición más temprana = más iniciativa), sin
+/// necesidad de comparar ningún número aparte.
+export function golpeaPrimeroEnDuelo(ordenIniciativa: string[], a: string, b: string): string {
+  return ordenIniciativa.indexOf(a) <= ordenIniciativa.indexOf(b) ? a : b;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 // § 3 — Bandos y tope de combatientes: 4 vs. 4 máximo, partición de encuentros grandes
 // ═══════════════════════════════════════════════════════════════════════════
 
