@@ -200,9 +200,11 @@ llamadas en total). Dos clusters claros y extraíbles con el mismo patrón que y
   `huntModalOpen`, `simpleModal`, `saquearZonaModalOpen`, `healModalOpen`, `postCombatTarget` —
   todo apertura/cierre de pop-ups de acción, candidato a un hook o reducer único de "modal activo".
 
-**Estado**: PENDIENTE. Ver [[tarkor_extraccion_hooks_gameview_2026-08-21]] (memoria) para el
-criterio ya validado de cuándo vale la pena extraer ("quién más escribe el estado", no solo el
-recuento de líneas) — aplica igual de bien a estos dos clusters nuevos.
+**Estado**: FIJADO (commit `6303635`, 2026-08-25) — `useKingdomState`/`useActionModalsState` nuevos
+(hooks/), mismo criterio de [[tarkor_extraccion_hooks_gameview_2026-08-21]]: ambos clusters tienen
+escritores externos (`syncFromSave`/`handleSubmit`/`useCombatFlow`), así que los hooks agrupan las
+16 declaraciones `useState` (valor+setter expuestos, mismos nombres reutilizados en `GameView.tsx`
+sin tocar el resto del archivo) en vez de encapsular del todo la lógica de apertura/escritura.
 
 ## 2026-08-25 — useCombatFlow.ts (585 líneas, el hook con más lógica de decisión) sin ningún test — hooks/ entera sin cobertura
 

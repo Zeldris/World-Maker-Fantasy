@@ -33,7 +33,7 @@ Y en su hallazgo de origen al cerrarse (FIJADO), con commit propio y verificaci�
 
 ## Bloque 4 — deuda técnica frontend
 
-- [ ] 16. `GameView.tsx`: extraer estado de Reino (`useKingdomState`) y estado de modales de acción
+- [x] 16. `GameView.tsx`: extraer estado de Reino (`useKingdomState`) y estado de modales de acción — commit `6303635`
 - [ ] 17. Tests para `useCombatFlow.ts` (585 líneas, el hook con más lógica de decisión, hoy sin ninguno)
 - [ ] 18. Unificar manejo de error de envío en los 6 modales de acción duplicados
 
