@@ -34,7 +34,7 @@ de las 3 auditorías".
 consciente, sin bug real detrás. No tocados.
 
 **`revisar-partida-hallazgos.md`** — hallazgos de narración/gameplay reales sin arreglar (todos
-necesitan reproducción en vivo con `dev-server.log` — sin rastro persistido en base de datos que
+necesitan reproducción en vivo con `logs/backend.log` — sin rastro persistido en base de datos que
 confirme la causa raíz al 100%, arriesgar un fix sin esa evidencia es lo mismo que "arreglar a
 ciegas" que se ha evitado durante toda esta sesión):
 - Quio narrado en 3 ubicaciones distintas el mismo día (2026-08-23) — ligado a un pendiente de

@@ -2683,7 +2683,7 @@ todos en verde.
 
 ## 2026-08-21 — despiece narrado por texto libre duplicaba botín en fauna cazada en grupo
 
-**Contexto**: sin partida jugada activa (sin `dev-server.log` reciente) se sustituyó el runbook
+**Contexto**: sin partida jugada activa (sin `logs/backend.log` reciente) se sustituyó el runbook
 habitual de "revisar partida" por una auditoría de código: 5 agentes en paralelo, cada uno acotado a
 una zona de archivos backend/frontend sin solapes, buscando bugs reales de comportamiento (no deuda
 técnica ni lore — esas son las auditorías 2 y 3 del mismo día). Verificación final propia (no solo el
@@ -2857,7 +2857,7 @@ real de estos combates. Esto encaja con que la narración de cada "huida" (leíd
 nunca lo menciona por nombre — en su lugar describe a Quio ("el Quio... no parece prestarle
 atención") o solo el entorno, nunca al propio atacante.
 
-**Teoría más probable (no confirmada del todo, sin `dev-server.log` con diagnóstico `[turno]`
+**Teoría más probable (no confirmada del todo, sin `logs/backend.log` con diagnóstico `[turno]`
 disponible para esta partida)**: mismo pendiente de diseño de anclaje por zona que el hallazgo de
 Quio de arriba — si la selección de fauna "en escena"/de encuentro no filtra por ubicación real,
 Cruzavientos (que sí vuela sobre gran parte de la región, pero anida solo en Pilares Rotos) puede
@@ -2866,7 +2866,7 @@ recibe el nombre real del atacante como contexto — de ahí que la usuaria solo
 que ve en la interfaz (banner de combate), nunca por la prosa.
 
 **Estado**: PENDIENTE, sin causa raíz de código confirmada al 100%. Para cerrarlo de verdad hace
-falta reproducirlo con `dev-server.log` activo (ver runbook § 2) y mirar la línea `[turno]` del
+falta reproducirlo con `logs/backend.log` activo (ver runbook § 2) y mirar la línea `[turno]` del
 momento exacto de un "Intento huir" contra Cruzavientos — ver qué `npcsInScene` devuelve y si el
 nombre del atacante real llega o no al contexto de `narrateAction`. Recomendado para la próxima
 sesión de juego real.
@@ -2887,7 +2887,7 @@ de Desollar/recolección, que sí distingue caza de combate real.
 **Estado**: PENDIENTE. A revisar: si el motor realmente permite que un `INOFENSIVO` sin
 `ataqueNatural` inflija daño mecánico real al jugador (grave, sería un bug de reglas) o si es solo
 narración sin consecuencia mecánica (menos grave, solo inmersión). No se pudo diferenciar sin log de
-turno — recomendado comprobar en la próxima partida jugada con `dev-server.log` activo.
+turno — recomendado comprobar en la próxima partida jugada con `logs/backend.log` activo.
 
 ## 2026-08-23 — Ruptidar descrito como "insecto" con "alas rotas" (es un reptil sin alas)
 

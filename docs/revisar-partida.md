@@ -17,10 +17,13 @@ ficticia), `WorldState.facts`/`factionsStatus`, `CharacterTransit` activo, `Ques
 (con su `scope`), inventario, compañeros, capítulos, y el log completo (personaje + mundo) en
 orden cronológico.
 
-## 2. Revisar dev-server.log
+## 2. Revisar logs/backend.log
+
+Ruta corregida (2026-08-26) — el arranque real (`iniciar-tarkor.sh`) escribe en `logs/backend.log`
+en la raíz del proyecto, nunca en `backend/dev-server.log` (nombre antiguo, ya no existe).
 
 ```
-grep -iE "warn|error|lint|turno" backend/dev-server.log
+grep -iE "warn|error|lint|turno" logs/backend.log
 ```
 
 - Líneas `[lint]` → `lintRegionMismatch` detectó que la narración mencionó una región distinta a
