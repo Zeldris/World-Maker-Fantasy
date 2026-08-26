@@ -10,12 +10,48 @@ de las 3 auditorías".
 - [x] 2. Partida "Gorhorn" duplicada al crear personaje (React StrictMode monta el efecto dos veces)
   — commit `d2aa600` (frontend, `GameView.tsx`, `creatingSaveRef`)
 - [x] 3. Combate real sin narración contra Quio — causa raíz CONFIRMADA y arreglada (commit
-  pendiente): "Remato a X" dispara a la vez `detectsExecuteIntent` y `detectsAttackIntent`; el
+  `081b340`): "Remato a X" dispara a la vez `detectsExecuteIntent` y `detectsAttackIntent`; el
   intercambio normal caía a `npcsInSceneVivos[0]` (cualquier bystander) porque el objetivo real ya
   estaba CONVALECIENTE. `combateActivo` ahora exige `executeTargets.length === 0`. Test de
   regresión en `turn.integration.test.ts`, verificado que reproduce el bug exacto sin el fix.
 - [x] 4. Dos ejemplos nuevos de "errores gramaticales sueltos del modelo" ("lame", "cortejar la luz
   del sol") — solo documentados, mismo criterio que el resto de esa familia (sin corrector genérico)
 
-**No incluido aquí**: la petición de rediseñar CONVALECIENTE (capturar/matar/dejar vivir, ya no
-victoria automática) — anotada en `docs/21-roadmap.md`, a desarrollar cuando se cierre este checklist.
+## Cola vieja de `revisar-partida-hallazgos.md`, cerrada de paso en la misma pasada
+
+- [x] 5. Caché de tirada de recolección (un slot por partida, no por oficio) — commit `e3ee484`.
+  `Save.harvestRollCache` pasa a mapa `oficio → entrada`; `/confirmar` invalida solo lo tocado.
+- [x] 6. Hallazgo desactualizado del 2026-08-21 (endedAt en inventario/progression/habilidades
+  marcado "PENDIENTE") — commit `40976be`, solo corrección de documentación: ya estaba FIJADO por
+  el checklist de las 3 auditorías (item 10, `rejectIfEnded`), el documento no se había actualizado.
+
+## Lo que queda realmente pendiente fuera de este checklist
+
+**`deuda-tecnica-hallazgos.md`** — 2 grupos "menores agrupados" (services/, routes/), prioridad baja
+consciente, sin bug real detrás. No tocados.
+
+**`revisar-partida-hallazgos.md`** — hallazgos de narración/gameplay reales sin arreglar:
+- Quio narrado en 3 ubicaciones distintas el mismo día (2026-08-23)
+- Cruzavientos ataca repetidamente y nunca se narra quién es (2026-08-23)
+- Ruptidar "ataca" en combate pese a ser INOFENSIVO/"No ataca" (2026-08-23)
+- Ruptidar descrito como "insecto" con "alas rotas" (es un reptil sin alas) (2026-08-23)
+- Ataque a Múrgol narrado como si fuera contra Cruzavientos (2026-08-14)
+- Posible reaparición de Gistera Koh sin nombrarla (2026-08-08)
+- Roca Luclara minable en Hondonada del Eco pese a `harvestSourceHomeLocationSlug` distinto
+  (2026-08-25) — **pregunta de diseño para la usuaria** (¿debería bloquearse por ubicación, o el
+  campo es solo lore sin efecto mecánico por diseño?), no un bug de código a secas.
+- Capacidad de inventario por filas vs. por cantidad (2026-08-08) — pregunta de diseño, no bug.
+- Familia "errores gramaticales/inglés colado del modelo" (~6 entradas, 2026-08-08 a 2026-08-26) —
+  decisión ya tomada de NO construir un corrector genérico; se quedan solo como registro fechado.
+
+**`docs/21-roadmap.md`** — 8 items sin marcar, todos feature/diseño (no bugs), varios aplazados a
+propósito por decisión explícita de la usuaria:
+- `comerciablePct`/`cortejablePct` — sin sistema detrás, confirmado que se quedan así por ahora.
+- `Npc.levelMax`/`percepcionPasivaFor` — en cola, pendientes de diseño propio.
+- "Trabajador de Reino" — bloquea 22 NPC del Campamento Serhu + oficio de agricultura.
+- Quién enseña un oficio nuevo — aplazado a propósito, baja prioridad.
+- Miel Lebude / profesión de cocina por raza-región — idea suelta, prioridad muy baja.
+- Botones "Aceptar"/"Cancelar" al ofrecer misión (2026-08-25).
+- NPCs que aparecen por narración no se marcan en la pestaña "Zona" (2026-08-25).
+- **CONVALECIENTE deja de ser "victoria automática"** (capturar/matar/dejar vivir) — petición
+  explícita de la usuaria (2026-08-26), aparcada a propósito hasta cerrar esta ronda de bugs.
