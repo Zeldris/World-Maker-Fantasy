@@ -119,8 +119,8 @@ Domador, comida/agua de compañero y de jugadora, equipo de compañero, Almacén
 sección "§ 7 Infraestructura nueva necesaria" (que enmarca cada pieza como "nada de esto existe hoy")
 también está obsoleta — cada ítem de esa lista ya está construido.
 
-**Estado**: PENDIENTE de actualizar el `.md` (el código manda — decisión de la usuaria: documentar
-esta ronda, no tocar el `.md` todavía).
+**Estado**: FIJADO (commit `5a38692`, 2026-08-25) — título y banner actualizados a "APLICADO al
+motor", § 7 reescrita entera con el estado real de cada punto.
 
 ## 2026-08-25 — companeros-y-supervivencia.md describe muerte real por inanición — el código la tapa a propósito en CONVALECIENTE
 
@@ -132,8 +132,8 @@ falta enganchar el pipeline real de muerte/respawn). Coincide con lo ya document
 [[tarkor_companeros_supervivencia_aplicado_2026-08-25]] ("solo falta muerte por inanición, fuera a
 propósito") — el `.md` simplemente no avisa de esta excepción temporal.
 
-**Estado**: PENDIENTE de añadir una nota de excepción en el `.md` (decisión de diseño ya tomada,
-solo falta reflejarla en la prosa — documentar esta ronda, no tocar el `.md` todavía).
+**Estado**: FIJADO (commit `5a38692`, 2026-08-25) — nota de excepción añadida en § 5, marcada como
+la única pieza de todo el documento que sigue siendo solo diseño.
 
 ## 2026-08-25 — reclutablePct nunca se usa en la tirada de persuasión pese a que el .md lo promete como dificultad base — DECIDIDO: hay que engancharlo
 
@@ -167,7 +167,9 @@ citado por el doc: con `reclutablePct: 5`, una tirada que con atributos puros ha
 plantilla se comporta como "personalizada" — la promesa de básicas "listas sin configurar nada" no
 está entregada.
 
-**Estado**: PENDIENTE.
+**Estado**: FIJADO como documentación (commit `5a38692`, 2026-08-25) — decisión de la usuaria (item
+22 del checklist): marcar explícitamente el hueco en el `.md` en vez de implementar el seed real.
+Nota añadida en § 6 aclarando que esta mitad no se construyó.
 
 ## 2026-08-25 — Menores agrupados — clima/estaciones, sin acción
 
