@@ -210,10 +210,11 @@ equipo por trabajadores todavía, eso sería un sistema de producción de Reino 
 
 **Plantillas** — dos tipos:
 - **Básicas, no editables**: vienen ya hechas por rol (guardia/trabajador/productor), listas para
-  usar sin configurar nada. **Hueco real (auditoría de lore 2026-08-25)**: esta mitad no se
-  implementó — no existe ningún seed de plantillas básicas por rol, `POST /plantillas` siempre exige
-  `name`/`rol`/`slots` a mano. Hoy toda plantilla se comporta como "personalizada", aunque el campo
-  `personalizada` sí existe en el modelo.
+  usar sin configurar nada. APLICADO (2026-08-26): se siembran 3 filas `personalizada: false` en la
+  misma transacción de `POST /reino/fundar` — Guardia básico (arma + armadura), Trabajador básico y
+  Productor básico (herramienta, ambos), mismo vocabulario de `category` que el resto del catálogo.
+  El backend rechaza editarlas/borrarlas (`PATCH`/`DELETE /plantillas/:id`) y el frontend oculta el
+  botón "Borrar" para ellas, mostrando "básica" en su lugar.
 - **Personalizadas, creadas por ti**: usando el equipo disponible en el Reino, defines tu propia
   plantilla (qué ranuras rellenar con qué tipo de objeto) y se la asignas al rol/grupo que quieras.
   APLICADO tal cual.
@@ -244,5 +245,5 @@ hoy" — se deja como referencia histórica de qué se pidió, con el estado rea
 - Roles de Reino (guardia/trabajador/productor) — APLICADO como convención de texto libre
   (`Companion.rolReino`/`Subject.role`), sin enum cerrado — decisión consciente, no un hueco.
 - **Almacén de Reino** — APLICADO (`AlmacenItem`).
-- **Plantillas de equipo** — APLICADO (`PlantillaEquipo`) salvo la mitad "básicas, no editables" —
-  ver hueco real anotado en § 6 más arriba.
+- **Plantillas de equipo** — APLICADO por completo (`PlantillaEquipo`), incluida la mitad "básicas,
+  no editables" (seed al fundar el Reino, ver § 6 más arriba).

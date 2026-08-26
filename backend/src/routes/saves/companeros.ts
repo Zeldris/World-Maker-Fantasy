@@ -388,6 +388,7 @@ export async function companerosRoutes(app: FastifyInstance) {
     async (request, reply) => {
       const plantilla = await prisma.plantillaEquipo.findFirst({ where: { id: request.params.plantillaId, saveId: request.params.id } });
       if (!plantilla) return reply.status(404).send({ error: 'Plantilla no encontrada' });
+      if (!plantilla.personalizada) return reply.status(400).send({ error: 'Esta plantilla es básica, no se puede editar' });
       const updated = await prisma.plantillaEquipo.update({
         where: { id: plantilla.id },
         data: {
@@ -406,6 +407,7 @@ export async function companerosRoutes(app: FastifyInstance) {
   app.delete<{ Params: { id: string; plantillaId: string } }>('/saves/:id/plantillas/:plantillaId', async (request, reply) => {
     const plantilla = await prisma.plantillaEquipo.findFirst({ where: { id: request.params.plantillaId, saveId: request.params.id } });
     if (!plantilla) return reply.status(404).send({ error: 'Plantilla no encontrada' });
+    if (!plantilla.personalizada) return reply.status(400).send({ error: 'Esta plantilla es básica, no se puede borrar' });
     await prisma.plantillaEquipo.delete({ where: { id: plantilla.id } });
     return { ok: true };
   });

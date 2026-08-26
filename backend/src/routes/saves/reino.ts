@@ -13,6 +13,22 @@ import { rejectIfEnded } from './shared.js';
 /// existía todavía cuando se construyó esto: solo llegó a crear el `Territory`. Ahora, en la misma
 /// transacción, se crea también la fila `Faction` (escapada a esta partida vía `saveId`) y su
 /// `DiscoveredEntity` — la jugadora ya "conoce" su propia facción en cuanto la funda.
+/// Plantillas básicas por rol (hueco real cerrado, auditoría de lore 2026-08-25, ver
+/// `companeros-y-supervivencia.md` § 6): "vienen ya hechas por rol, listas para usar sin
+/// configurar nada" — se siembran aquí, al fundar el Reino, porque `PlantillaEquipo` es
+/// saveId-scoped y no tiene sentido antes de tener un Reino donde asignarlas. Criterio de ranura
+/// por rol, mismo vocabulario de `category` que usa el resto del catálogo (`arma`/`ropa`/
+/// `herramienta`, ver `startingInventory.ts`: un objeto `category:'herramienta'` se equipa en
+/// ARMA_SECUNDARIA, igual que el cuchillo de Gorhorn):
+/// - guardia: arma + armadura — combate.
+/// - trabajador/productor: solo herramienta — labor sin necesidad de armadura de combate.
+/// `personalizada: false` las marca como no-editables (el frontend oculta "Borrar" para estas).
+const PLANTILLAS_BASICAS: { name: string; rol: string; prioridad: number; slots: Prisma.InputJsonValue }[] = [
+  { name: 'Guardia básico', rol: 'guardia', prioridad: 0, slots: { ARMA_PRINCIPAL: { category: 'arma' }, ARMADURA_SUPERIOR: { category: 'ropa' } } },
+  { name: 'Trabajador básico', rol: 'trabajador', prioridad: 1, slots: { ARMA_SECUNDARIA: { category: 'herramienta' } } },
+  { name: 'Productor básico', rol: 'productor', prioridad: 1, slots: { ARMA_SECUNDARIA: { category: 'herramienta' } } },
+];
+
 export async function reinoRoutes(app: FastifyInstance) {
   app.post<{ Params: { id: string }; Body: { kingdomName: string; description?: string } }>(
     '/saves/:id/reino/fundar',
@@ -78,6 +94,9 @@ export async function reinoRoutes(app: FastifyInstance) {
           });
           await tx.discoveredEntity.create({
             data: { saveId: save.id, entityType: 'faction', entitySlug: faction.slug },
+          });
+          await tx.plantillaEquipo.createMany({
+            data: PLANTILLAS_BASICAS.map((p) => ({ ...p, saveId: save.id, personalizada: false })),
           });
         });
       } catch (err) {

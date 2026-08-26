@@ -16,6 +16,7 @@ const updateSave = vi.fn();
 const updateTerritory = vi.fn();
 const createFaction = vi.fn();
 const createDiscoveredEntity = vi.fn();
+const createManyPlantillaEquipo = vi.fn();
 
 vi.mock('../../lib/prisma.js', () => ({
   prisma: {
@@ -31,6 +32,7 @@ vi.mock('../../lib/prisma.js', () => ({
         territory: { update: (...args: unknown[]) => updateTerritory(...args) },
         faction: { create: (...args: unknown[]) => createFaction(...args) },
         discoveredEntity: { create: (...args: unknown[]) => createDiscoveredEntity(...args) },
+        plantillaEquipo: { createMany: (...args: unknown[]) => createManyPlantillaEquipo(...args) },
       }),
   },
 }));
@@ -51,6 +53,7 @@ describe('POST /saves/:id/reino/fundar', () => {
     updateTerritory.mockReset();
     createFaction.mockReset().mockResolvedValue({ slug: 'reino-de-la-estepa-save1' });
     createDiscoveredEntity.mockReset().mockResolvedValue({});
+    createManyPlantillaEquipo.mockReset().mockResolvedValue({ count: 3 });
   });
 
   it('404 si la partida no existe', async () => {
@@ -125,6 +128,15 @@ describe('POST /saves/:id/reino/fundar', () => {
     expect(res.statusCode).toBe(200);
     expect(updateSave).toHaveBeenCalledWith({ where: { id: 'save1' }, data: { kingdomName: 'Maktor' } });
     expect(JSON.parse(res.body)).toEqual({ kingdomName: 'Maktor' });
+    // Plantillas básicas (hueco real cerrado, auditoría de lore 2026-08-25): se siembran las 3,
+    // no editables, en la misma transacción que funda el reino.
+    expect(createManyPlantillaEquipo).toHaveBeenCalledWith({
+      data: [
+        { name: 'Guardia básico', rol: 'guardia', prioridad: 0, slots: { ARMA_PRINCIPAL: { category: 'arma' }, ARMADURA_SUPERIOR: { category: 'ropa' } }, saveId: 'save1', personalizada: false },
+        { name: 'Trabajador básico', rol: 'trabajador', prioridad: 1, slots: { ARMA_SECUNDARIA: { category: 'herramienta' } }, saveId: 'save1', personalizada: false },
+        { name: 'Productor básico', rol: 'productor', prioridad: 1, slots: { ARMA_SECUNDARIA: { category: 'herramienta' } }, saveId: 'save1', personalizada: false },
+      ],
+    });
   });
 
   it('un personaje que NO es Gorhorn ("Gorhorn de prueba" u otro): el nombre del body se respeta', async () => {

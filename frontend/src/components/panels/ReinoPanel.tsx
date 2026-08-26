@@ -384,9 +384,15 @@ function PlantillasSection({
               <p className="text-xs font-medium text-wood-100">
                 {p.name} <span className="font-sans text-2xs text-wood-500">— {p.rol}, prioridad {p.prioridad}</span>
               </p>
-              <button onClick={() => handleBorrar(p.id)} disabled={busy} className="tactile shrink-0 text-2xs text-wood-500 hover:text-red-300 disabled:opacity-50">
-                Borrar
-              </button>
+              {p.personalizada ? (
+                <button onClick={() => handleBorrar(p.id)} disabled={busy} className="tactile shrink-0 text-2xs text-wood-500 hover:text-red-300 disabled:opacity-50">
+                  Borrar
+                </button>
+              ) : (
+                <span className="shrink-0 text-2xs text-wood-600" title="Plantilla básica, no editable">
+                  básica
+                </span>
+              )}
             </div>
             <p className="mt-1 text-2xs text-wood-500">
               {Object.entries(p.slots)
