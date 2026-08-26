@@ -2866,6 +2866,18 @@ export const items: ItemCatalogInput[] = [
 
   // Utilidad, consumibles y objetos narrativos
   {
+    slug: 'cuerdas',
+    name: 'Cuerdas',
+    category: 'cordaje',
+    tipo: 'MATERIAL',
+    description: 'Cuerdas trenzadas de fibra vegetal, bastas pero resistentes — atan a un rival vencido antes de que se recupere. Se gastan al usarlas.',
+    dimensiones: 'Rollo de 5 metros, 6 mm de grosor.',
+    // CONVALECIENTE deja de ser "victoria automática" (2026-08-26) — requisito real de
+    // POST /capturar/:npcSlug (companeros.ts), sustituye a trampa-de-lazo (que no era
+    // crafteable). Se consume 1 unidad por captura con éxito, a diferencia de trampa-de-lazo
+    // (equipable, reutilizable).
+  },
+  {
     slug: 'trampa-de-lazo',
     name: 'Trampa de lazo de tendón',
     aliases: ['trampa de lazo'],

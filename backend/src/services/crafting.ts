@@ -407,6 +407,28 @@ export const BRAIDED_CORDAGE_RECIPE: CraftingRecipe = {
     'El personaje trenza su fibra en cabos gruesos y resistentes — narra la escena con naturalidad. El objeto ya se gestiona automáticamente por el backend.',
 };
 
+/// CONVALECIENTE deja de ser "victoria automática" (2026-08-26) — requisito de captura real
+/// (companeros.ts § POST /capturar/:npcSlug), sustituye a trampa-de-lazo. `oficio` fija solo la
+/// profesión que recibe alivio/XP (petición: "cualquier profesión de construcción") — `canCraft`
+/// nunca exige poseer un oficio para craftear (solo ingredientes/atributos), así que un jugador de
+/// carpintero también puede hacerlas sin problema, solo sin el alivio de constructor.
+export const CUERDAS_RECIPE: CraftingRecipe = {
+  key: 'cuerdas',
+  verbRegex: /trenz|fabric|prepar|hac(e|ie)r/,
+  nounRegex: /\bcuerdas?\b/,
+  location: null,
+  ingredients: [{ match: { kind: 'category', tipo: 'RECURSO', category: 'fibras' }, cantidad: 2, label: 'fibra' }],
+  resultName: 'Cuerdas',
+  resultCatalogSlug: 'cuerdas',
+  resultDescription: 'Cuerdas bastas trenzadas de fibra vegetal — bastan para atar a un rival vencido.',
+  tier: 1,
+  oficio: 'constructor-orcos-llanuras',
+  narrationWant:
+    'El personaje quiere trenzar cuerdas, pero no lleva encima suficiente fibra en bruto para hacerlo (hacen falta al menos 2) — narra que lo intenta o lo considera, pero no que las cuerdas quedan terminadas.',
+  narrationDo:
+    'El personaje trenza un par de cuerdas bastas con la fibra que lleva encima — narra la escena con naturalidad. El objeto ya se gestiona automáticamente por el backend.',
+};
+
 // Primeros auxilios (2026-08-13, petición explícita: "una profesión que sea primeros-auxilios que
 // tenga pocas recetas de objetos básicos... si es convaleciente solo hay un item que te lleva a
 // grave... luego otro que mejora al siguiente, de grave a herido y de herido a ileso") — oficio
@@ -1005,6 +1027,7 @@ export const CRAFTING_RECIPES: CraftingRecipe[] = [
   WOOD_BEAM_RECIPE,
   BONE_COLUMN_RECIPE,
   BRAIDED_CORDAGE_RECIPE,
+  CUERDAS_RECIPE,
   YERREO_INGOT_RECIPE,
   HIYERRO_ALLOY_RECIPE,
   QUITINA_PLATES_RECIPE,

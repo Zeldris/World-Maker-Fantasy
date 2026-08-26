@@ -96,7 +96,7 @@ function row(id: string, catalogSlug: string, cantidad?: number): InventoryRowLi
 }
 
 describe('CRAFTING_RECIPES', () => {
-  it('tiene las 44 recetas esperadas, cada una con una clave única', () => {
+  it('tiene las 45 recetas esperadas, cada una con una clave única', () => {
     expect(CRAFTING_RECIPES.map((r) => r.key)).toEqual([
       'axeRepair',
       'smokeMeat',
@@ -113,6 +113,8 @@ describe('CRAFTING_RECIPES', () => {
       'woodBeam',
       'boneColumn',
       'braidedCordage',
+      // CONVALECIENTE deja de ser "victoria automática" (2026-08-26) — requisito real de captura.
+      'cuerdas',
       // 18 nuevas (2026-08-24, Grupo 3 § 27 recursos/materiales sin receta que los use) — cierran
       // el destino real de items recolectables desde el 2026-08-23 que no servían para nada.
       'yerreoIngot',

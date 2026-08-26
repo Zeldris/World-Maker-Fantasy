@@ -772,11 +772,21 @@ export interface CapturableCandidate {
   name: string
   tipo: 'FAUNA' | 'NPC'
 }
-export async function getCapturables(saveId: string): Promise<{ candidates: CapturableCandidate[]; tieneTrampaDeLazo: boolean }> {
+export async function getCapturables(saveId: string): Promise<{ candidates: CapturableCandidate[]; tieneCuerdas: boolean }> {
   return fetchJson(`${API_URL}/saves/${saveId}/capturables`)
 }
 export async function postCapturar(saveId: string, npcSlug: string): Promise<{ npcSlug: string; tipo: 'FAUNA' | 'NPC'; jaulaBuildingId: string | null }> {
   return fetchJson(`${API_URL}/saves/${saveId}/capturar/${npcSlug}`, { method: 'POST' })
+}
+
+/// CONVALECIENTE deja de ser "victoria automática" (2026-08-26) — "Dejarlo vivir" saca al NPC del
+/// combate activo (deja de ser objetivo) sin tocar su condicionFisica, que se queda CONVALECIENTE
+/// de verdad. Determinista, sin pasar por el turno narrado — mismo criterio que `postCapturar`.
+export async function dejarVivir(
+  saveId: string,
+  npcSlug: string,
+): Promise<{ npcSlug: string; logEntry: { id: string; text: string; timeLabel: string; createdAt: string } }> {
+  return fetchJson(`${API_URL}/saves/${saveId}/combat/dejar-vivir/${npcSlug}`, { method: 'POST' })
 }
 
 export interface TameoPendiente {

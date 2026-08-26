@@ -119,7 +119,7 @@ describe('Compañeros: cobertura de ruta — captura → tameo → confirmar (au
         { saveId, recipeKey: 'campamento', name: 'Campamento', kind: 'refugio', status: 'ACTIVO', description: 'x' },
       ],
     });
-    await prisma.inventoryItem.create({ data: { saveId, name: 'Trampa de lazo', description: 'x', catalogSlug: 'trampa-de-lazo' } });
+    await prisma.inventoryItem.create({ data: { saveId, name: 'Cuerdas', description: 'x', catalogSlug: 'cuerdas' } });
     // GRAVE = capturable (§1) — sin esto, /capturables no lo lista.
     await prisma.npcState.create({ data: { saveId, npcId: corretolvasId, scope: hondonadaId, condicionFisica: 'GRAVE' } });
   });
@@ -136,16 +136,16 @@ describe('Compañeros: cobertura de ruta — captura → tameo → confirmar (au
     await prisma.save.delete({ where: { id: saveId } });
   });
 
-  it('GET /capturables lista al Corretolvas GRAVE de la escena, con la trampa de lazo detectada', async () => {
+  it('GET /capturables lista al Corretolvas GRAVE de la escena, con las cuerdas detectadas', async () => {
     const app = await buildApp();
     const res = await app.inject({ method: 'GET', url: `/saves/${saveId}/capturables` });
     expect(res.statusCode).toBe(200);
     const body = res.json();
-    expect(body.tieneTrampaDeLazo).toBe(true);
+    expect(body.tieneCuerdas).toBe(true);
     expect(body.candidates).toEqual([{ npcSlug: 'corretolvas', name: 'Corretolvas', tipo: 'FAUNA' }]);
   });
 
-  it('POST /capturar/:npcSlug ata al Corretolvas — capturado=true, con la Jaula mediana asignada', async () => {
+  it('POST /capturar/:npcSlug ata al Corretolvas — capturado=true, con la Jaula mediana asignada, consume las cuerdas', async () => {
     const app = await buildApp();
     const res = await app.inject({ method: 'POST', url: `/saves/${saveId}/capturar/corretolvas` });
     expect(res.statusCode).toBe(200);
@@ -156,6 +156,9 @@ describe('Compañeros: cobertura de ruta — captura → tameo → confirmar (au
     const state = await prisma.npcState.findFirstOrThrow({ where: { saveId, npcId: corretolvasId } });
     expect(state.capturado).toBe(true);
     expect(state.capturaJaulaBuildingId).toBeTruthy();
+
+    const cuerdas = await prisma.inventoryItem.findFirst({ where: { saveId, catalogSlug: 'cuerdas' } });
+    expect(cuerdas).toBeNull();
   });
 
   it('GET /tameo-pendientes ya lista al Corretolvas capturado, con Felicidad 0/umbral', async () => {

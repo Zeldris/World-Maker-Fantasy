@@ -39,14 +39,14 @@ export async function companerosRoutes(app: FastifyInstance) {
   app.get<{ Params: { id: string } }>('/saves/:id/capturables', async (request, reply) => {
     const save = await prisma.save.findUnique({ where: { id: request.params.id }, select: { id: true, worldId: true, currentLocationId: true } });
     if (!save) return reply.status(404).send({ error: 'Partida no encontrada' });
-    if (!save.currentLocationId) return { candidates: [], tieneTrampaDeLazo: false };
+    if (!save.currentLocationId) return { candidates: [], tieneCuerdas: false };
 
-    const tieneTrampaDeLazo = !!(await prisma.inventoryItem.findFirst({ where: { saveId: save.id, catalogSlug: 'trampa-de-lazo' }, select: { id: true } }));
+    const tieneCuerdas = !!(await prisma.inventoryItem.findFirst({ where: { saveId: save.id, catalogSlug: 'cuerdas' }, select: { id: true } }));
 
     const states = await prisma.npcState.findMany({
       where: { saveId: save.id, condicionFisica: { in: ['GRAVE', 'CONVALECIENTE'] }, capturado: false },
     });
-    if (states.length === 0) return { candidates: [], tieneTrampaDeLazo };
+    if (states.length === 0) return { candidates: [], tieneCuerdas };
 
     const npcs = await prisma.npc.findMany({ where: { id: { in: states.map((s) => s.npcId) }, worldId: save.worldId } });
     const npcById = new Map(npcs.map((n) => [n.id, n]));
@@ -60,20 +60,22 @@ export async function companerosRoutes(app: FastifyInstance) {
         return { npcSlug: npc.slug, name: npc.name, tipo: npc.ataqueNatural !== null ? ('FAUNA' as const) : ('NPC' as const) };
       })
       .filter((c): c is NonNullable<typeof c> => !!c);
-    return { candidates, tieneTrampaDeLazo };
+    return { candidates, tieneCuerdas };
   });
 
   /// Atar con éxito — claim atómico sobre `NpcState.capturado`, mismo patrón que `saqueado`
   /// (turnResolution.ts § applyLootMode). Fauna necesita además una Jaula con hueco del tamaño
-  /// requerido ya construida; NPC no necesita jaula (pasa directo a "retenido").
+  /// requerido ya construida; NPC no necesita jaula (pasa directo a "retenido"). CONVALECIENTE
+  /// deja de ser "victoria automática" (2026-08-26) — requiere `cuerdas` (crafteable, se consume
+  /// al atar), sustituye a `trampa-de-lazo` (equipable, no se consumía).
   app.post<{ Params: { id: string; npcSlug: string } }>('/saves/:id/capturar/:npcSlug', async (request, reply) => {
     const save = await prisma.save.findUnique({ where: { id: request.params.id }, select: { id: true, worldId: true, currentLocationId: true, endedAt: true } });
     if (!save) return reply.status(404).send({ error: 'Partida no encontrada' });
     if (rejectIfEnded(save, reply)) return;
     if (!save.currentLocationId) return reply.status(400).send({ error: 'Sin ubicación actual' });
 
-    const tieneTrampaDeLazo = await prisma.inventoryItem.findFirst({ where: { saveId: save.id, catalogSlug: 'trampa-de-lazo' }, select: { id: true } });
-    if (!tieneTrampaDeLazo) return reply.status(400).send({ error: 'Necesitas una trampa de lazo (en inventario o equipada) para intentar atar.' });
+    const cuerdasItem = await prisma.inventoryItem.findFirst({ where: { saveId: save.id, catalogSlug: 'cuerdas' }, select: { id: true } });
+    if (!cuerdasItem) return reply.status(400).send({ error: 'Necesitas cuerdas (en inventario) para intentar atar.' });
 
     const npc = await prisma.npc.findUnique({ where: { worldId_slug: { worldId: save.worldId, slug: request.params.npcSlug } } });
     if (!npc || !npc.atributoResistencia) return reply.status(404).send({ error: 'Objetivo no capturable' });
@@ -114,6 +116,10 @@ export async function companerosRoutes(app: FastifyInstance) {
       data: { capturado: true, capturaFelicidad: 0, capturaJaulaBuildingId: jaulaBuildingId },
     });
     if (claimed.count === 0) return reply.status(409).send({ error: 'Alguien más ya ató a este objetivo.' });
+
+    // Se consume la cuerda usada, solo tras confirmar el claim (evita gastarla en un intento que
+    // pierde la carrera contra otra petición casi simultánea).
+    await prisma.inventoryItem.delete({ where: { id: cuerdasItem.id } });
 
     return { npcSlug: npc.slug, tipo: esFauna ? 'FAUNA' : 'NPC', jaulaBuildingId };
   });

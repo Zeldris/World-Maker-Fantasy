@@ -16,13 +16,13 @@ interface CapturaModalProps {
 /// narración de por medio — `postCapturar` se llama directo, sin pasar por el turno/narración.
 export function CapturaModal({ saveId, onCapturado, onCancel }: CapturaModalProps) {
   const [candidates, setCandidates] = useState<CapturableCandidate[]>([])
-  const [tieneTrampaDeLazo, setTieneTrampaDeLazo] = useState(true)
+  const [tieneCuerdas, setTieneCuerdas] = useState(true)
   const [capturando, setCapturando] = useState<string | null>(null)
   const { loading, error: loadError } = useAsyncModalData(
     () => getCapturables(saveId),
     (res) => {
       setCandidates(res.candidates)
-      setTieneTrampaDeLazo(res.tieneTrampaDeLazo)
+      setTieneCuerdas(res.tieneCuerdas)
     },
     'No se pudo comprobar quién hay capturable en la zona.',
     [saveId],
@@ -44,9 +44,9 @@ export function CapturaModal({ saveId, onCapturado, onCancel }: CapturaModalProp
     <SelectionModalShell title="Capturar" onCancel={onCancel} cancelDisabled={!!capturando}>
       {loading ? (
         <p className="text-xs text-wood-500">Buscando quién sigue a tu alcance...</p>
-      ) : !tieneTrampaDeLazo ? (
+      ) : !tieneCuerdas ? (
         <p className="text-xs text-wood-400">
-          Necesitas una trampa de lazo (en el inventario o equipada) para intentar atar a alguien.
+          Necesitas cuerdas (en el inventario) para intentar atar a alguien.
         </p>
       ) : candidates.length === 0 ? (
         <p className="text-xs text-wood-500">No hay nadie GRAVE o CONVALECIENTE aquí que puedas atar todavía.</p>
