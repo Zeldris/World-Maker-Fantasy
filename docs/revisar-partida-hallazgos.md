@@ -3242,7 +3242,7 @@ bug, solo quedó mal encajada encima del daño de refilón ya aplicado por el bu
 un turno que ya se resuelve entero como remate/decapitar/degollar/ejecutar no tiene ningún intercambio
 normal legítimo que resolver de refilón contra nadie más.
 
-**Estado**: FIJADO (commit pendiente, 2026-08-26) — test de regresión nuevo (verificado que falla sin
+**Estado**: FIJADO (commit `081b340`, 2026-08-26) — test de regresión nuevo (verificado que falla sin
 el fix, reproduciendo el bug exacto de la partida real, y pasa con él), suite unitaria completa
 (2777/2777) + `turn.integration.test.ts` (84/84) + el resto de archivos de integración en verde.
 
