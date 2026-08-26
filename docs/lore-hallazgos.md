@@ -41,8 +41,8 @@ bug de timeout de transacción ya cazado y arreglado en producción (ver
 pasada de código — a diferencia de `materiales-procesados-construccion.md`, que sí lleva una sección
 final "APLICADO al motor" describiendo con precisión lo que hay realmente.
 
-**Estado**: PENDIENTE de actualizar el `.md` (el código manda, sin ambigüedad — decisión de la
-usuaria: documentar esta ronda, no tocar el `.md` todavía).
+**Estado**: FIJADO (commit `57d7042`, 2026-08-25) — título y banner actualizados a "APLICADO al
+motor", con el estado real de cada pieza construida.
 
 ## 2026-08-25 — combate-multiple.md dice que NpcState.groupSize/groupDefeated se retiran — el código los mantiene a propósito
 
@@ -55,8 +55,8 @@ saqueo/desuello clásico tal cual, en vez de un mecanismo nuevo. Estos campos si
 real en `recolectar.ts`/`harvest.ts`/`npcScene.ts`. Confirma lo que ya documentaba
 [[tarkor_combate_multiple_2026-08-24]] — el `.md` simplemente no se actualizó tras esa decisión.
 
-**Estado**: PENDIENTE de actualizar el `.md` (el código manda — decisión ya tomada con anterioridad,
-documentar esta ronda, no tocar el `.md` todavía).
+**Estado**: FIJADO (commit `57d7042`, 2026-08-25) — corregido en "Qué existe hoy" y reescrita § 5
+entera con el estado APLICADO real de cada punto, incluida esta corrección explícita.
 
 ## 2026-08-25 — Faction.description de Helsig/Goshg estática pese a que worldAgenda puede escalar el conflicto — DECIDIDO: se queda estática
 

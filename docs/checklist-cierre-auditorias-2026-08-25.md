@@ -39,7 +39,7 @@ Y en su hallazgo de origen al cerrarse (FIJADO), con commit propio y verificaci�
 
 ## Bloque 5 — lore (actualizar prosa, bajo riesgo)
 
-- [ ] 19. `combate-multiple.md`: quitar banner "nada implementado" + corregir lo de `NpcState.groupSize` (se mantiene a propósito, no se retira)
+- [x] 19. `combate-multiple.md`: quitar banner "nada implementado" + corregir lo de `NpcState.groupSize` (se mantiene a propósito, no se retira) — commit `57d7042`
 - [ ] 20. `companeros-y-supervivencia.md`: quitar banner "nada implementado" + nota de excepción de inanición (tope en CONVALECIENTE, a propósito)
 - [ ] 21. `clases.md`: corregir tabla-resumen final (Guerrero/Cazador) + Rúnico/Convocador/Opresor
 - [ ] 22. Plantillas de equipo "básicas, no editables": implementar el seed real, o marcar explícitamente como diseño futuro no entregado en `companeros-y-supervivencia.md`
