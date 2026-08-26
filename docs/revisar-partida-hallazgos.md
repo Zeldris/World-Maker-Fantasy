@@ -2857,19 +2857,25 @@ real de estos combates. Esto encaja con que la narración de cada "huida" (leíd
 nunca lo menciona por nombre — en su lugar describe a Quio ("el Quio... no parece prestarle
 atención") o solo el entorno, nunca al propio atacante.
 
-**Teoría más probable (no confirmada del todo, sin `logs/backend.log` con diagnóstico `[turno]`
-disponible para esta partida)**: mismo pendiente de diseño de anclaje por zona que el hallazgo de
-Quio de arriba — si la selección de fauna "en escena"/de encuentro no filtra por ubicación real,
-Cruzavientos (que sí vuela sobre gran parte de la región, pero anida solo en Pilares Rotos) puede
-estar disparándose como amenaza en zonas donde no pintaría nada, y el propio texto de la huida no
-recibe el nombre real del atacante como contexto — de ahí que la usuaria solo sepa que es él por lo
-que ve en la interfaz (banner de combate), nunca por la prosa.
+**Causa raíz de la mitad "aparece en todas las zonas", CONFIRMADA (2026-08-26)**: `Npc.cruzavientos`
+tenía `homeLocationSlug: null` en `worldCatalog.ts` — el ÚNICO caso entre TODA la fauna
+`temperamento: 'AGRESIVO'` del catálogo (los otros 6: lebude, kirelon-arenoso, towrgu, ferike,
+rondador-de-brasas, miruina, todos con ubicación real fijada). Sin él, `detectNpcsInScene`
+(`npcScene.ts`) lo trata como candidato plausible en CUALQUIER región del mundo
+(`if (npc.homeLocationSlug === null) return true`), pese a que su propia `personality` dice
+"agresiva con cualquiera que se acerque a SU TERRITORIO de anidación" — contradicción directa entre
+lore y dato mecánico. **Fix aplicado**: `homeLocationSlug: 'pilares-rotos'` (donde el propio lore ya
+dice que anida) + `npm run seed-catalog` contra la base real. Sigue apareciendo en toda Las Llanuras
+del Viento Rojo (misma región), solo deja de colarse en regiones ajenas.
 
-**Estado**: PENDIENTE, sin causa raíz de código confirmada al 100%. Para cerrarlo de verdad hace
-falta reproducirlo con `logs/backend.log` activo (ver runbook § 2) y mirar la línea `[turno]` del
-momento exacto de un "Intento huir" contra Cruzavientos — ver qué `npcsInScene` devuelve y si el
-nombre del atacante real llega o no al contexto de `narrateAction`. Recomendado para la próxima
-sesión de juego real.
+**La otra mitad, "nunca se narra quién es", sigue PENDIENTE**: descartada la explicación de plantilla
+determinista (`/combat/flee`, cuyo texto SÍ es genérico a propósito) — "Intento huir de este combate"
+es texto libre normal (`useCombatFlow.ts:312`), pasa por el Narrador de verdad con `npcsInScene` en
+el contexto, así que es un fallo de la prosa generada en sí, no de qué datos recibe. Sin
+`logs/backend.log` con diagnóstico `[turno]` de esta partida concreta no se puede confirmar si el
+guard nuevo `hasFalseCombatTargetName` (ver más abajo, cierra el caso gemelo de Múrgol/Cruzavientos)
+ya cubre este patrón o si hace falta uno específico para "huir sin nombrar al atacante" — candidato
+fuerte a revisar la próxima vez que se reproduzca en vivo.
 
 ## 2026-08-23 — Ruptidar "ataca" en combate pese a ser INOFENSIVO/"No ataca"
 
@@ -2878,16 +2884,30 @@ varios asaltos con golpes recibidos: *"Gorhorn se mantiene firme, conteniendo la
 ataque de Ruptidar..."* — pero la ficha real de Ruptidar en `worldCatalog.ts` dice
 `ataqueNatural: 'No ataca.'` y `temperamento: 'INOFENSIVO'`.
 
-**Causa raíz**: no investigada a fondo. Puede ser puramente narrativo (el modelo dramatiza un
-combate donde mecánicamente no hay ningún ataque real del NPC) o puede que el flujo de "Salgo a
-cazar y ataco a X" trate a Ruptidar igual que cualquier fauna de combate normal sin comprobar
-`temperamento`/`ataqueNatural` antes de generar la narración de intercambio — a diferencia del flujo
-de Desollar/recolección, que sí distingue caza de combate real.
+**Causa raíz, CONFIRMADA (2026-08-26)**: era daño mecánico REAL, no solo narrativo — grave, como se
+temía. `npcCombatAbilitiesFor` (`npcCombatAbilities.ts`) crea SIEMPRE una habilidad `rol: 'ataque'`
+real y usable a partir de `ataqueNatural`, usándolo solo como texto de sabor para la descripción —
+nada comprobaba si ese texto literalmente decía "No ataca." (convención explícita del catálogo,
+compartida por `ruptidar`/`jusha-esmeralda`/`quio`, los 3 únicos `INOFENSIVO` sin ataque real).
+`chooseNpcAbility` (mismo archivo) siempre puede "elegir" alguna habilidad como ataque del NPC —
+incluso agotada la energía, cae al roster entero antes que dejar al NPC sin elegir nada — así que el
+intercambio de combate podía resolver un golpe real contra la jugadora.
 
-**Estado**: PENDIENTE. A revisar: si el motor realmente permite que un `INOFENSIVO` sin
-`ataqueNatural` inflija daño mecánico real al jugador (grave, sería un bug de reglas) o si es solo
-narración sin consecuencia mecánica (menos grave, solo inmersión). No se pudo diferenciar sin log de
-turno — recomendado comprobar en la próxima partida jugada con `logs/backend.log` activo.
+Reproducido de forma determinista en `turn.integration.test.ts` (rama `resolveIndependentExchange`,
+que evalúa la tirada del NPC contra su propia dificultad sin contraste de estadísticas — ni siquiera
+las estadísticas mecánicamente débiles de Ruptidar lo protegían por sí solas): sin el fix,
+`jugadorRecibeGolpe` salía `true` y la jugadora quedaba HERIDA; con el fix, se queda ILESO siempre.
+
+**Fix aplicado**: guard único en `resolveCombatExchangePhase` (`turnResolution.ts`), justo antes de
+devolver el resultado — si `npcParaIntercambio.ataqueNatural` empieza por "No ataca" (case-
+insensitive), fuerza `jugadorRecibeGolpe: false` y vacía `jugadorGolpeEfectos`, cubriendo las 6
+ramas internas de la función a la vez (incluida la resolución de un `pendingNpcAttack` sembrado en
+un turno anterior).
+
+**Estado**: FIJADO (commit `841f294`, 2026-08-26). Test de regresión nuevo (verificado que falla sin
+el fix, con `Math.random` al máximo, mostrando `jugadorRecibeGolpe: true` en depuración manual antes
+de restaurar el guard), suite completa (2788/2788) + `turn.integration.test.ts` (85/85) + resto de
+integración en verde.
 
 ## 2026-08-23 — Ruptidar descrito como "insecto" con "alas rotas" (es un reptil sin alas)
 
