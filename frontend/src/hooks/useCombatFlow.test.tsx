@@ -236,6 +236,21 @@ describe('submitCombatAction — camino feliz', () => {
   })
 })
 
+describe('handleCombatAttack — habilidad + objetivo seleccionados', () => {
+  it('bug real jugando en vivo (2026-08-26): el nombre del objetivo va introducido por "contra", nunca pegado al final del promptText', async () => {
+    mockClassify.mockResolvedValue({ classification: { atributo: 'fuerza', dificultad: 15, razon: 'x', banda: 'instantanea' }, roll: undefined } as never)
+    mockNarrate.mockResolvedValue(baseNarrateResponse() as never)
+    const { result } = renderHook(() => useHarness())
+    act(() => result.current.setCombateIniciado({ npcs: [npc({ slug: 'orco', name: 'Orco Enfurecido' })] }))
+    act(() => result.current.combat.openCombat())
+    act(() => result.current.combat.setCombatSelectedAbilityId('ability-1'))
+
+    await act(() => result.current.combat.handleCombatActuar())
+
+    expect(mockClassify).toHaveBeenCalledWith(expect.objectContaining({ action: "Ataco a mi enemigo, contra 'Orco Enfurecido'." }))
+  })
+})
+
 describe('handleCombatTurnResolved — fusión de combateIniciado', () => {
   it('nunca "resucita" a un NPC ya visto peor localmente, aunque el backend mande un estado mejor', async () => {
     mockClassify.mockResolvedValue({ classification: { atributo: 'fuerza', dificultad: 15, razon: 'x', banda: 'instantanea' }, roll: undefined } as never)

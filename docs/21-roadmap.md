@@ -243,6 +243,23 @@ resumen de trabajo real, agrupado por tamaño.
   dinámico). La usuaria confirma explícitamente: "no aparecen en la zona y sí tienen que salir".
   Conectado con "generalizar la Capa 1 más allá de La Hondonada del Eco" — probablemente la misma
   pieza de trabajo, sin diseñar todavía.
+- [ ] **CONVALECIENTE deja de significar "victoria automática" del combate** — petición explícita
+  (2026-08-26), a desarrollar más cuando se acaben los arreglos de bugs en curso. Diseño inicial tal
+  como lo describió la usuaria:
+  - Dejar a un enemigo CONVALECIENTE ya NO cierra el combate por sí solo — hoy sí lo hace.
+  - En vez de eso, sobre un enemigo CONVALECIENTE se ofrecen 3 opciones: **Capturar**, **Matar**
+    (rematar) o **Dejarlo vivir**.
+  - "Dejarlo vivir" saca a ese NPC del combate (deja de ser un objetivo activo) pero se queda
+    CONVALECIENTE de verdad — mantiene la regla ya existente de que se recupera solo pasadas unas
+    horas de ficción.
+  - Mientras un NPC está CONVALECIENTE (tanto si sigue en combate como si ya se le dejó vivir),
+    la jugadora puede interactuar con él: saquearlo, hablar con él, matarlo o capturarlo — no hace
+    falta que el combate siga abierto para eso.
+  - Si se elige "Matar", el combate continúa hasta que todos los NPC presentes en la escena mueran o
+    no quede nadie más con quien pelear — ya no basta con dejar CONVALECIENTE al primero.
+  - Sin diseño técnico todavía (qué endpoint ofrece las 3 opciones, cómo se marca "objetivo ya
+    resuelto, fuera de combate pero vivo en escena" en el modelo de datos) — queda para cuando se
+    retome esto en profundidad.
 
 ### Ajuste de números, no features nuevas (pero sin cerrar)
 

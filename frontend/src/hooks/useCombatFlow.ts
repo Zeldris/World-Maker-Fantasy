@@ -392,8 +392,13 @@ export function useCombatFlow(params: UseCombatFlowParams) {
       return
     }
     const selectedNpc = combatNpcsDisplay.find((n) => n.slug === combatSelectedNpcSlug) ?? null
+    // Bug real jugando en vivo (2026-08-26): el objetivo se pegaba pelado al final del promptText
+    // ("...con el arma que llevo en la mano principal 'Orco enfurecido'."), leyéndose como si el
+    // arma se llamara igual que el enemigo — ningún promptText de weaponAbilities.ts está escrito
+    // para terminar con un nombre propio detrás. "contra" antes del nombre lo deja legible pase lo
+    // que pase cómo termine la frase de la habilidad (ataque o defensa).
     const base = selectedAbility.promptText.trim().replace(/\.+$/, '')
-    const action = selectedNpc ? `${base} '${selectedNpc.name}'.` : selectedAbility.promptText
+    const action = selectedNpc ? `${base}, contra '${selectedNpc.name}'.` : selectedAbility.promptText
     submitCombatAction(action, { savedActionId: selectedAbility.id })
     resetCombatSelection()
   }

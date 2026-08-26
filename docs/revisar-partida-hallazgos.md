@@ -3193,3 +3193,96 @@ por debajo de ILESO), `hasFalseNewItemClaim` (nuevo guard, caso inverso de `hasF
 prosa no puede afirmar posesión de un objeto que no coincide con ningún `ItemCatalog` real), y la
 construcción rechazada ahora también corrige `narration.narration` (mismo criterio que los guards de
 viaje ya existentes), no solo `newFacts`/`newBuilding`.
+
+## 2026-08-26 — revisión de las dos partidas reales tras el checklist de las 3 auditorías
+
+**Contexto**: la usuaria pidió revisar sus dos partidas activas (`cms82odjc...`, pausada, y
+`cmt95ns3f...`, en curso) jugadas ANTES de aplicar los arreglos de esta sesión — no encontradas por
+lectura de código, sino comparando el log real de partida contra el estado persistido en Postgres.
+
+### 1. Combate real sin narración contra un NPC (Quio), seguido de una narración de "huir" que
+contradice el propio estado persistido
+
+**Síntoma**: en la partida pausada, `NpcState` de Quio queda con `condicionFisica: 'HERIDO'` y
+`energia: 54/59` — daño de combate real — pero el log de la partida **nunca menciona ningún combate
+contra Quio**. La única entrada relacionada es la narración de `POST /combat/flee`: *"Gorhorn logra
+escapar antes de que el combate llegue a empezar de verdad — pero huir así... es una mancha en su
+honor..."* (`session.ts:143`). El `updatedAt` de `NpcState` de Quio (17:34:00.041Z) coincide, al
+milisegundo, con el turno del golpe de gracia contra OTRO NPC (Orco Enfurecido, 17:34:00.035-046Z) —
+no con la petición de huir (17:35:01Z, un minuto después).
+
+**Causa raíz**: sin confirmar al 100%. Hipótesis con más peso: el turno que remata a Orco Enfurecido
+(`turnResolution.ts`, motor de combate 1v1/texto libre — esta partida nunca llegó a pasar por
+`combateMultipleOrquestacion.ts`, el motor nuevo que sí trata explícitamente varios NPC a la vez) deja
+alguna escritura de `NpcState` de un NPC presente en escena pero NO elegido como `npcParaIntercambio`
+este turno — `resolveCombatExchangePhase`/`candidateAttackTarget` (línea ~2494) solo parecen tocar a
+un único NPC por turno, así que el punto exacto donde Quio recibe esta escritura no se ha localizado
+todavía leyendo el código; hace falta reproducirlo en vivo con instrumentación (o un save de prueba
+con 2 NPC hostiles en la misma escena) para confirmarlo, en vez de arriesgar un cambio a ciegas en el
+motor de combate.
+
+Conecta directamente con la sospecha ya apuntada en memoria (no en este documento): un turno de
+apertura fallido puede sembrar un ataque real de NPC sin narración — esta partida parece ser la
+primera confirmación en vivo con evidencia de base de datos.
+
+**Estado**: PENDIENTE, causa raíz sin confirmar al 100% — necesita reproducción instrumentada antes
+de tocar el motor de combate. Prioridad alta (narración falsa sobre el propio estado del combate,
+además de una penalización de honor "no ganada").
+
+### 2. "Ataque Básico" genera una frase sin sentido con el nombre del objetivo (bug de plantilla)
+
+**Síntoma**: la acción de combate más usada del juego, vista 9 veces en las dos partidas con 3
+objetivos distintos ('Orco enfurecido', 'Quio', 'Ruptidar'):
+
+> "Ataco con un golpe directo, con el arma que llevo en la mano principal 'Orco enfurecido'."
+
+Como si el arma se llamara igual que el enemigo — no es un capricho del modelo, es el texto que el
+frontend le manda literalmente como acción del jugador.
+
+**Causa raíz**: `useCombatFlow.ts:396` (antes del fix) añadía `'{nombre del objetivo}'.` pegado
+directamente al final de CUALQUIER `promptText` de habilidad al enviar el ataque — mecanismo
+correcto (el nombre entre comillas SÍ es como el backend resuelve `explicitTarget`, ver
+`turnResolution.ts` § "sin comillas"/"con comillas"), pero ningún `promptText` de
+`weaponAbilities.ts` está escrito para terminar con un nombre propio pegado detrás — afecta,
+potencialmente, a las ~30 habilidades del catálogo, no solo a "Ataque Básico".
+
+**Fix aplicado**: `${base}, contra '${nombre}'.` en vez de `${base} '${nombre}'.` — legible con
+cualquier redacción de `promptText`, incluida la de habilidades defensivas ("me cubro tras mi
+escudo... contra 'X'" sigue leyéndose bien).
+
+**Estado**: FIJADO (frontend, 2026-08-26) — `useCombatFlow.test.tsx` nuevo test que fija el formato
+`"..., contra 'Nombre'."`; 92/92 tests del frontend en verde.
+
+### 3. Dos ejemplos nuevos de la familia ya conocida "errores gramaticales sueltos del modelo"
+
+- *"Gorhorn **lame** la maza orca y la clava con fuerza contra Quio"* — debería ser "alza"/"blande".
+- *"su cuchillo de hielo sílice resplandeciendo al **cortejar** la luz del sol"* — debería ser
+  "reflejar"/"captar".
+
+**Estado**: PENDIENTE, mismo criterio que el resto de esta familia (2026-08-08/2026-08-23) — no se
+propone corrector genérico, solo se deja constancia fechada.
+
+### 4. Partida "Gorhorn" duplicada y huérfana al crear personaje (React StrictMode, no doble clic)
+
+**Síntoma**: `cmt95ns3d...` (nivel 1, nunca jugada más allá del intro, 2 `LogEntry`) se creó en el
+mismo milisegundo (`createdAt` con 1ms de diferencia), con el intro narrativo idéntico letra por
+letra, que `cmt95ns3f...` (la partida que sí se jugó, nivel 3, 56 `LogEntry`) — dos filas `Save`
+completas e independientes de un solo "empezar personaje".
+
+**Causa raíz**: `GameView.tsx`, el `useEffect` de `createNewSave()` (ruta `/solitario/partida/nueva`)
+usaba solo una variable local `cancelled` para protegerse de un desmontaje a mitad del `await` — pero
+React `StrictMode` (activo en `main.tsx`) monta→desmonta→remonta este efecto dos veces seguidas en
+desarrollo, y `cancelled` no evita que AMBOS montajes disparen su propio `await createSave(...)` en
+paralelo; solo evita que el que pierde la carrera navegue/marque error después. `POST /saves` en sí
+no tiene ninguna protección de idempotencia.
+
+**Fix aplicado**: `creatingSaveRef` (`useRef`, sobrevive al remontaje de StrictMode a diferencia de
+`cancelled`) bloquea el segundo disparo de `createSave` dentro del mismo efecto.
+
+**Estado**: FIJADO (frontend, 2026-08-26) — `tsc -b` limpio, 92/92 tests del frontend en verde. Sin
+test dedicado (`GameView.tsx` no tiene arnés de test de componente todavía, ver deuda técnica
+"GameView.tsx ha vuelto a crecer" — replicar el doble-montaje de StrictMode en un test exigiría ese
+arnés primero, desproporcionado para este fix). Sin protección añadida en el backend (`POST /saves`)
+a propósito — la causa es puramente de ciclo de vida de React, no una condición de carrera real de
+usuaria; no se añade una capa de idempotencia que no hace falta.
+viaje ya existentes), no solo `newFacts`/`newBuilding`.

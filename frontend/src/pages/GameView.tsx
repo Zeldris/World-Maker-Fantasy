@@ -771,11 +771,20 @@ export function GameView() {
     }
   }
 
+  // Bug real jugando en vivo (2026-08-26): StrictMode monta-desmonta-remonta este efecto dos veces
+  // seguidas en desarrollo — `cancelled` solo evita que el SEGUNDO montaje navegue/marque error tras
+  // su propio `await createSave`, pero no evita que ambos monten a la vez y disparen el POST cada
+  // uno por su cuenta: dos `Save` completos, idénticos, creados con milisegundos de diferencia. Un
+  // `useRef` sí sobrevive al remontaje sin resetear entre medias (a diferencia de `cancelled`, que
+  // vive dentro del efecto), así que sirve para bloquear el segundo disparo del propio `createSave`.
+  const creatingSaveRef = useRef(false)
+
   useEffect(() => {
     let cancelled = false
 
     async function createNewSave() {
-      if (!selectedWorld || !selectedCharacter) return
+      if (!selectedWorld || !selectedCharacter || creatingSaveRef.current) return
+      creatingSaveRef.current = true
       // Intro propia por personaje pregenerado (2026-07-28, petición explícita: "había
       // actualizado algunos mensajes... pero no veo que salgan") — antes esta plantilla genérica
       // era la ÚNICA fuente posible, sin ningún hueco para una intro narrativa propia por
