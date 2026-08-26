@@ -241,8 +241,13 @@ resumen de trabajo real, agrupado por tamaño.
   mapa (a diferencia de `ZonePoint`), listados bajo "Presentes ahora" en vez de como pin — honesto
   sobre qué dato existe de verdad. De paso, una ubicación sin `ZonePoint` sembrado (fuera del
   prototipo de Hondonada del Eco) ya puede marcarse "disponible" si tiene algún NPC dinámico.
-- [ ] **CONVALECIENTE deja de significar "victoria automática" del combate** — petición explícita
-  (2026-08-26). Diseño cerrado con la usuaria, lista para implementar (empezar por aquí):
+- [x] ~~**CONVALECIENTE deja de significar "victoria automática" del combate**~~ — cerrado
+  2026-08-26, APLICADO al motor (commits `1aa94f3`/`e608a2b`/`d26e80c`). Checklist desactualizado:
+  quedó marcado `[ ]` pese a estar commiteado — corregido tras confirmar en el código real
+  (`session.ts` § `dejar-vivir`, `companeros.ts` § `cuerdas`, working tree limpio, sin cambios sin
+  commitear). Pendiente de tu lado: **jugarlo en vivo** para confirmar que la tarjeta
+  Matar/Capturar/Clemente se ve bien y bloquea el composer como toca — solo verificado por código,
+  no en partida real todavía.
   - Combate termina solo cuando todos los NPC están MUERTO o ya resueltos (Matar/Capturar/
     Clemente) — un CONVALECIENTE solo ya no cierra nada por sí mismo.
   - Sobre cada NPC CONVALECIENTE se ofrecen 3 opciones en una **tarjeta en el propio log de
