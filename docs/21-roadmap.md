@@ -293,6 +293,29 @@ resumen de trabajo real, agrupado por tamaño.
   componente que la Enciclopedia). Hallazgo real: el frontend tenía sus propios
   `ImagePromptEntityType`/`ImagePromptSizeProfile` duplicados en `api.ts` sin `'zona'`/`'mapa'` —
   corregido, causa real de por qué nunca aparecía nada.
+- [ ] **Seguimiento de imágenes de Zona (2026-08-26)** — dos cosas encontradas jugando en vivo con
+  el resultado ya generado:
+  1. **Corrección de sitio**: los 3 botones deben vivir SOLO en la ficha de Localización de la
+     Enciclopedia (banner/miniatura ya estaban ahí; falta añadir "Mapa" reutilizando
+     `entityType:'zona'`/`sizeProfile:'mapa'`, ya construido) — se retiran los 3 botones que se
+     añadieron hoy en `ZonaPanel.tsx`. El panel Zona sigue leyendo/mostrando la imagen 'mapa' de
+     fondo igual que ahora, solo sin botón propio ahí — genera lo que ya muestra, no duplica
+     generador.
+  2. **Calidad real del "mapa" generado**: la primera imagen de prueba (Hondonada del Eco) trae
+     texto incrustado en la propia imagen — título y leyenda ("Redsun Hollow", "Cave Mouth/Camp/
+     Fire Pit/Magnetic Sand Trail"), **en inglés**, pese a que el prompt YA pide explícitamente "no
+     text or labels" (`imagePromptGenerator.ts § ENTITY_TYPE_STYLE.zona`) — probablemente la
+     herramienta externa usada para generarla añade cartucho/leyenda por defecto sea cual sea el
+     prompt (habitual en generadores de "mapa de fantasía"). Un texto/leyenda incrustado además
+     **compite de verdad con los pines reales** que la app ya pinta encima (`ZonePoint`) — nunca
+     van a coincidir. Reforzar el prompt (prohibición más explícita/insistente de cualquier
+     texto/título/leyenda/cartucho/brújula/escala) y probar de nuevo antes de dar la Fase 1 de
+     imágenes por buena de verdad.
+  **Pendiente de hablar con calma, sin tocar nada todavía**: qué imagen sirve para qué en cada tipo
+  de entidad (NPC/ítem/ubicación/zona/facción/...) — hoy "banner" y "miniatura" significan cosas
+  algo distintas según dónde se usen (tarjeta de Enciclopedia vs ficha de detalle vs fondo de un
+  panel de juego), y no hay un criterio único escrito de "esta imagen es para esto, aparece aquí,
+  así". Repasarlo por tipo de entidad antes de seguir añadiendo más generadores sueltos.
 - [x] ~~**Fase 1 — CONTRA/REFRACTAR/CONTROL/COMPANERO**~~ — cerrado 2026-08-26, APLICADO al motor
   (commit `889b7e3`). `LETAL` en realidad ya estaba implementado pese a estar marcado `PENDIENTE`
   en el schema (corregido). CONTRA/REFRACTAR: contragolpe en el margen decisivo ya existente
@@ -329,6 +352,28 @@ resumen de trabajo real, agrupado por tamaño.
   aparte decide si no vuelve a aparecer nunca al terminar el combate; si vuelve, solo reaparece en
   su posición de la zona cuando la jugadora viaja fuera y regresa — toca `npcScene.ts`/presencia
   en zona, no solo `turnResolution.ts`.
+  **Diseño de objetivo individual real, cerrado con la usuaria** (2026-08-26, jugando en vivo
+  contra 2 cuervos — "no puedo elegir objetivo... cuando ataco debería ser yo vs mi objetivo y el
+  otro enemigo tiene ataque gratis"). Sistema de "enganche" por ronda, no solo "ataca a quien
+  elijas":
+  1. Todos (jugador, compañeros si aplican, todos los enemigos) tiran iniciativa cada ronda.
+  2. En ese orden, quien TODAVÍA no sea objetivo de nadie elige a quién atacar.
+  3. En cuanto alguien es elegido como objetivo, su propia elección (si ya la había hecho) se
+     cancela — cuando le toque actuar, su turno pasa a ser defenderse de quien lo eligió, un duelo
+     real entre los dos. Dentro de esa pareja, quien tenga más iniciativa golpea primero — da igual
+     quién "eligió" a quién (un enemigo con menos iniciativa puede enganchar a alguien con más, que
+     aun así golpea primero dentro de ese duelo).
+  4. Quien NO acaba en un duelo mutuo — porque a nadie le tocó elegirlo y él tampoco pudo enganchar
+     a nadie (su objetivo ya estaba ocupado en otro duelo), o porque es el que sobra en un grupo
+     impar — mete un golpe gratis, sin oposición real, contra quien quiera. Misma regla exacta que
+     "el otro enemigo tiene ataque gratis porque no es mi objetivo": no es un caso aparte, es la
+     consecuencia general de no estar en un duelo. `AGUANTE`+`MULTIPLE` es la única forma de
+     defenderse de verdad de un golpe gratis de este tipo.
+  Sin cerrar del todo, decidir cuando toque implementarlo (no bloquean el diseño de arriba): si se
+  puede enganchar a alguien que YA resolvió su turno esa misma ronda, o si los compañeros siguen
+  esta misma lógica de elección automática o esperan a su propia postura de combate (aparcada
+  aparte). Cierra el mismo hueco que ya tenía anotado el roadmap ("Combate múltiple — huecos: XP de
+  tirada, objetivo individual").
 - [ ] **Fase 4 — esperan que la usuaria rellene cifras a su ritmo**, quedan `⚠️ bloqueada` en
   `clases.md` mientras tanto (no frena el resto): `RETIRAR` (ninguna de sus 2 filas tiene cifra) y
   las filas sueltas de `AUMENTO`/`DEBILIDAD`/`CURAZION` sin número (sobre todo Segador/Asesino).
