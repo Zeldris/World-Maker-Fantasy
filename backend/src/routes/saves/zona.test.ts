@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import Fastify from 'fastify';
 
 // Grupo 3 § Mundo determinista, Capa 1 (2026-08-25) — prototipo de zonas navegables. Solo Prisma
@@ -6,11 +6,15 @@ import Fastify from 'fastify';
 // sin mockear a propósito para probar la integración real con el filesystem/catálogo.
 const findUniqueSave = vi.fn();
 const findManyNpc = vi.fn();
+// Imágenes propias de Zona (2026-08-26) — nunca es lo que este archivo prueba, siempre vacío por
+// defecto; `imageUrlsFor` se deja sin mockear a propósito (mismo criterio que `zoneMapImageUrl`).
+const findManyImagePrompt = vi.fn();
 
 vi.mock('../../lib/prisma.js', () => ({
   prisma: {
     save: { findUnique: (...args: unknown[]) => findUniqueSave(...args) },
     npc: { findMany: (...args: unknown[]) => findManyNpc(...args) },
+    imagePrompt: { findMany: (...args: unknown[]) => findManyImagePrompt(...args) },
   },
 }));
 
@@ -33,6 +37,10 @@ async function buildApp() {
   await app.register(zonaRoutes);
   return app;
 }
+
+beforeEach(() => {
+  findManyImagePrompt.mockResolvedValue([]);
+});
 
 afterEach(() => {
   vi.restoreAllMocks();

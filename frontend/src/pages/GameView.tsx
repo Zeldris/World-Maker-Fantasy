@@ -1668,7 +1668,7 @@ export function GameView() {
           {activePanel === 'mapa' && (
             <MapaPanel worldSlug={worldIdSlug} currentLocation={currentLocation} destinations={destinations} inventory={inventory} quests={quests} buildings={buildings} />
           )}
-          {activePanel === 'zona' && saveId && <ZonaPanel saveId={saveId} />}
+          {activePanel === 'zona' && saveId && <ZonaPanel saveId={saveId} worldSlug={worldIdSlug} />}
           {activePanel === 'diario' && saveId && <DiarioPanel saveId={saveId} chapters={chapters} />}
           {activePanel === 'inventario' && (
             <InventarioPanel

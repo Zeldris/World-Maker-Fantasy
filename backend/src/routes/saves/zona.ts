@@ -1,6 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import { prisma } from '../../lib/prisma.js';
-import { zoneMapImageUrl } from '../../lib/imageAssets.js';
+import { zoneMapImageUrl, imageUrlsFor } from '../../lib/imageAssets.js';
 import { sourceDisplayNameFor } from '../../scripts/worldCatalog.js';
 import { detectNpcsInScene } from '../../services/npcScene.js';
 import { loadSessionFacts } from '../../services/worldFacts.js';
@@ -43,6 +43,21 @@ export async function zonaRoutes(app: FastifyInstance) {
       .filter((n) => n.condicionFisica !== 'MUERTO' && !zonePointSlugs.has(n.slug))
       .map((n) => ({ slug: n.slug, nombre: n.name, tipo: (n.kind === 'PRINCIPAL' ? 'NPC' : 'FAUNA') as 'NPC' | 'FAUNA' }));
 
+    // Imágenes propias de Zona (2026-08-26, petición explícita: "banner, uno icono y otro una
+    // zona a modo de mapa dibujado... pintada y clara") — `entityType: 'zona'` separado de
+    // `'location'` (la Enciclopedia ya tiene su propio banner/miniatura fotorrealista de esta
+    // misma ubicación; aquí el estilo es cartografía pintada a mano, ver imagePromptGenerator.ts §
+    // ENTITY_TYPE_STYLE.zona, que ya aplica a los 3 perfiles de talla, no solo a 'mapa').
+    const imagePromptRows = await prisma.imagePrompt.findMany({
+      where: { worldId: save.worldId, entityType: 'zona', entitySlug: locationSlug },
+    });
+    const imagePrompts = {
+      thumbnail: imagePromptRows.find((p) => p.sizeProfile === 'thumbnail')?.prompt ?? null,
+      banner: imagePromptRows.find((p) => p.sizeProfile === 'banner')?.prompt ?? null,
+      mapa: imagePromptRows.find((p) => p.sizeProfile === 'mapa')?.prompt ?? null,
+    };
+    const imageUrls = imageUrlsFor('zona', locationSlug);
+
     if (zonePoints.length === 0) {
       return {
         disponible: dinamicos.length > 0,
@@ -51,6 +66,8 @@ export async function zonaRoutes(app: FastifyInstance) {
         locationSlug,
         locationName,
         imageUrl: zoneMapImageUrl(locationSlug),
+        imageUrls,
+        imagePrompts,
       };
     }
 
@@ -67,6 +84,8 @@ export async function zonaRoutes(app: FastifyInstance) {
       locationSlug,
       locationName,
       imageUrl: zoneMapImageUrl(locationSlug),
+      imageUrls,
+      imagePrompts,
       puntos: zonePoints.map((p) => ({
         id: p.id,
         x: p.x,

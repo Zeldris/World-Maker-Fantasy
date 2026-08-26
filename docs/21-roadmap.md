@@ -281,16 +281,18 @@ resumen de trabajo real, agrupado por tamaño.
   motivo que sea. Un enemigo que de verdad elige no rematar a la jugadora (duelo de honor) sería
   un sistema aparte, espejo del anterior — `Npc.temperamento`/`personality` como gancho natural.
   Aparcado, sin diseñar.
-- [ ] **Botón de imagen (banner/miniatura/mapa) en el panel Zona** — petición explícita
-  (2026-08-26). `zoneMapImageUrl()` (fondo que pinta `ZonaPanel.tsx`) ya busca en disco
-  `uploads/images/zona/<slug>-mapa.<ext>`, y `POST /world/:slug/image-prompt` con
-  `entityType:'zona', sizeProfile:'mapa'` ya genera el prompt de texto en backend (800x600) — ya
-  están conectados por convención de nombre de archivo, solo falta el botón en `ZonaPanel.tsx`
-  (`ImagePromptSlot`, mismo componente que ya usa la Enciclopedia) que dispare esa generación y
-  deje subir el PNG a mano, mismo flujo manual que el resto del juego. Banner/miniatura de esa
-  misma ubicación ya existen y funcionan hoy vía `entityType:'location'` en la Enciclopedia — abierto
-  si además de "mapa" quiere un juego de banner/miniatura propio para la vista Zona (duplicado) o
-  si con reutilizar el de la Enciclopedia basta.
+- [x] ~~**Botón de imagen (banner/miniatura/mapa) en el panel Zona**~~ — cerrado 2026-08-26,
+  APLICADO al motor. Decisión: juego de imágenes PROPIO de Zona (banner+miniatura+mapa), no
+  reutiliza el banner/miniatura fotorrealista que la ubicación ya tiene en la Enciclopedia —
+  petición explícita: "uno genera banner, otro icono y otro una zona a modo de mapa dibujado...
+  pintada y clara, no realista". El estilo cartográfico pintado a mano YA estaba bien construido
+  en backend (`imagePromptGenerator.ts § ENTITY_TYPE_STYLE.zona`) desde el prototipo de zonas
+  navegables, y `entityType:'zona'` nunca estuvo restringido a `sizeProfile:'mapa'` — solo faltaba
+  exponerlo. `GET /saves/:id/zona` (zona.ts) ahora también devuelve `imageUrls`/`imagePrompts`
+  (thumbnail/banner, más `imagePrompts.mapa`); `ZonaPanel.tsx` monta 3 `ImagePromptSlot` (mismo
+  componente que la Enciclopedia). Hallazgo real: el frontend tenía sus propios
+  `ImagePromptEntityType`/`ImagePromptSizeProfile` duplicados en `api.ts` sin `'zona'`/`'mapa'` —
+  corregido, causa real de por qué nunca aparecía nada.
 - [ ] **17 efectos de habilidad de clase pendientes de implementar en el motor** (`AbilityEffect`,
   `schema.prisma`) — diseño cerrado con la usuaria (2026-08-26) para la mayoría, ver
   [clases.md](rpgtarkor/clases.md) para las cifras exactas por habilidad. `LETAL` en realidad ya

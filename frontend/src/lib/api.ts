@@ -750,6 +750,13 @@ export interface ZonaResponse {
   locationSlug?: string
   locationName?: string
   imageUrl?: string | null
+  /// Banner/miniatura propios de Zona (2026-08-26, petición explícita: "uno genera banner, otro
+  /// icono y otro una zona a modo de mapa dibujado... pintada y clara") — entityType 'zona',
+  /// separado del banner/miniatura fotorrealista que la misma ubicación ya tiene en la
+  /// Enciclopedia (entityType 'location'). `imageUrl` de arriba sigue siendo el mapa (sizeProfile
+  /// 'mapa').
+  imageUrls?: { thumbnail: string | null; banner: string | null }
+  imagePrompts?: { thumbnail: string | null; banner: string | null; mapa: string | null }
   puntos: ZonePointInfo[]
   dinamicos: ZonaDinamicoInfo[]
 }
@@ -1322,10 +1329,13 @@ export async function getEnciclopedia(worldSlug: string, saveId?: string | null)
 }
 
 // 'faction'/'historia' (2026-08-06) — mismo literal que el backend, ver imagePromptGenerator.ts.
-export type ImagePromptEntityType = 'npc' | 'item' | 'fauna' | 'ability' | 'raza' | 'personaje' | 'location' | 'construccion' | 'faction' | 'historia' | 'crafteo'
+// 'zona' (2026-08-26) — imágenes propias del panel Zona (banner/miniatura/mapa pintados a mano),
+// separadas del banner/miniatura fotorrealista que la misma ubicación ya tiene bajo 'location'.
+export type ImagePromptEntityType = 'npc' | 'item' | 'fauna' | 'ability' | 'raza' | 'personaje' | 'location' | 'construccion' | 'faction' | 'historia' | 'crafteo' | 'zona'
 /// 'thumbnail' = icono cuadrado de la cuadrícula (EntryCard), 'banner' = MediaSlot ancho del
-/// detalle (~3:1, medido contra la UI real) — ver imagePromptGenerator.ts en el backend.
-export type ImagePromptSizeProfile = 'thumbnail' | 'banner'
+/// detalle (~3:1, medido contra la UI real), 'mapa' = fondo del panel Zona (800x600, solo
+/// entityType 'zona') — ver imagePromptGenerator.ts en el backend.
+export type ImagePromptSizeProfile = 'thumbnail' | 'banner' | 'mapa'
 
 export interface ImagePromptResult {
   prompt: string
