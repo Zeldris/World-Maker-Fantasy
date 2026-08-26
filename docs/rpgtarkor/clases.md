@@ -734,12 +734,16 @@ bloqueada que Totémico:
 | 24 | Runa de Resistencia | Voluntad | `AGUANTE` | ✅ lista | Te defiendes con Voluntad aumentandola e +5
 | 28 | Golpe Runa de Cólera | Magia | ATAQUE + `AUMENTO`  | ⚠️ bloqueada | Ataqye que aumenta tu Magia en +5, si la diferencia es 10, el +5 en magia se mantiene para el siguiente turno
 | 32 | Control Rúnico | Magia | CONTROL + `DEBILIDAD` — maldición que marca a un rival concreto | ⚠️ bloqueada | Debilita a un rival restandole -4 de fuerza si la diferencia es de 6 controla al rival un turno
-| 36 | Runa de Rayo Cadena| Inteligencia | `ATAQUE` + MULTIPLE  | ✅ lista | ⚠️ bloqueada
+| 36 | Runa de Rayo Cadena| Inteligencia | `ATAQUE` + MULTIPLE  | ⚠️ bloqueada | Ataca en cadena a varios rivales a la vez
 | 40 | Intelecto Rúnico *(capstone)* | Magia | `ATAQUE` + LIMITADA — una runa predice el ataque del rival; te anticipas con un golpe básico del tipo que tiene ventaja contra él | ✅ lista | LImitada a 4 usos
 
-**4 de 8 listas** (19/24/36/40) — la mejor proporción de las especializaciones bloqueadas hasta
-ahora. Magia sigue siendo mayoría (4/8: 12/16/28/40) con inteligencia/voluntad/carisma repartidas
-en el resto.
+**Corrección 2026-08-25 (auditoría de lore — verificación independiente contra el código real,
+`classAbilities.ts`)**: el recuento original decía "4 de 8 listas (19/24/36/40)", contradiciendo sus
+propias filas — 19 (INVOCACION+PROVOCACION) y 36 (MULTIPLE, fila que tenía además un error de datos
+real: el `Estado` decía "✅ lista" con "⚠️ bloqueada" colado en la columna de descripción) SÍ
+dependen de infraestructura bloqueada. **2 de 8 listas de verdad (24/40)** — el resto de la
+proporción "Magia sigue siendo mayoría" de más abajo ya no aplica tal cual, se deja sin ese cálculo
+secundario para no arrastrar el mismo error.
 
 ### Convocador — la menos bloqueada de las 4 (guerrero-mago)
 
@@ -760,6 +764,14 @@ invocaciones que persistan en la escena, así que apenas toca la infraestructura
 **6 de 8 listas** (12/16/19/28/32/40) — la más desbloqueada de las 4 especializaciones de Chamán.
 Magia sigue siendo mayoría (4/8) con constitución/fuerza/destreza repartidas en el resto.
 
+**Corrección 2026-08-25 (auditoría de lore — verificación independiente contra `classAbilities.ts`
+real)**: el recuento de arriba está mal — varias filas marcadas ✅ dependen en realidad de
+infraestructura bloqueada según el propio patrón de este documento (12 usa `AUMENTO`, 16/24 usan
+`DEBILIDAD`, 19 usa `MULTIPLE`, 40 usa `CANALIZAR`, todos en la lista de efectos bloqueados de más
+arriba). **El código real solo tiene 1 de 8 lista (nivel 28, Puño Ígneo)** — la tabla de arriba no
+se ha corregido fila por fila en esta pasada (exigiría reverificar cada `Estado` contra el código
+una por una), pero el recuento real a usar es este, no el "6 de 8" original.
+
 ### Opresor — la más bloqueada de las 4 (encaja con "subyugar/debilitar")
 
 | Nivel | Habilidad | Atributo | Efecto | Estado |
@@ -776,7 +788,13 @@ Magia sigue siendo mayoría (4/8) con constitución/fuerza/destreza repartidas e
 **3 de 8 listas** (12/24/32). Magia sube a 5/8 (12/16/19/36/40) — más concentrado que el resto de
 especializaciones, pero coherente con que Opresor es la más "mental/rúnica pura" de las 4.
 
-**Chamán completo**: Totémico 0/8, Rúnico 4/8, Convocador 6/8, Opresor 3/8.
+**Corrección 2026-08-25 (auditoría de lore — verificación independiente contra `classAbilities.ts`
+real)**: nivel 32 (Runa de Sujeción) usa `MULTIPLE`, efecto bloqueado según el propio patrón de este
+documento — no debería contar como lista. **El código real tiene 2 de 8 listas (12/24)**, no 3/8.
+
+**Chamán completo (recuento real, corregido 2026-08-25): Totémico 0/8, Rúnico 2/8, Convocador 1/8,
+Opresor 2/8** — el "0/8, 4/8, 6/8, 3/8" original no coincidía con el código en 3 de las 4
+especializaciones.
 
 ---
 
@@ -1167,9 +1185,9 @@ sobre 8 por especialización:
 
 | Clase | Especializaciones (listas/8) |
 |---|---|
-| Guerrero | Berserker 5, Guardián 5, Lancero 8, Especialista 8 |
-| Cazador | Domador 2, Supervivencia 5, Tirador 8, Instintivo 8 |
-| Chamán | Totémico 3, Rúnico 4, Convocador 6, Opresor 3 |
+| Guerrero | Berserker 1, Guardián 1, Lancero 2, Especialista 4 |
+| Cazador | Domador 0, Supervivencia 1, Tirador 5, Instintivo 4 |
+| Chamán | Totémico 3, Rúnico 2, Convocador 1, Opresor 2 |
 | Arquero | Maestro Arquero 7, Maestro Ballestero 7 |
 | Caballero | Orden 6, Valor 3, Dolor 7 |
 | Segador | Parca 3, Maldito 4, Ilustrado 6, Transmutador 2 |
