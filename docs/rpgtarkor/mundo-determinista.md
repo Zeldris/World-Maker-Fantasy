@@ -2,14 +2,18 @@
 
 [← Volver al índice del mundo](../07-mundo-helek-sirik.md)
 
-*Diseño de sistema (2026-08-25, sesión conjunta autora/Claude). **Nada de esto está implementado en
-el motor todavía** — documentación pura, mismo criterio que `clases.md`/`companeros-y-supervivencia.md`/
-`combate-multiple.md`. Nace de una conversación sobre cómo conectar el turno de la jugadora a
+*Diseño de sistema (2026-08-25, sesión conjunta autora/Claude) — **las 4 capas y los 5 hallazgos
+independientes APLICADOS al motor el mismo día** (ver § "Estado y orden recomendado" al final; este
+banner se quedó desactualizado diciendo "nada implementado todavía" pese a estar construido —
+mismo tipo de desfase ya corregido en `combate-multiple.md`/`companeros-y-supervivencia.md`, ver
+sus propios banners). Nace de una conversación sobre cómo conectar el turno de la jugadora a
 [combate-multiple.md](combate-multiple.md): al investigar cómo se dispara combate hoy, apareció un
 problema más grande y más viejo — la narración libre (el LLM) tiene margen real para decidir cosas
 que debería limitarse a narrar. Este documento generaliza el principio que ya rige el combate desde
 hace un mes ("el modelo nunca decide, solo narra lo YA RESUELTO") a todo lo demás: aparición de
-fauna/NPCs, eventos de mundo, misiones, objetos, compañeros y construcciones de Reino.*
+fauna/NPCs, eventos de mundo, misiones, objetos, compañeros y construcciones de Reino. Pendiente
+real: generalizar la Capa 1 (zonas navegables) más allá de La Hondonada del Eco — ver el final del
+documento.*
 
 ---
 

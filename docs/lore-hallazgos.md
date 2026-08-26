@@ -169,9 +169,11 @@ citado por el doc: con `reclutablePct: 5`, una tirada que con atributos puros ha
 plantilla se comporta como "personalizada" — la promesa de básicas "listas sin configurar nada" no
 está entregada.
 
-**Estado**: FIJADO como documentación (commit `5a38692`, 2026-08-25) — decisión de la usuaria (item
-22 del checklist): marcar explícitamente el hueco en el `.md` en vez de implementar el seed real.
-Nota añadida en § 6 aclarando que esta mitad no se construyó.
+**Estado**: FIJADO como documentación primero (commit `5a38692`, 2026-08-25) — decisión inicial de
+la usuaria (item 22 del checklist): marcar explícitamente el hueco en el `.md` en vez de
+implementar el seed real. **Implementado de verdad al día siguiente (2026-08-26)** — seed real de
+plantillas básicas por rol en `reino/fundar` + guard de no-editable en backend y frontend, ver
+`checklist-cierre-auditorias-2026-08-25.md` item 22 y `companeros-y-supervivencia.md` § 6.
 
 ## 2026-08-25 — Menores agrupados — clima/estaciones, sin acción
 

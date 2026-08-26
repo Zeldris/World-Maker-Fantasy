@@ -48,12 +48,15 @@ verdad a tu lado en combate (`Companion.attributes`, aplicado el mismo día que 
 verdad, nunca un chollo gratis por sorpresa. Coherente con que solo esos dos estados son "tocables"
 en el resto del motor.
 
-**Objeto ya existe, no hace falta crear uno nuevo** (2026-08-24, auditoría de items sin uso):
-`trampa-de-lazo` ("Trampa de lazo de tendón" — "lazo trenzado de tendón anclado a una estaca de
-madera, para cazar sin necesidad de perseguir") ya está en `ItemCatalog`, huérfana desde antes de
-esta sesión — es exactamente la cuerda de captura que hacía falta. Sin ella equipada/en inventario,
-no se puede intentar atar a nadie, ni fauna ni NPC. Un ataque/habilidad normal nunca captura por sí
-solo.
+**Ítem real: `cuerdas`, no `trampa-de-lazo`** (corregido 2026-08-26 — ver
+`docs/21-roadmap.md` § "CONVALECIENTE deja de significar victoria automática"). El diseño original
+de este punto (2026-08-24) reutilizaba `trampa-de-lazo` ("Trampa de lazo de tendón", equipable, no se
+gastaba nunca) — al construir de verdad el botón "Capturar" de la tarjeta Matar/Capturar/Clemente se
+sustituyó por `cuerdas` (material consumible, receta con 2 fibra para `carpintero-orcos-llanuras` y
+`constructor-orcos-llanuras`): **se consume 1 unidad al atar con éxito**, a diferencia de la trampa
+reutilizable. `trampa-de-lazo` queda en el catálogo sin uso real por ahora. Sin `cuerdas` en
+inventario, no se puede intentar atar a nadie, ni fauna ni NPC (`POST /saves/:id/capturar/:npcSlug`,
+`companeros.ts`). Un ataque/habilidad normal nunca captura por sí solo.
 
 Al atar con éxito:
 - **Fauna** → pasa a esperar en una **jaula** (ver § 2) mientras se intenta tamear.
@@ -235,7 +238,9 @@ trabajadores", es un orden editable por ti.
 hoy" — se deja como referencia histórica de qué se pidió, con el estado real de cada punto
 (auditoría de lore 2026-08-25).*
 
-- ~~Item "cuerda de captura" nuevo en `ItemCatalog`~~ — ya existía (`trampa-de-lazo`), confirmado.
+- ~~Item "cuerda de captura" nuevo en `ItemCatalog`~~ — a fecha 2026-08-25 se reutilizaba
+  `trampa-de-lazo` (ya existente); **sustituido de verdad 2026-08-26** por `cuerdas`, un item nuevo
+  real, consumible al atar — ver § 1 más arriba.
 - `Jaula` (pequeña/mediana/grande) — APLICADO, `construction.ts`.
 - Campo de "atributo de resistencia" — APLICADO (`Npc.atributoResistencia`).
 - `Companion` con Felicidad + Comida/Agua reales — APLICADO

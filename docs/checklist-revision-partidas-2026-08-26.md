@@ -67,14 +67,12 @@ ciegas" que se ha evitado durante toda esta sesión):
 - Familia "errores gramaticales/inglés colado del modelo" (~6 entradas, 2026-08-08 a 2026-08-26) —
   decisión ya tomada de NO construir un corrector genérico; se quedan solo como registro fechado.
 
-**`docs/21-roadmap.md`** — 8 items sin marcar, todos feature/diseño (no bugs), varios aplazados a
-propósito por decisión explícita de la usuaria:
-- `comerciablePct`/`cortejablePct` — sin sistema detrás, confirmado que se quedan así por ahora.
-- `Npc.levelMax`/`percepcionPasivaFor` — en cola, pendientes de diseño propio.
-- "Trabajador de Reino" — bloquea 22 NPC del Campamento Serhu + oficio de agricultura.
-- Quién enseña un oficio nuevo — aplazado a propósito, baja prioridad.
-- Miel Lebude / profesión de cocina por raza-región — idea suelta, prioridad muy baja.
-- Botones "Aceptar"/"Cancelar" al ofrecer misión (2026-08-25).
-- NPCs que aparecen por narración no se marcan en la pestaña "Zona" (2026-08-25).
-- **CONVALECIENTE deja de ser "victoria automática"** (capturar/matar/dejar vivir) — petición
-  explícita de la usuaria (2026-08-26), aparcada a propósito hasta cerrar esta ronda de bugs.
+**`docs/21-roadmap.md`** — fuente de verdad ÚNICA y viva del estado real del proyecto, actualizada
+constantemente (última pasada grande: 2026-08-26, cierre completo de "objetivo individual" en
+combate múltiple) — no se duplica su contenido aquí para no arriesgar quedar desactualizado dos
+veces. A fecha de esta pasada (2026-08-26), ya CERRADOS y APLICADOS los 3 items que este checklist
+había dejado pendientes cuando se escribió: botones "Aceptar"/"Cancelar" de misión, NPCs por
+narración en la pestaña "Zona", y CONVALECIENTE deja de ser "victoria automática"
+(Matar/Capturar/Clemente). Sigue abierto, sin diseño propio (ver roadmap para el detalle):
+`comerciablePct`/`cortejablePct`, `Npc.levelMax`/`percepcionPasivaFor`, "Trabajador de Reino", quién
+enseña un oficio nuevo, Miel Lebude.

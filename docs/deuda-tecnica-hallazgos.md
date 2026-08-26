@@ -27,6 +27,9 @@ Cada entrada: fecha, zona auditada, hallazgo, y estado.
 - [useCombatFlow.ts (585 líneas, el hook con más lógica de decisión) sin ningún test — hooks/ entera sin cobertura](#2026-08-25-usecombatflowts-585-líneas-el-hook-con-más-lógica-de-decisión-sin-ningún-test--hooks-entera-sin-cobertura)
 - [Duplicación menor de manejo de error de envío en 6 modales de acción](#2026-08-25-duplicación-menor-de-manejo-de-error-de-envío-en-6-modales-de-acción)
 
+**2026-08-26**
+- [combateMultipleOrquestacion.ts creció bastante más al enganchar el objetivo individual real](#2026-08-26-combatemultipleorquestacionts-creció-bastante-más-al-enganchar-el-objetivo-individual-real)
+
 ---
 
 ## 2026-08-25 — Combate múltiple arma atributos de NPC sin escalar por nivel (npcAttributesForLevel nunca se llama)
@@ -243,3 +246,26 @@ todo `frontend/src`, solo 14 aserciones `!` justificadas), código muerto en fro
 componentes grandes ya descompuestos internamente (`EnciclopediaPanel.tsx`, `CombatPanel.tsx` — no
 urgentes), retirada de DiscoveryReveal (limpia del todo, sin restos de código, solo dos menciones en
 comentarios históricos).
+
+## 2026-08-26 — combateMultipleOrquestacion.ts creció bastante más al enganchar el objetivo individual real
+
+**Hallazgo (auto-observado implementando "objetivo individual", docs/21-roadmap.md § Fase 3, no una
+auditoría dedicada)**: el ítem "menor agrupado" de arriba (2026-08-25) ya señalaba
+`ejecutarIntercambioYAvanzar` con 12 parámetros posicionales como candidato a objeto de opciones —
+con el enganche por ronda añadido hoy, el patrón se repite y se agrava:
+- `avanzarSinAtacar` pasó de 3 parámetros (`tx, encounterId, encounter`) a 6 (`prisma, worldId,
+  saveId, encounterId, encounter, weaponNamesPorDefecto`) — necesario porque ahora reutiliza
+  `avanzarYComprobarFin` en vez de solo avanzar `turnoActual` a ciegas (ver el propio bug real que
+  motivó el cambio, corregido el mismo día), pero son 8 sitios de llamada con la misma firma larga
+  repetida.
+- `calcularEnganchesRonda` (nueva) y `ejecutarGolpeGratisYAvanzar` (nueva) sostienen el mismo patrón
+  de 6-7 parámetros posicionales que ya tenían las funciones vecinas.
+- `retargetBando` (`combateMultiple.ts`) queda sin ningún caller real en `combateMultipleOrquestacion.ts`
+  (sustituido por `resolverEnganchesRonda`) — sigue exportada y con su propia cobertura de test, pero
+  es candidata a "código que ya no se usa en producción, solo en tests" si nadie la retoma.
+
+**Estado**: PENDIENTE, prioridad baja consciente — el archivo entero ya funciona y está probado a
+fondo (24 tests unitarios + 3 de integración nuevos solo de esta pasada, ver roadmap), refactorizar
+la firma de estas funciones a un objeto de opciones es limpieza pura, sin bug detrás. Buen candidato
+para la próxima vez que se toque este archivo por otro motivo (mismo criterio que el resto de esta
+lista: no se refactoriza en frío, solo se señala).

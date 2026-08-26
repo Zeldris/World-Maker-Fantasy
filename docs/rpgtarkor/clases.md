@@ -586,16 +586,19 @@ reales del Domador sobre el resto de clases, integración con Reino) vive en su 
 [companeros-y-supervivencia.md](companeros-y-supervivencia.md) — este apartado se queda solo con
 las habilidades de combate de la especialización.
 
-"Controlar bestias" depende de `COMPANERO`/`INVOCACION`, la infraestructura de combate
-multi-objetivo que hoy no existe — un bloqueo más profundo que la duración de turnos que frena a
-Berserker/Guardián/Supervivencia. Además, nivel 24 introduce **`MARCAR`**, un efecto que no existe
-en absoluto en `AbilityEffect` — no catalogado hasta ahora, mismo caso que `PROVOCACION` en
-Guardián: hace falta darlo de alta antes de que esa habilidad pueda construirse, más allá de que
-exista el compañero.
+**`COMPANERO` — APLICADO 2026-08-26** (Fase 1 del roadmap de efectos, ver `21-roadmap.md`): pasiva
+real, reutiliza `esSlotDomador` (`companeros.ts`, ya construido de antes) — "Compañero cazador"
+(nivel 12, fila de abajo) ya es una habilidad real y visible, no solo diseño. `INVOCACION` sigue
+bloqueada: depende de la infraestructura de combate multi-objetivo real (Fase 3, sin construir
+todavía) para que la mascota actúe según el efecto combinado dentro de un intercambio — un bloqueo
+más profundo que la duración de turnos que frena a Berserker/Guardián/Supervivencia. Además, nivel
+24 introduce **`MARCAR`**, un efecto que sigue sin existir en `AbilityEffect` — no catalogado
+todavía, mismo caso que `PROVOCACION` en Guardián: hace falta darlo de alta antes de que esa
+habilidad pueda construirse, más allá de que exista el compañero.
 
 | Nivel | Habilidad | Atributo | Efecto | Estado |
 |---|---|---|---|---|
-| 12 | Compañero cazador *(reasignada, antes tronco nv.8)* | Inteligencia | `COMPANERO`| ⛔ multi-objetivo, pasiva | Te desbloquea un slot de mascota, este slot no solo te permite añadir una criatura en tu poder sino que ademas te permite añadir equipo sobre la criatura. La criatura se visualizara en un tab en compañeros que será Bestiario y se le podra equipar casco, armadura y espalda (bolsa o montacargas o accesorios). Dependiendo el tamaño y el nivel se podran equipar menos o mas cosas, las piezas de mascotas solo se puede craftear no se obtienen de ninguna otra forma.
+| 12 | Compañero cazador *(reasignada, antes tronco nv.8)* | Inteligencia | `COMPANERO`| ✅ lista — APLICADA 2026-08-26 | Te desbloquea un slot de mascota, este slot no solo te permite añadir una criatura en tu poder sino que ademas te permite añadir equipo sobre la criatura. La criatura se visualizara en un tab en compañeros que será Bestiario y se le podra equipar casco, armadura y espalda (bolsa o montacargas o accesorios). Dependiendo el tamaño y el nivel se podran equipar menos o mas cosas, las piezas de mascotas solo se puede craftear no se obtienen de ninguna otra forma.
 | 16 | Vínculo Salvaje | Voluntad | `AUMENTO` + RECUPERACION (a tu bestia) | ⚠️⛔ duración + multi-objetivo | AUmenta el attr base de tu mascota y le recupera 10 de energia
 | 19 | Llamada de la Manada | Carisma | AGUANTE + `AUMENTO` + PROVOCACION + MULTIPLE + LIMITADO | ⛔ multi-objetivo | Tu mascota intercepta los ataques dirigidos a ti, la mascota aumenta su constitucion +4, si la difeencia es de 6 aumenta +6 la constitucion, si es de 10 la diferencia le obliga a atacarte el siguiente turno y aumenta +6 de constitucion, limitado a 2 veces por combate
 | 24 | Concentración del Domador | Voluntad | `RECUPERACION`, `MARCAR` | ⛔ depende del compañero + efecto nuevo (`MARCAR` sin catalogar) | Recuperas energia y marcas un objetivo para tu presa ataque durante 3 turnos
@@ -777,7 +780,7 @@ una por una), pero el recuento real a usar es este, no el "6 de 8" original.
 | Nivel | Habilidad | Atributo | Efecto | Estado |
 |---|---|---|---|---|
 | 12 | Grillete Rúnico | Magia | `ATURDIMIENTO` — una runa te retiene un turno | ✅ lista |
-| 16 | Opresión Mental | Magia | `CONTROL` — tomas el control del rival durante 2 turnos | ⛔⚠️ mecánica de control + duración |
+| 16 | Opresión Mental | Magia | `CONTROL` — tomas el control del rival durante 2 turnos | ✅ lista — APLICADA 2026-08-26, simplificada: en 1vs1 roba la iniciativa (mismo mecanismo que `ATURDIMIENTO`), sin los "2 turnos de control" reales (necesitan combate multi-objetivo, Fase 3, sin construir) |
 | 19 | Cadena de Sombras | Magia | ATAQUE + `DEBILIDAD` — runas oscuras atan y debilitan al rival | ⚠️ bloqueada | Ataque que si hay 6 de diferencia resta -4 a la destreza un turno
 | 24 | Golpe Sometedor | Fuerza | ATAQUE + `ATURDIMIENTO` — golpe físico que aturde | ✅ lista | Ataca aumentando tu magia en +3 y si la diferencia es de 6 aplica aturdimiento 1 turno
 | 28 | Voz que Doblega | Carisma | `MULTIPLE` + CONTROL — tu voz impone temor y desorienta | ⚠️ bloqueada | COntrolas a 2 enemigos aletoriamente que ese turno atacan a sus aliados, de preferencia a los enemigos de los cuales seas objetivo, sino aleatoriamente.

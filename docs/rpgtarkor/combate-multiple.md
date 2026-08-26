@@ -5,17 +5,19 @@
 *Diseño de sistema (2026-08-24, sesión conjunta autora/Claude) — **APLICADO al motor el
 2026-08-25** (auditoría de lore 2026-08-25: este banner seguía diciendo "nada implementado" pese a
 estar construido e integrado en producción desde el día siguiente al diseño). Real:
-`CombatEncounter`/`CombatParticipant` (`schema.prisma`), iniciativa N-way y emparejamiento por
-Inteligencia (`combateMultiple.ts`), orquestación con estado real incluida la jugadora
-(`combateMultipleOrquestacion.ts`), disparo real desde `cazar.ts` (caza en grupo) y desde un ataque
-directo, saqueo/desuello al resolverse, y narración ligera propia (`combateMultipleNarracion.ts`).
-Esta fue la pieza de infraestructura más grande de la sesión: desbloquea
-`MULTIPLE`/`INVOCACION`/`COMPANERO`/`CONTROL`/`EXPULSAR` en las 34 especializaciones de
-`clases.md`, y es lo que permite que un compañero (`companeros-y-supervivencia.md`) luche a tu lado
-en combate — aunque el compañero en sí necesitó su propio arreglo aparte (ver nota de
-`Companion.attributes` más abajo). Huecos reales que siguen sin construir: XP de la propia tirada de
-combate, y elegir objetivo individual entre miembros de un mismo grupo (mecánicamente
-intercambiables hoy).*
+`CombatEncounter`/`CombatParticipant` (`schema.prisma`), iniciativa N-way (`combateMultiple.ts`),
+orquestación con estado real incluida la jugadora (`combateMultipleOrquestacion.ts`), disparo real
+desde `cazar.ts` (caza en grupo) y desde un ataque directo, saqueo/desuello al resolverse, y
+narración ligera propia (`combateMultipleNarracion.ts`). Esta fue la pieza de infraestructura más
+grande de la sesión: desbloquea `MULTIPLE`/`INVOCACION`/`COMPANERO`/`CONTROL`/`EXPULSAR` en las 34
+especializaciones de `clases.md`, y es lo que permite que un compañero
+(`companeros-y-supervivencia.md`) luche a tu lado en combate — aunque el compañero en sí necesitó su
+propio arreglo aparte (ver nota de `Companion.attributes` más abajo).
+**Objetivo individual real (2026-08-26) — APLICADO, ver § 2 reescrito**: el emparejamiento "siempre
+auto-atacas al más herido, todos con objetivo válido garantizado" (`retargetBando`, § 2 original de
+más abajo) se sustituyó por un sistema de "enganche" por ronda — duelo mutuo real vs. golpe gratis
+sin oposición — cerrado con la usuaria jugando en vivo contra 2 cuervos. Sigue sin construir: XP de
+la propia tirada de combate.*
 
 ---
 
@@ -58,14 +60,37 @@ Cuando le toca el turno a alguien, ese combatiente **ataca** (un `resolveExchang
 su objetivo actual) — el resto de la ronda no se congela ni se resuelve en bloque, es turno a turno,
 tipo D&D real, no una ronda simultánea.
 
-## 2. Quién ataca a quién
+## 2. Quién ataca a quién — objetivo individual real (2026-08-26, APLICADO)
 
-- **Tú**: eliges tu objetivo manualmente, como ahora.
-- **Aliados y enemigos**: se auto-emparejan, sin que tengas que microgestionar cada uno. El
-  emparejamiento se **redecide en cada turno individual** (no se fija una vez al empezar la ronda) —
-  si el objetivo de alguien ya cayó en un turno anterior, se redirige a otro vivo del bando
-  contrario, nunca ataca al aire.
-- **Criterio de selección de objetivo — depende de Inteligencia del atacante**:
+*Sustituye por completo el diseño original de este punto (emparejamiento automático, "todos
+atacan a alguien, redecidido cada turno") — se quedó corto en cuanto se jugó de verdad: contra 2
+cuervos, cada uno resolvía un intercambio contestado completo contra ti, sin que hubiera ninguna
+noción de "solo uno es tu objetivo real, el otro te pega gratis". Diseño cerrado con la usuaria
+jugando en vivo, algoritmo puro en `combateMultiple.ts § 2b` (`resolverEnganchesRonda`), enganchado
+al motor real en `combateMultipleOrquestacion.ts`.*
+
+- **"Enganche" por ronda, no por turno**: todos (tú, aliados, enemigos) tiran iniciativa cada
+  ronda; en ese orden, quien TODAVÍA no sea objetivo de nadie elige a quién atacar. El primer
+  reclamo sobre un objetivo dado gana — un segundo/tercer pretendiente al MISMO objetivo no le
+  "roba" el duelo al primero, se queda con un **golpe gratis** contra él (ver más abajo).
+- **Ser elegido cancela tu propia elección**: si ya elegiste atacar a alguien y DESPUÉS otro te
+  reclama a ti como objetivo, tu ataque anterior se cancela — pasas a defenderte de quien te
+  reclamó, un **duelo real** entre los dos (da igual quién eligió a quién; dentro del duelo,
+  golpea primero quien tenga más iniciativa). Esto puede encadenarse más de un nivel: si a su vez
+  quien te reclamó es reclamado por alguien más tarde, ambos os quedáis sin nadie atacándoos esa
+  ronda — solo el último eslabón de la cadena llega a duelo real.
+- **Golpe gratis**: quien no acaba en un duelo mutuo —porque nadie lo eligió y él tampoco pudo
+  enganchar a nadie (su objetivo ya estaba ocupado en otro duelo), o porque es el sobrante de un
+  grupo impar— mete un golpe gratis, sin oposición real, contra quien quiera: impacto garantizado,
+  sin tirada de defensa del objetivo. `AGUANTE`+`MULTIPLE` es la única forma de defenderse de
+  verdad de uno de estos (sin ninguna habilidad real sembrada con ese efecto combinado todavía).
+- **Elección de la jugadora**: mismo criterio "nombre citado entre comillas" que el resto del
+  turno — con fallback al primer enemigo vivo. Se fija al empezar la ronda (nunca a mitad), porque
+  ningún intercambio de la ronda puede resolverse en firme hasta saber si su elección cancela a
+  alguien que, en la cola, actuaría antes que ella. Sin cambio de flujo visible para ella: su
+  turno real sigue resolviendo la ronda entera de una sentada, en la misma llamada.
+- **Aliados y enemigos** siguen auto-eligiendo (nunca microgestión) con el mismo criterio de
+  Inteligencia de siempre:
   - **Inteligencia alta** → objetivo inteligente: prioriza rematar a quien esté más cerca de caer
     (`GRAVE`/`CONVALECIENTE`), o concentra fuego sobre el más herido del bando contrario.
   - **Inteligencia baja** → objetivo aleatorio entre los vivos del bando contrario, sin ninguna
@@ -74,6 +99,8 @@ tipo D&D real, no una ronda simultánea.
     `ANALISIS`/utilidad) — un enemigo "cabecilla" o "brujo" con Inteligencia alta se vuelve
     tácticamente más peligroso que un "recluta"/bestia con Inteligencia baja, no solo
     numéricamente más fuerte.
+- **Compañeros**: siguen esta misma lógica automática (como un NPC) — su propia postura de
+  combate (Agresivo/Defensivo/Capturador/Clemente) sigue aparcada, sin diseñar.
 
 ## 3. Bandos y tope de combatientes — 4 vs. 4 máximo
 
@@ -103,8 +130,10 @@ hoy" — se deja como referencia histórica de qué se pidió, con el estado rea
 - **`Companion` con atributos y vida propios** — APLICADO (`Companion.attributes`/`condicionFisica`,
   copiados del `Npc` origen al confirmar tameo/persuasión). Confirma lo que este mismo punto ya
   apuntaba como requisito duro.
-- **Lógica de emparejamiento/retargeting por turno** — APLICADO (`retargetBando`,
-  `combateMultiple.ts`).
+- **Lógica de emparejamiento/retargeting por turno** — APLICADO originalmente como `retargetBando`
+  (`combateMultiple.ts`); **sustituido 2026-08-26** por el sistema de enganche por ronda de § 2
+  (`resolverEnganchesRonda`) — `retargetBando` sigue existiendo en el archivo pero ya no lo usa la
+  orquestación real.
 - **Partición de encuentros grandes en sub-combates de 4v4** — APLICADO (`particionarEnSubCombates`,
   `MAX_COMBATIENTES_POR_BANDO=4`).
 - **Modo de resolución determinista sin interacción** (§ 4) — APLICADO para el disparo real

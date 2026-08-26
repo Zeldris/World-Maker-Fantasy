@@ -7,6 +7,33 @@ mismo criterio que tenía el anterior.
 
 ---
 
+## Estado a fecha 2026-08-26 (orientación rápida para retomar la sesión)
+
+Este documento crece añadiendo secciones nuevas al final de cada bloque cerrado — para no tener que
+leerlo entero, esto es lo que pasó en la sesión más reciente (2026-08-26), de más a menos reciente:
+
+- **Objetivo individual en combate múltiple — CERRADO Y APLICADO** (el ítem más grande de la
+  sesión): sistema de "enganche" por ronda (duelo mutuo real vs. golpe gratis sin oposición),
+  diseñado con la usuaria jugando en vivo contra 2 cuervos y enganchado de verdad al motor
+  (`combateMultipleOrquestacion.ts`, migración nueva `esperandoEleccionJugadora`). Ver detalle en
+  "Fase 3" más abajo y en [combate-multiple.md](rpgtarkor/combate-multiple.md) § 2.
+- **5 puntos rápidos del checklist de la usuaria, todos CERRADOS**: sistema Matar/Capturar/Clemente
+  (ya estaba hecho de una sesión previa, el checklist estaba desactualizado — corregido, y de paso
+  se cerró un bug real del botón "Capturar" apareciendo aunque el NPC no fuera capturable); botones
+  de imagen de Zona reubicados a Enciclopedia > Localización; prompt de imagen de Zona reforzado
+  contra texto incrustado; habilidades de arma reales/avanzadas dan +2 de atributo al ejecutarlas;
+  96 partidas de prueba huérfanas borradas de Postgres + causa raíz arreglada (cleanup de test
+  movido a `afterEach`).
+- **Backend corriendo con `tsx src/server.ts` (sin watch)** — cualquier cambio de código de hoy
+  necesita que se reinicie a mano para surtir efecto; el arranque/parada de backend/frontend/Postgres
+  lo hace siempre la propia usuaria, nunca Claude.
+- Sesiones anteriores (2026-08-23/25) cerraron el grueso del "Grupo 3" de abajo — ver el resto del
+  documento para el detalle punto por punto, y `docs/deuda-tecnica-hallazgos.md`/
+  `docs/revisar-partida-hallazgos.md`/`docs/checklist-cierre-auditorias-2026-08-25.md` para las 3
+  auditorías previas, ya cerradas del todo (22/22).
+
+---
+
 ## Historial — cerrado en esta sesión (2026-08-23/24)
 
 **Auditoría de elementos desconectados (23/08)** — listado de ~16 mecánicas/datos sembrados sin
@@ -375,91 +402,49 @@ resumen de trabajo real, agrupado por tamaño.
   aparte decide si no vuelve a aparecer nunca al terminar el combate; si vuelve, solo reaparece en
   su posición de la zona cuando la jugadora viaja fuera y regresa — toca `npcScene.ts`/presencia
   en zona, no solo `turnResolution.ts`.
-  **Diseño de objetivo individual real, cerrado con la usuaria** (2026-08-26, jugando en vivo
-  contra 2 cuervos — "no puedo elegir objetivo... cuando ataco debería ser yo vs mi objetivo y el
-  otro enemigo tiene ataque gratis"). Sistema de "enganche" por ronda, no solo "ataca a quien
-  elijas":
-  1. Todos (jugador, compañeros si aplican, todos los enemigos) tiran iniciativa cada ronda.
-  2. En ese orden, quien TODAVÍA no sea objetivo de nadie elige a quién atacar.
-  3. En cuanto alguien es elegido como objetivo, su propia elección (si ya la había hecho) se
-     cancela — cuando le toque actuar, su turno pasa a ser defenderse de quien lo eligió, un duelo
-     real entre los dos. Dentro de esa pareja, quien tenga más iniciativa golpea primero — da igual
-     quién "eligió" a quién (un enemigo con menos iniciativa puede enganchar a alguien con más, que
-     aun así golpea primero dentro de ese duelo).
-  4. Quien NO acaba en un duelo mutuo — porque a nadie le tocó elegirlo y él tampoco pudo enganchar
-     a nadie (su objetivo ya estaba ocupado en otro duelo), o porque es el que sobra en un grupo
-     impar — mete un golpe gratis, sin oposición real, contra quien quiera. Misma regla exacta que
-     "el otro enemigo tiene ataque gratis porque no es mi objetivo": no es un caso aparte, es la
-     consecuencia general de no estar en un duelo. `AGUANTE`+`MULTIPLE` es la única forma de
-     defenderse de verdad de un golpe gratis de este tipo.
-  Sin cerrar del todo, decidir cuando toque implementarlo (no bloquean el diseño de arriba): si se
-  puede enganchar a alguien que YA resolvió su turno esa misma ronda, o si los compañeros siguen
-  esta misma lógica de elección automática o esperan a su propia postura de combate (aparcada
-  aparte). Cierra el mismo hueco que ya tenía anotado el roadmap ("Combate múltiple — huecos: XP de
-  tirada, objetivo individual").
+  **Objetivo individual real — CERRADO Y APLICADO 2026-08-26**, diseño + algoritmo + enganche al
+  motor en vivo, de punta a punta. Petición explícita jugando contra 2 cuervos: "no puedo elegir
+  objetivo... cuando ataco debería ser yo vs mi objetivo y el otro enemigo tiene ataque gratis".
+  Detalle completo (con ejemplos jugados) en
+  [combate-multiple.md](rpgtarkor/combate-multiple.md) § 2 — resumen aquí:
 
-  **Algoritmo puro — cerrado e IMPLEMENTADO 2026-08-26** (`combateMultiple.ts §2b`,
-  `resolverEnganchesRonda`/`esDueloMutuo`/`golpeaPrimeroEnDuelo`, 23 tests nuevos en
-  `combateMultiple.test.ts`, incluidos los 2 casos reales de arriba palabra por palabra: 2 cuervos
-  y el X/Y/Z). Decisiones tomadas al implementar (los huecos de arriba, ya resueltos):
-  - **Compañeros**: siguen la misma IA automática que un NPC (`elegirObjetivo`) — su propia postura
-    de combate sigue aparcada, esto no la bloquea ni la anticipa.
-  - **"Enganchar a quien ya resolvió su turno esta ronda"**: SÍ se puede — el algoritmo procesa
-    `ordenIniciativa` una vez entera antes de resolver ningún dado (ver más abajo, es la pieza que
-    hace posible la cancelación X/Y/Z en primer lugar). Un combatiente que ya "eligió" puede perder
-    esa elección más tarde en la misma pasada si alguien lo reclama a él — se queda sin nadie
-    atacándole esta ronda (no recupera una segunda oportunidad), documentado con test dedicado.
-  - **Reclamo simultáneo del mismo objetivo**: primer reclamo gana (orden de `ordenIniciativa`),
-    el resto de pretendientes al MISMO objetivo se convierten en golpe gratis contra él — nunca se
-    "roba" un duelo ya formado, solo se cancela la elección de alguien que a su vez es reclamado.
+  **La regla** — sistema de "enganche" por ronda, no "ataca a quien elijas":
+  1. Todos (jugador, compañeros, enemigos) tiran iniciativa cada ronda.
+  2. En ese orden, quien TODAVÍA no sea objetivo de nadie elige a quién atacar; el primer reclamo
+     sobre un objetivo dado gana.
+  3. Ser elegido como objetivo cancela tu propia elección anterior (si la había) — pasas a defender
+     un duelo real contra quien te reclamó. Dentro de la pareja, golpea primero quien tenga más
+     iniciativa, sin importar quién eligió a quién. Esto puede encadenarse (si tu reclamante es
+     reclamado a su vez por alguien más, ambos os quedáis sin nadie esa ronda) — verificado con test
+     dedicado, no un caso especial.
+  4. Quien no acaba en duelo mutuo (nadie lo reclamó y su objetivo ya estaba ocupado, o sobra en un
+     grupo impar) mete un **golpe gratis**: impacto garantizado, sin tirada de defensa del objetivo
+     — `AGUANTE`+`MULTIPLE` es la única forma real de defenderse de uno de estos.
+  - Compañeros siguen la misma IA automática que un NPC — su propia postura de combate
+    (Agresivo/Defensivo/Capturador/Clemente) sigue aparcada, sin diseñar.
 
-  **Enganche a la orquestación en vivo (`combateMultipleOrquestacion.ts`) — cerrado e IMPLEMENTADO
-  2026-08-26**, tras confirmar explícitamente con la usuaria el cambio de flujo real que exigía
-  ("¿te encaja elegir objetivo al empezar la ronda, antes de ver actuar a nadie más?" → "sí,
-  adelante con el enganche completo").
+  **Implementación** — `resolverEnganchesRonda`/`esDueloMutuo`/`golpeaPrimeroEnDuelo`
+  (`combateMultiple.ts § 2b`) es el algoritmo puro; `combateMultipleOrquestacion.ts` lo engancha al
+  motor real vía `CombatEncounter.esperandoEleccionJugadora` (columna nueva, migración
+  `20260826200000_combate_multiple_espera_eleccion_jugadora`) — bloquea CUALQUIER intercambio de la
+  ronda (no solo el de la jugadora) hasta que `fijarEleccionRondaJugador` fija su objetivo, porque
+  la cancelación de la regla 3 puede "alcanzar hacia atrás" a alguien que ya habría actuado.
+  `calcularEnganchesRonda` sustituye a `retargetBando` por completo (que queda exportado sin
+  ningún caller real en producción). **Sin cambio de flujo visible para la jugadora**: su turno real
+  ya resolvía la ronda entera de una sentada dentro de la misma llamada HTTP, así que solo cambió
+  el ORDEN interno en que se calcula el reparto, confirmado explícitamente con ella antes de tocar
+  el código ("¿te encaja elegir objetivo al empezar la ronda?" → "sí, adelante").
 
-  **Hallazgo real que obligó a un diseño más grande de lo previsto**: el algoritmo necesita
-  conocer las elecciones de TODA la ronda antes de resolver el primer dado — la cancelación X/Y/Z
-  puede alcanzar a CUALQUIER pareja, no solo a la jugadora, así que ningún intercambio de la ronda
-  (ni el suyo, ni el de ningún NPC/compañero) puede resolverse en firme hasta que todas las
-  elecciones de esa ronda estén decididas. En la práctica esto NO exigió romper el flujo de un
-  turno HTTP en dos peticiones — cada turno real de la jugadora ya resuelve TODA la ronda
-  autónoma de una sentada (antes y después de su acción) dentro de la MISMA llamada, así que la
-  narración sigue llegando de una vez, sin ningún paso nuevo visible para ella; lo único que
-  cambió fue EN QUÉ ORDEN, dentro de esa misma llamada, se calcula el reparto (su objetivo se fija
-  antes de narrar nada de la ronda, no a mitad como antes).
-  - **`CombatEncounter.esperandoEleccionJugadora`** (columna nueva, migración
-    `20260826200000_combate_multiple_espera_eleccion_jugadora`) — true mientras la ronda actual no
-    tiene el objetivo de la jugadora fijado; bloquea `resolverTurnoAutonomo`/`resolverTurnoJugador`
-    por completo (ni su turno ni el de nadie más de esa ronda se resuelve) hasta que se llame a
-    `fijarEleccionRondaJugador` (nombre citado entre comillas, mismo criterio de siempre; sin cita
-    real, cae al primer enemigo vivo).
-  - **`calcularEnganchesRonda`** — corre `resolverEnganchesRonda` con datos reales (condición/
-    inteligencia vivos) al crear el encuentro y al empezar cada ronda nueva (`avanzarYComprobarFin`
-    ya NO re-empareja turno a turno, solo al cruzar de ronda) — sustituye `retargetBando` por
-    completo, que queda sin usar.
-  - **Golpe gratis real** (`ejecutarGolpeGratisYAvanzar`) — impacto garantizado sin tirada de
-    defensa, salvo `AGUANTE`+`MULTIPLE` disponible (construido y listo, pero sin ninguna habilidad
-    real con ese efecto combinado sembrada todavía — Fase 1 ya lo señalaba, esta rama queda sin
-    poder probarse en partida real hasta entonces).
-  - **Bug real cazado en integración contra Postgres real, no solo en el diseño**: `avanzarSinAtacar`
-    (la mitad "ya resuelta por su pareja" de cada duelo, o un objetivo que muere a media ronda) solo
-    avanzaba `turnoActual` sin pasar por `avanzarYComprobarFin` — con el enganche por ronda esto se
-    dispara MUY a menudo (mitad de cada duelo), así que el combate podía quedarse con el reparto de
-    una ronda vieja para siempre, o nunca comprobar que ya había terminado. Corregido: reutiliza el
-    mismo camino que un intercambio real.
-  - **Cadena de cancelaciones, más allá del ejemplo de un solo nivel** (cazado depurando el propio
-    test de integración): si A reclama a B, C reclama a A (cancela A→B), y D reclama a C (cancela
-    C→A) — tanto A como B se quedan sin nadie atacándoles esta ronda, solo C↔D llega a duelo real.
-    Consecuencia directa de aplicar la regla 4 con generalidad, no un caso especial — documentado en
-    `combateMultiple.ts` con test dedicado.
-  - **Tests**: 24 unitarios (`combateMultiple.test.ts`, incluida la cadena de arriba), 3
-    de integración contra Postgres real (`combateMultipleOrquestacion.integration.test.ts` — 2v2
-    autónomo, 1v1 con la jugadora en persona, y el cableado completo de
-    `esperandoEleccionJugadora`/`fijarEleccionRondaJugador`), toda la suite de integración (122
-    tests, 9 archivos) repetida 3 veces sin fallos ni partidas huérfanas nuevas, `tsc -b` limpio en
-    backend y frontend (el frontend no necesitó ningún cambio — sigue mandando texto libre igual
-    que siempre).
+  **Bug real cazado en integración** (no solo en el diseño): `avanzarSinAtacar` (la mitad "ya
+  resuelta por su pareja" de cada duelo) solo avanzaba `turnoActual` sin pasar por
+  `avanzarYComprobarFin` — con el enganche por ronda esto se dispara muy a menudo, así que el
+  combate podía quedarse con el reparto de una ronda vieja para siempre. Corregido: reutiliza el
+  mismo camino que un intercambio real.
+
+  **Verificación**: 24 tests unitarios (`combateMultiple.test.ts`) + 3 de integración contra
+  Postgres real (`combateMultipleOrquestacion.integration.test.ts`), suite de integración completa
+  (122 tests, 9 archivos) repetida 3 veces sin fallos ni partidas huérfanas nuevas, `tsc -b` limpio
+  en backend y frontend (el frontend no necesitó ningún cambio).
 - [ ] **Fase 4 — esperan que la usuaria rellene cifras a su ritmo**, quedan `⚠️ bloqueada` en
   `clases.md` mientras tanto (no frena el resto): `RETIRAR` (ninguna de sus 2 filas tiene cifra) y
   las filas sueltas de `AUMENTO`/`DEBILIDAD`/`CURAZION` sin número (sobre todo Segador/Asesino).
