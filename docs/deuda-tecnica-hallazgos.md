@@ -167,7 +167,8 @@ claim de `esSlotDomador`, gates de capacidad de compañeros, guards 400/404/409 
 ninguna cobertura, a diferencia de `cazar.ts`/`recolectar.ts` (complejidad comparable, sí cubiertos).
 Es el módulo más nuevo (2026-08-25) y el que menos red de seguridad tiene.
 
-**Estado**: PENDIENTE.
+**Estado**: FIJADO (commit `ca71d4f`, 2026-08-25) — 3 describe nuevos en
+`companeros.integration.test.ts`, camino feliz real de los 11 endpoints (12 tests contra Postgres).
 
 ## 2026-08-25 — Menores agrupados — routes/
 

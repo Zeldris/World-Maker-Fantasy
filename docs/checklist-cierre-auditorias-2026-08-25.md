@@ -29,7 +29,7 @@ Y en su hallazgo de origen al cerrarse (FIJADO), con commit propio y verificaci�
 - [x] 12. `ENERGY_RECOVER_*`: conectar a `classAbilities.ts` o borrar — commit `a7997b7` (borradas, los valores reales no siguen esa escala)
 - [x] 13. `inventario.ts`/`habilidades.ts`: reducir los `findUnique` de `Save` redundantes — commit `92d9763` (inventario.ts 3→1; habilidades.ts revisado, sin redundancia real que consolidar)
 - [x] 14. Tests: `advanceCompanionSurvival`/`advancePlayerSurvival`/`autoEquiparDesdeAlmacen` — commit `0a9d970`
-- [ ] 15. Tests de ruta para `companeros.ts` (11 endpoints, hoy sin ninguno)
+- [x] 15. Tests de ruta para `companeros.ts` (11 endpoints, hoy sin ninguno) — commit `ca71d4f`
 
 ## Bloque 4 — deuda técnica frontend
 
