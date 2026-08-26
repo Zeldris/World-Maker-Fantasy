@@ -749,14 +749,9 @@ export interface ZonaResponse {
   disponible: boolean
   locationSlug?: string
   locationName?: string
+  /// Mapa pintado a mano de fondo (entityType 'zona'/sizeProfile 'mapa') — el botón que lo genera
+  /// vive en Enciclopedia > Localización (DetailModal.tsx), no aquí; este panel solo lo muestra.
   imageUrl?: string | null
-  /// Banner/miniatura propios de Zona (2026-08-26, petición explícita: "uno genera banner, otro
-  /// icono y otro una zona a modo de mapa dibujado... pintada y clara") — entityType 'zona',
-  /// separado del banner/miniatura fotorrealista que la misma ubicación ya tiene en la
-  /// Enciclopedia (entityType 'location'). `imageUrl` de arriba sigue siendo el mapa (sizeProfile
-  /// 'mapa').
-  imageUrls?: { thumbnail: string | null; banner: string | null }
-  imagePrompts?: { thumbnail: string | null; banner: string | null; mapa: string | null }
   puntos: ZonePointInfo[]
   dinamicos: ZonaDinamicoInfo[]
 }

@@ -302,24 +302,24 @@ resumen de trabajo real, agrupado por tamaño.
   componente que la Enciclopedia). Hallazgo real: el frontend tenía sus propios
   `ImagePromptEntityType`/`ImagePromptSizeProfile` duplicados en `api.ts` sin `'zona'`/`'mapa'` —
   corregido, causa real de por qué nunca aparecía nada.
-- [ ] **Seguimiento de imágenes de Zona (2026-08-26)** — dos cosas encontradas jugando en vivo con
-  el resultado ya generado:
-  1. **Corrección de sitio**: los 3 botones deben vivir SOLO en la ficha de Localización de la
-     Enciclopedia (banner/miniatura ya estaban ahí; falta añadir "Mapa" reutilizando
-     `entityType:'zona'`/`sizeProfile:'mapa'`, ya construido) — se retiran los 3 botones que se
-     añadieron hoy en `ZonaPanel.tsx`. El panel Zona sigue leyendo/mostrando la imagen 'mapa' de
-     fondo igual que ahora, solo sin botón propio ahí — genera lo que ya muestra, no duplica
-     generador.
-  2. **Calidad real del "mapa" generado**: la primera imagen de prueba (Hondonada del Eco) trae
-     texto incrustado en la propia imagen — título y leyenda ("Redsun Hollow", "Cave Mouth/Camp/
-     Fire Pit/Magnetic Sand Trail"), **en inglés**, pese a que el prompt YA pide explícitamente "no
-     text or labels" (`imagePromptGenerator.ts § ENTITY_TYPE_STYLE.zona`) — probablemente la
-     herramienta externa usada para generarla añade cartucho/leyenda por defecto sea cual sea el
-     prompt (habitual en generadores de "mapa de fantasía"). Un texto/leyenda incrustado además
-     **compite de verdad con los pines reales** que la app ya pinta encima (`ZonePoint`) — nunca
-     van a coincidir. Reforzar el prompt (prohibición más explícita/insistente de cualquier
-     texto/título/leyenda/cartucho/brújula/escala) y probar de nuevo antes de dar la Fase 1 de
-     imágenes por buena de verdad.
+- [x] ~~**Corrección de sitio: botones de imagen de Zona solo en Enciclopedia**~~ — cerrado
+  2026-08-26, APLICADO al motor. Los 3 botones (`ImagePromptSlot`) se retiraron de `ZonaPanel.tsx`
+  (que sigue leyendo/mostrando la imagen 'mapa' de fondo igual que antes, solo sin botón propio) y
+  "Mapa" se añadió a la ficha de Localización de la Enciclopedia (`DetailModal.tsx`, junto a
+  banner/miniatura que ya estaban ahí), reutilizando `entityType:'zona'`/`sizeProfile:'mapa'` — un
+  solo generador, no dos. `GET /saves/:id/zona` (zona.ts) recortado de vuelta: ya no devuelve
+  `imageUrls`/`imagePrompts` (nadie los consume ya), solo el `imageUrl` del mapa que sí se pinta de
+  fondo. `tsc -b` limpio en ambos lados, 2807 tests backend + 92 frontend en verde.
+- [ ] **Calidad real de imágenes de Zona (2026-08-26)** — la primera imagen de prueba (Hondonada
+  del Eco) trae texto incrustado en la propia imagen — título y leyenda ("Redsun Hollow", "Cave
+  Mouth/Camp/Fire Pit/Magnetic Sand Trail"), **en inglés**, pese a que el prompt YA pide
+  explícitamente "no text or labels" (`imagePromptGenerator.ts § ENTITY_TYPE_STYLE.zona`) —
+  probablemente la herramienta externa usada para generarla añade cartucho/leyenda por defecto sea
+  cual sea el prompt (habitual en generadores de "mapa de fantasía"). Un texto/leyenda incrustado
+  además **compite de verdad con los pines reales** que la app ya pinta encima (`ZonePoint`) —
+  nunca van a coincidir. Reforzar el prompt (prohibición más explícita/insistente de cualquier
+  texto/título/leyenda/cartucho/brújula/escala) y probar de nuevo antes de dar la Fase 1 de
+  imágenes por buena de verdad.
   **Pendiente de hablar con calma, sin tocar nada todavía**: qué imagen sirve para qué en cada tipo
   de entidad (NPC/ítem/ubicación/zona/facción/...) — hoy "banner" y "miniatura" significan cosas
   algo distintas según dónde se usen (tarjeta de Enciclopedia vs ficha de detalle vs fondo de un

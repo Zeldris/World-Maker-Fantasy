@@ -534,6 +534,23 @@ export function DetailModal({ target, onClose, onUnequip, onEquip, onSaveAbility
                       entitySlug={effective.entitySlug}
                       sizeProfile="banner"
                     />
+                    {/* "Mapa" (2026-08-26, corrección de sitio: vivía en ZonaPanel.tsx, se retiró
+                        de ahí) — SOLO en Localización, petición explícita: "Los 3 botones SOLO en
+                        Enciclopedia > Localización". Reutiliza `entityType:'zona'` (no
+                        `target.entityType`, que aquí es 'location') con el mismo `entitySlug` —
+                        mismo estilo cartográfico pintado a mano que ya usa ZonaPanel.tsx para
+                        pintar el fondo de esa vista, un solo generador, no dos. */}
+                    {target.entityType === 'location' && (
+                      <ImagePromptSlot
+                        key={`zona-${effective.entitySlug}-mapa`}
+                        label="Mapa (fondo de la vista Zona)"
+                        existingPrompt={null}
+                        worldSlug={worldSlug}
+                        entityType="zona"
+                        entitySlug={effective.entitySlug}
+                        sizeProfile="mapa"
+                      />
+                    )}
                   </div>
                 )}
                 {onInsert && (

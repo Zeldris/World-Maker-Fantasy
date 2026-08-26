@@ -1,13 +1,9 @@
 import { useEffect, useState } from 'react'
 import { getZona, resolveImageUrl, type ZonaResponse, type ZonePointInfo } from '../../lib/api'
 import { PanelEmptyState } from '../PanelEmptyState'
-import { ImagePromptSlot } from '../ImagePromptDisplay'
 
 interface ZonaPanelProps {
   saveId: string
-  /// Para `ImagePromptSlot` (2026-08-26) — mismo prop que ya recibe MapaPanel.tsx, `null` mientras
-  /// GameView.tsx todavía no ha resuelto el slug del mundo actual.
-  worldSlug: string | null
 }
 
 /// Grupo 3 § Mundo determinista, Capa 1 (2026-08-25, docs/rpgtarkor/mundo-determinista.md) —
@@ -28,7 +24,7 @@ const TIPO_LABEL: Record<ZonePointInfo['tipo'], string> = {
   NPC: 'NPC',
 }
 
-export function ZonaPanel({ saveId, worldSlug }: ZonaPanelProps) {
+export function ZonaPanel({ saveId }: ZonaPanelProps) {
   const [loading, setLoading] = useState(true)
   const [data, setData] = useState<ZonaResponse | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -59,44 +55,6 @@ export function ZonaPanel({ saveId, worldSlug }: ZonaPanelProps) {
   return (
     <div className="flex flex-col gap-3">
       <p className="text-sm font-medium text-wood-100">{data.locationName}</p>
-      {/* Imágenes propias de Zona (2026-08-26, petición explícita: "uno genera banner, otro icono
-          y otro una zona a modo de mapa dibujado... pintada y clara") — estilo cartografía pintada
-          a mano, distinto del banner/miniatura fotorrealista que esta misma ubicación ya tiene en
-          la Enciclopedia (entityType 'location'). Mismo componente/patrón que DetailModal.tsx. */}
-      {worldSlug && data.locationSlug && (
-        <div className="flex flex-col gap-2">
-          {data.imageUrls?.thumbnail && <p className="text-2xs italic text-wood-500">Miniatura real cargada ✓</p>}
-          <ImagePromptSlot
-            key={`zona-${data.locationSlug}-thumbnail`}
-            label="Miniatura (icono)"
-            existingPrompt={data.imagePrompts?.thumbnail ?? null}
-            worldSlug={worldSlug}
-            entityType="zona"
-            entitySlug={data.locationSlug}
-            sizeProfile="thumbnail"
-          />
-          {data.imageUrls?.banner && <p className="text-2xs italic text-wood-500">Banner real cargado ✓</p>}
-          <ImagePromptSlot
-            key={`zona-${data.locationSlug}-banner`}
-            label="Banner (detalle)"
-            existingPrompt={data.imagePrompts?.banner ?? null}
-            worldSlug={worldSlug}
-            entityType="zona"
-            entitySlug={data.locationSlug}
-            sizeProfile="banner"
-          />
-          {imageUrl && <p className="text-2xs italic text-wood-500">Mapa real cargado ✓</p>}
-          <ImagePromptSlot
-            key={`zona-${data.locationSlug}-mapa`}
-            label="Mapa (fondo de esta vista)"
-            existingPrompt={data.imagePrompts?.mapa ?? null}
-            worldSlug={worldSlug}
-            entityType="zona"
-            entitySlug={data.locationSlug}
-            sizeProfile="mapa"
-          />
-        </div>
-      )}
       {/* Solo hay mapa/pines de verdad si hay algún ZonePoint fijo — una zona con SOLO NPCs
           dinámicos (sin catálogo de puntos sembrado, "generalizar más allá de Hondonada" sin
           hacer todavía) no tiene posiciones reales que dibujar, ver comentario de
