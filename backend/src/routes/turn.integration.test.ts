@@ -3731,6 +3731,22 @@ describe('el "perseguidor" de Gistera Koh se detecta en escena sin nombrarlo, mi
     await prisma.save.delete({ where: { id: saveId } });
   });
 
+  // Limpieza real de partidas huérfanas (2026-08-26, hallazgo jugando: ~95 "Gorhorn de prueba"
+  // acumuladas en la partida REAL de la usuaria — este entorno comparte Postgres con su partida en
+  // vivo, arquitectura local-first). Causa raíz: los 2 tests de abajo creaban su propia Save extra
+  // y la borraban con una línea SUELTA al final del cuerpo del test — si cualquier `expect` de
+  // arriba fallaba (`revisar-partida-hallazgos.md` documenta que este archivo lleva semanas
+  // fallando de forma intermitente contra Postgres real), esa línea de borrado nunca se ejecutaba,
+  // dejando la fila huérfana para siempre. `afterEach` SÍ se ejecuta aunque el test falle — mismo
+  // criterio que ya usa `afterAll` de arriba para la Save compartida del describe.
+  let extraSaveId: string | null = null;
+  afterEach(async () => {
+    if (extraSaveId) {
+      await prisma.save.delete({ where: { id: extraSaveId } });
+      extraSaveId = null;
+    }
+  });
+
   it('buscar al "perseguidor" (sin nombrarlo) lo detecta en escena y abre combate, igual que si se nombrara "Orco enfurecido"', async () => {
     narrateAction.mockResolvedValueOnce({
       narration: 'Gorhorn inspecciona atentamente la hondonada, escrutando cada sombra y sonido.',
@@ -3776,6 +3792,7 @@ describe('el "perseguidor" de Gistera Koh se detecta en escena sin nombrarlo, mi
         currentLocationId: (await prisma.location.findFirstOrThrow({ where: { slug: 'hondonada-del-eco' } })).id,
       },
     });
+    extraSaveId = save2.id;
     await prisma.worldState.create({ data: { saveId: save2.id } });
     await prisma.quest.create({
       data: { saveId: save2.id, title: 'Acabar con el Orco Enfurecido', description: 'x', status: 'ACTIVA' },
@@ -3797,7 +3814,6 @@ describe('el "perseguidor" de Gistera Koh se detecta en escena sin nombrarlo, mi
     expect(lastNdjsonLine(narrateRes.payload).combateIniciado).toBeNull();
     const save2After = await prisma.save.findUniqueOrThrow({ where: { id: save2.id } });
     expect(save2After.pendingCombatNpcSlugs).toEqual([]);
-    await prisma.save.delete({ where: { id: save2.id } });
   }, 20_000);
 
   it('bug propio encontrado minutos después del fix anterior (2026-08-20): "persigue" (verbo en presente, raíz "persig-") también se detecta, no solo "perseguidor" (sustantivo, raíz "persegu-")', async () => {
@@ -3814,6 +3830,7 @@ describe('el "perseguidor" de Gistera Koh se detecta en escena sin nombrarlo, mi
         currentLocationId: (await prisma.location.findFirstOrThrow({ where: { slug: 'hondonada-del-eco' } })).id,
       },
     });
+    extraSaveId = save3.id;
     await prisma.worldState.create({ data: { saveId: save3.id } });
     await prisma.quest.create({
       data: { saveId: save3.id, title: 'Acabar con el Orco Enfurecido', description: 'x', status: 'ACTIVA' },
@@ -3834,7 +3851,6 @@ describe('el "perseguidor" de Gistera Koh se detecta en escena sin nombrarlo, mi
 
     const { combateIniciado } = lastNdjsonLine(narrateRes.payload) as { combateIniciado: { npcs: { slug: string }[] } | null };
     expect(combateIniciado?.npcs.map((n) => n.slug)).toEqual(['orco-enfurecido-hondonada']);
-    await prisma.save.delete({ where: { id: save3.id } });
   }, 20_000);
 });
 

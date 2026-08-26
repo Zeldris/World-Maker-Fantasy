@@ -460,10 +460,18 @@ resumen de trabajo real, agrupado por tamaño.
   el modo en solitario esté maduro, ni siquiera diseñado todavía.
 - **Benchmark de latencia real** (`06-decisiones-mecanicas.md` punto 5) — medición de rendimiento
   pendiente, no una feature.
-- **Hallazgo real 2026-08-26, sin investigar a fondo**: `turn.integration.test.ts` (26/91) y
-  `recolectar.integration.test.ts` (2/2, el describe de cooldown) fallan contra Postgres real,
-  reproducible incluso en el ÚLTIMO COMMIT antes de esta sesión (confirmado con `git stash` +
-  reejecutar) — no es una regresión de nada tocado hoy. No investigado más a fondo (fuera de
-  alcance de esta pasada); posible degradación del contenedor tras una sesión muy larga, o datos
-  reales de partida que ya no encajan con lo que esos tests asumen. El resto de archivos de
-  integración (companeros, session, zona, combate múltiple, creación) siguen en verde.
+- **Hallazgo real 2026-08-26, causa confirmada**: los 26/91 fallos de `turn.integration.test.ts`
+  contra Postgres real eran puro Ollama caído (`ECONNREFUSED 127.0.0.1:11434` desde
+  `embeddings.ts` — `retrieveLore` llama a Ollama de verdad en cualquier turno con `enCombate:
+  false`, aunque `narrateAction`/`classifyAction` estén mockeados). Con Ollama arriba, el archivo
+  completo pasa 91/91 — confirmado reejecutando tras levantarlo.
+- **Partidas de prueba huérfanas contaminando la partida real de la usuaria — cerrado 2026-08-26**:
+  96 de las 97 filas de `Save` en Postgres eran restos de tests ("Gorhorn de prueba (...)"),
+  visibles en su propia lista real de partidas — arquitectura local-first, un solo Postgres
+  compartido entre tests y partida en vivo. Causa raíz: 2 tests de `turn.integration.test.ts`
+  (describe "perseguidor de Gistera Koh") creaban su propia Save extra y la borraban con una línea
+  SUELTA al final del cuerpo del test — si cualquier `expect` anterior fallaba (y con Ollama caído
+  fallaban a menudo, ver punto de arriba), esa línea nunca se ejecutaba, dejando la fila huérfana
+  para siempre; acumulado desde 2026-08-11. Arreglado: cleanup movido a `afterEach` (sí se ejecuta
+  aunque el test falle). Verificado corriendo el archivo completo dos veces contra Postgres real
+  tras el fix — 91/91, cero filas nuevas huérfanas en ambos casos. Las 96 filas viejas, borradas.
