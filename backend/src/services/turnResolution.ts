@@ -1216,6 +1216,19 @@ function resolveCombatExchangePhase(input: CombatExchangePhaseInput): CombatExch
     }
   }
 
+  // Bug real jugando en vivo (revisión de partida, 2026-08-23/26, "Ruptidar 'ataca' en combate pese
+  // a ser INOFENSIVO/'No ataca'"): `ataqueNatural: 'No ataca.'` es una declaración explícita del
+  // catálogo (`ruptidar`/`jusha-esmeralda`/`quio`, los 3 únicos INOFENSIVO sin ataque real), pero
+  // nada de las 6 ramas de arriba la comprobaba — `chooseNpcAbility` siempre puede "elegir" ALGUNA
+  // habilidad como su ataque (cae al roster entero si no hay ninguna 'ataque' afrontable, ver su
+  // propio comentario), así que el NPC seguía pudiendo conectar un golpe real contra la jugadora.
+  // Único punto de verdad al final de la función, cubre las 6 ramas a la vez (incluida la
+  // resolución de un `pendingNpcAttack` sembrado en un turno anterior contra este mismo NPC).
+  if (npcParaIntercambio && /^no ataca\b/i.test(npcParaIntercambio.ataqueNatural ?? '')) {
+    jugadorRecibeGolpe = false;
+    jugadorGolpeEfectos = [];
+  }
+
   return {
     npcAttackTarget,
     npcAttackHits,

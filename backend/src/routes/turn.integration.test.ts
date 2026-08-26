@@ -2360,6 +2360,100 @@ describe('Remato a X: no debe dañar de refilón a otro NPC presente en la misma
   }, 20_000);
 });
 
+// Bug real jugando en vivo (revisión de partida, 2026-08-23/26, "Ruptidar 'ataca' en combate pese a
+// ser INOFENSIVO/'No ataca'"): un NPC con `ataqueNatural: 'No ataca.'` seguía pudiendo conectar un
+// golpe real contra la jugadora — nada comprobaba esa declaración explícita del catálogo antes de
+// aplicar el resultado del intercambio.
+describe('Un NPC INOFENSIVO ("No ataca.") nunca golpea de verdad, aunque tenga un ataque pendiente sembrado', () => {
+  let saveId: string;
+  let ruptidarId: string;
+  let analizarRivalId: string;
+
+  beforeAll(async () => {
+    // Dados al máximo — sin el guard, esto garantiza que el golpe pendiente del NPC conecta (ver
+    // el mismo criterio ya probado en el bloque "habilidades de utilidad reactivas": una habilidad
+    // de respuesta con `rol: 'utilidad'` entra en `resolveIndependentExchange` — el ataque del NPC
+    // se evalúa contra SU PROPIA dificultad, sin contraste de estadísticas con la jugadora, así que
+    // ni siquiera un Ruptidar mecánicamente débil se libra del golpe por pura diferencia de stats.
+    vi.spyOn(Math, 'random').mockReturnValue(0.99);
+    const userId = await getDefaultUserId();
+    const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
+    const ruptidar = await prisma.npc.findFirstOrThrow({ where: { worldId: world.id, slug: 'ruptidar' } });
+    ruptidarId = ruptidar.id;
+    expect(ruptidar.ataqueNatural).toMatch(/^No ataca/);
+    const hondonada = await prisma.location.findFirstOrThrow({ where: { worldId: world.id, slug: 'hondonada-del-eco' } });
+    const save = await prisma.save.create({
+      data: {
+        userId,
+        worldId: world.id,
+        characterName: 'Gorhorn de prueba 13',
+        characterArchetype: 'guerrero',
+        characterOrigin: 'Clan Maktor',
+        characterMotivation: 'x',
+        attributes: ATTRS,
+        portraitInitial: 'G',
+        currentLocationId: hondonada.id,
+      },
+    });
+    saveId = save.id;
+    await prisma.worldState.create({ data: { saveId } });
+    analizarRivalId = (
+      await prisma.savedAction.create({
+        data: {
+          saveId,
+          name: 'Analizar rival',
+          promptText: 'Estudio a mi enemigo un instante, leyendo su punto débil.',
+          category: 'combate',
+          effects: ['ANALISIS'],
+          rol: 'utilidad',
+          preferredAttribute: 'inteligencia',
+        },
+      })
+    ).id;
+    await prisma.npcState.create({ data: { saveId, npcId: ruptidarId, scope: hondonada.id, condicionFisica: 'ILESO' } });
+    // Simula que ALGÚN camino (emboscada, turno anterior) ya le sembró un ataque pendiente real a
+    // Ruptidar — el guard debe protegerte igual, sin depender de que nada más lo evite antes.
+    await prisma.save.update({
+      where: { id: saveId },
+      data: {
+        pendingCombatNpcSlugs: ['ruptidar'],
+        pendingNpcAttack: {
+          npcId: ruptidarId,
+          attribute: 'destreza',
+          effects: [],
+          rol: 'ataque',
+          abilityName: 'Ataque base',
+          abilityDescription: ruptidar.ataqueNatural,
+          energyCost: 5,
+          energyRegen: 0,
+        },
+      },
+    });
+  });
+
+  afterAll(async () => {
+    vi.restoreAllMocks();
+    await prisma.save.delete({ where: { id: saveId } });
+  });
+
+  it('el golpe pendiente de Ruptidar nunca conecta, aunque la tirada esté pinchada al máximo y se entre por la rama independiente', async () => {
+    const app = await buildApp();
+    const action = "Estudio a mi enemigo un instante, leyendo su punto débil 'Ruptidar'.";
+    const classifyRes = await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action, enCombate: true, savedActionId: analizarRivalId } });
+    expect(classifyRes.statusCode).toBe(200);
+    const { classification, roll } = classifyRes.json();
+    const narrateRes = await app.inject({
+      method: 'POST',
+      url: '/turn/narrate',
+      payload: { saveId, action, classification, roll, enCombate: true, savedActionId: analizarRivalId },
+    });
+    expect(narrateRes.statusCode).toBe(200);
+
+    const save = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
+    expect(save.condicionFisica).toBe('ILESO');
+  }, 20_000);
+});
+
 // Recompensa determinista de misión (docs/19-post-combate-y-recompensas-mision.md, pieza 3) —
 // antes Quest.rewardItems era solo texto para el panel, nunca creaba el InventoryItem de verdad.
 describe('Decapitar cierra una misión "derrotar a X" con rewardItems y entrega el objeto de verdad', () => {
