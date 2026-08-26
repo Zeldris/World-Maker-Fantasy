@@ -228,13 +228,12 @@ resumen de trabajo real, agrupado por tamaño.
   haya un caso concreto, baja prioridad.
 - [ ] **Miel Lebude / futura profesión de cocina por raza-región** (`flora-fauna.md`) — idea suelta,
   apenas especificada, prioridad muy baja.
-- [ ] **Botones "Aceptar"/"Cancelar" cuando un NPC ofrece una misión** — idea suelta (2026-08-25):
-  en vez de depender de que la jugadora escriba texto libre para aceptar, que aparezcan los dos
-  botones al final de la narración donde el NPC ofrece la misión; "Aceptar" genera una narración
-  determinista de aceptación (sin esperar a que el LLM decida si acepta o no). El log donde
-  aparece el botón "Aceptar" debe pintarse de fondo amarillo, igual que ya se pinta el resto de
-  entradas de misión. Mismo espíritu que el resto de "mundo determinista" — la narración deja de
-  decidir si se acepta, solo lo describe una vez ya decidido por la jugadora.
+- [x] ~~**Botones "Aceptar"/"Cancelar" cuando un NPC ofrece una misión**~~ — cerrado 2026-08-26,
+  APLICADO al motor (commit `f5ccb8b`). `narration.newQuest` genérico ya no crea la `Quest` en el
+  propio turno — solo la ofrece (`newQuestOfferInfo`); nuevo `POST /saves/:id/quests/aceptar`
+  materializa de verdad, determinista, con anclaje resuelto contra todo el mundo (no contra
+  `npcsInScene` del turno original). "Cancelar" solo limpia la tarjeta, sin backend. La misión
+  determinista de Gistera Koh/Orco Enfurecido sigue exactamente igual, sin tocar.
 - [ ] **NPCs que aparecen en escena por narración no se marcan en la pestaña "Zona"** — bug/hueco
   real señalado jugando (2026-08-25): cuando un NPC se presenta en la escena de forma determinista
   (p. ej. Gistera Koh como perseguidora, o un NPC de interrupción de la Capa 2/3 de
