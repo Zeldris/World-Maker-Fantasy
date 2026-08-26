@@ -736,12 +736,22 @@ export interface ZonePointInfo {
   targetSlug: string
   nombre: string
 }
+/// NPCs presentados de forma determinista (2026-08-26, "no aparecen en la zona y sí tienen que
+/// salir") — a diferencia de `ZonePointInfo` (catálogo fijo, con posición real curada), estos
+/// vienen de lo que la propia partida va estableciendo (`detectNpcsInScene`), sin ninguna
+/// posición en el mapa — el panel los lista aparte, nunca como pin.
+export interface ZonaDinamicoInfo {
+  slug: string
+  nombre: string
+  tipo: 'NPC' | 'FAUNA'
+}
 export interface ZonaResponse {
   disponible: boolean
   locationSlug?: string
   locationName?: string
   imageUrl?: string | null
   puntos: ZonePointInfo[]
+  dinamicos: ZonaDinamicoInfo[]
 }
 export async function getZona(saveId: string): Promise<ZonaResponse> {
   return fetchJson(`${API_URL}/saves/${saveId}/zona`)

@@ -50,34 +50,57 @@ export function ZonaPanel({ saveId }: ZonaPanelProps) {
   }
 
   const imageUrl = resolveImageUrl(data.imageUrl ?? null)
+  const dinamicos = data.dinamicos ?? []
 
   return (
     <div className="flex flex-col gap-3">
       <p className="text-sm font-medium text-wood-100">{data.locationName}</p>
-      <div className="overflow-hidden rounded-lg border border-iron-700 bg-wood-950/60">
-        <svg viewBox="0 0 800 600" className="h-auto w-full">
-          {imageUrl ? (
-            <image href={imageUrl} x={0} y={0} width={800} height={600} preserveAspectRatio="xMidYMid slice" />
-          ) : (
-            <rect x={0} y={0} width={800} height={600} fill="#1a1410" />
-          )}
-          {data.puntos.map((p) => (
-            <g key={p.id}>
-              <circle cx={p.x} cy={p.y} r={8} fill={TIPO_COLOR[p.tipo]} stroke="white" strokeWidth={1.5} />
-              <title>{`${p.nombre} (${TIPO_LABEL[p.tipo]})`}</title>
-            </g>
-          ))}
-        </svg>
-      </div>
-      <div className="flex flex-col gap-1.5">
-        {data.puntos.map((p) => (
-          <div key={p.id} className="flex items-center gap-2 rounded-lg border border-iron-700 bg-wood-950/40 px-3 py-1.5 text-xs">
-            <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: TIPO_COLOR[p.tipo] }} />
-            <span className="text-wood-100">{p.nombre}</span>
-            <span className="ml-auto text-2xs uppercase tracking-wide text-wood-500">{TIPO_LABEL[p.tipo]}</span>
+      {/* Solo hay mapa/pines de verdad si hay algún ZonePoint fijo — una zona con SOLO NPCs
+          dinámicos (sin catálogo de puntos sembrado, "generalizar más allá de Hondonada" sin
+          hacer todavía) no tiene posiciones reales que dibujar, ver comentario de
+          `ZonaDinamicoInfo`. */}
+      {data.puntos.length > 0 && (
+        <>
+          <div className="overflow-hidden rounded-lg border border-iron-700 bg-wood-950/60">
+            <svg viewBox="0 0 800 600" className="h-auto w-full">
+              {imageUrl ? (
+                <image href={imageUrl} x={0} y={0} width={800} height={600} preserveAspectRatio="xMidYMid slice" />
+              ) : (
+                <rect x={0} y={0} width={800} height={600} fill="#1a1410" />
+              )}
+              {data.puntos.map((p) => (
+                <g key={p.id}>
+                  <circle cx={p.x} cy={p.y} r={8} fill={TIPO_COLOR[p.tipo]} stroke="white" strokeWidth={1.5} />
+                  <title>{`${p.nombre} (${TIPO_LABEL[p.tipo]})`}</title>
+                </g>
+              ))}
+            </svg>
           </div>
-        ))}
-      </div>
+          <div className="flex flex-col gap-1.5">
+            {data.puntos.map((p) => (
+              <div key={p.id} className="flex items-center gap-2 rounded-lg border border-iron-700 bg-wood-950/40 px-3 py-1.5 text-xs">
+                <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: TIPO_COLOR[p.tipo] }} />
+                <span className="text-wood-100">{p.nombre}</span>
+                <span className="ml-auto text-2xs uppercase tracking-wide text-wood-500">{TIPO_LABEL[p.tipo]}</span>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+      {/* NPCs presentados de forma determinista (2026-08-26) — sin posición real, así que nunca
+          como pin: una lista aparte, siempre visible aunque no haya mapa de puntos fijos. */}
+      {dinamicos.length > 0 && (
+        <div className="flex flex-col gap-1.5">
+          <p className="text-2xs font-semibold uppercase tracking-[0.1em] text-wood-500">Presentes ahora</p>
+          {dinamicos.map((d) => (
+            <div key={d.slug} className="flex items-center gap-2 rounded-lg border border-iron-700 bg-wood-950/40 px-3 py-1.5 text-xs">
+              <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: TIPO_COLOR[d.tipo] }} />
+              <span className="text-wood-100">{d.nombre}</span>
+              <span className="ml-auto text-2xs uppercase tracking-wide text-wood-500">{TIPO_LABEL[d.tipo]}</span>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }

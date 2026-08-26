@@ -14,6 +14,18 @@ vi.mock('../../lib/prisma.js', () => ({
   },
 }));
 
+// NPCs presentados de forma determinista (2026-08-26, "no aparecen en la zona y sí tienen que
+// salir") — mismo mecanismo que `npcsInScene` en cada turno, mockeado aparte (no es lo que este
+// archivo prueba, `detectNpcsInScene`/`loadSessionFacts` ya tienen su propia cobertura).
+const detectNpcsInSceneMock = vi.fn();
+const loadSessionFactsMock = vi.fn();
+vi.mock('../../services/npcScene.js', () => ({
+  detectNpcsInScene: (...args: unknown[]) => detectNpcsInSceneMock(...args),
+}));
+vi.mock('../../services/worldFacts.js', () => ({
+  loadSessionFacts: (...args: unknown[]) => loadSessionFactsMock(...args),
+}));
+
 const { zonaRoutes } = await import('./zona.js');
 
 async function buildApp() {
@@ -38,17 +50,39 @@ describe('GET /saves/:id/zona', () => {
     findUniqueSave.mockResolvedValueOnce({ id: 's1', worldId: 'w1', currentLocation: null });
     const app = await buildApp();
     const res = await app.inject({ method: 'GET', url: '/saves/s1/zona' });
-    expect(res.json()).toEqual({ disponible: false, puntos: [] });
+    expect(res.json()).toEqual({ disponible: false, puntos: [], dinamicos: [] });
   });
 
-  it('con Location pero sin ZonePoint sembrado todavía: no disponible', async () => {
+  it('con Location pero sin ZonePoint sembrado y sin NPC dinámico: no disponible', async () => {
     findUniqueSave.mockResolvedValueOnce({
       id: 's1', worldId: 'w1',
       currentLocation: { id: 'loc1', slug: 'restos-de-maktor', name: 'Los Restos de Maktor', zonePoints: [] },
     });
+    loadSessionFactsMock.mockResolvedValueOnce([]);
+    detectNpcsInSceneMock.mockResolvedValueOnce([]);
     const app = await buildApp();
     const res = await app.inject({ method: 'GET', url: '/saves/s1/zona' });
-    expect(res.json()).toEqual({ disponible: false, puntos: [] });
+    const body = res.json();
+    expect(body.disponible).toBe(false);
+    expect(body.puntos).toEqual([]);
+    expect(body.dinamicos).toEqual([]);
+  });
+
+  it('sin ZonePoint sembrado pero CON un NPC dinámico en escena: sí disponible, sin pines', async () => {
+    findUniqueSave.mockResolvedValueOnce({
+      id: 's1', worldId: 'w1',
+      currentLocation: { id: 'loc1', slug: 'restos-de-maktor', name: 'Los Restos de Maktor', zonePoints: [] },
+    });
+    loadSessionFactsMock.mockResolvedValueOnce(['Gistera Koh anda cerca, perseguida.']);
+    detectNpcsInSceneMock.mockResolvedValueOnce([
+      { slug: 'gistera-koh', name: 'Gistera Koh', kind: 'PRINCIPAL', condicionFisica: 'ILESO' },
+    ]);
+    const app = await buildApp();
+    const res = await app.inject({ method: 'GET', url: '/saves/s1/zona' });
+    const body = res.json();
+    expect(body.disponible).toBe(true);
+    expect(body.puntos).toEqual([]);
+    expect(body.dinamicos).toEqual([{ slug: 'gistera-koh', nombre: 'Gistera Koh', tipo: 'NPC' }]);
   });
 
   it('con ZonePoints reales: resuelve nombres de FAUNA/RECURSO y devuelve posiciones', async () => {
@@ -70,6 +104,8 @@ describe('GET /saves/:id/zona', () => {
       { slug: 'kirelon-arenoso', name: 'Kirelon Arenoso' },
       { slug: 'gesgurio', name: 'Gesgurio' },
     ]);
+    loadSessionFactsMock.mockResolvedValueOnce([]);
+    detectNpcsInSceneMock.mockResolvedValueOnce([]);
     const app = await buildApp();
     const res = await app.inject({ method: 'GET', url: '/saves/s1/zona' });
     const body = res.json();
@@ -81,5 +117,44 @@ describe('GET /saves/:id/zona', () => {
       { id: 'zp2', x: 400, y: 470, tipo: 'RECURSO', targetSlug: 'yerreo', nombre: expect.any(String) },
       { id: 'zp3', x: 100, y: 100, tipo: 'FAUNA', targetSlug: 'gesgurio', nombre: 'Etiqueta a mano' }, // label manda sobre el nombre real
     ]);
+    expect(body.dinamicos).toEqual([]);
+  });
+
+  it('un NPC dinámico ya cubierto por un ZonePoint fijo no se duplica en dinamicos', async () => {
+    findUniqueSave.mockResolvedValueOnce({
+      id: 's1',
+      worldId: 'w1',
+      currentLocation: {
+        id: 'loc1',
+        slug: 'hondonada-del-eco',
+        name: 'La Hondonada del Eco',
+        zonePoints: [{ id: 'zp1', x: 620, y: 180, tipo: 'FAUNA', targetSlug: 'kirelon-arenoso', label: null }],
+      },
+    });
+    findManyNpc.mockResolvedValueOnce([{ slug: 'kirelon-arenoso', name: 'Kirelon Arenoso' }]);
+    loadSessionFactsMock.mockResolvedValueOnce([]);
+    detectNpcsInSceneMock.mockResolvedValueOnce([
+      { slug: 'kirelon-arenoso', name: 'Kirelon Arenoso', kind: 'PLANTILLA', condicionFisica: 'ILESO' },
+      { slug: 'gistera-koh', name: 'Gistera Koh', kind: 'PRINCIPAL', condicionFisica: 'ILESO' },
+    ]);
+    const app = await buildApp();
+    const res = await app.inject({ method: 'GET', url: '/saves/s1/zona' });
+    const body = res.json();
+    expect(body.dinamicos).toEqual([{ slug: 'gistera-koh', nombre: 'Gistera Koh', tipo: 'NPC' }]);
+  });
+
+  it('un NPC dinámico MUERTO no aparece', async () => {
+    findUniqueSave.mockResolvedValueOnce({
+      id: 's1',
+      worldId: 'w1',
+      currentLocation: { id: 'loc1', slug: 'hondonada-del-eco', name: 'La Hondonada del Eco', zonePoints: [] },
+    });
+    loadSessionFactsMock.mockResolvedValueOnce([]);
+    detectNpcsInSceneMock.mockResolvedValueOnce([
+      { slug: 'orco-enfurecido-hondonada', name: 'Orco Enfurecido', kind: 'PLANTILLA', condicionFisica: 'MUERTO' },
+    ]);
+    const app = await buildApp();
+    const res = await app.inject({ method: 'GET', url: '/saves/s1/zona' });
+    expect(res.json().dinamicos).toEqual([]);
   });
 });
