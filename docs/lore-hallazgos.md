@@ -105,8 +105,10 @@ desactualizadas frente al código, sin relación con la tabla resumen de arriba:
 - **Opresor**: el `.md` dice "3 de 8 listas (12/24/32)"; el código real solo tiene 2/8 (12/24 — el
   nivel 32 "Runa de Sujeción", marcado ✅ en la tabla, no está en el código).
 
-**Estado**: PENDIENTE de actualizar el `.md` (el código manda, sin ambigüedad — decisión de la
-usuaria: documentar esta ronda, no tocar el `.md` todavía).
+**Estado**: FIJADO (commit `f1bf8bb`, 2026-08-25) — tabla-resumen corregida para Guerrero/Cazador;
+Rúnico/Convocador/Opresor con nota de corrección explícita (recuento real 2/8, 1/8, 2/8) y el error
+de datos real de la fila 36 de Rúnico (✅/⚠️ mezclados) arreglado. Cierra el checklist de las 3
+auditorías (22/22).
 
 ## 2026-08-25 — companeros-y-supervivencia.md sigue con el banner "nada implementado" pese a estar aplicado de punta a punta
 
