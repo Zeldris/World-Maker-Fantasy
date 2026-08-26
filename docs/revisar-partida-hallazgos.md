@@ -2307,7 +2307,7 @@ real de este turno, solo si hubo intercambio de verdad) y `otherNpcNamesInScene`
 presentes); el guard dispara si la prosa no nombra al objetivo real EN NINGÚN SITIO pero sí nombra a
 otro NPC de la escena — mencionar a ambos (ambientación legítima) no dispara nada.
 
-**Estado**: FIJADO (commit pendiente, 2026-08-26). Tests nuevos en `narrador.test.ts` (incluye el
+**Estado**: FIJADO (commit `6c3239c`, 2026-08-26). Tests nuevos en `narrador.test.ts` (incluye el
 caso real de Múrgol/Cruzavientos), suite completa (2787/2787) + `turn.integration.test.ts` (84/84)
 + resto de integración en verde.
 
