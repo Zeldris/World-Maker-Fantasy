@@ -3250,7 +3250,7 @@ potencialmente, a las ~30 habilidades del catálogo, no solo a "Ataque Básico".
 cualquier redacción de `promptText`, incluida la de habilidades defensivas ("me cubro tras mi
 escudo... contra 'X'" sigue leyéndose bien).
 
-**Estado**: FIJADO (frontend, 2026-08-26) — `useCombatFlow.test.tsx` nuevo test que fija el formato
+**Estado**: FIJADO (commit `d2aa600`, 2026-08-26) — `useCombatFlow.test.tsx` nuevo test que fija el formato
 `"..., contra 'Nombre'."`; 92/92 tests del frontend en verde.
 
 ### 3. Dos ejemplos nuevos de la familia ya conocida "errores gramaticales sueltos del modelo"
@@ -3279,7 +3279,7 @@ no tiene ninguna protección de idempotencia.
 **Fix aplicado**: `creatingSaveRef` (`useRef`, sobrevive al remontaje de StrictMode a diferencia de
 `cancelled`) bloquea el segundo disparo de `createSave` dentro del mismo efecto.
 
-**Estado**: FIJADO (frontend, 2026-08-26) — `tsc -b` limpio, 92/92 tests del frontend en verde. Sin
+**Estado**: FIJADO (commit `d2aa600`, 2026-08-26) — `tsc -b` limpio, 92/92 tests del frontend en verde. Sin
 test dedicado (`GameView.tsx` no tiene arnés de test de componente todavía, ver deuda técnica
 "GameView.tsx ha vuelto a crecer" — replicar el doble-montaje de StrictMode en un test exigiría ese
 arnés primero, desproporcionado para este fix). Sin protección añadida en el backend (`POST /saves`)

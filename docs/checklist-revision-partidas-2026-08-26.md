@@ -5,10 +5,10 @@ de aplicar el checklist de las 3 auditorías del 2026-08-25. Detalle completo de
 `revisar-partida-hallazgos.md` § "2026-08-26 — revisión de las dos partidas reales tras el checklist
 de las 3 auditorías".
 
-- [x] 1. "Ataque Básico" pega el nombre del enemigo pegado a "...mano principal" — commit pendiente
+- [x] 1. "Ataque Básico" pega el nombre del enemigo pegado a "...mano principal" — commit `d2aa600`
   (frontend, `useCombatFlow.ts` + test nuevo en `useCombatFlow.test.tsx`)
 - [x] 2. Partida "Gorhorn" duplicada al crear personaje (React StrictMode monta el efecto dos veces)
-  — commit pendiente (frontend, `GameView.tsx`, `creatingSaveRef`)
+  — commit `d2aa600` (frontend, `GameView.tsx`, `creatingSaveRef`)
 - [ ] 3. Combate real sin narración contra Quio + narración de "huir" que contradice el propio
   estado persistido — PENDIENTE, causa raíz sin confirmar al 100%, necesita reproducción
   instrumentada antes de tocar el motor de combate. El más serio de los 4.
