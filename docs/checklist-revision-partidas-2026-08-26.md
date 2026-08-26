@@ -27,6 +27,19 @@ de las 3 auditorías".
 - [x] 7. Ataque a Múrgol narrado como si fuera contra Cruzavientos (2026-08-14) — commit `6c3239c`.
   Guard nuevo `hasFalseCombatTargetName` (narrador.ts): rechaza la narración si no nombra al
   objetivo real del intercambio de este turno pero sí nombra a otro NPC presente en la escena.
+- [x] 8. Cruzavientos aparecía en cualquier región — commit `8e8a731`. `homeLocationSlug: null`
+  (único caso entre toda la fauna AGRESIVO) contradecía su propia `personality` territorial. Ancla a
+  `pilares-rotos` + reseed del catálogo. Deja abierta la mitad "nunca se narra quién es" (ver abajo).
+- [x] 9. Ruptidar/Quio/Jusha-esmeralda (INOFENSIVO, "No ataca.") podían golpear de verdad en combate
+  — commit `841f294`, el más grave de los cerrados esta sesión (daño mecánico real, no solo
+  narrativo). Guard único en `resolveCombatExchangePhase`. Test de regresión verificado (falla sin
+  el fix, `jugadorRecibeGolpe: true` confirmado en depuración manual).
+
+**Probado en vivo contra el servidor real** (petición explícita de la usuaria, "pruébalo tú, ya he
+reiniciado todo y tienes todo levantado") — items 8 y 9 confirmados por lectura de catálogo/código +
+`turn.integration.test.ts` contra Postgres real, no solo mocks. **El backend en marcha corre con
+`tsx src/server.ts` sin watch — necesita que lo reinicies para recoger `turnResolution.ts`/
+`npcCombatAbilities.ts`/el reseed de catálogo de estos dos items.**
 
 ## Lo que queda realmente pendiente fuera de este checklist
 
@@ -39,11 +52,9 @@ confirme la causa raíz al 100%, arriesgar un fix sin esa evidencia es lo mismo 
 ciegas" que se ha evitado durante toda esta sesión):
 - Quio narrado en 3 ubicaciones distintas el mismo día (2026-08-23) — ligado a un pendiente de
   diseño ya aparcado explícitamente por la usuaria (anclar TODO el catálogo de fauna por zona).
-- Cruzavientos ataca repetidamente y nunca se narra quién es (2026-08-23) — sin ningún NpcState/
-  pendingNpcAttack persistido de Cruzavientos en la partida real; necesita reproducirse con log
-  activo para saber si es solo narrativo o si el motor deja atacar a un NPC no anclado a la escena.
-- Ruptidar "ataca" en combate pese a ser INOFENSIVO/"No ataca" (2026-08-23) — no está claro si es
-  daño mecánico real o solo dramatización narrativa; necesita el mismo tipo de log.
+- Cruzavientos: la mitad "nunca se narra quién es" del combate (item 8 solo cerró "aparece en
+  cualquier región") — confirmado que pasa por narración libre real, no una plantilla determinista;
+  sin saber si `hasFalseCombatTargetName` (item 7) ya lo cubre o hace falta un guard específico.
 - Ruptidar descrito como "insecto" con "alas rotas" (es un reptil sin alas) (2026-08-23) — la `bio`
   correcta ya existe en el catálogo, el modelo la ignoró; alucinación pura, no hay nada que
   corregir en datos. Primer caso de este subtipo, a vigilar si se repite.
