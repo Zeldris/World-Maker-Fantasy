@@ -323,10 +323,9 @@ resumen de trabajo real, agrupado por tamaño.
   `attributeBonus` hoy (a diferencia de las habilidades de clase, que sí lo tienen desde
   clases.md) — hay que darle a cada habilidad de arma (`weaponAbilitiesFor`, weaponAbilities.ts)
   un +2 fijo del atributo en el que está basada (`WeaponAbility.attribute`) al ejecutarla. Decisión
-  pendiente antes de tocar código: ¿el +2 alcanza también a "Ataque Básico" (genérica, cualquiera
-  la tiene sin arma real equipada) o solo a las reales/avanzadas por categoría de arma (Tajo
-  Horizontal, Golpe Devastador, etc.), para no igualar el genérico sin gracia con las que sí
-  representan un arma concreta?
+  ya cerrada: "Ataque Básico" (`tier: 'basica'`, genérica) se queda SIN bonus, va con el stat base
+  tal cual — el +2 es solo para las reales/avanzadas por categoría de arma (Tajo Horizontal, Golpe
+  Devastador, Ráfaga de Cortes, etc., `tier: 'real'`/`'avanzada'`).
 - [x] ~~**Fase 1 — CONTRA/REFRACTAR/CONTROL/COMPANERO**~~ — cerrado 2026-08-26, APLICADO al motor
   (commit `889b7e3`). `LETAL` en realidad ya estaba implementado pese a estar marcado `PENDIENTE`
   en el schema (corregido). CONTRA/REFRACTAR: contragolpe en el margen decisivo ya existente
