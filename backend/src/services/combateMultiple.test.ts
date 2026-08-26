@@ -200,6 +200,23 @@ describe('resolverEnganchesRonda', () => {
     expect(resultado.get('jugadora')).toBe('e1');
   });
 
+  it('cadena de cancelaciones (2026-08-26, cazado depurando la integración real): A reclama a B, C reclama a A (cancela A→B), D reclama a C (cancela C→A) — A y B se quedan sin nadie, solo C↔D llega a duelo real', () => {
+    const orden = ['a', 'b', 'c', 'd'];
+    const combatientes = [
+      { participantId: 'a', bando: 'JUGADOR' as const },
+      { participantId: 'b', bando: 'ENEMIGO' as const },
+      { participantId: 'c', bando: 'ENEMIGO' as const },
+      { participantId: 'd', bando: 'JUGADOR' as const },
+    ];
+    const elegir = (id: string) => ({ a: 'b', c: 'a', d: 'c' })[id] ?? null; // b nunca llega a elegir (reclamada por a antes de su turno)
+    const resultado = resolverEnganchesRonda(orden, combatientes, elegir);
+
+    expect(resultado.get('a')).toBeNull(); // reclamada por c, pero c a su vez cancelado por d
+    expect(resultado.get('b')).toBeNull(); // la elección de a (su único pretendiente) se canceló
+    expect(esDueloMutuo(resultado, 'c', 'd')).toBe(true); // el único duelo real que sobrevive
+    expect(golpeaPrimeroEnDuelo(orden, 'c', 'd')).toBe('c'); // c tiene más iniciativa que d
+  });
+
   it('un participante fuera de la lista de combatientes (no debería pasar) se ignora sin reventar', () => {
     const orden = ['fantasma', 'jugadora', 'enemigo'];
     const combatientes = [

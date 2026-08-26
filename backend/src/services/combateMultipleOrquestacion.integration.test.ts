@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { prisma } from '../lib/prisma.js';
 import { getDefaultUserId } from '../lib/defaultUser.js';
-import { iniciarCombatEncounter, resolverTurnoAutonomo, resolverTurnoJugador } from './combateMultipleOrquestacion.js';
+import { iniciarCombatEncounter, resolverTurnoAutonomo, resolverTurnoJugador, fijarEleccionRondaJugador } from './combateMultipleOrquestacion.js';
 import type { HabilidadParaIntercambio } from './combateMultiple.js';
 
 /// Grupo 3 § Combate múltiple (2026-08-25) — harness de integración real (mismo criterio que
@@ -136,16 +136,10 @@ describe('combate múltiple: orquestación real contra Postgres', () => {
       const actualId = encounter.ordenIniciativa[encounter.turnoActual % encounter.ordenIniciativa.length];
       const actual = encounter.participantes.find((p) => p.id === actualId)!;
       if (actual.tipo === 'JUGADOR') {
-        const objetivo = encounter.participantes.find((p) => p.bando === 'ENEMIGO')!;
-        const resultado = await resolverTurnoJugador(
-          prisma,
-          worldId,
-          saveId,
-          encounterId,
-          { targetParticipantId: objetivo.id, habilidad: habilidadBasica },
-          [],
-          dobleNarracionRapida,
-        );
+        // Único enemigo posible en este 1v1 — el propio motor ya la reclama a ella
+        // automáticamente al crear el encuentro (o al empezar cada ronda), nunca queda
+        // `esperandoEleccionJugadora` — su objetivo ya viene fijo en `objetivoActualId`.
+        const resultado = await resolverTurnoJugador(prisma, worldId, saveId, encounterId, { habilidad: habilidadBasica }, [], dobleNarracionRapida);
         if (resultado?.encounterTerminado) terminado = true;
       } else {
         const resultado = await resolverTurnoAutonomo(prisma, worldId, saveId, encounterId, [], dobleNarracionRapida);
@@ -162,5 +156,88 @@ describe('combate múltiple: orquestación real contra Postgres', () => {
     // concreto de condición (depende de tiradas reales, sin mockear Math.random en este test).
     const saveFinal = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
     expect(['ILESO', 'HERIDO', 'GRAVE', 'CONVALECIENTE', 'MUERTO']).toContain(saveFinal.condicionFisica);
+  }, 30_000);
+
+  // Objetivo individual real (2026-08-26, docs/21-roadmap.md § Fase 3) — cablea `esperandoEleccionJugadora`/
+  // `fijarEleccionRondaJugador` de punta a punta contra Postgres real: mientras la ronda está
+  // esperando, NINGÚN turno se resuelve (ni el suyo ni los autónomos); en cuanto se fija su
+  // elección, el encuentro queda libre para resolverse. Deliberadamente 1 vs. 1 (nada de un
+  // segundo enemigo o aliado, con su propio empate de IA a romper) — el algoritmo de enganche en
+  // sí (duelo/golpe gratis, cadenas de cancelación entre varios candidatos empatados) ya tiene
+  // cobertura exhaustiva y determinista con `elegirObjetivoPara` mockeado a mano en
+  // combateMultiple.test.ts; aquí solo importa que el CABLEADO real (persistencia en
+  // `CombatParticipant`/`CombatEncounter`, bloqueo de `resolverTurnoAutonomo`/`resolverTurnoJugador`)
+  // funcione contra la base de datos de verdad.
+  it('objetivo individual: la ronda queda esperando su elección hasta fijarEleccionRondaJugador, y bloquea toda resolución hasta entonces', async () => {
+    // El test anterior deja a la jugadora en cualquier condición real tras un combate sin sembrar
+    // — `datosVivosDe` lee la condición REAL de `Save` en este test también (misma partida, mismo
+    // `saveId` del describe), así que sin resetear aquí ella podría quedar fuera de "vivos"
+    // (CONVALECIENTE/MUERTO) desde el primer cálculo de enganche, dejando este test flaky por una
+    // razón ajena a lo que prueba.
+    await prisma.save.update({ where: { id: saveId }, data: { condicionFisica: 'ILESO', energia: 100 } });
+    const enemigo = await prisma.npc.findFirstOrThrow({ where: { worldId, slug: 'aullador-rojo' } });
+
+    const { encounterId } = await prisma.$transaction((tx) =>
+      iniciarCombatEncounter(tx, saveId, [
+        { bando: 'JUGADOR', tipo: 'JUGADOR', destreza: 10, inteligencia: 10 },
+        { bando: 'ENEMIGO', tipo: 'NPC', npcId: enemigo.id, npcScope: 'itinerante-espera', destreza: 10, inteligencia: 6 },
+      ]),
+    );
+
+    const encounterInicial = await prisma.combatEncounter.findUniqueOrThrow({ where: { id: encounterId }, include: { participantes: true } });
+    const jugadoraP = encounterInicial.participantes.find((p) => p.tipo === 'JUGADOR')!;
+    const enemigoP = encounterInicial.participantes.find((p) => p.tipo === 'NPC')!;
+
+    // Con un único enemigo posible, el propio motor ya la reclama a ella automáticamente al crear
+    // el encuentro (mismo comportamiento que el test 1v1 de arriba) — para probar el camino
+    // "esperando", se fuerza a mano la precondición contraria (nadie la ha reclamado todavía),
+    // exactamente el estado real que se da cuando SÍ hay más de un candidato posible y ninguno la
+    // elige (caso real que motivó el diseño, jugando contra 2 cuervos).
+    await prisma.combatEncounter.update({ where: { id: encounterId }, data: { esperandoEleccionJugadora: true } });
+    await prisma.combatParticipant.update({ where: { id: jugadoraP.id }, data: { objetivoActualId: null } });
+    await prisma.combatParticipant.update({ where: { id: enemigoP.id }, data: { objetivoActualId: null } });
+
+    expect((await prisma.combatEncounter.findUniqueOrThrow({ where: { id: encounterId } })).esperandoEleccionJugadora).toBe(true);
+
+    // Ningún turno puede resolverse todavía — ni siquiera los autónomos.
+    expect(await resolverTurnoAutonomo(prisma, worldId, saveId, encounterId, [], dobleNarracionRapida)).toBeNull();
+
+    // Fija su elección — único enemigo posible, así que el resultado es determinista: duelo mutuo.
+    await fijarEleccionRondaJugador(prisma, worldId, saveId, encounterId, enemigoP.id);
+
+    const encounterTrasElegir = await prisma.combatEncounter.findUniqueOrThrow({ where: { id: encounterId }, include: { participantes: true } });
+    expect(encounterTrasElegir.esperandoEleccionJugadora).toBe(false);
+    const jugadoraTrasElegir = encounterTrasElegir.participantes.find((p) => p.tipo === 'JUGADOR')!;
+    expect(jugadoraTrasElegir.objetivoActualId).toBe(enemigoP.id);
+    const enemigoTrasElegir = encounterTrasElegir.participantes.find((p) => p.tipo === 'NPC')!;
+    expect(enemigoTrasElegir.objetivoActualId).toBe(jugadoraP.id); // duelo mutuo real, no golpe gratis
+
+    // Una segunda llamada, ya sin nada pendiente, no hace nada (defensivo).
+    await fijarEleccionRondaJugador(prisma, worldId, saveId, encounterId, enemigoP.id);
+    const encounterSinCambios = await prisma.combatEncounter.findUniqueOrThrow({ where: { id: encounterId }, include: { participantes: true } });
+    expect(encounterSinCambios.participantes.find((p) => p.tipo === 'JUGADOR')!.objetivoActualId).toBe(enemigoP.id);
+
+    // Ahora sí puede resolverse el resto de la ronda de una sentada (mismo bucle que el test 1v1
+    // de arriba — único enemigo, así que nunca vuelve a quedar `esperandoEleccionJugadora` en
+    // rondas siguientes, el propio motor la reclama sola cada vez).
+    let terminado = false;
+    for (let i = 0; i < 60 && !terminado; i++) {
+      const encounter = await prisma.combatEncounter.findUniqueOrThrow({ where: { id: encounterId }, include: { participantes: true } });
+      if (encounter.estado === 'RESUELTO') {
+        terminado = true;
+        break;
+      }
+      const actualId = encounter.ordenIniciativa[encounter.turnoActual % encounter.ordenIniciativa.length];
+      const actual = encounter.participantes.find((p) => p.id === actualId)!;
+      if (actual.tipo === 'JUGADOR') {
+        const habilidadBasica: HabilidadParaIntercambio = { name: 'Ataque Básico', description: '', attribute: 'fuerza', effects: [], rol: 'ataque', energyCost: 5, energyRegen: 0 };
+        const resultado = await resolverTurnoJugador(prisma, worldId, saveId, encounterId, { habilidad: habilidadBasica }, [], dobleNarracionRapida);
+        if (resultado?.encounterTerminado) terminado = true;
+      } else {
+        const resultado = await resolverTurnoAutonomo(prisma, worldId, saveId, encounterId, [], dobleNarracionRapida);
+        if (resultado?.encounterTerminado) terminado = true;
+      }
+    }
+    expect(terminado).toBe(true);
   }, 30_000);
 });

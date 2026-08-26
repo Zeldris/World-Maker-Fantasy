@@ -131,6 +131,15 @@ export function retargetBando(
 // objetivo pero ese objetivo no le devuelve la mirada es un golpe gratis, sin oposición real
 // (`AGUANTE`+`MULTIPLE` es la única forma de defenderse de verdad de uno de estos, ver
 // combateMultipleOrquestacion.ts).
+//
+// Cadena de cancelaciones (2026-08-26, cazado depurando la integración real con más de 2
+// candidatos empatados): la regla 4 no se limita a un solo nivel — si A reclama a B, y luego C
+// reclama a A (cancelando el ataque de A contra B, B se queda sin nadie), pero DESPUÉS D reclama a
+// C (cancelando a su vez el ataque de C contra A) — tanto B como A se quedan sin nadie
+// atacándoles esta ronda (cada uno perdió su propio turno de elegir en el momento exacto en que
+// fue reclamado, y ninguno recupera una segunda oportunidad solo porque su reclamante cambió de
+// objetivo más tarde) — solo la pareja final (C↔D) llega a duelo real. Consecuencia directa de
+// aplicar la regla 4 con generalidad, no un caso especial nuevo — verificado con test dedicado.
 export function resolverEnganchesRonda(
   ordenIniciativa: string[],
   combatientes: { participantId: string; bando: Bando }[],

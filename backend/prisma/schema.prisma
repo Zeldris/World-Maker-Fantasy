@@ -713,6 +713,16 @@ model CombatEncounter {
   /// presente, p. ej. Reino defendiéndose) se resuelven deterministas de una sentada, sin turno a
   /// turno real.
   jugable         Boolean               @default(true)
+  /// Objetivo individual real (2026-08-26, docs/21-roadmap.md § Fase 3) — true mientras la ronda
+  /// ACTUAL todavía no tiene el enganche (duelo/golpe gratis) decidido del todo porque falta saber
+  /// a quién quiere atacar la jugadora. Mientras esté a true, NINGÚN intercambio de la ronda puede
+  /// resolverse en firme (ni el de la jugadora ni el de ningún NPC/compañero, aunque su turno vaya
+  /// antes que el de ella en `ordenIniciativa`) — la cancelación de un enganche (`resolverEnganchesRonda`,
+  /// combateMultiple.ts) puede "alcanzar hacia atrás" a alguien que ya habría actuado. Se pone a
+  /// true al crear el encuentro y al empezar cada ronda nueva (si hay jugadora viva y todavía sin
+  /// reclamar); se pone a false en cuanto su elección de esa ronda queda fija (reclamada por
+  /// alguien, o elegida por ella).
+  esperandoEleccionJugadora Boolean     @default(false)
   createdAt       DateTime              @default(now())
   resolvedAt      DateTime?
   participantes   CombatParticipant[]

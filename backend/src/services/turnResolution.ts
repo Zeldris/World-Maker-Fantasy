@@ -113,7 +113,7 @@ import {
 } from './death.js';
 import { continentForRegion, oppositeContinent } from '../lib/continent.js';
 import { advanceFictionalMinutes, formatFictionalDate } from './worldClock.js';
-import { resolverTurnoJugador, resolverTurnosAutonomosHastaJugadora, type AccionJugadorCombate } from './combateMultipleOrquestacion.js';
+import { resolverTurnoJugador, resolverTurnosAutonomosHastaJugadora, fijarEleccionRondaJugador, type AccionJugadorCombate } from './combateMultipleOrquestacion.js';
 import type { HabilidadParaIntercambio } from './combateMultiple.js';
 import { prisma } from '../lib/prisma.js';
 import type { RollResult, AttributeBlock, Attribute, GradoExito } from './dice.js';
@@ -3623,21 +3623,17 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     combatEncounterId = encounterId;
     const narraciones: string[] = [];
 
-    // Turnos autónomos pendientes de una ronda anterior (defensivo — no debería hacer falta si el
-    // turno anterior ya dejó la cola apuntando a la jugadora, pero cubre el caso de un reinicio de
-    // backend a media ronda).
-    // Bug real de timeout de transacción (2026-08-25, ver comentario de cabecera en
-    // combateMultipleOrquestacion.ts) — esto YA NO va envuelto en `prisma.$transaction`: la propia
-    // función gestiona sus transacciones cortas internamente y llama a Ollama fuera de ellas.
-    const antes = await resolverTurnosAutonomosHastaJugadora(prisma, worldId, saveId, encounterId);
-    narraciones.push(...antes.narraciones);
-    combatEncounterCaidos.push(...antes.caidos);
-    combatEncounterTerminado = antes.encounterTerminado;
-
-    if (!combatEncounterTerminado && antes.esperandoAccionJugadora) {
-      // Objetivo: nombre citado entre comillas (mismo criterio que el resto del turno) contra los
-      // participantes ENEMIGO vivos; sin cita real o sin match, cae al auto-targeting que el propio
-      // encuentro ya calculó (`objetivoActualId`, por Inteligencia — ver combateMultiple.ts § 2).
+    // Objetivo individual real (2026-08-26, docs/21-roadmap.md § Fase 3) — si la RONDA actual
+    // todavía no sabe a quién quiere atacar la jugadora, hay que decidirlo YA, antes de resolver
+    // ningún turno autónomo de esa ronda (aunque su posición en `ordenIniciativa` no sea la
+    // primera) — un enganche puede "alcanzar hacia atrás" y cancelar el de alguien que, en la
+    // cola, actuaría antes que ella; resolver ese turno en firme antes de saber su elección
+    // dejaría un golpe real sin poder deshacerlo. Ver comentario largo de
+    // `esperandoEleccionJugadora` en schema.prisma.
+    const encounterFresco = await prisma.combatEncounter.findUniqueOrThrow({ where: { id: encounterId } });
+    if (encounterFresco.esperandoEleccionJugadora) {
+      // Mismo criterio de siempre: nombre citado entre comillas contra los ENEMIGO vivos; sin cita
+      // real o sin match, cae al primer enemigo vivo (nunca se queda sin elegir).
       const participantesVivos = await prisma.combatParticipant.findMany({ where: { encounterId } });
       const enemigos = participantesVivos.filter((p) => p.bando === 'ENEMIGO');
       const enemigoNpcIds = enemigos.filter((p) => p.npcId).map((p) => p.npcId!);
@@ -3661,30 +3657,43 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
       const targetPorNombre = quotedMatch
         ? enemigosVivos.find((p) => p.npcId && normalizeText(nombreByNpcId.get(p.npcId) ?? '') === normalizeText(quotedMatch[1]))
         : undefined;
-      const jugadorParticipant = participantesVivos.find((p) => p.tipo === 'JUGADOR');
-      const targetParticipantId = targetPorNombre?.id ?? jugadorParticipant?.objetivoActualId ?? null;
-
+      const targetParticipantId = targetPorNombre?.id ?? enemigosVivos[0]?.id ?? null;
       if (targetParticipantId) {
-        // Misma habilidad ya resuelta arriba para el 1v1 clásico (botón pulsado o texto libre) —
-        // sin recalcular nada nuevo, solo repaquetada al shape que pide el motor de grupo.
-        const jugadorHabilidad: HabilidadParaIntercambio = {
-          name: selectedAbilityData?.name ?? 'Ataque Básico',
-          description: selectedAbilityData?.description ?? '',
-          attribute: classification.atributo,
-          attributeBonus: abilityAttributeBonus,
-          effects: abilityEffects,
-          rol: abilityRol ?? (detectsAttackIntent(action) ? 'ataque' : 'defensa'),
-          energyCost: abilityEnergyCost,
-          energyRegen: abilityEnergyRegen,
-          maxUsesPerCombat: selectedAbilityData?.maxUsesPerCombat ?? null,
-        };
-        const accion: AccionJugadorCombate = { targetParticipantId, habilidad: jugadorHabilidad, dualWieldBonus };
-        const turnoJugadora = await resolverTurnoJugador(prisma, worldId, saveId, encounterId, accion);
-        if (turnoJugadora) {
-          if (turnoJugadora.narracion) narraciones.push(turnoJugadora.narracion);
-          combatEncounterCaidos.push(...turnoJugadora.caidos);
-          combatEncounterTerminado = turnoJugadora.encounterTerminado;
-        }
+        await fijarEleccionRondaJugador(prisma, worldId, saveId, encounterId, targetParticipantId);
+      }
+    }
+
+    // Turnos autónomos pendientes de esta ronda (ahora ya con el enganche fijo) hasta que le toca
+    // a la jugadora — cubre también el caso defensivo de un reinicio de backend a media ronda.
+    // Bug real de timeout de transacción (2026-08-25, ver comentario de cabecera en
+    // combateMultipleOrquestacion.ts) — esto YA NO va envuelto en `prisma.$transaction`: la propia
+    // función gestiona sus transacciones cortas internamente y llama a Ollama fuera de ellas.
+    const antes = await resolverTurnosAutonomosHastaJugadora(prisma, worldId, saveId, encounterId);
+    narraciones.push(...antes.narraciones);
+    combatEncounterCaidos.push(...antes.caidos);
+    combatEncounterTerminado = antes.encounterTerminado;
+
+    if (!combatEncounterTerminado && antes.esperandoAccionJugadora) {
+      // A quién ataca ya está fijo (objetivoActualId, decidido arriba o en una ronda anterior) —
+      // solo hace falta resolver con qué habilidad. Misma habilidad ya resuelta arriba para el 1v1
+      // clásico (botón pulsado o texto libre), sin recalcular nada nuevo.
+      const jugadorHabilidad: HabilidadParaIntercambio = {
+        name: selectedAbilityData?.name ?? 'Ataque Básico',
+        description: selectedAbilityData?.description ?? '',
+        attribute: classification.atributo,
+        attributeBonus: abilityAttributeBonus,
+        effects: abilityEffects,
+        rol: abilityRol ?? (detectsAttackIntent(action) ? 'ataque' : 'defensa'),
+        energyCost: abilityEnergyCost,
+        energyRegen: abilityEnergyRegen,
+        maxUsesPerCombat: selectedAbilityData?.maxUsesPerCombat ?? null,
+      };
+      const accion: AccionJugadorCombate = { habilidad: jugadorHabilidad, dualWieldBonus };
+      const turnoJugadora = await resolverTurnoJugador(prisma, worldId, saveId, encounterId, accion);
+      if (turnoJugadora) {
+        if (turnoJugadora.narracion) narraciones.push(turnoJugadora.narracion);
+        combatEncounterCaidos.push(...turnoJugadora.caidos);
+        combatEncounterTerminado = turnoJugadora.encounterTerminado;
       }
 
       if (!combatEncounterTerminado) {
