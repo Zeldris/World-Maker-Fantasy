@@ -339,25 +339,48 @@ function applyGatheringRoll(candidates: SourceCandidate[], roll: GatheringRollRe
 /// algo enseñaba la lista CRUDA sin recortar por grado (ignorando la tirada por completo), y
 /// Desollar volvía a tirar en cada apertura del panel, dejando "pescar" un resultado mejor cerrando
 /// y reabriendo). `Save.harvestRollCache` (Json) guarda el resultado YA filtrado por
-/// `applyGatheringRoll` — nunca los candidatos crudos — junto al oficio/ubicación en que se tiró,
-/// para saber si sigue siendo válido. Reemplaza por completo el viejo mecanismo de
+/// `applyGatheringRoll` — nunca los candidatos crudos — junto a la ubicación en que se tiró, para
+/// saber si sigue siendo válido. Reemplaza por completo el viejo mecanismo de
 /// `detectHarvestSourcesInScene` para "ya localizado" en este archivo (Cazar, ruta aparte, sigue
 /// usando ese mecanismo — fuera del alcance de este cambio).
-interface HarvestRollCache {
-  oficio: string;
+///
+/// Mapa `oficio → entrada` (bug real jugando en vivo, 2026-08-25: "profesiones que me deja usarlas
+/// varias veces y repite las tiradas mostrando items diferentes"), no un único slot como antes de
+/// este fix — un único JSON por partida se pisaba entero en cada `/explorar`, así que explorar
+/// Talador invalidaba (sin avisar) la tirada ya congelada de Minero en la misma sesión.
+interface HarvestRollCacheEntry {
   locationId: string | null;
   sources: SourceCandidate[];
 }
+type HarvestRollCache = Record<string, HarvestRollCacheEntry>;
 
 function cachedRollFor(save: { harvestRollCache: unknown }, oficio: string, locationId: string | null): SourceCandidate[] | null {
-  const cache = save.harvestRollCache as HarvestRollCache | null;
-  if (!cache || cache.oficio !== oficio || cache.locationId !== locationId) return null;
+  const cache = (save.harvestRollCache as HarvestRollCache | null)?.[oficio];
+  if (!cache || cache.locationId !== locationId) return null;
   return cache.sources;
 }
 
-function saveRollCache(saveId: string, oficio: string, locationId: string | null, sources: SourceCandidate[]) {
-  const cache: HarvestRollCache = { oficio, locationId, sources };
+// `currentCache` viene del `save` YA cargado por el caller (`include` sin `select` ya trae
+// `harvestRollCache`) — evita una segunda ida a la base de datos solo para leer lo que el caller
+// ya tiene en la mano.
+function saveRollCache(saveId: string, currentCache: unknown, oficio: string, locationId: string | null, sources: SourceCandidate[]) {
+  const cache: HarvestRollCache = { ...(currentCache as HarvestRollCache | null), [oficio]: { locationId, sources } };
   return prisma.save.update({ where: { id: saveId }, data: { harvestRollCache: cache as unknown as Prisma.InputJsonValue } });
+}
+
+/// Confirmar recolección cambia el mundo real (población depletada/cadáver despiezado) — invalida
+/// solo las entradas del mapa cuya tirada congelada incluyera alguna de las fuentes tocadas esta
+/// vez, nunca el mapa entero (mismo bug de fondo que el de arriba: un oficio ajeno no tiene por qué
+/// perder su tirada porque se confirmó una recolección de OTRO oficio). Mismo criterio que
+/// `saveRollCache`: `currentCache` viene del `save` ya cargado por el caller.
+function invalidateRollCacheFor(saveId: string, currentCache: unknown, touchedSourceSlugs: Set<string>) {
+  const cache = currentCache as HarvestRollCache | null;
+  if (!cache || touchedSourceSlugs.size === 0) return Promise.resolve();
+  const next: HarvestRollCache = {};
+  for (const [oficio, entry] of Object.entries(cache)) {
+    if (!entry.sources.some((s) => touchedSourceSlugs.has(s.sourceSlug))) next[oficio] = entry;
+  }
+  return prisma.save.update({ where: { id: saveId }, data: { harvestRollCache: next as unknown as Prisma.InputJsonValue } });
 }
 
 export async function recolectarRoutes(app: FastifyInstance) {
@@ -398,7 +421,7 @@ export async function recolectarRoutes(app: FastifyInstance) {
         request.params.oficio,
       );
       const filtered = applyGatheringRoll(rawCandidates, roll);
-      await saveRollCache(save.id, request.params.oficio, save.currentLocationId, filtered);
+      await saveRollCache(save.id, save.harvestRollCache, request.params.oficio, save.currentLocationId, filtered);
       return { sources: groupByCategory(filtered), roll, puedeExplorar: false, enCooldown: false };
     }
 
@@ -482,7 +505,7 @@ export async function recolectarRoutes(app: FastifyInstance) {
     // suerte): reabrir el panel debe ver SIEMPRE lo mismo, nunca una oportunidad gratis de volver
     // a tirar por un resultado mejor. Se guarda antes de nada más, para que sobreviva aunque el
     // resto del turno (hechos de sesión) falle por cualquier motivo.
-    await saveRollCache(save.id, request.params.oficio, save.currentLocationId, filteredCandidates);
+    await saveRollCache(save.id, save.harvestRollCache, request.params.oficio, save.currentLocationId, filteredCandidates);
 
     const sessionFacts = await loadSessionFacts(save.id);
     // Una frase por categoría DISTINTA descubierta (2026-08-15, ya no por sourceSlug) — evita
@@ -803,10 +826,11 @@ export async function recolectarRoutes(app: FastifyInstance) {
         // Desollar podía quedar en el inventario sin desbloquear nunca su ficha de Enciclopedia.
         await recordEntityDiscoveries({ saveId: save.id, worldId: save.worldId, mentionedText: touched.logEntry!.text });
         // Tirada congelada (2026-08-22) — el mundo real cambió (población depletada/cadáver
-        // despiezado), así que la foto guardada por `saveRollCache` ya no refleja lo que queda.
-        // Se limpia el slot entero (un único caché por partida, no por oficio) para que la próxima
-        // apertura del panel/Explorar recalcule desde cero, con una tirada nueva.
-        await prisma.save.update({ where: { id: save.id }, data: { harvestRollCache: Prisma.JsonNull } });
+        // despiezado), así que la foto guardada por `saveRollCache` de la(s) fuente(s) tocada(s) ya
+        // no refleja lo que queda. Invalida SOLO esas entradas del mapa (bug real jugando en vivo,
+        // 2026-08-25/26, ver `invalidateRollCacheFor`) — un oficio ajeno a estas fuentes no pierde
+        // su propia tirada congelada por confirmar recolección de otro oficio distinto.
+        await invalidateRollCacheFor(save.id, save.harvestRollCache, new Set(selections.map((s) => s.sourceSlug)));
       }
 
       // Materia prima cruda — siempre tipo RECURSO por diseño (nunca EQUIPABLE ni ESPECIAL), mismo

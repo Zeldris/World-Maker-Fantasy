@@ -1158,19 +1158,59 @@ describe('GET /saves/:id/recolectar/:oficio', () => {
         where: { id: 'save1' },
         data: {
           harvestRollCache: {
-            oficio: 'minero-llanuras',
-            locationId: 'loc1',
-            sources: [
-              {
-                sourceSlug: 'roca-pilares-rotos',
-                sourceCategory: 'mineral',
-                disponible: 40,
-                yields: [{ itemSlug: 'piedra', itemName: 'Piedra', cantidadMaxima: 3, tier: 1 }],
-              },
-            ],
+            'minero-llanuras': {
+              locationId: 'loc1',
+              sources: [
+                {
+                  sourceSlug: 'roca-pilares-rotos',
+                  sourceCategory: 'mineral',
+                  disponible: 40,
+                  yields: [{ itemSlug: 'piedra', itemName: 'Piedra', cantidadMaxima: 3, tier: 1, sinTirada: undefined }],
+                },
+              ],
+            },
           },
         },
       });
+      vi.restoreAllMocks();
+    });
+
+    // Bug real jugando en vivo (2026-08-25/26, "profesiones que me deja usarlas varias veces y
+    // repite las tiradas mostrando items diferentes"): antes de este fix, `harvestRollCache` era un
+    // único slot por partida — explorar un SEGUNDO oficio pisaba entero el JSON, borrando la tirada
+    // ya congelada del primero sin avisar. Ahora es un mapa `oficio → entrada`: explorar Talador no
+    // debe tocar la entrada ya guardada de Minero.
+    it('explorar un oficio no invalida la caché ya congelada de otro oficio distinto', async () => {
+      vi.spyOn(Math, 'random').mockReturnValue(0.99);
+      findManyHarvestYield.mockResolvedValue([
+        { sourceSlug: 'lucre-blanco', sourceCategory: 'madera', item: { slug: 'madera-lucre-blanco', name: 'Madera de Lucre Blanco', tier: 1 }, cantidad: 2 },
+      ]);
+      findManyWorldPopulation.mockResolvedValue([
+        { targetSlug: 'lucre-blanco', poblacion: 20, distribucion: { 'Llanuras del Viento Rojo': 1 }, lastHarvestedAt: null, lastHarvestedLocationId: null },
+      ]);
+      // Simula que Minero ya se exploró antes y su tirada quedó congelada — el `save` que carga
+      // ESTA petición (Talador) ya trae esa entrada previa en `harvestRollCache`, tal y como la
+      // dejaría persistida la petición anterior.
+      findUniqueSave.mockResolvedValue({
+        id: 'save1',
+        worldId: 'world1',
+        currentLocationId: 'loc1',
+        currentLocation: { region: 'Las Llanuras del Viento Rojo' },
+        attributes: { fuerza: 20, destreza: 20, constitucion: 10, inteligencia: 10, voluntad: 10, carisma: 10, arcano: 10 },
+        secondaryAttributes: { suerte: 0 },
+        inventoryItems: [],
+        professionProgress: [],
+        harvestRollCache: {
+          'minero-llanuras': { locationId: 'loc1', sources: [{ sourceSlug: 'roca-pilares-rotos', sourceCategory: 'mineral', disponible: 40, yields: [{ itemSlug: 'piedra', itemName: 'Piedra', cantidadMaxima: 3, tier: 1 }] }] },
+        },
+      });
+      const app = await buildApp();
+
+      await app.inject({ method: 'POST', url: '/saves/save1/recolectar/talador-llanuras/explorar' });
+
+      const lastCall = updateSave.mock.calls.at(-1)?.[0];
+      expect(Object.keys(lastCall.data.harvestRollCache)).toEqual(['minero-llanuras', 'talador-llanuras']);
+      expect(lastCall.data.harvestRollCache['minero-llanuras'].sources[0].sourceSlug).toBe('roca-pilares-rotos');
       vi.restoreAllMocks();
     });
   });
@@ -1189,9 +1229,10 @@ describe('GET /saves/:id/recolectar/:oficio', () => {
       inventoryItems: [],
       professionProgress: [],
       harvestRollCache: {
-        oficio: 'minero-llanuras',
-        locationId: 'loc1',
-        sources: [{ sourceSlug: 'roca-pilares-rotos', sourceCategory: 'mineral', disponible: 40, yields: [{ itemSlug: 'piedra', itemName: 'Piedra', cantidadMaxima: 2, tier: 1 }] }],
+        'minero-llanuras': {
+          locationId: 'loc1',
+          sources: [{ sourceSlug: 'roca-pilares-rotos', sourceCategory: 'mineral', disponible: 40, yields: [{ itemSlug: 'piedra', itemName: 'Piedra', cantidadMaxima: 2, tier: 1 }] }],
+        },
       },
     });
     const app = await buildApp();
@@ -1221,7 +1262,7 @@ describe('GET /saves/:id/recolectar/:oficio', () => {
       secondaryAttributes: { suerte: 0 },
       inventoryItems: [],
       professionProgress: [],
-      harvestRollCache: { oficio: 'minero-llanuras', locationId: 'loc1', sources: [{ sourceSlug: 'x', sourceCategory: 'mineral', disponible: 1, yields: [] }] },
+      harvestRollCache: { 'minero-llanuras': { locationId: 'loc1', sources: [{ sourceSlug: 'x', sourceCategory: 'mineral', disponible: 1, yields: [] }] } },
     });
     const app = await buildApp();
 
@@ -1251,17 +1292,18 @@ describe('GET /saves/:id/recolectar/:oficio', () => {
       inventoryItems: [],
       professionProgress: [],
       harvestRollCache: {
-        oficio: 'minero-llanuras',
-        locationId: 'loc1',
-        sources: [
-          { sourceSlug: 'roca-pilares-rotos', sourceCategory: 'mineral', disponible: 40, yields: [{ itemSlug: 'piedra', itemName: 'Piedra', cantidadMaxima: 3, tier: null }] },
-          {
-            sourceSlug: 'veta-hierro-pilares-rotos',
-            sourceCategory: 'mineral',
-            disponible: 10,
-            yields: [{ itemSlug: 'mena-de-hierro', itemName: 'Mena de hierro', cantidadMaxima: 2, tier: null }],
-          },
-        ],
+        'minero-llanuras': {
+          locationId: 'loc1',
+          sources: [
+            { sourceSlug: 'roca-pilares-rotos', sourceCategory: 'mineral', disponible: 40, yields: [{ itemSlug: 'piedra', itemName: 'Piedra', cantidadMaxima: 3, tier: null }] },
+            {
+              sourceSlug: 'veta-hierro-pilares-rotos',
+              sourceCategory: 'mineral',
+              disponible: 10,
+              yields: [{ itemSlug: 'mena-de-hierro', itemName: 'Mena de hierro', cantidadMaxima: 2, tier: null }],
+            },
+          ],
+        },
       },
     });
     const app = await buildApp();

@@ -3038,12 +3038,17 @@ volver a un oficio ya explorado antes fuerza una tirada nueva, con resultado dis
 como si el sistema de "tirada congelada" (2026-08-22) no existiera para el caso real de jugar
 alternando entre varias profesiones en la misma sesión.
 
-**Arreglo propuesto (no aplicado)**: `harvestRollCache` debería guardar un mapa `oficio → cache`
-(o una fila por oficio en vez de un único JSON), no un único slot que se pisa. Candidato para la
-auditoría de deuda técnica — cambio de forma del dato, no solo de lógica puntual.
+**Arreglo aplicado (2026-08-26)**: `Save.harvestRollCache` pasa de un único slot `{oficio,
+locationId, sources}` a un mapa `Record<oficio, {locationId, sources}>` — `saveRollCache` ahora
+fusiona la entrada nueva con las que ya hubiera de otros oficios (recibe el `save` ya cargado por el
+caller, sin ida extra a la base de datos). El `/confirmar` que antes vaciaba el caché ENTERO tras
+recolectar (`harvestRollCache: Prisma.JsonNull`) ahora invalida solo las entradas cuya tirada
+congelada incluyera alguna de las fuentes tocadas (`invalidateRollCacheFor`) — confirmar Minero ya
+no le borra la tirada congelada a Talador si no comparten ninguna fuente.
 
-**Estado**: PENDIENTE, causa raíz confirmada leyendo el propio comentario del código + los tiempos
-reales del log de la partida. No arreglado en esta pasada.
+**Estado**: FIJADO (commit pendiente, 2026-08-26) — test nuevo en `recolectar.test.ts` ("explorar un
+oficio no invalida la caché ya congelada de otro oficio distinto"), 49/49 en verde + integración +
+suite completa (2779/2779).
 
 ## 2026-08-25 — Roca Luclara minable en Hondonada del Eco pese a tener `harvestSourceHomeLocationSlug` distinto — `harvestSourceHomeLocationSlug` nunca se aplica a MINERIA/TALA/EXTRACCION, solo a PASIVO
 
