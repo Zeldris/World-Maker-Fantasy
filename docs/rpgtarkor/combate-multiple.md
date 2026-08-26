@@ -1,13 +1,21 @@
-# Helek Sirik — Combate múltiple (varios aliados vs. varios enemigos)
+# Helek Sirik — Combate múltiple (varios aliados vs. varios enemigos) — APLICADO al motor
 
 [← Volver al índice del mundo](../07-mundo-helek-sirik.md)
 
-*Diseño de sistema (2026-08-24, sesión conjunta autora/Claude). **Nada de esto está implementado en
-el motor todavía** — documentación pura, mismo criterio que `clases.md` y
-`companeros-y-supervivencia.md`. Esta es la pieza de infraestructura más grande de toda la sesión:
-desbloquea `MULTIPLE`/`INVOCACION`/`COMPANERO`/`CONTROL`/`EXPULSAR` en las 34 especializaciones de
-`clases.md`, y es lo que de verdad haría falta para que un compañero
-(`companeros-y-supervivencia.md`) luche a tu lado en combate.*
+*Diseño de sistema (2026-08-24, sesión conjunta autora/Claude) — **APLICADO al motor el
+2026-08-25** (auditoría de lore 2026-08-25: este banner seguía diciendo "nada implementado" pese a
+estar construido e integrado en producción desde el día siguiente al diseño). Real:
+`CombatEncounter`/`CombatParticipant` (`schema.prisma`), iniciativa N-way y emparejamiento por
+Inteligencia (`combateMultiple.ts`), orquestación con estado real incluida la jugadora
+(`combateMultipleOrquestacion.ts`), disparo real desde `cazar.ts` (caza en grupo) y desde un ataque
+directo, saqueo/desuello al resolverse, y narración ligera propia (`combateMultipleNarracion.ts`).
+Esta fue la pieza de infraestructura más grande de la sesión: desbloquea
+`MULTIPLE`/`INVOCACION`/`COMPANERO`/`CONTROL`/`EXPULSAR` en las 34 especializaciones de
+`clases.md`, y es lo que permite que un compañero (`companeros-y-supervivencia.md`) luche a tu lado
+en combate — aunque el compañero en sí necesitó su propio arreglo aparte (ver nota de
+`Companion.attributes` más abajo). Huecos reales que siguen sin construir: XP de la propia tirada de
+combate, y elegir objetivo individual entre miembros de un mismo grupo (mecánicamente
+intercambiables hoy).*
 
 ---
 
@@ -17,10 +25,16 @@ desbloquea `MULTIPLE`/`INVOCACION`/`COMPANERO`/`CONTROL`/`EXPULSAR` en las 34 es
   **exactamente 2** participantes: un d20 opuesto cada lado, quien saca más gana. Es el corazón de
   todo el combate hoy, y **se queda como la pieza atómica del sistema nuevo** — lo que cambia es
   CUÁNTAS veces y en qué orden se llama por ronda, no la propia tirada.
-- El "combate en grupo" que ya existe (cazar en manada, `NpcState.groupSize`/`groupDefeated`) **no
-  es multi-combate de verdad** — es un truco: la misma fila de NPC "resucita" a `ILESO` cada vez que
-  cae un individuo, para simular 3 lobos como 3 combates 1v1 SEGUIDOS, nunca simultáneos. **Se
-  retira** cuando se construya esto — cada lobo pasa a ser un combatiente real propio.
+- El "combate en grupo" que existía antes de esto (cazar en manada, `NpcState.groupSize`/
+  `groupDefeated`) **no era multi-combate de verdad** — era un truco: la misma fila de NPC
+  "resucitaba" a `ILESO` cada vez que caía un individuo, para simular 3 lobos como 3 combates 1v1
+  SEGUIDOS, nunca simultáneos. **Corrección tras aplicarlo (2026-08-25): estos campos NO se
+  retiraron** — al resolverse un `CombatEncounter` de grupo, `turnResolution.ts` los materializa de
+  verdad (decisión explícita: reutilizar el pipeline de saqueo/desuello clásico tal cual en vez de
+  construir uno nuevo), así que `groupSize`/`groupDefeated`/`corpsesLooted` siguen vivos y en uso
+  real — la condición física de CADA individuo del grupo mientras el combate está EN CURSO vive en
+  `CombatParticipant.condicionFisicaGrupo` (fila nueva, un individuo real cada uno), y solo al
+  terminar el encuentro se resume de vuelta a `NpcState`.
 - `pendingCombatNpcSlugs` puede listar varios NPCs a la vez, pero el motor solo elige UNO como
   "objetivo activo" — el resto espera en cola, no atacan ni son atacados mientras tanto. Se
   sustituye por el orden de iniciativa real de este documento.
@@ -28,9 +42,11 @@ desbloquea `MULTIPLE`/`INVOCACION`/`COMPANERO`/`CONTROL`/`EXPULSAR` en las 34 es
   schema, § `NpcState.abilityUsesThisEncounter`) — hoy el estado de un combate vive repartido en
   campos sueltos (`condicionFisica`, `pendingCombatNpcSlugs`, `pendingNpcAttack`). Multi-combate
   real necesita algo más parecido a una sesión propia (ver § 5).
-- `Companion` hoy es casi puramente narrativo (`name`/`role`/`notes`, ver
-  `companeros-y-supervivencia.md`) — **no tiene atributos ni vida propios**, así que hoy no podría
-  ni siquiera participar en un `resolveExchange`. Esto también hay que resolverlo (§ 5).
+- `Companion` ya tiene `attributes`/`condicionFisica` propios (§ 5, aplicado) — copiados del `Npc`
+  de catálogo origen al confirmar el tameo/persuasión, escalados por su nivel en el momento de
+  combatir (`npcAttributesForLevel`, igual que cualquier otro NPC). **Bug real cerrado 2026-08-25**:
+  la ruta de confirmación nunca rellenaba `attributes` pese a que el propio comentario del modelo ya
+  lo prometía — ningún compañero podía luchar de verdad hasta que se arregló.
 
 ---
 
@@ -76,27 +92,26 @@ presenta después en un **"reporte de combate autónomo"** (narración a posteri
 generada una vez el combate ya está resuelto del todo). No es una mecánica distinta ni más simple
 que el combate jugable — es la misma, ejecutada sin pausas para pedir input.
 
-## 5. Infraestructura nueva necesaria (nada de esto existe hoy)
+## 5. Infraestructura nueva necesaria — APLICADA (2026-08-25)
 
-- **`rollInitiative` generalizado**: de comparar 2 lados a ordenar N combatientes — nueva firma,
-  misma tirada de base.
-- **Sesión de combate persistida** — hoy el estado vive repartido en campos sueltos de `Save`/
-  `NpcState`; multi-combate necesita algo que trackee de verdad: lista de combatientes de ambos
-  bandos, orden de iniciativa, turno actual, emparejamiento vivo de cada uno. Probablemente un
-  modelo nuevo tipo `CombatEncounter` + `CombatParticipant`.
-- **`Companion` necesita atributos y vida propios** — hoy es puramente narrativo
-  (`name`/`role`/`notes`). Para participar en un `resolveExchange` de verdad necesita al menos un
-  `AttributeBlock` y una `CondicionFisica` (reutilizando el mismo enum que jugador/NPC). Ya se
-  apuntaba como pendiente en `companeros-y-supervivencia.md § 7`, esto lo confirma como requisito
-  duro, no opcional.
-- **Lógica de emparejamiento/retargeting por turno**, con la rama de Inteligencia alta/baja (§ 2) —
-  función pura nueva, sin infraestructura previa que reutilizar.
-- **Partición de encuentros grandes en sub-combates de 4v4** (§ 3) — lógica de reparto + orquestación
-  de "1 en directo + N deterministas".
-- **Modo de resolución determinista sin interacción** (§ 4) — ejecutar una `CombatEncounter`
-  completa de principio a fin sin pausas, y generar su reporte narrado al final. Reutilizable tanto
-  para los sub-combates que no juega la usuaria como para el combate autónomo de Reino.
-- **Retirar** `NpcState.groupSize`/`groupDefeated`/`corpsesLooted` (el truco de "fila que resucita")
-  una vez esto esté construido — sustituido por combatientes reales en la cola de iniciativa. Migrar
-  el despiece en grupo (`recolectar.ts`, hoy depende de `groupDefeated`/`corpsesLooted`) a la lista
-  real de caídos del encuentro.
+*Esta sección listaba lo que hacía falta construir; el título original decía "nada de esto existe
+hoy" — se deja como referencia histórica de qué se pidió, con el estado real de cada punto.*
+
+- **`rollInitiative` generalizado** — APLICADO (`rollInitiativeMultiple`, `combateMultiple.ts`).
+- **Sesión de combate persistida** — APLICADO: `CombatEncounter`/`CombatParticipant` reales
+  (`schema.prisma`), tal como se anticipaba aquí.
+- **`Companion` con atributos y vida propios** — APLICADO (`Companion.attributes`/`condicionFisica`,
+  copiados del `Npc` origen al confirmar tameo/persuasión). Confirma lo que este mismo punto ya
+  apuntaba como requisito duro.
+- **Lógica de emparejamiento/retargeting por turno** — APLICADO (`retargetBando`,
+  `combateMultiple.ts`).
+- **Partición de encuentros grandes en sub-combates de 4v4** — APLICADO (`particionarEnSubCombates`,
+  `MAX_COMBATIENTES_POR_BANDO=4`).
+- **Modo de resolución determinista sin interacción** (§ 4) — APLICADO para el disparo real
+  (`iniciarCombatEncounter` + resolución de turnos autónomos); el combate autónomo de Reino
+  mencionado aquí como reutilización futura sigue sin construir.
+- **`NpcState.groupSize`/`groupDefeated`/`corpsesLooted`** — **NO se retiraron** (corrección real
+  tras aplicarlo, ver nota de "Qué existe hoy" más arriba): decisión explícita de reutilizar el
+  pipeline de saqueo/desuello clásico tal cual al resolverse el encuentro, en vez de migrar
+  `recolectar.ts` a una lista nueva. Siguen siendo la fuente de verdad real tras terminar un
+  combate de grupo.
