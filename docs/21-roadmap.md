@@ -293,38 +293,45 @@ resumen de trabajo real, agrupado por tamaño.
   componente que la Enciclopedia). Hallazgo real: el frontend tenía sus propios
   `ImagePromptEntityType`/`ImagePromptSizeProfile` duplicados en `api.ts` sin `'zona'`/`'mapa'` —
   corregido, causa real de por qué nunca aparecía nada.
-- [ ] **17 efectos de habilidad de clase pendientes de implementar en el motor** (`AbilityEffect`,
-  `schema.prisma`) — diseño cerrado con la usuaria (2026-08-26) para la mayoría, ver
-  [clases.md](rpgtarkor/clases.md) para las cifras exactas por habilidad. `LETAL` en realidad ya
-  estaba implementado pese a estar marcado `PENDIENTE` en el schema (corregir el comentario).
-  Orden de construcción acordado:
-  1. Listos tal cual, sin infraestructura nueva: `MULTIPLE` (en 1vs1 se queda en ataque normal),
-     `DESVIAR` (en 1vs1 se queda en ataque/defensa normal), `CONTROL` (en 1vs1 se convierte en
-     `ATURDIMIENTO`, ya implementado), `CONTRA`/`REFRACTAR` (atributo Arcano vs. resto de la
-     tirada como proxy de daño mágico/físico, sin construir un tipo de daño real — casi no hay
-     ataques mágicos en juego todavía, Mago sigue sin implementar), `REFLEJAR` (refleja el efecto
-     de una habilidad de utilidad, nunca daño/defensa), `PROVOCACION`, `PURIFICAR` (elimina
-     efectos negativos, depende de que exista duración por turnos para tener qué purificar),
-     `COMPANERO` (pasiva: nueva fuente de slot de compañero, suma a `maxCompanions` igual que los
-     edificios ya lo hacen — pero **con tipo restringido**: cada fuente de slot solo puede
-     ocuparla el tipo que indique su habilidad, ej. Domador → solo fauna combatible; otras clases
-     futuras podrán dar slots restringidos a NPC no inteligentes, invocaciones fijas, etc. — campo
-     genérico aunque hoy solo lo use el Domador).
-  2. Necesitan **duración por turnos** primero (infraestructura compartida, construir una vez):
-     `AUMENTO`, `DEBILIDAD`, `CANALIZAR` (turnos variables según nivel de la habilidad; cualquier
-     golpe recibido mientras se canaliza cancela el efecto antes de completarse — pensado para
-     gestión de agro en grupo), `CURAZION`.
-  3. Alcance mayor de lo previsto, tocan fuera de combate:
-     - `INVOCACION` — el tótem invocado actúa según el efecto combinado: `INVOCACION`+`ATAQUE` =
-       ataca cada turno sin defenderse; `INVOCACION`+`AGUANTE` = defiende sin atacar.
-     - `EXPULSAR` — no es solo un contador de turnos de combate: una tirada a los 2 turnos decide
-       si vuelve dentro del combate (y se va de la zona), otra tirada aparte decide si no vuelve a
-       aparecer nunca al terminar el combate; si vuelve, solo reaparece en su posición de la zona
-       cuando la jugadora viaja fuera y regresa — toca `npcScene.ts`/presencia en zona, no solo
-       `turnResolution.ts`.
-  4. Esperan que la usuaria rellene cifras a su ritmo, quedan `⚠️ bloqueada` en `clases.md`
-     mientras tanto (no frena el resto): `RETIRAR` (ninguna de sus 2 filas tiene cifra) y las
-     filas sueltas de `AUMENTO`/`DEBILIDAD`/`CURAZION` sin número (sobre todo Segador/Asesino).
+- [x] ~~**Fase 1 — CONTRA/REFRACTAR/CONTROL/COMPANERO**~~ — cerrado 2026-08-26, APLICADO al motor
+  (commit `889b7e3`). `LETAL` en realidad ya estaba implementado pese a estar marcado `PENDIENTE`
+  en el schema (corregido). CONTRA/REFRACTAR: contragolpe en el margen decisivo ya existente
+  (±10, no un umbral propio por habilidad — mismo criterio de simplificación que ya usaba LETAL),
+  gateado por el atributo Arcano como proxy de físico/mágico. CONTROL en 1vs1: se simplifica a
+  robar la iniciativa (mismo mecanismo que ATURDIMIENTO), sin los "2 turnos" reales — no hay
+  combate multi-objetivo al que redirigir "controla al rival para que ataque a sus aliados".
+  COMPANERO: pasiva, reutiliza `esSlotDomador` (companeros.ts), ya construido de antes — esta
+  pasada solo la hace visible como habilidad real. 3 habilidades reales sembradas cuyo efecto no
+  dependía de duración/multi-objetivo: Vórtice Menor (Chamán/Convocador 32), Opresión Mental
+  (Chamán/Opresor 16), Compañero cazador (Cazador/Domador 12) — 139 huecos reales en total ahora.
+  3 tests de integración nuevos contra Postgres real. **Hallazgo real**: `MULTIPLE`/`DESVIAR` NO
+  se pudieron sembrar del todo pese a estar "sin infraestructura nueva" en el plan original — cada
+  fila real de `clases.md` que los usa depende de verdad de un segundo objetivo real (combate
+  multi-objetivo), así que quedan con la mecánica de fallback construida pero sin ninguna
+  habilidad real enganchada todavía (ver Fase 3 más abajo). `REFLEJAR`/`PROVOCACION` también se
+  reclasificaron a Fase 2 (si necesitan duración de verdad, contra lo que decía el plan original).
+- [ ] **Fase 2 — necesitan duración por turnos primero** (infraestructura compartida, construir
+  una vez): `AUMENTO`, `DEBILIDAD`, `CANALIZAR` (turnos variables según nivel de la habilidad;
+  cualquier golpe recibido mientras se canaliza cancela el efecto antes de completarse — pensado
+  para gestión de agro en grupo), `CURAZION`, `REFLEJAR` (su única habilidad real, "Espejo
+  Maldito", devuelve un efecto negativo que a su vez necesita durar — no es tan simple como
+  parecía en el plan original), `PROVOCACION` ("obliga a atacarte 2 turnos" — también reclasificado
+  desde el plan original, que lo daba por listo sin serlo), `PURIFICAR` (elimina efectos
+  negativos, depende de que exista duración para tener qué purificar).
+- [ ] **Fase 3 — combate multi-objetivo de verdad** (no solo el fallback de 1vs1, ya construido en
+  la Fase 1): `MULTIPLE`/`DESVIAR`/`CONTROL` con segundo objetivo real requieren tocar el motor
+  `CombatEncounter` (`combateMultiple.ts`/`combateMultipleOrquestacion.ts`), que hoy tampoco tiene
+  ese enganche construido en el punto exacto donde se resuelve un golpe — más trabajo del que
+  parecía. `INVOCACION` (el tótem actúa según el efecto combinado: `INVOCACION`+`ATAQUE` = ataca
+  cada turno sin defenderse; `INVOCACION`+`AGUANTE` = defiende sin atacar) y `OCULTACION` también
+  viven aquí. `EXPULSAR` además toca fuera de combate: no es solo un contador de turnos — una
+  tirada a los 2 turnos decide si vuelve dentro del combate (y se va de la zona), otra tirada
+  aparte decide si no vuelve a aparecer nunca al terminar el combate; si vuelve, solo reaparece en
+  su posición de la zona cuando la jugadora viaja fuera y regresa — toca `npcScene.ts`/presencia
+  en zona, no solo `turnResolution.ts`.
+- [ ] **Fase 4 — esperan que la usuaria rellene cifras a su ritmo**, quedan `⚠️ bloqueada` en
+  `clases.md` mientras tanto (no frena el resto): `RETIRAR` (ninguna de sus 2 filas tiene cifra) y
+  las filas sueltas de `AUMENTO`/`DEBILIDAD`/`CURAZION` sin número (sobre todo Segador/Asesino).
   Parte del trabajo de cada efecto también es desbloquear esas filas en `clases.md` y darlas de
   alta como `ClassAbilityUnlock` reales, no solo construir el motor.
 
@@ -385,3 +392,10 @@ resumen de trabajo real, agrupado por tamaño.
   el modo en solitario esté maduro, ni siquiera diseñado todavía.
 - **Benchmark de latencia real** (`06-decisiones-mecanicas.md` punto 5) — medición de rendimiento
   pendiente, no una feature.
+- **Hallazgo real 2026-08-26, sin investigar a fondo**: `turn.integration.test.ts` (26/91) y
+  `recolectar.integration.test.ts` (2/2, el describe de cooldown) fallan contra Postgres real,
+  reproducible incluso en el ÚLTIMO COMMIT antes de esta sesión (confirmado con `git stash` +
+  reejecutar) — no es una regresión de nada tocado hoy. No investigado más a fondo (fuera de
+  alcance de esta pasada); posible degradación del contenedor tras una sesión muy larga, o datos
+  reales de partida que ya no encajan con lo que esos tests asumen. El resto de archivos de
+  integración (companeros, session, zona, combate múltiple, creación) siguen en verde.
