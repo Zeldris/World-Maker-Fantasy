@@ -220,6 +220,38 @@ describe('dualWieldAdjustedDifficulty', () => {
   });
 });
 
+// Bonus de atributo al ejecutar (petición explícita, 2026-08-26: "que las habilidades de arma su
+// efecto en todas sea ATAQUE que cuando se ejecuta da +2 del attr en el que está basada"). Decisión
+// cerrada tras revisarlo con la usuaria: "Ataque Básico" se queda con el stat base tal cual, sin
+// bonus — el +2 es solo para las reales/avanzadas (`tier !== 'basica'`).
+describe('weaponAbilitiesFor — attributeBonus', () => {
+  it('"Ataque Básico" (tier basica), armado o desarmado, nunca lleva bonus', () => {
+    const armado = weaponAbilitiesFor([{ slot: 'ARMA_PRINCIPAL', tipoArma: 'HACHA_1_MANO' }], 1)[0];
+    expect(armado).toMatchObject({ name: 'Ataque Básico', attributeBonus: 0 });
+    const desarmado = weaponAbilitiesFor([{ slot: 'ARMA_PRINCIPAL', tipoArma: null }], 1)[0];
+    expect(desarmado).toMatchObject({ name: 'Ataque Básico', attributeBonus: 0 });
+  });
+
+  it('la habilidad REAL por categoría de arma lleva +2', () => {
+    const result = weaponAbilitiesFor([{ slot: 'ARMA_PRINCIPAL', tipoArma: 'HACHA_1_MANO' }], 1);
+    expect(result.find((a) => a.tier === 'real')).toMatchObject({ name: 'Tajo Horizontal', attributeBonus: 2 });
+  });
+
+  it('la avanzada de ataque (fuerza/destreza y desarmada) lleva +2', () => {
+    const armado = weaponAbilitiesFor([{ slot: 'ARMA_PRINCIPAL', tipoArma: 'HACHA_1_MANO' }], 20);
+    expect(armado.find((a) => a.tier === 'avanzada')).toMatchObject({ name: 'Golpe Sísmico', attributeBonus: 2 });
+    const desarmado = weaponAbilitiesFor([], 20);
+    expect(desarmado.find((a) => a.tier === 'avanzada')).toMatchObject({ name: 'Puño Demoledor', attributeBonus: 2 });
+  });
+
+  it('defensa de escudo: la básica ("Cobertura de Escudo") sin bonus, la avanzada ("Muro Inquebrantable") con +2', () => {
+    const equipped: EquippedWeaponSlot[] = [{ slot: 'ARMA_PRINCIPAL', tipoArma: 'ESCUDO' }];
+    const result = weaponAbilitiesFor(equipped, 20);
+    expect(result.find((a) => a.name === 'Cobertura de Escudo')).toMatchObject({ attributeBonus: 0 });
+    expect(result.find((a) => a.name === 'Muro Inquebrantable')).toMatchObject({ attributeBonus: 2 });
+  });
+});
+
 // Restricción de armas por clase (2026-08-24, Grupo 3 § Sistema de clases, clases.md §
 // "Restricción de armas por clase") — solo Guerrero/Cazador/Chamán tienen pool construido.
 describe('weaponPoolFor', () => {

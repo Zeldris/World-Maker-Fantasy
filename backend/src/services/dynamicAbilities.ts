@@ -56,6 +56,9 @@ export interface DynamicAbilityData {
   /// Ver WeaponAbility.dualWield (2026-07-31) — true cuando la real de ataque colapsó por llevar
   /// la misma categoría en las dos manos. Siempre false en raciales.
   dualWield: boolean;
+  /// Ver WeaponAbility.attributeBonus (2026-08-26) — 0 en raciales (fuera de alcance de esa
+  /// petición, que hablaba solo de habilidades de ARMA).
+  attributeBonus: number;
 }
 
 export function dynamicCombatAbilitiesFor(raza: string | null, level: number, equipped: EquippedWeaponSlot[]): DynamicAbilityData[] {
@@ -65,8 +68,8 @@ export function dynamicCombatAbilitiesFor(raza: string | null, level: number, eq
     const razaInfo = BERIG_RAZAS.find((r) => r.slug === raza);
     if (razaInfo) {
       const { ataque, defensa } = razaInfo.habilidadesRaciales;
-      abilities.push({ ...ataque, preferredAttribute: ataque.preferredAttribute, effects: ['ATAQUE'], rol: 'ataque', energyCost: ENERGY_COST_BASICA, energyRegen: 0, isGeneric: false, dualWield: false });
-      abilities.push({ ...defensa, preferredAttribute: defensa.preferredAttribute, effects: ['AGUANTE'], rol: 'defensa', energyCost: ENERGY_COST_BASICA, energyRegen: 0, isGeneric: false, dualWield: false });
+      abilities.push({ ...ataque, preferredAttribute: ataque.preferredAttribute, effects: ['ATAQUE'], rol: 'ataque', energyCost: ENERGY_COST_BASICA, energyRegen: 0, isGeneric: false, dualWield: false, attributeBonus: 0 });
+      abilities.push({ ...defensa, preferredAttribute: defensa.preferredAttribute, effects: ['AGUANTE'], rol: 'defensa', energyCost: ENERGY_COST_BASICA, energyRegen: 0, isGeneric: false, dualWield: false, attributeBonus: 0 });
     }
   }
 
@@ -83,6 +86,7 @@ export function dynamicCombatAbilitiesFor(raza: string | null, level: number, eq
       energyRegen: w.energyRegen,
       isGeneric: w.isGeneric,
       dualWield: w.dualWield,
+      attributeBonus: w.attributeBonus,
     });
   }
 
@@ -119,6 +123,7 @@ export async function syncDynamicCombatAbilities(
       energyRegen: a.energyRegen,
       isGeneric: a.isGeneric,
       dualWield: a.dualWield,
+      attributeBonus: a.attributeBonus,
     })),
   });
 }

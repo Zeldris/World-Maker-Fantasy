@@ -45,6 +45,17 @@ describe('dynamicCombatAbilitiesFor (sistema de fatiga)', () => {
     expect(abilities.find((a) => a.name === 'Ataque Básico')?.rol).toBe('ataque');
     expect(abilities.find((a) => a.name === 'Cobertura de Escudo')?.rol).toBe('defensa');
   });
+
+  // Bonus de atributo (2026-08-26, ver weaponAbilities.test.ts § attributeBonus) — propaga
+  // WeaponAbility.attributeBonus tal cual; las raciales se quedan siempre en 0 (fuera de alcance
+  // de esa petición, que hablaba solo de habilidades de ARMA).
+  it('propaga attributeBonus: raciales siempre 0, Ataque Básico 0, la real de arma +2', () => {
+    const abilities = dynamicCombatAbilitiesFor('orcos', WEAPON_ABILITY_LEVEL_BASICA, [{ slot: 'ARMA_PRINCIPAL', tipoArma: 'HACHA_1_MANO' }]);
+    const raciales = abilities.filter((a) => a.name !== 'Ataque Básico' && a.name !== 'Tajo Horizontal');
+    expect(raciales.every((a) => a.attributeBonus === 0)).toBe(true);
+    expect(abilities.find((a) => a.name === 'Ataque Básico')?.attributeBonus).toBe(0);
+    expect(abilities.find((a) => a.name === 'Tajo Horizontal')?.attributeBonus).toBe(2);
+  });
 });
 
 describe('resolveEquippedWeaponSlots (deuda técnica 2026-07-30, extraído de 3 copias casi idénticas en routes/saves.ts)', () => {

@@ -327,16 +327,18 @@ resumen de trabajo real, agrupado por tamaño.
   algo distintas según dónde se usen (tarjeta de Enciclopedia vs ficha de detalle vs fondo de un
   panel de juego), y no hay un criterio único escrito de "esta imagen es para esto, aparece aquí,
   así". Repasarlo por tipo de entidad antes de seguir añadiendo más generadores sueltos.
-- [ ] **Habilidades de arma: bonus de atributo al ejecutarlas** (petición explícita, 2026-08-26).
-  `dynamicCombatAbilitiesFor` (dynamicAbilities.ts) ya da `effects: ['ATAQUE']` a TODAS las
-  habilidades de arma reales (línea `effects: [w.rol === 'defensa' ? 'AGUANTE' : 'ATAQUE']`) — ese
-  punto ya estaba cerrado, no hace falta tocarlo. Lo que falta de verdad: ninguna lleva
-  `attributeBonus` hoy (a diferencia de las habilidades de clase, que sí lo tienen desde
-  clases.md) — hay que darle a cada habilidad de arma (`weaponAbilitiesFor`, weaponAbilities.ts)
-  un +2 fijo del atributo en el que está basada (`WeaponAbility.attribute`) al ejecutarla. Decisión
-  ya cerrada: "Ataque Básico" (`tier: 'basica'`, genérica) se queda SIN bonus, va con el stat base
-  tal cual — el +2 es solo para las reales/avanzadas por categoría de arma (Tajo Horizontal, Golpe
-  Devastador, Ráfaga de Cortes, etc., `tier: 'real'`/`'avanzada'`).
+- [x] ~~**Habilidades de arma: bonus de atributo al ejecutarlas**~~ — cerrado 2026-08-26, APLICADO
+  al motor. `WeaponAbility.attributeBonus` nuevo (weaponAbilities.ts): +2 fijo del atributo base
+  para toda habilidad `tier: 'real'`/`'avanzada'` (Tajo Horizontal, Golpe Devastador, Ráfaga de
+  Cortes, Muro Inquebrantable, Puño Demoledor...), 0 para `tier: 'basica'` ("Ataque Básico" y
+  "Cobertura de Escudo" — decisión cerrada: el genérico va con el stat base tal cual). Enhebrado
+  hasta `SavedAction.attributeBonus` (`dynamicAbilities.ts § syncDynamicCombatAbilities`), la MISMA
+  columna que ya usan las habilidades de clase y que `turnResolution.ts` ya lee para calcular el
+  intercambio (`selectedAbilityData.attributeBonus` → `abilityAttributeBonus`) — sin tocar el motor
+  de combate en sí, solo se le empezó a dar un valor real a un campo que las habilidades de arma
+  nunca habían poblado. Raciales se quedan en 0 (fuera de alcance, la petición era solo sobre
+  habilidades de ARMA). Tests nuevos en `weaponAbilities.test.ts`/`dynamicAbilities.test.ts`, `tsc
+  -b` limpio, 2817 tests backend en verde.
 - [x] ~~**Fase 1 — CONTRA/REFRACTAR/CONTROL/COMPANERO**~~ — cerrado 2026-08-26, APLICADO al motor
   (commit `889b7e3`). `LETAL` en realidad ya estaba implementado pese a estar marcado `PENDIENTE`
   en el schema (corregido). CONTRA/REFRACTAR: contragolpe en el margen decisivo ya existente

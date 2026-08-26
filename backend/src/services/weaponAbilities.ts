@@ -78,6 +78,14 @@ export interface WeaponAbility {
   /// tiradas reales en el mismo turno) — se traduce en un bonus de dificultad al usarla, ver
   /// DUAL_WIELD_DIFFICULTY_BONUS/turnResolution.ts.
   dualWield: boolean;
+  /// Bonus fijo de atributo al ejecutarla (petición explícita, 2026-08-26: "que las habilidades de
+  /// arma su efecto en todas sea ATAQUE que cuando se ejecuta da +2 del attr en el que está
+  /// basada") — mismo mecanismo que ya usan las habilidades de clase (`ClassAbilityUnlock.
+  /// attributeBonus`, ver `ExchangeParticipant.attributeBonus` en combatExchange.ts). Decisión
+  /// cerrada tras revisarlo con la usuaria: "Ataque Básico" (tier 'basica') se queda CON el stat
+  /// base tal cual, sin bonus — el +2 es solo para las reales/avanzadas (`tier !== 'basica'`, sea
+  /// de ataque o de defensa de escudo).
+  attributeBonus: number;
 }
 
 interface WeaponAbilityContent {
@@ -349,6 +357,11 @@ export interface EquippedWeaponSlot {
 export const WEAPON_ABILITY_LEVEL_BASICA = 1;
 export const WEAPON_ABILITY_LEVEL_AVANZADA = 20;
 
+/// Ver comentario de `WeaponAbility.attributeBonus` — mismo orden de magnitud que el bonus típico
+/// de una habilidad de clase real (`classAbilities.ts`, p.ej. Vórtice Menor +4), pero deliberadamente
+/// más bajo: esto se aplica a TODA habilidad de arma real/avanzada, no a una elegida a mano.
+const WEAPON_ABILITY_ATTRIBUTE_BONUS = 2;
+
 /// Rediseño 2026-07-30 (petición explícita, tras probarlo en vivo: "ataque normal... se rige por
 /// el tipo de arma de la MANO PRINCIPAL — la secundaria deja de generar su propia habilidad de
 /// ataque aparte, como mucho aporta algo distinto si es un escudo"). Antes CADA categoría de arma
@@ -371,10 +384,10 @@ export function weaponAbilitiesFor(equipped: EquippedWeaponSlot[], level: number
     : UNARMED_AVANZADA_CONTENT;
   const basicaContent = principalAtaca ? ATAQUE_BASICO_ARMADO_CONTENT : ATAQUE_BASICO_DESARMADO_CONTENT;
   if (level >= WEAPON_ABILITY_LEVEL_BASICA) {
-    abilities.push({ ...basicaContent, attribute: attackAttribute, rol: 'ataque', tier: 'basica', isGeneric: true, energyRegen: 0, dualWield: false });
+    abilities.push({ ...basicaContent, attribute: attackAttribute, rol: 'ataque', tier: 'basica', isGeneric: true, energyRegen: 0, dualWield: false, attributeBonus: 0 });
   }
   if (level >= WEAPON_ABILITY_LEVEL_AVANZADA) {
-    abilities.push({ ...avanzadaContent, attribute: attackAttribute, rol: 'ataque', tier: 'avanzada', isGeneric: false, energyRegen: 0, dualWield: false });
+    abilities.push({ ...avanzadaContent, attribute: attackAttribute, rol: 'ataque', tier: 'avanzada', isGeneric: false, energyRegen: 0, dualWield: false, attributeBonus: WEAPON_ABILITY_ATTRIBUTE_BONUS });
   }
 
   // Habilidad REAL por categoría exacta (2026-07-31, ver WEAPON_REAL_ATAQUE_CONTENT) — a
@@ -401,6 +414,7 @@ export function weaponAbilitiesFor(equipped: EquippedWeaponSlot[], level: number
         isGeneric: false,
         energyRegen: 0,
         dualWield,
+        attributeBonus: WEAPON_ABILITY_ATTRIBUTE_BONUS,
       });
     }
   }
@@ -420,6 +434,7 @@ export function weaponAbilitiesFor(equipped: EquippedWeaponSlot[], level: number
         isGeneric: false,
         energyRegen: 0,
         dualWield: false,
+        attributeBonus: 0,
       });
     if (level >= WEAPON_ABILITY_LEVEL_AVANZADA)
       seenDefensa.set('avanzada', {
@@ -430,6 +445,7 @@ export function weaponAbilitiesFor(equipped: EquippedWeaponSlot[], level: number
         isGeneric: false,
         energyRegen: 0,
         dualWield: false,
+        attributeBonus: WEAPON_ABILITY_ATTRIBUTE_BONUS,
       });
   }
   abilities.push(...seenDefensa.values());
