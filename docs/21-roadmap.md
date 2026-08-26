@@ -316,6 +316,17 @@ resumen de trabajo real, agrupado por tamaño.
   algo distintas según dónde se usen (tarjeta de Enciclopedia vs ficha de detalle vs fondo de un
   panel de juego), y no hay un criterio único escrito de "esta imagen es para esto, aparece aquí,
   así". Repasarlo por tipo de entidad antes de seguir añadiendo más generadores sueltos.
+- [ ] **Habilidades de arma: bonus de atributo al ejecutarlas** (petición explícita, 2026-08-26).
+  `dynamicCombatAbilitiesFor` (dynamicAbilities.ts) ya da `effects: ['ATAQUE']` a TODAS las
+  habilidades de arma reales (línea `effects: [w.rol === 'defensa' ? 'AGUANTE' : 'ATAQUE']`) — ese
+  punto ya estaba cerrado, no hace falta tocarlo. Lo que falta de verdad: ninguna lleva
+  `attributeBonus` hoy (a diferencia de las habilidades de clase, que sí lo tienen desde
+  clases.md) — hay que darle a cada habilidad de arma (`weaponAbilitiesFor`, weaponAbilities.ts)
+  un +2 fijo del atributo en el que está basada (`WeaponAbility.attribute`) al ejecutarla. Decisión
+  pendiente antes de tocar código: ¿el +2 alcanza también a "Ataque Básico" (genérica, cualquiera
+  la tiene sin arma real equipada) o solo a las reales/avanzadas por categoría de arma (Tajo
+  Horizontal, Golpe Devastador, etc.), para no igualar el genérico sin gracia con las que sí
+  representan un arma concreta?
 - [x] ~~**Fase 1 — CONTRA/REFRACTAR/CONTROL/COMPANERO**~~ — cerrado 2026-08-26, APLICADO al motor
   (commit `889b7e3`). `LETAL` en realidad ya estaba implementado pese a estar marcado `PENDIENTE`
   en el schema (corregido). CONTRA/REFRACTAR: contragolpe en el margen decisivo ya existente
