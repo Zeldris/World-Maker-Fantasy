@@ -144,6 +144,10 @@ export async function detailRoutes(app: FastifyInstance) {
               // turnResolution.ts en la respuesta directa del turno; sin esto, recargar la partida
               // a mitad de combate perdía el desbloqueo de la ficha del rival hasta el próximo golpe.
               analizado: state?.analizado ?? false,
+              // Mismo campo que turnResolution.ts (2026-08-26, "el botón Capturar no debería salir
+              // si el NPC no es capturable") — gatea el botón "Capturar" de la tarjeta Matar/
+              // Capturar/Clemente también tras recargar la partida a mitad de combate.
+              capturable: n.atributoResistencia !== null,
             };
           }),
         }

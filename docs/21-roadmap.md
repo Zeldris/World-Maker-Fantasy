@@ -245,9 +245,13 @@ resumen de trabajo real, agrupado por tamaño.
   2026-08-26, APLICADO al motor (commits `1aa94f3`/`e608a2b`/`d26e80c`). Checklist desactualizado:
   quedó marcado `[ ]` pese a estar commiteado — corregido tras confirmar en el código real
   (`session.ts` § `dejar-vivir`, `companeros.ts` § `cuerdas`, working tree limpio, sin cambios sin
-  commitear). Pendiente de tu lado: **jugarlo en vivo** para confirmar que la tarjeta
-  Matar/Capturar/Clemente se ve bien y bloquea el composer como toca — solo verificado por código,
-  no en partida real todavía.
+  commitear). **Jugado en vivo y confirmado bueno (2026-08-26)** — de paso, probando "Capturar" se
+  encontró y cerró un bug real aparte: el botón se mostraba siempre aunque el NPC no tuviera
+  `atributoResistencia` (no capturable), el backend rechazaba en silencio y el frontend tragaba el
+  error sin avisar ("le doy al botón y no hace nada") — `capturable` añadido de punta a punta
+  (`npcScene.ts`/`turnResolution.ts`/`detail.ts` → `types.ts`/`useCombatFlow.ts`/`LogPanel.tsx`), el
+  botón ya no aparece si no aplica. Tests en verde (1343 backend + 92 frontend), `tsc -b` limpio en
+  ambos.
   - Combate termina solo cuando todos los NPC están MUERTO o ya resueltos (Matar/Capturar/
     Clemente) — un CONVALECIENTE solo ya no cierra nada por sí mismo.
   - Sobre cada NPC CONVALECIENTE se ofrecen 3 opciones en una **tarjeta en el propio log de

@@ -115,6 +115,11 @@ export interface NpcInScene {
   /// éxito una vez, para siempre en esta partida. Gatea qué muestra la ficha del rival en combate
   /// (CombatPanel.tsx § EnemyFicha) — sin analizar, ni estadísticas ni habilidades.
   analizado: boolean;
+  /// Bug real jugando en vivo (2026-08-26, "le doy a Capturar y no hace nada"): `POST
+  /// /capturar/:npcSlug` (companeros.ts) rechaza cualquier Npc sin `atributoResistencia` (sin
+  /// tirada opuesta posible), pero el botón "Capturar" de la tarjeta Matar/Capturar/Clemente
+  /// (LogPanel.tsx) se mostraba siempre — sin este dato, no hay forma de ocultarlo de antemano.
+  capturable: boolean;
   /// Caza en grupo (2026-08-13) — ver comentario completo en schema.prisma § NpcState.groupSize.
   /// null = encuentro solitario de siempre.
   groupSize: number | null;
@@ -183,6 +188,7 @@ export function buildNpcInScene(npc: NpcWithItems, state: NpcState | undefined):
     lootedItemNames: state?.lootedItemNames ?? [],
     energia: state?.energia ?? null,
     analizado: state?.analizado ?? false,
+    capturable: npc.atributoResistencia !== null,
     groupSize: state?.groupSize ?? null,
     groupDefeated: state?.groupDefeated ?? 0,
     corpsesLooted: state?.corpsesLooted ?? 0,

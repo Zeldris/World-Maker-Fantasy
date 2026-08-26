@@ -78,6 +78,7 @@ function npcInSceneFromCatalog(npc: NpcInput, overrides: Partial<NpcInScene> = {
     lootedItemNames: [],
     energia: null,
     analizado: false,
+    capturable: npc.atributoResistencia !== undefined,
     groupSize: null,
     groupDefeated: 0,
     corpsesLooted: 0,

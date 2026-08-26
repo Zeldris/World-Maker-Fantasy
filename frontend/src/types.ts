@@ -329,7 +329,7 @@ export interface LogEntry {
   /// tal cual, pero el estado de "ya resuelto" no se limpia aquí — se deriva en vivo comparando
   /// `npcSlug` contra `combatNpcsDisplay` (useCombatFlow.ts), así que sigue siendo correcto incluso
   /// si la jugadora responde desde una tarjeta de un turno anterior a esta.
-  convalecienteOffers?: { npcSlug: string; npcName: string }[]
+  convalecienteOffers?: { npcSlug: string; npcName: string; capturable: boolean }[]
 }
 
 export type EquipSlot =
@@ -598,6 +598,10 @@ export interface NpcInSceneInfo {
   // Rediseño de combate (2026-08-09, "Analizar rival") — gatea si CombatPanel.tsx § EnemyFicha
   // muestra el atributo recomendado contra este rival. Sin analizar, la ficha no muestra nada.
   analizado: boolean
+  // Bug real jugando en vivo (2026-08-26, "le doy a Capturar y no hace nada") — gatea el botón
+  // "Capturar" de la tarjeta Matar/Capturar/Clemente (LogPanel.tsx § convalecienteOffers): sin
+  // `atributoResistencia` en el backend no hay tirada opuesta posible, el POST siempre rechaza.
+  capturable: boolean
 }
 
 /// Un enlace de objeto/habilidad estilo World of Warcraft, insertado dentro del propio texto

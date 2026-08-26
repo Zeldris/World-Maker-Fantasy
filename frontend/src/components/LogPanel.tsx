@@ -357,13 +357,15 @@ export const LogPanel = memo(function LogPanel({
                         >
                           Matar
                         </button>
-                        <button
-                          type="button"
-                          onClick={() => onCapturarConvaleciente?.(offer.npcSlug)}
-                          className="tactile rounded-lg border border-accent-500/60 bg-accent-500/20 px-2.5 py-1 text-2xs font-semibold uppercase tracking-[0.08em] text-accent-300 hover:border-accent-400 hover:bg-accent-500/35"
-                        >
-                          Capturar
-                        </button>
+                        {offer.capturable && (
+                          <button
+                            type="button"
+                            onClick={() => onCapturarConvaleciente?.(offer.npcSlug)}
+                            className="tactile rounded-lg border border-accent-500/60 bg-accent-500/20 px-2.5 py-1 text-2xs font-semibold uppercase tracking-[0.08em] text-accent-300 hover:border-accent-400 hover:bg-accent-500/35"
+                          >
+                            Capturar
+                          </button>
+                        )}
                         <button
                           type="button"
                           onClick={() => onClementeConvaleciente?.(offer.npcSlug)}

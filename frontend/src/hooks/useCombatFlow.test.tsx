@@ -29,7 +29,7 @@ const mockNarrate = vi.mocked(requestTurnNarrate)
 const mockFlee = vi.mocked(requestFlee)
 
 function npc(overrides: Partial<NpcInSceneInfo> & { slug: string; name: string }): NpcInSceneInfo {
-  return { condicionFisica: 'ILESO', saqueado: false, lootedItemNames: [], analizado: false, ...overrides }
+  return { condicionFisica: 'ILESO', saqueado: false, lootedItemNames: [], analizado: false, capturable: true, ...overrides }
 }
 
 function baseProgression() {

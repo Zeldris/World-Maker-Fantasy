@@ -177,13 +177,13 @@ describe('GET /saves/:id', () => {
 
   it('un NPC CONVALECIENTE/MUERTO todavía sin saquear del todo sí reabre combateIniciado, con lootedItemNames', async () => {
     findUniqueSave.mockResolvedValue(baseSave({ pendingCombatNpcSlugs: ['orco-enfurecido-hondonada'] }));
-    findManyNpc.mockResolvedValue([{ id: 'npc1', slug: 'orco-enfurecido-hondonada', name: 'Orco Enfurecido', kind: 'SECUNDARIO' }]);
+    findManyNpc.mockResolvedValue([{ id: 'npc1', slug: 'orco-enfurecido-hondonada', name: 'Orco Enfurecido', kind: 'SECUNDARIO', atributoResistencia: 'voluntad' }]);
     findManyNpcState.mockResolvedValue([{ npcId: 'npc1', scope: 'itinerante', condicionFisica: 'MUERTO', saqueado: false, lootedItemNames: ['Maza orca'] }]);
     const app = await buildApp();
     const res = await app.inject({ method: 'GET', url: '/saves/save1' });
     expect(res.statusCode).toBe(200);
     expect(res.json().combateIniciado).toEqual({
-      npcs: [{ slug: 'orco-enfurecido-hondonada', name: 'Orco Enfurecido', condicionFisica: 'MUERTO', saqueado: false, lootedItemNames: ['Maza orca'], analizado: false }],
+      npcs: [{ slug: 'orco-enfurecido-hondonada', name: 'Orco Enfurecido', condicionFisica: 'MUERTO', saqueado: false, lootedItemNames: ['Maza orca'], analizado: false, capturable: true }],
     });
   });
 });

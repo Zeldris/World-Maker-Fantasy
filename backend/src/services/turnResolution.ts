@@ -374,7 +374,7 @@ export interface NarrateAndPersistResult {
   /// frontend pueda mostrar el popup de combate ya sincronizado con `NpcState`, sin una consulta
   /// adicional ni asumir que todo NPC arranca ILESO/sin saquear.
   combateIniciado?: {
-    npcs: { slug: string; name: string; condicionFisica: CondicionFisica; saqueado: boolean; lootedItemNames: string[]; analizado: boolean }[];
+    npcs: { slug: string; name: string; condicionFisica: CondicionFisica; saqueado: boolean; lootedItemNames: string[]; analizado: boolean; capturable: boolean }[];
   } | null;
   finDePartida: boolean;
   /// Bug real (2026-07-29, "si muero no hace lo que fijamos que haría" en combate): cuando la
@@ -2147,6 +2147,7 @@ async function resolveCombatSlugsAndPersist(params: {
             // (auditoría 2026-08-14) — mismo criterio que el override de `condicionFisica` de
             // arriba, `n.analizado` por sí solo es la foto de ANTES de este turno.
             analizado: analizarRivalExito && npcAttackTarget && n.id === npcAttackTarget.id ? true : n.analizado,
+            capturable: n.capturable,
           })),
       }
     : null;
@@ -5527,7 +5528,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
         const participantesFinal = await prisma.combatParticipant.findMany({ where: { encounterId: combatEncounterId! } });
         const enemigoNpcIds = participantesFinal.filter((p) => p.tipo === 'NPC' && p.npcId).map((p) => p.npcId!);
         const enemigoNpcRows = enemigoNpcIds.length
-          ? await prisma.npc.findMany({ where: { id: { in: enemigoNpcIds } }, select: { id: true, slug: true, name: true, kind: true } })
+          ? await prisma.npc.findMany({ where: { id: { in: enemigoNpcIds } }, select: { id: true, slug: true, name: true, kind: true, atributoResistencia: true } })
           : [];
         const npcRowById = new Map(enemigoNpcRows.map((n) => [n.id, n]));
         // Bug real de display (2026-08-25, hallado al cerrar saqueo/desuello): un participante
@@ -5553,6 +5554,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
               saqueado: false,
               lootedItemNames: [] as string[],
               analizado: false,
+              capturable: npcRow.atributoResistencia !== null,
             };
           });
         if (!combatEncounterTerminado) {

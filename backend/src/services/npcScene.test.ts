@@ -442,6 +442,7 @@ function npcFixture(overrides: Partial<NpcInScene> = {}): NpcInScene {
     attributes: { fuerza: 11, destreza: 10, constitucion: 9, inteligencia: 4, voluntad: 7, carisma: 2, arcano: 2 },
     raza: 'orcos', clase: 'GUERRERO', especializacion: null, ataqueNatural: null, habilidadesRaciales: [],
     temperamento: 'AGRESIVO', condicionFisica: 'ILESO', saqueado: false, lootedItemNames: [], energia: null, analizado: false,
+    capturable: false,
     groupSize: null, groupDefeated: 0, corpsesLooted: 0,
     abilityUsesThisEncounter: {},
     ...overrides,
