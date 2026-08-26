@@ -432,6 +432,13 @@ export interface NarrateAndPersistResult {
   /// creó una misión nueva, para que el frontend la resalte sin tener que comparar arrays. `null`
   /// en la inmensa mayoría de turnos, que no crean ninguna.
   newQuestInfo: { title: string; objetivo: string } | null;
+  /// Oferta de misión SIN aceptar todavía (2026-08-26, petición explícita: "botones Aceptar/
+  /// Cancelar cuando un NPC ofrece una misión, en vez de depender de que la jugadora escriba texto
+  /// libre para aceptar") — a diferencia de `newQuestInfo` (la misión YA se creó de verdad), esto
+  /// solo marca que el modelo propuso una con anclaje real al mundo (mismo filtro que antes exigía
+  /// para crearla) — la `Quest` no se crea hasta `POST /saves/:id/quests/aceptar`. `null` en la
+  /// inmensa mayoría de turnos.
+  newQuestOfferInfo: { title: string; description: string } | null;
   /// Notificación de misión COMPLETADA (2026-08-13, hallazgo real jugando: la narración de
   /// recompensa — questRewardNarrationFor — se persistía bien como LogEntry aparte, pero
   /// `/turn/narrate` nunca avisaba de que existía, así que ese turno el jugador solo veía la
@@ -3982,6 +3989,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     logEntryId: string;
     newQuestObjetivos: string[];
     newQuestInfo: { title: string; objetivo: string } | null;
+    newQuestOfferInfo: { title: string; description: string } | null;
     questCompletedInfo: QuestCompletedInfo | null;
     newKingdomFounded: KingdomFoundedInfo | null;
     companionCreated: { id: string; name: string; role: string; notes: string } | null;
@@ -4077,6 +4085,8 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     // Notificación de misión aceptada (ver NarrateAndPersistResult.newQuestInfo más arriba) — se
     // rellena en los dos sitios que crean una Quest de verdad, más abajo.
     let newQuestInfo: { title: string; objetivo: string } | null = null;
+    // Oferta de misión sin aceptar (ver NarrateAndPersistResult.newQuestOfferInfo más arriba).
+    let newQuestOfferInfo: { title: string; description: string } | null = null;
     // Notificación de misión completada (ver NarrateAndPersistResult.questCompletedInfo más
     // arriba) — se rellena en completeNpcTargetQuests (derrota normal/Decapitar) y en la rama
     // orcoYaResuelto (aceptar la misión con el objetivo ya resuelto de antes), los 3 sitios que
@@ -4890,20 +4900,17 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
       // solución completa (eso exige un catálogo de misiones propio, fuera de alcance de esta
       // pasada — ver el documento), pero cierra el caso más grave: una misión completamente
       // inventada, sin ninguna conexión con el mundo real, que ni siquiera podría cerrarse sola.
+      //
+      // Botones Aceptar/Cancelar (2026-08-26, petición explícita: "en vez de depender de que la
+      // jugadora escriba texto libre para aceptar... que 'Aceptar' genere una narración
+      // determinista de aceptación, sin esperar a que el LLM decida si acepta o no") — este bloque
+      // YA NO crea la `Quest` aquí: solo confirma que hay un anclaje real (mismo guard de siempre)
+      // y ofrece el título/descripción para que el frontend pinte los botones. La `Quest` de
+      // verdad nace en `POST /saves/:id/quests/aceptar` (quests.ts), que vuelve a resolver los
+      // anclajes por su cuenta contra el título/descripción exactos — nunca contra `npcsInScene`
+      // de este turno concreto, que para entonces ya puede haber cambiado.
       if (targetNpcId || targetLocationId || targetItemName) {
-        await tx.quest.create({
-          data: {
-            saveId,
-            title: narration.newQuest.title,
-            description: narration.newQuest.description,
-            targetNpcId,
-            targetLocationId,
-            targetItemName,
-          },
-        });
-        // Este camino nunca rellena `objetivo` (solo la misión determinista de abajo lo hace) —
-        // cae a `description`, para que la notificación siempre tenga algo real que mostrar.
-        newQuestInfo = { title: narration.newQuest.title, objetivo: narration.newQuest.description };
+        newQuestOfferInfo = { title: narration.newQuest.title, description: narration.newQuest.description };
       }
     }
 
@@ -5389,6 +5396,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
       logEntryId: mainLogEntry.id,
       newQuestObjetivos,
       newQuestInfo,
+      newQuestOfferInfo,
       questCompletedInfo,
       newKingdomFounded,
       companionCreated,
@@ -5424,6 +5432,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     logEntryId,
     newQuestObjetivos,
     newQuestInfo,
+    newQuestOfferInfo,
     questCompletedInfo,
     newKingdomFounded,
     companionCreated,
@@ -5674,6 +5683,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     logEntryId,
     quests,
     newQuestInfo,
+    newQuestOfferInfo,
     questCompletedInfo,
     newKingdomFounded,
     companionCreated,

@@ -58,6 +58,7 @@ import {
   deleteSavedAction,
   updateSavedAction,
   fundarReino,
+  aceptarMision,
   setItemSlot,
   requestSuggestions,
   getRecolectarLocalizado,
@@ -523,6 +524,34 @@ export function GameView() {
     setDetailTarget((prev) => (prev?.kind === 'ability' && prev.ability.id === habilidadId ? { kind: 'ability', ability: updated } : prev))
   }
 
+  // Botones Aceptar/Cancelar en una oferta de misión (2026-08-26) — `entryId` identifica la
+  // LogEntry concreta cuya tarjeta hay que limpiar (evita que quede pegada tras responder, y
+  // evita que un doble clic la reenvíe: la propia limpieza de `questOffer` deshabilita los
+  // botones antes de que la petición vuelva).
+  async function handleAcceptQuestOffer(entryId: string, title: string, description: string) {
+    setCharacterLog((prev) => prev.map((e) => (e.id === entryId ? { ...e, questOffer: undefined } : e)))
+    try {
+      const { logEntry } = await aceptarMision(saveId!, title, description)
+      if (logEntry) {
+        setCharacterLog((prev) => [
+          ...prev,
+          { id: logEntry.id, channel: 'character', text: logEntry.text, timeLabel: logEntry.timeLabel, createdAt: logEntry.createdAt },
+        ])
+      }
+      getSave(saveId!)
+        .then((save) => setQuests(save.quests))
+        .catch(() => {})
+    } catch {
+      // Best-effort (mismo criterio que el resto de acciones deterministas de este archivo): si
+      // la petición falla, la tarjeta ya se limpió — la jugadora puede volver a intentarlo escrito
+      // a mano si de verdad hace falta, no hay ningún estado a medias que arreglar.
+    }
+  }
+
+  function handleDismissQuestOffer(entryId: string) {
+    setCharacterLog((prev) => prev.map((e) => (e.id === entryId ? { ...e, questOffer: undefined } : e)))
+  }
+
   function handleItemDetail(item: InventoryItemInfo) {
     setDetailTarget({ kind: 'item', item })
     setDetailInsertHandler(null)
@@ -947,6 +976,7 @@ export function GameView() {
         logEntryId,
         quests: updatedQuests,
         newQuestInfo,
+        newQuestOfferInfo,
         questCompletedInfo,
         newKingdomFounded,
         companionCreated,
@@ -1038,6 +1068,7 @@ export function GameView() {
             xpDelta: progression.xpDelta > 0 ? progression.xpDelta : undefined,
             entityBanner,
             newQuest: newQuestInfo ?? undefined,
+            questOffer: newQuestOfferInfo ?? undefined,
           },
         ]
         // Misión completada (2026-08-13) — ver el mismo bloque en handleCombatTurnResolved: fila
@@ -1287,6 +1318,8 @@ export function GameView() {
               onCollapse={() => setCollapsedSide('character')}
               collapseIcon="‹"
               characterName={characterName ?? undefined}
+              onAcceptQuestOffer={handleAcceptQuestOffer}
+              onDismissQuestOffer={handleDismissQuestOffer}
             />
           )}
           {collapsedSide === 'world' ? (

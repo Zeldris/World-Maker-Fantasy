@@ -222,6 +222,7 @@ export function useCombatFlow(params: UseCombatFlowParams) {
         logEntryId,
         quests: updatedQuests,
         newQuestInfo,
+        newQuestOfferInfo,
         questCompletedInfo,
         esperandoDefensaJugador,
         npcAbilityUsed,
@@ -274,6 +275,7 @@ export function useCombatFlow(params: UseCombatFlowParams) {
         combatExchangeDisplay,
         nextInitiativeRoll,
         newQuestInfo,
+        newQuestOfferInfo,
         questCompletedInfo,
       })
       // Bug real (2026-07-29, "si muero no hace lo que fijamos que haría"): `condicionFisica` ya
@@ -443,6 +445,7 @@ export function useCombatFlow(params: UseCombatFlowParams) {
     combatExchangeDisplay: CombatExchangeInfo | null
     nextInitiativeRoll: InitiativeRollInfo | null
     newQuestInfo?: { title: string; objetivo: string } | null
+    newQuestOfferInfo?: { title: string; description: string } | null
     questCompletedInfo?: { logEntryId: string; text: string; title: string; grantedItems: string[]; rewardXp: number } | null
   }) {
     // `buildEntityBanner` se calcula FUERA del updater (bug real, 2026-07-24): StrictMode invoca
@@ -465,6 +468,7 @@ export function useCombatFlow(params: UseCombatFlowParams) {
           playerAbilityUsed: params.playerAbilityUsed ?? undefined,
           combatExchange: params.combatExchangeDisplay ?? undefined,
           newQuest: params.newQuestInfo ?? undefined,
+          questOffer: params.newQuestOfferInfo ?? undefined,
         },
       ]
       // Misión completada (2026-08-13) — LogEntry REAL aparte, nunca fusionada con la narración

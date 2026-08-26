@@ -7,6 +7,7 @@ import { resolveDueTransits, startEagerTransitResolution } from '../workers/worl
 import { recolectarRoutes } from './saves/recolectar.js';
 import { panelsRoutes } from './saves/panels.js';
 import { sessionRoutes } from './saves/session.js';
+import { questsRoutes } from './saves/quests.js';
 import { minutosConDestreza, bandaForMinutos } from '../services/travel.js';
 import type { NarrationResult } from '../services/narrador.js';
 import { hasFalseTravelClaim, hasFalsePhantomTravel } from '../services/narrador.js';
@@ -1155,6 +1156,106 @@ describe('newQuestInfo: notificación de misión aceptada', () => {
     });
     expect(lastNdjsonLine(narrateRes.payload).newQuestInfo).toBeNull();
   }, 30_000);
+});
+
+// Botones Aceptar/Cancelar (2026-08-26, petición explícita: "en vez de depender de que la jugadora
+// escriba texto libre para aceptar... que 'Aceptar' genere una narración determinista de
+// aceptación") — el camino GENÉRICO de `narration.newQuest` (a diferencia del determinista de
+// Gistera/Orco Enfurecido de arriba, que sigue igual) ya NO crea la Quest en el propio turno: solo
+// la ofrece. `POST /saves/:id/quests/aceptar` es quien la materializa de verdad.
+describe('newQuestOfferInfo + POST /saves/:id/quests/aceptar: oferta de misión sin aceptar todavía', () => {
+  let saveId: string;
+  let orcoId: string;
+
+  beforeAll(async () => {
+    const userId = await getDefaultUserId();
+    const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
+    const location = await prisma.location.findFirstOrThrow({ where: { worldId: world.id, slug: 'hondonada-del-eco' } });
+    const orco = await prisma.npc.findFirstOrThrow({ where: { worldId: world.id, slug: 'orco-enfurecido-hondonada' } });
+    orcoId = orco.id;
+    const save = await prisma.save.create({
+      data: {
+        userId,
+        worldId: world.id,
+        characterName: 'Gorhorn de prueba 14',
+        characterArchetype: 'guerrero',
+        characterOrigin: 'Clan Maktor',
+        characterMotivation: 'x',
+        attributes: ATTRS,
+        portraitInitial: 'G',
+        currentLocationId: location.id,
+      },
+    });
+    saveId = save.id;
+    await prisma.worldState.create({ data: { saveId } });
+    // LogEntry de jugador sembrado a mano (no vía doTurn) — el guion de Gistera Koh se dispara
+    // exactamente en `playerActionCount === 1` (turnResolution.ts), así que empezar ya en 2
+    // evita el guion entero sin arriesgarse a que un turno de relleno real dispare OTRO
+    // determinismo inesperado (ocurrió probando esto: "Examino el terreno" activó recolección).
+    await prisma.logEntry.create({
+      data: { saveId, channel: 'CHARACTER', text: 'relleno', timeLabel: 'Día 1, mañana', isPlayerAction: true },
+    });
+    classifyAction.mockResolvedValue({
+      requiereTirada: false, atributo: 'carisma', dificultad: 8, razon: 'x', banda: 'instantanea', duracionEstimadaMinutos: 0,
+    });
+  });
+
+  afterAll(async () => {
+    vi.restoreAllMocks();
+    await prisma.save.delete({ where: { id: saveId } });
+  });
+
+  it('el turno ofrece la misión (newQuestOfferInfo) pero NO la crea todavía', async () => {
+    narrateAction.mockResolvedValueOnce({
+      narration: 'El Orco Enfurecido te ofrece una tregua si le traes su maza perdida.',
+      newFacts: [],
+      newQuest: { title: 'Recuperar la maza del Orco Enfurecido', description: 'El Orco Enfurecido ofrece una tregua a cambio de su maza perdida.' },
+    });
+    const res = await doTurn(saveId, "Me acerco despacio a 'Orco enfurecido' sin decir nada.");
+    const body = lastNdjsonLine(res.payload);
+
+    expect(body.newQuestInfo).toBeNull();
+    expect(body.newQuestOfferInfo).toEqual({
+      title: 'Recuperar la maza del Orco Enfurecido',
+      description: 'El Orco Enfurecido ofrece una tregua a cambio de su maza perdida.',
+    });
+    const quest = await prisma.quest.findFirst({ where: { saveId, title: 'Recuperar la maza del Orco Enfurecido' } });
+    expect(quest).toBeNull();
+  }, 20_000);
+
+  it('POST /quests/aceptar materializa la misión de verdad, con el anclaje real resuelto y un LogEntry determinista', async () => {
+    const app = await buildApp();
+    await app.register(questsRoutes);
+    const res = await app.inject({
+      method: 'POST',
+      url: `/saves/${saveId}/quests/aceptar`,
+      payload: { title: 'Recuperar la maza del Orco Enfurecido', description: 'El Orco Enfurecido ofrece una tregua a cambio de su maza perdida.' },
+    });
+    expect(res.statusCode).toBe(200);
+    const body = res.json();
+    expect(body.alreadyExisted).toBe(false);
+    expect(body.quest.targetNpcId).toBe(orcoId);
+    expect(body.logEntry.text).toBe('Gorhorn de prueba 14 acepta la misión: Recuperar la maza del Orco Enfurecido.');
+
+    const quest = await prisma.quest.findFirstOrThrow({ where: { saveId, title: 'Recuperar la maza del Orco Enfurecido' } });
+    expect(quest.status).toBe('ACTIVA');
+    expect(quest.targetNpcId).toBe(orcoId);
+  }, 20_000);
+
+  it('aceptar dos veces la misma misión es idempotente — no duplica la Quest', async () => {
+    const app = await buildApp();
+    await app.register(questsRoutes);
+    const res = await app.inject({
+      method: 'POST',
+      url: `/saves/${saveId}/quests/aceptar`,
+      payload: { title: 'Recuperar la maza del Orco Enfurecido', description: 'El Orco Enfurecido ofrece una tregua a cambio de su maza perdida.' },
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().alreadyExisted).toBe(true);
+
+    const count = await prisma.quest.count({ where: { saveId, title: 'Recuperar la maza del Orco Enfurecido' } });
+    expect(count).toBe(1);
+  }, 20_000);
 });
 
 // Cobertura (auditoría de deuda técnica AMPLIA 2026-08-04 + guard de catálogo 2026-08-25, Grupo 3

@@ -317,6 +317,12 @@ export interface LogEntry {
   /// largo se interrumpió antes de llegar al destino pedido; LogPanel la pinta con fondo/borde
   /// ámbar, mismo criterio que `combate` (rojo) y `newQuest` (amarillo).
   travelInterrupted?: boolean
+  /// Oferta de misión SIN aceptar todavía (2026-08-26, botones Aceptar/Cancelar) — presente solo
+  /// en el turno en que un NPC propone una misión con anclaje real; LogPanel la pinta con el mismo
+  /// fondo amarillo que `newQuest`, más los dos botones. Se limpia localmente en cuanto la
+  /// jugadora responde (aceptar/cancelar) — nunca sobrevive a una recarga, mismo criterio efímero
+  /// que `newQuest`/`questCompleted`.
+  questOffer?: { title: string; description: string }
 }
 
 export type EquipSlot =

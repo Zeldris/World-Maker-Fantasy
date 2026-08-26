@@ -46,6 +46,12 @@ interface LogPanelProps {
   /// de la propia tarjeta de "pensando" mientras la narración se sigue generando debajo. `null`/
   /// ausente = turno sin intercambio de combate, la tarjeta de "pensando" sigue igual que siempre.
   diceReveal?: { exchange: CombatExchangeInfo; npcName: string | null } | null
+  /// Botones Aceptar/Cancelar en una oferta de misión (2026-08-26, `entry.questOffer`) — opcional,
+  /// mismo criterio que `onCollapse`/`onToggleView`: sin estos dos callbacks, LogPanel simplemente
+  /// no pinta la tarjeta de oferta (aunque no debería pasar — GameView.tsx los pasa siempre en el
+  /// panel de "Tu personaje", el único que puede recibir `questOffer`).
+  onAcceptQuestOffer?: (entryId: string, title: string, description: string) => void
+  onDismissQuestOffer?: (entryId: string) => void
 }
 
 const accentClasses = {
@@ -107,6 +113,8 @@ export const LogPanel = memo(function LogPanel({
   toggleViewLabel,
   characterName,
   diceReveal,
+  onAcceptQuestOffer,
+  onDismissQuestOffer,
 }: LogPanelProps) {
   const { enciclopediaIndex, onEntityDetail, onEntityQuickInsert } = useEnciclopediaLink()
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -204,7 +212,7 @@ export const LogPanel = memo(function LogPanel({
                 // Eventos de viaje interactivos (2026-08-05) — 4º estado, fondo ámbar: por debajo
                 // de `newQuest` pero por encima de `combate`/`isPlayerAction` (es su propia
                 // LogEntry aparte, nunca coincide con ninguno de los otros tres en la misma fila).
-                entry.newQuest || entry.questCompleted
+                entry.newQuest || entry.questCompleted || entry.questOffer
                   ? 'animate-entry-in rounded-lg border border-l-2 border-quest-600/50 bg-quest-500/10 px-3.5 py-2.5 text-sm text-wood-100'
                   : entry.travelInterrupted
                     ? 'animate-entry-in rounded-lg border border-l-2 border-cost-600/50 bg-cost-500/10 px-3.5 py-2.5 text-sm text-wood-100'
@@ -277,6 +285,37 @@ export const LogPanel = memo(function LogPanel({
                     <span>Nueva misión: {entry.newQuest.title}</span>
                   </p>
                   <p className="mt-1 text-2xs text-wood-300">{entry.newQuest.objetivo}</p>
+                </div>
+              )}
+              {/* Botones Aceptar/Cancelar (2026-08-26, petición explícita: "en vez de depender de
+                  que la jugadora escriba texto libre para aceptar... que 'Aceptar' genere una
+                  narración determinista de aceptación, sin esperar a que el LLM decida") — la
+                  Quest todavía no existe en la base de datos, solo se ofrece (`newQuestOfferInfo`,
+                  turnResolution.ts). "Aceptar" la materializa de verdad vía
+                  POST /saves/:id/quests/aceptar; "Cancelar" solo limpia la tarjeta, sin backend. */}
+              {entry.questOffer && (
+                <div className="mt-2 rounded-lg border border-quest-600/50 bg-quest-500/10 px-2.5 py-2">
+                  <p className="flex items-center gap-1.5 text-2xs font-semibold uppercase tracking-[0.1em] text-quest-400">
+                    <span aria-hidden="true">🎯</span>
+                    <span>Misión propuesta: {entry.questOffer.title}</span>
+                  </p>
+                  <p className="mt-1 text-2xs text-wood-300">{entry.questOffer.description}</p>
+                  <div className="mt-2 flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => onAcceptQuestOffer?.(entry.id, entry.questOffer!.title, entry.questOffer!.description)}
+                      className="tactile rounded-lg border border-quest-500/60 bg-quest-500/20 px-2.5 py-1 text-2xs font-semibold uppercase tracking-[0.08em] text-quest-300 hover:border-quest-400 hover:bg-quest-500/35"
+                    >
+                      Aceptar
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => onDismissQuestOffer?.(entry.id)}
+                      className="tactile rounded-lg border border-iron-700 bg-wood-950/40 px-2.5 py-1 text-2xs font-semibold uppercase tracking-[0.08em] text-wood-400 hover:border-iron-500 hover:text-wood-200"
+                    >
+                      Cancelar
+                    </button>
+                  </div>
                 </div>
               )}
               {entry.questCompleted && (

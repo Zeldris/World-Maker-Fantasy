@@ -208,6 +208,10 @@ export interface NarrateResponse {
   /// (lista completa, sin delta), esto marca que ESTE turno creó una misión nueva. `null` en la
   /// inmensa mayoría de turnos, que no crean ninguna.
   newQuestInfo: { title: string; objetivo: string } | null
+  /// Oferta de misión SIN aceptar (2026-08-26, botones Aceptar/Cancelar) — a diferencia de
+  /// `newQuestInfo`, la misión NO se ha creado todavía; hace falta `aceptarMision` para eso.
+  /// `null` en la inmensa mayoría de turnos.
+  newQuestOfferInfo: { title: string; description: string } | null
   /// Notificación de misión COMPLETADA (2026-08-13) — `logEntryId`/`text` son los de la LogEntry
   /// real ya persistida por el backend (questRewardNarrationFor), para insertarla tal cual con
   /// marca visual de "misión completada" en vez de una tarjeta sintética aparte. `null` en la
@@ -895,6 +899,20 @@ export async function fundarReino(id: string, kingdomName: string, description?:
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ kingdomName, description }),
+  })
+}
+
+/// Botones Aceptar/Cancelar cuando un NPC ofrece una misión (2026-08-26) — materializa de verdad
+/// la `Quest` que el turno solo ofreció (`newQuestOfferInfo`), determinista, sin pasar por Ollama.
+export async function aceptarMision(
+  saveId: string,
+  title: string,
+  description: string,
+): Promise<{ quest: { id: string }; alreadyExisted: boolean; logEntry?: { id: string; text: string; timeLabel: string; createdAt: string } }> {
+  return fetchJson(`${API_URL}/saves/${saveId}/quests/aceptar`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ title, description }),
   })
 }
 
