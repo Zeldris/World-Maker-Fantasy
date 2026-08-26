@@ -20,25 +20,33 @@ export type { Clase, Especializacion } from '@prisma/client';
 /// pasada aplica las 8 clases con tabla real (todas salvo MAGO, que sigue siendo solo identidad
 /// narrativa, sin tronco ni especializaciones con tabla de niveles todavía).
 ///
-/// Domador y Totémico (Cazador/Chamán) se quedan en 0 huecos reales — dependen por completo de
-/// compañeros/invocación, infraestructura de combate multi-objetivo que todavía no existe
+/// Domador y Totémico (Cazador/Chamán) se quedan casi en 0 huecos reales — dependen por completo
+/// de compañeros/invocación, infraestructura de combate multi-objetivo que todavía no existe
 /// (combate-multiple.md) — siguen siendo especializaciones válidas (`Especializacion.DOMADOR`/
-/// `TOTEMICO`, un NPC puede tenerlas asignadas), simplemente sin ningún desbloqueo de habilidad.
+/// `TOTEMICO`, un NPC puede tenerlas asignadas). Domador tiene 1 hueco real desde 2026-08-26
+/// (Compañero cazador, `COMPANERO` — pasiva, no depende de multi-objetivo, ver más abajo).
 ///
-/// De los 25 efectos de `AbilityEffect` (+ `CONVERSION`, nuevo esta pasada), solo estos están
-/// implementados de verdad hoy: ATAQUE/ATURDIMIENTO/INTIMIDACION/AGUANTE/ANALISIS/RECUPERACION/
-/// LETAL/LIMITADA/CONVERSION. El resto (AUMENTO/DEBILIDAD/CANALIZAR/CONTRA/CURAZION/REFLEJAR/
-/// REFRACTAR/PURIFICAR/PROVOCACION/RETIRAR/EXPULSAR — duración por turnos; INVOCACION/CONTROL/
-/// MULTIPLE/DESVIAR/OCULTACION/COMPANERO — combate multi-objetivo) sigue sin construir, así que
-/// solo se dan de alta aquí las habilidades de clases.md marcadas "✅ lista" (verificado efecto a
-/// efecto contra este enum real, no copiado tal cual del doc — varias filas de Convocador/Opresor
-/// Y de Maestro Arquero/Maestro Ballestero estaban mal marcadas "✅" en el propio documento pese a
-/// usar AUMENTO/DEBILIDAD/MULTIPLE/CONTRA, corregido aquí — Arquero pasa de "7/8" en el doc a 1/8
-/// real por especialización).
+/// De los 25 efectos de `AbilityEffect` (+ `CONVERSION`), están implementados de verdad hoy:
+/// ATAQUE/ATURDIMIENTO/INTIMIDACION/AGUANTE/ANALISIS/RECUPERACION/LETAL/LIMITADA/CONVERSION
+/// (pasada original) + CONTRA/REFRACTAR/CONTROL/COMPANERO (2026-08-26, solo las habilidades cuyo
+/// efecto real no dependía de infraestructura sin construir — ver clases.md § comentario de cada
+/// especialización para el resto, que se queda pendiente). CONTRA/REFRACTAR reutilizan el margen
+/// decisivo ya existente (±10) en vez del umbral propio de cada habilidad (6/8 en el doc, mismo
+/// criterio de simplificación que ya usa LETAL); CONTROL se simplifica a robar la iniciativa
+/// (como ATURDIMIENTO) en vez de "2 turnos" reales, al no existir todavía un segundo rival real al
+/// que redirigirlo; COMPANERO reutiliza `esSlotDomador` (companeros.ts), ya construido de antes.
+/// El resto (AUMENTO/DEBILIDAD/CANALIZAR/CURAZION/REFLEJAR/PURIFICAR/PROVOCACION/RETIRAR/EXPULSAR
+/// — duración por turnos; INVOCACION/MULTIPLE/DESVIAR/OCULTACION — combate multi-objetivo de
+/// verdad) sigue sin construir, así que solo se dan de alta aquí las habilidades de clases.md
+/// marcadas "✅ lista" o cuyo efecto real ya está cubierto (verificado efecto a efecto contra este
+/// enum real, no copiado tal cual del doc — varias filas de Convocador/Opresor Y de Maestro
+/// Arquero/Maestro Ballestero estaban mal marcadas "✅" en el propio documento pese a usar
+/// AUMENTO/DEBILIDAD/MULTIPLE, corregido aquí — Arquero pasa de "7/8" en el doc a 1/8 real por
+/// especialización).
 ///
 /// Recuento final por clase (huecos reales / 8 por especialización, tronco aparte):
-/// GUERRERO Berserker 1, Guardián 1, Lancero 2, Especialista 4 — CAZADOR Domador 0, Supervivencia
-/// 1, Tirador 5, Instintivo 4 — CHAMAN Totémico 0, Rúnico 2, Convocador 1, Opresor 2 — ARQUERO
+/// GUERRERO Berserker 1, Guardián 1, Lancero 2, Especialista 4 — CAZADOR Domador 1, Supervivencia
+/// 1, Tirador 5, Instintivo 4 — CHAMAN Totémico 0, Rúnico 2, Convocador 2, Opresor 3 — ARQUERO
 /// Maestro Arquero 1, Maestro Ballestero 1 — CABALLERO Orden 6, Valor 3, Dolor 7 — SEGADOR Parca 3,
 /// Maldito 4, Ilustrado 6, Transmutador 2 — ASESINO Maestro Asesino 7, Tóxico 3, Danzante 8,
 /// Selecto 6 — DRUIDA Cambiaformas 8, Aullador 2, Salvaje 8, Adaptado 8.
@@ -323,6 +331,28 @@ const CLASS_ABILITIES: ClassAbilityUnlock[] = [
     },
   },
 
+  // --- Domador (12/16/19/24/28/32/36/40 — solo 12 lista) ---
+  //
+  // COMPANERO (2026-08-26) — pasiva, sin turno que resolver en combate: da un slot de compañero
+  // NUEVO restringido a fauna combatible, que se suma a `maxCompanions` sin depender de
+  // construcción propia. La mecánica real (`esSlotDomador`, companeros.ts §
+  // POST /tameo-pendientes/:npcSlug/confirmar) ya existía de antes, gatead por clase/especialización
+  // (`esDomador`) — esta fila solo la hace visible como habilidad de verdad desbloqueada a nivel
+  // 12, no cambia el motor. El resto de la especialización (16-40) sigue dependiendo de
+  // `INVOCACION`/combate multi-objetivo, sin construir.
+  {
+    level: 12,
+    clase: 'CAZADOR',
+    especializacion: 'DOMADOR',
+    ability: {
+      name: 'Compañero cazador',
+      icon: '🐾',
+      description: 'Desbloquea un slot de mascota — una criatura capturada puede llevar equipo propio (casco, armadura, accesorio), gestionable desde el Bestiario. Solo con piezas crafteadas para ella.',
+      promptText: 'Me preparo para llevar una criatura capturada a mi lado como compañera de caza.',
+      category: 'general',
+    },
+  },
+
   // --- Supervivencia (12/16/19/24/28/32/36/40 — solo 16 lista) ---
   {
     level: 16,
@@ -591,11 +621,12 @@ const CLASS_ABILITIES: ClassAbilityUnlock[] = [
     },
   },
 
-  // --- Convocador (12/16/19/24/28/32/36/40 — solo 28 lista) ---
+  // --- Convocador (12/16/19/24/28/32/36/40 — 28 y 32 listas) ---
   //
   // Corrección frente al doc (2026-08-24): clases.md marcaba 12/16/19/28/32/40 como "✅ lista"
-  // (6/8), pero 12/16/19/32/40 usan AUMENTO/DEBILIDAD/MULTIPLE/CONTRA — ninguno implementado
-  // todavía. Solo 28 (Puño Ígneo, ATAQUE+ATURDIMIENTO) es real hoy.
+  // (6/8), pero 12/16/19/40 usan AUMENTO/DEBILIDAD/MULTIPLE/CANALIZAR — ninguno implementado
+  // todavía. 28 (Puño Ígneo, ATAQUE+ATURDIMIENTO) ya era real; 32 (Vórtice Menor, CONTRA) se suma
+  // 2026-08-26.
   {
     level: 28,
     clase: 'CHAMAN',
@@ -613,12 +644,31 @@ const CLASS_ABILITIES: ClassAbilityUnlock[] = [
       energyCost: ENERGY_COST_AVANZADA,
     },
   },
+  {
+    level: 32,
+    clase: 'CHAMAN',
+    especializacion: 'CONVOCADOR',
+    ability: {
+      name: 'Vórtice Menor',
+      icon: '🌪️',
+      description: 'Un torbellino menor te ayuda a esquivar — y a devolver el golpe si el rival se queda demasiado cerca.',
+      promptText: 'Invoco un torbellino menor para esquivar el golpe de mi rival.',
+      category: 'combate',
+      effects: ['AGUANTE', 'CONTRA'],
+      rol: 'defensa',
+      preferredAttribute: 'destreza',
+      attributeBonus: 4,
+      energyCost: ENERGY_COST_AVANZADA,
+    },
+  },
 
-  // --- Opresor (12/16/19/24/28/32/36/40 — 12 y 24 listas) ---
+  // --- Opresor (12/16/19/24/28/32/36/40 — 12, 16 y 24 listas) ---
   //
   // Corrección frente al doc (2026-08-24): clases.md marcaba 12/24/32 como "✅ lista" (3/8), pero
   // 32 (Runa de Sujeción) usa MULTIPLE ("inmoviliza a TODOS los rivales") — multi-objetivo, no
-  // implementado. Solo 12/24 son reales hoy.
+  // implementado. 12/24 ya eran reales; 16 (Opresión Mental, CONTROL) se suma 2026-08-26,
+  // simplificada a robar la iniciativa en vez de "2 turnos" (sin combate multi-objetivo para
+  // redirigir el control a un aliado del rival, ver turnResolution.ts).
   {
     level: 12,
     clase: 'CHAMAN',
@@ -633,6 +683,22 @@ const CLASS_ABILITIES: ClassAbilityUnlock[] = [
       rol: 'ataque',
       preferredAttribute: 'arcano',
       energyCost: ENERGY_COST_BASICA,
+    },
+  },
+  {
+    level: 16,
+    clase: 'CHAMAN',
+    especializacion: 'OPRESOR',
+    ability: {
+      name: 'Opresión Mental',
+      icon: '🧠',
+      description: 'Una presión mental invasiva impone tu voluntad sobre el rival, desorientándolo un instante.',
+      promptText: 'Impongo una presión mental invasiva sobre mi rival, buscando desorientarlo.',
+      category: 'combate',
+      effects: ['CONTROL'],
+      rol: 'utilidad',
+      preferredAttribute: 'arcano',
+      energyCost: ENERGY_COST_MEDIA,
     },
   },
   {

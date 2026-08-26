@@ -674,6 +674,8 @@ describe('Rediseño de combate: habilidades de utilidad reactivas y consumibles 
   let contraataqueId: string;
   let gritoDeGuerraId: string;
   let analizarRivalId: string;
+  let vorticeMenorId: string;
+  let opresionMentalId: string;
 
   beforeAll(async () => {
     vi.spyOn(Math, 'random').mockReturnValue(0.99);
@@ -740,6 +742,38 @@ describe('Rediseño de combate: habilidades de utilidad reactivas y consumibles 
           effects: ['ANALISIS'],
           rol: 'utilidad',
           preferredAttribute: 'inteligencia',
+        },
+      })
+    ).id;
+    // CONTRA/CONTROL (2026-08-26, mismo criterio de arriba: creadas a mano con el mismo
+    // effects/rol/preferredAttribute real que classAbilities.ts § Vórtice Menor/Opresión Mental,
+    // pero con `attributeBonus` mucho más alto que el real — solo para garantizar un margen ≥10
+    // (`defensor_contragolpea`) frente al Orco Enfurecido con los dados pinchados al máximo de
+    // este describe (roll empatado a 20 en ambos lados, así que el margen sale solo del atributo).
+    vorticeMenorId = (
+      await prisma.savedAction.create({
+        data: {
+          saveId,
+          name: 'Vórtice Menor',
+          promptText: 'Invoco un torbellino menor para esquivar el golpe de mi rival.',
+          category: 'combate',
+          effects: ['AGUANTE', 'CONTRA'],
+          rol: 'defensa',
+          preferredAttribute: 'destreza',
+          attributeBonus: 30,
+        },
+      })
+    ).id;
+    opresionMentalId = (
+      await prisma.savedAction.create({
+        data: {
+          saveId,
+          name: 'Opresión Mental',
+          promptText: 'Impongo una presión mental invasiva sobre mi rival, buscando desorientarlo.',
+          category: 'combate',
+          effects: ['CONTROL'],
+          rol: 'utilidad',
+          preferredAttribute: 'arcano',
         },
       })
     ).id;
@@ -860,6 +894,124 @@ describe('Rediseño de combate: habilidades de utilidad reactivas y consumibles 
     // que la BD ya tenía el dato correcto.
     const { combateIniciado } = lastNdjsonLine(narrateRes.payload) as { combateIniciado: { npcs: { slug: string; analizado: boolean }[] } | null };
     expect(combateIniciado?.npcs?.find((n) => n.slug === 'orco-enfurecido-hondonada')?.analizado).toBe(true);
+  }, 15_000);
+
+  // CONTRA (2026-08-26) — defiende con éxito Y devuelve el golpe, solo si el ataque entrante NO
+  // fue de Arcano (proxy de "físico"). El NPC ataca con 'fuerza' aquí — CONTRA debe disparar.
+  it('Vórtice Menor (CONTRA): defiende con éxito y contragolpea a un ataque físico, sin recibir el golpe', async () => {
+    await prisma.npcState.deleteMany({ where: { saveId, npcId } });
+    await prisma.save.update({
+      where: { id: saveId },
+      data: {
+        condicionFisica: 'ILESO',
+        pendingCombatNpcSlugs: [npcSlug],
+        pendingNpcAttack: {
+          npcId,
+          attribute: 'fuerza',
+          effects: ['ATAQUE'],
+          rol: 'ataque',
+          abilityName: 'Ataque base',
+          abilityDescription: 'Golpe improvisado.',
+          energyCost: 5,
+          energyRegen: 0,
+        },
+      },
+    });
+
+    const app = await buildApp();
+    const action = "Invoco un torbellino menor para esquivar el golpe de 'Orco enfurecido'.";
+    const classifyRes = await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action, enCombate: true, savedActionId: vorticeMenorId } });
+    const { classification, roll } = classifyRes.json();
+    const narrateRes = await app.inject({
+      method: 'POST',
+      url: '/turn/narrate',
+      payload: { saveId, action, classification, roll, enCombate: true, savedActionId: vorticeMenorId },
+    });
+    expect(narrateRes.statusCode).toBe(200);
+
+    // Defensa con éxito — el jugador no recibe el golpe.
+    const save = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
+    expect(save.condicionFisica).toBe('ILESO');
+    // Pero contragolpea de vuelta — el NPC sí acusa un golpe.
+    const npcState = await prisma.npcState.findFirst({ where: { saveId, npcId } });
+    expect(npcState?.condicionFisica).not.toBe('ILESO');
+  }, 15_000);
+
+  // REFRACTAR/CONTRA (2026-08-26) — mismo margen decisivo que arriba, pero el ataque entrante es
+  // de Arcano: una habilidad con solo CONTRA (sin REFRACTAR) NO debe contragolpear.
+  it('Vórtice Menor (CONTRA): NO contragolpea un ataque de Arcano — ese lo cubriría REFRACTAR, no CONTRA', async () => {
+    await prisma.npcState.deleteMany({ where: { saveId, npcId } });
+    await prisma.save.update({
+      where: { id: saveId },
+      data: {
+        condicionFisica: 'ILESO',
+        pendingCombatNpcSlugs: [npcSlug],
+        pendingNpcAttack: {
+          npcId,
+          attribute: 'arcano',
+          effects: ['ATAQUE'],
+          rol: 'ataque',
+          abilityName: 'Descarga arcana',
+          abilityDescription: 'Un golpe de energía pura.',
+          energyCost: 5,
+          energyRegen: 0,
+        },
+      },
+    });
+
+    const app = await buildApp();
+    const action = "Invoco un torbellino menor para esquivar el golpe de 'Orco enfurecido'.";
+    const classifyRes = await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action, enCombate: true, savedActionId: vorticeMenorId } });
+    const { classification, roll } = classifyRes.json();
+    const narrateRes = await app.inject({
+      method: 'POST',
+      url: '/turn/narrate',
+      payload: { saveId, action, classification, roll, enCombate: true, savedActionId: vorticeMenorId },
+    });
+    expect(narrateRes.statusCode).toBe(200);
+
+    const npcState = await prisma.npcState.findFirst({ where: { saveId, npcId } });
+    expect(npcState?.condicionFisica ?? 'ILESO').toBe('ILESO');
+  }, 15_000);
+
+  // CONTROL en 1vs1 (2026-08-26, "si es 1vs1 CONTROL pasa a ser un aturdimiento") — mismo
+  // comportamiento observable que Grito de Guerra/Instinto Salvaje: se queda con la iniciativa,
+  // sin `pendingNpcAttack` esperando defensa.
+  it('Opresión Mental (CONTROL): si dispara, te deja con la iniciativa del próximo intercambio', async () => {
+    await prisma.npcState.deleteMany({ where: { saveId, npcId } });
+    await prisma.save.update({
+      where: { id: saveId },
+      data: {
+        condicionFisica: 'ILESO',
+        pendingCombatNpcSlugs: [npcSlug],
+        pendingNpcAttack: {
+          npcId,
+          attribute: 'fuerza',
+          effects: ['ATAQUE'],
+          rol: 'ataque',
+          abilityName: 'Ataque base',
+          abilityDescription: 'Golpe improvisado.',
+          energyCost: 5,
+          energyRegen: 0,
+        },
+      },
+    });
+
+    const app = await buildApp();
+    const action = "Impongo una presión mental invasiva sobre 'Orco enfurecido', buscando desorientarlo.";
+    const classifyRes = await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action, enCombate: true, savedActionId: opresionMentalId } });
+    const { classification, roll } = classifyRes.json();
+    const narrateRes = await app.inject({
+      method: 'POST',
+      url: '/turn/narrate',
+      payload: { saveId, action, classification, roll, enCombate: true, savedActionId: opresionMentalId },
+    });
+    expect(narrateRes.statusCode).toBe(200);
+
+    const done = lastNdjsonLine(narrateRes.payload);
+    expect(done.esperandoDefensaJugador).toBe(false);
+    const saveAfter = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
+    expect(saveAfter.pendingNpcAttack).toBeNull();
   }, 15_000);
 
   it('consumir un objeto en combate activa el intercambio (el NPC puede actuar), pero nunca cuenta como golpe propio', async () => {

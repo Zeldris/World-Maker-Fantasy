@@ -5,9 +5,9 @@ import { classAbilityUnlocksFor, allClassAbilityUnlocks, classAbilityUnlocksForC
 // 2026-08-24 (Grupo 3 § Sistema de clases, docs/rpgtarkor/clases.md): el roster pasa de listas
 // planas por clase (4 Guerrero + 3 Cazador, todo tronco) a tronco común + especializaciones reales
 // para GUERRERO/CAZADOR/CHAMAN — 33 huecos en total, los únicos "✅ lista" del doc verificados
-// efecto a efecto contra el motor real. "Compañero cazador" (antes nivel 8 de Cazador) desaparece
-// del todo: se reasignó a Domador en el doc, pero Domador se queda en 0 huecos reales (bloqueada
-// por COMPANERO, sin implementar), así que hoy no vive en ningún sitio del roster.
+// efecto a efecto contra el motor real. "Compañero cazador" (antes nivel 8 de Cazador) se reasignó
+// a Domador en el doc — 2026-08-26: vuelve a sembrarse ahí (nivel 12, COMPANERO ya implementado,
+// pasiva sin depender de combate multi-objetivo).
 
 describe('classAbilityUnlocksFor', () => {
   it('Gorhorn (Cazador, sin especialización) aprende el tronco común por nivel', () => {
@@ -34,12 +34,12 @@ describe('classAbilityUnlocksFor', () => {
 });
 
 describe('allClassAbilityUnlocks', () => {
-  it('devuelve el roster completo (136 huecos: 8 clases con tabla real, MAGO sin tocar)', () => {
+  it('devuelve el roster completo (139 huecos: 8 clases con tabla real, MAGO sin tocar)', () => {
     const all = allClassAbilityUnlocks();
-    expect(all).toHaveLength(136);
+    expect(all).toHaveLength(139);
     expect(all.filter((u) => u.clase === 'GUERRERO')).toHaveLength(11);
-    expect(all.filter((u) => u.clase === 'CAZADOR')).toHaveLength(14);
-    expect(all.filter((u) => u.clase === 'CHAMAN')).toHaveLength(8);
+    expect(all.filter((u) => u.clase === 'CAZADOR')).toHaveLength(15);
+    expect(all.filter((u) => u.clase === 'CHAMAN')).toHaveLength(10);
     expect(all.filter((u) => u.clase === 'ARQUERO')).toHaveLength(6);
     expect(all.filter((u) => u.clase === 'CABALLERO')).toHaveLength(20);
     expect(all.filter((u) => u.clase === 'SEGADOR')).toHaveLength(19);
@@ -61,8 +61,8 @@ describe('classAbilityUnlocksForClase', () => {
     expect(classAbilityUnlocksForClase('GUERRERO', 'BERSERKER')).toHaveLength(4);
     // Tirador: 4 tronco + 5 propios (12/16/19/28/32) = 9
     expect(classAbilityUnlocksForClase('CAZADOR', 'TIRADOR')).toHaveLength(9);
-    // Domador: 4 tronco + 0 propios (bloqueada por completo, sin COMPANERO/INVOCACION) = 4
-    expect(classAbilityUnlocksForClase('CAZADOR', 'DOMADOR')).toHaveLength(4);
+    // Domador: 4 tronco + 1 propio (12, Compañero cazador, COMPANERO ya implementado) = 5
+    expect(classAbilityUnlocksForClase('CAZADOR', 'DOMADOR')).toHaveLength(5);
     // Totémico: 3 tronco + 0 propios (bloqueada por completo, sin INVOCACION) = 3
     expect(classAbilityUnlocksForClase('CHAMAN', 'TOTEMICO')).toHaveLength(3);
   });

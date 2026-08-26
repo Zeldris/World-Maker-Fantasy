@@ -669,6 +669,13 @@ const UTILITY_EFFECT_NARRATION: Partial<Record<AbilityEffect, (triggered: boolea
     triggered
       ? `${userName} lee con éxito el punto débil de ${rivalName} — narra el instante de estudio, nunca un golpe.`
       : `${userName} intenta leer a ${rivalName} pero no consigue sacar nada útil esta vez — narra el intento fallido, nunca un golpe.`,
+  // CONTROL en 1vs1 (2026-08-26) — simplificado a robar la iniciativa (mismo efecto mecánico que
+  // ATURDIMIENTO): sin un segundo rival real al que redirigir, "tomar el control" se narra como
+  // desorientar/imponerse un instante, nunca como una posesión de varios turnos.
+  CONTROL: (triggered, userName, rivalName) =>
+    triggered
+      ? `${userName} impone su voluntad sobre ${rivalName} por un instante — ${userName} se queda con la iniciativa del próximo intercambio. Narra la imposición momentánea, sin que esto por sí solo hiera a nadie.`
+      : `${userName} intenta imponer su voluntad sobre ${rivalName} pero no lo consigue esta vez (no atacó con daño, o el intento falla).`,
   // RECUPERACION (2026-08-17, primera mecánica real de los ~19 efectos que la usuaria dejó solo
   // como nombre + comentario) — recupera energía de más allá del `energyRegen` propio de la
   // habilidad (ver RECUPERACION_ENERGY_BONUS más arriba), sin cancelar ni añadir ningún golpe.
@@ -865,6 +872,14 @@ function resolveCombatExchangePhase(input: CombatExchangePhaseInput): CombatExch
               // Instinto Salvaje: roba iniciativa, nunca cancela ni añade daño.
               iniciativaForzadaPorUtilidad = 'jugador';
             }
+            // CONTROL en 1vs1 (2026-08-26, petición explícita: "si es 1vs1 CONTROL pasa a ser un
+            // aturdimiento") — sin un segundo rival real al que redirigir ("controla al rival para
+            // que ataque a sus aliados"), se simplifica al mismo gancho que ATURDIMIENTO: roba la
+            // iniciativa un intercambio, en vez de los "2 turnos" reales de la habilidad (solo
+            // aplicables con combate multi-objetivo, sin construir todavía).
+            if (abilityEffects.includes('CONTROL')) {
+              iniciativaForzadaPorUtilidad = 'jugador';
+            }
             if (abilityEffects.includes('ATAQUE')) {
               // Contraataque: además del golpe base (si lo hubo), devuelve un golpe propio al NPC.
               // `nextCondicionForAttack(abilityEffects, ...)` (auditoría 2026-08-17), no
@@ -933,7 +948,19 @@ function resolveCombatExchangePhase(input: CombatExchangePhaseInput): CombatExch
         // empate, nunca "los dos ganan a la vez"; el gate gemelo que este outcome necesitaba
         // (2026-08-14, "me hizo daño con una habilidad defensiva") desaparece con él, sin nada que
         // reemplazar.
-        const jugadorPuedeContragolpear = abilityEffects.includes('ATAQUE');
+        //
+        // CONTRA/REFRACTAR (2026-08-26) — mismo gancho que ATAQUE, pero solo si el golpe entrante
+        // era del tipo que cada una contesta: CONTRA solo físico (atributo del ataque del NPC
+        // distinto de arcano), REFRACTAR solo mágico (arcano). El motor no distingue tipos de daño
+        // de verdad (ver comentario del enum en schema.prisma) — se usa el atributo de la tirada
+        // como proxy, tal como ya apuntaba ese mismo comentario. Cifra de margen: se reutiliza el
+        // umbral decisivo ya existente (`defensor_contragolpea`, margen ±10) en vez de un umbral
+        // propio por habilidad (6/8 según clases.md) — mismo criterio de simplificación que ya usa
+        // LETAL (nextCondicionForAttack ignora el "diferencia de 8 vs 12" del doc, es binario).
+        const jugadorPuedeContragolpear =
+          abilityEffects.includes('ATAQUE') ||
+          (abilityEffects.includes('CONTRA') && pendingNpcAttack.attribute !== 'arcano') ||
+          (abilityEffects.includes('REFRACTAR') && pendingNpcAttack.attribute === 'arcano');
         const jugadorContragolpeaAplica = exchange.resultado === 'defensor_contragolpea' && jugadorPuedeContragolpear;
         jugadorRecibeGolpe = exchange.resultado === 'golpe_pleno' || exchange.resultado === 'golpe_normal';
         // `?? []` (auditoría de código 2026-08-17): un `pendingNpcAttack` persistido de antes del
@@ -1051,6 +1078,11 @@ function resolveCombatExchangePhase(input: CombatExchangePhaseInput): CombatExch
           if (jugadorDisparo && abilityEffects.includes('ATURDIMIENTO')) {
             iniciativaForzadaPorUtilidad = 'jugador';
           }
+          // CONTROL en 1vs1 — mismo criterio que el CASO DEFENSA de arriba (simplificado a robar
+          // la iniciativa, sin segundo rival real al que redirigir).
+          if (jugadorDisparo && abilityEffects.includes('CONTROL')) {
+            iniciativaForzadaPorUtilidad = 'jugador';
+          }
           if (jugadorDisparo && abilityEffects.includes('RECUPERACION')) {
             jugadorRecuperacionExtra = RECUPERACION_ENERGY_BONUS;
           }
@@ -1073,6 +1105,9 @@ function resolveCombatExchangePhase(input: CombatExchangePhaseInput): CombatExch
               npcTargetNewCondicion = null;
             }
             if (npcDefensa.effects.includes('ATURDIMIENTO')) {
+              iniciativaForzadaPorUtilidad = 'npc';
+            }
+            if (npcDefensa.effects.includes('CONTROL')) {
               iniciativaForzadaPorUtilidad = 'npc';
             }
             if (npcDefensa.effects.includes('RECUPERACION')) {
@@ -1124,7 +1159,14 @@ function resolveCombatExchangePhase(input: CombatExchangePhaseInput): CombatExch
         //
         // `'golpes_mutuos'` ya no existe (rediseño a check opuesto, 2026-08-21) — mismo motivo que
         // el CASO DEFENSA de arriba: con un margen entre dos totales, nunca "los dos ganan a la vez".
-        const npcPuedeContragolpear = npcDefensa.effects.includes('ATAQUE');
+        //
+        // CONTRA/REFRACTAR (2026-08-26) — mismo criterio que el CASO DEFENSA de arriba, espejado:
+        // aquí es el ataque del JUGADOR el que se contesta, así que el atributo relevante es
+        // `input.classificationAtributo` (el suyo), no el del NPC.
+        const npcPuedeContragolpear =
+          npcDefensa.effects.includes('ATAQUE') ||
+          (npcDefensa.effects.includes('CONTRA') && input.classificationAtributo !== 'arcano') ||
+          (npcDefensa.effects.includes('REFRACTAR') && input.classificationAtributo === 'arcano');
         const npcContragolpeaAplica = exchange.resultado === 'defensor_contragolpea' && npcPuedeContragolpear;
         npcAttackHits = exchange.resultado === 'golpe_pleno' || exchange.resultado === 'golpe_normal';
         npcTargetNewCondicion = npcAttackHits ? nextCondicionForAttack(abilityEffects, npcParaIntercambio.condicionFisica) : null;

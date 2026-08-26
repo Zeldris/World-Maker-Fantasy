@@ -838,11 +838,12 @@ enum AbilityEffect {
   // Analiza al enemigo para ofrecer sus habilidades y stats
   ANALISIS
   /// PENDIENTES en bloque (2026-08-17, auditoría de comentarios "para hacer cambios" — RECUPERACION
-  /// arriba es el único de este lote ya implementado, ver su comentario): INVOCACION/CONTROL/
-  /// MULTIPLE/DESVIAR/ATENCION/OCULTACION/COMPANERO exigen combate multi-objetivo (hoy es
-  /// estrictamente 1v1); RETIRAR/CANALIZAR/CURAZION/REFLEJAR/EXPULSAR exigen efectos con duración
-  /// real (turnos que se cuentan y expiran) — ninguna de las dos infraestructuras existe todavía en
-  /// el motor. Nombre + comentario de diseño se quedan tal cual hasta que se aborden aparte.
+  /// arriba es el único de este lote ya implementado, ver su comentario): INVOCACION/MULTIPLE/
+  /// DESVIAR/ATENCION/OCULTACION exigen combate multi-objetivo de verdad (hoy es estrictamente
+  /// 1v1) — CONTROL/COMPANERO se implementaron 2026-08-26 sin esperar a esa infraestructura (ver
+  /// sus propios comentarios más abajo). RETIRAR/CANALIZAR/CURAZION/REFLEJAR/EXPULSAR exigen
+  /// efectos con duración real (turnos que se cuentan y expiran) — no existe todavía en el motor.
+  /// Nombre + comentario de diseño se quedan tal cual hasta que se aborden aparte.
   //Invocar ser o seres que duran una cantidad de turnos determinada y luego desaparecen. Apoyos en el combate, sin equipo
   INVOCACION
   //Sangrados, venenos, maldiciones o discapacidades. Reduce tus attrs temporalmente
@@ -868,6 +869,10 @@ enum AbilityEffect {
   //Efecto de habilidad que es capaz de hacer que un enemigo se retire del combate
   EXPULSAR
   //Efecto de habilidad que permite "controlar" al rival haciando que actue sobre el resto de enemigos durante los turnos que indique la habilidad
+  /// IMPLEMENTADO parcialmente (2026-08-26) — sin combate multi-objetivo real, se simplifica a
+  /// robar la iniciativa un intercambio (mismo mecanismo que ATURDIMIENTO, turnResolution.ts), en
+  /// vez de los "2 turnos" reales de controlar al rival contra un aliado suyo. Se deja tal cual
+  /// hasta que exista un segundo rival real al que redirigir.
   CONTROL
   //Efecto que permite aplicar la habilidad sobre un enemigo y que su efecto se replique en otros enemigos
   MULTIPLE
@@ -880,12 +885,14 @@ enum AbilityEffect {
   //Efecto que permite que durante los turnos que diga la habilidad no se le podra atacar, si no es el unico enemigo/aliado
   OCULTACION
   //Efecto que refleja el daño fisico
-  /// PENDIENTE (2026-08-17) — el motor no distingue tipos de daño (físico/mágico), solo qué
-  /// atributo se usó en la tirada; CONTRA y REFRACTAR serían mecánicamente idénticos hoy sin ese
-  /// concepto. Se deja para cuando exista una noción real de tipo de daño.
+  /// IMPLEMENTADO (2026-08-26) — el motor sigue sin un tipo de daño real, pero usa el atributo de
+  /// la tirada como proxy (arcano = mágico, el resto = físico): CONTRA contragolpea cuando el
+  /// golpe entrante NO fue de Arcano. Reutiliza el margen decisivo ya existente
+  /// (`defensor_contragolpea`, ±10) en vez de un umbral propio por habilidad, ver turnResolution.ts.
   CONTRA
   //Efecto que refleja el daño magico
-  /// PENDIENTE (2026-08-17) — mismo motivo que CONTRA.
+  /// IMPLEMENTADO (2026-08-26) — mismo mecanismo que CONTRA, invertido: contragolpea solo cuando
+  /// el golpe entrante SÍ fue de Arcano. Sin ninguna habilidad de clases.md que lo use todavía.
   REFRACTAR
   //Efecto que sirve para recuperar la energia indicada por la habilidad
   /// IMPLEMENTADO (2026-08-17) — bonus de energía este intercambio (RECUPERACION_ENERGY_BONUS,
@@ -899,6 +906,11 @@ enum AbilityEffect {
   /// turnResolution.ts) — se deja para una pasada dedicada solo a eso, con sus propios tests.
   PURIFICAR
   //Permite convertir fauna en compañeros, desbloquea slots de compañero que no contabilizan sobre los slots de compañero...es decir desbloquea un slot o slots donde iran nuestra "mascota" o compañeros de fauna
+  /// IMPLEMENTADO (2026-08-26) — pasiva pura, sin turno que resolver: reutiliza `esSlotDomador`
+  /// (companeros.ts § POST /tameo-pendientes/:npcSlug/confirmar), ya construido de antes y gateado
+  /// por clase/especialización (`esDomador`) — esta fila del enum solo documenta el efecto, el
+  /// motor no lo lee directamente todavía (no hace falta: el gate real es por clase, no por
+  /// SavedAction desbloqueada). Restringido a fauna combatible, un slot garantizado por Domador.
   COMPANERO
   // Marca que la habilidad tiene un tope de usos por combate (ver maxUsesPerCombat en el propio
   // dato de la habilidad, y NpcState.abilityUsesThisEncounter para el contador real) — se combina
