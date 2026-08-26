@@ -3479,6 +3479,12 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   // acotados al inventario actual): un `newItem` propuesto puede ser cualquier objeto del mundo,
   // no solo uno que la jugadora ya tenga.
   const worldItemCatalogNames = (await prisma.itemCatalog.findMany({ where: { worldId }, select: { name: true } })).map((i) => i.name);
+  // Ver `hasFalseCombatTargetName` (narrador.ts) — solo cuando este turno resolvió de verdad un
+  // intercambio contra un objetivo concreto (nunca en execute/decapitar, que ya tiene su propio
+  // cierre determinista sin depender de que el modelo nombre a nadie) Y hay algún otro NPC real en
+  // la misma escena con quien pueda confundirse.
+  const combatRealTargetName = exchangeHappened && npcAttackTarget ? npcAttackTarget.name : undefined;
+  const otherNpcNamesInScene = combatRealTargetName ? npcsInScene.filter((n) => n.id !== npcAttackTarget!.id).map((n) => n.name) : [];
   const narrationCtx = {
     worldFacts: [...contextBlocks, ...(await selectRelevantFacts(action, saveId, sessionFacts))],
     // Separado de worldFacts (roadmap 2026-07-24, "revisar partida" — ver comentario en
@@ -3517,6 +3523,8 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     equippableItemNames,
     restHealCeilingBelowIleso,
     worldItemCatalogNames,
+    combatRealTargetName,
+    otherNpcNamesInScene,
     gisteraSeHaMarchado,
     onNarrationChunk,
     onNarrationReset,

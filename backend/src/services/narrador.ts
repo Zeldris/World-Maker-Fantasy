@@ -250,6 +250,15 @@ interface TurnContext {
   /// uno de esta lista (turnResolution.ts, `catalogMatch`) — si no coincide, la prosa no puede
   /// afirmar que el personaje se queda con/guarda el objeto, porque el inventario real no cambia.
   worldItemCatalogNames?: string[];
+  /// Ver `hasFalseCombatTargetName` más abajo (revisión de partida real, 2026-08-14/2026-08-26,
+  /// "ataque a Múrgol narrado como si fuera contra Cruzavientos") — nombre real del NPC que este
+  /// turno recibió de verdad el intercambio de combate (`npcAttackTarget`, turnResolution.ts).
+  /// `undefined` = no aplica (sin intercambio real este turno).
+  combatRealTargetName?: string;
+  /// Nombres de OTROS NPC/fauna real presentes en la misma escena que `combatRealTargetName` —
+  /// candidatos a "colarse" en la prosa en su lugar. Vacío = solo hay un NPC en escena, no hay con
+  /// quién confundirlo.
+  otherNpcNamesInScene?: string[];
 }
 
 interface ClassifyContext {
@@ -1290,6 +1299,10 @@ export async function narrateAction(ctx: TurnContext & { roll?: RollResult }): P
           check: () => hasFalseNewItemClaim(parsed.narration, parsed.newItem?.name, ctx.worldItemCatalogNames),
           reason: 'narrar que el personaje se queda con/guarda un objeto cuyo nombre no coincide con ningún ItemCatalog real (no se materializará)',
         },
+        {
+          check: () => hasFalseCombatTargetName(parsed.narration, ctx.combatRealTargetName, ctx.otherNpcNamesInScene),
+          reason: 'narrar el intercambio de combate resuelto sin nombrar al objetivo real, nombrando en su lugar a otro NPC presente en la escena',
+        },
       ].find((validator) => validator.check());
 
       if (rejection) {
@@ -1705,6 +1718,22 @@ export function hasFalseNewItemClaim(narration: string, newItemName: string | nu
   const normalizedNames = worldItemCatalogNames.map(normalizeText);
   if (normalizedNames.includes(normalizeText(newItemName))) return false; // sí existe, se materializará de verdad
   return ITEM_POSSESSION_CLAIM_REGEX.test(narration);
+}
+
+/// Narración-vs-mecánica (revisión de partida real, 2026-08-14, "ataque a Múrgol narrado como si
+/// fuera contra Cruzavientos"): un intercambio de combate resuelto contra un objetivo concreto
+/// (`npcAttackTarget`) puede narrarse sin nombrarlo en absoluto, mencionando en su lugar a OTRO
+/// NPC/fauna real presente en la misma escena — el modelo "se distrae" con el elemento mencionado
+/// más recientemente en vez del objetivo real de la acción de este turno; la capa determinista
+/// (XP, `NpcState`) resuelve bien, solo la prosa nombra mal a quién. Dispara solo cuando el nombre
+/// real NO aparece en ningún sitio del texto (mencionar a otro NPC de pasada junto al real es
+/// ambientación inocua, no un error) y sí aparece el de otro NPC presente — mismo criterio
+/// conservador que el resto de esta familia, para no disparar por ambientación legítima.
+export function hasFalseCombatTargetName(narration: string, realTargetName?: string, otherNpcNamesInScene?: string[]): boolean {
+  if (!realTargetName || !otherNpcNamesInScene || otherNpcNamesInScene.length === 0) return false;
+  const normalized = normalizeText(narration);
+  if (normalized.includes(normalizeText(realTargetName))) return false;
+  return otherNpcNamesInScene.some((name) => normalized.includes(normalizeText(name)));
 }
 
 /// Narración-vs-mecánica, mismo patrón que `hasFalseCombatHit` (2026-08-01, bug real jugando en

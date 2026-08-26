@@ -33,6 +33,7 @@ import {
   hasFalseEquipmentChangeClaim,
   hasFalseHealingClaim,
   hasFalseNewItemClaim,
+  hasFalseCombatTargetName,
   hasAnachronism,
   buildNarrationPrompt,
 } from './narrador.js';
@@ -931,6 +932,32 @@ describe('hasFalseNewItemClaim', () => {
 
   it('no dispara con una mención de pasada, sin verbo de posesión explícito', () => {
     expect(hasFalseNewItemClaim('Gorhorn observa la Daga de Hueso curtida, tirada entre las rocas.', 'Daga de Hueso curtida', CATALOG)).toBe(false);
+  });
+});
+
+// Revisión de partida real (2026-08-14, "ataque a Múrgol narrado como si fuera contra
+// Cruzavientos"): la capa determinista resolvió bien (XP, NpcState), pero la prosa nombró a otro
+// NPC presente en la escena en vez del objetivo real del intercambio.
+describe('hasFalseCombatTargetName', () => {
+  it('bug real jugando en vivo (2026-08-14): detecta que la narración nombra a otro NPC de la escena en vez del objetivo real', () => {
+    const narration =
+      'El Cruzavientos se mete en medio de la huida del matorral de cuerno, haciendo que las hojas caigan sobre su piel.';
+    expect(hasFalseCombatTargetName(narration, 'Múrgol', ['Cruzavientos'])).toBe(true);
+  });
+
+  it('no dispara si la narración nombra al objetivo real (aunque también mencione a otros de pasada)', () => {
+    const narration = 'Gorhorn golpea al Múrgol con fuerza, mientras un Cruzavientos sobrevuela la escena sin intervenir.';
+    expect(hasFalseCombatTargetName(narration, 'Múrgol', ['Cruzavientos'])).toBe(false);
+  });
+
+  it('no dispara sin objetivo real (sin intercambio resuelto este turno) ni sin otros NPC en escena', () => {
+    expect(hasFalseCombatTargetName('Gorhorn golpea al enemigo.', undefined, ['Cruzavientos'])).toBe(false);
+    expect(hasFalseCombatTargetName('Gorhorn golpea al enemigo.', 'Múrgol', [])).toBe(false);
+    expect(hasFalseCombatTargetName('Gorhorn golpea al enemigo.', 'Múrgol', undefined)).toBe(false);
+  });
+
+  it('no dispara si la narración no nombra a NADIE (prosa genérica, sin evidencia de confusión)', () => {
+    expect(hasFalseCombatTargetName('Gorhorn golpea con fuerza a su rival.', 'Múrgol', ['Cruzavientos'])).toBe(false);
   });
 });
 

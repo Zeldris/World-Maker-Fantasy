@@ -2301,10 +2301,15 @@ narración-vs-mecánica de `narrador.ts` (11 detectores en cascada, `hasFalseCom
 `hasResurrectedDeadNpc`/etc.): ninguno cubre "la narración de un golpe resuelto nombra a un NPC
 distinto del objetivo real" — hueco real, no cubierto hasta ahora.
 
-**Estado**: PENDIENTE. No se ha aplicado ningún fix — reportado a la usuaria con la propuesta de un
-detector nuevo (mismo patrón que los 11 ya existentes: comprobar que, cuando hay un intercambio
-mecánico resuelto contra un objetivo concreto Y hay más de un NPC/fauna real en escena, el texto
-generado nombre al objetivo correcto en vez de a otro presente) a la espera de luz verde.
+**Fix aplicado (2026-08-26)**: guard nuevo `hasFalseCombatTargetName` (narrador.ts), mismo patrón
+que los 11 ya existentes — `turnResolution.ts` calcula `combatRealTargetName` (el `npcAttackTarget`
+real de este turno, solo si hubo intercambio de verdad) y `otherNpcNamesInScene` (el resto de NPC
+presentes); el guard dispara si la prosa no nombra al objetivo real EN NINGÚN SITIO pero sí nombra a
+otro NPC de la escena — mencionar a ambos (ambientación legítima) no dispara nada.
+
+**Estado**: FIJADO (commit pendiente, 2026-08-26). Tests nuevos en `narrador.test.ts` (incluye el
+caso real de Múrgol/Cruzavientos), suite completa (2787/2787) + `turn.integration.test.ts` (84/84)
++ resto de integración en verde.
 
 ## 2026-08-15 — rediseño de balance: la rueda de debilidades solo premia, nunca penaliza
 
