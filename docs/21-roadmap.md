@@ -413,46 +413,56 @@ resumen de trabajo real, agrupado por tamaño.
     el resto de pretendientes al MISMO objetivo se convierten en golpe gratis contra él — nunca se
     "roba" un duelo ya formado, solo se cancela la elección de alguien que a su vez es reclamado.
 
-  **Enganche a la orquestación en vivo (`combateMultipleOrquestacion.ts`) — diseñado, sin
-  implementar todavía.** Hallazgo real durante el diseño: el algoritmo de arriba NECESITA conocer
-  las elecciones de TODA la ronda antes de resolver el primer dado (si no, la cancelación X/Y/Z es
-  imposible — el ataque de X contra Y ya se habría resuelto de verdad, con daño real y narración
-  ya mandada, antes de que Z pudiera cancelarlo). Eso choca con cómo funciona hoy el motor:
-  `resolverTurnoJugador` resuelve el intercambio de la jugadora AL INSTANTE, en la misma llamada
-  HTTP donde ella manda `targetParticipantId` — no hay ningún punto donde "todas las elecciones de
-  la ronda" existan ya antes de que el primer combatiente actúe de verdad.
-  - **Simplificación cerrada para resolver el choque**: la elección de la JUGADORA, una vez
-    mandada (o una vez que le toca actuar y ya está reclamada por alguien, así que ni elige), NUNCA
-    se cancela retroactivamente por un enemigo/compañero que actúe después de ella en la cola —
-    entre NPC/COMPANION el algoritmo N-way completo sigue aplicando tal cual (se pueden robar
-    objetivos entre ellos sin límite). Es la única concesión real: evita tener que pausar el cálculo
-    de una ronda a mitad para esperar su respuesta HTTP, sin perder el resto de la mecánica. Si
-    alguien la reclama DESPUÉS de que ya esté comprometida con su propio objetivo, ese alguien
-    simplemente se queda con un golpe gratis contra ella (consecuencia normal del algoritmo, no un
-    caso especial).
-  - **Flujo real por ronda**: (1) al detectar el inicio de una ronda nueva (`turnoActual` volviendo
-    a 0), correr `resolverEnganchesRonda` SOLO con los combatientes ANTERIORES a la jugadora en
-    `ordenIniciativa` (NPC/COMPANION, elección automática) + la propia jugadora como candidata
-    pasiva — esto ya determina si ella llega reclamada o libre a su turno, sin necesitar su
-    respuesta todavía. (2) Si llega reclamada: su "turno" deja de pedirle `targetParticipantId` (paso
-    de contrato con el frontend) y se resuelve directo como la mitad defensora de su duelo. Si llega
-    libre: se le pide el objetivo como hoy, y esa elección queda fija. (3) Con su elección ya fija
-    (o su ausencia de elección, si estaba reclamada), se completa `resolverEnganchesRonda` para el
-    RESTO de `ordenIniciativa` (los combatientes después de ella), esta vez con su estado ya
-    conocido como dato fijo. (4) Un "golpe gratis" se resuelve SIN el roll de defensa real del
-    objetivo — impacto garantizado (`nextCondicionForAttack` directo) — salvo que tenga una
-    habilidad con `AGUANTE`+`MULTIPLE` disponible (hoy no existe ninguna sembrada todavía, ver Fase
-    1: "MULTIPLE... sin ninguna habilidad real enganchada", así que esta rama no se puede probar en
-    vivo hasta que exista una).
-  - **Funciones que hay que tocar**: `iniciarCombatEncounter` (primer cálculo de enganches al crear
-    el encuentro, sustituye la llamada a `retargetBando`), `resolverTurnoAutonomo`/
-    `resolverTurnoJugador` (leer el enganche ya calculado en vez de `objetivoActualId` recalculado
-    cada turno), `avanzarYComprobarFin` (deja de re-emparejar en CADA turno — solo al empezar ronda
-    nueva), `ejecutarIntercambioYAvanzar` (rama nueva para golpe gratis, sin intercambio contestado
-    salvo AGUANTE+MULTIPLE). Contrato con el frontend: `AccionJugadorCombate.targetParticipantId`
-    pasa a ser opcional (no se manda si ella ya viene reclamada).
-  - No se ha tocado ninguna línea de `combateMultipleOrquestacion.ts` ni del frontend todavía —
-    diseño lo bastante detallado para implementarlo directo la próxima vez, sin re-abrir preguntas.
+  **Enganche a la orquestación en vivo (`combateMultipleOrquestacion.ts`) — investigado a fondo,
+  sin implementar. Resulta ser bastante más grande de lo que parecía al cerrar el diseño de
+  arriba — anotado con detalle para no tener que re-derivar esto la próxima vez.**
+
+  Hallazgo real, más profundo de lo que se pensó al principio: el algoritmo necesita conocer las
+  elecciones de TODA la ronda antes de resolver el PRIMER dado de esa ronda — no solo el de la
+  jugadora. Motivo: la cancelación X/Y/Z (regla 4 del diseño) puede afectar a CUALQUIER pareja,
+  no solo a la jugadora — si Z tiene menos iniciativa que X pero cancela su ataque contra Y, y el
+  motor ya hubiera resuelto el turno de X en firme (dado tirado, daño real aplicado, narración ya
+  mandada) antes de llegar al turno de Z, la cancelación llegaría demasiado tarde: no se puede
+  deshacer un golpe que la jugadora ya ha leído. Esto también aplica si la propia jugadora es
+  quien cancela a alguien que actuó antes que ella en la cola — su elección puede "alcanzar hacia
+  atrás" a un NPC que ya actuó, exactamente igual que Z alcanza a X en el ejemplo cerrado con
+  ella. Conclusión: **ningún intercambio de la ronda (ni el de la jugadora, ni el de ningún
+  NPC/compañero, ni siquiera los que "van antes" que ella en la cola de iniciativa) puede
+  resolverse en firme hasta que TODAS las elecciones de esa ronda —incluida la suya— estén ya
+  decididas.** No es un problema exclusivo de "cuándo le toca elegir a ella" (lo que se pensó al
+  cerrar el diseño arriba) — es un problema de la ronda entera.
+
+  Esto choca de raíz con cómo funciona hoy el motor: `resolverTurnosAutonomosHastaJugadora`
+  resuelve en firme (dado, daño, narración) cada turno autónomo segundo a segundo, ANTES de que
+  le toque a la jugadora, y `resolverTurnoJugador` resuelve el suyo al instante en la misma
+  llamada HTTP donde manda `targetParticipantId`. Para que la cancelación sea posible de verdad,
+  hace falta separar "elegir" de "resolver" en dos fases reales para la ronda COMPLETA: (1) fase
+  de elección — determinista, instantánea, sin narración, para TODOS los combatientes (NPC/
+  COMPANION vía `elegirObjetivo` de siempre; la jugadora necesita su respuesta HTTP real si no
+  llega ya reclamada por alguien de la fase de elección) — nada se resuelve todavía; (2) fase de
+  resolución — ya con el reparto de la ronda entera fijo y cerrado, se resuelven en orden de
+  iniciativa los duelos/golpes gratis reales (dado, daño, narración), sin volver a tocar el
+  reparto. Si la jugadora no es la primera de la cola, esto implica que NINGÚN turno autónomo
+  "anterior" a ella en la cola puede narrarse todavía cuando el backend le pide su elección —
+  tiene que pedírsela ANTES de narrar nada de esa ronda, no a mitad como hoy. Cambia el orden en
+  el que la jugadora ve las cosas sobre la mesa (elegir objetivo antes de ver actuar a nadie más
+  esa ronda), un cambio de experiencia real que vale la pena confirmar con ella antes de tocar
+  código, no solo una cuestión técnica interna.
+
+  Un "golpe gratis" (cuando por fin se resuelve, fase 2) se resuelve SIN el roll de defensa real
+  del objetivo — impacto garantizado (`nextCondicionForAttack` directo) — salvo que tenga una
+  habilidad con `AGUANTE`+`MULTIPLE` disponible (hoy no existe ninguna sembrada todavía, ver Fase
+  1: "MULTIPLE... sin ninguna habilidad real enganchada", así que esa rama no se podrá probar en
+  vivo hasta que exista una habilidad real con ese efecto combinado).
+
+  Funciones que habría que tocar cuando se implemente: `iniciarCombatEncounter` (sustituye
+  `retargetBando` por la fase de elección completa), una fase de elección nueva reutilizable desde
+  el punto donde hoy arranca cada ronda, `resolverTurnoAutonomo`/`resolverTurnoJugador` (dejan de
+  resolver al instante — solo narran/aplican daño una vez la fase de elección de la ronda está
+  cerrada), `avanzarYComprobarFin` (deja de re-emparejar cada turno — el reparto ya es fijo por
+  ronda). Contrato con el frontend: pedir el objetivo de la jugadora AL EMPEZAR la ronda (o nada,
+  si ya viene reclamada), no en mitad del turno a turno como hoy — cambio de flujo real, no solo
+  de payload.
 - [ ] **Fase 4 — esperan que la usuaria rellene cifras a su ritmo**, quedan `⚠️ bloqueada` en
   `clases.md` mientras tanto (no frena el resto): `RETIRAR` (ninguna de sus 2 filas tiene cifra) y
   las filas sueltas de `AUMENTO`/`DEBILIDAD`/`CURAZION` sin número (sobre todo Segador/Asesino).
