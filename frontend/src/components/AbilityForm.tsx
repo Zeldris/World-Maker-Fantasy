@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import type { SavedActionInfo } from '../types'
+import { useSubmitError } from '../hooks/useSubmitError'
 
 const ICON_OPTIONS = ['✨', '⚔️', '🛡️', '🏹', '🔥', '❄️', '🌿', '👁️', '💨', '🩹', '🐺', '🗿', '🎯', '🧭']
 
@@ -25,20 +26,17 @@ export function AbilityForm({ mode, initial, onSubmit, onCancel }: AbilityFormPr
   const [promptText, setPromptText] = useState(initial?.promptText ?? '')
   const [description, setDescription] = useState(initial?.description ?? '')
   const [icon, setIcon] = useState(initial?.icon ?? ICON_OPTIONS[0])
-  const [error, setError] = useState<string | null>(null)
+  const { error, runCatchingError } = useSubmitError()
   const [busy, setBusy] = useState(false)
 
   async function handleSubmit() {
     if (!name.trim() || !promptText.trim()) return
     setBusy(true)
-    setError(null)
-    try {
-      await onSubmit({ name: name.trim(), promptText: promptText.trim(), icon, description: description.trim() })
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'No se pudo guardar la habilidad')
-    } finally {
-      setBusy(false)
-    }
+    await runCatchingError(
+      () => onSubmit({ name: name.trim(), promptText: promptText.trim(), icon, description: description.trim() }),
+      'No se pudo guardar la habilidad',
+    )
+    setBusy(false)
   }
 
   return (

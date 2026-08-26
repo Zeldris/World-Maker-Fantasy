@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import type { KingdomFoundedInfo } from '../types'
+import { useSubmitError } from '../hooks/useSubmitError'
 
 interface KingdomFoundingModalProps {
   info: KingdomFoundedInfo
@@ -27,19 +28,16 @@ export function KingdomFoundingModal({ info, onConfirm, onCancel }: KingdomFound
   const [kingdomName, setKingdomName] = useState(info.suggestedName ?? '')
   const [description, setDescription] = useState('')
   const [busy, setBusy] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const { error, runCatchingError } = useSubmitError()
 
   async function handleConfirm() {
     if (!info.nameLocked && !kingdomName.trim()) return
     setBusy(true)
-    setError(null)
-    try {
-      await onConfirm(info.nameLocked ? info.suggestedName! : kingdomName.trim(), description.trim() || undefined)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'No se pudo fundar el reino')
-    } finally {
-      setBusy(false)
-    }
+    await runCatchingError(
+      () => onConfirm(info.nameLocked ? info.suggestedName! : kingdomName.trim(), description.trim() || undefined),
+      'No se pudo fundar el reino',
+    )
+    setBusy(false)
   }
 
   return (

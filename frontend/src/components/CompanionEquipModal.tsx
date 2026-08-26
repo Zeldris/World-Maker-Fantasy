@@ -3,6 +3,7 @@ import type { CompanionInfo, EquipSlot, InventoryItemInfo } from '../types'
 import { setCompanionItemSlot } from '../lib/api'
 import { isCompatibleWithSlot, SLOT_LABEL } from '../lib/equipSlots'
 import { SelectionModalShell } from './SelectionModalShell'
+import { useSubmitError } from '../hooks/useSubmitError'
 
 // Grupo 3 § Compañeros y supervivencia (2026-08-25, docs/rpgtarkor/companeros-y-supervivencia.md
 // § 6) — "ranuras reducidas" de fauna simplificadas a un set fijo (mismo criterio consciente que
@@ -29,7 +30,7 @@ interface CompanionEquipModalProps {
 export function CompanionEquipModal({ saveId, companion, inventory, onClose, onChanged }: CompanionEquipModalProps) {
   const [pickingSlot, setPickingSlot] = useState<EquipSlot | null>(null)
   const [busy, setBusy] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const { error, runCatchingError } = useSubmitError()
 
   const slots = companion.tipo === 'FAUNA' ? FAUNA_SLOTS : NPC_SLOTS
   const equippedHere = inventory.filter((i) => i.companionId === companion.id)
@@ -37,16 +38,12 @@ export function CompanionEquipModal({ saveId, companion, inventory, onClose, onC
 
   async function handleEquip(slot: EquipSlot, itemId: string | null) {
     setBusy(true)
-    setError(null)
-    try {
+    await runCatchingError(async () => {
       await setCompanionItemSlot(saveId, companion.id, itemId ?? equippedHere.find((i) => i.slot === slot)!.id, itemId ? slot : null)
       setPickingSlot(null)
       await onChanged()
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'No se pudo equipar.')
-    } finally {
-      setBusy(false)
-    }
+    }, 'No se pudo equipar.')
+    setBusy(false)
   }
 
   return (

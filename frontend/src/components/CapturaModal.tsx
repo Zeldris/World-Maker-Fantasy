@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { getCapturables, postCapturar, type CapturableCandidate } from '../lib/api'
 import { SelectionModalShell } from './SelectionModalShell'
 import { useAsyncModalData } from '../hooks/useAsyncModalData'
+import { useSubmitError } from '../hooks/useSubmitError'
 
 interface CapturaModalProps {
   saveId: string
@@ -17,7 +18,7 @@ export function CapturaModal({ saveId, onCapturado, onCancel }: CapturaModalProp
   const [candidates, setCandidates] = useState<CapturableCandidate[]>([])
   const [tieneTrampaDeLazo, setTieneTrampaDeLazo] = useState(true)
   const [capturando, setCapturando] = useState<string | null>(null)
-  const { loading, error, setError } = useAsyncModalData(
+  const { loading, error: loadError } = useAsyncModalData(
     () => getCapturables(saveId),
     (res) => {
       setCandidates(res.candidates)
@@ -26,17 +27,17 @@ export function CapturaModal({ saveId, onCapturado, onCancel }: CapturaModalProp
     'No se pudo comprobar quién hay capturable en la zona.',
     [saveId],
   )
+  const { error: submitError, runCatchingError } = useSubmitError()
+  const error = loadError ?? submitError
 
   async function handleCapturar(npcSlug: string) {
     setCapturando(npcSlug)
-    setError(null)
-    try {
-      await postCapturar(saveId, npcSlug)
-      onCapturado(npcSlug)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'No se pudo atar — puede que ya no esté a tu alcance.')
+    const ok = await runCatchingError(() => postCapturar(saveId, npcSlug), 'No se pudo atar — puede que ya no esté a tu alcance.')
+    if (ok === undefined) {
       setCapturando(null)
+      return
     }
+    onCapturado(npcSlug)
   }
 
   return (

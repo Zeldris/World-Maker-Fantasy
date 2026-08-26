@@ -3,6 +3,7 @@ import type { Attribute } from '../types'
 import { postIntentarTameo, postConfirmarTameo, postSoltarTameo, type TameoPendiente, type OpposedRollInfo } from '../lib/api'
 import { attributeLabels } from '../lib/dice'
 import { SelectionModalShell, confirmButtonClasses } from './SelectionModalShell'
+import { useSubmitError } from '../hooks/useSubmitError'
 
 const ATTRIBUTES: Attribute[] = ['fuerza', 'destreza', 'constitucion', 'inteligencia', 'voluntad', 'carisma', 'arcano']
 
@@ -22,46 +23,38 @@ export function TameoModal({ saveId, pendiente: initial, onConfirmado, onSoltado
   const [pendiente, setPendiente] = useState(initial)
   const [lastRoll, setLastRoll] = useState<OpposedRollInfo | null>(null)
   const [busy, setBusy] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const { error, runCatchingError } = useSubmitError()
 
   const umbralCompletado = pendiente.felicidad >= pendiente.umbral
 
   async function handleIntentar(attribute: Attribute) {
     setBusy(true)
-    setError(null)
-    try {
+    await runCatchingError(async () => {
       const res = await postIntentarTameo(saveId, pendiente.npcSlug, attribute)
       setLastRoll(res.roll)
       setPendiente((prev) => ({ ...prev, felicidad: res.felicidad }))
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'No se pudo intentar — puede que ya no esté capturado.')
-    } finally {
-      setBusy(false)
-    }
+    }, 'No se pudo intentar — puede que ya no esté capturado.')
+    setBusy(false)
   }
 
   async function handleConfirmar() {
     setBusy(true)
-    setError(null)
-    try {
-      await postConfirmarTameo(saveId, pendiente.npcSlug)
-      onConfirmado()
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'No se pudo confirmar — puede que no tengas ningún slot de compañero libre.')
+    const ok = await runCatchingError(() => postConfirmarTameo(saveId, pendiente.npcSlug), 'No se pudo confirmar — puede que no tengas ningún slot de compañero libre.')
+    if (ok === undefined) {
       setBusy(false)
+      return
     }
+    onConfirmado()
   }
 
   async function handleSoltar() {
     setBusy(true)
-    setError(null)
-    try {
-      await postSoltarTameo(saveId, pendiente.npcSlug)
-      onSoltado()
-    } catch {
-      setError('No se pudo soltar.')
+    const ok = await runCatchingError(() => postSoltarTameo(saveId, pendiente.npcSlug), 'No se pudo soltar.')
+    if (ok === undefined) {
       setBusy(false)
+      return
     }
+    onSoltado()
   }
 
   const verbo = pendiente.tipo === 'FAUNA' ? 'Alimentar' : 'Persuadir'
