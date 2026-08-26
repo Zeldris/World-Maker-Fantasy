@@ -217,8 +217,11 @@ vive en `lib/*.test.ts` (11 archivos: `slugify`, `combatDifficulty`, `encicloped
 `useSurroundingsPolling`, `useTransitPolling`, `useEnciclopedia`, `useRecipesData`) tienen bastante
 menos ramificación (4-7 condicionales cada uno) — menos urgentes, pero también sin cobertura.
 
-**Estado**: PENDIENTE. `useCombatFlow.ts` es el candidato claro a cubrir primero si se decide
-invertir en tests de hooks.
+**Estado**: FIJADO (commit `2da4bdd`, 2026-08-25) — decisión explícita de la usuaria: invertir en la
+infraestructura real (`@testing-library/react` + `jsdom`, antes deliberadamente fuera de alcance)
+en vez de solo extraer helpers puros. 15 tests nuevos sobre los flujos de mayor riesgo de
+`useCombatFlow.ts`. El resto de `hooks/` (`useEntityBanner`/`useReconnectionPolling`/etc.) sigue sin
+cobertura — menos urgente, la infraestructura ya existe para retomarlo cuando se decida.
 
 ## 2026-08-25 — Duplicación menor de manejo de error de envío en 6 modales de acción
 
