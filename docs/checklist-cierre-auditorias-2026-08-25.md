@@ -42,7 +42,7 @@ Y en su hallazgo de origen al cerrarse (FIJADO), con commit propio y verificaci�
 - [x] 19. `combate-multiple.md`: quitar banner "nada implementado" + corregir lo de `NpcState.groupSize` (se mantiene a propósito, no se retira) — commit `57d7042`
 - [x] 20. `companeros-y-supervivencia.md`: quitar banner "nada implementado" + nota de excepción de inanición (tope en CONVALECIENTE, a propósito) — commit `5a38692`, incluyó también corregir reclutablePct/domesticablePct y el hueco de plantillas básicas
 - [ ] 21. `clases.md`: corregir tabla-resumen final (Guerrero/Cazador) + Rúnico/Convocador/Opresor
-- [ ] 22. Plantillas de equipo "básicas, no editables": implementar el seed real, o marcar explícitamente como diseño futuro no entregado en `companeros-y-supervivencia.md`
+- [x] 22. Plantillas de equipo "básicas, no editables": implementar el seed real, o marcar explícitamente como diseño futuro no entregado en `companeros-y-supervivencia.md` — commit `5a38692` (se marcó explícitamente el hueco, no se implementó el seed)
 
 **Ya resuelto, sin acción**: `Faction.description` de Helsig/Goshg se queda estática a propósito
 (decisión de diseño confirmada 2026-08-25, ver `lore-hallazgos.md`).
