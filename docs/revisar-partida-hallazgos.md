@@ -3046,7 +3046,7 @@ recolectar (`harvestRollCache: Prisma.JsonNull`) ahora invalida solo las entrada
 congelada incluyera alguna de las fuentes tocadas (`invalidateRollCacheFor`) — confirmar Minero ya
 no le borra la tirada congelada a Talador si no comparten ninguna fuente.
 
-**Estado**: FIJADO (commit pendiente, 2026-08-26) — test nuevo en `recolectar.test.ts` ("explorar un
+**Estado**: FIJADO (commit `e3ee484`, 2026-08-26) — test nuevo en `recolectar.test.ts` ("explorar un
 oficio no invalida la caché ya congelada de otro oficio distinto"), 49/49 en verde + integración +
 suite completa (2779/2779).
 
