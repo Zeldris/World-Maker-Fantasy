@@ -23,6 +23,8 @@ import { useSurroundingsPolling } from '../hooks/useSurroundingsPolling'
 import { useRecipesData } from '../hooks/useRecipesData'
 import { useCombatFlow } from '../hooks/useCombatFlow'
 import { useTransitPolling } from '../hooks/useTransitPolling'
+import { useKingdomState } from '../hooks/useKingdomState'
+import { useActionModalsState } from '../hooks/useActionModalsState'
 import type { EnciclopediaLinkTarget } from '../lib/enciclopediaIndex'
 import { EnciclopediaLinkProvider } from '../context/EnciclopediaLinkContext'
 import { CompanerosPanel } from '../components/panels/CompanerosPanel'
@@ -73,10 +75,8 @@ import {
   questCompletedLogEntry,
 } from '../lib/gameViewHelpers'
 import type {
-  AlmacenItemInfo,
   Attribute,
   AttributeBlock,
-  BuildingInfo,
   CombatExchangeInfo,
   CompanionInfo,
   CondicionFisica,
@@ -86,20 +86,14 @@ import type {
   EquipSlot,
   InitiativeRollInfo,
   InventoryItemInfo,
-  KingdomFoundedInfo,
-  KingdomStatsInfo,
   LogEntry,
   NpcInSceneInfo,
-  PlantillaEquipoInfo,
-  PostCombatInteractionInfo,
   ProfessionProgressInfo,
   QuestInfo,
   SavedActionCategory,
   SavedActionInfo,
   SecondaryAttributeBlock,
   SessionSummaryInfo,
-  SubjectInfo,
-  TerritoryInfo,
 } from '../types'
 
 /// Combina los adjuntos del composer con el texto libre en una única acción (docs/14-combate-y-muerte.md
@@ -150,45 +144,53 @@ export function GameView() {
   const [suggestions, setSuggestions] = useState<string[]>([])
   const [suggestionsLoading, setSuggestionsLoading] = useState(false)
   const [inventory, setInventory] = useState<InventoryItemInfo[]>([])
-  // Pop-up de recolección (rediseño de profesiones, 2026-08-07) — null = cerrado.
-  const [harvestModal, setHarvestModal] = useState<{ oficio: string; label: string } | null>(null)
-  // Desollar pasa a pasiva (2026-08-25, petición explícita: "la habilidad de desollar debe pasar
-  // a pasiva") — ya no es un botón en Habilidades, aparece solo cuando hay cadáveres reales
-  // pendientes (narrativos o los que deja un CombatEncounter resuelto), reutilizando el mismo GET
-  // que antes solo pedía el botón (`carcassCandidatesFor`, backend). null = todavía sin comprobar
-  // esta escena; false/true = ya se comprobó.
-  const [carcassPending, setCarcassPending] = useState<boolean | null>(null)
-  const [huntModalOpen, setHuntModalOpen] = useState(false)
-  // Paneles nuevos (2026-08-17, comentarios de startingAbilities.ts): "Volver al campamento",
-  // "Viajar", "Saquear" y "Curar" — mismo patrón que huntModalOpen. "Volver al campamento"/"Viajar"
-  // comparten el mismo `onSelect`/`onCancel` de un único texto de acción (ver
-  // `handleSimpleModalSelect` más abajo), así que se colapsan en un único estado (auditoría de
-  // deuda técnica 2026-08-18, antes 3 booleanos casi idénticos) — "Saquear" y "Curar" se quedan
-  // aparte, cada uno con su propio estado: sus confirmaciones mandan algo más que el texto
-  // (`lootItemNames`/`healItemUses`), una forma distinta de verdad (mismo motivo por el que
-  // "Curar" salió del trío el 2026-08-18, rediseño de varios objetos/usos a la vez).
-  const [simpleModal, setSimpleModal] = useState<'camp' | 'travel' | null>(null)
-  const [saquearZonaModalOpen, setSaquearZonaModalOpen] = useState(false)
-  const [healModalOpen, setHealModalOpen] = useState(false)
-  // Interacción con un NPC/fauna ya convaleciente o muerto, fuera de combate (docs/19-post-combate-
-  // y-recompensas-mision.md pieza 2) — null = cerrado. `/turn/classify` lo detecta y corta el
-  // turno antes de narrar; este panel deja Saquear/Decapitar/Salir sin gastar generación.
-  const [postCombatTarget, setPostCombatTarget] = useState<PostCombatInteractionInfo | null>(null)
+  // Estado de los pop-ups de acción (deuda técnica, auditoría 2026-08-25) — ver
+  // hooks/useActionModalsState.ts para el detalle de cada uno (pop-up de recolección, desollar
+  // pasiva, caza, campamento/viajar/saquear/curar, interacción post-combate) y por qué
+  // `carcassPending` sigue exponiendo su setter (useCombatFlow/handleSubmit también lo escriben).
+  const {
+    harvestModal,
+    setHarvestModal,
+    carcassPending,
+    setCarcassPending,
+    huntModalOpen,
+    setHuntModalOpen,
+    simpleModal,
+    setSimpleModal,
+    saquearZonaModalOpen,
+    setSaquearZonaModalOpen,
+    healModalOpen,
+    setHealModalOpen,
+    postCombatTarget,
+    setPostCombatTarget,
+  } = useActionModalsState()
   const [companions, setCompanions] = useState<CompanionInfo[]>([])
   const [level, setLevel] = useState(1)
   const [xp, setXp] = useState(0)
   const [pendingAttributePoints, setPendingAttributePoints] = useState(0)
-  const [kingdomName, setKingdomName] = useState<string | null>(null)
-  // Popup de fundación de reino (2026-08-04) — se abre solo al construir el Ayuntamiento tier 1.
-  const [kingdomFoundedInfo, setKingdomFoundedInfo] = useState<KingdomFoundedInfo | null>(null)
-  const [territories, setTerritories] = useState<TerritoryInfo[]>([])
-  const [buildings, setBuildings] = useState<BuildingInfo[]>([])
-  const [subjects, setSubjects] = useState<SubjectInfo[]>([])
-  // Grupo 3 § Compañeros y supervivencia (2026-08-25) — Almacén de Reino + Plantillas de equipo.
-  const [almacenItems, setAlmacenItems] = useState<AlmacenItemInfo[]>([])
-  const [plantillasEquipo, setPlantillasEquipo] = useState<PlantillaEquipoInfo[]>([])
-  const [factionsStatus, setFactionsStatus] = useState<Record<string, number>>({})
-  const [kingdomStats, setKingdomStats] = useState<KingdomStatsInfo | null>(null)
+  // Estado de Reino (deuda técnica, auditoría 2026-08-25) — ver hooks/useKingdomState.ts para por
+  // qué esto se queda como un hook de PURA agrupación en vez de aislado del todo (syncFromSave y
+  // useCombatFlow, más abajo, siguen escribiendo estos mismos setters desde fuera).
+  const {
+    kingdomName,
+    setKingdomName,
+    kingdomFoundedInfo,
+    setKingdomFoundedInfo,
+    territories,
+    setTerritories,
+    buildings,
+    setBuildings,
+    subjects,
+    setSubjects,
+    almacenItems,
+    setAlmacenItems,
+    plantillasEquipo,
+    setPlantillasEquipo,
+    factionsStatus,
+    setFactionsStatus,
+    kingdomStats,
+    setKingdomStats,
+  } = useKingdomState()
   const [professionProgress, setProfessionProgress] = useState<ProfessionProgressInfo[]>([])
   const [deathCount, setDeathCount] = useState(0)
   const [dificultad, setDificultad] = useState<Dificultad>('NOVATO')
