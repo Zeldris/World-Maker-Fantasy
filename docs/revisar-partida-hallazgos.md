@@ -2719,14 +2719,19 @@ podía seguir depleccionando `WorldPopulation`, creando `NpcState`, añadiendo i
 fundando un reino nuevo, todo en una partida que la propia UI ya da por terminada para siempre.
 
 **Fix aplicado**: mismo guard 409 que ya usan `turn.ts`/`combat/flee`, añadido a las tres rutas.
-Alcance deliberadamente parcial: `inventario.ts` (equipar), `progression.ts`
-(`/attribute-points`) y `habilidades.ts` (CRUD de `SavedAction`) tienen el mismo hueco pero solo
+Alcance inicial deliberadamente parcial: `inventario.ts` (equipar), `progression.ts`
+(`/attribute-points`) y `habilidades.ts` (CRUD de `SavedAction`) tenían el mismo hueco pero solo
 mutan datos propios de la partida ya terminada, sin efecto en recursos compartidos del mundo — se
-deja como PENDIENTE, pregunta de producto (¿debería bloquearse igual por consistencia, o es
+dejó como PENDIENTE, pregunta de producto (¿debería bloquearse igual por consistencia, o es
 aceptable "ordenar la mochila" tras game-over?).
 
-**Estado**: FIJADO (los 3 endpoints con efecto en recursos compartidos). Tests nuevos en
-`cazar.test.ts`/`recolectar.test.ts`/`reino.test.ts`, suite completa en verde.
+**Actualización (checklist de las 3 auditorías, 2026-08-25)**: resuelta por consistencia — el helper
+`rejectIfEnded` (extraído en ese mismo checklist, item 10) se aplicó también a `inventario.ts`,
+`progression.ts` y `habilidades.ts`. Los 8 archivos de `routes/saves/` con este guard usan ya el
+mismo helper compartido, sin excepciones.
+
+**Estado**: FIJADO por completo, los 6 endpoints (los 3 originales + los 3 de alcance parcial).
+Tests nuevos en `cazar.test.ts`/`recolectar.test.ts`/`reino.test.ts`, suite completa en verde.
 
 ## 2026-08-21 (continuación) — reiniciar partida dejaba una `Faction` fantasma que bloqueaba refundar el reino
 
