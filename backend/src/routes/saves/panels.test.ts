@@ -181,8 +181,10 @@ describe('GET /saves/:id/saquear-zona', () => {
     findManyNpcState.mockResolvedValue([
       // PRINCIPAL: scope real siempre '' (scopeFor ignora currentLocationId para PRINCIPAL).
       { npcId: 'npc-principal', scope: '', condicionFisica: 'MUERTO', saqueado: false, groupSize: null, groupDefeated: 0, corpsesLooted: 0 },
-      // NPC normal en la ubicación ACTUAL: scope coincide, debe entrar.
-      { npcId: 'npc-aqui', scope: 'loc-a', condicionFisica: 'CONVALECIENTE', saqueado: false, groupSize: null, groupDefeated: 0, corpsesLooted: 0 },
+      // NPC normal en la ubicación ACTUAL: scope coincide, debe entrar. MUERTO (2026-08-26,
+      // CONVALECIENTE deja de ser saqueable) — el mock no aplica el `where` real de Prisma, pero
+      // la fixture debe seguir siendo honesta sobre qué es saqueable de verdad.
+      { npcId: 'npc-aqui', scope: 'loc-a', condicionFisica: 'MUERTO', saqueado: false, groupSize: null, groupDefeated: 0, corpsesLooted: 0 },
       // NPC normal en OTRA ubicación: scope no coincide, debe quedar fuera.
       { npcId: 'npc-alli', scope: 'loc-b', condicionFisica: 'MUERTO', saqueado: false, groupSize: null, groupDefeated: 0, corpsesLooted: 0 },
       // Ya saqueado del todo: sin loot pendiente, debe quedar fuera aunque el scope coincida.

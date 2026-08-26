@@ -110,8 +110,10 @@ export async function panelsRoutes(app: FastifyInstance) {
     // DESPUÉS, comparando contra el scope real que le tocaría a cada NPC según su `kind`
     // (`scopeFor`, mismo criterio que usa el resto del motor): un PRINCIPAL siempre "está aquí" (es
     // único en todo el mundo), uno normal solo si `scope` coincide con la ubicación actual.
+    // CONVALECIENTE deja de ser saqueable (2026-08-26, decisión explícita junto con el rediseño
+    // Matar/Capturar/Clemente) — solo MUERTO. Antes se podía saquear a alguien todavía vivo.
     const states = await prisma.npcState.findMany({
-      where: { saveId: save.id, condicionFisica: { in: ['CONVALECIENTE', 'MUERTO'] } },
+      where: { saveId: save.id, condicionFisica: 'MUERTO' },
     });
     const pendientes = states.filter(hasPendingLoot);
     if (pendientes.length === 0) return { candidates: [] };

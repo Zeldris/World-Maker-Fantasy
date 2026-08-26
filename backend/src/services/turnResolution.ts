@@ -2465,15 +2465,15 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     : null;
 
   // Bug real (auditoría 2026-07-28, "revisar partida"): el saqueo no comprobaba condicionFisica en
-  // absoluto (se podía "registrar" a un NPC en ILESO/HERIDO/GRAVE, cuando la progresión de combate
-  // ya establecida dice que solo CONVALECIENTE/MUERTO son saqueables) y además saqueaba TODOS los
+  // absoluto (se podía "registrar" a un NPC en ILESO/HERIDO/GRAVE) y además saqueaba TODOS los
   // npcsInScene a la vez, no solo al objetivo — un aliado ileso de pie al lado del enemigo derrotado
   // (p. ej. Gistera Koh junto al Orco Enfurecido) se saqueaba igual sin que el jugador lo pidiera.
   // Mismo patrón que `explicitTarget` para el ataque: si la acción cita un nombre entre comillas, el
   // saqueo se limita a ese NPC; si no, se limita a los NPCs realmente derrotados en escena.
-  const lootTargets = (explicitTarget ? [explicitTarget] : npcsInScene).filter(
-    (n) => n.condicionFisica === 'CONVALECIENTE' || n.condicionFisica === 'MUERTO',
-  );
+  //
+  // CONVALECIENTE deja de ser saqueable (2026-08-26, decisión explícita junto con el rediseño
+  // Matar/Capturar/Clemente) — solo MUERTO. Antes se podía saquear a alguien todavía vivo.
+  const lootTargets = (explicitTarget ? [explicitTarget] : npcsInScene).filter((n) => n.condicionFisica === 'MUERTO');
   // "Decapitar" (petición explícita, 2026-07-30, modal con checkbox: "marcar todos aquellos que
   // quieras decapitar") — golpe de gracia determinista contra CADA enemigo YA convaleciente que
   // el modal marcó, sin tirada (no puede resistir). Igual que `lootTargets` "sin objetivo

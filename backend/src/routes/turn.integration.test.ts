@@ -223,6 +223,10 @@ describe('Misión de apertura: combate contra el Orco Enfurecido (integración r
       requiereTirada: false, atributo: 'destreza', dificultad: 8, razon: 'x', banda: 'instantanea', duracionEstimadaMinutos: 0,
     });
     narrateAction.mockClear();
+    // CONVALECIENTE deja de ser saqueable (2026-08-26) — el test anterior lo dejó CONVALECIENTE;
+    // el saqueo parcial en sí (lo que prueba este test) es ortogonal a la condición, así que se
+    // fuerza MUERTO a mano en vez de montar un turno real de "Matar".
+    await prisma.npcState.updateMany({ where: { saveId, npcId }, data: { condicionFisica: 'MUERTO' } });
     const app = await buildApp();
     const action = "Registro el cuerpo de 'Orco enfurecido'.";
     const classifyRes = await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action, enCombate: true } });
@@ -329,8 +333,9 @@ describe('Misión de apertura: combate contra el Orco Enfurecido (integración r
 });
 
 // "Saquear" general (2026-08-17, petición explícita: "que funcione igual que saquear de un
-// combate, detectando los npcs muertos/convalecientes de la zona") — el nuevo
-// GET /saves/:id/saquear-zona encuentra al orco convaleciente sin que el jugador lo nombre. El
+// combate, detectando los npcs muertos de la zona" — CONVALECIENTE dejó de ser saqueable el
+// 2026-08-26) — el nuevo GET /saves/:id/saquear-zona encuentra al orco muerto sin que el jugador
+// lo nombre. El
 // saqueo en sí se manda con `enCombate: true` (mismo criterio EXACTO que ya usa
 // `handleSaquearSeleccion` en combate, incluso cuando el combate ya terminó de verdad — "Registrar/
 // Decapitar/Saquear son justo las acciones que la pantalla de combate YA terminado ofrece") — evita
@@ -363,9 +368,10 @@ describe('Saquear zona: GET /saves/:id/saquear-zona + saqueo fuera del panel de 
     });
     saveId = save.id;
     await prisma.worldState.create({ data: { saveId } });
-    // Convaleciente de entrada, sin pasar por un combate real — mismo atajo que usan otros
-    // describe de este archivo para dejar el NpcState en el estado exacto que hace falta probar.
-    await prisma.npcState.create({ data: { saveId, npcId, scope: '', condicionFisica: 'CONVALECIENTE', saqueado: false } });
+    // MUERTO de entrada, sin pasar por un combate real — mismo atajo que usan otros describe de
+    // este archivo para dejar el NpcState en el estado exacto que hace falta probar. CONVALECIENTE
+    // deja de ser saqueable (2026-08-26, decisión explícita junto con Matar/Capturar/Clemente).
+    await prisma.npcState.create({ data: { saveId, npcId, scope: '', condicionFisica: 'MUERTO', saqueado: false } });
   });
 
   afterAll(async () => {
@@ -373,7 +379,7 @@ describe('Saquear zona: GET /saves/:id/saquear-zona + saqueo fuera del panel de 
     await prisma.save.delete({ where: { id: saveId } });
   });
 
-  it('GET /saves/:id/saquear-zona encuentra al orco convaleciente, y el saqueo funciona con lootItemNames', async () => {
+  it('GET /saves/:id/saquear-zona encuentra al orco muerto, y el saqueo funciona con lootItemNames', async () => {
     const panelsApp = Fastify();
     await panelsApp.register(panelsRoutes);
     const zonaRes = await panelsApp.inject({ method: 'GET', url: `/saves/${saveId}/saquear-zona` });
@@ -381,7 +387,7 @@ describe('Saquear zona: GET /saves/:id/saquear-zona + saqueo fuera del panel de 
     const { candidates } = zonaRes.json() as { candidates: { slug: string; name: string; condicionFisica: string }[] };
     expect(candidates).toHaveLength(1);
     expect(candidates[0].slug).toBe('orco-enfurecido-hondonada');
-    expect(candidates[0].condicionFisica).toBe('CONVALECIENTE');
+    expect(candidates[0].condicionFisica).toBe('MUERTO');
 
     classifyAction.mockResolvedValue({
       requiereTirada: false, atributo: 'destreza', dificultad: 8, razon: 'x', banda: 'instantanea', duracionEstimadaMinutos: 0,

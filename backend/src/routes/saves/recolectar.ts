@@ -200,8 +200,9 @@ async function candidateSourcesFor(
 
 /// Desuello (2026-08-09, ver comentario de cabecera) — "candidatos" son fauna ya en escena
 /// (`detectNpcsInScene`, mismo mecanismo determinista que ya usan saqueo/decapitar) que está
-/// vencida (`condicionFisica` CONVALECIENTE o MUERTO — se pueda o no rematar/decapitar, no hace
-/// falta que esté MUERTA en concreto) y que todavía no se ha despiezado del todo
+/// vencida (`condicionFisica` MUERTO — CONVALECIENTE deja de ser desollable, 2026-08-26, decisión
+/// explícita junto con el rediseño Matar/Capturar/Clemente: no tiene sentido desollar a alguien
+/// todavía vivo) y que todavía no se ha despiezado del todo
 /// (`hasPendingLoot`, npcScene.ts — único punto de verdad, auditoría de deuda técnica 2026-08-18,
 /// compartido con `harvest.ts` § `yaDespiezada`/`panels.ts` § `saquear-zona`; antes esta función
 /// comparaba `!saqueado` a secas, sin la rama de `groupSize`, lo que bloqueaba el desuello del
@@ -225,7 +226,7 @@ async function carcassCandidatesFor(
 ): Promise<SourceCandidate[]> {
   const npcsInScene = await detectNpcsInScene({ action: '', worldId, sessionFacts, saveId, currentLocationId });
   const carcasses = npcsInScene.filter(
-    (n) => n.ataqueNatural !== null && hasPendingLoot(n) && (n.condicionFisica === 'CONVALECIENTE' || n.condicionFisica === 'MUERTO' || !!n.groupDefeated),
+    (n) => n.ataqueNatural !== null && hasPendingLoot(n) && (n.condicionFisica === 'MUERTO' || !!n.groupDefeated),
   );
   if (carcasses.length === 0) return [];
 
