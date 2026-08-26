@@ -391,6 +391,54 @@ resumen de trabajo real, agrupado por tamaño.
   parecía en el plan original), `PROVOCACION` ("obliga a atacarte 2 turnos" — también reclasificado
   desde el plan original, que lo daba por listo sin serlo), `PURIFICAR` (elimina efectos
   negativos, depende de que exista duración para tener qué purificar).
+
+  **Investigado a fondo 2026-08-26, diseño de AUMENTO/DEBILIDAD listo para implementar — sin
+  tocar código todavía a propósito** (ver razón al final). `CANALIZAR`/`REFLEJAR`/`PROVOCACION`/
+  `PURIFICAR` NO se han diseñado en esta pasada — cada uno es su propia mecánica encima de esta
+  base (cancelar-si-te-golpean, capturar-y-devolver, forzar-objetivo, limpiar), fuera de alcance
+  de hoy.
+
+  **Alcance real de "cuántas filas desbloquea"**: de las ~60 filas de `clases.md` que usan estos 7
+  efectos, MUCHAS están mezcladas con efectos de Fase 3 (`MULTIPLE`/`CONTROL`/`INVOCACION`, p.ej.
+  "Valor Compartido: `AUMENTO`+`MULTIPLE`") o sin cifras todavía (Fase 4, esperan a la usuaria) —
+  mismo patrón ya visto en Fase 1 con `MULTIPLE`/`DESVIAR`. Construir la infraestructura NO
+  desbloquea automáticamente todas esas filas; hay que revisar caso a caso cuáles quedan puras
+  (solo Fase 2, con cifras) antes de sembrar nada.
+
+  **Diseño cerrado, AUMENTO/DEBILIDAD (el caso simple, sin cancelar-si-te-golpean ni
+  capturar-y-devolver)**:
+  - `activeEffects Json @default("[]")` nuevo en `Save` Y `NpcState` (mismo patrón que
+    `abilityUsesThisEncounter` — reset a `[]` en el MISMO punto donde ese campo ya se resetea,
+    vuelta a `condicionFisica: 'ILESO'`). Array de `{ attribute: Attribute, magnitude: number,
+    turnsRemaining: number, sourceAbility: string }` — `magnitude` con signo (positivo AUMENTO,
+    negativo DEBILIDAD), `sourceAbility` para narración/depuración.
+  - `ClassAbilityUnlock`/`SavedAction`: 2 columnas nuevas, `durationEffectMagnitude Int?` /
+    `durationEffectTurns Int?` — mismo patrón que `attributeBonus` (2026-08-24), un número fijo
+    por habilidad, NO la escalada "+4 si diferencia 6, +6 si diferencia 10" que describen algunas
+    filas de `clases.md` en texto libre — misma simplificación ya aplicada a LETAL/CONTRA/
+    REFRACTAR (margen decisivo único, no umbral por habilidad).
+  - **Aplicación**: cuando una habilidad con `AUMENTO`/`DEBILIDAD` en `effects` GANA su intercambio
+    (mismo margen decisivo ±10 que ya usa `CONTRA`/`REFRACTAR`), empuja un `ActiveEffect` — AUMENTO
+    al array de QUIEN LA USA, DEBILIDAD al array del RIVAL que recibió el golpe.
+  - **Lectura**: antes de construir cualquier `ExchangeParticipant`, calcular `attributes`
+    EFECTIVOS = base + suma de `activeEffects` que apliquen a cada atributo — nueva función pura
+    (p.ej. `effectiveAttributesConDuracion(base, activeEffects)`, `combatExchange.ts` o archivo
+    nuevo `activeEffects.ts`) — sustituye el `attributes: npc.attributes`/`attributes` crudo en
+    los 4+ sitios donde `resolveCombatExchangePhase` construye un `ExchangeParticipant` (CASO
+    DEFENSA independiente/normal, CASO ATAQUE independiente/normal) — y el equivalente en
+    `combateMultipleOrquestacion.ts` § `ejecutarIntercambioYAvanzar`/`ejecutarGolpeGratisYAvanzar`
+    cuando le toque a ese motor (fuera de esta pasada, documentado para cuando se retome).
+  - **Decremento**: al final de CADA turno resuelto, restar 1 a `turnsRemaining` de TODOS los
+    `activeEffects` de AMBOS participantes (jugador y NPC), filtrar los que lleguen a 0 — mismo
+    punto donde ya se escribe `condicionFisica`/`energia` tras el intercambio.
+
+  **Por qué no se ha implementado ya**: `resolveCombatExchangePhase` (turnResolution.ts) es la
+  función más grande y más usada de todo el proyecto (cada combate normal pasa por aquí) — tocar
+  sus 4+ ramas para inyectar atributos efectivos de forma consistente es un cambio de alto riesgo
+  real (romper esto rompe combates normales, no un caso raro) al final de una sesión ya muy larga
+  tocando el mismo motor (objetivo individual, más arriba). Diseño dejado completo a propósito
+  para poder ejecutarlo directo la próxima vez, sin tener que rederivarlo — pendiente de que la
+  usuaria confirme que quiere que se implemente así antes de tocar el motor 1v1 clásico.
 - [ ] **Fase 3 — combate multi-objetivo de verdad** (no solo el fallback de 1vs1, ya construido en
   la Fase 1): `MULTIPLE`/`DESVIAR`/`CONTROL` con segundo objetivo real requieren tocar el motor
   `CombatEncounter` (`combateMultiple.ts`/`combateMultipleOrquestacion.ts`), que hoy tampoco tiene
