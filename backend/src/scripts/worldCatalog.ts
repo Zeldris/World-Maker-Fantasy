@@ -1289,6 +1289,14 @@ export const fauna: NpcInput[] = [
     faction: null,
     role: 'Ave planeadora que anida en Los Pilares Rotos',
     articulo: 'el',
+    // Bug real jugando en vivo (2026-08-23/26, "un cruzavientos me lleva atacando... en todas las
+    // zonas por las que he pasado"): sin `homeLocationSlug`, `detectNpcsInScene` (npcScene.ts) lo
+    // trata como candidato plausible en CUALQUIER región del mundo — el único caso entre toda la
+    // fauna AGRESIVO del catálogo sin ubicación fijada, pese a que su propia `personality` dice
+    // "agresiva con cualquiera que se acerque a SU TERRITORIO de anidación". Ancla su territorio a
+    // donde el propio lore ya dice que anida — sigue apareciendo en toda Las Llanuras del Viento
+    // Rojo (misma región que Pilares Rotos), solo deja de colarse en regiones ajenas.
+    homeLocationSlug: 'pilares-rotos',
     level: 5,
     levelMax: 10,
     attributes: { fuerza: 14, destreza: 10, constitucion: 10, inteligencia: 6, voluntad: 7, carisma: 2, arcano: 2 },
