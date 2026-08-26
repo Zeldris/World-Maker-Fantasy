@@ -1,15 +1,19 @@
-# Helek Sirik — Compañeros y supervivencia
+# Helek Sirik — Compañeros y supervivencia — APLICADO al motor
 
 [← Volver al índice del mundo](../07-mundo-helek-sirik.md)
 
 *Diseño de sistema (2026-08-24, sesión conjunta autora/Claude) — captura y tameo de fauna/NPC como
 compañeros, y de paso el sistema de Hambre/Sed del propio personaje (surgió de la misma
-conversación, comparte ritmo e items). **Nada de esto está implementado en el motor todavía**:
-documentación pura, mismo criterio que `clases.md`. Referencia cruzada obligada con
-`docs/17-reglas-construcciones-reino.md` (slots de compañero por edificio, ya real),
-`clases.md § Cazador — Domador` (ventajas de esta clase sobre el resto de este sistema) y
-[combate-multiple.md](combate-multiple.md) — que un compañero luche de verdad a tu lado depende por
-completo de esa pieza (necesita atributos/vida propios, hoy `Companion` es puramente narrativo).*
+conversación, comparte ritmo e items). **APLICADO al motor el 2026-08-25** (auditoría de lore
+2026-08-25: este banner seguía diciendo "nada implementado" pese a estar construido de punta a
+punta el día siguiente al diseño): captura+jaula, tameo/persuasión con tirada opuesta real
+(`resolverIntento`, incluido el malus de `reclutablePct`/`domesticablePct` — ver nota de § 3 más
+abajo), Felicidad, slot garantizado del Domador, Hambre/Sed de compañero y de la propia jugadora,
+equipo de compañero, Almacén de Reino + Plantillas de equipo. Única excepción real, dejada fuera A
+PROPÓSITO: **muerte por inanición** (ver nota de § 5 más abajo — el tope real hoy es CONVALECIENTE,
+nunca MUERTO). Referencia cruzada obligada con `docs/17-reglas-construcciones-reino.md` (slots de
+compañero por edificio) y [combate-multiple.md](combate-multiple.md) — un compañero ya lucha de
+verdad a tu lado en combate (`Companion.attributes`, aplicado el mismo día que ese sistema).*
 
 ---
 
@@ -120,11 +124,14 @@ tirada opuesta que la fauna:
   del NPC**, fijo en su ficha de catálogo — coherente con su personalidad ya escrita (un NPC
   orgulloso se resiste con Fuerza/Carisma, uno cauteloso con Inteligencia), calibrado a mano igual
   que `domesticablePct` en fauna.
-- **`Npc.reclutablePct` (ya sembrado, sin consumidor hasta hoy) es la dificultad base de esta
-  tirada** (2026-08-24) — mismo destino que `domesticablePct` para el tameo de fauna arriba: un NPC
-  con `reclutablePct` alto parte de una dificultad más baja de convencer, uno con `reclutablePct`
-  bajo (ej. Torgash Ketg, `reclutablePct: 5`) casi nunca cede por persuasión sola, coherente con su
-  ficha ya escrita.
+- **`Npc.reclutablePct`/`domesticablePct` son la dificultad base de esta tirada** — APLICADO
+  2026-08-25 (`resolverIntento`, `companionSupervivencia.ts`): un NPC/fauna con % alto parte de una
+  dificultad más baja de convencer, uno con % bajo (ej. Torgash Ketg, `reclutablePct: 5`) casi nunca
+  cede por persuasión sola. **Bug real cerrado la misma auditoría**: entre el diseño (2026-08-24) y
+  esta comprobación de lore, la implementación real nunca había llegado a leer estos campos —
+  cualquier NPC/fauna era igual de persuadible/domable con los atributos adecuados, sin importar su
+  disposición de catálogo. Resistencia extra = `floor((100 - %) / 10)`, sumada al resultado ya
+  tirado (nunca se toca `rollOpposed`/dice.ts, primitivo compartido con combate).
 - Ganas → sube Felicidad. Pierdes → baja Felicidad.
 - Al superar el umbral de Felicidad: eliges que sea **Companion**, o (si hay Reino) que se **una al
   Reino** en vez de ser compañero personal.
@@ -166,7 +173,12 @@ la vida baja poco a poco por cada hora de juego sin cubrir esa necesidad, **hast
 sigue bajando más allá de ahí con solo una carencia.
 
 **Consecuencia de quedarte sin las DOS a la vez** (agua y comida ambas a 0): la vida sigue bajando
-sin suelo, **hasta la muerte real** si se ignora del todo.
+sin suelo, **hasta la muerte real** si se ignora del todo — diseño original, sin aplicar todavía.
+**Excepción real dejada a propósito (2026-08-25, auditoría de lore)**: la implementación real
+(`condicionPorSupervivencia`, `companionSupervivencia.ts`) topa incluso con las DOS carencias a la
+vez en `CONVALECIENTE`, igual que con una sola — la muerte por inanición nunca llegó a construirse
+(falta enganchar el pipeline real de muerte/respawn). Es la única pieza de todo este documento que
+sigue siendo solo diseño; el resto está aplicado.
 
 Esto significa que un personaje `CONVALECIENTE` por hambre/sed que entra en combate ya está a un
 paso de la muerte — cruce intencional entre los dos sistemas (supervivencia y combate comparten
@@ -198,9 +210,13 @@ equipo por trabajadores todavía, eso sería un sistema de producción de Reino 
 
 **Plantillas** — dos tipos:
 - **Básicas, no editables**: vienen ya hechas por rol (guardia/trabajador/productor), listas para
-  usar sin configurar nada.
+  usar sin configurar nada. **Hueco real (auditoría de lore 2026-08-25)**: esta mitad no se
+  implementó — no existe ningún seed de plantillas básicas por rol, `POST /plantillas` siempre exige
+  `name`/`rol`/`slots` a mano. Hoy toda plantilla se comporta como "personalizada", aunque el campo
+  `personalizada` sí existe en el modelo.
 - **Personalizadas, creadas por ti**: usando el equipo disponible en el Reino, defines tu propia
   plantilla (qué ranuras rellenar con qué tipo de objeto) y se la asignas al rol/grupo que quieras.
+  APLICADO tal cual.
 
 Cada súbdito con una plantilla asignada se **auto-equipa** en cuanto haya en el almacén un objeto
 que encaje con su plantilla, sin que tengas que hacerlo tú a mano uno a uno.
@@ -212,25 +228,21 @@ trabajadores", es un orden editable por ti.
 
 ---
 
-## 7. Infraestructura nueva necesaria (nada de esto existe hoy — resumen para cuando toque construirlo)
+## 7. Infraestructura nueva necesaria — APLICADA (2026-08-25)
 
-- ~~Item "cuerda de captura" nuevo en `ItemCatalog`~~ — ya existe (`trampa-de-lazo`), no hace falta
-  crear nada, ver § 1.
-- `Jaula`: tipo de construcción nuevo (pequeña/mediana/grande), en `construction.ts` — igual que
-  Ayuntamiento tiene 3 tamaños con receta propia.
-- Campo de "atributo de resistencia" nuevo, tanto en catálogo de fauna como en NPCs reclutables.
-- `Companion` necesita Felicidad + Comida/Agua actuales como campos reales (hoy solo
-  `name`/`role`/`notes`) — y distinguir fauna de NPC si el comportamiento diverge lo suficiente al
-  construirlo.
-- Reloj de Hambre/Sed en `Save` (dos contadores, comida y agua) + lógica de tick basada en
-  `fictionalMinutes` — nuevo, sin precedente de "contador que baja con el tiempo" en el motor hoy
-  (lo más parecido es `NpcState.condicionFisicaSinceMinutes`, que solo registra un instante, no
-  decae).
-- Slot de mascota garantizado del Domador, separado de `companionSlotsForRecipeKey`.
-- Roles de Reino (guardia/trabajador/productor) para compañeros integrados — no existe ningún enum
-  de rol de Reino hoy, `Companion.role`/`Subject.role` son texto libre.
-- **Almacén de Reino** — modelo nuevo del todo, pool de objetos equipables a nivel de Reino,
-  separado de `InventoryItem` personal.
-- **Plantillas de equipo** — modelo nuevo (nombre, lista de ranuras/tipos deseados, básica o
-  personalizada) + asignación a rol/grupo de súbditos + orden de prioridad editable entre
-  plantillas para cuando el almacén escasea.
+*Esta sección listaba lo que hacía falta construir; el título original decía "nada de esto existe
+hoy" — se deja como referencia histórica de qué se pidió, con el estado real de cada punto
+(auditoría de lore 2026-08-25).*
+
+- ~~Item "cuerda de captura" nuevo en `ItemCatalog`~~ — ya existía (`trampa-de-lazo`), confirmado.
+- `Jaula` (pequeña/mediana/grande) — APLICADO, `construction.ts`.
+- Campo de "atributo de resistencia" — APLICADO (`Npc.atributoResistencia`).
+- `Companion` con Felicidad + Comida/Agua reales — APLICADO
+  (`felicidad`/`lastFedAtMinutes`/`lastWateredAtMinutes`).
+- Reloj de Hambre/Sed en `Save` — APLICADO (`lastAteAtMinutes`/`lastDrankAtMinutes`).
+- Slot de mascota garantizado del Domador — APLICADO (`Companion.esSlotDomador`).
+- Roles de Reino (guardia/trabajador/productor) — APLICADO como convención de texto libre
+  (`Companion.rolReino`/`Subject.role`), sin enum cerrado — decisión consciente, no un hueco.
+- **Almacén de Reino** — APLICADO (`AlmacenItem`).
+- **Plantillas de equipo** — APLICADO (`PlantillaEquipo`) salvo la mitad "básicas, no editables" —
+  ver hueco real anotado en § 6 más arriba.
