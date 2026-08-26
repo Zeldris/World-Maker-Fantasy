@@ -233,7 +233,10 @@ Es un patrón distinto (y no cubierto) del que ya resolvió `useAsyncModalData` 
 *fetch inicial* de 4+ modales de selección) — aquí falta el mismo tratamiento para la *acción de
 envío*.
 
-**Estado**: PENDIENTE, prioridad baja.
+**Estado**: FIJADO (commit `32b95a0`, 2026-08-25) — `useSubmitError` nuevo (hooks/), deliberadamente
+sin `busy` (los 6 sitios no comparten la misma forma de "ocupado" — `CapturaModal` necesita saber
+qué candidato concreto, no solo un booleano). Cierra el Bloque 4 (deuda técnica frontend) del
+checklist de cierre de las 3 auditorías.
 
 **Sin hallazgos significativos, confirmado en esta ronda**: tipado (cero `any`/`as unknown as` en
 todo `frontend/src`, solo 14 aserciones `!` justificadas), código muerto en frontend (ninguno),
