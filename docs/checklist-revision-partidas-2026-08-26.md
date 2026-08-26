@@ -24,19 +24,31 @@ de las 3 auditorías".
 - [x] 6. Hallazgo desactualizado del 2026-08-21 (endedAt en inventario/progression/habilidades
   marcado "PENDIENTE") — commit `40976be`, solo corrección de documentación: ya estaba FIJADO por
   el checklist de las 3 auditorías (item 10, `rejectIfEnded`), el documento no se había actualizado.
+- [x] 7. Ataque a Múrgol narrado como si fuera contra Cruzavientos (2026-08-14) — commit `6c3239c`.
+  Guard nuevo `hasFalseCombatTargetName` (narrador.ts): rechaza la narración si no nombra al
+  objetivo real del intercambio de este turno pero sí nombra a otro NPC presente en la escena.
 
 ## Lo que queda realmente pendiente fuera de este checklist
 
 **`deuda-tecnica-hallazgos.md`** — 2 grupos "menores agrupados" (services/, routes/), prioridad baja
 consciente, sin bug real detrás. No tocados.
 
-**`revisar-partida-hallazgos.md`** — hallazgos de narración/gameplay reales sin arreglar:
-- Quio narrado en 3 ubicaciones distintas el mismo día (2026-08-23)
-- Cruzavientos ataca repetidamente y nunca se narra quién es (2026-08-23)
-- Ruptidar "ataca" en combate pese a ser INOFENSIVO/"No ataca" (2026-08-23)
-- Ruptidar descrito como "insecto" con "alas rotas" (es un reptil sin alas) (2026-08-23)
-- Ataque a Múrgol narrado como si fuera contra Cruzavientos (2026-08-14)
-- Posible reaparición de Gistera Koh sin nombrarla (2026-08-08)
+**`revisar-partida-hallazgos.md`** — hallazgos de narración/gameplay reales sin arreglar (todos
+necesitan reproducción en vivo con `dev-server.log` — sin rastro persistido en base de datos que
+confirme la causa raíz al 100%, arriesgar un fix sin esa evidencia es lo mismo que "arreglar a
+ciegas" que se ha evitado durante toda esta sesión):
+- Quio narrado en 3 ubicaciones distintas el mismo día (2026-08-23) — ligado a un pendiente de
+  diseño ya aparcado explícitamente por la usuaria (anclar TODO el catálogo de fauna por zona).
+- Cruzavientos ataca repetidamente y nunca se narra quién es (2026-08-23) — sin ningún NpcState/
+  pendingNpcAttack persistido de Cruzavientos en la partida real; necesita reproducirse con log
+  activo para saber si es solo narrativo o si el motor deja atacar a un NPC no anclado a la escena.
+- Ruptidar "ataca" en combate pese a ser INOFENSIVO/"No ataca" (2026-08-23) — no está claro si es
+  daño mecánico real o solo dramatización narrativa; necesita el mismo tipo de log.
+- Ruptidar descrito como "insecto" con "alas rotas" (es un reptil sin alas) (2026-08-23) — la `bio`
+  correcta ya existe en el catálogo, el modelo la ignoró; alucinación pura, no hay nada que
+  corregir en datos. Primer caso de este subtipo, a vigilar si se repite.
+- Posible reaparición de Gistera Koh sin nombrarla (2026-08-08) — un solo caso, sin patrón
+  determinista barato sin riesgo de falsos positivos.
 - Roca Luclara minable en Hondonada del Eco pese a `harvestSourceHomeLocationSlug` distinto
   (2026-08-25) — **pregunta de diseño para la usuaria** (¿debería bloquearse por ubicación, o el
   campo es solo lore sin efecto mecánico por diseño?), no un bug de código a secas.
