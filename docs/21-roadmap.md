@@ -234,14 +234,13 @@ resumen de trabajo real, agrupado por tamaño.
   materializa de verdad, determinista, con anclaje resuelto contra todo el mundo (no contra
   `npcsInScene` del turno original). "Cancelar" solo limpia la tarjeta, sin backend. La misión
   determinista de Gistera Koh/Orco Enfurecido sigue exactamente igual, sin tocar.
-- [ ] **NPCs que aparecen en escena por narración no se marcan en la pestaña "Zona"** — bug/hueco
-  real señalado jugando (2026-08-25): cuando un NPC se presenta en la escena de forma determinista
-  (p. ej. Gistera Koh como perseguidora, o un NPC de interrupción de la Capa 2/3 de
-  [mundo-determinista.md](rpgtarkor/mundo-determinista.md)), no aparece como marcador en el panel
-  "Zona" (`ZonaPanel.tsx`, Capa 1 — hoy solo pinta los `ZonePoint` fijos precargados, ninguno
-  dinámico). La usuaria confirma explícitamente: "no aparecen en la zona y sí tienen que salir".
-  Conectado con "generalizar la Capa 1 más allá de La Hondonada del Eco" — probablemente la misma
-  pieza de trabajo, sin diseñar todavía.
+- [x] ~~**NPCs que aparecen en escena por narración no se marcan en la pestaña "Zona"**~~ — cerrado
+  2026-08-26, APLICADO al motor (commit `1ef1806`). `GET /saves/:id/zona` reutiliza
+  `detectNpcsInScene` (mismo mecanismo que `npcsInScene` en cada turno) para devolver una lista
+  `dinamicos` aparte de los `ZonePoint` fijos, deduplicada y sin MUERTO. Sin posición curada en el
+  mapa (a diferencia de `ZonePoint`), listados bajo "Presentes ahora" en vez de como pin — honesto
+  sobre qué dato existe de verdad. De paso, una ubicación sin `ZonePoint` sembrado (fuera del
+  prototipo de Hondonada del Eco) ya puede marcarse "disponible" si tiene algún NPC dinámico.
 - [ ] **CONVALECIENTE deja de significar "victoria automática" del combate** — petición explícita
   (2026-08-26), a desarrollar más cuando se acaben los arreglos de bugs en curso. Diseño inicial tal
   como lo describió la usuaria:
