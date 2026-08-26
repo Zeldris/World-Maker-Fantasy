@@ -310,16 +310,18 @@ resumen de trabajo real, agrupado por tamaño.
   solo generador, no dos. `GET /saves/:id/zona` (zona.ts) recortado de vuelta: ya no devuelve
   `imageUrls`/`imagePrompts` (nadie los consume ya), solo el `imageUrl` del mapa que sí se pinta de
   fondo. `tsc -b` limpio en ambos lados, 2807 tests backend + 92 frontend en verde.
-- [ ] **Calidad real de imágenes de Zona (2026-08-26)** — la primera imagen de prueba (Hondonada
-  del Eco) trae texto incrustado en la propia imagen — título y leyenda ("Redsun Hollow", "Cave
-  Mouth/Camp/Fire Pit/Magnetic Sand Trail"), **en inglés**, pese a que el prompt YA pide
-  explícitamente "no text or labels" (`imagePromptGenerator.ts § ENTITY_TYPE_STYLE.zona`) —
-  probablemente la herramienta externa usada para generarla añade cartucho/leyenda por defecto sea
-  cual sea el prompt (habitual en generadores de "mapa de fantasía"). Un texto/leyenda incrustado
-  además **compite de verdad con los pines reales** que la app ya pinta encima (`ZonePoint`) —
-  nunca van a coincidir. Reforzar el prompt (prohibición más explícita/insistente de cualquier
-  texto/título/leyenda/cartucho/brújula/escala) y probar de nuevo antes de dar la Fase 1 de
-  imágenes por buena de verdad.
+- [x] ~~**Calidad real de imágenes de Zona: reforzar el prompt**~~ — cerrado 2026-08-26, APLICADO
+  al motor. La primera imagen de prueba (Hondonada del Eco) traía texto incrustado — título y
+  leyenda ("Redsun Hollow", "Cave Mouth/Camp/Fire Pit/Magnetic Sand Trail"), **en inglés**, pese a
+  que el prompt ya pedía "no text or labels" (`imagePromptGenerator.ts § ENTITY_TYPE_STYLE.zona`) —
+  una sola cláusula al final, fácil de perder entre el resto de la descripción para la herramienta
+  externa de generación. Reforzado: prohibición repetida, explícita y en mayúsculas donde más pesa
+  ("ABSOLUTELY NO TEXT ANYWHERE... no title, no legend, no cartouche, no compass rose, no scale
+  bar..."). `generateImagePrompt` ya instruye al LLM de refinado a "copiar" el estilo literal (no
+  resumirlo), así que la prohibición sobrevive ese paso — confirmado leyendo el propio system
+  prompt, no solo asumido. **Pendiente de tu lado**: generar una imagen de prueba nueva y confirmar
+  si la herramienta externa por fin lo respeta — si sigue sin hacerlo, el problema está del todo en
+  esa herramienta, no en el prompt que le mandamos.
   **Pendiente de hablar con calma, sin tocar nada todavía**: qué imagen sirve para qué en cada tipo
   de entidad (NPC/ítem/ubicación/zona/facción/...) — hoy "banner" y "miniatura" significan cosas
   algo distintas según dónde se usen (tarjeta de Enciclopedia vs ficha de detalle vs fondo de un

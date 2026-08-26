@@ -59,7 +59,15 @@ const ENTITY_TYPE_STYLE: Record<ImagePromptEntityType, string> = {
   faction: 'bold flat icon illustration, simple clean shapes, a single strong silhouette, minimal flat color palette, no fine texture or surface detail — must read clearly and instantly as a small icon; NEVER photorealistic',
   historia: 'painterly style with visible brushstrokes, rich impasto textures, atmospheric lighting, soft edges, oil painting aesthetic, fantasy art quality, historical scene',
   crafteo: 'hyperrealistic design with fantastic nuances, photorealistic rendering, cinematic detail, sharp focus on crafted materials and tool marks',
-  zona: 'hand-illustrated fantasy cartography style, painterly top-down map, muted natural color palette, clearly readable terrain features and landmarks, no text or labels',
+  // Reforzado (2026-08-26, hallazgo real: la primera imagen de prueba trajo título y leyenda en
+  // inglés incrustados pese a que "no text or labels" ya estaba aquí) — la app pinta sus propios
+  // pines reales (`ZonePoint`) encima de esta imagen, así que cualquier texto/leyenda/cartucho
+  // horneado en el propio PNG siempre queda descolocado o duplicado. `generateImagePrompt` instruye
+  // al LLM a "copiar" este estilo literal (no resumirlo), así que la prohibición sobrevive el
+  // refinado — pero la herramienta EXTERNA de generación es la que puede seguir ignorándolo: una
+  // sola cláusula al final ("no text or labels") se pierde fácil entre el resto de la descripción,
+  // así que aquí va repetida, explícita y en mayúsculas donde más pesa.
+  zona: 'hand-illustrated fantasy cartography style, painterly top-down map, muted natural color palette, clearly readable terrain features and landmarks purely through illustrated shape and color — ABSOLUTELY NO TEXT ANYWHERE IN THE IMAGE: no title, no legend, no cartouche, no compass rose, no scale bar, no labels, no captions, no lettering, no numbers, no watermark, no UI elements of any kind, a completely textless illustration',
 };
 
 // ============================================================
