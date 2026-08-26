@@ -167,10 +167,10 @@ describe('submitCombatAction — guards', () => {
     mockClassify.mockResolvedValue({ classification: { atributo: 'fuerza', dificultad: 15, razon: 'x', banda: 'instantanea' }, roll: undefined } as never)
     mockNarrate.mockResolvedValue(baseNarrateResponse() as never)
     const { result } = renderHook(() => useHarness())
-    // Abrir con un rival YA convaleciente dispara el useEffect que marca combatEnded=true solo
-    // (un NPC en GRAVE/CONVALECIENTE ya se puede saquear — bug real 2026-07-25, "esto ya terminó"
-    // aunque nunca llegue a MUERTO).
-    act(() => result.current.setCombateIniciado({ npcs: [npc({ slug: 'orco', name: 'Orco', condicionFisica: 'CONVALECIENTE' })] }))
+    // Abrir con un rival YA muerto dispara el useEffect que marca combatEnded=true solo (bug real
+    // 2026-07-25, "esto ya terminó"). CONVALECIENTE ya no basta (2026-08-26, CONVALECIENTE deja
+    // de ser "victoria automática") — hace falta MUERTO o `dismissed`, ver el describe de abajo.
+    act(() => result.current.setCombateIniciado({ npcs: [npc({ slug: 'orco', name: 'Orco', condicionFisica: 'MUERTO' })] }))
     act(() => result.current.combat.openCombat())
     await waitFor(() => expect(result.current.combat.combatEnded).toBe(true))
 
@@ -283,7 +283,13 @@ describe('handleDecapitarSeleccion', () => {
     const target = result.current.combat.combatNpcsDisplay[0]!
     await act(() => result.current.combat.handleDecapitarSeleccion([target]))
     await waitFor(() => {
-      expect(result.current.combat.combatOpen).toBe(false) // decapitar cierra el combate (2026-07-31)
+      // CONVALECIENTE deja de ser "victoria automática" (2026-08-26): decapitar ya NO cierra el
+      // combate por su cuenta (`combatOpen` se queda `true`, el panel sigue abierto) — el único
+      // efecto de Matar al último rival es que `combatEnded` pasa a `true` vía el propio
+      // `useEffect` de `combatEnded` (ver más arriba en useCombatFlow.ts), no un cierre manual.
+      expect(result.current.combat.combatNpcsDisplay.find((n) => n.slug === 'orco')?.condicion).toBe('MUERTO')
+      expect(result.current.combat.combatEnded).toBe(true)
+      expect(result.current.combat.combatOpen).toBe(true)
     })
   })
 

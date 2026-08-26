@@ -323,6 +323,13 @@ export interface LogEntry {
   /// jugadora responde (aceptar/cancelar) — nunca sobrevive a una recarga, mismo criterio efímero
   /// que `newQuest`/`questCompleted`.
   questOffer?: { title: string; description: string }
+  /// CONVALECIENTE deja de ser "victoria automática" (2026-08-26) — presente en el turno de
+  /// combate en que uno o más NPC pasan a CONVALECIENTE por primera vez; LogPanel pinta, por cada
+  /// uno, una tarjeta con Matar/Capturar/Clemente (mismo fondo amarillo que `questOffer`). Efímero
+  /// tal cual, pero el estado de "ya resuelto" no se limpia aquí — se deriva en vivo comparando
+  /// `npcSlug` contra `combatNpcsDisplay` (useCombatFlow.ts), así que sigue siendo correcto incluso
+  /// si la jugadora responde desde una tarjeta de un turno anterior a esta.
+  convalecienteOffers?: { npcSlug: string; npcName: string }[]
 }
 
 export type EquipSlot =

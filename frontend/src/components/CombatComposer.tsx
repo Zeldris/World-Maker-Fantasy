@@ -15,6 +15,11 @@ export interface CombatNpcDisplay {
   // Rediseño de combate (2026-08-09, "Analizar rival") — gatea qué muestra la ficha del rival
   // (CombatPanel.tsx § EnemyFicha).
   analizado: boolean
+  // CONVALECIENTE deja de ser "victoria automática" (2026-08-26) — true tras "Capturar" o
+  // "Dejarlo vivir": el NPC deja de contar como pendiente de resolver (useCombatFlow.ts §
+  // combatEnded), pero su `condicion` NO cambia — sigue CONVALECIENTE de verdad, nunca se
+  // reescribe aquí, a diferencia de "Matar" (que sí pasa `condicion` a MUERTO).
+  dismissed?: boolean
 }
 
 interface CombatComposerProps {
@@ -23,6 +28,12 @@ interface CombatComposerProps {
   onSubmit: () => void
   busy: boolean
   ended: boolean
+  /// CONVALECIENTE deja de ser "victoria automática" (2026-08-26, petición explícita: "se bloquea
+  /// todo hasta responder la tarjeta o tarjetas de los enemigos convalecientes") — true mientras
+  /// quede al menos un NPC CONVALECIENTE sin Matar/Capturar/Clemente (ver
+  /// `combatHasPendingConvalecientes`, useCombatFlow.ts). El input sigue visible pero deshabilitado,
+  /// con un aviso — a diferencia de `ended`, que oculta el composer entero.
+  pendingDecisions?: boolean
 }
 
 /// Recortado a solo texto libre (rediseño de la vista de combate, 2026-07-28, petición explícita:
@@ -30,11 +41,14 @@ interface CombatComposerProps {
 /// habilidades/objetos y el botón Actuar suben a `CombatPanel.tsx`, que sustituye al LogPanel "El
 /// mundo" mientras dura el combate. El estado de selección vive en GameView.tsx, compartido entre
 /// ambos; este componente ya no tiene estado propio.
-export function CombatComposer({ freeText, onFreeTextChange, onSubmit, busy, ended }: CombatComposerProps) {
+export function CombatComposer({ freeText, onFreeTextChange, onSubmit, busy, ended, pendingDecisions }: CombatComposerProps) {
   if (ended) return null
 
   return (
     <div className="border-t border-red-900/50 bg-wood-950/90 px-4 pb-3 pt-3">
+      {pendingDecisions && (
+        <p className="mb-2 text-2xs text-danger-300">Resuelve a los rivales convalecientes antes de seguir.</p>
+      )}
       <div className="flex gap-2">
         <input
           value={freeText}
@@ -43,12 +57,12 @@ export function CombatComposer({ freeText, onFreeTextChange, onSubmit, busy, end
             if (e.key === 'Enter') onSubmit()
           }}
           placeholder="O describe tu acción..."
-          disabled={busy}
+          disabled={busy || pendingDecisions}
           className="flex-1 rounded-lg border border-iron-700 bg-wood-950/60 px-3 py-2 text-sm text-wood-100 outline-none disabled:opacity-50"
         />
         <button
           onClick={onSubmit}
-          disabled={busy || !freeText.trim()}
+          disabled={busy || pendingDecisions || !freeText.trim()}
           className="tactile shrink-0 rounded-lg border border-accent-600 bg-gradient-to-b from-accent-400 to-accent-600 px-3.5 py-2 text-xs font-bold uppercase tracking-wide text-wood-950 disabled:cursor-not-allowed disabled:border-iron-700 disabled:from-wood-700 disabled:to-wood-700 disabled:text-wood-500"
         >
           Actuar

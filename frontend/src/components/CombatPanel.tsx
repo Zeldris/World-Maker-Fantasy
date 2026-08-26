@@ -34,6 +34,10 @@ interface CombatPanelProps {
   onSelectItem: (id: string | null) => void
   busy: boolean
   ended: boolean
+  /// CONVALECIENTE deja de ser "victoria automática" (2026-08-26) — mismo criterio que
+  /// `CombatComposer.pendingDecisions`: bloquea también las acciones propias de este panel
+  /// (Huir/habilidades/objetos/Actuar) mientras quede algún rival CONVALECIENTE sin resolver.
+  pendingDecisions?: boolean
   /// Rediseño del turno de combate (2026-07-28) — true cuando el NPC ganó la iniciativa del
   /// intercambio y el jugador debe elegir su defensa a ciegas: oculta objetivos/Huir/objetos y
   /// cambia la etiqueta del botón de acción.
@@ -44,12 +48,6 @@ interface CombatPanelProps {
   lastInitiativeRoll: InitiativeRollInfo | null
   onActuar: () => void
   onRegistrar: (npc: CombatNpcDisplay) => void
-  /// Botón "Decapitar" (petición explícita, 2026-07-30, ajustado tras probarlo en vivo: "de los
-  /// enemigos convalecientes tienes que marcar todos aquellos que quieras decapitar... un popup
-  /// donde marcando con checkbox puedas elegir a quien decapitar y confirmarlo o cancelarlo") —
-  /// se llama con la lista YA confirmada desde el modal de selección (ver más abajo), nunca por
-  /// NPC suelto. Golpe de gracia determinista, solo sobre los que siguen CONVALECIENTE.
-  onDecapitarSeleccion: (npcs: CombatNpcDisplay[]) => void
   onHuir: () => void
   onContinue: () => void
   /// Resumen de combate (petición explícita, 2026-07-30, ajustado tras probarlo en vivo: "si le
@@ -303,11 +301,11 @@ export function CombatPanel({
   onSelectItem,
   busy,
   ended,
+  pendingDecisions,
   awaitingDefense,
   lastInitiativeRoll,
   onActuar,
   onRegistrar,
-  onDecapitarSeleccion,
   onHuir,
   onContinue,
   onSaquearSeleccion,
@@ -317,16 +315,18 @@ export function CombatPanel({
   onCollapse,
   collapseIcon,
 }: CombatPanelProps) {
-  // Modales de selección (petición explícita, 2026-07-30, tras probar en vivo el "Decapitar"/
-  // "Saquear todo" de un solo clic: "tienes que marcar todos aquellos que quieras... un popup
-  // donde marcando con checkbox puedas elegir y confirmarlo o cancelarlo").
-  const [decapitarModalOpen, setDecapitarModalOpen] = useState(false)
+  // Modal de selección (petición explícita, 2026-07-30, tras probar en vivo "Saquear todo" de un
+  // solo clic: "tienes que marcar todos aquellos que quieras... un popup donde marcando con
+  // checkbox puedas elegir y confirmarlo o cancelarlo"). El modal equivalente de "Decapitar" se
+  // retiró (2026-08-26): Matar/Capturar/Clemente sobre un CONVALECIENTE ya vive en la tarjeta del
+  // log, y `combatEnded` (useCombatFlow.ts) ya no deja llegar aquí con ningún CONVALECIENTE sin
+  // resolver, así que ese botón nunca podía dispararse de verdad.
   const [saquearModalOpen, setSaquearModalOpen] = useState(false)
 
-  const convalecientes = npcs.filter((n) => n.condicion === 'CONVALECIENTE')
   // Resumen de combate (2026-07-30) — solo se ofrece "Saquear todo" si de verdad queda algo sin
-  // saquear (CONVALECIENTE o MUERTO — un enemigo decapitado se puede saquear igual); si ya se
-  // registró todo uno a uno durante la pelea, el resumen solo ofrece salir.
+  // saquear; si ya se registró todo uno a uno durante la pelea, el resumen solo ofrece salir.
+  // Solo MUERTO es saqueable (2026-08-26, CONVALECIENTE deja de serlo) — mismo criterio que el
+  // backend (`saquear-zona`/`turnResolution.ts § lootTargets`).
   //
   // Bug real (auditoría 2026-08-06): sin el filtro `enciclopedia?.npcs.some(...)`, un enemigo de
   // FAUNA derrotado también contaba como "lootable" — pero `lootOptions` de abajo solo mira
@@ -335,9 +335,7 @@ export function CombatPanel({
   // aparte de este modal). Eso dejaba "Saquear todo" siempre visible tras derrotar fauna, abriendo
   // un modal sin ninguna opción que marcar — y como `fullyLootedSlugs` sale de `lootOptions`, esa
   // fauna nunca podía marcarse `yaSaqueado`, así que el botón reaparecía para siempre.
-  const lootables = npcs.filter(
-    (n) => (n.condicion === 'CONVALECIENTE' || n.condicion === 'MUERTO') && !n.yaSaqueado && enciclopedia?.npcs.some((e) => e.slug === n.slug),
-  )
+  const lootables = npcs.filter((n) => n.condicion === 'MUERTO' && !n.yaSaqueado && enciclopedia?.npcs.some((e) => e.slug === n.slug))
   const quedaAlgoPorSaquear = lootables.length > 0
 
   // Opciones del modal de saqueo (2026-07-30) — el loadout real de cada enemigo saqueable viene
@@ -384,7 +382,7 @@ export function CombatPanel({
           {!ended && !awaitingDefense && (
             <button
               onClick={onHuir}
-              disabled={busy}
+              disabled={busy || pendingDecisions}
               // Contraste real (petición explícita, 2026-08-18: "hay que mejorar para que sea más
               // claro el botón Huir" — antes solo texto apagado sin fondo, igual de invisible que
               // el botón de colapsar antes de arreglarlo). Tono ámbar (cost-*) a propósito, para
@@ -475,15 +473,6 @@ export function CombatPanel({
               >
                 Salir
               </button>
-              {convalecientes.length > 0 && (
-                <button
-                  onClick={() => setDecapitarModalOpen(true)}
-                  disabled={busy}
-                  className="tactile flex-1 rounded-lg border border-danger-600 bg-danger-600/20 px-3.5 py-2 text-xs font-bold uppercase tracking-wide text-danger-300 transition-colors hover:bg-danger-600/35 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  Matar
-                </button>
-              )}
               {quedaAlgoPorSaquear && (
                 <button
                   onClick={() => setSaquearModalOpen(true)}
@@ -573,38 +562,21 @@ export function CombatPanel({
                       <p className="text-2xs text-wood-400">{CONDICION_LABEL[npc.condicion]}</p>
                       {/* "Registrar" (solo este enemigo, instantáneo) sigue existiendo MIENTRAS el
                           combate sigue activo de verdad (p. ej. derrotaste a uno pero otros siguen
-                          en pie). "Decapitar" (petición explícita, 2026-07-30: "un popup con
-                          checkbox para elegir a quien decapitar") siempre abre el modal de
-                          selección compartido, nunca actúa directo sobre este NPC en concreto —
-                          por eso el enlace es el mismo aquí y en el resumen de victoria. */}
-                      {npc.condicion === 'CONVALECIENTE' && (
-                        <span className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5">
-                          {npc.yaSaqueado ? (
-                            <span className="text-2xs text-wood-500">Ya saqueado</span>
-                          ) : (
-                            <span
-                              role="button"
-                              tabIndex={0}
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                onRegistrar(npc)
-                              }}
-                              className="inline-block text-2xs text-accent-300 underline"
-                            >
-                              Registrar
-                            </span>
-                          )}
-                          <span
-                            role="button"
-                            tabIndex={0}
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              setDecapitarModalOpen(true)
-                            }}
-                            className="inline-block text-2xs text-danger-300 underline"
-                          >
-                            Matar
-                          </span>
+                          en pie). Matar/Capturar/Clemente sobre un CONVALECIENTE ya NO viven aquí
+                          (2026-08-26) — viven en la tarjeta del log ("Tu personaje"), que además
+                          bloquea el composer hasta resolverse; "Registrar" solo tiene sentido sobre
+                          MUERTO ahora, un CONVALECIENTE ya no es saqueable. */}
+                      {npc.condicion === 'MUERTO' && !npc.yaSaqueado && (
+                        <span
+                          role="button"
+                          tabIndex={0}
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            onRegistrar(npc)
+                          }}
+                          className="mt-0.5 inline-block text-2xs text-accent-300 underline"
+                        >
+                          Registrar
                         </span>
                       )}
                     </span>
@@ -689,7 +661,7 @@ export function CombatPanel({
                           // botón ⓘ, y un <button> no puede contener otro <button> válido en HTML)
                           // — el ⓘ para su propio clic con stopPropagation para no seleccionar la
                           // habilidad de paso al pedir su ficha de Enciclopedia.
-                          const disabledCard = busy || sinEnergia
+                          const disabledCard = busy || sinEnergia || pendingDecisions
                           const selectThisAbility = () => {
                             if (disabledCard) return
                             onSelectAbility(a.id)
@@ -836,7 +808,7 @@ export function CombatPanel({
                               onSelectItem(item.id)
                               onSelectAbility(null)
                             }}
-                            disabled={busy}
+                            disabled={busy || pendingDecisions}
                             className="tactile flex w-full items-center gap-2 text-left text-xs disabled:cursor-not-allowed"
                           >
                             <span aria-hidden="true">🎒</span>
@@ -873,28 +845,12 @@ export function CombatPanel({
         <div className="border-t border-iron-800 px-4 py-3">
           <button
             onClick={onActuar}
-            disabled={busy || (awaitingDefense ? !selectedAbilityId : !selectedAbilityId && !selectedItemId)}
+            disabled={busy || pendingDecisions || (awaitingDefense ? !selectedAbilityId : !selectedAbilityId && !selectedItemId)}
             className="tactile w-full rounded-lg border border-accent-600 bg-gradient-to-b from-accent-400 to-accent-600 px-3.5 py-2 text-xs font-bold uppercase tracking-wide text-wood-950 disabled:cursor-not-allowed disabled:border-iron-700 disabled:from-wood-700 disabled:to-wood-700 disabled:text-wood-500"
           >
             {awaitingDefense ? 'Defenderte' : 'Actuar'}
           </button>
         </div>
-      )}
-
-      {decapitarModalOpen && (
-        <CombatSelectionModal
-          title="¿A quién matar?"
-          description="Un golpe de gracia definitivo, sin tirada — no pueden resistir."
-          options={convalecientes.map((npc) => ({ id: npc.slug, label: npc.name }))}
-          confirmLabel="Matar"
-          tone="danger"
-          busy={busy}
-          onCancel={() => setDecapitarModalOpen(false)}
-          onConfirm={(selectedIds) => {
-            onDecapitarSeleccion(convalecientes.filter((npc) => selectedIds.includes(npc.slug)))
-            setDecapitarModalOpen(false)
-          }}
-        />
       )}
 
       {saquearModalOpen && (

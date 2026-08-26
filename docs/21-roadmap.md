@@ -242,22 +242,89 @@ resumen de trabajo real, agrupado por tamaño.
   sobre qué dato existe de verdad. De paso, una ubicación sin `ZonePoint` sembrado (fuera del
   prototipo de Hondonada del Eco) ya puede marcarse "disponible" si tiene algún NPC dinámico.
 - [ ] **CONVALECIENTE deja de significar "victoria automática" del combate** — petición explícita
-  (2026-08-26), a desarrollar más cuando se acaben los arreglos de bugs en curso. Diseño inicial tal
-  como lo describió la usuaria:
-  - Dejar a un enemigo CONVALECIENTE ya NO cierra el combate por sí solo — hoy sí lo hace.
-  - En vez de eso, sobre un enemigo CONVALECIENTE se ofrecen 3 opciones: **Capturar**, **Matar**
-    (rematar) o **Dejarlo vivir**.
-  - "Dejarlo vivir" saca a ese NPC del combate (deja de ser un objetivo activo) pero se queda
-    CONVALECIENTE de verdad — mantiene la regla ya existente de que se recupera solo pasadas unas
-    horas de ficción.
-  - Mientras un NPC está CONVALECIENTE (tanto si sigue en combate como si ya se le dejó vivir),
-    la jugadora puede interactuar con él: saquearlo, hablar con él, matarlo o capturarlo — no hace
-    falta que el combate siga abierto para eso.
-  - Si se elige "Matar", el combate continúa hasta que todos los NPC presentes en la escena mueran o
-    no quede nadie más con quien pelear — ya no basta con dejar CONVALECIENTE al primero.
-  - Sin diseño técnico todavía (qué endpoint ofrece las 3 opciones, cómo se marca "objetivo ya
-    resuelto, fuera de combate pero vivo en escena" en el modelo de datos) — queda para cuando se
-    retome esto en profundidad.
+  (2026-08-26). Diseño cerrado con la usuaria, lista para implementar (empezar por aquí):
+  - Combate termina solo cuando todos los NPC están MUERTO o ya resueltos (Matar/Capturar/
+    Clemente) — un CONVALECIENTE solo ya no cierra nada por sí mismo.
+  - Sobre cada NPC CONVALECIENTE se ofrecen 3 opciones en una **tarjeta en el propio log de
+    combate** (mismo patrón que la tarjeta Aceptar/Cancelar misión), no botones fijos en la ficha:
+    **Matar**, **Capturar**, **Clemente** (nombre mejorado de "Perdonar"/"Dejarlo vivir").
+  - Mientras haya una o más tarjetas sin resolver, el composer de combate se bloquea del todo
+    (texto libre + botón Actuar deshabilitados) — no se puede seguir combatiendo hasta responder
+    todas.
+  - **Capturar**: nuevo ítem "cuerdas" (material consumible, 2 fibra, recetas para
+    `carpintero-orcos-llanuras` y `constructor-orcos-llanuras`) sustituye a `trampa-de-lazo` como
+    requisito del endpoint `POST /capturar/:npcSlug` — ahora sí se consume 1 unidad al atar con
+    éxito (antes `trampa-de-lazo` era reutilizable). `trampa-de-lazo` queda sin uso por ahora.
+  - **Clemente**: nuevo endpoint (ya construido y con 3 tests en verde,
+    `POST /saves/:id/combat/dejar-vivir/:npcSlug`) saca al NPC de `pendingCombatNpcSlugs` sin
+    tocar `condicionFisica` — sigue CONVALECIENTE de verdad, recupera solo con las horas.
+  - **Saqueo/desuello**: se quita `CONVALECIENTE` de las dos listas de elegibilidad
+    (`saquear-zona` en `panels.ts` y `carcassCandidatesFor` en `recolectar.ts`) — solo `MUERTO`
+    (y `groupDefeated`, sin tocar) podrá saquearse/desollarse. Antes se podía saquear/desollar a
+    alguien vivo, decisión consciente de cerrar ese hueco.
+  - Fuera de esta pasada, aparcado para diseñar después (ver ítems siguientes): rematar más tarde
+    a un CONVALECIENTE en un encuentro nuevo (hoy 4 puntos de `npcScene.ts`/`turnResolution.ts` lo
+    bloquean a propósito), postura de compañero, y clemencia de enemigo.
+
+- [ ] **Postura de compañero en combate (Agresivo/Defensivo/Capturador/Clemente)** — solo tiene
+  sentido una vez exista combate autónomo de compañero sin la jugadora presente (hoy no existe:
+  los compañeros solo luchan dentro de la propia sesión de combate de la jugadora vía
+  `combateMultipleOrquestacion.ts`, nunca en solitario — sin patrullas/guarniciones/expediciones).
+  Mientras tanto, si un compañero deja CONVALECIENTE a un rival dentro de tu propio combate, la
+  tarjeta de decisión (ver ítem anterior) te la sigue mostrando a ti igual, da igual quién dio el
+  golpe — ya cubierto sin nada nuevo. Cuando se diseñe el motor de combate en solitario del
+  compañero: dos ejes independientes en vez de 4 presets fijos (gasto de energía
+  agresivo/reservista × decisión Matar/Capturar/Clemente), "Capturador" reutiliza el mismo chequeo
+  de cuerdas+jaula que el manual.
+- [ ] **Clemencia de enemigo / duelos de honor** — hoy no existe ninguna IA que decida "rematar o
+  no": el combate simplemente sigue la progresión normal golpe a golpe hasta que termina por el
+  motivo que sea. Un enemigo que de verdad elige no rematar a la jugadora (duelo de honor) sería
+  un sistema aparte, espejo del anterior — `Npc.temperamento`/`personality` como gancho natural.
+  Aparcado, sin diseñar.
+- [ ] **Botón de imagen (banner/miniatura/mapa) en el panel Zona** — petición explícita
+  (2026-08-26). `zoneMapImageUrl()` (fondo que pinta `ZonaPanel.tsx`) ya busca en disco
+  `uploads/images/zona/<slug>-mapa.<ext>`, y `POST /world/:slug/image-prompt` con
+  `entityType:'zona', sizeProfile:'mapa'` ya genera el prompt de texto en backend (800x600) — ya
+  están conectados por convención de nombre de archivo, solo falta el botón en `ZonaPanel.tsx`
+  (`ImagePromptSlot`, mismo componente que ya usa la Enciclopedia) que dispare esa generación y
+  deje subir el PNG a mano, mismo flujo manual que el resto del juego. Banner/miniatura de esa
+  misma ubicación ya existen y funcionan hoy vía `entityType:'location'` en la Enciclopedia — abierto
+  si además de "mapa" quiere un juego de banner/miniatura propio para la vista Zona (duplicado) o
+  si con reutilizar el de la Enciclopedia basta.
+- [ ] **17 efectos de habilidad de clase pendientes de implementar en el motor** (`AbilityEffect`,
+  `schema.prisma`) — diseño cerrado con la usuaria (2026-08-26) para la mayoría, ver
+  [clases.md](rpgtarkor/clases.md) para las cifras exactas por habilidad. `LETAL` en realidad ya
+  estaba implementado pese a estar marcado `PENDIENTE` en el schema (corregir el comentario).
+  Orden de construcción acordado:
+  1. Listos tal cual, sin infraestructura nueva: `MULTIPLE` (en 1vs1 se queda en ataque normal),
+     `DESVIAR` (en 1vs1 se queda en ataque/defensa normal), `CONTROL` (en 1vs1 se convierte en
+     `ATURDIMIENTO`, ya implementado), `CONTRA`/`REFRACTAR` (atributo Arcano vs. resto de la
+     tirada como proxy de daño mágico/físico, sin construir un tipo de daño real — casi no hay
+     ataques mágicos en juego todavía, Mago sigue sin implementar), `REFLEJAR` (refleja el efecto
+     de una habilidad de utilidad, nunca daño/defensa), `PROVOCACION`, `PURIFICAR` (elimina
+     efectos negativos, depende de que exista duración por turnos para tener qué purificar),
+     `COMPANERO` (pasiva: nueva fuente de slot de compañero, suma a `maxCompanions` igual que los
+     edificios ya lo hacen — pero **con tipo restringido**: cada fuente de slot solo puede
+     ocuparla el tipo que indique su habilidad, ej. Domador → solo fauna combatible; otras clases
+     futuras podrán dar slots restringidos a NPC no inteligentes, invocaciones fijas, etc. — campo
+     genérico aunque hoy solo lo use el Domador).
+  2. Necesitan **duración por turnos** primero (infraestructura compartida, construir una vez):
+     `AUMENTO`, `DEBILIDAD`, `CANALIZAR` (turnos variables según nivel de la habilidad; cualquier
+     golpe recibido mientras se canaliza cancela el efecto antes de completarse — pensado para
+     gestión de agro en grupo), `CURAZION`.
+  3. Alcance mayor de lo previsto, tocan fuera de combate:
+     - `INVOCACION` — el tótem invocado actúa según el efecto combinado: `INVOCACION`+`ATAQUE` =
+       ataca cada turno sin defenderse; `INVOCACION`+`AGUANTE` = defiende sin atacar.
+     - `EXPULSAR` — no es solo un contador de turnos de combate: una tirada a los 2 turnos decide
+       si vuelve dentro del combate (y se va de la zona), otra tirada aparte decide si no vuelve a
+       aparecer nunca al terminar el combate; si vuelve, solo reaparece en su posición de la zona
+       cuando la jugadora viaja fuera y regresa — toca `npcScene.ts`/presencia en zona, no solo
+       `turnResolution.ts`.
+  4. Esperan que la usuaria rellene cifras a su ritmo, quedan `⚠️ bloqueada` en `clases.md`
+     mientras tanto (no frena el resto): `RETIRAR` (ninguna de sus 2 filas tiene cifra) y las
+     filas sueltas de `AUMENTO`/`DEBILIDAD`/`CURAZION` sin número (sobre todo Segador/Asesino).
+  Parte del trabajo de cada efecto también es desbloquear esas filas en `clases.md` y darlas de
+  alta como `ClassAbilityUnlock` reales, no solo construir el motor.
 
 ### Ajuste de números, no features nuevas (pero sin cerrar)
 

@@ -552,6 +552,23 @@ export function GameView() {
     setCharacterLog((prev) => prev.map((e) => (e.id === entryId ? { ...e, questOffer: undefined } : e)))
   }
 
+  // Puente entre la tarjeta Matar/Capturar/Clemente del log (LogPanel.tsx § convalecienteOffers,
+  // 2026-08-26) y los handlers ya construidos en useCombatFlow.ts — la tarjeta solo conoce el
+  // `npcSlug`, aquí se resuelve contra el `CombatNpcDisplay` real (mismo objeto que ya usa
+  // CombatPanel) para reutilizar exactamente la misma lógica que los botones de combate normales.
+  function handleMatarConvaleciente(npcSlug: string) {
+    const npc = combat.combatNpcsDisplay.find((n) => n.slug === npcSlug)
+    if (npc) combat.handleDecapitarSeleccion([npc])
+  }
+  function handleCapturarConvaleciente(npcSlug: string) {
+    const npc = combat.combatNpcsDisplay.find((n) => n.slug === npcSlug)
+    if (npc) combat.handleCapturarSeleccion(npc)
+  }
+  function handleClementeConvaleciente(npcSlug: string) {
+    const npc = combat.combatNpcsDisplay.find((n) => n.slug === npcSlug)
+    if (npc) combat.handleDejarVivirSeleccion(npc)
+  }
+
   function handleItemDetail(item: InventoryItemInfo) {
     setDetailTarget({ kind: 'item', item })
     setDetailInsertHandler(null)
@@ -1320,6 +1337,10 @@ export function GameView() {
               characterName={characterName ?? undefined}
               onAcceptQuestOffer={handleAcceptQuestOffer}
               onDismissQuestOffer={handleDismissQuestOffer}
+              combatNpcsDisplay={combat.combatNpcsDisplay}
+              onMatarConvaleciente={handleMatarConvaleciente}
+              onCapturarConvaleciente={handleCapturarConvaleciente}
+              onClementeConvaleciente={handleClementeConvaleciente}
             />
           )}
           {collapsedSide === 'world' ? (
@@ -1354,11 +1375,11 @@ export function GameView() {
               playerAttributes={characterAttributes}
               busy={combat.combatBusy}
               ended={combat.combatEnded}
+              pendingDecisions={combat.combatHasPendingConvalecientes}
               awaitingDefense={combat.combatAwaitingDefense}
               lastInitiativeRoll={lastInitiativeRoll}
               onActuar={combat.handleCombatActuar}
               onRegistrar={combat.handleCombatRegistrar}
-              onDecapitarSeleccion={combat.handleDecapitarSeleccion}
               onHuir={combat.handleCombatHuir}
               onContinue={combat.closeCombat}
               onSaquearSeleccion={combat.handleSaquearSeleccion}
@@ -1469,6 +1490,7 @@ export function GameView() {
           onSubmit={combat.handleCombatFreeSubmit}
           busy={combat.combatBusy}
           ended={combat.combatEnded}
+          pendingDecisions={combat.combatHasPendingConvalecientes}
         />
       ) : (
         <>

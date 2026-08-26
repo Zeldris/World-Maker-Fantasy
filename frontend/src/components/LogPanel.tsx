@@ -1,5 +1,5 @@
 import { memo, useEffect, useRef, useState } from 'react'
-import type { CombatExchangeInfo, LogEntry } from '../types'
+import type { CombatExchangeInfo, CondicionFisica, LogEntry } from '../types'
 import { RollBadge } from './RollBadge'
 import { CombatExchangeBadge } from './CombatExchangeBadge'
 import { DiceRollReveal } from './DiceRollReveal'
@@ -52,6 +52,14 @@ interface LogPanelProps {
   /// panel de "Tu personaje", el único que puede recibir `questOffer`).
   onAcceptQuestOffer?: (entryId: string, title: string, description: string) => void
   onDismissQuestOffer?: (entryId: string) => void
+  /// CONVALECIENTE deja de ser "victoria automática" (2026-08-26) — `combatNpcsDisplay` es el
+  /// mismo estado en vivo que ya usa CombatPanel.tsx (useCombatFlow.ts), para saber por cada
+  /// `entry.convalecienteOffers` si ese NPC sigue pendiente o ya se resolvió (Matar → `MUERTO`,
+  /// Capturar/Clemente → `dismissed`) — la tarjeta no guarda su propio estado de "ya resuelto".
+  combatNpcsDisplay?: { slug: string; condicion: CondicionFisica; dismissed?: boolean }[]
+  onMatarConvaleciente?: (npcSlug: string) => void
+  onCapturarConvaleciente?: (npcSlug: string) => void
+  onClementeConvaleciente?: (npcSlug: string) => void
 }
 
 const accentClasses = {
@@ -115,6 +123,10 @@ export const LogPanel = memo(function LogPanel({
   diceReveal,
   onAcceptQuestOffer,
   onDismissQuestOffer,
+  combatNpcsDisplay,
+  onMatarConvaleciente,
+  onCapturarConvaleciente,
+  onClementeConvaleciente,
 }: LogPanelProps) {
   const { enciclopediaIndex, onEntityDetail, onEntityQuickInsert } = useEnciclopediaLink()
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -318,6 +330,52 @@ export const LogPanel = memo(function LogPanel({
                   </div>
                 </div>
               )}
+              {/* CONVALECIENTE deja de ser "victoria automática" (2026-08-26, petición explícita)
+                  — una tarjeta por cada NPC que pasó a CONVALECIENTE este turno, con Matar/
+                  Capturar/Clemente; bloquea el composer (CombatComposer.tsx §
+                  `pendingDecisions`) hasta que TODAS estén resueltas. El estado de "ya resuelto"
+                  no vive en la propia LogEntry — se mira en vivo contra `combatNpcsDisplay`, así
+                  que sigue siendo correcto aunque la jugadora resuelva desde la tarjeta de un
+                  turno posterior o anterior. */}
+              {entry.convalecienteOffers?.map((offer) => {
+                const npc = combatNpcsDisplay?.find((n) => n.slug === offer.npcSlug)
+                const resuelto = !npc || npc.condicion === 'MUERTO' || !!npc.dismissed
+                return (
+                  <div key={offer.npcSlug} className="mt-2 rounded-lg border border-danger-600/50 bg-danger-500/10 px-2.5 py-2">
+                    <p className="flex items-center gap-1.5 text-2xs font-semibold uppercase tracking-[0.1em] text-danger-400">
+                      <span aria-hidden="true">⚠️</span>
+                      <span>{offer.npcName} está convaleciente</span>
+                    </p>
+                    {resuelto ? (
+                      <p className="mt-1 text-2xs text-wood-400">Resuelto.</p>
+                    ) : (
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        <button
+                          type="button"
+                          onClick={() => onMatarConvaleciente?.(offer.npcSlug)}
+                          className="tactile rounded-lg border border-danger-500/60 bg-danger-500/20 px-2.5 py-1 text-2xs font-semibold uppercase tracking-[0.08em] text-danger-300 hover:border-danger-400 hover:bg-danger-500/35"
+                        >
+                          Matar
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => onCapturarConvaleciente?.(offer.npcSlug)}
+                          className="tactile rounded-lg border border-accent-500/60 bg-accent-500/20 px-2.5 py-1 text-2xs font-semibold uppercase tracking-[0.08em] text-accent-300 hover:border-accent-400 hover:bg-accent-500/35"
+                        >
+                          Capturar
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => onClementeConvaleciente?.(offer.npcSlug)}
+                          className="tactile rounded-lg border border-iron-700 bg-wood-950/40 px-2.5 py-1 text-2xs font-semibold uppercase tracking-[0.08em] text-wood-400 hover:border-iron-500 hover:text-wood-200"
+                        >
+                          Clemente
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
               {entry.questCompleted && (
                 <div className="mt-2 rounded-lg border border-quest-600/50 bg-quest-500/10 px-2.5 py-2">
                   <p className="flex items-center gap-1.5 text-2xs font-semibold uppercase tracking-[0.1em] text-quest-400">

@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { Prisma } from '@prisma/client';
 import { prisma } from '../../lib/prisma.js';
-import { contraataqueDifficultyFor } from '../../services/npcScene.js';
+import { contraataqueDifficultyFor, scopeFor } from '../../services/npcScene.js';
 import { effectiveAttributes, effectiveDefense } from '../../services/equipment.js';
 import { rollCheck } from '../../services/dice.js';
 import type { AttributeBlock } from '../../services/dice.js';
@@ -168,5 +168,46 @@ export async function sessionRoutes(app: FastifyInstance) {
       return reply.status(409).send({ error: 'El combate cambió mientras intentabas huir — vuelve a intentarlo.' });
     }
     return { escaped: roll.success, text };
+  });
+
+  // CONVALECIENTE deja de ser "victoria automática" (petición explícita, 2026-08-26): sobre un
+  // enemigo CONVALECIENTE la jugadora elige Capturar (`/capturar/:npcSlug`, ya existía), Matar
+  // (Decapitar, ya existía) o Dejarlo vivir — este último, nuevo. Determinista, sin tirada: la
+  // jugadora ya ganó el derecho a decidir en cuanto lo dejó CONVALECIENTE, no hace falta jugárselo
+  // otra vez. Saca al NPC de `pendingCombatNpcSlugs` (deja de ser objetivo activo — el combate
+  // sigue con el resto si queda alguien, o termina si era el último) pero NO toca
+  // `condicionFisica`: se queda CONVALECIENTE de verdad, recupera solo con las horas de ficción
+  // (misma regla ya existente, `applyCondicionTimeouts`).
+  app.post<{ Params: { id: string; npcSlug: string } }>('/saves/:id/combat/dejar-vivir/:npcSlug', async (request, reply) => {
+    const save = await prisma.save.findUnique({
+      where: { id: request.params.id },
+      include: { worldState: true, currentLocation: { select: { id: true } } },
+    });
+    if (!save) return reply.status(404).send({ error: 'Partida no encontrada' });
+    if (rejectIfEnded(save, reply)) return;
+
+    const npc = await prisma.npc.findUnique({ where: { worldId_slug: { worldId: save.worldId, slug: request.params.npcSlug } } });
+    if (!npc) return reply.status(404).send({ error: 'NPC no encontrado' });
+    const scope = scopeFor(npc.kind, save.currentLocation?.id ?? null);
+    const state = await prisma.npcState.findUnique({ where: { saveId_npcId_scope: { saveId: save.id, npcId: npc.id, scope } } });
+    if (!state || state.condicionFisica !== 'CONVALECIENTE') {
+      return reply.status(400).send({ error: 'Solo puedes dejar vivir a un enemigo CONVALECIENTE.' });
+    }
+
+    const timeLabel = save.worldState?.fictionalDateLabel ?? 'Día 1, mañana';
+    const text = `${save.characterName} deja con vida a ${npc.name}, convaleciente en el suelo — se aparta sin darle el golpe final.`;
+
+    // Mismo candado que /combat/flee (auditoría de código 2026-08-25) — un turno real de
+    // /turn/narrate en paralelo puede estar actualizando `pendingCombatNpcSlugs` justo ahora.
+    const logEntry = await prisma.$transaction(async (tx) => {
+      const [locked] = await tx.$queryRaw<{ pendingCombatNpcSlugs: string[] | null }[]>`
+        SELECT "pendingCombatNpcSlugs" FROM "Save" WHERE id = ${save.id} FOR UPDATE
+      `;
+      const freshSlugs = (locked.pendingCombatNpcSlugs ?? []).filter((s) => s !== npc.slug);
+      await tx.save.update({ where: { id: save.id }, data: { pendingCombatNpcSlugs: freshSlugs } });
+      return tx.logEntry.create({ data: { saveId: save.id, channel: 'CHARACTER', text, timeLabel } });
+    });
+
+    return { npcSlug: npc.slug, logEntry: { id: logEntry.id, text, timeLabel, createdAt: logEntry.createdAt.toISOString() } };
   });
 }
