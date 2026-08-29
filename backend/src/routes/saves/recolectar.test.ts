@@ -1014,11 +1014,16 @@ describe('GET /saves/:id/recolectar/:oficio', () => {
         professionProgress: [],
         worldState: { fictionalMinutes: 1440 * 60 }, // Día 61 = Vungrat (Otoño)
       });
+      // P1.1 (checklist consolidado 2026-08-27): 'boungo' tiene harvestSourceHomeLocationSlug real
+      // en worldCatalog.ts desde que ese campo se generalizó a MINERIA/TALA/EXTRACCION — este test
+      // prueba el gate de ESTACIÓN, no el de ubicación, así que se usa un slug inventado sin
+      // entrada real en el catálogo (el fixture es 100% mockeado, no depende de datos reales) para
+      // no acoplar un test de estación a un detalle de anclaje irrelevante aquí.
       findManyHarvestYield.mockResolvedValue([
-        { sourceSlug: 'boungo', sourceCategory: 'planta', item: { slug: 'boungo', name: 'Boungo', tier: 1 }, cantidad: 3, estacionRequerida: 'OTONO' },
+        { sourceSlug: 'planta-test-estacion', sourceCategory: 'planta', item: { slug: 'planta-test-estacion', name: 'Planta de prueba', tier: 1 }, cantidad: 3, estacionRequerida: 'OTONO' },
       ]);
       findManyWorldPopulation.mockResolvedValue([
-        { targetSlug: 'boungo', poblacion: 40, distribucion: { 'Llanuras del Viento Rojo': 1 }, lastHarvestedAt: null, lastHarvestedLocationId: null },
+        { targetSlug: 'planta-test-estacion', poblacion: 40, distribucion: { 'Llanuras del Viento Rojo': 1 }, lastHarvestedAt: null, lastHarvestedLocationId: null },
       ]);
       const app = await buildApp();
 
@@ -1182,11 +1187,14 @@ describe('GET /saves/:id/recolectar/:oficio', () => {
     // debe tocar la entrada ya guardada de Minero.
     it('explorar un oficio no invalida la caché ya congelada de otro oficio distinto', async () => {
       vi.spyOn(Math, 'random').mockReturnValue(0.99);
+      // P1.1 (checklist consolidado 2026-08-27): 'lucre-blanco' tiene harvestSourceHomeLocationSlug
+      // real ('pilares-rotos') en worldCatalog.ts — este test no prueba anclaje de ubicación, así
+      // que se usa un slug inventado sin entrada real en el catálogo.
       findManyHarvestYield.mockResolvedValue([
-        { sourceSlug: 'lucre-blanco', sourceCategory: 'madera', item: { slug: 'madera-lucre-blanco', name: 'Madera de Lucre Blanco', tier: 1 }, cantidad: 2 },
+        { sourceSlug: 'madera-test-cache', sourceCategory: 'madera', item: { slug: 'madera-test-cache', name: 'Madera de prueba', tier: 1 }, cantidad: 2 },
       ]);
       findManyWorldPopulation.mockResolvedValue([
-        { targetSlug: 'lucre-blanco', poblacion: 20, distribucion: { 'Llanuras del Viento Rojo': 1 }, lastHarvestedAt: null, lastHarvestedLocationId: null },
+        { targetSlug: 'madera-test-cache', poblacion: 20, distribucion: { 'Llanuras del Viento Rojo': 1 }, lastHarvestedAt: null, lastHarvestedLocationId: null },
       ]);
       // Simula que Minero ya se exploró antes y su tirada quedó congelada — el `save` que carga
       // ESTA petición (Talador) ya trae esa entrada previa en `harvestRollCache`, tal y como la

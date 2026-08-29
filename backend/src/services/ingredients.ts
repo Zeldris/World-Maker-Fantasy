@@ -57,6 +57,23 @@ export function baseNameOf(name: string): string {
   return name.replace(QUANTITY_SUFFIX_REGEX, '').trim();
 }
 
+/// Inventario del jugador al narrador (2026-08-27, auditoría: "el modelo narra sin lista real de
+/// objetos... la causa raíz más repetida de toda la familia de guards hasFalse*"). Agrupa por
+/// nombre base (varias filas de la misma especie, mismo criterio que `totalQuantity`) y suma
+/// `quantityOf` — formato "Nombre ×N" (N>1) o "Nombre" (N=1), mismo patrón ya usado en
+/// turnResolution.ts al listar objetos usados. `[]` = "Sin nada en el inventario." (nunca omitir el
+/// bloque entero: el narrador debe saber con certeza que la mochila está vacía, no solo que no se
+/// le mandó nada).
+export function inventorySummaryFor(rows: { name: string }[]): string {
+  if (rows.length === 0) return 'Sin nada en el inventario.';
+  const totals = new Map<string, number>();
+  for (const row of rows) {
+    const base = baseNameOf(row.name);
+    totals.set(base, (totals.get(base) ?? 0) + quantityOf(row.name));
+  }
+  return [...totals.entries()].map(([name, qty]) => (qty > 1 ? `${name} ×${qty}` : name)).join(', ') + '.';
+}
+
 /// Puro: cuántas unidades de este ingrediente lleva el jugador encima, sumando entre todas las
 /// filas que matchean (una especie puede materializar varias filas en distintos momentos). Suma
 /// también el equivalente de `orMatch` si la receta lo declara (ver IngredientRequirement).

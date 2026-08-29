@@ -11,10 +11,14 @@ import { MediaSlot } from './ImagePromptDisplay'
 import { TooltipAnchor } from './TooltipAnchor'
 import { CombatSelectionModal } from './CombatSelectionModal'
 import type { CombatNpcDisplay } from './CombatComposer'
-import type { AttributeBlock, CondicionFisica, InitiativeRollInfo, InventoryItemInfo, SavedActionInfo } from '../types'
+import { combatKeyFor, combatDisplayNameFor } from '../lib/gameViewHelpers'
+import type { ActiveEffect, AttributeBlock, CondicionFisica, InitiativeRollInfo, InventoryItemInfo, SavedActionInfo } from '../types'
 
 interface CombatPanelProps {
   playerCondicion: CondicionFisica
+  /// Fase 2 de efectos de clase (2026-08-27, indicador de combate — auditoría de diseño/UX
+  /// 2026-08-27 § 2.1) — AUMENTO/DEBILIDAD activos del jugador ahora mismo.
+  playerActiveEffects: ActiveEffect[]
   /// Rediseño de combate (2026-08-09, "Analizar rival") — para calcular el atributo recomendado
   /// contra el rival ya analizado (EnemyFicha), sin depender de ningún endpoint nuevo.
   playerAttributes: AttributeBlock
@@ -34,6 +38,11 @@ interface CombatPanelProps {
   onSelectItem: (id: string | null) => void
   busy: boolean
   ended: boolean
+  /// Bug real jugando en vivo (2026-08-27, "he perdido un combate...me sale victoria") — un
+  /// respawn sobrevivible deja `playerCondicion` de vuelta en ILESO (turnResolution.ts § MUERTO),
+  /// así que este panel no tenía ninguna señal propia para distinguir "morí y respawneé DENTRO de
+  /// este combate" de "gané limpio". Ver `combatPlayerJustDied`, useCombatFlow.ts.
+  playerJustDied: boolean
   /// CONVALECIENTE deja de ser "victoria automática" (2026-08-26) — mismo criterio que
   /// `CombatComposer.pendingDecisions`: bloquea también las acciones propias de este panel
   /// (Huir/habilidades/objetos/Actuar) mientras quede algún rival CONVALECIENTE sin resolver.
@@ -66,6 +75,35 @@ interface CombatPanelProps {
   /// al de "El mundo" durante un combate). Sin `onCollapse`, no sale ningún botón.
   onCollapse?: () => void
   collapseIcon?: string
+}
+
+/// Fase 2 de efectos de clase (2026-08-27, auditoría de diseño/UX 2026-08-27 § 2.1: "un AUMENTO/
+/// DEBILIDAD activo cambia `side.value` sin que nada en la cadena lo señale — es el único
+/// ingrediente de la fórmula que hoy queda mudo") — un chip por efecto activo, mismo criterio de
+/// "siempre visible" que ya justifica que la barra de estado de aquí nunca se oculte. ↑ verde para
+/// AUMENTO, ↓ rojo para DEBILIDAD, color del propio atributo afectado (mismo `attributeColorClasses`
+/// que el resto de la app) para que se lea como parte de la misma cadena causal que ya conoce el
+/// tooltip de malus por condición física, no como un sistema nuevo aparte.
+function ActiveEffectChips({ effects }: { effects: ActiveEffect[] }) {
+  if (effects.length === 0) return null
+  return (
+    <div className="flex flex-wrap gap-1">
+      {effects.map((effect, i) => (
+        <TooltipAnchor
+          key={`${effect.attribute}-${effect.sourceAbility}-${i}`}
+          text={`${effect.sourceAbility}: ${effect.magnitude > 0 ? '+' : ''}${effect.magnitude} ${attributeLabels[effect.attribute]}, ${effect.turnsRemaining} turno${effect.turnsRemaining === 1 ? '' : 's'} restante${effect.turnsRemaining === 1 ? '' : 's'}.`}
+        >
+          <span
+            className={`flex items-center gap-0.5 rounded-full border px-1.5 py-0.5 font-mono text-2xs ${attributeColorClasses[effect.attribute].border} ${attributeColorClasses[effect.attribute].bg} ${effect.magnitude > 0 ? 'text-moss-400' : 'text-danger-400'}`}
+          >
+            {effect.magnitude > 0 ? '↑' : '↓'}
+            <span className={attributeColorClasses[effect.attribute].text}>{attributeAbbr[effect.attribute]}</span>
+            <span className="text-wood-500">{effect.turnsRemaining}</span>
+          </span>
+        </TooltipAnchor>
+      ))}
+    </div>
+  )
 }
 
 /// Ficha de un enemigo — imagen, rol/facción/nivel, bio y (solo si ya se analizó) el atributo
@@ -252,7 +290,27 @@ function EnemyFicha({
                                 <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${attributeColorClasses[a.preferredAttribute].dot}`} aria-hidden="true" />
                                 {attributeAbbr[a.preferredAttribute]}
                               </span>
+                              {/* Efecto mecánico real (bug real, 2026-08-30: "en las descripciones
+                                  de las habilidades no están saliendo los efectos reales") —
+                                  gateado tras Análisis (mismo bloque que el atributo recomendado de
+                                  arriba, nunca visible de antemano como en la Enciclopedia,
+                                  decisión explícita de la usuaria). Solo habilidades de clase
+                                  llevan estos datos — raciales/ataque base se quedan sin chip. */}
+                              {!!a.attributeBonus && (
+                                <span className="inline-flex items-center gap-0.5 font-mono text-moss-400" title="Bono fijo de esta habilidad, ya sumado a su tirada">
+                                  +{a.attributeBonus}
+                                </span>
+                              )}
                             </span>
+                            {!!a.effects && a.effects.length > 0 && (
+                              <span className="mt-0.5 flex flex-wrap gap-1">
+                                {a.effects.map((effect) => (
+                                  <span key={effect} className="rounded-full border border-iron-700 px-1 font-mono text-2xs text-wood-500">
+                                    {effect}
+                                  </span>
+                                ))}
+                              </span>
+                            )}
                             <span className="mt-0.5 block leading-snug text-wood-400">{a.description}</span>
                           </span>
                           {a.detailTarget && (
@@ -288,6 +346,7 @@ function EnemyFicha({
 /// texto") — el estado de selección vive en GameView.tsx, compartido entre este panel y esa barra.
 export function CombatPanel({
   playerCondicion,
+  playerActiveEffects,
   playerAttributes,
   energia,
   npcs,
@@ -301,6 +360,7 @@ export function CombatPanel({
   onSelectItem,
   busy,
   ended,
+  playerJustDied,
   pendingDecisions,
   awaitingDefense,
   lastInitiativeRoll,
@@ -380,7 +440,7 @@ export function CombatPanel({
         </div>
         <div className="flex items-center gap-2">
           {!ended && !awaitingDefense && (
-            <button
+            <button type="button"
               onClick={onHuir}
               disabled={busy || pendingDecisions}
               // Contraste real (petición explícita, 2026-08-18: "hay que mejorar para que sea más
@@ -393,7 +453,7 @@ export function CombatPanel({
             </button>
           )}
           {onCollapse && (
-            <button
+            <button type="button"
               onClick={onCollapse}
               title='Colapsar "Combate"'
               // Mismo chip con relleno de color que LogPanel.tsx (petición explícita, 2026-08-18:
@@ -414,10 +474,19 @@ export function CombatPanel({
           tenemos en la parte superior") — quedaba duplicado con Personaje > Estadísticas, esta
           fila se queda solo con el estado de los rivales. */}
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 border-b border-iron-800 px-4 pb-2.5">
+        {/* Fase 2 de efectos de clase (2026-08-27) — fila propia del jugador, mismo criterio de
+            "siempre visible" que el resto de esta barra; solo aparece si tiene algún efecto activo. */}
+        {playerActiveEffects.length > 0 && (
+          <div className="flex items-center gap-1.5">
+            <span className="max-w-24 truncate text-2xs text-wood-400">Tú</span>
+            <ActiveEffectChips effects={playerActiveEffects} />
+          </div>
+        )}
         {npcs.map((npc) => (
-          <div key={npc.slug} className="flex items-center gap-1.5">
-            <span className="max-w-24 truncate text-2xs text-wood-400">{npc.name}</span>
+          <div key={combatKeyFor(npc)} className="flex items-center gap-1.5">
+            <span className="max-w-24 truncate text-2xs text-wood-400">{combatDisplayNameFor(npc)}</span>
             <HealthBar condicionFisica={npc.condicion} />
+            <ActiveEffectChips effects={npc.activeEffects} />
           </div>
         ))}
       </div>
@@ -433,57 +502,72 @@ export function CombatPanel({
           // ÚLTIMO enemigo caía, sin mirar si TÚ también habías caído en el proceso — un doble
           // K.O. se veía idéntico a una victoria limpia. Ahora distingue el caso: convaleciente
           // de verdad no es "victoria", aunque el enemigo también haya caído.
-          <div
-            className={`flex flex-col items-center gap-4 rounded-xl border p-5 text-center ${
-              playerCondicion === 'CONVALECIENTE'
-                ? 'border-danger-500/40 bg-gradient-to-b from-danger-500/10 via-wood-950/20 to-transparent'
-                : 'border-accent-500/40 bg-gradient-to-b from-accent-500/10 via-wood-950/20 to-transparent'
-            }`}
-          >
-            <span className="animate-gem-breathe text-5xl" aria-hidden="true">
-              {playerCondicion === 'CONVALECIENTE' ? '⚠️' : '🏆'}
-            </span>
-            <div>
-              <h3 className={`font-serif text-2xl tracking-wide ${playerCondicion === 'CONVALECIENTE' ? 'text-danger-300' : 'text-accent-300'}`}>
-                {playerCondicion === 'CONVALECIENTE' ? 'Combate terminado' : '¡Victoria!'}
-              </h3>
-              <p className="mt-1 text-2xs uppercase tracking-[0.2em] text-wood-500">
-                {playerCondicion === 'CONVALECIENTE' ? 'Sales convaleciente de la pelea' : 'Combate terminado'}
-              </p>
-            </div>
-            <ul className="w-full space-y-1.5">
-              {npcs.map((npc) => (
-                <li
-                  key={npc.slug}
-                  className="flex items-center justify-between gap-2 rounded-lg border border-iron-800 bg-wood-950/50 px-3 py-2 text-xs text-wood-200"
-                >
-                  <span className="truncate font-medium">{npc.name}</span>
-                  <span className="shrink-0 text-2xs text-wood-500">
-                    {CONDICION_LABEL[npc.condicion]}
-                    {npc.yaSaqueado ? ' · saqueado' : ''}
-                  </span>
-                </li>
-              ))}
-            </ul>
-            <div className="flex w-full gap-2">
-              <button
-                onClick={onContinue}
-                disabled={busy}
-                className="tactile flex-1 rounded-lg border border-iron-700 bg-wood-950/50 px-3.5 py-2 text-xs font-bold uppercase tracking-wide text-wood-300 transition-colors hover:border-accent-600/60 hover:text-accent-300 disabled:cursor-not-allowed disabled:opacity-60"
+          //
+          // Bug real jugando en vivo (2026-08-27, MÁS GRAVE: "he perdido un combate...me sale
+          // victoria"): la comprobación de arriba solo distinguía CONVALECIENTE del resto — un
+          // jugador MUERTO (combat_flow.ts pone `combatEnded` a true vía `justDied`, sin que el
+          // rival llegara a ni siquiera perder salud) caía por descarte en la rama de "¡Victoria!"
+          // con trofeo dorado, con el rival listado "Ileso". `playerCondicion === 'MUERTO'` NUNCA
+          // ocurre de verdad tras un respawn sobrevivible (turnResolution.ts lo resetea a ILESO en
+          // el mismo turno) — `playerJustDied` es la única señal real. Ahora se distinguen los 3
+          // casos reales.
+          (() => {
+            const derrota = playerJustDied
+            const casiDerrota = !derrota && playerCondicion === 'CONVALECIENTE'
+            return (
+              <div
+                className={`flex flex-col items-center gap-4 rounded-xl border p-5 text-center ${
+                  derrota || casiDerrota
+                    ? 'border-danger-500/40 bg-gradient-to-b from-danger-500/10 via-wood-950/20 to-transparent'
+                    : 'border-accent-500/40 bg-gradient-to-b from-accent-500/10 via-wood-950/20 to-transparent'
+                }`}
               >
-                Salir
-              </button>
-              {quedaAlgoPorSaquear && (
-                <button
-                  onClick={() => setSaquearModalOpen(true)}
-                  disabled={busy}
-                  className="tactile flex-1 rounded-lg border border-accent-600 bg-gradient-to-b from-accent-400 to-accent-600 px-3.5 py-2 text-xs font-bold uppercase tracking-wide text-wood-950 disabled:cursor-not-allowed disabled:border-iron-700 disabled:from-wood-700 disabled:to-wood-700 disabled:text-wood-500"
-                >
-                  Saquear todo
-                </button>
-              )}
-            </div>
-          </div>
+                <span className="animate-gem-breathe text-5xl" aria-hidden="true">
+                  {derrota ? '💀' : casiDerrota ? '⚠️' : '🏆'}
+                </span>
+                <div>
+                  <h3 className={`font-serif text-2xl tracking-wide ${derrota || casiDerrota ? 'text-danger-300' : 'text-accent-300'}`}>
+                    {derrota ? 'Derrota' : casiDerrota ? 'Combate terminado' : '¡Victoria!'}
+                  </h3>
+                  <p className="mt-1 text-2xs uppercase tracking-[0.2em] text-wood-500">
+                    {derrota ? 'Has caído en combate' : casiDerrota ? 'Sales convaleciente de la pelea' : 'Combate terminado'}
+                  </p>
+                </div>
+                <ul className="w-full space-y-1.5">
+                  {npcs.map((npc) => (
+                    <li
+                      key={combatKeyFor(npc)}
+                      className="flex items-center justify-between gap-2 rounded-lg border border-iron-800 bg-wood-950/50 px-3 py-2 text-xs text-wood-200"
+                    >
+                      <span className="truncate font-medium">{combatDisplayNameFor(npc)}</span>
+                      <span className="shrink-0 text-2xs text-wood-500">
+                        {CONDICION_LABEL[npc.condicion]}
+                        {npc.yaSaqueado ? ' · saqueado' : ''}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+                <div className="flex w-full gap-2">
+                  <button type="button"
+                    onClick={onContinue}
+                    disabled={busy}
+                    className="tactile flex-1 rounded-lg border border-iron-700 bg-wood-950/50 px-3.5 py-2 text-xs font-bold uppercase tracking-wide text-wood-300 transition-colors hover:border-accent-600/60 hover:text-accent-300 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    Salir
+                  </button>
+                  {quedaAlgoPorSaquear && (
+                    <button type="button"
+                      onClick={() => setSaquearModalOpen(true)}
+                      disabled={busy}
+                      className="tactile flex-1 rounded-lg border border-accent-600 bg-gradient-to-b from-accent-400 to-accent-600 px-3.5 py-2 text-xs font-bold uppercase tracking-wide text-wood-950 disabled:cursor-not-allowed disabled:border-iron-700 disabled:from-wood-700 disabled:to-wood-700 disabled:text-wood-500"
+                    >
+                      Saquear todo
+                    </button>
+                  )}
+                </div>
+              </div>
+            )
+          })()
         ) : (
           <>
         {playerCondicion === 'CONVALECIENTE' && (
@@ -544,21 +628,22 @@ export function CombatPanel({
                 const thumbnail = npcEnciclopedia
                   ? resolveImageUrl(sexoVariant?.imageUrls.thumbnail ?? sexoVariant?.imageUrls.banner ?? npcEnciclopedia.imageUrls.thumbnail ?? npcEnciclopedia.imageUrls.banner)
                   : null
+                const key = combatKeyFor(npc)
                 return (
                   <button
-                    key={npc.slug}
+                    key={key}
                     type="button"
                     disabled={busy}
-                    onClick={() => onSelectNpc(npc.slug)}
+                    onClick={() => onSelectNpc(key)}
                     className={`tactile flex items-center gap-2 rounded-lg border p-1.5 text-left text-xs transition-colors disabled:opacity-60 ${
-                      selectedNpcSlug === npc.slug ? 'border-accent-500 bg-accent-500/15' : 'border-iron-700 bg-wood-950/40 hover:border-accent-600/40'
+                      selectedNpcSlug === key ? 'border-accent-500 bg-accent-500/15' : 'border-iron-700 bg-wood-950/40 hover:border-accent-600/40'
                     }`}
                   >
                     <span className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-md bg-wood-950/60">
                       {thumbnail ? <img src={thumbnail} alt="" className="h-full w-full object-cover" /> : <span aria-hidden="true">⚔️</span>}
                     </span>
                     <span className="min-w-0">
-                      <p className="truncate font-medium text-wood-100">{npc.name}</p>
+                      <p className="truncate font-medium text-wood-100">{combatDisplayNameFor(npc)}</p>
                       <p className="text-2xs text-wood-400">{CONDICION_LABEL[npc.condicion]}</p>
                       {/* "Registrar" (solo este enemigo, instantáneo) sigue existiendo MIENTRAS el
                           combate sigue activo de verdad (p. ej. derrotaste a uno pero otros siguen
@@ -592,14 +677,14 @@ export function CombatPanel({
             en `awaitingDefense`, igual que el selector de objetivo (que sí tiene sentido ocultar:
             no eliges a quién defenderte). `selectedNpcSlug` no se resetea al entrar en defensa —
             sigue siendo el rival ya elegido, así que la ficha no necesita ningún dato nuevo. */}
-        {selectedNpcSlug && (
-          <EnemyFicha
-            slug={selectedNpcSlug}
-            analizado={npcs.find((n) => n.slug === selectedNpcSlug)?.analizado ?? false}
-            playerAttributes={playerAttributes}
-            enciclopedia={enciclopedia}
-          />
-        )}
+        {selectedNpcSlug && (() => {
+          // Identificador de combatientes duplicados (2026-08-27) — `selectedNpcSlug` puede ser un
+          // `participantId` (no un slug de catálogo real) cuando hay más de un combatiente del
+          // mismo Npc — `EnemyFicha` necesita el `slug` de catálogo de verdad para consultarlo.
+          const selected = npcs.find((n) => combatKeyFor(n) === selectedNpcSlug)
+          if (!selected) return null
+          return <EnemyFicha slug={selected.slug} analizado={selected.analizado} playerAttributes={playerAttributes} enciclopedia={enciclopedia} />
+        })()}
 
         {(combatAbilities.length > 0 || (!awaitingDefense && combatItems.length > 0)) && (
           // Bloque "usable" (petición explícita, 2026-07-28: "que destaque más... más claro que
@@ -655,10 +740,10 @@ export function CombatPanel({
                           const isSelected = selectedAbilityId === a.id
                           // Tarjeta entera clickable (2026-08-12, petición explícita: "asegúrate de
                           // que el cuadro completo sea clickable") — antes solo la fila superior
-                          // (icono+nombre) era un <button>; la descripción y el resto del cuadro no
+                          // (icono+nombre) era un <button type="button">; la descripción y el resto del cuadro no
                           // reaccionaban al clic. Ahora la tarjeta entera es el elemento interactivo
-                          // (div con role="button", no un <button> real: dentro va anidado el
-                          // botón ⓘ, y un <button> no puede contener otro <button> válido en HTML)
+                          // (div con role="button", no un <button type="button"> real: dentro va anidado el
+                          // botón ⓘ, y un <button type="button"> no puede contener otro <button type="button"> válido en HTML)
                           // — el ⓘ para su propio clic con stopPropagation para no seleccionar la
                           // habilidad de paso al pedir su ficha de Enciclopedia.
                           const disabledCard = busy || sinEnergia || pendingDecisions
@@ -767,6 +852,18 @@ export function CombatPanel({
                                         </span>
                                       </span>
                                     )}
+                                    {/* Bono de atributo por habilidad (bug real, 2026-08-30: "en las
+                                        descripciones de las habilidades no están saliendo los
+                                        efectos reales" — el dato YA viajaba del backend, `+2`/`+4`
+                                        para armas/clase, ver `attributeBonus` en `SavedActionInfo`,
+                                        pero esta tarjeta nunca lo pintaba). Mismo color/patrón que
+                                        el chip equivalente de `CombatExchangeBadge.tsx`
+                                        (`moss-400`, "explica por qué el número sale más alto"). */}
+                                    {!!a.attributeBonus && a.attributeBonus > 0 && (
+                                      <span className="inline-flex items-center gap-0.5 font-mono text-moss-400" title="Bono fijo de esta habilidad, ya sumado a tu tirada">
+                                        +{a.attributeBonus} hab
+                                      </span>
+                                    )}
                                   </span>
                                 </span>
                               </div>
@@ -803,7 +900,7 @@ export function CombatPanel({
                         }`}
                       >
                         <TooltipAnchor text={item.description} className="min-w-0 flex-1">
-                          <button
+                          <button type="button"
                             onClick={() => {
                               onSelectItem(item.id)
                               onSelectAbility(null)
@@ -843,7 +940,7 @@ export function CombatPanel({
           ya no lo afecta. Nunca se muestra en la pantalla de resumen (`ended`), igual que antes. */}
       {!ended && (
         <div className="border-t border-iron-800 px-4 py-3">
-          <button
+          <button type="button"
             onClick={onActuar}
             disabled={busy || pendingDecisions || (awaitingDefense ? !selectedAbilityId : !selectedAbilityId && !selectedItemId)}
             className="tactile w-full rounded-lg border border-accent-600 bg-gradient-to-b from-accent-400 to-accent-600 px-3.5 py-2 text-xs font-bold uppercase tracking-wide text-wood-950 disabled:cursor-not-allowed disabled:border-iron-700 disabled:from-wood-700 disabled:to-wood-700 disabled:text-wood-500"

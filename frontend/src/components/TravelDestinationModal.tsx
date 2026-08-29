@@ -51,7 +51,7 @@ export function TravelDestinationModal({ saveId, onSelect, onCancel }: TravelDes
       ) : (
         <div className="space-y-2">
           {destinations.map((d) => (
-            <button
+            <button type="button"
               key={d.locationSlug}
               onClick={() => onSelect(`Viajo hacia ${d.locationName}.`)}
               className="tactile flex w-full items-center justify-between gap-3 rounded-lg border border-wood-600/40 bg-wood-950/40 p-3 text-left text-xs text-wood-300 shadow-sm transition-colors hover:border-accent-600/60 hover:bg-accent-500/10"

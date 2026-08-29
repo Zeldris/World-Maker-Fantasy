@@ -11,6 +11,12 @@ import type { AttributeBlock } from '../../services/dice.js';
 import { normalizeSecondaryAttributes } from '../../services/secondaryAttributes.js';
 import { toFrontendLogEntry } from './shared.js';
 import { comidaPct, aguaPct } from '../../services/companionSupervivencia.js';
+import { parseActiveEffects } from '../../services/activeEffects.js';
+import { instanceNumbersByParticipantId } from '../../services/combateMultiple.js';
+import { entornoTemporalFor } from '../../services/worldClock.js';
+import { parseAgenda } from '../../services/worldAgenda.js';
+import type { PendingDynamicMode } from '../../services/dynamicMode.js';
+import { resolveActiveCombatAbilityNames } from '../../services/combatAbilities.js';
 
 export async function detailRoutes(app: FastifyInstance) {
   app.get<{ Params: { id: string } }>('/saves/:id', async (request, reply) => {
@@ -90,7 +96,7 @@ export async function detailRoutes(app: FastifyInstance) {
     // cada uno pagando su propio viaje de ida y vuelta al pool remoto de Supabase. Este endpoint es
     // el de carga de partida (se dispara en cada apertura/recarga), así que el ahorro se nota en el
     // punto de la sesión donde más se espera antes de poder hacer nada.
-    const [destinations, catalogItems, questTargetLocations, questTargetNpcs, pendingCombatNpcs] = await Promise.all([
+    const [destinations, catalogItems, questTargetLocations, questTargetNpcs, pendingCombatNpcs, activeCombatEncounter] = await Promise.all([
       // Posición (docs/12-mundo-estructurado.md § 1.6): destinos directos desde la ubicación
       // actual, con tiempos ya ajustados a la destreza del personaje — misma lista cerrada que
       // ve el clasificador, visible también para el jugador en el mapa.
@@ -101,6 +107,13 @@ export async function detailRoutes(app: FastifyInstance) {
       pendingCombatSlugs.length
         ? prisma.npc.findMany({ where: { worldId: save.worldId, slug: { in: pendingCombatSlugs } } })
         : Promise.resolve([]),
+      // `CombatEncounter` de grupo real (2026-08-27, bug real jugando: "ataqué a los dos buitres a
+      // la vez" — recargar la partida a mitad de un combate de grupo perdía el `participantId`/
+      // `instanceNumber` de cada individuo, reconstruyendo solo por `pendingCombatNpcSlugs`, que no
+      // distingue combatientes con el mismo Npc de catálogo). Mismo criterio que
+      // `turnResolution.ts` (`activeCombatEncounter`, línea ~2445): `EN_CURSO` + `jugable` (el
+      // único sub-combate que la jugadora ve en directo).
+      prisma.combatEncounter.findFirst({ where: { saveId: save.id, estado: 'EN_CURSO', jugable: true } }),
     ]);
     const catalogItemBySlug = new Map(catalogItems.map((c) => [c.slug, c]));
     const locationSlugById = new Map(questTargetLocations.map((l) => [l.id, l.slug]));
@@ -124,10 +137,78 @@ export async function detailRoutes(app: FastifyInstance) {
     // `pendingCombatNpcSlugs` vuelva a ensuciarse con un NPC ya resuelto, este filtro es la última
     // línea de defensa — si por lo que sea el campo persistido queda desactualizado (partidas ya
     // creadas antes de esos fixes, por ejemplo), ya no basta para reabrir el aviso de "Combatir".
-    const pendingCombatNpcsSinResolver = pendingCombatNpcs.filter(
-      (n) => !pendingCombatStateByKey.get(`${n.id}|${scopeFor(n.kind, save.currentLocationId)}`)?.saqueado,
+    //
+    // BUG REAL CERRADO (2026-08-29, reverificación en vivo con Playwright): para FAUNA
+    // (`ataqueNatural` truthy, mismo marcador que `carcassCandidatesFor` en recolectar.ts) este
+    // filtro dejaba un candado circular sin salida — un Kirelon Arenoso MUERTO nunca pasa por
+    // "Saquear todo" (ese botón del resumen de combate, `CombatPanel.tsx`, solo cuenta NPCs
+    // presentes en `enciclopedia.npcs`, es decir humanoides; fauna se despieza por Desollar, un
+    // mecanismo aparte). Con `saqueado` siempre `false` para fauna, `combateIniciado` nunca se
+    // vaciaba, y el aviso pasivo de Desollar (`GameView.tsx`, "Hay presas caídas sin desollar")
+    // exige `!combateIniciado` para aparecer — el jugador quedaba entre un botón "Salir" que no
+    // limpiaba nada y un botón "Combatir" que solo reabría la misma pantalla de victoria sin
+    // ninguna opción de desuello. Fauna MUERTA nunca cuenta como "pendiente de resolver" aquí — su
+    // resolución real es Desollar, que vive fuera de `combateIniciado` a propósito.
+    const pendingCombatNpcsSinResolver = pendingCombatNpcs.filter((n) => {
+      if (n.ataqueNatural) return false;
+      return !pendingCombatStateByKey.get(`${n.id}|${scopeFor(n.kind, save.currentLocationId)}`)?.saqueado;
+    });
+    // `CombatEncounter` de grupo real activo (2026-08-27) — reconstruye `combateIniciado` a partir
+    // de sus `CombatParticipant` reales (mismo shape/algoritmo que `turnResolution.ts`, incluido
+    // `participantId`/`instanceNumber`) en vez de `pendingCombatNpcSlugs`, que no distingue
+    // combatientes con el mismo Npc de catálogo — ver comentario largo de la consulta arriba.
+    const combatParticipantesReales = activeCombatEncounter
+      ? await prisma.combatParticipant.findMany({ where: { encounterId: activeCombatEncounter.id } })
+      : [];
+    const combatEnemigoNpcIds = combatParticipantesReales.filter((p) => p.tipo === 'NPC' && p.npcId).map((p) => p.npcId!);
+    const combatEnemigoNpcRows = combatEnemigoNpcIds.length
+      ? await prisma.npc.findMany({ where: { id: { in: combatEnemigoNpcIds } }, select: { id: true, slug: true, name: true, atributoResistencia: true } })
+      : [];
+    const combatNpcRowById = new Map(combatEnemigoNpcRows.map((n) => [n.id, n]));
+    const combatSoloNpcIds = combatParticipantesReales
+      .filter((p) => p.tipo === 'NPC' && p.npcId && p.condicionFisicaGrupo === null)
+      .map((p) => p.npcId!);
+    const combatSoloStates = combatSoloNpcIds.length
+      ? await prisma.npcState.findMany({ where: { saveId: save.id, npcId: { in: combatSoloNpcIds } } })
+      : [];
+    const combatSoloStateByNpcId = new Map(combatSoloStates.map((s) => [s.npcId, s]));
+    // Bug real jugando en vivo (2026-08-29, primer combate múltiple real): la tarjeta MATAR/
+    // CLEMENTE de un individuo de grupo ya resuelto (Clemente/Capturar) reaparecía tras recargar —
+    // este endpoint reconstruía `combateIniciado` desde `CombatParticipant` sin mirar si la
+    // jugadora ya decidió su suerte. `dismissedGrupo` (ver comentario de la columna en
+    // schema.prisma) es la señal real que Clemente/Capturar ahora escriben para un miembro de
+    // grupo — igual que fauna MUERTA se excluye arriba por su propio motivo, un participante ya
+    // resuelto por decisión de la jugadora nunca vuelve a la tarjeta pendiente.
+    const combatEnemigosParaDisplay = combatParticipantesReales.filter(
+      (p) => p.tipo === 'NPC' && p.npcId && combatNpcRowById.has(p.npcId) && !p.dismissedGrupo,
     );
-    const combateIniciado = pendingCombatNpcsSinResolver.length
+    const combatInstanceNumberByParticipantId = instanceNumbersByParticipantId(
+      combatEnemigosParaDisplay.map((p) => ({ participantId: p.id, npcId: p.npcId! })),
+    );
+
+    const combateIniciado = activeCombatEncounter
+      ? {
+          npcs: combatEnemigosParaDisplay.map((p) => {
+            const npcRow = combatNpcRowById.get(p.npcId!)!;
+            const state = p.condicionFisicaGrupo === null ? combatSoloStateByNpcId.get(p.npcId!) : undefined;
+            return {
+              slug: npcRow.slug,
+              name: npcRow.name,
+              condicionFisica: p.condicionFisicaGrupo ?? state?.condicionFisica ?? 'ILESO',
+              saqueado: state?.saqueado ?? false,
+              lootedItemNames: state?.lootedItemNames ?? [],
+              // "Analizar Rival" real en combate múltiple (2026-08-27) — miembro de grupo lee de su
+              // propio `CombatParticipant.analizadoGrupo` (`state` es `undefined` para él, ver
+              // comentario de la columna en schema.prisma).
+              analizado: p.condicionFisicaGrupo !== null ? (p.analizadoGrupo ?? false) : (state?.analizado ?? false),
+              capturable: npcRow.atributoResistencia !== null,
+              activeEffects: parseActiveEffects(state?.activeEffects),
+              participantId: p.id,
+              instanceNumber: combatInstanceNumberByParticipantId.get(p.id) ?? null,
+            };
+          }),
+        }
+      : pendingCombatNpcsSinResolver.length
       ? {
           npcs: pendingCombatNpcsSinResolver.map((n) => {
             const state = pendingCombatStateByKey.get(`${n.id}|${scopeFor(n.kind, save.currentLocationId)}`);
@@ -148,6 +229,10 @@ export async function detailRoutes(app: FastifyInstance) {
               // si el NPC no es capturable") — gatea el botón "Capturar" de la tarjeta Matar/
               // Capturar/Clemente también tras recargar la partida a mitad de combate.
               capturable: n.atributoResistencia !== null,
+              // Fase 2 de efectos de clase (2026-08-27, indicador de combate) — mismo criterio que
+              // el resto de campos de aquí: recargar la partida a mitad de combate no debe perder
+              // un AUMENTO/DEBILIDAD ya activo.
+              activeEffects: parseActiveEffects(state?.activeEffects),
             };
           }),
         }
@@ -172,6 +257,16 @@ export async function detailRoutes(app: FastifyInstance) {
       secondaryAttributes: effectiveSecondaryAttributes(normalizeSecondaryAttributes(save.secondaryAttributes), equippedItems),
       portraitInitial: save.portraitInitial,
       fictionalDateLabel: save.worldState?.fictionalDateLabel ?? 'Día 1, mañana',
+      // Estación/clima (2026-08-27, auditoría backend↔frontend: "ni siquiera llegan a la
+      // narración, mucho menos a un panel", pese a bloquear recolección/crafteo de verdad) —
+      // recalculado siempre fresco a partir de `fictionalMinutes`, mismo criterio que
+      // `fictionalDateLabel`, nunca guardado aparte.
+      entorno: entornoTemporalFor(save.worldState?.fictionalMinutes ?? 480, save.currentLocation?.region ?? null, save.raza),
+      // WorldState.agenda (2026-08-27, auditoría backend↔frontend + diseño/UX § 2.3: "solo llega
+      // como prosa ocasional inyectada a sessionFacts, nunca como dato estructurado") — hitos de
+      // mundo reales, expuestos tal cual (id/title/stage/maxStage), sin filtrar ninguno todavía
+      // (hoy solo hay uno, el conflicto Serhu-Concordia vs Helsig/Goshg).
+      worldAgenda: parseAgenda(save.worldState?.agenda),
       // Reputación de facción (roadmap 2026-07-19) — expuesto ya aunque todavía no haya panel
       // dedicado en el frontend, para poder inspeccionarlo mientras se decide esa UI.
       factionsStatus: (save.worldState?.factionsStatus as Record<string, number> | null) ?? {},
@@ -222,6 +317,12 @@ export async function detailRoutes(app: FastifyInstance) {
           // qué objetos están ya puestos en QUÉ compañero/súbdito concreto.
           companionId: i.companionId,
           subjectId: i.subjectId,
+          // Rediseño de captura (2026-08-28) — no null = esta fila ES una captura en tránsito
+          // (fauna/NPC atado, sin depositar en Jaula/Celda todavía), ver
+          // docs/rpgtarkor/captura-rediseno-2026-08-28.md. El frontend usa esto para mostrar el
+          // botón "Depositar"/"Soltar" en vez de las acciones normales de un objeto.
+          capturaNpcId: i.capturaNpcId,
+          capturaExpiraAtMinutes: i.capturaExpiraAtMinutes,
         };
       }),
       // Felicidad/Comida/Agua (Grupo 3 § Compañeros y supervivencia, 2026-08-25) — `felicidad:
@@ -241,6 +342,13 @@ export async function detailRoutes(app: FastifyInstance) {
         esSlotDomador: c.esSlotDomador,
         rolReino: c.rolReino,
         plantillaEquipoId: c.plantillaEquipoId,
+        // B.14 (checklist frontend 2026-08-27) — el campo YA existe en Companion desde el rediseño
+        // de combate múltiple (2026-08-25, `combatParticipants`), participa de verdad en combate,
+        // pero nunca se exponía aquí: el panel de Compañeros no tenía forma de saber si uno estaba
+        // GRAVE/CONVALECIENTE fuera de la pantalla de combate. `null` para compañeros sin capa
+        // mecánica (`attributes: null`, de quest/narración libre) — mismo criterio que
+        // `comida`/`agua`, su `condicionFisica` de catálogo (ILESO por defecto) no significa nada.
+        condicionFisica: c.attributes !== null ? c.condicionFisica : null,
       })),
       level: save.level,
       xp: save.xp,
@@ -326,7 +434,21 @@ export async function detailRoutes(app: FastifyInstance) {
         dualWield: a.dualWield,
         // Rediseño de combate (2026-08-09) — ver `enum AbilityRol` (schema.prisma).
         rol: a.rol,
+        // Bug real (2026-08-28, "jugando no se ve el +2/+4 de las habilidades de arma/clase"):
+        // `attributeBonus` (2026-08-24, clases.md § "Habilidad de daño vs ataque básico") se
+        // aplicaba en combate desde siempre pero nunca viajaba hasta el frontend — ni en la ficha
+        // de la habilidad ni en el desglose de la tirada (ver combatExchange.ts § ExchangeSideResult).
+        attributeBonus: a.attributeBonus,
       })),
+      // "Cinturón de combate" (2026-08-28, pendiente 2026-08-27 punto 3) — lista YA resuelta
+      // (saneada + con el "todas activas" por defecto aplicado si nunca se configuró), lista para
+      // que CombatPanel.tsx filtre directo, sin reimplementar la lógica de reconciliación en el
+      // frontend. `resolveActiveCombatAbilityNames`, combatAbilities.ts.
+      activeCombatAbilityNames: resolveActiveCombatAbilityNames(
+        save.activeCombatAbilityNames,
+        save.savedActions.filter((a) => a.category === 'combate').map((a) => ({ name: a.name, isGeneric: a.isGeneric })),
+        save.activeCombatAbilityNamesConfigured,
+      ),
       habilidadSlots: maxCombatAbilitiesFor(save.level),
       professionProgress: save.professionProgress.map((p) => ({ professionId: p.professionId, nivel: p.nivel, xp: p.xp })),
       kingdomStats: save.kingdomStats
@@ -339,6 +461,13 @@ export async function detailRoutes(app: FastifyInstance) {
             soldados: save.kingdomStats.soldados,
             trabajadores: save.kingdomStats.trabajadores,
             visitantes: save.kingdomStats.visitantes,
+            // B.19 (checklist frontend 2026-08-27) — el hallazgo original suponía que un territorio
+            // DISPUTADO/PERDIDO se explicaba por el conflicto de facciones (WorldState.agenda), pero
+            // son dos sistemas de causalidad DISTINTA: `Territory.control` cambia por felicidad
+            // sostenida del propio reino (turnResolution.ts, DIAS_PARA_REBELION/CONSOLIDAR), nunca
+            // por el conflicto del mundo. Se expone la causa REAL en vez de inventar un enlace falso.
+            diasFelicidadBaja: save.kingdomStats.diasFelicidadBaja,
+            diasFelicidadAlta: save.kingdomStats.diasFelicidadAlta,
           }
         : null,
       currentLocation: save.currentLocation
@@ -352,6 +481,10 @@ export async function detailRoutes(app: FastifyInstance) {
         : null,
       destinations: destinations.map((d) => ({ locationId: d.locationId, slug: d.slug, name: d.name, minutos: d.minutos })),
       condicionFisica: save.condicionFisica,
+      // Fase 2 de efectos de clase (2026-08-27, indicador de combate en CombatPanel.tsx) — mismo
+      // criterio que el resto de campos de este endpoint: recargar la partida a mitad de un
+      // AUMENTO/DEBILIDAD activo no debe perderlo hasta el próximo golpe.
+      activeEffects: parseActiveEffects(save.activeEffects),
       salud: save.salud,
       // Sistema de fatiga (2026-07-29) — `energia` es el valor real persistido; `energiaMax` se
       // deriva de Constitución EFECTIVA (con equipo, mismo criterio que narrateAndPersistTurn),
@@ -382,6 +515,24 @@ export async function detailRoutes(app: FastifyInstance) {
       }),
       chapters: save.sessionSummaries.map((c) => ({ chapterNumber: c.chapterNumber, summary: c.summary })),
       combateIniciado,
+      // "Modo dinámico" (checklist frontend 2026-08-27, A.3) — mismo criterio que `combateIniciado`
+      // arriba: reconstruido tras CUALQUIER resincronización (F5, reconexión), no solo devuelto en
+      // la respuesta directa del turno que lo abrió. Sin esto, recargar con una conversación en
+      // curso la hacía desaparecer del frontend aunque siguiera viva en `Save.pendingDynamicMode`.
+      pendingDynamicMode: save.pendingDynamicMode as PendingDynamicMode | null,
+      // Oferta SIN aceptar todavía (bug real 2026-08-28) — mismo criterio, un escalón antes: el
+      // botón "Interactuar"/"Ignorar" en sí, reconstruido tras recargar en vez de vivir solo en el
+      // `characterLog` efímero de React.
+      pendingDynamicModeOffer: save.pendingDynamicModeOffer as { tipo: 'NPC' | 'FAUNA'; targetSlug: string; targetName: string } | null,
+      // Ataque enemigo pendiente de defensa en combate 1v1 clásico (bug real 2026-08-28/29,
+      // "recargar mientras el enemigo tiene la iniciativa rompe el turno") — mismo criterio que
+      // `combateIniciado` arriba: `Save.pendingNpcAttack` ya persistía bien, pero nunca viajaba en
+      // esta respuesta, así que el frontend no podía distinguir "toca defender" de "toca atacar"
+      // tras F5. Mismo cálculo exacto que `esperandoDefensaJugador` en turnResolution.ts (línea
+      // ~6137) — booleano puro, el contenido real del ataque (`attribute`/`abilityName`/`effects`)
+      // ya lo consume el backend directamente de `Save.pendingNpcAttack` en el siguiente turno, no
+      // hace falta exponerlo al frontend.
+      esperandoDefensaJugador: !!save.pendingNpcAttack,
     };
   });
 }

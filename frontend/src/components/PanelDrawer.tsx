@@ -19,7 +19,7 @@ export function PanelDrawer({ title, subtitle, onClose, children, accent = 'acce
   const closeHoverClass = accent === 'accent2' ? 'hover:border-accent2-600/60 hover:text-accent2-300' : 'hover:border-accent-600/60 hover:text-accent-300'
   return (
     <div className="absolute inset-0 z-20 flex flex-col justify-end">
-      <button
+      <button type="button"
         aria-label="Cerrar"
         onClick={onClose}
         // Bug real (2026-07-22, "el cuadro negro se sigue viendo"): `backdrop-blur` es un filtro
@@ -39,7 +39,7 @@ export function PanelDrawer({ title, subtitle, onClose, children, accent = 'acce
             <h2 className="font-serif text-lg tracking-wide text-wood-100">{title}</h2>
             {subtitle && <p className="text-xs text-wood-500">{subtitle}</p>}
           </div>
-          <button
+          <button type="button"
             onClick={onClose}
             className={`rounded-lg border border-iron-700 bg-wood-950/50 px-2.5 py-1 text-xs text-wood-400 transition-colors ${closeHoverClass}`}
           >

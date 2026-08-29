@@ -1,4 +1,4 @@
-import type { CondicionFisica } from '../types'
+import type { ActiveEffect, CondicionFisica } from '../types'
 
 export interface CombatNpcDisplay {
   slug: string
@@ -20,6 +20,18 @@ export interface CombatNpcDisplay {
   // combatEnded), pero su `condicion` NO cambia — sigue CONVALECIENTE de verdad, nunca se
   // reescribe aquí, a diferencia de "Matar" (que sí pasa `condicion` a MUERTO).
   dismissed?: boolean
+  /// Fase 2 de efectos de clase (2026-08-27, indicador de combate en CombatPanel.tsx) — AUMENTO/
+  /// DEBILIDAD activos sobre este NPC ahora mismo.
+  activeEffects: ActiveEffect[]
+  /// Identificador de combatientes duplicados (2026-08-27) — ver comentario completo en
+  /// `NpcInSceneInfo`, types.ts. `participantId` sustituye a `slug` como key/identificador real en
+  /// CombatPanel.tsx; `instanceNumber` (1/2/3...) solo se muestra cuando hace falta desambiguar.
+  participantId?: string
+  instanceNumber?: number | null
+  /// Tarjeta persistente de Convaleciente (fix 2026-08-28, ver LogPanel.tsx) — mismo dato estático
+  /// del catálogo (`atributoResistencia !== null`) que ya usaba `entry.convalecienteOffers` para
+  /// decidir si ofrecer el botón "Capturar", ahora disponible aquí para no depender de la LogEntry.
+  capturable?: boolean
 }
 
 interface CombatComposerProps {
@@ -60,7 +72,7 @@ export function CombatComposer({ freeText, onFreeTextChange, onSubmit, busy, end
           disabled={busy || pendingDecisions}
           className="flex-1 rounded-lg border border-iron-700 bg-wood-950/60 px-3 py-2 text-sm text-wood-100 outline-none disabled:opacity-50"
         />
-        <button
+        <button type="button"
           onClick={onSubmit}
           disabled={busy || pendingDecisions || !freeText.trim()}
           className="tactile shrink-0 rounded-lg border border-accent-600 bg-gradient-to-b from-accent-400 to-accent-600 px-3.5 py-2 text-xs font-bold uppercase tracking-wide text-wood-950 disabled:cursor-not-allowed disabled:border-iron-700 disabled:from-wood-700 disabled:to-wood-700 disabled:text-wood-500"

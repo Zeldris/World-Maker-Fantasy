@@ -66,7 +66,7 @@ export function TameoModal({ saveId, pendiente: initial, onConfirmado, onSoltado
       cancelDisabled={busy}
       footer={
         umbralCompletado && (
-          <button onClick={handleConfirmar} disabled={busy} className={confirmButtonClasses('accent')}>
+          <button type="button" onClick={handleConfirmar} disabled={busy} className={confirmButtonClasses('accent')}>
             {busy ? 'Confirmando...' : 'Confirmar compañero'}
           </button>
         )
@@ -107,7 +107,7 @@ export function TameoModal({ saveId, pendiente: initial, onConfirmado, onSoltado
           <p className="mb-1.5 text-2xs text-wood-500">{verbo} eligiendo un atributo:</p>
           <div className="flex flex-wrap gap-1.5">
             {ATTRIBUTES.map((attr) => (
-              <button
+              <button type="button"
                 key={attr}
                 onClick={() => handleIntentar(attr)}
                 disabled={busy}
@@ -120,7 +120,7 @@ export function TameoModal({ saveId, pendiente: initial, onConfirmado, onSoltado
         </div>
       )}
 
-      <button
+      <button type="button"
         onClick={handleSoltar}
         disabled={busy}
         className="tactile w-full rounded-lg border border-danger-700/60 px-3 py-1.5 text-2xs font-medium uppercase tracking-wide text-danger-300 transition-colors hover:bg-danger-600/15 disabled:cursor-not-allowed disabled:opacity-50"

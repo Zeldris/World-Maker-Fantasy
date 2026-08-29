@@ -127,7 +127,7 @@ export function MapZoomModal({
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h2 className="font-serif text-lg text-wood-100">Mapa completo</h2>
           <div className="flex flex-wrap items-center gap-1.5">
-            <button
+            <button type="button"
               onClick={() => setScale((s) => clampScale(s - ZOOM_STEP))}
               className="tactile rounded-lg border border-iron-700 px-2.5 py-1 text-sm text-wood-300 transition-colors hover:border-accent-600/60 hover:text-accent-300"
               aria-label="Alejar"
@@ -135,20 +135,20 @@ export function MapZoomModal({
               −
             </button>
             <span className="w-12 text-center text-xs text-wood-400">{Math.round((scale / MIN_SCALE) * 100)}%</span>
-            <button
+            <button type="button"
               onClick={() => setScale((s) => clampScale(s + ZOOM_STEP))}
               className="tactile rounded-lg border border-iron-700 px-2.5 py-1 text-sm text-wood-300 transition-colors hover:border-accent-600/60 hover:text-accent-300"
               aria-label="Acercar"
             >
               +
             </button>
-            <button
+            <button type="button"
               onClick={reset}
               className="tactile rounded-lg border border-iron-700 px-2.5 py-1 text-xs text-wood-300 transition-colors hover:border-accent-600/60 hover:text-accent-300"
             >
               Restablecer
             </button>
-            <button
+            <button type="button"
               onClick={onClose}
               className="tactile rounded-lg border border-iron-700 bg-wood-950/50 px-2.5 py-1 text-xs text-wood-300 transition-colors hover:border-accent-600/60 hover:text-accent-300"
             >

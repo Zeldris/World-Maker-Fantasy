@@ -174,7 +174,17 @@ export function nextCondicionFisica(
     const ceilingIdx = CONDICION_ORDER.indexOf(healCeiling);
     return CONDICION_ORDER[Math.max(proposedIdx, ceilingIdx)];
   }
-  if (!enCombate) return current; // fuera de combate, el modelo nunca la empeora
+  // Bug real jugando en vivo (2026-08-28, "descansar en refugio nunca cura desde CONVALECIENTE"):
+  // fuera de combate, el modelo nunca la empeora — pero `return current` a secas también
+  // descartaba el techo de curación real (`healCeiling`) cuando el modelo proponía un empeoramiento
+  // narrativo (p. ej. un encuentro real merodeando durante el descanso hace que narre "sigue en
+  // peligro" con una condición peor). Mismo patrón que los dos bugs ya documentados arriba en esta
+  // función — el descanso/objeto médico ya se consumió de verdad, así que el techo tiene que ganar
+  // igual, sin depender de qué proponga el modelo.
+  if (!enCombate) {
+    const ceilingIdx = CONDICION_ORDER.indexOf(healCeiling);
+    return CONDICION_ORDER[Math.min(currentIdx, ceilingIdx)];
+  }
   const maxIdx = Math.min(currentIdx + 1, CONDICION_ORDER.length - 1);
   return CONDICION_ORDER[Math.min(proposedIdx, maxIdx)];
 }

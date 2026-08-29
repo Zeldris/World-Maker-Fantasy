@@ -31,15 +31,31 @@ describe('classAbilityUnlocksFor', () => {
   it('a niveles sin ningún desbloqueo de tronco (2, 3, 5, 7...) no hay nada nuevo', () => {
     expect(classAbilityUnlocksFor('Gorhorn', 2)).toEqual([]);
   });
+
+  // Cierre del hueco "Save.clase sin ningún flujo de asignación" (2026-08-29): `clase` explícito
+  // (tercer parámetro, `Save.clase` real vía `PATCH /saves/:id/clase`) tiene prioridad sobre el
+  // fallback por `characterName` — un personaje CUALQUIERA con clase fijada ya aprende su tronco,
+  // sin depender de ser 'Gorhorn'.
+  it('con clase explícita, cualquier characterName aprende el tronco de esa clase (no solo Gorhorn)', () => {
+    expect(classAbilityUnlocksFor('Sael Vhorn', 1, 'GUERRERO').length).toBeGreaterThan(0);
+    expect(classAbilityUnlocksFor('Sael Vhorn', 1, null)).toEqual([]);
+  });
+
+  it('clase explícita distinta de CAZADOR anula el fallback de Gorhorn', () => {
+    const conGuerrero = classAbilityUnlocksFor('Gorhorn', 1, 'GUERRERO');
+    const sinClaseExplicita = classAbilityUnlocksFor('Gorhorn', 1);
+    expect(conGuerrero).not.toEqual(sinClaseExplicita);
+    expect(conGuerrero.length).toBeGreaterThan(0);
+  });
 });
 
 describe('allClassAbilityUnlocks', () => {
-  it('devuelve el roster completo (139 huecos: 8 clases con tabla real, MAGO sin tocar)', () => {
+  it('devuelve el roster completo (147 huecos: 8 clases con tabla real, MAGO sin tocar)', () => {
     const all = allClassAbilityUnlocks();
-    expect(all).toHaveLength(139);
-    expect(all.filter((u) => u.clase === 'GUERRERO')).toHaveLength(11);
-    expect(all.filter((u) => u.clase === 'CAZADOR')).toHaveLength(15);
-    expect(all.filter((u) => u.clase === 'CHAMAN')).toHaveLength(10);
+    expect(all).toHaveLength(147);
+    expect(all.filter((u) => u.clase === 'GUERRERO')).toHaveLength(13);
+    expect(all.filter((u) => u.clase === 'CAZADOR')).toHaveLength(19);
+    expect(all.filter((u) => u.clase === 'CHAMAN')).toHaveLength(12);
     expect(all.filter((u) => u.clase === 'ARQUERO')).toHaveLength(6);
     expect(all.filter((u) => u.clase === 'CABALLERO')).toHaveLength(20);
     expect(all.filter((u) => u.clase === 'SEGADOR')).toHaveLength(19);

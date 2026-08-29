@@ -63,42 +63,42 @@ model User {
 
 /// Plantilla de mundo del catálogo (distinta de la instancia jugada — ver WorldState).
 model World {
-  id         String    @id @default(cuid())
-  slug       String    @unique
-  name       String
-  tagline    String
-  synopsis   String
-  tone       String
-  lethality  Lethality
+  id        String    @id @default(cuid())
+  slug      String    @unique
+  name      String
+  tagline   String
+  synopsis  String
+  tone      String
+  lethality Lethality
   /// Tema de color por mundo (accent300-600, accent2 300-600) — mismo shape que WorldTheme en el frontend.
-  theme      Json
-  createdAt  DateTime  @default(now())
+  theme     Json
+  createdAt DateTime  @default(now())
 
-  saves                  Save[]
-  loreChunks             LoreChunk[]
-  locations              Location[]
-  npcs                   Npc[]
-  itemCatalog            ItemCatalog[]
-  harvestYields          HarvestYield[]
-  imagePrompts           ImagePrompt[]
-  worldPopulations       WorldPopulation[]
-  factionCatalog         Faction[]
-  historiaEntries        HistoriaEntry[]
+  saves            Save[]
+  loreChunks       LoreChunk[]
+  locations        Location[]
+  npcs             Npc[]
+  itemCatalog      ItemCatalog[]
+  harvestYields    HarvestYield[]
+  imagePrompts     ImagePrompt[]
+  worldPopulations WorldPopulation[]
+  factionCatalog   Faction[]
+  historiaEntries  HistoriaEntry[]
 }
 
 /// Una partida: mundo elegido + personaje (copia editable, no referencia viva a la plantilla) + su WorldState.
 model Save {
-  id                       String    @id @default(cuid())
-  userId                   String
-  user                     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  worldId                  String
-  world                    World     @relation(fields: [worldId], references: [id])
+  id                      String  @id @default(cuid())
+  userId                  String
+  user                    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  worldId                 String
+  world                   World   @relation(fields: [worldId], references: [id])
   /// Id suelto (String, sin FK real) del personaje pregenerado que el FRONTEND ofreció al crear —
   /// referencia su propia lista hardcodeada (`frontend/src/data/mock.ts`), nunca la tabla
   /// `PregeneratedCharacter` que existió en este schema (quitada en la auditoría de elementos
   /// desconectados, 2026-08-23: cero filas sembradas, cero consumidores). Se escribe al crear la
   /// partida, nunca se vuelve a leer.
-  pregeneratedCharacterId  String?
+  pregeneratedCharacterId String?
 
   characterName       String
   characterArchetype  String
@@ -111,7 +111,7 @@ model Save {
   /// las usaba. Nunca se pasan a rollCheck (dice.ts) — solo alimentan comprobaciones de UMBRAL
   /// (requisitos de objetos/construcciones), nunca una tirada nueva. Default "{}" para no romper
   /// partidas ya creadas antes de esta migración; el código trata las claves ausentes como 0.
-  secondaryAttributes Json      @default("{}")
+  secondaryAttributes Json   @default("{}")
   portraitInitial     String
 
   /// Niveles/XP (docs/10-niveles-xp-reino.md, reversión 2026-07-18 de la decisión de mecánicas 4).
@@ -127,12 +127,13 @@ model Save {
   /// ahora el personaje jugable no tenía raza estructurada en ningún sitio — su habilidad racial
   /// nunca se le mostraba, solo se calculaba para NPCs. Null = personaje sin raza asignada
   /// todavía (partidas previas a este campo).
-  raza String?
+  raza            String?
   /// Clase de combate (2026-08-24, Grupo 3 § Sistema de clases, ver docs/rpgtarkor/clases.md) —
   /// mismo `Clase` que `Npc.clase`, ahora un enum real en vez de string libre. Null = sin clase
-  /// asignada todavía. No hay ningún flujo in-game para elegirla — se sigue leyendo por
-  /// `characterName` en `classAbilityUnlocksFor` (classAbilities.ts) hasta que exista.
-  clase Clase?
+  /// asignada todavía. Flujo in-game para fijarla, UNA sola vez: `PATCH /saves/:id/clase`
+  /// (progression.ts, 2026-08-29) — `classAbilityUnlocksFor` (classAbilities.ts) la lee como
+  /// fuente real, con fallback a `characterName` solo para partidas creadas antes de este fix.
+  clase           Clase?
   /// Especialización dentro de `clase`, elegida a nivel 10 (ver clases.md § Cómo funciona el
   /// sistema). Null = tronco común todavía, o clase sin especialización elegida. Sin flujo
   /// in-game para elegirla, igual que `clase` — de partida.
@@ -146,7 +147,7 @@ model Save {
   /// siendo el origen hasta que worldTick resuelve el CharacterTransit — "dónde estoy"
   /// nunca es ambiguo, y "hacia dónde voy" vive en el tránsito.
   currentLocationId String?
-  currentLocation   Location? @relation("CurrentLocation", fields: [currentLocationId], references: [id])
+  currentLocation   Location?       @relation("CurrentLocation", fields: [currentLocationId], references: [id])
   locationVisits    LocationVisit[]
 
   /// Condición física (docs/14-combate-y-muerte.md § 1, decisión de mecánicas 3 nunca
@@ -163,6 +164,12 @@ model Save {
   /// el máximo real escala con Constitución, no es una constante persistida. Se inicializa al
   /// máximo real en POST /saves (mismo criterio que condicionFisica arranca en ILESO).
   energia         Int             @default(100)
+  /// Fase 2 de efectos de clase (2026-08-26, docs/21-roadmap.md) — buffs/debuffs con duración real
+  /// (`AUMENTO`/`DEBILIDAD`) activos sobre la jugadora ahora mismo. `ActiveEffect[]`
+  /// (`services/activeEffects.ts`): `{ attribute, magnitude (con signo), turnsRemaining,
+  /// sourceAbility }`. Mismo criterio de reset que `NpcState.abilityUsesThisEncounter`: se vacía
+  /// en cuanto `condicionFisica` vuelve a ILESO (descanso/curación real entre combates).
+  activeEffects   Json            @default("[]")
 
   /// Último `Location` de kind refugio/asentamiento donde se descansó con éxito — punto de
   /// reaparición al morir (§ 4.1). Null = todavía no ha descansado en un sitio válido; el
@@ -173,13 +180,13 @@ model Save {
 
   /// Nº de veces que ha muerto esta partida — determina cuándo se dispara el fin de partida
   /// según `dificultad` (§ 4.2). No se resetea salvo por `/saves/:id/restart`.
-  deathCount Int @default(0)
+  deathCount Int        @default(0)
   /// Elegida al crear la partida (§ 4.2): determina el límite de muertes antes del fin de
   /// partida real. NOVATO = sin límite; MEDIO = 4; AVANZADO = 2.
   dificultad Dificultad @default(MEDIO)
   /// No nulo = partida cerrada por muerte definitiva (§ 4.4): bloquea `/turn/classify` (409,
   /// mismo patrón que CharacterTransit) hasta que se reinicia. No es lo mismo que borrar.
-  endedAt DateTime?
+  endedAt    DateTime?
   /// No nulo = la jugadora salió de la vista de juego con un tránsito en curso (roadmap
   /// 2026-07-20, petición explícita: "quiero que la partida se pause si salgo de ella"). Mientras
   /// esté puesto, `resolveDueTransits` (worldTick.ts) se salta esta partida aunque su
@@ -187,7 +194,7 @@ model Save {
   /// `busyUntil` se alarga exactamente lo que ha durado la pausa, así que ni se pierde tiempo de
   /// espera ni se resuelve de golpe por haber estado fuera. Nulo = partida activa (comportamiento
   /// de siempre).
-  pausedAt DateTime?
+  pausedAt   DateTime?
 
   /// Slugs de Npc en combate detectado por el último turno resuelto (bug real, 2026-07-23,
   /// "revisar partida" — este campo transitorio SOLO viajaba en la respuesta directa de
@@ -202,6 +209,37 @@ model Save {
   /// Quest.rewardRecipeKeys) — solo importa para recetas marcadas `requiresUnlock: true`
   /// (crafting.ts); el resto del catálogo sigue disponible para cualquiera sin este campo.
   unlockedRecipeKeys String[] @default([])
+
+  /// "Cinturón de combate" (2026-08-28, pendiente 2026-08-27 punto 3, "selección de habilidades de
+  /// clase activas en combate") — hasta ACTIVE_COMBAT_ABILITIES_MAX (6, ver combatAbilities.ts)
+  /// habilidades de combate NO genéricas, en el orden que el jugador elija (drag-and-drop en el
+  /// frontend). Solo estas + las 3 genéricas (Ataque Básico/Defenderse/Esquivar, siempre
+  /// disponibles, nunca ocupan slot) aparecen como opción real en CombatPanel durante un
+  /// enfrentamiento — el resto de habilidades aprendidas sigue existiendo (consultable en
+  /// Habilidades → Combate), simplemente no se ofrece para pulsar en plena pelea.
+  ///
+  /// Se identifica por NOMBRE de `SavedAction`, no por id — las raciales/de arma
+  /// (`SavedAction.isDynamic`) se BORRAN y RECREAN cada vez que cambia el equipo/nivel (id nuevo
+  /// cada vez), así que un id guardado aquí quedaría huérfano al instante. Si el nombre cambia
+  /// (p.ej. cambiar de espada a hacha), ese hueco del cinturón queda vacío hasta que el jugador
+  /// elija de nuevo — decisión explícita: más predecible que intentar adivinar qué sustituye a qué.
+  activeCombatAbilityNames String[] @default([])
+  /// false = el jugador nunca ha guardado el cinturón todavía — `resolveActiveCombatAbilityNames`
+  /// (combatAbilities.ts) cae al comportamiento por defecto (todas activas mientras quepan) en vez
+  /// de mostrar un cinturón vacío sin motivo aparente. true en cuanto el jugador guarda una vez
+  /// (aunque sea un cinturón vacío a propósito) — a partir de ahí se respeta tal cual, para siempre.
+  activeCombatAbilityNamesConfigured Boolean @default(false)
+
+  /// Bug real (revisión de partida en 5 fases, 2026-08-27, cerrado 2026-08-28) — slugs de Npc que
+  /// se despidieron "para siempre" con guion (hoy solo Gistera Koh, al aceptar su misión) —
+  /// `detectNpcsInScene` (npcScene.ts) los excluye SIEMPRE de `npcsInScene`, aunque un sessionFact
+  /// que los menciona ("...no volverá a aparecer") contenga su nombre literal — sin esto, el
+  /// matcher determinista los reintroducía como candidatos legítimos, camino distinto (y sin
+  /// cubrir) de los guards `hasFalseGisteraNamedReturn`/`hasGisteraReencuentroSinNombrar`
+  /// (narrador.ts), que solo comprueban la narración YA generada, no el propio `npcsInScene` antes
+  /// de narrar. Generaliza el parche hardcodeado por slug que ya existía
+  /// (`turnResolution.ts` § `gisteraSeHaMarchado`) para cualquier NPC futuro con guion similar.
+  npcsRetiredForever String[] @default([])
 
   /// Rediseño del turno de combate (2026-07-28, petición explícita: "se tiran dados y se ve
   /// quien ataca primero... el otro entra en un turno de defensa"). Cuando la iniciativa de un
@@ -223,6 +261,44 @@ model Save {
   /// necesidad de borrarla a mano (mismo criterio laxo que otros campos "pending" de este modelo).
   harvestRollCache Json?
 
+  /// "Modo dinámico" (2026-08-27, Pieza 4 de "Dinamismo del mundo") — mini-flujo acotado ofrecido
+  /// AL FINAL de un turno normal (nunca lo interrumpe), donde el JUEGO toma la iniciativa (un NPC
+  /// quiere hablar, hay fauna cerca, etc.) y el jugador responde vuelta a vuelta. El motor decide
+  /// determinista CUÁNDO ofrecerlo y QUÉ candidato es (`dynamicMode.ts`, a partir de `ZonePoint` de
+  /// la Pieza 3) — el LLM solo narra cada vuelta ya elegida, nunca decide libremente que "toca
+  /// algo", mismo principio que el resto de "Mundo determinista". `{ tipo, targetSlug, targetName,
+  /// vuelta, iniciadoAtMinutes }` mientras está activo — null si no hay ninguna interacción en
+  /// curso. Se limpia al resolverse (aplicar la decisión final) o al cancelarse, nunca sobrevive
+  /// a un cambio de `currentLocationId` (mismo criterio laxo que `harvestRollCache`).
+  pendingDynamicMode Json?
+
+  /// Oferta de modo dinámico SIN aceptar todavía (bug real 2026-08-28, "oferta de modo dinámico no
+  /// sobrevive a una recarga" — a diferencia de `pendingDynamicMode` de arriba, que SÍ se
+  /// reconstruye bien tras F5 una vez la jugadora ya pulsó "Interactuar", el momento previo (el
+  /// botón "Interactuar"/"Ignorar" en sí) solo vivía en `characterLog` efímero de React). `{ tipo,
+  /// targetSlug, targetName }` mientras el botón sigue visible sin decidir — null si no hay ninguna
+  /// oferta pendiente. Se limpia al pulsar "Interactuar" (pasa a `pendingDynamicMode` real) o
+  /// "Ignorar", igual de laxo que el resto de campos "pending" de este modelo.
+  pendingDynamicModeOffer Json?
+
+  /// Cooldown real de ofertas de modo dinámico (bug real jugando en vivo, 2026-08-27: "interactuar
+  /// me está saliendo en la gran mayoría de turnos" — con 35% de probabilidad por turno y CERO
+  /// cooldown, en varios turnos seguidos en la misma zona la sensación era de spam constante).
+  /// `fictionalMinutes` de la última vez que se ofreció/resolvió/ignoró una interacción — mismo
+  /// criterio "comparado en vivo contra el reloj" que `pendingDynamicMode`/`lastFedAtMinutes`, no
+  /// un contador que decrece. Null = nunca se ofreció una en esta partida, sin cooldown que aplicar.
+  lastDynamicModeOfferAtMinutes Int?
+
+  /// Viaje truncado por un evento de interrupción (ronda de correcciones 2026-08-28, P3.2 —
+  /// hallazgo real: "el viaje se trunca sin recordar el destino, el jugador queda varado en el
+  /// punto de interrupción"). `pickTravelInterruption` (turn.ts) ya recorta el tránsito a la
+  /// parada intermedia real donde entra el NPC en escena — este campo guarda el `Location.id`
+  /// ORIGINAL al que iba el jugador, para poder retomar el viaje solo. Se rellena al truncar; se
+  /// limpia al disparar la continuación automática (turnResolution.ts, tras resolver el turno que
+  /// sigue a la llegada al punto intermedio, sin combate activo y con el jugador vivo) o si el
+  /// jugador cambia de destino por su cuenta antes de que eso ocurra.
+  pendingTravelResumeDestinationId String?
+
   /// Hambre/Sed del propio personaje (Grupo 3 § Compañeros y supervivencia, 2026-08-25, ver
   /// docs/rpgtarkor/companeros-y-supervivencia.md § 5) — `WorldState.fictionalMinutes` de la
   /// última vez que comió/bebió, mismo patrón "comparado en vivo contra el reloj" que
@@ -233,26 +309,26 @@ model Save {
   lastAteAtMinutes   Int?
   lastDrankAtMinutes Int?
 
-  worldState       WorldState?
-  logEntries       LogEntry[]
-  characterTransit CharacterTransit?
-  sessionSummaries SessionSummary[]
-  inventoryItems   InventoryItem[]
-  companions       Companion[]
-  territories      Territory[]
-  buildings        Building[]
-  subjects         Subject[]
-  almacenItems     AlmacenItem[]
-  plantillasEquipo PlantillaEquipo[]
-  combatEncounters CombatEncounter[]
-  savedActions     SavedAction[]
-  quests           Quest[]
-  npcStates        NpcState[]
+  worldState         WorldState?
+  logEntries         LogEntry[]
+  characterTransit   CharacterTransit?
+  sessionSummaries   SessionSummary[]
+  inventoryItems     InventoryItem[]
+  companions         Companion[]
+  territories        Territory[]
+  buildings          Building[]
+  subjects           Subject[]
+  almacenItems       AlmacenItem[]
+  plantillasEquipo   PlantillaEquipo[]
+  combatEncounters   CombatEncounter[]
+  savedActions       SavedAction[]
+  quests             Quest[]
+  npcStates          NpcState[]
   professionProgress ProfessionProgress[]
-  kingdomStats     KingdomStats?
+  kingdomStats       KingdomStats?
   discoveredEntities DiscoveredEntity[]
-  sessionFacts     SessionFact[]
-  foundedFactions  Faction[]
+  sessionFacts       SessionFact[]
+  foundedFactions    Faction[]
 
   @@index([userId])
 }
@@ -286,13 +362,13 @@ model Location {
   y           Float?
   createdAt   DateTime @default(now())
 
-  linksFrom LocationLink[] @relation("linkFrom")
-  linksTo   LocationLink[] @relation("linkTo")
-  visits    LocationVisit[]
-  saves         Save[] @relation("CurrentLocation")
-  restingSaves  Save[] @relation("LastRestLocation")
-  buildings     Building[]
-  zonePoints    ZonePoint[]
+  linksFrom    LocationLink[]  @relation("linkFrom")
+  linksTo      LocationLink[]  @relation("linkTo")
+  visits       LocationVisit[]
+  saves        Save[]          @relation("CurrentLocation")
+  restingSaves Save[]          @relation("LastRestLocation")
+  buildings    Building[]
+  zonePoints   ZonePoint[]
 
   @@unique([worldId, slug])
 }
@@ -305,23 +381,52 @@ model Location {
 /// ACOTADO en esta pasada: solo representa DÓNDE vive algo dentro de la zona — no cambia todavía
 /// cómo se resuelve cazar/recolectar/combate (eso es trabajo de las Capas 2-3 del documento,
 /// construidas ENCIMA de esto, no aquí).
+/// Dinamismo del mundo, Pieza 3 (2026-08-27, docs/21-roadmap.md) — `ZonePoint` pasa de catálogo
+/// estático (solo "aquí PUEDE aparecer esta especie/recurso") a INSTANCIA VIVA: cada fila
+/// representa lo que hay realmente ahora mismo en ese punto, con estado que cambia con el tiempo de
+/// ficción. El seed de `worldCatalog.ts` pasa a ser el ESTADO INICIAL de cada punto curado a mano,
+/// no una plantilla reutilizable separada — decisión explícita (más simple, una sola tabla, en vez
+/// de una tabla de "catálogo de spawns" + otra de "instancia en vivo").
 model ZonePoint {
-  id         String        @id @default(cuid())
-  locationId String
-  location   Location      @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  id                   String        @id @default(cuid())
+  locationId           String
+  location             Location      @relation(fields: [locationId], references: [id], onDelete: Cascade)
   /// Píxeles del lienzo de la zona (convención 800×600, misma que ya usa el mapa de mundo —
   /// `frontend/src/data/map.ts` — para que el frontend pueda reutilizar el mismo sistema de
-  /// overlay SVG). Calibrado a mano contra el PNG real de la zona, no calculado.
-  x          Float
-  y          Float
-  tipo       ZonePointTipo
+  /// overlay SVG). Calibrado a mano contra el PNG real de la zona, no calculado — el recalculo
+  /// determinista SÍ puede desplazar x/y dentro del mismo lienzo con el tiempo (Pieza 3).
+  x                    Float
+  y                    Float
+  /// Determina la FORMA del icono en el frontend (regla fija, sin campo aparte): FAUNA=círculo,
+  /// NPC=triángulo (identidad única, incluye Companion), EDIFICIO=cuadrado, RECURSO=rombo (inerte:
+  /// flora/materiales/minerales).
+  tipo                 ZonePointTipo
   /// Slug del Npc (FAUNA/NPC) o de HarvestYield.sourceSlug (RECURSO) que puede aparecer aquí —
   /// string libre, no FK (mismo criterio que el resto del catálogo: el contenido real vive en
   /// worldCatalog.ts, esto solo referencia por slug).
-  targetSlug String
+  targetSlug           String
   /// Etiqueta corta para el marcador del mapa — null = el frontend cae al nombre real de catálogo.
-  label      String?
-  createdAt  DateTime      @default(now())
+  label                String?
+  /// Agrupación dinámica por cantidad real (Pieza 3) — cuántos individuos representa este punto
+  /// AHORA MISMO (nunca una marca fija de catálogo por especie). 1 = punto individual sin contador
+  /// visible; >1 = el frontend muestra "×N". Un `tipo: NPC` (identidad única) siempre vale 1, nunca
+  /// se agrupa. Default 1 — cualquier punto sembrado antes de esta migración se trata como
+  /// individual, comportamiento idéntico al de siempre.
+  cantidad             Int           @default(1)
+  /// Vivo/agotado (Pieza 3) — un punto FAUNA/NPC "muerto" o un RECURSO "agotado" deja de mostrarse
+  /// como activo (mismo vocabulario que el resto del motor de combate/recolección) hasta que el
+  /// recalculo determinista lo reponga o lo elimine. `true` = activo/visible con normalidad.
+  activo               Boolean       @default(true)
+  /// Color del icono por reputación con SU facción (Pieza 3) — null = sin facción asociada (fauna
+  /// salvaje, recursos, seres inertes sin dueño), el frontend pinta naranja de fondo en ese caso.
+  /// String libre (mismo criterio que `Npc.faction`), no FK.
+  factionSlug          String?
+  /// `WorldState.fictionalMinutes` de la ÚLTIMA vez que este punto se recalculó — comparado contra
+  /// el valor actual para saber cuánto tiempo de ficción pasó y así recalcular proporcionalmente
+  /// (mismo patrón que `condicionFisicaSinceMinutes`/`lastFedAtMinutes`, nunca un contador que
+  /// decrementa). Null = nunca recalculado todavía (recién sembrado o recién creado por el motor).
+  lastUpdatedAtMinutes Int?
+  createdAt            DateTime      @default(now())
 
   @@index([locationId])
 }
@@ -330,6 +435,10 @@ enum ZonePointTipo {
   FAUNA
   RECURSO
   NPC
+  /// Dinamismo del mundo, Pieza 3 (2026-08-27) — edificios construidos ahora sí tienen
+  /// representación espacial dentro del lienzo de zona (antes solo existían como fila de BD con
+  /// icono en el mapa de MUNDO/macro, invisibles en el mapa de ZONA/micro).
+  EDIFICIO
 }
 
 /// Ruta directa entre dos ubicaciones. Se guarda UNA fila por pareja y el grafo se trata
@@ -397,26 +506,26 @@ model DiscoveredEntity {
 /// La fuente de verdad de una partida — no es prosa, son hechos estructurados.
 /// Se lee/escribe en cada llamada al Narrador/Cronista para que nunca se contradigan (ver 01-analisis-producto.md § 4).
 model WorldState {
-  id      String @id @default(cuid())
-  saveId  String @unique
-  save    Save   @relation(fields: [saveId], references: [id], onDelete: Cascade)
+  id     String @id @default(cuid())
+  saveId String @unique
+  save   Save   @relation(fields: [saveId], references: [id], onDelete: Cascade)
 
-  fictionalDateLabel String   @default("Día 1, mañana")
+  fictionalDateLabel String @default("Día 1, mañana")
   /// Minutos ficticios totales transcurridos desde Día 1, 00:00 (480 = 08:00, el mismo origen que
   /// ya asumía `fictionalDateLabel` como placeholder). Avanza en narrateAndPersistTurn() según los
   /// minutos reales que cuesta cada turno (computeDuration/travel.minutos) — nunca lo decide el
   /// modelo. `fictionalDateLabel` se regenera a partir de este número cada vez que avanza, para no
   /// tener que tocar los muchos sitios que ya lo leen como string. Año todavía sin implementar
   /// (pendiente de que el flujo día/hora se demuestre estable jugando).
-  fictionalMinutes    Int     @default(480)
+  fictionalMinutes   Int    @default(480)
   /// Hitos de mundo que avanzan solos con el tiempo de ficción (2026-08-24, ver worldAgenda.ts) —
   /// más allá de la ambientación pasiva de `entorno.ts`. Quitado en la auditoría de elementos
   /// desconectados 2026-08-23 por no tener productor, restaurado el mismo día y construido de
   /// verdad al día siguiente: el tick de fondo (`worldTick.ts`) siembra y avanza
   /// `AgendaEntry[]` (worldAgenda.ts) — hoy un único hito, el conflicto Serhu-Concordia contra
   /// Helsig/Goshg, que deplete población real de esos dos clanes si nadie interviene.
-  agenda              Json    @default("[]")
-  factionsStatus      Json    @default("{}")
+  agenda             Json   @default("[]")
+  factionsStatus     Json   @default("{}")
 
   updatedAt DateTime @updatedAt
 }
@@ -432,65 +541,65 @@ model WorldState {
 /// actual (cohesión con hechos antiguos que vuelven a importar), sin aumentar el tamaño del
 /// prompt frente a antes (mismo tope de 10 que se manda realmente).
 model SessionFact {
-  id        String   @id @default(cuid())
+  id        String                      @id @default(cuid())
   saveId    String
-  save      Save     @relation(fields: [saveId], references: [id], onDelete: Cascade)
+  save      Save                        @relation(fields: [saveId], references: [id], onDelete: Cascade)
   text      String
   /// Mismo patrón que LoreChunk.embedding — habilitado a mano vía `CREATE EXTENSION vector`, no
   /// gestionado por Prisma (preview feature postgresqlExtensions), ver comentario del datasource.
   embedding Unsupported("vector(768)")?
-  createdAt DateTime @default(now())
+  createdAt DateTime                    @default(now())
 
   @@index([saveId, createdAt])
 }
 
 /// Entrada de log append-only. `roll` solo presente en entradas del canal CHARACTER que resuelven una tirada.
 model LogEntry {
-  id             String     @id @default(cuid())
-  saveId         String
-  save           Save       @relation(fields: [saveId], references: [id], onDelete: Cascade)
-  channel        LogChannel
-  text           String
+  id                String     @id @default(cuid())
+  saveId            String
+  save              Save       @relation(fields: [saveId], references: [id], onDelete: Cascade)
+  channel           LogChannel
+  text              String
   /// RollInfo: { attribute, value, difficulty, result, success } — null si la entrada no es una tirada
-  roll           Json?
-  isPlayerAction Boolean    @default(false)
-  timeLabel      String
+  roll              Json?
+  isPlayerAction    Boolean    @default(false)
+  timeLabel         String
   /// XP ganada en esta entrada, si alguna (docs/10-niveles-xp-reino.md § 6) — permite mostrar
   /// "+50 XP" en el Diario y auditar el nivel sumando el log.
-  xpDelta        Int?
+  xpDelta           Int?
   /// Minuto de ficción real en el momento de crear esta entrada (WorldState.fictionalMinutes,
   /// petición explícita de la usuaria, 2026-07-24: "el log de personaje solo muestre 24h del
   /// mundo... el diario clasificado por días") — antes solo existía `timeLabel` (texto ya
   /// formateado, "Día 3, 14:20"), sin número real que permita filtrar por ventana de tiempo de
   /// juego ni agrupar por día sin parsear el string. `@default(0)` es solo para filas anteriores
   /// a esta migración (se leerán como "Día 1"), nunca se usa para filas nuevas.
-  fictionalMinutes Int      @default(0)
+  fictionalMinutes  Int        @default(0)
   /// Qué entidad de la Enciclopedia se mostró como banner bajo esta narración (rework 2026-07-24,
   /// "las imágenes que se muestran en la narración deben persistir de alguna forma") — el frontend
   /// ya decide cuál mostrar (mentionedEntityBanner.ts, con su propia deduplicación); esto solo
   /// guarda esa decisión para que sobreviva a una recarga dentro de la ventana de 24h. Se resuelve
   /// la imagen real en cada lectura (nunca se guarda la URL), igual que el resto de imágenes de la
   /// Enciclopedia — así una imagen subida más tarde para la misma entidad también se ve aquí.
-  entityBannerType String?
-  entityBannerSlug String?
+  entityBannerType  String?
+  entityBannerSlug  String?
   /// Rediseño de la vista de combate (2026-07-28): marca si esta entrada se generó durante un
   /// turno de combate (`enCombate: true` en turnResolution.ts) — el frontend la pinta con fondo
   /// rojo en el log de "Tu personaje". No se puede inferir esto de forma fiable a partir de otros
   /// campos ya existentes (`roll` también aparece en tiradas fuera de combate), así que necesita
   /// su propia columna para sobrevivir a una recarga de partida.
-  combate        Boolean    @default(false)
+  combate           Boolean    @default(false)
   /// Eventos de viaje interactivos (2026-08-05): marca la entrada determinista (nunca narrada por
   /// el LLM) que avisa de que un viaje largo se interrumpió antes de llegar al destino pedido —
   /// el frontend la pinta con fondo ámbar en el log, igual que `combate` con el rojo. Sin esto, el
   /// jugador podía terminar en una ubicación distinta a la pedida sin ninguna señal visible más
   /// allá de la narración de llegada, que no sabe (ni debe saber) cuál era el destino original.
-  travelInterrupted Boolean @default(false)
+  travelInterrupted Boolean    @default(false)
   /// CombatExchangeDisplay (combatExchange.ts): las DOS tiradas reales de un intercambio de
   /// combate ("Tú"/"Enemigo") — bug real jugando en vivo, 2026-08-13: hasta ahora solo viajaba en
   /// la respuesta HTTP del turno recién resuelto (turn.ts), nunca se guardaba, así que recargar la
   /// partida perdía el lado del enemigo y el badge de dos filas colapsaba al de una sola tirada
   /// (`roll`, que solo guarda el lado del jugador). null si el turno no tuvo intercambio real.
-  combatExchange Json?
+  combatExchange    Json?
   /// { npcName, abilityName, rol } / { name, icon, description, rol } (turnResolution.ts) — mismo
   /// bug gemelo que `combatExchange` de arriba (2026-08-14, encontrado al pedir que
   /// CombatExchangeBadge mostrara el nombre real del NPC en vez de "el enemigo": tras recargar,
@@ -505,8 +614,8 @@ model LogEntry {
   /// en el PRÓXIMO intercambio, pero solo viajaba en la respuesta HTTP del turno recién resuelto
   /// (routes/turn.ts) — nunca se guardaba, así que recargar la partida durante un combate abierto
   /// perdía el banner de iniciativa por completo. null si el turno no tuvo intercambio real.
-  initiativeRoll Json?
-  createdAt      DateTime   @default(now())
+  initiativeRoll    Json?
+  createdAt         DateTime   @default(now())
 
   @@index([saveId, createdAt])
   @@index([saveId, fictionalMinutes])
@@ -515,13 +624,13 @@ model LogEntry {
 /// Personaje "ocupado/en tránsito" durante una acción larga (viajar, descansar varios días...).
 /// Como mucho una fila activa por partida — el personaje solo puede estar haciendo una cosa larga a la vez.
 model CharacterTransit {
-  id          String   @id @default(cuid())
-  saveId      String   @unique
-  save        Save     @relation(fields: [saveId], references: [id], onDelete: Cascade)
-  activity    String
-  busyUntil   DateTime
-  zoneContext Json?
-  createdAt   DateTime @default(now())
+  id                 String    @id @default(cuid())
+  saveId             String    @unique
+  save               Save      @relation(fields: [saveId], references: [id], onDelete: Cascade)
+  activity           String
+  busyUntil          DateTime
+  zoneContext        Json?
+  createdAt          DateTime  @default(now())
   /// Espera de viaje precalculada (2026-08-13) — candado de reclamo SEPARADO de `busyUntil`
   /// (que sigue siendo puramente la cuenta atrás visible del jugador, nunca se toca para esto).
   /// `turn.ts` lo pone al arrancar un viaje sin evento, reclamando esta fila para la resolución
@@ -577,42 +686,56 @@ enum EquipSlot {
 /// un objeto puede llevar un bonificador mecánico real a uno de los 6 atributos jugables,
 /// aplicado solo mientras está EQUIPADO (ver effectiveAttributes en services/equipment.ts).
 model InventoryItem {
-  id          String     @id @default(cuid())
-  saveId      String
-  save        Save       @relation(fields: [saveId], references: [id], onDelete: Cascade)
-  name        String
-  description String
+  id                     String     @id @default(cuid())
+  saveId                 String
+  save                   Save       @relation(fields: [saveId], references: [id], onDelete: Cascade)
+  name                   String
+  description            String
   /// De dónde salió (botín, inicial, regalo de un NPC...) — contexto narrativo, no categoría mecánica.
-  origin      String?
+  origin                 String?
   /// Hueco de equipo asignado (null = en la mochila, sin equipar). La jugadora lo asigna a mano
   /// desde el panel "Equipo" — el modelo nunca lo decide.
-  slot        EquipSlot?
+  slot                   EquipSlot?
   /// Bonificadores mecánicos reales (solo cuentan mientras `slot` no es null) — mapa múltiple
   /// (2026-08-03, sustituye a statBonusAttribute/statBonusAmount) de cero o más de los 7
   /// atributos jugables más 'defensa' — nunca mágico por ahora (arcano incluido en la lista pero
   /// sin usarlo todavía en objetos reales — Gorhorn es guerrero, sin nada mágico hasta que se
   /// decida introducirlo). Null = objeto puramente narrativo, como antes.
   /// Partial<Record<Attribute | 'defensa', number>> (ver StatBonusMap, equipment.ts).
-  statBonuses Json?
+  statBonuses            Json?
   /// Slug de ItemCatalog de origen (sesión de diseño 2026-07-23) — no es FK real (mismo criterio
   /// laxo que Quest.targetItemName): un objeto narrativo suelto (newItem del modelo) nunca tiene
   /// uno. Se rellena cuando se sabe el origen (saqueo/despiece/crafteo, ver turnResolution.ts) —
   /// permite mirar ItemCatalog.requisitos al equipar sin comparar por nombre (frágil, el nombre
   /// final puede personalizarse en el saqueo/crafteo).
-  catalogSlug String?
-  createdAt   DateTime   @default(now())
+  catalogSlug            String?
+  createdAt              DateTime   @default(now())
   /// Equipo de compañero/súbdito (Grupo 3 § Compañeros y supervivencia, 2026-08-25, ver
   /// docs/rpgtarkor/companeros-y-supervivencia.md § 6) — ambos null = equipado en el propio
   /// personaje (comportamiento de siempre) o sin equipar; como mucho UNO de los dos con valor,
   /// nunca los dos a la vez (mismo campo `slot` reutilizado para las 3 posibilidades).
   /// `onDelete: SetNull` en ambos — si el compañero/súbdito se pierde, el objeto no desaparece,
   /// vuelve a la mochila sin equipar.
-  companionId String?
-  companion   Companion? @relation(fields: [companionId], references: [id], onDelete: SetNull)
+  companionId            String?
+  companion              Companion? @relation(fields: [companionId], references: [id], onDelete: SetNull)
   /// Solo para el auto-equipo de súbditos por plantilla (§7) — nunca lo asigna la jugadora a mano
   /// como con `companionId`.
-  subjectId   String?
-  subject     Subject?   @relation(fields: [subjectId], references: [id], onDelete: SetNull)
+  subjectId              String?
+  subject                Subject?   @relation(fields: [subjectId], references: [id], onDelete: SetNull)
+  /// Rediseño de captura (2026-08-28, docs/rpgtarkor/captura-rediseno-2026-08-28.md) — no null =
+  /// esta fila ES una captura en tránsito (fauna o NPC atado, todavía sin depositar en Jaula/Celda
+  /// de Retención), no un objeto normal. Reemplaza el viejo mecanismo donde la captura vivía
+  /// in-situ en `NpcState.capturado` — eso rompía la caza en grupo (una sola fila `NpcState` por
+  /// especie no podía ser "el individuo capturado en tameo" Y "el individuo activo para seguir
+  /// cazando al resto" a la vez). Al materializarse como ítem, el `NpcState` de origen se resetea
+  /// exactamente igual que `grupoContinua` (turnResolution.ts) — libre para que el grupo siga.
+  capturaNpcId           String?
+  capturaScope           String?
+  /// `fictionalMinutes` en que esta captura se escapa sola si sigue en el inventario (no
+  /// depositada en Jaula/Celda) — derivado del tier de la cuerda usada al atar
+  /// (`plazoCapturaHorasForTier`, companionSupervivencia.ts). Null = tier 7 (cuerda que nunca se
+  /// rompe, sin plazo) — todavía sin craftear ninguna cuerda de tier > 1 en el catálogo real.
+  capturaExpiraAtMinutes Int?
 
   // `@@unique([saveId, slot])` retirado (2026-08-25): con `companionId`/`subjectId`, "un objeto
   // por hueco" ya no es un único par (saveId, slot) — el personaje Y cada compañero/súbdito
@@ -645,32 +768,32 @@ model Companion {
 
   /// FAUNA = tameado (jaula + tirada opuesta de atributo). NPC = persuadido (atar + tirada
   /// opuesta) O de quest/narración libre (`newCompanion`, comportamiento de siempre).
-  tipo CompanionTipo @default(NPC)
+  tipo                 CompanionTipo    @default(NPC)
   /// Slug del Npc de catálogo (fauna o humanoide) del que viene este compañero — null para los de
   /// quest/narración libre, que no tienen una ficha de catálogo real detrás.
-  sourceSlug String?
+  sourceSlug           String?
   /// 0-100, sube/baja por el resultado de cada tirada de tameo/persuasión (§2/3) y por descuido de
   /// Comida/Agua (§4) — null para compañeros de quest/narración libre (sin capa mecánica).
-  felicidad Int?
+  felicidad            Int?
   /// `WorldState.fictionalMinutes` de la última vez que comió/bebió — null = recién capturado, sin
   /// hambre/sed acumulada todavía (mismo criterio que dar de alta con reloj "a cero"). Comparado en
   /// vivo contra el reloj actual para saber el estado (nunca se decrementa un contador aparte,
   /// mismo patrón que `NpcState.condicionFisicaSinceMinutes`).
-  lastFedAtMinutes    Int?
+  lastFedAtMinutes     Int?
   lastWateredAtMinutes Int?
   /// true = ocupa el slot de mascota GARANTIZADO del Domador (companeros-y-supervivencia.md § 2),
   /// separado por completo de `companionSlotsForRecipeKey` — no compite contra Campamento/Choza.
-  esSlotDomador Boolean @default(false)
+  esSlotDomador        Boolean          @default(false)
   /// Integración en el Reino (§2/§6-7) — 'guardia'/'trabajador'/'productor' (convención libre,
   /// mismo criterio que `role`), null = solo compañero personal, no integrado. Requiere Reino
   /// (con o sin slot de Domador/edificio ya resuelto aparte); el rol concreto depende de la
   /// especie, sin enum cerrado.
-  rolReino String?
+  rolReino             String?
   /// Plantilla de equipo asignada (§7) — solo relevante si `rolReino` no es null. Null = sin
   /// plantilla, se equipa a mano como cualquier compañero personal (`inventoryItems` abajo).
-  plantillaEquipoId String?
-  plantillaEquipo   PlantillaEquipo? @relation(fields: [plantillaEquipoId], references: [id], onDelete: SetNull)
-  inventoryItems    InventoryItem[]
+  plantillaEquipoId    String?
+  plantillaEquipo      PlantillaEquipo? @relation(fields: [plantillaEquipoId], references: [id], onDelete: SetNull)
+  inventoryItems       InventoryItem[]
 
   /// Combate múltiple (Grupo 3, 2026-08-25, docs/rpgtarkor/combate-multiple.md § 5: "Companion
   /// necesita atributos y vida propios") — null = compañero sin capa de combate todavía (de
@@ -678,11 +801,17 @@ model Companion {
   /// confirmar un tameo/persuasión (companeros.ts), se copia tal cual el `attributes` del `Npc`
   /// de catálogo origen — un compañero de combate real nunca es más fuerte que el individuo del
   /// que salió. AttributeBlock, mismo shape que `Save.attributes`/`Npc.attributes`.
-  attributes Json?
+  attributes         Json?
   /// Mismo enum que Save/NpcState — participa en `resolveExchange` exactamente igual que el
   /// jugador o un Npc. Arranca ILESO; nunca se inicializa junto a `attributes: null` (sin
   /// atributos no hay combate posible, el valor por defecto de aquí es irrelevante en ese caso).
-  condicionFisica CondicionFisica @default(ILESO)
+  condicionFisica    CondicionFisica     @default(ILESO)
+  /// Fase 3 § 3a de efectos de clase (2026-08-27, docs/21-roadmap.md) — mismo campo que
+  /// `Save.activeEffects`/`NpcState.activeEffects` (`ActiveEffect[]`, `services/activeEffects.ts`),
+  /// faltaba aquí porque `Companion` no participaba todavía en `combateMultipleOrquestacion.ts`
+  /// cuando se construyó Fase 2. Mismo criterio de reset: se vacía en cuanto `condicionFisica`
+  /// vuelve a ILESO.
+  activeEffects      Json                @default("[]")
   combatParticipants CombatParticipant[]
 
   @@index([saveId])
@@ -696,23 +825,23 @@ model Companion {
 /// `CombatEncounter` (uno jugable, el resto resueltos deterministas de una sentada, ver
 /// `combateMultiple.ts` § resolverEncounterDeterminista).
 model CombatEncounter {
-  id              String                @id @default(cuid())
-  saveId          String
-  save            Save                  @relation(fields: [saveId], references: [id], onDelete: Cascade)
-  estado          CombatEncounterEstado @default(EN_CURSO)
-  ronda           Int                   @default(1)
+  id                        String                @id @default(cuid())
+  saveId                    String
+  save                      Save                  @relation(fields: [saveId], references: [id], onDelete: Cascade)
+  estado                    CombatEncounterEstado @default(EN_CURSO)
+  ronda                     Int                   @default(1)
   /// Índice del combatiente actual DENTRO de `ordenIniciativa` — no el `CombatParticipant.id`
   /// directamente, para poder avanzar con un simple `+1 % length` sin buscar posiciones.
-  turnoActual     Int                   @default(0)
+  turnoActual               Int                   @default(0)
   /// `CombatParticipant.id[]` ya ordenados por iniciativa — recalculado solo al empezar el
   /// encuentro (§1: "cada combatiente presente tira su propia iniciativa... se ordenan todos en
   /// una única cola"), nunca se re-tira a media pelea.
-  ordenIniciativa String[]              @default([])
+  ordenIniciativa           String[]              @default([])
   /// true = este es el sub-combate que la jugadora juega en directo (§3/§4) — los demás
   /// (sub-combates 4v4 sobrantes de un choque más grande, o cualquier combate sin la jugadora
   /// presente, p. ej. Reino defendiéndose) se resuelven deterministas de una sentada, sin turno a
   /// turno real.
-  jugable         Boolean               @default(true)
+  jugable                   Boolean               @default(true)
   /// Objetivo individual real (2026-08-26, docs/21-roadmap.md § Fase 3) — true mientras la ronda
   /// ACTUAL todavía no tiene el enganche (duelo/golpe gratis) decidido del todo porque falta saber
   /// a quién quiere atacar la jugadora. Mientras esté a true, NINGÚN intercambio de la ronda puede
@@ -722,10 +851,10 @@ model CombatEncounter {
   /// true al crear el encuentro y al empezar cada ronda nueva (si hay jugadora viva y todavía sin
   /// reclamar); se pone a false en cuanto su elección de esa ronda queda fija (reclamada por
   /// alguien, o elegida por ella).
-  esperandoEleccionJugadora Boolean     @default(false)
-  createdAt       DateTime              @default(now())
-  resolvedAt      DateTime?
-  participantes   CombatParticipant[]
+  esperandoEleccionJugadora Boolean               @default(false)
+  createdAt                 DateTime              @default(now())
+  resolvedAt                DateTime?
+  participantes             CombatParticipant[]
 
   @@index([saveId])
 }
@@ -740,25 +869,25 @@ enum CombatEncounterEstado {
 /// `Companion` (la fuente de verdad de siempre), leídos en vivo en cada turno. Evita el bug real
 /// de tener dos copias de "cuánta vida le queda a X" que puedan desincronizarse.
 model CombatParticipant {
-  id          String                @id @default(cuid())
-  encounterId String
-  encounter   CombatEncounter       @relation(fields: [encounterId], references: [id], onDelete: Cascade)
-  bando       CombatBando
-  tipo        CombatParticipantTipo
+  id                        String                @id @default(cuid())
+  encounterId               String
+  encounter                 CombatEncounter       @relation(fields: [encounterId], references: [id], onDelete: Cascade)
+  bando                     CombatBando
+  tipo                      CombatParticipantTipo
   /// Exactamente uno de los 3 rellena según `tipo` — JUGADOR no necesita ninguno (ya es `save`,
   /// vía `encounter.saveId`).
-  companionId String?
-  companion   Companion?            @relation(fields: [companionId], references: [id], onDelete: Cascade)
-  npcId       String?
-  npc         Npc?                  @relation(fields: [npcId], references: [id], onDelete: Cascade)
+  companionId               String?
+  companion                 Companion?            @relation(fields: [companionId], references: [id], onDelete: Cascade)
+  npcId                     String?
+  npc                       Npc?                  @relation(fields: [npcId], references: [id], onDelete: Cascade)
   /// Scope real del Npc en ESTA escena (mismo criterio que `NpcState.scope`) — necesario para
   /// resolver la fila `NpcState` correcta cuando el Npc es `PLANTILLA` (varias apariciones
   /// posibles del mismo arquetipo). Vacío para JUGADOR/COMPANION.
-  npcScope    String                @default("")
+  npcScope                  String                @default("")
   /// Otro `CombatParticipant.id` del bando contrario — el emparejamiento vivo de cada turno (§2),
   /// null si su bando contrario ya no tiene nadie vivo (combate a punto de cerrarse) o si el
   /// jugador todavía no ha elegido objetivo esta ronda.
-  objetivoActualId String?
+  objetivoActualId          String?
   /// ÚNICA excepción al criterio de arriba ("nunca duplica atributos/condición", ver comentario
   /// del modelo) — solo para miembros reales de un grupo cazado (§3 de companeros-y-supervivencia
   /// no aplica aquí, esto es combate múltiple de verdad, no el truco antiguo de
@@ -768,8 +897,76 @@ model CombatParticipant {
   /// null = combatiente normal (JUGADOR/COMPANION/NPC solitario), su condición real sigue viviendo
   /// en Save/Companion/NpcState como siempre. Con valor = miembro de un grupo, este campo ES su
   /// única fuente de verdad real (NpcState de un miembro de grupo se queda en ILESO, sin usar).
-  condicionFisicaGrupo CondicionFisica?
-  createdAt   DateTime              @default(now())
+  condicionFisicaGrupo      CondicionFisica?
+  /// Fase 3 § 3a de efectos de clase (2026-08-27, docs/21-roadmap.md) — `CONTROL` real: cuántas
+  /// rondas le quedan a este combatiente actuando contra su PROPIO bando en vez del contrario
+  /// (`resolverTurnoAutonomo`/`resolverTurnoJugador`, combateMultipleOrquestacion.ts). Null/0 =
+  /// combatiente normal. Se decrementa una vez por ronda (mismo punto donde avanza `ronda`), nunca
+  /// dentro de la misma ronda en que se fija (mismo cuidado de orden que `ActiveEffect.
+  /// turnsRemaining`, ver activeEffects.ts).
+  controladoPorRondas       Int?
+  /// Fase 3 § 3c de efectos de clase (2026-08-27, docs/21-roadmap.md) — `OCULTACION` real: cuántas
+  /// rondas le quedan a este combatiente oculto (excluido de ser ELEGIDO como objetivo por el
+  /// enganche, `resolverEnganchesRonda`, salvo que sea el único vivo de su bando — sigue pudiendo
+  /// actuar con normalidad). Null/0 = no oculto. Se pierde de inmediato si el propio combatiente
+  /// ataca mientras está oculto (ficha real de Camuflaje), y se decrementa igual que
+  /// `controladoPorRondas` (una vez por ronda, nunca dentro de la misma ronda en que se fija).
+  ocultoPorRondas           Int?
+  /// Fase 3 § 3d de efectos de clase (2026-08-27, docs/21-roadmap.md) — `INVOCACION` real: solo
+  /// relleno para `tipo: INVOCACION` (un tótem/elemental, nunca JUGADOR/COMPANION/NPC normal).
+  /// Cuántos golpes recibidos más aguanta antes de desaparecer ("aguanta 1 golpe" en la ficha real
+  /// de Tótem de Guerra) — al llegar a 0, se trata como derrotado (mismo criterio que
+  /// CONVALECIENTE/MUERTO: fuera de `objetivosValidos`/enganches). Distinto de `condicionFisicaGrupo`
+  /// (esto no tiene HERIDO/GRAVE intermedios, solo "aguanta N golpes más o desaparece").
+  invocacionVidaRestante    Int?
+  /// Cuántas rondas más ataca antes de desaparecer por tiempo agotado (aunque no haya recibido
+  /// ningún golpe) — "ataca durante 2 turnos y desaparece" en la ficha real. Se decrementa en el
+  /// mismo punto de cruce de ronda que `controladoPorRondas`/`ocultoPorRondas`; al llegar a 0 se
+  /// retira del encuentro igual que si hubiera agotado `invocacionVidaRestante`.
+  invocacionRondasRestantes Int?
+  /// Quién la invocó (otro `CombatParticipant.id`, siempre del MISMO bando) — necesaria para el
+  /// candado real de la ficha ("NO se puede invocar más de un tótem de este tipo a la vez": se
+  /// consulta antes de crear una invocación nueva del mismo `npcId` para el mismo invocador) y para
+  /// que el tótem ataque siempre al bando contrario del suyo, nunca al de su propio invocador.
+  invocacionInvocadorId     String?
+  /// Fase 3 § 3e de efectos de clase (2026-08-27, docs/21-roadmap.md) — `EXPULSAR` real: cuántas
+  /// rondas le quedan a este combatiente expulsado del combate (excluido de ser ELEGIDO como
+  /// objetivo por el enganche, `resolverEnganchesRonda`, salvo que sea el único vivo de su bando —
+  /// misma excepción y mismo mecanismo exacto que `ocultoPorRondas`, columna separada a propósito:
+  /// conceptualmente son cosas distintas — uno se esconde, al otro lo empujan fuera a la fuerza —
+  /// aunque la lógica de exclusión sea idéntica). Simplificación consciente frente a la ficha real
+  /// de Embate de Escudo (2 tramos por margen, 50% de volver, "no vuelve nunca" en el tramo alto):
+  /// aquí un único margen decisivo dispara siempre "expulsa 2 rondas, vuelve solo al cumplirlas o
+  /// antes si su bando se queda sin nadie más vivo" — sin tirada de 50%, sin caso "nunca vuelve"
+  /// por separado (decisión explícita de la usuaria, "vamos con que expulse directamente y punto").
+  /// Se decrementa igual que `ocultoPorRondas`/`controladoPorRondas` (una vez por ronda, nunca
+  /// dentro de la misma ronda en que se fija).
+  expulsadoPorRondas        Int?
+  /// "Analizar Rival" real en combate múltiple (2026-08-27, bug real jugando junto al identificador
+  /// de combatientes duplicados) — mismo criterio de columna separada que `condicionFisicaGrupo`:
+  /// `NpcState.analizado` es compartido por `(npcId, scope)`, la fila de la ESPECIE, no de un
+  /// individuo — marcarlo ahí al analizar a un solo buitre de un grupo desbloquearía la ficha de
+  /// análisis para TODOS los buitres del grupo a la vez, un efecto colateral no pedido por ninguna
+  /// habilidad real (no existe ninguna fila de `clases.md` que combine `ANALISIS`+`MULTIPLE`).
+  /// null/false = miembro de grupo sin analizar (o combatiente solitario, que usa `NpcState.
+  /// analizado` como siempre — este campo se queda `null` para él). Nunca se resetea a `false`
+  /// (mismo criterio idempotente que `NpcState.analizado`/`saqueado`).
+  analizadoGrupo            Boolean?
+  /// Bug real jugando en vivo (2026-08-29, primer combate múltiple real: "la tarjeta MATAR/
+  /// CLEMENTE reaparece tras recargar") — mismo criterio de columna separada que
+  /// `condicionFisicaGrupo`/`analizadoGrupo`: Clemente/Capturar sobre un miembro de GRUPO solo
+  /// podían escribir en `Save.pendingCombatNpcSlugs` (el campo que consume el motor 1v1 clásico) o
+  /// en `NpcState` (compartido por toda la especie, sin noción de "cuál individuo concreto"), pero
+  /// `GET /saves/:id` reconstruye la tarjeta de combate múltiple leyendo `CombatParticipant`, sin
+  /// mirar ninguno de los dos — la decisión de la jugadora se perdía en cuanto recargaba. `true` =
+  /// la jugadora ya decidió Clemente/Capturar sobre ESTE individuo concreto, se excluye de la
+  /// tarjeta de decisión pendiente aunque su `condicionFisicaGrupo` siga CONVALECIENTE (Clemente no
+  /// cambia la condición a propósito, ver el propio endpoint). Null/false = sin decidir todavía, o
+  /// combatiente solitario (que no lo necesita — su `condicionFisica` real en Save/NpcState/
+  /// Companion ya basta). Nunca se resetea a `false` (mismo criterio idempotente que el resto de
+  /// estos campos "Grupo").
+  dismissedGrupo            Boolean?
+  createdAt                 DateTime              @default(now())
 
   @@index([encounterId])
 }
@@ -783,6 +980,13 @@ enum CombatParticipantTipo {
   JUGADOR
   COMPANION
   NPC
+  /// Fase 3 § 3d de efectos de clase (2026-08-27) — tótem/elemental invocado en combate, ver
+  /// comentario de `CombatParticipant.invocacionVidaRestante`. Su ficha de catálogo vive en `Npc`
+  /// como cualquier otro (reutiliza `npcId`), así queda reconocible en la Enciclopedia igual que
+  /// fauna — se descubre solo la primera vez que aparece, mismo mecanismo que el resto del catálogo
+  /// (`entityDiscovery.ts`), sin ningún campo de "temporalidad" nuevo: el tótem individual dura 1-2
+  /// turnos en combate, pero su FICHA de catálogo (igual que cualquier fauna cazada) es permanente.
+  INVOCACION
 }
 
 enum CompanionTipo {
@@ -813,9 +1017,9 @@ enum LoreChunkType {
 /// Fuente de verdad editorial: sigue siendo `docs/rpgtarkor/*.md` (para humanos); estos fragmentos
 /// se curan a partir de ahí y se reindexan con `npm run reindex-lore` cada vez que el lore cambia.
 model LoreChunk {
-  id        String        @id @default(cuid())
+  id        String                      @id @default(cuid())
   worldId   String
-  world     World         @relation(fields: [worldId], references: [id], onDelete: Cascade)
+  world     World                       @relation(fields: [worldId], references: [id], onDelete: Cascade)
   type      LoreChunkType
   title     String
   text      String
@@ -826,7 +1030,7 @@ model LoreChunk {
   /// nomic-embed-text produce vectores de 768 dimensiones. Tipo no soportado nativamente por
   /// Prisma Client — se escribe/lee con SQL crudo ($executeRaw/$queryRaw) en lib/embeddings.ts.
   embedding Unsupported("vector(768)")?
-  createdAt DateTime      @default(now())
+  createdAt DateTime                    @default(now())
 
   @@index([worldId])
 }
@@ -1045,88 +1249,98 @@ model ProfessionProgress {
 /// fundar el primer Territory (turnResolution.ts) — "el vacío es un estado válido"
 /// (docs/10-niveles-xp-reino.md § 5.1): sin fila, no hay reino todavía, nada que tiquear.
 model KingdomStats {
-  id           String   @id @default(cuid())
-  saveId       String   @unique
-  save         Save     @relation(fields: [saveId], references: [id], onDelete: Cascade)
-  poblacion    Int      @default(0)
-  felicidad    Int      @default(50)
-  comida       Int      @default(0)
-  bebida       Int      @default(0)
-  riqueza      Int      @default(0)
-  soldados     Int      @default(0)
-  trabajadores Int      @default(0)
-  visitantes   Int      @default(0)
+  id                String   @id @default(cuid())
+  saveId            String   @unique
+  save              Save     @relation(fields: [saveId], references: [id], onDelete: Cascade)
+  poblacion         Int      @default(0)
+  felicidad         Int      @default(50)
+  comida            Int      @default(0)
+  bebida            Int      @default(0)
+  riqueza           Int      @default(0)
+  soldados          Int      @default(0)
+  trabajadores      Int      @default(0)
+  visitantes        Int      @default(0)
   /// Rachas de días consecutivos de felicidad alta/baja (2026-08-23, Grupo 3 § Territory.control) —
   /// puro estado interno del tick, nunca se serializa al frontend. Se resetea a 0 en cuanto la
   /// felicidad sale de su banda (ver `tickKingdomOneDay`, kingdomTick.ts). Cruzar el umbral de días
   /// dispara consolidar/perder territorios — ver el bloque de `diasCruzados` en turnResolution.ts.
-  diasFelicidadAlta Int @default(0)
-  diasFelicidadBaja Int @default(0)
-  updatedAt    DateTime @updatedAt
+  diasFelicidadAlta Int      @default(0)
+  diasFelicidadBaja Int      @default(0)
+  updatedAt         DateTime @updatedAt
 }
 
 /// El cupo lo da el nivel (docs/10-niveles-xp-reino.md § 4.3): 3 + floor(nivel/2).
 model SavedAction {
-  id          String   @id @default(cuid())
-  saveId      String
-  save        Save     @relation(fields: [saveId], references: [id], onDelete: Cascade)
-  name        String
-  promptText  String
+  id                      String          @id @default(cuid())
+  saveId                  String
+  save                    Save            @relation(fields: [saveId], references: [id], onDelete: Cascade)
+  name                    String
+  promptText              String
   /// Un emoji — icono del botón en el panel de Habilidades.
-  icon        String   @default("✨")
+  icon                    String          @default("✨")
   /// Texto corto para el tooltip al pasar el ratón — qué hace la habilidad, de cara al jugador.
-  description String   @default("")
+  description             String          @default("")
   /// Habilidades "de serie" (creadas al iniciar la partida, ej. las de Gorhorn) no cuentan
   /// contra el cupo por nivel (habilidadSlotsForLevel) — ese cupo es solo para las que el
   /// jugador va creando él mismo. Ver docs/10-niveles-xp-reino.md § 4.3.
-  isStarting  Boolean  @default(false)
+  isStarting              Boolean         @default(false)
   /// Libre, no enum cerrado (misma razón que Companion.role): "combate", "exploracion",
   /// "social" son las sugeridas en la UI, pero no hay lista cerrada de categorías posibles.
   /// Como en cualquier RPG: la barra de fuera de combate no es la misma que la de dentro.
-  category    String   @default("general")
+  category                String          @default("general")
   /// Solo relevante para category:'combate' (nunca en habilidades creadas a mano por la
   /// jugadora — esas siguen siendo 'general', ver POST /saves/:id/abilities). Array vacío en
   /// partidas ya en curso hasta que se reinicien o suba de nivel de nuevo (mismo patrón
   /// aditivo/nullable que el resto del proyecto). Lista, no valor único (2026-08-15, petición
   /// explícita: "que una habilidad pueda tener múltiples AbilityEffects") — cada efecto de la
   /// lista se comprueba de forma independiente al resolver el intercambio (turnResolution.ts).
-  effects            AbilityEffect[] @default([])
+  effects                 AbilityEffect[] @default([])
   /// Tope de usos por combate (2026-08-15, junto a AbilityEffect.LIMITADA) — independiente de qué
   /// efectos lleve: null/undefined = sin tope. Ver NpcState.abilityUsesThisEncounter para el
   /// contador real.
-  maxUsesPerCombat   Int?
+  maxUsesPerCombat        Int?
   /// Rediseño de combate (2026-08-09) — ver comentario completo en `enum AbilityRol`. Mismo
   /// criterio nullable/aditivo que `effects`: solo relevante para category:'combate', null hasta
   /// que la partida se resincronice.
-  rol                AbilityRol?
+  rol                     AbilityRol?
   /// Atributo con el que se resuelve la tirada de esta habilidad — gana sobre la heurística de
   /// palabra clave de npcScene.ts (tabulatedAttackAttribute) cuando el turno manda `savedActionId`.
-  preferredAttribute String?
+  preferredAttribute      String?
   /// Bonus de atributo fijo (2026-08-24, Grupo 3 § Sistema de clases, clases.md § "Habilidad de
   /// daño vs ataque básico") — se suma al valor CRUDO de `preferredAttribute` antes del
   /// multiplicador de tipo al resolver el intercambio (`ExchangeParticipant.attributeBonus`,
   /// combatExchange.ts), nunca un bono plano a la tirada. Null = sin bonus (Ataque Básico y el
   /// resto de habilidades genéricas).
-  attributeBonus     Int?
+  attributeBonus          Int?
+  /// Fase 2 de efectos de clase (2026-08-26, docs/21-roadmap.md) — solo relevante si `effects`
+  /// incluye `AUMENTO`/`DEBILIDAD`: cuánto sube/baja (con signo, positivo AUMENTO/negativo
+  /// DEBILIDAD) el atributo `preferredAttribute` mientras dure el efecto. Simplificación
+  /// consciente (mismo criterio ya usado para LETAL/CONTRA/REFRACTAR): una cifra fija por
+  /// habilidad, no la escalada "+4 si diferencia 6, +6 si diferencia 10" que describen algunas
+  /// filas de `clases.md` en texto libre. Null = sin efecto de duración (el resto de habilidades).
+  durationEffectMagnitude Int?
+  /// Turnos que dura el efecto de arriba — junto con `durationEffectMagnitude`, ambos null o
+  /// ambos rellenos.
+  durationEffectTurns     Int?
   /// Habilidad racial/de arma recalculada automáticamente (2026-07-29, sistema de habilidades por
   /// arma) — a diferencia de `isStarting` (fija de por vida), estas se BORRAN y se vuelven a crear
   /// cada vez que cambia el equipo o el nivel, para reflejar siempre el arma que llevas puesta
   /// ahora mismo. Nunca editable/borrable por la jugadora (mismo criterio visual que isStarting).
-  isDynamic   Boolean  @default(false)
+  isDynamic               Boolean         @default(false)
   /// Sistema de fatiga (2026-07-29) — coste fijo por tramo (energy.ts § ENERGY_COST_BASICA/
   /// AVANZADA/ATAQUE_BASICO). 'general' se queda en 0.
-  energyCost  Int      @default(0)
+  energyCost              Int             @default(0)
   /// Rediseño 2026-07-31 (petición explícita: "ataque básico no es una habilidad como las demás,
   /// ni defenderse ni esquivar... son acciones que tienen todos los personajes") — marca los 3
   /// genéricos (Ataque Básico, Defenderse, Esquivar) para separarlos en su propio bloque en la UI
   /// y excluirlos del cupo de 10 habilidades (antes se usaba `energyCost === 0` para esto último,
   /// una heurística que dejó de servir en cuanto Ataque Básico pasó a costar 5 en vez de 0).
-  isGeneric   Boolean  @default(false)
+  isGeneric               Boolean         @default(false)
   /// Energía que RECUPERA usar esta habilidad en un intercambio de combate real (2026-07-31) —
   /// Defenderse=10/Esquivar=5, 0 en el resto (incluido Ataque Básico, que solo cuesta). Sustituye
   /// al viejo mecanismo de regen por ROL (¿el jugador atacó o se defendió este turno?) — ahora
   /// depende de LA HABILIDAD usada, no del rol, ver energy.ts § nextEnergia.
-  energyRegen Int      @default(0)
+  energyRegen             Int             @default(0)
   /// Habilidad real por categoría exacta de arma (2026-07-31, petición explícita: "cada arma
   /// equipada te dará una habilidad de su tipo... si llevas 2 armas del mismo tipo tendrás solo 1
   /// habilidad de arma con doble efecto") — true cuando esta habilidad colapsó porque ARMA_
@@ -1134,8 +1348,8 @@ model SavedAction {
   /// weaponAbilitiesFor). Se traduce en un bonus de dificultad al usarla (turnResolution.ts §
   /// DUAL_WIELD_DIFFICULTY_BONUS) — nunca en una segunda tirada real, decisión explícita para no
   /// duplicar el intercambio de combate en un mismo turno.
-  dualWield   Boolean  @default(false)
-  createdAt   DateTime @default(now())
+  dualWield               Boolean         @default(false)
+  createdAt               DateTime        @default(now())
 
   @@index([saveId])
 }
@@ -1151,12 +1365,12 @@ enum QuestStatus {
 /// propone (newQuest/questProgress en narrador.ts), el backend valida y materializa — sin
 /// bonificadores mecánicos propios, coherente con la decisión de mecánicas 6.
 model Quest {
-  id          String      @id @default(cuid())
-  saveId      String
-  save        Save        @relation(fields: [saveId], references: [id], onDelete: Cascade)
-  title       String
-  description String
-  status      QuestStatus @default(ACTIVA)
+  id               String      @id @default(cuid())
+  saveId           String
+  save             Save        @relation(fields: [saveId], references: [id], onDelete: Cascade)
+  title            String
+  description      String
+  status           QuestStatus @default(ACTIVA)
   /// Condición de cierre detectable por el backend (roadmap 2026-07-19, mecánicas): si esta
   /// misión se detecta como "derrotar a X" al crearse (match contra los NPCs del mundo, mismo
   /// matcher de npcScene.ts), aquí queda el id del Npc objetivo — sin FK real a propósito (mismo
@@ -1164,7 +1378,7 @@ model Quest {
   /// ninguna partida. En cuanto su NpcState pase a CONVALECIENTE/MUERTO en ESTA partida, el
   /// backend cierra la misión solo, sin depender de que el modelo repita el título EXACTO en
   /// "questProgress".
-  targetNpcId String?
+  targetNpcId      String?
   /// Mismo patrón que `targetNpcId` (roadmap 2026-07-20, P1 de Fable): si el título/descripción
   /// menciona una Location conocida del mundo (mismo `matchDestination` que usa `travel.ts` para
   /// resolver destinos), aquí queda su id — cierra sola la misión "llegar a Y" en cuanto se
@@ -1176,34 +1390,34 @@ model Quest {
   /// una fila de catálogo exacta: botín/despiece/crafteo pueden personalizar el nombre). Cierra
   /// sola la misión "conseguir Z" en cuanto se materializa un `InventoryItem` cuyo nombre lo
   /// menciona (loot, despiece, crafteo o "newItem" de la narración).
-  targetItemName String?
+  targetItemName   String?
   /// Frase corta y accionable de qué hay que hacer (2026-07-25, petición explícita: "Objetivo"
   /// separado de `description`, que es texto narrativo/de trasfondo) — se muestra en el panel de
   /// Misiones. Nullable: las misiones ya existentes antes de este campo no tienen uno todavía.
-  objetivo String?
+  objetivo         String?
   /// Recompensa estática de la misión (petición explícita, 2026-07-25) — nunca decidida por el
   /// modelo, siempre fijada a mano al crear la misión (mismo criterio que loot de NpcItem: la
   /// única fuente de verdad es lo que el propio código define, nunca una invención libre). null =
   /// sin recompensa de XP definida todavía.
-  rewardXp Int?
+  rewardXp         Int?
   /// Nombres de objetos ya definidos como recompensa (solo texto para mostrar en el panel — la
   /// entrega real de esos objetos concretos sigue pasando por el mecanismo de loot/crafteo normal
   /// que ya exista; este campo no crea InventoryItem por sí solo, ver comentario de rewardXp).
-  rewardItems String[] @default([])
+  rewardItems      String[]    @default([])
   /// Recompensa no-objeto (2026-08-17, petición explícita: "añadir un reward que no sea item
   /// solo, sino también recetas, compañeros o pasivas temporales") — claves de `CraftingRecipe`
   /// (crafting.ts) que se desbloquean al completarse esta misión. Solo tiene efecto real en
   /// recetas marcadas `requiresUnlock: true` (ver comentario del campo en crafting.ts) — las 16
   /// recetas ya existentes no lo llevan, siguen disponibles para cualquiera exactamente como hoy.
   /// Entrega real en `grantQuestRewardRecipesAndCompanion` (questResolution.ts).
-  rewardRecipeKeys String[] @default([])
+  rewardRecipeKeys String[]    @default([])
   /// Compañero de recompensa (2026-08-17) — plantilla fija {name, role, notes}, mismo shape que
   /// `Companion` sin el `id`/`saveId`. Sujeto al mismo tope real de slots que cualquier otro
   /// compañero (companionSlotsForRecipeKey) — si no hay hueco al completarse la misión, no se
   /// crea (nunca se pierde silenciosamente el resto de la recompensa por esto).
-  rewardCompanion Json?
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
+  rewardCompanion  Json?
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
 
   @@index([saveId])
 }
@@ -1332,11 +1546,11 @@ model AlmacenItem {
 /// el auto-equipo (`autoEquiparDesdeAlmacen`, companionSupervivencia.ts) la usa para decidir qué
 /// coger del Almacén para cada Subject/Companion que la tenga asignada.
 model PlantillaEquipo {
-  id            String    @id @default(cuid())
+  id            String      @id @default(cuid())
   saveId        String
-  save          Save      @relation(fields: [saveId], references: [id], onDelete: Cascade)
+  save          Save        @relation(fields: [saveId], references: [id], onDelete: Cascade)
   name          String
-  personalizada Boolean   @default(true)
+  personalizada Boolean     @default(true)
   /// 'guardia' | 'trabajador' | 'productor' — mismo criterio de texto libre que Subject.role.
   rol           String
   /// Record<EquipSlot, { category?: string; catalogSlug?: string }> — un criterio de match por
@@ -1345,8 +1559,8 @@ model PlantillaEquipo {
   slots         Json
   /// Orden de servicio cuando el Almacén escasea y varias plantillas compiten por el mismo objeto
   /// — menor número = se sirve antes. Editable por la jugadora, sin jerarquía fija de rol.
-  prioridad     Int       @default(0)
-  createdAt     DateTime  @default(now())
+  prioridad     Int         @default(0)
+  createdAt     DateTime    @default(now())
   subjects      Subject[]
   companions    Companion[]
 
@@ -1440,19 +1654,19 @@ enum Especializacion {
 /// sigue viviendo en WorldState.facts, igual que hasta ahora). Sembrado desde
 /// worldCatalog.ts; la prosa larga vive en docs/rpgtarkor/npcs.md y en lore chunks SIN números.
 model Npc {
-  id      String  @id @default(cuid())
-  worldId String
-  world   World   @relation(fields: [worldId], references: [id], onDelete: Cascade)
-  kind    NpcKind
-  slug    String
-  name    String
+  id                  String           @id @default(cuid())
+  worldId             String
+  world               World            @relation(fields: [worldId], references: [id], onDelete: Cascade)
+  kind                NpcKind
+  slug                String
+  name                String
   /// Formas reales de referirse a él/ella ("torgash", "el jefe de guerra serhu", "la terk'ikar")
   /// — para la detección determinista de "NPC en escena" (§ 2.5)
-  aliases String[]
+  aliases             String[]
   /// Clan o facción, libre ("Clan Serhu", "Concordia de Hierro") — null para independientes
-  faction String?
+  faction             String?
   /// Rol corto ("Kort'ikar del Clan Serhu", "soldado de patrulla") — libre
-  role    String
+  role                String
   /// Artículo determinado ("el"/"la") que necesita `name` al presentarse en el contexto del
   /// Narrador — null si es un nombre propio que no lleva artículo (2026-07-31, bug real jugando:
   /// "se gira hacia la orca enfurecida... el Orco Enfurecido salta hacia él" — el modelo confunde
@@ -1463,7 +1677,7 @@ model Npc {
   /// Se usa para REFORZAR el nombre en el propio contexto ("el Orco Enfurecido"), no para corregir
   /// la prosa después — más seguro que un reemplazo de texto a ciegas, que podría corromper una
   /// mención legítima en femenino de otro NPC real (p.ej. Gistera Koh) en la misma escena.
-  articulo String?
+  articulo            String?
   /// Género gramatical ("M"/"F"), distinto de `articulo` (2026-08-07, bug real jugando,
   /// 2026-07-30: Gistera Koh — orca, femenino, ya explícito como primera palabra de su `bio` —
   /// narrada como "el orco"). `articulo` solo ayuda cuando el NOMBRE del NPC es un rol/descripción
@@ -1472,23 +1686,23 @@ model Npc {
   /// género ya establecido en `bio`. Null = no reforzado explícitamente (el modelo usa `bio` tal
   /// cual, como siempre) — se puebla solo donde ya se ha visto el fallo en vivo, no en todo el
   /// catálogo de golpe.
-  genero String?
+  genero              String?
   /// Nivel en la MISMA escala de docs/10-niveles-xp-reino.md. Para PRINCIPAL es fijo; para
   /// PLANTILLA es el nivel canónico (levelMax acota el rango típico). Hoy el motor no hace
   /// tiradas opuestas: este nivel sirve para que el clasificador calibre la dificultad y el
   /// Narrador el tono (§ 2.5), no para un sistema de combate simétrico.
-  level    Int
-  levelMax Int?
+  level               Int
+  levelMax            Int?
   /// AttributeBlock { fuerza, destreza, sigilo, voluntad, carisma, arcano }, rango 4-18 —
   /// mismo shape que Save.attributes para poder reutilizar tipos y validaciones
-  attributes Json
+  attributes          Json
   /// Biografía/descripción corta + personalidad: el resumen que se inyecta en el prompt.
   /// La versión larga y los ganchos viven en los .md y en lore chunks.
-  bio         String
-  personality String
+  bio                 String
+  personality         String
   /// Dónde se le encuentra normalmente — slug de Location, string (no FK: una plantilla
   /// puede aparecer "en cualquier ruta"), null = itinerante
-  homeLocationSlug String?
+  homeLocationSlug    String?
   /// Rediseño de la vista de combate (2026-07-28, petición explícita: "usa habilidades de la
   /// enciclopedia... si vas a añadir nuevas reflejalas con el resto de habilidades bajo su
   /// clase") — las habilidades que se ven en la ficha de un NPC NO son un campo suelto por NPC
@@ -1508,28 +1722,28 @@ model Npc {
   /// de hielo sílice" que se desbloquean subiendo de nivel de oficio, categoría 'general' del
   /// panel de Habilidades, no 'combate'), aplazado a otra sesión. `Npc` no necesita ningún campo
   /// para eso.
-  raza  String?
+  raza                String?
   /// Clase de combate (2026-08-24, Grupo 3 § Sistema de clases, ver docs/rpgtarkor/clases.md) —
   /// antes `String?` libre (comentario de arriba ya avisaba que "debería" ser esto). Solo
   /// humanoides con equipo real la llevan, igual que antes.
-  clase Clase?
+  clase               Clase?
   /// Especialización dentro de `clase`, ver comentario de `Save.especializacion`. Null = sin
   /// especialización asignada (tronco común, o clase sin especializaciones construidas todavía).
-  especializacion Especializacion?
+  especializacion     Especializacion?
   /// Fauna/monstruos (sin `raza` — cada fila de fauna en worldCatalog.ts YA es una especie
   /// entera, no un individuo, así que su racial vive aquí en vez de en un catálogo aparte):
   /// hasta 6 habilidades raciales propias, `{ icon, name, description, categoria:
   /// 'ataque'|'defensa'|'utilidad' }` (2 de cada). Vacío en NPCs humanoides (su racial sale de
   /// `raza` en vez de este campo).
-  habilidadesRaciales Json @default("[]")
+  habilidadesRaciales Json             @default("[]")
   /// Frase corta del ataque natural (solo fauna, sin arma en su `loadout`) — alimenta el
   /// "Ataque base" calculado (baseAttack.ts) cuando no hay arma que describir. Null en NPCs
   /// humanoides (su Ataque base describe el arma de su `loadout` en su lugar).
-  ataqueNatural String?
+  ataqueNatural       String?
   /// Disposición al combate, ver enum `Temperamento`. Default CAUTELOSO = comportamiento actual
   /// (depende del verbo del jugador), así que sembrar sin asignar esto explícitamente no cambia
   /// nada del comportamiento existente.
-  temperamento Temperamento @default(CAUTELOSO)
+  temperamento        Temperamento     @default(CAUTELOSO)
   /// Capacidades de interacción (2026-07-29, "no siempre puedes domesticar a un animal de la misma
   /// raza... quiero que sea dinámico"): % (0-100) de que ESTA especie/individuo tenga la capacidad
   /// en absoluto, no un booleano fijo — un Aullador Rojo hambriento no siempre es domesticable.
@@ -1537,11 +1751,11 @@ model Npc {
   /// instancia de partida, persistida en NpcState, con el mismo rollCheck de dice.ts) se monta
   /// cuando exista una mecánica real de comerciar/reclutar/domesticar/capturar/cortejar que la
   /// consuma — hasta entonces sería estado sin ningún caller.
-  comerciablePct   Int @default(0)
-  reclutablePct    Int @default(0)
-  domesticablePct  Int @default(0)
-  capturablePct    Int @default(0)
-  cortejablePct    Int @default(0)
+  comerciablePct      Int              @default(0)
+  reclutablePct       Int              @default(0)
+  domesticablePct     Int              @default(0)
+  capturablePct       Int              @default(0)
+  cortejablePct       Int              @default(0)
   /// Atributo de resistencia (Grupo 3 § Compañeros y supervivencia, 2026-08-25, ver
   /// docs/rpgtarkor/companeros-y-supervivencia.md § 2/3) — CUÁL de los 7 atributos propios de este
   /// NPC/fauna (`attributes`, ya sembrado) se usa como resistencia en la tirada opuesta de
@@ -1557,10 +1771,10 @@ model Npc {
   /// ("personajes únicos pueden aparecer en cualquier sitio por guion"); este campo es lo que ese
   /// filtro comprueba ahora para las excepciones. Default `true` — solo se pone `false` en
   /// PRINCIPAL de regiones todavía no jugables (worldCatalog.ts).
-  nucleoJugable Boolean @default(true)
+  nucleoJugable       Boolean          @default(true)
 
-  items     NpcItem[]
-  npcStates NpcState[]
+  items              NpcItem[]
+  npcStates          NpcState[]
   combatParticipants CombatParticipant[]
 
   @@unique([worldId, slug])
@@ -1627,11 +1841,11 @@ model HistoriaEntry {
 /// pulsando "Registrar" tantas veces como se quisiera. Determinista, sin IA — el modelo nunca
 /// decide si un NPC está derrotado ni si ya se le saqueó.
 model NpcState {
-  id              String          @id @default(cuid())
-  saveId          String
-  save            Save            @relation(fields: [saveId], references: [id], onDelete: Cascade)
-  npcId           String
-  npc             Npc             @relation(fields: [npcId], references: [id], onDelete: Cascade)
+  id                          String          @id @default(cuid())
+  saveId                      String
+  save                        Save            @relation(fields: [saveId], references: [id], onDelete: Cascade)
+  npcId                       String
+  npc                         Npc             @relation(fields: [npcId], references: [id], onDelete: Cascade)
   /// Ámbito del estado (roadmap 2026-07-20, bug real P0): un Npc `PLANTILLA` es una única fila
   /// de catálogo compartida por TODAS sus apariciones en el mundo ("rezagado", "corredor de
   /// cauce"...) — sin esto, derrotar/saquear UNA aparición marcaba la plantilla entera como
@@ -1642,25 +1856,25 @@ model NpcState {
   /// cualquier escena). Para `PLANTILLA`, el `Location.id` donde ocurre ESTE encuentro concreto
   /// ("itinerante" si no hay ubicación resuelta en el turno) — así cada aparición nueva en un
   /// sitio distinto empieza fresca, sin memoria de otras plantillas del mismo arquetipo.
-  scope           String          @default("")
-  condicionFisica CondicionFisica @default(ILESO)
+  scope                       String          @default("")
+  condicionFisica             CondicionFisica @default(ILESO)
   /// Sistema de fatiga simétrico (2026-07-30, deuda técnica: "los NPC siguen eligiendo habilidad
   /// sin restricción de energía" — ver energy.ts) — null = tope completo, mismo criterio lazy que
   /// `condicionFisica` antes de que exista fila: un NPC nunca tocado no necesita fila propia. El
   /// tope real (energiaMaxFor(constitución)) nunca se persiste aquí, se deriva en caliente igual
   /// que en Save.
-  energia         Int?
+  energia                     Int?
   /// Rediseño 2026-07-31 (petición explícita: "si no saqueas todo el botón sigue para poder
   /// saquear lo que dejaste") — true = ya se copió TODO su loadout conocido al inventario del
   /// jugador (comparado contra `lootedItemNames`), bloquea "Registrar"/"Saquear todo" de nuevo
   /// sobre el mismo NPC hasta que la partida se reinicie. Antes se marcaba en cuanto se tocaba
   /// CUALQUIER objeto suyo (saqueo parcial perdía el resto para siempre); ahora depende de
   /// `lootedItemNames` cubrir el 100% de `Npc`/`ItemCatalog` asociados.
-  saqueado        Boolean         @default(false)
+  saqueado                    Boolean         @default(false)
   /// Nombres de objeto YA copiados al inventario del jugador de este NPC, en esta partida
   /// (2026-07-31) — permite un saqueo parcial real: dejar algo sin marcar en el modal no lo
   /// pierde, una visita posterior solo ofrece lo que falta y nunca duplica lo ya tomado.
-  lootedItemNames String[]        @default([])
+  lootedItemNames             String[]        @default([])
   /// Captura (Grupo 3 § Compañeros y supervivencia, 2026-08-25, ver
   /// docs/rpgtarkor/companeros-y-supervivencia.md § 1-3) — mismo patrón de claim-atómico que
   /// `saqueado`: true en cuanto se ata con éxito (trampa-de-lazo + GRAVE/CONVALECIENTE), bloquea
@@ -1670,17 +1884,17 @@ model NpcState {
   /// completar el tameo/persuasión con éxito y crear el `Companion`, estos 3 campos NO se limpian
   /// — quedan como registro de que esta instancia concreta ya se procesó, mismo criterio que
   /// `saqueado` nunca se resetea.
-  capturado             Boolean @default(false)
-  capturaFelicidad      Int     @default(0)
+  capturado                   Boolean         @default(false)
+  capturaFelicidad            Int             @default(0)
   /// Solo fauna — qué Jaula la aloja durante el tameo. Null para NPC (no necesita jaula, solo
   /// atado+persuasión) y para fauna todavía sin jaula asignada (recién atada).
-  capturaJaulaBuildingId String?
+  capturaJaulaBuildingId      String?
   /// Rediseño de combate (2026-08-09, "Analizar rival") — true en cuanto el jugador analiza con
   /// éxito a ESTE npc/scope concreto una vez, para siempre en esta partida (no hace falta
   /// repetirlo en el siguiente combate: el atributo recomendado es un dato fijo de sus
   /// `attributes`, no cambia entre encuentros). Gatea qué muestra la ficha del rival en combate
   /// (CombatPanel.tsx § EnemyFicha) — sin analizar, ni estadísticas ni habilidades.
-  analizado       Boolean         @default(false)
+  analizado                   Boolean         @default(false)
   /// Tope de usos por combate (2026-08-15, AbilityEffect.LIMITADA/maxUsesPerCombat) — mapa `nombre
   /// de habilidad → veces usada`, cuenta tanto lo que el JUGADOR ha usado contra este NPC como lo
   /// que este NPC ha usado contra el jugador en el encuentro actual (un solo contador compartido:
@@ -1688,7 +1902,10 @@ model NpcState {
   /// se reutiliza la vuelta a `condicionFisica: ILESO` (descanso/curación entre combates, nunca
   /// durante uno) como frontera real para resetear a `{}`, mismo punto donde ya se limpian
   /// `saqueado`/`analizado`.
-  abilityUsesThisEncounter Json @default("{}")
+  abilityUsesThisEncounter    Json            @default("{}")
+  /// Fase 2 de efectos de clase (2026-08-26) — ver comentario completo en `Save.activeEffects`,
+  /// mismo shape (`ActiveEffect[]`), mismo criterio de reset (vuelta a `condicionFisica: ILESO`).
+  activeEffects               Json            @default("[]")
   /// docs/19-post-combate-y-recompensas-mision.md pieza 2 (2026-08-13) — `fictionalMinutes` (no
   /// tiempo real, el reloj del mundo se pausa cuando el backend está parado) del momento en que
   /// `condicionFisica` pasó a su valor ACTUAL. Solo se usa cuando el valor actual es CONVALECIENTE
@@ -1705,16 +1922,16 @@ model NpcState {
   /// MUERTO (ver `applyCombatExchangeToNpcState`/`applyExecuteTargets`, turnResolution.ts). null
   /// = encuentro solitario de siempre, sin cambio de comportamiento (todo el código que ya existía
   /// antes de este campo sigue funcionando igual, `groupSize` nunca se pone fuera de cazar.ts).
-  groupSize       Int?
+  groupSize                   Int?
   /// Cuántos individuos del grupo han caído (MUERTO) hasta ahora — sube en cada kill dentro del
   /// grupo, tope real en `groupSize`. Ver `corpsesLooted` para cuántos de esos cadáveres ya se
   /// despiezaron (recolectar.ts).
-  groupDefeated   Int             @default(0)
+  groupDefeated               Int             @default(0)
   /// Cadáveres del grupo YA despiezados — sustituye a `saqueado` (booleano, solo tiene sentido
   /// para 1 individuo) cuando `groupSize` no es null. Disponibles para despiece ahora mismo =
   /// `groupDefeated - corpsesLooted`, nunca negativo.
-  corpsesLooted   Int             @default(0)
-  updatedAt       DateTime        @updatedAt
+  corpsesLooted               Int             @default(0)
+  updatedAt                   DateTime        @updatedAt
 
   @@unique([saveId, npcId, scope])
 }
@@ -1723,17 +1940,17 @@ model NpcState {
 /// documentos, objetos de valor narrativo). Sin bonificadores ni stats (decisión de
 /// mecánicas 6): description es contexto para el Narrador. Sembrado desde worldCatalog.ts.
 model ItemCatalog {
-  id          String  @id @default(cuid())
-  worldId     String
-  world       World   @relation(fields: [worldId], references: [id], onDelete: Cascade)
-  slug        String
-  name        String
+  id                    String           @id @default(cuid())
+  worldId               String
+  world                 World            @relation(fields: [worldId], references: [id], onDelete: Cascade)
+  slug                  String
+  name                  String
   /// Categoría libre ("arma", "herramienta", "ropa", "material", "consumible",
   /// "medicinal", "documento", "valor") — organiza el catálogo, no es mecánica
-  category    String
+  category              String
   /// Categorización mecánica real (2026-07-29) — ver comentario del enum ItemTipo. `category`
   /// (arriba) sigue siendo el subtipo fino DENTRO de este tipo, no se sustituye.
-  tipo        ItemTipo
+  tipo                  ItemTipo
   /// Oficios (prefijo sin raza/región, p.ej. "curtidor", "desollador" — mismo criterio de prefijo
   /// que `matchesOficioPrefix`, harvestAbilities.ts) para los que este objeto cuenta como
   /// herramienta requerida (2026-08-17, petición explícita: "cada profesión dependerá de tener la
@@ -1742,12 +1959,12 @@ model ItemCatalog {
   /// de verdad los oficios que de hecho tienen algún objeto dado de alta aquí — ver
   /// OFICIOS_CON_HERRAMIENTA_REQUERIDA en crafting.ts: un oficio sin ninguna herramienta
   /// registrada en todo el catálogo se queda sin gate, igual que siempre.
-  herramientaParaOficio String[] @default([])
+  herramientaParaOficio String[]         @default([])
   /// Solo en armas/escudos (2026-07-29, sistema de habilidades por arma) — decide qué habilidad
   /// de ataque/defensa genera este objeto al equiparlo, ver weaponAbilities.ts. Null en el resto
   /// del catálogo (herramientas, ropa, consumibles...).
-  tipoArma    WeaponCategory?
-  description String
+  tipoArma              WeaponCategory?
+  description           String
   /// Formas reales de referirse al objeto ("hacha", "el cuchillo"...) — mismo campo y mismo
   /// propósito que Npc.aliases/Location.aliases: sin esto, tanto la Enciclopedia progresiva
   /// (entityDiscovery.ts) como el texto clicable de narración (enciclopediaIndex.ts, frontend)
@@ -1755,36 +1972,36 @@ model ItemCatalog {
   /// "Hacha de guerra rota" (auditoría 2026-07-30, "revisar partida"). Default `[]` en vez de
   /// obligatorio: la inmensa mayoría de objetos no necesita ninguno (su nombre ya es corto y
   /// único, o no se presta a sinónimos seguros sin colisionar con otro objeto del catálogo).
-  aliases     String[] @default([])
+  aliases               String[]         @default([])
   /// Ranura de equipo real (2026-07-30, petición explícita: "hay que categorizarlos por las
   /// partes equipables, para que no pueda poner un casco en los pies") — solo en objetos
   /// `tipo: EQUIPABLE`, null en el resto (nunca se equipan). Familia, no ranura exacta a rajatabla:
   /// ARMA_PRINCIPAL vale también para ARMA_SECUNDARIA y viceversa (cualquier arma va en cualquier
   /// mano), ANILLO_1 vale también para ANILLO_2 (ver `equipSlotFamily`, equipment.ts) — el resto
   /// de ranuras son 1:1 exactas.
-  equipSlot   EquipSlot?
+  equipSlot             EquipSlot?
   /// Bonificadores mecánicos reales al equipar (2026-07-19, mismo mecanismo que InventoryItem;
   /// mapa múltiple desde 2026-08-03 — sustituye a statBonusAttribute/statBonusAmount, un solo par
   /// no dejaba a un objeto sumar, p.ej., fuerza Y defensa a la vez) — hoy sobre todo en armas
   /// (categoría "arma") y armadura; el resto del catálogo sigue siendo puramente narrativo.
   /// Partial<Record<Attribute | 'defensa', number>> (ver StatBonusMap, equipment.ts). Se copia a
   /// InventoryItem.statBonuses al materializarse por saqueo/despiece.
-  statBonuses Json?
+  statBonuses           Json?
   /// Medidas físicas aproximadas en texto libre (2026-07-22, "para los objetos sus medidas y su
   /// lugar de origen... que eso se refleje en los prompts") — p.ej. "hoja de 45 cm, mango de 15
   /// cm". Texto libre porque la forma de medir varía demasiado entre categorías (arma, ropa,
   /// consumible...) para forzar un único campo numérico.
-  dimensiones String?
+  dimensiones           String?
   /// Lugar/pueblo/región de origen o fabricación, cuando aporta algo al lore (p.ej. "manufactura
   /// goirnte, Meseta del Orden"). Null en objetos sin origen especial (p.ej. un cuchillo genérico).
-  lugarOrigen String?
+  lugarOrigen           String?
   /// Nivel de rareza/dificultad (1-5, sesión de diseño 2026-07-23) — "Craftable", mismo concepto
   /// que ConstructionRecipe.tier (construction.ts). Default 1 = objeto común, sin requisito real.
-  tier        Int      @default(1)
+  tier                  Int              @default(1)
   /// Requisitos mínimos de atributo del PJ para EQUIPAR este objeto (Partial<Record<Attribute |
   /// SecondaryAttribute, number>>, ver requisitos.ts) — comprobación de UMBRAL pura en
   /// PATCH /saves/:id/inventario/:itemId, nunca una tirada. Null = sin requisito.
-  requisitos  Json?
+  requisitos            Json?
   /// Tope real de curación al usar este objeto (2026-07-29, "si sales de un combate Incapacitado,
   /// tendrás que usar objetos específicos para volver a Herido o pasar directo a Ileso"): solo
   /// tiene sentido en objetos `category: "medicinal"` — descansar/comer SIN objeto solo llega a
@@ -1792,7 +2009,7 @@ model ItemCatalog {
   /// médico con este campo puesto rompe ese tope, incluso desde CONVALECIENTE. Null = el objeto no
   /// cura condición física (la inmensa mayoría del catálogo, incluido el resto de "medicinal" que
   /// no cura de verdad, como el contraveneno).
-  curaHasta   CondicionFisica?
+  curaHasta             CondicionFisica?
   /// Primeros auxilios (2026-08-13, petición explícita: objetos "básicos" que solo mejoran UN
   /// escalón de condición desde donde estés, nunca de golpe hasta `curaHasta` como los objetos
   /// normales) — con esto en `true`, `curaHasta` deja de ser un tope absoluto y pasa a ser el
@@ -1800,23 +2017,23 @@ model ItemCatalog {
   /// condición actual). Ver `healCeilingFor` (death.ts) para la fórmula real. `false`/`null` =
   /// comportamiento de siempre (rompe el tope de golpe, incluso desde CONVALECIENTE) — el resto
   /// del catálogo (alquimista y superiores) sigue así a propósito.
-  curaUnPaso  Boolean          @default(false)
+  curaUnPaso            Boolean          @default(false)
   /// Cantidad de energía que restaura al usarlo (2026-07-29, sistema de fatiga) — mismo criterio
   /// que `curaHasta` pero numérico (la energía es un pool 0..max, no un enum con pasos fijos).
   /// Null = el objeto no restaura energía.
-  curaEnergia Int?
+  curaEnergia           Int?
   /// Clave estable del efecto especial (2026-08-03, `tipo: ESPECIAL`) — un identificador que un
   /// sistema concreto del juego consulta para activar su propio comportamiento (p.ej.
   /// `'reveal-map-llanuras'` para MapaPanel.tsx). Texto libre a propósito, como `sourceSlug` en
   /// HarvestYield: no hay (ni tiene sentido crear) un enum cerrado de "todos los efectos
   /// especiales posibles" — cada sistema que consuma una clave nueva la define y la documenta
   /// donde vive ese sistema, no aquí. Null en el resto del catálogo (tipo != ESPECIAL).
-  effectKey         String?
+  effectKey             String?
   /// Texto explicando el efecto en español llano, para mostrar en un sitio propio y diferenciado
   /// de `description` (inventario/detalle) — nunca en la narración del Narrador. Null si
   /// `effectKey` también lo es.
-  effectDescription String?
-  createdAt   DateTime @default(now())
+  effectDescription     String?
+  createdAt             DateTime         @default(now())
 
   npcItems NpcItem[]
   yields   HarvestYield[]
@@ -1844,50 +2061,50 @@ model NpcItem {
 /// fija que se lee, nunca una tirada ni una invención del modelo. Las especies NO tienen
 /// tabla propia: su prosa vive en areas.md/lore chunks; aquí solo la clave textual estable.
 model HarvestYield {
-  id         String      @id @default(cuid())
-  worldId    String
-  world      World       @relation(fields: [worldId], references: [id], onDelete: Cascade)
+  id                  String          @id @default(cuid())
+  worldId             String
+  world               World           @relation(fields: [worldId], references: [id], onDelete: Cascade)
   /// Clave de la especie ("corredor-de-cauce", "salvia-del-polvo") — string, no FK
-  sourceSlug String
+  sourceSlug          String
   /// Categoría amplia de la fuente (2026-08-15, sustituye a sourceName — ver comentario de
   /// HarvestYieldInput en worldCatalog.ts): agrupa varias fuentes bajo el mismo bucket en el front.
   /// Clave de SOURCE_CATEGORY_NAMES (worldCatalog.ts) — el nombre legible se resuelve ahí
   /// (sourceCategoryNameFor), no se guarda repetido en cada fila.
-  sourceCategory String
-  itemId     String
-  item       ItemCatalog @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  sourceCategory      String
+  itemId              String
+  item                ItemCatalog     @relation(fields: [itemId], references: [id], onDelete: Cascade)
   /// Cantidad FIJA por pieza/planta — la variación ya la puso la tirada de caza previa
-  cantidad   Int         @default(1)
+  cantidad            Int             @default(1)
   /// Condición narrativa o de tirada ("cuchillo de deshuello", "extracción cuidadosa:
   /// destreza 15", "solo cadáver ya muerto") — null = sin condición
-  condicion  String?
+  condicion           String?
   /// Qué verbo/acción exige harvest.ts para dar este recurso (2026-07-29) — ver comentario del
   /// enum MetodoObtencion. Invariante: todas las filas de un mismo sourceSlug comparten método
   /// (validado en seed-catalog.ts).
-  metodoObtencion MetodoObtencion
+  metodoObtencion     MetodoObtencion
   /// Bypass real de `rollGathering` (2026-08-23, ver comentario de HarvestYieldInput.sinTirada en
   /// worldCatalog.ts) — recursos de reconocimiento trivial que la propia `condicion` ya describía
   /// como "no requiere tirada" sin que el motor lo respetara. `false` = tira igual que el resto.
-  sinTirada  Boolean     @default(false)
+  sinTirada           Boolean         @default(false)
   /// Gate real de herramienta POR YIELD (2026-08-23, ver comentario de
   /// HarvestYieldInput.requiereHerramienta en worldCatalog.ts) — a diferencia de
   /// OFICIOS_CON_HERRAMIENTA_REQUERIDA (crafting.ts, bloquea un oficio entero), esto bloquea solo
   /// ESTE yield concreto sin herramienta. `false` = no exige nada, igual que el resto.
-  requiereHerramienta Boolean @default(false)
+  requiereHerramienta Boolean         @default(false)
   /// Gate real de estación POR YIELD (2026-08-24, Grupo 3 § Sistema de estaciones, ver
   /// docs/rpgtarkor/estaciones.md) — a diferencia de `sinTirada`/`requiereHerramienta`, la
   /// mayoría del catálogo no tiene ninguna restricción de estación: null = disponible todo el
   /// año, igual que hoy. Hoy solo `boungo` ("crece en otoño") la usa, con `OTONO`. Comparado
   /// contra `estacionFor(fictionalMinutes)` (worldClock.ts), nunca contra el nombre narrado
   /// (que cambia según la raza del personaje jugable).
-  estacionRequerida Estacion?
+  estacionRequerida   Estacion?
   /// Gate real de clima POR YIELD (2026-08-24, Grupo 3 § Eventos de clima puntuales, ver
   /// docs/rpgtarkor/clima-tormentas.md) — a diferencia de `estacionRequerida` (igualdad exacta),
   /// esto es un umbral de severidad MÍNIMA: `climaFor(...) >= climaRequerido` (orden de
   /// `EstadoClima`, `climaSeveridadAlMenos` en worldClock.ts). Null = no exige clima concreto,
   /// igual que hoy la mayoría del catálogo. Hoy solo `punado-arena-iman` (TORMENTA_GRANDE) y
   /// `esquirla-celeste-caida` (TORMENTA_EXTREMA) la usan.
-  climaRequerido EstadoClima?
+  climaRequerido      EstadoClima?
 
   @@index([worldId, sourceSlug])
 }
@@ -1960,7 +2177,7 @@ model WorldPopulation {
   /// `orcos` a secas, precisamente porque son 3 filas distintas.
   targetSlug String
   /// Etiqueta legible para logs/debug — nunca la ve la jugadora, esto es control interno puro.
-  label String
+  label      String
 
   poblacion    Int
   /// Techo real de `poblacion` — `growAllPopulations` (population.ts) nunca crece una fila por
@@ -1980,7 +2197,7 @@ model WorldPopulation {
   /// se recolectó esta fuente por última vez de verdad (`recolectar.ts`). `null` = nunca
   /// recolectada, o fuera de cooldown desde hace tiempo. No afecta a FAUNA/RAZA (esas no pasan por
   /// `recolectar.ts`, se depliezan al morir, no al "recolectar" repetidamente en el sitio).
-  lastHarvestedAt DateTime?
+  lastHarvestedAt         DateTime?
   /// Dónde se recolectó por última vez (bug real jugando en vivo, 2026-08-13: "avanzo por la
   /// hondonada buscando más elementos... ahí sí que debería poder volver a usarla" — el cooldown
   /// de arriba era puramente de reloj, sin memoria de sitio, así que moverte a otra Location no
@@ -1995,12 +2212,12 @@ model WorldPopulation {
 
 /// Resúmenes por capítulos — memoria de partida para no perder coherencia en partidas largas (riesgo 1 del análisis).
 model SessionSummary {
-  id             String   @id @default(cuid())
-  saveId         String
-  save           Save     @relation(fields: [saveId], references: [id], onDelete: Cascade)
-  chapterNumber  Int
-  summary        String
-  createdAt      DateTime @default(now())
+  id            String   @id @default(cuid())
+  saveId        String
+  save          Save     @relation(fields: [saveId], references: [id], onDelete: Cascade)
+  chapterNumber Int
+  summary       String
+  createdAt     DateTime @default(now())
 
   @@index([saveId, chapterNumber])
 }
@@ -2014,25 +2231,25 @@ model SessionSummary {
 /// contenido estático en código (classAbilities.ts/startingAbilities.ts, sin fila de BD) — una
 /// tabla aparte cubre los cuatro tipos sin tocar cada modelo.
 model ImagePrompt {
-  id         String   @id @default(cuid())
-  worldId    String
-  world      World    @relation(fields: [worldId], references: [id], onDelete: Cascade)
+  id          String   @id @default(cuid())
+  worldId     String
+  world       World    @relation(fields: [worldId], references: [id], onDelete: Cascade)
   /// 'npc' | 'item' | 'fauna' | 'ability' — qué catálogo referencia entitySlug
-  entityType String
+  entityType  String
   /// slug real (Npc.slug/ItemCatalog.slug/HarvestYield.sourceSlug) o nombre slugificado
   /// (habilidades, que no tienen slug propio en código)
-  entitySlug String
+  entitySlug  String
   /// 'thumbnail' (miniatura cuadrada de EntryCard, cuadrícula de la Enciclopedia) | 'banner'
   /// (MediaSlot ancho de DetailModal, ~3:1 — medido en la UI real, no una talla inventada). Cada
   /// perfil tiene su propia instrucción de encuadre en imagePromptGenerator.ts y se genera/cachea
   /// por separado (petición explícita de la usuaria, 2026-07-22: "1 a 1", nunca las dos de golpe).
   sizeProfile String
-  prompt     String
+  prompt      String
   /// Qué proveedor lo generó ("cerebras:gpt-oss-120b", "ollama:qwen2.5:1.5b-instruct"...) — para
   /// poder distinguir calidad si hace falta regenerar solo lo que cayó al fallback local.
-  provider   String
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  provider    String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   @@unique([worldId, entityType, entitySlug, sizeProfile])
 }
@@ -2058,17 +2275,17 @@ model LiveTeacherCapture {
   systemPrompt String
   /// Texto EXACTO enviado como "user" — prompt de buildNarrationPrompt + el bloque de formato
   /// JSON Schema (mismo patrón que buildTeacherUserContent en modelfileSystemPrompt.ts).
-  userContent String
+  userContent  String
 
   /// Salida cruda del profesor cloud (puede incluir fences markdown sin limpiar todavía).
-  cloudRawText String
+  cloudRawText      String
   /// Proveedor real que respondió ("gemini:gemini-flash-latest", "groq:llama-3.3-70b-versatile"...).
-  cloudProvider String
+  cloudProvider     String
   /// true si cloudRawText, tras extractJsonPayload + JSON.parse, pasó validateSchema + runDetectors
   /// (los MISMOS detectores que protegen producción). Solo las filas con true son candidatas de
   /// exportación DPO — se guardan también los rechazos (false) para poder auditar cuánto alucina
   /// cada proveedor sin descartar la fila entera de la tabla.
-  cloudValid Boolean
+  cloudValid        Boolean
   /// Motivo de rechazo si cloudValid es false (mismo string que devuelven validateSchema/
   /// runDetectors) — null si cloudValid es true. Solo diagnóstico, nunca se exporta.
   cloudRejectReason String?
@@ -2079,7 +2296,7 @@ model LiveTeacherCapture {
   /// Modelo local que produjo localNarrationJson (env.ollamaModelNarrador en el momento de la
   /// captura) — útil para descartar/filtrar filas si el narrador local cambia de versión entre
   /// capturas (p. ej. tras promocionar tarkor-narrador-v2).
-  localModel String
+  localModel         String
 
   /// Export/consumo (para que re-ejecutar el script de export no duplique filas).
   exportedAt DateTime?

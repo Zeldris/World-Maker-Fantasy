@@ -7,6 +7,38 @@ export type Attribute = 'fuerza' | 'destreza' | 'constitucion' | 'inteligencia' 
 
 export type AttributeBlock = Record<Attribute, number>
 
+/// Espejo del enum `AbilityEffect` de Prisma (backend/prisma/schema.prisma) — qué hace
+/// mecánicamente una habilidad de clase al conectar (2026-08-30, para exponer el bono/efecto real
+/// en la Ficha del Rival una vez analizada, en vez de solo texto de lore). Ver ese enum para el
+/// comentario de diseño de cada valor.
+export type AbilityEffect =
+  | 'ATAQUE'
+  | 'ATURDIMIENTO'
+  | 'INTIMIDACION'
+  | 'AGUANTE'
+  | 'ANALISIS'
+  | 'INVOCACION'
+  | 'DEBILIDAD'
+  | 'AUMENTO'
+  | 'RETIRAR'
+  | 'CANALIZAR'
+  | 'CURAZION'
+  | 'REFLEJAR'
+  | 'EXPULSAR'
+  | 'CONTROL'
+  | 'MULTIPLE'
+  | 'LETAL'
+  | 'DESVIAR'
+  | 'PROVOCACION'
+  | 'OCULTACION'
+  | 'CONTRA'
+  | 'REFRACTAR'
+  | 'RECUPERACION'
+  | 'PURIFICAR'
+  | 'COMPANERO'
+  | 'LIMITADA'
+  | 'CONVERSION'
+
 /// Atributos secundarios de PJ (sesión de diseño 2026-07-23, remodelados 2026-08-22) — nunca
 /// alimentan una tirada (dice.ts), solo comprobaciones de umbral (requisitos de objetos/
 /// construcciones/oficios). Ver el comentario completo en el backend (secondaryAttributes.ts)
@@ -132,6 +164,11 @@ export interface KingdomStatsInfo {
   soldados: number
   trabajadores: number
   visitantes: number
+  /// B.19 (checklist frontend 2026-08-27) — causa REAL de que un territorio pase a DISPUTADO/
+  /// PERDIDO (felicidad baja sostenida, 7 días) o se consolide (felicidad alta sostenida) —
+  /// nunca el conflicto de facciones del mundo, que es un sistema completamente distinto.
+  diasFelicidadBaja: number
+  diasFelicidadAlta: number
 }
 
 export interface WorldTheme {
@@ -206,6 +243,17 @@ export interface CombatExchangeSideInfo extends RollInfo {
   /// opcional que `multiplicador`: ausente en LogEntry.combatExchange persistidas antes de este
   /// campo.
   malus?: number
+  /// Bug real (2026-08-28, "en los cálculos de la tirada tampoco se está viendo") — bonus fijo de
+  /// la habilidad usada este intercambio (ver SavedActionInfo.attributeBonus), ya sumado dentro de
+  /// `valorEfectivo`/`result` pero nunca expuesto por separado hasta ahora. Mismo criterio de
+  /// opcional que `malus`/`multiplicador`.
+  attributeBonus?: number
+  /// Pasivas raciales (2026-08-28, pendiente 2026-08-27 punto 4) — `rolls` tiene 2 elementos si
+  /// `rollMode !== 'normal'` (ventaja = mejor de los dos, desventaja = peor), 1 si 'normal'.
+  /// `racialAdvantageReason` es el texto listo para mostrar de por qué se tiró así.
+  rolls?: number[]
+  rollMode?: 'normal' | 'ventaja' | 'desventaja'
+  racialAdvantageReason?: string
 }
 
 // 'independiente' (bug real, 2026-08-13: faltaba en este type — el backend YA lo manda para
@@ -323,6 +371,13 @@ export interface LogEntry {
   /// jugadora responde (aceptar/cancelar) — nunca sobrevive a una recarga, mismo criterio efímero
   /// que `newQuest`/`questCompleted`.
   questOffer?: { title: string; description: string }
+  /// "Modo dinámico" (2026-08-27) — botón "Interactuar" al final de un turno normal, nunca lo
+  /// interrumpe; mismo criterio efímero/local que `questOffer` (se limpia al pulsar Interactuar o
+  /// Ignorar, nunca sobrevive a una recarga). `busy`/`error` (checklist frontend 2026-08-27, A.7):
+  /// antes la tarjeta se limpiaba ANTES de saber si la petición tuvo éxito — si fallaba, la
+  /// jugadora se quedaba sin ningún rastro de la oferta ni explicación. Ahora la tarjeta sigue
+  /// visible con el error inline y puede reintentar con el mismo botón.
+  dynamicModeOffer?: { tipo: 'NPC' | 'FAUNA'; targetSlug: string; targetName: string; busy?: boolean; error?: string }
   /// CONVALECIENTE deja de ser "victoria automática" (2026-08-26) — presente en el turno de
   /// combate en que uno o más NPC pasan a CONVALECIENTE por primera vez; LogPanel pinta, por cada
   /// uno, una tarjeta con Matar/Capturar/Clemente (mismo fondo amarillo que `questOffer`). Efímero
@@ -405,6 +460,12 @@ export interface InventoryItemInfo {
   /// súbdito, nunca los dos a la vez.
   companionId?: string | null
   subjectId?: string | null
+  /// Rediseño de captura (2026-08-28) — no null = esta fila ES una captura en tránsito (fauna/NPC
+  /// atado, sin depositar en Jaula/Celda todavía). Ver `capturaExpiraAtMinutes` para el plazo antes
+  /// de que se escape sola (null = tier 7 de cuerda, nunca expira — ninguna cuerda de ese tier
+  /// existe en el catálogo real todavía).
+  capturaNpcId?: string | null
+  capturaExpiraAtMinutes?: number | null
 }
 
 /// Grupo 3 § Compañeros y supervivencia (2026-08-25) — `felicidad: null` = compañero de quest/
@@ -421,6 +482,12 @@ export interface CompanionInfo {
   esSlotDomador: boolean
   rolReino: string | null
   plantillaEquipoId: string | null
+  /// B.14 (checklist frontend 2026-08-27) — el campo ya existía en el backend (Companion,
+  /// participa de verdad en combate múltiple) pero nunca se exponía aquí: el panel de Compañeros
+  /// no tenía forma de saber si uno estaba GRAVE/CONVALECIENTE fuera de la pantalla de combate.
+  /// `null` para compañeros sin capa mecánica real (de quest/narración libre), mismo criterio que
+  /// `comida`/`agua`.
+  condicionFisica: CondicionFisica | null
 }
 
 export interface AlmacenItemInfo {
@@ -570,6 +637,11 @@ export interface SavedActionInfo {
   /// conectar), 'defensa' (nunca hace daño) o 'utilidad' (reactiva/condicionada al rival, ver
   /// CombatExchangeBadge.tsx y el backend). Null en habilidades 'general' o partidas antiguas.
   rol: 'ataque' | 'defensa' | 'utilidad' | null
+  /// Bug real (2026-08-28, "jugando no se ve el +2/+4 de las habilidades de arma/clase") —
+  /// bonus fijo al atributo CRUDO (ANTES del multiplicador de tipo) que esta habilidad concreta
+  /// suma al usarla, ver ExchangeParticipant.attributeBonus (backend). 0/null = sin bonus propio
+  /// (Ataque Básico y el resto de habilidades genéricas).
+  attributeBonus?: number | null
 }
 
 export type CondicionFisica = 'ILESO' | 'HERIDO' | 'GRAVE' | 'CONVALECIENTE' | 'MUERTO'
@@ -578,11 +650,42 @@ export type Dificultad = 'NOVATO' | 'MEDIO' | 'AVANZADO'
 /// Interacción con un NPC/fauna ya convaleciente o muerto, fuera de combate (docs/19-post-combate-
 /// y-recompensas-mision.md pieza 2) — lo que devuelve /turn/classify en vez de la clasificación
 /// normal cuando el jugador nombra a alguien ya resuelto que sigue en escena.
+/// Restringido a MUERTO (2026-08-30, rediseño de "Matar") — antes también cubría CONVALECIENTE;
+/// ese caso ahora fluye como acción normal (`explicitTargetVivo`, backend), nunca corta el turno
+/// aquí. Ver `postCombatInteraction.ts` (backend) para el detalle completo.
 export interface PostCombatInteractionInfo {
   slug: string
   name: string
-  condicionFisica: 'CONVALECIENTE' | 'MUERTO'
+  condicionFisica: 'MUERTO'
   saqueado: boolean
+}
+
+/// Fase 2 de efectos de clase (2026-08-27, AUMENTO/DEBILIDAD con duración real por turnos — ver
+/// activeEffects.ts en el backend). `magnitude` viaja con signo (positivo AUMENTO, negativo
+/// DEBILIDAD); `attribute` es siempre el mismo que el atributo con el que se tiró la habilidad que
+/// lo generó, nunca uno distinto.
+export interface ActiveEffect {
+  attribute: Attribute
+  magnitude: number
+  turnsRemaining: number
+  sourceAbility: string
+}
+
+/// Estación/clima (2026-08-27, auditoría backend↔frontend + diseño/UX) — `clima` es null fuera de
+/// Las Llanuras del Viento Rojo (única región con clima real diseñado hoy, ver `worldClock.ts`
+/// backend). `nombre` ya viene resuelto por raza (Kektira para orcos, glosa común para el resto).
+export interface EntornoTemporalInfo {
+  estacion: { key: 'PRIMAVERA' | 'VERANO' | 'OTONO' | 'INVIERNO'; nombre: string }
+  clima: { key: 'CLIMA_LLEVABLE' | 'VIENTO_FUERTE' | 'TORMENTA_GRANDE' | 'TORMENTA_EXTREMA'; nombre: string } | null
+}
+
+/// WorldState.agenda (2026-08-27, auditoría backend↔frontend + diseño/UX § 2.3) — hito de mundo
+/// real que avanza solo con el tiempo de ficción si nadie interviene (worldAgenda.ts, backend).
+export interface AgendaEntryInfo {
+  id: string
+  title: string
+  stage: number
+  maxStage: number
 }
 
 export interface NpcInSceneInfo {
@@ -602,6 +705,19 @@ export interface NpcInSceneInfo {
   // "Capturar" de la tarjeta Matar/Capturar/Clemente (LogPanel.tsx § convalecienteOffers): sin
   // `atributoResistencia` en el backend no hay tirada opuesta posible, el POST siempre rechaza.
   capturable: boolean
+  /// Fase 2 de efectos de clase (2026-08-27, indicador de combate) — AUMENTO/DEBILIDAD activos
+  /// sobre este NPC ahora mismo.
+  activeEffects: ActiveEffect[]
+  /// Identificador de combatientes duplicados (2026-08-27, bug real jugando: "ataqué a los dos
+  /// buitres a la vez" — en realidad no podía dirigir el golpe al segundo, `slug` no basta cuando
+  /// dos `CombatParticipant` de un `CombatEncounter` de grupo comparten el mismo Npc de catálogo).
+  /// `participantId` = `CombatParticipant.id` real, siempre único — sustituye a `slug` como key/
+  /// identificador en la UI de combate. `instanceNumber` = 1/2/3... SOLO cuando hay más de un
+  /// combatiente con el mismo `slug` en esta lista (null en el caso normal, un único enemigo, para
+  /// no mostrar "#1" cuando no hace falta desambiguar nada). Ambos undefined en combate 1v1 clásico
+  /// (sin `CombatEncounter` de por medio, no hay `CombatParticipant` que exponer).
+  participantId?: string
+  instanceNumber?: number | null
 }
 
 /// Un enlace de objeto/habilidad estilo World of Warcraft, insertado dentro del propio texto

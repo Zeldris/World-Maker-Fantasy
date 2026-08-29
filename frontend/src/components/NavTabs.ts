@@ -8,7 +8,7 @@ export type PanelId =
   | 'reino'
   | 'habilidades'
   | 'enciclopedia'
-  | 'zona'
+  | 'reputacion'
 
 export interface Tab {
   id: PanelId
@@ -26,13 +26,14 @@ export const characterTabs: Tab[] = [
   { id: 'reino', icon: '🏰', label: 'Reino' },
 ]
 
+// B.13 (checklist frontend 2026-08-27) — "Reputación" pasa de sub-pestaña de Personaje (canal
+// dorado) a pestaña propia del riel "El mundo" (canal azulado): conceptualmente es del eje
+// mundo/facciones, no del personaje en sí — mismo eje que Enciclopedia > Facciones, que muestra la
+// misma entidad. Decisión de navegación explícita, no solo de estilo.
 export const worldTabs: Tab[] = [
   { id: 'mapa', icon: '🗺️', label: 'Mapa' },
-  // Grupo 3 § Mundo determinista, Capa 1 (2026-08-25) — prototipo de zonas navegables, solo
-  // La Hondonada del Eco por ahora (ZonaPanel oculta su contenido si la zona actual no tiene
-  // ningún ZonePoint sembrado, ver zona.ts).
-  { id: 'zona', icon: '🧭', label: 'Zona' },
   { id: 'diario', icon: '📖', label: 'Diario' },
   { id: 'misiones', icon: '🎯', label: 'Misiones' },
+  { id: 'reputacion', icon: '🤝', label: 'Reputación' },
   { id: 'enciclopedia', icon: '📚', label: 'Enciclopedia' },
 ]

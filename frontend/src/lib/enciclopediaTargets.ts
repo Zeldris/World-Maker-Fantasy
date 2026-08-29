@@ -13,6 +13,7 @@ import type {
   EnciclopediaFaccionInfo,
   EnciclopediaFaunaFloraInfo,
   EnciclopediaHistoriaInfo,
+  EnciclopediaInteraccion,
   EnciclopediaItemInfo,
   EnciclopediaLocationInfo,
   EnciclopediaNpcInfo,
@@ -141,14 +142,38 @@ export function yieldsSummary(entry: EnciclopediaFaunaFloraInfo): string {
   return entry.yields.map((y) => `${y.cantidad} ${y.itemName}${y.condicion ? ` (${y.condicion})` : ''}`).join(', ')
 }
 
+const INTERACCION_LABELS: Record<keyof Omit<EnciclopediaInteraccion, 'atributoResistencia'>, string> = {
+  comerciablePct: 'Comerciable',
+  reclutablePct: 'Reclutable',
+  domesticablePct: 'Domesticable',
+  capturablePct: 'Capturable',
+  cortejablePct: 'Cortejable',
+}
+
+// Corrección 2026-08-27: nivel/atributos/ataque base/loadout son mecánica de combate, no lore —
+// se quitaron de la Enciclopedia (viven correctamente en CombatPanel.tsx, "Analizar Rival").
+// Las probabilidades de interacción SÍ se quedan (decisión explícita): saber que algo es
+// domesticable/reclutable es información del mundo, no un número de dificultad de combate.
+function interaccionLine(interaccion?: EnciclopediaInteraccion): string | null {
+  if (!interaccion) return null
+  const entries = (Object.entries(INTERACCION_LABELS) as [keyof typeof INTERACCION_LABELS, string][])
+    .filter(([key]) => interaccion[key] > 0)
+    .map(([key, label]) => `${label} ${interaccion[key]}%`)
+  if (entries.length === 0) return null
+  const resistencia = interaccion.atributoResistencia ? ALL_ATTRIBUTE_LABELS[interaccion.atributoResistencia] ?? interaccion.atributoResistencia : null
+  return `Interacción: ${entries.join(', ')}${resistencia ? ` (resistencia: ${resistencia})` : ''}.`
+}
+
 export function npcToDetailTarget(npc: EnciclopediaNpcInfo): EnciclopediaLinkTarget {
   return {
     kind: 'info',
     icon: npcIcon(),
     name: npc.name,
-    meta: `${npc.role}${npc.faction ? ` — ${npc.faction}` : ''} · nivel ${npc.level}`,
+    meta: `${npc.role}${npc.faction ? ` — ${npc.faction}` : ''}`,
     description: npc.bio,
-    extra: npc.aliases.length ? `También reconocido como: ${npc.aliases.join(', ')}.` : undefined,
+    extra: [interaccionLine(npc.interaccion), npc.aliases.length ? `También reconocido como: ${npc.aliases.join(', ')}.` : null]
+      .filter((line): line is string => !!line)
+      .join('\n'),
     imagePrompts: npc.imagePrompts,
     imageUrls: npc.imageUrls,
     entityType: 'npc',
@@ -171,6 +196,12 @@ export function itemToDetailTarget(item: EnciclopediaItemInfo): EnciclopediaLink
     requisitosEntries.length > 0
       ? `Requisitos para equipar: ${requisitosEntries.map(([k, v]) => `${ALL_ATTRIBUTE_LABELS[k] ?? k} ${v}`).join(', ')}.`
       : null,
+    // Auditoría de Enciclopedia (2026-08-27) — antes invisible pese a ser "petición explícita"
+    // según el propio comentario del schema. Son prefijos de oficio (sin raza/región, p.ej.
+    // "curtidor"), no el id completo de `professions` — se muestran tal cual, capitalizados.
+    item.herramientaParaOficio && item.herramientaParaOficio.length > 0
+      ? `Herramienta requerida para: ${item.herramientaParaOficio.map((o) => o.charAt(0).toUpperCase() + o.slice(1)).join(', ')}.`
+      : null,
   ].filter((line): line is string => !!line)
   return {
     kind: 'info',
@@ -191,14 +222,18 @@ export function faunaFloraToDetailTarget(entry: EnciclopediaFaunaFloraInfo): Enc
     kind: 'info',
     icon: faunaFloraIcon(entry),
     name: entry.sourceName,
+    // Corrección 2026-08-27: mismo criterio que npcToDetailTarget — nivel/atributos/ataque son
+    // mecánica de combate, no lore, revertido de la pasada de la auditoría. `interaccionLine` sí
+    // se queda (decisión explícita, ver comentario junto a esa función).
     meta: faunaFloraMeta(entry),
     description: entry.description ?? yieldsSummary(entry),
     extra: [
       entry.description ? `Recursos: ${yieldsSummary(entry)}` : null,
+      interaccionLine(entry.interaccion),
       entry.aliases.length ? `También reconocido como: ${entry.aliases.join(', ')}.` : null,
     ]
-      .filter(Boolean)
-      .join(' '),
+      .filter((line): line is string => !!line)
+      .join('\n'),
     imagePrompts: entry.imagePrompts,
     imageUrls: entry.imageUrls,
     entityType: 'fauna',
@@ -218,6 +253,7 @@ export function locationToDetailTarget(loc: EnciclopediaLocationInfo): Enciclope
     imageUrls: loc.imageUrls,
     entityType: 'location',
     entitySlug: loc.slug,
+    variantesTiempo: loc.variantesTiempo,
   }
 }
 
@@ -312,6 +348,10 @@ export function faccionToDetailTarget(faccion: EnciclopediaFaccionInfo): Enciclo
     kind: 'info',
     icon: '🚩',
     name: faccion.name,
+    // Auditoría de Enciclopedia (2026-08-27) — Facciones era la única categoría con entidad real
+    // sin ningún `meta`, pese a que `raza` ya existe en el tipo (se usa para agrupar colapsables
+    // en EnciclopediaPanel.tsx, nunca se pasaba a la propia ficha de detalle).
+    meta: faccion.raza,
     description: faccion.description,
     imagePrompts: faccion.imagePrompts,
     imageUrls: faccion.imageUrls,

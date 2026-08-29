@@ -8,6 +8,7 @@ import {
   type EnciclopediaImageUrls,
   type EnciclopediaRazaVariante,
   type EnciclopediaSexoVariante,
+  type EnciclopediaTiempoVariante,
   type ImagePromptEntityType,
 } from '../lib/api'
 import { AbilityForm, type AbilityFormParams } from './AbilityForm'
@@ -56,7 +57,19 @@ export type DetailTarget =
       /// NPC de tipo PLANTILLA genéricos, y razas a nivel general. Nunca en flora/mineral ni en
       /// individuos únicos con nombre propio.
       variantesSexo?: EnciclopediaSexoVariante[]
+      /// Día/noche/estación (2026-08-27, docs/rpgtarkor/imagenes-prompts.md) — SOLO en
+      /// `entityType === 'location'` (petición explícita: "que se muestre la opción que marques en
+      /// vez de todos de golpe" — pestañas de estación + toggle de día/noche, nunca los 8 prompts
+      /// listados seguidos).
+      variantesTiempo?: EnciclopediaTiempoVariante[]
     }
+
+const ESTACION_LABEL: Record<EnciclopediaTiempoVariante['estacion'], string> = {
+  primavera: '🌸 Primavera',
+  verano: '☀️ Verano',
+  otono: '🍂 Otoño',
+  invierno: '❄️ Invierno',
+}
 
 // Deduplicado (auditoría de deuda técnica, 2026-08-12): el mapeo de statBonuses a chips estaba
 // copiado 3 veces (objeto suelto, ranura equipada, candidato a equipar) — cada uno con su propio
@@ -147,16 +160,26 @@ export function DetailModal({ target, onClose, onUnequip, onEquip, onSaveAbility
   // raza o el de la variante regional por defecto (si esta trae el suyo propio, como Orcos), misma
   // lógica de "siempre uno seleccionado, el primero por defecto, se resetea al abrir otra entrada".
   const [selectedSexo, setSelectedSexo] = useState<'macho' | 'hembra' | null>(null)
+  // Día/noche/estación (2026-08-27, petición explícita: "añade un header a modo de tab para poder
+  // elegir estacion y luego un togle para dia y noche... que eso muestre la opcion que marques en
+  // vez de todos de golpe") — mismo criterio "siempre una seleccionada, primera por defecto" que
+  // variante/sexo de arriba, SOLO relevante en `entityType === 'location'`.
+  const [selectedEstacion, setSelectedEstacion] = useState<EnciclopediaTiempoVariante['estacion']>('primavera')
+  const [selectedMomento, setSelectedMomento] = useState<EnciclopediaTiempoVariante['momento']>('dia')
   const targetKey = target.kind === 'info' ? target.entitySlug : undefined
   useEffect(() => {
     if (target.kind !== 'info') {
       setSelectedVariantSlug(null)
       setSelectedSexo(null)
+      setSelectedEstacion('primavera')
+      setSelectedMomento('dia')
       return
     }
     const firstVariant = target.variantes?.[0] ?? null
     setSelectedVariantSlug(firstVariant?.slug ?? null)
     setSelectedSexo((firstVariant?.variantesSexo ?? target.variantesSexo)?.[0]?.sexo ?? null)
+    setSelectedEstacion('primavera')
+    setSelectedMomento('dia')
     // Deliberadamente solo `targetKey` (2026-07-22): resetear variante/sexo debe pasar al abrir
     // una ENTRADA distinta (slug distinto), no cada vez que `target` cambia de referencia por un
     // re-render del padre con el mismo slug — eso arrastraría de vuelta la selección del usuario.
@@ -209,7 +232,7 @@ export function DetailModal({ target, onClose, onUnequip, onEquip, onSaveAbility
             {!!target.item.origin && <p className="text-2xs uppercase tracking-[0.1em] text-wood-600">{target.item.origin}</p>}
             {actionError && <p className="text-xs text-red-400">{actionError}</p>}
             {target.item.slot && onUnequip && (
-              <button
+              <button type="button"
                 onClick={() => runEquipAction(() => onUnequip(target.item))}
                 disabled={busy}
                 className="tactile self-start rounded-lg border border-iron-700 px-3 py-1.5 text-xs text-wood-300 transition-colors hover:border-accent-600/60 hover:text-wood-100 disabled:cursor-not-allowed disabled:opacity-50"
@@ -231,7 +254,7 @@ export function DetailModal({ target, onClose, onUnequip, onEquip, onSaveAbility
                 const recipeTarget = enciclopediaIndex.bySlugKey.get(`${target.ability.recipeCategory ?? 'crafteo'}:${target.ability.recipeKey}`)
                 return (
                   recipeTarget && (
-                    <button
+                    <button type="button"
                       onClick={() => onEntityDetail?.(recipeTarget)}
                       className="tactile self-start rounded-lg border border-iron-700 px-3 py-1.5 text-xs text-wood-300 transition-colors hover:border-accent-600/60 hover:text-accent-300"
                     >
@@ -255,7 +278,7 @@ export function DetailModal({ target, onClose, onUnequip, onEquip, onSaveAbility
             ) : (
               <div className="flex gap-2">
                 {onSaveAbility && (
-                  <button
+                  <button type="button"
                     onClick={() => setEditing(true)}
                     className="tactile rounded-lg border border-accent-600/60 px-3 py-1.5 text-xs text-accent-300 transition-colors hover:bg-accent-500/10"
                   >
@@ -263,7 +286,7 @@ export function DetailModal({ target, onClose, onUnequip, onEquip, onSaveAbility
                   </button>
                 )}
                 {onDeleteAbility && (
-                  <button
+                  <button type="button"
                     onClick={() => {
                       onDeleteAbility(target.ability.id)
                       onClose()
@@ -330,7 +353,7 @@ export function DetailModal({ target, onClose, onUnequip, onEquip, onSaveAbility
                       </div>
                     )}
                     {onUnequip && (
-                      <button
+                      <button type="button"
                         onClick={() => runEquipAction(() => onUnequip(target.equipped!))}
                         disabled={busy}
                         className="tactile rounded-lg border border-iron-700 px-3 py-1.5 text-xs text-wood-300 transition-colors hover:border-accent-600/60 hover:text-wood-100 disabled:cursor-not-allowed disabled:opacity-50"
@@ -358,7 +381,7 @@ export function DetailModal({ target, onClose, onUnequip, onEquip, onSaveAbility
                           className="flex items-center gap-1.5 rounded-lg border border-iron-700 bg-wood-950/40 px-1.5 py-1.5 transition-colors hover:border-accent-600/60"
                         >
                           <TooltipAnchor text={item.description} className="min-w-0 flex-1">
-                            <button
+                            <button type="button"
                               onClick={() => onEquip && runEquipAction(() => onEquip(item, target.slot))}
                               disabled={busy}
                               className="tactile flex w-full flex-col items-start gap-1 text-left text-sm text-wood-200 disabled:cursor-not-allowed disabled:opacity-50"
@@ -421,14 +444,23 @@ export function DetailModal({ target, onClose, onUnequip, onEquip, onSaveAbility
             // general) con su propia imagen, esa; si no, la de la región; si no, la general.
             const image = selectedSexoVariant ?? selectedVariant ?? null
             const sexoBaseSlug = selectedVariant?.slug ?? target.entitySlug
+            // Día/noche/estación (2026-08-27) — SOLO en `location` (nunca cruza con
+            // variantes/sexo, que son de npc/fauna/raza). Sin texto curado que combinar (a
+            // diferencia de región/sexo): la imagen de la combinación manda entera, sin mezclar
+            // con la de otra.
+            const selectedTiempoVariant =
+              target.entityType === 'location'
+                ? (target.variantesTiempo?.find((v) => v.momento === selectedMomento && v.estacion === selectedEstacion) ?? null)
+                : null
             const effective = {
               name: selectedVariant?.name ?? target.name,
               meta: [target.meta, selectedVariant?.rasgoFisico, selectedSexoVariant?.rasgoFisico].filter(Boolean).join(' — ') || undefined,
               description: [target.description, selectedVariant?.description, selectedSexoVariant?.description].filter(Boolean).join('\n\n'),
-              imagePrompts: image?.imagePrompts ?? target.imagePrompts,
-              imageUrls: image?.imageUrls ?? target.imageUrls,
-              entitySlug:
-                selectedSexoVariant && sexoBaseSlug
+              imagePrompts: selectedTiempoVariant?.imagePrompts ?? image?.imagePrompts ?? target.imagePrompts,
+              imageUrls: selectedTiempoVariant?.imageUrls ?? image?.imageUrls ?? target.imageUrls,
+              entitySlug: selectedTiempoVariant
+                ? `${target.entitySlug}-${selectedTiempoVariant.momento}-${selectedTiempoVariant.estacion}`
+                : selectedSexoVariant && sexoBaseSlug
                   ? `${sexoBaseSlug}-${selectedSexoVariant.sexo}`
                   : (selectedVariant?.slug ?? target.entitySlug),
             }
@@ -442,7 +474,7 @@ export function DetailModal({ target, onClose, onUnequip, onEquip, onSaveAbility
                 {target.variantes && target.variantes.length > 0 && (
                   <div className="flex flex-wrap gap-1.5">
                     {target.variantes.map((v) => (
-                      <button
+                      <button type="button"
                         key={v.slug}
                         onClick={() => setSelectedVariantSlug(v.slug)}
                         className={`tactile rounded-full border px-2.5 py-1 text-2xs transition-colors ${
@@ -459,7 +491,7 @@ export function DetailModal({ target, onClose, onUnequip, onEquip, onSaveAbility
                 {sexoSource && sexoSource.length > 0 && (
                   <div className="flex flex-wrap gap-1.5">
                     {sexoSource.map((v) => (
-                      <button
+                      <button type="button"
                         key={v.sexo}
                         onClick={() => setSelectedSexo(v.sexo)}
                         className={`tactile rounded-full border px-2.5 py-1 text-2xs transition-colors ${
@@ -471,6 +503,42 @@ export function DetailModal({ target, onClose, onUnequip, onEquip, onSaveAbility
                         {v.sexo === 'macho' ? '♂ Macho' : '♀ Hembra'}
                       </button>
                     ))}
+                  </div>
+                )}
+                {/* Día/noche/estación (2026-08-27) — header de pestañas por estación + toggle de
+                    día/noche, mostrando SOLO la combinación marcada (nunca los 8 prompts seguidos).
+                    Solo en `location`, y solo si el backend trae variantes (partidas viejas antes
+                    de este campo no las tienen). */}
+                {target.entityType === 'location' && target.variantesTiempo && target.variantesTiempo.length > 0 && (
+                  <div className="flex flex-col gap-1.5">
+                    <div className="flex flex-wrap gap-1.5">
+                      {(['primavera', 'verano', 'otono', 'invierno'] as const).map((estacion) => (
+                        <button type="button"
+                          key={estacion}
+                          onClick={() => setSelectedEstacion(estacion)}
+                          className={`tactile rounded-full border px-2.5 py-1 text-2xs transition-colors ${
+                            selectedEstacion === estacion
+                              ? 'border-accent-600/60 bg-accent-500/10 text-accent-300'
+                              : 'border-iron-700 text-wood-400 hover:border-accent-600/60 hover:text-accent-300'
+                          }`}
+                        >
+                          {ESTACION_LABEL[estacion]}
+                        </button>
+                      ))}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedMomento(selectedMomento === 'dia' ? 'noche' : 'dia')}
+                      aria-label={`Cambiar a ${selectedMomento === 'dia' ? 'noche' : 'día'}`}
+                      className="tactile flex w-fit items-center gap-0.5 self-start rounded-full border border-iron-700 p-0.5 text-2xs transition-colors hover:border-accent-600/60"
+                    >
+                      <span className={`rounded-full px-2 py-1 transition-colors ${selectedMomento === 'dia' ? 'bg-accent-500/10 text-accent-300' : 'text-wood-500'}`}>
+                        ☀️ Día
+                      </span>
+                      <span className={`rounded-full px-2 py-1 transition-colors ${selectedMomento === 'noche' ? 'bg-accent-500/10 text-accent-300' : 'text-wood-500'}`}>
+                        🌙 Noche
+                      </span>
+                    </button>
                   </div>
                 )}
                 {selectedSexoVariant && (
@@ -541,20 +609,27 @@ export function DetailModal({ target, onClose, onUnequip, onEquip, onSaveAbility
                         mismo estilo cartográfico pintado a mano que ya usa ZonaPanel.tsx para
                         pintar el fondo de esa vista, un solo generador, no dos. */}
                     {target.entityType === 'location' && (
-                      <ImagePromptSlot
-                        key={`zona-${effective.entitySlug}-mapa`}
-                        label="Mapa (fondo de la vista Zona)"
-                        existingPrompt={null}
-                        worldSlug={worldSlug}
-                        entityType="zona"
-                        entitySlug={effective.entitySlug}
-                        sizeProfile="mapa"
-                      />
+                      <>
+                        {/* `mapaImageUrl` (2026-08-27) solo se conoce cuando hay una variante de
+                            tiempo seleccionada (viaja en `variantesTiempo`, no en `target` a secas)
+                            — sin selección de variante (partidas viejas sin `variantesTiempo`),
+                            se queda igual que antes: sin checkmark previo, siempre "Generar". */}
+                        {selectedTiempoVariant?.mapaImageUrl && <p className="text-2xs italic text-wood-500">Mapa real cargado ✓</p>}
+                        <ImagePromptSlot
+                          key={`zona-${effective.entitySlug}-mapa`}
+                          label="Mapa (fondo de la vista Zona)"
+                          existingPrompt={selectedTiempoVariant?.mapaImagePrompt ?? null}
+                          worldSlug={worldSlug}
+                          entityType="zona"
+                          entitySlug={effective.entitySlug}
+                          sizeProfile="mapa"
+                        />
+                      </>
                     )}
                   </div>
                 )}
                 {onInsert && (
-                  <button
+                  <button type="button"
                     onClick={() => {
                       onInsert()
                       onClose()
@@ -568,7 +643,7 @@ export function DetailModal({ target, onClose, onUnequip, onEquip, onSaveAbility
             )
           })()}
 
-        <button
+        <button type="button"
           onClick={onClose}
           className="tactile self-end rounded-lg border border-iron-700 bg-wood-950/50 px-3 py-1.5 text-xs text-wood-300 transition-colors hover:border-accent-600/60 hover:text-accent-300"
         >

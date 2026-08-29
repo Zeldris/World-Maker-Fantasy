@@ -39,6 +39,16 @@ export interface StartingAbility {
   /// un intercambio real (Defenderse/Esquivar, ver genericCombatAbilities.ts). 0/undefined en el
   /// resto.
   energyRegen?: number;
+  /// Fase 2 de efectos de clase (2026-08-26, docs/21-roadmap.md) — solo relevante si `effects`
+  /// incluye `AUMENTO`/`DEBILIDAD`: cuánto sube/baja (con signo, positivo AUMENTO/negativo
+  /// DEBILIDAD) el atributo `preferredAttribute` mientras dure el efecto (nunca un atributo
+  /// distinto — simplificación consciente, ver schema.prisma § SavedAction.durationEffectMagnitude).
+  /// AUMENTO se aplica a quien usó la habilidad, DEBILIDAD a quien recibió el golpe. undefined =
+  /// sin efecto de duración.
+  durationEffectMagnitude?: number;
+  /// Turnos que dura el efecto de arriba — junto con `durationEffectMagnitude`, ambos undefined o
+  /// ambos rellenos.
+  durationEffectTurns?: number;
 }
 
 /// Kit de habilidades "de serie" de Gorhorn — no cuentan contra el cupo por nivel

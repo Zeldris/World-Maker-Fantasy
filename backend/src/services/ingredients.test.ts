@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { quantityOf, baseNameOf, totalQuantity, planConsumption, type IngredientRequirement, type CatalogLookup } from './ingredients.js';
+import { quantityOf, baseNameOf, totalQuantity, planConsumption, inventorySummaryFor, type IngredientRequirement, type CatalogLookup } from './ingredients.js';
 
 describe('quantityOf', () => {
   it('lee la cantidad del sufijo "(N)"', () => {
@@ -16,6 +16,27 @@ describe('baseNameOf', () => {
   it('quita el sufijo de cantidad', () => {
     expect(baseNameOf('Leña (60)')).toBe('Leña');
     expect(baseNameOf('Piel de Corredor de Cauce')).toBe('Piel de Corredor de Cauce');
+  });
+});
+
+// Inventario del jugador al narrador (2026-08-27, dinamismo del mundo § Pieza 2) — la narración
+// inventa menos cuando conoce qué lleva encima el jugador de verdad.
+describe('inventorySummaryFor', () => {
+  it('sin nada, dice explícitamente que está vacío (nunca omite el bloque)', () => {
+    expect(inventorySummaryFor([])).toBe('Sin nada en el inventario.');
+  });
+
+  it('un objeto suelto (sin sufijo de cantidad) se lista sin "×1"', () => {
+    expect(inventorySummaryFor([{ name: 'Cuchillo de hielo sílice' }])).toBe('Cuchillo de hielo sílice.');
+  });
+
+  it('un objeto con cantidad ≥2 en el nombre se lista con "×N"', () => {
+    expect(inventorySummaryFor([{ name: 'Leña (60)' }])).toBe('Leña ×60.');
+  });
+
+  it('agrupa varias filas del mismo nombre base, sumando cantidades', () => {
+    const rows = [{ name: 'Piel de Corredor de Cauce' }, { name: 'Piel de Corredor de Cauce' }, { name: 'Leña (10)' }, { name: 'Leña (5)' }];
+    expect(inventorySummaryFor(rows)).toBe('Piel de Corredor de Cauce ×2, Leña ×15.');
   });
 });
 

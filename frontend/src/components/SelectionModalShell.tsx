@@ -28,7 +28,7 @@ export function SelectionModalShell({ title, onCancel, cancelDisabled, children,
         <h3 className="font-serif text-lg text-wood-100">{title}</h3>
         {children}
         <div className="flex gap-2">
-          <button
+          <button type="button"
             onClick={onCancel}
             disabled={cancelDisabled}
             className="tactile flex-1 rounded-lg border border-iron-700 bg-wood-950/50 px-3.5 py-2 text-xs font-bold uppercase tracking-wide text-wood-300 transition-colors hover:border-accent-600/60 hover:text-accent-300 disabled:cursor-not-allowed disabled:opacity-60"

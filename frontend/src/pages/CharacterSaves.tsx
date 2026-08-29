@@ -143,7 +143,7 @@ export function CharacterSaves() {
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-6 px-6 py-12">
       <div>
-        <button
+        <button type="button"
           onClick={() => navigate(`/solitario/mundo/${world.id}`)}
           className="mb-2 text-xs text-wood-500 transition-colors hover:text-accent-300"
         >
@@ -199,7 +199,7 @@ export function CharacterSaves() {
               </div>
               <div className="flex shrink-0 items-center gap-3">
                 <span className="text-xs text-wood-500">{relativeTime(save.lastPlayedAt)}</span>
-                <button
+                <button type="button"
                   onClick={(e) => handleRestart(e, save.id)}
                   disabled={restartingId === save.id}
                   title="Reiniciar partida (vuelve a Día 1, sigue en la lista)"
@@ -207,7 +207,7 @@ export function CharacterSaves() {
                 >
                   {restartingId === save.id ? '...' : '↺ Reiniciar'}
                 </button>
-                <button
+                <button type="button"
                   onClick={(e) => handleDelete(e, save.id)}
                   disabled={deletingId === save.id}
                   title="Borrar partida (desaparece de la lista)"
@@ -234,7 +234,7 @@ export function CharacterSaves() {
         </p>
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
           {DIFICULTAD_OPTIONS.map((opt) => (
-            <button
+            <button type="button"
               key={opt.value}
               onClick={() => setSelectedDificultad(opt.value)}
               className={`rounded-lg border px-3 py-2.5 text-left text-xs transition-colors ${

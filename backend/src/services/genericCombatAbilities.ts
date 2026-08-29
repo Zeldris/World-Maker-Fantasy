@@ -10,9 +10,14 @@ import type { StartingAbility } from './startingAbilities.js';
 /// Rediseño 2026-07-31 (petición explícita: "son acciones que tienen todos los personajes... si
 /// usar defenderse recupera 10 y si usa esquivar recupera 5"): dejan de ser solo "gratis" y pasan
 /// a RECUPERAR energía de verdad al usarlas en un intercambio real — `energyRegen`, no
-/// `energyCost` (que se queda en 0, nunca cuestan nada). El tercer genérico, "Ataque Básico", NO
-/// vive aquí — depende del arma equipada, se calcula en weaponAbilities.ts/dynamicAbilities.ts,
-/// pero comparte el mismo flag `isGeneric` para agruparse junto a estos dos en la UI.
+/// `energyCost`. El tercer genérico, "Ataque Básico", NO vive aquí — depende del arma equipada, se
+/// calcula en weaponAbilities.ts/dynamicAbilities.ts, pero comparte el mismo flag `isGeneric` para
+/// agruparse junto a estos dos en la UI.
+///
+/// Ajuste 2026-08-28 (petición explícita, ronda de correcciones): Defenderse baja de recuperar 10
+/// a recuperar 5; Esquivar invierte el signo — deja de recuperar 5, pasa a COSTAR 5 (`energyCost`,
+/// `energyRegen: 0`). Antes ninguna de las dos costaba nada, ambas solo recuperaban — Esquivar deja
+/// de ser gratis del todo.
 export const GENERIC_COMBAT_ABILITIES: StartingAbility[] = [
   {
     name: 'Defenderse',
@@ -24,18 +29,18 @@ export const GENERIC_COMBAT_ABILITIES: StartingAbility[] = [
     rol: 'defensa',
     preferredAttribute: 'constitucion',
     energyCost: 0,
-    energyRegen: 10,
+    energyRegen: 5,
   },
   {
     name: 'Esquivar',
     icon: '💨',
-    description: 'Se aparta del golpe confiando solo en sus reflejos — siempre disponible, y recupera algo de energía.',
+    description: 'Se aparta del golpe confiando solo en sus reflejos — siempre disponible, aunque gasta algo de energía.',
     promptText: 'Me aparto del golpe confiando solo en mis reflejos.',
     category: 'combate',
     effects: ['AGUANTE'],
     rol: 'defensa',
     preferredAttribute: 'destreza',
-    energyCost: 0,
-    energyRegen: 5,
+    energyCost: 5,
+    energyRegen: 0,
   },
 ];

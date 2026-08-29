@@ -109,6 +109,43 @@ export function climaNombreFor(estado: EstadoClima, raza: string | null): string
   return raza === 'orcos' ? CLIMA_NOMBRE_KEKTIRA[estado] : CLIMA_GLOSA_COMUN[estado];
 }
 
+/// Momento del día (2026-08-27, imágenes de día/noche por Location/Zona — ver
+/// docs/rpgtarkor/imagenes-prompts.md) — eje binario, deliberadamente MÁS simple que las 6 franjas
+/// horarias de `entorno.ts` (madrugada/mañana/mediodía/tarde/atardecer/noche, pensadas para prosa
+/// ambiental): una imagen solo puede ser de día o de noche, no hay "atardecer" intermedio que
+/// generar aparte. Corte a las 6:00/20:00 — coincide con dónde `franjaHorariaFor` empieza
+/// 'madrugada' y 'noche' (los dos tramos ya oscuros), sin depender de esa función para no acoplar
+/// dos ejes pensados para cosas distintas.
+export type MomentoDelDia = 'dia' | 'noche';
+
+export function momentoDelDiaFor(totalMinutes: number): MomentoDelDia {
+  const minuteOfDay = ((totalMinutes % MINUTES_PER_DAY) + MINUTES_PER_DAY) % MINUTES_PER_DAY;
+  const hour = Math.floor(minuteOfDay / 60);
+  return hour >= 6 && hour < 20 ? 'dia' : 'noche';
+}
+
+/// Estación/clima actuales, listos para exponer al frontend (2026-08-27, auditoría backend↔
+/// frontend: "estación y clima reales... ni siquiera llegan a la narración, mucho menos a un
+/// panel", pese a que ya gatean de verdad qué se puede recolectar/craftear). Un solo punto de
+/// cálculo reutilizado por `GET /saves/:id` (detail.ts) y por cada respuesta de turno
+/// (turnResolution.ts) — mismo criterio que `fictionalDate`, refrescado siempre fresco en vez de
+/// guardado en ningún sitio.
+export interface EntornoTemporal {
+  estacion: { key: Estacion; nombre: string };
+  /// null si la región no tiene clima real diseñado todavía (solo Las Llanuras del Viento Rojo
+  /// hoy, ver `climaFor`) — nunca inventar "clima llevable" por defecto donde no hay datos.
+  clima: { key: EstadoClima; nombre: string } | null;
+}
+
+export function entornoTemporalFor(totalMinutes: number, region: string | null, raza: string | null): EntornoTemporal {
+  const estacionKey = estacionFor(totalMinutes);
+  const climaKey = climaFor(totalMinutes, region);
+  return {
+    estacion: { key: estacionKey, nombre: estacionNombreFor(estacionKey, raza) },
+    clima: climaKey ? { key: climaKey, nombre: climaNombreFor(climaKey, raza) } : null,
+  };
+}
+
 export function advanceFictionalMinutes(current: number, deltaMinutos: number): number {
   return current + Math.max(0, deltaMinutos);
 }

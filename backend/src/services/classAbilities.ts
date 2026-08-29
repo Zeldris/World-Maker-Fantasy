@@ -28,25 +28,51 @@ export type { Clase, Especializacion } from '@prisma/client';
 ///
 /// De los 25 efectos de `AbilityEffect` (+ `CONVERSION`), están implementados de verdad hoy:
 /// ATAQUE/ATURDIMIENTO/INTIMIDACION/AGUANTE/ANALISIS/RECUPERACION/LETAL/LIMITADA/CONVERSION
-/// (pasada original) + CONTRA/REFRACTAR/CONTROL/COMPANERO (2026-08-26, solo las habilidades cuyo
-/// efecto real no dependía de infraestructura sin construir — ver clases.md § comentario de cada
-/// especialización para el resto, que se queda pendiente). CONTRA/REFRACTAR reutilizan el margen
-/// decisivo ya existente (±10) en vez del umbral propio de cada habilidad (6/8 en el doc, mismo
-/// criterio de simplificación que ya usa LETAL); CONTROL se simplifica a robar la iniciativa
-/// (como ATURDIMIENTO) en vez de "2 turnos" reales, al no existir todavía un segundo rival real al
-/// que redirigirlo; COMPANERO reutiliza `esSlotDomador` (companeros.ts), ya construido de antes.
-/// El resto (AUMENTO/DEBILIDAD/CANALIZAR/CURAZION/REFLEJAR/PURIFICAR/PROVOCACION/RETIRAR/EXPULSAR
-/// — duración por turnos; INVOCACION/MULTIPLE/DESVIAR/OCULTACION — combate multi-objetivo de
-/// verdad) sigue sin construir, así que solo se dan de alta aquí las habilidades de clases.md
-/// marcadas "✅ lista" o cuyo efecto real ya está cubierto (verificado efecto a efecto contra este
-/// enum real, no copiado tal cual del doc — varias filas de Convocador/Opresor Y de Maestro
-/// Arquero/Maestro Ballestero estaban mal marcadas "✅" en el propio documento pese a usar
+/// (pasada original) + CONTRA/REFRACTAR/CONTROL/COMPANERO (2026-08-26, primera pasada del día) +
+/// AUMENTO/DEBILIDAD (2026-08-26, Fase 2, motor 1v1) + AUMENTO/DEBILIDAD/CONTROL también en
+/// combate múltiple + MULTIPLE (solo combinado con ATAQUE, un enemigo extra — nunca con AUMENTO/
+/// AGUANTE, buff a aliados, que depende de AUMENTO en el camino de utilidad, sin construir) + DESVIAR
+/// (redirige el golpe entrante a un tercero) + OCULTACION (excluye de ser elegido como objetivo,
+/// salvo ser el único vivo del bando — nunca combinado con su propio `AUMENTO`, mismo motivo que
+/// MULTIPLE+AUMENTO) (Fase 3 § 3a/3b/3c, 2026-08-27) + INVOCACION (Fase 3 § 3d, 2026-08-27: tótem
+/// como tercer participante real del combate, `CombatParticipantTipo.INVOCACION` — solo Tótem de
+/// Guerra sembrado, "aguanta 1 golpe, ataca 2 turnos y desaparece" literal; invocar consume el
+/// turno entero del invocador, el tótem no se inserta en `ordenIniciativa` — actúa fuera de la cola,
+/// al cruzar cada ronda mientras le queden turnos, ver comentario largo en
+/// combateMultipleOrquestacion.ts) + EXPULSAR (Fase 3 § 3e, 2026-08-27: margen decisivo excluye al
+/// expulsado de ser elegido como objetivo 2 rondas, mismo mecanismo y misma excepción que
+/// OCULTACION — columna separada, `CombatParticipant.expulsadoPorRondas` — pero misma lógica de
+/// exclusión; simplificado a un único desenlace, sin el tramo "no vuelve nunca" de la ficha real),
+/// solo las habilidades cuyo efecto real no
+/// dependía de infraestructura sin construir — ver clases.md § comentario de cada especialización
+/// para el resto, que se queda pendiente. CONTRA/REFRACTAR/AUMENTO/DEBILIDAD/MULTIPLE/DESVIAR
+/// reutilizan el margen decisivo ya existente (±10, `golpe_pleno`/`defensor_contragolpea`) en vez
+/// del umbral propio de cada habilidad (4/6/8/10/12 en el doc según la fila, mismo criterio de
+/// simplificación que ya usa LETAL) — y solo se aplican en el camino no-independiente
+/// (`resolveExchange`), nunca en el independiente (utilidad) ni en el lado NPC-atacante, todavía
+/// sin ninguna habilidad real que lo dispare; CONTROL/OCULTACION SÍ viven en el camino
+/// independiente (utilidad) — CONTROL en 1v1 se simplifica a robar la iniciativa (como
+/// ATURDIMIENTO), en combate múltiple con ≥2 enemigos vivos redirige de verdad al controlado contra
+/// un aliado propio 2 rondas; OCULTACION oculta a quien la dispara (nunca al rival) 2 rondas;
+/// COMPANERO reutiliza `esSlotDomador` (companeros.ts), ya construido de antes.
+/// El resto (CANALIZAR/CURAZION/REFLEJAR/PURIFICAR/PROVOCACION/RETIRAR — duración por
+/// turnos con mecánica propia más allá de sumar/restar un atributo; MULTIPLE/OCULTACION combinados
+/// con AUMENTO/AGUANTE — buff/duración propia sin AUMENTO en el camino de utilidad; DESVIAR
+/// combinado con DEBILIDAD sin cifra propia en el texto de la fila; INVOCACION combinada con
+/// MULTIPLE/AUMENTO/PROVOCACION/CONTRA/LIMITADO en tótems más avanzados que Tótem de Guerra) sigue
+/// sin construir, así que solo se dan de alta aquí las habilidades de
+/// clases.md marcadas "✅ lista" o cuyo efecto real ya está cubierto (verificado efecto a efecto
+/// contra este enum real, no copiado tal cual del doc — varias filas de Convocador/Opresor Y de
+/// Maestro Arquero/Maestro Ballestero estaban mal marcadas "✅" en el propio documento pese a usar
 /// AUMENTO/DEBILIDAD/MULTIPLE, corregido aquí — Arquero pasa de "7/8" en el doc a 1/8 real por
-/// especialización).
+/// especialización). **Control Rúnico (Chamán/Rúnico 32) no se pudo sembrar** pese a que el plan
+/// original lo daba por hecho: combina CONTROL (camino independiente) + DEBILIDAD (camino no
+/// independiente) en una sola habilidad, y `rol` es un campo único — ningún camino cubre los dos
+/// efectos a la vez sin reinterpretar la fila.
 ///
 /// Recuento final por clase (huecos reales / 8 por especialización, tronco aparte):
-/// GUERRERO Berserker 1, Guardián 1, Lancero 2, Especialista 4 — CAZADOR Domador 1, Supervivencia
-/// 1, Tirador 5, Instintivo 4 — CHAMAN Totémico 0, Rúnico 2, Convocador 2, Opresor 3 — ARQUERO
+/// GUERRERO Berserker 1, Guardián 2, Lancero 3, Especialista 4 — CAZADOR Domador 1, Supervivencia
+/// 5, Tirador 5, Instintivo 4 — CHAMAN Totémico 0, Rúnico 3, Convocador 3, Opresor 3 — ARQUERO
 /// Maestro Arquero 1, Maestro Ballestero 1 — CABALLERO Orden 6, Valor 3, Dolor 7 — SEGADOR Parca 3,
 /// Maldito 4, Ilustrado 6, Transmutador 2 — ASESINO Maestro Asesino 7, Tóxico 3, Danzante 8,
 /// Selecto 6 — DRUIDA Cambiaformas 8, Aullador 2, Salvaje 8, Adaptado 8.
@@ -139,7 +165,11 @@ const CLASS_ABILITIES: ClassAbilityUnlock[] = [
     },
   },
 
-  // --- Guardián (12/16/19/24/28/32/36/40 — solo 12 lista) ---
+  // --- Guardián (12/16/19/24/28/32/36/40 — 12 y 28 listas) ---
+  //
+  // 28 (Embate de Escudo, ATAQUE+EXPULSAR) se suma 2026-08-27, Fase 3 § 3e — mismo umbral de margen
+  // decisivo que el resto de la Fase 2/3, sin distinguir el tramo 8/14 propio de la fila (ni tirada
+  // de 50% de volver ni caso "nunca vuelve" por separado, decisión explícita de la usuaria).
   {
     level: 12,
     clase: 'GUERRERO',
@@ -157,8 +187,25 @@ const CLASS_ABILITIES: ClassAbilityUnlock[] = [
       energyCost: ENERGY_COST_BASICA,
     },
   },
+  {
+    level: 28,
+    clase: 'GUERRERO',
+    especializacion: 'GUARDIAN',
+    ability: {
+      name: 'Embate de Escudo',
+      icon: '🛡️',
+      description: 'Un golpe de escudo cargado con todo el peso del cuerpo — si conecta con fuerza suficiente, aparta al rival del combate un par de turnos.',
+      promptText: 'Cargo mi escudo con todo mi peso y golpeo, buscando apartar a mi rival del combate.',
+      category: 'combate',
+      effects: ['ATAQUE', 'EXPULSAR'],
+      rol: 'ataque',
+      preferredAttribute: 'constitucion',
+      attributeBonus: 4,
+      energyCost: ENERGY_COST_AVANZADA,
+    },
+  },
 
-  // --- Lancero (12/16/19/24/28/32/36/40 — 16 y 40 listas) ---
+  // --- Lancero (12/16/19/24/28/32/36/40 — 16, 24 y 40 listas) ---
   {
     level: 16,
     clase: 'GUERRERO',
@@ -172,6 +219,27 @@ const CLASS_ABILITIES: ClassAbilityUnlock[] = [
       effects: ['ATURDIMIENTO'],
       rol: 'ataque',
       preferredAttribute: 'destreza',
+      energyCost: ENERGY_COST_MEDIA,
+    },
+  },
+  // MULTIPLE real (2026-08-27, Fase 3 § 3b) — el propio umbral de la fila (diferencia 12, aunque
+  // el doc también describe un tramo bajo en 6 → 2 enemigos, aquí simplificado a un único tramo)
+  // ya está cerca del margen decisivo del motor (±10), mismo criterio de aproximación que Golpe
+  // Envenenado (Fase 2, "solo el tramo alto de sus 2 umbrales propios").
+  {
+    level: 24,
+    clase: 'GUERRERO',
+    especializacion: 'LANCERO',
+    ability: {
+      name: 'Punta Doble',
+      icon: '🔱',
+      description: 'Un giro de asta que golpea con fuerza y, si el golpe es decisivo, alcanza también a otro rival cercano.',
+      promptText: 'Giro mi asta con fuerza, buscando alcanzar a más de un rival a la vez.',
+      category: 'combate',
+      effects: ['ATAQUE', 'MULTIPLE'],
+      rol: 'ataque',
+      preferredAttribute: 'destreza',
+      attributeBonus: 2,
       energyCost: ENERGY_COST_MEDIA,
     },
   },
@@ -353,7 +421,32 @@ const CLASS_ABILITIES: ClassAbilityUnlock[] = [
     },
   },
 
-  // --- Supervivencia (12/16/19/24/28/32/36/40 — solo 16 lista) ---
+  // --- Supervivencia (12/16/19/24/28/32/36/40 — 12/16/19/32/40 listas) ---
+  //
+  // DEBILIDAD (2026-08-26, docs/21-roadmap.md § Fase 2, clases.md nv.12 "Ataque que aumenta en +2
+  // la destreza, si la diferencia es de 4 resta 2 durante 2 turnos de destreza a tu objetivo, si
+  // la diferencia es de 8 resta 4") — solo se aplica el golpe base (`attributeBonus`) y el tramo
+  // MÁS ALTO de debilidad (mismo criterio de simplificación que CONTRA/REFRACTAR: se reutiliza el
+  // margen decisivo ya existente, ±10, en vez de los umbrales propios 4/8 de la habilidad).
+  {
+    level: 12,
+    clase: 'CAZADOR',
+    especializacion: 'SUPERVIVENCIA',
+    ability: {
+      name: 'Golpe Envenenado',
+      icon: '🧪',
+      description: 'Un tajo rápido untado en veneno — no solo hiere, deja al rival debilitado varios turnos.',
+      promptText: 'Lanzo un tajo rápido untado en veneno, buscando debilitar a mi rival más allá del golpe.',
+      category: 'combate',
+      effects: ['ATAQUE', 'DEBILIDAD'],
+      rol: 'ataque',
+      preferredAttribute: 'destreza',
+      attributeBonus: 2,
+      durationEffectMagnitude: -4,
+      durationEffectTurns: 2,
+      energyCost: ENERGY_COST_BASICA,
+    },
+  },
   {
     level: 16,
     clase: 'CAZADOR',
@@ -368,6 +461,68 @@ const CLASS_ABILITIES: ClassAbilityUnlock[] = [
       rol: 'ataque',
       preferredAttribute: 'destreza',
       energyCost: ENERGY_COST_BASICA,
+    },
+  },
+  // OCULTACION real (2026-08-27, Fase 3 § 3c) — tramo alto de la fila (diferencia 10 → 2 turnos),
+  // mismo criterio que Golpe Envenenado. `AUMENTO` (+2 destreza mientras dura) se queda SIN
+  // construir: depende de AUMENTO en el camino de utilidad, infraestructura que ni Fase 2 ni 3a
+  // engancharon nunca — INTIMIDACION (cancela el golpe entrante) y OCULTACION sí quedan reales.
+  {
+    level: 19,
+    clase: 'CAZADOR',
+    especializacion: 'SUPERVIVENCIA',
+    ability: {
+      name: 'Camuflaje',
+      icon: '🍃',
+      description: 'Cancela el ataque del rival y se funde con el entorno — sale del agro un par de turnos, siempre que no vuelva a atacar.',
+      promptText: 'Cancelo el ataque de mi rival y me fundo con el entorno, saliendo de su vista.',
+      category: 'combate',
+      effects: ['INTIMIDACION', 'OCULTACION', 'AUMENTO'],
+      rol: 'utilidad',
+      preferredAttribute: 'destreza',
+      energyCost: ENERGY_COST_MEDIA,
+    },
+  },
+  // MULTIPLE real (2026-08-27, Fase 3 § 3b) — reinterpretación consciente: la fila describe "ataca
+  // a dos objetivos de tu elección" SIN ninguna condición de margen (siempre 2) — se gatea igual
+  // que el resto de MULTIPLE (margen decisivo, ±10) por consistencia con el motor, en vez de
+  // dispararla siempre. Documentado, no un descuido.
+  {
+    level: 32,
+    clase: 'CAZADOR',
+    especializacion: 'SUPERVIVENCIA',
+    ability: {
+      name: 'Golpe Gemelo',
+      icon: '👊',
+      description: 'Un golpe rápido en dos direcciones — si conecta de lleno, alcanza también a otro rival cercano.',
+      promptText: 'Golpeo en dos direcciones a la vez, buscando alcanzar a más de un rival.',
+      category: 'combate',
+      effects: ['ATAQUE', 'MULTIPLE'],
+      rol: 'ataque',
+      preferredAttribute: 'fuerza',
+      energyCost: ENERGY_COST_AVANZADA,
+    },
+  },
+  // DESVIAR real (2026-08-27, Fase 3 § 3c) — el propio umbral de la fila (diferencia 8) se
+  // aproxima al margen decisivo del motor (±10), mismo criterio de aproximación que el resto de
+  // Fase 3. `DEBILIDAD` combinada se queda SIN construir: la fila nunca describe qué atributo
+  // debilita ni por cuánto ni cuántos turnos — no hay ninguna cifra real que poblar, a diferencia
+  // de Golpe Envenenado (que sí tenía "tramo alto" con números propios).
+  {
+    level: 40,
+    clase: 'CAZADOR',
+    especializacion: 'SUPERVIVENCIA',
+    ability: {
+      name: 'Comunión Salvaje',
+      icon: '🦌',
+      description: 'Defensa instintiva que, si es decisiva, desvía el golpe entrante hacia otro rival cercano.',
+      promptText: 'Me defiendo por puro instinto, buscando desviar el golpe hacia otro rival.',
+      category: 'combate',
+      effects: ['AGUANTE', 'DESVIAR', 'DEBILIDAD'],
+      rol: 'defensa',
+      preferredAttribute: 'destreza',
+      attributeBonus: 6,
+      energyCost: ENERGY_COST_EXPERTA,
     },
   },
 
@@ -585,7 +740,7 @@ const CLASS_ABILITIES: ClassAbilityUnlock[] = [
     },
   },
 
-  // --- Rúnico (12/16/19/24/28/32/36/40 — 24 y 40 listas) ---
+  // --- Rúnico (12/16/19/24/28/32/36/40 — 24/28/40 listas) ---
   {
     level: 24,
     clase: 'CHAMAN',
@@ -601,6 +756,30 @@ const CLASS_ABILITIES: ClassAbilityUnlock[] = [
       preferredAttribute: 'voluntad',
       attributeBonus: 5,
       energyCost: ENERGY_COST_MEDIA,
+    },
+  },
+  // AUMENTO (2026-08-26, docs/21-roadmap.md § Fase 2, clases.md nv.28 "Ataque que aumenta tu
+  // Magia en +5, si la diferencia es 10, el +5 en magia se mantiene para el siguiente turno") —
+  // encaja sin ninguna reinterpretación: el propio umbral de la habilidad (diferencia de 10) YA
+  // coincide con el margen decisivo del motor (±10, `golpe_pleno`), a diferencia de la mayoría de
+  // filas de `clases.md` (que sí necesitan reinterpretar sus 4/6/8 propios).
+  {
+    level: 28,
+    clase: 'CHAMAN',
+    especializacion: 'RUNICO',
+    ability: {
+      name: 'Golpe Runa de Cólera',
+      icon: '⚡',
+      description: 'Una runa de cólera arde en el golpe — con un impacto decisivo, su furia se queda grabada un turno más.',
+      promptText: 'Grabo una runa de cólera en mi golpe, dejando que su furia arda más allá del impacto.',
+      category: 'combate',
+      effects: ['ATAQUE', 'AUMENTO'],
+      rol: 'ataque',
+      preferredAttribute: 'arcano',
+      attributeBonus: 5,
+      durationEffectMagnitude: 5,
+      durationEffectTurns: 1,
+      energyCost: ENERGY_COST_AVANZADA,
     },
   },
   {
@@ -621,12 +800,32 @@ const CLASS_ABILITIES: ClassAbilityUnlock[] = [
     },
   },
 
-  // --- Convocador (12/16/19/24/28/32/36/40 — 28 y 32 listas) ---
+  // --- Convocador (12/16/19/24/28/32/36/40 — 12, 28 y 32 listas) ---
   //
   // Corrección frente al doc (2026-08-24): clases.md marcaba 12/16/19/28/32/40 como "✅ lista"
-  // (6/8), pero 12/16/19/40 usan AUMENTO/DEBILIDAD/MULTIPLE/CANALIZAR — ninguno implementado
+  // (6/8), pero 16/19/40 usan AUMENTO/DEBILIDAD/MULTIPLE/CANALIZAR — ninguno implementado
   // todavía. 28 (Puño Ígneo, ATAQUE+ATURDIMIENTO) ya era real; 32 (Vórtice Menor, CONTRA) se suma
-  // 2026-08-26.
+  // 2026-08-26; 12 (Tótem de Guerra, INVOCACION) se suma 2026-08-27, Fase 3 § 3d — primera
+  // habilidad real de INVOCACION del catálogo, ver comentario de cabecera y `worldCatalog.ts`
+  // (ficha Npc "totem-de-guerra"). Invocar consume el turno entero (decisión de diseño): no hay
+  // `attributeBonus`/`durationEffectMagnitude/Turns` aquí, el turno de invocar nunca pasa por
+  // `resolverIntercambioCompleto`.
+  {
+    level: 12,
+    clase: 'CHAMAN',
+    especializacion: 'CONVOCADOR',
+    ability: {
+      name: 'Tótem de Guerra',
+      icon: '🗿',
+      description: 'Clavas un tótem de guerra en tierra — aguanta un golpe, ataca por su cuenta un par de turnos y desaparece. No puedes tener más de uno a la vez.',
+      promptText: 'Clavo un tótem de guerra en tierra, canalizando parte de mi poder a través de él.',
+      category: 'combate',
+      effects: ['INVOCACION'],
+      rol: 'ataque',
+      preferredAttribute: 'arcano',
+      energyCost: ENERGY_COST_MEDIA,
+    },
+  },
   {
     level: 28,
     clase: 'CHAMAN',
@@ -2421,14 +2620,20 @@ const CLASS_ABILITIES: ClassAbilityUnlock[] = [
   },
 ];
 
-/// Qué habilidades de clase tiene un personaje — hoy solo Gorhorn es jugable, `clase: 'CAZADOR'`
-/// (`docs/rpgtarkor/clases.md`, "Gorhorn deja de tener doble clase... voy a probarlo por la rama
-/// de domador"). Domador se queda sin ningún hueco real construido esta pasada (0/8, bloqueada
-/// por completo) — Gorhorn sigue recibiendo el tronco común de Cazador tal cual, sin
-/// especialización filtrada todavía (no hay flujo in-game para elegirla).
-export function classAbilityUnlocksFor(characterName: string, level: number): StartingAbility[] {
-  if (characterName !== 'Gorhorn') return [];
-  return CLASS_ABILITIES.filter((u) => u.level === level && u.clase === 'CAZADOR' && !u.especializacion).map((u) => u.ability);
+/// Qué habilidades de clase tiene un personaje. `clase` (2026-08-29, cierre del hueco "Save.clase
+/// sin flujo de asignación") es la fuente de verdad real cuando la partida ya la tiene fijada
+/// (`PATCH /saves/:id/clase`, progression.ts) — antes de ese fix, `Save.clase` nunca se leía aquí
+/// en absoluto, así que ni siquiera arreglar la columna a mano bastaba para activar el sistema de
+/// clases. `characterName` se mantiene como fallback SOLO para partidas antiguas creadas antes del
+/// flujo de asignación (`clase` todavía `null` en Postgres) — hoy solo Gorhorn es jugable,
+/// `clase: 'CAZADOR'` (`docs/rpgtarkor/clases.md`, "Gorhorn deja de tener doble clase... voy a
+/// probarlo por la rama de domador"). Domador se queda sin ningún hueco real construido esta pasada
+/// (0/8, bloqueada por completo) — sin especialización filtrada todavía (no hay flujo in-game para
+/// elegirla, `especializacion` se decide a nivel 10).
+export function classAbilityUnlocksFor(characterName: string, level: number, clase?: Clase | null): StartingAbility[] {
+  const claseReal = clase ?? (characterName === 'Gorhorn' ? 'CAZADOR' : null);
+  if (!claseReal) return [];
+  return CLASS_ABILITIES.filter((u) => u.level === level && u.clase === claseReal && !u.especializacion).map((u) => u.ability);
 }
 
 /// Roster completo (todos los niveles) — para la Enciclopedia, no para el motor de turnos.

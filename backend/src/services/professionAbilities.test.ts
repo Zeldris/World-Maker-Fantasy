@@ -13,11 +13,13 @@ describe('professionAbilityUnlocksFor', () => {
     expect(result).toHaveLength(0);
   });
 
-  it('constructor-orcos-llanuras nivel 1 desbloquea "Tallar bloque de piedra"', () => {
+  it('constructor-orcos-llanuras nivel 1 desbloquea "Tallar bloque de piedra" y "Trenzar cuerdas"', () => {
+    // Bug real (pendiente 2026-08-27, investigado 2026-08-28): CUERDAS_RECIPE ya funcionaba por
+    // texto libre desde el commit que la creó, pero nunca se dio de alta aquí — sin botón de un
+    // clic en Habilidades → Profesiones, quien no supiera la frase exacta la veía como "no craftea".
     const result = professionAbilityUnlocksFor('constructor-orcos-llanuras', 1);
-    expect(result).toHaveLength(1);
-    expect(result[0].name).toBe('Tallar bloque de piedra');
-    expect(result[0].category).toBe('profesion');
+    expect(result.map((a) => a.name).sort()).toEqual(['Tallar bloque de piedra', 'Trenzar cuerdas'].sort());
+    expect(result.every((a) => a.category === 'profesion')).toBe(true);
   });
 
   it('herrero-orco-llanuras nivel 2 desbloquea solo el lingote de hierro (tier 2), no las de tier 3 todavía', () => {

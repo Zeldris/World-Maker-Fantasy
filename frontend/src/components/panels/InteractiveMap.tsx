@@ -179,7 +179,7 @@ export function InteractiveMap({
   return (
     <div className="flex flex-col gap-3">
       <div className="plank-panel relative overflow-hidden rounded-xl p-2">
-        <button
+        <button type="button"
           onClick={() => setShowZoomModal(true)}
           className="tactile absolute right-3 top-3 z-10 rounded-lg border border-iron-700 bg-wood-950/70 px-2.5 py-1 text-2xs text-wood-300 transition-colors hover:border-accent-600/60 hover:text-accent-300"
         >

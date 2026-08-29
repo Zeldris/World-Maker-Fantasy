@@ -1,4 +1,4 @@
-import { forwardRef, useEffect, useImperativeHandle, useRef, useState, type KeyboardEvent } from 'react'
+import { forwardRef, useEffect, useImperativeHandle, useRef, useState, type KeyboardEvent, type ReactNode } from 'react'
 import type { ComposerChip } from '../types'
 import type { EnciclopediaIndex } from '../lib/enciclopediaIndex'
 
@@ -22,12 +22,23 @@ interface ChatComposerProps {
   onChange?: (text: string) => void
   onSubmit: (text: string) => void
   disabled?: boolean
+  /// B.24 (checklist frontend 2026-08-27) — antes el texto de ayuda era siempre el mismo
+  /// ("Enter para enviar...") sin importar POR QUÉ estaba deshabilitado (combate, turno en curso,
+  /// convaleciente pendiente, otro modal abierto eran indistinguibles). `GameView.tsx` conoce la
+  /// causa real, `ChatComposer` solo la muestra — mismo criterio que `disabled`, que tampoco vive
+  /// aquí.
+  disabledReason?: string
   /// Botón secundario "Sugerir" (petición explícita, 2026-08-15) — llamada aparte que genera
   /// sugerencias bajo demanda, ver `SuggestionBar.tsx`/`GameView.tsx`. Solo se renderiza si
   /// `GameView.tsx` pasa este callback (p. ej. nunca durante combate) — `ChatComposer` no sabe nada
   /// de sugerencias más allá de disparar el callback y mostrar el estado de carga.
   onRequestSuggestions?: () => void
   suggestionsLoading?: boolean
+  /// Toggle de la barra de habilidades (2026-08-29, feedback en vivo: "a la izquierda de la barra y
+  /// no encima") — se renderiza en la MISMA fila que el propio panel de texto, dentro del wrapper
+  /// exterior de este componente, para compartir el borde/fondo en vez de duplicarlo con un
+  /// contenedor aparte por fuera.
+  leftSlot?: ReactNode
 }
 
 // Dos datasets separados a propósito: `chipLabel` marca "esto es un chip" y sirve de display;
@@ -84,7 +95,7 @@ function serialize(root: HTMLElement): string {
 }
 
 export const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(function ChatComposer(
-  { onChange, onSubmit, disabled, onRequestSuggestions, suggestionsLoading },
+  { onChange, onSubmit, disabled, disabledReason, onRequestSuggestions, suggestionsLoading, leftSlot },
   ref,
 ) {
   const editorRef = useRef<HTMLDivElement>(null)
@@ -200,7 +211,7 @@ export const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(fu
     },
     // Mismo criterio de coincidencia que EnciclopediaLinkedText.tsx (el índice ya viene ordenado
     // largo-a-corto en su regex, así que "gana" siempre la mención más específica) — aquí, en vez
-    // de un <button> clicable de navegación, cada mención reconocida se inserta como el mismo chip
+    // de un <button type="button"> clicable de navegación, cada mención reconocida se inserta como el mismo chip
     // real que ya usa insertChip (icono + nombre canónico + tooltip), para que sea indistinguible
     // de haberla insertado a mano desde la barra lateral.
     setTextWithChips(text: string, index: EnciclopediaIndex) {
@@ -238,11 +249,17 @@ export const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(fu
 
   return (
     <div className="border-t border-iron-800 bg-wood-950/90 px-4 pb-3 pt-3.5">
-      <div className="plank-panel relative flex flex-col gap-2 rounded-xl px-4 py-3 transition-shadow focus-within:shadow-[inset_0_0_0_1px_rgba(0,0,0,0.35),0_0_0_1px_var(--color-accent-500),0_0_20px_-6px_var(--color-accent-500)]">
+      <div className="flex items-end gap-2">
+        {leftSlot}
+        <div className="plank-panel relative flex flex-1 flex-col gap-2 rounded-xl px-4 py-3 transition-shadow focus-within:shadow-[inset_0_0_0_1px_rgba(0,0,0,0.35),0_0_0_1px_var(--color-accent-500),0_0_20px_-6px_var(--color-accent-500)]">
         <div className="flex items-end gap-3">
           <div
             ref={editorRef}
             contentEditable={!disabled}
+            role="textbox"
+            aria-multiline="true"
+            aria-label="Acción de tu personaje"
+            aria-disabled={disabled}
             onInput={handleInput}
             onKeyDown={handleKeyDown}
             onKeyUp={saveSelection}
@@ -254,7 +271,7 @@ export const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(fu
             }`}
           />
           {onRequestSuggestions && (
-            <button
+            <button type="button"
               onClick={onRequestSuggestions}
               disabled={disabled || suggestionsLoading}
               className="tactile shrink-0 rounded-lg border border-iron-700 bg-wood-950/50 px-3 py-2 text-xs font-semibold text-wood-300 transition-colors hover:border-accent-600/60 hover:text-accent-300 disabled:cursor-not-allowed disabled:opacity-50"
@@ -262,7 +279,7 @@ export const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(fu
               {suggestionsLoading ? 'Pensando...' : '💡 Sugerir'}
             </button>
           )}
-          <button
+          <button type="button"
             onClick={triggerSubmit}
             disabled={!canSubmit}
             className={`tactile shrink-0 rounded-lg border border-accent-600 bg-gradient-to-b from-accent-400 to-accent-600 px-3.5 py-2 text-xs font-bold uppercase tracking-wide text-wood-950 shadow-[inset_0_1px_0_rgba(255,255,255,0.3),0_2px_10px_-3px_var(--color-accent-500)] transition-all hover:from-accent-300 hover:to-accent-500 disabled:cursor-not-allowed disabled:border-iron-700 disabled:from-wood-700 disabled:to-wood-700 disabled:text-wood-500 disabled:shadow-none ${
@@ -272,9 +289,12 @@ export const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(fu
             Actuar
           </button>
         </div>
+        </div>
       </div>
       <p className="mt-2 text-center text-2xs text-wood-400">
-        Enter para enviar · Shift+Enter para salto de línea · haz clic en una habilidad/objeto para insertarlo aquí
+        {disabled && disabledReason
+          ? disabledReason
+          : 'Enter para enviar · Shift+Enter para salto de línea · haz clic en una habilidad/objeto para insertarlo aquí'}
       </p>
     </div>
   )

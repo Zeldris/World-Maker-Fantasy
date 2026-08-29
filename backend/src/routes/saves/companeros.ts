@@ -1,7 +1,8 @@
 import type { FastifyInstance } from 'fastify';
 import { prisma } from '../../lib/prisma.js';
 import { scopeFor } from '../../services/npcScene.js';
-import { equipSlotFamily, effectiveAttributes } from '../../services/equipment.js';
+import { equipSlotFamily, effectiveAttributes, effectiveInventorySlotsBonus } from '../../services/equipment.js';
+import { inventoryCapacityFor, totalInventoryUnits } from '../../services/inventoryCapacity.js';
 import type { AttributeBlock, Attribute } from '../../services/dice.js';
 import { companionSlotsForRecipeKey } from '../../services/construction.js';
 import { rejectIfEnded } from './shared.js';
@@ -12,6 +13,8 @@ import {
   jaulaTamanoRequeridoFor,
   jaulaAlcanzaPara,
   jaulaRecipeKeyFor,
+  capturaSlotsFor,
+  plazoCapturaHorasForTier,
   autoEquiparDesdeAlmacen,
   type PlantillaSlots,
 } from '../../services/companionSupervivencia.js';
@@ -48,6 +51,13 @@ export async function companerosRoutes(app: FastifyInstance) {
     });
     if (states.length === 0) return { candidates: [], tieneCuerdas };
 
+    // Rediseño de captura (2026-08-28): mientras se ata, `NpcState.capturado` se libera de nuevo a
+    // `false` (para que el grupo pueda seguir) — sin este filtro, un individuo YA atado y
+    // esperando en el inventario (todavía sin depositar en Jaula) volvería a listarse aquí como
+    // capturable de nuevo. Excluye cualquier `(npcId, scope)` que ya tenga una captura en tránsito.
+    const enTransito = await prisma.inventoryItem.findMany({ where: { saveId: save.id, capturaNpcId: { not: null } }, select: { capturaNpcId: true, capturaScope: true } });
+    const enTransitoKeys = new Set(enTransito.map((c) => `${c.capturaNpcId}::${c.capturaScope}`));
+
     const npcs = await prisma.npc.findMany({ where: { id: { in: states.map((s) => s.npcId) }, worldId: save.worldId } });
     const npcById = new Map(npcs.map((n) => [n.id, n]));
     const candidates = states
@@ -57,75 +67,207 @@ export async function companerosRoutes(app: FastifyInstance) {
         // Solo lo que de verdad se puede tamear/persuadir — sin atributoResistencia no hay tirada
         // opuesta posible, aunque esté GRAVE/CONVALECIENTE.
         if (!npc.atributoResistencia) return null;
+        if (enTransitoKeys.has(`${npc.id}::${state.scope}`)) return null;
         return { npcSlug: npc.slug, name: npc.name, tipo: npc.ataqueNatural !== null ? ('FAUNA' as const) : ('NPC' as const) };
       })
       .filter((c): c is NonNullable<typeof c> => !!c);
     return { candidates, tieneCuerdas };
   });
 
-  /// Atar con éxito — claim atómico sobre `NpcState.capturado`, mismo patrón que `saqueado`
-  /// (turnResolution.ts § applyLootMode). Fauna necesita además una Jaula con hueco del tamaño
-  /// requerido ya construida; NPC no necesita jaula (pasa directo a "retenido"). CONVALECIENTE
-  /// deja de ser "victoria automática" (2026-08-26) — requiere `cuerdas` (crafteable, se consume
-  /// al atar), sustituye a `trampa-de-lazo` (equipable, no se consumía).
-  app.post<{ Params: { id: string; npcSlug: string } }>('/saves/:id/capturar/:npcSlug', async (request, reply) => {
-    const save = await prisma.save.findUnique({ where: { id: request.params.id }, select: { id: true, worldId: true, currentLocationId: true, endedAt: true } });
+  /// Atar con éxito — REDISEÑO 2026-08-28 (docs/rpgtarkor/captura-rediseno-2026-08-28.md): la
+  /// captura deja de vivir in-situ en `NpcState.capturado` (eso rompía la caza en grupo — una sola
+  /// fila `NpcState` no podía ser "el individuo capturado" Y "el individuo activo para seguir
+  /// cazando al resto" a la vez) y se materializa como `InventoryItem` en tránsito. El `NpcState`
+  /// de origen se resetea EXACTAMENTE igual que `grupoContinua` (turnResolution.ts): si quedan más
+  /// miembros del grupo, "resucita" a ILESO para el siguiente; si no, vuelve a MUERTO/CONVALECIENTE
+  /// normal, disponible para saqueo/decapitar como cualquier baja normal. Solo 1 captura activa a
+  /// la vez en toda la partida — regla nueva. CONVALECIENTE deja de ser "victoria automática"
+  /// (2026-08-26) — requiere `cuerdas` (crafteable, se consume al atar).
+  app.post<{ Params: { id: string; npcSlug: string }; Body: { participantId?: string } }>('/saves/:id/capturar/:npcSlug', async (request, reply) => {
+    const save = await prisma.save.findUnique({ where: { id: request.params.id }, select: { id: true, worldId: true, currentLocationId: true, endedAt: true, worldState: { select: { fictionalMinutes: true } } } });
     if (!save) return reply.status(404).send({ error: 'Partida no encontrada' });
     if (rejectIfEnded(save, reply)) return;
     if (!save.currentLocationId) return reply.status(400).send({ error: 'Sin ubicación actual' });
 
-    const cuerdasItem = await prisma.inventoryItem.findFirst({ where: { saveId: save.id, catalogSlug: 'cuerdas' }, select: { id: true } });
+    // Regla nueva (§1 del rediseño): solo 1 captura activa a la vez, para toda la partida —
+    // cualquier InventoryItem en tránsito (capturaNpcId no null) todavía sin depositar.
+    const capturaEnCurso = await prisma.inventoryItem.findFirst({ where: { saveId: save.id, capturaNpcId: { not: null } }, select: { id: true } });
+    if (capturaEnCurso) {
+      return reply.status(400).send({ error: 'Ya llevas una captura sin resolver — suéltala o deposítala antes de atar a otra.' });
+    }
+
+    const cuerdasItem = await prisma.inventoryItem.findFirst({ where: { saveId: save.id, catalogSlug: 'cuerdas' }, select: { id: true, catalogSlug: true } });
     if (!cuerdasItem) return reply.status(400).send({ error: 'Necesitas cuerdas (en inventario) para intentar atar.' });
+    const cuerdaCatalog = await prisma.itemCatalog.findFirst({ where: { worldId: save.worldId, slug: cuerdasItem.catalogSlug ?? 'cuerdas' }, select: { tier: true } });
 
     const npc = await prisma.npc.findUnique({ where: { worldId_slug: { worldId: save.worldId, slug: request.params.npcSlug } } });
     if (!npc || !npc.atributoResistencia) return reply.status(404).send({ error: 'Objetivo no capturable' });
-    const scope = scopeFor(npc.kind, save.currentLocationId);
-    const state = await prisma.npcState.findUnique({ where: { saveId_npcId_scope: { saveId: save.id, npcId: npc.id, scope } } });
-    if (!state || !['GRAVE', 'CONVALECIENTE'].includes(state.condicionFisica) || state.capturado) {
-      return reply.status(400).send({ error: 'Este objetivo no está listo para atar (tiene que estar GRAVE o CONVALECIENTE, sin capturar ya).' });
+
+    // Combate múltiple real (2026-08-29, ver comentario de `CombatParticipant.dismissedGrupo` en
+    // schema.prisma — mismo hueco exacto que Clemente): con `participantId`, un miembro de grupo
+    // tiene su condición real en `CombatParticipant.condicionFisicaGrupo`, nunca en `NpcState`
+    // (fila compartida por toda la especie). El resto del flujo de captura (cuerdas, inventario,
+    // InventoryItem en tránsito) es idéntico — solo cambia de dónde se lee la condición y qué se
+    // marca como "ya resuelto": `dismissedGrupo` en el propio `CombatParticipant`, nunca
+    // `NpcState.groupSize/groupDefeated` (sistema viejo, no aplica a un CombatEncounter real).
+    const participantId = request.body?.participantId;
+    let scope: string;
+    let state: { id: string; groupSize: number | null; groupDefeated: number } | null;
+    let esGrupoReal = false;
+    if (participantId) {
+      const participant = await prisma.combatParticipant.findUnique({ where: { id: participantId } });
+      if (!participant || participant.npcId !== npc.id) {
+        return reply.status(404).send({ error: 'Ese combatiente no existe en este combate.' });
+      }
+      if (participant.dismissedGrupo) {
+        return reply.status(400).send({ error: 'Ese combatiente ya fue resuelto.' });
+      }
+      scope = participant.npcScope;
+      esGrupoReal = participant.condicionFisicaGrupo !== null;
+      const npcState = await prisma.npcState.findUnique({ where: { saveId_npcId_scope: { saveId: save.id, npcId: npc.id, scope } } });
+      const condicionReal = esGrupoReal ? participant.condicionFisicaGrupo! : (npcState?.condicionFisica ?? 'ILESO');
+      if (!['GRAVE', 'CONVALECIENTE'].includes(condicionReal) || npcState?.capturado) {
+        return reply.status(400).send({ error: 'Este objetivo no está listo para atar (tiene que estar GRAVE o CONVALECIENTE, sin capturar ya).' });
+      }
+      state = npcState ? { id: npcState.id, groupSize: npcState.groupSize, groupDefeated: npcState.groupDefeated } : null;
+    } else {
+      scope = scopeFor(npc.kind, save.currentLocationId);
+      const npcState = await prisma.npcState.findUnique({ where: { saveId_npcId_scope: { saveId: save.id, npcId: npc.id, scope } } });
+      if (!npcState || !['GRAVE', 'CONVALECIENTE'].includes(npcState.condicionFisica) || npcState.capturado) {
+        return reply.status(400).send({ error: 'Este objetivo no está listo para atar (tiene que estar GRAVE o CONVALECIENTE, sin capturar ya).' });
+      }
+      state = { id: npcState.id, groupSize: npcState.groupSize, groupDefeated: npcState.groupDefeated };
     }
 
     const esFauna = npc.ataqueNatural !== null;
-    let jaulaBuildingId: string | null = null;
-    if (esFauna) {
-      const tamanoRequerido = jaulaTamanoRequeridoFor(npc.slug);
-      const jaulas = await prisma.building.findMany({
-        where: { saveId: save.id, status: 'ACTIVO', recipeKey: { in: ['jaula-pequena', 'jaula-mediana', 'jaula-grande'] } },
-      });
-      const jaulaConHueco = await (async () => {
-        for (const jaula of jaulas) {
-          const jaulaTamano = jaula.recipeKey === jaulaRecipeKeyFor('GRANDE') ? 'GRANDE' : jaula.recipeKey === jaulaRecipeKeyFor('MEDIANA') ? 'MEDIANA' : 'PEQUENA';
-          if (!jaulaAlcanzaPara(jaulaTamano, tamanoRequerido)) continue;
-          // Capacidad = 1 animal por Jaula (companionSupervivencia.ts § JAULA_ORDEN comment) —
-          // ocupada = cualquier NpcState todavía capturado sin confirmar apuntando a esta Jaula.
-          const ocupada = await prisma.npcState.findFirst({ where: { capturaJaulaBuildingId: jaula.id } });
-          if (!ocupada) return jaula;
-        }
-        return null;
-      })();
-      if (!jaulaConHueco) {
-        return reply.status(400).send({ error: `Necesitas una Jaula (${tamanoRequerido.toLowerCase()} o mayor) con hueco libre para retener a esta criatura.` });
-      }
-      jaulaBuildingId = jaulaConHueco.id;
+    const slotsNecesarios = capturaSlotsFor(esFauna, npc.slug);
+    // Sin hueco en el inventario → falla el intento (confirmado ronda 3): la cuerda no se gasta,
+    // el objetivo sigue GRAVE/CONVALECIENTE para reintentar tras hacer hueco.
+    const [playerAttributesRow, inventoryRows, equippedItems] = await Promise.all([
+      prisma.save.findUniqueOrThrow({ where: { id: save.id }, select: { attributes: true } }),
+      prisma.inventoryItem.findMany({ where: { saveId: save.id }, select: { name: true } }),
+      prisma.inventoryItem.findMany({ where: { saveId: save.id, slot: { not: null } }, select: { statBonuses: true } }),
+    ]);
+    const attrs = playerAttributesRow.attributes as AttributeBlock;
+    const capacidad = inventoryCapacityFor(attrs.fuerza, attrs.constitucion, effectiveInventorySlotsBonus(equippedItems));
+    const usados = totalInventoryUnits(inventoryRows);
+    if (usados + slotsNecesarios > capacidad) {
+      return reply.status(400).send({ error: `No tienes hueco en el inventario (necesitas ${slotsNecesarios} slots libres para transportar la captura).` });
     }
 
-    // Claim atómico — mismo patrón que `saqueado` (turnResolution.ts): el `where` incluye
-    // `capturado: false` para que dos peticiones casi simultáneas no reclamen el mismo objetivo.
-    const claimed = await prisma.npcState.updateMany({
-      where: { id: state.id, capturado: false },
-      data: { capturado: true, capturaFelicidad: 0, capturaJaulaBuildingId: jaulaBuildingId },
+    if (esGrupoReal) {
+      // Claim atómico sobre el propio CombatParticipant — mismo criterio que `saqueado`, pero
+      // aquí no hay NpcState.groupSize/groupDefeated real que avanzar (eso es del sistema viejo):
+      // el individuo capturado simplemente se marca resuelto, el resto del grupo sigue como está.
+      const claimed = await prisma.combatParticipant.updateMany({ where: { id: participantId!, dismissedGrupo: null }, data: { dismissedGrupo: true } });
+      if (claimed.count === 0) return reply.status(409).send({ error: 'Alguien más ya ató a este objetivo.' });
+      if (state) await prisma.npcState.update({ where: { id: state.id }, data: { capturado: true, capturaFelicidad: 0 } });
+    } else {
+      // Claim atómico — mismo patrón que `saqueado` (turnResolution.ts): el `where` incluye
+      // `capturado: false` para que dos peticiones casi simultáneas no reclamen el mismo objetivo.
+      const claimed = await prisma.npcState.updateMany({ where: { id: state!.id, capturado: false }, data: { capturado: true } });
+      if (claimed.count === 0) return reply.status(409).send({ error: 'Alguien más ya ató a este objetivo.' });
+
+      // Libera el NpcState de origen — mismo criterio EXACTO que `grupoContinua`
+      // (turnResolution.ts): si quedan más miembros del grupo, resucita a ILESO para el siguiente;
+      // si no, se queda en la condición ya resuelta (MUERTO/CONVALECIENTE normal), disponible para
+      // saqueo/decapitar como cualquier baja normal — la captura ya no vive ahí, vive en el inventario.
+      const grupoContinua = !!(state!.groupSize && state!.groupDefeated + 1 < state!.groupSize);
+      await prisma.npcState.update({
+        where: { id: state!.id },
+        data: grupoContinua
+          ? { condicionFisica: 'ILESO', groupDefeated: { increment: 1 }, capturado: false, capturaFelicidad: 0 }
+          : { capturado: false, capturaFelicidad: 0 },
+      });
+    }
+
+    const nowMinutes = save.worldState?.fictionalMinutes ?? 480;
+    const plazoHoras = plazoCapturaHorasForTier(cuerdaCatalog?.tier ?? 1);
+    const capturaExpiraAtMinutes = plazoHoras === null ? null : nowMinutes + plazoHoras * 60;
+
+    // Se consume la cuerda y se crea la captura en tránsito en la misma transacción — mismo
+    // criterio de siempre (evitar gastarla en un intento que pierde la carrera).
+    const item = await prisma.$transaction(async (tx) => {
+      await tx.inventoryItem.delete({ where: { id: cuerdasItem.id } });
+      return tx.inventoryItem.create({
+        data: {
+          saveId: save.id,
+          name: `${npc.name} (Capturado) (${slotsNecesarios})`,
+          description: esFauna ? 'Una criatura atada, todavía sin domesticar — hay que depositarla en una Jaula para poder ganarse su confianza.' : `${npc.name}, retenido tras la captura — sin resolver todavía.`,
+          origin: 'Captura',
+          capturaNpcId: npc.id,
+          capturaScope: scope,
+          capturaExpiraAtMinutes,
+        },
+      });
     });
-    if (claimed.count === 0) return reply.status(409).send({ error: 'Alguien más ya ató a este objetivo.' });
 
-    // Se consume la cuerda usada, solo tras confirmar el claim (evita gastarla en un intento que
-    // pierde la carrera contra otra petición casi simultánea).
-    await prisma.inventoryItem.delete({ where: { id: cuerdasItem.id } });
+    return { npcSlug: npc.slug, tipo: esFauna ? 'FAUNA' : 'NPC', inventoryItemId: item.id, capturaExpiraAtMinutes };
+  });
 
-    return { npcSlug: npc.slug, tipo: esFauna ? 'FAUNA' : 'NPC', jaulaBuildingId };
+  /// Depositar una captura del inventario en una Jaula con hueco — mismo criterio de tamaño que
+  /// antes (`jaulaAlcanzaPara`), capacidad = 1 animal por Jaula. NPC no tiene edificio de destino
+  /// todavía (Celda de Retención, pausada — ver el doc de rediseño) — de momento solo fauna puede
+  /// depositarse; un NPC capturado se queda en el inventario hasta soltarlo o (futuro) depositarlo.
+  app.post<{ Params: { id: string; itemId: string } }>('/saves/:id/capturas/:itemId/depositar', async (request, reply) => {
+    const item = await prisma.inventoryItem.findFirst({ where: { id: request.params.itemId, saveId: request.params.id, capturaNpcId: { not: null } } });
+    if (!item) return reply.status(404).send({ error: 'Captura no encontrada en el inventario' });
+
+    const save = await prisma.save.findUnique({ where: { id: request.params.id }, select: { worldId: true } });
+    const npc = await prisma.npc.findUnique({ where: { id: item.capturaNpcId! } });
+    if (!npc) return reply.status(404).send({ error: 'Objetivo no encontrado' });
+    const esFauna = npc.ataqueNatural !== null;
+    if (!esFauna) {
+      return reply.status(400).send({ error: 'Los NPC capturados todavía no tienen un edificio de destino (Celda de Retención, pendiente de construir).' });
+    }
+
+    const tamanoRequerido = jaulaTamanoRequeridoFor(npc.slug);
+    const jaulas = await prisma.building.findMany({
+      where: { saveId: request.params.id, status: 'ACTIVO', recipeKey: { in: ['jaula-pequena', 'jaula-mediana', 'jaula-grande'] } },
+    });
+    let jaulaConHueco = null;
+    for (const jaula of jaulas) {
+      const jaulaTamano = jaula.recipeKey === jaulaRecipeKeyFor('GRANDE') ? 'GRANDE' : jaula.recipeKey === jaulaRecipeKeyFor('MEDIANA') ? 'MEDIANA' : 'PEQUENA';
+      if (!jaulaAlcanzaPara(jaulaTamano, tamanoRequerido)) continue;
+      const ocupada = await prisma.npcState.findFirst({ where: { capturaJaulaBuildingId: jaula.id } });
+      if (!ocupada) {
+        jaulaConHueco = jaula;
+        break;
+      }
+    }
+    if (!jaulaConHueco) {
+      return reply.status(400).send({ error: `Necesitas una Jaula (${tamanoRequerido.toLowerCase()} o mayor) con hueco libre para depositar a esta criatura.` });
+    }
+
+    // La captura pasa de InventoryItem (en tránsito) a NpcState.capturaJaulaBuildingId (en
+    // proceso de tameo) — mismo NpcState de origen (npcId+scope), ya liberado del grupo al atar.
+    await prisma.$transaction([
+      prisma.inventoryItem.delete({ where: { id: item.id } }),
+      prisma.npcState.updateMany({
+        where: { saveId: request.params.id, npcId: npc.id, scope: item.capturaScope! },
+        data: { capturado: true, capturaFelicidad: 0, capturaJaulaBuildingId: jaulaConHueco.id },
+      }),
+    ]);
+    return { ok: true, jaulaBuildingId: jaulaConHueco.id };
+  });
+
+  /// Soltar/liberar una captura EN EL INVENTARIO (antes de depositar) — disponible en cualquier
+  /// momento (confirmado ronda 3). Libera el slot de "1 captura a la vez" al instante. Distinto del
+  /// `/tameo-pendientes/:npcSlug/soltar` de abajo, que suelta una captura YA depositada en Jaula.
+  app.post<{ Params: { id: string; itemId: string } }>('/saves/:id/capturas/:itemId/soltar', async (request, reply) => {
+    const item = await prisma.inventoryItem.findFirst({ where: { id: request.params.itemId, saveId: request.params.id, capturaNpcId: { not: null } } });
+    if (!item) return reply.status(404).send({ error: 'Captura no encontrada en el inventario' });
+    await prisma.inventoryItem.delete({ where: { id: item.id } });
+    return { ok: true };
   });
 
   // ═══════════════════════════════════════════════════════════════════════
-  // § 2/3 — Tameo/persuasión: alimentar (fauna) o persuadir (NPC), mismo mecanismo
+  // § 2/3 — Tameo/persuasión: alimentar (fauna) o persuadir (NPC), mismo mecanismo.
+  // REDISEÑO 2026-08-28: `NpcState.capturado` ya solo se marca `true` al DEPOSITAR en Jaula (ver
+  // `/capturas/:itemId/depositar` arriba) — para entonces el NpcState de origen ya fue liberado del
+  // grupo al atar, así que `scope` vuelve a ser inequívoco (una fila = una captura en proceso real,
+  // nunca compite con "el individuo activo del grupo"). El bug original de grupo se resolvía ahí,
+  // no aquí — estos 3 endpoints no necesitan más cambios que los del propio flujo de antes.
   // ═══════════════════════════════════════════════════════════════════════
 
   app.get<{ Params: { id: string } }>('/saves/:id/tameo-pendientes', async (request, reply) => {

@@ -1,6 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { prisma } from '../../lib/prisma.js';
 import { rejectIfEnded } from './shared.js';
+import { sanitizeActiveCombatAbilityNames } from '../../services/combatAbilities.js';
 
 /// CRUD de habilidades 'general' creadas a mano por la jugadora (deuda técnica 2026-07-30, split
 /// de saves.ts) — las de combate (isStarting/isDynamic) son fijas por clase/raza/arma y nunca
@@ -144,5 +145,30 @@ export async function habilidadesRoutes(app: FastifyInstance) {
       dualWield: updated.dualWield,
       rol: updated.rol,
     };
+  });
+
+  /// "Cinturón de combate" (2026-08-28, pendiente 2026-08-27 punto 3) — reemplaza la lista completa
+  /// en el orden recibido (mismo criterio que reordenar un inventario: el cliente manda el estado
+  /// final ya decidido, no operaciones incrementales). Saneada contra las habilidades de combate NO
+  /// genéricas reales de AHORA MISMO (`sanitizeActiveCombatAbilityNames`) — nunca se confía en que
+  /// el cliente mande solo nombres válidos. Marca `activeCombatAbilityNamesConfigured: true` SIEMPRE
+  /// que se llama, incluso si el resultado saneado queda vacío — a partir de aquí,
+  /// `resolveActiveCombatAbilityNames` deja de aplicar el "todas activas" por defecto.
+  app.patch<{ Params: { id: string }; Body: { names: string[] } }>('/saves/:id/combat-abilities', async (request, reply) => {
+    const save = await prisma.save.findUnique({ where: { id: request.params.id } });
+    if (!save) return reply.status(404).send({ error: 'Partida no encontrada' });
+    if (rejectIfEnded(save, reply)) return;
+
+    const combatAbilities = await prisma.savedAction.findMany({
+      where: { saveId: save.id, category: 'combate' },
+      select: { name: true, isGeneric: true },
+    });
+    const sanitized = sanitizeActiveCombatAbilityNames(request.body.names ?? [], combatAbilities);
+
+    const updated = await prisma.save.update({
+      where: { id: save.id },
+      data: { activeCombatAbilityNames: sanitized, activeCombatAbilityNamesConfigured: true },
+    });
+    return { activeCombatAbilityNames: updated.activeCombatAbilityNames };
   });
 }

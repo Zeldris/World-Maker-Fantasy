@@ -23,7 +23,7 @@ export function CharacterCard({
   onSelect?: () => void
 }) {
   return (
-    <button
+    <button type="button"
       onClick={onSelect}
       className={`plank-panel relative flex flex-col gap-4 rounded-xl p-5 text-left transition-[filter,box-shadow,border-color] ${
         selected ? 'card-selected' : 'hover:border-accent-600/40 hover:brightness-110'

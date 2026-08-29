@@ -616,7 +616,7 @@ que más infraestructura nueva necesita — no es un problema de diseño de las 
 
 | Nivel | Habilidad | Atributo | Efecto | Estado |
 |---|---|---|---|---|
-| 12 | Golpe Envenenado | Destreza | ATAQUE + `DEBILIDAD` (veneno) | ⚠️ bloqueada | Ataque que aumente en +2 la destreza, si la diferencia es de 4 resta 2 durante 2 turnos de destreza a tu objetivo, si la diferencia es de 8 resta 4
+| 12 | Golpe Envenenado | Destreza | ATAQUE + `DEBILIDAD` (veneno) | ✅ lista — APLICADA 2026-08-26 (solo el tramo alto: -4 destreza, 2 turnos, en vez de los dos tramos 4/8 de aquí, mismo criterio que CONTRA/REFRACTAR) | Ataque que aumente en +2 la destreza, si la diferencia es de 4 resta 2 durante 2 turnos de destreza a tu objetivo, si la diferencia es de 8 resta 4
 | 16 | Zancadilla | Destreza | `ATURDIMIENTO` | ✅ lista |
 | 19 | Camuflaje | Destreza | INTIMIDACION + `OCULTACION` + AUMENTO | ⚠️ bloqueada | Cancela el ataque de tu enemigo y si la tirada tiene una diferencia de 4 te oculta el siguiente turno del agro y te aumenta en +2 la destreza, si la diferencia es de 10 entonces te oculta 2 turnos y aumenta en +2 tu destreza esos 2 turnos. Si realizas un ataque esos turnos de ocultacion, la ocultacion se pierde
 | 24 | Giro Toxina Paralizante | Destreza | ATAQUE +`DEBILIDAD` + `ATURDIMIENTO` + MULTIPLE + LIMITADO | ⚠️ bloqueada | Eecuta un ataque que te aumenta +2 la destreza, si la diferencia es de 4 le aplica al objetivo -4 de destreza y lo aturde un turno, si la diferencia es de 10 mismo efecto, pero la debilidad se propaga a todos los enemigos pero les resta -6. Limitado a 2 usos por combate
@@ -625,10 +625,9 @@ que más infraestructura nueva necesita — no es un problema de diseño de las 
 | 36 | Golpe Veneno Corrosivo | Destreza | ATAQUE + `DEBILIDAD` | ⚠️ bloqueada (`DEBILIDAD`) | Ataque que aumenta tu destreza en 3 ese turno y si la diferencia es de 6, le resta al enemigo -2 en todos los stats durante 1 turno, si la diferencia es de 12 en la tirada entonces le resta -6 de todos los attrs durante 1 turno
 | 40 | Comunion Salvaje | Destreza | `AGUANTE` + `DESVIAR` + `DEBILIDAD` | ⚠️ bloqueada (`DESVIAR` + `DEBILIDAD`) | Defiende de un ataque aumentando tu destreza en +6, si le superas en 8 desvia el ataque a otro enemigo aleatorio
 
-**Solo 1 de 8 lista** (16) — Zancadilla es la única sin ningún efecto pendiente. El resto combina
-`DEBILIDAD` (los venenos, el corazón temático de la rama), `OCULTACION`, `MULTIPLE` o `DESVIAR` —
-no es "solo los venenos esperan" como decía antes, prácticamente toda la rama depende de algo
-pendiente.
+**2 de 8 listas** (12/16, actualizado 2026-08-26 — Golpe Envenenado ya aplicado, Fase 2). El resto
+combina `OCULTACION`, `MULTIPLE` o `DESVIAR`, o el tramo bajo de `DEBILIDAD` que la simplificación
+de Golpe Envenenado no cubre por separado.
 
 ### Tirador — 5 de 8 listas
 
@@ -735,7 +734,7 @@ bloqueada que Totémico:
 | 16 | Golpe Runa de Debilidad | Magia | ATAQUE + `DEBILIDAD` (a un rival concreto) | ⚠️ bloqueada | Ataque que aumenta +5 la Magia, si la diferencia es de 5 entonces le resta -2 de todos los stats al enemigo
 | 19 | Runa Ilusoria | Inteligencia | INVOCACION + `AGUANTE` + PROVOCACION  | ⚠️ bloqueada | Invoca una ilusion con una runa que tiene 1 de vida y que para el ataque de un enemigo
 | 24 | Runa de Resistencia | Voluntad | `AGUANTE` | ✅ lista | Te defiendes con Voluntad aumentandola e +5
-| 28 | Golpe Runa de Cólera | Magia | ATAQUE + `AUMENTO`  | ⚠️ bloqueada | Ataqye que aumenta tu Magia en +5, si la diferencia es 10, el +5 en magia se mantiene para el siguiente turno
+| 28 | Golpe Runa de Cólera | Magia | ATAQUE + `AUMENTO`  | ✅ lista — APLICADA 2026-08-26 (el umbral de esta fila, diferencia 10, ya coincidía con el margen decisivo del motor, sin reinterpretar nada) | Ataqye que aumenta tu Magia en +5, si la diferencia es 10, el +5 en magia se mantiene para el siguiente turno
 | 32 | Control Rúnico | Magia | CONTROL + `DEBILIDAD` — maldición que marca a un rival concreto | ⚠️ bloqueada | Debilita a un rival restandole -4 de fuerza si la diferencia es de 6 controla al rival un turno
 | 36 | Runa de Rayo Cadena| Inteligencia | `ATAQUE` + MULTIPLE  | ⚠️ bloqueada | Ataca en cadena a varios rivales a la vez
 | 40 | Intelecto Rúnico *(capstone)* | Magia | `ATAQUE` + LIMITADA — una runa predice el ataque del rival; te anticipas con un golpe básico del tipo que tiene ventaja contra él | ✅ lista | LImitada a 4 usos
@@ -744,9 +743,10 @@ bloqueada que Totémico:
 `classAbilities.ts`)**: el recuento original decía "4 de 8 listas (19/24/36/40)", contradiciendo sus
 propias filas — 19 (INVOCACION+PROVOCACION) y 36 (MULTIPLE, fila que tenía además un error de datos
 real: el `Estado` decía "✅ lista" con "⚠️ bloqueada" colado en la columna de descripción) SÍ
-dependen de infraestructura bloqueada. **2 de 8 listas de verdad (24/40)** — el resto de la
-proporción "Magia sigue siendo mayoría" de más abajo ya no aplica tal cual, se deja sin ese cálculo
-secundario para no arrastrar el mismo error.
+dependen de infraestructura bloqueada. **2 de 8 listas de verdad (24/40)**, ahora **3 de 8** con
+Golpe Runa de Cólera (28) aplicado 2026-08-26, Fase 2 — el resto de la proporción "Magia sigue
+siendo mayoría" de más abajo ya no aplica tal cual, se deja sin ese cálculo secundario para no
+arrastrar el mismo error.
 
 ### Convocador — la menos bloqueada de las 4 (guerrero-mago)
 

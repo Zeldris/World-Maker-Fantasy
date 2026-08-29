@@ -198,7 +198,7 @@ export async function creationRoutes(app: FastifyInstance) {
               create: [
                 ...startingAbilitiesFor(characterName).map((a) => ({ ...a, isStarting: true })),
                 ...GENERIC_COMBAT_ABILITIES.map((a) => ({ ...a, isStarting: true, isGeneric: true })),
-                ...classAbilityUnlocksFor(characterName, 1).map((a) => ({ ...a, isStarting: true })),
+                ...classAbilityUnlocksFor(characterName, 1, null).map((a) => ({ ...a, isStarting: true })),
                 ...startingProfessions.flatMap((oficio) => [
                   ...professionAbilityUnlocksFor(oficio, 1).map((a) => ({ ...a, isStarting: true })),
                   ...harvestAbilityUnlocksFor(oficio, 1).map((a) => ({ ...a, isStarting: true })),
@@ -364,7 +364,7 @@ export async function creationRoutes(app: FastifyInstance) {
           data: [
             ...startingAbilitiesFor(save.characterName).map((a) => ({ ...a, saveId: save.id, isStarting: true })),
             ...GENERIC_COMBAT_ABILITIES.map((a) => ({ ...a, saveId: save.id, isStarting: true, isGeneric: true })),
-            ...classAbilityUnlocksFor(save.characterName, 1).map((a) => ({ ...a, saveId: save.id, isStarting: true })),
+            ...classAbilityUnlocksFor(save.characterName, 1, save.clase).map((a) => ({ ...a, saveId: save.id, isStarting: true })),
             ...startingProfessions.flatMap((oficio) => [
               ...professionAbilityUnlocksFor(oficio, 1).map((a) => ({ ...a, saveId: save.id, isStarting: true })),
               ...harvestAbilityUnlocksFor(oficio, 1).map((a) => ({ ...a, saveId: save.id, isStarting: true })),

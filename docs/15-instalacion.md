@@ -39,7 +39,9 @@ Resto de variables:
 
 **Alternativa (Supabase remoto):** solo si algún día hace falta jugar de verdad desde varios dispositivos a la vez con la misma partida sincronizada — ver `.env.example` para la plantilla comentada. Si se usa, habilitar la extensión a mano igual (Prisma no la gestiona vía schema, ver comentario en `schema.prisma`): `CREATE EXTENSION IF NOT EXISTS vector;`.
 
-El frontend no tiene `.env` — `API_URL` está hardcodeado a `http://localhost:3001` en `frontend/src/lib/api.ts` (pendiente de mover a variable de entorno). Esto significa que **backend y frontend tienen que correr en la MISMA máquina** — no vale instalar solo el frontend apuntando a un backend remoto sin tocar ese archivo primero.
+El frontend lee `VITE_API_URL` (variable de entorno de Vite, `frontend/src/lib/api.ts`) con fallback
+a `http://localhost:3001` si no se define — apuntar a un backend en otra máquina ya no exige tocar
+código, solo definir `VITE_API_URL` en un `.env` del frontend antes de arrancar.
 
 ## 3bis. Postgres local vía podman (por defecto desde 2026-07-30)
 

@@ -3,6 +3,11 @@ import { createPortal } from 'react-dom'
 
 interface TooltipAnchorProps {
   text?: string
+  /// Segunda línea opcional, con menos énfasis que `text` (2026-08-29, feedback en vivo sobre la
+  /// barra de habilidades: "al poner el ratón encima tiene que salir nombre y descripción") — sin
+  /// esto, un tooltip de "nombre + descripción" solo tenía una forma de componerse: texto corrido
+  /// con un separador a mano (`${nombre} — ${descripcion}`), sin jerarquía visual entre ambos.
+  subtext?: string
   children: ReactNode
   className?: string
 }
@@ -17,15 +22,31 @@ interface TooltipAnchorProps {
 // lo que le pasaba a la primera fila de cualquier cuadrícula). Renderizarlo fuera del árbol, con
 // posición calculada del propio ancla, escapa de cualquier `overflow`/contexto de apilamiento de
 // un ancestro — no es solo cuestión de z-index.
-export function TooltipAnchor({ text, children, className = '' }: TooltipAnchorProps) {
+// Ancho máximo real de `.tooltip-portal` (index.css) — usado aquí para decidir si centrar el
+// tooltip sobre el ancla se saldría de la ventana por alguno de los dos lados.
+const TOOLTIP_MAX_WIDTH = 240
+const VIEWPORT_MARGIN = 8
+
+export function TooltipAnchor({ text, subtext, children, className = '' }: TooltipAnchorProps) {
   const anchorRef = useRef<HTMLSpanElement>(null)
-  const [pos, setPos] = useState<{ top: number; left: number } | null>(null)
+  // Bug real jugando en vivo (2026-08-29, feedback sobre la barra de habilidades — icono muy
+  // pegado al borde izquierdo de la ventana): centrar SIEMPRE el tooltip sobre el ancla
+  // (`left: 50%` + `translateX(-50%)`) lo cortaba contra el borde de la ventana en cuanto el
+  // ancla estaba a menos de media anchura del tooltip de cualquiera de los dos lados — no era
+  // solo un problema de overflow de un contenedor padre (para eso ya existía el portal), sino del
+  // propio viewport. `align` decide si el tooltip se centra sobre el ancla (caso normal) o se
+  // ancla a su izquierda/derecha (`left`/`right` del ancla, sin centrar) cuando no cabe centrado.
+  const [pos, setPos] = useState<{ top: number; left: number; align: 'center' | 'left' | 'right' } | null>(null)
 
   function show() {
     const el = anchorRef.current
     if (!el) return
     const rect = el.getBoundingClientRect()
-    setPos({ top: rect.top, left: rect.left + rect.width / 2 })
+    const center = rect.left + rect.width / 2
+    const halfTooltip = TOOLTIP_MAX_WIDTH / 2
+    const align = center - halfTooltip < VIEWPORT_MARGIN ? 'left' : center + halfTooltip > window.innerWidth - VIEWPORT_MARGIN ? 'right' : 'center'
+    const left = align === 'left' ? rect.left : align === 'right' ? rect.right : center
+    setPos({ top: rect.top, left, align })
   }
   function hide() {
     setPos(null)
@@ -45,8 +66,9 @@ export function TooltipAnchor({ text, children, className = '' }: TooltipAnchorP
       {text &&
         pos &&
         createPortal(
-          <span className="tooltip-portal" style={{ top: pos.top, left: pos.left }}>
-            {text}
+          <span className={`tooltip-portal tooltip-portal-${pos.align}`} style={{ top: pos.top, left: pos.left }}>
+            <span className="tooltip-portal-title">{text}</span>
+            {subtext && <span className="tooltip-portal-subtext">{subtext}</span>}
           </span>,
           document.body,
         )}

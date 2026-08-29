@@ -103,6 +103,55 @@ export function jaulaRecipeKeyFor(tamano: JaulaTamano): string {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
+// Rediseño de captura (2026-08-28, docs/rpgtarkor/captura-rediseno-2026-08-28.md) — la captura se
+// materializa como InventoryItem en tránsito (ver `InventoryItem.capturaNpcId`, schema.prisma) en
+// vez de vivir in-situ en NpcState. Slots que ocupa en el inventario y plazo de expiración antes de
+// depositarla en Jaula/Celda de Retención.
+// ═══════════════════════════════════════════════════════════════════════════
+
+/// NPC (raza inteligente) siempre 5 slots — equivalente a MEDIANA, sin tabla de calibración propia
+/// (un humanoide adulto no varía tanto como la fauna, que sí va de PEQUEÑA a GRANDE).
+export const CAPTURA_SLOTS_NPC = 5;
+
+const CAPTURA_SLOTS_POR_JAULA_TAMANO: Record<JaulaTamano, number> = {
+  PEQUENA: 3,
+  MEDIANA: 5,
+  GRANDE: 8,
+};
+
+export function capturaSlotsFor(esFauna: boolean, faunaSlug?: string): number {
+  if (!esFauna) return CAPTURA_SLOTS_NPC;
+  return CAPTURA_SLOTS_POR_JAULA_TAMANO[jaulaTamanoRequeridoFor(faunaSlug ?? '')];
+}
+
+/// Plazo en el inventario (horas de ficción) antes de que la captura se escape sola si no se ha
+/// depositado en Jaula/Celda — depende del tier de la CUERDA usada al atar, no una cifra fija
+/// (ronda 4 de diseño, cifras dadas explícitamente por la usuaria). Solo existe tier 1 en el
+/// catálogo real hoy; tiers 2-6 quedan listos para cuando se craftee esa cuerda. Tier 7 = null
+/// (nunca expira, "no pueden escapar").
+const PLAZO_CAPTURA_HORAS_POR_TIER: Record<number, number | null> = {
+  1: 6,
+  2: 8,
+  3: 12,
+  4: 16,
+  5: 20,
+  6: 24,
+  7: null,
+};
+
+export function plazoCapturaHorasForTier(cuerdaTier: number): number | null {
+  return PLAZO_CAPTURA_HORAS_POR_TIER[cuerdaTier] ?? PLAZO_CAPTURA_HORAS_POR_TIER[1];
+}
+
+/// Puro — mismo patrón que `npcCorpseShouldDespawn`/`npcRecoversFromConvaleciente` (death.ts):
+/// dado cuándo expira (ya calculado al atar) y el minuto de ficción actual, decide si toca escapar.
+/// `expiraAtMinutes: null` = tier 7, nunca expira.
+export function capturaEnInventarioExpiro(expiraAtMinutes: number | null, nowMinutes: number): boolean {
+  if (expiraAtMinutes === null) return false;
+  return nowMinutes >= expiraAtMinutes;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 // § 4/5 — Comida/Agua (compañeros) y Hambre/Sed (personaje): mismo modelo de porcentaje
 // derivado en vivo desde `fictionalMinutes`, nunca un contador que se decrementa aparte (mismo
 // patrón que `NpcState.condicionFisicaSinceMinutes`).

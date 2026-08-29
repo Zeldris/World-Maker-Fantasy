@@ -33,7 +33,35 @@ vi.mock('../scripts/worldCatalog.js', () => ({
   sourceDisplayNameFor: (slug: string, npcName?: string | null) => npcName ?? slug,
 }));
 
-const { loreContextFor } = await import('./imagePromptContext.js');
+const { loreContextFor, stripLocationTimeVariant } = await import('./imagePromptContext.js');
+
+describe('stripLocationTimeVariant', () => {
+  it('sin sufijo, devuelve el slug tal cual con los dos ejes en null', () => {
+    expect(stripLocationTimeVariant('hondonada-del-eco')).toEqual({ baseSlug: 'hondonada-del-eco', momento: null, estacion: null });
+  });
+
+  it('con los dos ejes, en el orden momento-estacion', () => {
+    expect(stripLocationTimeVariant('hondonada-del-eco-dia-primavera')).toEqual({
+      baseSlug: 'hondonada-del-eco',
+      momento: 'dia',
+      estacion: 'primavera',
+    });
+  });
+
+  it('con solo estación (sin momento)', () => {
+    expect(stripLocationTimeVariant('hondonada-del-eco-invierno')).toEqual({ baseSlug: 'hondonada-del-eco', momento: null, estacion: 'invierno' });
+  });
+
+  it('con solo momento (sin estación)', () => {
+    expect(stripLocationTimeVariant('hondonada-del-eco-noche')).toEqual({ baseSlug: 'hondonada-del-eco', momento: 'noche', estacion: null });
+  });
+
+  it('un slug base que termina por casualidad en una palabra de estación no se confunde (no es un caso real del catálogo, pero cubre el límite del método)', () => {
+    // 'del-eco' no coincide con ningún sufijo reconocido, así que esto no dispara falsos positivos
+    // — documentado aquí como el límite real del enfoque (sufijo por texto, no un campo aparte).
+    expect(stripLocationTimeVariant('rio-verano-eco')).toEqual({ baseSlug: 'rio-verano-eco', momento: null, estacion: null });
+  });
+});
 
 describe('loreContextFor — npc', () => {
   it('devuelve null si el npc no existe', async () => {
@@ -211,6 +239,48 @@ describe('loreContextFor — location/faction/historia', () => {
     findUniqueLocation.mockResolvedValueOnce({ name: 'Los Pilares Rotos', region: 'Las Llanuras del Viento Rojo', kind: 'punto_de_interes', description: 'Ruinas antiguas.' });
     const result = await loreContextFor('w1', 'location', 'los-pilares-rotos');
     expect(result).toEqual({ name: 'Los Pilares Rotos', loreContext: 'Región: Las Llanuras del Viento Rojo. Tipo: punto_de_interes. Ruinas antiguas.' });
+  });
+
+  // Día/noche/estación (2026-08-27) — el sufijo se despoja ANTES de consultar Prisma (la fila real
+  // sigue viviendo bajo el slug base) y el texto genérico de cada eje se añade al final, en ese
+  // orden, sin tocar el general.
+  it('location: sufijo de día/noche/estación consulta el slug BASE y añade el texto genérico de cada eje', async () => {
+    findUniqueLocation.mockResolvedValueOnce({ name: 'Los Pilares Rotos', region: 'Las Llanuras del Viento Rojo', kind: 'punto_de_interes', description: 'Ruinas antiguas.' });
+    const result = await loreContextFor('w1', 'location', 'los-pilares-rotos-noche-invierno');
+    expect(findUniqueLocation).toHaveBeenLastCalledWith({ where: { worldId_slug: { worldId: 'w1', slug: 'los-pilares-rotos' } } });
+    expect(result?.loreContext).toBe(
+      'Región: Las Llanuras del Viento Rojo. Tipo: punto_de_interes. Ruinas antiguas. ' +
+        'Es de noche: iluminada por luna/estrellas o fuego, sombras profundas, colores apagados y fríos, sin luz solar. ' +
+        'Es invierno: frío marcado, posible nieve o escarcha si la región lo permite, luz fría y apagada, vegetación reducida o desnuda.',
+    );
+  });
+
+  it('location: solo un eje del sufijo (sin el otro) también funciona, cada uno es independiente', async () => {
+    findUniqueLocation.mockResolvedValueOnce({ name: 'Los Pilares Rotos', region: 'Las Llanuras del Viento Rojo', kind: 'punto_de_interes', description: 'Ruinas antiguas.' });
+    const result = await loreContextFor('w1', 'location', 'los-pilares-rotos-dia');
+    expect(findUniqueLocation).toHaveBeenLastCalledWith({ where: { worldId_slug: { worldId: 'w1', slug: 'los-pilares-rotos' } } });
+    expect(result?.loreContext).toBe(
+      'Región: Las Llanuras del Viento Rojo. Tipo: punto_de_interes. Ruinas antiguas. Es de día: luz solar clara y directa, buena visibilidad de todos los detalles del paisaje.',
+    );
+  });
+
+  it('zona: mismo sufijo de día/noche/estación, manteniendo los puntos calibrados en el texto', async () => {
+    findUniqueLocation.mockResolvedValueOnce({
+      name: 'La Hondonada del Eco',
+      region: 'Las Llanuras del Viento Rojo',
+      kind: 'zona_explorable',
+      description: 'Una hondonada resguardada.',
+      zonePoints: [{ label: 'Pozo viejo', targetSlug: 'pozo-viejo' }],
+    });
+    const result = await loreContextFor('w1', 'zona', 'hondonada-del-eco-noche-verano');
+    expect(findUniqueLocation).toHaveBeenLastCalledWith({
+      where: { worldId_slug: { worldId: 'w1', slug: 'hondonada-del-eco' } },
+      include: { zonePoints: true },
+    });
+    expect(result?.loreContext).toContain('Elementos reales presentes en la zona');
+    expect(result?.loreContext).toContain('Pozo viejo');
+    expect(result?.loreContext).toContain('Es de noche');
+    expect(result?.loreContext).toContain('Es verano');
   });
 
   it('faction: null si no existe, lore con raza dominante/descripción si existe', async () => {

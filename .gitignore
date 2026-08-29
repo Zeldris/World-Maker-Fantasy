@@ -13,3 +13,8 @@ logs/
 # Configuración local de Claude Code (permisos de sesión, locks) — específica de esta máquina,
 # no del proyecto.
 .claude/
+
+# Playwright que usa Claude para jugar el frontend real y hacer pruebas en vivo — herramienta de
+# Claude, no dependencia del juego. node_modules/browsers propios, scripts .mjs sueltos y capturas
+# se quedan fuera de control de versiones; persiste entre sesiones para no reinstalar cada vez.
+tools/playwright-e2e/

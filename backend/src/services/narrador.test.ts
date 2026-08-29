@@ -7,6 +7,7 @@ import {
   isTooSimilarToLast,
   sanitizeSuggestions,
   hasFalseCombatMiss,
+  hasFalseCombatAttacker,
   dropSuggestionsTargetingDownedNpc,
   dropSuggestionsAttackingHelpRequester,
   dropSuggestionsCompressingAcceptance,
@@ -27,13 +28,18 @@ import {
   hasFalseNpcAppearance,
   hasGisteraReencuentroSinNombrar,
   hasFalseGisteraNamedReturn,
+  hasFalseKarotVekuAsRiver,
+  hasFalseMaktorThreatClaim,
   hasFalseTravelClaim,
   hasFalsePhantomTravel,
   hasFalseWeaponThrowClaim,
   hasFalseEquipmentChangeClaim,
+  hasFalseItemGivenAway,
   hasFalseHealingClaim,
   hasFalseNewItemClaim,
+  hasFalsePassiveHarvestClaim,
   hasFalseCombatTargetName,
+  hasWrongNpcName,
   hasAnachronism,
   buildNarrationPrompt,
 } from './narrador.js';
@@ -433,6 +439,25 @@ describe('hasEnglishLeak', () => {
   it('no confunde palabras españolas que casualmente empiezan igual (p.ej. "ownership" no es una palabra española, pero tampoco debe disparar por una palabra española que la contenga)', () => {
     expect(hasEnglishLeak('Gorhorn recupera el honor de su propio clan.')).toBe(false);
   });
+
+  // Ronda de correcciones 2026-08-28 (P5.1) — 3 casos reales encontrados jugando en vivo que la
+  // lista original (own/the/and/was/with/from) no cubría: "small clearing" (2026-08-13), "several
+  // pasos" (2026-08-23), "lullaby" (2026-08-28).
+  it('detecta "small clearing" colado en la narración (bug real 2026-08-13)', () => {
+    expect(hasEnglishLeak('Gorhorn llega a un small clearing entre los árboles.')).toBe(true);
+  });
+
+  it('detecta "several" colado en la narración (bug real 2026-08-23)', () => {
+    expect(hasEnglishLeak('Avanza several pasos antes de detenerse.')).toBe(true);
+  });
+
+  it('detecta "lullaby" colado en la narración (bug real 2026-08-28)', () => {
+    expect(hasEnglishLeak('Una lullaby lejana se cuela entre los árboles.')).toBe(true);
+  });
+
+  it('detecta "accompanies" — verbo inglés conjugado sustituyendo al español (bug real, sesión de pruebas 2026-08-28)', () => {
+    expect(hasEnglishLeak('El viento siseante lo accompanies en su búsqueda.')).toBe(true);
+  });
 });
 
 describe('hasAnachronism', () => {
@@ -477,6 +502,17 @@ describe('hasFalseCombatHit', () => {
 
   it('bug real jugando en vivo (2026-08-08): detecta el gerundio "atravesando", no solo pasado/presente ("atravesó"/"atraviesa")', () => {
     expect(hasFalseCombatHit('Gorhorn da un fuerte golpe, atravesando el cuello del ave con una precisión sorprendente.', true)).toBe(true);
+  });
+
+  it('bug real jugando en vivo (sesión de pruebas 2026-08-28): detecta "clava con fuerza en" — "con" se cuela entre el verbo y el artículo, "clava\\s+(su|el|un|la)" no lo cazaba', () => {
+    const narration =
+      'Gorhorn levanta su maza orca y la clava con fuerza en el cuello del Kirelon Arenoso, haciendo que éste retroceda unos pasos.';
+    expect(hasFalseCombatHit(narration, true)).toBe(true);
+  });
+
+  it('bug real jugando en vivo (mismo combate, turno siguiente, 2026-08-28): detecta "derriba" — vocabulario de golpe conectado sin cubrir', () => {
+    const narration = 'Gorhorn ataca con un golpe directo, apunto a Kirelon Arenoso y derriba su brazo de cuchillo.';
+    expect(hasFalseCombatHit(narration, true)).toBe(true);
   });
 
   it('bug real jugando en vivo (2026-08-15): detecta "golpea" en presente + "herida" (hueco de vocabulario — la lista solo cubría "golpeó"/"golpeo", nunca "golpea")', () => {
@@ -542,6 +578,64 @@ describe('hasFalseCombatMiss', () => {
   it('no dispara con un fallo parcial de UN lado en golpes_mutuos/defensor_contragolpea, mientras el otro sí conecta', () => {
     const narration = 'El orco falla su zarpazo por poco margen, pero el hacha de Gorhorn sí encuentra su hombro con fuerza.';
     expect(hasFalseCombatMiss(narration, true)).toBe(false);
+  });
+
+  it('bug real jugando en vivo (prueba con Playwright, 2026-08-27): detecta "bloquea el ataque" seguido de la herida en la misma frase, cuando el golpe sí conectó', () => {
+    const narration =
+      'Gorhorn con furia bestial. Tu Hacha de guerra rota bloquea el ataque, pero una mancha roja se abre en su pecho.';
+    expect(hasFalseCombatMiss(narration, true)).toBe(true);
+  });
+
+  it('no dispara con "intenta bloquear" (fallo genuino de defensa, el otro lado sí conecta)', () => {
+    const narration = 'El orco intenta bloquear el golpe, pero el hacha de Gorhorn sí encuentra su hombro.';
+    expect(hasFalseCombatMiss(narration, true)).toBe(false);
+  });
+
+  it('2º bug real jugando en vivo el mismo día (prueba con Playwright, 2026-08-27, tras aplicar el fix de "bloquea el ataque"): detecta "se desvía" seguido de una mancha roja, cuando el golpe SÍ falló de verdad', () => {
+    const narration = 'Gorhorn se desvía con agilidad, notando una mancha roja en su pecho. El golpe falla al último momento.';
+    expect(hasFalseCombatMiss(narration, true)).toBe(true);
+  });
+});
+
+describe('hasFalseCombatAttacker', () => {
+  it('bug real jugando en vivo (prueba con Playwright, 2026-08-27): detecta al jugador narrado como quien acierta el golpe cuando fue el NPC quien conectó', () => {
+    const narration =
+      'Gorhorn clava su cuchillo en el costado del Orco enfurecido, que gruñe de dolor.';
+    expect(hasFalseCombatAttacker(narration, 'Gorhorn', true)).toBe(true);
+  });
+
+  it('no dispara si el jugador no recibió ningún golpe real este turno (jugadorRecibeGolpeEsteTurno=false)', () => {
+    const narration = 'Gorhorn descarga su hacha con toda su fuerza y esta vez sí conecta de lleno contra el hombro del orco.';
+    expect(hasFalseCombatAttacker(narration, 'Gorhorn', false)).toBe(false);
+  });
+
+  it('no dispara sin characterName', () => {
+    const narration = 'Gorhorn ataca de lleno al Orco enfurecido.';
+    expect(hasFalseCombatAttacker(narration, undefined, true)).toBe(false);
+  });
+
+  it('dispara con un contragolpe legítimo del jugador (límite conocido, no un bug del guard)', () => {
+    const narration = 'El Orco enfurecido ataca con su maza, pero Gorhorn logra contragolpear y clava su cuchillo en el costado del orco.';
+    // Nota: este caso es un falso positivo aceptado del guard tal como está diseñado — un
+    // contragolpe real del jugador narra igual que un golpe invertido (mismo vocabulario, mismo
+    // orden sujeto-verbo-objeto). Se deja documentado como límite conocido, no como bug: el
+    // criterio conservador (misma frase + nombre del jugador) es el mismo ya usado en
+    // hasFalseItemUse/hasResurrectedDeadNpc, y el reintento en cascada de narrateAction ya absorbe
+    // el coste de un falso positivo ocasional — mejor un reintento de más que dejar pasar la
+    // inversión de roles real, que es mucho más grave (ver memoria de sesión
+    // tarkor_bug_narracion_atacante_invertido_2026-08-27).
+    expect(hasFalseCombatAttacker(narration, 'Gorhorn', true)).toBe(true);
+  });
+
+  it('no dispara si el jugador solo aparece como víctima del golpe, sin vocabulario de impacto en la frase siguiente', () => {
+    const narration = 'El Orco enfurecido descarga su maza con fuerza brutal contra el costado de Gorhorn, que cae de rodillas. Gorhorn respira con dificultad.';
+    expect(hasFalseCombatAttacker(narration, 'Gorhorn', true)).toBe(false);
+  });
+
+  it('bug real jugando en vivo (texto capturado exacto, prueba con Playwright, 2026-08-27): "línea roja" sin la palabra "sangre"', () => {
+    const narration =
+      'Gorhorn lanza su Cuchillo de hielo sílice en una estocada rápida y profunda hacia el Orco enfurecido. El cuchillo atrapa la piel del osoide en un ángulo mortal, dejando una línea roja que corre desde el omóplato hasta el costado.';
+    expect(hasFalseCombatAttacker(narration, 'Gorhorn', true)).toBe(true);
   });
 });
 
@@ -806,6 +900,12 @@ describe('hasGisteraReencuentroSinNombrar', () => {
     const narration = 'La Terk\'ikar Ulkha, una orca del Clan Serhu, ordena a sus guerreros que se preparen.';
     expect(hasGisteraReencuentroSinNombrar(narration, true)).toBe(false);
   });
+
+  it('bug real jugando en vivo (checklist consolidado P0.1, 2026-08-27): reaparición tras un respawn narrada como amenaza estática, sin vocabulario de persecución/huida', () => {
+    const narration =
+      'Una orca marcada del Clan Serhu, sin nombre revelado todavía, aparece en la Hondonada del Eco, sus ojos fieros fijos en Gorhorn.';
+    expect(hasGisteraReencuentroSinNombrar(narration, true)).toBe(true);
+  });
 });
 
 describe('hasFalseGisteraNamedReturn', () => {
@@ -826,6 +926,41 @@ describe('hasFalseGisteraNamedReturn', () => {
 
   it('no dispara con un nombre que solo contiene "gistera" como subcadena de otra palabra', () => {
     expect(hasFalseGisteraNamedReturn('Gorhorn examina un gisteral extraño en el suelo.', true)).toBe(false);
+  });
+});
+
+describe('hasFalseKarotVekuAsRiver', () => {
+  it('bug real jugando en vivo (checklist consolidado P0.2, 2026-08-27): detecta "el río Karot Veku" — es el nombre nativo del campamento del Clan Serhu, nunca un río', () => {
+    const narration = 'Una orca con colores oscuros, similar a las que se encuentran en el río Karot Veku.';
+    expect(hasFalseKarotVekuAsRiver(narration)).toBe(true);
+  });
+
+  it('detecta otras variantes de accidente geográfico (lago, afluente)', () => {
+    expect(hasFalseKarotVekuAsRiver('Cerca del lago Karot Veku se ven huellas frescas.')).toBe(true);
+    expect(hasFalseKarotVekuAsRiver('El afluente de Karot Veku baja crecido esta estación.')).toBe(true);
+  });
+
+  it('no dispara con una mención correcta de Karot Veku como campamento/lugar', () => {
+    expect(hasFalseKarotVekuAsRiver('Gorhorn se dirige hacia Karot Veku, el campamento del Clan Serhu.')).toBe(false);
+    expect(hasFalseKarotVekuAsRiver('A pocos kilómetros del Karot Veku estuvo a punto de caer en una trampa.')).toBe(false);
+  });
+});
+
+describe('hasFalseMaktorThreatClaim', () => {
+  it('bug real jugando en vivo (ronda de correcciones 2026-08-28, P5.3): detecta "orcos del Clan Maktor" como amenaza externa — el clan fue aniquilado, Gorhorn es el único superviviente', () => {
+    const narration =
+      'Creo que es tiempo de irme por el camino principal antes de que lleguen más goirsentres o orcos del Clan Maktor.';
+    expect(hasFalseMaktorThreatClaim(narration)).toBe(true);
+  });
+
+  it('detecta otras variantes de "quedan más" del clan', () => {
+    expect(hasFalseMaktorThreatClaim('Un ejército del Clan Maktor se acerca desde el norte.')).toBe(true);
+    expect(hasFalseMaktorThreatClaim('Teme que otros supervivientes del Clan Maktor lo reconozcan.')).toBe(true);
+  });
+
+  it('no dispara con una mención correcta del Clan Maktor (origen, historia, honor)', () => {
+    expect(hasFalseMaktorThreatClaim('Gorhorn recuerda el honor perdido del Clan Maktor, su clan de origen.')).toBe(false);
+    expect(hasFalseMaktorThreatClaim('El Clan Maktor fue aniquilado hace años — Gorhorn es el último.')).toBe(false);
   });
 });
 
@@ -890,6 +1025,41 @@ describe('hasFalseEquipmentChangeClaim', () => {
   });
 });
 
+// Categoría nueva sin guard hasta ahora (análisis de cierre de partida, 2026-08-28, FASE 1: "dar
+// un objeto a un NPC no lo retira del inventario del jugador") — este juego no tiene mecánica de
+// "entregar objeto", el InventoryItem nunca se retira sea lo que sea que narre el modelo.
+describe('hasFalseItemGivenAway', () => {
+  const ITEMS = ['Cuchillo de hielo sílice', 'Arnés de cuero'];
+
+  it('bug real jugando en vivo (2026-08-28, análisis de cierre de partida): detecta la entrega de un objeto real a un NPC', () => {
+    const narration =
+      'Con un gesto seguro, le entrega su cuchillo de hielo sílice y dice: «Toma esto, quizás te ayude a mantenerlos a raya.»';
+    expect(hasFalseItemGivenAway(narration, ITEMS)).toBe(true);
+  });
+
+  it('detecta "le da"/"le pasa"/"le ofrece"/"le tiende" junto al nombre real del objeto', () => {
+    expect(hasFalseItemGivenAway('Gorhorn le da el cuchillo de hielo sílice sin dudarlo.', ITEMS)).toBe(true);
+    expect(hasFalseItemGivenAway('Gorhorn le pasa el cuchillo de hielo sílice por encima de la mesa.', ITEMS)).toBe(true);
+    expect(hasFalseItemGivenAway('Gorhorn le ofrece el cuchillo de hielo sílice como muestra de confianza.', ITEMS)).toBe(true);
+    expect(hasFalseItemGivenAway('Gorhorn le tiende el cuchillo de hielo sílice con cuidado.', ITEMS)).toBe(true);
+  });
+
+  it('no dispara con "le da" sin nombrar ningún objeto real (demasiado genérico, o sobre otra cosa)', () => {
+    expect(hasFalseItemGivenAway('Gorhorn le da un golpe seco en el hombro.', ITEMS)).toBe(false);
+    expect(hasFalseItemGivenAway('Gorhorn le da las gracias por la ayuda.', ITEMS)).toBe(false);
+  });
+
+  it('no dispara si el verbo y el objeto están en frases distintas', () => {
+    expect(hasFalseItemGivenAway('Gorhorn le da las gracias. Lleva el cuchillo de hielo sílice al cinto.', ITEMS)).toBe(false);
+  });
+
+  it('no dispara sin lista de objetos equipables (materia prima/recursos, o inventario vacío)', () => {
+    const narration = 'Gorhorn le entrega su cuchillo de hielo sílice.';
+    expect(hasFalseItemGivenAway(narration, [])).toBe(false);
+    expect(hasFalseItemGivenAway(narration, undefined)).toBe(false);
+  });
+});
+
 // Categoría nueva sin guard hasta ahora (auditoría de código 2026-08-25): "descansar" libre pasa
 // por el LLM, pero el techo real de curación lo calcula healCeilingFor de forma determinista.
 describe('hasFalseHealingClaim', () => {
@@ -935,6 +1105,33 @@ describe('hasFalseNewItemClaim', () => {
   });
 });
 
+// Hallazgo real jugando en vivo (2026-08-28): "Recolecto más materiales de la zona antes de
+// descansar." narrado como una recolección exitosa ("Encontrado un par de hojas duraderas, las
+// añade a sus raciones") pese a que el turno no tenía ningún camino mecánico de recolección/
+// saqueo activo y el modelo tampoco rellenó `newItem` — `hasFalseNewItemClaim` no lo cazaba
+// porque solo mira `newItem`, y aquí quedó `null`.
+describe('hasFalsePassiveHarvestClaim', () => {
+  it('bug real jugando en vivo (2026-08-28): detecta la promesa de obtención sin ningún camino mecánico activo ni newItem', () => {
+    const narration = 'Gorhorn se agacha junto a una veta de yerreo y recoge un par de hojas duraderas, las añade a sus raciones para el viaje.';
+    expect(hasFalsePassiveHarvestClaim(narration, null, false)).toBe(true);
+    expect(hasFalsePassiveHarvestClaim(narration, undefined, undefined)).toBe(true);
+  });
+
+  it('no dispara si ya hay un camino mecánico real de obtención activo este turno (recolección/saqueo/construcción/crafteo)', () => {
+    const narration = 'Gorhorn recoge un par de hojas duraderas y las añade a sus raciones para el viaje.';
+    expect(hasFalsePassiveHarvestClaim(narration, null, true)).toBe(false);
+  });
+
+  it('no dispara si el modelo SÍ rellenó newItem (lo cubre hasFalseNewItemClaim en su lugar)', () => {
+    const narration = 'Gorhorn recoge un par de hojas duraderas y las añade a sus raciones para el viaje.';
+    expect(hasFalsePassiveHarvestClaim(narration, 'Hojas duraderas', false)).toBe(false);
+  });
+
+  it('no dispara sin vocabulario de obtención en la narración', () => {
+    expect(hasFalsePassiveHarvestClaim('Gorhorn descansa junto al fuego, atento a los ruidos de la noche.', null, false)).toBe(false);
+  });
+});
+
 // Revisión de partida real (2026-08-14, "ataque a Múrgol narrado como si fuera contra
 // Cruzavientos"): la capa determinista resolvió bien (XP, NpcState), pero la prosa nombró a otro
 // NPC presente en la escena en vez del objetivo real del intercambio.
@@ -958,6 +1155,29 @@ describe('hasFalseCombatTargetName', () => {
 
   it('no dispara si la narración no nombra a NADIE (prosa genérica, sin evidencia de confusión)', () => {
     expect(hasFalseCombatTargetName('Gorhorn golpea con fuerza a su rival.', 'Múrgol', ['Cruzavientos'])).toBe(false);
+  });
+});
+
+// Hallazgo real jugando en vivo (2026-08-28/29): encabezado mecánico "KIRELON ARENOSO ATACA CON
+// 'CAZA POR VIBRACIÓN'" pero la prosa narró "El Quio retrocede gruñendo ante el ataque de
+// Gorhorn" — Quio era el rival de un combate ANTERIOR de la misma sesión, ya ausente de la
+// escena actual, así que `hasFalseCombatTargetName` (que solo mira NPCs presentes a la vez) no
+// lo cazaba.
+describe('hasWrongNpcName', () => {
+  it('bug real jugando en vivo (2026-08-28/29): detecta que la narración nombra a un NPC de un combate anterior de la sesión, ausente de la escena actual', () => {
+    const narration = 'El Quio retrocede gruñendo ante el ataque de Gorhorn.';
+    expect(hasWrongNpcName(narration, 'Kirelon Arenoso', ['Quio'])).toBe(true);
+  });
+
+  it('no dispara si la narración nombra al rival real (aunque también mencione de pasada a un NPC de un combate anterior)', () => {
+    const narration = 'Kirelon Arenoso retrocede gruñendo ante el ataque de Gorhorn, que recuerda vagamente su pelea con Quio.';
+    expect(hasWrongNpcName(narration, 'Kirelon Arenoso', ['Quio'])).toBe(false);
+  });
+
+  it('no dispara sin objetivo real ni lista de NPCs previos de la partida', () => {
+    expect(hasWrongNpcName('Gorhorn golpea al enemigo.', undefined, ['Quio'])).toBe(false);
+    expect(hasWrongNpcName('Gorhorn golpea al enemigo.', 'Kirelon Arenoso', [])).toBe(false);
+    expect(hasWrongNpcName('Gorhorn golpea al enemigo.', 'Kirelon Arenoso', undefined)).toBe(false);
   });
 });
 

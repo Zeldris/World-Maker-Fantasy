@@ -44,7 +44,11 @@ export function EnciclopediaLinkedText({ text, index, onDetail, onQuickInsert }:
           }
         }}
         style={{ cursor: 'pointer' }}
-        className="chip-inline relative inline-flex items-center gap-1 rounded-full border border-accent-600/60 bg-accent-500/10 px-2 py-0.5 align-baseline text-xs text-accent-300 transition-colors hover:bg-accent-500/20"
+        // C.12 (checklist frontend 2026-08-27) — mismo lenguaje visual que el chip decorativo del
+        // composer a propósito (ver comentario de cabecera), pero un subrayado punteado sutil deja
+        // claro que ESTE en concreto es clicable — el único indicio antes era el cursor `pointer`
+        // en línea, invisible en pantallas táctiles.
+        className="chip-inline relative inline-flex items-center gap-1 rounded-full border border-accent-600/60 bg-accent-500/10 px-2 py-0.5 align-baseline text-xs text-accent-300 underline decoration-accent-500/50 decoration-dotted underline-offset-2 transition-colors hover:bg-accent-500/20"
       >
         <span>{target.icon}</span>
         <span className="font-medium">{target.name}</span>

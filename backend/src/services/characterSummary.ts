@@ -1,6 +1,7 @@
 import { saludBandFor } from './death.js';
 import type { AttributeBlock } from './dice.js';
 import type { CondicionFisica } from '@prisma/client';
+import type { EntornoTemporal } from './worldClock.js';
 
 /// Petición explícita de la usuaria (2026-07-20/21): que el modelo local reciba SIEMPRE, en cada
 /// prompt (clasificar y narrar), una plantilla fija con hora/posición/atributos/condición — para
@@ -24,14 +25,20 @@ export function characterSummaryFor(
     level: number;
     attributes: AttributeBlock;
     condicionFisica: CondicionFisica;
+    /// Auditoría backend↔frontend (2026-08-27): "estación y clima reales... ni siquiera llegan a
+    /// la narración" — ya gatean recolección/crafteo, pero el narrador nunca se enteraba. Opcional
+    /// (no todos los callers lo calculan todavía) — `undefined` omite la frase entera, nunca
+    /// inventa "buen tiempo" por defecto donde no se pasó el dato.
+    entorno?: EntornoTemporal;
   },
 ): string {
   const base = `${save.characterName}, ${save.characterArchetype}. ${save.characterOrigin} ${save.characterMotivation}`;
   if (!estadoPartida) return base;
-  const { timeLabel, locationName, region, level, attributes, condicionFisica } = estadoPartida;
+  const { timeLabel, locationName, region, level, attributes, condicionFisica, entorno } = estadoPartida;
   const attrsTxt = (['fuerza', 'destreza', 'constitucion', 'inteligencia', 'voluntad', 'carisma', 'arcano'] as const)
     .map((a) => `${a} ${attributes[a]}`)
     .join(', ');
+  const entornoTxt = entorno ? ` Estación: ${entorno.estacion.nombre}${entorno.clima ? `. Clima: ${entorno.clima.nombre}` : ''}.` : '';
   return `${base}
-ESTADO DE LA PARTIDA (hechos mecánicos reales, nunca los contradigas): ${timeLabel}. Ubicación: ${locationName ?? 'sin resolver todavía'}${region ? ` (${region})` : ''}. Nivel ${level}. Atributos: ${attrsTxt}. Condición física: ${saludBandFor(condicionFisica)}.`;
+ESTADO DE LA PARTIDA (hechos mecánicos reales, nunca los contradigas): ${timeLabel}. Ubicación: ${locationName ?? 'sin resolver todavía'}${region ? ` (${region})` : ''}. Nivel ${level}. Atributos: ${attrsTxt}. Condición física: ${saludBandFor(condicionFisica)}.${entornoTxt}`;
 }

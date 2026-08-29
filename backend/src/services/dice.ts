@@ -44,6 +44,31 @@ export function rollCheck(attributes: AttributeBlock, attribute: Attribute, diff
   return { attribute, value, roll, result, difficulty, success: gradoExito !== 'fallo', gradoExito }
 }
 
+/// D&D real: 'ventaja' tira 2d20 y se queda con el mejor, 'desventaja' con el peor — NUNCA un
+/// modificador numérico plano (mismo criterio ya confirmado con la usuaria para `rollGathering`,
+/// ver `SUERTE_VENTAJA_UMBRAL` más abajo). Extraído (2026-08-28, pasivas raciales — ver
+/// combatExchange.ts § rollSide) para que combate y recolección compartan la misma primitiva en
+/// vez de reimplementar el mismo "tira 1 o 2 dados, elige el extremo que toque" cada vez.
+export type RollMode = 'normal' | 'ventaja' | 'desventaja'
+
+export interface D20RollResult {
+  /// Un elemento si 'normal', dos (los dos d20 tirados) si 'ventaja'/'desventaja' — el frontend
+  /// anima ambos y tacha el descartado, mismo criterio ya usado en `GatheringRollResult.rolls`.
+  rolls: number[]
+  usedRoll: number
+}
+
+export function rollD20(mode: RollMode, random: () => number = Math.random): D20RollResult {
+  const rollOnce = () => Math.floor(random() * 20) + 1
+  if (mode === 'normal') {
+    const roll = rollOnce()
+    return { rolls: [roll], usedRoll: roll }
+  }
+  const rolls = [rollOnce(), rollOnce()]
+  const usedRoll = mode === 'ventaja' ? Math.max(...rolls) : Math.min(...rolls)
+  return { rolls, usedRoll }
+}
+
 /// Percepción pasiva (remodelado de atributos secundarios, 2026-08-22) — mismo criterio que D&D
 /// (10 + modificador de Sabiduría, sin tirada): vigilancia de fondo, nunca una tirada activa.
 /// Voluntad es el equivalente de Sabiduría del proyecto (ver comentario de `Attribute` arriba),

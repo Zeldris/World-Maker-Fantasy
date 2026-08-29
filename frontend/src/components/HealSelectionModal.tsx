@@ -37,6 +37,11 @@ const CONDICION_TEXT_COLOR: Record<CondicionFisica, string> = {
 export function HealSelectionModal({ inventory, condicionFisica, onConfirm, onCancel }: HealSelectionModalProps) {
   const [quantities, setQuantities] = useState<Record<string, number>>({})
   const [selectionOrder, setSelectionOrder] = useState<string[]>([])
+  // A.6 (checklist frontend 2026-08-27) — único modal de su familia sin guardarraíl contra doble
+  // clic: `onConfirm` es síncrona (solo reenvía el texto de acción al turno normal del padre, sin
+  // await propio aquí), así que basta un flag local — no hace falta `error` real como en los
+  // modales que sí llaman a su propio endpoint (HuntSelectionModal, CapturaModal...).
+  const [confirmado, setConfirmado] = useState(false)
 
   const curativos = inventory.filter((i) => i.curaHasta || i.curaEnergia)
   const yaIleso = condicionFisica === 'ILESO'
@@ -65,9 +70,10 @@ export function HealSelectionModal({ inventory, condicionFisica, onConfirm, onCa
   }
 
   function handleConfirmar() {
-    if (selectionOrder.length === 0) return
+    if (confirmado || selectionOrder.length === 0) return
     const healItemUses = selectionOrder.map((id) => ({ itemId: id, quantity: quantities[id] ?? 0 })).filter((u) => u.quantity > 0)
     if (healItemUses.length === 0) return
+    setConfirmado(true)
     onConfirm('Reviso mi inventario y me curo con lo que llevo encima.', healItemUses)
   }
 
@@ -75,11 +81,12 @@ export function HealSelectionModal({ inventory, condicionFisica, onConfirm, onCa
     <SelectionModalShell
       title="Curar"
       onCancel={onCancel}
+      cancelDisabled={confirmado}
       footer={
         !yaIleso &&
         curativos.length > 0 && (
-          <button onClick={handleConfirmar} disabled={selectionOrder.length === 0} className={confirmButtonClasses('accent')}>
-            Curarme
+          <button type="button" onClick={handleConfirmar} disabled={confirmado || selectionOrder.length === 0} className={confirmButtonClasses('accent')}>
+            {confirmado ? 'Curándome...' : 'Curarme'}
           </button>
         )
       }

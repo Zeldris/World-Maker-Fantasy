@@ -9,7 +9,9 @@ const findFirstSavedAction = vi.fn();
 const createSavedAction = vi.fn();
 const deleteManySavedAction = vi.fn();
 const updateSavedAction = vi.fn();
+const findManySavedAction = vi.fn();
 const findUniqueSave = vi.fn();
+const updateSave = vi.fn();
 
 vi.mock('../../lib/prisma.js', () => ({
   prisma: {
@@ -18,9 +20,11 @@ vi.mock('../../lib/prisma.js', () => ({
       create: (...args: unknown[]) => createSavedAction(...args),
       deleteMany: (...args: unknown[]) => deleteManySavedAction(...args),
       update: (...args: unknown[]) => updateSavedAction(...args),
+      findMany: (...args: unknown[]) => findManySavedAction(...args),
     },
     save: {
       findUnique: (...args: unknown[]) => findUniqueSave(...args),
+      update: (...args: unknown[]) => updateSave(...args),
     },
   },
 }));
@@ -238,5 +242,59 @@ describe('PATCH /saves/:id/habilidades/:habilidadId', () => {
 
     expect(res.statusCode).toBe(200);
     expect(updateSavedAction).toHaveBeenCalledWith({ where: { id: 'a1' }, data: { name: 'Nuevo nombre' } });
+  });
+});
+
+/// Cobertura nueva (pendiente 2026-08-27 punto 3, "cinturón de combate" — 2026-08-28): saneado
+/// real contra las habilidades de combate NO genéricas de AHORA MISMO, nunca confía en el cliente.
+describe('PATCH /saves/:id/combat-abilities', () => {
+  beforeEach(() => {
+    findUniqueSave.mockReset();
+    findManySavedAction.mockReset();
+    updateSave.mockReset();
+  });
+
+  it('404 si la partida no existe', async () => {
+    findUniqueSave.mockResolvedValue(null);
+    const app = await buildApp();
+    const res = await app.inject({ method: 'PATCH', url: '/saves/save1/combat-abilities', payload: { names: ['Tajo Horizontal'] } });
+    expect(res.statusCode).toBe(404);
+  });
+
+  it('descarta nombres que ya no son habilidades de combate reales del personaje', async () => {
+    findUniqueSave.mockResolvedValue({ id: 'save1', endedAt: null });
+    findManySavedAction.mockResolvedValue([
+      { name: 'Tajo Horizontal', isGeneric: false },
+      { name: 'Ataque Básico', isGeneric: true },
+    ]);
+    updateSave.mockResolvedValue({ activeCombatAbilityNames: ['Tajo Horizontal'] });
+    const app = await buildApp();
+
+    const res = await app.inject({
+      method: 'PATCH',
+      url: '/saves/save1/combat-abilities',
+      payload: { names: ['Tajo Horizontal', 'Estocada Inventada', 'Ataque Básico'] },
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(updateSave).toHaveBeenCalledWith({
+      where: { id: 'save1' },
+      data: { activeCombatAbilityNames: ['Tajo Horizontal'], activeCombatAbilityNamesConfigured: true },
+    });
+  });
+
+  it('marca activeCombatAbilityNamesConfigured incluso si el resultado saneado queda vacío', async () => {
+    findUniqueSave.mockResolvedValue({ id: 'save1', endedAt: null });
+    findManySavedAction.mockResolvedValue([{ name: 'Tajo Horizontal', isGeneric: false }]);
+    updateSave.mockResolvedValue({ activeCombatAbilityNames: [] });
+    const app = await buildApp();
+
+    const res = await app.inject({ method: 'PATCH', url: '/saves/save1/combat-abilities', payload: { names: [] } });
+
+    expect(res.statusCode).toBe(200);
+    expect(updateSave).toHaveBeenCalledWith({
+      where: { id: 'save1' },
+      data: { activeCombatAbilityNames: [], activeCombatAbilityNamesConfigured: true },
+    });
   });
 });

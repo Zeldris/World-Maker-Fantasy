@@ -43,7 +43,7 @@ export function AbilityForm({ mode, initial, onSubmit, onCancel }: AbilityFormPr
     <div className="flex flex-col gap-2">
       <div className="flex flex-wrap gap-1.5">
         {ICON_OPTIONS.map((opt) => (
-          <button
+          <button type="button"
             key={opt}
             onClick={() => setIcon(opt)}
             className={`flex h-8 w-8 items-center justify-center rounded-lg border text-base transition-colors ${
@@ -76,14 +76,14 @@ export function AbilityForm({ mode, initial, onSubmit, onCancel }: AbilityFormPr
       {error && <p className="text-xs text-red-400">{error}</p>}
       <div className="flex justify-end gap-2">
         {onCancel && (
-          <button
+          <button type="button"
             onClick={onCancel}
             className="tactile rounded-lg border border-iron-700 px-3.5 py-1.5 text-xs text-wood-300 transition-colors hover:border-accent-600/60 hover:text-wood-100"
           >
             Cancelar
           </button>
         )}
-        <button
+        <button type="button"
           onClick={handleSubmit}
           disabled={busy || !name.trim() || !promptText.trim()}
           className="rounded-lg border border-accent-600 bg-gradient-to-b from-accent-400 to-accent-600 px-3.5 py-1.5 text-xs font-bold uppercase tracking-wide text-wood-950 transition-all hover:from-accent-300 hover:to-accent-500 disabled:cursor-not-allowed disabled:border-iron-700 disabled:from-wood-700 disabled:to-wood-700 disabled:text-wood-500"

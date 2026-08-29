@@ -143,7 +143,7 @@ function ImagePromptBox({
       <p className="text-2xs uppercase tracking-[0.1em] text-wood-500">{label} (inglés)</p>
       <p className="font-mono text-xs leading-relaxed text-wood-300">{prompt}</p>
       <div className="flex gap-2">
-        <button
+        <button type="button"
           onClick={() => {
             navigator.clipboard.writeText(prompt)
             setCopied(true)
@@ -154,7 +154,7 @@ function ImagePromptBox({
           {copied ? 'Copiado ✓' : 'Copiar prompt'}
         </button>
         {onRegenerate && (
-          <button
+          <button type="button"
             disabled={regenerating}
             onClick={onRegenerate}
             className="tactile self-start rounded-lg border border-iron-700 px-2.5 py-1 text-2xs text-wood-300 transition-colors hover:border-accent-600/60 hover:text-accent-300 disabled:opacity-60"
@@ -215,7 +215,7 @@ export function ImagePromptSlot({
 
   return (
     <div className="flex flex-col gap-1.5">
-      <button
+      <button type="button"
         disabled={generating}
         onClick={() => generate(false)}
         className="tactile self-start rounded-lg border border-dashed border-iron-700/60 px-3 py-1.5 text-xs text-wood-400 transition-colors hover:border-accent-600/60 hover:text-accent-300 disabled:opacity-60"

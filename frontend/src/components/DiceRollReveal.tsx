@@ -113,7 +113,13 @@ function DiceSide({
   // "/2" — sacarlo fuera de la fracción, como antes, se leía como una multiplicación todavía
   // pendiente sobre el total de arriba. `side.valorEfectivo` es el mismo número que ya calculó el
   // backend para `bono` — se reutiliza tal cual, nunca se recalcula aparte.
-  const valorCrudo = Math.max(1, side.value - (side.malus || 0))
+  //
+  // Bug real (2026-08-29, "use tajo horizontal que suma fuerza pero no se ve reflejada en el
+  // proceso de tirada"): faltaba `+ (side.attributeBonus || 0)`, mismo bug ya cerrado en
+  // CombatExchangeBadge.tsx el 2026-08-28 pero nunca replicado aquí — este bloque en vivo seguía
+  // calculando el crudo sin el bono de habilidad, así que el "+N" y el "(X/2)" no cuadraban con el
+  // resultado real que ya había calculado el backend (rollSide, combatExchange.ts).
+  const valorCrudo = Math.max(1, side.value - (side.malus || 0) + (side.attributeBonus || 0))
   const bono = Math.floor(side.valorEfectivo / 2)
 
   return (
@@ -140,18 +146,37 @@ function DiceSide({
             dado, `accent2` frío para la fracción que solo explica de dónde sale ese número. */}
         <span className="flex items-baseline gap-1.5 font-mono text-sm">
           <span className="font-bold text-wood-100">+{bono}</span>
-          <span className="text-accent2-400">
-            ({valorCrudo}
-            {/* El ×mult se resuelve AQUÍ DENTRO, antes del "/2" — mismo criterio y mismo motivo
-                que CombatExchangeBadge.tsx (bug real, 2026-08-20). */}
-            {side.multiplicador != null && side.multiplicador !== 1 && (
-              <>
-                <span className={side.multiplicador > 1 ? 'text-moss-400' : 'text-danger-400'}>×{formatMultiplier(side.multiplicador)}</span>
-                ≈{side.valorEfectivo}
-              </>
-            )}
-            /2)
-          </span>
+          <TooltipAnchor
+            text={`${attributeLabels[side.attribute]} ${side.value}${side.malus ? ` − ${side.malus} por tu condición física` : ''}${side.attributeBonus ? ` + ${side.attributeBonus} de la habilidad` : ''} = ${valorCrudo}.${
+              side.multiplicador != null && side.multiplicador !== 1
+                ? ` Con ×${formatMultiplier(side.multiplicador)} de ventaja de tipo: ${valorCrudo}×${formatMultiplier(side.multiplicador)} ≈ ${side.valorEfectivo} (redondeado). Mitad = tu bono real: +${bono}.`
+                : ` Mitad = tu bono real: +${bono}.`
+            }`}
+          >
+            <span className="text-accent2-400 underline decoration-dotted decoration-wood-700 underline-offset-2">
+              (
+              {/* Bug real (2026-08-29, "use tajo horizontal que suma fuerza pero no se ve
+                  reflejada en el proceso de tirada... al estar el + suelto no se sabe a dónde se
+                  está sumando"): antes el bono de habilidad vivía como chip suelto DEBAJO de todo
+                  el bloque, sin conexión visual con la fracción que ya lo incluía por dentro — se
+                  veía "13/2" sin que se entendiera de dónde salía ese 13. Ahora la suma vive DENTRO
+                  del paréntesis, en el sitio exacto donde ocurre, mismo verde que ya usaba el chip
+                  (`moss-400`) para seguir distinguiéndose del resto de la fórmula. */}
+              {side.value}
+              {!!side.malus && <span className="text-danger-400"> −{side.malus}sal</span>}
+              {!!side.attributeBonus && <span className="text-moss-400"> +{side.attributeBonus}hab</span>}
+              {side.malus || side.attributeBonus ? ` = ${valorCrudo}` : ''}
+              {/* El ×mult se resuelve AQUÍ DENTRO, antes del "/2" — mismo criterio y mismo motivo
+                  que CombatExchangeBadge.tsx (bug real, 2026-08-20). */}
+              {side.multiplicador != null && side.multiplicador !== 1 && (
+                <>
+                  <span className={side.multiplicador > 1 ? 'text-moss-400' : 'text-danger-400'}>×{formatMultiplier(side.multiplicador)}</span>
+                  ≈{side.valorEfectivo}
+                </>
+              )}
+              /2)
+            </span>
+          </TooltipAnchor>
         </span>
       </span>
       {/* Color por atributo (petición explícita, 2026-08-20) — mismo `attributeColorClasses` que

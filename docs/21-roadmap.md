@@ -7,11 +7,150 @@ mismo criterio que tenía el anterior.
 
 ---
 
-## Estado a fecha 2026-08-26 (orientación rápida para retomar la sesión)
+## Estado a fecha 2026-08-27 (orientación rápida para retomar la sesión)
 
 Este documento crece añadiendo secciones nuevas al final de cada bloque cerrado — para no tener que
-leerlo entero, esto es lo que pasó en la sesión más reciente (2026-08-26), de más a menos reciente:
+leerlo entero, esto es lo que pasó en la sesión más reciente (2026-08-27/26), de más a menos
+reciente:
 
+- **Dinamismo del mundo — las 5 piezas APLICADAS (2026-08-27)**: la
+  usuaria planteó una preocupación de fondo tras cerrar Fase 3 — "el 99% del juego depende de que yo
+  actúe, el juego está parado si no hago nada". Investigación confirmó que hoy NADA pasa sin acción
+  del jugador (`fictionalMinutes` solo avanza dentro de un turno; `worldTick.ts` cada 2 min reales
+  da la ILUSIÓN de background real pero lee ese mismo contador congelado). Auditoría completa de
+  narración (2 agentes en paralelo) confirmó 4 huecos de contexto reales: clima/estación nunca
+  llegan al narrador, inventario del jugador nunca se pasa como contexto (causa raíz más repetida de
+  toda la familia de guards `hasFalse*`), hora sin traducir a sensación ambiental, y `ZonePoint`
+  totalmente desconectado del narrador. **Piezas 1 (clima/estación) y 2 (inventario) — APLICADAS**:
+  `entornoTemporalFor` (ya existía) conectado a `characterSummaryFor`; nueva `inventorySummaryFor`
+  (`ingredients.ts`) conectada a `contextBlocks` (`turnResolution.ts`). **Pieza 3 (`ZonePoint` como
+  instancia viva) — APLICADA**: `ZonePoint` gana `cantidad`/`activo`/`factionSlug`/
+  `lastUpdatedAtMinutes` (migración `20260827170000_zonepoint_instancia_viva`, además `EDIFICIO`
+  nuevo en `ZonePointTipo`). Nuevo servicio `zonePoints.ts`: `proximaCantidadPara` (puro, ajuste
+  proporcional al tiempo de ficción transcurrido, tope `AJUSTE_MAXIMO_POR_DIA=3`/día, recorte a
+  `CANTIDAD_MAX_POR_PUNTO=20`), `recalcularZonePointsDeLocation` (lee `WorldPopulation` real por
+  región vía `distribucion`, solo FAUNA/RECURSO — NPC/EDIFICIO fuera del recalculo a propósito) y
+  `zonePointsSummaryFor` (nuevo bloque de contexto para el narrador). Enganchado en
+  `narrateAndPersistTurn` (`turnResolution.ts`, mismo punto que Pieza 2) usando `regionLocationId`/
+  `regionLocation.region` — el criterio YA establecido en el archivo para "dónde está el jugador
+  ahora" (contempla viaje en curso). `GET /saves/:id/zona` ahora filtra por `activo` y expone
+  `cantidad`/`color` (`zonePointColorFor`, banda de reputación 0-5000 de `reputation.ts` recortada a
+  3 colores + `SIN_FACCION`). Frontend `ZonaPanel.tsx`: 4 formas SVG (círculo/triángulo/cuadrado/
+  rombo) + color por reputación + contador "×N" sobre el pin. 14 tests nuevos (9 unitarios puros +
+  5 de integración real contra Postgres), suite 1585/1585, `tsc -b` limpio backend+frontend.
+  **Pieza 5 (control regional) — APLICADA**: nueva `regionControlFor` (`worldAgenda.ts`, puro, sin
+  Prisma) deriva neutra/en-disputa/conquistada de la etapa real de `conflicto-serhu-concordia-vs-
+  helsig-goshg` para Cristal Helado/Ciénaga Troncal (`stage` 0-1 dueño original, 2-3 en disputa, 4
+  conquistada) — Las Llanuras del Viento Rojo (región del propio agresor) siempre dueño original,
+  excepción explícita; Meseta del Orden (sin conflicto sembrado) fija con su dueño de
+  `REGION_OWNING_FACTIONS` (ahora exportada desde `reputation.ts`). Sin migración de schema — se
+  deriva en caliente de `WorldState.agenda` ya persistida. Expuesto en `GET /saves/:id/zona` como
+  `regionControl`; frontend `ZonaPanel.tsx` con placeholder de texto ("Territorio de X"/"En disputa:
+  X vs Y"), logo real pendiente de generación de imagen en otra pasada. 9 tests unitarios nuevos.
+  **Pieza 4 ("modo dinámico") — APLICADA, la más grande con diferencia** (estado de conversación
+  multi-turno, nunca antes construido en el motor): `Save.pendingDynamicMode Json?` (migración
+  `20260827180000_save_pending_dynamic_mode`) guarda `{tipo, targetSlug, targetName, vuelta,
+  iniciadoAtMinutes}` mientras dura la interacción. Motor determinista nuevo `dynamicMode.ts`:
+  `decideOfertaModoDinamico` (puro, `random` inyectable — probabilidad `PROBABILIDAD_OFERTA=0.35`
+  por turno con candidato disponible, mismo criterio que el resto de cifras de partida del
+  proyecto) elige entre `ZonePoint` NPC/FAUNA activos ya recalculados por la Pieza 3 —
+  RECURSO/EDIFICIO quedan fuera (no inician nada por sí mismos). Decidido en
+  `narrateAndPersistTurn` DESPUÉS de conocer `combateIniciado` (nunca se ofrece si el turno terminó
+  en combate) y solo si `pendingDynamicMode` está vacío — expuesto como `dynamicModeOffer` en el
+  `done` de `/turn/narrate`, mismo molde que `newQuestOfferInfo`. Narración de cada vuelta
+  deliberadamente separada del pipeline principal (`dynamicModeNarracion.ts`, mismo criterio de
+  "primer corte" que `combateMultipleNarracion.ts`): prompt acotado, LLM devuelve narración +
+  2-3 opciones deterministas (nunca texto libre dentro del modo) + `cierra`, con fallback
+  determinista si Ollama falla 2 veces. 3 endpoints dedicados nuevos (`saves/dynamicMode.ts`,
+  mismo molde que `quests/aceptar`): `POST /saves/:id/modo-dinamico/interactuar` (primera vuelta),
+  `/responder` (vueltas siguientes), `/ignorar` (descarta la oferta sin tocar BD). Avance de
+  `MINUTOS_POR_VUELTA_MODO_DINAMICO=2` minutos por vuelta (decisión explícita de la usuaria: "debe
+  sentirse fluido"), tope `MAX_VUELTAS_MODO_DINAMICO=4`. Frontend: tarjeta inline en `LogPanel.tsx`
+  (`entry.dynamicModeOffer`, mismo patrón visual que la oferta de misión) + nuevo
+  `DynamicModeModal.tsx` para las vueltas (mismo molde que `PostCombatInteractionModal.tsx`).
+  **Bug real cazado por el propio test end-to-end nuevo** (no en el código de producción): un
+  fixture de prueba creaba un `ZonePoint` con `cantidad: 5` pero sin fila `WorldPopulation` real —
+  la Pieza 3 lo recalculaba a 0 en el mismo turno (comportamiento correcto), así que la oferta
+  nunca aparecía hasta añadir la población real al fixture — confirma que Piezas 3 y 4 interactúan
+  como estaba diseñado. 8 tests nuevos (5 unitarios de `decideOfertaModoDinamico` + 6 de integración
+  de los 3 endpoints + 3 de integración end-to-end del enganche en `/turn/narrate`, con probabilidad
+  real no forzada). Diseño completo en `/home/deck/.claude/plans/spicy-questing-brook.md`. Suite
+  completa backend: 1610/1610, `tsc -b` limpio backend+frontend. **Pendiente: jugarlo en vivo** (no
+  probado en el navegador esta sesión).
+- **Identificador de combatientes duplicados — APLICADO 2026-08-27** (bug real jugando: "ataqué a
+  los dos buitres a la vez"): `CombatParticipant.id` real expuesto al frontend como
+  `participantId`/`instanceNumber` ("#1"/"#2", solo cuando hace falta desambiguar) —
+  `turnResolution.ts` § `combateIniciado`, `saves/detail.ts` § recarga de partida (antes
+  reconstruía solo por `pendingCombatNpcSlugs`, sin saber del `CombatEncounter` real), y todo
+  `useCombatFlow.ts`/`CombatPanel.tsx` (bug de fondo: un `Map` por `slug` colapsaba dos buitres
+  iguales al mismo estado local). Nueva `resolverObjetivoPorTexto` (combateMultiple.ts) acepta
+  "Buitre #2" en el texto citado, extraída de `turnResolution.ts` tras un test de integración
+  end-to-end flaky real (~1/5 corridas) — el turno completo atraviesa DOS sistemas de detección de
+  objetivo en paralelo (el `CombatEncounter` nuevo y el `npcsInScene` viejo, que nunca reconoce
+  "#N") y competían de forma no controlable desde el test; solución real: extraer a función pura y
+  probarla con un test unitario 100% determinista en vez de arrastrar el turno HTTP entero.
+  **Hueco arquitectónico real descubierto y documentado, sin tocar**: Capturar/Clemente (y el
+  propio modal de saqueo) actúan sobre `NpcState` por especie, nunca por individuo de grupo — la
+  "materialización" del `CombatEncounter` al terminar ya pierde la distinción CONVALECIENTE/MUERTO
+  antes de que esas rutas puedan actuar (`groupDefeated` suma ambos sin diferenciarlos). Arreglarlo
+  de verdad exige rediseñar esa materialización, no solo cablear 2 rutas — aparcado como pieza
+  propia. **"Analizar Rival" real en combate múltiple — APLICADO misma sesión**: el resultado
+  (`analizarRivalExito`) se calculaba y se descartaba, a diferencia del motor 1v1 (que sí lo
+  persiste en `NpcState.analizado`) — el NIVEL del rival ya se veía gratis gracias al fix de arriba,
+  solo faltaba desbloquear la pestaña "Análisis" (stats/atributo recomendado). Nueva columna
+  `CombatParticipant.analizadoGrupo` (mismo patrón que `condicionFisicaGrupo`): analizar a UN
+  individuo de un grupo cazado nunca desbloquea la ficha del resto del grupo — decisión explícita de
+  construir el soporte de grupo YA (sin fila real de `clases.md` que combine ANALISIS+MULTIPLE hoy,
+  pero la usuaria lo pidió como puerta de entrada futura). Límite ya existente sin tocar: solo el
+  atacante puede disparar el análisis, nunca el defensor (sin rama simétrica en el código base).
+  Suite backend 1564/1564, frontend 93/93, `tsc -b` limpio en ambos.
+- **Fase 3 completa (§ 3a-3e) de combate multi-objetivo — CERRADA Y APLICADA (2026-08-27)**: 3a cierra
+  el hueco real que dejó Fase 2 (el motor multi no leía `activeEffects`) + hace CONTROL redirigir de
+  verdad; 3b hace que MULTIPLE golpee a un objetivo extra real (Punta Doble/Golpe Gemelo); 3c añade
+  DESVIAR (redirige el golpe a un tercero) y OCULTACION (excluido de ser elegido como objetivo,
+  salvo ser el único vivo del bando — Comunión Salvaje/Camuflaje), con un bug real cazado en
+  integración (un oculto sin alternativa podía quedarse "oculto" para siempre pese a combatir,
+  corregido); 3d añade INVOCACION real (tótems, `CombatParticipantTipo.INVOCACION` nuevo) — Tótem de
+  Guerra (Chamán/Convocador 12) invoca un tercer participante que aguanta 1 golpe, ataca 2 rondas
+  fuera de `ordenIniciativa` y desaparece, con ficha `Npc` de catálogo propia (reconocible en la
+  Enciclopedia, se descubre sola por mención en narración, igual que fauna) — bug real de orden
+  cazado en integración (el tótem expiraba por rondas-agotadas ANTES de que le tocara atacar su
+  último turno, corregido: expira DESPUÉS de golpear); 3e añade EXPULSAR real (Embate de Escudo,
+  Guerrero/Guardián 28) — margen decisivo expulsa 2 rondas, mismo mecanismo de exclusión que
+  OCULTACION (columna separada, `expulsadoPorRondas`), simplificado a un único desenlace sin el
+  tramo "no vuelve nunca" de la ficha real (decisión explícita de la usuaria) — cierra las 5 piezas
+  en que se dividió Fase 3, con la usuaria delegando el orden desde el principio ("vamos con todo,
+  en el orden que prefieras, a tu elección"). Ver detalle completo en "Fase 3" más abajo.
+- **Cierre de las 2 auditorías (backend↔frontend + diseño/UX) — 12/13 hallazgos APLICADOS
+  (2026-08-27)**: "todo, de arriba a abajo" — indicador de `activeEffects` en combate (chip +
+  tooltip), badge de estación/clima (Mapa + header), enlace Reputación↔Facciones, flash de cambio
+  en Reputación, Zona plegada dentro de Mapa, tracker de `WorldState.agenda`, ficha de compañero de
+  Reino unificada, transición de entrada en el aviso de Hambre/Sed, pop en subida de nivel de
+  profesión, `ResourceBar` compartido (dedupe Hambre/Sed jugador↔compañero), confirmación visual al
+  cambiar plantilla de equipo, enlace "Ver historial completo" del log en vivo al Diario. Único
+  pendiente: `Save.clase`/`especializacion` (bloqueado de verdad — necesita un flujo de asignación
+  de clase que hoy no existe en absoluto, no es un arreglo de UI). `tsc -b` limpio backend y
+  frontend, suite completa backend 1518/1518 (retry aislado tras el flake conocido de
+  `turnLock` bajo carga paralela), frontend 93/93.
+- **Auditoría + mejora del sistema de imágenes/prompts — CERRADO Y APLICADO (2026-08-27)**: bug real
+  encontrado y arreglado (el estilo/tono/encuadre calculado en `imagePromptGenerator.ts` nunca
+  llegaba al LLM que escribe el prompt final — se calculaba y se descartaba) + variantes de día/
+  noche/estación para Location/Zona (mismo mecanismo de sufijo de slug que las variantes por sexo,
+  header de pestañas de estación + toggle de día/noche en la Enciclopedia, auto-selección por reloj
+  real en la vista Zona en vivo). Ver detalle completo en
+  [imagenes-prompts.md](rpgtarkor/imagenes-prompts.md).
+- **2 auditorías en paralelo (2026-08-27)**: backend sin conectar a frontend
+  ([backend-sin-conectar-frontend-2026-08-27.md](../backend-sin-conectar-frontend-2026-08-27.md)) y
+  diseño/UX del frontend
+  ([frontend-diseno-ux-hallazgos-2026-08-27.md](../frontend-diseno-ux-hallazgos-2026-08-27.md),
+  ejecutada después y con los hallazgos de la primera como contexto) — ambas solo listado, sin
+  arreglar todavía. Hallazgo más citado en las dos: los `activeEffects` de Fase 2 (justo abajo) no
+  tienen ningún indicador visual en combate.
+- **Fase 2 de efectos de clase (AUMENTO/DEBILIDAD) — CERRADO Y APLICADO** (el mismo día que el
+  diseño, autorizado explícitamente por la usuaria: "dale a todo"): duración real por turnos sobre
+  el motor 1v1 clásico (`turnResolution.ts`), infraestructura nueva en `activeEffects.ts`, 2
+  habilidades reales sembradas (Golpe Runa de Cólera/Golpe Envenenado), 14 tests nuevos. Ver detalle
+  completo en "Fase 2" más abajo.
 - **Objetivo individual en combate múltiple — CERRADO Y APLICADO** (el ítem más grande de la
   sesión): sistema de "enganche" por ronda (duelo mutuo real vs. golpe gratis sin oposición),
   diseñado con la usuaria jugando en vivo contra 2 cuervos y enganchado de verdad al motor
@@ -383,73 +522,231 @@ resumen de trabajo real, agrupado por tamaño.
   multi-objetivo), así que quedan con la mecánica de fallback construida pero sin ninguna
   habilidad real enganchada todavía (ver Fase 3 más abajo). `REFLEJAR`/`PROVOCACION` también se
   reclasificaron a Fase 2 (si necesitan duración de verdad, contra lo que decía el plan original).
-- [ ] **Fase 2 — necesitan duración por turnos primero** (infraestructura compartida, construir
-  una vez): `AUMENTO`, `DEBILIDAD`, `CANALIZAR` (turnos variables según nivel de la habilidad;
-  cualquier golpe recibido mientras se canaliza cancela el efecto antes de completarse — pensado
-  para gestión de agro en grupo), `CURAZION`, `REFLEJAR` (su única habilidad real, "Espejo
-  Maldito", devuelve un efecto negativo que a su vez necesita durar — no es tan simple como
-  parecía en el plan original), `PROVOCACION` ("obliga a atacarte 2 turnos" — también reclasificado
-  desde el plan original, que lo daba por listo sin serlo), `PURIFICAR` (elimina efectos
-  negativos, depende de que exista duración para tener qué purificar).
+- [x] **Fase 2 — AUMENTO/DEBILIDAD CERRADO Y APLICADO 2026-08-26** (mismo día que el diseño, tras
+  autorización explícita de la usuaria: "todo, ya que vamos a tener 2 cuentas de claude durante un
+  tiempo dale a todo"). `CANALIZAR`/`CURAZION`/`REFLEJAR`/`PROVOCACION`/`PURIFICAR` siguen SIN
+  construir — cada uno es su propia mecánica encima de esta base (cancelar-si-te-golpean, curar,
+  capturar-y-devolver, forzar-objetivo, limpiar efectos), fuera de alcance de esta pasada.
 
-  **Investigado a fondo 2026-08-26, diseño de AUMENTO/DEBILIDAD listo para implementar — sin
-  tocar código todavía a propósito** (ver razón al final). `CANALIZAR`/`REFLEJAR`/`PROVOCACION`/
-  `PURIFICAR` NO se han diseñado en esta pasada — cada uno es su propia mecánica encima de esta
-  base (cancelar-si-te-golpean, capturar-y-devolver, forzar-objetivo, limpiar), fuera de alcance
-  de hoy.
+  **Infraestructura construida** (`backend/src/services/activeEffects.ts`, nuevo):
+  `ActiveEffect { attribute, magnitude (con signo), turnsRemaining, sourceAbility }`,
+  `effectiveAttributesConDuracion(base, activeEffects)` (suma con signo, varios efectos sobre el
+  mismo atributo se APILAN), `pushActiveEffect`, `decrementActiveEffects`, `parseActiveEffects`
+  (lectura defensiva del `Json`). `Save.activeEffects`/`NpcState.activeEffects` (`Json @default
+  ("[]")`, migración `20260826210000_fase2_efectos_duracion`) — reset a `[]` en el MISMO punto
+  donde ya se resetea `abilityUsesThisEncounter` (vuelta real a ILESO desde un estado peor —
+  **bug real evitado en el propio diseño**: comparar solo "condición final es ILESO" resetearía
+  siempre que el jugador siga ileso sin haber sido tocado, el caso más común; hace falta la
+  transición real desde un estado peor). `SavedAction.durationEffectMagnitude/Turns` (`Int?`, ya
+  existían del diseño previo) + `StartingAbility` con los mismos 2 campos, sincronizados al crear
+  la `SavedAction` de un desbloqueo de clase. El atributo afectado por el efecto es SIEMPRE el
+  mismo que `preferredAttribute` de la habilidad (decisión de diseño ya tomada al escribir el
+  comentario de la columna, sin campo nuevo) — limita qué filas de `clases.md` encajan sin
+  reinterpretar (ver habilidades sembradas, abajo).
 
-  **Alcance real de "cuántas filas desbloquea"**: de las ~60 filas de `clases.md` que usan estos 7
-  efectos, MUCHAS están mezcladas con efectos de Fase 3 (`MULTIPLE`/`CONTROL`/`INVOCACION`, p.ej.
-  "Valor Compartido: `AUMENTO`+`MULTIPLE`") o sin cifras todavía (Fase 4, esperan a la usuaria) —
-  mismo patrón ya visto en Fase 1 con `MULTIPLE`/`DESVIAR`. Construir la infraestructura NO
-  desbloquea automáticamente todas esas filas; hay que revisar caso a caso cuáles quedan puras
-  (solo Fase 2, con cifras) antes de sembrar nada.
+  **Aplicado en `turnResolution.ts` § `resolveCombatExchangePhase`, SOLO el camino no-independiente
+  (`resolveExchange`, CASO ATAQUE del jugador) — el resto queda deliberadamente sin cablear**: ni
+  el camino independiente (utilidad) ni el lado NPC-atacante tienen hoy ninguna habilidad real que
+  lleve AUMENTO/DEBILIDAD, así que no se construyó ese enganche todavía (documentado, no un
+  descuido). Mismo margen decisivo ±10 que ya usan CONTRA/REFRACTAR (`golpe_pleno`), no el umbral
+  propio de cada habilidad. Los "atributos efectivos" (base + `activeEffects`) se calculan UNA vez
+  por intercambio y sustituyen a `attributes`/`npcParaIntercambio.attributes` crudos en los 4 sitios
+  donde se construye un `ExchangeParticipant`, más `rollInitiative` del próximo intercambio.
+  **Cuidado real con el orden del decremento**: los efectos nuevos de ESTE turno viajan aparte
+  (`nuevosJugador/NpcActiveEffects`) hasta el final — empujarlos directo sobre el array que luego
+  se decrementa los habría envejecido en el MISMO turno en que nacen, y un efecto de 1 turno
+  ("se mantiene para el siguiente turno") habría expirado antes de que ese turno siguiente llegara
+  a leerlo. `combateMultipleOrquestacion.ts` (motor multi-combate) sigue sin leer/aplicar
+  `activeEffects` — deferred, documentado también en `classAbilities.ts`.
 
-  **Diseño cerrado, AUMENTO/DEBILIDAD (el caso simple, sin cancelar-si-te-golpean ni
-  capturar-y-devolver)**:
-  - `activeEffects Json @default("[]")` nuevo en `Save` Y `NpcState` (mismo patrón que
-    `abilityUsesThisEncounter` — reset a `[]` en el MISMO punto donde ese campo ya se resetea,
-    vuelta a `condicionFisica: 'ILESO'`). Array de `{ attribute: Attribute, magnitude: number,
-    turnsRemaining: number, sourceAbility: string }` — `magnitude` con signo (positivo AUMENTO,
-    negativo DEBILIDAD), `sourceAbility` para narración/depuración.
-  - `ClassAbilityUnlock`/`SavedAction`: 2 columnas nuevas, `durationEffectMagnitude Int?` /
-    `durationEffectTurns Int?` — mismo patrón que `attributeBonus` (2026-08-24), un número fijo
-    por habilidad, NO la escalada "+4 si diferencia 6, +6 si diferencia 10" que describen algunas
-    filas de `clases.md` en texto libre — misma simplificación ya aplicada a LETAL/CONTRA/
-    REFRACTAR (margen decisivo único, no umbral por habilidad).
-  - **Aplicación**: cuando una habilidad con `AUMENTO`/`DEBILIDAD` en `effects` GANA su intercambio
-    (mismo margen decisivo ±10 que ya usa `CONTRA`/`REFRACTAR`), empuja un `ActiveEffect` — AUMENTO
-    al array de QUIEN LA USA, DEBILIDAD al array del RIVAL que recibió el golpe.
-  - **Lectura**: antes de construir cualquier `ExchangeParticipant`, calcular `attributes`
-    EFECTIVOS = base + suma de `activeEffects` que apliquen a cada atributo — nueva función pura
-    (p.ej. `effectiveAttributesConDuracion(base, activeEffects)`, `combatExchange.ts` o archivo
-    nuevo `activeEffects.ts`) — sustituye el `attributes: npc.attributes`/`attributes` crudo en
-    los 4+ sitios donde `resolveCombatExchangePhase` construye un `ExchangeParticipant` (CASO
-    DEFENSA independiente/normal, CASO ATAQUE independiente/normal) — y el equivalente en
-    `combateMultipleOrquestacion.ts` § `ejecutarIntercambioYAvanzar`/`ejecutarGolpeGratisYAvanzar`
-    cuando le toque a ese motor (fuera de esta pasada, documentado para cuando se retome).
-  - **Decremento**: al final de CADA turno resuelto, restar 1 a `turnsRemaining` de TODOS los
-    `activeEffects` de AMBOS participantes (jugador y NPC), filtrar los que lleguen a 0 — mismo
-    punto donde ya se escribe `condicionFisica`/`energia` tras el intercambio.
+  **2 habilidades reales sembradas** (las únicas encontradas en `clases.md` con cifra propia Y
+  roll-attribute = atributo afectado, condición que el diseño de arriba exige): **Golpe Runa de
+  Cólera** (Chamán/Rúnico 28, AUMENTO — el umbral de la propia fila, diferencia 10, ya coincidía
+  con el margen decisivo del motor sin reinterpretar nada) y **Golpe Envenenado** (Cazador/
+  Supervivencia 12, DEBILIDAD — solo el tramo alto de sus dos umbrales propios, 4/8, mismo criterio
+  de simplificación que CONTRA/REFRACTAR). Rúnico pasa de 2 a 3 de 8, Supervivencia de 1 a 2 de 8 —
+  141 huecos reales en total ahora (antes 139).
 
-  **Por qué no se ha implementado ya**: `resolveCombatExchangePhase` (turnResolution.ts) es la
-  función más grande y más usada de todo el proyecto (cada combate normal pasa por aquí) — tocar
-  sus 4+ ramas para inyectar atributos efectivos de forma consistente es un cambio de alto riesgo
-  real (romper esto rompe combates normales, no un caso raro) al final de una sesión ya muy larga
-  tocando el mismo motor (objetivo individual, más arriba). Diseño dejado completo a propósito
-  para poder ejecutarlo directo la próxima vez, sin tener que rederivarlo — pendiente de que la
-  usuaria confirme que quiere que se implemente así antes de tocar el motor 1v1 clásico.
-- [ ] **Fase 3 — combate multi-objetivo de verdad** (no solo el fallback de 1vs1, ya construido en
-  la Fase 1): `MULTIPLE`/`DESVIAR`/`CONTROL` con segundo objetivo real requieren tocar el motor
-  `CombatEncounter` (`combateMultiple.ts`/`combateMultipleOrquestacion.ts`), que hoy tampoco tiene
-  ese enganche construido en el punto exacto donde se resuelve un golpe — más trabajo del que
-  parecía. `INVOCACION` (el tótem actúa según el efecto combinado: `INVOCACION`+`ATAQUE` = ataca
-  cada turno sin defenderse; `INVOCACION`+`AGUANTE` = defiende sin atacar) y `OCULTACION` también
-  viven aquí. `EXPULSAR` además toca fuera de combate: no es solo un contador de turnos — una
-  tirada a los 2 turnos decide si vuelve dentro del combate (y se va de la zona), otra tirada
-  aparte decide si no vuelve a aparecer nunca al terminar el combate; si vuelve, solo reaparece en
-  su posición de la zona cuando la jugadora viaja fuera y regresa — toca `npcScene.ts`/presencia
-  en zona, no solo `turnResolution.ts`.
+  **Verificación**: 12 tests unitarios nuevos (`activeEffects.test.ts`, funciones puras) + 2 tests
+  de integración nuevos contra Postgres real (`turn.integration.test.ts`, uno por efecto — prueban
+  el ciclo completo: golpe decisivo → efecto empujado y persistido → turno siguiente → decrementado/
+  expirado) + recuento actualizado en `classAbilities.test.ts` (139→141). `tsc -b` limpio, suite
+  completa 2984 tests (solo 4 fallos en `recolectar.integration.test.ts` bajo ejecución paralela,
+  confirmados pre-existentes y no relacionados — pasan limpio en aislamiento).
+- [x] ~~**Fase 3 — combate multi-objetivo de verdad**~~ — **CERRADA Y APLICADA COMPLETA 2026-08-27**
+  (las 5 piezas § 3a-3e, ver detalle completo debajo de cada una). Alcance real construido, más
+  simple que el diseño original que sigue documentado a continuación por su valor de contexto:
+  `MULTIPLE`/`DESVIAR`/`CONTROL`/`OCULTACION`/`EXPULSAR` con segundo objetivo real, e `INVOCACION`
+  (tótems como tercer participante, solo el modo `ATAQUE` construido — Tótem de Guerra). `EXPULSAR`
+  se simplificó a un único desenlace sin tocar `npcScene.ts`/presencia en zona (decisión explícita
+  de la usuaria: sin la tirada de "no vuelve nunca", el expulsado siempre acaba volviendo dentro
+  del propio `CombatEncounter`, nunca sale de la zona).
+
+  **§ 3a — `activeEffects` en combate múltiple + `CONTROL` real — CERRADO Y APLICADO 2026-08-27**
+  (primera pieza de las 5 en que se dividió la Fase 3, "todo, en el orden que prefieras, a tu
+  elección"): `combateMultipleOrquestacion.ts` no leía ni aplicaba `activeEffects` en absoluto
+  hasta ahora (hueco real de Fase 2, que solo enganchó el motor 1v1) — `datosVivosDe` ahora aplica
+  `effectiveAttributesConDuracion` a los 3 tipos de combatiente (JUGADOR/NPC/COMPANION, migración
+  `Companion.activeEffects` nueva), y `ejecutarIntercambioYAvanzar`/`ejecutarGolpeGratisYAvanzar`
+  decrementan/empujan igual que el motor 1v1 (mismo cuidado de orden: lo nuevo de este turno no se
+  decrementa este mismo turno). AUMENTO/DEBILIDAD sigue con el mismo alcance exacto que Fase 2
+  (solo el camino NO independiente, `resolveExchange`/margen decisivo — nunca el camino de
+  utilidad). `CONTROL` real: cuando la utilidad que lo dispara reacciona a un ataque entrante con
+  ≥2 enemigos vivos en el bando del controlado, el controlado ataca a un aliado propio 2 rondas
+  (`CombatParticipant.controladoPorRondas`, nueva) en vez de robar la iniciativa (el fallback de
+  Fase 1 se mantiene solo cuando no hay a quién redirigir) — Opresión Mental (ya sembrada) pasa a
+  hacer lo que dice de verdad. **Control Rúnico NO se sembró** (hallazgo real durante la
+  implementación, corrige el plan original): combina CONTROL (camino independiente/utilidad) +
+  DEBILIDAD (camino no independiente/margen decisivo) en una sola habilidad — como `rol` es un
+  campo único por habilidad, ningún camino de resolución cubre los dos efectos a la vez sin
+  reinterpretar la fila; se queda `⚠️ bloqueada`. 6 tests unitarios nuevos
+  (`combateMultiple.test.ts`, `resolverIntercambioCompleto`) + 3 de integración contra Postgres
+  real (`combateMultipleOrquestacion.integration.test.ts`, repetidos 5 veces sin fallos), `tsc -b`
+  limpio, suite completa backend en verde (retry aislado tras el flake conocido de `turnLock`).
+
+  **§ 3b — `MULTIPLE` real — CERRADO Y APLICADO 2026-08-27**: cuando una habilidad `ATAQUE`+
+  `MULTIPLE` golpea con margen decisivo, el mismo golpe también alcanza a un objetivo extra
+  aleatorio del mismo bando que el defensor principal (`objetivoExtraFor`, `combateMultiple.ts`),
+  golpe directo sin tirada de defensa propia (mismo mecanismo que un golpe gratis) — si la
+  habilidad también lleva `DEBILIDAD`, el mismo `ActiveEffect` se aplica a los dos objetivos (la
+  ficha real, Zancada Perforante, describe la debilidad "propagándose a todos los enemigos", no una
+  copia distinta por cada uno). **Deliberadamente sin construir**: `AUMENTO`/`AGUANTE`+`MULTIPLE`
+  (buff a aliados en vez de golpe a un enemigo extra — Valor Compartido, Postura Inquebrantable,
+  Grito Improvisado, Llamada de la Manada) depende de que AUMENTO funcione en el camino de utilidad,
+  que ni Fase 2 ni 3a engancharon nunca — 4 filas reales se quedan `⚠️ bloqueada` a propósito, no un
+  descuido. 2 habilidades reales sembradas: **Punta Doble** (Guerrero/Lancero 24 — su propio umbral,
+  diferencia 12, se aproxima al margen decisivo del motor ±10, mismo criterio que Golpe Envenenado)
+  y **Golpe Gemelo** (Cazador/Supervivencia 32 — reinterpretación consciente: la fila describe
+  "ataca a dos objetivos" SIN ninguna condición de margen, se gatea igual que el resto por
+  consistencia con el motor, documentado explícitamente, no un descuido). Lancero pasa de 2 a 3 de
+  8, Supervivencia de 2 a 3 de 8 — 143 huecos reales en total ahora (antes 141). 6 tests unitarios
+  nuevos (`objetivoExtraFor`, `multipleTriggered`) + 1 de integración contra Postgres real (2
+  enemigos, el que no fue objetivo principal también queda golpeado — imposible sin MULTIPLE),
+  repetidos 5 veces sin fallos. `tsc -b` limpio, suite completa backend en verde.
+
+  **§ 3c — `DESVIAR`+`OCULTACION` reales — CERRADO Y APLICADO 2026-08-27**: `DESVIAR` — cuando la
+  defensora gana por margen decisivo (`defensor_contragolpea`, mismo umbral que CONTRA/REFRACTAR) y
+  su habilidad de defensa lleva `DESVIAR`, el golpe entrante (que de todos modos ya iba a fallar) se
+  redirige a un objetivo aleatorio del bando del ATACANTE original en vez de simplemente fallar —
+  mismo mecanismo de golpe directo que MULTIPLE, solo que el objetivo extra sale del bando contrario,
+  no del propio. `OCULTACION` — `CombatParticipant.ocultoPorRondas` (columna nueva) excluye a quien
+  la tiene de ser ELEGIDO como objetivo en `resolverEnganchesRonda` (nuevo parámetro `ocultos:
+  Set<string>`, calculado en `calcularEnganchesRonda`), salvo que sea el único vivo de su bando — se
+  rompe de inmediato si el propio oculto ataca. Ambas reutilizan el camino ya construido en 3a/3b
+  (independiente para OCULTACION, no-independiente para DESVIAR) sin infraestructura nueva más allá
+  de la columna. **Sin cifra para la `DEBILIDAD` combinada de Comunión Salvaje** (la fila nunca
+  describe qué atributo, cuánto ni cuántos turnos — a diferencia de Golpe Envenenado, que sí tenía
+  "tramo alto" con números propios) ni para el `AUMENTO` de Camuflaje (mismo motivo que MULTIPLE+
+  AUMENTO: depende del camino de utilidad, sin construir) — documentado, no un descuido. 2
+  habilidades reales sembradas: **Comunión Salvaje** (Cazador/Supervivencia 40, su umbral propio de
+  8 se aproxima al margen decisivo ±10) y **Camuflaje** (Cazador/Supervivencia 19, tramo alto de la
+  fila, 2 turnos). Supervivencia pasa de 3 a 5 de 8 — 145 huecos reales en total ahora (antes 143).
+
+  **Bug real cazado en integración** (no solo en el diseño, igual que el de `avanzarSinAtacar` de
+  objetivo individual): un oculto sin ningún otro candidato posible que su propio hider (p. ej. un
+  único enemigo real) SIGUE PUDIENDO reclamarlo de vuelta con su propia elección (nada le impide
+  elegir su objetivo con normalidad, solo se le excluye de ser el CHOSEN por otros) — y por la regla
+  de reciprocidad ya existente de "objetivo individual" (ser reclamado cancela tu propia elección),
+  ese reclamo del propio oculto puede formar un duelo mutuo real que termina resolviéndose desde el
+  turno del OTRO combatiente (quien tenga más iniciativa) — la ruptura de ocultación solo miraba al
+  atacante de turno, nunca al defensor de un duelo mutuo real, así que el oculto se quedaba "oculto"
+  para siempre en la base de datos pese a haber elegido combatir. Corregido: `ejecutarIntercambioYAvanzar`
+  rompe la ocultación de AMBOS lados de un duelo mutuo (esta función SOLO se llama para duelos
+  mutuos reales, nunca golpes gratis — el defensor también "atacó" con su propia elección de ronda).
+
+  Verificación: 12 tests unitarios nuevos (`combateMultiple.test.ts` — exclusión de
+  `resolverEnganchesRonda` con `elegirObjetivoPara` mockeado a mano, `desviarTriggered`,
+  `atacanteOcultacionDisparada`/`defensorOcultacionDisparada`) + 2 de integración contra Postgres
+  real, repetidos 5 veces sin fallos — el de OCULTACION verifica justo el bug de arriba (la
+  ocultación SIEMPRE acaba rompiéndose, nunca se queda colgada). `tsc -b` limpio, suite completa
+  backend 1544/1544 (retry aislado tras el flake conocido de `turnLock`).
+
+  **§ 3d — `INVOCACION` real (tótems) — CERRADO Y APLICADO 2026-08-27**: la pieza estructuralmente
+  más grande de las 5 — nuevo `CombatParticipantTipo.INVOCACION` (tercer tipo de participante junto
+  a JUGADOR/NPC/COMPANION, migración con `ALTER TYPE ... ADD VALUE`) + 3 columnas nuevas en
+  `CombatParticipant` (`invocacionVidaRestante`, `invocacionRondasRestantes`,
+  `invocacionInvocadorId`). Solo se sembró **Tótem de Guerra** (Chamán/Convocador 12, único
+  `INVOCACION` de `clases.md` sin combinar con ningún otro efecto sin construir) — ficha literal de
+  la fila: "aguanta 1 golpe, ataca durante 2 turnos y desaparece, no se puede invocar más de uno de
+  este tipo a la vez".
+
+  **Decisiones de diseño explícitas** (discutidas con la usuaria antes de implementar, no asumidas):
+  - **El tótem NO se inserta en `ordenIniciativa`** — reordenar ese array en caliente (tocar la
+    aritmética de `turnoActual % length` en pleno combate) se descartó por invasivo frente al
+    beneficio. En vez de eso, actúa FUERA de la cola: ataca una vez al cruzar cada ronda mientras le
+    queden `invocacionRondasRestantes`, en el mismo punto donde ya se decrementan
+    `controladoPorRondas`/`ocultoPorRondas` (`avanzarYComprobarFin`).
+  - **Invocar consume el turno entero del invocador** — sin golpe propio ese mismo turno (decisión
+    explícita: más simple y coherente con "aguanta 1 golpe, ataca 2 turnos" contados desde que el
+    tótem empieza a existir, en vez de mezclar dos resultados en el mismo intercambio).
+  - **El golpe del tótem SÍ se narra** (Ollama, fuera de transacción, mismo patrón de seguridad que
+    el resto del motor) — solo el "housekeeping" de decidir qué tótems tienen turno pendiente
+    (`avanzarYComprobarFin`) se queda silencioso, igual que ya lo era para CONTROL/OCULTACION.
+  - **Reconocible en la Enciclopedia** (petición explícita de la usuaria: "que sea reconocible así
+    como npc, aunque sea temporal") — Tótem de Guerra tiene una ficha `Npc` de catálogo NORMAL
+    (`worldCatalog.ts`, `kind: 'PLANTILLA'`, sin `raza`/`clase`), se descubre sola por mención en la
+    narración de combate (mismo mecanismo automático que cualquier NPC/fauna,
+    `entityDiscovery.ts`) y queda permanentemente en la pestaña NPCs de la Enciclopedia, aunque el
+    tótem individual solo dure 1-2 turnos en un combate concreto — sin inventar ningún campo de
+    "temporalidad" nuevo en el modelo de Enciclopedia. La idea de una categoría propia
+    "humanoide civilizado / no-inteligente estilo murloc" (para separar invocaciones de NPCs
+    civilizados) se planteó y se dejó aparte a propósito, como pieza de diseño de mundo/lore
+    independiente — ver memoria de sesión 2026-08-27.
+
+  **Bug real cazado en integración** (segundo de la Fase 3, mismo patrón que el de OCULTACION en
+  3c: el trace de diseño no coincidía con el comportamiento observado): el decremento de
+  `invocacionRondasRestantes` y la expiración por agotar rondas (`invocacionVidaRestante: 0`) vivían
+  juntos, DENTRO de `avanzarYComprobarFin` (transacción pura, sin narrar) — así que un tótem que
+  agotaba su duración justo en el cruce de ronda quedaba "ya destruido" ANTES de que
+  `resolverTotemsPendientes` (que corre DESPUÉS, fuera de la transacción) llegara a resolver su
+  último golpe, y nunca atacaba en el turno en que expiraba. Corregido: `avanzarYComprobarFin` solo
+  decrementa `invocacionRondasRestantes` (sigue sin narrar); la expiración por rondas-agotadas se
+  decide DESPUÉS de resolver el golpe, dentro de `resolverTotemsPendientes`.
+
+  Verificación: 3 tests de integración nuevos contra Postgres real (invocar crea el
+  `CombatParticipant` correcto y consume el turno entero; el tótem ataca al cruzar de ronda y
+  desaparece al agotar vida/rondas — el que atrapó el bug de arriba; el candado de "no más de uno
+  del mismo tipo a la vez"), repetidos 5 veces sin fallos. `tsc -b` limpio, suite completa backend
+  1547/1547 (retry aislado tras el flake conocido de `turnLock`, 93/93 en solitario). Sin cambios de
+  frontend (mismo patrón que el resto de Fase 2/3).
+
+  **Deliberadamente sin construir**: los otros 7 tótems de `clases.md` (Tótem de Protección,
+  Elementos, Clan, Temblor, Ancestral, Elementales, Runa Ilusoria, Llamada/Eco de la Manada/
+  Invocación del Ancestro) — todos combinan INVOCACION con `PROVOCACION`/`CONTRA`/`AGUANTE`/
+  `MULTIPLE`/`AUMENTO`/`LIMITADO` o describen mecánicas propias (mitad de stats del invocador,
+  varios tótems a la vez, elegir modo ataque/aguante) fuera del alcance de esta pasada — Tótem de
+  Guerra era el único que encajaba sin reinterpretar la fila.
+
+  **§ 3e — `EXPULSAR` real — CERRADO Y APLICADO 2026-08-27, cierra la Fase 3 completa**: única fila
+  real de `clases.md` con este efecto (Embate de Escudo, Guerrero/Guardián 28, "ataque normal a no
+  ser que saques 8 de diferencia... entonces lo expulsa del combate 2 turnos y hay un 50% de
+  posibilidades de que vuelva, si la diferencia es +14 lo retira y no vuelve"). Discutido con la
+  usuaria antes de implementar (2 rondas de preguntas):
+
+  - **Un único margen decisivo** (±10, mismo umbral que el resto de Fase 2/3) en vez de los dos
+    tramos propios de la fila (8 y 14) — decisión explícita: "vamos con que expulse directamente y
+    punto, sin complicarnos".
+  - **Sin tirada de 50% de volver ni caso "nunca vuelve"** — margen decisivo dispara siempre
+    "expulsa 2 rondas, vuelve solo al cumplirlas o antes si su bando se queda sin nadie más vivo".
+    La usuaria fijó explícitamente la regla del "antes": "si mato a todos los presentes, el
+    expulsado vuelve — no se expulsa nunca indefinidamente".
+  - Con esa regla, EXPULSAR queda **mecánicamente idéntico a OCULTACION** (misma exclusión de
+    `resolverEnganchesRonda`, misma excepción de "único vivo del bando") — se decidió reutilizar la
+    lógica pero con una **columna separada** (`CombatParticipant.expulsadoPorRondas`, no
+    `ocultoPorRondas`): conceptualmente son cosas distintas (uno se esconde, al otro lo empujan
+    fuera a la fuerza) aunque el mecanismo de exclusión sea idéntico letra por letra.
+
+  Sin mitad "fuera de combate" (nunca toca `npcScene.ts`/presencia en zona) — al eliminar el caso
+  "no vuelve nunca", el expulsado siempre termina volviendo dentro del propio `CombatEncounter`, así
+  que esa mitad de la ficha original queda sin construir a propósito, no un descuido.
+
+  Verificación: 3 tests unitarios nuevos (`expulsarTriggered`, mismo gate que MULTIPLE) + 2 de
+  integración contra Postgres real (Embate de Escudo marca `expulsadoPorRondas` sobre el defensor
+  golpeado y se decrementa al cruzar de ronda; el expulsado único-vivo-del-bando sigue siendo
+  enganchado con normalidad, nunca deja el combate sin objetivo), repetidos 5 veces sin fallos.
+  `tsc -b` limpio, suite completa backend 1552/1552 (retry aislado tras el flake conocido de
+  `turnLock`, 93/93 en solitario). Sin cambios de frontend.
+
   **Objetivo individual real — CERRADO Y APLICADO 2026-08-26**, diseño + algoritmo + enganche al
   motor en vivo, de punta a punta. Petición explícita jugando contra 2 cuervos: "no puedo elegir
   objetivo... cuando ataco debería ser yo vs mi objetivo y el otro enemigo tiene ataque gratis".

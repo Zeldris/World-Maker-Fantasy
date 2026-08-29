@@ -76,6 +76,13 @@ export interface NarrationResult {
 interface TurnContext {
   worldFacts: string[];
   characterSummary: string;
+  /// Ver `hasFalseCombatAttacker` más abajo (bug real jugando en vivo, prueba con Playwright,
+  /// 2026-08-27) — nombre real del personaje del jugador, solo para comparar sujeto/verbo en ese
+  /// guard. A diferencia de las otras 2 interfaces de este archivo con `characterName` (líneas
+  /// 420/815), esta no lo tenía hasta ahora — `buildNarrationPrompt` seguía usando solo
+  /// `characterSummary` (string libre) para todo lo demás, este campo es exclusivamente para el
+  /// guard nuevo.
+  characterName?: string;
   action: string;
   /// true si la recuperación de lore (RAG) no encontró nada realmente relevante para esta
   /// acción — en ese caso, exigir "no inventes nada" sin darle material real puede dejar al
@@ -250,6 +257,11 @@ interface TurnContext {
   /// uno de esta lista (turnResolution.ts, `catalogMatch`) — si no coincide, la prosa no puede
   /// afirmar que el personaje se queda con/guarda el objeto, porque el inventario real no cambia.
   worldItemCatalogNames?: string[];
+  /// Ver `hasFalsePassiveHarvestClaim` más abajo (hallazgo real jugando en vivo, 2026-08-28) —
+  /// true si ESTE turno ya tiene algún camino mecánico real de obtención de objeto activo
+  /// (recolección/saqueo/construcción/crafteo, ya calculados en turnResolution.ts antes de llamar
+  /// aquí). false/undefined = la prosa no tiene ningún respaldo mecánico este turno.
+  harvestOrLootActiveThisTurn?: boolean;
   /// Ver `hasFalseCombatTargetName` más abajo (revisión de partida real, 2026-08-14/2026-08-26,
   /// "ataque a Múrgol narrado como si fuera contra Cruzavientos") — nombre real del NPC que este
   /// turno recibió de verdad el intercambio de combate (`npcAttackTarget`, turnResolution.ts).
@@ -259,6 +271,13 @@ interface TurnContext {
   /// candidatos a "colarse" en la prosa en su lugar. Vacío = solo hay un NPC en escena, no hay con
   /// quién confundirlo.
   otherNpcNamesInScene?: string[];
+  /// Ver `hasWrongNpcName` más abajo (hallazgo real jugando en vivo, 2026-08-28/29: encabezado
+  /// mecánico decía "KIRELON ARENOSO ATACA..." pero la prosa narró "El Quio retrocede..." — Quio
+  /// era el rival de un combate ANTERIOR de la misma sesión, ya ausente de la escena actual, así
+  /// que `otherNpcNamesInScene` no lo cazaba). Nombres reales de NPCs ya conocidos por esta
+  /// partida (`NpcState` propio) que NO son el NPC actual del combate ni están en la escena de
+  /// este turno — candidatos a "arrastrarse" del historial de la sesión en vez del rival real.
+  possiblyStaleNpcNames?: string[];
 }
 
 interface ClassifyContext {
@@ -858,6 +877,49 @@ Escribe SOLO tu réplica hablada, en primera persona y entre comillas, coherente
   return text.trim();
 }
 
+export interface QuestResponseContext {
+  characterName: string;
+  npcName: string | null;
+  questTitle: string;
+  accepted: boolean;
+  sessionFacts: string[];
+}
+
+/// Narración de la respuesta del JUGADOR al pulsar Aceptar/Cancelar sobre una oferta de misión
+/// (2026-08-30, petición explícita: "esto genera narración de respuesta... según el tono del pj
+/// responde y acepta la misión") — antes `quests.ts` escribía un texto fijo
+/// (`"${characterName} acepta la misión: ${title}."`) sin pasar por Ollama en absoluto; la mecánica
+/// (crear la Quest, aplicar recompensa) sigue siendo 100% determinista, solo el TEXTO de reacción
+/// pasa a narrarse — mismo principio que el resto de "mundo determinista": el motor ya decidió QUÉ
+/// pasó, el LLM solo lo cuenta. Llamada aislada, mismo espíritu que `generateNpcReply` (una tarea
+/// única y estrecha en vez de arriesgar el pipeline completo de un turno para una frase corta) pero
+/// al revés: aquí narra al PERSONAJE DEL JUGADOR, no a un NPC.
+export async function generateQuestResponseNarration(ctx: QuestResponseContext): Promise<string> {
+  const system =
+    'Narras UNA sola acción breve de un personaje de rol de mesa en tercera persona, tono acorde a la escena — nunca inventes hechos nuevos, nunca decidas el desenlace (ya está decidido), solo describe cómo lo hace/dice.';
+
+  const decision = ctx.accepted ? 'ACABA DE ACEPTAR' : 'ACABA DE RECHAZAR';
+  const npcLine = ctx.npcName ? ` a ${ctx.npcName}` : '';
+  const prompt = `PERSONAJE: ${ctx.characterName}.
+
+HECHOS YA ESTABLECIDOS (no los contradigas):
+${factsBlock(ctx.sessionFacts)}
+
+${ctx.characterName} ${decision} la misión "${ctx.questTitle}"${npcLine ? `, ofrecida por${npcLine}` : ''}.
+
+Escribe 1-2 frases narrando en tercera persona cómo ${ctx.characterName} ${ctx.accepted ? 'acepta' : 'rechaza'} — su gesto, su tono, una frase corta si dice algo. No repitas literalmente el título de la misión como si fuera diálogo. No inventes ningún hecho nuevo (ni objetos, ni lugares, ni personajes) que no esté ya aquí.`;
+
+  const { text } = await ollamaGenerate({
+    model: env.ollamaModelNarrador,
+    system,
+    prompt,
+    timeoutMs: 120_000,
+    keepAlive: '1h',
+    temperature: 0.4,
+  });
+  return text.trim();
+}
+
 /// Grados de éxito (docs/08-acciones-por-tiempo.md § 5, roadmap 2026-07-19): misma tirada de
 /// siempre, tres lecturas narrativas en vez de éxito/fallo binario — "con coste" completa la
 /// acción pero con un precio (tarda más, gasta un recurso, deja peor postura), distinto tanto de
@@ -920,7 +982,7 @@ export function buildNarrationPrompt(ctx: TurnContext & { roll?: RollResult }): 
           : ' Ninguno sorprende al otro — ambos se preparan a la vez, en igualdad de condiciones, sin que el enfrentamiento en sí (quién golpea, quién sale herido) se resuelva todavía en esta narración.'
       : '';
   const combatBlock = ctx.enCombate
-    ? `ESTÁS DENTRO DE UN COMBATE (docs/14-combate-y-muerte.md § 2.3): narra en 1-2 frases, corto y directo, el intercambio de ESTE turno — nada de ambientación de relleno, es el ritmo de un choque, no una escena. Puedes proponer "condicionFisica" si el personaje sale herido de este intercambio (nunca lo cures aquí salvo que la acción sea explícitamente curarse).${
+    ? `ESTÁS DENTRO DE UN COMBATE (docs/14-combate-y-muerte.md § 2.3): narra en 1-2 frases, corto y directo, el intercambio de ESTE turno — nada de ambientación de relleno, es el ritmo de un choque, no una escena. Puedes proponer "condicionFisica" si el personaje sale herido de este intercambio (nunca lo cures aquí salvo que la acción sea explícitamente curarse). No te contradigas dentro de la misma frase (checklist consolidado P1.6, 2026-08-27, bug real: "bloquea eficazmente... sin daño, dejando una mancha roja en su pecho" — el propio texto se desmiente a sí mismo) — si un golpe se bloquea o esquiva sin daño, no describas ninguna herida/mancha/marca en el mismo aliento; si SÍ hay herida, no digas antes que fue "sin daño".${
         ctx.npcFallsUnconsciousThisTurn
           ? ctx.npcFallsConvalecienteThisTurn
             ? // Grupo que continúa (auditoría 2026-08-22, "revisa la partida otra vez"): este mismo
@@ -976,7 +1038,7 @@ export function buildNarrationPrompt(ctx: TurnContext & { roll?: RollResult }): 
   // acción) va al final. Nota 2026-07-22: medido en vivo que el prefill de un prompt típico
   // (~900 tokens) tarda ~0.3s en este hardware — perder algo de caché de prefijo por variar
   // `lengthGuidance` es coste real pero insignificante frente a los 60s+ que domina el decode.
-  const fixedInstructions = `${lengthGuidance} NUNCA termines la narración con preguntas retóricas dirigidas al jugador (nada de "¿qué harás?", "¿te arriesgas?", "¿continúas?") ni le ofrezcas explícitamente una lista de opciones a elegir — eso lo decide el jugador con su siguiente acción libre, no el narrador proponiéndoselo. TONO DEL PERSONAJE DEL JUGADOR (auditoría 2026-08-12, "descolocación de tono" — bug real jugando en vivo: un acercamiento pacífico y explícito, manos vacías y en calma, se narró como si el personaje exigiera y desafiara): el tono/actitud que el jugador describe explícitamente en su propia acción (calma, cortesía, agresividad...) define cómo actúa y se comporta SU personaje en esta narración — nunca lo sustituyas por uno contrario. Esto no limita cómo reacciona el NPC: puede responder con su propia personalidad (hostil, huidizo, indiferente...) aunque el tono del jugador sea distinto — el tono ajeno del NPC no debe "contagiar" cómo se describe al personaje del jugador. RECORDATORIO DE MUNDO (mundo medieval-fantástico): JAMÁS menciones pólvora, armas de fuego, metal industrial, plástico, electricidad ni ningún objeto o tecnología moderna/anacrónica — ni como ambientación ni como detalle suelto. Si necesitas un olor o peligro genérico, usa algo coherente con el lugar (sudor, sangre, humo de leña, arcilla, azufre volcánico), nunca un cliché de videojuego moderno. No contradigas los hechos ya establecidos sobre el propio personaje (por ejemplo, si va solo, no le des compañeros, seguidores o un grupo propio que no existían antes) ni repitas como si fuera nuevo un lugar o hecho que ya aparece en HECHOS DEL MUNDO. Si la narración revela algo que el personaje ahora sabe o que cambia la situación, añádelo también a "newFacts" como frase corta, para que se recuerde en turnos futuros. Sí puedes improvisar libremente NPCs sin nombre o sucesos menores que no tengan peso en la trama (un viajero anónimo, un ruido, el clima) — pero si a cualquier NPC (con nombre o improvisado) le describes un arma, armadura o material, usa solo los ya establecidos en este mundo (hierro, hueso, cuero o piel curtida, madera, hielo sílice, arcilla): nunca inventes un material distinto (nada de bronce, acero, cobre, obsidiana ni ningún otro que no hayas visto ya en HECHOS DEL MUNDO). Igual con cualquier animal o criatura que aparezca (con nombre o improvisado): usa solo fauna ya establecida en este mundo (la que se te da como pista de posible encuentro, la ya vista en HECHOS DEL MUNDO, o el bestiario propio de este lugar) — nunca un animal mundano del mundo real que no exista aquí (zorro, ciervo, conejo, lobo, oso...). Solo si la acción resulta de verdad en que el personaje consigue o fabrica un objeto físico duradero (no algo que se consume o desaparece en la escena), rellena "newItem" con su nombre y descripción — en caso contrario déjalo en null; esto pasará en la minoría de turnos, no en cada uno. Igual para "newCompanion": solo si la acción resulta de verdad en ganar un aliado o compañero de verdad (nunca lo inventes de la nada ni contradigas que el personaje va solo), rellénalo con nombre/rol/notas; si no, déjalo en null.
+  const fixedInstructions = `${lengthGuidance} NARRA SIEMPRE EN TERCERA PERSONA sobre el personaje del jugador, por su nombre (checklist consolidado P1.6/P1.7, 2026-08-27, bug real jugando en vivo: la narración saltaba a segunda persona a mitad de párrafo — "El orco... lanzándola hacia Gorhorn... Tu hacha... tu pecho" — mezclando registros dentro de la misma frase) — nunca "tú"/"tu"/"te" refiriéndote al personaje del jugador, aunque estas instrucciones a TI (el modelo) sí usen esa forma para hablarte. Solo el diálogo citado entre comillas de un NPC dirigiéndose al jugador puede usar la segunda persona ("¿Has visto algo?", te pregunta). NUNCA termines la narración con preguntas retóricas dirigidas al jugador (nada de "¿qué harás?", "¿te arriesgas?", "¿continúas?") ni le ofrezcas explícitamente una lista de opciones a elegir — eso lo decide el jugador con su siguiente acción libre, no el narrador proponiéndoselo. TONO DEL PERSONAJE DEL JUGADOR (auditoría 2026-08-12, "descolocación de tono" — bug real jugando en vivo: un acercamiento pacífico y explícito, manos vacías y en calma, se narró como si el personaje exigiera y desafiara): el tono/actitud que el jugador describe explícitamente en su propia acción (calma, cortesía, agresividad...) define cómo actúa y se comporta SU personaje en esta narración — nunca lo sustituyas por uno contrario. Esto no limita cómo reacciona el NPC: puede responder con su propia personalidad (hostil, huidizo, indiferente...) aunque el tono del jugador sea distinto — el tono ajeno del NPC no debe "contagiar" cómo se describe al personaje del jugador. RECORDATORIO DE MUNDO (mundo medieval-fantástico): JAMÁS menciones pólvora, armas de fuego, metal industrial, plástico, electricidad ni ningún objeto o tecnología moderna/anacrónica — ni como ambientación ni como detalle suelto. Si necesitas un olor o peligro genérico, usa algo coherente con el lugar (sudor, sangre, humo de leña, arcilla, azufre volcánico), nunca un cliché de videojuego moderno. No contradigas los hechos ya establecidos sobre el propio personaje (por ejemplo, si va solo, no le des compañeros, seguidores o un grupo propio que no existían antes) ni repitas como si fuera nuevo un lugar o hecho que ya aparece en HECHOS DEL MUNDO. Si la narración revela algo que el personaje ahora sabe o que cambia la situación, añádelo también a "newFacts" como frase corta, para que se recuerde en turnos futuros. Sí puedes improvisar libremente NPCs sin nombre o sucesos menores que no tengan peso en la trama (un viajero anónimo, un ruido, el clima) — pero si a cualquier NPC (con nombre o improvisado) le describes un arma, armadura o material, usa solo los ya establecidos en este mundo (hierro, hueso, cuero o piel curtida, madera, hielo sílice, arcilla): nunca inventes un material distinto (nada de bronce, acero, cobre, obsidiana ni ningún otro que no hayas visto ya en HECHOS DEL MUNDO). Igual con cualquier animal o criatura que aparezca (con nombre o improvisado): usa solo fauna ya establecida en este mundo (la que se te da como pista de posible encuentro, la ya vista en HECHOS DEL MUNDO, o el bestiario propio de este lugar) — nunca un animal mundano del mundo real que no exista aquí (zorro, ciervo, conejo, lobo, oso...). Solo si la acción resulta de verdad en que el personaje consigue o fabrica un objeto físico duradero (no algo que se consume o desaparece en la escena), rellena "newItem" con su nombre y descripción — en caso contrario déjalo en null; esto pasará en la minoría de turnos, no en cada uno. Igual para "newCompanion": solo si la acción resulta de verdad en ganar un aliado o compañero de verdad (nunca lo inventes de la nada ni contradigas que el personaje va solo), rellénalo con nombre/rol/notas; si no, déjalo en null.
 
 Progresión: si este turno logra algo significativo que no sea solo superar la tirada (un descubrimiento importante, cerrar un objetivo menor, cerrar un objetivo mayor/misión larga), rellena "hito" con "descubrimiento", "objetivo_menor" u "objetivo_mayor" — en caso contrario, null. Esto es poco frecuente, no pasa en cada turno.
 
@@ -1243,6 +1305,10 @@ export async function narrateAction(ctx: TurnContext & { roll?: RollResult }): P
           reason: 'narrar (en prosa o en newFacts) una esquiva/bloqueo limpio cuando el golpe sí conectó (golpe_normal/golpe_pleno/golpes_mutuos)',
         },
         {
+          check: () => hasFalseCombatAttacker(narrationAndFacts, ctx.characterName, ctx.jugadorRecibeGolpeEsteTurno),
+          reason: 'narrar (en prosa o en newFacts) al jugador acertando un golpe cuando el golpe real de este intercambio lo dio el NPC contra el jugador',
+        },
+        {
           check: () => hasPrematureCombatResolution(narrationAndFacts, ctx.combatNotYetResolved),
           reason: 'narrar (en prosa o en newFacts) un combate ya resuelto sin ningún intercambio mecánico este turno',
         },
@@ -1272,6 +1338,14 @@ export async function narrateAction(ctx: TurnContext & { roll?: RollResult }): P
           reason: 'nombrar a Gistera Koh directamente pese a haberse marchado para siempre',
         },
         {
+          check: () => hasFalseKarotVekuAsRiver(narrationAndFacts),
+          reason: 'describir Karot Veku como un río — es el nombre nativo del campamento del Clan Serhu, no un accidente geográfico',
+        },
+        {
+          check: () => hasFalseMaktorThreatClaim(narrationAndFacts),
+          reason: 'sugerir que quedan otros orcos del Clan Maktor con vida — el clan fue aniquilado, Gorhorn es el único superviviente conocido',
+        },
+        {
           check: () => hasFalseTravelClaim(parsed, ctx.possiblyFalseTravelDestinationNames),
           reason: 'narrar una llegada a un destino sin resolver mecánicamente (2+ salidas posibles)',
         },
@@ -1292,6 +1366,10 @@ export async function narrateAction(ctx: TurnContext & { roll?: RollResult }): P
           reason: 'narrar un cambio de equipo (ponerse/quitarse/atarse algo) no pedido y sin reflejo real en InventoryItem.slot',
         },
         {
+          check: () => hasFalseItemGivenAway(parsed.narration, ctx.equippableItemNames),
+          reason: 'narrar la entrega de un objeto real a un NPC — no existe mecánica de "dar objeto", el InventoryItem nunca se retira',
+        },
+        {
           check: () => hasFalseHealingClaim(parsed.narration, ctx.restHealCeilingBelowIleso),
           reason: 'prometer una recuperación completa al descansar cuando el techo mecánico real queda por debajo de ILESO',
         },
@@ -1300,8 +1378,16 @@ export async function narrateAction(ctx: TurnContext & { roll?: RollResult }): P
           reason: 'narrar que el personaje se queda con/guarda un objeto cuyo nombre no coincide con ningún ItemCatalog real (no se materializará)',
         },
         {
+          check: () => hasFalsePassiveHarvestClaim(parsed.narration, parsed.newItem?.name, ctx.harvestOrLootActiveThisTurn),
+          reason: 'narrar la obtención de un objeto sin ningún camino mecánico activo este turno ni newItem propuesto',
+        },
+        {
           check: () => hasFalseCombatTargetName(parsed.narration, ctx.combatRealTargetName, ctx.otherNpcNamesInScene),
           reason: 'narrar el intercambio de combate resuelto sin nombrar al objetivo real, nombrando en su lugar a otro NPC presente en la escena',
+        },
+        {
+          check: () => hasWrongNpcName(parsed.narration, ctx.combatRealTargetName, ctx.possiblyStaleNpcNames),
+          reason: 'narrar el combate mencionando a un NPC de un combate anterior de la sesión en vez del NPC real de este combate',
         },
       ].find((validator) => validator.check());
 
@@ -1411,13 +1497,44 @@ export function hasAnachronism(narration: string): boolean {
   return ANACHRONISM_REGEX.test(narration);
 }
 
+/// Amenaza inventada de "otros orcos del Clan Maktor" (ronda de correcciones 2026-08-28, P5.3 —
+/// bug real jugando en vivo: *"antes de que lleguen más goirsentres o orcos del Clan Maktor"*).
+/// `protectedFactsFor` YA instruye explícitamente que el Clan Maktor fue aniquilado y Gorhorn es
+/// el único superviviente conocido — el modelo lo ignoró de todos modos, mismo patrón que el resto
+/// de esta familia de guards (`hasFalseGisteraNamedReturn`, `hasFalseKarotVekuAsRiver`...): no
+/// basta con la instrucción, hace falta comprobar el texto generado. Detecta "Clan Maktor" en la
+/// misma frase que vocabulario de amenaza/pluralidad real (más orcos del clan, no solo Gorhorn) —
+/// deliberadamente NO dispara con menciones neutras del clan (origen, honor, historia), solo con
+/// la contradicción concreta de "quedan más".
+const MAKTOR_THREAT_REGEX = /\bclan\s+maktor\b/i;
+const MAKTOR_THREAT_CONTEXT_REGEX =
+  /\b(m[áa]s|otros?|dem[áa]s|resto|superviviente|quedan?|llegan?|amenaza|ataque|ej[ée]rcito|guerreros?)\b/i;
+
+export function hasFalseMaktorThreatClaim(narration: string): boolean {
+  return narration
+    .split(/(?<=[.!?])\s+/)
+    .some((sentence) => MAKTOR_THREAT_REGEX.test(sentence) && MAKTOR_THREAT_CONTEXT_REGEX.test(sentence));
+}
+
 /// Fuga de inglés, red de seguridad determinista (2026-07-31, bug real probando en vivo: "el eco
 /// de su own pisadas" — una palabra en inglés suelta en medio de una frase en español). Mismo
 /// criterio que `hasAnachronism`/`stripNonLatinScript`: el Modelfile ya pide español, esto es la
 /// red de seguridad para cuando el modelo lo ignora de todos modos. Lista deliberadamente corta y
 /// conservadora — solo palabras función inglesas sin NINGÚN homónimo español real, para no
 /// disparar con nombres propios o préstamos legítimos.
-const ENGLISH_LEAK_REGEX = /\b(own|the|and|was|with|from)\b/i;
+///
+/// Ampliada (ronda de correcciones 2026-08-28, P5.1) — recurrencia confirmada 3 veces jugando en
+/// vivo con la lista original SIN cubrir ninguno de los casos reales: "small clearing" (2026-08-13),
+/// "several pasos" (2026-08-23), "lullaby" (2026-08-28). Añadidas esas palabras concretas más otras
+/// del mismo campo semántico (tamaño/cantidad/sustantivos comunes en descripciones de escena) que
+/// comparten el mismo riesgo de colarse sueltas en medio de una frase en español.
+///
+/// "accompanies" añadido (sesión de pruebas 2026-08-28, partida nueva de Novato): "El viento
+/// siseante lo accompanies en su búsqueda" — variante nueva del mismo hueco, pero con un VERBO
+/// conjugado en inglés sustituyendo al verbo español ("acompaña") en mitad de la frase, no un
+/// sustantivo/adjetivo suelto como los casos anteriores.
+const ENGLISH_LEAK_REGEX =
+  /\b(own|the|and|was|with|from|small|clearing|several|lullaby|nearby|forest|shadow|whisper|silence|darkness|distant|accompanies)\b/i;
 
 export function hasEnglishLeak(narration: string): boolean {
   return ENGLISH_LEAK_REGEX.test(narration);
@@ -1517,8 +1634,23 @@ export function sanitizeSuggestions(suggestions: string[] | undefined): string[]
 // detrás, nunca sueltos (un "mandoble que falla" sigue siendo un fallo real). "clava"/"ensarta"/
 // "empala" sí se añaden sueltos — a diferencia de "golpe", esos verbos ya implican contacto por
 // definición en español (no existe un "empala" fallido).
+// "línea roja" añadido (bug real jugando en vivo, prueba con Playwright, 2026-08-27, ver
+// `hasFalseCombatAttacker`): "una línea roja que corre desde el omóplato hasta el costado" no
+// disparaba nada — "línea de sangre" ya cubría la variante explícita, pero "roja" a secas (sin la
+// palabra "sangre") es igual de común en la prosa real y describe el mismo corte. Solo "línea roja"
+// como frase fija (no "línea"/"roja" sueltos, que tendrían demasiados falsos positivos legítimos
+// fuera de combate).
+// "clava" ampliado (bug real jugando en vivo, ronda de pruebas 2026-08-28): "la clava con fuerza
+// en el cuello del Kirelon Arenoso, haciendo que éste retroceda" con la tirada real en Fallo para
+// Gorhorn (combatBothMissed) — "clava con fuerza en" no matchea `clava\s+(su|el|un|la)` porque
+// "con" se cuela entre el verbo y el artículo del complemento de lugar. Añadido `con\s+\w+\s+en`
+// como alternativa que cubre ese fraseo sin perder la ya existente.
+//
+// "derriba" añadido (mismo día, mismo combate, segundo turno): "apunto a Kirelon Arenoso y derriba
+// su brazo de cuchillo" con `resultado: 'parada_en_seco'` (fallo total del jugador) — "derriba" sin
+// más describe un golpe conectado, vocabulario nuevo sin cubrir hasta ahora.
 const COMBAT_HIT_LEAK_REGEX =
-  /\b(golpe[oó]|golpea(?!\s+el\s+aire)|golpeando|impact[oó]|impactando|hiri[oó]|hiere|hiriendo|herida|atraves[oó]|atraviesa|atravesando|reban[oó]|rebanando|degüell[oa]|hace sangrar|rastro de sangre|l[ií]nea de sangre|sangrando|sangra por|se desploma|desplom[oó]|desplomándose|muerte instantánea|corta la garganta|corta el cuello|derram\w* (una gran cantidad de )?sangre|asesta\s+\w*\s*(golpe|zarpazo|tajo|estocada|mandoble)|propina\s+\w*\s*(golpe|zarpazo|tajo|estocada|mandoble)|golpe\s+(certero|limpio|directo|contundente|mortal)|zarpazo\s+(certero|limpio|directo)|tajo\s+(certero|limpio|profundo)|estocada\s+(certera|limpia|directa)|ensarta|empala|clava\s+(su|el|un|la))\b/i;
+  /\b(golpe[oó]|golpea(?!\s+el\s+aire)|golpeando|impact[oó]|impactando|hiri[oó]|hiere|hiriendo|herida|atraves[oó]|atraviesa|atravesando|reban[oó]|rebanando|degüell[oa]|hace sangrar|rastro de sangre|l[ií]nea de sangre|l[ií]nea roja|sangrando|sangra por|se desploma|desplom[oó]|desplomándose|muerte instantánea|corta la garganta|corta el cuello|derram\w* (una gran cantidad de )?sangre|derrib[oa]|derribando|asesta\s+\w*\s*(golpe|zarpazo|tajo|estocada|mandoble)|propina\s+\w*\s*(golpe|zarpazo|tajo|estocada|mandoble)|golpe\s+(certero|limpio|directo|contundente|mortal)|zarpazo\s+(certero|limpio|directo)|tajo\s+(certero|limpio|profundo)|estocada\s+(certera|limpia|directa)|ensarta|empala|clava\s+(su|el|un|la)|clava\s+con\s+\w+\s+en)\b/i;
 
 export function hasFalseCombatHit(narration: string, combatBothMissed?: boolean): boolean {
   if (!combatBothMissed) return false;
@@ -1536,12 +1668,54 @@ export function hasFalseCombatHit(narration: string, combatBothMissed?: boolean)
 // "por poco" a secas se probó y se quitó a propósito: "falla su zarpazo por poco margen" (un
 // fallo genuino de UN lado en golpes_mutuos/defensor_contragolpea, mientras el otro sí conecta)
 // también lo contiene — "por un pelo" es igual de idiomático para una esquiva limpia y no choca.
+// "bloquea el/su/un/tu ataque|golpe|zarpazo|tajo|estocada|mandoble" añadido (bug real jugando en
+// vivo, prueba con Playwright, 2026-08-27): "Tu Hacha de guerra rota bloquea el ataque, pero una
+// mancha roja se abre en su pecho" con la tirada real en 'Éxito con éxito' para el atacante (el
+// golpe SÍ conectó) — "bloquea por completo" no cubría "bloquea el ataque" a secas, el fraseo más
+// común para un bloqueo narrado. Con objeto explícito (ataque/golpe/zarpazo/tajo/estocada/mandoble)
+// a propósito, igual que el criterio ya usado para "asesta/propina" en COMBAT_HIT_LEAK_REGEX — deja
+// pasar "intenta bloquear" (fallo genuino de defensa) sin disparar.
+// "se desvía"/"se aparta" (sin "a tiempo") añadidos (2º bug real jugando en vivo el mismo día,
+// prueba con Playwright, 2026-08-27, tras aplicar el fix de arriba): "Gorhorn se desvía con
+// agilidad, notando una mancha roja en su pecho. El golpe falla al último momento" — con la tirada
+// real en Éxito para Gorhorn (esquiva de verdad) y Fallo para el orco (no conecta). Mismo hueco de
+// vocabulario, verbo distinto — "se aparta a tiempo" ya existía pero exigía "a tiempo" detrás,
+// dejando pasar "se aparta"/"se desvía" sueltos, que son igual de comunes en la prosa real.
 const COMBAT_MISS_LEAK_REGEX =
-  /\b(esquiv[oa]|esquivando|esquiv[aá]ndol[oa]|elude|eludiendo|evade|evita el golpe|sortea|sorteando|por un pelo|ni siquiera (roza|toca)|sin (rozarlo|rozarla|tocarlo|tocarla)|detiene el golpe en seco|para en seco|se aparta a tiempo|bloquea por completo)\b/i;
+  /\b(esquiv[oa]|esquivando|esquiv[aá]ndol[oa]|elude|eludiendo|evade|evita el golpe|sortea|sorteando|por un pelo|ni siquiera (roza|toca)|sin (rozarlo|rozarla|tocarlo|tocarla)|detiene el golpe en seco|para en seco|se aparta|se desv[ií]a|bloquea por completo|bloquea\s+(el|su|un|tu)\s+(ataque|golpe|zarpazo|tajo|estocada|mandoble))\b/i;
 
 export function hasFalseCombatMiss(narration: string, combatRealHitLanded?: boolean): boolean {
   if (!combatRealHitLanded) return false;
   return COMBAT_MISS_LEAK_REGEX.test(narration);
+}
+
+/// Narración-vs-mecánica, caso NUEVO (bug real jugando en vivo, prueba con Playwright, 2026-08-27,
+/// reproducido 2 de 4 turnos de la misma partida real): `jugadorRecibeGolpeEsteTurno` ya existe
+/// (true cuando el NPC fue quien acertó el golpe de ESTE intercambio, jugador incluido contragolpe
+/// recibido) pero ningún guard comprobaba a quién le atribuye la prosa el golpe GANADOR. Captura
+/// real: mecánica "Gana Orco enfurecido... el golpe conecta" (Gorhorn cae a Convaleciente), pero la
+/// narración dijo "Gorhorn ataca de lleno al Orco enfurecido con su Hacha de guerra rota" — sujeto y
+/// objeto invertidos del todo, no solo vocabulario de contacto suelto (`hasFalseCombatHit`/
+/// `hasFalseCombatMiss` no lo cazan: SÍ hubo un golpe real este turno, así que `combatBothMissed`/
+/// `combatRealHitLanded` no disparan nada, el hueco es de A QUIÉN). Mismo vocabulario ya validado de
+/// `COMBAT_HIT_LEAK_REGEX` (golpe/hiere/atraviesa/asesta un golpe...), pero a diferencia del resto
+/// de la familia `sentenceMatchesRegexAndName` ("misma frase"), aquí la ventana es de 2 frases
+/// SEGUIDAS: el texto real capturado del bug partía sujeto y consecuencia así — "Gorhorn lanza su
+/// Cuchillo... [frase 1, sin verbo de impacto confirmado, solo intención]. El cuchillo atrapa la
+/// piel..., dejando una línea roja [frase 2, el impacto de verdad, sin nombrar a Gorhorn]" — con
+/// solo "misma frase" ninguna de las dos frases dispara. Riesgo aceptado: si la frase 2 describe a
+/// otro sujeto distinto de Gorhorn (p. ej. un tercer NPC entrando en la escena), podría disparar de
+/// más — no observado en la práctica todavía, mismo criterio que otros guards de esta familia
+/// (mejor un reintento de más que dejar pasar la inversión de roles real).
+export function hasFalseCombatAttacker(narration: string, characterName?: string, jugadorRecibeGolpeEsteTurno?: boolean): boolean {
+  if (!characterName || !jugadorRecibeGolpeEsteTurno) return false;
+  const normalizedName = normalizeText(characterName);
+  const sentences = narration.split(SENTENCE_SPLIT_REGEX).map(normalizeText);
+  return sentences.some((sentence, i) => {
+    if (!sentence.includes(normalizedName)) return false;
+    const window = [sentence, sentences[i + 1] ?? ''].join(' ');
+    return COMBAT_HIT_LEAK_REGEX.test(window);
+  });
 }
 
 /// Narración-vs-mecánica, mismo patrón que `hasFalseCombatHit` (2026-08-02, bug real jugando en
@@ -1689,6 +1863,25 @@ export function hasFalseEquipmentChangeClaim(narration: string, equippableItemNa
   return sentenceMatchesRegexAndName(narration, EQUIP_CHANGE_VERB_REGEX, normalizedNames);
 }
 
+/// Narración-vs-mecánica, categoría sin ningún guard hasta ahora (bug real jugando en vivo,
+/// análisis de cierre de partida 2026-08-28, FASE 1: "dar un objeto a un NPC no lo retira del
+/// inventario del jugador") — este juego no tiene ninguna mecánica de "entregar objeto a NPC" (sin
+/// InventoryItem que se retire, sin ningún camino que reaccione a esa intención en texto libre). Si
+/// la narración describe al personaje entregando/dando/pasando un objeto real de su inventario a
+/// alguien, es una alucinación de licencia narrativa, nunca algo que la mecánica pueda cumplir: el
+/// objeto reaparece en manos del jugador en cualquier turno posterior, exactamente el bug real
+/// encontrado (el cuchillo de hielo sílice "entregado" a Gistera Koh seguía en el inventario y
+/// reapareció en 4 turnos posteriores). Mismo criterio que `hasFalseEquipmentChangeClaim`:
+/// mismo-sentencia-que-el-nombre-real, para no disparar con "entrega su vida a la causa" o frases
+/// sin relación con un objeto real concreto.
+const ITEM_GIVEN_AWAY_VERB_REGEX = /\b(entreg\w*|le d[ae]s?|le pas\w*|le ofrec\w*|le tiend\w*)\b/i;
+
+export function hasFalseItemGivenAway(narration: string, equippableItemNames?: string[]): boolean {
+  if (!equippableItemNames || equippableItemNames.length === 0) return false;
+  const normalizedNames = equippableItemNames.map(normalizeText);
+  return sentenceMatchesRegexAndName(narration, ITEM_GIVEN_AWAY_VERB_REGEX, normalizedNames);
+}
+
 /// Narración-vs-mecánica, categoría sin ningún guard hasta ahora (auditoría de código 2026-08-25):
 /// "descansar" libre (sin panel "Curar" explícito, `usingExplicitHealList` false) pasa por el LLM,
 /// pero el techo real de curación lo calcula `healCeilingFor` (death.ts) de forma determinista —
@@ -1720,6 +1913,26 @@ export function hasFalseNewItemClaim(narration: string, newItemName: string | nu
   return ITEM_POSSESSION_CLAIM_REGEX.test(narration);
 }
 
+/// Narración-vs-mecánica, hueco distinto de `hasFalseNewItemClaim` (hallazgo real jugando en vivo,
+/// 2026-08-28: "Recolecto más materiales de la zona antes de descansar." narrado como "recoge...
+/// Encontrado un par de hojas duraderas, las añade a sus raciones" — pero el turno no tenía
+/// `harvestMatch`/`lootMode` activos NI el modelo rellenó `newItem`, así que ningún camino
+/// mecánico ni `hasFalseNewItemClaim` (que solo mira `newItem`) podía cazarlo). `detectHarvest`
+/// exige nombrar la fuente real del catálogo a propósito (decisión de diseño 2026-07-29, evita
+/// "picar" madera o "talar" piedra) — no se amplía su vocabulario aquí; en vez de eso, se veta
+/// cualquier prosa que prometa una obtención SIN ningún camino mecánico activo este turno, sin
+/// importar qué palabras use para prometerlo. Vocabulario de obtención (encontrar/recoger/
+/// conseguir/añadir a la mochila) — mismo criterio conservador que el resto de la familia: si
+/// ya hay un camino mecánico real este turno (recolección/saqueo/construcción/crafteo), la
+/// obtención es legítima y el guard no se evalúa.
+const ITEM_OBTAINED_CLAIM_REGEX =
+  /\b(encuentr\w*|recog\w*|recolect\w*|consigu\w*|obtien\w*|hall[ao]\w*)\b|añade a (su|sus) (inventario|raciones|mochila|bolsa|zurr[oó]n)/i;
+
+export function hasFalsePassiveHarvestClaim(narration: string, newItemName: string | null | undefined, harvestOrLootActiveThisTurn?: boolean): boolean {
+  if (harvestOrLootActiveThisTurn || newItemName) return false;
+  return ITEM_OBTAINED_CLAIM_REGEX.test(narration);
+}
+
 /// Narración-vs-mecánica (revisión de partida real, 2026-08-14, "ataque a Múrgol narrado como si
 /// fuera contra Cruzavientos"): un intercambio de combate resuelto contra un objetivo concreto
 /// (`npcAttackTarget`) puede narrarse sin nombrarlo en absoluto, mencionando en su lugar a OTRO
@@ -1734,6 +1947,21 @@ export function hasFalseCombatTargetName(narration: string, realTargetName?: str
   const normalized = normalizeText(narration);
   if (normalized.includes(normalizeText(realTargetName))) return false;
   return otherNpcNamesInScene.some((name) => normalized.includes(normalizeText(name)));
+}
+
+/// Narración-vs-mecánica, hermano de `hasFalseCombatTargetName` con alcance distinto (hallazgo
+/// real jugando en vivo, 2026-08-28/29: encabezado mecánico "KIRELON ARENOSO ATACA CON 'CAZA POR
+/// VIBRACIÓN'" pero la prosa narró "El Quio retrocede gruñendo ante el ataque de Gorhorn" — Quio
+/// era el rival de un combate ANTERIOR de la misma sesión, ya AUSENTE de la escena actual, así que
+/// `otherNpcNamesInScene` — que solo cubre confusión entre NPCs presentes a la vez — no lo cazaba).
+/// El modelo "arrastra" un nombre que sigue apareciendo en `sessionFacts` (contexto reciente ya
+/// mandado al prompt) en vez del rival real de este intercambio. Mismo criterio conservador: solo
+/// dispara si el nombre real NO aparece en ningún sitio del texto.
+export function hasWrongNpcName(narration: string, realTargetName?: string, possiblyStaleNpcNames?: string[]): boolean {
+  if (!realTargetName || !possiblyStaleNpcNames || possiblyStaleNpcNames.length === 0) return false;
+  const normalized = normalizeText(narration);
+  if (normalized.includes(normalizeText(realTargetName))) return false;
+  return possiblyStaleNpcNames.some((name) => normalized.includes(normalizeText(name)));
 }
 
 /// Narración-vs-mecánica, mismo patrón que `hasFalseCombatHit` (2026-08-01, bug real jugando en
@@ -1838,7 +2066,16 @@ export function hasFalseNpcAppearance(narration: string, possiblyUnauthorizedNpc
 /// evita ese falso positivo mientras sigue cazando el patrón real (confirmado en las 3 apariciones
 /// reales: siempre persecución/huida, nunca una mención neutra del clan).
 const GISTERA_CLAN_MENTION_REGEX = /orca\s+(?:marcada\s+)?(?:del\s+clan\s+)?serhu/i;
-const GISTERA_PERSECUCION_REGEX = /persigu\w*|persecucion\w*|jadea\w*|sin aliento|huy[eo]|huyendo|acecha\w*/i;
+// Ampliado (bug real jugando en vivo, 2026-08-27, checklist consolidado P0.1): tras un respawn, la
+// reaparición se narró como amenaza estática/acechante ("sin nombre revelado todavía... sus ojos
+// fieros fijos en Gorhorn"), sin ninguna de las palabras de persecución/huida ya cubiertas — el
+// vocabulario original asumía siempre el mismo patrón de "ella huye, él la persigue", pero esta
+// reaparición invierte el marco. "sin nombre revelado" es la frase más específica del patrón real
+// (recicla casi textualmente la intro original) — deliberadamente NO se añaden verbos genéricos
+// como "aparece"/"se acerca" para no disparar con una mención legítima futura de otra orca real del
+// Clan Serhu (Torgash/Ulkha) que no tenga nada que ver con Gistera.
+const GISTERA_PERSECUCION_REGEX =
+  /persigu\w*|persecucion\w*|jadea\w*|sin aliento|huy[eo]|huyendo|acecha\w*|sin nombre revelado/i;
 
 export function hasGisteraReencuentroSinNombrar(narration: string, gisteraSeHaMarchado?: boolean): boolean {
   if (!gisteraSeHaMarchado) return false;
@@ -1859,6 +2096,21 @@ const GISTERA_NAME_REGEX = /\bgistera(\s+koh)?\b/i;
 export function hasFalseGisteraNamedReturn(narration: string, gisteraSeHaMarchado?: boolean): boolean {
   if (!gisteraSeHaMarchado) return false;
   return GISTERA_NAME_REGEX.test(normalizeText(narration));
+}
+
+/// Narración-vs-catálogo (bug real jugando en vivo, 2026-08-27, checklist consolidado P0.2, mismo
+/// turno contaminado que `hasGisteraReencuentroSinNombrar`): "Karot Veku" es el nombre NATIVO en
+/// lengua orca del campamento del Clan Serhu (worldCatalog.ts, alias "karot veku" de
+/// "Karot Veku - Campamento del Clan Serhu" — mismo sitio que "Colmillo Ceniza"), nunca un río. La
+/// narración de esa partida inventó "el río Karot Veku" — mezcló un topónimo real del catálogo con
+/// una naturaleza geográfica que no le corresponde. Guard acotado a este caso concreto (decisión
+/// explícita: un guard genérico de topónimos contra TODAS las Location del mundo, mapeando
+/// vocabulario natural a `kind`, es diseño nuevo con más riesgo de falso positivo — se deja para
+/// si el patrón se repite con otro lugar).
+const KAROT_VEKU_AS_WATER_REGEX = /\b(r[ií]o|lago|laguna|afluente|arroyo|cauce)\s+(de\s+)?karot\s+veku\b/i;
+
+export function hasFalseKarotVekuAsRiver(narration: string): boolean {
+  return KAROT_VEKU_AS_WATER_REGEX.test(normalizeText(narration));
 }
 
 /// Narración-vs-mecánica, mismo patrón que `hasFalseItemUse`/`hasResurrectedDeadNpc` (bug real

@@ -92,4 +92,39 @@ describe('generateImagePrompt', () => {
     expect(userContent).toContain('Un corredor de llanura veloz.');
     expect(userContent).toContain('1920x768px');
   });
+
+  // Bug real (2026-08-27, auditoría de calidad de prompts): `buildPrompt` calculaba estilo/tono/
+  // encuadre pero nunca llegaba al LLM — `userContent` solo mandaba Type/Name/Lore/Profile en
+  // bruto. Estas 3 comprueban que el borrador estructurado (con su estilo/tono/encuadre reales)
+  // viaja de verdad dentro de `userContent`, no solo las 4 líneas sueltas de arriba.
+  it('el borrador estructurado (con el estilo real del tipo de entidad) viaja dentro de userContent', async () => {
+    completeWithFallback.mockResolvedValue({ text: 'prompt', provider: 'x' });
+
+    await generateImagePrompt('faction', 'Clan Serhu', 'Clan orco de las Llanuras.', 'thumbnail');
+
+    const userContent = completeWithFallback.mock.calls[0][1] as string;
+    // Estilo real de 'faction' (ENTITY_TYPE_STYLE) — icono plano, nunca fotorrealista.
+    expect(userContent).toContain('bold flat icon illustration');
+    expect(userContent).toContain('NEVER photorealistic');
+  });
+
+  it('el tono inferido del lore (p.ej. volcánico) también viaja dentro del borrador estructurado', async () => {
+    completeWithFallback.mockResolvedValue({ text: 'prompt', provider: 'x' });
+
+    await generateImagePrompt('location', 'Grietas de Ceniza', 'Un páramo volcánico cubierto de ceniza.', 'banner');
+
+    const userContent = completeWithFallback.mock.calls[0][1] as string;
+    expect(userContent).toContain('ash-choked air');
+    expect(userContent).toContain('volcanic haze');
+  });
+
+  it('las dimensiones exactas del perfil viajan dentro del borrador estructurado, no solo en la línea "Profile"', async () => {
+    completeWithFallback.mockResolvedValue({ text: 'prompt', provider: 'x' });
+
+    await generateImagePrompt('npc', 'Gorhorn', 'Guerrero orco.', 'thumbnail');
+
+    const userContent = completeWithFallback.mock.calls[0][1] as string;
+    // Aparece dos veces: una en la línea "Profile:" de siempre, otra dentro del borrador.
+    expect(userContent.match(/1024x1024px/g)?.length).toBe(2);
+  });
 });

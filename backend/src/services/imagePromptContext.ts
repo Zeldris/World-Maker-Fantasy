@@ -14,10 +14,70 @@ import {
   type SexoVariantesEntry,
 } from './sexDimorphism.js';
 import type { ImagePromptEntityType } from './imagePromptGenerator.js';
+import type { MomentoDelDia } from './worldClock.js';
 
 export interface ImagePromptSubject {
   name: string;
   loreContext: string;
+}
+
+/// Imágenes de día/noche y estación (2026-08-27, docs/rpgtarkor/imagenes-prompts.md) — mismo
+/// mecanismo de sufijo en `entitySlug` que ya usan las variantes por sexo (`stripSexoSuffix`) más
+/// abajo, pero deliberadamente SIN contenido curado por entidad: a diferencia del sexo (rasgo
+/// físico propio de cada especie), la luz/estación son genéricas — un bloque de texto reutilizable
+/// basta, sin escribir nada nuevo por Location. Solo aplica a `location`/`zona` (el resto de tipos
+/// de entidad son retratos/objetos aislados donde "de noche" no tiene sentido visual propio).
+export type EstacionSlug = 'primavera' | 'verano' | 'otono' | 'invierno';
+const MOMENTOS: MomentoDelDia[] = ['dia', 'noche'];
+const ESTACIONES: EstacionSlug[] = ['primavera', 'verano', 'otono', 'invierno'];
+
+const MOMENTO_TEXT: Record<MomentoDelDia, string> = {
+  dia: 'Es de día: luz solar clara y directa, buena visibilidad de todos los detalles del paisaje.',
+  noche: 'Es de noche: iluminada por luna/estrellas o fuego, sombras profundas, colores apagados y fríos, sin luz solar.',
+};
+
+const ESTACION_TEXT: Record<EstacionSlug, string> = {
+  primavera: 'Es primavera: vegetación en brote, colores vivos y frescos, clima templado.',
+  verano: 'Es verano: calor intenso, luz dura y alta, vegetación seca o en su punto máximo según la región.',
+  otono: 'Es otoño: hojas caídas y doradas donde haya vegetación, luz cálida y oblicua, primeros fríos ya notándose.',
+  invierno: 'Es invierno: frío marcado, posible nieve o escarcha si la región lo permite, luz fría y apagada, vegetación reducida o desnuda.',
+};
+
+export interface LocationTimeVariant {
+  baseSlug: string;
+  momento: MomentoDelDia | null;
+  estacion: EstacionSlug | null;
+}
+
+/// Sufijo compuesto SIEMPRE en el mismo orden, `-<momento>-<estacion>` (p.ej.
+/// `hondonada-del-eco-noche-invierno`) — pero cada mitad es independiente y opcional, así que
+/// `-noche` o `-invierno` solos también son válidos (no hace falta generar los 8 cruces de golpe).
+export function stripLocationTimeVariant(entitySlug: string): LocationTimeVariant {
+  let rest = entitySlug;
+  let estacion: EstacionSlug | null = null;
+  let momento: MomentoDelDia | null = null;
+  for (const e of ESTACIONES) {
+    if (rest.endsWith(`-${e}`)) {
+      estacion = e;
+      rest = rest.slice(0, -(`-${e}`.length));
+      break;
+    }
+  }
+  for (const m of MOMENTOS) {
+    if (rest.endsWith(`-${m}`)) {
+      momento = m;
+      rest = rest.slice(0, -(`-${m}`.length));
+      break;
+    }
+  }
+  return { baseSlug: rest, momento, estacion };
+}
+
+function withTimeVariant(loreContext: string, momento: MomentoDelDia | null, estacion: EstacionSlug | null): string {
+  const parts = [loreContext];
+  if (momento) parts.push(MOMENTO_TEXT[momento]);
+  if (estacion) parts.push(ESTACION_TEXT[estacion]);
+  return parts.join(' ');
 }
 
 /// Variantes por sexo (2026-07-22, ver sexDimorphism.ts): el entitySlug de una variante es
@@ -163,9 +223,12 @@ export async function loreContextFor(worldId: string, entityType: ImagePromptEnt
   }
 
   if (entityType === 'location') {
-    const location = await prisma.location.findUnique({ where: { worldId_slug: { worldId, slug: entitySlug } } });
+    // Día/noche/estación (2026-08-27) — sufijo opcional en el slug, ver stripLocationTimeVariant.
+    const { baseSlug, momento, estacion } = stripLocationTimeVariant(entitySlug);
+    const location = await prisma.location.findUnique({ where: { worldId_slug: { worldId, slug: baseSlug } } });
     if (!location) return null;
-    return { name: location.name, loreContext: `Región: ${location.region}. Tipo: ${location.kind}. ${location.description}` };
+    const general = `Región: ${location.region}. Tipo: ${location.kind}. ${location.description}`;
+    return { name: location.name, loreContext: withTimeVariant(general, momento, estacion) };
   }
 
   if (entityType === 'zona') {
@@ -173,12 +236,16 @@ export async function loreContextFor(worldId: string, entityType: ImagePromptEnt
     // pero pensado para el mapa navegable de la zona (sizeProfile 'mapa'), no para un retrato
     // ambiental. Se listan los puntos reales ya calibrados (ZonePoint) para que la imagen generada
     // tenga referencias concretas de qué hay en cada rincón, no solo la descripción general.
-    const location = await prisma.location.findUnique({ where: { worldId_slug: { worldId, slug: entitySlug } }, include: { zonePoints: true } });
+    // Día/noche/estación (2026-08-27), mismo sufijo que 'location' — el mapa de zona también
+    // puede variar (nieve, oscuridad) sin perder los puntos de referencia calibrados.
+    const { baseSlug, momento, estacion } = stripLocationTimeVariant(entitySlug);
+    const location = await prisma.location.findUnique({ where: { worldId_slug: { worldId, slug: baseSlug } }, include: { zonePoints: true } });
     if (!location) return null;
     const puntos = location.zonePoints.length
       ? ` Elementos reales presentes en la zona (referencia, no listar como texto en la imagen): ${location.zonePoints.map((p) => p.label ?? p.targetSlug).join(', ')}.`
       : '';
-    return { name: location.name, loreContext: `Región: ${location.region}. Tipo: ${location.kind}. ${location.description}${puntos}` };
+    const general = `Región: ${location.region}. Tipo: ${location.kind}. ${location.description}${puntos}`;
+    return { name: location.name, loreContext: withTimeVariant(general, momento, estacion) };
   }
 
   if (entityType === 'faction') {

@@ -5,6 +5,7 @@ import { contraataqueDifficultyFor, scopeFor } from '../../services/npcScene.js'
 import { effectiveAttributes, effectiveDefense } from '../../services/equipment.js';
 import { rollCheck } from '../../services/dice.js';
 import type { AttributeBlock } from '../../services/dice.js';
+import { oneStepWorseThan } from '../../services/death.js';
 import { rejectIfEnded } from './shared.js';
 
 /// Control del estado de una partida EN CURSO (deuda técnica 2026-07-30, split de saves.ts):
@@ -170,6 +171,77 @@ export async function sessionRoutes(app: FastifyInstance) {
     return { escaped: roll.success, text };
   });
 
+  // Huir DENTRO de un combate ya iniciado (bug real 2026-08-28, ronda de correcciones — petición
+  // explícita: "el huir es un turno pero no debería defenderte, o huyes o recibes un golpe
+  // directo... que huir tenga un riesgo, y que esto se represente en la narración"). Antes,
+  // `handleCombatHuir` (frontend) enviaba "Intento huir..." como texto libre normal, resuelto por
+  // el motor de intercambio como un ataque/defensa disfrazado — indistinguible mecánicamente de
+  // Defenderse. Este endpoint reutiliza la MISMA tirada determinista que `/combat/flee` (arriba,
+  // huir ANTES de entrar), pero con una consecuencia real distinta si falla: en vez de solo narrar
+  // que no lo consigue y dejar el combate intacto, aplica un golpe directo SIN tirada de defensa —
+  // el escalón de condición física empeora un paso real (`oneStepWorseThan`), sin posibilidad de
+  // bloquear/esquivar, mismo espíritu que "arriesgas algo real a cambio de intentar escapar".
+  app.post<{ Params: { id: string } }>('/saves/:id/combat/huir-en-curso', async (request, reply) => {
+    const save = await prisma.save.findUnique({
+      where: { id: request.params.id },
+      include: { worldState: true, inventoryItems: { where: { slot: { not: null } } } },
+    });
+    if (!save) {
+      return reply.status(404).send({ error: 'Partida no encontrada' });
+    }
+    if (rejectIfEnded(save, reply)) return;
+
+    const pendingSlugs = (save.pendingCombatNpcSlugs as string[] | null) ?? [];
+    if (pendingSlugs.length === 0) {
+      return reply.status(404).send({ error: 'No hay ningún combate en curso del que huir' });
+    }
+    if (save.condicionFisica === 'CONVALECIENTE' || save.condicionFisica === 'MUERTO') {
+      // El golpe directo de un fallo llevaría a MUERTO sin ninguna posibilidad de reacción — el
+      // mismo caso ya bloqueado para cualquier otra acción de combate en este estado (Matar/
+      // Capturar/Clemente son las únicas salidas reales desde CONVALECIENTE).
+      return reply.status(409).send({ error: 'No puedes intentar huir estando convaleciente — resuelve tu propia condición primero.' });
+    }
+
+    const npcs = await prisma.npc.findMany({ where: { worldId: save.worldId, slug: { in: pendingSlugs } } });
+    const maxNpcLevel = npcs.reduce((max, n) => Math.max(max, n.level), 1);
+    const attributes = effectiveAttributes(save.attributes as AttributeBlock, save.inventoryItems);
+    const defensa = effectiveDefense(save.inventoryItems);
+    const dificultad = contraataqueDifficultyFor(maxNpcLevel, save.level, defensa);
+    const roll = rollCheck(attributes, 'destreza', dificultad);
+    const timeLabel = save.worldState?.fictionalDateLabel ?? 'Día 1, mañana';
+
+    const nuevaCondicion = roll.success ? save.condicionFisica : oneStepWorseThan(save.condicionFisica);
+    const text = roll.success
+      ? `${save.characterName} rompe el contacto y logra escapar del combate — no sin dejar atrás el orgullo de haber dado la cara.`
+      : `${save.characterName} intenta huir, pero el rival aprovecha el movimiento para conectar un golpe directo, sin darle tiempo a defenderse.`;
+
+    // Mismo candado que /combat/flee (auditoría de código 2026-08-25) — un turno real de
+    // /turn/narrate en paralelo puede estar actualizando `pendingCombatNpcSlugs` justo ahora.
+    const outcomeEnCurso = await prisma.$transaction(async (tx) => {
+      const [locked] = await tx.$queryRaw<{ pendingCombatNpcSlugs: string[] | null }[]>`
+        SELECT "pendingCombatNpcSlugs" FROM "Save" WHERE id = ${save.id} FOR UPDATE
+      `;
+      const freshSlugs = locked.pendingCombatNpcSlugs ?? [];
+      const mismoSet = freshSlugs.length === pendingSlugs.length && freshSlugs.every((s) => pendingSlugs.includes(s));
+      if (roll.success && !mismoSet) return { kind: 'cambiado' as const };
+
+      await tx.logEntry.create({ data: { saveId: save.id, channel: 'CHARACTER', text, timeLabel } });
+      await tx.save.update({
+        where: { id: save.id },
+        data: {
+          condicionFisica: nuevaCondicion,
+          ...(roll.success ? { pendingCombatNpcSlugs: [] } : {}),
+        },
+      });
+      return { kind: 'ok' as const };
+    });
+
+    if (outcomeEnCurso.kind === 'cambiado') {
+      return reply.status(409).send({ error: 'El combate cambió mientras intentabas huir — vuelve a intentarlo.' });
+    }
+    return { escaped: roll.success, text, condicionFisica: nuevaCondicion };
+  });
+
   // CONVALECIENTE deja de ser "victoria automática" (petición explícita, 2026-08-26): sobre un
   // enemigo CONVALECIENTE la jugadora elige Capturar (`/capturar/:npcSlug`, ya existía), Matar
   // (Decapitar, ya existía) o Dejarlo vivir — este último, nuevo. Determinista, sin tirada: la
@@ -178,36 +250,71 @@ export async function sessionRoutes(app: FastifyInstance) {
   // sigue con el resto si queda alguien, o termina si era el último) pero NO toca
   // `condicionFisica`: se queda CONVALECIENTE de verdad, recupera solo con las horas de ficción
   // (misma regla ya existente, `applyCondicionTimeouts`).
-  app.post<{ Params: { id: string; npcSlug: string } }>('/saves/:id/combat/dejar-vivir/:npcSlug', async (request, reply) => {
-    const save = await prisma.save.findUnique({
-      where: { id: request.params.id },
-      include: { worldState: true, currentLocation: { select: { id: true } } },
-    });
-    if (!save) return reply.status(404).send({ error: 'Partida no encontrada' });
-    if (rejectIfEnded(save, reply)) return;
+  app.post<{ Params: { id: string; npcSlug: string }; Body: { participantId?: string } }>(
+    '/saves/:id/combat/dejar-vivir/:npcSlug',
+    async (request, reply) => {
+      const save = await prisma.save.findUnique({
+        where: { id: request.params.id },
+        include: { worldState: true, currentLocation: { select: { id: true } } },
+      });
+      if (!save) return reply.status(404).send({ error: 'Partida no encontrada' });
+      if (rejectIfEnded(save, reply)) return;
 
-    const npc = await prisma.npc.findUnique({ where: { worldId_slug: { worldId: save.worldId, slug: request.params.npcSlug } } });
-    if (!npc) return reply.status(404).send({ error: 'NPC no encontrado' });
-    const scope = scopeFor(npc.kind, save.currentLocation?.id ?? null);
-    const state = await prisma.npcState.findUnique({ where: { saveId_npcId_scope: { saveId: save.id, npcId: npc.id, scope } } });
-    if (!state || state.condicionFisica !== 'CONVALECIENTE') {
-      return reply.status(400).send({ error: 'Solo puedes dejar vivir a un enemigo CONVALECIENTE.' });
-    }
+      const npc = await prisma.npc.findUnique({ where: { worldId_slug: { worldId: save.worldId, slug: request.params.npcSlug } } });
+      if (!npc) return reply.status(404).send({ error: 'NPC no encontrado' });
 
-    const timeLabel = save.worldState?.fictionalDateLabel ?? 'Día 1, mañana';
-    const text = `${save.characterName} deja con vida a ${npc.name}, convaleciente en el suelo — se aparta sin darle el golpe final.`;
+      // Combate múltiple real (2026-08-29, bug real jugando en vivo — ver comentario de
+      // `CombatParticipant.dismissedGrupo` en schema.prisma): con `participantId`, la condición
+      // real del individuo vive en `CombatParticipant.condicionFisicaGrupo` para un miembro de
+      // grupo (null para un solitario dentro de un CombatEncounter, que sigue usando NpcState como
+      // siempre) — nunca en `NpcState`, que es una fila COMPARTIDA por toda la especie. Marcar
+      // `dismissedGrupo: true` es lo que `detail.ts` respeta al reconstruir la tarjeta pendiente
+      // tras recargar.
+      const participantId = request.body?.participantId;
+      if (participantId) {
+        const participant = await prisma.combatParticipant.findUnique({ where: { id: participantId } });
+        if (!participant || participant.npcId !== npc.id) {
+          return reply.status(404).send({ error: 'Ese combatiente no existe en este combate.' });
+        }
+        const condicionReal =
+          participant.condicionFisicaGrupo ??
+          (await prisma.npcState.findUnique({ where: { saveId_npcId_scope: { saveId: save.id, npcId: npc.id, scope: participant.npcScope } } }))
+            ?.condicionFisica ??
+          'ILESO';
+        if (condicionReal !== 'CONVALECIENTE') {
+          return reply.status(400).send({ error: 'Solo puedes dejar vivir a un enemigo CONVALECIENTE.' });
+        }
 
-    // Mismo candado que /combat/flee (auditoría de código 2026-08-25) — un turno real de
-    // /turn/narrate en paralelo puede estar actualizando `pendingCombatNpcSlugs` justo ahora.
-    const logEntry = await prisma.$transaction(async (tx) => {
-      const [locked] = await tx.$queryRaw<{ pendingCombatNpcSlugs: string[] | null }[]>`
-        SELECT "pendingCombatNpcSlugs" FROM "Save" WHERE id = ${save.id} FOR UPDATE
-      `;
-      const freshSlugs = (locked.pendingCombatNpcSlugs ?? []).filter((s) => s !== npc.slug);
-      await tx.save.update({ where: { id: save.id }, data: { pendingCombatNpcSlugs: freshSlugs } });
-      return tx.logEntry.create({ data: { saveId: save.id, channel: 'CHARACTER', text, timeLabel } });
-    });
+        const timeLabel = save.worldState?.fictionalDateLabel ?? 'Día 1, mañana';
+        const text = `${save.characterName} deja con vida a ${npc.name}, convaleciente en el suelo — se aparta sin darle el golpe final.`;
+        const logEntry = await prisma.$transaction(async (tx) => {
+          await tx.combatParticipant.update({ where: { id: participantId }, data: { dismissedGrupo: true } });
+          return tx.logEntry.create({ data: { saveId: save.id, channel: 'CHARACTER', text, timeLabel } });
+        });
+        return { npcSlug: npc.slug, participantId, logEntry: { id: logEntry.id, text, timeLabel, createdAt: logEntry.createdAt.toISOString() } };
+      }
 
-    return { npcSlug: npc.slug, logEntry: { id: logEntry.id, text, timeLabel, createdAt: logEntry.createdAt.toISOString() } };
-  });
+      const scope = scopeFor(npc.kind, save.currentLocation?.id ?? null);
+      const state = await prisma.npcState.findUnique({ where: { saveId_npcId_scope: { saveId: save.id, npcId: npc.id, scope } } });
+      if (!state || state.condicionFisica !== 'CONVALECIENTE') {
+        return reply.status(400).send({ error: 'Solo puedes dejar vivir a un enemigo CONVALECIENTE.' });
+      }
+
+      const timeLabel = save.worldState?.fictionalDateLabel ?? 'Día 1, mañana';
+      const text = `${save.characterName} deja con vida a ${npc.name}, convaleciente en el suelo — se aparta sin darle el golpe final.`;
+
+      // Mismo candado que /combat/flee (auditoría de código 2026-08-25) — un turno real de
+      // /turn/narrate en paralelo puede estar actualizando `pendingCombatNpcSlugs` justo ahora.
+      const logEntry = await prisma.$transaction(async (tx) => {
+        const [locked] = await tx.$queryRaw<{ pendingCombatNpcSlugs: string[] | null }[]>`
+          SELECT "pendingCombatNpcSlugs" FROM "Save" WHERE id = ${save.id} FOR UPDATE
+        `;
+        const freshSlugs = (locked.pendingCombatNpcSlugs ?? []).filter((s) => s !== npc.slug);
+        await tx.save.update({ where: { id: save.id }, data: { pendingCombatNpcSlugs: freshSlugs } });
+        return tx.logEntry.create({ data: { saveId: save.id, channel: 'CHARACTER', text, timeLabel } });
+      });
+
+      return { npcSlug: npc.slug, logEntry: { id: logEntry.id, text, timeLabel, createdAt: logEntry.createdAt.toISOString() } };
+    },
+  );
 }

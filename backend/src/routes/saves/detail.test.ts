@@ -14,6 +14,13 @@ const findManyLocation = vi.fn();
 const findManyNpc = vi.fn();
 const findManyNpcState = vi.fn();
 const findManyLogEntry = vi.fn();
+// Identificador de combatientes duplicados (2026-08-27) — `detail.ts` ahora consulta el
+// `CombatEncounter` de grupo real activo (además de `pendingCombatNpcSlugs`, el mecanismo viejo)
+// para reconstruir `combateIniciado` con `participantId`/`instanceNumber`. `findFirstCombatEncounter`
+// devuelve `null` por defecto en cada test (sin `CombatEncounter` de grupo activo) salvo que un
+// test concreto lo sobrescriba — cae al comportamiento viejo (`pendingCombatNpcSlugs`) tal cual.
+const findFirstCombatEncounter = vi.fn();
+const findManyCombatParticipant = vi.fn();
 
 vi.mock('../../lib/prisma.js', () => ({
   prisma: {
@@ -24,6 +31,8 @@ vi.mock('../../lib/prisma.js', () => ({
     npc: { findMany: (...args: unknown[]) => findManyNpc(...args) },
     npcState: { findMany: (...args: unknown[]) => findManyNpcState(...args) },
     logEntry: { findMany: (...args: unknown[]) => findManyLogEntry(...args) },
+    combatEncounter: { findFirst: (...args: unknown[]) => findFirstCombatEncounter(...args) },
+    combatParticipant: { findMany: (...args: unknown[]) => findManyCombatParticipant(...args) },
   },
 }));
 
@@ -80,6 +89,8 @@ function baseSave(overrides: Partial<Record<string, unknown>> = {}) {
     quests: [],
     sessionSummaries: [],
     pendingCombatNpcSlugs: null,
+    pendingDynamicMode: null,
+    pendingDynamicModeOffer: null,
     ...overrides,
   };
 }
@@ -93,6 +104,8 @@ describe('GET /saves/:id', () => {
     findManyNpc.mockReset().mockResolvedValue([]);
     findManyNpcState.mockReset().mockResolvedValue([]);
     findManyLogEntry.mockReset().mockResolvedValue([]);
+    findFirstCombatEncounter.mockReset().mockResolvedValue(null);
+    findManyCombatParticipant.mockReset().mockResolvedValue([]);
   });
 
   it('404 si la partida no existe', async () => {
@@ -100,6 +113,68 @@ describe('GET /saves/:id', () => {
     const app = await buildApp();
     const res = await app.inject({ method: 'GET', url: '/saves/no-existe' });
     expect(res.statusCode).toBe(404);
+  });
+
+  it('pendingDynamicMode null por defecto', async () => {
+    findUniqueSave.mockResolvedValue(baseSave());
+    const app = await buildApp();
+    const res = await app.inject({ method: 'GET', url: '/saves/save1' });
+    expect(res.json().pendingDynamicMode).toBeNull();
+  });
+
+  it('A.3 (checklist frontend 2026-08-27) — pendingDynamicMode se reconstruye tras recargar, igual que combateIniciado, incluida la última narración/opciones', async () => {
+    const pending = {
+      tipo: 'NPC',
+      targetSlug: 'gistera-koh',
+      targetName: 'Gistera Koh',
+      vuelta: 2,
+      iniciadoAtMinutes: 480,
+      narration: 'Gistera Koh insiste en su petición.',
+      opciones: ['Aceptar ayudarla', 'Rechazar de nuevo'],
+    };
+    findUniqueSave.mockResolvedValue(baseSave({ pendingDynamicMode: pending }));
+    const app = await buildApp();
+    const res = await app.inject({ method: 'GET', url: '/saves/save1' });
+    expect(res.json().pendingDynamicMode).toEqual(pending);
+  });
+
+  it('pendingDynamicModeOffer null por defecto', async () => {
+    findUniqueSave.mockResolvedValue(baseSave());
+    const app = await buildApp();
+    const res = await app.inject({ method: 'GET', url: '/saves/save1' });
+    expect(res.json().pendingDynamicModeOffer).toBeNull();
+  });
+
+  it('bug real 2026-08-28 ("oferta de modo dinámico no sobrevive a una recarga") — pendingDynamicModeOffer se reconstruye tras recargar, mismo criterio que pendingDynamicMode', async () => {
+    const offer = { tipo: 'FAUNA', targetSlug: 'gesgurio', targetName: 'Gesgurio' };
+    findUniqueSave.mockResolvedValue(baseSave({ pendingDynamicModeOffer: offer }));
+    const app = await buildApp();
+    const res = await app.inject({ method: 'GET', url: '/saves/save1' });
+    expect(res.json().pendingDynamicModeOffer).toEqual(offer);
+  });
+
+  it('B.14 (checklist frontend 2026-08-27) — condicionFisica de compañero con capa mecánica real (attributes no null) se expone; sin ella, null', async () => {
+    findUniqueSave.mockResolvedValue(
+      baseSave({
+        companions: [
+          {
+            id: 'c1', name: 'Múrgol', role: 'aliado', notes: 'x', tipo: 'FAUNA', felicidad: 80,
+            lastFedAtMinutes: null, lastWateredAtMinutes: null, esSlotDomador: false, rolReino: null,
+            plantillaEquipoId: null, attributes: { fuerza: 10 }, condicionFisica: 'GRAVE',
+          },
+          {
+            id: 'c2', name: 'Compañero de quest', role: 'aliado', notes: 'x', tipo: 'NPC', felicidad: null,
+            lastFedAtMinutes: null, lastWateredAtMinutes: null, esSlotDomador: false, rolReino: null,
+            plantillaEquipoId: null, attributes: null, condicionFisica: 'ILESO',
+          },
+        ],
+      }),
+    );
+    const app = await buildApp();
+    const res = await app.inject({ method: 'GET', url: '/saves/save1' });
+    const companions = res.json().companions;
+    expect(companions[0].condicionFisica).toBe('GRAVE');
+    expect(companions[1].condicionFisica).toBeNull();
   });
 
   it('resuelve targetLocationSlug de una misión que apunta a un Location directamente', async () => {
@@ -183,7 +258,24 @@ describe('GET /saves/:id', () => {
     const res = await app.inject({ method: 'GET', url: '/saves/save1' });
     expect(res.statusCode).toBe(200);
     expect(res.json().combateIniciado).toEqual({
-      npcs: [{ slug: 'orco-enfurecido-hondonada', name: 'Orco Enfurecido', condicionFisica: 'MUERTO', saqueado: false, lootedItemNames: ['Maza orca'], analizado: false, capturable: true }],
+      npcs: [{ slug: 'orco-enfurecido-hondonada', name: 'Orco Enfurecido', condicionFisica: 'MUERTO', saqueado: false, lootedItemNames: ['Maza orca'], analizado: false, capturable: true, activeEffects: [] }],
     });
+  });
+
+  // BUG REAL CERRADO (2026-08-29, reverificación en vivo con Playwright, ver detail.ts para la
+  // causa raíz completa): fauna MUERTA sin saquear ('Saquear todo' del resumen de combate solo
+  // cuenta NPCs humanoides, no fauna — Desollar es un mecanismo aparte) dejaba `combateIniciado`
+  // poblado para siempre, y el aviso pasivo de Desollar exige `!combateIniciado` para aparecer —
+  // candado circular sin ninguna vía de UI. Fauna nunca debe reabrir combateIniciado por sí sola.
+  it('un Kirelon Arenoso (fauna, ataqueNatural real) MUERTO sin saquear NO reabre combateIniciado', async () => {
+    findUniqueSave.mockResolvedValue(baseSave({ pendingCombatNpcSlugs: ['kirelon-arenoso'] }));
+    findManyNpc.mockResolvedValue([
+      { id: 'npc1', slug: 'kirelon-arenoso', name: 'Kirelon Arenoso', kind: 'PLANTILLA', ataqueNatural: 'Envuelve a su presa y la asfixia.' },
+    ]);
+    findManyNpcState.mockResolvedValue([{ npcId: 'npc1', scope: 'itinerante', condicionFisica: 'MUERTO', saqueado: false, lootedItemNames: [] }]);
+    const app = await buildApp();
+    const res = await app.inject({ method: 'GET', url: '/saves/save1' });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().combateIniciado).toBeNull();
   });
 });

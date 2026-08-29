@@ -3,6 +3,7 @@ import { env } from '../config/env.js';
 import { narrateAndPersistTurn, TransitCancelledError } from '../services/turnResolution.js';
 import { computeDuration } from '../services/timedActions.js';
 import { effectiveAttributes, effectiveSecondaryAttributes, effectiveDefense, equippedWeaponNames, equippedItemsSummary } from '../services/equipment.js';
+import { parseActiveEffects } from '../services/activeEffects.js';
 import { normalizeSecondaryAttributes } from '../services/secondaryAttributes.js';
 import { characterSummaryFor } from '../services/characterSummary.js';
 import { loadSessionFacts } from '../services/worldFacts.js';
@@ -132,6 +133,7 @@ async function resolveClaimedTransit(transit: DueTransit, notBefore?: Date): Pro
       action,
       characterSummary,
       characterName: save.characterName,
+      clase: save.clase,
       timeLabel,
       sessionFacts,
       currentXp: save.xp,
@@ -151,6 +153,7 @@ async function resolveClaimedTransit(transit: DueTransit, notBefore?: Date): Pro
       produccion: duration?.produccion,
       condicionFisica: save.condicionFisica,
       energia: save.energia,
+      activeEffects: parseActiveEffects(save.activeEffects),
       dificultad: save.dificultad,
       deathCount: save.deathCount,
       lastRestLocationId: save.lastRestLocationId,

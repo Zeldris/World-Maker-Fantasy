@@ -8,6 +8,8 @@ import {
   climaFor,
   climaSeveridadAlMenos,
   climaNombreFor,
+  momentoDelDiaFor,
+  entornoTemporalFor,
 } from './worldClock.js';
 
 // Cobertura nueva (auditoría 2026-08-03, "análisis completo backend/frontend"): el reloj ficticio
@@ -91,6 +93,25 @@ describe('estacionFor', () => {
   });
 });
 
+describe('momentoDelDiaFor', () => {
+  it('6:00 a 19:59 es día', () => {
+    expect(momentoDelDiaFor(6 * 60)).toBe('dia');
+    expect(momentoDelDiaFor(12 * 60)).toBe('dia');
+    expect(momentoDelDiaFor(19 * 60 + 59)).toBe('dia');
+  });
+
+  it('20:00 a 5:59 es noche, incluida la medianoche', () => {
+    expect(momentoDelDiaFor(20 * 60)).toBe('noche');
+    expect(momentoDelDiaFor(0)).toBe('noche');
+    expect(momentoDelDiaFor(5 * 60 + 59)).toBe('noche');
+  });
+
+  it('se repite igual cada día, independientemente del día de ficción', () => {
+    expect(momentoDelDiaFor(1440 * 7 + 6 * 60)).toBe('dia');
+    expect(momentoDelDiaFor(1440 * 7 + 21 * 60)).toBe('noche');
+  });
+});
+
 describe('estacionNombreFor', () => {
   it('para un personaje orco, usa el nombre Kektira', () => {
     expect(estacionNombreFor('PRIMAVERA', 'orcos')).toBe("Ur'gathek");
@@ -159,5 +180,26 @@ describe('climaNombreFor', () => {
   it('para cualquier otra raza o raza desconocida, usa la glosa en lengua común', () => {
     expect(climaNombreFor('VIENTO_FUERTE', 'goirntes')).toBe('el viento cortante');
     expect(climaNombreFor('CLIMA_LLEVABLE', null)).toBe('el respiro');
+  });
+});
+
+describe('entornoTemporalFor', () => {
+  it('devuelve estación con nombre (glosa común) y clima null fuera de Las Llanuras', () => {
+    const result = entornoTemporalFor(0, 'Meseta del Orden', 'goirntes');
+    expect(result).toEqual({ estacion: { key: 'PRIMAVERA', nombre: 'la estación de las crecidas' }, clima: null });
+  });
+
+  it('en Las Llanuras, devuelve también el clima con nombre', () => {
+    // Día 2 (diaDelAno=1) → posicionCiclo=1 → VIENTO_FUERTE, ver describe('climaFor') de arriba.
+    const result = entornoTemporalFor(1440, 'Las Llanuras del Viento Rojo', 'orcos');
+    expect(result.estacion.key).toBe('PRIMAVERA');
+    expect(result.clima).toEqual({ key: 'VIENTO_FUERTE', nombre: "Sek'tar" });
+  });
+
+  it('usa el nombre Kektira para un orco, la glosa común para el resto', () => {
+    const orco = entornoTemporalFor(0, null, 'orcos');
+    const goirntes = entornoTemporalFor(0, null, 'goirntes');
+    expect(orco.estacion.nombre).toBe("Ur'gathek");
+    expect(goirntes.estacion.nombre).toBe('la estación de las crecidas');
   });
 });

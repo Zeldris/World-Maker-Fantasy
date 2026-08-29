@@ -12,7 +12,7 @@ export function WorldSelect() {
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-6 px-6 py-12">
       <div>
-        <button onClick={() => navigate('/')} className="mb-2 text-xs text-wood-500 transition-colors hover:text-accent-300">
+        <button type="button" onClick={() => navigate('/')} className="mb-2 text-xs text-wood-500 transition-colors hover:text-accent-300">
           ← Volver
         </button>
         <div className="flex items-center gap-3">

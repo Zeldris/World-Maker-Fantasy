@@ -12,7 +12,7 @@ export function ComingSoon() {
         El modo multijugador (salas compartidas) todavía está en diseño. El MVP se centra primero en pulir el
         modo en solitario.
       </p>
-      <button
+      <button type="button"
         onClick={() => navigate('/')}
         className="mt-2 rounded-full border border-iron-700 bg-wood-900/60 px-4 py-2 text-sm text-moss-400 transition-colors hover:border-moss-600/60 hover:bg-moss-500/10 hover:text-moss-400"
       >

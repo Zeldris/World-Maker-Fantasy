@@ -1,6 +1,6 @@
-import type { Attribute, AttributeBlock, RollResult } from './dice.js';
+import type { Attribute, AttributeBlock, RollResult, RollMode } from './dice.js';
 import type { AbilityEffect, CondicionFisica } from '@prisma/client';
-import { gradoExitoFor } from './dice.js';
+import { gradoExitoFor, rollD20 } from './dice.js';
 import { effectiveAttributeValue, typeMultiplierFor, type CombatTree } from './attributeWheel.js';
 import { condicionMalus, saludBandFor } from './death.js';
 
@@ -106,6 +106,15 @@ export interface ExchangeParticipant {
   /// este campo (sigue funcionando exactamente igual que antes) — vive aquí para que el caller
   /// tenga un único objeto por lado, no un parámetro suelto aparte.
   rol: 'ataque' | 'defensa' | 'utilidad';
+  /// Pasivas raciales (2026-08-28, pendiente 2026-08-27 punto 4, "de 2 raciales activas a 1
+  /// pasiva") — el caller (turnResolution.ts/combateMultipleOrquestacion.ts) decide el modo según
+  /// raza+contexto (defensa contra ataque no-arcano para Goirntes, primer intercambio del combate
+  /// para Faerus...) y lo pasa aquí; `rollSide` solo sabe TIRAR con el modo que le dan, nunca
+  /// decide por qué. `racialAdvantageReason` es el texto explicativo que viaja hasta la UI (petición
+  /// explícita: "todos los datos ajenos al combate deben estar bien expresados e identificados") —
+  /// ambos van juntos, nunca uno sin el otro.
+  rollMode?: RollMode;
+  racialAdvantageReason?: string;
 }
 
 export interface ExchangeSideResult extends RollResult {
@@ -126,6 +135,20 @@ export interface ExchangeSideResult extends RollResult {
   /// `valorEfectivo` desde siempre, pero nunca viajaba expuesto — sin esto, un bono más bajo de
   /// lo esperado por estar herido no tenía explicación visible.
   malus: number;
+  /// Pasivas raciales (2026-08-28) — mismo criterio que `malus`/`multiplicador`: el número final
+  /// nunca debe esconder de dónde sale. `rollMode !== 'normal'` cuando la tirada real tiró 2d20 en
+  /// vez de 1 (ver `rolls`); `racialAdvantageReason` es el texto listo para mostrar ("Piel
+  /// Quitinosa: ventaja al defenderse contra ataques físicos"). Ambos ausentes = tirada normal, sin
+  /// ninguna pasiva racial de por medio.
+  rolls: number[];
+  rollMode: RollMode;
+  racialAdvantageReason?: string;
+  /// Bug real (2026-08-28, "en los cálculos de la tirada tampoco se está viendo" — jugando en
+  /// vivo): `ExchangeParticipant.attributeBonus` (habilidad de arma/clase, +2/+4) ya se sumaba
+  /// dentro de `valorEfectivo`/`result` desde siempre, pero nunca viajaba expuesto — mismo hueco
+  /// exacto que `malus` tenía antes de 2026-08-15. Sin esto, un resultado más alto de lo esperado
+  /// por el bonus de la habilidad no tenía explicación visible, igual que pasaba con `malus`.
+  attributeBonus: number;
 }
 
 export type ExchangeOutcome =
@@ -195,8 +218,8 @@ function rollSide(self: ExchangeParticipant, opponentAttribute: Attribute, tree:
   const valorCrudo = Math.max(1, self.attributes[self.attribute] + (self.attributeBonus ?? 0) - condicionMalus(self.condicionFisica));
   const multiplicador = typeMultiplierFor(self.attribute, opponentAttribute, tree);
   const valorEfectivo = effectiveAttributeValue(valorCrudo, self.attribute, opponentAttribute, tree);
-  const roll = Math.floor(Math.random() * 20) + 1;
-  const result = roll + Math.floor(valorEfectivo / 2) + (self.bonoTirada ?? 0);
+  const { rolls, usedRoll } = rollD20(self.rollMode ?? 'normal');
+  const result = usedRoll + Math.floor(valorEfectivo / 2) + (self.bonoTirada ?? 0);
   const gradoExito = gradoExitoFor(result, self.difficulty);
   return {
     attribute: self.attribute,
@@ -204,7 +227,11 @@ function rollSide(self: ExchangeParticipant, opponentAttribute: Attribute, tree:
     valorEfectivo,
     multiplicador,
     malus: condicionMalus(self.condicionFisica),
-    roll,
+    roll: usedRoll,
+    rolls,
+    rollMode: self.rollMode ?? 'normal',
+    racialAdvantageReason: self.racialAdvantageReason,
+    attributeBonus: self.attributeBonus ?? 0,
     result,
     difficulty: self.difficulty,
     success: gradoExito !== 'fallo',

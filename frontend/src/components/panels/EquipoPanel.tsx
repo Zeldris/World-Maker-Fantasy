@@ -91,7 +91,7 @@ function PaperdollSlot({ slot, equipped, onClick, gridArea }: PaperdollSlotProps
   return (
     <div style={gridArea ? { gridArea } : undefined} className="relative min-w-0">
       <TooltipAnchor text={equipped ? equipped.description : `${SLOT_LABEL[slot]} — vacío`} className="block h-full min-w-0">
-        <button
+        <button type="button"
           onClick={onClick}
           className="tactile relative flex h-full w-full min-w-0 flex-col items-center justify-center gap-1 overflow-hidden rounded-lg border border-iron-700 bg-wood-950/40 px-1.5 py-2.5 text-center transition-colors hover:border-accent-600/60 hover:bg-accent-500/10"
         >

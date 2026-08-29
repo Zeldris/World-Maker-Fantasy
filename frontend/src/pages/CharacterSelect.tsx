@@ -81,7 +81,7 @@ export function CharacterSelect() {
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-6 px-6 py-12">
       <div>
-        <button onClick={() => navigate('/solitario')} className="mb-2 text-xs text-wood-500 transition-colors hover:text-accent-300">
+        <button type="button" onClick={() => navigate('/solitario')} className="mb-2 text-xs text-wood-500 transition-colors hover:text-accent-300">
           ← Volver
         </button>
         <div className="flex items-center gap-3">
@@ -92,7 +92,7 @@ export function CharacterSelect() {
       </div>
 
       <div className="flex gap-2 border-b border-iron-700">
-        <button
+        <button type="button"
           onClick={() => setTab('pregen')}
           className={`border-b-2 px-3 py-2 text-sm transition-colors ${
             tab === 'pregen'
@@ -102,7 +102,7 @@ export function CharacterSelect() {
         >
           Preseleccionados
         </button>
-        <button
+        <button type="button"
           onClick={() => setTab('custom')}
           className={`border-b-2 px-3 py-2 text-sm transition-colors ${
             tab === 'custom'

@@ -31,7 +31,7 @@ export function Home() {
       </div>
 
       <div className="grid w-full max-w-2xl grid-cols-1 gap-5 sm:grid-cols-2">
-        <button
+        <button type="button"
           onClick={() => navigate('/solitario')}
           className="plank-panel group relative flex flex-col items-start gap-3 rounded-xl p-7 text-left transition-[filter,border-color,box-shadow] hover:border-accent-600/50 hover:brightness-110 hover:shadow-[0_0_26px_-10px_var(--color-accent-500),0_8px_24px_-12px_rgba(0,0,0,0.7)]"
         >
@@ -47,7 +47,7 @@ export function Home() {
           </p>
         </button>
 
-        <button
+        <button type="button"
           onClick={() => navigate('/multijugador')}
           className="plank-panel group relative flex flex-col items-start gap-3 rounded-xl p-7 text-left transition-[filter,border-color,box-shadow] hover:border-moss-600/50 hover:brightness-110 hover:shadow-[0_0_26px_-10px_var(--color-moss-500),0_8px_24px_-12px_rgba(0,0,0,0.7)]"
         >
@@ -65,7 +65,7 @@ export function Home() {
       </div>
 
       {lastSave && (
-        <button
+        <button type="button"
           onClick={() => navigate(`/solitario/partida/${lastSave.id}`)}
           className="animate-entry-in group flex items-center gap-2.5 rounded-full border border-iron-700 bg-wood-900/60 px-4 py-2 text-sm text-wood-300 transition-colors hover:border-accent-600/60 hover:bg-accent-500/10 hover:text-accent-300"
         >

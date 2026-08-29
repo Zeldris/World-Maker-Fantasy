@@ -1,6 +1,8 @@
 import { existsSync } from 'node:fs';
 import path from 'node:path';
 import type { ImagePromptEntityType, ImagePromptSizeProfile } from '../services/imagePromptGenerator.js';
+import type { MomentoDelDia } from '../services/worldClock.js';
+import type { EstacionSlug } from '../services/imagePromptContext.js';
 
 /// Imágenes reales de la Enciclopedia (checklist 2026-07-21/22, punto 7): la usuaria sube el
 /// archivo a mano a `uploads/images/<entityType>/<entitySlug>-<sizeProfile>.<ext>` (servido por
@@ -33,6 +35,23 @@ export function imageUrlsFor(
 /// Grupo 3 § Mundo determinista, Capa 1 (2026-08-25) — el mapa de zona usa su propio sizeProfile
 /// ('mapa', 800×600) en vez de thumbnail/banner, así que no encaja en `imageUrlsFor` de arriba
 /// (pensado para la pareja fija que usa la Enciclopedia). Mismo mecanismo de búsqueda por archivo.
-export function zoneMapImageUrl(locationSlug: string): string | null {
-  return findImage('zona', locationSlug, 'mapa');
+///
+/// Día/noche/estación (2026-08-27) — `momento`/`estacion` opcionales para la vista EN VIVO de
+/// Zona (`routes/saves/zona.ts`, que ya conoce la hora/estación reales de la partida y elige sola,
+/// sin selector manual). Degrada en cascada de lo más específico a lo más genérico: cruce completo
+/// → solo estación → solo momento → imagen base sin sufijo — así que subir SOLO `-invierno` (sin
+/// molestarse en las 8 combinaciones) ya cubre las 4 estaciones de noche igual que las de día,
+/// nunca hace falta rellenar el cruce entero para que algo se vea.
+export function zoneMapImageUrl(locationSlug: string, momento?: MomentoDelDia | null, estacion?: EstacionSlug | null): string | null {
+  const candidateSlugs = [
+    momento && estacion ? `${locationSlug}-${momento}-${estacion}` : null,
+    estacion ? `${locationSlug}-${estacion}` : null,
+    momento ? `${locationSlug}-${momento}` : null,
+    locationSlug,
+  ].filter((s): s is string => !!s);
+  for (const slug of candidateSlugs) {
+    const found = findImage('zona', slug, 'mapa');
+    if (found) return found;
+  }
+  return null;
 }

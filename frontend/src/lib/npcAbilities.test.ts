@@ -42,8 +42,8 @@ describe('resolveCombatAbilities', () => {
           name: 'Guerrero',
           description: '',
           unlocks: [
-            { level: 1, ability: { name: 'Tajo', icon: '🗡️', description: 'Nivel 1.', promptText: '', category: 'combate', imagePrompts: { thumbnail: null, banner: null }, imageUrls: { thumbnail: null, banner: null }, preferredAttribute: 'fuerza' } },
-            { level: 5, ability: { name: 'Embestida', icon: '🛡️', description: 'Nivel 5.', promptText: '', category: 'combate', imagePrompts: { thumbnail: null, banner: null }, imageUrls: { thumbnail: null, banner: null }, preferredAttribute: 'constitucion' } },
+            { level: 1, especializacion: null, ability: { name: 'Tajo', icon: '🗡️', description: 'Nivel 1.', promptText: '', category: 'combate', imagePrompts: { thumbnail: null, banner: null }, imageUrls: { thumbnail: null, banner: null }, preferredAttribute: 'fuerza' } },
+            { level: 5, especializacion: null, ability: { name: 'Embestida', icon: '🛡️', description: 'Nivel 5.', promptText: '', category: 'combate', imagePrompts: { thumbnail: null, banner: null }, imageUrls: { thumbnail: null, banner: null }, preferredAttribute: 'constitucion' } },
           ],
         },
       ],
@@ -60,8 +60,8 @@ describe('resolveCombatAbilities', () => {
           name: 'Guerrero',
           description: '',
           unlocks: [
-            { level: 1, ability: { name: 'Tajo', icon: '🗡️', description: '', promptText: '', category: 'combate', imagePrompts: { thumbnail: null, banner: null }, imageUrls: { thumbnail: null, banner: null }, preferredAttribute: 'fuerza' } },
-            { level: 5, ability: { name: 'Embestida', icon: '🛡️', description: '', promptText: '', category: 'combate', imagePrompts: { thumbnail: null, banner: null }, imageUrls: { thumbnail: null, banner: null }, preferredAttribute: 'constitucion' } },
+            { level: 1, especializacion: null, ability: { name: 'Tajo', icon: '🗡️', description: '', promptText: '', category: 'combate', imagePrompts: { thumbnail: null, banner: null }, imageUrls: { thumbnail: null, banner: null }, preferredAttribute: 'fuerza' } },
+            { level: 5, especializacion: null, ability: { name: 'Embestida', icon: '🛡️', description: '', promptText: '', category: 'combate', imagePrompts: { thumbnail: null, banner: null }, imageUrls: { thumbnail: null, banner: null }, preferredAttribute: 'constitucion' } },
           ],
         },
       ],
@@ -120,7 +120,7 @@ describe('resolveCombatAbilities', () => {
           name: 'Guerrero',
           description: '',
           unlocks: [
-            { level: 1, ability: { name: 'Tajo', icon: '🗡️', description: '', promptText: '', category: 'combate', imagePrompts: { thumbnail: null, banner: null }, imageUrls: { thumbnail: null, banner: null }, preferredAttribute: 'fuerza' } },
+            { level: 1, especializacion: null, ability: { name: 'Tajo', icon: '🗡️', description: '', promptText: '', category: 'combate', imagePrompts: { thumbnail: null, banner: null }, imageUrls: { thumbnail: null, banner: null }, preferredAttribute: 'fuerza' } },
           ],
         },
       ],

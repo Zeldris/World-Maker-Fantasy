@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { advanceEntry, initialAgenda, parseAgenda, advanceWorldAgenda } from './worldAgenda.js';
+import { advanceEntry, initialAgenda, parseAgenda, advanceWorldAgenda, regionControlFor, type AgendaEntry } from './worldAgenda.js';
 
 const loadSessionFacts = vi.fn();
 const appendSessionFacts = vi.fn();
@@ -63,6 +63,47 @@ describe('advanceEntry', () => {
     const { entry, stagesCrossed } = advanceEntry(almostMax, farFuture);
     expect(entry.stage).toBe(4);
     expect(stagesCrossed).toBe(1);
+  });
+});
+
+describe('regionControlFor', () => {
+  const conflictoEn = (stage: number): AgendaEntry[] => [
+    { id: 'conflicto-serhu-concordia-vs-helsig-goshg', title: 'x', stage, maxStage: 4, nextStageAtMinutes: 999999 },
+  ];
+
+  it('Las Llanuras del Viento Rojo (región del propio agresor) siempre dueño original, aunque el conflicto esté en la etapa final', () => {
+    const control = regionControlFor('Las Llanuras del Viento Rojo', conflictoEn(4), 'Clan Serhu');
+    expect(control).toEqual({ estado: 'NEUTRAL_O_DUENO_ORIGINAL', duenoActual: 'Clan Serhu' });
+  });
+
+  it('región sin conflicto sembrado (ej. Meseta del Orden) se queda fija con su dueño original', () => {
+    const control = regionControlFor('La Meseta del Orden', conflictoEn(4), 'Concordia de Hierro');
+    expect(control).toEqual({ estado: 'NEUTRAL_O_DUENO_ORIGINAL', duenoActual: 'Concordia de Hierro' });
+  });
+
+  it('región con conflicto sembrado sin ninguna entrada en la agenda (partida antigua) se trata como etapa 0', () => {
+    const control = regionControlFor('Cristal Helado', [], 'Clan Helsig');
+    expect(control).toEqual({ estado: 'NEUTRAL_O_DUENO_ORIGINAL', duenoActual: 'Clan Helsig' });
+  });
+
+  it.each([0, 1])('etapa %i: dueño original, sin disputa todavía', (stage) => {
+    const control = regionControlFor('Cristal Helado', conflictoEn(stage), 'Clan Helsig');
+    expect(control).toEqual({ estado: 'NEUTRAL_O_DUENO_ORIGINAL', duenoActual: 'Clan Helsig' });
+  });
+
+  it.each([2, 3])('etapa %i: en disputa, agresor identificado, dueño original todavía resiste', (stage) => {
+    const control = regionControlFor('Cristal Helado', conflictoEn(stage), 'Clan Helsig');
+    expect(control).toEqual({ estado: 'EN_DISPUTA', duenoActual: 'Clan Helsig', agresor: 'Clan Serhu-Concordia de Hierro' });
+  });
+
+  it('etapa 4 (maxStage): conquistada por el agresor, el dueño original ya no controla nada', () => {
+    const control = regionControlFor('Cristal Helado', conflictoEn(4), 'Clan Helsig');
+    expect(control).toEqual({ estado: 'CONQUISTADA', duenoActual: 'Clan Serhu-Concordia de Hierro' });
+  });
+
+  it('Ciénaga Troncal (segunda región en conflicto) sigue el mismo cálculo, dueño propio', () => {
+    const control = regionControlFor('Ciénaga Troncal', conflictoEn(3), 'Clan Goshg');
+    expect(control).toEqual({ estado: 'EN_DISPUTA', duenoActual: 'Clan Goshg', agresor: 'Clan Serhu-Concordia de Hierro' });
   });
 });
 

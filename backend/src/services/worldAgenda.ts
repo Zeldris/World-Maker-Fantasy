@@ -70,6 +70,52 @@ export function parseAgenda(raw: Prisma.JsonValue | null | undefined): AgendaEnt
   return (raw as AgendaEntry[] | null) ?? [];
 }
 
+export type RegionControlEstado = 'NEUTRAL_O_DUENO_ORIGINAL' | 'EN_DISPUTA' | 'CONQUISTADA';
+
+export interface RegionControlState {
+  estado: RegionControlEstado;
+  /// Dueño de la región HOY según este cálculo — el original (`REGION_OWNING_FACTIONS`,
+  /// reputation.ts) en `NEUTRAL_O_DUENO_ORIGINAL`/`EN_DISPUTA`, el agresor en `CONQUISTADA`.
+  duenoActual: string;
+  /// Solo presente en `EN_DISPUTA` — quién presiona.
+  agresor?: string;
+}
+
+const AGRESOR = 'Clan Serhu-Concordia de Hierro';
+
+/// Región propia del agresor (Las Llanuras del Viento Rojo, dueño de lore "Clan Serhu") — nunca
+/// entra en disputa consigo misma aunque el conflicto avance, decisión cerrada con la usuaria
+/// explícitamente para esta excepción.
+const REGION_DEL_AGRESOR = 'Las Llanuras del Viento Rojo';
+
+/// Las 3 regiones con conflicto sembrado hoy (docs/rpgtarkor/areas.md) — su dueño ORIGINAL de
+/// `REGION_OWNING_FACTIONS` (reputation.ts) es el defensor cuando `stage` entra en disputa.
+const REGION_DEFENSOR: Record<string, string> = {
+  'Cristal Helado': 'Clan Helsig',
+  'Ciénaga Troncal': 'Clan Goshg',
+};
+
+/// Puro — control determinista por región, derivado de la etapa real de `CONFLICTO_ID`
+/// (Serhu-Concordia vs. Helsig/Goshg) donde exista conflicto sembrado. El resto de regiones (sin
+/// entrada en `REGION_DEFENSOR`, ej. Meseta del Orden) se quedan FIJAS con su dueño de
+/// `REGION_OWNING_FACTIONS` — nunca se inventa una disputa que el diseño no tiene. `stage` 0-1 =
+/// dueño original, 2-3 = en disputa, 4 (`maxStage`) = conquistada por el agresor. Las Llanuras del
+/// Viento Rojo (del propio Clan Serhu) son la única excepción: siempre dueño original, pase lo que
+/// pase con la etapa.
+export function regionControlFor(region: string, agenda: AgendaEntry[], duenoOriginal: string): RegionControlState {
+  if (region === REGION_DEL_AGRESOR) return { estado: 'NEUTRAL_O_DUENO_ORIGINAL', duenoActual: duenoOriginal };
+
+  const defensor = REGION_DEFENSOR[region];
+  if (!defensor) return { estado: 'NEUTRAL_O_DUENO_ORIGINAL', duenoActual: duenoOriginal };
+
+  const conflicto = agenda.find((entry) => entry.id === CONFLICTO_ID);
+  const stage = conflicto?.stage ?? 0;
+  const maxStage = conflicto?.maxStage ?? STAGE_FACTS.length - 1;
+  if (stage >= maxStage) return { estado: 'CONQUISTADA', duenoActual: AGRESOR };
+  if (stage >= 2) return { estado: 'EN_DISPUTA', duenoActual: duenoOriginal, agresor: AGRESOR };
+  return { estado: 'NEUTRAL_O_DUENO_ORIGINAL', duenoActual: duenoOriginal };
+}
+
 /// Puro: cuántas etapas cruza una entrada dado el tiempo de ficción actual, y su estado
 /// resultante. Puede cruzar más de una etapa a la vez (un salto grande de tiempo de ficción, ej.
 /// un viaje largo) — nunca se queda "atrasada" esperando varios ticks para ponerse al día.

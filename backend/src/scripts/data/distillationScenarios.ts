@@ -83,6 +83,8 @@ function npcInSceneFromCatalog(npc: NpcInput, overrides: Partial<NpcInScene> = {
     groupDefeated: 0,
     corpsesLooted: 0,
     abilityUsesThisEncounter: {},
+    activeEffects: [],
+    homeLocationSlug: npc.homeLocationSlug ?? null,
     ...overrides,
   };
 }

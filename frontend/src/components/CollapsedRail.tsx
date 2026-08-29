@@ -15,7 +15,7 @@ export function CollapsedRail({
   onExpand: () => void
 }) {
   return (
-    <button
+    <button type="button"
       onClick={onExpand}
       title={`Mostrar "${label}"`}
       className="tactile plank-panel flex w-9 flex-col items-center justify-center gap-3 rounded-xl border border-iron-800 py-4 transition-colors hover:border-accent-600/60"

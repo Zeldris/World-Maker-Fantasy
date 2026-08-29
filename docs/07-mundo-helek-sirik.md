@@ -29,6 +29,7 @@ El contenido completo del mundo vive repartido en `docs/rpgtarkor/` — este arc
 | [rpgtarkor/materiales-procesados-construccion.md](rpgtarkor/materiales-procesados-construccion.md) | Construcciones de Reino por materiales procesados (bloques/lingotes/columnas) y oficio regional, no recursos crudos. **APLICADO al motor** (2026-08-24). |
 | [rpgtarkor/estaciones.md](rpgtarkor/estaciones.md) | Calendario único global (120 días/año), nombres Kektira por raza, gate de estación en recolección. **APLICADO al motor** (2026-08-24). |
 | [rpgtarkor/clima-tormentas.md](rpgtarkor/clima-tormentas.md) | Clima real de Las Llanuras del Viento Rojo (tormentas/vientos por severidad). **APLICADO al motor** (2026-08-24). |
+| [rpgtarkor/imagenes-prompts.md](rpgtarkor/imagenes-prompts.md) | Sistema de prompts de imagen de la Enciclopedia: fix del bug estilo/tono nunca llegaba al LLM, variantes de día/noche/estación en Location/Zona. **APLICADO al motor** (2026-08-27). |
 
 ---
 

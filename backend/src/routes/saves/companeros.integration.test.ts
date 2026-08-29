@@ -3,6 +3,7 @@ import Fastify from 'fastify';
 import { prisma } from '../../lib/prisma.js';
 import { getDefaultUserId } from '../../lib/defaultUser.js';
 import { companerosRoutes } from './companeros.js';
+import { iniciarCombatEncounter } from '../../services/combateMultipleOrquestacion.js';
 
 /// Cobertura nueva (auditoría de código 2026-08-25, condición de carrera real): la ruta
 /// `/tameo-pendientes/:npcSlug/confirmar` no pasa por `claimTurnInFlight` (exclusivo de
@@ -145,20 +146,53 @@ describe('Compañeros: cobertura de ruta — captura → tameo → confirmar (au
     expect(body.candidates).toEqual([{ npcSlug: 'corretolvas', name: 'Corretolvas', tipo: 'FAUNA' }]);
   });
 
-  it('POST /capturar/:npcSlug ata al Corretolvas — capturado=true, con la Jaula mediana asignada, consume las cuerdas', async () => {
+  let capturaItemId: string;
+
+  it('POST /capturar/:npcSlug ata al Corretolvas — se materializa como InventoryItem en tránsito (5 slots), consume las cuerdas, libera el NpcState', async () => {
     const app = await buildApp();
     const res = await app.inject({ method: 'POST', url: `/saves/${saveId}/capturar/corretolvas` });
     expect(res.statusCode).toBe(200);
     const body = res.json();
     expect(body).toMatchObject({ npcSlug: 'corretolvas', tipo: 'FAUNA' });
-    expect(body.jaulaBuildingId).toBeTruthy();
+    expect(body.inventoryItemId).toBeTruthy();
+    expect(body.capturaExpiraAtMinutes).toBe(480 + 6 * 60); // tier 1 de cuerda = 6h, arranca en 480 (Día 1)
+    capturaItemId = body.inventoryItemId;
 
+    const item = await prisma.inventoryItem.findUniqueOrThrow({ where: { id: capturaItemId } });
+    expect(item.capturaNpcId).toBe(corretolvasId);
+    expect(item.name).toBe('Corretolvas (Capturado) (5)'); // MEDIANA = 5 slots
+
+    // El NpcState de origen se libera de nuevo — la captura ya no vive ahí, vive en el inventario.
+    const state = await prisma.npcState.findFirstOrThrow({ where: { saveId, npcId: corretolvasId } });
+    expect(state.capturado).toBe(false);
+    expect(state.capturaJaulaBuildingId).toBeNull();
+
+    const cuerdas = await prisma.inventoryItem.findFirst({ where: { saveId, catalogSlug: 'cuerdas' } });
+    expect(cuerdas).toBeNull();
+  });
+
+  it('POST /capturar/:npcSlug de un segundo objetivo falla — solo 1 captura activa a la vez', async () => {
+    await prisma.inventoryItem.create({ data: { saveId, name: 'Cuerdas', description: 'x', catalogSlug: 'cuerdas' } });
+    const app = await buildApp();
+    const res = await app.inject({ method: 'POST', url: `/saves/${saveId}/capturar/corretolvas` });
+    expect(res.statusCode).toBe(400);
+    expect(res.json().error).toMatch(/ya llevas una captura/i);
+  });
+
+  it('POST /capturas/:itemId/depositar mueve la captura del inventario a la Jaula — NpcState.capturado=true de nuevo', async () => {
+    const app = await buildApp();
+    const res = await app.inject({ method: 'POST', url: `/saves/${saveId}/capturas/${capturaItemId}/depositar` });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().jaulaBuildingId).toBeTruthy();
+
+    expect(await prisma.inventoryItem.findUnique({ where: { id: capturaItemId } })).toBeNull();
     const state = await prisma.npcState.findFirstOrThrow({ where: { saveId, npcId: corretolvasId } });
     expect(state.capturado).toBe(true);
     expect(state.capturaJaulaBuildingId).toBeTruthy();
 
-    const cuerdas = await prisma.inventoryItem.findFirst({ where: { saveId, catalogSlug: 'cuerdas' } });
-    expect(cuerdas).toBeNull();
+    // La cuerda "de sobra" del test anterior sigue en el inventario, sin usarse — la limpia para
+    // no interferir con el resto de tests de este describe.
+    await prisma.inventoryItem.deleteMany({ where: { saveId, catalogSlug: 'cuerdas' } });
   });
 
   it('GET /tameo-pendientes ya lista al Corretolvas capturado, con Felicidad 0/umbral', async () => {
@@ -210,6 +244,73 @@ describe('Compañeros: cobertura de ruta — captura → tameo → confirmar (au
     const body = res.json();
     expect(body.companion).toMatchObject({ sourceSlug: 'corretolvas', tipo: 'FAUNA', felicidad: 90 });
     expect(await prisma.companion.count({ where: { saveId, sourceSlug: 'corretolvas' } })).toBe(1);
+  });
+});
+
+/// Bug ORIGINAL que dispara todo el rediseño (2026-08-28, docs/rpgtarkor/captura-rediseno-2026-08-28.md
+/// § "Bug original que dispara este documento"): capturar a UN individuo de un grupo cazado de 2+
+/// del mismo tipo rompía la caza del resto — `NpcState` es una fila COMPARTIDA por especie+scope,
+/// capturar marcaba `capturado: true` en ella sin saber nada de `groupSize`/`groupDefeated`. Este
+/// test reproduce el escenario exacto (2 buitres cazados en grupo, capturar solo el primero) y
+/// verifica que el segundo individuo sigue cazable con normalidad.
+describe('Compañeros: captura en grupo — el bug original (2026-08-28)', () => {
+  let saveId: string;
+  let hondonadaId: string;
+  let buitreId: string;
+
+  beforeAll(async () => {
+    const userId = await getDefaultUserId();
+    const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
+    const hondonada = await prisma.location.findFirstOrThrow({ where: { worldId: world.id, slug: 'hondonada-del-eco' } });
+    hondonadaId = hondonada.id;
+    const buitre = await prisma.npc.findFirstOrThrow({ where: { worldId: world.id, slug: 'buitre-cenizo' } });
+    buitreId = buitre.id;
+
+    const save = await prisma.save.create({
+      data: {
+        userId,
+        worldId: world.id,
+        characterName: 'Gorhorn de prueba (captura en grupo)',
+        characterArchetype: 'guerrero',
+        characterOrigin: 'Clan Maktor',
+        characterMotivation: 'x',
+        attributes: { fuerza: 10, destreza: 10, constitucion: 10, inteligencia: 10, voluntad: 10, carisma: 10, arcano: 10 },
+        portraitInitial: 'G',
+        currentLocationId: hondonada.id,
+      },
+    });
+    saveId = save.id;
+    await prisma.inventoryItem.create({ data: { saveId, name: 'Cuerdas', description: 'x', catalogSlug: 'cuerdas' } });
+    // Grupo de 2 buitres, el primero ya GRAVE (capturable) — mismo shape que deja `cazar.ts` a
+    // mitad de una caza en grupo real: 1 fila NpcState, groupSize=2, groupDefeated=0 (ninguno
+    // MUERTO todavía, este está GRAVE = capturable sin necesidad de matarlo).
+    await prisma.npcState.create({
+      data: { saveId, npcId: buitreId, scope: hondonadaId, condicionFisica: 'GRAVE', groupSize: 2, groupDefeated: 0 },
+    });
+  });
+
+  afterAll(async () => {
+    await prisma.inventoryItem.deleteMany({ where: { saveId } });
+    await prisma.npcState.deleteMany({ where: { saveId } });
+    await prisma.save.delete({ where: { id: saveId } });
+  });
+
+  it('capturar al primer buitre GRAVE resucita la misma fila a ILESO para el segundo — el grupo sigue cazable', async () => {
+    const app = await buildApp();
+    const res = await app.inject({ method: 'POST', url: `/saves/${saveId}/capturar/buitre-cenizo` });
+    expect(res.statusCode).toBe(200);
+
+    // El bug original: antes esta fila se quedaba GRAVE+capturado=true para siempre, bloqueando al
+    // segundo individuo del grupo. Ahora debe "resucitar" a ILESO — mismo criterio EXACTO que
+    // `grupoContinua` en combate normal (turnResolution.ts).
+    const state = await prisma.npcState.findFirstOrThrow({ where: { saveId, npcId: buitreId } });
+    expect(state.condicionFisica).toBe('ILESO');
+    expect(state.groupDefeated).toBe(1);
+    expect(state.capturado).toBe(false);
+
+    // La captura del primero sigue viva, en el inventario, sin perderse.
+    const item = await prisma.inventoryItem.findFirstOrThrow({ where: { saveId, capturaNpcId: buitreId } });
+    expect(item.name).toBe('Buitre Cenizo (Capturado) (3)'); // PEQUEÑA = 3 slots
   });
 });
 
@@ -380,5 +481,105 @@ describe('Compañeros: cobertura de ruta — plantillas de equipo (auditoría de
     expect(resSubject.statusCode).toBe(200);
     const subject = await prisma.subject.findUniqueOrThrow({ where: { id: subjectId } });
     expect(subject.plantillaEquipoId).toBe(plantilla.id);
+  });
+});
+
+// BUG CERRADO (2026-08-29, ver comentario de `CombatParticipant.dismissedGrupo` en schema.prisma —
+// mismo hueco exacto que Clemente, confirmado por code review antes de este fix): dentro de un
+// `CombatEncounter` real, un miembro de grupo tiene su condición real en
+// `CombatParticipant.condicionFisicaGrupo`, no en `NpcState` (fila compartida por la especie) — el
+// camino sin `participantId` nunca la resolvía bien. Con `participantId`, Capturar ahora lee esa
+// condición real y marca `dismissedGrupo: true` en el propio `CombatParticipant` al atar con éxito.
+describe('POST /saves/:id/capturar/:npcSlug con participantId (combate múltiple real, bug real 2026-08-29)', () => {
+  let saveId: string;
+  let encounterId: string;
+  let objetivo: { id: string };
+  let otro: { id: string };
+  let auladorId: string;
+
+  beforeAll(async () => {
+    const userId = await getDefaultUserId();
+    const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
+    const aullador = await prisma.npc.findFirstOrThrow({ where: { worldId: world.id, slug: 'aullador-rojo' } });
+    auladorId = aullador.id;
+    const hondonada = await prisma.location.findFirstOrThrow({ where: { worldId: world.id, slug: 'hondonada-del-eco' } });
+    const save = await prisma.save.create({
+      data: {
+        userId,
+        worldId: world.id,
+        characterName: 'Gorhorn de prueba (capturar grupo)',
+        characterArchetype: 'guerrero',
+        characterOrigin: 'Clan Maktor',
+        characterMotivation: 'x',
+        attributes: { fuerza: 10, destreza: 10, constitucion: 10, inteligencia: 10, voluntad: 10, carisma: 10, arcano: 10 },
+        portraitInitial: 'G',
+        currentLocationId: hondonada.id,
+      },
+    });
+    saveId = save.id;
+    await prisma.worldState.create({ data: { saveId } });
+    await prisma.inventoryItem.create({ data: { saveId, name: 'Cuerdas', description: 'x', catalogSlug: 'cuerdas' } });
+
+    const { encounterId: eid } = await prisma.$transaction((tx) =>
+      iniciarCombatEncounter(tx, saveId, [
+        { bando: 'JUGADOR', tipo: 'JUGADOR', destreza: 10, inteligencia: 10 },
+        { bando: 'ENEMIGO', tipo: 'NPC', npcId: auladorId, npcScope: 'itinerante-capturar-grupo', destreza: 8, inteligencia: 4, esGrupo: true },
+        { bando: 'ENEMIGO', tipo: 'NPC', npcId: auladorId, npcScope: 'itinerante-capturar-grupo', destreza: 8, inteligencia: 4, esGrupo: true },
+      ]),
+    );
+    encounterId = eid;
+    [objetivo, otro] = await prisma.combatParticipant.findMany({ where: { encounterId, npcId: auladorId }, orderBy: { id: 'asc' } });
+    await prisma.combatParticipant.update({ where: { id: objetivo.id }, data: { condicionFisicaGrupo: 'CONVALECIENTE' } });
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  afterAll(async () => {
+    await prisma.inventoryItem.deleteMany({ where: { saveId } });
+    await prisma.combatEncounter.deleteMany({ where: { saveId } });
+    await prisma.npcState.deleteMany({ where: { saveId } });
+    await prisma.save.delete({ where: { id: saveId } });
+  });
+
+  it('ata al participante indicado, marca dismissedGrupo SOLO en él y consume las cuerdas', async () => {
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: `/saves/${saveId}/capturar/aullador-rojo`,
+      payload: { participantId: objetivo.id },
+    });
+    expect(res.statusCode).toBe(200);
+    const body = res.json();
+    expect(body).toMatchObject({ npcSlug: 'aullador-rojo', tipo: 'FAUNA' });
+    expect(body.inventoryItemId).toBeTruthy();
+
+    const item = await prisma.inventoryItem.findUniqueOrThrow({ where: { id: body.inventoryItemId } });
+    expect(item.capturaNpcId).toBe(auladorId);
+    expect(item.capturaScope).toBe('itinerante-capturar-grupo');
+
+    const cuerdas = await prisma.inventoryItem.findFirst({ where: { saveId, catalogSlug: 'cuerdas' } });
+    expect(cuerdas).toBeNull(); // consumida
+
+    const objetivoFresco = await prisma.combatParticipant.findUniqueOrThrow({ where: { id: objetivo.id } });
+    const otroFresco = await prisma.combatParticipant.findUniqueOrThrow({ where: { id: otro.id } });
+    expect(objetivoFresco.dismissedGrupo).toBe(true);
+    expect(otroFresco.dismissedGrupo).not.toBe(true); // el otro individuo del grupo no se ve afectado
+  });
+
+  it('400 si se intenta atar de nuevo al mismo participante ya resuelto', async () => {
+    // Suelta la captura en tránsito del test anterior (mismo criterio que "solo 1 captura activa a
+    // la vez") para poder llegar al chequeo real de `dismissedGrupo`, no al de "ya llevas una
+    // captura sin resolver".
+    await prisma.inventoryItem.deleteMany({ where: { saveId, capturaNpcId: { not: null } } });
+    await prisma.inventoryItem.create({ data: { saveId, name: 'Cuerdas', description: 'x', catalogSlug: 'cuerdas' } });
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: `/saves/${saveId}/capturar/aullador-rojo`,
+      payload: { participantId: objetivo.id },
+    });
+    expect(res.statusCode).toBe(400);
   });
 });

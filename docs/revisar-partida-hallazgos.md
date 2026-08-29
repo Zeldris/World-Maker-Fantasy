@@ -136,6 +136,24 @@ Cada entrada: fecha, qué se detectó (cita textual si es narración), causa ra�
 - [Huecos de vocabulario en guards de honestidad narración-vs-mecánica existentes](#2026-08-25-huecos-de-vocabulario-en-guards-de-honestidad-narración-vs-mecánica-existentes)
 - [Categorías mecánicas sin ningún guard de honestidad correspondiente](#2026-08-25-categorías-mecánicas-sin-ningún-guard-de-honestidad-correspondiente)
 
+**2026-08-27 — playtest en vivo + revisión en 5 fases separadas (funcionalidad/coherencia/vocabulario/lore/UX), primera vez con este formato**
+- [FASE 1 (funcionalidad): sin hallazgos, estado técnico sano](#2026-08-27-fase-1-funcionalidad-sin-hallazgos-estado-técnico-sano)
+- [FASE 2 (coherencia): sessionFacts reintroduce a Gistera Koh "sin nombre" tras respawn pese a un hecho protegido "no volverá a aparecer" — hueco distinto de los guards ya FIJADOS el 2026-08-13](#2026-08-27-fase-2-coherencia-sessionfacts-reintroduce-a-gistera-koh-sin-nombre-tras-respawn-pese-a-un-hecho-protegido-no-volverá-a-aparecer--hueco-distinto-de-los-guards-ya-fijados-el-2026-08-13)
+- [FASE 2 (coherencia, menor): "amuleto de hueso" cae 3 veces en el mismo combate sin memoria narrativa](#2026-08-27-fase-2-coherencia-menor-amuleto-de-hueso-cae-3-veces-en-el-mismo-combate-sin-memoria-narrativa)
+- [FASE 3 (vocabulario/prosa): contradicción interna en la misma frase ("bloquea sin daño" + "mancha roja")](#2026-08-27-fase-3-vocabularioprosa-contradicción-interna-en-la-misma-frase-bloquea-sin-daño--mancha-roja)
+- [FASE 3 (vocabulario/prosa): mezcla de 2ª/3ª persona en la misma narración](#2026-08-27-fase-3-vocabularioprosa-mezcla-de-2ª3ª-persona-en-la-misma-narración)
+- [FASE 3 (vocabulario/prosa, menor): fórmula de impacto reciclada ("mancha roja en tu pecho" ×3)](#2026-08-27-fase-3-vocabularioprosa-menor-fórmula-de-impacto-reciclada-mancha-roja-en-tu-pecho-3)
+- [FASE 4 (lore): el mismo sessionFact contaminado inventa "el río Karot Veku" (es un campamento, no un río)](#2026-08-27-fase-4-lore-el-mismo-sessionfact-contaminado-inventa-el-río-karot-veku-es-un-campamento-no-un-río)
+- [FASE 5 (UX): sin hallazgos, puntos de atributo/contador de muertes correctos](#2026-08-27-fase-5-ux-sin-hallazgos-puntos-de-atributocontador-de-muertes-correctos)
+
+**2026-08-28 — cierre de la partida de pruebas de Gorhorn, análisis en 5 fases (`auditSave.ts`)**
+- [FASE 1 (funcionalidad): dar un objeto a un NPC no lo retira del inventario del jugador](#2026-08-28-fase-1-funcionalidad-dar-un-objeto-a-un-npc-no-lo-retira-del-inventario-del-jugador)
+- [FASE 2 (coherencia): Orco Enfurecido MUERTO reaparece como amenaza viva — mismo síntoma que 2026-08-01, causa DISTINTA](#2026-08-28-fase-2-coherencia-orco-enfurecido-muerto-reaparece-como-amenaza-viva-2-veces--mismo-síntoma-que-el-hallazgo-fijado-2026-08-01-pero-causa-distinta)
+- [FASE 3 (vocabulario/prosa): "lullaby", 3ª vez confirmada de la familia "palabra en inglés colada"](#2026-08-28-fase-3-vocabularioprosa-lullaby-3ª-vez-confirmada-de-la-familia-palabra-en-inglés-colada-en-narración-española)
+- [FASE 3 (vocabulario/prosa): el texto de la acción del jugador se filtra casi literal en la narración](#2026-08-28-fase-3-vocabularioprosa-el-texto-de-la-acción-del-jugador-se-filtra-casi-literal-en-la-narración-con-comillas-y-mayúsculas-de-énfasis-incluidas)
+- [FASE 4 (lore): "orcos del Clan Maktor" como amenaza externa — contradice que es el propio clan aniquilado de Gorhorn](#2026-08-28-fase-4-lore-orcos-del-clan-maktor-como-amenaza-externa--contradice-que-el-clan-maktor-es-el-propio-clan-aniquilado-de-gorhorn)
+- [hallazgos de diseño/mecánica encontrados jugando en vivo — ver checklist-pruebas-juego.md](#2026-08-28-hallazgos-de-diseñomecánica-encontrados-jugando-en-vivo-no-de-este-análisis-de-cierre-ya-registrados-en-docschecklist-pruebas-juegomd)
+
 ---
 
 ## 2026-08-01 — descansar no curaba + objeto médico narrado sin usarse
@@ -3338,3 +3356,240 @@ arnés primero, desproporcionado para este fix). Sin protección añadida en el 
 a propósito — la causa es puramente de ciclo de vida de React, no una condición de carrera real de
 usuaria; no se añade una capa de idempotencia que no hace falta.
 viaje ya existentes), no solo `newFacts`/`newBuilding`.
+
+## 2026-08-27 — playtest en vivo + revisión en 5 fases separadas (primera vez con este formato)
+
+Petición explícita: "cuando revises una partida haz una cosa, divide en fases: primero revisa
+funcionalidad, luego revisar coherencia, luego revisar vocabulario, luego revisar lore y el resto
+de cosas, vas haciendo cada fase individualmente". Formato nuevo del runbook (ver
+`revisar-partida.md`, sección "Fases" añadida el mismo día) — cada fase se investiga y se agota
+antes de pasar a la siguiente, en vez de un único paso 3 monolítico. Partida real de Gorhorn
+(`cmta6mev00001ri7qcfqrspc1`), nivel 2, combate en curso contra el Orco Enfurecido (Hondonada del
+Eco), consultada vía Prisma directo (no `auditSave.ts` esta vez — mismos datos, consulta ad hoc).
+
+### 2026-08-27 (FASE 1: funcionalidad) — sin hallazgos, estado técnico sano
+
+`Save`/`WorldState`/`NpcState`/inventario/misiones revisados campo a campo: `pendingDynamicMode`,
+`characterTransit`, `pausedAt` todos `null` (nada colgado); `deathCount: 1` refleja correctamente
+la muerte/respawn real ya ocurrida; `NpcState.energia: 0` del Orco Enfurecido es fatiga real por uso
+de habilidades (mismo sistema simétrico jugador/NPC), no un bug. Sin hallazgos.
+
+### 2026-08-27 (FASE 2: coherencia) — sessionFacts reintroduce a Gistera Koh "sin nombre" tras respawn pese a un hecho protegido "no volverá a aparecer" — hueco distinto de los guards ya FIJADOS el 2026-08-13
+
+**Síntoma**: turno 08:37, `SessionFact` protegido creado: *"Gistera Koh se marchó hacia la Ciénaga
+Troncal en cuanto Gorhorn aceptó ayudarla — ya no está en escena, no volverá a aparecer."* Tras
+morir en combate contra el Orco Enfurecido y respawnear (09:12, susurro determinista real), el turno
+siguiente (09:13, acción "Busco al perseguidor") generó un `SessionFact` nuevo: *"La orca marcada
+del Clan Serhu, sin nombre revelado todavía, aparece en la Hondonada del Eco."* — mismo gancho
+narrativo literal que la primera aparición de Gistera Koh a las 08:00, como si el encuentro se
+reseteara desde cero, sin memoria de que ya se conocieron ni de que ella ya se había ido para
+siempre.
+
+**Causa raíz — distinta de los 2 guards ya FIJADOS el 2026-08-13** (`hasFalseGisteraNamedReturn` y
+`hasGisteraReencuentroSinNombrar`, narrador.ts — ambos comprueban la NARRACIÓN LIBRE generada por
+el LLM contra `ctx.gisteraSeHaMarchado`): `detectNpcsInScene` (`npcScene.ts:414-415`) construye su
+`haystack` de detección concatenando `[action, ...sessionFacts]` y hace `matchNpcAliases` sobre ese
+texto crudo, SIN distinguir si el fact dice que el NPC está presente o que se fue para siempre. El
+propio fact protegido "Gistera Koh... no volverá a aparecer" CONTIENE el nombre "Gistera Koh", así
+que el matcher la vuelve a marcar como candidata legítima en `npcsInScene` — este es el camino
+DETERMINISTA de reintroducción (el motor la trae de vuelta como si el LLM no tuviera vela en el
+asunto), no una alucinación de texto libre. Ninguno de los 2 guards de 2026-08-13 comprueba este
+camino: ambos actúan sobre la narración ya generada, no sobre `npcsInScene` antes de narrar.
+
+**Estado**: PENDIENTE. No se ha aplicado ningún fix todavía (fase de revisión, no de arreglo — la
+usuaria pidió "solo anotar" en el momento del hallazgo). Fix candidato a evaluar: en
+`detectNpcsInScene`, excluir del `haystack` de `sessionFacts` cualquier fact que contenga el propio
+NPC junto a vocabulario de despedida/cierre ("no volverá a aparecer", "se marchó para siempre" —
+mismo vocabulario que ya usa `gisteraSeHaMarchado` en narrador.ts), o mantener un flag persistido
+por NPC tipo `Save.npcsRetiredForever: string[]` consultado ANTES de construir `npcsInScene`, más
+robusto que parsear vocabulario del propio fact.
+
+### 2026-08-27 (FASE 2: coherencia, menor) — "amuleto de hueso" cae 3 veces en el mismo combate sin memoria narrativa
+
+**Síntoma**: mismo combate, mismo objeto real del loadout del Orco Enfurecido (`NpcItem` confirmado
+en BD, no un objeto inventado): "el amuleto de hueso del orco **cae al polvo**" (09:46), "el amuleto
+de hueso del orco **se cae al suelo**" (09:49), "el orco... **tira de su amuleto de hueso y lo
+arroja lejos**" (09:50) — tres eventos de color distintos sobre el mismo objeto sin que nunca se
+saquee ni desaparezca de la narración, como si el LLM no recordara que ya usó ese mismo detalle
+decorativo en turnos anteriores del mismo combate en curso.
+
+**Estado**: PENDIENTE, sin investigar causa raíz (candidato: mismo hueco ya documentado de contexto
+insuficiente de turnos recientes dentro de un combate largo — evaluar si merece su propio guard o
+es tolerable como variación de color).
+
+### 2026-08-27 (FASE 3: vocabulario/prosa) — contradicción interna en la misma frase ("bloquea sin daño" + "mancha roja")
+
+**Síntoma**: turno 09:49: *"El orco enfurecido bloquea eficazmente el ataque de Gorhorn **sin
+daño**, dejando una **mancha roja en su pecho**."* — la misma frase afirma que el bloqueo fue sin
+daño y a la vez describe una herida nueva, con un pronombre posesivo ambiguo ("su pecho": ¿del orco,
+que se supone bloqueó sin daño, o de Gorhorn?). El intercambio mecánico subyacente ya se verificó
+correcto en FASE 1 (el `condicionFisica`/salud reales de ese turno son coherentes) — es puramente
+un problema de redacción, la narración se contradice a sí misma dentro de una sola oración.
+
+**Causa raíz**: ningún guard `hasFalse*` existente compara la narración contra SÍ MISMA — todos
+comparan narración contra el estado mecánico real (turnResolution.ts). Este caso es distinto: el
+estado mecánico es correcto, pero la prosa libre añadió una cláusula decorativa contradictoria.
+
+**Estado**: PENDIENTE, sin fix propuesto — clase de fallo nueva (autocontradicción de prosa sin
+comparación mecánica posible), evaluar si vale la pena un detector de patrones tipo "sin daño...
+mancha/marca/herida" en la misma frase, o si es ruido aceptable de un modelo pequeño.
+
+### 2026-08-27 (FASE 3: vocabulario/prosa) — mezcla de 2ª/3ª persona en la misma narración
+
+**Síntoma**: 2 de 18 narraciones del combate mezclan tercera persona ("Gorhorn levanta...") con
+segunda persona ("tu hacha...", "tu pecho...") dentro del mismo párrafo, sin transición. Turno
+09:12: *"...una voz que no es de este mundo susurra: 'Aún no ha llegado **tu** momento...'.
+**Gorhorn** despierta de golpe..."* (aceptable, es una voz externa citando en 2ª persona, después
+narración en 3ª). Turno 09:47, caso real sin justificar: *"El orco enfurecido tira de su maza orca,
+lanzándola hacia **Gorhorn**... **Tu** hacha rota bloquea el ataque, pero una mancha roja se abre en
+**tu** pecho."* — mismo párrafo, mismo evento, salta de 3ª a 2ª persona sin ninguna razón narrativa.
+
+**Estado**: PENDIENTE, sin investigar si el prompt del narrador especifica una persona gramatical
+fija o la deja libre — revisar `buildNarrationPrompt`/instrucciones de estilo en `narrador.ts` antes
+de proponer un fix (podría ser tan simple como reforzar la instrucción de persona consistente).
+
+### 2026-08-27 (FASE 3: vocabulario/prosa, menor) — fórmula de impacto reciclada ("mancha roja en tu pecho" ×3)
+
+**Síntoma**: la frase "mancha/marca roja en tu/su pecho" aparece 3 veces distintas en el mismo
+combate largo (09:44, 09:47, 09:49) como resultado de intercambios diferentes — vocabulario de
+impacto poco variado, sensación de fórmula reciclada en vez de descripciones distintas por golpe.
+
+**Estado**: PENDIENTE, mismo criterio que la familia "errores gramaticales sueltos del modelo" ya
+documentada (2026-08-08/2026-08-23) — no se propone corrector genérico, solo se deja constancia
+fechada. Podría mitigarse con más ejemplos variados en el prompt, evaluar si merece la pena frente
+al resto de hallazgos pendientes.
+
+### 2026-08-27 (FASE 4: lore) — el mismo sessionFact contaminado inventa "el río Karot Veku" (es un campamento, no un río)
+
+**Síntoma**: mismo turno 09:13 (turno del respawn, ver hallazgo de FASE 2 arriba) generó un segundo
+`SessionFact` inventado: *"Una orca con colores oscuros, similar a las que se encuentran en **el
+río Karot Veku**."* Karot Veku es el nombre real de "Karot Veku - Campamento del Clan Serhu" —
+un asentamiento amurallado con empalizadas y torres de vigía cerca del Pozo de Cauce Viejo,
+confirmado contra `Location` real del catálogo — nunca un río. El LLM confundió un topónimo real
+del mundo con un accidente geográfico inventado, mismo turno contaminado que reintrodujo a Gistera
+Koh (FASE 2), probablemente por el mismo motivo de fondo: el respawn deja al LLM sin anclaje real
+suficiente y rellena el hueco inventando.
+
+**Estado**: PENDIENTE, mismo fix candidato que el hallazgo de FASE 2 (mejor contexto/guards
+alrededor del turno inmediatamente posterior a un respawn) — no se investigó por separado si hace
+falta un guard propio de "topónimos inventados" o si basta con cerrar el hueco de FASE 2.
+
+**Lore de fondo, sin hallazgo**: fichas de catálogo de Gorhorn/Gistera Koh/Orco Enfurecido (Clan
+Serhu, trama de Uhuld Koh, el tótem Maktor) revisadas y coherentes entre sí, sin contradicciones —
+la calidad narrativa de base del catálogo es alta, el problema está en lo que el LLM improvisa
+fuera de ese catálogo, no en el catálogo mismo.
+
+### 2026-08-27 (FASE 5: UX) — sin hallazgos, puntos de atributo/contador de muertes correctos
+
+`pendingAttributePoints: 0` en nivel 2 es correcto (los puntos de atributo (ASI) solo se ganan en
+niveles 4/8/12/16/19..., `progression.ts`, no en nivel 2) — se comprobó antes de reportarlo como
+posible bug. Contador de muertes (`deathCount: 1`, dificultad MEDIO → límite 4) se expone
+correctamente en el header de la UI ("1/4"). Sin hallazgos.
+
+## 2026-08-28 — cierre de la partida de pruebas de Gorhorn, análisis en 5 fases (`auditSave.ts`)
+
+Partida real de Gorhorn (`cmta6mev00001ri7qcfqrspc1`, nivel 3, `CONVALECIENTE`, La Hondonada del
+Eco), usada toda la sesión como partida de pruebas manuales del checklist vivo (ver
+`docs/checklist-pruebas-juego.md`). Al cerrar la sesión de pruebas, análisis completo en 5 fases
+sobre las 129 entradas del log vía `auditSave.ts` — varios de los bugs de mecánica ya se habían
+encontrado y corregido EN VIVO durante la propia sesión de pruebas (ver el checklist para el detalle
+técnico completo de cada fix); aquí se registran formalmente y se añaden los hallazgos de
+coherencia/vocabulario/lore que no habían salido jugando.
+
+### 2026-08-28 (FASE 1: funcionalidad) — dar un objeto a un NPC no lo retira del inventario del jugador
+
+**Síntoma**: turno 08:31, narración: *"Con un gesto seguro, le entrega su cuchillo de hielo sílice
+[a Gistera Koh]"*. El objeto sigue en el inventario real de `Save` (`Cuchillo de hielo sílice
+[ARMA_SECUNDARIA] — inicial`) y reaparece en manos de Gorhorn en 4 turnos posteriores (08:32, 09:48,
+09:51, 10:32) como si nunca se hubiera ido.
+
+**Causa raíz — sin investigar a fondo**: no existe ningún camino determinista que reaccione a "dar
+un objeto a un NPC" narrado en texto libre — a diferencia de recibir botín (que sí tiene un flujo
+determinista, `lootMode`), entregar un objeto parece ser puramente narrativo, sin ningún efecto
+mecánico real sobre `InventoryItem`. Candidato de guard/mecánica: o bien detectar la intención de
+"dar/entregar [objeto] a [NPC]" como un turno determinista que sí retire el `InventoryItem`, o —
+más simple — un guard tipo `hasFalseItemGivenAway` que impida a la narración prometer una entrega
+que la mecánica no puede cumplir (mismo principio que el resto de guards `hasFalse*`).
+
+**Estado**: PENDIENTE, no arreglado — encontrado en el análisis de cierre, no jugando en vivo.
+
+### 2026-08-28 (FASE 2: coherencia) — Orco Enfurecido MUERTO reaparece como amenaza viva 2 veces — mismo síntoma que el hallazgo FIJADO 2026-08-01, pero causa DISTINTA
+
+**Síntoma**: `NpcState` del Orco Enfurecido confirmado `MUERTO`+`saqueado` desde el turno 09:46. Dos
+turnos posteriores narran su presencia activa: 10:15 *"El Orco Enfurecido le sigue con una mirada
+furiosa, dejando una mancha roja en su pecho al bloquear un golpe fallido"* y 14:53 *"la mancha roja
+en su pecho es un recordatorio de la resistencia inusual del Orco Enfurecido"*.
+
+**Causa raíz — CONFIRMADA, distinta de `hasResurrectedDeadNpc` (FIJADO 2026-08-01)**: ese guard (y
+el fix de `agresivoSlugsInScene` de la misma fecha) asumen que existe un `NpcState` real con
+`condicionFisica: MUERTO` que el modelo simplemente ignora al narrar. Aquí la causa fue distinta y
+más profunda: un `NpcState` que **directamente no existía en la base de datos** — un turno de
+remate reenviado manualmente por HTTP (fuera del flujo normal del frontend, para desatascar un bug
+de UI real, ver checklist de hoy) devolvió `combate: null` en su respuesta, señal de que no pasó
+por el camino real de "ejecutar en combate" (`turnResolution.ts:1975-1977`, el que escribe
+`condicionFisica: 'MUERTO'`). Sin ninguna fila de `NpcState`, el motor determinista trató al Orco
+Enfurecido como `ILESO` por defecto y llegó a abrir un `CombatEncounter` NUEVO real contra él en un
+turno posterior — no fue solo un fallo de narración, fue una reintroducción mecánica real.
+
+**Estado**: FIJADO puntualmente en esta partida (`INSERT` manual del `NpcState` correcto, con los
+mismos datos que la UI ya había mostrado). El guard `hasResurrectedDeadNpc` sigue siendo válido para
+su caso original (NPC muerto real, mal narrado) — este hallazgo es un caso de "consecuencia de un
+atajo de diagnóstico", no un hueco nuevo del motor en uso normal. Lección para el futuro: cualquier
+atajo manual por HTTP que sustituya un turno de combate real debe verificar que la respuesta trae
+`combate` no-null antes de darse por completado.
+
+### 2026-08-28 (FASE 3: vocabulario/prosa) — "lullaby", 3ª vez confirmada de la familia "palabra en inglés colada en narración española"
+
+**Síntoma**: turno 10:19, *"El rugido constante de la tormenta de arena magnética... es casi
+**lullaby** en comparación con el silencio que precede a la calma."*
+
+**Causa raíz**: misma familia ya documentada 2 veces ("small clearing" 2026-08-13, "several pasos"
+×2 2026-08-23) — calidad de redacción del modelo local, sin detector determinista barato propuesto
+todavía en ninguna de las apariciones previas.
+
+**Estado**: PENDIENTE — 3ª aparición confirmada del mismo patrón exacto ("palabra en inglés
+completa" en medio de prosa española). La recurrencia ya es alta (3 veces en 3 sesiones de
+revisión distintas) — a valorar si merece un detector genérico (regex simple de palabras inglesas
+comunes/frecuentes) en vez de seguir solo registrando cada aparición nueva.
+
+### 2026-08-28 (FASE 3: vocabulario/prosa) — el texto de la acción del jugador se filtra casi literal en la narración, con comillas y mayúsculas de énfasis incluidas
+
+**Síntoma**: turno 09:37, acción del jugador: *"Ataco con un golpe directo, con el arma que llevo
+en la mano principal, contra 'Orco enfurecido'."* Narración devuelta: *"¡Ataca con un golpe
+directo, con el arma que lleva en la mano **PRINCIPAL**, contra **'Orco enfurecido'**."* — casi una
+copia literal del `promptText` de la habilidad (`weaponAbilities.ts:116`, en 1ª persona minúscula
+en origen) más el nombre del objetivo aún con las comillas que solo tienen sentido como sintaxis de
+`explicitTarget` para el backend, nunca como prosa narrativa real.
+
+**Causa raíz**: sin investigar — ningún guard existente cubre "la narración es casi idéntica al
+texto de entrada en vez de prosa real". Podría ser una clase de fallo nueva (detector de similitud
+alta narración-vs-acción) o simplemente ruido puntual de un modelo pequeño bajo presión.
+
+**Estado**: PENDIENTE, sin fix propuesto — caso aislado (1 vez en 18 turnos de ese combate), no se
+propone corrector genérico todavía.
+
+### 2026-08-28 (FASE 4: lore) — "orcos del Clan Maktor" como amenaza externa — contradice que el Clan Maktor es el propio clan aniquilado de Gorhorn
+
+**Síntoma**: turno 09:47, *"Creo que es tiempo de irme por el camino principal antes de que lleguen
+más goirsentres o **orcos del Clan Maktor**."*
+
+**Causa raíz**: contradicción de lore real y grave — el Clan Maktor es el clan de ORIGEN de Gorhorn,
+aniquilado (hecho protegido, confirmado en su propia quest activa "Recuperar el honor de los
+Maktor": *"el Clan Maktor fue aniquilado y Gorhorn es, que él sepa, el último"*). No puede temer una
+amenaza externa de "orcos del Clan Maktor" — no queda ninguno salvo él. Además "goirsentres" no es
+ninguna palabra real del catálogo (el término correcto es "Goirntes") — probable fusión/alucinación
+del modelo al intentar nombrar a la facción enemiga real de fondo.
+
+**Estado**: PENDIENTE, sin investigar causa técnica exacta — mismo patrón general que otros
+hallazgos de lore inventado (el LLM rellena con un nombre que "suena" del mundo cuando no tiene
+anclaje real suficiente en el contexto de ese turno concreto).
+
+### 2026-08-28 — hallazgos de diseño/mecánica encontrados jugando en vivo (no de este análisis de cierre), ya registrados en `docs/checklist-pruebas-juego.md`
+
+Para no duplicar contenido: la sesión de pruebas de hoy encontró y (en su mayoría) corrigió varios
+bugs reales de mecánica jugando en vivo, todos con su detalle técnico completo ya en el checklist —
+misión que se salta los botones Aceptar/Cancelar, tarjeta Convaleciente que atasca el combate tras
+recargar, saqueo optimista sin reconciliar, descanso que no curaba si se interrumpía por combate
+(CERRADO con fix+test), y 2 cambios de diseño pedidos sin aplicar (riesgo real al Huir dentro de
+combate, retomar un viaje interrumpido tras resolver el evento con éxito). Ver el checklist para el
+detalle completo — no se repiten aquí.

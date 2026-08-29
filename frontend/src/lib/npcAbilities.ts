@@ -1,4 +1,4 @@
-import type { Attribute } from '../types'
+import type { AbilityEffect, Attribute } from '../types'
 import type { EnciclopediaResponse, EnciclopediaAtaqueBase } from './api'
 import type { EnciclopediaLinkTarget } from './enciclopediaIndex'
 import { abilityToDetailTarget, razaToDetailTarget } from './enciclopediaTargets'
@@ -14,6 +14,12 @@ export interface ResolvedAbility {
   /// consultarlo en la enciclopedia") — undefined cuando no hay una página propia a la que
   /// enlazar (Ataque base es calculado, no una entidad de catálogo real).
   detailTarget?: EnciclopediaLinkTarget
+  /// Efecto mecánico real (2026-08-30) — solo las habilidades de CLASE lo llevan (ver
+  /// `EnciclopediaAbilityInfo`); ataque base y habilidades raciales se quedan `undefined` a
+  /// propósito, no tienen ningún bono/efecto más allá del atributo (diseño real, no un hueco de
+  /// datos). El caller (EnemyFicha, CombatPanel.tsx) gatea su visualización tras `analizado`.
+  attributeBonus?: number
+  effects?: AbilityEffect[]
 }
 
 /// Fuente mínima para resolver la lista de habilidades a mostrar en la ficha de combate de un
@@ -52,8 +58,16 @@ export function resolveCombatAbilities(source: CombatAbilitySource, enciclopedia
       const level = source.level ?? Infinity
       for (const unlock of clase.unlocks) {
         if (unlock.level <= level) {
-          const { icon, name, description, preferredAttribute } = unlock.ability
-          abilities.push({ icon, name, description, preferredAttribute, detailTarget: abilityToDetailTarget(unlock.ability, `Nivel ${unlock.level}`) })
+          const { icon, name, description, preferredAttribute, attributeBonus, effects } = unlock.ability
+          abilities.push({
+            icon,
+            name,
+            description,
+            preferredAttribute,
+            attributeBonus,
+            effects,
+            detailTarget: abilityToDetailTarget(unlock.ability, `Nivel ${unlock.level}`),
+          })
         }
       }
     }

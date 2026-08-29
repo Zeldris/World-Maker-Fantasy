@@ -6,6 +6,7 @@ import { MAX_LEVEL, xpProgress } from '../../lib/progression'
 import { PanelSection } from '../PanelSection'
 import { HealthBar } from '../HealthBar'
 import { EnergyBar } from '../EnergyBar'
+import { ResourceBar } from '../ResourceBar'
 
 interface EstadisticasPanelProps {
   // Bug real (auditoría de elementos desconectados, 2026-08-23): el backend ya mandaba estos dos
@@ -90,26 +91,24 @@ export function EstadisticasPanel({
             ['🍖 Comida', hambre],
             ['💧 Agua', sed],
           ] as const).map(([label, pct]) => (
-            <div key={label}>
-              <div className="mb-1 flex items-center justify-between text-2xs text-wood-400">
-                <span>{label}</span>
-                <span className="font-mono tabular-nums">{pct}%</span>
-              </div>
-              <div className="h-1.5 overflow-hidden rounded-full bg-iron-800">
-                <div
-                  className={`h-full rounded-full transition-[width] duration-500 ${
-                    pct < 25 ? 'bg-red-500' : pct < 50 ? 'bg-amber-500' : 'bg-emerald-500'
-                  }`}
-                  style={{ width: `${pct}%` }}
-                />
-              </div>
-            </div>
+            <ResourceBar key={label} label={label} pct={pct} />
           ))}
-          {(hambre < 25 || sed < 25) && (
-            <p className="text-2xs italic text-red-400">
+          {(hambre < 50 || sed < 50) && (
+            // Entrada animada (2026-08-27, auditoría de diseño/UX § 3.2: "el aviso aparece de
+            // golpe, sin ninguna transición" — hambre/sed avanzan solas en el worldTick de fondo,
+            // así que cruzar el umbral puede pasar mientras la jugadora está en otra pestaña; al
+            // menos que la primera vez que se ve el aviso no sea un salto brusco en el DOM).
+            //
+            // B.23 (checklist frontend 2026-08-27) — antes solo 2 estados de texto pese a que la
+            // barra ya tiene 3 umbrales de color (ResourceBar: <25 rojo, <50 ámbar, ≥50 verde). La
+            // banda ámbar se veía amarilla sin ningún mensaje que la acompañara — saltaba directo
+            // de "sin aviso" a "desgaste real" (rojo), como si no pasara nada hasta llegar ahí.
+            <p className={`animate-entry-in text-2xs italic ${hambre < 25 || sed < 25 ? 'text-red-400' : 'text-amber-400'}`}>
               {hambre <= 0 && sed <= 0
                 ? 'Ni comes ni bebes desde hace demasiado — la vida sigue bajando sin suelo mientras siga así.'
-                : 'Llevas demasiado sin comer o beber — el desgaste ya es real, busca comida o agua pronto.'}
+                : hambre < 25 || sed < 25
+                  ? 'Llevas demasiado sin comer o beber — el desgaste ya es real, busca comida o agua pronto.'
+                  : 'Empiezas a notar hambre o sed — no urge todavía, pero no lo dejes pasar mucho más.'}
             </p>
           )}
         </div>
@@ -123,7 +122,7 @@ export function EstadisticasPanel({
           </p>
           <div className="flex flex-wrap gap-2">
             {(Object.keys(attributes) as Attribute[]).map((attr) => (
-              <button
+              <button type="button"
                 key={attr}
                 onClick={() => onSpendPoint(attr)}
                 disabled={attributes[attr] >= 18}

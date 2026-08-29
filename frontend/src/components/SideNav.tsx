@@ -35,7 +35,7 @@ export function SideNav({ tabs, active, onSelect, align, dimmed, disabledIds }: 
         const isDisabled = disabledIds?.includes(tab.id) ?? false
         return (
           <TooltipAnchor key={tab.id} text={isDisabled ? `${tab.label} (no disponible en combate)` : tab.label} className="block w-full">
-            <button
+            <button type="button"
               onClick={() => !isDisabled && onSelect(tab.id)}
               disabled={isDisabled}
               className={`tactile relative flex w-full flex-col items-center gap-0.5 rounded-lg px-1 py-2 text-2xs transition-colors disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent ${

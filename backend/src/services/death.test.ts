@@ -99,6 +99,14 @@ describe('nextCondicionFisica', () => {
     // techo real manda, igual que antes del fix de arriba.
     expect(nextCondicionFisica('GRAVE', 'ILESO', false, 'HERIDO')).toBe('HERIDO');
   });
+
+  it('bug real jugando en vivo (2026-08-28, "descansar en refugio real nunca cura desde CONVALECIENTE"): fuera de combate, el modelo propone un EMPEORAMIENTO (p. ej. un encuentro real merodeando durante el descanso) — el techo de curación real tiene que ganar igual, no descartarse sin más', () => {
+    expect(nextCondicionFisica('CONVALECIENTE', 'MUERTO', false, 'GRAVE')).toBe('GRAVE');
+    expect(nextCondicionFisica('GRAVE', 'CONVALECIENTE', false, 'HERIDO')).toBe('HERIDO');
+    // Sin causa real (healCeiling = current), el empeoramiento propuesto sigue sin aplicar — fuera
+    // de combate el modelo nunca empeora de verdad, coherente con el resto de esta función.
+    expect(nextCondicionFisica('GRAVE', 'CONVALECIENTE', false, 'GRAVE')).toBe('GRAVE');
+  });
 });
 
 describe('healCeilingFor', () => {

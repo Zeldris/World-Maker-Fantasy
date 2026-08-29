@@ -15,6 +15,9 @@ import { defineConfig } from 'vitest/config'
 export default defineConfig({
   test: {
     environment: 'jsdom',
-    include: ['src/lib/**/*.test.ts', 'src/hooks/**/*.test.{ts,tsx}'],
+    // Ampliado (2026-08-28, bug real de LogPanel.tsx investigado — "el foco no siempre baja a la
+    // narración"): primer test de un componente puro (no hook) de `src/components/` — mismo
+    // criterio que la ampliación de 2026-08-25 a `hooks/`, un paso más de la misma dirección.
+    include: ['src/lib/**/*.test.ts', 'src/hooks/**/*.test.{ts,tsx}', 'src/components/**/*.test.tsx'],
   },
 })

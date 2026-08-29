@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { ProfessionProgressInfo, ProfessionRecipeInfo, RecipeStatusInfo, SavedActionCategory, SavedActionInfo } from '../../types'
 import { professions } from '../../data/professions'
 import { REINO_ABILITY_RECIPE_KEY } from '../../data/reinoRecipes'
@@ -7,10 +7,16 @@ import { PanelEmptyState } from '../PanelEmptyState'
 import { PanelSection } from '../PanelSection'
 import { IconCard } from '../IconCard'
 import { AbilityForm } from '../AbilityForm'
+import { CombatAbilityBelt, CombatAbilityToggleGrid } from '../CombatAbilityBelt'
+import { abilityBonusSuffix } from '../../lib/abilityBonusSuffix'
 
 interface HabilidadesPanelProps {
   savedActions: SavedActionInfo[]
   combatSlots: number
+  /// "Cinturón de combate" (2026-08-28, pendiente 2026-08-27 punto 3) — nombres activos AHORA
+  /// MISMO, ya resueltos por el backend (ver GET /saves/:id § activeCombatAbilityNames).
+  activeCombatAbilityNames: string[]
+  onChangeActiveCombatAbilityNames: (names: string[]) => void
   professionProgress: ProfessionProgressInfo[]
   professionRecipes: ProfessionRecipeInfo[]
   /// Estado real de materiales/atributos/ubicación de cada receta EN ESTA PARTIDA (2026-08-13,
@@ -74,7 +80,7 @@ function AbilityGrid({
       {abilities.map((a) => {
         const status = statusFor?.(a.name)
         const passive = PASSIVE_ABILITY_NAMES.has(a.name)
-        const baseTooltip = statusFor ? readinessTooltip(a.description, status) : a.description
+        const baseTooltip = (statusFor ? readinessTooltip(a.description, status) : a.description) + abilityBonusSuffix(a)
         return (
           <IconCard
             key={a.id}
@@ -83,7 +89,8 @@ function AbilityGrid({
             tooltip={passive ? `${baseTooltip}${PASSIVE_TOOLTIP_SUFFIX}` : baseTooltip}
             onUse={() => onUse(a)}
             onDetail={() => onDetail(a)}
-            disabled={passive || (status && !status.met)}
+            disabled={!passive && !!(status && !status.met)}
+            passive={passive}
             badge={passive ? <span className="absolute -left-1 -top-1 rounded-full border border-iron-700 bg-wood-950 px-1 text-[9px] text-wood-400">Pasiva</span> : undefined}
           />
         )
@@ -92,9 +99,32 @@ function AbilityGrid({
   )
 }
 
+/// Pop en una subida real de nivel de profesión (2026-08-27, auditoría de diseño/UX § 3.3: "un
+/// nivel de profesión que sube... es la misma categoría de evento que subir de nivel de personaje,
+/// que sí tiene su chip animado en el header" — mismo patrón "pop counter" que `levelPop`/
+/// `deathPop` en GameView.tsx, nunca al montar por primera vez).
+function ProfessionLevelLabel({ nivel, label }: { nivel: number; label: string }) {
+  const [pop, setPop] = useState(0)
+  const prevRef = useRef(nivel)
+  useEffect(() => {
+    if (prevRef.current !== nivel) {
+      setPop((p) => p + 1)
+      prevRef.current = nivel
+    }
+  }, [nivel])
+
+  return (
+    <span key={pop} className={`font-mono tabular-nums text-wood-500 ${pop > 0 ? 'animate-pop-once' : ''}`}>
+      {label}
+    </span>
+  )
+}
+
 export function HabilidadesPanel({
   savedActions,
   combatSlots,
+  activeCombatAbilityNames,
+  onChangeActiveCombatAbilityNames,
   professionProgress,
   professionRecipes,
   recipesStatus,
@@ -108,6 +138,15 @@ export function HabilidadesPanel({
   // Ver la cuadrícula y crear una nueva ya no se muestran a la vez (petición explícita de la
   // usuaria, 2026-07-21) — solo aplica a "general" (combate no tiene formulario de creación).
   const [showCreateForm, setShowCreateForm] = useState(false)
+
+  // "Cinturón de combate" (2026-08-28) — añade/quita un nombre, siempre al final si se añade
+  // (arrastrar dentro del cinturón decide el orden después, si el jugador quiere reordenar).
+  function toggleActiveCombatAbility(name: string) {
+    const next = activeCombatAbilityNames.includes(name)
+      ? activeCombatAbilityNames.filter((n) => n !== name)
+      : [...activeCombatAbilityNames, name]
+    onChangeActiveCombatAbilityNames(next)
+  }
 
   const inTab = savedActions.filter((a) => a.category === tab)
   // Rediseño "tope de 10" (2026-07-29): las habilidades de combate son fijas por raza/arma/clase
@@ -169,7 +208,7 @@ export function HabilidadesPanel({
   return (
     <div className="flex flex-col gap-5">
       <div className="flex gap-2 border-b border-iron-700">
-        <button
+        <button type="button"
           onClick={() => setTab('general')}
           className={`border-b-2 px-3 py-2 text-sm transition-colors ${
             tab === 'general' ? 'border-accent-500 font-medium text-accent-300' : 'border-transparent text-wood-400 hover:text-wood-200'
@@ -177,7 +216,7 @@ export function HabilidadesPanel({
         >
           Generales
         </button>
-        <button
+        <button type="button"
           onClick={() => setTab('combate')}
           className={`border-b-2 px-3 py-2 text-sm transition-colors ${
             tab === 'combate' ? 'border-accent-500 font-medium text-accent-300' : 'border-transparent text-wood-400 hover:text-wood-200'
@@ -185,7 +224,7 @@ export function HabilidadesPanel({
         >
           Combate
         </button>
-        <button
+        <button type="button"
           onClick={() => setTab('profesion')}
           className={`border-b-2 px-3 py-2 text-sm transition-colors ${
             tab === 'profesion' ? 'border-accent-500 font-medium text-accent-300' : 'border-transparent text-wood-400 hover:text-wood-200'
@@ -193,7 +232,7 @@ export function HabilidadesPanel({
         >
           Profesiones
         </button>
-        <button
+        <button type="button"
           onClick={() => setTab('reino')}
           className={`border-b-2 px-3 py-2 text-sm transition-colors ${
             tab === 'reino' ? 'border-accent-500 font-medium text-accent-300' : 'border-transparent text-wood-400 hover:text-wood-200'
@@ -205,7 +244,7 @@ export function HabilidadesPanel({
 
       {tab === 'general' && (
         <div className="flex gap-1.5 self-start rounded-lg border border-iron-700 bg-wood-950/40 p-1">
-          <button
+          <button type="button"
             onClick={() => setShowCreateForm(false)}
             className={`rounded-md px-3 py-1 text-xs transition-colors ${
               !showCreateForm ? 'bg-accent-500/15 text-accent-300' : 'text-wood-400 hover:text-wood-200'
@@ -213,7 +252,7 @@ export function HabilidadesPanel({
           >
             Ver habilidades
           </button>
-          <button
+          <button type="button"
             onClick={() => setShowCreateForm(true)}
             className={`rounded-md px-3 py-1 text-xs transition-colors ${
               showCreateForm ? 'bg-accent-500/15 text-accent-300' : 'text-wood-400 hover:text-wood-200'
@@ -252,9 +291,10 @@ export function HabilidadesPanel({
                 <div key={profession.id}>
                   <div className="mb-1 flex items-center justify-between text-xs">
                     <span className="font-medium text-wood-100">{profession.name}</span>
-                    <span className="font-mono tabular-nums text-wood-500">
-                      {progress.nivel >= MAX_PROFESSION_LEVEL ? `Nivel ${progress.nivel} (máximo)` : `Nivel ${progress.nivel} — ${current}/${span} XP`}
-                    </span>
+                    <ProfessionLevelLabel
+                      nivel={progress.nivel}
+                      label={progress.nivel >= MAX_PROFESSION_LEVEL ? `Nivel ${progress.nivel} (máximo)` : `Nivel ${progress.nivel} — ${current}/${span} XP`}
+                    />
                   </div>
                   <div className="mb-2 h-1 overflow-hidden rounded-full bg-iron-800">
                     <div
@@ -311,7 +351,7 @@ export function HabilidadesPanel({
         <>
           <p className="text-2xs text-wood-400">
             {tab === 'combate'
-              ? `Habilidades activas: ${combatUsed} / ${combatSlots} (2 raciales + 1-2 de arma equipada + 4 de clase) — solo consulta, para atacar usa el panel de Combate durante un enfrentamiento.`
+              ? `Aprendidas: ${combatUsed} / ${combatSlots} (2 raciales + 1-2 de arma equipada + 4 de clase) — marca cuáles quieres en el cinturón de combate, abajo.`
               : 'Sin límite de huecos.'}
           </p>
 
@@ -331,31 +371,43 @@ export function HabilidadesPanel({
             // `isStarting` (de clase, fijas de por vida). Ninguna de las tres es editable/borrable
             // a mano (ver DetailModal.tsx).
             //
-            // Solo información (petición explícita, 2026-08-07: "las de combate pasará a ser solo
-            // de informacion, para saber y elegir las habilidades que quieres usar") — pulsar la
-            // tarjeta ya no manda la acción (eso solo tenía sentido fuera de combate); ahora abre
-            // la misma ficha que el botón ⓘ. El combate real se sigue eligiendo y atacando desde
-            // CombatPanel durante un enfrentamiento, sin cambios ahí.
-            <div className="space-y-3">
+            // "Cinturón de combate" (2026-08-28, pendiente 2026-08-27 punto 3) — las genéricas
+            // siguen solo-consulta (siempre disponibles en combate, nunca ocupan slot); las
+            // raciales/de arma y de clase ahora se ACTIVAN/DESACTIVAN con un click (ver
+            // CombatAbilityToggleGrid) en vez de solo abrir el detalle — eso se hace con el botón ⓘ.
+            <div className="space-y-4">
+              <CombatAbilityBelt
+                abilities={inTab.filter((a) => !a.isGeneric)}
+                activeNames={activeCombatAbilityNames}
+                onChange={onChangeActiveCombatAbilityNames}
+              />
               {inTab.some((a) => a.isGeneric) && (
                 <div>
-                  <p className="mb-1 text-2xs font-semibold uppercase tracking-[0.1em] text-wood-500">Acciones básicas</p>
+                  <p className="mb-1 text-2xs font-semibold uppercase tracking-[0.1em] text-wood-500">Acciones básicas (siempre disponibles)</p>
                   <AbilityGrid abilities={inTab.filter((a) => a.isGeneric)} onUse={onDetail} onDetail={onDetail} />
                 </div>
               )}
               {inTab.some((a) => a.isDynamic && !a.isGeneric) && (
                 <div>
                   <p className="mb-1 text-2xs font-semibold uppercase tracking-[0.1em] text-wood-500">Raciales y de arma equipada</p>
-                  <AbilityGrid abilities={inTab.filter((a) => a.isDynamic && !a.isGeneric)} onUse={onDetail} onDetail={onDetail} />
+                  <CombatAbilityToggleGrid
+                    abilities={inTab.filter((a) => a.isDynamic && !a.isGeneric)}
+                    activeNames={activeCombatAbilityNames}
+                    onToggle={toggleActiveCombatAbility}
+                    onDetail={onDetail}
+                    atMax={activeCombatAbilityNames.length >= 6}
+                  />
                 </div>
               )}
               {inTab.some((a) => a.isStarting && !a.isDynamic && !a.isGeneric && a.energyCost > 0) && (
                 <div>
                   <p className="mb-1 text-2xs font-semibold uppercase tracking-[0.1em] text-wood-500">De clase</p>
-                  <AbilityGrid
+                  <CombatAbilityToggleGrid
                     abilities={inTab.filter((a) => a.isStarting && !a.isDynamic && !a.isGeneric && a.energyCost > 0)}
-                    onUse={onDetail}
+                    activeNames={activeCombatAbilityNames}
+                    onToggle={toggleActiveCombatAbility}
                     onDetail={onDetail}
+                    atMax={activeCombatAbilityNames.length >= 6}
                   />
                 </div>
               )}
@@ -366,12 +418,41 @@ export function HabilidadesPanel({
 
           {tab === 'combate' && (
             <PanelSection title="De dónde salen">
-              <p className="text-xs text-wood-500 italic">
-                Ataque Básico, Defenderse y Esquivar los tiene cualquier personaje, siempre disponibles: Ataque Básico cuesta poca energía y se adapta
-                al arma que lleves equipada; Defenderse y Esquivar no cuestan nada y encima recuperan energía. El resto son fijas, no se crean a mano:
-                2 raciales (ataque + defensa de tu raza), 1-2 del arma que llevas equipada (una por categoría distinta en cada mano — llevar 2 del
-                mismo tipo da solo una, pero mejor) + 1 más al alcanzar el nivel avanzado, y 4 de tu clase — todas gastan energía real al usarlas.
-              </p>
+              {/* C.13 (checklist frontend 2026-08-27) — párrafo denso reestructurado en lista escaneable,
+                  mismo lenguaje visual de badge+texto que el resto del panel. */}
+              <ul className="space-y-2 text-xs text-wood-400">
+                <li className="flex items-start gap-2">
+                  <span className="mt-0.5 rounded-full border border-iron-700 bg-iron-800 px-2 py-0.5 text-2xs font-semibold uppercase tracking-wide text-wood-400">
+                    Siempre
+                  </span>
+                  <span>
+                    Ataque Básico, Defenderse y Esquivar — cualquier personaje las tiene. Ataque Básico cuesta poca energía y se adapta al arma
+                    equipada; Defenderse y Esquivar no cuestan nada y encima recuperan energía.
+                  </span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="mt-0.5 rounded-full border border-iron-700 bg-iron-800 px-2 py-0.5 text-2xs font-semibold uppercase tracking-wide text-wood-400">
+                    2 raciales
+                  </span>
+                  <span>Ataque y defensa fijas de tu raza.</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="mt-0.5 rounded-full border border-iron-700 bg-iron-800 px-2 py-0.5 text-2xs font-semibold uppercase tracking-wide text-wood-400">
+                    1-2 de arma
+                  </span>
+                  <span>
+                    Una por categoría distinta en cada mano equipada (2 del mismo tipo dan solo una, pero mejor), + 1 más al alcanzar el nivel
+                    avanzado.
+                  </span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="mt-0.5 rounded-full border border-iron-700 bg-iron-800 px-2 py-0.5 text-2xs font-semibold uppercase tracking-wide text-wood-400">
+                    4 de clase
+                  </span>
+                  <span>Fijas según tu clase.</span>
+                </li>
+              </ul>
+              <p className="mt-2 text-2xs italic text-wood-500">Ninguna se crea a mano — todas menos Defenderse/Esquivar gastan energía real al usarlas.</p>
             </PanelSection>
           )}
         </>

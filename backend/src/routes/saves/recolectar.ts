@@ -179,6 +179,13 @@ async function candidateSourcesFor(
     // haber muchas plantas y en zonas humedas deberias haber mas") — mismo punto que el filtro de
     // región de arriba, ver terrain.ts.
     if (!pasaFiltroTerreno(locationSlug ? locationTerrainTags[locationSlug] : undefined, harvestSourceTerrainTag[pop.targetSlug])) continue;
+    // Anclaje a Location EXACTA (checklist consolidado P1.1, 2026-08-27, bug real jugando en vivo:
+    // Roca Luclara — con `harvestSourceHomeLocationSlug: 'sabana-alta-colmillar'` — salía minable
+    // en La Hondonada del Eco): antes este campo solo se aplicaba en `pasivoCandidatesFor`
+    // (recursos PASIVO), nunca en MINERIA/TALA/EXTRACCION — mismo criterio de comparación estricta
+    // que ahí. Recursos sin el campo definido (la mayoría) no cambian de comportamiento.
+    const homeSlug = harvestSourceHomeLocationSlug[pop.targetSlug];
+    if (homeSlug && homeSlug !== locationSlug) continue;
     const sourceRows = (bySlug.get(pop.targetSlug) ?? []).filter(
       (r) => pasaFiltroEstacion(r.estacionRequerida, estacionActual) && pasaFiltroClima(r.climaRequerido, climaActual),
     );
@@ -382,6 +389,25 @@ function invalidateRollCacheFor(saveId: string, currentCache: unknown, touchedSo
     if (!entry.sources.some((s) => touchedSourceSlugs.has(s.sourceSlug))) next[oficio] = entry;
   }
   return prisma.save.update({ where: { id: saveId }, data: { harvestRollCache: next as unknown as Prisma.InputJsonValue } });
+}
+
+/// Bug real (2026-08-29, reverificación en vivo tras cerrar combate múltiple): un cadáver que
+/// aparece DESPUÉS de que el `useEffect` pasivo del frontend ya congeló `desollador` en `{sources:
+/// []}` para esta ubicación (típicamente, cualquier combate que ocurra tras entrar a la escena)
+/// quedaba huérfano para siempre en esa visita — `invalidateRollCacheFor` de arriba solo invalida
+/// entradas cuyos `sources` mencionen el slug tocado, pero una entrada VACÍA no tiene ningún slug
+/// que tocar. A diferencia de una recolección confirmada (donde se sabe exactamente qué
+/// `sourceSlug` se tocó), un turno que mata a un NPC en combate (1v1, Decapitar o múltiple) no
+/// tiene ese dato a mano en `turnResolution.ts` sin duplicar lógica en los 3 caminos — más simple y
+/// igual de correcto: si este turno dejó algún NPC MUERTO en la ubicación actual, tirar la entrada
+/// `desollador` entera para esa ubicación (si la había), forzando que la próxima consulta pasiva
+/// vuelva a tirar de verdad. `tx` porque esto corre dentro de la transacción principal del turno.
+export function invalidateCarcassRollCache(tx: Prisma.TransactionClient, saveId: string, currentCache: unknown, locationId: string | null) {
+  const cache = currentCache as HarvestRollCache | null;
+  const entry = cache?.['desollador'];
+  if (!entry || entry.locationId !== locationId) return Promise.resolve();
+  const { desollador: _omit, ...next } = cache!;
+  return tx.save.update({ where: { id: saveId }, data: { harvestRollCache: next as unknown as Prisma.InputJsonValue } });
 }
 
 export async function recolectarRoutes(app: FastifyInstance) {

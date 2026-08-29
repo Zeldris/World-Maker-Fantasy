@@ -1470,6 +1470,16 @@ export const fauna: NpcInput[] = [
     loadout: [],
     ataqueNatural: 'Muerde con mandíbulas pequeñas pero constantes, buscando puntos ya heridos.',
     temperamento: 'CAUTELOSO',
+    // Hueco de datos real encontrado jugando en vivo (2026-08-29): sin `capturablePct` (default 0
+    // en el schema), `avistadosFor` (cazar.ts) siempre da 1 avistado sin importar la población real
+    // — el combate múltiple (Grupo 3 § Mundo determinista, Capa 4) era matemáticamente inalcanzable
+    // cazando en La Hondonada del Eco, la única zona con `ZonePoint` sembrado hoy. Gesgurio es el
+    // candidato natural (insecto abundante, población real más alta de la zona — ver
+    // `worldPopulation.ts` — bio coherente con aparecer en grupo, a diferencia de Kirelon Arenoso,
+    // depredador solitario de alto nivel). Valor bajo-medio (no es fácil de avistar en grupo real,
+    // "sigiloso... sin ser detectado" en su propia bio) — sirve para que `avistadosFor(30, 2146) =
+    // round(30/10) = 3` dé un grupo real sin ser un valor arbitrario alto.
+    capturablePct: 30,
     habilidadesRaciales: [
       { icon: '🦴', name: 'Emboscada camuflada', description: 'Ataca desde el camuflaje contra la roca, sin que la presa lo vea venir.', categoria: 'ataque', preferredAttribute: 'destreza' },
       { icon: '🛡️', name: 'Caparazón de arcilla', description: 'El caparazón absorbe golpes directos casi tan bien como la propia roca a la que imita.', categoria: 'defensa', preferredAttribute: 'constitucion' },
@@ -2432,6 +2442,34 @@ export const npcs: NpcInput[] = [
     cortejablePct: 10,
     loadout: [],
   },
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // INVOCACIONES DE COMBATE (Fase 3 § 3d, 2026-08-27, docs/21-roadmap.md) — ficha de catálogo
+  // normal (kind PLANTILLA, repetible) para que un tótem invocado sea reconocible como cualquier
+  // otro NPC en la Enciclopedia — se descubre solo, por mención en la narración de combate, mismo
+  // mecanismo que el resto del catálogo (entityDiscovery.ts), sin campo de "temporalidad" nuevo:
+  // el tótem individual dura 1-2 turnos en un combate concreto, pero su ficha es permanente. Sin
+  // `raza`/`clase` (objeto invocado, no un ser inteligente con equipo propio, mismo criterio que
+  // fauna) — el eje "humanoide no-inteligente estilo murloc" que la usuaria pidió para futuras
+  // invocaciones queda deliberadamente sin construir aquí, ver memoria de sesión 2026-08-27.
+  // ══════════════════════════════════════════════════════════════════════════
+
+  {
+    slug: 'totem-de-guerra',
+    name: 'Tótem de Guerra',
+    kind: 'PLANTILLA',
+    aliases: ['totem de guerra', 'el totem'],
+    faction: null,
+    role: 'Invocación de combate del Chamán — aguanta un golpe, ataca dos turnos y desaparece',
+    articulo: 'el',
+    level: 1,
+    attributes: { fuerza: 8, destreza: 6, constitucion: 4, inteligencia: 1, voluntad: 1, carisma: 1, arcano: 10 },
+    bio: 'Un tótem de madera y hueso tallado en plena batalla, clavado en tierra por un Chamán — no piensa ni actúa por voluntad propia, solo canaliza la magia de quien lo invocó mientras dura. Se astilla y cae al primer golpe certero que reciba, o en cuanto se agota su breve tiempo en pie.',
+    personality: 'No tiene personalidad propia — objeto animado brevemente, no un ser con voluntad.',
+    temperamento: 'AGRESIVO',
+    ataqueNatural: 'Descarga de energía arcana concentrada a través de la talla del tótem',
+    loadout: [],
+  },
 ];
 
 export interface ItemCatalogInput {
@@ -2876,6 +2914,10 @@ export const items: ItemCatalogInput[] = [
     // POST /capturar/:npcSlug (companeros.ts), sustituye a trampa-de-lazo (que no era
     // crafteable). Se consume 1 unidad por captura con éxito, a diferencia de trampa-de-lazo
     // (equipable, reutilizable).
+    // tier explícito (2026-08-28, rediseño de captura — ver plazoCapturaHorasForTier,
+    // companionSupervivencia.ts): tier 1 = 6h de plazo en inventario antes de escaparse. Ya era el
+    // default de ItemCatalog.tier, se hace explícito porque ahora tiene significado mecánico real.
+    tier: 1,
   },
   {
     slug: 'trampa-de-lazo',
@@ -6352,6 +6394,12 @@ export const harvestSourceHomeLocationSlug: Record<string, string> = {
   // también en La Sabana Alta — hueco real preexistente, no solo de esta pasada.
   guchapo: 'pozo-cauce-viejo',
   lebude: 'pozo-cauce-viejo',
+  // Checklist consolidado 2026-08-27, P1.2 — bug real jugando en vivo (auditoría lore↔código,
+  // 2026-08-23): Quio (Npc.homeLocationSlug ya lo tenía, línea ~1681) apareció narrado el mismo
+  // Día 1 en Hondonada del Eco, Paso de los Pilares Rotos Y Los Manaderos — sin este candado en
+  // la tabla que sí consulta la recolección/caza (distinta de `Npc.homeLocationSlug`, que solo
+  // alimenta `detectNpcsInScene`), quedaba sin anclar a su zona real para desuello/caza.
+  quio: 'manaderos',
   escorante: 'pozo-cauce-viejo',
   'telda-ceniza': 'cruce-de-las-cenizas',
   ferike: 'cruce-de-las-cenizas',

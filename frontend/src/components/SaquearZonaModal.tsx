@@ -64,7 +64,7 @@ export function SaquearZonaModal({ saveId, onConfirm, onCancel }: SaquearZonaMod
       cancelDisabled={confirming}
       footer={
         candidates.length > 0 && (
-          <button onClick={handleConfirmar} disabled={confirming || selected.size === 0} className={confirmButtonClasses('accent')}>
+          <button type="button" onClick={handleConfirmar} disabled={confirming || selected.size === 0} className={confirmButtonClasses('accent')}>
             {confirming ? 'Saqueando...' : 'Saquear seleccionados'}
           </button>
         )

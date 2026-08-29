@@ -18,6 +18,11 @@ export function CapturaModal({ saveId, onCapturado, onCancel }: CapturaModalProp
   const [candidates, setCandidates] = useState<CapturableCandidate[]>([])
   const [tieneCuerdas, setTieneCuerdas] = useState(true)
   const [capturando, setCapturando] = useState<string | null>(null)
+  // Rediseño de captura (2026-08-28): atar ya no deja al objetivo listo para tamear al instante —
+  // se lleva en el inventario hasta depositarlo en una Jaula. Mensaje de éxito propio en vez de
+  // cerrar el modal sin explicación (mismo criterio que el resto de mutaciones deterministas de
+  // este proyecto: confirmar lo que acaba de pasar, no dejarlo implícito).
+  const [atado, setAtado] = useState<{ tipo: 'FAUNA' | 'NPC' } | null>(null)
   const { loading, error: loadError } = useAsyncModalData(
     () => getCapturables(saveId),
     (res) => {
@@ -32,17 +37,20 @@ export function CapturaModal({ saveId, onCapturado, onCancel }: CapturaModalProp
 
   async function handleCapturar(npcSlug: string) {
     setCapturando(npcSlug)
-    const ok = await runCatchingError(() => postCapturar(saveId, npcSlug), 'No se pudo atar — puede que ya no esté a tu alcance.')
-    if (ok === undefined) {
-      setCapturando(null)
-      return
-    }
+    const res = await runCatchingError(() => postCapturar(saveId, npcSlug), 'No se pudo atar — puede que ya no esté a tu alcance.')
+    setCapturando(null)
+    if (res === undefined) return
+    setAtado({ tipo: res.tipo })
     onCapturado(npcSlug)
   }
 
   return (
     <SelectionModalShell title="Capturar" onCancel={onCancel} cancelDisabled={!!capturando}>
-      {loading ? (
+      {atado ? (
+        <p className="text-xs text-emerald-300">
+          ¡Atado! Ahora llevas {atado.tipo === 'FAUNA' ? 'a la criatura' : 'al prisionero'} en tu inventario — deposítalo en una Jaula desde ahí para empezar a ganarte su confianza.
+        </p>
+      ) : loading ? (
         <p className="text-xs text-wood-500">Buscando quién sigue a tu alcance...</p>
       ) : !tieneCuerdas ? (
         <p className="text-xs text-wood-400">
@@ -58,7 +66,7 @@ export function CapturaModal({ saveId, onCapturado, onCancel }: CapturaModalProp
                 {c.tipo === 'FAUNA' ? '🐾 ' : ''}
                 {c.name}
               </span>
-              <button
+              <button type="button"
                 onClick={() => handleCapturar(c.npcSlug)}
                 disabled={!!capturando}
                 className="tactile shrink-0 rounded-lg border border-accent-600/60 px-3 py-1.5 text-2xs font-bold uppercase tracking-wide text-accent-300 transition-colors hover:bg-accent-500/10 disabled:cursor-not-allowed disabled:opacity-50"

@@ -256,7 +256,10 @@ describe('POST /turn/classify — interacción con un NPC ya convaleciente, fuer
     classifyAction.mockReset();
   });
 
-  it('nombrar a un NPC convaleciente en escena, fuera de combate, devuelve la ficha sin llamar a classifyAction ni persistir nada', async () => {
+  // RESTRINGIDO A MUERTO (2026-08-30, rediseño de "Matar") — antes nombrar a un CONVALECIENTE
+  // fuera de combate cortaba el turno con la ficha (botón Matar = remate determinista). Ahora un
+  // convaleciente ya no es terminal: el turno fluye normal por `classifyAction`, sin ficha propia.
+  it('nombrar a un NPC convaleciente en escena, fuera de combate, NO dispara la ficha — el turno fluye normal', async () => {
     findUniqueSave.mockResolvedValue({
       id: 'save1',
       worldId: 'world1',
@@ -269,6 +272,9 @@ describe('POST /turn/classify — interacción con un NPC ya convaleciente, fuer
       characterTransit: null,
       worldState: { fictionalDateLabel: 'Día 1, mañana', fictionalMinutes: 480 },
     });
+    classifyAction.mockResolvedValue({
+      requiereTirada: false, atributo: 'fuerza', dificultad: 8, razon: 'x', banda: 'instantanea', duracionEstimadaMinutos: 0,
+    });
 
     const app = await buildApp();
     const res = await app.inject({
@@ -279,14 +285,8 @@ describe('POST /turn/classify — interacción con un NPC ya convaleciente, fuer
 
     expect(res.statusCode).toBe(200);
     const body = res.json();
-    expect(body.postCombatInteraction).toEqual({
-      slug: 'orco-enfurecido',
-      name: 'Orco Enfurecido',
-      condicionFisica: 'CONVALECIENTE',
-      saqueado: false,
-    });
-    expect(classifyAction).not.toHaveBeenCalled();
-    expect(logEntryCreate).not.toHaveBeenCalled();
+    expect(body.postCombatInteraction).toBeUndefined();
+    expect(classifyAction).toHaveBeenCalled();
   });
 
   it('no dispara si la misma acción ocurre dentro de un combate activo (enCombate: true)', async () => {

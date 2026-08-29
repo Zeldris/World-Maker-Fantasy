@@ -34,7 +34,7 @@ export function CampSelectionModal({ saveId, onSelect, onCancel }: CampSelection
       ) : (
         <div className="space-y-1.5">
           {camps.map((c) => (
-            <button
+            <button type="button"
               key={c.locationSlug}
               onClick={() => onSelect(`Viajo hacia el campamento en ${c.locationName}.`)}
               className="tactile w-full rounded-lg border border-iron-700 p-2.5 text-left text-xs text-wood-300 transition-colors hover:border-accent-600/60 hover:bg-accent-500/10"

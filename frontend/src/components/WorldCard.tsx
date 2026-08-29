@@ -17,7 +17,7 @@ export function WorldCard({
   onSelect?: () => void
 }) {
   return (
-    <button
+    <button type="button"
       onClick={onSelect}
       // Cielo de Cristal en el fondo (roadmap de rediseño visual, Fable 2026-07-20, Nivel 2) —
       // solo Helek Sirik: es el Origen Azul de SU cielo, no una textura de mundo genérico.

@@ -4,6 +4,7 @@ import type { NpcKind, CondicionFisica, Temperamento, WeaponCategory, EquipSlot,
 import type { Attribute, AttributeBlock } from './dice.js';
 import type { Clase } from './classAbilities.js';
 import { npcAttributesForLevel } from './progression.js';
+import { parseActiveEffects, type ActiveEffect } from './activeEffects.js';
 
 /// Detección determinista de "NPC en escena" (docs/12-mundo-estructurado.md § 2.5) — sin llamada
 /// extra a Ollama: se busca Npc.aliases (normalizados) en el texto de la acción y en los hechos
@@ -132,6 +133,17 @@ export interface NpcInScene {
   /// comentario completo en schema.prisma § NpcState.abilityUsesThisEncounter. `{}` si todavía no
   /// existe fila o no se ha usado ninguna habilidad limitada en este encuentro.
   abilityUsesThisEncounter: Record<string, number>;
+  /// Fase 2 de efectos de clase (2026-08-26, docs/21-roadmap.md) — AUMENTO/DEBILIDAD con duración
+  /// real por turnos, ver activeEffects.ts. `[]` si todavía no existe fila o no hay ningún efecto
+  /// activo ahora mismo — mismo criterio lazy que `abilityUsesThisEncounter`.
+  activeEffects: ActiveEffect[];
+  /// Combate "fantasma" (bug real, investigación 2026-08-29): dato crudo (no resuelto a región
+  /// aquí — `detectNpcsInScene` deliberadamente deja "ya establecido en esta partida" como
+  /// candidato SIN mirar región, ver comentario de cabecera de la función). `turnResolution.ts` lo
+  /// usa para decidir si un NPC agresivo puede FORZAR combate (solo cerca de su territorio) sin
+  /// tocar el resto del contrato de "sigue siendo candidato en escena" ya cubierto por tests.
+  /// `null` = itinerante, sin territorio propio.
+  homeLocationSlug: string | null;
 }
 
 interface NpcWithAliases {
@@ -193,6 +205,8 @@ export function buildNpcInScene(npc: NpcWithItems, state: NpcState | undefined):
     groupDefeated: state?.groupDefeated ?? 0,
     corpsesLooted: state?.corpsesLooted ?? 0,
     abilityUsesThisEncounter: (state?.abilityUsesThisEncounter as Record<string, number> | undefined) ?? {},
+    activeEffects: parseActiveEffects(state?.activeEffects),
+    homeLocationSlug: npc.homeLocationSlug,
   };
 }
 
@@ -339,6 +353,17 @@ export function hasPendingLoot(
 /// sesión (para que un NPC mencionado en un turno anterior "el Kort'ikar Torgash llegó" siga
 /// reconociéndose en turnos siguientes aunque el jugador ya no repita su nombre completo).
 ///
+/// Bug real (revisión de partida en 5 fases, 2026-08-27, investigado/cerrado 2026-08-28): el
+/// `haystack` de detección incluye TODOS los `sessionFacts` sin distinguir si dicen que el NPC
+/// está presente o que se fue para siempre — un fact como "Gistera Koh se marchó... no volverá a
+/// aparecer" CONTIENE el nombre "Gistera Koh", así que el matcher la reintroducía como candidata
+/// legítima, camino 100% determinista (no una alucinación del LLM). El caso de Gistera Koh ya
+/// tenía su propio parche hardcodeado por slug (`turnResolution.ts` § `gisteraSeHaMarchado` +
+/// `.filter((n) => n.slug !== 'gistera-koh')`) — `Save.npcsRetiredForever` generaliza ese mismo
+/// patrón para cualquier NPC futuro con guion que se despida "para siempre": el caller que decide
+/// la despedida (hoy solo `gisteraSeHaMarchado`) añade el slug a esa lista, y aquí se filtra SIEMPRE,
+/// sin tener que repetir un `.filter` a mano por cada NPC nuevo.
+///
 /// Acotar el candidato, no añadir IA (auditoría de arquitectura 2026-07-30 — replanteamiento tras
 /// "llevamos días atascados"): antes se comparaba el texto contra TODO el roster de NPCs del
 /// mundo, sin acotar por ubicación — causa raíz confirmada del falso positivo real "presas" (a
@@ -354,7 +379,7 @@ export async function detectNpcsInScene(params: {
   saveId: string;
   currentLocationId: string | null;
 }): Promise<NpcInScene[]> {
-  const [npcs, currentLocation, activeQuestTargets, encounteredStates] = await Promise.all([
+  const [npcs, currentLocation, activeQuestTargets, encounteredStates, saveRow] = await Promise.all([
     prisma.npc.findMany({
       where: { worldId: params.worldId },
       include: { items: { include: { item: true } } },
@@ -367,8 +392,10 @@ export async function detectNpcsInScene(params: {
       select: { targetNpcId: true },
     }),
     prisma.npcState.findMany({ where: { saveId: params.saveId }, select: { npcId: true } }),
+    prisma.save.findUnique({ where: { id: params.saveId }, select: { npcsRetiredForever: true } }),
   ]);
   if (npcs.length === 0) return [];
+  const retiredForeverSlugs = new Set(saveRow?.npcsRetiredForever ?? []);
 
   const questTargetIds = new Set(activeQuestTargets.map((q) => q.targetNpcId!));
   const encounteredIds = new Set(encounteredStates.map((s) => s.npcId));
@@ -407,7 +434,9 @@ export async function detectNpcsInScene(params: {
 
   const haystack = [params.action, ...params.sessionFacts].join('\n');
   const matchedIds = new Set(matchNpcAliases(haystack, candidateNpcs));
-  const matchedNpcs = candidateNpcs.filter((npc) => matchedIds.has(npc.id));
+  // `npcsRetiredForever` gana SIEMPRE sobre un match por nombre — un sessionFact que menciona al
+  // NPC para decir que se fue para siempre no debe reintroducirlo (ver comentario de cabecera).
+  const matchedNpcs = candidateNpcs.filter((npc) => matchedIds.has(npc.id) && !retiredForeverSlugs.has(npc.slug));
   if (matchedNpcs.length === 0) return [];
 
   // Sin filtrar por `scope` en la consulta (varía por NPC según su `kind`, no es un único valor
@@ -822,6 +851,23 @@ export function npcSceneBlockFor(npc: NpcInScene, playerLevel: number): string {
 Descripción/hechos ya establecidos (nunca los contradigas): ${npc.bio}
 Personalidad: ${npc.personality}
 LLEVA ENCIMA: ${itemsLine(npc.items)}. Si es derrotado, registrado o comercia, lo que lleva encima es TODO lo que puede aparecer — no existe ningún otro objeto.`;
+}
+
+/// Línea corta para el narrador (2026-08-28, tope de contexto — "cuelgue con modelo grande",
+/// `contextBlocks` sin límite crecía sin tope con cada NPC en escena, 1104 tokens medidos para solo
+/// 3 NPCs reales). Se usa para los NPCs que quedan FUERA del tope de bloque completo
+/// (`npcSceneBlockFor`) — sin bio/personalidad/items, pero conservando las 3 señales de las que
+/// dependen guards deterministas ya existentes: estado ya resuelto (`hasResurrectedDeadNpc`),
+/// género (`generoHintFor`) y fauna-sin-habla (`faunaSinHablaHint`) — omitirlas reintroduciría esos
+/// bugs para cualquier NPC que caiga en esta rama.
+export function npcSceneLineFor(npc: NpcInScene, playerLevel: number): string {
+  if (npcYaResuelto(npc)) {
+    const estado = npc.condicionFisica === 'MUERTO' ? 'muerto' : 'convaleciente';
+    return `PERSONAJE MENCIONADO, YA RESUELTO: ${displayName(npc)} — ya está ${estado}. NO lo narres como amenaza activa.${generoHintFor(npc)}`;
+  }
+  const { label } = difficultyHintFor(npc.level, playerLevel);
+  const faunaSinHablaHint = npc.ataqueNatural !== null ? ` ES UN ANIMAL, NO PUEDE HABLAR.` : '';
+  return `PERSONAJE EN ESCENA (de fondo): ${displayName(npc)} — ${npc.role}, nivel ${npc.level} (acciones directas tienden a ${label}).${generoHintFor(npc)}${faunaSinHablaHint}`;
 }
 
 /// Línea corta para el clasificador (§ 2.2) — solo la calibración de dificultad, sin equipo.

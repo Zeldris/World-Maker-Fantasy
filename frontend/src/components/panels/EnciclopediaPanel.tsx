@@ -1,6 +1,8 @@
 import { useState, type ReactNode } from 'react'
 import {
   resolveImageUrl,
+  type EnciclopediaClassInfo,
+  type EnciclopediaClassUnlock,
   type EnciclopediaConstructionRecipe,
   type EnciclopediaCraftingRecipe,
   type EnciclopediaFaunaFloraInfo,
@@ -74,6 +76,26 @@ interface EnciclopediaPanelProps {
   recipesStatus: RecipeStatusInfo[]
   onInsert: (chip: { icon: string; label: string; description?: string; value?: string }) => void
   onDetail: (target: DetailTarget, onInsertForTarget?: () => void) => void
+}
+
+// Buscador de la Enciclopedia (auditoría 2026-08-27) — quita acentos y normaliza mayúsculas para
+// que "Espada" encuentre "espada" y "gargantua" encuentre "Gargántua".
+function normalizeSearchText(text: string): string {
+  return text
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .toLowerCase()
+}
+
+// Clases y especializaciones (2026-08-27) — `Especializacion` (schema.prisma) son 31 valores
+// SNAKE_CASE (BERSERKER, MAESTRO_ARQUERO...); en vez de mantener un mapa a mano sincronizado con
+// el enum del backend, se formatea genéricamente a Title Case con espacios.
+function especializacionLabel(especializacion: string): string {
+  return especializacion
+    .toLowerCase()
+    .split('_')
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ')
 }
 
 function groupBy<T>(list: T[], keyFor: (item: T) => string): Map<string, T[]> {
@@ -311,7 +333,7 @@ function EntryCard({
   }
   return (
     <TooltipAnchor text={tooltip} className="block">
-      <button
+      <button type="button"
         onClick={(e) => {
           if (e.shiftKey && onQuickInsert) {
             onQuickInsert()
@@ -351,6 +373,7 @@ function EntryCardGrid<T>({
   onInsert,
   wide,
   discovered,
+  search,
 }: {
   items: T[]
   keyOf: (item: T) => string
@@ -368,10 +391,15 @@ function EntryCardGrid<T>({
   /// Enciclopedia progresiva (2026-07-23) — solo lo pasan las categorías gateadas (NPCs/fauna/
   /// flora/lugares); ausente = todo visible, como hasta ahora (razas/personajes/atributos...).
   discovered?: (item: T) => boolean
+  /// Buscador de la Enciclopedia (auditoría 2026-08-27, "no hay ninguna forma de filtrar por
+  /// texto, solo navegar tab→colapsable→cuadrícula a ojo") — filtro por nombre, sin distinguir
+  /// mayúsculas/acentos, aplicado uniformemente en las 13 categorías que usan esta grilla.
+  search?: string
 }) {
+  const filtered = search ? items.filter((item) => normalizeSearchText(name(item)).includes(normalizeSearchText(search))) : items
   return (
     <div className={wide ? 'grid grid-cols-2 gap-2 sm:grid-cols-3' : 'grid grid-cols-3 gap-2 sm:grid-cols-4'}>
-      {items.map((item) =>
+      {filtered.map((item) =>
         discovered && !discovered(item) ? (
           <EntryCard key={keyOf(item)} icon={icon(item)} name={name(item)} tooltip={tooltip(item)} onDetail={() => {}} locked />
         ) : (
@@ -408,7 +436,7 @@ function CollapsibleGroup({
 }) {
   return (
     <div className="rounded-lg border border-iron-800">
-      <button
+      <button type="button"
         onClick={onToggle}
         className="tactile flex w-full items-center justify-between gap-2 rounded-lg px-3.5 py-2.5 text-left transition-colors hover:bg-wood-950/40"
       >
@@ -463,6 +491,10 @@ const CATEGORY_TABS: { id: EnciclopediaCategory; label: string; icon: string }[]
 // merece su propio layout de dos columnas dentro del cajón.
 export function EnciclopediaPanel({ data, loading, recipesStatus, onInsert, onDetail }: EnciclopediaPanelProps) {
   const [category, setCategory] = useState<EnciclopediaCategory>('npcs')
+  // Buscador (auditoría 2026-08-27) — se limpia al cambiar de categoría, mismo criterio que
+  // cualquier filtro de lista: buscar "espada" en Objetos no debería seguir aplicado si luego se
+  // entra en NPCs.
+  const [search, setSearch] = useState('')
   // Derivados directos del prop `data` (ya no hay fetch/estado propio, ver comentario de la
   // interfaz de arriba) — arrays vacíos mientras `data` es null, mismo aspecto que el estado
   // inicial de antes.
@@ -490,6 +522,20 @@ export function EnciclopediaPanel({ data, loading, recipesStatus, onInsert, onDe
   const [expandedFloraZonas, toggleFloraZona] = useToggleSet()
   const [expandedFaccionRazas, toggleFaccionRaza] = useToggleSet()
   const [expandedHistoriaPeriodos, toggleHistoriaPeriodo] = useToggleSet()
+  // Colapsables por región (petición explícita, 2026-08-27: "asegúrate de que si hay categorías
+  // con cosas bajo ellas sea colapsable su padre... como en location por región") — Lugares era la
+  // única categoría con grupos padre que usaba PanelSection (siempre expandido) en vez de
+  // CollapsibleGroup, mismo patrón que NPCs/Fauna/Flora/Facciones ya tenían.
+  const [expandedLocationRegions, toggleLocationRegion] = useToggleSet()
+  // Mismo criterio (2026-08-27) para Construcciones (por raza) y Crafteo (por oficio) — ambas
+  // podían tener decenas de recetas repartidas en muchos grupos, siempre expandidos con PanelSection.
+  const [expandedConstructionGroups, toggleConstructionGroup] = useToggleSet()
+  const [expandedCraftingGroups, toggleCraftingGroup] = useToggleSet()
+  // Sub-colapsables por especialización dentro de cada clase (petición explícita, 2026-08-27:
+  // "sobre la genera de guerrero van las habs hasta lvl 10 luego las de especializaciones tendrás
+  // que hacer collapsables con cada especialización") — clave compuesta `clase:especializacion`
+  // para que abrir una especialización de Guerrero no afecte a la misma de Cazador.
+  const [expandedSpecializations, toggleSpecialization] = useToggleSet()
   // Sub-tabs de la categoría "Atributos" (2026-07-28, petición explícita: "mete un tab para ver
   // los atributos y otro para ver el árbol de ventajas") — exclusivas entre sí, a diferencia
   // de `expandedClasses` de arriba.
@@ -593,16 +639,17 @@ export function EnciclopediaPanel({ data, loading, recipesStatus, onInsert, onDe
   function renderRecipeList<
     R extends { key: string; name: string; oficio: string | null; tier: number | null; requirements: { cantidad: number; label: string }[]; imageUrls: EnciclopediaImageUrls },
   >(recipes: R[], statusCategory: 'crafteo' | 'construccion', icon: string, insertValue: (recipe: R) => string, toDetailTarget: (recipe: R, status?: RecipeStatusInfo) => DetailTarget) {
+    const filtered = search ? recipes.filter((r) => normalizeSearchText(r.name).includes(normalizeSearchText(search))) : recipes
     return (
       <div className="flex flex-col gap-2">
-        {recipes.map((recipe) => {
+        {filtered.map((recipe) => {
           const status = recipeStatusByKey.get(`${statusCategory}:${recipe.key}`)
           const requisitos = status ? status.ingredients.map((i) => `${i.label} ${i.tienes}/${i.necesitas}`).join(', ') : recipe.requirements.map((r) => `${r.cantidad} de ${r.label}`).join(', ')
           const nivel = oficioRequirementLine(recipe.oficio, recipe.tier)
           const imageUrl = resolveImageUrl(recipe.imageUrls.thumbnail)
           const value = insertValue(recipe)
           return (
-            <button
+            <button type="button"
               key={recipe.key}
               onClick={(e) => {
                 if (e.shiftKey) {
@@ -637,13 +684,56 @@ export function EnciclopediaPanel({ data, loading, recipesStatus, onInsert, onDe
   const renderConstructionList = (recipes: EnciclopediaConstructionRecipe[]) =>
     renderRecipeList(recipes, 'construccion', '🏗️', (recipe) => `Me pongo a construir ${recipe.name}`, constructionToDetailTarget)
 
+  // Botón de habilidad individual dentro de la senda de nivel de una clase (2026-08-27) —
+  // reutilizado entre la senda base (sin especialización) y cada sub-colapsable de especialización.
+  function renderAbilityUnlock({ level, ability }: EnciclopediaClassUnlock) {
+    return (
+      <button type="button"
+        key={ability.name}
+        onClick={(e) => {
+          if (e.shiftKey) {
+            onInsert({ icon: ability.icon, label: ability.name, description: ability.description, value: ability.promptText })
+          } else {
+            onDetail(abilityToDetailTarget(ability, `Nivel ${level}`), () =>
+              onInsert({ icon: ability.icon, label: ability.name, description: ability.description, value: ability.promptText }),
+            )
+          }
+        }}
+        className="tactile relative flex items-center gap-3 rounded-lg border border-iron-800 bg-wood-950/40 px-3 py-2 text-left transition-colors hover:border-accent2-600/40 hover:bg-accent2-500/5"
+      >
+        <span aria-hidden="true" className="absolute -left-[1.375rem] h-2 w-2 rounded-full border border-accent2-500 bg-wood-950" />
+        <span className="rounded-full border border-iron-700 bg-wood-950/60 px-2 py-0.5 font-mono text-2xs text-wood-400">Nv. {level}</span>
+        <span className="text-lg leading-none">{ability.icon}</span>
+        <span className="text-sm text-wood-200">{ability.name}</span>
+      </button>
+    )
+  }
+  // Especializaciones dentro de una clase (petición explícita, 2026-08-27: "sobre la genera de
+  // guerrero van las habs hasta lvl 10 luego las de especializaciones tendrás que hacer
+  // collapsables con cada especialización") — ordenadas por primer nivel de desbloqueo, cada una
+  // con sus unlocks ordenados por nivel.
+  function specializationsFor(clase: EnciclopediaClassInfo): [string, EnciclopediaClassUnlock[]][] {
+    const bySpec = new Map<string, EnciclopediaClassUnlock[]>()
+    for (const unlock of clase.unlocks) {
+      if (!unlock.especializacion) continue
+      const list = bySpec.get(unlock.especializacion) ?? []
+      list.push(unlock)
+      bySpec.set(unlock.especializacion, list)
+    }
+    for (const list of bySpec.values()) list.sort((a, b) => a.level - b.level)
+    return Array.from(bySpec.entries()).sort(([, a], [, b]) => a[0].level - b[0].level)
+  }
+
   return (
     <div className="flex min-h-0 flex-1 gap-4">
       <nav className="flex w-11 shrink-0 flex-col gap-1 sm:w-28">
         {CATEGORY_TABS.map((tab) => (
-          <button
+          <button type="button"
             key={tab.id}
-            onClick={() => setCategory(tab.id)}
+            onClick={() => {
+              setCategory(tab.id)
+              setSearch('')
+            }}
             title={tab.label}
             className={`flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-left text-xs transition-colors ${
               category === tab.id ? 'bg-accent2-500/10 font-medium text-accent2-300' : 'text-wood-400 hover:bg-wood-950/40 hover:text-wood-200'
@@ -660,6 +750,17 @@ export function EnciclopediaPanel({ data, loading, recipesStatus, onInsert, onDe
           <p className="text-sm italic text-wood-500">Cargando enciclopedia...</p>
         ) : (
           <>
+            {/* Buscador (auditoría 2026-08-27) — solo en categorías con cuadrícula plana de
+                EntryCardGrid; Clases/Atributos/Combate tienen su propio layout sin grilla. */}
+            {category !== 'classes' && category !== 'attributes' && category !== 'combate' && (
+              <input
+                type="text"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Buscar por nombre..."
+                className="mb-3 w-full rounded-lg border border-iron-700 bg-iron-900 px-3 py-1.5 text-sm text-wood-100 placeholder:text-wood-600 focus:border-accent2-500 focus:outline-none"
+              />
+            )}
             {category === 'npcs' &&
               (npcs.length === 0 ? (
                 <PanelEmptyState icon="🧑" title="Sin NPCs catalogados" hint="Todavía no hay ninguno en este mundo." />
@@ -689,6 +790,7 @@ export function EnciclopediaPanel({ data, loading, recipesStatus, onInsert, onDe
                           onDetail={onDetail}
                           onInsert={onInsert}
                           discovered={(npc) => npc.discovered}
+                          search={search}
                         />
                       </CollapsibleGroup>
                     )
@@ -729,6 +831,7 @@ export function EnciclopediaPanel({ data, loading, recipesStatus, onInsert, onDe
                               onDetail={onDetail}
                               onInsert={onInsert}
                               discovered={(item) => item.discovered}
+                              search={search}
                             />
                           </PanelSection>
                         ))}
@@ -765,6 +868,7 @@ export function EnciclopediaPanel({ data, loading, recipesStatus, onInsert, onDe
                         onDetail={onDetail}
                         onInsert={onInsert}
                         discovered={(entry) => entry.discovered}
+                        search={search}
                       />
                     </CollapsibleGroup>
                   ))}
@@ -796,6 +900,7 @@ export function EnciclopediaPanel({ data, loading, recipesStatus, onInsert, onDe
                         onDetail={onDetail}
                         onInsert={onInsert}
                         discovered={(entry) => entry.discovered}
+                        search={search}
                       />
                     </CollapsibleGroup>
                   ))}
@@ -806,13 +911,19 @@ export function EnciclopediaPanel({ data, loading, recipesStatus, onInsert, onDe
               (locations.length === 0 ? (
                 <PanelEmptyState icon="🗺️" title="Sin lugares catalogados" hint="Todavía no hay ninguno en este mundo." />
               ) : (
-                <div className="flex flex-col gap-5">
+                <div className="flex flex-col gap-3">
                   {beriRegions.map((region) => {
                     const regionLocations = locationsByRegion.get(region.name) ?? []
                     if (regionLocations.length === 0) return null
                     return (
-                      <PanelSection key={region.name} title={region.name}>
-                        <p className="mb-2 text-xs italic leading-relaxed text-wood-500">{region.description}</p>
+                      <CollapsibleGroup
+                        key={region.name}
+                        title={region.name}
+                        count={regionLocations.length}
+                        expanded={expandedLocationRegions.has(region.name)}
+                        onToggle={() => toggleLocationRegion(region.name)}
+                      >
+                        <p className="-mt-1 text-xs italic leading-relaxed text-wood-500">{region.description}</p>
                         <EntryCardGrid
                           items={regionLocations}
                           keyOf={(loc) => loc.slug}
@@ -825,8 +936,9 @@ export function EnciclopediaPanel({ data, loading, recipesStatus, onInsert, onDe
                           onDetail={onDetail}
                           onInsert={onInsert}
                           discovered={(loc) => loc.discovered}
+                          search={search}
                         />
-                      </PanelSection>
+                      </CollapsibleGroup>
                     )
                   })}
                 </div>
@@ -848,6 +960,7 @@ export function EnciclopediaPanel({ data, loading, recipesStatus, onInsert, onDe
                   toChip={(raza) => ({ icon: raza.icon, label: raza.name, description: raza.description })}
                   onDetail={onDetail}
                   onInsert={onInsert}
+                  search={search}
                 />
               ))}
 
@@ -867,6 +980,7 @@ export function EnciclopediaPanel({ data, loading, recipesStatus, onInsert, onDe
                   toChip={(pj) => ({ icon: pj.icon, label: pj.name, description: pj.historia })}
                   onDetail={onDetail}
                   onInsert={onInsert}
+                  search={search}
                 />
               ))}
 
@@ -897,6 +1011,7 @@ export function EnciclopediaPanel({ data, loading, recipesStatus, onInsert, onDe
                           onDetail={onDetail}
                           onInsert={onInsert}
                           discovered={(f) => f.discovered}
+                          search={search}
                         />
                       </CollapsibleGroup>
                     )
@@ -913,7 +1028,7 @@ export function EnciclopediaPanel({ data, loading, recipesStatus, onInsert, onDe
                       { id: 'semillas', label: 'Era de las Semillas' },
                     ] as const
                   ).map((tab) => (
-                    <button
+                    <button type="button"
                       key={tab.id}
                       onClick={() => setHistoriaEra(tab.id)}
                       className={`tactile flex-1 rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
@@ -951,6 +1066,7 @@ export function EnciclopediaPanel({ data, loading, recipesStatus, onInsert, onDe
                             onDetail={onDetail}
                             onInsert={onInsert}
                             discovered={(h) => h.discovered}
+                            search={search}
                           />
                         </CollapsibleGroup>
                       )
@@ -977,6 +1093,7 @@ export function EnciclopediaPanel({ data, loading, recipesStatus, onInsert, onDe
                       onDetail={onDetail}
                       onInsert={onInsert}
                       discovered={(h) => h.discovered}
+                      search={search}
                     />
                   ))}
               </div>
@@ -995,7 +1112,7 @@ export function EnciclopediaPanel({ data, loading, recipesStatus, onInsert, onDe
                     const isExpanded = expandedClasses.has(clase.name)
                     return (
                       <div key={clase.name} className="rounded-lg border border-iron-800">
-                        <button
+                        <button type="button"
                           onClick={() =>
                             setExpandedClasses((prev) => {
                               const next = new Set(prev)
@@ -1013,48 +1130,44 @@ export function EnciclopediaPanel({ data, loading, recipesStatus, onInsert, onDe
                           <span className={`shrink-0 text-wood-500 transition-transform ${isExpanded ? 'rotate-180' : ''}`}>▾</span>
                         </button>
                         {isExpanded && (
-                          <div className="border-t border-iron-800 px-3.5 py-3">
+                          <div className="flex flex-col gap-4 border-t border-iron-800 px-3.5 py-3">
                             {/* Senda de nivel (Fable, 2026-07-21): línea vertical que atraviesa
-                                cada desbloqueo — progresión lineal real, no un árbol ramificado. */}
+                                cada desbloqueo — progresión lineal real, no un árbol ramificado.
+                                Solo habilidades comunes (sin especialización, hasta nivel 10) —
+                                las de especialización se agrupan aparte, ver más abajo. */}
                             <div className="flex flex-col gap-1.5 border-l-2 border-iron-700 pl-4">
                               {[...clase.unlocks]
+                                .filter((u) => !u.especializacion)
                                 .sort((a, b) => a.level - b.level)
-                                .map(({ level, ability }) => (
-                                  <button
-                                    key={ability.name}
-                                    onClick={(e) => {
-                                      if (e.shiftKey) {
-                                        onInsert({
-                                          icon: ability.icon,
-                                          label: ability.name,
-                                          description: ability.description,
-                                          value: ability.promptText,
-                                        })
-                                      } else {
-                                        onDetail(abilityToDetailTarget(ability, `Nivel ${level}`), () =>
-                                          onInsert({
-                                            icon: ability.icon,
-                                            label: ability.name,
-                                            description: ability.description,
-                                            value: ability.promptText,
-                                          }),
-                                        )
-                                      }
-                                    }}
-                                    className="tactile relative flex items-center gap-3 rounded-lg border border-iron-800 bg-wood-950/40 px-3 py-2 text-left transition-colors hover:border-accent2-600/40 hover:bg-accent2-500/5"
-                                  >
-                                    <span
-                                      aria-hidden="true"
-                                      className="absolute -left-[1.375rem] h-2 w-2 rounded-full border border-accent2-500 bg-wood-950"
-                                    />
-                                    <span className="rounded-full border border-iron-700 bg-wood-950/60 px-2 py-0.5 font-mono text-2xs text-wood-400">
-                                      Nv. {level}
-                                    </span>
-                                    <span className="text-lg leading-none">{ability.icon}</span>
-                                    <span className="text-sm text-wood-200">{ability.name}</span>
-                                  </button>
-                                ))}
+                                .map((unlock) => renderAbilityUnlock(unlock))}
                             </div>
+                            {/* Especializaciones (petición explícita, 2026-08-27): a partir de
+                                nivel 10 cada habilidad pertenece a una especialización concreta de
+                                la clase — sub-colapsable por especialización, no todo listado
+                                junto sin distinguir a cuál pertenece cada una. */}
+                            {specializationsFor(clase).map(([especializacion, unlocks]) => {
+                              const key = `${clase.name}:${especializacion}`
+                              const specExpanded = expandedSpecializations.has(key)
+                              return (
+                                <div key={especializacion} className="rounded-lg border border-iron-800">
+                                  <button type="button"
+                                    onClick={() => toggleSpecialization(key)}
+                                    className="tactile flex w-full items-center justify-between gap-2 rounded-lg px-3 py-2 text-left transition-colors hover:bg-wood-950/40"
+                                  >
+                                    <p className="text-2xs font-semibold uppercase tracking-[0.14em] text-wood-400">
+                                      {especializacionLabel(especializacion)}{' '}
+                                      <span className="font-mono normal-case tracking-normal text-wood-600">({unlocks.length})</span>
+                                    </p>
+                                    <span className={`shrink-0 text-wood-500 transition-transform ${specExpanded ? 'rotate-180' : ''}`}>▾</span>
+                                  </button>
+                                  {specExpanded && (
+                                    <div className="flex flex-col gap-1.5 border-t border-iron-800 px-3 py-2.5 pl-6">
+                                      {unlocks.map((unlock) => renderAbilityUnlock(unlock))}
+                                    </div>
+                                  )}
+                                </div>
+                              )
+                            })}
                           </div>
                         )}
                       </div>
@@ -1067,15 +1180,30 @@ export function EnciclopediaPanel({ data, loading, recipesStatus, onInsert, onDe
               (constructionRecipes.length === 0 ? (
                 <PanelEmptyState icon="🏗️" title="Sin construcciones catalogadas" hint="Todavía no hay ninguna disponible." />
               ) : (
-                <div className="flex flex-col gap-5">
-                  <PanelSection title="Común">{renderConstructionList(commonConstructions)}</PanelSection>
+                <div className="flex flex-col gap-3">
+                  {commonConstructions.length > 0 && (
+                    <CollapsibleGroup
+                      title="Común"
+                      count={commonConstructions.length}
+                      expanded={expandedConstructionGroups.has('común')}
+                      onToggle={() => toggleConstructionGroup('común')}
+                    >
+                      {renderConstructionList(commonConstructions)}
+                    </CollapsibleGroup>
+                  )}
                   {razas.map((raza) => {
                     const list = constructionsByRaza.get(raza.slug) ?? []
                     if (list.length === 0) return null
                     return (
-                      <PanelSection key={raza.slug} title={raza.name}>
+                      <CollapsibleGroup
+                        key={raza.slug}
+                        title={raza.name}
+                        count={list.length}
+                        expanded={expandedConstructionGroups.has(raza.slug)}
+                        onToggle={() => toggleConstructionGroup(raza.slug)}
+                      >
                         {renderConstructionList(list)}
-                      </PanelSection>
+                      </CollapsibleGroup>
                     )
                   })}
                 </div>
@@ -1085,15 +1213,30 @@ export function EnciclopediaPanel({ data, loading, recipesStatus, onInsert, onDe
               (craftingRecipes.length === 0 ? (
                 <PanelEmptyState icon="🔨" title="Sin recetas de crafteo catalogadas" hint="Todavía no hay ninguna disponible." />
               ) : (
-                <div className="flex flex-col gap-5">
-                  {sinOficioCrafting.length > 0 && <PanelSection title="Sin oficio">{renderCraftingList(sinOficioCrafting)}</PanelSection>}
+                <div className="flex flex-col gap-3">
+                  {sinOficioCrafting.length > 0 && (
+                    <CollapsibleGroup
+                      title="Sin oficio"
+                      count={sinOficioCrafting.length}
+                      expanded={expandedCraftingGroups.has('sin-oficio')}
+                      onToggle={() => toggleCraftingGroup('sin-oficio')}
+                    >
+                      {renderCraftingList(sinOficioCrafting)}
+                    </CollapsibleGroup>
+                  )}
                   {professions.map((profession) => {
                     const list = craftingByOficio.get(profession.id) ?? []
                     if (list.length === 0) return null
                     return (
-                      <PanelSection key={profession.id} title={oficioNameById.get(profession.id) ?? profession.id}>
+                      <CollapsibleGroup
+                        key={profession.id}
+                        title={oficioNameById.get(profession.id) ?? profession.id}
+                        count={list.length}
+                        expanded={expandedCraftingGroups.has(profession.id)}
+                        onToggle={() => toggleCraftingGroup(profession.id)}
+                      >
                         {renderCraftingList(list)}
-                      </PanelSection>
+                      </CollapsibleGroup>
                     )
                   })}
                 </div>
@@ -1108,7 +1251,7 @@ export function EnciclopediaPanel({ data, loading, recipesStatus, onInsert, onDe
                       { id: 'ventajas', label: 'Árbol de ventajas' },
                     ] as const
                   ).map((tab) => (
-                    <button
+                    <button type="button"
                       key={tab.id}
                       onClick={() => setAttributesSubTab(tab.id)}
                       className={`tactile flex-1 rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
@@ -1174,7 +1317,7 @@ export function EnciclopediaPanel({ data, loading, recipesStatus, onInsert, onDe
                 <PanelSection title="Cómo funciona el combate">
                   <div className="flex flex-col gap-2">
                     {combate.map((entry) => (
-                      <button
+                      <button type="button"
                         key={entry.slug}
                         onClick={() => onDetail({ kind: 'info', icon: entry.icon, name: entry.title, description: entry.text })}
                         className="tactile flex items-center gap-3 rounded-lg border border-iron-800 bg-wood-950/40 px-3 py-2.5 text-left transition-colors hover:border-accent2-600/40 hover:bg-accent2-500/5"

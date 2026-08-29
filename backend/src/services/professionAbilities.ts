@@ -8,6 +8,7 @@ import {
   RED_SPIKE_INFUSION_RECIPE,
   BASIC_POULTICE_RECIPE,
   COMPLETE_POULTICE_RECIPE,
+  CUERDAS_RECIPE,
   type CraftingRecipe,
 } from './crafting.js';
 import { CHOZA_RECIPE, type ConstructionRecipe } from './construction.js';
@@ -92,6 +93,15 @@ const PROFESSION_ABILITIES: ProfessionAbilityUnlock[] = [
   abilityFor(RED_SPIKE_INFUSION_RECIPE, 'Preparar infusión de espiga roja', '☕', 'Preparo una infusión de espiga roja.'),
   abilityFor(BASIC_POULTICE_RECIPE, 'Preparar cataplasma básica de salvia', '🌿', 'Preparo una cataplasma básica de salvia.'),
   abilityFor(COMPLETE_POULTICE_RECIPE, 'Preparar cataplasma completa de salvia y ceniza', '✨', 'Preparo una cataplasma completa de salvia y ceniza.'),
+  // Bug real (pendiente 2026-08-27, "la cuerda no craftea para orcos de las Llanuras" — investigado
+  // 2026-08-28): CUERDAS_RECIPE (crafting.ts) SÍ funciona por texto libre desde que se creó
+  // (commit 1aa94f3, 2026-08-26) — `canCraft`/`detectDeterministicCraft` verificados aparte, sin
+  // ningún bloqueo real. Lo que faltaba era darla de alta AQUÍ: sin esta entrada, nunca aparecía el
+  // botón de un clic en Habilidades → Profesiones, así que quien no supiera la frase exacta de texto
+  // libre la veía como "no craftea" — mismo patrón ya documentado en el comentario de cabecera de
+  // este archivo ("una receta sigue siendo crafteable por texto libre aunque su botón todavía no
+  // haya aparecido").
+  abilityFor(CUERDAS_RECIPE, 'Trenzar cuerdas', '🪢', 'Trenzo un par de cuerdas con la fibra que llevo encima.'),
   buildAbilityFor(CHOZA_RECIPE, 'Construir choza de piel y hueso', '🛖', 'Construyo una choza de piel y hueso con los materiales que llevo.'),
 ];
 

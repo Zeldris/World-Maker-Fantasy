@@ -54,7 +54,7 @@ export function effectiveTemperamento(catalogTemperamento: Temperamento, faction
 /// Margen Silencioso quedan sin entrada a propósito — sus clanes de lore (Goshg, Nabieus/Faerus)
 /// todavía no tienen ningún NPC seedeado con ese `faction` exacto, así que mecánicamente hoy son
 /// "sin dueño".
-const REGION_OWNING_FACTIONS: Record<string, string[]> = {
+export const REGION_OWNING_FACTIONS: Record<string, string[]> = {
   'Las Llanuras del Viento Rojo': ['Clan Serhu'],
   'La Meseta del Orden': ['Concordia de Hierro'],
   'Cristal Helado': ['Clan Helsig'],

@@ -57,7 +57,7 @@ export function CompanionEquipModal({ saveId, companion, inventory, onClose, onC
             unequipped
               .filter((i) => isCompatibleWithSlot(i, pickingSlot))
               .map((item) => (
-                <button
+                <button type="button"
                   key={item.id}
                   onClick={() => handleEquip(pickingSlot, item.id)}
                   disabled={busy}
@@ -67,7 +67,7 @@ export function CompanionEquipModal({ saveId, companion, inventory, onClose, onC
                 </button>
               ))
           )}
-          <button onClick={() => setPickingSlot(null)} disabled={busy} className="tactile text-2xs text-wood-500 underline">
+          <button type="button" onClick={() => setPickingSlot(null)} disabled={busy} className="tactile text-2xs text-wood-500 underline">
             Volver
           </button>
         </div>
@@ -83,7 +83,7 @@ export function CompanionEquipModal({ saveId, companion, inventory, onClose, onC
                 </div>
                 <div className="flex shrink-0 gap-1.5">
                   {equipped && (
-                    <button
+                    <button type="button"
                       onClick={() => handleEquip(slot, null)}
                       disabled={busy}
                       className="tactile rounded border border-iron-700 px-2 py-1 text-2xs text-wood-400 hover:text-red-300 disabled:cursor-not-allowed disabled:opacity-50"
@@ -91,7 +91,7 @@ export function CompanionEquipModal({ saveId, companion, inventory, onClose, onC
                       Quitar
                     </button>
                   )}
-                  <button
+                  <button type="button"
                     onClick={() => setPickingSlot(slot)}
                     disabled={busy}
                     className="tactile rounded border border-accent-600/60 px-2 py-1 text-2xs text-accent-300 hover:bg-accent-500/10 disabled:cursor-not-allowed disabled:opacity-50"

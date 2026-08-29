@@ -16,6 +16,9 @@ const upsertNpcState = vi.fn();
 // de arriba, que solo vive DENTRO del mock de `$transaction` (caza limpia sin combate).
 const upsertNpcStateDirect = vi.fn();
 const updateManyWorldPopulation = vi.fn();
+// P3.6 (checklist consolidado 2026-08-27) — "Cazar" limpio ahora avanza el reloj de ficción
+// (mismo patrón que Minar/Talar), nuevo `tx.worldState.update` dentro de la transacción.
+const updateWorldState = vi.fn();
 const createLogEntry = vi.fn();
 const updateSave = vi.fn();
 const transaction = vi.fn();
@@ -266,6 +269,7 @@ describe('POST /saves/:id/cazar/confirmar', () => {
     upsertNpcState.mockReset();
     upsertNpcStateDirect.mockReset();
     updateManyWorldPopulation.mockReset();
+    updateWorldState.mockReset();
     createLogEntry.mockReset().mockResolvedValue({ id: 'log1', createdAt: new Date('2026-08-08T12:00:00Z') });
     updateSave.mockReset();
     loadSessionFacts.mockReset().mockResolvedValue([]);
@@ -287,6 +291,7 @@ describe('POST /saves/:id/cazar/confirmar', () => {
         $queryRaw: vi.fn().mockResolvedValue(undefined),
         npcState: { upsert: (...args: unknown[]) => upsertNpcState(...args) },
         worldPopulation: { updateMany: (...args: unknown[]) => updateManyWorldPopulation(...args) },
+        worldState: { update: (...args: unknown[]) => updateWorldState(...args) },
         logEntry: { create: (...args: unknown[]) => createLogEntry(...args) },
         save: { update: (...args: unknown[]) => updateSave(...args) },
         combatEncounter: {

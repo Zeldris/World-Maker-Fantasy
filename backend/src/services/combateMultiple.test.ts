@@ -3,13 +3,17 @@ import {
   rollInitiativeMultiple,
   elegirObjetivo,
   objetivosValidos,
+  bandoSigueEnCombate,
   retargetBando,
   resolverEnganchesRonda,
+  objetivoExtraFor,
   esDueloMutuo,
   golpeaPrimeroEnDuelo,
   particionarEnSubCombates,
   subCombateJugable,
   resolverIntercambioCompleto,
+  instanceNumbersByParticipantId,
+  resolverObjetivoPorTexto,
   INTELIGENCIA_TACTICA_UMBRAL,
   MAX_COMBATIENTES_POR_BANDO,
   type CombatienteIniciativa,
@@ -59,6 +63,55 @@ describe('objetivosValidos / elegirObjetivo', () => {
     expect(objetivosValidos(candidatos).map((c) => c.participantId)).toEqual(['a', 'b']);
   });
 
+  // Bug real jugando en vivo (2026-08-29, primer combate múltiple real): usar `objetivosValidos`
+  // también para "¿terminó el combate?" cerraba el CombatEncounter entero en cuanto el jugador
+  // caía CONVALECIENTE, aunque quedaran enemigos ILESO reales sin resolver — contradice el diseño
+  // ya establecido del motor 1v1 ("puedes seguir intentándolo estando convaleciente"). Decidido
+  // por `esJugadorReal` (el `CombatParticipant.tipo === 'JUGADOR'` real), NUNCA por el string
+  // `bando` — un bando `'JUGADOR'` puede estar compuesto solo de NPC aliados (combate NPC-vs-NPC,
+  // ver `combateMultipleOrquestacion.integration.test.ts`), sin ninguna jugadora real de por medio.
+  describe('bandoSigueEnCombate', () => {
+    it('la JUGADORA REAL convaleciente sigue en combate — solo MUERTO real la saca', () => {
+      expect(bandoSigueEnCombate([{ participantId: 'j', condicionFisica: 'CONVALECIENTE', esJugadorReal: true }])).toBe(true);
+      expect(bandoSigueEnCombate([{ participantId: 'j', condicionFisica: 'GRAVE', esJugadorReal: true }])).toBe(true);
+      expect(bandoSigueEnCombate([{ participantId: 'j', condicionFisica: 'MUERTO', esJugadorReal: true }])).toBe(false);
+    });
+
+    it('un NPC (incluido uno metido en el bando "JUGADOR" como aliado) CONVALECIENTE SÍ cuenta como fuera de combate — mismo criterio que objetivosValidos', () => {
+      expect(bandoSigueEnCombate([{ participantId: 'e', condicionFisica: 'CONVALECIENTE' }])).toBe(false);
+      expect(bandoSigueEnCombate([{ participantId: 'e', condicionFisica: 'MUERTO' }])).toBe(false);
+      expect(bandoSigueEnCombate([{ participantId: 'e', condicionFisica: 'GRAVE' }])).toBe(true);
+      // Aliado NPC en el bando "JUGADOR" (combate NPC-vs-NPC, sin jugadora real) — mismo criterio
+      // estricto, `esJugadorReal` ausente/false es lo que importa, no el string `bando`.
+      expect(bandoSigueEnCombate([{ participantId: 'aliado', condicionFisica: 'CONVALECIENTE', esJugadorReal: false }])).toBe(false);
+    });
+
+    it('caso real reproducido: jugadora convaleciente + 2 enemigos ileso — el combate sigue en curso', () => {
+      const jugador: ObjetivoCandidato[] = [{ participantId: 'j', condicionFisica: 'CONVALECIENTE', esJugadorReal: true }];
+      const enemigos: ObjetivoCandidato[] = [
+        { participantId: 'e1', condicionFisica: 'ILESO' },
+        { participantId: 'e2', condicionFisica: 'ILESO' },
+      ];
+      expect(bandoSigueEnCombate(jugador) && bandoSigueEnCombate(enemigos)).toBe(true);
+    });
+
+    it('grupo entero de enemigos CONVALECIENTE/MUERTO sí termina el combate', () => {
+      const enemigos: ObjetivoCandidato[] = [
+        { participantId: 'e1', condicionFisica: 'CONVALECIENTE' },
+        { participantId: 'e2', condicionFisica: 'MUERTO' },
+      ];
+      expect(bandoSigueEnCombate(enemigos)).toBe(false);
+    });
+
+    it('bando "JUGADOR" de dos NPC aliados (combate NPC-vs-NPC, sin jugadora real) SÍ termina si ambos caen', () => {
+      const bandoAliados: ObjetivoCandidato[] = [
+        { participantId: 'a1', condicionFisica: 'MUERTO', esJugadorReal: false },
+        { participantId: 'a2', condicionFisica: 'CONVALECIENTE', esJugadorReal: false },
+      ];
+      expect(bandoSigueEnCombate(bandoAliados)).toBe(false);
+    });
+  });
+
   it('Inteligencia alta remata al más herido de los vivos', () => {
     const objetivo = elegirObjetivo(INTELIGENCIA_TACTICA_UMBRAL, candidatos, () => 0);
     expect(objetivo).toBe('b'); // GRAVE está más cerca de caer que ILESO
@@ -72,6 +125,33 @@ describe('objetivosValidos / elegirObjetivo', () => {
   it('null si no queda nadie vivo en el bando contrario', () => {
     const soloMuertos: ObjetivoCandidato[] = [{ participantId: 'x', condicionFisica: 'MUERTO' }];
     expect(elegirObjetivo(20, soloMuertos)).toBeNull();
+  });
+});
+
+// Fase 3 § 3b de efectos de clase (2026-08-27, docs/21-roadmap.md) — objetivo extra de MULTIPLE.
+describe('objetivoExtraFor', () => {
+  const candidatos: ObjetivoCandidato[] = [
+    { participantId: 'a', condicionFisica: 'ILESO' },
+    { participantId: 'b', condicionFisica: 'GRAVE' },
+    { participantId: 'c', condicionFisica: 'MUERTO' },
+  ];
+
+  it('excluye siempre al objetivo principal, nunca se elige a sí mismo', () => {
+    expect(objetivoExtraFor('a', candidatos, () => 0)).toBe('b');
+  });
+
+  it('nunca elige aleatorio priorizado por Inteligencia (a diferencia de elegirObjetivo)', () => {
+    // Con random()=0.99 elegiría 'b' de todos modos por ser el único vivo distinto de 'a' — el
+    // punto real de este test es que NO hay ninguna lógica de "más herido gana" de por medio.
+    expect(objetivoExtraFor('a', candidatos, () => 0.99)).toBe('b');
+  });
+
+  it('null si no queda nadie más vivo aparte del principal', () => {
+    const soloElPrincipalYUnMuerto: ObjetivoCandidato[] = [
+      { participantId: 'a', condicionFisica: 'ILESO' },
+      { participantId: 'c', condicionFisica: 'MUERTO' },
+    ];
+    expect(objetivoExtraFor('a', soloElPrincipalYUnMuerto)).toBeNull();
   });
 });
 
@@ -227,6 +307,138 @@ describe('resolverEnganchesRonda', () => {
     const resultado = resolverEnganchesRonda(orden, combatientes, elegir);
     expect(resultado.has('fantasma')).toBe(false); // ignorado del todo, ni siquiera null
     expect(esDueloMutuo(resultado, 'jugadora', 'enemigo')).toBe(true);
+  });
+
+  // OCULTACION real (Fase 3 § 3c, 2026-08-27) — excluidos de ser elegidos como objetivo.
+  it('un combatiente oculto nunca es elegido como objetivo mientras haya otro candidato visible', () => {
+    const orden = ['enemigo', 'oculto', 'visible'];
+    const combatientes = [
+      { participantId: 'enemigo', bando: 'ENEMIGO' as const },
+      { participantId: 'oculto', bando: 'JUGADOR' as const },
+      { participantId: 'visible', bando: 'JUGADOR' as const },
+    ];
+    // 'oculto' nunca elige a nadie (aísla la exclusión como CANDIDATO de la reciprocidad normal
+    // del algoritmo — si 'oculto' también reclamara a 'enemigo' por su cuenta, esa reclamación
+    // cancelaría la elección de 'enemigo' igual que en cualquier otro caso, sin relación con estar
+    // oculto). El propio `elegirObjetivoPara` no filtra nada más allá de eso — la exclusión de
+    // 'oculto' como candidato la aplica `resolverEnganchesRonda` antes de ofrecerle a nadie.
+    const elegir = (id: string, candidatos: string[]) => (id === 'oculto' ? null : (candidatos[0] ?? null));
+    const resultado = resolverEnganchesRonda(orden, combatientes, elegir, new Set(['oculto']));
+    expect(resultado.get('enemigo')).toBe('visible');
+  });
+
+  it('la excepción "único vivo del bando" deja al oculto como candidato igualmente', () => {
+    const orden = ['enemigo', 'oculto'];
+    const combatientes = [
+      { participantId: 'enemigo', bando: 'ENEMIGO' as const },
+      { participantId: 'oculto', bando: 'JUGADOR' as const },
+    ];
+    const elegir = (_id: string, candidatos: string[]) => candidatos[0] ?? null;
+    const resultado = resolverEnganchesRonda(orden, combatientes, elegir, new Set(['oculto']));
+    expect(resultado.get('enemigo')).toBe('oculto'); // único candidato posible, la exclusión no lo deja sin nadie
+  });
+
+  it('un combatiente oculto sigue pudiendo elegir su propio objetivo con normalidad', () => {
+    const orden = ['oculto', 'enemigo'];
+    const combatientes = [
+      { participantId: 'oculto', bando: 'JUGADOR' as const },
+      { participantId: 'enemigo', bando: 'ENEMIGO' as const },
+    ];
+    const elegir = (_id: string, candidatos: string[]) => candidatos[0] ?? null;
+    const resultado = resolverEnganchesRonda(orden, combatientes, elegir, new Set(['oculto']));
+    expect(resultado.get('oculto')).toBe('enemigo'); // ocultarse no le impide actuar
+  });
+});
+
+// Identificador de combatientes duplicados (2026-08-27, bug real jugando: "ataqué a los dos
+// buitres a la vez" — no podía dirigir el golpe al segundo, dos CombatParticipant del mismo npcId
+// comparían nombre y el matching por texto siempre resolvía al primero del array).
+describe('instanceNumbersByParticipantId', () => {
+  it('sin duplicados, no numera a nadie', () => {
+    const resultado = instanceNumbersByParticipantId([
+      { participantId: 'p1', npcId: 'buitre' },
+      { participantId: 'p2', npcId: 'corredor' },
+    ]);
+    expect(resultado.size).toBe(0);
+  });
+
+  it('con 2 del mismo npcId, numera ambos 1/2 en orden estable por participantId', () => {
+    const resultado = instanceNumbersByParticipantId([
+      { participantId: 'zzz', npcId: 'buitre' },
+      { participantId: 'aaa', npcId: 'buitre' },
+    ]);
+    // Orden estable por participantId (localeCompare), no por orden de llegada del array.
+    expect(resultado.get('aaa')).toBe(1);
+    expect(resultado.get('zzz')).toBe(2);
+  });
+
+  it('mezcla: solo numera el grupo que tiene duplicados, el solitario se queda sin entrada', () => {
+    const resultado = instanceNumbersByParticipantId([
+      { participantId: 'b1', npcId: 'buitre' },
+      { participantId: 'b2', npcId: 'buitre' },
+      { participantId: 'c1', npcId: 'corredor' },
+    ]);
+    expect(resultado.has('c1')).toBe(false);
+    expect(resultado.get('b1')).toBe(1);
+    expect(resultado.get('b2')).toBe(2);
+  });
+
+  it('3 del mismo npcId, numera 1/2/3', () => {
+    const resultado = instanceNumbersByParticipantId([
+      { participantId: 'a', npcId: 'buitre' },
+      { participantId: 'b', npcId: 'buitre' },
+      { participantId: 'c', npcId: 'buitre' },
+    ]);
+    expect([resultado.get('a'), resultado.get('b'), resultado.get('c')]).toEqual([1, 2, 3]);
+  });
+});
+
+// Extraído de turnResolution.ts (2026-08-27) para poder probarlo aislado del resto del turno
+// (clasificador LLM real, sistema viejo `npcsInScene` — ruido genuino en un test de integración
+// completo, ver memoria de sesión: "citar #2 a veces no ganaba por interferencia de otro camino").
+describe('resolverObjetivoPorTexto', () => {
+  const normalize = (s: string) => s.toLowerCase().trim();
+  const nombreByNpcId = new Map([['buitre-npc', 'Buitre']]);
+
+  it('sin cita ninguna, cae al primer vivo', () => {
+    const candidatos = [
+      { participantId: 'p1', npcId: 'buitre-npc', vivo: true },
+      { participantId: 'p2', npcId: 'buitre-npc', vivo: true },
+    ];
+    expect(resolverObjetivoPorTexto('Ataco con todas mis fuerzas.', candidatos, nombreByNpcId, normalize)).toBe('p1');
+  });
+
+  it('cita el nombre base sin duplicados: match directo', () => {
+    const candidatos = [{ participantId: 'p1', npcId: 'buitre-npc', vivo: true }];
+    expect(resolverObjetivoPorTexto("Ataco a 'Buitre'.", candidatos, nombreByNpcId, normalize)).toBe('p1');
+  });
+
+  it('con 2 duplicados, "Buitre #2" apunta al segundo (orden estable por participantId), nunca al primero', () => {
+    const candidatos = [
+      { participantId: 'zzz', npcId: 'buitre-npc', vivo: true },
+      { participantId: 'aaa', npcId: 'buitre-npc', vivo: true },
+    ];
+    // Orden estable por participantId (localeCompare): 'aaa' es #1, 'zzz' es #2.
+    expect(resolverObjetivoPorTexto("Ataco a 'Buitre #2'.", candidatos, nombreByNpcId, normalize)).toBe('zzz');
+    expect(resolverObjetivoPorTexto("Ataco a 'Buitre #1'.", candidatos, nombreByNpcId, normalize)).toBe('aaa');
+  });
+
+  it('"#2" sigue significando lo mismo aunque el "#1" ya no esté vivo', () => {
+    const candidatos = [
+      { participantId: 'aaa', npcId: 'buitre-npc', vivo: false }, // #1, ya caído
+      { participantId: 'zzz', npcId: 'buitre-npc', vivo: true }, // #2, sigue vivo
+    ];
+    expect(resolverObjetivoPorTexto("Ataco a 'Buitre #2'.", candidatos, nombreByNpcId, normalize)).toBe('zzz');
+  });
+
+  it('cita un nombre que no matchea a nadie: cae al primer vivo, no revienta', () => {
+    const candidatos = [{ participantId: 'p1', npcId: 'buitre-npc', vivo: true }];
+    expect(resolverObjetivoPorTexto("Ataco a 'Corredor de Cauce'.", candidatos, nombreByNpcId, normalize)).toBe('p1');
+  });
+
+  it('sin ningún candidato vivo, devuelve null', () => {
+    const candidatos = [{ participantId: 'p1', npcId: 'buitre-npc', vivo: false }];
+    expect(resolverObjetivoPorTexto("Ataco a 'Buitre'.", candidatos, nombreByNpcId, normalize)).toBeNull();
   });
 });
 
@@ -391,5 +603,265 @@ describe('resolverIntercambioCompleto', () => {
     );
     expect(resultado.defensorRecibeGolpe).toBe(false);
     expect(resultado.nuevaCondicionDefensor).toBe('ILESO');
+  });
+
+  // Fase 3 § 3a de efectos de clase (2026-08-27, docs/21-roadmap.md) — cierra el hueco de Fase 2
+  // en combate múltiple (AUMENTO/DEBILIDAD) + CONTROL real.
+  it('AUMENTO/DEBILIDAD: margen decisivo + habilidad con duración -> ActiveEffect listo para empujar', () => {
+    mockRolls(rFor(15), rFor(1)); // margen 14 -> golpe_pleno
+    const resultado = resolverIntercambioCompleto(
+      combatiente({ nombre: 'Gorhorn' }),
+      habilidad({ rol: 'ataque', effects: ['ATAQUE', 'AUMENTO'], attribute: 'arcano', durationEffectMagnitude: 5, durationEffectTurns: 1 }),
+      'ataque',
+      13,
+      combatiente({ nombre: 'Lobo' }),
+      habilidad({ rol: 'defensa' }),
+      13,
+    );
+    expect(resultado.margenDecisivo).toBe(true);
+    expect(resultado.nuevoEfectoAtacante).toEqual({ attribute: 'arcano', magnitude: 5, turnsRemaining: 1, sourceAbility: 'Habilidad' });
+    expect(resultado.nuevoEfectoDefensor).toBeNull();
+  });
+
+  it('AUMENTO/DEBILIDAD: sin margen decisivo (golpe_normal) no empuja ningún ActiveEffect', () => {
+    mockRolls(rFor(10), rFor(7)); // atacante 15 vs defensor 12, margen 3 -> golpe_normal
+    const resultado = resolverIntercambioCompleto(
+      combatiente({ nombre: 'Gorhorn' }),
+      habilidad({ rol: 'ataque', effects: ['ATAQUE', 'AUMENTO'], durationEffectMagnitude: 5, durationEffectTurns: 1 }),
+      'ataque',
+      13,
+      combatiente({ nombre: 'Lobo' }),
+      habilidad({ rol: 'defensa' }),
+      13,
+    );
+    expect(resultado.margenDecisivo).toBe(false);
+    expect(resultado.defensorRecibeGolpe).toBe(true);
+    expect(resultado.nuevoEfectoAtacante).toBeNull();
+  });
+
+  it('DEBILIDAD: margen decisivo -> el efecto se dirige al defensor, no al atacante', () => {
+    mockRolls(rFor(15), rFor(1));
+    const resultado = resolverIntercambioCompleto(
+      combatiente({ nombre: 'Gorhorn' }),
+      habilidad({ rol: 'ataque', effects: ['ATAQUE', 'DEBILIDAD'], attribute: 'destreza', durationEffectMagnitude: -4, durationEffectTurns: 2 }),
+      'ataque',
+      13,
+      combatiente({ nombre: 'Lobo' }),
+      habilidad({ rol: 'defensa' }),
+      13,
+    );
+    expect(resultado.nuevoEfectoDefensor).toEqual({ attribute: 'destreza', magnitude: -4, turnsRemaining: 2, sourceAbility: 'Habilidad' });
+    expect(resultado.nuevoEfectoAtacante).toBeNull();
+  });
+
+  // Fase 3 § 3b de efectos de clase (2026-08-27) — MULTIPLE real.
+  it('MULTIPLE: ATAQUE+MULTIPLE con margen decisivo y golpe conectado -> multipleTriggered', () => {
+    mockRolls(rFor(15), rFor(1));
+    const resultado = resolverIntercambioCompleto(
+      combatiente({ nombre: 'Gorhorn' }),
+      habilidad({ rol: 'ataque', effects: ['ATAQUE', 'MULTIPLE'] }),
+      'ataque',
+      13,
+      combatiente({ nombre: 'Lobo' }),
+      habilidad({ rol: 'defensa' }),
+      13,
+    );
+    expect(resultado.multipleTriggered).toBe(true);
+  });
+
+  it('MULTIPLE: sin margen decisivo (golpe_normal) no dispara, mismo criterio que AUMENTO/DEBILIDAD', () => {
+    mockRolls(rFor(10), rFor(7)); // margen 3 -> golpe_normal
+    const resultado = resolverIntercambioCompleto(
+      combatiente({ nombre: 'Gorhorn' }),
+      habilidad({ rol: 'ataque', effects: ['ATAQUE', 'MULTIPLE'] }),
+      'ataque',
+      13,
+      combatiente({ nombre: 'Lobo' }),
+      habilidad({ rol: 'defensa' }),
+      13,
+    );
+    expect(resultado.multipleTriggered).toBe(false);
+  });
+
+  it('MULTIPLE sin ATAQUE (p.ej. AUMENTO+MULTIPLE, buff a aliados) nunca dispara — sin construir a propósito', () => {
+    mockRolls(rFor(15), rFor(1));
+    const resultado = resolverIntercambioCompleto(
+      combatiente({ nombre: 'Gorhorn' }),
+      habilidad({ rol: 'ataque', effects: ['AUMENTO', 'MULTIPLE'] }),
+      'ataque',
+      13,
+      combatiente({ nombre: 'Lobo' }),
+      habilidad({ rol: 'defensa' }),
+      13,
+    );
+    expect(resultado.multipleTriggered).toBe(false);
+  });
+
+  // Fase 3 § 3e de efectos de clase (2026-08-27) — EXPULSAR real, mismo gate que MULTIPLE.
+  it('EXPULSAR: ATAQUE+EXPULSAR con margen decisivo y golpe conectado -> expulsarTriggered', () => {
+    mockRolls(rFor(15), rFor(1));
+    const resultado = resolverIntercambioCompleto(
+      combatiente({ nombre: 'Gorhorn' }),
+      habilidad({ rol: 'ataque', effects: ['ATAQUE', 'EXPULSAR'] }),
+      'ataque',
+      13,
+      combatiente({ nombre: 'Lobo' }),
+      habilidad({ rol: 'defensa' }),
+      13,
+    );
+    expect(resultado.expulsarTriggered).toBe(true);
+  });
+
+  it('EXPULSAR: sin margen decisivo (golpe_normal) no dispara', () => {
+    mockRolls(rFor(10), rFor(7)); // margen 3 -> golpe_normal
+    const resultado = resolverIntercambioCompleto(
+      combatiente({ nombre: 'Gorhorn' }),
+      habilidad({ rol: 'ataque', effects: ['ATAQUE', 'EXPULSAR'] }),
+      'ataque',
+      13,
+      combatiente({ nombre: 'Lobo' }),
+      habilidad({ rol: 'defensa' }),
+      13,
+    );
+    expect(resultado.expulsarTriggered).toBe(false);
+  });
+
+  it('EXPULSAR sin ATAQUE nunca dispara (mismo criterio que MULTIPLE)', () => {
+    mockRolls(rFor(15), rFor(1));
+    const resultado = resolverIntercambioCompleto(
+      combatiente({ nombre: 'Gorhorn' }),
+      habilidad({ rol: 'ataque', effects: ['EXPULSAR'] }),
+      'ataque',
+      13,
+      combatiente({ nombre: 'Lobo' }),
+      habilidad({ rol: 'defensa' }),
+      13,
+    );
+    expect(resultado.expulsarTriggered).toBe(false);
+  });
+
+  it('AUMENTO/DEBILIDAD nunca se dispara en el camino independiente (utilidad), mismo alcance que Fase 2', () => {
+    mockRolls(rFor(15), rFor(15));
+    const resultado = resolverIntercambioCompleto(
+      combatiente({ nombre: 'Gorhorn' }),
+      habilidad({ rol: 'utilidad', effects: ['AUMENTO'], durationEffectMagnitude: 5, durationEffectTurns: 1 }),
+      'utilidad',
+      10,
+      combatiente({ nombre: 'Lobo' }),
+      habilidad({ rol: 'defensa' }),
+      10,
+    );
+    expect(resultado.margenDecisivo).toBe(false);
+    expect(resultado.nuevoEfectoAtacante).toBeNull();
+  });
+
+  it('CONTROL real: la utilidad del atacante dispara -> marca al DEFENSOR como controlado, nunca a sí mismo', () => {
+    // `utilityTriggered` exige que el RIVAL tenga rol 'ataque' (mismo criterio que Opresión Mental
+    // en el motor 1vs1: la utilidad reacciona a un ataque entrante) — aquí es el "defensor" quien
+    // ataca y el "atacante" quien reacciona con su utilidad.
+    mockRolls(rFor(10), rFor(1)); // atacante 15 >= dificultad 10 -> su utilidad se dispara
+    const resultado = resolverIntercambioCompleto(
+      combatiente({ nombre: 'Gorhorn' }),
+      habilidad({ rol: 'utilidad', effects: ['CONTROL'] }),
+      'utilidad',
+      10,
+      combatiente({ nombre: 'Lobo' }),
+      habilidad({ rol: 'ataque' }),
+      10,
+    );
+    expect(resultado.atacanteControlDisparado).toBe(true);
+    expect(resultado.defensorControlDisparado).toBe(false);
+  });
+
+  it('CONTROL real: la utilidad del defensor dispara -> marca al ATACANTE como controlado', () => {
+    // mismo patrón de tiradas que "contraataque del defensor" (atacante falla su base, defensor
+    // acierta su propia utilidad).
+    mockRolls(rFor(1), rFor(15));
+    const resultado = resolverIntercambioCompleto(
+      combatiente({ nombre: 'Gorhorn' }),
+      habilidad({ rol: 'ataque' }),
+      'ataque',
+      15,
+      combatiente({ nombre: 'Lobo' }),
+      habilidad({ rol: 'utilidad', effects: ['CONTROL'] }),
+      10,
+    );
+    expect(resultado.defensorControlDisparado).toBe(true);
+    expect(resultado.atacanteControlDisparado).toBe(false);
+  });
+
+  // Fase 3 § 3c de efectos de clase (2026-08-27) — DESVIAR real.
+  it('DESVIAR: la defensora gana por margen decisivo (defensor_contragolpea) -> desviarTriggered', () => {
+    mockRolls(rFor(1), rFor(15)); // atacante 6 vs defensor 20, margen -14 -> defensor_contragolpea
+    const resultado = resolverIntercambioCompleto(
+      combatiente({ nombre: 'Gorhorn' }),
+      habilidad({ rol: 'ataque' }),
+      'ataque',
+      13,
+      combatiente({ nombre: 'Lobo' }),
+      habilidad({ rol: 'defensa', effects: ['AGUANTE', 'DESVIAR'] }),
+      13,
+    );
+    expect(resultado.desviarTriggered).toBe(true);
+    expect(resultado.defensorRecibeGolpe).toBe(false); // nunca la golpea a ella, se desvía a otro
+  });
+
+  it('DESVIAR: sin el efecto en la habilidad de defensa, nunca dispara aunque el margen sea decisivo', () => {
+    mockRolls(rFor(1), rFor(15));
+    const resultado = resolverIntercambioCompleto(
+      combatiente({ nombre: 'Gorhorn' }),
+      habilidad({ rol: 'ataque' }),
+      'ataque',
+      13,
+      combatiente({ nombre: 'Lobo' }),
+      habilidad({ rol: 'defensa', effects: ['AGUANTE'] }),
+      13,
+    );
+    expect(resultado.desviarTriggered).toBe(false);
+  });
+
+  it('DESVIAR: margen no decisivo (parada_en_seco) no dispara', () => {
+    mockRolls(rFor(5), rFor(8)); // atacante 10 vs defensor 13, margen -3
+    const resultado = resolverIntercambioCompleto(
+      combatiente({ nombre: 'Gorhorn' }),
+      habilidad({ rol: 'ataque' }),
+      'ataque',
+      13,
+      combatiente({ nombre: 'Lobo' }),
+      habilidad({ rol: 'defensa', effects: ['AGUANTE', 'DESVIAR'] }),
+      13,
+    );
+    expect(resultado.desviarTriggered).toBe(false);
+  });
+
+  // Fase 3 § 3c de efectos de clase (2026-08-27) — OCULTACION real, mismo patrón de tiradas que CONTROL.
+  it('OCULTACION: la utilidad del atacante dispara -> se oculta A SÍ MISMO, nunca al rival', () => {
+    mockRolls(rFor(10), rFor(1));
+    const resultado = resolverIntercambioCompleto(
+      combatiente({ nombre: 'Gorhorn' }),
+      habilidad({ rol: 'utilidad', effects: ['OCULTACION'] }),
+      'utilidad',
+      10,
+      combatiente({ nombre: 'Lobo' }),
+      habilidad({ rol: 'ataque' }),
+      10,
+    );
+    expect(resultado.atacanteOcultacionDisparada).toBe(true);
+    expect(resultado.defensorOcultacionDisparada).toBe(false);
+  });
+
+  it('OCULTACION: la utilidad del defensor dispara -> se oculta a sí misma', () => {
+    mockRolls(rFor(1), rFor(15));
+    const resultado = resolverIntercambioCompleto(
+      combatiente({ nombre: 'Gorhorn' }),
+      habilidad({ rol: 'ataque' }),
+      'ataque',
+      15,
+      combatiente({ nombre: 'Lobo' }),
+      habilidad({ rol: 'utilidad', effects: ['OCULTACION'] }),
+      10,
+    );
+    expect(resultado.defensorOcultacionDisparada).toBe(true);
+    expect(resultado.atacanteOcultacionDisparada).toBe(false);
   });
 });

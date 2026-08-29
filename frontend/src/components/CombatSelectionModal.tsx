@@ -55,7 +55,7 @@ export function CombatSelectionModal({
       onCancel={onCancel}
       cancelDisabled={busy}
       footer={
-        <button onClick={() => onConfirm(Array.from(selected))} disabled={busy || selected.size === 0} className={confirmButtonClasses(tone)}>
+        <button type="button" onClick={() => onConfirm(Array.from(selected))} disabled={busy || selected.size === 0} className={confirmButtonClasses(tone)}>
           {confirmLabel}
         </button>
       }

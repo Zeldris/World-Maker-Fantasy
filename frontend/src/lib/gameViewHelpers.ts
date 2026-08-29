@@ -21,8 +21,16 @@ export function applyInventoryDelta(
   return [...reconciled, ...added]
 }
 
+// Bug real cazado por useTurnFlow.test.tsx (checklist frontend 2026-08-27, A.1) — `!('ended' in
+// err)` no bastaba para distinguir un BusyError real de un TurnLockedError real: ambos son
+// `{ status: 409, ... }` sin `ended`, así que un TurnLockedError genuino ({status:409, locked:true})
+// también cumplía esta guarda y se trataba como BusyError (fijaba `busyUntil` con `undefined`, sin
+// mensaje de turno bloqueado). No se disparaba en producción hoy solo porque `requestTurnNarrate`
+// (api.ts) nunca lanza BusyError, únicamente TurnLockedError — pero la función en sí era incorrecta
+// de forma aislada, mismo criterio que el resto del proyecto: se arregla la causa, no solo el
+// síntoma que hoy no se ve.
 export function isBusyError(err: unknown): err is BusyError {
-  return typeof err === 'object' && err !== null && (err as { status?: number }).status === 409 && !('ended' in err)
+  return typeof err === 'object' && err !== null && (err as { status?: number }).status === 409 && !('ended' in err) && !('locked' in err)
 }
 
 export function isEndedGameError(err: unknown): err is EndedGameError {
@@ -82,7 +90,28 @@ export function npcInSceneToCombatDisplay(npc: NpcInSceneInfo): CombatNpcDisplay
     yaSaqueado: npc.saqueado,
     lootedItemNames: npc.lootedItemNames,
     analizado: npc.analizado,
+    activeEffects: npc.activeEffects,
+    participantId: npc.participantId,
+    instanceNumber: npc.instanceNumber,
+    capturable: npc.capturable,
   }
+}
+
+/// Identificador de combatientes duplicados (2026-08-27, bug real jugando: "ataqué a los dos
+/// buitres a la vez" — dos `CombatNpcDisplay` con el mismo `slug` colapsaban al mismo estado local
+/// porque todo el merge de useCombatFlow.ts usaba `slug` como clave única). Clave real a usar en
+/// vez de `slug` puro en cualquier `Map`/selección de combate: `participantId` cuando existe (un
+/// `CombatEncounter` de grupo real, cada `CombatParticipant` es único), `slug` de vuelta en combate
+/// 1v1 clásico (sin `CombatEncounter`, nunca hay dos NPCs a la vez de todos modos).
+export function combatKeyFor(npc: Pick<CombatNpcDisplay, 'slug' | 'participantId'>): string {
+  return npc.participantId ?? npc.slug
+}
+
+/// Nombre citable en texto libre (2026-08-27) — "Buitre #2" cuando hace falta desambiguar
+/// (`instanceNumber` no nulo), el nombre tal cual en el resto de casos. Mismo sufijo `#N` que el
+/// backend acepta en el matching por texto citado (`turnResolution.ts`, `esperandoEleccionJugadora`).
+export function combatDisplayNameFor(npc: Pick<CombatNpcDisplay, 'name' | 'instanceNumber'>): string {
+  return npc.instanceNumber != null ? `${npc.name} #${npc.instanceNumber}` : npc.name
 }
 
 /// LogEntry de recompensa de misión completada (2026-08-13) — misma construcción usada tanto al

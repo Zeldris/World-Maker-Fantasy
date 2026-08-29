@@ -6,6 +6,7 @@ import { DiceRollReveal } from './DiceRollReveal'
 import { PanelRivets } from './Rivet'
 import { EnciclopediaLinkedText } from './EnciclopediaLinkedText'
 import { useEnciclopediaLink } from '../context/useEnciclopediaLink'
+import { OfferCard } from './OfferCard'
 
 interface LogPanelProps {
   title: string
@@ -52,12 +53,25 @@ interface LogPanelProps {
   /// panel de "Tu personaje", el único que puede recibir `questOffer`).
   onAcceptQuestOffer?: (entryId: string, title: string, description: string) => void
   onDismissQuestOffer?: (entryId: string) => void
+  /// "Modo dinámico" (2026-08-27, `entry.dynamicModeOffer`) — mismo criterio opcional que
+  /// `onAcceptQuestOffer`/`onDismissQuestOffer`.
+  onInteractuarModoDinamico?: (entryId: string, tipo: 'NPC' | 'FAUNA', targetSlug: string, targetName: string) => void
+  onDismissDynamicModeOffer?: (entryId: string) => void
   /// CONVALECIENTE deja de ser "victoria automática" (2026-08-26) — `combatNpcsDisplay` es el
-  /// mismo estado en vivo que ya usa CombatPanel.tsx (useCombatFlow.ts), para saber por cada
-  /// `entry.convalecienteOffers` si ese NPC sigue pendiente o ya se resolvió (Matar → `MUERTO`,
-  /// Capturar/Clemente → `dismissed`) — la tarjeta no guarda su propio estado de "ya resuelto".
-  combatNpcsDisplay?: { slug: string; condicion: CondicionFisica; dismissed?: boolean }[]
+  /// mismo estado en vivo que ya usa CombatPanel.tsx (useCombatFlow.ts). Antes solo se usaba para
+  /// saber si un `entry.convalecienteOffers` concreto ya se había resuelto; desde el fix del
+  /// 2026-08-28 ("recargar tras Convaleciente atasca el combate del todo" — la oferta vivía SOLO en
+  /// el `characterLog` efímero de React, sin reconstruirse tras F5) la tarjeta persistente de abajo
+  /// se calcula DIRECTAMENTE de aquí (filtrando CONVALECIENTE sin `dismissed`), sin depender de
+  /// ninguna `LogEntry` concreta — `name`/`capturable` hacen falta para poder pintar la tarjeta sin
+  /// tener que ir a buscarlos a otro sitio.
+  combatNpcsDisplay?: { slug: string; name: string; condicion: CondicionFisica; dismissed?: boolean; capturable?: boolean }[]
   onMatarConvaleciente?: (npcSlug: string) => void
+  /// Atajo a Diario (2026-08-27, auditoría de diseño/UX § 4.3: "no hay ningún atajo desde el log
+  /// en vivo hacia el Diario — el jugador tiene que saber por su cuenta que existe esa pestaña
+  /// aparte" — este log solo muestra las últimas 24h por diseño, ver comentario de `entries`).
+  /// Mismo patrón opcional que `onCollapse`/`onToggleView`: sin este callback, no sale el enlace.
+  onViewFullHistory?: () => void
   onCapturarConvaleciente?: (npcSlug: string) => void
   onClementeConvaleciente?: (npcSlug: string) => void
 }
@@ -123,17 +137,34 @@ export const LogPanel = memo(function LogPanel({
   diceReveal,
   onAcceptQuestOffer,
   onDismissQuestOffer,
+  onInteractuarModoDinamico,
+  onDismissDynamicModeOffer,
   combatNpcsDisplay,
   onMatarConvaleciente,
   onCapturarConvaleciente,
   onClementeConvaleciente,
+  onViewFullHistory,
 }: LogPanelProps) {
   const { enciclopediaIndex, onEntityDetail, onEntityQuickInsert } = useEnciclopediaLink()
   const scrollRef = useRef<HTMLDivElement>(null)
   const classes = accentClasses[accent]
 
+  // Bug real (pendiente 2026-08-27, "el foco no siempre baja a la narración" — investigado
+  // 2026-08-28): con `behavior: 'smooth'` en CADA chunk (cada ~200-300ms mientras narra), cualquier
+  // gesto de scroll manual del usuario (rueda del ratón, trackpad) durante el streaming CANCELA la
+  // animación programática en curso — comportamiento estándar del navegador, sin evento para
+  // detectarlo y reintentar. El siguiente chunk relanzaba un nuevo scroll suave, pero si el usuario
+  // no volvía a tocar el scroll, la vista se quedaba a medio camino sin motivo aparente — "en
+  // muchas narraciones", no todas, coincide justo con las veces que hubo ese gesto de por medio.
+  // Fix: instantáneo (`'auto'`) SIEMPRE que el turno termina de verdad (`isThinking` true→false)
+  // — el aterrizaje final nunca debe poder quedar interrumpido a medias. Mientras sigue narrando
+  // (`isThinking` true), se mantiene `'smooth'` — más agradable de ver, y si un scroll manual
+  // cancela una animación intermedia no importa: el chunk siguiente relanza el scroll normal.
+  const wasThinkingForScrollRef = useRef(isThinking)
   useEffect(() => {
-    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' })
+    const turnJustEnded = wasThinkingForScrollRef.current && !isThinking
+    wasThinkingForScrollRef.current = isThinking
+    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: turnJustEnded ? 'auto' : 'smooth' })
     // thinkingText en la dependencia (roadmap de velocidad, 2026-07-20): con streaming, la
     // tarjeta "pensando" crece de tamaño en vivo — sin esto, el scroll no la sigue mientras narra.
     // Los chunks llegan cada ~200-300ms en este hardware (3-4,5 tok/s medido), no cada frame.
@@ -163,7 +194,7 @@ export const LogPanel = memo(function LogPanel({
           <p className="text-2xs text-wood-400">{subtitle}</p>
         </div>
         {onToggleView && (
-          <button
+          <button type="button"
             onClick={onToggleView}
             title={`Ver "${toggleViewLabel}"`}
             className={`tactile relative shrink-0 rounded-full border px-2.5 py-1 text-2xs font-bold uppercase tracking-wide transition-colors ${classes.controlButton}`}
@@ -172,7 +203,7 @@ export const LogPanel = memo(function LogPanel({
           </button>
         )}
         {onCollapse && (
-          <button
+          <button type="button"
             onClick={onCollapse}
             title={`Colapsar "${title}"`}
             className={`tactile relative flex h-8 w-8 shrink-0 items-center justify-center rounded-full border text-base transition-colors ${classes.controlButton}`}
@@ -186,6 +217,14 @@ export const LogPanel = memo(function LogPanel({
           )}
         </div>
       </header>
+      {onViewFullHistory && (
+        <button type="button"
+          onClick={onViewFullHistory}
+          className="tactile shrink-0 px-4 pb-1 text-left text-2xs text-wood-500 transition-colors hover:text-accent-300"
+        >
+          Ver historial completo en el Diario →
+        </button>
+      )}
       <div ref={scrollRef} className="flex-1 space-y-3 overflow-y-auto px-4 py-4">
         {entries.length === 0 && !isThinking && (
           <p className="pt-2 text-sm text-wood-500 italic">{emptyHint}</p>
@@ -305,30 +344,53 @@ export const LogPanel = memo(function LogPanel({
                   Quest todavía no existe en la base de datos, solo se ofrece (`newQuestOfferInfo`,
                   turnResolution.ts). "Aceptar" la materializa de verdad vía
                   POST /saves/:id/quests/aceptar; "Cancelar" solo limpia la tarjeta, sin backend. */}
+              {/* Botones Aceptar/Cancelar (2026-08-26, petición explícita: "en vez de depender de
+                  que la jugadora escriba texto libre para aceptar... que 'Aceptar' genere una
+                  narración determinista de aceptación, sin esperar a que el LLM decida") — la
+                  Quest todavía no existe en la base de datos, solo se ofrece (`newQuestOfferInfo`,
+                  turnResolution.ts). "Aceptar" la materializa de verdad vía
+                  POST /saves/:id/quests/aceptar; "Cancelar" solo limpia la tarjeta, sin backend. */}
               {entry.questOffer && (
-                <div className="mt-2 rounded-lg border border-quest-600/50 bg-quest-500/10 px-2.5 py-2">
-                  <p className="flex items-center gap-1.5 text-2xs font-semibold uppercase tracking-[0.1em] text-quest-400">
-                    <span aria-hidden="true">🎯</span>
-                    <span>Misión propuesta: {entry.questOffer.title}</span>
-                  </p>
-                  <p className="mt-1 text-2xs text-wood-300">{entry.questOffer.description}</p>
-                  <div className="mt-2 flex gap-2">
-                    <button
-                      type="button"
-                      onClick={() => onAcceptQuestOffer?.(entry.id, entry.questOffer!.title, entry.questOffer!.description)}
-                      className="tactile rounded-lg border border-quest-500/60 bg-quest-500/20 px-2.5 py-1 text-2xs font-semibold uppercase tracking-[0.08em] text-quest-300 hover:border-quest-400 hover:bg-quest-500/35"
-                    >
-                      Aceptar
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => onDismissQuestOffer?.(entry.id)}
-                      className="tactile rounded-lg border border-iron-700 bg-wood-950/40 px-2.5 py-1 text-2xs font-semibold uppercase tracking-[0.08em] text-wood-400 hover:border-iron-500 hover:text-wood-200"
-                    >
-                      Cancelar
-                    </button>
-                  </div>
-                </div>
+                <OfferCard
+                  tone="quest"
+                  icon="🎯"
+                  title={`Misión propuesta: ${entry.questOffer.title}`}
+                  subtitle={entry.questOffer.description}
+                  actions={[
+                    { label: 'Aceptar', tone: 'primary', onClick: () => onAcceptQuestOffer?.(entry.id, entry.questOffer!.title, entry.questOffer!.description) },
+                    { label: 'Cancelar', tone: 'neutral', onClick: () => onDismissQuestOffer?.(entry.id) },
+                  ]}
+                />
+              )}
+              {/* "Modo dinámico" (2026-08-27, `entry.dynamicModeOffer`) — mismo patrón que la
+                  tarjeta de misión: oferta opcional al final del turno, nunca lo interrumpe.
+                  "Interactuar" abre el mini-flujo (DynamicModeModal.tsx); "Ignorar" solo limpia
+                  la tarjeta. B.9/B.10 (checklist frontend 2026-08-27): `accent2` (azulado, canal
+                  "El mundo") en vez del "quest" amarillo, más segunda línea de contexto. `busy`/
+                  `error` (A.7): antes un fallo de red dejaba los botones sin explicación. */}
+              {entry.dynamicModeOffer && (
+                <OfferCard
+                  tone="accent2"
+                  icon="💬"
+                  title={`${entry.dynamicModeOffer.targetName} busca tu atención`}
+                  subtitle={entry.dynamicModeOffer.tipo === 'NPC' ? 'Puedes hablar con esta persona.' : 'Hay algo cerca con lo que puedes interactuar.'}
+                  error={entry.dynamicModeOffer.error}
+                  actions={[
+                    {
+                      label: entry.dynamicModeOffer.busy ? 'Interactuando...' : 'Interactuar',
+                      tone: 'primary',
+                      disabled: entry.dynamicModeOffer.busy,
+                      onClick: () =>
+                        onInteractuarModoDinamico?.(
+                          entry.id,
+                          entry.dynamicModeOffer!.tipo,
+                          entry.dynamicModeOffer!.targetSlug,
+                          entry.dynamicModeOffer!.targetName,
+                        ),
+                    },
+                    { label: 'Ignorar', tone: 'neutral', disabled: entry.dynamicModeOffer.busy, onClick: () => onDismissDynamicModeOffer?.(entry.id) },
+                  ]}
+                />
               )}
               {/* CONVALECIENTE deja de ser "victoria automática" (2026-08-26, petición explícita)
                   — una tarjeta por cada NPC que pasó a CONVALECIENTE este turno, con Matar/
@@ -336,46 +398,30 @@ export const LogPanel = memo(function LogPanel({
                   `pendingDecisions`) hasta que TODAS estén resueltas. El estado de "ya resuelto"
                   no vive en la propia LogEntry — se mira en vivo contra `combatNpcsDisplay`, así
                   que sigue siendo correcto aunque la jugadora resuelva desde la tarjeta de un
-                  turno posterior o anterior. */}
+                  turno posterior o anterior.
+                  Fix 2026-08-28: mientras SIGUE pendiente, los botones activos ahora viven solo en
+                  la tarjeta PERSISTENTE de más abajo (calculada de `combatNpcsDisplay`, sobrevive a
+                  una recarga) — esta de aquí, ligada a la LogEntry del turno concreto, se queda como
+                  registro histórico de "aquí pasó a convaleciente" y solo muestra acciones mientras
+                  ninguna recarga ha intervenido (si ya se resolvió, sigue mostrando "Resuelto." como
+                  siempre; si sigue pendiente, no repite los mismos 3 botones que ya están abajo). */}
               {entry.convalecienteOffers?.map((offer) => {
                 const npc = combatNpcsDisplay?.find((n) => n.slug === offer.npcSlug)
                 const resuelto = !npc || npc.condicion === 'MUERTO' || !!npc.dismissed
+                if (!resuelto) return null
                 return (
-                  <div key={offer.npcSlug} className="mt-2 rounded-lg border border-danger-600/50 bg-danger-500/10 px-2.5 py-2">
-                    <p className="flex items-center gap-1.5 text-2xs font-semibold uppercase tracking-[0.1em] text-danger-400">
-                      <span aria-hidden="true">⚠️</span>
-                      <span>{offer.npcName} está convaleciente</span>
-                    </p>
-                    {resuelto ? (
-                      <p className="mt-1 text-2xs text-wood-400">Resuelto.</p>
-                    ) : (
-                      <div className="mt-2 flex flex-wrap gap-2">
-                        <button
-                          type="button"
-                          onClick={() => onMatarConvaleciente?.(offer.npcSlug)}
-                          className="tactile rounded-lg border border-danger-500/60 bg-danger-500/20 px-2.5 py-1 text-2xs font-semibold uppercase tracking-[0.08em] text-danger-300 hover:border-danger-400 hover:bg-danger-500/35"
-                        >
-                          Matar
-                        </button>
-                        {offer.capturable && (
-                          <button
-                            type="button"
-                            onClick={() => onCapturarConvaleciente?.(offer.npcSlug)}
-                            className="tactile rounded-lg border border-accent-500/60 bg-accent-500/20 px-2.5 py-1 text-2xs font-semibold uppercase tracking-[0.08em] text-accent-300 hover:border-accent-400 hover:bg-accent-500/35"
-                          >
-                            Capturar
-                          </button>
-                        )}
-                        <button
-                          type="button"
-                          onClick={() => onClementeConvaleciente?.(offer.npcSlug)}
-                          className="tactile rounded-lg border border-iron-700 bg-wood-950/40 px-2.5 py-1 text-2xs font-semibold uppercase tracking-[0.08em] text-wood-400 hover:border-iron-500 hover:text-wood-200"
-                        >
-                          Clemente
-                        </button>
-                      </div>
-                    )}
-                  </div>
+                  <OfferCard
+                    key={offer.npcSlug}
+                    tone="danger"
+                    icon="⚠️"
+                    title={`${offer.npcName} está convaleciente`}
+                    resolvedText="Resuelto."
+                    actions={[
+                      { label: 'Matar', tone: 'danger', onClick: () => onMatarConvaleciente?.(offer.npcSlug) },
+                      ...(offer.capturable ? [{ label: 'Capturar', tone: 'accent' as const, onClick: () => onCapturarConvaleciente?.(offer.npcSlug) }] : []),
+                      { label: 'Clemente', tone: 'neutral', onClick: () => onClementeConvaleciente?.(offer.npcSlug) },
+                    ]}
+                  />
                 )
               })}
               {entry.questCompleted && (
@@ -417,6 +463,26 @@ export const LogPanel = memo(function LogPanel({
             </div>
           ),
         )}
+        {/* Fix 2026-08-28 ("recargar tras Convaleciente atasca el combate del todo"): tarjeta
+            PERSISTENTE, calculada directamente de `combatNpcsDisplay` (estado real de combate, ya
+            viene de `GET /saves/:id` — sobrevive a una recarga) — a diferencia de la de arriba
+            (`entry.convalecienteOffers`, ligada al `characterLog` efímero de React, que nunca
+            sobrevive a F5), esta no depende de haber visto nacer la oferta en el turno en curso. */}
+        {combatNpcsDisplay
+          ?.filter((n) => n.condicion === 'CONVALECIENTE' && !n.dismissed)
+          .map((npc) => (
+            <OfferCard
+              key={`persistent-convaleciente-${npc.slug}`}
+              tone="danger"
+              icon="⚠️"
+              title={`${npc.name} está convaleciente`}
+              actions={[
+                { label: 'Matar', tone: 'danger', onClick: () => onMatarConvaleciente?.(npc.slug) },
+                ...(npc.capturable ? [{ label: 'Capturar', tone: 'accent' as const, onClick: () => onCapturarConvaleciente?.(npc.slug) }] : []),
+                { label: 'Clemente', tone: 'neutral', onClick: () => onClementeConvaleciente?.(npc.slug) },
+              ]}
+            />
+          ))}
         {isThinking && (
           <div
             className={`relative overflow-hidden rounded-lg border border-dashed px-3.5 py-3 ${

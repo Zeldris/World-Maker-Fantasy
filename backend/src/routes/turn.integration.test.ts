@@ -2,10 +2,12 @@ import { describe, it, expect, vi, beforeAll, afterAll, afterEach } from 'vitest
 import Fastify from 'fastify';
 import { Prisma } from '@prisma/client';
 import { prisma } from '../lib/prisma.js';
+import { env } from '../config/env.js';
 import { getDefaultUserId } from '../lib/defaultUser.js';
 import { resolveDueTransits, startEagerTransitResolution } from '../workers/worldTick.js';
 import { recolectarRoutes } from './saves/recolectar.js';
 import { panelsRoutes } from './saves/panels.js';
+import { detailRoutes } from './saves/detail.js';
 import { sessionRoutes } from './saves/session.js';
 import { questsRoutes } from './saves/quests.js';
 import { minutosConDestreza, bandaForMinutos } from '../services/travel.js';
@@ -30,6 +32,13 @@ const narrateAction = vi.fn(async (ctx: { onNarrationChunk?: (d: string) => void
   ctx.onNarrationChunk?.('El golpe conecta.');
   return { narration: 'El golpe conecta.', newFacts: [] };
 });
+// Narración de aceptación de misión (2026-08-30, POST /quests/aceptar) — mismo motivo que
+// classifyAction/narrateAction: sin mockear, `generateQuestResponseNarration` llamaría a Ollama
+// real dentro de un test de integración. Texto fijo predecible, distinto del texto legado (el test
+// de abajo asume EXACTAMENTE el texto legado "acepta la misión" — se actualiza junto con esto).
+const generateQuestResponseNarration = vi.fn(async (ctx: { characterName: string; questTitle: string; accepted: boolean }) => {
+  return `${ctx.characterName} ${ctx.accepted ? 'acepta' : 'rechaza'} la misión: ${ctx.questTitle}.`;
+});
 
 vi.mock('../services/narrador.js', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../services/narrador.js')>();
@@ -37,6 +46,7 @@ vi.mock('../services/narrador.js', async (importOriginal) => {
     ...actual,
     classifyAction: (...args: unknown[]) => classifyAction(...args),
     narrateAction: (ctx: Parameters<typeof narrateAction>[0]) => narrateAction(ctx),
+    generateQuestResponseNarration: (ctx: Parameters<typeof generateQuestResponseNarration>[0]) => generateQuestResponseNarration(ctx),
   };
 });
 
@@ -676,6 +686,9 @@ describe('Rediseño de combate: habilidades de utilidad reactivas y consumibles 
   let analizarRivalId: string;
   let vorticeMenorId: string;
   let opresionMentalId: string;
+  let golpeRunaColeraId: string;
+  let golpeEnvenenadoId: string;
+  let ataqueBasicoId: string;
 
   beforeAll(async () => {
     vi.spyOn(Math, 'random').mockReturnValue(0.99);
@@ -777,6 +790,43 @@ describe('Rediseño de combate: habilidades de utilidad reactivas y consumibles 
         },
       })
     ).id;
+    // AUMENTO/DEBILIDAD (Fase 2, 2026-08-26) — mismo criterio que Vórtice Menor arriba:
+    // `attributeBonus: 30` (muy por encima de la cifra real, 5) solo para garantizar un margen
+    // decisivo ('golpe_pleno') en un golpe de ATAQUE del jugador contra la defensa del Orco, sin
+    // depender de qué habilidad de defensa concreta elija `chooseNpcAbility` este turno.
+    golpeRunaColeraId = (
+      await prisma.savedAction.create({
+        data: {
+          saveId,
+          name: 'Golpe Runa de Cólera',
+          promptText: 'Grabo una runa de cólera en mi golpe.',
+          category: 'combate',
+          effects: ['ATAQUE', 'AUMENTO'],
+          rol: 'ataque',
+          preferredAttribute: 'arcano',
+          attributeBonus: 30,
+          durationEffectMagnitude: 5,
+          durationEffectTurns: 1,
+        },
+      })
+    ).id;
+    golpeEnvenenadoId = (
+      await prisma.savedAction.create({
+        data: {
+          saveId,
+          name: 'Golpe Envenenado',
+          promptText: 'Lanzo un tajo rápido untado en veneno.',
+          category: 'combate',
+          effects: ['ATAQUE', 'DEBILIDAD'],
+          rol: 'ataque',
+          preferredAttribute: 'destreza',
+          attributeBonus: 30,
+          durationEffectMagnitude: -4,
+          durationEffectTurns: 2,
+        },
+      })
+    ).id;
+    ataqueBasicoId = (await prisma.savedAction.create({ data: { saveId, name: 'Ataque Básico', promptText: 'Ataco con un golpe directo.', category: 'combate' } })).id;
   });
 
   afterAll(async () => {
@@ -1014,6 +1064,79 @@ describe('Rediseño de combate: habilidades de utilidad reactivas y consumibles 
     expect(saveAfter.pendingNpcAttack).toBeNull();
   }, 15_000);
 
+  // Fase 2 de efectos de clase (2026-08-26, docs/21-roadmap.md) — AUMENTO: el jugador ataca con la
+  // iniciativa (sin `pendingNpcAttack`, mismo patrón que "Ataque Básico" más arriba en el archivo),
+  // conecta de forma decisiva y se empuja un `ActiveEffect` sobre su propio `Save.activeEffects`.
+  // Un segundo turno (Ataque Básico normal) debe decrementarlo hasta expirar (turnsRemaining: 1 →
+  // 0 → fuera del array).
+  it('Golpe Runa de Cólera (AUMENTO): un golpe decisivo empuja un efecto activo sobre el propio jugador, y expira un turno después', async () => {
+    await prisma.npcState.deleteMany({ where: { saveId, npcId } });
+    await prisma.save.update({ where: { id: saveId }, data: { condicionFisica: 'ILESO', pendingCombatNpcSlugs: [npcSlug], pendingNpcAttack: Prisma.JsonNull, activeEffects: [] } });
+
+    const app = await buildApp();
+    const action = "Grabo una runa de cólera en mi golpe contra 'Orco enfurecido'.";
+    const classifyRes = await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action, enCombate: true, savedActionId: golpeRunaColeraId } });
+    const { classification, roll } = classifyRes.json();
+    const narrateRes = await app.inject({
+      method: 'POST',
+      url: '/turn/narrate',
+      payload: { saveId, action, classification, roll, enCombate: true, savedActionId: golpeRunaColeraId },
+    });
+    expect(narrateRes.statusCode).toBe(200);
+
+    const save = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
+    expect(save.activeEffects).toEqual([{ attribute: 'arcano', magnitude: 5, turnsRemaining: 1, sourceAbility: 'Golpe Runa de Cólera' }]);
+
+    // Segundo turno cualquiera con intercambio real — el efecto ya existía ANTES de este turno, así
+    // que decrementa y expira (a diferencia del turno en que nace, que no se decrementa a sí mismo).
+    // Fuerza la iniciativa del jugador de nuevo (turno 1 pudo dejársela al NPC) para que este
+    // segundo golpe pase seguro por CASO ATAQUE, no por una defensa a ciegas.
+    await prisma.save.update({ where: { id: saveId }, data: { pendingNpcAttack: Prisma.JsonNull } });
+    const action2 = "Ataco con un golpe directo 'Orco enfurecido'.";
+    const classifyRes2 = await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action: action2, enCombate: true, savedActionId: ataqueBasicoId } });
+    const { classification: classification2, roll: roll2 } = classifyRes2.json();
+    await app.inject({
+      method: 'POST',
+      url: '/turn/narrate',
+      payload: { saveId, action: action2, classification: classification2, roll: roll2, enCombate: true, savedActionId: ataqueBasicoId },
+    });
+    const saveAfter = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
+    expect(saveAfter.activeEffects).toEqual([]);
+  }, 20_000);
+
+  // DEBILIDAD — mismo mecanismo espejado sobre el NPC objetivo del golpe (nunca sobre quien la usó).
+  it('Golpe Envenenado (DEBILIDAD): un golpe decisivo empuja un efecto activo sobre el NPC golpeado, y decrementa en el turno siguiente', async () => {
+    await prisma.npcState.deleteMany({ where: { saveId, npcId } });
+    await prisma.save.update({ where: { id: saveId }, data: { condicionFisica: 'ILESO', pendingCombatNpcSlugs: [npcSlug], pendingNpcAttack: Prisma.JsonNull, activeEffects: [] } });
+
+    const app = await buildApp();
+    const action = "Lanzo un tajo rápido untado en veneno contra 'Orco enfurecido'.";
+    const classifyRes = await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action, enCombate: true, savedActionId: golpeEnvenenadoId } });
+    const { classification, roll } = classifyRes.json();
+    const narrateRes = await app.inject({
+      method: 'POST',
+      url: '/turn/narrate',
+      payload: { saveId, action, classification, roll, enCombate: true, savedActionId: golpeEnvenenadoId },
+    });
+    expect(narrateRes.statusCode).toBe(200);
+
+    const npcState = await prisma.npcState.findFirstOrThrow({ where: { saveId, npcId } });
+    expect(npcState.activeEffects).toEqual([{ attribute: 'destreza', magnitude: -4, turnsRemaining: 2, sourceAbility: 'Golpe Envenenado' }]);
+
+    // Fuerza la iniciativa del jugador de nuevo, mismo motivo que el test de AUMENTO de arriba.
+    await prisma.save.update({ where: { id: saveId }, data: { pendingNpcAttack: Prisma.JsonNull } });
+    const action2 = "Ataco con un golpe directo 'Orco enfurecido'.";
+    const classifyRes2 = await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action: action2, enCombate: true, savedActionId: ataqueBasicoId } });
+    const { classification: classification2, roll: roll2 } = classifyRes2.json();
+    await app.inject({
+      method: 'POST',
+      url: '/turn/narrate',
+      payload: { saveId, action: action2, classification: classification2, roll: roll2, enCombate: true, savedActionId: ataqueBasicoId },
+    });
+    const npcStateAfter = await prisma.npcState.findFirstOrThrow({ where: { saveId, npcId } });
+    expect(npcStateAfter.activeEffects).toEqual([{ attribute: 'destreza', magnitude: -4, turnsRemaining: 1, sourceAbility: 'Golpe Envenenado' }]);
+  }, 20_000);
+
   it('consumir un objeto en combate activa el intercambio (el NPC puede actuar), pero nunca cuenta como golpe propio', async () => {
     await prisma.npcState.deleteMany({ where: { saveId, npcId } });
     await prisma.save.update({ where: { id: saveId }, data: { condicionFisica: 'ILESO', pendingCombatNpcSlugs: [], pendingNpcAttack: Prisma.JsonNull } });
@@ -1243,15 +1366,12 @@ describe('newQuestInfo: notificación de misión aceptada', () => {
     });
     saveId = save.id;
     await prisma.worldState.create({ data: { saveId } });
-    // Simula que Gistera Koh ya se presentó en un turno anterior (gisteraYaPresentada, ver
-    // turnResolution.ts) — sin esto, aceptar ayudar no dispara la misión determinista. Inserción
-    // directa (no `appendSessionFacts`) para no depender de Ollama estando arriba solo para
-    // embeber un hecho de prueba — el valor del vector no importa para lo que se comprueba aquí
-    // (`loadSessionFacts` solo necesita el texto).
-    await prisma.$executeRaw`
-      INSERT INTO "SessionFact" (id, "saveId", text, embedding, "createdAt")
-      VALUES (${crypto.randomUUID()}, ${saveId}, 'Gistera Koh, una orca expulsada del Clan Serhu, pidió ayuda.', NULL, ${new Date()})
-    `;
+    // REDISEÑO 2026-08-30 (bug real jugando en vivo, "sigue sin salir el boton aceptar y
+    // cancelar"): antes se sembraba `gisteraYaPresentada = true` a mano (SessionFact directa) y se
+    // esperaba que un turno de ACEPTACIÓN VERBAL disparara `newQuestOfferInfo` — ya no es así, el
+    // botón debe ofrecerse en el turno en que Gistera SE PRESENTA (`gisteraSePresentaEsteTurno`),
+    // no cuando el jugador ya aceptó por texto libre. Sin sembrar nada aquí: `gisteraYaPresentada`
+    // debe empezar en `false` de verdad, para que el propio turno de diálogo del test la dispare.
   });
 
   afterAll(async () => {
@@ -1265,7 +1385,11 @@ describe('newQuestInfo: notificación de misión aceptada', () => {
   // consulta — nada que ver con lo que se comprueba aquí. `classifyAction` sí hace falta mockearla
   // (a diferencia del resto del archivo, que tabula sin llamarla): sin un NPC en escena tampoco
   // tabula por su cuenta.
-  it('al aceptar ayudar, newQuestInfo trae el título y objetivo de la misión recién creada', async () => {
+  // REDISEÑO 2026-08-30 (bug real jugando en vivo, "sigue sin salir el boton aceptar y cancelar"):
+  // antes el botón exigía una frase de ACEPTACIÓN VERBAL en texto libre; ahora se ofrece en el
+  // turno de PRESENTACIÓN (diálogo, `gisteraSePresentaEsteTurno`) — sin sembrar `gisteraYaPresentada`
+  // a mano, para que sea literalmente el primer turno de diálogo con ella en la partida.
+  it('al hablar con Gistera Koh cuando se presenta, newQuestOfferInfo ofrece la misión con botones', async () => {
     classifyAction.mockResolvedValue({
       requiereTirada: false, atributo: 'voluntad', dificultad: 8, razon: 'x', banda: 'instantanea', duracionEstimadaMinutos: 0,
     });
@@ -1284,7 +1408,9 @@ describe('newQuestInfo: notificación de misión aceptada', () => {
       payload: { saveId, action: filler, classification: fillerParsed.classification, roll: fillerParsed.roll, enCombate: true },
     });
 
-    const action = 'Yo me encargo de tu perseguidor';
+    // `detectsDialogueIntent` exige un signo de pregunta/exclamación o un verbo de diálogo —
+    // "Yo me encargo de tu perseguidor" (texto viejo) no matcheaba nada de eso.
+    const action = '¿Quién eres?';
     const classifyRes = await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action, enCombate: true } });
     const { classification, roll } = classifyRes.json();
     const narrateRes = await app.inject({
@@ -1292,11 +1418,18 @@ describe('newQuestInfo: notificación de misión aceptada', () => {
       url: '/turn/narrate',
       payload: { saveId, action, classification, roll, enCombate: true },
     });
+    // Bug real 2026-08-28 ("misión se salta los botones Aceptar/Cancelar" — petición explícita:
+    // "quiero que las misiones pasen todas por aceptar y cancelar, sin excepción"): este camino
+    // creaba la Quest YA ACTIVA directamente aquí (`newQuestInfo`), saltándose los botones. Ahora
+    // solo OFRECE, igual que el camino genérico — `newQuestOfferInfo`, sin crear la Quest todavía.
     const body = lastNdjsonLine(narrateRes.payload);
-    expect(body.newQuestInfo).toEqual({
+    expect(body.newQuestInfo).toBeNull();
+    expect(body.newQuestOfferInfo).toEqual({
       title: 'Acabar con el Orco Enfurecido',
-      objetivo: 'Derrotar al Orco Enfurecido que persigue a Gistera Koh.',
+      description: 'Gistera Koh, expulsada del Clan Serhu, pidió ayuda para acabar con el guerrero que la persigue — Gorhorn ha aceptado. Derrotarlo la pondrá a salvo.',
     });
+    const quest = await prisma.quest.findFirst({ where: { saveId, title: 'Acabar con el Orco Enfurecido' } });
+    expect(quest).toBeNull();
   }, 30_000);
 
   it('en un turno que no crea ninguna misión, newQuestInfo es null', async () => {
@@ -2327,10 +2460,11 @@ describe('Respawn tras morir: vuelve al último campamento, no se queda donde mu
     // El personaje se aleja del campamento y llega a las puertas de la muerte estando en OTRO
     // sitio — `condicionFisica` a CONVALECIENTE (un escalón antes de MUERTO: `nextCondicionFisica`
     // solo empeora un escalón por turno, incluso en combate) para que un solo turno de combate
-    // baste para morir.
+    // baste para morir. `pendingCombatNpcSlugs` ya activo a mano (bug real 2026-08-28, ver más
+    // abajo): simula que el combate seguía "enganchado" a un agresor justo antes de este turno.
     await prisma.save.update({
       where: { id: saveId },
-      data: { currentLocationId: pilaresId, condicionFisica: 'CONVALECIENTE' },
+      data: { currentLocationId: pilaresId, condicionFisica: 'CONVALECIENTE', pendingCombatNpcSlugs: ['aullador-rojo'] },
     });
     classifyAction.mockResolvedValueOnce({
       requiereTirada: true, atributo: 'fuerza', dificultad: 18, razon: 'x', banda: 'instantanea', duracionEstimadaMinutos: 0,
@@ -2339,6 +2473,7 @@ describe('Respawn tras morir: vuelve al último campamento, no se queda donde mu
       narration: 'El golpe final acaba con Gorhorn.',
       newFacts: [],
       condicionFisica: 'MUERTO',
+      combateIniciado: { npcSlugs: ['aullador-rojo'] },
     });
     await doTurn(saveId, 'Sigo luchando contra todo pronóstico.');
 
@@ -2348,6 +2483,12 @@ describe('Respawn tras morir: vuelve al último campamento, no se queda donde mu
     expect(savedAfterDeath.endedAt).toBeNull(); // NOVATO, sin fin de partida
     expect(savedAfterDeath.currentLocationId).toBe(hondonadaId); // vuelve al campamento…
     expect(savedAfterDeath.currentLocationId).not.toBe(pilaresId); // …no se queda donde murió
+    // Bug real jugando en vivo (ronda de pruebas 2026-08-28): morir y respawnear no limpiaba
+    // `pendingCombatNpcSlugs` — el aviso "COMBATIR/HUIR" contra el agresor seguía apareciendo pese
+    // a que el jugador ya reapareció Ileso en otro lugar. El combate debe cerrarse del todo, aunque
+    // el modelo (mockeado aquí igual que jugando en vivo) siga proponiendo `combateIniciado` con el
+    // mismo agresor este mismo turno.
+    expect(savedAfterDeath.pendingCombatNpcSlugs).toEqual([]);
   }, 20_000);
 });
 
@@ -2483,19 +2624,23 @@ describe('Saqueo: condición de carrera en turnos concurrentes (auditoría 2026-
   }, 20_000);
 });
 
-// Cobertura nueva (auditoría de deuda técnica AMPLIA 2026-08-04, bug real de condición de carrera
-// — mismo patrón exacto ya cerrado hoy varias veces): `executeTargets` (Decapitar) sale de
-// `npcsInScene`, leído con `prisma` ANTES de la transacción — dos "decapito a X" casi simultáneos
-// contra el mismo NPC ya CONVALECIENTE podían pasar ambos el filtro con la misma foto obsoleta y
-// aplicar la muerte DOS veces: población mundial restada dos veces por una sola baja. Arreglado
-// revalidando `NpcState.condicionFisica` fresco con `tx` justo antes de aplicar los efectos.
-describe('Decapitar: condición de carrera en turnos concurrentes (auditoría 2026-08-04)', () => {
+// Cobertura (auditoría de deuda técnica AMPLIA 2026-08-04, bug real de condición de carrera —
+// mismo patrón exacto ya cerrado hoy varias veces; REDISEÑADO 2026-08-30 — "Matar" ya no es un
+// remate determinista propio, es un ataque normal contra un NPC CONVALECIENTE, resuelto por el
+// mismo intercambio de combate de siempre): dos ataques casi simultáneos contra el mismo NPC ya
+// CONVALECIENTE no deben restar población dos veces por una sola muerte — el intercambio normal ya
+// se resuelve dentro de una transacción con revalidación fresca (mismo motivo por el que el resto
+// de acciones deterministas de combate — saqueo, capturar — ya estaban protegidas), así que el
+// mismo candado cubre este caso sin necesitar el mecanismo aparte que existía antes.
+describe('Matar (CONVALECIENTE): condición de carrera en turnos concurrentes (auditoría 2026-08-04)', () => {
   let saveId: string;
   let npcId: string;
+  let worldId: string;
 
   beforeAll(async () => {
     const userId = await getDefaultUserId();
     const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
+    worldId = world.id;
     const hondonada = await prisma.location.findFirstOrThrow({ where: { worldId: world.id, slug: 'hondonada-del-eco' } });
     const orco = await prisma.npc.findFirstOrThrow({ where: { worldId: world.id, slug: 'orco-enfurecido-hondonada' } });
     npcId = orco.id;
@@ -2514,25 +2659,48 @@ describe('Decapitar: condición de carrera en turnos concurrentes (auditoría 20
     });
     saveId = save.id;
     await prisma.worldState.create({ data: { saveId } });
-    // PRINCIPAL → scope siempre ''. CONVALECIENTE (no MUERTO) para que `executeTargets` lo recoja.
+    // PRINCIPAL → scope siempre ''. CONVALECIENTE (no MUERTO) — objetivo de "Matar" tras el rediseño.
     await prisma.npcState.create({ data: { saveId, npcId, scope: '', condicionFisica: 'CONVALECIENTE' } });
     classifyAction.mockResolvedValue({
       requiereTirada: false, atributo: 'fuerza', dificultad: 8, razon: 'x', banda: 'instantanea', duracionEstimadaMinutos: 0,
+    });
+
+    // Higiene de test (bug real encontrado 2026-08-28, ver `tarkor_bug_decapitar_concurrente_falso_2026-08-28`
+    // en memoria): `WorldPopulation` es del MUNDO compartido, no de esta `Save` — `decrementPopulationOnDeath`
+    // resta 1 de verdad en cada corrida, y `seed-catalog.ts` protege `poblacion` a propósito en un
+    // reseed (nunca resetea el valor actual a la semilla). Sin este seteo explícito, decapitaciones
+    // acumuladas de sesiones de test anteriores pueden agotar la fila a 0 y el test falla con "0 en
+    // vez de 1" — no por una regresión real, sino porque el guard `poblacion: { gt: 0 }`
+    // (population.ts) hace un no-op silencioso cuando ya no queda nada que restar. Se fija un valor
+    // alto y conocido antes de medir, y se restaura al mismo valor de semilla al cerrar (no al valor
+    // que hubiera quedado degradado antes de este fix) — deliberado: perpetuar el número viejo solo
+    // pospondría el mismo agotamiento para la próxima sesión de tests.
+    await prisma.worldPopulation.update({
+      where: { worldId_targetType_targetSlug: { worldId: world.id, targetType: 'RAZA', targetSlug: 'orcos-llanuras' } },
+      data: { poblacion: 600 },
     });
   });
 
   afterAll(async () => {
     await prisma.save.delete({ where: { id: saveId } });
+    await prisma.worldPopulation.update({
+      where: { worldId_targetType_targetSlug: { worldId, targetType: 'RAZA', targetSlug: 'orcos-llanuras' } },
+      data: { poblacion: 600 },
+    });
   });
 
-  it('dos "decapito al orco" simultáneos solo restan población una vez', async () => {
+  it('dos ataques simultáneos contra el mismo convaleciente solo restan población una vez', async () => {
     const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
     const before = await prisma.worldPopulation.findUniqueOrThrow({
       where: { worldId_targetType_targetSlug: { worldId: world.id, targetType: 'RAZA', targetSlug: 'orcos-llanuras' } },
     });
 
+    // Math.random()=0.99 garantiza el mejor resultado posible en cualquier tirada — con esto, el
+    // ataque conecta y remata al convaleciente de verdad (mismo criterio que el resto del archivo
+    // para tests que necesitan un desenlace determinista pese a resolverse por tirada real).
+    vi.spyOn(Math, 'random').mockReturnValue(0.99);
     narrateAction.mockClear();
-    const action = 'Decapito al Orco Enfurecido de un solo golpe.';
+    const action = "Golpeo a 'Orco enfurecido' con todas mis fuerzas.";
     await Promise.all([doTurn(saveId, action), doTurn(saveId, action)]);
 
     const state = await prisma.npcState.findUniqueOrThrow({ where: { saveId_npcId_scope: { saveId, npcId, scope: '' } } });
@@ -2545,13 +2713,14 @@ describe('Decapitar: condición de carrera en turnos concurrentes (auditoría 20
   }, 20_000);
 });
 
-// Bug real (revisión forense de partida real, 2026-08-26): "Remato a X, asestándoles el golpe de
-// gracia final." dispara `detectsExecuteIntent` (por "remat") Y TAMBIÉN `detectsAttackIntent` (por
-// "golpe") — con X ya CONVALECIENTE (excluido de `npcsInSceneVivos`), el intercambio de combate
-// NORMAL caía a `npcsInSceneVivos[0]`, que puede ser cualquier otro NPC presente en la escena sin
-// relación con el remate — dañándolo de verdad, sin ninguna narración. Confirmado en una partida
-// real: Quio quedó HERIDO tras rematar al Orco Enfurecido, sin que el log mencionara a Quio nunca.
-describe('Remato a X: no debe dañar de refilón a otro NPC presente en la misma escena', () => {
+// Bug real original (revisión forense de partida real, 2026-08-26, camino YA RETIRADO 2026-08-30):
+// "Remato a X" sin comillas dañaba de refilón a otro NPC de la escena por colisión de detectores.
+// REDISEÑADO 2026-08-30 — "Matar" ya no tiene texto/detector propio; `handleDecapitarSeleccion`
+// (frontend) manda un ataque normal citando al objetivo ENTRE COMILLAS SIMPLES, igual que
+// `handleCombatAttack`. Este test se conserva como regresión del mecanismo real que ahora evita el
+// mismo problema: `explicitTarget` (comillas) manda sobre el orden de detección, así que un
+// bystander presente en la escena nunca puede robarle el golpe al objetivo citado.
+describe('Matar (CONVALECIENTE) citando por nombre no debe dañar de refilón a otro NPC presente en la misma escena', () => {
   let saveId: string;
   let orcoId: string;
   let quioId: string;
@@ -2581,10 +2750,10 @@ describe('Remato a X: no debe dañar de refilón a otro NPC presente en la misma
     });
     saveId = save.id;
     await prisma.worldState.create({ data: { saveId } });
-    // Orco Enfurecido ya CONVALECIENTE (el remate no puede resistirse). Quio ya "encontrado antes"
-    // (NpcState propio, ver `detectNpcsInScene` § encounteredIds) e ILESO — un bystander cualquiera
-    // que solo hace falta que la acción/hechos de sesión mencionen para que entre en escena, igual
-    // que le pasó a Quio en la partida real.
+    // Orco Enfurecido ya CONVALECIENTE — objetivo de "Matar" tras el rediseño. Quio ya "encontrado
+    // antes" (NpcState propio, ver `detectNpcsInScene` § encounteredIds) e ILESO — un bystander
+    // cualquiera que solo hace falta que la acción/hechos de sesión mencionen para que entre en
+    // escena, igual que le pasó a Quio en la partida real.
     await prisma.npcState.create({ data: { saveId, npcId: orcoId, scope: '', condicionFisica: 'CONVALECIENTE' } });
     await prisma.npcState.create({ data: { saveId, npcId: quioId, scope: locationId, condicionFisica: 'ILESO' } });
     await prisma.$executeRaw`
@@ -2600,14 +2769,16 @@ describe('Remato a X: no debe dañar de refilón a otro NPC presente en la misma
     await prisma.save.delete({ where: { id: saveId } });
   });
 
-  it('rematar a Orco Enfurecido (sin comillas) deja a Quio intacto', async () => {
+  it("matar a 'Orco enfurecido' citado entre comillas deja a Quio intacto", async () => {
     // Math.random()=0.99 garantiza el mejor resultado posible en CUALQUIER tirada (mismo criterio
     // que el resto de este archivo) — si el bug estuviera de vuelta, el intercambio de refilón
     // contra Quio conectaría siempre, no solo a veces, así que este test no puede colar en falso
     // por una tirada de suerte.
     vi.spyOn(Math, 'random').mockReturnValue(0.99);
     narrateAction.mockClear();
-    const res = await doTurn(saveId, 'Remato a Orco enfurecido, asestándoles el golpe de gracia final.');
+    // Mismo texto que arma `handleDecapitarSeleccion` (useCombatFlow.ts) tras el rediseño: ataque
+    // normal citando al objetivo entre comillas simples, sin ningún verbo especial de remate.
+    const res = await doTurn(saveId, "Ataco con todas mis fuerzas, contra 'Orco enfurecido'.");
     expect(res.statusCode).toBe(200);
 
     const orcoState = await prisma.npcState.findUniqueOrThrow({ where: { saveId_npcId_scope: { saveId, npcId: orcoId, scope: '' } } });
@@ -2762,7 +2933,11 @@ describe('Decapitar cierra una misión "derrotar a X" con rewardItems y entrega 
   });
 
   it('la misión se completa, el objeto se crea de verdad y hay un LogEntry anunciando la recompensa', async () => {
-    const res = await doTurn(saveId, 'Decapito al Orco Enfurecido de un solo golpe.');
+    // Math.random()=0.99 garantiza el mejor resultado posible en cualquier tirada (REDISEÑO
+    // 2026-08-30: "Matar" ya no es un remate determinista, es un ataque real contra el CONVALECIENTE
+    // citado entre comillas simples — necesita conectar de verdad para completar la misión).
+    vi.spyOn(Math, 'random').mockReturnValue(0.99);
+    const res = await doTurn(saveId, "Ataco con todas mis fuerzas, contra 'Orco enfurecido'.");
 
     const quest = await prisma.quest.findFirstOrThrow({ where: { saveId, title: { contains: 'Orco Enfurecido (prueba)' } } });
     expect(quest.status).toBe('COMPLETADA');
@@ -2795,6 +2970,92 @@ describe('Decapitar cierra una misión "derrotar a X" con rewardItems y entrega 
     const mainNarrationEntry = allEntries.find((e) => e.channel === 'CHARACTER' && !e.isPlayerAction && e.id !== rewardLog!.id);
     expect(mainNarrationEntry).toBeDefined();
     expect(rewardLog!.createdAt.getTime()).toBeGreaterThan(mainNarrationEntry!.createdAt.getTime());
+  }, 20_000);
+});
+
+// Bug real (2026-08-29, reverificación en vivo tras cerrar combate múltiple): "Decapitar" mataba
+// de verdad al NPC, pero si el `useEffect` pasivo del frontend ya había consultado "desollador" al
+// entrar a la escena (antes de que hubiera ningún cadáver), esa tirada congelada vacía quedaba
+// huérfana para siempre — la invalidación normal (`invalidateRollCacheFor`, ligada a qué
+// `sourceSlug` se tocó) nunca dispara sobre una entrada sin ningún slug. Ver
+// `invalidateCarcassRollCache` en recolectar.ts.
+describe('Decapitar invalida la tirada congelada de Desollar si ya estaba vacía (bug real 2026-08-29)', () => {
+  let saveId: string;
+  let hondonadaId: string;
+  let npcId: string;
+
+  beforeAll(async () => {
+    // El GET de Desollar hace su propia tirada de habilidad (gatheringRollFor) sobre los candidatos
+    // ya encontrados — sin esto, una tirada mala real (Math.random no mockeado) recorta legítimamente
+    // `sources` a vacío y el test se vuelve flaky por una razón ajena al fix bajo prueba.
+    vi.spyOn(Math, 'random').mockReturnValue(0.99);
+    const userId = await getDefaultUserId();
+    const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
+    const hondonada = await prisma.location.findFirstOrThrow({ where: { worldId: world.id, slug: 'hondonada-del-eco' } });
+    hondonadaId = hondonada.id;
+    // Aullador Rojo (fauna con HarvestYield real, worldCatalog.ts) — a diferencia del Orco
+    // Enfurecido (humanoide, sin ningún yield de desuello asociado), este NPC sí tiene un candidato
+    // real que el endpoint de Desollar puede devolver una vez muerto.
+    const aullador = await prisma.npc.findFirstOrThrow({ where: { worldId: world.id, slug: 'aullador-rojo' } });
+    npcId = aullador.id;
+    const save = await prisma.save.create({
+      data: {
+        userId,
+        worldId: world.id,
+        characterName: 'Gorhorn de prueba (caché Desollar)',
+        characterArchetype: 'guerrero',
+        characterOrigin: 'Clan Maktor',
+        characterMotivation: 'x',
+        attributes: ATTRS,
+        portraitInitial: 'G',
+        currentLocationId: hondonada.id,
+      },
+    });
+    saveId = save.id;
+    await prisma.worldState.create({ data: { saveId } });
+    await prisma.npcState.create({ data: { saveId, npcId, scope: hondonadaId, condicionFisica: 'CONVALECIENTE' } });
+    // Simula el `useEffect` pasivo consultando "desollador" al entrar a la escena, antes de que el
+    // Aullador muriera: sin cadáveres todavía, la tirada se congela vacía.
+    await prisma.save.update({
+      where: { id: saveId },
+      data: { harvestRollCache: { desollador: { locationId: hondonadaId, sources: [] } } },
+    });
+    classifyAction.mockResolvedValue({
+      requiereTirada: false, atributo: 'fuerza', dificultad: 8, razon: 'x', banda: 'instantanea', duracionEstimadaMinutos: 0,
+    });
+  });
+
+  afterAll(async () => {
+    vi.restoreAllMocks();
+    await prisma.save.delete({ where: { id: saveId } });
+  });
+
+  it('tras decapitar, GET /saves/:id/recolectar/desollador ya no sirve la tirada vieja vacía', async () => {
+    const res = await doTurn(saveId, "Decapito al 'Aullador Rojo' de un solo golpe.");
+    expect(res.statusCode).toBe(200);
+
+    const npcState = await prisma.npcState.findFirstOrThrow({ where: { saveId, npcId } });
+    expect(npcState.condicionFisica).toBe('MUERTO');
+
+    // `detectNpcsInScene` (usado tanto por el turno como por este GET aislado) reconoce a un NPC
+    // en la escena por su nombre citado en la ACCIÓN de este turno o en los `sessionFacts` ya
+    // guardados — el mock de Ollama de este archivo narra un texto genérico que no menciona al
+    // Aullador, así que sin esto la siguiente consulta aislada no lo "recordaría" (limitación real
+    // y preexistente de `detectNpcsInScene`, no relacionada con el fix bajo prueba). En una partida
+    // real el LLM sí narra el nombre del enemigo derrotado. Inserción directa (mismo patrón que
+    // otros tests de este archivo) para no depender de Ollama solo por el embedding.
+    await prisma.$executeRaw`
+      INSERT INTO "SessionFact" (id, "saveId", text, embedding, "createdAt")
+      VALUES (${crypto.randomUUID()}, ${saveId}, 'El Aullador Rojo yace muerto junto a Gorhorn de prueba (caché Desollar).', NULL, ${new Date()})
+    `;
+
+    const app = Fastify();
+    await app.register(recolectarRoutes);
+    const getRes = await app.inject({ method: 'GET', url: `/saves/${saveId}/recolectar/desollador` });
+    expect(getRes.statusCode).toBe(200);
+    const body = getRes.json() as { sources: { yields: { sourceSlug: string }[] }[] };
+    const slugs = new Set(body.sources.flatMap((cat) => cat.yields.map((y) => y.sourceSlug)));
+    expect(slugs.has('aullador-rojo')).toBe(true);
   }, 20_000);
 });
 
@@ -2928,7 +3189,10 @@ describe('La recompensa de misión enlaza con ItemCatalog cuando el nombre coinc
   });
 
   it('el objeto concedido lleva el catalogSlug real, no un objeto sin categorizar', async () => {
-    await doTurn(saveId, 'Decapito al Orco Enfurecido de un solo golpe.');
+    // Math.random()=0.99 garantiza el mejor resultado posible (REDISEÑO 2026-08-30 — ver el
+    // describe hermano de arriba para el mismo motivo).
+    vi.spyOn(Math, 'random').mockReturnValue(0.99);
+    await doTurn(saveId, "Ataco con todas mis fuerzas, contra 'Orco enfurecido'.");
 
     const item = await prisma.inventoryItem.findFirstOrThrow({ where: { saveId, name: 'Mapa de las Llanuras' } });
     expect(item.catalogSlug).toBe('mapa-de-las-llanuras');
@@ -3273,6 +3537,67 @@ describe('Objetivo de ataque en combate ya iniciado: un ataque sin comillas no s
   }, 20_000);
 });
 
+// Bug real jugando en vivo (2026-08-29, reproducido con Playwright): mismo síntoma exacto que el
+// bug de 2026-08-04 de arriba (golpe redirigido a Gistera Koh), pero en el PRIMER golpe de un
+// encuentro nuevo, no en un ataque de seguimiento. El jugador citó "Kirelon Arenoso" con comillas
+// DOBLES (formato que el composer de texto libre permite escribir a mano, pero que `explicitTarget`
+// no reconoce — solo comillas simples, el único formato real que genera el mecanismo de citar por
+// nombre). Sin `explicitTarget` ni `ongoingCombatTarget` (no hay combate previo), y con Gistera Koh
+// presentándose en la MISMA narración de este turno, el fallback caía en ella — pacífica por
+// diseño, nunca debería recibir un golpe mecánico sin que el jugador la citara de verdad.
+describe('Objetivo de ataque en el PRIMER golpe de un encuentro nuevo: comillas dobles (no reconocidas) no deben redirigir el golpe a un PNJ pacífico presente (bug real 2026-08-29)', () => {
+  let saveId: string;
+  let orcoId: string;
+  let gisteraId: string;
+
+  beforeAll(async () => {
+    vi.spyOn(Math, 'random').mockReturnValue(0.99);
+    const userId = await getDefaultUserId();
+    const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
+    const hondonada = await prisma.location.findFirstOrThrow({ where: { worldId: world.id, slug: 'hondonada-del-eco' } });
+    const orco = await prisma.npc.findFirstOrThrow({ where: { worldId: world.id, slug: 'orco-enfurecido-hondonada' } });
+    const gistera = await prisma.npc.findFirstOrThrow({ where: { worldId: world.id, slug: 'gistera-koh' } });
+    orcoId = orco.id;
+    gisteraId = gistera.id;
+    const save = await prisma.save.create({
+      data: {
+        userId,
+        worldId: world.id,
+        characterName: 'Gorhorn de prueba (comillas dobles)',
+        characterArchetype: 'guerrero',
+        characterOrigin: 'Clan Maktor',
+        characterMotivation: 'x',
+        attributes: ATTRS,
+        portraitInitial: 'G',
+        currentLocationId: hondonada.id,
+      },
+    });
+    saveId = save.id;
+    await prisma.worldState.create({ data: { saveId } });
+  });
+
+  afterAll(async () => {
+    vi.restoreAllMocks();
+    await prisma.save.delete({ where: { id: saveId } });
+  });
+
+  it('un ataque con comillas dobles (no reconocidas como cita) golpea al Orco Enfurecido, nunca a Gistera Koh', async () => {
+    // Comillas dobles a propósito — mismo texto real enviado en la sesión de pruebas que reprodujo
+    // el bug, mencionando también a Gistera Koh de pasada (mismo mecanismo que la haría aparecer
+    // "en escena" vía sessionFacts/narración libre, sin que `explicitTarget` la resuelva a ella).
+    await doTurn(
+      saveId,
+      'Ataco a "Orco enfurecido" con mi hacha, sin previo aviso, para matarlo, mientras Gistera Koh grita pidiendo ayuda a mis espaldas.',
+    );
+
+    const orcoState = await prisma.npcState.findFirst({ where: { saveId, npcId: orcoId } });
+    expect(orcoState?.condicionFisica).toBe('HERIDO'); // recibió el golpe real, Math.random pinchado al máximo
+
+    const gisteraState = await prisma.npcState.findFirst({ where: { saveId, npcId: gisteraId } });
+    expect(gisteraState).toBeNull(); // nunca fue objetivo del golpe mecánico
+  }, 20_000);
+});
+
 // Bug real jugando en vivo (2026-08-07, auditoría "revisa la partida" en directo): con un enemigo
 // ya MUERTO/saqueado hace turnos todavía detectable en escena (su alias sigue matcheando hechos de
 // sesión antiguos), un "Ataco a X" sin comillas contra una fauna NUEVA en la misma escena caía a
@@ -3520,6 +3845,17 @@ describe('Saqueo/desuello de CombatEncounter: se materializa en NpcState real al
     // Objetivo del ataque de la jugadora: el último Corretolvas con vida (mismo criterio de
     // targeting por nombre citado que usa turnResolution.ts en modo CombatEncounter).
     await prisma.combatParticipant.updateMany({ where: { encounterId, tipo: 'JUGADOR' }, data: { objetivoActualId: ultimoConVida } });
+
+    // Bug real (2026-08-29, reverificación en vivo): simula el `useEffect` pasivo del frontend
+    // consultando "desollador" AL ENTRAR a la escena, antes de que el combate matara a nadie —
+    // sin cadáveres todavía, la tirada se congela vacía. Sin el fix de `invalidateCarcassRollCache`
+    // (turnResolution.ts), esta entrada vacía queda huérfana para siempre: la invalidación normal
+    // de recolección solo dispara si algún `sourceSlug` de la tirada congelada coincide con lo
+    // tocado, y una tirada vacía no tiene ningún slug que pueda coincidir nunca.
+    await prisma.save.update({
+      where: { id: saveId },
+      data: { harvestRollCache: { desollador: { locationId: hondonadaId, sources: [] } } },
+    });
   });
 
   afterAll(async () => {
@@ -4009,11 +4345,10 @@ describe('Misión de Gistera Koh: NPC objetivo ya resuelto no deja la misión at
     // PRINCIPAL → scope siempre '' (scopeFor) — ya derrotado y saqueado ANTES de que exista la
     // misión, mismo escenario real de la partida jugada.
     await prisma.npcState.create({ data: { saveId, npcId: orco.id, scope: '', condicionFisica: 'MUERTO', saqueado: true } });
-    // Simula que Gistera Koh ya se presentó en un turno anterior (mismo atajo que 'newQuestInfo').
-    await prisma.$executeRaw`
-      INSERT INTO "SessionFact" (id, "saveId", text, embedding, "createdAt")
-      VALUES (${crypto.randomUUID()}, ${saveId}, 'Gistera Koh, una orca expulsada del Clan Serhu, pidió ayuda.', NULL, ${new Date()})
-    `;
+    // REDISEÑO 2026-08-30 — sin sembrar la SessionFact de presentación a mano: el botón se ofrece
+    // en el turno de PRESENTACIÓN real (`gisteraSePresentaEsteTurno`, exige `!gisteraYaPresentada`
+    // — sembrarla aquí lo bloquearía de raíz). Ver el describe hermano 'newQuestInfo: notificación
+    // de misión aceptada' para el mismo patrón.
     classifyAction.mockResolvedValue({
       requiereTirada: false, atributo: 'voluntad', dificultad: 8, razon: 'x', banda: 'instantanea', duracionEstimadaMinutos: 0,
     });
@@ -4024,15 +4359,41 @@ describe('Misión de Gistera Koh: NPC objetivo ya resuelto no deja la misión at
   });
 
   it('la misión nace ya COMPLETADA, con el XP de recompensa concedido en el acto', async () => {
+    // Bug real 2026-08-28 ("misión se salta los botones") — este camino ya no crea la Quest
+    // directamente en `/turn/narrate`, solo la ofrece (`newQuestOfferInfo`). El caso "ya resuelto
+    // antes de aceptar" (bug real 2026-08-04, hallazgo 9) ahora se aplica en
+    // `POST /saves/:id/quests/aceptar`, que es quien materializa la Quest de verdad.
     const app = await buildApp();
-    const action = 'Yo me encargo de tu perseguidor';
+    await app.register(questsRoutes);
+    // Turno de relleno (a propósito, mismo motivo que el describe hermano): la ACCIÓN Nº1 dispara
+    // el gancho de fase-1 de Gistera Koh y la trae a `npcsInScene` para el turno siguiente.
+    const filler = 'Miro alrededor con calma';
+    const fillerClassify = await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action: filler, enCombate: true } });
+    const fillerParsed = fillerClassify.json();
+    await app.inject({
+      method: 'POST',
+      url: '/turn/narrate',
+      payload: { saveId, action: filler, classification: fillerParsed.classification, roll: fillerParsed.roll, enCombate: true },
+    });
+
+    // `detectsDialogueIntent` exige un signo de pregunta/exclamación o un verbo de diálogo.
+    const action = '¿Quién eres?';
     const classifyRes = await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action, enCombate: true } });
     const { classification, roll } = classifyRes.json();
-    await app.inject({
+    const narrateRes = await app.inject({
       method: 'POST',
       url: '/turn/narrate',
       payload: { saveId, action, classification, roll, enCombate: true },
     });
+    const offer = lastNdjsonLine(narrateRes.payload).newQuestOfferInfo as { title: string; description: string };
+    expect(offer.title).toBe('Acabar con el Orco Enfurecido');
+
+    const acceptRes = await app.inject({
+      method: 'POST',
+      url: `/saves/${saveId}/quests/aceptar`,
+      payload: { title: offer.title, description: offer.description },
+    });
+    expect(acceptRes.statusCode).toBe(200);
 
     const quest = await prisma.quest.findFirstOrThrow({ where: { saveId, title: { contains: 'Orco Enfurecido' } } });
     expect(quest.status).toBe('COMPLETADA');
@@ -4301,8 +4662,17 @@ describe('Viaje largo interrumpido a mitad de camino (integración real, solo LL
   let destId: string;
   let interruptionNpcId: string;
   let interruptionNpcSlug: string;
+  // P3.2 (2026-08-28, "retomar viaje truncado"): el último test de este bloque deja que
+  // `startEagerTransitResolution` (el mismo mecanismo real de producción, disparado dentro de
+  // turnResolution.ts) resuelva el tránsito de reanudación por su cuenta — su `busyUntil` real
+  // depende de `env.fictionMinutesPerRealMinute`/`transitMaxRealMinutes`, minutos reales con la
+  // config normal. Se topa aquí solo para este describe, restaurado siempre en `afterAll`.
+  const originalTransitMaxRealMinutes = env.transitMaxRealMinutes;
 
   beforeAll(async () => {
+    // Tope bajo (5s reales) solo para este describe — el tránsito de reanudación (P3.2) real de
+    // 67 min de ficción tardaría minutos reales de espera con el tope normal de producción.
+    env.transitMaxRealMinutes = 5 / 60;
     const userId = await getDefaultUserId();
     const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
     worldId = world.id;
@@ -4387,6 +4757,7 @@ describe('Viaje largo interrumpido a mitad de camino (integración real, solo LL
   });
 
   afterAll(async () => {
+    env.transitMaxRealMinutes = originalTransitMaxRealMinutes;
     pickTravelInterruptionMock.mockReset();
     await prisma.save.delete({ where: { id: saveId } });
     await prisma.npc.delete({ where: { id: interruptionNpcId } });
@@ -4394,7 +4765,7 @@ describe('Viaje largo interrumpido a mitad de camino (integración real, solo LL
     await prisma.location.deleteMany({ where: { id: { in: [originId, midId, destId] } } });
   });
 
-  it('el viaje se trunca en la ubicación intermedia, con el agresor ya asignado en el tránsito', async () => {
+  it('el viaje se trunca en la ubicación intermedia, con el agresor ya asignado en el tránsito, y guarda el destino original para retomarlo', async () => {
     const app = await buildApp();
     const classifyRes = await app.inject({
       method: 'POST',
@@ -4411,6 +4782,11 @@ describe('Viaje largo interrumpido a mitad de camino (integración real, solo LL
     const zoneContext = transit.zoneContext as { travel: { toLocationId: string }; travelInterruptionNpcId: string | null };
     expect(zoneContext.travel.toLocationId).toBe(midId);
     expect(zoneContext.travelInterruptionNpcId).toBe(interruptionNpcId);
+
+    // P3.2 (ronda de correcciones 2026-08-28): el destino ORIGINAL pedido por el jugador (destId,
+    // no midId) se persiste ya en este momento, para poder retomar el viaje solo al resolver.
+    const save = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
+    expect(save.pendingTravelResumeDestinationId).toBe(destId);
   });
 
   it('al resolverse el tránsito, el personaje llega a la ubicación intermedia y el combate se fuerza SIN que el mock del LLM mencione al agresor', async () => {
@@ -4436,6 +4812,57 @@ describe('Viaje largo interrumpido a mitad de camino (integración real, solo LL
     // su ficha completa — así debe ser, el Narrador necesita saber quién está en escena; lo que
     // no debe pasar, y no pasa, es que el motor dependa de que el modelo ACIERTE ese nombre por
     // su cuenta en la narración que devuelve, algo que este mock nunca hace por construcción.)
+  }, 20_000);
+
+  it('P3.2 (2026-08-28): resuelto el combate sin dejar rastro pendiente, el siguiente turno retoma solo el viaje hacia el destino original', async () => {
+    // Resuelve el combate forzado del test anterior sin pasar por un intercambio real — mismo
+    // atajo que otros tests de este archivo usan para simular "el combate ya se cerró de una
+    // forma u otra" (huida, derrota del agresor, clemencia...): lo único que le importa a esta
+    // pieza es que `pendingCombatNpcSlugs` quede vacío antes del turno siguiente.
+    await prisma.save.update({ where: { id: saveId }, data: { pendingCombatNpcSlugs: [] } });
+    // Turno instantáneo normal, sin ataque ni viaje — mismo `classifyAction` tabulado que el resto
+    // del archivo usa para acciones libres fuera de combate/viaje.
+    classifyAction.mockResolvedValue({
+      requiereTirada: false, atributo: 'destreza', dificultad: 8, razon: 'x', banda: 'instantanea', duracionEstimadaMinutos: 0,
+    });
+
+    const app = await buildApp();
+    const classifyRes = await app.inject({
+      method: 'POST',
+      url: '/turn/classify',
+      payload: { saveId, action: 'Recupero el aliento y miro alrededor.', enCombate: false },
+    });
+    expect(classifyRes.statusCode).toBe(200);
+    const { classification, roll } = classifyRes.json();
+
+    const narrateRes = await app.inject({
+      method: 'POST',
+      url: '/turn/narrate',
+      payload: { saveId, action: 'Recupero el aliento y miro alrededor.', classification, roll, enCombate: false },
+    });
+    expect(narrateRes.statusCode).toBe(200);
+    const done = lastNdjsonLine(narrateRes.payload);
+    expect(done.travelResumed).toMatchObject({ toLocationName: 'Zona de Prueba Destino' });
+
+    // El destino truncado se limpia — no debe volver a dispararse en turnos futuros.
+    const saveAfterTurn = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
+    expect(saveAfterTurn.pendingTravelResumeDestinationId).toBeNull();
+
+    // El tránsito nuevo hacia el destino ORIGINAL (destId) ya existe. La propia reanudación (P3.2,
+    // turnResolution.ts) ya dispara `startEagerTransitResolution` fire-and-forget, igual que
+    // turn.ts hace con cualquier viaje sin evento — mismo mecanismo real de producción, no
+    // simulado. Esa resolución retiene su commit hasta `busyUntil` (minutos reales, ver
+    // TRANSIT_MAX_REAL_MINUTES) antes de escribir `currentLocationId` — se sondea en vez de asumir
+    // que ya terminó, evitando la carrera de intentar resolverla dos veces a la vez con un
+    // `resolveDueTransits()` manual (que solo vería `claimTurnInFlight` ya tomado y no haría nada).
+    await prisma.characterTransit.findUniqueOrThrow({ where: { saveId } });
+    const deadline = Date.now() + 15_000;
+    let saveAfterResume = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
+    while (saveAfterResume.currentLocationId !== destId && Date.now() < deadline) {
+      await new Promise((r) => setTimeout(r, 250));
+      saveAfterResume = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
+    }
+    expect(saveAfterResume.currentLocationId).toBe(destId);
   }, 20_000);
 });
 
@@ -4746,6 +5173,18 @@ describe('Emboscada real del turno de apertura: fallo siembra pendingNpcAttack (
     // El turno de apertura no toca condición ni HP — solo decide QUIÉN actúa primero después.
     expect(await prisma.npcState.findFirst({ where: { saveId, npcId } })).toBeNull();
 
+    // Bug real jugando en vivo (2026-08-28, confirmado por la usuaria): el bloque de texto de
+    // iniciativa no salía en la ronda de apertura de combate, solo en las siguientes — causa raíz
+    // era que este camino nunca calculaba `nextInitiativeRoll` (solo sembraba `pendingNpcAttack`),
+    // así que el `LogEntry` de apertura quedaba sin `initiativeRoll` que mostrar. Confirma que el
+    // fix lo calcula también aquí, con la misma forma que cualquier otro intercambio real.
+    const openingLogEntry = await prisma.logEntry.findFirst({ where: { saveId, channel: 'CHARACTER' }, orderBy: { createdAt: 'desc' } });
+    expect(openingLogEntry?.initiativeRoll).toMatchObject({
+      ganador: expect.stringMatching(/^(jugador|npc)$/),
+      jugadorTirada: expect.any(Number),
+      npcTirada: expect.any(Number),
+    });
+
     // Turno B: ya dentro del panel, enCombate:true — cualquier acción del jugador aquí es su
     // defensa a ciegas contra el ataque ya decidido, no su propio golpe.
     classifyAction.mockResolvedValueOnce({
@@ -4770,5 +5209,260 @@ describe('Emboscada real del turno de apertura: fallo siembra pendingNpcAttack (
     });
     expect(narrateDefense.statusCode).toBe(200);
     expect((lastNdjsonLine(narrateDefense.payload).combatExchangeDisplay as { atacanteEsJugador?: boolean } | null)?.atacanteEsJugador).toBe(false);
+  }, 20_000);
+});
+
+// Bug real jugando en vivo (2026-08-28/29): recargar la página mientras el enemigo tiene la
+// iniciativa ("elige a ciegas cómo defenderte") rompía la resolución del turno — el jugador veía
+// el panel de ATAQUE en vez de DEFENSA tras F5, elegía con el catálogo equivocado (atributo de
+// ataque en vez de defensa) y perdía el intercambio contra la Destreza real del NPC. Causa raíz:
+// `Save.pendingNpcAttack` ya persistía bien, pero `GET /saves/:id` nunca lo exponía, así que el
+// frontend no podía rehidratar `combatAwaitingDefense` tras una recarga. Ver
+// docs/checklist-pruebas-juego.md § 1 para el diagnóstico completo.
+describe('GET /saves/:id expone esperandoDefensaJugador (fix del bug de recarga en defensa a ciegas, 2026-08-29)', () => {
+  let saveId: string;
+  let npcId: string;
+
+  // `buildApp()` (arriba en este archivo) solo registra `turnRoutes` — `GET /saves/:id` vive en
+  // `detailRoutes`, que aquí hace falta también para simular la recarga real de página.
+  async function buildAppWithDetail() {
+    const app = Fastify();
+    await app.register(turnRoutes);
+    await app.register(detailRoutes);
+    return app;
+  }
+
+  beforeAll(async () => {
+    vi.spyOn(Math, 'random').mockReturnValue(0);
+    const userId = await getDefaultUserId();
+    const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
+    const npc = await prisma.npc.findFirstOrThrow({ where: { worldId: world.id, slug: 'orco-enfurecido-hondonada' } });
+    npcId = npc.id;
+    const location = await prisma.location.findFirstOrThrow({ where: { worldId: world.id, slug: 'hondonada-del-eco' } });
+    const save = await prisma.save.create({
+      data: {
+        userId,
+        worldId: world.id,
+        characterName: 'Gorhorn de prueba (esperandoDefensaJugador en GET)',
+        characterArchetype: 'guerrero',
+        characterOrigin: 'Clan Maktor',
+        characterMotivation: 'x',
+        attributes: ATTRS,
+        portraitInitial: 'G',
+        currentLocationId: location.id,
+      },
+    });
+    saveId = save.id;
+    await prisma.worldState.create({ data: { saveId } });
+  });
+
+  afterAll(async () => {
+    vi.restoreAllMocks();
+    await prisma.save.delete({ where: { id: saveId } });
+  });
+
+  it('sin pendingNpcAttack, GET /saves/:id devuelve esperandoDefensaJugador:false', async () => {
+    const app = await buildAppWithDetail();
+    const getRes = await app.inject({ method: 'GET', url: `/saves/${saveId}` });
+    expect(getRes.statusCode).toBe(200);
+    expect(getRes.json().esperandoDefensaJugador).toBe(false);
+  });
+
+  it('tras sembrar pendingNpcAttack, GET /saves/:id devuelve esperandoDefensaJugador:true — no solo la respuesta directa del turno', async () => {
+    const app = await buildAppWithDetail();
+
+    // Mismo turno de apertura que el describe anterior — un fallo del jugador siembra
+    // `pendingNpcAttack` real en Postgres, simulando "el enemigo tiene la iniciativa".
+    const openingAction = "Voy a luchar contra 'Orco enfurecido'.";
+    const classifyOpen = await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action: openingAction, enCombate: false } });
+    const { classification: classificationOpen, roll: rollOpen } = classifyOpen.json();
+    const narrateOpen = await app.inject({
+      method: 'POST',
+      url: '/turn/narrate',
+      payload: { saveId, action: openingAction, classification: classificationOpen, roll: rollOpen, enCombate: false },
+    });
+    expect(narrateOpen.statusCode).toBe(200);
+
+    const saveAfterOpening = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
+    expect(saveAfterOpening.pendingNpcAttack).toMatchObject({ npcId });
+
+    // Esto es lo que reproduce el bug: NO seguimos la respuesta directa del turno — simulamos una
+    // recarga de página pidiendo el estado de la partida desde cero, tal como hace `syncFromSave`.
+    const getRes = await app.inject({ method: 'GET', url: `/saves/${saveId}` });
+    expect(getRes.statusCode).toBe(200);
+    expect(getRes.json().esperandoDefensaJugador).toBe(true);
+  }, 15_000);
+});
+
+// Combate "fantasma" tras huir/viajar (BUG REAL confirmado 2 veces en vivo, mitigado parcialmente
+// 2026-08-28, causa exacta sin aislar hasta ahora — ver docs/checklist-pruebas-juego.md).
+// Investigación 2026-08-29: `detectNpcsInScene` (npcScene.ts) trata a un NPC "ya establecido en
+// esta partida" (tiene `NpcState` propio) como candidato SIEMPRE, sin importar la región actual
+// (`encounteredIds.has(npc.id)` gana sobre el filtro geográfico) — comportamiento INTENCIONAL, ya
+// cubierto por su propio test explícito ("un NPC ya establecido... sigue siendo candidato aunque
+// cambie de región", npcScene.test.ts). Combinado con el matching fuzzy de alias (mismo mecanismo
+// que ya causó el bug histórico "res" dentro de "presas"/"interesante", Levenshtein 2), un NPC
+// agresivo (`effectiveTemperamento`, sin ningún estado de "se calmó tras huir" para fauna sin
+// facción) puede volver a colarse en `npcsInSceneVivos` y disparar `shouldForceCombat` de nuevo
+// en CUALQUIER región, con solo que la acción del turno o los `sessionFacts` recientes contengan
+// una palabra parecida a su nombre/alias — reproducido aquí de forma aislada y determinista.
+describe('Combate "fantasma": un NPC agresivo puede volver a forzar combate tras huir Y cambiar de región (investigación 2026-08-29)', () => {
+  let saveId: string;
+
+  beforeAll(async () => {
+    const userId = await getDefaultUserId();
+    const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
+    const hondonada = await prisma.location.findFirstOrThrow({ where: { worldId: world.id, slug: 'hondonada-del-eco' } });
+    const otraRegion = await prisma.location.findFirstOrThrow({ where: { worldId: world.id, slug: 'trepaderes-humededos' } });
+    expect(otraRegion.region).not.toBe(hondonada.region);
+
+    const save = await prisma.save.create({
+      data: {
+        userId,
+        worldId: world.id,
+        characterName: 'Gorhorn de prueba (combate fantasma)',
+        characterArchetype: 'guerrero',
+        characterOrigin: 'Clan Maktor',
+        characterMotivation: 'x',
+        attributes: ATTRS,
+        portraitInitial: 'G',
+        currentLocationId: hondonada.id,
+      },
+    });
+    saveId = save.id;
+    await prisma.worldState.create({ data: { saveId } });
+
+    // Ya se conoció a Kirelon Arenoso antes en esta partida (NpcState real) — mismo estado que
+    // deja un encuentro/huida anterior, sin condición física especial (vivo, de paso).
+    const kirelon = await prisma.npc.findFirstOrThrow({ where: { worldId: world.id, slug: 'kirelon-arenoso' } });
+    await prisma.npcState.create({ data: { saveId, npcId: kirelon.id, scope: hondonada.id, condicionFisica: 'ILESO' } });
+
+    // Huyó con éxito: sin combate pendiente, y YA viajó a una región completamente distinta.
+    await prisma.save.update({ where: { id: saveId }, data: { pendingCombatNpcSlugs: [], currentLocationId: otraRegion.id } });
+
+    // Lo que el LLM real narraría tras una huida exitosa — mencionar al agresor por nombre es
+    // natural en la narración de cierre ("consigues escapar de X"), y ese hecho queda en
+    // `sessionFacts` para turnos futuros (`appendSessionFacts`, ventana rodante MAX_FACTS=10).
+    await prisma.$executeRaw`
+      INSERT INTO "SessionFact" (id, "saveId", text, embedding, "createdAt")
+      VALUES (${crypto.randomUUID()}, ${saveId}, 'Gorhorn logra escapar de Kirelon Arenoso en La Hondonada del Eco, dejándolo atrás.', NULL, ${new Date()})
+    `;
+
+    classifyAction.mockResolvedValue({
+      requiereTirada: false, atributo: 'fuerza', dificultad: 8, razon: 'x', banda: 'instantanea', duracionEstimadaMinutos: 0,
+    });
+  });
+
+  afterAll(async () => {
+    await prisma.npcState.deleteMany({ where: { saveId } });
+    await prisma.save.delete({ where: { id: saveId } });
+  });
+
+  it('una acción neutral en OTRA región, sin nombrar al NPC, no debería reabrir combate contra él solo por matching fuzzy de alias', async () => {
+    const app = await buildApp();
+    // "presas" matchea por Levenshtein-2 con el alias "kirelon" tan poco como con "brasas" en el
+    // bug histórico — el objetivo real de este turno es descansar/explorar, sin ninguna intención
+    // hostil ni mención real a Kirelon.
+    const classifyRes = await app.inject({
+      method: 'POST',
+      url: '/turn/classify',
+      payload: { saveId, action: 'Busco un buen sitio para descansar y curar mis heridas.', enCombate: false },
+    });
+    const { classification, roll } = classifyRes.json();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/turn/narrate',
+      payload: { saveId, action: 'Busco un buen sitio para descansar y curar mis heridas.', classification, roll, enCombate: false },
+    });
+    expect(res.statusCode).toBe(200);
+    const body = lastNdjsonLine(res.payload);
+    expect(body.combateIniciado).toBeNull();
+  }, 20_000);
+});
+
+describe('Turno "fantasma": conexión cortada a media narración (bug real jugando en vivo, prueba con Playwright, 2026-08-27)', () => {
+  let saveId: string;
+
+  beforeAll(async () => {
+    const userId = await getDefaultUserId();
+    const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
+    const location = await prisma.location.findFirstOrThrow({ where: { worldId: world.id, slug: 'hondonada-del-eco' } });
+
+    const save = await prisma.save.create({
+      data: {
+        userId,
+        worldId: world.id,
+        characterName: 'Gorhorn de prueba (turno fantasma)',
+        characterArchetype: 'guerrero',
+        characterOrigin: 'Clan Maktor',
+        characterMotivation: 'Recuperar el honor de los Maktor',
+        attributes: ATTRS,
+        portraitInitial: 'G',
+        currentLocationId: location.id,
+      },
+    });
+    saveId = save.id;
+    await prisma.worldState.create({ data: { saveId } });
+  });
+
+  afterAll(async () => {
+    await prisma.save.delete({ where: { id: saveId } });
+  });
+
+  it('si reply.raw.write() lanza como al escribir en un socket ya cerrado, el turno se persiste igual (backend/src/routes/turn.ts, writeLine sin try/catch propio — bug real jugando en vivo: cerrar el navegador a media narración dejó 2 turnos sin resolver nunca, solo con la acción del jugador registrada)', async () => {
+    const app = await buildApp();
+    // Parchea `reply.raw.write` para lanzar en su primera llamada, exactamente donde `writeLine`
+    // (turn.ts) escribiría el primer evento NDJSON ('chunk') — reproduce sin sockets TCP reales lo
+    // que EPIPE/ECONNRESET haría si el cliente ya cortó la conexión mientras el turno narraba.
+    app.addHook('onRequest', async (request, reply) => {
+      if (request.url !== '/turn/narrate') return;
+      const originalWrite = reply.raw.write.bind(reply.raw);
+      let thrown = false;
+      reply.raw.write = ((...args: Parameters<typeof originalWrite>) => {
+        if (!thrown) {
+          thrown = true;
+          throw new Error('write EPIPE (simulado — socket ya cerrado por el cliente)');
+        }
+        return originalWrite(...args);
+      }) as typeof reply.raw.write;
+    });
+
+    const action = 'Miro a mi alrededor.';
+
+    classifyAction.mockResolvedValueOnce({
+      requiereTirada: false,
+      atributo: null,
+      dificultad: null,
+      razon: 'x',
+      banda: 'corta',
+      duracionEstimadaMinutos: 10,
+    });
+    const classifyRes = await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action, enCombate: false } });
+    const { classification, roll } = classifyRes.json();
+
+    narrateAction.mockImplementationOnce(async (ctx: { onNarrationChunk?: (d: string) => void }) => {
+      ctx.onNarrationChunk?.('Algo se mueve entre las dunas.');
+      return { narration: 'Algo se mueve entre las dunas.', newFacts: [] };
+    });
+
+    const narrateRes = await app.inject({
+      method: 'POST',
+      url: '/turn/narrate',
+      payload: { saveId, action, classification, roll, enCombate: false },
+    });
+
+    // El turno DEBE persistirse en characterLog aunque el streaming al cliente falle — el
+    // resultado ya está decidido (Ollama respondió, la mecánica ya se resolvió), lo único que
+    // falla es AVISAR a un cliente que ya no está escuchando. Si esta aserción falla, confirma el
+    // bug: el turno queda "fantasma" — la acción del jugador queda registrada pero la narración de
+    // resultado nunca llega a guardarse, y el jugador tiene que reintentar con otra acción distinta
+    // para que el juego vuelva a avanzar.
+    const lastEntry = await prisma.logEntry.findFirst({
+      where: { saveId, channel: 'CHARACTER', isPlayerAction: false },
+      orderBy: { createdAt: 'desc' },
+    });
+    expect(lastEntry?.text).toContain('Algo se mueve entre las dunas.');
+
+    void narrateRes; // el código de estado de esta respuesta concreta no es lo que se está probando aquí
   }, 20_000);
 });

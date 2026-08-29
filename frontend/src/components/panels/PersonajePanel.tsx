@@ -1,7 +1,6 @@
 import type { Attribute, AttributeBlock, CondicionFisica, EquipSlot, InventoryItemInfo, SecondaryAttributeBlock } from '../../types'
 import { EquipoPanel } from './EquipoPanel'
 import { EstadisticasPanel } from './EstadisticasPanel'
-import { ReputacionPanel } from './ReputacionPanel'
 
 // Consolidación de "Equipo" en "Personaje" (2026-07-29, petición explícita: "un tab en la
 // sección de Equipo que va a pasar a llamarse Personaje... equipo, estadísticas, reputación,
@@ -13,12 +12,14 @@ import { ReputacionPanel } from './ReputacionPanel'
 // redundante en cuanto Habilidades > Profesiones pasó a mostrar lo mismo (barras) y bastante más
 // (recetas por nivel, enlace a Enciclopedia). El botón "Adoptar" que vivía aquí no enganchaba con
 // ninguna mecánica real, así que tampoco se lleva a ningún sitio nuevo.
-export type PersonajeSubTab = 'equipo' | 'estadisticas' | 'reputacion'
+//
+// "Reputación" sale de aquí (checklist frontend 2026-08-27, B.13) — pasa a pestaña propia del riel
+// "El mundo" (NavTabs.ts): conceptualmente es del eje mundo/facciones, no del personaje.
+export type PersonajeSubTab = 'equipo' | 'estadisticas'
 
 const SUB_TABS: { id: PersonajeSubTab; label: string; icon: string }[] = [
   { id: 'equipo', label: 'Equipo', icon: '⚔️' },
   { id: 'estadisticas', label: 'Estadísticas', icon: '📊' },
-  { id: 'reputacion', label: 'Reputación', icon: '🤝' },
 ]
 
 interface PersonajePanelProps {
@@ -43,8 +44,6 @@ interface PersonajePanelProps {
   energiaMax: number
   hambre: number
   sed: number
-
-  factionsStatus: Record<string, number>
 }
 
 export function PersonajePanel({
@@ -66,13 +65,12 @@ export function PersonajePanel({
   energiaMax,
   hambre,
   sed,
-  factionsStatus,
 }: PersonajePanelProps) {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex gap-1.5 border-b border-iron-800 pb-2">
         {SUB_TABS.map((tab) => (
-          <button
+          <button type="button"
             key={tab.id}
             onClick={() => onSubTabChange(tab.id)}
             className={`tactile flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs transition-colors ${
@@ -106,7 +104,6 @@ export function PersonajePanel({
           sed={sed}
         />
       )}
-      {activeSubTab === 'reputacion' && <ReputacionPanel factionsStatus={factionsStatus} />}
     </div>
   )
 }

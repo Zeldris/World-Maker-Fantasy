@@ -16,7 +16,7 @@ import { allProfessionAbilityUnlocks } from '../services/professionAbilities.js'
 import { slugify } from '../lib/slugify.js';
 import { generateImagePrompt, type ImagePromptEntityType, type ImagePromptSizeProfile } from '../services/imagePromptGenerator.js';
 import { loreContextFor } from '../services/imagePromptContext.js';
-import { imageUrlsFor } from '../lib/imageAssets.js';
+import { imageUrlsFor, zoneMapImageUrl } from '../lib/imageAssets.js';
 import { BERIG_RAZAS, BERIG_PERSONAJES } from '../services/berigLore.js';
 import { COMBAT_LORE_SECTIONS } from '../services/combatLore.js';
 import { baseAttackFor } from '../services/baseAttack.js';
@@ -39,6 +39,21 @@ interface VarianteSexoOut {
   imageUrls: { thumbnail: string | null; banner: string | null };
 }
 
+/// Día/noche/estación (2026-08-27, docs/rpgtarkor/imagenes-prompts.md) — a diferencia de
+/// `VarianteSexoOut`, sin ningún texto curado por entidad: la luz/estación son genéricas, así que
+/// las 8 combinaciones se listan siempre igual para CUALQUIER Location, nunca desde una tabla de
+/// contenido propia (ver `imagePromptContext.ts` § MOMENTO_TEXT/ESTACION_TEXT). `mapaImagePrompt`/
+/// `mapaImageUrl` viajan aparte (entityType 'zona', sizeProfile 'mapa') porque el botón "Mapa" de
+/// la Enciclopedia vive junto al de Location pero genera/guarda bajo ese otro entityType.
+interface VarianteTiempoOut {
+  momento: 'dia' | 'noche';
+  estacion: 'primavera' | 'verano' | 'otono' | 'invierno';
+  imagePrompts: { thumbnail: string | null; banner: string | null };
+  imageUrls: { thumbnail: string | null; banner: string | null };
+  mapaImagePrompt: string | null;
+  mapaImageUrl: string | null;
+}
+
 /// Deuda técnica (2026-07-30, auditoría técnica: "el handler de /world/:slug/enciclopedia
 /// ensambla ~280 líneas de secciones de tipo de entidad SIN RELACIÓN entre sí, todo en un único
 /// cuerpo de función"). Agrupa todos los closures/mapas ya calculados que las 8 secciones de la
@@ -51,6 +66,7 @@ interface EnciclopediaBuildContext {
     baseSlug: string,
     variantes: Record<string, SexoVariantesEntry>,
   ) => VarianteSexoOut[] | undefined;
+  variantesTiempoFor: (locationSlug: string) => VarianteTiempoOut[];
   isDiscovered: (entityType: string, entitySlug: string) => boolean;
   isLocationDiscovered: (locationId: string) => boolean;
   ataqueBaseFor: (n: { id: string; attributes: unknown; ataqueNatural: string | null }) => ReturnType<typeof baseAttackFor>;
@@ -66,6 +82,27 @@ interface EnciclopediaBuildContext {
   /// Es contenido de CATÁLOGO (Npc/NpcItem no dependen de la partida), así que vale la pena
   /// exponerlo aquí en vez de en un endpoint nuevo por partida.
   lootableItemsByNpcId: Map<string, { name: string; cantidad: number; notas: string | null }[]>;
+}
+
+// Auditoría de Enciclopedia (2026-08-27): comerciablePct/reclutablePct/domesticablePct/
+// capturablePct/cortejablePct y atributoResistencia ya existían en el modelo (sistema de
+// compañeros y supervivencia) pero nunca viajaban a la Enciclopedia — el jugador no tenía ninguna
+// pista in-game de qué NPC/fauna admite alguna de estas interacciones antes de intentarlo.
+// `undefined` (no un objeto con todo a 0) cuando ninguna está calibrada, para no añadir ruido a la
+// mayoría de entradas sin ninguna interacción especial.
+function interaccionFor(n: {
+  comerciablePct: number;
+  reclutablePct: number;
+  domesticablePct: number;
+  capturablePct: number;
+  cortejablePct: number;
+  atributoResistencia: string | null;
+}) {
+  const { comerciablePct, reclutablePct, domesticablePct, capturablePct, cortejablePct, atributoResistencia } = n;
+  if (comerciablePct === 0 && reclutablePct === 0 && domesticablePct === 0 && capturablePct === 0 && cortejablePct === 0) {
+    return undefined;
+  }
+  return { comerciablePct, reclutablePct, domesticablePct, capturablePct, cortejablePct, atributoResistencia };
 }
 
 function buildNpcsSection(npcsForEncyclopedia: Npc[], ctx: EnciclopediaBuildContext) {
@@ -89,6 +126,7 @@ function buildNpcsSection(npcsForEncyclopedia: Npc[], ctx: EnciclopediaBuildCont
     clase: n.clase,
     ataqueBase: ctx.ataqueBaseFor(n),
     items: ctx.lootableItemsByNpcId.get(n.id) ?? [],
+    interaccion: interaccionFor(n),
   }));
 }
 
@@ -108,6 +146,9 @@ function buildItemsSection(items: Awaited<ReturnType<typeof prisma.itemCatalog.f
     requisitos: i.requisitos as Record<string, number> | null,
     effectKey: i.effectKey,
     effectDescription: i.effectDescription,
+    // Auditoría de Enciclopedia (2026-08-27) — antes invisible pese a que el propio comentario del
+    // schema lo marca como "petición explícita": qué oficios requieren este objeto como herramienta.
+    herramientaParaOficio: i.herramientaParaOficio,
     imagePrompts: ctx.imagePromptsFor('item', i.slug),
     imageUrls: imageUrlsFor('item', i.slug),
     discovered: ctx.isDiscovered('item', i.slug),
@@ -152,6 +193,11 @@ function buildFaunaFloraSection(ctx: EnciclopediaBuildContext) {
       const faunaNpc = ctx.npcBySlug.get(sourceSlug);
       return faunaNpc ? ctx.ataqueBaseFor(faunaNpc) : null;
     })(),
+    // Auditoría de Enciclopedia (2026-08-27) — mismo campo que buildNpcsSection, ver interaccionFor.
+    interaccion: (() => {
+      const faunaNpc = ctx.npcBySlug.get(sourceSlug);
+      return faunaNpc ? interaccionFor(faunaNpc) : undefined;
+    })(),
   }));
 }
 
@@ -168,6 +214,7 @@ function buildLocationsSection(locations: Awaited<ReturnType<typeof prisma.locat
     imagePrompts: ctx.imagePromptsFor('location', l.slug),
     imageUrls: imageUrlsFor('location', l.slug),
     discovered: ctx.isLocationDiscovered(l.id),
+    variantesTiempo: ctx.variantesTiempoFor(l.slug),
   }));
 }
 
@@ -454,8 +501,18 @@ export async function worldRoutes(app: FastifyInstance) {
         ataqueNatural: n.ataqueNatural,
       });
 
-    const isDiscovered = (entityType: string, entitySlug: string): boolean =>
-      !saveId || discoveredEntities.some((d) => d.entityType === entityType && d.entitySlug === entitySlug);
+    // Auditoría de Enciclopedia (2026-08-27): los NPC `nucleoJugable: false` (Yovenne Tal, Vrask
+    // Ombra...) están documentados en worldCatalog.ts como "referencia de la Enciclopedia, no NPCs
+    // encontrables en la partida" — `entityDiscovery.ts` los excluye a propósito de la cascada de
+    // descubrimiento (nunca deben poder aparecer en escena/combate por un match de alias corto),
+    // pero eso significa que en partida real (`saveId` presente) `discovered` no podía llegar a
+    // `true` jamás: quedaban en la lista pero bloqueados sin ninguna vía de desbloqueo, contra la
+    // intención documentada de que fueran visibles. Mismo criterio que razas/personajes/clases
+    // (catálogo de referencia pura, sin gateo) para este subconjunto concreto de NPC.
+    const isDiscovered = (entityType: string, entitySlug: string): boolean => {
+      if (entityType === 'npc' && npcs.find((n) => n.slug === entitySlug)?.nucleoJugable === false) return true;
+      return !saveId || discoveredEntities.some((d) => d.entityType === entityType && d.entitySlug === entitySlug);
+    };
     const visitedLocationIds = new Set(locationVisits.map((v) => v.locationId));
     const isLocationDiscovered = (locationId: string): boolean => !saveId || visitedLocationIds.has(locationId);
 
@@ -468,6 +525,27 @@ export async function worldRoutes(app: FastifyInstance) {
       thumbnail: promptByKey.get(`${entityType}:${entitySlug}:thumbnail`) ?? null,
       banner: promptByKey.get(`${entityType}:${entitySlug}:banner`) ?? null,
     });
+
+    // Día/noche/estación (2026-08-27, docs/rpgtarkor/imagenes-prompts.md) — las 8 combinaciones se
+    // listan siempre igual para CUALQUIER Location (sin tabla de contenido curado, ver comentario
+    // de `VarianteTiempoOut`); cada una es un `entitySlug` propio (`<base>-<momento>-<estacion>`,
+    // mismo convenio de sufijo que `variantesSexoFor`) con su propio `ImagePrompt`/imagen subida.
+    const MOMENTOS = ['dia', 'noche'] as const;
+    const ESTACIONES = ['primavera', 'verano', 'otono', 'invierno'] as const;
+    const variantesTiempoFor = (locationSlug: string): VarianteTiempoOut[] =>
+      MOMENTOS.flatMap((momento) =>
+        ESTACIONES.map((estacion) => {
+          const slug = `${locationSlug}-${momento}-${estacion}`;
+          return {
+            momento,
+            estacion,
+            imagePrompts: imagePromptsFor('location', slug),
+            imageUrls: imageUrlsFor('location', slug),
+            mapaImagePrompt: promptByKey.get(`zona:${slug}:mapa`) ?? null,
+            mapaImageUrl: zoneMapImageUrl(slug),
+          };
+        }),
+      );
 
     // Variantes por sexo (2026-07-22, ver sexDimorphism.ts): mismo slug base + sufijo -macho/
     // -hembra para su propia imagen, igual que las variantes regionales de raza — undefined si la
@@ -527,6 +605,7 @@ export async function worldRoutes(app: FastifyInstance) {
     const ctx: EnciclopediaBuildContext = {
       imagePromptsFor,
       variantesSexoFor,
+      variantesTiempoFor,
       isDiscovered,
       isLocationDiscovered,
       ataqueBaseFor,

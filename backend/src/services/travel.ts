@@ -359,6 +359,21 @@ export async function resolveTravel(params: {
   return null;
 }
 
+/// Retomar un viaje truncado por un evento de interrupción (2026-08-28, P3.2) — a diferencia de
+/// `resolveTravel`, aquí el destino YA se conoce por id (guardado en
+/// `Save.pendingTravelResumeDestinationId` en el momento de truncar), sin re-matchear texto libre
+/// contra el nombre — el jugador nunca escribió esta acción, la dispara el motor.
+export async function resolveTravelToLocationId(
+  worldId: string,
+  currentLocationId: string,
+  destinationLocationId: string,
+  attributes: AttributeBlock,
+): Promise<TravelResolution | null> {
+  const destination = await prisma.location.findUnique({ where: { id: destinationLocationId } });
+  if (!destination) return null;
+  return resolveTravelPath(worldId, currentLocationId, destination, attributes);
+}
+
 /// Ubicación inicial al crear una partida nueva (docs/12-mundo-estructurado.md § 1.2) — hoy
 /// solo Gorhorn tiene mundo estructurado (alcance v1), igual que startingAbilitiesFor.
 export function initialLocationSlugFor(characterName: string): string | undefined {

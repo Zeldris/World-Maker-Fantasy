@@ -3,6 +3,8 @@ import { prisma } from '../../lib/prisma.js';
 import { attributeCapForLevel } from '../../services/progression.js';
 import type { AttributeBlock, Attribute } from '../../services/dice.js';
 import { VALID_ATTRIBUTES, rejectIfEnded } from './shared.js';
+import { classAbilityUnlocksFor } from '../../services/classAbilities.js';
+import { Clase } from '@prisma/client';
 
 /// Progresión "manual" del personaje (deuda técnica 2026-07-30, split de saves.ts): repartir un
 /// punto de atributo ganado por nivel — decisión puntual de la jugadora sobre su propio personaje,
@@ -76,4 +78,78 @@ export async function progressionRoutes(app: FastifyInstance) {
       return { attributes: outcome.attributes, pendingAttributePoints: outcome.pendingAttributePoints };
     },
   );
+
+  // Cierre del hueco "Save.clase sin ningún flujo de asignación" (2026-08-29, confirmado con datos
+  // reales: la partida de Gorhorn tenía `clase: NULL` en Postgres pese a estar decidida
+  // narrativamente, sin ningún camino de UI para fijarla — corregido esa vez con un UPDATE manual
+  // en la base de datos). Solo permite fijarla UNA vez (mismo criterio que `especializacion` a
+  // nivel 10: es una decisión, no un respec libre) — si `save.clase` ya no es `null`, 409. Al
+  // fijarla, concede de golpe TODO el tronco común ya alcanzado por el nivel actual del
+  // personaje (`classAbilityUnlocksFor`, ver classAbilities.ts) — cubre tanto elegir clase al
+  // crear personaje (nivel 1, un solo desbloqueo) como decidirla más tarde jugando (como pasó de
+  // verdad con Gorhorn), sin dejar huecos de niveles ya alcanzados.
+  app.patch<{ Params: { id: string }; Body: { clase: Clase } }>('/saves/:id/clase', async (request, reply) => {
+    const { clase } = request.body;
+    if (!clase || !Object.values(Clase).includes(clase)) {
+      return reply.status(400).send({ error: `Clase no válida: "${clase}"` });
+    }
+    const save = await prisma.save.findUnique({ where: { id: request.params.id }, include: { worldState: true } });
+    if (!save) {
+      return reply.status(404).send({ error: 'Partida no encontrada' });
+    }
+    if (rejectIfEnded(save, reply)) return;
+    if (save.clase) {
+      return reply.status(409).send({ error: `Esta partida ya tiene clase asignada: ${save.clase}` });
+    }
+
+    // Anti-duplicado (bug real encontrado antes de reproducir esto en la partida real de la
+    // usuaria, 2026-08-29): una partida creada ANTES de este fix pudo recibir ya alguna de estas
+    // habilidades por el camino viejo (fallback por `characterName` dentro de la propia
+    // `classAbilityUnlocksFor` — ver comentario ahí) — p. ej. Gorhorn/Cazador ya tenía "Analisis
+    // Salvaje" (nivel 1) al crear su partida, mucho antes de que existiera este endpoint. Sin este
+    // guard, fijar la clase ahora la duplicaría. Comparado por nombre (igual que el resto del
+    // motor identifica una SavedAction "de serie" — no hay otro id compartido entre el catálogo
+    // estático de habilidades y la fila ya persistida).
+    const yaTiene = new Set((await prisma.savedAction.findMany({ where: { saveId: save.id, category: 'combate' }, select: { name: true } })).map((a) => a.name));
+
+    // Mismos campos explícitos con default que el desbloqueo por subida de nivel
+    // (turnResolution.ts, bucle de `classAbilityUnlocksFor`) — mismo motivo: `createMany` no
+    // tolera `undefined` en columnas no admiten null como bien `create` sí hace con el spread.
+    const nuevasHabilidades = Array.from({ length: save.level }, (_, i) => i + 1)
+      .flatMap((lvl) => classAbilityUnlocksFor(save.characterName, lvl, clase))
+      .filter((ability) => !yaTiene.has(ability.name))
+      .map((ability) => ({
+        saveId: save.id,
+        name: ability.name,
+        promptText: ability.promptText,
+        icon: ability.icon,
+        description: ability.description,
+        category: ability.category,
+        isStarting: true,
+        effects: ability.effects ?? [],
+        rol: ability.rol ?? null,
+        preferredAttribute: ability.preferredAttribute ?? null,
+        attributeBonus: ability.attributeBonus ?? null,
+        durationEffectMagnitude: ability.durationEffectMagnitude ?? null,
+        durationEffectTurns: ability.durationEffectTurns ?? null,
+        energyCost: ability.energyCost ?? 0,
+        energyRegen: ability.energyRegen ?? 0,
+        maxUsesPerCombat: ability.maxUsesPerCombat ?? null,
+      }));
+
+    await prisma.$transaction([
+      prisma.save.update({ where: { id: save.id }, data: { clase } }),
+      ...(nuevasHabilidades.length > 0 ? [prisma.savedAction.createMany({ data: nuevasHabilidades })] : []),
+      prisma.logEntry.create({
+        data: {
+          saveId: save.id,
+          channel: 'CHARACTER',
+          text: `${save.characterName} asume su clase: ${clase}.`,
+          timeLabel: save.worldState?.fictionalDateLabel ?? 'Día 1, mañana',
+        },
+      }),
+    ]);
+
+    return { clase };
+  });
 }

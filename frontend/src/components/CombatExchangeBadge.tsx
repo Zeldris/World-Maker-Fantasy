@@ -226,7 +226,11 @@ function SideRow({
   // 2026-08-20). Ahora el ×mult se aplica y se resuelve DENTRO del paréntesis (crudo×mult≈
   // valorEfectivo), así que "/2" cae justo después de su propio resultado y el bono +N es
   // literalmente esa cuenta terminada — nada se aplica ya fuera de la fracción.
-  const valorCrudo = Math.max(1, side.value - (side.malus || 0))
+  // Bug real (2026-08-28, "en los cálculos de la tirada tampoco se está viendo"): `attributeBonus`
+  // (habilidad de arma/clase, +2/+4) se sumaba al atributo crudo DENTRO de `valorEfectivo` desde
+  // siempre — sin restarlo aquí, `valorCrudo` no cuadraba con lo que `rollSide` (backend) calculó
+  // de verdad en cuanto la habilidad llevaba bonus propio.
+  const valorCrudo = Math.max(1, side.value - (side.malus || 0) + (side.attributeBonus || 0))
   const bono = Math.floor(side.valorEfectivo / 2)
   const colors = attributeColorClasses[side.attribute]
   const border = withTopBorder ? 'border-t border-iron-800/60' : ''
@@ -262,10 +266,27 @@ function SideRow({
           ecuación y con algo más de tamaño de letra para que destaque") — más grande que el resto
           de la fila (`text-2xs` heredado del badge) para que el número que de verdad decide el
           turno salte a la vista sin tener que leer toda la explicación alrededor. */}
-      <span className={`flex flex-wrap items-baseline gap-1.5 py-1.5 font-mono tabular-nums ${border}`}>
-        <span className="font-bold text-wood-100">🎲{side.roll}</span>
+      <span className={`flex flex-wrap items-baseline justify-center gap-1.5 border-l border-l-iron-800/60 py-1.5 pl-2 font-mono tabular-nums ${border}`}>
+        {/* Pasivas raciales (2026-08-28) — con `rollMode !== 'normal'`, `side.rolls` trae los DOS
+            d20 reales tirados: se muestran ambos, tachando el descartado, en vez de un solo 🎲
+            (petición explícita: "que se vea, dos dados haciendo roll y como descarta el más bajo y
+            se queda con el grande"). `usedRoll` (= `side.roll`) siempre es el que de verdad entra
+            en la cuenta de abajo. */}
+        {side.rollMode && side.rollMode !== 'normal' && side.rolls && side.rolls.length === 2 ? (
+          <TooltipAnchor text={side.racialAdvantageReason ?? (side.rollMode === 'ventaja' ? 'Ventaja: se tiran 2 dados, se queda el más alto.' : 'Desventaja: se tiran 2 dados, se queda el más bajo.')}>
+            <span className="flex items-baseline gap-1 underline decoration-dotted decoration-wood-700 underline-offset-2">
+              {side.rolls.map((r, i) => (
+                <span key={i} className={r === side.roll ? 'font-bold text-wood-100' : 'text-wood-600 line-through'}>
+                  🎲{r}
+                </span>
+              ))}
+            </span>
+          </TooltipAnchor>
+        ) : (
+          <span className="font-bold text-wood-100">🎲{side.roll}</span>
+        )}
         <TooltipAnchor
-          text={`${attributeLabels[side.attribute]} ${side.value}${side.malus ? ` − ${side.malus} por tu condición física` : ''} = ${valorCrudo}.${
+          text={`${attributeLabels[side.attribute]} ${side.value}${side.malus ? ` − ${side.malus} por tu condición física` : ''}${side.attributeBonus ? ` + ${side.attributeBonus} de la habilidad` : ''} = ${valorCrudo}.${
             side.multiplicador != null && side.multiplicador !== 1
               ? ` Con ×${formatMultiplier(side.multiplicador)} de ventaja de tipo: ${valorCrudo}×${formatMultiplier(side.multiplicador)} ≈ ${side.valorEfectivo} (redondeado). Mitad = tu bono real: +${bono}.`
               : ` Mitad = tu bono real: +${bono}.`
@@ -274,7 +295,20 @@ function SideRow({
           <span className="flex items-baseline gap-1.5 underline decoration-dotted decoration-wood-700 underline-offset-2">
             <span className="font-bold text-wood-100">+{bono}</span>
             <span className="text-accent2-400">
-              ({valorCrudo}
+              (
+              {/* Desglose inline (petición explícita, 2026-08-29: "mejoralo todo para que se mas
+                  claro y se entiendan bien los calculos, mas incluso que en la vista que ya
+                  dejamos lista" — mismo rediseño que DiceRollReveal.tsx, mismo motivo: antes el
+                  malus/bono de habilidad vivían como chips sueltos en la columna de la derecha,
+                  sin conexión visual con esta fracción que ya los incluía por dentro — se veía
+                  "13/2" sin que se entendiera de dónde salía ese 13. Ahora cada término vive DENTRO
+                  del paréntesis, en el sitio exacto donde ocurre la suma, mismos colores que ya
+                  usaban los chips (`danger-400` resta, `moss-400` suma) para seguir
+                  distinguiéndose del resto de la fórmula. */}
+              {side.value}
+              {!!side.malus && <span className="text-danger-400"> −{side.malus}sal</span>}
+              {!!side.attributeBonus && <span className="text-moss-400"> +{side.attributeBonus}hab</span>}
+              {side.malus || side.attributeBonus ? ` = ${valorCrudo}` : ''}
               {/* El ×mult se resuelve AQUÍ DENTRO, antes del "/2" — no suelto después del bono
                   (bug real, 2026-08-20: puesto fuera de la fracción, justo antes del "=resultado"
                   final, se leía como una multiplicación todavía pendiente sobre el total ya
@@ -292,7 +326,7 @@ function SideRow({
         </TooltipAnchor>
         <span className="text-sm font-extrabold text-wood-100">= {side.result}</span>
       </span>
-      <span className={`whitespace-nowrap py-1.5 ${border}`}>
+      <span className={`whitespace-nowrap border-l border-l-iron-800/60 py-1.5 pl-2 ${border}`}>
         {/* Nombre de la dificultad SIEMPRE visible, no solo al pasar el ratón (petición explícita,
             2026-08-14, tras ver que el tooltip por hover no bastaba: "lo veo igual" — en una
             captura, o sin saber que hay hover ahí, "necesitaba 12" seguía sin explicarse solo).
@@ -307,19 +341,22 @@ function SideRow({
             </span>
           </TooltipAnchor>
         )}
-        {/* Resta por condición física (petición explícita, 2026-08-15: "hay que indicar también
-            la resta que tiene por el estado... en el resultado", nunca en la animación de dados)
-            — aparte de la fila de arriba a propósito, no encadenada con el "+bono" real: mostrarla
-            ahí como "+8 -2" leería como una resta pendiente sobre el total ya mostrado, cuando en
-            realidad ya se restó ANTES de calcular ese bono (rollSide, combatExchange.ts) — esto es
-            solo la explicación de por qué salió más bajo, no una operación más que hacer a mano. */}
-        {!!side.malus && (
-          <TooltipAnchor text={`Tu condición física actual te resta al atributo antes de la tirada: -${side.malus}. Ya está descontado del bono de arriba.`}>
-            <span className="ml-1 font-mono text-danger-400 underline decoration-dotted decoration-wood-700 underline-offset-2">−{side.malus} salud</span>
+        {/* Malus por condición física y bono de habilidad (petición explícita, 2026-08-15 y
+            2026-08-28) — ya NO viven aquí como chips sueltos (rediseño 2026-08-29, "mejoralo todo
+            para que se mas claro y se entiendan bien los calculos"): ahora se ven DENTRO de la
+            fracción de la celda anterior, en el sitio exacto donde ocurre la suma, en vez de
+            repetidos aquí sin conexión visual con el "13/2" que ya los incluía. */}
+        {/* Pasivas raciales (2026-08-28) — chip propio, siempre visible cuando aplicó, mismo
+            criterio que malus/attributeBonus de antes: nunca solo en un tooltip perdido. */}
+        {side.racialAdvantageReason && (
+          <TooltipAnchor text={side.racialAdvantageReason}>
+            <span className={`ml-1 font-mono underline decoration-dotted decoration-wood-700 underline-offset-2 ${side.rollMode === 'ventaja' ? 'text-moss-400' : 'text-danger-400'}`}>
+              {side.rollMode === 'ventaja' ? '▲' : '▼'} racial
+            </span>
           </TooltipAnchor>
         )}
       </span>
-      <span className={`whitespace-nowrap py-1.5 pr-2.5 text-right font-sans font-semibold ${GRADE_TEXT[grado]} ${border}`}>
+      <span className={`whitespace-nowrap border-l border-l-iron-800/60 py-1.5 pl-2 pr-2.5 text-right font-sans font-semibold ${GRADE_TEXT[grado]} ${border}`}>
         {SIDE_LABEL[grado]}
         {isWinner && ' 🏆'}
       </span>
@@ -409,8 +446,18 @@ export function CombatExchangeBadge({ exchange, playerName, enemyName }: { excha
           entre la fracción y el resultado según cuánto ocupara cada una — petición explícita
           siguiente: "el total pegado a la ecuación"). Con todo en una celda y `gap-1.5` uniforme,
           el resultado queda siempre a la misma distancia corta de la fracción, aunque ya no
-          garantice que las dos filas alineen columna a columna. */}
-      <div className="grid grid-cols-[auto_1fr_auto_auto] gap-x-2">
+          garantice que las dos filas alineen columna a columna.
+
+          Separadores de columna visibles (petición explícita, 2026-08-29: "añadir
+          separadores/bordes de celda visibles... para que se perciba como una cuadrícula real")
+          — antes solo había `border-t` entre filas (dentro de cada `SideRow`, vía `withTopBorder`).
+          Probado primero con `divide-x` en el contenedor (no se veía — los hijos DOM reales del
+          grid son los `<span>` de cada `SideRow`, no filas envolventes, así que Tailwind no tenía
+          un selector `> * + *` fiable ahí). Cada celda de `SideRow` ahora lleva su propio
+          `border-l` explícito (mismo patrón ya probado que `border-t`/`withTopBorder`, JIT-safe con
+          la paleta custom del proyecto), salvo la primera columna (el nombre no necesita línea a su
+          izquierda, es el borde del propio badge). */}
+      <div className="grid grid-cols-[auto_1fr_auto_auto]">
         <SideRow label={nombreJugador} side={jugador} isWinner={winnerIsJugador} withTopBorder={false} showDifficulty={!esOpuesto} />
         <SideRow label={nombreEnemigo} side={enemigo} isWinner={winnerIsEnemigo} withTopBorder showDifficulty={!esOpuesto} />
       </div>

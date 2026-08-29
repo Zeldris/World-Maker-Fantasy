@@ -155,10 +155,14 @@ export function npcCombatAbilitiesFor(npc: NpcForCombatAbilities, weaponNames: s
   // cualquier personaje jugable (GENERIC_COMBAT_ABILITIES, genericCombatAbilities.ts). Sin esto,
   // un NPC sin clase/raza con habilidad AGUANTE (fauna, sociales, PLANTILLA genéricas) no tenía
   // NINGUNA opción defensiva real — `chooseNpcAbility('defensa', ...)` caía siempre en el roster
-  // entero (en la práctica, reusar Ataque base como si fuera una defensa). Gratis (energyCost 0)
-  // y, desde 2026-07-31, RECUPERAN energía (10/5) — mismos números que el lado del jugador.
+  // entero (en la práctica, reusar Ataque base como si fuera una defensa).
   // Descripciones idénticas a GENERIC_COMBAT_ABILITIES (genericCombatAbilities.ts) — mismo verbo
   // que ya usa el jugador para las mismas dos acciones, coherencia entre los dos lados.
+  //
+  // Ajuste 2026-08-28 (petición explícita, ronda de correcciones): "mismos números que el lado del
+  // jugador" se quedó desactualizado en algún punto — el lado del NPC ya tenía Esquivar costando 5
+  // (`energyCost: 5, energyRegen: 0`) desde antes, pero el lado del jugador seguía RECUPERANDO 5
+  // hasta hoy. Ahora ambos vuelven a coincidir.
   abilities.push({
     name: 'Esquivar',
     description: 'Se aparta del golpe confiando en sus reflejos y destreza.',

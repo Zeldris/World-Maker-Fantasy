@@ -11,8 +11,10 @@ import {
 } from '../../data/map'
 import { getEnciclopedia, getWorldLocations, type EnciclopediaConstructionRecipe, type WorldLocationInfo } from '../../lib/api'
 import { formatMinutos } from '../../lib/gameViewHelpers'
+import { ESTACION_ICON, CLIMA_ICON } from '../../lib/entorno'
+import { ZonaPanel } from './ZonaPanel'
 import { InteractiveMap } from './InteractiveMap'
-import type { BuildingInfo, CurrentLocationInfo, DestinationInfo, InventoryItemInfo, QuestInfo } from '../../types'
+import type { BuildingInfo, CurrentLocationInfo, DestinationInfo, EntornoTemporalInfo, InventoryItemInfo, QuestInfo } from '../../types'
 import { PanelSection } from '../PanelSection'
 import { useEnciclopediaLink } from '../../context/useEnciclopediaLink'
 import { constructionToDetailTarget, locationToDetailTarget, personajeToDetailTarget } from '../../lib/enciclopediaTargets'
@@ -31,6 +33,9 @@ function recipeKeyForBuilding(b: { recipeKey?: string | null; tier?: number | nu
 
 interface MapaPanelProps {
   worldSlug: string | null
+  /// Zona (2026-08-27, auditoría de diseño/UX § 1.1) — para renderizar `<ZonaPanel>` como
+  /// subsección propia en vez de pestaña de nivel superior.
+  saveId: string | null
   currentLocation: CurrentLocationInfo | null
   destinations: DestinationInfo[]
   inventory: InventoryItemInfo[]
@@ -40,6 +45,10 @@ interface MapaPanelProps {
   /// "El campamento" (2026-08-04) — construcciones reales de la partida (Reino), para pintar su
   /// icono en el nodo de su `locationId` y ofrecerlas en la paleta de puntos.
   buildings: BuildingInfo[]
+  /// Estación/clima (2026-08-27, auditoría backend↔frontend + diseño/UX § 2.2: "el sitio donde el
+  /// jugador ya va a mirar 'dónde estoy y qué hay aquí'... es exactamente donde falta 'qué
+  /// estación/clima hay ahora'"). Null solo antes de la primera carga de partida.
+  entorno: EntornoTemporalInfo | null
 }
 
 // Clave de efecto especial (petición explícita, 2026-07-23; migrado 2026-08-03 de comparar por
@@ -148,7 +157,13 @@ function useProtagonistaYConstrucciones(worldSlug: string | null) {
   return { protagonistaTarget: target, constructionsByKey }
 }
 
-export function MapaPanel({ worldSlug, currentLocation, destinations, inventory, quests, buildings }: MapaPanelProps) {
+export function MapaPanel({ worldSlug, saveId, currentLocation, destinations, inventory, quests, buildings, entorno }: MapaPanelProps) {
+  // Sub-tabs Zona/Mapa (2026-08-27, petición explícita: "en la misma sección de Mapa el botón, al
+  // darle dentro directamente se vea la zona primero y que sean dos tabs" — Zona vuelve a ser una
+  // vista de pleno derecho tras la auditoría de diseño/UX que la había quitado como pestaña de
+  // nivel superior el mismo día, pero ahora vive DENTRO del botón Mapa de siempre, no en NavTabs.ts).
+  // Mismo patrón visual que el tab Era Común/Semillas de EnciclopediaPanel.tsx.
+  const [mapaTab, setMapaTab] = useState<'zona' | 'mapa'>('zona')
   const {
     llanurasNodes,
     llanurasEdges,
@@ -222,68 +237,109 @@ export function MapaPanel({ worldSlug, currentLocation, destinations, inventory,
 
   return (
     <div className="flex flex-col gap-5">
-      <PanelSection title="Berig">
-        <InteractiveMap
-          regions={beriRegions}
-          currentRegion={currentLocation?.region ?? 'Las Llanuras del Viento Rojo'}
-          llanurasNodes={llanurasNodes}
-          llanurasEdges={llanurasEdges}
-          cristalHeladoNodes={cristalHeladoNodes}
-          currentLocationSlug={currentLocation?.slug ?? null}
-          hasLlanurasMap={hasLlanurasMap}
-          hasCristalHeladoMap={hasCristalHeladoMap}
-          questTargetLocationSlug={questTargetLocationSlug}
-          getNodeOptions={getNodeOptions}
-          buildingIconBySlug={buildingIconBySlug}
-        />
-        {!hasLlanurasMap && !hasCristalHeladoMap && (
-          <p className="mt-2 text-xs italic text-wood-500">
-            Sin un mapa de la región, solo se ve el contorno — consigue el "Mapa de las Llanuras" o el "Mapa de Cristal Helado" para ver sus puntos de interés.
-          </p>
-        )}
-      </PanelSection>
+      <div className="flex gap-1 rounded-lg border border-iron-800 bg-wood-950/40 p-1">
+        {(
+          [
+            { id: 'zona', label: 'Zona' },
+            { id: 'mapa', label: 'Mapa' },
+          ] as const
+        ).map((tab) => (
+          <button type="button"
+            key={tab.id}
+            onClick={() => setMapaTab(tab.id)}
+            className={`tactile flex-1 rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
+              mapaTab === tab.id ? 'bg-accent2-500/10 text-accent2-300' : 'text-wood-400 hover:text-wood-200'
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
 
-      <PanelSection
-        title={currentLocation ? `Puntos de interés — ${currentLocation.region}` : 'Puntos de interés — Llanuras del Viento Rojo'}
-      >
-        {currentLocation ? (
-          <div className="flex flex-col gap-2">
-            <div className="rounded-lg border border-accent2-600/50 bg-wood-950/40 px-3.5 py-2.5 text-sm">
-              <p className="flex items-center gap-2 font-medium text-wood-100">
-                <span className="gem2" />
-                {currentLocation.name}
-              </p>
-              <p className="mt-1 text-xs leading-relaxed text-wood-400">{currentLocation.description}</p>
-            </div>
-            {destinations.length > 0 && (
-              <div className="rounded-lg border border-iron-700 bg-wood-950/40 px-3.5 py-2.5 text-sm">
-                <p className="mb-1.5 text-xs font-medium text-wood-300">Desde aquí se puede ir a:</p>
-                <ul className="flex flex-col gap-1">
-                  {destinations.map((d) => (
-                    <li key={d.locationId} className="flex items-center justify-between text-xs text-wood-400">
-                      <span>{d.name}</span>
-                      <span className="text-wood-400">{formatMinutos(d.minutos)}</span>
-                    </li>
-                  ))}
-                </ul>
+      {mapaTab === 'zona' && (saveId ? <ZonaPanel saveId={saveId} /> : <p className="text-sm italic text-wood-500">Sin partida activa.</p>)}
+
+      {mapaTab === 'mapa' && (
+        <div className="flex flex-col gap-5">
+          <PanelSection title="Berig">
+            {/* Estación/clima (2026-08-27) — mismo tratamiento visual que el pill de fecha del header
+                (fondo wood-950/60, borde iron-700, texto 2xs): el sitio donde la jugadora ya mira
+                "dónde estoy y qué hay aquí" es el sitio correcto para "qué estación/clima hay ahora",
+                el dato que en la práctica decide qué se puede recolectar. */}
+            {entorno && (
+              <div className="mb-2 flex flex-wrap gap-1.5">
+                <span className="rounded-full border border-iron-700 bg-wood-950/60 px-2 py-1 text-2xs text-wood-300">
+                  {ESTACION_ICON[entorno.estacion.key]} {entorno.estacion.nombre}
+                </span>
+                {entorno.clima && (
+                  <span className="rounded-full border border-iron-700 bg-wood-950/60 px-2 py-1 text-2xs text-wood-300">
+                    {CLIMA_ICON[entorno.clima.key]} {entorno.clima.nombre}
+                  </span>
+                )}
               </div>
             )}
-          </div>
-        ) : (
-          <div className="flex flex-col gap-2">
-            {llanurasPuntosDeInteres.map((poi) => (
-              <div key={poi.name} className="rounded-lg border border-iron-700 bg-wood-950/40 px-3.5 py-2.5 text-sm">
-                <p className="font-medium text-wood-100">{poi.name}</p>
-                <p className="mt-1 text-xs leading-relaxed text-wood-400">{poi.description}</p>
-              </div>
-            ))}
-          </div>
-        )}
-      </PanelSection>
+            <InteractiveMap
+              regions={beriRegions}
+              currentRegion={currentLocation?.region ?? 'Las Llanuras del Viento Rojo'}
+              llanurasNodes={llanurasNodes}
+              llanurasEdges={llanurasEdges}
+              cristalHeladoNodes={cristalHeladoNodes}
+              currentLocationSlug={currentLocation?.slug ?? null}
+              hasLlanurasMap={hasLlanurasMap}
+              hasCristalHeladoMap={hasCristalHeladoMap}
+              questTargetLocationSlug={questTargetLocationSlug}
+              getNodeOptions={getNodeOptions}
+              buildingIconBySlug={buildingIconBySlug}
+            />
+            {!hasLlanurasMap && !hasCristalHeladoMap && (
+              <p className="mt-2 text-xs italic text-wood-500">
+                Sin un mapa de la región, solo se ve el contorno — consigue el "Mapa de las Llanuras" o el "Mapa de Cristal Helado" para ver sus puntos de interés.
+              </p>
+            )}
+          </PanelSection>
 
-      <p className="text-xs text-wood-500 italic">
-        Vaelira y el resto del mapa se irán añadiendo cuando la partida los necesite.
-      </p>
+          <PanelSection
+            title={currentLocation ? `Puntos de interés — ${currentLocation.region}` : 'Puntos de interés — Llanuras del Viento Rojo'}
+          >
+            {currentLocation ? (
+              <div className="flex flex-col gap-2">
+                <div className="rounded-lg border border-accent2-600/50 bg-wood-950/40 px-3.5 py-2.5 text-sm">
+                  <p className="flex items-center gap-2 font-medium text-wood-100">
+                    <span className="gem2" />
+                    {currentLocation.name}
+                  </p>
+                  <p className="mt-1 text-xs leading-relaxed text-wood-400">{currentLocation.description}</p>
+                </div>
+                {destinations.length > 0 && (
+                  <div className="rounded-lg border border-iron-700 bg-wood-950/40 px-3.5 py-2.5 text-sm">
+                    <p className="mb-1.5 text-xs font-medium text-wood-300">Desde aquí se puede ir a:</p>
+                    <ul className="flex flex-col gap-1">
+                      {destinations.map((d) => (
+                        <li key={d.locationId} className="flex items-center justify-between text-xs text-wood-400">
+                          <span>{d.name}</span>
+                          <span className="text-wood-400">{formatMinutos(d.minutos)}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="flex flex-col gap-2">
+                {llanurasPuntosDeInteres.map((poi) => (
+                  <div key={poi.name} className="rounded-lg border border-iron-700 bg-wood-950/40 px-3.5 py-2.5 text-sm">
+                    <p className="font-medium text-wood-100">{poi.name}</p>
+                    <p className="mt-1 text-xs leading-relaxed text-wood-400">{poi.description}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </PanelSection>
+
+          <p className="text-xs text-wood-500 italic">
+            Vaelira y el resto del mapa se irán añadiendo cuando la partida los necesite.
+          </p>
+        </div>
+      )}
     </div>
   )
 }

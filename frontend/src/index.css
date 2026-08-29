@@ -355,6 +355,52 @@ body {
   transform: translateY(1px) scale(0.98);
 }
 
+/* Slot de hotbar (barra de habilidades fuera de combate, 2026-08-29 — tres vueltas de feedback en
+   vivo). La usuaria mandó captura real de la hotbar de WoW como referencia y aclaró: "olvídate de
+   copiar los colores, respeta los nuestros, hablo más del TIPO de diseño" — el lenguaje a copiar,
+   no la paleta: icono a sangre completa (casi sin aire alrededor, el emoji llena el slot en vez de
+   flotar centrado con margen), esquinas casi rectas (no muy redondeadas), borde metálico FINO de
+   alto contraste (no un aro grueso), y slots casi pegados entre sí formando un bloque compacto (ver
+   `gap-px`/`gap-0.5` en SkillBar.tsx/GameView.tsx, no el `gap-2` holgado de antes) — nunca negro
+   puro ni morados/azules brillantes de WoW, la paleta sigue siendo `iron`/`wood`/`accent` del
+   proyecto. `accent-500` sustituye el borde por un resplandor al pasar el ratón. */
+.skill-slot {
+  position: relative;
+  display: flex;
+  height: 44px;
+  width: 44px;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: 3px;
+  font-size: 1.85rem;
+  line-height: 1;
+  background: linear-gradient(155deg, var(--color-iron-800), var(--color-iron-900) 70%);
+  border: 1px solid color-mix(in srgb, var(--color-wood-400) 65%, var(--color-iron-900));
+  box-shadow:
+    inset 0 0 0 1px rgba(0, 0, 0, 0.7),
+    inset 0 1px 2px rgba(0, 0, 0, 0.8),
+    0 1px 0 rgba(255, 255, 255, 0.06);
+  transition:
+    border-color 120ms ease-out,
+    box-shadow 120ms ease-out;
+}
+.skill-slot span {
+  filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.9));
+}
+.skill-slot:hover:not(:disabled) {
+  border-color: var(--color-accent-400);
+  box-shadow:
+    inset 0 0 0 1px rgba(0, 0, 0, 0.7),
+    inset 0 1px 2px rgba(0, 0, 0, 0.8),
+    0 0 0 1px color-mix(in srgb, var(--color-accent-500) 60%, transparent),
+    0 0 10px -2px var(--color-accent-500);
+}
+.skill-slot:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
 /* Composer enriquecido (enlaces de objeto/habilidad estilo WoW, insertados dentro del propio
    texto libre): placeholder vía :empty ya que un <div contenteditable> no soporta el atributo
    nativo placeholder de <textarea>. */
@@ -407,7 +453,7 @@ body {
    DOM real, un portal rompe esa relación). */
 .tooltip-portal {
   position: fixed;
-  transform: translate(-50%, calc(-100% - 6px));
+  transform: translateY(calc(-100% - 6px));
   min-width: 160px;
   max-width: 240px;
   padding: 0.5rem 0.625rem;
@@ -424,6 +470,32 @@ body {
   pointer-events: none;
   z-index: 9999;
   animation: tooltip-portal-in 120ms ease-out both;
+}
+/* Centrado sobre el ancla (caso normal) vs. anclado a su izquierda/derecha sin centrar (el ancla
+   está demasiado cerca del borde de la ventana para que un tooltip centrado quepa entero — ver
+   TooltipAnchor.tsx). `left`/`right` ya vienen como el borde real del ancla desde JS. */
+.tooltip-portal-center {
+  transform: translate(-50%, calc(-100% - 6px));
+}
+.tooltip-portal-left {
+  transform: translateY(calc(-100% - 6px));
+}
+.tooltip-portal-right {
+  transform: translate(-100%, calc(-100% - 6px));
+}
+/* Nombre + descripción con jerarquía visual (2026-08-29, ver `subtext` en TooltipAnchor.tsx) — el
+   nombre en negrita/wood-100 (más claro), la descripción normal/wood-400 (más apagada), cada uno
+   en su propia línea. */
+.tooltip-portal-title {
+  display: block;
+  font-weight: 600;
+  color: var(--color-wood-100);
+}
+.tooltip-portal-subtext {
+  display: block;
+  margin-top: 0.15rem;
+  font-weight: 400;
+  color: var(--color-wood-400);
 }
 @keyframes tooltip-portal-in {
   from {

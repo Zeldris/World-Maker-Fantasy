@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useState, type Dispatch, type SetStateAction } from 'react'
 import type { CombatNpcDisplay } from '../components/CombatComposer'
-import { requestTurnClassify, requestTurnNarrate, requestFlee, postCapturar, dejarVivir, type EnciclopediaResponse } from '../lib/api'
-import { isTurnLockedError, npcInSceneToCombatDisplay, applyInventoryDelta, questCompletedLogEntry } from '../lib/gameViewHelpers'
+import { requestTurnClassify, requestTurnNarrate, requestFlee, requestHuirEnCurso, postCapturar, dejarVivir, type EnciclopediaResponse } from '../lib/api'
+import { isTurnLockedError, npcInSceneToCombatDisplay, combatKeyFor, combatDisplayNameFor, applyInventoryDelta, questCompletedLogEntry } from '../lib/gameViewHelpers'
 import { combatDifficultyFor, type CombatDifficulty } from '../lib/combatDifficulty'
 import type {
+  ActiveEffect,
   CombatExchangeInfo,
   CondicionFisica,
+  EntornoTemporalInfo,
   InitiativeRollInfo,
   InventoryItemInfo,
   LogEntry,
@@ -46,6 +48,13 @@ interface UseCombatFlowParams {
   setLevel: Dispatch<SetStateAction<number>>
   setPendingAttributePoints: Dispatch<SetStateAction<number>>
   setCondicionFisica: Dispatch<SetStateAction<CondicionFisica>>
+  /// Fase 2 de efectos de clase (2026-08-27, indicador de combate) — mismo criterio que
+  /// `setCondicionFisica`: GameView.tsx sigue siendo el dueño del estado (también lo escribe
+  /// `syncFromSave`/`handleSubmit`), este hook solo lo actualiza en los turnos resueltos DENTRO
+  /// del popup ya abierto.
+  setPlayerActiveEffects: Dispatch<SetStateAction<ActiveEffect[]>>
+  /// Estación/clima (2026-08-27) — mismo criterio que `setFictionalDate`.
+  setEntorno: Dispatch<SetStateAction<EntornoTemporalInfo | null>>
   setEnergia: Dispatch<SetStateAction<number>>
   setEnergiaMax: Dispatch<SetStateAction<number>>
   setFictionalDate: Dispatch<SetStateAction<string>>
@@ -53,8 +62,10 @@ interface UseCombatFlowParams {
   setDiceReveal: Dispatch<SetStateAction<{ exchange: CombatExchangeInfo; npcName: string | null } | null>>
   /// Desollar pasiva (2026-08-25) — un turno DENTRO del popup de combate (mismo `CombatEncounter`
   /// ya abierto, a diferencia del primer turno que lo abre, ver GameView.tsx) también puede ser el
-  /// que lo resuelve del todo, con caídos reales que desollar.
-  setCarcassPending: Dispatch<SetStateAction<boolean | null>>
+  /// que lo resuelve del todo, con caídos reales que desollar. C.2 (checklist frontend 2026-08-27)
+  /// — este hook solo necesita marcar "sí hay" (nunca sincroniza contra la escena), así que recibe
+  /// el helper con nombre en vez del setter crudo (`useActionModalsState.ts § markCarcassPending`).
+  markCarcassPending: () => void
 }
 
 /// Bloque de combate de GameView.tsx (deuda técnica 2026-08-21) — extraído tras confirmar que
@@ -92,12 +103,14 @@ export function useCombatFlow(params: UseCombatFlowParams) {
     setLevel,
     setPendingAttributePoints,
     setCondicionFisica,
+    setPlayerActiveEffects,
+    setEntorno,
     setEnergia,
     setEnergiaMax,
     setFictionalDate,
     setEndedAt,
     setDiceReveal,
-    setCarcassPending,
+    markCarcassPending,
   } = params
 
   const [combatOpen, setCombatOpen] = useState(false)
@@ -105,6 +118,12 @@ export function useCombatFlow(params: UseCombatFlowParams) {
   const [combatNpcStates, setCombatNpcStates] = useState<CombatNpcDisplay[]>([])
   const [combatBusy, setCombatBusy] = useState(false)
   const [combatEnded, setCombatEnded] = useState(false)
+  // Bug real jugando en vivo (2026-08-27, "he perdido un combate...me sale victoria"): un respawn
+  // sobrevivible deja `condicionFisica` de vuelta en ILESO (ver comentario de la línea de
+  // `justDied` más abajo), así que CombatPanel.tsx no tenía ninguna señal propia para distinguir
+  // "morí y respawneé" de "gané limpio" — la única pista real era `justDied` de este mismo turno,
+  // que se usaba solo para decidir `combatEnded` y nunca se propagaba más allá.
+  const [combatPlayerJustDied, setCombatPlayerJustDied] = useState(false)
   const [combatAwaitingDefense, setCombatAwaitingDefense] = useState(false)
   const [combatSelectedNpcSlug, setCombatSelectedNpcSlug] = useState<string | null>(null)
   const [combatSelectedAbilityId, setCombatSelectedAbilityId] = useState<string | null>(null)
@@ -117,7 +136,7 @@ export function useCombatFlow(params: UseCombatFlowParams) {
   const combatNpcsDisplay: CombatNpcDisplay[] = useMemo(
     () =>
       (combateIniciado?.npcs ?? []).map(
-        (n) => combatNpcStates.find((s) => s.slug === n.slug) ?? npcInSceneToCombatDisplay(n),
+        (n) => combatNpcStates.find((s) => combatKeyFor(s) === combatKeyFor(n)) ?? npcInSceneToCombatDisplay(n),
       ),
     [combateIniciado, combatNpcStates],
   )
@@ -167,7 +186,8 @@ export function useCombatFlow(params: UseCombatFlowParams) {
     if (!combate) return
     setCombatNpcStates(combate.npcs.map(npcInSceneToCombatDisplay))
     setCombatEnded(false)
-    setCombatSelectedNpcSlug(combate.npcs[0]?.slug ?? null)
+    setCombatPlayerJustDied(false)
+    setCombatSelectedNpcSlug(combate.npcs[0] ? combatKeyFor(combate.npcs[0]) : null)
     setCombatSelectedAbilityId(null)
     setCombatSelectedItemId(null)
     setCombatFreeText('')
@@ -224,6 +244,8 @@ export function useCombatFlow(params: UseCombatFlowParams) {
         narration,
         progression,
         condicionFisica,
+        activeEffects,
+        entorno,
         energia,
         energiaMax,
         timeLabel: newTimeLabel,
@@ -269,11 +291,13 @@ export function useCombatFlow(params: UseCombatFlowParams) {
       setFactionsStatus(updatedFactionsStatus)
       setProfessionProgress(updatedProfessionProgress)
       // Desollar pasiva (2026-08-25) — ver mismo comentario en GameView.tsx.
-      if (combatEncounterLootSummary && combatEncounterLootSummary.length > 0) setCarcassPending(true)
+      if (combatEncounterLootSummary && combatEncounterLootSummary.length > 0) markCarcassPending()
       handleCombatTurnResolved({
         narration: narration.narration,
         progression,
         condicionFisica,
+        activeEffects,
+        entorno,
         energia,
         energiaMax,
         timeLabel: newTimeLabel,
@@ -296,6 +320,10 @@ export function useCombatFlow(params: UseCombatFlowParams) {
       // llega resuelta a ILESO tras un respawn sobrevivible (nunca MUERTO) — sin `justDied` este
       // chequeo nunca se cumplía salvo fin de partida.
       if (finDePartida || justDied) setCombatEnded(true)
+      // Bug real jugando en vivo (2026-08-27, "he perdido un combate...me sale victoria") — ver
+      // comentario de `combatPlayerJustDied` más arriba: única señal real de que el jugador murió
+      // y respawneó DENTRO de este combate, ya que `condicionFisica` vuelve a ILESO tras respawnear.
+      if (justDied) setCombatPlayerJustDied(true)
       return true
     } catch (err) {
       // Candado de turno (auditoría de código completa, 2026-08-07) — este intercambio se
@@ -322,47 +350,93 @@ export function useCombatFlow(params: UseCombatFlowParams) {
     }
   }
 
-  function handleCombatHuir() {
-    // Fire-and-forget + cierre inmediato: no se espera el resultado narrativo para volver al modo
-    // normal.
-    submitCombatAction('Intento huir de este combate, alejándome como pueda.', {})
-    setCombatOpen(false)
-    setCombateIniciado(null)
-    setCombatAwaitingDefense(false)
-  }
-
-  async function handleCombatRegistrar(npc: CombatNpcDisplay) {
-    setCombatNpcStates((prev) => prev.map((n) => (n.slug === npc.slug ? { ...n, yaSaqueado: true } : n)))
-    // Comillas alrededor del nombre (bug real, auditoría 2026-07-28): igual que handleAttack ya
-    // hace para que el backend resuelva `explicitTarget` — sin ellas, el saqueo podía alcanzar a
-    // cualquier otro NPC derrotado en escena, no solo al pulsado aquí.
-    const ok = await submitCombatAction(`Registro el cuerpo de '${npc.name}'.`, { allowAfterEnded: true })
-    // Rollback (bug real, auditoría 2026-07-28): si el turno falla, el saqueo optimista de arriba
-    // dejaba al NPC marcado como saqueado en la UI para siempre.
-    if (!ok) {
-      setCombatNpcStates((prev) => prev.map((n) => (n.slug === npc.slug ? { ...n, yaSaqueado: false } : n)))
+  // Huir DENTRO de combate con riesgo real (ronda de correcciones 2026-08-28, P3.2). Antes,
+  // `handleCombatHuir` mandaba el intento como texto libre por `submitCombatAction`, que lo
+  // resolvía con el motor de intercambio normal — un ataque/defensa disfrazado, indistinguible de
+  // "Defenderse". Ahora usa el endpoint dedicado `combat/huir-en-curso` (misma tirada determinista
+  // que `handleFleeAttempt` pre-combate): si falla, aplica un golpe directo real sin tirada de
+  // defensa, reflejado tanto en `condicionFisica` como en la narración.
+  async function handleCombatHuir() {
+    if (!saveId || combatBusy) return
+    setCombatBusy(true)
+    try {
+      const { escaped, text, condicionFisica: newCondicion } = await requestHuirEnCurso(saveId)
+      setCharacterLog((prev) => [
+        ...prev,
+        { id: `huir-${Date.now()}`, channel: 'character', text, timeLabel: fictionalDate, createdAt: new Date().toISOString(), combate: true },
+      ])
+      setCondicionFisica(newCondicion as CondicionFisica)
+      if (escaped) {
+        setCombatOpen(false)
+        setCombateIniciado(null)
+        setCombatAwaitingDefense(false)
+      }
+      // Si falla, el popup se queda abierto con el combate en curso — el golpe ya aplicado se ve
+      // reflejado en el estado de condición física, sin necesidad de cerrar ni reabrir nada.
+    } catch (err) {
+      // Bug real jugando en vivo (2026-08-28): pulsar "Huir" estando CONVALECIENTE devuelve 409
+      // ("resuelve tu propia condición primero") del guard nuevo del backend, pero este catch lo
+      // tragaba en silencio — el botón parecía no hacer nada, sin ningún aviso de qué pasó.
+      setCharacterLog((prev) => [
+        ...prev,
+        {
+          id: `huir-err-${Date.now()}`,
+          channel: 'character',
+          text: err instanceof Error ? err.message : 'No se pudo intentar huir.',
+          timeLabel: fictionalDate,
+          createdAt: new Date().toISOString(),
+          combate: true,
+        },
+      ])
+    } finally {
+      setCombatBusy(false)
     }
   }
 
-  // Botón "Decapitar"/"Matar" (petición explícita, 2026-07-30) — golpe de gracia determinista
-  // contra un enemigo YA convaleciente, sin tirada. UN único prompt mencionando a todos por
-  // nombre, SIN comillas — con comillas, `explicitTarget` solo extrae UN nombre, así que varios
-  // seleccionados a la vez solo rematarían al primero.
+  async function handleCombatRegistrar(npc: CombatNpcDisplay) {
+    const key = combatKeyFor(npc)
+    setCombatNpcStates((prev) => prev.map((n) => (combatKeyFor(n) === key ? { ...n, yaSaqueado: true } : n)))
+    // Comillas alrededor del nombre (bug real, auditoría 2026-07-28): igual que handleAttack ya
+    // hace para que el backend resuelva `explicitTarget` — sin ellas, el saqueo podía alcanzar a
+    // cualquier otro NPC derrotado en escena, no solo al pulsado aquí. Identificador de
+    // combatientes duplicados (2026-08-27) — `combatDisplayNameFor` cita "Buitre #2" cuando hace
+    // falta desambiguar.
+    const ok = await submitCombatAction(`Registro el cuerpo de '${combatDisplayNameFor(npc)}'.`, { allowAfterEnded: true })
+    // Rollback (bug real, auditoría 2026-07-28): si el turno falla, el saqueo optimista de arriba
+    // dejaba al NPC marcado como saqueado en la UI para siempre.
+    if (!ok) {
+      setCombatNpcStates((prev) => prev.map((n) => (combatKeyFor(n) === key ? { ...n, yaSaqueado: false } : n)))
+    }
+  }
+
+  // Botón "Decapitar"/"Matar" (petición explícita, 2026-07-30, REDISEÑADO 2026-08-30) — golpe de
+  // gracia contra un enemigo CONVALECIENTE. Antes era determinista sin tirada (remate garantizado);
+  // petición explícita de la usuaria tras confirmarse que ese diseño era antiguo y ya no encajaba
+  // ("matar tiene que abrir el combate de nuevo, no resolverse"): ahora se resuelve como un ataque
+  // NORMAL — mismo camino que `handleCombatAttack` (habilidad ya seleccionada por el jugador, o
+  // Ataque Básico si no hay ninguna elegida), citando al NPC entre comillas simples
+  // (`explicitTarget`, backend) para que el intercambio caiga sobre él y no sobre otro NPC de la
+  // escena. El CONVALECIENTE ya lleva el malus más alto de la tabla (`CONDICION_MALUS`, -10,
+  // death.ts) — riesgo real pero bajo, sin necesidad de una tabla de malus nueva.
   //
-  // CONVALECIENTE deja de ser "victoria automática" (2026-08-26): antes esto cerraba el combate
-  // sin más ("solo salir o decapitar cierran el combate", 2026-07-31) — ahora el cierre es
+  // Sin optimistic update de condición (a diferencia de la versión vieja) — el resultado ya no es
+  // binario éxito-de-red/CONVALECIENTE, puede seguir CONVALECIENTE si falla el intercambio o pasar
+  // a MUERTO si conecta; se deja que la condición real llegue de la respuesta del backend, mismo
+  // criterio que `handleCombatAttack`.
+  //
+  // CONVALECIENTE deja de ser "victoria automática" (2026-08-26) — el cierre del combate es
   // responsabilidad ÚNICA del `useEffect` de `combatEnded` de arriba, que solo dispara cuando
-  // TODOS los NPC de la escena están MUERTO o `dismissed`. Si quedan otros por resolver, el panel
-  // sigue activo. De paso arregla un bug real: el `setCombatAwaitingDefense(false)` manual de aquí
-  // pisaba SIEMPRE el valor real que `handleCombatTurnResolved` (dentro de `submitCombatAction`,
-  // justo arriba) ya había puesto a partir de la respuesta real del backend.
+  // TODOS los NPC de la escena están MUERTO o `dismissed`.
   async function handleDecapitarSeleccion(npcs: CombatNpcDisplay[]) {
     if (npcs.length === 0) return
-    setCombatNpcStates((prev) => prev.map((n) => (npcs.some((p) => p.slug === n.slug) ? { ...n, condicion: 'MUERTO' } : n)))
-    const nombres = npcs.map((n) => n.name).join(', ')
-    const ok = await submitCombatAction(`Remato a ${nombres}, asestándoles el golpe de gracia final.`, { allowAfterEnded: true })
-    if (!ok) {
-      setCombatNpcStates((prev) => prev.map((n) => (npcs.some((p) => p.slug === n.slug) ? { ...n, condicion: 'CONVALECIENTE' } : n)))
+    const selectedAbility = savedActions.find((a) => a.id === combatSelectedAbilityId) ?? savedActions.find((a) => a.name === 'Ataque Básico')
+    if (!selectedAbility) return
+    const base = selectedAbility.promptText.trim().replace(/\.+$/, '')
+    // Un turno por NPC (no un único prompt mencionando a varios) — mismo motivo que
+    // `handleCombatAttack`: `explicitTarget` (backend) solo extrae UN nombre citado, así que un
+    // texto combinado solo golpearía al primero.
+    for (const npc of npcs) {
+      await submitCombatAction(`${base}, contra '${combatDisplayNameFor(npc)}'.`, { savedActionId: selectedAbility.id, allowAfterEnded: true })
     }
   }
 
@@ -373,8 +447,11 @@ export function useCombatFlow(params: UseCombatFlowParams) {
   // `dismissed: true` lo saca de "pendiente de resolver" para `combatEnded`.
   async function handleCapturarSeleccion(npc: CombatNpcDisplay) {
     try {
-      await postCapturar(saveId!, npc.slug)
-      setCombatNpcStates((prev) => prev.map((n) => (n.slug === npc.slug ? { ...n, dismissed: true } : n)))
+      await postCapturar(saveId!, npc.slug, npc.participantId)
+      // Identificador de combatientes duplicados (mismo criterio que el resto de este archivo,
+      // `combatKeyFor` — bug real 2026-08-29: filtrar por `slug` a secas marcaba `dismissed` en
+      // TODOS los individuos del mismo tipo a la vez con 2+ del mismo grupo).
+      setCombatNpcStates((prev) => prev.map((n) => (combatKeyFor(n) === combatKeyFor(npc) ? { ...n, dismissed: true } : n)))
     } catch {
       // Best-effort (mismo criterio que el resto de acciones deterministas de combate): sin
       // cuerdas o sin jaula libre, el backend ya devuelve el motivo — no hay nada que deshacer
@@ -388,8 +465,9 @@ export function useCombatFlow(params: UseCombatFlowParams) {
   // que `handleFleeAttempt`.
   async function handleDejarVivirSeleccion(npc: CombatNpcDisplay) {
     try {
-      const { logEntry } = await dejarVivir(saveId!, npc.slug)
-      setCombatNpcStates((prev) => prev.map((n) => (n.slug === npc.slug ? { ...n, dismissed: true } : n)))
+      const { logEntry } = await dejarVivir(saveId!, npc.slug, npc.participantId)
+      // Mismo criterio que `handleCapturarSeleccion` de arriba — `combatKeyFor`, no `slug` a secas.
+      setCombatNpcStates((prev) => prev.map((n) => (combatKeyFor(n) === combatKeyFor(npc) ? { ...n, dismissed: true } : n)))
       setCharacterLog((prev) => [
         ...prev,
         { id: logEntry.id, channel: 'character', text: logEntry.text, timeLabel: logEntry.timeLabel, createdAt: logEntry.createdAt, combate: true },
@@ -406,23 +484,38 @@ export function useCombatFlow(params: UseCombatFlowParams) {
   // Saqueo parcial (2026-07-31): a diferencia de Decapitar/Salir, saquear NUNCA cierra el combate
   // por su cuenta — `quedaAlgoPorSaquear` (CombatPanel.tsx) reacciona solo al estado real de
   // `yaSaqueado` de cada NPC.
+  //
+  // Bug real (2026-08-28, "saqueo puede mostrar 'saqueado' en UI sin persistir nada"): el estado
+  // optimista de abajo se aplicaba SIN esperar a `submitCombatAction`, y a diferencia de
+  // `handleDecapitarSeleccion` (que sí revierte a CONVALECIENTE si `!ok`) no había NINGÚN camino de
+  // reversión — un turno huérfano/fallido dejaba la UI mintiendo "Muerto · saqueado" para siempre
+  // mientras el backend nunca recibió los objetos. Mismo patrón de reversión que Decapitar: guardar
+  // el estado previo antes de mutar, revertirlo si `submitCombatAction` devuelve `false`.
   async function handleSaquearSeleccion(itemNames: string[], fullyLootedSlugs: string[], itemNamesByNpc: Record<string, string[]>) {
     const porSaquear = combatNpcsDisplay.filter((n) => (n.condicion === 'CONVALECIENTE' || n.condicion === 'MUERTO') && !n.yaSaqueado)
-    if (porSaquear.length > 0) {
+    if (porSaquear.length === 0) return
+    const previousStates = new Map(porSaquear.map((n) => [combatKeyFor(n), { yaSaqueado: n.yaSaqueado, lootedItemNames: n.lootedItemNames }]))
+    setCombatNpcStates((prev) =>
+      prev.map((n) => {
+        const added = itemNamesByNpc[n.slug]
+        // `undefined` = este NPC no formaba parte de esta ronda de saqueo, se deja igual.
+        if (added === undefined) return n
+        return {
+          ...n,
+          yaSaqueado: fullyLootedSlugs.includes(n.slug) ? true : n.yaSaqueado,
+          lootedItemNames: added.length > 0 ? [...new Set([...n.lootedItemNames, ...added])] : n.lootedItemNames,
+        }
+      }),
+    )
+    const nombres = porSaquear.map((n) => n.name).join(', ')
+    const ok = await submitCombatAction(`Registro los cuerpos de los enemigos derrotados en este combate: ${nombres}.`, { lootItemNames: itemNames, allowAfterEnded: true })
+    if (!ok) {
       setCombatNpcStates((prev) =>
         prev.map((n) => {
-          const added = itemNamesByNpc[n.slug]
-          // `undefined` = este NPC no formaba parte de esta ronda de saqueo, se deja igual.
-          if (added === undefined) return n
-          return {
-            ...n,
-            yaSaqueado: fullyLootedSlugs.includes(n.slug) ? true : n.yaSaqueado,
-            lootedItemNames: added.length > 0 ? [...new Set([...n.lootedItemNames, ...added])] : n.lootedItemNames,
-          }
+          const previous = previousStates.get(combatKeyFor(n))
+          return previous ? { ...n, ...previous } : n
         }),
       )
-      const nombres = porSaquear.map((n) => n.name).join(', ')
-      await submitCombatAction(`Registro los cuerpos de los enemigos derrotados en este combate: ${nombres}.`, { lootItemNames: itemNames, allowAfterEnded: true })
     }
   }
 
@@ -442,14 +535,17 @@ export function useCombatFlow(params: UseCombatFlowParams) {
       resetCombatSelection()
       return
     }
-    const selectedNpc = combatNpcsDisplay.find((n) => n.slug === combatSelectedNpcSlug) ?? null
+    const selectedNpc = combatNpcsDisplay.find((n) => combatKeyFor(n) === combatSelectedNpcSlug) ?? null
     // Bug real jugando en vivo (2026-08-26): el objetivo se pegaba pelado al final del promptText
     // ("...con el arma que llevo en la mano principal 'Orco enfurecido'."), leyéndose como si el
     // arma se llamara igual que el enemigo — ningún promptText de weaponAbilities.ts está escrito
     // para terminar con un nombre propio detrás. "contra" antes del nombre lo deja legible pase lo
     // que pase cómo termine la frase de la habilidad (ataque o defensa).
     const base = selectedAbility.promptText.trim().replace(/\.+$/, '')
-    const action = selectedNpc ? `${base}, contra '${selectedNpc.name}'.` : selectedAbility.promptText
+    // Identificador de combatientes duplicados (2026-08-27, bug real jugando: "ataqué a los dos
+    // buitres a la vez") — cita "Buitre #2" cuando hace falta desambiguar, mismo sufijo que el
+    // backend acepta al interpretar el texto (`turnResolution.ts`, `esperandoEleccionJugadora`).
+    const action = selectedNpc ? `${base}, contra '${combatDisplayNameFor(selectedNpc)}'.` : selectedAbility.promptText
     submitCombatAction(action, { savedActionId: selectedAbility.id })
     resetCombatSelection()
   }
@@ -479,6 +575,8 @@ export function useCombatFlow(params: UseCombatFlowParams) {
     narration: string
     progression: ProgressionResult
     condicionFisica: CondicionFisica
+    activeEffects: ActiveEffect[]
+    entorno: EntornoTemporalInfo
     energia: number
     energiaMax: number
     timeLabel: string
@@ -507,7 +605,7 @@ export function useCombatFlow(params: UseCombatFlowParams) {
     // no contra el de la respuesta): un NPC que ya estaba CONVALECIENTE de un turno anterior no
     // vuelve a ofrecer tarjeta.
     const newlyConvalecientes = (params.combate?.npcs ?? [])
-      .filter((n) => n.condicionFisica === 'CONVALECIENTE' && combatNpcsDisplay.find((d) => d.slug === n.slug)?.condicion !== 'CONVALECIENTE')
+      .filter((n) => n.condicionFisica === 'CONVALECIENTE' && combatNpcsDisplay.find((d) => combatKeyFor(d) === combatKeyFor(n))?.condicion !== 'CONVALECIENTE')
       .map((n) => ({ npcSlug: n.slug, npcName: n.name, capturable: n.capturable }))
     setCharacterLog((prev) => {
       const next = [
@@ -545,6 +643,8 @@ export function useCombatFlow(params: UseCombatFlowParams) {
       setPendingAttributePoints((prev) => prev + params.progression.attributePointsGained)
     }
     setCondicionFisica(params.condicionFisica)
+    setPlayerActiveEffects(params.activeEffects)
+    setEntorno(params.entorno)
     setEnergia(params.energia)
     setEnergiaMax(params.energiaMax)
     setFictionalDate(params.timeLabel)
@@ -556,23 +656,33 @@ export function useCombatFlow(params: UseCombatFlowParams) {
     if (params.combate && params.combate.npcs.length > 0) {
       setCombateIniciado(params.combate)
       setCombatNpcStates((prev) => {
-        const bySlug = new Map(prev.map((n) => [n.slug, n]))
+        // Identificador de combatientes duplicados (2026-08-27, bug real jugando: "ataqué a los
+        // dos buitres a la vez") — `combatKeyFor` (participantId cuando existe, slug si no) en vez
+        // de `slug` puro: dos combatientes del mismo Npc de catálogo ya no colapsan al mismo estado.
+        const bySlug = new Map(prev.map((n) => [combatKeyFor(n), n]))
         for (const n of params.combate!.npcs) {
           const real: CombatNpcDisplay = npcInSceneToCombatDisplay(n)
-          const local = bySlug.get(n.slug)
+          const key = combatKeyFor(n)
+          const local = bySlug.get(key)
           if (!local) {
-            bySlug.set(n.slug, real)
+            bySlug.set(key, real)
             continue
           }
           // El backend manda: solo se sustituye el estado local si el real ha avanzado más (nunca
           // "resucita" a alguien que el propio jugador ya vio caer más allá).
           const avanza = CONDICION_ORDER.indexOf(real.condicion) > CONDICION_ORDER.indexOf(local.condicion)
           if (avanza || (real.yaSaqueado && !local.yaSaqueado) || (real.analizado && !local.analizado)) {
-            bySlug.set(n.slug, real)
+            bySlug.set(key, real)
           } else if (real.lootedItemNames.length > local.lootedItemNames.length) {
             // Saqueo parcial (2026-07-31): `lootedItemNames` solo crece, aunque `condicion`/
             // `yaSaqueado` no hayan cambiado este turno.
-            bySlug.set(n.slug, { ...local, lootedItemNames: n.lootedItemNames })
+            bySlug.set(key, { ...local, lootedItemNames: n.lootedItemNames, activeEffects: real.activeEffects })
+          } else {
+            // Fase 2 de efectos de clase (2026-08-27) — a diferencia de `lootedItemNames`
+            // (solo crece), un `activeEffects` puede tanto ganar un efecto nuevo como perder uno
+            // que acaba de expirar en el MISMO turno — el backend manda siempre, sin comparar
+            // longitudes, aunque ninguna otra condición de arriba haya cambiado.
+            bySlug.set(key, { ...local, activeEffects: real.activeEffects })
           }
         }
         return Array.from(bySlug.values())
@@ -626,6 +736,7 @@ export function useCombatFlow(params: UseCombatFlowParams) {
     combatDifficulty,
     combatBusy,
     combatEnded,
+    combatPlayerJustDied,
     combatHasPendingConvalecientes,
     combatAwaitingDefense,
     setCombatAwaitingDefense,

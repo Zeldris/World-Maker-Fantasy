@@ -20,16 +20,22 @@ vi.mock('../lib/api', () => ({
   requestTurnClassify: vi.fn(),
   requestTurnNarrate: vi.fn(),
   requestFlee: vi.fn(),
+  requestHuirEnCurso: vi.fn(),
+  postCapturar: vi.fn(),
+  dejarVivir: vi.fn(),
 }))
 
-import { requestTurnClassify, requestTurnNarrate, requestFlee } from '../lib/api'
+import { requestTurnClassify, requestTurnNarrate, requestFlee, requestHuirEnCurso, postCapturar, dejarVivir } from '../lib/api'
 
 const mockClassify = vi.mocked(requestTurnClassify)
 const mockNarrate = vi.mocked(requestTurnNarrate)
+const mockPostCapturar = vi.mocked(postCapturar)
+const mockDejarVivir = vi.mocked(dejarVivir)
 const mockFlee = vi.mocked(requestFlee)
+const mockHuirEnCurso = vi.mocked(requestHuirEnCurso)
 
 function npc(overrides: Partial<NpcInSceneInfo> & { slug: string; name: string }): NpcInSceneInfo {
-  return { condicionFisica: 'ILESO', saqueado: false, lootedItemNames: [], analizado: false, capturable: true, ...overrides }
+  return { condicionFisica: 'ILESO', saqueado: false, lootedItemNames: [], analizado: false, capturable: true, activeEffects: [], ...overrides }
 }
 
 function baseProgression() {
@@ -41,6 +47,8 @@ function baseNarrateResponse(overrides: Partial<Awaited<ReturnType<typeof reques
     narration: { narration: 'La escena continúa.', newFacts: [] },
     progression: baseProgression(),
     condicionFisica: 'ILESO' as const,
+    activeEffects: [],
+    entorno: { estacion: { key: 'PRIMAVERA' as const, nombre: "Ur'gathek" }, clima: null },
     energia: 100,
     energiaMax: 100,
     timeLabel: 'Día 1, mañana',
@@ -65,8 +73,8 @@ function baseNarrateResponse(overrides: Partial<Awaited<ReturnType<typeof reques
   }
 }
 
-function useHarness() {
-  const [combateIniciado, setCombateIniciado] = useState<{ npcs: NpcInSceneInfo[] } | null>(null)
+function useHarness(initialCombateIniciado: { npcs: NpcInSceneInfo[] } | null = null) {
+  const [combateIniciado, setCombateIniciado] = useState<{ npcs: NpcInSceneInfo[] } | null>(initialCombateIniciado)
   const [inventory, setInventory] = useState<InventoryItemInfo[]>([])
   const [characterLog, setCharacterLog] = useState<LogEntry[]>([])
   const [quests, setQuests] = useState<QuestInfo[]>([])
@@ -104,12 +112,14 @@ function useHarness() {
     setLevel,
     setPendingAttributePoints,
     setCondicionFisica,
+    setPlayerActiveEffects: vi.fn(),
+    setEntorno: vi.fn(),
     setEnergia: vi.fn(),
     setEnergiaMax: vi.fn(),
     setFictionalDate: vi.fn(),
     setEndedAt,
     setDiceReveal: vi.fn(),
-    setCarcassPending,
+    markCarcassPending: () => setCarcassPending(true),
   })
 
   return { combat, combateIniciado, setCombateIniciado, inventory, characterLog, quests, deathCount, factionsStatus, xp, level, pendingAttributePoints, condicionFisica, endedAt, carcassPending }
@@ -119,6 +129,9 @@ beforeEach(() => {
   mockClassify.mockReset()
   mockNarrate.mockReset()
   mockFlee.mockReset()
+  mockHuirEnCurso.mockReset()
+  mockPostCapturar.mockReset()
+  mockDejarVivir.mockReset()
 })
 
 describe('openCombat', () => {
@@ -130,7 +143,20 @@ describe('openCombat', () => {
     act(() => result.current.combat.openCombat())
     expect(result.current.combat.combatOpen).toBe(true)
     expect(result.current.combat.combatNpcsDisplay).toEqual([
-      { slug: 'orco', name: 'Orco Enfurecido', condicion: 'ILESO', yaSaqueado: false, lootedItemNames: [], analizado: false },
+      {
+        slug: 'orco',
+        name: 'Orco Enfurecido',
+        condicion: 'ILESO',
+        yaSaqueado: false,
+        lootedItemNames: [],
+        analizado: false,
+        activeEffects: [],
+        participantId: undefined,
+        instanceNumber: undefined,
+        // Tarjeta persistente de Convaleciente (fix 2026-08-28, LogPanel.tsx) — capturable ahora
+        // se propaga desde NpcInSceneInfo, antes se perdía en npcInSceneToCombatDisplay.
+        capturable: true,
+      },
     ])
     expect(result.current.combat.combatSelectedNpcSlug).toBe('orco')
   })
@@ -152,6 +178,83 @@ describe('openCombat', () => {
     const { result } = renderHook(() => useHarness())
     act(() => result.current.combat.openCombat())
     expect(result.current.combat.combatOpen).toBe(false)
+  })
+})
+
+// BUG CERRADO (2026-08-29, ver comentario de `CombatParticipant.dismissedGrupo` en schema.prisma
+// y `combatKeyFor` en gameViewHelpers.ts): Capturar/Clemente filtraban `combatNpcStates` por
+// `slug` a secas — con 2+ individuos del mismo Npc de catálogo en el mismo CombatEncounter (mismo
+// slug, `participantId` distinto), marcar `dismissed` sobre UNO los marcaba a TODOS de golpe.
+describe('handleCapturarSeleccion/handleDejarVivirSeleccion: identificador de combatientes duplicados (bug real 2026-08-29)', () => {
+  it('Capturar sobre un individuo de un grupo de 2 (mismo slug) marca dismissed SOLO en ese participantId', async () => {
+    const { result } = renderHook(() => useHarness())
+    const npcs = [
+      npc({ slug: 'gesgurio', name: 'Gesgurio', condicionFisica: 'CONVALECIENTE', participantId: 'p1' }),
+      npc({ slug: 'gesgurio', name: 'Gesgurio', condicionFisica: 'CONVALECIENTE', participantId: 'p2' }),
+    ]
+    act(() => {
+      result.current.setCombateIniciado({ npcs })
+      result.current.combat.openCombat({ npcs })
+    })
+    mockPostCapturar.mockResolvedValueOnce({ npcSlug: 'gesgurio', tipo: 'FAUNA', inventoryItemId: 'item-1', capturaExpiraAtMinutes: null })
+
+    await act(() => result.current.combat.handleCapturarSeleccion(result.current.combat.combatNpcsDisplay[0]))
+
+    expect(mockPostCapturar).toHaveBeenCalledWith(expect.any(String), 'gesgurio', 'p1')
+    const [p1, p2] = result.current.combat.combatNpcsDisplay
+    expect(p1.dismissed).toBe(true)
+    expect(p2.dismissed).not.toBe(true) // el otro individuo del grupo NO se ve afectado
+  })
+
+  it('Clemente (dejarVivir) sobre un individuo de un grupo de 2 marca dismissed SOLO en ese participantId', async () => {
+    const { result } = renderHook(() => useHarness())
+    const npcs = [
+      npc({ slug: 'gesgurio', name: 'Gesgurio', condicionFisica: 'CONVALECIENTE', participantId: 'p1' }),
+      npc({ slug: 'gesgurio', name: 'Gesgurio', condicionFisica: 'CONVALECIENTE', participantId: 'p2' }),
+    ]
+    act(() => {
+      result.current.setCombateIniciado({ npcs })
+      result.current.combat.openCombat({ npcs })
+    })
+    mockDejarVivir.mockResolvedValueOnce({ npcSlug: 'gesgurio', logEntry: { id: 'log-1', text: 'x', timeLabel: 'x', createdAt: 'x' } })
+
+    await act(() => result.current.combat.handleDejarVivirSeleccion(result.current.combat.combatNpcsDisplay[1]))
+
+    expect(mockDejarVivir).toHaveBeenCalledWith(expect.any(String), 'gesgurio', 'p2')
+    const [p1, p2] = result.current.combat.combatNpcsDisplay
+    expect(p1.dismissed).not.toBe(true) // el otro individuo del grupo NO se ve afectado
+    expect(p2.dismissed).toBe(true)
+  })
+})
+
+// BUG CERRADO (2026-08-29, ver docs/checklist-pruebas-juego.md "recargar tras Convaleciente atasca
+// el combate del todo") — antes del fix, la tarjeta Matar/Capturar/Clemente solo nacía de
+// `entry.convalecienteOffers` (ligado al `characterLog` efímero de React) y nunca sobrevivía a una
+// recarga real, aunque el bloqueo del composer (`combatHasPendingConvalecientes`) sí persistía —
+// atasco total sin ninguna vía de UI. El fix (LogPanel.tsx) calcula la tarjeta directamente de
+// `combatNpcsDisplay`, que a su vez sale de `combateIniciado` (viene de `GET /saves/:id`). Test
+// nuevo, faltante desde el cierre original del bug (mencionado como pendiente en el checklist):
+// monta el hook YA con `combateIniciado` poblado (nunca abierto por un `openCombat()` en esta
+// sesión de React) — simula exactamente una recarga real con el navegador recién cargado.
+describe('Recarga con un CONVALECIENTE pendiente (bug real 2026-08-28, cerrado 2026-08-29)', () => {
+  it('combatNpcsDisplay/combatHasPendingConvalecientes reflejan al CONVALECIENTE ya al montar, sin pasar por openCombat', () => {
+    const { result } = renderHook(() =>
+      useHarness({ npcs: [npc({ slug: 'kirelon-arenoso', name: 'Kirelon Arenoso', condicionFisica: 'CONVALECIENTE' })] }),
+    )
+    // `combatOpen` sigue false — el panel nunca se "abrió" en esta sesión de React, pero el dato ya
+    // está disponible para que LogPanel.tsx pueda ofrecer la tarjeta persistente igualmente.
+    expect(result.current.combat.combatOpen).toBe(false)
+    expect(result.current.combat.combatNpcsDisplay).toEqual([
+      expect.objectContaining({ slug: 'kirelon-arenoso', name: 'Kirelon Arenoso', condicion: 'CONVALECIENTE' }),
+    ])
+    expect(result.current.combat.combatHasPendingConvalecientes).toBe(true)
+  })
+
+  it('un NPC MUERTO o ya dismissed al montar NO bloquea el composer', () => {
+    const { result } = renderHook(() =>
+      useHarness({ npcs: [npc({ slug: 'kirelon-arenoso', name: 'Kirelon Arenoso', condicionFisica: 'MUERTO' })] }),
+    )
+    expect(result.current.combat.combatHasPendingConvalecientes).toBe(false)
   })
 })
 
@@ -234,6 +337,27 @@ describe('submitCombatAction — camino feliz', () => {
     await act(() => result.current.combat.submitCombatAction('Ataco a mi enemigo', {}))
     await waitFor(() => expect(result.current.combat.combatEnded).toBe(true))
   })
+
+  it('bug real jugando en vivo (2026-08-27, "he perdido un combate...me sale victoria"): justDied marca combatPlayerJustDied, única señal real de derrota tras respawn', async () => {
+    mockClassify.mockResolvedValue({ classification: { atributo: 'fuerza', dificultad: 15, razon: 'x', banda: 'instantanea' }, roll: undefined } as never)
+    mockNarrate.mockResolvedValue(baseNarrateResponse({ condicionFisica: 'ILESO', justDied: true }) as never)
+    const { result } = renderHook(() => useHarness())
+    act(() => result.current.setCombateIniciado({ npcs: [npc({ slug: 'orco', name: 'Orco' })] }))
+    act(() => result.current.combat.openCombat())
+    expect(result.current.combat.combatPlayerJustDied).toBe(false)
+    await act(() => result.current.combat.submitCombatAction('Ataco a mi enemigo', {}))
+    await waitFor(() => expect(result.current.combat.combatPlayerJustDied).toBe(true))
+  })
+
+  it('un combate ganado limpio (sin justDied) nunca marca combatPlayerJustDied', async () => {
+    mockClassify.mockResolvedValue({ classification: { atributo: 'fuerza', dificultad: 15, razon: 'x', banda: 'instantanea' }, roll: undefined } as never)
+    mockNarrate.mockResolvedValue(baseNarrateResponse({ condicionFisica: 'ILESO', justDied: false }) as never)
+    const { result } = renderHook(() => useHarness())
+    act(() => result.current.setCombateIniciado({ npcs: [npc({ slug: 'orco', name: 'Orco' })] }))
+    act(() => result.current.combat.openCombat())
+    await act(() => result.current.combat.submitCombatAction('Ataco a mi enemigo', {}))
+    expect(result.current.combat.combatPlayerJustDied).toBe(false)
+  })
 })
 
 describe('handleCombatAttack — habilidad + objetivo seleccionados', () => {
@@ -270,41 +394,108 @@ describe('handleCombatTurnResolved — fusión de combateIniciado', () => {
       expect(result.current.combat.combatNpcsDisplay.find((n) => n.slug === 'orco')?.condicion).toBe('MUERTO')
     })
   })
+
+  // Fase 2 de efectos de clase (2026-08-27) — a diferencia de `lootedItemNames` (solo crece), un
+  // `activeEffects` puede EXPIRAR de un turno a otro sin que ninguna otra condición de la fusión
+  // (condicion/yaSaqueado/analizado/lootedItemNames) cambie — el backend debe mandar siempre,
+  // sin comparar longitudes.
+  it('sincroniza siempre activeEffects con el backend, aunque nada más de la fusión haya cambiado (puede expirar, no solo crecer)', async () => {
+    mockClassify.mockResolvedValue({ classification: { atributo: 'fuerza', dificultad: 15, razon: 'x', banda: 'instantanea' }, roll: undefined } as never)
+    mockNarrate.mockResolvedValue(
+      baseNarrateResponse({
+        combateIniciado: {
+          npcs: [npc({ slug: 'orco', name: 'Orco', condicionFisica: 'ILESO', activeEffects: [] })],
+        },
+      }) as never,
+    )
+    const { result } = renderHook(() => useHarness())
+    act(() =>
+      result.current.setCombateIniciado({
+        npcs: [npc({ slug: 'orco', name: 'Orco', condicionFisica: 'ILESO', activeEffects: [{ attribute: 'destreza', magnitude: -4, turnsRemaining: 1, sourceAbility: 'Golpe Envenenado' }] })],
+      }),
+    )
+    act(() => result.current.combat.openCombat())
+    expect(result.current.combat.combatNpcsDisplay[0]?.activeEffects).toHaveLength(1)
+
+    await act(() => result.current.combat.submitCombatAction('Ataco a mi enemigo', {}))
+    await waitFor(() => {
+      // El efecto expiró (turnsRemaining llegó a 0 en el backend) — condicion/yaSaqueado/analizado
+      // no cambiaron este turno, pero activeEffects sí debe reflejar la lista vacía real.
+      expect(result.current.combat.combatNpcsDisplay.find((n) => n.slug === 'orco')?.activeEffects).toEqual([])
+    })
+  })
 })
 
+// REDISEÑADO 2026-08-30 (petición explícita: "matar tiene que abrir el combate de nuevo, no
+// resolverse...lo de resolverse es antiguo y ya no encaja") — "Matar" deja de ser un remate
+// determinista con optimistic update propio; ahora es un ataque normal (mismo camino que
+// `handleCombatAttack`), con la habilidad ya seleccionada o "Ataque Básico" citando al NPC entre
+// comillas simples, y sin ningún estado optimista — la condición final llega de la respuesta real.
 describe('handleDecapitarSeleccion', () => {
-  it('marca MUERTO de forma optimista y lo mantiene si el turno se resuelve bien', async () => {
+  it('arma un ataque normal con Ataque Básico citando al NPC entre comillas, sin optimistic update', async () => {
+    mockClassify.mockResolvedValue({ classification: { atributo: 'fuerza', dificultad: 15, razon: 'x', banda: 'instantanea' }, roll: undefined } as never)
+    mockNarrate.mockResolvedValue(baseNarrateResponse({ condicionFisica: 'ILESO', combateIniciado: null } as never) as never)
+    const { result } = renderHook(() => useHarness())
+    act(() => result.current.setCombateIniciado({ npcs: [npc({ slug: 'orco', name: 'Orco', condicionFisica: 'CONVALECIENTE' })] }))
+    act(() => result.current.combat.openCombat())
+
+    const target = result.current.combat.combatNpcsDisplay[0]!
+    // Sin optimistic update: la condición no cambia hasta que la respuesta real llega.
+    expect(target.condicion).toBe('CONVALECIENTE')
+    await act(() => result.current.combat.handleDecapitarSeleccion([target]))
+
+    expect(mockClassify).toHaveBeenCalledWith(expect.objectContaining({ action: "Ataco a mi enemigo, contra 'Orco'." }))
+  })
+
+  it('con varios NPC seleccionados, manda un turno por cada uno (nunca un único prompt combinado)', async () => {
+    mockClassify.mockResolvedValue({ classification: { atributo: 'fuerza', dificultad: 15, razon: 'x', banda: 'instantanea' }, roll: undefined } as never)
+    mockNarrate.mockResolvedValue(baseNarrateResponse() as never)
+    const { result } = renderHook(() =>
+      useHarness({
+        npcs: [
+          npc({ slug: 'orco', name: 'Orco', condicionFisica: 'CONVALECIENTE' }),
+          npc({ slug: 'quio', name: 'Quio', condicionFisica: 'CONVALECIENTE' }),
+        ],
+      }),
+    )
+    act(() => result.current.combat.openCombat())
+
+    await act(() => result.current.combat.handleDecapitarSeleccion(result.current.combat.combatNpcsDisplay))
+
+    expect(mockClassify).toHaveBeenCalledTimes(2)
+    expect(mockClassify).toHaveBeenNthCalledWith(1, expect.objectContaining({ action: "Ataco a mi enemigo, contra 'Orco'." }))
+    expect(mockClassify).toHaveBeenNthCalledWith(2, expect.objectContaining({ action: "Ataco a mi enemigo, contra 'Quio'." }))
+  })
+})
+
+describe('handleSaquearSeleccion', () => {
+  it('marca yaSaqueado de forma optimista y lo mantiene si el turno se resuelve bien', async () => {
     mockClassify.mockResolvedValue({ classification: { atributo: 'fuerza', dificultad: 15, razon: 'x', banda: 'instantanea' }, roll: undefined } as never)
     mockNarrate.mockResolvedValue(baseNarrateResponse() as never)
     const { result } = renderHook(() => useHarness())
-    act(() => result.current.setCombateIniciado({ npcs: [npc({ slug: 'orco', name: 'Orco', condicionFisica: 'CONVALECIENTE' })] }))
+    act(() => result.current.setCombateIniciado({ npcs: [npc({ slug: 'orco', name: 'Orco', condicionFisica: 'MUERTO' })] }))
     act(() => result.current.combat.openCombat())
 
-    const target = result.current.combat.combatNpcsDisplay[0]!
-    await act(() => result.current.combat.handleDecapitarSeleccion([target]))
+    await act(() => result.current.combat.handleSaquearSeleccion(['Maza orca'], ['orco'], { orco: ['Maza orca'] }))
     await waitFor(() => {
-      // CONVALECIENTE deja de ser "victoria automática" (2026-08-26): decapitar ya NO cierra el
-      // combate por su cuenta (`combatOpen` se queda `true`, el panel sigue abierto) — el único
-      // efecto de Matar al último rival es que `combatEnded` pasa a `true` vía el propio
-      // `useEffect` de `combatEnded` (ver más arriba en useCombatFlow.ts), no un cierre manual.
-      expect(result.current.combat.combatNpcsDisplay.find((n) => n.slug === 'orco')?.condicion).toBe('MUERTO')
-      expect(result.current.combat.combatEnded).toBe(true)
-      expect(result.current.combat.combatOpen).toBe(true)
+      const orco = result.current.combat.combatNpcsDisplay.find((n) => n.slug === 'orco')
+      expect(orco?.yaSaqueado).toBe(true)
+      expect(orco?.lootedItemNames).toEqual(['Maza orca'])
     })
   })
 
-  it('bug real (2026-07-28): revierte a CONVALECIENTE si el turno falla — no deja el saqueo/remate optimista colgado', async () => {
+  it('bug real (2026-08-28): revierte yaSaqueado/lootedItemNames si el turno falla — no deja la UI mintiendo "saqueado" sin persistir nada', async () => {
     mockClassify.mockResolvedValue({ classification: { atributo: 'fuerza', dificultad: 15, razon: 'x', banda: 'instantanea' }, roll: undefined } as never)
     mockNarrate.mockRejectedValue(new Error('fallo de red'))
     const { result } = renderHook(() => useHarness())
-    act(() => result.current.setCombateIniciado({ npcs: [npc({ slug: 'orco', name: 'Orco', condicionFisica: 'CONVALECIENTE' })] }))
+    act(() => result.current.setCombateIniciado({ npcs: [npc({ slug: 'orco', name: 'Orco', condicionFisica: 'MUERTO' })] }))
     act(() => result.current.combat.openCombat())
 
-    const target = result.current.combat.combatNpcsDisplay[0]!
-    await act(() => result.current.combat.handleDecapitarSeleccion([target]))
+    await act(() => result.current.combat.handleSaquearSeleccion(['Maza orca'], ['orco'], { orco: ['Maza orca'] }))
     await waitFor(() => {
-      expect(result.current.combat.combatNpcsDisplay.find((n) => n.slug === 'orco')?.condicion).toBe('CONVALECIENTE')
-      expect(result.current.combat.combatOpen).toBe(true) // nunca llegó a cerrarse
+      const orco = result.current.combat.combatNpcsDisplay.find((n) => n.slug === 'orco')
+      expect(orco?.yaSaqueado).toBe(false)
+      expect(orco?.lootedItemNames).toEqual([])
     })
   })
 })
@@ -343,13 +534,50 @@ describe('closeCombat / handleCombatHuir', () => {
     expect(result.current.combateIniciado).toBeNull()
   })
 
-  it('handleCombatHuir cierra el popup de inmediato (fire-and-forget), sin esperar la respuesta del backend', () => {
-    mockClassify.mockImplementation(() => new Promise(() => {})) // nunca resuelve en este test
+  // Ronda de correcciones 2026-08-28 (P3.2): "Huir DENTRO de combate debe tener riesgo real" — antes
+  // handleCombatHuir mandaba el intento como texto libre por submitCombatAction (motor de
+  // intercambio normal, fire-and-forget). Ahora usa el endpoint dedicado combat/huir-en-curso, con
+  // la misma tirada determinista que handleFleeAttempt, y un fallo aplica un golpe directo real.
+  it('handleCombatHuir con éxito: cierra el popup, limpia combateIniciado, no toca condicionFisica', async () => {
+    mockHuirEnCurso.mockResolvedValue({ escaped: true, text: 'Escapas del combate.', condicionFisica: 'ILESO' })
     const { result } = renderHook(() => useHarness())
     act(() => result.current.setCombateIniciado({ npcs: [npc({ slug: 'orco', name: 'Orco' })] }))
     act(() => result.current.combat.openCombat())
-    act(() => result.current.combat.handleCombatHuir())
-    expect(result.current.combat.combatOpen).toBe(false)
-    expect(result.current.combateIniciado).toBeNull()
+    await act(() => result.current.combat.handleCombatHuir())
+    await waitFor(() => {
+      expect(result.current.combat.combatOpen).toBe(false)
+      expect(result.current.combateIniciado).toBeNull()
+      expect(result.current.condicionFisica).toBe('ILESO')
+      expect(result.current.characterLog).toHaveLength(1)
+    })
+  })
+
+  it('handleCombatHuir con fallo: el popup se queda abierto, condicionFisica refleja el golpe directo', async () => {
+    mockHuirEnCurso.mockResolvedValue({ escaped: false, text: 'No consigues huir y recibes un golpe.', condicionFisica: 'HERIDO' })
+    const { result } = renderHook(() => useHarness())
+    act(() => result.current.setCombateIniciado({ npcs: [npc({ slug: 'orco', name: 'Orco' })] }))
+    act(() => result.current.combat.openCombat())
+    await act(() => result.current.combat.handleCombatHuir())
+    await waitFor(() => {
+      expect(result.current.combat.combatOpen).toBe(true)
+      expect(result.current.combateIniciado).not.toBeNull()
+      expect(result.current.condicionFisica).toBe('HERIDO')
+    })
+  })
+
+  // Bug real jugando en vivo (2026-08-28): pulsar Huir estando CONVALECIENTE devuelve 409 del
+  // guard del backend ("resuelve tu propia condición primero") — el catch original lo tragaba en
+  // silencio, el botón parecía no hacer nada. Ahora debe avisar en el log de personaje.
+  it('handleCombatHuir cuando la llamada falla (409 u otro error): avisa en el log en vez de no hacer nada', async () => {
+    mockHuirEnCurso.mockRejectedValue(new Error('No puedes intentar huir estando convaleciente — resuelve tu propia condición primero.'))
+    const { result } = renderHook(() => useHarness())
+    act(() => result.current.setCombateIniciado({ npcs: [npc({ slug: 'orco', name: 'Orco' })] }))
+    act(() => result.current.combat.openCombat())
+    await act(() => result.current.combat.handleCombatHuir())
+    await waitFor(() => {
+      expect(result.current.combat.combatOpen).toBe(true)
+      expect(result.current.characterLog).toHaveLength(1)
+      expect(result.current.characterLog[0].text).toContain('convaleciente')
+    })
   })
 })

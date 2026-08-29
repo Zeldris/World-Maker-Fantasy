@@ -7,13 +7,12 @@ const npcsInScene = [
 ];
 
 describe('detectsPostCombatInteraction', () => {
-  it('detecta nombrar a un NPC convaleciente en escena', () => {
-    expect(detectsPostCombatInteraction('Reviso al Orco enfurecido de cerca.', npcsInScene)).toEqual({
-      slug: 'orco-enfurecido-hondonada',
-      name: 'Orco enfurecido',
-      condicionFisica: 'CONVALECIENTE',
-      saqueado: false,
-    });
+  // Restringido a MUERTO (2026-08-30, rediseño de "Matar") — antes también disparaba para
+  // CONVALECIENTE (cualquier verbo que lo nombrara). Con "Matar" convertido en un intercambio real
+  // (turnResolution.ts § explicitTargetVivo), dejar que este atajo siga cortando el turno para un
+  // CONVALECIENTE le robaría ese intercambio — solo un cadáver de verdad sigue siendo terminal.
+  it('NO dispara para un NPC convaleciente en escena — ya no es un desenlace terminal', () => {
+    expect(detectsPostCombatInteraction('Reviso al Orco enfurecido de cerca.', npcsInScene)).toBeNull();
   });
 
   it('no dispara para un NPC en escena pero sano (ILESO)', () => {

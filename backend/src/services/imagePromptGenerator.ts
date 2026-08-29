@@ -94,6 +94,23 @@ function inferToneFromLore(lore: string): string {
   if (lower.includes('antiguo') || lower.includes('anciano') || lower.includes('ruinas') || lower.includes('millenios')) {
     return 'worn by millennia, weathered and eroded, ruins of a forgotten age, time-scarred';
   }
+  // Añadidos 2026-08-27 (docs/rpgtarkor/imagenes-prompts.md, auditoría de calidad de prompts) —
+  // vocabulario real y frecuente en worldCatalog.ts que antes caía siempre al fallback neutro
+  // (sin ningún tono inferido): "ceniza" aparece 12 veces, "volcánic-" 5, "helada" 4, "desiert-" 2,
+  // "sagrad-" 2 — grepeado contra el catálogo real, no inventado, para no añadir buckets que nunca
+  // vayan a disparar en la práctica.
+  if (lower.includes('ceniza') || lower.includes('volcáni') || lower.includes('volcani') || lower.includes('lava') || lower.includes('ígne') || lower.includes('igne')) {
+    return 'ash-choked air, volcanic haze, cracked scorched ground, embers glowing in the distance';
+  }
+  if (lower.includes('desiert') || lower.includes('árido') || lower.includes('arido')) {
+    return 'harsh arid expanse, heat shimmer, cracked dry earth, relentless sun-bleached horizon';
+  }
+  if (lower.includes('helad') || lower.includes('hielo') || lower.includes('gélid') || lower.includes('gelid') || lower.includes('nieve')) {
+    return 'biting cold, frost-rimed surfaces, pale wintry light, breath visible in the air';
+  }
+  if (lower.includes('sagrad') || lower.includes('prohibid')) {
+    return 'reverent hushed stillness, sense of the sacred or forbidden, light falling as if consecrated';
+  }
   return ''; // neutral
 }
 
@@ -221,8 +238,8 @@ export async function generateImagePrompt(
   loreContext: string,
   sizeProfile: ImagePromptSizeProfile,
 ): Promise<{ prompt: string; provider: string }> {
-  // Construir el prompt estructurado sin llamar al LLM
-  // (porque ya tenemos toda la lógica interna)
+  // Construir el prompt estructurado sin llamar al LLM (porque ya tenemos toda la lógica interna:
+  // hint por tipo, estilo por tipo, tono inferido del lore, encuadre por perfil, dimensiones).
   const structuredPrompt = buildPrompt(
     entityType,
     name,
@@ -230,24 +247,32 @@ export async function generateImagePrompt(
     sizeProfile,
   );
 
-  // Usar el LLM para refinar y ajustar el prompt, pero con la estructura
-  // como base y sin perder los matices.
+  // Bug real (2026-08-27, auditoría de calidad de prompts): `structuredPrompt` se calculaba pero
+  // NUNCA llegaba al LLM — `userContent` solo mandaba Type/Name/Lore/Profile en bruto, así que
+  // toda la maquinaria de arriba (estilo por tipo, tono inferido, encuadre, dimensiones exactas)
+  // quedaba muerta; el system prompt le pedía al modelo "usa el tono inferido del lore"/"copia el
+  // estilo apropiado" SIN DARLE ese tono/estilo en ningún sitio — tenía que adivinarlos de cero.
+  // Ahora el borrador estructurado viaja como base real a pulir, tal como el comentario de arriba
+  // siempre dijo que pasaba.
   const userContent = `
 Type: ${ENTITY_TYPE_HINT[entityType]}
 Name: ${name}
 Lore (Spanish): ${loreContext}
 Profile: ${SIZE_PROFILE_DIMENSIONS[sizeProfile]}
+
+Structured draft (already includes the correct tone, framing/headroom, art style and exact pixel dimensions for this type of image — polish it into natural, vivid, flowing English; NEVER drop or rewrite the art style or the exact dimensions it already states):
+${structuredPrompt}
 `;
 
-  const systemPrompt = `You are a prompt engineer for a text-to-image AI. You receive a lore description in Spanish and must refine it into a concise, vivid English image prompt. Follow this exact structure for your output (single line, comma-separated):
+  const systemPrompt = `You are a prompt engineer for a text-to-image AI. You receive a lore description in Spanish plus an already-correct structured draft prompt, and must refine that draft into a concise, vivid English image prompt. Follow this exact structure for your output (single line, comma-separated):
   1. Subject (with sex explicitly stated if provided)
   2. Physical appearance / material description
   3. Clothing, armor, or textures
   4. Props, weapons, or equipment
   5. Setting / environment / background
-  6. Lighting and atmosphere (use the tone inferred from the lore)
-  7. Framing and composition (use the headroom instruction)
-  8. Art style (copy the style appropriate for the entity type)
+  6. Lighting and atmosphere (use the tone already given in the structured draft, never invent a different one)
+  7. Framing and composition (use the headroom instruction already given in the structured draft)
+  8. Art style (copy the art style already given in the structured draft, word for word — never substitute it)
   9. Dimensions (copy the exact dimensions for the profile)
 
   CRITICAL:

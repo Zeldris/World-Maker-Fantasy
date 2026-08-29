@@ -9,6 +9,7 @@ import { resolveTravel, bandaForMinutos, type TravelResolution } from '../servic
 import { pickTravelInterruption } from '../services/travelInterruption.js';
 import { pickStationaryInterruption } from '../services/stationaryInterruption.js';
 import { effectiveAttributes, effectiveSecondaryAttributes, effectiveDefense, equippedWeaponNames, equippedItemsSummary } from '../services/equipment.js';
+import { parseActiveEffects } from '../services/activeEffects.js';
 import {
   detectNpcsInScene,
   calibrationLineFor,
@@ -28,6 +29,7 @@ import { env } from '../config/env.js';
 import { peekCachedClassify, setCachedClassify, consumeCachedClassify } from '../lib/classifyCache.js';
 import { normalizeSecondaryAttributes } from '../services/secondaryAttributes.js';
 import { characterSummaryFor } from '../services/characterSummary.js';
+import { entornoTemporalFor } from '../services/worldClock.js';
 import { loadSessionFacts } from '../services/worldFacts.js';
 import { claimTurnInFlight, releaseTurnInFlight } from '../services/turnLock.js';
 import {
@@ -558,6 +560,9 @@ export async function turnRoutes(app: FastifyInstance) {
       level: save.level,
       attributes,
       condicionFisica: save.condicionFisica,
+      // Clima/estación al narrador (2026-08-27) — ver comentario de `EntornoTemporal.clima`, sigue
+      // siendo null si la región no tiene clima real diseñado (solo Las Llanuras hoy).
+      entorno: entornoTemporalFor(save.worldState?.fictionalMinutes ?? 0, currentLocationForSummary?.region ?? null, save.raza),
     });
 
     const { classification, roll, travel, npcsInScene } = await resolveClassificationForTurn({
@@ -800,7 +805,17 @@ export async function turnRoutes(app: FastifyInstance) {
           create: { saveId, activity: action, busyUntil, zoneContext },
           update: { activity: action, busyUntil, zoneContext },
         });
-        await tx.save.update({ where: { id: saveId }, data: { lastPlayedAt: new Date() } });
+        // Retomar viaje truncado (2026-08-28, P3.2): solo se rellena en el momento real de truncar
+        // (interruption !== null Y había un travel de verdad, no una acción estacionaria) — un
+        // nuevo viaje iniciado normalmente (sin truncar) debe limpiar cualquier resto de un
+        // truncamiento anterior que el jugador decidiera abandonar por su cuenta.
+        await tx.save.update({
+          where: { id: saveId },
+          data: {
+            lastPlayedAt: new Date(),
+            pendingTravelResumeDestinationId: interruption && travel ? travel.toLocationId : null,
+          },
+        });
         return transit;
       });
 
@@ -902,7 +917,25 @@ export async function turnRoutes(app: FastifyInstance) {
       Vary: 'Origin',
     });
 
-    const writeLine = (payload: object) => reply.raw.write(`${JSON.stringify(payload)}\n`);
+    // Bug real (jugando en vivo con Playwright, 2026-08-27, confirmado con un test de integración
+    // reproducible: turn.integration.test.ts § 'Turno "fantasma"'): `reply.raw.write()` escribe
+    // directamente en el socket TCP sin ningún try/catch — si el cliente ya cortó la conexión
+    // (navegador cerrado, recarga, wifi caído) mientras el turno seguía narrándose, ese `write()`
+    // lanza (EPIPE/ECONNRESET). `onNarrationChunk`/`onNarrationReset`/`onExchangeResolved` llaman a
+    // `writeLine` DESDE DENTRO de `narrateAndPersistTurn` (services/turnResolution.ts), antes de su
+    // propia transacción de persistencia — esa excepción abortaba la función entera sin que
+    // ningún catch la loguera, dejando el turno "fantasma": la acción del jugador quedaba
+    // registrada en el log, pero la narración de resultado nunca llegaba a persistirse, y el
+    // jugador tenía que reintentar con OTRA acción distinta para que el juego volviera a avanzar.
+    // El cliente ya no está para recibir esta línea de todos modos — ignorar el error de escritura
+    // aquí deja que el resto de `narrateAndPersistTurn` siga corriendo hasta su transacción real.
+    const writeLine = (payload: object) => {
+      try {
+        reply.raw.write(`${JSON.stringify(payload)}\n`);
+      } catch {
+        // Silenciado a propósito — ver comentario de arriba.
+      }
+    };
 
     const currentLocationForSummary = save.currentLocationId
       ? await prisma.location.findUnique({ where: { id: save.currentLocationId } })
@@ -914,6 +947,7 @@ export async function turnRoutes(app: FastifyInstance) {
       level: save.level,
       attributes,
       condicionFisica: save.condicionFisica,
+      entorno: entornoTemporalFor(save.worldState?.fictionalMinutes ?? 0, currentLocationForSummary?.region ?? null, save.raza),
     });
 
     try {
@@ -921,12 +955,14 @@ export async function turnRoutes(app: FastifyInstance) {
         narration,
         progression,
         condicionFisica,
+        activeEffects,
         energia,
         energiaMax,
         // Renombrado al desestructurar (evita chocar con el `timeLabel` de entrada, calculado
         // justo arriba a partir de `save.worldState` ANTES de este turno) — el nuevo `writeLine`
         // de más abajo manda este otro, el que ya incluye el avance de reloj de ESTE turno.
         timeLabel: newTimeLabel,
+        entorno,
         combateIniciado,
         finDePartida,
         justDied,
@@ -937,6 +973,8 @@ export async function turnRoutes(app: FastifyInstance) {
         quests,
         newQuestInfo,
         newQuestOfferInfo,
+        dynamicModeOffer,
+        travelResumed,
         questCompletedInfo,
         newKingdomFounded,
         companionCreated,
@@ -959,6 +997,7 @@ export async function turnRoutes(app: FastifyInstance) {
         action,
         characterSummary: characterSummaryWithEstado,
         characterName: save.characterName,
+        clase: save.clase,
         timeLabel,
         sessionFacts,
         currentXp: save.xp,
@@ -979,6 +1018,7 @@ export async function turnRoutes(app: FastifyInstance) {
         produccion: duration?.produccion,
         condicionFisica: save.condicionFisica,
         energia: save.energia,
+        activeEffects: parseActiveEffects(save.activeEffects),
         dificultad: save.dificultad,
         deathCount: save.deathCount,
         lastRestLocationId: save.lastRestLocationId,
@@ -1008,9 +1048,11 @@ export async function turnRoutes(app: FastifyInstance) {
         narration,
         progression,
         condicionFisica,
+        activeEffects,
         energia,
         energiaMax,
         timeLabel: newTimeLabel,
+        entorno,
         combateIniciado,
         finDePartida,
         justDied,
@@ -1021,6 +1063,8 @@ export async function turnRoutes(app: FastifyInstance) {
         quests,
         newQuestInfo,
         newQuestOfferInfo,
+        dynamicModeOffer,
+        travelResumed,
         questCompletedInfo,
         newKingdomFounded,
         companionCreated,

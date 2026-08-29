@@ -31,7 +31,7 @@ export function SuggestionBar({
 
   return (
     <div className="border-t border-iron-800 bg-wood-950/70 px-4 pt-2.5">
-      <button
+      <button type="button"
         onClick={() => setExpanded((e) => !e)}
         disabled={loading}
         className="tactile flex w-full items-center justify-between rounded-lg border border-iron-700 bg-wood-950/40 px-3 py-1.5 text-xs text-wood-300 transition-colors hover:border-accent-600/60 hover:text-accent-300 disabled:cursor-not-allowed"
@@ -49,7 +49,7 @@ export function SuggestionBar({
       {expanded && !loading && (
         <div className="animate-entry-in grid grid-cols-1 gap-2 py-2.5 sm:grid-cols-3">
           {suggestions.map((s, i) => (
-            <button
+            <button type="button"
               key={i}
               onClick={() => {
                 onPick(s)

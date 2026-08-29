@@ -113,7 +113,7 @@ export function HuntSelectionModal({ saveId, onResuelto, onCancel }: HuntSelecti
       cancelDisabled={confirming}
       footer={
         candidates.length > 0 && (
-          <button onClick={handleConfirmar} disabled={confirming || selected.size === 0} className={confirmButtonClasses('accent')}>
+          <button type="button" onClick={handleConfirmar} disabled={confirming || selected.size === 0} className={confirmButtonClasses('accent')}>
             {confirming ? 'Cazando...' : 'Cazar'}
           </button>
         )
@@ -127,7 +127,7 @@ export function HuntSelectionModal({ saveId, onResuelto, onCancel }: HuntSelecti
         puedeExplorar ? (
           <div className="flex flex-col items-start gap-2">
             <p className="text-xs text-wood-400">No has localizado ninguna presa todavía en esta zona.</p>
-            <button
+            <button type="button"
               onClick={handleExplorar}
               disabled={exploring}
               className="tactile rounded-lg border border-accent-600/60 px-3 py-1.5 text-xs text-accent-300 transition-colors hover:bg-accent-500/10 disabled:cursor-not-allowed disabled:opacity-60"

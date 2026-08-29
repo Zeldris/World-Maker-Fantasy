@@ -1,0 +1,63 @@
+import { describe, it, expect } from 'vitest';
+import { proximaCantidadPara, type ZonePointRow } from './zonePoints.js';
+
+function puntoBase(overrides: Partial<ZonePointRow> = {}): ZonePointRow {
+  return {
+    id: 'punto-1',
+    tipo: 'FAUNA',
+    targetSlug: 'murgol',
+    cantidad: 5,
+    activo: true,
+    lastUpdatedAtMinutes: 0,
+    ...overrides,
+  };
+}
+
+describe('proximaCantidadPara', () => {
+  it('primera vez (lastUpdatedAtMinutes null) adopta el objetivo directamente, sin límite diario', () => {
+    const punto = puntoBase({ lastUpdatedAtMinutes: null, cantidad: 1 });
+    expect(proximaCantidadPara(punto, 12, 480)).toEqual({ cantidad: 12, activo: true });
+  });
+
+  it('objetivo 0 en la primera vez marca el punto inactivo', () => {
+    const punto = puntoBase({ lastUpdatedAtMinutes: null });
+    expect(proximaCantidadPara(punto, 0, 480)).toEqual({ cantidad: 0, activo: false });
+  });
+
+  it('sin minutos transcurridos, no cambia nada (evita recalculo redundante en el mismo turno)', () => {
+    const punto = puntoBase({ lastUpdatedAtMinutes: 480, cantidad: 5, activo: true });
+    expect(proximaCantidadPara(punto, 20, 480)).toEqual({ cantidad: 5, activo: true });
+  });
+
+  it('un día completo transcurrido ajusta hasta AJUSTE_MAXIMO_POR_DIA (3) hacia el objetivo', () => {
+    const punto = puntoBase({ lastUpdatedAtMinutes: 0, cantidad: 5 });
+    // 24h después, objetivo 20 -> el delta (15) supera el máximo diario (3), se limita a +3
+    expect(proximaCantidadPara(punto, 20, 24 * 60)).toEqual({ cantidad: 8, activo: true });
+  });
+
+  it('ajuste hacia abajo también respeta el tope diario', () => {
+    const punto = puntoBase({ lastUpdatedAtMinutes: 0, cantidad: 10 });
+    expect(proximaCantidadPara(punto, 0, 24 * 60)).toEqual({ cantidad: 7, activo: true });
+  });
+
+  it('una acción corta (fracción de día) mueve una fracción proporcional, redondeada al entero más cercano', () => {
+    const punto = puntoBase({ lastUpdatedAtMinutes: 0, cantidad: 5 });
+    // 12h (medio día) -> ajusteMaximo = round(3 * 0.5) = 2 (mínimo 1 si el resultado fuera 0)
+    expect(proximaCantidadPara(punto, 20, 12 * 60)).toEqual({ cantidad: 7, activo: true });
+  });
+
+  it('descender a 0 exactamente marca el punto inactivo', () => {
+    const punto = puntoBase({ lastUpdatedAtMinutes: 0, cantidad: 2 });
+    expect(proximaCantidadPara(punto, 0, 24 * 60)).toEqual({ cantidad: 0, activo: false });
+  });
+
+  it('objetivo por encima de CANTIDAD_MAX_POR_PUNTO (20) se recorta antes de comparar', () => {
+    const punto = puntoBase({ lastUpdatedAtMinutes: 0, cantidad: 18 });
+    expect(proximaCantidadPara(punto, 400, 24 * 60)).toEqual({ cantidad: 20, activo: true });
+  });
+
+  it('ya en el objetivo, no cambia aunque pase tiempo', () => {
+    const punto = puntoBase({ lastUpdatedAtMinutes: 0, cantidad: 20 });
+    expect(proximaCantidadPara(punto, 20, 24 * 60)).toEqual({ cantidad: 20, activo: true });
+  });
+});

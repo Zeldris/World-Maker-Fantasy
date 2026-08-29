@@ -3,6 +3,7 @@ import type { Attribute, AttributeBlock } from './dice.js';
 import { resolveExchange, resolveIndependentExchange, exchangeContextBlock, independentExchangeContextBlock, utilityTriggered, type ExchangeParticipant } from './combatExchange.js';
 import { nextCondicionForAttack } from './death.js';
 import { dualWieldAdjustedDifficulty } from './weaponAbilities.js';
+import type { ActiveEffect } from './activeEffects.js';
 
 /// Grupo 3 § Combate múltiple (2026-08-25, diseño completo en docs/rpgtarkor/combate-multiple.md)
 /// — Fase A: piezas puras (iniciativa N-way, emparejamiento/retargeting por Inteligencia,
@@ -62,10 +63,50 @@ const ORDEN_CONDICION: CondicionFisica[] = ['ILESO', 'HERIDO', 'GRAVE', 'CONVALE
 export interface ObjetivoCandidato {
   participantId: string;
   condicionFisica: CondicionFisica;
+  /// Solo `true` para el `CombatParticipant` real de `tipo: 'JUGADOR'` — ver `bandoSigueEnCombate`.
+  /// `undefined`/`false` para cualquier otro (NPC, COMPANION, INVOCACION), incluidos NPCs marcados
+  /// con `bando: 'JUGADOR'' (aliados de un encuentro NPC-vs-NPC, sin jugadora real de por medio).
+  esJugadorReal?: boolean;
 }
 
 export function objetivosValidos(candidatos: ObjetivoCandidato[]): ObjetivoCandidato[] {
   return candidatos.filter((c) => c.condicionFisica !== 'CONVALECIENTE' && c.condicionFisica !== 'MUERTO');
+}
+
+/// Bug real jugando en vivo (2026-08-29, primer combate múltiple real): `objetivosValidos` se
+/// reutilizaba también para decidir si el `CombatEncounter` entero había TERMINADO — Gorhorn
+/// CONVALECIENTE hacía que `vivosJugador.length === 0`, cerrando el combate pese a que quedaban
+/// enemigos ILESO reales sin resolver. `objetivosValidos` es correcta para su propósito original
+/// (a quién puede atacar de nuevo un NPC — CONVALECIENTE/MUERTO no son objetivo válido, mismo
+/// criterio que el resto del motor: solo esos dos estados son saqueables/rematables), pero "sigue
+/// el bando en combate" es una pregunta distinta con una respuesta distinta para la JUGADORA REAL:
+/// el motor 1v1 clásico ya deja explícito que CONVALECIENTE NO es fuera de combate para ella
+/// ("puedes seguir intentándolo, muy penalizado" — CombatPanel.tsx) — solo deja de estar en juego
+/// si de verdad muere (`justDied`/respawn, gestionado aparte). Cualquier otro participante (NPC,
+/// COMPANION, un aliado NPC metido en el bando 'JUGADOR' de un encuentro NPC-vs-NPC) SÍ sale
+/// realmente del combate al caer CONVALECIENTE (necesita Matar/Capturar/Clemente para resolverse) —
+/// mismo criterio de `objetivosValidos`, sin cambiar. Deliberadamente NO se decide por `bando`
+/// (`'JUGADOR'` puede estar lleno de NPC aliados sin jugadora real, ver tests de integración) —
+/// se decide por `esJugadorReal`, el dato concreto del `CombatParticipant.tipo === 'JUGADOR'`.
+export function bandoSigueEnCombate(candidatos: ObjetivoCandidato[]): boolean {
+  const jugadoraReal = candidatos.find((c) => c.esJugadorReal);
+  if (jugadoraReal && jugadoraReal.condicionFisica !== 'MUERTO') return true;
+  return objetivosValidos(candidatos.filter((c) => !c.esJugadorReal)).length > 0;
+}
+
+/// Bug real jugando en vivo (2026-08-29, cuarta causa encadenada del mismo hallazgo): con la
+/// JUGADORA REAL ya incluida como "viva" (`bandoSigueEnCombate`/el guard de `resolverTurnoJugador`,
+/// ambos ya fijados), un NPC enemigo que solo tenía a ella como candidato seguía sin poder elegirla
+/// como objetivo — `elegirObjetivo` usaba `objetivosValidos` a secas, que la excluye por estar
+/// CONVALECIENTE. Resultado real observado: el NPC quedaba con `objetivoActualId: null` para
+/// siempre (nadie "vivo" que atacar según ese criterio), el combate se congelaba sin resolver
+/// nunca — ronda tras ronda de `resolverTurnoAutonomo` devolviendo `null`. Mismo criterio que el
+/// resto de esta familia: la jugadora real SIGUE siendo un objetivo válido de ataque mientras no
+/// esté MUERTA de verdad (coherente con el motor 1v1 — un enemigo puede seguir golpeando a un
+/// jugador convaleciente hasta rematarlo); solo otros participantes (NPC, aliados) quedan
+/// excluidos al caer CONVALECIENTE, mismo criterio estricto de siempre.
+export function objetivosValidosParaAtacar(candidatos: ObjetivoCandidato[]): ObjetivoCandidato[] {
+  return candidatos.filter((c) => c.condicionFisica !== 'MUERTO' && (c.esJugadorReal || c.condicionFisica !== 'CONVALECIENTE'));
 }
 
 /// Elige el objetivo de un ataque — `null` si no queda nadie vivo en el bando contrario (el
@@ -73,7 +114,7 @@ export function objetivosValidos(candidatos: ObjetivoCandidato[]): ObjetivoCandi
 /// más cerca de caer); empate entre igual de heridos se rompe por orden de aparición en
 /// `candidatos`, nunca aleatorio de más — solo Inteligencia baja tira dado de verdad.
 export function elegirObjetivo(inteligenciaAtacante: number, candidatos: ObjetivoCandidato[], random: () => number = Math.random): string | null {
-  const vivos = objetivosValidos(candidatos);
+  const vivos = objetivosValidosParaAtacar(candidatos);
   if (vivos.length === 0) return null;
   if (inteligenciaAtacante < INTELIGENCIA_TACTICA_UMBRAL) {
     return vivos[Math.floor(random() * vivos.length)].participantId;
@@ -82,6 +123,76 @@ export function elegirObjetivo(inteligenciaAtacante: number, candidatos: Objetiv
     ORDEN_CONDICION.indexOf(actual.condicionFisica) > ORDEN_CONDICION.indexOf(peor.condicionFisica) ? actual : peor,
   );
   return masHerido.participantId;
+}
+
+/// Fase 3 § 3b de efectos de clase (2026-08-27, docs/21-roadmap.md) — objetivo adicional para
+/// `MULTIPLE` (el mismo golpe alcanza a un segundo combatiente) y `DESVIAR`/`INVOCACION` más
+/// adelante: uno aleatorio entre los vivos de `candidatos`, excluyendo al objetivo principal —
+/// nunca prioriza por Inteligencia (a diferencia de `elegirObjetivo`), las filas reales de
+/// `clases.md` que usan `MULTIPLE` siempre lo describen como "aleatorio", nunca "el más débil". El
+/// caller ya filtra `candidatos` al bando correcto (esta función no conoce bandos).
+export function objetivoExtraFor(excluirParticipantId: string, candidatos: ObjetivoCandidato[], random: () => number = Math.random): string | null {
+  const vivos = objetivosValidos(candidatos).filter((c) => c.participantId !== excluirParticipantId);
+  if (vivos.length === 0) return null;
+  return vivos[Math.floor(random() * vivos.length)].participantId;
+}
+
+/// Identificador de combatientes duplicados (2026-08-27, bug real jugando: "ataqué a los dos
+/// buitres a la vez" — no podía dirigir el golpe al segundo, dos `CombatParticipant` del mismo
+/// `npcId` comparten nombre y el matching por texto siempre resolvía al primero del array). Calcula
+/// "combatiente #1/#2..." SOLO para quien tenga algún otro participante con el mismo `npcId` en la
+/// lista — un enemigo solitario no se numera (mismo criterio en frontend, `NpcInSceneInfo.
+/// instanceNumber`). Orden ESTABLE por `participantId` (nunca por orden de llegada de una query,
+/// que puede variar entre llamadas) — así "buitre #2" significa lo mismo tanto para el backend (al
+/// interpretar el texto citado) como para el frontend (al mostrar el numerito), sin depender de que
+/// ambos iteren en el mismo orden por casualidad.
+export function instanceNumbersByParticipantId(combatientes: { participantId: string; npcId: string }[]): Map<string, number> {
+  const countByNpcId = new Map<string, number>();
+  for (const c of combatientes) countByNpcId.set(c.npcId, (countByNpcId.get(c.npcId) ?? 0) + 1);
+  const ordenEstable = [...combatientes].sort((a, b) => a.participantId.localeCompare(b.participantId));
+  const seenByNpcId = new Map<string, number>();
+  const resultado = new Map<string, number>();
+  for (const c of ordenEstable) {
+    if ((countByNpcId.get(c.npcId) ?? 0) <= 1) continue;
+    const numero = (seenByNpcId.get(c.npcId) ?? 0) + 1;
+    seenByNpcId.set(c.npcId, numero);
+    resultado.set(c.participantId, numero);
+  }
+  return resultado;
+}
+
+export interface CandidatoObjetivoPorTexto {
+  participantId: string;
+  npcId: string | null;
+  vivo: boolean;
+}
+
+/// Extraído de `turnResolution.ts` (2026-08-27, "buitre #2" — mismo bug de identificador de
+/// combatientes duplicados) para poder probarlo aislado del resto del turno (clasificador LLM real,
+/// `explicitTarget`/`npcsInScene` del sistema viejo, etc. — toda esa superficie era ruido genuino
+/// para un test de integración de ESTE matching concreto, ver memoria de sesión). Nombre citado
+/// entre comillas contra los enemigos VIVOS, aceptando tanto el nombre base como "Nombre #N" cuando
+/// hace falta desambiguar (mismo criterio de `instanceNumbersByParticipantId`, calculado aquí sobre
+/// TODOS los candidatos recibidos, no solo los vivos, para que "buitre #2" no cambie de significado
+/// solo porque otro miembro del grupo ya cayó). Sin cita real o sin match, cae al primer vivo (nunca
+/// se queda sin elegir) — `null` si no queda ninguno.
+export function resolverObjetivoPorTexto(action: string, candidatos: CandidatoObjetivoPorTexto[], nombreByNpcId: Map<string, string>, normalizeText: (s: string) => string): string | null {
+  const vivos = candidatos.filter((c) => c.vivo);
+  const instanceNumberByParticipantId = instanceNumbersByParticipantId(
+    candidatos.filter((c): c is CandidatoObjetivoPorTexto & { npcId: string } => !!c.npcId).map((c) => ({ participantId: c.participantId, npcId: c.npcId })),
+  );
+  const quotedMatch = action.match(/'([^']+)'/);
+  const quotedNormalizado = quotedMatch ? normalizeText(quotedMatch[1]) : null;
+  const targetPorNombre = quotedNormalizado
+    ? vivos.find((c) => {
+        if (!c.npcId) return false;
+        const nombreBase = normalizeText(nombreByNpcId.get(c.npcId) ?? '');
+        if (nombreBase === quotedNormalizado) return true;
+        const numero = instanceNumberByParticipantId.get(c.participantId);
+        return numero != null && normalizeText(`${nombreBase} #${numero}`) === quotedNormalizado;
+      })
+    : undefined;
+  return targetPorNombre?.participantId ?? vivos[0]?.participantId ?? null;
 }
 
 /// Redecide el emparejamiento de TODO un bando de una vez (llamado tras cada baja, §2: "el
@@ -144,6 +255,13 @@ export function resolverEnganchesRonda(
   ordenIniciativa: string[],
   combatientes: { participantId: string; bando: Bando }[],
   elegirObjetivoPara: (participantId: string, candidatos: string[]) => string | null,
+  /// OCULTACION (Fase 3 § 3c) + EXPULSAR (Fase 3 § 3e, 2026-08-27) — combatientes excluidos de ser
+  /// ELEGIDOS como objetivo (siguen pudiendo elegir el suyo propio con normalidad) salvo que sean
+  /// el único vivo de su bando (regla explícita de Camuflaje: "si no es el único enemigo/aliado" —
+  /// EXPULSAR reutiliza la misma excepción, "vuelve antes de las 2 rondas si su bando se queda sin
+  /// nadie más") — calculado por bando, nunca globalmente. El caller pasa la UNIÓN de ambos sets
+  /// (`ocultoPorRondas`/`expulsadoPorRondas`), la exclusión en sí no distingue el motivo.
+  ocultos: Set<string> = new Set(),
 ): Map<string, string | null> {
   const bandoDe = new Map(combatientes.map((c) => [c.participantId, c.bando]));
   // target → primer atacante que lo reclamó — first-come, nunca se sobreescribe con un reclamo
@@ -158,7 +276,9 @@ export function resolverEnganchesRonda(
     if (reclamadoPor.has(id)) continue; // ya reclamado por alguien antes — no elige (regla 3)
 
     const bando = bandoDe.get(id)!;
-    const candidatos = combatientes.filter((c) => c.bando !== bando).map((c) => c.participantId);
+    const candidatosCrudos = combatientes.filter((c) => c.bando !== bando);
+    const candidatosVisibles = candidatosCrudos.filter((c) => !ocultos.has(c.participantId));
+    const candidatos = (candidatosVisibles.length > 0 ? candidatosVisibles : candidatosCrudos).map((c) => c.participantId);
     const elegido = elegirObjetivoPara(id, candidatos);
     if (elegido === null) continue; // sin nadie a quien atacar (bando contrario agotado)
 
@@ -289,6 +409,14 @@ export interface HabilidadParaIntercambio {
   energyCost: number;
   energyRegen: number;
   maxUsesPerCombat?: number | null;
+  /// Fase 3 § 3a de efectos de clase (2026-08-27, docs/21-roadmap.md) — mismos campos que
+  /// `SavedAction.durationEffectMagnitude/Turns`, solo poblados hoy para la habilidad de ATAQUE
+  /// que la JUGADORA elige explícitamente (turnResolution.ts, construcción de `jugadorHabilidad`)
+  /// — nunca para una habilidad auto-elegida como defensa/utilidad (`NpcCombatAbility` no lleva
+  /// estos campos, ver npcCombatAbilities.ts), mismo alcance exacto que Fase 2 ("CASO ATAQUE del
+  /// jugador" en el motor 1vs1, resolveCombatExchangePhase).
+  durationEffectMagnitude?: number | null;
+  durationEffectTurns?: number | null;
 }
 
 export interface CombatienteParaIntercambio {
@@ -317,7 +445,59 @@ export interface ResultadoIntercambioCompleto {
   defensorRecuperacionExtra: number;
   combatBothMissed: boolean;
   combatRealHitLanded: boolean;
+  /// Fase 3 § 3a de efectos de clase (2026-08-27, docs/21-roadmap.md) — margen decisivo del camino
+  /// NO independiente (`golpe_pleno`, `resolveExchange`), el mismo umbral que ya usan CONTRA/
+  /// REFRACTAR/LETAL. Único gate real para empujar AUMENTO/DEBILIDAD (ver Fase 2, turnResolution.ts
+  /// § resolveCombatExchangePhase) — siempre `false` en el camino independiente (cada lado se juzga
+  /// contra su propia dificultad, no hay "margen" entre dos totales; mismo alcance que Fase 2, que
+  /// tampoco enganchó ese camino).
+  margenDecisivo: boolean;
+  /// CONTROL real (Fase 3 § 3a) — la utilidad del atacante/defensor disparó CONTROL con éxito (solo
+  /// posible en el camino independiente, `rol: 'utilidad'`) — el caller debe marcar al OTRO lado
+  /// (quien no disparó) como controlado N rondas, nunca a quien la usó (mismo sentido que la ficha
+  /// de cada habilidad: "tomas el control DEL RIVAL").
+  atacanteControlDisparado: boolean;
+  defensorControlDisparado: boolean;
+  /// AUMENTO/DEBILIDAD real (Fase 3 § 3a) — `ActiveEffect` listo para empujar (`pushActiveEffect`,
+  /// activeEffects.ts) sobre quien corresponda. `null` si esta habilidad no lleva duración, o el
+  /// golpe no fue decisivo. `nuevoEfectoAtacante` = AUMENTO sobre quien atacó, `nuevoEfectoDefensor`
+  /// = DEBILIDAD sobre quien lo recibió — nunca los dos a la vez (una habilidad real de
+  /// `clases.md` no combina ambos efectos hoy).
+  nuevoEfectoAtacante: ActiveEffect | null;
+  nuevoEfectoDefensor: ActiveEffect | null;
+  /// `MULTIPLE` real (Fase 3 § 3b, 2026-08-27) — mismo gate que AUMENTO/DEBILIDAD (margen decisivo,
+  /// nunca el camino independiente) + el golpe base debe haber conectado de verdad. Solo cubre la
+  /// combinación `ATAQUE`+`MULTIPLE` (un enemigo extra) — `AUMENTO`/`AGUANTE`+`MULTIPLE` (buff a
+  /// aliados) queda sin construir a propósito: depende de que AUMENTO funcione en el camino de
+  /// utilidad, que Fase 2/3a nunca engancharon (ver comentario de `margenDecisivo`). El caller
+  /// (combateMultipleOrquestacion.ts) es quien conoce al resto de combatientes — resuelve el golpe
+  /// al objetivo extra con `objetivoExtraFor` + el mismo mecanismo directo que un golpe gratis.
+  multipleTriggered: boolean;
+  /// `DESVIAR` real (Fase 3 § 3c, 2026-08-27) — la defensora ganó por margen decisivo con una
+  /// habilidad `DESVIAR`: el golpe entrante se redirige a un tercero del bando del atacante en vez
+  /// de simplemente fallar. Solo 1 fila real hoy (Comunión Salvaje), sin cifra propia de duración
+  /// para su `DEBILIDAD` combinada (la ficha nunca la describe) — esa parte se queda sin construir,
+  /// documentado, no un descuido.
+  desviarTriggered: boolean;
+  /// `OCULTACION` real (Fase 3 § 3c) — la utilidad que la dispara oculta A QUIEN LA USÓ (nunca al
+  /// rival, a diferencia de CONTROL) — el caller marca `ocultoPorRondas` sobre ese mismo lado.
+  atacanteOcultacionDisparada: boolean;
+  defensorOcultacionDisparada: boolean;
+  /// `EXPULSAR` real (Fase 3 § 3e, 2026-08-27) — mismo gate que MULTIPLE/DESVIAR (margen decisivo,
+  /// camino no-independiente, el golpe base debe haber conectado) + la habilidad de ataque lleva
+  /// `ATAQUE`+`EXPULSAR`. Solo 1 fila real (Embate de Escudo) — simplificación consciente frente a
+  /// la ficha (2 tramos por margen, 50% de volver, "no vuelve nunca" en el tramo alto): un único
+  /// margen decisivo dispara siempre "expulsa 2 rondas", sin tirada de 50% ni caso "nunca vuelve"
+  /// por separado (decisión explícita de la usuaria). El caller marca `expulsadoPorRondas` sobre EL
+  /// DEFENSOR (a quien golpea Embate de Escudo), nunca sobre el atacante.
+  expulsarTriggered: boolean;
 }
+
+/// `INVOCACION` real (Fase 3 § 3d, 2026-08-27) — a diferencia del resto de efectos de
+/// `ResultadoIntercambioCompleto`, INVOCACION nunca pasa por `resolverIntercambioCompleto`: el
+/// caller (combateMultipleOrquestacion.ts) la intercepta ANTES, mirando directamente
+/// `habilidad.effects.includes('INVOCACION')` — invocar consume el turno entero, sin intercambio
+/// real ese turno (ver comentario largo en `resolverTurnoJugador`/`resolverTurnoAutonomo`).
 
 /// Mismo valor fijo que `RECUPERACION_ENERGY_BONUS` en turnResolution.ts (2026-08-17) — no hay
 /// ningún dato en el catálogo hoy que exprese "cuánta energía recupera" por separado del
@@ -361,6 +541,12 @@ export function resolverIntercambioCompleto(
   let atacanteRecuperacionExtra = 0;
   let defensorRecuperacionExtra = 0;
   let exchangeBlock: string;
+  let atacanteControlDisparado = false;
+  let defensorControlDisparado = false;
+  let margenDecisivo = false;
+  let desviarTriggered = false;
+  let atacanteOcultacionDisparada = false;
+  let defensorOcultacionDisparada = false;
 
   const esIndependiente = atacanteRol !== 'ataque' || defensorHabilidad.rol === 'utilidad';
 
@@ -384,6 +570,12 @@ export function resolverIntercambioCompleto(
         }
         if (atacanteHabilidad.effects.includes('ATURDIMIENTO')) iniciativaForzada = 'atacante';
         if (atacanteHabilidad.effects.includes('RECUPERACION')) atacanteRecuperacionExtra = RECUPERACION_ENERGY_BONUS;
+        // CONTROL real (Fase 3 § 3a, 2026-08-27) — el atacante "toma el control del rival": es el
+        // DEFENSOR quien queda controlado, nunca quien usó la habilidad.
+        if (atacanteHabilidad.effects.includes('CONTROL')) atacanteControlDisparado = true;
+        // OCULTACION real (Fase 3 § 3c, 2026-08-27) — a diferencia de CONTROL, quien la dispara se
+        // oculta A SÍ MISMO (Camuflaje: "te oculta... del agro"), nunca al rival.
+        if (atacanteHabilidad.effects.includes('OCULTACION')) atacanteOcultacionDisparada = true;
       }
     }
     if (defensorHabilidad.rol === 'utilidad') {
@@ -400,6 +592,8 @@ export function resolverIntercambioCompleto(
         }
         if (defensorHabilidad.effects.includes('ATURDIMIENTO')) iniciativaForzada = 'defensor';
         if (defensorHabilidad.effects.includes('RECUPERACION')) defensorRecuperacionExtra = RECUPERACION_ENERGY_BONUS;
+        if (defensorHabilidad.effects.includes('CONTROL')) defensorControlDisparado = true;
+        if (defensorHabilidad.effects.includes('OCULTACION')) defensorOcultacionDisparada = true;
       }
     }
     exchangeBlock = independentExchangeContextBlock(independent, atacante.nombre, defensor.nombre);
@@ -412,7 +606,37 @@ export function resolverIntercambioCompleto(
     atacanteRecibeGolpe = defensorContragolpeaAplica;
     if (atacanteRecibeGolpe) nuevaCondicionAtacante = nextCondicionForAttack(defensorHabilidad.effects, atacante.condicionFisica);
     exchangeBlock = exchangeContextBlock(exchange, atacante.nombre, defensor.nombre, defensorPuedeContragolpear);
+    margenDecisivo = exchange.resultado === 'golpe_pleno';
+    // DESVIAR real (Fase 3 § 3c, 2026-08-27) — la defensora gana por margen decisivo (mismo umbral
+    // que CONTRA/REFRACTAR, `defensor_contragolpea`) Y su habilidad de defensa lleva DESVIAR: el
+    // golpe entrante (que de todos modos ya iba a fallar, `defensorRecibeGolpe` es `false` en este
+    // desenlace) se redirige a un tercero en vez de simplemente fallar — el caller (que sí conoce
+    // al resto de combatientes) resuelve el golpe redirigido con las propias `atacanteHabilidad`.
+    desviarTriggered = exchange.resultado === 'defensor_contragolpea' && defensorHabilidad.effects.includes('DESVIAR');
   }
+
+  // AUMENTO/DEBILIDAD real (Fase 3 § 3a, 2026-08-27) — mismo gate que Fase 2 (margen decisivo,
+  // ver comentario de `margenDecisivo` arriba): solo se construye el `ActiveEffect` si la propia
+  // habilidad de ataque trae ambos campos de duración poblados (ver comentario de
+  // `HabilidadParaIntercambio.durationEffectMagnitude/Turns`).
+  let nuevoEfectoAtacante: ActiveEffect | null = null;
+  let nuevoEfectoDefensor: ActiveEffect | null = null;
+  if (margenDecisivo && atacanteHabilidad.durationEffectMagnitude != null && atacanteHabilidad.durationEffectTurns != null) {
+    const efecto: ActiveEffect = {
+      attribute: atacanteHabilidad.attribute,
+      magnitude: atacanteHabilidad.durationEffectMagnitude,
+      turnsRemaining: atacanteHabilidad.durationEffectTurns,
+      sourceAbility: atacanteHabilidad.name,
+    };
+    if (atacanteHabilidad.effects.includes('AUMENTO')) nuevoEfectoAtacante = efecto;
+    if (atacanteHabilidad.effects.includes('DEBILIDAD')) nuevoEfectoDefensor = efecto;
+  }
+
+  // MULTIPLE real (Fase 3 § 3b, 2026-08-27) — mismo gate, ver comentario de la interfaz.
+  const multipleTriggered = margenDecisivo && defensorRecibeGolpe && atacanteHabilidad.effects.includes('ATAQUE') && atacanteHabilidad.effects.includes('MULTIPLE');
+
+  // EXPULSAR real (Fase 3 § 3e, 2026-08-27) — mismo gate que MULTIPLE, ver comentario de la interfaz.
+  const expulsarTriggered = margenDecisivo && defensorRecibeGolpe && atacanteHabilidad.effects.includes('ATAQUE') && atacanteHabilidad.effects.includes('EXPULSAR');
 
   if (atacanteHabilidad.effects.includes('LETAL')) {
     exchangeBlock += defensorRecibeGolpe
@@ -432,5 +656,15 @@ export function resolverIntercambioCompleto(
     defensorRecuperacionExtra,
     combatBothMissed: !defensorRecibeGolpe && !atacanteRecibeGolpe,
     combatRealHitLanded: defensorRecibeGolpe,
+    margenDecisivo,
+    atacanteControlDisparado,
+    defensorControlDisparado,
+    nuevoEfectoAtacante,
+    nuevoEfectoDefensor,
+    multipleTriggered,
+    desviarTriggered,
+    atacanteOcultacionDisparada,
+    defensorOcultacionDisparada,
+    expulsarTriggered,
   };
 }

@@ -123,7 +123,7 @@ export function HarvestSelectionModal({ saveId, oficio, oficioLabel, inventoryUs
       footer={
         sources.length > 0 &&
         revealed && (
-          <button onClick={handleConfirmar} disabled={confirming || totalSeleccionado === 0} className={confirmButtonClasses('accent')}>
+          <button type="button" onClick={handleConfirmar} disabled={confirming || totalSeleccionado === 0} className={confirmButtonClasses('accent')}>
             {confirming ? 'Recolectando...' : 'Aceptar'}
           </button>
         )
@@ -148,7 +148,7 @@ export function HarvestSelectionModal({ saveId, oficio, oficioLabel, inventoryUs
         ) : puedeExplorar ? (
           <div className="flex flex-col items-start gap-2">
             <p className="text-xs text-wood-400">No has localizado nada todavía en esta zona.</p>
-            <button
+            <button type="button"
               onClick={handleExplorar}
               disabled={exploring}
               className="tactile rounded-lg border border-accent-600/60 px-3 py-1.5 text-xs text-accent-300 transition-colors hover:bg-accent-500/10 disabled:cursor-not-allowed disabled:opacity-60"
@@ -198,7 +198,7 @@ export function HarvestSelectionModal({ saveId, oficio, oficioLabel, inventoryUs
                           >
                             <span className="min-w-0 truncate">{y.itemName}</span>
                             <div className="flex shrink-0 items-center gap-2">
-                              <button
+                              <button type="button"
                                 onClick={() => setQuantity(key, value - 1, max)}
                                 disabled={value <= 0}
                                 className="tactile flex h-6 w-6 items-center justify-center rounded border border-iron-700 text-wood-300 disabled:cursor-not-allowed disabled:opacity-40"
@@ -208,7 +208,7 @@ export function HarvestSelectionModal({ saveId, oficio, oficioLabel, inventoryUs
                               <span className="w-10 text-center font-mono tabular-nums">
                                 {value}/{max}
                               </span>
-                              <button
+                              <button type="button"
                                 onClick={() => setQuantity(key, value + 1, max)}
                                 disabled={value >= max || espacioLibre - totalSeleccionado <= 0}
                                 className="tactile flex h-6 w-6 items-center justify-center rounded border border-iron-700 text-wood-300 disabled:cursor-not-allowed disabled:opacity-40"

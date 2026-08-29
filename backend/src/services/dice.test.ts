@@ -7,8 +7,36 @@ import {
   cantidadForGrado,
   SUERTE_VENTAJA_UMBRAL,
   rollOpposed,
+  rollD20,
   type AttributeBlock,
 } from './dice.js';
+
+/// Extraída (2026-08-28, pasivas raciales — ver racialPassives.ts/combatExchange.ts) de la misma
+/// lógica que ya usaba `rollGathering` — mismo criterio D&D: ventaja/desventaja tira 2d20, nunca
+/// un modificador numérico plano.
+describe('rollD20', () => {
+  it("'normal': un único d20, sin descartar nada", () => {
+    const result = rollD20('normal', () => 0.5);
+    expect(result.rolls).toEqual([11]);
+    expect(result.usedRoll).toBe(11);
+  });
+
+  it("'ventaja': dos d20, se queda con el MAYOR", () => {
+    const rolls = [0.1, 0.9]; // 3 y 19
+    let i = 0;
+    const result = rollD20('ventaja', () => rolls[i++]);
+    expect(result.rolls).toEqual([3, 19]);
+    expect(result.usedRoll).toBe(19);
+  });
+
+  it("'desventaja': dos d20, se queda con el MENOR", () => {
+    const rolls = [0.1, 0.9]; // 3 y 19
+    let i = 0;
+    const result = rollD20('desventaja', () => rolls[i++]);
+    expect(result.rolls).toEqual([3, 19]);
+    expect(result.usedRoll).toBe(3);
+  });
+});
 
 describe('gradoExitoFor', () => {
   it('claro cuando el resultado supera la dificultad en 5 o más', () => {

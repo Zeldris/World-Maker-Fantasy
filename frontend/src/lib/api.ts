@@ -1,7 +1,11 @@
 import type {
+  AbilityEffect,
+  ActiveEffect,
   AlmacenItemInfo,
   Attribute,
   AttributeBlock,
+  AgendaEntryInfo,
+  EntornoTemporalInfo,
   BuildingInfo,
   CombatExchangeInfo,
   CompanionInfo,
@@ -167,6 +171,13 @@ export interface NarrateResponse {
   }
   progression: ProgressionResult
   condicionFisica: CondicionFisica
+  /// Fase 2 de efectos de clase (2026-08-27, indicador de combate) — AUMENTO/DEBILIDAD activos
+  /// del JUGADOR tras este turno. Los de cada NPC viajan dentro de
+  /// `combateIniciado.npcs[].activeEffects`, no aquí.
+  activeEffects: ActiveEffect[]
+  /// Estación/clima (2026-08-27, auditoría backend↔frontend + diseño/UX) — recalculado fresco
+  /// cada turno, mismo criterio que `timeLabel`.
+  entorno: EntornoTemporalInfo
   /// Sistema de fatiga (2026-07-29) — energía real tras este turno y su tope actual (deriva de
   /// Constitución efectiva), listos para actualizar la barra sin recalcular nada en el cliente.
   energia: number
@@ -212,6 +223,11 @@ export interface NarrateResponse {
   /// `newQuestInfo`, la misión NO se ha creado todavía; hace falta `aceptarMision` para eso.
   /// `null` en la inmensa mayoría de turnos.
   newQuestOfferInfo: { title: string; description: string } | null
+  /// "Modo dinámico" (2026-08-27, Pieza 4 de "Dinamismo del mundo") — oferta opcional de un botón
+  /// "Interactuar" al FINAL de este turno (nunca lo interrumpe). El motor ya decidió determinista
+  /// el candidato; la narración de la primera vuelta ocurre al pulsar Interactuar
+  /// (`POST /saves/:id/modo-dinamico/interactuar`), no aquí. `null` en la inmensa mayoría de turnos.
+  dynamicModeOffer: { tipo: 'NPC' | 'FAUNA'; targetSlug: string; targetName: string } | null
   /// Notificación de misión COMPLETADA (2026-08-13) — `logEntryId`/`text` son los de la LogEntry
   /// real ya persistida por el backend (questRewardNarrationFor), para insertarla tal cual con
   /// marca visual de "misión completada" en vez de una tarjeta sintética aparte. `null` en la
@@ -458,11 +474,24 @@ export interface SaveDetail {
   transit: { activity: string; busyUntil: string; duracionMinutos?: number | null } | null
   savedActions: SavedActionInfo[]
   habilidadSlots: number
+  /// "Cinturón de combate" (2026-08-28, pendiente 2026-08-27 punto 3) — nombres de las habilidades
+  /// de combate NO genéricas activas AHORA MISMO, ya resueltas por el backend (saneado + "todas
+  /// activas" por defecto si nunca se configuró) — solo estas + las 3 genéricas se ofrecen para
+  /// pulsar en CombatPanel.tsx durante un enfrentamiento.
+  activeCombatAbilityNames: string[]
   professionProgress: ProfessionProgressInfo[]
   kingdomStats: KingdomStatsInfo | null
   currentLocation: CurrentLocationInfo | null
   destinations: DestinationInfo[]
   condicionFisica: CondicionFisica
+  /// Fase 2 de efectos de clase (2026-08-27, indicador de combate) — AUMENTO/DEBILIDAD activos
+  /// del JUGADOR ahora mismo, sobreviven a recargar la partida.
+  activeEffects: ActiveEffect[]
+  /// Estación/clima (2026-08-27, auditoría backend↔frontend + diseño/UX).
+  entorno: EntornoTemporalInfo
+  /// WorldState.agenda (2026-08-27, auditoría backend↔frontend + diseño/UX § 2.3) — solo aquí
+  /// (no en NarrateResponse): avanza en el tick de fondo, no dentro de un turno en vivo.
+  worldAgenda: AgendaEntryInfo[]
   /// Sistema de fatiga (2026-07-29) — `energia` es el valor real; `energiaMax` ya viene derivado
   /// de Constitución efectiva (con equipo), listo para pintar la barra sin recalcular nada aquí.
   energia: number
@@ -479,6 +508,25 @@ export interface SaveDetail {
   /// respuesta, el aviso de "Combatir" se perdía sin dejar rastro pese a que el combate sí se
   /// había calculado bien en el backend.
   combateIniciado: { npcs: NpcInSceneInfo[] } | null
+  /// "Modo dinámico" en curso, reconstruido tras cualquier resincronización (checklist frontend
+  /// 2026-08-27, A.3 — mismo criterio que `combateIniciado` arriba): antes solo viajaba en la
+  /// respuesta directa de `/modo-dinamico/interactuar`/`/responder` — recargar con una conversación
+  /// abierta la hacía desaparecer sin dejar rastro, aunque el backend la siguiera guardando en
+  /// `Save.pendingDynamicMode`. Incluye la última narración/opciones ya narradas, para reabrir el
+  /// modal exacto sin volver a llamar al LLM.
+  pendingDynamicMode: { tipo: 'NPC' | 'FAUNA'; targetSlug: string; targetName: string; vuelta: number; narration: string; opciones: string[] } | null
+  /// Oferta de modo dinámico SIN aceptar todavía (bug real 2026-08-28, "no sobrevive a una
+  /// recarga") — mismo criterio que `pendingDynamicMode` arriba, un escalón antes: el botón
+  /// "Interactuar"/"Ignorar" en sí, reconstruido tras F5 en vez de vivir solo en `characterLog`.
+  pendingDynamicModeOffer: { tipo: 'NPC' | 'FAUNA'; targetSlug: string; targetName: string } | null
+  /// Ataque enemigo pendiente de defensa en el combate 1v1 clásico (bug real 2026-08-28/29,
+  /// "recargar mientras el enemigo tiene la iniciativa rompe el turno"): `Save.pendingNpcAttack`
+  /// ya persistía bien en el backend, pero nunca viajaba en `GET /saves/:id` — tras F5,
+  /// `combatAwaitingDefense` (solo `useState` en memoria) volvía a `false` y el panel de combate
+  /// mostraba el catálogo de ATAQUE en vez de DEFENSA, aunque el backend siguiera esperando una
+  /// defensa de verdad. Mismo criterio que `combateIniciado`/`lastInitiativeRoll` arriba: se
+  /// reconstruye en cada resincronización, no solo en la respuesta directa de `/turn/narrate`.
+  esperandoDefensaJugador: boolean
 }
 
 export async function getSave(id: string): Promise<SaveDetail> {
@@ -535,6 +583,15 @@ export async function requestFlee(id: string): Promise<{ escaped: boolean; text:
   return fetchJson(`${API_URL}/saves/${id}/combat/flee`, { method: 'POST' })
 }
 
+// Huir DENTRO de un combate ya iniciado (ronda de correcciones 2026-08-28, P3.2) — misma tirada
+// determinista que requestFlee, pero un fallo aplica un golpe directo real (sin tirada de
+// defensa): `condicionFisica` viene ya actualizada en la respuesta.
+export async function requestHuirEnCurso(
+  id: string,
+): Promise<{ escaped: boolean; text: string; condicionFisica: string }> {
+  return fetchJson(`${API_URL}/saves/${id}/combat/huir-en-curso`, { method: 'POST' })
+}
+
 export async function spendAttributePoint(
   id: string,
   attribute: Attribute,
@@ -571,6 +628,16 @@ export async function updateSavedAction(
 
 export async function deleteSavedAction(id: string, habilidadId: string): Promise<void> {
   return fetchJson(`${API_URL}/saves/${id}/habilidades/${habilidadId}`, { method: 'DELETE' })
+}
+
+/// "Cinturón de combate" (2026-08-28, pendiente 2026-08-27 punto 3) — reemplaza la lista completa
+/// en el orden recibido; la respuesta es la lista YA saneada por el backend (fuente de verdad real).
+export async function setActiveCombatAbilities(id: string, names: string[]): Promise<{ activeCombatAbilityNames: string[] }> {
+  return fetchJson(`${API_URL}/saves/${id}/combat-abilities`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ names }),
+  })
 }
 
 export async function setItemSlot(id: string, itemId: string, slot: EquipSlot | null): Promise<void> {
@@ -732,9 +799,14 @@ export interface ZonePointInfo {
   id: string
   x: number
   y: number
-  tipo: 'FAUNA' | 'RECURSO' | 'NPC'
+  tipo: 'FAUNA' | 'RECURSO' | 'NPC' | 'EDIFICIO'
   targetSlug: string
   nombre: string
+  /// Instancia viva (2026-08-27, Pieza 3 de "Dinamismo del mundo") — cuántos individuos reales
+  /// representa este punto (agrupación por población regional real vía `WorldPopulation`), y su
+  /// color por reputación con `factionSlug` (verde/amarillo/rojo; sin facción = naranja).
+  cantidad: number
+  color: 'ALIADO' | 'NEUTRO' | 'ENEMIGO' | 'SIN_FACCION'
 }
 /// NPCs presentados de forma determinista (2026-08-26, "no aparecen en la zona y sí tienen que
 /// salir") — a diferencia de `ZonePointInfo` (catálogo fijo, con posición real curada), estos
@@ -745,6 +817,14 @@ export interface ZonaDinamicoInfo {
   nombre: string
   tipo: 'NPC' | 'FAUNA'
 }
+/// Control regional (2026-08-27, Pieza 5 de "Dinamismo del mundo") — derivado en caliente de
+/// `WorldState.agenda`, sin logo real todavía (placeholder de texto en el frontend mientras se
+/// generan los assets). `null` si la región no tiene dueño de lore conocido.
+export interface RegionControlInfo {
+  estado: 'NEUTRAL_O_DUENO_ORIGINAL' | 'EN_DISPUTA' | 'CONQUISTADA'
+  duenoActual: string
+  agresor?: string
+}
 export interface ZonaResponse {
   disponible: boolean
   locationSlug?: string
@@ -752,6 +832,7 @@ export interface ZonaResponse {
   /// Mapa pintado a mano de fondo (entityType 'zona'/sizeProfile 'mapa') — el botón que lo genera
   /// vive en Enciclopedia > Localización (DetailModal.tsx), no aquí; este panel solo lo muestra.
   imageUrl?: string | null
+  regionControl?: RegionControlInfo | null
   puntos: ZonePointInfo[]
   dinamicos: ZonaDinamicoInfo[]
 }
@@ -777,18 +858,52 @@ export interface CapturableCandidate {
 export async function getCapturables(saveId: string): Promise<{ candidates: CapturableCandidate[]; tieneCuerdas: boolean }> {
   return fetchJson(`${API_URL}/saves/${saveId}/capturables`)
 }
-export async function postCapturar(saveId: string, npcSlug: string): Promise<{ npcSlug: string; tipo: 'FAUNA' | 'NPC'; jaulaBuildingId: string | null }> {
-  return fetchJson(`${API_URL}/saves/${saveId}/capturar/${npcSlug}`, { method: 'POST' })
+/// Rediseño de captura (2026-08-28, docs/rpgtarkor/captura-rediseno-2026-08-28.md) — atar ya no
+/// asigna una Jaula directamente: la captura se materializa como InventoryItem en tránsito
+/// (`inventoryItemId`), que el jugador deposita en una Jaula más tarde (`postDepositarCaptura`).
+/// `participantId` (2026-08-29, bug real "la tarjeta MATAR/CLEMENTE reaparece tras recargar en
+/// combate múltiple") — dentro de un CombatEncounter real, identifica al individuo CONCRETO de un
+/// grupo (`combatKeyFor`, ver useCombatFlow.ts): sin él, el backend no puede distinguir cuál de 2+
+/// individuos del mismo Npc de catálogo se está atando. `undefined` = combate 1v1 clásico o
+/// solitario, mismo comportamiento de siempre.
+export async function postCapturar(
+  saveId: string,
+  npcSlug: string,
+  participantId?: string,
+): Promise<{ npcSlug: string; tipo: 'FAUNA' | 'NPC'; inventoryItemId: string; capturaExpiraAtMinutes: number | null }> {
+  return fetchJson(`${API_URL}/saves/${saveId}/capturar/${npcSlug}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ participantId }),
+  })
+}
+
+/// Deposita una captura EN EL INVENTARIO (`InventoryItem.capturaNpcId` no null) en una Jaula con
+/// hueco — solo fauna tiene edificio de destino hoy (NPC espera la Celda de Retención, pausada).
+export async function postDepositarCaptura(saveId: string, itemId: string): Promise<{ ok: true; jaulaBuildingId: string }> {
+  return fetchJson(`${API_URL}/saves/${saveId}/capturas/${itemId}/depositar`, { method: 'POST' })
+}
+
+/// Suelta/libera una captura TODAVÍA EN EL INVENTARIO (antes de depositar) — disponible en
+/// cualquier momento. Distinto de `postSoltarTameo` (abajo), que suelta una captura YA depositada.
+export async function postSoltarCaptura(saveId: string, itemId: string): Promise<{ ok: true }> {
+  return fetchJson(`${API_URL}/saves/${saveId}/capturas/${itemId}/soltar`, { method: 'POST' })
 }
 
 /// CONVALECIENTE deja de ser "victoria automática" (2026-08-26) — "Dejarlo vivir" saca al NPC del
 /// combate activo (deja de ser objetivo) sin tocar su condicionFisica, que se queda CONVALECIENTE
 /// de verdad. Determinista, sin pasar por el turno narrado — mismo criterio que `postCapturar`.
+/// `participantId` — mismo motivo/criterio que `postCapturar` de arriba.
 export async function dejarVivir(
   saveId: string,
   npcSlug: string,
+  participantId?: string,
 ): Promise<{ npcSlug: string; logEntry: { id: string; text: string; timeLabel: string; createdAt: string } }> {
-  return fetchJson(`${API_URL}/saves/${saveId}/combat/dejar-vivir/${npcSlug}`, { method: 'POST' })
+  return fetchJson(`${API_URL}/saves/${saveId}/combat/dejar-vivir/${npcSlug}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ participantId }),
+  })
 }
 
 export interface TameoPendiente {
@@ -938,6 +1053,38 @@ export async function aceptarMision(
   })
 }
 
+/// "Modo dinámico" (2026-08-27, Pieza 4 de "Dinamismo del mundo") — resultado de una vuelta,
+/// idéntico en `interactuar` (primera vuelta) y `responder` (siguientes): narración ya redactada
+/// por el motor + `opciones` deterministas para que el jugador elija (nunca texto libre dentro del
+/// modo dinámico), y `cierra` marca si esta vuelta ya resuelve la interacción.
+export interface DynamicModeTurno {
+  narration: string
+  opciones: string[]
+  cierra: boolean
+  vuelta: number
+  timeLabel: string
+}
+
+export async function interactuarModoDinamico(saveId: string, tipo: 'NPC' | 'FAUNA', targetSlug: string, targetName: string): Promise<DynamicModeTurno> {
+  return fetchJson(`${API_URL}/saves/${saveId}/modo-dinamico/interactuar`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ tipo, targetSlug, targetName }),
+  })
+}
+
+export async function responderModoDinamico(saveId: string, respuesta: string): Promise<DynamicModeTurno> {
+  return fetchJson(`${API_URL}/saves/${saveId}/modo-dinamico/responder`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ respuesta }),
+  })
+}
+
+export async function ignorarModoDinamico(saveId: string): Promise<{ ok: boolean }> {
+  return fetchJson(`${API_URL}/saves/${saveId}/modo-dinamico/ignorar`, { method: 'POST' })
+}
+
 export async function deleteSave(id: string): Promise<void> {
   return fetchJson(`${API_URL}/saves/${id}`, { method: 'DELETE' })
 }
@@ -1047,6 +1194,19 @@ export interface EnciclopediaNpcInfo {
   /// quiero quedar") — mismo dato crudo de NpcItem, contenido de catálogo (no depende de la
   /// partida), para que el modal de saqueo sepa de antemano qué lleva encima cada NPC.
   items: { name: string; cantidad: number; notas: string | null }[]
+  /// Auditoría de Enciclopedia (2026-08-27) — probabilidades de interacción del sistema de
+  /// compañeros y supervivencia (companionSupervivencia.ts), antes invisibles para el jugador.
+  /// undefined cuando ninguna está calibrada (>0), para no añadir ruido al resto de NPCs.
+  interaccion?: EnciclopediaInteraccion
+}
+
+export interface EnciclopediaInteraccion {
+  comerciablePct: number
+  reclutablePct: number
+  domesticablePct: number
+  capturablePct: number
+  cortejablePct: number
+  atributoResistencia: string | null
 }
 
 export interface EnciclopediaItemInfo {
@@ -1075,6 +1235,9 @@ export interface EnciclopediaItemInfo {
   /// `description`. Ver comentario de ambos campos en schema.prisma (backend).
   effectKey?: string | null
   effectDescription?: string | null
+  /// Auditoría de Enciclopedia (2026-08-27) — prefijos de oficio (sin raza/región, p.ej.
+  /// "curtidor"/"desollador") para los que este objeto cuenta como herramienta requerida.
+  herramientaParaOficio: string[]
   imagePrompts: EnciclopediaImagePrompts
   imageUrls: EnciclopediaImageUrls
   /// Enciclopedia progresiva (2026-07-23) — mencionado en narración O visto ya en el inventario.
@@ -1115,6 +1278,23 @@ export interface EnciclopediaFaunaFloraInfo {
   ataqueNatural?: string | null
   habilidadesRaciales?: { icon: string; name: string; description: string; categoria: 'ataque' | 'defensa' | 'utilidad'; preferredAttribute: Attribute }[]
   ataqueBase: EnciclopediaAtaqueBase | null
+  /// Auditoría de Enciclopedia (2026-08-27) — mismo campo que EnciclopediaNpcInfo, solo presente
+  /// si `cazable` (hay Npc real detrás) y alguna probabilidad está calibrada.
+  interaccion?: EnciclopediaInteraccion
+}
+
+// Día/noche/estación (2026-08-27, docs/rpgtarkor/imagenes-prompts.md) — a diferencia de
+// EnciclopediaSexoVariante, sin texto curado: las 8 combinaciones son siempre las mismas para
+// cualquier Location, el backend solo agrega imagePrompts/imageUrls propios de cada una.
+// `mapaImagePrompt`/`mapaImageUrl` son el mapa de Zona de ESA combinación (entityType 'zona',
+// sizeProfile 'mapa'), expuesto aquí junto al resto porque comparten el mismo selector en el modal.
+export interface EnciclopediaTiempoVariante {
+  momento: 'dia' | 'noche'
+  estacion: 'primavera' | 'verano' | 'otono' | 'invierno'
+  imagePrompts: EnciclopediaImagePrompts
+  imageUrls: EnciclopediaImageUrls
+  mapaImagePrompt: string | null
+  mapaImageUrl: string | null
 }
 
 export interface EnciclopediaLocationInfo {
@@ -1129,6 +1309,9 @@ export interface EnciclopediaLocationInfo {
   /// Enciclopedia progresiva (2026-07-23) — gateado por `LocationVisit` (visita física real), no
   /// por mención en narración, eje independiente del resto de tipos.
   discovered: boolean
+  /// Undefined en respuestas más ligeras que no traen esta sección (p.ej. `WorldLocationInfo` del
+  /// mapa general, ver MapaPanel.tsx) — solo la Enciclopedia completa la rellena siempre.
+  variantesTiempo?: EnciclopediaTiempoVariante[]
 }
 
 // Razas y personajes jugables de Berig (2026-07-22) — contenido estático servido por el backend
@@ -1195,6 +1378,13 @@ export interface EnciclopediaAbilityInfo {
   /// Rediseño del turno de combate (2026-07-28) — "tipo" de la habilidad para el árbol de
   /// ventajas (attributeWheel.ts, backend) y su color en la UI.
   preferredAttribute: Attribute
+  /// Bono fijo de atributo/efecto mecánico real (2026-08-30, bug: "las descripciones no muestran
+  /// el efecto real") — ya viajaban en el JSON de esta ruta desde siempre (spread `...u.ability`
+  /// en `world.ts` § `buildClassesSection`, backend), solo faltaba declararlos aquí para poder
+  /// leerlos con tipos. Solo habilidades de CLASE los llevan — las raciales/genéricas no tienen
+  /// ningún efecto mecánico más allá del atributo (`berigLore.ts`, diseño real, no una omisión).
+  attributeBonus?: number
+  effects?: AbilityEffect[]
 }
 
 /// Antepone el origen real del backend a una ruta relativa de imagen (p.ej. "/images/fauna/x.png")
@@ -1207,6 +1397,11 @@ export function resolveImageUrl(path: string | null): string | null {
 
 export interface EnciclopediaClassUnlock {
   level: number
+  /// Especialización dentro de la clase (2026-08-24, Grupo 3 § Sistema de clases) — el backend ya
+  /// lo enviaba (buildClassesSection, world.ts), pero faltaba en este tipo. null hasta nivel 10
+  /// (habilidades comunes a toda la clase); a partir de ahí, cada habilidad pertenece a una de las
+  /// varias especializaciones posibles de esa clase (ver auditoría de Enciclopedia, 2026-08-27).
+  especializacion: string | null
   ability: EnciclopediaAbilityInfo
 }
 

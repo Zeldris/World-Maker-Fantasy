@@ -1,4 +1,9 @@
+import { useEffect, useRef, useState } from 'react'
 import { PanelEmptyState } from '../PanelEmptyState'
+import type { AgendaEntryInfo } from '../../types'
+import type { EnciclopediaFaccionInfo } from '../../lib/api'
+import { faccionToDetailTarget } from '../../lib/enciclopediaTargets'
+import { useEnciclopediaLink } from '../../context/useEnciclopediaLink'
 
 // Gauge 0-5000 por facción (backend: reputation.ts) — mismo concepto que la barra de XP, pero
 // bipolar: 2500 es el punto neutro, sube hacia AMIGABLE o baja hacia ENEMIGO. Umbrales duplicados
@@ -28,14 +33,118 @@ function bandFor(value: number): ReputationBand {
   return REPUTATION_BANDS[0]
 }
 
-interface ReputacionPanelProps {
-  factionsStatus: Record<string, number>
+/// Feedback de cambio (2026-08-27, auditoría de diseño/UX § 3.1: "una bajada de reputación... es
+/// mecánicamente el mismo tipo de evento que 'recibir daño'... pero hoy no tiene ningún eco
+/// visual"). Mismo patrón exacto que `HealthBar.tsx` (useRef del valor anterior + flash 'worse'/
+/// 'better' comparado contra ese valor, nunca contra un umbral fijo) — extraído a su propio
+/// componente para que cada facción tenga su propio `useRef`/`useState` de instancia (React ya
+/// distingue cada fila por `key={faction}` en el `.map` del padre).
+function FactionRow({
+  faction,
+  value,
+  factionEntry,
+  onEntityDetail,
+}: {
+  faction: string
+  value: number
+  factionEntry: EnciclopediaFaccionInfo | undefined
+  onEntityDetail?: (target: ReturnType<typeof faccionToDetailTarget>) => void
+}) {
+  const band = bandFor(value)
+  const percent = Math.max(0, Math.min(100, (value / FACTION_REP_MAX) * 100))
+  const prevRef = useRef(value)
+  const [flash, setFlash] = useState<'worse' | 'better' | null>(null)
+
+  useEffect(() => {
+    const prev = prevRef.current
+    if (prev !== value) {
+      setFlash(value < prev ? 'worse' : 'better')
+      prevRef.current = value
+    }
+  }, [value])
+
+  return (
+    <div
+      key={value}
+      className={`relative overflow-hidden rounded-lg border border-iron-700 bg-wood-950/40 px-3.5 py-2.5 ${flash === 'worse' ? 'animate-shake-no' : ''}`}
+    >
+      {flash && (
+        <span
+          className={`pointer-events-none absolute inset-0 ${flash === 'worse' ? 'animate-hit-flash-red bg-danger-500' : 'animate-hit-flash-moss bg-moss-500'}`}
+          aria-hidden="true"
+        />
+      )}
+      <div className="flex items-center justify-between gap-2">
+        <span className="flex min-w-0 items-center gap-1.5">
+          <p className="truncate font-medium text-wood-100">{faction}</p>
+          {factionEntry && (
+            <button
+              type="button"
+              onClick={() => onEntityDetail?.(faccionToDetailTarget(factionEntry))}
+              aria-label={`Consultar ${faction} en la Enciclopedia`}
+              className="tactile flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-iron-700 text-2xs text-wood-500 transition-colors hover:border-accent-600/60 hover:text-accent-300"
+            >
+              ⓘ
+            </button>
+          )}
+        </span>
+        <span className={`shrink-0 text-2xs font-bold uppercase tracking-wide ${band.textClass}`}>{band.label}</span>
+      </div>
+      <div className="mt-1.5 mb-1 flex items-center justify-end text-2xs">
+        <span className="font-mono tabular-nums text-wood-500">
+          {value} / {FACTION_REP_MAX}
+        </span>
+      </div>
+      <div className="h-2 overflow-hidden rounded-full bg-iron-800 shadow-[inset_0_1px_2px_rgba(0,0,0,0.6)]">
+        <div
+          className={`h-full rounded-full bg-gradient-to-r transition-[width] duration-500 ${band.barClass}`}
+          style={{ width: `${percent}%` }}
+        />
+      </div>
+    </div>
+  )
 }
 
-export function ReputacionPanel({ factionsStatus }: ReputacionPanelProps) {
-  const entries = Object.entries(factionsStatus)
+/// WorldState.agenda (2026-08-27, auditoría backend↔frontend + diseño/UX § 2.3: "el sitio natural
+/// es ReputacionPanel mismo: una tarjeta fija arriba de la lista de facciones... reutilizar el
+/// lenguaje de barra por etapas que ya existe (nivel de profesión, HabilidadesPanel.tsx) evita
+/// inventar un tercer patrón de 'progreso' en la misma app"). Segmentos discretos (uno por etapa),
+/// no un porcentaje continuo — `maxStage` es un entero pequeño, cada segmento es un hito real
+/// cruzado, no una fracción arbitraria.
+function AgendaCard({ entry }: { entry: AgendaEntryInfo }) {
+  return (
+    <div className="rounded-lg border border-iron-700 bg-wood-950/40 px-3.5 py-2.5">
+      <div className="flex items-center justify-between text-xs">
+        <p className="font-medium text-wood-100">⚔️ {entry.title}</p>
+        <span className="font-mono tabular-nums text-wood-500">
+          Etapa {entry.stage}/{entry.maxStage}
+        </span>
+      </div>
+      <div className="mt-2 flex gap-1">
+        {Array.from({ length: entry.maxStage }).map((_, i) => (
+          <span key={i} className={`h-1.5 flex-1 rounded-full ${i < entry.stage ? 'bg-accent-500' : 'bg-iron-800'}`} />
+        ))}
+      </div>
+    </div>
+  )
+}
 
-  if (entries.length === 0) {
+interface ReputacionPanelProps {
+  factionsStatus: Record<string, number>
+  /// Enlace cruzado con Enciclopedia > Facciones (2026-08-27, auditoría de diseño/UX § 1.2:
+  /// "son la MISMA entidad mostrada en dos rieles sin ninguna conexión... la app ya tiene la
+  /// infraestructura para esto"). Solo se ofrece el enlace si la facción ya está descubierta —
+  /// nunca revela una ficha de Enciclopedia todavía bloqueada desde aquí.
+  factions: EnciclopediaFaccionInfo[]
+  worldAgenda: AgendaEntryInfo[]
+}
+
+export function ReputacionPanel({ factionsStatus, factions, worldAgenda }: ReputacionPanelProps) {
+  const entries = Object.entries(factionsStatus)
+  const { onEntityDetail } = useEnciclopediaLink()
+  const factionByName = new Map(factions.filter((f) => f.discovered).map((f) => [f.name, f]))
+
+  if (entries.length === 0 && worldAgenda.length === 0) {
     return (
       <PanelEmptyState
         icon="🤝"
@@ -47,29 +156,12 @@ export function ReputacionPanel({ factionsStatus }: ReputacionPanelProps) {
 
   return (
     <div className="flex flex-col gap-3">
-      {entries.map(([faction, value]) => {
-        const band = bandFor(value)
-        const percent = Math.max(0, Math.min(100, (value / FACTION_REP_MAX) * 100))
-        return (
-          <div key={faction} className="rounded-lg border border-iron-700 bg-wood-950/40 px-3.5 py-2.5">
-            <div className="flex items-center justify-between">
-              <p className="font-medium text-wood-100">{faction}</p>
-              <span className={`text-2xs font-bold uppercase tracking-wide ${band.textClass}`}>{band.label}</span>
-            </div>
-            <div className="mt-1.5 mb-1 flex items-center justify-end text-2xs">
-              <span className="font-mono tabular-nums text-wood-500">
-                {value} / {FACTION_REP_MAX}
-              </span>
-            </div>
-            <div className="h-2 overflow-hidden rounded-full bg-iron-800 shadow-[inset_0_1px_2px_rgba(0,0,0,0.6)]">
-              <div
-                className={`h-full rounded-full bg-gradient-to-r transition-[width] duration-500 ${band.barClass}`}
-                style={{ width: `${percent}%` }}
-              />
-            </div>
-          </div>
-        )
-      })}
+      {worldAgenda.map((entry) => (
+        <AgendaCard key={entry.id} entry={entry} />
+      ))}
+      {entries.map(([faction, value]) => (
+        <FactionRow key={faction} faction={faction} value={value} factionEntry={factionByName.get(faction)} onEntityDetail={onEntityDetail} />
+      ))}
     </div>
   )
 }

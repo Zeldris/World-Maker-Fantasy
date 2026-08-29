@@ -10,6 +10,13 @@ import { recordEntityDiscoveries } from '../../services/entityDiscovery.js';
 import type { AttributeBlock } from '../../services/dice.js';
 import { iniciarCombatEncounter } from '../../services/combateMultipleOrquestacion.js';
 import { rejectIfEnded } from './shared.js';
+import { advanceFictionalMinutes, formatFictionalDate } from '../../services/worldClock.js';
+
+// Checklist consolidado P3.6 (2026-08-27) — "Cazar" limpio no avanzaba el reloj de ficción, mismo
+// hueco ya cerrado en recolectar.ts (Minar/Talar) el 2026-08-14. Cifra fija (no hay cantidad
+// variable que escalar, a diferencia de recolección) — mismo criterio base que
+// RECOLECCION_MINUTOS_BASE (recolectar.ts).
+const CAZA_LIMPIA_MINUTOS = 10;
 
 /// Caza (revisión de partida 2026-08-08, "buscar presas... eso no va, sale un pequeño raposa que
 /// desaparece sin más" + diseño consultado con la usuaria): el texto libre nunca conectaba de
@@ -292,17 +299,21 @@ export async function cazarRoutes(app: FastifyInstance) {
       const currentLocationId = save.currentLocation?.id ?? null;
       const scope = scopeFor(npc.kind, currentLocationId);
       const text = `${save.characterName} caza limpiamente a ${npc.name}, sin darle ninguna opción de reaccionar.`;
-      const timeLabel = save.worldState?.fictionalDateLabel ?? 'Día 1, mañana';
-      const fictionalMinutes = save.worldState?.fictionalMinutes ?? 480;
+      // P3.6 (checklist consolidado 2026-08-27) — el reloj avanza ANTES de fijar timeLabel/
+      // fictionalMinutes del log y de condicionFisicaSinceMinutes, mismo criterio que
+      // recolectar.ts (el log/estado reflejan el momento DESPUÉS de la acción, no antes).
+      const nuevoFictionalMinutes = advanceFictionalMinutes(save.worldState?.fictionalMinutes ?? 480, CAZA_LIMPIA_MINUTOS);
+      const timeLabel = formatFictionalDate(nuevoFictionalMinutes);
 
       const logEntry = await prisma.$transaction(async (tx) => {
         await tx.npcState.upsert({
           where: { saveId_npcId_scope: { saveId: save.id, npcId: npc.id, scope } },
-          create: { saveId: save.id, npcId: npc.id, scope, condicionFisica: 'MUERTO', condicionFisicaSinceMinutes: fictionalMinutes },
-          update: { condicionFisica: 'MUERTO', condicionFisicaSinceMinutes: fictionalMinutes },
+          create: { saveId: save.id, npcId: npc.id, scope, condicionFisica: 'MUERTO', condicionFisicaSinceMinutes: nuevoFictionalMinutes },
+          update: { condicionFisica: 'MUERTO', condicionFisicaSinceMinutes: nuevoFictionalMinutes },
         });
         await decrementPopulationOnDeath(tx, save.worldId, null, npc.slug, region);
-        const created = await tx.logEntry.create({ data: { saveId: save.id, channel: 'CHARACTER', text, timeLabel, fictionalMinutes, isPlayerAction: false } });
+        await tx.worldState.update({ where: { saveId: save.id }, data: { fictionalMinutes: nuevoFictionalMinutes, fictionalDateLabel: timeLabel } });
+        const created = await tx.logEntry.create({ data: { saveId: save.id, channel: 'CHARACTER', text, timeLabel, fictionalMinutes: nuevoFictionalMinutes, isPlayerAction: false } });
         await tx.save.update({ where: { id: save.id }, data: { pendingCombatNpcSlugs: [npc.slug] } });
         return created;
       });

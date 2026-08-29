@@ -22,6 +22,7 @@ const findUniqueLocation = vi.fn();
 const findManyLocation = vi.fn();
 const findManyQuest = vi.fn();
 const findManyNpcState = vi.fn();
+const findUniqueSave = vi.fn();
 
 vi.mock('../lib/prisma.js', () => ({
   prisma: {
@@ -32,6 +33,10 @@ vi.mock('../lib/prisma.js', () => ({
     },
     quest: { findMany: (...args: unknown[]) => findManyQuest(...args) },
     npcState: { findMany: (...args: unknown[]) => findManyNpcState(...args) },
+    // Bug real de sessionFacts reintroduciendo NPCs "retirados para siempre" (2026-08-27, cerrado
+    // 2026-08-28) — `detectNpcsInScene` consulta `Save.npcsRetiredForever` ahora. `[]` por defecto
+    // (ningún test de este archivo prueba ese caso en concreto todavía).
+    save: { findUnique: (...args: unknown[]) => findUniqueSave(...args) },
   },
 }));
 
@@ -255,8 +260,10 @@ describe('detectNpcsInScene — acotar el candidato por escena', () => {
     findManyLocation.mockReset();
     findManyQuest.mockReset();
     findManyNpcState.mockReset();
+    findUniqueSave.mockReset();
     findManyQuest.mockResolvedValue([]);
     findManyNpcState.mockResolvedValue([]);
+    findUniqueSave.mockResolvedValue({ npcsRetiredForever: [] });
   });
 
   it('bug real (2026-07-24): "presas" no engancha a un NPC cuya región de origen no es la actual, aunque esté a distancia Levenshtein 2 de uno de sus alias ("brasas")', async () => {
@@ -375,6 +382,40 @@ describe('detectNpcsInScene — acotar el candidato por escena', () => {
     });
     expect(result.map((n) => n.id)).toEqual(['lurker']);
   });
+
+  // Bug real (revisión de partida en 5 fases, 2026-08-27, cerrado 2026-08-28): un sessionFact que
+  // MENCIONA al NPC para decir que se fue para siempre contiene su nombre literal, así que el
+  // matcher lo reintroducía como candidato legítimo — camino determinista, no una alucinación del
+  // LLM. `npcsRetiredForever` corta esto de raíz, sin importar qué diga el propio texto del fact.
+  it('un NPC en npcsRetiredForever NUNCA se reintroduce, aunque un sessionFact lo mencione y matchee su alias', async () => {
+    findManyNpc.mockResolvedValue([baseNpc()]);
+    findUniqueLocation.mockResolvedValue(HONDONADA);
+    findManyLocation.mockResolvedValue([CIENAGA_CAMPAMENTO]);
+    findManyNpcState.mockResolvedValue([{ npcId: 'lurker' }]); // "ya establecido antes" — candidato geográfico igual
+    findUniqueSave.mockResolvedValue({ npcsRetiredForever: ['acechador-de-brasas'] });
+
+    const result = await detectNpcsInScene({
+      action: 'Exploro la zona',
+      worldId: 'w1',
+      sessionFacts: ['El Acechador de Brasas se marchó para siempre — no volverá a aparecer.'],
+      saveId: 's1',
+      currentLocationId: 'loc-hondonada',
+    });
+    expect(result).toEqual([]);
+  });
+
+  it('un NPC NO retirado sigue detectándose con normalidad (npcsRetiredForever con otros slugs no interfiere)', async () => {
+    findManyNpc.mockResolvedValue([baseNpc()]);
+    findUniqueLocation.mockResolvedValue(HONDONADA);
+    findManyLocation.mockResolvedValue([CIENAGA_CAMPAMENTO]);
+    findManyNpcState.mockResolvedValue([{ npcId: 'lurker' }]);
+    findUniqueSave.mockResolvedValue({ npcsRetiredForever: ['otro-npc-cualquiera'] });
+
+    const result = await detectNpcsInScene({
+      action: 'Busco al acechador', worldId: 'w1', sessionFacts: [], saveId: 's1', currentLocationId: 'loc-hondonada',
+    });
+    expect(result.map((n) => n.id)).toEqual(['lurker']);
+  });
 });
 
 // Grupo 3 § Mundo determinista, Capa 3, pieza B (2026-08-25) — mismo filtro geográfico que
@@ -445,6 +486,8 @@ function npcFixture(overrides: Partial<NpcInScene> = {}): NpcInScene {
     capturable: false,
     groupSize: null, groupDefeated: 0, corpsesLooted: 0,
     abilityUsesThisEncounter: {},
+    activeEffects: [],
+    homeLocationSlug: null,
     ...overrides,
   };
 }
