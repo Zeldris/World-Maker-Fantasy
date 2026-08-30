@@ -3473,6 +3473,61 @@ describe('Crafteo con espera real (2026-08-20): transit con busyUntil, resoluci�
   });
 });
 
+// Auditoría "revisar partida" (2026-08-30) — primer caso real de `resultCantidad > 1`: fundir
+// Garras de Kirelon Arenoso da 2 Lingotes de Yerreo de un solo crafteo, no 1. Confirma que el
+// InventoryItem resultante lleva el sufijo "(2)" (mismo formato que el resto de apilables),
+// nunca dos filas separadas.
+describe('Crafteo con resultCantidad > 1 (2026-08-30): fundir Garras de Kirelon da 2 Lingotes de Yerreo de golpe', () => {
+  let saveId: string;
+
+  beforeAll(async () => {
+    const userId = await getDefaultUserId();
+    const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
+    const campamento = await prisma.location.findFirstOrThrow({ where: { worldId: world.id, slug: 'campamento-serhu' } });
+    const save = await prisma.save.create({
+      data: {
+        userId,
+        worldId: world.id,
+        characterName: 'Gorhorn de prueba (garras de Kirelon)',
+        characterArchetype: 'guerrero',
+        characterOrigin: 'Clan Maktor',
+        characterMotivation: 'x',
+        attributes: ATTRS,
+        portraitInitial: 'G',
+        currentLocationId: campamento.id,
+      },
+    });
+    saveId = save.id;
+    await prisma.worldState.create({ data: { saveId } });
+    classifyAction.mockResolvedValue({
+      requiereTirada: false, atributo: 'destreza', dificultad: 8, razon: 'x', banda: 'instantanea', duracionEstimadaMinutos: 0,
+    });
+    await giveMaterials(saveId, [{ name: 'Garras de Kirelon Arenoso', catalogSlug: 'garras-kirelon' }]);
+  });
+
+  afterAll(async () => {
+    await prisma.logEntry.deleteMany({ where: { saveId } });
+    await prisma.inventoryItem.deleteMany({ where: { saveId } });
+    await prisma.worldState.deleteMany({ where: { saveId } });
+    await prisma.save.delete({ where: { id: saveId } });
+  });
+
+  it('produce "Lingote de Yerreo (2)" en una sola fila, consumiendo las garras', async () => {
+    const app = await buildApp();
+    await app.inject({
+      method: 'POST',
+      url: '/turn/classify',
+      payload: { saveId, action: 'Fundo mis garras de Kirelon en la fragua del campamento.', enCombate: false },
+    });
+    await prisma.characterTransit.update({ where: { saveId }, data: { busyUntil: new Date(Date.now() - 1000) } });
+    await resolveDueTransits();
+
+    const inventory = await prisma.inventoryItem.findMany({ where: { saveId } });
+    expect(inventory.some((i) => i.name === 'Lingote de Yerreo (2)')).toBe(true);
+    expect(inventory.some((i) => i.name.startsWith('Garras de Kirelon Arenoso'))).toBe(false); // ingrediente consumido
+  }, 20_000);
+});
+
 // Bug real jugando en vivo (2026-08-04, "ronda larga de pruebas" — el propio combate contra el
 // Orco Enfurecido en la Hondonada del Eco redirigió el golpe a Gistera Koh, un PNJ nunca hostil,
 // en cuanto el segundo turno de ataque dejó de citar su nombre entre comillas). Confirmado en

@@ -27,6 +27,7 @@ const magnetizedIronIngot = recipe('magnetizedIronIngot');
 const compassNeedle = recipe('compassNeedle');
 const sandPouch = recipe('sandPouch');
 const stoneBlock = recipe('stoneBlock');
+const boiledLichenWater = recipe('boiledLichenWater');
 const firstAidBandage = recipe('firstAidBandage');
 const redSpikeInfusion = recipe('redSpikeInfusion');
 const basicPoultice = recipe('basicPoultice');
@@ -96,7 +97,7 @@ function row(id: string, catalogSlug: string, cantidad?: number): InventoryRowLi
 }
 
 describe('CRAFTING_RECIPES', () => {
-  it('tiene las 45 recetas esperadas, cada una con una clave única', () => {
+  it('tiene las 47 recetas esperadas, cada una con una clave única', () => {
     expect(CRAFTING_RECIPES.map((r) => r.key)).toEqual([
       'axeRepair',
       'smokeMeat',
@@ -118,6 +119,9 @@ describe('CRAFTING_RECIPES', () => {
       // 18 nuevas (2026-08-24, Grupo 3 § 27 recursos/materiales sin receta que los use) — cierran
       // el destino real de items recolectables desde el 2026-08-23 que no servían para nada.
       'yerreoIngot',
+      // Auditoría "revisar partida" (2026-08-30) — receta real que la propia condicion de
+      // garras-kirelon (worldCatalog.ts) ya prometía, pero nunca se había implementado.
+      'kirelonClawsToIngot',
       'hiyerroAlloy',
       'quitinaPlates',
       'quitinaArmor',
@@ -142,6 +146,9 @@ describe('CRAFTING_RECIPES', () => {
       'club',
       'gargantuaLegArmor',
       'boungoRoast',
+      // Auditoría "revisar partida" (2026-08-30) — Agua hervida de liquen pasa de HarvestYield
+      // directo (sin verificar la condición de "hervido sobre fuego") a receta real.
+      'boiledLichenWater',
       'coraceloMace',
       // 5 nuevas (2026-08-24, Grupo 3 § auditoría de items sin uso) — cierran el hueco de
       // hacha-de-mano-orca/anillo-vertebra-corredor/capa-piel-gargantua/capucha-piel-corredor/
@@ -171,6 +178,14 @@ describe('detectsCraftIntent', () => {
     expect(detectsCraftIntent(smokeMeat, 'Ahumo mi ración de carne sobre el fuego')).toBe(true);
     expect(detectsCraftIntent(smokeMeat, 'Quiero crear carne ahumada')).toBe(true);
     expect(detectsCraftIntent(smokeMeat, 'Como mi ración de carne')).toBe(false);
+  });
+
+  // Auditoría "revisar partida" (2026-08-30) — Agua hervida de liquen deja de recolectarse directa
+  // (HarvestYield sin verificación real) y pasa a receta real de crafteo.
+  it('detecta intención de hervir agua con liquen', () => {
+    expect(detectsCraftIntent(boiledLichenWater, 'Ato un vendaje y hiervo agua con mi liquen húmedo')).toBe(true);
+    expect(detectsCraftIntent(boiledLichenWater, 'Hiervo el liquen sobre el fuego')).toBe(true);
+    expect(detectsCraftIntent(boiledLichenWater, 'Miro el liquen con curiosidad')).toBe(false);
   });
 
   it('detecta intención de fabricar el peto, incluido "crear" como verbo', () => {

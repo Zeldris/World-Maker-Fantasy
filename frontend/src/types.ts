@@ -371,6 +371,13 @@ export interface LogEntry {
   /// jugadora responde (aceptar/cancelar) — nunca sobrevive a una recarga, mismo criterio efímero
   /// que `newQuest`/`questCompleted`.
   questOffer?: { title: string; description: string }
+  /// Bug real jugando en vivo (2026-08-30, "el cuadro del log de gistera deberia seguir siendo
+  /// amarillo...no azul") — al aceptar/cancelar, `questOffer` se limpia (los botones deben
+  /// desaparecer), pero sin este flag la entrada perdía TODO rastro amarillo y caía al fondo azul
+  /// normal, aunque la narración de presentación siga siendo, de hecho, la oferta de una misión.
+  /// Se marca al limpiar `questOffer`, nunca se borra — la entrada se queda amarilla para siempre,
+  /// coherente con que sigue siendo "sobre una oferta de misión" aunque ya esté resuelta.
+  questOfferResolved?: boolean
   /// "Modo dinámico" (2026-08-27) — botón "Interactuar" al final de un turno normal, nunca lo
   /// interrumpe; mismo criterio efímero/local que `questOffer` (se limpia al pulsar Interactuar o
   /// Ignorar, nunca sobrevive a una recarga). `busy`/`error` (checklist frontend 2026-08-27, A.7):

@@ -30,6 +30,13 @@ export interface CraftingRecipe {
   ingredients: IngredientRequirement[];
   resultName: string;
   resultDescription: string;
+  /// Cuántas unidades del resultado produce ESTE crafteo de una vez (2026-08-30, primer caso real:
+  /// "un herrero con fragua puede fundir las Garras de Kirelon directo en 2 Lingotes de Yerreo",
+  /// petición explícita: "la idea era que las garras... una receta que te permite convertirlas en
+  /// 2 lingotes"). Opcional, default 1 (todas las recetas anteriores dan exactamente 1 unidad) —
+  /// mismo formato de sufijo `(N)` que ya usa el resto del inventario apilable
+  /// (`baseNameOf`/`quantityOf`, ingredients.ts), nunca N filas separadas.
+  resultCantidad?: number;
   /// Slug de ItemCatalog (sesión de diseño 2026-07-23) — se copia al InventoryItem.catalogSlug
   /// del resultado para poder mirar sus requisitos de equipar (ver requisitos.ts). Opcional: no
   /// todas las recetas tienen fila propia en el catálogo del mundo.
@@ -173,6 +180,28 @@ export const BOUNGO_ROAST_RECIPE: CraftingRecipe = {
   narrationWant:
     'El personaje quiere asar Boungo, pero no lleva encima al menos 2 setas Boungo — narra que lo intenta o lo considera, pero no que las asa de verdad.',
   narrationDo: 'El personaje asa sus Boungo sobre brasas — narra la escena con naturalidad. El objeto ya se gestiona automáticamente por el backend.',
+};
+
+// Auditoría "revisar partida" (2026-08-30, petición explícita: "Agua hervida de liquen debería ser
+// un objeto crafteable, no un recurso") — antes vivía como HarvestYield directo (EXTRACCION) con
+// una `condicion` de texto libre ("requiere hervirlo sobre fuego ya encendido") que NUNCA se
+// verificaba mecánicamente — recolectar en la zona daba el agua YA hervida sin ningún gate real,
+// pese a que su propia `description` de catálogo ("hervido sobre fuego") ya admitía que no es un
+// recurso crudo. Ahora es una receta real: Liquen húmedo del cauce (sí crudo, sigue siendo
+// HarvestYield) + hervirlo. Mismo patrón que BOUNGO_ROAST_RECIPE (cocinar sin oficio complejo, sin
+// ubicación fija — hervir agua no exige una fragua ni un campamento concreto).
+export const BOILED_LICHEN_WATER_RECIPE: CraftingRecipe = {
+  key: 'boiledLichenWater',
+  verbRegex: /herv|hierv|cocin|prepar/,
+  nounRegex: /liquen|agua/,
+  location: null,
+  ingredients: [{ match: { kind: 'exact', catalogSlug: 'liquen-humedo' }, cantidad: 1, label: 'Liquen húmedo del cauce' }],
+  resultName: 'Agua hervida de liquen',
+  resultCatalogSlug: 'agua-hervida-liquen',
+  resultDescription: 'Liquen húmedo del cauce hervido sobre fuego — más segura de beber que masticarlo en crudo.',
+  narrationWant:
+    'El personaje quiere hervir agua con liquen, pero no lleva encima al menos 1 Liquen húmedo del cauce (o no tiene fuego encendido cerca) — narra que lo intenta o lo considera, pero no que la hierve de verdad.',
+  narrationDo: 'El personaje hierve su Liquen húmedo del cauce sobre el fuego — narra la escena con naturalidad. El objeto ya se gestiona automáticamente por el backend.',
 };
 
 export const CORACELO_MACE_RECIPE: CraftingRecipe = {
@@ -696,6 +725,31 @@ export const YERREO_INGOT_RECIPE: CraftingRecipe = {
     'El personaje funde su mena de Yerreo en la fragua del campamento, colándola en un molde sencillo — narra la escena con el peso que merece. El objeto ya se gestiona automáticamente por el backend.',
 };
 
+// Auditoría "revisar partida" (2026-08-30) — la propia `condicion` de `garras-kirelon`
+// (worldCatalog.ts, HarvestYield de Kirelon Arenoso) ya prometía esta receta ("un herrero con
+// fragua a mano puede fundirlas directo en 2 Lingotes de Yerreo"), pero nunca se había
+// implementado — confirmado con la usuaria: "la idea era que las garras... una receta que te
+// permite convertirlas en 2 lingotes". Mismo oficio/ubicación que YERREO_INGOT_RECIPE (misma
+// fragua, mismo lingote resultante), pero atajo directo desde el material de caza en vez de mena.
+export const KIRELON_CLAWS_TO_INGOT_RECIPE: CraftingRecipe = {
+  key: 'kirelonClawsToIngot',
+  verbRegex: /fund|forj|refin|derret/,
+  nounRegex: /garra.*kirelon|kirelon.*garra/,
+  location: 'campamento-serhu',
+  ingredients: [{ match: { kind: 'exact', catalogSlug: 'garras-kirelon' }, cantidad: 1, label: 'Garras de Kirelon Arenoso' }],
+  resultName: 'Lingote de Yerreo',
+  resultCatalogSlug: 'lingote-yerreo',
+  resultCantidad: 2,
+  resultDescription: 'Yerreo fundido directo de las Garras de Kirelon Arenoso en la fragua del campamento y colado en un molde sencillo — metal más denso y valioso que el hierro común.',
+  tier: 4,
+  requisitos: { fuerza: 10 },
+  oficio: 'herrero-orco-llanuras',
+  narrationWant:
+    'El personaje quiere fundir Garras de Kirelon Arenoso en lingotes, pero no puede hacerlo ahora mismo (hace falta estar en el Campamento del Clan Serhu y llevar al menos 1 Garras de Kirelon Arenoso) — narra que lo intenta o lo considera, pero no que las funde de verdad.',
+  narrationDo:
+    'El personaje funde sus Garras de Kirelon Arenoso directamente en la fragua del campamento, colándolas en un molde sencillo — narra la escena con el peso que merece. El objeto ya se gestiona automáticamente por el backend.',
+};
+
 export const HIYERRO_ALLOY_RECIPE: CraftingRecipe = {
   key: 'hiyerroAlloy',
   verbRegex: /fund|forj|refin|derret|aleac/,
@@ -1029,6 +1083,7 @@ export const CRAFTING_RECIPES: CraftingRecipe[] = [
   BRAIDED_CORDAGE_RECIPE,
   CUERDAS_RECIPE,
   YERREO_INGOT_RECIPE,
+  KIRELON_CLAWS_TO_INGOT_RECIPE,
   HIYERRO_ALLOY_RECIPE,
   QUITINA_PLATES_RECIPE,
   QUITINA_ARMOR_RECIPE,
@@ -1053,6 +1108,7 @@ export const CRAFTING_RECIPES: CraftingRecipe[] = [
   CLUB_RECIPE,
   GARGANTUA_LEG_ARMOR_RECIPE,
   BOUNGO_ROAST_RECIPE,
+  BOILED_LICHEN_WATER_RECIPE,
   CORACELO_MACE_RECIPE,
   CORREDOR_VERTEBRA_RING_RECIPE,
   GARGANTUA_CAPE_RECIPE,

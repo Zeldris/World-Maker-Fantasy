@@ -109,8 +109,39 @@ cascada de fallback de `zoneMapImageUrl`, sin fallback en `imageUrlsFor`), 3 en
 `imagePromptGenerator.test.ts` (fix del bug de arriba). `tsc -b` limpio backend y frontend, suite
 completa backend 1515/1515, frontend 92/92.
 
+## 3. Location ya no tiene imagen genérica sin estación (2026-08-30)
+
+**Decisión explícita de la usuaria** ("ya no existen imágenes generales que no sean de estaciones en
+locations"): las 12 imágenes de `location/*-banner.png` que existían SIN sufijo de tiempo (todas de
+primavera, subidas antes de que existiera el sistema de día/noche/estación) se renombraron todas a
+`<slug>-dia-primavera-banner.png` — mismo convenio de sufijo que ya usaban las 8 variantes
+(`variantesTiempoFor`, § 2 de arriba). Confirmado con la usuaria que esto deja verano/otoño/invierno
+SIN imagen en la Enciclopedia hasta que se generen esas variantes nuevas (36 = 12 locations × 3
+estaciones restantes) — asumido a propósito, no es un hueco accidental.
+
+`imageUrlsFor('location', slug)` SIN sufijo ahora devuelve siempre `null` para las 12 locations
+existentes (era el comportamiento correcto de `imageAssets.ts` ya de antes — nunca tuvo cascada de
+fallback, a diferencia de `zoneMapImageUrl`, que sí la tiene; el "fallback" real hasta ahora vivía
+solo en que el archivo sin sufijo coincidía con el nombre buscado). No hace falta ningún cambio de
+código: `DetailModal.tsx` ya arranca con `selectedEstacion: 'primavera'`/`selectedMomento: 'dia'` por
+defecto, así que la ficha sigue mostrando la imagen correcta de entrada sin tocar nada en frontend.
+El único campo que queda "muerto" es `EnciclopediaLocationInfo.imageUrls` (el genérico de nivel
+superior, usado también por el grafo del mapa de mundo en `WorldLocationInfo`) — confirmado que el
+frontend no lo consume en ningún sitio hoy (`MapaPanel.tsx` no pinta imagen de nodo), así que
+queda `null` sin ningún efecto visible; no se ha retirado el campo en sí, decisión de no tocar más
+superficie de la necesaria en esta pasada.
+
 ## Pendiente / fuera de alcance de esta pasada
 
+- **Revisar prompts de `entityType: 'faction'` (2026-08-30)**: la usuaria generó
+  `clan-serhu-banner.png` y, comparándolo contra su propio prompt guardado ("bold flat icon
+  illustration, simple clean shapes, minimal flat color palette" — pensado como emblema
+  heráldico/icono plano), el resultado real es una escena narrativa completa (orcos, volcán,
+  sombras, profundidad) — visualmente buena pero no lo que el prompt pedía. Candidato: el
+  `ENTITY_TYPE_STYLE`/hint de `imagePromptGenerator.ts` para `faction` puede no estar transmitiendo
+  bien "icono plano" al LLM que redacta el prompt final (mismo tipo de bug ya cerrado en la § 1 de
+  arriba, donde el estilo se calculaba pero no llegaba al `userContent`) — sin investigar todavía,
+  la usuaria pidió aparcarlo ("olvidalo por ahora") y solo dejarlo anotado.
 - Generar/subir las imágenes reales día/noche/estación de cada Location — trabajo manual de la
   usuaria, sin plazo.
 - Construcción (`entityType: 'construccion'`, Campamento/Ayuntamiento) no lleva día/noche/estación

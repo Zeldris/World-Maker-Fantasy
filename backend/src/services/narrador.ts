@@ -97,6 +97,19 @@ interface TurnContext {
   /// Slugs de los NPCs ya detectados en escena (docs/12 § 2.5) — lista cerrada para el campo
   /// "combateIniciado.npcSlugs"; vacío = no hay NPC conocido, así que no puede haber combate.
   npcSlugsInScene?: string[];
+  /// Ver `hasWrongAggressorName` más abajo — nombres de NPCs en escena que NO pueden ser agresores
+  /// por catálogo (temperamento distinto de AGRESIVO/ENEMIGO, ya combinado con reputación real de
+  /// facción de esta partida). Auditoría "narrador vs. motor determinista" (2026-08-30, bug real:
+  /// "Exploro la zona" narró a un NPC INOFENSIVO como agresor mientras el combate real que el motor
+  /// abrió fue contra otro NPC completamente distinto, el único de verdad AGRESIVO en la escena) —
+  /// a diferencia de `combatRealTargetName`/`otherNpcNamesInScene` (que solo existen tras un
+  /// intercambio de combate ya resuelto), esto está disponible en CUALQUIER turno con NPC vivo en
+  /// escena, cubriendo también la apertura de combate desde una acción pasiva sin ataque explícito.
+  nonHostileNpcNamesInScene?: string[];
+  /// Igual que `nonHostileNpcNamesInScene`, en slug (no nombre) — usado por el guard
+  /// `hasWrongAggressorName` para comparar directamente contra el campo estructurado
+  /// "combateIniciado.npcSlugs" que el propio LLM devuelve, sin depender de parsear texto libre.
+  nonHostileNpcSlugsInScene?: string[];
   /// Streaming (roadmap de velocidad, 2026-07-20, punto 13): si se pasa, el intento principal
   /// (el que de verdad ocurre en la inmensa mayoría de turnos) transmite el texto de "narration"
   /// según se va generando, en vez de esperar a tener el JSON entero. Solo cubre el intento 1 —
@@ -907,7 +920,9 @@ ${factsBlock(ctx.sessionFacts)}
 
 ${ctx.characterName} ${decision} la misión "${ctx.questTitle}"${npcLine ? `, ofrecida por${npcLine}` : ''}.
 
-Escribe 1-2 frases narrando en tercera persona cómo ${ctx.characterName} ${ctx.accepted ? 'acepta' : 'rechaza'} — su gesto, su tono, una frase corta si dice algo. No repitas literalmente el título de la misión como si fuera diálogo. No inventes ningún hecho nuevo (ni objetos, ni lugares, ni personajes) que no esté ya aquí.`;
+Escribe 1-2 frases narrando en tercera persona cómo ${ctx.characterName} ${ctx.accepted ? 'acepta' : 'rechaza'} — su gesto, su tono, una frase corta si dice algo. No repitas literalmente el título de la misión como si fuera diálogo.
+IMPORTANTE: el título de arriba es solo una etiqueta INTERNA para identificar la misión — ${ctx.characterName} NO conoce ningún nombre propio que no esté ya en los HECHOS YA ESTABLECIDOS. Si el título nombra a alguien y ese nombre no aparece en los hechos, ${ctx.characterName} debe referirse a esa persona de forma genérica (p.ej. "el que la persigue", "su perseguidor"), nunca por su nombre.
+No inventes ningún hecho nuevo (ni objetos, ni lugares, ni personajes) que no esté ya aquí.`;
 
   const { text } = await ollamaGenerate({
     model: env.ollamaModelNarrador,
@@ -973,6 +988,15 @@ export function buildNarrationPrompt(ctx: TurnContext & { roll?: RollResult }): 
   // dentro del mismo prompt — se reescribe para hablar de VENTAJA DE POSICIÓN/INICIATIVA, nunca
   // de un golpe ya conectado ni de la reacción física del objetivo a él.
   const hostileEngagement = !ctx.enCombate && npcSlugs.length > 0 && (detectsAttackIntent(ctx.action) || detectsHostileSearchIntent(ctx.action));
+  // Ver `hasWrongAggressorName` más abajo y el comentario de `nonHostileNpcNamesInScene` en
+  // TurnContext — instrucción explícita con nombres reales, no solo el guard post-hoc, para que el
+  // modelo tenga la información desde el principio en vez de que la corrección llegue solo vía
+  // reintento.
+  const nonHostileNames = ctx.nonHostileNpcNamesInScene ?? [];
+  const nonHostileHint =
+    nonHostileNames.length > 0
+      ? ` ${nonHostileNames.join(', ')} ${nonHostileNames.length === 1 ? 'no es' : 'no son'} agresivo${nonHostileNames.length === 1 ? '' : 's'} por naturaleza — nunca lo(s) narres iniciando un ataque, ni como el implicado en "combateIniciado" si la escena deriva en enfrentamiento.`
+      : '';
   const ambushHint =
     hostileEngagement && ctx.roll
       ? ctx.roll.gradoExito === 'claro'
@@ -1012,7 +1036,7 @@ export function buildNarrationPrompt(ctx: TurnContext & { roll?: RollResult }): 
               // hasta el sexo del NPC en dos turnos. La instrucción anterior ("Modo diálogo: si hay
               // conversación...") no era lo bastante explícita para un modelo pequeño; esta nombra el
               // fallo exacto a evitar.
-              `Si esta escena deriva en un enfrentamiento real (no solo tensión verbal), rellena "combateIniciado" con los NPCs implicados (usa exactamente los slugs ya listados, nunca inventes uno) — en caso contrario, null. DIÁLOGO (obligatorio si el jugador pregunta, saluda o dirige la palabra a un NPC en escena): ese NPC EXACTO — usa su nombre y personalidad reales de "PERSONAJE EN ESCENA" más abajo, nunca lo sustituyas por un rol genérico ni le cambies el sexo — tiene que responderle de verdad dentro de esta misma narración, hablando en primera persona entre comillas. Dejar la pregunta sin respuesta, resumirla en tercera persona genérica, o hacer que el propio personaje del jugador repita sus mismas palabras como si fueran la respuesta de otro, es un fallo grave. Si hay diálogo real (no solo tensión), puedes extenderte algo más de lo habitual para darle espacio a esa voz — no lo comprimas a una sola frase.`
+              `Si esta escena deriva en un enfrentamiento real (no solo tensión verbal), rellena "combateIniciado" con los NPCs implicados (usa exactamente los slugs ya listados, nunca inventes uno) — en caso contrario, null.${nonHostileHint} DIÁLOGO (obligatorio si el jugador pregunta, saluda o dirige la palabra a un NPC en escena): ese NPC EXACTO — usa su nombre y personalidad reales de "PERSONAJE EN ESCENA" más abajo, nunca lo sustituyas por un rol genérico ni le cambies el sexo — tiene que responderle de verdad dentro de esta misma narración, hablando en primera persona entre comillas. Dejar la pregunta sin respuesta, resumirla en tercera persona genérica, o hacer que el propio personaje del jugador repita sus mismas palabras como si fueran la respuesta de otro, es un fallo grave. Si hay diálogo real (no solo tensión), puedes extenderte algo más de lo habitual para darle espacio a esa voz — no lo comprimas a una sola frase.`
             : 'No hay ningún NPC con datos conocidos en esta escena, así que "combateIniciado" tiene que ser null.'
       }`;
 
@@ -1388,6 +1412,10 @@ export async function narrateAction(ctx: TurnContext & { roll?: RollResult }): P
         {
           check: () => hasWrongNpcName(parsed.narration, ctx.combatRealTargetName, ctx.possiblyStaleNpcNames),
           reason: 'narrar el combate mencionando a un NPC de un combate anterior de la sesión en vez del NPC real de este combate',
+        },
+        {
+          check: () => hasWrongAggressorName(parsed.combateIniciado?.npcSlugs, ctx.nonHostileNpcSlugsInScene),
+          reason: 'proponer "combateIniciado" contra un NPC que no puede ser agresor por catálogo (temperamento no AGRESIVO/ENEMIGO)',
         },
       ].find((validator) => validator.check());
 
@@ -1962,6 +1990,20 @@ export function hasWrongNpcName(narration: string, realTargetName?: string, poss
   const normalized = normalizeText(narration);
   if (normalized.includes(normalizeText(realTargetName))) return false;
   return possiblyStaleNpcNames.some((name) => normalized.includes(normalizeText(name)));
+}
+
+/// Auditoría "narrador vs. motor determinista" (2026-08-30, bug real jugando: "Exploro la zona"
+/// narró a un NPC INOFENSIVO comportándose como agresor, mientras el combate real que el motor
+/// abrió fue contra otro NPC completamente distinto, el único de verdad AGRESIVO en la escena) —
+/// a diferencia del resto de la familia `hasFalse*`/`hasWrong*` (que comparan PROSA libre contra
+/// un nombre esperado), este guard compara el campo ESTRUCTURADO "combateIniciado.npcSlugs" que el
+/// propio modelo devuelve — más preciso que parsear texto, sin depender de vocabulario/regex: si el
+/// modelo propone como implicado en el combate a cualquier slug que el motor ya sabe que NO puede
+/// ser agresor (`nonHostileNpcSlugsInScene`), es una alucinación de "quién" inicia el
+/// enfrentamiento, no una licencia narrativa.
+export function hasWrongAggressorName(combateIniciadoSlugs?: string[] | null, nonHostileNpcSlugsInScene?: string[]): boolean {
+  if (!combateIniciadoSlugs || combateIniciadoSlugs.length === 0 || !nonHostileNpcSlugsInScene || nonHostileNpcSlugsInScene.length === 0) return false;
+  return combateIniciadoSlugs.some((slug) => nonHostileNpcSlugsInScene.includes(slug));
 }
 
 /// Narración-vs-mecánica, mismo patrón que `hasFalseCombatHit` (2026-08-01, bug real jugando en

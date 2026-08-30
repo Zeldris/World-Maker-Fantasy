@@ -65,7 +65,7 @@ interface LogPanelProps {
   /// se calcula DIRECTAMENTE de aquí (filtrando CONVALECIENTE sin `dismissed`), sin depender de
   /// ninguna `LogEntry` concreta — `name`/`capturable` hacen falta para poder pintar la tarjeta sin
   /// tener que ir a buscarlos a otro sitio.
-  combatNpcsDisplay?: { slug: string; name: string; condicion: CondicionFisica; dismissed?: boolean; capturable?: boolean }[]
+  combatNpcsDisplay?: { slug: string; name: string; condicion: CondicionFisica; dismissed?: boolean; capturable?: boolean; targetedForKill?: boolean }[]
   onMatarConvaleciente?: (npcSlug: string) => void
   /// Atajo a Diario (2026-08-27, auditoría de diseño/UX § 4.3: "no hay ningún atajo desde el log
   /// en vivo hacia el Diario — el jugador tiene que saber por su cuenta que existe esa pestaña
@@ -156,15 +156,17 @@ export const LogPanel = memo(function LogPanel({
   // detectarlo y reintentar. El siguiente chunk relanzaba un nuevo scroll suave, pero si el usuario
   // no volvía a tocar el scroll, la vista se quedaba a medio camino sin motivo aparente — "en
   // muchas narraciones", no todas, coincide justo con las veces que hubo ese gesto de por medio.
-  // Fix: instantáneo (`'auto'`) SIEMPRE que el turno termina de verdad (`isThinking` true→false)
-  // — el aterrizaje final nunca debe poder quedar interrumpido a medias. Mientras sigue narrando
-  // (`isThinking` true), se mantiene `'smooth'` — más agradable de ver, y si un scroll manual
-  // cancela una animación intermedia no importa: el chunk siguiente relanza el scroll normal.
-  const wasThinkingForScrollRef = useRef(isThinking)
+  // Fix: instantáneo (`'auto'`) mientras NO se está narrando en directo (`!isThinking`) — cubre
+  // tanto la transición true→false del streaming normal como el caso de viaje/tránsito
+  // (2026-08-30, bug real: `useTurnFlow.ts` pone `isThinking` en `false` INMEDIATAMENTE tras
+  // clasificar, y las entradas reales del viaje llegan después de golpe vía `syncFromSave` — para
+  // entonces `isThinking` ya llevaba un rato en `false`, así que la vieja condición de "transición
+  // en este mismo render" nunca se cumplía y el scroll se quedaba en `'smooth'`, sin garantía de
+  // completarse). Mientras SIGUE narrando (`isThinking` true), se mantiene `'smooth'` — más
+  // agradable de ver, y si un scroll manual cancela una animación intermedia no importa: el chunk
+  // siguiente relanza el scroll normal.
   useEffect(() => {
-    const turnJustEnded = wasThinkingForScrollRef.current && !isThinking
-    wasThinkingForScrollRef.current = isThinking
-    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: turnJustEnded ? 'auto' : 'smooth' })
+    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: isThinking ? 'smooth' : 'auto' })
     // thinkingText en la dependencia (roadmap de velocidad, 2026-07-20): con streaming, la
     // tarjeta "pensando" crece de tamaño en vivo — sin esto, el scroll no la sigue mientras narra.
     // Los chunks llegan cada ~200-300ms en este hardware (3-4,5 tok/s medido), no cada frame.
@@ -263,7 +265,7 @@ export const LogPanel = memo(function LogPanel({
                 // Eventos de viaje interactivos (2026-08-05) — 4º estado, fondo ámbar: por debajo
                 // de `newQuest` pero por encima de `combate`/`isPlayerAction` (es su propia
                 // LogEntry aparte, nunca coincide con ninguno de los otros tres en la misma fila).
-                entry.newQuest || entry.questCompleted || entry.questOffer
+                entry.newQuest || entry.questCompleted || entry.questOffer || entry.questOfferResolved
                   ? 'animate-entry-in rounded-lg border border-l-2 border-quest-600/50 bg-quest-500/10 px-3.5 py-2.5 text-sm text-wood-100'
                   : entry.travelInterrupted
                     ? 'animate-entry-in rounded-lg border border-l-2 border-cost-600/50 bg-cost-500/10 px-3.5 py-2.5 text-sm text-wood-100'
@@ -311,7 +313,12 @@ export const LogPanel = memo(function LogPanel({
                   </span>
                 </div>
               )}
-              <p>
+              {/* whitespace-pre-line (bug real, 2026-08-30, "esta respuesta ha quedado rara"): un
+                  `\n\n` en el texto (p.ej. la despedida de Gistera tras aceptar la misión, quests.ts)
+                  se colapsaba a un simple espacio por el HTML por defecto — la reacción de Gorhorn
+                  y la de Gistera se leían pegadas en la misma frase corrida, sin ninguna pausa entre
+                  ambas. Inocuo para el resto de narraciones (sin `\n\n` en el texto, se ve idéntico). */}
+              <p className="whitespace-pre-line">
                 <EnciclopediaLinkedText
                   text={entry.text}
                   index={enciclopediaIndex}
@@ -467,9 +474,12 @@ export const LogPanel = memo(function LogPanel({
             PERSISTENTE, calculada directamente de `combatNpcsDisplay` (estado real de combate, ya
             viene de `GET /saves/:id` — sobrevive a una recarga) — a diferencia de la de arriba
             (`entry.convalecienteOffers`, ligada al `characterLog` efímero de React, que nunca
-            sobrevive a F5), esta no depende de haber visto nacer la oferta en el turno en curso. */}
+            sobrevive a F5), esta no depende de haber visto nacer la oferta en el turno en curso.
+            `!targetedForKill` (2026-08-30, bug real: la tarjeta reaparecía en cada turno mientras
+            el NPC seguía convaleciente tras pulsar "Matar") — una vez elegido "Matar", la tarjeta
+            desaparece (el panel de combate normal ya queda desbloqueado para atacar). */}
         {combatNpcsDisplay
-          ?.filter((n) => n.condicion === 'CONVALECIENTE' && !n.dismissed)
+          ?.filter((n) => n.condicion === 'CONVALECIENTE' && !n.dismissed && !n.targetedForKill)
           .map((npc) => (
             <OfferCard
               key={`persistent-convaleciente-${npc.slug}`}

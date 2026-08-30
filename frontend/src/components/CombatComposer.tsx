@@ -17,9 +17,15 @@ export interface CombatNpcDisplay {
   analizado: boolean
   // CONVALECIENTE deja de ser "victoria automática" (2026-08-26) — true tras "Capturar" o
   // "Dejarlo vivir": el NPC deja de contar como pendiente de resolver (useCombatFlow.ts §
-  // combatEnded), pero su `condicion` NO cambia — sigue CONVALECIENTE de verdad, nunca se
-  // reescribe aquí, a diferencia de "Matar" (que sí pasa `condicion` a MUERTO).
+  // combatEnded), pero su `condicion` NO cambia — sigue CONVALECIENTE de verdad.
   dismissed?: boolean
+  // Rediseño de "Matar" (2026-08-30, ver tarkor_rediseno_matar_combate_real_2026-08-30): pulsar
+  // "Matar" ya NO remata directo — solo marca al NPC como objetivo elegido para desbloquear el
+  // panel (`combatHasPendingConvalecientes`) y ocultar su tarjeta persistente del log, dejando que
+  // el jugador ataque de verdad (habilidad/texto libre) con riesgo real de tirada, igual que
+  // cualquier otro combate. Sigue CONVALECIENTE hasta que un intercambio real lo mate — nunca se
+  // reescribe `condicion` aquí, a diferencia del diseño viejo (remate determinista sin tirada).
+  targetedForKill?: boolean
   /// Fase 2 de efectos de clase (2026-08-27, indicador de combate en CombatPanel.tsx) — AUMENTO/
   /// DEBILIDAD activos sobre este NPC ahora mismo.
   activeEffects: ActiveEffect[]

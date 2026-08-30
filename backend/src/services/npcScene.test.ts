@@ -488,6 +488,11 @@ function npcFixture(overrides: Partial<NpcInScene> = {}): NpcInScene {
     abilityUsesThisEncounter: {},
     activeEffects: [],
     homeLocationSlug: null,
+    comerciablePct: 0,
+    reclutablePct: 0,
+    domesticablePct: 0,
+    cortejablePct: 0,
+    capturablePct: 0,
     ...overrides,
   };
 }
@@ -567,6 +572,76 @@ describe('npcSceneBlockFor', () => {
   it('sin genero, no añade ningún refuerzo de género', () => {
     const block = npcSceneBlockFor(npcFixture({ genero: null }), 1);
     expect(block).not.toContain('GÉNERO DE');
+  });
+
+  // Auditoría "narrador vs. catálogo del mundo" (2026-08-30, hallazgo 1): el narrador conocía el
+  // nombre de la facción pero nunca si el jugador es Aliado/Enemigo real de ella en esta partida.
+  describe('reputación de facción real', () => {
+    it('con factionsStatus que desplaza el temperamento efectivo (banda ENEMIGO), anota la relación hostil', () => {
+      const block = npcSceneBlockFor(npcFixture({ faction: 'Clan Serhu', temperamento: 'CAUTELOSO' }), 1, { 'Clan Serhu': 200 });
+      expect(block).toContain('RELACIÓN CON CLAN SERHU');
+      expect(block).toMatch(/hostilidad/);
+    });
+
+    it('sin factionsStatus (default {}), reputación neutra, no añade ninguna anotación', () => {
+      const block = npcSceneBlockFor(npcFixture({ faction: 'Clan Serhu', temperamento: 'CAUTELOSO' }), 1);
+      expect(block).not.toContain('RELACIÓN CON');
+    });
+
+    it('sin facción, nunca añade nada aunque haya factionsStatus', () => {
+      const block = npcSceneBlockFor(npcFixture({ faction: null }), 1, { 'Clan Serhu': 200 });
+      expect(block).not.toContain('RELACIÓN CON');
+    });
+  });
+
+  // Auditoría "narrador vs. catálogo del mundo" (2026-08-30, hallazgo 3): `clase`/`especializacion`
+  // ya viajaban hasta el objeto pero nunca se traducían a texto.
+  describe('clase/especialización', () => {
+    it('con clase y especialización, las anota', () => {
+      const block = npcSceneBlockFor(npcFixture({ clase: 'GUERRERO', especializacion: 'ORDEN' }), 1);
+      expect(block).toContain('CLASE DE ORCO ENFURECIDO: GUERRERO, especializado en ORDEN');
+    });
+
+    it('sin clase, no añade nada', () => {
+      const block = npcSceneBlockFor(npcFixture({ clase: null }), 1);
+      expect(block).not.toContain('CLASE DE');
+    });
+  });
+
+  // Auditoría "narrador vs. catálogo del mundo" (2026-08-30, hallazgo 4): ejemplo real del
+  // catálogo, Torgash Ketg con reclutablePct: 5 ("tan fácil de convencer como uno entre veinte").
+  describe('receptividad a interacciones sociales', () => {
+    it('con un porcentaje bajo, avisa de que es poco receptivo', () => {
+      const block = npcSceneBlockFor(npcFixture({ reclutablePct: 5 }), 1);
+      expect(block).toContain('MUY POCO RECEPTIVO');
+      expect(block).toContain('reclutarlo/a');
+    });
+
+    it('con porcentaje alto (caso normal), no añade ninguna advertencia', () => {
+      const block = npcSceneBlockFor(npcFixture({ reclutablePct: 80 }), 1);
+      expect(block).not.toContain('MUY POCO RECEPTIVO');
+    });
+
+    it('con porcentaje 0 (no aplica esta interacción en absoluto), no añade advertencia', () => {
+      const block = npcSceneBlockFor(npcFixture({ reclutablePct: 0 }), 1);
+      expect(block).not.toContain('MUY POCO RECEPTIVO');
+    });
+  });
+
+  // Auditoría "narrador vs. catálogo del mundo" (2026-08-30, hallazgo 6): `activeEffects` ya
+  // viajaban hasta el objeto pero nunca se traducían a texto.
+  describe('efectos activos', () => {
+    it('con un efecto activo, lo anota con magnitud y turnos restantes', () => {
+      const block = npcSceneBlockFor(npcFixture({ activeEffects: [{ attribute: 'fuerza', magnitude: -2, turnsRemaining: 2, sourceAbility: 'Debilitar' }] }), 1);
+      expect(block).toContain('ESTADO ACTIVO DE ORCO ENFURECIDO');
+      expect(block).toContain('-2 fuerza');
+      expect(block).toContain('2 turnos restantes');
+    });
+
+    it('sin efectos activos, no añade nada', () => {
+      const block = npcSceneBlockFor(npcFixture({ activeEffects: [] }), 1);
+      expect(block).not.toContain('ESTADO ACTIVO DE');
+    });
   });
 });
 

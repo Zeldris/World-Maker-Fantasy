@@ -12,8 +12,10 @@ import {
   resolveFoundingOutcome,
   FACTION_REP_ATTACK_DELTA,
   FACTION_REP_PEACE_DELTA,
+  REGION_OWNING_FACTIONS,
   type FoundingOutcome,
 } from './reputation.js';
+import { regionControlFor, parseAgenda } from './worldAgenda.js';
 import {
   detectNpcsInScene,
   npcSceneBlockFor,
@@ -2430,7 +2432,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   // ms) frente a los 30-220s que domina la generación del modelo — vale la pena por ser gratis y
   // sin riesgo, no porque vaya a notarse en la duración total del turno.
   const regionLocationId = travel ? travel.toLocationId : currentLocationId;
-  const [selectedAbilityData, regionLocation, npcsInSceneRaw, harvestMatch, faunaSources, factionsStatus, lastNarration, gisteraQuestYaExiste] = await Promise.all([
+  const [selectedAbilityData, regionLocation, npcsInSceneRaw, harvestMatch, faunaSources, worldStateForFactionsAndAgenda, lastNarration, gisteraQuestYaExiste] = await Promise.all([
     // Efecto y coste de energía de la habilidad pulsada (checklist 2026-07-21/22, puntos 1-2;
     // coste de energía 2026-07-29) — null/0 si el jugador escribió la acción a mano (sin
     // savedActionId) o si esa SavedAction no tiene efecto asignado (habilidades generales, o
@@ -2492,7 +2494,11 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     // Reputación de facción (2026-07-29) — necesaria YA aquí (no solo al persistir el delta más
     // abajo) para calcular el temperamento EFECTIVO de cada NPC en escena antes de decidir
     // shouldForceCombat (ver reputation.ts § effectiveTemperamento).
-    prisma.worldState.findUnique({ where: { saveId }, select: { factionsStatus: true } }).then((r) => parseFactionsStatus(r?.factionsStatus)),
+    // `agenda` (2026-08-30, auditoría "narrador vs. catálogo del mundo", hallazgo 2) añadido al
+    // mismo `select` — `regionControlFor` (control regional) ya se exponía al frontend
+    // (GET /saves/:id/zona) pero nunca llegaba al narrador, así que la prosa podía describir calma
+    // en una región que el propio mapa ya mostraba en disputa/conquistada.
+    prisma.worldState.findUnique({ where: { saveId }, select: { factionsStatus: true, agenda: true } }),
     // Anti-repetición (2026-07-30, auditoría "revisar partida" — queja explícita: "redundancias
     // con la palabra sombra o cosas de este estilo"): el Narrador nunca veía su propia narración
     // de turnos anteriores, solo `sessionFacts` (hechos discretos, nunca prosa) — sin eso, no
@@ -2511,6 +2517,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     // disponible como objetivo mecánico un turno más, aunque la narración ya la diera por ida.
     prisma.quest.findFirst({ where: { saveId, title: { contains: 'Orco Enfurecido' } } }),
   ]);
+  const factionsStatus = parseFactionsStatus(worldStateForFactionsAndAgenda?.factionsStatus);
 
   // Grupo 3 § Mundo determinista, Capa 4 (docs/rpgtarkor/mundo-determinista.md, 2026-08-25) —
   // disparo real: si esta partida tiene un `CombatEncounter` real EN_CURSO y jugable (Combate
@@ -2761,6 +2768,23 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     const t = effectiveTemperamento(n.temperamento, n.faction, factionsStatus);
     return t === 'AGRESIVO' || t === 'ENEMIGO';
   });
+  // Auditoría "narrador vs. motor determinista" (2026-08-30, bug real jugando: "Exploro la zona"
+  // narró a Quio — INOFENSIVO por catálogo — comportándose como agresor, mientras el combate REAL
+  // que el motor abrió más abajo (`resolveCombatSlugsAndPersist`, mismas ~1850 líneas después) fue
+  // contra Kirelon Arenoso, el único de verdad AGRESIVO en la escena). Causa raíz: el narrador
+  // nunca sabía quién de los NPC en escena podía ser agresor real — la instrucción de prompt
+  // dejaba "combateIniciado" totalmente libre para cualquier slug de `npcSlugsInScene`, y los
+  // guards existentes (`hasFalseCombatTargetName`/`hasWrongNpcName`) solo se activan si YA hubo un
+  // intercambio de combate resuelto este turno (`exchangeHappened`), nunca en la APERTURA de
+  // combate desde una acción pasiva. Mismo patrón ya usado con éxito en este archivo para
+  // `restAttemptedForGuard`/`restHealCeilingBelowIleso` (ver más abajo): duplicar aquí, antes de
+  // narrar, un dato que de otro modo solo estaría disponible ~1850 líneas después.
+  const npcsNoHostilesEnEscena = npcsInSceneVivos.filter((n) => !npcsHostilesEnEscena.includes(n));
+  const nonHostileNpcNamesInScene = npcsNoHostilesEnEscena.map((n) => n.name);
+  // Slugs (no nombres) para el guard estructurado `hasWrongAggressorName` — compara directamente
+  // contra `combateIniciado.npcSlugs` (campo estructurado que el propio LLM devuelve, sin depender
+  // de parsear texto libre con regex).
+  const nonHostileNpcSlugsInScene = npcsNoHostilesEnEscena.map((n) => n.slug);
   const candidateAttackTarget =
     explicitTarget ?? ongoingCombatTarget ?? npcsHostilesEnEscena[0] ?? npcsInSceneVivos[0] ?? npcsInScene[0] ?? null;
   // Rediseño del turno de combate (2026-07-28, petición explícita: "primero se tiran dados y se
@@ -3029,6 +3053,58 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     }
   }
 
+  // Auditoría "narrador vs. catálogo del mundo" (2026-08-30, hallazgo 2): `regionControlFor` ya
+  // se exponía al frontend (`GET /saves/:id/zona`, ver `zona.ts`) para pintar "Territorio de
+  // X"/"En disputa" bajo el nombre de la zona, pero nunca llegaba al narrador — la prosa podía
+  // describir calma en una región que el propio mapa del jugador ya mostraba en guerra abierta.
+  // Mismos inputs que `zona.ts` (duenoOriginal de `REGION_OWNING_FACTIONS`, agenda parseada) —
+  // solo se anota cuando hay conflicto real (nunca en el caso neutro, para no inflar contexto).
+  if (activeRegion) {
+    const duenoOriginal = REGION_OWNING_FACTIONS[activeRegion]?.[0] ?? null;
+    if (duenoOriginal) {
+      const regionControl = regionControlFor(activeRegion, parseAgenda(worldStateForFactionsAndAgenda?.agenda), duenoOriginal);
+      if (regionControl.estado === 'CONQUISTADA') {
+        contextBlocks.push(`CONTROL DE LA REGIÓN (${activeRegion}): conquistada por ${regionControl.duenoActual} — refleja este dominio en la ambientación (patrullas, banderas, tensión propia de territorio ocupado), no la narres como si siguiera en calma neutral.`);
+      } else if (regionControl.estado === 'EN_DISPUTA') {
+        contextBlocks.push(`CONTROL DE LA REGIÓN (${activeRegion}): en disputa abierta entre ${regionControl.agresor} y ${regionControl.duenoActual} — refleja esta tensión de guerra en la ambientación (patrullas nerviosas, rastros de conflicto reciente), no la narres como si fuera una zona tranquila.`);
+      }
+    }
+  }
+
+  // Auditoría "narrador vs. catálogo del mundo" (2026-08-30, hallazgo 5): `Territory`/`Building`/
+  // `Subject` solo se releían DESPUÉS de toda la transacción del turno (más abajo, solo para la
+  // respuesta HTTP al frontend) — el narrador nunca sabía que el jugador ya fundó un territorio
+  // aquí, con qué edificios/súbditos reales, así que podía describir un campamento vacío o
+  // inventar edificios/súbditos distintos a los reales en cualquier turno posterior al de fundar/
+  // construir. Acotado a lo relevante a ESTA escena: territorios de la región activa (o
+  // edificios/súbditos "libres" anclados a la ubicación exacta, sin territorio) — nunca el reino
+  // entero, para no inflar contexto con dominios lejanos que no pintan nada aquí.
+  if (activeRegion || currentLocationId) {
+    const territoriosAqui = await prisma.territory.findMany({
+      where: { saveId, ...(activeRegion ? { region: activeRegion } : {}) },
+      select: { id: true, name: true, control: true, population: true },
+    });
+    const territorioIds = territoriosAqui.map((t) => t.id);
+    const [edificiosAqui, subditosAqui] = await Promise.all([
+      prisma.building.findMany({
+        where: {
+          saveId,
+          OR: [...(territorioIds.length > 0 ? [{ territoryId: { in: territorioIds } }] : []), ...(currentLocationId ? [{ locationId: currentLocationId, territoryId: null }] : [])],
+        },
+        select: { name: true, kind: true, status: true },
+      }),
+      territorioIds.length > 0 ? prisma.subject.findMany({ where: { saveId, territoryId: { in: territorioIds } }, select: { name: true, role: true } }) : Promise.resolve([]),
+    ]);
+    if (territoriosAqui.length > 0 || edificiosAqui.length > 0) {
+      const territoriosTxt = territoriosAqui.map((t) => `${t.name} (${t.control}, población ${t.population})`).join('; ') || 'ninguno fundado aquí todavía';
+      const edificiosTxt = edificiosAqui.length > 0 ? edificiosAqui.map((b) => `${b.name} (${b.kind}, ${b.status})`).join(', ') : 'ninguno';
+      const subditosTxt = subditosAqui.length > 0 ? subditosAqui.map((s) => `${s.name} (${s.role})`).join(', ') : 'ninguno';
+      contextBlocks.push(
+        `TU DOMINIO AQUÍ: Territorio(s): ${territoriosTxt}. Edificios reales: ${edificiosTxt}. Súbditos reales: ${subditosTxt}. Esto es TODO lo que existe de verdad — no inventes edificios/súbditos distintos, ni describas el lugar como vacío si ya hay algo fundado aquí.`,
+      );
+    }
+  }
+
   // Sugerencia ambiental de encuentro (checklist 2026-07-21/22, punto 3 — "más NPCs/fauna
   // itinerante para encuentros casuales más frecuentes"): sin esto, el modelo nunca tenía ningún
   // empujón hacia el roster real de itinerantes del catálogo durante viaje/exploración — dependía
@@ -3048,7 +3124,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   if (npcsInScene.length === 0 && !enCombate && !lootMode && !harvestMatch && activeRegion && Math.random() < 0.25) {
     const itinerantCandidates = await prisma.npc.findMany({
       where: { worldId, kind: 'PLANTILLA', homeLocationSlug: null },
-      select: { slug: true, name: true, role: true },
+      select: { slug: true, name: true, role: true, temperamento: true, faction: true },
     });
     if (itinerantCandidates.length > 0) {
       const populationRows = await prisma.worldPopulation.findMany({
@@ -3069,8 +3145,19 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
         .filter((c): c is { slug: string; name: string; role: string; weight: number } => c !== null);
       const candidate = pickAmbientEncounterCandidate(weightedCandidates);
       if (candidate) {
+        // Auditoría "narrador vs. motor determinista" (2026-08-30, Hallazgo 3): antes esta
+        // sugerencia no decía si el candidato es pacífico u hostil por catálogo — el modelo podía
+        // "aceptar" la sugerencia y narrarlo agresivo aunque fuera INOFENSIVO por diseño, mismo
+        // hueco exacto que el bug de Quio/Kirelon, aquí en la puerta de entrada de aparición
+        // ambiental en vez de en la decisión de combate. `pickAmbientEncounterCandidate` devuelve
+        // el tipo compartido `AmbientEncounterCandidate` (sin temperamento/facción, usado también
+        // por travelInterruption.ts/stationaryInterruption.ts) — se busca el candidato completo
+        // por slug en vez de ampliar ese tipo compartido.
+        const fullCandidate = itinerantCandidates.find((c) => c.slug === candidate.slug)!;
+        const t = effectiveTemperamento(fullCandidate.temperamento, fullCandidate.faction, factionsStatus);
+        const temperamentoHint = t === 'AGRESIVO' || t === 'ENEMIGO' ? 'es hostil por naturaleza' : 'es pacífico por naturaleza — no lo narres iniciando un ataque';
         contextBlocks.push(
-          `SUGERENCIA OPCIONAL DE ENCUENTRO (úsala solo si encaja de forma natural con la escena, ignórala si no): el personaje podría cruzarse aquí con ${candidate.name} (${candidate.role}). Si decides introducirlo, usa ese nombre exacto para que el motor lo reconozca de verdad.`,
+          `SUGERENCIA OPCIONAL DE ENCUENTRO (úsala solo si encaja de forma natural con la escena, ignórala si no): el personaje podría cruzarse aquí con ${candidate.name} (${candidate.role}), que ${temperamentoHint}. Si decides introducirlo, usa ese nombre exacto para que el motor lo reconozca de verdad.`,
         );
       }
     }
@@ -3091,7 +3178,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     ...npcsInScene.filter((npc) => npc !== npcParaIntercambio),
   ].slice(0, NPC_BLOQUE_COMPLETO_TOPE);
   for (const npc of npcsInScene) {
-    contextBlocks.push(npcsConBloqueCompleto.includes(npc) ? npcSceneBlockFor(npc, params.currentLevel) : npcSceneLineFor(npc, params.currentLevel));
+    contextBlocks.push(npcsConBloqueCompleto.includes(npc) ? npcSceneBlockFor(npc, params.currentLevel, factionsStatus) : npcSceneLineFor(npc, params.currentLevel));
   }
   // Ver `hasResurrectedDeadNpc` (narrador.ts) — bug real jugando en vivo (2026-08-01, "el orco que
   // maté volvió a aparecer"): con el Orco Enfurecido MUERTO y saqueado desde hacía varios turnos,
@@ -3099,7 +3186,23 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   // y merodeando. `npcSceneBlockFor` (arriba) ya le da al modelo la instrucción de tratarlo solo
   // como recuerdo, pero puede ignorarla igual que el resto de instrucciones "no hagas X" de esta
   // sesión — mismo criterio: comprobar el texto ya generado, no confiar solo en la instrucción.
-  const possiblyResurrectedNpcNames = npcsInScene.filter((n) => n.condicionFisica === 'CONVALECIENTE' || n.condicionFisica === 'MUERTO').map((n) => n.name);
+  const possiblyResurrectedNpcNamesEnEscena = npcsInScene.filter((n) => n.condicionFisica === 'CONVALECIENTE' || n.condicionFisica === 'MUERTO').map((n) => n.name);
+  // Auditoría "narrador vs. catálogo del mundo" (2026-08-30, hallazgo 7): el bloque de arriba solo
+  // cubre NPCs que YA entraron en `npcsInScene` por matching de texto/alias — un NPC muerto/
+  // convaleciente que nunca entra ahí, pero SÍ aparece en el `backgroundLore` recuperado por RAG
+  // (por similitud semántica con la acción actual, sin que su nombre esté en la acción ni en
+  // `sessionFacts` recientes), quedaba sin ningún guard que lo cazara si el modelo lo narraba como
+  // amenaza activa. Ampliado a cualquier NPC MUERTO/CONVALECIENTE de esta partida (`NpcState`) cuyo
+  // nombre aparezca en el propio texto del lore recuperado — acotado a lo relevante de este turno,
+  // no el historial completo de la partida, para no inflar la lista con NPCs sin relación.
+  const loreText = retrieved.map((r) => `${r.title} ${r.text}`).join(' ');
+  const possiblyResurrectedNpcNamesFueraDeEscena =
+    loreText.length > 0
+      ? (await prisma.npcState.findMany({ where: { saveId, condicionFisica: { in: ['CONVALECIENTE', 'MUERTO'] } }, select: { npc: { select: { name: true } } } }))
+          .map((s) => s.npc.name)
+          .filter((name) => !possiblyResurrectedNpcNamesEnEscena.includes(name) && loreText.includes(name))
+      : [];
+  const possiblyResurrectedNpcNames = [...possiblyResurrectedNpcNamesEnEscena, ...possiblyResurrectedNpcNamesFueraDeEscena];
 
   // Ver `hasFalseNpcAppearance` (narrador.ts) — Grupo 3 § Mundo determinista, Capa 3, pieza B
   // (2026-08-25): candidatos geográficamente plausibles (mismo filtro que `detectNpcsInScene`)
@@ -3809,6 +3912,13 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     enCombate,
     banda: classification.banda,
     npcSlugsInScene: npcsInScene.map((n) => n.slug),
+    // Ver `hasWrongAggressorName` (narrador.ts) — nombres de NPCs presentes en escena que NO
+    // pueden ser agresores por catálogo (temperamento distinto de AGRESIVO/ENEMIGO, ya combinado
+    // con reputación real de facción). A diferencia de `combatRealTargetName`/`otherNpcNamesInScene`
+    // (que solo existen tras un intercambio ya resuelto), esto está disponible SIEMPRE que haya
+    // algún NPC vivo en escena — cubre también la apertura de combate desde una acción pasiva.
+    nonHostileNpcNamesInScene,
+    nonHostileNpcSlugsInScene,
     // `contextBlocks` va SIEMPRE primero en `worldFacts` (línea de arriba) — su longitud es
     // justo el corte que un reintento de emergencia (attempt2, ver narrador.ts) debe respetar
     // para no perder bloques deterministas/obligatorios como la escena de Gistera Koh.
@@ -4821,10 +4931,13 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
           }
         }
       }
+      // `resultCantidad` (2026-08-30) — mismo formato de sufijo `(N)` que ya usa el resto del
+      // inventario apilable, nunca N filas separadas para el mismo resultado de un solo crafteo.
+      const resultCantidad = recipe.resultCantidad ?? 1;
       const created = await tx.inventoryItem.create({
         data: {
           saveId,
-          name: recipe.resultName,
+          name: resultCantidad > 1 ? `${recipe.resultName} (${resultCantidad})` : recipe.resultName,
           description: recipe.resultDescription,
           origin: 'crafteo',
           catalogSlug: recipe.resultCatalogSlug,

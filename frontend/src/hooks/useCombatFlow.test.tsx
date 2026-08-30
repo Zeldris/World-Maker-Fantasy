@@ -426,30 +426,45 @@ describe('handleCombatTurnResolved — fusión de combateIniciado', () => {
   })
 })
 
-// REDISEÑADO 2026-08-30 (petición explícita: "matar tiene que abrir el combate de nuevo, no
-// resolverse...lo de resolverse es antiguo y ya no encaja") — "Matar" deja de ser un remate
-// determinista con optimistic update propio; ahora es un ataque normal (mismo camino que
-// `handleCombatAttack`), con la habilidad ya seleccionada o "Ataque Básico" citando al NPC entre
-// comillas simples, y sin ningún estado optimista — la condición final llega de la respuesta real.
+// REDISEÑADO 2026-08-30 (petición explícita, dos rondas: "matar tiene que abrir el combate de
+// nuevo, no resolverse...lo de resolverse es antiguo y ya no encaja" — y tras reportar en vivo que
+// el primer intento seguía ejecutando un Ataque Básico automático al pulsar, sin dejar elegir nada:
+// "deberia dejarme continuar el combate...elegir una habilidad...pero ahora mismo se ejecuta como
+// una accion"). "Matar" ya NO dispara ningún turno — solo marca `targetedForKill` para desbloquear
+// el panel de combate normal (`combatHasPendingConvalecientes`) y ocultar la tarjeta persistente
+// del log; el ataque real lo dispara el jugador después, por el camino normal de combate.
 describe('handleDecapitarSeleccion', () => {
-  it('arma un ataque normal con Ataque Básico citando al NPC entre comillas, sin optimistic update', async () => {
-    mockClassify.mockResolvedValue({ classification: { atributo: 'fuerza', dificultad: 15, razon: 'x', banda: 'instantanea' }, roll: undefined } as never)
-    mockNarrate.mockResolvedValue(baseNarrateResponse({ condicionFisica: 'ILESO', combateIniciado: null } as never) as never)
+  it('marca targetedForKill sin disparar ningún turno ni cambiar la condición', () => {
     const { result } = renderHook(() => useHarness())
     act(() => result.current.setCombateIniciado({ npcs: [npc({ slug: 'orco', name: 'Orco', condicionFisica: 'CONVALECIENTE' })] }))
     act(() => result.current.combat.openCombat())
 
     const target = result.current.combat.combatNpcsDisplay[0]!
-    // Sin optimistic update: la condición no cambia hasta que la respuesta real llega.
-    expect(target.condicion).toBe('CONVALECIENTE')
-    await act(() => result.current.combat.handleDecapitarSeleccion([target]))
+    expect(target.targetedForKill).toBeFalsy()
 
-    expect(mockClassify).toHaveBeenCalledWith(expect.objectContaining({ action: "Ataco a mi enemigo, contra 'Orco'." }))
+    act(() => result.current.combat.handleDecapitarSeleccion([target]))
+
+    expect(mockClassify).not.toHaveBeenCalled()
+    expect(mockNarrate).not.toHaveBeenCalled()
+    const updated = result.current.combat.combatNpcsDisplay[0]!
+    expect(updated.condicion).toBe('CONVALECIENTE')
+    expect(updated.targetedForKill).toBe(true)
   })
 
-  it('con varios NPC seleccionados, manda un turno por cada uno (nunca un único prompt combinado)', async () => {
-    mockClassify.mockResolvedValue({ classification: { atributo: 'fuerza', dificultad: 15, razon: 'x', banda: 'instantanea' }, roll: undefined } as never)
-    mockNarrate.mockResolvedValue(baseNarrateResponse() as never)
+  it('desbloquea combatHasPendingConvalecientes y oculta la tarjeta persistente para ese NPC', () => {
+    const { result } = renderHook(() => useHarness())
+    act(() => result.current.setCombateIniciado({ npcs: [npc({ slug: 'orco', name: 'Orco', condicionFisica: 'CONVALECIENTE' })] }))
+    act(() => result.current.combat.openCombat())
+
+    expect(result.current.combat.combatHasPendingConvalecientes).toBe(true)
+
+    const target = result.current.combat.combatNpcsDisplay[0]!
+    act(() => result.current.combat.handleDecapitarSeleccion([target]))
+
+    expect(result.current.combat.combatHasPendingConvalecientes).toBe(false)
+  })
+
+  it('con varios NPC seleccionados, marca targetedForKill en todos ellos', () => {
     const { result } = renderHook(() =>
       useHarness({
         npcs: [
@@ -460,11 +475,10 @@ describe('handleDecapitarSeleccion', () => {
     )
     act(() => result.current.combat.openCombat())
 
-    await act(() => result.current.combat.handleDecapitarSeleccion(result.current.combat.combatNpcsDisplay))
+    act(() => result.current.combat.handleDecapitarSeleccion(result.current.combat.combatNpcsDisplay))
 
-    expect(mockClassify).toHaveBeenCalledTimes(2)
-    expect(mockClassify).toHaveBeenNthCalledWith(1, expect.objectContaining({ action: "Ataco a mi enemigo, contra 'Orco'." }))
-    expect(mockClassify).toHaveBeenNthCalledWith(2, expect.objectContaining({ action: "Ataco a mi enemigo, contra 'Quio'." }))
+    expect(mockClassify).not.toHaveBeenCalled()
+    expect(result.current.combat.combatNpcsDisplay.every((n) => n.targetedForKill)).toBe(true)
   })
 })
 
@@ -502,7 +516,7 @@ describe('handleSaquearSeleccion', () => {
 
 describe('handleFleeAttempt', () => {
   it('huida con éxito: limpia combateIniciado sin abrir el popup', async () => {
-    mockFlee.mockResolvedValue({ escaped: true, text: 'Logras escapar.' })
+    mockFlee.mockResolvedValue({ escaped: true, text: 'Logras escapar.', roll: { attribute: 'destreza', value: 10, roll: 15, difficulty: 12, result: 20, success: true } })
     const { result } = renderHook(() => useHarness())
     act(() => result.current.setCombateIniciado({ npcs: [npc({ slug: 'orco', name: 'Orco' })] }))
     await act(() => result.current.combat.handleFleeAttempt())
@@ -514,7 +528,7 @@ describe('handleFleeAttempt', () => {
   })
 
   it('huida fallida: abre el popup de combate normal', async () => {
-    mockFlee.mockResolvedValue({ escaped: false, text: 'No consigues escapar.' })
+    mockFlee.mockResolvedValue({ escaped: false, text: 'No consigues escapar.', roll: { attribute: 'destreza', value: 10, roll: 3, difficulty: 12, result: 8, success: false } })
     const { result } = renderHook(() => useHarness())
     act(() => result.current.setCombateIniciado({ npcs: [npc({ slug: 'orco', name: 'Orco' })] }))
     await act(() => result.current.combat.handleFleeAttempt())
@@ -539,7 +553,7 @@ describe('closeCombat / handleCombatHuir', () => {
   // intercambio normal, fire-and-forget). Ahora usa el endpoint dedicado combat/huir-en-curso, con
   // la misma tirada determinista que handleFleeAttempt, y un fallo aplica un golpe directo real.
   it('handleCombatHuir con éxito: cierra el popup, limpia combateIniciado, no toca condicionFisica', async () => {
-    mockHuirEnCurso.mockResolvedValue({ escaped: true, text: 'Escapas del combate.', condicionFisica: 'ILESO' })
+    mockHuirEnCurso.mockResolvedValue({ escaped: true, text: 'Escapas del combate.', condicionFisica: 'ILESO', roll: { attribute: 'destreza', value: 10, roll: 15, difficulty: 12, result: 20, success: true } })
     const { result } = renderHook(() => useHarness())
     act(() => result.current.setCombateIniciado({ npcs: [npc({ slug: 'orco', name: 'Orco' })] }))
     act(() => result.current.combat.openCombat())
@@ -553,7 +567,7 @@ describe('closeCombat / handleCombatHuir', () => {
   })
 
   it('handleCombatHuir con fallo: el popup se queda abierto, condicionFisica refleja el golpe directo', async () => {
-    mockHuirEnCurso.mockResolvedValue({ escaped: false, text: 'No consigues huir y recibes un golpe.', condicionFisica: 'HERIDO' })
+    mockHuirEnCurso.mockResolvedValue({ escaped: false, text: 'No consigues huir y recibes un golpe.', condicionFisica: 'HERIDO', roll: { attribute: 'destreza', value: 10, roll: 3, difficulty: 12, result: 8, success: false } })
     const { result } = renderHook(() => useHarness())
     act(() => result.current.setCombateIniciado({ npcs: [npc({ slug: 'orco', name: 'Orco' })] }))
     act(() => result.current.combat.openCombat())

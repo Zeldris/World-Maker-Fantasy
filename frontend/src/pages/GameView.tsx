@@ -240,6 +240,18 @@ export function GameView() {
   // de siempre y una fila de botones con las habilidades generales, ver SkillBar.tsx.
   const [showSkillBar, setShowSkillBar] = useState(false)
   const composerRef = useRef<ChatComposerHandle>(null)
+  // Bug real (2026-08-30, ver handleAttachAbility): con la barra desplegada, `ChatComposer` ni
+  // siquiera está montado — `setShowSkillBar(false)` es asíncrono, así que escribir en
+  // `composerRef` en la MISMA función no llega a tiempo (la ref sigue `null` hasta el próximo
+  // render). Se guarda aquí el texto pendiente y este efecto lo aplica en cuanto el composer se
+  // remonta de verdad.
+  const pendingComposerTextRef = useRef<string | null>(null)
+  useEffect(() => {
+    if (!showSkillBar && pendingComposerTextRef.current !== null) {
+      composerRef.current?.setText(pendingComposerTextRef.current)
+      pendingComposerTextRef.current = null
+    }
+  }, [showSkillBar])
   const [characterThinking, setCharacterThinking] = useState(false)
   const [timedThinkingText, setTimedThinkingText] = useState<string | null>(null)
   // Streaming (roadmap de velocidad, 2026-07-20, punto 13): la narración crece en vivo mientras
@@ -613,7 +625,12 @@ export function GameView() {
   // evita que un doble clic la reenvíe: la propia limpieza de `questOffer` deshabilita los
   // botones antes de que la petición vuelva).
   async function handleAcceptQuestOffer(entryId: string, title: string, description: string) {
-    setCharacterLog((prev) => prev.map((e) => (e.id === entryId ? { ...e, questOffer: undefined } : e)))
+    // Bug real jugando en vivo (2026-08-30, "el cuadro del log de gistera deberia seguir siendo
+    // amarillo...no azul") — limpiar `questOffer` sin más quitaba los botones PERO también todo
+    // rastro amarillo de esta entrada (LogPanel.tsx la trataba como narración normal en cuanto
+    // dejaba de tener botones). `questOfferResolved: true` mantiene el fondo amarillo para siempre
+    // — sigue siendo, de hecho, la presentación de una oferta de misión, ya resuelta.
+    setCharacterLog((prev) => prev.map((e) => (e.id === entryId ? { ...e, questOffer: undefined, questOfferResolved: true } : e)))
     // Bug real jugando en vivo (2026-08-30, "al añadir la respuesta no se bloquean el prompt y el
     // boton actuar") — esta acción ahora pasa por `generateQuestResponseNarration` (Ollama, no
     // instantánea), pero a diferencia de cualquier turno normal nunca marcaba `characterThinking`:
@@ -621,11 +638,22 @@ export function GameView() {
     // jugadora mandara un turno nuevo por encima de la respuesta todavía pendiente.
     setCharacterThinking(true)
     try {
-      const { logEntry } = await aceptarMision(saveId!, title, description)
+      const { quest, logEntry } = await aceptarMision(saveId!, title, description)
       if (logEntry) {
         setCharacterLog((prev) => [
           ...prev,
-          { id: logEntry.id, channel: 'character', text: logEntry.text, timeLabel: logEntry.timeLabel, createdAt: logEntry.createdAt },
+          {
+            id: logEntry.id,
+            channel: 'character',
+            text: logEntry.text,
+            timeLabel: logEntry.timeLabel,
+            createdAt: logEntry.createdAt,
+            // Bug real jugando en vivo (2026-08-30, "el cuadro del log de gistera deberia seguir
+            // siendo amarillo...no azul") — sin `newQuest`, LogPanel.tsx pintaba esta entrada con
+            // el fondo azul normal en vez del amarillo de "nueva misión" (mismo criterio que
+            // cualquier otra aceptación vía el camino de texto libre, que sí lo lleva).
+            newQuest: { title: quest.title, objetivo: quest.objetivo ?? description },
+          },
         ])
       }
       getSave(saveId!)
@@ -852,7 +880,23 @@ export function GameView() {
       setActivePanel(null)
       return
     }
-    composerRef.current?.insertChip({ icon: ability.icon, label: ability.name, description: ability.description, value: ability.promptText })
+    // Bug real (2026-08-30, reportado jugando): las habilidades generales sin modal propio (barra
+    // de habilidades, SkillBar.tsx) usaban `insertChip`, que CONCATENA al texto ya escrito en el
+    // composer — igual que citar un NPC/objeto/lugar. La usuaria pidió lo contrario para este caso
+    // concreto: pulsar una habilidad general debe SUSTITUIR cualquier texto ya escrito, no
+    // añadirse a él (los chips de citar entidades, en cambio, siguen concatenando como siempre —
+    // `setText` limpia el composer entero antes de escribir, a diferencia de `insertChip`).
+    //
+    // Segundo bug real, encontrado verificando el fix de arriba con Playwright (2026-08-30): con
+    // `showSkillBar` true, `ChatComposer` NI SIQUIERA está montado (se sustituye entero por
+    // `SkillBar`, ver el JSX de más abajo) — `composerRef.current` era `null` en ese momento, así
+    // que `setText` no hacía NADA en silencio. Coincide exactamente con lo reportado ("al darle a
+    // una no hace nada"). Fix: guardar el texto pendiente y volver a texto libre — el efecto de
+    // `pendingComposerTextRef` de arriba lo aplica en cuanto el composer se remonta de verdad
+    // (`setShowSkillBar(false)` es asíncrono, `composerRef.current` seguiría `null` si se llamara
+    // aquí mismo en la misma función).
+    pendingComposerTextRef.current = ability.promptText
+    setShowSkillBar(false)
     setActivePanel(null)
   }
 

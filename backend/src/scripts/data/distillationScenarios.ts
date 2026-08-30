@@ -85,6 +85,11 @@ function npcInSceneFromCatalog(npc: NpcInput, overrides: Partial<NpcInScene> = {
     abilityUsesThisEncounter: {},
     activeEffects: [],
     homeLocationSlug: npc.homeLocationSlug ?? null,
+    comerciablePct: npc.comerciablePct ?? 0,
+    reclutablePct: npc.reclutablePct ?? 0,
+    domesticablePct: npc.domesticablePct ?? 0,
+    cortejablePct: npc.cortejablePct ?? 0,
+    capturablePct: npc.capturablePct ?? 0,
     ...overrides,
   };
 }

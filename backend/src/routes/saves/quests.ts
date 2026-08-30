@@ -84,8 +84,13 @@ export async function questsRoutes(app: FastifyInstance) {
       // nunca por ese bloque, así que la despedida nunca llegaba a narrarse. Mismo texto fijo
       // (determinista, nunca generado por LLM — la usuaria fijó el destino/motivo exactos), solo
       // movido a este endpoint para el caso concreto de Gistera/Orco Enfurecido.
+      // Bug real jugando en vivo (2026-08-30, "esta respuesta ha quedado rara") — la concatenación
+      // directa con un simple espacio pegaba la reacción de Gorhorn a la despedida de Gistera en el
+      // mismo bloque de texto corrido, sin ninguna pausa entre "habla Gorhorn" y "reacciona
+      // Gistera". Salto de párrafo (línea en blanco) entre ambas, mismo criterio que el resto del
+      // juego usa para separar turnos de habla distintos dentro de la misma narración.
       const text = isOrcoEnfurecidoTitle
-        ? `${acceptanceText} Gistera Koh asiente, aliviada, y sin perder ni un segundo más echa a andar hacia el sur, en dirección a la Ciénaga Troncal, perdiéndose pronto entre la maleza.`
+        ? `${acceptanceText}\n\nGistera Koh asiente, aliviada, y sin perder ni un segundo más echa a andar hacia el sur, en dirección a la Ciénaga Troncal, perdiéndose pronto entre la maleza.`
         : acceptanceText;
 
       const { quest, logEntry, questCompletedInfo } = await prisma.$transaction(async (tx) => {

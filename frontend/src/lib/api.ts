@@ -579,7 +579,9 @@ export async function cancelTransit(id: string): Promise<void> {
 
 // Huir antes de entrar al combate (2026-07-24) — una sola tirada determinista en el backend, sin
 // IA: `escaped` decide si el frontend limpia el aviso de "Combatir" o abre el popup igualmente.
-export async function requestFlee(id: string): Promise<{ escaped: boolean; text: string }> {
+// `roll` (2026-08-30, bug real: 3 intentos seguidos narraban la misma frase fija sin ningún
+// desglose) — se pinta con RollBadge, igual que cualquier otra tirada del juego.
+export async function requestFlee(id: string): Promise<{ escaped: boolean; text: string; roll: RollInfo }> {
   return fetchJson(`${API_URL}/saves/${id}/combat/flee`, { method: 'POST' })
 }
 
@@ -588,7 +590,7 @@ export async function requestFlee(id: string): Promise<{ escaped: boolean; text:
 // defensa): `condicionFisica` viene ya actualizada en la respuesta.
 export async function requestHuirEnCurso(
   id: string,
-): Promise<{ escaped: boolean; text: string; condicionFisica: string }> {
+): Promise<{ escaped: boolean; text: string; condicionFisica: string; roll: RollInfo }> {
   return fetchJson(`${API_URL}/saves/${id}/combat/huir-en-curso`, { method: 'POST' })
 }
 
@@ -1045,7 +1047,11 @@ export async function aceptarMision(
   saveId: string,
   title: string,
   description: string,
-): Promise<{ quest: { id: string }; alreadyExisted: boolean; logEntry?: { id: string; text: string; timeLabel: string; createdAt: string } }> {
+): Promise<{
+  quest: { id: string; title: string; objetivo: string | null }
+  alreadyExisted: boolean
+  logEntry?: { id: string; text: string; timeLabel: string; createdAt: string }
+}> {
   return fetchJson(`${API_URL}/saves/${saveId}/quests/aceptar`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },

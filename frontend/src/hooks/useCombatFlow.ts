@@ -158,12 +158,12 @@ export function useCombatFlow(params: UseCombatFlowParams) {
   // CONVALECIENTE deja de significar "victoria automática" (petición explícita, 2026-08-26): antes
   // bastaba con dejar a un enemigo CONVALECIENTE para que el combate se diera por terminado — ni
   // siquiera hacía falta decidir qué hacer con él. Ahora un CONVALECIENTE SOLO cuenta como
-  // resuelto si la jugadora ya decidió algo de verdad: "Matar" (pasa a MUERTO, ver
-  // `handleDecapitarSeleccion`) o "Capturar"/"Clemente" (`dismissed: true`, ver los handlers de
-  // más abajo — su `condicion` se queda CONVALECIENTE tal cual). Con un solo enemigo, esto deja el
-  // panel de combate ACTIVO hasta que la jugadora responda desde la tarjeta del log (LogPanel.tsx
-  // § convalecienteOffers, que además bloquea el composer — ver `combatHasPendingConvalecientes`
-  // más abajo), en vez de saltar directa al resumen de victoria.
+  // resuelto si de verdad muere (`condicion === 'MUERTO'`, un intercambio real tras "Matar" — ver
+  // `targetedForKill` más abajo) o si la jugadora eligió "Capturar"/"Clemente" (`dismissed: true`,
+  // ver los handlers de más abajo — su `condicion` se queda CONVALECIENTE tal cual). Con un solo
+  // enemigo, esto deja el panel de combate ACTIVO hasta que la jugadora responda desde la tarjeta
+  // del log (LogPanel.tsx § convalecienteOffers, que además bloquea el composer — ver
+  // `combatHasPendingConvalecientes` más abajo), en vez de saltar directa al resumen de victoria.
   useEffect(() => {
     if (!combatOpen || combatEnded || combatNpcsDisplay.length === 0) return
     const allResolved = combatNpcsDisplay.every((n) => n.condicion === 'MUERTO' || n.dismissed)
@@ -171,10 +171,12 @@ export function useCombatFlow(params: UseCombatFlowParams) {
   }, [combatOpen, combatEnded, combatNpcsDisplay])
 
   // Bloqueo del composer (2026-08-26, petición explícita: "se bloquea todo hasta responder la
-  // tarjeta o tarjetas de los enemigos convalecientes") — mismo criterio que `allResolved` de
-  // arriba, en negativo: mientras quede al menos un CONVALECIENTE sin Matar/Capturar/Clemente, no
-  // se puede seguir actuando (ni texto libre ni Actuar).
-  const combatHasPendingConvalecientes = combatNpcsDisplay.some((n) => n.condicion === 'CONVALECIENTE' && !n.dismissed)
+  // tarjeta o tarjetas de los enemigos convalecientes") — mientras quede al menos un CONVALECIENTE
+  // sin decisión tomada (ni "Matar" pulsado, ni "Capturar"/"Clemente"), no se puede seguir actuando
+  // (ni texto libre ni Actuar). `targetedForKill` (2026-08-30) cuenta como decisión tomada — pulsar
+  // "Matar" desbloquea el panel para que el jugador ataque de verdad, aunque el NPC siga
+  // CONVALECIENTE hasta que el golpe real lo remate.
+  const combatHasPendingConvalecientes = combatNpcsDisplay.some((n) => n.condicion === 'CONVALECIENTE' && !n.dismissed && !n.targetedForKill)
 
   // `combatOverride` (bug real, auditoría de bugs 2026-08-21): "Cazar" resolviendo una presa
   // débil SIN combate (`handleHuntResolved`, GameView.tsx) hace `setCombateIniciado(result.combate)`
@@ -360,10 +362,10 @@ export function useCombatFlow(params: UseCombatFlowParams) {
     if (!saveId || combatBusy) return
     setCombatBusy(true)
     try {
-      const { escaped, text, condicionFisica: newCondicion } = await requestHuirEnCurso(saveId)
+      const { escaped, text, condicionFisica: newCondicion, roll } = await requestHuirEnCurso(saveId)
       setCharacterLog((prev) => [
         ...prev,
-        { id: `huir-${Date.now()}`, channel: 'character', text, timeLabel: fictionalDate, createdAt: new Date().toISOString(), combate: true },
+        { id: `huir-${Date.now()}`, channel: 'character', text, timeLabel: fictionalDate, createdAt: new Date().toISOString(), combate: true, roll },
       ])
       setCondicionFisica(newCondicion as CondicionFisica)
       if (escaped) {
@@ -413,31 +415,29 @@ export function useCombatFlow(params: UseCombatFlowParams) {
   // gracia contra un enemigo CONVALECIENTE. Antes era determinista sin tirada (remate garantizado);
   // petición explícita de la usuaria tras confirmarse que ese diseño era antiguo y ya no encajaba
   // ("matar tiene que abrir el combate de nuevo, no resolverse"): ahora se resuelve como un ataque
-  // NORMAL — mismo camino que `handleCombatAttack` (habilidad ya seleccionada por el jugador, o
-  // Ataque Básico si no hay ninguna elegida), citando al NPC entre comillas simples
-  // (`explicitTarget`, backend) para que el intercambio caiga sobre él y no sobre otro NPC de la
-  // escena. El CONVALECIENTE ya lleva el malus más alto de la tabla (`CONDICION_MALUS`, -10,
-  // death.ts) — riesgo real pero bajo, sin necesidad de una tabla de malus nueva.
-  //
-  // Sin optimistic update de condición (a diferencia de la versión vieja) — el resultado ya no es
-  // binario éxito-de-red/CONVALECIENTE, puede seguir CONVALECIENTE si falla el intercambio o pasar
-  // a MUERTO si conecta; se deja que la condición real llegue de la respuesta del backend, mismo
-  // criterio que `handleCombatAttack`.
-  //
-  // CONVALECIENTE deja de ser "victoria automática" (2026-08-26) — el cierre del combate es
-  // responsabilidad ÚNICA del `useEffect` de `combatEnded` de arriba, que solo dispara cuando
-  // TODOS los NPC de la escena están MUERTO o `dismissed`.
-  async function handleDecapitarSeleccion(npcs: CombatNpcDisplay[]) {
+  // Rediseño de "Matar" (2026-08-30, ver tarkor_rediseno_matar_combate_real_2026-08-30 — el intento
+  // anterior seguía ejecutando un ataque automático (Ataque Básico) en cuanto se pulsaba el botón,
+  // sin dejar elegir nada, contradiciendo la intención real del rediseño: "debe abrir el combate de
+  // nuevo, no resolverse solo"). Pulsar "Matar" ya NO dispara ningún turno — solo marca
+  // `targetedForKill: true` en `combatNpcStates`, lo que desbloquea el panel/composer
+  // (`combatHasPendingConvalecientes`) y oculta la tarjeta persistente del log para ese NPC
+  // (LogPanel.tsx). El jugador ataca después con el panel de combate NORMAL — habilidad elegida o
+  // texto libre citando al NPC entre comillas simples (`explicitTarget`, backend), exactamente
+  // igual que contra cualquier otro rival — con riesgo real de tirada (el CONVALECIENTE ya lleva el
+  // malus más alto de la tabla, `CONDICION_MALUS`, -10, death.ts). El NPC sigue CONVALECIENTE hasta
+  // que un intercambio real lo mate; el cierre del combate sigue siendo responsabilidad única del
+  // `useEffect` de `combatEnded` de arriba (MUERTO o `dismissed`).
+  function handleDecapitarSeleccion(npcs: CombatNpcDisplay[]) {
     if (npcs.length === 0) return
-    const selectedAbility = savedActions.find((a) => a.id === combatSelectedAbilityId) ?? savedActions.find((a) => a.name === 'Ataque Básico')
-    if (!selectedAbility) return
-    const base = selectedAbility.promptText.trim().replace(/\.+$/, '')
-    // Un turno por NPC (no un único prompt mencionando a varios) — mismo motivo que
-    // `handleCombatAttack`: `explicitTarget` (backend) solo extrae UN nombre citado, así que un
-    // texto combinado solo golpearía al primero.
-    for (const npc of npcs) {
-      await submitCombatAction(`${base}, contra '${combatDisplayNameFor(npc)}'.`, { savedActionId: selectedAbility.id, allowAfterEnded: true })
-    }
+    setCombatNpcStates((prev) => {
+      const next = [...prev]
+      for (const npc of npcs) {
+        const idx = next.findIndex((s) => combatKeyFor(s) === combatKeyFor(npc))
+        if (idx >= 0) next[idx] = { ...next[idx], targetedForKill: true }
+        else next.push({ ...npc, targetedForKill: true })
+      }
+      return next
+    })
   }
 
   // Botón "Capturar" (2026-08-26, CONVALECIENTE deja de ser "victoria automática") — reutiliza
@@ -486,11 +486,10 @@ export function useCombatFlow(params: UseCombatFlowParams) {
   // `yaSaqueado` de cada NPC.
   //
   // Bug real (2026-08-28, "saqueo puede mostrar 'saqueado' en UI sin persistir nada"): el estado
-  // optimista de abajo se aplicaba SIN esperar a `submitCombatAction`, y a diferencia de
-  // `handleDecapitarSeleccion` (que sí revierte a CONVALECIENTE si `!ok`) no había NINGÚN camino de
+  // optimista de abajo se aplicaba SIN esperar a `submitCombatAction`, sin NINGÚN camino de
   // reversión — un turno huérfano/fallido dejaba la UI mintiendo "Muerto · saqueado" para siempre
-  // mientras el backend nunca recibió los objetos. Mismo patrón de reversión que Decapitar: guardar
-  // el estado previo antes de mutar, revertirlo si `submitCombatAction` devuelve `false`.
+  // mientras el backend nunca recibió los objetos. Fix: guardar el estado previo antes de mutar,
+  // revertirlo si `submitCombatAction` devuelve `false`.
   async function handleSaquearSeleccion(itemNames: string[], fullyLootedSlugs: string[], itemNamesByNpc: Record<string, string[]>) {
     const porSaquear = combatNpcsDisplay.filter((n) => (n.condicion === 'CONVALECIENTE' || n.condicion === 'MUERTO') && !n.yaSaqueado)
     if (porSaquear.length === 0) return
@@ -703,10 +702,10 @@ export function useCombatFlow(params: UseCombatFlowParams) {
     if (!saveId || fleeingPreCombat) return
     setFleeingPreCombat(true)
     try {
-      const { escaped, text } = await requestFlee(saveId)
+      const { escaped, text, roll } = await requestFlee(saveId)
       setCharacterLog((prev) => [
         ...prev,
-        { id: `flee-${Date.now()}`, channel: 'character', text, timeLabel: fictionalDate, createdAt: new Date().toISOString() },
+        { id: `flee-${Date.now()}`, channel: 'character', text, timeLabel: fictionalDate, createdAt: new Date().toISOString(), roll },
       ])
       if (escaped) {
         setCombateIniciado(null)

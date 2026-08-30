@@ -840,6 +840,20 @@ resumen de trabajo real, agrupado por tamaño.
 
 ### No es Grupo 3 — categorías aparte, para no confundir al leer esta lista
 
+- **Tanda de hallazgos 2026-08-30, sin investigar todavía** — sesión de juego real (Gorhorn):
+  rediseño de "Matar" (P3.2) incompleto (no reabre elección real, ejecuta Ataque Básico solo),
+  reputación de facción al matar sin confirmar si dispara, aviso Matar/Clemente repetido cada turno
+  mientras el NPC siga CONVALECIENTE, barra de habilidades generales sin efecto al pulsar (debería
+  escribir en el composer, no ejecutar), Cazar rechazado sin motivo aparente, combate abierto contra
+  un NPC distinto al que narra la acción (posible reapertura de un bug ya cerrado), Huir sin
+  narración única por intento (3 líneas idénticas seguidas), diseño de muerte permanente sin/con
+  punto de guardado (pendiente de diseñar, marcado como "lo complicado"), Agua hervida de liquen
+  debería ser crafteable no recurso (+ revisar más casos similares), Hagar duplicado en la
+  Enciclopedia, fauna/flora mezcladas en `uploads/images/fauna/`, banner de Kirelon subido a mano
+  sin efecto, género macho/hembra ausente por defecto en mucha fauna, "La Sábana Alta" duplicada en
+  la selección de viaje y sin conectar en el mapa de región, scroll/foco no bajan solos tras cada
+  turno, narración de viaje debería cubrir cada tramo intermedio. Detalle completo de cada uno en
+  `revisar-partida-hallazgos.md § 2026-08-30` y en el checklist de pruebas (§§ 7, 10).
 - **Bugs reales** ("profesiones tiran dado siempre" sin confirmar, Cruzavientos nunca narrado) —
   viven en sus propias memorias/`revisar-partida-hallazgos.md`, no compiten por prioridad con las
   features de arriba. `recolectar.ts`/`rollGathering` 500 — **cerrado 2026-08-25**: eran 4

@@ -129,56 +129,54 @@ export function ZonaPanel({ saveId }: ZonaPanelProps) {
             (pendiente de generación de imagen, mismo mecanismo que el resto de assets). Tono por
             estado (C.6) para que no se lea como metadata secundaria (mismo tono que un timestamp). */}
         {data.regionControl && <p className={`text-xs font-medium ${regionControlDisplay(data.regionControl).tone}`}>{regionControlDisplay(data.regionControl).text}</p>}
-        {/* Solo hay mapa/pines de verdad si hay algún ZonePoint fijo — una zona con SOLO NPCs
-            dinámicos (sin catálogo de puntos sembrado, "generalizar más allá de Hondonada" sin
-            hacer todavía) no tiene posiciones reales que dibujar, ver comentario de
-            `ZonaDinamicoInfo`. */}
-        {data.puntos.length > 0 && (
-          <>
-            <div className="overflow-hidden rounded-lg border border-iron-700 bg-wood-950/60">
-              <svg viewBox="0 0 800 600" className="h-auto w-full">
-                {imageUrl ? (
-                  <image href={imageUrl} x={0} y={0} width={800} height={600} preserveAspectRatio="xMidYMid slice" />
-                ) : (
-                  <rect x={0} y={0} width={800} height={600} fill="#1a1410" />
-                )}
-                {data.puntos.map((p) => (
-                  <g key={p.id}>
-                    <ZonePointShape tipo={p.tipo} x={p.x} y={p.y} color={COLOR_HEX[p.color]} />
-                    {/* C.5 (checklist frontend 2026-08-27) — con 2 dígitos, el número centrado
-                        dentro del icono podía sobresalir de formas estrechas (rombo/triángulo);
-                        a partir de 10 se pinta como badge fuera del icono, arriba a la derecha. */}
-                    {p.cantidad > 1 && p.cantidad < 10 && (
-                      <text x={p.x} y={p.y + 3} textAnchor="middle" fontSize={9} fontWeight="bold" fill="white" stroke="black" strokeWidth={0.3}>
+        {/* Mapa de fondo (2026-08-30, bug real: antes este bloque entero dependía de
+            `data.puntos.length > 0`, así que la imagen del mapa nunca se pintaba en ninguna zona
+            sin `ZonePoint` fijos sembrados — hoy solo Hondonada del Eco los tiene, dejando el
+            resto de zonas sin mapa aunque su imagen sí existiera en disco. La imagen de fondo y
+            los pines son independientes: la imagen se muestra si hay `imageUrl`, los pines solo si
+            hay `puntos`. */}
+        {imageUrl && (
+          <div className="overflow-hidden rounded-lg border border-iron-700 bg-wood-950/60">
+            <svg viewBox="0 0 800 600" className="h-auto w-full">
+              <image href={imageUrl} x={0} y={0} width={800} height={600} preserveAspectRatio="xMidYMid slice" />
+              {data.puntos.map((p) => (
+                <g key={p.id}>
+                  <ZonePointShape tipo={p.tipo} x={p.x} y={p.y} color={COLOR_HEX[p.color]} />
+                  {/* C.5 (checklist frontend 2026-08-27) — con 2 dígitos, el número centrado
+                      dentro del icono podía sobresalir de formas estrechas (rombo/triángulo);
+                      a partir de 10 se pinta como badge fuera del icono, arriba a la derecha. */}
+                  {p.cantidad > 1 && p.cantidad < 10 && (
+                    <text x={p.x} y={p.y + 3} textAnchor="middle" fontSize={9} fontWeight="bold" fill="white" stroke="black" strokeWidth={0.3}>
+                      {p.cantidad}
+                    </text>
+                  )}
+                  {p.cantidad >= 10 && (
+                    <>
+                      <circle cx={p.x + 9} cy={p.y - 9} r={7} fill="#1a1410" stroke="white" strokeWidth={1} />
+                      <text x={p.x + 9} y={p.y - 6} textAnchor="middle" fontSize={8} fontWeight="bold" fill="white">
                         {p.cantidad}
                       </text>
-                    )}
-                    {p.cantidad >= 10 && (
-                      <>
-                        <circle cx={p.x + 9} cy={p.y - 9} r={7} fill="#1a1410" stroke="white" strokeWidth={1} />
-                        <text x={p.x + 9} y={p.y - 6} textAnchor="middle" fontSize={8} fontWeight="bold" fill="white">
-                          {p.cantidad}
-                        </text>
-                      </>
-                    )}
-                    <title>{`${p.nombre}${p.cantidad > 1 ? ` ×${p.cantidad}` : ''} (${TIPO_LABEL[p.tipo]})`}</title>
-                  </g>
-                ))}
-              </svg>
-            </div>
-            <div className="flex flex-col gap-1.5">
-              {data.puntos.map((p) => (
-                <div key={p.id} className="flex items-center gap-2 rounded-lg border border-iron-700 bg-wood-950/40 px-3 py-1.5 text-xs">
-                  <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: COLOR_HEX[p.color] }} />
-                  <span className="text-wood-100">
-                    {p.nombre}
-                    {p.cantidad > 1 && <span className="text-wood-500"> ×{p.cantidad}</span>}
-                  </span>
-                  <span className="ml-auto text-2xs uppercase tracking-wide text-wood-500">{TIPO_LABEL[p.tipo]}</span>
-                </div>
+                    </>
+                  )}
+                  <title>{`${p.nombre}${p.cantidad > 1 ? ` ×${p.cantidad}` : ''} (${TIPO_LABEL[p.tipo]})`}</title>
+                </g>
               ))}
-            </div>
-          </>
+            </svg>
+          </div>
+        )}
+        {data.puntos.length > 0 && (
+          <div className="flex flex-col gap-1.5">
+            {data.puntos.map((p) => (
+              <div key={p.id} className="flex items-center gap-2 rounded-lg border border-iron-700 bg-wood-950/40 px-3 py-1.5 text-xs">
+                <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: COLOR_HEX[p.color] }} />
+                <span className="text-wood-100">
+                  {p.nombre}
+                  {p.cantidad > 1 && <span className="text-wood-500"> ×{p.cantidad}</span>}
+                </span>
+                <span className="ml-auto text-2xs uppercase tracking-wide text-wood-500">{TIPO_LABEL[p.tipo]}</span>
+              </div>
+            ))}
+          </div>
         )}
         {/* NPCs presentados de forma determinista (2026-08-26) — sin posición real, así que nunca
             como pin: una lista aparte, siempre visible aunque no haya mapa de puntos fijos. */}

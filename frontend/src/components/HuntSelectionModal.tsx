@@ -100,8 +100,13 @@ export function HuntSelectionModal({ saveId, onResuelto, onCancel }: HuntSelecti
     try {
       const res = await confirmarCaza(saveId, [...selected], cantidades)
       onResuelto(res)
-    } catch {
-      setError('No se pudo cazar — puede que otra acción se haya adelantado.')
+    } catch (err) {
+      // Bug real (2026-08-30, reportado jugando): este catch siempre mostraba el mismo texto
+      // genérico ("puede que otra acción se haya adelantado"), aunque `fetchJson` ya propaga el
+      // mensaje real del backend (p.ej. "Ya hay un combate en curso" o "Esa fauna ya no está
+      // disponible aquí") — la causa real quedaba oculta tras un mensaje que siempre culpaba a una
+      // condición de carrera, aunque el jugador no hubiera hecho nada más en paralelo.
+      setError(err instanceof Error && err.message ? err.message : 'No se pudo cazar — puede que otra acción se haya adelantado.')
       setConfirming(false)
     }
   }

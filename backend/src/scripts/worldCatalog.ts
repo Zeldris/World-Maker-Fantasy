@@ -5930,14 +5930,12 @@ export const harvestYields: HarvestYieldInput[] = [
     sinTirada: true,
   },
 
-  {
-    sourceSlug: 'liquen-del-cauce',
-    sourceCategory: 'planta',
-    metodoObtencion: 'EXTRACCION',
-    itemSlug: 'agua-hervida-liquen',
-    cantidad: 1,
-    condicion: 'requiere hervirlo sobre fuego ya encendido — no se obtiene masticándolo en crudo',
-  },
+  // Auditoría "revisar partida" (2026-08-30, petición explícita: "Agua hervida de liquen debería
+  // ser un objeto crafteable, no un recurso"): este HarvestYield daba el agua YA hervida por
+  // simple recolección/EXTRACCION, con una `condicion` de texto libre ("requiere hervirlo sobre
+  // fuego") que nunca se verificaba mecánicamente — retirado. Ahora es una CraftingRecipe real
+  // (BOILED_LICHEN_WATER_RECIPE, crafting.ts) a partir de Liquen húmedo del cauce (arriba, sigue
+  // siendo recolección directa — es el recurso crudo real).
 
   // --- Matorral de Cuerno ---
 

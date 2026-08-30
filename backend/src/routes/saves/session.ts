@@ -140,9 +140,19 @@ export async function sessionRoutes(app: FastifyInstance) {
     const roll = rollCheck(attributes, 'destreza', dificultad);
     const timeLabel = save.worldState?.fictionalDateLabel ?? 'Día 1, mañana';
 
-    const text = roll.success
-      ? `${save.characterName} logra escapar antes de que el combate llegue a empezar de verdad — pero huir así, dejando la pelea sin dar la cara, es una mancha en su honor que no se borra sola.`
-      : `${save.characterName} intenta escapar antes de que empiece la pelea, pero no lo consigue — no hay forma de zafarse de esto ahora mismo.`;
+    // Bug real reportado jugando (2026-08-30, mismo endpoint hermano de huir-en-curso): texto fijo
+    // sin variación ni desglose de tirada visible — ver comentario completo en /combat/huir-en-curso.
+    const textosExitoPre = [
+      `${save.characterName} logra escapar antes de que el combate llegue a empezar de verdad — pero huir así, dejando la pelea sin dar la cara, es una mancha en su honor que no se borra sola.`,
+      `${save.characterName} se aleja a tiempo, sin llegar a cruzar un solo golpe — aunque la retirada le pesa en el orgullo.`,
+      `${save.characterName} lee la situación y decide no arriesgarse — se retira antes de que nadie pueda impedírselo.`,
+    ];
+    const textosFalloPre = [
+      `${save.characterName} intenta escapar antes de que empiece la pelea, pero no lo consigue — no hay forma de zafarse de esto ahora mismo.`,
+      `${save.characterName} busca una salida, pero el rival se interpone antes de que pueda alejarse — no hay escapatoria posible.`,
+      `${save.characterName} da un paso atrás buscando distancia, pero queda atrapado — el enfrentamiento es inevitable.`,
+    ];
+    const text = roll.success ? textosExitoPre[roll.roll % textosExitoPre.length] : textosFalloPre[roll.roll % textosFalloPre.length];
 
     // Condición de carrera real (auditoría de código 2026-08-25): un turno real de `/turn/narrate`
     // (protegido por `claimTurnInFlight`) puede estar resolviendo un intercambio de combate en
@@ -160,7 +170,7 @@ export async function sessionRoutes(app: FastifyInstance) {
       const mismoSet = freshSlugs.length === pendingSlugs.length && freshSlugs.every((s) => pendingSlugs.includes(s));
       if (roll.success && !mismoSet) return { kind: 'cambiado' as const };
 
-      await tx.logEntry.create({ data: { saveId: save.id, channel: 'CHARACTER', text, timeLabel } });
+      await tx.logEntry.create({ data: { saveId: save.id, channel: 'CHARACTER', text, timeLabel, roll: roll as unknown as Prisma.InputJsonValue } });
       if (roll.success) await tx.save.update({ where: { id: save.id }, data: { pendingCombatNpcSlugs: [] } });
       return { kind: 'ok' as const };
     });
@@ -168,7 +178,7 @@ export async function sessionRoutes(app: FastifyInstance) {
     if (outcome.kind === 'cambiado') {
       return reply.status(409).send({ error: 'El combate cambió mientras intentabas huir — vuelve a intentarlo.' });
     }
-    return { escaped: roll.success, text };
+    return { escaped: roll.success, text, roll };
   });
 
   // Huir DENTRO de un combate ya iniciado (bug real 2026-08-28, ronda de correcciones — petición
@@ -211,9 +221,23 @@ export async function sessionRoutes(app: FastifyInstance) {
     const timeLabel = save.worldState?.fictionalDateLabel ?? 'Día 1, mañana';
 
     const nuevaCondicion = roll.success ? save.condicionFisica : oneStepWorseThan(save.condicionFisica);
-    const text = roll.success
-      ? `${save.characterName} rompe el contacto y logra escapar del combate — no sin dejar atrás el orgullo de haber dado la cara.`
-      : `${save.characterName} intenta huir, pero el rival aprovecha el movimiento para conectar un golpe directo, sin darle tiempo a defenderse.`;
+    // Bug real reportado jugando (2026-08-30): 3 intentos de huir seguidos narraban EXACTAMENTE la
+    // misma frase fija, sin ningún desglose visible — parecía un error repitiendo texto en vez de 3
+    // intentos reales distintos. Fix: varias variantes por `gradoExito` (mismo criterio que el
+    // resto del motor de tiradas) + el `roll` completo se devuelve en la respuesta para que el
+    // frontend lo pinte con `RollBadge`, igual que cualquier otra tirada — antes se calculaba y se
+    // descartaba, sin llegar nunca al jugador.
+    const textosExito = [
+      `${save.characterName} rompe el contacto de un salto certero y logra escapar del combate — no sin dejar atrás el orgullo de haber dado la cara.`,
+      `${save.characterName} encuentra el hueco justo y se escabulle del combate antes de que el rival pueda reaccionar.`,
+      `${save.characterName} finta, gira sobre sus talones y logra poner distancia real — el combate queda atrás.`,
+    ];
+    const textosFallo = [
+      `${save.characterName} intenta huir, pero el rival aprovecha el movimiento para conectar un golpe directo, sin darle tiempo a defenderse.`,
+      `${save.characterName} se vuelve para escapar, pero el rival es más rápido y le alcanza de lleno antes de que pueda alejarse.`,
+      `${save.characterName} rompe a correr, pero tropieza en el peor momento — el rival aprovecha el traspié para golpear sin oposición.`,
+    ];
+    const text = roll.success ? textosExito[roll.roll % textosExito.length] : textosFallo[roll.roll % textosFallo.length];
 
     // Mismo candado que /combat/flee (auditoría de código 2026-08-25) — un turno real de
     // /turn/narrate en paralelo puede estar actualizando `pendingCombatNpcSlugs` justo ahora.
@@ -225,7 +249,7 @@ export async function sessionRoutes(app: FastifyInstance) {
       const mismoSet = freshSlugs.length === pendingSlugs.length && freshSlugs.every((s) => pendingSlugs.includes(s));
       if (roll.success && !mismoSet) return { kind: 'cambiado' as const };
 
-      await tx.logEntry.create({ data: { saveId: save.id, channel: 'CHARACTER', text, timeLabel } });
+      await tx.logEntry.create({ data: { saveId: save.id, channel: 'CHARACTER', text, timeLabel, roll: roll as unknown as Prisma.InputJsonValue } });
       await tx.save.update({
         where: { id: save.id },
         data: {
@@ -239,7 +263,7 @@ export async function sessionRoutes(app: FastifyInstance) {
     if (outcomeEnCurso.kind === 'cambiado') {
       return reply.status(409).send({ error: 'El combate cambió mientras intentabas huir — vuelve a intentarlo.' });
     }
-    return { escaped: roll.success, text, condicionFisica: nuevaCondicion };
+    return { escaped: roll.success, text, condicionFisica: nuevaCondicion, roll };
   });
 
   // CONVALECIENTE deja de ser "victoria automática" (petición explícita, 2026-08-26): sobre un

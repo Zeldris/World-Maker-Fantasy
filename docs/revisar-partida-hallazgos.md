@@ -3593,3 +3593,236 @@ recargar, saqueo optimista sin reconciliar, descanso que no curaba si se interru
 (CERRADO con fix+test), y 2 cambios de diseño pedidos sin aplicar (riesgo real al Huir dentro de
 combate, retomar un viaje interrumpido tras resolver el evento con éxito). Ver el checklist para el
 detalle completo — no se repiten aquí.
+
+### 2026-08-30 — tanda de hallazgos reportados jugando en vivo (sin investigar causa raíz todavía, solo anotados a petición explícita)
+
+Sesión de juego real de la usuaria (partida de Gorhorn). Todos los puntos de abajo están **solo
+anotados** — instrucción explícita: "revisa todo lo que te he puesto, añade todo al checklist del
+roadmap...y anota todo en hallazgos y al acabar nos organizamos". Ninguno se ha investigado ni
+tocado en código todavía.
+
+**Rediseño de "Matar" (P3.2, ver `tarkor_rediseno_matar_combate_real_2026-08-30`) incompleto —
+"Matar" no reabre elección real, ejecuta Ataque Básico solo**: tras pulsar MATAR sobre un NPC
+CONVALECIENTE, el combate pasa directo a "RESOLVIENDO COMBATE" con Ataque Básico ya disparado, sin
+dejar al jugador elegir habilidad ni escribir nada — captura confirma `USAS "ATAQUE BÁSICO"` como
+único resultado. La intención del rediseño (según la propia usuaria, mismo turno) era: pulsar MATAR
+debe DESBLOQUEAR el panel de combate normal (elegir habilidad/escribir acción), no ejecutar un
+ataque por su cuenta. Revisar `handleDecapitarSeleccion` (`useCombatFlow.ts`) — hoy dispara
+`submitCombatAction` inmediatamente con la habilidad ya resuelta (Ataque Básico si no hay ninguna
+seleccionada) en vez de solo desbloquear el panel para que el jugador actúe.
+
+**Diseño nuevo pedido — reputación de facción al matar**: matar a un NPC o fauna con facción debe
+restar reputación con esa facción. Escala completa confirmada por la usuaria (de peor a mejor):
+Odiado ← Enemigo ← Hostil ← Neutral → Amistoso → Aliado → Honorable. Todo empieza en Neutral salvo
+que se especifique lo contrario explícitamente. Distintas acciones deben poder sumar o restar según
+se defina caso a caso (matar resta, otras acciones podrían sumar). Revisar qué tan cerca está esto
+de lo que `reputation.ts`/`factionsStatus` ya hacen hoy (el sistema de reputación numérico 0-5000 ya
+existe, usado por `regionControlFor`/`zonePointColorFor` — falta confirmar si ya dispara con la
+muerte de un NPC/fauna con facción, o solo se mueve por otras vías).
+
+**Aviso Matar/Clemente reaparece en cada turno mientras el NPC siga CONVALECIENTE**: debería salir
+UNA sola vez por enemigo (al quedar convaleciente), no repetirse turno tras turno hasta que se
+resuelva. Revisar de dónde sale la tarjeta persistente (ver el fix del "atasco tras recargar",
+2026-08-29, que la reconstruye desde `combatNpcsDisplay` filtrando `CONVALECIENTE && !dismissed`) —
+puede que el criterio de "ya se mostró una vez" no exista y haya que añadirlo.
+
+**Barra de habilidades generales (fuera de combate) no hace nada al pulsar**: la fila de iconos bajo
+el composer (campamento/brújula/fuego/vasija/arco/hoja/mano) no produce ningún efecto visible al
+pulsar. Diseño esperado por la usuaria: pulsar una habilidad general debe **escribir/insertar texto
+en el composer**, sustituyendo lo que hubiera (no ejecutar nada hasta que el jugador pulse Actuar).
+Excepción explícita: las habilidades que abren un modal determinista (Cazar, Recolectar, etc.) sí
+deben lanzarse directamente al pulsar, porque no se ejecutan hasta que el jugador elige algo dentro
+del propio modal — esas ya funcionan así. Los "links" (chips de citar NPC/objeto/lugar) se siguen
+concatenando al texto existente como hasta ahora, sin sustituir — la sustitución es SOLO para las
+habilidades generales de la barra.
+
+**Bug real: Cazar rechaza la acción sin motivo aparente** ("No se pudo cazar — puede que otra acción
+se haya adelantado"), con el jugador sin haber hecho nada más en paralelo — captura del modal de
+Cazar (Corretolvas ×7, Presa Débil, Dificultad Fácil) mostrando el error igualmente. Sin investigar
+causa — candidato inicial: alguna condición de carrera o candado (`turnLock`) quedando ocupado sin
+motivo real, mismo patrón que otros "falsos atascos" ya vistos en la sesión.
+
+**Bug real (reaparecido): combate abierto contra un NPC distinto al que narra la escena** —
+**CONFIRMADO y FIJADO 2026-08-30**. Acción "Exploro la zona" narra un encuentro con **Quio** ("el
+gusano filtrador... comienza a moverse con más rapidez y lanza una serie de chillidos agudos hacia
+Gorhorn"), pero el combate que se abre realmente es contra **Kirelon Arenoso**. La elección del NPC
+real (Kirelon) era CORRECTA por diseño — Quio es `INOFENSIVO` por catálogo, Kirelon es `AGRESIVO`.
+El problema no era de elección, era de ORDEN: el narrador escribe el texto ANTES de que el motor
+decida qué NPC real entrará en combate (`resolveCombatSlugsAndPersist` se llama ~1850 líneas
+después de narrar) — así que en el momento de narrar, nada le impedía al modelo elegir libremente a
+cualquier NPC presente, incluido uno incapaz de agredir por catálogo. Los guards existentes
+(`hasFalseCombatTargetName`/`hasWrongNpcName`) solo se activan tras un intercambio de combate ya
+resuelto ese turno — la apertura desde acción pasiva quedaba fuera de su alcance por diseño
+explícito (comentario del propio código). Petición explícita de la usuaria tras confirmarse la
+causa: no parchear solo este caso, lanzar una auditoría más amplia de "qué datos deterministas le
+faltan al narrador para no tener que inventar" — ver
+[[tarkor_causa_raiz_combate_narracion_desconectada_2026-08-30]] para el informe completo. **Fix
+aplicado**: nuevo cálculo `nonHostileNpcNamesInScene`/`nonHostileNpcSlugsInScene`
+(`turnResolution.ts`, mismo patrón que `restAttemptedForGuard` ya usaba con éxito — duplicar un
+cálculo para tenerlo listo antes de narrar) pasado al narrador, instrucción de prompt explícita con
+nombres reales, y guard nuevo `hasWrongAggressorName` que compara el campo ESTRUCTURADO
+`combateIniciado.npcSlugs` (no prosa libre) contra la lista de no-hostiles — más preciso que
+cualquier regex. Mismo fix aplicado también al "encuentro ambiental" (sugerencia opcional al
+narrador, mismo hueco en otra puerta de entrada). 3 tests nuevos, `tsc -b` limpio, 3275/3276 en
+suite unitaria (el único fallo restante, probabilístico, confirmado preexistente con `git stash`).
+Pendiente: reverificar en vivo la próxima vez que se reproduzca un caso similar jugando.
+
+**Diseño pedido — combate siempre con narración encadenada de apertura, nunca "fantasma" sin
+explicación**: la usuaria propuso esto como posible solución al hallazgo de arriba. El fix aplicado
+(pasar quién puede ser agresor real al narrador + guard estructurado) resuelve el síntoma concreto
+sin necesitar un bloque de narración de apertura obligatorio aparte — se deja sin implementar esa
+pieza específica, el hueco que la motivó ya está cerrado por otra vía.
+
+**Huir dentro de combate debería narrarse como una tirada real, igual que un intercambio de
+ataque/defensa** — con desglose de resultado y explicación de cómo consigue (o no) escapar, igual
+que ya se narra un golpe que conecta o falla. Captura real muestra 3 líneas IDÉNTICAS seguidas
+("Gorhorn intenta huir, pero el rival aprovecha el movimiento para conectar un golpe directo, sin
+darle tiempo a defenderse") — sugiere que el jugador pulsó Huir 3 veces sin que ninguna avanzara el
+combate de forma distinguible, hasta bloquear con "No puedes intentar huir estando convaleciente".
+El diseño P3.2 (2026-08-28, `combat/huir-en-curso`) ya tiene tirada real y 2 resultados posibles
+(éxito narrado / fallo con golpe directo) — lo que falta es que CADA intento se narre de forma única
+(no la misma frase fija repetida) y quede claro en el log que fueron 3 intentos reales distintos, no
+un error repitiendo el mismo texto.
+
+**Diseño pedido — muerte permanente de Gorhorn sin punto de guardado propio, y restauración completa
+si SÍ hay punto de guardado**: la usuaria pide diseñar (no implementar todavía) qué pasa si Gorhorn
+muere y no tiene ningún punto de guardado activo: debe aparecer un mensaje de la "entidad
+desconocida" (el narrador meta-consciente ya establecido en el lore/mecánica de muerte) con un botón
+tipo Aceptar en la propia narración — al pulsarlo, la partida se reinicia desde el mismo inicio de
+siempre. Si SÍ hay un punto de guardado, la restauración debe devolver al jugador exactamente al
+estado de ESE punto — equipo, compañeros, todo — un punto de guardado real y completo, no una
+reconstrucción parcial. La propia usuaria marca esta segunda parte como "lo complicado", pidiendo
+mirarlo bien antes de decidir cómo construirlo — sin alcance ni diseño técnico cerrado todavía,
+puramente anotado para retomar.
+
+**Diseño pedido — "Agua hervida de liquen" debería ser un objeto crafteable, no un recurso
+recolectable directamente**: revisar su definición actual en el catálogo (`HarvestYield` vs.
+`CraftingRecipe`) y decidir la receta. La usuaria pide además revisar de forma más amplia si hay
+OTROS materiales marcados hoy como recurso recolectable que en realidad deberían requerir un paso de
+crafteo (agua hervida es solo el ejemplo que disparó la duda, no el único caso a mirar).
+
+**Enciclopedia — "Hagar" aparece 2 veces** en el árbol de NPC de "Hijos del Estallido" (una fila
+"Hagar" ya descubierta, otra fila distinta con tooltip "Todavía no descubierto"). **CONFIRMADO BUG
+REAL DE DATOS, FIJADO 2026-08-30**: primer intento de investigación asumió erróneamente que era solo
+percepción visual (dos NPC orcos distintos en celdas vecinas) — la propia usuaria corrigió eso
+("como no va a ser un error que salga 2 veces Hagar, un NPC único, 2 veces"), y comprobando
+Postgres directamente (no solo `worldCatalog.ts`) apareció la causa real: existían efectivamente
+**2 filas `Npc` casi idénticas** — `slug: 'hagar-kiugh'` (la real y correcta, con `clase: GUERRERO`/
+`especializacion: ESPECIALISTA`/`atributoResistencia: carisma` ya rellenos por el sistema de clases
+2026-08-24) y `slug: 'hagar'` (resto huérfano de una versión anterior del catálogo, ANTES de que se
+renombrara a `hagar-kiugh` — mismo `bio`/`role`/`personality`/`attributes` exactos, pero
+`clase`/`especializacion`/`atributoResistencia` todos `null`, señal clara de que quedó congelada
+antes de esa migración de datos). El slug `hagar` YA NO existe en el catálogo actual
+(`worldCatalog.ts`, verificado con grep — cero apariciones), así que el seed nunca se corrió limpio
+tras el renombrado, dejando la fila vieja en la base de datos real de la usuaria. Confirmado CERO
+referencias a esa fila en cualquier otra tabla (`NpcState`/`HarvestYield`/`Companion`/
+`DiscoveredEntity`, todas en 0) antes de borrarla — borrado seguro, sin dejar nada huérfano detrás.
+Comprobado también que no hay NINGÚN otro caso del mismo patrón en las 46 filas `Npc` totales (0
+nombres duplicados tras el fix). **Lección de proceso**: no dar un hallazgo de "duplicado" por
+percepción visual sin comprobar la base de datos real primero — el catálogo en código puede estar
+limpio mientras Postgres arrastra restos de una versión anterior tras un renombrado de slug.
+
+**Uploads de imágenes — fauna y flora mezcladas en una sola carpeta**: `backend/uploads/images/fauna/`
+contiene tanto fauna real (aullador-rojo, kirelon-arenoso, murgol, quio...) como flora/materia
+inerte (cardo-brujula, flor-de-ceniza, hielo-silice, roca-pilares-rotos, salvia-del-polvo) — deberían
+vivir en carpetas separadas `fauna/`y `flora/` (o el nombre de carpeta que corresponda para lo
+inerte). Revisar `imageAssets.ts`/`imagePromptGenerator.ts` (`ImagePromptEntityType`) para ver si ya
+distinguen fauna de flora a nivel de tipo de entidad o si hoy todo cae bajo el mismo `entityType`.
+
+**`kirelon-arenoso-macho-banner.png` subida a mano por la usuaria a la carpeta fauna, pero no
+funciona** — confirmado que el archivo existe en disco con el nombre exacto esperado
+(`kirelon-arenoso-macho-banner.png`, patrón `<slug>-<genero>-banner`), pero no se refleja en el
+juego. Revisar si el problema es de caché, de que el slug de fauna no incluye género en la búsqueda,
+o algo de la mezcla fauna/flora del punto anterior.
+
+**Selector macho/hembra no aparece para mucha fauna** — varias fichas de fauna no ofrecen elegir
+género (a diferencia de otras que sí). La usuaria confirma que es correcto que ALGUNA fauna no tenga
+género (sin sexo diferenciado), pero pide que **por defecto todas las fichas de fauna tengan
+macho/hembra**, y quitarlo selectivamente después solo para las que de verdad no apliquen — es decir,
+invertir el criterio actual (que parece ser "sin género salvo que se añada", cuando debería ser "con
+género salvo que se quite").
+
+**Mapa — "La Sábana Alta" duplicada en la lista de selección de viaje, y sin conectar en el mapa de
+región — CONFIRMADO BUG REAL DE DATOS, FIJADO 2026-08-30**: mismo patrón exacto que el bug de Hagar
+de arriba (resto huérfano tras un renombrado de slug, nunca limpiado de Postgres). Existían 2 filas
+`Location` reales, mismo `name`/`description`/`region`/`x`/`y`: `slug: 'sabana-alta'` (creada
+2026-08-05, la vieja) y `slug: 'sabana-alta-colmillar'` (creada 2026-08-15, 10 días después — el
+slug que sigue vigente hoy en `worldCatalog.ts`). Confirmado con `LocationLink` real: SOLO
+`sabana-alta-colmillar` tiene su conexión real (`Paso de los Huesos → Sabana Alta`, 165 min base) —
+`sabana-alta` (la vieja) tenía CERO links, exactamente el "nodo aislado" que vio la usuaria en el
+mapa, y explica también el duplicado en la lista de viaje (una entrada con tiempo real calculable,
+la otra sin ningún link del que sacar duración). Cero referencias en `Save`/`LocationVisit`/
+`ZonePoint`/`Npc.homeLocationSlug` a la fila vieja — borrada de forma segura. **Búsqueda sistemática
+tras este hallazgo (misma sesión, aprendiendo de haber fallado a la primera con Hagar)**: 3 casos
+MÁS del mismo patrón encontrados en `ItemCatalog` (`aguja-de-cardo`→`aguja-cardo-brujula`,
+`arena-magnetica`→`saquito-arena-iman`, `cataplasma-salvia`→`cataplasma-salvia-polvo` — los 3 slugs
+viejos ya no existen en `worldCatalog.ts`, coinciden con el mismo renombrado masivo de 2026-08-15
+"para que el slug encaje con el nombre del archivo de imagen" ya documentado). Cero referencias en
+`InventoryItem`/`HarvestYield`/`AlmacenItem` a los 3 — borrados igual. Verificación final: 0
+duplicados por nombre en las 4 tablas de catálogo revisadas (Npc, Location, ItemCatalog, Faction).
+**Lección de proceso, reforzando la de Hagar**: cualquier renombrado de `slug` en `worldCatalog.ts`
+sin volver a correr `seed-catalog` limpio deja un resto huérfano en Postgres — merece la pena una
+pasada de "duplicados por nombre" cada vez que se sospeche de uno, no dar por cerrado con el primero
+que se encuentre.
+
+**UX — scroll y foco deberían ir siempre al final de la narración tras cualquier acción** (prompt
+enviado por el jugador o respuesta narrada) — hoy el log no baja solo, obligando a bajar a mano tras
+cada turno para ver la respuesta más reciente. Revisar `LogPanel.tsx` (o el contenedor que lo envuelve
+en `GameView.tsx`) — probablemente falta un `scrollIntoView`/`scrollTop = scrollHeight` disparado
+tras cada turno resuelto.
+
+**Diseño pedido — narración de viaje tramo a tramo**: durante un viaje (captura: "Viajo hacia Paso de
+los Pilares Rotos", ~visible por varios minutos de ficción), la usuaria pide que la narración cubra
+cada zona intermedia por la que se pasa hasta llegar al destino — de dónde se parte, por dónde se ha
+pasado ya, y así sucesivamente durante toda la duración del viaje — en vez de solo narrar la salida y
+la llegada final de un tirón. Relacionado con la Pieza "retomar viaje tras evento" ya anotada
+(`tarkor_diseno_retomar_viaje_tras_evento_2026-08-28`) pero es un punto de diseño distinto (cobertura
+narrativa del trayecto, no qué pasa si el viaje se interrumpe).
+
+### 2026-08-30 (runbook completo, 5 fases) — auditoría de la partida real de Gorhorn (`cmteuqm0k0001ri7jqoo86e7q`)
+
+Ejecutado `docs/revisar-partida.md` completo sobre la partida actual (Día 1, 17:43, nivel 3, XP
+1080, CONVALECIENTE, en Los Pastos de la Deriva). **FASE 1 (funcionalidad)**: sin estado huérfano —
+`characterTransit`/`pendingNpcAttack`/`pendingDynamicMode`/`pendingDynamicModeOffer` todos `null`
+correctamente; `pendingCombatNpcSlugs: ['kirelon-arenoso']` coincide exactamente con el combate
+visible en pantalla (confirma mecánicamente el hallazgo de abajo). `NpcState` del Orco Enfurecido
+MUERTO+saqueado correcto, sin duplicados en inventario/misiones. **FASE 5 (UX)**: nivel/XP/salud en
+pantalla coinciden con Postgres — sin desajuste nuevo más allá de lo ya reportado por captura
+(scroll/foco, barra de habilidades, tarjeta Matar/Clemente repetida — ver entrada de arriba).
+
+**FASE 2 (coherencia) — hallazgo NUEVO, confirmación mecánica exacta del bug ya reportado por
+captura ("combate contra Kirelon narrado como si fuera Quio")**: turno 17:10, acción "Exploro la
+zona", narra un encuentro con Quio ("el Quio comienza a moverse con más rapidez y lanza una serie de
+chillidos agudos hacia Gorhorn"). Ningún turno posterior vuelve a mencionar a Quio ni narra ninguna
+transición — a las 17:40 el combate real que se abre es contra **Kirelon Arenoso**
+(`pendingCombatNpcSlugs: ['kirelon-arenoso']` confirmado en Postgres, coincide con la ficha del
+rival vista en pantalla). Mismo hallazgo ya anotado por captura arriba — esta pasada solo añade la
+confirmación mecánica exacta (el campo real que prueba que no es solo percepción visual).
+
+**FASE 2 (coherencia) — hallazgo NUEVO, distinto del anterior**: turno 08:53, en pleno combate 1v1
+contra el Orco Enfurecido (acción del jugador: "Ataco con un golpe directo... contra 'Orco
+enfurecido'"), la narración devuelta habla de **Gistera Koh** en vez del Orco: *"Gistera Koh se
+detiene abruptamente al notar a Gorhorn acercándose. Su cuerpo se estremece ante la visión de él y
+su **personalidad violenta**."* — Gistera Koh ya se había despedido y marchado hacia el sur en el
+turno 08:31 (`SessionFact`: "sin perder ni un segundo más echa a andar hacia el sur... perdiéndose
+pronto entre la maleza"), por lo que reaparecer aquí ya sería sospechoso de por sí (mismo patrón que
+`hasFalseNpcAppearance`/reintroducción vía `sessionFacts`, ver § "Detectores de texto libre" del
+runbook). Más grave: "personalidad violenta" es un rasgo real del **Orco Enfurecido**, no de
+Gistera — el propio `SessionFact` de esa misma partida lo dice literalmente ("Orco enfurecido...
+Se comporta erráticamente y tiene una personalidad violenta"). Es decir, el turno no solo confundió
+QUIÉN aparece en pantalla, sino que le atribuyó a Gistera Koh un rasgo de personalidad que
+pertenece al Orco — mismo síntoma que el bug ya cerrado 2026-08-29 ("nombre de NPC inconsistente
+entre encabezado y cuerpo", `hasWrongNpcName`) pero con un rasgo de personalidad cruzado además del
+nombre, no visto documentado hasta ahora. Turnos inmediatamente anterior (08:52) y posterior (08:54)
+del mismo combate SÍ narran correctamente al Orco Enfurecido — es un fallo puntual de 1 turno en
+medio de una secuencia por lo demás correcta. Sin investigar causa técnica exacta todavía —
+candidato: mismo mecanismo de `sessionFacts` sin filtrar que ya causó el bug de Gistera reintroducida
+el 2026-08-27, aplicado aquí a la narración de combate en vez de a `detectNpcsInScene`.
+
+**FASE 3/4**: sin hallazgos nuevos de vocabulario/lore en este log más allá de lo ya cubierto arriba
+(repetición de fórmula del jugador en 3 turnos consecutivos 08:52-08:54, no es bug; geografía y
+nombres propios mencionados — Ciénaga Troncal, Karot Veku, El Pozo de Cauce Viejo — todos
+confirmados reales en el catálogo).
+
+**Estado**: ambos hallazgos PENDIENTES, sin investigar causa técnica ni tocar código — solo
+documentados en esta pasada, mismo criterio que el resto de la tanda de hoy.

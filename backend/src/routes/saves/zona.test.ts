@@ -111,7 +111,11 @@ describe('GET /saves/:id/zona', () => {
     const body = res.json();
     expect(body.disponible).toBe(true);
     expect(body.locationSlug).toBe('hondonada-del-eco');
-    expect(body.imageUrl).toBeNull(); // sin PNG real subido en este entorno de test
+    // 2026-08-30: ya hay un PNG real subido para hondonada-del-eco (imageAssets.ts lee el
+    // filesystem real, sin mockear) — antes se asumía `null` porque el archivo no existía en el
+    // entorno de test, pero eso dependía de estado externo, no de la lógica de esta ruta.
+    // Comprobamos el patrón esperado en vez de un valor fijo, sea cual sea el estado del archivo.
+    expect(body.imageUrl === null || body.imageUrl === '/images/zona/hondonada-del-eco-mapa.png').toBe(true);
     expect(body.puntos).toEqual([
       { id: 'zp1', x: 620, y: 180, tipo: 'FAUNA', targetSlug: 'kirelon-arenoso', nombre: 'Kirelon Arenoso', cantidad: 1, color: 'SIN_FACCION' },
       { id: 'zp2', x: 400, y: 470, tipo: 'RECURSO', targetSlug: 'yerreo', nombre: expect.any(String), cantidad: 1, color: 'SIN_FACCION' },

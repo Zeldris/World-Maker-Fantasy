@@ -40,6 +40,7 @@ import {
   hasFalsePassiveHarvestClaim,
   hasFalseCombatTargetName,
   hasWrongNpcName,
+  hasWrongAggressorName,
   hasAnachronism,
   buildNarrationPrompt,
 } from './narrador.js';
@@ -1178,6 +1179,24 @@ describe('hasWrongNpcName', () => {
     expect(hasWrongNpcName('Gorhorn golpea al enemigo.', undefined, ['Quio'])).toBe(false);
     expect(hasWrongNpcName('Gorhorn golpea al enemigo.', 'Kirelon Arenoso', [])).toBe(false);
     expect(hasWrongNpcName('Gorhorn golpea al enemigo.', 'Kirelon Arenoso', undefined)).toBe(false);
+  });
+});
+
+describe('hasWrongAggressorName', () => {
+  it('bug real jugando en vivo (2026-08-30, "Exploro la zona" narró a Quio — INOFENSIVO por catálogo — como agresor mientras el combate real se abrió contra Kirelon Arenoso): detecta "combateIniciado" contra un NPC que no puede ser agresor', () => {
+    expect(hasWrongAggressorName(['quio'], ['quio', 'imanio'])).toBe(true);
+  });
+
+  it('no dispara si "combateIniciado" solo incluye NPCs realmente hostiles', () => {
+    expect(hasWrongAggressorName(['kirelon-arenoso'], ['quio', 'imanio'])).toBe(false);
+  });
+
+  it('no dispara sin propuesta de combate, sin lista de no-hostiles, o con listas vacías', () => {
+    expect(hasWrongAggressorName(undefined, ['quio'])).toBe(false);
+    expect(hasWrongAggressorName(null, ['quio'])).toBe(false);
+    expect(hasWrongAggressorName([], ['quio'])).toBe(false);
+    expect(hasWrongAggressorName(['kirelon-arenoso'], [])).toBe(false);
+    expect(hasWrongAggressorName(['kirelon-arenoso'], undefined)).toBe(false);
   });
 });
 

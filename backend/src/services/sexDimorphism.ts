@@ -45,8 +45,9 @@ export interface SexoVariantesEntry {
 // gargantua-de-ceniza → fuerza, corretolvas → destreza, aullador-rojo → destreza, murgol → (sin
 // combate, valor/utilidad), cruzavientos → destreza, rondador-de-brasas → sigilo (empate con
 // fuerza, se elige sigilo por coherencia de "carroñero nocturno"), salamandra-de-escoria → fuerza,
-// buitre-cenizo → destreza. Espina del Viento/Cornante/Sombra de Kroj no tienen Npc/atributos —
-// se usa su rasgo narrativo ya establecido (veneno, adaptación al barro, sigilo).
+// buitre-cenizo → destreza, kirelon-arenoso → fuerza (ciego, caza por vibración/olfato, ver bio en
+// worldCatalog.ts). Espina del Viento/Cornante/Sombra de Kroj no tienen Npc/atributos — se usa su
+// rasgo narrativo ya establecido (veneno, adaptación al barro, sigilo).
 //
 // Medidas y edades (2026-07-22, "que indique casi medidas exactas tanto en el macho como en la
 // hembra... siguiendo un poco la lógica de lore y de descripción de cada elemento"): cifras
@@ -191,6 +192,20 @@ export const FAUNA_SEXO_VARIANTES: Record<string, SexoVariantesEntry> = {
       description: 'Permanece enterrada cerca de un mismo punto, junto a su propio nido, y es la más peligrosa de encontrarse por sorpresa.',
       medidaCm: 95,
       edadMaxima: 18,
+    },
+  },
+  'kirelon-arenoso': {
+    macho: {
+      rasgoFisico: 'Reptil ciego de escama negra, cabeza y hocico proporcionalmente más grandes que el resto del cuerpo, membranas entre las extremidades más amplias.',
+      description: 'Cubre un territorio de caza más extenso bajo la arena, siguiendo el rastro de vibración más débil hasta encontrarlo.',
+      medidaCm: 380,
+      edadMaxima: 40,
+    },
+    hembra: {
+      rasgoFisico: 'Reptil ciego de escama negra, cuerpo más macizo y compacto, garras de Yerreo notablemente más gruesas.',
+      description: 'Excava madrigueras más profundas y permanece enterrada más tiempo antes de emerger — cuando por fin ataca, ninguna presa logra desprenderse de su mordida.',
+      medidaCm: 340,
+      edadMaxima: 45,
     },
   },
   cornante: {

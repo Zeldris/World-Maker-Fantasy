@@ -5,6 +5,7 @@ import type { Attribute, AttributeBlock } from './dice.js';
 import type { Clase } from './classAbilities.js';
 import { npcAttributesForLevel } from './progression.js';
 import { parseActiveEffects, type ActiveEffect } from './activeEffects.js';
+import { effectiveTemperamento } from './reputation.js';
 
 /// Detección determinista de "NPC en escena" (docs/12-mundo-estructurado.md § 2.5) — sin llamada
 /// extra a Ollama: se busca Npc.aliases (normalizados) en el texto de la acción y en los hechos
@@ -144,6 +145,17 @@ export interface NpcInScene {
   /// tocar el resto del contrato de "sigue siendo candidato en escena" ya cubierto por tests.
   /// `null` = itinerante, sin territorio propio.
   homeLocationSlug: string | null;
+  /// Auditoría "narrador vs. catálogo del mundo" (2026-08-30) — porcentajes reales de qué tan
+  /// receptivo es este NPC a cada tipo de interacción social (schema.prisma § Npc, usados
+  /// mecánicamente en companeros.ts/cazar.ts para la tirada real). Antes llegaban solo hasta el
+  /// objeto en memoria — el narrador nunca sabía, p.ej., que Torgash Ketg tiene
+  /// `reclutablePct: 5` ("tan fácil de convencer como uno entre veinte") y podía narrar una
+  /// negociación fluida justo antes de que la tirada real fallara casi siempre.
+  comerciablePct: number;
+  reclutablePct: number;
+  domesticablePct: number;
+  cortejablePct: number;
+  capturablePct: number;
 }
 
 interface NpcWithAliases {
@@ -207,6 +219,11 @@ export function buildNpcInScene(npc: NpcWithItems, state: NpcState | undefined):
     abilityUsesThisEncounter: (state?.abilityUsesThisEncounter as Record<string, number> | undefined) ?? {},
     activeEffects: parseActiveEffects(state?.activeEffects),
     homeLocationSlug: npc.homeLocationSlug,
+    comerciablePct: npc.comerciablePct,
+    reclutablePct: npc.reclutablePct,
+    domesticablePct: npc.domesticablePct,
+    cortejablePct: npc.cortejablePct,
+    capturablePct: npc.capturablePct,
   };
 }
 
@@ -823,7 +840,70 @@ function generoHintFor(npc: NpcInScene): string {
   return ` GÉNERO DE ${npc.name.toUpperCase()}: ${propio} — si te refieres a ${npc.name} sin usar su nombre (p.ej. por su raza o rol), hazlo siempre en ${propio}, NUNCA en ${opuesto}, aunque su raza o rol suene distinto por defecto.`;
 }
 
-export function npcSceneBlockFor(npc: NpcInScene, playerLevel: number): string {
+/// Auditoría "narrador vs. catálogo del mundo" (2026-08-30, hallazgo 1: el narrador conocía el
+/// NOMBRE de la facción de un NPC pero nunca si el jugador es Aliado/Enemigo de ella en esta
+/// partida — podía narrar una bienvenida calurosa donde el motor ya sabe que hay hostilidad
+/// acumulada, o frialdad con una facción con la que ya se hicieron las paces). Reutiliza
+/// `effectiveTemperamento` (reputation.ts, ya usado mecánicamente para decidir si el NPC fuerza
+/// combate) — mismo cálculo, solo se traduce a texto en vez de quedarse solo en la decisión
+/// mecánica. `factionsStatus` opcional (default `{}` = reputación neutra) para no romper los
+/// llamadores de `distillationScenarios.ts` que no tienen este dato disponible.
+function facRepHintFor(npc: NpcInScene, factionsStatus: Record<string, number>): string {
+  if (!npc.faction) return '';
+  const t = effectiveTemperamento(npc.temperamento, npc.faction, factionsStatus);
+  if (t === npc.temperamento) return '';
+  const desc: Record<Temperamento, string> = {
+    AMIGABLE: 'con clara cordialidad — el jugador ya se ha ganado una buena relación con esta facción',
+    INOFENSIVO: 'con cierta cordialidad — el trato con esta facción ha mejorado respecto a lo habitual',
+    CAUTELOSO: 'con cautela neutra',
+    AGRESIVO: 'con hostilidad evidente — el jugador ya ha dañado su relación con esta facción',
+    ENEMIGO: 'con hostilidad abierta y desconfianza total — el jugador es visto como un enemigo declarado de esta facción',
+  };
+  return ` RELACIÓN CON ${npc.faction.toUpperCase()}: el jugador trata a ${npc.name} ${desc[t]} — refleja este trato en el tono de la escena, no lo narres neutro por defecto.`;
+}
+
+/// Auditoría "narrador vs. catálogo del mundo" (2026-08-30, hallazgo 3: `clase`/`especializacion`
+/// ya viajaban hasta el objeto `NpcInScene` — usados mecánicamente para escalar atributos — pero
+/// `npcSceneBlockFor`/`npcSceneLineFor` nunca los convertían a texto. El narrador podía narrar
+/// tácticas incoherentes con la clase real, p.ej. un Hechicero cargando cuerpo a cuerpo).
+function claseHintFor(npc: NpcInScene): string {
+  if (!npc.clase) return '';
+  const especializacionTxt = npc.especializacion ? `, especializado en ${npc.especializacion}` : '';
+  return ` CLASE DE ${npc.name.toUpperCase()}: ${npc.clase}${especializacionTxt} — su forma de combatir/actuar debe encajar con esta identidad (estilo de arma, tácticas, actitud), no la narres genérica.`;
+}
+
+/// Auditoría "narrador vs. catálogo del mundo" (2026-08-30, hallazgo 4: los 5 `*Pct` ya
+/// determinaban mecánicamente la tirada real de comerciar/reclutar/domesticar/cortejar/capturar
+/// — companeros.ts/cazar.ts — pero el narrador no sabía nada de ellos. Ejemplo real del catálogo:
+/// Torgash Ketg tiene `reclutablePct: 5` ("tan fácil de convencer como uno entre veinte") — sin
+/// este hecho, el narrador podía narrar una negociación fluida justo antes de que la tirada real
+/// fallara casi siempre, contradiciendo su propia prosa). Solo se anota cuando el porcentaje es
+/// bajo — un valor alto no necesita advertencia, es el caso "normal" sin sorpresas.
+const LOW_RECEPTIVITY_THRESHOLD = 20;
+function receptividadHintFor(npc: NpcInScene): string {
+  const bajos: string[] = [];
+  if (npc.comerciablePct > 0 && npc.comerciablePct < LOW_RECEPTIVITY_THRESHOLD) bajos.push('comerciar');
+  if (npc.reclutablePct > 0 && npc.reclutablePct < LOW_RECEPTIVITY_THRESHOLD) bajos.push('reclutarlo/a');
+  if (npc.domesticablePct > 0 && npc.domesticablePct < LOW_RECEPTIVITY_THRESHOLD) bajos.push('domesticarlo/a');
+  if (npc.cortejablePct > 0 && npc.cortejablePct < LOW_RECEPTIVITY_THRESHOLD) bajos.push('cortejarlo/a');
+  if (npc.capturablePct > 0 && npc.capturablePct < LOW_RECEPTIVITY_THRESHOLD) bajos.push('capturarlo/a');
+  if (bajos.length === 0) return '';
+  return ` ${npc.name} es MUY POCO RECEPTIVO a intentar ${bajos.join('/')} — si la acción va en esa dirección, no narres el intento como si fuera a salir bien, deja la duda/dificultad real abierta hasta que la tirada lo decida.`;
+}
+
+/// Auditoría "narrador vs. catálogo del mundo" (2026-08-30, hallazgo 6: `activeEffects`
+/// (AUMENTO/DEBILIDAD/CONTROL...) ya viajaban hasta el objeto pero nunca se traducían a texto —
+/// el narrador podía narrar al NPC actuando con normalidad mientras mecánicamente estaba
+/// potenciado/debilitado, chocando con el resultado numérico del intercambio que sigue).
+function activeEffectsHintFor(npc: NpcInScene): string {
+  if (npc.activeEffects.length === 0) return '';
+  const desc = npc.activeEffects
+    .map((e) => `${e.magnitude > 0 ? '+' : ''}${e.magnitude} ${e.attribute} por "${e.sourceAbility}" (${e.turnsRemaining} turnos restantes)`)
+    .join(', ');
+  return ` ESTADO ACTIVO DE ${npc.name.toUpperCase()}: ${desc} — refleja este estado en cómo actúa/se mueve este turno (más fuerte/débil de lo normal según corresponda), no lo narres como si estuviera en condición normal.`;
+}
+
+export function npcSceneBlockFor(npc: NpcInScene, playerLevel: number, factionsStatus: Record<string, number> = {}): string {
   if (npcYaResuelto(npc)) {
     const estado = npc.condicionFisica === 'MUERTO' ? 'muerto' : 'convaleciente';
     // Bug real jugando en vivo (2026-07-31): un cuerpo CONVALECIENTE/MUERTO todavía sin saquear
@@ -847,7 +927,7 @@ export function npcSceneBlockFor(npc: NpcInScene, playerLevel: number): string {
   // `carcassCandidatesFor`, recolectar.ts) — instrucción explícita en vez de confiar en que el
   // modelo lo infiera solo de la bio/personalidad.
   const faunaSinHablaHint = npc.ataqueNatural !== null ? ` ES UN ANIMAL, NO PUEDE HABLAR: nunca le pongas diálogo entre comillas ni palabras humanas — solo comportamiento animal (gruñidos, chillidos, gestos, movimientos).` : '';
-  return `PERSONAJE EN ESCENA: ${displayName(npc)} — ${npc.role}${npc.faction ? `, ${npc.faction}` : ''}, nivel ${npc.level} (acciones directas contra él/ella tienden a ${label}).${generoHintFor(npc)}${faunaSinHablaHint}
+  return `PERSONAJE EN ESCENA: ${displayName(npc)} — ${npc.role}${npc.faction ? `, ${npc.faction}` : ''}, nivel ${npc.level} (acciones directas contra él/ella tienden a ${label}).${generoHintFor(npc)}${faunaSinHablaHint}${facRepHintFor(npc, factionsStatus)}${claseHintFor(npc)}${receptividadHintFor(npc)}${activeEffectsHintFor(npc)}
 Descripción/hechos ya establecidos (nunca los contradigas): ${npc.bio}
 Personalidad: ${npc.personality}
 LLEVA ENCIMA: ${itemsLine(npc.items)}. Si es derrotado, registrado o comercia, lo que lleva encima es TODO lo que puede aparecer — no existe ningún otro objeto.`;
