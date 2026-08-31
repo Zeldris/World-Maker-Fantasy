@@ -3731,11 +3731,20 @@ reconstrucción parcial. La propia usuaria marca esta segunda parte como "lo com
 mirarlo bien antes de decidir cómo construirlo — sin alcance ni diseño técnico cerrado todavía,
 puramente anotado para retomar.
 
-**Diseño pedido — "Agua hervida de liquen" debería ser un objeto crafteable, no un recurso
-recolectable directamente**: revisar su definición actual en el catálogo (`HarvestYield` vs.
-`CraftingRecipe`) y decidir la receta. La usuaria pide además revisar de forma más amplia si hay
-OTROS materiales marcados hoy como recurso recolectable que en realidad deberían requerir un paso de
-crafteo (agua hervida es solo el ejemplo que disparó la duda, no el único caso a mirar).
+**Diseño pedido — "Agua hervida de liquen" debería ser un objeto crafteable** — **FIJADO 2026-08-30**
+(`BOILED_LICHEN_WATER_RECIPE`, `crafting.ts`, insumo `liquen-del-cauce`).
+
+**Revisión amplia — ¿hay otros recolectables que deberían pasar por crafteo?** — **HECHA 2026-08-31**:
+auditoría completa de los ~140 `HarvestYield` contra las 48 recetas de `crafting.ts`. Casi todo el
+catálogo ya sigue el patrón correcto (`RECURSO` crudo + receta obligatoria, o consumible crudo
+admitido a propósito por su propia descripción — grano/liquen/bulbo). **1 caso real encontrado y
+corregido**: `racion-carne` (carne cruda genérica de caza) se comía directa curando MÁS energía (15)
+que su propia versión ahumada (`racion-carne-ahumada`, 10, y con `curaHasta: GRAVE` que la cruda ni
+tenía) — el incentivo estaba invertido, cocinar salía peor que comer crudo. `curaEnergia` bajado a 8.
+Verificado también que ningún otro par crudo/crafteado (agua hervida de liquen, boungo asado, carne
+de Jusha ahumada) tenía esta inversión — en todos los demás casos el crafteado ya igualaba o
+mejoraba al crudo en ambos ejes (energía y `curaHasta`). `tsc -b` limpio, seed corrido en Postgres
+real.
 
 **Enciclopedia — "Hagar" aparece 2 veces** en el árbol de NPC de "Hijos del Estallido" (una fila
 "Hagar" ya descubierta, otra fila distinta con tooltip "Todavía no descubierto"). **CONFIRMADO BUG

@@ -3451,7 +3451,12 @@ export const items: ItemCatalogInput[] = [
     equipSlot: 'CONSUMIBLE_1',
     description: 'Trozos de carne fresca de caza, todavía con algo de sangre — se estropea en días.',
     dimensiones: 'Trozos de 300 a 500 g.',
-    curaEnergia: 15,
+    // curaEnergia bajado de 15 a 8 (auditoría "recolectables que deberían ser crafteables",
+    // 2026-08-31): antes curaba MÁS que su propia versión ahumada (racion-carne-ahumada, 10, y
+    // encima con curaHasta: GRAVE que la cruda no tiene) — comer la carne cruda salía mejor que
+    // cocinarla, invirtiendo el incentivo. Mismo criterio que `SMOKE_MEAT_RECIPE` (crafting.ts):
+    // procesar el ingrediente debe ganar en algún eje real, nunca perder en todos.
+    curaEnergia: 8,
   },
 
   {
