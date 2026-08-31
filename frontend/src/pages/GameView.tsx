@@ -48,6 +48,7 @@ import { CampSelectionModal } from '../components/CampSelectionModal'
 import { TravelDestinationModal } from '../components/TravelDestinationModal'
 import { SaquearZonaModal } from '../components/SaquearZonaModal'
 import { HealSelectionModal } from '../components/HealSelectionModal'
+import { EntregaModal } from '../components/EntregaModal'
 import { inventoryCapacityFor, totalInventoryUnits } from '../lib/inventoryCapacity'
 import {
   requestTurnClassify,
@@ -167,6 +168,8 @@ export function GameView() {
     setSaquearZonaModalOpen,
     healModalOpen,
     setHealModalOpen,
+    entregaModalOpen,
+    setEntregaModalOpen,
     postCombatTarget,
     setPostCombatTarget,
     activeDynamicMode,
@@ -883,6 +886,11 @@ export function GameView() {
     }
     if (ability.name === 'Curar') {
       setHealModalOpen(true)
+      setActivePanel(null)
+      return
+    }
+    if (ability.name === 'Entregar') {
+      setEntregaModalOpen(true)
       setActivePanel(null)
       return
     }
@@ -1755,6 +1763,19 @@ export function GameView() {
             handleSubmit(actionText, { healItemUses })
           }}
           onCancel={() => setHealModalOpen(false)}
+        />
+      )}
+
+      {entregaModalOpen && saveId && (
+        <EntregaModal
+          saveId={saveId}
+          onEntregado={(itemId, logEntry) => {
+            setInventory((prev) => prev.filter((i) => i.id !== itemId))
+            setCharacterLog((prev) => [...prev, { ...logEntry, channel: 'character' }])
+            setFictionalDate(logEntry.timeLabel)
+            setEntregaModalOpen(false)
+          }}
+          onCancel={() => setEntregaModalOpen(false)}
         />
       )}
 

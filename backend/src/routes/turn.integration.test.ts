@@ -9,6 +9,7 @@ import { recolectarRoutes } from './saves/recolectar.js';
 import { panelsRoutes } from './saves/panels.js';
 import { detailRoutes } from './saves/detail.js';
 import { deathRoutes } from './saves/death.js';
+import { entregaRoutes } from './saves/entrega.js';
 import { sessionRoutes } from './saves/session.js';
 import { questsRoutes } from './saves/quests.js';
 import { minutosConDestreza, bandaForMinutos } from '../services/travel.js';
@@ -3009,6 +3010,104 @@ describe('Decapitar cierra una misión "derrotar a X" con rewardItems y entrega 
     // implícito. Mismo turno que completa la quest, un solo golpe.
     const saveAfterKill = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
     expect(saveAfterKill.tutorialCompletedAt).not.toBeNull();
+  }, 20_000);
+});
+
+// Ciclo completo de "dar objeto a NPC" (2026-08-31, mecánica real — cierra el bug documentado en
+// docs/revisar-partida-hallazgos.md, 2026-08-28: el cuchillo "entregado" a Gistera Koh seguía en
+// el inventario y reapareció en 4 turnos posteriores). Este test cubre justo el escenario que
+// entrega.integration.test.ts NO puede probar aislado: que el objeto entregado sobrevive a la
+// MUERTE del NPC y sale de verdad en un saqueo real vía /turn/narrate, mismo pipeline
+// (applyLootMode) que cualquier otro botín de catálogo.
+describe('Entregar objeto a NPC → matarlo → el objeto entregado sale en el saqueo real (2026-08-31)', () => {
+  let saveId: string;
+  let npcId: string;
+  const npcSlug = 'orco-enfurecido-hondonada';
+
+  async function buildAppWithEntrega() {
+    const app = Fastify();
+    await app.register(entregaRoutes);
+    return app;
+  }
+
+  beforeAll(async () => {
+    const userId = await getDefaultUserId();
+    const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
+    const npc = await prisma.npc.findFirstOrThrow({ where: { worldId: world.id, slug: npcSlug } });
+    npcId = npc.id;
+    const location = await prisma.location.findFirstOrThrow({ where: { worldId: world.id, slug: 'hondonada-del-eco' } });
+    const save = await prisma.save.create({
+      data: {
+        userId,
+        worldId: world.id,
+        characterName: 'Gorhorn de prueba (entrega + saqueo)',
+        characterArchetype: 'guerrero',
+        characterOrigin: 'Clan Maktor',
+        characterMotivation: 'x',
+        attributes: ATTRS,
+        portraitInitial: 'G',
+        currentLocationId: location.id,
+      },
+    });
+    saveId = save.id;
+    await prisma.worldState.create({ data: { saveId } });
+    // ILESO al principio — la entrega solo acepta destinatarios conscientes (ILESO/HERIDO/GRAVE,
+    // ver entrega.ts). Se deja CONVALECIENTE justo antes de rematar (dentro del propio test), para
+    // que el golpe final con tirada perfecta baste (`oneStepWorseThan` solo empeora un escalón).
+    await prisma.npcState.create({ data: { saveId, npcId, scope: '', condicionFisica: 'ILESO' } });
+    await prisma.inventoryItem.create({
+      data: { saveId, name: 'Amuleto de la suerte', description: 'x', origin: 'inicial' },
+    });
+  });
+
+  afterAll(async () => {
+    await prisma.save.delete({ where: { id: saveId } });
+  });
+
+  it('entregado → derrotado → saqueado: el amuleto aparece en el botín real, no en la lista original de NpcItem', async () => {
+    const item = await prisma.inventoryItem.findFirstOrThrow({ where: { saveId, name: 'Amuleto de la suerte' } });
+    const entregaApp = await buildAppWithEntrega();
+    const entregaRes = await entregaApp.inject({
+      method: 'POST',
+      url: `/saves/${saveId}/entregar/${npcSlug}`,
+      payload: { itemId: item.id },
+    });
+    expect(entregaRes.statusCode).toBe(200);
+    expect(await prisma.inventoryItem.findUnique({ where: { id: item.id } })).toBeNull();
+
+    // Ya dañado (un turno de combate previo, no simulado aquí) — deja al Orco a un golpe de morir.
+    await prisma.npcState.update({
+      where: { saveId_npcId_scope: { saveId, npcId, scope: '' } },
+      data: { condicionFisica: 'CONVALECIENTE' },
+    });
+
+    // Muerte real con tirada perfecta — mismo patrón que "Decapitar cierra una misión..." arriba.
+    vi.spyOn(Math, 'random').mockReturnValue(0.99);
+    classifyAction.mockResolvedValue({
+      requiereTirada: false, atributo: 'fuerza', dificultad: 8, razon: 'x', banda: 'instantanea', duracionEstimadaMinutos: 0,
+    });
+    await doTurn(saveId, "Ataco con todas mis fuerzas, contra 'Orco enfurecido'.");
+    const stateAfterKill = await prisma.npcState.findUniqueOrThrow({ where: { saveId_npcId_scope: { saveId, npcId, scope: '' } } });
+    expect(stateAfterKill.condicionFisica).toBe('MUERTO');
+    vi.restoreAllMocks();
+
+    // Saqueo real por texto libre, pidiendo explícitamente el objeto entregado (no del catálogo
+    // NpcItem del Orco) — si `applyLootMode` no lo viera en `npc.items`, esto no daría nada.
+    classifyAction.mockResolvedValue({
+      requiereTirada: false, atributo: 'destreza', dificultad: 8, razon: 'x', banda: 'instantanea', duracionEstimadaMinutos: 0,
+    });
+    const app = await buildApp();
+    const action = 'Registro el cuerpo del Orco enfurecido.';
+    const classifyRes = await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action, enCombate: true } });
+    const { classification, roll } = classifyRes.json();
+    const narrateRes = await app.inject({
+      method: 'POST',
+      url: '/turn/narrate',
+      payload: { saveId, action, classification, roll, enCombate: true, lootItemNames: ['Amuleto de la suerte'] },
+    });
+    expect(narrateRes.statusCode).toBe(200);
+    const looted = await prisma.inventoryItem.findFirst({ where: { saveId, name: 'Amuleto de la suerte', origin: { contains: 'botín' } } });
+    expect(looted).not.toBeNull();
   }, 20_000);
 });
 

@@ -153,6 +153,19 @@ const GORHORN_GENERAL_ABILITIES: StartingAbility[] = [
     promptText: 'Recojo lo que encuentro por la zona.',
     category: 'general',
   },
+  // Entregar un objeto a un NPC (2026-08-31, mecánica real — antes solo existía la mitigación de
+  // coherencia hasFalseItemGivenAway, narrador.ts: bloqueaba que la narración PROMETIERA una
+  // entrega, sin ningún camino real de cumplirla). Panel de selección (mismo patrón que Curar/
+  // Cazar): elige objeto + NPC en escena, sin tirada, mutación determinista real
+  // (EntregaModal.tsx, POST /saves/:id/entregar/:npcSlug). `promptText` nunca se usa (GameView.tsx
+  // intercepta por nombre antes de llegar al composer), se deja por consistencia.
+  {
+    name: 'Entregar',
+    icon: '🤝',
+    description: 'Elige un objeto de tu inventario y un NPC presente para entregárselo de verdad — se queda con él, no es solo narración.',
+    promptText: 'Entrego un objeto a ',
+    category: 'general',
+  },
 ];
 
 // Edificios sin oficio (2026-08-13, petición explícita: "hay que añadir también los edificios

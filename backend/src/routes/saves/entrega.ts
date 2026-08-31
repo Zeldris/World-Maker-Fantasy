@@ -1,0 +1,124 @@
+import type { FastifyInstance } from 'fastify';
+import { prisma } from '../../lib/prisma.js';
+import { scopeFor, type NpcItemInScene } from '../../services/npcScene.js';
+import { rejectIfEnded, toFrontendLogEntry } from './shared.js';
+
+/// Entregar un objeto a un NPC (2026-08-31, mecánica real — antes solo existía la mitigación de
+/// coherencia `hasFalseItemGivenAway`, narrador.ts: bloqueaba que la narración PROMETIERA una
+/// entrega, pero ningún InventoryItem se retiraba nunca, sin ningún camino real de cumplirla).
+///
+/// Mismo patrón que Capturar (`companeros.ts`, docs/rpgtarkor/captura-rediseno-2026-08-28.md):
+/// mutación 100% determinista sin narración de por medio, endpoint dedicado propio, botón en el
+/// frontend en vez de detección de texto libre (decisión explícita: dos referencias a resolver a
+/// la vez — objeto Y NPC — hacían frágil el matching por comillas simples que usa `explicitTarget`
+/// para un solo objetivo).
+///
+/// El objeto entregado no desaparece sin más: se guarda aplanado en `NpcState.givenItems` (mismo
+/// shape que `NpcItemInScene`) y se suma al loadout del NPC en `buildNpcInScene` — si ese NPC
+/// concreto es derrotado más adelante, el objeto entregado aparece entre lo saqueable, mismo
+/// pipeline que el loot de catálogo, sin lógica paralela (ver comentario del campo en
+/// schema.prisma).
+export async function entregaRoutes(app: FastifyInstance) {
+  /// Candidatos: objetos NO equipados del inventario + NPCs vivos ya conocidos en esta ubicación
+  /// (mismo criterio que Capturar/Saquear-zona: `NpcState` real + `scopeFor` — no depende de que
+  /// la narración de ESTE turno haya vuelto a mencionar al NPC).
+  app.get<{ Params: { id: string } }>('/saves/:id/entregables', async (request, reply) => {
+    const save = await prisma.save.findUnique({
+      where: { id: request.params.id },
+      select: { id: true, worldId: true, currentLocationId: true, inventoryItems: { where: { slot: null }, select: { id: true, name: true, description: true } } },
+    });
+    if (!save) return reply.status(404).send({ error: 'Partida no encontrada' });
+    if (!save.currentLocationId || save.inventoryItems.length === 0) return { items: [], npcs: [] };
+
+    const states = await prisma.npcState.findMany({
+      where: { saveId: save.id, condicionFisica: { in: ['ILESO', 'HERIDO', 'GRAVE'] } },
+    });
+    if (states.length === 0) return { items: save.inventoryItems, npcs: [] };
+
+    const npcs = await prisma.npc.findMany({ where: { id: { in: states.map((s) => s.npcId) }, worldId: save.worldId } });
+    const npcById = new Map(npcs.map((n) => [n.id, n]));
+    const candidateNpcs = states
+      .map((state) => {
+        const npc = npcById.get(state.npcId);
+        if (!npc || scopeFor(npc.kind, save.currentLocationId) !== state.scope) return null;
+        return { npcSlug: npc.slug, name: npc.name };
+      })
+      .filter((n): n is { npcSlug: string; name: string } => !!n);
+
+    return { items: save.inventoryItems, npcs: candidateNpcs };
+  });
+
+  app.post<{ Params: { id: string; npcSlug: string }; Body: { itemId: string } }>(
+    '/saves/:id/entregar/:npcSlug',
+    async (request, reply) => {
+      const save = await prisma.save.findUnique({
+        where: { id: request.params.id },
+        select: { id: true, worldId: true, currentLocationId: true, endedAt: true, characterName: true, worldState: { select: { fictionalDateLabel: true, fictionalMinutes: true } } },
+      });
+      if (!save) return reply.status(404).send({ error: 'Partida no encontrada' });
+      if (rejectIfEnded(save, reply)) return;
+      if (!save.currentLocationId) return reply.status(400).send({ error: 'Sin ubicación actual' });
+
+      const { itemId } = request.body;
+      if (!itemId) return reply.status(400).send({ error: 'Falta itemId' });
+
+      const item = await prisma.inventoryItem.findUnique({ where: { id: itemId } });
+      if (!item || item.saveId !== save.id) return reply.status(404).send({ error: 'Objeto no encontrado en tu inventario' });
+      if (item.slot !== null) return reply.status(400).send({ error: 'Desequípalo antes de entregarlo' });
+
+      const npc = await prisma.npc.findUnique({ where: { worldId_slug: { worldId: save.worldId, slug: request.params.npcSlug } } });
+      if (!npc) return reply.status(404).send({ error: 'NPC no encontrado' });
+      const scope = scopeFor(npc.kind, save.currentLocationId);
+      const state = await prisma.npcState.findUnique({ where: { saveId_npcId_scope: { saveId: save.id, npcId: npc.id, scope } } });
+      if (!state || !['ILESO', 'HERIDO', 'GRAVE'].includes(state.condicionFisica)) {
+        return reply.status(400).send({ error: 'Ese NPC no está aquí para recibir nada' });
+      }
+
+      const catalog = item.catalogSlug
+        ? await prisma.itemCatalog.findFirst({ where: { worldId: save.worldId, slug: item.catalogSlug } })
+        : null;
+      const givenItem: NpcItemInScene = {
+        name: item.name,
+        cantidad: 1,
+        notas: item.description,
+        description: item.description,
+        equipSlot: catalog?.equipSlot ?? null,
+        statBonuses: item.statBonuses as NpcItemInScene['statBonuses'],
+        // `NpcItem.catalogSlug` real siempre viene de una relación con ficha (nunca null) — un
+        // objeto entregado puede ser puramente narrativo (sin catalogSlug), mismo criterio que el
+        // resto del proyecto usa para "objeto sin ficha real detrás" (turnResolution.ts, botín).
+        catalogSlug: item.catalogSlug ?? '',
+        effectKey: catalog?.effectKey ?? null,
+        category: catalog?.category ?? 'objeto',
+        tipoArma: catalog?.tipoArma ?? null,
+        tipo: catalog?.tipo ?? 'MATERIAL',
+      };
+
+      const timeLabel = save.worldState?.fictionalDateLabel ?? 'Día 1, mañana';
+      const fictionalMinutes = save.worldState?.fictionalMinutes ?? 480;
+      // `givenItems` es Json, no un array escalar nativo — `push` de Prisma solo existe para
+      // String[]/Int[]. Se lee/muta/escribe entero, mismo criterio que cualquier otro campo Json
+      // acumulativo de este proyecto (p.ej. `activeEffects`).
+      const existingGivenItems = (state.givenItems as unknown as NpcItemInScene[] | undefined) ?? [];
+      const createdLogEntry = await prisma.$transaction(async (tx) => {
+        await tx.inventoryItem.delete({ where: { id: item.id } });
+        await tx.npcState.update({
+          where: { saveId_npcId_scope: { saveId: save.id, npcId: npc.id, scope } },
+          data: { givenItems: [...existingGivenItems, givenItem] as unknown as object },
+        });
+        return tx.logEntry.create({
+          data: {
+            saveId: save.id,
+            channel: 'CHARACTER',
+            text: `${save.characterName} le entrega ${item.name} a ${npc.name}.`,
+            timeLabel,
+            fictionalMinutes,
+            isPlayerAction: true,
+          },
+        });
+      });
+
+      return { npcSlug: npc.slug, itemName: item.name, logEntry: toFrontendLogEntry(createdLogEntry) };
+    },
+  );
+}

@@ -182,7 +182,10 @@ export function buildNpcInScene(npc: NpcWithItems, state: NpcState | undefined):
     faction: npc.faction,
     personality: npc.personality,
     bio: npc.bio,
-    items: npc.items.map((i) => ({
+    // Entrega real de objeto a NPC (2026-08-31) — `NpcState.givenItems` ya viene aplanado al
+    // mismo shape que el resto (ver comentario del campo en schema.prisma), se suma tal cual al
+    // loadout fijo de catálogo — mismo pipeline de saqueo/decapitar, sin lógica paralela.
+    items: [...npc.items.map((i) => ({
       name: i.item.name,
       cantidad: i.cantidad,
       notas: i.notas,
@@ -194,7 +197,7 @@ export function buildNpcInScene(npc: NpcWithItems, state: NpcState | undefined):
       category: i.item.category,
       tipoArma: i.item.tipoArma,
       tipo: i.item.tipo,
-    })),
+    })), ...((state?.givenItems as unknown as NpcItemInScene[] | undefined) ?? [])],
     // Escalado por nivel (2026-08-21, "quiero afinar cómo funciona el tema de los niveles"): el
     // bloque `attributes` de catálogo es siempre nivel 1 — aquí se proyecta hasta `npc.level` con
     // el mismo ritmo de puntos que el PJ (ver npcAttributesForLevel, progression.ts). `raza`/

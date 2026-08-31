@@ -26,6 +26,8 @@ export function useActionModalsState() {
   const [simpleModal, setSimpleModal] = useState<'camp' | 'travel' | null>(null)
   const [saquearZonaModalOpen, setSaquearZonaModalOpen] = useState(false)
   const [healModalOpen, setHealModalOpen] = useState(false)
+  /// Entregar un objeto a un NPC (2026-08-31) — mismo patrón que healModalOpen/saquearZonaModalOpen.
+  const [entregaModalOpen, setEntregaModalOpen] = useState(false)
   const [postCombatTarget, setPostCombatTarget] = useState<PostCombatInteractionInfo | null>(null)
   /// "Modo dinámico" (2026-08-27) — mini-flujo abierto tras pulsar "Interactuar" en la tarjeta de
   /// oferta del log; `turno` es la vuelta actual (narración + opciones), `busy` bloquea los botones
@@ -43,7 +45,7 @@ export function useActionModalsState() {
   /// `detailTarget`/`kingdomFoundedInfo` (GameView.tsx) y `combat.combatOpen` (useCombatFlow.ts)
   /// viven fuera de aquí, el caller los combina antes de decidir si abre uno nuevo.
   const anyActionModalOpen = Boolean(
-    harvestModal || huntModalOpen || simpleModal || saquearZonaModalOpen || healModalOpen || postCombatTarget || activeDynamicMode,
+    harvestModal || huntModalOpen || simpleModal || saquearZonaModalOpen || healModalOpen || entregaModalOpen || postCombatTarget || activeDynamicMode,
   )
 
   return {
@@ -60,6 +62,8 @@ export function useActionModalsState() {
     setSaquearZonaModalOpen,
     healModalOpen,
     setHealModalOpen,
+    entregaModalOpen,
+    setEntregaModalOpen,
     postCombatTarget,
     setPostCombatTarget,
     activeDynamicMode,

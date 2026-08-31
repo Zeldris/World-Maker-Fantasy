@@ -921,6 +921,30 @@ export async function postCapturar(
   })
 }
 
+/// Entregar un objeto a un NPC (2026-08-31) — mismo patrón que Capturar: mutación 100%
+/// determinista sin narración de por medio, endpoint dedicado propio. `items` son objetos NO
+/// equipados del inventario real; `npcs` son NPCs vivos ya conocidos en esta ubicación.
+export interface EntregableNpc {
+  npcSlug: string
+  name: string
+}
+export async function getEntregables(
+  saveId: string,
+): Promise<{ items: { id: string; name: string; description: string }[]; npcs: EntregableNpc[] }> {
+  return fetchJson(`${API_URL}/saves/${saveId}/entregables`)
+}
+export async function postEntregar(
+  saveId: string,
+  npcSlug: string,
+  itemId: string,
+): Promise<{ npcSlug: string; itemName: string; logEntry: LogEntry }> {
+  return fetchJson(`${API_URL}/saves/${saveId}/entregar/${npcSlug}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ itemId }),
+  })
+}
+
 /// Deposita una captura EN EL INVENTARIO (`InventoryItem.capturaNpcId` no null) en una Jaula con
 /// hueco — solo fauna tiene edificio de destino hoy (NPC espera la Celda de Retención, pausada).
 export async function postDepositarCaptura(saveId: string, itemId: string): Promise<{ ok: true; jaulaBuildingId: string }> {

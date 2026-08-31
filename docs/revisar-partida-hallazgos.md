@@ -3519,7 +3519,17 @@ mecánico real sobre `InventoryItem`. Candidato de guard/mecánica: o bien detec
 más simple — un guard tipo `hasFalseItemGivenAway` que impida a la narración prometer una entrega
 que la mecánica no puede cumplir (mismo principio que el resto de guards `hasFalse*`).
 
-**Estado**: PENDIENTE, no arreglado — encontrado en el análisis de cierre, no jugando en vivo.
+**Estado**: FIJADO en 2 pasadas. (1) `hasFalseItemGivenAway` (narrador.ts) — mitigación de
+coherencia: bloquea que la narración libre PROMETA una entrega, forzando reintento. (2) 2026-08-31,
+mecánica real: nuevo modal "Entregar" (habilidad general, mismo patrón que Curar/Cazar) + endpoint
+determinista `POST /saves/:id/entregar/:npcSlug` (mismo patrón que Capturar — mutación real, sin
+narración de por medio). El `InventoryItem` se borra de verdad; el objeto se guarda aplanado en
+`NpcState.givenItems` (campo nuevo) y se suma al loadout del NPC en `buildNpcInScene` — si ese NPC
+es derrotado después, el objeto entregado sale en el saqueo real, mismo pipeline que el botín de
+catálogo. Verificado con test de integración del ciclo completo (entregar → dañar → matar →
+saquear, objeto real en el botín). `tsc -b` limpio en backend/frontend, 3324/3325 en la suite
+unitaria (único fallo, flake ya confirmado), 104/104 en `turn.integration.test.ts`, 5/5 en
+`entrega.integration.test.ts`. Ver memoria de sesión `tarkor_mecanica_entrega_objeto_npc_2026-08-31.md`.
 
 ### 2026-08-28 (FASE 2: coherencia) — Orco Enfurecido MUERTO reaparece como amenaza viva 2 veces — mismo síntoma que el hallazgo FIJADO 2026-08-01, pero causa DISTINTA
 

@@ -1919,15 +1919,16 @@ export function hasFalseEquipmentChangeClaim(narration: string, equippableItemNa
   return sentenceMatchesRegexAndName(narration, EQUIP_CHANGE_VERB_REGEX, normalizedNames);
 }
 
-/// Narración-vs-mecánica, categoría sin ningún guard hasta ahora (bug real jugando en vivo,
-/// análisis de cierre de partida 2026-08-28, FASE 1: "dar un objeto a un NPC no lo retira del
-/// inventario del jugador") — este juego no tiene ninguna mecánica de "entregar objeto a NPC" (sin
-/// InventoryItem que se retire, sin ningún camino que reaccione a esa intención en texto libre). Si
-/// la narración describe al personaje entregando/dando/pasando un objeto real de su inventario a
-/// alguien, es una alucinación de licencia narrativa, nunca algo que la mecánica pueda cumplir: el
-/// objeto reaparece en manos del jugador en cualquier turno posterior, exactamente el bug real
-/// encontrado (el cuchillo de hielo sílice "entregado" a Gistera Koh seguía en el inventario y
-/// reapareció en 4 turnos posteriores). Mismo criterio que `hasFalseEquipmentChangeClaim`:
+/// Narración-vs-mecánica (bug real jugando en vivo, análisis de cierre de partida 2026-08-28,
+/// FASE 1: "dar un objeto a un NPC no lo retira del inventario del jugador") — la ÚNICA forma real
+/// de entregar un objeto a un NPC es el modal dedicado "Entregar" (EntregaModal.tsx,
+/// POST /saves/:id/entregar/:npcSlug, 2026-08-31), determinista, sin narración de por medio. La
+/// narración LIBRE nunca decide una entrega por su cuenta — si describe al personaje entregando/
+/// dando/pasando un objeto real de su inventario a alguien, es una alucinación de licencia
+/// narrativa, nunca algo que esa vía pueda cumplir: el objeto reaparecería en manos del jugador en
+/// cualquier turno posterior (exactamente el bug real encontrado antes de que existiera el modal —
+/// el cuchillo de hielo sílice "entregado" a Gistera Koh seguía en el inventario y reapareció en 4
+/// turnos posteriores). Mismo criterio que `hasFalseEquipmentChangeClaim`:
 /// mismo-sentencia-que-el-nombre-real, para no disparar con "entrega su vida a la causa" o frases
 /// sin relación con un objeto real concreto.
 const ITEM_GIVEN_AWAY_VERB_REGEX = /\b(entreg\w*|le d[ae]s?|le pas\w*|le ofrec\w*|le tiend\w*)\b/i;
