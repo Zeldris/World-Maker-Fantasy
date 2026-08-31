@@ -178,6 +178,28 @@ model Save {
   lastRestLocationId String?
   lastRestLocation   Location? @relation("LastRestLocation", fields: [lastRestLocationId], references: [id])
 
+  /// Muerte permanente (2026-08-31, petición explícita) — true en cuanto el jugador derrota de
+  /// verdad (mata) al Orco Enfurecido del tutorial (services/quests.ts, ORCO_ENFURECIDO_QUEST_TITLE),
+  /// nunca antes. Sirve de "primer punto de guardado implícito": antes de este hito, morir sin
+  /// haber descansado nunca en construcción propia (`lastRestLocationId` null) ya no reaparece con
+  /// el progreso intacto — reinicia la partida entera, igual que `/saves/:id/restart` (decisión
+  /// explícita: reinicio total temprano es duro pero coherente con "no hay nada real que
+  /// preservar todavía"; tras el tutorial, SIEMPRE hay al menos este hito como red de seguridad).
+  tutorialCompletedAt DateTime?
+
+  /// Muerte pendiente de resolución (2026-08-31, petición explícita: "te pondra un boton tipo
+  /// Aceptar o Reintentar en la narracion, si le das vuelve al punto de guardado") — el turno que
+  /// mata al jugador persiste HASTA AQUÍ y se detiene: `condicionFisica` ya es MUERTO, el susurro
+  /// de la Entidad ya se narró (LogEntry), pero el respawn/reinicio real NO se aplica todavía.
+  /// Bloquea /turn/classify y /turn/narrate (mismo 409 que `endedAt`/`characterTransit.busyUntil`)
+  /// hasta que POST /saves/:id/death/resolve lo consume — ahí se decide, con el estado REAL de la
+  /// partida en ese momento (no uno guardado aparte, que podría quedar obsoleto), si toca
+  /// reaparecer en `lastRestLocationId` o reiniciar del todo (`tutorialCompletedAt` null Y sin
+  /// punto de guardado). Sin datos propios a propósito — todo lo necesario para resolver
+  /// (`deathCount`, `dificultad`, `lastRestLocationId`, `tutorialCompletedAt`) ya vive en sus
+  /// propias columnas de `Save`.
+  pendingDeathResolution Boolean @default(false)
+
   /// Nº de veces que ha muerto esta partida — determina cuándo se dispara el fin de partida
   /// según `dificultad` (§ 4.2). No se resetea salvo por `/saves/:id/restart`.
   deathCount Int        @default(0)

@@ -18,7 +18,7 @@ import { formatFictionalDate } from '../../services/worldClock.js';
 import { recordEntityDiscoveries } from '../../services/entityDiscovery.js';
 import type { AttributeBlock } from '../../services/dice.js';
 import { Prisma, type Dificultad } from '@prisma/client';
-import { buildStartingQuestsData, VALID_ATTRIBUTES } from './shared.js';
+import { buildStartingQuestsData, VALID_ATTRIBUTES, withCatalogStatBonuses, restartSaveTransactionBody } from './shared.js';
 
 /// Auditoría 2026-08-11 ("pruebas por API"): el guard de la ruta solo cubría 3 de los ~10 campos
 /// `string` no opcionales de `CreateSaveBody` — faltar cualquier otro (p. ej. `characterOrigin`)
@@ -58,22 +58,6 @@ function validationErrorFor(body: CreateSaveBody): string | null {
 /// Gorhorn se creaban con `statBonuses: null` para siempre. Se resuelve aquí, una sola vez, contra
 /// ItemCatalog — mismo criterio de "el catálogo es la fuente de verdad" que ya usa
 /// `grantQuestRewardItems`.
-async function withCatalogStatBonuses(
-  tx: Prisma.TransactionClient,
-  worldId: string,
-  items: StartingInventoryItem[],
-): Promise<StartingInventoryItem[]> {
-  const slugs = items.map((i) => i.catalogSlug).filter((s): s is string => !!s);
-  if (slugs.length === 0) return items;
-  const catalogRows = await tx.itemCatalog.findMany({ where: { worldId, slug: { in: slugs } }, select: { slug: true, statBonuses: true } });
-  const statBonusesBySlug = new Map(catalogRows.map((r) => [r.slug, r.statBonuses]));
-  return items.map((item) => {
-    if (item.statBonuses || !item.catalogSlug) return item;
-    const catalogBonuses = statBonusesBySlug.get(item.catalogSlug);
-    return catalogBonuses ? { ...item, statBonuses: catalogBonuses as StartingInventoryItem['statBonuses'] } : item;
-  });
-}
-
 interface CreateSaveBody {
   worldSlug: string;
   pregeneratedCharacterId?: string;
@@ -270,7 +254,6 @@ export async function creationRoutes(app: FastifyInstance) {
       return reply.status(404).send({ error: 'Partida no encontrada' });
     }
 
-    const fictionalDateLabel = formatFictionalDate(480);
     // Intro propia por personaje pregenerado (2026-07-28) — CharacterSaves.tsx ya conoce el
     // personaje de esta partida (`data/mock.ts`, la misma fuente que usa la creación de partida
     // nueva) y manda su intro propia si la tiene; si no llega nada (personaje sin intro propia,
@@ -281,174 +264,19 @@ export async function creationRoutes(app: FastifyInstance) {
     const introWorldText =
       request.body?.introWorldText ?? `El mundo de ${save.world.name} sigue su curso, ajeno por ahora a la llegada de un nuevo actor en la historia.`;
 
-    const initialLocationSlug = initialLocationSlugFor(save.characterName);
-    const initialLocation = initialLocationSlug
-      ? await prisma.location.findUnique({ where: { worldId_slug: { worldId: save.worldId, slug: initialLocationSlug } } })
-      : null;
-    const startingProfessions = startingProfessionsFor(save.characterName, save.raza, initialLocation?.region ?? null);
-    const startingQuestsData = await buildStartingQuestsData(save.worldId, save.characterName);
-
-    // Callback en vez de array de operaciones (auditoría 2026-07-28, fix #9): el registro de
-    // descubrimientos/primera visita de más abajo antes vivía en dos awaits sueltos DESPUÉS de este
-    // array — un crash entre medias dejaba la partida reiniciada pero con la Enciclopedia sin sus
-    // datos "de serie". Ahora es una única transacción, todo o nada, igual que en POST /saves.
-    //
-    // `timeout`/`maxWait` explícitos (bug real jugando en vivo, 2026-07-28): esta transacción
-    // encadena ~17 queries secuenciales — contra el pool remoto de Supabase (pgbouncer=true,
-    // eu-west-3) con la latencia real de la Steam Deck, eso supera de sobra el timeout por defecto
-    // de Prisma (5s) y el motor cierra la transacción a mitad de camino: la query que llega tarde
-    // revienta con `PrismaClientKnownRequestError P2028: Transaction not found` — reproducido en
-    // aislado fuera de Fastify, mismo error exacto que "Reiniciar" daba en el frontend (el 500
-    // genérico solo decía "Error interno del servidor", sin este dato).
-    await prisma.$transaction(
-      async (tx) => {
-        await tx.logEntry.deleteMany({ where: { saveId: save.id } });
-        await tx.inventoryItem.deleteMany({ where: { saveId: save.id } });
-        await tx.companion.deleteMany({ where: { saveId: save.id } });
-        await tx.subject.deleteMany({ where: { saveId: save.id } });
-        // Grupo 3 § Compañeros y supervivencia (2026-08-25) — Almacén de Reino/Plantillas también
-        // son progreso de ESTA partida, mismo criterio que Companion/Subject arriba.
-        await tx.almacenItem.deleteMany({ where: { saveId: save.id } });
-        await tx.plantillaEquipo.deleteMany({ where: { saveId: save.id } });
-        await tx.building.deleteMany({ where: { saveId: save.id } });
-        await tx.territory.deleteMany({ where: { saveId: save.id } });
-        await tx.characterTransit.deleteMany({ where: { saveId: save.id } });
-        await tx.savedAction.deleteMany({ where: { saveId: save.id } });
-        await tx.locationVisit.deleteMany({ where: { saveId: save.id } });
-        await tx.quest.deleteMany({ where: { saveId: save.id } });
-        await tx.sessionSummary.deleteMany({ where: { saveId: save.id } });
-        // NpcState (2026-07-19): sin esto, la condición física/saqueo de un NPC de una partida
-        // anterior sobrevivía al "reiniciar" — un NPC ya derrotado seguía derrotado en el Día 1
-        // nuevo, en vez de volver a ILESO como todo lo demás.
-        await tx.npcState.deleteMany({ where: { saveId: save.id } });
-        // Bug real (2026-07-23, encontrado al reiniciar la partida real de Gorhorn): ProfessionProgress
-        // y KingdomStats no se borraban — un nivel de oficio o una economía de reino ya fundada
-        // sobrevivían a "reiniciar", igual de incoherente que el NpcState de arriba antes de aquel fix.
-        await tx.professionProgress.deleteMany({ where: { saveId: save.id } });
-        await tx.kingdomStats.deleteMany({ where: { saveId: save.id } });
-        // Bug real (auditoría de bugs, 2026-08-21): `Faction` (fundar reino, reino.ts) es
-        // `saveId`-scoped igual que el resto de filas de arriba, pero nunca se borraba aquí — el
-        // reinicio ya deja `Save.kingdomName: null` (más abajo), así que la partida reiniciada
-        // parece "sin reino" de nuevo, pero la fila `Faction` de la partida anterior seguía viva en
-        // la base de datos con el mismo `saveId`. Reproducible: fundar un reino, reiniciar, fundar
-        // OTRO reino con el mismo nombre exacto — `factionSlug = slugify(nombre)-${save.id}` choca
-        // contra el `@@unique([worldId, slug])` de la fila fantasma y `POST /reino/fundar` responde
-        // "Ya has fundado tu reino" (P2002, ver reino.ts) para una partida que en realidad empieza
-        // de cero. `DiscoveredEntity` de la Faction vieja ya se borra abajo junto con el resto —
-        // sin borrar la propia `Faction`, quedaba huérfana pero seguía bloqueando el slug.
-        await tx.faction.deleteMany({ where: { saveId: save.id } });
-        // Enciclopedia progresiva (2026-07-23): reiniciar vuelve a Día 1 también en lo que ya se
-        // "conoce" — sin esto, la Enciclopedia de una partida recién reiniciada seguiría mostrando
-        // NPCs/fauna/objetos de la partida anterior como ya descubiertos.
-        await tx.discoveredEntity.deleteMany({ where: { saveId: save.id } });
-        // `facts` vivía aquí como columna de WorldState — migró a la tabla SessionFact (2026-07-30,
-        // ver worldFacts.ts). Bug real (2026-07-31, encontrado jugando: "Reiniciar" daba 500):
-        // esta ruta se quedó sin actualizar en esa migración, seguía escribiendo `facts: []` en un
-        // campo que ya no existe. Reiniciar ahora borra sus SessionFact reales — mismo espíritu
-        // que el resto del reset (npcState/quest/etc.), Día 1 sin ningún hecho previo.
-        await tx.sessionFact.deleteMany({ where: { saveId: save.id } });
-        await tx.worldState.update({
-          where: { saveId: save.id },
-          data: { fictionalDateLabel, fictionalMinutes: 480, agenda: [], factionsStatus: {} },
-        });
-        await tx.logEntry.create({
-          data: { saveId: save.id, channel: 'CHARACTER', text: introCharacterText, timeLabel: fictionalDateLabel },
-        });
-        await tx.logEntry.create({
-          data: { saveId: save.id, channel: 'WORLD', text: introWorldText, timeLabel: fictionalDateLabel },
-        });
-        await tx.savedAction.createMany({
-          // Mismo bug que en POST /saves (ver comentario de arriba): las habilidades de clase
-          // (level:1) tampoco se concedían al reiniciar. isGeneric (2026-07-31): mismo criterio
-          // que la creación — solo las 2 genéricas de aquí lo llevan.
-          data: [
-            ...startingAbilitiesFor(save.characterName).map((a) => ({ ...a, saveId: save.id, isStarting: true })),
-            ...GENERIC_COMBAT_ABILITIES.map((a) => ({ ...a, saveId: save.id, isStarting: true, isGeneric: true })),
-            ...classAbilityUnlocksFor(save.characterName, 1, save.clase).map((a) => ({ ...a, saveId: save.id, isStarting: true })),
-            ...startingProfessions.flatMap((oficio) => [
-              ...professionAbilityUnlocksFor(oficio, 1).map((a) => ({ ...a, saveId: save.id, isStarting: true })),
-              ...harvestAbilityUnlocksFor(oficio, 1).map((a) => ({ ...a, saveId: save.id, isStarting: true })),
-            ]),
-          ],
-        });
-        const startingInventoryWithStats = await withCatalogStatBonuses(tx, save.worldId, startingInventoryFor(save.characterName));
-        const restartedInventory = await tx.inventoryItem.createManyAndReturn({
-          data: startingInventoryWithStats.map((i) => ({ ...i, saveId: save.id })),
-        });
-        // Bug real (2026-07-29, encontrado probando en vivo): reiniciar nunca llamaba a
-        // syncDynamicCombatAbilities — las raciales/de arma (isDynamic) se borraban arriba junto
-        // con el resto de savedActions y no se volvían a crear hasta el próximo equipar/desequipar
-        // manual, dejando al personaje sin ellas justo después de "reiniciar".
-        const restartedEquippedWeaponSlots = await resolveEquippedWeaponSlots(tx, save.worldId, restartedInventory);
-        await syncDynamicCombatAbilities(tx, save.id, save.raza, 1, restartedEquippedWeaponSlots);
-        await tx.quest.createMany({
-          data: startingQuestsData.map((q) => ({ ...q, saveId: save.id })),
-        });
-        await tx.professionProgress.createMany({
-          data: startingProfessions.map((professionId) => ({ professionId, saveId: save.id })),
-        });
-        await tx.save.update({
-          where: { id: save.id },
-          data: {
-            lastPlayedAt: new Date(),
-            level: 1,
-            xp: 0,
-            pendingAttributePoints: 0,
-            kingdomName: null,
-            currentLocationId: initialLocation?.id ?? null,
-            // docs/14-combate-y-muerte.md § 4.4: reiniciar borra el fin de partida y el contador
-            // de muertes — la dificultad elegida al crear la partida NO se resetea (es una
-            // preferencia de la partida, no parte del progreso que "reiniciar" debe borrar).
-            condicionFisica: 'ILESO',
-            salud: 100,
-            // Hambre/Sed (Grupo 3 § Compañeros y supervivencia, 2026-08-25) — mismo criterio que
-            // el resto de este bloque: un reinicio también vuelve al Día 1 recién comido/bebido.
-            lastAteAtMinutes: 480,
-            lastDrankAtMinutes: 480,
-            // Sistema de fatiga (2026-07-29) — mismo criterio que condicionFisica/salud: un
-            // reinicio también restaura la energía al tope (Constitución no se resetea, así que
-            // se recalcula sobre la misma, no un 100 fijo).
-            energia: energiaMaxFor((save.attributes as AttributeBlock).constitucion),
-            deathCount: 0,
-            endedAt: null,
-            lastRestLocationId: null,
-            pausedAt: null,
-            // Bug real jugando en vivo (2026-08-01, "al reiniciar la partida me empieza en
-            // combate"): estos dos campos son la única fuente de la que GET /saves/:id reconstruye
-            // el aviso de "Combatir" tras una resincronización (ver comentario de
-            // `pendingCombatSlugs` en saves/detail.ts) — sin resetearlos aquí, un combate sin
-            // cerrar de la partida ANTERIOR (p. ej. un NPC ya derrotado y saqueado, cuyo slug
-            // seguía en `pendingCombatNpcSlugs` porque nunca llegó a vaciarse) sobrevivía al
-            // reinicio entero: Día 1, ILESO, inventario limpio... y aun así con el popup de combate
-            // listo para abrirse contra un enemigo que ya no existe en esta partida nueva.
-            pendingCombatNpcSlugs: [],
-            pendingNpcAttack: Prisma.JsonNull,
-          },
-        });
-
-        // Mismo motivo que en POST /saves — el equipo inicial ya se "conoce" desde ya, y el objetivo
-        // de las misiones "de serie" también puede desbloquear algo de la Enciclopedia.
-        await recordEntityDiscoveries(
-          {
-            saveId: save.id,
-            worldId: save.worldId,
-            mentionedText: startingQuestsData
-              .map((q) => q.objetivo)
-              .filter((o): o is string => !!o)
-              .join('\n'),
-          },
-          tx,
-        );
-        if (initialLocation) {
-          await tx.locationVisit.upsert({
-            where: { saveId_locationId: { saveId: save.id, locationId: initialLocation.id } },
-            create: { saveId: save.id, locationId: initialLocation.id },
-            update: {},
-          });
-        }
-      },
-      { maxWait: 10_000, timeout: 20_000 },
-    );
+    // Cuerpo real extraído a shared.ts (2026-08-31, muerte permanente) — reutilizado tal cual por
+    // POST /saves/:id/death/resolve cuando toca reiniciar la partida entera. `timeout`/`maxWait`
+    // explícitos (bug real jugando en vivo, 2026-07-28): esta transacción encadena ~17 queries
+    // secuenciales — contra el pool remoto de Supabase (pgbouncer=true, eu-west-3) con la latencia
+    // real de la Steam Deck, eso supera de sobra el timeout por defecto de Prisma (5s) y el motor
+    // cierra la transacción a mitad de camino: la query que llega tarde revienta con
+    // `PrismaClientKnownRequestError P2028: Transaction not found` — reproducido en aislado fuera
+    // de Fastify, mismo error exacto que "Reiniciar" daba en el frontend (el 500 genérico solo
+    // decía "Error interno del servidor", sin este dato).
+    await prisma.$transaction(async (tx) => restartSaveTransactionBody(tx, save, introCharacterText, introWorldText), {
+      maxWait: 10_000,
+      timeout: 20_000,
+    });
 
     return { id: save.id };
   });

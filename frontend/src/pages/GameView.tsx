@@ -69,6 +69,7 @@ import {
   requestSuggestions,
   getRecolectarLocalizado,
   resolveImageUrl,
+  resolveDeath,
   type SaveDetail,
 } from '../lib/api'
 import { characterWaitingFlavor, combatWaitingFlavor, worldWaitingFlavor, useRotatingFlavor } from '../lib/waitingFlavor'
@@ -312,6 +313,9 @@ export function GameView() {
   const [hambre, setHambre] = useState(100)
   const [sed, setSed] = useState(100)
   const [endedAt, setEndedAt] = useState<string | null>(null)
+  // Muerte permanente, botón Aceptar/Reintentar (2026-08-31) — mismo patrón que `endedAt`.
+  const [pendingDeathResolution, setPendingDeathResolution] = useState(false)
+  const [resolvingDeath, setResolvingDeath] = useState(false)
   const [combateIniciado, setCombateIniciado] = useState<{ npcs: NpcInSceneInfo[] } | null>(null)
   // Rediseño del turno de combate (2026-07-29, "quiero que sea más claro cuando es turno de
   // ataque... indicándome qué salió en los dados") — tirada real de iniciativa del último turno
@@ -428,7 +432,8 @@ export function GameView() {
   // respuesta cruda del preview (evita el riesgo de perder "discoveries"/"transit" del envío real).
   useEffect(() => {
     const action = input.trim()
-    const composerDisabled = characterThinking || !!busyUntil || !!endedAt || (!!combateIniciado && !combat.combatOpen)
+    const composerDisabled =
+      characterThinking || !!busyUntil || !!endedAt || pendingDeathResolution || (!!combateIniciado && !combat.combatOpen)
     if (!action || !saveId || composerDisabled) return
 
     const timer = setTimeout(() => {
@@ -436,7 +441,7 @@ export function GameView() {
     }, 1500)
 
     return () => clearTimeout(timer)
-  }, [input, saveId, characterThinking, busyUntil, endedAt, combateIniciado, combat.combatOpen])
+  }, [input, saveId, characterThinking, busyUntil, endedAt, pendingDeathResolution, combateIniciado, combat.combatOpen])
 
   // Vuelca un SaveDetail completo en el estado local — usado al cargar la partida y al
   // resincronizar tras resolverse una acción por tiempo en diferido (CharacterTransit).
@@ -485,6 +490,7 @@ export function GameView() {
     setDeathCount(save.deathCount)
     setDificultad(save.dificultad)
     setEndedAt(save.endedAt)
+    setPendingDeathResolution(save.pendingDeathResolution)
     setQuests(save.quests)
     setChapters(save.chapters)
     // Bug real (2026-07-23, "revisar partida"): antes `combateIniciado` solo se fijaba con la
@@ -1120,6 +1126,17 @@ export function GameView() {
     }
   }, [saveId])
 
+  // Fin de partida real (sin vidas restantes, 2026-08-31, petición explícita: "Te sacamos de la
+  // partida al selector, permitiendote reiniciarla o crear una nueva, pero no seguir jugando ya
+  // que es game over") — antes se quedaba en esta misma vista con un mensaje en línea, sin sacar
+  // al jugador; ahora navega sola en cuanto `endedAt` se marca, con un breve momento para que se
+  // alcance a leer el susurro/aviso de última vez ya narrado en el log.
+  useEffect(() => {
+    if (!endedAt) return
+    const timer = setTimeout(() => navigate('/solitario'), 3500)
+    return () => clearTimeout(timer)
+  }, [endedAt, navigate])
+
   // A.1 (checklist frontend 2026-08-27) — handleSubmit (flujo del turno normal) extraído a
   // useTurnFlow.ts, mismo criterio que useCombatFlow.ts (2026-08-21): GameView sigue siendo dueño
   // de todo el "estado de save" (también lo escribe syncFromSave), el hook lo recibe como
@@ -1131,6 +1148,7 @@ export function GameView() {
     characterName,
     busyUntil,
     endedAt,
+    pendingDeathResolution,
     characterLog,
     composerRef,
     buildEntityBanner,
@@ -1163,6 +1181,7 @@ export function GameView() {
     setInventory,
     setCombateIniciado,
     setEndedAt,
+    setPendingDeathResolution,
     setCurrentLocation,
     setDestinations,
     setCompanions,
@@ -1174,6 +1193,25 @@ export function GameView() {
     setBusyActivity,
     setBusyDuracionMinutos,
   })
+
+  // Muerte permanente, botón Aceptar/Reintentar (2026-08-31) — se llama al pulsar el botón que se
+  // muestra mientras `pendingDeathResolution` es true. El backend ya decidió (respawn real o
+  // reinicio total) de forma determinista; aquí solo recargamos la partida entera para reflejar
+  // lo que sea que haya pasado — mismo patrón que classifyResult.transit/blocked en useTurnFlow.ts
+  // (recargar en vez de reconstruir el estado a mano).
+  async function handleResolveDeath() {
+    if (!saveId || resolvingDeath) return
+    setResolvingDeath(true)
+    try {
+      await resolveDeath(saveId)
+      const save = await getSave(saveId)
+      syncFromSave(save)
+    } catch (err) {
+      console.error('resolveDeath falló', err)
+    } finally {
+      setResolvingDeath(false)
+    }
+  }
 
   async function handleSpendAttributePoint(attribute: Attribute) {
     if (!saveId) return
@@ -1480,7 +1518,7 @@ export function GameView() {
         </div>
       )}
 
-      {combateIniciado && !combat.combatOpen && !endedAt && (
+      {combateIniciado && !combat.combatOpen && !endedAt && !pendingDeathResolution && (
         <div className="flex flex-col items-center gap-1.5 border-t border-iron-800 bg-wood-950/90 px-4 py-2 text-center">
           {combat.combatDifficulty && (
             <p className={`text-2xs font-semibold uppercase tracking-[0.1em] ${combat.combatDifficulty.colorClass}`}>
@@ -1515,9 +1553,23 @@ export function GameView() {
         <div className="animate-entry-in-slow border-t border-iron-800 bg-wood-950/90 px-4 py-5 text-center">
           <div className="animate-line-extend mx-auto mb-3 h-px w-24 origin-center bg-red-800" />
           <p className="text-sm text-danger-400">
-            {characterName} ya no puede seguir — esta partida ha terminado. Puedes reiniciarla desde
-            "Sus partidas".
+            {characterName} ya no puede seguir — esta partida ha terminado. Volviendo a "Sus partidas"...
           </p>
+        </div>
+      ) : pendingDeathResolution ? (
+        // Muerte permanente, botón Aceptar/Reintentar (2026-08-31) — el susurro de la Entidad ya
+        // está en el log (LogPanel, arriba); este bloque sustituye al composer normal hasta que el
+        // jugador confirma, mismo criterio visual que el bloque de `endedAt`.
+        <div className="animate-entry-in-slow border-t border-iron-800 bg-wood-950/90 px-4 py-5 text-center">
+          <div className="animate-line-extend mx-auto mb-3 h-px w-24 origin-center bg-accent-700" />
+          <button
+            type="button"
+            onClick={handleResolveDeath}
+            disabled={resolvingDeath}
+            className="tactile rounded-lg border border-accent-600 bg-accent-500/10 px-4 py-2 text-sm font-bold uppercase tracking-wide text-accent-300 transition-colors hover:bg-accent-500/20 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {resolvingDeath ? 'Resolviendo...' : 'Aceptar'}
+          </button>
         </div>
       ) : combat.combatOpen && combateIniciado ? (
         // Rework 2026-07-24, recortado en el rediseño de la vista de combate (2026-07-28): sigue

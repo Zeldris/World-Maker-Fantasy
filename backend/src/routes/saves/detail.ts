@@ -494,6 +494,10 @@ export async function detailRoutes(app: FastifyInstance) {
       dificultad: save.dificultad,
       deathCount: save.deathCount,
       endedAt: save.endedAt?.toISOString() ?? null,
+      // Muerte permanente, botón Aceptar/Reintentar (2026-08-31) — para que recargar/reconectar a
+      // mitad de una muerte pendiente de resolver siga mostrando el botón, mismo criterio que
+      // `endedAt`.
+      pendingDeathResolution: save.pendingDeathResolution,
       quests: save.quests.map((q) => {
         // Dos pasos en vez de un único `??` anidado en tres niveles (bug real, auditoría
         // 2026-07-30: TS 6.0.2 marca la versión de una sola expresión como "always nullish"

@@ -119,6 +119,14 @@ export interface EndedGameError {
   endedAt: string
 }
 
+/// Muerte permanente, botón Aceptar/Reintentar (2026-08-31) — distinto de `EndedGameError`: aquí
+/// la partida NO ha terminado, solo está pendiente de que el jugador pulse el botón (POST
+/// /saves/:id/death/resolve) antes de poder mandar ningún turno nuevo.
+export interface PendingDeathError {
+  status: 409
+  pendingDeathResolution: true
+}
+
 /// Candado de turno (auditoría de código completa, 2026-08-07, ver turnLock.ts en el backend) —
 /// distinto de `BusyError`: aquí no hay ningún `busyUntil` que contar ni nada resolviéndose en
 /// segundo plano que valga la pena sondear — el turno se rechazó de raíz, nunca llegó a narrar.
@@ -150,6 +158,10 @@ export async function requestTurnClassify(params: {
     const body = await response.json()
     if (body.endedAt) {
       const err: EndedGameError = { status: 409, ended: true, endedAt: body.endedAt }
+      throw err
+    }
+    if (body.pendingDeathResolution) {
+      const err: PendingDeathError = { status: 409, pendingDeathResolution: true }
       throw err
     }
     const err: BusyError = { status: 409, activity: body.activity, busyUntil: body.busyUntil, duracionMinutos: body.duracionMinutos ?? null }
@@ -190,6 +202,10 @@ export interface NarrateResponse {
   timeLabel: string
   combateIniciado?: { npcs: NpcInSceneInfo[] } | null
   finDePartida: boolean
+  /// Muerte permanente, botón Aceptar/Reintentar (2026-08-31) — true cuando este turno mató al
+  /// jugador pero no agotó las vidas: el susurro de la Entidad ya está en el log, pero ningún
+  /// turno nuevo puede correr hasta POST /saves/:id/death/resolve (ver GameView.tsx).
+  pendingDeathResolution: boolean
   /// Bug real (2026-07-29, "si muero no hace lo que fijamos que haría" en combate): `condicionFisica`
   /// de arriba ya viene resuelta tras un respawn sobrevivible (siempre ILESO, nunca MUERTO) — este
   /// campo es la única forma real de saber que la muerte ocurrió ESTE turno, para poder cerrar el
@@ -343,6 +359,14 @@ export async function requestTurnNarrate(
 
   if (response.status === 409) {
     const body = await response.json()
+    if (body.endedAt) {
+      const err: EndedGameError = { status: 409, ended: true, endedAt: body.endedAt }
+      throw err
+    }
+    if (body.pendingDeathResolution) {
+      const err: PendingDeathError = { status: 409, pendingDeathResolution: true }
+      throw err
+    }
     if (body.locked) {
       const err: TurnLockedError = { status: 409, locked: true }
       throw err
@@ -504,6 +528,9 @@ export interface SaveDetail {
   dificultad: Dificultad
   deathCount: number
   endedAt: string | null
+  /// Muerte permanente, botón Aceptar/Reintentar (2026-08-31) — true si esta partida se cargó/
+  /// recargó a mitad de una muerte pendiente de resolver (ver PendingDeathError arriba).
+  pendingDeathResolution: boolean
   quests: QuestInfo[]
   chapters: SessionSummaryInfo[]
   factionsStatus: Record<string, number>
@@ -558,6 +585,15 @@ export async function restartSave(
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(intro ?? {}),
   })
+}
+
+/// Muerte permanente, botón Aceptar/Reintentar (2026-08-31) — se llama al pulsar el botón que
+/// GameView.tsx muestra mientras `pendingDeathResolution` es true. `restartedTotal` distingue si
+/// tocó reaparecer en el punto de guardado (progreso intacto) o reiniciar la partida entera (sin
+/// punto de guardado ni tutorial superado) — GameView.tsx usa esto para decidir si sincroniza el
+/// estado en el sitio o navega de vuelta al selector, mismo criterio que "Reiniciar" ya usa hoy.
+export async function resolveDeath(id: string): Promise<{ restartedTotal: boolean; respawnLocationId?: string | null }> {
+  return fetchJson(`${API_URL}/saves/${id}/death/resolve`, { method: 'POST' })
 }
 
 // Pausar/reanudar la partida (roadmap 2026-07-20: "quiero que la partida se pause si salgo de

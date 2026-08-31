@@ -104,7 +104,10 @@ export async function questsRoutes(app: FastifyInstance) {
         const orcoState = orcoEnfurecido
           ? await tx.npcState.findUnique({ where: { saveId_npcId_scope: { saveId: save.id, npcId: orcoEnfurecido.id, scope: '' } } })
           : null;
-        const orcoYaResuelto = orcoState?.condicionFisica === 'CONVALECIENTE' || orcoState?.condicionFisica === 'MUERTO';
+        // Petición explícita 2026-08-31: "Acabar con el Orco Enfurecido" solo cuenta como
+        // resuelto con la MUERTE real — CONVALECIENTE (perdonar/capturar) ya no basta, mismo
+        // criterio que completeNpcTargetQuests/applyKillSideEffects (turnResolution.ts).
+        const orcoYaResuelto = orcoState?.condicionFisica === 'MUERTO';
 
         const quest = await tx.quest.create({
           data: {

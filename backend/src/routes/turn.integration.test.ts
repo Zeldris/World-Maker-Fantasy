@@ -8,6 +8,7 @@ import { resolveDueTransits, startEagerTransitResolution } from '../workers/worl
 import { recolectarRoutes } from './saves/recolectar.js';
 import { panelsRoutes } from './saves/panels.js';
 import { detailRoutes } from './saves/detail.js';
+import { deathRoutes } from './saves/death.js';
 import { sessionRoutes } from './saves/session.js';
 import { questsRoutes } from './saves/quests.js';
 import { minutosConDestreza, bandaForMinutos } from '../services/travel.js';
@@ -2492,18 +2493,35 @@ describe('Respawn tras morir: vuelve al último campamento, no se queda donde mu
     });
     await doTurn(saveId, 'Sigo luchando contra todo pronóstico.');
 
+    // Muerte permanente, botón Aceptar/Reintentar (2026-08-31) — el turno que mata ya NO respawnea
+    // solo: se detiene en MUERTO + pendingDeathResolution, a la espera del botón.
     const savedAfterDeath = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
-    expect(savedAfterDeath.condicionFisica).toBe('ILESO'); // respawn siempre revive a salvo
+    expect(savedAfterDeath.condicionFisica).toBe('MUERTO');
     expect(savedAfterDeath.deathCount).toBe(1);
     expect(savedAfterDeath.endedAt).toBeNull(); // NOVATO, sin fin de partida
-    expect(savedAfterDeath.currentLocationId).toBe(hondonadaId); // vuelve al campamento…
-    expect(savedAfterDeath.currentLocationId).not.toBe(pilaresId); // …no se queda donde murió
-    // Bug real jugando en vivo (ronda de pruebas 2026-08-28): morir y respawnear no limpiaba
+    expect(savedAfterDeath.pendingDeathResolution).toBe(true);
+    // Bug real jugando en vivo (ronda de pruebas 2026-08-28): morir no limpiaba
     // `pendingCombatNpcSlugs` — el aviso "COMBATIR/HUIR" contra el agresor seguía apareciendo pese
-    // a que el jugador ya reapareció Ileso en otro lugar. El combate debe cerrarse del todo, aunque
-    // el modelo (mockeado aquí igual que jugando en vivo) siga proponiendo `combateIniciado` con el
+    // a que el jugador ya no puede seguir jugando. El combate debe cerrarse del todo, aunque el
+    // modelo (mockeado aquí igual que jugando en vivo) siga proponiendo `combateIniciado` con el
     // mismo agresor este mismo turno.
     expect(savedAfterDeath.pendingCombatNpcSlugs).toEqual([]);
+
+    // Pulsar Aceptar (POST /saves/:id/death/resolve) — con lastRestLocationId real, reaparece ahí
+    // con el resto del progreso intacto, mismo comportamiento que el respawn "blando" de siempre.
+    // `buildApp()` (arriba en este archivo) solo registra `turnRoutes` — death/resolve vive en
+    // `deathRoutes`, mismo patrón que `buildAppWithDetail` más abajo en este archivo.
+    const deathApp = Fastify();
+    await deathApp.register(deathRoutes);
+    const resolveRes = await deathApp.inject({ method: 'POST', url: `/saves/${saveId}/death/resolve` });
+    expect(resolveRes.statusCode).toBe(200);
+    expect(resolveRes.json()).toMatchObject({ restartedTotal: false, respawnLocationId: hondonadaId });
+
+    const savedAfterResolve = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
+    expect(savedAfterResolve.condicionFisica).toBe('ILESO');
+    expect(savedAfterResolve.pendingDeathResolution).toBe(false);
+    expect(savedAfterResolve.currentLocationId).toBe(hondonadaId); // vuelve al campamento…
+    expect(savedAfterResolve.currentLocationId).not.toBe(pilaresId); // …no se queda donde murió
   }, 20_000);
 });
 
@@ -2985,6 +3003,162 @@ describe('Decapitar cierra una misión "derrotar a X" con rewardItems y entrega 
     const mainNarrationEntry = allEntries.find((e) => e.channel === 'CHARACTER' && !e.isPlayerAction && e.id !== rewardLog!.id);
     expect(mainNarrationEntry).toBeDefined();
     expect(rewardLog!.createdAt.getTime()).toBeGreaterThan(mainNarrationEntry!.createdAt.getTime());
+
+    // Muerte permanente, "fin de tutorial" (2026-08-31, petición explícita) — matar de verdad al
+    // Orco Enfurecido (aquí mismo, `orco-enfurecido-hondonada`) es el primer punto de guardado
+    // implícito. Mismo turno que completa la quest, un solo golpe.
+    const saveAfterKill = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
+    expect(saveAfterKill.tutorialCompletedAt).not.toBeNull();
+  }, 20_000);
+});
+
+// Petición explícita 2026-08-31: "Acabar con el Orco Enfurecido" solo debe completarse con la
+// MUERTE real del NPC — antes CONVALECIENTE (perdonar/capturar) también valía. Cobertura del caso
+// NEGATIVO (dejarlo Convaleciente no completa nada, la quest sigue ACTIVA) — el caso positivo
+// (matarlo sí completa) ya está cubierto arriba en "Decapitar cierra una misión...".
+describe('Quest "derrotar a X" ya NO se completa dejando al objetivo CONVALECIENTE (2026-08-31)', () => {
+  let saveId: string;
+  let npcId: string;
+
+  beforeAll(async () => {
+    const userId = await getDefaultUserId();
+    const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
+    const hondonada = await prisma.location.findFirstOrThrow({ where: { worldId: world.id, slug: 'hondonada-del-eco' } });
+    const orco = await prisma.npc.findFirstOrThrow({ where: { worldId: world.id, slug: 'orco-enfurecido-hondonada' } });
+    npcId = orco.id;
+    const save = await prisma.save.create({
+      data: {
+        userId,
+        worldId: world.id,
+        characterName: 'Gorhorn de prueba 17b',
+        characterArchetype: 'guerrero',
+        characterOrigin: 'Clan Maktor',
+        characterMotivation: 'x',
+        attributes: ATTRS,
+        portraitInitial: 'G',
+        currentLocationId: hondonada.id,
+      },
+    });
+    saveId = save.id;
+    await prisma.worldState.create({ data: { saveId } });
+    // Ya GRAVE (no ILESO/HERIDO) para que un solo golpe con tirada perfecta lo deje CONVALECIENTE,
+    // no MUERTO — `nextCondicionForAttack`/`oneStepWorseThan` solo empeora un escalón por golpe
+    // (ILESO→HERIDO→GRAVE→CONVALECIENTE→MUERTO).
+    await prisma.npcState.create({ data: { saveId, npcId, scope: '', condicionFisica: 'GRAVE' } });
+    await prisma.quest.create({
+      data: {
+        saveId,
+        title: 'Acabar con el Orco Enfurecido (prueba 17b)',
+        description: 'x',
+        status: 'ACTIVA',
+        targetNpcId: npcId,
+        rewardXp: 100,
+        rewardItems: ['Mapa de las Llanuras (prueba 17b)'],
+      },
+    });
+    classifyAction.mockResolvedValue({
+      requiereTirada: false, atributo: 'fuerza', dificultad: 8, razon: 'x', banda: 'instantanea', duracionEstimadaMinutos: 0,
+    });
+  });
+
+  afterAll(async () => {
+    await prisma.save.delete({ where: { id: saveId } });
+  });
+
+  it('deja CONVALECIENTE, la quest sigue ACTIVA y no se entrega recompensa', async () => {
+    vi.spyOn(Math, 'random').mockReturnValue(0.99);
+    const res = await doTurn(saveId, "Ataco con todas mis fuerzas, contra 'Orco enfurecido'.");
+
+    const npcState = await prisma.npcState.findFirstOrThrow({ where: { saveId, npcId } });
+    expect(npcState.condicionFisica).toBe('CONVALECIENTE');
+
+    const quest = await prisma.quest.findFirstOrThrow({ where: { saveId, title: { contains: 'Orco Enfurecido (prueba 17b)' } } });
+    expect(quest.status).toBe('ACTIVA');
+
+    const item = await prisma.inventoryItem.findFirst({ where: { saveId, name: 'Mapa de las Llanuras (prueba 17b)' } });
+    expect(item).toBeNull();
+
+    const done = lastNdjsonLine(res.payload);
+    expect(done.questCompletedInfo).toBeFalsy();
+  }, 20_000);
+});
+
+// Muerte permanente, reinicio total (2026-08-31, petición explícita: "si no hay punto de guardado
+// volvera al inicio de la partida... como que te despiertas de una pesadilla") — sin
+// lastRestLocationId NI tutorialCompletedAt, POST /saves/:id/death/resolve debe reiniciar la
+// partida entera (mismo cuerpo que /saves/:id/restart), no solo reposicionar.
+describe('Muerte permanente sin punto de guardado: reinicio total (2026-08-31)', () => {
+  let saveId: string;
+
+  beforeAll(async () => {
+    const userId = await getDefaultUserId();
+    const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
+    const hondonada = await prisma.location.findFirstOrThrow({ where: { worldId: world.id, slug: 'hondonada-del-eco' } });
+    const save = await prisma.save.create({
+      data: {
+        userId,
+        worldId: world.id,
+        characterName: 'Gorhorn de prueba 18',
+        characterArchetype: 'guerrero',
+        characterOrigin: 'Clan Maktor',
+        characterMotivation: 'x',
+        attributes: ATTRS,
+        portraitInitial: 'G',
+        currentLocationId: hondonada.id,
+        condicionFisica: 'CONVALECIENTE',
+        dificultad: 'NOVATO',
+        level: 5,
+        xp: 500,
+        // Sin lastRestLocationId (null por defecto), sin tutorialCompletedAt (null por defecto) —
+        // exactamente el caso "nada real que preservar todavía".
+      },
+    });
+    saveId = save.id;
+    await prisma.worldState.create({ data: { saveId } });
+    await prisma.inventoryItem.create({
+      data: { saveId, name: 'Objeto de prueba antes de reiniciar (99)', description: 'x', origin: 'partida' },
+    });
+  });
+
+  afterAll(async () => {
+    await prisma.save.deleteMany({ where: { id: saveId } });
+  });
+
+  it('el turno de muerte queda pendiente, y resolverlo reinicia la partida entera', async () => {
+    classifyAction.mockResolvedValueOnce({
+      requiereTirada: true, atributo: 'fuerza', dificultad: 18, razon: 'x', banda: 'instantanea', duracionEstimadaMinutos: 0,
+    });
+    narrateAction.mockResolvedValueOnce({
+      narration: 'El golpe final acaba con Gorhorn.',
+      newFacts: [],
+      condicionFisica: 'MUERTO',
+      combateIniciado: { npcSlugs: ['aullador-rojo'] },
+    });
+    await prisma.save.update({ where: { id: saveId }, data: { pendingCombatNpcSlugs: ['aullador-rojo'] } });
+    await doTurn(saveId, 'Sigo luchando contra todo pronóstico.');
+
+    const savedAfterDeath = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
+    expect(savedAfterDeath.condicionFisica).toBe('MUERTO');
+    expect(savedAfterDeath.pendingDeathResolution).toBe(true);
+
+    const deathApp = Fastify();
+    await deathApp.register(deathRoutes);
+    const resolveRes = await deathApp.inject({ method: 'POST', url: `/saves/${saveId}/death/resolve` });
+    expect(resolveRes.statusCode).toBe(200);
+    expect(resolveRes.json()).toMatchObject({ restartedTotal: true });
+
+    const savedAfterResolve = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
+    expect(savedAfterResolve.condicionFisica).toBe('ILESO');
+    expect(savedAfterResolve.pendingDeathResolution).toBe(false);
+    expect(savedAfterResolve.level).toBe(1); // reinicio total real, no solo reposición
+    expect(savedAfterResolve.xp).toBe(0);
+    expect(savedAfterResolve.deathCount).toBe(0);
+
+    const remainingItem = await prisma.inventoryItem.findFirst({ where: { saveId, name: { contains: 'prueba antes de reiniciar' } } });
+    expect(remainingItem).toBeNull(); // el inventario de antes de morir no sobrevive
+
+    const introEntry = await prisma.logEntry.findFirst({ where: { saveId, text: { contains: 'pesadilla' } } });
+    expect(introEntry).not.toBeNull();
   }, 20_000);
 });
 

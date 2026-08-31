@@ -3,6 +3,7 @@ import {
   limiteMuertes,
   resolveDeathOutcome,
   whisperText,
+  awakensText,
   nextCondicionFisica,
   nextCondicionForAttack,
   isValidRestLocationKind,
@@ -43,15 +44,27 @@ describe('resolveDeathOutcome', () => {
 });
 
 describe('whisperText', () => {
-  it('incluye el nombre del personaje y el lugar de reaparición', () => {
-    const text = whisperText('Gorhorn', 'La Hondonada del Eco', false);
+  it('incluye el nombre del personaje, sin ubicación todavía (pendiente de resolver)', () => {
+    const text = whisperText('Gorhorn', false);
     expect(text).toContain('Gorhorn');
-    expect(text).toContain('La Hondonada del Eco');
     expect(text).not.toContain('no habrá una próxima vez');
   });
   it('añade el aviso de última oportunidad cuando corresponde', () => {
-    const text = whisperText('Gorhorn', 'La Hondonada del Eco', true);
+    const text = whisperText('Gorhorn', true);
     expect(text).toContain('no habrá una próxima vez');
+  });
+});
+
+describe('awakensText', () => {
+  it('incluye el nombre del personaje y el lugar de reaparición', () => {
+    const text = awakensText('Gorhorn', 'La Hondonada del Eco', false);
+    expect(text).toContain('Gorhorn');
+    expect(text).toContain('La Hondonada del Eco');
+  });
+  it('narra un reinicio total como si todo hubiera sido un sueño', () => {
+    const text = awakensText('Gorhorn', 'La Hondonada del Eco', true);
+    expect(text).toContain('pesadilla');
+    expect(text).toContain('La Hondonada del Eco');
   });
 });
 

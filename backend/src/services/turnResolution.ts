@@ -414,6 +414,11 @@ export interface NarrateAndPersistResult {
     }[];
   } | null;
   finDePartida: boolean;
+  /// Muerte permanente, botón Aceptar/Reintentar (2026-08-31) — true cuando este turno mató al
+  /// jugador pero NO agotó las vidas (`finDePartida` false): el frontend debe mostrar el susurro
+  /// ya narrado junto a un botón, sin dejar seguir jugando, hasta que POST /saves/:id/death/resolve
+  /// se llame. Mutuamente excluyente con `finDePartida` — nunca ambos true a la vez.
+  pendingDeathResolution: boolean;
   /// Bug real (2026-07-29, "si muero no hace lo que fijamos que haría" en combate): cuando la
   /// muerte es sobrevivible (no dispara fin de partida), `condicionFisica` de abajo ya vuelve
   /// resuelta a ILESO (el respawn ya ocurrió en esta misma transacción, § 4.3 de
@@ -421,6 +426,11 @@ export interface NarrateAndPersistResult {
   /// este turno" de "no pasó nada", así que el combate en curso nunca se cerraba tras una muerte
   /// no definitiva (seguía el mismo combate como si el jugador no hubiera muerto). true siempre
   /// que este turno propuso MUERTO, sobreviva o no a `finDePartida`.
+  ///
+  /// Actualización 2026-08-31: con el botón Aceptar/Reintentar, `condicionFisica` YA NO vuelve a
+  /// ILESO en este mismo turno cuando la muerte es sobrevivible — se queda en MUERTO hasta
+  /// resolver. `justDied` sigue cumpliendo el mismo papel (cerrar el combate en curso), ahora
+  /// coincidiendo siempre con `pendingDeathResolution || finDePartida`.
   justDied: boolean;
   /// Roadmap 2026-07-19 (bug real de UI encontrado en auditoría de frontend): loot/despiece/
   /// producción se materializaban de verdad en la DB, pero `/turn/narrate` nunca devolvía esos
@@ -1917,6 +1927,13 @@ async function applyCombatExchangeToNpcState(params: {
       nuevaFictionalDateLabel,
       activeRegion,
       nextAfterMainLogCreatedAt,
+      // Petición explícita 2026-08-31: "Acabar con el Orco Enfurecido" (y cualquier quest futura
+      // de "derrotar a X" que use targetNpcId) solo debe completarse con la MUERTE real del NPC —
+      // dejarlo CONVALECIENTE (perdonar/capturar) ya no basta. De paso, esto es lo que da pie a
+      // "fin de tutorial" como primer punto de guardado implícito (ver whisperText/death.ts): sin
+      // este cambio, un jugador que perdona al orco nunca vería su quest completarse pero SÍ
+      // contaría como tutorial superado, dos señales desalineadas.
+      completeQuest: npcTargetNewCondicion === 'MUERTO',
     });
     questCompletedInfo = killSideEffects.questCompletedInfo;
     factionRepChange = killSideEffects.factionRepChange;
@@ -1940,14 +1957,21 @@ async function applyKillSideEffects(params: {
   nuevaFictionalDateLabel: string;
   activeRegion: string | null;
   nextAfterMainLogCreatedAt?: () => Date;
+  /// Petición explícita 2026-08-31: "derrotar a X" (targetNpcId) solo cuenta como completada con
+  /// la MUERTE real — CONVALECIENTE (perdonar/capturar) ya no basta. Todo lo demás de esta función
+  /// (reputación, saqueo/desuello, etc.) sigue disparándose igual con cualquier `esGolpeDeMuerte`.
+  completeQuest: boolean;
 }): Promise<{ questCompletedInfo: QuestCompletedInfo | null; factionRepChange: FactionRepChangeInfo | null }> {
-  const { tx, npc, nuevaCondicion, saveId, worldId, nuevoFictionalMinutes, nuevaFictionalDateLabel, activeRegion, nextAfterMainLogCreatedAt } = params;
+  const { tx, npc, nuevaCondicion, saveId, worldId, nuevoFictionalMinutes, nuevaFictionalDateLabel, activeRegion, nextAfterMainLogCreatedAt, completeQuest } =
+    params;
   // Cierre detectable por backend (roadmap 2026-07-19, mecánicas): si alguna misión ACTIVA
   // apuntaba a este NPC (Quest.targetNpcId, ver newQuest más arriba), derrotarlo la cierra sola
   // en cuanto cae — el modelo nunca tiene que acertar el título EXACTO vía questProgress para
   // el caso más común de misión de combate ("derrotar a X"). También concede rewardItems/
   // rewardXp de verdad y narra la recompensa (docs/19 pieza 3).
-  const questCompletedInfo = await completeNpcTargetQuests(tx, saveId, worldId, npc.id, nuevaFictionalDateLabel, nuevoFictionalMinutes, nextAfterMainLogCreatedAt);
+  const questCompletedInfo = completeQuest
+    ? await completeNpcTargetQuests(tx, saveId, worldId, npc.id, nuevaFictionalDateLabel, nuevoFictionalMinutes, nextAfterMainLogCreatedAt)
+    : null;
 
   // Reputación de facción determinista (roadmap 2026-07-19, prioridad 4): reutiliza
   // `WorldState.factionsStatus` (gauge 0-5000 por facción, ver reputation.ts — reemplaza el
@@ -1974,6 +1998,13 @@ async function applyKillSideEffects(params: {
   // CONVALECIENTE es solo derrotado, no una baja real de la especie/raza.
   if (nuevaCondicion === 'MUERTO') {
     await decrementPopulationOnDeath(tx, worldId, npc.raza, npc.slug, activeRegion);
+  }
+  // Muerte permanente (2026-08-31) — fin de tutorial = primer punto de guardado implícito, ver
+  // comentario de `Save.tutorialCompletedAt` (schema.prisma). `updateMany` con el guard `null`
+  // evita reescribir la fecha si el jugador vuelve a matar a otro "orco-enfurecido-hondonada" más
+  // adelante (mismo slug de PLANTILLA, otra aparición) — solo cuenta la primera vez de verdad.
+  if (nuevaCondicion === 'MUERTO' && npc.slug === 'orco-enfurecido-hondonada') {
+    await tx.save.updateMany({ where: { id: saveId, tutorialCompletedAt: null }, data: { tutorialCompletedAt: new Date() } });
   }
   return { questCompletedInfo, factionRepChange };
 }
@@ -4434,6 +4465,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     energia: number;
     energiaMax: number;
     finDePartida: boolean;
+    pendingDeathResolution: boolean;
     justDied: boolean;
     newInventoryItems: NewInventoryItemInfo[];
     removedInventoryItemIds: string[];
@@ -4743,6 +4775,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
           nuevaFictionalDateLabel,
           activeRegion,
           nextAfterMainLogCreatedAt,
+          completeQuest: caido.nuevaCondicion === 'MUERTO',
         });
         if (killSideEffects.questCompletedInfo) {
           questCompletedInfo = killSideEffects.questCompletedInfo;
@@ -5759,40 +5792,36 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
       }
     }
 
+    let finalPendingDeathResolution = false;
     if (proposedCondicion === 'MUERTO') {
       const outcome = resolveDeathOutcome(params.dificultad, params.deathCount);
       finalDeathCount = outcome.deathCount;
       if (outcome.finDePartida) {
+        // Sin vidas restantes: game over real, sin botón de reintentar — nada que decidir, el
+        // frontend saca al jugador al selector de partidas (2026-08-31, petición explícita).
         finDePartidaResult = true;
         finalEndedAt = new Date();
         finalCondicion = 'MUERTO';
       } else {
-        const respawnLocationId =
-          params.lastRestLocationId ?? (await resolveInitialLocationId(tx, worldId, characterName)) ?? currentLocationId ?? undefined;
-        const respawnLocation = respawnLocationId ? await tx.location.findUnique({ where: { id: respawnLocationId } }) : null;
-        // Recupera la construcción propia (2026-08-04, petición explícita: "vuelve al último
-        // momento que descansaste en el campamento, recuperando el campamento si fuese así") — si
-        // era tu punto de guardado y quedó DANADO/ABANDONADO mientras tanto, reaparecer aquí la
-        // devuelve a ACTIVO en el mismo momento, nunca te deja "sin base" tras morir una vez.
-        if (respawnLocationId) {
-          await tx.building.updateMany({
-            where: { saveId, locationId: respawnLocationId, status: { in: ['DANADO', 'ABANDONADO'] } },
-            data: { status: 'ACTIVO' },
-          });
-        }
+        // Muerte permanente, botón Aceptar/Reintentar (2026-08-31, petición explícita: "te pondra
+        // un boton... si le das vuelve al punto de guardado"): el susurro de la Entidad ya se
+        // narra AQUÍ (es determinista, no depende de a dónde se vaya a respawnear todavía), pero
+        // el respawn/reinicio real se retiene — POST /saves/:id/death/resolve lo aplica al pulsar
+        // el botón, con el estado de la partida en ESE momento (nunca lo que había al morir).
+        // `finalCondicion` se queda en MUERTO a propósito: bloquea turnos vía el mismo guard que
+        // `pendingDeathResolution` en turn.ts, red de seguridad doble.
         await tx.logEntry.create({
           data: {
             saveId,
             channel: 'CHARACTER',
-            text: whisperText(characterName, respawnLocation?.name ?? 'un lugar que reconoce', outcome.avisoUltimaVez),
+            text: whisperText(characterName, outcome.avisoUltimaVez),
             timeLabel,
             fictionalMinutes: nuevoFictionalMinutes,
             createdAt: nextAfterMainLogCreatedAt(),
           },
         });
-        finalCondicion = 'ILESO';
-        finalCurrentLocationId = respawnLocationId;
-        finalEnergia = energiaMax;
+        finalCondicion = 'MUERTO';
+        finalPendingDeathResolution = true;
       }
     }
 
@@ -5815,6 +5844,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
         lastRestLocationId: finalLastRestLocationId,
         deathCount: finalDeathCount,
         endedAt: finalEndedAt,
+        pendingDeathResolution: finalPendingDeathResolution,
         // Rediseño del turno de combate (2026-07-28): guarda el ataque de NPC decidido para el
         // PRÓXIMO intercambio (si la iniciativa lo favorece) o limpia el de este turno, ya
         // consumido — nunca sobrevive más de un intercambio sin resolverse.
@@ -5842,6 +5872,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
       energia: finalEnergia,
       energiaMax,
       finDePartida: finDePartidaResult,
+      pendingDeathResolution: finalPendingDeathResolution,
       justDied: proposedCondicion === 'MUERTO',
       newInventoryItems,
       removedInventoryItemIds,
@@ -5880,6 +5911,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     energia,
     energiaMax: energiaMaxResult,
     finDePartida,
+    pendingDeathResolution,
     justDied,
     newInventoryItems,
     removedInventoryItemIds,
@@ -6290,6 +6322,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     entorno: entornoTemporalFor(freshWorldState?.fictionalMinutes ?? nuevoFictionalMinutes, activeRegion, raza),
     combateIniciado,
     finDePartida,
+    pendingDeathResolution,
     justDied,
     newInventoryItems,
     removedInventoryItemIds,

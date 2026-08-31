@@ -438,6 +438,15 @@ export async function turnRoutes(app: FastifyInstance) {
       return reply.status(409).send({ error: 'Esta partida ha terminado', endedAt: save.endedAt });
     }
 
+    // Muerte permanente, botón Aceptar/Reintentar (2026-08-31, petición explícita) — el susurro de
+    // la Entidad ya se narró, pero el respawn/reinicio real está pendiente de
+    // POST /saves/:id/death/resolve. Ningún turno normal puede correr mientras tanto (mismo
+    // criterio que `endedAt`) — solo rutas de solo lectura (Enciclopedia, world.ts) siguen
+    // disponibles, porque nunca pasan por aquí.
+    if (save.pendingDeathResolution) {
+      return reply.status(409).send({ error: 'Tienes una muerte pendiente de resolver', pendingDeathResolution: true });
+    }
+
     if (save.characterTransit && save.characterTransit.busyUntil > new Date()) {
       return reply.status(409).send({
         error: 'El personaje sigue ocupado',
@@ -878,6 +887,15 @@ export async function turnRoutes(app: FastifyInstance) {
       return reply.status(404).send({ error: 'Partida no encontrada' });
     }
 
+    if (save.endedAt) {
+      return reply.status(409).send({ error: 'Esta partida ha terminado', endedAt: save.endedAt });
+    }
+
+    // Mismo guard que /turn/classify — ver comentario ahí.
+    if (save.pendingDeathResolution) {
+      return reply.status(409).send({ error: 'Tienes una muerte pendiente de resolver', pendingDeathResolution: true });
+    }
+
     // Candado de turno (auditoría de código completa, 2026-08-07, ver turnLock.ts) — ANTES de
     // cualquier `await` de aquí en adelante, para que dos peticiones casi simultáneas no puedan
     // pasar ambas este chequeo. Mismo código 409 que `busyUntil` en /turn/classify, distinto
@@ -975,6 +993,7 @@ export async function turnRoutes(app: FastifyInstance) {
         entorno,
         combateIniciado,
         finDePartida,
+        pendingDeathResolution,
         justDied,
         newInventoryItems,
         removedInventoryItemIds,
@@ -1066,6 +1085,7 @@ export async function turnRoutes(app: FastifyInstance) {
         entorno,
         combateIniciado,
         finDePartida,
+        pendingDeathResolution,
         justDied,
         newInventoryItems,
         removedInventoryItemIds,

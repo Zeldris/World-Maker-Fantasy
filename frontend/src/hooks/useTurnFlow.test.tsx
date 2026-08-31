@@ -45,6 +45,7 @@ function baseNarrateResponse(overrides: Partial<Awaited<ReturnType<typeof reques
     combatExchangeDisplay: null,
     nextInitiativeRoll: null,
     finDePartida: false,
+    pendingDeathResolution: false,
     justDied: false,
     newInventoryItems: [],
     removedInventoryItemIds: [],
@@ -89,6 +90,7 @@ function useHarness() {
   const [characterLog, setCharacterLog] = useState<LogEntry[]>([])
   const [condicionFisica, setCondicionFisica] = useState<CondicionFisica>('ILESO')
   const [endedAt, setEndedAt] = useState<string | null>(null)
+  const [pendingDeathResolution, setPendingDeathResolution] = useState(false)
   const [busyUntil, setBusyUntil] = useState<string | null>(null)
   const [xp, setXp] = useState(0)
   const [level, setLevel] = useState(1)
@@ -101,6 +103,7 @@ function useHarness() {
     characterName: 'Gorhorn',
     busyUntil,
     endedAt,
+    pendingDeathResolution,
     characterLog,
     composerRef,
     buildEntityBanner: () => undefined,
@@ -133,6 +136,7 @@ function useHarness() {
     setInventory: vi.fn(),
     setCombateIniciado: vi.fn(),
     setEndedAt,
+    setPendingDeathResolution,
     setCurrentLocation: vi.fn(),
     setDestinations: vi.fn(),
     setCompanions: vi.fn(),
@@ -145,7 +149,7 @@ function useHarness() {
     setBusyDuracionMinutos: vi.fn(),
   })
 
-  return { turn, characterLog, condicionFisica, endedAt, busyUntil, xp, level, pendingAttributePoints }
+  return { turn, characterLog, condicionFisica, endedAt, pendingDeathResolution, busyUntil, xp, level, pendingAttributePoints }
 }
 
 beforeEach(() => {

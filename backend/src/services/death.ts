@@ -266,11 +266,31 @@ export function resolveDeathOutcome(dificultad: Dificultad, deathCountBefore: nu
 
 /// § 4.3 paso 5: el susurro de la Entidad Desconocida — determinista, nunca generado por el
 /// modelo grande (docs/rpgtarkor/genesis.md: la misma Entidad que le susurra dudas a Tarkor).
-export function whisperText(characterName: string, respawnLocationName: string, avisoUltimaVez: boolean): string {
-  const base = `Todo se apaga en un frío total, y entre la nada una voz que no es de este mundo susurra: "Aún no ha llegado tu momento...". ${characterName} despierta de golpe, como de una pesadilla, en ${respawnLocationName}.`;
+///
+/// Muerte permanente, botón Aceptar/Reintentar (2026-08-31, petición explícita) — separado de
+/// `awakensText` (antes era un único texto con la ubicación de respawn ya decidida): en el
+/// instante de morir, el motor todavía no sabe si el jugador va a reaparecer en su punto de
+/// guardado o si la partida entera va a reiniciarse (`POST /saves/:id/death/resolve` lo decide
+/// con el estado REAL en ese momento) — el susurro solo narra el instante de la muerte en sí y
+/// deja pendiente la resolución, nunca inventa un destino que aún no es seguro.
+export function whisperText(characterName: string, avisoUltimaVez: boolean): string {
+  const base = `Todo se apaga en un frío total, y entre la nada una voz que no es de este mundo susurra a ${characterName}: "Aún no ha llegado tu momento...".`;
   return avisoUltimaVez
     ? `${base} La voz se demora un instante más de lo normal, como una advertencia — no habrá una próxima vez.`
     : base;
+}
+
+/// Texto de reaparición tras resolver una muerte pendiente (`POST /saves/:id/death/resolve`) — ya
+/// con el destino real decidido (punto de guardado, o el inicio de la partida si tocó reiniciar
+/// del todo). `esReinicioTotal` cambia el matiz: "vuelve a" (mismo progreso, solo reposicionado)
+/// frente a "todo era un sueño" (coherente con reiniciar la partida entera, decisión explícita de
+/// la usuaria: "si no hay punto de guardado volvera al inicio... como que te despiertas de una
+/// pesadilla").
+export function awakensText(characterName: string, respawnLocationName: string, esReinicioTotal: boolean): string {
+  if (esReinicioTotal) {
+    return `${characterName} despierta de golpe, sobresaltado — todo lo vivido no fue más que una pesadilla. Se encuentra de nuevo en ${respawnLocationName}, como el primer día.`;
+  }
+  return `${characterName} despierta de golpe, como de una pesadilla, en ${respawnLocationName}.`;
 }
 
 /// § 4.1: un Location solo cuenta como punto de descanso válido si es refugio o asentamiento —

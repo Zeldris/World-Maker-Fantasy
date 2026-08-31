@@ -1,4 +1,4 @@
-import type { BusyError, EndedGameError, TurnLockedError } from './api'
+import type { BusyError, EndedGameError, PendingDeathError, TurnLockedError } from './api'
 import type { CombatNpcDisplay } from '../components/CombatComposer'
 import type { InventoryItemInfo, LogEntry, NpcInSceneInfo } from '../types'
 
@@ -30,11 +30,22 @@ export function applyInventoryDelta(
 // de forma aislada, mismo criterio que el resto del proyecto: se arregla la causa, no solo el
 // síntoma que hoy no se ve.
 export function isBusyError(err: unknown): err is BusyError {
-  return typeof err === 'object' && err !== null && (err as { status?: number }).status === 409 && !('ended' in err) && !('locked' in err)
+  return (
+    typeof err === 'object' &&
+    err !== null &&
+    (err as { status?: number }).status === 409 &&
+    !('ended' in err) &&
+    !('locked' in err) &&
+    !('pendingDeathResolution' in err)
+  )
 }
 
 export function isEndedGameError(err: unknown): err is EndedGameError {
   return typeof err === 'object' && err !== null && (err as { ended?: boolean }).ended === true
+}
+
+export function isPendingDeathError(err: unknown): err is PendingDeathError {
+  return typeof err === 'object' && err !== null && (err as { pendingDeathResolution?: boolean }).pendingDeathResolution === true
 }
 
 export function isTurnLockedError(err: unknown): err is TurnLockedError {

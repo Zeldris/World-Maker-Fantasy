@@ -1,7 +1,20 @@
 import type { FastifyReply } from 'fastify';
+import { Prisma, type Dificultad, type Clase } from '@prisma/client';
 import { prisma } from '../../lib/prisma.js';
 import { startingQuestsFor } from '../../services/startingQuests.js';
-import type { Attribute } from '../../services/dice.js';
+import type { Attribute, AttributeBlock } from '../../services/dice.js';
+import { energiaMaxFor } from '../../services/energy.js';
+import { startingAbilitiesFor } from '../../services/startingAbilities.js';
+import { GENERIC_COMBAT_ABILITIES } from '../../services/genericCombatAbilities.js';
+import { classAbilityUnlocksFor } from '../../services/classAbilities.js';
+import { startingInventoryFor, type StartingInventoryItem } from '../../services/startingInventory.js';
+import { startingProfessionsFor } from '../../services/startingProfessions.js';
+import { professionAbilityUnlocksFor } from '../../services/professionAbilities.js';
+import { harvestAbilityUnlocksFor } from '../../services/harvestAbilities.js';
+import { syncDynamicCombatAbilities, resolveEquippedWeaponSlots } from '../../services/dynamicAbilities.js';
+import { initialLocationSlugFor } from '../../services/travel.js';
+import { formatFictionalDate } from '../../services/worldClock.js';
+import { recordEntityDiscoveries } from '../../services/entityDiscovery.js';
 
 /// Único punto de verdad para los 7 atributos válidos (deuda técnica 2026-08-21: `creation.ts` §
 /// `validationErrorFor` y `progression.ts` § `/saves/:id/attribute-points` mantenían cada una su
@@ -95,4 +108,154 @@ export function toFrontendLogEntry(entry: {
     // Eventos de viaje interactivos (2026-08-05) — fondo ámbar en el frontend, mismo criterio.
     travelInterrupted: entry.travelInterrupted || undefined,
   };
+}
+
+/// Copia `statBonuses` del catálogo al kit inicial cuando la propia entrada no lo trae ya (bug
+/// real 2026-08-XX, ver comentario original en creation.ts) — mismo criterio que el saqueo/crafteo
+/// real (turnResolution.ts). Movida aquí (2026-08-31) desde creation.ts para que
+/// `restartSaveTransactionBody` (más abajo) pueda reutilizarla sin duplicarla — antes solo la usaba
+/// POST /saves y POST /saves/:id/restart, ahora también el reinicio total tras morir sin punto de
+/// guardado (routes/saves/death.ts).
+export async function withCatalogStatBonuses(
+  tx: Prisma.TransactionClient,
+  worldId: string,
+  items: StartingInventoryItem[],
+): Promise<StartingInventoryItem[]> {
+  const slugs = items.map((i) => i.catalogSlug).filter((s): s is string => !!s);
+  if (slugs.length === 0) return items;
+  const catalogRows = await tx.itemCatalog.findMany({ where: { worldId, slug: { in: slugs } }, select: { slug: true, statBonuses: true } });
+  const statBonusesBySlug = new Map(catalogRows.map((r) => [r.slug, r.statBonuses]));
+  return items.map((item) => {
+    if (item.statBonuses || !item.catalogSlug) return item;
+    const catalogBonuses = statBonusesBySlug.get(item.catalogSlug);
+    return catalogBonuses ? { ...item, statBonuses: catalogBonuses as StartingInventoryItem['statBonuses'] } : item;
+  });
+}
+
+/// Cuerpo real de "volver a Día 1" — extraído (2026-08-31, muerte permanente) de
+/// POST /saves/:id/restart (creation.ts) para que POST /saves/:id/death/resolve (death.ts) pueda
+/// reutilizarlo tal cual cuando toca reiniciar la partida entera (sin punto de guardado y sin
+/// tutorial superado): mismo borrado total de progreso, mismo kit inicial, misma Enciclopedia
+/// "de serie" — un jugador que reinicia a mano y uno que muere sin red de seguridad terminan
+/// exactamente en el mismo Día 1, sin dos implementaciones que puedan divergir con el tiempo.
+/// El caller ya está dentro de una transacción (`tx`) y ya resolvió `introCharacterText`/
+/// `introWorldText` — aquí solo vive el borrado + reconstrucción en sí.
+export async function restartSaveTransactionBody(
+  tx: Prisma.TransactionClient,
+  save: {
+    id: string;
+    worldId: string;
+    characterName: string;
+    raza: string | null;
+    clase: Clase | null;
+    attributes: unknown;
+  },
+  introCharacterText: string,
+  introWorldText: string,
+): Promise<void> {
+  const fictionalDateLabel = formatFictionalDate(480);
+  const initialLocationSlug = initialLocationSlugFor(save.characterName);
+  const initialLocation = initialLocationSlug
+    ? await tx.location.findUnique({ where: { worldId_slug: { worldId: save.worldId, slug: initialLocationSlug } } })
+    : null;
+  const startingProfessions = startingProfessionsFor(save.characterName, save.raza, initialLocation?.region ?? null);
+  const startingQuestsData = await buildStartingQuestsData(save.worldId, save.characterName);
+
+  await tx.logEntry.deleteMany({ where: { saveId: save.id } });
+  await tx.inventoryItem.deleteMany({ where: { saveId: save.id } });
+  await tx.companion.deleteMany({ where: { saveId: save.id } });
+  await tx.subject.deleteMany({ where: { saveId: save.id } });
+  await tx.almacenItem.deleteMany({ where: { saveId: save.id } });
+  await tx.plantillaEquipo.deleteMany({ where: { saveId: save.id } });
+  await tx.building.deleteMany({ where: { saveId: save.id } });
+  await tx.territory.deleteMany({ where: { saveId: save.id } });
+  await tx.characterTransit.deleteMany({ where: { saveId: save.id } });
+  await tx.savedAction.deleteMany({ where: { saveId: save.id } });
+  await tx.locationVisit.deleteMany({ where: { saveId: save.id } });
+  await tx.quest.deleteMany({ where: { saveId: save.id } });
+  await tx.sessionSummary.deleteMany({ where: { saveId: save.id } });
+  await tx.npcState.deleteMany({ where: { saveId: save.id } });
+  await tx.professionProgress.deleteMany({ where: { saveId: save.id } });
+  await tx.kingdomStats.deleteMany({ where: { saveId: save.id } });
+  await tx.faction.deleteMany({ where: { saveId: save.id } });
+  await tx.discoveredEntity.deleteMany({ where: { saveId: save.id } });
+  await tx.sessionFact.deleteMany({ where: { saveId: save.id } });
+  await tx.worldState.update({
+    where: { saveId: save.id },
+    data: { fictionalDateLabel, fictionalMinutes: 480, agenda: [], factionsStatus: {} },
+  });
+  await tx.logEntry.create({
+    data: { saveId: save.id, channel: 'CHARACTER', text: introCharacterText, timeLabel: fictionalDateLabel },
+  });
+  await tx.logEntry.create({
+    data: { saveId: save.id, channel: 'WORLD', text: introWorldText, timeLabel: fictionalDateLabel },
+  });
+  await tx.savedAction.createMany({
+    data: [
+      ...startingAbilitiesFor(save.characterName).map((a) => ({ ...a, saveId: save.id, isStarting: true })),
+      ...GENERIC_COMBAT_ABILITIES.map((a) => ({ ...a, saveId: save.id, isStarting: true, isGeneric: true })),
+      ...classAbilityUnlocksFor(save.characterName, 1, save.clase).map((a) => ({ ...a, saveId: save.id, isStarting: true })),
+      ...startingProfessions.flatMap((oficio) => [
+        ...professionAbilityUnlocksFor(oficio, 1).map((a) => ({ ...a, saveId: save.id, isStarting: true })),
+        ...harvestAbilityUnlocksFor(oficio, 1).map((a) => ({ ...a, saveId: save.id, isStarting: true })),
+      ]),
+    ],
+  });
+  const startingInventoryWithStats = await withCatalogStatBonuses(tx, save.worldId, startingInventoryFor(save.characterName));
+  const restartedInventory = await tx.inventoryItem.createManyAndReturn({
+    data: startingInventoryWithStats.map((i) => ({ ...i, saveId: save.id })),
+  });
+  const restartedEquippedWeaponSlots = await resolveEquippedWeaponSlots(tx, save.worldId, restartedInventory);
+  await syncDynamicCombatAbilities(tx, save.id, save.raza, 1, restartedEquippedWeaponSlots);
+  await tx.quest.createMany({
+    data: startingQuestsData.map((q) => ({ ...q, saveId: save.id })),
+  });
+  await tx.professionProgress.createMany({
+    data: startingProfessions.map((professionId) => ({ professionId, saveId: save.id })),
+  });
+  await tx.save.update({
+    where: { id: save.id },
+    data: {
+      lastPlayedAt: new Date(),
+      level: 1,
+      xp: 0,
+      pendingAttributePoints: 0,
+      kingdomName: null,
+      currentLocationId: initialLocation?.id ?? null,
+      condicionFisica: 'ILESO',
+      salud: 100,
+      lastAteAtMinutes: 480,
+      lastDrankAtMinutes: 480,
+      energia: energiaMaxFor((save.attributes as AttributeBlock).constitucion),
+      deathCount: 0,
+      endedAt: null,
+      lastRestLocationId: null,
+      pausedAt: null,
+      pendingCombatNpcSlugs: [],
+      pendingNpcAttack: Prisma.JsonNull,
+      // Muerte permanente (2026-08-31) — un reinicio total también vuelve al tutorial no
+      // superado, mismo criterio que el resto de este bloque (Día 1 sin nada acumulado).
+      tutorialCompletedAt: null,
+      pendingDeathResolution: false,
+    },
+  });
+
+  await recordEntityDiscoveries(
+    {
+      saveId: save.id,
+      worldId: save.worldId,
+      mentionedText: startingQuestsData
+        .map((q) => q.objetivo)
+        .filter((o): o is string => !!o)
+        .join('\n'),
+    },
+    tx,
+  );
+  if (initialLocation) {
+    await tx.locationVisit.upsert({
+      where: { saveId_locationId: { saveId: save.id, locationId: initialLocation.id } },
+      create: { saveId: save.id, locationId: initialLocation.id },
+      update: {},
+    });
+  }
 }

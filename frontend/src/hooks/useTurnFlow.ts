@@ -1,7 +1,7 @@
 import type { Dispatch, RefObject, SetStateAction } from 'react'
 import type { ChatComposerHandle } from '../components/ChatComposer'
 import { requestTurnClassify, requestTurnNarrate, getSave, type ClassifyResponse, type SaveDetail } from '../lib/api'
-import { isBusyError, isEndedGameError, isTurnLockedError, applyInventoryDelta, questCompletedLogEntry } from '../lib/gameViewHelpers'
+import { isBusyError, isEndedGameError, isPendingDeathError, isTurnLockedError, applyInventoryDelta, questCompletedLogEntry } from '../lib/gameViewHelpers'
 import { playerActionEntry } from '../lib/simulateAI'
 import type {
   ActiveEffect,
@@ -30,6 +30,7 @@ interface UseTurnFlowParams {
   characterName: string | null
   busyUntil: string | null
   endedAt: string | null
+  pendingDeathResolution: boolean
   characterLog: LogEntry[]
   composerRef: RefObject<ChatComposerHandle | null>
   buildEntityBanner: (text: string, logEntryId?: string) => MentionedEntityBanner | undefined
@@ -71,6 +72,8 @@ interface UseTurnFlowParams {
   setInventory: Dispatch<SetStateAction<InventoryItemInfo[]>>
   setCombateIniciado: Dispatch<SetStateAction<{ npcs: import('../types').NpcInSceneInfo[] } | null>>
   setEndedAt: Dispatch<SetStateAction<string | null>>
+  /// Muerte permanente, botón Aceptar/Reintentar (2026-08-31) — mismo patrón que `setEndedAt`.
+  setPendingDeathResolution: Dispatch<SetStateAction<boolean>>
   setCurrentLocation: Dispatch<SetStateAction<CurrentLocationInfo | null>>
   setDestinations: Dispatch<SetStateAction<DestinationInfo[]>>
   setCompanions: Dispatch<SetStateAction<CompanionInfo[]>>
@@ -99,6 +102,7 @@ export function useTurnFlow(params: UseTurnFlowParams) {
     characterName,
     busyUntil,
     endedAt,
+    pendingDeathResolution,
     characterLog,
     composerRef,
     buildEntityBanner,
@@ -131,6 +135,7 @@ export function useTurnFlow(params: UseTurnFlowParams) {
     setInventory,
     setCombateIniciado,
     setEndedAt,
+    setPendingDeathResolution,
     setCurrentLocation,
     setDestinations,
     setCompanions,
@@ -149,7 +154,7 @@ export function useTurnFlow(params: UseTurnFlowParams) {
     // tal cual a requestTurnNarrate, mismo criterio que `lootItemNames` en submitCombatAction.
     extras?: { healItemUses?: { itemId: string; quantity: number }[] },
   ) {
-    if (!action || !saveId || busyUntil || endedAt) return
+    if (!action || !saveId || busyUntil || endedAt || pendingDeathResolution) return
     composerRef.current?.clear()
     setInput('')
     // Bug real (2026-07-23, "al cambiar de pestaña el narrador da error de localhost"): el stream
@@ -223,6 +228,7 @@ export function useTurnFlow(params: UseTurnFlowParams) {
         combateIniciado: combate,
         esperandoDefensaJugador,
         finDePartida,
+        pendingDeathResolution: newPendingDeathResolution,
         newInventoryItems,
         removedInventoryItemIds,
         updatedInventoryItems,
@@ -294,6 +300,7 @@ export function useTurnFlow(params: UseTurnFlowParams) {
       // defenderse.
       setCombatAwaitingDefense(esperandoDefensaJugador)
       if (finDePartida) setEndedAt(new Date().toISOString())
+      if (newPendingDeathResolution) setPendingDeathResolution(true)
 
       if (travel) {
         // Un viaje resuelto síncronamente (banda corta) ya cambió currentLocationId en el
@@ -373,6 +380,12 @@ export function useTurnFlow(params: UseTurnFlowParams) {
     } catch (err) {
       if (isEndedGameError(err)) {
         setEndedAt(err.endedAt)
+        setCharacterLog((prev) => prev.slice(0, -1))
+      } else if (isPendingDeathError(err)) {
+        // Turno mandado mientras había una muerte sin resolver que el estado local todavía no
+        // reflejaba (p. ej. otra pestaña, o un refresco a medias) — el backend ya lo bloqueó,
+        // aquí solo sincronizamos el flag para que el botón aparezca sin más acción del jugador.
+        setPendingDeathResolution(true)
         setCharacterLog((prev) => prev.slice(0, -1))
       } else if (isBusyError(err)) {
         setBusyUntil(err.busyUntil)
