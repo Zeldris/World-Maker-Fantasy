@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import { useEffect, useRef, type ReactNode } from 'react'
 
 interface SelectionModalShellProps {
   title: string
@@ -19,10 +19,23 @@ interface SelectionModalShellProps {
 /// de carga/error/vacío) varía demasiado entre modales como para compartirlo también aquí — cada
 /// uno sigue escribiendo el suyo como `children`.
 export function SelectionModalShell({ title, onCancel, cancelDisabled, children, footer }: SelectionModalShellProps) {
+  // Foco al abrirse (2026-08-31, "revisa bien todos los casos del foco/scroll") — cascarón
+  // compartido por los 11 modales de selección (Cazar/Recolectar/Curar/Entregar/Saquear/campamento-
+  // viaje/etc.), ninguno tenía nada que llevara el foco dentro del modal al abrirse. El contenedor
+  // scrollable recibe el foco (tabIndex -1, fuera del tab order normal) en vez de adivinar cuál es
+  // el primer campo interactivo de cada uno — varía demasiado entre modales (checkbox, lista,
+  // formulario) para un criterio único más específico.
+  const scrollRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    scrollRef.current?.focus()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
   return (
     <div className="animate-overlay-in fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4" onClick={onCancel}>
       <div
-        className="plank-panel animate-combat-enter relative flex max-h-[85vh] w-full max-w-md flex-col gap-4 overflow-y-auto rounded-xl p-5"
+        ref={scrollRef}
+        tabIndex={-1}
+        className="plank-panel animate-combat-enter relative flex max-h-[85vh] w-full max-w-md flex-col gap-4 overflow-y-auto rounded-xl p-5 outline-none"
         onClick={(e) => e.stopPropagation()}
       >
         <h3 className="font-serif text-lg text-wood-100">{title}</h3>

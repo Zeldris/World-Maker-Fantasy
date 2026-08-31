@@ -3826,6 +3826,26 @@ trayecto vía `syncFromSave`, dejando la vieja condición de "transición en est
 cumplirse nunca) también está corregido — comentario explícito en el propio código documentando
 ambas causas.
 
+**Ampliación — resto de casos de foco/scroll en la app, más allá del log** (petición explícita
+2026-08-31: "revisa bien todos los casos del foco/scroll... cuando abres un modal, una sección o lo
+que sea"). Auditoría completa de los 4 tipos de contenedor que se abren sobre la partida — ninguno
+gestionaba foco/scroll al abrirse o cerrarse, salvo el log (arriba) y el fix puntual de la barra de
+habilidades (2026-08-30). **Los 4 corregidos**:
+1. **Modales de acción** (`SelectionModalShell.tsx`, cascarón compartido por 12 modales — Cazar/
+   Recolectar/Curar/Entregar/Saquear/campamento-viaje/captura/tameo/equipo de compañero/etc.):
+   foco al contenedor al abrirse. `ChatComposer` ganó un método `focus()` público nuevo (antes solo
+   `insertChip`/`setText` ponían foco como efecto colateral de escribir algo) y `GameView.tsx`
+   devuelve el foco al composer al cerrarse cualquiera de estos modales (`anyActionModalOpen`
+   true→false), cancelado o resuelto.
+2. **Paneles laterales** (`PanelDrawer.tsx` — personaje/reputación/mapa/enciclopedia/diario/reino...):
+   foco al contenedor + scroll al inicio al abrirse o cambiar de panel.
+3. **Panel de combate** (`CombatPanel.tsx`): scroll al inicio al entrar en combate (sin robar foco
+   de teclado a propósito — el jugador entra a pulsar un botón de acción, no a leer).
+4. **Modo dinámico** (`DynamicModeModal.tsx`): foco al contenedor solo en la vuelta 1 (el modal
+   permanece montado entre vueltas, no se le roba el foco en cada respuesta si el jugador ya está
+   navegando con teclado dentro).
+`tsc -b` limpio, 116/116 tests de frontend en verde.
+
 **Diseño pedido — narración de viaje tramo a tramo**: durante un viaje (captura: "Viajo hacia Paso de
 los Pilares Rotos", ~visible por varios minutos de ficción), la usuaria pide que la narración cubra
 cada zona intermedia por la que se pasa hasta llegar al destino — de dónde se parte, por dónde se ha

@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react'
 import type { DynamicModeTurno } from '../lib/api'
 
 interface DynamicModeModalProps {
@@ -34,8 +35,17 @@ interface DynamicModeModalProps {
 /// más allá de la primera vez; forzar remount por vuelta hace que cada respuesta del NPC/fauna
 /// vuelva a animarse en vez de "saltar" de texto sin transición.
 export function DynamicModeModal({ turno, busy, error, imageUrl, onElegir, onCerrar, onSalir }: DynamicModeModalProps) {
+  // Foco al abrirse por primera vez (2026-08-31, "revisa bien todos los casos del foco/scroll") —
+  // solo en la vuelta 1 (el modal permanece montado entre vueltas, ver comentario de cabecera sobre
+  // `key={turno.vuelta}`), para no robarle el foco al jugador en cada respuesta si ya está
+  // interactuando con el teclado dentro del propio modal.
+  const rootRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (turno.vuelta === 1) rootRef.current?.focus()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
   return (
-    <div className="animate-overlay-in fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4">
+    <div ref={rootRef} tabIndex={-1} className="animate-overlay-in fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4 outline-none">
       <div className="plank-panel animate-combat-enter relative flex w-full max-w-md flex-col gap-4 rounded-xl p-5">
         <div className="flex items-center justify-between gap-2">
           <p className="text-2xs font-semibold uppercase tracking-[0.2em] text-accent2-400">

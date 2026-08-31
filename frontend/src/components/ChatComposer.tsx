@@ -5,6 +5,11 @@ import type { EnciclopediaIndex } from '../lib/enciclopediaIndex'
 export interface ChatComposerHandle {
   insertChip: (chip: ComposerChip) => void
   clear: () => void
+  /// Foco puro, sin tocar el contenido (2026-08-31, "revisa bien todos los casos del foco/scroll")
+  /// — a diferencia de `setText`/`insertChip`, que también ponen el foco pero como efecto colateral
+  /// de escribir algo, esto es para devolver el foco al composer tras cerrar un modal de acción sin
+  /// que el jugador tuviera que escribir nada dentro de él.
+  focus: () => void
   /// Sugerencias de próxima acción (petición explícita, 2026-08-15) — a diferencia de `insertChip`
   /// (un elemento fijo tipo chip, pensado para referenciar una entidad concreta), esto REEMPLAZA
   /// todo el contenido por texto plano libre y editable: la jugadora eligió una sugerencia como
@@ -193,6 +198,9 @@ export const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(fu
       el.innerHTML = ''
       savedRangeRef.current = null
       handleInput()
+    },
+    focus() {
+      editorRef.current?.focus()
     },
     setText(text: string) {
       const el = editorRef.current

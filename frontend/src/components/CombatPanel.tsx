@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { CONDICION_LABEL } from '../lib/health'
 import { attributeLabels, attributeColorClasses, attributeAbbr } from '../lib/dice'
 import { recommendedAttributeAgainst } from '../lib/attributeWheel'
@@ -383,6 +383,17 @@ export function CombatPanel({
   // resolver, así que ese botón nunca podía dispararse de verdad.
   const [saquearModalOpen, setSaquearModalOpen] = useState(false)
 
+  // Scroll al inicio al abrirse el panel (2026-08-31, "revisa bien todos los casos del foco/
+  // scroll") — el panel se monta de nuevo cada vez que se entra en combate; sin esto, si el
+  // contenido quedó scrolleado hacia abajo la vez anterior, no había garantía de arrancar viendo
+  // el encabezado (rivales/estado del jugador). Sin foco de teclado aquí a propósito, a diferencia
+  // de PanelDrawer — el jugador entra a pulsar un botón de acción, no a leer, y robar el foco justo
+  // al abrir combate sería más intrusivo que útil.
+  const contentScrollRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    contentScrollRef.current?.scrollTo({ top: 0 })
+  }, [])
+
   // Resumen de combate (2026-07-30) — solo se ofrece "Saquear todo" si de verdad queda algo sin
   // saquear; si ya se registró todo uno a uno durante la pelea, el resumen solo ofrece salir.
   // Solo MUERTO es saqueable (2026-08-26, CONVALECIENTE deja de serlo) — mismo criterio que el
@@ -491,7 +502,7 @@ export function CombatPanel({
         ))}
       </div>
 
-      <div className="flex-1 space-y-3 overflow-y-auto px-4 py-3">
+      <div ref={contentScrollRef} className="flex-1 space-y-3 overflow-y-auto px-4 py-3">
         {ended ? (
           // Resumen de combate (petición explícita, 2026-07-30: "no se entiende que vencí...
           // quiero una vista de victoria más vistosa y que no muestre el contenido del combate").

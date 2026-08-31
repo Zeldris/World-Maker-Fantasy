@@ -256,6 +256,18 @@ export function GameView() {
       pendingComposerTextRef.current = null
     }
   }, [showSkillBar])
+
+  // Foco de vuelta al composer al cerrar cualquier modal de acción (2026-08-31, "revisa bien todos
+  // los casos del foco/scroll... cuando abres un modal") — cancelado o resuelto con éxito, ninguno
+  // de los 6 modales de `anyActionModalOpen` (Cazar/Recolectar/Curar/Entregar/Saquear/campamento-
+  // viaje) devolvía el foco al composer, a diferencia del caso ya arreglado de la barra de
+  // habilidades (que llama `setText` internamente). Mismo patrón de transición true→false que el
+  // resto de efectos de este archivo — no dispara en el primer render (nada estaba abierto antes).
+  const wasActionModalOpenRef = useRef(false)
+  useEffect(() => {
+    if (wasActionModalOpenRef.current && !anyActionModalOpen) composerRef.current?.focus()
+    wasActionModalOpenRef.current = anyActionModalOpen
+  }, [anyActionModalOpen])
   const [characterThinking, setCharacterThinking] = useState(false)
   const [timedThinkingText, setTimedThinkingText] = useState<string | null>(null)
   // Streaming (roadmap de velocidad, 2026-07-20, punto 13): la narración crece en vivo mientras

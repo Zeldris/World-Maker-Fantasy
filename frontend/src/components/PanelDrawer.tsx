@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import { useEffect, useRef, type ReactNode } from 'react'
 
 interface PanelDrawerProps {
   title: string
@@ -17,6 +17,18 @@ interface PanelDrawerProps {
 export function PanelDrawer({ title, subtitle, onClose, children, accent = 'accent' }: PanelDrawerProps) {
   const hairlineClass = accent === 'accent2' ? 'accent2-hairline' : 'accent-hairline'
   const closeHoverClass = accent === 'accent2' ? 'hover:border-accent2-600/60 hover:text-accent2-300' : 'hover:border-accent-600/60 hover:text-accent-300'
+  // Foco + scroll al inicio al abrirse (2026-08-31, "revisa bien todos los casos del foco/scroll")
+  // — ninguno de los ~8 paneles que renderiza este cajón (personaje/reputación/mapa/enciclopedia/
+  // diario/reino...) tenía nada que asegurara arrancar arriba del todo ni que el foco del teclado
+  // pasara al panel — se quedaba donde estuviera (normalmente el botón de la barra que lo abrió).
+  // El propio contenedor recibe el foco (tabIndex -1: enfocable por código, fuera del tab order
+  // normal) en vez de intentar adivinar cuál es "el primer campo" de cada panel distinto.
+  const scrollRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    scrollRef.current?.scrollTo({ top: 0 })
+    scrollRef.current?.focus()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [title])
   return (
     <div className="absolute inset-0 z-20 flex flex-col justify-end">
       <button type="button"
@@ -47,7 +59,7 @@ export function PanelDrawer({ title, subtitle, onClose, children, accent = 'acce
           </button>
           <div className={`absolute inset-x-0 bottom-0 ${hairlineClass}`} />
         </div>
-        <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">{children}</div>
+        <div ref={scrollRef} tabIndex={-1} className="min-h-0 flex-1 overflow-y-auto px-5 py-4 outline-none">{children}</div>
       </div>
     </div>
   )
