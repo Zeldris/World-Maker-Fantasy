@@ -128,8 +128,10 @@ reciente:
   Reino unificada, transición de entrada en el aviso de Hambre/Sed, pop en subida de nivel de
   profesión, `ResourceBar` compartido (dedupe Hambre/Sed jugador↔compañero), confirmación visual al
   cambiar plantilla de equipo, enlace "Ver historial completo" del log en vivo al Diario. Único
-  pendiente: `Save.clase`/`especializacion` (bloqueado de verdad — necesita un flujo de asignación
-  de clase que hoy no existe en absoluto, no es un arreglo de UI). `tsc -b` limpio backend y
+  pendiente: `Save.clase`/`especializacion` — **corrección 2026-08-31**: el endpoint backend
+  (`PATCH /saves/:id/clase`, `progression.ts`) ya existe desde el 2026-08-29, pero ningún componente
+  frontend lo invoca todavía — sigue sin flujo de creación/asignación real de cara al jugador, el
+  hueco real es de frontend, no de backend. `tsc -b` limpio backend y
   frontend, suite completa backend 1518/1518 (retry aislado tras el flake conocido de
   `turnLock` bajo carga paralela), frontend 93/93.
 - **Auditoría + mejora del sistema de imágenes/prompts — CERRADO Y APLICADO (2026-08-27)**: bug real
@@ -856,13 +858,22 @@ resumen de trabajo real, agrupado por tamaño.
   `revisar-partida-hallazgos.md § 2026-08-30` y en el checklist de pruebas (§§ 7, 10).
 - **Bugs reales** ("profesiones tiran dado siempre" sin confirmar, Cruzavientos nunca narrado) —
   viven en sus propias memorias/`revisar-partida-hallazgos.md`, no compiten por prioridad con las
-  features de arriba. `recolectar.ts`/`rollGathering` 500 — **cerrado 2026-08-25**: eran 4
+  features de arriba. **Cruzavientos — causa raíz ya diagnosticada, sin fix (trasladado aquí
+  2026-08-31 al limpiar checklists obsoletos)**: al huir de un combate, la narración no nombra al
+  atacante real — confirmado en código que `combatRealTargetName`/`otherNpcNamesInScene`
+  (`turnResolution.ts:3940-3941`) solo se calculan si `exchangeHappened`, sin cubrir el caso de
+  `detectsFleeIntent`. `recolectar.ts`/`rollGathering` 500 — **cerrado 2026-08-25**: eran 4
   migraciones sin aplicar contra Postgres real, no un bug de código; de paso, correr los 3 archivos
   de integración contra DB real por primera vez destapó una regresión de test genuina en "Ayuntamiento
   mediano" (fixture sin `ProfessionProgress`, invisible en el sandbox sin DB) — arreglada.
 - **Huecos de lore puro** (Riko sin desarrollar, Kael Dorn↔Ithren sin cerrar del todo, Kalisar sin
   NPC propio) — trabajo de escritura, no de código; ya trackeados en
   `ampliar-lore-checklist.md § Pendiente de diseño`.
+- **Deuda técnica de frontend, sin dueño en ningún otro doc** (trasladado aquí 2026-08-31 al limpiar
+  checklists obsoletos de auditorías de UX cerradas): `GameView.tsx` con 63 `useState` sueltos sin
+  agrupar en hooks (mismo criterio de extracción ya aplicado a otras piezas del archivo, ver
+  [[tarkor_extraccion_hooks_gameview_2026-08-21]]) — deuda, no bug; `EnciclopediaPanel.tsx` (1337
+  líneas) y otros paneles grandes sin dividir en archivos más pequeños — bajo valor real, cosmético.
 - **Modo Multijugador** (`02-decisiones.md`, 12 preguntas P0-P3) — explícitamente pausado hasta que
   el modo en solitario esté maduro, ni siquiera diseñado todavía.
 - **Benchmark de latencia real** (`06-decisiones-mecanicas.md` punto 5) — medición de rendimiento
