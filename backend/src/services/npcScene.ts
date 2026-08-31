@@ -158,7 +158,7 @@ export interface NpcInScene {
   capturablePct: number;
 }
 
-interface NpcWithAliases {
+export interface NpcWithAliases {
   id: string;
   aliases: string[];
 }

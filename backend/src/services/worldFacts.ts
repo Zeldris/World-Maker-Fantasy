@@ -1,5 +1,6 @@
 import { prisma } from '../lib/prisma.js';
 import { embed, toVectorLiteral } from '../lib/embeddings.js';
+import { matchNpcAliases, type NpcWithAliases } from './npcScene.js';
 
 /// Mejora de cohesión (2026-07-30, ver SessionFact en schema.prisma): antes `sessionFacts` era
 /// una ventana rodante de los últimos 10 hechos (mergeFacts/MAX_FACTS), recortando por pura
@@ -131,20 +132,46 @@ async function pruneOldFacts(saveId: string): Promise<void> {
   await prisma.sessionFact.deleteMany({ where: { id: { in: stale.map((f) => f.id) } } });
 }
 
+/// NPCs retirados para siempre (`Save.npcsRetiredForever`) mencionados en un fact de despedida
+/// (2026-08-31, causa raíz confirmada: "sessionFacts reintroduce NPCs retirados/cruza rasgos entre
+/// NPCs") — un hecho como "Gistera Koh se despidió y se marchó, no volverá a aparecer" seguía
+/// llegando al Narrador vía `selectRelevantFacts` aunque `detectNpcsInScene` (npcScene.ts, fijado
+/// el 2026-08-28) ya lo excluyera de `npcsInScene`. El filtro de `npcsInScene` protege la FICHA
+/// estructurada de "quién está aquí ahora"; este protege el propio TEXTO de memoria para que el
+/// nombre no llegue al prompt por ninguna vía — visto en combate real narrando a un NPC ya
+/// retirado con el rasgo de personalidad de OTRO NPC real en escena, mismo mecanismo de "dos
+/// nombres en el mismo bloque de texto" que `matchNpcAliases` ya evita en otros detectores.
 /// Selecciona qué hechos de verdad se mandan al Narrador este turno — solo se usa en el punto
 /// donde se construye `worldFacts`/`sessionFacts` para `narrateAction` (turnResolution.ts), NUNCA
 /// para el haystack de detección de NPCs ni comprobaciones deterministas (ver comentario de
 /// `loadSessionFacts`). Si hay MAX_SENT_FACTS o menos en total, no hace falta filtrar nada — ni
 /// una consulta ni un embedding de más en la mayoría de partidas cortas/medias, que es
 /// precisamente cuando esta mejora no hace falta todavía.
-export async function selectRelevantFacts(action: string, saveId: string, sessionFacts: string[]): Promise<string[]> {
-  if (sessionFacts.length <= MAX_SENT_FACTS) return sessionFacts;
+export async function selectRelevantFacts(action: string, saveId: string, worldId: string, sessionFacts: string[]): Promise<string[]> {
+  // NPCs retirados para siempre (ver comentario arriba) — se excluyen de la fuente ANTES de
+  // recortar por recencia/relevancia, para que ni siquiera cuenten como candidato "reciente
+  // garantizado" (mismo criterio que `npcsRetiredForever` gana siempre en detectNpcsInScene).
+  const save = await prisma.save.findUnique({ where: { id: saveId }, select: { npcsRetiredForever: true } });
+  const retiredSlugs = save?.npcsRetiredForever ?? [];
+  const filteredFacts =
+    retiredSlugs.length === 0
+      ? sessionFacts
+      : await (async () => {
+          const retiredNpcs: NpcWithAliases[] = await prisma.npc.findMany({
+            where: { worldId, slug: { in: retiredSlugs } },
+            select: { id: true, aliases: true },
+          });
+          if (retiredNpcs.length === 0) return sessionFacts;
+          return sessionFacts.filter((fact) => matchNpcAliases(fact, retiredNpcs).length === 0);
+        })();
+
+  if (filteredFacts.length <= MAX_SENT_FACTS) return filteredFacts;
 
   // Los `RECENCY_GUARANTEED` más recientes van SIEMPRE primero en la combinación (nunca se
   // recortan) — bug real encontrado probando en vivo (2026-07-30): con `relevant` primero y
   // `recent` al final, un `.slice(0, MAX_SENT_FACTS)` podía descartar la recencia entera si la
   // consulta de relevancia ya llenaba las 10 plazas ella sola.
-  const recent = sessionFacts.slice(-RECENCY_GUARANTEED);
+  const recent = filteredFacts.slice(-RECENCY_GUARANTEED);
   const remainingBudget = MAX_SENT_FACTS - recent.length;
   const vector = await embed(action);
   const rows = await prisma.$queryRaw<{ text: string }[]>`
@@ -153,9 +180,15 @@ export async function selectRelevantFacts(action: string, saveId: string, sessio
     ORDER BY embedding <=> ${toVectorLiteral(vector)}::vector
     LIMIT ${MAX_SENT_FACTS + RECENCY_GUARANTEED}
   `;
-  const relevant = rows.map((r) => r.text).filter((t) => !recent.includes(t)).slice(0, remainingBudget);
+  // La consulta vectorial lee de la tabla completa (incluye facts ya excluidos arriba) — se
+  // vuelve a filtrar contra `filteredFacts` (no `sessionFacts`) para que un fact de despedida no
+  // se cuele de todos modos por esta vía.
+  const relevant = rows
+    .map((r) => r.text)
+    .filter((t) => filteredFacts.includes(t) && !recent.includes(t))
+    .slice(0, remainingBudget);
   const combined = new Set([...recent, ...relevant]);
-  // Orden final: cronológico según `sessionFacts` (no por score de similitud) — para que el
+  // Orden final: cronológico según `filteredFacts` (no por score de similitud) — para que el
   // Narrador los lea en secuencia natural, no mezclados por relevancia.
-  return sessionFacts.filter((f) => combined.has(f));
+  return filteredFacts.filter((f) => combined.has(f));
 }

@@ -3396,13 +3396,21 @@ DETERMINISTA de reintroducción (el motor la trae de vuelta como si el LLM no tu
 asunto), no una alucinación de texto libre. Ninguno de los 2 guards de 2026-08-13 comprueba este
 camino: ambos actúan sobre la narración ya generada, no sobre `npcsInScene` antes de narrar.
 
-**Estado**: PENDIENTE. No se ha aplicado ningún fix todavía (fase de revisión, no de arreglo — la
-usuaria pidió "solo anotar" en el momento del hallazgo). Fix candidato a evaluar: en
-`detectNpcsInScene`, excluir del `haystack` de `sessionFacts` cualquier fact que contenga el propio
-NPC junto a vocabulario de despedida/cierre ("no volverá a aparecer", "se marchó para siempre" —
-mismo vocabulario que ya usa `gisteraSeHaMarchado` en narrador.ts), o mantener un flag persistido
-por NPC tipo `Save.npcsRetiredForever: string[]` consultado ANTES de construir `npcsInScene`, más
-robusto que parsear vocabulario del propio fact.
+**Estado**: FIJADO en 2 pasadas. (1) 2026-08-28: `Save.npcsRetiredForever: string[]` (migración
+`20260828120000_npcs_retired_forever`) consultado en `detectNpcsInScene` — excluye correctamente al
+NPC de `npcsInScene`, la ficha ESTRUCTURADA de "quién está en escena". (2) 2026-08-31, causa raíz
+completa: ese filtro no protegía OTRA vía — `selectRelevantFacts` (worldFacts.ts) seguía pudiendo
+recuperar por similitud semántica un fact que menciona al NPC retirado y colarlo al prompt del
+Narrador de todos modos (confirmado como la causa real de un síntoma más grave visto el 2026-08-30,
+ver entrada de ese día: rasgo de OTRO NPC atribuido a Gistera Koh nombrada en pleno combate).
+Corregido: `selectRelevantFacts` gana `worldId`, resuelve alias de `npcsRetiredForever` y excluye
+cualquier fact que los mencione, ANTES de separar entre recientes/relevantes. De paso, cerrada
+también la red de seguridad del reintento (narrador.ts): si los 3 intentos de narración violaban el
+MISMO guard (sesgo fijo en el prompt, no aleatorio), se devolvía el último intento contaminado —
+ahora cae al fallback determinista sin IA. Verificado: `tsc -b` limpio, 3318/3319 en la suite
+unitaria (único fallo, flake ya confirmado), 103/103 en `turn.integration.test.ts`, 14/14 nuevos en
+`worldFacts.test.ts`, 4/4 nuevos en `narrador.test.ts`. Ver memoria de sesión
+`tarkor_fix_sessionfacts_npc_retirado_2026-08-31.md`.
 
 ### 2026-08-27 (FASE 2: coherencia, menor) — "amuleto de hueso" cae 3 veces en el mismo combate sin memoria narrativa
 
@@ -3824,5 +3832,10 @@ el 2026-08-27, aplicado aquí a la narración de combate en vez de a `detectNpcs
 nombres propios mencionados — Ciénaga Troncal, Karot Veku, El Pozo de Cauce Viejo — todos
 confirmados reales en el catálogo).
 
-**Estado**: ambos hallazgos PENDIENTES, sin investigar causa técnica ni tocar código — solo
-documentados en esta pasada, mismo criterio que el resto de la tanda de hoy.
+**Estado**: el segundo hallazgo (Gistera + rasgo cruzado del Orco) — **FIJADO 2026-08-31**. Causa
+técnica confirmada: exactamente el mecanismo candidato apuntado arriba (`sessionFacts` sin filtrar),
+esta vez colándose vía `selectRelevantFacts` (worldFacts.ts) en vez de `detectNpcsInScene`. Ver
+entrada del 2026-08-27 (arriba en este mismo documento) para el detalle técnico completo del fix y
+la verificación — mismo fix cierra ambos hallazgos, causa raíz compartida. El primer hallazgo
+(combate contra Kirelon narrado como Quio) sigue sin investigar, causa distinta (no es reintroducción
+de NPC retirado).

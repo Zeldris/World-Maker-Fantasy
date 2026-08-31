@@ -10,6 +10,8 @@ const deleteManySessionFact = vi.fn();
 const executeRaw = vi.fn();
 const queryRaw = vi.fn();
 const embed = vi.fn();
+const findUniqueSave = vi.fn();
+const findManyNpc = vi.fn();
 
 vi.mock('../lib/prisma.js', () => ({
   prisma: {
@@ -17,6 +19,12 @@ vi.mock('../lib/prisma.js', () => ({
       findMany: (...args: unknown[]) => findManySessionFact(...args),
       count: (...args: unknown[]) => countSessionFact(...args),
       deleteMany: (...args: unknown[]) => deleteManySessionFact(...args),
+    },
+    save: {
+      findUnique: (...args: unknown[]) => findUniqueSave(...args),
+    },
+    npc: {
+      findMany: (...args: unknown[]) => findManyNpc(...args),
     },
     $executeRaw: (...args: unknown[]) => executeRaw(...args),
     $queryRaw: (...args: unknown[]) => queryRaw(...args),
@@ -116,11 +124,13 @@ describe('selectRelevantFacts', () => {
   beforeEach(() => {
     queryRaw.mockReset();
     embed.mockReset().mockResolvedValue([0.1, 0.2, 0.3]);
+    findUniqueSave.mockReset().mockResolvedValue({ npcsRetiredForever: [] });
+    findManyNpc.mockReset().mockResolvedValue([]);
   });
 
   it('con MAX_SENT_FACTS (10) o menos, devuelve todo tal cual — sin embeber ni consultar nada', async () => {
     const facts = Array.from({ length: 10 }, (_, i) => `hecho ${i}`);
-    const result = await selectRelevantFacts('acción del jugador', 'save1', facts);
+    const result = await selectRelevantFacts('acción del jugador', 'save1', 'world1', facts);
     expect(result).toEqual(facts);
     expect(embed).not.toHaveBeenCalled();
     expect(queryRaw).not.toHaveBeenCalled();
@@ -129,7 +139,7 @@ describe('selectRelevantFacts', () => {
   it('con más de 10, garantiza los 3 más recientes y completa con los más relevantes recuperados por similitud', async () => {
     const facts = Array.from({ length: 15 }, (_, i) => `hecho ${i}`); // hecho 12/13/14 = los 3 más recientes
     queryRaw.mockResolvedValue([{ text: 'hecho 2' }, { text: 'hecho 5' }, { text: 'hecho 14' }]); // "hecho 14" ya está en recencia
-    const result = await selectRelevantFacts('acción del jugador', 'save1', facts);
+    const result = await selectRelevantFacts('acción del jugador', 'save1', 'world1', facts);
     expect(embed).toHaveBeenCalledWith('acción del jugador');
     // Recencia garantizada (12,13,14) + relevantes no solapados (2,5) — sin duplicar "hecho 14".
     expect(result).toEqual(['hecho 2', 'hecho 5', 'hecho 12', 'hecho 13', 'hecho 14']);
@@ -139,8 +149,34 @@ describe('selectRelevantFacts', () => {
     const facts = Array.from({ length: 15 }, (_, i) => `hecho ${i}`);
     // La consulta "por relevancia" los devuelve en un orden distinto al cronológico.
     queryRaw.mockResolvedValue([{ text: 'hecho 8' }, { text: 'hecho 1' }]);
-    const result = await selectRelevantFacts('acción del jugador', 'save1', facts);
+    const result = await selectRelevantFacts('acción del jugador', 'save1', 'world1', facts);
     const indices = result.map((f) => facts.indexOf(f));
     expect(indices).toEqual([...indices].sort((a, b) => a - b));
+  });
+
+  // Causa raíz confirmada 2026-08-31 ("sessionFacts reintroduce NPCs retirados/cruza rasgos entre
+  // NPCs"): un fact de despedida seguía llegando al Narrador aunque detectNpcsInScene (fijado el
+  // 2026-08-28) ya excluyera al NPC de npcsInScene — el nombre se colaba por esta vía en su lugar.
+  it('excluye cualquier hecho que mencione a un NPC de npcsRetiredForever, aunque quepa sin filtrar por volumen', async () => {
+    findUniqueSave.mockResolvedValue({ npcsRetiredForever: ['gistera-koh'] });
+    findManyNpc.mockResolvedValue([{ id: 'npc1', aliases: ['gistera koh', 'gistera'] }]);
+    const facts = ['Gistera Koh se despidió y se marchó, no volverá a aparecer.', 'El Orco Enfurecido sigue merodeando cerca.'];
+    const result = await selectRelevantFacts('acción del jugador', 'save1', 'world1', facts);
+    expect(result).toEqual(['El Orco Enfurecido sigue merodeando cerca.']);
+    expect(findManyNpc).toHaveBeenCalledWith(expect.objectContaining({ where: { worldId: 'world1', slug: { in: ['gistera-koh'] } } }));
+  });
+
+  it('excluye un hecho de NPC retirado también cuando SÍ hay que filtrar por relevancia (no se cuela por la consulta vectorial)', async () => {
+    findUniqueSave.mockResolvedValue({ npcsRetiredForever: ['gistera-koh'] });
+    findManyNpc.mockResolvedValue([{ id: 'npc1', aliases: ['gistera koh'] }]);
+    const facts = [
+      ...Array.from({ length: 12 }, (_, i) => `hecho de relleno ${i}`),
+      'Gistera Koh se despidió y se marchó, no volverá a aparecer.',
+    ];
+    // La consulta "por relevancia" recupera el fact de despedida igualmente (similitud semántica
+    // con la acción actual) — debe seguir excluido pese a salir en la respuesta cruda de Postgres.
+    queryRaw.mockResolvedValue([{ text: 'Gistera Koh se despidió y se marchó, no volverá a aparecer.' }, { text: 'hecho de relleno 2' }]);
+    const result = await selectRelevantFacts('acción del jugador', 'save1', 'world1', facts);
+    expect(result).not.toContain('Gistera Koh se despidió y se marchó, no volverá a aparecer.');
   });
 });

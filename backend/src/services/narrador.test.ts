@@ -43,6 +43,7 @@ import {
   hasWrongAggressorName,
   hasAnachronism,
   buildNarrationPrompt,
+  allAttemptsRejectedForSameReason,
 } from './narrador.js';
 
 describe('reinoIntentDetected', () => {
@@ -1197,6 +1198,28 @@ describe('hasWrongAggressorName', () => {
     expect(hasWrongAggressorName([], ['quio'])).toBe(false);
     expect(hasWrongAggressorName(['kirelon-arenoso'], [])).toBe(false);
     expect(hasWrongAggressorName(['kirelon-arenoso'], undefined)).toBe(false);
+  });
+});
+
+describe('allAttemptsRejectedForSameReason', () => {
+  // Causa raíz confirmada 2026-08-31 ("sessionFacts reintroduce NPCs retirados/cruza rasgos entre
+  // NPCs"): si el sesgo vive en el propio prompt (mismo sessionFact/ficha de NPC visto en los 3
+  // intentos), el reintento en cascada no lo cura solo — los 3 intentos pueden violar el MISMO
+  // guard por igual, y antes de esto narrateAction devolvía el último de todos modos.
+  it('true si las 3 razones coinciden exactamente', () => {
+    expect(allAttemptsRejectedForSameReason(['nombrar a Gistera Koh', 'nombrar a Gistera Koh', 'nombrar a Gistera Koh'], 3)).toBe(true);
+  });
+
+  it('false si los intentos fallaron por motivos distintos (el reintento sí sirvió de algo)', () => {
+    expect(allAttemptsRejectedForSameReason(['fuga de inglés', 'nombrar a Gistera Koh', 'nombrar a Gistera Koh'], 3)).toBe(false);
+  });
+
+  it('false si algún intento falló por excepción en vez de violar un guard (menos de 3 razones registradas)', () => {
+    expect(allAttemptsRejectedForSameReason(['nombrar a Gistera Koh', 'nombrar a Gistera Koh'], 3)).toBe(false);
+  });
+
+  it('false si no hubo ningún rechazo (el turno tuvo éxito en el primer intento)', () => {
+    expect(allAttemptsRejectedForSameReason([], 3)).toBe(false);
   });
 });
 

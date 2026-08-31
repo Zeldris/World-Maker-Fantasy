@@ -3956,7 +3956,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   // obtención en prosa libre es pura alucinación.
   const harvestOrLootActiveThisTurn = !!harvestMatch || lootMode || buildMode || craftMode;
   const narrationCtx = {
-    worldFacts: [...contextBlocks, ...(await selectRelevantFacts(action, saveId, sessionFacts))],
+    worldFacts: [...contextBlocks, ...(await selectRelevantFacts(action, saveId, worldId, sessionFacts))],
     // Separado de worldFacts (roadmap 2026-07-24, "revisar partida" — ver comentario en
     // TurnContext.backgroundLore, narrador.ts): el lore RAG es trasfondo del mundo, no hechos
     // de la escena actual — fusionarlos bajo el mismo "HECHOS DEL MUNDO" le daba al modelo

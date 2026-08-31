@@ -1200,6 +1200,18 @@ Responde solo con el JSON pedido, nada más.`;
   return { prompt, format, backgroundLoreBlock };
 }
 
+/// Red de seguridad del reintento en cascada (2026-08-31, causa raíz: "sessionFacts reintroduce
+/// NPCs retirados/cruza rasgos entre NPCs") — true si CADA intento produjo JSON válido pero fue
+/// rechazado por EXACTAMENTE el mismo guard las 3 veces (mismo `reason` de texto). Cuando el sesgo
+/// vive en el propio prompt (mismo sessionFact/ficha de NPC visto en los 3 intentos), el reintento
+/// no lo cura solo — devolver el último intento (como se hacía antes) narraba la contaminación al
+/// jugador de todos modos. `reasons.length < totalAttempts` (algún intento falló por excepción, no
+/// por rechazo de guard) nunca cuenta como "mismo motivo" — solo se activa si TODOS los intentos
+/// llegaron a producir JSON y TODOS violaron el mismo guard.
+export function allAttemptsRejectedForSameReason(reasons: string[], totalAttempts: number): boolean {
+  return reasons.length === totalAttempts && new Set(reasons).size === 1;
+}
+
 export async function narrateAction(ctx: TurnContext & { roll?: RollResult }): Promise<NarrationResult> {
   const { prompt, format, backgroundLoreBlock } = buildNarrationPrompt(ctx);
 
@@ -1292,6 +1304,14 @@ export async function narrateAction(ctx: TurnContext & { roll?: RollResult }): P
     });
 
   let lastResult: NarrationResult | null = null;
+  // Red de seguridad (2026-08-31, causa raíz: "sessionFacts reintroduce NPCs retirados/cruza
+  // rasgos entre NPCs") — si el sesgo que produce una violación vive en el PROPIO prompt (mismo
+  // sessionFact/ficha de NPC visto en los 3 intentos), el reintento en cascada no lo cura solo:
+  // los 3 intentos pueden violar el MISMO guard por igual, y antes de esto se devolvía el último
+  // de todos modos (`lastResult`), narrando la contaminación al jugador. Se registra la `reason`
+  // de cada rechazo para poder distinguir ese caso de "tuvo éxito en el intento 2/3 tras un fallo
+  // distinto cada vez" — solo cuando las 3 razones coinciden EXACTAMENTE se trata como no resuelto.
+  const rejectionReasons: string[] = [];
   const attempts = [attempt1, attempt2, attempt3];
   for (let idx = 0; idx < attempts.length; idx++) {
     try {
@@ -1423,6 +1443,7 @@ export async function narrateAction(ctx: TurnContext & { roll?: RollResult }): P
         console.warn(`[narrador] intento ${idx + 1}/3 descartado por ${rejection.reason}, reintentando`);
         if (idx === 0) ctx.onNarrationReset?.();
         lastResult = parsed;
+        rejectionReasons.push(rejection.reason);
         continue;
       }
       return parsed;
@@ -1437,6 +1458,13 @@ export async function narrateAction(ctx: TurnContext & { roll?: RollResult }): P
     }
   }
 
+  // Las 3 razones de rechazo coinciden EXACTAMENTE (mismo guard, las 3 veces) — el sesgo vive en
+  // el propio prompt, no es aleatorio, así que un 4º reintento no arreglaría nada. Se trata igual
+  // que un fallo técnico: fallback determinista en vez de la última prosa contaminada.
+  if (lastResult && allAttemptsRejectedForSameReason(rejectionReasons, attempts.length)) {
+    console.warn(`[narrador] los 3 intentos violaron el mismo guard ("${rejectionReasons[0]}") — usando fallback determinista sin IA para: "${ctx.action}"`);
+    return deterministicFallbackNarration(ctx);
+  }
   if (lastResult) return lastResult;
   // Fallback determinista (auditoría 2026-07-24, "revisa todo bien bien"): antes, si los 3
   // intentos fallaban de verdad (nunca produjeron ni un JSON parseable — timeout/cuelgue real),
