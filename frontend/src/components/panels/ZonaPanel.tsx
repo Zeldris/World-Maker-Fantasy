@@ -129,16 +129,18 @@ export function ZonaPanel({ saveId }: ZonaPanelProps) {
             (pendiente de generación de imagen, mismo mecanismo que el resto de assets). Tono por
             estado (C.6) para que no se lea como metadata secundaria (mismo tono que un timestamp). */}
         {data.regionControl && <p className={`text-xs font-medium ${regionControlDisplay(data.regionControl).tone}`}>{regionControlDisplay(data.regionControl).text}</p>}
-        {/* Mapa de fondo (2026-08-30, bug real: antes este bloque entero dependía de
-            `data.puntos.length > 0`, así que la imagen del mapa nunca se pintaba en ninguna zona
-            sin `ZonePoint` fijos sembrados — hoy solo Hondonada del Eco los tiene, dejando el
-            resto de zonas sin mapa aunque su imagen sí existiera en disco. La imagen de fondo y
-            los pines son independientes: la imagen se muestra si hay `imageUrl`, los pines solo si
-            hay `puntos`. */}
-        {imageUrl && (
+        {/* Lienzo de puntos (2026-08-31, bug real: el comentario de esta sección ya decía "imagen
+            de fondo y pines son independientes" desde 2026-08-30, pero el código seguía
+            condicionando el `<svg>` ENTERO (imagen Y pines) a `imageUrl` — sin PNG subido, los
+            `ZonePoint` reales existían en BD pero eran invisibles en el lienzo, solo se veían en
+            la lista textual de abajo. Confirmado jugando en vivo con Playwright en el interior de
+            Karot Veku, recién sembrado y sin imagen todavía). Ahora el `<svg>` se pinta siempre
+            que haya `puntos`, con o sin imagen de fondo — el `<image>` es un elemento más dentro,
+            no la condición de todo el bloque. */}
+        {data.puntos.length > 0 && (
           <div className="overflow-hidden rounded-lg border border-iron-700 bg-wood-950/60">
             <svg viewBox="0 0 800 600" className="h-auto w-full">
-              <image href={imageUrl} x={0} y={0} width={800} height={600} preserveAspectRatio="xMidYMid slice" />
+              {imageUrl && <image href={imageUrl} x={0} y={0} width={800} height={600} preserveAspectRatio="xMidYMid slice" />}
               {data.puntos.map((p) => (
                 <g key={p.id}>
                   <ZonePointShape tipo={p.tipo} x={p.x} y={p.y} color={COLOR_HEX[p.color]} />
