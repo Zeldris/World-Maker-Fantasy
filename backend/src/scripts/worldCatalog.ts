@@ -2094,6 +2094,31 @@ export const npcs: NpcInput[] = [
   },
 
   {
+    slug: 'maestro-cocinero-serhu',
+    name: 'Maestro Cocinero Serhu',
+    kind: 'PRINCIPAL',
+    aliases: ['maestro cocinero', 'el cocinero de Karot Veku'],
+    faction: 'Clan Serhu',
+    genero: 'M',
+    role: 'Maestro Cocinero del Clan Serhu',
+    level: 5,
+    attributes: { fuerza: 11, destreza: 13, constitucion: 14, inteligencia: 12, voluntad: 12, carisma: 13, arcano: 2 },
+    bio: 'Orco de brazos gruesos y delantal siempre manchado, vigila las ollas de la cocina común de Karot Veku con la misma seriedad con la que otros vigilan la muralla. Sabe estirar una caza pobre para alimentar a todo el clan sin que nadie note la escasez.',
+    personality: 'Bromista con quien colabora, seco con quien desperdicia comida.',
+    homeLocationSlug: 'campamento-serhu-interior',
+    teachesProfession: 'cocinero-orco-llanuras',
+    raza: 'orcos',
+    clase: 'GUERRERO',
+    especializacion: 'ESPECIALISTA',
+    temperamento: 'CAUTELOSO',
+    comerciablePct: 30,
+    reclutablePct: 0,
+    atributoResistencia: 'constitucion',
+    capturablePct: 0,
+    loadout: [],
+  },
+
+  {
     slug: 'mercader-de-paso',
     name: 'Mercader de paso',
     kind: 'PLANTILLA',
@@ -7221,6 +7246,7 @@ export const zonePoints: ZonePointInput[] = [
   { locationSlug: 'campamento-serhu-interior', x: 400, y: 380, tipo: 'NPC', targetSlug: 'ulkha-ketg', label: "Ulkha Ketg, Terk'ikar" },
   { locationSlug: 'campamento-serhu-interior', x: 180, y: 300, tipo: 'EDIFICIO', targetSlug: 'herreria-serhu', label: 'Herrería del Clan Serhu' },
   { locationSlug: 'campamento-serhu-interior', x: 620, y: 300, tipo: 'EDIFICIO', targetSlug: 'curtiduria-serhu', label: 'Curtiduría del Clan Serhu' },
+  { locationSlug: 'campamento-serhu-interior', x: 400, y: 460, tipo: 'EDIFICIO', targetSlug: 'cocina-serhu', label: 'Cocina común de Karot Veku' },
 
   // El Cruce de las Cenizas — Ferike tiene homeLocationSlug directo aquí. Telda Ceniza y Matorral
   // de Cuerno tienen homeLocationSlug/tag de vegetación coherentes con la propia description
@@ -7433,6 +7459,16 @@ export const factionBuildings: FactionBuildingInput[] = [
     tier: 1,
     description:
       'Pieles tensadas en bastidores de madera alrededor de una hoguera baja que nunca se apaga del todo — el olor a curtido llega antes de ver la propia choza. La Maestra Curtidora Serhu trabaja aquí el cuero de la caza del clan.',
+  },
+  {
+    slug: 'cocina-serhu',
+    name: 'Cocina común de Karot Veku',
+    factionSlug: 'Clan Serhu',
+    locationSlug: 'campamento-serhu-interior',
+    profession: 'cocinero-orco-llanuras',
+    tier: 1,
+    description:
+      'Ollas de hierro colgadas sobre brasas siempre vivas, bajo un cobertizo abierto por los cuatro costados para que el humo escape. El Maestro Cocinero Serhu alimenta a todo el clan desde aquí.',
   },
 ];
 

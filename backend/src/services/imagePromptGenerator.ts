@@ -118,7 +118,16 @@ function inferToneFromLore(lore: string): string {
   // (sin ningún tono inferido): "ceniza" aparece 12 veces, "volcánic-" 5, "helada" 4, "desiert-" 2,
   // "sagrad-" 2 — grepeado contra el catálogo real, no inventado, para no añadir buckets que nunca
   // vayan a disparar en la práctica.
-  if (lower.includes('ceniza') || lower.includes('volcáni') || lower.includes('volcani') || lower.includes('lava') || lower.includes('ígne') || lower.includes('igne')) {
+  // Bug real (2026-08-31): "ceniza" también aparece en nombres propios sin relación con terreno
+  // volcánico — "Karot Vekhad, el Salón del Colmillo Ceniza" (Location, cuya propia descripción
+  // menciona además "el humo" de los talleres de oficio) y "tótem... Gargantúa de Ceniza tallada"
+  // (Faction Clan Serhu) — ambos en Las Llanuras del Viento Rojo, sin volcán real en su lore, pero
+  // el prompt les metía "volcanic haze, cracked scorched ground". "humo"/"humean" se probaron como
+  // señal de coocurrencia y fallaron (disparaban con CUALQUIER fogata/taller/fragua, no solo
+  // volcanes) — se exige vocabulario inequívocamente volcánico/ígneo en la misma frase; "volcáni-"/
+  // "lava"/"ígne-" nunca aparecen fuera de ese contexto, así que se quedan sin cambios.
+  const cenizaDeTerrenoReal = /\bceniza\b/.test(lower) && /volc[aá]n|lava|magma|erupci[oó]n|cráter|crater/.test(lower);
+  if (cenizaDeTerrenoReal || lower.includes('volcáni') || lower.includes('volcani') || lower.includes('lava') || lower.includes('ígne') || lower.includes('igne')) {
     return 'ash-choked air, volcanic haze, cracked scorched ground, embers glowing in the distance';
   }
   if (lower.includes('desiert') || lower.includes('árido') || lower.includes('arido')) {
@@ -155,7 +164,7 @@ const HEADROOM_INSTRUCTION: Record<ImagePromptSizeProfile, string> = {
   banner:
     'clear headroom above the main subject — the top of the composition must have at least 15% of the image height as open sky, mist, or empty background before the subject begins, to allow safe cropping for UI overlays without cutting into the focal point; center horizontally or place slightly off-center, but always leave breathing room around it; never crop the top or any edge of the subject',
   mapa:
-    'the entire navigable area must be visible within frame, evenly lit with no single dramatic focal point, consistent scale and perspective across the whole image so landmarks can be located precisely, no vignetting or heavy framing at the edges',
+    'empty terrain and environment ONLY — ground texture, vegetation, natural landmarks, paths, walls or a perimeter if relevant, open space where structures would stand; do NOT render any buildings, huts, tents, characters, creatures or named landmarks as drawn objects (they are placed afterward as separate map markers on top of this background), the entire navigable area must be visible within frame, evenly lit with no single dramatic focal point, consistent scale and perspective across the whole image so markers can be positioned precisely, no vignetting or heavy framing at the edges',
   icono:
     'single centered emblem or landmark silhouette filling most of the frame, plain or minimal flat background, bold and instantly readable even at very small display sizes, no fine detail that would disappear when scaled down',
 };
