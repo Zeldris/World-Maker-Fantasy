@@ -166,6 +166,17 @@ const GORHORN_GENERAL_ABILITIES: StartingAbility[] = [
     promptText: 'Entrego un objeto a ',
     category: 'general',
   },
+  // Aprender oficio de un Maestro (2026-08-31, "Trabajador de Reino") — cierra el hueco real de
+  // que los oficios solo se sembraban al crear personaje. Mismo patrón que Entregar: panel de
+  // selección (AprenderOficioModal.tsx), sin tirada, mutación determinista real
+  // (POST /saves/:id/npc/:npcSlug/aprender-oficio). `promptText` nunca se usa.
+  {
+    name: 'Aprender oficio',
+    icon: '📜',
+    description: 'Pide a un Maestro presente que te enseñe su oficio — exige su confianza y un pago en Goirnos.',
+    promptText: 'Le pido a un Maestro que me enseñe su oficio.',
+    category: 'general',
+  },
 ];
 
 // Edificios sin oficio (2026-08-13, petición explícita: "hay que añadir también los edificios

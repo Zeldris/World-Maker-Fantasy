@@ -84,6 +84,7 @@ model World {
   worldPopulations WorldPopulation[]
   factionCatalog   Faction[]
   historiaEntries  HistoriaEntry[]
+  factionBuildings FactionBuilding[]
 }
 
 /// Una partida: mundo elegido + personaje (copia editable, no referencia viva a la plantilla) + su WorldState.
@@ -118,6 +119,12 @@ model Save {
   level                  Int @default(1)
   xp                     Int @default(0)
   pendingAttributePoints Int @default(0)
+  /// Goirnos que lleva el jugador (2026-08-31, "Trabajador de Reino" — sistema de moneda de
+  /// Berig) — moneda única, acuñada por los Goirntes, aceptada también por orcos y Nabieus (que
+  /// prefieren el trueque si el jugador no lleva Goirnos encima; los Goirntes prefieren cobrar en
+  /// su propia moneda). Campo plano en `Save`, mismo criterio que `xp` — no hay varias monedas
+  /// distintas en Berig, no hace falta una tabla aparte.
+  goirnos                Int @default(0)
 
   /// Nombre del reino/dominio si el jugador lo bautiza — null = aún sin reino (docs/10 § 5.1).
   kingdomName String?
@@ -1737,6 +1744,13 @@ model Npc {
   /// Dónde se le encuentra normalmente — slug de Location, string (no FK: una plantilla
   /// puede aparecer "en cualquier ruta"), null = itinerante
   homeLocationSlug    String?
+  /// `professionId` que este NPC enseña (2026-08-31, "Trabajador de Reino" — ver
+  /// `POST /saves/:id/npc/:slug/aprender-oficio`) — mismo string que `ProfessionProgress`. Null =
+  /// no enseña ningún oficio (la inmensa mayoría de NPC). Solo tiene sentido en un Maestro
+  /// PRINCIPAL protegido (`capturablePct: 0`), coherente con `FactionBuilding.profession` del
+  /// edificio donde vive — no se valida en BD que ambos coincidan (mismo criterio laxo del resto
+  /// del catálogo de mundo), pero deberían mantenerse en sincronía al sembrar.
+  teachesProfession   String?
   /// Rediseño de la vista de combate (2026-07-28, petición explícita: "usa habilidades de la
   /// enciclopedia... si vas a añadir nuevas reflejalas con el resto de habilidades bajo su
   /// clase") — las habilidades que se ven en la ficha de un NPC NO son un campo suelto por NPC
@@ -1841,6 +1855,38 @@ model Faction {
   description String
 
   @@unique([worldId, slug])
+}
+
+/// Edificio de FACCIÓN AJENA (2026-08-31, "Trabajador de Reino" — Karot Veku) — deliberadamente
+/// distinto de `Building` (que es 100% del Reino del JUGADOR: siempre `saveId`, se construye/
+/// mejora gastando materiales por turno, protegido por `KingdomStats` 1:1). Este modelo es
+/// CATÁLOGO DE MUNDO puro (`worldId`, nunca `saveId`) — existe igual en cualquier partida, el
+/// jugador nunca lo construye ni lo mejora, solo lo visita. Sembrado a mano en `worldCatalog.ts`,
+/// mismo criterio que `Npc`/`Location`. `profession: null` marca el edificio "sede" del
+/// asentamiento (equivalente al Ayuntamiento del jugador — lo que "establece que existe" como
+/// tribu/ciudad real) en vez de un edificio de oficio concreto.
+model FactionBuilding {
+  id           String  @id @default(cuid())
+  worldId      String
+  world        World   @relation(fields: [worldId], references: [id], onDelete: Cascade)
+  slug         String
+  name         String
+  /// String libre, no FK — mismo criterio que `Npc.faction` (comparación por igualdad exacta de
+  /// nombre, no de slug).
+  factionSlug  String
+  /// Location EXTERIOR donde vive (p. ej. `campamento-serhu`) — el `ZonePoint` tipo EDIFICIO que
+  /// lo representa en el mapa de Zona vive ahí, referenciando `slug` como `targetSlug`.
+  locationSlug String
+  /// `professionId` real (p. ej. `herrero-orco-llanuras`), mismo string que `ProfessionProgress`
+  /// — null = este edificio es la SEDE del asentamiento (ver comentario del modelo), no un oficio.
+  profession   String?
+  /// 1=pequeño (1 trabajador) / 2=mediano (3) / 3=grande (6) — mismo espíritu de tiers que
+  /// `ConstructionRecipe`, pero fijo de catálogo, nunca mejorable por el jugador.
+  tier         Int
+  description  String
+
+  @@unique([worldId, slug])
+  @@index([locationSlug])
 }
 
 /// Entrada de lore descubrible como objeto físico (libro/diario/nota) — sección "Historia" de la
@@ -2082,6 +2128,12 @@ model ItemCatalog {
   /// de `description` (inventario/detalle) — nunca en la narración del Narrador. Null si
   /// `effectKey` también lo es.
   effectDescription     String?
+  /// Valor económico en Goirnos, moneda única de Berig (2026-08-31, sistema de economía) — ver
+  /// comentario del campo homónimo en ItemCatalogInput (worldCatalog.ts) para la fórmula base
+  /// (`valorGoirnosBaseFor`, services/economia.ts) y los ajustes de lore aplicados a mano. Default
+  /// bajo (1) como red de seguridad estándar del proyecto, nunca debería usarse en la práctica: el
+  /// seed siempre manda un valor explícito para las 184 filas del catálogo.
+  valorGoirnos          Int              @default(1)
   createdAt             DateTime         @default(now())
 
   npcItems NpcItem[]

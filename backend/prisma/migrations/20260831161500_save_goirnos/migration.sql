@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE "Save" ADD COLUMN "goirnos" INTEGER NOT NULL DEFAULT 0;

@@ -352,6 +352,7 @@ export async function detailRoutes(app: FastifyInstance) {
       })),
       level: save.level,
       xp: save.xp,
+      goirnos: save.goirnos,
       pendingAttributePoints: save.pendingAttributePoints,
       kingdomName: save.kingdomName,
       territories: save.territories.map((t) => ({

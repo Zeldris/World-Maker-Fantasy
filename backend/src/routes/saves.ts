@@ -19,6 +19,7 @@ import { questsRoutes } from './saves/quests.js';
 import { dynamicModeRoutes } from './saves/dynamicMode.js';
 import { deathRoutes } from './saves/death.js';
 import { entregaRoutes } from './saves/entrega.js';
+import { aprenderOficioRoutes } from './saves/aprenderOficio.js';
 
 /// Rutas de persistencia real de partidas (decisión 2026-07-17: /turn y /entorno dejan de ser
 /// stateless — el frontend crea una partida una vez y a partir de ahí solo manda `saveId`).
@@ -48,4 +49,5 @@ export async function savesRoutes(app: FastifyInstance) {
   await app.register(dynamicModeRoutes);
   await app.register(deathRoutes);
   await app.register(entregaRoutes);
+  await app.register(aprenderOficioRoutes);
 }

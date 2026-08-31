@@ -73,6 +73,21 @@ export const locations: LocationInput[] = [
     y: -5,
   },
 
+  // "Interior" de un asentamiento con FactionBuilding real (2026-08-31, "Trabajador de Reino") —
+  // Location de catálogo más, mismo criterio que el resto (no un nivel de mapa nuevo): entrar/
+  // salir es un LocationLink normal de coste 0 (ver locationLinks más abajo), reutilizando el
+  // 100% del sistema de viaje/Zona/ZonePoint ya existente. Sin x/y propias a propósito — no es un
+  // punto nuevo del mapa de MUNDO, vive "dentro" de las mismas coordenadas que campamento-serhu.
+  {
+    slug: 'campamento-serhu-interior',
+    name: 'Karot Veku — Karot Vekhad',
+    region: 'Las Llanuras del Viento Rojo',
+    kind: 'interior',
+    description:
+      'Dentro de la empalizada de Karot Veku: chozas de techo cónico alrededor de una plaza de tierra apisonada, cada oficio con su propio taller reconocible por el humo o el ruido que sale de él. En el centro, el Karot Vekhad — el Salón del Colmillo Ceniza —, la choza más grande del poblado, donde la Terk\'ikar Ulkha Ketg y el Kort\'ikar Torgash Ketg reciben a quien cruza la entrada.',
+    aliases: ['karot vekhad', 'el salón del colmillo ceniza', 'dentro de karot veku', 'interior del campamento serhu'],
+  },
+
   {
     slug: 'cruce-de-las-cenizas',
     name: 'El Cruce de las Cenizas',
@@ -735,6 +750,17 @@ export interface LocationLinkInput {
 export const locationLinks: LocationLinkInput[] = [
   // --- Desde Campamento del Clan Serhu ---
 
+  // Entrada/salida del interior (2026-08-31, "Trabajador de Reino") — `minutosBase: 0` a
+  // propósito (instantáneo, "es solo cruzar la empalizada"), reutiliza el sistema de viaje normal
+  // sin ningún mecanismo narrativo nuevo. `minutosConDestreza` topa a `Math.max(1, ...)`, así que
+  // en la práctica cuesta 1 minuto de ficción — imperceptible, no un tramo real.
+  {
+    fromSlug: 'campamento-serhu',
+    toSlug: 'campamento-serhu-interior',
+    minutosBase: 0,
+    terreno: 'La entrada de la empalizada',
+  },
+
   {
     fromSlug: 'campamento-serhu',
     toSlug: 'pastos-de-la-deriva',
@@ -1070,6 +1096,9 @@ export interface NpcInput {
   bio: string;
   personality: string;
   homeLocationSlug?: string;
+  /// `professionId` que este NPC enseña (2026-08-31, "Trabajador de Reino") — ver comentario del
+  /// campo homónimo en schema.prisma.
+  teachesProfession?: string;
   /// slug de ItemCatalog -> { cantidad, notas }
   loadout: { itemSlug: string; cantidad?: number; notas?: string }[];
   /// Rediseño de la vista de combate (2026-07-28) — solo humanoides ("seres inteligentes que
@@ -2008,6 +2037,62 @@ export const npcs: NpcInput[] = [
     ],
   },
 
+  // "Trabajador de Reino" (2026-08-31) — los 2 primeros Maestros de prueba (Herrero/Curtidor),
+  // siguiendo la regla generativa de areas.md ("por cada oficio, un Maestro único PRINCIPAL,
+  // protegido/no capturable, que enseña el oficio"). `capturablePct`/`reclutablePct: 0` a
+  // propósito — no son fauna cazable ni NPC persuadible/reclutable como Companion, su única
+  // interacción mecánica es enseñar su oficio (ver `POST /saves/:id/npc/:slug/aprender-oficio`).
+  // El resto de los 11 oficios queda para siguientes pasadas.
+  {
+    slug: 'maestro-herrero-serhu',
+    name: 'Maestro Herrero Serhu',
+    kind: 'PRINCIPAL',
+    aliases: ['maestro herrero', 'el herrero de Karot Veku'],
+    faction: 'Clan Serhu',
+    genero: 'M',
+    role: 'Maestro Herrero del Clan Serhu',
+    level: 5,
+    attributes: { fuerza: 18, destreza: 10, constitucion: 16, inteligencia: 10, voluntad: 12, carisma: 9, arcano: 2 },
+    bio: 'Orco corpulento de manos cubiertas de quemaduras viejas ya curtidas, cejas chamuscadas por décadas frente a la fragua. Funde la mena que trae el resto del clan en lingotes reales — sin él, Karot Veku no tendría hachas de guerra propias, solo las heredadas.',
+    personality: 'Paciente con quien de verdad quiere aprender, cortante con quien solo busca un favor rápido.',
+    homeLocationSlug: 'campamento-serhu-interior',
+    teachesProfession: 'herrero-orco-llanuras',
+    raza: 'orcos',
+    clase: 'GUERRERO',
+    especializacion: 'ESPECIALISTA',
+    temperamento: 'CAUTELOSO',
+    comerciablePct: 30,
+    reclutablePct: 0,
+    atributoResistencia: 'fuerza',
+    capturablePct: 0,
+    loadout: [],
+  },
+
+  {
+    slug: 'maestra-curtidora-serhu',
+    name: 'Maestra Curtidora Serhu',
+    kind: 'PRINCIPAL',
+    aliases: ['maestra curtidora', 'la curtidora de Karot Veku'],
+    faction: 'Clan Serhu',
+    genero: 'F',
+    role: 'Maestra Curtidora del Clan Serhu',
+    level: 5,
+    attributes: { fuerza: 12, destreza: 15, constitucion: 13, inteligencia: 11, voluntad: 13, carisma: 10, arcano: 2 },
+    bio: 'Orca de dedos ágiles y manchados del tinte oscuro de las pieles que trabaja, siempre con un cuchillo curvo de desollador al cinto. Cada pieza de cuero real que sale de Karot Veku ha pasado por sus manos primero.',
+    personality: 'Directa, poco dada a rodeos — enseña haciendo, no explicando de más.',
+    homeLocationSlug: 'campamento-serhu-interior',
+    teachesProfession: 'curtidor-orcos-llanuras',
+    raza: 'orcos',
+    clase: 'CAZADOR',
+    especializacion: 'SUPERVIVENCIA',
+    temperamento: 'CAUTELOSO',
+    comerciablePct: 30,
+    reclutablePct: 0,
+    atributoResistencia: 'destreza',
+    capturablePct: 0,
+    loadout: [],
+  },
+
   {
     slug: 'mercader-de-paso',
     name: 'Mercader de paso',
@@ -2543,6 +2628,15 @@ export interface ItemCatalogInput {
   /// (2026-08-17) — ver comentario del campo homónimo en schema.prisma. Omitido = `[]`, no cuenta
   /// como herramienta de ningún oficio.
   herramientaParaOficio?: string[];
+  /// Valor económico en Goirnos, moneda única de Berig (2026-08-31, sistema de economía) —
+  /// obligatorio, no opcional: todo objeto del catálogo tiene un precio, aunque sea 0 (reliquias/
+  /// objetos de misión no vendibles, con comentario explicando por qué). Fórmula base determinista
+  /// por `tipo`/`tier`/`statBonuses`/`curaEnergia`/`curaHasta` en `valorGoirnosBaseFor`
+  /// (services/economia.ts) — el valor de cada entrada de abajo parte de esa fórmula pero puede
+  /// estar AJUSTADO a mano contra el lore real (rareza de `lugarOrigen`, objetos codiciados según
+  /// `description`, reliquias sin mercado). Primer consumidor real: aprender un oficio de un NPC
+  /// (10 Goirnos o trueque equivalente).
+  valorGoirnos: number;
 }
 
 export const items: ItemCatalogInput[] = [
@@ -2562,6 +2656,7 @@ export const items: ItemCatalogInput[] = [
     statBonuses: { destreza: 3 },
     dimensiones: 'Hoja de 15 cm, mango de 10 cm.',
     tier: 2,
+    valorGoirnos: 16,
     requisitos: { destreza: 10, fuerza: 6 },
     tipoArma: 'CUCHILLO',
   },
@@ -2578,6 +2673,7 @@ export const items: ItemCatalogInput[] = [
     dimensiones: 'Hoja de 18 cm, empuñadura de 10 cm.',
     lugarOrigen: 'Clan Helsig, minas de Cristal Helado.',
     tier: 1,
+    valorGoirnos: 9,
     requisitos: { destreza: 6 },
     tipoArma: 'CUCHILLO',
     // Arma Y herramienta a la vez (2026-08-17, petición explícita: "vale también para poder hacer
@@ -2598,6 +2694,7 @@ export const items: ItemCatalogInput[] = [
     dimensiones: 'Hoja de 20 cm.',
     lugarOrigen: 'Manufactura goirnte, Meseta del Orden.',
     tier: 2,
+    valorGoirnos: 16,
     requisitos: { destreza: 11, fuerza: 5 },
     tipoArma: 'DAGA',
   },
@@ -2613,6 +2710,7 @@ export const items: ItemCatalogInput[] = [
     statBonuses: { destreza: 1, fuerza: 1 },
     dimensiones: 'Hoja recta de 55 cm, empuñadura de 12 cm.',
     tier: 1,
+    valorGoirnos: 9,
     requisitos: { fuerza: 8, destreza: 4 },
     lugarOrigen: 'Manufactura goirnte, Meseta del Orden.',
     tipoArma: 'ESPADA_1_MANO',
@@ -2629,6 +2727,7 @@ export const items: ItemCatalogInput[] = [
     statBonuses: { fuerza: 1 },
     dimensiones: 'Palo de 60 cm.',
     tier: 1,
+    valorGoirnos: 7,
     requisitos: { fuerza: 6, destreza: 4 },
     // Corregido (auditoría de lore/catálogo, 2026-08-21): decía "Manufactura goirnte, Meseta del
     // Orden" — copiado por error de la plantilla de armas goirntes de más arriba, contradice tanto
@@ -2654,6 +2753,7 @@ export const items: ItemCatalogInput[] = [
     lugarOrigen: 'Clan Maktor, Llanuras del Viento Rojo.',
     // Mismo requisito que la receta de crafteo homónima (crafting.ts, axeRepair).
     tier: 4,
+    valorGoirnos: 36,
     requisitos: { fuerza: 16, destreza: 12, constitucion: 14 },
     tipoArma: 'HACHA_1_MANO',
   },
@@ -2672,6 +2772,7 @@ export const items: ItemCatalogInput[] = [
     // Sesión de diseño 2026-07-23: arma común (tier 1) — requisito modesto, cualquier guerrero
     // orco adulto puede blandirla.
     tier: 2,
+    valorGoirnos: 16,
     requisitos: { fuerza: 12, destreza: 6, constitucion: 6 },
     tipoArma: 'HACHA_1_MANO',
   },
@@ -2688,6 +2789,7 @@ export const items: ItemCatalogInput[] = [
     dimensiones: 'Astil de 75 cm, cabeza de hierro partida por la mitad.',
     lugarOrigen: 'Clan Maktor, Llanuras del Viento Rojo.',
     tier: 1,
+    valorGoirnos: 7,
     requisitos: { fuerza: 6, destreza: 4, constitucion: 4 },
     tipoArma: 'HACHA_1_MANO',
   },
@@ -2705,6 +2807,7 @@ export const items: ItemCatalogInput[] = [
     dimensiones: 'Mango de 35 cm, cabeza de 12 cm.',
     lugarOrigen: 'Manufactura orca.',
     tier: 2,
+    valorGoirnos: 16,
     requisitos: { fuerza: 8, destreza: 6, constitucion: 5},
     tipoArma: 'HACHA_1_MANO',
   },
@@ -2721,6 +2824,7 @@ export const items: ItemCatalogInput[] = [
     dimensiones: 'Asta de 120 cm, punta de hueso de 15 cm.',
     lugarOrigen: 'Llanuras del Viento Rojo.',
     tier: 2,
+    valorGoirnos: 18,
     requisitos: { fuerza: 6, destreza: 12, voluntad: 6 },
     tipoArma: 'LANZA',
   },
@@ -2739,6 +2843,7 @@ export const items: ItemCatalogInput[] = [
     // Sesión de diseño 2026-07-23: arma de duelo/cacería ritual (tier 2) — exige algo más de
     // fuerza que un arma común para manejarla con la distancia y el respeto que exige un duelo.
     tier: 3,
+    valorGoirnos: 31,
     requisitos: { destreza: 14, fuerza: 8, carisma: 6, voluntad: 8 },
     tipoArma: 'LANZA',
   },
@@ -2754,6 +2859,7 @@ export const items: ItemCatalogInput[] = [
     dimensiones: 'Mango de 55 cm, cabeza nudosa de 15 cm de diámetro.',
     lugarOrigen: 'Manufactura orca.',
     tier: 1,
+    valorGoirnos: 9,
     requisitos: { fuerza: 6, destreza: 4, constitucion: 4 },
     tipoArma: 'MAZA_1_MANO',
   },
@@ -2772,6 +2878,7 @@ export const items: ItemCatalogInput[] = [
     dimensiones: 'Mango de 45 cm, cabeza de escamas de 15 cm.',
     lugarOrigen: 'Manufactura orca, La Sabana Alta.',
     tier: 3,
+    valorGoirnos: 21,
     requisitos: { fuerza: 9, destreza: 5, constitucion: 5 },
     tipoArma: 'MAZA_1_MANO',
   },
@@ -2788,6 +2895,7 @@ export const items: ItemCatalogInput[] = [
     dimensiones: 'Asta de 210 cm.',
     lugarOrigen: 'Concordia de Hierro, Meseta del Orden.',
     tier: 2,
+    valorGoirnos: 18,
     requisitos: { fuerza: 6, destreza: 12, voluntad: 8 },
     tipoArma: 'PICA',
   },
@@ -2810,6 +2918,7 @@ export const items: ItemCatalogInput[] = [
     aliases: ['aguja de cardo', 'brújula'],
     category: 'herramienta',
     tipo: 'EQUIPABLE',
+    valorGoirnos: 5,
     equipSlot: 'ACCESORIO',
     description: 'Aguja imantada natural: colgada de un hilo señala siempre el mismo rumbo, incluso en plena tormenta.',
     dimensiones: 'Aguja de 4-8 cm, colgada de un hilo de 15-25 cm.',
@@ -2822,6 +2931,7 @@ export const items: ItemCatalogInput[] = [
     aliases: ['antorcha de resina'],
     category: 'herramienta',
     tipo: 'EQUIPABLE',
+    valorGoirnos: 5,
     equipSlot: 'ARMA_SECUNDARIA',
     description: 'Antorcha de madera envuelta en resina oscura de ciénaga — arde incluso con lluvia, comercio Llanuras-Ciénaga.',
     dimensiones: 'Antorcha de 55 cm.',
@@ -2834,6 +2944,7 @@ export const items: ItemCatalogInput[] = [
     aliases: ['cuchillo de deshuello'],
     category: 'herramienta',
     tipo: 'EQUIPABLE',
+    valorGoirnos: 5,
     equipSlot: 'ARMA_SECUNDARIA',
     description: 'Hoja corta y curva de hielo sílice, más gruesa que un cuchillo normal para no quebrarse contra piel dura — para pieles duras, canon de Cristal Helado.',
     dimensiones: 'Hoja curva de 14 cm, notablemente más gruesa que un cuchillo estándar.',
@@ -2845,6 +2956,7 @@ export const items: ItemCatalogInput[] = [
     name: 'Cuerda de tendón',
     category: 'herramienta',
     tipo: 'EQUIPABLE',
+    valorGoirnos: 5,
     equipSlot: 'ACCESORIO',
     description: 'Cuerda trenzada de tendón seco, resistente y algo rígida al tacto — hecha de tendón de Corredor de Cauce.',
     dimensiones: 'Rollo de 8 metros, 4 mm de grosor.',
@@ -2856,6 +2968,7 @@ export const items: ItemCatalogInput[] = [
     aliases: ['kit de costura'],
     category: 'herramienta',
     tipo: 'EQUIPABLE',
+    valorGoirnos: 5,
     equipSlot: 'ACCESORIO',
     description: 'Agujas de hueso fino y cordel enrollado en un retal de cuero — reparar ropa y pieles en ruta.',
     dimensiones: 'Estuche de 15x8 cm.',
@@ -2866,6 +2979,7 @@ export const items: ItemCatalogInput[] = [
     name: 'Odre de agua',
     category: 'herramienta',
     tipo: 'EQUIPABLE',
+    valorGoirnos: 5,
     equipSlot: 'ACCESORIO',
     description: 'Odre de cuero curtido cosido a mano, correa larga para llevar al hombro — imprescindible en la estepa.',
     dimensiones: 'Capacidad de 2 litros, correa de 70 cm.',
@@ -2876,6 +2990,7 @@ export const items: ItemCatalogInput[] = [
     name: 'Pico de minero',
     category: 'herramienta',
     tipo: 'EQUIPABLE',
+    valorGoirnos: 5,
     equipSlot: 'ARMA_SECUNDARIA',
     description: 'Pico de cabeza de hierro pesado y mango largo de madera, punta desgastada de golpear roca y hielo — herramienta de minería de hielo sílice.',
     dimensiones: 'Cabeza de 25 cm, mango de 90 cm.',
@@ -2892,6 +3007,7 @@ export const items: ItemCatalogInput[] = [
     name: 'Piedra de afilar',
     category: 'herramienta',
     tipo: 'EQUIPABLE',
+    valorGoirnos: 5,
     equipSlot: 'ACCESORIO',
     description: 'Piedra plana y áspera, gastada por un lado de tanto uso — mantiene el filo de un arma.',
     dimensiones: 'Piedra de 10x4 cm.',
@@ -2902,6 +3018,7 @@ export const items: ItemCatalogInput[] = [
     name: 'Piedras de chispa',
     category: 'herramienta',
     tipo: 'EQUIPABLE',
+    valorGoirnos: 5,
     equipSlot: 'ACCESORIO',
     description: 'Un par de piedras oscuras y ásperas al tacto, bordes desgastados de tanto entrechocarlas — para encender fuego sin Raíz de Fuego.',
     dimensiones: 'Par de piedras de unos 5 cm cada una.',
@@ -2923,6 +3040,7 @@ export const items: ItemCatalogInput[] = [
     // companionSupervivencia.ts): tier 1 = 6h de plazo en inventario antes de escaparse. Ya era el
     // default de ItemCatalog.tier, se hace explícito porque ahora tiene significado mecánico real.
     tier: 1,
+    valorGoirnos: 3,
   },
   {
     slug: 'trampa-de-lazo',
@@ -2930,6 +3048,7 @@ export const items: ItemCatalogInput[] = [
     aliases: ['trampa de lazo'],
     category: 'herramienta',
     tipo: 'EQUIPABLE',
+    valorGoirnos: 5,
     equipSlot: 'ACCESORIO',
     description: 'Lazo trenzado de tendón anclado a una estaca de madera — para cazar sin necesidad de perseguir.',
     dimensiones: 'Lazo de 1 metro, estaca de 30 cm.',
@@ -2943,6 +3062,7 @@ export const items: ItemCatalogInput[] = [
     aliases: ['anillo de sello'],
     category: 'ropa',
     tipo: 'EQUIPABLE',
+    valorGoirnos: 5,
     equipSlot: 'ANILLO_1',
     description: 'Anillo de aleación gris con el sello de la Concordia grabado — acredita, o incrimina, a quien lo lleva.',
     dimensiones: 'Anillo de 2 cm de diámetro.',
@@ -2960,6 +3080,7 @@ export const items: ItemCatalogInput[] = [
     description: 'Anillo tallado de una sola vértebra de Corredor de Cauce, pulida hasta sacarle brillo — recuerdo de una presa.',
     statBonuses: { carisma: 1 , inteligencia: 1 },
     tier: 2,
+    valorGoirnos: 14,
     dimensiones: 'Anillo de 2 cm de diámetro.',
     lugarOrigen: 'Llanuras del Viento Rojo.',
   },
@@ -2969,6 +3090,7 @@ export const items: ItemCatalogInput[] = [
     name: 'Arnés de cuero',
     category: 'ropa',
     tipo: 'EQUIPABLE',
+    valorGoirnos: 9,
     equipSlot: 'CAMISA',
     description: 'Arnés de cuero curtido, correas cruzadas al pecho, remaches de hueso.',
     statBonuses: { constitucion: 2 },
@@ -2981,6 +3103,7 @@ export const items: ItemCatalogInput[] = [
     name: 'Bandolera de caza', 
     category: 'ropa',
     tipo: 'EQUIPABLE', 
+    valorGoirnos: 5,
     equipSlot: 'ACCESORIO', 
     description: 'Lazadas de tendón para cuchillo, trampas y piezas menores.', 
     dimensiones: 'Banda cruzada de 100 cm.', 
@@ -2993,6 +3116,7 @@ export const items: ItemCatalogInput[] = [
     name: 'Botas de estepa', 
     category: 'ropa',
     tipo: 'EQUIPABLE', 
+    valorGoirnos: 11,
     equipSlot: 'BOTAS',
     description: 'Cuero y suela de piel de corredor, gastadas.',
     // Peso de armadura (2026-08-31, clases.md § restricción por peso) — destreza+voluntad
@@ -3012,6 +3136,7 @@ export const items: ItemCatalogInput[] = [
     equipSlot: 'BOTAS',
     description: 'Suela claveteada de aleación, equipamiento estándar de patrulla.',
     tier: 2,
+    valorGoirnos: 16,
     // Peso de armadura (2026-08-31) — "equipamiento estándar de patrulla" Goirnte, coherente con
     // el resto del uniforme (Medio, no Pesado de Caballero).
     pesoArmadura: 'MEDIO',
@@ -3033,6 +3158,7 @@ export const items: ItemCatalogInput[] = [
     lugarOrigen: 'Llanuras del Viento Rojo.',
     statBonuses: {voluntad: 2, destreza: 3, carisma: 2 },
     tier: 3,
+    valorGoirnos: 29,
     requisitos: { fuerza: 12, destreza: 8, constitucion: 10, voluntad: 6 },
   },
 
@@ -3051,6 +3177,7 @@ export const items: ItemCatalogInput[] = [
     pesoArmadura: 'MEDIO',
     statBonuses: {constitucion: 1, voluntad: 1 },
     tier: 1,
+    valorGoirnos: 9,
     requisitos: { fuerza: 8, destreza: 8, constitucion: 6 },
   },
 
@@ -3070,6 +3197,7 @@ export const items: ItemCatalogInput[] = [
     dimensiones: 'Cinturón de 90 a 110 cm.',
     lugarOrigen: 'Llanuras del Viento Rojo.',
     tier: 2,
+    valorGoirnos: 14,
   },
 
   {
@@ -3092,6 +3220,7 @@ export const items: ItemCatalogInput[] = [
     // Constitución (2026-08-22, remodelado de atributos secundarios): resistenciaFisica se
     // eliminó por duplicar el papel que ya cumple Constitución entre los 7 primarios.
     tier: 2,
+    valorGoirnos: 14,
     requisitos: { constitucion: 8 },
   },
 
@@ -3109,6 +3238,7 @@ export const items: ItemCatalogInput[] = [
     pesoArmadura: 'MEDIO',
     statBonuses: {constitucion: 1, destreza: 2 },
     tier: 2,
+    valorGoirnos: 16,
     requisitos: { fuerza: 8, destreza: 8, constitucion: 6 },
   },
 
@@ -3119,6 +3249,7 @@ export const items: ItemCatalogInput[] = [
     aliases: ['guantes de piel'],
     category: 'ropa',
     tipo: 'EQUIPABLE',
+    valorGoirnos: 9,
     equipSlot: 'GUANTES',
     description: 'Agarre firme para lanza y cuchillo.',
     pesoArmadura: 'MEDIO',
@@ -3133,6 +3264,7 @@ export const items: ItemCatalogInput[] = [
     aliases: ['manoplas de aleación'],
     category: 'ropa',
     tipo: 'EQUIPABLE',
+    valorGoirnos: 12,
     equipSlot: 'GUANTES',
     description: 'Manoplas de aleación gris articuladas en los nudillos — pieza de saqueo poco común, solo la lleva un oficial.',
     // Peso de armadura (2026-08-31) — aleación de metal real, constitución pura, tramo Pesado.
@@ -3154,6 +3286,7 @@ export const items: ItemCatalogInput[] = [
     lugarOrigen: 'Meseta del Orden.' ,
     statBonuses: {constitucion: 2, voluntad: 1 },
     tier: 2,
+    valorGoirnos: 16,
     requisitos: { fuerza: 8, destreza: 8, constitucion: 6 },
   },
 
@@ -3177,6 +3310,7 @@ export const items: ItemCatalogInput[] = [
     pesoArmadura: 'MEDIO',
     statBonuses: { destreza: 2 },
     tier: 1,
+    valorGoirnos: 9,
     requisitos: { fuerza: 6, destreza: 4, constitucion: 6 },
   },
 
@@ -3193,6 +3327,7 @@ export const items: ItemCatalogInput[] = [
     dimensiones: 'Cubren de la cadera al tobillo.',
     lugarOrigen: 'Meseta del Orden.',
     tier: 1,
+    valorGoirnos: 9,
     requisitos: { fuerza: 8, destreza: 8, constitucion: 6 },
   },
 
@@ -3214,6 +3349,7 @@ export const items: ItemCatalogInput[] = [
     // Mismo requisito que la receta de crafteo homónima (crafting.ts, gargantuaArmor) — equiparla
     // exige la misma fuerza que montarla, tanto si se craftea como si se encuentra ya hecha.
     tier: 3,
+    valorGoirnos: 29,
     requisitos: { fuerza: 14, constitucion: 16, voluntad: 6, destreza: 8 },
   },
 
@@ -3232,6 +3368,7 @@ export const items: ItemCatalogInput[] = [
     pesoArmadura: 'MEDIO',
     statBonuses: {constitucion: 2, voluntad: 1 },
     tier: 2,
+    valorGoirnos: 16,
     requisitos: { fuerza: 8, destreza: 8, constitucion: 6 },
   },
 
@@ -3255,6 +3392,7 @@ export const items: ItemCatalogInput[] = [
     dimensiones: 'Casco abierto, contorno de cabeza de 55 a 60 cm.',
     lugarOrigen: 'Concordia de Hierro, Meseta del Orden.',
     tier: 3,
+    valorGoirnos: 23,
     requisitos: { fuerza: 12, destreza: 6, constitucion: 12, voluntad: 8 },
   },
 
@@ -3276,6 +3414,7 @@ export const items: ItemCatalogInput[] = [
     dimensiones: 'Cubre el torso completo.',
     lugarOrigen: 'La Hondonada del Eco, Llanuras del Viento Rojo.',
     tier: 3,
+    valorGoirnos: 23,
     requisitos: { destreza: 10 },
   },
   {
@@ -3291,6 +3430,7 @@ export const items: ItemCatalogInput[] = [
     dimensiones: 'Guantelete con 4 garras de 15 cm.',
     lugarOrigen: 'La Sabana Alta, Llanuras del Viento Rojo.',
     tier: 5,
+    valorGoirnos: 31,
     requisitos: { destreza: 14 },
   },
   {
@@ -3308,6 +3448,7 @@ export const items: ItemCatalogInput[] = [
     dimensiones: 'Cubre el torso completo.',
     lugarOrigen: 'Los Manaderos, Llanuras del Viento Rojo.',
     tier: 2,
+    valorGoirnos: 18,
     requisitos: { destreza: 8 },
   },
   {
@@ -3325,6 +3466,7 @@ export const items: ItemCatalogInput[] = [
     dimensiones: 'Tocado de 40 cm de alto.',
     lugarOrigen: 'Llanuras del Viento Rojo.',
     tier: 1,
+    valorGoirnos: 9,
     requisitos: { destreza: 6 },
   },
   {
@@ -3341,6 +3483,7 @@ export const items: ItemCatalogInput[] = [
     dimensiones: 'Capa hasta media pierna.',
     lugarOrigen: 'El Cruce de las Cenizas, Llanuras del Viento Rojo.',
     tier: 7,
+    valorGoirnos: 60,
     requisitos: { destreza: 16 },
   },
 
@@ -3356,6 +3499,7 @@ export const items: ItemCatalogInput[] = [
     aliases: ['agua hervida'], 
     category: 'consumible',
     tipo: 'CONSUMIBLE', 
+    valorGoirnos: 18,
     equipSlot: 'CONSUMIBLE_1', 
     description: 'Liquen húmedo del cauce hervido sobre fuego — más segura de beber que masticarlo en crudo.', 
     dimensiones: 'Cantimplora de 500 ml.',
@@ -3369,6 +3513,7 @@ export const items: ItemCatalogInput[] = [
     name: 'Bulbo del Cauce', 
     category: 'consumible',
     tipo: 'CONSUMIBLE', 
+    valorGoirnos: 10,
     equipSlot: 'CONSUMIBLE_1', 
     description: 'Tubérculo fibroso: comida y un trago de agua en uno.',
     dimensiones: 'Tubérculo de 8 cm.',
@@ -3388,6 +3533,7 @@ export const items: ItemCatalogInput[] = [
     // tier 5 (Grupo 3 § HarvestYield.condicion, 2026-08-24): mismo caso que veneno-espina/
     // ascuas-raiz-fuego — "extracción con cuidado (destreza, Media 15 — falla = se inflama)".
     tier: 5,
+    valorGoirnos: 10,
   },
 
   {
@@ -3396,6 +3542,7 @@ export const items: ItemCatalogInput[] = [
     aliases: ['grano de espiga roja'],
     category: 'consumible',
     tipo: 'CONSUMIBLE',
+    valorGoirnos: 4,
     equipSlot: 'CONSUMIBLE_1',
     description: 'Puñado de grano rojo ocre de Espiga Roja — tostado o crudo, como forraje.',
     dimensiones: 'Puñado de 100 a 200 g.',
@@ -3409,6 +3556,7 @@ export const items: ItemCatalogInput[] = [
     aliases: ['liquen húmedo'], 
     category: 'consumible',
     tipo: 'CONSUMIBLE', 
+    valorGoirnos: 9,
     equipSlot: 'CONSUMIBLE_1', 
     description: 'Masticado calma la sed; donde crece, cavar un par de codos da agua.', 
     dimensiones: 'Puñado de unos 10 cm.',
@@ -3422,6 +3570,7 @@ export const items: ItemCatalogInput[] = [
     aliases: ['petaca de aguardiente'],
     category: 'consumible',
     tipo: 'CONSUMIBLE',
+    valorGoirnos: 8,
     equipSlot: 'CONSUMIBLE_1',
     description: 'Petaca de metal con licor claro y fuerte — ración líquida de campaña, limpia heridas o da valor.',
     dimensiones: 'Petaca de 15 cm, 250 ml.',
@@ -3435,6 +3584,7 @@ export const items: ItemCatalogInput[] = [
     aliases: ['carne ahumada'],
     category: 'consumible',
     tipo: 'CONSUMIBLE', 
+    valorGoirnos: 9,
     equipSlot: 'CONSUMIBLE_1', 
     description: 'Ahumada sobre fuego — a diferencia de la carne fresca, aguanta mucho más antes de estropearse.', 
     dimensiones: 'Trozos de 300 a 500 g.',
@@ -3448,6 +3598,7 @@ export const items: ItemCatalogInput[] = [
     aliases: ['carne fresca'],
     category: 'consumible',
     tipo: 'CONSUMIBLE',
+    valorGoirnos: 3,
     equipSlot: 'CONSUMIBLE_1',
     description: 'Trozos de carne fresca de caza, todavía con algo de sangre — se estropea en días.',
     dimensiones: 'Trozos de 300 a 500 g.',
@@ -3468,6 +3619,7 @@ export const items: ItemCatalogInput[] = [
     aliases: ['raciones de viaje'],
     category: 'consumible',
     tipo: 'CONSUMIBLE',
+    valorGoirnos: 6,
     equipSlot: 'CONSUMIBLE_1',
     description: 'Bulto envuelto en tela basta con lo justo para aguantar el camino — unidad estándar de raciones, "para N días".',
     dimensiones: 'Bulto de 15x10 cm por ración.',
@@ -3483,6 +3635,7 @@ export const items: ItemCatalogInput[] = [
     name: 'Ración goirntes',
     category: 'consumible',
     tipo: 'CONSUMIBLE',
+    valorGoirnos: 5,
     equipSlot: 'CONSUMIBLE_1',
     description: 'Bloque compacto de comida prensada envuelto en papel encerado — más compacta y mejor conservada que la de campaña orca.',
     dimensiones: 'Bloque de 12x8 cm.',
@@ -3506,6 +3659,7 @@ export const items: ItemCatalogInput[] = [
     // "extracción con cuidado (destreza, Media 15 — falla = se inflama)" en texto sin dificultad
     // real detrás; tier 5 da la dificultad 15 que el texto prometía.
     tier: 5,
+    valorGoirnos: 10,
   },
 
   // --- medicinal ---
@@ -3523,6 +3677,7 @@ export const items: ItemCatalogInput[] = [
     // decía "extracción cuidadosa (destreza, Media 15)" en texto sin que el motor lo respetara —
     // dificultadForTier(tier) = 10 + tier, tier 5 da la dificultad 15 real que el texto prometía.
     tier: 5,
+    valorGoirnos: 10,
   },
 
   {
@@ -3531,6 +3686,7 @@ export const items: ItemCatalogInput[] = [
     aliases: ['cataplasma de flor de ceniza'],
     category: 'medicinal',
     tipo: 'CONSUMIBLE',
+    valorGoirnos: 13,
     equipSlot: 'CONSUMIBLE_1',
     description: 'Forma preparada de los pétalos de Flor de Ceniza — adormece el dolor y ayuda a dormir a un herido, más suave que la cataplasma de salvia.',
     dimensiones: 'Emplasto de 8x8 cm.',
@@ -3552,6 +3708,7 @@ export const items: ItemCatalogInput[] = [
     aliases: ['cataplasma de salvia'],
     category: 'medicinal',
     tipo: 'CONSUMIBLE', 
+    valorGoirnos: 22,
     equipSlot: 'CONSUMIBLE_1', 
     description: 'Pasta verde grisácea de hojas machacadas de Salvia del Polvo — forma preparada de la salvia, corta hemorragias y limpia heridas.', 
     dimensiones: 'Emplasto de 10x10 cm.', 
@@ -3567,6 +3724,7 @@ export const items: ItemCatalogInput[] = [
     aliases: ['contraveneno'],
     category: 'medicinal',
     tipo: 'CONSUMIBLE', 
+    valorGoirnos: 6,
     equipSlot: 'CONSUMIBLE_1', 
     description: 'Pasta oscura de olor amargo, mezcla preparada de salvia del polvo y pétalos de Flor de Ceniza — neutraliza el veneno de Espina del Viento.', 
     dimensiones: 'Pasta de 50 g.' 
@@ -3578,6 +3736,7 @@ export const items: ItemCatalogInput[] = [
     aliases: ['manojo de salvia'],
     category: 'medicinal',
     tipo: 'CONSUMIBLE',
+    valorGoirnos: 7,
     equipSlot: 'CONSUMIBLE_1',
     description: 'Manojo de hojas grises secas de Salvia del Polvo, atadas con un cordel — machacadas, cortan hemorragias y limpian heridas.',
     dimensiones: 'Manojo de 15 cm.',
@@ -3594,6 +3753,7 @@ export const items: ItemCatalogInput[] = [
     aliases: ['pétalos de flor de ceniza'],
     category: 'medicinal',
     tipo: 'CONSUMIBLE', 
+    valorGoirnos: 9,
     equipSlot: 'CONSUMIBLE_1', 
     description: 'Infusión que adormece el dolor y deja dormir a un herido.', 
     dimensiones: 'Puñado de pétalos de 3 a 4 cm.',
@@ -3618,6 +3778,7 @@ export const items: ItemCatalogInput[] = [
     name: 'Vendaje improvisado orco de las Llanuras',
     category: 'medicinal',
     tipo: 'CONSUMIBLE',
+    valorGoirnos: 7,
     equipSlot: 'CONSUMIBLE_1',
     description: 'Tiras de tela atadas sobre un manojo machacado de salvia del polvo — primeros auxilios de campaña, lo justo para dejar de desangrarse.',
     dimensiones: 'Vendaje de 2 m.',
@@ -3632,6 +3793,7 @@ export const items: ItemCatalogInput[] = [
     aliases: ['cataplasma básica'],
     category: 'medicinal',
     tipo: 'CONSUMIBLE',
+    valorGoirnos: 12,
     equipSlot: 'CONSUMIBLE_1',
     description: 'Salvia del polvo y pétalos de Flor de Ceniza machacados juntos en una pasta simple — cura mejor que el vendaje improvisado, pero sigue siendo primeros auxilios de campaña.',
     dimensiones: 'Emplasto de 10x10 cm.',
@@ -3646,6 +3808,7 @@ export const items: ItemCatalogInput[] = [
     aliases: ['cataplasma completa'],
     category: 'medicinal',
     tipo: 'CONSUMIBLE',
+    valorGoirnos: 22,
     equipSlot: 'CONSUMIBLE_1',
     description: 'La preparación más cuidada de primeros auxilios que se puede hacer en campaña — doble ración de salvia del polvo y pétalos de Flor de Ceniza, machacados y aplicados con calma. Cierra hasta la última herida.',
     dimensiones: 'Emplasto de 15x15 cm.',
@@ -3659,6 +3822,7 @@ export const items: ItemCatalogInput[] = [
     aliases: ['infusión de espiga'],
     category: 'medicinal',
     tipo: 'CONSUMIBLE',
+    valorGoirnos: 10,
     equipSlot: 'CONSUMIBLE_1',
     description: 'Grano de espiga roja tostado e infusionado en agua hirviendo — más nutritiva que el grano crudo, prepara para seguir adelante.',
     dimensiones: 'Cuenco de 250 ml.',
@@ -3675,6 +3839,7 @@ export const items: ItemCatalogInput[] = [
     aliases: ['carne ahumada de jusha'],
     category: 'consumible',
     tipo: 'CONSUMIBLE',
+    valorGoirnos: 4,
     equipSlot: 'CONSUMIBLE_1',
     description: 'Carne de Jusha Esmeralda ahumada sobre brasas — se conserva mejor que cruda y rinde más energía.',
     dimensiones: 'Ración de 200 g.',
@@ -3687,6 +3852,7 @@ export const items: ItemCatalogInput[] = [
     aliases: ['pan de trigo'],
     category: 'consumible',
     tipo: 'CONSUMIBLE',
+    valorGoirnos: 4,
     equipSlot: 'CONSUMIBLE_1',
     description: 'Trigo escarlata molido y horneado sobre piedra caliente — pan denso, poco habitual entre los orcos de las Llanuras.',
     dimensiones: 'Hogaza de 300 g.',
@@ -3699,6 +3865,7 @@ export const items: ItemCatalogInput[] = [
     aliases: ['panal de miel'],
     category: 'consumible',
     tipo: 'CONSUMIBLE',
+    valorGoirnos: 3,
     equipSlot: 'CONSUMIBLE_1',
     description: 'Panal de Lebude prensado y endulzado — dulce concentrado, poco cuerpo pero mucha energía rápida.',
     dimensiones: 'Trozo de 100 g.',
@@ -3711,6 +3878,7 @@ export const items: ItemCatalogInput[] = [
     aliases: ['cuajada'],
     category: 'consumible',
     tipo: 'CONSUMIBLE',
+    valorGoirnos: 4,
     equipSlot: 'CONSUMIBLE_1',
     description: 'Leche de los múrgoles domados del Campamento del Clan Serhu, cuajada y prensada — de las pocas cosas que se producen dentro de la propia empalizada, no se cazan ni se recolectan.',
     dimensiones: 'Cuña de 150 g.',
@@ -3723,6 +3891,7 @@ export const items: ItemCatalogInput[] = [
     aliases: ['cataplasma de musgo rojo'],
     category: 'medicinal',
     tipo: 'CONSUMIBLE',
+    valorGoirnos: 12,
     equipSlot: 'CONSUMIBLE_1',
     description: 'Musgo rojo machacado en una pasta simple, aplicada directamente sobre la herida — primeros auxilios de campaña, sin más pretensión.',
     dimensiones: 'Emplasto de 10x10 cm.',
@@ -3743,6 +3912,7 @@ export const items: ItemCatalogInput[] = [
     curaHasta: 'HERIDO',
     curaUnPaso: true,
     tier: 2,
+    valorGoirnos: 14,
   },
   {
     slug: 'filtro-claridad-quio',
@@ -3750,6 +3920,7 @@ export const items: ItemCatalogInput[] = [
     aliases: ['filtro de claridad'],
     category: 'medicinal',
     tipo: 'CONSUMIBLE',
+    valorGoirnos: 3,
     equipSlot: 'CONSUMIBLE_1',
     description: 'El filtro natural de Quio, destilado en un frasco pequeño — despeja la cabeza tras un golpe fuerte.',
     dimensiones: 'Frasco de 50 ml.',
@@ -3762,6 +3933,7 @@ export const items: ItemCatalogInput[] = [
     aliases: ['estera de junco', 'estera'],
     category: 'consumible',
     tipo: 'CONSUMIBLE',
+    valorGoirnos: 3,
     equipSlot: 'CONSUMIBLE_1',
     description: 'Juncos rojizos, verdileas acuáticas y hojas de Telda trenzados en una estera para dormir — un descanso de verdad, no solo suelo desnudo.',
     dimensiones: 'Estera de 180x60 cm.',
@@ -3781,6 +3953,7 @@ export const items: ItemCatalogInput[] = [
     aliases: ['bloque de piedra'],
     category: 'bloque',
     tipo: 'MATERIAL',
+    valorGoirnos: 3,
     description: 'Bloque de piedra desbastado a golpes de maza y cincel hasta dejarlo plano por al menos dos caras — ya no es solo cascote, sirve para levantar un muro de verdad.',
     dimensiones: 'Bloque de 30x20x15 cm.',
   },
@@ -3793,6 +3966,7 @@ export const items: ItemCatalogInput[] = [
     aliases: ['lingote de aleación'], 
     category: 'metal',
     tipo: 'MATERIAL', 
+    valorGoirnos: 6,
     description: 'Metal refinado de la Meseta del Orden, moldeado en lingote — bien de comercio serio, no baratija.', 
     dimensiones: 'Lingote de 20x5x5 cm.', 
     lugarOrigen: 'Meseta del Orden.' 
@@ -3803,6 +3977,7 @@ export const items: ItemCatalogInput[] = [
     name: 'Lingote de hierro',
     category: 'metal',
     tipo: 'MATERIAL',
+    valorGoirnos: 3,
     description: 'Metal fundido y colado en un molde sencillo — ya listo para forjar en la fragua del campamento.',
     dimensiones: 'Lingote de 20x5x5 cm.',
   },
@@ -3815,6 +3990,7 @@ export const items: ItemCatalogInput[] = [
     aliases: ['lingote imantado'],
     category: 'metal',
     tipo: 'MATERIAL',
+    valorGoirnos: 3,
     description: 'Lingote de hierro fundido junto a arena imán — conserva un tirón magnético débil pero constante, notable si se acerca a otro metal.',
     dimensiones: 'Lingote de 20x5x5 cm.',
   },
@@ -3831,6 +4007,7 @@ export const items: ItemCatalogInput[] = [
     aliases: ['viga de madera', 'viga tallada'],
     category: 'viga',
     tipo: 'MATERIAL',
+    valorGoirnos: 3,
     description: 'Tronco desbastado y escuadrado en una viga recta de sección uniforme — lista para sostener un techo o un muro de verdad, ya no sirve solo de leña.',
     dimensiones: 'Viga de 200x15x15 cm.',
   },
@@ -3843,6 +4020,7 @@ export const items: ItemCatalogInput[] = [
     aliases: ['columna de hueso', 'columna osea'],
     category: 'columna',
     tipo: 'MATERIAL',
+    valorGoirnos: 3,
     description: 'Varios huesos largos trabados y reforzados en un único puntal rígido — técnica orca de aprovechar lo que caza la propia tierra en vez de depender solo de piedra o madera.',
     dimensiones: 'Columna de 180x10x10 cm.',
   },
@@ -3855,6 +4033,7 @@ export const items: ItemCatalogInput[] = [
     aliases: ['cordaje', 'cuerda trenzada'],
     category: 'cordaje',
     tipo: 'MATERIAL',
+    valorGoirnos: 3,
     description: 'Fibra vegetal trenzada en cabos gruesos y resistentes — ata vigas, tensa pieles de techo, asegura lo que un edificio grande no puede confiar solo al peso.',
     dimensiones: 'Rollo de cordaje de 10 m.',
   },
@@ -3873,6 +4052,7 @@ export const items: ItemCatalogInput[] = [
     name: 'Hierba del Hierro',
     category: 'hierba',
     tipo: 'RECURSO',
+    valorGoirnos: 1,
     description: 'Hojas grisáceas extremadamente duras y ricas en minerales — materia prima de las aleaciones goirntes, sin procesar todavía.',
     dimensiones: 'Hojas de 20 a 30 cm.',
     lugarOrigen: 'Meseta del Orden.',
@@ -3889,6 +4069,7 @@ export const items: ItemCatalogInput[] = [
     name: 'Cardo Brújula',
     category: 'hierba',
     tipo: 'RECURSO',
+    valorGoirnos: 1,
     description: 'Tallo espinoso rematado en una flor cerrada de un morado apagado, que siempre gira despacio hasta señalar el mismo rumbo — sin tallar todavía tiene curiosidad, pero ningún uso práctico.',
     dimensiones: 'Tallo de 25 cm.',
     lugarOrigen: 'Las Agujas Imán, Llanuras del Viento Rojo.',
@@ -3904,6 +4085,7 @@ export const items: ItemCatalogInput[] = [
     aliases: ['colmillo de aullador'],
     category: 'hueso',
     tipo: 'RECURSO',
+    valorGoirnos: 1,
     description: 'Colmillo curvo y afilado de Aullador Rojo — pieza clásica de los amuletos de hueso orcos.',
     dimensiones: 'Colmillo de 6 cm.',
   },
@@ -3914,6 +4096,7 @@ export const items: ItemCatalogInput[] = [
     aliases: ['hueso largo'],
     category: 'hueso',
     tipo: 'RECURSO',
+    valorGoirnos: 1,
     description: 'Hueso largo y macizo de un blanco amarillento, pesado en la mano — materia prima de lanzas.',
     dimensiones: 'Hueso de 90 cm de largo.',
     lugarOrigen: 'Llanuras del Viento Rojo.',
@@ -3924,6 +4107,7 @@ export const items: ItemCatalogInput[] = [
     name: 'Hueso ligero',
     category: 'hueso',
     tipo: 'RECURSO',
+    valorGoirnos: 1,
     description: 'Hueso pequeño y liviano, fácil de tallar — para abalorios, agujas, mangos.',
     dimensiones: 'Fragmentos de 5 a 15 cm.',
   },
@@ -3934,6 +4118,7 @@ export const items: ItemCatalogInput[] = [
     aliases: ['placa ósea'],
     category: 'hueso',
     tipo: 'RECURSO',
+    valorGoirnos: 1,
     description: 'Placa ósea blanquecina y gruesa, curva como una costilla — usada en construcción o armadura pesada.',
     dimensiones: 'Placa curva de 40x25 cm.',
     lugarOrigen: 'Llanuras del Viento Rojo.',
@@ -3947,6 +4132,7 @@ export const items: ItemCatalogInput[] = [
     aliases: ['leña de matorral'],
     category: 'madera',
     tipo: 'RECURSO',
+    valorGoirnos: 1,
     description: 'Trozos de madera oscura y retorcida, corteza agrietada — arde lento y caliente. Producto de la fórmula de leña ya existente.',
     dimensiones: 'Trozos de 20 a 40 cm.',
   },
@@ -3960,6 +4146,7 @@ export const items: ItemCatalogInput[] = [
     name: 'Mena de Hierro de las Llanuras',
     category: 'mena',
     tipo: 'RECURSO',
+    valorGoirnos: 1,
     description: 'Roca oscura veteada de óxido rojizo, pesada para su tamaño — hierro sin refinar, todavía sin ninguna utilidad hasta pasar por la fragua.',
     dimensiones: 'Fragmentos de 10 a 20 cm.',
     lugarOrigen: 'Los Pilares Rotos, Llanuras del Viento Rojo.',
@@ -3973,6 +4160,7 @@ export const items: ItemCatalogInput[] = [
     aliases: ['cuña sin tallar'], 
     category: 'piedra',
     tipo: 'RECURSO', 
+    valorGoirnos: 1,
     description: 'Bloque en bruto de hielo sílice de las minas de Cristal Helado, todavía sin tallar por manos Helsig — solo tiene sentido de verdad si se abre Cristal Helado.', 
     dimensiones: 'Bloque en bruto de 15x10 cm.', 
     lugarOrigen: 'Cristal Helado.' 
@@ -3984,6 +4172,7 @@ export const items: ItemCatalogInput[] = [
     aliases: ['esquirla de hielo'],
     category: 'piedra',
     tipo: 'RECURSO',
+    valorGoirnos: 1,
     description: 'Esquirla translúcida de un blanco azulado, fría al tacto y con un filo natural — para tallar filos y prótesis.',
     dimensiones: 'Esquirla de 10 a 20 cm.',
     lugarOrigen: 'Cristal Helado.',
@@ -3994,6 +4183,7 @@ export const items: ItemCatalogInput[] = [
     name: 'Piedra',
     category: 'piedra',
     tipo: 'RECURSO',
+    valorGoirnos: 1,
     description: 'Bloques y cascotes de roca erosionada — sirven para levantar muros, cimientos o un campamento.',
     dimensiones: 'Bloques de 20 a 30 cm.'
   },
@@ -4008,6 +4198,7 @@ export const items: ItemCatalogInput[] = [
     aliases: ['arena imán', 'limaduras'],
     category: 'piedra',
     tipo: 'RECURSO',
+    valorGoirnos: 1,
     description: 'Arena oscura y fina, cargada de limaduras magnéticas que dejan las tormentas — se pega a cualquier cosa de hierro que se le acerque.',
     dimensiones: 'Puñado de unos 100 g.',
     lugarOrigen: 'Las Agujas Imán, Llanuras del Viento Rojo.',
@@ -4020,6 +4211,7 @@ export const items: ItemCatalogInput[] = [
     name: 'Lana de múrgol',
     category: 'piel',
     tipo: 'RECURSO',
+    valorGoirnos: 1,
     description: 'Mechones de lana parda enredada de múrgol — fieltro para ropa y mantas.',
     dimensiones: 'Mechones de 10 a 20 cm.',
   },
@@ -4035,6 +4227,7 @@ export const items: ItemCatalogInput[] = [
     aliases: ['fibra vegetal', 'fibra de enredadera'],
     category: 'fibras',
     tipo: 'RECURSO',
+    valorGoirnos: 1,
     description: 'Tallos fibrosos de las enredaderas que trepan por sombra en la Hondonada del Eco y la base de Los Pilares Rotos — material base de crafteo ligero.',
     dimensiones: 'Fibras de 30 a 60 cm.',
   },
@@ -4048,6 +4241,7 @@ export const items: ItemCatalogInput[] = [
     description: 'Mineral con la apariencia del hierro pero de vetas rojas y brillos anaranjados — muy difícil de encontrar y en cantidades mínimas donde aparece.',
     dimensiones: 'Fragmentos de 5 a 10 cm.',
     tier: 4,
+    valorGoirnos: 15,
     lugarOrigen: 'La Hondonada del Eco, Llanuras del Viento Rojo.',
   },
 
@@ -4060,6 +4254,7 @@ export const items: ItemCatalogInput[] = [
     description: 'Yerreo fundido en lingote — se obtiene fundiendo su mena, o directamente de las garras del Kirelon Arenoso si el cazador es herrero con fragua a mano.',
     dimensiones: 'Lingote de 15 cm.',
     tier: 4,
+    valorGoirnos: 12,
   },
 
   {
@@ -4075,6 +4270,7 @@ export const items: ItemCatalogInput[] = [
     description: 'La mejor aleación orca de las Llanuras — hierro, Yerreo y Arena Imán fundidos juntos. Material de las armas de mayor tier que un herrero de la región puede forjar. No debe confundirse con el Lingote de hierro imantado (aleación mucho más simple, sin Yerreo).',
     dimensiones: 'Lingote de 15 cm.',
     tier: 7,
+    valorGoirnos: 21,
   },
 
   {
@@ -4083,6 +4279,7 @@ export const items: ItemCatalogInput[] = [
     aliases: ['quitina roja', 'trozo de quitina'],
     category: 'quitina',
     tipo: 'RECURSO',
+    valorGoirnos: 1,
     description: 'Fragmento del caparazón de un Gesgurio, color arcilla roja con púas más oscuras.',
     dimensiones: 'Fragmento de 3 a 6 cm.',
   },
@@ -4096,6 +4293,7 @@ export const items: ItemCatalogInput[] = [
     description: 'Varios trozos de quitina roja de Gesgurio, trabajados hasta formar una pieza completa lista para crafteo.',
     dimensiones: 'Pieza de 10 cm.',
     tier: 2,
+    valorGoirnos: 6,
   },
 
   {
@@ -4107,6 +4305,7 @@ export const items: ItemCatalogInput[] = [
     description: 'Hueso macizo del Kirelon Arenoso, depredador ciego de La Hondonada del Eco.',
     dimensiones: 'Hueso de 40 a 60 cm.',
     tier: 3,
+    valorGoirnos: 6,
   },
 
   {
@@ -4118,6 +4317,7 @@ export const items: ItemCatalogInput[] = [
     description: 'Cráneo alargado del Kirelon Arenoso, hocico achatado y dientes en sierra todavía visibles.',
     dimensiones: 'Cráneo de 50 cm.',
     tier: 4,
+    valorGoirnos: 10,
   },
 
   {
@@ -4129,6 +4329,7 @@ export const items: ItemCatalogInput[] = [
     description: 'Escamas negras del Kirelon Arenoso, resistentes y flexibles pese a su grosor.',
     dimensiones: 'Piel de 1 a 2 m².',
     tier: 4,
+    valorGoirnos: 10,
   },
 
   {
@@ -4140,6 +4341,7 @@ export const items: ItemCatalogInput[] = [
     description: 'Garras del Kirelon Arenoso, compuestas en su mayoría de Yerreo — un herrero con fragua a mano puede fundirlas directo en 2 Lingotes de Yerreo.',
     dimensiones: 'Garras de 12 cm.',
     tier: 5,
+    valorGoirnos: 15,
   },
 
   {
@@ -4151,6 +4353,7 @@ export const items: ItemCatalogInput[] = [
     description: 'Tronco claro y muy resistente de los árboles de Lucre Blanco, en las cumbres de Los Pilares Rotos.',
     dimensiones: 'Tablones de 1 m.',
     tier: 6,
+    valorGoirnos: 20,
   },
 
   {
@@ -4162,6 +4365,7 @@ export const items: ItemCatalogInput[] = [
     description: 'Resina blanca translúcida del Lucre Blanco — pegamento muy resistente.',
     dimensiones: 'Bloques de 8x5 cm.',
     tier: 5,
+    valorGoirnos: 15,
   },
 
   {
@@ -4170,6 +4374,7 @@ export const items: ItemCatalogInput[] = [
     aliases: ['musgo arcilla', 'musgo rojo'],
     category: 'planta',
     tipo: 'RECURSO',
+    valorGoirnos: 1,
     description: 'Musgo rojo como pelaje, recogido del Musgo Arcilla que crece pegado a la roca en zonas húmedas — material de construcción para tejados orcos.',
     dimensiones: 'Puñados de 200 g.',
   },
@@ -4180,6 +4385,7 @@ export const items: ItemCatalogInput[] = [
     aliases: ['madera de telda comun', 'madera de telda ceniza'],
     category: 'madera',
     tipo: 'RECURSO',
+    valorGoirnos: 1,
     description: 'Madera clara de los árboles Telda —Común en El Pozo de Cauce Viejo, Ceniza en El Cruce de las Cenizas, misma especie y mismo recurso.',
     dimensiones: 'Tablones de 80 cm.',
   },
@@ -4193,6 +4399,7 @@ export const items: ItemCatalogInput[] = [
     description: 'Resina gris de los árboles Telda — pegamento de uso general.',
     dimensiones: 'Bloques de 8x5 cm.',
     tier: 2,
+    valorGoirnos: 3,
   },
 
   {
@@ -4201,6 +4408,7 @@ export const items: ItemCatalogInput[] = [
     aliases: ['hojas de telda'],
     category: 'planta',
     tipo: 'RECURSO',
+    valorGoirnos: 1,
     description: 'Hojas grandes de los árboles Telda, de 30 a 50 cm — material de tejados y cobertizos orcos. Misma hoja para Telda Común, Telda Ceniza y Telda Atardecer, solo cambian tronco/resina entre variantes.',
     dimensiones: 'Hojas de 30 a 50 cm.',
     lugarOrigen: 'Llanuras del Viento Rojo.',
@@ -4215,6 +4423,7 @@ export const items: ItemCatalogInput[] = [
     description: 'Piel tersa de Guchapo, tensa por el agua que el animal acumula en vida.',
     dimensiones: 'Piel de 1 m².',
     tier: 3,
+    valorGoirnos: 6,
   },
 
   {
@@ -4226,6 +4435,7 @@ export const items: ItemCatalogInput[] = [
     description: 'Cera de las colmenas de Lebude, en forma de pequeñas montañas junto a los Telda — material de construcción.',
     dimensiones: 'Bloques de 10x10 cm.',
     tier: 3,
+    valorGoirnos: 6,
   },
 
   {
@@ -4237,6 +4447,7 @@ export const items: ItemCatalogInput[] = [
     description: 'Miel de las colmenas de Lebude — ingrediente de cocina.',
     dimensiones: 'Tarro de 200 g.',
     tier: 2,
+    valorGoirnos: 3,
   },
 
   {
@@ -4248,6 +4459,7 @@ export const items: ItemCatalogInput[] = [
     description: 'Fragmento del caparazón acorazado del Escorante, con los diminutos pinchos que segregan su líquido repelente.',
     dimensiones: 'Fragmento de 8 cm.',
     tier: 3,
+    valorGoirnos: 6,
   },
 
   {
@@ -4259,6 +4471,7 @@ export const items: ItemCatalogInput[] = [
     description: 'Pelaje espeso de Ferike, raíz negra y puntas verde oscuro — material para abalorios de tier alto.',
     dimensiones: 'Piel de 1,5 m².',
     tier: 6,
+    valorGoirnos: 20,
   },
 
   {
@@ -4270,6 +4483,7 @@ export const items: ItemCatalogInput[] = [
     description: 'Garras curvas y anchas del Ferike, capaces de desgarrar y escalar árboles.',
     dimensiones: 'Garras de 15 cm.',
     tier: 6,
+    valorGoirnos: 20,
   },
 
   {
@@ -4281,6 +4495,7 @@ export const items: ItemCatalogInput[] = [
     description: 'Espigas de pelo negro de la cola-maza de un Ferike macho — objeto especial, muy baja probabilidad de loot, ingrediente del crafteo de mayor calidad de su tier.',
     dimensiones: 'Mechón de 40 cm.',
     tier: 7,
+    valorGoirnos: 30,
   },
 
   {
@@ -4289,6 +4504,7 @@ export const items: ItemCatalogInput[] = [
     aliases: ['leche de murgol'],
     category: 'alimento',
     tipo: 'RECURSO',
+    valorGoirnos: 1,
     description: 'Leche del recinto de Múrgol domados del Campamento del Clan Serhu.',
     dimensiones: 'Odre de 1 litro.',
   },
@@ -4302,6 +4518,7 @@ export const items: ItemCatalogInput[] = [
     description: 'Trozo pequeño del esqueleto de la Gargantúa de Ceniza de El Osario de la Manada.',
     dimensiones: 'Fragmento de 10 a 20 cm.',
     tier: 2,
+    valorGoirnos: 3,
   },
 
   {
@@ -4310,6 +4527,7 @@ export const items: ItemCatalogInput[] = [
     aliases: ['huesos de gargantua'],
     category: 'hueso',
     tipo: 'RECURSO',
+    valorGoirnos: 1,
     description: 'Piezas grandes del esqueleto de El Osario de la Manada — material de construcción, distinto del Hueso largo (materia prima de lanzas) y la Placa ósea (armadura).',
     dimensiones: 'Huesos de 60 a 100 cm.',
   },
@@ -4320,6 +4538,7 @@ export const items: ItemCatalogInput[] = [
     aliases: ['boungo', 'seta boungo'],
     category: 'alimento',
     tipo: 'RECURSO',
+    valorGoirnos: 1,
     description: 'Seta de sombrero marrón oscuro con manchas rojas, tallo fino beis, aspecto seco — crece en otoño en El Osario de la Manada, en cúmulos apretados.',
     dimensiones: 'Setas de 5 a 30 cm.',
   },
@@ -4330,6 +4549,7 @@ export const items: ItemCatalogInput[] = [
     aliases: ['boungo asado', 'setas asadas'],
     category: 'consumible',
     tipo: 'CONSUMIBLE',
+    valorGoirnos: 4,
     equipSlot: 'CONSUMIBLE_1',
     description: 'Boungo asado sobre brasas por un cocinero orco — la primera receta real del oficio de cocinero-orco-llanuras, más allá de las raciones reasignadas.',
     dimensiones: 'Ración de 150 g.',
@@ -4342,6 +4562,7 @@ export const items: ItemCatalogInput[] = [
     aliases: ['verdileas', 'algas de manaderos'],
     category: 'planta',
     tipo: 'RECURSO',
+    valorGoirnos: 1,
     description: 'Alga de Los Manaderos, base de la cadena trófica de la charca — alimento de la Jusha Esmeralda.',
     dimensiones: 'Mata de 20 cm.',
   },
@@ -4352,6 +4573,7 @@ export const items: ItemCatalogInput[] = [
     aliases: ['juncos', 'juncos de los manaderos'],
     category: 'planta',
     tipo: 'RECURSO',
+    valorGoirnos: 1,
     description: 'Juncos rojizos de las charcas de Los Manaderos — material de tejido y techado.',
     dimensiones: 'Tallos de 80 cm a 1,2 m.',
   },
@@ -4362,6 +4584,7 @@ export const items: ItemCatalogInput[] = [
     aliases: ['carne de jusha'],
     category: 'alimento',
     tipo: 'RECURSO',
+    valorGoirnos: 1,
     description: 'Carne de Jusha Esmeralda, sabor amargo pero comestible — ingrediente de cocinero-orco-llanuras.',
     dimensiones: 'Filetes de 100 g.',
   },
@@ -4375,6 +4598,7 @@ export const items: ItemCatalogInput[] = [
     description: 'Escama verde musgo con brillos azul oscuro de la Jusha Esmeralda.',
     dimensiones: 'Escamas de 1 a 2 cm.',
     tier: 2,
+    valorGoirnos: 3,
   },
 
   {
@@ -4386,6 +4610,7 @@ export const items: ItemCatalogInput[] = [
     description: 'Piel impermeable del Miruina, roedor nadador nocturno de Los Manaderos.',
     dimensiones: 'Piel de 1 m².',
     tier: 3,
+    valorGoirnos: 6,
   },
 
   {
@@ -4394,6 +4619,7 @@ export const items: ItemCatalogInput[] = [
     aliases: ['filtro de quio'],
     category: 'filtro',
     tipo: 'RECURSO',
+    valorGoirnos: 1,
     description: 'Boca filtradora del Quio, pelos finos que retienen y filtran como las barbas de una ballena.',
     dimensiones: 'Filtro de 3 cm.',
   },
@@ -4407,6 +4633,7 @@ export const items: ItemCatalogInput[] = [
     description: 'Plumas del plumaje alborotado de la Tura Jusha.',
     dimensiones: 'Plumas de 10 a 15 cm.',
     tier: 2,
+    valorGoirnos: 3,
   },
 
   {
@@ -4418,6 +4645,7 @@ export const items: ItemCatalogInput[] = [
     description: 'Garra tipo dinosaurio, con uña retráctil negra, de la pata de la Tura Jusha.',
     dimensiones: 'Garra de 8 cm.',
     tier: 2,
+    valorGoirnos: 3,
   },
 
   {
@@ -4426,6 +4654,7 @@ export const items: ItemCatalogInput[] = [
     aliases: ['pasto solar', 'hierba comun'],
     category: 'hierba',
     tipo: 'RECURSO',
+    valorGoirnos: 1,
     description: 'Hierba amarilla, el pasto base de toda la llanura allí donde crece vegetación.',
     dimensiones: 'Manojo de 200 g.',
     // Sin candado de Location única (ver harvestSourceHomeLocationSlug) desde 2026-08-22 — sin
@@ -4440,6 +4669,7 @@ export const items: ItemCatalogInput[] = [
     aliases: ['gradias', 'fibra de gradias'],
     category: 'fibras',
     tipo: 'RECURSO',
+    valorGoirnos: 1,
     description: 'Ramas fibrosas del arbusto Gradias — sus hojas anchas sueltan toda su agua acumulada al triturarlas.',
     dimensiones: 'Ramas de 30 cm.',
   },
@@ -4453,6 +4683,7 @@ export const items: ItemCatalogInput[] = [
     description: 'Pétalos verdes con tono azulado de la Flor Salvatura, planta negra de aspecto muerto — ingrediente base de alquimia para varias recetas de pociones curativas.',
     dimensiones: 'Pétalos de 4 cm.',
     tier: 3,
+    valorGoirnos: 6,
   },
 
   {
@@ -4461,6 +4692,7 @@ export const items: ItemCatalogInput[] = [
     aliases: ['piel de cuernahoja'],
     category: 'piel',
     tipo: 'RECURSO',
+    valorGoirnos: 1,
     description: 'Pelaje corto y ligero de Cuernahoja, rojo por arriba y blanco por el vientre.',
     dimensiones: 'Piel de 1 m².',
   },
@@ -4474,6 +4706,7 @@ export const items: ItemCatalogInput[] = [
     description: 'Cuerno fino y largo de Cuernahoja, sin apenas espiral — el de las hembras, más ancho, es la variante de mayor calidad.',
     dimensiones: 'Cuerno de 30 a 40 cm.',
     tier: 2,
+    valorGoirnos: 3,
   },
 
   {
@@ -4485,6 +4718,7 @@ export const items: ItemCatalogInput[] = [
     description: 'Mineral volcánico de El Filo de las Brasas, veta común de la zona.',
     dimensiones: 'Fragmentos de 8 cm.',
     tier: 3,
+    valorGoirnos: 6,
   },
 
   {
@@ -4496,6 +4730,7 @@ export const items: ItemCatalogInput[] = [
     description: 'Roca de construcción negra con vetas rojas, de El Filo de las Brasas.',
     dimensiones: 'Bloques de 20 cm.',
     tier: 2,
+    valorGoirnos: 3,
   },
 
   {
@@ -4507,6 +4742,7 @@ export const items: ItemCatalogInput[] = [
     description: 'Mineral casi imposible de encontrar, solo cerca de cráteres y lava en El Filo de las Brasas —más probable en Las Fumarolas Negras—, protegido por las propias Salamandras de Escoria.',
     dimensiones: 'Fragmentos de 5 cm.',
     tier: 5,
+    valorGoirnos: 22,
   },
 
   {
@@ -4515,6 +4751,7 @@ export const items: ItemCatalogInput[] = [
     aliases: ['pasto de sangre', 'hierba roja'],
     category: 'hierba',
     tipo: 'RECURSO',
+    valorGoirnos: 1,
     description: 'Hierba roja de La Sabana Alta, más alta y densa que el Pasto Solar del que desciende — el tono rojo viene de la mezcla de esa raza de pasto con la mineralización, también roja, del agua de la zona.',
     dimensiones: 'Manojo de 200 g.',
     lugarOrigen: 'La Sabana Alta, Llanuras del Viento Rojo.',
@@ -4529,6 +4766,7 @@ export const items: ItemCatalogInput[] = [
     description: 'Madera de la misma especie que la Telda Común y la Telda Ceniza, pero con tronco y hojas de tonos rojos — la mejor madera de todas las variantes de Telda conocidas, propia de La Sabana Alta.',
     dimensiones: 'Tablones de 80 cm.',
     tier: 4,
+    valorGoirnos: 10,
   },
 
   {
@@ -4540,6 +4778,7 @@ export const items: ItemCatalogInput[] = [
     description: 'Resina roja de los árboles de Telda Atardecer — pegamento más fino que la Resina Telda Gris común.',
     dimensiones: 'Bloques de 8x5 cm.',
     tier: 3,
+    valorGoirnos: 6,
   },
 
   {
@@ -4548,6 +4787,7 @@ export const items: ItemCatalogInput[] = [
     aliases: ['trigo escarlata'],
     category: 'alimento',
     tipo: 'RECURSO',
+    valorGoirnos: 1,
     description: 'Espigas de un rojo intenso, base para harinas — crece salvaje en La Sabana Alta. Los orcos de las Llanuras nunca han logrado cultivarlo de verdad: la presión Goirnte y el terreno que ocupan no les han dejado desarrollar una agricultura propia, una de las razones reales de que el clan nunca se haya expandido como civilización.',
     dimensiones: 'Espigas de 25 cm.',
   },
@@ -4561,6 +4801,7 @@ export const items: ItemCatalogInput[] = [
     description: 'Piedra clara, casi blanca, similar al mármol — los Towrgu excavan en ella sus propios nidos. Material de construcción de tier alto para edificaciones de Las Llanuras.',
     dimensiones: 'Bloques de 25 cm.',
     tier: 6,
+    valorGoirnos: 20,
   },
 
   {
@@ -4572,6 +4813,7 @@ export const items: ItemCatalogInput[] = [
     description: 'Pelaje corto y erizado de Towrgu, en tonos de rojo con manchas.',
     dimensiones: 'Piel de 1,3 m².',
     tier: 4,
+    valorGoirnos: 10,
   },
 
   {
@@ -4583,6 +4825,7 @@ export const items: ItemCatalogInput[] = [
     description: 'Garras curvas de Towrgu, tan afiladas para trepar como para desgarrar.',
     dimensiones: 'Garras de 6 a 8 cm.',
     tier: 5,
+    valorGoirnos: 15,
   },
 
   {
@@ -4594,6 +4837,7 @@ export const items: ItemCatalogInput[] = [
     description: 'Dientes cortos y afilados de una boca capaz de abrirse casi hasta las orejas.',
     dimensiones: 'Colmillos de 3 a 5 cm.',
     tier: 6,
+    valorGoirnos: 20,
   },
 
   {
@@ -4605,6 +4849,7 @@ export const items: ItemCatalogInput[] = [
     description: 'Pelaje espeso y largo de Coracelo, en tonos ceniza claro o marrón claro.',
     dimensiones: 'Piel de 80 cm.',
     tier: 2,
+    valorGoirnos: 3,
   },
 
   {
@@ -4616,6 +4861,7 @@ export const items: ItemCatalogInput[] = [
     description: 'Los dos largos colmillos inferiores, cuadrados, de un Coracelo.',
     dimensiones: 'Colmillos de 8 a 12 cm.',
     tier: 3,
+    valorGoirnos: 6,
   },
 
   {
@@ -4627,6 +4873,7 @@ export const items: ItemCatalogInput[] = [
     description: 'El bulto de escamas duras del final de la cola de un Coracelo, que el animal usa en vida para partir roca — resistencia equiparable al hierro. Material crudo para crafteos que no son de construcción.',
     dimensiones: 'Bulto de 15 cm.',
     tier: 4,
+    valorGoirnos: 10,
   },
 
   {
@@ -4635,6 +4882,7 @@ export const items: ItemCatalogInput[] = [
     aliases: ['piel de corredor'],
     category: 'piel',
     tipo: 'RECURSO',
+    valorGoirnos: 1,
     description: 'Piel rojiza de Corredor de Cauce, fina y flexible, curtida para aguantar el calor de la llanura.',
     dimensiones: 'Pieza de aproximadamente 100x60 cm.',
     lugarOrigen: 'Llanuras del Viento Rojo.',
@@ -4645,6 +4893,7 @@ export const items: ItemCatalogInput[] = [
     name: 'Piel de gargantúa',
     category: 'piel',
     tipo: 'RECURSO',
+    valorGoirnos: 1,
     description: 'Piel gruesa de un gris ceniciento, curtida en placas rígidas — solo de cacería ritual o cadáver ya muerto.',
     dimensiones: 'Placa de aproximadamente 150x100 cm.',
     lugarOrigen: 'Llanuras del Viento Rojo.',
@@ -4655,6 +4904,7 @@ export const items: ItemCatalogInput[] = [
     name: 'Piel de Canizor',
     category: 'piel',
     tipo: 'RECURSO',
+    valorGoirnos: 1,
     description: 'Pelaje corto y denso, entre felino y cánido — el de una hembra es más tupido y se paga mejor. Muy valorada por los Maktor: llevarla es una forma de reclamar la vieja costumbre del clan.',
     dimensiones: 'Pieza de aproximadamente 90x55 cm.',
     lugarOrigen: 'Llanuras del Viento Rojo.',
@@ -4666,6 +4916,7 @@ export const items: ItemCatalogInput[] = [
     aliases: ['piel de rondador'],
     category: 'piel',
     tipo: 'RECURSO',
+    valorGoirnos: 1,
     description: 'Piel gruesa de un gris ceniciento, pelaje espeso propio de cazador nocturno — buena capa.',
     dimensiones: 'Pieza de aproximadamente 80x50 cm.',
   },
@@ -4676,6 +4927,7 @@ export const items: ItemCatalogInput[] = [
     aliases: ['piel de salamandra'],
     category: 'piel',
     tipo: 'RECURSO',
+    valorGoirnos: 1,
     description: 'Piel escamosa de un gris ceniciento, resistente al fuego — cuero ignífugo.',
     dimensiones: 'Pieza de aproximadamente 90x60 cm.',
   },
@@ -4688,6 +4940,7 @@ export const items: ItemCatalogInput[] = [
     aliases: ['plumas rojizas'],
     category: 'pluma',
     tipo: 'RECURSO',
+    valorGoirnos: 1,
     description: 'Puñado de plumas cortas de un rojo apagado, de Corretolvas — uso decorativo o trueque menor.',
     dimensiones: 'Plumas de 8 a 10 cm.',
   },
@@ -4700,6 +4953,7 @@ export const items: ItemCatalogInput[] = [
     aliases: ['caparazón de espina'],
     category: 'quitina',
     tipo: 'RECURSO',
+    valorGoirnos: 1,
     description: 'Placa de quitina oscura y brillante, dura como el cuerno, del caparazón de una Espina del Viento.',
     dimensiones: 'Placa de 30x20 cm.',
   },
@@ -4712,6 +4966,7 @@ export const items: ItemCatalogInput[] = [
     aliases: ['resina de trepador ocaso'],
     category: 'resina',
     tipo: 'RECURSO',
+    valorGoirnos: 1,
     description: 'Bloque de resina ambarina y pegajosa — sella e impermeabiliza.',
     dimensiones: 'Bloque de 10x10 cm.',
     lugarOrigen: 'Margen Silencioso.',
@@ -4729,6 +4984,7 @@ export const items: ItemCatalogInput[] = [
     aliases: ['correspondencia sellada'],
     category: 'documento',
     tipo: 'NARRATIVO',
+    valorGoirnos: 8,
     description: 'Rollo de pergamino sellado con cera y el emblema de la Concordia — puede saber demasiado.',
     dimensiones: 'Rollo de 20 cm.',
     lugarOrigen: 'Concordia de Hierro.',
@@ -4740,6 +4996,7 @@ export const items: ItemCatalogInput[] = [
     aliases: ['croquis de rutas'],
     category: 'documento',
     tipo: 'NARRATIVO',
+    valorGoirnos: 10,
     description: 'Croquis a mano alzada sobre cuero fino, rutas marcadas con tinta desvaída — saber por dónde no pasar.',
     dimensiones: 'Croquis en cuero de 25x20 cm.',
     lugarOrigen: 'Concordia de Hierro.',
@@ -4751,6 +5008,7 @@ export const items: ItemCatalogInput[] = [
     aliases: ['diario de soldado'], 
     category: 'documento',
     tipo: 'NARRATIVO', 
+    valorGoirnos: 3,
     description: 'Cuaderno de tapas de cuero gastado, letra apretada — un nombre, una familia en la Meseta, humaniza el saqueo.', 
     dimensiones: 'Cuaderno de 15x10 cm.', 
     lugarOrigen: 'Meseta del Orden.' 
@@ -4768,6 +5026,7 @@ export const items: ItemCatalogInput[] = [
     aliases: ['mapa de llanuras'],
     category: 'especial',
     tipo: 'ESPECIAL',
+    valorGoirnos: 0,
     description: 'Piel curtida con las rutas, campamentos y pozos de las Llanuras del Viento Rojo marcados a mano por generaciones de clanes — suficiente para orientarse por el territorio sin perderse.',
     effectKey: 'reveal-map-llanuras',
     effectDescription: 'Mientras lo lleves encima, la pestaña Mapa muestra los puntos de ubicación reales de Las Llanuras del Viento Rojo, no solo la región resaltada.',
@@ -4780,6 +5039,7 @@ export const items: ItemCatalogInput[] = [
     aliases: ['mapa de cristal helado'],
     category: 'especial',
     tipo: 'ESPECIAL',
+    valorGoirnos: 0,
     description: 'Piel curtida con las rutas, campamentos y pozos de Cristal Helado marcados a mano por generaciones de clanes — suficiente para orientarse por el territorio sin perderse.',
     effectKey: 'reveal-map-cristal-helado',
     effectDescription: 'Mientras lo lleves encima, la pestaña Mapa muestra los puntos de ubicación reales de Cristal Helado, no solo la región resaltada.',
@@ -4793,6 +5053,7 @@ export const items: ItemCatalogInput[] = [
     aliases: ['sello de patrulla'],
     category: 'documento',
     tipo: 'NARRATIVO',
+    valorGoirnos: 12,
     description: 'Disco de aleación grabado con el emblema de una patrulla — acredita, o incrimina, a quien lo lleva.',
     dimensiones: 'Disco de 4 cm de diámetro.',
     lugarOrigen: 'Concordia de Hierro.',
@@ -4803,6 +5064,7 @@ export const items: ItemCatalogInput[] = [
     name: 'Tablilla quemada', 
     category: 'documento',
     tipo: 'NARRATIVO', 
+    valorGoirnos: 2,
     description: 'Fragmento de una tablilla de arcilla cocida, ennegrecida por el fuego que arrasó el asentamiento — lo que queda de la escritura apenas se distingue.', 
     dimensiones: 'Fragmento de 12x8 cm.', 
     lugarOrigen: 'Clan Maktor.' 
@@ -4818,6 +5080,7 @@ export const items: ItemCatalogInput[] = [
     // retirada del enum, ver EquipSlot en schema.prisma).
     category: 'cosmetico',
     tipo: 'NARRATIVO',
+    valorGoirnos: 2,
     equipSlot: 'COSMETICO_CINTURA',
     description: 'Puñado de cuentas de hueso, piedra pulida y vidrio volcánico ensartadas en cordel — trueque menor.',
     dimensiones: 'Cuentas de 1 cm en cordel de 30 cm.',
@@ -4828,6 +5091,7 @@ export const items: ItemCatalogInput[] = [
     name: 'Amuleto de hueso',
     category: 'cosmetico',
     tipo: 'NARRATIVO',
+    valorGoirnos: 6,
     // Colgante de verdad (2026-07-30, "categorizar por ranura"). Ranura actualizada 2026-08-03:
     // COSMETICO_CINTURA (ABALORIO retirado del enum) — ya no comparte hueco con el Tótem Maktor,
     // que ahora vive en COSMETICO_ESPALDA, más abajo.
@@ -4849,6 +5113,7 @@ export const items: ItemCatalogInput[] = [
     // más raro que fercaneo (tier 5, "casi imposible") y melena-cola-ferike (tier 7, "muy baja
     // probabilidad") — el tier más alto del catálogo hasta hoy, a propósito.
     tier: 9,
+    valorGoirnos: 80,
   },
 
   {
@@ -4857,6 +5122,7 @@ export const items: ItemCatalogInput[] = [
     aliases: ['garra de rondador'],
     category: 'valor',
     tipo: 'NARRATIVO',
+    valorGoirnos: 20,
     description: 'Garra curva y negra de Rondador de Brasas — trofeo de amuleto de primer orden.',
     dimensiones: 'Garra de 8 cm.',
   },
@@ -4867,6 +5133,7 @@ export const items: ItemCatalogInput[] = [
     aliases: ['hueso marcado'], 
     category: 'valor',
     tipo: 'NARRATIVO', 
+    valorGoirnos: 0,
     description: 'Hueso con muescas rituales — ofrenda dejada por quien cobró su primera pieza en nombre de quien yace en el túmulo.', 
     dimensiones: 'Hueso de 15 cm.', 
     lugarOrigen: 'Llanuras del Viento Rojo.' 
@@ -4881,6 +5148,7 @@ export const items: ItemCatalogInput[] = [
     name: 'Marca de clan',
     category: 'cosmetico',
     tipo: 'NARRATIVO',
+    valorGoirnos: 4,
     equipSlot: 'COSMETICO_CINTURA',
     description: 'Colgante o tira de cuero con el símbolo tallado de un clan — cuál exactamente se especifica en las notas.',
     dimensiones: 'Colgante de 5 cm.',
@@ -4892,6 +5160,7 @@ export const items: ItemCatalogInput[] = [
     aliases: ['pañuelo de luto'], 
     category: 'valor',
     tipo: 'NARRATIVO', 
+    valorGoirnos: 0,
     description: 'Tela oscura anudada a la piedra de un túmulo — luto Serhu por alguien que murió con honor.', 
     dimensiones: 'Tela de 30x30 cm.', 
     lugarOrigen: 'Clan Serhu.' 
@@ -4903,6 +5172,7 @@ export const items: ItemCatalogInput[] = [
     aliases: ['pluma de sombra'], 
     category: 'valor',
     tipo: 'NARRATIVO', 
+    valorGoirnos: 15,
     description: 'Pluma larga de un negro casi azulado que absorbe la luz — objeto de trueque con el Margen Silencioso.', 
     dimensiones: 'Pluma de 25 cm.', 
     lugarOrigen: 'Margen Silencioso.' 
@@ -4914,6 +5184,7 @@ export const items: ItemCatalogInput[] = [
     aliases: ['pluma timonera'], 
     category: 'valor',
     tipo: 'NARRATIVO', 
+    valorGoirnos: 10,
     description: 'Pluma larga y rígida de Cruzavientos, punta gris acerado — adorno y trueque, los Serhu las montan en lanzas y trenzas.', 
     dimensiones: 'Pluma de 30 cm.' 
   },
@@ -4923,6 +5194,7 @@ export const items: ItemCatalogInput[] = [
     name: 'Sal de trueque',
     category: 'valor',
     tipo: 'NARRATIVO',
+    valorGoirnos: 6,
     description: 'Bloques de sal gris comprimida, ásperos al tacto — la moneda de facto de la estepa.',
     dimensiones: 'Bloques de 8x5 cm.',
   },
@@ -4938,6 +5210,7 @@ export const items: ItemCatalogInput[] = [
     // palabras) ya es lo bastante corto sin necesitar uno.
     category: 'valor',
     tipo: 'NARRATIVO', 
+    valorGoirnos: 12,
     description: 'Limaduras que dejan las tormentas — los herreros goirntes pagan bien por un saquito.', 
     dimensiones: 'Saquito de 10x8 cm.' 
   },
@@ -4948,6 +5221,7 @@ export const items: ItemCatalogInput[] = [
     aliases: ['silbato de hueso'], 
     category: 'valor',
     tipo: 'NARRATIVO', 
+    valorGoirnos: 4,
     description: 'Pequeño silbato tallado en hueso pulido — señales de caza Serhu.', 
     dimensiones: 'Silbato de 5 cm.', lugarOrigen: 'Clan Serhu, Llanuras del Viento Rojo.'
   },
@@ -4964,6 +5238,7 @@ export const items: ItemCatalogInput[] = [
     aliases: ['tótem maktor', 'tótem de gorhorn', 'tótem personal'],
     category: 'cosmetico',
     tipo: 'NARRATIVO',
+    valorGoirnos: 0,
     equipSlot: 'COSMETICO_ESPALDA',
     description: 'El tótem del Clan Maktor, atado con cuerdas a la espalda — el objeto más importante de Gorhorn, lo único que le queda de sus ancestros.',
     dimensiones: 'Talla de madera de unos 40 cm, tallada a mano.',
@@ -4976,6 +5251,7 @@ export const items: ItemCatalogInput[] = [
     aliases: ['tótem de clan roto'],
     category: 'cosmetico',
     tipo: 'NARRATIVO',
+    valorGoirnos: 8,
     equipSlot: 'COSMETICO_ESPALDA',
     statBonuses: { carisma: 1 },
     description: 'Fragmento de madera de ciénaga tallada, roto por la mitad, con restos de un símbolo de clan irreconocible — gancho de un posible superviviente Maktor.',
@@ -4994,6 +5270,7 @@ export const items: ItemCatalogInput[] = [
     aliases: ['cuerno tallado', 'cuerno de caza'],
     category: 'valor',
     tipo: 'NARRATIVO',
+    valorGoirnos: 8,
     description: 'Cuerno de Cuernahoja vaciado y tallado con motivos de caza — suena bajo y largo, se oye a kilómetros en la llanura abierta.',
     dimensiones: 'Cuerno de 35 cm.',
     lugarOrigen: 'Los Pastos de la Deriva, Llanuras del Viento Rojo.',
@@ -5004,6 +5281,7 @@ export const items: ItemCatalogInput[] = [
     aliases: ['vela de cera'],
     category: 'valor',
     tipo: 'NARRATIVO',
+    valorGoirnos: 3,
     description: 'Cera de la colmena de Lebude moldeada en una vela gruesa — arde más limpio y más tiempo que la resina, apreciada por quienes pasan la noche fuera del campamento.',
     dimensiones: 'Vela de 15 cm.',
     lugarOrigen: 'El Pozo de Cauce Viejo, Llanuras del Viento Rojo.',
@@ -6923,15 +7201,26 @@ export const zonePoints: ZonePointInput[] = [
   { locationSlug: 'agujas-iman', x: 380, y: 420, tipo: 'RECURSO', targetSlug: 'cardo-brujula', label: 'Cardo Brújula a sotavento' },
   { locationSlug: 'agujas-iman', x: 620, y: 480, tipo: 'RECURSO', targetSlug: 'arena-iman', label: 'Arena Imán acumulada' },
 
-  // Karot Veku - Campamento del Clan Serhu — único EDIFICIO real de este lote (empalizada +
-  // torres de vigía descritas en su propia description). Torgash Ketg y Ulkha Ketg son los únicos
-  // NPC con nombre propio anclados aquí (cazadora-serhu es PLANTILLA/arquetipo repetible, no
-  // nombre propio — fuera de alcance explícito de esta tarea). Múrgoles domados: recurso interior
-  // del propio campamento, homeLocationSlug directo.
-  { locationSlug: 'campamento-serhu', x: 400, y: 300, tipo: 'EDIFICIO', targetSlug: 'campamento-serhu', label: 'Empalizada de Karot Veku' },
-  { locationSlug: 'campamento-serhu', x: 250, y: 200, tipo: 'NPC', targetSlug: 'torgash-ketg', label: "Torgash Ketg, Kort'ikar" },
-  { locationSlug: 'campamento-serhu', x: 550, y: 210, tipo: 'NPC', targetSlug: 'ulkha-ketg', label: "Ulkha Ketg, Terk'ikar" },
+  // Karot Veku - Campamento del Clan Serhu. Múrgoles domados: recurso interior del propio
+  // campamento, homeLocationSlug directo.
+  //
+  // "Trabajador de Reino" (2026-08-31) — el punto EDIFICIO de la empalizada dejó de apuntar a sí
+  // mismo (anti-patrón: `targetSlug` = slug de la propia Location, sin catálogo real detrás).
+  // Ahora referencia el `FactionBuilding` sede real (`karot-vekhad`, ver más abajo). Torgash/Ulkha
+  // se mudan al interior (viven en el Karot Vekhad de verdad, coherente con su lore — "reciben a
+  // quien cruza la entrada") — sus puntos NPC pasan a `campamento-serhu-interior`.
+  { locationSlug: 'campamento-serhu', x: 400, y: 300, tipo: 'EDIFICIO', targetSlug: 'karot-vekhad', label: 'Karot Vekhad — el Salón del Colmillo Ceniza' },
   { locationSlug: 'campamento-serhu', x: 400, y: 460, tipo: 'RECURSO', targetSlug: 'murgoles-domados-campamento', label: 'Recinto de múrgoles domados' },
+
+  // Interior de Karot Veku (2026-08-31, "Trabajador de Reino") — mismo lienzo 800×600, propio de
+  // esta Location. Torgash/Ulkha en el propio Karot Vekhad (centro); los 2 edificios de profesión
+  // de prueba (Herrería/Curtiduría) a los lados, con sus Maestros — el resto de los 11 oficios
+  // queda para una siguiente pasada una vez verificado el motor con estos 2.
+  { locationSlug: 'campamento-serhu-interior', x: 400, y: 300, tipo: 'EDIFICIO', targetSlug: 'karot-vekhad', label: 'Karot Vekhad — el Salón del Colmillo Ceniza' },
+  { locationSlug: 'campamento-serhu-interior', x: 400, y: 220, tipo: 'NPC', targetSlug: 'torgash-ketg', label: "Torgash Ketg, Kort'ikar" },
+  { locationSlug: 'campamento-serhu-interior', x: 400, y: 380, tipo: 'NPC', targetSlug: 'ulkha-ketg', label: "Ulkha Ketg, Terk'ikar" },
+  { locationSlug: 'campamento-serhu-interior', x: 180, y: 300, tipo: 'EDIFICIO', targetSlug: 'herreria-serhu', label: 'Herrería del Clan Serhu' },
+  { locationSlug: 'campamento-serhu-interior', x: 620, y: 300, tipo: 'EDIFICIO', targetSlug: 'curtiduria-serhu', label: 'Curtiduría del Clan Serhu' },
 
   // El Cruce de las Cenizas — Ferike tiene homeLocationSlug directo aquí. Telda Ceniza y Matorral
   // de Cuerno tienen homeLocationSlug/tag de vegetación coherentes con la propia description
@@ -7092,3 +7381,64 @@ export const zonePoints: ZonePointInput[] = [
   // único match de terreno árido (Ruptidar), coherente con "nadie ha reclamado nunca del todo".
   { locationSlug: 'campo-yermo', x: 400, y: 300, tipo: 'FAUNA', targetSlug: 'ruptidar', label: 'Ruptidar entre los restos oxidados' },
 ];
+
+/// Edificios de FACCIÓN AJENA (2026-08-31, "Trabajador de Reino") — catálogo de mundo puro, nunca
+/// `Building`/`saveId` del jugador (ver comentario del modelo `FactionBuilding`, schema.prisma).
+/// El jugador nunca construye ni mejora estos edificios, solo los visita. `profession: null` marca
+/// el edificio SEDE (equivalente al Ayuntamiento del jugador — lo que "establece que existe" como
+/// asentamiento real); el resto son edificios de oficio concreto, con capacidad de trabajadores por
+/// tier (1=pequeño→1, 2=mediano→3, 3=grande→6, `tierCapacityFor`).
+///
+/// Solo Karot Veku por ahora, y dentro de Karot Veku solo 2 de los 11 oficios (Herrero/Curtidor,
+/// petición explícita: "1-2 oficios de prueba primero") — el resto de oficios/asentamientos queda
+/// para siguientes pasadas una vez verificado el motor completo (modelo + vista de interior +
+/// aprender oficio) de punta a punta con estos 2.
+export interface FactionBuildingInput {
+  slug: string;
+  name: string;
+  factionSlug: string;
+  locationSlug: string;
+  profession: string | null;
+  tier: number;
+  description: string;
+}
+
+export const factionBuildings: FactionBuildingInput[] = [
+  {
+    slug: 'karot-vekhad',
+    name: 'Karot Vekhad — el Salón del Colmillo Ceniza',
+    factionSlug: 'Clan Serhu',
+    locationSlug: 'campamento-serhu-interior',
+    profession: null,
+    tier: 3,
+    description:
+      'La choza más grande de Karot Veku, en el centro del poblado — sede de la Terk\'ikar Ulkha Ketg y el Kort\'ikar Torgash Ketg. Lo que hace de Karot Veku un asentamiento real del Clan Serhu, no solo un campamento de paso.',
+  },
+  {
+    slug: 'herreria-serhu',
+    name: 'Herrería del Clan Serhu',
+    factionSlug: 'Clan Serhu',
+    locationSlug: 'campamento-serhu-interior',
+    profession: 'herrero-orco-llanuras',
+    tier: 1,
+    description:
+      'Fragua orca de piedra y arcilla cocida, con el yunque hundido a golpes de generaciones de aprendices. El Maestro Herrero Serhu funde mena en lingotes para todo el clan.',
+  },
+  {
+    slug: 'curtiduria-serhu',
+    name: 'Curtiduría del Clan Serhu',
+    factionSlug: 'Clan Serhu',
+    locationSlug: 'campamento-serhu-interior',
+    profession: 'curtidor-orcos-llanuras',
+    tier: 1,
+    description:
+      'Pieles tensadas en bastidores de madera alrededor de una hoguera baja que nunca se apaga del todo — el olor a curtido llega antes de ver la propia choza. La Maestra Curtidora Serhu trabaja aquí el cuero de la caza del clan.',
+  },
+];
+
+/// Capacidad de trabajadores por tier (2026-08-31) — mismo espíritu que
+/// `companionSlotsForRecipeKey` (construction.ts), pero para catálogo de facción ajena, no Building
+/// del jugador. 1=pequeño/2=mediano/3=grande, igual que el resto de tiers de este archivo.
+export function tierCapacityFor(tier: number): number {
+  return { 1: 1, 2: 3, 3: 6 }[tier] ?? 0;
+}

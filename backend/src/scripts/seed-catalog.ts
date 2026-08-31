@@ -1,7 +1,7 @@
 import 'dotenv/config';
 import { Prisma } from '@prisma/client';
 import { prisma } from '../lib/prisma.js';
-import { locations, locationLinks, npcs, fauna, items, harvestYields, factions, historiaEntries, zonePoints } from './worldCatalog.js';
+import { locations, locationLinks, npcs, fauna, items, harvestYields, factions, historiaEntries, zonePoints, factionBuildings } from './worldCatalog.js';
 import { assertValidCategory } from '../services/itemTaxonomy.js';
 import { worldPopulations } from './worldPopulation.js';
 
@@ -80,6 +80,7 @@ async function main() {
         effectKey: item.effectKey ?? null,
         effectDescription: item.effectDescription ?? null,
         herramientaParaOficio: item.herramientaParaOficio ?? [],
+        valorGoirnos: item.valorGoirnos,
       },
       create: { worldId, ...item },
     });
@@ -128,6 +129,7 @@ async function main() {
         bio: npcData.bio,
         personality: npcData.personality,
         homeLocationSlug: npcData.homeLocationSlug,
+        teachesProfession: npcData.teachesProfession ?? null,
         raza: npcData.raza,
         clase: npcData.clase,
         especializacion: npcData.especializacion,
@@ -280,6 +282,22 @@ async function main() {
     if (!locationId) throw new Error(`ZonePoint con locationSlug desconocido: ${point.locationSlug}`);
     await prisma.zonePoint.create({
       data: { locationId, x: point.x, y: point.y, tipo: point.tipo, targetSlug: point.targetSlug, label: point.label ?? null },
+    });
+  }
+
+  console.log(`  Edificios de facción (${factionBuildings.length}, "Trabajador de Reino")...`);
+  for (const building of factionBuildings) {
+    await prisma.factionBuilding.upsert({
+      where: { worldId_slug: { worldId, slug: building.slug } },
+      update: {
+        name: building.name,
+        factionSlug: building.factionSlug,
+        locationSlug: building.locationSlug,
+        profession: building.profession,
+        tier: building.tier,
+        description: building.description,
+      },
+      create: { worldId, ...building },
     });
   }
 
