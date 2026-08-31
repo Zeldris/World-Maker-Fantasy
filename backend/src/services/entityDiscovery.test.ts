@@ -9,6 +9,10 @@ vi.mock('../scripts/worldCatalog.js', () => ({
   // Stub fiel al real (worldCatalog.ts): nombre del Npc si lo hay, si no el slug tal cual — ninguno
   // de estos tests depende de `harvestSourceDisplayName` (el diccionario de fallback real).
   sourceDisplayNameFor: (slug: string, npcName?: string | null) => npcName ?? slug,
+  // Auditoría "revisar partida" (2026-08-30, "fauna y flora en carpetas separadas") — vacío a
+  // propósito: ninguno de estos tests simula uno de los 3 animales sin Npc propio (Espina del
+  // Viento/Cornante/Sombra de Kroj), así que el mock real basta sin necesitar contenido.
+  harvestSourcesThatAreFaunaWithoutNpc: new Set<string>(),
 }));
 
 const { recordEntityDiscoveries } = await import('./entityDiscovery.js');
@@ -89,7 +93,13 @@ describe('recordEntityDiscoveries', () => {
   });
 
   it('descubre fauna por alias de recolección (harvestSourceAliases), no solo por el sourceName', async () => {
+    // Auditoría "revisar partida" (2026-08-30, "fauna y flora en carpetas separadas") — mockea el
+    // Npc real (antes se omitía) porque el `entityType` ahora se decide dinámicamente según el
+    // mismo criterio que `esFauna`: sin Npc real ni estar en `harvestSourcesThatAreFaunaWithoutNpc`,
+    // este mock resolvería a 'flora', no 'fauna' — el test se llama "descubre FAUNA", así que debe
+    // simular un caso real de fauna cazable, no uno accidentalmente ambiguo.
     const client = fakeClient({
+      npc: { findMany: vi.fn(() => Promise.resolve([{ slug: 'jabali-de-espinas', name: 'Jabalí de espinas', aliases: [] }])) },
       harvestYield: { findMany: vi.fn(() => Promise.resolve([{ sourceSlug: 'jabali-de-espinas', sourceName: 'Jabalí de espinas' }])) },
     });
 
@@ -97,6 +107,21 @@ describe('recordEntityDiscoveries', () => {
 
     expect(client.discoveredEntity.createMany).toHaveBeenCalledWith({
       data: [{ saveId: 's1', entityType: 'fauna', entitySlug: 'jabali-de-espinas' }],
+      skipDuplicates: true,
+    });
+  });
+
+  // Auditoría "revisar partida" (2026-08-30) — caso nuevo, complementario al de arriba: sin Npc
+  // real (ni en la lista especial), el HarvestYield es flora/mineral por definición.
+  it('descubre flora/mineral (sin Npc real detrás) como "flora", no como "fauna"', async () => {
+    const client = fakeClient({
+      harvestYield: { findMany: vi.fn(() => Promise.resolve([{ sourceSlug: 'jabali-de-espinas', sourceName: 'Jabalí de espinas' }])) },
+    });
+
+    await recordEntityDiscoveries({ saveId: 's1', worldId: 'w1', mentionedText: 'Ataco al jabalí espinoso.' }, client as never);
+
+    expect(client.discoveredEntity.createMany).toHaveBeenCalledWith({
+      data: [{ saveId: 's1', entityType: 'flora', entitySlug: 'jabali-de-espinas' }],
       skipDuplicates: true,
     });
   });

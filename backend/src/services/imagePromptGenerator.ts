@@ -8,6 +8,16 @@ export type ImagePromptEntityType =
   | 'npc'
   | 'item'
   | 'fauna'
+  /// Auditoría "revisar partida" (2026-08-30, petición explícita: "fauna y flora en carpetas
+  /// separadas") — antes `fauna` cubría animal, planta Y mineral de golpe (11 fauna real + 4
+  /// planta + 4 mineral mezclados en `uploads/images/fauna/`), aunque el motor ya distinguía
+  /// internamente "cazable" (fauna) de "no cazable" (flora/mineral) para el TEXTO del prompt
+  /// (`imagePromptContext.ts`). `flora` cubre planta+mineral juntos (decisión explícita: 2
+  /// carpetas, no 3 — más simple de gestionar al subir imágenes). Criterio real de asignación:
+  /// `esFauna`/`harvestSourcesThatAreFaunaWithoutNpc` (worldCatalog.ts) — un NPC real cazable, o
+  /// uno de los 3 animales sin ficha (Espina del Viento/Cornante/Sombra de Kroj), va a `fauna`;
+  /// cualquier otro `HarvestYield` (planta/mineral/objeto) va a `flora`.
+  | 'flora'
   | 'ability'
   | 'raza'
   | 'personaje'
@@ -31,7 +41,8 @@ export type ImagePromptSizeProfile = 'thumbnail' | 'banner' | 'mapa';
 const ENTITY_TYPE_HINT: Record<ImagePromptEntityType, string> = {
   npc: 'a character portrait',
   item: 'an item/prop illustration',
-  fauna: 'a creature or plant illustration',
+  fauna: 'a creature/animal illustration',
+  flora: 'a plant or mineral illustration',
   ability: 'a dynamic action/skill illustration',
   raza: 'a reference illustration of a typical member of this people/race (not a specific named character)',
   personaje: 'a character portrait of this specific playable protagonist',
@@ -51,6 +62,7 @@ const ENTITY_TYPE_STYLE: Record<ImagePromptEntityType, string> = {
   npc: 'hyperrealistic design with fantastic nuances, photorealistic rendering, cinematic detail, rich textures, dramatic lighting',
   item: 'hyperrealistic design with fantastic nuances, photorealistic rendering, cinematic detail, sharp focus on materials and texture',
   fauna: 'hyperrealistic design with fantastic nuances, photorealistic rendering, cinematic detail, animal anatomy and environmental integration',
+  flora: 'hyperrealistic design with fantastic nuances, photorealistic rendering, cinematic detail, botanical/mineral texture and natural detail',
   ability: 'dark fantasy illustration style, heavy shadows, dramatic chiaroscuro, moody and atmospheric, ink-wash textures, gothic undertones',
   raza: 'hyperrealistic design with fantastic nuances, photorealistic rendering, cinematic detail, anthropological reference quality',
   personaje: 'hyperrealistic design with fantastic nuances, photorealistic rendering, cinematic detail, character portrait with personality and presence',

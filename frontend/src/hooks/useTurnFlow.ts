@@ -232,6 +232,7 @@ export function useTurnFlow(params: UseTurnFlowParams) {
         newQuestOfferInfo,
         dynamicModeOffer,
         questCompletedInfo,
+        factionRepChange,
         newKingdomFounded,
         companionCreated,
         territories: updatedTerritories,
@@ -326,6 +327,7 @@ export function useTurnFlow(params: UseTurnFlowParams) {
             newQuest: newQuestInfo ?? undefined,
             questOffer: newQuestOfferInfo ?? undefined,
             dynamicModeOffer: dynamicModeOffer ?? undefined,
+            factionRepChange: factionRepChange ?? undefined,
           },
         ]
         // Misión completada (2026-08-13) — ver el mismo bloque en handleCombatTurnResolved: fila

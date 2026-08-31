@@ -262,6 +262,7 @@ export function useCombatFlow(params: UseCombatFlowParams) {
         newQuestInfo,
         newQuestOfferInfo,
         questCompletedInfo,
+        factionRepChange,
         esperandoDefensaJugador,
         npcAbilityUsed,
         playerAbilityUsed,
@@ -317,6 +318,7 @@ export function useCombatFlow(params: UseCombatFlowParams) {
         newQuestInfo,
         newQuestOfferInfo,
         questCompletedInfo,
+        factionRepChange,
       })
       // Bug real (2026-07-29, "si muero no hace lo que fijamos que haría"): `condicionFisica` ya
       // llega resuelta a ILESO tras un respawn sobrevivible (nunca MUERTO) — sin `justDied` este
@@ -593,6 +595,7 @@ export function useCombatFlow(params: UseCombatFlowParams) {
     newQuestInfo?: { title: string; objetivo: string } | null
     newQuestOfferInfo?: { title: string; description: string } | null
     questCompletedInfo?: { logEntryId: string; text: string; title: string; grantedItems: string[]; rewardXp: number } | null
+    factionRepChange?: { faction: string; delta: number; newValue: number } | null
   }) {
     // `buildEntityBanner` se calcula FUERA del updater (bug real, 2026-07-24): StrictMode invoca
     // dos veces en dev cualquier función pasada a `setState`, y `buildEntityBanner` muta un ref
@@ -623,6 +626,7 @@ export function useCombatFlow(params: UseCombatFlowParams) {
           newQuest: params.newQuestInfo ?? undefined,
           questOffer: params.newQuestOfferInfo ?? undefined,
           convalecienteOffers: newlyConvalecientes.length > 0 ? newlyConvalecientes : undefined,
+          factionRepChange: params.factionRepChange ?? undefined,
         },
       ]
       // Misión completada (2026-08-13) — LogEntry REAL aparte, nunca fusionada con la narración

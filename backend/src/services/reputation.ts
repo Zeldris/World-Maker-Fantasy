@@ -23,6 +23,17 @@ export function factionRepFor(factionsStatus: Record<string, number>, faction: s
   return factionsStatus[faction] ?? FACTION_REP_DEFAULT;
 }
 
+/// Feedback de UX (2026-08-30, "falta que la suma de repu o la pérdida se refleje en la UX...
+/// sino el usuario ni se entera") — el delta de reputación ya se aplicaba y persistía desde
+/// 2026-07-19, pero nunca llegaba al jugador; este tipo es lo que ahora viaja desde
+/// `applyKillSideEffects` (turnResolution.ts) hasta el `LogEntry` del turno, mismo patrón que
+/// `xpDelta`.
+export interface FactionRepChangeInfo {
+  faction: string;
+  delta: number;
+  newValue: number;
+}
+
 /// Puro — no toca la base de datos, solo calcula el próximo valor acotado. El caller decide
 /// cuándo persistirlo (turnResolution.ts, mismo sitio de siempre).
 export function applyFactionRepDelta(factionsStatus: Record<string, number>, faction: string, delta: number): Record<string, number> {

@@ -62,7 +62,7 @@ interface VarianteTiempoOut {
 interface EnciclopediaBuildContext {
   imagePromptsFor: (entityType: ImagePromptEntityType, entitySlug: string) => { thumbnail: string | null; banner: string | null };
   variantesSexoFor: (
-    entityType: 'npc' | 'fauna' | 'raza',
+    entityType: 'npc' | 'fauna' | 'flora' | 'raza',
     baseSlug: string,
     variantes: Record<string, SexoVariantesEntry>,
   ) => VarianteSexoOut[] | undefined;
@@ -160,6 +160,11 @@ function buildItemsSection(items: Awaited<ReturnType<typeof prisma.itemCatalog.f
 // cosechables — el bio real vivía en el Npc (fauna cazable) o en harvestSourceDescriptions
 // (flora/mineral sin Npc propio, ver worldCatalog.ts) pero nunca llegaba al frontend.
 function buildFaunaFloraSection(ctx: EnciclopediaBuildContext) {
+  // Auditoría "revisar partida" (2026-08-30, "fauna y flora en carpetas separadas") — mismo
+  // criterio real que `esFauna` (abajo), extraído aparte porque hace falta ANTES de calcular esa
+  // fila para resolver `entityType` en las 4 llamadas de imagen.
+  const imageEntityTypeFor = (sourceSlug: string): 'fauna' | 'flora' =>
+    ctx.npcSlugs.has(sourceSlug) || harvestSourcesThatAreFaunaWithoutNpc.has(sourceSlug) ? 'fauna' : 'flora';
   return Array.from(ctx.sourceDisplayNameBySlug.entries()).map(([sourceSlug, sourceName]) => ({
     sourceSlug,
     sourceName,
@@ -170,15 +175,21 @@ function buildFaunaFloraSection(ctx: EnciclopediaBuildContext) {
     // `esFauna` (bug real 2026-07-22, separado a propósito de `cazable`): si es un animal de
     // verdad, tenga o no ficha de combate — Espina del Viento/Cornante/Sombra de Kroj son
     // fauna sin Npc propio (peligro ambiental o fuera del núcleo jugable), no flora/mineral.
+    //
+    // Auditoría "revisar partida" (2026-08-30, "fauna y flora en carpetas separadas"): antes las
+    // 4 líneas de imagen de abajo usaban el literal 'fauna' siempre, aunque `esFauna` (esta misma
+    // fila) YA calculaba el criterio real — animal vs. planta/mineral se pintaban con el mismo
+    // `entityType`, mezclando ambos en la misma carpeta de disco. Ahora reutiliza `esFauna` para
+    // resolver dinámicamente 'fauna' o 'flora'.
     esFauna: ctx.npcSlugs.has(sourceSlug) || harvestSourcesThatAreFaunaWithoutNpc.has(sourceSlug),
     // Zona de origen (2026-07-29, colapsables de fauna/flora por zona en la Enciclopedia).
     region: ctx.regionFor(sourceSlug),
     description: ctx.npcBySlug.get(sourceSlug)?.bio ?? harvestSourceDescriptions[sourceSlug] ?? null,
     yields: ctx.yieldsBySource.get(sourceSlug) ?? [],
-    imagePrompts: ctx.imagePromptsFor('fauna', sourceSlug),
-    imageUrls: imageUrlsFor('fauna', sourceSlug),
-    variantesSexo: ctx.variantesSexoFor('fauna', sourceSlug, FAUNA_SEXO_VARIANTES),
-    discovered: ctx.isDiscovered('fauna', sourceSlug),
+    imagePrompts: ctx.imagePromptsFor(imageEntityTypeFor(sourceSlug), sourceSlug),
+    imageUrls: imageUrlsFor(imageEntityTypeFor(sourceSlug), sourceSlug),
+    variantesSexo: ctx.variantesSexoFor(imageEntityTypeFor(sourceSlug), sourceSlug, FAUNA_SEXO_VARIANTES),
+    discovered: ctx.isDiscovered(imageEntityTypeFor(sourceSlug), sourceSlug),
     // Rediseño de la vista de combate (2026-07-28): solo presentes si hay Npc real detrás
     // (`cazable`) — flora/mineral sin ficha de combate se queda con los cinco en null/vacío.
     // `level` (2026-07-29, indicador de dificultad antes de Combatir): sin esto, la fauna no
@@ -551,7 +562,7 @@ export async function worldRoutes(app: FastifyInstance) {
     // -hembra para su propia imagen, igual que las variantes regionales de raza — undefined si la
     // entidad no tiene entrada en el mapa (la inmensa mayoría de NPCs, todos los PRINCIPAL con
     // nombre propio, y toda la flora/mineral).
-    const variantesSexoFor = (entityType: 'npc' | 'fauna' | 'raza', baseSlug: string, variantes: Record<string, SexoVariantesEntry>) => {
+    const variantesSexoFor = (entityType: 'npc' | 'fauna' | 'flora' | 'raza', baseSlug: string, variantes: Record<string, SexoVariantesEntry>) => {
       const entry = variantes[baseSlug];
       if (!entry) return undefined;
       return (['macho', 'hembra'] as const).map((sexo) => ({

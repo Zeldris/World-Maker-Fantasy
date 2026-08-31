@@ -14,6 +14,7 @@ import {
   FACTION_REP_PEACE_DELTA,
   REGION_OWNING_FACTIONS,
   type FoundingOutcome,
+  type FactionRepChangeInfo,
 } from './reputation.js';
 import { regionControlFor, parseAgenda } from './worldAgenda.js';
 import {
@@ -495,6 +496,12 @@ export interface NarrateAndPersistResult {
   /// tras la siguiente recarga completa). Mismo criterio que `newQuestInfo`: `null` en la inmensa
   /// mayoría de turnos, que no completan ninguna.
   questCompletedInfo: QuestCompletedInfo | null;
+  /// Feedback de UX (2026-08-30, petición explícita: "falta que la suma de repu o la perdida se
+  /// refleje en la UX de alguna forma, sino el usuario ni se entera") — el delta de reputación de
+  /// facción ya se aplicaba y persistía desde 2026-07-19 (matar/dejar convaleciente a un NPC de
+  /// facción), pero nunca llegaba al jugador. `null` en la inmensa mayoría de turnos (solo se
+  /// rellena cuando este turno mató/incapacitó a un NPC con `faction` real).
+  factionRepChange: FactionRepChangeInfo | null;
   /// Notificación de fundación de reino (2026-08-04, "el Ayuntamiento") — solo al construir el
   /// Ayuntamiento tier 1 desde cero, nunca en una mejora. `null` en la inmensa mayoría de turnos.
   newKingdomFounded: KingdomFoundedInfo | null;
@@ -1826,7 +1833,7 @@ async function applyCombatExchangeToNpcState(params: {
   /// Ver comentario de `completeNpcTargetQuests` (questResolution.ts) — reloj sintético
   /// "después de mainLogEntry" para que la recompensa de misión se lea en el orden correcto.
   nextAfterMainLogCreatedAt?: () => Date;
-}): Promise<{ questCompletedInfo: QuestCompletedInfo | null }> {
+}): Promise<{ questCompletedInfo: QuestCompletedInfo | null; factionRepChange: FactionRepChangeInfo | null }> {
   const {
     tx,
     npcAttackTarget,
@@ -1845,11 +1852,12 @@ async function applyCombatExchangeToNpcState(params: {
     nextAfterMainLogCreatedAt,
   } = params;
   let questCompletedInfo: QuestCompletedInfo | null = null;
+  let factionRepChange: FactionRepChangeInfo | null = null;
   if (
     !npcAttackTarget ||
     !(npcNuevaEnergia !== null || (npcAttackHits && npcTargetNewCondicion) || analizarRivalExito || abilityNamesToIncrement.length > 0)
   ) {
-    return { questCompletedInfo };
+    return { questCompletedInfo, factionRepChange };
   }
   const scope = scopeFor(npcAttackTarget.kind, currentLocationId);
   const esGolpeDeMuerte = npcAttackHits && npcTargetNewCondicion && (npcTargetNewCondicion === 'CONVALECIENTE' || npcTargetNewCondicion === 'MUERTO');
@@ -1898,7 +1906,7 @@ async function applyCombatExchangeToNpcState(params: {
   });
 
   if (esGolpeDeMuerte) {
-    questCompletedInfo = await applyKillSideEffects({
+    const killSideEffects = await applyKillSideEffects({
       tx,
       npc: npcAttackTarget,
       nuevaCondicion: npcTargetNewCondicion,
@@ -1909,8 +1917,10 @@ async function applyCombatExchangeToNpcState(params: {
       activeRegion,
       nextAfterMainLogCreatedAt,
     });
+    questCompletedInfo = killSideEffects.questCompletedInfo;
+    factionRepChange = killSideEffects.factionRepChange;
   }
-  return { questCompletedInfo };
+  return { questCompletedInfo, factionRepChange };
 }
 
 /// Extraído de `applyCombatExchangeToNpcState` (Combate múltiple, 2026-08-25) — cierre de
@@ -1929,7 +1939,7 @@ async function applyKillSideEffects(params: {
   nuevaFictionalDateLabel: string;
   activeRegion: string | null;
   nextAfterMainLogCreatedAt?: () => Date;
-}): Promise<QuestCompletedInfo | null> {
+}): Promise<{ questCompletedInfo: QuestCompletedInfo | null; factionRepChange: FactionRepChangeInfo | null }> {
   const { tx, npc, nuevaCondicion, saveId, worldId, nuevoFictionalMinutes, nuevaFictionalDateLabel, activeRegion, nextAfterMainLogCreatedAt } = params;
   // Cierre detectable por backend (roadmap 2026-07-19, mecánicas): si alguna misión ACTIVA
   // apuntaba a este NPC (Quest.targetNpcId, ver newQuest más arriba), derrotarlo la cierra sola
@@ -1943,10 +1953,20 @@ async function applyKillSideEffects(params: {
   // viejo ±1 sin límite). Atacar a un NPC de una facción concreta resta bastante más de lo que
   // se recupera resolviendo algo en paz (deltas asimétricos, "pozo real" para ENEMIGO); sin
   // facción (fauna, NPCs independientes) no afecta a nada.
+  //
+  // Feedback de UX (2026-08-30, petición explícita: "falta que la suma de repu o la perdida se
+  // refleje en la UX de alguna forma, sino el usuario ni se entera") — el delta ya se aplicaba y
+  // persistía desde 2026-07-19, pero nunca se comunicaba de vuelta: el jugador solo podía
+  // enterarse abriendo el panel de Reputación por su cuenta, sin ninguna señal de que algo acababa
+  // de cambiar. Se devuelve aquí el resultado (facción/delta/valor nuevo) para que
+  // `narrateAndPersistTurn` lo propague hasta el LogEntry del turno, mismo patrón que `xpDelta`.
+  let factionRepChange: FactionRepChangeInfo | null = null;
   if (npc.faction) {
     const currentWorldState = await tx.worldState.findUnique({ where: { saveId }, select: { factionsStatus: true } });
-    const updatedFactionsStatus = applyFactionRepDelta(parseFactionsStatus(currentWorldState?.factionsStatus), npc.faction, FACTION_REP_ATTACK_DELTA);
+    const currentStatus = parseFactionsStatus(currentWorldState?.factionsStatus);
+    const updatedFactionsStatus = applyFactionRepDelta(currentStatus, npc.faction, FACTION_REP_ATTACK_DELTA);
     await tx.worldState.update({ where: { saveId }, data: { factionsStatus: updatedFactionsStatus } });
+    factionRepChange = { faction: npc.faction, delta: FACTION_REP_ATTACK_DELTA, newValue: updatedFactionsStatus[npc.faction] };
   }
 
   // Población dinámica (docs/16-poblacion-dinamica.md): solo MUERTO resta población de verdad —
@@ -1954,7 +1974,7 @@ async function applyKillSideEffects(params: {
   if (nuevaCondicion === 'MUERTO') {
     await decrementPopulationOnDeath(tx, worldId, npc.raza, npc.slug, activeRegion);
   }
-  return questCompletedInfo;
+  return { questCompletedInfo, factionRepChange };
 }
 
 /// Despiece/recolección (§ 3.3), extraído de la transacción de `narrateAndPersistTurn` (refactor
@@ -4412,6 +4432,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     newQuestInfo: { title: string; objetivo: string } | null;
     newQuestOfferInfo: { title: string; description: string } | null;
     questCompletedInfo: QuestCompletedInfo | null;
+    factionRepChange: FactionRepChangeInfo | null;
     newKingdomFounded: KingdomFoundedInfo | null;
     companionCreated: { id: string; name: string; role: string; notes: string } | null;
     partiallyLootedSlugs: string[];
@@ -4518,6 +4539,10 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     // conceden recompensa de verdad. Si dos misiones se completaran en el mismo turno (caso raro),
     // gana la última — la recompensa real de ambas se concede igual, solo la tarjeta es una sola.
     let questCompletedInfo: QuestCompletedInfo | null = null;
+    // Feedback de UX (2026-08-30) — ver comentario completo en `applyKillSideEffects`. Mismo
+    // criterio que `questCompletedInfo`: si dos NPC de facción caen en el mismo turno (raro, pero
+    // posible en combate múltiple), gana el último — cada delta real ya se aplicó/persistió igual.
+    let factionRepChange: FactionRepChangeInfo | null = null;
     // Notificación de fundación de reino (2026-08-04, ver NarrateAndPersistResult.newKingdomFounded
     // más arriba) — se rellena solo al construir el Ayuntamiento tier 1 desde cero (nunca en una
     // mejora de tier), para que el frontend abra el popup de fundación de facción.
@@ -4657,6 +4682,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
       nextAfterMainLogCreatedAt,
     });
     if (combatExchangeResult.questCompletedInfo) questCompletedInfo = combatExchangeResult.questCompletedInfo;
+    if (combatExchangeResult.factionRepChange) factionRepChange = combatExchangeResult.factionRepChange;
     // Bug real (auditoría "revisar partida" 2026-08-14): la recompensa de misión se narraba
     // ("+100 XP" en el texto de `completeNpcTargetQuests`) pero nunca se sumaba al XP real del
     // turno — a diferencia del camino de saqueo (más abajo, `lootResult.questRewardXp`), que sí lo
@@ -4696,7 +4722,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
         if (caido.tipo !== 'NPC' || !caido.npcId) continue;
         const npcRow = npcCaidoById.get(caido.npcId);
         if (!npcRow) continue;
-        const killQuestInfo = await applyKillSideEffects({
+        const killSideEffects = await applyKillSideEffects({
           tx,
           npc: npcRow,
           nuevaCondicion: caido.nuevaCondicion,
@@ -4707,10 +4733,11 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
           activeRegion,
           nextAfterMainLogCreatedAt,
         });
-        if (killQuestInfo) {
-          questCompletedInfo = killQuestInfo;
-          questRewardXp += killQuestInfo.rewardXp ?? 0;
+        if (killSideEffects.questCompletedInfo) {
+          questCompletedInfo = killSideEffects.questCompletedInfo;
+          questRewardXp += killSideEffects.questCompletedInfo.rewardXp ?? 0;
         }
+        if (killSideEffects.factionRepChange) factionRepChange = killSideEffects.factionRepChange;
       }
     }
 
@@ -5813,6 +5840,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
       newQuestInfo,
       newQuestOfferInfo,
       questCompletedInfo,
+      factionRepChange,
       newKingdomFounded,
       companionCreated,
       partiallyLootedSlugs,
@@ -5850,6 +5878,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     newQuestInfo,
     newQuestOfferInfo,
     questCompletedInfo,
+    factionRepChange,
     newKingdomFounded,
     companionCreated,
     partiallyLootedSlugs,
@@ -6257,6 +6286,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     dynamicModeOffer,
     travelResumed,
     questCompletedInfo,
+    factionRepChange,
     newKingdomFounded,
     companionCreated,
     esperandoDefensaJugador: !!nuevoPendingNpcAttack,

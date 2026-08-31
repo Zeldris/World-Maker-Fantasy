@@ -159,6 +159,11 @@ describe('Misión de apertura: combate contra el Orco Enfurecido (integración r
   it('atacar repetidamente reduce la condición física del NPC hasta CONVALECIENTE, sin llamar a Ollama (camino tabulado)', async () => {
     const app = await buildApp();
     const action = "Descargo un golpe directo con todo el peso de mi arma detrás 'Orco enfurecido'.";
+    // Feedback de UX (2026-08-30, "falta que la suma de repu... se refleje en la UX") — se captura
+    // el body del turno que de verdad deja al NPC CONVALECIENTE (el Orco Enfurecido es Clan Serhu),
+    // para comprobar que la respuesta HTTP trae `factionRepChange` en ese turno exacto.
+    type NarrateBodyOnKill = { factionRepChange: { faction: string; delta: number; newValue: number } | null };
+    let narrateBodyOnKill: NarrateBodyOnKill | null = null;
 
     for (let turno = 0; turno < 4; turno++) {
       const classifyRes = await app.inject({
@@ -178,7 +183,10 @@ describe('Misión de apertura: combate contra el Orco Enfurecido (integración r
       expect(narrateRes.statusCode).toBe(200);
 
       const state = await prisma.npcState.findFirst({ where: { saveId, npcId } });
-      if (state?.condicionFisica === 'CONVALECIENTE') break;
+      if (state?.condicionFisica === 'CONVALECIENTE') {
+        narrateBodyOnKill = lastNdjsonLine(narrateRes.payload) as unknown as NarrateBodyOnKill;
+        break;
+      }
     }
 
     expect(classifyAction).not.toHaveBeenCalled();
@@ -186,6 +194,13 @@ describe('Misión de apertura: combate contra el Orco Enfurecido (integración r
     const finalState = await prisma.npcState.findFirst({ where: { saveId, npcId } });
     expect(finalState?.condicionFisica).toBe('CONVALECIENTE');
     expect(finalState?.saqueado).toBe(false); // nunca se saquea solo por incapacitarlo
+
+    // El Orco Enfurecido es Clan Serhu (worldCatalog.ts) — dejarlo CONVALECIENTE dispara
+    // `applyKillSideEffects`, que resta reputación real (FACTION_REP_ATTACK_DELTA) y ahora
+    // devuelve el resultado en la respuesta HTTP para que el frontend lo muestre.
+    expect(narrateBodyOnKill?.factionRepChange).toEqual({ faction: 'Clan Serhu', delta: -150, newValue: 2350 });
+    const worldStateAfter = await prisma.worldState.findUniqueOrThrow({ where: { saveId } });
+    expect((worldStateAfter.factionsStatus as Record<string, number>)['Clan Serhu']).toBe(2350);
 
     // `golpes_mutuos` (ambos lados conectan con dados pinchados al máximo) — pero Gorhorn siempre
     // gana la iniciativa con este mock (empate → gana jugador, ver rollInitiative), así que el NPC

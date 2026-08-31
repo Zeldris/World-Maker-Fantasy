@@ -18,7 +18,8 @@ const OUTPUT_PATH = path.resolve(import.meta.dirname, '../../output/image-prompt
 const SECTION_LABEL: Record<ImagePromptEntityType, string> = {
   npc: 'NPCs',
   item: 'Objetos',
-  fauna: 'Fauna y flora',
+  fauna: 'Fauna',
+  flora: 'Flora y minerales',
   ability: 'Habilidades',
   raza: 'Razas',
   personaje: 'Personajes jugables',

@@ -236,6 +236,246 @@ export const FAUNA_SEXO_VARIANTES: Record<string, SexoVariantesEntry> = {
       edadMaxima: 17,
     },
   },
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // 16 especies añadidas 2026-08-31 (mismo criterio de las 13 anteriores, ver comentario de
+  // cabecera del archivo) — defining attribute por especie (de worldCatalog.ts, `fauna`):
+  // canizor → destreza (aunque la propia bio ya trae dimorfismo: hembras más corpulentas y de
+  // pelaje abundante, machos más finos y de pelo corto), gesgurio → destreza (sigilo de
+  // emboscada), ruptidar → sin combate real (inofensivo total, se usa su único rasgo narrativo:
+  // el desgaste/disolución de la coraza), ferike → destreza/fuerza (bio ya trae dimorfismo:
+  // hembras sin cola pero alfas cazadoras con dientes/garras más fuertes), guchapo →
+  // constitucion, lebude → destreza (coordinación de colmena), escorante → constitucion,
+  // jusha-esmeralda → destreza (esquiva, población escasa), miruina → destreza (caza nocturna en
+  // manada), quio → sin combate real (inofensivo total, filtrador), tura-jusha → destreza,
+  // cuernahoja → destreza/fuerza (bio ya trae dimorfismo: hembras más rojas, cuernos más anchos,
+  // defienden la manada), imanio → constitucion (coraza de rocas), nuente → destreza/arcano
+  // (vuelo nocturno errático + visión de magnetismo), towrgu → destreza (emboscador solitario),
+  // coracelo → constitucion/inteligencia (madriguera fortificada, uso de herramientas).
+  'canizor': {
+    macho: {
+      rasgoFisico: 'Fiera de cabeza y mandíbula de tigre sobre porte lobuno, pelaje corto y de tonos claros, complexión más fina y estilizada que la del resto de la especie.',
+      description: 'Marca territorio en solitario con aullidos largos al caer la noche, y es quien con más frecuencia doman los altos cargos del Clan Maktor.',
+      medidaCm: 95,
+      edadMaxima: 16,
+    },
+    hembra: {
+      rasgoFisico: 'Fiera de cabeza y mandíbula de tigre sobre porte lobuno, pelaje abundante y largo que le da una silueta más corpulenta, garras delanteras notablemente más gruesas.',
+      description: 'Es ella quien de verdad sostiene un territorio de caza frente a cualquier otro Canizor rival — ningún macho lo defiende con la misma ferocidad.',
+      medidaCm: 100,
+      edadMaxima: 18,
+    },
+  },
+  gesgurio: {
+    macho: {
+      rasgoFisico: 'Insecto de caparazón quitinoso color arcilla roja con púas más oscuras, patas dentadas bajo el caparazón, silueta algo más alargada.',
+      description: 'Sigue de lejos cualquier señal de vida moribunda, esperando paciente a que perezca antes de acercarse.',
+      medidaCm: 16,
+      edadMaxima: 5,
+    },
+    hembra: {
+      rasgoFisico: 'Insecto de caparazón quitinoso más compacto y de púas más numerosas y apretadas, tono arcilla roja algo más oscuro que se funde mejor con la roca de la Hondonada.',
+      description: 'Es ella quien se acerca más cerca de la presa sin ser detectada — el camuflaje contra la piedra se le da mejor que a ningún macho de la especie.',
+      medidaCm: 14,
+      edadMaxima: 6,
+    },
+  },
+  ruptidar: {
+    macho: {
+      rasgoFisico: 'Reptil serpentiforme de cuerpo seco y duro como piedra, coraza inerte de tono arenoso uniforme.',
+      description: 'Se desliza bajo la arena filtrando materia orgánica, indiferente a cualquier presencia a su alrededor.',
+      medidaCm: 48,
+      edadMaxima: 4,
+    },
+    hembra: {
+      rasgoFisico: 'Reptil serpentiforme de cuerpo algo más largo y grueso, coraza de un tono arenoso más pálido, casi blanquecino en la zona ventral.',
+      description: 'Filtra tramos de arena más amplios que cualquier macho antes de que su coraza termine deshaciéndose al morir.',
+      medidaCm: 55,
+      edadMaxima: 4,
+    },
+  },
+  ferike: {
+    macho: {
+      rasgoFisico: 'Bestia de pelaje espeso con raíz negra y rastas verde oscuro que arrastran por el suelo, ojos violeta oscuro brillantes, dientes largos que no dejan cerrar la boca del todo, cola terminada en espigas de pelo negro que puede apretar como una maza.',
+      description: 'Usa la cola-maza tanto para golpear en barridos como en el ritual de cortejo, aunque no es quien encabeza la caza real de la manada.',
+      medidaCm: 105,
+      edadMaxima: 18,
+    },
+    hembra: {
+      rasgoFisico: 'Bestia de pelaje espeso con raíz negra y rastas verde oscuro que arrastran por el suelo, ojos violeta oscuro brillantes, sin cola, dientes y garras notablemente más largos y afilados que los del macho.',
+      description: 'Es la cazadora y alfa real de la manada — el gruñido bajo que avisa antes de cargar casi siempre sale de ella primero.',
+      medidaCm: 110,
+      edadMaxima: 20,
+    },
+  },
+  guchapo: {
+    macho: {
+      rasgoFisico: 'Sapo redondo y gordo de piel tersa por el agua acumulada, lengua trifurcada larga, coloración parda apagada, frente corta e hinchada llena de verrugas.',
+      description: 'Muy asustadizo, se sumerge en la charca más profunda ante el menor sobresalto.',
+      medidaCm: 150,
+      edadMaxima: 14,
+    },
+    hembra: {
+      rasgoFisico: 'Sapo redondo de piel tersa aún más hinchada por el agua retenida, coloración verdosa algo más intensa, verrugas frontales más marcadas.',
+      description: 'Aguanta mucho más tiempo sumergida sin salir a respirar que cualquier macho, lo que la hace casi imposible de localizar en una charca profunda.',
+      medidaCm: 155,
+      edadMaxima: 16,
+    },
+  },
+  lebude: {
+    macho: {
+      rasgoFisico: 'Híbrido luciérnaga-avispa negro con rayas gris ceniza, ojos blancos de libélula, aguijón grande, luminiscencia abdominal intensa.',
+      description: 'Tímido en solitario, coordinado y agresivo solo cuando caza junto al resto de la colmena.',
+      medidaCm: 11,
+      edadMaxima: 2,
+    },
+    hembra: {
+      rasgoFisico: 'Híbrido luciérnaga-avispa de abdomen más ancho y aguijón proporcionalmente mayor, rayas gris ceniza más marcadas, luminiscencia más tenue y constante.',
+      description: 'Es quien de verdad coordina el ataque en manada contra un Escorante — la colmena entera sigue el rumbo que marca ella.',
+      medidaCm: 12,
+      edadMaxima: 3,
+    },
+  },
+  escorante: {
+    macho: {
+      rasgoFisico: 'Escarabajo de caparazón oscuro y amarillo con detalles arcillosos y rojos, cuerno frontal en forma de pala, pinchos diminutos por todo el caparazón.',
+      description: 'Prefiere enterrarse en zonas húmedas antes que enfrentarse a un depredador, saliendo solo a alimentarse del Musgo Arcilla.',
+      medidaCm: 48,
+      edadMaxima: 10,
+    },
+    hembra: {
+      rasgoFisico: 'Escarabajo de caparazón más grueso y compacto, cuerno frontal algo más corto y romo, pinchos que segregan una mayor cantidad del líquido repelente.',
+      description: 'Resiste mucho mejor el asedio de una manada de Lebudes sin necesidad de enterrarse — su caparazón aguanta lo que ningún macho soporta a la intemperie.',
+      medidaCm: 52,
+      edadMaxima: 12,
+    },
+  },
+  'jusha-esmeralda': {
+    macho: {
+      rasgoFisico: 'Pez de escamas verde musgo con brillos azul oscuro, aleta dorsal espinosa sin membrana, cola amplia, hocico redondo con dientes planos.',
+      description: 'Se mantiene esquivo en las charcas más profundas, saliendo poco a la superficie.',
+      medidaCm: 24,
+      edadMaxima: 6,
+    },
+    hembra: {
+      rasgoFisico: 'Pez de escamas verde musgo algo más pálidas, cola más ancha y potente, aleta dorsal de espinas más cortas.',
+      description: 'Es la primera en saltar de charca en charca cuando la sequía aprieta — ningún macho arriesga el salto por barro con la misma decisión.',
+      medidaCm: 22,
+      edadMaxima: 7,
+    },
+  },
+  miruina: {
+    macho: {
+      rasgoFisico: 'Roedor nocturno de escamas de las que brota pelo, negro con mechas blancas, incisivos orientados en varias direcciones, ojos diminutos casi ciegos de día.',
+      description: 'Amplía la madriguera bajo el agua durante el día y se une a la manada al caer la noche para cazar.',
+      medidaCm: 108,
+      edadMaxima: 9,
+    },
+    hembra: {
+      rasgoFisico: 'Roedor nocturno de pelaje impermeable más denso, mechas blancas más extendidas por el lomo, incisivos algo más largos.',
+      description: 'Es quien marca el rumbo de la manada durante la caza nocturna — ningún macho localiza antes que ella un banco de Jusha en la oscuridad del agua.',
+      medidaCm: 104,
+      edadMaxima: 10,
+    },
+  },
+  quio: {
+    macho: {
+      rasgoFisico: 'Gusano tipo oruga blanco con manchas marronas, boca de filtro sin dientes, cuerpo blando y alargado.',
+      description: 'Vive en el fango de las orillas filtrando restos orgánicos, indiferente a cualquier presencia.',
+      medidaCm: 14,
+      edadMaxima: 3,
+    },
+    hembra: {
+      rasgoFisico: 'Gusano tipo oruga de manchas marronas más numerosas y oscuras, boca de filtro algo más ancha.',
+      description: 'Filtra una franja de fango más amplia que cualquier macho antes de desplazarse a otra orilla.',
+      medidaCm: 16,
+      edadMaxima: 3,
+    },
+  },
+  'tura-jusha': {
+    macho: {
+      rasgoFisico: 'Ave sin vuelo de patas larguísimas ensanchadas hacia el pie, garra tipo dinosaurio de uñas retráctiles negras, escamas grises, plumaje alborotado, pico ancho que almacena agua.',
+      description: 'Caza de día crías de Jusha desorientadas, planeando de charca en charca de forma discreta.',
+      medidaCm: 92,
+      edadMaxima: 10,
+    },
+    hembra: {
+      rasgoFisico: 'Ave sin vuelo de patas aún más largas en proporción al cuerpo, garra retráctil de mayor tamaño, plumaje algo más oscuro en el dorso.',
+      description: 'Es quien localiza antes que nadie a las crías de Jusha desorientadas, casi siempre la primera en saltar a por ellas.',
+      medidaCm: 96,
+      edadMaxima: 11,
+    },
+  },
+  cuernahoja: {
+    macho: {
+      rasgoFisico: 'Gacela de cuernos finos y largos casi sin espiral, cuello ancho, pelaje muy corto con menos rojo que la hembra y vientre blanco.',
+      description: 'Se mueve con la manada aportando el grueso de su fuerza, aunque no es quien se planta primero ante una amenaza.',
+      medidaCm: 150,
+      edadMaxima: 13,
+    },
+    hembra: {
+      rasgoFisico: 'Gacela de pelaje con más rojo que el macho por todo el lomo, cuernos notablemente más anchos, cuello igual de ancho.',
+      description: 'Es ella quien se interpone entre la manada y cualquier amenaza real, embistiendo con los cuernos más anchos de toda la especie.',
+      medidaCm: 155,
+      edadMaxima: 14,
+    },
+  },
+  imanio: {
+    macho: {
+      rasgoFisico: 'Insecto tipo bicho palo de quitina blanca con tonos azules, cuerpo largo y fino bajo la armadura de rocas imantadas que va acumulando.',
+      description: 'Vaga lento por Las Agujas Imán buscando Arena Imán, defensivo solo cuando no le queda otra salida.',
+      medidaCm: 130,
+      edadMaxima: 22,
+    },
+    hembra: {
+      rasgoFisico: 'Insecto tipo bicho palo de quitina blanca y azul algo más gruesa, cuerpo más macizo capaz de sostener una armadura de rocas de mayor volumen.',
+      description: 'Acumula una coraza de rocas imantadas más pesada que la de cualquier macho, absorbiendo golpes que a otro Imanio lo dejarían expuesto.',
+      medidaCm: 140,
+      edadMaxima: 25,
+    },
+  },
+  nuente: {
+    macho: {
+      rasgoFisico: 'Bestia nocturna de cuerpo de rana y alas de murciélago, cabeza tipo golem con forma de búho, halos en los ojos, pelaje blanco con mechas azul marino.',
+      description: 'Caza en solitario por las noches de Las Agujas Imán, silencioso y calculador con quien no lo busca.',
+      medidaCm: 98,
+      edadMaxima: 16,
+    },
+    hembra: {
+      rasgoFisico: 'Bestia nocturna de la misma mezcla de rana y murciélago, halos oculares más marcados, mechas azul marino más extendidas por las alas.',
+      description: 'Es quien "ve" el magnetismo con más precisión en la oscuridad total — ningún macho localiza a un Imanio escondido tan rápido como ella.',
+      medidaCm: 102,
+      edadMaxima: 18,
+    },
+  },
+  towrgu: {
+    macho: {
+      rasgoFisico: 'Bestia de pelaje rojo con manchas, corto y erizado, ojos ámbar, garras curvas para trepar y desgarrar, boca extremadamente grande, cola larga negra rematada en mechón rojo.',
+      description: 'Caza en solitario desde la cobertura del Pasto de Sangre, atacando sin previo aviso.',
+      medidaCm: 140,
+      edadMaxima: 15,
+    },
+    hembra: {
+      rasgoFisico: 'Bestia de pelaje rojo con manchas más densas, garras curvas notablemente más largas, cola rematada en un mechón rojo más frondoso.',
+      description: 'Es quien tiende la emboscada más certera desde la hierba alta — ningún macho de la especie iguala su sigilo antes del zarpazo.',
+      medidaCm: 135,
+      edadMaxima: 17,
+    },
+  },
+  coracelo: {
+    macho: {
+      rasgoFisico: 'Roedor de pelaje espeso y largo ceniza claro que arrastra por el suelo, manos muy desarrolladas, zarpas traseras grandes con garras, dos colmillos inferiores cuadrados, cola rematada en bulto de escamas duras.',
+      description: 'Usa piedras y madera para levantar su propia madriguera fortificada, huyendo a ella antes que enfrentarse a nada.',
+      medidaCm: 65,
+      edadMaxima: 11,
+    },
+    hembra: {
+      rasgoFisico: 'Roedor de pelaje espeso marrón claro, manos igual de hábiles, bulto de escamas de la cola algo mayor y de resistencia aún más marcada.',
+      description: 'Construye madrigueras más profundas y mejor reforzadas que las de cualquier macho — es a ella a quien se le atribuyen los refugios más difíciles de forzar de La Sabana Alta.',
+      medidaCm: 62,
+      edadMaxima: 13,
+    },
+  },
 };
 
 /// Razas (2026-07-22, "nos dejamos las razas también para el macho/hembra") — a nivel de RAZA

@@ -1,7 +1,7 @@
 import type { Prisma } from '@prisma/client';
 import { prisma } from '../lib/prisma.js';
 import { normalizeText, matchesAliasBoundary } from './travel.js';
-import { harvestSourceAliases, sourceDisplayNameFor } from '../scripts/worldCatalog.js';
+import { harvestSourceAliases, sourceDisplayNameFor, harvestSourcesThatAreFaunaWithoutNpc } from '../scripts/worldCatalog.js';
 
 /// Enciclopedia progresiva (sesión de diseño 2026-07-23, petición explícita de la usuaria: "en vez
 /// de tener todo descubierto desde el inicio... los npcs, fauna, flora, etc... solo se verá una
@@ -66,11 +66,20 @@ export async function recordEntityDiscoveries(
     }
 
     const npcNameBySlug = new Map(npcs.map((n) => [n.slug, n.name]));
+    // Auditoría "revisar partida" (2026-08-30, "fauna y flora en carpetas separadas") — bug real
+    // encontrado de paso: `buildFaunaFloraSection` (routes/world.ts) ahora resuelve dinámicamente
+    // 'fauna' o 'flora' según el mismo criterio de abajo, pero `isDiscovered` compara el
+    // `entityType` de forma EXACTA contra lo que ya está grabado en `DiscoveredEntity` — si aquí
+    // se seguía grabando SIEMPRE 'fauna', TODA la flora/mineral se habría quedado bloqueada para
+    // siempre en la Enciclopedia (el candado nunca habría coincidido). Mismo criterio real que
+    // `esFauna`/`imageEntityTypeFor`: un NPC cazable, o uno de los 3 animales sin ficha propia.
+    const npcSlugsSet = new Set(npcs.map((n) => n.slug));
     for (const sourceSlug of faunaSlugs) {
       const sourceName = sourceDisplayNameFor(sourceSlug, npcNameBySlug.get(sourceSlug));
       const aliases = [sourceName, ...(harvestSourceAliases[sourceSlug] ?? [])];
       if (aliases.some((a) => matchesAliasBoundary(normalized, normalizeText(a)))) {
-        discovered.push({ entityType: 'fauna', entitySlug: sourceSlug });
+        const entityType = npcSlugsSet.has(sourceSlug) || harvestSourcesThatAreFaunaWithoutNpc.has(sourceSlug) ? 'fauna' : 'flora';
+        discovered.push({ entityType, entitySlug: sourceSlug });
       }
     }
 

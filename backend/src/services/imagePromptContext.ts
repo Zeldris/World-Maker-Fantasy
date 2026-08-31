@@ -141,7 +141,11 @@ export async function loreContextFor(worldId: string, entityType: ImagePromptEnt
     return { name: item.name, loreContext: `Categoría: ${item.category}. ${item.description}${medidas}${origen}` };
   }
 
-  if (entityType === 'fauna') {
+  // Auditoría "revisar partida" (2026-08-30, "fauna y flora en carpetas separadas") — `'fauna'` y
+  // `'flora'` comparten exactamente esta misma lógica (el criterio real, `cazable`, ya distinguía
+  // internamente animal de planta/mineral desde 2026-07-22); solo cambia dónde se guarda/busca el
+  // archivo de imagen (`imageAssets.ts`), decidido ya en el punto de llamada (`buildFaunaFloraSection`).
+  if (entityType === 'fauna' || entityType === 'flora') {
     // Variante por sexo (2026-07-22, ver sexDimorphism.ts): solo fauna de verdad tiene entrada en
     // FAUNA_SEXO_VARIANTES — flora/mineral nunca matchea, así que sigue igual que antes para ellos.
     const sexoMatch = stripSexoSuffix(entitySlug);

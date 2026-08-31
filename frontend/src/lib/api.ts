@@ -233,6 +233,11 @@ export interface NarrateResponse {
   /// marca visual de "misión completada" en vez de una tarjeta sintética aparte. `null` en la
   /// inmensa mayoría de turnos, que no completan ninguna.
   questCompletedInfo: { logEntryId: string; text: string; title: string; grantedItems: string[]; rewardXp: number } | null
+  /// Feedback de UX (2026-08-30, petición explícita: "falta que la suma de repu o la perdida se
+  /// refleje en la UX... sino el usuario ni se entera") — el delta de reputación de facción ya se
+  /// aplicaba y persistía al matar/dejar convaleciente a un NPC con `faction` real, pero nunca
+  /// llegaba al jugador. `null` en la inmensa mayoría de turnos.
+  factionRepChange: { faction: string; delta: number; newValue: number } | null
   /// Notificación de fundación de reino (2026-08-04, "el Ayuntamiento") — solo al construir el
   /// Ayuntamiento tier 1 desde cero, nunca en una mejora. `null` en la inmensa mayoría de turnos.
   newKingdomFounded: KingdomFoundedInfo | null

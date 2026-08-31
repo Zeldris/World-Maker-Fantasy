@@ -320,6 +320,12 @@ export interface LogEntry {
   isPlayerAction?: boolean
   createdAt: string
   xpDelta?: number
+  /// Feedback de UX (2026-08-30, petición explícita: "falta que la suma de repu o la perdida se
+  /// refleje en la UX... sino el usuario ni se entera") — mismo patrón que `xpDelta`: el backend
+  /// ya calculaba y persistía el delta de reputación de facción al matar/dejar convaleciente a un
+  /// NPC con `faction` real, pero nunca llegaba al jugador salvo abriendo el panel de Reputación a
+  /// mano. `undefined` en la inmensa mayoría de turnos.
+  factionRepChange?: { faction: string; delta: number; newValue: number }
   /// Marca la entrada de "sube a nivel N" (roadmap de animaciones 2026-07-20) para que LogPanel
   /// le dé su propio marco/gema/barrido en vez de tratarla como una narración más.
   isLevelUp?: boolean

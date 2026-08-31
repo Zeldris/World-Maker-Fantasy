@@ -7,6 +7,7 @@ import { startingAbilitiesFor } from '../services/startingAbilities.js';
 import { slugify } from '../lib/slugify.js';
 import { BERIG_RAZAS, BERIG_PERSONAJES } from '../services/berigLore.js';
 import { CONSTRUCTION_RECIPES } from '../services/construction.js';
+import { harvestSourcesThatAreFaunaWithoutNpc } from './worldCatalog.js';
 
 /// Siembra por lotes los prompts de imagen (checklist 2026-07-21/22, punto 7) para NPCs, objetos,
 /// fauna/flora y habilidades de clase, en sus DOS perfiles de talla (thumbnail/banner, ver
@@ -87,9 +88,14 @@ async function main() {
     await seedBoth(worldId, 'item', item.slug);
   }
 
+  // Auditoría "revisar partida" (2026-08-30, "fauna y flora en carpetas separadas") — mismo
+  // criterio real que `buildFaunaFloraSection` (routes/world.ts): un NPC real cazable, o uno de
+  // los 3 animales sin ficha propia, va a 'fauna'; el resto (planta/mineral) va a 'flora'.
+  const npcSlugsSet = new Set(npcs.map((n) => n.slug));
   console.log(`  Fauna y flora (${sourceSlugs.size})...`);
   for (const sourceSlug of sourceSlugs) {
-    await seedBoth(worldId, 'fauna', sourceSlug);
+    const entityType = npcSlugsSet.has(sourceSlug) || harvestSourcesThatAreFaunaWithoutNpc.has(sourceSlug) ? 'fauna' : 'flora';
+    await seedBoth(worldId, entityType, sourceSlug);
   }
 
   console.log(`  Razas (${BERIG_RAZAS.length})...`);

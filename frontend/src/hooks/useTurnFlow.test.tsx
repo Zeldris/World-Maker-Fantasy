@@ -55,6 +55,7 @@ function baseNarrateResponse(overrides: Partial<Awaited<ReturnType<typeof reques
     newQuestOfferInfo: null,
     dynamicModeOffer: null,
     questCompletedInfo: null,
+    factionRepChange: null,
     newKingdomFounded: null,
     companionCreated: null,
     territories: [] as TerritoryInfo[],

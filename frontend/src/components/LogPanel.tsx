@@ -466,6 +466,21 @@ export const LogPanel = memo(function LogPanel({
                     +{entry.xpDelta} XP
                   </span>
                 )}
+                {/* Feedback de UX (2026-08-30, "falta que la suma de repu o la perdida se refleje
+                    en la UX... sino el usuario ni se entera") — mismo patrón visual que el chip de
+                    XP, en rojo/verde según el signo del delta (hoy solo se dispara en negativo, al
+                    matar/dejar convaleciente a un NPC de facción — el signo queda genérico por si
+                    algún día una acción distinta suma reputación). */}
+                {!!entry.factionRepChange && (
+                  <span
+                    className={`rounded-full border px-1.5 py-0.5 font-mono text-2xs ${
+                      entry.factionRepChange.delta < 0 ? 'border-danger-600/50 bg-danger-500/10 text-danger-300' : 'border-moss-600/50 bg-moss-500/10 text-moss-300'
+                    }`}
+                  >
+                    {entry.factionRepChange.delta > 0 ? '+' : ''}
+                    {entry.factionRepChange.delta} {entry.factionRepChange.faction}
+                  </span>
+                )}
               </div>
             </div>
           ),
