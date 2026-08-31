@@ -188,8 +188,11 @@ export const BOUNGO_ROAST_RECIPE: CraftingRecipe = {
 // verificaba mecánicamente — recolectar en la zona daba el agua YA hervida sin ningún gate real,
 // pese a que su propia `description` de catálogo ("hervido sobre fuego") ya admitía que no es un
 // recurso crudo. Ahora es una receta real: Liquen húmedo del cauce (sí crudo, sigue siendo
-// HarvestYield) + hervirlo. Mismo patrón que BOUNGO_ROAST_RECIPE (cocinar sin oficio complejo, sin
-// ubicación fija — hervir agua no exige una fragua ni un campamento concreto).
+// HarvestYield) + hervirlo, sin ubicación fija (hervir agua no exige una fragua ni un campamento
+// concreto). Oficio cocinero añadido (corregido 2026-08-31, "revisar cocina") — el comentario
+// original decía "mismo patrón que BOUNGO_ROAST_RECIPE (sin oficio)", pero esa receta SÍ lo lleva;
+// mismo criterio real que Boungo/Pan de trigo/Panal/Cuajada: preparación de comida/bebida real del
+// clan, no pura supervivencia genérica como ahumar carne cruda sobre cualquier fuego.
 export const BOILED_LICHEN_WATER_RECIPE: CraftingRecipe = {
   key: 'boiledLichenWater',
   verbRegex: /herv|hierv|cocin|prepar/,
@@ -199,6 +202,8 @@ export const BOILED_LICHEN_WATER_RECIPE: CraftingRecipe = {
   resultName: 'Agua hervida de liquen',
   resultCatalogSlug: 'agua-hervida-liquen',
   resultDescription: 'Liquen húmedo del cauce hervido sobre fuego — más segura de beber que masticarlo en crudo.',
+  tier: 1,
+  oficio: 'cocinero-orco-llanuras',
   narrationWant:
     'El personaje quiere hervir agua con liquen, pero no lleva encima al menos 1 Liquen húmedo del cauce (o no tiene fuego encendido cerca) — narra que lo intenta o lo considera, pero no que la hierve de verdad.',
   narrationDo: 'El personaje hierve su Liquen húmedo del cauce sobre el fuego — narra la escena con naturalidad. El objeto ya se gestiona automáticamente por el backend.',
@@ -822,8 +827,10 @@ export const JUSHA_SMOKED_MEAT_RECIPE: CraftingRecipe = {
   resultName: 'Carne de Jusha ahumada',
   resultCatalogSlug: 'carne-jusha-ahumada',
   resultDescription: 'Carne de Jusha Esmeralda ahumada sobre brasas — se conserva mejor que cruda y rinde más energía.',
-  tier: 1,
-  oficio: 'cocinero-orco-llanuras',
+  // Sin tier/oficio a propósito (corregido 2026-08-31, "revisar cocina" — mismo criterio que
+  // smokeMeat, arriba): ahumar carne sobre fuego es habilidad de supervivencia básica, no algo que
+  // exija el oficio de cocinero — no había ninguna razón de lore real para tratar esta receta
+  // distinto solo por ser de una especie concreta (Jusha) en vez de la carne genérica.
   narrationWant:
     'El personaje quiere ahumar carne de Jusha, pero no lleva encima al menos 2 raciones de carne de Jusha — narra que lo intenta o lo considera, pero no que la ahuma de verdad.',
   narrationDo: 'El personaje ahuma su carne de Jusha sobre brasas — narra la escena con naturalidad. El objeto ya se gestiona automáticamente por el backend.',

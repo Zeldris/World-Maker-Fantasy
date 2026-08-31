@@ -3746,6 +3746,19 @@ de Jusha ahumada) tenía esta inversión — en todos los demás casos el crafte
 mejoraba al crudo en ambos ejes (energía y `curaHasta`). `tsc -b` limpio, seed corrido en Postgres
 real.
 
+**Revisión de oficio de cocinero — HECHA 2026-08-31** (petición explícita: "revisar si hay items
+sin etiquetar que deberían caer sobre esta profesión"): encontrada y corregida una inconsistencia
+real entre recetas casi idénticas — `jushaSmokedMeat` (ahumar carne de Jusha) exigía el oficio de
+cocinero mientras `smokeMeat` (ahumar ración de carne genérica) no, sin ninguna razón de lore que
+las distinguiera; quitado el oficio de `jushaSmokedMeat` (mismo criterio ya confirmado por test para
+`smokeMeat`: "habilidad de supervivencia básica"). De paso, el comentario de
+`BOILED_LICHEN_WATER_RECIPE` citaba mal su propia referencia ("mismo patrón que BOUNGO_ROAST_RECIPE
+sin oficio", cuando esa receta SÍ lo lleva) — añadido `oficio: 'cocinero-orco-llanuras'` a
+`BOILED_LICHEN_WATER_RECIPE` para que encaje con el resto de preparaciones de comida real del clan
+(Boungo/Pan/Panal/Cuajada). Sin efecto de bloqueo (cocinero no exige herramienta,
+`OFICIOS_CON_HERRAMIENTA_REQUERIDA`) — solo mejora la progresión de XP del oficio. `tsc -b` limpio,
+92/92 en `crafting.test.ts`.
+
 **Enciclopedia — "Hagar" aparece 2 veces** en el árbol de NPC de "Hijos del Estallido" (una fila
 "Hagar" ya descubierta, otra fila distinta con tooltip "Todavía no descubierto"). **CONFIRMADO BUG
 REAL DE DATOS, FIJADO 2026-08-30**: primer intento de investigación asumió erróneamente que era solo
