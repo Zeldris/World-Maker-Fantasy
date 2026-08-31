@@ -3651,15 +3651,16 @@ resuelva. Revisar de dónde sale la tarjeta persistente (ver el fix del "atasco 
 2026-08-29, que la reconstruye desde `combatNpcsDisplay` filtrando `CONVALECIENTE && !dismissed`) —
 puede que el criterio de "ya se mostró una vez" no exista y haya que añadirlo.
 
-**Barra de habilidades generales (fuera de combate) no hace nada al pulsar**: la fila de iconos bajo
-el composer (campamento/brújula/fuego/vasija/arco/hoja/mano) no produce ningún efecto visible al
-pulsar. Diseño esperado por la usuaria: pulsar una habilidad general debe **escribir/insertar texto
-en el composer**, sustituyendo lo que hubiera (no ejecutar nada hasta que el jugador pulse Actuar).
-Excepción explícita: las habilidades que abren un modal determinista (Cazar, Recolectar, etc.) sí
-deben lanzarse directamente al pulsar, porque no se ejecutan hasta que el jugador elige algo dentro
-del propio modal — esas ya funcionan así. Los "links" (chips de citar NPC/objeto/lugar) se siguen
-concatenando al texto existente como hasta ahora, sin sustituir — la sustitución es SOLO para las
-habilidades generales de la barra.
+**Barra de habilidades generales (fuera de combate) no hace nada al pulsar** — **FIJADO 2026-08-30,
+CONFIRMADO POR CÓDIGO 2026-08-31**: 2 bugs reales encadenados, ambos con comentario explícito en
+`handleAttachAbility` (`GameView.tsx`). (1) Usaba `insertChip`, que CONCATENA al texto existente
+(igual que citar NPC/objeto/lugar) — la usuaria pedía SUSTITUIR. (2) Encontrado verificando el fix
+de (1) con Playwright: con `showSkillBar` true, `ChatComposer` ni siquiera está montado (se
+sustituye entero por `SkillBar`), así que `composerRef.current` era `null` y `setText` no hacía nada
+en silencio — coincide exactamente con "al darle a una no hace nada". Fix: `pendingComposerTextRef`
+guarda el texto y un efecto lo aplica en cuanto el composer se remonta de verdad (`setShowSkillBar`
+es asíncrono). Las habilidades con modal propio (Cazar/Recolectar/Curar/Entregar/Saquear) siguen
+lanzándose directas, sin pasar por este camino.
 
 **Bug real: Cazar rechaza la acción sin motivo aparente** ("No se pudo cazar — puede que otra acción
 se haya adelantado"), con el jugador sin haber hecho nada más en paralelo — captura del modal de
