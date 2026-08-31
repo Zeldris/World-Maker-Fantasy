@@ -251,6 +251,29 @@ export function bandaForMinutos(minutos: number): Banda {
   return 'larga';
 }
 
+/// Espera REAL (de pared) de un viaje por número de tramos cruzados, no por `minutosBase` de
+/// ficción acumulado (petición explícita, 2026-08-31: "minimo tiempo de viaje 1 min... cada punto
+/// suma segundos... hasta un maximo de 5mins" — con el grafo real, un solo tramo largo (hasta 360
+/// min de ficción) ya daba 18 min reales con la fórmula vieja de `minutos_ficción ÷ 20`, sin
+/// llegar nunca a tocar el tope viejo de 30 — la espera real tenía que depender de CUÁNTAS zonas
+/// se cruzan, no de lo narrativamente largo que sea un tramo). `minutosBase`/`fictionalMinutes`
+/// siguen intactos para la banda de tirada y el reloj de ficción — esto solo gobierna cuánto
+/// espera el jugador de verdad. Parámetros configurables vía env (config/env.ts) para no importar
+/// `env` en este servicio puro — los defaults de aquí solo cubren llamadas sin config explícita
+/// (tests unitarios).
+export function segundosRealesPorTramos(
+  numeroDeTramos: number,
+  config: { segundosPrimerTramo: number; segundosPorTramoExtra: number; segundosMaximos: number } = {
+    segundosPrimerTramo: 60,
+    segundosPorTramoExtra: 30,
+    segundosMaximos: 5 * 60,
+  },
+): number {
+  if (numeroDeTramos <= 0) return 0;
+  const segundos = config.segundosPrimerTramo + (numeroDeTramos - 1) * config.segundosPorTramoExtra;
+  return Math.min(segundos, config.segundosMaximos);
+}
+
 export interface TravelSegment {
   fromName: string;
   toName: string;

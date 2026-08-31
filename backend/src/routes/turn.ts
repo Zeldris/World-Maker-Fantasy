@@ -5,7 +5,7 @@ import type { AttributeBlock, RollResult } from '../services/dice.js';
 import { computeDuration, detectsRestIntent, mentionsExplicitDuration } from '../services/timedActions.js';
 import { narrateAndPersistTurn } from '../services/turnResolution.js';
 import type { PendingNpcAttack } from '../services/combatExchange.js';
-import { resolveTravel, bandaForMinutos, type TravelResolution } from '../services/travel.js';
+import { resolveTravel, bandaForMinutos, segundosRealesPorTramos, type TravelResolution } from '../services/travel.js';
 import { pickTravelInterruption } from '../services/travelInterruption.js';
 import { pickStationaryInterruption } from '../services/stationaryInterruption.js';
 import { effectiveAttributes, effectiveSecondaryAttributes, effectiveDefense, equippedWeaponNames, equippedItemsSummary } from '../services/equipment.js';
@@ -730,7 +730,17 @@ export async function turnRoutes(app: FastifyInstance) {
       // espera real hacía matemáticamente imposible una sesión fluida (un viaje interno normal ya
       // son 83-248 min de ficción con el grafo actual). El reloj ficticio sigue avanzando el total
       // real de `minutos` sin comprimir (ver narrateAndPersistTurn) — solo se comprime la espera.
-      const minutosReales = Math.min(Math.max(1, effectiveMinutos / env.fictionMinutesPerRealMinute), env.transitMaxRealMinutes);
+      // Viaje real (`effectiveTravel` con `segments`): la espera se calcula por NÚMERO de tramos
+      // cruzados (segundosRealesPorTramos, travel.ts), no por `minutosBase` acumulado — ver
+      // comentario ahí. Cualquier otra acción larga sin desplazamiento (descansar, construir,
+      // crafteo largo) sigue con la fórmula vieja de minutos de ficción ÷ divisor.
+      const minutosReales = effectiveTravel
+        ? segundosRealesPorTramos(effectiveTravel.segments.length, {
+            segundosPrimerTramo: env.travelSegundosPrimerTramo,
+            segundosPorTramoExtra: env.travelSegundosPorTramoExtra,
+            segundosMaximos: env.travelSegundosMaximos,
+          }) / 60
+        : Math.min(Math.max(1, effectiveMinutos / env.fictionMinutesPerRealMinute), env.transitMaxRealMinutes);
       const busyUntil = new Date(Date.now() + minutosReales * 60_000);
       const produccionLabel = produccion ? `${produccion.cantidad} de ${produccion.itemName}` : undefined;
       const startText = `${save.characterName} se pone a ello: "${action}". Estará ocupado un buen rato${

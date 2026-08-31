@@ -42,6 +42,18 @@ export const env = {
   /// de partida, ajustable sin tocar código.
   transitMaxRealMinutes: Number(process.env.TRANSIT_MAX_REAL_MINUTES ?? 30),
 
+  /// Espera real de un VIAJE (no de otras acciones largas) por número de tramos cruzados, no por
+  /// `minutosBase` de ficción acumulado (petición explícita, 2026-08-31: "minimo tiempo de viaje 1
+  /// min... cada punto suma segundos... hasta un maximo de 5mins" — con el grafo real, un solo
+  /// tramo largo, hasta 360 min de ficción, ya daba 18 min reales con la fórmula vieja de
+  /// `fictionMinutesPerRealMinute`, sin llegar nunca a tocar `transitMaxRealMinutes` — la espera
+  /// real de un viaje tenía que depender de CUÁNTAS zonas se cruzan, no de lo narrativamente largo
+  /// que sea un tramo). Solo gobierna la espera real — `minutosBase`/`fictionalMinutes` del viaje
+  /// siguen intactos para la banda de tirada y el reloj de ficción (ver travel.ts).
+  travelSegundosPrimerTramo: Number(process.env.TRAVEL_SEGUNDOS_PRIMER_TRAMO ?? 60),
+  travelSegundosPorTramoExtra: Number(process.env.TRAVEL_SEGUNDOS_POR_TRAMO_EXTRA ?? 30),
+  travelSegundosMaximos: Number(process.env.TRAVEL_SEGUNDOS_MAXIMOS ?? 5 * 60),
+
   /// Eventos de viaje interactivos (2026-08-05, petición explícita: "que las esperas entre los
   /// movimientos de zonas sean más dinámicas"): probabilidad, por CADA nodo intermedio de un
   /// viaje extendida/larga, de que ese tramo interrumpa el viaje con un encuentro real (ver

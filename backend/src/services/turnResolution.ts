@@ -95,6 +95,7 @@ import {
   detectsVagueMovementIntent,
   cardinalDirectionBetween,
   resolveTravelToLocationId,
+  segundosRealesPorTramos,
   type TravelResolution,
 } from './travel.js';
 import { detectsRestIntent, type Produccion } from './timedActions.js';
@@ -3035,8 +3036,18 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     // pasaba ambos datos (LLEGADA A / RUTA RECORRIDA) pero sin pedir explícitamente que la escena
     // TERMINE anclada en el destino — un modelo pequeño bajo presión de longitud corta puede
     // gastar toda la frase en la imagen más vívida del camino y nunca llegar de verdad.
+    // Narración de viaje tramo a tramo (diseño 2026-08-28, "retomar viaje tras evento" — pendiente
+    // aparte — más esta pieza: la ruta ya se calculaba y pasaba entera al narrador, pero sin pedir
+    // explícitamente que nombrara las zonas intermedias, así que solía perderse en la primera o
+    // saltar directa al destino. Solo aplica con 2+ tramos reales (viaje directo de 1 tramo no
+    // tiene zona intermedia que nombrar, pedirlo ahí sería una instrucción vacía).
+    const zonasIntermedias = travel.segments.slice(0, -1).map((s) => s.toName);
+    const tramoHint =
+      zonasIntermedias.length > 0
+        ? ` El trayecto pasa por ${zonasIntermedias.length === 1 ? 'una zona intermedia real' : `${zonasIntermedias.length} zonas intermedias reales`} (${zonasIntermedias.join(', ')}) — nómbra${zonasIntermedias.length === 1 ? 'la' : 'las'} de pasada en la narración, con algo breve y propio de cada una (terreno, un detalle sensorial), no como una simple lista.`
+        : '';
     contextBlocks.push(
-      `LLEGADA A ${travel.toLocationName}: ${destination?.description ?? ''}\nRUTA RECORRIDA: ${ruta}\nLa narración de este turno tiene que TERMINAR con el personaje ya en ${travel.toLocationName}, mencionando algo concreto y propio de este lugar (no solo del paisaje del camino) — puedes describir brevemente el trayecto, pero nunca a costa de dejar la llegada implícita o sin situar.`,
+      `LLEGADA A ${travel.toLocationName}: ${destination?.description ?? ''}\nRUTA RECORRIDA: ${ruta}\nLa narración de este turno tiene que TERMINAR con el personaje ya en ${travel.toLocationName}, mencionando algo concreto y propio de este lugar (no solo del paisaje del camino) — puedes describir brevemente el trayecto, pero nunca a costa de dejar la llegada implícita o sin situar.${tramoHint}`,
     );
   } else if (currentLocationId) {
     const location = await prisma.location.findUnique({ where: { id: currentLocationId } });
@@ -6140,10 +6151,14 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     if (resumeDestinationId && resumeDestinationId !== regionLocationId) {
       const resumedTravel = await resolveTravelToLocationId(worldId, regionLocationId, resumeDestinationId, attributes);
       if (resumedTravel) {
-        const minutosReales = Math.min(
-          Math.max(1, resumedTravel.minutos / env.fictionMinutesPerRealMinute),
-          env.transitMaxRealMinutes,
-        );
+        // Mismo criterio de espera-por-tramos que turn.ts (ver comentario en travel.ts,
+        // segundosRealesPorTramos) — este es también un viaje real, no una acción estacionaria.
+        const minutosReales =
+          segundosRealesPorTramos(resumedTravel.segments.length, {
+            segundosPrimerTramo: env.travelSegundosPrimerTramo,
+            segundosPorTramoExtra: env.travelSegundosPorTramoExtra,
+            segundosMaximos: env.travelSegundosMaximos,
+          }) / 60;
         const busyUntil = new Date(Date.now() + minutosReales * 60_000);
         const resumeText = `Con esto resuelto, ${characterName} retoma el camino hacia ${resumedTravel.toLocationName}.`;
         // Mismo `classification` sintético sin tirada que turn.ts construye para cualquier viaje

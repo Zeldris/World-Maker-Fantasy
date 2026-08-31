@@ -4735,14 +4735,16 @@ describe('Viaje largo interrumpido a mitad de camino (integración real, solo LL
   // P3.2 (2026-08-28, "retomar viaje truncado"): el último test de este bloque deja que
   // `startEagerTransitResolution` (el mismo mecanismo real de producción, disparado dentro de
   // turnResolution.ts) resuelva el tránsito de reanudación por su cuenta — su `busyUntil` real
-  // depende de `env.fictionMinutesPerRealMinute`/`transitMaxRealMinutes`, minutos reales con la
-  // config normal. Se topa aquí solo para este describe, restaurado siempre en `afterAll`.
-  const originalTransitMaxRealMinutes = env.transitMaxRealMinutes;
+  // depende de `env.travelSegundosMaximos` (espera de VIAJE por tramos, 2026-08-31 — ya no de
+  // `fictionMinutesPerRealMinute`/`transitMaxRealMinutes`, que solo gobiernan acciones sin
+  // desplazamiento). Se topa aquí solo para este describe, restaurado siempre en `afterAll`.
+  const originalTravelSegundosMaximos = env.travelSegundosMaximos;
 
   beforeAll(async () => {
     // Tope bajo (5s reales) solo para este describe — el tránsito de reanudación (P3.2) real de
-    // 67 min de ficción tardaría minutos reales de espera con el tope normal de producción.
-    env.transitMaxRealMinutes = 5 / 60;
+    // 67 min de ficción / 1 tramo tardaría hasta el tope normal de producción (5 min) si no se
+    // topara aquí.
+    env.travelSegundosMaximos = 5;
     const userId = await getDefaultUserId();
     const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
     worldId = world.id;
@@ -4827,7 +4829,7 @@ describe('Viaje largo interrumpido a mitad de camino (integración real, solo LL
   });
 
   afterAll(async () => {
-    env.transitMaxRealMinutes = originalTransitMaxRealMinutes;
+    env.travelSegundosMaximos = originalTravelSegundosMaximos;
     pickTravelInterruptionMock.mockReset();
     await prisma.save.delete({ where: { id: saveId } });
     await prisma.npc.delete({ where: { id: interruptionNpcId } });
