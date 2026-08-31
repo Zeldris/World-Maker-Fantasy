@@ -6887,7 +6887,10 @@ export interface ZonePointInput {
   locationSlug: string;
   x: number;
   y: number;
-  tipo: 'FAUNA' | 'RECURSO' | 'NPC';
+  // 'EDIFICIO' añadido (ampliación 2026-08-31, Las Llanuras del Viento Rojo zona por zona): ya
+  // existía en el motor (schema.prisma ZonePointTipo, zonePoints.ts, zona.ts) para asentamientos
+  // reales, pero el tipo de datos de este archivo se había quedado corto — solo faltaba aquí.
+  tipo: 'FAUNA' | 'RECURSO' | 'NPC' | 'EDIFICIO';
   targetSlug: string;
   label?: string;
 }
@@ -6896,4 +6899,191 @@ export const zonePoints: ZonePointInput[] = [
   { locationSlug: 'hondonada-del-eco', x: 620, y: 180, tipo: 'FAUNA', targetSlug: 'kirelon-arenoso', label: 'Boca de cueva (Kirelon Arenoso)' },
   { locationSlug: 'hondonada-del-eco', x: 260, y: 340, tipo: 'FAUNA', targetSlug: 'gesgurio', label: 'Pared de arcilla (Gesgurio)' },
   { locationSlug: 'hondonada-del-eco', x: 400, y: 470, tipo: 'RECURSO', targetSlug: 'yerreo', label: 'Veta de Yerreo' },
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // Ampliación 2026-08-31 — resto de Las Llanuras del Viento Rojo (27 Locations, todo el núcleo
+  // jugable salvo Hondonada del Eco, ya sembrada arriba). Mismo criterio que el prototipo: cruce
+  // categórico Location↔terreno (`locationTerrainTags`/`faunaTerrainTag`/`harvestSourceTerrainTag`,
+  // ver `terrain.ts`), NPC solo con nombre propio anclado por `homeLocationSlug`, EDIFICIO solo en
+  // asentamientos con estructura real descrita en su `description`. Coordenadas PROVISIONALES
+  // (lienzo 800×600, sin PNG real generado todavía para estas zonas) — mismo aviso que arriba.
+  // ══════════════════════════════════════════════════════════════════════════
+
+  // Las Agujas Imán — imanio/nuente tienen homeLocationSlug propio aquí; cardo-brujula/arena-iman
+  // no tienen homeLocationSlug fijo en la tabla de recursos, pero la propia description de la
+  // Location los nombra explícitamente ("a sotavento se acumula arena imán y crece el Cardo
+  // Brújula") — match textual directo, no solo de terreno.
+  { locationSlug: 'agujas-iman', x: 200, y: 160, tipo: 'FAUNA', targetSlug: 'imanio', label: 'Imanio bajo su coraza de rocas' },
+  { locationSlug: 'agujas-iman', x: 560, y: 210, tipo: 'FAUNA', targetSlug: 'nuente', label: 'Nuente al acecho nocturno' },
+  { locationSlug: 'agujas-iman', x: 380, y: 420, tipo: 'RECURSO', targetSlug: 'cardo-brujula', label: 'Cardo Brújula a sotavento' },
+  { locationSlug: 'agujas-iman', x: 620, y: 480, tipo: 'RECURSO', targetSlug: 'arena-iman', label: 'Arena Imán acumulada' },
+
+  // Karot Veku - Campamento del Clan Serhu — único EDIFICIO real de este lote (empalizada +
+  // torres de vigía descritas en su propia description). Torgash Ketg y Ulkha Ketg son los únicos
+  // NPC con nombre propio anclados aquí (cazadora-serhu es PLANTILLA/arquetipo repetible, no
+  // nombre propio — fuera de alcance explícito de esta tarea). Múrgoles domados: recurso interior
+  // del propio campamento, homeLocationSlug directo.
+  { locationSlug: 'campamento-serhu', x: 400, y: 300, tipo: 'EDIFICIO', targetSlug: 'campamento-serhu', label: 'Empalizada de Karot Veku' },
+  { locationSlug: 'campamento-serhu', x: 250, y: 200, tipo: 'NPC', targetSlug: 'torgash-ketg', label: "Torgash Ketg, Kort'ikar" },
+  { locationSlug: 'campamento-serhu', x: 550, y: 210, tipo: 'NPC', targetSlug: 'ulkha-ketg', label: "Ulkha Ketg, Terk'ikar" },
+  { locationSlug: 'campamento-serhu', x: 400, y: 460, tipo: 'RECURSO', targetSlug: 'murgoles-domados-campamento', label: 'Recinto de múrgoles domados' },
+
+  // El Cruce de las Cenizas — Ferike tiene homeLocationSlug directo aquí. Telda Ceniza y Matorral
+  // de Cuerno tienen homeLocationSlug/tag de vegetación coherentes con la propia description
+  // ('vegetacion' en locationTerrainTags).
+  { locationSlug: 'cruce-de-las-cenizas', x: 220, y: 260, tipo: 'FAUNA', targetSlug: 'ferike', label: 'Ferike en el borde de la sombra' },
+  { locationSlug: 'cruce-de-las-cenizas', x: 480, y: 180, tipo: 'RECURSO', targetSlug: 'telda-ceniza', label: 'Telda Ceniza' },
+  { locationSlug: 'cruce-de-las-cenizas', x: 560, y: 440, tipo: 'RECURSO', targetSlug: 'matorral-de-cuerno', label: 'Matorral de Cuerno' },
+
+  // El Filo de las Brasas — Rondador de Brasas y Salamandra de Escoria tienen homeLocationSlug
+  // directo. Volcanita es la veta "más común de la zona" (harvestSourceDescriptions); Fercaneo es
+  // más raro pero su propia description ya lo ancla aquí ("solo cerca de cráteres y lava en El
+  // Filo de las Brasas").
+  { locationSlug: 'filo-de-las-brasas', x: 240, y: 200, tipo: 'FAUNA', targetSlug: 'rondador-de-brasas', label: 'Rondador de Brasas al borde de la luz' },
+  { locationSlug: 'filo-de-las-brasas', x: 540, y: 260, tipo: 'FAUNA', targetSlug: 'salamandra-de-escoria', label: 'Salamandra de Escoria' },
+  { locationSlug: 'filo-de-las-brasas', x: 340, y: 440, tipo: 'RECURSO', targetSlug: 'volcanita', label: 'Veta de Volcanita' },
+  { locationSlug: 'filo-de-las-brasas', x: 620, y: 480, tipo: 'RECURSO', targetSlug: 'fercaneo', label: 'Fercaneo entre cráteres' },
+
+  // Los Manaderos — Jusha Esmeralda, Miruina y Quio tienen homeLocationSlug directo (Tura Jusha
+  // queda fuera por cupo, misma charca que Jusha Esmeralda). Juncos Rojizos tiene homeLocationSlug
+  // directo también.
+  { locationSlug: 'manaderos', x: 220, y: 180, tipo: 'FAUNA', targetSlug: 'jusha-esmeralda', label: 'Jusha Esmeralda en charca profunda' },
+  { locationSlug: 'manaderos', x: 540, y: 220, tipo: 'FAUNA', targetSlug: 'miruina', label: 'Madriguera de Miruina' },
+  { locationSlug: 'manaderos', x: 320, y: 420, tipo: 'FAUNA', targetSlug: 'quio', label: 'Quio filtrando el fango de la orilla' },
+  { locationSlug: 'manaderos', x: 600, y: 460, tipo: 'RECURSO', targetSlug: 'juncos-rojizos', label: 'Juncos Rojizos' },
+
+  // El Osario de la Manada — hito pequeño, sin fauna viva anclada propia (la Gargantúa que le da
+  // nombre lleva muerta décadas). Solo los 2 recursos con homeLocationSlug directo.
+  { locationSlug: 'osario-de-la-manada', x: 400, y: 260, tipo: 'RECURSO', targetSlug: 'osario-de-la-manada', label: 'Costillas de la Gargantúa' },
+  { locationSlug: 'osario-de-la-manada', x: 500, y: 420, tipo: 'RECURSO', targetSlug: 'boungo', label: 'Cúmulo de Boungo' },
+
+  // Los Pastos de la Deriva — Cuernahoja tiene homeLocationSlug directo; Gradias y Flor Salvatura
+  // también.
+  { locationSlug: 'pastos-de-la-deriva', x: 260, y: 220, tipo: 'FAUNA', targetSlug: 'cuernahoja', label: 'Manada de Cuernahoja' },
+  { locationSlug: 'pastos-de-la-deriva', x: 540, y: 260, tipo: 'RECURSO', targetSlug: 'gradias', label: 'Arbusto de Gradias' },
+  { locationSlug: 'pastos-de-la-deriva', x: 400, y: 460, tipo: 'RECURSO', targetSlug: 'flor-salvatura', label: 'Flor Salvatura' },
+
+  // Paso de los Pilares Rotos — Cruzavientos tiene homeLocationSlug directo (anida en lo alto).
+  // Roca, Veta de Hierro y Lucre Blanco, los 3 con homeLocationSlug directo — Location con más
+  // variedad de recursos minerales/madera del núcleo, de ahí el cupo completo de 4.
+  { locationSlug: 'pilares-rotos', x: 400, y: 140, tipo: 'FAUNA', targetSlug: 'cruzavientos', label: 'Nido de Cruzavientos en lo alto' },
+  { locationSlug: 'pilares-rotos', x: 220, y: 320, tipo: 'RECURSO', targetSlug: 'roca-pilares-rotos', label: 'Roca erosionada' },
+  { locationSlug: 'pilares-rotos', x: 560, y: 340, tipo: 'RECURSO', targetSlug: 'veta-hierro-pilares-rotos', label: 'Veta de hierro' },
+  { locationSlug: 'pilares-rotos', x: 400, y: 500, tipo: 'RECURSO', targetSlug: 'lucre-blanco', label: 'Lucre Blanco en la cumbre' },
+
+  // El Pozo de Cauce Viejo — Guchapo, Lebude y Escorante tienen homeLocationSlug directo (misma
+  // charca, cadena trófica descrita en sus propias bios: Lebude caza Guchapo/Escorante). Musgo
+  // Arcilla completa el cupo de 4 (también homeLocationSlug directo, material de construcción).
+  { locationSlug: 'pozo-cauce-viejo', x: 220, y: 200, tipo: 'FAUNA', targetSlug: 'guchapo', label: 'Charca de Guchapos' },
+  { locationSlug: 'pozo-cauce-viejo', x: 540, y: 220, tipo: 'FAUNA', targetSlug: 'lebude', label: 'Colmena de Lebude' },
+  { locationSlug: 'pozo-cauce-viejo', x: 300, y: 440, tipo: 'FAUNA', targetSlug: 'escorante', label: 'Escorante enterrado' },
+  { locationSlug: 'pozo-cauce-viejo', x: 580, y: 460, tipo: 'RECURSO', targetSlug: 'musgo-arcilla', label: 'Musgo Arcilla' },
+
+  // Los Restos de Maktor — Restos personales tiene homeLocationSlug directo. Ruptidar (limpiador
+  // de arena "presente en cualquier zona arenosa", sin homeLocationSlug fijo) completa el terreno
+  // árido sin forzar ninguna especie con ancla propia en otro sitio.
+  { locationSlug: 'restos-de-maktor', x: 380, y: 260, tipo: 'RECURSO', targetSlug: 'restos-personales-maktor', label: 'Restos personales entre los cimientos' },
+  { locationSlug: 'restos-de-maktor', x: 560, y: 420, tipo: 'FAUNA', targetSlug: 'ruptidar', label: 'Ruptidar bajo la arena' },
+
+  // Los Túmulos del Honor — Ofrendas tiene homeLocationSlug directo. Mismo criterio de Ruptidar
+  // que Restos de Maktor (terreno árido, sin ancla propia en otra Location).
+  { locationSlug: 'tumulos-del-honor', x: 400, y: 240, tipo: 'RECURSO', targetSlug: 'ofrendas-tumulos-honor', label: 'Ofrendas sobre las piedras' },
+  { locationSlug: 'tumulos-del-honor', x: 240, y: 440, tipo: 'FAUNA', targetSlug: 'ruptidar', label: 'Ruptidar bajo la arena' },
+
+  // El Oasis de Juncos Rojos — sin fauna/recurso propio con homeLocationSlug fijo aquí; match por
+  // terreno (humedo/vegetacion) con especies/plantas sin ancla en otra Location. Bulbo del Cauce y
+  // Liquen del Cauce comparten la misma corriente subterránea que la propia description del Oasis
+  // nombra explícitamente. Múrgol (ganado itinerante, sin homeLocationSlug fijo) encaja con el
+  // propio texto: "disputado entre clanes, fauna y cualquiera que necesite descansar".
+  { locationSlug: 'oasis-de-juncos-rojos', x: 260, y: 220, tipo: 'RECURSO', targetSlug: 'bulbo-del-cauce', label: 'Bulbo del Cauce' },
+  { locationSlug: 'oasis-de-juncos-rojos', x: 540, y: 260, tipo: 'RECURSO', targetSlug: 'liquen-del-cauce', label: 'Liquen del Cauce' },
+  { locationSlug: 'oasis-de-juncos-rojos', x: 400, y: 460, tipo: 'FAUNA', targetSlug: 'murgol', label: 'Múrgoles abrevando' },
+
+  // La Desembocadura Callada — sin fauna/recurso costero propio catalogado (ninguna especie del
+  // catálogo tiene ancla marina/costera real); match por terreno con lo poco disponible: Liquen
+  // del Cauce (humedo, cierra el mismo recorrido de agua que la propia description nombra) y Flor
+  // de Ceniza (rocoso, coincide con el brazo de roca que menciona locationTerrainTags). Match
+  // débil a propósito — anotado en el resumen de la tarea, no hay más candidatos reales.
+  { locationSlug: 'desembocadura-callada', x: 320, y: 260, tipo: 'RECURSO', targetSlug: 'liquen-del-cauce', label: 'Liquen del Cauce en la marisma' },
+  { locationSlug: 'desembocadura-callada', x: 540, y: 420, tipo: 'RECURSO', targetSlug: 'flor-de-ceniza', label: 'Flor de Ceniza' },
+
+  // Playa de Ceniza Blanca — mismo hueco real de fauna/recurso costero que el resto de la costa
+  // (ver comentario de Desembocadura Callada). Bulbo del Cauce (humedo) y Salvia del Polvo (arido)
+  // son los únicos matches de terreno sin ancla previa en otra Location.
+  { locationSlug: 'playa-de-ceniza-blanca', x: 300, y: 300, tipo: 'RECURSO', targetSlug: 'bulbo-del-cauce', label: 'Bulbo del Cauce' },
+  { locationSlug: 'playa-de-ceniza-blanca', x: 540, y: 380, tipo: 'RECURSO', targetSlug: 'salvia-del-polvo', label: 'Salvia del Polvo' },
+
+  // Los Acantilados Partidos — mismo hueco real de fauna/recurso costero. Flor de Ceniza (rocoso)
+  // y Liquen del Cauce (humedo) son los matches de terreno disponibles.
+  { locationSlug: 'acantilados-partidos', x: 320, y: 240, tipo: 'RECURSO', targetSlug: 'flor-de-ceniza', label: 'Flor de Ceniza en la grieta' },
+  { locationSlug: 'acantilados-partidos', x: 520, y: 420, tipo: 'RECURSO', targetSlug: 'liquen-del-cauce', label: 'Liquen del Cauce' },
+
+  // Las Pozas de Marea — mismo hueco real de fauna/recurso costero. Bulbo y Liquen del Cauce,
+  // únicos matches de terreno húmedo disponibles, coherentes con "vida propia en cada poza".
+  { locationSlug: 'pozas-de-marea', x: 300, y: 280, tipo: 'RECURSO', targetSlug: 'bulbo-del-cauce', label: 'Bulbo del Cauce en la poza' },
+  { locationSlug: 'pozas-de-marea', x: 520, y: 400, tipo: 'RECURSO', targetSlug: 'liquen-del-cauce', label: 'Liquen del Cauce' },
+
+  // El Embarcadero de Ceniza — único EDIFICIO real de la costa (botes varados + redes tendidas,
+  // descritos en su propia description). Liquen del Cauce completa con el único match de terreno
+  // húmedo disponible sin ancla previa.
+  { locationSlug: 'embarcadero-de-ceniza', x: 400, y: 280, tipo: 'EDIFICIO', targetSlug: 'embarcadero-de-ceniza', label: 'Botes y redes del Embarcadero' },
+  { locationSlug: 'embarcadero-de-ceniza', x: 560, y: 440, tipo: 'RECURSO', targetSlug: 'liquen-del-cauce', label: 'Liquen del Cauce' },
+
+  // La Fosa Horadada — Espina del Viento no tiene homeLocationSlug en la tabla de recursos, pero
+  // la propia description de la Fosa la nombra explícitamente ("la mayor madriguera conocida de
+  // Espina del Viento de toda la región") — match textual directo, único punto, hito pequeño y
+  // peligroso sin más lore de fauna/recurso propio.
+  { locationSlug: 'fosa-horadada', x: 400, y: 300, tipo: 'RECURSO', targetSlug: 'espina-del-viento', label: 'Madriguera de Espina del Viento' },
+
+  // Las Dunas Ahogadas — ruinas del Reino Nabierus bajo la arena; Arena Imán (arido, sin ancla
+  // previa) y Ruptidar (arido, "cualquier zona arenosa") son los matches de terreno disponibles.
+  { locationSlug: 'dunas-ahogadas', x: 340, y: 260, tipo: 'RECURSO', targetSlug: 'arena-iman', label: 'Arena Imán entre las dunas' },
+  { locationSlug: 'dunas-ahogadas', x: 540, y: 420, tipo: 'FAUNA', targetSlug: 'ruptidar', label: 'Ruptidar bajo la arena' },
+
+  // El Vientre del Engaño — hondonada seca y estéril "donde nada crece"; se deja deliberadamente
+  // con solo 2 puntos de terreno árido genérico (Ruptidar, Salvia del Polvo), sin forzar más
+  // variedad que contradiga la propia description ("nada crece").
+  { locationSlug: 'vientre-del-engano', x: 380, y: 280, tipo: 'FAUNA', targetSlug: 'ruptidar', label: 'Ruptidar bajo la arena' },
+  { locationSlug: 'vientre-del-engano', x: 560, y: 440, tipo: 'RECURSO', targetSlug: 'salvia-del-polvo', label: 'Salvia del Polvo en la sombra' },
+
+  // El Laberinto de Cañones — badlands de arcilla árida/rocosa sin fauna/recurso propio anclado;
+  // Flor de Ceniza (rocoso) y Ruptidar (arido) son los matches de terreno disponibles.
+  { locationSlug: 'laberinto-de-canones', x: 320, y: 260, tipo: 'RECURSO', targetSlug: 'flor-de-ceniza', label: 'Flor de Ceniza en la sombra del cañón' },
+  { locationSlug: 'laberinto-de-canones', x: 540, y: 420, tipo: 'FAUNA', targetSlug: 'ruptidar', label: 'Ruptidar bajo la arena' },
+
+  // Las Fumarolas Negras — más hostil que El Filo de las Brasas; Fercaneo tiene match textual
+  // directo en su propia description ("más probable en Las Fumarolas Negras"). Raíz de Fuego
+  // (rocoso/volcánico, sin ancla previa) completa el segundo punto.
+  { locationSlug: 'fumarolas-negras', x: 340, y: 260, tipo: 'RECURSO', targetSlug: 'fercaneo', label: 'Fercaneo entre grietas humeantes' },
+  { locationSlug: 'fumarolas-negras', x: 540, y: 420, tipo: 'RECURSO', targetSlug: 'raiz-de-fuego', label: 'Raíz de Fuego' },
+
+  // El Paso de los Huesos — cañón estrecho, paso obligado hacia La Sabana Alta; sin fauna/recurso
+  // propio anclado, un único match de terreno (Flor de Ceniza, rocoso) — hito de paso, no de
+  // permanencia.
+  { locationSlug: 'paso-de-los-huesos', x: 400, y: 300, tipo: 'RECURSO', targetSlug: 'flor-de-ceniza', label: 'Flor de Ceniza entre los huesos' },
+
+  // La Sabana Alta — Towrgu y Coracelo tienen homeLocationSlug directo; Pasto de Sangre y Trigo
+  // Escarlata (también homeLocationSlug directo) son los recursos que la propia description nombra
+  // por nombre ("hierba roja... más alta y densa"). Telda Atardecer y Roca Luclara quedan fuera
+  // por cupo (4 máximo).
+  { locationSlug: 'sabana-alta-colmillar', x: 220, y: 200, tipo: 'FAUNA', targetSlug: 'towrgu', label: 'Towrgu al acecho en el pasto alto' },
+  { locationSlug: 'sabana-alta-colmillar', x: 560, y: 240, tipo: 'FAUNA', targetSlug: 'coracelo', label: 'Madriguera fortificada de Coracelo' },
+  { locationSlug: 'sabana-alta-colmillar', x: 320, y: 440, tipo: 'RECURSO', targetSlug: 'pasto-de-sangre', label: 'Pasto de Sangre' },
+  { locationSlug: 'sabana-alta-colmillar', x: 580, y: 460, tipo: 'RECURSO', targetSlug: 'trigo-escarlata', label: 'Trigo Escarlata' },
+
+  // El Vergel de Kegi — coto de caza/comercio de los Faerus; sin fauna/recurso propio anclado
+  // (fuera del alcance directo de Gorhorn). Corretolvas (vegetacion, caza menor sin ancla previa
+  // ni conflicto con el corredor migratorio de Corredor de Cauce, reservado a Manaderos/Pastos/
+  // Sabana) y Liquen del Cauce (humedo) son los matches de terreno disponibles.
+  { locationSlug: 'vergel-de-kegi', x: 340, y: 260, tipo: 'FAUNA', targetSlug: 'corretolvas', label: 'Bandada de Corretolvas' },
+  { locationSlug: 'vergel-de-kegi', x: 540, y: 420, tipo: 'RECURSO', targetSlug: 'liquen-del-cauce', label: 'Liquen del Cauce' },
+
+  // La Grieta Cantora — hito puramente sonoro/atmosférico (el viento cantando en las grietas), sin
+  // lore de fauna o recurso propio; un único match débil de terreno rocoso (Flor de Ceniza),
+  // anotado en el resumen de la tarea como el caso más flojo de todo el lote.
+  { locationSlug: 'grieta-cantora', x: 400, y: 300, tipo: 'RECURSO', targetSlug: 'flor-de-ceniza', label: 'Flor de Ceniza entre las grietas' },
+
+  // El Campo Yermo — llanura de huesos viejos y metal oxidado sin fauna/recurso propio anclado; un
+  // único match de terreno árido (Ruptidar), coherente con "nadie ha reclamado nunca del todo".
+  { locationSlug: 'campo-yermo', x: 400, y: 300, tipo: 'FAUNA', targetSlug: 'ruptidar', label: 'Ruptidar entre los restos oxidados' },
 ];
