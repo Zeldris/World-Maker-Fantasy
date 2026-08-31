@@ -3780,12 +3780,14 @@ funciona** — confirmado que el archivo existe en disco con el nombre exacto es
 juego. Revisar si el problema es de caché, de que el slug de fauna no incluye género en la búsqueda,
 o algo de la mezcla fauna/flora del punto anterior.
 
-**Selector macho/hembra no aparece para mucha fauna** — varias fichas de fauna no ofrecen elegir
-género (a diferencia de otras que sí). La usuaria confirma que es correcto que ALGUNA fauna no tenga
-género (sin sexo diferenciado), pero pide que **por defecto todas las fichas de fauna tengan
-macho/hembra**, y quitarlo selectivamente después solo para las que de verdad no apliquen — es decir,
-invertir el criterio actual (que parece ser "sin género salvo que se añada", cuando debería ser "con
-género salvo que se quite").
+**Selector macho/hembra no aparece para mucha fauna** — **FIJADO (2026-08-30/31, verificado por
+código 2026-08-31)**: `FAUNA_SEXO_VARIANTES` (`sexDimorphism.ts`) cubre hoy las 26/26 especies de
+`fauna` (`worldCatalog.ts`) — las 16 que faltaban se añadieron el 2026-08-30
+([[tarkor_separacion_fauna_flora_2026-08-30]]). Confirmado también que el backend
+(`variantesSexoFor`, `world.ts`) expone `variantesSexo` para cualquier slug con entrada en el mapa
+sin ningún hueco de exposición, y el frontend (`DetailModal.tsx`, `CombatPanel.tsx`) ya renderiza el
+selector cuando el dato llega. Criterio invertido tal como se pidió: por defecto CON género, no al
+revés.
 
 **Mapa — "La Sábana Alta" duplicada en la lista de selección de viaje, y sin conectar en el mapa de
 región — CONFIRMADO BUG REAL DE DATOS, FIJADO 2026-08-30**: mismo patrón exacto que el bug de Hagar
