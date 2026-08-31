@@ -3775,10 +3775,14 @@ distinto de `'fauna'` (`imagePromptGenerator.ts`, criterio real `esFauna`/
 0 archivos mal ubicados en ninguna de las dos carpetas.
 
 **`kirelon-arenoso-macho-banner.png` subida a mano por la usuaria a la carpeta fauna, pero no
-funciona** — confirmado que el archivo existe en disco con el nombre exacto esperado
-(`kirelon-arenoso-macho-banner.png`, patrón `<slug>-<genero>-banner`), pero no se refleja en el
-juego. Revisar si el problema es de caché, de que el slug de fauna no incluye género en la búsqueda,
-o algo de la mezcla fauna/flora del punto anterior.
+funciona** — **REVISADO 2026-08-31, PROBABLE FALSO POSITIVO, sin reproducir**: pipeline completo
+verificado sano — el archivo existe en disco con el nombre exacto (`<slug>-<genero>-banner`), el
+servidor lo sirve por HTTP (200 OK, `Cache-Control: max-age=0`, sin caché fuerte), el backend
+(`variantesSexoFor`, `world.ts`) resuelve `imageUrls` con el sufijo `-macho`/`-hembra` correcto, y el
+frontend (`DetailModal.tsx`) preselecciona automáticamente el primer sexo disponible al abrir la
+ficha, así que el banner debería pintarse sin que el jugador tenga que elegir nada. No se encontró
+ninguna causa real en código. No verificado visualmente en el navegador — si reaparece, reproducir en
+vivo (probablemente un caché de navegador puntual del momento del hallazgo, ya no del servidor).
 
 **Selector macho/hembra no aparece para mucha fauna** — **FIJADO (2026-08-30/31, verificado por
 código 2026-08-31)**: `FAUNA_SEXO_VARIANTES` (`sexDimorphism.ts`) cubre hoy las 26/26 especies de
