@@ -48,18 +48,27 @@ export type { Clase, Especializacion } from '@prisma/client';
 /// para el resto, que se queda pendiente. CONTRA/REFRACTAR/AUMENTO/DEBILIDAD/MULTIPLE/DESVIAR
 /// reutilizan el margen decisivo ya existente (±10, `golpe_pleno`/`defensor_contragolpea`) en vez
 /// del umbral propio de cada habilidad (4/6/8/10/12 en el doc según la fila, mismo criterio de
-/// simplificación que ya usa LETAL) — y solo se aplican en el camino no-independiente
-/// (`resolveExchange`), nunca en el independiente (utilidad) ni en el lado NPC-atacante, todavía
-/// sin ninguna habilidad real que lo dispare; CONTROL/OCULTACION SÍ viven en el camino
+/// simplificación que ya usa LETAL) — y se aplican en el camino no-independiente (`resolveExchange`)
+/// **en ambos sentidos**: cuando el JUGADOR ataca (AUMENTO a sí mismo, DEBILIDAD al rival) Y cuando
+/// el JUGADOR DEFIENDE con una habilidad de rol `defensa` (AUMENTO a sí mismo, DEBILIDAD a quien
+/// atacó) — confirmado leyendo el motor 2026-08-31, corrige una asunción incorrecta de la primera
+/// pasada ("solo funciona en ataque") que dejó ~20 habilidades más bloqueadas de lo necesario en
+/// clases.md. Nunca en el camino independiente (utilidad) ni en el lado NPC-atacante, todavía sin
+/// ninguna habilidad real que lo dispare; CONTROL/OCULTACION SÍ viven en el camino
 /// independiente (utilidad) — CONTROL en 1v1 se simplifica a robar la iniciativa (como
 /// ATURDIMIENTO), en combate múltiple con ≥2 enemigos vivos redirige de verdad al controlado contra
 /// un aliado propio 2 rondas; OCULTACION oculta a quien la dispara (nunca al rival) 2 rondas;
 /// COMPANERO reutiliza `esSlotDomador` (companeros.ts), ya construido de antes.
-/// El resto (CANALIZAR/CURAZION/REFLEJAR/PURIFICAR/PROVOCACION/RETIRAR — duración por
-/// turnos con mecánica propia más allá de sumar/restar un atributo; MULTIPLE/OCULTACION combinados
-/// con AUMENTO/AGUANTE — buff/duración propia sin AUMENTO en el camino de utilidad; DESVIAR
-/// combinado con DEBILIDAD sin cifra propia en el texto de la fila; INVOCACION combinada con
-/// MULTIPLE/AUMENTO/PROVOCACION/CONTRA/LIMITADO en tótems más avanzados que Tótem de Guerra) sigue
+/// El resto (CANALIZAR/CURAZION/REFLEJAR/PURIFICAR/PROVOCACION/RETIRAR/MARCAR — duración por
+/// turnos con mecánica propia más allá de sumar/restar un atributo, o efecto sin ningún dar de
+/// alta todavía; MULTIPLE/OCULTACION combinados con AUMENTO/AGUANTE en rol UTILIDAD — buff/duración
+/// propia sin AUMENTO en el camino de utilidad; DESVIAR combinado con DEBILIDAD sin cifra propia
+/// en el texto de la fila; INVOCACION combinada con MULTIPLE/AUMENTO/PROVOCACION/CONTRA/LIMITADO
+/// en tótems más avanzados que Tótem de Guerra; efectos de ÁREA reales — "a TODOS los rivales", "2
+/// enemigos aleatoriamente" — que van más allá de MULTIPLE, que solo propaga a UN objetivo extra
+/// puntual desde ataque directo; `Companion.activeEffects` se LEE en combate múltiple pero nada lo
+/// ESCRIBE todavía, así que ningún efecto de duración toca a una mascota; roles duales
+/// ataque/defensa en la misma ficha, que `rol` (campo único) no puede representar) sigue
 /// sin construir, así que solo se dan de alta aquí las habilidades de
 /// clases.md marcadas "✅ lista" o cuyo efecto real ya está cubierto (verificado efecto a efecto
 /// contra este enum real, no copiado tal cual del doc — varias filas de Convocador/Opresor Y de
@@ -70,9 +79,18 @@ export type { Clase, Especializacion } from '@prisma/client';
 /// independiente) en una sola habilidad, y `rol` es un campo único — ningún camino cubre los dos
 /// efectos a la vez sin reinterpretar la fila.
 ///
+/// Auditoría 2026-08-31 (docs/rpgtarkor/clases.md sincronizado fila a fila contra este archivo
+/// real): 22 habilidades nuevas sembradas de golpe en Guerrero/Cazador/Chamán, sin tocar motor —
+/// el bloqueo real que quedaba en la mayoría de ellas era una asunción incorrecta ("AUMENTO/
+/// DEBILIDAD solo funcionan en ataque"), no falta de infraestructura. De paso, 2 bugs de siembra
+/// reales corregidos: "Golpe Gemelo" (ATAQUE+MULTIPLE) vivía en Supervivencia nv.32 en vez de
+/// Instintivo nv.32 (donde clases.md siempre lo diseñó); "Tótem de Guerra" (INVOCACION) vivía en
+/// Convocador nv.12 en vez de Totémico nv.12, ocupando el hueco real de "Filo Elemental" — ambos
+/// movidos a su especialización correcta.
+///
 /// Recuento final por clase (huecos reales / 8 por especialización, tronco aparte):
-/// GUERRERO Berserker 1, Guardián 2, Lancero 3, Especialista 4 — CAZADOR Domador 1, Supervivencia
-/// 5, Tirador 5, Instintivo 4 — CHAMAN Totémico 0, Rúnico 3, Convocador 3, Opresor 3 — ARQUERO
+/// GUERRERO Berserker 3, Guardián 4, Lancero 6, Especialista 5 — CAZADOR Domador 1, Supervivencia
+/// 7, Tirador 6, Instintivo 7 — CHAMAN Totémico 1, Rúnico 6, Convocador 6, Opresor 4 — ARQUERO
 /// Maestro Arquero 1, Maestro Ballestero 1 — CABALLERO Orden 6, Valor 3, Dolor 7 — SEGADOR Parca 3,
 /// Maldito 4, Ilustrado 6, Transmutador 2 — ASESINO Maestro Asesino 7, Tóxico 3, Danzante 8,
 /// Selecto 6 — DRUIDA Cambiaformas 8, Aullador 2, Salvaje 8, Adaptado 8.
@@ -146,7 +164,7 @@ const CLASS_ABILITIES: ClassAbilityUnlock[] = [
     },
   },
 
-  // --- Berserker (12/16/19/24/28/32/36/40 — solo 19 lista) ---
+  // --- Berserker (12/16/19/24/28/32/36/40 — 19/24/32 listas) ---
   {
     level: 19,
     clase: 'GUERRERO',
@@ -162,6 +180,45 @@ const CLASS_ABILITIES: ClassAbilityUnlock[] = [
       preferredAttribute: 'constitucion',
       attributeBonus: 2,
       energyCost: ENERGY_COST_MEDIA,
+    },
+  },
+  // MULTIPLE real (2026-08-31, auditoría de clases.md contra el motor) — mismo criterio de
+  // simplificación a un único tramo que Punta Doble/Golpe Gemelo (diferencia 6/12 de la ficha
+  // original, aquí solo el margen decisivo ±10 del motor).
+  {
+    level: 24,
+    clase: 'GUERRERO',
+    especializacion: 'BERSERKER',
+    ability: {
+      name: 'Giro Salvaje',
+      icon: '🌪️',
+      description: 'Un giro furioso que golpea a quien tenga delante — y si el golpe es decisivo, arrastra a más rivales con él.',
+      promptText: 'Giro con furia buscando arrastrar a más de un rival en el mismo golpe.',
+      category: 'combate',
+      effects: ['ATAQUE', 'MULTIPLE'],
+      rol: 'ataque',
+      preferredAttribute: 'fuerza',
+      energyCost: ENERGY_COST_MEDIA,
+    },
+  },
+  // CONTRA real (2026-08-31) — mismo mecanismo que Vórtice Menor (Chamán/Convocador), la propia
+  // ficha ya distingue "golpe mutuo" para el margen bajo, aquí simplificado al único desenlace del
+  // motor (contragolpe con margen decisivo).
+  {
+    level: 32,
+    clase: 'GUERRERO',
+    especializacion: 'BERSERKER',
+    ability: {
+      name: 'Piel de Batalla',
+      icon: '🩹',
+      description: 'Aguanta el golpe con pura piel curtida — y si su tirada es de verdad decisiva, devuelve el daño con la misma fuerza.',
+      promptText: 'Aguanto el golpe con pura piel curtida, listo para devolverlo con la misma fuerza.',
+      category: 'combate',
+      effects: ['AGUANTE', 'CONTRA'],
+      rol: 'defensa',
+      preferredAttribute: 'constitucion',
+      attributeBonus: 4,
+      energyCost: ENERGY_COST_AVANZADA,
     },
   },
 
@@ -204,8 +261,70 @@ const CLASS_ABILITIES: ClassAbilityUnlock[] = [
       energyCost: ENERGY_COST_AVANZADA,
     },
   },
+  // DEBILIDAD real (2026-08-31) — tramo alto de la ficha (diferencia 8, -5 destreza), mismo
+  // criterio de simplificación al margen decisivo ±10 que Golpe Envenenado.
+  {
+    level: 24,
+    clase: 'GUERRERO',
+    especializacion: 'GUARDIAN',
+    ability: {
+      name: 'Golpe de Advertencia',
+      icon: '⚠️',
+      description: 'Un golpe de aviso, más para desestabilizar que para herir — quien lo recibe queda visiblemente más torpe un rato.',
+      promptText: 'Golpeo a modo de aviso, buscando desestabilizar más que herir.',
+      category: 'combate',
+      effects: ['ATURDIMIENTO', 'DEBILIDAD'],
+      rol: 'ataque',
+      preferredAttribute: 'constitucion',
+      durationEffectMagnitude: -5,
+      durationEffectTurns: 3,
+      energyCost: ENERGY_COST_MEDIA,
+    },
+  },
+  // CONTRA+LIMITADA real (2026-08-31) — "todos los ataques del combate" de la ficha original
+  // (multi-objetivo real) se simplifica al mismo contragolpe puntual que el resto de CONTRA, con
+  // el tope de 1 uso ya construido (LIMITADA).
+  {
+    level: 40,
+    clase: 'GUERRERO',
+    especializacion: 'GUARDIAN',
+    ability: {
+      name: 'Sacrificio del Guardián',
+      icon: '🛡️',
+      description: 'Se planta sin pensar en sí mismo — el golpe definitivo del tanque, devolviendo con la misma fuerza a quien se atreva a atacarle.',
+      promptText: 'Me planto sin pensar en mí mismo, listo para devolver el golpe a quien se atreva.',
+      category: 'combate',
+      effects: ['AGUANTE', 'CONTRA', 'LIMITADA'],
+      rol: 'defensa',
+      preferredAttribute: 'constitucion',
+      attributeBonus: 6,
+      maxUsesPerCombat: 1,
+      energyCost: ENERGY_COST_EXPERTA,
+    },
+  },
 
-  // --- Lancero (12/16/19/24/28/32/36/40 — 16, 24 y 40 listas) ---
+  // --- Lancero (12/16/19/24/28/32/36/40 — 12/16/19/24/36/40 listas) ---
+  // AUMENTO real (2026-08-31) — mismo mecanismo que Golpe Runa de Cólera, tramo alto de la ficha
+  // (diferencia 6, +4 destreza).
+  {
+    level: 12,
+    clase: 'GUERRERO',
+    especializacion: 'LANCERO',
+    ability: {
+      name: 'Estocada Calculada',
+      icon: '📐',
+      description: 'Un ataque medido con precisión — si el golpe es de verdad decisivo, la ventaja se mantiene un turno más.',
+      promptText: 'Mido mi estocada con precisión, buscando que la ventaja se mantenga.',
+      category: 'combate',
+      effects: ['ATAQUE', 'AUMENTO'],
+      rol: 'ataque',
+      preferredAttribute: 'voluntad',
+      attributeBonus: 2,
+      durationEffectMagnitude: 4,
+      durationEffectTurns: 1,
+      energyCost: ENERGY_COST_MEDIA,
+    },
+  },
   {
     level: 16,
     clase: 'GUERRERO',
@@ -219,6 +338,25 @@ const CLASS_ABILITIES: ClassAbilityUnlock[] = [
       effects: ['ATURDIMIENTO'],
       rol: 'ataque',
       preferredAttribute: 'destreza',
+      energyCost: ENERGY_COST_MEDIA,
+    },
+  },
+  // DEBILIDAD real (2026-08-31) — tramo alto de la ficha (diferencia 8, -5 fuerza).
+  {
+    level: 19,
+    clase: 'GUERRERO',
+    especializacion: 'LANCERO',
+    ability: {
+      name: 'Embestida de Asta',
+      icon: '🐗',
+      description: 'Una embestida directa con todo el peso del asta — deja al rival visiblemente debilitado.',
+      promptText: 'Embisto con todo el peso de mi asta, buscando debilitar a mi rival.',
+      category: 'combate',
+      effects: ['ATAQUE', 'DEBILIDAD'],
+      rol: 'ataque',
+      preferredAttribute: 'fuerza',
+      durationEffectMagnitude: -5,
+      durationEffectTurns: 2,
       energyCost: ENERGY_COST_MEDIA,
     },
   },
@@ -241,6 +379,27 @@ const CLASS_ABILITIES: ClassAbilityUnlock[] = [
       preferredAttribute: 'destreza',
       attributeBonus: 2,
       energyCost: ENERGY_COST_MEDIA,
+    },
+  },
+  // DEBILIDAD+MULTIPLE combinados real (2026-08-31, Fase 3§3a: MULTIPLE propaga el mismo
+  // ActiveEffect a los dos objetivos) — tramo alto de la ficha (diferencia 12, -5 destreza).
+  {
+    level: 36,
+    clase: 'GUERRERO',
+    especializacion: 'LANCERO',
+    ability: {
+      name: 'Zancada Perforante',
+      icon: '🌀',
+      description: 'Un giro perforante que, si es de verdad decisivo, alcanza y debilita a más de un rival a la vez.',
+      promptText: 'Giro con fuerza perforante, buscando alcanzar y debilitar a más de un rival.',
+      category: 'combate',
+      effects: ['ATAQUE', 'DEBILIDAD', 'MULTIPLE'],
+      rol: 'ataque',
+      preferredAttribute: 'destreza',
+      attributeBonus: 5,
+      durationEffectMagnitude: -5,
+      durationEffectTurns: 2,
+      energyCost: ENERGY_COST_AVANZADA,
     },
   },
   {
@@ -330,6 +489,28 @@ const CLASS_ABILITIES: ClassAbilityUnlock[] = [
       attributeBonus: 4,
       energyCost: ENERGY_COST_MEDIA,
       energyRegen: 15,
+    },
+  },
+  // AUMENTO en defensa real (2026-08-31, confirmado leyendo el motor: se aplica también cuando el
+  // JUGADOR defiende con una habilidad de rol 'defensa', no solo al atacar — mismo mecanismo que
+  // Golpe Runa de Cólera espejado). Tramo alto de la ficha (diferencia 6, +6 constitución).
+  {
+    level: 32,
+    clase: 'GUERRERO',
+    especializacion: 'ESPECIALISTA',
+    ability: {
+      name: 'Reflejos Entrenados',
+      icon: '🤸',
+      description: 'Reflejos afinados a base de entrenamiento puro — si la esquiva es de verdad limpia, se mantiene más ágil un rato.',
+      promptText: 'Confío en mis reflejos entrenados, buscando que la esquiva se mantenga limpia.',
+      category: 'combate',
+      effects: ['AGUANTE', 'AUMENTO'],
+      rol: 'defensa',
+      preferredAttribute: 'destreza',
+      attributeBonus: 4,
+      durationEffectMagnitude: 6,
+      durationEffectTurns: 3,
+      energyCost: ENERGY_COST_AVANZADA,
     },
   },
 
@@ -483,14 +664,62 @@ const CLASS_ABILITIES: ClassAbilityUnlock[] = [
       energyCost: ENERGY_COST_MEDIA,
     },
   },
+  // DEBILIDAD+ATURDIMIENTO+MULTIPLE+LIMITADA combinados real (2026-08-31) — tramo alto de la
+  // ficha (diferencia 10, -6 destreza + aturdimiento, propagado a los dos objetivos de MULTIPLE).
+  {
+    level: 24,
+    clase: 'CAZADOR',
+    especializacion: 'SUPERVIVENCIA',
+    ability: {
+      name: 'Giro Toxina Paralizante',
+      icon: '🧫',
+      description: 'Un giro rápido untado en toxina paralizante — si el golpe es decisivo, la parálisis alcanza también a un rival cercano.',
+      promptText: 'Giro con mi toxina paralizante, buscando alcanzar a más de un rival.',
+      category: 'combate',
+      effects: ['ATAQUE', 'DEBILIDAD', 'ATURDIMIENTO', 'MULTIPLE', 'LIMITADA'],
+      rol: 'ataque',
+      preferredAttribute: 'destreza',
+      attributeBonus: 2,
+      durationEffectMagnitude: -6,
+      durationEffectTurns: 1,
+      maxUsesPerCombat: 2,
+      energyCost: ENERGY_COST_AVANZADA,
+    },
+  },
+  // DEBILIDAD+CONTRA combinados real (2026-08-31) — tramo alto de la ficha (diferencia 10, -6
+  // constitución + contra).
+  {
+    level: 28,
+    clase: 'CAZADOR',
+    especializacion: 'SUPERVIVENCIA',
+    ability: {
+      name: 'Caparazón Gargantúa',
+      icon: '🐢',
+      description: 'Un caparazón improvisado con piezas de gargantúa — quien ataca contra él sale peor parado que quien lo lleva.',
+      promptText: 'Me cubro con mi caparazón improvisado, listo para devolver el golpe.',
+      category: 'combate',
+      effects: ['AGUANTE', 'DEBILIDAD', 'CONTRA'],
+      rol: 'defensa',
+      preferredAttribute: 'constitucion',
+      attributeBonus: 6,
+      durationEffectMagnitude: -6,
+      durationEffectTurns: 1,
+      energyCost: ENERGY_COST_AVANZADA,
+    },
+  },
   // MULTIPLE real (2026-08-27, Fase 3 § 3b) — reinterpretación consciente: la fila describe "ataca
   // a dos objetivos de tu elección" SIN ninguna condición de margen (siempre 2) — se gatea igual
   // que el resto de MULTIPLE (margen decisivo, ±10) por consistencia con el motor, en vez de
   // dispararla siempre. Documentado, no un descuido.
+  //
+  // Corregido 2026-08-31: bug de siembra real — clases.md siempre diseñó "Golpe Gemelo" en
+  // Instintivo nv.32 (Fuerza), pero se sembró aquí en Supervivencia nv.32 por error. Movida a su
+  // especialización correcta; Supervivencia nv.32 (Trampa Improvisada, MULTIPLE también) se queda
+  // sin sembrar, sigue bloqueada como antes de este fix — no cambia su estado.
   {
     level: 32,
     clase: 'CAZADOR',
-    especializacion: 'SUPERVIVENCIA',
+    especializacion: 'INSTINTIVO',
     ability: {
       name: 'Golpe Gemelo',
       icon: '👊',
@@ -500,6 +729,27 @@ const CLASS_ABILITIES: ClassAbilityUnlock[] = [
       effects: ['ATAQUE', 'MULTIPLE'],
       rol: 'ataque',
       preferredAttribute: 'fuerza',
+      energyCost: ENERGY_COST_AVANZADA,
+    },
+  },
+  // DEBILIDAD real (2026-08-31) — tramo alto de la ficha (diferencia 12, -6 a todos los stats
+  // simplificado al atributo de la tirada, mismo criterio que el resto de DEBILIDAD).
+  {
+    level: 36,
+    clase: 'CAZADOR',
+    especializacion: 'SUPERVIVENCIA',
+    ability: {
+      name: 'Golpe Veneno Corrosivo',
+      icon: '☠️',
+      description: 'Un veneno corrosivo que, con un golpe de verdad decisivo, deja al rival muy debilitado.',
+      promptText: 'Ataco con mi veneno corrosivo, buscando debilitar de verdad a mi rival.',
+      category: 'combate',
+      effects: ['ATAQUE', 'DEBILIDAD'],
+      rol: 'ataque',
+      preferredAttribute: 'destreza',
+      attributeBonus: 3,
+      durationEffectMagnitude: -6,
+      durationEffectTurns: 1,
       energyCost: ENERGY_COST_AVANZADA,
     },
   },
@@ -611,8 +861,25 @@ const CLASS_ABILITIES: ClassAbilityUnlock[] = [
       energyCost: ENERGY_COST_AVANZADA,
     },
   },
+  // MULTIPLE real (2026-08-31) — mismo patrón que Punta Doble/Golpe Gemelo, tramo único.
+  {
+    level: 36,
+    clase: 'CAZADOR',
+    especializacion: 'TIRADOR',
+    ability: {
+      name: 'Tiro Múltiple',
+      icon: '🏹',
+      description: 'Un disparo tan preciso que, si conecta de lleno, alcanza también a otro rival cercano.',
+      promptText: 'Disparo buscando alcanzar a más de un rival de un solo tiro.',
+      category: 'combate',
+      effects: ['ATAQUE', 'MULTIPLE'],
+      rol: 'ataque',
+      preferredAttribute: 'destreza',
+      energyCost: ENERGY_COST_AVANZADA,
+    },
+  },
 
-  // --- Instintivo (12/16/19/24/28/32/36/40 — 12/16/36/40 listas) ---
+  // --- Instintivo (12/16/19/24/28/32/36/40 — 12/16/32/36/40 listas) ---
   {
     level: 12,
     clase: 'CAZADOR',
@@ -644,6 +911,44 @@ const CLASS_ABILITIES: ClassAbilityUnlock[] = [
       preferredAttribute: 'destreza',
       attributeBonus: 4,
       energyCost: ENERGY_COST_BASICA,
+    },
+  },
+  // CONTRA real (2026-08-31) — mismo mecanismo que Vórtice Menor.
+  {
+    level: 19,
+    clase: 'CAZADOR',
+    especializacion: 'INSTINTIVO',
+    ability: {
+      name: 'Instinto Reactivo',
+      icon: '🔄',
+      description: 'Un reflejo puro que, si es de verdad decisivo, devuelve el golpe con la misma fuerza.',
+      promptText: 'Confío en mi instinto reactivo, listo para devolver el golpe.',
+      category: 'combate',
+      effects: ['AGUANTE', 'CONTRA'],
+      rol: 'defensa',
+      preferredAttribute: 'destreza',
+      attributeBonus: 4,
+      energyCost: ENERGY_COST_MEDIA,
+    },
+  },
+  // DEBILIDAD real (2026-08-31) — tramo bajo de la ficha (diferencia 6, -4 destreza).
+  {
+    level: 24,
+    clase: 'CAZADOR',
+    especializacion: 'INSTINTIVO',
+    ability: {
+      name: 'Furia Instintiva',
+      icon: '😤',
+      description: 'Un golpe de pura rabia primaria — deja al rival más torpe de lo que estaba.',
+      promptText: 'Golpeo con pura rabia primaria, buscando dejar a mi rival más torpe.',
+      category: 'combate',
+      effects: ['ATAQUE', 'DEBILIDAD'],
+      rol: 'ataque',
+      preferredAttribute: 'fuerza',
+      attributeBonus: 6,
+      durationEffectMagnitude: -4,
+      durationEffectTurns: 2,
+      energyCost: ENERGY_COST_MEDIA,
     },
   },
   {
@@ -740,7 +1045,74 @@ const CLASS_ABILITIES: ClassAbilityUnlock[] = [
     },
   },
 
-  // --- Rúnico (12/16/19/24/28/32/36/40 — 24/28/40 listas) ---
+  // --- Totémico (12/16/19/24/28/32/36/40 — 12 lista) ---
+  //
+  // Corregido 2026-08-31: "Tótem de Guerra" (INVOCACION, Fase 3§3d, 2026-08-27 — primera y única
+  // habilidad real de INVOCACION del catálogo, ver comentario de cabecera y worldCatalog.ts, ficha
+  // Npc "totem-de-guerra") vivía sembrada por error en Convocador nv.12 — clases.md siempre la
+  // diseñó aquí. Invocar consume el turno entero (decisión de diseño): sin `attributeBonus`/
+  // `durationEffectMagnitude/Turns`, el turno de invocar nunca pasa por
+  // `resolverIntercambioCompleto`. El resto de Totémico (16-40) sigue sin construir: todos
+  // combinan INVOCACION con PROVOCACION/CONTRA/AGUANTE/MULTIPLE/AUMENTO, o "varios tótems a la
+  // vez" — más allá de lo que el motor cubre hoy (un único invocador con un único tótem).
+  {
+    level: 12,
+    clase: 'CHAMAN',
+    especializacion: 'TOTEMICO',
+    ability: {
+      name: 'Tótem de Guerra',
+      icon: '🗿',
+      description: 'Clavas un tótem de guerra en tierra — aguanta un golpe, ataca por su cuenta un par de turnos y desaparece. No puedes tener más de uno a la vez.',
+      promptText: 'Clavo un tótem de guerra en tierra, canalizando parte de mi poder a través de él.',
+      category: 'combate',
+      effects: ['INVOCACION'],
+      rol: 'ataque',
+      preferredAttribute: 'arcano',
+      energyCost: ENERGY_COST_MEDIA,
+    },
+  },
+
+  // --- Rúnico (12/16/19/24/28/32/36/40 — 12/16/24/28/36/40 listas) ---
+  // AUMENTO real (2026-08-31) — a uno mismo, tramo único de la ficha (+6 fuerza, 1 turno).
+  {
+    level: 12,
+    clase: 'CHAMAN',
+    especializacion: 'RUNICO',
+    ability: {
+      name: 'Runa de Fuerza',
+      icon: '💪',
+      description: 'Una runa de fuerza grabada al vuelo — canaliza poder bruto en el propio golpe.',
+      promptText: 'Grabo una runa de fuerza al vuelo, canalizando poder bruto en mi golpe.',
+      category: 'combate',
+      effects: ['ATAQUE', 'AUMENTO'],
+      rol: 'ataque',
+      preferredAttribute: 'arcano',
+      durationEffectMagnitude: 6,
+      durationEffectTurns: 1,
+      energyCost: ENERGY_COST_MEDIA,
+    },
+  },
+  // DEBILIDAD real (2026-08-31) — tramo bajo de la ficha (diferencia 5, -2 a todos los stats
+  // simplificado al atributo de la tirada).
+  {
+    level: 16,
+    clase: 'CHAMAN',
+    especializacion: 'RUNICO',
+    ability: {
+      name: 'Golpe Runa de Debilidad',
+      icon: '🩸',
+      description: 'Una runa de debilidad se graba en el golpe — con un impacto decisivo, deja al rival visiblemente mermado.',
+      promptText: 'Grabo una runa de debilidad en mi golpe, buscando mermar a mi rival.',
+      category: 'combate',
+      effects: ['ATAQUE', 'DEBILIDAD'],
+      rol: 'ataque',
+      preferredAttribute: 'arcano',
+      attributeBonus: 5,
+      durationEffectMagnitude: -2,
+      durationEffectTurns: 2,
+      energyCost: ENERGY_COST_MEDIA,
+    },
+  },
   {
     level: 24,
     clase: 'CHAMAN',
@@ -782,6 +1154,23 @@ const CLASS_ABILITIES: ClassAbilityUnlock[] = [
       energyCost: ENERGY_COST_AVANZADA,
     },
   },
+  // MULTIPLE real (2026-08-31) — mismo patrón que Punta Doble/Golpe Gemelo, tramo único.
+  {
+    level: 36,
+    clase: 'CHAMAN',
+    especializacion: 'RUNICO',
+    ability: {
+      name: 'Runa de Rayo Cadena',
+      icon: '⚡',
+      description: 'Un rayo rúnico que, con un impacto decisivo, salta también hacia otro rival cercano.',
+      promptText: 'Lanzo un rayo rúnico, buscando que salte hacia más de un rival.',
+      category: 'combate',
+      effects: ['ATAQUE', 'MULTIPLE'],
+      rol: 'ataque',
+      preferredAttribute: 'inteligencia',
+      energyCost: ENERGY_COST_AVANZADA,
+    },
+  },
   {
     level: 40,
     clase: 'CHAMAN',
@@ -800,30 +1189,88 @@ const CLASS_ABILITIES: ClassAbilityUnlock[] = [
     },
   },
 
-  // --- Convocador (12/16/19/24/28/32/36/40 — 12, 28 y 32 listas) ---
+  // --- Convocador (12/16/19/24/28/32/36/40 — 12/16/19/24/28/32 listas) ---
   //
-  // Corrección frente al doc (2026-08-24): clases.md marcaba 12/16/19/28/32/40 como "✅ lista"
-  // (6/8), pero 16/19/40 usan AUMENTO/DEBILIDAD/MULTIPLE/CANALIZAR — ninguno implementado
-  // todavía. 28 (Puño Ígneo, ATAQUE+ATURDIMIENTO) ya era real; 32 (Vórtice Menor, CONTRA) se suma
-  // 2026-08-26; 12 (Tótem de Guerra, INVOCACION) se suma 2026-08-27, Fase 3 § 3d — primera
-  // habilidad real de INVOCACION del catálogo, ver comentario de cabecera y `worldCatalog.ts`
-  // (ficha Npc "totem-de-guerra"). Invocar consume el turno entero (decisión de diseño): no hay
-  // `attributeBonus`/`durationEffectMagnitude/Turns` aquí, el turno de invocar nunca pasa por
-  // `resolverIntercambioCompleto`.
+  // Corregido 2026-08-31: bug de siembra real — clases.md siempre diseñó "Tótem de Guerra" en
+  // Chamán/Totémico nv.12 (INVOCACION), pero se sembró aquí en Convocador por error, ocupando el
+  // hueco real de "Filo Elemental" (ATAQUE+AUMENTO). Movido a Totémico (ver más abajo); este hueco
+  // ahora lleva de verdad Filo Elemental + el resto de la especialización sembrable (16/19/24).
+  // AUMENTO real (2026-08-31) — tramo alto de la ficha (diferencia 6, +4 magia).
   {
     level: 12,
     clase: 'CHAMAN',
     especializacion: 'CONVOCADOR',
     ability: {
-      name: 'Tótem de Guerra',
-      icon: '🗿',
-      description: 'Clavas un tótem de guerra en tierra — aguanta un golpe, ataca por su cuenta un par de turnos y desaparece. No puedes tener más de uno a la vez.',
-      promptText: 'Clavo un tótem de guerra en tierra, canalizando parte de mi poder a través de él.',
+      name: 'Filo Elemental',
+      icon: '🔥',
+      description: 'Imbuye su arma con un elemento justo antes del golpe — si el impacto es decisivo, el filo sigue ardiendo un turno más.',
+      promptText: 'Imbuyo mi arma con un elemento justo antes de golpear.',
       category: 'combate',
-      effects: ['INVOCACION'],
+      effects: ['ATAQUE', 'AUMENTO'],
       rol: 'ataque',
       preferredAttribute: 'arcano',
+      attributeBonus: 3,
+      durationEffectMagnitude: 4,
+      durationEffectTurns: 1,
       energyCost: ENERGY_COST_MEDIA,
+    },
+  },
+  // DEBILIDAD en defensa real (2026-08-31, confirmado que funciona también cuando el jugador
+  // defiende) — tramo único de la ficha (-4 destreza).
+  {
+    level: 16,
+    clase: 'CHAMAN',
+    especializacion: 'CONVOCADOR',
+    ability: {
+      name: 'Armadura de Piedra',
+      icon: '🪨',
+      description: 'Invoca tierra sobre su propio equipo — quien la ataca sale con las piernas más torpes.',
+      promptText: 'Invoco tierra sobre mi propio equipo, listo para defenderme.',
+      category: 'combate',
+      effects: ['AGUANTE', 'DEBILIDAD'],
+      rol: 'defensa',
+      preferredAttribute: 'constitucion',
+      durationEffectMagnitude: -4,
+      durationEffectTurns: 2,
+      energyCost: ENERGY_COST_MEDIA,
+    },
+  },
+  // MULTIPLE real (2026-08-31) — mismo patrón que Punta Doble/Golpe Gemelo, tramo único.
+  {
+    level: 19,
+    clase: 'CHAMAN',
+    especializacion: 'CONVOCADOR',
+    ability: {
+      name: 'Golpe de Trueno',
+      icon: '⚡',
+      description: 'Una descarga eléctrica concentrada en un golpe físico — si es decisivo, alcanza a más de un rival cercano.',
+      promptText: 'Concentro una descarga eléctrica en mi golpe, buscando alcanzar a más de un rival.',
+      category: 'combate',
+      effects: ['ATAQUE', 'MULTIPLE'],
+      rol: 'ataque',
+      preferredAttribute: 'fuerza',
+      attributeBonus: 4,
+      energyCost: ENERGY_COST_MEDIA,
+    },
+  },
+  // DEBILIDAD en defensa real (2026-08-31) — tramo único de la ficha (-3 destreza).
+  {
+    level: 24,
+    clase: 'CHAMAN',
+    especializacion: 'CONVOCADOR',
+    ability: {
+      name: 'Escudo de Escarcha',
+      icon: '❄️',
+      description: 'El hielo refuerza su resistencia unos turnos — quien lo ataca sale con las piernas heladas.',
+      promptText: 'Refuerzo mi resistencia con hielo, listo para defenderme.',
+      category: 'combate',
+      effects: ['AGUANTE', 'DEBILIDAD'],
+      rol: 'defensa',
+      preferredAttribute: 'constitucion',
+      attributeBonus: 4,
+      durationEffectMagnitude: -3,
+      durationEffectTurns: 1,
+      energyCost: ENERGY_COST_AVANZADA,
     },
   },
   {
@@ -897,6 +1344,25 @@ const CLASS_ABILITIES: ClassAbilityUnlock[] = [
       effects: ['CONTROL'],
       rol: 'utilidad',
       preferredAttribute: 'arcano',
+      energyCost: ENERGY_COST_MEDIA,
+    },
+  },
+  // DEBILIDAD real (2026-08-31) — tramo único de la ficha (diferencia 6, -4 destreza).
+  {
+    level: 19,
+    clase: 'CHAMAN',
+    especializacion: 'OPRESOR',
+    ability: {
+      name: 'Cadena de Sombras',
+      icon: '⛓️',
+      description: 'Runas oscuras se enredan en el rival — atado, se mueve visiblemente peor.',
+      promptText: 'Enredo a mi rival en runas oscuras, buscando atarlo y debilitarlo.',
+      category: 'combate',
+      effects: ['ATAQUE', 'DEBILIDAD'],
+      rol: 'ataque',
+      preferredAttribute: 'arcano',
+      durationEffectMagnitude: -4,
+      durationEffectTurns: 1,
       energyCost: ENERGY_COST_MEDIA,
     },
   },

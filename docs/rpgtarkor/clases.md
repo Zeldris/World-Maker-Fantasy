@@ -472,25 +472,20 @@ ritmo, con el resto relleno alrededor:
 
 | Nivel | Habilidad | Atributo | Efecto | Rol | Estado |
 |---|---|---|---|---|---|
-| 12 | Grito de Guerra *(reasignada, antes tronco nv.1)* | Carisma | `INTIMIDACION` + `DEBILIDAD` | utilidad | ⚠️ bloqueada (DEBILIDAD) — el efecto de intimidacion solo se aplicara si la diferencia de la tirada es de 6 |
-| 16 | Grito tenebroso *(reasignada, antes tronco nv.6)* | Carisma | `DEBILIDAD` + `ATURDIMIENTO` | utilidad | ⚠️ bloqueada, el efecto del aturdimiento solo se aplicara si la diferencia de la tirada es de 8 |
-| 19 | Última Resistencia | Constitucion | `AGUANTE`, solo si estás Convaleciente, aumenta + 10 la constitucion si estas convaleciente, sino solo + 2 | defensa | ✅ lista |
-| 24 | Giro Salvaje | Fuerza | `ATAQUE` + `MULTIPLE` | ataque que se realiza sobre un enemigo , si la tirada tiene una diferencia de 6 afecta a tu objetivo y otro aleatorio, si mayor de 12 a tu objetivo y 2 aleatorios | ⚠️ bloqueada |
-| 28 | Grito Desgarrador | Carisma | `CANALIZAR` + `ATURDIMIENTO` | utilidad si ganas la tirada aturde a todos los enemigos 1 turno | ⚠️ bloqueada|
-| 32 | Piel de Batalla | Constitución | `AGUANTE` + `CONTRA` | defensa, si tu tirada supea en 6 a la de cualquier enemigo que ataque, le devuelve el daño, si ganas por menos de 6 recibes el daño pero se genera un golpe mutuo | ⚠️ bloqueada |
-| 36 | Instinto Berserker | Fuerza | `AUMENTO` + `RECUPERACION` + `PURIFICAR` + `LIMITADA` | utilidad | ⚠️ bloqueada, aumenta la fueza +3 y la destreza +2 durante 2 turnos, recupera 40 de energia | Elimina todos los efectos negativos | una vez por combate|
-| 40 | Golpe Devastador *(capstone)* | Fuerza | `CANALIZAR` + `ATAQUE` + `LETAL`| ataque | ⚠️ bloqueada, se canaliza un turno, si ganas es un ataque normal que te aumenta la fuerza en +6 y si sacas una diferencia de 8 lo dejas convaleciente, si tienes mas de 12 de difeencia entonces lo mata directamente |
+| 12 | Grito de Guerra *(reasignada, antes tronco nv.1)* | Carisma | `INTIMIDACION` + `DEBILIDAD` | utilidad | ⚠️ bloqueada — `DEBILIDAD` ya está construido, pero solo en el camino de ATAQUE directo (margen decisivo ±10); esta fila es `rol: utilidad` (INTIMIDACION cancela el golpe, no ataca), y el camino de utilidad no aplica DEBILIDAD todavía |
+| 16 | Grito tenebroso *(reasignada, antes tronco nv.6)* | Carisma | `DEBILIDAD` + `ATURDIMIENTO` | utilidad | ⚠️ bloqueada, mismo motivo que 12 — rol utilidad, DEBILIDAD solo funciona hoy en ataque directo |
+| 19 | Última Resistencia | Constitucion | `AGUANTE`, solo si estás Convaleciente, aumenta + 10 la constitucion si estas convaleciente, sino solo + 2 | defensa | ✅ lista, sembrada en `classAbilities.ts` |
+| 24 | Giro Salvaje | Fuerza | `ATAQUE` + `MULTIPLE` | ataque que se realiza sobre un enemigo , si la tirada tiene una diferencia de 6 afecta a tu objetivo y otro aleatorio, si mayor de 12 a tu objetivo y 2 aleatorios | ⚠️ bloqueada de verdad todavía — sin sembrar, aunque `MULTIPLE`+`ATAQUE` YA tiene motor real (mismo patrón que Punta Doble/Golpe Gemelo, un solo tramo simplificado) |
+| 28 | Grito Desgarrador | Carisma | `CANALIZAR` + `ATURDIMIENTO` | utilidad si ganas la tirada aturde a todos los enemigos 1 turno | ⛔ `CANALIZAR` sigue sin ningún comportamiento real en el motor (solo enum) |
+| 32 | Piel de Batalla | Constitución | `AGUANTE` + `CONTRA` | defensa, si tu tirada supea en 6 a la de cualquier enemigo que ataque, le devuelve el daño, si ganas por menos de 6 recibes el daño pero se genera un golpe mutuo | ⚠️ bloqueada de verdad todavía — sin sembrar, aunque `CONTRA` YA tiene motor real (mismo patrón que Vórtice Menor) |
+| 36 | Instinto Berserker | Fuerza | `AUMENTO` + `RECUPERACION` + `PURIFICAR` + `LIMITADA` | utilidad | ⛔ `AUMENTO` a uno mismo desde una habilidad de rol utilidad (no ataque) sigue sin motor + `PURIFICAR` sin ningún comportamiento real |
+| 40 | Golpe Devastador *(capstone)* | Fuerza | `CANALIZAR` + `ATAQUE` + `LETAL`| ataque | ⛔ `CANALIZAR` sigue sin ningún comportamiento real |
 
-Encaja con la descripción original: 4 gritos con efectos distintos (12/16/28/40 en espíritu — el
-40 es un golpe, no un grito, pero es el remate de la rama), daño mayoritariamente de fuerza con
-algo de carisma, defensa poca pero real (19/32, dos sabores — bloqueo por dureza vs. último
-aliento al borde de la muerte), y `AUMENTO` (36) es el "utilidad que añade buffs pasivos" pedido —
-siempre para uno mismo, nunca para aliados (eso es Guardián). **Solo 1 de 8 huecos listo ya** (19,
-la única habilidad sin ningún efecto pendiente) — los otros 7 combinan al menos un efecto bloqueado
-(`DEBILIDAD`/`MULTIPLE`/`CANALIZAR`/`CONTRA`/`AUMENTO`/`PURIFICAR`), casi todos de la misma familia
-de infraestructura de duración/turnos pendiente, salvo `MULTIPLE` (24) que además necesita
-multi-objetivo. Es la rama que más se resiente de combinar 2-4 efectos por habilidad: al añadir
-tantos efectos nuevos apilados, casi todo pasó a depender de algo que aún no existe.
+**1 de 8 huecos sembrado** (19). `DEBILIDAD`/`MULTIPLE`/`CONTRA` ya tienen motor real en el camino
+de ATAQUE directo desde las Fases 2/3 (2026-08-26/27) — **24 y 32 son sembrables YA, sin tocar
+motor**, solo falta darlas de alta en `classAbilities.ts` (mismo criterio de simplificación a un
+único tramo que ya usan Punta Doble/Golpe Gemelo/Vórtice Menor). 12/16 (DEBILIDAD en rol utilidad)
+y 36/40 (`CANALIZAR`/`PURIFICAR`, sin ningún motor) siguen bloqueadas de verdad.
 
 ### Guardián — completo (8 huecos)
 
@@ -503,24 +498,20 @@ donde tenía sentido:
 
 | Nivel | Habilidad | Atributo | Efecto | Rol | Estado |
 |---|---|---|---|---|---|
-| 12 | Muro de Batalla | Constitución | `AGUANTE` | defensa | ✅ lista, te defiedes y aumenta en +4 la constitucion |
-| 16 | Bastión Personal | Fuerza | `AGUANTE` + `PROVOCACION` | defensa | ⛔ necesita efecto nuevo (`PROVOCACION`) — te defiendes Y obliga tu enemigo a atacarte durante 2 turnos |
-| 19 | Desafío | Carisma | `PROVOCACION` *(nueva)* | utilidad | ⛔ necesita efecto nuevo |
-| 24 | Golpe de Advertencia | Constitución | `ATURDIMIENTO` + `DEBILIDAD` | ataque | ⚠️ bloqueada , aturde un turno y despues del aturdimiento resta -3 de destreza 3 turnos|
-| 28 | Embate de Escudo | Constitución | `ATAQUE` + `EXPULSAR `— escala por constitución, no fuerza | ataque | ⚠️ bloqueada, ataque normal a no ser que saques 8 de diferencia con el objetivo entonces lo expulsa del combate 2 turnos y hay un 50% de posibilidades de que vuelva, si la diferencia es +14 lo retira y no vuelve |
-| 32 | Valor Compartido | Carisma | `AUMENTO` + `MULTIPLE`| utilidad | ⚠️ bloqueada, aumenta +2 de fuerza y +5 constitucion el siguiente turno a todos los aliados|
-| 36 | Postura Inquebrantable | Constitución | `AGUANTE` + `MULTIPLE` + | defensa | ⚠️ bloqueada (`MULTIPLE`, multi-objetivo) — si ganas te defiende de un ataque sumando +4 de constitucion, si la diferencia es de 6 bloquea el de tu objetivo y el de otro aliad, si la diferencia es de 12 la tu objetivo y 2 aliados aleatorios |
-| 40 | Sacrificio del Guardián *(capstone)* | Constitución | `AGUANTE` + `CONTRA` + `LIMITADA` — Defiendes todos los ataques del combate a los que le ganes en valor de tirada y devuelve un ataque a todos aquellos a quien ganes en tirada, solo se puede usar 1 vez por combate | defensa | ⚠️ bloqueada (`CONTRA` — `LIMITADA` ya está implementada, no es el problema aquí) |
+| 12 | Muro de Batalla | Constitución | `AGUANTE` | defensa | ✅ lista, sembrada |
+| 16 | Bastión Personal | Fuerza | `AGUANTE` + `PROVOCACION` | defensa | ⛔ `PROVOCACION` está en el enum (2026-08-31: no era cierto que faltara darlo de alta) pero sigue sin NINGÚN comportamiento real en el motor — el efecto inverso a OCULTACION/EXPULSAR (forzar inclusión/redirección de objetivo), sin construir |
+| 19 | Desafío | Carisma | `PROVOCACION` *(nueva)* | utilidad | ⛔ mismo motivo que 16 |
+| 24 | Golpe de Advertencia | Constitución | `ATURDIMIENTO` + `DEBILIDAD` | ataque | ⚠️ bloqueada de verdad todavía — sin sembrar, aunque `DEBILIDAD`+`ATAQUE`/`ATURDIMIENTO` de rol ataque YA tiene motor real (mismo tramo simplificado que Golpe Envenenado) |
+| 28 | Embate de Escudo | Constitución | `ATAQUE` + `EXPULSAR `— escala por constitución, no fuerza | ataque | ✅ **lista, sembrada 2026-08-27 (Fase 3§3e)** — simplificada a un único margen/2 rondas, sin los 2 tramos 8/14 ni la tirada de 50% de volver |
+| 32 | Valor Compartido | Carisma | `AUMENTO` + `MULTIPLE`| utilidad | ⛔ `AUMENTO` a ALIADOS (no a uno mismo) sigue sin motor — es el bloqueo real más grande que queda en Guerrero/Cazador/Chamán juntos, afecta a varias filas más |
+| 36 | Postura Inquebrantable | Constitución | `AGUANTE` + `MULTIPLE` + | defensa | ⛔ mismo motivo que 32 — MULTIPLE aplicado a defender ALIADOS, no a atacar enemigos, es otro camino sin construir |
+| 40 | Sacrificio del Guardián *(capstone)* | Constitución | `AGUANTE` + `CONTRA` + `LIMITADA` — Defiendes todos los ataques del combate a los que le ganes en valor de tirada y devuelve un ataque a todos aquellos a quien ganes en tirada, solo se puede usar 1 vez por combate | defensa | ⚠️ bloqueada de verdad todavía — sin sembrar, aunque `CONTRA`+`LIMITADA` YA tiene motor real (mismo patrón que Vórtice Menor); "todos los ataques del combate" (multi-objetivo real) es más de lo que el CONTRA actual cubre, revisar al sembrar |
 
-**Solo 1 de 8 huecos listo ya** (12). El resto (16/19/24/28/32/36/40) depende de al menos un efecto
-pendiente entre `PROVOCACION` (sin dar de alta), `DEBILIDAD`, `EXPULSAR`, `AUMENTO`, `MULTIPLE` y
-`CONTRA`. Mayoría constitución (5 huecos: 12/16/28/36/40), carisma solo donde de verdad es
-liderazgo/agro (19/32), un único ataque de fuerza (24) — "pocas habs de ataque" tal cual pedías, y
-ahora con Embate de Escudo (28) tiene dos formas de golpear, ambas coherentes con el tanque (fuerza
-bruta puntual + masa/aguante como arma). El reparto de atributos sigue teniendo sentido; lo que ha
-cambiado es cuánto de la rama depende ahora mismo de infraestructura que aún no existe — más que
-Berserker, incluso, porque `PROVOCACION` (el corazón temático de Guardián: "conseguir o redirigir
-agro") ni siquiera está dado de alta todavía.
+**2 de 8 huecos sembrados** (12, 28). `DEBILIDAD`+ataque (24) y `CONTRA`+`LIMITADA` (40, con
+matiz de alcance) son sembrables YA sin tocar motor. `PROVOCACION` (16/19) sigue en cero pese a
+estar en el enum. `AUMENTO`/`MULTIPLE` a ALIADOS (32/36) son el mismo bloqueo real de fondo que
+aparece repetido en varias clases — nunca se construyó el camino de "utilidad que buffa a otros",
+solo "ataque que buffa/debilita a quien golpea o es golpeado".
 
 ### Lancero — 2 de 8 listas, no "completa" todavía
 
@@ -530,20 +521,19 @@ la columna Estado, que se había perdido al escribir esta tabla:
 
 | Nivel | Habilidad | Atributo | Efecto | Estado |
 |---|---|---|---|---|
-| 12 | Estocada Calculada | Voluntad | `ATAQUE` + `AUMENTO` | ⚠️ bloqueada (`AUMENTO`) — te aumenta +2 de destrez al aracar, si la diferencia es de 6 te aumenta +4 de destreza para el siguiente turno |
-| 16 | Barrido de Asta | Destreza | `ATURDIMIENTO` | ✅ lista — aturde al enemigo 1 turno |
-| 19 | Embestida de Asta | Fuerza | `ATAQUE` + `DEBILIDAD` | ⚠️ bloqueada (`DEBILIDAD`) — realiza un ataque que si se diferencia en 4 o mas la tirada aplica -3 de fuerza, si es superior a 8 -5 de fuerza |
-| 24 | Punta Doble | Destreza | `ATAQUE` + `MULTIPLE` | ⚠️ bloqueada (`MULTIPLE`, multi-objetivo) — ataque que aumenta +2 la destreza y si la diferencia es de 6 se aplica sobre 2 enemigos, si es de 12 sobre 3 |
-| 28 | Empalizada | Carisma | `INTIMIDACION` + `DEBILIDAD` + `CONTRA` | ⚠️ bloqueada (`DEBILIDAD` + `CONTRA`) — cancela un ataque y si la diferencia es de 4 le resta +4 de comstitucion al enemigo, si la diferencia es de 10 realiza una contra devolviendo el golpe |
-| 32 | Guardia de Asta | Constitucion | `AGUANTE` + `PROVOCACION` + `CONTRA` | ⛔ necesita efecto nuevo (`PROVOCACION`) + `CONTRA` — defiende un ataque y si la diferencia es de 8 hace una contra devolviendo el golpe y le obliga a atacarle 1 turno |
-| 36 | Zancada Perforante | Destreza | `ATAQUE` + `DEBILIDAD` + `MULTIPLE` | ⚠️ bloqueada (`DEBILIDAD` + `MULTIPLE`) — ataca teniendo +5 de destrza, si la tirada se diferencia en 12 se aplica a todos lo enemigos y les resta -5 de destreza |
-| 40 | Lanza Certera *(capstone)* | Voluntad + Destreza | `ATAQUE` + `ATURDIMIENTO` + `LETAL` + `LIMITADA` | ✅ lista — ataque que aturde 1 turno si la diferencia es de 6, si la diferencia es de 12 es un golpe letal, se puede usar 3 veces por combate |
+| 12 | Estocada Calculada | Voluntad | `ATAQUE` + `AUMENTO` | ⚠️ bloqueada de verdad todavía — sin sembrar, aunque `AUMENTO` a uno mismo desde ataque directo YA tiene motor real (mismo patrón que Golpe Runa de Cólera) |
+| 16 | Barrido de Asta | Destreza | `ATURDIMIENTO` | ✅ lista, sembrada |
+| 19 | Embestida de Asta | Fuerza | `ATAQUE` + `DEBILIDAD` | ⚠️ bloqueada de verdad todavía — sin sembrar, aunque `DEBILIDAD`+ataque YA tiene motor real |
+| 24 | Punta Doble | Destreza | `ATAQUE` + `MULTIPLE` | ✅ **lista, sembrada 2026-08-27 (Fase 3§3b)** — tramo único (diferencia 12), sin el tramo bajo (6→2 enemigos) de la ficha original |
+| 28 | Empalizada | Carisma | `INTIMIDACION` + `DEBILIDAD` + `CONTRA` | ⛔ combina utilidad (INTIMIDACION) con DEBILIDAD+CONTRA — ninguno de los dos funciona todavía fuera del camino de ataque directo |
+| 32 | Guardia de Asta | Constitucion | `AGUANTE` + `PROVOCACION` + `CONTRA` | ⛔ `PROVOCACION` sigue sin motor real (ver Guardián 16/19) |
+| 36 | Zancada Perforante | Destreza | `ATAQUE` + `DEBILIDAD` + `MULTIPLE` | ⚠️ bloqueada de verdad todavía — sin sembrar, aunque `DEBILIDAD`+`MULTIPLE` combinados YA tienen motor real (Fase 3§3a: MULTIPLE propaga el mismo ActiveEffect a los dos objetivos) |
+| 40 | Lanza Certera *(capstone)* | Voluntad + Destreza | `ATAQUE` + `ATURDIMIENTO` + `LETAL` + `LIMITADA` | ✅ lista, sembrada |
 
-`ATURDIMIENTO` ("aturdir/inmovilizar al enemigo") **ya está implementado de verdad** — se usa hoy
-en una habilidad de Cazador (Barrido Salvaje), sin depender de ninguna infraestructura pendiente.
-**2 de 8 listas** (16/40) — el resto depende de `AUMENTO`/`DEBILIDAD`/`MULTIPLE`/`CONTRA` o de
-`PROVOCACION` (sin dar de alta). Es la rama más bloqueada de Guerrero tras el repaso — casi todo lo
-que la hace "Lancero" (inmovilizar/debilitar al rival) vive detrás de efectos pendientes.
+**2 de 8 sembradas** (16, 24). `AUMENTO`+ataque (12), `DEBILIDAD`+ataque (19) y `DEBILIDAD`+
+`MULTIPLE` combinados (36) son sembrables YA sin tocar motor — dejarían Lancero en 5/8 sin escribir
+ninguna línea de motor nueva. 28 (INTIMIDACION+DEBILIDAD+CONTRA, mezcla utilidad con ataque) y 32
+(`PROVOCACION`) siguen bloqueadas de verdad.
 
 ### Especialista — 4 de 8 listas
 
@@ -555,20 +545,18 @@ constitución y destreza repetidas. Columna Estado añadida (se había perdido a
 
 | Nivel | Habilidad | Atributo | Efecto | Rol | Estado |
 |---|---|---|---|---|---|
-| 12 | Golpe Adaptado | Fuerza | `ATAQUE` | ataque | ✅ lista — aumenta + 4 la fuerza al atacar |
-| 16 | Golpe Calculado | Inteligencia | `ATAQUE` — golpe técnico, no de fuerza bruta | ataque | ✅ lista — aumenta + 4 la inteligencia al atacar |
-| 19 | Golpe Desequilibrante | Destreza | `ATAQUE` + `ATURDIMIENTO` | ataque | ✅ lista — aumenta + 4 la destreza al atacar y si la diferenica es de 10 te aturde un turno |
-| 24 | Aliento de Batalla | Voluntad | `AGUANTE` + `RECUPERACION` | utilidad | ✅ lista — aumenta +4 la voluntad y si la tirada supera en 6 te recupera 40 de energia |
-| 28 | Postura Firme | Constitución | `AGUANTE` + `PROVOCACION` + `CONTRA` | defensa | ⛔ necesita efecto nuevo (`PROVOCACION`) + `CONTRA` — te defiendes sumandote +3 de constitucion y obliga al enemigo a atacarte el siguiente turno, si la diferencia es de 12 aplica una contra |
-| 32 | Reflejos Entrenados | Destreza | `AGUANTE` + `AUMENTO` | defensa | ⚠️ bloqueada (`AUMENTO`) — te defiendes aumentando +4 tu constitucion, si la diferencia es de 6 te aumenta la constitucion +6 durante 3 turnos |
-| 36 | Grito Improvisado | Carisma | `INTIMIDACION` + `AUMENTO` + `MULTIPLE` | utilidad | ⚠️ bloqueada (`AUMENTO` + `MULTIPLE`) — cancela el ataque de un enemigo y te aumenta + 4 de fuerza 3 turnos si hay 4 de diferencia y si hay 8 aumenta +4 a todo el grupo |
-| 40 | Segunda Oportunidad *(capstone)* | Constitución | `RECUPERACION` + `CURAZION` + `LIMITADA` | utilidad | ⚠️ bloqueada (`CURAZION`) — si estas convaleciente te devuelve a herido, te recupera toda la energia y solo es 1 uso por combate |
+| 12 | Golpe Adaptado | Fuerza | `ATAQUE` | ataque | ✅ lista, sembrada |
+| 16 | Golpe Calculado | Inteligencia | `ATAQUE` — golpe técnico, no de fuerza bruta | ataque | ✅ lista, sembrada |
+| 19 | Golpe Desequilibrante | Destreza | `ATAQUE` + `ATURDIMIENTO` | ataque | ✅ lista, sembrada |
+| 24 | Aliento de Batalla | Voluntad | `AGUANTE` + `RECUPERACION` | utilidad | ✅ lista, sembrada |
+| 28 | Postura Firme | Constitución | `AGUANTE` + `PROVOCACION` + `CONTRA` | defensa | ⛔ `PROVOCACION` sigue sin motor real |
+| 32 | Reflejos Entrenados | Destreza | `AGUANTE` + `AUMENTO` | defensa | ⚠️ bloqueada de verdad todavía — sin sembrar, pero **es sembrable YA**: confirmado leyendo el motor (turnResolution.ts, "CASO DEFENSA") que `AUMENTO` SÍ se aplica cuando el JUGADOR defiende con una habilidad de rol `defensa` (no solo cuando ataca), mismo mecanismo que ya usa Golpe Runa de Cólera en ataque |
+| 36 | Grito Improvisado | Carisma | `INTIMIDACION` + `AUMENTO` + `MULTIPLE` | utilidad | ⛔ `AUMENTO`/`MULTIPLE` a ALIADOS desde una habilidad de rol utilidad — mismo bloqueo de fondo que Valor Compartido (Guardián 32) |
+| 40 | Segunda Oportunidad *(capstone)* | Constitución | `RECUPERACION` + `CURAZION` + `LIMITADA` | utilidad | ⛔ `CURAZION` sigue sin ningún comportamiento real |
 
-**4 de 8 listas** (12/16/19/24) — mezcla lo que ya existe (`ATAQUE`/`ATURDIMIENTO`/`RECUPERACION`/
-`AGUANTE`) en distintos atributos y roles; los otros 4 huecos (28/32/36/40) combinan al menos un
-efecto pendiente. "Postura Firme" (28) defiende bloqueando con pura resistencia; "Reflejos
-Entrenados" (32) defiende esquivando con pura agilidad — dos sabores de defensa distintos en vez de
-repetir el mismo, eso se mantiene bien. Reparto final de rol: 3 ataque / 2 defensa / 3 utilidad.
+**4 de 8 sembradas** (12/16/19/24). **32 es sembrable YA** sin tocar motor (ver nota de la fila) —
+dejaría Especialista en 5/8. 28 (`PROVOCACION`) y 36/40 (`AUMENTO` a aliados / `CURAZION`) siguen
+bloqueadas de verdad. Reparto de rol si se siembra 32: 3 ataque / 2 defensa / 3 utilidad.
 
 ---
 
@@ -607,36 +595,39 @@ habilidad pueda construirse, más allá de que exista el compañero.
 
 | Nivel | Habilidad | Atributo | Efecto | Estado |
 |---|---|---|---|---|
-| 12 | Compañero cazador *(reasignada, antes tronco nv.8)* | Inteligencia | `COMPANERO`| ✅ lista — APLICADA 2026-08-26 | Te desbloquea un slot de mascota, este slot no solo te permite añadir una criatura en tu poder sino que ademas te permite añadir equipo sobre la criatura. La criatura se visualizara en un tab en compañeros que será Bestiario y se le podra equipar casco, armadura y espalda (bolsa o montacargas o accesorios). Dependiendo el tamaño y el nivel se podran equipar menos o mas cosas, las piezas de mascotas solo se puede craftear no se obtienen de ninguna otra forma.
-| 16 | Vínculo Salvaje | Voluntad | `AUMENTO` + RECUPERACION (a tu bestia) | ⚠️⛔ duración + multi-objetivo | AUmenta el attr base de tu mascota y le recupera 10 de energia
-| 19 | Llamada de la Manada | Carisma | AGUANTE + `AUMENTO` + PROVOCACION + MULTIPLE + LIMITADO | ⛔ multi-objetivo | Tu mascota intercepta los ataques dirigidos a ti, la mascota aumenta su constitucion +4, si la difeencia es de 6 aumenta +6 la constitucion, si es de 10 la diferencia le obliga a atacarte el siguiente turno y aumenta +6 de constitucion, limitado a 2 veces por combate
-| 24 | Concentración del Domador | Voluntad | `RECUPERACION`, `MARCAR` | ⛔ depende del compañero + efecto nuevo (`MARCAR` sin catalogar) | Recuperas energia y marcas un objetivo para tu presa ataque durante 3 turnos
-| 28 | Adiestrar | Voluntad | `AGUANTE` + 'CONTRA' + 'DEBILIDAD' (tu bestia intercepta el golpe) | ⛔ depende de que exista el compañero | tu compañero te defiende de un ataque aumentando en +4 su constitucion, si la diferencia es de 4 le reduce su destreza en 3 al enemigo, si la diferencia es de 8, ejecuta una contra y tambien le resta los 3 de destreza
-| 32 | Grito Animal | Carisma | `ATURDIMIENTO` + `MULTIPLE` + `AUMENTO` | ⛔⚠️ multi-objetivo + duración | Conectas con tu compañero y en un grito mutuo aunemnta +2 todos los stats durante dos turnos del compañero y a ti mismo, si sacas mas de 6 de diferencia aplica atudimiento a tu objetivo si la diferencia es de 12 se aplica el atudimiento a todos
-| 36 | Manada Furiosa | destreza | CANALIZAR, `AUMENTO`, AGUANTE, PROVOCACION  (a tu bestia) | ⚠️ duración | Durante 2 turnos canalizas, si te atacan en esos turnos tu bestia te defiende y atra los ataques dirigidos a ti a ella, por cada ataque que aguante se multiplcara, es decir 1 ataque x2, 2 ataques, x3, 3 ataques x4.....por +3 x la cantidad de ataques en destreza que se aplicaran al final de la canalizacion a ti y a tu compañero durante 2 turnos
-| 40 | Alfa de la Manada *(capstone)* | Voluntad | `COMPANERO` + `AUMENTO` | ⛔⚠️ las dos cosas | Esta es otra habilidad pasiva, te permite tener otro compañero y un buff pasivo si estan los dos compañeros equipados de +2 a la voluntad a tus bestias, ademas te permite elegir un Alfa para que tenga un buff extra de +2 de fuerza entre tus dos compañeros.
+| 12 | Compañero cazador *(reasignada, antes tronco nv.8)* | Inteligencia | `COMPANERO`| ✅ lista, sembrada | Te desbloquea un slot de mascota, este slot no solo te permite añadir una criatura en tu poder sino que ademas te permite añadir equipo sobre la criatura. La criatura se visualizara en un tab en compañeros que será Bestiario y se le podra equipar casco, armadura y espalda (bolsa o montacargas o accesorios). Dependiendo el tamaño y el nivel se podran equipar menos o mas cosas, las piezas de mascotas solo se puede craftear no se obtienen de ninguna otra forma.
+| 16 | Vínculo Salvaje | Voluntad | `AUMENTO` + RECUPERACION (a tu bestia) | ⛔ ningún efecto se aplica a un COMPAÑERO todavía — `AUMENTO`/`DEBILIDAD` solo tocan jugador↔NPC rival, sin ruta que afecte a `Companion.activeEffects` | AUmenta el attr base de tu mascota y le recupera 10 de energia
+| 19 | Llamada de la Manada | Carisma | AGUANTE + `AUMENTO` + PROVOCACION + MULTIPLE + LIMITADO | ⛔ mismo motivo que 16 (compañero) + `PROVOCACION` sin motor | Tu mascota intercepta los ataques dirigidos a ti, la mascota aumenta su constitucion +4, si la difeencia es de 6 aumenta +6 la constitucion, si es de 10 la diferencia le obliga a atacarte el siguiente turno y aumenta +6 de constitucion, limitado a 2 veces por combate
+| 24 | Concentración del Domador | Voluntad | `RECUPERACION`, `MARCAR` | ⛔ `MARCAR` no existe en el enum `AbilityEffect` — el único efecto de todo `clases.md` que sigue sin dar de alta siquiera (a diferencia de `PROVOCACION`, ya catalogado desde antes) | Recuperas energia y marcas un objetivo para tu presa ataque durante 3 turnos
+| 28 | Adiestrar | Voluntad | `AGUANTE` + 'CONTRA' + 'DEBILIDAD' (tu bestia intercepta el golpe) | ⛔ mismo motivo que 16 (compañero) | tu compañero te defiende de un ataque aumentando en +4 su constitucion, si la diferencia es de 4 le reduce su destreza en 3 al enemigo, si la diferencia es de 8, ejecuta una contra y tambien le resta los 3 de destreza
+| 32 | Grito Animal | Carisma | `ATURDIMIENTO` + `MULTIPLE` + `AUMENTO` | ⛔ mismo motivo que 16 (compañero) | Conectas con tu compañero y en un grito mutuo aunemnta +2 todos los stats durante dos turnos del compañero y a ti mismo, si sacas mas de 6 de diferencia aplica atudimiento a tu objetivo si la diferencia es de 12 se aplica el atudimiento a todos
+| 36 | Manada Furiosa | destreza | CANALIZAR, `AUMENTO`, AGUANTE, PROVOCACION  (a tu bestia) | ⛔ `CANALIZAR` sin motor + mismo motivo que 16 (compañero) | Durante 2 turnos canalizas, si te atacan en esos turnos tu bestia te defiende y atra los ataques dirigidos a ti a ella, por cada ataque que aguante se multiplcara, es decir 1 ataque x2, 2 ataques, x3, 3 ataques x4.....por +3 x la cantidad de ataques en destreza que se aplicaran al final de la canalizacion a ti y a tu compañero durante 2 turnos
+| 40 | Alfa de la Manada *(capstone)* | Voluntad | `COMPANERO` + `AUMENTO` | ⛔ mismo motivo que 16 (compañero) | Esta es otra habilidad pasiva, te permite tener otro compañero y un buff pasivo si estan los dos compañeros equipados de +2 a la voluntad a tus bestias, ademas te permite elegir un Alfa para que tenga un buff extra de +2 de fuerza entre tus dos compañeros.
 
-**0 de 8 listas** — la más bloqueada de las 9 clases, tal como la introducción de esta sección
-adelanta. Todo depende de `COMPANERO` (el propio compañero, sin el cual media rama no tiene
-sentido) y/o de efectos de duración/multi-objetivo encima. Coherente con ser la especialización
-que más infraestructura nueva necesita — no es un problema de diseño de las habilidades en sí.
+**1 de 8 sembradas** (12). Sigue siendo la especialización más bloqueada — el bloqueo real ya NO es
+"multi-objetivo" en general (confirmado 2026-08-31 que `AUMENTO` funciona en ataque Y en defensa
+propia del jugador), sino específicamente que `Companion.activeEffects` (Fase 3§3a) **se LEE en
+combate múltiple pero nada lo ESCRIBE todavía** — el campo existe y `effectiveAttributesConDuracion`
+ya lo aplica al calcular atributos, pero ningún camino de `turnResolution.ts` empuja un nuevo
+`ActiveEffect` a un compañero (solo a jugador↔NPC rival). Falta el "productor", no el "consumidor".
+`MARCAR` (24) sigue siendo el único efecto de todo el documento sin dar de alta en el enum.
 
 ### Supervivencia
 
 | Nivel | Habilidad | Atributo | Efecto | Estado |
 |---|---|---|---|---|
-| 12 | Golpe Envenenado | Destreza | ATAQUE + `DEBILIDAD` (veneno) | ✅ lista — APLICADA 2026-08-26 (solo el tramo alto: -4 destreza, 2 turnos, en vez de los dos tramos 4/8 de aquí, mismo criterio que CONTRA/REFRACTAR) | Ataque que aumente en +2 la destreza, si la diferencia es de 4 resta 2 durante 2 turnos de destreza a tu objetivo, si la diferencia es de 8 resta 4
-| 16 | Zancadilla | Destreza | `ATURDIMIENTO` | ✅ lista |
-| 19 | Camuflaje | Destreza | INTIMIDACION + `OCULTACION` + AUMENTO | ⚠️ bloqueada | Cancela el ataque de tu enemigo y si la tirada tiene una diferencia de 4 te oculta el siguiente turno del agro y te aumenta en +2 la destreza, si la diferencia es de 10 entonces te oculta 2 turnos y aumenta en +2 tu destreza esos 2 turnos. Si realizas un ataque esos turnos de ocultacion, la ocultacion se pierde
-| 24 | Giro Toxina Paralizante | Destreza | ATAQUE +`DEBILIDAD` + `ATURDIMIENTO` + MULTIPLE + LIMITADO | ⚠️ bloqueada | Eecuta un ataque que te aumenta +2 la destreza, si la diferencia es de 4 le aplica al objetivo -4 de destreza y lo aturde un turno, si la diferencia es de 10 mismo efecto, pero la debilidad se propaga a todos los enemigos pero les resta -6. Limitado a 2 usos por combate
-| 28 | Caparazon Gargantua | Constitución | `AGUANTE` + `DEBILIDAD` + `CONTRA` | ⚠️ bloqueada (`DEBILIDAD` + `CONTRA`) | Te defiende de un ataque aumentando en +6 tu constitucion, si la diferencia es de 6 entonces le resta -6 del attr usando por tu objetivo este turno, si la diferencia es de 10 mismo efecto pero apica tambien una contra
-| 32 | Trampa Improvisada | Inteligencia | `ATURDIMIENTO` + `MULTIPLE` + `LIMITADO` | ⛔ multi-objetivo (`MULTIPLE`) | Coloca trampas a su alrededor que duran 2 turnos, todo el que le ataque  se queda aturdido un turno si ganas la tirada. Limitado a 1 uso por combate
-| 36 | Golpe Veneno Corrosivo | Destreza | ATAQUE + `DEBILIDAD` | ⚠️ bloqueada (`DEBILIDAD`) | Ataque que aumenta tu destreza en 3 ese turno y si la diferencia es de 6, le resta al enemigo -2 en todos los stats durante 1 turno, si la diferencia es de 12 en la tirada entonces le resta -6 de todos los attrs durante 1 turno
-| 40 | Comunion Salvaje | Destreza | `AGUANTE` + `DESVIAR` + `DEBILIDAD` | ⚠️ bloqueada (`DESVIAR` + `DEBILIDAD`) | Defiende de un ataque aumentando tu destreza en +6, si le superas en 8 desvia el ataque a otro enemigo aleatorio
+| 12 | Golpe Envenenado | Destreza | ATAQUE + `DEBILIDAD` (veneno) | ✅ lista, sembrada (2026-08-26, solo tramo alto: -4 destreza, 2 turnos) | Ataque que aumente en +2 la destreza, si la diferencia es de 4 resta 2 durante 2 turnos de destreza a tu objetivo, si la diferencia es de 8 resta 4
+| 16 | Zancadilla | Destreza | `ATURDIMIENTO` | ✅ lista, sembrada |
+| 19 | Camuflaje | Destreza | INTIMIDACION + `OCULTACION` + AUMENTO | ✅ **lista, sembrada 2026-08-27 (Fase 3§3c)** — solo OCULTACION (tramo alto, 2 turnos) real; el `AUMENTO` combinado en esta misma fila SIGUE sin construir porque su rol es `utilidad` (INTIMIDACION cancela el golpe), no `ataque`/`defensa` — mismo bloqueo que Grito Improvisado | Cancela el ataque de tu enemigo y si la tirada tiene una diferencia de 4 te oculta el siguiente turno del agro y te aumenta en +2 la destreza, si la diferencia es de 10 entonces te oculta 2 turnos y aumenta en +2 tu destreza esos 2 turnos. Si realizas un ataque esos turnos de ocultacion, la ocultacion se pierde
+| 24 | Giro Toxina Paralizante | Destreza | ATAQUE +`DEBILIDAD` + `ATURDIMIENTO` + MULTIPLE + LIMITADO | ⚠️ bloqueada de verdad todavía — sin sembrar, aunque `DEBILIDAD`+`MULTIPLE`+`ATURDIMIENTO` sobre ataque directo YA tienen motor real combinado | Eecuta un ataque que te aumenta +2 la destreza, si la diferencia es de 4 le aplica al objetivo -4 de destreza y lo aturde un turno, si la diferencia es de 10 mismo efecto, pero la debilidad se propaga a todos los enemigos pero les resta -6. Limitado a 2 usos por combate
+| 28 | Caparazon Gargantua | Constitución | `AGUANTE` + `DEBILIDAD` + `CONTRA` | ⚠️ bloqueada de verdad todavía — sin sembrar, aunque DEBILIDAD ya funciona en defensa del jugador (confirmado 2026-08-31) y CONTRA también | Te defiende de un ataque aumentando en +6 tu constitucion, si la diferencia es de 6 entonces le resta -6 del attr usando por tu objetivo este turno, si la diferencia es de 10 mismo efecto pero apica tambien una contra
+| 32 | Trampa Improvisada | Inteligencia | `ATURDIMIENTO` + `MULTIPLE` + `LIMITADO` | ⛔ "todo el que le ataque" es un efecto de área persistente (trampa que dura 2 turnos, afecta a quien sea) — no encaja con el MULTIPLE real (propagación puntual en el turno de ataque), sin construir | Coloca trampas a su alrededor que duran 2 turnos, todo el que le ataque  se queda aturdido un turno si ganas la tirada. Limitado a 1 uso por combate
+| 36 | Golpe Veneno Corrosivo | Destreza | ATAQUE + `DEBILIDAD` | ⚠️ bloqueada de verdad todavía — sin sembrar, aunque DEBILIDAD+ataque YA tiene motor real | Ataque que aumenta tu destreza en 3 ese turno y si la diferencia es de 6, le resta al enemigo -2 en todos los stats durante 1 turno, si la diferencia es de 12 en la tirada entonces le resta -6 de todos los attrs durante 1 turno
+| 40 | Comunion Salvaje | Destreza | `AGUANTE` + `DESVIAR` + `DEBILIDAD` | ✅ **lista, sembrada 2026-08-27 (Fase 3§3c)** — solo DESVIAR real; la `DEBILIDAD` combinada de esta fila sigue SIN cifra en la ficha original (nunca dice qué atributo/cuánto/cuántos turnos), no hay número que sembrar todavía | Defiende de un ataque aumentando tu destreza en +6, si le superas en 8 desvia el ataque a otro enemigo aleatorio
 
-**2 de 8 listas** (12/16, actualizado 2026-08-26 — Golpe Envenenado ya aplicado, Fase 2). El resto
-combina `OCULTACION`, `MULTIPLE` o `DESVIAR`, o el tramo bajo de `DEBILIDAD` que la simplificación
-de Golpe Envenenado no cubre por separado.
+**3 de 8 sembradas** (12, 16, 19 parcial, 40 parcial — realmente 4 filas con presencia en el motor,
+2 de ellas simplificadas). 24/28/36 son sembrables YA sin tocar motor (DEBILIDAD ya cubre ataque Y
+defensa del jugador). 32 necesita una mecánica de "trampa persistente" que no existe.
 
 ### Tirador — 5 de 8 listas
 
@@ -645,18 +636,18 @@ Columna Estado añadida (se había perdido al escribir esta tabla) y corregido e
 
 | Nivel | Habilidad | Atributo | Efecto | Estado |
 |---|---|---|---|---|
-| 12 | Disparo Certero | Destreza | `ATAQUE` | ✅ lista — ataca añadiendo +3 de destreza |
-| 16 | Instinto de Cazador | Inteligencia | `AGUANTE` — lees la intención del rival y esquivas antes del golpe aumentando tu inteligencia en +4 | ✅ lista |
-| 19 | Tiro Inmovilizador | Destreza | `ATAQUE` + `ATURDIMIENTO` | ✅ lista — realiza un ataque con +3 de destreza, si la diferencia es de 8 aturde al enemigo 1 turno |
-| 24 | Tensar al Límite | Fuerza | `ATAQUE` + `CANALIZAR` + `LETAL` — tensa el arco al máximo, más potencia por pura resistencia física | ⚠️ bloqueada (`CANALIZAR`) — ataque que se canaliza 1 turno, si te atacan la canalizacion se corta, sino te aumenta +6 en fuerza, si la diferencia es de 8 el golpe es LETAL si estas HERIDO o menos |
-| 28 | Concentración Absoluta | Voluntad | `ATAQUE` — paciencia y foco antes de disparar, no técnica | ✅ lista |
-| 32 | Puntería Perfecta | Destreza | `ATAQUE` — el disparo definitivo de precisión | ✅ lista — ataque que aumenta tu destreza en +8 |
-| 36 | Tiro Multiple | Destreza | `ATAQUE` + `MULTIPLE` | ⛔ multi-objetivo — ataque que impacta en 2 enemigos de tu decision, si eres objetivo del enemigo podra tirar para esquivar o defenderse, sino el golpe es directo |
-| 40 | Disparo Definitivo *(capstone)* | Destreza | `ATAQUE` + `AGUANTE` + `CONTRA` + `LIMITADO` | ⚠️ bloqueada (`CONTRA`) — si es en turno de ataque suma +10 de destreza en el ataque, si es en defensa esquiva el ataque enemigo y si la diferencia es de 8 hace un contra. Limitado a 3 usos por combate |
+| 12 | Disparo Certero | Destreza | `ATAQUE` | ✅ lista, sembrada |
+| 16 | Instinto de Cazador | Inteligencia | `AGUANTE` — lees la intención del rival y esquivas antes del golpe aumentando tu inteligencia en +4 | ✅ lista, sembrada |
+| 19 | Tiro Inmovilizador | Destreza | `ATAQUE` + `ATURDIMIENTO` | ✅ lista, sembrada |
+| 24 | Tensar al Límite | Fuerza | `ATAQUE` + `CANALIZAR` + `LETAL` — tensa el arco al máximo, más potencia por pura resistencia física | ⛔ `CANALIZAR` sigue sin ningún comportamiento real ("se cancela si te atacan antes de completarse" no tiene mecanismo de motor) |
+| 28 | Concentración Absoluta | Voluntad | `ATAQUE` — paciencia y foco antes de disparar, no técnica | ✅ lista, sembrada |
+| 32 | Puntería Perfecta | Destreza | `ATAQUE` — el disparo definitivo de precisión | ✅ lista, sembrada |
+| 36 | Tiro Multiple | Destreza | `ATAQUE` + `MULTIPLE` | ⚠️ bloqueada de verdad todavía — sin sembrar, aunque `MULTIPLE`+`ATAQUE` YA tiene motor real (mismo patrón que Punta Doble/Golpe Gemelo) |
+| 40 | Disparo Definitivo *(capstone)* | Destreza | `ATAQUE` + `AGUANTE` + `CONTRA` + `LIMITADO` | ⛔ combina rol ataque Y rol defensa en la MISMA habilidad ("si es en turno de ataque... si es en defensa...") — el motor asigna un único `rol` por `SavedAction`, no hay forma de que la misma ficha se comporte distinto según quién inicia el intercambio |
 
-**5 de 8 listas** (12/16/19/28/32), no "cero bloqueos" como decía antes. Mayoría destreza (5) con
-constitución y voluntad metidas con sentido propio (tensar el arco, mantener la calma antes de
-disparar); lo que bloquea al resto es `CANALIZAR`/`MULTIPLE`/`CONTRA`, no el reparto de atributos.
+**5 de 8 sembradas** (12/16/19/28/32). 36 es sembrable YA sin tocar motor. 24 (`CANALIZAR`) y 40
+(rol dual ataque/defensa en una sola ficha, limitación estructural real, no solo un efecto sin
+construir) siguen bloqueadas de verdad.
 
 ### Instintivo — 4 de 8 listas
 
@@ -664,17 +655,18 @@ Columna Estado añadida (se había perdido al escribir esta tabla):
 
 | Nivel | Habilidad | Atributo | Efecto | Estado |
 |---|---|---|---|---|
-| 12 | Barrido Instintivo | Destreza | `ATURDIMIENTO` (reactiva, rol defensa) | ✅ lista — si ganas aturdes a tu objetivo 1 turno |
-| 16 | Golpe Rápido | Destreza | `ATAQUE` | ✅ lista — aumenta tu destreza en 4 y realiza el ataque |
-| 19 | Instinto Reactivo | Destreza | `AGUANTE` + `CONTRA` | ⚠️ bloqueada (`CONTRA`) — ataque que aumenta tu destreza en +4 si la diferencia es de 8 hace una contra |
-| 24 | Furia Instintiva | Fuerza | `ATAQUE` + `DEBILIDAD` | ⚠️ bloqueada (`DEBILIDAD`) — ataque que aumenta tu fuerza en +6 si la diferencia es de 6 reduce la destreza del enemigo en -4 durante 2 turnos |
-| 28 | Instinto de Reserva | Inteligencia | `AGUANTE` + `RECUPERACION` + `MULTIPLE` | ⛔ multi-objetivo — te defiende de todos los ataques dirigidos a ti, por cada defensa exitosa recuperas 10 de energia |
-| 32 | Golpe Gemelo | Fuerza | `ATAQUE` + `MULTIPLE` | ⛔ multi-objetivo — ataca a dos objetivos de tu eleccion |
-| 36 | Instinto Asesino | Constitución | `AGUANTE` + `ATURDIMIENTO` + `LIMITADO` — reacción primaria, pura adrenalina | ✅ lista — te defiende de un ataque aumentando +4 la constitucion, si la diferencia es de 4 aturde 1 turno. Limitado a 3 usos por combate |
-| 40 | Velocidad Letal *(capstone)* | Destreza | `ATAQUE` + `LETAL` | ✅ lista — aumenta en +6 de destreza tu ataque, si la diferencia es de 10 el ataque es letal si el rival esta HERIDO o menos |
+| 12 | Barrido Instintivo | Destreza | `ATURDIMIENTO` (reactiva, rol defensa) | ✅ lista, sembrada |
+| 16 | Golpe Rápido | Destreza | `ATAQUE` | ✅ lista, sembrada |
+| 19 | Instinto Reactivo | Destreza | `AGUANTE` + `CONTRA` | ⚠️ bloqueada de verdad todavía — sin sembrar, aunque `CONTRA`+defensa YA tiene motor real (mismo patrón que Vórtice Menor) |
+| 24 | Furia Instintiva | Fuerza | `ATAQUE` + `DEBILIDAD` | ⚠️ bloqueada de verdad todavía — sin sembrar, aunque `DEBILIDAD`+ataque YA tiene motor real |
+| 28 | Instinto de Reserva | Inteligencia | `AGUANTE` + `RECUPERACION` + `MULTIPLE` | ⛔ "te defiende de TODOS los ataques dirigidos a ti" es un efecto de área en defensa, distinto del MULTIPLE real (propaga UN ataque a un objetivo extra) — sin construir |
+| 32 | Golpe Gemelo | Fuerza | `ATAQUE` + `MULTIPLE` | ✅ **lista, sembrada 2026-08-31** — corregido un bug de siembra real: estaba dada de alta por error en Supervivencia nv.32 en vez de aquí (mismo nombre, mismo atributo), movida a su especialización correcta. Tramo único (siempre 2 objetivos si conecta), sin condición de margen propia de la ficha |
+| 36 | Instinto Asesino | Constitución | `AGUANTE` + `ATURDIMIENTO` + `LIMITADO` — reacción primaria, pura adrenalina | ✅ lista, sembrada |
+| 40 | Velocidad Letal *(capstone)* | Destreza | `ATAQUE` + `LETAL` | ✅ lista, sembrada |
 
-**4 de 8 listas** (12/16/36/40), no "cero bloqueos" como decía antes. Mayoría destreza (4) con
-fuerza, inteligencia y constitución repartidas; `CONTRA`/`DEBILIDAD`/`MULTIPLE` bloquean el resto.
+**6 de 8 sembradas** (12/16/32/36/40 + Golpe Gemelo corregido en esta pasada). 19 y 24 son
+sembrables YA sin tocar motor — dejarían Instintivo en 8/8 salvo 28 (mecánica de área en defensa
+sin construir). Es la especialización más cerca de completarse de las 12 revisadas hoy.
 
 ---
 
@@ -695,7 +687,7 @@ tirada.
 | Nivel | Habilidad | Atributo | Efecto | Estado |
 |---|---|---|---|---|
 | 1 | Carga Rúnica | Magia | `CONVERSION` *(nueva)* — tu ataque de este turno pasa a usar Magia en vez del atributo normal del arma | ✅ lista — efecto nuevo pero sin depender de duración de turnos |
-| 4 | Tótem Veloz | Destreza | `AUMENTO` — +2 destreza durante 3 turnos | ⚠️ bloqueada |
+| 4 | Tótem Veloz | Destreza | `AUMENTO` — +2 destreza durante 3 turnos | ⚠️ bloqueada de verdad todavía — sin sembrar, potencialmente sembrable YA si se le asigna `rol: ataque` o `defensa` (confirmado 2026-08-31 que AUMENTO funciona en ambos); la ficha original no fija ninguno de los dos, es una decisión de diseño pendiente, no un bloqueo de motor |
 | 6 | Voluntad del Espíritu | Voluntad | `AGUANTE` — resistir un golpe sosteniendo la conexión bajo presión, no por magia en sí | ✅ lista |
 | 8 | Comunión con el Entorno | Magia | `RECUPERACION` — canaliza magia ambiental del entorno para recuperar energía | ✅ lista |
 
@@ -739,23 +731,19 @@ bloqueada que Totémico:
 
 | Nivel | Habilidad | Atributo | Efecto | Estado |
 |---|---|---|---|---|
-| 12 | Runa de Fuerza | Magia | `AUMENTO` (a ti mismo) | ⚠️ bloqueada | Aumenta la fueza en +6 durante 1 turno
-| 16 | Golpe Runa de Debilidad | Magia | ATAQUE + `DEBILIDAD` (a un rival concreto) | ⚠️ bloqueada | Ataque que aumenta +5 la Magia, si la diferencia es de 5 entonces le resta -2 de todos los stats al enemigo
-| 19 | Runa Ilusoria | Inteligencia | INVOCACION + `AGUANTE` + PROVOCACION  | ⚠️ bloqueada | Invoca una ilusion con una runa que tiene 1 de vida y que para el ataque de un enemigo
-| 24 | Runa de Resistencia | Voluntad | `AGUANTE` | ✅ lista | Te defiendes con Voluntad aumentandola e +5
-| 28 | Golpe Runa de Cólera | Magia | ATAQUE + `AUMENTO`  | ✅ lista — APLICADA 2026-08-26 (el umbral de esta fila, diferencia 10, ya coincidía con el margen decisivo del motor, sin reinterpretar nada) | Ataqye que aumenta tu Magia en +5, si la diferencia es 10, el +5 en magia se mantiene para el siguiente turno
-| 32 | Control Rúnico | Magia | CONTROL + `DEBILIDAD` — maldición que marca a un rival concreto | ⚠️ bloqueada | Debilita a un rival restandole -4 de fuerza si la diferencia es de 6 controla al rival un turno
-| 36 | Runa de Rayo Cadena| Inteligencia | `ATAQUE` + MULTIPLE  | ⚠️ bloqueada | Ataca en cadena a varios rivales a la vez
-| 40 | Intelecto Rúnico *(capstone)* | Magia | `ATAQUE` + LIMITADA — una runa predice el ataque del rival; te anticipas con un golpe básico del tipo que tiene ventaja contra él | ✅ lista | LImitada a 4 usos
+| 12 | Runa de Fuerza | Magia | `AUMENTO` (a ti mismo) | ⚠️ bloqueada de verdad todavía — sin sembrar, potencialmente sembrable YA si se le asigna `rol: ataque` o `defensa` (ficha original no lo fija) |
+| 16 | Golpe Runa de Debilidad | Magia | ATAQUE + `DEBILIDAD` (a un rival concreto) | ⚠️ bloqueada de verdad todavía — sin sembrar, aunque DEBILIDAD+ataque YA tiene motor real |
+| 19 | Runa Ilusoria | Inteligencia | INVOCACION + `AGUANTE` + PROVOCACION  | ⛔ INVOCACION solo construido para Tótem de Guerra (Convocador); PROVOCACION sin motor |
+| 24 | Runa de Resistencia | Voluntad | `AGUANTE` | ✅ lista, sembrada |
+| 28 | Golpe Runa de Cólera | Magia | ATAQUE + `AUMENTO`  | ✅ lista, sembrada (2026-08-26) |
+| 32 | Control Rúnico | Magia | CONTROL + `DEBILIDAD` — maldición que marca a un rival concreto | ⛔ **confirmado NO sembrable con la arquitectura actual** (docs/21-roadmap.md, 27-08): combina CONTROL (solo dispara en el camino independiente/`rol: utilidad`) con DEBILIDAD (solo dispara en el camino no-independiente/ataque-defensa) — `rol` es un campo único por habilidad, ningún camino cubre los dos efectos a la vez sin reinterpretar la fila entera |
+| 36 | Runa de Rayo Cadena| Inteligencia | `ATAQUE` + MULTIPLE  | ⚠️ bloqueada de verdad todavía — sin sembrar, aunque MULTIPLE+ATAQUE YA tiene motor real |
+| 40 | Intelecto Rúnico *(capstone)* | Magia | `ATAQUE` + LIMITADA — una runa predice el ataque del rival; te anticipas con un golpe básico del tipo que tiene ventaja contra él | ✅ lista, sembrada |
 
-**Corrección 2026-08-25 (auditoría de lore — verificación independiente contra el código real,
-`classAbilities.ts`)**: el recuento original decía "4 de 8 listas (19/24/36/40)", contradiciendo sus
-propias filas — 19 (INVOCACION+PROVOCACION) y 36 (MULTIPLE, fila que tenía además un error de datos
-real: el `Estado` decía "✅ lista" con "⚠️ bloqueada" colado en la columna de descripción) SÍ
-dependen de infraestructura bloqueada. **2 de 8 listas de verdad (24/40)**, ahora **3 de 8** con
-Golpe Runa de Cólera (28) aplicado 2026-08-26, Fase 2 — el resto de la proporción "Magia sigue
-siendo mayoría" de más abajo ya no aplica tal cual, se deja sin ese cálculo secundario para no
-arrastrar el mismo error.
+**3 de 8 sembradas** (24/28/40). 12/16/36 son sembrables YA sin tocar motor. 19 (INVOCACION+
+PROVOCACION) y 32 (Control Rúnico, el caso confirmado de "no cabe en el modelo actual") siguen
+bloqueadas de verdad — 32 en particular necesita decisión de diseño, no solo motor: o se separa en
+2 habilidades, o se reinterpreta con un único rol.
 
 ### Convocador — la menos bloqueada de las 4 (guerrero-mago)
 
@@ -764,49 +752,42 @@ invocaciones que persistan en la escena, así que apenas toca la infraestructura
 
 | Nivel | Habilidad | Atributo | Efecto | Estado |
 |---|---|---|---|---|
-| 12 | Filo Elemental | Magia | `ATAQUE` + AUMENTO — imbuye tu arma con un elemento para el golpe | ✅ lista | Ataque que aumenta tu magia en +3 y que si la diferencia es de 6 aumenta tu magia en +4 en el siguiente turno
-| 16 | Armadura de Piedra | Constitución | `AGUANTE` + DEBILIDAD — invoca tierra sobre tu propio equipo | ✅ lista | Te defiendes si la tirada tiene una diferencia de mas de 4 entonces le aplica -4 de destreza
-| 19 | Golpe de Trueno | Fuerza | `ATAQUE` + MULTIPLE — descarga eléctrica concentrada en un golpe físico | ✅ lista | Ataca sumando +4 de fuerza y si la tirada se diferencia en mas de 10 entonces hace daño en area 
-| 24 | Escudo de Escarcha | Constitución | `AGUANTE` + DEBILIDAD  — el hielo refuerza tu resistencia unos turnos | ⚠️ bloqueada | Te dfientes de un ataque aumentando +4 la constitucion y restas -3 de destreza a quien te ataca si ganas la tirada
-| 28 | Puño Ígneo | Magia | `ATAQUE` + ATURDIMIENTO — golpe de fuego consecutivo | ✅ lista | ATaca sumando +4 a la magi ay si la diferencia es de 8 o mas etonces aurde al enemigo 1 turno
-| 32 | Vórtice Menor | Destreza | `AGUANTE` + CONTRA — un torbellino te ayuda a esquivar | ✅ lista | Aumenta la destreza en +4 para defenderte y si la diferencia es de 6 contrataca
-| 36 | Cuerpo Elemental | Magia | AGUANTE + ATAQUE +`AUMENTO` — te conviertes brevemente en un ser elemental | ⚠️ bloqueada | Si se usa en turno de ataque aumenta la magia en +3, si ganas el turno se guarda el +3 2 turnos, si es en defensa aumenta la magia +3  y si ganas te da +3 de fueza 1 turno
-| 40 | Furia de los Elementos *(capstone)* | Magia | `ATAQUE` + CANALIZAR + LETAL + LIMITADO — combina los 4 elementos en un golpe devastador final | ✅ lista | Ataque que see canaliza sumandote +6 en el turno de uso, si la diferencia es de 8 es letal. Solo un uso por combate.
+| 12 | Filo Elemental | Magia | `ATAQUE` + AUMENTO — imbuye tu arma con un elemento para el golpe | ✅ **sembrable YA** — sin sembrar todavía, `AUMENTO`+ataque tiene motor real | Ataque que aumenta tu magia en +3 y que si la diferencia es de 6 aumenta tu magia en +4 en el siguiente turno
+| 16 | Armadura de Piedra | Constitución | `AGUANTE` + DEBILIDAD — invoca tierra sobre tu propio equipo | ✅ **sembrable YA** — sin sembrar todavía, DEBILIDAD+defensa YA funciona (confirmado 2026-08-31) | Te defiendes si la tirada tiene una diferencia de mas de 4 entonces le aplica -4 de destreza
+| 19 | Golpe de Trueno | Fuerza | `ATAQUE` + MULTIPLE — descarga eléctrica concentrada en un golpe físico | ✅ **sembrable YA** — sin sembrar todavía, MULTIPLE+ataque tiene motor real | Ataca sumando +4 de fuerza y si la tirada se diferencia en mas de 10 entonces hace daño en area 
+| 24 | Escudo de Escarcha | Constitución | `AGUANTE` + DEBILIDAD  — el hielo refuerza tu resistencia unos turnos | ✅ **sembrable YA** — mismo motivo que 16, DEBILIDAD ya funciona en defensa | Te dfientes de un ataque aumentando +4 la constitucion y restas -3 de destreza a quien te ataca si ganas la tirada
+| 28 | Puño Ígneo | Magia | `ATAQUE` + ATURDIMIENTO — golpe de fuego consecutivo | ✅ lista, sembrada | ATaca sumando +4 a la magi ay si la diferencia es de 8 o mas etonces aurde al enemigo 1 turno
+| 32 | Vórtice Menor | Destreza | `AGUANTE` + CONTRA — un torbellino te ayuda a esquivar | ✅ lista, sembrada |
+| 36 | Cuerpo Elemental | Magia | AGUANTE + ATAQUE +`AUMENTO` — te conviertes brevemente en un ser elemental | ⛔ combina rol ataque Y rol defensa en la MISMA habilidad, mismo bloqueo estructural que Disparo Definitivo (Tirador 40) — el motor asigna un único `rol` por ficha |
+| 40 | Furia de los Elementos *(capstone)* | Magia | `ATAQUE` + CANALIZAR + LETAL + LIMITADO — combina los 4 elementos en un golpe devastador final | ⛔ `CANALIZAR` sigue sin ningún comportamiento real |
 
-**6 de 8 listas** (12/16/19/28/32/40) — la más desbloqueada de las 4 especializaciones de Chamán.
-Magia sigue siendo mayoría (4/8) con constitución/fuerza/destreza repartidas en el resto.
-
-**Corrección 2026-08-25 (auditoría de lore — verificación independiente contra `classAbilities.ts`
-real)**: el recuento de arriba está mal — varias filas marcadas ✅ dependen en realidad de
-infraestructura bloqueada según el propio patrón de este documento (12 usa `AUMENTO`, 16/24 usan
-`DEBILIDAD`, 19 usa `MULTIPLE`, 40 usa `CANALIZAR`, todos en la lista de efectos bloqueados de más
-arriba). **El código real solo tiene 1 de 8 lista (nivel 28, Puño Ígneo)** — la tabla de arriba no
-se ha corregido fila por fila en esta pasada (exigiría reverificar cada `Estado` contra el código
-una por una), pero el recuento real a usar es este, no el "6 de 8" original.
+**2 de 8 sembradas** (28, 32) — bastante menos que el "6 de 8" original, pero la especialización
+CON MÁS margen de las 12 revisadas hoy: **12/16/19/24 son sembrables YA sin tocar motor**, dejando
+Convocador en 6/8 real de golpe si se siembran. Solo 36 (rol dual) y 40 (`CANALIZAR`) siguen
+bloqueadas de verdad.
 
 ### Opresor — la más bloqueada de las 4 (encaja con "subyugar/debilitar")
 
 | Nivel | Habilidad | Atributo | Efecto | Estado |
 |---|---|---|---|---|
-| 12 | Grillete Rúnico | Magia | `ATURDIMIENTO` — una runa te retiene un turno | ✅ lista |
-| 16 | Opresión Mental | Magia | `CONTROL` — tomas el control del rival durante 2 turnos | ✅ lista — APLICADA 2026-08-26, simplificada: en 1vs1 roba la iniciativa (mismo mecanismo que `ATURDIMIENTO`), sin los "2 turnos de control" reales (necesitan combate multi-objetivo, Fase 3, sin construir) |
-| 19 | Cadena de Sombras | Magia | ATAQUE + `DEBILIDAD` — runas oscuras atan y debilitan al rival | ⚠️ bloqueada | Ataque que si hay 6 de diferencia resta -4 a la destreza un turno
-| 24 | Golpe Sometedor | Fuerza | ATAQUE + `ATURDIMIENTO` — golpe físico que aturde | ✅ lista | Ataca aumentando tu magia en +3 y si la diferencia es de 6 aplica aturdimiento 1 turno
-| 28 | Voz que Doblega | Carisma | `MULTIPLE` + CONTROL — tu voz impone temor y desorienta | ⚠️ bloqueada | COntrolas a 2 enemigos aletoriamente que ese turno atacan a sus aliados, de preferencia a los enemigos de los cuales seas objetivo, sino aleatoriamente.
-| 32 | Runa de Sujeción | Voluntad | 'MULTIPLE' + `ATURDIMIENTO` — inmoviliza brevemente al rival | ✅ lista | Inmovilza a todos los rivales un turno
-| 36 | Grieta de Voluntad | Magia | MULTIPLE + `DEBILIDAD` — quiebra la voluntad del rival | ⚠️ bloqueada | Resta -6 a todos los rivales e voluntad 2 tunos
-| 40 | Sometimiento Total *(capstone)* | Magia | 'ATAQUE' + `MULTIPLE` + 'CONTROL' + `DEBILIDAD` + LIMITADO — un golpe rúnico definitivo que aturde y debilita a la vez | ⚠️ bloqueada | Ataque que aunmenta la magia en +6, si la diferencia es de 6 aplica -3 a todos los stats a todos los enemgios, si es diferencia de 12 controlas a 3 enemigos aleatorios 1 turno. Limitada a 2 usos
+| 12 | Grillete Rúnico | Magia | `ATURDIMIENTO` — una runa te retiene un turno | ✅ lista, sembrada |
+| 16 | Opresión Mental | Magia | `CONTROL` — tomas el control del rival durante 2 turnos | ✅ **lista, sembrada — mejorada 2026-08-27 (Fase 3§3a)**: en combate múltiple real (`CombatEncounter`, ≥2 enemigos vivos del bando controlado), el controlado ataca de verdad a un aliado propio durante 2 rondas — el efecto REAL de la ficha, no solo el fallback de robar iniciativa (que se mantiene solo en 1v1 clásico, sin nadie a quien redirigir) |
+| 19 | Cadena de Sombras | Magia | ATAQUE + `DEBILIDAD` — runas oscuras atan y debilitan al rival | ⚠️ bloqueada de verdad todavía — sin sembrar, aunque DEBILIDAD+ataque YA tiene motor real |
+| 24 | Golpe Sometedor | Fuerza | ATAQUE + `ATURDIMIENTO` — golpe físico que aturde | ✅ lista, sembrada |
+| 28 | Voz que Doblega | Carisma | `MULTIPLE` + CONTROL — tu voz impone temor y desorienta | ⛔ "controla a 2 enemigos ALEATORIAMENTE" es CONTROL multi-objetivo real (Fase 3§3a solo redirige a UN controlado, no controla 2 a la vez) — más allá de lo que el motor cubre hoy |
+| 32 | Runa de Sujeción | Voluntad | 'MULTIPLE' + `ATURDIMIENTO` — inmoviliza brevemente al rival | ⛔ "inmoviliza a TODOS los rivales" es un efecto de área en aturdimiento, distinto del MULTIPLE real (propagación puntual de UN ataque) — sin construir |
+| 36 | Grieta de Voluntad | Magia | MULTIPLE + `DEBILIDAD` — quiebra la voluntad del rival | ⛔ mismo motivo que 32 — "resta a TODOS los rivales" es área, no el MULTIPLE puntual real |
+| 40 | Sometimiento Total *(capstone)* | Magia | 'ATAQUE' + `MULTIPLE` + 'CONTROL' + `DEBILIDAD` + LIMITADO — un golpe rúnico definitivo que aturde y debilita a la vez | ⛔ combina 4 efectos, varios de área — más allá de lo que el motor cubre hoy |
 
-**3 de 8 listas** (12/24/32). Magia sube a 5/8 (12/16/19/36/40) — más concentrado que el resto de
-especializaciones, pero coherente con que Opresor es la más "mental/rúnica pura" de las 4.
+**3 de 8 sembradas** (12, 16 mejorada, 24). 19 es sembrable YA sin tocar motor, dejando Opresor en
+4/8. 28/32/36/40 comparten el mismo bloqueo real: describen efectos de ÁREA verdaderos ("a todos
+los rivales", "2 enemigos aleatoriamente") que van más allá de lo que `MULTIPLE` cubre hoy
+(propagación puntual a UN objetivo extra desde un ataque directo) — necesitan diseño de mecánica
+de área propia, no solo sembrar con el `MULTIPLE` ya construido.
 
-**Corrección 2026-08-25 (auditoría de lore — verificación independiente contra `classAbilities.ts`
-real)**: nivel 32 (Runa de Sujeción) usa `MULTIPLE`, efecto bloqueado según el propio patrón de este
-documento — no debería contar como lista. **El código real tiene 2 de 8 listas (12/24)**, no 3/8.
-
-**Chamán completo (recuento real, corregido 2026-08-25): Totémico 0/8, Rúnico 2/8, Convocador 1/8,
-Opresor 2/8** — el "0/8, 4/8, 6/8, 3/8" original no coincidía con el código en 3 de las 4
-especializaciones.
+**Chamán completo (recuento real, 2026-08-31): Totémico 0/8, Rúnico 3/8, Convocador 2/8 (6/8
+sembrable ya), Opresor 3/8 (4/8 sembrable ya)** — sustituye el recuento del 2026-08-25, que ya
+estaba desactualizado por las Fases 2/3 del 2026-08-26/27.
 
 ---
 

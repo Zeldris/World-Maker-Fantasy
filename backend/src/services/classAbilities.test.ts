@@ -50,12 +50,12 @@ describe('classAbilityUnlocksFor', () => {
 });
 
 describe('allClassAbilityUnlocks', () => {
-  it('devuelve el roster completo (147 huecos: 8 clases con tabla real, MAGO sin tocar)', () => {
+  it('devuelve el roster completo (169 huecos: auditoría 2026-08-31 de Guerrero/Cazador/Chamán contra el motor real, 22 nuevas sembradas + 2 bugs de siembra corregidos)', () => {
     const all = allClassAbilityUnlocks();
-    expect(all).toHaveLength(147);
-    expect(all.filter((u) => u.clase === 'GUERRERO')).toHaveLength(13);
-    expect(all.filter((u) => u.clase === 'CAZADOR')).toHaveLength(19);
-    expect(all.filter((u) => u.clase === 'CHAMAN')).toHaveLength(12);
+    expect(all).toHaveLength(169);
+    expect(all.filter((u) => u.clase === 'GUERRERO')).toHaveLength(21);
+    expect(all.filter((u) => u.clase === 'CAZADOR')).toHaveLength(25);
+    expect(all.filter((u) => u.clase === 'CHAMAN')).toHaveLength(20);
     expect(all.filter((u) => u.clase === 'ARQUERO')).toHaveLength(6);
     expect(all.filter((u) => u.clase === 'CABALLERO')).toHaveLength(20);
     expect(all.filter((u) => u.clase === 'SEGADOR')).toHaveLength(19);
@@ -72,20 +72,58 @@ describe('classAbilityUnlocksForClase', () => {
     expect(classAbilityUnlocksForClase('CHAMAN')).toHaveLength(3);
   });
 
+  // Auditoría 2026-08-31 (docs/rpgtarkor/clases.md sincronizado contra classAbilities.ts real):
+  // varias habilidades ya bloqueadas en el documento resultaron sembrables sin tocar motor —
+  // DEBILIDAD/AUMENTO/CONTRA/MULTIPLE ya funcionan en ataque Y en defensa del jugador (confirmado
+  // leyendo turnResolution.ts, no solo asumido). De paso, 2 bugs de siembra reales corregidos:
+  // "Golpe Gemelo" vivía en Supervivencia en vez de Instintivo, "Tótem de Guerra" vivía en
+  // Convocador en vez de Totémico — ambos movidos a su especialización real de clases.md.
   it('con especialización, devuelve tronco + los huecos reales de esa rama', () => {
-    // Berserker: 3 tronco + 1 propio (19, único listo de 8) = 4
-    expect(classAbilityUnlocksForClase('GUERRERO', 'BERSERKER')).toHaveLength(4);
-    // Tirador: 4 tronco + 5 propios (12/16/19/28/32) = 9
-    expect(classAbilityUnlocksForClase('CAZADOR', 'TIRADOR')).toHaveLength(9);
+    // Berserker: 3 tronco + 3 propios (19/24/32, antes solo 19) = 6
+    expect(classAbilityUnlocksForClase('GUERRERO', 'BERSERKER')).toHaveLength(6);
+    // Guardián: 3 tronco + 4 propios (12/24/28/40, antes 12/28) = 7
+    expect(classAbilityUnlocksForClase('GUERRERO', 'GUARDIAN')).toHaveLength(7);
+    // Lancero: 3 tronco + 6 propios (12/16/19/24/36/40, antes 16/24/40) = 9
+    expect(classAbilityUnlocksForClase('GUERRERO', 'LANCERO')).toHaveLength(9);
+    // Especialista: 3 tronco + 5 propios (12/16/19/24/32, antes 12/16/19/24) = 8
+    expect(classAbilityUnlocksForClase('GUERRERO', 'ESPECIALISTA')).toHaveLength(8);
     // Domador: 4 tronco + 1 propio (12, Compañero cazador, COMPANERO ya implementado) = 5
     expect(classAbilityUnlocksForClase('CAZADOR', 'DOMADOR')).toHaveLength(5);
-    // Totémico: 3 tronco + 0 propios (bloqueada por completo, sin INVOCACION) = 3
-    expect(classAbilityUnlocksForClase('CHAMAN', 'TOTEMICO')).toHaveLength(3);
+    // Supervivencia: 4 tronco + 7 propios (12/16/19/24/28/36/40, antes 12/16/19/40) = 11
+    expect(classAbilityUnlocksForClase('CAZADOR', 'SUPERVIVENCIA')).toHaveLength(11);
+    // Tirador: 4 tronco + 6 propios (12/16/19/28/32/36, antes 12/16/19/28/32) = 10
+    expect(classAbilityUnlocksForClase('CAZADOR', 'TIRADOR')).toHaveLength(10);
+    // Instintivo: 4 tronco + 7 propios (12/16/19/24/32/36/40, antes 12/16/36/40) = 11
+    expect(classAbilityUnlocksForClase('CAZADOR', 'INSTINTIVO')).toHaveLength(11);
+    // Totémico: 3 tronco + 1 propio (12, Tótem de Guerra — movido aquí desde Convocador) = 4
+    expect(classAbilityUnlocksForClase('CHAMAN', 'TOTEMICO')).toHaveLength(4);
+    // Rúnico: 3 tronco + 6 propios (12/16/24/28/36/40, antes 24/28/40) = 9
+    expect(classAbilityUnlocksForClase('CHAMAN', 'RUNICO')).toHaveLength(9);
+    // Convocador: 3 tronco + 6 propios (12/16/19/24/28/32, Tótem de Guerra salió, Filo Elemental
+    // entró de verdad en el 12) = 9
+    expect(classAbilityUnlocksForClase('CHAMAN', 'CONVOCADOR')).toHaveLength(9);
+    // Opresor: 3 tronco + 4 propios (12/16/19/24, antes 12/16/24) = 7
+    expect(classAbilityUnlocksForClase('CHAMAN', 'OPRESOR')).toHaveLength(7);
   });
 
   it('una especialización de otra clase no se cuela en el roster', () => {
     const berserker = classAbilityUnlocksForClase('GUERRERO', 'BERSERKER');
     expect(berserker.every((u) => u.clase === 'GUERRERO')).toBe(true);
     expect(berserker.some((u) => u.especializacion === 'TIRADOR')).toBe(false);
+  });
+
+  it('Tótem de Guerra (INVOCACION) vive en Totémico, no en Convocador (bug de siembra corregido 2026-08-31)', () => {
+    const totemico = classAbilityUnlocksForClase('CHAMAN', 'TOTEMICO');
+    expect(totemico.some((u) => u.ability.name === 'Tótem de Guerra')).toBe(true);
+    const convocador = classAbilityUnlocksForClase('CHAMAN', 'CONVOCADOR');
+    expect(convocador.some((u) => u.ability.name === 'Tótem de Guerra')).toBe(false);
+    expect(convocador.some((u) => u.ability.name === 'Filo Elemental')).toBe(true);
+  });
+
+  it('Golpe Gemelo (ATAQUE+MULTIPLE) vive en Instintivo, no en Supervivencia (bug de siembra corregido 2026-08-31)', () => {
+    const instintivo = classAbilityUnlocksForClase('CAZADOR', 'INSTINTIVO');
+    expect(instintivo.some((u) => u.ability.name === 'Golpe Gemelo')).toBe(true);
+    const supervivencia = classAbilityUnlocksForClase('CAZADOR', 'SUPERVIVENCIA');
+    expect(supervivencia.some((u) => u.ability.name === 'Golpe Gemelo')).toBe(false);
   });
 });
