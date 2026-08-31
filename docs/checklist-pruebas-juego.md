@@ -211,18 +211,19 @@ Dinamismo del mundo).
 
 ## 12. "Trabajador de Reino" (2026-08-31) — moneda, edificios de facción, interior, aprender oficio
 
-Fase 1 completa por código/tests, NUNCA probada en vivo todavía — ver
-`tarkor_trabajador_reino_fase1_2026-08-31` (memoria de sesión) para el diseño completo.
+Fase 1 verificada en vivo con Playwright (2 partidas de prueba) — ver
+`tarkor_pruebas_trabajador_reino_2026-08-31` (memoria de sesión) para el detalle completo, 1 bug
+real encontrado y corregido (`ZonaPanel.tsx`, commit `0e3e4a8`).
 
 | Ítem | Estado | Notas |
 |---|---|---|
-| Goirnos visibles en Inventario (🪙 junto a capacidad) | 🧪 sin verificar en vivo | `save.goirnos` empieza en 0 por defecto — necesita que algo lo suba primero para verse un número real. |
-| Entrar al interior de Karot Veku (viaje instantáneo) | 🧪 sin verificar en vivo | `LocationLink` `campamento-serhu` → `campamento-serhu-interior`, `minutosBase: 0`. |
-| Ver a Torgash/Ulkha dentro del interior (ya no en la Zona exterior) | 🧪 sin verificar en vivo | Movidos de `campamento-serhu` a `campamento-serhu-interior` en `ZonePoint`. |
-| Ver los 2 `FactionBuilding` de prueba (Herrería/Curtiduría) en el mapa de Zona del interior | 🧪 sin verificar en vivo | Icono EDIFICIO (cuadrado), `targetSlug` real a `FactionBuilding.slug` (corregido el anti-patrón de Karot Vekhad que antes apuntaba a sí mismo). |
-| Habilidad "Aprender oficio" en la barra general | 🧪 sin verificar en vivo | Debe listar Maestros presentes en la Location actual (`GET /saves/:id/aprender-oficio`), con motivo de bloqueo real si aplica. |
-| Aprender oficio con éxito (reputación AMIGABLE + 10 Goirnos) | 🧪 sin verificar en vivo | Requiere reputación con Clan Serhu ≥3500/5000 y ≥10 Goirnos — con una partida nueva, ninguno de los dos se cumple por defecto. |
-| Icono de asentamiento en la ficha de Enciclopedia de Karot Veku | 🧪 sin verificar en vivo | Sustituye banner/miniatura; sin imagen real subida todavía, debería verse el placeholder de siempre + botón "Generar" para el prompt de icono. |
+| Goirnos visibles en Inventario (🪙 junto a capacidad) | ✅ verificado en vivo (2026-08-31) | "🪙 50" visible junto a "Capacidad: 0/48 objetos". |
+| Entrar al interior de Karot Veku (viaje instantáneo) | ✅ verificado en vivo (2026-08-31) | Narración coherente, ~1 min real de espera, `currentLocationId` confirmado en Postgres. |
+| Ver a Torgash/Ulkha dentro del interior (ya no en la Zona exterior) | ✅ verificado en vivo (2026-08-31) | Ulkha Ketg apareció en escena real dialogando al entrar. |
+| Ver los 2 `FactionBuilding` de prueba (Herrería/Curtiduría) en el mapa de Zona del interior | ✅ FIJADO Y VERIFICADO EN VIVO (2026-08-31) | **Bug real encontrado**: el `<svg>` de pines estaba condicionado a `imageUrl` (sin imagen de fondo, cero pines visibles pese a existir en BD) — afectaba a cualquier zona sin PNG subido, no solo esta. Corregido (`0e3e4a8`), reverificado: 2 triángulos + 3 cuadrados naranjas visibles. |
+| Habilidad "Aprender oficio" en la barra general | ✅ verificado en vivo (2026-08-31) | Icono 📜 presente (confirmado por `aria-label`, sin texto visible en la barra), abre modal con los 2 Maestros. |
+| Aprender oficio con éxito (reputación AMIGABLE + 10 Goirnos) | ⚠️ mala elección de caso de prueba | Herrero/Curtidor están entre los 8 oficios que Gorhorn ya tiene de serie (`GORHORN_STARTING_PROFESSIONS`) — nunca podrá "aprenderlos" con este personaje. Botones correctamente `disabled` cuando `yaAprendido: true` (verificado programáticamente). Repetir con Alquimista o Cocinero (los únicos 2 que Gorhorn no tiene) para probar el flujo de éxito real. |
+| Icono de asentamiento en la ficha de Enciclopedia de Karot Veku | ✅ verificado en vivo (2026-08-31) | Botón "Generar icono (emblema plano)" presente SOLO en asentamientos (Miniatura/Banner ocultos), prompt generado real con 512×512 + estilo plano correcto. |
 
 ---
 
