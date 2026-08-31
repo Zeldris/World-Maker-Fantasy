@@ -17,10 +17,15 @@ import { createInFlightClaimSet } from '../lib/inFlightClaimSet.js';
 /// candado — mezclar los dos conceptos en el mismo campo confundiría ambos).
 ///
 /// En memoria a propósito, no en la base de datos: este backend corre como un único proceso (la
-/// Steam Deck), así que no hace falta coordinar entre instancias — y un candado en memoria se
-/// autocura solo si el proceso se reinicia a mitad de una narración (un candado persistido en DB
-/// necesitaría una caducidad a mano para no dejar una partida atascada para siempre tras un
-/// cuelgue).
+/// Steam Deck), así que no hace falta coordinar entre instancias.
+///
+/// Caducidad automática (2026-08-31, `inFlightClaimSet.ts`): un candado más viejo de 5 minutos
+/// (default) se trata como abandonado y `claim()` lo reemplaza — antes solo se autocuraba
+/// reiniciando el proceso backend a mano, que es exactamente lo que se estaba reproduciendo
+/// sesión tras sesión con turnos que se quedaban colgados sin resolver ni fallar (el candado
+/// tomado para siempre por una promesa zombie de `narrateAndPersistTurn`, ver auditoría del mismo
+/// día). La tarea zombie de origen sigue corriendo de fondo sin que nada la mate, pero deja de
+/// bloquear turnos NUEVOS de la misma partida.
 const turnClaims = createInFlightClaimSet<string>();
 
 /// Reclama el turno para `saveId` — `false` si ya hay uno en curso (el caller debe responder 409

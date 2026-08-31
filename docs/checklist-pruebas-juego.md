@@ -124,7 +124,8 @@ Un combate contra un único NPC siempre cae en el motor 1v1 clásico, nunca ejer
 
 | Ítem | Estado | Notas |
 |---|---|---|
-| Captura post-combate (individual) | 🧪 REDISEÑADO (2026-08-28), cobertura precisada (2026-08-28, revisión de código) | Ya no es un único paso — atar deja la captura como InventoryItem en tránsito, hay que llevarla a una Jaula y depositarla ahí (nuevo botón "Depositar" en Inventario) antes de que aparezca en "Pendientes de tamear". **Backend**: SÍ tiene integración real de punta a punta contra Postgres (`companeros.integration.test.ts:87`, describe "cobertura de ruta — captura → tameo → confirmar", secuencia completa atar→tránsito→depositar→pendientes→intentar→soltar→confirmar, más el bug de grupo cazado explícitamente en otro describe de la línea 255). Casos de error sin cubrir por test: NPC sin edificio destino, sin cuerdas, sin hueco de inventario, sin Jaula con hueco, captura de NPC con `atributoResistencia` (solo se prueba con fauna). **Frontend**: el botón "Depositar" (`InventarioPanel.tsx`, función `CapturasEnTransito`) NO tiene NINGÚN test de React — ni `CapturaModal.tsx` ni `TameoModal.tsx` tampoco. El checklist decía "backend+frontend completos, verificado solo por tests" — impreciso, solo el backend tiene cobertura real. **Riesgo más serio identificado, cero cobertura**: la expiración silenciosa de una captura en tránsito no depositada a tiempo (`applyCapturaEnInventarioTimeouts`/`capturaEnInventarioExpiro`, `turnResolution.ts:1664-1674`/`companionSupervivencia.ts:149-152`) — grep confirma CERO tests (ni unitarios ni de integración) y no hay evidencia de haberse visto en vivo. Si se juega esta sección en vivo, priorizar dejar pasar turnos con una captura sin depositar y observar si expira correctamente. |
+| Captura post-combate (individual) | ✅ camino de éxito verificado en vivo (2026-08-31) | Rediseño confirmado: atar deja la captura como InventoryItem en tránsito, hay que llevarla a una Jaula y depositarla ahí antes de que aparezca en "Pendientes de tamear". **Jugado en vivo**: cazado un grupo de 4 Buitre Cenizo (combate múltiple), un participante forzado a CONVALECIENTE, pulsado "Capturar" en la tarjeta real de decisión — primer intento con 400 real ("Necesitas cuerdas"), añadidas cuerdas al inventario, reintento con 400 real distinto (mensaje de guard de estado cuando el `participantId` no coincidía con el CONVALECIENTE real — confirma que el guard exige el id correcto, no solo el slug), tercer intento con el `participantId` correcto → 200, `InventoryItem` real creado ("Buitre Cenizo (Capturado) (3)", `capturaNpcId`/`capturaScope`/`capturaExpiraAtMinutes` poblados), `CombatParticipant.dismissedGrupo` correctamente marcado `true` para ese individuo, el resto del grupo sin tocar. Confirma también en vivo el patrón de combate múltiple: cada botón "Capturar"/"Matar" de la lista corresponde a un `participantId` real distinto, no intercambiable por posición en el DOM. **Sigue pendiente**: depositar en Jaula, tameo, y expiración (ver fila siguiente). |
+| **Expiración silenciosa de captura en tránsito no depositada** | ✅ verificado en vivo (2026-08-31) | Antes CERO cobertura de test conocida. `InventoryItem.capturaExpiraAtMinutes` forzado a un valor ya vencido vía SQL (470, con `fictionalMinutes` real en 480), turno normal de texto libre enviado para disparar `applyCapturaEnInventarioTimeouts` — confirmado en Postgres: el `InventoryItem` de la captura desapareció del todo tras el turno (`fictionalMinutes` 480→481), sin dejar ningún residuo/huérfano en el resto del inventario (8 objetos normales de partida, ninguno relacionado con la captura). Comportamiento 100% silencioso confirmado tal como documenta el código — sin mensaje, sin log, sin narración. **Bloqueada varias veces por un cuelgue real de Ollama** durante la verificación (ver hallazgo de infraestructura más abajo, `ollamaQueue.ts` corregido con autorrecuperación) — la verificación final se completó una vez el sistema volvió a responder con normalidad. |
 | Tameo/persuasión (tirada opuesta, Felicidad) | 🧪 REABRIR (2026-08-28), cobertura confirmada por código (2026-08-28) | El mecanismo en sí (`resolverIntento`) no cambió, y el flujo completo de punta a punta (incluyendo `resolverIntento` con estado real persistido) SÍ está cubierto por el mismo test de integración de la fila de arriba (mismo `describe`, no hace falta un test aparte) — camino feliz confirmado por código. Frontend (`TameoModal.tsx`) sin ningún test de React, igual que Captura. Sin verificar en vivo todavía esta sesión (bloqueado por cuelgue de Ollama, ver § 1). |
 | Hambre/Sed/Felicidad derivadas en tiempo real | ✅ | Backend+frontend completos, verificados. |
 | Equipar/desequipar compañero (ranuras reducidas fauna / completas NPC) | ✅ | — |
@@ -141,7 +142,7 @@ Un combate contra un único NPC siempre cae en el motor 1v1 clásico, nunca ejer
 | Construcción de Campamento / Ayuntamiento pequeño | ✅ | — |
 | Ayuntamiento mediano (75% material procesado) | 🚧 requiere condición previa | Exige oficio de procesado a nivel medio — poco frecuente alcanzar en sesión corta. |
 | Ayuntamiento grande (100% material procesado, 4 oficios) | 🚧 requiere condición previa | Exige los 4 oficios de procesado a la vez — muy poco frecuente. |
-| Control regional (neutro/disputa/conquistado) | 🧪 verificado por código (2026-08-28) | Confirmado leyendo código: `regionControlFor` (worldAgenda.ts, pura, 16 tests unitarios) SÍ está conectada de punta a punta — `GET /saves/:id/zona` la expone (`zona.ts:49-50`), `ZonaPanel.tsx:131` la consume y renderiza con color por estado (`regionControlDisplay`, 3 casos exhaustivos). Estaba marcado ❌ por error — es 🧪 (construido y con tests, no visto en pantalla en una partida real todavía; para verlo hace falta llegar a una región con conflicto sembrado — Cristal Helado/Ciénaga Troncal — y que `WorldState.agenda` tenga `stage` ≥ 2). |
+| Control regional (neutro/disputa/conquistado) | ✅ LOS 3 ESTADOS CONFIRMADOS EN VIVO (2026-08-31) | `regionControlFor` verificado contra `GET /saves/:id/zona` real, agenda forzada por SQL para cubrir los 3 casos: `stage: 0` → `NEUTRAL_O_DUENO_ORIGINAL` (Clan Helsig, dueño real de Cristal Helado); `stage: 2` → `EN_DISPUTA` (dueño Clan Helsig, agresor "Clan Serhu-Concordia de Hierro"); `stage: 4` → `CONQUISTADA` (dueño pasa a ser el agresor). **Excepción de diseño confirmada**: con `stage: 4` activo, Las Llanuras del Viento Rojo (territorio del propio Clan Serhu, el agresor) se queda `NEUTRAL_O_DUENO_ORIGINAL` — nunca se disputa a sí misma, tal como estaba diseñado. Visto también en pantalla real ("Territorio de Clan Serhu" bajo el título del panel de Zona de La Hondonada del Eco). |
 
 ## 6. Modo dinámico (Pieza 4 de "Dinamismo del mundo")
 
@@ -155,7 +156,7 @@ Un combate contra un único NPC siempre cae en el motor 1v1 clásico, nunca ejer
 
 | Ítem | Estado | Notas |
 |---|---|---|
-| 4 formas de icono por categoría (círculo/triángulo/cuadrado/rombo) | ✅ parcial reverificado en vivo (2026-08-28) | Visto en pantalla real (La Hondonada del Eco): 2 puntos círculo (fauna) con contador "×20" cada uno. Solo fauna presente en esta zona concreta — triángulo/cuadrado/rombo siguen sin verse en pantalla, requiere una zona con NPC con nombre/edificio/recurso a la vez. |
+| 4 formas de icono por categoría (círculo/triángulo/cuadrado/rombo) | ✅ LAS 4 CONFIRMADAS EN VIVO (2026-08-31) | Círculo (fauna) ya visto 2026-08-28 (La Hondonada del Eco, ×20). Triángulo y cuadrado confirmados 2026-08-31 en el interior de Karot Veku (§12): 2 triángulos NPC (Torgash/Ulkha) + 3 cuadrados EDIFICIO. **Rombo confirmado 2026-08-31**, mismo día: La Hondonada del Eco tiene un `ZonePoint` tipo RECURSO real (Veta de Yerreo, ×20) — visible como rombo naranja en el mapa real junto a los 2 círculos de fauna. Las 4 formas vistas en pantalla real. |
 | Color por reputación con la facción del elemento | ✅ reverificado en vivo (2026-08-28) | Ambos puntos en naranja — correcto, fauna salvaje sin facción asociada usa naranja de fondo según el diseño. |
 | Agrupación dinámica por cantidad (×N) | ✅ reverificado en vivo (2026-08-28) | Contador "×20" visible directamente sobre el icono en el mapa real, tal como se diseñó. |
 | Recálculo proporcional al tiempo de ficción transcurrido | 🧪 verificado por código (2026-08-28) | `recalcularZonePointsDeLocation` (zonePoints.ts, 9 tests unitarios) enganchada en `turnResolution.ts:3139` — corre en CADA turno, no solo en algunos. Los ×20 vistos hoy no se compararon contra un valor anterior, así que el recálculo en sí sigue sin confirmarse visualmente (haría falta ver el número cambiar entre dos visitas). |
@@ -174,7 +175,7 @@ Un combate contra un único NPC siempre cae en el motor 1v1 clásico, nunca ejer
 
 | Ítem | Estado | Notas |
 |---|---|---|
-| Restricción de armas por clase (Guerrero/Cazador/Chamán) | 🧪 verificado por código, circuito de error confirmado completo (2026-08-28) | `PATCH /saves/:id/inventario/:itemId` (inventario.ts:79-90) valida contra `weaponPoolFor` con mensaje de error claro (400: `"${item.name}" no encaja con tu clase...`), test de integración cubre el caso rechazado. **Frontend confirmado por code review, NO es UX rota**: `api.ts:52-60` propaga el mensaje real del backend como `Error`, `GameView.tsx` (`handleEquipItem:882-914`) hace update optimista y revierte + relanza el error en el `catch` (comentario propio explícito: "DetailModal espera esta promesa y muestra el mensaje en vez de que el objeto 'se desequipe solo' en silencio"), `DetailModal.tsx:146-147` captura y muestra `actionError` en rojo (línea 233/322). Circuito completo y correcto. **Sigue sin ningún test de React** que lo ejercite (no existe `DetailModal.test.tsx` ni `GameView.test.tsx`; `equipSlots.test.ts` solo cubre funciones puras de compatibilidad de ranuras) — y sigue sin verse en pantalla real jugando. |
+| Restricción de armas por clase (Guerrero/Cazador/Chamán) | ✅ verificado en vivo (2026-08-31) | Requiere `especializacion` fijada (`weaponPoolFor('CAZADOR', null)` devuelve `null` = sin restricción — Gorhorn no la tiene hasta nivel 10). Partida de prueba con `clase: CAZADOR, especializacion: TIRADOR` (SQL directo) + "Espada corta goirntes" (`ESPADA_1_MANO`, no permitida para TIRADOR) añadida al inventario. Jugado en vivo con Playwright: Personaje→Equipo→Arma Principal→"Sustituir por"→Espada corta goirntes → `PATCH /saves/:id/inventario/:itemId` devuelve 400 real (`"Espada corta goirntes" no encaja con tu clase — CAZADOR (TIRADOR) no puede equipar armas de tipo ESPADA_1_MANO.`), mensaje mostrado en rojo dentro del propio modal, "Hacha de guerra rota" se queda equipada sin cambios (sin desequipado silencioso). Circuito completo confirmado en pantalla real, no solo por code review. Sigue sin ningún test de React dedicado (no bloqueante). |
 | Bonus de atributo por habilidad desbloqueada | 🧪 REABRIR (2026-08-28), componente confirmado sin test (2026-08-28) | El bono en sí (+2/+4) ya se aplicaba en combate desde 2026-08-24, pero era INVISIBLE en toda la UI (bug real encontrado jugando) — ahora se muestra en el tooltip de la habilidad y como chip en el desglose de la tirada. **Confirmado por code review**: el chip vive en `CombatExchangeBadge.tsx:345-349` (`+${side.attributeBonus} habilidad`) y el desglose en líneas 288-293; un segundo sitio (`abilityBonusSuffix.ts:9`, usado en `PersonajePanel.tsx`) muestra el bono en el tooltip de la propia habilidad. **Cero cobertura de test confirmada por grep**: no existe `CombatExchangeBadge.test.tsx`/`CombatPanel.test.tsx`/`abilityBonusSuffix.test.ts`, y `LogPanel.test.tsx` (que sí envuelve `CombatExchangeBadge`) no menciona `attributeBonus` en absoluto. Sigue necesitando verse en pantalla real jugando — la revisión estática no puede sustituir esta verificación. |
 | Clase Mago | ⛔ sin diseñar | Sin tabla de niveles todavía — la usuaria no lo ha diseñado. |
 | Migraciones de clases aplicadas contra Postgres real | ✅ | Confirmado indirectamente (2026-08-28): migración `20260824030000_sistema_clases` existe en `prisma/migrations/`, y la partida real de hoy funciona sin ningún error de schema en combate/inventario/progresión — si no estuviera aplicada, cualquiera de esas rutas habría fallado con un error de Prisma como el visto en otra partida (`Value 'CONSUMIBLE_1' not found in enum`, ver `tarkor_bug_narracion_atacante_invertido_2026-08-27`, causado por un proceso viejo con cliente desincronizado, no por falta de migración). |
@@ -222,7 +223,7 @@ real encontrado y corregido (`ZonaPanel.tsx`, commit `0e3e4a8`).
 | Ver a Torgash/Ulkha dentro del interior (ya no en la Zona exterior) | ✅ verificado en vivo (2026-08-31) | Ulkha Ketg apareció en escena real dialogando al entrar. |
 | Ver los 2 `FactionBuilding` de prueba (Herrería/Curtiduría) en el mapa de Zona del interior | ✅ FIJADO Y VERIFICADO EN VIVO (2026-08-31) | **Bug real encontrado**: el `<svg>` de pines estaba condicionado a `imageUrl` (sin imagen de fondo, cero pines visibles pese a existir en BD) — afectaba a cualquier zona sin PNG subido, no solo esta. Corregido (`0e3e4a8`), reverificado: 2 triángulos + 3 cuadrados naranjas visibles. |
 | Habilidad "Aprender oficio" en la barra general | ✅ verificado en vivo (2026-08-31) | Icono 📜 presente (confirmado por `aria-label`, sin texto visible en la barra), abre modal con los 2 Maestros. |
-| Aprender oficio con éxito (reputación AMIGABLE + 10 Goirnos) | ⚠️ mala elección de caso de prueba | Herrero/Curtidor están entre los 8 oficios que Gorhorn ya tiene de serie (`GORHORN_STARTING_PROFESSIONS`) — nunca podrá "aprenderlos" con este personaje. Botones correctamente `disabled` cuando `yaAprendido: true` (verificado programáticamente). Repetir con Alquimista o Cocinero (los únicos 2 que Gorhorn no tiene) para probar el flujo de éxito real. |
+| Aprender oficio con éxito (reputación AMIGABLE + 10 Goirnos) | ✅ verificado en vivo (2026-08-31) | Sembrado un 3er Maestro real (`maestro-cocinero-serhu`, `teachesProfession: 'cocinero-orco-llanuras'`, + `FactionBuilding` "Cocina común de Karot Veku" + `ZonePoint`, mismo patrón que Herrero/Curtidor) — Cocinero es uno de los únicos 2 oficios que Gorhorn no tiene de serie. Jugado en vivo: modal mostró "Cuesta 🪙 10" con botón APRENDER habilitado (Herrero/Curtidor ya `disabled`, "Ya conoces este oficio"), pulsado → `POST /saves/:id/npc/maestro-cocinero-serhu/aprender-oficio` devuelve 200 con `LogEntry` real ("Gorhorn paga 10 Goirnos y aprende el oficio de Maestro Cocinero Serhu"), confirmado en Postgres: `Save.goirnos` 50→40, fila nueva en `ProfessionProgress` (`cocinero-orco-llanuras`, nivel 1, xp 0). **Recargada la página**: los 3 Maestros muestran correctamente "Ya conoces este oficio" tras F5 — estado sobrevive a recarga. Flujo de éxito completo confirmado en producción real, no solo por tests. |
 | Icono de asentamiento en la ficha de Enciclopedia de Karot Veku | ✅ verificado en vivo (2026-08-31) | Botón "Generar icono (emblema plano)" presente SOLO en asentamientos (Miniatura/Banner ocultos), prompt generado real con 512×512 + estilo plano correcto. |
 
 ---
@@ -302,6 +303,45 @@ await browser.close();
   tabla de Combate 1v1). Aunque ya está arreglado, sigue siendo mala práctica: esperar siempre a
   que el turno termine (confirmado vía API) antes de cerrar el navegador o lanzar el siguiente
   script.
+- **El composer de texto libre NO siempre es el mismo selector** (hallazgo real, 2026-08-31, tras
+  varios timeouts perdidos): fuera de combate es `[contenteditable="true"]` (placeholder "¿Qué
+  hace tu personaje?"); DENTRO del panel de combate (tras pulsar "Combatir") es un `<input
+  placeholder="O describe tu acción...">` normal, sin `contenteditable`. Un selector que solo
+  busca uno de los dos falla en silencio (`count: 0`, timeout largo) en el otro contexto —
+  comprobar `page.locator('[contenteditable="true"], input[placeholder]')` o inspeccionar antes de
+  asumir cuál aplica.
+- **NUNCA reenviar la misma acción de texto libre por segunda vez sin confirmar antes, vía API,
+  que el turno anterior terminó** (hallazgo real, 2026-08-31): cada clic en "Actuar" crea su eco
+  ("Tu acción") de inmediato en el `characterLog` (`turn.ts:863-867`, `/turn/classify`), ANTES de
+  que la narración real (`/turn/narrate`) responda — reenviar tras un timeout de script (no de
+  turno real) deja varios ecos idénticos sin ninguna respuesta del narrador detrás,
+  ensuciando el log de la partida de prueba sin avanzar `fictionalMinutes`. Si un script de
+  Playwright falla/hace timeout tras pulsar Actuar, comprobar el estado real vía API antes de
+  reintentar — nunca reintentar a ciegas solo porque el script murió.
+- **En un `CombatEncounter` de grupo (2+ del mismo tipo), el orden de los botones en el DOM NO
+  coincide con el orden por `id` de `CombatParticipant` en Postgres** (hallazgo real, 2026-08-31):
+  si se fija la condición de un participante concreto por SQL para forzar un escenario de prueba
+  (p. ej. CONVALECIENTE para probar Capturar), hace falta verificar con el `body enviado` real del
+  `POST` (interceptar `req.postData()` en Playwright) qué `participantId` mandó el botón pulsado,
+  no asumir que "el primero de la lista" es el que se acaba de editar en la BD — si no coinciden,
+  el backend responde 400 con guard de estado ("no está listo para atar"), confuso si no se sabe
+  la causa. Más simple y fiable: fijar TODOS los participantes del grupo al estado deseado de una
+  vez, no solo uno.
+- **Un turno real puede tardar mucho más de los 20-30s habituales tras cargar el modelo narrador
+  grande desde cero por primera vez en la sesión de Ollama** (hallazgo real, 2026-08-31, confirmado
+  con el log completo de `ollama serve`): un turno se quedó sin resolver 5+ minutos justo después
+  de que Ollama arrancara `tarkor-narrador` (7.6B) desde cero (`load_tensors`/`llama_context` en el
+  log) — el modelo tarda en cargar en VRAM antes de poder procesar el prompt real, y ese tiempo de
+  carga NO es visible desde `GET /saves/:id` (que solo muestra "sin resolver todavía", igual que un
+  cuelgue real). **Aviso importante de la usuaria, jugando de verdad su experiencia real es 30-120s,
+  casi nunca más** (salvo procesos con espera de ficción real, como viajar) — si un turno de
+  Claude jugando tarda mucho más que eso, sospechar primero del PROPIO proceso de prueba (curls
+  externos de diagnóstico al puerto 11434 compitiendo por el único slot de generación de Ollama,
+  `n_slots = 1` confirmado en el log — un `curl .../api/generate` de "comprobación de salud" hecho
+  mientras un turno real está en cola puede desplazarlo) antes de concluir que es un cuelgue de
+  infraestructura sin más. **No hacer curls directos a Ollama para "comprobar salud" mientras se
+  espera un turno real** — comprobar solo `GET /saves/:id`, que no compite por el slot de
+  generación.
 - El input de acción libre NO es un `<textarea>` — es un `[contenteditable="true"]`. Usar
   `page.locator('[contenteditable="true"]')` con `.click()` + `.fill()`, nunca
   `getByPlaceholder(...)` (el placeholder cambia dinámicamente y puede dar timeout).
@@ -427,6 +467,85 @@ haber cambiado de modelo activo varias veces en la misma sesión.
    temporalmente, no lo resuelve de raíz — la mitigación de infraestructura real (timeout+reintento,
    o healthcheck de generación real en vez de solo `/api/ps`) sigue pendiente y cada vez parece más
    necesaria para poder completar sesiones de pruebas largas sin interrupciones repetidas.
+
+   **CAUSA RAÍZ REAL DEL LADO DE CÓDIGO ENCONTRADA Y FIJADA (2026-08-31)**: la mitigación pedida
+   arriba ("timeout+reintento automático del backend hacia Ollama") NO existía — investigado a
+   fondo tras reproducir el cuelgue en vivo una vez más y confirmarlo con el log real del backend
+   (`/turn/classify` sin `res` en absoluto, minutos después de enviarse) y el log real de `ollama
+   serve` (el modelo `tarkor-narrador` cargándose desde cero justo antes, `load_tensors`/
+   `llama_context`). Causa exacta en `ollamaQueue.ts`: la cola de concurrencia-1 solo avanzaba
+   (`this.tail`) cuando la tarea encolada RESOLVÍA de verdad — el `timeoutMs`/`AbortController` de
+   `ollama.ts` (`classifyAction`: 90s, `narrateAction`: 90-240s) protege el propio `fetch`, pero si
+   Ollama acepta la conexión TCP y se cuelga genuinamente sin devolver el control, el `AbortSignal`
+   no siempre logra cerrar esa conexión a tiempo del lado de Node/undici — la tarea puede quedar
+   viva mucho más allá de su timeout nominal. Con la cola vieja, esa UNA tarea zombie bloqueaba TODA
+   la cola detrás para siempre: ni el turno atascado ni ningún turno posterior (de cualquier
+   partida, es una cola global de proceso) llegaba nunca a resolver ni a fallar con un error visible
+   — la única forma de destrabar la sesión era reiniciar el backend entero, exactamente lo que la
+   usuaria llevaba haciendo repetidamente sesión tras sesión. **Fix real** (`ollamaQueue.ts`): la
+   cola ahora avanza (`this.tail`) en cuanto CUALQUIERA de las dos cosas ocurre primero — la tarea
+   real resuelve, O expira su propio `queueTimeoutMs` de cola (150s por defecto, por encima del
+   timeout interno más largo conocido) — vía `Promise.race`. Esto da **autorrecuperación real**: una
+   tarea zombie sigue corriendo de fondo sin que nada la controle, pero dejar de ser escuchada no
+   bloquea a nadie más — el siguiente turno en cola (de la misma partida o de otra) puede ejecutar
+   con normalidad en cuanto le toque, sin ninguna intervención manual. 5 tests nuevos en
+   `ollamaQueue.test.ts` (orden normal, error real propagado, zombie rechaza sola, autorrecuperación
+   de una tarea real detrás de una zombie, varias zombies seguidas no bloquean a una tarea real más
+   adelante) — todos en verde. `tsc -b` limpio.
+
+   **INVESTIGACIÓN AMPLIADA LA MISMA NOCHE (2026-08-31→09-01)**: el fix de `ollamaQueue.ts` por sí
+   solo NO resolvió el síntoma real — reproducido en vivo repetidas veces esa misma noche, turnos
+   de prueba se quedaban sin resolver 260s-990s incluso tras reiniciar backend y Ollama con el fix
+   ya aplicado y compilado. Investigado a fondo (scripts de diagnóstico aislados, todos pasaban
+   perfecto — la discrepancia entre "funciona aislado" y "falla en producción real" fue la pista
+   de que el problema estaba en OTRO punto del pipeline, no en `ollamaQueue.ts` en sí). Lanzado un
+   agente de auditoría del pipeline completo (turno del jugador → respuesta), que encontró la causa
+   raíz real, más profunda de lo diagnosticado la primera vez:
+
+   - **CRÍTICO, la causa real del síntoma**: `turnLock.ts`/`inFlightClaimSet.ts` — el candado de
+     turno en memoria (`claimTurnInFlight`, `turn.ts:904`, ANTES de `reply.hijack()`) solo se
+     liberaba en el `finally` de `narrateAndPersistTurn`. Si esa promesa entera nunca resuelve NI
+     rechaza (ver punto siguiente), el `finally` nunca corre y el candado queda tomado PARA
+     SIEMPRE — el fix de `ollamaQueue.ts` protege la cola de Ollama, pero no este candado superior,
+     que es el que de verdad explicaba "turnos que no resuelven ni fallan": el frontend seguía
+     esperando una respuesta HTTP que nunca iba a llegar (turno original zombie), y cualquier
+     REINTENTO del jugador chocaba con 409 en vez de con un error claro. **Fix**:
+     `inFlightClaimSet.ts` gana caducidad automática (`staleAfterMs`, default 5 min/300000ms) — un
+     candado más viejo que ese margen se trata como abandonado y `claim()` lo reemplaza, sin
+     esperar nunca a un `release()` que quizás no llegue. 6 tests nuevos, todos en verde.
+   - **ALTO**: `retrieval.ts` — `prisma.$queryRaw` (RAG contra pgvector/Postgres, corre en casi
+     todos los turnos vía `retrieveLore`) sin ningún timeout propio ni AbortController (Prisma no
+     soporta cancelación nativa de queries raw). El propio comentario del código YA advertía
+     "latencia de red... Supabase remoto" como cuello de botella conocido, sin protección real.
+     **Fix**: `withQueryTimeout` (15s) envolviendo la consulta + `try/catch` en el caller
+     (`turnResolution.ts:2722`) que degrada a `[]` (sin lore RAG) en vez de romper el turno entero
+     — mismo criterio que ya usa `isWeaklyGrounded` para "sin lore relevante". 3 tests nuevos.
+   - **Bug real introducido por mi propio primer fix, encontrado revisando el informe del agente**:
+     `ollamaQueue.enqueue` nunca recibía `queueTimeoutMs` explícito desde `ollama.ts` — SIEMPRE
+     usaba el default de la cola (150s), pero `narrateAction` (attempt2) pide `timeoutMs: 240_000`
+     a su propio `AbortController` interno. Mi guard de cola (150s) disparaba ANTES de que ese
+     timeout interno más largo tuviera ocasión de actuar de forma limpia — cortando prematuramente
+     intentos legítimos que el propio código ya había decidido que podían tardar más. **Fix**:
+     `queueTimeoutFor` (`ollama.ts`) deriva el guard de cola del `timeoutMs` real de cada llamada
+     +30s de margen, en vez de usar siempre el default. 2 tests nuevos.
+   - **Investigado y descartado como causa, documentado para no repetir la investigación**: Fastify
+     tiene `requestTimeout: 0` (`server.ts:16`) a propósito, y `/turn/narrate` usa `reply.hijack()`
+     — ninguno de los dos es el bug en sí (son decisiones deliberadas ya documentadas), pero juntos
+     confirman que la ÚNICA red de seguridad real contra un cuelgue es el guard de nivel de
+     aplicación (candado + cola), nunca Fastify — coherente con por qué los 2 fixes de arriba eran
+     necesarios. Los proveedores cloud de imagen (`aiProviders/*Client.ts`) tampoco tienen timeout,
+     pero solo se usan en scripts de siembra offline y en una llamada fire-and-forget
+     (`liveTeacherCapture.ts`, `void` sin await) — no bloquean la respuesta al jugador, riesgo real
+     pero de fuga de recursos, no de cuelgue de turno.
+
+   **Verificación**: `tsc -b` limpio backend completo. 11 tests nuevos en total entre las 3 piezas
+   (`inFlightClaimSet.test.ts`, `retrieval.test.ts`, `ollama.test.ts`), todos en verde, más los 5 ya
+   existentes de `ollamaQueue.test.ts`. **Pendiente de verificar en vivo la próxima sesión real**:
+   este conjunto de 3 fixes juntos (candado con caducidad + timeout de RAG + guard de cola
+   coherente con el timeout interno) es la primera vez que se ataca el problema completo de punta a
+   punta en vez de solo la pieza de Ollama — confirmar que un cuelgue real ya no deja la partida
+   bloqueada más de ~5 minutos sin que el jugador pueda seguir jugando (reintentando el turno),
+   incluso sin que nadie reinicie nada.
 
    **AVISO para la usuaria**: como resultado de esta inestabilidad, la partida real de pruebas
    (Gorhorn, `cmtd4qgfk003lriuof6id16e0`) acumuló **5 turnos de acción sin ninguna narración de

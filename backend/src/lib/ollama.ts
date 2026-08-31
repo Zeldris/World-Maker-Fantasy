@@ -69,8 +69,22 @@ function buildRequestBody(options: OllamaGenerateOptions, stream: boolean) {
   });
 }
 
+/// Bug real (2026-08-31): `ollamaQueue.enqueue` nunca recibía `queueTimeoutMs` explícito, así que
+/// SIEMPRE usaba su default (150s) — pero `narrador.ts` (attempt2 de `narrateAction`) pide
+/// `timeoutMs: 240_000` a su propio `AbortController` interno. El guard de cola (150s) disparaba
+/// ANTES de que ese timeout interno más largo tuviera oportunidad de actuar de forma limpia,
+/// cortando prematuramente intentos legítimos que el propio código ya decidió que podían tardar
+/// más. El guard de cola es la red de seguridad ÚLTIMA (protege contra que el `AbortController`
+/// interno falle en cortar la conexión, ver `ollamaQueue.ts`) — nunca debe ser más corto que el
+/// propio `timeoutMs` que el caller ya pidió; +30s de margen para que el `AbortController` interno
+/// tenga ocasión de disparar primero, limpio, antes de que el guard de cola lo haga por fuerza.
+export function queueTimeoutFor(options: OllamaGenerateOptions): number | undefined {
+  return options.timeoutMs ? options.timeoutMs + 30_000 : undefined;
+}
+
 /// Llamada no-streaming a /api/generate, serializada por ollamaQueue (decisión técnica 5).
 export async function ollamaGenerate(options: OllamaGenerateOptions): Promise<OllamaGenerateResult> {
+  const queueTimeoutMs = queueTimeoutFor(options);
   return ollamaQueue.enqueue(async () => {
     const controller = options.timeoutMs ? new AbortController() : undefined;
     const timer = controller ? setTimeout(() => controller.abort(), options.timeoutMs) : undefined;
@@ -103,7 +117,7 @@ export async function ollamaGenerate(options: OllamaGenerateOptions): Promise<Ol
     } finally {
       if (timer) clearTimeout(timer);
     }
-  });
+  }, queueTimeoutMs);
 }
 
 /// Llamada en streaming a /api/generate (roadmap de velocidad, 2026-07-20, punto 13): Ollama
@@ -116,6 +130,7 @@ export async function ollamaGenerateStream(
   options: OllamaGenerateOptions,
   onChunk: (delta: string) => void,
 ): Promise<OllamaGenerateResult> {
+  const queueTimeoutMs = queueTimeoutFor(options);
   return ollamaQueue.enqueue(async () => {
     const controller = options.timeoutMs ? new AbortController() : undefined;
     const timer = controller ? setTimeout(() => controller.abort(), options.timeoutMs) : undefined;
@@ -168,5 +183,5 @@ export async function ollamaGenerateStream(
     } finally {
       if (timer) clearTimeout(timer);
     }
-  });
+  }, queueTimeoutMs);
 }

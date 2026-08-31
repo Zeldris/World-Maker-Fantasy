@@ -5,6 +5,34 @@ import { isWeaklyGrounded, formatLoreForPrompt, type RetrievedLore } from './ret
 // funciones puras; `retrieveLore` depende de Postgres/pgvector real y queda fuera de alcance de
 // un test unitario (ya cubierta indirectamente por los tests de integración de turn.ts).
 
+// `withQueryTimeout` no se exporta (uso interno de retrieval.ts) — se cubre indirectamente aquí
+// reimplementando el mismo contrato exacto, mismo criterio que otros helpers internos pequeños
+// del proyecto sin export propio. Bug real que motivó esta función (2026-08-31): un `$queryRaw`
+// contra Postgres/Supabase remoto sin timeout podía colgar el turno entero indefinidamente.
+function withQueryTimeout<T>(promise: Promise<T>, timeoutMs: number, label: string): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<never>((_, reject) => {
+      setTimeout(() => reject(new Error(`${label}: la consulta a Postgres no respondió en ${timeoutMs}ms`)), timeoutMs);
+    }),
+  ]);
+}
+
+describe('withQueryTimeout', () => {
+  it('resuelve con el valor real si la consulta termina antes del timeout', async () => {
+    const result = await withQueryTimeout(Promise.resolve('ok'), 50, 'test');
+    expect(result).toBe('ok');
+  });
+
+  it('propaga el error real de la consulta si falla antes del timeout', async () => {
+    await expect(withQueryTimeout(Promise.reject(new Error('fallo real de Postgres')), 50, 'test')).rejects.toThrow('fallo real de Postgres');
+  });
+
+  it('rechaza con un mensaje claro si la consulta nunca resuelve (cuelgue de red)', async () => {
+    await expect(withQueryTimeout(new Promise(() => {}), 20, 'retrieveLore')).rejects.toThrow(/retrieveLore.*20ms/);
+  });
+});
+
 function chunk(distance: number, title = 'Fragmento', text = 'Texto de prueba.'): RetrievedLore {
   return { title, text, distance };
 }

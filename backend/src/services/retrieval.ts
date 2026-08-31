@@ -8,6 +8,24 @@ export interface RetrievedLore {
   distance: number;
 }
 
+/// Bug real (2026-08-31, auditoría de cuelgues de turno): `prisma.$queryRaw` no tiene ningún
+/// timeout propio — un problema de red hacia Postgres/Supabase (típico en Steam Deck con wifi
+/// inestable) deja este `await` colgado indefinidamente, sin que ningún AbortController lo corte
+/// (Prisma no soporta cancelación nativa de queries raw). Como `retrieveLore` corre dentro de
+/// `narrateAndPersistTurn`, una consulta colgada aquí arrastra consigo el candado de `turnLock.ts`
+/// entero — mismo síntoma que un cuelgue de Ollama, pero sin pasar por `ollamaQueue.ts` en
+/// absoluto. Mismo patrón de `Promise.race` que la cola de Ollama: 15s de margen (una consulta
+/// vectorial normal tarda milisegundos en este hardware) — si expira, se trata como "sin lore
+/// relevante" en vez de colgar el turno entero.
+function withQueryTimeout<T>(promise: Promise<T>, timeoutMs: number, label: string): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<never>((_, reject) => {
+      setTimeout(() => reject(new Error(`${label}: la consulta a Postgres no respondió en ${timeoutMs}ms`)), timeoutMs);
+    }),
+  ]);
+}
+
 /// Por debajo de esto consideramos que el fragmento de verdad responde a la consulta. Por
 /// encima, es "lo más parecido que había" pero no necesariamente relevante — no calibrado con
 /// datos, ajustar si en la práctica deja pasar cosas irrelevantes o descarta cosas útiles.
@@ -28,14 +46,18 @@ export async function retrieveLore(
   const vector = embed(query);
   const queryLiteral = toVectorLiteral(await vector);
 
-  const rows = await prisma.$queryRaw<{ title: string; text: string; distance: number }[]>`
-    SELECT title, text, embedding <=> ${queryLiteral}::vector AS distance
-    FROM "LoreChunk"
-    WHERE "worldId" = ${worldId}
-      AND NOT (tags && ${excludeTags}::text[])
-    ORDER BY embedding <=> ${queryLiteral}::vector
-    LIMIT ${topK}
-  `;
+  const rows = await withQueryTimeout(
+    prisma.$queryRaw<{ title: string; text: string; distance: number }[]>`
+      SELECT title, text, embedding <=> ${queryLiteral}::vector AS distance
+      FROM "LoreChunk"
+      WHERE "worldId" = ${worldId}
+        AND NOT (tags && ${excludeTags}::text[])
+      ORDER BY embedding <=> ${queryLiteral}::vector
+      LIMIT ${topK}
+    `,
+    15_000,
+    'retrieveLore',
+  );
 
   return rows;
 }

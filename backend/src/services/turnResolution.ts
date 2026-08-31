@@ -2719,7 +2719,18 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   // (la misma latencia de red ya identificada como cuello de botella real en este hardware) para
   // un bloque que ni el prompt necesita en combate. `[]` se salta la llamada entera; `isWeaklyGrounded([])`
   // ya cae sola al texto genérico correcto ("describe de forma genérica y creíble").
-  const retrieved = enCombate ? [] : await retrieveLore(regionLabel ? `${action} — ${regionLabel}` : action, worldId, 4, excludeTags);
+  // Bug real (2026-08-31, auditoría de cuelgues de turno): sin este try/catch, un timeout real de
+  // `retrieveLore` (Postgres/Supabase remoto colgado — ver el comentario de `withQueryTimeout` en
+  // retrieval.ts) rompía el turno ENTERO con un error no capturado, arrastrando consigo el candado
+  // de `turnLock.ts` (nunca se libera si `narrateAndPersistTurn` nunca llega al `finally`). Degradar
+  // a `[]` (mismo resultado que ya maneja bien `isWeaklyGrounded`, "sin lore relevante") es
+  // preferible a colgar la partida entera por un problema de red ajeno a la propia narración.
+  const retrieved = enCombate
+    ? []
+    : await retrieveLore(regionLabel ? `${action} — ${regionLabel}` : action, worldId, 4, excludeTags).catch((err) => {
+        console.warn(`[retrieveLore] fallo o timeout, continuando sin lore RAG: ${err instanceof Error ? err.message : err}`);
+        return [];
+      });
   // Bug real del roadmap 2026-07-19: sin exigir `enCombate`, "le compro una ración a Torgash"
   // fuera de combate copiaba TODO su loadout gratis, sin tirada y con el NPC vivo — el regex solo
   // miraba el verbo. No hay estado persistido de "NPC derrotado" (la condición de los NPCs en
