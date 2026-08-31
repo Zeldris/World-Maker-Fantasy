@@ -35,6 +35,7 @@ const SIZE_PROFILE_LABEL: Record<ImagePromptSizeProfile, string> = {
   thumbnail: 'Miniatura (icono cuadrado, cuadrícula)',
   banner: 'Banner (detalle, formato ancho)',
   mapa: 'Mapa de zona (vista aérea navegable, 800x600)',
+  icono: 'Icono de asentamiento (emblema plano, 512x512)',
 };
 
 async function main() {

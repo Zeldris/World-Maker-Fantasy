@@ -16,7 +16,7 @@ import { allProfessionAbilityUnlocks } from '../services/professionAbilities.js'
 import { slugify } from '../lib/slugify.js';
 import { generateImagePrompt, type ImagePromptEntityType, type ImagePromptSizeProfile } from '../services/imagePromptGenerator.js';
 import { loreContextFor } from '../services/imagePromptContext.js';
-import { imageUrlsFor, zoneMapImageUrl } from '../lib/imageAssets.js';
+import { imageUrlsFor, zoneMapImageUrl, iconoUrlFor } from '../lib/imageAssets.js';
 import { BERIG_RAZAS, BERIG_PERSONAJES } from '../services/berigLore.js';
 import { COMBAT_LORE_SECTIONS } from '../services/combatLore.js';
 import { baseAttackFor } from '../services/baseAttack.js';
@@ -61,6 +61,9 @@ interface VarianteTiempoOut {
 /// cada `buildXSection`.
 interface EnciclopediaBuildContext {
   imagePromptsFor: (entityType: ImagePromptEntityType, entitySlug: string) => { thumbnail: string | null; banner: string | null };
+  /// Asentamientos (2026-08-31) — icono (entityType 'location', sizeProfile 'icono'), ver
+  /// comentario junto a su implementación real más abajo.
+  asentamientoImagesFor: (locationSlug: string) => { iconoPrompt: string | null; iconoUrl: string | null };
   variantesSexoFor: (
     entityType: 'npc' | 'fauna' | 'flora' | 'raza',
     baseSlug: string,
@@ -226,6 +229,9 @@ function buildLocationsSection(locations: Awaited<ReturnType<typeof prisma.locat
     imageUrls: imageUrlsFor('location', l.slug),
     discovered: ctx.isLocationDiscovered(l.id),
     variantesTiempo: ctx.variantesTiempoFor(l.slug),
+    // Asentamientos (2026-08-31) — mapa+icono en vez de banner, undefined para el resto (hitos,
+    // cruces...) para no añadir ruido a Locations que no lo necesitan.
+    asentamiento: l.kind === 'asentamiento' ? ctx.asentamientoImagesFor(l.slug) : undefined,
   }));
 }
 
@@ -444,6 +450,12 @@ export async function worldRoutes(app: FastifyInstance) {
         // Este endpoint (grafo del mapa) no gatea por enciclopedia progresiva — el mapa ya tiene
         // su propia "niebla de guerra" por posesión del objeto "Mapa de las Llanuras" (MapaPanel.tsx).
         discovered: true,
+        // Asentamientos (2026-08-31) — mismo criterio que /world/:slug/enciclopedia, ver
+        // comentario de `asentamientoImagesFor` más abajo en este mismo archivo.
+        asentamiento:
+          l.kind === 'asentamiento'
+            ? { iconoPrompt: promptByKey.get(`${l.slug}:icono`) ?? null, iconoUrl: iconoUrlFor('location', l.slug) }
+            : undefined,
       })),
       links: links.map((link) => ({
         fromSlug: slugById.get(link.fromId) ?? link.fromId,
@@ -537,6 +549,16 @@ export async function worldRoutes(app: FastifyInstance) {
       banner: promptByKey.get(`${entityType}:${entitySlug}:banner`) ?? null,
     });
 
+    // Asentamientos (2026-08-31, "las ciudades deben tener prompt de mapa como la zona y de icono,
+    // no de banner") — icono nuevo (entityType 'location', sizeProfile 'icono'). El mapa YA se
+    // ofrecía para cualquier Location vía `variantesTiempoFor`/`mapaImagePrompt` (entityType
+    // 'zona', DetailModal.tsx) — no duplicado aquí. Función aparte de `imagePromptsFor` de arriba
+    // para no tocar el shape fijo thumbnail/banner que ya usan 12+ secciones de la Enciclopedia.
+    const asentamientoImagesFor = (locationSlug: string) => ({
+      iconoPrompt: promptByKey.get(`location:${locationSlug}:icono`) ?? null,
+      iconoUrl: iconoUrlFor('location', locationSlug),
+    });
+
     // Día/noche/estación (2026-08-27, docs/rpgtarkor/imagenes-prompts.md) — las 8 combinaciones se
     // listan siempre igual para CUALQUIER Location (sin tabla de contenido curado, ver comentario
     // de `VarianteTiempoOut`); cada una es un `entitySlug` propio (`<base>-<momento>-<estacion>`,
@@ -615,6 +637,7 @@ export async function worldRoutes(app: FastifyInstance) {
 
     const ctx: EnciclopediaBuildContext = {
       imagePromptsFor,
+      asentamientoImagesFor,
       variantesSexoFor,
       variantesTiempoFor,
       isDiscovered,
@@ -658,7 +681,7 @@ export async function worldRoutes(app: FastifyInstance) {
     'crafteo',
     'zona',
   ];
-  const IMAGE_PROMPT_SIZE_PROFILES: ImagePromptSizeProfile[] = ['thumbnail', 'banner', 'mapa'];
+  const IMAGE_PROMPT_SIZE_PROFILES: ImagePromptSizeProfile[] = ['thumbnail', 'banner', 'mapa', 'icono'];
 
   // Generación de prompts de imagen BAJO DEMANDA (checklist 2026-07-21/22, punto 7 — petición
   // explícita de la usuaria: "hay que pedir 1 a 1 la imagen en cada petición, no que genere todos

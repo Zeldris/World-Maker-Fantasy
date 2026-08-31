@@ -32,6 +32,14 @@ export function imageUrlsFor(
   };
 }
 
+/// Icono plano (2026-08-31, "las ciudades deben tener prompt de mapa como la zona y de icono, no
+/// de banner") — perfil propio, fuera de `imageUrlsFor` (que ya usan 15+ sitios con el shape fijo
+/// thumbnail/banner) para no tocar ningún caller existente. Hoy solo `entityType: 'location'`
+/// (asentamientos) lo usa, pero la función en sí es genérica por si otro tipo lo necesita.
+export function iconoUrlFor(entityType: ImagePromptEntityType, entitySlug: string): string | null {
+  return findImage(entityType, entitySlug, 'icono');
+}
+
 /// Grupo 3 § Mundo determinista, Capa 1 (2026-08-25) — el mapa de zona usa su propio sizeProfile
 /// ('mapa', 800×600) en vez de thumbnail/banner, así que no encaja en `imageUrlsFor` de arriba
 /// (pensado para la pareja fija que usa la Enciclopedia). Mismo mecanismo de búsqueda por archivo.

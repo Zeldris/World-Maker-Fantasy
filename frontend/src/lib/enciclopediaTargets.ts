@@ -254,6 +254,7 @@ export function locationToDetailTarget(loc: EnciclopediaLocationInfo): Enciclope
     entityType: 'location',
     entitySlug: loc.slug,
     variantesTiempo: loc.variantesTiempo,
+    asentamiento: loc.asentamiento,
   }
 }
 

@@ -62,6 +62,14 @@ export type DetailTarget =
       /// vez de todos de golpe" — pestañas de estación + toggle de día/noche, nunca los 8 prompts
       /// listados seguidos).
       variantesTiempo?: EnciclopediaTiempoVariante[]
+      /// Asentamientos (2026-08-31, "las ciudades deben tener prompt de mapa como la zona y de
+      /// icono, no de banner") — icono en vez del banner/thumbnail normales (el mapa ya se ofrecía
+      /// para cualquier Location vía `variantesTiempo`). Ver `asentamientoImagesFor` en el backend
+      /// (world.ts). Undefined para el resto de Locations.
+      asentamiento?: {
+        iconoPrompt: string | null
+        iconoUrl: string | null
+      }
     }
 
 const ESTACION_LABEL: Record<EnciclopediaTiempoVariante['estacion'], string> = {
@@ -466,7 +474,11 @@ export function DetailModal({ target, onClose, onUnequip, onEquip, onSaveAbility
             }
             return (
               <>
-                <MediaSlot icon={target.icon} variant="placeholder" imageUrl={resolveImageUrl(effective.imageUrls?.banner ?? null)} />
+                <MediaSlot
+                  icon={target.icon}
+                  variant="placeholder"
+                  imageUrl={resolveImageUrl((target.asentamiento ? target.asentamiento.iconoUrl : effective.imageUrls?.banner) ?? null)}
+                />
                 <div>
                   <h2 className="font-serif text-lg text-wood-100">{effective.name}</h2>
                   {effective.meta && <p className="text-2xs uppercase tracking-[0.1em] text-wood-500">{effective.meta}</p>}
@@ -582,26 +594,47 @@ export function DetailModal({ target, onClose, onUnequip, onEquip, onSaveAbility
                         ya esté incluida") — antes, en cuanto existía `imageUrls`, el prompt
                         desaparecía del todo detrás de un simple "cargada ✓", sin forma de
                         consultarlo o regenerarlo. */}
-                    {effective.imageUrls?.thumbnail && <p className="text-2xs italic text-wood-500">Miniatura real cargada ✓</p>}
-                    <ImagePromptSlot
-                      key={`${target.entityType}-${effective.entitySlug}-thumbnail`}
-                      label="Miniatura (icono)"
-                      existingPrompt={effective.imagePrompts?.thumbnail ?? null}
-                      worldSlug={worldSlug}
-                      entityType={target.entityType}
-                      entitySlug={effective.entitySlug}
-                      sizeProfile="thumbnail"
-                    />
-                    {effective.imageUrls?.banner && <p className="text-2xs italic text-wood-500">Banner real cargado ✓</p>}
-                    <ImagePromptSlot
-                      key={`${target.entityType}-${effective.entitySlug}-banner`}
-                      label="Banner (detalle)"
-                      existingPrompt={effective.imagePrompts?.banner ?? null}
-                      worldSlug={worldSlug}
-                      entityType={target.entityType}
-                      entitySlug={effective.entitySlug}
-                      sizeProfile="banner"
-                    />
+                    {/* Asentamientos (2026-08-31, "las ciudades deben tener prompt de mapa como la
+                        zona y de icono, no de banner") — Miniatura/Banner normales se ocultan del
+                        todo, sustituidos por Icono (más abajo, junto a Mapa). */}
+                    {!target.asentamiento && (
+                      <>
+                        {effective.imageUrls?.thumbnail && <p className="text-2xs italic text-wood-500">Miniatura real cargada ✓</p>}
+                        <ImagePromptSlot
+                          key={`${target.entityType}-${effective.entitySlug}-thumbnail`}
+                          label="Miniatura (icono)"
+                          existingPrompt={effective.imagePrompts?.thumbnail ?? null}
+                          worldSlug={worldSlug}
+                          entityType={target.entityType}
+                          entitySlug={effective.entitySlug}
+                          sizeProfile="thumbnail"
+                        />
+                        {effective.imageUrls?.banner && <p className="text-2xs italic text-wood-500">Banner real cargado ✓</p>}
+                        <ImagePromptSlot
+                          key={`${target.entityType}-${effective.entitySlug}-banner`}
+                          label="Banner (detalle)"
+                          existingPrompt={effective.imagePrompts?.banner ?? null}
+                          worldSlug={worldSlug}
+                          entityType={target.entityType}
+                          entitySlug={effective.entitySlug}
+                          sizeProfile="banner"
+                        />
+                      </>
+                    )}
+                    {target.asentamiento && (
+                      <>
+                        {target.asentamiento.iconoUrl && <p className="text-2xs italic text-wood-500">Icono real cargado ✓</p>}
+                        <ImagePromptSlot
+                          key={`location-${effective.entitySlug}-icono`}
+                          label="Icono (emblema plano)"
+                          existingPrompt={target.asentamiento.iconoPrompt}
+                          worldSlug={worldSlug}
+                          entityType="location"
+                          entitySlug={effective.entitySlug}
+                          sizeProfile="icono"
+                        />
+                      </>
+                    )}
                     {/* "Mapa" (2026-08-26, corrección de sitio: vivía en ZonaPanel.tsx, se retiró
                         de ahí) — SOLO en Localización, petición explícita: "Los 3 botones SOLO en
                         Enciclopedia > Localización". Reutiliza `entityType:'zona'` (no

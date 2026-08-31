@@ -32,7 +32,14 @@ export type ImagePromptEntityType =
 /// 800×600, misma convención que ya usa el mapa de mundo (`frontend/src/data/map.ts`) para que el
 /// overlay SVG de marcadores se pueda reutilizar tal cual. Distinto de `banner`/`thumbnail`
 /// (pensados para retrato/icono, no para una vista aérea navegable).
-export type ImagePromptSizeProfile = 'thumbnail' | 'banner' | 'mapa';
+///
+/// `'icono'` (2026-08-31, "las ciudades deben tener prompt de mapa como la zona y de icono, no de
+/// banner") — mismo lienzo cuadrado que `thumbnail` (1024×1024, lectura a tamaño reducido), pero
+/// con el estilo PLANO tipo blasón (`ENTITY_TYPE_STYLE` condicional, ver `buildPrompt`), no el
+/// retrato/paisaje pintado que usa `thumbnail` normalmente — mismo espíritu visual que ya usa
+/// `faction` para sus emblemas. Pensado para asentamientos (`Location.kind === 'asentamiento'`),
+/// pero el perfil en sí es genérico por si otro `entityType` lo necesita más adelante.
+export type ImagePromptSizeProfile = 'thumbnail' | 'banner' | 'mapa' | 'icono';
 
 // ============================================================
 // MAPEOS — ENTITY TYPE → HINT (sin cambios)
@@ -134,6 +141,7 @@ const SIZE_PROFILE_DIMENSIONS: Record<ImagePromptSizeProfile, string> = {
   thumbnail: 'square 1:1 aspect ratio, 1024x1024px',
   banner: 'wide 2.5:1 aspect ratio, 1920x768px',
   mapa: 'wide 4:3 aspect ratio, 800x600px',
+  icono: 'square 1:1 aspect ratio, 512x512px',
 };
 
 // ============================================================
@@ -148,6 +156,8 @@ const HEADROOM_INSTRUCTION: Record<ImagePromptSizeProfile, string> = {
     'clear headroom above the main subject — the top of the composition must have at least 15% of the image height as open sky, mist, or empty background before the subject begins, to allow safe cropping for UI overlays without cutting into the focal point; center horizontally or place slightly off-center, but always leave breathing room around it; never crop the top or any edge of the subject',
   mapa:
     'the entire navigable area must be visible within frame, evenly lit with no single dramatic focal point, consistent scale and perspective across the whole image so landmarks can be located precisely, no vignetting or heavy framing at the edges',
+  icono:
+    'single centered emblem or landmark silhouette filling most of the frame, plain or minimal flat background, bold and instantly readable even at very small display sizes, no fine detail that would disappear when scaled down',
 };
 
 // ============================================================
@@ -217,7 +227,11 @@ function buildPrompt(
 ): string {
   const hint = ENTITY_TYPE_HINT[entityType];
   const dimensions = SIZE_PROFILE_DIMENSIONS[sizeProfile];
-  const style = ENTITY_TYPE_STYLE[entityType];
+  // Icono de asentamiento (2026-08-31) — mismo estilo plano/heráldico que ya usa `faction` para
+  // sus emblemas (`ENTITY_TYPE_STYLE.faction`), reutilizado en vez de duplicar el texto: un
+  // asentamiento necesita leerse igual de claro a tamaño reducido que un blasón de facción. Solo
+  // afecta a `location`+`icono` — el resto de combinaciones sigue su estilo normal por tipo.
+  const style = entityType === 'location' && sizeProfile === 'icono' ? ENTITY_TYPE_STYLE.faction : ENTITY_TYPE_STYLE[entityType];
   const headroom = HEADROOM_INSTRUCTION[sizeProfile];
   const tone = inferToneFromLore(loreContext);
 

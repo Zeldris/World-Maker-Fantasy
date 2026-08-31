@@ -1197,6 +1197,11 @@ export interface WorldLocationInfo {
   /// Siempre true aquí — este endpoint (grafo del mapa) no gatea por enciclopedia progresiva, el
   /// mapa ya tiene su propia "niebla de guerra" por posesión del objeto "Mapa de las Llanuras".
   discovered: boolean
+  /// Asentamientos (2026-08-31) — mismo campo que `EnciclopediaLocationInfo`, ver ahí.
+  asentamiento?: {
+    iconoPrompt: string | null
+    iconoUrl: string | null
+  }
 }
 
 export interface WorldLocationLinkInfo {
@@ -1403,6 +1408,14 @@ export interface EnciclopediaLocationInfo {
   /// Undefined en respuestas más ligeras que no traen esta sección (p.ej. `WorldLocationInfo` del
   /// mapa general, ver MapaPanel.tsx) — solo la Enciclopedia completa la rellena siempre.
   variantesTiempo?: EnciclopediaTiempoVariante[]
+  /// Asentamientos (2026-08-31, "las ciudades deben tener prompt de mapa como la zona y de icono,
+  /// no de banner") — icono en vez de banner. El mapa ya se ofrecía para cualquier Location vía
+  /// `variantesTiempo`/`mapaImagePrompt` (entityType 'zona'), no duplicado aquí. Undefined para el
+  /// resto de Locations (hitos, cruces...), que siguen usando `imageUrls`/`imagePrompts` normales.
+  asentamiento?: {
+    iconoPrompt: string | null
+    iconoUrl: string | null
+  }
 }
 
 // Razas y personajes jugables de Berig (2026-07-22) — contenido estático servido por el backend
@@ -1615,8 +1628,9 @@ export async function getEnciclopedia(worldSlug: string, saveId?: string | null)
 export type ImagePromptEntityType = 'npc' | 'item' | 'fauna' | 'ability' | 'raza' | 'personaje' | 'location' | 'construccion' | 'faction' | 'historia' | 'crafteo' | 'zona'
 /// 'thumbnail' = icono cuadrado de la cuadrícula (EntryCard), 'banner' = MediaSlot ancho del
 /// detalle (~3:1, medido contra la UI real), 'mapa' = fondo del panel Zona (800x600, solo
-/// entityType 'zona') — ver imagePromptGenerator.ts en el backend.
-export type ImagePromptSizeProfile = 'thumbnail' | 'banner' | 'mapa'
+/// entityType 'zona'), 'icono' (2026-08-31) = emblema plano cuadrado (512x512, hoy solo
+/// asentamientos, entityType 'location') — ver imagePromptGenerator.ts en el backend.
+export type ImagePromptSizeProfile = 'thumbnail' | 'banner' | 'mapa' | 'icono'
 
 export interface ImagePromptResult {
   prompt: string
