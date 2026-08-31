@@ -3452,9 +3452,14 @@ narración en 3ª). Turno 09:47, caso real sin justificar: *"El orco enfurecido 
 lanzándola hacia **Gorhorn**... **Tu** hacha rota bloquea el ataque, pero una mancha roja se abre en
 **tu** pecho."* — mismo párrafo, mismo evento, salta de 3ª a 2ª persona sin ninguna razón narrativa.
 
-**Estado**: PENDIENTE, sin investigar si el prompt del narrador especifica una persona gramatical
-fija o la deja libre — revisar `buildNarrationPrompt`/instrucciones de estilo en `narrador.ts` antes
-de proponer un fix (podría ser tan simple como reforzar la instrucción de persona consistente).
+**Estado**: FIJADO en 2 pasadas. (1) `fixedInstructions` (narrador.ts, checklist consolidado
+P1.6/P1.7, 2026-08-27) ya prohibía explícitamente "tú"/"tu"/"te" fuera de diálogo citado, con este
+mismo caso citado como ejemplo — pero sin ningún guard que comprobara el texto YA generado. (2)
+2026-08-31: nuevo guard determinista `hasSecondPersonLeak` (mismo patrón que `hasEnglishLeak`) —
+quita todo el texto entre comillas dobles (diálogo legítimo) y busca "tú"/"tu"/"tus"/"te"/"contigo"
+en lo que queda, forzando reintento si aparece. Enganchado en el bucle de `narrateAction`.
+Verificado sin falsos positivos (7 tests nuevos en narrador.test.ts, incluido el caso "estatua"/
+"entre" con substrings), 3360/3361 en la suite completa, 109/109 en integración real de turnos.
 
 ### 2026-08-27 (FASE 3: vocabulario/prosa, menor) — fórmula de impacto reciclada ("mancha roja en tu pecho" ×3)
 
@@ -3565,10 +3570,12 @@ atajo manual por HTTP que sustituya un turno de combate real debe verificar que 
 ×2 2026-08-23) — calidad de redacción del modelo local, sin detector determinista barato propuesto
 todavía en ninguna de las apariciones previas.
 
-**Estado**: PENDIENTE — 3ª aparición confirmada del mismo patrón exacto ("palabra en inglés
-completa" en medio de prosa española). La recurrencia ya es alta (3 veces en 3 sesiones de
-revisión distintas) — a valorar si merece un detector genérico (regex simple de palabras inglesas
-comunes/frecuentes) en vez de seguir solo registrando cada aparición nueva.
+**Estado**: FIJADO (ronda de correcciones 2026-08-28, P5.1) — `hasEnglishLeak` (narrador.ts)
+ampliado con las 3 palabras reales confirmadas ("small", "clearing", "several", "lullaby") más
+otras del mismo campo semántico, y con un caso nuevo encontrado de paso ("accompanies", verbo
+inglés conjugado sustituyendo al verbo español). Enganchado en el bucle de reintento de
+`narrateAction` (mismo mecanismo que el resto de guards `hasFalse*`). Tests en narrador.test.ts
+cubriendo los 3 casos reales.
 
 ### 2026-08-28 (FASE 3: vocabulario/prosa) — el texto de la acción del jugador se filtra casi literal en la narración, con comillas y mayúsculas de énfasis incluidas
 

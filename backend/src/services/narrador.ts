@@ -1343,6 +1343,7 @@ export async function narrateAction(ctx: TurnContext & { roll?: RollResult }): P
         { check: () => hasAnachronism(parsed.narration), reason: 'anacronismo' },
         { check: () => isTooSimilarToLast(parsed.narration, ctx.lastNarrationText), reason: 'repetir casi verbatim el turno anterior' },
         { check: () => hasEnglishLeak(parsed.narration), reason: 'fuga de inglés' },
+        { check: () => hasSecondPersonLeak(parsed.narration), reason: 'salto a segunda persona fuera de diálogo citado' },
         { check: () => hasFalseCombatHit(narrationAndFacts, ctx.combatBothMissed), reason: 'narrar (en prosa o en newFacts) un golpe que no conectó (ataque_falla/parada_en_seco)' },
         {
           check: () => hasFalseCombatMiss(narrationAndFacts, ctx.combatRealHitLanded),
@@ -1594,6 +1595,27 @@ const ENGLISH_LEAK_REGEX =
 
 export function hasEnglishLeak(narration: string): boolean {
   return ENGLISH_LEAK_REGEX.test(narration);
+}
+
+/// Red de seguridad determinista para la instrucción de persona gramatical fija de
+/// `fixedInstructions` ("NARRA SIEMPRE EN TERCERA PERSONA... nunca 'tú'/'tu'/'te'... Solo el
+/// diálogo citado entre comillas... puede usar la segunda persona") — mismo criterio que
+/// `hasEnglishLeak`/`hasAnachronism`: la instrucción de prompt ya existe desde 2026-08-27 (mismo
+/// caso real citado ahí como ejemplo), pero nada comprobaba el texto YA generado. Bug real
+/// documentado 2 veces jugando en vivo (2026-08-27, "revisar partida" — el susurro de la Entidad
+/// SÍ narra en 2ª persona legítimamente, dentro de sus propias comillas; el fallo real era la
+/// PROSA de fuera saltando a 2ª persona a mitad de párrafo sin ninguna comilla que lo justifique:
+/// "El orco... lanzándola hacia Gorhorn... Tu hacha... tu pecho").
+///
+/// Comillas dobles rectas (mismo patrón que `lastLogHasDirectSpeech`, único formato real que usa
+/// el diálogo citado en este motor) — se retira TODO lo que caiga entre un par de comillas antes
+/// de buscar la 2ª persona, así que un NPC diciéndole "tu momento" al jugador nunca dispara esto.
+const QUOTED_SPEECH_REGEX = /"[^"]*"/g;
+const SECOND_PERSON_REGEX = /\b(tú|tu|tus|te|contigo)\b/i;
+
+export function hasSecondPersonLeak(narration: string): boolean {
+  const withoutQuotedSpeech = narration.replace(QUOTED_SPEECH_REGEX, ' ');
+  return SECOND_PERSON_REGEX.test(withoutQuotedSpeech);
 }
 
 /// Anti-repetición, red de seguridad determinista (2026-07-31, bug real probando en vivo: dos

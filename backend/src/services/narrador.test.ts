@@ -44,6 +44,7 @@ import {
   hasAnachronism,
   buildNarrationPrompt,
   allAttemptsRejectedForSameReason,
+  hasSecondPersonLeak,
 } from './narrador.js';
 
 describe('reinoIntentDetected', () => {
@@ -459,6 +460,42 @@ describe('hasEnglishLeak', () => {
 
   it('detecta "accompanies" — verbo inglés conjugado sustituyendo al español (bug real, sesión de pruebas 2026-08-28)', () => {
     expect(hasEnglishLeak('El viento siseante lo accompanies en su búsqueda.')).toBe(true);
+  });
+});
+
+describe('hasSecondPersonLeak', () => {
+  // Bug real jugando en vivo (2026-08-27, "revisar partida"): la narración saltaba de 3ª a 2ª
+  // persona a mitad de párrafo, sin ningún diálogo citado que lo justifique. La instrucción de
+  // prompt (`fixedInstructions`, narrador.ts) ya existe desde entonces con este mismo caso citado
+  // como ejemplo — este guard es la red de seguridad determinista que faltaba.
+  it('detecta el caso real del bug: narración en 3ª persona que salta a "tu"/"tú" fuera de comillas', () => {
+    expect(
+      hasSecondPersonLeak(
+        'El orco enfurecido tira de su maza orca, lanzándola hacia Gorhorn. Tu hacha rota bloquea el ataque, pero una mancha roja se abre en tu pecho.',
+      ),
+    ).toBe(true);
+  });
+
+  it('no dispara con narración en 3ª persona correcta, sin ninguna 2ª persona', () => {
+    expect(hasSecondPersonLeak('El orco enfurecido tira de su maza orca hacia Gorhorn. Su hacha rota bloquea el golpe.')).toBe(false);
+  });
+
+  it('no dispara con diálogo citado de un NPC dirigiéndose al jugador en 2ª persona (legítimo)', () => {
+    expect(hasSecondPersonLeak('El orco se detiene y pregunta: "¿Has visto algo? Dime la verdad, o te arrepentirás."')).toBe(false);
+  });
+
+  it('SÍ dispara si hay 2ª persona TANTO en la prosa como en el diálogo — la de fuera de comillas sigue siendo un fallo', () => {
+    expect(hasSecondPersonLeak('Tu hacha tiembla en tu mano mientras el orco pregunta: "¿Te rindes?"')).toBe(true);
+  });
+
+  it('no confunde palabras que contienen "tu"/"te" como substring (límite de palabra real)', () => {
+    expect(hasSecondPersonLeak('Gorhorn entra en la estatua de piedra y se detiene entre las columnas.')).toBe(false);
+  });
+
+  it('detecta variantes: "tus", "te", "contigo"', () => {
+    expect(hasSecondPersonLeak('El eco repite tus pisadas por el pasillo.')).toBe(true);
+    expect(hasSecondPersonLeak('El viento te empuja hacia atrás.')).toBe(true);
+    expect(hasSecondPersonLeak('El orco avanza contigo pisándole los talones.')).toBe(true);
   });
 });
 
