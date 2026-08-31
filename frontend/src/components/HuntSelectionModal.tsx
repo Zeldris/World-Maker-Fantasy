@@ -1,8 +1,17 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { HuntCandidate, NpcInSceneInfo } from '../types'
 import { getCazarCandidatos, explorarCaza, confirmarCaza } from '../lib/api'
 import { SelectionModalShell, confirmButtonClasses } from './SelectionModalShell'
 import { useAsyncModalData } from '../hooks/useAsyncModalData'
+
+/// Refresco en vivo mientras el modal está abierto (2026-08-31, bug real "Cazar rechaza sin motivo
+/// aparente" — el jugador no puede hacer nada más en paralelo con el composer bloqueado, pero la
+/// población de la presa SÍ puede cambiar en segundo plano: crecimiento natural o muerte de la
+/// misma especie en otra parte del mundo, `WorldPopulation` no está ligada a esta Location). Con
+/// solo la carga inicial (`useAsyncModalData`), la lista mostrada podía quedar desfasada frente a lo
+/// que `/cazar/confirmar` recalcula de cero al pulsar Cazar — el jugador veía la presa disponible,
+/// el backend la rechazaba igual. Pedido explícito: "quiero que aparente ser dinámico".
+const REFRESCO_CANDIDATOS_MS = 2000;
 
 /// Color de fondo por dificultad (petición explícita, 2026-08-14: "verde, amarillo o rojo según su
 /// dificultad") — mismos 3 tokens semánticos que ya usa el resto del juego para lo mismo (moss=
@@ -56,6 +65,35 @@ export function HuntSelectionModal({ saveId, onResuelto, onCancel }: HuntSelecti
     'No se pudo comprobar qué fauna hay en la zona.',
     [saveId],
   )
+
+  // Refresco silencioso — nunca toca `loading`/`error` de la carga inicial, ni corre mientras se
+  // está confirmando o si ya no hay nada que mostrar (evita reabrir "Explorar" solo bajo el pulso).
+  useEffect(() => {
+    if (confirming || candidates.length === 0) return
+    const interval = setInterval(() => {
+      getCazarCandidatos(saveId)
+        .then((res) => {
+          setCandidates(res.candidates)
+          setSelected((prev) => {
+            const stillSighted = new Set(res.candidates.map((c) => c.slug))
+            const next = new Set([...prev].filter((slug) => stillSighted.has(slug)))
+            return next.size === prev.size ? prev : next
+          })
+          setCantidades((prev) => {
+            const next = { ...prev }
+            for (const c of res.candidates) {
+              if (next[c.slug] != null) next[c.slug] = Math.min(next[c.slug], c.avistados)
+            }
+            return next
+          })
+        })
+        .catch(() => {
+          // Silencioso a propósito — un refresco fallido no debe interrumpir al jugador leyendo el
+          // modal; si el problema persiste, ya se verá al pulsar Cazar de verdad.
+        })
+    }, REFRESCO_CANDIDATOS_MS)
+    return () => clearInterval(interval)
+  }, [saveId, confirming, candidates.length])
 
   async function handleExplorar() {
     setExploring(true)

@@ -3663,9 +3663,19 @@ habilidades generales de la barra.
 
 **Bug real: Cazar rechaza la acción sin motivo aparente** ("No se pudo cazar — puede que otra acción
 se haya adelantado"), con el jugador sin haber hecho nada más en paralelo — captura del modal de
-Cazar (Corretolvas ×7, Presa Débil, Dificultad Fácil) mostrando el error igualmente. Sin investigar
-causa — candidato inicial: alguna condición de carrera o candado (`turnLock`) quedando ocupado sin
-motivo real, mismo patrón que otros "falsos atascos" ya vistos en la sesión.
+Cazar (Corretolvas ×7, Presa Débil, Dificultad Fácil) mostrando el error igualmente. **CAUSA
+CONFIRMADA Y FIJADA 2026-08-31**: no era `turnLock` (`cazar.ts` no lo usa en ningún punto) — el
+modal (`GET /saves/:id/cazar`) y la confirmación (`POST /cazar/confirmar`) recalculan
+`candidateFaunaFor` cada uno por su cuenta, en momentos distintos. Con el modal abierto el composer
+principal queda bloqueado (`anyModalOpen`), así que el jugador no puede viajar ni actuar en
+paralelo, pero `WorldPopulation` SÍ puede cambiar en segundo plano mientras decide (crecimiento
+natural, o la misma especie muriendo en otra Location de la región) — el jugador veía la presa
+listada como disponible y el backend la rechazaba igual al confirmar, sin ninguna acción propia de
+por medio. **Fix**: `HuntSelectionModal.tsx` ahora refresca `getCazarCandidatos` cada 2s mientras el
+modal está abierto (silencioso, sin tocar `loading`/`error` de la carga inicial, parado mientras se
+confirma o si ya no queda nada que mostrar) — si una presa marcada deja de estar disponible se
+desmarca sola y su cantidad se topa al nuevo `avistados`, así el jugador nunca llega a confirmar algo
+que el backend ya no va a aceptar. `tsc -b` limpio.
 
 **Bug real (reaparecido): combate abierto contra un NPC distinto al que narra la escena** —
 **CONFIRMADO y FIJADO 2026-08-30**. Acción "Exploro la zona" narra un encuentro con **Quio** ("el
