@@ -42,11 +42,11 @@ verdad a tu lado en combate (`Companion.attributes`, aplicado el mismo día que 
 
 ---
 
-## 1. Captura (fauna y NPC, mismo mecanismo)
+## 1. Captura (fauna y NPC, mismo mecanismo) — REDISEÑADO 2026-08-28
 
-**Precondición**: el objetivo tiene que estar en `GRAVE` o `CONVALECIENTE` — subyugado en combate de
-verdad, nunca un chollo gratis por sorpresa. Coherente con que solo esos dos estados son "tocables"
-en el resto del motor.
+**Precondición, sin cambios**: el objetivo tiene que estar en `GRAVE` o `CONVALECIENTE` — subyugado
+en combate de verdad, nunca un chollo gratis por sorpresa. Coherente con que solo esos dos estados
+son "tocables" en el resto del motor.
 
 **Ítem real: `cuerdas`, no `trampa-de-lazo`** (corregido 2026-08-26 — ver
 `docs/21-roadmap.md` § "CONVALECIENTE deja de significar victoria automática"). El diseño original
@@ -58,34 +58,73 @@ reutilizable. `trampa-de-lazo` queda en el catálogo sin uso real por ahora. Sin
 inventario, no se puede intentar atar a nadie, ni fauna ni NPC (`POST /saves/:id/capturar/:npcSlug`,
 `companeros.ts`). Un ataque/habilidad normal nunca captura por sí solo.
 
-Al atar con éxito:
-- **Fauna** → pasa a esperar en una **jaula** (ver § 2) mientras se intenta tamear.
-- **NPC** → pasa a un estado "retenido", a la espera de persuasión (ver § 3).
+**Rediseño real (nace de un bug de grupo — `NpcState` es una fila compartida por especie+ubicación;
+capturar al individuo activo de un grupo cazado rompía la caza del resto, porque el estado viejo
+"resucitaba" al siguiente individuo sobre la misma fila que la captura ya estaba usando)**: la
+captura deja de vivir como estado de `NpcState` in-situ y pasa a **materializarse como un ítem en el
+inventario del jugador** en cuanto se ata con éxito — esto es lo que libera la fila `NpcState`
+original para seguir el resto de la caza en grupo con normalidad.
+
+- **Solo 1 captura activa a la vez, para toda la partida** — mientras el jugador lleve una sin
+  resolver (ni depositada+tameada, ni soltada/escapada), no puede atar a un segundo objetivo, ni de
+  la misma especie ni de otra.
+- **Ocupa slots de INVENTARIO** (no una ranura de equipo): Fauna `PEQUEÑA` → 3, `MEDIANA` → 5,
+  `GRANDE` → 8 (`jaulaTamanoRequeridoFor`); NPC → 5 fijos (equivalente a MEDIANA, sin tabla propia
+  por individuo). Sin hueco suficiente al atar, el intento FALLA directamente (la cuerda no se
+  gasta, el objetivo sigue GRAVE/CONVALECIENTE para reintentar tras hacer hueco).
+- **Plazo de expiración en el inventario, ANTES de depositar** — ligado al `tier` de la cuerda usada
+  al atar (`plazoCapturaHorasForTier`, `companionSupervivencia.ts`), no una cifra única global: tier
+  1 → 6h, 2 → 8h, 3 → 12h, 4 → 16h, 5 → 20h, 6 → 24h, 7 → nunca expira. Hoy solo existe la cuerda
+  tier 1 en el catálogo; tiers 2-7 quedan sin craftear todavía, el motor ya los soporta sin tocar
+  código cuando se añadan. Si expira sin depositarse, la captura se escapa sola del inventario
+  (libera el slot de "1 captura a la vez" automáticamente).
+- **Sin mecánica especial de pérdida en combate/muerte** — se comporta como cualquier otro objeto
+  del inventario: si el jugador muere sin haber guardado con la captura encima, la pierde por el
+  reinicio normal al último punto de guardado, no por una regla nueva de "botín valioso".
+- Al atar con éxito:
+  - **Fauna** → viaja en el inventario hasta depositarse en una **jaula** (ver § 2).
+  - **NPC** → viaja en el inventario hasta un destino de "retenido" (ver § 3) — sin edificio propio
+    todavía (Celda de Retención, ver nota al final de § 3), de momento expirar el plazo significa
+    liberarlo directamente.
 
 ---
 
 ## 2. Tameo de fauna
 
-### Jaula — requisito para poder INTENTAR tamear (no es el slot final)
+### Jaula — destino final tras depositar, YA NO es requisito para intentar atar
 
-Construcción nueva, tres tamaños — **pequeña/mediana/grande según el tamaño narrativo YA descrito
-en la bio de cada especie de fauna** (un Corredor pequeño necesita jaula pequeña, una Gargántua
-necesita grande) — sin campo numérico nuevo en el catálogo, se calibra igual que el resto de datos
-de fauna (`domesticablePct` etc.), a mano, por especie.
+Cambio de rol respecto al diseño original (donde la Jaula era la condición previa para poder
+intentar tamear en absoluto): ahora la Jaula es donde el jugador **deposita** la captura que ya
+lleva en el inventario, típicamente al volver a su Campamento/Reino — antes de depositarla, la
+captura no se puede alimentar/tamear todavía. Construcción nueva, tres tamaños — **pequeña/mediana/
+grande según el tamaño narrativo YA descrito en la bio de cada especie de fauna** (un Corredor
+pequeño necesita jaula pequeña, una Gargántua necesita grande) — sin campo numérico nuevo en el
+catálogo, se calibra igual que el resto de datos de fauna (`domesticablePct` etc.), a mano, por
+especie.
 
 La jaula es el sitio físico donde se cuida al animal DURANTE el proceso — **no es lo mismo que
 tener sitio para quedártelo después**: una vez tameado con éxito, compite por un slot de compañero
 como cualquier otro (ver § 4). Si no hay slot libre al completar el tameo, se queda en la jaula o se
 suelta.
 
-### El proceso: alimentar = tirada opuesta de atributo
+### El proceso: alimentar = tirada opuesta de atributo, ANCLADA al ritmo real de Hambre/Sed
 
-Cada intento de alimentar a la fauna capturada es una tirada: **eliges un atributo tuyo, compite
-contra el atributo propio de esa especie** (campo nuevo de catálogo, calibrado por especie —
-coherente con que cada fauna ya tiene rasgos/personalidad propios en su ficha).
+Dentro de la Jaula, la captura tiene **Hambre/Sed real, igual que un `Companion` ya asentado**
+(`lastFedAtMinutes`/`lastWateredAtMinutes`, mismo ritmo que § 4: agua ~5h, comida ~12h de
+`fictionalMinutes`) — a diferencia del Companion/jugador ya asentados (donde el tope real es
+CONVALECIENTE, nunca MUERTO, ver nota de § 5), **aquí SÍ hay riesgo real de perder la captura por
+negligencia**: si no se le da de comer/beber a tiempo, puede morir.
 
-- **Ganas** la tirada → sube Felicidad, el animal come.
-- **Pierdes** → baja Felicidad, no come ese intento (se pierde la ración usada).
+Darle de comer/beber tiene **dos efectos independientes a la vez, no uno sustituyendo al otro**:
+1. **Sacia el hambre/sed real** — actualiza `lastFedAtMinutes`/`lastWateredAtMinutes`, esto es lo
+   que evita la muerte por negligencia, pase lo que pase con la tirada de abajo.
+2. **En el mismo gesto, dispara la tirada opuesta de atributo**: eliges un atributo tuyo, compite
+   contra el atributo propio de esa especie (campo de catálogo, calibrado por especie).
+   - **Ganas** → sube Felicidad. **Pierdes** → baja Felicidad (puede bajar aunque la captura ya no
+     tenga hambre — la comida siempre la salva de morir, pero no garantiza que le guste).
+
+Es decir: alimentar solo se puede hacer cuando de verdad hay hambre/sed real (no es un botón
+repetible sin límite), y siempre sacia el hambre, pero la Felicidad solo sube si la tirada sale bien.
 
 **Ventaja del Domador sobre cualquier otra clase** (dos ventajas distintas, no una sola):
 1. **Ve el atributo de resistencia ANTES de elegir con qué enfrentarse** — un no-Domador elige a
@@ -97,30 +136,25 @@ coherente con que cada fauna ya tiene rasgos/personalidad propios en su ficha).
 Cualquier clase puede tamear, no es exclusivo de Domador — es la única forma en que "casi difícil
 si no eres Domador, no imposible" se cumple sin depender de una profesión ni de tener Reino.
 
-### Al completar el tameo — se convierte en Companion
+### Al completar el tameo — elección explícita, distinta según clase
 
 - **Domador**: tiene un **slot de mascota propio y garantizado**, separado del todo de
   `companionSlotsForRecipeKey` — no depende de tener Campamento/Choza construidos. Esto sustituye
-  lo que `clases.md § Domador nv.12 "Compañero cazador"` describe como "te desbloquea un slot".
-- **Cualquier otra clase**: la fauna tameada compite por los slots normales de edificio
-  (Campamento=1, Choza=2), igual que un NPC aliado cualquiera.
-- **Con Reino**: la fauna tameada, ADEMÁS de (o en vez de, según sitio disponible) ocupar un slot de
-  compañero, puede integrarse como **guardia, trabajador o productor** del Reino — el rol concreto
-  depende de la especie y de lo que se especifique al construirlo (ej. un Corredor de Cauce como
-  productor de algo relacionado con su comportamiento, un Makt'orik como guardia). Esto es contenido
-  nuevo, sin roles de Reino formalizados hoy en el motor (no existe ningún enum de rol) — a
-  desarrollar cuando toque esta pieza.
-- **Sin Reino**: nada cambia respecto a lo de arriba — Reino NO es requisito para tener un
-  compañero real y utilizable (con Domador o con slot de edificio). Reino solo añade la opción
-  EXTRA de integrarlo como guardia/trabajador/productor. Sin slot libre de ningún tipo, la fauna
-  tameada se queda como elemento narrativo del campamento (no combate, no Bestiario) o se suelta.
+  lo que `clases.md § Domador nv.12 "Compañero cazador"` describe como "te desbloquea un slot". La
+  opción de **Compañero personal** (slot de mascota) solo aparece si el jugador es Domador.
+- **Cualquier otra clase**: la fauna tameada se une al **Reino** (guardia/trabajador/productor —
+  contenido nuevo, sin roles de Reino formalizados hoy en el motor, a desarrollar cuando toque esta
+  pieza), o compite por los slots normales de edificio (Campamento=1, Choza=2) igual que un NPC
+  aliado cualquiera si no hay Reino.
+- **Sin slot libre de ningún tipo**: la fauna tameada se queda como elemento narrativo del
+  campamento (no combate, no Bestiario) o se suelta.
 
 ---
 
 ## 3. Captura y persuasión de NPC
 
-Mismo mecanismo de atar (§ 1: `GRAVE`/`CONVALECIENTE` + cuerda de captura) y el mismo esqueleto de
-tirada opuesta que la fauna:
+Mismo mecanismo de atar (§ 1: `GRAVE`/`CONVALECIENTE` + cuerda de captura, viaja en el inventario) y
+el mismo esqueleto de tirada opuesta que la fauna:
 
 - **Eliges un atributo tuyo** (Carisma para convencer, Fuerza para amenazar, Inteligencia para
   razonar/negociar — libre elección, no solo Carisma) **contra el atributo de resistencia propio
@@ -135,14 +169,24 @@ tirada opuesta que la fauna:
   cualquier NPC/fauna era igual de persuadible/domable con los atributos adecuados, sin importar su
   disposición de catálogo. Resistencia extra = `floor((100 - %) / 10)`, sumada al resultado ya
   tirado (nunca se toca `rollOpposed`/dice.ts, primitivo compartido con combate).
-- Ganas → sube Felicidad. Pierdes → baja Felicidad.
-- Al superar el umbral de Felicidad: eliges que sea **Companion**, o (si hay Reino) que se **una al
-  Reino** en vez de ser compañero personal.
+- **NPC tiene varias formas de subir Felicidad, no solo alimentar** — hablar con él, darle de
+  comer/beber, y más formas a diseñar más adelante (lista deliberadamente abierta, ampliable — para
+  la primera versión construible basta con alimentar/dar de beber + hablar).
+- Al superar el umbral de Felicidad: **siempre 2 opciones, Reino o Compañero** — sin restricción de
+  clase (a diferencia de fauna, donde Compañero personal exige Domador), cualquier jugador puede
+  elegir cualquiera de las dos con un NPC.
 - Sin slot libre de ningún tipo: se suelta, no se queda esperando indefinidamente.
 
 **Camino alternativo, sin captura**: algunos NPC se reclutan por **misión dedicada** (una quest que
 resuelve el reclutamiento por su cuenta, ver `Quest`) — no todo tiene que pasar por atar+convencer;
 esto ya encaja con el patrón de quests existente, sin infraestructura nueva.
+
+**Celda de Retención — diseño cerrado, SIN CONSTRUIR (pausado a propósito)**: equivalente a la Jaula
+pero para NPC de razas inteligentes (tono narrativo de retención temporal mientras se completa la
+persuasión, no una prisión punitiva) — 1 sola receta con 3 niveles mejorables (mismo patrón que el
+Ayuntamiento, `upgradesRecipeKey`), capacidad 2 → 4 → 8 NPC retenidos a la vez (distinto de los 5
+slots de inventario que ocupa transportar a uno). Explícitamente pausado ("fauna primero, Celda
+después") — no bloquea el resto del rediseño, que se centró en fauna en grupo (el bug original).
 
 ---
 

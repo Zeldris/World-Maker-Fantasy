@@ -141,13 +141,12 @@ reciente:
   header de pestañas de estación + toggle de día/noche en la Enciclopedia, auto-selección por reloj
   real en la vista Zona en vivo). Ver detalle completo en
   [imagenes-prompts.md](rpgtarkor/imagenes-prompts.md).
-- **2 auditorías en paralelo (2026-08-27)**: backend sin conectar a frontend
-  ([backend-sin-conectar-frontend-2026-08-27.md](../backend-sin-conectar-frontend-2026-08-27.md)) y
-  diseño/UX del frontend
-  ([frontend-diseno-ux-hallazgos-2026-08-27.md](../frontend-diseno-ux-hallazgos-2026-08-27.md),
-  ejecutada después y con los hallazgos de la primera como contexto) — ambas solo listado, sin
-  arreglar todavía. Hallazgo más citado en las dos: los `activeEffects` de Fase 2 (justo abajo) no
-  tienen ningún indicador visual en combate.
+- **2 auditorías en paralelo (2026-08-27)**: backend sin conectar a frontend, y diseño/UX del
+  frontend (ejecutada después y con los hallazgos de la primera como contexto) — ambas cerradas
+  poco después, ver banner "todo, de arriba a abajo" un poco más abajo (documentos originales
+  borrados 2026-08-31 al limpiar checklists ya 100% resueltos, contenido absorbido aquí). Hallazgo
+  más citado en las dos: los `activeEffects` de Fase 2 (justo abajo) no tenían ningún indicador
+  visual en combate.
 - **Fase 2 de efectos de clase (AUMENTO/DEBILIDAD) — CERRADO Y APLICADO** (el mismo día que el
   diseño, autorizado explícitamente por la usuaria: "dale a todo"): duración real por turnos sobre
   el motor 1v1 clásico (`turnResolution.ts`), infraestructura nueva en `activeEffects.ts`, 2
@@ -809,8 +808,8 @@ resumen de trabajo real, agrupado por tamaño.
   diseño real: los recursos base son fungibles sin región ("cualquier piedra vale"), y construir
   debería depender de materiales PROCESADOS (bloques, lingotes, columnas) por oficio regional, no
   de recursos crudos directamente. Diseño completo en
-  [materiales-procesados-construccion.md](rpgtarkor/materiales-procesados-construccion.md)
-  (encontró que parte ya existía sin conectar: `bloque-piedra-tallada`/`lingote-de-hierro`
+  `17-reglas-construcciones-reino.md § Materiales procesados y oficios regionales`
+  (fusionado ahí 2026-08-31; encontró que parte ya existía sin conectar: `bloque-piedra-tallada`/`lingote-de-hierro`
   huérfanos desde 2026-07-29). Cifras cerradas: pequeño 100% crudo, mediano ~75% procesado/25%
   crudo, grande 100% procesado (salvo resina, sin versión procesada nunca) — "así es difícil de
   ampliar" a propósito, exige los 4 oficios de procesado a la vez.
@@ -819,7 +818,7 @@ resumen de trabajo real, agrupado por tamaño.
   `lingote-de-hierro` conectados a construcción por primera vez, y
   `ConstructionRecipe.oficio` pasa de "solo alivio" a bloqueo real (`OFICIOS_CONSTRUCCION_REQUERIDOS`,
   mismo patrón que `OFICIOS_CON_HERRAMIENTA_REQUERIDA`) desde el mediano en adelante. Diseño
-  completo en [materiales-procesados-construccion.md](rpgtarkor/materiales-procesados-construccion.md).
+  completo en `17-reglas-construcciones-reino.md § Materiales procesados y oficios regionales`.
   **Bug real cerrado 2026-08-25**: los 3 items nuevos (`category: 'viga'/'columna'/'cordaje'`)
   nunca se dieron de alta en `itemTaxonomy.ts` § `CATEGORY_VOCAB_BY_TIPO.MATERIAL` — `seed-catalog`
   llevaba roto desde esta misma pasada, sin haberse vuelto a correr hasta que se corrió de verdad

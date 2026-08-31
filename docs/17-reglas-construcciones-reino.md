@@ -6,10 +6,6 @@ población). Este documento es la fuente de verdad de las reglas; el checklist a
 se va tachando según se implementa. Si la sesión se corta a mitad, seguir desde el primer punto sin
 tachar.
 
-**Ver también (2026-08-24)**:
-[rpgtarkor/materiales-procesados-construccion.md](rpgtarkor/materiales-procesados-construccion.md)
-— qué materiales pide cada construcción (crudo vs. procesado por oficio regional), diseño nuevo
-sin aplicar todavía, complementario a las reglas de aquí.
 
 ## Reglas acordadas
 
@@ -223,6 +219,75 @@ commit. Hallazgos reales, arreglados y verificados (tsc + 585 tests backend / 18
   caso (2-4 satélites, cualquier ángulo) tras el cambio, frente a las 33+7 de antes. Solo se
   tocaron esos 4 nodos — el resto del núcleo no se movió. `tsc -b` + 18 tests frontend limpios
   tras el cambio.
+
+## Materiales procesados y oficios regionales — APLICADO al motor (2026-08-24, fusionado 2026-08-31)
+
+*Diseño de sistema, surgió al cerrar el rebalanceo de coste de Campamento/Ayuntamiento: pedir
+recursos base fungibles ("cualquier piedra vale") estaba mal — un edificio debería depender de qué
+oficio REGIONAL tienes aprendido, y de materiales PROCESADOS (bloques, lingotes, columnas...), no
+de recursos crudos directos, cada vez más según sube el tier del edificio.*
+
+**Grounding — la idea ya se había planteado y parcialmente construido el 2026-07-29** sin conectarse
+con nada: `STONE_BLOCK_RECIPE` (`crafting.ts`) ya existía (5 Piedra → 1 Bloque de piedra tallada,
+oficio `constructor-orcos-llanuras`), pero ningún `ConstructionRecipe` la consumía. Los oficios ya
+son regionales por su propio nombre (`herrero-orco-llanuras`, `curtidor-orcos-llanuras`,
+`carpintero-orcos-llanuras`, `constructor-orcos-llanuras`, `desollador-orcos-llanuras`) — el
+"candado regional" no necesita etiqueta nueva en los objetos, ya vive en qué oficio aprendiste.
+`ConstructionRecipe.oficio` ya existía pero solo daba un alivio de requisito, nunca bloqueaba si no
+tenías el oficio.
+
+**Dos candados regionales en cascada**:
+1. **El oficio de construcción en sí es regional** — determina QUÉ construcciones puedes intentar
+   en absoluto. Sin el oficio de esa región, ni te lo planteas.
+2. **Los materiales que esas construcciones piden vienen de oficios de PROCESADO igual de
+   regionales** — el oficio de construcción no fabrica él mismo todo; puede necesitar que TÚ (u
+   otro con el oficio correspondiente) hayas procesado antes la piedra en bloques, la mena en
+   lingotes, el hueso en columnas.
+
+**Escalado por tier — menos crudo, más procesado cuanto más grande el edificio**: Campamento/tier
+más bajo mayormente crudo (coherente con "un cerco improvisado", nadie procesa nada para pasar la
+noche); Ayuntamiento pequeño todavía mayormente crudo; mediano/grande la proporción de procesado
+crece con cada nivel — la "capital de verdad" no se levanta con piedras sueltas.
+
+**Categorías crudo → procesado** (una por recurso, siguiendo el precedente de `bloque-piedra-tallada`
+— categoría propia `bloque`, no reutiliza `piedra`, para poder pedir "procesado" como requisito
+separado del crudo en cualquier receta futura):
+
+| Recurso crudo | Material procesado | Categoría procesada | Oficio que lo produce | Ratio |
+|---|---|---|---|---|
+| Piedra | Bloque de piedra tallada | `bloque` | `constructor-orcos-llanuras` | 5:1 |
+| Leña | Viga de madera tallada | `viga` | `carpintero-orcos-llanuras` | 4:1 |
+| Hueso | Columna de hueso | `columna` | `constructor-orcos-llanuras` | 3:1 |
+| Mena | Lingote de hierro (`lingote-de-hierro`) | `metal` (inconsistente con el resto, item ya en uso, no tocado a propósito) | `herrero-orco-llanuras` | 4:1 |
+| Resina | Sin material procesado — se queda cruda incluso en tiers altos (no se "talla", se usa tal cual como sellante/adhesivo) | — | — | — |
+| Fibra | Cordaje trenzado | `cordaje` | `curtidor-orcos-llanuras` | 4:1 |
+
+**Ayuntamiento — cifras cerradas y aplicadas**: pequeño 100% crudo (14 Piedra + 2 Mena + 6 Madera +
+6 Hueso + 8 Fibra + 8 Resina), sin oficio exigido. Mediano ~75% procesado/25% crudo por categoría
+procesable (3 Bloques+5 Piedra cruda / 1 Lingote+1 Mena cruda / 2 Vigas+3 Leña cruda / 2 Columnas+2
+Hueso crudo / 2 Cordajes+3 Fibra cruda / 12 Resina siempre cruda). Grande 100% procesado en todo lo
+procesable (8 Bloques / 4 Lingotes / 5 Vigas / 5 Columnas / 5 Cordajes / 20 Resina cruda) — "así es
+difícil de ampliar" a propósito: exige tener los 4 oficios de procesado a buen nivel a la vez, no
+solo más cantidad de lo mismo. `oficio: 'constructor-orcos-llanuras'` se exige (bloqueo real) desde
+el mediano en adelante; el pequeño se queda accesible sin oficio.
+
+**Aplicado al motor**: 3 items nuevos en `ItemCatalog` (Viga de madera tallada, Columna de hueso,
+Cordaje trenzado) + 3 `CraftingRecipe` nuevas (`WOOD_BEAM_RECIPE`/`BONE_COLUMN_RECIPE`/
+`BRAIDED_CORDAGE_RECIPE`, mismo patrón que `STONE_BLOCK_RECIPE`: ingrediente por categoría,
+`location: null`). `bloque-piedra-tallada`/`lingote-de-hierro` conectados a construcción real por
+primera vez. `ConstructionRecipe.oficio` pasa de "solo alivio" a bloqueo real:
+`OFICIOS_CONSTRUCCION_REQUERIDOS` nuevo (hoy solo `['constructor']`), `checkRecipe` gana un 7º
+parámetro `tieneOficio` (default `true`, no rompe callers existentes) que añade un
+`RequirementShortfall` binario si la receta lo exige y el personaje no lo ha aprendido en absoluto —
+distingue "nivel 1 por no tenerlo" de "no lo tiene". `AYUNTAMIENTO_MEDIANO_RECIPE`/
+`AYUNTAMIENTO_GRANDE_RECIPE` actualizadas con las cifras de arriba. Tests: `construction.test.ts`
+(mediano/grande + bloqueo de oficio), `crafting.test.ts` (3 recetas nuevas), `turn.integration.test.ts`
+actualizado. `tsc -b` limpio, sin regresiones.
+
+Cuando se diseñen construcciones de otras razas/regiones (Goirntes/Meseta, Nabieus/Margen,
+Faerus/Bosque...), cada una necesitará sus propios oficios regionales y quizá sus propios materiales
+procesados — este sistema solo cierra el caso orco/Llanuras, el patrón general queda documentado
+para repetirlo.
 
 ## Fuera de alcance a propósito (ni hoy ni en este documento)
 - "Puesto avanzado" como tipo de edificio nuevo — mencionado como roadmap futuro, no se crea su

@@ -129,15 +129,17 @@ huecosHabilidad(nivel) = 3 + floor(nivel / 2)
 
 ## 5. Modelo de datos de Reino
 
-**Nota (2026-08-13, reconciliación pendiente desde § 9 punto 8): este § 5 documenta el diseño v1
-histórico (2026-07-19, "para revisión, no migrar todavía"), no el estado actual.** Los tres
-modelos (`Territory`/`Building`/`Subject`) SÍ se migraron tal cual y siguen siendo la base real,
-pero la afirmación central de § 5.1 ("sin capa de números de gestión") ya no es cierta: desde
-2026-07-23 existe `KingdomStats` (población/felicidad/comida/bebida/riqueza/soldados/trabajadores/
-visitantes, `schema.prisma`) con un tick diario real (`backend/src/services/kingdomTick.ts`) — es
-exactamente la capa de gestión que aquí se descartaba. `docs/17-reglas-construcciones-reino.md` es
-hoy la fuente de verdad viva de las reglas de construcción/Reino; este § 5 se conserva por su valor
-de historial de diseño (por qué se empezó sin números de gestión), no como arquitectura vigente.
+**Para las reglas de construcción/Reino VIGENTES (edificios, materiales procesados, oficios
+regionales, fundación), la fuente de verdad viva es
+[17-reglas-construcciones-reino.md](17-reglas-construcciones-reino.md) — reescrito 2026-08-31 para
+dejar de mezclar diseño histórico con notas de corrección.** Este § 5 se conserva por dos motivos
+reales, no solo histórico: (a) los tres modelos `Territory`/`Building`/`Subject` de § 5.2 SÍ se
+migraron tal cual y siguen siendo la base de datos real hoy, y (b) § 5.4 (Reino como fuente de XP)
+sigue vigente, es el único sitio donde vive esa tabla. **Lo único que NO es cierto hoy** es la
+afirmación central de § 5.1 ("sin capa de números de gestión") — desde 2026-07-23 existe
+`KingdomStats` (población/felicidad/comida/bebida/riqueza/soldados/trabajadores/visitantes,
+`schema.prisma`) con un tick diario real (`backend/src/services/kingdomTick.ts`), exactamente la
+capa de gestión que aquí se descartaba en el diseño original de 2026-07-19.
 
 ### 5.1 Principio: tres piezas, y el vacío es un estado válido
 
@@ -328,14 +330,10 @@ Coste añadido: **cero llamadas nuevas a Ollama** — `hitos` y `reino_events` v
    pausado** (actualización 2026-08-13): la pausa citada aquí (`docs/archivo/11-roadmap-historico.md`, 2026-07-19) se
    revirtió — reino fundado y jugado en vivo (2026-08-07), reglas de construcción cerradas
    (`docs/17-reglas-construcciones-reino.md`, 2026-08-04) y habilidades/recetas de construcción con
-   deshabilitado en tiempo real (2026-08-13). Dos detalles de ESTE documento que quedan
-   desfasados y sin reconciliar todavía (no corregidos en esta pasada por ser cambio de diseño
-   grande, no una errata): (a) el campo real que devuelve la narración no es un único
-   `reino_events` sino tres campos separados (`newTerritory`/`newBuilding`/`newSubject`, ver
-   `narrador.ts`); (b) § 5.1 dice explícitamente que Reino no tendría "capa de números de gestión
-   (nada de comida/oro/moral por turno)" — desde 2026-07-23 existe `KingdomStats`
-   (población/felicidad/comida/bebida/riqueza/soldados/trabajadores/visitantes) con un tick diario
-   real (`kingdomTick.ts`), que es exactamente esa capa. `docs/17` es hoy la fuente de verdad viva
-   de Reino; este § 5 describe el diseño v1 histórico.
+   deshabilitado en tiempo real (2026-08-13). **Reconciliación de § 5 con `docs/17` —
+   cerrada 2026-08-31**: § 5 reescrito para señalar explícitamente qué sigue vigente (modelos
+   `Territory`/`Building`/`Subject`, tabla de XP de § 5.4) frente a lo que ya no lo es (§ 5.1 "sin
+   capa de números de gestión", superado por `KingdomStats`/`kingdomTick.ts` desde 2026-07-23), con
+   puntero directo a `docs/17` como fuente de verdad viva de las reglas de construcción.
 9. Actualizar los documentos afectados — parcialmente hecho por esta misma pasada (2026-08-02);
    pendiente real: reconciliar § 5 de este documento con `docs/17` (punto 8 de arriba).
