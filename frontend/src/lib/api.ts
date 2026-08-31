@@ -489,6 +489,8 @@ export interface SaveDetail {
   companions: CompanionInfo[]
   level: number
   xp: number
+  /// Moneda "Goirno" (2026-08-31, "Trabajador de Reino") — moneda única de Berig.
+  goirnos: number
   pendingAttributePoints: number
   kingdomName: string | null
   territories: TerritoryInfo[]
@@ -943,6 +945,24 @@ export async function postEntregar(
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ itemId }),
   })
+}
+
+/// "Aprender oficio de un Maestro" (2026-08-31, "Trabajador de Reino") — mismo patrón que Entregar,
+/// un solo paso (solo hay que elegir con quién, no "qué").
+export interface AprenderOficioMaestro {
+  npcSlug: string
+  name: string
+  professionId: string
+  costeGoirnos: number
+  yaAprendido: boolean
+  puedeAprender: boolean
+  motivoBloqueo: string | null
+}
+export async function getAprenderOficioMaestros(saveId: string): Promise<{ maestros: AprenderOficioMaestro[] }> {
+  return fetchJson(`${API_URL}/saves/${saveId}/aprender-oficio`)
+}
+export async function postAprenderOficio(saveId: string, npcSlug: string): Promise<{ professionId: string; logEntry: LogEntry }> {
+  return fetchJson(`${API_URL}/saves/${saveId}/npc/${npcSlug}/aprender-oficio`, { method: 'POST' })
 }
 
 /// Deposita una captura EN EL INVENTARIO (`InventoryItem.capturaNpcId` no null) en una Jaula con

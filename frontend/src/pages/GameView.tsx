@@ -49,6 +49,7 @@ import { TravelDestinationModal } from '../components/TravelDestinationModal'
 import { SaquearZonaModal } from '../components/SaquearZonaModal'
 import { HealSelectionModal } from '../components/HealSelectionModal'
 import { EntregaModal } from '../components/EntregaModal'
+import { AprenderOficioModal } from '../components/AprenderOficioModal'
 import { inventoryCapacityFor, totalInventoryUnits } from '../lib/inventoryCapacity'
 import {
   requestTurnClassify,
@@ -170,6 +171,8 @@ export function GameView() {
     setHealModalOpen,
     entregaModalOpen,
     setEntregaModalOpen,
+    aprenderOficioModalOpen,
+    setAprenderOficioModalOpen,
     postCombatTarget,
     setPostCombatTarget,
     activeDynamicMode,
@@ -179,6 +182,7 @@ export function GameView() {
   const [companions, setCompanions] = useState<CompanionInfo[]>([])
   const [level, setLevel] = useState(1)
   const [xp, setXp] = useState(0)
+  const [goirnos, setGoirnos] = useState(0)
   const [pendingAttributePoints, setPendingAttributePoints] = useState(0)
   // Estado de Reino (deuda técnica, auditoría 2026-08-25) — ver hooks/useKingdomState.ts para por
   // qué esto se queda como un hook de PURA agrupación en vez de aislado del todo (syncFromSave y
@@ -476,6 +480,7 @@ export function GameView() {
     setCompanions(save.companions)
     setLevel(save.level)
     setXp(save.xp)
+    setGoirnos(save.goirnos)
     setPendingAttributePoints(save.pendingAttributePoints)
     setKingdomName(save.kingdomName)
     setTerritories(save.territories)
@@ -903,6 +908,11 @@ export function GameView() {
     }
     if (ability.name === 'Entregar') {
       setEntregaModalOpen(true)
+      setActivePanel(null)
+      return
+    }
+    if (ability.name === 'Aprender oficio') {
+      setAprenderOficioModalOpen(true)
       setActivePanel(null)
       return
     }
@@ -1791,6 +1801,20 @@ export function GameView() {
         />
       )}
 
+      {aprenderOficioModalOpen && saveId && (
+        <AprenderOficioModal
+          saveId={saveId}
+          onAprendido={(professionId, costeGoirnos, logEntry) => {
+            setProfessionProgress((prev) => [...prev, { professionId, nivel: 1, xp: 0 }])
+            setGoirnos((prev) => Math.max(0, prev - costeGoirnos))
+            setCharacterLog((prev) => [...prev, { ...logEntry, channel: 'character' }])
+            setFictionalDate(logEntry.timeLabel)
+            setAprenderOficioModalOpen(false)
+          }}
+          onCancel={() => setAprenderOficioModalOpen(false)}
+        />
+      )}
+
       {saquearZonaModalOpen && saveId && (
         <SaquearZonaModal
           saveId={saveId}
@@ -1862,6 +1886,7 @@ export function GameView() {
             <InventarioPanel
               saveId={saveId}
               items={inventory}
+              goirnos={goirnos}
               capacity={inventoryCapacityFor(
                 characterAttributes,
                 inventory.filter((i) => i.slot !== null),

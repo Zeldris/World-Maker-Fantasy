@@ -12,6 +12,8 @@ import { IconCard } from '../IconCard'
 interface InventarioPanelProps {
   saveId: string
   items: InventoryItemInfo[]
+  /// Goirnos que lleva el jugador (2026-08-31, "Trabajador de Reino" — moneda única de Berig).
+  goirnos: number
   /// Capacidad real de inventario (rediseño de profesiones, 2026-08-07) — base + Fuerza/
   /// Constitución + bonus de cosméticos equipados (ver lib/inventoryCapacity.ts).
   capacity: number
@@ -145,7 +147,7 @@ function ItemGrid({ items, onUse, onDetail }: Pick<InventarioPanelProps, 'items'
 // equipados se quedan en su propia sección arriba (petición explícita de siempre, "equipados
 // primero") porque cruzan varios tipos a la vez (un arma y una armadura equipadas no deberían
 // separarse solo por eso); el resto se agrupa por tipo, igual que ya hace la Enciclopedia.
-export function InventarioPanel({ saveId, items, capacity, onUse, onDetail, onRefreshSave }: InventarioPanelProps) {
+export function InventarioPanel({ saveId, items, goirnos, capacity, onUse, onDetail, onRefreshSave }: InventarioPanelProps) {
   // Bug real jugando en vivo (2026-08-08, "podemos tener inventario infinito"): esto contaba
   // filas, no unidades — una pila de 9 piedras aparentaba pesar 1 solo hueco. Ver
   // `totalInventoryUnits` (lib/inventoryCapacity.ts).
@@ -155,9 +157,14 @@ export function InventarioPanel({ saveId, items, capacity, onUse, onDetail, onRe
   // (EstadisticasPanel: hambre/sed) — amber al 80%, rojo ya lleno.
   const capacityRatio = capacity > 0 ? usedUnits / capacity : 0
   const capacityLabel = (
-    <p className={`text-2xs ${usedUnits >= capacity ? 'text-red-400' : capacityRatio >= 0.8 ? 'text-amber-400' : 'text-wood-500'}`}>
-      Capacidad: {usedUnits}/{capacity} objetos
-    </p>
+    <div className="flex items-center justify-between gap-2">
+      <p className={`text-2xs ${usedUnits >= capacity ? 'text-red-400' : capacityRatio >= 0.8 ? 'text-amber-400' : 'text-wood-500'}`}>
+        Capacidad: {usedUnits}/{capacity} objetos
+      </p>
+      <p className="text-2xs font-semibold text-quest-400" title="Goirnos — moneda de Berig, acuñada por los Goirntes">
+        🪙 {goirnos}
+      </p>
+    </div>
   )
 
   // Captura en tránsito (2026-08-28) — sección propia, ver CapturasEnTransito arriba. Excluida del
