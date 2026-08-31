@@ -3816,11 +3816,15 @@ sin volver a correr `seed-catalog` limpio deja un resto huérfano en Postgres �
 pasada de "duplicados por nombre" cada vez que se sospeche de uno, no dar por cerrado con el primero
 que se encuentre.
 
-**UX — scroll y foco deberían ir siempre al final de la narración tras cualquier acción** (prompt
-enviado por el jugador o respuesta narrada) — hoy el log no baja solo, obligando a bajar a mano tras
-cada turno para ver la respuesta más reciente. Revisar `LogPanel.tsx` (o el contenedor que lo envuelve
-en `GameView.tsx`) — probablemente falta un `scrollIntoView`/`scrollTop = scrollHeight` disparado
-tras cada turno resuelto.
+**UX — scroll y foco deberían ir siempre al final de la narración tras cualquier acción** —
+**FIJADO (2026-08-27, con reaparición y fix del caso de viaje/tránsito 2026-08-30, verificado por
+código 2026-08-31)**: `LogPanel.tsx` (`scrollRef`) ya baja solo tras cada turno resuelto —
+`behavior: 'smooth'` mientras narra en directo, `'auto'` (instantáneo, sin depender de gestos de
+scroll manual que puedan cancelar la animación) en cuanto termina. El caso de viaje/tránsito
+reportado el 2026-08-30 (`isThinking` caía a `false` antes de que llegaran las entradas reales del
+trayecto vía `syncFromSave`, dejando la vieja condición de "transición en este render" sin
+cumplirse nunca) también está corregido — comentario explícito en el propio código documentando
+ambas causas.
 
 **Diseño pedido — narración de viaje tramo a tramo**: durante un viaje (captura: "Viajo hacia Paso de
 los Pilares Rotos", ~visible por varios minutos de ficción), la usuaria pide que la narración cubra
