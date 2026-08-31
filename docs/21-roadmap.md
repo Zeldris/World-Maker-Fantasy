@@ -387,12 +387,21 @@ resumen de trabajo real, agrupado por tamaño.
   `HarvestYield.climaRequerido` (umbral de severidad mínima, no igualdad exacta), por región desde
   el principio (hoy solo Las Llanuras tiene números reales). **Pendiente de tu lado**: aplicar la
   migración nueva + reseed del catálogo.
-- [ ] **"Trabajador de Reino"** — bloquea hoy a los 22 NPC del Campamento Serhu y al oficio de
-  agricultura de Las Llanuras (pensado para aprenderse por misión, no por NPC-maestro). Mismo
-  bloque de diseño que el Almacén de Reino/roles guardia-trabajador-productor de
-  `companeros-y-supervivencia.md` — candidato fuerte a resolverse junto con ese sistema.
-- [ ] **Quién enseña un oficio nuevo** (`09-panel-personaje.md`) — aplazado a propósito hasta que
-  haya un caso concreto, baja prioridad.
+- [x] ~~**"Trabajador de Reino", fase 1**~~ — **APLICADO al motor (2026-08-31)**. Ampliado por la
+  usuaria en vivo a un sistema mucho más grande y reutilizable: edificio de facción por profesión
+  (mejorable pequeño/mediano/grande = 1/3/6 trabajadores), vista de interior de asentamiento,
+  moneda Goirno (valor real en los 184 items del catálogo), sistema de idiomas por raza. Piezas
+  nuevas: `FactionBuilding` (catálogo de mundo, `worldId`-scoped, deliberadamente distinto de
+  `Building` del jugador), `Location` interior (`campamento-serhu-interior`, entrada instantánea vía
+  `LocationLink` normal), `Npc.teachesProfession`, endpoint determinista
+  `POST /saves/:id/npc/:npcSlug/aprender-oficio` (reputación + coste en Goirnos). Solo Karot Veku,
+  solo 2 de los 11 oficios (Herrero/Curtidor) como prueba end-to-end — **detalle completo y huecos
+  pendientes en** `tarkor_trabajador_reino_fase1_2026-08-31` (memoria de sesión): faltan los 9
+  oficios restantes + sus NPC trabajador, producción pasiva de recursos (sin roles de Reino
+  formalizados todavía), efectos activos reales del edificio, y extender a otras facciones. Sin
+  probar en vivo jugando todavía.
+- [x] ~~**Quién enseña un oficio nuevo**~~ — resuelto de paso por lo de arriba: el Maestro de cada
+  profesión (`Npc.teachesProfession`) es la respuesta real, ya no aplazado.
 - [ ] **Miel Lebude / futura profesión de cocina por raza-región** (`flora-fauna.md`) — idea suelta,
   apenas especificada, prioridad muy baja.
 - [x] ~~**Botones "Aceptar"/"Cancelar" cuando un NPC ofrece una misión**~~ — cerrado 2026-08-26,

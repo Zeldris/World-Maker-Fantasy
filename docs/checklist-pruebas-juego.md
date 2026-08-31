@@ -209,6 +209,21 @@ Dinamismo del mundo).
 | `tarkor-narrador-v2` | 7.6B | ❌ sin probar | Existe una v2 en el catálogo de Ollama, no se ha usado como narrador activo en ninguna prueba reciente. |
 | `tarkor-narrador-fast` | 3.1B | ❌ sin probar | El más pequeño del catálogo con fine-tune de Tarkor — candidato interesante para la comparación pendiente. |
 
+## 12. "Trabajador de Reino" (2026-08-31) — moneda, edificios de facción, interior, aprender oficio
+
+Fase 1 completa por código/tests, NUNCA probada en vivo todavía — ver
+`tarkor_trabajador_reino_fase1_2026-08-31` (memoria de sesión) para el diseño completo.
+
+| Ítem | Estado | Notas |
+|---|---|---|
+| Goirnos visibles en Inventario (🪙 junto a capacidad) | 🧪 sin verificar en vivo | `save.goirnos` empieza en 0 por defecto — necesita que algo lo suba primero para verse un número real. |
+| Entrar al interior de Karot Veku (viaje instantáneo) | 🧪 sin verificar en vivo | `LocationLink` `campamento-serhu` → `campamento-serhu-interior`, `minutosBase: 0`. |
+| Ver a Torgash/Ulkha dentro del interior (ya no en la Zona exterior) | 🧪 sin verificar en vivo | Movidos de `campamento-serhu` a `campamento-serhu-interior` en `ZonePoint`. |
+| Ver los 2 `FactionBuilding` de prueba (Herrería/Curtiduría) en el mapa de Zona del interior | 🧪 sin verificar en vivo | Icono EDIFICIO (cuadrado), `targetSlug` real a `FactionBuilding.slug` (corregido el anti-patrón de Karot Vekhad que antes apuntaba a sí mismo). |
+| Habilidad "Aprender oficio" en la barra general | 🧪 sin verificar en vivo | Debe listar Maestros presentes en la Location actual (`GET /saves/:id/aprender-oficio`), con motivo de bloqueo real si aplica. |
+| Aprender oficio con éxito (reputación AMIGABLE + 10 Goirnos) | 🧪 sin verificar en vivo | Requiere reputación con Clan Serhu ≥3500/5000 y ≥10 Goirnos — con una partida nueva, ninguno de los dos se cumple por defecto. |
+| Icono de asentamiento en la ficha de Enciclopedia de Karot Veku | 🧪 sin verificar en vivo | Sustituye banner/miniatura; sin imagen real subida todavía, debería verse el placeholder de siempre + botón "Generar" para el prompt de icono. |
+
 ---
 
 ## Proceso: cómo probar el frontend en vivo (Claude jugando como jugadora)
