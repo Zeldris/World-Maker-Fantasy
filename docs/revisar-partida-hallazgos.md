@@ -3767,12 +3767,12 @@ nombres duplicados tras el fix). **Lección de proceso**: no dar un hallazgo de 
 percepción visual sin comprobar la base de datos real primero — el catálogo en código puede estar
 limpio mientras Postgres arrastra restos de una versión anterior tras un renombrado de slug.
 
-**Uploads de imágenes — fauna y flora mezcladas en una sola carpeta**: `backend/uploads/images/fauna/`
-contiene tanto fauna real (aullador-rojo, kirelon-arenoso, murgol, quio...) como flora/materia
-inerte (cardo-brujula, flor-de-ceniza, hielo-silice, roca-pilares-rotos, salvia-del-polvo) — deberían
-vivir en carpetas separadas `fauna/`y `flora/` (o el nombre de carpeta que corresponda para lo
-inerte). Revisar `imageAssets.ts`/`imagePromptGenerator.ts` (`ImagePromptEntityType`) para ver si ya
-distinguen fauna de flora a nivel de tipo de entidad o si hoy todo cae bajo el mismo `entityType`.
+**Uploads de imágenes — fauna y flora mezcladas en una sola carpeta** — **FIJADO 2026-08-30,
+VERIFICADO EN DISCO 2026-08-31**: `ImagePromptEntityType` ganó `'flora'` como valor propio,
+distinto de `'fauna'` (`imagePromptGenerator.ts`, criterio real `esFauna`/
+`harvestSourcesThatAreFaunaWithoutNpc`, `worldCatalog.ts`). Confirmado en el disco real:
+`uploads/images/fauna/` solo tiene fauna cazable, `uploads/images/flora/` solo planta/mineral —
+0 archivos mal ubicados en ninguna de las dos carpetas.
 
 **`kirelon-arenoso-macho-banner.png` subida a mano por la usuaria a la carpeta fauna, pero no
 funciona** — confirmado que el archivo existe en disco con el nombre exacto esperado
