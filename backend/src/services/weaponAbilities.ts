@@ -1,5 +1,5 @@
 import type { Attribute } from './dice.js';
-import type { EquipSlot, WeaponCategory, Clase, Especializacion } from '@prisma/client';
+import type { EquipSlot, WeaponCategory, Clase, Especializacion, PesoArmadura } from '@prisma/client';
 
 /// Sistema de habilidades por arma (2026-07-29, referencia Guild Wars 2 — "dependiendo el arma
 /// que lleves las habilidades se adapten... en vez de tener muchas habilidades usables a la vez
@@ -458,8 +458,8 @@ export function weaponAbilitiesFor(equipped: EquippedWeaponSlot[], level: number
 /// pasada: SOLO Guerrero/Cazador/Chamán (las únicas 3 con habilidades ya revisadas a fondo) — el
 /// resto de clases se queda sin restricción todavía, se añadirá cuando les toque su propio repaso.
 /// Guerrero y Chamán comparten el mismo pool para sus 4 especializaciones; Cazador varía por
-/// especialización (Tirador es el único a distancia). Sin armadura por peso todavía (pieza de
-/// infraestructura aparte, documentada pero sin aplicar, ver clases.md).
+/// especialización (Tirador es el único a distancia). Armadura por peso construida aparte (ver
+/// `pesoArmaduraPermitidoFor` más abajo, cubre las 9 clases de una vez).
 const GUERRERO_WEAPONS: WeaponCategory[] = [
   'HACHA_1_MANO',
   'HACHA_2_MANO',
@@ -495,4 +495,29 @@ export function weaponPoolFor(clase: Clase | null, especializacion: Especializac
   if (clase === 'CHAMAN') return CHAMAN_WEAPONS;
   if (clase === 'CAZADOR' && especializacion) return CAZADOR_WEAPONS_BY_ESPECIALIZACION[especializacion] ?? null;
   return null;
+}
+
+/// Restricción de armadura por peso (2026-08-31, Grupo 3 § Sistema de clases, clases.md §
+/// "Restricción de armadura por peso") — a diferencia de las armas, cubre las 9 clases DE UNA VEZ
+/// (petición explícita de la usuaria: categorización más plana, no necesita el mismo nivel de
+/// detalle previo que armas). El peso sigue el criterio de CLASE, no de especialización — única
+/// excepción anotada: Caballero del Valor es más flexible que sus 2 hermanas (Orden/Dolor).
+const PESO_POR_CLASE: Record<Clase, PesoArmadura[]> = {
+  GUERRERO: ['PESADO', 'MEDIO'],
+  CAZADOR: ['MEDIO'],
+  CHAMAN: ['MEDIO', 'PESADO'],
+  ARQUERO: ['LIGERO', 'MEDIO'],
+  CABALLERO: ['PESADO'],
+  MAGO: ['LIGERO'],
+  SEGADOR: ['LIGERO', 'MEDIO'],
+  ASESINO: ['LIGERO'],
+  DRUIDA: ['LIGERO', 'MEDIO'],
+};
+
+/// Tramos permitidos para esta clase/especialización — nunca null (a diferencia de
+/// `weaponPoolFor`, esta pasada cubre las 9 clases de una vez, sin huecos por especialización sin
+/// elegir todavía: el peso depende solo de la clase base).
+export function pesoArmaduraPermitidoFor(clase: Clase, especializacion: Especializacion | null): PesoArmadura[] {
+  if (clase === 'CABALLERO' && especializacion === 'CABALLERO_DEL_VALOR') return ['PESADO', 'MEDIO'];
+  return PESO_POR_CLASE[clase];
 }

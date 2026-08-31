@@ -239,3 +239,90 @@ describe('PATCH /saves/:id/inventario/:itemId — restricción de armas por clas
     expect(res.statusCode).toBe(200);
   });
 });
+
+// Restricción de armadura por peso (2026-08-31, Grupo 3 § Sistema de clases, ver
+// pesoArmaduraPermitidoFor en weaponAbilities.ts) — a diferencia de armas, cubre las 9 clases de
+// una vez.
+describe('PATCH /saves/:id/inventario/:itemId — restricción de armadura por peso', () => {
+  beforeEach(() => {
+    findFirstInventoryItem.mockReset();
+    findUniqueSave.mockReset();
+    findUniqueItemCatalog.mockReset();
+    updateInventoryItem.mockReset();
+    updateManyInventoryItem.mockReset();
+    findManyInventoryItem.mockReset().mockResolvedValue([]);
+    transaction.mockReset().mockImplementation((ops: unknown[]) => Promise.all(ops));
+  });
+
+  it('un Mago no puede equipar armadura Pesada (solo Ligero, sin excepción)', async () => {
+    findUniqueSave.mockResolvedValue({ worldId: 'world1', attributes: {}, secondaryAttributes: {}, raza: null, level: 1, clase: 'MAGO', especializacion: null });
+    findFirstInventoryItem.mockResolvedValue({ id: 'item1', name: 'Peto de placas óseas de gargantúa', catalogSlug: 'peto-placas-gargantua', slot: null });
+    findUniqueItemCatalog.mockResolvedValue({ equipSlot: 'ARMADURA_SUPERIOR', requisitos: null, pesoArmadura: 'PESADO' });
+    const app = await buildApp();
+
+    const res = await app.inject({ method: 'PATCH', url: '/saves/save1/inventario/item1', payload: { slot: 'ARMADURA_SUPERIOR' } });
+
+    expect(res.statusCode).toBe(400);
+    expect(JSON.parse(res.body).error).toMatch(/pesa demasiado/);
+    expect(updateInventoryItem).not.toHaveBeenCalled();
+  });
+
+  it('un Guerrero SÍ puede equipar armadura Pesada', async () => {
+    findUniqueSave.mockResolvedValue({ worldId: 'world1', attributes: {}, secondaryAttributes: {}, raza: null, level: 1, clase: 'GUERRERO', especializacion: 'BERSERKER' });
+    findFirstInventoryItem.mockResolvedValue({ id: 'item1', name: 'Peto de placas óseas de gargantúa', catalogSlug: 'peto-placas-gargantua', slot: null });
+    findUniqueItemCatalog.mockResolvedValue({ equipSlot: 'ARMADURA_SUPERIOR', requisitos: null, pesoArmadura: 'PESADO' });
+    updateInventoryItem.mockResolvedValue({});
+    const app = await buildApp();
+
+    const res = await app.inject({ method: 'PATCH', url: '/saves/save1/inventario/item1', payload: { slot: 'ARMADURA_SUPERIOR' } });
+
+    expect(res.statusCode).toBe(200);
+  });
+
+  it('Caballero del Valor puede equipar Medio, a diferencia de sus 2 hermanas (solo Pesado)', async () => {
+    findUniqueSave.mockResolvedValue({ worldId: 'world1', attributes: {}, secondaryAttributes: {}, raza: null, level: 10, clase: 'CABALLERO', especializacion: 'CABALLERO_DEL_VALOR' });
+    findFirstInventoryItem.mockResolvedValue({ id: 'item1', name: 'Cota de aleación ligera goirntes', catalogSlug: 'cota-ligera-goirntes', slot: null });
+    findUniqueItemCatalog.mockResolvedValue({ equipSlot: 'ARMADURA_SUPERIOR', requisitos: null, pesoArmadura: 'MEDIO' });
+    updateInventoryItem.mockResolvedValue({});
+    const app = await buildApp();
+
+    const res = await app.inject({ method: 'PATCH', url: '/saves/save1/inventario/item1', payload: { slot: 'ARMADURA_SUPERIOR' } });
+
+    expect(res.statusCode).toBe(200);
+  });
+
+  it('Caballero del Orden NO puede equipar Medio (solo Pesado, sin la flexibilidad del Valor)', async () => {
+    findUniqueSave.mockResolvedValue({ worldId: 'world1', attributes: {}, secondaryAttributes: {}, raza: null, level: 10, clase: 'CABALLERO', especializacion: 'CABALLERO_DEL_ORDEN' });
+    findFirstInventoryItem.mockResolvedValue({ id: 'item1', name: 'Cota de aleación ligera goirntes', catalogSlug: 'cota-ligera-goirntes', slot: null });
+    findUniqueItemCatalog.mockResolvedValue({ equipSlot: 'ARMADURA_SUPERIOR', requisitos: null, pesoArmadura: 'MEDIO' });
+    const app = await buildApp();
+
+    const res = await app.inject({ method: 'PATCH', url: '/saves/save1/inventario/item1', payload: { slot: 'ARMADURA_SUPERIOR' } });
+
+    expect(res.statusCode).toBe(400);
+  });
+
+  it('un objeto sin pesoArmadura (joyería/ropa interior) nunca dispara la restricción', async () => {
+    findUniqueSave.mockResolvedValue({ worldId: 'world1', attributes: {}, secondaryAttributes: {}, raza: null, level: 1, clase: 'MAGO', especializacion: null });
+    findFirstInventoryItem.mockResolvedValue({ id: 'item1', name: 'Anillo cualquiera', catalogSlug: 'anillo-cualquiera', slot: null });
+    findUniqueItemCatalog.mockResolvedValue({ equipSlot: 'ACCESORIO', requisitos: null, pesoArmadura: null });
+    updateInventoryItem.mockResolvedValue({});
+    const app = await buildApp();
+
+    const res = await app.inject({ method: 'PATCH', url: '/saves/save1/inventario/item1', payload: { slot: 'ACCESORIO' } });
+
+    expect(res.statusCode).toBe(200);
+  });
+
+  it('un personaje sin clase asignada todavía (Save.clase null) no tiene restricción de peso', async () => {
+    findUniqueSave.mockResolvedValue({ worldId: 'world1', attributes: {}, secondaryAttributes: {}, raza: null, level: 1, clase: null, especializacion: null });
+    findFirstInventoryItem.mockResolvedValue({ id: 'item1', name: 'Peto de placas óseas de gargantúa', catalogSlug: 'peto-placas-gargantua', slot: null });
+    findUniqueItemCatalog.mockResolvedValue({ equipSlot: 'ARMADURA_SUPERIOR', requisitos: null, pesoArmadura: 'PESADO' });
+    updateInventoryItem.mockResolvedValue({});
+    const app = await buildApp();
+
+    const res = await app.inject({ method: 'PATCH', url: '/saves/save1/inventario/item1', payload: { slot: 'ARMADURA_SUPERIOR' } });
+
+    expect(res.statusCode).toBe(200);
+  });
+});

@@ -1235,6 +1235,18 @@ enum WeaponCategory {
   VARA
 }
 
+/// Restricción de armadura por peso (2026-08-31, Grupo 3 § Sistema de clases, clases.md §
+/// "Restricción de armadura por peso") — mismo espíritu que `WeaponCategory`/restricción de armas
+/// por clase, pero cubre las 9 clases de una vez (categorización más plana, no necesita el mismo
+/// nivel de detalle previo que las armas). Solo aplica a las 6 ranuras de armadura real (CASCO,
+/// ARMADURA_SUPERIOR, ARMADURA_INFERIOR, GUANTES, BOTAS, CINTURON) — CAMISA (ropa interior) y
+/// joyería (ACCESORIO/ANILLO_1/ANILLO_2) se quedan fuera, sin restricción de peso.
+enum PesoArmadura {
+  LIGERO
+  MEDIO
+  PESADO
+}
+
 /// Qué acción/verbo exige `harvest.ts` para dar este recurso concreto (2026-07-29, petición
 /// explícita: "para conseguir estos recursos debes cazar... o talar... o picar... a veces al
 /// explorar la zona me saca recursos que no tiene sentido obtener directamente"). `discovery.ts`
@@ -2012,6 +2024,11 @@ model ItemCatalog {
   /// mano), ANILLO_1 vale también para ANILLO_2 (ver `equipSlotFamily`, equipment.ts) — el resto
   /// de ranuras son 1:1 exactas.
   equipSlot             EquipSlot?
+  /// Restricción de armadura por peso (2026-08-31, ver enum `PesoArmadura` arriba) — null salvo en
+  /// objetos de armadura real (las 6 ranuras `CASCO`/`ARMADURA_SUPERIOR`/`ARMADURA_INFERIOR`/
+  /// `GUANTES`/`BOTAS`/`CINTURON`). Determina qué clases pueden equiparlo, mismo criterio que
+  /// `tipoArma`/`weaponPoolFor` para armas — ver `pesoArmaduraPermitidoFor` (weaponAbilities.ts).
+  pesoArmadura          PesoArmadura?
   /// Bonificadores mecánicos reales al equipar (2026-07-19, mismo mecanismo que InventoryItem;
   /// mapa múltiple desde 2026-08-03 — sustituye a statBonusAttribute/statBonusAmount, un solo par
   /// no dejaba a un objeto sumar, p.ej., fuerza Y defensa a la vez) — hoy sobre todo en armas

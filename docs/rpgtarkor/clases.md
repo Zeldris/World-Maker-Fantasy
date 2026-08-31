@@ -376,7 +376,16 @@ foco:
 
 ---
 
-## Armadura por clase — ligero/medio/pesado (2026-08-24, documentado, sin aplicar todavía)
+## Armadura por clase — ligero/medio/pesado (2026-08-24, documentado — CONSTRUIDO 2026-08-31)
+
+**Estado: aplicado.** Enum `PesoArmadura` + `ItemCatalog.pesoArmadura` (schema.prisma), función
+pura `pesoArmaduraPermitidoFor(clase, especializacion)` (weaponAbilities.ts, mismo patrón que
+`weaponPoolFor`) y guard real en `PATCH /saves/:id/inventario/:itemId` (mismo bloque que la
+restricción de armas por clase, inventario.ts). Las 17 piezas de armadura real del catálogo
+(worldCatalog.ts) clasificadas y sembradas en Postgres — donde el `statBonuses` no bastaba por sí
+solo (empates, solo `defensa`, solo carisma), se usó el criterio de la descripción/lore de cada
+pieza (p.ej. "armadura ligera" en el propio texto pesa más que el stat crudo). Verificado con
+tests unitarios (`weaponAbilities.test.ts`) e integración del endpoint (`inventario.test.ts`).
 
 **Objetivo**, mismo espíritu que la restricción de armas de arriba ("como en el WoW"): cada clase
 solo puede equipar armadura de ciertos tramos de peso. A diferencia de las armas, esta pasada

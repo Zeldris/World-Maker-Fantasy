@@ -6,6 +6,7 @@ import {
   DUAL_WIELD_DIFFICULTY_BONUS,
   dualWieldAdjustedDifficulty,
   weaponPoolFor,
+  pesoArmaduraPermitidoFor,
   type EquippedWeaponSlot,
 } from './weaponAbilities.js';
 
@@ -295,5 +296,40 @@ describe('weaponPoolFor', () => {
   it('una clase fuera de las 3 construidas: sin restricción (null)', () => {
     expect(weaponPoolFor('ASESINO', 'MAESTRO_ASESINO')).toBeNull();
     expect(weaponPoolFor(null, null)).toBeNull();
+  });
+});
+
+// Restricción de armadura por peso (2026-08-31, Grupo 3 § Sistema de clases, clases.md §
+// "Restricción de armadura por peso") — a diferencia de weaponPoolFor, cubre las 9 clases de una
+// vez (nunca null): el peso depende solo de la clase, no de la especialización, salvo la única
+// excepción anotada (Caballero del Valor).
+describe('pesoArmaduraPermitidoFor', () => {
+  it('Mago: solo Ligero, sin excepción — el caster puro de tela', () => {
+    expect(pesoArmaduraPermitidoFor('MAGO', null)).toEqual(['LIGERO']);
+  });
+
+  it('Guerrero: Pesado + Medio — tanque/bruiser', () => {
+    expect(pesoArmaduraPermitidoFor('GUERRERO', 'BERSERKER')).toEqual(['PESADO', 'MEDIO']);
+  });
+
+  it('Caballero (Orden/Dolor): solo Pesado, el tanque de los caballeros', () => {
+    expect(pesoArmaduraPermitidoFor('CABALLERO', 'CABALLERO_DEL_ORDEN')).toEqual(['PESADO']);
+    expect(pesoArmaduraPermitidoFor('CABALLERO', 'CABALLERO_DEL_DOLOR')).toEqual(['PESADO']);
+    expect(pesoArmaduraPermitidoFor('CABALLERO', null)).toEqual(['PESADO']);
+  });
+
+  it('Caballero del Valor: única excepción de especialización, más flexible que sus 2 hermanas', () => {
+    expect(pesoArmaduraPermitidoFor('CABALLERO', 'CABALLERO_DEL_VALOR')).toEqual(['PESADO', 'MEDIO']);
+  });
+
+  it('Asesino: solo Ligero, nunca pesado (sigilo/agilidad)', () => {
+    expect(pesoArmaduraPermitidoFor('ASESINO', 'MAESTRO_ASESINO')).toEqual(['LIGERO']);
+  });
+
+  it('nunca devuelve null — a diferencia de weaponPoolFor, esta pasada cubre las 9 clases de una vez', () => {
+    for (const clase of ['GUERRERO', 'CAZADOR', 'CHAMAN', 'ARQUERO', 'CABALLERO', 'MAGO', 'SEGADOR', 'ASESINO', 'DRUIDA'] as const) {
+      expect(pesoArmaduraPermitidoFor(clase, null)).not.toBeNull();
+      expect(pesoArmaduraPermitidoFor(clase, null).length).toBeGreaterThan(0);
+    }
   });
 });

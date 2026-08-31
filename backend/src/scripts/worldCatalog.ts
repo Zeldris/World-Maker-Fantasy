@@ -6,7 +6,7 @@
 
 import type { Attribute, AttributeBlock } from '../services/dice.js';
 import type { Requisitos } from '../services/requisitos.js';
-import type { Estacion, EstadoClima, EquipSlot, ItemTipo, MetodoObtencion, WeaponCategory, Clase, Especializacion } from '@prisma/client';
+import type { Estacion, EstadoClima, EquipSlot, ItemTipo, MetodoObtencion, WeaponCategory, Clase, Especializacion, PesoArmadura } from '@prisma/client';
 import type { TerrainTag } from '../services/terrain.js';
 
 export interface LocationInput {
@@ -2492,6 +2492,11 @@ export interface ItemCatalogInput {
   /// ARMA_SECUNDARIA/ANILLO_2 (ver `equipSlotFamily`, equipment.ts) — cualquier arma va en
   /// cualquier mano, cualquier anillo en cualquier dedo.
   equipSlot?: EquipSlot;
+  /// Restricción de armadura por peso (2026-08-31, clases.md § "Restricción de armadura por
+  /// peso") — solo con sentido en las 6 ranuras de armadura real (CASCO/ARMADURA_SUPERIOR/
+  /// ARMADURA_INFERIOR/GUANTES/BOTAS/CINTURON); omitido en el resto. Ver `pesoArmaduraPermitidoFor`
+  /// (weaponAbilities.ts) para qué clases pueden equipar cada tramo.
+  pesoArmadura?: PesoArmadura;
   /// Categorización mecánica (2026-07-29) — ver itemTaxonomy.ts. `category` (arriba) sigue
   /// siendo el subtipo fino DENTRO de este tipo.
   tipo: ItemTipo;
@@ -2988,8 +2993,11 @@ export const items: ItemCatalogInput[] = [
     name: 'Botas de estepa', 
     category: 'ropa',
     tipo: 'EQUIPABLE', 
-    equipSlot: 'BOTAS', 
-    description: 'Cuero y suela de piel de corredor, gastadas.', 
+    equipSlot: 'BOTAS',
+    description: 'Cuero y suela de piel de corredor, gastadas.',
+    // Peso de armadura (2026-08-31, clases.md § restricción por peso) — destreza+voluntad
+    // dominantes, tramo Medio.
+    pesoArmadura: 'MEDIO',
     statBonuses: { voluntad: 1, destreza: 2 },
     dimensiones: 'Caña hasta el tobillo.', 
     lugarOrigen: 'Llanuras del Viento Rojo.' 
@@ -3004,6 +3012,9 @@ export const items: ItemCatalogInput[] = [
     equipSlot: 'BOTAS',
     description: 'Suela claveteada de aleación, equipamiento estándar de patrulla.',
     tier: 2,
+    // Peso de armadura (2026-08-31) — "equipamiento estándar de patrulla" Goirnte, coherente con
+    // el resto del uniforme (Medio, no Pesado de Caballero).
+    pesoArmadura: 'MEDIO',
     statBonuses: { destreza: 1, constitucion: 2 },
     dimensiones: 'Caña hasta media pantorrilla.',
     lugarOrigen: 'Concordia de Hierro, Meseta del Orden.',
@@ -3035,6 +3046,9 @@ export const items: ItemCatalogInput[] = [
     description: 'Capucha de piel rojiza de Corredor de Cauce, ajustada a la cabeza — protege del sol y de la arena magnética.',
     dimensiones: 'Ajustada a cabeza y cuello.',
     lugarOrigen: 'Llanuras del Viento Rojo.',
+    // Peso de armadura (2026-08-31) — pieza ligera de cuero, sin metal, coherente con explorador
+    // ágil (Medio).
+    pesoArmadura: 'MEDIO',
     statBonuses: {constitucion: 1, voluntad: 1 },
     tier: 1,
     requisitos: { fuerza: 8, destreza: 8, constitucion: 6 },
@@ -3049,6 +3063,9 @@ export const items: ItemCatalogInput[] = [
     tipo: 'EQUIPABLE',
     equipSlot: 'CINTURON',
     description: 'Colmillos y garras cosidos al cuero — entre orcos, respeto a la vista.',
+    // Peso de armadura (2026-08-31) — pieza decorativa de trofeos, sin protección real, tramo
+    // Ligero (mismo criterio que tocado-plumas/capa-melena-ferike: prestigio, no defensa).
+    pesoArmadura: 'LIGERO',
     statBonuses: { carisma: 1, voluntad: 1 },
     dimensiones: 'Cinturón de 90 a 110 cm.',
     lugarOrigen: 'Llanuras del Viento Rojo.',
@@ -3063,6 +3080,10 @@ export const items: ItemCatalogInput[] = [
     tipo: 'EQUIPABLE',
     equipSlot: 'ARMADURA_SUPERIOR',
     description: 'Cota de anillas finas de un gris metálico apagado, sorprendentemente ligera — de Hierba del Hierro procesada.',
+    // Peso de armadura (2026-08-31) — el requisito real es Constitución (ver comentario debajo),
+    // coherente con Medio (explorador/patrulla Goirnte), no Ligero puro (sigue siendo metal, y
+    // Ligero es el tramo reservado a caster/tela sin protección física real).
+    pesoArmadura: 'MEDIO',
     statBonuses: { defensa: 2 },
     dimensiones: 'Cota hasta la cadera, anillas de 1 cm de diámetro.',
     lugarOrigen: 'Manufactura goirnte, Meseta del Orden.',
@@ -3081,9 +3102,11 @@ export const items: ItemCatalogInput[] = [
     category: 'ropa',
     tipo: 'EQUIPABLE', 
     equipSlot: 'ARMADURA_INFERIOR', 
-    description: 'Faldar de piel gris ceniza de gargantúa, con pequeñas placas óseas todavía cosidas al cuero — abrigo, no defensa.', 
-    dimensiones: 'Faldar de 55 cm de largo.', 
+    description: 'Faldar de piel gris ceniza de gargantúa, con pequeñas placas óseas todavía cosidas al cuero — abrigo, no defensa.',
+    dimensiones: 'Faldar de 55 cm de largo.',
     lugarOrigen: 'Llanuras del Viento Rojo.' ,
+    // Peso de armadura (2026-08-31) — destreza dominante, "abrigo, no defensa" (piel sin metal).
+    pesoArmadura: 'MEDIO',
     statBonuses: {constitucion: 1, destreza: 2 },
     tier: 2,
     requisitos: { fuerza: 8, destreza: 8, constitucion: 6 },
@@ -3098,6 +3121,7 @@ export const items: ItemCatalogInput[] = [
     tipo: 'EQUIPABLE',
     equipSlot: 'GUANTES',
     description: 'Agarre firme para lanza y cuchillo.',
+    pesoArmadura: 'MEDIO',
     statBonuses: { destreza: 1, constitucion: 1 },
     dimensiones: 'Talla estándar de mano orca.',
     lugarOrigen: 'Llanuras del Viento Rojo.',
@@ -3111,6 +3135,8 @@ export const items: ItemCatalogInput[] = [
     tipo: 'EQUIPABLE',
     equipSlot: 'GUANTES',
     description: 'Manoplas de aleación gris articuladas en los nudillos — pieza de saqueo poco común, solo la lleva un oficial.',
+    // Peso de armadura (2026-08-31) — aleación de metal real, constitución pura, tramo Pesado.
+    pesoArmadura: 'PESADO',
     statBonuses: { constitucion: 2 },
     dimensiones: 'Talla estándar articulada en los nudillos.',
     lugarOrigen: 'Concordia de Hierro, Meseta del Orden.',
@@ -3148,6 +3174,7 @@ export const items: ItemCatalogInput[] = [
     description: 'Piel con pequeños detalles de pelo de cornamenta.',
     dimensiones: 'Cubren de la cadera al tobillo.',
     lugarOrigen: 'Llanuras del Viento Rojo.',
+    pesoArmadura: 'MEDIO',
     statBonuses: { destreza: 2 },
     tier: 1,
     requisitos: { fuerza: 6, destreza: 4, constitucion: 6 },
@@ -3161,6 +3188,7 @@ export const items: ItemCatalogInput[] = [
     tipo: 'EQUIPABLE',
     equipSlot: 'ARMADURA_INFERIOR',
     description: 'Perneras de cuero reforzado gris — completa el uniforme de patrulla junto a la cota ligera.',
+    pesoArmadura: 'MEDIO',
     statBonuses: { destreza: 1, constitucion: 1 },
     dimensiones: 'Cubren de la cadera al tobillo.',
     lugarOrigen: 'Meseta del Orden.',
@@ -3177,6 +3205,9 @@ export const items: ItemCatalogInput[] = [
     tipo: 'EQUIPABLE',
     equipSlot: 'ARMADURA_SUPERIOR',
     description: 'Peto de placas óseas blanquecinas de gargantúa cosidas sobre cuero grueso — armadura pesada, las placas solo salen de cacería ritual o cadáver ya viejo.',
+    // Peso de armadura (2026-08-31) — "armadura pesada" en la propia descripción, constitución
+    // dominante, requisito de fuerza 14. Tramo Pesado sin duda.
+    pesoArmadura: 'PESADO',
     statBonuses: { constitucion: 3, voluntad: 2, carisma: 2 },
     dimensiones: 'Cubre el torso completo.',
     lugarOrigen: 'Llanuras del Viento Rojo.',
@@ -3193,9 +3224,12 @@ export const items: ItemCatalogInput[] = [
     category: 'ropa',
     tipo: 'EQUIPABLE', 
     equipSlot: 'CINTURON', 
-    description: 'Correaje de oficial, hebilla con el sello de la Concordia.', 
-    dimensiones: 'Correaje ajustable al torso.', 
+    description: 'Correaje de oficial, hebilla con el sello de la Concordia.',
+    dimensiones: 'Correaje ajustable al torso.',
     lugarOrigen: 'Concordia de Hierro, Meseta del Orden.',
+    // Peso de armadura (2026-08-31) — mismo uniforme de patrulla que botas/perneras/cota-ligera
+    // Goirnte (Medio, no Pesado — ese es Caballero, otra rama de la misma facción).
+    pesoArmadura: 'MEDIO',
     statBonuses: {constitucion: 2, voluntad: 1 },
     tier: 2,
     requisitos: { fuerza: 8, destreza: 8, constitucion: 6 },
@@ -3213,6 +3247,10 @@ export const items: ItemCatalogInput[] = [
     tipo: 'EQUIPABLE',
     equipSlot: 'CASCO',
     description: 'Casco abierto de aleación ligera, sello de la Concordia en la frente.',
+    // Peso de armadura (2026-08-31) — pese a "aleación ligera" en el nombre, los requisitos reales
+    // (fuerza 12, constitución 12) y constitución 4 pura son de tanque — Pesado por sus números,
+    // no por el nombre.
+    pesoArmadura: 'PESADO',
     statBonuses: { constitucion: 4 },
     dimensiones: 'Casco abierto, contorno de cabeza de 55 a 60 cm.',
     lugarOrigen: 'Concordia de Hierro, Meseta del Orden.',
@@ -3231,6 +3269,9 @@ export const items: ItemCatalogInput[] = [
     tipo: 'EQUIPABLE',
     equipSlot: 'ARMADURA_SUPERIOR',
     description: 'Placas de quitina roja de Gesgurio cosidas sobre un refuerzo de caparazón de Espina del Viento y quitina de Escorante — ligera, pero resiste bien el corte.',
+    // Peso de armadura (2026-08-31) — "ligera" en la propia descripción, sin requisito de fuerza
+    // (solo destreza), coherente con Medio pese a la constitución pura (quitina, no metal macizo).
+    pesoArmadura: 'MEDIO',
     statBonuses: { constitucion: 4 },
     dimensiones: 'Cubre el torso completo.',
     lugarOrigen: 'La Hondonada del Eco, Llanuras del Viento Rojo.',
@@ -3260,6 +3301,9 @@ export const items: ItemCatalogInput[] = [
     tipo: 'EQUIPABLE',
     equipSlot: 'ARMADURA_SUPERIOR',
     description: 'Escamas de Jusha Esmeralda cosidas en hilera sobre cuero fino — armadura ligera, se mueve con quien la lleva.',
+    // Peso de armadura (2026-08-31) — "armadura ligera" en su propia descripción, destreza+
+    // constitución empatadas, tramo Medio (explorador ágil).
+    pesoArmadura: 'MEDIO',
     statBonuses: { destreza: 2, constitucion: 2 },
     dimensiones: 'Cubre el torso completo.',
     lugarOrigen: 'Los Manaderos, Llanuras del Viento Rojo.',
@@ -3274,6 +3318,9 @@ export const items: ItemCatalogInput[] = [
     tipo: 'EQUIPABLE',
     equipSlot: 'CASCO',
     description: 'Plumas rojizas de Corretolvas y plumas de Tura Jusha trenzadas en un tocado ceremonial — más presencia que protección.',
+    // Peso de armadura (2026-08-31) — "más presencia que protección", sin peso real, tramo
+    // Ligero (mismo criterio que capa-melena-ferike/cinturon-de-trofeos: piezas de prestigio).
+    pesoArmadura: 'LIGERO',
     statBonuses: { carisma: 2 },
     dimensiones: 'Tocado de 40 cm de alto.',
     lugarOrigen: 'Llanuras del Viento Rojo.',
@@ -3288,6 +3335,8 @@ export const items: ItemCatalogInput[] = [
     tipo: 'EQUIPABLE',
     equipSlot: 'ARMADURA_SUPERIOR',
     description: 'Capa cosida con la melena de la cola de un Ferike macho — objeto de prestigio real, casi nadie ha visto una de cerca.',
+    // Peso de armadura (2026-08-31) — objeto de prestigio, sin protección real, tramo Ligero.
+    pesoArmadura: 'LIGERO',
     statBonuses: { carisma: 5 },
     dimensiones: 'Capa hasta media pierna.',
     lugarOrigen: 'El Cruce de las Cenizas, Llanuras del Viento Rojo.',

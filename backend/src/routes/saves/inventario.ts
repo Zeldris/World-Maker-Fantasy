@@ -4,7 +4,7 @@ import { syncDynamicCombatAbilities, resolveEquippedWeaponSlots } from '../../se
 import { normalizeSecondaryAttributes } from '../../services/secondaryAttributes.js';
 import { checkRequisitos, shortfallLabel, type Requisitos } from '../../services/requisitos.js';
 import { equipSlotFamily, effectiveAttributes, effectiveSecondaryAttributes } from '../../services/equipment.js';
-import { weaponPoolFor } from '../../services/weaponAbilities.js';
+import { weaponPoolFor, pesoArmaduraPermitidoFor } from '../../services/weaponAbilities.js';
 import type { AttributeBlock } from '../../services/dice.js';
 import { EquipSlot } from '@prisma/client';
 import { rejectIfEnded } from './shared.js';
@@ -85,6 +85,20 @@ export async function inventarioRoutes(app: FastifyInstance) {
           if (pool && !pool.includes(catalogItem.tipoArma)) {
             return reply.status(400).send({
               error: `"${item.name}" no encaja con tu clase — ${save.clase ?? 'tu clase'}${save.especializacion ? ` (${save.especializacion})` : ''} no puede equipar armas de tipo ${catalogItem.tipoArma}.`,
+            });
+          }
+        }
+
+        // Restricción de armadura por peso (2026-08-31, Grupo 3 § Sistema de clases, ver
+        // `pesoArmaduraPermitidoFor` en weaponAbilities.ts) — a diferencia de armas, cubre las 9
+        // clases de una vez: `save.clase` null (personaje sin clase asignada, ver Save.clase) se
+        // queda sin restricción, mismo criterio permisivo que el resto de este bloque cuando falta
+        // un dato contra el que validar.
+        if (catalogItem?.pesoArmadura && save.clase) {
+          const pesosPermitidos = pesoArmaduraPermitidoFor(save.clase, save.especializacion);
+          if (!pesosPermitidos.includes(catalogItem.pesoArmadura)) {
+            return reply.status(400).send({
+              error: `"${item.name}" pesa demasiado (o demasiado poco) para tu clase — ${save.clase}${save.especializacion ? ` (${save.especializacion})` : ''} solo puede equipar armadura ${pesosPermitidos.join('/')}.`,
             });
           }
         }

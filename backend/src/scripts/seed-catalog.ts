@@ -61,6 +61,7 @@ async function main() {
         name: item.name,
         aliases: item.aliases ?? [],
         equipSlot: item.equipSlot ?? null,
+        pesoArmadura: item.pesoArmadura ?? null,
         category: item.category,
         tipo: item.tipo,
         description: item.description,
