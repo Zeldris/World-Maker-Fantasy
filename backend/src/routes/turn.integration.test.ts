@@ -5811,3 +5811,84 @@ describe('Turno "fantasma": conexión cortada a media narración (bug real jugan
     void narrateRes; // el código de estado de esta respuesta concreta no es lo que se está probando aquí
   }, 20_000);
 });
+
+// Bug real de integridad de estado (auditoría 2026-09-01, jugando en vivo — "nuente" enganchado en
+// pendingCombatNpcSlugs sin haber sido nunca CombatParticipant de ningún CombatEncounter): el
+// último fallback de `forcedCombatSlugs` (turnResolution.ts, cuando `explicitTarget` está vacío Y
+// `agresivoSlugsInScene` está vacío) usaba `npcsInSceneVivos` SIN filtrar — cualquier NPC
+// AMIGABLE/INOFENSIVO/CAUTELOSO presente en la misma escena que un agresor real (o que disparó
+// `shouldForceCombat` por otra vía, como una bajada de condición) se arrastraba al array de
+// combate junto con él, huérfano para siempre en cuanto el CombatEncounter real solo enganchaba al
+// agresor de verdad. Fix: `npcsInSceneHostilesCandidatos` filtra por temperamento efectivo antes
+// de usarse como fallback.
+describe('pendingCombatNpcSlugs no arrastra a un NPC pacífico "de paso" cuando se fuerza combate contra otro (bug real 2026-09-01)', () => {
+  let saveId: string;
+  let orcoId: string;
+  let torgashId: string;
+
+  beforeAll(async () => {
+    const userId = await getDefaultUserId();
+    const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
+    const hondonada = await prisma.location.findFirstOrThrow({ where: { worldId: world.id, slug: 'hondonada-del-eco' } });
+    const save = await prisma.save.create({
+      data: {
+        userId,
+        worldId: world.id,
+        characterName: 'Gorhorn de prueba (fallback no arrastra pacífico)',
+        characterArchetype: 'guerrero',
+        characterOrigin: 'Clan Maktor',
+        characterMotivation: 'x',
+        attributes: ATTRS,
+        portraitInitial: 'G',
+        currentLocationId: hondonada.id,
+      },
+    });
+    saveId = save.id;
+    await prisma.worldState.create({ data: { saveId } });
+    const orco = await prisma.npc.findFirstOrThrow({ where: { worldId: world.id, slug: 'orco-enfurecido-hondonada' } });
+    const torgash = await prisma.npc.findFirstOrThrow({ where: { worldId: world.id, slug: 'torgash' } });
+    orcoId = orco.id;
+    torgashId = torgash.id;
+    // Mismo atajo que "Slots de compañero" más arriba: NpcState con scope '' hace que
+    // `detectNpcsInScene` los detecte siempre, sin depender de que el texto de la acción los
+    // mencione por alias — así el escenario es determinista, no depende del fuzzy-matching
+    // concreto que causó el bug real ("cuenta"~"nuente"). `saveId` propio de este describe, sin
+    // relación con los demás tests del archivo que también usan a Orco Enfurecido.
+    await prisma.npcState.create({ data: { saveId, npcId: orcoId, scope: '', condicionFisica: 'ILESO' } });
+    await prisma.npcState.create({ data: { saveId, npcId: torgashId, scope: '', condicionFisica: 'ILESO' } });
+    classifyAction.mockResolvedValue({
+      requiereTirada: true, atributo: 'fuerza', dificultad: 12, razon: 'x', banda: 'instantanea', duracionEstimadaMinutos: 0,
+    });
+  });
+
+  afterAll(async () => {
+    await prisma.save.delete({ where: { id: saveId } });
+  });
+
+  it('un ataque sin nombrar a nadie entre comillas solo engancha al agresivo real, nunca al CAUTELOSO de paso', async () => {
+    narrateAction.mockResolvedValueOnce({
+      narration: 'Gorhorn ataca a ciegas contra la amenaza más cercana.',
+      newFacts: [],
+    });
+    const app = await buildApp();
+    // Sin comillas (sin explicitTarget, así que no se cita a nadie en concreto — fuerza el camino
+    // del fallback) pero nombrando a ambos SIN comillas (detectNpcsInScene exige que
+    // matchNpcAliases los encuentre en el texto, aunque ya tengan NpcState) — mismo patrón que la
+    // narración real del bug ("Un Canizor Aullador Rojo se acerca...", los dos nombrados a la vez
+    // en prosa, sin que el jugador cite a ninguno entre comillas). agresivoSlugsInScene SÍ detecta
+    // al Orco Enfurecido (temperamento AGRESIVO real de catálogo).
+    const action = 'Ataco sin dudarlo, con el hacha en alto, mientras el Orco Enfurecido y Torgash me observan.';
+    const classifyRes = await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action, enCombate: false } });
+    const { classification, roll } = classifyRes.json();
+    const narrateRes = await app.inject({
+      method: 'POST',
+      url: '/turn/narrate',
+      payload: { saveId, action, classification, roll, enCombate: false },
+    });
+    expect(narrateRes.statusCode).toBe(200);
+
+    const saveAfter = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
+    expect(saveAfter.pendingCombatNpcSlugs).toEqual(['orco-enfurecido-hondonada']);
+    expect(saveAfter.pendingCombatNpcSlugs).not.toContain('torgash');
+  }, 15_000);
+});
