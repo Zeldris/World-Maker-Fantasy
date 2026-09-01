@@ -3181,5 +3181,11 @@ export function resumenMecanicoEspecializacion(clase: Clase, especializacion: Es
   const efectosEtiquetados = efectos.map((e) => EFFECT_LABEL[e]).filter((e): e is string => !!e);
   const parteEfectos = efectosEtiquetados.length > 0 ? ` Incluye ${efectosEtiquetados.join(', ')}.` : '';
 
-  return `${parteAtributos}${parteEfectos}`.trim() || 'Rama con contenido propio, sin resumen mecánico claro todavía.';
+  const resumen = `${parteAtributos}${parteEfectos}`.trim();
+  if (resumen) return resumen;
+
+  // Especialización sin habilidades de combate propias (ej. Domador: solo "Compañero cazador",
+  // category:'general', sin rol/effects/preferredAttribute) — cae a la propia `description` de la
+  // primera habilidad en vez de un mensaje vacío.
+  return habilidades[0].ability.description || 'Rama con contenido propio, sin resumen mecánico claro todavía.';
 }

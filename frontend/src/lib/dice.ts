@@ -31,6 +31,23 @@ export const attributeAbbr: Record<Attribute, string> = {
 /// renderizarse como "undefined" en la UI (bug real: nunca la tuvo, ver InventoryItemInfo.statBonuses).
 export const statBonusLabels: Record<string, string> = { ...attributeLabels, defensa: 'Defensa' }
 
+/// Clases/especializaciones (2026-08-27, movida aquí desde EnciclopediaPanel.tsx en el roadmap de
+/// especialización 2026-09-01 para compartirla con el modal de elección obligatoria a nivel 10, sin
+/// duplicar el mismo formateo en dos sitios) — `Clase`/`Especializacion` (schema.prisma) son
+/// valores SNAKE_CASE (BERSERKER, MAESTRO_ARQUERO...); en vez de mantener un mapa a mano
+/// sincronizado con el enum del backend, se formatea genéricamente a Title Case con espacios.
+export function claseLabel(clase: string): string {
+  return clase.charAt(0) + clase.slice(1).toLowerCase()
+}
+
+export function especializacionLabel(especializacion: string): string {
+  return especializacion
+    .toLowerCase()
+    .split('_')
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ')
+}
+
 /// Rediseño del turno de combate (2026-07-28) — un color por atributo (tokens en index.css) para
 /// identificar el "tipo" de una habilidad de un vistazo. Clases completas y literales a propósito
 /// (no una plantilla `` `border-${attr}-500` ``): Tailwind solo genera CSS para clases que ve

@@ -10,7 +10,7 @@ import {
   type EnciclopediaItemInfo,
   type EnciclopediaResponse,
 } from '../../lib/api'
-import { attributeLabels } from '../../lib/dice'
+import { attributeLabels, especializacionLabel } from '../../lib/dice'
 import { secondaryAttributeLabels } from '../../lib/secondaryAttributes'
 import type { Attribute, RecipeStatusInfo, SecondaryAttribute } from '../../types'
 import { PanelEmptyState } from '../PanelEmptyState'
@@ -76,6 +76,10 @@ interface EnciclopediaPanelProps {
   recipesStatus: RecipeStatusInfo[]
   onInsert: (chip: { icon: string; label: string; description?: string; value?: string }) => void
   onDetail: (target: DetailTarget, onInsertForTarget?: () => void) => void
+  /// Roadmap de especialización (2026-09-01) — el modal de elección obligatoria a nivel 10 enlaza
+  /// "Ver en la Enciclopedia"; sin esto, el panel siempre abría en 'npcs' sin importar de dónde
+  /// venía el clic. Solo aplica al abrir el panel (no fuerza la pestaña en cada re-render).
+  initialCategory?: EnciclopediaCategory
 }
 
 // Buscador de la Enciclopedia (auditoría 2026-08-27) — quita acentos y normaliza mayúsculas para
@@ -85,17 +89,6 @@ function normalizeSearchText(text: string): string {
     .normalize('NFD')
     .replace(/[̀-ͯ]/g, '')
     .toLowerCase()
-}
-
-// Clases y especializaciones (2026-08-27) — `Especializacion` (schema.prisma) son 31 valores
-// SNAKE_CASE (BERSERKER, MAESTRO_ARQUERO...); en vez de mantener un mapa a mano sincronizado con
-// el enum del backend, se formatea genéricamente a Title Case con espacios.
-function especializacionLabel(especializacion: string): string {
-  return especializacion
-    .toLowerCase()
-    .split('_')
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(' ')
 }
 
 function groupBy<T>(list: T[], keyFor: (item: T) => string): Map<string, T[]> {
@@ -488,8 +481,8 @@ const CATEGORY_TABS: { id: EnciclopediaCategory; label: string; icon: string }[]
 // 2026-07-21, Nivel 2 de su roadmap): con 7 categorías y creciendo, una barra de tabs horizontal
 // ya rompía a 2 líneas — la Enciclopedia es el único panel con subnavegación interna, así que
 // merece su propio layout de dos columnas dentro del cajón.
-export function EnciclopediaPanel({ data, loading, recipesStatus, onInsert, onDetail }: EnciclopediaPanelProps) {
-  const [category, setCategory] = useState<EnciclopediaCategory>('npcs')
+export function EnciclopediaPanel({ data, loading, recipesStatus, onInsert, onDetail, initialCategory }: EnciclopediaPanelProps) {
+  const [category, setCategory] = useState<EnciclopediaCategory>(initialCategory ?? 'npcs')
   // Buscador (auditoría 2026-08-27) — se limpia al cambiar de categoría, mismo criterio que
   // cualquier filtro de lista: buscar "espada" en Objetos no debería seguir aplicado si luego se
   // entra en NPCs.

@@ -50,6 +50,7 @@ import { SaquearZonaModal } from '../components/SaquearZonaModal'
 import { HealSelectionModal } from '../components/HealSelectionModal'
 import { EntregaModal } from '../components/EntregaModal'
 import { AprenderOficioModal } from '../components/AprenderOficioModal'
+import { EspecializacionModal } from '../components/EspecializacionModal'
 import { inventoryCapacityFor, totalInventoryUnits } from '../lib/inventoryCapacity'
 import {
   requestTurnClassify,
@@ -72,6 +73,7 @@ import {
   getRecolectarLocalizado,
   resolveImageUrl,
   resolveDeath,
+  assignEspecializacion,
   type SaveDetail,
 } from '../lib/api'
 import { characterWaitingFlavor, combatWaitingFlavor, worldWaitingFlavor, useRotatingFlavor } from '../lib/waitingFlavor'
@@ -81,6 +83,7 @@ import type {
   ActiveEffect,
   Attribute,
   AttributeBlock,
+  Clase,
   CombatExchangeInfo,
   AgendaEntryInfo,
   EntornoTemporalInfo,
@@ -89,6 +92,7 @@ import type {
   CurrentLocationInfo,
   DestinationInfo,
   Dificultad,
+  Especializacion,
   EquipSlot,
   InitiativeRollInfo,
   InventoryItemInfo,
@@ -282,6 +286,12 @@ export function GameView() {
   const [busyActivity, setBusyActivity] = useState<string | null>(null)
   const [busyDuracionMinutos, setBusyDuracionMinutos] = useState<number | null>(null)
   const [activePanel, setActivePanel] = useState<PanelId | null>(null)
+  // Roadmap de especialización (2026-09-01) — "Ver en la Enciclopedia" desde el modal de elección
+  // obligatoria fuerza la pestaña 'classes' al abrir el panel. `enciclopediaOpenKey` fuerza un
+  // remount de EnciclopediaPanel (su categoría activa es estado interno, `initialCategory` solo se
+  // lee en el montaje) para que aplique cada vez que se pulsa el enlace, no solo la primera.
+  const [enciclopediaInitialCategory, setEnciclopediaInitialCategory] = useState<'npcs' | 'classes'>('npcs')
+  const [enciclopediaOpenKey, setEnciclopediaOpenKey] = useState(0)
   // Colapsar logs (2026-08-14, petición explícita: "que pueda colapsar el log de personaje a la
   // izquierda y que el de mundo ocupe todo... y al revés... lo mismo con las de combate") — un
   // solo estado tri-valuado en vez de dos booleanos independientes, para que nunca puedan quedar
@@ -335,6 +345,11 @@ export function GameView() {
   // Muerte permanente, botón Aceptar/Reintentar (2026-08-31) — mismo patrón que `endedAt`.
   const [pendingDeathResolution, setPendingDeathResolution] = useState(false)
   const [resolvingDeath, setResolvingDeath] = useState(false)
+  // Elección obligatoria de especialización a nivel 10 (2026-09-01) — mismo patrón que
+  // pendingDeathResolution: bloquea el composer hasta resolver.
+  const [pendingEspecializacionChoice, setPendingEspecializacionChoice] = useState(false)
+  const [especializacionesDisponibles, setEspecializacionesDisponibles] = useState<{ especializacion: Especializacion; resumenMecanico: string }[]>([])
+  const [clase, setClase] = useState<Clase | null>(null)
   const [combateIniciado, setCombateIniciado] = useState<{ npcs: NpcInSceneInfo[] } | null>(null)
   // Rediseño del turno de combate (2026-07-29, "quiero que sea más claro cuando es turno de
   // ataque... indicándome qué salió en los dados") — tirada real de iniciativa del último turno
@@ -511,6 +526,9 @@ export function GameView() {
     setDificultad(save.dificultad)
     setEndedAt(save.endedAt)
     setPendingDeathResolution(save.pendingDeathResolution)
+    setClase(save.clase)
+    setPendingEspecializacionChoice(save.pendingEspecializacionChoice)
+    setEspecializacionesDisponibles(save.especializacionesDisponibles ?? [])
     setQuests(save.quests)
     setChapters(save.chapters)
     // Bug real (2026-07-23, "revisar partida"): antes `combateIniciado` solo se fijaba con la
@@ -1243,6 +1261,22 @@ export function GameView() {
     }
   }
 
+  // Elección obligatoria de especialización a nivel 10 (2026-09-01) — mismo criterio que
+  // handleResolveDeath: recarga la partida entera para reflejar las habilidades nuevas concedidas
+  // por el backend, en vez de reconstruir el estado a mano.
+  async function handleAssignEspecializacion(especializacion: Especializacion) {
+    if (!saveId) return
+    await assignEspecializacion(saveId, especializacion)
+    const save = await getSave(saveId)
+    syncFromSave(save)
+  }
+
+  function handleOpenEnciclopediaClasses() {
+    setEnciclopediaInitialCategory('classes')
+    setEnciclopediaOpenKey((k) => k + 1)
+    setActivePanel('enciclopedia')
+  }
+
   async function handleSpendAttributePoint(attribute: Attribute) {
     if (!saveId) return
     try {
@@ -1734,6 +1768,19 @@ export function GameView() {
         <KingdomFoundingModal info={kingdomFoundedInfo} onCancel={() => setKingdomFoundedInfo(null)} onConfirm={handleFundarReino} />
       )}
 
+      {/* Elección obligatoria de especialización a nivel 10 (2026-09-01) — overlay bloqueante,
+          mismo criterio de prioridad que el resto de estados excluyentes de la partida: la muerte
+          permanente/fin de partida ganan si coinciden (no debería pasar de verdad: resolver una
+          muerte no sube de nivel), especialización solo se muestra si ninguna de esas dos aplica. */}
+      {pendingEspecializacionChoice && !pendingDeathResolution && !endedAt && clase && (
+        <EspecializacionModal
+          clase={clase}
+          especializaciones={especializacionesDisponibles}
+          onConfirm={handleAssignEspecializacion}
+          onOpenEnciclopedia={handleOpenEnciclopediaClasses}
+        />
+      )}
+
       {harvestModal && saveId && characterAttributes && (
         <HarvestSelectionModal
           saveId={saveId}
@@ -1926,11 +1973,13 @@ export function GameView() {
           )}
           {activePanel === 'enciclopedia' && (
             <EnciclopediaPanel
+              key={enciclopediaOpenKey}
               data={enciclopediaData}
               loading={enciclopediaLoading}
               recipesStatus={recipesStatus}
               onInsert={handleEnciclopediaInsert}
               onDetail={handleEnciclopediaDetail}
+              initialCategory={enciclopediaInitialCategory}
             />
           )}
           {activePanel === 'habilidades' && (

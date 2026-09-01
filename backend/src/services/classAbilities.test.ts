@@ -151,4 +151,9 @@ describe('resumenMecanicoEspecializacion', () => {
     const resumen = resumenMecanicoEspecializacion('GUERRERO', 'BERSERKER');
     expect(resumen).toMatch(/Fuerza|Carisma/);
   });
+
+  it('Domador (solo "Compañero cazador", category:general, sin rol/effects/preferredAttribute) cae a la description real en vez de un mensaje vacío', () => {
+    const resumen = resumenMecanicoEspecializacion('CAZADOR', 'DOMADOR');
+    expect(resumen).toContain('Desbloquea un slot de mascota');
+  });
 });
