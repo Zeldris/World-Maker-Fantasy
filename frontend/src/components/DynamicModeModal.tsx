@@ -69,9 +69,22 @@ export function DynamicModeModal({ turno, busy, error, imageUrl, onElegir, onCer
         {/* B.8 (checklist consolidado 2026-08-27, mitad pendiente) — la transición ENTRE vueltas ya
             estaba resuelta (`key={turno.vuelta}`/`animate-entry-in`); faltaba el indicador MIENTRAS
             se espera la siguiente vuelta (Ollama puede tardar varios segundos y `busy` solo
-            deshabilitaba los botones, sin ninguna señal visual de que algo está en curso). */}
+            deshabilitaba los botones, sin ninguna señal visual de que algo está en curso).
+            UX 2026-09-01 (hallazgo jugando en vivo): un simple `animate-pulse` en el texto entero
+            (fade in/out en bloque, decenas de segundos por vuelta) no comunica "sigue en marcha"
+            con claridad — se confunde con "algo se ha quedado colgado". Reutiliza el mismo patrón
+            visual que ya usa LogPanel.tsx para la tarjeta "El Narrador escribe"/"El mundo se
+            mueve" (`thinking-sheen`, un barrido de luz en bucle sobre la tarjeta, diseñado a
+            propósito para esperas largas — "algo se mueve aunque tarde minutos") en vez de
+            inventar un spinner nuevo. */}
         {busy && (
-          <p className="animate-pulse text-2xs italic text-wood-500">Resolviendo...</p>
+          <div className="relative overflow-hidden rounded-lg border border-dashed border-accent2-600/40 bg-accent2-500/5 px-3 py-2">
+            <div className="thinking-sheen" />
+            <div className="flex items-center gap-2">
+              <span className="h-1.5 w-1.5 shrink-0 animate-pulse rounded-full bg-accent2-400" />
+              <p className="text-2xs italic text-wood-400">Resolviendo...</p>
+            </div>
+          </div>
         )}
         {error && <p className="text-xs text-red-400">{error}</p>}
         <div className="flex flex-col gap-2">

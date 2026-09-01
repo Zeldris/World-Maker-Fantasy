@@ -443,6 +443,20 @@ export const LogPanel = memo(function LogPanel({
                   </p>
                 </div>
               )}
+              {/* UX 2026-09-01 (hallazgo jugando en vivo): antes el XP de hito/capítulo se sumaba
+                  sin más al chip "+N XP" de abajo — si la tirada del turno FALLABA pero el hito
+                  era grande (p.ej. "capitulo", 500 XP), el jugador veía un "+500 XP" pegado a un
+                  "Fallo" en rojo, como si el juego premiara el fracaso. Caja propia, mismo patrón
+                  visual que "Misión completada" de arriba, para que quede claro que ese XP viene
+                  de otra fuente (progreso de historia/Reino) y no de lo que acaba de intentar. */}
+              {!!entry.xpHitoDelta && (
+                <div className="mt-2 rounded-lg border border-quest-600/50 bg-quest-500/10 px-2.5 py-2">
+                  <p className="flex items-center gap-1.5 text-2xs font-semibold uppercase tracking-[0.1em] text-quest-400">
+                    <span aria-hidden="true">📖</span>
+                    <span>{entry.xpHitoLabel ?? 'Hito alcanzado'} (+{entry.xpHitoDelta} XP)</span>
+                  </p>
+                </div>
+              )}
               {entry.entityBanner && (
                 <button
                   type="button"
@@ -461,9 +475,13 @@ export const LogPanel = memo(function LogPanel({
               )}
               <div className="mt-1.5 flex items-center gap-2">
                 <p className="text-2xs tracking-wide text-wood-400">{entry.timeLabel}</p>
-                {!!entry.xpDelta && (
+                {/* UX 2026-09-01: `xpDelta` es el TOTAL del turno (tirada + hito); la parte de
+                    hito ya tiene su propia caja arriba (📖), así que aquí solo se muestra el
+                    resto — evita contar el mismo XP dos veces y, si el resto es 0 (turno fallido
+                    con solo hito detrás), no pinta un "+0 XP" confuso junto al resultado. */}
+                {!!entry.xpDelta && entry.xpDelta - (entry.xpHitoDelta ?? 0) > 0 && (
                   <span className="rounded-full border border-accent-600/50 bg-accent-500/10 px-1.5 py-0.5 font-mono text-2xs text-accent-300">
-                    +{entry.xpDelta} XP
+                    +{entry.xpDelta - (entry.xpHitoDelta ?? 0)} XP
                   </span>
                 )}
                 {/* Feedback de UX (2026-08-30, "falta que la suma de repu o la perdida se refleje

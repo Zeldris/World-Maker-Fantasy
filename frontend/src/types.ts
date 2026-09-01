@@ -779,4 +779,9 @@ export interface ProgressionResult {
   newLevel: number
   leveledUp: boolean
   attributePointsGained: number
+  /// Espejo de `ProgressionResult` en el backend (progression.ts) — desglose opcional de `xpDelta`
+  /// entre XP de tirada normal y XP de hito/capítulo (UX 2026-09-01).
+  xpTirada?: number
+  xpHito?: number
+  xpHitoLabel?: string | null
 }

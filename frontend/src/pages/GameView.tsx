@@ -1566,7 +1566,14 @@ export function GameView() {
               disabled={combat.fleeingPreCombat}
               className="animate-alert-pulse rounded-lg border border-red-700 bg-danger-500/10 px-3 py-1.5 text-xs font-bold uppercase tracking-wide text-danger-400 shadow-[0_0_14px_-4px_color-mix(in_srgb,var(--color-danger-500)_70%,transparent)] transition-colors hover:bg-danger-500/20 disabled:opacity-50"
             >
-              ⚔️ Combatir
+              {/* UX 2026-09-01 (hallazgo jugando en vivo): el botón siempre lleva ⚔️ — nunca hubo
+                  aquí una condición que cambiara a ❌ (revisado, no existe en ningún componente de
+                  combate; el ❌ visto en partida real fue casi seguro un fallback de fuente del
+                  sistema sin glifo de espada, no un icono a propósito del juego). El botón nunca
+                  está deshabilitado por dificultad — solo por estar ya huyendo — así que ⚠️ en
+                  dificultad alta refuerza "puedes combatir pero es arriesgado" sin la ambigüedad
+                  de "no disponible" que tendría un aspa junto al texto "Dificultad" de arriba. */}
+              {combat.combatDifficulty?.label === 'Difícil' || combat.combatDifficulty?.label === 'Muy difícil' ? '⚠️' : '⚔️'} Combatir
             </button>
             <button type="button"
               onClick={combat.handleFleeAttempt}

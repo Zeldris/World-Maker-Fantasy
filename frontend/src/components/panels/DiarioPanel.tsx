@@ -105,9 +105,18 @@ export function DiarioPanel({ saveId, chapters = [] }: DiarioPanelProps) {
                 <span className="text-2xs font-semibold uppercase tracking-[0.14em] text-wood-400">{channelLabel[entry.channel]}</span>
                 <span className="text-wood-600">·</span>
                 <span className="text-2xs tracking-wide text-wood-400">{entry.timeLabel}</span>
-                {!!entry.xpDelta && (
+                {/* UX 2026-09-01: `xpDelta` es el TOTAL del turno (tirada + hito); igual que en
+                    LogPanel, aquí solo se muestra el resto tras quitar la parte de hito (que
+                    tiene su propio chip 📖 al lado) — evita contar el mismo XP dos veces y un
+                    "+0 XP" confuso en un turno fallido con solo hito detrás. */}
+                {!!entry.xpDelta && entry.xpDelta - (entry.xpHitoDelta ?? 0) > 0 && (
                   <span className="rounded-full border border-accent-600/50 bg-accent-500/10 px-1.5 py-0.5 font-mono text-2xs text-accent-300">
-                    +{entry.xpDelta} XP
+                    +{entry.xpDelta - (entry.xpHitoDelta ?? 0)} XP
+                  </span>
+                )}
+                {!!entry.xpHitoDelta && (
+                  <span className="rounded-full border border-quest-600/50 bg-quest-500/10 px-1.5 py-0.5 font-mono text-2xs text-quest-400">
+                    📖 {entry.xpHitoLabel ?? 'Hito'} (+{entry.xpHitoDelta} XP)
                   </span>
                 )}
               </div>

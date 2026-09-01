@@ -330,6 +330,10 @@ export function useTurnFlow(params: UseTurnFlowParams) {
             roll,
             createdAt: new Date().toISOString(),
             xpDelta: progression.xpDelta > 0 ? progression.xpDelta : undefined,
+            // UX 2026-09-01 (ver comentario del mismo campo en types.ts § LogEntry) — separa el
+            // chip de hito/capítulo del de XP normal en vez de sumarlos en un único "+N XP".
+            xpHitoDelta: progression.xpHito && progression.xpHito > 0 ? progression.xpHito : undefined,
+            xpHitoLabel: progression.xpHitoLabel ?? undefined,
             entityBanner,
             newQuest: newQuestInfo ?? undefined,
             questOffer: newQuestOfferInfo ?? undefined,

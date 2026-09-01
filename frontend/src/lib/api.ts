@@ -713,6 +713,9 @@ export interface DiarioEntry {
   roll?: RollInfo
   isPlayerAction?: boolean
   xpDelta?: number
+  /// Desglose de `xpDelta` (UX 2026-09-01) — ver el mismo campo en `LogEntry` (types.ts).
+  xpHitoDelta?: number
+  xpHitoLabel?: string
   createdAt: string
   /// Día de ficción real (1-indexado, ver worldClock.ts) — para agrupar el registro completo por
   /// día en vez de una lista plana (petición explícita, 2026-07-24). Nunca lleva banner de

@@ -166,6 +166,52 @@ export function ZonaPanel({ saveId }: ZonaPanelProps) {
             </svg>
           </div>
         )}
+        {/* UX 2026-09-01 (hallazgo jugando en vivo): el mapa usa 4 formas (círculo=Fauna,
+            triángulo=NPC, cuadrado=Edificio, rombo=Recurso) y 4 colores de reputación con la
+            facción del punto, pero no explicaba el código a una jugadora nueva. `<details>` nativo
+            — colapsable sin JS extra, cerrado por defecto para no competir visualmente con el
+            mapa; mismos `COLOR_HEX`/`TIPO_LABEL` que usa el propio SVG de arriba, así que nunca
+            puede desincronizarse de lo que de verdad se pinta. Formas dibujadas con el mismo
+            `ZonePointShape` de los pines reales, a tamaño de leyenda (viewBox propio 20×20), en
+            vez de reconstruir cada silueta a mano en CSS. */}
+        {data.puntos.length > 0 && (
+          <details className="group rounded-lg border border-iron-700 bg-wood-950/40 text-2xs text-wood-400">
+            <summary className="tactile flex cursor-pointer select-none items-center gap-1.5 px-3 py-1.5 font-semibold uppercase tracking-[0.1em] text-wood-500 marker:content-none">
+              <span aria-hidden="true" className="transition-transform group-open:rotate-90">▸</span>
+              Leyenda del mapa
+            </summary>
+            <div className="flex flex-col gap-2 border-t border-iron-800 px-3 py-2">
+              <div className="flex flex-wrap gap-x-4 gap-y-1.5">
+                {(Object.keys(TIPO_LABEL) as ZonePointInfo['tipo'][]).map((tipo) => (
+                  <span key={tipo} className="flex items-center gap-1.5">
+                    <svg viewBox="0 0 24 24" width={14} height={14} aria-hidden="true">
+                      <ZonePointShape tipo={tipo} x={12} y={12} color="#8a8578" />
+                    </svg>
+                    {TIPO_LABEL[tipo]}
+                  </span>
+                ))}
+              </div>
+              <div className="flex flex-wrap gap-x-4 gap-y-1.5">
+                <span className="flex items-center gap-1.5">
+                  <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: COLOR_HEX.ALIADO }} />
+                  Aliado
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: COLOR_HEX.NEUTRO }} />
+                  Neutro
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: COLOR_HEX.ENEMIGO }} />
+                  Enemigo
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: COLOR_HEX.SIN_FACCION }} />
+                  Sin facción
+                </span>
+              </div>
+            </div>
+          </details>
+        )}
         {data.puntos.length > 0 && (
           <div className="flex flex-col gap-1.5">
             {data.puntos.map((p) => (
