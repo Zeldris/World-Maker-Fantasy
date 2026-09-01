@@ -2634,6 +2634,78 @@ export const npcs: NpcInput[] = [
     ataqueNatural: 'Descarga de energía arcana concentrada a través de la talla del tótem',
     loadout: [],
   },
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // NPC DE PRUEBA POR RAZA (2026-09-01, petición explícita: "añade ya un npc genérico para cada
+  // raza para este tipo de pruebas") — uno por raza jugable hoy sin representante combatible fácil
+  // de forzar (Goirnte y Faerus tenían pasivas raciales sin confirmar en pantalla por falta de
+  // escenario, no por bug; Faerus no tenía NINGÚN NPC en todo el catálogo). `nucleoJugable: false`
+  // (mismo criterio que Sella Marn) — no forman parte de ninguna trama real, viven en Las Agujas
+  // Imán (hito sin dueño ni facción) solo para poder forzarlos en un CombatEncounter de prueba sin
+  // tocar contenido narrativo real. `temperamento: 'AGRESIVO'` para poder combatirlos directo, sin
+  // depender de random de hostilidad. Clase = la exclusiva de su propia raza (mismo criterio que
+  // el resto del catálogo humanoide), nivel 1 (tronco común real ya construido para las 3).
+  // ══════════════════════════════════════════════════════════════════════════
+
+  {
+    slug: 'goirnte-renegado',
+    name: 'Goirnte Renegado',
+    kind: 'PLANTILLA',
+    nucleoJugable: false,
+    aliases: ['goirnte renegado', 'renegado'],
+    faction: null,
+    role: 'NPC de prueba — Goirnte hostil sin trama, para verificar mecánica de raza/clase en vivo',
+    articulo: 'el',
+    level: 1,
+    attributes: { fuerza: 10, destreza: 8, constitucion: 12, inteligencia: 8, voluntad: 8, carisma: 6, magia: 2 },
+    bio: 'Un Goirnte expulsado de la Meseta del Orden por una deuda de honor que nunca reconoció — deambula solo por Las Agujas Imán, armado y desconfiado de cualquiera que se acerque.',
+    personality: 'Cortante, calculador, sin paciencia para explicaciones.',
+    raza: 'goirntes',
+    clase: 'CABALLERO',
+    especializacion: 'CABALLERO_DEL_VALOR',
+    temperamento: 'AGRESIVO',
+    loadout: [],
+  },
+
+  {
+    slug: 'faerus-erratico',
+    name: 'Faerus Errático',
+    kind: 'PLANTILLA',
+    nucleoJugable: false,
+    aliases: ['faerus erratico', 'errático'],
+    faction: null,
+    role: 'NPC de prueba — Faerus hostil sin trama, para verificar mecánica de raza/clase en vivo',
+    articulo: 'el',
+    level: 1,
+    attributes: { fuerza: 8, destreza: 12, constitucion: 8, inteligencia: 6, voluntad: 6, carisma: 6, magia: 6 },
+    bio: 'Un Faerus separado de su manada, errante entre Las Agujas Imán — el campo magnético confunde su olfato y lo deja al borde de la agresión constante.',
+    personality: 'Nervioso, reactivo, ataca antes de que le ataquen.',
+    raza: 'faerus',
+    clase: 'DRUIDA',
+    especializacion: 'CAMBIAFORMAS',
+    temperamento: 'AGRESIVO',
+    loadout: [],
+  },
+
+  {
+    slug: 'nabieus-enloquecido',
+    name: 'Nabieus Enloquecido',
+    kind: 'PLANTILLA',
+    nucleoJugable: false,
+    aliases: ['nabieus enloquecido', 'enloquecido'],
+    faction: null,
+    role: 'NPC de prueba — Nabieus hostil sin trama, para verificar mecánica de raza/clase en vivo',
+    articulo: 'el',
+    level: 1,
+    attributes: { fuerza: 6, destreza: 10, constitucion: 6, inteligencia: 12, voluntad: 8, carisma: 4, magia: 8 },
+    bio: 'Un Nabieus que perdió el contacto con El Margen Silencioso hace demasiado — su calma característica se rompió en algo más errático e imprevisible, sin dejar de ser frío y calculador a su manera.',
+    personality: 'Impredecible, frío pese a todo, no negocia.',
+    raza: 'nabieus',
+    clase: 'SEGADOR',
+    especializacion: 'PARCA',
+    temperamento: 'AGRESIVO',
+    loadout: [],
+  },
 ];
 
 export interface ItemCatalogInput {
