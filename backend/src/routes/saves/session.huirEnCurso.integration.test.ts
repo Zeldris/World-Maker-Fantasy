@@ -126,4 +126,35 @@ describe('/combat/huir-en-curso', () => {
     const saveAfter = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
     expect(saveAfter.pendingCombatNpcSlugs).toEqual([npcSlug, 'otro-npc-que-se-unio']);
   }, 20_000);
+
+  it('BUG CERRADO (auditoría 2026-09-01): si la propia tirada de huida FALLA con una carrera activa, también aborta con 409 en vez de aplicar el golpe directo sobre un combate ya cambiado', async () => {
+    // Antes de este fix, el guard `if (roll.success && !mismoSet)` solo abortaba cuando la tirada
+    // tenía éxito — con un roll fallido y la misma carrera, el golpe directo se aplicaba siempre
+    // (condicionFisica degradada, LogEntry creado) aunque `pendingCombatNpcSlugs` ya hubiera
+    // cambiado por otra petición concurrente (p.ej. la mitad exitosa del mismo doble clic).
+    vi.spyOn(Math, 'random').mockReturnValue(0.01); // d20 bajo, fallo garantizado
+    const app = await buildApp();
+    const logCountAntes = await prisma.logEntry.count({ where: { saveId } });
+
+    let resolveGotLock!: () => void;
+    const gotLock = new Promise<void>((resolve) => { resolveGotLock = resolve; });
+    const competidor = prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT id FROM "Save" WHERE id = ${saveId} FOR UPDATE`;
+      resolveGotLock();
+      await new Promise((resolve) => setTimeout(resolve, 80));
+      await tx.save.update({ where: { id: saveId }, data: { pendingCombatNpcSlugs: [npcSlug, 'otro-npc-que-se-unio'] } });
+    });
+    await gotLock;
+    const huirPromise = app.inject({ method: 'POST', url: `/saves/${saveId}/combat/huir-en-curso` });
+
+    const [huirRes] = await Promise.all([huirPromise, competidor]);
+
+    expect(huirRes.statusCode).toBe(409);
+    const logCountDespues = await prisma.logEntry.count({ where: { saveId } });
+    expect(logCountDespues).toBe(logCountAntes);
+    const saveAfter = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
+    // La condición física NO se degradó — el golpe directo del fallo nunca se aplicó.
+    expect(saveAfter.condicionFisica).toBe('ILESO');
+    expect(saveAfter.pendingCombatNpcSlugs).toEqual([npcSlug, 'otro-npc-que-se-unio']);
+  }, 20_000);
 });

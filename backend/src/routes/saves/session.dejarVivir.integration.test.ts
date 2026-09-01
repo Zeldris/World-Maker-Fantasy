@@ -82,12 +82,18 @@ describe('POST /saves/:id/combat/dejar-vivir/:npcSlug', () => {
     expect(logEntry.text).toContain('deja con vida a Orco enfurecido');
   });
 
-  it('dejar vivir dos veces al mismo NPC no revienta (ya no está en pendingCombatNpcSlugs, pero sigue CONVALECIENTE)', async () => {
+  it('BUG CERRADO (auditoría 2026-09-01, condición de carrera): dejar vivir dos veces al mismo NPC rechaza la segunda con 409 en vez de duplicar el LogEntry', async () => {
+    // Antes de este fix, un segundo "dejar vivir" (doble clic, o replay) devolvía 200 igual que el
+    // primero — sin comparar el slug ya ausente de pendingCombatNpcSlugs contra el estado fresco
+    // dentro de la transacción, creaba un LogEntry duplicado narrando la misma decisión dos veces.
+    const logCountAntes = await prisma.logEntry.count({ where: { saveId } });
     const app = await buildApp();
     const res = await app.inject({ method: 'POST', url: `/saves/${saveId}/combat/dejar-vivir/${npcSlug}` });
-    expect(res.statusCode).toBe(200);
+    expect(res.statusCode).toBe(409);
     const save = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
     expect(save.pendingCombatNpcSlugs).toEqual(['otro-npc-cualquiera']);
+    const logCountDespues = await prisma.logEntry.count({ where: { saveId } });
+    expect(logCountDespues).toBe(logCountAntes);
   });
 });
 
@@ -171,4 +177,30 @@ describe('POST /saves/:id/combat/dejar-vivir/:npcSlug con participantId (combate
     // CONVALECIENTE, confirmando que no hay contaminación cruzada entre los dos participantes.
     expect(res.statusCode).toBe(400);
   });
+
+  it('BUG CERRADO (auditoría 2026-09-01, condición de carrera): dos "dejar vivir" simultáneos sobre el mismo participante crean como mucho 1 LogEntry', async () => {
+    // Nuevo objetivo CONVALECIENTE propio para este test (independiente de `objetivo`, ya
+    // dismissed por el primer test de este describe) — dos peticiones reales concurrentes vía
+    // Promise.all, sin mockear la carrera a mano: solo una debe ganar (200), la otra debe rechazarse
+    // con 409 sin duplicar el LogEntry, gracias a la relectura de `dismissedGrupo` dentro de la
+    // transacción (antes de este fix, ninguna de las dos comprobaba nada y ambas escribían).
+    const enemigo = await prisma.npc.findFirstOrThrow({ where: { slug: 'aullador-rojo' } });
+    const tercero = await prisma.combatParticipant.create({
+      data: { encounterId, bando: 'ENEMIGO', tipo: 'NPC', npcId: enemigo.id, npcScope: 'itinerante-dejar-vivir-grupo-race', condicionFisicaGrupo: 'CONVALECIENTE' },
+    });
+    const logCountAntes = await prisma.logEntry.count({ where: { saveId } });
+    const app = await buildApp();
+
+    const [resA, resB] = await Promise.all([
+      app.inject({ method: 'POST', url: `/saves/${saveId}/combat/dejar-vivir/aullador-rojo`, payload: { participantId: tercero.id } }),
+      app.inject({ method: 'POST', url: `/saves/${saveId}/combat/dejar-vivir/aullador-rojo`, payload: { participantId: tercero.id } }),
+    ]);
+
+    const codes = [resA.statusCode, resB.statusCode].sort();
+    expect(codes).toEqual([200, 409]);
+    const logCountDespues = await prisma.logEntry.count({ where: { saveId } });
+    expect(logCountDespues).toBe(logCountAntes + 1);
+    const terceroFresco = await prisma.combatParticipant.findUniqueOrThrow({ where: { id: tercero.id } });
+    expect(terceroFresco.dismissedGrupo).toBe(true);
+  }, 20_000);
 });

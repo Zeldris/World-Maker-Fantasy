@@ -86,6 +86,40 @@ describe('/combat/flee: condición de carrera con una escritura paralela de pend
     expect(saveAfter.pendingCombatNpcSlugs).toEqual([npcSlug, 'otro-npc-que-se-unio']);
   }, 20_000);
 
+  it('BUG CERRADO (auditoría 2026-09-01): si la propia tirada de huida FALLA, también se compara contra el estado fresco antes de escribir el LogEntry — antes se persistía siempre, sin comprobar', async () => {
+    // Antes de este fix, el guard `if (roll.success && !mismoSet)` solo abortaba cuando la tirada
+    // TENÍA éxito — una tirada fallida se persistía siempre, sin comparar contra pendingCombatNpcSlugs
+    // fresco, aunque el combate ya hubiera cambiado (p.ej. resuelto por la otra mitad de un doble
+    // clic). Esta prueba fuerza un roll fallido (destreza baja) con la misma carrera que el test de
+    // arriba, y confirma que ahora también aborta con 409 sin crear el LogEntry.
+    await prisma.save.update({ where: { id: saveId }, data: { pendingCombatNpcSlugs: [npcSlug], attributes: { fuerza: 1, destreza: 1, constitucion: 1, inteligencia: 1, voluntad: 1, carisma: 1, magia: 1 } } });
+    vi.spyOn(Math, 'random').mockReturnValue(0.01); // roll de huida garantizado en fallo (d20 bajo)
+    const app = await buildApp();
+    const logCountAntes = await prisma.logEntry.count({ where: { saveId } });
+
+    let resolveGotLock!: () => void;
+    const gotLock = new Promise<void>((resolve) => { resolveGotLock = resolve; });
+    const competidor = prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT id FROM "Save" WHERE id = ${saveId} FOR UPDATE`;
+      resolveGotLock();
+      await new Promise((resolve) => setTimeout(resolve, 80));
+      await tx.save.update({ where: { id: saveId }, data: { pendingCombatNpcSlugs: [npcSlug, 'otro-npc-que-se-unio'] } });
+    });
+    await gotLock;
+    const fleePromise = app.inject({ method: 'POST', url: `/saves/${saveId}/combat/flee` });
+
+    const [fleeRes] = await Promise.all([fleePromise, competidor]);
+
+    expect(fleeRes.statusCode).toBe(409);
+    const logCountDespues = await prisma.logEntry.count({ where: { saveId } });
+    expect(logCountDespues).toBe(logCountAntes);
+    const saveAfter = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
+    expect(saveAfter.pendingCombatNpcSlugs).toEqual([npcSlug, 'otro-npc-que-se-unio']);
+
+    // Restaura atributos altos para no afectar al resto de tests de este describe.
+    await prisma.save.update({ where: { id: saveId }, data: { attributes: { fuerza: 10, destreza: 18, constitucion: 10, inteligencia: 10, voluntad: 10, carisma: 10, magia: 10 } } });
+  }, 20_000);
+
   it('sin ninguna carrera, un roll de huida exitoso sigue limpiando pendingCombatNpcSlugs con normalidad', async () => {
     vi.spyOn(Math, 'random').mockReturnValue(0.99);
     await prisma.save.update({ where: { id: saveId }, data: { pendingCombatNpcSlugs: [npcSlug] } });

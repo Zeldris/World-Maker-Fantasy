@@ -154,21 +154,27 @@ export async function sessionRoutes(app: FastifyInstance) {
     ];
     const text = roll.success ? textosExitoPre[roll.roll % textosExitoPre.length] : textosFalloPre[roll.roll % textosFalloPre.length];
 
-    // Condición de carrera real (auditoría de código 2026-08-25): un turno real de `/turn/narrate`
-    // (protegido por `claimTurnInFlight`) puede estar resolviendo un intercambio de combate en
-    // paralelo y actualizando `pendingCombatNpcSlugs` (nuevo NPC entra en combate, o cambia el set)
-    // justo en la ventana entre la lectura de arriba y este `update` — sin bloquear la fila, esa
-    // escritura paralela se perdía en silencio bajo el `pendingCombatNpcSlugs: []` de huir. Se
-    // bloquea la fila de `Save` (`SELECT ... FOR UPDATE`, mismo patrón que `progression.ts`/
-    // `companeros.ts`/`cazar.ts`) y solo se limpia si el set sigue siendo EXACTAMENTE el mismo que
-    // se leyó al principio — si cambió entre medias, se aborta con 409 en vez de pisarlo.
+    // Condición de carrera real (auditoría de código 2026-08-25, ampliada 2026-09-01): un turno
+    // real de `/turn/narrate` (protegido por `claimTurnInFlight`) puede estar resolviendo un
+    // intercambio de combate en paralelo y actualizando `pendingCombatNpcSlugs` (nuevo NPC entra en
+    // combate, o cambia el set) justo en la ventana entre la lectura de arriba y este `update` —
+    // sin bloquear la fila, esa escritura paralela se perdía en silencio bajo el
+    // `pendingCombatNpcSlugs: []` de huir. Se bloquea la fila de `Save` (`SELECT ... FOR UPDATE`,
+    // mismo patrón que `progression.ts`/`companeros.ts`/`cazar.ts`) y solo se limpia si el set
+    // sigue siendo EXACTAMENTE el mismo que se leyó al principio — si cambió entre medias, se
+    // aborta con 409 en vez de pisarlo.
+    //
+    // Bug real (auditoría 2026-09-01, confirmado con 2 peticiones simultáneas): el guard de arriba
+    // solo comprobaba `mismoSet` cuando `roll.success` era true — una segunda petición cuya tirada
+    // fallaba se persistía SIEMPRE, sin comparar contra el estado fresco, aunque la primera ya
+    // hubiera resuelto el mismo intento de huida con éxito. Ahora se compara siempre.
     const outcome = await prisma.$transaction(async (tx) => {
       const [locked] = await tx.$queryRaw<{ pendingCombatNpcSlugs: string[] | null }[]>`
         SELECT "pendingCombatNpcSlugs" FROM "Save" WHERE id = ${save.id} FOR UPDATE
       `;
       const freshSlugs = locked.pendingCombatNpcSlugs ?? [];
       const mismoSet = freshSlugs.length === pendingSlugs.length && freshSlugs.every((s) => pendingSlugs.includes(s));
-      if (roll.success && !mismoSet) return { kind: 'cambiado' as const };
+      if (!mismoSet) return { kind: 'cambiado' as const };
 
       await tx.logEntry.create({ data: { saveId: save.id, channel: 'CHARACTER', text, timeLabel, roll: roll as unknown as Prisma.InputJsonValue } });
       if (roll.success) await tx.save.update({ where: { id: save.id }, data: { pendingCombatNpcSlugs: [] } });
@@ -239,15 +245,17 @@ export async function sessionRoutes(app: FastifyInstance) {
     ];
     const text = roll.success ? textosExito[roll.roll % textosExito.length] : textosFallo[roll.roll % textosFallo.length];
 
-    // Mismo candado que /combat/flee (auditoría de código 2026-08-25) — un turno real de
-    // /turn/narrate en paralelo puede estar actualizando `pendingCombatNpcSlugs` justo ahora.
+    // Mismo candado que /combat/flee (auditoría de código 2026-08-25, mismo fix ampliado
+    // 2026-09-01: comparar `mismoSet` siempre, no solo cuando la tirada tiene éxito — ver comentario
+    // completo en /combat/flee) — un turno real de /turn/narrate en paralelo puede estar
+    // actualizando `pendingCombatNpcSlugs` justo ahora.
     const outcomeEnCurso = await prisma.$transaction(async (tx) => {
       const [locked] = await tx.$queryRaw<{ pendingCombatNpcSlugs: string[] | null }[]>`
         SELECT "pendingCombatNpcSlugs" FROM "Save" WHERE id = ${save.id} FOR UPDATE
       `;
       const freshSlugs = locked.pendingCombatNpcSlugs ?? [];
       const mismoSet = freshSlugs.length === pendingSlugs.length && freshSlugs.every((s) => pendingSlugs.includes(s));
-      if (roll.success && !mismoSet) return { kind: 'cambiado' as const };
+      if (!mismoSet) return { kind: 'cambiado' as const };
 
       await tx.logEntry.create({ data: { saveId: save.id, channel: 'CHARACTER', text, timeLabel, roll: roll as unknown as Prisma.InputJsonValue } });
       await tx.save.update({
@@ -311,10 +319,23 @@ export async function sessionRoutes(app: FastifyInstance) {
 
         const timeLabel = save.worldState?.fictionalDateLabel ?? 'Día 1, mañana';
         const text = `${save.characterName} deja con vida a ${npc.name}, convaleciente en el suelo — se aparta sin darle el golpe final.`;
+        // Condición de carrera real (auditoría 2026-09-01): sin releer, un doble clic simultáneo
+        // pasaba los dos el guard de `condicionReal !== 'CONVALECIENTE'` de arriba (leído ANTES de
+        // esta transacción) y creaba 2 LogEntry duplicados narrando la misma decisión dos veces.
+        // `SELECT ... FOR UPDATE` sobre la fila del participante (mismo patrón que `Save` en
+        // /combat/flee) — sin el lock explícito, dos transacciones concurrentes pueden leer
+        // `dismissedGrupo: false` ANTES de que ninguna escriba, dejando pasar a las dos.
         const logEntry = await prisma.$transaction(async (tx) => {
+          const [locked] = await tx.$queryRaw<{ dismissedGrupo: boolean | null }[]>`
+            SELECT "dismissedGrupo" FROM "CombatParticipant" WHERE id = ${participantId} FOR UPDATE
+          `;
+          if (locked.dismissedGrupo) return null;
           await tx.combatParticipant.update({ where: { id: participantId }, data: { dismissedGrupo: true } });
           return tx.logEntry.create({ data: { saveId: save.id, channel: 'CHARACTER', text, timeLabel } });
         });
+        if (!logEntry) {
+          return reply.status(409).send({ error: 'Ya se dejó con vida a este combatiente.' });
+        }
         return { npcSlug: npc.slug, participantId, logEntry: { id: logEntry.id, text, timeLabel, createdAt: logEntry.createdAt.toISOString() } };
       }
 
@@ -329,15 +350,27 @@ export async function sessionRoutes(app: FastifyInstance) {
 
       // Mismo candado que /combat/flee (auditoría de código 2026-08-25) — un turno real de
       // /turn/narrate en paralelo puede estar actualizando `pendingCombatNpcSlugs` justo ahora.
-      const logEntry = await prisma.$transaction(async (tx) => {
+      // Bug real (auditoría 2026-09-01): sin comprobar si el slug YA no estaba en la lista fresca,
+      // un doble clic simultáneo pasaba las dos peticiones (el `filter` es idempotente sobre el
+      // array, no se rompe), pero cada una creaba su propio LogEntry — 2 narraciones duplicadas de
+      // la misma decisión. Aborta con 409 si el slug ya no está, en vez de escribir de nuevo.
+      const outcome = await prisma.$transaction(async (tx) => {
         const [locked] = await tx.$queryRaw<{ pendingCombatNpcSlugs: string[] | null }[]>`
           SELECT "pendingCombatNpcSlugs" FROM "Save" WHERE id = ${save.id} FOR UPDATE
         `;
-        const freshSlugs = (locked.pendingCombatNpcSlugs ?? []).filter((s) => s !== npc.slug);
+        const freshBefore = locked.pendingCombatNpcSlugs ?? [];
+        if (!freshBefore.includes(npc.slug)) return { kind: 'ya-resuelto' as const };
+
+        const freshSlugs = freshBefore.filter((s) => s !== npc.slug);
         await tx.save.update({ where: { id: save.id }, data: { pendingCombatNpcSlugs: freshSlugs } });
-        return tx.logEntry.create({ data: { saveId: save.id, channel: 'CHARACTER', text, timeLabel } });
+        const created = await tx.logEntry.create({ data: { saveId: save.id, channel: 'CHARACTER', text, timeLabel } });
+        return { kind: 'ok' as const, logEntry: created };
       });
 
+      if (outcome.kind === 'ya-resuelto') {
+        return reply.status(409).send({ error: 'Ya se dejó con vida a este NPC.' });
+      }
+      const logEntry = outcome.logEntry;
       return { npcSlug: npc.slug, logEntry: { id: logEntry.id, text, timeLabel, createdAt: logEntry.createdAt.toISOString() } };
     },
   );
