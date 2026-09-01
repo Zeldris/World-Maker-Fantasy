@@ -578,6 +578,14 @@ export interface SaveDetail {
   /// especialización real de la clase (`especializacionesConHuecosPara`, backend), con un resumen
   /// mecánico corto derivado de sus habilidades reales (nunca lore inventado).
   especializacionesDisponibles?: { especializacion: Especializacion; resumenMecanico: string; iconoUrl: string | null }[]
+  /// Elección obligatoria de clase al empezar a jugar (2026-09-01, fix de bug real: un personaje
+  /// custom se quedaba con `clase: null` para siempre — `PATCH /saves/:id/clase` existía pero
+  /// ningún punto de la UI lo llamaba). `true` mientras `clase` sea `null`. Mismo criterio que
+  /// `pendingEspecializacionChoice`: bloquea el composer hasta resolver.
+  pendingClaseChoice: boolean
+  /// Solo presente cuando `pendingClaseChoice` es `true` — filtradas por raza (clases exclusivas
+  /// de raza, ver `clasesPermitidasParaRaza` en el backend), Mago excluido (sin tronco real).
+  clasesDisponibles?: { clase: Clase; resumenMecanico: string; iconoUrl: string | null }[]
 }
 
 export async function getSave(id: string): Promise<SaveDetail> {
@@ -673,6 +681,16 @@ export async function assignEspecializacion(id: string, especializacion: Especia
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ especializacion }),
+  })
+}
+
+// Elección obligatoria de clase al empezar a jugar (2026-09-01, fix de bug real: personaje custom
+// se quedaba sin clase para siempre) — decisión única, mismo criterio que assignEspecializacion.
+export async function assignClase(id: string, clase: Clase): Promise<{ clase: Clase }> {
+  return fetchJson(`${API_URL}/saves/${id}/clase`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ clase }),
   })
 }
 

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { classAbilityUnlocksFor, allClassAbilityUnlocks, classAbilityUnlocksForClase, especializacionesConHuecosPara, resumenMecanicoEspecializacion, claseDeEspecializacion } from './classAbilities.js';
+import { classAbilityUnlocksFor, allClassAbilityUnlocks, classAbilityUnlocksForClase, especializacionesConHuecosPara, resumenMecanicoEspecializacion, claseDeEspecializacion, clasesPermitidasParaRaza } from './classAbilities.js';
 
 // Cobertura nueva (auditoría 2026-08-03, "análisis completo backend/frontend"). Reescrita
 // 2026-08-24 (Grupo 3 § Sistema de clases, docs/rpgtarkor/clases.md): el roster pasa de listas
@@ -169,5 +169,35 @@ describe('claseDeEspecializacion', () => {
 
   it('devuelve undefined para una especialización sin ningún hueco construido', () => {
     expect(claseDeEspecializacion('PODER_MAGIA')).toBeUndefined();
+  });
+});
+
+// Fix de bug real (auditoría en 6 agentes, 2026-09-01): personaje custom sin raza/clase asignada
+// se quedaba sin clase para siempre — esta función filtra qué clases son válidas para elegir,
+// respetando las 4 exclusivas de raza y excluyendo MAGO (sin tronco real construido).
+describe('clasesPermitidasParaRaza', () => {
+  it('sin raza (null), ofrece las 5 clases libres, nunca las 4 exclusivas ni Mago', () => {
+    const clases = clasesPermitidasParaRaza(null);
+    expect(clases.sort()).toEqual(['ARQUERO', 'ASESINO', 'CAZADOR', 'GUERRERO'].sort());
+  });
+
+  it('cada raza exclusiva ve su propia clase exclusiva, además de las 5 libres', () => {
+    expect(clasesPermitidasParaRaza('orcos')).toEqual(expect.arrayContaining(['CHAMAN', 'GUERRERO', 'CAZADOR']));
+    expect(clasesPermitidasParaRaza('goirntes')).toEqual(expect.arrayContaining(['CABALLERO', 'GUERRERO', 'CAZADOR']));
+    expect(clasesPermitidasParaRaza('nabieus')).toEqual(expect.arrayContaining(['SEGADOR', 'GUERRERO', 'CAZADOR']));
+    expect(clasesPermitidasParaRaza('faerus')).toEqual(expect.arrayContaining(['DRUIDA', 'GUERRERO', 'CAZADOR']));
+  });
+
+  it('una raza sin clase exclusiva propia nunca ve la clase exclusiva de otra raza', () => {
+    const clasesOrco = clasesPermitidasParaRaza('orcos');
+    expect(clasesOrco).not.toContain('CABALLERO');
+    expect(clasesOrco).not.toContain('SEGADOR');
+    expect(clasesOrco).not.toContain('DRUIDA');
+  });
+
+  it('MAGO nunca aparece, con ninguna raza (sin tronco real construido)', () => {
+    for (const raza of [null, 'orcos', 'goirntes', 'nabieus', 'faerus', 'raza-inventada']) {
+      expect(clasesPermitidasParaRaza(raza)).not.toContain('MAGO');
+    }
   });
 });

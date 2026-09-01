@@ -349,4 +349,40 @@ describe('GET /saves/:id — raza/clase/especialización', () => {
     const res = await app.inject({ method: 'GET', url: '/saves/save1' });
     expect(res.json().pendingEspecializacionChoice).toBe(false);
   });
+
+  // Fix de bug real (auditoría en 6 agentes, 2026-09-01): un personaje custom se quedaba con
+  // `clase: null` para siempre — `PATCH /saves/:id/clase` existía pero ningún punto de la UI lo
+  // llamaba nunca. `pendingClaseChoice`/`clasesDisponibles` son el mecanismo nuevo, mismo patrón
+  // derivado que `pendingEspecializacionChoice`.
+  it('sin clase asignada, pendingClaseChoice es true y manda las clases disponibles filtradas por raza', async () => {
+    findUniqueSave.mockResolvedValue(baseSave({ raza: 'orcos', clase: null }));
+    const app = await buildApp();
+    const res = await app.inject({ method: 'GET', url: '/saves/save1' });
+    const body = res.json();
+    expect(body.pendingClaseChoice).toBe(true);
+    const clases = body.clasesDisponibles.map((c: { clase: string }) => c.clase).sort();
+    expect(clases).toEqual(['ARQUERO', 'ASESINO', 'CAZADOR', 'CHAMAN', 'GUERRERO'].sort());
+    expect(clases).not.toContain('CABALLERO'); // exclusiva de goirntes, no de orcos
+    expect(clases).not.toContain('MAGO'); // sin tronco real construido
+  });
+
+  it('sin raza asignada (personaje custom sin raza fijada aún), pendingClaseChoice sigue true con las 5 clases libres', async () => {
+    findUniqueSave.mockResolvedValue(baseSave({ raza: null, clase: null }));
+    const app = await buildApp();
+    const res = await app.inject({ method: 'GET', url: '/saves/save1' });
+    const body = res.json();
+    expect(body.pendingClaseChoice).toBe(true);
+    expect(body.clasesDisponibles.map((c: { clase: string }) => c.clase).sort()).toEqual(
+      ['ARQUERO', 'ASESINO', 'CAZADOR', 'GUERRERO'].sort(),
+    );
+  });
+
+  it('con clase ya asignada, pendingClaseChoice es false y no manda clasesDisponibles', async () => {
+    findUniqueSave.mockResolvedValue(baseSave({ clase: 'CAZADOR' }));
+    const app = await buildApp();
+    const res = await app.inject({ method: 'GET', url: '/saves/save1' });
+    const body = res.json();
+    expect(body.pendingClaseChoice).toBe(false);
+    expect(body.clasesDisponibles).toBeUndefined();
+  });
 });

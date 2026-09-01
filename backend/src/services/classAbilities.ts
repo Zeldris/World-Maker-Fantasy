@@ -3182,6 +3182,28 @@ export const CLASE_DESCRIPTION: Partial<Record<Clase, string>> = {
   DRUIDA: 'La clase exclusiva Faerus — se transforma en fauna real de su territorio, vínculo de manada y furia feral.',
 };
 
+/// Clase exclusiva de una raza (docs/rpgtarkor/clases.md, "clases exclusivas por raza") — slug real
+/// de BERIG_RAZAS (berigLore.ts), no el nombre de raza en español. Solo estas 4 son exclusivas; el
+/// resto (Guerrero/Cazador/Arquero/Asesino, y Mago cuando tenga tronco real) son libres de raza.
+const CLASE_EXCLUSIVA_DE_RAZA: Partial<Record<Clase, string>> = {
+  CHAMAN: 'orcos',
+  CABALLERO: 'goirntes',
+  SEGADOR: 'nabieus',
+  DRUIDA: 'faerus',
+};
+
+/// Clases jugables para una raza dada (roadmap de fix "personaje custom sin clase para siempre",
+/// 2026-09-01, auditoría en 6 agentes) — MAGO queda fuera siempre (sin tronco real construido, ver
+/// `CLASE_DESCRIPTION`). Sin raza (`null`, personaje custom sin raza asignada) se ofrecen las 5
+/// libres — no tiene sentido bloquear la elección de clase solo porque la raza todavía no se haya
+/// fijado en ningún punto de la creación de personaje.
+export function clasesPermitidasParaRaza(raza: string | null): Clase[] {
+  return (Object.keys(CLASE_DESCRIPTION) as Clase[]).filter((clase) => {
+    const exclusiva = CLASE_EXCLUSIVA_DE_RAZA[clase];
+    return !exclusiva || exclusiva === raza;
+  });
+}
+
 /// A qué clase pertenece una especialización dada — derivado de `CLASS_ABILITIES`, sin mapeo
 /// aparte (roadmap de UI de especialización, 2026-09-01, generador de prompts de imagen: recibe
 /// solo el slug de la especialización, sin la clase). `undefined` si la especialización no tiene

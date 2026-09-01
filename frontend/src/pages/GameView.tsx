@@ -51,6 +51,7 @@ import { HealSelectionModal } from '../components/HealSelectionModal'
 import { EntregaModal } from '../components/EntregaModal'
 import { AprenderOficioModal } from '../components/AprenderOficioModal'
 import { EspecializacionModal } from '../components/EspecializacionModal'
+import { ClaseModal } from '../components/ClaseModal'
 import { inventoryCapacityFor, totalInventoryUnits } from '../lib/inventoryCapacity'
 import {
   requestTurnClassify,
@@ -74,6 +75,7 @@ import {
   resolveImageUrl,
   resolveDeath,
   assignEspecializacion,
+  assignClase,
   type SaveDetail,
 } from '../lib/api'
 import { characterWaitingFlavor, combatWaitingFlavor, worldWaitingFlavor, useRotatingFlavor } from '../lib/waitingFlavor'
@@ -345,6 +347,10 @@ export function GameView() {
   // Muerte permanente, botón Aceptar/Reintentar (2026-08-31) — mismo patrón que `endedAt`.
   const [pendingDeathResolution, setPendingDeathResolution] = useState(false)
   const [resolvingDeath, setResolvingDeath] = useState(false)
+  // Elección obligatoria de clase al empezar a jugar (2026-09-01, fix de bug real: personaje
+  // custom se quedaba sin clase para siempre) — mismo patrón que pendingDeathResolution.
+  const [pendingClaseChoice, setPendingClaseChoice] = useState(false)
+  const [clasesDisponibles, setClasesDisponibles] = useState<{ clase: Clase; resumenMecanico: string; iconoUrl: string | null }[]>([])
   // Elección obligatoria de especialización a nivel 10 (2026-09-01) — mismo patrón que
   // pendingDeathResolution: bloquea el composer hasta resolver.
   const [pendingEspecializacionChoice, setPendingEspecializacionChoice] = useState(false)
@@ -527,6 +533,8 @@ export function GameView() {
     setEndedAt(save.endedAt)
     setPendingDeathResolution(save.pendingDeathResolution)
     setClase(save.clase)
+    setPendingClaseChoice(save.pendingClaseChoice)
+    setClasesDisponibles(save.clasesDisponibles ?? [])
     setPendingEspecializacionChoice(save.pendingEspecializacionChoice)
     setEspecializacionesDisponibles(save.especializacionesDisponibles ?? [])
     setQuests(save.quests)
@@ -1261,6 +1269,16 @@ export function GameView() {
     }
   }
 
+  // Elección obligatoria de clase al empezar a jugar (2026-09-01, fix de bug real) — mismo
+  // criterio que handleAssignEspecializacion: recarga la partida entera para reflejar el tronco
+  // común de habilidades concedido por el backend.
+  async function handleAssignClase(clase: Clase) {
+    if (!saveId) return
+    await assignClase(saveId, clase)
+    const save = await getSave(saveId)
+    syncFromSave(save)
+  }
+
   // Elección obligatoria de especialización a nivel 10 (2026-09-01) — mismo criterio que
   // handleResolveDeath: recarga la partida entera para reflejar las habilidades nuevas concedidas
   // por el backend, en vez de reconstruir el estado a mano.
@@ -1766,6 +1784,14 @@ export function GameView() {
 
       {kingdomFoundedInfo && (
         <KingdomFoundingModal info={kingdomFoundedInfo} onCancel={() => setKingdomFoundedInfo(null)} onConfirm={handleFundarReino} />
+      )}
+
+      {/* Elección obligatoria de clase al empezar a jugar (2026-09-01, fix de bug real: personaje
+          custom sin clase para siempre) — overlay bloqueante, mismo criterio de prioridad que
+          muerte/fin de partida. Nunca coincide con el modal de especialización de abajo:
+          pendingEspecializacionChoice exige `save.clase` ya asignada. */}
+      {pendingClaseChoice && !pendingDeathResolution && !endedAt && worldIdSlug && (
+        <ClaseModal clases={clasesDisponibles} worldSlug={worldIdSlug} onConfirm={handleAssignClase} />
       )}
 
       {/* Elección obligatoria de especialización a nivel 10 (2026-09-01) — overlay bloqueante,

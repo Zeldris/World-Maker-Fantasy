@@ -17,7 +17,7 @@ import { entornoTemporalFor } from '../../services/worldClock.js';
 import { parseAgenda } from '../../services/worldAgenda.js';
 import type { PendingDynamicMode } from '../../services/dynamicMode.js';
 import { resolveActiveCombatAbilityNames } from '../../services/combatAbilities.js';
-import { especializacionesConHuecosPara, resumenMecanicoEspecializacion } from '../../services/classAbilities.js';
+import { especializacionesConHuecosPara, resumenMecanicoEspecializacion, clasesPermitidasParaRaza, CLASE_DESCRIPTION } from '../../services/classAbilities.js';
 import { NIVEL_MINIMO_ESPECIALIZACION } from './progression.js';
 
 export async function detailRoutes(app: FastifyInstance) {
@@ -543,6 +543,18 @@ export async function detailRoutes(app: FastifyInstance) {
       raza: save.raza,
       clase: save.clase,
       especializacion: save.especializacion,
+      // Elección obligatoria de clase al empezar a jugar (auditoría en 6 agentes, 2026-09-01,
+      // bug real: un personaje custom se quedaba con `clase: null` para siempre — `PATCH
+      // /saves/:id/clase` ya existía y funcionaba, pero ningún punto de la UI lo llamaba nunca).
+      // Derivado igual que `pendingEspecializacionChoice` — sin flag persistido propio.
+      pendingClaseChoice: !save.clase,
+      clasesDisponibles: !save.clase
+        ? clasesPermitidasParaRaza(save.raza).map((clase) => ({
+            clase,
+            resumenMecanico: CLASE_DESCRIPTION[clase] ?? '',
+            iconoUrl: iconoUrlFor('clase', clase),
+          }))
+        : undefined,
       // Elección obligatoria de especialización a nivel 10 (2026-09-01) — derivado, igual que
       // `esperandoDefensaJugador` arriba: sin flag persistido propio, se recalcula solo en cada
       // GET. El frontend bloquea el composer mientras sea `true`, mismo patrón que
