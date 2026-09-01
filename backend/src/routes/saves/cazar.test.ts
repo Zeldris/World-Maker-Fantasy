@@ -342,7 +342,10 @@ describe('POST /saves/:id/cazar/confirmar', () => {
         worldPopulation: { updateMany: (...args: unknown[]) => updateManyWorldPopulation(...args) },
         worldState: { update: (...args: unknown[]) => updateWorldState(...args) },
         logEntry: { create: (...args: unknown[]) => createLogEntry(...args) },
-        save: { update: (...args: unknown[]) => updateSave(...args) },
+        // Condición de carrera real (auditoría 2026-09-01) — caza limpia sin combate relee
+        // `pendingCombatNpcSlugs` DENTRO de la transacción (mismo criterio que `$queryRaw` de
+        // arriba) antes de escribir; por defecto vacío, igual que `SAVE_BASE.pendingCombatNpcSlugs`.
+        save: { update: (...args: unknown[]) => updateSave(...args), findUniqueOrThrow: vi.fn().mockResolvedValue({ pendingCombatNpcSlugs: [] }) },
         combatEncounter: {
           create: (...args: unknown[]) => createCombatEncounter(...args),
           update: (...args: unknown[]) => updateCombatEncounter(...args),

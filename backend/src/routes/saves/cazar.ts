@@ -306,7 +306,18 @@ export async function cazarRoutes(app: FastifyInstance) {
       const nuevoFictionalMinutes = advanceFictionalMinutes(save.worldState?.fictionalMinutes ?? 480, CAZA_LIMPIA_MINUTOS);
       const timeLabel = formatFictionalDate(nuevoFictionalMinutes);
 
+      // Condición de carrera real (auditoría 2026-09-01): a diferencia de la caza en grupo (más
+      // abajo, ya protegida desde 2026-08-25), este camino escribía directo sin releer el estado —
+      // doble clic en "cazar" contra la misma presa única disparaba dos transacciones en paralelo,
+      // cada una decrementando población y creando su propio LogEntry, duplicando ambos. Mismo
+      // patrón exacto que el bloque de grupo: `SELECT ... FOR UPDATE` sobre `Save` + relectura de
+      // `pendingCombatNpcSlugs` dentro de la transacción antes de escribir nada — la segunda
+      // petición ve ya el resultado de la primera y aborta sin duplicar.
       const logEntry = await prisma.$transaction(async (tx) => {
+        await tx.$queryRaw`SELECT id FROM "Save" WHERE id = ${save.id} FOR UPDATE`;
+        const freshSave = await tx.save.findUniqueOrThrow({ where: { id: save.id }, select: { pendingCombatNpcSlugs: true } });
+        if ((freshSave.pendingCombatNpcSlugs as string[]).includes(npc.slug)) return null;
+
         await tx.npcState.upsert({
           where: { saveId_npcId_scope: { saveId: save.id, npcId: npc.id, scope } },
           create: { saveId: save.id, npcId: npc.id, scope, condicionFisica: 'MUERTO', condicionFisicaSinceMinutes: nuevoFictionalMinutes },
@@ -318,6 +329,10 @@ export async function cazarRoutes(app: FastifyInstance) {
         await tx.save.update({ where: { id: save.id }, data: { pendingCombatNpcSlugs: [npc.slug] } });
         return created;
       });
+
+      if (!logEntry) {
+        return reply.status(409).send({ error: 'Ya se está resolviendo una caza contra esta presa — espera un momento.' });
+      }
 
       const sessionFacts = await loadSessionFacts(save.id);
       await appendSessionFacts(save.id, sessionFacts, [text]);

@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { describe, it, expect, vi, beforeAll, afterAll } from 'vitest';
 import Fastify from 'fastify';
 import { prisma } from '../../lib/prisma.js';
 import { getDefaultUserId } from '../../lib/defaultUser.js';
@@ -64,6 +64,74 @@ describe('Cazar: condición de carrera en confirmaciones concurrentes (auditorí
     // termina en 200 con el actionText de siempre — nunca las dos en 200.
     expect(codes).toEqual([200, 400]);
     expect(await prisma.combatEncounter.count({ where: { saveId, estado: 'EN_CURSO' } })).toBe(1);
+  }, 20_000);
+});
+
+/// Cobertura nueva (auditoría de código 2026-09-01, ronda de auditoría en 6 agentes — hallazgo real
+/// jugando en vivo, confirmado con 2 peticiones simultáneas por curl): a diferencia del camino de
+/// grupo de arriba (protegido desde 2026-08-25), el camino de "caza limpia" (presa única y débil,
+/// sin combate) escribía directo sin releer el estado dentro de una transacción — doble clic
+/// producía 2 LogEntry duplicados y 2 decrementos de población para el mismo evento. Mismo fix
+/// exacto: `SELECT ... FOR UPDATE` + relectura de `pendingCombatNpcSlugs` antes de escribir.
+describe('Cazar: condición de carrera en caza limpia (presa única, auditoría 2026-09-01)', () => {
+  let saveId: string;
+  const randomSpy = vi.spyOn(Math, 'random');
+
+  beforeAll(async () => {
+    const userId = await getDefaultUserId();
+    const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
+    const hondonada = await prisma.location.findFirstOrThrow({ where: { worldId: world.id, slug: 'hondonada-del-eco' } });
+    const save = await prisma.save.create({
+      data: {
+        userId,
+        worldId: world.id,
+        characterName: 'Gorhorn de prueba (cazar, caza limpia concurrente)',
+        characterArchetype: 'guerrero',
+        characterOrigin: 'Clan Maktor',
+        characterMotivation: 'x',
+        // Nivel 10 y destreza alta: 'buitre-cenizo' es nivel 1 (debil = level <= playerLevel-2, ver
+        // NIVEL_DIFERENCIA_PRESA_DEBIL) y la tirada de éxito (capturablePct + destreza, tope 90)
+        // queda garantizada con Math.random mockeado a 0 más abajo, sin depender del azar real.
+        level: 10,
+        attributes: { fuerza: 10, destreza: 50, constitucion: 10, inteligencia: 10, voluntad: 10, carisma: 10, magia: 10 },
+        portraitInitial: 'G',
+        currentLocationId: hondonada.id,
+      },
+    });
+    saveId = save.id;
+    await prisma.worldState.create({ data: { saveId } });
+  });
+
+  afterAll(async () => {
+    randomSpy.mockRestore();
+    await prisma.combatEncounter.deleteMany({ where: { saveId } });
+    await prisma.npcState.deleteMany({ where: { saveId } });
+    await prisma.save.delete({ where: { id: saveId } });
+  });
+
+  it('dos "salgo a cazar" simultáneos contra la misma presa única y débil crean como mucho 1 LogEntry y decrementan la población una sola vez', async () => {
+    randomSpy.mockReturnValue(0); // garantiza éxito en la tirada de caza limpia (chance siempre > 0)
+    const poblacionAntes = (
+      await prisma.worldPopulation.findFirstOrThrow({ where: { worldId: (await prisma.save.findUniqueOrThrow({ where: { id: saveId } })).worldId, targetSlug: 'buitre-cenizo' } })
+    ).poblacion;
+
+    const app = await buildApp();
+    const [resA, resB] = await Promise.all([
+      app.inject({ method: 'POST', url: `/saves/${saveId}/cazar/confirmar`, payload: { slugs: ['buitre-cenizo'] } }),
+      app.inject({ method: 'POST', url: `/saves/${saveId}/cazar/confirmar`, payload: { slugs: ['buitre-cenizo'] } }),
+    ]);
+
+    const codes = [resA.statusCode, resB.statusCode].sort();
+    // La que pierde la carrera se rechaza con 409 (relectura dentro de la transacción encuentra el
+    // slug ya en pendingCombatNpcSlugs); la ganadora termina en 200 — nunca las dos en 200.
+    expect(codes).toEqual([200, 409]);
+
+    const logCount = await prisma.logEntry.count({ where: { saveId, text: { contains: 'Buitre Cenizo' } } });
+    expect(logCount).toBe(1);
+
+    const world = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
+    const poblacionDespues = (await prisma.worldPopulation.findFirstOrThrow({ where: { worldId: world.worldId, targetSlug: 'buitre-cenizo' } })).poblacion;
+    expect(poblacionAntes - poblacionDespues).toBe(1);
   }, 20_000);
 });
 
