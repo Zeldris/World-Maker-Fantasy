@@ -403,6 +403,63 @@ haber cambiado de modelo activo varias veces en la misma sesión.
 
 ---
 
+## 13. Ronda de auditoría en 6 agentes (2026-09-01) — deuda técnica, funcional, lore
+
+Tras cerrar especialización/pasivas raciales/banners/Maestros de oficio, se lanzó una ronda de
+auditoría amplia dividida en 6 agentes secuenciales (cada uno informado por el anterior): 2 de
+deuda técnica, 2 de coherencia funcional (jugando de verdad), 2 de lore.
+
+**Deuda técnica** (`turnResolution.ts`/`narrador.ts` por un lado, resto de `services/`+`routes/`
+por otro) — 11 hallazgos, ninguno confirmado como bug propio ese mismo día, candidatos a refactor
+futuro: `narrateAndPersistTurn` (~3944 líneas mezclando 3 capas), cadena de invariantes de "forzar
+combate" con historial de 5-6 bugs reales, 28 validadores anti-alucinación dependientes de ~35
+campos de contexto sin sincronía garantizada por tipos, `catch {}` mudo en reparto de atributos,
+reconstrucción de `combateIniciado` duplicada entre `detail.ts`/`turnResolution.ts`, guard de
+condición de carrera copiado a mano 3 veces en `session.ts` (motivó el fix real de abajo). Se
+descartó con evidencia la sospecha de "combate fantasma en combate múltiple" — modelo de entrada
+distinto al 1v1 clásico, no aplica.
+
+**Coherencia funcional (jugando en vivo con Playwright) — 6 bugs reales confirmados, 5 FIJADOS
+el mismo día**:
+1. ✅ **FIJADO** — doble clic en "Cazar" (presa única, sin combate) duplicaba LogEntry + población
+   (sin `SELECT ... FOR UPDATE`, a diferencia del camino de grupo). `cazar.ts`.
+2. ✅ **FIJADO** — `/combat/flee`/`/combat/huir-en-curso`: el guard de carrera solo comparaba
+   contra el estado fresco cuando la propia tirada tenía éxito; una tirada fallida se persistía
+   siempre. `/combat/dejar-vivir` (ambos caminos) no tenía guard de carrera en absoluto. `session.ts`.
+3. ✅ **FIJADO** — un personaje custom (no Gorhorn) se quedaba con `Save.clase: null` para siempre
+   — `PATCH /saves/:id/clase` existía pero ninguna UI lo llamaba. Nuevo `ClaseModal.tsx`, mismo
+   patrón que `EspecializacionModal.tsx`.
+4. ✅ **FIJADO** — mencionar "leña" al construir disparaba la regex de producción de leña
+   (`computeDuration`, sin relación con `buildRecipe`) EN PARALELO a la construcción real, creando
+   un `InventoryItem` fantasma con cantidad absurda. `turnResolution.ts`/`turn.ts`.
+5. ✅ **FIJADO** — construcción diferida real (`earlyBuildingId`, nunca antes cubierta por ningún
+   test) bloqueada para siempre: `computeBuildBlockedReason` (cupo `maxPerRegion`) contaba la
+   propia fila `Building EN_CONSTRUCCION` de la construcción en curso contra su propio cupo. De
+   paso, corregido un problema de staleness relacionado en `catalogBySlug` (snapshot pre-transacción
+   sin ampliar con materiales vistos solo en la relectura fresca). `construction.ts`/`turnResolution.ts`.
+6. ⚠️ **Sin confirmar/reproducir** — sub-combates fragmentados (>4v4) con fallo de servidor entre
+   el commit y la resolución fuera de transacción: riesgo de diseño confirmado por lectura de
+   código (sin cron de recuperación de `CombatEncounter` huérfanos), pero requeriría interrumpir el
+   backend a propósito para reproducirlo en vivo — no autorizado esa sesión. Candidato para otra
+   ronda si se decide forzarlo.
+
+**Hallazgo colateral sin investigar**: iniciar combate por texto libre normal contra fauna no
+"localizada" en `sessionFacts` no siempre engancha `combateIniciado` (el narrador narra el golpe en
+prosa, pero el motor de detección no lo reconoce) — mencionado de pasada durante la Prueba 3, fuera
+de alcance de esa verificación.
+
+**Lore** (NPCs/facciones/clases por un agente, objetos/recetas/geografía por otro) — 2 hallazgos de
+severidad ALTA, sin aplicar todavía: `docs/rpgtarkor/areas.md` enumera "11 oficios" por nombre con
+4 desincronizados del catálogo real (minero/talador/constructor documentados y sin Maestro o
+inexistentes; Domador/Sastre reales y omitidos de la lista) — mismo documento que ya se corrigió en
+la sección de Trabajador de Reino de este mismo checklist, pendiente la lista de `areas.md` en sí.
+`docs/rpgtarkor/items.md` afirma que "Ración de carne ahumada"/"Ración de viaje" fueron reasignadas
+al oficio Cocinero — ninguna de las dos lo está en el código real (una es sin oficio a propósito,
+la otra no tiene receta de crafteo en absoluto). Resto del lore de NPCs/facciones/clases confirmado
+sano (sin contradicciones directas de datos encontradas).
+
+---
+
 ## Próximos pasos sugeridos (por prioridad)
 
 0. **NUEVO, máxima prioridad** (2026-08-28): investigar/arreglar el patrón de cuelgues de Ollama
