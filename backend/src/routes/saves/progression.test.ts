@@ -276,3 +276,130 @@ describe('PATCH /saves/:id/clase', () => {
     expect(createManySavedAction).not.toHaveBeenCalled();
   });
 });
+
+// Cierre del hueco "Save.especializacion sin ningún flujo de asignación" (roadmap de consolidación
+// 2026-09-01) — mismo hueco que Save.clase tenía hasta el endpoint de arriba, que sirve de molde.
+// `Especializacion` existe en el schema desde el sistema de clases (2026-08-24), nunca tuvo
+// endpoint propio.
+describe('PATCH /saves/:id/especializacion', () => {
+  beforeEach(() => {
+    findUniqueSave.mockReset();
+    updateSave.mockReset();
+    createManySavedAction.mockReset();
+    createLogEntry.mockReset();
+    findManySavedAction.mockReset();
+    findManySavedAction.mockResolvedValue([]);
+  });
+
+  it('rechaza una especialización que no existe en el enum', async () => {
+    const app = await buildApp();
+
+    const res = await app.inject({ method: 'PATCH', url: '/saves/save1/especializacion', payload: { especializacion: 'NIGROMANTE' } });
+
+    expect(res.statusCode).toBe(400);
+    expect(findUniqueSave).not.toHaveBeenCalled();
+  });
+
+  it('rechaza el campo especializacion ausente', async () => {
+    const app = await buildApp();
+
+    const res = await app.inject({ method: 'PATCH', url: '/saves/save1/especializacion', payload: {} });
+
+    expect(res.statusCode).toBe(400);
+  });
+
+  it('404 si la partida no existe', async () => {
+    findUniqueSave.mockResolvedValue(null);
+    const app = await buildApp();
+
+    const res = await app.inject({ method: 'PATCH', url: '/saves/save1/especializacion', payload: { especializacion: 'GUARDIAN' } });
+
+    expect(res.statusCode).toBe(404);
+  });
+
+  it('409 si la partida ya ha terminado (endedAt)', async () => {
+    findUniqueSave.mockResolvedValue({ id: 'save1', endedAt: new Date('2026-08-21T12:00:00Z'), clase: 'GUERRERO', level: 12, especializacion: null });
+    const app = await buildApp();
+
+    const res = await app.inject({ method: 'PATCH', url: '/saves/save1/especializacion', payload: { especializacion: 'GUARDIAN' } });
+
+    expect(res.statusCode).toBe(409);
+    expect(updateSave).not.toHaveBeenCalled();
+  });
+
+  it('409 si la partida todavía no tiene clase asignada', async () => {
+    findUniqueSave.mockResolvedValue({ id: 'save1', endedAt: null, clase: null, level: 12, especializacion: null });
+    const app = await buildApp();
+
+    const res = await app.inject({ method: 'PATCH', url: '/saves/save1/especializacion', payload: { especializacion: 'GUARDIAN' } });
+
+    expect(res.statusCode).toBe(409);
+    expect(JSON.parse(res.body).error).toMatch(/todavía no tiene clase asignada/);
+    expect(updateSave).not.toHaveBeenCalled();
+  });
+
+  it('409 si el nivel es menor que 10, aunque ya tenga clase', async () => {
+    findUniqueSave.mockResolvedValue({ id: 'save1', endedAt: null, clase: 'GUERRERO', level: 9, especializacion: null });
+    const app = await buildApp();
+
+    const res = await app.inject({ method: 'PATCH', url: '/saves/save1/especializacion', payload: { especializacion: 'GUARDIAN' } });
+
+    expect(res.statusCode).toBe(409);
+    expect(JSON.parse(res.body).error).toMatch(/Nivel insuficiente/);
+    expect(updateSave).not.toHaveBeenCalled();
+  });
+
+  it('409 si la partida ya tiene una especialización asignada — no es un respec libre', async () => {
+    findUniqueSave.mockResolvedValue({ id: 'save1', endedAt: null, clase: 'GUERRERO', level: 12, especializacion: 'BERSERKER' });
+    const app = await buildApp();
+
+    const res = await app.inject({ method: 'PATCH', url: '/saves/save1/especializacion', payload: { especializacion: 'GUARDIAN' } });
+
+    expect(res.statusCode).toBe(409);
+    expect(JSON.parse(res.body).error).toMatch(/ya tiene especialización asignada/);
+    expect(updateSave).not.toHaveBeenCalled();
+  });
+
+  it('400 si la especialización no pertenece a la clase real del personaje', async () => {
+    // TIRADOR es de ARQUERO, no de GUERRERO — mismatch real de clase↔especialización.
+    findUniqueSave.mockResolvedValue({ id: 'save1', endedAt: null, clase: 'GUERRERO', level: 12, especializacion: null });
+    const app = await buildApp();
+
+    const res = await app.inject({ method: 'PATCH', url: '/saves/save1/especializacion', payload: { especializacion: 'TIRADOR' } });
+
+    expect(res.statusCode).toBe(400);
+    expect(JSON.parse(res.body).error).toMatch(/no es una especialización real de GUERRERO/);
+    expect(updateSave).not.toHaveBeenCalled();
+  });
+
+  it('fija la especialización y concede los huecos de esa rama ya alcanzados por el nivel actual', async () => {
+    // GUARDIAN (Guerrero) tiene su primer hueco real en nivel 12 (classAbilities.ts) — nivel 12
+    // exacto ejercita el bucle real, no solo un nivel muy por encima que lo dejaría ambiguo.
+    findUniqueSave.mockResolvedValue({ id: 'save1', endedAt: null, clase: 'GUERRERO', level: 12, characterName: 'Sael Vhorn', worldState: null, especializacion: null });
+    updateSave.mockResolvedValue({ especializacion: 'GUARDIAN' });
+    const app = await buildApp();
+
+    const res = await app.inject({ method: 'PATCH', url: '/saves/save1/especializacion', payload: { especializacion: 'GUARDIAN' } });
+
+    expect(res.statusCode).toBe(200);
+    expect(JSON.parse(res.body)).toEqual({ especializacion: 'GUARDIAN' });
+    expect(updateSave).toHaveBeenCalledWith({ where: { id: 'save1' }, data: { especializacion: 'GUARDIAN' } });
+    expect(createManySavedAction).toHaveBeenCalled();
+    const grantedNames = (createManySavedAction.mock.calls[0][0].data as { name: string }[]).map((a) => a.name);
+    expect(grantedNames.length).toBeGreaterThan(0);
+    expect(createLogEntry).toHaveBeenCalled();
+  });
+
+  it('no concede nada de una rama con nivel más alto que el actual (respeta el gate de nivel real)', async () => {
+    // GUARDIAN también tiene hueco en nivel 24/28/40 — a nivel 12 exacto solo debe concederse el
+    // de nivel 12, nunca adelantar los de niveles superiores.
+    findUniqueSave.mockResolvedValue({ id: 'save1', endedAt: null, clase: 'GUERRERO', level: 12, characterName: 'Sael Vhorn', worldState: null, especializacion: null });
+    updateSave.mockResolvedValue({ especializacion: 'GUARDIAN' });
+    const app = await buildApp();
+
+    await app.inject({ method: 'PATCH', url: '/saves/save1/especializacion', payload: { especializacion: 'GUARDIAN' } });
+
+    const grantedNames = (createManySavedAction.mock.calls[0][0].data as { name: string }[]).map((a) => a.name);
+    expect(grantedNames.length).toBe(1);
+  });
+});

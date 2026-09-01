@@ -3,8 +3,13 @@ import { prisma } from '../../lib/prisma.js';
 import { attributeCapForLevel } from '../../services/progression.js';
 import type { AttributeBlock, Attribute } from '../../services/dice.js';
 import { VALID_ATTRIBUTES, rejectIfEnded } from './shared.js';
-import { classAbilityUnlocksFor } from '../../services/classAbilities.js';
-import { Clase } from '@prisma/client';
+import { classAbilityUnlocksFor, especializacionAbilityUnlocksFor, especializacionesConHuecosPara } from '../../services/classAbilities.js';
+import { Clase, Especializacion } from '@prisma/client';
+
+/// Nivel mínimo real para elegir especialización (docs/rpgtarkor/clases.md, "cada una con 2-4
+/// especializaciones elegidas a nivel 10") — mismo criterio que el resto de topes de partida del
+/// proyecto (cifra citada del propio diseño, no inventada aquí).
+const NIVEL_MINIMO_ESPECIALIZACION = 10;
 
 /// Progresión "manual" del personaje (deuda técnica 2026-07-30, split de saves.ts): repartir un
 /// punto de atributo ganado por nivel — decisión puntual de la jugadora sobre su propio personaje,
@@ -151,5 +156,79 @@ export async function progressionRoutes(app: FastifyInstance) {
     ]);
 
     return { clase };
+  });
+
+  // Cierre del hueco "Save.especializacion sin ningún flujo de asignación" (roadmap de
+  // consolidación 2026-09-01, mismo hueco que `Save.clase` tenía hasta el endpoint de arriba, que
+  // sirve de molde) — `Especializacion` existe en el schema desde el sistema de clases (2026-08-24),
+  // pero nunca tuvo endpoint propio. Solo permite fijarla UNA vez (mismo criterio que `clase`: es
+  // una decisión, no un respec libre). Concede de golpe SOLO los huecos de la rama de
+  // especialización elegida ya alcanzados por el nivel actual — el tronco común ya se concedió al
+  // fijar `clase` (o al subir de nivel, turnResolution.ts); `classAbilityUnlocksFor` los excluye a
+  // propósito (`!u.especializacion`) para no duplicarlos aquí.
+  app.patch<{ Params: { id: string }; Body: { especializacion: Especializacion } }>('/saves/:id/especializacion', async (request, reply) => {
+    const { especializacion } = request.body;
+    if (!especializacion || !Object.values(Especializacion).includes(especializacion)) {
+      return reply.status(400).send({ error: `Especialización no válida: "${especializacion}"` });
+    }
+    const save = await prisma.save.findUnique({ where: { id: request.params.id }, include: { worldState: true } });
+    if (!save) {
+      return reply.status(404).send({ error: 'Partida no encontrada' });
+    }
+    if (rejectIfEnded(save, reply)) return;
+    if (!save.clase) {
+      return reply.status(409).send({ error: 'Esta partida todavía no tiene clase asignada — hay que elegir clase antes que especialización' });
+    }
+    if (save.level < NIVEL_MINIMO_ESPECIALIZACION) {
+      return reply.status(409).send({ error: `Nivel insuficiente: la especialización se elige a partir de nivel ${NIVEL_MINIMO_ESPECIALIZACION} (actual: ${save.level})` });
+    }
+    if (save.especializacion) {
+      return reply.status(409).send({ error: `Esta partida ya tiene especialización asignada: ${save.especializacion}` });
+    }
+    const validas = especializacionesConHuecosPara(save.clase);
+    if (!validas.includes(especializacion)) {
+      return reply.status(400).send({ error: `"${especializacion}" no es una especialización real de ${save.clase} (válidas: ${validas.join(', ') || 'ninguna construida todavía'})` });
+    }
+
+    // Mismo guard anti-duplicado que `/saves/:id/clase` — por si alguna habilidad de esta rama ya
+    // existiera por otro camino (ninguno conocido hoy para especialización, pero el mismo criterio
+    // defensivo del endpoint hermano se mantiene por consistencia).
+    const yaTiene = new Set((await prisma.savedAction.findMany({ where: { saveId: save.id, category: 'combate' }, select: { name: true } })).map((a) => a.name));
+
+    const nuevasHabilidades = especializacionAbilityUnlocksFor(save.clase, especializacion, save.level)
+      .filter((ability) => !yaTiene.has(ability.name))
+      .map((ability) => ({
+        saveId: save.id,
+        name: ability.name,
+        promptText: ability.promptText,
+        icon: ability.icon,
+        description: ability.description,
+        category: ability.category,
+        isStarting: true,
+        effects: ability.effects ?? [],
+        rol: ability.rol ?? null,
+        preferredAttribute: ability.preferredAttribute ?? null,
+        attributeBonus: ability.attributeBonus ?? null,
+        durationEffectMagnitude: ability.durationEffectMagnitude ?? null,
+        durationEffectTurns: ability.durationEffectTurns ?? null,
+        energyCost: ability.energyCost ?? 0,
+        energyRegen: ability.energyRegen ?? 0,
+        maxUsesPerCombat: ability.maxUsesPerCombat ?? null,
+      }));
+
+    await prisma.$transaction([
+      prisma.save.update({ where: { id: save.id }, data: { especializacion } }),
+      ...(nuevasHabilidades.length > 0 ? [prisma.savedAction.createMany({ data: nuevasHabilidades })] : []),
+      prisma.logEntry.create({
+        data: {
+          saveId: save.id,
+          channel: 'CHARACTER',
+          text: `${save.characterName} se especializa: ${especializacion}.`,
+          timeLabel: save.worldState?.fictionalDateLabel ?? 'Día 1, mañana',
+        },
+      }),
+    ]);
+
+    return { especializacion };
   });
 }

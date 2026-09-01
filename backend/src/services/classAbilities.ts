@@ -3113,3 +3113,22 @@ export function allClassAbilityUnlocks(): ClassAbilityUnlock[] {
 export function classAbilityUnlocksForClase(clase: Clase, especializacion?: Especializacion | null): ClassAbilityUnlock[] {
   return CLASS_ABILITIES.filter((u) => u.clase === clase && (!u.especializacion || u.especializacion === especializacion));
 }
+
+/// Especializaciones reales con al menos un desbloqueo construido para una clase (roadmap de
+/// consolidación 2026-09-01, endpoint `PATCH /saves/:id/especializacion`) — deriva del propio
+/// catálogo `CLASS_ABILITIES` en vez de mantener un mapeo aparte que pudiera desincronizarse. Una
+/// clase sin ninguna especialización con huecos reales (0/8, ver comentario de
+/// `classAbilityUnlocksFor`) devuelve `[]`.
+export function especializacionesConHuecosPara(clase: Clase): Especializacion[] {
+  return [...new Set(CLASS_ABILITIES.filter((u) => u.clase === clase && u.especializacion).map((u) => u.especializacion!))];
+}
+
+/// Para el motor de turnos (a diferencia de `classAbilityUnlocksForClase`, pensada para la
+/// Enciclopedia) — SOLO los huecos de la RAMA de especialización elegida, ya alcanzados por el
+/// nivel actual del personaje (mismo criterio que `classAbilityUnlocksFor` para el tronco común,
+/// que ya se concede aparte al fijar `Save.clase`). Usada por `PATCH /saves/:id/especializacion`
+/// para conceder de golpe lo ya alcanzado, y por cualquier resincronización futura al subir de
+/// nivel más allá de 10 con especialización ya elegida.
+export function especializacionAbilityUnlocksFor(clase: Clase, especializacion: Especializacion, level: number): StartingAbility[] {
+  return CLASS_ABILITIES.filter((u) => u.clase === clase && u.especializacion === especializacion && u.level <= level).map((u) => u.ability);
+}
