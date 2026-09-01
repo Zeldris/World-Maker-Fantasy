@@ -406,8 +406,14 @@ resumen de trabajo real, agrupado por tamaño.
   probar en vivo jugando todavía. **Ampliado (2026-09-01, ronda de consolidación)**: Maestro Cocinero
   Serhu añadido y verificado en vivo (checklist, 2026-08-31), y Maestro Carpintero Serhu + Maestra
   Sastre Serhu añadidos (mismo patrón exacto, sin test dedicado — el motor ya está probado de forma
-  genérica) — **5 de los 11 oficios** con Maestro real hoy (herrero/curtidor/cocinero/carpintero/
-  sastre). Quedan 6 (herborista, alquimista, domador, desollador, peletero, primeros-auxilios).
+  genérica) — 5 de los 11 oficios con Maestro real ese día. **Completado (2026-09-01, mismo día,
+  segunda pasada)**: los 6 Maestros restantes añadidos (Herborista/Alquimista/Domador/Desollador/
+  Peletero/Primeros Auxilios Serhu) — **los 11 oficios base ya tienen Maestro real** en Karot Veku,
+  mismo patrón exacto de datos (nivel 5, `comerciablePct: 30`, `reclutablePct: 0`,
+  `capturablePct: 0`). Confirmado por consulta directa a Postgres (`teachesProfession` de los 11
+  slugs correctos), `tsc -b` limpio, 1869/1869 tests en verde — sin verificación en vivo jugando
+  para estos 6 (decisión explícita: el motor genérico ya se confirmó en pantalla con
+  Carpintero/Sastre, mismo patrón byte a byte, sin nada específico por NPC que pudiera romperse).
 - [x] ~~**Quién enseña un oficio nuevo**~~ — resuelto de paso por lo de arriba: el Maestro de cada
   profesión (`Npc.teachesProfession`) es la respuesta real, ya no aplazado.
 - [ ] **Miel Lebude / futura profesión de cocina por raza-región** (`flora-fauna.md`) — idea suelta,
