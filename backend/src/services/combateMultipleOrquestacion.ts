@@ -1144,7 +1144,12 @@ export async function resolverTurnoAutonomo(
   const objetivoControlado = await objetivoControladoPara(prisma, worldId, saveId, actual, encounter, weaponNamesPorDefecto);
   if (objetivoControlado) {
     const habilidadControlada = chooseNpcAbility(datosAtacante.abilities, 'ataque', datosAtacante.energia, Math.random, datosAtacante.usageCounts);
-    return ejecutarIntercambioYAvanzar(prisma, worldId, saveId, encounterId, encounter, actual, datosAtacante, habilidadControlada, 'ataque', false, objetivoControlado, weaponNamesPorDefecto, narrarFn);
+    // `habilidadControlada.rol` real (no 'ataque' fijo, consolidación 2026-09-01) — casi siempre
+    // coincide, salvo la excepción real de CONTROL (chooseNpcAbility('ataque', ...) SÍ puede
+    // devolver una utilidad con effects:['CONTROL'], ver comentario de esa función). Con 'ataque'
+    // fijo, resolverIntercambioCompleto nunca entraba en la rama independiente que dispara
+    // atacanteControlDisparado — mismo patrón ya correcto que el turno de la jugadora, línea 1224.
+    return ejecutarIntercambioYAvanzar(prisma, worldId, saveId, encounterId, encounter, actual, datosAtacante, habilidadControlada, habilidadControlada.rol, false, objetivoControlado, weaponNamesPorDefecto, narrarFn);
   }
 
   const habilidadAtaque = chooseNpcAbility(datosAtacante.abilities, 'ataque', datosAtacante.energia, Math.random, datosAtacante.usageCounts);
@@ -1162,7 +1167,8 @@ export async function resolverTurnoAutonomo(
 
   const esDuelo = defensor.objetivoActualId === actual.id;
   if (esDuelo) {
-    return ejecutarIntercambioYAvanzar(prisma, worldId, saveId, encounterId, encounter, actual, datosAtacante, habilidadAtaque, 'ataque', false, defensor, weaponNamesPorDefecto, narrarFn);
+    // `habilidadAtaque.rol` real, mismo motivo que el comentario de arriba (objetivoControlado).
+    return ejecutarIntercambioYAvanzar(prisma, worldId, saveId, encounterId, encounter, actual, datosAtacante, habilidadAtaque, habilidadAtaque.rol, false, defensor, weaponNamesPorDefecto, narrarFn);
   }
   return ejecutarGolpeGratisYAvanzar(prisma, worldId, saveId, encounterId, encounter, actual, datosAtacante, habilidadAtaque, defensor, weaponNamesPorDefecto, narrarFn);
 }

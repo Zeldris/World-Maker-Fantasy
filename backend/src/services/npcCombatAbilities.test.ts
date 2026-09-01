@@ -147,6 +147,19 @@ describe('chooseNpcAbility', () => {
     }
   });
 
+  // Bug real de consolidación (auditoría 2026-09-01, "CONTROL estructuralmente inalcanzable"):
+  // Opresión Mental (rol:'utilidad', effects:['CONTROL']) es la única excepción real a "ni una
+  // defensa ni una utilidad atacan" — SÍ debe poder elegirse atacando, a diferencia de cualquier
+  // otra utilidad sin CONTROL (Contraataque, arriba, sigue excluida).
+  it('atacando, incluye una utilidad con effect CONTROL en el pool (excepción real, "Opresión Mental")', () => {
+    const roster: NpcCombatAbility[] = [
+      { name: 'Zarpazo', description: 'Un zarpazo rápido.', attribute: 'fuerza', effects: [], rol: 'ataque', energyCost: 0, energyRegen: 0 },
+      { name: 'Opresión Mental', description: 'Doblega la voluntad del rival.', attribute: 'voluntad', effects: ['CONTROL'], rol: 'utilidad', energyCost: 0, energyRegen: 0 },
+    ];
+    const elegidos = new Set([0, 0.1, 0.5, 0.9, 0.99].map((r) => chooseNpcAbility(roster, 'ataque', 999, () => r).name));
+    expect(elegidos).toEqual(new Set(['Zarpazo', 'Opresión Mental']));
+  });
+
   it('defendiendo con random alto (>0.7), cae al roster completo aunque haya defensivas/utilidad disponibles', () => {
     const result = chooseNpcAbility(abilities, 'defensa', 999, () => 0.9);
     expect(result).toEqual(abilities[Math.floor(0.9 * abilities.length)]);

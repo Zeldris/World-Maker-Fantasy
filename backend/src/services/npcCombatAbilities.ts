@@ -242,7 +242,14 @@ export function chooseNpcAbility(
     }
     return affordable[Math.floor(random() * affordable.length)];
   }
-  const atacantes = affordable.filter((a) => a.rol === 'ataque');
+  // Excepción acotada a CONTROL (auditoría de consolidación, 2026-09-01, "Opresión Mental
+  // estructuralmente inalcanzable para cualquier NPC"): la regla de arriba ("ni una defensa ni
+  // una utilidad atacan") es correcta en general, pero Opresión Mental es una utilidad que SÍ
+  // actúa como ataque real (roba la iniciativa, turnResolution.ts) — sin este caso especial,
+  // ningún NPC Chamán/Opresor podía usarla nunca, aunque el jugador sí. Acotado por `effects`,
+  // no por `rol` en general, para no reintroducir el bug real que motivó la regla original ("el
+  // orco ataca con Esquivar").
+  const atacantes = affordable.filter((a) => a.rol === 'ataque' || (a.rol === 'utilidad' && a.effects.includes('CONTROL')));
   if (atacantes.length > 0) return atacantes[Math.floor(random() * atacantes.length)];
   // Sin ninguna de ataque AFRONTABLE (2026-07-31, consecuencia real de que Ataque base ya no sea
   // gratis) — antes de caer en el roster entero (que podría ser puramente defensiva/utilidad y
@@ -250,7 +257,7 @@ export function chooseNpcAbility(
   // CUALQUIER habilidad de ataque del roster completo, ignorando el coste — un NPC exhausto sigue
   // golpeando igual, nunca "ataca defendiéndose". `nextEnergia` ya topa el resultado a 0, nunca a
   // negativo.
-  const cualquierAtacante = usable.filter((a) => a.rol === 'ataque');
+  const cualquierAtacante = usable.filter((a) => a.rol === 'ataque' || (a.rol === 'utilidad' && a.effects.includes('CONTROL')));
   const pool = cualquierAtacante.length > 0 ? cualquierAtacante : affordable;
   return pool[Math.floor(random() * pool.length)];
 }

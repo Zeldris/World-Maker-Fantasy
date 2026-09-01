@@ -577,6 +577,75 @@ describe('combate múltiple: orquestación real contra Postgres', () => {
     await prisma.combatEncounter.deleteMany({ where: { saveId, id: encounterId } });
   }, 30_000);
 
+  // Consolidación (auditoría 2026-09-01, "CONTROL estructuralmente inalcanzable para cualquier
+  // NPC"): el efecto CONTROL en sí ya tenía cobertura unitaria (combateMultiple.test.ts, mockeando
+  // la habilidad directamente) y `chooseNpcAbility` ya prueba por separado que SÍ elige una
+  // utilidad con CONTROL al atacar — este test confirma el CABLEADO real end-to-end: un NPC
+  // Chamán/Opresor real, con su roster real derivado del catálogo (npcCombatAbilitiesFor), ataca
+  // de verdad con Opresión Mental y controla al rival. Ulkha Ketg (CHAMAN/RUNICO real de nivel 6,
+  // único CHAMAN del catálogo con nivel editable de forma segura para pruebas — sin entrelazado de
+  // misión) se fuerza temporalmente a OPRESOR/nivel 16 (mínimo real para desbloquear Opresión
+  // Mental, classAbilities.ts) y se revierte al final.
+  it('CONTROL real: un NPC Chamán/Opresor ataca con Opresión Mental y marca al rival como controlado', async () => {
+    const opresor = await prisma.npc.findFirstOrThrow({ where: { worldId, slug: 'ulkha-ketg' } });
+    const rival = await prisma.npc.findFirstOrThrow({ where: { worldId, slug: 'aullador-rojo' } });
+    await prisma.npc.update({ where: { id: opresor.id }, data: { especializacion: 'OPRESOR', level: 16 } });
+
+    // NPC vs NPC (no NPC vs jugadora): `datosVivosDe` da a la jugadora, cuando defiende, SOLO
+    // habilidades rol:'defensa'/'utilidad' (sus propias SavedAction reales o el fallback fijo
+    // ESQUIVAR_GENERICO) — nunca 'ataque'. Como `utilityTriggered` exige que el DEFENSOR responda
+    // con rol:'ataque' para que CONTROL dispare, la jugadora nunca podría cumplirlo por diseño; un
+    // rival NPC real sí puede, vía `chooseNpcAbility('defensa', ...)` cayendo al roster completo.
+    //
+    // Secuencia de Math.random mockeada por cada turno del opresor (2 llamadas reales antes de
+    // llegar al roll de la tirada, confirmadas con depuración en vivo antes de fijar esta
+    // secuencia):
+    // 1) `chooseNpcAbility(opresor, 'ataque', ...)` — roster filtrado a rol:'ataque'+CONTROL da
+    //    `[Ataque base, Carga Rúnica, Grillete Rúnico, Opresión Mental, Sangre del Estallido]` (5).
+    //    `Math.floor(0.7*5)=3` → Opresión Mental.
+    // 2) `chooseNpcAbility(rival, 'defensa', ...)` — primer random decide si prefiere defensiva
+    //    (línea `random() < 0.7`); 0.99 (`>=0.7`) fuerza caer al roster COMPLETO (línea
+    //    `affordable[...]`, no solo defensivas). Segundo random elige el índice: roster real del
+    //    Aullador Rojo `[Ataque base, Posicion defensiva, Filos centella, Instinto Solitario,
+    //    Esquivar, Defenderse, Descansar]` (7) — `Math.floor(0.1*7)=0` → Ataque base (`rol:'ataque'`,
+    //    justo lo que exige `utilityTriggered`).
+    // 3-4) `rollD20` del atacante y del defensor (combatExchange.ts) — ambos con roll alto
+    //    (`Math.floor(0.9*20)+1=19`) para que la tirada del opresor tenga éxito con margen incluso
+    //    con `magia:8` (bono +4, resultado 23 vs dificultad fija 15).
+    const secuenciaPorTurno = [0.7, 0.99, 0.1, 0.9, 0.9];
+    const randomSpy = vi.spyOn(Math, 'random');
+    try {
+      // 1v1 puro NPC vs NPC, sin jugadora (mismo patrón que otros tests de este archivo, MULTIPLE/
+      // DESVIAR arriba) — `jugadorParticipantId` acepta null con seguridad.
+      const { encounterId } = await prisma.$transaction((tx) =>
+        iniciarCombatEncounter(tx, saveId, [
+          { bando: 'JUGADOR', tipo: 'NPC', npcId: opresor.id, npcScope: 'itinerante-control-opresor', destreza: 1000, inteligencia: 6 },
+          { bando: 'ENEMIGO', tipo: 'NPC', npcId: rival.id, npcScope: 'itinerante-control-rival', destreza: 1, inteligencia: 6 },
+        ]),
+      );
+
+      let opresorControlo = false;
+      for (let i = 0; i < 10 && !opresorControlo; i++) {
+        const encounter = await prisma.combatEncounter.findUniqueOrThrow({ where: { id: encounterId }, include: { participantes: true } });
+        if (encounter.estado === 'RESUELTO') break;
+        const actualId = encounter.ordenIniciativa[encounter.turnoActual % encounter.ordenIniciativa.length];
+        const actual = encounter.participantes.find((p) => p.id === actualId)!;
+        if (actual.npcScope === 'itinerante-control-opresor') {
+          for (const r of secuenciaPorTurno) randomSpy.mockReturnValueOnce(r);
+        }
+        await resolverTurnoAutonomo(prisma, worldId, saveId, encounterId, [], dobleNarracionRapida);
+        const rivalP = await prisma.combatParticipant.findFirstOrThrow({ where: { encounterId, npcScope: 'itinerante-control-rival' } });
+        if ((rivalP.controladoPorRondas ?? 0) > 0) opresorControlo = true;
+      }
+      expect(opresorControlo).toBe(true);
+
+      await prisma.combatEncounter.deleteMany({ where: { saveId, id: encounterId } });
+    } finally {
+      randomSpy.mockRestore();
+      await prisma.npc.update({ where: { id: opresor.id }, data: { especializacion: opresor.especializacion, level: opresor.level } });
+    }
+  }, 30_000);
+
   // Fase 3 § 3c de efectos de clase (2026-08-27) — OCULTACION real: forzada a mano vía
   // `ocultoPorRondas` (mismo criterio que el test de CONTROL: probar el CABLEADO real, la condición
   // de disparo ya está cubierta en combateMultiple.test.ts). La exclusión de `resolverEnganchesRonda`
