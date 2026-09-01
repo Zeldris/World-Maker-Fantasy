@@ -47,6 +47,11 @@ sin diferenciar clase/raza.
 clases sin magia, sería fácil de acotar — mismo criterio ya aplicado a otros guards de vocabulario
 (ver [[tarkor_vocabulario_prosa_2026-08-31]]).
 
+**Estado**: FIJADO (2026-09-01) — nuevo guard `hasIllegitimateMagicVocabulary`
+(`backend/src/services/narrador.ts`), registrado en la lista de rechazo de `narrateAction`: rechaza
+cualquier narración con vocabulario mágico (arcano/hechizo/conjuro/encantamiento/mágico) cuando
+`characterClase` no es MAGO ni CHAMAN, forzando reintento. 219/219 tests del narrador en verde.
+
 ## El narrador pone al personaje hablándose a sí mismo por su nombre
 
 **Qué pasó**: al examinar cómo se siente tras el descanso, la narración termina con Gorhorn diciendo
@@ -257,5 +262,16 @@ parece que añade slugs de forma más amplia que los que realmente llegan a inst
 `CombatEncounter`, y no hay ningún camino de limpieza para los que se quedan fuera. Prioridad más
 alta que el resto de hallazgos de esta sesión — es el único que toca integridad de estado, no solo
 percepción/UX.
+
+**Estado**: FIJADO (2026-09-01) — causa raíz exacta confirmada: el último fallback de
+`forcedCombatSlugs` (`turnResolution.ts`, cuando ni `explicitTarget` ni `agresivoSlugsInScene`
+identifican a nadie) usaba `npcsInSceneVivos` sin filtrar por temperamento — cualquier NPC
+AMIGABLE/INOFENSIVO/CAUTELOSO presente en la misma escena se arrastraba junto al agresor real, y
+quedaba huérfano en cuanto el `CombatEncounter` real solo enganchaba a este último ("nuente" coló
+por matching fuzzy Levenshtein≤2 de "cuenta"~"nuente", mismo mecanismo que el bug histórico
+"presas"/"brasas"). Fix: `npcsInSceneHostilesCandidatos` filtra por temperamento efectivo
+(`AMIGABLE`/`INOFENSIVO`/`CAUTELOSO` excluidos) antes de usarse como fallback. Test de regresión
+añadido (`turn.integration.test.ts`, Orco Enfurecido agresivo + Torgash CAUTELOSO ambos en escena,
+confirma que solo el agresivo queda enganchado) — 105/105 tests de ese archivo en verde.
 
 ---
