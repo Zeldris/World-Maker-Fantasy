@@ -17,6 +17,8 @@ import { entornoTemporalFor } from '../../services/worldClock.js';
 import { parseAgenda } from '../../services/worldAgenda.js';
 import type { PendingDynamicMode } from '../../services/dynamicMode.js';
 import { resolveActiveCombatAbilityNames } from '../../services/combatAbilities.js';
+import { especializacionesConHuecosPara, resumenMecanicoEspecializacion } from '../../services/classAbilities.js';
+import { NIVEL_MINIMO_ESPECIALIZACION } from './progression.js';
 
 export async function detailRoutes(app: FastifyInstance) {
   app.get<{ Params: { id: string } }>('/saves/:id', async (request, reply) => {
@@ -538,6 +540,21 @@ export async function detailRoutes(app: FastifyInstance) {
       // ya lo consume el backend directamente de `Save.pendingNpcAttack` en el siguiente turno, no
       // hace falta exponerlo al frontend.
       esperandoDefensaJugador: !!save.pendingNpcAttack,
+      raza: save.raza,
+      clase: save.clase,
+      especializacion: save.especializacion,
+      // Elección obligatoria de especialización a nivel 10 (2026-09-01) — derivado, igual que
+      // `esperandoDefensaJugador` arriba: sin flag persistido propio, se recalcula solo en cada
+      // GET. El frontend bloquea el composer mientras sea `true`, mismo patrón que
+      // `pendingDeathResolution`.
+      pendingEspecializacionChoice: !!save.clase && save.level >= NIVEL_MINIMO_ESPECIALIZACION && !save.especializacion,
+      especializacionesDisponibles:
+        save.clase && save.level >= NIVEL_MINIMO_ESPECIALIZACION && !save.especializacion
+          ? especializacionesConHuecosPara(save.clase).map((especializacion) => ({
+              especializacion,
+              resumenMecanico: resumenMecanicoEspecializacion(save.clase!, especializacion),
+            }))
+          : undefined,
     };
   });
 }

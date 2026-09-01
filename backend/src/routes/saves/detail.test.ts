@@ -91,6 +91,9 @@ function baseSave(overrides: Partial<Record<string, unknown>> = {}) {
     pendingCombatNpcSlugs: null,
     pendingDynamicMode: null,
     pendingDynamicModeOffer: null,
+    raza: null,
+    clase: null,
+    especializacion: null,
     ...overrides,
   };
 }
@@ -277,5 +280,73 @@ describe('GET /saves/:id', () => {
     const res = await app.inject({ method: 'GET', url: '/saves/save1' });
     expect(res.statusCode).toBe(200);
     expect(res.json().combateIniciado).toBeNull();
+  });
+});
+
+// Roadmap de UI de especialización (2026-09-01) — `raza`/`clase`/`especializacion` no viajaban en
+// absoluto antes de esto; `pendingEspecializacionChoice` es el flag derivado que bloquea el
+// composer del frontend, mismo criterio que `esperandoDefensaJugador`.
+describe('GET /saves/:id — raza/clase/especialización', () => {
+  beforeEach(() => {
+    findUniqueWorldState.mockReset().mockResolvedValue(null);
+    findUniqueSave.mockReset();
+    findManyItemCatalog.mockReset().mockResolvedValue([]);
+    findManyLocation.mockReset().mockResolvedValue([]);
+    findManyNpc.mockReset().mockResolvedValue([]);
+    findManyNpcState.mockReset().mockResolvedValue([]);
+    findManyLogEntry.mockReset().mockResolvedValue([]);
+    findFirstCombatEncounter.mockReset().mockResolvedValue(null);
+    findManyCombatParticipant.mockReset().mockResolvedValue([]);
+  });
+
+  it('raza/clase/especialización viajan tal cual, null por defecto', async () => {
+    findUniqueSave.mockResolvedValue(baseSave());
+    const app = await buildApp();
+    const res = await app.inject({ method: 'GET', url: '/saves/save1' });
+    const body = res.json();
+    expect(body.raza).toBeNull();
+    expect(body.clase).toBeNull();
+    expect(body.especializacion).toBeNull();
+  });
+
+  it('con clase asignada y nivel <10, pendingEspecializacionChoice es false y no manda especializacionesDisponibles', async () => {
+    findUniqueSave.mockResolvedValue(baseSave({ raza: 'orcos', clase: 'CHAMAN', level: 3 }));
+    const app = await buildApp();
+    const res = await app.inject({ method: 'GET', url: '/saves/save1' });
+    const body = res.json();
+    expect(body.clase).toBe('CHAMAN');
+    expect(body.pendingEspecializacionChoice).toBe(false);
+    expect(body.especializacionesDisponibles).toBeUndefined();
+  });
+
+  it('con clase asignada, nivel >=10 y sin especialización, pendingEspecializacionChoice es true y manda las especializaciones con hueco real', async () => {
+    findUniqueSave.mockResolvedValue(baseSave({ clase: 'CHAMAN', level: 16 }));
+    const app = await buildApp();
+    const res = await app.inject({ method: 'GET', url: '/saves/save1' });
+    const body = res.json();
+    expect(body.pendingEspecializacionChoice).toBe(true);
+    expect(body.especializacionesDisponibles).toEqual(
+      expect.arrayContaining([expect.objectContaining({ especializacion: 'TOTEMICO', resumenMecanico: expect.any(String) })]),
+    );
+    expect(body.especializacionesDisponibles.map((e: { especializacion: string }) => e.especializacion).sort()).toEqual(
+      ['TOTEMICO', 'RUNICO', 'CONVOCADOR', 'OPRESOR'].sort(),
+    );
+  });
+
+  it('con clase y especialización ya asignadas, pendingEspecializacionChoice vuelve a false', async () => {
+    findUniqueSave.mockResolvedValue(baseSave({ clase: 'CHAMAN', level: 16, especializacion: 'OPRESOR' }));
+    const app = await buildApp();
+    const res = await app.inject({ method: 'GET', url: '/saves/save1' });
+    const body = res.json();
+    expect(body.especializacion).toBe('OPRESOR');
+    expect(body.pendingEspecializacionChoice).toBe(false);
+    expect(body.especializacionesDisponibles).toBeUndefined();
+  });
+
+  it('sin clase asignada, aunque el nivel ya sea >=10, pendingEspecializacionChoice es false', async () => {
+    findUniqueSave.mockResolvedValue(baseSave({ clase: null, level: 16 }));
+    const app = await buildApp();
+    const res = await app.inject({ method: 'GET', url: '/saves/save1' });
+    expect(res.json().pendingEspecializacionChoice).toBe(false);
   });
 });

@@ -7,12 +7,14 @@ import type {
   AgendaEntryInfo,
   EntornoTemporalInfo,
   BuildingInfo,
+  Clase,
   CombatExchangeInfo,
   CompanionInfo,
   CondicionFisica,
   CurrentLocationInfo,
   DestinationInfo,
   Dificultad,
+  Especializacion,
   EquipSlot,
   InventoryItemInfo,
   ItemTipo,
@@ -472,6 +474,12 @@ export interface SaveDetail {
   characterArchetype: string
   characterOrigin: string
   characterMotivation: string
+  /// Sistema de clases (2026-08-24) — `raza` es un slug libre de BERIG_RAZAS (berigLore.ts,
+  /// backend), null si el personaje no tiene raza asignada. `clase`/`especializacion` null hasta
+  /// que se fijen jugando (`PATCH /saves/:id/clase` y `/especializacion`).
+  raza: string | null
+  clase: Clase | null
+  especializacion: Especializacion | null
   attributes: AttributeBlock
   /// Bonus de equipo por atributo jugable, SIN sumar la base (2026-08-14) — `attributes` de
   /// arriba ya es el base puro; esto permite pintar la barra en dos tramos (claro=base,
@@ -561,6 +569,15 @@ export interface SaveDetail {
   /// defensa de verdad. Mismo criterio que `combateIniciado`/`lastInitiativeRoll` arriba: se
   /// reconstruye en cada resincronización, no solo en la respuesta directa de `/turn/narrate`.
   esperandoDefensaJugador: boolean
+  /// Elección obligatoria de especialización a nivel 10 (2026-09-01) — `true` mientras haya clase
+  /// asignada, nivel ≥10 y ninguna especialización elegida todavía. Mismo criterio que
+  /// `pendingDeathResolution`: mientras sea `true`, el composer normal se sustituye por el modal
+  /// de especialización (ver GameView.tsx) hasta que se resuelva con `assignEspecializacion`.
+  pendingEspecializacionChoice: boolean
+  /// Solo presente cuando `pendingEspecializacionChoice` es `true` — una tarjeta por
+  /// especialización real de la clase (`especializacionesConHuecosPara`, backend), con un resumen
+  /// mecánico corto derivado de sus habilidades reales (nunca lore inventado).
+  especializacionesDisponibles?: { especializacion: Especializacion; resumenMecanico: string }[]
 }
 
 export async function getSave(id: string): Promise<SaveDetail> {
@@ -645,6 +662,17 @@ export async function spendAttributePoint(
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ attribute }),
+  })
+}
+
+// Elección obligatoria de especialización a nivel 10 (2026-09-01) — decisión única, el backend
+// rechaza con 409 si ya hay especialización asignada; el mensaje ya llega listo para mostrar tal
+// cual (ver fetchJson).
+export async function assignEspecializacion(id: string, especializacion: Especializacion): Promise<{ especializacion: Especializacion }> {
+  return fetchJson(`${API_URL}/saves/${id}/especializacion`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ especializacion }),
   })
 }
 

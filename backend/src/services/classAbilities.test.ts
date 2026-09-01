@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { classAbilityUnlocksFor, allClassAbilityUnlocks, classAbilityUnlocksForClase } from './classAbilities.js';
+import { classAbilityUnlocksFor, allClassAbilityUnlocks, classAbilityUnlocksForClase, especializacionesConHuecosPara, resumenMecanicoEspecializacion } from './classAbilities.js';
 
 // Cobertura nueva (auditoría 2026-08-03, "análisis completo backend/frontend"). Reescrita
 // 2026-08-24 (Grupo 3 § Sistema de clases, docs/rpgtarkor/clases.md): el roster pasa de listas
@@ -125,5 +125,30 @@ describe('classAbilityUnlocksForClase', () => {
     expect(instintivo.some((u) => u.ability.name === 'Golpe Gemelo')).toBe(true);
     const supervivencia = classAbilityUnlocksForClase('CAZADOR', 'SUPERVIVENCIA');
     expect(supervivencia.some((u) => u.ability.name === 'Golpe Gemelo')).toBe(false);
+  });
+});
+
+// Roadmap de UI de especialización (2026-09-01) — resumen mecánico derivado de datos reales, sin
+// lore inventado, para las tarjetas del modal obligatorio de nivel 10.
+describe('resumenMecanicoEspecializacion', () => {
+  it('una especialización real con contenido devuelve una frase no vacía', () => {
+    for (const clase of ['GUERRERO', 'CAZADOR', 'CHAMAN'] as const) {
+      for (const especializacion of especializacionesConHuecosPara(clase)) {
+        const resumen = resumenMecanicoEspecializacion(clase, especializacion);
+        expect(resumen.length).toBeGreaterThan(0);
+        expect(resumen).not.toBe('Sin habilidades propias construidas todavía.');
+      }
+    }
+  });
+
+  it('una combinación clase/especialización sin ningún hueco (la especialización no es de esa clase) devuelve el mensaje de "sin contenido"', () => {
+    // TIRADOR es una especialización de CAZADOR, no de GUERRERO — 0 filas en CLASS_ABILITIES para
+    // esta combinación, igual que cualquier clase sin ninguna especialización construida todavía.
+    expect(resumenMecanicoEspecializacion('GUERRERO', 'TIRADOR')).toBe('Sin habilidades propias construidas todavía.');
+  });
+
+  it('menciona el atributo real de las habilidades de Berserker (fuerza/carisma, docs/rpgtarkor/clases.md)', () => {
+    const resumen = resumenMecanicoEspecializacion('GUERRERO', 'BERSERKER');
+    expect(resumen).toMatch(/Fuerza|Carisma/);
   });
 });

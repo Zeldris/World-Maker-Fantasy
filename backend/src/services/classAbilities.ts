@@ -3132,3 +3132,54 @@ export function especializacionesConHuecosPara(clase: Clase): Especializacion[] 
 export function especializacionAbilityUnlocksFor(clase: Clase, especializacion: Especializacion, level: number): StartingAbility[] {
   return CLASS_ABILITIES.filter((u) => u.clase === clase && u.especializacion === especializacion && u.level <= level).map((u) => u.ability);
 }
+
+const ATTRIBUTE_LABEL: Record<string, string> = {
+  fuerza: 'Fuerza',
+  destreza: 'Destreza',
+  constitucion: 'Constitución',
+  inteligencia: 'Inteligencia',
+  voluntad: 'Voluntad',
+  carisma: 'Carisma',
+  magia: 'Magia',
+};
+
+/// Frase corta por `AbilityEffect`, solo para los que aparecen de verdad en habilidades de
+/// especialización — no los 20+ del enum completo (muchos siguen "PENDIENTE", ver schema.prisma).
+const EFFECT_LABEL: Partial<Record<string, string>> = {
+  ATAQUE: 'ataque directo',
+  ATURDIMIENTO: 'aturdir al rival',
+  INTIMIDACION: 'cancelar la acción del rival',
+  AGUANTE: 'defensa',
+  ANALISIS: 'analizar al rival',
+  INVOCACION: 'invocar un apoyo',
+  DEBILIDAD: 'debilitar al rival',
+  AUMENTO: 'buff propio',
+  CONTROL: 'controlar al rival',
+  MULTIPLE: 'golpear a varios rivales',
+  LETAL: 'golpe letal',
+  DESVIAR: 'desviar el golpe',
+  PROVOCACION: 'provocar al rival',
+  OCULTACION: 'ocultarse',
+  CONTRA: 'contragolpe físico',
+  REFRACTAR: 'contragolpe mágico',
+  RECUPERACION: 'recuperar energía',
+  CONVERSION: 'ataque de Magia',
+};
+
+/// Resumen mecánico corto de una especialización, derivado de las habilidades reales ya
+/// construidas (roadmap de UI de especialización, 2026-09-01) — nunca lore inventado: solo
+/// `rol`/`effects`/`preferredAttribute` de `CLASS_ABILITIES`, sustituible por prosa real de
+/// clases.md el día que exista una descripción propia por especialización (hoy no existe ninguna).
+export function resumenMecanicoEspecializacion(clase: Clase, especializacion: Especializacion): string {
+  const habilidades = CLASS_ABILITIES.filter((u) => u.clase === clase && u.especializacion === especializacion);
+  if (habilidades.length === 0) return 'Sin habilidades propias construidas todavía.';
+
+  const atributos = [...new Set(habilidades.map((u) => u.ability.preferredAttribute).filter((a): a is NonNullable<typeof a> => !!a))];
+  const efectos = [...new Set(habilidades.flatMap((u) => u.ability.effects ?? []))];
+
+  const parteAtributos = atributos.length > 0 ? `Basada en ${atributos.map((a) => ATTRIBUTE_LABEL[a] ?? a).join('/')}.` : '';
+  const efectosEtiquetados = efectos.map((e) => EFFECT_LABEL[e]).filter((e): e is string => !!e);
+  const parteEfectos = efectosEtiquetados.length > 0 ? ` Incluye ${efectosEtiquetados.join(', ')}.` : '';
+
+  return `${parteAtributos}${parteEfectos}`.trim() || 'Rama con contenido propio, sin resumen mecánico claro todavía.';
+}

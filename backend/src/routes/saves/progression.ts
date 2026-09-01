@@ -9,7 +9,7 @@ import { Clase, Especializacion } from '@prisma/client';
 /// Nivel mínimo real para elegir especialización (docs/rpgtarkor/clases.md, "cada una con 2-4
 /// especializaciones elegidas a nivel 10") — mismo criterio que el resto de topes de partida del
 /// proyecto (cifra citada del propio diseño, no inventada aquí).
-const NIVEL_MINIMO_ESPECIALIZACION = 10;
+export const NIVEL_MINIMO_ESPECIALIZACION = 10;
 
 /// Progresión "manual" del personaje (deuda técnica 2026-07-30, split de saves.ts): repartir un
 /// punto de atributo ganado por nivel — decisión puntual de la jugadora sobre su propio personaje,

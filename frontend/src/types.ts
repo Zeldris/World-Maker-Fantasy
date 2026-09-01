@@ -670,6 +670,45 @@ export interface SavedActionInfo {
 export type CondicionFisica = 'ILESO' | 'HERIDO' | 'GRAVE' | 'CONVALECIENTE' | 'MUERTO'
 export type Dificultad = 'NOVATO' | 'MEDIO' | 'AVANZADO'
 
+/// Sistema de clases (2026-08-24, docs/rpgtarkor/clases.md) — mismo enum `Clase` que el backend
+/// (schema.prisma), replicado a mano (sin cliente Prisma en frontend, mismo criterio que Dificultad).
+export type Clase = 'GUERRERO' | 'CAZADOR' | 'CHAMAN' | 'ARQUERO' | 'CABALLERO' | 'MAGO' | 'SEGADOR' | 'ASESINO' | 'DRUIDA'
+
+/// Especialización elegida a nivel 10 dentro de una Clase — mismo enum `Especializacion` del
+/// backend, 30 valores (no todos con contenido real construido, ver `especializacionesConHuecosPara`).
+export type Especializacion =
+  | 'BERSERKER'
+  | 'GUARDIAN'
+  | 'LANCERO'
+  | 'ESPECIALISTA'
+  | 'DOMADOR'
+  | 'SUPERVIVENCIA'
+  | 'TIRADOR'
+  | 'INSTINTIVO'
+  | 'TOTEMICO'
+  | 'RUNICO'
+  | 'CONVOCADOR'
+  | 'OPRESOR'
+  | 'MAESTRO_ARQUERO'
+  | 'MAESTRO_BALLESTERO'
+  | 'CABALLERO_DEL_ORDEN'
+  | 'CABALLERO_DEL_VALOR'
+  | 'CABALLERO_DEL_DOLOR'
+  | 'PODER_MAGIA'
+  | 'PODER_SEMILLA'
+  | 'PARCA'
+  | 'MALDITO'
+  | 'ILUSTRADO'
+  | 'TRANSMUTADOR'
+  | 'MAESTRO_ASESINO'
+  | 'ASESINO_TOXICO'
+  | 'ASESINO_DANZANTE'
+  | 'ASESINO_SELECTO'
+  | 'CAMBIAFORMAS'
+  | 'AULLADOR'
+  | 'SALVAJE'
+  | 'ADAPTADO'
+
 /// Interacción con un NPC/fauna ya convaleciente o muerto, fuera de combate (docs/19-post-combate-
 /// y-recompensas-mision.md pieza 2) — lo que devuelve /turn/classify en vez de la clasificación
 /// normal cuando el jugador nombra a alguien ya resuelto que sigue en escena.
