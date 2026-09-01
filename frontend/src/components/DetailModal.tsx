@@ -12,6 +12,7 @@ import {
   type ImagePromptEntityType,
 } from '../lib/api'
 import { AbilityForm, type AbilityFormParams } from './AbilityForm'
+import { abilityBonusSuffix } from '../lib/abilityBonusSuffix'
 import { EnciclopediaLinkedText } from './EnciclopediaLinkedText'
 import { useEnciclopediaLink } from '../context/useEnciclopediaLink'
 import { MediaSlot, ImagePromptSlot } from './ImagePromptDisplay'
@@ -255,7 +256,13 @@ export function DetailModal({ target, onClose, onUnequip, onEquip, onSaveAbility
           <>
             <MediaSlot icon={target.ability.icon} />
             <h2 className="font-serif text-lg text-wood-100">{target.ability.name}</h2>
-            <p className="text-sm leading-relaxed text-wood-300">{target.ability.description || 'Sin descripción.'}</p>
+            {/* Bug real (2026-09-01, checklist "Bonus de atributo por habilidad"): este modal de
+                detalle — el camino más visible al pulsar el botón ⓘ de una habilidad — mostraba
+                `description` a secas, sin el sufijo "(+N de bono fijo al usarla)" que sí llevan
+                los `title` nativos de AbilityGrid/CombatAbilityBelt (abilityBonusSuffix.ts). El
+                bono en sí SIEMPRE se aplicó en combate; solo faltaba aquí, el sitio que de verdad
+                se ve al jugar. */}
+            <p className="text-sm leading-relaxed text-wood-300">{(target.ability.description || 'Sin descripción.') + abilityBonusSuffix(target.ability)}</p>
             <p className="rounded-lg border border-iron-700 bg-wood-950/40 px-3 py-2 text-xs italic text-wood-400">"{target.ability.promptText}"</p>
             {target.ability.recipeKey &&
               (() => {
