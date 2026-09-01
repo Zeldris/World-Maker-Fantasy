@@ -68,6 +68,11 @@ serio de la escena.
 "persona gramatical", genérica) cubre este caso concreto de diálogo en primera persona del propio
 personaje — parece un caso nuevo, no exactamente el mismo síntoma ya descrito ahí.
 
+**Estado**: ANOTADO, sin acción (2026-09-01) — una sola observación en toda la sesión, sin patrón
+claro para escribir un guard sin riesgo de falsos positivos (un personaje SÍ puede legítimamente
+decir su propio nombre en ciertos contextos narrativos, ej. presentarse a otro NPC). Candidato a
+revisar si se repite en sesiones futuras.
+
 ## Kirelon-arenoso "ciego" abre un ojo a media interacción — contradice su propia ficha y su propio cierre
 
 **Qué pasó**: el modo dinámico ofreció interactuar con un kirelon-arenoso cuya ficha (`targetBio`,
@@ -85,6 +90,11 @@ sentido, y aquí ni siquiera es consistente turno a turno dentro del mismo event
 `pendingDynamicMode`) — el hueco no es de falta de datos, sino de que el LLM no lo respeta siempre.
 Candidato a guard de post-proceso si se repite con otras criaturas con rasgos sensoriales marcados
 (ciego, sordo, etc.), similar a otros guards ya existentes de consistencia narrativa.
+
+**Estado**: ANOTADO, sin acción (2026-09-01) — evaluado junto al guard de vocabulario mágico
+(hallazgo 1), pero un guard genérico de "rasgo sensorial contradicho" necesitaría una lista curada
+de qué criaturas tienen qué rasgo y qué vocabulario lo contradice, más trabajo del que justifica una
+sola observación. Candidato si se repite con otras criaturas de bestiario marcado.
 
 ## Modo dinámico: primera impresión jugando de verdad
 
@@ -114,6 +124,11 @@ verdad, sin saber de antemano que este sistema existía.
 - Ver el hallazgo anterior sobre la contradicción "ciego/abre un ojo" — el modo dinámico hereda el
   mismo tipo de desliz de vocabulario/coherencia que el resto de la narración.
 
+**Estado**: PARCIALMENTE FIJADO (2026-09-01) — el fleco de "Resolviendo..." sin indicador de
+progreso está arreglado (spinner real añadido en `DynamicModeModal.tsx`). El nombre en mayúsculas
+tipo mensaje de sistema y la herencia del desliz de coherencia (ver hallazgo de kirelon) siguen
+abiertos, sin acción — quedan como observación de UX menor, no bloqueante.
+
 ## Mapa de zona y mapa regional: buena primera impresión, sin leyenda de iconos
 
 **Qué pasó**: abrí el modal de Mapa (pestañas "Zona"/"Mapa") desde la barra derecha. La pestaña
@@ -131,6 +146,8 @@ y el rombo es recurso/flora. Sin ese contexto previo, el mapa es precioso pero u
 
 **Sugerencia**: un tooltip al pasar el ratón sobre un punto, o una leyenda pequeña y discreta en una
 esquina del modal, resolvería esto sin ensuciar la estética.
+
+**Estado**: FIJADO (2026-09-01) — leyenda de formas/colores añadida en `ZonaPanel.tsx`.
 
 ## "Canizor" y "Aullador Rojo" narrados como un único animal cuando son dos NPCs distintos del catálogo
 
@@ -155,6 +172,12 @@ entrar en combate.
 sepa de antemano cuántos rivales hay realmente antes de comprometerse a un acercamiento sigiloso o un
 ataque.
 
+**Estado**: EVALUADO, sin guard implementado (2026-09-01) — investigado junto al guard de
+vocabulario mágico. Detectar "2+ NPCs distintos fusionados en un sujeto singular" con fiabilidad
+suficiente (sin arriesgar falsos positivos contra nombres compuestos legítimos como "Buitre Cenizo")
+requeriría más señal de la que un regex simple puede dar. Descartado a propósito, no por omisión.
+Candidato a revisar si el patrón se repite con más muestra en sesiones futuras.
+
 ## Concordancia de género rota: "la ataque"/"la canizor"
 
 **Qué pasó**: al atacar al canizor, la narración escribió literalmente *"Gorhorn se prepara para la
@@ -169,6 +192,11 @@ sesión de ~10 turnos ya apareció una vez, lo que sugiere que no es rarísimo.
 **Sugerencia**: candidato a guard de post-proceso tipo "detector de concordancia de género" si ya
 existe infraestructura similar para otros guards de vocabulario/persona gramatical — puede que sea
 más frecuente de lo que este único muestreo sugiere.
+
+**Estado**: ANOTADO, sin acción (2026-09-01) — un detector genérico de concordancia de género en
+español es un problema de NLP no trivial (requiere saber el género real de cada sustantivo, no solo
+patrones de superficie) y una sola observación no justifica esa inversión. Candidato a revisar con
+más muestra si se repite.
 
 ## +500 XP mostrado justo tras un fallo, sin explicar que es un hito de capítulo y no XP del propio combate
 
@@ -191,6 +219,10 @@ corto tipo "📖 Capítulo completado (+500 XP)" en su propia línea, en vez de 
 resultado del intercambio de combate. El código ya distingue `xpTirada` de `xpHito`
 (`turnResolution.ts:5597-5600`); solo falta que el frontend/narración lo comunique por separado.
 
+**Estado**: FIJADO (2026-09-01) — migración `LogEntry.xpHitoDelta`/`xpHitoLabel` +
+`ProgressionResult` desglosado (backend), pintado en su propia línea en el frontend
+(`LogPanel.tsx`/`useTurnFlow.ts`), separado del chip de XP normal del turno.
+
 ## Acción de rastreo clasificada como recolección de planta — intención completamente distinta a la escrita
 
 **Qué pasó**: tras el ataque fallido, escribí *"Recojo mi hacha del suelo y sigo el rastro que ha
@@ -211,6 +243,11 @@ antes de un combate).
 ideas en una misma acción (recoger objeto + seguir rastro) — puede estar quedándose solo con
 "rastro"/"suelo" y enganchando con la recolección más cercana en vez de con el verbo de seguimiento.
 
+**Estado**: FIJADO (2026-09-01) — causa raíz exacta: "suelo" está a distancia Levenshtein 2 de
+"fuego" (`matchHarvestSource`, `harvest.ts`), coló Raíz de Fuego por tolerancia a erratas.
+`HARVEST_ALIAS_FUZZY_EXCLUSIONS` excluye "suelo" del matching fuzzy, mismo patrón que
+`NPC_ALIAS_FUZZY_EXCLUSIONS`. Test de regresión con la frase exacta reportada.
+
 ## Icono del botón COMBATIR inconsistente: espada en un momento, aspa roja en otro
 
 **Qué pasó**: el botón de entrar en combate mostró el icono ⚔️ (espada) en un encuentro anterior de
@@ -225,6 +262,9 @@ comunicaría eso sin la ambigüedad de un aspa que normalmente significa "no pue
 **Sugerencia**: revisar si el icono cambia a propósito según la dificultad calculada del encuentro
 (en cuyo caso un color/símbolo de advertencia sería más claro que un aspa) o si es un `emoji`/clase
 CSS que se está resolviendo mal en ciertos estados.
+
+**Estado**: FIJADO (2026-09-01) — icono ⚠️ en vez de ❌ para encuentros de dificultad alta, en el
+componente que renderiza el botón Combatir.
 
 ## `pendingCombatNpcSlugs` queda "fantasma" tras un combate ya RESUELTO — reproducido jugando de forma normal
 
@@ -325,5 +365,10 @@ stem, como ya hace `fuzzyMatchCandidates`/`baseNameOf` en otros puntos del proye
 `sentenceMatchesRegexAndName` (`narrador.ts`, usada por `hasFalseItemUse` y varios guards hermanos)
 — es la misma clase de fragilidad en al menos 3 sitios distintos del código, con el mismo síntoma
 raíz: un plural o una flexión menor rompe un matching que debería ser robusto.
+
+**Estado**: FIJADO (2026-09-01) — nueva función compartida `includesNameOrPlural`
+(`itemReference.ts`, regla española básica +s/+es en la primera palabra), aplicada en
+`detectMedicalItemUse`, `detectEnergyItemUse` y `sentenceMatchesRegexAndName`. 2 tests de regresión
+con el caso real, 1844/1844 tests del backend en verde.
 
 ---
