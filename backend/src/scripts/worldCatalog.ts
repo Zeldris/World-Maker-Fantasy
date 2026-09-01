@@ -2639,12 +2639,23 @@ export const npcs: NpcInput[] = [
   // NPC DE PRUEBA POR RAZA (2026-09-01, petición explícita: "añade ya un npc genérico para cada
   // raza para este tipo de pruebas") — uno por raza jugable hoy sin representante combatible fácil
   // de forzar (Goirnte y Faerus tenían pasivas raciales sin confirmar en pantalla por falta de
-  // escenario, no por bug; Faerus no tenía NINGÚN NPC en todo el catálogo). `nucleoJugable: false`
-  // (mismo criterio que Sella Marn) — no forman parte de ninguna trama real, viven en Las Agujas
-  // Imán (hito sin dueño ni facción) solo para poder forzarlos en un CombatEncounter de prueba sin
-  // tocar contenido narrativo real. `temperamento: 'AGRESIVO'` para poder combatirlos directo, sin
-  // depender de random de hostilidad. Clase = la exclusiva de su propia raza (mismo criterio que
-  // el resto del catálogo humanoide), nivel 1 (tronco común real ya construido para las 3).
+  // escenario, no por bug; Faerus no tenía NINGÚN NPC en todo el catálogo). Viven en Las Agujas
+  // Imán (hito sin dueño ni facción) para no tocar contenido narrativo real. `temperamento:
+  // 'AGRESIVO'` para poder combatirlos directo, sin depender de random de hostilidad. Clase = la
+  // exclusiva de su propia raza (mismo criterio que el resto del catálogo humanoide), nivel 1
+  // (tronco común real ya construido para las 3).
+  //
+  // `nucleoJugable: false` (mismo criterio que Sella Marn) — bloqueo real confirmado dos veces esta
+  // misma sesión: (1) sin ella, `detectNpcsInScene` (npcScene.ts) los descarta ANTES de comprobar
+  // "itinerante sin homeLocationSlug", así que no pueden aparecer en escena la primera vez sin un
+  // `NpcState` ya existente; (2) sin ella, al ser itinerantes sin `homeLocationSlug`, son candidatos
+  // en CUALQUIER ubicación del mundo — rompió 2 tests de integración reales de
+  // `turn.integration.test.ts` que no esperaban verlos en escena (uno de ellos en la misma
+  // `hondonada-del-eco` usada para forzarlos en vivo). Para usarlos de verdad: crear a mano el
+  // `NpcState` de la partida real primero (`INSERT INTO "NpcState" (saveId, npcId, scope,
+  // condicionFisica, ...)`, mismo patrón que Sella Marn) — eso libera el candado SOLO para esa
+  // partida concreta (`encounteredIds`, npcScene.ts, es por `saveId`), sin volver itinerantes
+  // universales para el resto del mundo/tests.
   // ══════════════════════════════════════════════════════════════════════════
 
   {
