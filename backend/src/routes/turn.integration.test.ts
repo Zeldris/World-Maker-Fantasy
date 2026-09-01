@@ -1768,6 +1768,105 @@ describe('Construcción determinista: campamento', () => {
   }, 15_000);
 });
 
+// Cobertura nueva (auditoría en vivo, 2026-09-01, hallazgo de un agente investigando "la
+// construcción rechaza materiales válidos y deja el Building EN_CONSTRUCCION huérfano"): el
+// camino DIFERIDO real de construcción (`Building` `EN_CONSTRUCCION` creado por `/turn/classify`,
+// completado más tarde por `startEagerTransitResolution` vía `earlyBuildingId`) nunca tenía NINGÚN
+// test — toda la suite de "Construcción determinista" de arriba llama a `/turn/narrate`
+// directamente, con `earlyBuildingId` siempre `undefined` (comentario propio de
+// `turnResolution.ts`: "nunca pasa hoy, todas las recetas son banda larga"). Este test ejercita el
+// camino real de producción de punta a punta.
+//
+// De paso, confirma el fix de staleness de `catalogBySlug` (turnResolution.ts): antes de ese fix,
+// un material cuyo `catalogSlug` no estuviera ya en el snapshot pre-transacción de
+// `narrateAndPersistTurn` podía undercontarse al revalidar dentro de la transacción
+// (`matchesRow`/ingredients.ts, lookup por categoría) — aquí no se fuerza esa ventana exacta con
+// timing real (frágil e indeterminista desde fuera de la función), pero si esa relectura no
+// ampliara el mapa correctamente, este mismo test fallaría igual en cuanto tocara cualquier
+// material no visto por `planDeterministicBuild` (que sí usa su propio catálogo fresco al crear
+// el `CharacterTransit`).
+describe('Construcción diferida (camino real de producción, startEagerTransitResolution) — nunca antes cubierto por ningún test (auditoría 2026-09-01)', () => {
+  let saveId: string;
+  let locationId: string;
+
+  beforeAll(async () => {
+    const userId = await getDefaultUserId();
+    const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
+    const location = await prisma.location.findFirstOrThrow({ where: { worldId: world.id, slug: 'hondonada-del-eco' } });
+    locationId = location.id;
+    const save = await prisma.save.create({
+      data: {
+        userId,
+        worldId: world.id,
+        characterName: 'Gorhorn de prueba (construcción diferida real)',
+        characterArchetype: 'guerrero',
+        characterOrigin: 'Clan Maktor',
+        characterMotivation: 'x',
+        attributes: ATTRS,
+        portraitInitial: 'G',
+        currentLocationId: location.id,
+      },
+    });
+    saveId = save.id;
+    await prisma.worldState.create({ data: { saveId } });
+    await prisma.inventoryItem.createMany({
+      data: [
+        { saveId, name: 'Leña de matorral de cuerno (6)', description: 'x', catalogSlug: 'lena-matorral-cuerno', origin: 'partida' },
+        { saveId, name: 'Piedra (8)', description: 'x', catalogSlug: 'piedra', origin: 'partida' },
+        { saveId, name: 'Lana de múrgol (2)', description: 'x', catalogSlug: 'lana-murgol', origin: 'partida' },
+      ],
+    });
+  });
+
+  afterAll(async () => {
+    await prisma.save.delete({ where: { id: saveId } });
+  });
+
+  it('con earlyBuildingId real: completa el Building a ACTIVO y consume los materiales exactos', async () => {
+    const action = 'Construyo un campamento base en este lugar.';
+    const earlyBuilding = await prisma.building.create({
+      data: {
+        saveId,
+        locationId,
+        recipeKey: 'campamento',
+        name: 'Campamento Base Orco de las Llanuras',
+        kind: 'campamento',
+        description: 'x',
+        status: 'EN_CONSTRUCCION',
+      },
+    });
+    const transit = await prisma.characterTransit.create({
+      data: {
+        saveId,
+        activity: action,
+        busyUntil: new Date(Date.now() + 10 * 60_000), // lejos a propósito: notBefore manda
+        zoneContext: {
+          action,
+          classification: { requiereTirada: false, atributo: 'fuerza', dificultad: 15, razon: 'x', banda: 'larga', duracionEstimadaMinutos: 4320 },
+          roll: undefined,
+          travel: null,
+          buildingId: earlyBuilding.id,
+        } as object,
+      },
+    });
+
+    await startEagerTransitResolution(transit.id, new Date());
+
+    const building = await prisma.building.findUniqueOrThrow({ where: { id: earlyBuilding.id } });
+    expect(building.status).toBe('ACTIVO');
+
+    // Los 3 materiales se consumieron EXACTOS — nada queda en el inventario. Si el fix de
+    // staleness de `catalogBySlug` se rompiera, este `Building` se quedaría `EN_CONSTRUCCION`
+    // igual que en el bug real reportado.
+    const inventoryAfter = await prisma.inventoryItem.findMany({ where: { saveId } });
+    expect(inventoryAfter).toEqual([]);
+
+    // El CharacterTransit se borra al completar — ya no queda ningún tránsito "colgado".
+    const transitAfter = await prisma.characterTransit.findUnique({ where: { id: transit.id } });
+    expect(transitAfter).toBeNull();
+  }, 15_000);
+});
+
 // BUG CERRADO (auditoría en vivo, 2026-09-01): mencionar "leña" al construir (materiales que el
 // jugador ya lleva, texto libre normal) disparaba la regex de producción de leña de
 // `computeDuration` (timedActions.ts) EN PARALELO a la construcción real, creando un InventoryItem

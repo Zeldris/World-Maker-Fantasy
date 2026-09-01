@@ -477,11 +477,26 @@ export async function computeBuildBlockedReason(params: {
   buildRecipe: ConstructionRecipe;
   activeRegion: string | null;
   currentLocationRecord: { id: string };
+  /// Bug real (auditoría en vivo, 2026-09-01, camino DIFERIDO de construcción — `earlyBuildingId`
+  /// en turnResolution.ts): la fila `Building EN_CONSTRUCCION` de ESTA MISMA construcción ya
+  /// existe cuando se revalida dentro de la transacción (turn.ts la crea al iniciar el turno
+  /// largo) — sin excluirla, el conteo de cupo por región se autocontaba a sí misma, bloqueando
+  /// PARA SIEMPRE cualquier construcción diferida real con `maxPerRegion` (el propio Campamento:
+  /// "ya tiene Campamento Base activo en esta región" contra su propia fila todavía a medio
+  /// construir). El camino síncrono (`/turn/narrate` directo, sin `earlyBuildingId`) nunca lo
+  /// sufre porque su `Building` se crea DESPUÉS de esta revalidación, no antes.
+  excludeBuildingId?: string;
 }): Promise<string | null> {
-  const { db, saveId, worldId, buildRecipe, activeRegion, currentLocationRecord } = params;
+  const { db, saveId, worldId, buildRecipe, activeRegion, currentLocationRecord, excludeBuildingId } = params;
   if (buildRecipe.maxPerRegion) {
     const sameRegionCount = await db.building.count({
-      where: { saveId, recipeKey: buildRecipe.key, status: { in: ['ACTIVO', 'EN_CONSTRUCCION'] }, location: { region: activeRegion ?? undefined } },
+      where: {
+        saveId,
+        recipeKey: buildRecipe.key,
+        status: { in: ['ACTIVO', 'EN_CONSTRUCCION'] },
+        location: { region: activeRegion ?? undefined },
+        ...(excludeBuildingId ? { id: { not: excludeBuildingId } } : {}),
+      },
     });
     if (sameRegionCount >= buildRecipe.maxPerRegion) {
       return `ya tiene ${buildRecipe.name} activo en esta región (máximo ${buildRecipe.maxPerRegion} por región)`;

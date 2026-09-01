@@ -1608,8 +1608,15 @@ async function resolveBuildIntentContext(params: {
   secondaryAttributes: SecondaryAttributeBlock;
   alivioFor: (oficio: string | undefined) => number;
   tieneOficioFor: (oficio: string | undefined) => boolean;
+  /// Bug real (auditoría en vivo, 2026-09-01, camino DIFERIDO — ver comentario completo en
+  /// `computeBuildBlockedReason`, construction.ts): mismo motivo que la exclusión de la segunda
+  /// llamada (dentro de la transacción, más abajo) — sin esto, esta PRIMERA comprobación (fuera de
+  /// transacción, la que decide `buildMode` de entrada) ya bloqueaba con "ya tiene X activo en
+  /// esta región" contra su propia fila `EN_CONSTRUCCION`, antes de llegar siquiera a la
+  /// revalidación de materiales.
+  earlyBuildingId?: string;
 }): Promise<BuildIntentContext> {
-  const { action, saveId, worldId, activeRegion, currentLocationRecord, inventoryRows, catalogBySlug, attributes, secondaryAttributes, alivioFor, tieneOficioFor } =
+  const { action, saveId, worldId, activeRegion, currentLocationRecord, inventoryRows, catalogBySlug, attributes, secondaryAttributes, alivioFor, tieneOficioFor, earlyBuildingId } =
     params;
   const buildRecipe: ConstructionRecipe | undefined = CONSTRUCTION_RECIPES.find((r) => detectsBuildIntent(r, action));
   const buildRecipeCheck: RecipeCheck | null = buildRecipe
@@ -1617,7 +1624,7 @@ async function resolveBuildIntentContext(params: {
     : null;
   const buildBlockedReason: string | null =
     buildRecipe && buildRecipeCheck?.met && currentLocationRecord
-      ? await computeBuildBlockedReason({ db: prisma, saveId, worldId, buildRecipe, activeRegion, currentLocationRecord })
+      ? await computeBuildBlockedReason({ db: prisma, saveId, worldId, buildRecipe, activeRegion, currentLocationRecord, excludeBuildingId: earlyBuildingId })
       : null;
   const buildMode = !!buildRecipe && !!buildRecipeCheck?.met && !buildBlockedReason;
   const blocks: string[] = [];
@@ -3801,6 +3808,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     secondaryAttributes,
     alivioFor,
     tieneOficioFor,
+    earlyBuildingId,
   });
   contextBlocks.push(...buildBlocks);
 
@@ -4969,6 +4977,53 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
       select: { id: true, name: true, catalogSlug: true, slot: true },
     });
 
+    // Bug real (auditoría en vivo, 2026-09-01): `catalogBySlug` (construido más arriba, ANTES de
+    // esta transacción, a partir de `inventoryRows`) solo conoce los `catalogSlug` que el
+    // jugador YA tenía al empezar a narrar. `matchesRow` (ingredients.ts) para un requisito por
+    // categoría hace `catalogBySlug.get(row.catalogSlug)` — si una fila de `freshInventoryRows`
+    // tiene un `catalogSlug` que no estaba en ese snapshot viejo (un objeto llegó entre la
+    // primera lectura y esta relectura: producción de fondo, otro turno, un tick del mundo), el
+    // lookup da `undefined` y esa fila se considera "no coincide" aunque su categoría real sí
+    // encaje — undercuenta el inventario real y puede rechazar una construcción/crafteo con
+    // materiales de sobra. Se amplía el mapa con cualquier `catalogSlug` nuevo antes de planear
+    // el consumo real (crafteo/construcción, más abajo) — mismo criterio anti-carrera que
+    // `freshInventoryRows` en sí: los datos que se USAN para decidir deben ser los frescos.
+    const freshCatalogSlugs = [...new Set(freshInventoryRows.map((i) => i.catalogSlug).filter((s): s is string => !!s))].filter(
+      (slug) => !catalogBySlug.has(slug),
+    );
+    if (freshCatalogSlugs.length > 0) {
+      const freshCatalogRows = await tx.itemCatalog.findMany({
+        where: { worldId, slug: { in: freshCatalogSlugs } },
+        select: {
+          slug: true,
+          tipo: true,
+          category: true,
+          curaHasta: true,
+          curaUnPaso: true,
+          tipoArma: true,
+          curaEnergia: true,
+          equipSlot: true,
+          effectKey: true,
+          aliases: true,
+          herramientaParaOficio: true,
+        },
+      });
+      for (const c of freshCatalogRows) {
+        catalogBySlug.set(c.slug, {
+          tipo: c.tipo,
+          category: c.category,
+          curaHasta: c.curaHasta,
+          curaUnPaso: c.curaUnPaso,
+          tipoArma: c.tipoArma,
+          curaEnergia: c.curaEnergia,
+          equipSlot: c.equipSlot,
+          effectKey: c.effectKey,
+          aliases: c.aliases,
+          herramientaParaOficio: c.herramientaParaOficio,
+        });
+      }
+    }
+
     // Consumo real de objetos médicos/de energía (bug real jugando en vivo, 2026-08-07: "he
     // consumido una ración y no ha desaparecido del inventario", también en combate) —
     // `consumedItemIds` se calculó ANTES de esta transacción; se revalida aquí contra
@@ -5108,7 +5163,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
       buildMode && buildRecipe ? planRecipeConsumption(buildRecipe, freshInventoryRows, catalogBySlug) : null;
     const buildStillBlockedReason =
       buildMode && buildRecipe && buildRecipeConsumptionPlans && currentLocationRecord
-        ? await computeBuildBlockedReason({ db: tx, saveId, worldId, buildRecipe, activeRegion, currentLocationRecord })
+        ? await computeBuildBlockedReason({ db: tx, saveId, worldId, buildRecipe, activeRegion, currentLocationRecord, excludeBuildingId: earlyBuildingId })
         : null;
     const buildValidNow = !!buildRecipeConsumptionPlans && !buildStillBlockedReason;
     // Narración mentirosa si se pierde la carrera (auditoría 2026-08-04, cierre del hallazgo de
