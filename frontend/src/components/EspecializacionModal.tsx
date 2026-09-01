@@ -1,12 +1,14 @@
 import { useState } from 'react'
 import type { Clase, Especializacion } from '../types'
 import { claseLabel, especializacionLabel } from '../lib/dice'
-import { MediaSlot } from './ImagePromptDisplay'
+import { MediaSlot, ImagePromptSlot } from './ImagePromptDisplay'
+import { resolveImageUrl } from '../lib/api'
 import { useSubmitError } from '../hooks/useSubmitError'
 
 interface EspecializacionModalProps {
   clase: Clase
-  especializaciones: { especializacion: Especializacion; resumenMecanico: string }[]
+  especializaciones: { especializacion: Especializacion; resumenMecanico: string; iconoUrl: string | null }[]
+  worldSlug: string
   onConfirm: (especializacion: Especializacion) => Promise<void>
   onOpenEnciclopedia: () => void
 }
@@ -16,7 +18,7 @@ interface EspecializacionModalProps {
 /// que KingdomFoundingModal.tsx (overlay + plank-panel), pero SIN `onCancel` — a diferencia de
 /// fundar reino, esta decisión no se puede posponer una vez a nivel 10 (ver GameView.tsx, sustituye
 /// al composer normal mientras `pendingEspecializacionChoice` sea `true`).
-export function EspecializacionModal({ clase, especializaciones, onConfirm, onOpenEnciclopedia }: EspecializacionModalProps) {
+export function EspecializacionModal({ clase, especializaciones, worldSlug, onConfirm, onOpenEnciclopedia }: EspecializacionModalProps) {
   const [seleccionada, setSeleccionada] = useState<Especializacion | null>(null)
   const [confirmando, setConfirmando] = useState(false)
   const [busy, setBusy] = useState(false)
@@ -65,12 +67,22 @@ export function EspecializacionModal({ clase, especializaciones, onConfirm, onOp
           </>
         ) : (
           <>
-            <MediaSlot icon="🎓" />
+            <MediaSlot icon="🎓" imageUrl={resolveImageUrl(detalle.iconoUrl)} />
             <div>
               <h3 className="font-serif text-lg text-wood-100">{especializacionLabel(detalle.especializacion)}</h3>
               <p className="mt-1 text-xs text-wood-400">{claseLabel(clase)}</p>
             </div>
             <p className="text-sm leading-relaxed text-wood-300">{detalle.resumenMecanico}</p>
+            {!detalle.iconoUrl && (
+              <ImagePromptSlot
+                label="Icono"
+                existingPrompt={null}
+                worldSlug={worldSlug}
+                entityType="especializacion"
+                entitySlug={detalle.especializacion}
+                sizeProfile="icono"
+              />
+            )}
 
             {confirmando && (
               <div className="rounded-lg border border-danger-600/50 bg-danger-500/10 px-3.5 py-2.5 text-xs leading-relaxed text-danger-300">

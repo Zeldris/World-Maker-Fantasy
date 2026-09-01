@@ -348,7 +348,7 @@ export function GameView() {
   // Elección obligatoria de especialización a nivel 10 (2026-09-01) — mismo patrón que
   // pendingDeathResolution: bloquea el composer hasta resolver.
   const [pendingEspecializacionChoice, setPendingEspecializacionChoice] = useState(false)
-  const [especializacionesDisponibles, setEspecializacionesDisponibles] = useState<{ especializacion: Especializacion; resumenMecanico: string }[]>([])
+  const [especializacionesDisponibles, setEspecializacionesDisponibles] = useState<{ especializacion: Especializacion; resumenMecanico: string; iconoUrl: string | null }[]>([])
   const [clase, setClase] = useState<Clase | null>(null)
   const [combateIniciado, setCombateIniciado] = useState<{ npcs: NpcInSceneInfo[] } | null>(null)
   // Rediseño del turno de combate (2026-07-29, "quiero que sea más claro cuando es turno de
@@ -1772,10 +1772,11 @@ export function GameView() {
           mismo criterio de prioridad que el resto de estados excluyentes de la partida: la muerte
           permanente/fin de partida ganan si coinciden (no debería pasar de verdad: resolver una
           muerte no sube de nivel), especialización solo se muestra si ninguna de esas dos aplica. */}
-      {pendingEspecializacionChoice && !pendingDeathResolution && !endedAt && clase && (
+      {pendingEspecializacionChoice && !pendingDeathResolution && !endedAt && clase && worldIdSlug && (
         <EspecializacionModal
           clase={clase}
           especializaciones={especializacionesDisponibles}
+          worldSlug={worldIdSlug}
           onConfirm={handleAssignEspecializacion}
           onOpenEnciclopedia={handleOpenEnciclopediaClasses}
         />

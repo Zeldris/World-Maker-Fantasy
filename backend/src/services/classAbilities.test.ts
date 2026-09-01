@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { classAbilityUnlocksFor, allClassAbilityUnlocks, classAbilityUnlocksForClase, especializacionesConHuecosPara, resumenMecanicoEspecializacion } from './classAbilities.js';
+import { classAbilityUnlocksFor, allClassAbilityUnlocks, classAbilityUnlocksForClase, especializacionesConHuecosPara, resumenMecanicoEspecializacion, claseDeEspecializacion } from './classAbilities.js';
 
 // Cobertura nueva (auditoría 2026-08-03, "análisis completo backend/frontend"). Reescrita
 // 2026-08-24 (Grupo 3 § Sistema de clases, docs/rpgtarkor/clases.md): el roster pasa de listas
@@ -155,5 +155,19 @@ describe('resumenMecanicoEspecializacion', () => {
   it('Domador (solo "Compañero cazador", category:general, sin rol/effects/preferredAttribute) cae a la description real en vez de un mensaje vacío', () => {
     const resumen = resumenMecanicoEspecializacion('CAZADOR', 'DOMADOR');
     expect(resumen).toContain('Desbloquea un slot de mascota');
+  });
+});
+
+// Roadmap de banners de clase/especialización (2026-09-01) — el generador de prompts de imagen
+// recibe solo el slug de la especialización, sin la clase, y necesita derivarla.
+describe('claseDeEspecializacion', () => {
+  it('devuelve la clase real dueña de una especialización con contenido', () => {
+    expect(claseDeEspecializacion('BERSERKER')).toBe('GUERRERO');
+    expect(claseDeEspecializacion('INSTINTIVO')).toBe('CAZADOR');
+    expect(claseDeEspecializacion('OPRESOR')).toBe('CHAMAN');
+  });
+
+  it('devuelve undefined para una especialización sin ningún hueco construido', () => {
+    expect(claseDeEspecializacion('PODER_MAGIA')).toBeUndefined();
   });
 });

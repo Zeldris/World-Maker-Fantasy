@@ -29,6 +29,8 @@ const SECTION_LABEL: Record<ImagePromptEntityType, string> = {
   historia: 'Historia',
   crafteo: 'Crafteo',
   zona: 'Zonas navegables',
+  clase: 'Clases',
+  especializacion: 'Especializaciones',
 };
 
 const SIZE_PROFILE_LABEL: Record<ImagePromptSizeProfile, string> = {

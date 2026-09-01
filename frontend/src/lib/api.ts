@@ -577,7 +577,7 @@ export interface SaveDetail {
   /// Solo presente cuando `pendingEspecializacionChoice` es `true` — una tarjeta por
   /// especialización real de la clase (`especializacionesConHuecosPara`, backend), con un resumen
   /// mecánico corto derivado de sus habilidades reales (nunca lore inventado).
-  especializacionesDisponibles?: { especializacion: Especializacion; resumenMecanico: string }[]
+  especializacionesDisponibles?: { especializacion: Especializacion; resumenMecanico: string; iconoUrl: string | null }[]
 }
 
 export async function getSave(id: string): Promise<SaveDetail> {
@@ -1656,7 +1656,21 @@ export async function getEnciclopedia(worldSlug: string, saveId?: string | null)
 // 'faction'/'historia' (2026-08-06) — mismo literal que el backend, ver imagePromptGenerator.ts.
 // 'zona' (2026-08-26) — imágenes propias del panel Zona (banner/miniatura/mapa pintados a mano),
 // separadas del banner/miniatura fotorrealista que la misma ubicación ya tiene bajo 'location'.
-export type ImagePromptEntityType = 'npc' | 'item' | 'fauna' | 'ability' | 'raza' | 'personaje' | 'location' | 'construccion' | 'faction' | 'historia' | 'crafteo' | 'zona'
+export type ImagePromptEntityType =
+  | 'npc'
+  | 'item'
+  | 'fauna'
+  | 'ability'
+  | 'raza'
+  | 'personaje'
+  | 'location'
+  | 'construccion'
+  | 'faction'
+  | 'historia'
+  | 'crafteo'
+  | 'zona'
+  | 'clase'
+  | 'especializacion'
 /// 'thumbnail' = icono cuadrado de la cuadrícula (EntryCard), 'banner' = MediaSlot ancho del
 /// detalle (~3:1, medido contra la UI real), 'mapa' = fondo del panel Zona (800x600, solo
 /// entityType 'zona'), 'icono' (2026-08-31) = emblema plano cuadrado (512x512, hoy solo

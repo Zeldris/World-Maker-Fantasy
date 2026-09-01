@@ -6,7 +6,7 @@ import { destinationsFrom } from '../../services/travel.js';
 import { type Requisitos } from '../../services/requisitos.js';
 import { scopeFor } from '../../services/npcScene.js';
 import { effectiveAttributes, effectiveSecondaryAttributes, attributeBonusesFromEquipment, type StatBonusMap } from '../../services/equipment.js';
-import { imageUrlsFor } from '../../lib/imageAssets.js';
+import { imageUrlsFor, iconoUrlFor } from '../../lib/imageAssets.js';
 import type { AttributeBlock } from '../../services/dice.js';
 import { normalizeSecondaryAttributes } from '../../services/secondaryAttributes.js';
 import { toFrontendLogEntry } from './shared.js';
@@ -553,6 +553,10 @@ export async function detailRoutes(app: FastifyInstance) {
           ? especializacionesConHuecosPara(save.clase).map((especializacion) => ({
               especializacion,
               resumenMecanico: resumenMecanicoEspecializacion(save.clase!, especializacion),
+              // Roadmap de banners de clase/especialización (2026-09-01) — icono ya subido a mano
+              // por la usuaria (`uploads/images/especializacion/<ENUM>-icono.<ext>`), null hasta
+              // entonces (el modal cae al icono de fallback, ver EspecializacionModal.tsx).
+              iconoUrl: iconoUrlFor('especializacion', especializacion),
             }))
           : undefined,
     };

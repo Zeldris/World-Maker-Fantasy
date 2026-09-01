@@ -3166,6 +3166,31 @@ const EFFECT_LABEL: Partial<Record<string, string>> = {
   CONVERSION: 'ataque de Magia',
 };
 
+/// Descripción de sabor corta por clase (docs/rpgtarkor/clases.md) — movida aquí desde
+/// `buildClassesSection` (routes/world.ts) para reutilizarla en el generador de prompts de imagen
+/// (`imagePromptContext.ts`, roadmap de UI de especialización 2026-09-01) sin duplicarla ni crear
+/// una dependencia de rutas→servicios invertida. MAGO queda fuera a propósito (sigue siendo solo
+/// identidad narrativa sin tabla de niveles, ver comentario histórico de `classAbilityUnlocksFor`).
+export const CLASE_DESCRIPTION: Partial<Record<Clase, string>> = {
+  GUERRERO: 'Fuerza bruta y aguante en primera línea — golpea directo, encaja el golpe y no cede terreno.',
+  CAZADOR: 'Reflejos, puntería a distancia e instinto de rastreo — hiere antes de ser visto y remata sin errar.',
+  CHAMAN: 'El equivalente orco a un Mago — nunca lanza la magia directamente, la canaliza siempre a través de un tótem o una runa.',
+  ARQUERO: 'Precisión a distancia con arco o ballesta — el equivalente al Guerrero pero sin gritos, todo puntería.',
+  CABALLERO: 'La disciplina militar Goirnte hecha clase — honor, orden y una defensa que no cede.',
+  SEGADOR: 'La clase exclusiva Nabieus — succión de vida, debilidades, remates y lectura del destino.',
+  ASESINO: 'Precisión letal, veneno y movilidad — golpea antes de que el rival sepa que está en peligro.',
+  DRUIDA: 'La clase exclusiva Faerus — se transforma en fauna real de su territorio, vínculo de manada y furia feral.',
+};
+
+/// A qué clase pertenece una especialización dada — derivado de `CLASS_ABILITIES`, sin mapeo
+/// aparte (roadmap de UI de especialización, 2026-09-01, generador de prompts de imagen: recibe
+/// solo el slug de la especialización, sin la clase). `undefined` si la especialización no tiene
+/// ningún hueco real construido todavía (mismo caso que "combinación imposible" en otras funciones
+/// de este archivo).
+export function claseDeEspecializacion(especializacion: Especializacion): Clase | undefined {
+  return CLASS_ABILITIES.find((u) => u.especializacion === especializacion)?.clase;
+}
+
 /// Resumen mecánico corto de una especialización, derivado de las habilidades reales ya
 /// construidas (roadmap de UI de especialización, 2026-09-01) — nunca lore inventado: solo
 /// `rol`/`effects`/`preferredAttribute` de `CLASS_ABILITIES`, sustituible por prosa real de

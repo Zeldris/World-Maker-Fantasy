@@ -9,7 +9,7 @@ import {
   sourceDisplayNameFor,
 } from '../scripts/worldCatalog.js';
 import { coreRegionOf } from '../services/discovery.js';
-import { allClassAbilityUnlocks } from '../services/classAbilities.js';
+import { allClassAbilityUnlocks, CLASE_DESCRIPTION } from '../services/classAbilities.js';
 import { CONSTRUCTION_RECIPES } from '../services/construction.js';
 import { CRAFTING_RECIPES } from '../services/crafting.js';
 import { allProfessionAbilityUnlocks } from '../services/professionAbilities.js';
@@ -335,19 +335,9 @@ function buildPersonajesSection(ctx: EnciclopediaBuildContext) {
 // `classAbilityUnlocksForClase(clase, especializacion)`, pensado para el motor de turnos/un NPC en
 // particular, no para esta vista de referencia.
 function buildClassesSection(ctx: EnciclopediaBuildContext) {
-  const DESCRIPTIONS: Record<string, string> = {
-    GUERRERO: 'Fuerza bruta y aguante en primera línea — golpea directo, encaja el golpe y no cede terreno.',
-    CAZADOR: 'Reflejos, puntería a distancia e instinto de rastreo — hiere antes de ser visto y remata sin errar.',
-    CHAMAN: 'El equivalente orco a un Mago — nunca lanza la magia directamente, la canaliza siempre a través de un tótem o una runa.',
-    ARQUERO: 'Precisión a distancia con arco o ballesta — el equivalente al Guerrero pero sin gritos, todo puntería.',
-    CABALLERO: 'La disciplina militar Goirnte hecha clase — honor, orden y una defensa que no cede.',
-    SEGADOR: 'La clase exclusiva Nabieus — succión de vida, debilidades, remates y lectura del destino.',
-    ASESINO: 'Precisión letal, veneno y movilidad — golpea antes de que el rival sepa que está en peligro.',
-    DRUIDA: 'La clase exclusiva Faerus — se transforma en fauna real de su territorio, vínculo de manada y furia feral.',
-  };
   return (['GUERRERO', 'CAZADOR', 'CHAMAN', 'ARQUERO', 'CABALLERO', 'SEGADOR', 'ASESINO', 'DRUIDA'] as const).map((clase) => ({
     name: clase,
-    description: DESCRIPTIONS[clase],
+    description: CLASE_DESCRIPTION[clase],
     unlocks: allClassAbilityUnlocks()
       .filter((u) => u.clase === clase)
       .map((u) => ({
@@ -680,6 +670,8 @@ export async function worldRoutes(app: FastifyInstance) {
     'historia',
     'crafteo',
     'zona',
+    'clase',
+    'especializacion',
   ];
   const IMAGE_PROMPT_SIZE_PROFILES: ImagePromptSizeProfile[] = ['thumbnail', 'banner', 'mapa', 'icono'];
 

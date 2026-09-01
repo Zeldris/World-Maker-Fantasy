@@ -2,8 +2,9 @@ import { prisma } from '../lib/prisma.js';
 import { harvestSourceAliases, harvestSourceDescriptions, sourceDisplayNameFor } from '../scripts/worldCatalog.js';
 import { CONSTRUCTION_RECIPES } from './construction.js';
 import { CRAFTING_RECIPES } from './crafting.js';
-import { allClassAbilityUnlocks } from './classAbilities.js';
+import { allClassAbilityUnlocks, CLASE_DESCRIPTION, claseDeEspecializacion, resumenMecanicoEspecializacion } from './classAbilities.js';
 import { startingAbilitiesFor } from './startingAbilities.js';
+import type { Clase, Especializacion } from '@prisma/client';
 import { slugify } from '../lib/slugify.js';
 import { BERIG_RAZAS, BERIG_PERSONAJES } from './berigLore.js';
 import {
@@ -19,6 +20,17 @@ import type { MomentoDelDia } from './worldClock.js';
 export interface ImagePromptSubject {
   name: string;
   loreContext: string;
+}
+
+/// Formato Title Case desde SNAKE_CASE, mismo criterio que `especializacionLabel`/`claseLabel`
+/// del frontend (lib/dice.ts) — replicado aquí en vez de compartido porque backend/frontend no
+/// comparten módulos de utilidades (roadmap de UI de especialización, 2026-09-01).
+function enumLabel(value: string): string {
+  return value
+    .toLowerCase()
+    .split('_')
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
 }
 
 /// Imágenes de día/noche y estación (2026-08-27, docs/rpgtarkor/imagenes-prompts.md) — mismo
@@ -293,6 +305,26 @@ export async function loreContextFor(worldId: string, entityType: ImagePromptEnt
     return {
       name: personaje.name,
       loreContext: `Raza: ${personaje.raza}. ${personaje.personalidad} ${personaje.facultades} ${personaje.historia}`,
+    };
+  }
+
+  // clase/especializacion: contenido estático en código (classAbilities.ts), sin fila de BD —
+  // roadmap de UI de especialización (2026-09-01). `entitySlug` es el propio valor del enum
+  // (p.ej. 'CAZADOR', 'INSTINTIVO'), no un slug kebab-case — mismo criterio usado ya en el modal
+  // del frontend, sin conversión de casing extra en ningún punto del flujo.
+  if (entityType === 'clase') {
+    const clase = entitySlug as Clase;
+    const description = CLASE_DESCRIPTION[clase];
+    if (!description) return null;
+    return { name: enumLabel(clase), loreContext: description };
+  }
+  if (entityType === 'especializacion') {
+    const especializacion = entitySlug as Especializacion;
+    const clase = claseDeEspecializacion(especializacion);
+    if (!clase) return null;
+    return {
+      name: enumLabel(especializacion),
+      loreContext: `Rama de la clase ${enumLabel(clase)}. ${resumenMecanicoEspecializacion(clase, especializacion)}`,
     };
   }
 

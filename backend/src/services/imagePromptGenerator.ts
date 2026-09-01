@@ -26,7 +26,14 @@ export type ImagePromptEntityType =
   | 'faction'
   | 'historia'
   | 'crafteo'
-  | 'zona';
+  | 'zona'
+  /// Roadmap de UI de especialización (2026-09-01) — el modal de elección obligatoria a nivel 10
+  /// usaba solo un icono de fallback, sin banner propio. `clase`/`especializacion` referencian los
+  /// enums `Clase`/`Especializacion` (schema.prisma) directamente como `entitySlug` (p.ej.
+  /// 'CAZADOR', 'INSTINTIVO') — contenido estático en código (classAbilities.ts), sin fila de BD,
+  /// mismo patrón que `ability`.
+  | 'clase'
+  | 'especializacion';
 
 /// `'mapa'` (Grupo 3 § Mundo determinista, 2026-08-25, Capa 1: zonas navegables) — lienzo fijo
 /// 800×600, misma convención que ya usa el mapa de mundo (`frontend/src/data/map.ts`) para que el
@@ -59,6 +66,8 @@ const ENTITY_TYPE_HINT: Record<ImagePromptEntityType, string> = {
   historia: 'an illustration of the historical scene or physical document described in this lore entry',
   crafteo: 'an item/prop illustration of this specific crafted result',
   zona: 'a top-down aerial exploration map of this real place, illustrated terrain layout with distinct landmarks, in the style of a hand-drawn fantasy game map — NOT a scenic ground-level illustration',
+  clase: 'a heraldic emblem/icon illustration representing this combat class (an abstract archetype, not a specific named character)',
+  especializacion: 'a heraldic emblem/icon illustration representing this specific combat specialization branch (an abstract archetype, not a specific named character)',
 };
 
 // ============================================================
@@ -87,6 +96,12 @@ const ENTITY_TYPE_STYLE: Record<ImagePromptEntityType, string> = {
   // sola cláusula al final ("no text or labels") se pierde fácil entre el resto de la descripción,
   // así que aquí va repetida, explícita y en mayúsculas donde más pesa.
   zona: 'hand-illustrated fantasy cartography style, painterly top-down map, muted natural color palette, clearly readable terrain features and landmarks purely through illustrated shape and color — ABSOLUTELY NO TEXT ANYWHERE IN THE IMAGE: no title, no legend, no cartouche, no compass rose, no scale bar, no labels, no captions, no lettering, no numbers, no watermark, no UI elements of any kind, a completely textless illustration',
+  // Emblema plano (mismo criterio que `faction`, distinto de `ability`) — clase/especialización son
+  // conceptos abstractos elegidos por el jugador, no una acción concreta en marcha; un icono
+  // heráldico coherente con el resto de emblemas del juego (facciones, asentamientos) se lee mejor
+  // en el espacio de tarjeta pequeño del modal de elección que una ilustración de acción dinámica.
+  clase: 'bold flat icon illustration, simple clean shapes, a single strong silhouette, minimal flat color palette, no fine texture or surface detail — must read clearly and instantly as a small icon; NEVER photorealistic',
+  especializacion: 'bold flat icon illustration, simple clean shapes, a single strong silhouette, minimal flat color palette, no fine texture or surface detail — must read clearly and instantly as a small icon; NEVER photorealistic',
 };
 
 // ============================================================
