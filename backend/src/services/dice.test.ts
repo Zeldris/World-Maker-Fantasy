@@ -54,7 +54,7 @@ describe('gradoExitoFor', () => {
   });
 });
 
-const ATTRS: AttributeBlock = { fuerza: 14, destreza: 10, constitucion: 10, inteligencia: 10, voluntad: 10, carisma: 10, arcano: 10 };
+const ATTRS: AttributeBlock = { fuerza: 14, destreza: 10, constitucion: 10, inteligencia: 10, voluntad: 10, carisma: 10, magia: 10 };
 
 describe('rollGathering', () => {
   it('sin ventaja con Suerte por debajo del umbral: un único d20', () => {
@@ -126,8 +126,8 @@ function sequence(values: number[]): () => number {
 }
 
 describe('rollOpposed', () => {
-  const playerAttrs: AttributeBlock = { fuerza: 10, destreza: 10, constitucion: 10, inteligencia: 10, voluntad: 10, carisma: 14, arcano: 0 };
-  const resistenciaAttrs: AttributeBlock = { fuerza: 10, destreza: 10, constitucion: 10, inteligencia: 10, voluntad: 8, carisma: 0, arcano: 0 };
+  const playerAttrs: AttributeBlock = { fuerza: 10, destreza: 10, constitucion: 10, inteligencia: 10, voluntad: 10, carisma: 14, magia: 0 };
+  const resistenciaAttrs: AttributeBlock = { fuerza: 10, destreza: 10, constitucion: 10, inteligencia: 10, voluntad: 8, carisma: 0, magia: 0 };
 
   it('gana el jugador si su resultado supera al de la resistencia', () => {
     // playerRoll = floor(0.9*20)+1 = 19, resistenciaRoll = floor(0.1*20)+1 = 3

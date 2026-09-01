@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { computeDuration, mentionsExplicitDuration } from './timedActions.js';
 
-const attrs = { fuerza: 8, destreza: 10, constitucion: 10, inteligencia: 10, voluntad: 10, carisma: 10, arcano: 10 };
+const attrs = { fuerza: 8, destreza: 10, constitucion: 10, inteligencia: 10, voluntad: 10, carisma: 10, magia: 10 };
 
 describe('mentionsExplicitDuration', () => {
   it('detecta duraciones explícitas', () => {

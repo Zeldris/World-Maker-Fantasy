@@ -44,7 +44,7 @@ async function buildApp() {
   return app;
 }
 
-const ATTRS = { fuerza: 10, destreza: 10, constitucion: 10, inteligencia: 10, voluntad: 10, carisma: 10, arcano: 10 };
+const ATTRS = { fuerza: 10, destreza: 10, constitucion: 10, inteligencia: 10, voluntad: 10, carisma: 10, magia: 10 };
 
 function baseSave(overrides: Partial<Record<string, unknown>> = {}) {
   return {

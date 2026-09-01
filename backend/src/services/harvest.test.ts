@@ -15,6 +15,19 @@ describe('matchHarvestSource', () => {
   it('no matchea nada si no hay ninguna especie mencionada', () => {
     expect(matchHarvestSource('Camino tranquilamente por la llanura')).toBeUndefined();
   });
+
+  it('bug real 2026-09-01: "suelo" no colisiona con Raíz de Fuego (Levenshtein 2, s→f/l→g) al seguir un rastro', () => {
+    // Partida Gorhorn/Hondonada del Eco: esta frase es intención de rastrear una presa, sin
+    // ninguna mención real a Raíz de Fuego ni a su zona (Fumarolas Negras) — antes del fix,
+    // "suelo" (palabra de terreno de uso constante, no una errata de "fuego") colaba
+    // 'raiz-de-fuego' por tolerancia a erratas. La frase SÍ nombra a "canizor" (fauna real,
+    // ver test de matchesVerbForMetodo justo abajo) — matchHarvestSource acierta ahí, la
+    // protección real contra resolver esto como recolección la da el chequeo de verbo (CAZA
+    // exige despiezar/desollar, no "seguir el rastro").
+    const action = 'Recojo mi hacha del suelo y sigo el rastro que ha dejado el canizor, con cuidado de no perderlo de vista.';
+    expect(matchHarvestSource(action)).toBe('canizor');
+    expect(matchesVerbForMetodo(action, 'CAZA')).toBe(false);
+  });
 });
 
 // Verbo por método (2026-07-29, petición explícita: "para conseguir estos recursos debes cazar...

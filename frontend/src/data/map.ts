@@ -180,7 +180,11 @@ export const llanurasNodePositions: Record<string, { x: number; y: number }> = {
   'laberinto-de-canones': { x: 6, y: -42 }, // confirmado correcto 2026-08-05
   'fumarolas-negras': { x: 19, y: 42 }, // confirmado correcto 2026-08-05
   'paso-de-los-huesos': { x: 41, y: 2 }, // confirmado correcto 2026-08-05
-  'sabana-alta': { x: 54, y: -10 }, // confirmado correcto 2026-08-05
+  // Bug real (checklist 2026-09-01): la clave era 'sabana-alta', pero el slug real del catálogo
+  // (worldCatalog.ts) es 'sabana-alta-colmillar' — el desajuste excluía el nodo del filtro
+  // `l.slug in llanurasNodePositions` en MapaPanel.tsx, así que ni siquiera se dibujaba (no era un
+  // nodo aislado sin aristas, sencillamente no aparecía). Coordenadas ya correctas, sin tocar.
+  'sabana-alta-colmillar': { x: 54, y: -10 }, // confirmado correcto 2026-08-05
   'vergel-de-kegi': { x: -8, y: -175 }, // confirmado correcto 2026-08-05
   'grieta-cantora': { x: 6, y: -100 }, // confirmado correcto 2026-08-05
   'campo-yermo': { x: 19, y: 22 }, // confirmado correcto 2026-08-05

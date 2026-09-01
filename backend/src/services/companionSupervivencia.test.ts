@@ -43,8 +43,8 @@ describe('felicidadUmbralFor', () => {
 });
 
 describe('resolverIntento', () => {
-  const playerAttrs: AttributeBlock = { fuerza: 20, destreza: 10, constitucion: 10, inteligencia: 10, voluntad: 10, carisma: 10, arcano: 0 };
-  const resistenciaAttrs: AttributeBlock = { fuerza: 2, destreza: 10, constitucion: 10, inteligencia: 10, voluntad: 10, carisma: 10, arcano: 0 };
+  const playerAttrs: AttributeBlock = { fuerza: 20, destreza: 10, constitucion: 10, inteligencia: 10, voluntad: 10, carisma: 10, magia: 0 };
+  const resistenciaAttrs: AttributeBlock = { fuerza: 2, destreza: 10, constitucion: 10, inteligencia: 10, voluntad: 10, carisma: 10, magia: 0 };
 
   it('ganar sube Felicidad, el umbral general no se completa con un solo intento', () => {
     const result = resolverIntento(playerAttrs, 'fuerza', resistenciaAttrs, 'fuerza', 0, false, 100, () => 0.9);

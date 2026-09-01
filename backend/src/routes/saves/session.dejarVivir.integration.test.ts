@@ -33,7 +33,7 @@ describe('POST /saves/:id/combat/dejar-vivir/:npcSlug', () => {
         characterArchetype: 'guerrero',
         characterOrigin: 'Clan Maktor',
         characterMotivation: 'x',
-        attributes: { fuerza: 10, destreza: 10, constitucion: 10, inteligencia: 10, voluntad: 10, carisma: 10, arcano: 10 },
+        attributes: { fuerza: 10, destreza: 10, constitucion: 10, inteligencia: 10, voluntad: 10, carisma: 10, magia: 10 },
         portraitInitial: 'G',
         currentLocationId: location.id,
         pendingCombatNpcSlugs: [npcSlug, 'otro-npc-cualquiera'],
@@ -115,7 +115,7 @@ describe('POST /saves/:id/combat/dejar-vivir/:npcSlug con participantId (combate
         characterArchetype: 'guerrero',
         characterOrigin: 'Clan Maktor',
         characterMotivation: 'x',
-        attributes: { fuerza: 10, destreza: 10, constitucion: 10, inteligencia: 10, voluntad: 10, carisma: 10, arcano: 10 },
+        attributes: { fuerza: 10, destreza: 10, constitucion: 10, inteligencia: 10, voluntad: 10, carisma: 10, magia: 10 },
         portraitInitial: 'G',
       },
     });

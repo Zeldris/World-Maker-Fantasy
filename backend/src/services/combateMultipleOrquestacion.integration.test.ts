@@ -69,7 +69,7 @@ describe('combate múltiple: orquestación real contra Postgres', () => {
         characterArchetype: 'guerrero',
         characterOrigin: 'Clan Maktor',
         characterMotivation: 'x',
-        attributes: { fuerza: 10, destreza: 10, constitucion: 10, inteligencia: 10, voluntad: 10, carisma: 10, arcano: 10 },
+        attributes: { fuerza: 10, destreza: 10, constitucion: 10, inteligencia: 10, voluntad: 10, carisma: 10, magia: 10 },
         portraitInitial: 'G',
       },
     });
@@ -344,7 +344,7 @@ describe('combate múltiple: orquestación real contra Postgres', () => {
     // Magnitud grande de sobra (2026-08-27) — tiene que garantizar margen decisivo (golpe_pleno,
     // diferencia >=10) incluso en el peor caso de dados (ella saca 1, el NPC saca 20 defendiéndose
     // con Constitución), no solo "de media".
-    const efectoPrevio: ActiveEffect = { attribute: 'arcano', magnitude: 100, turnsRemaining: 3, sourceAbility: 'Efecto de prueba (garantiza el margen)' };
+    const efectoPrevio: ActiveEffect = { attribute: 'magia', magnitude: 100, turnsRemaining: 3, sourceAbility: 'Efecto de prueba (garantiza el margen)' };
     await prisma.save.update({ where: { id: saveId }, data: { activeEffects: [efectoPrevio] as unknown as object } });
 
     // Energía del NPC a 0 (2026-08-27) — fuerza a `chooseNpcAbility` a defenderse SOLO con
@@ -372,7 +372,7 @@ describe('combate múltiple: orquestación real contra Postgres', () => {
     const habilidadConAumento: HabilidadParaIntercambio = {
       name: 'Golpe de Prueba',
       description: '',
-      attribute: 'arcano',
+      attribute: 'magia',
       effects: ['ATAQUE', 'AUMENTO'],
       rol: 'ataque',
       energyCost: 5,
@@ -387,7 +387,7 @@ describe('combate múltiple: orquestación real contra Postgres', () => {
     const activeEffectsTras = parseActiveEffects(saveTrasIntercambio.activeEffects);
     // El previo decrementado (3->2) + el nuevo tal cual (sin decrementar este turno, 2 completos).
     expect(activeEffectsTras).toContainEqual({ ...efectoPrevio, turnsRemaining: 2 });
-    expect(activeEffectsTras).toContainEqual({ attribute: 'arcano', magnitude: 5, turnsRemaining: 2, sourceAbility: 'Golpe de Prueba' });
+    expect(activeEffectsTras).toContainEqual({ attribute: 'magia', magnitude: 5, turnsRemaining: 2, sourceAbility: 'Golpe de Prueba' });
 
     await prisma.save.update({ where: { id: saveId }, data: { activeEffects: [] } });
   }, 30_000);
@@ -638,7 +638,7 @@ describe('combate múltiple: orquestación real contra Postgres', () => {
         promptText: '',
         rol: 'ataque',
         effects: ['INVOCACION'],
-        preferredAttribute: 'arcano',
+        preferredAttribute: 'magia',
         energyCost: 0,
         energyRegen: 0,
       },
@@ -656,7 +656,7 @@ describe('combate múltiple: orquestación real contra Postgres', () => {
     const habilidad: HabilidadParaIntercambio = {
       name: 'Tótem de Guerra (prueba)',
       description: '',
-      attribute: 'arcano',
+      attribute: 'magia',
       effects: ['INVOCACION'],
       rol: 'ataque',
       energyCost: 0,
@@ -729,7 +729,7 @@ describe('combate múltiple: orquestación real contra Postgres', () => {
         promptText: '',
         rol: 'ataque',
         effects: ['INVOCACION'],
-        preferredAttribute: 'arcano',
+        preferredAttribute: 'magia',
         energyCost: 0,
         energyRegen: 0,
       },
@@ -746,7 +746,7 @@ describe('combate múltiple: orquestación real contra Postgres', () => {
     const habilidad: HabilidadParaIntercambio = {
       name: 'Tótem de Guerra (prueba candado)',
       description: '',
-      attribute: 'arcano',
+      attribute: 'magia',
       effects: ['INVOCACION'],
       rol: 'ataque',
       energyCost: 0,
@@ -1005,7 +1005,7 @@ describe('Golpe "con_coste"/golpe_normal (no decisivo) contra un miembro de grup
         characterArchetype: 'guerrero',
         characterOrigin: 'Clan Maktor',
         characterMotivation: 'x',
-        attributes: { fuerza: 25, destreza: 1000, constitucion: 10, inteligencia: 10, voluntad: 10, carisma: 10, arcano: 10 },
+        attributes: { fuerza: 25, destreza: 1000, constitucion: 10, inteligencia: 10, voluntad: 10, carisma: 10, magia: 10 },
         portraitInitial: 'G',
       },
     });

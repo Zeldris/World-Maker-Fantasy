@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { npcCombatAbilitiesFor, chooseNpcAbility, type NpcForCombatAbilities, type NpcCombatAbility } from './npcCombatAbilities.js';
 import { ENERGY_COST_ATAQUE_BASICO } from './energy.js';
 
-const ATTRS = { fuerza: 13, destreza: 10, constitucion: 5, inteligencia: 5, voluntad: 8, carisma: 2, arcano: 2 };
+const ATTRS = { fuerza: 13, destreza: 10, constitucion: 5, inteligencia: 5, voluntad: 8, carisma: 2, magia: 2 };
 
 describe('npcCombatAbilitiesFor', () => {
   it('siempre incluye Ataque base + Esquivar/Defenderse/Descansar genéricos, aunque el NPC no tenga clase/raza/racial (p.ej. NPC social)', () => {

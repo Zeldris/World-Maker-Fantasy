@@ -16,7 +16,7 @@ const emptyAttributes: AttributeBlock = {
   inteligencia: 8,
   voluntad: 8,
   carisma: 8,
-  arcano: 8,
+  magia: 8,
 }
 
 // Rediseño de atributos (2026-07-29): de 6 a 7 jugables — base 8×7=56 en vez de 8×6=48, mismos

@@ -21,10 +21,10 @@ const NONE: RacialAdvantageResult = { rollMode: 'normal' };
 
 /// Goirntes — "leen la guardia con precisión matemática, sin margen de error" + su piel se
 /// endurece bajo tensión (Piel Quitinosa, la habilidad activa de siempre). Ventaja al DEFENDERSE,
-/// SOLO contra ataques físicos (cualquier atributo salvo `arcano` — decisión explícita: "todos los
+/// SOLO contra ataques físicos (cualquier atributo salvo `magia` — decisión explícita: "todos los
 /// attr son fisicos menos la Magia"). Nunca en ataque, nunca contra magia.
 function goirntesDefensiveMode(rivalAttribute: Attribute): RacialAdvantageResult {
-  if (rivalAttribute === 'arcano') return NONE;
+  if (rivalAttribute === 'magia') return NONE;
   return { rollMode: 'ventaja', racialAdvantageReason: 'Piel Quitinosa (Goirnte): ventaja al defenderse contra ataques físicos.' };
 }
 

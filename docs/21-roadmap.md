@@ -282,9 +282,13 @@ resumen de trabajo real, agrupado por tamaño.
   hecho de sesión al resolverse), sin migración ni rutas nuevas; de paso cazó un bug real
   (`avanzarYComprobarFin` comprobaba el fin del combate contra un snapshot de participantes
   desactualizado — un grupo entero derrotado en la misma transacción del golpe decisivo podía
-  quedarse `EN_CURSO` para siempre). Huecos documentados a propósito: XP de la propia tirada de
-  combate, objetivo individual entre miembros de un mismo grupo (mecánicamente intercambiables
-  hoy), y sub-partición >4v4 sin probar en vivo todavía.
+  quedarse `EN_CURSO` para siempre). **Sub-partición >4v4: enganchada al motor real (2026-09-01)**
+  — existía desde 2026-08-28 (`particionarEnSubCombates`) pero nunca se invocaba desde ningún
+  caller; hallazgo real jugando en vivo (checklist), fix en `cazar.ts` (fragmentos ≤4, el que
+  incluye a la jugadora `jugable`, el resto resuelto de una sentada con
+  `resolverTurnosAutonomosHastaJugadora`, narración muda + resumen determinista). Huecos que siguen
+  documentados a propósito: XP de la propia tirada de combate, objetivo individual entre miembros
+  de un mismo grupo (mecánicamente intercambiables hoy).
 - [x] ~~**Mundo determinista: zonas, eventos y narración que solo narra**~~
   (`docs/rpgtarkor/mundo-determinista.md`, diseño 2026-08-25) — generaliza "el modelo nunca decide,
   solo narra" (ya probado en combate) a aparición de NPC/fauna, eventos de mundo y creación de

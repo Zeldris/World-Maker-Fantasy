@@ -10,12 +10,12 @@ import type { Attribute } from './dice.js';
 /// de "qué le gana a qué" en Tarkor). Rediseño de atributos (2026-07-29, referencia BG3/D&D, de 6
 /// a 7 nodos — Sigilo/Carisma salieron, entraron Constitución/Inteligencia): la agilidad esquiva
 /// la fuerza bruta; una lectura fría (Inteligencia) anticipa el movimiento antes de que ocurra,
-/// venciendo la pura velocidad; lo arcano sortea la inteligencia (la magia salvaje no sigue una
-/// lógica que se pueda anticipar); la constitución aguanta el desgaste arcano con pura resistencia
+/// venciendo la pura velocidad; la magia sortea la inteligencia (la magia salvaje no sigue una
+/// lógica que se pueda anticipar); la constitución aguanta el desgaste mágico con pura resistencia
 /// física; la voluntad quiebra a quien solo aguanta físicamente sin determinación; el carisma
 /// quiebra la voluntad ajena; y la fuerza bruta no se deja intimidar, interrumpiendo el carisma
 /// cerrando distancia — cierra el ciclo de vuelta a Fuerza.
-export const ATTRIBUTE_RING: Attribute[] = ['fuerza', 'destreza', 'inteligencia', 'arcano', 'constitucion', 'voluntad', 'carisma'];
+export const ATTRIBUTE_RING: Attribute[] = ['fuerza', 'destreza', 'inteligencia', 'magia', 'constitucion', 'voluntad', 'carisma'];
 
 /// Distancia dirigida en el anillo desde `a` hasta `b`, en pasos hacia adelante (1..ring.length-1
 /// para atributos distintos, 0 si son el mismo). Ejemplo con el anillo de arriba:

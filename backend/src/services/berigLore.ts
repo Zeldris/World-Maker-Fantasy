@@ -196,7 +196,7 @@ export const BERIG_RAZAS: RazaInfo[] = [
         name: 'Golpe del Vacío',
         description: 'Ataca desde un silencio que no debería esconder a nadie — el vacío que lo envuelve parece golpear con él, un instante antes de que el enemigo entienda qué ha pasado.',
         promptText: 'Ataco desde un silencio que no debería esconder a nadie — el vacío que me envuelve parece golpear conmigo.',
-        preferredAttribute: 'arcano',
+        preferredAttribute: 'magia',
       },
       defensa: {
         icon: '🌑',

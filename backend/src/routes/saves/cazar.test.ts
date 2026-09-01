@@ -37,6 +37,16 @@ const updateCombatEncounter = vi.fn();
 // completo en cazar.ts. Por defecto sin ninguno activo (null), cada test que sí lo necesite lo
 // sobrescribe.
 const findFirstCombatEncounter = vi.fn();
+// Sub-partición >4v4 (checklist 2026-09-01) — con Múrgol (8 avistados), el bando ENEMIGO se parte
+// en fragmentos y los sobrantes se resuelven de una sentada fuera de la transacción
+// (`resolverTurnosAutonomosHastaJugadora`, sobre el `prisma` REAL, no el `tx` mockeado de arriba).
+// Sin ningún JUGADOR en esos fragmentos, `avanzarYComprobarFin` los cierra RESUELTO en la primera
+// vuelta (bando contrario vacío) — solo hacen falta los métodos que se leen ANTES de comprobar eso.
+const findUniqueOrThrowCombatEncounter = vi.fn();
+const findManyCombatParticipant = vi.fn();
+const updateCombatParticipantReal = vi.fn();
+const updateCombatEncounterReal = vi.fn();
+const findFirstNpcReal = vi.fn();
 
 vi.mock('../../lib/prisma.js', () => ({
   prisma: {
@@ -45,9 +55,18 @@ vi.mock('../../lib/prisma.js', () => ({
     npc: {
       findMany: (...args: unknown[]) => findManyNpc(...args),
       findUnique: (...args: unknown[]) => findUniqueNpc(...args),
+      findFirst: (...args: unknown[]) => findFirstNpcReal(...args),
     },
-    npcState: { upsert: (...args: unknown[]) => upsertNpcStateDirect(...args) },
-    combatEncounter: { findFirst: (...args: unknown[]) => findFirstCombatEncounter(...args) },
+    npcState: { upsert: (...args: unknown[]) => upsertNpcStateDirect(...args), findUnique: vi.fn().mockResolvedValue(null) },
+    combatEncounter: {
+      findFirst: (...args: unknown[]) => findFirstCombatEncounter(...args),
+      findUniqueOrThrow: (...args: unknown[]) => findUniqueOrThrowCombatEncounter(...args),
+      update: (...args: unknown[]) => updateCombatEncounterReal(...args),
+    },
+    combatParticipant: {
+      findMany: (...args: unknown[]) => findManyCombatParticipant(...args),
+      update: (...args: unknown[]) => updateCombatParticipantReal(...args),
+    },
     $transaction: (...args: unknown[]) => transaction(...args),
   },
 }));
@@ -274,13 +293,43 @@ describe('POST /saves/:id/cazar/confirmar', () => {
     updateSave.mockReset();
     loadSessionFacts.mockReset().mockResolvedValue([]);
     appendSessionFacts.mockReset().mockResolvedValue(undefined);
-    createCombatEncounter.mockReset().mockResolvedValue({ id: 'encounter1' });
+    // Sub-partición >4v4 (checklist 2026-09-01): almacén en memoria compartido entre el `tx`
+    // mockeado (crea encuentros/participantes DENTRO de la transacción) y el `prisma` real
+    // mockeado (`resolverTurnosAutonomosHastaJugadora`, que corre DESPUÉS, fuera de la
+    // transacción, sobre los fragmentos NO jugables) — sin esto, el segundo lado no vería nada de
+    // lo que creó el primero. Solo hace falta ser coherente para el caso real de este archivo: un
+    // fragmento autónomo sin JUGADOR se cierra RESUELTO en la primera vuelta (`bandoSigueEnCombate`
+    // con bando JUGADOR vacío → false), así que ni `combatParticipant.update` ni un segundo
+    // `combatEncounter.update` (avanzar turno/ronda) llegan a dispararse nunca en estos tests.
+    let combatEncounterCounter = 0;
     let combatParticipantCounter = 0;
-    createCombatParticipant.mockReset().mockImplementation((args: { data: Record<string, unknown> }) =>
-      Promise.resolve({ id: `participant${++combatParticipantCounter}`, ...args.data }),
-    );
+    const encountersById = new Map<string, { id: string; jugable: boolean }>();
+    const participantsByEncounterId = new Map<string, Record<string, unknown>[]>();
+    createCombatEncounter.mockReset().mockImplementation((args: { data: { jugable?: boolean } }) => {
+      const id = `encounter${++combatEncounterCounter}`;
+      encountersById.set(id, { id, jugable: args.data.jugable !== false });
+      participantsByEncounterId.set(id, []);
+      return Promise.resolve({ id });
+    });
+    createCombatParticipant.mockReset().mockImplementation((args: { data: Record<string, unknown> }) => {
+      const participant = { id: `participant${++combatParticipantCounter}`, ...args.data };
+      const list = participantsByEncounterId.get(args.data.encounterId as string) ?? [];
+      list.push(participant);
+      participantsByEncounterId.set(args.data.encounterId as string, list);
+      return Promise.resolve(participant);
+    });
     updateCombatParticipant.mockReset().mockResolvedValue({});
     updateCombatEncounter.mockReset().mockResolvedValue({});
+    findManyCombatParticipant.mockReset().mockImplementation((args: { where: { encounterId: string } }) =>
+      Promise.resolve(participantsByEncounterId.get(args.where.encounterId) ?? []),
+    );
+    findUniqueOrThrowCombatEncounter.mockReset().mockImplementation((args: { where: { id: string } }) => {
+      const participantes = participantsByEncounterId.get(args.where.id) ?? [];
+      return Promise.resolve({ id: args.where.id, estado: 'EN_CURSO', ordenIniciativa: participantes.map((p) => p.id as string), turnoActual: 0, esperandoEleccionJugadora: false, participantes });
+    });
+    updateCombatEncounterReal.mockReset().mockResolvedValue({});
+    updateCombatParticipantReal.mockReset().mockResolvedValue({});
+    findFirstNpcReal.mockReset().mockResolvedValue(null);
     transaction.mockReset().mockImplementation((cb: (tx: unknown) => unknown) =>
       cb({
         // Condición de carrera real (auditoría de código 2026-08-25) — la creación del
@@ -299,7 +348,16 @@ describe('POST /saves/:id/cazar/confirmar', () => {
           update: (...args: unknown[]) => updateCombatEncounter(...args),
           findFirst: (...args: unknown[]) => findFirstCombatEncounter(...args),
         },
-        combatParticipant: { create: (...args: unknown[]) => createCombatParticipant(...args), update: (...args: unknown[]) => updateCombatParticipant(...args) },
+        combatParticipant: {
+          create: (...args: unknown[]) => createCombatParticipant(...args),
+          update: (...args: unknown[]) => updateCombatParticipant(...args),
+          // Sub-partición >4v4: `avanzarSinAtacar`/`avanzarYComprobarFin` (dentro de
+          // `resolverTurnosAutonomosHastaJugadora`) abren su PROPIA `prisma.$transaction` — el
+          // mismo mock de arriba, así que necesita los mismos métodos que el `prisma` real de
+          // fuera, leyendo del mismo almacén compartido.
+          findMany: (...args: unknown[]) => findManyCombatParticipant(...args),
+        },
+        npc: { findUnique: (...args: unknown[]) => findUniqueNpc(...args) },
       }),
     );
   });
@@ -346,8 +404,13 @@ describe('POST /saves/:id/cazar/confirmar', () => {
     // dispara iniciarCombatEncounter (Capa 4, 2026-08-25). Cruzavientos: capturablePct 10,
     // población 20 -> avistadosFor(10,20)=1, sin grupo, pero SÍ entra como participante solo en el
     // MISMO encounter (regla de "no mezclar" caza en grupo + solo en una misma escena).
-    expect(transaction).toHaveBeenCalledTimes(1);
-    expect(createCombatEncounter).toHaveBeenCalledTimes(1);
+    // Sub-partición >4v4 (checklist 2026-09-01): 9 ENEMIGO totales (8 Múrgol + 1 Cruzavientos) se
+    // parten en 3 fragmentos de ≤4 — 1 `CombatEncounter` jugable (con la jugadora) + 2 autónomos,
+    // cada uno resuelto de una sentada con su propia `prisma.$transaction` interna
+    // (`avanzarSinAtacar`) además de la transacción principal — de ahí 3 `transaction`/
+    // `createCombatEncounter`, ya no 1.
+    expect(transaction).toHaveBeenCalledTimes(3);
+    expect(createCombatEncounter).toHaveBeenCalledTimes(3);
     const murgolCreates = createCombatParticipant.mock.calls.filter(([args]) => (args as { data: { npcId: string } }).data.npcId === 'npc-murgol');
     expect(murgolCreates).toHaveLength(8);
     for (const [args] of murgolCreates) {

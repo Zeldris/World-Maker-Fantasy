@@ -4,7 +4,7 @@ import type { AttributeBlock } from './dice.js';
 
 // Cobertura nueva (auditoría 2026-08-03, "análisis completo backend/frontend").
 
-const ATTRS: AttributeBlock = { fuerza: 10, destreza: 10, constitucion: 10, inteligencia: 10, voluntad: 10, carisma: 10, arcano: 10 };
+const ATTRS: AttributeBlock = { fuerza: 10, destreza: 10, constitucion: 10, inteligencia: 10, voluntad: 10, carisma: 10, magia: 10 };
 
 describe('baseAttackFor', () => {
   it('describe el arma equipada cuando hay alguna', () => {

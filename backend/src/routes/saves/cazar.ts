@@ -8,7 +8,8 @@ import { detectHarvestSourcesInScene } from '../../services/harvest.js';
 import { loadSessionFacts, appendSessionFacts } from '../../services/worldFacts.js';
 import { recordEntityDiscoveries } from '../../services/entityDiscovery.js';
 import type { AttributeBlock } from '../../services/dice.js';
-import { iniciarCombatEncounter } from '../../services/combateMultipleOrquestacion.js';
+import { iniciarCombatEncounter, resolverTurnosAutonomosHastaJugadora } from '../../services/combateMultipleOrquestacion.js';
+import { MAX_COMBATIENTES_POR_BANDO } from '../../services/combateMultiple.js';
 import { rejectIfEnded } from './shared.js';
 import { advanceFictionalMinutes, formatFictionalDate } from '../../services/worldClock.js';
 
@@ -369,6 +370,22 @@ export async function cazarRoutes(app: FastifyInstance) {
           combatientes.push({ bando: 'ENEMIGO', tipo: 'NPC', npcId: npc.id, npcScope: scope, destreza: npcAttrs.destreza, inteligencia: npcAttrs.inteligencia });
         }
       }
+      // Sub-partición >4v4 (docs/rpgtarkor/combate-multiple.md § 3, "Tope duro: 4 combatientes por
+      // bando"; checklist 2026-09-01: la función `particionarEnSubCombates` existía desde
+      // 2026-08-28 pero nunca se enganchó a este flujo real — un grupo de 5+ creaba un único
+      // `CombatEncounter` con TODOS dentro, sin ningún tope). El bando ENEMIGO es el único que
+      // puede superar el tope aquí (JUGADOR es siempre 1 en esta ruta) — se parte en fragmentos de
+      // `MAX_COMBATIENTES_POR_BANDO`; el jugador se enfrenta en directo solo al primer fragmento
+      // (`jugable: true`, mismo flujo de siempre), el resto se crea como `CombatEncounter`
+      // `jugable: false` y se resuelve de una sentada nada más terminar la transacción (§ 4 del
+      // doc, "combates sin ti presente... misma mecánica exacta, sin interacción en directo").
+      const [jugador, ...enemigos] = combatientes;
+      const fragmentosEnemigos: typeof enemigos[] = [];
+      for (let i = 0; i < enemigos.length; i += MAX_COMBATIENTES_POR_BANDO) {
+        fragmentosEnemigos.push(enemigos.slice(i, i + MAX_COMBATIENTES_POR_BANDO));
+      }
+      const fragmentosParaCrear = fragmentosEnemigos.length > 0 ? fragmentosEnemigos : [[]];
+
       // Condición de carrera real (auditoría de código 2026-08-25): el guard de arriba (líneas
       // ~246-260) es solo una comprobación temprana — entre esa lectura y este punto hay varias
       // consultas async (`candidateFaunaFor`, `npc.findMany`), tiempo de sobra para que un doble
@@ -376,15 +393,34 @@ export async function cazarRoutes(app: FastifyInstance) {
       // `activeEncounter` DENTRO de una transacción con la fila de `Save` bloqueada
       // (`SELECT ... FOR UPDATE`, mismo patrón que `progression.ts`/`companeros.ts`) justo antes de
       // crear el encuentro — la segunda petición ve ya el encuentro que dejó la primera.
-      const creado = await prisma.$transaction(async (tx) => {
+      const resultado = await prisma.$transaction(async (tx) => {
         await tx.$queryRaw`SELECT id FROM "Save" WHERE id = ${save.id} FOR UPDATE`;
         const activeEncounterFresco = await tx.combatEncounter.findFirst({ where: { saveId: save.id, estado: 'EN_CURSO', jugable: true } });
-        if (activeEncounterFresco) return false;
-        await iniciarCombatEncounter(tx, save.id, combatientes);
-        return true;
+        if (activeEncounterFresco) return null;
+        await iniciarCombatEncounter(tx, save.id, [jugador, ...fragmentosParaCrear[0]]);
+        const autonomosIds: string[] = [];
+        for (const fragmento of fragmentosParaCrear.slice(1)) {
+          const { encounterId } = await iniciarCombatEncounter(tx, save.id, fragmento, false);
+          autonomosIds.push(encounterId);
+        }
+        return { autonomosIds };
       });
-      if (!creado) {
+      if (!resultado) {
         return reply.status(400).send({ error: 'Ya hay un combate en curso — resuélvelo antes de salir a cazar.' });
+      }
+
+      // Resolución determinista de los sub-combates sin la jugadora presente, de una sentada, sin
+      // narrar cada turno individual (decisión explícita 2026-09-01: esos intercambios no se le
+      // muestran en directo, narrarlos uno a uno solo suma llamadas a Ollama sin ningún beneficio
+      // real) — un resumen corto y determinista basta, mismo criterio que `groupVarianceClause` de
+      // arriba (nunca inventado por el modelo).
+      let caidosAutonomos = 0;
+      for (const encounterId of resultado.autonomosIds) {
+        const { caidos } = await resolverTurnosAutonomosHastaJugadora(prisma, save.worldId, save.id, encounterId, [], async () => '');
+        caidosAutonomos += caidos.length;
+      }
+      if (caidosAutonomos > 0) {
+        varianceClauses.push(`El resto de la manada, fuera del alcance directo de ${save.characterName}, se enfrenta entre sí y con el terreno — ${caidosAutonomos} caen sin que ${save.characterName} llegue a verlo.`);
       }
     }
 

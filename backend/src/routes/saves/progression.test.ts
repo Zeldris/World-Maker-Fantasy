@@ -49,7 +49,7 @@ async function buildApp() {
   return app;
 }
 
-const BASE_ATTRIBUTES = { fuerza: 10, destreza: 10, constitucion: 10, inteligencia: 10, voluntad: 10, carisma: 10, arcano: 10 };
+const BASE_ATTRIBUTES = { fuerza: 10, destreza: 10, constitucion: 10, inteligencia: 10, voluntad: 10, carisma: 10, magia: 10 };
 
 describe('POST /saves/:id/attribute-points', () => {
   beforeEach(() => {

@@ -58,7 +58,7 @@ describe('POST /saves/:id/suggestions', () => {
       currentLocationId: 'loc1',
       condicionFisica: 'HERIDO',
       energia: 20,
-      attributes: { fuerza: 10, destreza: 10, constitucion: 10, inteligencia: 10, voluntad: 10, carisma: 10, arcano: 10 },
+      attributes: { fuerza: 10, destreza: 10, constitucion: 10, inteligencia: 10, voluntad: 10, carisma: 10, magia: 10 },
     });
     // El mock devuelve directamente lo que la query pediría en DESC (más reciente primero) — la
     // propia ruta hace `.reverse()` para pasarle a `generateSuggestions` el orden cronológico real.

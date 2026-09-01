@@ -8,14 +8,14 @@ import { ownRacialAdvantageFor, rivalRacialDisadvantageAgainst } from './racialP
 /// Faerus (ventaja en el primer intercambio de cada combate).
 
 describe('ownRacialAdvantageFor', () => {
-  it('Goirntes defendiéndose contra un ataque físico (no arcano): ventaja', () => {
+  it('Goirntes defendiéndose contra un ataque físico (no de magia): ventaja', () => {
     const result = ownRacialAdvantageFor('goirntes', 'defensa', 'fuerza', false);
     expect(result.rollMode).toBe('ventaja');
     expect(result.racialAdvantageReason).toMatch(/Piel Quitinosa/);
   });
 
-  it('Goirntes defendiéndose contra un ataque ARCANO: sin ventaja — "todos los attr son fisicos menos la Magia"', () => {
-    const result = ownRacialAdvantageFor('goirntes', 'defensa', 'arcano', false);
+  it('Goirntes defendiéndose contra un ataque de MAGIA: sin ventaja — "todos los attr son fisicos menos la Magia"', () => {
+    const result = ownRacialAdvantageFor('goirntes', 'defensa', 'magia', false);
     expect(result.rollMode).toBe('normal');
     expect(result.racialAdvantageReason).toBeUndefined();
   });

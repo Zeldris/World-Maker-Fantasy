@@ -59,7 +59,7 @@ Con las dos tiradas ya resueltas, se cruzan para decidir qué pasa de verdad: un
     slug: 'ventajas-atributos',
     icon: '🔄',
     title: 'Ventajas entre atributos',
-    text: `Los atributos no son todos iguales entre sí en combate: cada uno tiene ventaja sobre alguno, como una rueda que se cierra sobre sí misma (la Destreza esquiva a la Fuerza bruta, una mente fría anticipa a la pura velocidad, lo arcano no sigue una lógica anticipable...).
+    text: `Los atributos no son todos iguales entre sí en combate: cada uno tiene ventaja sobre alguno, como una rueda que se cierra sobre sí misma (la Destreza esquiva a la Fuerza bruta, una mente fría anticipa a la pura velocidad, la magia no sigue una lógica anticipable...).
 
 Si tu habilidad usa un atributo con ventaja sobre el que usa tu rival este intercambio, tu tirada sale reforzada. Si no la tiene, tu tirada sigue siendo la normal — la rueda solo puede ayudarte, nunca te penaliza por el lado que te toque usar. El propio intercambio te enseña el multiplicador exacto cuando aplica, para que veas de un vistazo si la rueda jugó a tu favor.`,
   },

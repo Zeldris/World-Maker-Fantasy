@@ -6,10 +6,8 @@ import type { SecondaryAttributeBlock } from './secondaryAttributes.js';
 // Cobertura nueva (auditoría 2026-08-03, "análisis completo backend/frontend") — usado tanto por
 // crafting.ts como construction.ts, sin ningún test directo hasta ahora.
 
-const ATTRS: AttributeBlock = { fuerza: 10, destreza: 8, constitucion: 10, inteligencia: 10, voluntad: 10, carisma: 10, arcano: 10 };
+const ATTRS: AttributeBlock = { fuerza: 10, destreza: 8, constitucion: 10, inteligencia: 10, voluntad: 10, carisma: 10, magia: 10 };
 const SECONDARY: SecondaryAttributeBlock = {
-  magia: 0,
-  poderSemilla: 0,
   moral: 5,
   resistenciaFrio: 0,
   resistenciaCalor: 0,

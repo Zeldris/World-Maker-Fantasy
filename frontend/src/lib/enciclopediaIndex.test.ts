@@ -17,7 +17,7 @@ const DUMMY_ATTRIBUTES: AttributeBlock = {
   inteligencia: 1,
   voluntad: 1,
   carisma: 1,
-  arcano: 1,
+  magia: 1,
 }
 
 function makeNpc(overrides: Partial<EnciclopediaNpcInfo> & Pick<EnciclopediaNpcInfo, 'slug' | 'name'>): EnciclopediaNpcInfo {

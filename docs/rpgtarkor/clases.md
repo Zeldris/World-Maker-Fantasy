@@ -147,7 +147,7 @@ especialización frente al motor.)*
 
 ---
 
-## Atributo Magia (decisión 2026-08-23 — documentado, sin aplicar todavía)
+## Atributo Magia (decisión 2026-08-23 — APLICADO al motor 2026-09-01)
 
 El atributo primario que hoy se llama `arcano` en el motor pasa a llamarse **Magia** — no es solo
 un cambio de nombre por claridad ("arcano" es jerga de manual, "magia" se entiende solo), también
@@ -173,17 +173,16 @@ mágica; "Arcano" sigue existiendo como nombre de UNA escuela concreta dentro de
 abajo) — la más pura/sin sabor de las 7, no toda la magia. Un Mago Arcano tira con el atributo
 Magia, igual que un Mago Purificador o un Mago Remodelador.
 
-**Estado**: decisión cerrada, documentada aquí — **no aplicada al motor todavía** (`arcano` sigue
-viviendo tal cual en `backend/src/services/dice.ts`/`secondaryAttributes.ts`, tu partida guardada
-sigue usando ese nombre). Se aplicará cuando se construya la clase Mago de verdad, con su propia
-migración.
+**Estado**: decisión cerrada — **APLICADA al motor (2026-09-01)**. `arcano` ya se llama `magia` en
+`backend/src/services/dice.ts`, y los secundarios `magia`/`poderSemilla` se retiraron de
+`secondaryAttributes.ts`; las partidas guardadas ya migradas usan el nuevo nombre.
 
 ## Mago — Poder Magia (7 escuelas)
 
 Las 7 ramas en las que se divide la magia de Tarkor (ver
 [genesis.md § Las 7 ramas de la magia de Tarkor](genesis.md#era-0--el-génesis)) — hoy solo
-`arcano` existe como atributo jugable real en el motor (pendiente de renombrarse a Magia, ver
-sección de arriba), las otras 6 escuelas son diseño narrativo sin mecánica propia todavía (ver
+`magia` existe como atributo jugable real en el motor (ver sección de arriba), las otras 6
+escuelas son diseño narrativo sin mecánica propia todavía (ver
 [07-mundo-helek-sirik.md § Contrato de mundo](../07-mundo-helek-sirik.md)).
 
 - **Mago Arcano** — Daño puro, la cara más agresiva de las 7: fuerza destructiva sin filtrar por
@@ -337,9 +336,9 @@ aparte, no cubierta aquí.
 
 Bastón de combate cuerpo a cuerpo — el "bo" de las artes marciales, para Domador/Supervivencia.
 **No confundir con `BACULO`/`BASTON`**, que ya existen en el motor y son focos **mágicos** (atributo
-arcano/Magia, igual que `GRIMORIO`) — `VARA` es un arma física de golpear, sin nada de canalización
+Magia, igual que `GRIMORIO`) — `VARA` es un arma física de golpear, sin nada de canalización
 arcana. Atributo: **Voluntad** — hoy ninguna categoría de arma usa Voluntad (solo
-fuerza/destreza/constitución/arcano existen en `WEAPON_CATEGORY_ATTRIBUTE`), así que esto también
+fuerza/destreza/constitución/magia existen en `WEAPON_CATEGORY_ATTRIBUTE`), así que esto también
 abre el primer hueco de arma-Voluntad del motor.
 
 ### Guerrero — mismo pool para las 4 especializaciones

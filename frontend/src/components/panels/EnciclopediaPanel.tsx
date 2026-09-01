@@ -129,9 +129,9 @@ const ATTRIBUTES_INFO: { key: Attribute; icon: string; description: string }[] =
   },
   { key: 'carisma', icon: '🗣️', description: 'Persuasión social — convencer, negociar, ganarse a alguien con las palabras.' },
   {
-    key: 'arcano',
+    key: 'magia',
     icon: '🔮',
-    description: 'Fuerza destructiva pura de Tarkor, sin ningún matiz añadido — una de las 7 ramas en las que se divide su magia. Usarlo siempre conlleva un pequeño riesgo, incluso cuando sale bien.',
+    description: 'Fuerza destructiva pura de Tarkor, sin ningún matiz añadido — una de las 7 ramas en las que se divide su magia (la escuela Arcano). Usarlo siempre conlleva un pequeño riesgo, incluso cuando sale bien.',
   },
 ]
 
@@ -144,7 +144,7 @@ const ATTRIBUTES_INFO: { key: Attribute; icon: string; description: string }[] =
 // diseño anterior donde el tipo perdedor SÍ dividía su atributo (una desventaja real); desde el
 // rediseño de combate de 2026-08-15 (`typeMultiplierFor`, backend) el lado que no tiene ventaja
 // se queda en ×1 neutro, nunca en malus — "debilidades" describía un castigo que ya no existe.
-const ADVANTAGE_RING: Attribute[] = ['fuerza', 'destreza', 'inteligencia', 'arcano', 'constitucion', 'voluntad', 'carisma']
+const ADVANTAGE_RING: Attribute[] = ['fuerza', 'destreza', 'inteligencia', 'magia', 'constitucion', 'voluntad', 'carisma']
 
 const ADVANTAGE_RING_COLOR: Record<Attribute, string> = {
   fuerza: 'var(--color-fuerza-500)',
@@ -153,7 +153,7 @@ const ADVANTAGE_RING_COLOR: Record<Attribute, string> = {
   inteligencia: 'var(--color-inteligencia-500)',
   voluntad: 'var(--color-voluntad-500)',
   carisma: 'var(--color-carisma-500)',
-  arcano: 'var(--color-arcano-500)',
+  magia: 'var(--color-magia-500)',
 }
 
 // Rediseño del turno de combate (2026-07-28, petición explícita: "un tab para ver el árbol de
@@ -266,7 +266,7 @@ function AttributeAdvantageDiagram() {
             </tr>
             <tr>
               <td className="py-1.5">3 · máxima distancia (anillo de 7, sin antípoda exacta)</td>
-              <td className="py-1.5">Arcano vs Fuerza</td>
+              <td className="py-1.5">Magia vs Fuerza</td>
               <td className="py-1.5 text-right">sin relación (×1)</td>
             </tr>
           </tbody>
@@ -280,12 +280,11 @@ function AttributeAdvantageDiagram() {
 // tirada (dice.ts), solo comprueban umbrales de requisitos (craftear/equipar/construir/nivel de
 // oficio, ver requisitos.ts en el backend) o son color narrativo puro. Sigilo salió de aquí (pasa
 // a ser habilidad activa de Destreza); Resistencia física/mágica/de semilla se eliminaron
-// (duplicaban a Constitución); Magia/Poder de Semilla se quedan como reserva narrativa para un
-// futuro sistema de magia jugable (Poder de Semilla, además, se ramificará por Semilla creadora
-// el día que se diseñe eso de verdad); Suerte/Honor son nuevos.
+// (duplicaban a Constitución); Magia/Poder de Semilla se RETIRARON de aquí el 2026-09-01: pasaron
+// a vivir en el atributo primario Magia (antes Arcano, ver ATTRIBUTES_INFO arriba), con tirada
+// real propia — dejan de ser color narrativo puro para ser un atributo jugable como los otros 6;
+// Suerte/Honor son nuevos.
 const SECONDARY_ATTRIBUTES_INFO: { key: SecondaryAttribute; icon: string; description: string }[] = [
-  { key: 'magia', icon: '✨', description: 'Afinidad narrativa con las otras 6 escuelas de magia del mundo (elementos/oscura/purificadora/naturaleza/dominio/salvaje) — distinta de Arcano, el único poder que hoy tira dados. Reservado: base de un futuro atributo con tirada real, incluso en combate, cuando exista magia jugable de verdad.' },
-  { key: 'poderSemilla', icon: '🌱', description: 'Fuerza de la conexión innata con la Semilla creadora de tu raza — los Orcos, nacidos del Estallido sin Semilla propia, lo tienen más bajo y errático. Reservado: se ramificará en una rama por Semilla el día que exista magia jugable, igual que Magia.' },
   { key: 'moral', icon: '🕊️', description: 'Entereza pasiva ante el horror, la pérdida o el miedo — no quebrarse por dentro (distinta de Voluntad, que es aguantar presión activa).' },
   { key: 'resistenciaFrio', icon: '❄️', description: 'Capacidad de aguantar frío extremo — relevante en Cristal Helado.' },
   { key: 'resistenciaCalor', icon: '🔥', description: 'Capacidad de aguantar calor extremo — relevante en las Llanuras del Viento Rojo.' },

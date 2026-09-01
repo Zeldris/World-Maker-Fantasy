@@ -10,7 +10,7 @@ import {
 } from './combatExchange.js';
 import type { AttributeBlock } from './dice.js';
 
-const BASE_ATTRIBUTES: AttributeBlock = { fuerza: 10, destreza: 10, constitucion: 10, inteligencia: 10, voluntad: 10, carisma: 10, arcano: 10 };
+const BASE_ATTRIBUTES: AttributeBlock = { fuerza: 10, destreza: 10, constitucion: 10, inteligencia: 10, voluntad: 10, carisma: 10, magia: 10 };
 
 // d20 = floor(r*20)+1 — valores de Math.random() que producen cada roll usado en los tests.
 const R_FOR_ROLL_5 = 0.2; // floor(0.2*20)+1 = 5

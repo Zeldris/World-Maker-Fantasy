@@ -5,7 +5,7 @@ import type { Attribute } from '../types'
 /// inventoryCapacityFor, sesión 2026-08-08) en vez de exponer un endpoint solo para esto. Aquí
 /// SOLO la parte pura del multiplicador de tipo (rediseño de combate, 2026-08-09, "Analizar
 /// rival") — sin `effectiveAttributeValue`/tiradas, que son cosa del backend.
-const ATTRIBUTE_RING: Attribute[] = ['fuerza', 'destreza', 'inteligencia', 'arcano', 'constitucion', 'voluntad', 'carisma']
+const ATTRIBUTE_RING: Attribute[] = ['fuerza', 'destreza', 'inteligencia', 'magia', 'constitucion', 'voluntad', 'carisma']
 
 function ringForwardSteps(a: Attribute, b: Attribute): number {
   const ring = ATTRIBUTE_RING

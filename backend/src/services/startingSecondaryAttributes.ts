@@ -10,8 +10,6 @@ import type { SecondaryAttributeBlock } from './secondaryAttributes.js';
 /// Gorhorn no ha tenido una vida especialmente afortunada (esclavitud, clan aniquilado), suerte
 /// baja; el honor es central en su arco (la deuda con Kekta, la redención), alto.
 const GORHORN_SECONDARY_ATTRIBUTES: SecondaryAttributeBlock = {
-  magia: 6,
-  poderSemilla: 0,
   moral: 12,
   resistenciaFrio: 6,
   resistenciaCalor: 18,

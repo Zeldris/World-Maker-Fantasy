@@ -108,7 +108,7 @@ export interface ExchangeParticipant {
   rol: 'ataque' | 'defensa' | 'utilidad';
   /// Pasivas raciales (2026-08-28, pendiente 2026-08-27 punto 4, "de 2 raciales activas a 1
   /// pasiva") — el caller (turnResolution.ts/combateMultipleOrquestacion.ts) decide el modo según
-  /// raza+contexto (defensa contra ataque no-arcano para Goirntes, primer intercambio del combate
+  /// raza+contexto (defensa contra ataque no-mágico para Goirntes, primer intercambio del combate
   /// para Faerus...) y lo pasa aquí; `rollSide` solo sabe TIRAR con el modo que le dan, nunca
   /// decide por qué. `racialAdvantageReason` es el texto explicativo que viaja hasta la UI (petición
   /// explícita: "todos los datos ajenos al combate deben estar bien expresados e identificados") —

@@ -41,6 +41,7 @@ import {
   hasFalseCombatTargetName,
   hasWrongNpcName,
   hasWrongAggressorName,
+  hasIllegitimateMagicVocabulary,
   hasAnachronism,
   buildNarrationPrompt,
   allAttemptsRejectedForSameReason,
@@ -460,6 +461,37 @@ describe('hasEnglishLeak', () => {
 
   it('detecta "accompanies" — verbo inglés conjugado sustituyendo al español (bug real, sesión de pruebas 2026-08-28)', () => {
     expect(hasEnglishLeak('El viento siseante lo accompanies en su búsqueda.')).toBe(true);
+  });
+
+  // Reaparecido más grave (checklist 2026-09-01): cláusulas ENTERAS en inglés con vocabulario
+  // nuevo cada vez (no palabras sueltas ya listadas) — detectado por densidad de palabras función
+  // inglesas inequívocas en una ventana corta, no por listar cada sustantivo/verbo a mano.
+  it('detecta una cláusula completa en inglés con vocabulario nuevo, no cubierto por la lista de palabras (bug real 2026-09-01)', () => {
+    expect(
+      hasEnglishLeak(
+        "Canizor's blade slices through the air with a resonant crack, catching Gorhorn off balance and leaving a fresh gash across his shoulder.",
+      ),
+    ).toBe(true);
+  });
+
+  it('detecta la segunda variante real casi idéntica del mismo bug (2026-09-01, turno siguiente)', () => {
+    expect(
+      hasEnglishLeak(
+        "Canizor's blade slices through the air with a fierce cry, catching Gorhorn off guard and leaving a deep gash on his shoulder.",
+      ),
+    ).toBe(true);
+  });
+
+  it('no dispara con una narración normal en español con nombres propios y comillas', () => {
+    expect(
+      hasEnglishLeak(
+        'Gorhorn avanza junto a Canizor, atento a cualquier señal de peligro entre las rocas rojizas del cañón, "vamos con cuidado" susurra.',
+      ),
+    ).toBe(false);
+  });
+
+  it('no dispara con una sola palabra función suelta (menos de 3 en la ventana) — evita falsos positivos de una preposición aislada', () => {
+    expect(hasEnglishLeak('Gorhorn cruza el puente con paso firme, decidido a llegar antes del anochecer.')).toBe(false);
   });
 });
 
@@ -1235,6 +1267,47 @@ describe('hasWrongAggressorName', () => {
     expect(hasWrongAggressorName([], ['quio'])).toBe(false);
     expect(hasWrongAggressorName(['kirelon-arenoso'], [])).toBe(false);
     expect(hasWrongAggressorName(['kirelon-arenoso'], undefined)).toBe(false);
+  });
+});
+
+describe('hasIllegitimateMagicVocabulary', () => {
+  it('bug real jugando en vivo (2026-09-01): detecta vocabulario mágico narrando la curación de Gorhorn (Cazador, sin clase mágica)', () => {
+    const narration =
+      'Las heridas de Gorhorn comienzan a sellarse con un fino escudo de energía arcana mientras descansa junto al fuego.';
+    expect(hasIllegitimateMagicVocabulary(narration, 'CAZADOR')).toBe(true);
+  });
+
+  it('detecta la variante real del segundo turno del mismo bug ("escudo arcáneo")', () => {
+    const narration = 'Gorhorn nota que el escudo arcáneo se ha fortalecido alrededor de las heridas más profundas.';
+    expect(hasIllegitimateMagicVocabulary(narration, 'CAZADOR')).toBe(true);
+  });
+
+  it('detecta el resto del vocabulario mágico acotado (hechizo/conjuro/encantamiento/mágico) para una clase no mágica', () => {
+    expect(hasIllegitimateMagicVocabulary('Un hechizo parece envolver la herida.', 'GUERRERO')).toBe(true);
+    expect(hasIllegitimateMagicVocabulary('Murmura un conjuro improvisado.', 'GUERRERO')).toBe(true);
+    expect(hasIllegitimateMagicVocabulary('El encantamiento se desvanece lentamente.', 'GUERRERO')).toBe(true);
+    expect(hasIllegitimateMagicVocabulary('Una energía mágica recorre su brazo.', 'GUERRERO')).toBe(true);
+  });
+
+  it('no dispara para MAGO, la clase con vertiente mágica real por diseño', () => {
+    const narration = 'Sus heridas se sellan con un fino escudo de energía arcana, canalizado a través de su propia magia.';
+    expect(hasIllegitimateMagicVocabulary(narration, 'MAGO')).toBe(false);
+  });
+
+  it('no dispara para CHAMAN, cuyas habilidades reales usan el atributo Magia (classAbilities.ts)', () => {
+    const narration = 'El chamán murmura un cántico y un hechizo de curación recorre su piel.';
+    expect(hasIllegitimateMagicVocabulary(narration, 'CHAMAN')).toBe(false);
+  });
+
+  it('sí dispara con clase null (partida sin clase asignada todavía) o sin clase pasada', () => {
+    const narration = 'Un escudo arcano protege sus heridas.';
+    expect(hasIllegitimateMagicVocabulary(narration, null)).toBe(true);
+    expect(hasIllegitimateMagicVocabulary(narration, undefined)).toBe(true);
+  });
+
+  it('no dispara sin vocabulario mágico en la prosa (curación descrita en términos físicos normales)', () => {
+    const narration = 'Gorhorn venda sus heridas con tiras de tela y descansa junto al fuego hasta recuperar fuerzas.';
+    expect(hasIllegitimateMagicVocabulary(narration, 'CAZADOR')).toBe(false);
   });
 });
 

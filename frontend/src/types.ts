@@ -1,9 +1,10 @@
 /// Rediseño de atributos (2026-07-29, referencia Baldur's Gate 3/D&D — mismo motor de dados y
 /// tablas de XP que ya usa Tarkor): los 6 clásicos de D&D (Voluntad = Sabiduría, mismo nombre que
-/// ya usaba el proyecto) + Arcano aparte, porque en el lore de Tarkor la magia es salvaje/innata,
-/// no intelecto (a diferencia de D&D puro). Sigilo baja a SecondaryAttribute — ni en D&D es un
-/// atributo primario, ahí es una habilidad bajo Destreza.
-export type Attribute = 'fuerza' | 'destreza' | 'constitucion' | 'inteligencia' | 'voluntad' | 'carisma' | 'arcano'
+/// ya usaba el proyecto) + Magia aparte (renombrado desde "Arcano" el 2026-09-01, ver
+/// docs/rpgtarkor/clases.md § Atributo Magia), porque en el lore de Tarkor la magia es
+/// salvaje/innata, no intelecto (a diferencia de D&D puro). Sigilo baja a SecondaryAttribute — ni
+/// en D&D es un atributo primario, ahí es una habilidad bajo Destreza.
+export type Attribute = 'fuerza' | 'destreza' | 'constitucion' | 'inteligencia' | 'voluntad' | 'carisma' | 'magia'
 
 export type AttributeBlock = Record<Attribute, number>
 
@@ -44,9 +45,11 @@ export type AbilityEffect =
 /// construcciones/oficios). Ver el comentario completo en el backend (secondaryAttributes.ts)
 /// para el porqué de cada uno: `sigilo` salió de aquí (pasa a ser habilidad activa de Destreza,
 /// no un rasgo aparte); `resistenciaFisica`/`resistenciaMagica`/`resistenciaSemilla` se
-/// eliminaron (duplicaban el papel de Constitución); `magia`/`poderSemilla` se quedan como
-/// reserva narrativa para un futuro sistema de magia jugable; `suerte`/`honor` son nuevos.
-export type SecondaryAttribute = 'moral' | 'magia' | 'poderSemilla' | 'resistenciaFrio' | 'resistenciaCalor' | 'suerte' | 'honor'
+/// eliminaron (duplicaban el papel de Constitución); `magia`/`poderSemilla` se RETIRARON de aquí
+/// el 2026-09-01: pasaron a vivir en el atributo primario `magia` (antes `arcano`, ver dice.ts),
+/// con tirada real propia — dejan de ser color narrativo puro para ser un atributo jugable como
+/// los otros 6; `suerte`/`honor` son nuevos.
+export type SecondaryAttribute = 'moral' | 'resistenciaFrio' | 'resistenciaCalor' | 'suerte' | 'honor'
 
 export type SecondaryAttributeBlock = Record<SecondaryAttribute, number>
 
@@ -320,6 +323,13 @@ export interface LogEntry {
   isPlayerAction?: boolean
   createdAt: string
   xpDelta?: number
+  /// Desglose de `xpDelta` (UX 2026-09-01, hallazgo jugando en vivo: un turno FALLIDO con un hito
+  /// grande detrás — p.ej. "capitulo", 500 XP — se veía como un único "+500 XP" pegado a un
+  /// "Fallo" en rojo, como si el juego premiara el fracaso). `xpHitoDelta` es la parte de
+  /// `xpDelta` que vino de un hito/evento de Reino, no de la tirada normal; se pinta en su propia
+  /// línea separada del chip de XP normal. Ambos undefined si el turno no tuvo hito.
+  xpHitoDelta?: number
+  xpHitoLabel?: string
   /// Feedback de UX (2026-08-30, petición explícita: "falta que la suma de repu o la perdida se
   /// refleje en la UX... sino el usuario ni se entera") — mismo patrón que `xpDelta`: el backend
   /// ya calculaba y persistía el delta de reputación de facción al matar/dejar convaleciente a un

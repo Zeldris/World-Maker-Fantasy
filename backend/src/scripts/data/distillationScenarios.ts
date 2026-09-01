@@ -41,7 +41,7 @@ export type ScenarioCategory =
 /// Mismo personaje y resumen que ya usa test-turn.ts (el único script manual existente que ya
 /// prueba turnos reales) — no se importa de ahí porque ese fichero ejecuta su propio main() al
 /// cargarse, así que se duplica el texto (dato plano, no lógica) para mantener la consistencia.
-const GORHORN_ATTRIBUTES: AttributeBlock = { fuerza: 10, destreza: 6, constitucion: 7, inteligencia: 7, voluntad: 8, carisma: 6, arcano: 2 };
+const GORHORN_ATTRIBUTES: AttributeBlock = { fuerza: 10, destreza: 6, constitucion: 7, inteligencia: 7, voluntad: 8, carisma: 6, magia: 2 };
 const GORHORN_SUMMARY =
   'Gorhorn, guerrero orco, único superviviente del clan Maktor, aniquilado como carne de cañón por el mando Goirntes en la Concordia de Hierro. Viaja solo por las Llanuras del Viento Rojo buscando una forma de que la muerte de su clan signifique algo.';
 const GORHORN_LEVEL = 1;

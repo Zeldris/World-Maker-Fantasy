@@ -15,14 +15,14 @@ const flat: Record<Attribute, number> = {
   inteligencia: 10,
   voluntad: 10,
   carisma: 10,
-  arcano: 10,
+  magia: 10,
 }
 
 function enemyWith(strongest: Attribute): Record<Attribute, number> {
   return { ...flat, [strongest]: 99 }
 }
 
-// Mismo anillo que ATTRIBUTE_RING (privado) — ['fuerza','destreza','inteligencia','arcano',
+// Mismo anillo que ATTRIBUTE_RING (privado) — ['fuerza','destreza','inteligencia','magia',
 // 'constitucion','voluntad','carisma']. El "sucesor" de cada atributo en el anillo es el que gana
 // la ventaja directa (×1.5) contra él — confirmado contra el comentario del backend
 // (`typeMultiplierFor('destreza', 'fuerza', 'ataque') === 1.5`).

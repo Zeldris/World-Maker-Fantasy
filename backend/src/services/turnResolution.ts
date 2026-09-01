@@ -1,7 +1,7 @@
 import { env } from '../config/env.js';
 import { narrateAction, generateNpcReply, hasFalseTravelClaim, hasFalsePhantomTravel, type ClassificationResult, type NarrationResult } from './narrador.js';
 import { retrieveLore, formatLoreForPrompt, isWeaklyGrounded } from './retrieval.js';
-import { xpForRollSuccess, xpForHitos, applyXp, type ProgressionResult, type HitoTipo } from './progression.js';
+import { xpForRollSuccess, xpForHitos, labelForHitos, applyXp, type ProgressionResult, type HitoTipo } from './progression.js';
 import { alivioForLevel, xpForCraftSuccess, professionLevelForXp } from './professionProgress.js';
 import { tickKingdom, daysCrossed, DEFAULT_KINGDOM_STATS, territoryPopulationDelta, DIAS_PARA_CONSOLIDAR, DIAS_PARA_REBELION } from './kingdomTick.js';
 import { appendSessionFacts, selectRelevantFacts } from './worldFacts.js';
@@ -1108,7 +1108,7 @@ function resolveCombatExchangePhase(input: CombatExchangePhaseInput): CombatExch
         //
         // CONTRA/REFRACTAR (2026-08-26) — mismo gancho que ATAQUE, pero solo si el golpe entrante
         // era del tipo que cada una contesta: CONTRA solo físico (atributo del ataque del NPC
-        // distinto de arcano), REFRACTAR solo mágico (arcano). El motor no distingue tipos de daño
+        // distinto de magia), REFRACTAR solo mágico (magia). El motor no distingue tipos de daño
         // de verdad (ver comentario del enum en schema.prisma) — se usa el atributo de la tirada
         // como proxy, tal como ya apuntaba ese mismo comentario. Cifra de margen: se reutiliza el
         // umbral decisivo ya existente (`defensor_contragolpea`, margen ±10) en vez de un umbral
@@ -1116,8 +1116,8 @@ function resolveCombatExchangePhase(input: CombatExchangePhaseInput): CombatExch
         // LETAL (nextCondicionForAttack ignora el "diferencia de 8 vs 12" del doc, es binario).
         const jugadorPuedeContragolpear =
           abilityEffects.includes('ATAQUE') ||
-          (abilityEffects.includes('CONTRA') && pendingNpcAttack.attribute !== 'arcano') ||
-          (abilityEffects.includes('REFRACTAR') && pendingNpcAttack.attribute === 'arcano');
+          (abilityEffects.includes('CONTRA') && pendingNpcAttack.attribute !== 'magia') ||
+          (abilityEffects.includes('REFRACTAR') && pendingNpcAttack.attribute === 'magia');
         const jugadorContragolpeaAplica = exchange.resultado === 'defensor_contragolpea' && jugadorPuedeContragolpear;
         jugadorRecibeGolpe = exchange.resultado === 'golpe_pleno' || exchange.resultado === 'golpe_normal';
         // `?? []` (auditoría de código 2026-08-17): un `pendingNpcAttack` persistido de antes del
@@ -1333,8 +1333,8 @@ function resolveCombatExchangePhase(input: CombatExchangePhaseInput): CombatExch
         // `input.classificationAtributo` (el suyo), no el del NPC.
         const npcPuedeContragolpear =
           npcDefensa.effects.includes('ATAQUE') ||
-          (npcDefensa.effects.includes('CONTRA') && input.classificationAtributo !== 'arcano') ||
-          (npcDefensa.effects.includes('REFRACTAR') && input.classificationAtributo === 'arcano');
+          (npcDefensa.effects.includes('CONTRA') && input.classificationAtributo !== 'magia') ||
+          (npcDefensa.effects.includes('REFRACTAR') && input.classificationAtributo === 'magia');
         const npcContragolpeaAplica = exchange.resultado === 'defensor_contragolpea' && npcPuedeContragolpear;
         npcAttackHits = exchange.resultado === 'golpe_pleno' || exchange.resultado === 'golpe_normal';
         npcTargetNewCondicion = npcAttackHits ? nextCondicionForAttack(abilityEffects, npcParaIntercambio.condicionFisica) : null;
@@ -2307,11 +2307,34 @@ async function resolveCombatSlugsAndPersist(params: {
   // abajo) es exactamente el caso que debe forzar un intercambio real, con su malus de condición
   // (`CONDICION_MALUS.CONVALECIENTE`, death.ts) como riesgo bajo pero real.
   const explicitTargetVivo = explicitTarget && explicitTarget.condicionFisica !== 'MUERTO' ? explicitTarget : null;
+  // Bug real (auditoría de integridad de estado, 2026-09-01, "nuente" enganchado en
+  // `pendingCombatNpcSlugs` sin haber sido nunca `CombatParticipant` de ningún `CombatEncounter`
+  // real): el comentario de arriba ("ha metido un murgol que no pinta nada", 2026-07-23) documenta
+  // que el fallback ya NO debía barrer con todo `npcsInScene` sin filtrar — pero solo se corrigió
+  // el caso `agresivoSlugsInScene.length > 0`. Cuando ni hay `explicitTarget` ni ningún agresivo
+  // detectado (p.ej. `shouldForceCombat` se disparó por `detectsAttackIntent`/
+  // `detectsHostileSearchIntent` sobre un NPC agresivo que el matching de alias NO reconoció como
+  // tal, o por una bajada de condición), este ÚLTIMO fallback seguía usando
+  // `npcsInSceneVivos.map((n) => n.slug)` tal cual — cualquier NPC pacífico detectado en la MISMA
+  // escena (aunque sea un falso positivo de fuzzy-match de alias, Levenshtein≤2, el mismo mecanismo
+  // que ya causó el bug histórico "presas"/"brasas") se arrastraba a `pendingCombatNpcSlugs` junto
+  // con el agresor real. Caso confirmado en partida real: "nuente" (CAUTELOSO, sin relación con la
+  // escena) coló por matchear "cuenta" ("el canizor se da cuenta...") a distancia 2 del alias
+  // "nuente" — el combate real que se abrió después solo enganchó a "canizor", dejando a "nuente"
+  // huérfano para siempre en el array (nada más lo retira). Mismo criterio que
+  // `allNpcsInSceneArePacificos` más arriba: un NPC AMIGABLE/INOFENSIVO/CAUTELOSO no puede ser el
+  // objetivo de un forzado de combate por esta vía — si tras excluirlos no queda ningún candidato
+  // plausible, no se fuerza combate contra nadie (mejor no abrir popup que abrirlo contra quien no
+  // pinta nada).
+  const npcsInSceneHostilesCandidatos = npcsInSceneVivos.filter((n) => {
+    const t = effectiveTemperamento(n.temperamento, n.faction, factionsStatus);
+    return t !== 'AMIGABLE' && t !== 'INOFENSIVO' && t !== 'CAUTELOSO';
+  });
   const forcedCombatSlugs = explicitTargetVivo
     ? [explicitTargetVivo.slug]
     : agresivoSlugsInScene.length > 0
       ? agresivoSlugsInScene
-      : npcsInSceneVivos.map((n) => n.slug);
+      : npcsInSceneHostilesCandidatos.map((n) => n.slug);
   const baseCombatSlugs = combatSlugsFromModel.length > 0 ? combatSlugsFromModel : shouldForceCombat ? forcedCombatSlugs : [];
   // Bug real (2026-07-29, jugando en vivo — "sigo sin hacerle daño al enemigo" con `enCombate`
   // ya activo): mientras el combate ya está abierto, `shouldForceCombat` exige `!enCombate`
@@ -2443,6 +2466,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     action,
     characterSummary,
     characterName,
+    clase,
     timeLabel,
     sessionFacts,
     classification,
@@ -4019,6 +4043,9 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     otherNpcNamesInScene,
     possiblyStaleNpcNames,
     gisteraSeHaMarchado,
+    // Ver `hasIllegitimateMagicVocabulary` (narrador.ts) — bug real jugando en vivo, 2026-09-01:
+    // vocabulario mágico narrando la curación de un personaje sin ninguna clase/habilidad mágica.
+    characterClase: clase,
     onNarrationChunk,
     onNarrationReset,
   };
@@ -5596,9 +5623,18 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     // siempre que exista; `roll` solo se usa como estaba fuera de combate.
     const effectiveRoll: RollResult | null = combatExchangeRoll ?? roll ?? null;
     const xpTirada = effectiveRoll ? xpForRollSuccess(effectiveRoll.difficulty, effectiveRoll.success) : 0;
-    const xpHito = Math.max(xpForHitos(hitos), reinoXp);
+    const xpHitoFromTipos = xpForHitos(hitos);
+    const xpHito = Math.max(xpHitoFromTipos, reinoXp);
+    // UX 2026-09-01: separar el chip de XP normal del de "hito"/capítulo en el frontend (antes un
+    // único "+N XP" sumaba ambos, y un turno FALLIDO con un hito grande detrás — p.ej. "capitulo",
+    // 500 XP — se veía como "+500 XP" pegado a un "Fallo" en rojo, como si el juego premiara el
+    // fracaso). `reinoXp` no tiene un `HitoTipo` propio (fundar/consolidar territorio, activar
+    // edificio, súbdito nuevo...) así que, si es él quien domina sobre los hitos propuestos por el
+    // modelo, usa una etiqueta genérica de Reino en vez de `labelForHitos`.
+    const xpHitoLabel: string | null =
+      xpHito === 0 ? null : reinoXp >= xpHitoFromTipos ? 'Progreso del Reino' : labelForHitos(hitos);
     const xpTurno = xpTirada + xpHito + questRewardXp;
-    const result = applyXp(params.currentXp, params.currentLevel, xpTurno);
+    const result = applyXp(params.currentXp, params.currentLevel, xpTurno, { xpTirada, xpHito, xpHitoLabel });
 
     // Eventos de viaje interactivos (2026-08-05): aviso determinista, ANTES de la narración de
     // llegada — nunca lo escribe el LLM (no sabe a dónde iba el jugador, y no debe inventarlo).
@@ -5659,6 +5695,10 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
         initiativeRoll: nextInitiativeRoll ? (nextInitiativeRoll as unknown as Prisma.InputJsonValue) : undefined,
         timeLabel,
         xpDelta: xpTurno > 0 ? xpTurno : undefined,
+        // UX 2026-09-01 (ver comentario de la columna en schema.prisma) — desglose de `xpDelta`
+        // para que el frontend separe el chip de hito/capítulo del de XP normal tras recargar.
+        xpHitoDelta: xpHito > 0 ? xpHito : undefined,
+        xpHitoLabel: xpHito > 0 ? xpHitoLabel ?? undefined : undefined,
         fictionalMinutes: nuevoFictionalMinutes,
         createdAt: mainLogEntryCreatedAt,
         // Rediseño de la vista de combate (2026-07-28): marca solo la narración PRINCIPAL de este

@@ -21,7 +21,7 @@ import { recordEntityDiscoveries } from '../../services/entityDiscovery.js';
 /// propia copia idéntica de este array — duplicación real, reconocida a propósito en un comentario
 /// de creation.ts ("no hay un módulo compartido de validación de atributos todavía"). Ahora sí lo
 /// hay: las dos rutas importan esta misma constante.
-export const VALID_ATTRIBUTES: Attribute[] = ['fuerza', 'destreza', 'constitucion', 'inteligencia', 'voluntad', 'carisma', 'arcano'];
+export const VALID_ATTRIBUTES: Attribute[] = ['fuerza', 'destreza', 'constitucion', 'inteligencia', 'voluntad', 'carisma', 'magia'];
 
 /// Guard de `save.endedAt` (deuda técnica, auditoría 2026-08-25) — el mismo bloque de 3 líneas
 /// estaba copiado literalmente en 8+ archivos de `routes/saves/` (`recolectar.ts`, `cazar.ts`,
@@ -70,6 +70,8 @@ export function toFrontendLogEntry(entry: {
   timeLabel: string;
   createdAt: Date;
   xpDelta?: number | null;
+  xpHitoDelta?: number | null;
+  xpHitoLabel?: string | null;
   entityBannerType?: string | null;
   entityBannerSlug?: string | null;
   combate?: boolean;
@@ -98,6 +100,10 @@ export function toFrontendLogEntry(entry: {
     initiativeRoll: entry.initiativeRoll ?? undefined,
     isPlayerAction: entry.isPlayerAction || undefined,
     xpDelta: entry.xpDelta ?? undefined,
+    // UX 2026-09-01 (ver comentario de la columna en schema.prisma) — desglose del chip de XP:
+    // separa la parte de hito/capítulo/Reino de la de tirada normal tras recargar la partida.
+    xpHitoDelta: entry.xpHitoDelta ?? undefined,
+    xpHitoLabel: entry.xpHitoLabel ?? undefined,
     // Persistencia de banners de entidad (rework 2026-07-24) — solo la referencia (tipo+slug); el
     // frontend resuelve la imagen real contra la Enciclopedia ya cargada, nunca se guarda una URL.
     entityBannerType: entry.entityBannerType ?? undefined,

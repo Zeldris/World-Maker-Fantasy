@@ -5,9 +5,9 @@ import { normalizeText, fuzzyMatchCandidates, findFuzzyStemMatch } from './trave
 import { detectsAttackIntent, detectsHostileSearchIntent } from './npcScene.js';
 import { similarity, factSimilarity } from './worldFacts.js';
 import type { Attribute, RollResult } from './dice.js';
-import type { CondicionFisica } from '@prisma/client';
+import type { CondicionFisica, Clase } from '@prisma/client';
 
-const ATTRIBUTES: Attribute[] = ['fuerza', 'destreza', 'constitucion', 'inteligencia', 'voluntad', 'carisma', 'arcano'];
+const ATTRIBUTES: Attribute[] = ['fuerza', 'destreza', 'constitucion', 'inteligencia', 'voluntad', 'carisma', 'magia'];
 
 /// Ejemplo few-shot (2026-07-31, "brainstorming de mejora de narración" — idea de la usuaria:
 /// enseñar ejemplos reales en vez de solo acumular más reglas de prosa). Un modelo pequeño sigue
@@ -291,6 +291,15 @@ interface TurnContext {
   /// partida (`NpcState` propio) que NO son el NPC actual del combate ni están en la escena de
   /// este turno — candidatos a "arrastrarse" del historial de la sesión en vez del rival real.
   possiblyStaleNpcNames?: string[];
+  /// Ver `hasIllegitimateMagicVocabulary` más abajo — bug real jugando en vivo (2026-09-01):
+  /// Gorhorn (Cazador, orco, sin ninguna clase/habilidad mágica) tuvo su curación por descanso
+  /// normal narrada DOS turnos seguidos con imaginería mágica ("un fino escudo de energía
+  /// arcana", "el escudo arcáneo se ha fortalecido") — vocabulario que solo tiene sentido para
+  /// las 2 clases con vertiente mágica real del catálogo (MAGO por diseño; CHAMAN porque varias
+  /// de sus habilidades reales usan `preferredAttribute: 'magia'`, ver classAbilities.ts). Clase
+  /// del personaje de esta partida (`Save.clase`, enum Prisma) — null = sin clase asignada
+  /// todavía (tampoco legítimo para vocabulario mágico).
+  characterClase?: Clase | null;
 }
 
 interface ClassifyContext {
@@ -1438,6 +1447,10 @@ export async function narrateAction(ctx: TurnContext & { roll?: RollResult }): P
           check: () => hasWrongAggressorName(parsed.combateIniciado?.npcSlugs, ctx.nonHostileNpcSlugsInScene),
           reason: 'proponer "combateIniciado" contra un NPC que no puede ser agresor por catálogo (temperamento no AGRESIVO/ENEMIGO)',
         },
+        {
+          check: () => hasIllegitimateMagicVocabulary(parsed.narration, ctx.characterClase),
+          reason: 'usar vocabulario mágico (arcano/hechizo/conjuro/encantamiento/mágico) narrando a un personaje sin clase con vertiente mágica real (solo MAGO/CHAMAN)',
+        },
       ].find((validator) => validator.check());
 
       if (rejection) {
@@ -1593,8 +1606,38 @@ export function hasFalseMaktorThreatClaim(narration: string): boolean {
 const ENGLISH_LEAK_REGEX =
   /\b(own|the|and|was|with|from|small|clearing|several|lullaby|nearby|forest|shadow|whisper|silence|darkness|distant|accompanies)\b/i;
 
+/// Reaparecido más grave (checklist 2026-09-01, sesión de combate en vivo tras varios reinicios de
+/// Ollama/backend): no palabras sueltas, sino CLÁUSULAS ENTERAS en inglés dentro de una frase por
+/// lo demás en español — "Canizor's blade slices through the air with a resonant crack, catching
+/// Gorhorn off balance and leaving a fresh gash across his shoulder." La lista de arriba (una
+/// palabra por bug real encontrado) no escala a este caso: cada cláusula nueva trae vocabulario
+/// distinto ("blade"/"slices"/"crack"/"catching"/"gash"...), imposible de enumerar a mano de
+/// antemano. En vez de listar sustantivos/verbos (riesgo real de falsos positivos con préstamos o
+/// nombres), se detecta la DENSIDAD de palabras función inglesas inequívocas (sin ningún homónimo
+/// ni preposición española real — a diferencia de la lista de arriba, aquí se excluyen a propósito
+/// "a"/"en"/"on" por chocar con "a"/preposición española) dentro de una ventana corta de texto: 3+
+/// aparecen juntas en 12 palabras seguidas prácticamente nunca ocurre por azar en una frase en
+/// español, pero sí es la firma de una cláusula inglesa completa colada en medio.
+const ENGLISH_FUNCTION_WORDS = ['the', 'with', 'and', 'his', 'her', 'of', 'to', 'off', 'across', 'through', 'into', 'onto', 'catching', 'leaving'];
+const ENGLISH_FUNCTION_WORD_REGEX = new RegExp(`\\b(${ENGLISH_FUNCTION_WORDS.join('|')})\\b`, 'gi');
+const ENGLISH_CLAUSE_WINDOW = 12;
+const ENGLISH_CLAUSE_THRESHOLD = 3;
+
+function hasEnglishClauseDensity(narration: string): boolean {
+  const words = narration.split(/\s+/);
+  const hitIndices: number[] = [];
+  words.forEach((word, i) => {
+    ENGLISH_FUNCTION_WORD_REGEX.lastIndex = 0;
+    if (ENGLISH_FUNCTION_WORD_REGEX.test(word)) hitIndices.push(i);
+  });
+  for (let i = 0; i + ENGLISH_CLAUSE_THRESHOLD - 1 < hitIndices.length; i++) {
+    if (hitIndices[i + ENGLISH_CLAUSE_THRESHOLD - 1] - hitIndices[i] < ENGLISH_CLAUSE_WINDOW) return true;
+  }
+  return false;
+}
+
 export function hasEnglishLeak(narration: string): boolean {
-  return ENGLISH_LEAK_REGEX.test(narration);
+  return ENGLISH_LEAK_REGEX.test(narration) || hasEnglishClauseDensity(narration);
 }
 
 /// Red de seguridad determinista para la instrucción de persona gramatical fija de
@@ -2026,6 +2069,30 @@ export function hasFalseCombatTargetName(narration: string, realTargetName?: str
   const normalized = normalizeText(narration);
   if (normalized.includes(normalizeText(realTargetName))) return false;
   return otherNpcNamesInScene.some((name) => normalized.includes(normalizeText(name)));
+}
+
+/// Narración-vs-mecánica, categoría de vocabulario ilegítimo (bug real jugando en vivo, 2026-09-01):
+/// Gorhorn (Cazador, orco, sin ninguna clase/habilidad mágica) tuvo la curación por descanso normal
+/// narrada DOS turnos seguidos con imaginería mágica — "las heridas... comienzan a sellarse con un
+/// fino escudo de energía arcana" y luego "notando que el escudo arcáneo se ha fortalecido alrededor
+/// de las heridas más profundas" — pese a que ninguna mecánica de este personaje involucra magia.
+/// Solo 2 de las 9 clases (docs/rpgtarkor/clases.md) tienen vertiente mágica legítima: MAGO (la
+/// clase mágica por diseño, aunque su tabla de habilidades siga siendo solo identidad hoy) y CHAMAN
+/// (varias habilidades reales usan `preferredAttribute: 'magia'`, ver classAbilities.ts). El resto
+/// (Guerrero/Cazador/Arquero/Caballero/Segador/Asesino/Druida) y una partida sin clase asignada
+/// (`characterClase` null) no tienen ningún camino mecánico a vocabulario mágico — si aparece de
+/// todos modos, es una alucinación de sabor, no una licencia narrativa.
+/// Vocabulario acotado al campo semántico real que usa el proyecto (clases.md § Mago: "arcano" como
+/// nombre de escuela, "hechizo"/"conjuro"/"encantamiento" como sinónimos de acto mágico, "mágic-" en
+/// cualquier flexión) — no se inventan términos que el juego no usa. "Arcano" es ambiguo a propósito
+/// (es tanto vocabulario mágico general como el nombre de una escuela de Mago) pero eso es correcto:
+/// para un personaje SIN vertiente mágica no hay lectura legítima de la palabra en absoluto.
+const MAGIC_VOCABULARY_REGEX = /\barcan[oa]s?\b|\barcáne[oa]s?\b|\bhechiz\w*|\bconjur\w*|\bencantamient\w*|\bmágic[oa]s?\b/i;
+const MAGIC_CLASSES: ReadonlySet<Clase> = new Set(['MAGO', 'CHAMAN']);
+
+export function hasIllegitimateMagicVocabulary(narration: string, characterClase?: Clase | null): boolean {
+  if (characterClase && MAGIC_CLASSES.has(characterClase)) return false;
+  return MAGIC_VOCABULARY_REGEX.test(narration);
 }
 
 /// Narración-vs-mecánica, hermano de `hasFalseCombatTargetName` con alcance distinto (hallazgo

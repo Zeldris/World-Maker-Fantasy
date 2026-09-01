@@ -13,7 +13,7 @@ const SAVE = {
   characterMotivation: 'Restaurar el nombre del Clan Maktor.',
 };
 
-const ATTRS: AttributeBlock = { fuerza: 18, destreza: 9, constitucion: 14, inteligencia: 10, voluntad: 12, carisma: 8, arcano: 8 };
+const ATTRS: AttributeBlock = { fuerza: 18, destreza: 9, constitucion: 14, inteligencia: 10, voluntad: 12, carisma: 8, magia: 8 };
 
 describe('characterSummaryFor', () => {
   it('sin estadoPartida, devuelve solo el resumen base del personaje', () => {

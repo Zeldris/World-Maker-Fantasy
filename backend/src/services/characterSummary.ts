@@ -35,7 +35,7 @@ export function characterSummaryFor(
   const base = `${save.characterName}, ${save.characterArchetype}. ${save.characterOrigin} ${save.characterMotivation}`;
   if (!estadoPartida) return base;
   const { timeLabel, locationName, region, level, attributes, condicionFisica, entorno } = estadoPartida;
-  const attrsTxt = (['fuerza', 'destreza', 'constitucion', 'inteligencia', 'voluntad', 'carisma', 'arcano'] as const)
+  const attrsTxt = (['fuerza', 'destreza', 'constitucion', 'inteligencia', 'voluntad', 'carisma', 'magia'] as const)
     .map((a) => `${a} ${attributes[a]}`)
     .join(', ');
   const entornoTxt = entorno ? ` Estación: ${entorno.estacion.nombre}${entorno.clima ? `. Clima: ${entorno.clima.nombre}` : ''}.` : '';

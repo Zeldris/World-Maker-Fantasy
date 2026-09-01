@@ -109,11 +109,33 @@ const XP_BY_HITO: Record<HitoTipo, number> = {
   capitulo: 500,
 };
 
+/// Etiqueta legible del hito de mayor valor de un turno (UX 2026-09-01: separar visualmente el
+/// XP de hito del XP normal de tirada — antes un único chip "+N XP" sumaba ambos, y si la tirada
+/// fallaba pero había un hito grande [p.ej. "capitulo", 500 XP], el jugador veía un "+500 XP"
+/// pegado a un "Fallo" en rojo, como si el juego premiara el fracaso). Solo para mostrar, nunca
+/// para calcular — `xpForHitos` sigue siendo la única fuente de verdad del número.
+const HITO_LABEL: Record<HitoTipo, string> = {
+  descubrimiento: 'Descubrimiento',
+  objetivo_menor: 'Objetivo cumplido',
+  objetivo_mayor: 'Objetivo mayor cumplido',
+  capitulo: 'Capítulo completado',
+};
+
 /// De la lista de hitos que propone el modelo (solo el tipo) más los eventos deterministas de
 /// Reino, se queda con el de mayor valor — tope 1 hito/turno (§ 3.2, § 5.4).
 export function xpForHitos(hitoTipos: HitoTipo[]): number {
   if (hitoTipos.length === 0) return 0;
   return Math.max(...hitoTipos.map((t) => XP_BY_HITO[t] ?? 0));
+}
+
+/// Etiqueta del hito de mayor valor entre los de este turno (mismo criterio de "el de mayor
+/// valor gana" que `xpForHitos`) — null si no hubo ningún hito. `reinoXp` (fundar/consolidar
+/// territorio, etc.) no tiene tipo de `HitoTipo` propio, así que lo etiqueta el caller si aplica
+/// (ver `xpHitoLabel` en turnResolution.ts).
+export function labelForHitos(hitoTipos: HitoTipo[]): string | null {
+  if (hitoTipos.length === 0) return null;
+  const top = hitoTipos.reduce((best, t) => (XP_BY_HITO[t] > XP_BY_HITO[best] ? t : best));
+  return HITO_LABEL[top];
 }
 
 export interface ProgressionResult {
@@ -122,11 +144,27 @@ export interface ProgressionResult {
   newLevel: number;
   leveledUp: boolean;
   attributePointsGained: number;
+  /// Desglose del XP de este turno (UX 2026-09-01, ver comentario de `HITO_LABEL`) — la parte de
+  /// `xpDelta` que vino de una tirada normal de acción/combate vs. la que vino de un hito o de un
+  /// evento de Reino. Opcionales: los callers de `applyXp` fuera del turno principal (XP de
+  /// oficio al craftear, etc.) no conocen hitos y los dejan sin rellenar; el frontend trata su
+  /// ausencia como "todo es XP de tirada", igual que hacía antes de este campo.
+  xpTirada?: number;
+  xpHito?: number;
+  xpHitoLabel?: string | null;
 }
 
 /// Aplica un delta de XP a una partida y calcula si sube de nivel (§ 7). No toca la base de
 /// datos — el caller decide cómo persistir (Save.xp/level/pendingAttributePoints, LogEntry.xpDelta).
-export function applyXp(currentXp: number, currentLevel: number, xpDelta: number): ProgressionResult {
+/// `breakdown` es opcional (UX 2026-09-01) — solo lo rellena el turno principal, que es el único
+/// caller que conoce la distinción tirada/hito; el resto de callers (XP de oficio, etc.) no lo
+/// pasan y `ProgressionResult` simplemente no trae desglose para ellos.
+export function applyXp(
+  currentXp: number,
+  currentLevel: number,
+  xpDelta: number,
+  breakdown?: { xpTirada: number; xpHito: number; xpHitoLabel: string | null },
+): ProgressionResult {
   const newXp = currentXp + xpDelta;
   const newLevel = levelForXp(newXp);
   const leveledUp = newLevel > currentLevel;
@@ -138,7 +176,16 @@ export function applyXp(currentXp: number, currentLevel: number, xpDelta: number
     }
   }
 
-  return { xpDelta, newXp, newLevel, leveledUp, attributePointsGained };
+  return {
+    xpDelta,
+    newXp,
+    newLevel,
+    leveledUp,
+    attributePointsGained,
+    ...(breakdown
+      ? { xpTirada: breakdown.xpTirada, xpHito: breakdown.xpHito, xpHitoLabel: breakdown.xpHitoLabel }
+      : {}),
+  };
 }
 
 /// Puntos de ASI ganados subiendo de `fromLevel` (exclusivo) a `toLevel` (inclusivo) — misma
@@ -162,15 +209,15 @@ function asiPointsBetweenLevels(fromLevel: number, toLevel: number): number {
 /// clases.md, sin repaso a fondo de habilidades todavía (mismo criterio que el resto del reparto:
 /// cifra de partida, ajustable jugando).
 const NPC_CLASS_ATTRIBUTE_WEIGHTS: Record<Clase, Partial<Record<Attribute, number>>> = {
-  GUERRERO: { fuerza: 0.35, constitucion: 0.3, voluntad: 0.15, destreza: 0.1, inteligencia: 0.05, carisma: 0.03, arcano: 0.02 },
-  CAZADOR: { destreza: 0.35, inteligencia: 0.2, constitucion: 0.15, voluntad: 0.15, fuerza: 0.1, carisma: 0.03, arcano: 0.02 },
-  CHAMAN: { arcano: 0.3, constitucion: 0.25, voluntad: 0.2, fuerza: 0.15, inteligencia: 0.05, destreza: 0.03, carisma: 0.02 },
-  ARQUERO: { destreza: 0.4, inteligencia: 0.2, constitucion: 0.15, fuerza: 0.15, voluntad: 0.06, carisma: 0.02, arcano: 0.02 },
-  CABALLERO: { fuerza: 0.3, constitucion: 0.3, voluntad: 0.2, carisma: 0.1, destreza: 0.06, inteligencia: 0.02, arcano: 0.02 },
-  MAGO: { arcano: 0.45, inteligencia: 0.25, voluntad: 0.15, constitucion: 0.08, destreza: 0.04, carisma: 0.02, fuerza: 0.01 },
-  SEGADOR: { destreza: 0.3, inteligencia: 0.25, voluntad: 0.2, fuerza: 0.15, constitucion: 0.06, carisma: 0.02, arcano: 0.02 },
-  ASESINO: { destreza: 0.45, inteligencia: 0.2, voluntad: 0.15, fuerza: 0.1, constitucion: 0.06, carisma: 0.02, arcano: 0.02 },
-  DRUIDA: { constitucion: 0.3, voluntad: 0.25, fuerza: 0.2, destreza: 0.15, arcano: 0.06, inteligencia: 0.02, carisma: 0.02 },
+  GUERRERO: { fuerza: 0.35, constitucion: 0.3, voluntad: 0.15, destreza: 0.1, inteligencia: 0.05, carisma: 0.03, magia: 0.02 },
+  CAZADOR: { destreza: 0.35, inteligencia: 0.2, constitucion: 0.15, voluntad: 0.15, fuerza: 0.1, carisma: 0.03, magia: 0.02 },
+  CHAMAN: { magia: 0.3, constitucion: 0.25, voluntad: 0.2, fuerza: 0.15, inteligencia: 0.05, destreza: 0.03, carisma: 0.02 },
+  ARQUERO: { destreza: 0.4, inteligencia: 0.2, constitucion: 0.15, fuerza: 0.15, voluntad: 0.06, carisma: 0.02, magia: 0.02 },
+  CABALLERO: { fuerza: 0.3, constitucion: 0.3, voluntad: 0.2, carisma: 0.1, destreza: 0.06, inteligencia: 0.02, magia: 0.02 },
+  MAGO: { magia: 0.45, inteligencia: 0.25, voluntad: 0.15, constitucion: 0.08, destreza: 0.04, carisma: 0.02, fuerza: 0.01 },
+  SEGADOR: { destreza: 0.3, inteligencia: 0.25, voluntad: 0.2, fuerza: 0.15, constitucion: 0.06, carisma: 0.02, magia: 0.02 },
+  ASESINO: { destreza: 0.45, inteligencia: 0.2, voluntad: 0.15, fuerza: 0.1, constitucion: 0.06, carisma: 0.02, magia: 0.02 },
+  DRUIDA: { constitucion: 0.3, voluntad: 0.25, fuerza: 0.2, destreza: 0.15, magia: 0.06, inteligencia: 0.02, carisma: 0.02 },
 };
 
 /// Reparte `points` entre los atributos de `weights` (normalizados a su suma real, no hace falta

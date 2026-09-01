@@ -32,7 +32,7 @@ describe('POST /saves/:id/restart limpia el combate pendiente de la partida ante
         characterArchetype: 'guerrero',
         characterOrigin: 'Clan Maktor',
         characterMotivation: 'x',
-        attributes: { fuerza: 10, destreza: 10, constitucion: 10, inteligencia: 10, voluntad: 10, carisma: 10, arcano: 10 },
+        attributes: { fuerza: 10, destreza: 10, constitucion: 10, inteligencia: 10, voluntad: 10, carisma: 10, magia: 10 },
         portraitInitial: 'G',
         condicionFisica: 'CONVALECIENTE',
         // Simula justo lo que se encontró en la partida real: un combate que nunca llegó a
@@ -82,7 +82,7 @@ describe('POST /saves/:id/restart borra la Faction de un reino fundado en la par
         characterArchetype: 'guerrero',
         characterOrigin: 'Clan Maktor',
         characterMotivation: 'x',
-        attributes: { fuerza: 10, destreza: 10, constitucion: 10, inteligencia: 10, voluntad: 10, carisma: 10, arcano: 10 },
+        attributes: { fuerza: 10, destreza: 10, constitucion: 10, inteligencia: 10, voluntad: 10, carisma: 10, magia: 10 },
         portraitInitial: 'G',
         raza: 'orcos',
         kingdomName: 'Reino de Prueba',
@@ -136,7 +136,7 @@ describe('POST /saves/:id/restart rellena statBonuses del inventario inicial des
         characterArchetype: 'guerrero',
         characterOrigin: 'Clan Maktor',
         characterMotivation: 'x',
-        attributes: { fuerza: 10, destreza: 10, constitucion: 10, inteligencia: 10, voluntad: 10, carisma: 10, arcano: 10 },
+        attributes: { fuerza: 10, destreza: 10, constitucion: 10, inteligencia: 10, voluntad: 10, carisma: 10, magia: 10 },
         portraitInitial: 'G',
       },
     });

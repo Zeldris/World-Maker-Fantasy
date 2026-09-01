@@ -5,7 +5,7 @@ import { attributeLabels } from '../lib/dice'
 import { SelectionModalShell, confirmButtonClasses } from './SelectionModalShell'
 import { useSubmitError } from '../hooks/useSubmitError'
 
-const ATTRIBUTES: Attribute[] = ['fuerza', 'destreza', 'constitucion', 'inteligencia', 'voluntad', 'carisma', 'arcano']
+const ATTRIBUTES: Attribute[] = ['fuerza', 'destreza', 'constitucion', 'inteligencia', 'voluntad', 'carisma', 'magia']
 
 interface TameoModalProps {
   saveId: string

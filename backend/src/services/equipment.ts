@@ -2,7 +2,7 @@ import type { AttributeBlock, Attribute } from './dice.js';
 import type { EquipSlot } from '@prisma/client';
 import { SECONDARY_ATTRIBUTES, type SecondaryAttribute, type SecondaryAttributeBlock } from './secondaryAttributes.js';
 
-const ATTRIBUTES: Attribute[] = ['fuerza', 'destreza', 'constitucion', 'inteligencia', 'voluntad', 'carisma', 'arcano'];
+const ATTRIBUTES: Attribute[] = ['fuerza', 'destreza', 'constitucion', 'inteligencia', 'voluntad', 'carisma', 'magia'];
 
 function isAttribute(value: string): value is Attribute {
   return (ATTRIBUTES as string[]).includes(value);

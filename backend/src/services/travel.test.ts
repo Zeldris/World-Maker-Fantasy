@@ -38,7 +38,7 @@ const {
 type LocationNode = import('./travel.js').LocationNode;
 type LinkEdge = import('./travel.js').LinkEdge;
 
-const ATTRS: AttributeBlock = { fuerza: 10, destreza: 10, constitucion: 10, inteligencia: 10, voluntad: 10, carisma: 10, arcano: 10 };
+const ATTRS: AttributeBlock = { fuerza: 10, destreza: 10, constitucion: 10, inteligencia: 10, voluntad: 10, carisma: 10, magia: 10 };
 
 describe('normalizeText', () => {
   it('quita tildes y pasa a minúsculas', () => {
@@ -207,11 +207,11 @@ describe('edgeBetween', () => {
 
 describe('minutosConDestreza', () => {
   it('reduce el tiempo con más destreza (fórmula base/(1+destreza/20))', () => {
-    expect(minutosConDestreza(150, { fuerza: 10, destreza: 0, constitucion: 10, inteligencia: 10, voluntad: 10, carisma: 10, arcano: 10 })).toBe(150);
-    expect(minutosConDestreza(150, { fuerza: 10, destreza: 9, constitucion: 10, inteligencia: 10, voluntad: 10, carisma: 10, arcano: 10 })).toBe(103);
+    expect(minutosConDestreza(150, { fuerza: 10, destreza: 0, constitucion: 10, inteligencia: 10, voluntad: 10, carisma: 10, magia: 10 })).toBe(150);
+    expect(minutosConDestreza(150, { fuerza: 10, destreza: 9, constitucion: 10, inteligencia: 10, voluntad: 10, carisma: 10, magia: 10 })).toBe(103);
   });
   it('nunca baja de 1 minuto', () => {
-    expect(minutosConDestreza(1, { fuerza: 10, destreza: 100, constitucion: 10, inteligencia: 10, voluntad: 10, carisma: 10, arcano: 10 })).toBe(1);
+    expect(minutosConDestreza(1, { fuerza: 10, destreza: 100, constitucion: 10, inteligencia: 10, voluntad: 10, carisma: 10, magia: 10 })).toBe(1);
   });
 });
 

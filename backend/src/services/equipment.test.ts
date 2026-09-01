@@ -7,7 +7,7 @@ import { EMPTY_SECONDARY_ATTRIBUTES } from './secondaryAttributes.js';
 // CERO tests pese a ser el cálculo base (effectiveAttributes/effectiveDefense) que alimenta cada
 // intercambio de combate del juego (ver combatExchange.ts) — un bug silencioso aquí afectaría a
 // toda partida sin que ningún test lo detectara.
-const BASE: AttributeBlock = { fuerza: 10, destreza: 10, constitucion: 10, inteligencia: 10, voluntad: 10, carisma: 10, arcano: 10 };
+const BASE: AttributeBlock = { fuerza: 10, destreza: 10, constitucion: 10, inteligencia: 10, voluntad: 10, carisma: 10, magia: 10 };
 
 describe('effectiveAttributes', () => {
   it('sin objetos equipados, la base no cambia', () => {

@@ -38,7 +38,7 @@ describe('attributeCapForLevel', () => {
 });
 
 describe('npcAttributesForLevel', () => {
-  const base = { fuerza: 6, destreza: 10, constitucion: 7, inteligencia: 8, voluntad: 6, carisma: 6, arcano: 0 };
+  const base = { fuerza: 6, destreza: 10, constitucion: 7, inteligencia: 8, voluntad: 6, carisma: 6, magia: 0 };
 
   it('nivel 1 devuelve el bloque base sin cambios (sin puntos ASI que repartir)', () => {
     expect(npcAttributesForLevel(base, 1, null)).toEqual(base);
@@ -58,7 +58,7 @@ describe('npcAttributesForLevel', () => {
   });
 
   it('nunca supera el tope de atributo real para ese nivel', () => {
-    const highBase = { fuerza: 17, destreza: 5, constitucion: 5, inteligencia: 5, voluntad: 5, carisma: 5, arcano: 5 };
+    const highBase = { fuerza: 17, destreza: 5, constitucion: 5, inteligencia: 5, voluntad: 5, carisma: 5, magia: 5 };
     const scaled = npcAttributesForLevel(highBase, 19, 'GUERRERO'); // 5 ASI = 10 puntos, todos priorizarían fuerza
     expect(scaled.fuerza).toBeLessThanOrEqual(attributeCapForLevel(19));
   });

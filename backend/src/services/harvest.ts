@@ -29,12 +29,23 @@ export function matchesVerbForMetodo(action: string, metodo: MetodoObtencion): b
   return VERB_REGEX_BY_METODO[metodo].test(normalizeText(action));
 }
 
+// Bug real jugando en vivo (2026-09-01, partida Gorhorn/Hondonada del Eco): "Recojo mi hacha del
+// suelo y sigo el rastro que ha dejado el canizor..." (intención de rastrear/seguir una presa, sin
+// relación alguna con recolección) resolvió como RECOLECTAR Raíz de Fuego — el jugador nunca
+// mencionó la planta ni la zona donde vive de verdad (Fumarolas Negras, no la Hondonada). Causa:
+// "suelo" está a distancia Levenshtein 2 de "fuego" (s→f, l→g), la misma clase de colisión que
+// NPC_ALIAS_FUZZY_EXCLUSIONS ya documenta en npcScene.ts ("lugar"~"hagar") — "suelo" es una palabra
+// de terreno de uso constante en el juego, no una errata de "fuego". Mismo criterio: excluirla de
+// los candidatos fuzzy en vez de tocar la tolerancia a erratas en general (sigue haciendo falta
+// para erratas reales, ver test "corredr"~"corredor" en harvest.test.ts).
+const HARVEST_ALIAS_FUZZY_EXCLUSIONS = new Set(['suelo']);
+
 /// Tolerancia a erratas (roadmap 2026-07-20, P0 de Fable — auditoría de los demás detectores tras
 /// el bug real de matchNpcAliases): mismo patrón exacto, distancia de edición ≤2 palabra a palabra
 /// en palabras de 5+ letras cuando la coincidencia exacta de substring falla.
 export function matchHarvestSource(action: string): string | undefined {
   const normalized = normalizeText(action);
-  const words = fuzzyMatchCandidates(normalized);
+  const words = fuzzyMatchCandidates(normalized).filter((w) => !HARVEST_ALIAS_FUZZY_EXCLUSIONS.has(w));
   for (const [sourceSlug, aliases] of Object.entries(harvestSourceAliases)) {
     const hit = aliases.some((alias) => {
       const normalizedAlias = normalizeText(alias);

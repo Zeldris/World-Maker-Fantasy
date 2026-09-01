@@ -39,7 +39,7 @@ describe('Aprender oficio de un Maestro (2026-08-31)', () => {
         characterArchetype: 'guerrero',
         characterOrigin: 'Clan Maktor',
         characterMotivation: 'x',
-        attributes: { fuerza: 10, destreza: 10, constitucion: 10, inteligencia: 10, voluntad: 10, carisma: 10, arcano: 10 },
+        attributes: { fuerza: 10, destreza: 10, constitucion: 10, inteligencia: 10, voluntad: 10, carisma: 10, magia: 10 },
         portraitInitial: 'G',
         currentLocationId: interior.id,
         goirnos: COSTE_GOIRNOS_APRENDER_OFICIO,

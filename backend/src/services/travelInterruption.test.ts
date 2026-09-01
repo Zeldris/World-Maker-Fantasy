@@ -18,7 +18,7 @@ vi.mock('../lib/prisma.js', () => ({
 
 const { truncateTravelResolution, pickTravelInterruption } = await import('./travelInterruption.js');
 
-const ATTRS: AttributeBlock = { fuerza: 10, destreza: 10, constitucion: 10, inteligencia: 10, voluntad: 10, carisma: 10, arcano: 10 };
+const ATTRS: AttributeBlock = { fuerza: 10, destreza: 10, constitucion: 10, inteligencia: 10, voluntad: 10, carisma: 10, magia: 10 };
 
 // Ruta de 4 nodos / 3 tramos, mismo shape que devuelve resolveTravelPath (travel.ts) — A es el
 // origen, D el destino final, B y C los dos nodos intermedios.

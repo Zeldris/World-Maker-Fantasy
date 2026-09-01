@@ -59,7 +59,7 @@ async function buildApp() {
   return app;
 }
 
-const ATTRS = { fuerza: 15, destreza: 10, constitucion: 10, inteligencia: 10, voluntad: 10, carisma: 10, arcano: 10 };
+const ATTRS = { fuerza: 15, destreza: 10, constitucion: 10, inteligencia: 10, voluntad: 10, carisma: 10, magia: 10 };
 
 describe('POST /turn/classify — camino tabulado de combate (sin Ollama)', () => {
   beforeEach(() => {

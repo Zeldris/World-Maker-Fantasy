@@ -17,7 +17,7 @@ describe('normalizeSecondaryAttributes', () => {
     const result = normalizeSecondaryAttributes({ honor: 5, moral: 15 });
     expect(result.honor).toBe(5);
     expect(result.moral).toBe(15);
-    expect(result.magia).toBe(0);
+    expect(result.resistenciaFrio).toBe(0);
   });
 
   it('claves residuales de antes del remodelado 2026-08-22 (sigilo/resistenciaFisica...) se ignoran, no revientan', () => {
@@ -26,7 +26,7 @@ describe('normalizeSecondaryAttributes', () => {
     expect(result).not.toHaveProperty('sigilo');
   });
 
-  it('devuelve las 7 claves de SECONDARY_ATTRIBUTES, ninguna de más ni de menos', () => {
+  it('devuelve las 5 claves de SECONDARY_ATTRIBUTES, ninguna de más ni de menos', () => {
     const result = normalizeSecondaryAttributes({});
     expect(Object.keys(result).sort()).toEqual([...SECONDARY_ATTRIBUTES].sort());
   });

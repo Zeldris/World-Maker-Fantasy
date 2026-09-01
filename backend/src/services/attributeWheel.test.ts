@@ -19,8 +19,8 @@ describe('typeMultiplierFor', () => {
   });
 
   it('sin relación en el extremo del anillo (distancia 3, anillo de 7 impar — dos por lado) — multiplicador neutro', () => {
-    expect(typeMultiplierFor('fuerza', 'arcano', 'ataque')).toBe(1);
-    expect(typeMultiplierFor('arcano', 'fuerza', 'ataque')).toBe(1);
+    expect(typeMultiplierFor('fuerza', 'magia', 'ataque')).toBe(1);
+    expect(typeMultiplierFor('magia', 'fuerza', 'ataque')).toBe(1);
   });
 
   it('mismo atributo — siempre neutro, nunca se compite consigo mismo', () => {
@@ -69,7 +69,7 @@ describe('effectiveAttributeValue', () => {
 
 describe('ATTRIBUTE_RING', () => {
   it('tiene los 7 atributos jugables, cada uno una sola vez', () => {
-    const expected: Attribute[] = ['fuerza', 'destreza', 'constitucion', 'inteligencia', 'voluntad', 'carisma', 'arcano']
+    const expected: Attribute[] = ['fuerza', 'destreza', 'constitucion', 'inteligencia', 'voluntad', 'carisma', 'magia']
     expect(new Set(ATTRIBUTE_RING)).toEqual(new Set(expected));
     expect(ATTRIBUTE_RING.length).toBe(expected.length);
   });

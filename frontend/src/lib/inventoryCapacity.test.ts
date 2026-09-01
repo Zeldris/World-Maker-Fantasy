@@ -12,7 +12,7 @@ const BASE_ATTRIBUTES: AttributeBlock = {
   inteligencia: 1,
   voluntad: 1,
   carisma: 1,
-  arcano: 1,
+  magia: 1,
 }
 
 function makeItem(overrides: Partial<InventoryItemInfo> & Pick<InventoryItemInfo, 'id' | 'name'>): InventoryItemInfo {

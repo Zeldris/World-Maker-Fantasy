@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { effectiveAttributesConDuracion, pushActiveEffect, decrementActiveEffects, parseActiveEffects, type ActiveEffect } from './activeEffects.js';
 import type { AttributeBlock } from './dice.js';
 
-const BASE: AttributeBlock = { fuerza: 10, destreza: 10, constitucion: 10, inteligencia: 10, voluntad: 10, carisma: 10, arcano: 10 };
+const BASE: AttributeBlock = { fuerza: 10, destreza: 10, constitucion: 10, inteligencia: 10, voluntad: 10, carisma: 10, magia: 10 };
 
 describe('effectiveAttributesConDuracion', () => {
   it('sin efectos activos, devuelve el bloque base tal cual', () => {

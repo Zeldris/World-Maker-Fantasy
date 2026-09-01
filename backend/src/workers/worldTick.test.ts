@@ -63,7 +63,7 @@ function transitFixture(overrides: Partial<Record<string, unknown>> = {}) {
       characterMotivation: 'Honor',
       xp: 0,
       level: 1,
-      attributes: { fuerza: 12, destreza: 10, sigilo: 8, voluntad: 10, carisma: 8, arcano: 4 },
+      attributes: { fuerza: 12, destreza: 10, sigilo: 8, voluntad: 10, carisma: 8, magia: 4 },
       currentLocationId: 'loc1',
       condicionFisica: 'ILESO',
       dificultad: 'MEDIO',

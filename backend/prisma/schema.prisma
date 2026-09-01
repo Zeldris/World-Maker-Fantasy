@@ -596,6 +596,15 @@ model LogEntry {
   /// XP ganada en esta entrada, si alguna (docs/10-niveles-xp-reino.md § 6) — permite mostrar
   /// "+50 XP" en el Diario y auditar el nivel sumando el log.
   xpDelta           Int?
+  /// Desglose de `xpDelta` (UX 2026-09-01, hallazgo jugando en vivo: un turno FALLIDO con un hito
+  /// grande detrás — p.ej. "capitulo", 500 XP — se veía como un único "+500 XP" pegado a un
+  /// "Fallo" en rojo, como si el juego premiara el fracaso). `xpHitoDelta` es la parte de
+  /// `xpDelta` que vino de un hito/evento de Reino, no de la tirada normal del turno; el frontend
+  /// la pinta en su propia línea ("📖 Capítulo completado (+500 XP)") separada del chip de XP
+  /// normal. Ambos null si el turno no tuvo hito — mismo patrón que `combate`/`travelInterrupted`
+  /// de más abajo: necesita su propia columna para sobrevivir a una recarga de partida.
+  xpHitoDelta       Int?
+  xpHitoLabel       String?
   /// Minuto de ficción real en el momento de crear esta entrada (WorldState.fictionalMinutes,
   /// petición explícita de la usuaria, 2026-07-24: "el log de personaje solo muestre 24h del
   /// mundo... el diario clasificado por días") — antes solo existía `timeLabel` (texto ya
@@ -727,7 +736,7 @@ model InventoryItem {
   slot                   EquipSlot?
   /// Bonificadores mecánicos reales (solo cuentan mientras `slot` no es null) — mapa múltiple
   /// (2026-08-03, sustituye a statBonusAttribute/statBonusAmount) de cero o más de los 7
-  /// atributos jugables más 'defensa' — nunca mágico por ahora (arcano incluido en la lista pero
+  /// atributos jugables más 'defensa' — nunca mágico por ahora (magia incluido en la lista pero
   /// sin usarlo todavía en objetos reales — Gorhorn es guerrero, sin nada mágico hasta que se
   /// decida introducirlo). Null = objeto puramente narrativo, como antes.
   /// Partial<Record<Attribute | 'defensa', number>> (ver StatBonusMap, equipment.ts).
@@ -1129,13 +1138,13 @@ enum AbilityEffect {
   OCULTACION
   //Efecto que refleja el daño fisico
   /// IMPLEMENTADO (2026-08-26) — el motor sigue sin un tipo de daño real, pero usa el atributo de
-  /// la tirada como proxy (arcano = mágico, el resto = físico): CONTRA contragolpea cuando el
-  /// golpe entrante NO fue de Arcano. Reutiliza el margen decisivo ya existente
+  /// la tirada como proxy (magia = mágico, el resto = físico): CONTRA contragolpea cuando el
+  /// golpe entrante NO fue de Magia. Reutiliza el margen decisivo ya existente
   /// (`defensor_contragolpea`, ±10) en vez de un umbral propio por habilidad, ver turnResolution.ts.
   CONTRA
   //Efecto que refleja el daño magico
   /// IMPLEMENTADO (2026-08-26) — mismo mecanismo que CONTRA, invertido: contragolpea solo cuando
-  /// el golpe entrante SÍ fue de Arcano. Sin ninguna habilidad de clases.md que lo use todavía.
+  /// el golpe entrante SÍ fue de Magia. Sin ninguna habilidad de clases.md que lo use todavía.
   REFRACTAR
   //Efecto que sirve para recuperar la energia indicada por la habilidad
   /// IMPLEMENTADO (2026-08-17) — bonus de energía este intercambio (RECUPERACION_ENERGY_BONUS,
@@ -1236,7 +1245,7 @@ enum WeaponCategory {
   RED
   /// Nuevo (2026-08-24, Grupo 3 § Sistema de clases, clases.md § Restricción de armas) — bastón
   /// de combate cuerpo a cuerpo, el "bo" de las artes marciales (Domador/Supervivencia de
-  /// Cazador). NO confundir con `BACULO`/`BASTON` (focos MÁGICOS, atributo arcano/Magia) — VARA
+  /// Cazador). NO confundir con `BACULO`/`BASTON` (focos MÁGICOS, atributo Magia) — VARA
   /// es un arma física de golpear, sin canalización arcana. Primer hueco de arma-Voluntad del
   /// motor (`WEAPON_CATEGORY_ATTRIBUTE`, weaponAbilities.ts).
   VARA
@@ -1734,7 +1743,7 @@ model Npc {
   /// Narrador el tono (§ 2.5), no para un sistema de combate simétrico.
   level               Int
   levelMax            Int?
-  /// AttributeBlock { fuerza, destreza, sigilo, voluntad, carisma, arcano }, rango 4-18 —
+  /// AttributeBlock { fuerza, destreza, sigilo, voluntad, carisma, magia }, rango 4-18 —
   /// mismo shape que Save.attributes para poder reutilizar tipos y validaciones
   attributes          Json
   /// Biografía/descripción corta + personalidad: el resumen que se inyecta en el prompt.

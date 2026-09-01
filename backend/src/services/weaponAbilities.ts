@@ -12,7 +12,7 @@ import type { EquipSlot, WeaponCategory, Clase, Especializacion, PesoArmadura } 
 // _1_MANO/_2_MANO (mismo atributo que la categoría base, la mano no cambia qué atributo usa) y se
 // añadieron arcos/honda/ballesta/báculo/bastón/grimorio/guantes/red. Criterio: armas de fuerza
 // bruta → fuerza; armas de precisión/puntería (incluidas las de proyectil) → destreza; armas de
-// canalización arcana → arcano. Sin mecánica propia todavía más allá de qué atributo usan.
+// canalización arcana → magia. Sin mecánica propia todavía más allá de qué atributo usan.
 export const WEAPON_CATEGORY_ATTRIBUTE: Record<WeaponCategory, Attribute> = {
   HACHA_1_MANO: 'fuerza',
   HACHA_2_MANO: 'fuerza',
@@ -33,9 +33,9 @@ export const WEAPON_CATEGORY_ATTRIBUTE: Record<WeaponCategory, Attribute> = {
   BALLESTA: 'destreza',
   RED: 'destreza',
   GUANTES: 'destreza',
-  BACULO: 'arcano',
-  BASTON: 'arcano',
-  GRIMORIO: 'arcano',
+  BACULO: 'magia',
+  BASTON: 'magia',
+  GRIMORIO: 'magia',
   // Nuevo (2026-08-24, Grupo 3 § Sistema de clases) — primer hueco de arma-Voluntad del motor,
   // ver comentario de `VARA` en schema.prisma.
   VARA: 'voluntad',
@@ -261,7 +261,7 @@ const WEAPON_REAL_ATAQUE_CONTENT: Record<Exclude<WeaponCategory, 'ESCUDO'>, Weap
   BASTON: {
     name: 'Barrido de Bastón',
     icon: '🥢',
-    description: 'Un barrido rápido a media altura, más marcial que arcano, buscando desequilibrar antes que herir.',
+    description: 'Un barrido rápido a media altura, más marcial que mágico, buscando desequilibrar antes que herir.',
     promptText: 'Barro con mi bastón a media altura, buscando desequilibrar a mi rival antes que herirlo.',
   },
   GRIMORIO: {

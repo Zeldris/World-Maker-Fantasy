@@ -115,7 +115,7 @@ function splitLockWinnerAndLoser(responses: { statusCode: number; payload: strin
   return { ganador: lastNdjsonLine(ok[0].payload), perdedorStatusCode: locked[0].statusCode };
 }
 
-const ATTRS = { fuerza: 15, destreza: 10, constitucion: 12, inteligencia: 8, voluntad: 8, carisma: 8, arcano: 4 };
+const ATTRS = { fuerza: 15, destreza: 10, constitucion: 12, inteligencia: 8, voluntad: 8, carisma: 8, magia: 4 };
 
 describe('Misión de apertura: combate contra el Orco Enfurecido (integración real, solo LLM mockeado)', () => {
   let saveId: string;
@@ -803,7 +803,7 @@ describe('Rediseño de combate: habilidades de utilidad reactivas y consumibles 
           category: 'combate',
           effects: ['CONTROL'],
           rol: 'utilidad',
-          preferredAttribute: 'arcano',
+          preferredAttribute: 'magia',
         },
       })
     ).id;
@@ -820,7 +820,7 @@ describe('Rediseño de combate: habilidades de utilidad reactivas y consumibles 
           category: 'combate',
           effects: ['ATAQUE', 'AUMENTO'],
           rol: 'ataque',
-          preferredAttribute: 'arcano',
+          preferredAttribute: 'magia',
           attributeBonus: 30,
           durationEffectMagnitude: 5,
           durationEffectTurns: 1,
@@ -964,7 +964,7 @@ describe('Rediseño de combate: habilidades de utilidad reactivas y consumibles 
   }, 15_000);
 
   // CONTRA (2026-08-26) — defiende con éxito Y devuelve el golpe, solo si el ataque entrante NO
-  // fue de Arcano (proxy de "físico"). El NPC ataca con 'fuerza' aquí — CONTRA debe disparar.
+  // fue de Magia (proxy de "físico"). El NPC ataca con 'fuerza' aquí — CONTRA debe disparar.
   it('Vórtice Menor (CONTRA): defiende con éxito y contragolpea a un ataque físico, sin recibir el golpe', async () => {
     await prisma.npcState.deleteMany({ where: { saveId, npcId } });
     await prisma.save.update({
@@ -1005,8 +1005,8 @@ describe('Rediseño de combate: habilidades de utilidad reactivas y consumibles 
   }, 15_000);
 
   // REFRACTAR/CONTRA (2026-08-26) — mismo margen decisivo que arriba, pero el ataque entrante es
-  // de Arcano: una habilidad con solo CONTRA (sin REFRACTAR) NO debe contragolpear.
-  it('Vórtice Menor (CONTRA): NO contragolpea un ataque de Arcano — ese lo cubriría REFRACTAR, no CONTRA', async () => {
+  // de Magia: una habilidad con solo CONTRA (sin REFRACTAR) NO debe contragolpear.
+  it('Vórtice Menor (CONTRA): NO contragolpea un ataque de Magia — ese lo cubriría REFRACTAR, no CONTRA', async () => {
     await prisma.npcState.deleteMany({ where: { saveId, npcId } });
     await prisma.save.update({
       where: { id: saveId },
@@ -1015,7 +1015,7 @@ describe('Rediseño de combate: habilidades de utilidad reactivas y consumibles 
         pendingCombatNpcSlugs: [npcSlug],
         pendingNpcAttack: {
           npcId,
-          attribute: 'arcano',
+          attribute: 'magia',
           effects: ['ATAQUE'],
           rol: 'ataque',
           abilityName: 'Descarga arcana',
@@ -1102,7 +1102,7 @@ describe('Rediseño de combate: habilidades de utilidad reactivas y consumibles 
     expect(narrateRes.statusCode).toBe(200);
 
     const save = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
-    expect(save.activeEffects).toEqual([{ attribute: 'arcano', magnitude: 5, turnsRemaining: 1, sourceAbility: 'Golpe Runa de Cólera' }]);
+    expect(save.activeEffects).toEqual([{ attribute: 'magia', magnitude: 5, turnsRemaining: 1, sourceAbility: 'Golpe Runa de Cólera' }]);
 
     // Segundo turno cualquiera con intercambio real — el efecto ya existía ANTES de este turno, así
     // que decrementa y expira (a diferencia del turno en que nace, que no se decrementa a sí mismo).
@@ -5047,7 +5047,7 @@ describe('Viaje largo interrumpido a mitad de camino (integración real, solo LL
         aliases: ['agresor de prueba'],
         role: 'Bandido itinerante',
         level: 1,
-        attributes: { fuerza: 8, destreza: 8, constitucion: 8, inteligencia: 4, voluntad: 4, carisma: 2, arcano: 0 },
+        attributes: { fuerza: 8, destreza: 8, constitucion: 8, inteligencia: 4, voluntad: 4, carisma: 2, magia: 0 },
         bio: 'x',
         personality: 'x',
         homeLocationSlug: null, // itinerante, aunque aquí no importa: la selección va mockeada

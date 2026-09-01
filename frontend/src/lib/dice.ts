@@ -7,7 +7,7 @@ export const attributeLabels: Record<Attribute, string> = {
   inteligencia: 'Inteligencia',
   voluntad: 'Voluntad',
   carisma: 'Carisma',
-  arcano: 'Arcano',
+  magia: 'Magia',
 }
 
 /// Abreviatura de 3 letras por atributo (2026-08-12, rediseño de la vista de combate a 2 columnas:
@@ -22,7 +22,7 @@ export const attributeAbbr: Record<Attribute, string> = {
   inteligencia: 'INT',
   voluntad: 'VOL',
   carisma: 'CAR',
-  arcano: 'ARC',
+  magia: 'MAG',
 }
 
 /// Etiquetas para bonificadores de objetos (2026-08-03) — `attributeLabels` de arriba solo cubre
@@ -52,5 +52,5 @@ export const attributeColorClasses: Record<Attribute, { text: string; border: st
   inteligencia: { text: 'text-inteligencia-400', border: 'border-inteligencia-500', bg: 'bg-inteligencia-500/15', dot: 'bg-inteligencia-500', dotLight: 'bg-inteligencia-400' },
   voluntad: { text: 'text-voluntad-400', border: 'border-voluntad-500', bg: 'bg-voluntad-500/15', dot: 'bg-voluntad-500', dotLight: 'bg-voluntad-400' },
   carisma: { text: 'text-carisma-400', border: 'border-carisma-500', bg: 'bg-carisma-500/15', dot: 'bg-carisma-500', dotLight: 'bg-carisma-400' },
-  arcano: { text: 'text-arcano-400', border: 'border-arcano-500', bg: 'bg-arcano-500/15', dot: 'bg-arcano-500', dotLight: 'bg-arcano-400' },
+  magia: { text: 'text-magia-400', border: 'border-magia-500', bg: 'bg-magia-500/15', dot: 'bg-magia-500', dotLight: 'bg-magia-400' },
 }

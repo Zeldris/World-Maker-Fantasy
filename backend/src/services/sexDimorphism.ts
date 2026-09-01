@@ -249,7 +249,7 @@ export const FAUNA_SEXO_VARIANTES: Record<string, SexoVariantesEntry> = {
   // jusha-esmeralda → destreza (esquiva, población escasa), miruina → destreza (caza nocturna en
   // manada), quio → sin combate real (inofensivo total, filtrador), tura-jusha → destreza,
   // cuernahoja → destreza/fuerza (bio ya trae dimorfismo: hembras más rojas, cuernos más anchos,
-  // defienden la manada), imanio → constitucion (coraza de rocas), nuente → destreza/arcano
+  // defienden la manada), imanio → constitucion (coraza de rocas), nuente → destreza/magia
   // (vuelo nocturno errático + visión de magnetismo), towrgu → destreza (emboscador solitario),
   // coracelo → constitucion/inteligencia (madriguera fortificada, uso de herramientas).
   'canizor': {

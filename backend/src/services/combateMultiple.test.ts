@@ -493,7 +493,7 @@ describe('resolverIntercambioCompleto', () => {
 
   const combatiente = (overrides: Partial<CombatienteParaIntercambio> = {}): CombatienteParaIntercambio => ({
     nombre: 'Combatiente',
-    attributes: { fuerza: 10, destreza: 10, constitucion: 10, inteligencia: 10, voluntad: 10, carisma: 10, arcano: 10 },
+    attributes: { fuerza: 10, destreza: 10, constitucion: 10, inteligencia: 10, voluntad: 10, carisma: 10, magia: 10 },
     condicionFisica: 'ILESO',
     ...overrides,
   });
@@ -611,7 +611,7 @@ describe('resolverIntercambioCompleto', () => {
     mockRolls(rFor(15), rFor(1)); // margen 14 -> golpe_pleno
     const resultado = resolverIntercambioCompleto(
       combatiente({ nombre: 'Gorhorn' }),
-      habilidad({ rol: 'ataque', effects: ['ATAQUE', 'AUMENTO'], attribute: 'arcano', durationEffectMagnitude: 5, durationEffectTurns: 1 }),
+      habilidad({ rol: 'ataque', effects: ['ATAQUE', 'AUMENTO'], attribute: 'magia', durationEffectMagnitude: 5, durationEffectTurns: 1 }),
       'ataque',
       13,
       combatiente({ nombre: 'Lobo' }),
@@ -619,7 +619,7 @@ describe('resolverIntercambioCompleto', () => {
       13,
     );
     expect(resultado.margenDecisivo).toBe(true);
-    expect(resultado.nuevoEfectoAtacante).toEqual({ attribute: 'arcano', magnitude: 5, turnsRemaining: 1, sourceAbility: 'Habilidad' });
+    expect(resultado.nuevoEfectoAtacante).toEqual({ attribute: 'magia', magnitude: 5, turnsRemaining: 1, sourceAbility: 'Habilidad' });
     expect(resultado.nuevoEfectoDefensor).toBeNull();
   });
 

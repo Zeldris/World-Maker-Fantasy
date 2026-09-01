@@ -14,7 +14,7 @@ import type { AttributeBlock } from '../services/dice.js';
 
 const gorhorn = {
   name: 'Gorhorn',
-  attributes: { fuerza: 18, destreza: 9, constitucion: 5, inteligencia: 5, voluntad: 12, carisma: 8, arcano: 8 } satisfies AttributeBlock,
+  attributes: { fuerza: 18, destreza: 9, constitucion: 5, inteligencia: 5, voluntad: 12, carisma: 8, magia: 8 } satisfies AttributeBlock,
   summary:
     'Gorhorn, guerrero orco, único superviviente del clan Maktor, aniquilado como carne de cañón por el mando Goirntes en la Concordia de Hierro. Viaja solo por las Llanuras del Viento Rojo buscando una forma de que la muerte de su clan signifique algo.',
 };
