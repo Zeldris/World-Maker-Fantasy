@@ -4,6 +4,7 @@ import { Prisma } from '@prisma/client';
 import { prisma } from '../lib/prisma.js';
 import { getDefaultUserId } from '../lib/defaultUser.js';
 import type { NarrationResult } from '../services/narrador.js';
+import { questsRoutes } from './saves/quests.js';
 
 /// Enganche end-to-end de `dynamicModeOffer` en `/turn/narrate` (2026-08-27, Pieza 4 de
 /// "Dinamismo del mundo") — archivo separado de turn.integration.test.ts a propósito (ese archivo
@@ -26,6 +27,7 @@ const { turnRoutes } = await import('./turn.js');
 async function buildApp() {
   const app = Fastify();
   await app.register(turnRoutes);
+  await app.register(questsRoutes);
   return app;
 }
 
@@ -108,6 +110,38 @@ describe('dynamicModeOffer en /turn/narrate', () => {
     });
     try {
       const app = await buildApp();
+
+      // Colisión de fixtures descubierta jugando en vivo (2026-09-01): `campamento-serhu` (la
+      // Location de este describe, compartida por todos sus tests) dispara el encuentro guionizado
+      // determinista de Gistera Koh en el turno 1 del save (ver turnResolution.ts, "Encuentro
+      // guionizado del primer turno"). Mientras `gisteraEnEscena && !gisteraSeHaMarchado`, el guard
+      // de la línea ~6293 de turnResolution.ts bloquea `dynamicModeOffer` a propósito (nunca ofrece
+      // el modo dinámico con un encuentro guionizado sin resolver todavía) — con el bucle de abajo
+      // repitiendo siempre "Espero un momento.", Gistera nunca se resolvía y el test fallaba de
+      // forma determinista (100%, no un flake de probabilidad).
+      //
+      // `gisteraSeHaMarchado` solo lee `true` en el turno EXACTO de aceptación en texto libre, o si
+      // `gisteraQuestYaExiste` (Quest real ya creada) — la aceptación real del juego NUNCA pasa por
+      // texto libre (decisión de diseño 2026-08-26, ver quests.ts: "Aceptar"/"Cancelar" deterministas
+      // vía botón, sin depender de que el jugador acierte la frase ni de que el LLM decida). Se
+      // resuelve aquí ANTES del bucle, mismo flujo de 2 pasos que seguiría la UI real: un turno de
+      // diálogo (dispara `detectsDialogueIntent`, la presenta y ofrece `newQuestOfferInfo`) y una
+      // llamada directa a `POST /saves/:id/quests/aceptar` (el endpoint real que materializa la
+      // Quest, mismo que pulsa el botón "Aceptar" en el frontend) — así `gisteraQuestYaExiste` pasa
+      // a ser cierto de verdad en los turnos siguientes del bucle.
+      const gisteraClassify = await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action: '¿Quién eres?', enCombate: false } });
+      const { classification: gisteraClassification, roll: gisteraRoll } = gisteraClassify.json();
+      await app.inject({
+        method: 'POST',
+        url: '/turn/narrate',
+        payload: { saveId, action: '¿Quién eres?', classification: gisteraClassification, roll: gisteraRoll, enCombate: false },
+      });
+      await app.inject({
+        method: 'POST',
+        url: `/saves/${saveId}/quests/aceptar`,
+        payload: { title: 'Acabar con el Orco Enfurecido', description: 'Gistera Koh pidió ayuda para acabar con quien la persigue.' },
+      });
+
       let algunaOferta = false;
       // 60 intentos con probabilidad real 0.2/turno (bajada de 0.35, 2026-08-27, bug real "sale
       // en la gran mayoría de turnos"): fallo por puro azar ≈ 0.8^60 ≈ 8.3e-7, margen amplio para
