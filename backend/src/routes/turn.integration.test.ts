@@ -5892,3 +5892,65 @@ describe('pendingCombatNpcSlugs no arrastra a un NPC pacífico "de paso" cuando 
     expect(saveAfter.pendingCombatNpcSlugs).not.toContain('torgash');
   }, 15_000);
 });
+
+// Consolidación (auditoría 2026-09-01, "EXPULSAR estructuralmente inalcanzable, no existe ningún
+// escudo en el mundo"): confirma el flujo real completo desde el turno del jugador — con
+// "Escudo de torre goirntes" ya sembrado en el catálogo (worldCatalog.ts) y equipado de verdad, el
+// guard `detectsUnequippedWeaponClaim` (playerActionValidation.ts, invocado desde turn.ts) ya no
+// bloquea una acción que nombra "escudo" — antes de este ítem, CUALQUIER jugador que lo nombrara
+// era rechazado con "Gorhorn baja la vista a sus manos... no lo que acaba de nombrar", sin importar
+// su clase/nivel, porque ningún ítem tipoArma:'ESCUDO' existía para equipar. El mecanismo EXPULSAR
+// en sí (materializar expulsadoPorRondas en combate) ya tiene cobertura de integración completa en
+// combateMultipleOrquestacion.integration.test.ts — este test cubre solo el hueco real que faltaba:
+// el guard de coherencia de arma del turno normal (fuera de combate múltiple).
+describe('EXPULSAR: el guard de arma no bloquea una acción que nombra "escudo" con un escudo real equipado', () => {
+  let saveId: string;
+
+  beforeAll(async () => {
+    const userId = await getDefaultUserId();
+    const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
+    const location = await prisma.location.findFirstOrThrow({ where: { worldId: world.id, slug: 'hondonada-del-eco' } });
+    const save = await prisma.save.create({
+      data: {
+        userId,
+        worldId: world.id,
+        characterName: 'Gorhorn de prueba (escudo real)',
+        characterArchetype: 'guerrero',
+        characterOrigin: 'Clan Maktor',
+        characterMotivation: 'x',
+        attributes: ATTRS,
+        portraitInitial: 'G',
+        currentLocationId: location.id,
+      },
+    });
+    saveId = save.id;
+    await prisma.worldState.create({ data: { saveId } });
+    await prisma.inventoryItem.create({ data: { saveId, name: 'Hacha de guerra rota', description: 'x', slot: 'ARMA_PRINCIPAL' } });
+    await prisma.inventoryItem.create({ data: { saveId, name: 'Escudo de torre goirntes', description: 'x', slot: 'ARMA_SECUNDARIA' } });
+    classifyAction.mockResolvedValue({
+      requiereTirada: true, atributo: 'constitucion', dificultad: 12, razon: 'x', banda: 'instantanea', duracionEstimadaMinutos: 0,
+    });
+    narrateAction.mockResolvedValue({ narration: 'Narración de prueba.', newFacts: [] });
+  });
+
+  afterAll(async () => {
+    await prisma.save.delete({ where: { id: saveId } });
+  });
+
+  it('una acción que nombra "escudo" con el escudo real equipado llega a narrarse, sin el rechazo de arma incoherente', async () => {
+    const app = await buildApp();
+    const action = 'Cargo mi escudo con todo mi peso y golpeo, buscando apartar a mi rival del combate.';
+    const classifyRes = await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action, enCombate: false } });
+    const { classification, roll } = classifyRes.json();
+    const narrateRes = await app.inject({
+      method: 'POST',
+      url: '/turn/narrate',
+      payload: { saveId, action, classification, roll, enCombate: false },
+    });
+    expect(narrateRes.statusCode).toBe(200);
+    const done = lastNdjsonLine(narrateRes.payload);
+    // Si el guard hubiera disparado, `blocked.narration` contendría "baja la vista a sus manos" —
+    // confirmamos justo lo contrario: el turno llega a narrarse con normalidad.
+    expect(done.blocked).toBeUndefined();
+  }, 15_000);
+});

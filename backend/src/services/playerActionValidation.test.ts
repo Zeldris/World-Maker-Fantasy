@@ -50,6 +50,15 @@ describe('detectsUnequippedWeaponClaim', () => {
   it('detecta con dos armas equipadas (dual-wield) si ninguna coincide', () => {
     expect(detectsUnequippedWeaponClaim('Clavo mi daga en el enemigo.', ['Hacha de guerra rota', 'Maza orca'])).toEqual({ claimedNoun: 'daga' });
   });
+
+  // Consolidación (2026-09-01, "EXPULSAR estructuralmente inalcanzable, no existe ningún escudo en
+  // el mundo"): "escudo" ya estaba en WEAPON_CATEGORY_NOUNS desde antes de que existiera ningún
+  // ítem tipoArma:'ESCUDO' real (bloqueaba a cualquiera que lo nombrara sin llevarlo). Confirma que
+  // con el ítem real ya en el catálogo ("Escudo de torre goirntes"), el guard SÍ lo reconoce como
+  // arma equipada legítima — desbloquea "Embate de Escudo" para quien lo lleve puesto.
+  it('reconoce un escudo real equipado y no bloquea "Embate de Escudo"', () => {
+    expect(detectsUnequippedWeaponClaim('Cargo con mi escudo y golpeo con él.', ['Escudo de torre goirntes'])).toBeNull();
+  });
 });
 
 describe('wrongWeaponNarrationFor', () => {

@@ -2741,6 +2741,30 @@ export const items: ItemCatalogInput[] = [
     tipoArma: 'ESPADA_1_MANO',
   },
 
+  // Consolidación (auditoría 2026-09-01, "EXPULSAR estructuralmente inalcanzable, no existe ningún
+  // escudo en el mundo"): primer ítem tipoArma:'ESCUDO' real del catálogo — el enum y toda la
+  // infraestructura de armas (weaponAbilities.ts) ya lo soportaban, solo faltaba el dato. Desbloquea
+  // "Embate de Escudo" (GUERRERO/GUARDIAN nivel 28, ATAQUE+EXPULSAR). Manufactura goirnte, mismo
+  // criterio ya usado en este bloque (07-mundo-helek-sirik.md asocia a los Goirntes con mejor
+  // metalurgia) — equipSlot ARMA_SECUNDARIA (vale para cualquier mano, ver comentario de
+  // schema.prisma) y bono en constitución (WEAPON_CATEGORY_ATTRIBUTE.ESCUDO, weaponAbilities.ts).
+  {
+    slug: 'escudo-torre-goirntes',
+    name: 'Escudo de torre goirntes',
+    aliases: ['escudo de torre', 'escudo goirnte'],
+    category: 'arma',
+    tipo: 'EQUIPABLE',
+    equipSlot: 'ARMA_SECUNDARIA',
+    description: 'Plancha de aleación gris curvada, remachada sobre un armazón de madera densa — manufactura goirnte, pensada para aguantar en la línea de un muro de escudos.',
+    statBonuses: { constitucion: 2 },
+    dimensiones: 'Óvalo de 90 x 55 cm.',
+    tier: 1,
+    valorGoirnos: 10,
+    requisitos: { constitucion: 8, fuerza: 6 },
+    lugarOrigen: 'Manufactura goirnte, Meseta del Orden.',
+    tipoArma: 'ESCUDO',
+  },
+
   {
     slug: 'garrote-matorral-cuerno',
     name: 'Garrote de matorral de cuerno',
