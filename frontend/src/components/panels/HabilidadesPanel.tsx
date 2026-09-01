@@ -149,13 +149,16 @@ export function HabilidadesPanel({
   }
 
   const inTab = savedActions.filter((a) => a.category === tab)
-  // Rediseño "tope de 10" (2026-07-29): las habilidades de combate son fijas por raza/arma/clase
-  // (las da el diseño, nunca la jugadora) — `combatSlots` ya no crece suave con el nivel (viejo
-  // `habilidadSlotsForLevel`), es el tope real: 2 raciales + 2 de arma (4 desde el nivel de arma
-  // avanzada) + 4 de clase. Los 3 genéricos (Ataque Básico/Defenderse/Esquivar) quedan FUERA de
-  // este tope a propósito — son la acción base de cualquier personaje, no parte del reparto curado
-  // por raza/arma/clase, así que no cuentan contra el cupo. Antes se usaba `energyCost > 0` para
-  // esto (dejó de servir en cuanto Ataque Básico pasó a costar 5, 2026-07-31) — ahora `isGeneric`.
+  // Rediseño "tope de 10" (2026-07-29), bajado a 8 (2026-09-01): las habilidades de combate son
+  // fijas por arma/clase (las da el diseño, nunca la jugadora) — `combatSlots` ya no crece suave
+  // con el nivel (viejo `habilidadSlotsForLevel`), es el tope real: 2 de arma (4 desde el nivel de
+  // arma avanzada) + 4 de clase. Las 2 raciales activas viejas (ataque+defensa) se quitaron del
+  // sembrado real (ver `dynamicAbilities.ts`) — la raza ahora solo aporta la pasiva automática de
+  // `racialPassives.ts`, que no ocupa hueco. Los 3 genéricos (Ataque Básico/Defenderse/Esquivar)
+  // quedan FUERA de este tope a propósito — son la acción base de cualquier personaje, no parte
+  // del reparto curado por arma/clase, así que no cuentan contra el cupo. Antes se usaba
+  // `energyCost > 0` para esto (dejó de servir en cuanto Ataque Básico pasó a costar 5,
+  // 2026-07-31) — ahora `isGeneric`.
   const combatUsed = savedActions.filter((a) => a.category === 'combate' && !a.isGeneric).length
 
   // Rediseño de profesiones (2026-08-07): profesiones creadoras que el jugador practica de verdad
@@ -351,7 +354,7 @@ export function HabilidadesPanel({
         <>
           <p className="text-2xs text-wood-400">
             {tab === 'combate'
-              ? `Aprendidas: ${combatUsed} / ${combatSlots} (2 raciales + 1-2 de arma equipada + 4 de clase) — marca cuáles quieres en el cinturón de combate, abajo.`
+              ? `Aprendidas: ${combatUsed} / ${combatSlots} (1-2 de arma equipada + 4 de clase) — marca cuáles quieres en el cinturón de combate, abajo.`
               : 'Sin límite de huecos.'}
           </p>
 
@@ -389,7 +392,10 @@ export function HabilidadesPanel({
               )}
               {inTab.some((a) => a.isDynamic && !a.isGeneric) && (
                 <div>
-                  <p className="mb-1 text-2xs font-semibold uppercase tracking-[0.1em] text-wood-500">Raciales y de arma equipada</p>
+                  {/* "Raciales y de arma equipada" → "De arma equipada" (2026-09-01): las 2 raciales
+                      activas viejas ya no se siembran (ver dynamicAbilities.ts) — este bloque de
+                      isDynamic ahora solo contiene habilidades de arma. */}
+                  <p className="mb-1 text-2xs font-semibold uppercase tracking-[0.1em] text-wood-500">De arma equipada</p>
                   <CombatAbilityToggleGrid
                     abilities={inTab.filter((a) => a.isDynamic && !a.isGeneric)}
                     activeNames={activeCombatAbilityNames}
@@ -429,12 +435,6 @@ export function HabilidadesPanel({
                     Ataque Básico, Defenderse y Esquivar — cualquier personaje las tiene. Ataque Básico cuesta poca energía y se adapta al arma
                     equipada; Defenderse y Esquivar no cuestan nada y encima recuperan energía.
                   </span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="mt-0.5 rounded-full border border-iron-700 bg-iron-800 px-2 py-0.5 text-2xs font-semibold uppercase tracking-wide text-wood-400">
-                    2 raciales
-                  </span>
-                  <span>Ataque y defensa fijas de tu raza.</span>
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="mt-0.5 rounded-full border border-iron-700 bg-iron-800 px-2 py-0.5 text-2xs font-semibold uppercase tracking-wide text-wood-400">

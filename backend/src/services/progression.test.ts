@@ -65,12 +65,15 @@ describe('npcAttributesForLevel', () => {
 });
 
 describe('maxCombatAbilitiesFor', () => {
-  it('8 huecos por debajo del nivel de arma avanzada (2 raciales + 2 de arma + 4 de clase)', () => {
-    expect(maxCombatAbilitiesFor(1)).toBe(8);
-    expect(maxCombatAbilitiesFor(19)).toBe(8);
+  // Bajado de 10/8 a 8/6 (2026-09-01): las 2 raciales activas viejas ("Sangre del Estallido"/
+  // "Piel de Guerra") ya no se siembran — la raza solo aporta la pasiva automática de
+  // racialPassives.ts, que no ocupa hueco de combate.
+  it('6 huecos por debajo del nivel de arma avanzada (2 de arma + 4 de clase)', () => {
+    expect(maxCombatAbilitiesFor(1)).toBe(6);
+    expect(maxCombatAbilitiesFor(19)).toBe(6);
   });
-  it('10 huecos al cruzar el nivel de arma avanzada (2 raciales + 4 de arma + 4 de clase)', () => {
-    expect(maxCombatAbilitiesFor(20)).toBe(10);
+  it('8 huecos al cruzar el nivel de arma avanzada (4 de arma + 4 de clase)', () => {
+    expect(maxCombatAbilitiesFor(20)).toBe(8);
   });
 });
 

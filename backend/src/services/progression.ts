@@ -76,8 +76,14 @@ export function levelForXp(xp: number): number {
 /// vieja `habilidadSlotsForLevel`, que crecía suave con el nivel (3 + nivel/2) de cuando las
 /// habilidades de combate eran una lista progresiva de 12; ya no lo son, así que ese crecimiento
 /// no reflejaba nada real y el contador de HabilidadesPanel mentía sobre cuántos huecos había.
+///
+/// Bajado de 10 a 8 (2026-09-01, petición explícita): las 2 raciales activas ("Sangre del
+/// Estallido"/"Piel de Guerra" y equivalentes de otras razas) ya no se siembran nunca —
+/// `dynamicAbilities.ts` las sustituyó por una única pasiva automática (`racialPassives.ts`,
+/// 2026-08-28), redundante con las activas y ya quitada del todo. El tope real hoy es solo
+/// arma+clase.
 export function maxCombatAbilitiesFor(level: number): number {
-  return 2 + (level >= WEAPON_ABILITY_LEVEL_AVANZADA ? 4 : 2) + 4;
+  return (level >= WEAPON_ABILITY_LEVEL_AVANZADA ? 4 : 2) + 4;
 }
 
 const XP_BY_DIFFICULTY: Record<number, number> = {

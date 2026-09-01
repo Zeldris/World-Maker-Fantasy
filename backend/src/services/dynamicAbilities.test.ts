@@ -4,14 +4,16 @@ import { ENERGY_COST_BASICA, ENERGY_COST_AVANZADA, ENERGY_COST_ATAQUE_BASICO } f
 import { WEAPON_ABILITY_LEVEL_BASICA, WEAPON_ABILITY_LEVEL_AVANZADA } from './weaponAbilities.js';
 
 describe('dynamicCombatAbilitiesFor (sistema de fatiga)', () => {
-  it('las raciales cuestan siempre ENERGY_COST_BASICA, el ataque básico (con o sin arma) cuesta ENERGY_COST_ATAQUE_BASICO (rediseño 2026-07-31)', () => {
+  // Bug real (2026-09-01, petición explícita): esta función ya NO empuja ninguna habilidad
+  // racial activa — el rediseño de pasivas raciales (racialPassives.ts, 2026-08-28) las
+  // sustituyó por una única pasiva automática por raza, y las 2 activas viejas ("Sangre del
+  // Estallido"/"Piel de Guerra" para orcos, y equivalentes de otras razas) quedaron redundantes
+  // y confusas. `raza` sigue en la firma por compatibilidad con los 4 callers reales, pero ya no
+  // se usa dentro de esta función.
+  it('la raza no aporta ninguna habilidad dinámica — solo cuenta el Ataque Básico desarmado', () => {
     const abilities = dynamicCombatAbilitiesFor('orcos', WEAPON_ABILITY_LEVEL_BASICA, []);
-    expect(abilities).toHaveLength(3); // ataque racial + defensa racial + Ataque Básico (sin arma, desarmado)
-    const raciales = abilities.filter((a) => a.name !== 'Ataque Básico');
-    expect(raciales).toHaveLength(2);
-    expect(raciales.every((a) => a.energyCost === ENERGY_COST_BASICA)).toBe(true);
-    const ataqueBasico = abilities.find((a) => a.name === 'Ataque Básico')!;
-    expect(ataqueBasico).toMatchObject({ energyCost: ENERGY_COST_ATAQUE_BASICO, energyRegen: 0, isGeneric: true });
+    expect(abilities).toHaveLength(1);
+    expect(abilities[0]).toMatchObject({ name: 'Ataque Básico', energyCost: ENERGY_COST_ATAQUE_BASICO, energyRegen: 0, isGeneric: true });
   });
 
   it('la de arma básica ("Ataque Básico") cuesta ENERGY_COST_ATAQUE_BASICO, no ENERGY_COST_BASICA — la real ("Tajo Horizontal") cuesta ENERGY_COST_BASICA como una habilidad de clase', () => {
@@ -36,23 +38,17 @@ describe('dynamicCombatAbilitiesFor (sistema de fatiga)', () => {
   });
 
   // Rediseño de combate (2026-08-09) — WeaponAbility.rol ya existía (weaponAbilities.ts), pero se
-  // descartaba al pasar por aquí; la racial ataque/defensa es trivialmente 'ataque'/'defensa'.
-  it('propaga rol: racial ataque/defensa trivial, de arma toma WeaponAbility.rol (nunca se descarta)', () => {
+  // descartaba al pasar por aquí.
+  it('propaga rol: de arma toma WeaponAbility.rol (nunca se descarta)', () => {
     const abilities = dynamicCombatAbilitiesFor('orcos', WEAPON_ABILITY_LEVEL_BASICA, [{ slot: 'ARMA_PRINCIPAL', tipoArma: 'ESCUDO' }]);
-    const [ataqueRacial, defensaRacial] = abilities.filter((a) => a.name !== 'Ataque Básico' && a.name !== 'Cobertura de Escudo');
-    expect(ataqueRacial.rol).toBe('ataque');
-    expect(defensaRacial.rol).toBe('defensa');
     expect(abilities.find((a) => a.name === 'Ataque Básico')?.rol).toBe('ataque');
     expect(abilities.find((a) => a.name === 'Cobertura de Escudo')?.rol).toBe('defensa');
   });
 
   // Bonus de atributo (2026-08-26, ver weaponAbilities.test.ts § attributeBonus) — propaga
-  // WeaponAbility.attributeBonus tal cual; las raciales se quedan siempre en 0 (fuera de alcance
-  // de esa petición, que hablaba solo de habilidades de ARMA).
-  it('propaga attributeBonus: raciales siempre 0, Ataque Básico 0, la real de arma +2', () => {
+  // WeaponAbility.attributeBonus tal cual.
+  it('propaga attributeBonus: Ataque Básico 0, la real de arma +2', () => {
     const abilities = dynamicCombatAbilitiesFor('orcos', WEAPON_ABILITY_LEVEL_BASICA, [{ slot: 'ARMA_PRINCIPAL', tipoArma: 'HACHA_1_MANO' }]);
-    const raciales = abilities.filter((a) => a.name !== 'Ataque Básico' && a.name !== 'Tajo Horizontal');
-    expect(raciales.every((a) => a.attributeBonus === 0)).toBe(true);
     expect(abilities.find((a) => a.name === 'Ataque Básico')?.attributeBonus).toBe(0);
     expect(abilities.find((a) => a.name === 'Tajo Horizontal')?.attributeBonus).toBe(2);
   });

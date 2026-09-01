@@ -1,5 +1,4 @@
 import type { Prisma, AbilityEffect, AbilityRol, EquipSlot } from '@prisma/client';
-import { BERIG_RAZAS } from './berigLore.js';
 import { weaponAbilitiesFor, type EquippedWeaponSlot } from './weaponAbilities.js';
 import { ENERGY_COST_BASICA, ENERGY_COST_AVANZADA, ENERGY_COST_ATAQUE_BASICO } from './energy.js';
 
@@ -61,17 +60,19 @@ export interface DynamicAbilityData {
   attributeBonus: number;
 }
 
+/// Bug real (2026-09-01, petición explícita de la usuaria): hasta ahora esta función seguía
+/// empujando las 2 habilidades raciales activas VIEJAS (ataque/defensa, p.ej. "Sangre del
+/// Estallido"/"Piel de Guerra" para orcos) como SavedAction reales, pese a que el rediseño de
+/// pasivas raciales (2026-08-28, ver `racialPassives.ts`) las sustituyó por una única pasiva
+/// automática por raza (ventaja/desventaja de tirada, sin botón que pulsar). La decisión de
+/// entonces fue no BORRAR `BerigRazaInfo.habilidadesRaciales` de `berigLore.ts` "para no dejar el
+/// panel de Habilidades con un roster vacío raro" — pero eso dejó las 2 activas viejas totalmente
+/// funcionales y redundantes con la pasiva nueva, confundiendo a quien juega. Se quita aquí el
+/// punto real que las siembra; `BerigRazaInfo.habilidadesRaciales` en sí se deja intacto (sigue
+/// siendo lore/dato de referencia, y lo consume también `npcCombatAbilities.ts` para fauna/NPC,
+/// un sistema totalmente distinto que no se toca).
 export function dynamicCombatAbilitiesFor(raza: string | null, level: number, equipped: EquippedWeaponSlot[]): DynamicAbilityData[] {
   const abilities: DynamicAbilityData[] = [];
-
-  if (raza) {
-    const razaInfo = BERIG_RAZAS.find((r) => r.slug === raza);
-    if (razaInfo) {
-      const { ataque, defensa } = razaInfo.habilidadesRaciales;
-      abilities.push({ ...ataque, preferredAttribute: ataque.preferredAttribute, effects: ['ATAQUE'], rol: 'ataque', energyCost: ENERGY_COST_BASICA, energyRegen: 0, isGeneric: false, dualWield: false, attributeBonus: 0 });
-      abilities.push({ ...defensa, preferredAttribute: defensa.preferredAttribute, effects: ['AGUANTE'], rol: 'defensa', energyCost: ENERGY_COST_BASICA, energyRegen: 0, isGeneric: false, dualWield: false, attributeBonus: 0 });
-    }
-  }
 
   for (const w of weaponAbilitiesFor(equipped, level)) {
     abilities.push({
