@@ -4889,7 +4889,16 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     // Producción de acciones por tiempo (docs/08 § 4) — hasta ahora "debería conseguir 60 de
     // leña" era solo texto de aviso y nunca se materializaba de verdad (roadmap 2026-07-19).
     // Mismo criterio que el despiece: solo si la acción tuvo éxito o no requería tirada.
-    if (produccion && (!roll || roll.success)) {
+    //
+    // Bug real (auditoría en vivo, 2026-09-01): `computeDuration` (timedActions.ts) decide la
+    // producción SOLO por palabras sueltas del texto libre (regex de "leña", sin relación con
+    // `buildRecipe`/`detectsBuildIntent` de arriba) — "Construyo un campamento... usando la leña,
+    // piedra y piel que llevo" disparaba la regex de leña por la propia palabra "leña" en la
+    // frase, creando un InventoryItem fantasma ("Leña (12960)") EN PARALELO a la construcción
+    // real, sin relación con ella. `buildRecipe` ya excluye este caso — presente tanto si la
+    // construcción se completa (`buildMode`) como si queda bloqueada por falta de requisitos: en
+    // ambos casos la "producción de leña" del mismo turno es igual de incorrecta.
+    if (produccion && !buildRecipe && (!roll || roll.success)) {
       const created = await tx.inventoryItem.create({
         data: {
           saveId,

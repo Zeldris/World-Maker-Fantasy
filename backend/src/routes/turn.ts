@@ -590,9 +590,18 @@ export async function turnRoutes(app: FastifyInstance) {
       pendingNpcAttack: save.pendingNpcAttack as unknown as PendingNpcAttack | null,
     });
 
+    // Bug real (auditoría en vivo, 2026-09-01): `computeDuration` decide su `produccion` solo por
+    // palabras sueltas del texto libre (regex de "leña", sin relación con si la acción es una
+    // construcción real) — "Construyo un campamento... usando la leña..." disparaba la regex de
+    // leña por la propia palabra en la frase, mostrando aquí (y materializando más abajo, en
+    // narrateAndPersistTurn) un "estará ocupado... debería conseguir N de Leña" espurio junto al
+    // aviso real de construcción. Mismo chequeo barato (sin I/O) que `mightBeBuildAttempt` más
+    // abajo (línea ~692) — se calcula aquí también porque este punto es anterior en el flujo.
+    const mightBeBuildAttemptForDuration = CONSTRUCTION_RECIPES.some((r) => detectsBuildIntent(r, action));
     const { minutos, produccion } = travel
       ? { minutos: travel.minutos, produccion: undefined }
       : computeDuration(action, classification.banda, attributes, classification.duracionEstimadaMinutos);
+    const produccionFiltrada = mightBeBuildAttemptForDuration ? undefined : produccion;
 
     if (preview) {
       return {
@@ -600,7 +609,7 @@ export async function turnRoutes(app: FastifyInstance) {
         roll,
         travel,
         duracionMinutos: minutos,
-        produccion: produccion ? `${produccion.cantidad} de ${produccion.itemName}` : undefined,
+        produccion: produccionFiltrada ? `${produccionFiltrada.cantidad} de ${produccionFiltrada.itemName}` : undefined,
       };
     }
 
@@ -751,7 +760,7 @@ export async function turnRoutes(app: FastifyInstance) {
           }) / 60
         : Math.min(Math.max(1, effectiveMinutos / env.fictionMinutesPerRealMinute), env.transitMaxRealMinutes);
       const busyUntil = new Date(Date.now() + minutosReales * 60_000);
-      const produccionLabel = produccion ? `${produccion.cantidad} de ${produccion.itemName}` : undefined;
+      const produccionLabel = produccionFiltrada ? `${produccionFiltrada.cantidad} de ${produccionFiltrada.itemName}` : undefined;
       const startText = `${save.characterName} se pone a ello: "${action}". Estará ocupado un buen rato${
         produccionLabel ? ` (debería conseguir ${produccionLabel})` : ''
       }.`;
@@ -866,7 +875,7 @@ export async function turnRoutes(app: FastifyInstance) {
       data: { saveId, channel: 'CHARACTER', text: action, isPlayerAction: true, timeLabel },
     });
 
-    const produccionLabel = produccion ? `${produccion.cantidad} de ${produccion.itemName}` : undefined;
+    const produccionLabel = produccionFiltrada ? `${produccionFiltrada.cantidad} de ${produccionFiltrada.itemName}` : undefined;
     // Auditoría de rendimiento 2026-07-28 ("rascar segundos"): `npcsInScene` viaja tal cual hasta
     // el frontend para que /turn/narrate lo reciba de vuelta y no tenga que recalcularlo — ver
     // NarrateBody.npcsInScene más abajo y el mismo comentario en turnResolution.ts.

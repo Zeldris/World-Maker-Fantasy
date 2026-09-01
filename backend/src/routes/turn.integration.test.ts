@@ -1768,6 +1768,88 @@ describe('Construcción determinista: campamento', () => {
   }, 15_000);
 });
 
+// BUG CERRADO (auditoría en vivo, 2026-09-01): mencionar "leña" al construir (materiales que el
+// jugador ya lleva, texto libre normal) disparaba la regex de producción de leña de
+// `computeDuration` (timedActions.ts) EN PARALELO a la construcción real, creando un InventoryItem
+// fantasma ("Leña (N)", N absurdo por la fórmula de minutos×fuerza de una banda "larga") sin
+// relación con la construcción. Partida propia (materiales/ubicación aparte del describe de
+// arriba) para no interferir con su estado compartido.
+describe('Construcción determinista: mencionar "leña" en el texto no crea un InventoryItem fantasma (auditoría 2026-09-01)', () => {
+  let saveId: string;
+
+  beforeAll(async () => {
+    const userId = await getDefaultUserId();
+    const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
+    const location = await prisma.location.findFirstOrThrow({ where: { worldId: world.id, slug: 'hondonada-del-eco' } });
+    const save = await prisma.save.create({
+      data: {
+        userId,
+        worldId: world.id,
+        characterName: 'Gorhorn de prueba (campamento con leña en el texto)',
+        characterArchetype: 'guerrero',
+        characterOrigin: 'Clan Maktor',
+        characterMotivation: 'x',
+        attributes: ATTRS,
+        portraitInitial: 'G',
+        currentLocationId: location.id,
+      },
+    });
+    saveId = save.id;
+    await prisma.worldState.create({ data: { saveId } });
+    await prisma.inventoryItem.createMany({
+      data: [
+        { saveId, name: 'Leña de matorral de cuerno (6)', description: 'x', catalogSlug: 'lena-matorral-cuerno', origin: 'partida' },
+        { saveId, name: 'Piedra (8)', description: 'x', catalogSlug: 'piedra', origin: 'partida' },
+        { saveId, name: 'Lana de múrgol (2)', description: 'x', catalogSlug: 'lana-murgol', origin: 'partida' },
+      ],
+    });
+  });
+
+  afterAll(async () => {
+    await prisma.save.delete({ where: { id: saveId } });
+  });
+
+  it('construye el campamento y consume los materiales exactos, sin crear ningún InventoryItem "Leña" nuevo', async () => {
+    classifyAction.mockResolvedValue({
+      requiereTirada: false, atributo: 'fuerza', dificultad: 15, razon: 'x', banda: 'larga', duracionEstimadaMinutos: 4320,
+    });
+    const app = await buildApp();
+
+    // Turno de relleno (mismo motivo que en el describe hermano de arriba): esquivar el gancho de
+    // fase-1 de Gistera Koh en la acción #1 de la partida, que añadiría un newFact ajeno a lo que
+    // se comprueba aquí.
+    const filler = 'Miro alrededor con calma';
+    const fillerClassify = await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action: filler, enCombate: true } });
+    const fillerParsed = fillerClassify.json();
+    await app.inject({
+      method: 'POST',
+      url: '/turn/narrate',
+      payload: { saveId, action: filler, classification: fillerParsed.classification, roll: fillerParsed.roll, enCombate: true },
+    });
+
+    const action = 'Construyo un campamento base aquí mismo, usando la leña, piedra y piel que llevo.';
+    const classifyRes = await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action, enCombate: true } });
+    const { classification, roll } = classifyRes.json();
+    const narrateRes = await app.inject({
+      method: 'POST',
+      url: '/turn/narrate',
+      payload: { saveId, action, classification, roll, enCombate: true },
+    });
+
+    const body = lastNdjsonLine(narrateRes.payload);
+    expect(body.narration).toEqual({ narration: expect.stringContaining('Campamento'), newFacts: [] });
+
+    const building = await prisma.building.findFirstOrThrow({ where: { saveId } });
+    expect(building.recipeKey).toBe('campamento');
+    expect(building.status).toBe('ACTIVO');
+
+    // Los 3 materiales originales se consumieron EXACTOS — y sobre todo, NO aparece ningún
+    // InventoryItem nuevo de "Leña" (el objeto fantasma que causaba el bug).
+    const inventoryAfter = await prisma.inventoryItem.findMany({ where: { saveId } });
+    expect(inventoryAfter).toEqual([]);
+  }, 30_000);
+});
+
 const ATTRS_CARISMATICO = { ...ATTRS, carisma: 18 };
 
 async function giveMaterials(saveId: string, items: { name: string; catalogSlug: string }[]) {
