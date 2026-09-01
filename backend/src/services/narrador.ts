@@ -2,6 +2,7 @@ import { ollamaGenerate, ollamaGenerateStream } from '../lib/ollama.js';
 import { extractStreamingNarration } from './narrationStream.js';
 import { env } from '../config/env.js';
 import { normalizeText, fuzzyMatchCandidates, findFuzzyStemMatch } from './travel.js';
+import { includesNameOrPlural } from './itemReference.js';
 import { detectsAttackIntent, detectsHostileSearchIntent } from './npcScene.js';
 import { similarity, factSimilarity } from './worldFacts.js';
 import type { Attribute, RollResult } from './dice.js';
@@ -2151,7 +2152,10 @@ function sentenceMatchesRegexAndName(text: string | string[], actionRegex: RegEx
     .flatMap((t) => t.split(SENTENCE_SPLIT_REGEX))
     .some((sentence) => {
       const normalizedSentence = normalizeText(sentence);
-      return actionRegex.test(normalizedSentence) && normalizedNames.some((name) => normalizedSentence.includes(name));
+      // Tolerancia a plural simple (bug real jugando en vivo, 2026-09-01: "cataplasmas de salvia
+      // del polvo" no matcheaba contra "Cataplasma de salvia del polvo" del catálogo) — ver
+      // `includesNameOrPlural` (itemReference.ts) para el criterio exacto.
+      return actionRegex.test(normalizedSentence) && normalizedNames.some((name) => includesNameOrPlural(normalizedSentence, name));
     });
 }
 

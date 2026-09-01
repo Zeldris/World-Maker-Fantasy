@@ -26,6 +26,7 @@ marcha — solo observar y anotar.
 - [Acción de rastreo clasificada como recolección de planta — intención completamente distinta a la escrita](#acción-de-rastreo-clasificada-como-recolección-de-planta--intención-completamente-distinta-a-la-escrita)
 - [Icono del botón COMBATIR inconsistente: espada en un momento, aspa roja en otro](#icono-del-botón-combatir-inconsistente-espada-en-un-momento-aspa-roja-en-otro)
 - [`pendingCombatNpcSlugs` queda "fantasma" tras un combate ya RESUELTO — reproducido jugando de forma normal](#pendingcombatnpcslugs-queda-fantasma-tras-un-combate-ya-resuelto--reproducido-jugando-de-forma-normal)
+- [El narrador cita el nombre exacto de un objeto médico real sin que el jugador lo pidiera ni se consuma de verdad](#el-narrador-cita-el-nombre-exacto-de-un-objeto-médico-real-sin-que-el-jugador-lo-pidiera-ni-se-consuma-de-verdad)
 
 ---
 
@@ -273,5 +274,56 @@ por matching fuzzy Levenshtein≤2 de "cuenta"~"nuente", mismo mecanismo que el 
 (`AMIGABLE`/`INOFENSIVO`/`CAUTELOSO` excluidos) antes de usarse como fallback. Test de regresión
 añadido (`turn.integration.test.ts`, Orco Enfurecido agresivo + Torgash CAUTELOSO ambos en escena,
 confirma que solo el agresivo queda enganchado) — 105/105 tests de ese archivo en verde.
+
+## El narrador cita el nombre exacto de un objeto médico real sin que el jugador lo pidiera ni se consuma de verdad
+
+**Qué pasó**: seguía CONVALECIENTE (25/98 de vida real) tras varios descansos previos — investigado
+a fondo, es diseño correcto: `healCeilingFor` (`death.ts`) topa la mejora de CONVALECIENTE en la
+propia CONVALECIENTE salvo que se use un objeto médico real (descansar solo, aunque sea en un
+asentamiento como La Hondonada del Eco, nunca cura ese escalón — solo llega a HERIDO desde GRAVE
+hacia abajo). Probé una acción de texto libre sin nombrar ningún objeto concreto: *"Reviso mis
+heridas con cuidado y las trato como puedo, limpiándolas y vendándolas con lo que llevo encima."* —
+el narrador respondió: *"Gorhorn inspecciona sus heridas... aplicando cataplasmas de Salvia del
+Polvo donde es necesario..."* — **"Cataplasma de salvia del polvo" es un objeto real que Gorhorn
+lleva de verdad en el inventario**, con `curaHasta: ILESO` en el catálogo (curación máxima posible).
+
+**Por qué es un hallazgo real, no solo un chirrido de prosa**: comprobado en base de datos —
+`condicionFisica` siguió en CONVALECIENTE tras el turno, y el ítem del inventario **no se
+consumió**. El mecanismo real de detección (`detectMedicalItemUse`, `itemReference.ts`) busca el
+nombre del objeto médico DENTRO DEL TEXTO DEL JUGADOR (no en la narración generada) — como yo nunca
+mencioné "cataplasma" en mi frase, el sistema determinista nunca lo detectó, así que no se consumió
+ni curó nada. Pero el LLM sí "sabía" (por el inventario real que se le pasa como contexto) que ese
+objeto existía, y lo usó en la prosa como si el jugador lo hubiera pedido — mintiendo sobre una
+acción real que nunca ocurrió mecánicamente. El guard existente más parecido,
+`hasFalseHealingClaim`, solo detecta frases de curación TOTAL explícitas ("completamente sano",
+"como nuevo") — mi caso fue más sutil (una curación parcial narrada, citando el nombre EXACTO de un
+objeto real sin consumirlo), así que no lo cazó.
+
+**Por qué chirría especialmente**: como jugadora, leer que mi personaje usó un objeto concreto que sí
+tengo, por su nombre exacto, me hace asumir que se consumió y que curó algo — es la peor clase de
+desajuste narración-vs-mecánica porque cita datos reales del inventario para sonar creíble, no un
+objeto inventado.
+
+**Corrección tras investigar el código**: sí existe un guard con el propósito exacto —
+`hasFalseItemUse(narration, possiblyFalseItemUseNames)` (`backend/src/services/narrador.ts:2158`),
+registrado en la lista de rechazo de `narrateAction`, y `turnResolution.ts:3614` SÍ lo rellena
+correctamente (el comentario de esa línea describe literalmente este mismo bug, ya arreglado una vez
+el 2026-08-01: "descansar no curó, y encima consumió un objeto sin pedirlo"). El guard debería haber
+disparado. **Causa raíz real, distinta**: el mismo tipo de bug de plural ya visto en esta sesión
+(hallazgo "Acción de rastreo clasificada como recolección de planta", `harvest.ts`) — el matching es
+`normalizedSentence.includes(name)`, substring EXACTO. El catálogo tiene el nombre en singular
+("Cataplasma de salvia del polvo"), pero la narración generada dijo **"cataplasma*s* de salvia del
+polvo"** (plural) — la S insertada rompe el `.includes()` literal, así que ni `detectMedicalItemUse`
+(que tampoco detectó el uso real) ni `hasFalseItemUse` (que debía cazar la mentira) dispararon.
+Doble fallo por la misma causa raíz: el jugador no pudo curarse de verdad (comportamiento correcto,
+sin objeto detectado) PERO la mentira narrativa tampoco se cazó, porque el propio guard que debía
+protegerla usa el mismo matching frágil de substring exacto sin tolerancia a plural/flexión.
+
+**Sugerencia**: normalizar el nombre del objeto Y la frase a singular (o usar un matching por raíz/
+stem, como ya hace `fuzzyMatchCandidates`/`baseNameOf` en otros puntos del proyecto) tanto en
+`detectMedicalItemUse`/`detectEnergyItemUse` (`itemReference.ts`) como en
+`sentenceMatchesRegexAndName` (`narrador.ts`, usada por `hasFalseItemUse` y varios guards hermanos)
+— es la misma clase de fragilidad en al menos 3 sitios distintos del código, con el mismo síntoma
+raíz: un plural o una flexión menor rompe un matching que debería ser robusto.
 
 ---

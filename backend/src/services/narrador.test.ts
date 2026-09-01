@@ -851,6 +851,16 @@ describe('hasFalseItemUse', () => {
     const narration = 'Gorhorn bebe un trago de agua de su cantimplora antes de seguir camino.';
     expect(hasFalseItemUse(narration, ['Cataplasma de salvia del polvo'])).toBe(false);
   });
+
+  // Bug real jugando en vivo (2026-09-01, sesión de jugadora, mismo síntoma que el bug de arriba
+  // pero sin cazarlo): la narración pluralizó el nombre del objeto ("cataplasmas" en vez de
+  // "cataplasma") y el matching de substring exacto no lo reconoció como el mismo objeto — el
+  // jugador se quedó sin curar de verdad Y esta mentira narrativa tampoco se rechazó.
+  it('detecta la mentira aunque la narración pluralice el nombre del objeto ("cataplasmas" vs "Cataplasma")', () => {
+    const narration =
+      'Gorhorn inspecciona sus heridas con mano firme, aplicando cataplasmas de salvia del polvo donde es necesario.';
+    expect(hasFalseItemUse(narration, ['Cataplasma de salvia del polvo'])).toBe(true);
+  });
 });
 
 describe('hasFalseInventoryReview', () => {

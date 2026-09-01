@@ -128,6 +128,19 @@ describe('detectMedicalItemUse', () => {
     const items = [{ id: 'item-vendaje', name: 'Vendaje improvisado (2)', curaHasta: 'GRAVE' as const, curaUnPaso: true }];
     expect(detectMedicalItemUse("Uso 'Vendaje improvisado'", items)).toEqual({ id: 'item-vendaje', curaHasta: 'GRAVE', curaUnPaso: true });
   });
+
+  // Bug real jugando en vivo (2026-09-01, sesión de jugadora): "aplicando cataplasmas de salvia
+  // del polvo" (narración generada, plural) nunca matcheaba contra "Cataplasma de salvia del
+  // polvo" (nombre real del catálogo, singular) — el jugador se quedaba sin curar Y la narración
+  // mentía sobre usar el objeto, sin que ningún guard lo cazara (ver hasFalseItemUse en
+  // narrador.test.ts para el guard hermano).
+  it('matchea aunque la narración pluralice el nombre del objeto ("cataplasmas" vs "Cataplasma")', () => {
+    expect(detectMedicalItemUse('Gorhorn aplica cataplasmas de salvia del polvo en sus heridas.', MEDICAL_ITEMS)).toEqual({
+      id: 'item-cataplasma',
+      curaHasta: 'HERIDO',
+      curaUnPaso: false,
+    });
+  });
 });
 
 describe('detectsOwnedItemQuote', () => {

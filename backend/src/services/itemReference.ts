@@ -2,6 +2,25 @@ import type { CondicionFisica } from '@prisma/client';
 import { normalizeText, levenshtein } from './travel.js';
 import { baseNameOf } from './ingredients.js';
 
+/// Tolerancia a plural simple (bug real jugando en vivo, 2026-09-01: "aplicando cataplasmas de
+/// salvia del polvo" nunca matcheaba contra "Cataplasma de salvia del polvo" del catálogo — el
+/// nombre real está en singular, la narración lo pluralizó, y `.includes()` de substring exacto no
+/// tolera ni una letra de más). Regla española básica, no un stemmer genérico: el singular con una
+/// "s"/"es" añadida al final de la PRIMERA palabra (la que de verdad se pluraliza en el uso real,
+/// "cataplasmas de salvia" no "cataplasma de salvias") — evita falsos positivos de plurales
+/// irregulares o de palabras cortas donde añadir letras cambia el sentido.
+export function withSimplePluralVariant(normalizedName: string): string[] {
+  const [firstWord, ...rest] = normalizedName.split(' ');
+  if (!firstWord || firstWord.length < 4) return [normalizedName];
+  const pluralFirstWord = /[aeiou]$/.test(firstWord) ? `${firstWord}s` : `${firstWord}es`;
+  const pluralName = [pluralFirstWord, ...rest].join(' ');
+  return [normalizedName, pluralName];
+}
+
+export function includesNameOrPlural(haystack: string, normalizedName: string): boolean {
+  return withSimplePluralVariant(normalizedName).some((variant) => haystack.includes(variant));
+}
+
 /// Palabras de objeto genéricas que un jugador puede pedir mirar/usar/revisar sin nombrarlo
 /// exactamente como en su inventario (roadmap 2026-07-19: "mirar el mapa" sin tener uno debía
 /// narrar que no lo tiene, no inventarlo ni ignorar el hecho en silencio). Lista CURADA a
@@ -85,7 +104,7 @@ export function detectMedicalItemUse(
   // su nombre SIN el sufijo de cantidad ("Uso 'Vendaje improvisado'"), así que un `.includes()`
   // contra el nombre CON sufijo nunca matcheaba con una pila de 2 o más — el objeto no se detectaba
   // como usado, y por tanto tampoco se consumía. Con una única unidad (sin sufijo) sí coincidía.
-  const matches = medicalItems.filter((item) => normalized.includes(normalizeText(baseNameOf(item.name))));
+  const matches = medicalItems.filter((item) => includesNameOrPlural(normalized, normalizeText(baseNameOf(item.name))));
   if (matches.length === 0) return null;
   const best = matches.sort((a, b) => CURA_HASTA_ORDER.indexOf(a.curaHasta) - CURA_HASTA_ORDER.indexOf(b.curaHasta))[0];
   return { id: best.id, curaHasta: best.curaHasta, curaUnPaso: best.curaUnPaso };
@@ -105,7 +124,7 @@ export function detectEnergyItemUse(action: string, energyItems: { id: string; n
   const normalized = normalizeText(action);
   // Mismo fix que `detectMedicalItemUse` de arriba — `baseNameOf` para no romper el match contra
   // una pila de 2+ unidades.
-  const matches = energyItems.filter((item) => normalized.includes(normalizeText(baseNameOf(item.name))));
+  const matches = energyItems.filter((item) => includesNameOrPlural(normalized, normalizeText(baseNameOf(item.name))));
   if (matches.length === 0) return null;
   const best = matches.sort((a, b) => b.curaEnergia - a.curaEnergia)[0];
   return { id: best.id, curaEnergia: best.curaEnergia };
