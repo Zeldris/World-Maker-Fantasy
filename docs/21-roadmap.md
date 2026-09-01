@@ -403,7 +403,11 @@ resumen de trabajo real, agrupado por tamaño.
   pendientes en** `tarkor_trabajador_reino_fase1_2026-08-31` (memoria de sesión): faltan los 9
   oficios restantes + sus NPC trabajador, producción pasiva de recursos (sin roles de Reino
   formalizados todavía), efectos activos reales del edificio, y extender a otras facciones. Sin
-  probar en vivo jugando todavía.
+  probar en vivo jugando todavía. **Ampliado (2026-09-01, ronda de consolidación)**: Maestro Cocinero
+  Serhu añadido y verificado en vivo (checklist, 2026-08-31), y Maestro Carpintero Serhu + Maestra
+  Sastre Serhu añadidos (mismo patrón exacto, sin test dedicado — el motor ya está probado de forma
+  genérica) — **5 de los 11 oficios** con Maestro real hoy (herrero/curtidor/cocinero/carpintero/
+  sastre). Quedan 6 (herborista, alquimista, domador, desollador, peletero, primeros-auxilios).
 - [x] ~~**Quién enseña un oficio nuevo**~~ — resuelto de paso por lo de arriba: el Maestro de cada
   profesión (`Npc.teachesProfession`) es la respuesta real, ya no aplazado.
 - [ ] **Miel Lebude / futura profesión de cocina por raza-región** (`flora-fauna.md`) — idea suelta,
