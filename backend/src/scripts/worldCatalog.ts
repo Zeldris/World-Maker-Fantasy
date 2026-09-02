@@ -5418,6 +5418,11 @@ export const items: ItemCatalogInput[] = [
     tipo: 'NARRATIVO',
     valorGoirnos: 2,
     equipSlot: 'COSMETICO_CINTURA',
+    // Pasada de objetos narrativos sin función real en juego (2026-09-02, "al menos todo objeto
+    // que se almacene en el inventario" debía aportar algo) — al ser equipable, el gancho natural
+    // es statBonuses, no venta/lore: cuentas de trueque llevadas como adorno, encaja con la
+    // sociabilidad que representa el carisma.
+    statBonuses: { carisma: 3 },
     description: 'Puñado de cuentas de hueso, piedra pulida y vidrio volcánico ensartadas en cordel — trueque menor.',
     dimensiones: 'Cuentas de 1 cm en cordel de 30 cm.',
   },
@@ -5432,7 +5437,9 @@ export const items: ItemCatalogInput[] = [
     // COSMETICO_CINTURA (ABALORIO retirado del enum) — ya no comparte hueco con el Tótem Maktor,
     // que ahora vive en COSMETICO_ESPALDA, más abajo.
     equipSlot: 'COSMETICO_CINTURA',
-    statBonuses: { carisma: 1 },
+    // Recalibrado (2026-09-02, misma pasada que abalorios): trofeo de caza importante, no solo
+    // adorno — voluntad por lo que representa haber cobrado esa presa, carisma por llevarlo visible.
+    statBonuses: { voluntad: 1, carisma: 2 },
     description: 'Cordel de cuero con vértebras o colmillos tallados de una presa importante, colgados como cuentas.',
     dimensiones: 'Cordel de 40 cm con piezas de 2 a 3 cm.',
   },
@@ -5448,6 +5455,16 @@ export const items: ItemCatalogInput[] = [
     // "extremadamente rara — tratar como añadido narrativo ocasional... nunca drop garantizado",
     // más raro que fercaneo (tier 5, "casi imposible") y melena-cola-ferike (tier 7, "muy baja
     // probabilidad") — el tier más alto del catálogo hasta hoy, a propósito.
+    //
+    // PENDIENTE DE IMPLEMENTAR (pasada de objetos narrativos sin uso, 2026-09-02, decisión
+    // explícita de la usuaria): este será el ingrediente exclusivo de un Báculo mágico nuevo, tier
+    // 7 (el tier máximo de armas de ataque hoy — la primera arma `WeaponCategory.BACULO`, que ya
+    // existe en el enum y ya tiene habilidad básica lista en weaponAbilities.ts pero ningún objeto
+    // real todavía). Solo obtenible en La Hondonada del Eco, de noche, muy poco probable — valor en
+    // Goirnos alto acorde. Ver memoria tarkor_pasada_objetos_narrativos_2026-09-02 para el detalle
+    // técnico completo (BACULO→magia ya mapeado, ficha de habilidad ya escrita, CHAMAN_WEAPONS ya
+    // lo incluye). No tocar sin retomar esa pieza completa — de momento sigue sin receta ni drop
+    // condicionado por momento del día.
     tier: 9,
     valorGoirnos: 80,
   },
@@ -5461,18 +5478,9 @@ export const items: ItemCatalogInput[] = [
     valorGoirnos: 20,
     description: 'Garra curva y negra de Rondador de Brasas — trofeo de amuleto de primer orden.',
     dimensiones: 'Garra de 8 cm.',
-  },
-
-  { 
-    slug: 'hueso-marcado-primer-caceria', 
-    name: 'Hueso marcado de primera cacería', 
-    aliases: ['hueso marcado'], 
-    category: 'valor',
-    tipo: 'NARRATIVO', 
-    valorGoirnos: 0,
-    description: 'Hueso con muescas rituales — ofrenda dejada por quien cobró su primera pieza en nombre de quien yace en el túmulo.', 
-    dimensiones: 'Hueso de 15 cm.', 
-    lugarOrigen: 'Llanuras del Viento Rojo.' 
+    // PENDIENTE DE IMPLEMENTAR (pasada de objetos narrativos sin uso, 2026-09-02, decisión
+    // explícita de la usuaria): ingrediente necesario de una receta nueva de dagas tier 3. Ver
+    // memoria tarkor_pasada_objetos_narrativos_2026-09-02. No implementado todavía.
   },
 
   // --- Tier 0, ronda 2 de objetos (roadmap 2026-07-20, ver memoria
@@ -6670,14 +6678,6 @@ export const harvestYields: HarvestYieldInput[] = [
     sourceCategory: 'objeto',
     metodoObtencion: 'PASIVO',
     itemSlug: 'panuelo-luto-serhu',
-    cantidad: 1
-  },
-
-  {
-    sourceSlug: 'ofrendas-tumulos-honor',
-    sourceCategory: 'objeto',
-    metodoObtencion: 'PASIVO',
-    itemSlug: 'hueso-marcado-primer-caceria',
     cantidad: 1
   },
 

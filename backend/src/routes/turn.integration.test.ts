@@ -3770,7 +3770,10 @@ describe('Desaparición de un cadáver tras 48h de ficción (docs/19 pieza 2)', 
 // hace falta repetir para "tener suerte" de que algo salga.
 describe('"Recoger": objetos narrativos "PASIVO" ligados a su Location exacta (auditoría 2026-08-14, reescrito 2026-08-25)', () => {
   const MAKTOR_ITEMS = ['Tablilla quemada', 'Tótem de clan roto'];
-  const OFRENDAS_ITEMS = ['Pañuelo de luto Serhu', 'Hueso marcado de primera cacería'];
+  // 'Hueso marcado de primera cacería' eliminado del catálogo (pasada de objetos narrativos sin
+  // uso, 2026-09-02, decisión explícita de la usuaria: "no tiene valor mantenerlo") — la fuente
+  // 'ofrendas-tumulos-honor' sigue viva con el pañuelo, solo se retira el otro item de la lista.
+  const OFRENDAS_ITEMS = ['Pañuelo de luto Serhu'];
 
   async function saveAt(locationSlug: string, name: string) {
     const userId = await getDefaultUserId();
