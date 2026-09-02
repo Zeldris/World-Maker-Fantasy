@@ -8,7 +8,7 @@ import { detectHarvestSourcesInScene } from '../../services/harvest.js';
 import { loadSessionFacts, appendSessionFacts } from '../../services/worldFacts.js';
 import { recordEntityDiscoveries } from '../../services/entityDiscovery.js';
 import type { AttributeBlock } from '../../services/dice.js';
-import { iniciarCombatEncounter, resolverTurnosAutonomosHastaJugadora } from '../../services/combateMultipleOrquestacion.js';
+import { iniciarCombatEncounter, resolverTurnosAutonomosHastaJugadora, type CombatienteInicial } from '../../services/combateMultipleOrquestacion.js';
 import { MAX_COMBATIENTES_POR_BANDO } from '../../services/combateMultiple.js';
 import { rejectIfEnded, lockRowForUpdate } from './shared.js';
 import { advanceFictionalMinutes, formatFictionalDate } from '../../services/worldClock.js';
@@ -364,7 +364,7 @@ export async function cazarRoutes(app: FastifyInstance) {
 
     if (hayGrupoReal) {
       const jugadorAttrs = save.attributes as AttributeBlock;
-      const combatientes: (Parameters<typeof iniciarCombatEncounter>[2][number])[] = [
+      const combatientes: (CombatienteInicial & { destreza: number; inteligencia: number })[] = [
         { bando: 'JUGADOR', tipo: 'JUGADOR', destreza: jugadorAttrs.destreza, inteligencia: jugadorAttrs.inteligencia },
       ];
       for (const c of conAvistados) {
