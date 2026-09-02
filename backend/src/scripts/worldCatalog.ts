@@ -5591,14 +5591,21 @@ export const items: ItemCatalogInput[] = [
   },
 
   { 
-    slug: 'silbato-hueso-caza', 
-    name: 'Silbato de hueso de caza', 
-    aliases: ['silbato de hueso'], 
+    slug: 'silbato-hueso-caza',
+    name: 'Silbato de hueso de caza',
+    aliases: ['silbato de hueso'],
     category: 'valor',
-    tipo: 'NARRATIVO', 
+    tipo: 'NARRATIVO',
     valorGoirnos: 4,
-    description: 'Pequeño silbato tallado en hueso pulido — señales de caza Serhu.', 
-    dimensiones: 'Silbato de 5 cm.', lugarOrigen: 'Clan Serhu, Llanuras del Viento Rojo.'
+    description: 'Pequeño silbato tallado en hueso pulido — señales de caza Serhu.',
+    dimensiones: 'Silbato de 5 cm.', lugarOrigen: 'Clan Serhu, Llanuras del Viento Rojo.',
+    // APARCADO — DISEÑO MÁS AMPLIO QUE UN SOLO OBJETO (pasada de objetos narrativos sin uso,
+    // 2026-09-02, decisión explícita de la usuaria): pieza de una profesión de Reino nueva,
+    // "ganadería" (hermana de la agricultura ya existente) — herramienta requerida para que un
+    // Trabajador de Reino se dedique al cuidado de ganado. Por ahora solo orcos y Goirntes (no
+    // Nabieus ni Faerus). NO retomar como objeto suelto — es parte del desarrollo real de Reino,
+    // aparcado hasta cerrar más el modo RPG. Ver memoria
+    // tarkor_pasada_objetos_narrativos_2026-09-02.
   },
 
   {
