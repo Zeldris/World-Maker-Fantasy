@@ -155,13 +155,15 @@ const CAZA_EXPLORAR_CHANCE_FALLO = 0.35;
 /// quiere combatir... con un calculo determinista puede darse que salgan menos o más de los que
 /// marcaste"). Tirada simple 1d6 sobre lo elegido — primera versión de balance, ajustable después
 /// con datos reales de partida: 1-2 uno menos (algunos se dispersan/no llegan a comprometerse),
-/// 3-4 exactamente lo elegido, 5-6 uno más (el ruido del combate atrae a otro del grupo). Topado
-/// siempre a [1, avistados] — nunca menos de 1 (no tiene sentido "cazar cero") ni más de lo que de
-/// verdad hay avistado.
+/// 3-4 exactamente lo elegido, 5-6 uno más (el ruido del combate atrae a otro del grupo). Topado a
+/// `avistados` por arriba (nunca más de lo que de verdad hay), pero YA NO topado a mínimo 1 por
+/// abajo (2026-09-02, decisión explícita de la usuaria: "que narre un intento fallido") — si
+/// `cantidadElegida` es 1 y el roll es malo, el resultado puede ser 0: el grupo entero se dispersa
+/// antes de comprometerse, intento de caza fallido de verdad, no solo "menos de lo esperado".
 export function rollGroupEngagement(cantidadElegida: number, avistados: number, random: () => number = Math.random): number {
   const roll = Math.floor(random() * 6) + 1;
   const delta = roll <= 2 ? -1 : roll >= 5 ? 1 : 0;
-  return Math.max(1, Math.min(avistados, cantidadElegida + delta));
+  return Math.max(0, Math.min(avistados, cantidadElegida + delta));
 }
 
 /// Cláusula determinista para el texto de la acción cuando lo que de verdad se compromete al
@@ -169,9 +171,12 @@ export function rollGroupEngagement(cantidadElegida: number, avistados: number, 
 /// intrusión cuando sale más o menos de lo que marcaste... si marcas 2 y solo consigues acorralar
 /// a uno" / "arrinconas a una pero otra aparece repentinamente"). Nunca deja que el Narrador
 /// decida ni invente el número — esto ya es el hecho resuelto, la prosa libre solo lo viste.
-/// `null` si `cantidadReal === cantidadElegida` (nada que aclarar).
+/// `null` si `cantidadReal === cantidadElegida` (nada que aclarar). `cantidadReal === 0`
+/// (2026-09-02, "que narre un intento fallido") es un caso propio, distinto de "menos de los
+/// marcados" — el grupo entero se dispersa antes de comprometerse, no queda ni uno.
 export function groupVarianceClause(cantidadElegida: number, cantidadReal: number): string | null {
   if (cantidadReal === cantidadElegida) return null;
+  if (cantidadReal === 0) return 'aunque al final el grupo entero se dispersa antes de que pueda acorralar a ninguno';
   if (cantidadReal > cantidadElegida) {
     const extra = cantidadReal - cantidadElegida;
     return extra === 1
@@ -374,7 +379,16 @@ export async function cazarRoutes(app: FastifyInstance) {
         const scope = scopeFor(npc.kind, currentLocationId);
         if (c.avistados > 1) {
           const cantidadElegida = Math.max(1, Math.min(c.avistados, Math.round(cantidades?.[c.slug] ?? c.avistados)));
-          const cantidadReal = rollGroupEngagement(cantidadElegida, c.avistados);
+          let cantidadReal = rollGroupEngagement(cantidadElegida, c.avistados);
+          // Fallo total solo tiene sentido narrativo si el grupo puede permitirse dispersarse sin
+          // pelear (2026-09-02, matiz explícito de la usuaria: "cazar uno agresivo... ese no
+          // debería huir a no ser que realmente seas muy superior a él") — un grupo AGRESIVO no se
+          // dispersa por las buenas: si el jugador no supera claramente el tope de nivel de la
+          // especie (`levelMax`, mismo criterio que "ya lo tiene todo aprendido"), se fuerza el
+          // mínimo de 1 de siempre, igual que antes de este cambio.
+          if (cantidadReal === 0 && npc.temperamento === 'AGRESIVO' && save.level <= (npc.levelMax ?? npc.level)) {
+            cantidadReal = 1;
+          }
           for (let i = 0; i < cantidadReal; i++) {
             combatientes.push({ bando: 'ENEMIGO', tipo: 'NPC', npcId: npc.id, npcScope: scope, destreza: npcAttrs.destreza, inteligencia: npcAttrs.inteligencia, esGrupo: true });
           }

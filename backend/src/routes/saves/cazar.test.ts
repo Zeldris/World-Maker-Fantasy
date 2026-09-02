@@ -158,8 +158,15 @@ describe('rollGroupEngagement', () => {
     expect(rollGroupEngagement(3, 10, () => 0.99)).toBe(4); // floor(0.99*6)+1=6 -> delta +1
   });
 
-  it('nunca baja de 1 aunque el roll reste', () => {
-    expect(rollGroupEngagement(1, 10, () => 0)).toBe(1);
+  // Cambiado (2026-09-02, "que narre un intento fallido"): con cantidadElegida=1 y el peor roll,
+  // ahora SÍ puede dar 0 — fallo total, el grupo entero se dispersa. El tope condicionado a fauna
+  // AGRESIVO/nivel del jugador vive en el CALLER (cazar.ts), no en esta función pura.
+  it('con cantidadElegida=1 y el peor roll, puede dar 0 (fallo total)', () => {
+    expect(rollGroupEngagement(1, 10, () => 0)).toBe(0);
+  });
+
+  it('nunca baja de 0 (el suelo real, no 1)', () => {
+    expect(rollGroupEngagement(0, 10, () => 0)).toBe(0);
   });
 
   it('nunca supera los avistados reales aunque el roll sume', () => {
@@ -180,6 +187,12 @@ describe('groupVarianceClause', () => {
   it('sale MENOS de lo marcado: solo se consigue acorralar a algunos', () => {
     expect(groupVarianceClause(2, 1)).toBe('aunque al final solo consigo acorralar a uno de los que había marcado');
     expect(groupVarianceClause(4, 2)).toBe('aunque al final solo consigo acorralar a 2 de los que había marcado');
+  });
+
+  // Fallo total (2026-09-02, "que narre un intento fallido") — caso propio, distinto de "menos de
+  // los marcados": no queda ni uno.
+  it('fallo total (cantidadReal 0): el grupo entero se dispersa', () => {
+    expect(groupVarianceClause(3, 0)).toBe('aunque al final el grupo entero se dispersa antes de que pueda acorralar a ninguno');
   });
 });
 
