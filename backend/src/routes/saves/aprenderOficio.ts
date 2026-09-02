@@ -3,6 +3,7 @@ import { prisma } from '../../lib/prisma.js';
 import { scopeFor } from '../../services/npcScene.js';
 import { checkAprenderOficio, nextGoirnosTrasCobro, COSTE_GOIRNOS_APRENDER_OFICIO } from '../../services/learnProfession.js';
 import { rejectIfEnded, toFrontendLogEntry } from './shared.js';
+import { CONDICIONES_INTERACTUABLE } from '../../services/death.js';
 
 const MOTIVO_MENSAJE: Record<string, string> = {
   reputacion_insuficiente: 'Todavía no confía lo bastante en ti para enseñarte su oficio.',
@@ -91,7 +92,7 @@ export async function aprenderOficioRoutes(app: FastifyInstance) {
       const scope = scopeFor(npc.kind, save.currentLocationId);
       const state = await prisma.npcState.findUnique({ where: { saveId_npcId_scope: { saveId: save.id, npcId: npc.id, scope } } });
       const condicion = state?.condicionFisica ?? 'ILESO';
-      if (!['ILESO', 'HERIDO', 'GRAVE'].includes(condicion)) {
+      if (!CONDICIONES_INTERACTUABLE.includes(condicion)) {
         return reply.status(400).send({ error: 'Ese Maestro no está en condiciones de enseñarte nada ahora mismo' });
       }
       const currentLocation = await prisma.location.findUnique({ where: { id: save.currentLocationId } });

@@ -6,6 +6,12 @@ import type { CondicionFisica, Dificultad, AbilityEffect } from '@prisma/client'
 
 const CONDICION_ORDER: CondicionFisica[] = ['ILESO', 'HERIDO', 'GRAVE', 'CONVALECIENTE', 'MUERTO'];
 
+/// Deuda técnica cerrada (auditoría 2026-09-01): el mismo literal `['ILESO', 'HERIDO', 'GRAVE']`
+/// ("el NPC sigue en pie y puede interactuar — no está CONVALECIENTE ni MUERTO") estaba copiado 3
+/// veces entre `routes/saves/aprenderOficio.ts` y `routes/saves/entrega.ts`. Único punto de
+/// verdad ahora, derivado de `CONDICION_ORDER` para no poder desincronizarse de él.
+export const CONDICIONES_INTERACTUABLE: CondicionFisica[] = CONDICION_ORDER.slice(0, 3);
+
 /// Malus mecánico por condición física en combate (2026-07-29, "cómo es posible que alguien
 /// convaleciente reaccione igual" — hasta ahora `condicionFisica` no afectaba ninguna tirada, solo
 /// paraba a quien ya había caído). Se resta al valor CRUDO del atributo antes del multiplicador

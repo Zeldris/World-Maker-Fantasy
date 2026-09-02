@@ -2,6 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import { prisma } from '../../lib/prisma.js';
 import { scopeFor, type NpcItemInScene } from '../../services/npcScene.js';
 import { rejectIfEnded, toFrontendLogEntry } from './shared.js';
+import { CONDICIONES_INTERACTUABLE } from '../../services/death.js';
 
 /// Entregar un objeto a un NPC (2026-08-31, mecánica real — antes solo existía la mitigación de
 /// coherencia `hasFalseItemGivenAway`, narrador.ts: bloqueaba que la narración PROMETIERA una
@@ -31,7 +32,7 @@ export async function entregaRoutes(app: FastifyInstance) {
     if (!save.currentLocationId || save.inventoryItems.length === 0) return { items: [], npcs: [] };
 
     const states = await prisma.npcState.findMany({
-      where: { saveId: save.id, condicionFisica: { in: ['ILESO', 'HERIDO', 'GRAVE'] } },
+      where: { saveId: save.id, condicionFisica: { in: CONDICIONES_INTERACTUABLE } },
     });
     if (states.length === 0) return { items: save.inventoryItems, npcs: [] };
 
@@ -70,7 +71,7 @@ export async function entregaRoutes(app: FastifyInstance) {
       if (!npc) return reply.status(404).send({ error: 'NPC no encontrado' });
       const scope = scopeFor(npc.kind, save.currentLocationId);
       const state = await prisma.npcState.findUnique({ where: { saveId_npcId_scope: { saveId: save.id, npcId: npc.id, scope } } });
-      if (!state || !['ILESO', 'HERIDO', 'GRAVE'].includes(state.condicionFisica)) {
+      if (!state || !CONDICIONES_INTERACTUABLE.includes(state.condicionFisica)) {
         return reply.status(400).send({ error: 'Ese NPC no está aquí para recibir nada' });
       }
 
