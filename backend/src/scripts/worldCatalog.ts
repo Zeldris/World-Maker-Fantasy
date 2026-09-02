@@ -5507,16 +5507,23 @@ export const items: ItemCatalogInput[] = [
     dimensiones: 'Cinturón de cuero de 6 cm de ancho.',
   },
 
-  { 
-    slug: 'panuelo-luto-serhu', 
-    name: 'Pañuelo de luto Serhu', 
-    aliases: ['pañuelo de luto'], 
-    category: 'valor',
-    tipo: 'NARRATIVO', 
-    valorGoirnos: 0,
-    description: 'Tela oscura anudada a la piedra de un túmulo — luto Serhu por alguien que murió con honor.', 
-    dimensiones: 'Tela de 30x30 cm.', 
-    lugarOrigen: 'Clan Serhu.' 
+  {
+    // panuelo-luto-serhu → reemplazado por "Mochila Curtida" (pasada de objetos narrativos sin
+    // uso, 2026-09-02): el pañuelo era puro ritual sin función (valorGoirnos: 0, loot pasivo de
+    // Los Túmulos del Honor) — la usuaria pidió sustituirlo directamente por un cosmético de
+    // espalda crafteable real. Slug sin cambiar. Receta real: MOCHILA_CURTIDA_RECIPE
+    // (crafting.ts, oficio curtidor-orcos-llanuras).
+    slug: 'panuelo-luto-serhu',
+    name: 'Mochila Curtida',
+    aliases: ['mochila curtida', 'mochila'],
+    category: 'cosmetico',
+    tipo: 'NARRATIVO',
+    valorGoirnos: 25,
+    equipSlot: 'COSMETICO_ESPALDA',
+    statBonuses: { inventorySlots: 10 },
+    description: 'Mochila de cuero grueso curtido, correas reforzadas y varios compartimentos — carga de verdad, pensada para pasar días fuera del campamento.',
+    dimensiones: 'Mochila de 45x30 cm.',
+    tier: 4,
   },
 
   { 
@@ -6682,14 +6689,6 @@ export const harvestYields: HarvestYieldInput[] = [
   // de recuerdo/ofrenda; con `EXTRACCION` se colaban en el pop-up de Herborista junto a hierbas de
   // verdad. `PASIVO` los deja donde tienen sentido narrativo: solo salen al "Explorar la zona"
   // genérico (discovery.ts), nunca ligados a un oficio concreto.
-  {
-    sourceSlug: 'ofrendas-tumulos-honor',
-    sourceCategory: 'objeto',
-    metodoObtencion: 'PASIVO',
-    itemSlug: 'panuelo-luto-serhu',
-    cantidad: 1
-  },
-
   // --- Raíz de Fuego ---
 
   {
@@ -6913,7 +6912,6 @@ export const harvestSourceAliases: Record<string, string[]> = {
   'arena-iman': ['arena iman', 'arena imán', 'limaduras'],
   // Tier 0, ronda 2 (roadmap 2026-07-20) — dos fuentes nuevas ligadas a Location, no a fauna/flora.
   'restos-personales-maktor': ['restos personales', 'objetos personales', 'pertenencias de maktor', 'restos personales de maktor'],
-  'ofrendas-tumulos-honor': ['ofrendas', 'ofrendas de los tumulos', 'ofrendas del tumulo', 'ofrendas de los túmulos'],
   // Otras regiones de Berig (2026-07-22) — fuera del núcleo jugable, ver harvestYields arriba.
   'hielo-silice': ['hielo silice', 'hielo sílice'],
   'hierba-del-hierro': ['hierba del hierro', 'hierba de hierro'],
@@ -7051,7 +7049,6 @@ export const harvestSourcesThatAreFaunaWithoutNpc = new Set(['cornante', 'espina
 /// `tumulos-del-honor` ("donde los clanes... entierran a quienes murieron con honor").
 export const harvestSourceHomeLocationSlug: Record<string, string> = {
   'restos-personales-maktor': 'restos-de-maktor',
-  'ofrendas-tumulos-honor': 'tumulos-del-honor',
 
   // Ampliación de lore 2026-08-21 — mismo criterio que arriba, ligado a Location concreta.
   'osario-de-la-manada': 'osario-de-la-manada',
@@ -7143,7 +7140,6 @@ export const harvestSourceRegion: Record<string, string> = {
   'liquen-del-cauce': 'Llanuras del Viento Rojo',
   'matorral-de-cuerno': 'Llanuras del Viento Rojo',
   murgol: 'Llanuras del Viento Rojo',
-  'ofrendas-tumulos-honor': 'Llanuras del Viento Rojo',
   'raiz-de-fuego': 'Llanuras del Viento Rojo',
   // Restos de Maktor (Location `restos-de-maktor`, ver `locations` arriba) tiene
   // region: 'Las Llanuras del Viento Rojo' — dentro del núcleo jugable, solo le faltaba esta fila.
@@ -7246,7 +7242,6 @@ export const harvestSourceDisplayName: Record<string, string> = {
   'hierba-del-hierro': 'Hierba del Hierro',
   'liquen-del-cauce': 'Liquen del Cauce',
   'matorral-de-cuerno': 'Matorral de Cuerno',
-  'ofrendas-tumulos-honor': 'Ofrendas de los Túmulos del Honor',
   'raiz-de-fuego': 'Raíz de Fuego',
   'restos-personales-maktor': 'Restos personales de Maktor',
   'roca-pilares-rotos': 'Roca de Los Pilares Rotos',
@@ -7317,8 +7312,6 @@ export const harvestSourceDescriptions: Record<string, string> = {
     'Musgo húmedo de un verde apagado casi gris, crece en parches allí donde el agua corre justo bajo la superficie — masticado deja un regusto mineral y calma la sed.',
   'matorral-de-cuerno':
     'Arbusto bajo de madera oscura y retorcida en espirales como cuernos entrelazados, corteza agrietada y reseca — la única leña de verdad en la llanura abierta.',
-  'ofrendas-tumulos-honor':
-    'Pequeños objetos dejados sobre las piedras de Los Túmulos del Honor — telas anudadas, huesos con muescas rituales, expuestos durante años al viento y al polvo rojo de la llanura.',
   'raiz-de-fuego':
     'Enredadera parásita de tallos oscuros y nudosos que crece pegada a grietas volcánicas, acumulando calor en su interior hasta un punto crítico — perturbada sin cuidado, libera un gas inflamable con un chasquido seco.',
   'restos-personales-maktor':
@@ -7627,7 +7620,6 @@ export const zonePoints: ZonePointInput[] = [
 
   // Los Túmulos del Honor — Ofrendas tiene homeLocationSlug directo. Mismo criterio de Ruptidar
   // que Restos de Maktor (terreno árido, sin ancla propia en otra Location).
-  { locationSlug: 'tumulos-del-honor', x: 400, y: 240, tipo: 'RECURSO', targetSlug: 'ofrendas-tumulos-honor', label: 'Ofrendas sobre las piedras' },
   { locationSlug: 'tumulos-del-honor', x: 240, y: 440, tipo: 'FAUNA', targetSlug: 'ruptidar', label: 'Ruptidar bajo la arena' },
 
   // El Oasis de Juncos Rojos — sin fauna/recurso propio con homeLocationSlug fijo aquí; match por

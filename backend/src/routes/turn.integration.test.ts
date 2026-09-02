@@ -3770,10 +3770,11 @@ describe('Desaparición de un cadáver tras 48h de ficción (docs/19 pieza 2)', 
 // hace falta repetir para "tener suerte" de que algo salga.
 describe('"Recoger": objetos narrativos "PASIVO" ligados a su Location exacta (auditoría 2026-08-14, reescrito 2026-08-25)', () => {
   const MAKTOR_ITEMS = ['Tablilla quemada', 'Tótem de clan roto'];
-  // 'Hueso marcado de primera cacería' eliminado del catálogo (pasada de objetos narrativos sin
-  // uso, 2026-09-02, decisión explícita de la usuaria: "no tiene valor mantenerlo") — la fuente
-  // 'ofrendas-tumulos-honor' sigue viva con el pañuelo, solo se retira el otro item de la lista.
-  const OFRENDAS_ITEMS = ['Pañuelo de luto Serhu'];
+  // La fuente 'ofrendas-tumulos-honor' (Los Túmulos del Honor) ya no existe (pasada de objetos
+  // narrativos sin uso, 2026-09-02): 'Hueso marcado de primera cacería' eliminado por no aportar
+  // nada ("no tiene valor mantenerlo"), y 'Pañuelo de luto Serhu' reemplazado por "Mochila
+  // Curtida" (cosmético crafteable real, sin drop pasivo) — Los Túmulos del Honor se quedan sin
+  // ningún loot propio.
 
   async function saveAt(locationSlug: string, name: string) {
     const userId = await getDefaultUserId();
@@ -3798,26 +3799,24 @@ describe('"Recoger": objetos narrativos "PASIVO" ligados a su Location exacta (a
     return body.sources.flatMap((cat) => cat.yields.map((y) => y.itemName));
   }
 
-  it('en La Hondonada del Eco, Recoger nunca ofrece objetos ligados a Restos de Maktor/Túmulos del Honor', async () => {
+  it('en La Hondonada del Eco, Recoger nunca ofrece objetos ligados a Restos de Maktor', async () => {
     const saveId = await saveAt('hondonada-del-eco', 'Gorhorn de prueba (recoger hondonada)');
     const names = await recogerSourcesFor(saveId);
-    expect(names.filter((n) => MAKTOR_ITEMS.includes(n) || OFRENDAS_ITEMS.includes(n))).toEqual([]);
+    expect(names.filter((n) => MAKTOR_ITEMS.includes(n))).toEqual([]);
     await prisma.save.delete({ where: { id: saveId } });
   }, 20_000);
 
-  it('en Los Restos de Maktor, Recoger SÍ ofrece los objetos de Maktor (y nunca los de Ofrendas)', async () => {
+  it('en Los Restos de Maktor, Recoger SÍ ofrece los objetos de Maktor', async () => {
     const saveId = await saveAt('restos-de-maktor', 'Gorhorn de prueba (recoger restos maktor)');
     const names = await recogerSourcesFor(saveId);
     expect(MAKTOR_ITEMS.every((n) => names.includes(n))).toBe(true);
-    expect(names.some((n) => OFRENDAS_ITEMS.includes(n))).toBe(false);
     await prisma.save.delete({ where: { id: saveId } });
   }, 20_000);
 
-  it('en Los Túmulos del Honor, Recoger SÍ ofrece las ofrendas (y nunca los objetos de Maktor)', async () => {
+  it('en Los Túmulos del Honor, Recoger nunca ofrece objetos de Maktor (sin loot propio desde 2026-09-02)', async () => {
     const saveId = await saveAt('tumulos-del-honor', 'Gorhorn de prueba (recoger tumulos)');
     const names = await recogerSourcesFor(saveId);
-    expect(OFRENDAS_ITEMS.every((n) => names.includes(n))).toBe(true);
-    expect(names.some((n) => MAKTOR_ITEMS.includes(n))).toBe(false);
+    expect(names.filter((n) => MAKTOR_ITEMS.includes(n))).toEqual([]);
     await prisma.save.delete({ where: { id: saveId } });
   }, 20_000);
 });

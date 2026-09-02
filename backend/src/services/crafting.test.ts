@@ -97,7 +97,7 @@ function row(id: string, catalogSlug: string, cantidad?: number): InventoryRowLi
 }
 
 describe('CRAFTING_RECIPES', () => {
-  it('tiene las 47 recetas esperadas, cada una con una clave única', () => {
+  it('tiene las 48 recetas esperadas, cada una con una clave única', () => {
     expect(CRAFTING_RECIPES.map((r) => r.key)).toEqual([
       'axeRepair',
       'smokeMeat',
@@ -158,6 +158,9 @@ describe('CRAFTING_RECIPES', () => {
       'corredorHood',
       'trophyBelt',
       'handAxe',
+      // Mochila Curtida — reemplaza al Pañuelo de luto Serhu (pasada de objetos narrativos sin
+      // uso, 2026-09-02): cosmético de espalda crafteable real, statBonuses inventorySlots.
+      'tannedBackpack',
     ]);
   });
 });

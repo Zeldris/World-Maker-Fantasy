@@ -659,6 +659,33 @@ export const CORREDOR_HOOD_RECIPE: CraftingRecipe = {
     'El personaje curte y ajusta la capucha aquí mismo, en el Campamento del Clan Serhu — narra la escena con naturalidad. El objeto ya se gestiona automáticamente por el backend.',
 };
 
+// Mochila Curtida — reemplaza al Pañuelo de luto Serhu (pasada de objetos narrativos sin uso,
+// 2026-09-02, decisión explícita de la usuaria: "un cosmético de espalda... que se consigue
+// crafteándola con peletería y añade 10 slots a tu inventario de tier 4"). Ingrediente de piel por
+// CATEGORÍA (mismo criterio que SAND_POUCH_RECIPE, cantidad más alta por ser tier 4) + un lingote
+// de Yerreo para las correas y broches reforzados — coherente con "correas reforzadas" de la
+// descripción del objeto.
+export const TANNED_BACKPACK_RECIPE: CraftingRecipe = {
+  key: 'tannedBackpack',
+  verbRegex: /confeccion|cos[eo]|curt|prepar|fabric|crear|creo/,
+  nounRegex: /mochila/,
+  location: 'campamento-serhu',
+  ingredients: [
+    { match: { kind: 'category', tipo: 'RECURSO', category: 'piel' }, cantidad: 3, label: 'piel curtida' },
+    { match: { kind: 'exact', catalogSlug: 'lingote-yerreo' }, cantidad: 1, label: 'lingote de Yerreo' },
+  ],
+  resultName: 'Mochila Curtida',
+  resultCatalogSlug: 'panuelo-luto-serhu',
+  resultDescription: 'Mochila de cuero grueso curtido, correas reforzadas y varios compartimentos — carga de verdad, pensada para pasar días fuera del campamento.',
+  tier: 4,
+  requisitos: { destreza: 10 },
+  oficio: 'curtidor-orcos-llanuras',
+  narrationWant:
+    'El personaje quiere confeccionar una Mochila Curtida, pero no lleva encima suficiente piel curtida (hacen falta al menos 3) y un lingote de Yerreo a la vez (o no está en el Campamento del Clan Serhu) — narra que lo intenta o lo considera, pero no que la confecciona de verdad.',
+  narrationDo:
+    'El personaje curte y cose la mochila aquí mismo, en el Campamento del Clan Serhu, remachando las correas con el lingote de Yerreo — narra la escena con naturalidad. El objeto ya se gestiona automáticamente por el backend.',
+};
+
 export const TROPHY_BELT_RECIPE: CraftingRecipe = {
   key: 'trophyBelt',
   verbRegex: /confeccion|cos[eo]|curt|prepar|fabric|crear|creo/,
@@ -1122,6 +1149,7 @@ export const CRAFTING_RECIPES: CraftingRecipe[] = [
   CORREDOR_HOOD_RECIPE,
   TROPHY_BELT_RECIPE,
   HAND_AXE_RECIPE,
+  TANNED_BACKPACK_RECIPE,
 ];
 
 export function detectsCraftIntent(recipe: CraftingRecipe, action: string): boolean {
