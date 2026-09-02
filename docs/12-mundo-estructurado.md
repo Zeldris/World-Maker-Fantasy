@@ -435,14 +435,15 @@ Instrucción explícita de la usuaria: **"El loot nunca será aleatorio, será l
 3. "Lootear" = el backend **lee** esa lista y copia filas a `InventoryItem`. Sin tirada, sin tabla de probabilidades, sin que el modelo proponga objetos.
 4. El campo `newItem` del JSON de narración **queda restringido**: cuando hay NPC en escena o despiece activo, el backend IGNORA `newItem` y usa la lista (el prompt además instruye al modelo para dejarlo en null en esos casos). `newItem` sobrevive solo para el caso legítimo que ya cubría: objetos fabricados o hallados sin fuente estructurada (y como pendiente futuro, incluso eso puede pasar a validarse contra el catálogo).
 
-Coherencia con la decisión de mecánicas 6: los objetos siguen **sin stats ni bonificadores** — el catálogo aporta identidad y procedencia, no números de daño.
+Coherencia con la decisión de mecánicas 5 (revertida en parte el 2026-08-13): la mayoría de objetos siguen sin stats, pero el equipo real puede llevar `statBonuses` — el catálogo aporta identidad y procedencia siempre, y números reales cuando el objeto es equipable (ver `backend/src/services/equipment.ts`).
 
 ### 4.2 Modelo de datos
 
 ```prisma
 /// Catálogo cerrado de objetos del mundo (armas, herramientas, materiales, consumibles,
-/// documentos, objetos de valor narrativo). Sin bonificadores ni stats (decisión de
-/// mecánicas 6): description es contexto para el Narrador. Sembrado desde worldCatalog.ts.
+/// documentos, objetos de valor narrativo). description es siempre contexto para el
+/// Narrador; statBonuses (decisión de mecánicas 5, revertida en parte 2026-08-13) añade
+/// bonificadores reales cuando el objeto es equipable. Sembrado desde worldCatalog.ts.
 model ItemCatalog {
   id          String  @id @default(cuid())
   worldId     String
