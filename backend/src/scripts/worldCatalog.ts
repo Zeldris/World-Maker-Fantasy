@@ -5577,10 +5577,17 @@ export const items: ItemCatalogInput[] = [
     // compartirlo colisionaba y siempre ganaba el primero declarado. El nombre completo (3
     // palabras) ya es lo bastante corto sin necesitar uno.
     category: 'valor',
-    tipo: 'NARRATIVO', 
+    tipo: 'NARRATIVO',
     valorGoirnos: 12,
-    description: 'Limaduras que dejan las tormentas — los herreros goirntes pagan bien por un saquito.', 
-    dimensiones: 'Saquito de 10x8 cm.' 
+    description: 'Limaduras que dejan las tormentas — los herreros goirntes pagan bien por un saquito.',
+    dimensiones: 'Saquito de 10x8 cm.',
+    // PENDIENTE DE IMPLEMENTAR (auditoría de lore en profundidad 2026-09-02, confirmado de nuevo
+    // en la pasada de objetos narrativos sin uso, misma fecha): areas.md/items.md prometen que
+    // este saquito es "el único ítem que evita perder la Arena Imán suelta del inventario al
+    // entrar en Las Agujas Imán" — ni ese effectKey ni la lógica de pérdida de Arena Imán en la
+    // zona existen hoy en el motor. Ya es craftable de verdad (SAND_POUCH_RECIPE, crafting.ts),
+    // solo falta el efecto protector en sí. Ver memoria
+    // tarkor_pasada_objetos_narrativos_2026-09-02. No implementado todavía.
   },
 
   { 
