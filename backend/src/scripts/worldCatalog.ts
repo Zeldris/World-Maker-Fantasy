@@ -5037,15 +5037,22 @@ export const items: ItemCatalogInput[] = [
   },
 
   {
+    // Renombrado por completo (pasada de objetos narrativos sin uso, 2026-09-02) — de "Cuerno de
+    // Cuernahoja" (cuerno en bruto sin más función) a un material de crafteo real: el casquillo de
+    // hueso que enganchase la punta de una lanza al asta, oficio típico orco de las Llanuras.
     slug: 'cuerno-cuernahoja',
-    name: 'Cuerno de Cuernahoja',
-    aliases: ['cuerno de cuernahoja'],
+    name: 'Enganche de hueso de Cuernahoja',
+    aliases: ['cuerno de cuernahoja', 'enganche de hueso', 'enganche de cuernahoja'],
     category: 'cuerno',
     tipo: 'RECURSO',
-    description: 'Cuerno fino y largo de Cuernahoja, sin apenas espiral — el de las hembras, más ancho, es la variante de mayor calidad.',
-    dimensiones: 'Cuerno de 30 a 40 cm.',
+    description: 'Casquillo de hueso de Cuernahoja, vaciado y pulido para encajar la punta de una lanza en el asta — el de las hembras, más ancho, es la variante de mayor calidad.',
+    dimensiones: 'Casquillo de 30 a 40 cm.',
     tier: 2,
     valorGoirnos: 3,
+    // PENDIENTE DE IMPLEMENTAR (misma pasada, decisión explícita de la usuaria): ingrediente
+    // material para craftear una Lanza, específicamente el enganche que une la punta al asta —
+    // crafteo típico de los orcos de las Llanuras. Ver memoria
+    // tarkor_pasada_objetos_narrativos_2026-09-02. No implementado todavía.
   },
 
   {
@@ -5644,19 +5651,9 @@ export const items: ItemCatalogInput[] = [
     lugarOrigen: 'Los Restos de Maktor, Llanuras del Viento Rojo (madera de ciénaga, de origen distante).',
   },
 
-  // 2 trofeos nuevos (2026-08-24, Grupo 3 § 27 recursos/materiales sin receta) — mismo patrón que
-  // garra-rondador/sal-trueque: curiosidad/valor real, sin mecánica de equipo.
-  {
-    slug: 'cuerno-caza-tallado',
-    name: 'Cuerno de caza tallado',
-    aliases: ['cuerno tallado', 'cuerno de caza'],
-    category: 'valor',
-    tipo: 'NARRATIVO',
-    valorGoirnos: 8,
-    description: 'Cuerno de Cuernahoja vaciado y tallado con motivos de caza — suena bajo y largo, se oye a kilómetros en la llanura abierta.',
-    dimensiones: 'Cuerno de 35 cm.',
-    lugarOrigen: 'Los Pastos de la Deriva, Llanuras del Viento Rojo.',
-  },
+  // cuerno-caza-tallado eliminado (pasada de objetos narrativos sin uso, 2026-09-02) — era un
+  // instrumento decorativo redundante con 'cuerno-cuernahoja' (más arriba en este archivo, ahora
+  // renombrado "Enganche de hueso de Cuernahoja" — casquillo real de lanza, no cuerno decorativo).
   {
     slug: 'vela-cera-lebude',
     name: 'Vela de cera de Lebude',
