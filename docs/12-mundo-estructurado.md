@@ -521,7 +521,7 @@ Todo lo que ya existe en `rpgtarkor/items.md` § Armamento y loot + el inventari
 | `sello-patrulla-concordia` | Sello de patrulla de la Concordia | documento | Acredita (o incrimina) a quien lo lleva |
 | `amuleto-hueso` | Amuleto de hueso | valor | Vértebras/colmillos de presa importante |
 | `abalorios` | Abalorios variados | valor | Trueque menor |
-| `marca-de-clan` | Marca de clan | valor | El clan concreto va en `notas` |
+| `marca-de-clan` | Cinturón de cargador | cosmetico | Renombrado 2026-09-02 (era "Marca de clan", solo decorativo) — equipable, `statBonuses: { inventorySlots: 4 }`, el clan concreto sigue yendo en `notas` de quien lo lleva |
 | `totem-clan-roto` | Tótem de clan roto | valor | Gancho "Maktor superviviente" — **también ingrediente real de `MAKTOR_CLAN_TOTEM_RECIPE` (construction.ts)**, hallazgo de la ampliación de lore 2026-08-21 que hizo revertir su retirada inicial (ver `areas.md`, pendiente de confirmar con la usuaria si se mantiene tal cual) |
 | `totem-maktor` | Tótem del Clan Maktor | valor | ÚNICO — el de Gorhorn; en catálogo para que su nombre sea estable en hechos y narración |
 

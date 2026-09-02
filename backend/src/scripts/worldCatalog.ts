@@ -2027,10 +2027,10 @@ export const npcs: NpcInput[] = [
       { itemSlug: 'hacha-guerra-orca', notas: 'Con la marca del Clan Serhu grabada en la cabeza' },
       { itemSlug: 'lanza-hueso-gargantua' },
       { itemSlug: 'amuleto-hueso', notas: 'Colmillos de corredor de su primera cacería' },
-      // marca-de-clan (auditoría de items sin uso, 2026-08-24): huérfana en ItemCatalog desde
-      // antes de esta sesión — el propio Kort'ikar del Clan Serhu es el portador natural del
-      // símbolo tallado de su clan, no un objeto suelto de mercado.
-      { itemSlug: 'marca-de-clan', notas: 'El símbolo tallado del Clan Serhu, como corresponde a su Kort\'ikar' },
+      // marca-de-clan → renombrado a "Cinturón de cargador" (pasada de objetos narrativos sin
+      // uso, 2026-09-02) — el propio Kort'ikar del Clan Serhu es el portador natural del símbolo
+      // tallado de su clan, ahora en la hebilla de un cinturón con función real (+4 slots).
+      { itemSlug: 'marca-de-clan', notas: 'El símbolo tallado del Clan Serhu en la hebilla, como corresponde a su Kort\'ikar' },
       { itemSlug: 'racion-viaje', cantidad: 3 },
       { itemSlug: 'ascuas-raiz-fuego', cantidad: 1 },
       { itemSlug: 'odre-agua' },
@@ -2902,7 +2902,10 @@ export interface ItemCatalogInput {
   /// par statBonusAttribute/statBonusAmount) — armas (uno o más de los 7 atributos jugables) y,
   /// desde el slot de defensa, armaduras reales ('defensa', resta a la dificultad de contraataque
   /// en npcScene.ts). El resto del catálogo sigue siendo puramente narrativo.
-  statBonuses?: Partial<Record<Attribute | 'defensa', number>>;
+  /// 'inventorySlots' (rediseño de profesiones, 2026-08-07): cosméticos con +N slots de
+  /// inventario, ver `effectiveInventorySlotsBonus` (equipment.ts) — el tipo del catálogo de seed
+  /// no lo incluía todavía porque hasta el 2026-09-02 ningún objeto real lo usaba.
+  statBonuses?: Partial<Record<Attribute | 'defensa' | 'inventorySlots', number>>;
   /// Medidas físicas aproximadas, texto libre (2026-07-22, "para los objetos sus medidas y su
   /// lugar de origen... que eso se refleje en los prompts") — para que el generador de imágenes
   /// tenga una cifra concreta en vez de tener que inventarla o dejarla ambigua.
@@ -5488,14 +5491,20 @@ export const items: ItemCatalogInput[] = [
   // y Túmulos del Honor sin objeto propio, rareza cósmica del Origen Azul, comercio goirntes
   // ampliado, y dos formas preparadas más (mismo patrón que cataplasma-salvia-polvo).
   {
+    // Renombrado y recalibrado (pasada de objetos narrativos sin uso, 2026-09-02): "Marca de
+    // clan" era un colgante puramente decorativo sin ningún stat — pasa a ser un cinturón real con
+    // función práctica, manteniendo el símbolo de clan tallado como parte del diseño visual (ver
+    // notas del loadout que lo entrega, más abajo en este archivo).
     slug: 'marca-de-clan',
-    name: 'Marca de clan',
+    name: 'Cinturón de cargador',
+    aliases: ['marca de clan', 'cinturon de cargador'],
     category: 'cosmetico',
     tipo: 'NARRATIVO',
     valorGoirnos: 4,
     equipSlot: 'COSMETICO_CINTURA',
-    description: 'Colgante o tira de cuero con el símbolo tallado de un clan — cuál exactamente se especifica en las notas.',
-    dimensiones: 'Colgante de 5 cm.',
+    statBonuses: { inventorySlots: 4 },
+    description: 'Ancho cinturón de cuero reforzado con bolsas y correas, el símbolo de un clan tallado en la hebilla — pensado para cargar de verdad, no solo para lucirlo.',
+    dimensiones: 'Cinturón de cuero de 6 cm de ancho.',
   },
 
   { 
