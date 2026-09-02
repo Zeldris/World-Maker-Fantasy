@@ -10,7 +10,7 @@ import { recordEntityDiscoveries } from '../../services/entityDiscovery.js';
 import type { AttributeBlock } from '../../services/dice.js';
 import { iniciarCombatEncounter, resolverTurnosAutonomosHastaJugadora } from '../../services/combateMultipleOrquestacion.js';
 import { MAX_COMBATIENTES_POR_BANDO } from '../../services/combateMultiple.js';
-import { rejectIfEnded } from './shared.js';
+import { rejectIfEnded, lockRowForUpdate } from './shared.js';
 import { advanceFictionalMinutes, formatFictionalDate } from '../../services/worldClock.js';
 
 // Checklist consolidado P3.6 (2026-08-27) — "Cazar" limpio no avanzaba el reloj de ficción, mismo
@@ -314,9 +314,8 @@ export async function cazarRoutes(app: FastifyInstance) {
       // `pendingCombatNpcSlugs` dentro de la transacción antes de escribir nada — la segunda
       // petición ve ya el resultado de la primera y aborta sin duplicar.
       const logEntry = await prisma.$transaction(async (tx) => {
-        await tx.$queryRaw`SELECT id FROM "Save" WHERE id = ${save.id} FOR UPDATE`;
-        const freshSave = await tx.save.findUniqueOrThrow({ where: { id: save.id }, select: { pendingCombatNpcSlugs: true } });
-        if ((freshSave.pendingCombatNpcSlugs as string[]).includes(npc.slug)) return null;
+        const freshSave = await lockRowForUpdate<{ pendingCombatNpcSlugs: string[] }>(tx, 'Save', save.id, ['pendingCombatNpcSlugs']);
+        if (freshSave.pendingCombatNpcSlugs.includes(npc.slug)) return null;
 
         await tx.npcState.upsert({
           where: { saveId_npcId_scope: { saveId: save.id, npcId: npc.id, scope } },
@@ -409,7 +408,7 @@ export async function cazarRoutes(app: FastifyInstance) {
       // (`SELECT ... FOR UPDATE`, mismo patrón que `progression.ts`/`companeros.ts`) justo antes de
       // crear el encuentro — la segunda petición ve ya el encuentro que dejó la primera.
       const resultado = await prisma.$transaction(async (tx) => {
-        await tx.$queryRaw`SELECT id FROM "Save" WHERE id = ${save.id} FOR UPDATE`;
+        await lockRowForUpdate(tx, 'Save', save.id, ['id']);
         const activeEncounterFresco = await tx.combatEncounter.findFirst({ where: { saveId: save.id, estado: 'EN_CURSO', jugable: true } });
         if (activeEncounterFresco) return null;
         await iniciarCombatEncounter(tx, save.id, [jugador, ...fragmentosParaCrear[0]]);

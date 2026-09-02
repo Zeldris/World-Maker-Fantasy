@@ -38,6 +38,25 @@ export function rejectIfEnded(save: { endedAt: Date | null }, reply: FastifyRepl
   return false;
 }
 
+/// Bloquea una fila con `SELECT ... FOR UPDATE` y relee las columnas pedidas dentro de la misma
+/// transacción — deuda técnica cerrada (auditoría 2026-09-01): el mismo `$queryRaw` con `FOR
+/// UPDATE` estaba copiado 7 veces entre `progression.ts`, `session.ts`, `cazar.ts` y
+/// `companeros.ts`, cada uno con su propio comentario explicando el mismo patrón de condición de
+/// carrera (doble clic / dos peticiones casi simultáneas viendo el mismo estado stale antes de que
+/// ninguna escriba). `columns` va sin comillas ni interpolación de valores — solo nombres de
+/// columna literales del propio caller, nunca texto de request. Cuando solo hace falta serializar
+/// sin leer nada (el caller solo quiere el lock), pasa `['id']` y descarta la fila devuelta.
+export async function lockRowForUpdate<T extends Record<string, unknown>>(
+  tx: Prisma.TransactionClient,
+  table: 'Save' | 'CombatParticipant',
+  id: string,
+  columns: string[],
+): Promise<T> {
+  const columnList = Prisma.raw(columns.map((c) => `"${c}"`).join(', '));
+  const [row] = await tx.$queryRaw<T[]>`SELECT ${columnList} FROM ${Prisma.raw(`"${table}"`)} WHERE id = ${id} FOR UPDATE`;
+  return row;
+}
+
 /// Resuelve `targetNpcSlug` (startingQuests.ts) al id real del Npc de catálogo de este mundo —
 /// mismo mecanismo que narrador.ts usa para misiones propuestas en juego (Quest.targetNpcId),
 /// pero aquí se resuelve de una vez para las misiones "de serie" en vez de por coincidencia de

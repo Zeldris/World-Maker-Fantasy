@@ -6,7 +6,7 @@ import { effectiveAttributes, effectiveDefense } from '../../services/equipment.
 import { rollCheck } from '../../services/dice.js';
 import type { AttributeBlock } from '../../services/dice.js';
 import { oneStepWorseThan } from '../../services/death.js';
-import { rejectIfEnded } from './shared.js';
+import { rejectIfEnded, lockRowForUpdate } from './shared.js';
 
 /// Control del estado de una partida EN CURSO (deuda técnica 2026-07-30, split de saves.ts):
 /// pausar/reanudar, cancelar una acción por tiempo, y huir antes de que un combate llegue a
@@ -169,9 +169,7 @@ export async function sessionRoutes(app: FastifyInstance) {
     // fallaba se persistía SIEMPRE, sin comparar contra el estado fresco, aunque la primera ya
     // hubiera resuelto el mismo intento de huida con éxito. Ahora se compara siempre.
     const outcome = await prisma.$transaction(async (tx) => {
-      const [locked] = await tx.$queryRaw<{ pendingCombatNpcSlugs: string[] | null }[]>`
-        SELECT "pendingCombatNpcSlugs" FROM "Save" WHERE id = ${save.id} FOR UPDATE
-      `;
+      const locked = await lockRowForUpdate<{ pendingCombatNpcSlugs: string[] | null }>(tx, 'Save', save.id, ['pendingCombatNpcSlugs']);
       const freshSlugs = locked.pendingCombatNpcSlugs ?? [];
       const mismoSet = freshSlugs.length === pendingSlugs.length && freshSlugs.every((s) => pendingSlugs.includes(s));
       if (!mismoSet) return { kind: 'cambiado' as const };
@@ -250,9 +248,7 @@ export async function sessionRoutes(app: FastifyInstance) {
     // completo en /combat/flee) — un turno real de /turn/narrate en paralelo puede estar
     // actualizando `pendingCombatNpcSlugs` justo ahora.
     const outcomeEnCurso = await prisma.$transaction(async (tx) => {
-      const [locked] = await tx.$queryRaw<{ pendingCombatNpcSlugs: string[] | null }[]>`
-        SELECT "pendingCombatNpcSlugs" FROM "Save" WHERE id = ${save.id} FOR UPDATE
-      `;
+      const locked = await lockRowForUpdate<{ pendingCombatNpcSlugs: string[] | null }>(tx, 'Save', save.id, ['pendingCombatNpcSlugs']);
       const freshSlugs = locked.pendingCombatNpcSlugs ?? [];
       const mismoSet = freshSlugs.length === pendingSlugs.length && freshSlugs.every((s) => pendingSlugs.includes(s));
       if (!mismoSet) return { kind: 'cambiado' as const };
@@ -326,9 +322,7 @@ export async function sessionRoutes(app: FastifyInstance) {
         // /combat/flee) — sin el lock explícito, dos transacciones concurrentes pueden leer
         // `dismissedGrupo: false` ANTES de que ninguna escriba, dejando pasar a las dos.
         const logEntry = await prisma.$transaction(async (tx) => {
-          const [locked] = await tx.$queryRaw<{ dismissedGrupo: boolean | null }[]>`
-            SELECT "dismissedGrupo" FROM "CombatParticipant" WHERE id = ${participantId} FOR UPDATE
-          `;
+          const locked = await lockRowForUpdate<{ dismissedGrupo: boolean | null }>(tx, 'CombatParticipant', participantId, ['dismissedGrupo']);
           if (locked.dismissedGrupo) return null;
           await tx.combatParticipant.update({ where: { id: participantId }, data: { dismissedGrupo: true } });
           return tx.logEntry.create({ data: { saveId: save.id, channel: 'CHARACTER', text, timeLabel } });
@@ -355,9 +349,7 @@ export async function sessionRoutes(app: FastifyInstance) {
       // array, no se rompe), pero cada una creaba su propio LogEntry — 2 narraciones duplicadas de
       // la misma decisión. Aborta con 409 si el slug ya no está, en vez de escribir de nuevo.
       const outcome = await prisma.$transaction(async (tx) => {
-        const [locked] = await tx.$queryRaw<{ pendingCombatNpcSlugs: string[] | null }[]>`
-          SELECT "pendingCombatNpcSlugs" FROM "Save" WHERE id = ${save.id} FOR UPDATE
-        `;
+        const locked = await lockRowForUpdate<{ pendingCombatNpcSlugs: string[] | null }>(tx, 'Save', save.id, ['pendingCombatNpcSlugs']);
         const freshBefore = locked.pendingCombatNpcSlugs ?? [];
         if (!freshBefore.includes(npc.slug)) return { kind: 'ya-resuelto' as const };
 

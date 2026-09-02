@@ -5,7 +5,7 @@ import { equipSlotFamily, effectiveAttributes, effectiveInventorySlotsBonus } fr
 import { inventoryCapacityFor, totalInventoryUnits } from '../../services/inventoryCapacity.js';
 import type { AttributeBlock, Attribute } from '../../services/dice.js';
 import { companionSlotsForRecipeKey } from '../../services/construction.js';
-import { rejectIfEnded } from './shared.js';
+import { rejectIfEnded, lockRowForUpdate } from './shared.js';
 import {
   esDomador,
   felicidadUmbralFor,
@@ -378,7 +378,7 @@ export async function companerosRoutes(app: FastifyInstance) {
       // fila de `Save` con `SELECT ... FOR UPDATE` para serializar confirmaciones de la MISMA
       // partida — la segunda ve ya el estado que dejó la primera antes de decidir nada.
       const outcome = await prisma.$transaction(async (tx) => {
-        await tx.$queryRaw`SELECT id FROM "Save" WHERE id = ${save.id} FOR UPDATE`;
+        await lockRowForUpdate(tx, 'Save', save.id, ['id']);
 
         // Slot garantizado del Domador (§2) — solo para fauna con Domador real; el resto compite
         // por `companionSlotsForRecipeKey` como cualquier compañero.

@@ -2,7 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import { prisma } from '../../lib/prisma.js';
 import { attributeCapForLevel } from '../../services/progression.js';
 import type { AttributeBlock, Attribute } from '../../services/dice.js';
-import { VALID_ATTRIBUTES, rejectIfEnded } from './shared.js';
+import { VALID_ATTRIBUTES, rejectIfEnded, lockRowForUpdate } from './shared.js';
 import { classAbilityUnlocksFor, especializacionAbilityUnlocksFor, especializacionesConHuecosPara } from '../../services/classAbilities.js';
 import { Clase, Especializacion } from '@prisma/client';
 
@@ -56,9 +56,10 @@ export async function progressionRoutes(app: FastifyInstance) {
       let outcome: { kind: 'ok'; attributes: AttributeBlock; pendingAttributePoints: number } | { kind: 'no-points' } | { kind: 'at-max' };
       try {
         outcome = await prisma.$transaction(async (tx) => {
-          const [locked] = await tx.$queryRaw<{ pendingAttributePoints: number; attributes: AttributeBlock }[]>`
-            SELECT "pendingAttributePoints", attributes FROM "Save" WHERE id = ${save.id} FOR UPDATE
-          `;
+          const locked = await lockRowForUpdate<{ pendingAttributePoints: number; attributes: AttributeBlock }>(tx, 'Save', save.id, [
+            'pendingAttributePoints',
+            'attributes',
+          ]);
           if (locked.pendingAttributePoints <= 0) return { kind: 'no-points' };
           if (locked.attributes[attribute] >= attributeCap) return { kind: 'at-max' };
           const updated = await tx.save.update({

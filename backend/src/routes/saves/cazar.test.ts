@@ -332,19 +332,17 @@ describe('POST /saves/:id/cazar/confirmar', () => {
     findFirstNpcReal.mockReset().mockResolvedValue(null);
     transaction.mockReset().mockImplementation((cb: (tx: unknown) => unknown) =>
       cb({
-        // Condición de carrera real (auditoría de código 2026-08-25) — la creación del
-        // CombatEncounter ahora bloquea la fila de Save (`$queryRaw` ... FOR UPDATE) y relee
-        // `combatEncounter.findFirst` DENTRO de la misma transacción antes de crear; por defecto
-        // ningún test de este archivo tiene un encuentro activo ya (mismo valor por defecto que
-        // `findFirstCombatEncounter` fuera de la transacción).
-        $queryRaw: vi.fn().mockResolvedValue(undefined),
+        // Condición de carrera real (auditoría de código 2026-08-25, ampliada 2026-09-01) — tanto
+        // la creación del CombatEncounter (lock vacío, solo serializa antes de releer
+        // `combatEncounter.findFirst`) como la caza limpia sin combate (releen
+        // `pendingCombatNpcSlugs`) pasan por `lockRowForUpdate` (shared.ts), que envuelve un único
+        // `$queryRaw` — por defecto sin combate activo y sin slugs pendientes, igual que
+        // `SAVE_BASE.pendingCombatNpcSlugs`.
+        $queryRaw: vi.fn().mockResolvedValue([{ id: 'save1', pendingCombatNpcSlugs: [] }]),
         npcState: { upsert: (...args: unknown[]) => upsertNpcState(...args) },
         worldPopulation: { updateMany: (...args: unknown[]) => updateManyWorldPopulation(...args) },
         worldState: { update: (...args: unknown[]) => updateWorldState(...args) },
         logEntry: { create: (...args: unknown[]) => createLogEntry(...args) },
-        // Condición de carrera real (auditoría 2026-09-01) — caza limpia sin combate relee
-        // `pendingCombatNpcSlugs` DENTRO de la transacción (mismo criterio que `$queryRaw` de
-        // arriba) antes de escribir; por defecto vacío, igual que `SAVE_BASE.pendingCombatNpcSlugs`.
         save: { update: (...args: unknown[]) => updateSave(...args), findUniqueOrThrow: vi.fn().mockResolvedValue({ pendingCombatNpcSlugs: [] }) },
         combatEncounter: {
           create: (...args: unknown[]) => createCombatEncounter(...args),
