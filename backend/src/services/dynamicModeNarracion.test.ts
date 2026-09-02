@@ -6,6 +6,7 @@ vi.mock('../lib/ollama.js', () => ({
 }));
 
 const { narrarVueltaModoDinamico } = await import('./dynamicModeNarracion.js');
+const { hasSecondPersonLeak } = await import('./narrador.js');
 
 const BASE_INPUT = {
   tipo: 'NPC' as const,
@@ -54,12 +55,55 @@ describe('narrarVueltaModoDinamico — guard determinista de "nunca sustituye co
   it('sigue respetando cierra:true del modelo cuando la narración no tiene vocabulario de golpe', async () => {
     ollamaGenerate.mockResolvedValueOnce({
       text: JSON.stringify({
-        narration: 'Gistera Koh asiente y se marcha, satisfecha con tu respuesta.',
+        narration: 'Gistera Koh asiente y se marcha, satisfecha con la respuesta de Gorhorn.',
         opciones: ['Seguir tu camino', 'Despedirte'],
         cierra: true,
       }),
     });
     const result = await narrarVueltaModoDinamico(BASE_INPUT);
     expect(result.cierra).toBe(true);
+  });
+});
+
+/// Persona gramatical (checklist-pruebas-juego.md: "confirmado en vivo que el modelo pequeño la
+/// ignora" — turno real "Te ergues... impactarte..."): este flujo tiene su propio narrador,
+/// separado de narrador.ts § narrateAction (que ya reintentaba con hasSecondPersonLeak) — sin este
+/// guard, una fuga a 2ª persona se aceptaba tal cual, sin ningún reintento.
+describe('narrarVueltaModoDinamico — guard de persona gramatical (2ª persona)', () => {
+  beforeEach(() => {
+    ollamaGenerate.mockReset();
+  });
+
+  it('descarta un intento con fuga a 2ª persona y usa el siguiente intento válido', async () => {
+    ollamaGenerate
+      .mockResolvedValueOnce({
+        text: JSON.stringify({
+          narration: 'Te ergues frente a Gistera Koh, que se prepara para impactarte con su vara.',
+          opciones: ['Retroceder', 'Sostenerle la mirada'],
+          cierra: false,
+        }),
+      })
+      .mockResolvedValueOnce({
+        text: JSON.stringify({
+          narration: 'Gorhorn se yergue frente a Gistera Koh, que se prepara para golpearlo con su vara.',
+          opciones: ['Retroceder', 'Sostenerle la mirada'],
+          cierra: false,
+        }),
+      });
+    const result = await narrarVueltaModoDinamico(BASE_INPUT);
+    expect(result.narration).toBe('Gorhorn se yergue frente a Gistera Koh, que se prepara para golpearlo con su vara.');
+    expect(ollamaGenerate).toHaveBeenCalledTimes(2);
+  });
+
+  it('si los 2 intentos tienen fuga a 2ª persona, cae al texto determinista (sin fuga, mismo criterio que el resto de guards)', async () => {
+    ollamaGenerate.mockResolvedValue({
+      text: JSON.stringify({
+        narration: 'Te preparas para responder a Gistera Koh.',
+        opciones: ['Retroceder', 'Sostenerle la mirada'],
+        cierra: false,
+      }),
+    });
+    const result = await narrarVueltaModoDinamico(BASE_INPUT);
+    expect(hasSecondPersonLeak(result.narration)).toBe(false);
   });
 });

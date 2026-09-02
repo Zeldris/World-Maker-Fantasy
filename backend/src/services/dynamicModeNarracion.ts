@@ -1,7 +1,7 @@
 import { env } from '../config/env.js';
 import { ollamaGenerate } from '../lib/ollama.js';
 import type { DynamicModeTipo } from './dynamicMode.js';
-import { hasCombatVocabulary } from './narrador.js';
+import { hasCombatVocabulary, hasSecondPersonLeak } from './narrador.js';
 
 /// Narración por LLM de UNA vuelta del "modo dinámico" (2026-08-27, Pieza 4 de "Dinamismo del
 /// mundo") — deliberadamente MÁS SIMPLE que `narrador.ts` § `narrateAction`/`buildNarrationPrompt`
@@ -93,7 +93,12 @@ Narra en 1-2 frases cortas qué pasa en esta vuelta, ANCLADA en los datos reales
 export function deterministicDynamicModeTurno(input: DynamicModeTurnoInput): DynamicModeTurnoOutput {
   const quien = input.targetName;
   return {
-    narration: input.tipo === 'NPC' ? `${quien} se acerca, con intención de hablar contigo.` : `${quien} anda cerca, atento a lo que hagas.`,
+    // 3ª persona real (bug propio encontrado 2026-09-03 al escribir el test del guard nuevo de
+    // persona gramatical): "hablar contigo"/"lo que hagas" son fugas a 2ª persona en el propio
+    // texto de fallback determinista — invisibles hasta ahora porque nunca se ejercitaba con
+    // hasSecondPersonLeak, y en la práctica el LLM casi siempre acierta antes de agotar los 2
+    // intentos (este texto solo se ve si Ollama falla dos veces seguidas).
+    narration: input.tipo === 'NPC' ? `${quien} se acerca, con intención de hablar.` : `${quien} anda cerca, atento a la escena.`,
     opciones: ['Acercarte', 'Ignorarlo y seguir tu camino'],
     cierra: input.vuelta >= input.maxVueltas,
   };
@@ -117,6 +122,12 @@ export async function narrarVueltaModoDinamico(input: DynamicModeTurnoInput): Pr
       const parsed = JSON.parse(text) as Partial<DynamicModeTurnoOutput>;
       const narration = (parsed.narration ?? '').trim();
       const opciones = Array.isArray(parsed.opciones) ? parsed.opciones.map((o) => String(o).trim()).filter(Boolean) : [];
+      // Persona gramatical (checklist-pruebas-juego.md: "confirmado en vivo que el modelo pequeño
+      // la ignora", mismo hueco ya cerrado en narrateAction con hasSecondPersonLeak) — este flujo
+      // tiene su propio narrador separado (nunca pasa por narrador.ts § narrateAction), así que
+      // necesita su propio guard. Descarta el intento entero (no solo lo marca) y deja que el
+      // bucle de reintento pruebe otra vez, mismo criterio que el resto de validadores en cascada.
+      if (narration && hasSecondPersonLeak(narration)) continue;
       if (narration && opciones.length >= 2) {
         // "Nunca sustituye un combate" (prompt, arriba) es solo una instrucción — un modelo pequeño
         // puede narrar un golpe real conectando sin marcar "cierra": true por su cuenta (mismo
