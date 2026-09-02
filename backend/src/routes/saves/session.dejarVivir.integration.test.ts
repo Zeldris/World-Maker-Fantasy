@@ -3,7 +3,15 @@ import Fastify from 'fastify';
 import { prisma } from '../../lib/prisma.js';
 import { getDefaultUserId } from '../../lib/defaultUser.js';
 import { sessionRoutes } from './session.js';
+import { detailRoutes } from './detail.js';
 import { iniciarCombatEncounter } from '../../services/combateMultipleOrquestacion.js';
+
+async function buildAppWithDetail() {
+  const app = Fastify();
+  await app.register(sessionRoutes);
+  await app.register(detailRoutes);
+  return app;
+}
 
 /// CONVALECIENTE deja de ser "victoria automática" (petición explícita, 2026-08-26) — "Dejarlo
 /// vivir" saca al NPC de `pendingCombatNpcSlugs` (deja de ser objetivo activo) pero NO toca
@@ -202,5 +210,45 @@ describe('POST /saves/:id/combat/dejar-vivir/:npcSlug con participantId (combate
     expect(logCountDespues).toBe(logCountAntes + 1);
     const terceroFresco = await prisma.combatParticipant.findUniqueOrThrow({ where: { id: tercero.id } });
     expect(terceroFresco.dismissedGrupo).toBe(true);
+  }, 20_000);
+
+  // Cobertura que faltaba, señalada en checklist-pruebas-juego.md ("BUG CERRADO 2026-08-29:
+  // recargar tras Convaleciente atasca el combate del todo" — verificado con Playwright en su
+  // momento, pero sin test de integración real de `GET /saves/:id`, a diferencia de
+  // `esperandoDefensaJugador`, que sí lo tiene). Confirma en el mismo Postgres real que
+  // `detail.ts` reconstruye `combateIniciado` de forma coherente con `dismissedGrupo`: el
+  // participante ya resuelto (Clemente) desaparece de la tarjeta, el resto del grupo sin resolver
+  // (incluido uno CONVALECIENTE) sigue apareciendo — la "recarga" real es justo esta llamada.
+  it('GET /saves/:id tras "recargar": el participante dismissed desaparece de combateIniciado, el resto (incluido uno CONVALECIENTE) sigue', async () => {
+    const enemigo = await prisma.npc.findFirstOrThrow({ where: { slug: 'aullador-rojo' } });
+    const resuelto = await prisma.combatParticipant.create({
+      data: { encounterId, bando: 'ENEMIGO', tipo: 'NPC', npcId: enemigo.id, npcScope: 'itinerante-dejar-vivir-grupo-getcheck', condicionFisicaGrupo: 'CONVALECIENTE' },
+    });
+    const pendienteConvaleciente = await prisma.combatParticipant.create({
+      data: { encounterId, bando: 'ENEMIGO', tipo: 'NPC', npcId: enemigo.id, npcScope: 'itinerante-dejar-vivir-grupo-getcheck', condicionFisicaGrupo: 'CONVALECIENTE' },
+    });
+    const app = await buildApp();
+    const dejarVivirRes = await app.inject({
+      method: 'POST',
+      url: `/saves/${saveId}/combat/dejar-vivir/aullador-rojo`,
+      payload: { participantId: resuelto.id },
+    });
+    expect(dejarVivirRes.statusCode).toBe(200);
+
+    const appDetail = await buildAppWithDetail();
+    const getRes = await appDetail.inject({ method: 'GET', url: `/saves/${saveId}` });
+    expect(getRes.statusCode).toBe(200);
+    const { combateIniciado } = getRes.json() as { combateIniciado: { npcs: { name: string; condicionFisica: string }[] } | null };
+
+    expect(combateIniciado).not.toBeNull();
+    const npcsRestantes = combateIniciado!.npcs;
+    // El resuelto (Clemente) nunca vuelve a aparecer tras "recargar" — justo el bug real que
+    // reabría la tarjeta MATAR/CLEMENTE sobre un individuo ya decidido.
+    expect(npcsRestantes.length).toBeGreaterThan(0);
+    expect(npcsRestantes.every((n) => n.condicionFisica !== undefined)).toBe(true);
+    const conCondicionConvaleciente = npcsRestantes.filter((n) => n.condicionFisica === 'CONVALECIENTE');
+    // El participante CONVALECIENTE sin resolver sigue en la tarjeta — la vía de salida real
+    // (Matar/Capturar/Clemente) sigue disponible tras recargar, en vez de un atasco sin UI.
+    expect(conCondicionConvaleciente.length).toBeGreaterThan(0);
   }, 20_000);
 });
