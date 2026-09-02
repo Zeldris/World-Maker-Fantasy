@@ -5664,6 +5664,11 @@ export const items: ItemCatalogInput[] = [
     description: 'Cera de la colmena de Lebude moldeada en una vela gruesa — arde más limpio y más tiempo que la resina, apreciada por quienes pasan la noche fuera del campamento.',
     dimensiones: 'Vela de 15 cm.',
     lugarOrigen: 'El Pozo de Cauce Viejo, Llanuras del Viento Rojo.',
+    // PENDIENTE DE IMPLEMENTAR (pasada de objetos narrativos sin uso, 2026-09-02, decisión
+    // explícita de la usuaria): material para recetas de construction.ts (edificios de Reino
+    // avanzados, patrón `requirements`/`requiresAyuntamiento: true`, ver MAKTOR_CLAN_TOTEM_RECIPE
+    // como ejemplo) — no crafting.ts (equipo personal). Ver memoria
+    // tarkor_pasada_objetos_narrativos_2026-09-02. No implementado todavía.
   },
 ];
 
