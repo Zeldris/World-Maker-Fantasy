@@ -218,9 +218,36 @@ export const worldPopulations: WorldPopulationInput[] = [
   {
     targetType: 'RECURSO',
     targetSlug: 'roca-pilares-rotos',
-    label: 'Roca de Los Pilares Rotos (piedra)',
+    // Renombrado (2026-09-02, generalización a toda la región árida) — de "Roca de Los Pilares
+    // Rotos" a "Roca de Llanura Roja", coherente con el ItemCatalog.
+    label: 'Roca de Llanura Roja (piedra)',
     poblacion: 4000,
     poblacionMax: 4000,
+    distribucion: { 'Llanuras del Viento Rojo': 1 },
+  },
+  // Junba Verde/Temune (zona 15 del repaso, Playa de Ceniza Blanca, 2026-09-02).
+  {
+    targetType: 'RECURSO',
+    targetSlug: 'junba-verde',
+    label: 'Madera Jumba',
+    poblacion: 3000,
+    poblacionMax: 3000,
+    distribucion: { 'Llanuras del Viento Rojo': 1 },
+  },
+  {
+    targetType: 'RECURSO',
+    targetSlug: 'junba-verde-resina-fuente',
+    label: 'Resina Jumba Verde',
+    poblacion: 1500,
+    poblacionMax: 1500,
+    distribucion: { 'Llanuras del Viento Rojo': 1 },
+  },
+  {
+    targetType: 'RECURSO',
+    targetSlug: 'temune',
+    label: 'Algas Temune',
+    poblacion: 2500,
+    poblacionMax: 2500,
     distribucion: { 'Llanuras del Viento Rojo': 1 },
   },
   {

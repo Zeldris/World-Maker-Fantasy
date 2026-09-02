@@ -4719,6 +4719,32 @@ export const items: ItemCatalogInput[] = [
     valorGoirnos: 15,
   },
 
+  // Junba Verde (zona 15 del repaso "zona por zona", Playa de Ceniza Blanca, 2026-09-02) — árbol
+  // de tronco claro rematado en una maraña de lianas y hojas que le da forma de seta.
+  {
+    slug: 'madera-jumba',
+    name: 'Madera Jumba',
+    aliases: ['madera jumba', 'madera de junba verde'],
+    category: 'madera',
+    tipo: 'RECURSO',
+    description: 'Madera clara y ligera del tronco de Junba Verde — fácil de trabajar, típica del mobiliario costero.',
+    dimensiones: 'Tablones de 1 m.',
+    tier: 2,
+    valorGoirnos: 8,
+  },
+
+  {
+    slug: 'resina-jumba-verde',
+    name: 'Resina Jumba Verde',
+    aliases: ['resina jumba', 'resina de junba verde'],
+    category: 'resina',
+    tipo: 'RECURSO',
+    description: 'Resina verde intensa de las lianas de Junba Verde — pegajosa, de olor dulzón.',
+    dimensiones: 'Bloques de 8x5 cm.',
+    tier: 2,
+    valorGoirnos: 6,
+  },
+
   {
     slug: 'musgo-rojo',
     name: 'Musgo Rojo',
@@ -4916,6 +4942,20 @@ export const items: ItemCatalogInput[] = [
     valorGoirnos: 1,
     description: 'Alga de Los Manaderos, base de la cadena trófica de la charca — alimento de la Jusha Esmeralda.',
     dimensiones: 'Mata de 20 cm.',
+  },
+
+  // Temune (zona 15 del repaso "zona por zona", Playa de Ceniza Blanca, 2026-09-02) — algas
+  // anchas y curvadas arrancadas por la corriente, varadas en la orilla.
+  {
+    slug: 'algas-temune',
+    name: 'Algas Temune',
+    aliases: ['algas temune', 'temune'],
+    category: 'planta',
+    tipo: 'RECURSO',
+    description: 'Alga ancha y curvada, de color verde tirando a marrón, sabor suave a mar — ingrediente habitual de la cocina costera.',
+    dimensiones: 'Mata de 40 a 60 cm.',
+    tier: 1,
+    valorGoirnos: 2,
   },
 
   {
@@ -6237,6 +6277,34 @@ export const harvestYields: HarvestYieldInput[] = [
     cantidad: 1,
   },
 
+  // --- Junba Verde (Playa de Ceniza Blanca) ---
+
+  {
+    sourceSlug: 'junba-verde',
+    sourceCategory: 'planta',
+    metodoObtencion: 'TALA',
+    itemSlug: 'madera-jumba',
+    cantidad: 2,
+  },
+
+  {
+    sourceSlug: 'junba-verde-resina-fuente',
+    sourceCategory: 'planta',
+    metodoObtencion: 'EXTRACCION',
+    itemSlug: 'resina-jumba-verde',
+    cantidad: 1,
+  },
+
+  // --- Temune (Playa de Ceniza Blanca) ---
+
+  {
+    sourceSlug: 'temune',
+    sourceCategory: 'planta',
+    metodoObtencion: 'EXTRACCION',
+    itemSlug: 'algas-temune',
+    cantidad: 2,
+  },
+
   // --- Musgo Arcilla (El Pozo de Cauce Viejo) ---
 
   {
@@ -7015,6 +7083,12 @@ export const harvestSourceAliases: Record<string, string[]> = {
   'resina-lucre-blanco-fuente': ['resina de lucre blanco', 'resina de lucre'],
   'lucre-blanco': ['lucre blanco', 'arbol de lucre blanco', 'lucres blancos'],
   'pasto-de-sangre': ['pasto de sangre', 'hierba roja'],
+  // Junba Verde/Temune (zona 15 del repaso, Playa de Ceniza Blanca, 2026-09-02) — fuente de
+  // resina separada de la de madera, mismo criterio que resina-lucre-blanco-fuente (evita que
+  // mencionar "resina de junba" se malinterprete como el árbol/madera).
+  'junba-verde-resina-fuente': ['resina de junba', 'resina de junba verde'],
+  'junba-verde': ['junba verde', 'arbol de junba verde', 'junbas verdes'],
+  temune: ['temune', 'algas temune'],
   'pasto-solar': ['pasto solar', 'hierba comun', 'hierba común'],
   // 'resina-telda-atardecer-fuente' antes que 'telda-atardecer' Y que 'resina-telda-fuente' a
   // propósito: 'resina de telda atardecer' contiene literalmente 'telda atardecer' y también
@@ -7093,6 +7167,9 @@ export const harvestSourceHomeLocationSlug: Record<string, string> = {
   'kirelon-arenoso': 'hondonada-del-eco',
   'lucre-blanco': 'pilares-rotos',
   'resina-lucre-blanco-fuente': 'pilares-rotos',
+  'junba-verde': 'playa-de-ceniza-blanca',
+  'junba-verde-resina-fuente': 'playa-de-ceniza-blanca',
+  temune: 'playa-de-ceniza-blanca',
   'musgo-arcilla': 'pozo-cauce-viejo',
   'telda-comun': 'pozo-cauce-viejo',
   'resina-telda-fuente': 'pozo-cauce-viejo',
@@ -7205,6 +7282,9 @@ export const harvestSourceRegion: Record<string, string> = {
   'kirelon-arenoso': 'Llanuras del Viento Rojo',
   'lucre-blanco': 'Llanuras del Viento Rojo',
   'resina-lucre-blanco-fuente': 'Llanuras del Viento Rojo',
+  'junba-verde': 'Llanuras del Viento Rojo',
+  'junba-verde-resina-fuente': 'Llanuras del Viento Rojo',
+  temune: 'Llanuras del Viento Rojo',
   'musgo-arcilla': 'Llanuras del Viento Rojo',
   'telda-comun': 'Llanuras del Viento Rojo',
   'telda-ceniza': 'Llanuras del Viento Rojo',
@@ -7299,6 +7379,9 @@ export const harvestSourceDisplayName: Record<string, string> = {
   'hojas-telda-fuente': 'Hojas de Telda',
   'juncos-rojizos': 'Juncos Rojizos',
   'lucre-blanco': 'Lucre Blanco',
+  'junba-verde': 'Junba Verde',
+  'junba-verde-resina-fuente': 'Junba Verde',
+  temune: 'Temune',
   'musgo-arcilla': 'Musgo Arcilla',
   'pasto-de-sangre': 'Pasto de Sangre',
   'pasto-solar': 'Pasto Solar',
@@ -7385,6 +7468,12 @@ export const harvestSourceDescriptions: Record<string, string> = {
     'Juncos rojizos de las charcas de Los Manaderos, tallos de 80 cm a 1,2 m — material de tejido y techado.',
   'lucre-blanco':
     'Árbol de tronco claro y madera muy resistente que crece en las cumbres de Los Pilares Rotos.',
+  'junba-verde':
+    'Árbol de tronco claro como la arena, rematado en una maraña de lianas y hojas de un verde intenso que le da forma de seta — 3 m de tronco, hasta 3,50 m contando el copete de lianas.',
+  'junba-verde-resina-fuente':
+    'Resina verde intensa que rezuma de las lianas de Junba Verde — pegajosa, de olor dulzón.',
+  temune:
+    'Algas anchas de color verde tirando a marrón, arrancadas por la corriente y varadas en la orilla, terminadas en bulbos rellenos de semillas — muchas curvas en toda su longitud.',
   'musgo-arcilla':
     'Musgo rojo como pelaje, crece pegado a la roca en zonas húmedas de El Pozo de Cauce Viejo — material de construcción para tejados orcos.',
   'pasto-de-sangre':
@@ -7452,6 +7541,12 @@ export const harvestSourceTerrainTag: Record<string, TerrainTag> = {
   fercaneo: 'volcanico',
   'lucre-blanco': 'rocoso', // Los Pilares Rotos (altas cumbres)
   'resina-lucre-blanco-fuente': 'rocoso',
+  // homeLocationSlug ya candado exacto a Playa de Ceniza Blanca — 'costero' es solo informativo,
+  // Location.terrainTags de la playa no lo incluye (['humedo','arido']), así que este tag nunca
+  // interviene en el filtro real (ver comentario de pasaFiltroTerreno, terrain.ts).
+  'junba-verde': 'costero',
+  'junba-verde-resina-fuente': 'costero',
+  temune: 'costero',
   'telda-comun': 'humedo', // El Pozo de Cauce Viejo
   // Telda Ceniza es la misma especie que Telda Común con corteza distinta (El Cruce de las
   // Cenizas) — comparte resina/hojas con ella, mismo tag por coherencia (Cruce de las Cenizas no
@@ -7686,6 +7781,9 @@ export const zonePoints: ZonePointInput[] = [
   // son los únicos matches de terreno sin ancla previa en otra Location.
   { locationSlug: 'playa-de-ceniza-blanca', x: 300, y: 300, tipo: 'RECURSO', targetSlug: 'bulbo-del-cauce', label: 'Bulbo del Cauce' },
   { locationSlug: 'playa-de-ceniza-blanca', x: 540, y: 380, tipo: 'RECURSO', targetSlug: 'salvia-del-polvo', label: 'Salvia del Polvo' },
+  { locationSlug: 'playa-de-ceniza-blanca', x: 200, y: 220, tipo: 'RECURSO', targetSlug: 'junba-verde', label: 'Junba Verde' },
+  { locationSlug: 'playa-de-ceniza-blanca', x: 450, y: 480, tipo: 'RECURSO', targetSlug: 'temune', label: 'Algas Temune varadas' },
+  { locationSlug: 'playa-de-ceniza-blanca', x: 620, y: 220, tipo: 'RECURSO', targetSlug: 'roca-pilares-rotos', label: 'Roca de Llanura Roja' },
 
   // Los Acantilados Partidos — mismo hueco real de fauna/recurso costero. Flor de Ceniza (rocoso)
   // y Liquen del Cauce (humedo) son los matches de terreno disponibles.
