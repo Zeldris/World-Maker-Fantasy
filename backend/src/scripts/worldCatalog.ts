@@ -8310,7 +8310,12 @@ export const faunaTerrainTag: Record<string, TerrainTag> = {
   'corredor-de-cauce': 'vegetacion',
   corretolvas: 'vegetacion',
   cruzavientos: 'rocoso', // anida en Los Pilares Rotos
-  'gargantua-de-ceniza': 'rocoso',
+  // Cambiado de 'rocoso' a 'vegetacion' (2026-09-02, corredor migratorio real, decisión explícita
+  // de la usuaria) — 'rocoso' no tenía ningún comentario que lo justificara y no encajaba con
+  // ninguna zona de pasto amplio; mismo tag y mismas 3 Locations que Corredor de Cauce/Aullador
+  // Rojo (Los Manaderos → Los Pastos de la Deriva → La Sabana Alta), coherente con flora-fauna.md
+  // ("las Terk'ikar logran que transporten comunidades enteras en migraciones estacionales").
+  'gargantua-de-ceniza': 'vegetacion',
   murgol: 'vegetacion',
   'salamandra-de-escoria': 'rocoso', // homeLocationSlug: filo-de-las-brasas
   // Añadido 2026-08-22 (análisis de réplica): sin tag aparecía en TODA la región (playas
