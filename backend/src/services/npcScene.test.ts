@@ -273,6 +273,7 @@ describe('detectNpcsInScene — acotar el candidato por escena', () => {
 
     const result = await detectNpcsInScene({
       action: 'Busco presas por la zona', worldId: 'w1', sessionFacts: [], saveId: 's1', currentLocationId: 'loc-hondonada',
+      fictionalMinutes: 480,
     });
     expect(result).toEqual([]);
   });
@@ -284,6 +285,7 @@ describe('detectNpcsInScene — acotar el candidato por escena', () => {
 
     const result = await detectNpcsInScene({
       action: 'Busco presas por la zona', worldId: 'w1', sessionFacts: [], saveId: 's1', currentLocationId: 'loc-cienaga',
+      fictionalMinutes: 480,
     });
     expect(result.map((n) => n.id)).toEqual(['lurker']);
   });
@@ -295,6 +297,7 @@ describe('detectNpcsInScene — acotar el candidato por escena', () => {
 
     const result = await detectNpcsInScene({
       action: 'Busco presas por la zona', worldId: 'w1', sessionFacts: [], saveId: 's1', currentLocationId: 'loc-hondonada',
+      fictionalMinutes: 480,
     });
     expect(result.map((n) => n.id)).toEqual(['lurker']);
   });
@@ -310,6 +313,7 @@ describe('detectNpcsInScene — acotar el candidato por escena', () => {
 
     const result = await detectNpcsInScene({
       action: 'Busco presas por la zona', worldId: 'w1', sessionFacts: [], saveId: 's1', currentLocationId: 'loc-hondonada',
+      fictionalMinutes: 480,
     });
     expect(result).toEqual([]);
   });
@@ -322,6 +326,7 @@ describe('detectNpcsInScene — acotar el candidato por escena', () => {
 
     const result = await detectNpcsInScene({
       action: 'Busco presas por la zona', worldId: 'w1', sessionFacts: [], saveId: 's1', currentLocationId: 'loc-hondonada',
+      fictionalMinutes: 480,
     });
     expect(result.map((n) => n.id)).toEqual(['sella']);
   });
@@ -334,6 +339,7 @@ describe('detectNpcsInScene — acotar el candidato por escena', () => {
 
     const result = await detectNpcsInScene({
       action: 'Busco presas por la zona', worldId: 'w1', sessionFacts: [], saveId: 's1', currentLocationId: 'loc-hondonada',
+      fictionalMinutes: 480,
     });
     expect(result.map((n) => n.id)).toEqual(['sella']);
   });
@@ -346,6 +352,7 @@ describe('detectNpcsInScene — acotar el candidato por escena', () => {
 
     const result = await detectNpcsInScene({
       action: 'Busco presas por la zona', worldId: 'w1', sessionFacts: [], saveId: 's1', currentLocationId: 'loc-hondonada',
+      fictionalMinutes: 480,
     });
     expect(result.map((n) => n.id)).toEqual(['lurker']);
   });
@@ -358,6 +365,7 @@ describe('detectNpcsInScene — acotar el candidato por escena', () => {
 
     const result = await detectNpcsInScene({
       action: 'Busco presas por la zona', worldId: 'w1', sessionFacts: [], saveId: 's1', currentLocationId: 'loc-hondonada',
+      fictionalMinutes: 480,
     });
     expect(result.map((n) => n.id)).toEqual(['lurker']);
   });
@@ -369,6 +377,7 @@ describe('detectNpcsInScene — acotar el candidato por escena', () => {
 
     const result = await detectNpcsInScene({
       action: 'Busco presas por la zona', worldId: 'w1', sessionFacts: [], saveId: 's1', currentLocationId: 'loc-hondonada',
+      fictionalMinutes: 480,
     });
     expect(result.map((n) => n.id)).toEqual(['lurker']);
   });
@@ -379,6 +388,7 @@ describe('detectNpcsInScene — acotar el candidato por escena', () => {
 
     const result = await detectNpcsInScene({
       action: 'Busco presas por la zona', worldId: 'w1', sessionFacts: [], saveId: 's1', currentLocationId: null,
+      fictionalMinutes: 480,
     });
     expect(result.map((n) => n.id)).toEqual(['lurker']);
   });
@@ -400,6 +410,7 @@ describe('detectNpcsInScene — acotar el candidato por escena', () => {
       sessionFacts: ['El Acechador de Brasas se marchó para siempre — no volverá a aparecer.'],
       saveId: 's1',
       currentLocationId: 'loc-hondonada',
+      fictionalMinutes: 480,
     });
     expect(result).toEqual([]);
   });
@@ -413,6 +424,103 @@ describe('detectNpcsInScene — acotar el candidato por escena', () => {
 
     const result = await detectNpcsInScene({
       action: 'Busco al acechador', worldId: 'w1', sessionFacts: [], saveId: 's1', currentLocationId: 'loc-hondonada',
+      fictionalMinutes: 480,
+    });
+    expect(result.map((n) => n.id)).toEqual(['lurker']);
+  });
+});
+
+// Fauna diurna/nocturna real (2026-09-02) — mención directa: decisión explícita de la usuaria, más
+// estricta que el diseño inicial ("bloquear también la mención directa, no solo el encuentro
+// ambiental"). `nuente` está en `faunaMomentoDelDia` como 'noche' (worldCatalog.ts, bio: "Solo sale
+// de noche; caza Imanios") — slug real del catálogo, no sintético, para no depender de que el mock
+// de `faunaMomentoDelDia` se mantenga sincronizado con datos inventados.
+describe('detectNpcsInScene — fauna diurna/nocturna real', () => {
+  beforeEach(() => {
+    findManyNpc.mockReset();
+    findUniqueLocation.mockReset();
+    findManyLocation.mockReset();
+    findManyQuest.mockReset();
+    findManyNpcState.mockReset();
+    findUniqueSave.mockReset();
+    findManyQuest.mockResolvedValue([]);
+    findManyNpcState.mockResolvedValue([]);
+    findUniqueSave.mockResolvedValue({ npcsRetiredForever: [] });
+  });
+
+  function nuenteNpc(overrides: Partial<Record<string, unknown>> = {}) {
+    return baseNpc({
+      id: 'nuente-1', slug: 'nuente', name: 'Nuente', aliases: ['nuente', 'nuentes'],
+      homeLocationSlug: 'agujas-iman', ...overrides,
+    });
+  }
+
+  const AGUJAS_IMAN = { slug: 'agujas-iman', region: 'Llanuras del Viento Rojo' };
+
+  it('mencionado de noche (fictionalMinutes en la banda nocturna): SÍ es candidato', async () => {
+    findManyNpc.mockResolvedValue([nuenteNpc()]);
+    findUniqueLocation.mockResolvedValue(AGUJAS_IMAN);
+    findManyLocation.mockResolvedValue([AGUJAS_IMAN]);
+
+    // hour=22 (22*60=1320) cae en la banda 'noche' de momentoDelDiaFor (hour>=20 || hour<6).
+    const result = await detectNpcsInScene({
+      action: 'Busco al Nuente', worldId: 'w1', sessionFacts: [], saveId: 's1', currentLocationId: 'loc-agujas',
+      fictionalMinutes: 22 * 60,
+    });
+    expect(result.map((n) => n.id)).toEqual(['nuente-1']);
+  });
+
+  it('mencionado de día (fictionalMinutes en la banda diurna): NUNCA aparece en escena, aunque el jugador lo nombre', async () => {
+    findManyNpc.mockResolvedValue([nuenteNpc()]);
+    findUniqueLocation.mockResolvedValue(AGUJAS_IMAN);
+    findManyLocation.mockResolvedValue([AGUJAS_IMAN]);
+
+    // hour=12 (12*60=720) cae en la banda 'dia' de momentoDelDiaFor (6<=hour<20).
+    const result = await detectNpcsInScene({
+      action: 'Busco al Nuente', worldId: 'w1', sessionFacts: [], saveId: 's1', currentLocationId: 'loc-agujas',
+      fictionalMinutes: 12 * 60,
+    });
+    expect(result).toEqual([]);
+  });
+
+  // Misma prioridad EXACTA que `nucleoJugable` (comentario de cabecera en npcScene.ts): quest
+  // activa gana siempre, incluso de día contra una especie nocturna.
+  it('un Nuente objetivo de una misión activa SÍ es candidato de día (la quest gana sobre el filtro de hora)', async () => {
+    findManyNpc.mockResolvedValue([nuenteNpc()]);
+    findUniqueLocation.mockResolvedValue(AGUJAS_IMAN);
+    findManyLocation.mockResolvedValue([AGUJAS_IMAN]);
+    findManyQuest.mockResolvedValue([{ targetNpcId: 'nuente-1' }]);
+
+    const result = await detectNpcsInScene({
+      action: 'Busco al Nuente', worldId: 'w1', sessionFacts: [], saveId: 's1', currentLocationId: 'loc-agujas',
+      fictionalMinutes: 12 * 60,
+    });
+    expect(result.map((n) => n.id)).toEqual(['nuente-1']);
+  });
+
+  // Misma prioridad que "ya establecido antes en esta partida" (NpcState propio) — gana sobre el
+  // filtro de hora igual que ya gana sobre `nucleoJugable === false`.
+  it('un Nuente ya establecido antes en esta partida (NpcState propio) SÍ es candidato de día', async () => {
+    findManyNpc.mockResolvedValue([nuenteNpc()]);
+    findUniqueLocation.mockResolvedValue(AGUJAS_IMAN);
+    findManyLocation.mockResolvedValue([AGUJAS_IMAN]);
+    findManyNpcState.mockResolvedValue([{ npcId: 'nuente-1' }]);
+
+    const result = await detectNpcsInScene({
+      action: 'Busco al Nuente', worldId: 'w1', sessionFacts: [], saveId: 's1', currentLocationId: 'loc-agujas',
+      fictionalMinutes: 12 * 60,
+    });
+    expect(result.map((n) => n.id)).toEqual(['nuente-1']);
+  });
+
+  it('un NPC sin entrada en faunaMomentoDelDia (p.ej. el fixture base) nunca se bloquea por hora, de día o de noche', async () => {
+    findManyNpc.mockResolvedValue([baseNpc()]); // slug: acechador-de-brasas, sin entrada en faunaMomentoDelDia
+    findUniqueLocation.mockResolvedValue(CIENAGA_CAMPAMENTO);
+    findManyLocation.mockResolvedValue([CIENAGA_CAMPAMENTO]);
+
+    const result = await detectNpcsInScene({
+      action: 'Busco al acechador', worldId: 'w1', sessionFacts: [], saveId: 's1', currentLocationId: 'loc-cienaga',
+      fictionalMinutes: 12 * 60,
     });
     expect(result.map((n) => n.id)).toEqual(['lurker']);
   });
@@ -541,7 +649,7 @@ describe('npcSceneBlockFor', () => {
     expect(block).toContain('PERSONAJE EN ESCENA: Gistera Koh —');
   });
 
-  // Bug real jugando en vivo (2026-08-15, "revisar partida"): el Buitre Cenizo (fauna, sin habla)
+  // Bug real jugando en vivo (2026-08-15, "revisar partida"): el Zense Ceniza (fauna, sin habla)
   // dio una réplica completa entre comillas y llamó "humano" al jugador — nada en el prompt le
   // impedía inventar diálogo para un animal. `ataqueNatural !== null` es el mismo marcador ya
   // usado en todo el proyecto para "esto es fauna" (ver carcassCandidatesFor, recolectar.ts).
