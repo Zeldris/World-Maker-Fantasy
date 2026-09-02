@@ -1,14 +1,14 @@
 import type { FastifyInstance } from 'fastify';
 import { prisma } from '../../lib/prisma.js';
-import { metodoForOficio, attributeForOficio } from '../../services/harvestAbilities.js';
+import { metodoForOficio, attributeForOficio, attributeSecundarioForMetodo, professionIdForOficio, matchesOficioPrefix } from '../../services/harvestAbilities.js';
 import { detectNpcsInScene, scopeFor, hasPendingLoot } from '../../services/npcScene.js';
 import { loadSessionFacts, appendSessionFacts } from '../../services/worldFacts.js';
 import { inventoryCapacityFor, totalInventoryUnits } from '../../services/inventoryCapacity.js';
 import { effectiveAttributes, effectiveInventorySlotsBonus, effectiveSecondaryAttributes } from '../../services/equipment.js';
 import { stripRegionArticle } from '../../services/population.js';
 import { pasaFiltroTerreno } from '../../services/terrain.js';
-import { locationTerrainTags, harvestSourceTerrainTag, sourceCategoryNameFor, harvestSourceHomeLocationSlug } from '../../scripts/worldCatalog.js';
-import { quantityOf } from '../../services/ingredients.js';
+import { locationTerrainTags, harvestSourceTerrainTag, faunaTerrainTag, sourceCategoryNameFor, harvestSourceHomeLocationSlug } from '../../scripts/worldCatalog.js';
+import { quantityOf, baseNameOf, totalQuantity, planConsumption, type IngredientRequirement } from '../../services/ingredients.js';
 import { hasToolForOficio, OFICIOS_CON_HERRAMIENTA_REQUERIDA } from '../../services/crafting.js';
 import { closeItemQuests } from '../../services/questResolution.js';
 import { recordEntityDiscoveries } from '../../services/entityDiscovery.js';
@@ -16,7 +16,7 @@ import { advanceFictionalMinutes, formatFictionalDate, estacionFor, climaFor, cl
 import { alivioForLevel } from '../../services/professionProgress.js';
 import { normalizeSecondaryAttributes } from '../../services/secondaryAttributes.js';
 import { rollGathering, dificultadForTier, gradoForRecurso, cantidadForGrado } from '../../services/dice.js';
-import type { GatheringRollResult, AttributeBlock } from '../../services/dice.js';
+import type { GatheringRollResult, AttributeBlock, Attribute, GradoRecurso } from '../../services/dice.js';
 import { Prisma } from '@prisma/client';
 import type { Estacion, EstadoClima, MetodoObtencion } from '@prisma/client';
 import { rejectIfEnded } from './shared.js';
@@ -78,6 +78,82 @@ function pasaFiltroClima(climaRequerido: EstadoClima | null, climaActual: Estado
   return !climaRequerido || climaSeveridadAlMenos(climaActual, climaRequerido);
 }
 
+/// Nivel de oficio limita qué tier es accesible (2026-09-02, petición explícita: "el nivel de
+/// habilidad también define qué sale... no tiene sentido que siendo minero nivel 0 me salgan
+/// recursos de tier alto... lo que define que aparece es tu nivel de profesión"). Mapeo directo,
+/// sin tope artificial propio: nivel 1 → tier máximo 1, nivel 2 → tier máximo 2, etc. — un
+/// candidato sin `tier` cuenta como tier 1 (mismo default que `dificultadForTier`, dice.ts).
+/// Aplica a los 5 oficios recolectores reales (minero/talador/desollador/herborista/pescador);
+/// PASIVO ("Recoger") y CAZA-desuello no pasan por aquí a propósito — ver comentario de cada rama
+/// en `recolectarRoutes` de por qué quedan fuera (objetos narrativos sin tier "de recurso" real, y
+/// despiece de un cadáver ya concreto respectivamente).
+function pasaFiltroNivelOficio(tier: number | null | undefined, nivelOficio: number): boolean {
+  return (tier ?? 1) <= nivelOficio;
+}
+
+/// Cooldown de "pescador" (2026-09-02, Pieza 1) — DISTINTO del cooldown estándar de recolección
+/// (`RECOLECCION_COOLDOWN_MS`, "1 uso, luego 30 min" por FUENTE): Pescar/Buscar admiten
+/// `PESCA_USOS_SEGUIDOS_MAX` usos SEGUIDOS antes de entrar en cooldown, contado POR JUGADOR
+/// (`Save.pescaUsosSeguidos`/`pescaCooldownDesde`, no por `WorldPopulation` — pescar/buscar no
+/// depletan ninguna población real, ver comentario de `esFaunaMetodo` más abajo). Reloj real
+/// (de pared), mismo criterio que `RECOLECCION_COOLDOWN_MS`.
+const PESCA_USOS_SEGUIDOS_MAX = 3;
+const PESCA_COOLDOWN_MS = 30 * 60_000;
+
+/// Puro: dado el estado actual de `Save.pescaUsosSeguidos`/`pescaCooldownDesde`, decide si Pescar/
+/// Buscar están disponibles ahora mismo. `pescaCooldownDesde` se fija la primera vez que
+/// `pescaUsosSeguidos` llega al tope — mientras no hayan pasado los 30 min reales desde entonces,
+/// sigue bloqueado; en cuanto pasan, el contador se considera implícitamente reseteado a 0 (nunca
+/// se escribe hasta el siguiente uso real, ver `nextPescaCooldownState`).
+function pescaDisponible(pescaUsosSeguidos: number, pescaCooldownDesde: Date | null): boolean {
+  if (pescaUsosSeguidos < PESCA_USOS_SEGUIDOS_MAX) return true;
+  if (!pescaCooldownDesde) return true;
+  return Date.now() - pescaCooldownDesde.getTime() >= PESCA_COOLDOWN_MS;
+}
+
+/// Doble tirada en tier alto (2026-09-02, Pieza 2, cita textual de la usuaria: "1 tirada busca y
+/// si lo marcas para recolectar, por cada item especial se hace una tirada que es la que indica si
+/// lo conseguiste recolectar") — la tirada de Explorar (`gatheringRollFor`/`applyGatheringRoll`)
+/// sigue decidiendo QUÉ aparece y CUÁNTO como siempre, sin tocar; esto es una SEGUNDA comprobación,
+/// solo al CONFIRMAR una selección cuyo `ItemCatalog.tier` alcanza este umbral — candidatos de tier
+/// más bajo nunca la disparan, se comportan exactamente igual que hoy. 6 porque es el primer tier
+/// que hoy no tiene ningún HarvestYield real por debajo (el catálogo salta de tier 1 a tier 6+ para
+/// todo lo "especial" — escamas de Toluh, carne de Toluh — mientras que tier 2-5 no se usa en
+/// ningún recurso recolectable todavía), cifra de partida ajustable como el resto de umbrales de
+/// este sistema.
+const SEGUNDA_TIRADA_TIER_MINIMO = 6;
+
+/// Umbral EXACTO de la segunda tirada (2026-09-02) — mismo criterio que el resto del archivo
+/// (`gradoForRecurso`/`dificultadForTier`, dice.ts): nunca un umbral propio inventado aparte. Un
+/// resultado 'fallo' no materializa nada de esta selección concreta (mismo criterio que
+/// `cantidadForGrado('fallo', ...) === 0`); 'con_coste'/'claro' sí, recortando la cantidad exacto
+/// igual que ya hace `applyGatheringRoll` para la tirada de Explorar — la más consistente con el
+/// resto del sistema: dos tiradas independientes, cada una con su propio grado, nunca una regla
+/// especial solo para esta. `suerte` fijo a 0 (decisión propia dentro del margen del encargo, sin
+/// pedirlo la usuaria): Suerte ya dio ventaja en la PRIMERA tirada (la de Explorar, la que decide
+/// si el candidato tier alto aparece siquiera) — dársela otra vez aquí doblaría su peso para el
+/// mismo intento de recolección. Revisar si en la práctica se echa en falta.
+function pasaSegundaTirada(attributes: AttributeBlock, attribute: Attribute, bonusOficio: number, tier: number | null | undefined): { paso: boolean; grado: GradoRecurso } {
+  const roll = rollGathering(attributes, attribute, bonusOficio, 0);
+  const grado = gradoForRecurso(roll.result, dificultadForTier(tier));
+  return { paso: grado !== 'fallo', grado };
+}
+
+/// Puro: siguiente estado de `pescaUsosSeguidos`/`pescaCooldownDesde` tras un uso real confirmado
+/// — si el cooldown anterior ya expiró (`pescaDisponible` con el estado viejo era `true` por
+/// tiempo, no solo por contador bajo), el contador arranca de cero como si fuera la primera vez.
+function nextPescaCooldownState(pescaUsosSeguidos: number, pescaCooldownDesde: Date | null): { pescaUsosSeguidos: number; pescaCooldownDesde: Date | null } {
+  const cooldownExpirado = pescaCooldownDesde !== null && Date.now() - pescaCooldownDesde.getTime() >= PESCA_COOLDOWN_MS;
+  const usosPrevios = cooldownExpirado ? 0 : pescaUsosSeguidos;
+  const nuevosUsos = usosPrevios + 1;
+  return {
+    pescaUsosSeguidos: nuevosUsos,
+    // Se fija la marca de tiempo en cuanto se ALCANZA el tope (no en cada uso) — es el instante a
+    // partir del cual empiezan a contar los 30 min reales de espera.
+    pescaCooldownDesde: nuevosUsos >= PESCA_USOS_SEGUIDOS_MAX ? new Date() : cooldownExpirado ? null : pescaCooldownDesde,
+  };
+}
+
 interface SourceCandidate {
   sourceSlug: string;
   sourceCategory: string;
@@ -131,17 +207,35 @@ function groupByCategory(rawCandidates: SourceCandidate[]): CategoryCandidate[] 
   }));
 }
 
+/// Método PESCA/BUSQUEDA = fauna real (peces/marisco de Playa de Ceniza Blanca), a diferencia de
+/// MINERIA/TALA/EXTRACCION (`WorldPopulation.targetType: 'RECURSO'`) — mismo `targetType: 'FAUNA'`
+/// que ya usa Cazar (`cazar.ts` § `candidateFaunaFor`), NUNCA depletado aquí: Pescar/Buscar no
+/// reducen la población mundial de peces al confirmar (a diferencia de Cazar, no hay combate ni
+/// muerte real — el pez vuelve a nadar), así que tampoco aplican el cooldown estándar por FUENTE
+/// (`RECOLECCION_COOLDOWN_MS`/`lastHarvestedAt`) — su límite real es el contador de usos por
+/// JUGADOR de `Save.pescaUsosSeguidos` (ver `pescaDisponible`), comprobado aparte en la ruta.
+function esFaunaMetodo(metodo: MetodoObtencion): boolean {
+  return metodo === 'PESCA' || metodo === 'BUSQUEDA';
+}
+
 /// Fuentes candidatas para `oficio` en la región actual: las que tienen HarvestYield con el
-/// método correcto Y una fila WorldPopulation tipo RECURSO con población real > 0 en esa región
-/// (nunca se ofrece recolectar algo que el propio mundo dice que no queda) Y que no estén en
-/// cooldown por haberse recolectado hace poco EN ESTA MISMA Location. `anyOnCooldown` distingue
-/// "no hay nada aquí" de "lo que hay está agotado por ahora" para el mensaje del frontend.
+/// método correcto Y una fila WorldPopulation (tipo RECURSO para MINERIA/TALA/EXTRACCION, tipo
+/// FAUNA para PESCA/BUSQUEDA — ver `esFaunaMetodo`) con población real > 0 en esa región (nunca se
+/// ofrece recolectar algo que el propio mundo dice que no queda) Y que no estén en cooldown por
+/// haberse recolectado hace poco EN ESTA MISMA Location (PESCA/BUSQUEDA no tienen cooldown por
+/// fuente, ver comentario de `esFaunaMetodo`). `anyOnCooldown` distingue "no hay nada aquí" de "lo
+/// que hay está agotado por ahora" para el mensaje del frontend.
 ///
 /// Cooldown location-aware (bug real jugando en vivo, 2026-08-13: "avanzo por la hondonada
 /// buscando más elementos... ahí sí que debería poder volver a usarla, al igual que si cambiamos
 /// de zona" — antes el cooldown de 30 min era puro reloj, sin memoria de sitio, así que moverte a
 /// otra Location no servía de nada). Pasa el guard si CUALQUIERA de las dos condiciones se cumple:
 /// pasaron los 30 min reales, O `locationId` no coincide con `lastHarvestedLocationId`.
+///
+/// `nivelOficio` (2026-09-02, Pieza 3: "el nivel de habilidad también define qué sale... lo que
+/// define que aparece es tu nivel de profesión") recorta cada YIELD individual (no la fuente
+/// entera — una misma fuente puede tener yields de tier bajo Y alto a la vez) cuyo `tier` supere el
+/// nivel actual: ese yield ni siquiera cuenta como candidato, antes de que exista ninguna tirada.
 async function candidateSourcesFor(
   worldId: string,
   metodo: MetodoObtencion,
@@ -150,6 +244,7 @@ async function candidateSourcesFor(
   locationSlug: string | null,
   estacionActual: Estacion,
   climaActual: EstadoClima | null,
+  nivelOficio: number,
 ): Promise<{ candidates: SourceCandidate[]; anyOnCooldown: boolean }> {
   const rows = await prisma.harvestYield.findMany({ where: { worldId, metodoObtencion: metodo }, include: { item: true } });
   if (rows.length === 0) return { candidates: [], anyOnCooldown: false };
@@ -158,8 +253,9 @@ async function candidateSourcesFor(
     if (!bySlug.has(row.sourceSlug)) bySlug.set(row.sourceSlug, []);
     bySlug.get(row.sourceSlug)!.push(row);
   }
+  const esFauna = esFaunaMetodo(metodo);
   const populations = await prisma.worldPopulation.findMany({
-    where: { worldId, targetType: 'RECURSO', targetSlug: { in: [...bySlug.keys()] }, poblacion: { gt: 0 } },
+    where: { worldId, targetType: esFauna ? 'FAUNA' : 'RECURSO', targetSlug: { in: [...bySlug.keys()] }, poblacion: { gt: 0 } },
   });
   const cooldownCutoff = Date.now() - RECOLECCION_COOLDOWN_MS;
   const candidates: SourceCandidate[] = [];
@@ -177,23 +273,37 @@ async function candidateSourcesFor(
     if (!(distribucion[stripRegionArticle(region)] > 0)) continue;
     // Filtro por terreno de la zona (petición explícita, 2026-08-14: "en zonas aridas no deberia
     // haber muchas plantas y en zonas humedas deberias haber mas") — mismo punto que el filtro de
-    // región de arriba, ver terrain.ts.
-    if (!pasaFiltroTerreno(locationSlug ? locationTerrainTags[locationSlug] : undefined, harvestSourceTerrainTag[pop.targetSlug])) continue;
+    // región de arriba, ver terrain.ts. Fauna (PESCA/BUSQUEDA) usa `faunaTerrainTag` (mismo mapa
+    // que ya usa Cazar), no `harvestSourceTerrainTag` (solo EXTRACCION/MINERIA/TALA, ver su propio
+    // comentario de cabecera en worldCatalog.ts) — ninguno de los 6 peces/marisco nuevos está
+    // etiquetado ahí todavía, así que hoy no se filtran por terreno (mismo criterio "solo premia,
+    // nunca penaliza" de siempre: sin tag, nunca se descarta por esto).
+    const terrainTag = esFauna ? faunaTerrainTag[pop.targetSlug] : harvestSourceTerrainTag[pop.targetSlug];
+    if (!pasaFiltroTerreno(locationSlug ? locationTerrainTags[locationSlug] : undefined, terrainTag)) continue;
     // Anclaje a Location EXACTA (checklist consolidado P1.1, 2026-08-27, bug real jugando en vivo:
     // Roca Luclara — con `harvestSourceHomeLocationSlug: 'sabana-alta-colmillar'` — salía minable
     // en La Hondonada del Eco): antes este campo solo se aplicaba en `pasivoCandidatesFor`
     // (recursos PASIVO), nunca en MINERIA/TALA/EXTRACCION — mismo criterio de comparación estricta
-    // que ahí. Recursos sin el campo definido (la mayoría) no cambian de comportamiento.
-    const homeSlug = harvestSourceHomeLocationSlug[pop.targetSlug];
+    // que ahí. Recursos sin el campo definido (la mayoría) no cambian de comportamiento. Fauna
+    // (PESCA/BUSQUEDA) no lo necesita: los 6 Npc de peces/marisco ya llevan su propio
+    // `homeLocationSlug` directo en la ficha (jashil/toluh/negueo/bulco, todos
+    // 'playa-de-ceniza-blanca') — mismo criterio que jusha-esmeralda (fauna con Npc propio nunca
+    // usa este mapa, solo lo usan fuentes SIN fila Npc, ver comentario de
+    // `harvestSourceHomeLocationSlug` en worldCatalog.ts).
+    const homeSlug = esFauna ? undefined : harvestSourceHomeLocationSlug[pop.targetSlug];
     if (homeSlug && homeSlug !== locationSlug) continue;
     const sourceRows = (bySlug.get(pop.targetSlug) ?? []).filter(
-      (r) => pasaFiltroEstacion(r.estacionRequerida, estacionActual) && pasaFiltroClima(r.climaRequerido, climaActual),
+      (r) => pasaFiltroEstacion(r.estacionRequerida, estacionActual) && pasaFiltroClima(r.climaRequerido, climaActual) && pasaFiltroNivelOficio(r.item.tier, nivelOficio),
     );
     if (sourceRows.length === 0) continue;
-    const sameLocation = locationId !== null && pop.lastHarvestedLocationId === locationId;
-    if (pop.lastHarvestedAt && pop.lastHarvestedAt.getTime() > cooldownCutoff && sameLocation) {
-      anyOnCooldown = true;
-      continue;
+    // Cooldown por fuente (2026-09-02) — PESCA/BUSQUEDA no lo aplican en absoluto (ver comentario
+    // de `esFaunaMetodo`): su único límite es el contador de usos por jugador, comprobado aparte.
+    if (!esFauna) {
+      const sameLocation = locationId !== null && pop.lastHarvestedLocationId === locationId;
+      if (pop.lastHarvestedAt && pop.lastHarvestedAt.getTime() > cooldownCutoff && sameLocation) {
+        anyOnCooldown = true;
+        continue;
+      }
     }
     candidates.push({
       sourceSlug: pop.targetSlug,
@@ -314,11 +424,13 @@ interface GatheringRollInputs {
 /// aplicada luego contra la dificultad de CADA recurso candidato (`applyGatheringRoll` más abajo),
 /// nunca una tirada por recurso: el margen de un único resultado ya decide a la vez qué aparece y
 /// cuánta cantidad, igual que un único chequeo de Supervivencia en D&D revela más cuanto mejor se
-/// tira. `oficio` es el `professionId` exacto pulsado (ej. "minero-llanuras"), no un prefijo.
+/// tira. `oficio` es el `professionId` exacto pulsado (ej. "minero-llanuras"), no un prefijo — con
+/// la única excepción de pescador (2026-09-02, ver `professionIdForOficio`), donde la clave de
+/// ruta ('pescador-pescar'/'pescador-buscar') y el `professionId` real ('pescador') divergen.
 function gatheringRollFor(save: GatheringRollInputs, oficio: string): GatheringRollResult {
   const attributes = effectiveAttributes(save.attributes, save.inventoryItems);
   const secondaryAttributes = effectiveSecondaryAttributes(normalizeSecondaryAttributes(save.secondaryAttributesJson), save.inventoryItems);
-  const nivelOficio = save.professionProgress.find((p) => p.professionId === oficio)?.nivel ?? 1;
+  const nivelOficio = save.professionProgress.find((p) => p.professionId === professionIdForOficio(oficio))?.nivel ?? 1;
   // Ya validado más arriba (metodoForOficio no fue null): attributeForOficio busca el mismo
   // prefijo y siempre encuentra pareja.
   const attribute = attributeForOficio(oficio)!;
@@ -431,6 +543,11 @@ export async function recolectarRoutes(app: FastifyInstance) {
     // que ve cualquier partida nueva.
     const estacionActual = estacionFor(save.worldState?.fictionalMinutes ?? 0);
     const climaActual = climaFor(save.worldState?.fictionalMinutes ?? 0, save.currentLocation?.region ?? null);
+    // Nivel de oficio limita qué tier es accesible (2026-09-02, Pieza 3) — mismo `professionId`
+    // real que ya usa `gatheringRollFor` para el bonus de la tirada (ver `professionIdForOficio`,
+    // necesario para pescador: 'pescador-pescar'/'pescador-buscar' comparten un único oficio real
+    // 'pescador'). Nivel 1 si el jugador todavía no tiene fila para este oficio (recién aprendido).
+    const nivelOficio = (save.professionProgress ?? []).find((p) => p.professionId === professionIdForOficio(request.params.oficio))?.nivel ?? 1;
 
     if (metodo === 'CAZA') {
       // Tirada congelada (rediseño de recolección, 2026-08-22) — antes se tiraba de nuevo en CADA
@@ -466,6 +583,14 @@ export async function recolectarRoutes(app: FastifyInstance) {
     const cachedSources = cachedRollFor(save, request.params.oficio, save.currentLocationId);
     if (cachedSources) return { sources: groupByCategory(cachedSources), puedeExplorar: false, enCooldown: false };
 
+    // Cooldown de pescador (2026-09-02, Pieza 1) — "3 usos, luego 30 min", por JUGADOR, distinto
+    // del cooldown por FUENTE del resto de oficios (ver `pescaDisponible`). Se comprueba ANTES de
+    // buscar candidatos: en cooldown, Pescar/Buscar no tienen nada que ofrecer aunque el mundo sí
+    // tenga peces/marisco reales en la zona.
+    if (esFaunaMetodo(metodo) && !pescaDisponible(save.pescaUsosSeguidos, save.pescaCooldownDesde)) {
+      return { sources: [], puedeExplorar: false, enCooldown: true };
+    }
+
     const { candidates, anyOnCooldown } = await candidateSourcesFor(
       save.worldId,
       metodo,
@@ -474,6 +599,7 @@ export async function recolectarRoutes(app: FastifyInstance) {
       save.currentLocation?.slug ?? null,
       estacionActual,
       climaActual,
+      nivelOficio,
     );
     if (candidates.length === 0) return { sources: [], puedeExplorar: false, enCooldown: anyOnCooldown };
     return { sources: [], puedeExplorar: true, enCooldown: false };
@@ -506,6 +632,16 @@ export async function recolectarRoutes(app: FastifyInstance) {
     // da por definitivamente muerto.
     if (rejectIfEnded(save, reply)) return;
 
+    // Cooldown de pescador (2026-09-02, Pieza 1) — mismo criterio que el GET de arriba: "3 usos,
+    // luego 30 min" por JUGADOR, comprobado antes de gastar nada en candidatos/tirada.
+    if (esFaunaMetodo(metodo) && !pescaDisponible(save.pescaUsosSeguidos, save.pescaCooldownDesde)) {
+      return { sources: [], enCooldown: true };
+    }
+
+    // Nivel de oficio limita qué tier es accesible (2026-09-02, Pieza 3) — ver comentario del GET
+    // de arriba, mismo criterio (`professionIdForOficio` por pescador).
+    const nivelOficio = (save.professionProgress ?? []).find((p) => p.professionId === professionIdForOficio(request.params.oficio))?.nivel ?? 1;
+
     const { candidates, anyOnCooldown } = await candidateSourcesFor(
       save.worldId,
       metodo,
@@ -514,6 +650,7 @@ export async function recolectarRoutes(app: FastifyInstance) {
       save.currentLocation?.slug ?? null,
       estacionFor(save.worldState?.fictionalMinutes ?? 0),
       climaFor(save.worldState?.fictionalMinutes ?? 0, save.currentLocation?.region ?? null),
+      nivelOficio,
     );
     if (candidates.length === 0) return { sources: [], enCooldown: anyOnCooldown };
 
@@ -533,6 +670,16 @@ export async function recolectarRoutes(app: FastifyInstance) {
     // a tirar por un resultado mejor. Se guarda antes de nada más, para que sobreviva aunque el
     // resto del turno (hechos de sesión) falle por cualquier motivo.
     await saveRollCache(save.id, save.harvestRollCache, request.params.oficio, save.currentLocationId, filteredCandidates);
+
+    // Cuenta este intento como un "uso" de pescador (2026-09-02, Pieza 1) — el propio lanzamiento
+    // de caña/rastreo de marisco es lo que cansa, tenga éxito o no la tirada (mismo criterio que el
+    // resto del motor: la tirada decide QUÉ aparece, nunca SI el intento "cuenta"). Se escribe
+    // aparte de `saveRollCache` (dos updates en vez de fusionar el JSON) para no acoplar un campo
+    // de ficción específico de pescador al mecanismo genérico de caché de todos los oficios.
+    if (esFaunaMetodo(metodo)) {
+      const next = nextPescaCooldownState(save.pescaUsosSeguidos, save.pescaCooldownDesde);
+      await prisma.save.update({ where: { id: save.id }, data: { pescaUsosSeguidos: next.pescaUsosSeguidos, pescaCooldownDesde: next.pescaCooldownDesde } });
+    }
 
     const sessionFacts = await loadSessionFacts(save.id);
     // Una frase por categoría DISTINTA descubierta (2026-08-15, ya no por sourceSlug) — evita
@@ -557,7 +704,17 @@ export async function recolectarRoutes(app: FastifyInstance) {
         return reply.status(400).send({ error: 'Falta el campo: selections' });
       }
 
-      const save = await prisma.save.findUnique({ where: { id: request.params.id }, include: { worldState: true } });
+      const save = await prisma.save.findUnique({
+        where: { id: request.params.id },
+        include: {
+          worldState: true,
+          // Segunda tirada en tier alto (2026-09-02, Pieza 2) — mismos inputs que `gatheringRollFor`
+          // (equipo puesto + nivel de oficio), necesarios aquí porque la segunda tirada ocurre AL
+          // CONFIRMAR, no al explorar.
+          inventoryItems: { where: { slot: { not: null } }, select: { statBonuses: true } },
+          professionProgress: { select: { professionId: true, nivel: true } },
+        },
+      });
       if (!save) return reply.status(404).send({ error: 'Partida no encontrada' });
       // Bug real (auditoría de bugs, 2026-08-21) — ver comentario de /recolectar/:oficio/explorar arriba.
       if (rejectIfEnded(save, reply)) return;
@@ -626,6 +783,21 @@ export async function recolectarRoutes(app: FastifyInstance) {
         // hasta Piedra común) — este check se computa siempre, y solo se aplica más abajo a los
         // yields concretos marcados `requiereHerramienta` (mena de Yerreo, mena de hierro).
         const hasMineroTool = hasToolForOficio('minero', toolRows, toolCatalogBySlug);
+        // Pescar (2026-09-02, Pieza 1) — caña de pescar, mismo gate por OFICIO ENTERO que
+        // desollador/curtidor (bloquea Pescar completo sin caña, no un yield concreto). Buscar
+        // (BUSQUEDA) no la necesita en absoluto — nunca se comprueba en esa rama, ver más abajo.
+        const hasCanaPescar = hasToolForOficio('pescador-pescar', toolRows, toolCatalogBySlug);
+        // Cebo (2026-09-02) — consumible que se GASTA al pescar (1 por petición de Pescar, no por
+        // unidad capturada — mismo criterio "una tirada, un intento" que el resto de la
+        // herramienta/consumo de este archivo), mismo mecanismo de `totalQuantity`/
+        // `planConsumption` que ya usa crafting.ts/construction.ts para ingredientes. `toolRows`
+        // sirve tal cual como `InventoryRowLike` (mismo shape: id/name/catalogSlug).
+        const CEBO_INGREDIENT: IngredientRequirement = { match: { kind: 'exact', catalogSlug: 'cebo-pesca' }, cantidad: 1, label: 'cebo' };
+        const hasCebo = totalQuantity(toolRows, CEBO_INGREDIENT, toolCatalogBySlug) >= 1;
+        // Se consume UNA vez por petición (no por selección: varias selecciones de Pescar en la
+        // misma petición vienen todas de la misma "tirada de caña" ya consumida en /explorar) —
+        // aplicado la primera vez que aparece una selección PESCA, ver bucle principal.
+        let ceboConsumido = false;
 
         // Acumula en la pila ya existente en vez de crear siempre una fila nueva (bug real jugando
         // en vivo, 2026-08-07: "Piedra (3)" + "Piedra (3)" sueltas en vez de "Piedra (6)") — mismo
@@ -660,7 +832,28 @@ export async function recolectarRoutes(app: FastifyInstance) {
             include: { item: true },
           });
           if (!yieldRow) continue;
-          const cantidad = Math.min(sel.cantidad, yieldRow.cantidad, unitsRemaining);
+          let cantidad = Math.min(sel.cantidad, yieldRow.cantidad, unitsRemaining);
+
+          // Segunda tirada en tier alto (2026-09-02, Pieza 2) — SOLO candidatos tier >= 6 (el
+          // resto del catálogo, la inmensa mayoría, no cambia en absoluto). Se dispara AQUÍ, ANTES
+          // de tocar NpcState/WorldPopulation/inventario: si falla, esta selección concreta no se
+          // materializa — nunca se depleta población ni se reclama un cadáver por algo que al
+          // final no se consigue de verdad.
+          if ((yieldRow.item.tier ?? 1) >= SEGUNDA_TIRADA_TIER_MINIMO) {
+            const segunda = attributeSecundarioForMetodo(yieldRow.metodoObtencion);
+            if (segunda) {
+              // `segunda.oficio` es siempre el PREFIJO base ("minero", nunca "minero-llanuras" —
+              // `HARVEST_ABILITIES` no guarda variantes de región/raza, ver comentario de
+              // `professionIdForOficio`) — mismo emparejamiento por prefijo que el resto del
+              // archivo (`matchesOficioPrefix`), nunca una comparación exacta contra este string.
+              const nivelOficio = (save.professionProgress ?? []).find((p) => matchesOficioPrefix(p.professionId, segunda.oficio))?.nivel ?? 1;
+              const effectiveAttrs = effectiveAttributes(save.attributes as AttributeBlock, save.inventoryItems);
+              const { paso, grado } = pasaSegundaTirada(effectiveAttrs, segunda.attribute, alivioForLevel(nivelOficio), yieldRow.item.tier);
+              if (!paso) continue;
+              cantidad = cantidadForGrado(grado, cantidad);
+              if (cantidad <= 0) continue;
+            }
+          }
 
           if (yieldRow.metodoObtencion === 'CAZA') {
             if (!hasDesolladorTool) continue;
@@ -704,6 +897,25 @@ export async function recolectarRoutes(app: FastifyInstance) {
             // `pasivoCandidatesFor`): si el candidato llegó hasta aquí es porque sigue en su
             // Location exacta ahora mismo, se concede directo. Mismo verbo que el resto de
             // no-CAZA en el texto final ("recolecta"), no hace falta una rama de texto aparte.
+            anyNonCaza = true;
+          } else if (yieldRow.metodoObtencion === 'PESCA' || yieldRow.metodoObtencion === 'BUSQUEDA') {
+            // Pescador (2026-09-02, Pieza 1) — a diferencia de MINERIA/TALA/EXTRACCION (rama de
+            // abajo), NUNCA toca `WorldPopulation`: pescar/buscar no depletan la población mundial
+            // de peces/marisco (no hay muerte real, ver comentario de `esFaunaMetodo`), su único
+            // límite real es el cooldown de 3-usos-seguidos ya aplicado en /explorar (Save.pescaUsosSeguidos).
+            if (yieldRow.metodoObtencion === 'PESCA') {
+              if (!hasCanaPescar || !hasCebo) continue;
+              if (!ceboConsumido) {
+                const plan = planConsumption(toolRows, CEBO_INGREDIENT, toolCatalogBySlug);
+                for (const id of plan.deleteIds) await tx.inventoryItem.delete({ where: { id } });
+                if (plan.updateRemainder) {
+                  const row = toolRows.find((r) => r.id === plan.updateRemainder!.id)!;
+                  const newName = plan.updateRemainder.newQuantity > 1 ? `${baseNameOf(row.name)} (${plan.updateRemainder.newQuantity})` : baseNameOf(row.name);
+                  await tx.inventoryItem.update({ where: { id: plan.updateRemainder.id }, data: { name: newName } });
+                }
+                ceboConsumido = true;
+              }
+            }
             anyNonCaza = true;
           } else {
             // Pico de minero (2026-08-23) — igual que el guard de CAZA arriba, comprobado antes

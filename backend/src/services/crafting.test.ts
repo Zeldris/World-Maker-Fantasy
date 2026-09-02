@@ -97,7 +97,7 @@ function row(id: string, catalogSlug: string, cantidad?: number): InventoryRowLi
 }
 
 describe('CRAFTING_RECIPES', () => {
-  it('tiene las 48 recetas esperadas, cada una con una clave única', () => {
+  it('tiene las 50 recetas esperadas, cada una con una clave única', () => {
     expect(CRAFTING_RECIPES.map((r) => r.key)).toEqual([
       'axeRepair',
       'smokeMeat',
@@ -161,6 +161,10 @@ describe('CRAFTING_RECIPES', () => {
       // Mochila Curtida — reemplaza al Pañuelo de luto Serhu (pasada de objetos narrativos sin
       // uso, 2026-09-02): cosmético de espalda crafteable real, statBonuses inventorySlots.
       'tannedBackpack',
+      // Caña de pescar (carpintero) y Cebo (pescador) — profesión pescador nueva, cierran el hueco
+      // real de "herramienta sin forma de conseguirla" detectado al verificar la implementación.
+      'canaPesca',
+      'ceboPesca',
     ]);
   });
 });

@@ -634,4 +634,64 @@ export const worldPopulations: WorldPopulationInput[] = [
     poblacionMax: 350,
     distribucion: { 'Llanuras del Viento Rojo': 1 },
   },
+
+  // Peces y marisco de Playa de Ceniza Blanca (zona 15 del repaso, 2026-09-02, profesión
+  // "pescador") — mismo `targetType: 'FAUNA'` que el resto de fauna real (aullador-rojo, etc.),
+  // NUNCA depletado por Pescar/Buscar (esos no matan, ver comentario de `esFaunaMetodo`,
+  // recolectar.ts) — la cifra aquí es solo el gate "hay peces en esta costa", no un contador que
+  // baje con cada captura. Jashil/Negueo: "muy abundante"/pez común de toda la costa → población
+  // alta (800-1500, igual de orden de magnitud que otra fauna abundante como Aullador Rojo).
+  // Bulco de Arena: caracol de marea, igual de común → misma franja alta. Toluh: "pez migratorio
+  // de gran tamaño... muy apreciado por lo raro que es dar con uno" → población baja (80-150,
+  // orden de magnitud de Rondador de Brasas/Canizor, la fauna más rara ya sembrada) — su
+  // disponibilidad REAL por estación (solo otoño) vive en `HarvestYield.estacionRequerida`, no
+  // aquí (`WorldPopulation` no tiene campo de estación, ver schema.prisma).
+  {
+    targetType: 'FAUNA',
+    targetSlug: 'jashil-verde',
+    label: 'Jashil Verde',
+    poblacion: 1200,
+    poblacionMax: 2000,
+    distribucion: { 'Llanuras del Viento Rojo': 1 },
+  },
+  {
+    targetType: 'FAUNA',
+    targetSlug: 'jashil-rojo',
+    label: 'Jashil Rojo',
+    poblacion: 1200,
+    poblacionMax: 2000,
+    distribucion: { 'Llanuras del Viento Rojo': 1 },
+  },
+  {
+    targetType: 'FAUNA',
+    targetSlug: 'toluh',
+    label: 'Toluh',
+    poblacion: 120,
+    poblacionMax: 200,
+    distribucion: { 'Llanuras del Viento Rojo': 1 },
+  },
+  {
+    targetType: 'FAUNA',
+    targetSlug: 'negueo-turquesa',
+    label: 'Negueo Turquesa',
+    poblacion: 900,
+    poblacionMax: 1600,
+    distribucion: { 'Llanuras del Viento Rojo': 1 },
+  },
+  {
+    targetType: 'FAUNA',
+    targetSlug: 'negueo-solar',
+    label: 'Negueo Solar',
+    poblacion: 900,
+    poblacionMax: 1600,
+    distribucion: { 'Llanuras del Viento Rojo': 1 },
+  },
+  {
+    targetType: 'FAUNA',
+    targetSlug: 'bulco-de-arena',
+    label: 'Bulco de Arena',
+    poblacion: 1500,
+    poblacionMax: 2500,
+    distribucion: { 'Llanuras del Viento Rojo': 1 },
+  },
 ];

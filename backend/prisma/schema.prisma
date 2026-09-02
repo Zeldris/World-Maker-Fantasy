@@ -252,12 +252,12 @@ model Save {
   /// cada vez), así que un id guardado aquí quedaría huérfano al instante. Si el nombre cambia
   /// (p.ej. cambiar de espada a hacha), ese hueco del cinturón queda vacío hasta que el jugador
   /// elija de nuevo — decisión explícita: más predecible que intentar adivinar qué sustituye a qué.
-  activeCombatAbilityNames String[] @default([])
+  activeCombatAbilityNames           String[] @default([])
   /// false = el jugador nunca ha guardado el cinturón todavía — `resolveActiveCombatAbilityNames`
   /// (combatAbilities.ts) cae al comportamiento por defecto (todas activas mientras quepan) en vez
   /// de mostrar un cinturón vacío sin motivo aparente. true en cuanto el jugador guarda una vez
   /// (aunque sea un cinturón vacío a propósito) — a partir de ahí se respeta tal cual, para siempre.
-  activeCombatAbilityNamesConfigured Boolean @default(false)
+  activeCombatAbilityNamesConfigured Boolean  @default(false)
 
   /// Bug real (revisión de partida en 5 fases, 2026-08-27, cerrado 2026-08-28) — slugs de Npc que
   /// se despidieron "para siempre" con guion (hoy solo Gistera Koh, al aceptar su misión) —
@@ -337,6 +337,19 @@ model Save {
   /// arranque ya hambriento.
   lastAteAtMinutes   Int?
   lastDrankAtMinutes Int?
+
+  /// Cooldown de "pescador" (2026-09-02, Pieza 1) — DISTINTO del cooldown estándar de recolección
+  /// (`RECOLECCION_COOLDOWN_MS`/`WorldPopulation.lastHarvestedAt`, recolectar.ts: "1 uso, luego 30
+  /// min"): Pescar/Buscar admiten 3 usos SEGUIDOS antes de entrar en el mismo cooldown de 30 min.
+  /// Real (no de ficción), reloj de pared — mismo criterio ya aceptado para `lastHarvestedAt`
+  /// (population.ts): no depende del reloj de ficción de la partida, que puede saltar de golpe
+  /// tras un viaje largo. `pescaUsosSeguidos` cuenta 0-3, se resetea a 0 en cuanto pasan los 30 min
+  /// desde `pescaCooldownDesde` (o si es null, nunca ha pescado, sin cooldown activo). Campo en
+  /// `Save` (no en `WorldPopulation`, a diferencia del resto de recolección): el límite es POR
+  /// JUGADOR ("te cansas de pescar"), no por fuente/población del mundo — Pescar/Buscar no
+  /// depletan ninguna `WorldPopulation` propia, son peces/marisco de una costa que no se agota así.
+  pescaUsosSeguidos  Int       @default(0)
+  pescaCooldownDesde DateTime?
 
   worldState         WorldState?
   logEntries         LogEntry[]
@@ -1276,6 +1289,14 @@ enum MetodoObtencion {
   MINERIA
   /// Recolección deliberada de algo delicado (raíces, venenos) — verbo propio, pero no caza/tala/mina.
   EXTRACCION
+  /// Profesión "pescador" (2026-09-02, zona 15 "Playa de Ceniza Blanca") — peces de verdad
+  /// (Jashil/Toluh/Negueo), atrapados sin combate, nunca vía Cazar (esos NPC son 'INOFENSIVO'/
+  /// 'CAUTELOSO', "no ataca, huye"). Verbo propio "Pescar", exige caña + cebo, mismo criterio de
+  /// herramienta requerida por oficio que minero/desollador.
+  PESCA
+  /// Segunda mitad de "pescador" (2026-09-02) — marisco/caracoles enterrados en la arena (Bulco de
+  /// Arena), verbo "Buscar": sin herramienta, solo Voluntad para dar con ellos.
+  BUSQUEDA
 }
 
 /// Nivel de oficio (sesión de diseño 2026-07-23) — eje independiente del nivel de personaje, uno

@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import Fastify from 'fastify';
+import { MAX_PROFESSION_LEVEL } from '../../services/professionProgress.js';
 
 /// Cobertura nueva (auditoría de código completa, 2026-08-07) — este endpoint no tenía NINGÚN test
 /// antes. El foco es el bug real encontrado auditando `confirmar`: no validaba `selections` contra
@@ -16,6 +17,7 @@ const updateManyWorldPopulation = vi.fn();
 const createInventoryItem = vi.fn();
 const createManyInventoryItem = vi.fn();
 const updateInventoryItem = vi.fn();
+const deleteInventoryItem = vi.fn();
 const findManyInventoryItem = vi.fn();
 const findFirstInventoryItem = vi.fn();
 const createLogEntry = vi.fn();
@@ -91,6 +93,7 @@ describe('POST /saves/:id/recolectar/confirmar', () => {
     createInventoryItem.mockReset();
     createManyInventoryItem.mockReset().mockResolvedValue({ count: 0 });
     updateInventoryItem.mockReset();
+    deleteInventoryItem.mockReset();
     findManyInventoryItem.mockReset().mockResolvedValue([]);
     // Sin pila previa por defecto — cada test de acumulación la sobreescribe explícitamente.
     findFirstInventoryItem.mockReset().mockResolvedValue(null);
@@ -111,7 +114,10 @@ describe('POST /saves/:id/recolectar/confirmar', () => {
       worldId: 'world1',
       characterName: 'Gorhorn',
       currentLocationId: 'loc1',
-      attributes: { fuerza: 10, constitucion: 10 },
+      attributes: { fuerza: 10, constitucion: 10, destreza: 10, inteligencia: 10, voluntad: 10, carisma: 10, magia: 10 },
+      secondaryAttributes: {},
+      inventoryItems: [],
+      professionProgress: [],
       worldState: { fictionalDateLabel: 'Día 1, mañana', fictionalMinutes: 480 },
     });
     transaction.mockReset().mockImplementation((cb: (tx: unknown) => unknown) =>
@@ -122,6 +128,7 @@ describe('POST /saves/:id/recolectar/confirmar', () => {
           create: (...args: unknown[]) => createInventoryItem(...args),
           createMany: (...args: unknown[]) => createManyInventoryItem(...args),
           update: (...args: unknown[]) => updateInventoryItem(...args),
+          delete: (...args: unknown[]) => deleteInventoryItem(...args),
         },
         logEntry: { create: (...args: unknown[]) => createLogEntry(...args) },
         harvestYield: { findFirst: (...args: unknown[]) => findFirstHarvestYield(...args) },
@@ -667,6 +674,240 @@ describe('POST /saves/:id/recolectar/confirmar', () => {
 
     expect(res.statusCode).toBe(404);
   });
+
+  // Doble tirada en tier alto (2026-09-02, Pieza 2, cita textual: "1 tirada busca y si lo marcas
+  // para recolectar, por cada item especial se hace una tirada que es la que indica si lo
+  // conseguiste recolectar"). Se dispara SOLO al confirmar un candidato tier >= 6 — atributos
+  // altos (inteligencia 20, segundo atributo de minero) garantizan éxito de la segunda tirada;
+  // atributos en 0 garantizan fallo, sin depender de mockear Math.random.
+  describe('doble tirada en tier alto al confirmar (Pieza 2)', () => {
+    it('candidato tier < 6: nunca dispara la segunda tirada, se materializa igual que siempre', async () => {
+      findFirstHarvestYield.mockResolvedValue({ cantidad: 3, metodoObtencion: 'MINERIA', item: { slug: 'piedra', name: 'Piedra', tier: 5 } });
+      updateManyWorldPopulation.mockResolvedValue({ count: 1 });
+      createInventoryItem.mockResolvedValue({ id: 'item1' });
+      const app = await buildApp();
+
+      const res = await app.inject({
+        method: 'POST',
+        url: '/saves/save1/recolectar/confirmar',
+        payload: { selections: [{ sourceSlug: 'roca-pilares-rotos', itemSlug: 'piedra', cantidad: 3 }] },
+      });
+
+      expect(res.statusCode).toBe(200);
+      expect(JSON.parse(res.body).items).not.toEqual([]);
+    });
+
+    it('candidato tier >= 6 con inteligencia (segundo atributo de minero) alta: pasa la segunda tirada y se materializa', async () => {
+      // dificultad = 10+tier(6) = 16; inteligencia 30 garantiza éxito incluso con el peor d20 (1):
+      // 1 + floor(30/2) + 0 = 16, igual a la dificultad ('con_coste' o mejor, nunca 'fallo') —
+      // determinista sin depender de Math.random.
+      findUniqueSave.mockResolvedValue({
+        id: 'save1',
+        worldId: 'world1',
+        characterName: 'Gorhorn',
+        currentLocationId: 'loc1',
+        attributes: { fuerza: 10, constitucion: 10, destreza: 10, inteligencia: 30, voluntad: 10, carisma: 10, magia: 10 },
+        secondaryAttributes: {},
+        inventoryItems: [],
+        professionProgress: [],
+        worldState: { fictionalDateLabel: 'Día 1, mañana', fictionalMinutes: 480 },
+      });
+      findFirstHarvestYield.mockResolvedValue({ cantidad: 2, metodoObtencion: 'MINERIA', item: { slug: 'mena-yerreo', name: 'Mena de Yerreo', tier: 6 } });
+      updateManyWorldPopulation.mockResolvedValue({ count: 1 });
+      createInventoryItem.mockResolvedValue({ id: 'item1' });
+      const app = await buildApp();
+
+      const res = await app.inject({
+        method: 'POST',
+        url: '/saves/save1/recolectar/confirmar',
+        payload: { selections: [{ sourceSlug: 'yerreo', itemSlug: 'mena-yerreo', cantidad: 2 }] },
+      });
+
+      expect(res.statusCode).toBe(200);
+      expect(JSON.parse(res.body).items).not.toEqual([]);
+    });
+
+    it('candidato tier >= 6 con inteligencia 0: falla la segunda tirada, no se materializa nada de esa selección', async () => {
+      findUniqueSave.mockResolvedValue({
+        id: 'save1',
+        worldId: 'world1',
+        characterName: 'Gorhorn',
+        currentLocationId: 'loc1',
+        attributes: { fuerza: 0, constitucion: 0, destreza: 0, inteligencia: 0, voluntad: 0, carisma: 0, magia: 0 },
+        secondaryAttributes: {},
+        inventoryItems: [],
+        professionProgress: [],
+        worldState: { fictionalDateLabel: 'Día 1, mañana', fictionalMinutes: 480 },
+      });
+      // tier 20: dificultad 10+20=30, con inteligencia 0 y el mejor d20 posible (20) el resultado
+      // máximo es 20 — nunca llega, fallo garantizado sin mockear Math.random.
+      findFirstHarvestYield.mockResolvedValue({ cantidad: 2, metodoObtencion: 'MINERIA', item: { slug: 'mena-yerreo', name: 'Mena de Yerreo', tier: 20 } });
+      updateManyWorldPopulation.mockResolvedValue({ count: 1 });
+      const app = await buildApp();
+
+      const res = await app.inject({
+        method: 'POST',
+        url: '/saves/save1/recolectar/confirmar',
+        payload: { selections: [{ sourceSlug: 'yerreo', itemSlug: 'mena-yerreo', cantidad: 2 }] },
+      });
+
+      expect(res.statusCode).toBe(200);
+      expect(JSON.parse(res.body).items).toEqual([]);
+      // La primera tirada de "Explorar" ya decidió que esto era candidato — pero la SEGUNDA
+      // tirada, al confirmar, falla antes de tocar WorldPopulation: nunca se depleta población
+      // por algo que al final no se consigue de verdad.
+      expect(updateManyWorldPopulation).not.toHaveBeenCalled();
+    });
+
+    it('un yield de CAZA (desuello) tier >= 6 también dispara la segunda tirada, antes de reclamar NpcState', async () => {
+      findUniqueSave.mockResolvedValue({
+        id: 'save1',
+        worldId: 'world1',
+        characterName: 'Gorhorn',
+        currentLocationId: 'loc1',
+        attributes: { fuerza: 0, constitucion: 0, destreza: 0, inteligencia: 0, voluntad: 0, carisma: 0, magia: 0 },
+        secondaryAttributes: {},
+        inventoryItems: [],
+        professionProgress: [],
+        worldState: { fictionalDateLabel: 'Día 1, mañana', fictionalMinutes: 480 },
+      });
+      findFirstHarvestYield.mockResolvedValue({ cantidad: 1, metodoObtencion: 'CAZA', item: { slug: 'escamas-toluh', name: 'Escamas de Toluh', tier: 20 } });
+      const app = await buildApp();
+
+      const res = await app.inject({
+        method: 'POST',
+        url: '/saves/save1/recolectar/confirmar',
+        payload: { selections: [{ sourceSlug: 'toluh', itemSlug: 'escamas-toluh', cantidad: 1 }] },
+      });
+
+      expect(res.statusCode).toBe(200);
+      expect(JSON.parse(res.body).items).toEqual([]);
+      expect(updateManyNpcStateTx).not.toHaveBeenCalled();
+    });
+  });
+
+  // Pescador (2026-09-02, Pieza 1) — Pescar (PESCA) exige caña+cebo y consume 1 cebo por
+  // petición, nunca toca WorldPopulation; Buscar (BUSQUEDA) no exige ninguna herramienta.
+  describe('Pescador: Pescar exige caña+cebo (se gasta), Buscar no exige nada (Pieza 1)', () => {
+    function mockPlayerHasCanaYCebo() {
+      findManyInventoryItem.mockResolvedValue([
+        { id: 'tool1', name: 'Caña de pescar', catalogSlug: 'cana-pesca' },
+        { id: 'cebo1', name: 'Cebo (3)', catalogSlug: 'cebo-pesca' },
+      ]);
+      findManyItemCatalogTx.mockResolvedValue([
+        { slug: 'cana-pesca', tipo: 'EQUIPABLE', category: 'herramienta', herramientaParaOficio: ['pescador-pescar'] },
+        { slug: 'cebo-pesca', tipo: 'CONSUMIBLE', category: 'consumible', herramientaParaOficio: [] },
+      ]);
+    }
+
+    it('Pescar sin caña de pescar no da nada, aunque haya cebo', async () => {
+      findManyInventoryItem.mockResolvedValue([{ id: 'cebo1', name: 'Cebo (3)', catalogSlug: 'cebo-pesca' }]);
+      findManyItemCatalogTx.mockResolvedValue([{ slug: 'cebo-pesca', tipo: 'CONSUMIBLE', category: 'consumible', herramientaParaOficio: [] }]);
+      findFirstHarvestYield.mockResolvedValue({ cantidad: 1, metodoObtencion: 'PESCA', item: { slug: 'carne-jashil', name: 'Carne de Jashil', tier: 1 } });
+      const app = await buildApp();
+
+      const res = await app.inject({
+        method: 'POST',
+        url: '/saves/save1/recolectar/confirmar',
+        payload: { selections: [{ sourceSlug: 'jashil-verde', itemSlug: 'carne-jashil', cantidad: 1 }] },
+      });
+
+      expect(res.statusCode).toBe(200);
+      expect(JSON.parse(res.body).items).toEqual([]);
+      expect(createInventoryItem).not.toHaveBeenCalled();
+    });
+
+    it('Pescar con caña pero sin cebo no da nada', async () => {
+      findManyInventoryItem.mockResolvedValue([{ id: 'tool1', name: 'Caña de pescar', catalogSlug: 'cana-pesca' }]);
+      findManyItemCatalogTx.mockResolvedValue([{ slug: 'cana-pesca', tipo: 'EQUIPABLE', category: 'herramienta', herramientaParaOficio: ['pescador-pescar'] }]);
+      findFirstHarvestYield.mockResolvedValue({ cantidad: 1, metodoObtencion: 'PESCA', item: { slug: 'carne-jashil', name: 'Carne de Jashil', tier: 1 } });
+      const app = await buildApp();
+
+      const res = await app.inject({
+        method: 'POST',
+        url: '/saves/save1/recolectar/confirmar',
+        payload: { selections: [{ sourceSlug: 'jashil-verde', itemSlug: 'carne-jashil', cantidad: 1 }] },
+      });
+
+      expect(res.statusCode).toBe(200);
+      expect(JSON.parse(res.body).items).toEqual([]);
+      expect(createInventoryItem).not.toHaveBeenCalled();
+    });
+
+    it('Pescar con caña y cebo da el pez Y consume 1 cebo de la pila (sin depletar WorldPopulation)', async () => {
+      mockPlayerHasCanaYCebo();
+      findFirstHarvestYield.mockResolvedValue({ cantidad: 1, metodoObtencion: 'PESCA', item: { slug: 'carne-jashil', name: 'Carne de Jashil', tier: 1 } });
+      createInventoryItem.mockResolvedValue({ id: 'item1' });
+      const app = await buildApp();
+
+      const res = await app.inject({
+        method: 'POST',
+        url: '/saves/save1/recolectar/confirmar',
+        payload: { selections: [{ sourceSlug: 'jashil-verde', itemSlug: 'carne-jashil', cantidad: 1 }] },
+      });
+
+      expect(res.statusCode).toBe(200);
+      expect(JSON.parse(res.body).items).not.toEqual([]);
+      // Nunca toca WorldPopulation (Pescar/Buscar no depletan población — ver esFaunaMetodo).
+      expect(updateManyWorldPopulation).not.toHaveBeenCalled();
+      // Pila de 3 cebos, se consume 1 → queda en 2 (mismo mecanismo planConsumption/quantityOf
+      // que ya usa crafting.ts para ingredientes).
+      expect(updateInventoryItem).toHaveBeenCalledWith({ where: { id: 'cebo1' }, data: { name: 'Cebo (2)' } });
+    });
+
+    it('dos selecciones de Pescar en la misma petición solo consumen 1 cebo en total', async () => {
+      findManyInventoryItem.mockResolvedValue([
+        { id: 'tool1', name: 'Caña de pescar', catalogSlug: 'cana-pesca' },
+        { id: 'cebo1', name: 'Cebo', catalogSlug: 'cebo-pesca' },
+      ]);
+      findManyItemCatalogTx.mockResolvedValue([
+        { slug: 'cana-pesca', tipo: 'EQUIPABLE', category: 'herramienta', herramientaParaOficio: ['pescador-pescar'] },
+        { slug: 'cebo-pesca', tipo: 'CONSUMIBLE', category: 'consumible', herramientaParaOficio: [] },
+      ]);
+      findFirstHarvestYield.mockImplementation(({ where }: { where: { item: { slug: string } } }) =>
+        Promise.resolve(
+          where.item.slug === 'carne-jashil'
+            ? { cantidad: 1, metodoObtencion: 'PESCA', item: { slug: 'carne-jashil', name: 'Carne de Jashil', tier: 1 } }
+            : { cantidad: 1, metodoObtencion: 'PESCA', item: { slug: 'carne-negueo', name: 'Carne de Negueo', tier: 1 } },
+        ),
+      );
+      createInventoryItem.mockImplementation(({ data }: { data: { catalogSlug: string } }) =>
+        Promise.resolve({ id: data.catalogSlug === 'carne-jashil' ? 'item-jashil' : 'item-negueo' }),
+      );
+      const app = await buildApp();
+
+      await app.inject({
+        method: 'POST',
+        url: '/saves/save1/recolectar/confirmar',
+        payload: {
+          selections: [
+            { sourceSlug: 'jashil-verde', itemSlug: 'carne-jashil', cantidad: 1 },
+            { sourceSlug: 'negueo-turquesa', itemSlug: 'carne-negueo', cantidad: 1 },
+          ],
+        },
+      });
+
+      // Solo una pila de cebo (única fila) — se borra entera de una sola vez, no dos.
+      expect(deleteInventoryItem).toHaveBeenCalledTimes(1);
+    });
+
+    it('Buscar (BUSQUEDA) da el marisco sin ninguna herramienta ni cebo en el inventario', async () => {
+      findFirstHarvestYield.mockResolvedValue({ cantidad: 1, metodoObtencion: 'BUSQUEDA', item: { slug: 'bulco-arena-marisco', name: 'Bulco de Arena', tier: 1 } });
+      createInventoryItem.mockResolvedValue({ id: 'item1' });
+      const app = await buildApp();
+
+      const res = await app.inject({
+        method: 'POST',
+        url: '/saves/save1/recolectar/confirmar',
+        payload: { selections: [{ sourceSlug: 'bulco-de-arena', itemSlug: 'bulco-arena-marisco', cantidad: 1 }] },
+      });
+
+      expect(res.statusCode).toBe(200);
+      expect(JSON.parse(res.body).items).not.toEqual([]);
+      expect(updateManyWorldPopulation).not.toHaveBeenCalled();
+      expect(deleteInventoryItem).not.toHaveBeenCalled();
+    });
+  });
 });
 
 describe('GET /saves/:id/recolectar/:oficio', () => {
@@ -698,6 +939,227 @@ describe('GET /saves/:id/recolectar/:oficio', () => {
     const res = await app.inject({ method: 'GET', url: '/saves/save1/recolectar/herrero-orco-llanuras' });
 
     expect(res.statusCode).toBe(400);
+  });
+
+  // Cooldown de pescador (2026-09-02, Pieza 1) — "3 usos, luego 30 min", DISTINTO del cooldown por
+  // fuente del resto de oficios: por JUGADOR (Save.pescaUsosSeguidos/pescaCooldownDesde), nunca
+  // por WorldPopulation. Se comprueba ANTES de buscar candidatos.
+  describe('Pescador: cooldown de 3 usos seguidos (Pieza 1)', () => {
+    it('con menos de 3 usos seguidos, Pescar puede explorar con normalidad', async () => {
+      findUniqueSave.mockResolvedValue({
+        id: 'save1',
+        worldId: 'world1',
+        currentLocationId: 'loc1',
+        currentLocation: { region: 'Las Llanuras del Viento Rojo' },
+        attributes: { fuerza: 20, destreza: 20, constitucion: 10, inteligencia: 10, voluntad: 10, carisma: 10, magia: 10 },
+        secondaryAttributes: { suerte: 0 },
+        inventoryItems: [],
+        professionProgress: [],
+        pescaUsosSeguidos: 2,
+        pescaCooldownDesde: null,
+      });
+      findManyHarvestYield.mockResolvedValue([
+        { sourceSlug: 'jashil-verde', sourceCategory: 'fauna', item: { slug: 'carne-jashil', name: 'Carne de Jashil', tier: 1 }, cantidad: 1 },
+      ]);
+      findManyWorldPopulation.mockResolvedValue([
+        { targetSlug: 'jashil-verde', poblacion: 1200, distribucion: { 'Llanuras del Viento Rojo': 1 }, lastHarvestedAt: null, lastHarvestedLocationId: null },
+      ]);
+      const app = await buildApp();
+
+      const res = await app.inject({ method: 'GET', url: '/saves/save1/recolectar/pescador-pescar' });
+
+      expect(res.statusCode).toBe(200);
+      expect(JSON.parse(res.body).puedeExplorar).toBe(true);
+    });
+
+    it('al llegar al tope de usos hace menos de 30 min, Pescar está en cooldown (enCooldown:true, sin candidatos)', async () => {
+      findUniqueSave.mockResolvedValue({
+        id: 'save1',
+        worldId: 'world1',
+        currentLocationId: 'loc1',
+        currentLocation: { region: 'Las Llanuras del Viento Rojo' },
+        attributes: { fuerza: 20, destreza: 20, constitucion: 10, inteligencia: 10, voluntad: 10, carisma: 10, magia: 10 },
+        secondaryAttributes: { suerte: 0 },
+        inventoryItems: [],
+        professionProgress: [],
+        pescaUsosSeguidos: 3,
+        pescaCooldownDesde: new Date(Date.now() - 5 * 60_000), // hace 5 min, muy por debajo de 30
+      });
+      const app = await buildApp();
+
+      const res = await app.inject({ method: 'GET', url: '/saves/save1/recolectar/pescador-pescar' });
+
+      expect(res.statusCode).toBe(200);
+      const body = JSON.parse(res.body);
+      expect(body.enCooldown).toBe(true);
+      expect(body.sources).toEqual([]);
+      // En cooldown, la ruta ni siquiera consulta HarvestYield/WorldPopulation.
+      expect(findManyHarvestYield).not.toHaveBeenCalled();
+    });
+
+    it('tras pasar los 30 min desde que se alcanzó el tope, Pescar vuelve a estar disponible', async () => {
+      findUniqueSave.mockResolvedValue({
+        id: 'save1',
+        worldId: 'world1',
+        currentLocationId: 'loc1',
+        currentLocation: { region: 'Las Llanuras del Viento Rojo' },
+        attributes: { fuerza: 20, destreza: 20, constitucion: 10, inteligencia: 10, voluntad: 10, carisma: 10, magia: 10 },
+        secondaryAttributes: { suerte: 0 },
+        inventoryItems: [],
+        professionProgress: [],
+        pescaUsosSeguidos: 3,
+        pescaCooldownDesde: new Date(Date.now() - 31 * 60_000), // hace 31 min, ya pasó el cooldown
+      });
+      findManyHarvestYield.mockResolvedValue([
+        { sourceSlug: 'jashil-verde', sourceCategory: 'fauna', item: { slug: 'carne-jashil', name: 'Carne de Jashil', tier: 1 }, cantidad: 1 },
+      ]);
+      findManyWorldPopulation.mockResolvedValue([
+        { targetSlug: 'jashil-verde', poblacion: 1200, distribucion: { 'Llanuras del Viento Rojo': 1 }, lastHarvestedAt: null, lastHarvestedLocationId: null },
+      ]);
+      const app = await buildApp();
+
+      const res = await app.inject({ method: 'GET', url: '/saves/save1/recolectar/pescador-pescar' });
+
+      expect(res.statusCode).toBe(200);
+      expect(JSON.parse(res.body).puedeExplorar).toBe(true);
+    });
+
+    it('Buscar (BUSQUEDA) comparte el mismo cooldown que Pescar (contador por jugador, no por verbo)', async () => {
+      findUniqueSave.mockResolvedValue({
+        id: 'save1',
+        worldId: 'world1',
+        currentLocationId: 'loc1',
+        currentLocation: { region: 'Las Llanuras del Viento Rojo' },
+        attributes: { fuerza: 20, destreza: 20, constitucion: 10, inteligencia: 10, voluntad: 10, carisma: 10, magia: 10 },
+        secondaryAttributes: { suerte: 0 },
+        inventoryItems: [],
+        professionProgress: [],
+        pescaUsosSeguidos: 3,
+        pescaCooldownDesde: new Date(Date.now() - 5 * 60_000),
+      });
+      const app = await buildApp();
+
+      const res = await app.inject({ method: 'GET', url: '/saves/save1/recolectar/pescador-buscar' });
+
+      expect(JSON.parse(res.body).enCooldown).toBe(true);
+    });
+
+    it('minero/talador nunca comprueban el cooldown de pescador (esFaunaMetodo solo aplica a PESCA/BUSQUEDA)', async () => {
+      findUniqueSave.mockResolvedValue({
+        id: 'save1',
+        worldId: 'world1',
+        currentLocationId: 'loc1',
+        currentLocation: { region: 'Las Llanuras del Viento Rojo' },
+        attributes: { fuerza: 20, destreza: 20, constitucion: 10, inteligencia: 10, voluntad: 10, carisma: 10, magia: 10 },
+        secondaryAttributes: { suerte: 0 },
+        inventoryItems: [],
+        professionProgress: [],
+        pescaUsosSeguidos: 3,
+        pescaCooldownDesde: new Date(), // "en cooldown" de pescador, pero minero no debe verse afectado
+      });
+      findManyHarvestYield.mockResolvedValue([
+        { sourceSlug: 'roca-pilares-rotos', sourceCategory: 'mineral', item: { slug: 'piedra', name: 'Piedra', tier: 1 }, cantidad: 3 },
+      ]);
+      findManyWorldPopulation.mockResolvedValue([
+        { targetSlug: 'roca-pilares-rotos', poblacion: 40, distribucion: { 'Llanuras del Viento Rojo': 1 }, lastHarvestedAt: null, lastHarvestedLocationId: null },
+      ]);
+      const app = await buildApp();
+
+      const res = await app.inject({ method: 'GET', url: '/saves/save1/recolectar/minero-llanuras' });
+
+      expect(JSON.parse(res.body).puedeExplorar).toBe(true);
+    });
+  });
+
+  // POST /explorar cuenta como un "uso" real de pescador (2026-09-02, Pieza 1) — el intento en sí
+  // (tenga éxito o no la tirada) es lo que cansa, mismo criterio que el resto del motor: la tirada
+  // decide QUÉ aparece, nunca SI el intento "cuenta" para el cooldown.
+  describe('Pescador: /explorar incrementa pescaUsosSeguidos (Pieza 1)', () => {
+    it('cada Pescar/explorar incrementa pescaUsosSeguidos en 1', async () => {
+      findUniqueSave.mockResolvedValue({
+        id: 'save1',
+        worldId: 'world1',
+        characterName: 'Gorhorn',
+        currentLocationId: 'loc1',
+        currentLocation: { region: 'Las Llanuras del Viento Rojo' },
+        attributes: { fuerza: 20, destreza: 20, constitucion: 10, inteligencia: 10, voluntad: 10, carisma: 10, magia: 10 },
+        secondaryAttributes: { suerte: 0 },
+        inventoryItems: [],
+        professionProgress: [],
+        pescaUsosSeguidos: 1,
+        pescaCooldownDesde: null,
+        worldState: { fictionalMinutes: 0 },
+      });
+      findManyHarvestYield.mockResolvedValue([
+        { sourceSlug: 'jashil-verde', sourceCategory: 'fauna', item: { slug: 'carne-jashil', name: 'Carne de Jashil', tier: 1 }, cantidad: 1 },
+      ]);
+      findManyWorldPopulation.mockResolvedValue([
+        { targetSlug: 'jashil-verde', poblacion: 1200, distribucion: { 'Llanuras del Viento Rojo': 1 }, lastHarvestedAt: null, lastHarvestedLocationId: null },
+      ]);
+      const app = await buildApp();
+
+      await app.inject({ method: 'POST', url: '/saves/save1/recolectar/pescador-pescar/explorar' });
+
+      expect(updateSave).toHaveBeenCalledWith({ where: { id: 'save1' }, data: { pescaUsosSeguidos: 2, pescaCooldownDesde: null } });
+    });
+
+    it('al alcanzar el tope (3), fija pescaCooldownDesde a AHORA', async () => {
+      findUniqueSave.mockResolvedValue({
+        id: 'save1',
+        worldId: 'world1',
+        characterName: 'Gorhorn',
+        currentLocationId: 'loc1',
+        currentLocation: { region: 'Las Llanuras del Viento Rojo' },
+        attributes: { fuerza: 20, destreza: 20, constitucion: 10, inteligencia: 10, voluntad: 10, carisma: 10, magia: 10 },
+        secondaryAttributes: { suerte: 0 },
+        inventoryItems: [],
+        professionProgress: [],
+        pescaUsosSeguidos: 2,
+        pescaCooldownDesde: null,
+        worldState: { fictionalMinutes: 0 },
+      });
+      findManyHarvestYield.mockResolvedValue([
+        { sourceSlug: 'jashil-verde', sourceCategory: 'fauna', item: { slug: 'carne-jashil', name: 'Carne de Jashil', tier: 1 }, cantidad: 1 },
+      ]);
+      findManyWorldPopulation.mockResolvedValue([
+        { targetSlug: 'jashil-verde', poblacion: 1200, distribucion: { 'Llanuras del Viento Rojo': 1 }, lastHarvestedAt: null, lastHarvestedLocationId: null },
+      ]);
+      const app = await buildApp();
+
+      await app.inject({ method: 'POST', url: '/saves/save1/recolectar/pescador-pescar/explorar' });
+
+      const call = updateSave.mock.calls.find((c) => 'pescaUsosSeguidos' in (c[0] as { data: object }).data);
+      expect((call![0] as { data: { pescaUsosSeguidos: number; pescaCooldownDesde: Date } }).data.pescaUsosSeguidos).toBe(3);
+      expect((call![0] as { data: { pescaUsosSeguidos: number; pescaCooldownDesde: Date } }).data.pescaCooldownDesde).toBeInstanceOf(Date);
+    });
+
+    it('minero/talador nunca tocan pescaUsosSeguidos al explorar', async () => {
+      findUniqueSave.mockResolvedValue({
+        id: 'save1',
+        worldId: 'world1',
+        characterName: 'Gorhorn',
+        currentLocationId: 'loc1',
+        currentLocation: { region: 'Las Llanuras del Viento Rojo' },
+        attributes: { fuerza: 20, destreza: 20, constitucion: 10, inteligencia: 10, voluntad: 10, carisma: 10, magia: 10 },
+        secondaryAttributes: { suerte: 0 },
+        inventoryItems: [],
+        professionProgress: [],
+        pescaUsosSeguidos: 0,
+        pescaCooldownDesde: null,
+        worldState: { fictionalMinutes: 0 },
+      });
+      findManyHarvestYield.mockResolvedValue([
+        { sourceSlug: 'roca-pilares-rotos', sourceCategory: 'mineral', item: { slug: 'piedra', name: 'Piedra', tier: 1 }, cantidad: 3 },
+      ]);
+      findManyWorldPopulation.mockResolvedValue([
+        { targetSlug: 'roca-pilares-rotos', poblacion: 40, distribucion: { 'Llanuras del Viento Rojo': 1 }, lastHarvestedAt: null, lastHarvestedLocationId: null },
+      ]);
+      const app = await buildApp();
+
+      await app.inject({ method: 'POST', url: '/saves/save1/recolectar/minero-llanuras/explorar' });
+
+      expect(updateSave.mock.calls.some((c) => 'pescaUsosSeguidos' in (c[0] as { data: object }).data)).toBe(false);
+    });
   });
 
   // Desuello (2026-08-09, petición explícita: "que al usar la habilidad de profesión de desollar
@@ -915,9 +1377,15 @@ describe('GET /saves/:id/recolectar/:oficio', () => {
       expect(typeof body.roll.advantage).toBe('boolean');
     });
 
-    it('un recurso con dificultad inalcanzable ni con el mejor d20 posible no aparece (fallo)', async () => {
-      // fuerza 0 + bonusOficio 0 + mejor d20 (20) = 20, dificultad = 10+tier(20) = 30 — nunca llega,
-      // determinista sin necesidad de mockear Math.random.
+    it('un recurso de tier por encima del nivel de oficio real no aparece, ni siquiera llega a tirar (Pieza 3)', async () => {
+      // Con el filtro de nivel de oficio (2026-09-02, Pieza 3, candidateSourcesFor), un candidato
+      // de tier > nivel real se descarta ANTES de la tirada — el endpoint responde sin `roll` en
+      // absoluto (mismo camino que "sin candidatos", ver recolectar.ts § POST .../explorar). El
+      // escenario "dificultad inalcanzable ni con el mejor d20" que probaba esta misma prueba ANTES
+      // de la Pieza 3 (tier 20, professionProgress vacío → alivio 0, dificultad 30 > 20) ya no es
+      // observable de forma aislada: con fuerza 0, cualquier tier que SÍ pase el filtro de nivel
+      // (tier <= nivel) tiene dificultad <= 10+nivel, y el mejor d20 (20) + alivioForLevel(nivel)
+      // siempre la alcanza — matemáticamente no puede fallar por dificultad si ya pasó por nivel.
       findUniqueSave.mockResolvedValue({
         id: 'save1',
         worldId: 'world1',
@@ -940,13 +1408,17 @@ describe('GET /saves/:id/recolectar/:oficio', () => {
 
       const body = JSON.parse(res.body);
       expect(body.sources).toEqual([]);
-      expect(body.roll.result).toBeLessThan(30);
+      expect(body.roll).toBeUndefined();
     });
 
-    // sinTirada (2026-08-23, Grupo 3 § HarvestYield.condicion) — mismo montaje que el test de
-    // arriba (fuerza 0 + tier 20 = fallo garantizado con cualquier d20), pero con sinTirada:true
-    // el yield debe aparecer igualmente, sin comparar contra la dificultad.
+    // sinTirada (2026-08-23, Grupo 3 § HarvestYield.condicion) — con sinTirada:true el yield debe
+    // aparecer igualmente, sin comparar contra la dificultad.
     it('un yield con sinTirada:true aparece siempre, aunque la dificultad sea inalcanzable', async () => {
+      // `nivel: MAX_PROFESSION_LEVEL` + `tier: MAX_PROFESSION_LEVEL` en professionProgress
+      // (2026-09-02, Pieza 3) — deja pasar el filtro NUEVO de nivel de oficio (tier <= nivel), que
+      // no es lo que este test valida; MAX_PROFESSION_LEVEL en vez de un valor arbitrario (el `20`
+      // de antes) porque `ProfessionProgress.nivel` real nunca supera ese tope
+      // (`professionLevelForXp`) — un mock fuera de rango infla `alivioForLevel` sin límite.
       findUniqueSave.mockResolvedValue({
         id: 'save1',
         worldId: 'world1',
@@ -955,10 +1427,10 @@ describe('GET /saves/:id/recolectar/:oficio', () => {
         attributes: { fuerza: 0, destreza: 0, constitucion: 10, inteligencia: 10, voluntad: 10, carisma: 10, magia: 10 },
         secondaryAttributes: { suerte: 0 },
         inventoryItems: [],
-        professionProgress: [],
+        professionProgress: [{ professionId: 'herborista-llanuras', nivel: MAX_PROFESSION_LEVEL }],
       });
       findManyHarvestYield.mockResolvedValue([
-        { sourceSlug: 'salvia-del-polvo', sourceCategory: 'planta', item: { slug: 'manojo-salvia-polvo', name: 'Manojo de salvia del polvo', tier: 20 }, cantidad: 1, sinTirada: true },
+        { sourceSlug: 'salvia-del-polvo', sourceCategory: 'planta', item: { slug: 'manojo-salvia-polvo', name: 'Manojo de salvia del polvo', tier: MAX_PROFESSION_LEVEL }, cantidad: 1, sinTirada: true },
       ]);
       findManyWorldPopulation.mockResolvedValue([
         { targetSlug: 'salvia-del-polvo', poblacion: 40, distribucion: { 'Llanuras del Viento Rojo': 1 }, lastHarvestedAt: null, lastHarvestedLocationId: null },
@@ -1220,6 +1692,107 @@ describe('GET /saves/:id/recolectar/:oficio', () => {
       expect(Object.keys(lastCall.data.harvestRollCache)).toEqual(['minero-llanuras', 'talador-llanuras']);
       expect(lastCall.data.harvestRollCache['minero-llanuras'].sources[0].sourceSlug).toBe('roca-pilares-rotos');
       vi.restoreAllMocks();
+    });
+  });
+
+  // Nivel de oficio limita qué tier es accesible (2026-09-02, Pieza 3, petición explícita: "el
+  // nivel de habilidad también define qué sale... no tiene sentido que siendo minero nivel 0 me
+  // salgan recursos de tier alto"). Filtra en `candidateSourcesFor`, ANTES de la tirada: un
+  // candidato de tier por encima del nivel actual ni siquiera es candidato, no solo "sale con
+  // cantidad 0" — atributos altos (fuerza 20) garantizan éxito de tirada si el filtro de nivel lo
+  // deja pasar, así que estos tests aíslan de verdad el filtro nuevo del resto del sistema.
+  describe('nivel de oficio limita qué tier es accesible (Pieza 3)', () => {
+    function saveWithNivel(nivel: number, professionId = 'minero-llanuras') {
+      return {
+        id: 'save1',
+        worldId: 'world1',
+        currentLocationId: 'loc1',
+        currentLocation: { region: 'Las Llanuras del Viento Rojo' },
+        attributes: { fuerza: 20, destreza: 20, constitucion: 10, inteligencia: 10, voluntad: 10, carisma: 10, magia: 10 },
+        secondaryAttributes: { suerte: 0 },
+        inventoryItems: [],
+        professionProgress: [{ professionId, nivel }],
+      };
+    }
+
+    it('nivel 1: un candidato de tier 2 NO aparece, aunque la tirada sería un éxito garantizado', async () => {
+      findUniqueSave.mockResolvedValue(saveWithNivel(1));
+      findManyHarvestYield.mockResolvedValue([
+        { sourceSlug: 'roca-pilares-rotos', sourceCategory: 'mineral', item: { slug: 'piedra-rara', name: 'Piedra rara', tier: 2 }, cantidad: 3 },
+      ]);
+      findManyWorldPopulation.mockResolvedValue([
+        { targetSlug: 'roca-pilares-rotos', poblacion: 40, distribucion: { 'Llanuras del Viento Rojo': 1 }, lastHarvestedAt: null, lastHarvestedLocationId: null },
+      ]);
+      const app = await buildApp();
+
+      const res = await app.inject({ method: 'POST', url: '/saves/save1/recolectar/minero-llanuras/explorar' });
+
+      expect(JSON.parse(res.body).sources).toEqual([]);
+    });
+
+    it('nivel 2: ese mismo candidato de tier 2 SÍ aparece', async () => {
+      findUniqueSave.mockResolvedValue(saveWithNivel(2));
+      findManyHarvestYield.mockResolvedValue([
+        { sourceSlug: 'roca-pilares-rotos', sourceCategory: 'mineral', item: { slug: 'piedra-rara', name: 'Piedra rara', tier: 2 }, cantidad: 3 },
+      ]);
+      findManyWorldPopulation.mockResolvedValue([
+        { targetSlug: 'roca-pilares-rotos', poblacion: 40, distribucion: { 'Llanuras del Viento Rojo': 1 }, lastHarvestedAt: null, lastHarvestedLocationId: null },
+      ]);
+      const app = await buildApp();
+
+      const res = await app.inject({ method: 'POST', url: '/saves/save1/recolectar/minero-llanuras/explorar' });
+
+      expect(JSON.parse(res.body).sources).toHaveLength(1);
+    });
+
+    it('sin fila de ProfessionProgress todavía (oficio recién aprendido), se trata como nivel 1', async () => {
+      findUniqueSave.mockResolvedValue({ ...saveWithNivel(1), professionProgress: [] });
+      findManyHarvestYield.mockResolvedValue([
+        { sourceSlug: 'roca-pilares-rotos', sourceCategory: 'mineral', item: { slug: 'piedra-rara', name: 'Piedra rara', tier: 2 }, cantidad: 3 },
+      ]);
+      findManyWorldPopulation.mockResolvedValue([
+        { targetSlug: 'roca-pilares-rotos', poblacion: 40, distribucion: { 'Llanuras del Viento Rojo': 1 }, lastHarvestedAt: null, lastHarvestedLocationId: null },
+      ]);
+      const app = await buildApp();
+
+      const res = await app.inject({ method: 'POST', url: '/saves/save1/recolectar/minero-llanuras/explorar' });
+
+      expect(JSON.parse(res.body).sources).toEqual([]);
+    });
+
+    it('un candidato sin tier (default 1) siempre pasa el filtro de nivel 1', async () => {
+      findUniqueSave.mockResolvedValue(saveWithNivel(1));
+      findManyHarvestYield.mockResolvedValue([
+        { sourceSlug: 'roca-pilares-rotos', sourceCategory: 'mineral', item: { slug: 'piedra', name: 'Piedra', tier: null }, cantidad: 3 },
+      ]);
+      findManyWorldPopulation.mockResolvedValue([
+        { targetSlug: 'roca-pilares-rotos', poblacion: 40, distribucion: { 'Llanuras del Viento Rojo': 1 }, lastHarvestedAt: null, lastHarvestedLocationId: null },
+      ]);
+      const app = await buildApp();
+
+      const res = await app.inject({ method: 'POST', url: '/saves/save1/recolectar/minero-llanuras/explorar' });
+
+      expect(JSON.parse(res.body).sources).toHaveLength(1);
+    });
+
+    // Una fuente con dos yields de tier distinto (2026-09-02) — el filtro recorta por YIELD
+    // individual, no por fuente entera: a nivel 1, solo el yield de tier 1 sobrevive.
+    it('recorta yields individuales por tier, no la fuente entera: a nivel 1 solo sobrevive el yield de tier 1', async () => {
+      findUniqueSave.mockResolvedValue(saveWithNivel(1));
+      findManyHarvestYield.mockResolvedValue([
+        { sourceSlug: 'roca-pilares-rotos', sourceCategory: 'mineral', item: { slug: 'piedra', name: 'Piedra', tier: 1 }, cantidad: 3 },
+        { sourceSlug: 'roca-pilares-rotos', sourceCategory: 'mineral', item: { slug: 'piedra-rara', name: 'Piedra rara', tier: 3 }, cantidad: 1 },
+      ]);
+      findManyWorldPopulation.mockResolvedValue([
+        { targetSlug: 'roca-pilares-rotos', poblacion: 40, distribucion: { 'Llanuras del Viento Rojo': 1 }, lastHarvestedAt: null, lastHarvestedLocationId: null },
+      ]);
+      const app = await buildApp();
+
+      const res = await app.inject({ method: 'POST', url: '/saves/save1/recolectar/minero-llanuras/explorar' });
+
+      const body = JSON.parse(res.body);
+      expect(body.sources).toHaveLength(1);
+      expect(body.sources[0].yields.map((y: { itemSlug: string }) => y.itemSlug)).toEqual(['piedra']);
     });
   });
 

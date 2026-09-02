@@ -19,6 +19,11 @@ const VERB_REGEX_BY_METODO: Record<Exclude<MetodoObtencion, 'PASIVO'>, RegExp> =
   TALA: /tal[oae]|talando|hach(e|ea)|cort[oae].*(madera|le[ñn]a|arbol)/,
   MINERIA: /min[oae]|pic[ao]|extra(e|igo).*(roca|piedra|mena|mineral)/,
   EXTRACCION: /extra(e|igo)|arranc|recolect|cosech|recoj/,
+  // Pescador (2026-09-02) — mismo criterio de completitud que el resto del mapa, aunque en la
+  // práctica Pescar/Buscar siempre pasan por su propio pop-up determinista (HarvestSelectionModal,
+  // igual que Minar/Talar/Recolectar hierbas), nunca por este detector de texto libre.
+  PESCA: /pesc[oae]|pescando|ca[ñn]a/,
+  BUSQUEDA: /busc[oae].*(marisco|arena|caracol)|rebusc/,
 };
 
 /// Puro, separado de `detectHarvest` para poder testearlo sin BD (mismo criterio que

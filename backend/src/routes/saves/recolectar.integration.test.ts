@@ -83,7 +83,10 @@ describe('Cooldown de recolección: cambiar de Location lo salta, quedarse quiet
     expect(first.statusCode).toBe(200);
     const afterFirst = JSON.parse(first.body);
     expect(afterFirst.items).toHaveLength(1);
-    expect(afterFirst.items[0].name).toBe('Piedra (3)');
+    // Nombre real actualizado (2026-09-02, commit 445dd4d "renombra recursos genéricos con
+    // identidad regional", ajeno a esta tarea) — el item `slug: 'piedra'` pasó a llamarse "Roca de
+    // Llanura Roja", este test se había quedado con el nombre viejo tras ese rename.
+    expect(afterFirst.items[0].name).toBe('Roca de Llanura Roja (3)');
 
     const popAfterFirst = await prisma.worldPopulation.findFirstOrThrow({
       where: { worldId, targetType: 'RECURSO', targetSlug: 'roca-pilares-rotos' },
@@ -115,15 +118,135 @@ describe('Cooldown de recolección: cambiar de Location lo salta, quedarse quiet
       payload: { selections: [{ sourceSlug: 'roca-pilares-rotos', itemSlug: 'piedra', cantidad: 3 }] },
     });
     expect(res.statusCode).toBe(200);
-    // Ya existe una pila de "Piedra" del test anterior en este mismo save — se acumula en vez de
-    // crear una fila nueva (`updatedItems`, no `items`), mismo criterio que el resto del motor.
+    // Ya existe una pila de "Roca de Llanura Roja" del test anterior en este mismo save — se
+    // acumula en vez de crear una fila nueva (`updatedItems`, no `items`), mismo criterio que el
+    // resto del motor.
     const body = JSON.parse(res.body);
-    expect(body.updatedItems).toEqual([expect.objectContaining({ name: 'Piedra (6)' })]);
+    expect(body.updatedItems).toEqual([expect.objectContaining({ name: 'Roca de Llanura Roja (6)' })]);
 
     const pop = await prisma.worldPopulation.findFirstOrThrow({
       where: { worldId, targetType: 'RECURSO', targetSlug: 'roca-pilares-rotos' },
     });
     expect(pop.poblacion).toBe(originalPopulation.poblacion - 6);
     expect(pop.lastHarvestedLocationId).toBe(locationBId);
+  }, 15_000);
+});
+
+/// Profesión "pescador" nueva (2026-09-02, Pieza 1/2/3) — contra el catálogo REAL sembrado
+/// (Playa de Ceniza Blanca, jashil-verde/toluh/bulco-de-arena): confirma que las 6 filas de
+/// HarvestYield nuevas (seed-catalog.ts § worldCatalog.ts) de verdad enganchan con el motor de
+/// principio a fin — Explorar → confirmar, sin mockear nada. No toca `WorldPopulation` real de
+/// jashil/bulco (Pescar/Buscar nunca depletan población, ver `esFaunaMetodo`), así que no hace
+/// falta snapshot/restore de esas filas — solo borrar la partida/inventario de prueba al final.
+describe('Pescador (PESCA/BUSQUEDA) contra el catálogo real sembrado', () => {
+  let saveId: string;
+  let worldId: string;
+  let playaLocationId: string;
+
+  beforeAll(async () => {
+    const userId = await getDefaultUserId();
+    const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
+    worldId = world.id;
+    const playa = await prisma.location.findFirstOrThrow({ where: { worldId, slug: 'playa-de-ceniza-blanca' } });
+    playaLocationId = playa.id;
+
+    const save = await prisma.save.create({
+      data: {
+        userId,
+        worldId,
+        characterName: 'Gorhorn de prueba pescador',
+        characterArchetype: 'guerrero',
+        characterOrigin: 'Clan Maktor',
+        characterMotivation: 'x',
+        // Atributos altos en fuerza/voluntad/inteligencia/destreza: éxito garantizado tanto en la
+        // tirada de Explorar (fuerza/voluntad) como en la segunda tirada de Toluh (inteligencia,
+        // tier 7) — estos tests no dependen del azar de Math.random.
+        attributes: { fuerza: 20, destreza: 20, constitucion: 10, inteligencia: 20, voluntad: 20, carisma: 10, magia: 10 },
+        portraitInitial: 'G',
+        currentLocationId: playaLocationId,
+        // Nivel 7 en 'pescador' (Pieza 3) — necesario para que Toluh (tier 7) sea candidato.
+        professionProgress: { create: { professionId: 'pescador', nivel: 7 } },
+      },
+    });
+    saveId = save.id;
+    await prisma.worldState.create({ data: { saveId } });
+
+    const canaCatalog = await prisma.itemCatalog.findFirstOrThrow({ where: { worldId, slug: 'cana-pesca' } });
+    const ceboCatalog = await prisma.itemCatalog.findFirstOrThrow({ where: { worldId, slug: 'cebo-pesca' } });
+    await prisma.inventoryItem.create({
+      data: { saveId, name: canaCatalog.name, description: canaCatalog.description, catalogSlug: canaCatalog.slug },
+    });
+    await prisma.inventoryItem.create({
+      data: { saveId, name: 'Cebo (5)', description: ceboCatalog.description, catalogSlug: ceboCatalog.slug },
+    });
+  });
+
+  afterAll(async () => {
+    await prisma.save.delete({ where: { id: saveId } });
+  });
+
+  it('Explorar con Pescar localiza peces reales de la costa (jashil/negueo/toluh), no marisco', async () => {
+    const app = await buildApp();
+
+    const res = await app.inject({ method: 'POST', url: `/saves/${saveId}/recolectar/pescador-pescar/explorar` });
+
+    expect(res.statusCode).toBe(200);
+    const body = JSON.parse(res.body);
+    expect(body.sources.length).toBeGreaterThan(0);
+    const itemSlugs = body.sources.flatMap((s: { yields: { itemSlug: string }[] }) => s.yields.map((y) => y.itemSlug));
+    expect(itemSlugs.every((slug: string) => ['carne-jashil', 'carne-negueo', 'carne-toluh', 'escamas-toluh'].includes(slug))).toBe(true);
+    expect(itemSlugs).not.toContain('bulco-arena-marisco');
+  }, 15_000);
+
+  it('confirmar Pescar da el pez y consume 1 cebo de la pila, sin tocar ninguna WorldPopulation', async () => {
+    const app = await buildApp();
+    const jashilPop = await prisma.worldPopulation.findFirstOrThrow({ where: { worldId, targetType: 'FAUNA', targetSlug: 'jashil-verde' } });
+
+    const res = await app.inject({
+      method: 'POST',
+      url: `/saves/${saveId}/recolectar/confirmar`,
+      payload: { selections: [{ sourceSlug: 'jashil-verde', itemSlug: 'carne-jashil', cantidad: 1 }] },
+    });
+
+    expect(res.statusCode).toBe(200);
+    const body = JSON.parse(res.body);
+    expect(body.items.some((i: { name: string }) => i.name.includes('Carne de Jashil'))).toBe(true);
+
+    const jashilPopAfter = await prisma.worldPopulation.findFirstOrThrow({ where: { worldId, targetType: 'FAUNA', targetSlug: 'jashil-verde' } });
+    expect(jashilPopAfter.poblacion).toBe(jashilPop.poblacion);
+
+    const ceboRow = await prisma.inventoryItem.findFirstOrThrow({ where: { saveId, catalogSlug: 'cebo-pesca' } });
+    expect(ceboRow.name).toBe('Cebo (4)');
+  }, 15_000);
+
+  it('Explorar con Buscar localiza marisco (bulco-arena-marisco), no peces', async () => {
+    const app = await buildApp();
+
+    const res = await app.inject({ method: 'POST', url: `/saves/${saveId}/recolectar/pescador-buscar/explorar` });
+
+    expect(res.statusCode).toBe(200);
+    const body = JSON.parse(res.body);
+    expect(body.sources.length).toBeGreaterThan(0);
+    const itemSlugs = body.sources.flatMap((s: { yields: { itemSlug: string }[] }) => s.yields.map((y) => y.itemSlug));
+    expect(itemSlugs).toEqual(['bulco-arena-marisco']);
+  }, 15_000);
+
+  it('confirmar Buscar da el marisco sin ninguna herramienta (caña/cebo no aplican a BUSQUEDA)', async () => {
+    const app = await buildApp();
+    const ceboAntes = await prisma.inventoryItem.findFirstOrThrow({ where: { saveId, catalogSlug: 'cebo-pesca' } });
+
+    const res = await app.inject({
+      method: 'POST',
+      url: `/saves/${saveId}/recolectar/confirmar`,
+      payload: { selections: [{ sourceSlug: 'bulco-de-arena', itemSlug: 'bulco-arena-marisco', cantidad: 1 }] },
+    });
+
+    expect(res.statusCode).toBe(200);
+    const body = JSON.parse(res.body);
+    expect(body.items.some((i: { name: string }) => i.name.includes('Bulco de Arena'))).toBe(true);
+
+    // Buscar no toca el cebo — sigue igual que tras el test anterior.
+    const ceboDespues = await prisma.inventoryItem.findFirstOrThrow({ where: { saveId, catalogSlug: 'cebo-pesca' } });
+    expect(ceboDespues.name).toBe(ceboAntes.name);
   }, 15_000);
 });

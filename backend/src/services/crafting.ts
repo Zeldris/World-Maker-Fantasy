@@ -686,6 +686,56 @@ export const TANNED_BACKPACK_RECIPE: CraftingRecipe = {
     'El personaje curte y cose la mochila aquí mismo, en el Campamento del Clan Serhu, remachando las correas con el lingote de Yerreo — narra la escena con naturalidad. El objeto ya se gestiona automáticamente por el backend.',
 };
 
+// Caña de pescar (2026-09-02, profesión pescador — decisión explícita de la usuaria: "la caña se
+// crea con carpintería") — mismo patrón que WOOD_BEAM_RECIPE (madera por categoría, sin location
+// fija) más un anzuelo de hueso y sedal de cuerda. Sin esta receta, pescador quedaba bloqueado sin
+// ninguna forma real de conseguir su herramienta (hallazgo de verificación, ver harvestAbilities.ts
+// § comentario de cabecera).
+export const CANA_PESCA_RECIPE: CraftingRecipe = {
+  key: 'canaPesca',
+  verbRegex: /confeccion|tall|fabric|prepar|crear|creo/,
+  nounRegex: /ca[ñn]a.*pesc|pesc.*ca[ñn]a/,
+  location: null,
+  ingredients: [
+    { match: { kind: 'category', tipo: 'RECURSO', category: 'madera' }, cantidad: 2, label: 'madera' },
+    { match: { kind: 'category', tipo: 'RECURSO', category: 'hueso' }, cantidad: 1, label: 'hueso' },
+    { match: { kind: 'exact', catalogSlug: 'cuerdas' }, cantidad: 1, label: 'cuerdas' },
+  ],
+  resultName: 'Caña de pescar',
+  resultCatalogSlug: 'cana-pesca',
+  resultDescription: 'Vara flexible de madera con sedal de cuerda trenzada y anzuelo de hueso tallado — imprescindible para pescar en la costa.',
+  tier: 1,
+  requisitos: { destreza: 6 },
+  oficio: 'carpintero-orcos-llanuras',
+  narrationWant:
+    'El personaje quiere fabricar una caña de pescar, pero no lleva encima suficiente madera (hacen falta al menos 2), un hueso y unas cuerdas a la vez — narra que lo intenta o lo considera, pero no que la fabrica de verdad.',
+  narrationDo:
+    'El personaje talla la vara de madera, ata el sedal de cuerda y monta el anzuelo de hueso en la punta — narra la escena con naturalidad. El objeto ya se gestiona automáticamente por el backend.',
+};
+
+// Cebo (2026-09-02, profesión pescador — decisión explícita de la usuaria: "el cebo es un objeto
+// crafteable de Pesca, como receta de la propia profesión") — receta del propio pescador, no de
+// carpintero (a diferencia de la caña): quien ya sabe pescar sabe también preparar su cebo. Sin
+// `location` fija, ingrediente por categoría (cualquier marisco/carne de la costa sirve).
+export const CEBO_PESCA_RECIPE: CraftingRecipe = {
+  key: 'ceboPesca',
+  verbRegex: /prepar|confeccion|fabric|crear|creo/,
+  nounRegex: /cebo/,
+  location: null,
+  ingredients: [{ match: { kind: 'category', tipo: 'RECURSO', category: 'alimento' }, cantidad: 1, label: 'marisco o carne de costa' }],
+  resultName: 'Cebo',
+  resultCatalogSlug: 'cebo-pesca',
+  resultCantidad: 10,
+  resultDescription: 'Gusanos de arena y trozos de marisco ensartados en el anzuelo — atraen a los peces de la costa.',
+  tier: 1,
+  requisitos: { voluntad: 4 },
+  oficio: 'pescador-pescar',
+  narrationWant:
+    'El personaje quiere preparar cebo, pero no lleva encima marisco o carne de costa con que prepararlo — narra que lo intenta o lo considera, pero no que lo prepara de verdad.',
+  narrationDo:
+    'El personaje trocea marisco y lo ensarta en el anzuelo, dejando listo un bote de cebo fresco — narra la escena con naturalidad. El objeto ya se gestiona automáticamente por el backend.',
+};
+
 export const TROPHY_BELT_RECIPE: CraftingRecipe = {
   key: 'trophyBelt',
   verbRegex: /confeccion|cos[eo]|curt|prepar|fabric|crear|creo/,
@@ -1150,6 +1200,8 @@ export const CRAFTING_RECIPES: CraftingRecipe[] = [
   TROPHY_BELT_RECIPE,
   HAND_AXE_RECIPE,
   TANNED_BACKPACK_RECIPE,
+  CANA_PESCA_RECIPE,
+  CEBO_PESCA_RECIPE,
 ];
 
 export function detectsCraftIntent(recipe: CraftingRecipe, action: string): boolean {
@@ -1253,7 +1305,12 @@ export async function detectDeterministicCraft(params: {
 /// condición solo pide "pico de minero" para 2 vetas concretas y raras — Mena de Yerreo, Mena de
 /// hierro de Los Pilares Rotos). Ese gate es POR YIELD, no por oficio — ver
 /// `HarvestYield.requiereHerramienta` y el chequeo de `hasMineroTool` en recolectar.ts.
-export const OFICIOS_CON_HERRAMIENTA_REQUERIDA = ['curtidor', 'desollador'];
+/// 'pescador-pescar' (2026-09-02, no 'pescador' a secas) — bloquea SOLO Pescar (exige caña de
+/// pescar, ver `ItemCatalog.herramientaParaOficio` de la caña), nunca Buscar (marisco, sin
+/// herramienta): ambos comparten profesión pero tienen su propia clave de ruta desde
+/// `harvestAbilities.ts` § `HarvestAbilityUnlock.subOficio` — usar el prefijo genérico 'pescador'
+/// aquí habría bloqueado también Buscar por accidente (`matchesOficioPrefix` machea por prefijo).
+export const OFICIOS_CON_HERRAMIENTA_REQUERIDA = ['curtidor', 'desollador', 'pescador-pescar'];
 
 /// Puro: ¿tiene el personaje, en las filas de inventario dadas, algún objeto marcado como
 /// herramienta para este oficio? Solo relevante si `oficio` está en

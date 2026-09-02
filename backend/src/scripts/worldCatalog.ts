@@ -1875,6 +1875,197 @@ export const fauna: NpcInput[] = [
       { icon: '🕳️', name: 'Madriguera fortificada', description: 'Se retira a su propia madriguera reforzada con roca, casi imposible de forzar desde fuera.', categoria: 'defensa', preferredAttribute: 'constitucion' },
     ],
   },
+
+  // Fauna de Playa de Ceniza Blanca (zona 15 del repaso "zona por zona", 2026-09-02) — zona
+  // pacífica/de descanso, sin fauna combatible: todos los peces son "no ataca, huye" o inofensivos
+  // sésiles, se obtienen vía la nueva profesión "pescador" (Pescar/Buscar), nunca por Cazar.
+  {
+    slug: 'jashil-verde',
+    name: 'Jashil Verde',
+    kind: 'PLANTILLA',
+    aliases: ['jashil verde', 'jashil'],
+    faction: null,
+    role: 'Pez abundante de la costa de Playa de Ceniza Blanca',
+    articulo: 'el',
+    level: 1,
+    levelMax: 2,
+    attributes: { fuerza: 2, destreza: 5, constitucion: 3, inteligencia: 1, voluntad: 2, carisma: 1, magia: 0 },
+    bio: 'Pez de 40 a 60 cm, cuerpo largo y escuálido como un pez aguja, varias filas de branquias visibles, cabeza similar a la de un lucio. Colores verdes vívidos mezclados, aletas dorsales de un esmeralda intenso. Muy abundante en esta costa.',
+    personality: 'Inofensivo, no reacciona a la presencia de un pescador.',
+    homeLocationSlug: 'playa-de-ceniza-blanca',
+    loadout: [],
+    ataqueNatural: 'No ataca, huye.',
+    temperamento: 'INOFENSIVO',
+    habilidadesRaciales: [],
+  },
+
+  {
+    slug: 'jashil-rojo',
+    name: 'Jashil Rojo',
+    kind: 'PLANTILLA',
+    aliases: ['jashil rojo'],
+    faction: null,
+    role: 'Pez abundante de la costa de Playa de Ceniza Blanca, variante cromática del Jashil Verde',
+    articulo: 'el',
+    level: 1,
+    levelMax: 2,
+    attributes: { fuerza: 2, destreza: 5, constitucion: 3, inteligencia: 1, voluntad: 2, carisma: 1, magia: 0 },
+    bio: 'Idéntico en forma al Jashil Verde —cuerpo largo y escuálido, cabeza de lucio, varias filas de branquias—, pero en tonos rojos variados con aleta dorsal color rubí.',
+    personality: 'Inofensivo, no reacciona a la presencia de un pescador.',
+    homeLocationSlug: 'playa-de-ceniza-blanca',
+    loadout: [],
+    ataqueNatural: 'No ataca, huye.',
+    temperamento: 'INOFENSIVO',
+    habilidadesRaciales: [],
+  },
+
+  {
+    slug: 'toluh',
+    name: 'Toluh',
+    kind: 'PLANTILLA',
+    aliases: ['toluh'],
+    faction: null,
+    role: 'Pez migratorio de gran tamaño, solo en otoño en Playa de Ceniza Blanca',
+    articulo: 'el',
+    level: 4,
+    levelMax: 6,
+    attributes: { fuerza: 8, destreza: 3, constitucion: 14, inteligencia: 2, voluntad: 3, carisma: 1, magia: 0 },
+    bio: 'Pez de 1 a 1,40 m, gris oscuro, ancho y circular como un pez luna pero con aletas muy desarrolladas que le permiten acelerar rápido pese a no ser veloz. Escamas grandes que cubren todo su cuerpo como una armadura. Come principalmente algas, en las zonas más profundas de la costa. Migra por el mar como las ballenas — solo aparece en las jornadas de otoño.',
+    personality: 'Inofensivo, presa grande y pacífica, nunca ataca.',
+    homeLocationSlug: 'playa-de-ceniza-blanca',
+    loadout: [],
+    ataqueNatural: 'No ataca.',
+    temperamento: 'INOFENSIVO',
+    habilidadesRaciales: [],
+  },
+
+  {
+    slug: 'negueo-turquesa',
+    name: 'Negueo Turquesa',
+    kind: 'PLANTILLA',
+    aliases: ['negueo turquesa', 'negueo'],
+    faction: null,
+    role: 'Pez carroñero de la costa de Playa de Ceniza Blanca',
+    articulo: 'el',
+    level: 1,
+    levelMax: 2,
+    attributes: { fuerza: 2, destreza: 4, constitucion: 3, inteligencia: 1, voluntad: 2, carisma: 1, magia: 0 },
+    bio: 'Pez de 10 a 30 cm con aspecto de sargo pero en tonos turquesa, más gordo que un sargo y con dientes de piraña. Carroñero — se alimenta de restos orgánicos y cadáveres que llegan a la costa, esperando cerca de la orilla. Carne de sabor pobre y poca energía, aunque hay recetas de cocina que saben aprovechar su amargor.',
+    personality: 'Cauteloso — se acerca a la comida, pero se aparta si detecta una amenaza real.',
+    homeLocationSlug: 'playa-de-ceniza-blanca',
+    loadout: [],
+    ataqueNatural: 'No ataca directamente, pero no es fácil de acorralar.',
+    temperamento: 'CAUTELOSO',
+    habilidadesRaciales: [],
+  },
+
+  {
+    slug: 'negueo-solar',
+    name: 'Negueo Solar',
+    kind: 'PLANTILLA',
+    aliases: ['negueo solar'],
+    faction: null,
+    role: 'Pez carroñero de la costa de Playa de Ceniza Blanca, variante cromática del Negueo Turquesa',
+    articulo: 'el',
+    level: 1,
+    levelMax: 2,
+    attributes: { fuerza: 2, destreza: 4, constitucion: 3, inteligencia: 1, voluntad: 2, carisma: 1, magia: 0 },
+    bio: 'Idéntico en forma al Negueo Turquesa —aspecto de sargo, dientes de piraña, carroñero—, pero en distintos tonos amarillos.',
+    personality: 'Cauteloso — se acerca a la comida, pero se aparta si detecta una amenaza real.',
+    homeLocationSlug: 'playa-de-ceniza-blanca',
+    loadout: [],
+    ataqueNatural: 'No ataca directamente, pero no es fácil de acorralar.',
+    temperamento: 'CAUTELOSO',
+    habilidadesRaciales: [],
+  },
+
+  {
+    slug: 'bulco-de-arena',
+    name: 'Bulco de Arena',
+    kind: 'PLANTILLA',
+    aliases: ['bulco de arena', 'bulco'],
+    faction: null,
+    role: 'Caracol de mar de la costa de Playa de Ceniza Blanca',
+    articulo: 'el',
+    level: 1,
+    levelMax: 1,
+    attributes: { fuerza: 1, destreza: 1, constitucion: 2, inteligencia: 1, voluntad: 1, carisma: 1, magia: 0 },
+    bio: 'Caracol de mar de 5 a 15 cm, concha rugosa y puntiaguda con montañitas redondas simétricas, entre rojo muy oscuro y marrón claro. Interior blando y viscoso, con mucho sabor a mar. Los Terinte los desentierran con fruición, aunque también se pueden encontrar buscando en la arena.',
+    personality: 'Sésil, sin reacción — no huye ni se defiende.',
+    homeLocationSlug: 'playa-de-ceniza-blanca',
+    loadout: [],
+    ataqueNatural: 'No ataca.',
+    temperamento: 'INOFENSIVO',
+    habilidadesRaciales: [],
+  },
+
+  {
+    slug: 'terinte',
+    name: 'Terinte',
+    kind: 'PLANTILLA',
+    aliases: ['terinte'],
+    faction: null,
+    role: 'Mamífero excavador de la costa de Playa de Ceniza Blanca, puramente ambiental',
+    articulo: 'el',
+    level: 1,
+    levelMax: 2,
+    attributes: { fuerza: 2, destreza: 9, constitucion: 3, inteligencia: 3, voluntad: 2, carisma: 2, magia: 0 },
+    bio: 'Parecido a un hurón, 40 a 60 cm, pelaje claro como la arena. Escarba túneles en busca de marisco, muy rápido, con garras adaptadas a cavar y un morro puntiagudo. Su lengua se divide en dos partes redondas (no planas, a diferencia de una serpiente), con pequeños dientes al final a modo de papilas, con los que atrapa marisco — no tiene dientes en la boca. Sale a escarbar en cuanto detecta que no hay nadie cerca, o se le puede ver alguna vez despistado antes de desaparecer.',
+    personality: 'Cauteloso — huye nada más detectar una presencia amenazante.',
+    homeLocationSlug: 'playa-de-ceniza-blanca',
+    loadout: [],
+    ataqueNatural: 'No ataca, huye.',
+    temperamento: 'CAUTELOSO',
+    // Puramente narrativo/ambiental a propósito (decisión explícita de la usuaria, 2026-09-02): no
+    // proporciona ningún material real — no lleva HarvestYield, nunca aparece en ningún modal
+    // mecánico (Cazar/Pescar/Buscar), solo lo menciona el Narrador en la escena.
+    habilidadesRaciales: [],
+  },
+
+  {
+    slug: 'benusa-pesquera',
+    name: 'Benusa Pesquera',
+    kind: 'PLANTILLA',
+    aliases: ['benusa pesquera', 'benusa'],
+    faction: null,
+    role: 'Ave pescadora migratoria de la costa de Playa de Ceniza Blanca, puramente ambiental',
+    articulo: 'la',
+    level: 1,
+    levelMax: 2,
+    attributes: { fuerza: 2, destreza: 7, constitucion: 3, inteligencia: 3, voluntad: 2, carisma: 2, magia: 0 },
+    bio: 'Ave de cuerpo similar a una cigüeña pero de patas cortas, cuello largo de cormorán, pico fino y puntiagudo similar al de un pelícano pero sin apenas papada. Plumas blancas que, en posición de pesca, dejan ver un brillo azul con el que engaña a los peces haciéndoles creer que son escamas — pico azulado con franjas blancas, ojos extraños de iris y pupila de ave pero forma reptiliana. Principalmente acuática, con largos vuelos migratorios: descansa en esta costa en verano y primavera, y el resto del año se refugia en la costa sur del Margen Silencioso. Su presa favorita es el Jashil, el pez más abundante de toda la costa de Berig.',
+    personality: 'Cauteloso — furtiva y activa al pescar, pero no agresiva hacia nadie más.',
+    homeLocationSlug: 'playa-de-ceniza-blanca',
+    loadout: [],
+    ataqueNatural: 'No ataca.',
+    temperamento: 'CAUTELOSO',
+    // Puramente narrativo/ambiental a propósito (2026-09-02): depredador natural del Jashil, mismo
+    // patrón que Miruina/Tura Jusha en Los Manaderos — un depredador NPC no duplica el recurso de
+    // su presa. Sin HarvestYield, no entra en ningún modal mecánico.
+    habilidadesRaciales: [],
+  },
+
+  {
+    slug: 'manesti-azul',
+    name: 'Manesti Azul',
+    kind: 'PLANTILLA',
+    aliases: ['manesti azul', 'manesti'],
+    faction: null,
+    role: 'Criatura híbrida de la costa de Playa de Ceniza Blanca, puramente ambiental',
+    articulo: 'el',
+    level: 1,
+    levelMax: 2,
+    attributes: { fuerza: 2, destreza: 3, constitucion: 2, inteligencia: 2, voluntad: 2, carisma: 1, magia: 0 },
+    bio: 'Criatura de 10 a 15 cm, mitad lagartija mitad crustáceo: cuerpo redondo con la cabeza centrada en él (no plana al suelo como una lagartija), dos patas traseras de cangrejo normal y otras dos intermedias que le ayudan a sostenerse en pie, y delanteras que emulan manos de 3 dedos cuadrados hechos del mismo material que un cangrejo. Azul muy oscuro por arriba, perdiendo tono hacia abajo hasta quedar blanco en el centro del vientre.',
+    personality: 'Curiosa, indiferente al entorno.',
+    homeLocationSlug: 'playa-de-ceniza-blanca',
+    loadout: [],
+    ataqueNatural: 'No ataca.',
+    temperamento: 'INOFENSIVO',
+    // Puramente narrativo/ambiental a propósito (2026-09-02): sin ninguna pista de que aporte
+    // material real — curiosidad de fauna, no entra en ningún modal mecánico.
+    habilidadesRaciales: [],
+  },
 ];
 
 export const npcs: NpcInput[] = [
@@ -2268,6 +2459,36 @@ export const npcs: NpcInput[] = [
     comerciablePct: 30,
     reclutablePct: 0,
     atributoResistencia: 'voluntad',
+    capturablePct: 0,
+    loadout: [],
+  },
+
+  // Maestro Pescador (2026-09-02, profesión "pescador" nueva, zona 15 de Playa de Ceniza Blanca) —
+  // sin él, nadie podía aprender pescador en absoluto (hallazgo de verificación tras implementar
+  // Pescar/Buscar). Mismo patrón que el resto de Maestros de oficio; `teachesProfession: 'pescador'`
+  // SIN sufijo regional, a diferencia del resto — pescador es universal (harvestAbilities.ts, todas
+  // las razas), no un combo raza+región de professions.ts.
+  {
+    slug: 'maestro-pescador-serhu',
+    name: 'Maestro Pescador Serhu',
+    kind: 'PRINCIPAL',
+    aliases: ['maestro pescador', 'el pescador de Playa de Ceniza Blanca'],
+    faction: 'Clan Serhu',
+    genero: 'M',
+    role: 'Maestro Pescador, Playa de Ceniza Blanca',
+    level: 5,
+    attributes: { fuerza: 11, destreza: 13, constitucion: 12, inteligencia: 10, voluntad: 12, carisma: 8, magia: 1 },
+    bio: 'Orco curtido por el sol y la sal, manos ásperas de manejar sedal y cuerda a diario. Conoce cada banco de Jashil y sabe leer cuándo el Toluh puede aparecer en la orilla profunda. Baja de vez en cuando desde Karot Veku a instalarse en la playa una temporada.',
+    personality: 'Paciente, habla poco y solo cuando el pez no muerde.',
+    homeLocationSlug: 'playa-de-ceniza-blanca',
+    teachesProfession: 'pescador',
+    raza: 'orcos',
+    clase: 'CAZADOR',
+    especializacion: 'SUPERVIVENCIA',
+    temperamento: 'CAUTELOSO',
+    comerciablePct: 30,
+    reclutablePct: 0,
+    atributoResistencia: 'destreza',
     capturablePct: 0,
     loadout: [],
   },
@@ -4745,6 +4966,68 @@ export const items: ItemCatalogInput[] = [
     valorGoirnos: 6,
   },
 
+  // Loot pescable/marisco de Playa de Ceniza Blanca (zona 15 del repaso, 2026-09-02) — vía la
+  // nueva profesión "pescador" (Pescar/Buscar), nunca Cazar.
+  {
+    slug: 'carne-jashil',
+    name: 'Carne de Jashil',
+    aliases: ['carne de jashil'],
+    category: 'alimento',
+    tipo: 'RECURSO',
+    valorGoirnos: 1,
+    description: 'Carne de Jashil, pez abundante de Playa de Ceniza Blanca — sabor suave, base habitual de la cocina costera.',
+    dimensiones: 'Filetes de 100 g.',
+    tier: 1,
+  },
+
+  {
+    slug: 'carne-toluh',
+    name: 'Carne de Toluh',
+    aliases: ['carne de toluh'],
+    category: 'alimento',
+    tipo: 'RECURSO',
+    valorGoirnos: 6,
+    description: 'Carne del Toluh, pez migratorio de gran tamaño — ración abundante, muy apreciada por lo raro que es dar con uno.',
+    dimensiones: 'Filetes de 500 g.',
+    tier: 7,
+  },
+
+  {
+    slug: 'escamas-toluh',
+    name: 'Escamas de Toluh',
+    aliases: ['escamas de toluh'],
+    category: 'escamas',
+    tipo: 'RECURSO',
+    description: 'Escama grande y dura del Toluh, gris oscuro — codiciada para crear armaduras.',
+    dimensiones: 'Escamas de 8 a 10 cm.',
+    tier: 7,
+    valorGoirnos: 25,
+  },
+
+  {
+    slug: 'carne-negueo',
+    name: 'Carne de Negueo',
+    aliases: ['carne de negueo', 'carne de negueo turquesa', 'carne de negueo solar'],
+    category: 'alimento',
+    tipo: 'RECURSO',
+    valorGoirnos: 1,
+    description: 'Carne de Negueo (Turquesa o Solar), pez carroñero de sabor pobre — poca energía, pero algunas recetas de cocina saben aprovechar su amargor.',
+    dimensiones: 'Filetes de 60 g.',
+    tier: 1,
+  },
+
+  {
+    slug: 'bulco-arena-marisco',
+    name: 'Bulco de Arena',
+    aliases: ['bulco de arena', 'marisco de bulco'],
+    category: 'alimento',
+    tipo: 'RECURSO',
+    valorGoirnos: 2,
+    description: 'Interior blando y viscoso del caracol Bulco de Arena, mucho sabor a mar — marisco de la costa de Playa de Ceniza Blanca.',
+    dimensiones: 'Pieza de 5 a 15 cm.',
+    tier: 1,
+  },
+
   {
     slug: 'musgo-rojo',
     name: 'Musgo Rojo',
@@ -5721,6 +6004,45 @@ export const items: ItemCatalogInput[] = [
     // avanzados, patrón `requirements`/`requiresAyuntamiento: true`, ver MAKTOR_CLAN_TOTEM_RECIPE
     // como ejemplo) — no crafting.ts (equipo personal). Ver memoria
     // tarkor_pasada_objetos_narrativos_2026-09-02. No implementado todavía.
+  },
+
+  // Pescador (2026-09-02, profesión nueva universal, Pieza 1) — dos objetos nuevos: la caña
+  // (herramienta real, equipable, mismo patrón que `pico-minero`) y el cebo (material consumible,
+  // se gasta al pescar, mismo patrón que `cuerdas`). Decisión explícita de la usuaria: ambos son
+  // CRAFTEABLES, no de partida — caña con carpintero (WOOD_BEAM_RECIPE como plantilla), cebo con
+  // el propio pescador (receta real, no entrega gratuita). Ver CANA_PESCA_RECIPE/CEBO_PESCA_RECIPE
+  // en crafting.ts.
+  {
+    slug: 'cana-pesca',
+    name: 'Caña de pescar',
+    aliases: ['caña de pescar', 'caña'],
+    category: 'herramienta',
+    tipo: 'EQUIPABLE',
+    valorGoirnos: 6,
+    equipSlot: 'ARMA_SECUNDARIA',
+    description: 'Vara flexible de madera de Telda con sedal de tendón trenzado y anzuelo de hueso tallado — imprescindible para pescar en la costa.',
+    dimensiones: 'Vara de 1,80 m.',
+    lugarOrigen: 'Playa de Ceniza Blanca.',
+    herramientaParaOficio: ['pescador-pescar'],
+  },
+
+  {
+    // `tipo: 'CONSUMIBLE'`/`category: 'consumible'` (no MATERIAL — itemTaxonomy.ts solo admite
+    // ['metal','bloque','quitina','viga','columna','cordaje'] ahí, todo procesado de construcción;
+    // cebo no encaja y sí es, mecánicamente, un consumible que se gasta al usarlo, mismo criterio
+    // que `agua-hervida-liquen`) — a diferencia de esos, sin `equipSlot`/`curaEnergia` propios: no
+    // se "usa" desde el inventario como una poción, se consume automáticamente al confirmar Pescar
+    // (recolectar.ts, mismo mecanismo `totalQuantity`/`planConsumption` que ya usa crafting.ts
+    // para ingredientes — no depende de `equipSlot` para nada).
+    slug: 'cebo-pesca',
+    name: 'Cebo',
+    aliases: ['cebo', 'cebo de pesca'],
+    category: 'consumible',
+    tipo: 'CONSUMIBLE',
+    valorGoirnos: 2,
+    description: 'Gusanos de arena y trozos de marisco ensartados en el anzuelo — atraen a los peces de la costa. Se gasta al pescar.',
+    dimensiones: 'Bote de 10 unidades.',
+    lugarOrigen: 'Playa de Ceniza Blanca.',
   },
 ];
 
@@ -6950,6 +7272,81 @@ export const harvestYields: HarvestYieldInput[] = [
     condicion: 'requiere pico de minero — vetas visibles entre las grietas de la roca erosionada',
     requiereHerramienta: true,
   },
+
+  // Peces y marisco de Playa de Ceniza Blanca (zona 15 del repaso, 2026-09-02) — profesión
+  // "pescador" nueva (ver harvestAbilities.ts): Pescar (PESCA, caña+cebo) para los peces, Buscar
+  // (BUSQUEDA, sin herramienta) para el marisco. `sourceCategory: 'fauna'` mismo criterio que
+  // jusha-esmeralda (fauna real con Npc propio) — no confundir con el resto de fauna del catálogo,
+  // que usa CAZA (combate/desuello): estos peces son 'INOFENSIVO'/'CAUTELOSO' ("no ataca, huye"),
+  // nunca se cazan. Cantidad 1 por captura para los 6 (peces/caracoles individuales, no vetas).
+
+  // --- Jashil Verde / Jashil Rojo (mismo item, dos peces cromáticamente distintos) ---
+
+  {
+    sourceSlug: 'jashil-verde',
+    sourceCategory: 'fauna',
+    metodoObtencion: 'PESCA',
+    itemSlug: 'carne-jashil',
+    cantidad: 1,
+  },
+
+  {
+    sourceSlug: 'jashil-rojo',
+    sourceCategory: 'fauna',
+    metodoObtencion: 'PESCA',
+    itemSlug: 'carne-jashil',
+    cantidad: 1,
+  },
+
+  // --- Toluh (migratorio, solo otoño — tier 7, dos yields del mismo pez) ---
+
+  {
+    sourceSlug: 'toluh',
+    sourceCategory: 'fauna',
+    metodoObtencion: 'PESCA',
+    itemSlug: 'carne-toluh',
+    cantidad: 1,
+    condicion: 'pez migratorio, solo en otoño',
+    estacionRequerida: 'OTONO',
+  },
+
+  {
+    sourceSlug: 'toluh',
+    sourceCategory: 'fauna',
+    metodoObtencion: 'PESCA',
+    itemSlug: 'escamas-toluh',
+    cantidad: 1,
+    condicion: 'pez migratorio, solo en otoño',
+    estacionRequerida: 'OTONO',
+  },
+
+  // --- Negueo Turquesa / Negueo Solar (mismo item, dos peces cromáticamente distintos) ---
+
+  {
+    sourceSlug: 'negueo-turquesa',
+    sourceCategory: 'fauna',
+    metodoObtencion: 'PESCA',
+    itemSlug: 'carne-negueo',
+    cantidad: 1,
+  },
+
+  {
+    sourceSlug: 'negueo-solar',
+    sourceCategory: 'fauna',
+    metodoObtencion: 'PESCA',
+    itemSlug: 'carne-negueo',
+    cantidad: 1,
+  },
+
+  // --- Bulco de Arena (marisco, Buscar — sin herramienta) ---
+
+  {
+    sourceSlug: 'bulco-de-arena',
+    sourceCategory: 'fauna',
+    metodoObtencion: 'BUSQUEDA',
+    itemSlug: 'bulco-arena-marisco',
+    cantidad: 1,
+  },
 ];
 
 /// Especie/planta -> aliases de jugador, para el matcher determinista de despiece/recolección
@@ -7314,6 +7711,15 @@ export const harvestSourceRegion: Record<string, string> = {
   'roca-luclara': 'Llanuras del Viento Rojo',
   towrgu: 'Llanuras del Viento Rojo',
   coracelo: 'Llanuras del Viento Rojo',
+
+  // Peces y marisco de Playa de Ceniza Blanca (zona 15, 2026-09-02, profesión "pescador") — todos
+  // dentro de Las Llanuras del Viento Rojo, misma región que el resto de la costa.
+  'jashil-verde': 'Llanuras del Viento Rojo',
+  'jashil-rojo': 'Llanuras del Viento Rojo',
+  toluh: 'Llanuras del Viento Rojo',
+  'negueo-turquesa': 'Llanuras del Viento Rojo',
+  'negueo-solar': 'Llanuras del Viento Rojo',
+  'bulco-de-arena': 'Llanuras del Viento Rojo',
 };
 
 /// Categorías amplias de fuente recolectable (2026-08-15, petición explícita: "tener un enum con
