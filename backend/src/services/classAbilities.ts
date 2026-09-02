@@ -3133,6 +3133,34 @@ export function especializacionAbilityUnlocksFor(clase: Clase, especializacion: 
   return CLASS_ABILITIES.filter((u) => u.clase === clase && u.especializacion === especializacion && u.level <= level).map((u) => u.ability);
 }
 
+/// Deuda técnica cerrada (auditoría 2026-09-01): el mismo mapeo de 13 campos `StartingAbility` →
+/// datos de `SavedAction.create`/`createMany` estaba copiado 3 veces (`progression.ts` §
+/// `/clase` y `/especializacion`, `turnResolution.ts` § desbloqueo por subida de nivel) — todas
+/// con el mismo comentario reconociendo que `createMany` no tolera `undefined` en columnas no
+/// nulas (a diferencia de `create`, que sí acepta el spread con `undefined` implícito). Único
+/// punto de verdad ahora: los tres callers usan esto y solo añaden `saveId`/`isStarting` (que no
+/// dependen de la habilidad en sí).
+export function savedActionDataFromAbility(saveId: string, ability: StartingAbility) {
+  return {
+    saveId,
+    name: ability.name,
+    promptText: ability.promptText,
+    icon: ability.icon,
+    description: ability.description,
+    category: ability.category,
+    isStarting: true,
+    effects: ability.effects ?? [],
+    rol: ability.rol ?? null,
+    preferredAttribute: ability.preferredAttribute ?? null,
+    attributeBonus: ability.attributeBonus ?? null,
+    durationEffectMagnitude: ability.durationEffectMagnitude ?? null,
+    durationEffectTurns: ability.durationEffectTurns ?? null,
+    energyCost: ability.energyCost ?? 0,
+    energyRegen: ability.energyRegen ?? 0,
+    maxUsesPerCombat: ability.maxUsesPerCombat ?? null,
+  };
+}
+
 const ATTRIBUTE_LABEL: Record<string, string> = {
   fuerza: 'Fuerza',
   destreza: 'Destreza',

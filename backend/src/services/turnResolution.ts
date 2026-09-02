@@ -79,7 +79,7 @@ import {
 } from './construction.js';
 import { shortfallLabel } from './requisitos.js';
 import { inventorySummaryFor, type CatalogLookup, type InventoryRowLike } from './ingredients.js';
-import { classAbilityUnlocksFor } from './classAbilities.js';
+import { classAbilityUnlocksFor, savedActionDataFromAbility } from './classAbilities.js';
 import { professionAbilityUnlocksFor } from './professionAbilities.js';
 import type { StartingAbility } from './startingAbilities.js';
 import { protectedFactsFor } from './protectedFacts.js';
@@ -5811,26 +5811,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
       // kit inicial — ver DetailModal.tsx/HabilidadesPanel.tsx).
       for (let lvl = params.currentLevel + 1; lvl <= result.newLevel; lvl++) {
         for (const ability of classAbilityUnlocksFor(characterName, lvl, params.clase)) {
-          await tx.savedAction.create({
-            data: {
-              saveId,
-              name: ability.name,
-              promptText: ability.promptText,
-              icon: ability.icon,
-              description: ability.description,
-              category: ability.category,
-              isStarting: true,
-              effects: ability.effects ?? [],
-              rol: ability.rol ?? null,
-              preferredAttribute: ability.preferredAttribute ?? null,
-              attributeBonus: ability.attributeBonus ?? null,
-              durationEffectMagnitude: ability.durationEffectMagnitude ?? null,
-              durationEffectTurns: ability.durationEffectTurns ?? null,
-              energyCost: ability.energyCost ?? 0,
-              energyRegen: ability.energyRegen ?? 0,
-              maxUsesPerCombat: ability.maxUsesPerCombat ?? null,
-            },
-          });
+          await tx.savedAction.create({ data: savedActionDataFromAbility(saveId, ability) });
           await tx.logEntry.create({
             data: {
               saveId,

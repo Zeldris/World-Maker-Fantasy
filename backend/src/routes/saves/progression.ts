@@ -3,7 +3,12 @@ import { prisma } from '../../lib/prisma.js';
 import { attributeCapForLevel } from '../../services/progression.js';
 import type { AttributeBlock, Attribute } from '../../services/dice.js';
 import { VALID_ATTRIBUTES, rejectIfEnded, lockRowForUpdate } from './shared.js';
-import { classAbilityUnlocksFor, especializacionAbilityUnlocksFor, especializacionesConHuecosPara } from '../../services/classAbilities.js';
+import {
+  classAbilityUnlocksFor,
+  especializacionAbilityUnlocksFor,
+  especializacionesConHuecosPara,
+  savedActionDataFromAbility,
+} from '../../services/classAbilities.js';
 import { Clase, Especializacion } from '@prisma/client';
 
 /// Nivel mínimo real para elegir especialización (docs/rpgtarkor/clases.md, "cada una con 2-4
@@ -123,30 +128,10 @@ export async function progressionRoutes(app: FastifyInstance) {
     // estático de habilidades y la fila ya persistida).
     const yaTiene = new Set((await prisma.savedAction.findMany({ where: { saveId: save.id, category: 'combate' }, select: { name: true } })).map((a) => a.name));
 
-    // Mismos campos explícitos con default que el desbloqueo por subida de nivel
-    // (turnResolution.ts, bucle de `classAbilityUnlocksFor`) — mismo motivo: `createMany` no
-    // tolera `undefined` en columnas no admiten null como bien `create` sí hace con el spread.
     const nuevasHabilidades = Array.from({ length: save.level }, (_, i) => i + 1)
       .flatMap((lvl) => classAbilityUnlocksFor(save.characterName, lvl, clase))
       .filter((ability) => !yaTiene.has(ability.name))
-      .map((ability) => ({
-        saveId: save.id,
-        name: ability.name,
-        promptText: ability.promptText,
-        icon: ability.icon,
-        description: ability.description,
-        category: ability.category,
-        isStarting: true,
-        effects: ability.effects ?? [],
-        rol: ability.rol ?? null,
-        preferredAttribute: ability.preferredAttribute ?? null,
-        attributeBonus: ability.attributeBonus ?? null,
-        durationEffectMagnitude: ability.durationEffectMagnitude ?? null,
-        durationEffectTurns: ability.durationEffectTurns ?? null,
-        energyCost: ability.energyCost ?? 0,
-        energyRegen: ability.energyRegen ?? 0,
-        maxUsesPerCombat: ability.maxUsesPerCombat ?? null,
-      }));
+      .map((ability) => savedActionDataFromAbility(save.id, ability));
 
     await prisma.$transaction([
       prisma.save.update({ where: { id: save.id }, data: { clase } }),
@@ -203,24 +188,7 @@ export async function progressionRoutes(app: FastifyInstance) {
 
     const nuevasHabilidades = especializacionAbilityUnlocksFor(save.clase, especializacion, save.level)
       .filter((ability) => !yaTiene.has(ability.name))
-      .map((ability) => ({
-        saveId: save.id,
-        name: ability.name,
-        promptText: ability.promptText,
-        icon: ability.icon,
-        description: ability.description,
-        category: ability.category,
-        isStarting: true,
-        effects: ability.effects ?? [],
-        rol: ability.rol ?? null,
-        preferredAttribute: ability.preferredAttribute ?? null,
-        attributeBonus: ability.attributeBonus ?? null,
-        durationEffectMagnitude: ability.durationEffectMagnitude ?? null,
-        durationEffectTurns: ability.durationEffectTurns ?? null,
-        energyCost: ability.energyCost ?? 0,
-        energyRegen: ability.energyRegen ?? 0,
-        maxUsesPerCombat: ability.maxUsesPerCombat ?? null,
-      }));
+      .map((ability) => savedActionDataFromAbility(save.id, ability));
 
     await prisma.$transaction([
       prisma.save.update({ where: { id: save.id }, data: { especializacion } }),
