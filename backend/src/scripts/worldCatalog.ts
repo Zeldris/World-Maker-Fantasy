@@ -5526,27 +5526,35 @@ export const items: ItemCatalogInput[] = [
     tier: 4,
   },
 
-  { 
-    slug: 'pluma-sombra-kroj', 
-    name: 'Pluma de Sombra de Kroj', 
-    aliases: ['pluma de sombra'], 
+  {
+    slug: 'pluma-sombra-kroj',
+    name: 'Pluma de Sombra de Kroj',
+    aliases: ['pluma de sombra'],
     category: 'valor',
-    tipo: 'NARRATIVO', 
+    tipo: 'NARRATIVO',
     valorGoirnos: 15,
-    description: 'Pluma larga de un negro casi azulado que absorbe la luz — objeto de trueque con el Margen Silencioso.', 
-    dimensiones: 'Pluma de 25 cm.', 
-    lugarOrigen: 'Margen Silencioso.' 
+    description: 'Pluma larga de un negro casi azulado que absorbe la luz — objeto de trueque con el Margen Silencioso.',
+    dimensiones: 'Pluma de 25 cm.',
+    lugarOrigen: 'Margen Silencioso.',
+    // PENDIENTE DE IMPLEMENTAR (pasada de objetos narrativos sin uso, 2026-09-02, decisión
+    // explícita de la usuaria): ingrediente para craftear un Arco tier 5. Ver memoria
+    // tarkor_pasada_objetos_narrativos_2026-09-02. No implementado todavía.
   },
 
-  { 
-    slug: 'pluma-timonera', 
-    name: 'Pluma timonera de Cruzavientos', 
-    aliases: ['pluma timonera'], 
+  {
+    slug: 'pluma-timonera',
+    name: 'Pluma timonera de Cruzavientos',
+    aliases: ['pluma timonera'],
     category: 'valor',
-    tipo: 'NARRATIVO', 
+    tipo: 'NARRATIVO',
     valorGoirnos: 10,
-    description: 'Pluma larga y rígida de Cruzavientos, punta gris acerado — adorno y trueque, los Serhu las montan en lanzas y trenzas.', 
-    dimensiones: 'Pluma de 30 cm.' 
+    description: 'Pluma larga y rígida de Cruzavientos, punta gris acerado — adorno y trueque, los Serhu las montan en lanzas y trenzas.',
+    dimensiones: 'Pluma de 30 cm.',
+    // PENDIENTE DE IMPLEMENTAR (pasada de objetos narrativos sin uso, 2026-09-02, decisión
+    // explícita de la usuaria): ingrediente para craftear una Armadura tier 5 — difícil de
+    // conseguir, Cruzavientos es fauna de nido en altura, dificilísima de cazar salvo en el nido o
+    // con trampa cebada (ver flora-fauna.md). Ver memoria
+    // tarkor_pasada_objetos_narrativos_2026-09-02. No implementado todavía.
   },
 
   {
