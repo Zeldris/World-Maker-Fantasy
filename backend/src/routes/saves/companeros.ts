@@ -225,16 +225,18 @@ export async function companerosRoutes(app: FastifyInstance) {
     const jaulas = await prisma.building.findMany({
       where: { saveId: request.params.id, status: 'ACTIVO', recipeKey: { in: ['jaula-pequena', 'jaula-mediana', 'jaula-grande'] } },
     });
-    let jaulaConHueco = null;
-    for (const jaula of jaulas) {
+    // Deuda técnica cerrada (auditoría 2026-09-01): antes era un `findFirst` de NpcState por cada
+    // jaula dentro del bucle (patrón N+1) — una sola consulta con `IN` trae la ocupación de TODAS
+    // las jaulas de golpe, comprobada después en memoria contra un Set.
+    const jaulasOcupadas = new Set(
+      (await prisma.npcState.findMany({ where: { capturaJaulaBuildingId: { in: jaulas.map((j) => j.id) } }, select: { capturaJaulaBuildingId: true } })).map(
+        (s) => s.capturaJaulaBuildingId,
+      ),
+    );
+    const jaulaConHueco = jaulas.find((jaula) => {
       const jaulaTamano = jaula.recipeKey === jaulaRecipeKeyFor('GRANDE') ? 'GRANDE' : jaula.recipeKey === jaulaRecipeKeyFor('MEDIANA') ? 'MEDIANA' : 'PEQUENA';
-      if (!jaulaAlcanzaPara(jaulaTamano, tamanoRequerido)) continue;
-      const ocupada = await prisma.npcState.findFirst({ where: { capturaJaulaBuildingId: jaula.id } });
-      if (!ocupada) {
-        jaulaConHueco = jaula;
-        break;
-      }
-    }
+      return jaulaAlcanzaPara(jaulaTamano, tamanoRequerido) && !jaulasOcupadas.has(jaula.id);
+    });
     if (!jaulaConHueco) {
       return reply.status(400).send({ error: `Necesitas una Jaula (${tamanoRequerido.toLowerCase()} o mayor) con hueco libre para depositar a esta criatura.` });
     }
