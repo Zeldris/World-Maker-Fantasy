@@ -1779,6 +1779,17 @@ export function hasFalseCombatHit(narration: string, combatBothMissed?: boolean)
   return COMBAT_HIT_LEAK_REGEX.test(narration);
 }
 
+/// Mismo vocabulario que `COMBAT_HIT_LEAK_REGEX`, sin condicionar a ningún contexto de combate ya
+/// resuelto — para contextos donde combate ni siquiera debería estar abierto todavía (modo
+/// dinámico, `dynamicModeNarracion.ts`: "nunca sustituye un combate" es solo una instrucción de
+/// prompt, sin guard determinista — candidato real de bug anotado en checklist-pruebas-juego.md,
+/// mismo patrón frágil ya visto varias veces en este proyecto con un modelo pequeño que ignora
+/// instrucciones de "no hagas X"). Usarlo para forzar el cierre determinista de la interacción en
+/// vez de fiarse de que el LLM ponga `cierra: true` por sí solo.
+export function hasCombatVocabulary(narration: string): boolean {
+  return COMBAT_HIT_LEAK_REGEX.test(narration);
+}
+
 /// Inverso de `COMBAT_HIT_LEAK_REGEX`/`hasFalseCombatHit` (ver `combatRealHitLanded` en
 /// `TurnContext`) — vocabulario de esquiva/bloqueo LIMPIO, sin contacto alguno. Deliberadamente
 /// más corto y específico que una lista de "cualquier palabra de fallo" a propósito: en

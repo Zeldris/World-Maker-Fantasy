@@ -1,6 +1,7 @@
 import { env } from '../config/env.js';
 import { ollamaGenerate } from '../lib/ollama.js';
 import type { DynamicModeTipo } from './dynamicMode.js';
+import { hasCombatVocabulary } from './narrador.js';
 
 /// Narración por LLM de UNA vuelta del "modo dinámico" (2026-08-27, Pieza 4 de "Dinamismo del
 /// mundo") — deliberadamente MÁS SIMPLE que `narrador.ts` § `narrateAction`/`buildNarrationPrompt`
@@ -117,7 +118,12 @@ export async function narrarVueltaModoDinamico(input: DynamicModeTurnoInput): Pr
       const narration = (parsed.narration ?? '').trim();
       const opciones = Array.isArray(parsed.opciones) ? parsed.opciones.map((o) => String(o).trim()).filter(Boolean) : [];
       if (narration && opciones.length >= 2) {
-        return { narration, opciones: opciones.slice(0, 3), cierra: Boolean(parsed.cierra) || input.vuelta >= input.maxVueltas };
+        // "Nunca sustituye un combate" (prompt, arriba) es solo una instrucción — un modelo pequeño
+        // puede narrar un golpe real conectando sin marcar "cierra": true por su cuenta (mismo
+        // patrón frágil ya visto en otras instrucciones de "no hagas X" de este proyecto). Guard
+        // determinista: vocabulario de golpe real fuerza el cierre igual, sin depender del LLM.
+        const cierra = Boolean(parsed.cierra) || input.vuelta >= input.maxVueltas || hasCombatVocabulary(narration);
+        return { narration, opciones: opciones.slice(0, 3), cierra };
       }
     } catch {
       // Reintenta en la siguiente vuelta del bucle; tras la última, cae al determinista de abajo.

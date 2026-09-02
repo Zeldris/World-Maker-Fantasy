@@ -19,6 +19,7 @@ import {
   dropSuggestionsNamingStaleNpc,
   hasEnglishLeak,
   hasFalseCombatHit,
+  hasCombatVocabulary,
   hasPrematureCombatResolution,
   hasFalseUnconsciousNarration,
   hasFalseDeathClaim,
@@ -622,6 +623,20 @@ describe('hasFalseCombatHit', () => {
     expect(hasFalseCombatHit('Gorhorn ensarta al orco con su lanza.', true)).toBe(true);
     expect(hasFalseCombatHit('Gorhorn empala a la bestia contra el suelo.', true)).toBe(true);
     expect(hasFalseCombatHit('Gorhorn clava su daga en el costado del orco.', true)).toBe(true);
+  });
+});
+
+describe('hasCombatVocabulary', () => {
+  it('detecta vocabulario de golpe real, sin condicionar a ningún contexto de combate (mismo regex que hasFalseCombatHit)', () => {
+    expect(hasCombatVocabulary('El hacha golpea el hombro del orco, dejando una herida visible.')).toBe(true);
+  });
+
+  it('no dispara con una narración pacífica sin ningún vocabulario de contacto', () => {
+    expect(hasCombatVocabulary('Kirelon Arenoso se acerca, olfateando el aire, y vuelve a enterrarse.')).toBe(false);
+  });
+
+  it('no dispara con "golpea el aire" (fallo genuino explícitamente excluido, mismo criterio que hasFalseCombatHit)', () => {
+    expect(hasCombatVocabulary('Gorhorn golpea el aire, fallando por completo.')).toBe(false);
   });
 });
 
