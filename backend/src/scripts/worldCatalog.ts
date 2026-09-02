@@ -4312,12 +4312,15 @@ export const items: ItemCatalogInput[] = [
   },
 
   {
+    // Renombrado con identidad regional (2026-09-02, mismo criterio que Roca de Llanura Roja) —
+    // "hierro" a secas sin apellido colisionaría con el hierro de otras regiones más adelante.
     slug: 'lingote-de-hierro',
-    name: 'Lingote de hierro',
+    name: 'Lingote de Hierro de Llanura Roja',
+    aliases: ['lingote de hierro'],
     category: 'metal',
     tipo: 'MATERIAL',
     valorGoirnos: 3,
-    description: 'Metal fundido y colado en un molde sencillo — ya listo para forjar en la fragua del campamento.',
+    description: 'Metal fundido y colado en un molde sencillo, de la mena que se encuentra por toda la Llanura Roja — ya listo para forjar en la fragua del campamento.',
     dimensiones: 'Lingote de 20x5x5 cm.',
   },
 
@@ -4325,12 +4328,12 @@ export const items: ItemCatalogInput[] = [
   // forjar la Aguja de Cardo Brújula (mena de hierro + arena imán fundidas juntas en la fragua).
   {
     slug: 'lingote-hierro-imantado',
-    name: 'Lingote de hierro imantado',
-    aliases: ['lingote imantado'],
+    name: 'Lingote de Hierro Imantado de Llanura Roja',
+    aliases: ['lingote imantado', 'lingote de hierro imantado'],
     category: 'metal',
     tipo: 'MATERIAL',
     valorGoirnos: 3,
-    description: 'Lingote de hierro fundido junto a arena imán — conserva un tirón magnético débil pero constante, notable si se acerca a otro metal.',
+    description: 'Lingote de hierro de la Llanura Roja fundido junto a arena imán — conserva un tirón magnético débil pero constante, notable si se acerca a otro metal.',
     dimensiones: 'Lingote de 20x5x5 cm.',
   },
 
@@ -4518,12 +4521,21 @@ export const items: ItemCatalogInput[] = [
   },
 
   {
+    // Renombrado de "Piedra" a nombre propio de región (2026-09-02, zona 15 del repaso "Playa de
+    // Ceniza Blanca") — decisión de diseño: evitar nombres genéricos sueltos que puedan colisionar
+    // entre regiones distintas más adelante (Cristal Helado, Margen Silencioso...); `category:
+    // 'piedra'` se mantiene, las 5 recetas que la consumen (construction.ts/crafting.ts) matchean
+    // por categoría, no por slug exacto, así que el renombrado no rompe nada. Sin alias "piedra" a
+    // propósito (misma decisión de diseño): un alias genérico solo puede ganar UNA región cuando
+    // haya más de una "piedra" real en el catálogo — mismo criterio ya aplicado a
+    // punado-arena-iman/saquito-arena-iman.
     slug: 'piedra',
-    name: 'Piedra',
+    name: 'Roca de Llanura Roja',
+    aliases: ['roca de llanura roja'],
     category: 'piedra',
     tipo: 'RECURSO',
     valorGoirnos: 1,
-    description: 'Bloques y cascotes de roca erosionada — sirven para levantar muros, cimientos o un campamento.',
+    description: 'Bloques y cascotes de roca rojiza erosionada, típica de toda la Llanura Roja — sirven para levantar muros, cimientos o un campamento.',
     dimensiones: 'Bloques de 20 a 30 cm.'
   },
 
@@ -7268,7 +7280,10 @@ export const harvestSourceDisplayName: Record<string, string> = {
   'matorral-de-cuerno': 'Matorral de Cuerno',
   'raiz-de-fuego': 'Raíz de Fuego',
   'restos-personales-maktor': 'Restos personales de Maktor',
-  'roca-pilares-rotos': 'Roca de Los Pilares Rotos',
+  // Renombrada de "Roca de Los Pilares Rotos" (2026-09-02, zona 15 del repaso "Playa de Ceniza
+  // Blanca") — el nombre atado a un sitio concreto no encajaba al generalizar la fuente a varias
+  // zonas de la región; slug sin tocar.
+  'roca-pilares-rotos': 'Roca de Llanura Roja',
   'salvia-del-polvo': 'Salvia del Polvo',
   'sombra-de-kroj': 'Sombra de Kroj',
   'trepador-ocaso': 'Trepador Ocaso',
@@ -7341,7 +7356,7 @@ export const harvestSourceDescriptions: Record<string, string> = {
   'restos-personales-maktor':
     'Objetos personales medio enterrados entre los cimientos quemados de Los Restos de Maktor — cuero ennegrecido, hueso tallado, todo cubierto de una fina capa de ceniza vieja.',
   'roca-pilares-rotos':
-    'Bloques y cascotes de roca rojiza erosionada por el viento, desprendidos de la base de Los Pilares Rotos — superficie áspera, veteada de ocre y gris.',
+    'Bloques y cascotes de roca rojiza, erosionados por el viento y el paso del tiempo — superficie áspera, veteada de ocre y gris, típica de toda la Llanura Roja.',
   'salvia-del-polvo':
     'Mata baja de hojas grises apagadas y aroma amargo, crece pegada al suelo en hondonadas y rincones de sombra — machacada entre los dedos suelta un jugo oscuro que corta hemorragias.',
   'sombra-de-kroj':
@@ -7415,7 +7430,10 @@ export const harvestSourceTerrainTag: Record<string, TerrainTag> = {
   'salvia-del-polvo': 'arido',
   'raiz-de-fuego': 'rocoso',
   'arena-iman': 'arido',
-  'roca-pilares-rotos': 'rocoso',
+  // Generalizada de 'rocoso' a 'arido' (2026-09-02, zona 15 del repaso) — piedra rojiza suelta,
+  // no formación rocosa vertical; con 'arido' aparece también en Playa de Ceniza Blanca y el
+  // resto de zonas áridas de la región, coherente con el mismo criterio ya aplicado a Ruptidar.
+  'roca-pilares-rotos': 'arido',
   'veta-hierro-pilares-rotos': 'rocoso',
   'matorral-de-cuerno': 'vegetacion',
   // Fuera del núcleo jugable hoy (ver harvestSourceRegion) — tagueadas igual por completitud, sin
