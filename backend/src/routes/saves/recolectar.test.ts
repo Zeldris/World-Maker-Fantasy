@@ -1236,8 +1236,8 @@ describe('GET /saves/:id/recolectar/:oficio', () => {
     vi.spyOn(Math, 'random').mockReturnValue(0.99);
     detectNpcsInScene.mockResolvedValue([
       {
-        slug: 'buitre-cenizo',
-        name: 'Buitre Cenizo',
+        slug: 'zense-ceniza',
+        name: 'Zense Ceniza',
         ataqueNatural: 'Picotea y araña',
         condicionFisica: 'ILESO',
         saqueado: false,
@@ -1247,7 +1247,7 @@ describe('GET /saves/:id/recolectar/:oficio', () => {
       },
     ]);
     findManyHarvestYield.mockResolvedValue([
-      { sourceSlug: 'buitre-cenizo', sourceCategory: 'fauna', item: { slug: 'pluma-buitre-cenizo', name: 'Pluma de Buitre Cenizo' }, cantidad: 2 },
+      { sourceSlug: 'zense-ceniza', sourceCategory: 'fauna', item: { slug: 'pluma-zense-ceniza', name: 'Pluma de Zense Ceniza' }, cantidad: 2 },
     ]);
     const app = await buildApp();
 
@@ -1256,7 +1256,7 @@ describe('GET /saves/:id/recolectar/:oficio', () => {
     expect(res.statusCode).toBe(200);
     const body = JSON.parse(res.body);
     expect(body.sources).toHaveLength(1);
-    expect(body.sources[0].yields).toEqual([{ sourceSlug: 'buitre-cenizo', itemSlug: 'pluma-buitre-cenizo', itemName: 'Pluma de Buitre Cenizo', cantidadMaxima: 2, disponible: 2 }]);
+    expect(body.sources[0].yields).toEqual([{ sourceSlug: 'zense-ceniza', itemSlug: 'pluma-zense-ceniza', itemName: 'Pluma de Zense Ceniza', cantidadMaxima: 2, disponible: 2 }]);
     vi.restoreAllMocks();
   });
 

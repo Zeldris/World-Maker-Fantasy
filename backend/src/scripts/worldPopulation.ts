@@ -112,8 +112,8 @@ export const worldPopulations: WorldPopulationInput[] = [
   },
   {
     targetType: 'FAUNA',
-    targetSlug: 'buitre-cenizo',
-    // Renombrado 2026-09-02: "Buitre Cenizo" → "Zense Ceniza" (nombres de fauna sin palabras
+    targetSlug: 'zense-ceniza',
+    // Renombrado 2026-09-02: "Zense Ceniza" → "Zense Ceniza" (nombres de fauna sin palabras
     // reales de la Tierra). Slug sin cambiar.
     label: 'Zense Ceniza',
     poblacion: 3200,

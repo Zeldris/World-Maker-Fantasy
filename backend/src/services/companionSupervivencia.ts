@@ -72,7 +72,7 @@ export type JaulaTamano = 'PEQUENA' | 'MEDIANA' | 'GRANDE';
 
 const JAULA_TAMANO_REQUERIDO: Record<string, JaulaTamano> = {
   'aullador-rojo': 'MEDIANA',
-  'buitre-cenizo': 'PEQUENA',
+  'zense-ceniza': 'PEQUENA',
   canizor: 'MEDIANA',
   'corredor-de-cauce': 'MEDIANA',
   corretolvas: 'MEDIANA',

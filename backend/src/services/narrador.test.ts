@@ -588,13 +588,13 @@ describe('hasFalseCombatHit', () => {
 
   it('bug real jugando en vivo (2026-08-15): detecta "golpea" en presente + "herida" (hueco de vocabulario — la lista solo cubría "golpeó"/"golpeo", nunca "golpea")', () => {
     const narration =
-      'Gorhorn alza su Maza orca y la estrella con fuerza hacia el Buitre Cenizo, quien intenta esquivarla pero falla en el último instante. La maza golpea fuertemente el costado del Buitre Cenizo, dejando una herida visible antes de que este se desvanezca en el viento.';
+      'Gorhorn alza su Maza orca y la estrella con fuerza hacia el Zense Ceniza, quien intenta esquivarla pero falla en el último instante. La maza golpea fuertemente el costado del Zense Ceniza, dejando una herida visible antes de que este se desvanezca en el viento.';
     expect(hasFalseCombatHit(narration, true)).toBe(true);
   });
 
   it('bug real jugando en vivo (2026-08-15): detecta "se desploma al suelo" tras un golpe narrado', () => {
     const narration =
-      'Gorhorn clava su Maza orca en el cuello del Buitre Cenizo, rebotando un instante antes de clavarse firmemente. El ave grita y se desploma al suelo.';
+      'Gorhorn clava su Maza orca en el cuello del Zense Ceniza, rebotando un instante antes de clavarse firmemente. El ave grita y se desploma al suelo.';
     expect(hasFalseCombatHit(narration, true)).toBe(true);
   });
 
@@ -604,7 +604,7 @@ describe('hasFalseCombatHit', () => {
 
   it('bug real jugando en vivo (2026-08-22, "revisa la partida otra vez"): detecta un golpe de muerte completo narrado sobre un "parada_en_seco" (nadie conectó nada) — texto real de esa partida', () => {
     const narration =
-      'Gorhorn propina un potente zarpazo que corta la garganta del Buitre Cenizo, derramando una gran cantidad de sangre y causándole la muerte instantánea.';
+      'Gorhorn propina un potente zarpazo que corta la garganta del Zense Ceniza, derramando una gran cantidad de sangre y causándole la muerte instantánea.';
     expect(hasFalseCombatHit(narration, true)).toBe(true);
   });
 
@@ -743,21 +743,21 @@ describe('hasPrematureCombatResolution', () => {
     expect(hasPrematureCombatResolution(narration, true)).toBe(true);
   });
 
-  it('bug real jugando en vivo (2026-08-22, "Salgo a cazar y ataco a \'Buitre Cenizo\'."): detecta un ataque a una parte del cuerpo seguido de la reacción de dolor/huida del objetivo, sin usar ningún verbo de contacto de la lista de arriba', () => {
+  it('bug real jugando en vivo (2026-08-22, "Salgo a cazar y ataco a \'Zense Ceniza\'."): detecta un ataque a una parte del cuerpo seguido de la reacción de dolor/huida del objetivo, sin usar ningún verbo de contacto de la lista de arriba', () => {
     const narration =
-      'Con un rápido movimiento, ataca la pierna del Buitre Cenizo, haciendo que el carroñero chillé gigantesco y se lance hacia atrás en un intento de escapar.';
+      'Con un rápido movimiento, ataca la pierna del Zense Ceniza, haciendo que el carroñero chillé gigantesco y se lance hacia atrás en un intento de escapar.';
     expect(hasPrematureCombatResolution(narration, true)).toBe(true);
   });
 
   it('no dispara con "ataca a" + NPC (declara intención de enfrentarse, no un golpe a una parte del cuerpo)', () => {
-    expect(hasPrematureCombatResolution('Gorhorn ataca al Buitre Cenizo, arma en mano.', true)).toBe(false);
+    expect(hasPrematureCombatResolution('Gorhorn ataca al Zense Ceniza, arma en mano.', true)).toBe(false);
   });
 });
 
 describe('hasFalseUnconsciousNarration', () => {
   it('bug real jugando en vivo (2026-08-22, "he matado a un buitre pero..."): detecta "cayendo inerte" el turno en que el rival queda CONVALECIENTE (no MUERTO) — texto real de esa partida', () => {
     const narration =
-      'Gorhorn apuñala al Buitre Cenizo justo en la base del pico, dejando un rastro de sangre en su plumaje negro. El carroñero chirría y cae hacia atrás, cayendo inerte sobre el polvo.';
+      'Gorhorn apuñala al Zense Ceniza justo en la base del pico, dejando un rastro de sangre en su plumaje negro. El carroñero chirría y cae hacia atrás, cayendo inerte sobre el polvo.';
     expect(hasFalseUnconsciousNarration(narration, true)).toBe(true);
   });
 
@@ -797,8 +797,8 @@ describe('hasFalseDeathClaim', () => {
   // no en `narration`. El call site real (narrador.ts) le pasa `[narration, ...newFacts].join(' ')`
   // a este guard, así que el test reproduce justo eso: el texto combinado.
   it('bug real jugando en vivo: la prosa dice "se desploma" (golpe real, GRAVE) pero newFacts reclama la muerte — texto real de esa partida', () => {
-    const narration = 'Gorhorn clava su hacha rota en Buitre Cenizo, atravesándole un ala. El carroñero chirría y se desploma hacia atrás, dejando una mancha de sangre en el suelo.';
-    const newFact = 'Buitre Cenizo ha sido derrotado y muerto.';
+    const narration = 'Gorhorn clava su hacha rota en Zense Ceniza, atravesándole un ala. El carroñero chirría y se desploma hacia atrás, dejando una mancha de sangre en el suelo.';
+    const newFact = 'Zense Ceniza ha sido derrotado y muerto.';
     expect(hasFalseDeathClaim(`${narration} ${newFact}`, true)).toBe(true);
   });
 
@@ -1465,9 +1465,9 @@ describe('buildNarrationPrompt — emboscada (ambushHint) ya no contradice a com
   const hostileCtx = {
     worldFacts: [],
     characterSummary: 'Gorhorn',
-    action: "Salgo a cazar y ataco a 'Buitre Cenizo'.",
+    action: "Salgo a cazar y ataco a 'Zense Ceniza'.",
     enCombate: false,
-    npcSlugsInScene: ['buitre-cenizo'],
+    npcSlugsInScene: ['zense-ceniza'],
     roll: { attribute: 'destreza' as const, value: 12, roll: 19, result: 25, difficulty: 15, success: true, gradoExito: 'claro' as const },
   };
 

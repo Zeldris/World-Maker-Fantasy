@@ -197,7 +197,7 @@ const oficialConcordiaMuertoInScene = npcInSceneFromCatalog(npcBySlug('oficial-c
 // significa "sin semilla de combate", corretolvas ya prueba que se caza fauna dócil (caza real,
 // no dueleo) desde el principio del banco.
 const corredorCauceInScene = npcInSceneFromCatalog(npcBySlug('corredor-de-cauce'));
-const buitreCenizoInScene = npcInSceneFromCatalog(npcBySlug('buitre-cenizo'));
+const zenseCenizaInScene = npcInSceneFromCatalog(npcBySlug('zense-ceniza'));
 const murgolInScene = npcInSceneFromCatalog(npcBySlug('murgol'));
 
 const SEEDS: ScenarioSeed[] = [
@@ -1058,13 +1058,13 @@ const SEEDS: ScenarioSeed[] = [
     rollVariants: [{ attribute: 'destreza', gradoExito: 'claro' }, { attribute: 'destreza', gradoExito: 'fallo' }],
   },
   {
-    id: 'combate-buitre-cenizo',
+    id: 'combate-zense-ceniza',
     category: 'combate',
     base: {
-      worldFacts: [locationFact('paso-de-los-huesos'), npcSceneBlockFor(buitreCenizoInScene, GORHORN_LEVEL)],
+      worldFacts: [locationFact('paso-de-los-huesos'), npcSceneBlockFor(zenseCenizaInScene, GORHORN_LEVEL)],
       characterSummary: GORHORN_SUMMARY,
       enCombate: true,
-      npcSlugsInScene: ['buitre-cenizo'],
+      npcSlugsInScene: ['zense-ceniza'],
     },
     actionVariants: ['Ataco al buitre cenizo con mi hacha.', 'Espanto y golpeo al buitre antes de que huya.', 'Cazo al buitre cenizo.'],
     rollVariants: [{ attribute: 'destreza', gradoExito: 'claro' }, { attribute: 'fuerza', gradoExito: 'fallo' }],

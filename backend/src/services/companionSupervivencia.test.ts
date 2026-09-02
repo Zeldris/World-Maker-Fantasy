@@ -88,7 +88,7 @@ describe('resolverIntento', () => {
 describe('jaula', () => {
   it('tamaño requerido conocido por especie, PEQUENA por defecto si no está calibrada', () => {
     expect(jaulaTamanoRequeridoFor('gargantua-de-ceniza')).toBe('GRANDE');
-    expect(jaulaTamanoRequeridoFor('buitre-cenizo')).toBe('PEQUENA');
+    expect(jaulaTamanoRequeridoFor('zense-ceniza')).toBe('PEQUENA');
     expect(jaulaTamanoRequeridoFor('especie-inventada-sin-calibrar')).toBe('PEQUENA');
   });
 

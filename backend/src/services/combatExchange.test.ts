@@ -255,20 +255,20 @@ describe('rollInitiative', () => {
 
 describe('hitSeverityHint', () => {
   it('bug real jugando en vivo (2026-08-15): un golpe que solo baja a GRAVE no debe narrarse como si dejara al objetivo inerte/muerto', () => {
-    const hint = hitSeverityHint('Buitre Cenizo', 'GRAVE');
+    const hint = hitSeverityHint('Zense Ceniza', 'GRAVE');
     expect(hint).toContain('sigue consciente, en pie y capaz de seguir luchando');
     expect(hint).toContain('NUNCA lo narres cayendo inerte, desmayado o muerto');
   });
 
   it('no añade nada si el golpe deja al objetivo CONVALECIENTE — eso ya lo cubre npcFallsUnconsciousThisTurn', () => {
-    expect(hitSeverityHint('Buitre Cenizo', 'CONVALECIENTE')).toBe('');
+    expect(hitSeverityHint('Zense Ceniza', 'CONVALECIENTE')).toBe('');
   });
 
   it('no añade nada si el golpe deja al objetivo MUERTO — mismo motivo', () => {
-    expect(hitSeverityHint('Buitre Cenizo', 'MUERTO')).toBe('');
+    expect(hitSeverityHint('Zense Ceniza', 'MUERTO')).toBe('');
   });
 
   it('deja claro que no hubo ningún daño real si el golpe no conectó (nuevaCondicion null)', () => {
-    expect(hitSeverityHint('Buitre Cenizo', null)).toBe('El golpe no conecta — no hay ningún daño real que narrar en Buitre Cenizo.');
+    expect(hitSeverityHint('Zense Ceniza', null)).toBe('El golpe no conecta — no hay ningún daño real que narrar en Zense Ceniza.');
   });
 });

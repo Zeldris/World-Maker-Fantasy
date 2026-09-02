@@ -256,15 +256,15 @@ describe('Compañeros: cobertura de ruta — captura → tameo → confirmar (au
 describe('Compañeros: captura en grupo — el bug original (2026-08-28)', () => {
   let saveId: string;
   let hondonadaId: string;
-  let buitreId: string;
+  let zenseId: string;
 
   beforeAll(async () => {
     const userId = await getDefaultUserId();
     const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
     const hondonada = await prisma.location.findFirstOrThrow({ where: { worldId: world.id, slug: 'hondonada-del-eco' } });
     hondonadaId = hondonada.id;
-    const buitre = await prisma.npc.findFirstOrThrow({ where: { worldId: world.id, slug: 'buitre-cenizo' } });
-    buitreId = buitre.id;
+    const zense = await prisma.npc.findFirstOrThrow({ where: { worldId: world.id, slug: 'zense-ceniza' } });
+    zenseId = zense.id;
 
     const save = await prisma.save.create({
       data: {
@@ -285,7 +285,7 @@ describe('Compañeros: captura en grupo — el bug original (2026-08-28)', () =>
     // mitad de una caza en grupo real: 1 fila NpcState, groupSize=2, groupDefeated=0 (ninguno
     // MUERTO todavía, este está GRAVE = capturable sin necesidad de matarlo).
     await prisma.npcState.create({
-      data: { saveId, npcId: buitreId, scope: hondonadaId, condicionFisica: 'GRAVE', groupSize: 2, groupDefeated: 0 },
+      data: { saveId, npcId: zenseId, scope: hondonadaId, condicionFisica: 'GRAVE', groupSize: 2, groupDefeated: 0 },
     });
   });
 
@@ -297,20 +297,20 @@ describe('Compañeros: captura en grupo — el bug original (2026-08-28)', () =>
 
   it('capturar al primer buitre GRAVE resucita la misma fila a ILESO para el segundo — el grupo sigue cazable', async () => {
     const app = await buildApp();
-    const res = await app.inject({ method: 'POST', url: `/saves/${saveId}/capturar/buitre-cenizo` });
+    const res = await app.inject({ method: 'POST', url: `/saves/${saveId}/capturar/zense-ceniza` });
     expect(res.statusCode).toBe(200);
 
     // El bug original: antes esta fila se quedaba GRAVE+capturado=true para siempre, bloqueando al
     // segundo individuo del grupo. Ahora debe "resucitar" a ILESO — mismo criterio EXACTO que
     // `grupoContinua` en combate normal (turnResolution.ts).
-    const state = await prisma.npcState.findFirstOrThrow({ where: { saveId, npcId: buitreId } });
+    const state = await prisma.npcState.findFirstOrThrow({ where: { saveId, npcId: zenseId } });
     expect(state.condicionFisica).toBe('ILESO');
     expect(state.groupDefeated).toBe(1);
     expect(state.capturado).toBe(false);
 
     // La captura del primero sigue viva, en el inventario, sin perderse.
-    const item = await prisma.inventoryItem.findFirstOrThrow({ where: { saveId, capturaNpcId: buitreId } });
-    // 'Buitre Cenizo' renombrado a 'Zense Ceniza' (2026-09-02) — slug sin cambiar.
+    const item = await prisma.inventoryItem.findFirstOrThrow({ where: { saveId, capturaNpcId: zenseId } });
+    // 'Buitre Cenizo' renombrado a 'Zense Ceniza' (2026-09-02/03), slug incluido.
     expect(item.name).toBe('Zense Ceniza (Capturado) (3)'); // PEQUEÑA = 3 slots
   });
 });

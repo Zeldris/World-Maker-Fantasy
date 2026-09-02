@@ -190,7 +190,7 @@ interface TurnContext {
   /// queda nada más al revisar la partida?"): un golpe real que solo dejó al rival GRAVE (no
   /// CONVALECIENTE/MUERTO, así que `npcFallsUnconsciousThisTurn` no protege nada aquí) se narró en
   /// prosa honesta ("se desploma hacia atrás, dejando una mancha de sangre") pero escribió en
-  /// `newFacts` "Buitre Cenizo ha sido derrotado y muerto." — un SessionFact falso persistido para
+  /// `newFacts` "Zense Ceniza ha sido derrotado y muerto." — un SessionFact falso persistido para
   /// siempre. True en cualquier turno con un golpe real contra el NPC que NO lo deja MUERTO de
   /// verdad — el caso contrario a `npcFallsUnconsciousThisTurn`/`npcFallsConvalecienteThisTurn`.
   combatNoRealDeathThisTurn?: boolean;
@@ -984,7 +984,7 @@ export function buildNarrationPrompt(ctx: TurnContext & { roll?: RollResult }): 
   // real que esto tapa: "busco a X en busca de pelea" no lleva verbo de ataque literal.
   //
   // Contradicción real encontrada (bug jugando en vivo, 2026-08-22, "Salgo a cazar y ataco a
-  // 'Buitre Cenizo'." narró un golpe conectado y la reacción de dolor del ave, en el turno que
+  // 'Zense Ceniza'." narró un golpe conectado y la reacción de dolor del ave, en el turno que
   // INICIA combate, sin ningún intercambio mecánico todavía): la rama `gradoExito === 'claro'`
   // decía literalmente "actúa/golpea primero" — la palabra "golpea" implica contacto ya resuelto,
   // justo lo que `combatNotYetResolved` (turnResolution.ts, mismo prompt, más abajo en
@@ -1341,7 +1341,7 @@ export async function narrateAction(ctx: TurnContext & { roll?: RollResult }): P
       // Bug real jugando en vivo (auditoría 2026-08-22, "¿no queda nada más al revisar la
       // partida?"): un turno cuya PROSA era honesta ("se desploma hacia atrás, dejando una
       // mancha de sangre" — un golpe de verdad, pero ni de lejos una muerte) escribió de todos
-      // modos "Buitre Cenizo ha sido derrotado y muerto." en `newFacts` — un SessionFact falso
+      // modos "Zense Ceniza ha sido derrotado y muerto." en `newFacts` — un SessionFact falso
       // que ninguno de los guards de abajo pilló porque todos comprobaban solo `parsed.narration`,
       // nunca `newFacts`. Ese hecho falso queda persistido para siempre (`appendSessionFacts`) y
       // contamina la RAG de turnos futuros, mucho más grave que una frase suelta mal elegida —
@@ -1724,12 +1724,12 @@ export function sanitizeSuggestions(suggestions: string[] | undefined): string[]
 // armadura" — dice fallo (esquiva) e impacto (sangre) en la MISMA frase; el hueco era de
 // vocabulario (la lista no cubría esta variante concreta de "hay sangre"), no de lógica.
 // Gerundios añadidos (bug real jugando en vivo, revisión de partida 2026-08-08): "atravesando el
-// cuello del ave" en un turno de "Salgo a cazar y ataco a 'Buitre Cenizo'" (combate recién abierto,
+// cuello del ave" en un turno de "Salgo a cazar y ataco a 'Zense Ceniza'" (combate recién abierto,
 // sin ningún intercambio mecánico todavía) se coló porque la lista solo cubría las formas en
 // pasado/presente de cada verbo (`atraves[oó]`/`atraviesa`), nunca el gerundio — el mismo hueco
 // existe en potencia para cualquier otro verbo de la lista ("golpeando", "hiriendo", "rebanando").
 // "golpea" (presente) añadido (dos bugs reales seguidos jugando en vivo, 2026-08-15): "la maza
-// golpea fuertemente el costado del Buitre Cenizo, dejando una herida visible" en un turno resuelto
+// golpea fuertemente el costado del Zense Ceniza, dejando una herida visible" en un turno resuelto
 // 'ataque_falla' — el comentario original excluía "golpea" a propósito por "golpea el aire"/
 // "intenta golpear" (fallo genuino), pero eso dejaba pasar TAMBIÉN "golpea [al objetivo real]"
 // (acierto falso) — se reintroduce con una excepción explícita solo para "golpea el aire", el caso
@@ -1742,7 +1742,7 @@ export function sanitizeSuggestions(suggestions: string[] | undefined): string[]
 // jugando en vivo, auditoría 2026-08-22 "revisa la partida otra vez"): un "Remato a 'Buitre
 // Cenizo'..." resolvió 'parada_en_seco' (el buitre atacó y falló, Gorhorn lo bloqueó — nadie
 // conectó ningún golpe, mucho menos uno mortal), pero el modelo narró "Gorhorn propina un potente
-// zarpazo que corta la garganta del Buitre Cenizo, derramando una gran cantidad de sangre y
+// zarpazo que corta la garganta del Zense Ceniza, derramando una gran cantidad de sangre y
 // causándole la muerte instantánea" — un golpe de muerte completo, inventado de la nada. Mismo
 // hueco de vocabulario que las rondas anteriores: la lista no cubría ninguna de estas frases de
 // remate/muerte, aunque la lógica (combatBothMissed) ya era correcta.
@@ -1865,7 +1865,7 @@ export function hasFalseCombatAttacker(narration: string, characterName?: string
 // Variante nueva (bug real jugando en vivo, 2026-08-22, "Salgo a cazar y ataco a 'Buitre
 // Cenizo'." — primer turno, sin intercambio mecánico todavía): la narración evitó todo el
 // vocabulario de arriba (nunca dice "golpea"/"hiere"/"acierta") pero describió el mismo desenlace
-// ya decidido de otra forma — "...ataca la pierna del Buitre Cenizo, haciendo que el carroñero
+// ya decidido de otra forma — "...ataca la pierna del Zense Ceniza, haciendo que el carroñero
 // chillé gigantesco y se lance hacia atrás en un intento de escapar": un ataque dirigido a una
 // parte del cuerpo concreta ("ataca la/el/los/las X", a diferencia de "ataca A [NPC]", que solo
 // declara intención de enfrentarse) seguido de la REACCIÓN de dolor/susto del objetivo (chillido,
@@ -1881,7 +1881,7 @@ export function hasPrematureCombatResolution(narration: string, combatNotYetReso
 
 /// Narración-vs-mecánica (bug real jugando en vivo, 2026-08-22, "he matado a un buitre pero
 /// desollar no detecta el cadáver" — revisando el log completo de la partida se encontró OTRO
-/// problema aparte: el turno justo antes del remate real, con el Buitre Cenizo todavía
+/// problema aparte: el turno justo antes del remate real, con el Zense Ceniza todavía
 /// CONVALECIENTE de verdad, la narración dijo "cae hacia atrás, cayendo inerte sobre el polvo" —
 /// el propio `combatBlock` (más arriba, `npcFallsUnconsciousThisTurn`) ya prohíbe explícitamente
 /// "inconsciente/desmayado/sin sentido" para CONVALECIENTE ("un rival inconsciente de verdad no
@@ -1906,7 +1906,7 @@ export function hasFalseUnconsciousNarration(narration: string, npcFallsConvalec
 /// un golpe real que solo dejó al rival GRAVE (no CONVALECIENTE/MUERTO, así que ningún guard
 /// gateado por `npcFallsUnconsciousThisTurn` protegía nada aquí) tuvo una PROSA honesta ("se
 /// desploma hacia atrás, dejando una mancha de sangre en el suelo" — un golpe real, ni de lejos
-/// una muerte) pero escribió en `newFacts` "Buitre Cenizo ha sido derrotado y muerto." — un
+/// una muerte) pero escribió en `newFacts` "Zense Ceniza ha sido derrotado y muerto." — un
 /// SessionFact falso que queda persistido para siempre (`appendSessionFacts`) y contamina la RAG
 /// de turnos futuros. Se llama con `parsed.narration` + `parsed.newFacts` combinados (ver el
 /// call site en `narrateTurn`), no solo la prosa — este es justo el guard que necesitaba mirar

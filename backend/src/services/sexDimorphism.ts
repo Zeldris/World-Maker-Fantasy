@@ -45,7 +45,7 @@ export interface SexoVariantesEntry {
 // gargantua-de-ceniza → fuerza, corretolvas → destreza, aullador-rojo → destreza, murgol → (sin
 // combate, valor/utilidad), cruzavientos → destreza, rondador-de-brasas → sigilo (empate con
 // fuerza, se elige sigilo por coherencia de "carroñero nocturno"), salamandra-de-escoria → fuerza,
-// buitre-cenizo → destreza, kirelon-arenoso → fuerza (ciego, caza por vibración/olfato, ver bio en
+// zense-ceniza → destreza, kirelon-arenoso → fuerza (ciego, caza por vibración/olfato, ver bio en
 // worldCatalog.ts). Espina del Viento/Cornante/Sombra de Kroj no tienen Npc/atributos — se usa su
 // rasgo narrativo ya establecido (veneno, adaptación al barro, sigilo).
 //
@@ -152,7 +152,7 @@ export const FAUNA_SEXO_VARIANTES: Record<string, SexoVariantesEntry> = {
       edadMaxima: 27,
     },
   },
-  'buitre-cenizo': {
+  'zense-ceniza': {
     macho: {
       rasgoFisico: 'Ave carroñera de la llanura, plumaje del cuello revuelto y oscuro, pico grande.',
       description: 'Vigila en círculos amplios, cubriendo más terreno de la llanura, aunque tarda más en detectar el primer indicio.',

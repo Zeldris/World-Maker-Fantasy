@@ -9,6 +9,7 @@ import type { Requisitos } from '../services/requisitos.js';
 import type { Estacion, EstadoClima, EquipSlot, ItemTipo, MetodoObtencion, WeaponCategory, Clase, Especializacion, PesoArmadura, AbilityEffect } from '@prisma/client';
 import type { TerrainTag } from '../services/terrain.js';
 import type { FaunaCategoria } from '../services/faunaAbilities.js';
+import type { MomentoDelDia } from '../services/worldClock.js';
 
 export interface LocationInput {
   slug: string;
@@ -1218,11 +1219,11 @@ export const fauna: NpcInput[] = [
   {
     // Renombrado (2026-09-02, decisión explícita de la usuaria: nombres de fauna no deben ser
     // palabras reales de la Tierra — mismo criterio aplicado a la nueva fauna de Los Acantilados
-    // Partidos) — de "Buitre Cenizo" a "Zense Ceniza". Slug sin cambiar (buitre-cenizo, sin
+    // Partidos) — de "Zense Ceniza" a "Zense Ceniza". Slug sin cambiar (zense-ceniza, sin
     // referencias a `name` en el resto del código, solo por slug/id). Nota pendiente de la usuaria:
     // todos los nombres actuales de fauna/flora/etc. están en lengua común — en algún momento se
     // añadirán versiones en los idiomas propios de cada raza cuando ella lo indique explícitamente.
-    slug: 'buitre-cenizo',
+    slug: 'zense-ceniza',
     name: 'Zense Ceniza',
     kind: 'PLANTILLA',
     aliases: ['zense ceniza', 'zense', 'zenses ceniza'],
@@ -6536,10 +6537,10 @@ export const harvestYields: HarvestYieldInput[] = [
     condicion: 'cuchillo' 
   },
 
-  // --- Zense Ceniza (slug buitre-cenizo) ---
+  // --- Zense Ceniza (slug zense-ceniza) ---
 
   { 
-    sourceSlug: 'buitre-cenizo',
+    sourceSlug: 'zense-ceniza',
     sourceCategory: 'fauna',
     metodoObtencion: 'CAZA', 
     itemSlug: 'racion-carne', 
@@ -6548,7 +6549,7 @@ export const harvestYields: HarvestYieldInput[] = [
   },
 
   { 
-    sourceSlug: 'buitre-cenizo',
+    sourceSlug: 'zense-ceniza',
     sourceCategory: 'fauna',
     metodoObtencion: 'CAZA', 
     itemSlug: 'hueso-ligero', 
@@ -7710,7 +7711,7 @@ export const harvestSourceAliases: Record<string, string[]> = {
   cruzavientos: ['cruzavientos', 'cruzaviento', 'ave de tormenta', 'aves de tormenta'],
   'rondador-de-brasas': ['rondador', 'rondador de brasas', 'bestia nocturna', 'bestia de la noche'],
   'salamandra-de-escoria': ['salamandra', 'salamandra de escoria', 'lagarto de fuego', 'lagarto grande'],
-  'buitre-cenizo': ['buitre', 'buitres', 'buitre cenizo', 'buitres cenizos', 'carroneras', 'carroñeras'],
+  'zense-ceniza': ['buitre', 'buitres', 'buitre cenizo', 'buitres cenizos', 'carroneras', 'carroñeras'],
   // Flora/mineral nueva
   'cardo-brujula': ['cardo', 'cardo brújula', 'cardo brujula', 'cardos'],
   'liquen-del-cauce': ['liquen', 'liquen del cauce'],
@@ -7932,7 +7933,7 @@ export const harvestSourceRegion: Record<string, string> = {
   'arena-iman': 'Llanuras del Viento Rojo',
   'murgoles-domados-campamento': 'Llanuras del Viento Rojo',
   'aullador-rojo': 'Llanuras del Viento Rojo',
-  'buitre-cenizo': 'Llanuras del Viento Rojo',
+  'zense-ceniza': 'Llanuras del Viento Rojo',
   'bulbo-del-cauce': 'Llanuras del Viento Rojo',
   'cardo-brujula': 'Llanuras del Viento Rojo',
   // Corregido (2026-07-29, auditoría al asignar población): su propia descripción dice "se
@@ -8347,6 +8348,30 @@ export const faunaTerrainTag: Record<string, TerrainTag> = {
   cuernahoja: 'vegetacion', // Los Pastos de la Deriva, mismo tag que flor-salvatura/gradias
   imanio: 'rocoso', // Las Agujas Iman (formación rocosa, ver bio: "armadura de rocas imantadas")
   nuente: 'rocoso', // Las Agujas Iman, mismo territorio que su presa (Imanio)
+};
+
+/// Momento del día real en que cada especie está activa (2026-09-02, fauna diurna/nocturna real —
+/// ver `momentoDelDiaFor`, worldClock.ts) — leído de su propia `bio` en el array `fauna` de
+/// arriba, mismo criterio exacto que `faunaTerrainTag`: solo entran las especies cuya bio describe
+/// un comportamiento diurno/nocturno explícito y sin ambigüedad, el resto se deja fuera del
+/// diccionario y nunca se filtra por hora (sin dato = sin filtrar, igual que terreno/estación/clima
+/// en toda esta zona del catálogo).
+export const faunaMomentoDelDia: Record<string, MomentoDelDia> = {
+  // "Pasa el día bajo tierra descansando; solo emerge de noche o con temperaturas bajas a cazar".
+  'kirelon-arenoso': 'noche',
+  // "Solo sale de noche; caza Imanios".
+  nuente: 'noche',
+  // "Roedor nocturno... Caza en manada de noche... De día amplía sus madrigueras bajo el agua...
+  // no soportan la luz del día".
+  miruina: 'noche',
+  // "Carroñero-cazador nocturno... Ronda el borde de la luz de un campamento durante horas".
+  'rondador-de-brasas': 'noche',
+  // Marca territorio "con aullidos largos al caer la noche"; habilidad racial Cazador nocturno:
+  // "Ve y se mueve mejor de noche, cuando caza de verdad".
+  canizor: 'noche',
+  // "Caza de día, especializada en crías de Jusha desorientadas" — único candidato DIURNO de los
+  // 6, incluido a propósito (bio igual de explícita que el resto, aunque el matiz sea más suave).
+  'tura-jusha': 'dia',
 };
 
 /// Grupo 3 § Mundo determinista (docs/rpgtarkor/mundo-determinista.md, 2026-08-25) — Capa 1: zonas
