@@ -70,7 +70,12 @@ export async function progressionRoutes(app: FastifyInstance) {
           });
           return { kind: 'ok', attributes: updated.attributes as AttributeBlock, pendingAttributePoints: updated.pendingAttributePoints };
         });
-      } catch {
+      } catch (err) {
+        // Deuda técnica cerrada (auditoría 2026-09-01): `catch {}` mudo aquí no distinguía un
+        // deadlock/timeout real de Postgres de un caso de negocio normal — cualquier fallo real de
+        // la transacción se devolvía como el mismo 500 genérico, sin dejar ningún rastro para
+        // diagnosticar qué pasó de verdad.
+        console.error(`[progression] error repartiendo punto de atributo para save ${save.id}:`, err);
         return reply.status(500).send({ error: 'No se pudo repartir el punto de atributo' });
       }
 
