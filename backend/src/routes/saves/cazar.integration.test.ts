@@ -126,7 +126,8 @@ describe('Cazar: condición de carrera en caza limpia (presa única, auditoría 
     // slug ya en pendingCombatNpcSlugs); la ganadora termina en 200 — nunca las dos en 200.
     expect(codes).toEqual([200, 409]);
 
-    const logCount = await prisma.logEntry.count({ where: { saveId, text: { contains: 'Buitre Cenizo' } } });
+    // 'Buitre Cenizo' renombrado a 'Zense Ceniza' (2026-09-02) — slug sin cambiar.
+    const logCount = await prisma.logEntry.count({ where: { saveId, text: { contains: 'Zense Ceniza' } } });
     expect(logCount).toBe(1);
 
     const world = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });

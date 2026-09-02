@@ -113,7 +113,9 @@ export const worldPopulations: WorldPopulationInput[] = [
   {
     targetType: 'FAUNA',
     targetSlug: 'buitre-cenizo',
-    label: 'Buitre Cenizo',
+    // Renombrado 2026-09-02: "Buitre Cenizo" → "Zense Ceniza" (nombres de fauna sin palabras
+    // reales de la Tierra). Slug sin cambiar.
+    label: 'Zense Ceniza',
     poblacion: 3200,
     poblacionMax: 4000,
     distribucion: { 'Llanuras del Viento Rojo': 1 },

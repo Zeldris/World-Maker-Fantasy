@@ -1190,10 +1190,16 @@ export const fauna: NpcInput[] = [
   },
 
   {
+    // Renombrado (2026-09-02, decisión explícita de la usuaria: nombres de fauna no deben ser
+    // palabras reales de la Tierra — mismo criterio aplicado a la nueva fauna de Los Acantilados
+    // Partidos) — de "Buitre Cenizo" a "Zense Ceniza". Slug sin cambiar (buitre-cenizo, sin
+    // referencias a `name` en el resto del código, solo por slug/id). Nota pendiente de la usuaria:
+    // todos los nombres actuales de fauna/flora/etc. están en lengua común — en algún momento se
+    // añadirán versiones en los idiomas propios de cada raza cuando ella lo indique explícitamente.
     slug: 'buitre-cenizo',
-    name: 'Buitre Cenizo',
+    name: 'Zense Ceniza',
     kind: 'PLANTILLA',
-    aliases: ['buitre cenizo', 'buitres cenizos'],
+    aliases: ['zense ceniza', 'zense', 'zenses ceniza'],
     faction: null,
     role: 'Carroñero de caza menor y señal ambiental',
     articulo: 'el',
@@ -1201,9 +1207,9 @@ export const fauna: NpcInput[] = [
     levelMax: 3,
     attributes: { fuerza: 6, destreza: 8, constitucion: 6, inteligencia: 4, voluntad: 6, carisma: 2, magia: 0 },
     // Bio ajustada (checklist 2026-07-21/22, ronda de imágenes) al primer prompt de imagen que la
-    // usuaria generó de verdad y validó — más fiera de aspecto que un buitre real, aunque su papel
-    // en el mundo (carroñero, señal ambiental, nivel 1) no cambia.
-    bio: 'Buitre de plumaje negro intenso, revuelto y salvaje, con la piel bajo el plumaje de un gris ceniza brillante sobre escamas pardas — de aspecto mucho más fiero de lo esperado. El pico entreabierto deja ver pequeños dientes afilados, y sus ojos brillan de un gris ceniciento sólido con destellos blancos. Envergadura enorme y desproporcionada para su cuerpo, garras afiladas y curvas colgando de las patas al planear. Siempre en círculos sobre lo que muere en la llanura. Los orcos los leen como los Goirntes leen mapas: dónde caen los buitres, algo ha caído antes.',
+    // usuaria generó de verdad y validó — más fiero de aspecto de lo esperado, aunque su papel en
+    // el mundo (carroñero, señal ambiental, nivel 1) no cambia.
+    bio: 'Ave carroñera de plumaje negro intenso, revuelto y salvaje, con la piel bajo el plumaje de un gris ceniza brillante sobre escamas pardas — de aspecto mucho más fiero de lo esperado. El pico entreabierto deja ver pequeños dientes afilados, y sus ojos brillan de un gris ceniciento sólido con destellos blancos. Envergadura enorme y desproporcionada para su cuerpo, garras afiladas y curvas colgando de las patas al planear. Siempre en círculos sobre lo que muere en la llanura. Los orcos los leen como los Goirntes leen mapas: dónde caen los Zense, algo ha caído antes.',
     personality: 'Cobarde con lo vivo, atrevidísima con lo muerto.',
     loadout: [],
     ataqueNatural: 'Picotea y araña con sus garras curvas, torpe y dudosa mientras su presa todavía respira.',
@@ -1494,7 +1500,7 @@ export const fauna: NpcInput[] = [
     levelMax: 3,
     attributes: { fuerza: 4, destreza: 9, constitucion: 6, inteligencia: 3, voluntad: 5, carisma: 1, magia: 0 },
     bio: 'Insecto de 5 a 20 cm, caparazón quitinoso color arcilla roja con púas más oscuras que lo camuflan contra las paredes de la Hondonada, patas dentadas bajo el caparazón para agarrarse a la roca. Come huesos de quien no logra cruzar la Hondonada; sin huesos, sigue de lejos, sin ser detectado, cualquier señal de vida —sobre todo moribundos o convalecientes— esperando a que perezcan.',
-    personality: 'Paciente y sigiloso, nunca ataca a algo con fuerzas — el equivalente terrestre del Buitre Cenizo.',
+    personality: 'Paciente y sigiloso, nunca ataca a algo con fuerzas — el equivalente terrestre del Zense Ceniza.',
     homeLocationSlug: 'hondonada-del-eco',
     loadout: [],
     ataqueNatural: 'Muerde con mandíbulas pequeñas pero constantes, buscando puntos ya heridos.',
@@ -6266,7 +6272,7 @@ export const harvestYields: HarvestYieldInput[] = [
     condicion: 'cuchillo' 
   },
 
-  // --- Buitre Cenizo ---
+  // --- Zense Ceniza (slug buitre-cenizo) ---
 
   { 
     sourceSlug: 'buitre-cenizo',

@@ -310,7 +310,8 @@ describe('Compañeros: captura en grupo — el bug original (2026-08-28)', () =>
 
     // La captura del primero sigue viva, en el inventario, sin perderse.
     const item = await prisma.inventoryItem.findFirstOrThrow({ where: { saveId, capturaNpcId: buitreId } });
-    expect(item.name).toBe('Buitre Cenizo (Capturado) (3)'); // PEQUEÑA = 3 slots
+    // 'Buitre Cenizo' renombrado a 'Zense Ceniza' (2026-09-02) — slug sin cambiar.
+    expect(item.name).toBe('Zense Ceniza (Capturado) (3)'); // PEQUEÑA = 3 slots
   });
 });
 
