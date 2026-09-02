@@ -496,6 +496,32 @@ export interface TurnoAutonomoResultado {
   narracionesExtra: string[];
 }
 
+/// Campos compartidos por `ejecutarIntercambioYAvanzar`/`ejecutarGolpeGratisYAvanzar`/
+/// `invocarTotemYAvanzar` (deuda técnica cerrada, auditoría 2026-09-01: las 3 tenían 9-13
+/// parámetros posicionales, varios de tipos consecutivos idénticos —`ParticipantRef` seguido de
+/// otro `ParticipantRef`, dos `boolean` seguidos— mismo patrón de riesgo que ya causó un bug real
+/// esta sesión (`atacanteRol` fijo al string literal `'ataque'` en vez del rol real de la
+/// habilidad, `combateMultipleOrquestacion.ts`, corregido en la ronda de consolidación). Un
+/// objeto con nombres explícitos hace ese tipo de desliz imposible de cometer en silencio.
+interface TurnoAutonomoBaseParams {
+  prisma: PrismaClient;
+  worldId: string;
+  saveId: string;
+  encounterId: string;
+  encounter: { turnoActual: number; ordenIniciativa: string[]; participantes: (ParticipantRef & { bando: Bando })[] };
+  actual: ParticipantRef;
+  datosAtacante: DatosCombatiente;
+  habilidadAtaque: HabilidadParaIntercambio;
+  weaponNamesPorDefecto: string[];
+  narrarFn: typeof narrarTurnoCombateMultiple;
+}
+
+interface EjecutarIntercambioParams extends TurnoAutonomoBaseParams {
+  atacanteRol: 'ataque' | 'defensa' | 'utilidad';
+  dualWieldBonus: boolean;
+  defensor: ParticipantRef;
+}
+
 /// Núcleo compartido por `resolverTurnoAutonomo` (atacante NPC/COMPANION) y `resolverTurnoJugador`
 /// (atacante la propia jugadora, 2026-08-25): resuelve el intercambio completo (paridad real vía
 /// `resolverIntercambioCompleto`, combateMultiple.ts § 4), escribe condición/energía de AMBOS
@@ -510,21 +536,8 @@ export interface TurnoAutonomoResultado {
 /// transacciones cortas propias (solo escritura, sin narración dentro) alrededor de la llamada a
 /// `narrarFn`, que corre fuera de cualquier transacción — mismo criterio que ya usa
 /// `narrateAndPersistTurn` para `appendSessionFacts`/`captureLiveTeacherExample`.
-async function ejecutarIntercambioYAvanzar(
-  prisma: PrismaClient,
-  worldId: string,
-  saveId: string,
-  encounterId: string,
-  encounter: { turnoActual: number; ordenIniciativa: string[]; participantes: (ParticipantRef & { bando: Bando })[] },
-  actual: ParticipantRef,
-  datosAtacante: DatosCombatiente,
-  habilidadAtaque: HabilidadParaIntercambio,
-  atacanteRol: 'ataque' | 'defensa' | 'utilidad',
-  dualWieldBonus: boolean,
-  defensor: ParticipantRef,
-  weaponNamesPorDefecto: string[],
-  narrarFn: typeof narrarTurnoCombateMultiple,
-): Promise<TurnoAutonomoResultado> {
+async function ejecutarIntercambioYAvanzar(params: EjecutarIntercambioParams): Promise<TurnoAutonomoResultado> {
+  const { prisma, worldId, saveId, encounterId, encounter, actual, datosAtacante, habilidadAtaque, atacanteRol, dualWieldBonus, defensor, weaponNamesPorDefecto, narrarFn } = params;
   const datosDefensor = await datosVivosDe(prisma, worldId, saveId, defensor, weaponNamesPorDefecto);
   if (!datosDefensor || datosDefensor.condicionFisica === 'CONVALECIENTE' || datosDefensor.condicionFisica === 'MUERTO') {
     return avanzarSinAtacar(prisma, worldId, saveId, encounterId, encounter, weaponNamesPorDefecto, narrarFn);
@@ -784,19 +797,8 @@ async function ejecutarIntercambioYAvanzar(
 /// roadmap — esta rama queda lista para cuando exista, pero no dispara todavía en partida real).
 /// Mismo patrón de 2 transacciones cortas + narración fuera de ambas que `ejecutarIntercambioYAvanzar`
 /// (ver su comentario de cabecera sobre el bug de timeout de 2026-08-25).
-async function ejecutarGolpeGratisYAvanzar(
-  prisma: PrismaClient,
-  worldId: string,
-  saveId: string,
-  encounterId: string,
-  encounter: { turnoActual: number; ordenIniciativa: string[]; participantes: (ParticipantRef & { bando: Bando })[] },
-  actual: ParticipantRef,
-  datosAtacante: DatosCombatiente,
-  habilidadAtaque: HabilidadParaIntercambio,
-  defensor: ParticipantRef,
-  weaponNamesPorDefecto: string[],
-  narrarFn: typeof narrarTurnoCombateMultiple,
-): Promise<TurnoAutonomoResultado> {
+async function ejecutarGolpeGratisYAvanzar(params: TurnoAutonomoBaseParams & { defensor: ParticipantRef }): Promise<TurnoAutonomoResultado> {
+  const { prisma, worldId, saveId, encounterId, encounter, actual, datosAtacante, habilidadAtaque, defensor, weaponNamesPorDefecto, narrarFn } = params;
   const datosDefensor = await datosVivosDe(prisma, worldId, saveId, defensor, weaponNamesPorDefecto);
   if (!datosDefensor || datosDefensor.condicionFisica === 'CONVALECIENTE' || datosDefensor.condicionFisica === 'MUERTO') {
     return avanzarSinAtacar(prisma, worldId, saveId, encounterId, encounter, weaponNamesPorDefecto, narrarFn);
@@ -813,7 +815,10 @@ async function ejecutarGolpeGratisYAvanzar(
   if (aguanteMultiple) {
     // Única forma real de defenderse de un golpe gratis — se resuelve como un intercambio
     // contestado normal, mismo camino que un duelo real.
-    return ejecutarIntercambioYAvanzar(prisma, worldId, saveId, encounterId, encounter, actual, datosAtacante, habilidadAtaque, 'ataque', false, defensor, weaponNamesPorDefecto, narrarFn);
+    return ejecutarIntercambioYAvanzar({
+      prisma, worldId, saveId, encounterId, encounter, actual, datosAtacante, habilidadAtaque,
+      atacanteRol: 'ataque', dualWieldBonus: false, defensor, weaponNamesPorDefecto, narrarFn,
+    });
   }
 
   const nuevaCondicionDefensor = nextCondicionForAttack(habilidadAtaque.effects, datosDefensor.condicionFisica);
@@ -997,17 +1002,9 @@ async function resolverTotemsPendientes(
 /// siguiente mientras le queden `invocacionRondasRestantes` (`actuarInvocacionesYAvanzar`, llamado
 /// desde `avanzarYComprobarFin`, mismo punto donde ya se decrementan CONTROL/OCULTACION).
 async function invocarTotemYAvanzar(
-  prisma: PrismaClient,
-  worldId: string,
-  saveId: string,
-  encounterId: string,
-  encounter: { turnoActual: number; ordenIniciativa: string[]; participantes: (ParticipantRef & { bando: Bando })[] },
-  actual: ParticipantRef & { bando: Bando },
-  datosAtacante: DatosCombatiente,
-  habilidadInvocacion: HabilidadParaIntercambio,
-  weaponNamesPorDefecto: string[],
-  narrarFn: typeof narrarTurnoCombateMultiple,
+  params: Omit<TurnoAutonomoBaseParams, 'actual' | 'habilidadAtaque'> & { actual: ParticipantRef & { bando: Bando }; habilidadInvocacion: HabilidadParaIntercambio },
 ): Promise<TurnoAutonomoResultado> {
+  const { prisma, worldId, saveId, encounterId, encounter, actual, datosAtacante, habilidadInvocacion, weaponNamesPorDefecto, narrarFn } = params;
   const totemNpc = await prisma.npc.findFirst({ where: { worldId, slug: TOTEM_DE_GUERRA_SLUG } });
   if (!totemNpc) {
     // Catálogo sin sembrar todavía (entorno recién creado sin `npm run seed-catalog`) — se pierde
@@ -1149,7 +1146,10 @@ export async function resolverTurnoAutonomo(
     // devolver una utilidad con effects:['CONTROL'], ver comentario de esa función). Con 'ataque'
     // fijo, resolverIntercambioCompleto nunca entraba en la rama independiente que dispara
     // atacanteControlDisparado — mismo patrón ya correcto que el turno de la jugadora, línea 1224.
-    return ejecutarIntercambioYAvanzar(prisma, worldId, saveId, encounterId, encounter, actual, datosAtacante, habilidadControlada, habilidadControlada.rol, false, objetivoControlado, weaponNamesPorDefecto, narrarFn);
+    return ejecutarIntercambioYAvanzar({
+      prisma, worldId, saveId, encounterId, encounter, actual, datosAtacante, habilidadAtaque: habilidadControlada,
+      atacanteRol: habilidadControlada.rol, dualWieldBonus: false, defensor: objetivoControlado, weaponNamesPorDefecto, narrarFn,
+    });
   }
 
   const habilidadAtaque = chooseNpcAbility(datosAtacante.abilities, 'ataque', datosAtacante.energia, Math.random, datosAtacante.usageCounts);
@@ -1157,7 +1157,7 @@ export async function resolverTurnoAutonomo(
   // INVOCACION real (Fase 3 § 3d, 2026-08-27) — antes de mirar el enganche normal (invocar no
   // necesita objetivo, consume el turno entero, ver comentario largo de `invocarTotemYAvanzar`).
   if (habilidadAtaque.effects.includes('INVOCACION')) {
-    return invocarTotemYAvanzar(prisma, worldId, saveId, encounterId, encounter, actual, datosAtacante, habilidadAtaque, weaponNamesPorDefecto, narrarFn);
+    return invocarTotemYAvanzar({ prisma, worldId, saveId, encounterId, encounter, actual, datosAtacante, habilidadInvocacion: habilidadAtaque, weaponNamesPorDefecto, narrarFn });
   }
 
   const defensorId = actual.objetivoActualId;
@@ -1168,9 +1168,12 @@ export async function resolverTurnoAutonomo(
   const esDuelo = defensor.objetivoActualId === actual.id;
   if (esDuelo) {
     // `habilidadAtaque.rol` real, mismo motivo que el comentario de arriba (objetivoControlado).
-    return ejecutarIntercambioYAvanzar(prisma, worldId, saveId, encounterId, encounter, actual, datosAtacante, habilidadAtaque, habilidadAtaque.rol, false, defensor, weaponNamesPorDefecto, narrarFn);
+    return ejecutarIntercambioYAvanzar({
+      prisma, worldId, saveId, encounterId, encounter, actual, datosAtacante, habilidadAtaque,
+      atacanteRol: habilidadAtaque.rol, dualWieldBonus: false, defensor, weaponNamesPorDefecto, narrarFn,
+    });
   }
-  return ejecutarGolpeGratisYAvanzar(prisma, worldId, saveId, encounterId, encounter, actual, datosAtacante, habilidadAtaque, defensor, weaponNamesPorDefecto, narrarFn);
+  return ejecutarGolpeGratisYAvanzar({ prisma, worldId, saveId, encounterId, encounter, actual, datosAtacante, habilidadAtaque, defensor, weaponNamesPorDefecto, narrarFn });
 }
 
 export interface AccionJugadorCombate {
@@ -1227,12 +1230,15 @@ export async function resolverTurnoJugador(
   // que el enganche por ronda).
   const objetivoControlado = await objetivoControladoPara(prisma, worldId, saveId, actual, encounter, weaponNamesPorDefecto);
   if (objetivoControlado) {
-    return ejecutarIntercambioYAvanzar(prisma, worldId, saveId, encounterId, encounter, actual, datosAtacante, accion.habilidad, accion.habilidad.rol, accion.dualWieldBonus ?? false, objetivoControlado, weaponNamesPorDefecto, narrarFn);
+    return ejecutarIntercambioYAvanzar({
+      prisma, worldId, saveId, encounterId, encounter, actual, datosAtacante, habilidadAtaque: accion.habilidad,
+      atacanteRol: accion.habilidad.rol, dualWieldBonus: accion.dualWieldBonus ?? false, defensor: objetivoControlado, weaponNamesPorDefecto, narrarFn,
+    });
   }
 
   // INVOCACION real (Fase 3 § 3d, 2026-08-27) — ver comentario largo de `invocarTotemYAvanzar`.
   if (accion.habilidad.effects.includes('INVOCACION')) {
-    return invocarTotemYAvanzar(prisma, worldId, saveId, encounterId, encounter, actual, datosAtacante, accion.habilidad, weaponNamesPorDefecto, narrarFn);
+    return invocarTotemYAvanzar({ prisma, worldId, saveId, encounterId, encounter, actual, datosAtacante, habilidadInvocacion: accion.habilidad, weaponNamesPorDefecto, narrarFn });
   }
 
   const defensorId = actual.objetivoActualId;
@@ -1242,10 +1248,10 @@ export async function resolverTurnoJugador(
 
   const esDuelo = defensor.objetivoActualId === actual.id;
   if (!esDuelo) {
-    return ejecutarGolpeGratisYAvanzar(prisma, worldId, saveId, encounterId, encounter, actual, datosAtacante, accion.habilidad, defensor, weaponNamesPorDefecto, narrarFn);
+    return ejecutarGolpeGratisYAvanzar({ prisma, worldId, saveId, encounterId, encounter, actual, datosAtacante, habilidadAtaque: accion.habilidad, defensor, weaponNamesPorDefecto, narrarFn });
   }
 
-  return ejecutarIntercambioYAvanzar(
+  return ejecutarIntercambioYAvanzar({
     prisma,
     worldId,
     saveId,
@@ -1253,13 +1259,13 @@ export async function resolverTurnoJugador(
     encounter,
     actual,
     datosAtacante,
-    accion.habilidad,
-    accion.habilidad.rol,
-    accion.dualWieldBonus ?? false,
+    habilidadAtaque: accion.habilidad,
+    atacanteRol: accion.habilidad.rol,
+    dualWieldBonus: accion.dualWieldBonus ?? false,
     defensor,
     weaponNamesPorDefecto,
     narrarFn,
-  );
+  });
 }
 
 /// Grupo 3 § Mundo determinista, Capa 4 (2026-08-25) — disparo real: resuelve turnos autónomos
