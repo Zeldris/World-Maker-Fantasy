@@ -4,6 +4,7 @@ import { baseAttackFor } from './baseAttack.js';
 import { classAbilityUnlocksForClase, type Clase, type Especializacion } from './classAbilities.js';
 import { BERIG_RAZAS } from './berigLore.js';
 import type { NpcHabilidadRacialInScene } from './npcScene.js';
+import { faunaCategoriaAbilitiesForLevel, type FaunaCategoria } from './faunaAbilities.js';
 import { ENERGY_COST_BASICA, ENERGY_COST_ATAQUE_BASICO } from './energy.js';
 
 export interface NpcCombatAbility {
@@ -21,10 +22,13 @@ export interface NpcCombatAbility {
   /// Bonus de atributo fijo (2026-08-24, ver comentario de `ExchangeParticipant.attributeBonus`,
   /// combatExchange.ts) — solo las de clase lo llevan, igual que `effects`/`maxUsesPerCombat`.
   attributeBonus?: number;
-  /// [] para Ataque base y habilidades raciales (siempre puramente descriptivas, nunca leídas
-  /// como mecánica de combate — ver comentario de `Npc.habilidadesRaciales` en schema.prisma) —
-  /// solo las de clase tienen `AbilityEffect` real. Lista, no valor único (2026-08-15, "que una
-  /// habilidad pueda tener múltiples AbilityEffects").
+  /// [] SOLO para Ataque base (baseAttackFor no tiene mecánica propia más allá del atributo).
+  /// Hasta el sistema de categorías de raza de fauna (2026-09-02) las habilidades raciales de
+  /// fauna (`Npc.habilidadesRaciales`) eran siempre puramente descriptivas, `effects: []` fijo —
+  /// YA NO ES CIERTO: tanto las 7 de `faunaCategoria` (faunaAbilities.ts) como las hasta 3
+  /// específicas por animal (`habilidadesRaciales`, ahora con `level`/`effects` reales en
+  /// worldCatalog.ts) llevan `AbilityEffect` real, mismo criterio que las de clase. Lista, no
+  /// valor único (2026-08-15, "que una habilidad pueda tener múltiples AbilityEffects").
   effects: AbilityEffect[];
   /// Rediseño de combate (2026-08-09) — ver `enum AbilityRol` (schema.prisma). Ataque base
   /// siempre 'ataque'; de clase toma el `rol` ya asignado en classAbilities.ts (hoy las 4 son
@@ -61,6 +65,10 @@ export interface NpcForCombatAbilities {
   especializacion?: string | null;
   ataqueNatural: string | null;
   habilidadesRaciales: NpcHabilidadRacialInScene[];
+  /// Sistema de categorías de raza de fauna (2026-09-02, `Npc.faunaCategoria`) — sistema PARALELO
+  /// a `clase`/`raza`, nunca combinado con ellos en la práctica (fauna no lleva clase/raza).
+  /// null/undefined = sin categoría asignada (fauna sin combate real, o pendiente de clasificar).
+  faunaCategoria?: string | null;
 }
 
 /// Rediseño del turno de combate (2026-07-28) — reúne TODO lo que un NPC puede usar en un
@@ -135,15 +143,42 @@ export function npcCombatAbilitiesFor(npc: NpcForCombatAbilities, weaponNames: s
     }
   }
 
+  // Sistema de categorías de raza de fauna (2026-09-02) — las 7 habilidades base de
+  // `npc.faunaCategoria`, filtradas por nivel igual que las de clase de arriba. Sistema PARALELO
+  // a `clase`/`raza` (ver comentario de `NpcForCombatAbilities.faunaCategoria`) — en la práctica
+  // nunca coincide con ninguno de los dos bloques de arriba (fauna no lleva clase/raza).
+  if (npc.faunaCategoria) {
+    for (const ability of faunaCategoriaAbilitiesForLevel(npc.faunaCategoria as FaunaCategoria, npc.level)) {
+      // Ninguna habilidad de categoría de fauna es 'pasiva' hoy (faunaAbilities.ts, todas
+      // 'ataque'/'defensa'/'utilidad'), pero el filtro se deja igual que en el bloque de clase de
+      // arriba por si el catálogo crece — mismo motivo exacto: una pasiva no es acción de turno.
+      if (ability.rol === 'pasiva') continue;
+      abilities.push({
+        name: ability.name,
+        description: ability.description,
+        attribute: ability.preferredAttribute ?? 'fuerza',
+        attributeBonus: ability.attributeBonus,
+        effects: ability.effects ?? [],
+        rol: ability.rol ?? 'ataque',
+        energyCost: ENERGY_COST_BASICA,
+        energyRegen: 0,
+        maxUsesPerCombat: ability.maxUsesPerCombat,
+      });
+    }
+  }
+
+  // Sistema de categorías de raza de fauna (2026-09-02) — las hasta 3 habilidades ESPECÍFICAS de
+  // este animal individual (worldCatalog.ts), ahora filtradas por `level` igual que el resto del
+  // roster (antes se añadían todas sin filtro, `effects: []` fijo — ver comentario actualizado de
+  // `NpcCombatAbility.effects` arriba). `categoria` (ataque/defensa/utilidad) ya existía y se
+  // respeta tal cual, igual que antes.
   for (const racial of npc.habilidadesRaciales) {
+    if (racial.level > npc.level) continue;
     abilities.push({
       name: racial.name,
       description: racial.description,
       attribute: racial.preferredAttribute,
-      effects: [],
-      // `categoria` ya existía en worldCatalog.ts (ataque/defensa/utilidad) — antes se leía y se
-      // descartaba aquí mismo, así que un Corretolvas podía "atacar" con "Fuga audaz" (utilidad,
-      // huir) y hacer daño real. Ahora se respeta tal cual.
+      effects: racial.effects ?? [],
       rol: racial.categoria,
       energyCost: ENERGY_COST_BASICA,
       energyRegen: 0,

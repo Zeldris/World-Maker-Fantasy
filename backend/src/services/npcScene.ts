@@ -1,6 +1,6 @@
 import { prisma } from '../lib/prisma.js';
 import { normalizeText, fuzzyMatchCandidates, fuzzyMatchesAnyStem, findFuzzyStemMatch, matchesAliasBoundary } from './travel.js';
-import type { NpcKind, CondicionFisica, Temperamento, WeaponCategory, EquipSlot, ItemTipo, Prisma, NpcState } from '@prisma/client';
+import type { NpcKind, CondicionFisica, Temperamento, WeaponCategory, EquipSlot, ItemTipo, Prisma, NpcState, AbilityEffect } from '@prisma/client';
 import type { Attribute, AttributeBlock } from './dice.js';
 import type { Clase } from './classAbilities.js';
 import { npcAttributesForLevel } from './progression.js';
@@ -58,12 +58,18 @@ export interface NpcItemInScene {
 /// `NpcHabilidadRacial` allí. Duplicado aquí en vez de importado (ese archivo es contenido de
 /// seed, no un módulo pensado para importarse en el motor de turnos) — mismo criterio que el
 /// resto de shapes de este archivo, que ya reflejan columnas de Npc a mano.
+///
+/// Sistema de categorías de raza de fauna (2026-09-02) — `level`/`effects` añadidos, mismo
+/// motivo que en worldCatalog.ts: estas 3 habilidades específicas por animal ahora escalan por
+/// nivel y llevan mecánica real, ya no son puramente descriptivas.
 export interface NpcHabilidadRacialInScene {
   icon: string;
   name: string;
   description: string;
   categoria: 'ataque' | 'defensa' | 'utilidad';
   preferredAttribute: Attribute;
+  level: number;
+  effects: AbilityEffect[];
 }
 
 export interface NpcInScene {
@@ -97,6 +103,10 @@ export interface NpcInScene {
   especializacion: string | null;
   ataqueNatural: string | null;
   habilidadesRaciales: NpcHabilidadRacialInScene[];
+  /// Sistema de categorías de raza de fauna (2026-09-02, `Npc.faunaCategoria`) — sistema PARALELO
+  /// a `clase`/`raza`, mismo criterio nullable. Solo fauna la lleva; null en humanoides y en
+  /// fauna sin categoría asignada todavía.
+  faunaCategoria: string | null;
   /// Disposición al combate (schema.prisma § Temperamento, 2026-07-29) — gate determinista en
   /// shouldForceCombat (turnResolution.ts): AGRESIVO fuerza combate con cualquier interacción,
   /// INOFENSIVO protege de la red de seguridad.
@@ -209,6 +219,7 @@ export function buildNpcInScene(npc: NpcWithItems, state: NpcState | undefined):
     especializacion: npc.especializacion,
     ataqueNatural: npc.ataqueNatural,
     habilidadesRaciales: (npc.habilidadesRaciales as unknown as NpcHabilidadRacialInScene[]) ?? [],
+    faunaCategoria: npc.faunaCategoria,
     temperamento: npc.temperamento,
     condicionFisica: state?.condicionFisica ?? 'ILESO',
     saqueado: state?.saqueado ?? false,
@@ -307,7 +318,15 @@ const NPC_ALIAS_FUZZY_EXCLUSIONS = new Set([
   'sano',
   'sanamos',
   'confia',
-  'patrullar'
+  'patrullar',
+  // Colisión entre dos NOMBRES DE NPC reales, no un verbo común (2026-09-02, encontrado al
+  // sembrar Terkash — Los Acantilados Partidos): "torgash" (alias corto de Torgash Ketg,
+  // Kort'ikar del Clan Serhu) está a distancia Levenshtein 2 de "terkash" (alias del nuevo
+  // crustáceo) — mencionar a Torgash Ketg en texto libre ("...mientras Torgash Ketg me
+  // observa...") disparaba también a Terkash por tolerancia a erratas, sin que ninguno de los dos
+  // tuviera ningún error tipográfico real. La detección EXACTA de Torgash Ketg sigue intacta (su
+  // alias real es "Torgash Ketg", con espacio — matchesAliasBoundary, no esta lista de fuzzy).
+  'torgash',
 ]);
 
 /// Puro: dado un texto y una lista de NPCs con sus aliases, devuelve los ids que matchean.

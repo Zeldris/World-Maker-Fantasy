@@ -6,8 +6,9 @@
 
 import type { Attribute, AttributeBlock } from '../services/dice.js';
 import type { Requisitos } from '../services/requisitos.js';
-import type { Estacion, EstadoClima, EquipSlot, ItemTipo, MetodoObtencion, WeaponCategory, Clase, Especializacion, PesoArmadura } from '@prisma/client';
+import type { Estacion, EstadoClima, EquipSlot, ItemTipo, MetodoObtencion, WeaponCategory, Clase, Especializacion, PesoArmadura, AbilityEffect } from '@prisma/client';
 import type { TerrainTag } from '../services/terrain.js';
+import type { FaunaCategoria } from '../services/faunaAbilities.js';
 
 export interface LocationInput {
   slug: string;
@@ -1073,6 +1074,20 @@ export interface NpcHabilidadRacial {
   /// con el que se tira, elegido por lo que la habilidad representa (garras=destreza,
   /// mordisco pesado=fuerza, acecho sigiloso=destreza...), nunca uniforme por especie.
   preferredAttribute: Attribute;
+  /// Sistema de categorías de raza de fauna (2026-09-02) — nivel al que este animal concreto
+  /// desbloquea esta habilidad ESPECÍFICA suya (las 3 propias, encima de las 7 de
+  /// `NpcInput.faunaCategoria`), mismo criterio de reparto que `FAUNA_ESPECIFICA_LEVELS`
+  /// (faunaAbilities.ts): 4/12/20. Filtrado por nivel real en `npcCombatAbilitiesFor`
+  /// (npcCombatAbilities.ts), igual que las de categoría/clase.
+  level: number;
+  /// `AbilityEffect` real (2026-09-02) — antes este campo no existía y `npcCombatAbilitiesFor`
+  /// forzaba siempre `effects: []` para toda habilidad racial (puramente descriptivas, ver
+  /// comentario viejo, ya corregido, de `NpcCombatAbility.effects`). Ahora cada habilidad
+  /// específica de fauna lleva su propio efecto mecánico real, mismo vocabulario que
+  /// `StartingAbility.effects` — solo los ya implementados de verdad (ver comentario de cabecera
+  /// de `FAUNA_CATEGORIA_ABILITIES`, faunaAbilities.ts, para el mapa completo y por qué
+  /// `PROVOCACION` se queda fuera pese a ser un valor válido del enum).
+  effects: AbilityEffect[];
 }
 
 export interface NpcInput {
@@ -1121,6 +1136,13 @@ export interface NpcInput {
   /// de su ataque natural (alimenta baseAttack.ts) y hasta 6 habilidades raciales propias,
   /// categorizadas (2 ataque, 2 defensa, 2 utilidad como máximo orientativo, no un mínimo fijo).
   ataqueNatural?: string;
+  /// Categorías de raza de fauna (2026-09-02, ver comentario completo en faunaAbilities.ts y en
+  /// `Npc.faunaCategoria`, schema.prisma) — solo fauna, sistema PARALELO a `clase` (nunca ambos a
+  /// la vez en la práctica: fauna no lleva `clase`). Concede las 7 habilidades base de esa
+  /// categoría (compartidas por toda la fauna de la misma categoría), filtradas por nivel, encima
+  /// de las hasta 3 `habilidadesRaciales` propias de esta fila. Omitido = sin categoría asignada
+  /// todavía (fauna puramente ambiental sin combate real, o pendiente de clasificar).
+  faunaCategoria?: FaunaCategoria;
   habilidadesRaciales?: NpcHabilidadRacial[];
   /// Disposición al combate (schema.prisma § Temperamento) — default 'CAUTELOSO' (comportamiento
   /// actual dependiente del verbo del jugador) si no se especifica.
@@ -1182,10 +1204,14 @@ export const fauna: NpcInput[] = [
     // instinto de huida/ataque rápido, no por fuerza bruta.
     atributoResistencia: 'destreza',
     capturablePct: 35,
+    // Categoría de raza de fauna (2026-09-02) — GUELISES: caza en jaurías de 4-6, texto literal
+    // de su propia bio ("un aullador solo nunca ataca a un orco adulto — una jauría con hambre,
+    // sí"), coordinación de grupo real.
+    faunaCategoria: 'GUELISES',
     habilidadesRaciales: [
-      { icon: '🐺', name: 'Posicion defensiva', description: 'Adopta una posición defensiva al enfrentar a sus enemigos y a la minima oportunidad contra ataca', categoria: 'defensa', preferredAttribute: 'destreza' },
-      { icon: '🔄', name: 'Filos centella', description: 'Se coloca en tu punto ciego y busca tus puntos débiles para atacar rapidamente con sus pronunciados colmillos.', categoria: 'ataque', preferredAttribute: 'destreza' },
-      { icon: '🐾', name: 'Instinto Solitario', description: 'En cuanto se queda solo, se retira a toda velocidad — casi imposible rematarlo en la huida.', categoria: 'utilidad', preferredAttribute: 'inteligencia' },
+      { icon: '🐺', name: 'Posicion defensiva', description: 'Adopta una posición defensiva al enfrentar a sus enemigos y a la minima oportunidad contra ataca', categoria: 'defensa', preferredAttribute: 'destreza', level: 4, effects: ['AGUANTE'] },
+      { icon: '🔄', name: 'Filos centella', description: 'Se coloca en tu punto ciego y busca tus puntos débiles para atacar rapidamente con sus pronunciados colmillos.', categoria: 'ataque', preferredAttribute: 'destreza', level: 12, effects: ['ATAQUE'] },
+      { icon: '🐾', name: 'Instinto Solitario', description: 'En cuanto se queda solo, se retira a toda velocidad — casi imposible rematarlo en la huida.', categoria: 'utilidad', preferredAttribute: 'inteligencia', level: 20, effects: ['AGUANTE'] },
     ],
   },
 
@@ -1218,10 +1244,13 @@ export const fauna: NpcInput[] = [
     // Tameo (2026-08-25) — carroñero aéreo, resiste esquivando, no plantando cara.
     atributoResistencia: 'destreza',
     capturablePct: 50,
+    // Categoría de raza de fauna (2026-09-02) — CORVENES: ave de presa/carroñera, "cae en picado
+    // sobre su presa" desde altura, texto literal de su propia habilidad de ataque.
+    faunaCategoria: 'CORVENES',
     habilidadesRaciales: [
-      { icon: '🐦', name: 'Plumaje ferreo', description: 'Aprrieta los musculos para protegerse de los ataques formando una malla resistente con su plumaje.', categoria: 'defensa', preferredAttribute: 'fuerza' },
-      { icon: '🦅', name: 'Vuelo Embestida', description: 'Alza el vuelo, al obtener cierta altura cae en picado sobre su presa', categoria: 'ataque', preferredAttribute: 'destreza' },
-      { icon: '🦴', name: 'Carroña', description: 'Busca rapidamente un cadáver para alimentarse y recuperar un poco de salud', categoria: 'utilidad', preferredAttribute: 'inteligencia' },
+      { icon: '🐦', name: 'Plumaje ferreo', description: 'Aprrieta los musculos para protegerse de los ataques formando una malla resistente con su plumaje.', categoria: 'defensa', preferredAttribute: 'fuerza', level: 4, effects: ['AGUANTE'] },
+      { icon: '🦅', name: 'Vuelo Embestida', description: 'Alza el vuelo, al obtener cierta altura cae en picado sobre su presa', categoria: 'ataque', preferredAttribute: 'destreza', level: 12, effects: ['ATAQUE'] },
+      { icon: '🦴', name: 'Carroña', description: 'Busca rapidamente un cadáver para alimentarse y recuperar un poco de salud', categoria: 'utilidad', preferredAttribute: 'inteligencia', level: 20, effects: ['RECUPERACION'] },
     ],
   },
 
@@ -1256,10 +1285,13 @@ export const fauna: NpcInput[] = [
     // por pura voluntad territorial, no por fuerza o velocidad.
     atributoResistencia: 'voluntad',
     capturablePct: 20,
+    // Categoría de raza de fauna (2026-09-02) — ACECHANTES: "a diferencia de los Aulladores Rojos,
+    // caza y vive en solitario" (texto literal de su bio), depredador solitario territorial.
+    faunaCategoria: 'ACECHANTES',
     habilidadesRaciales: [
-      { icon: '🐾', name: 'Zarpazo marcado', description: 'Ataca con las garras delanteras, dejando el mismo tipo de marca que lleva el emblema del Clan Maktor.', categoria: 'ataque', preferredAttribute: 'fuerza' },
-      { icon: '🌙', name: 'Cazador nocturno', description: 'Ve y se mueve mejor de noche, cuando caza de verdad — más peligroso al caer el sol.', categoria: 'ataque', preferredAttribute: 'destreza' },
-      { icon: '🦴', name: 'Instinto territorial', description: 'Defiende su terreno con más fuerza de la que muestra al cazar — no huye si se siente acorralado en él.', categoria: 'defensa', preferredAttribute: 'voluntad' },
+      { icon: '🐾', name: 'Zarpazo marcado', description: 'Ataca con las garras delanteras, dejando el mismo tipo de marca que lleva el emblema del Clan Maktor.', categoria: 'ataque', preferredAttribute: 'fuerza', level: 4, effects: ['ATAQUE'] },
+      { icon: '🌙', name: 'Cazador nocturno', description: 'Ve y se mueve mejor de noche, cuando caza de verdad — más peligroso al caer el sol.', categoria: 'ataque', preferredAttribute: 'destreza', level: 12, effects: ['ATAQUE', 'ATURDIMIENTO'] },
+      { icon: '🦴', name: 'Instinto territorial', description: 'Defiende su terreno con más fuerza de la que muestra al cazar — no huye si se siente acorralado en él.', categoria: 'defensa', preferredAttribute: 'voluntad', level: 20, effects: ['AGUANTE'] },
     ],
   },
 
@@ -1283,10 +1315,13 @@ export const fauna: NpcInput[] = [
     // Tameo (2026-08-25) — "bestia veloz de seis patas", resiste huyendo, no plantando cara.
     atributoResistencia: 'destreza',
     capturablePct: 60,
+    // Categoría de raza de fauna (2026-09-02) — BESTIONES: "se desplaza en manadas" (texto literal
+    // de su bio), herbívoro grande de manada pese a su tamaño moderado.
+    faunaCategoria: 'BESTIONES',
     habilidadesRaciales: [
-      { icon: '🏃', name: 'Fuga audaz', description: 'Al primer sobresalto intenta huir siendo casi imposible pararlo.', categoria: 'utilidad', preferredAttribute: 'destreza' },
-      { icon: '🦴', name: 'Placas del Lomo', description: 'La hilera de placas óseas del lomo amortigua un golpe que a otra bestia la habría derribado.', categoria: 'defensa', preferredAttribute: 'fuerza' },
-      { icon: '💥', name: 'Embestida Volatil', description: 'Carga con todo su peso y puede derribar a quien no logre apartarse a tiempo.', categoria: 'ataque', preferredAttribute: 'fuerza' },
+      { icon: '🏃', name: 'Fuga audaz', description: 'Al primer sobresalto intenta huir siendo casi imposible pararlo.', categoria: 'utilidad', preferredAttribute: 'destreza', level: 4, effects: ['AGUANTE'] },
+      { icon: '🦴', name: 'Placas del Lomo', description: 'La hilera de placas óseas del lomo amortigua un golpe que a otra bestia la habría derribado.', categoria: 'defensa', preferredAttribute: 'fuerza', level: 12, effects: ['AGUANTE'] },
+      { icon: '💥', name: 'Embestida Volatil', description: 'Carga con todo su peso y puede derribar a quien no logre apartarse a tiempo.', categoria: 'ataque', preferredAttribute: 'fuerza', level: 20, effects: ['ATAQUE', 'ATURDIMIENTO'] },
     ],
   },
 
@@ -1310,9 +1345,12 @@ export const fauna: NpcInput[] = [
     // Tameo (2026-08-25) — corredor incapaz de volar, resiste huyendo a la carrera.
     atributoResistencia: 'destreza',
     capturablePct: 70,
+    // Categoría de raza de fauna (2026-09-02) — ZANCUDOS: "criatura corredora incapaz de volar"
+    // (texto literal de su bio), ave terrestre de patas largas.
+    faunaCategoria: 'ZANCUDOS',
     habilidadesRaciales: [
-      { icon: '💥', name: 'Picoteo Incesante', description: 'En un ataque agil, ejecuta continuos picotazos en las partes mas debil de su agresor. Busca atacar las partes mas blandas y desprotegidas.', categoria: 'ataque', preferredAttribute: 'destreza' },
-      { icon: '🐦', name: 'Vuelo en Bandada', description: 'Se coloca en posición de carrera y sin que te puedas dar cuenta huye del combate desapareciendo entre las tornmentas de arena roja.', categoria: 'utilidad', preferredAttribute: 'destreza' },
+      { icon: '💥', name: 'Picoteo Incesante', description: 'En un ataque agil, ejecuta continuos picotazos en las partes mas debil de su agresor. Busca atacar las partes mas blandas y desprotegidas.', categoria: 'ataque', preferredAttribute: 'destreza', level: 4, effects: ['ATAQUE'] },
+      { icon: '🐦', name: 'Vuelo en Bandada', description: 'Se coloca en posición de carrera y sin que te puedas dar cuenta huye del combate desapareciendo entre las tornmentas de arena roja.', categoria: 'utilidad', preferredAttribute: 'destreza', level: 12, effects: ['AGUANTE'] },
     ],
   },
 
@@ -1349,11 +1387,16 @@ export const fauna: NpcInput[] = [
     // casi nunca cede.
     atributoResistencia: 'voluntad',
     capturablePct: 10,
+    // Categoría de raza de fauna (2026-09-02) — CORVENES: "planeadora... cabalga los frentes de
+    // viento", ave de presa agresiva de vuelo alto. 4 específicas (por encima del máximo
+    // orientativo de 3, dentro del tope real "hasta 6" de `habilidadesRaciales`) — repartidas en
+    // 4/12/20/28, un tramo más allá del patrón estándar de 3 (4/12/20).
+    faunaCategoria: 'CORVENES',
     habilidadesRaciales: [
-      { icon: '🌬️', name: 'Vuelo Errático', description: 'Despliega sus alas rígidas y se mueve rapido haciendo movimientos impredecibles siendo muy dificil alcanzarlo', categoria: 'utilidad', preferredAttribute: 'destreza' },
-      { icon: '💥', name: 'Embestida Aérea', description: 'Carga con todo su peso desde el aire embistiendo con su afilado plumaje a sus enemigos', categoria: 'ataque', preferredAttribute: 'destreza' },
-      { icon: '🩸', name: 'Garras Sangrantes', description: 'Busca tus puntos débiles y los ataca con sus garras afiladas bucando desgarrar tendones.', categoria: 'ataque', preferredAttribute: 'fuerza' },
-      { icon: '🌋', name: 'Coraza Ceniza', description: 'Colaca sus alas al frente creando un escudo de plumaje solido que le protege casi de cualquier ataque.', categoria: 'defensa', preferredAttribute: 'constitucion' },
+      { icon: '🌬️', name: 'Vuelo Errático', description: 'Despliega sus alas rígidas y se mueve rapido haciendo movimientos impredecibles siendo muy dificil alcanzarlo', categoria: 'utilidad', preferredAttribute: 'destreza', level: 4, effects: ['AGUANTE'] },
+      { icon: '💥', name: 'Embestida Aérea', description: 'Carga con todo su peso desde el aire embistiendo con su afilado plumaje a sus enemigos', categoria: 'ataque', preferredAttribute: 'destreza', level: 12, effects: ['ATAQUE'] },
+      { icon: '🩸', name: 'Garras Sangrantes', description: 'Busca tus puntos débiles y los ataca con sus garras afiladas bucando desgarrar tendones.', categoria: 'ataque', preferredAttribute: 'fuerza', level: 20, effects: ['ATAQUE', 'ATURDIMIENTO'] },
+      { icon: '🌋', name: 'Coraza Ceniza', description: 'Colaca sus alas al frente creando un escudo de plumaje solido que le protege casi de cualquier ataque.', categoria: 'defensa', preferredAttribute: 'constitucion', level: 28, effects: ['AGUANTE'] },
     ],
   },
 
@@ -1382,10 +1425,13 @@ export const fauna: NpcInput[] = [
     // Tameo (2026-08-25) — "bestia grande y pesada", resiste por pura masa/resistencia física.
     atributoResistencia: 'constitucion',
     capturablePct: 10,
+    // Categoría de raza de fauna (2026-09-02) — BESTIONES: "bestia grande y pesada", cazada en
+    // cacerías serias, mismo perfil de gran herbívoro/bestia que Corredor de Cauce/Múrgol.
+    faunaCategoria: 'BESTIONES',
     habilidadesRaciales: [
-      { icon: '🦴', name: 'Coraza de Placas', description: 'Las gruesas placas óseas que le cubren el lomo absorben buena parte de cualquier golpe directo.', categoria: 'defensa', preferredAttribute: 'fuerza' },
-      { icon: '💥', name: 'Embestida Sísmica', description: 'Carga con todo su peso y puede derribar a quien no logre apartarse a tiempo.', categoria: 'ataque', preferredAttribute: 'fuerza' },
-      { icon: '🐾', name: 'Paso Pesado', description: 'El suelo tiembla bajo sus pisadas — imposible acercarse a ella sin que lo note.', categoria: 'utilidad', preferredAttribute: 'voluntad' },
+      { icon: '🦴', name: 'Coraza de Placas', description: 'Las gruesas placas óseas que le cubren el lomo absorben buena parte de cualquier golpe directo.', categoria: 'defensa', preferredAttribute: 'fuerza', level: 4, effects: ['AGUANTE'] },
+      { icon: '💥', name: 'Embestida Sísmica', description: 'Carga con todo su peso y puede derribar a quien no logre apartarse a tiempo.', categoria: 'ataque', preferredAttribute: 'fuerza', level: 12, effects: ['ATAQUE', 'ATURDIMIENTO'] },
+      { icon: '🐾', name: 'Paso Pesado', description: 'El suelo tiembla bajo sus pisadas — imposible acercarse a ella sin que lo note.', categoria: 'utilidad', preferredAttribute: 'voluntad', level: 20, effects: ['INTIMIDACION'] },
     ],
   },
 
@@ -1417,9 +1463,12 @@ export const fauna: NpcInput[] = [
     // Tameo (2026-08-25) — "dócil, gregario", ganado de los clanes, resiste poco y por pura masa.
     atributoResistencia: 'constitucion',
     capturablePct: 80,
+    // Categoría de raza de fauna (2026-09-02) — BESTIONES: "gregario", ganado de manada de los
+    // clanes, mismo perfil que Corredor de Cauce/Gargantúa de Ceniza.
+    faunaCategoria: 'BESTIONES',
     habilidadesRaciales: [
-      { icon: '💥', name: 'Embestida Sísmica', description: 'Carga con todo su peso y puede derribar a quien no logre apartarse a tiempo.', categoria: 'ataque', preferredAttribute: 'fuerza' },
-      { icon: '🧶', name: 'Lana Espesa', description: 'La gruesa capa de lana enredada de polvo amortigua cualquier golpe menor antes de que llegue a la piel.', categoria: 'defensa', preferredAttribute: 'constitucion' },
+      { icon: '💥', name: 'Embestida Sísmica', description: 'Carga con todo su peso y puede derribar a quien no logre apartarse a tiempo.', categoria: 'ataque', preferredAttribute: 'fuerza', level: 4, effects: ['ATAQUE'] },
+      { icon: '🧶', name: 'Lana Espesa', description: 'La gruesa capa de lana enredada de polvo amortigua cualquier golpe menor antes de que llegue a la piel.', categoria: 'defensa', preferredAttribute: 'constitucion', level: 12, effects: ['AGUANTE'] },
     ],
   },
 
@@ -1447,10 +1496,13 @@ export const fauna: NpcInput[] = [
     // Tameo (2026-08-25) — carroñero-cazador nocturno testarudo, resiste por puro instinto.
     atributoResistencia: 'voluntad',
     capturablePct: 15,
+    // Categoría de raza de fauna (2026-09-02) — ACECHANTES: "solitario", ronda en la sombra sin
+    // ser visto antes de atacar, depredador de emboscada nocturno.
+    faunaCategoria: 'ACECHANTES',
     habilidadesRaciales: [
-      { icon: '🌒', name: 'Acecho Nocturno', description: 'Ronda el borde de la luz sin ser visto — el primer golpe contra un objetivo que no lo ha notado cae con fuerza extra.', categoria: 'ataque', preferredAttribute: 'destreza' },
-      { icon: '🩸', name: 'Mordisco Abrasado', description: 'Propina un mordisco abrasador que cercena la carné con sus colmillos y la calcina a la vez. Recupera una parte de la energia si el golpe es crítico y le resta esa misma energia a su rival.', categoria: 'ataque', preferredAttribute: 'fuerza' },
-      { icon: '🔥', name: 'Brasa Berserker', description: 'En un fuerte aullido y en posicion defensiv, acelera su sangre dejando ver las venas de fuego y expulsando vapor pudiendo endurecer su cuerpo brevemente para detener el impacto. Si la defensa acierta tambien recupera un poco sus heridas, uso unico por combate.', categoria: 'defensa', preferredAttribute: 'destreza' },
+      { icon: '🌒', name: 'Acecho Nocturno', description: 'Ronda el borde de la luz sin ser visto — el primer golpe contra un objetivo que no lo ha notado cae con fuerza extra.', categoria: 'ataque', preferredAttribute: 'destreza', level: 4, effects: ['ATAQUE', 'ATURDIMIENTO'] },
+      { icon: '🩸', name: 'Mordisco Abrasado', description: 'Propina un mordisco abrasador que cercena la carné con sus colmillos y la calcina a la vez. Recupera una parte de la energia si el golpe es crítico y le resta esa misma energia a su rival.', categoria: 'ataque', preferredAttribute: 'fuerza', level: 12, effects: ['ATAQUE', 'RECUPERACION'] },
+      { icon: '🔥', name: 'Brasa Berserker', description: 'En un fuerte aullido y en posicion defensiv, acelera su sangre dejando ver las venas de fuego y expulsando vapor pudiendo endurecer su cuerpo brevemente para detener el impacto. Si la defensa acierta tambien recupera un poco sus heridas, uso unico por combate.', categoria: 'defensa', preferredAttribute: 'destreza', level: 20, effects: ['AGUANTE', 'RECUPERACION'] },
     ],
   },
 
@@ -1475,10 +1527,15 @@ export const fauna: NpcInput[] = [
     // Tameo (2026-08-25) — reptil de "complexión robusta", resiste por dureza física propia.
     atributoResistencia: 'constitucion',
     capturablePct: 20,
+    // Categoría de raza de fauna (2026-09-02) — MUDOS_SALVAJE: reptil de escamas volcánicas que
+    // "arden con vetas de lava" — un rasgo imposible para un reptil normal, coherente con la magia
+    // Salvaje derramada tras el Estallido de Tarkor (genesis.md), no un poder propio de Florial
+    // (creador de ESCAMADOS "normales").
+    faunaCategoria: 'MUDOS_SALVAJE',
     habilidadesRaciales: [
-      { icon: '🔥', name: 'Piel Ardiente', description: 'Sus escamas retienen el calor de la lava — golpearla de cerca, cuerpo a cuerpo, también quema.', categoria: 'ataque', preferredAttribute: 'fuerza' },
-      { icon: '🌋', name: 'Escamas de Escoria', description: 'La coraza de escoria volcánica resiste el calor y buena parte del daño físico directo.', categoria: 'defensa', preferredAttribute: 'fuerza' },
-      { icon: '💨', name: 'Silbido de Vapor', description: 'Hincha la garganta y silba con fuerza antes de cargar — el aviso basta para hacer dudar a cualquiera.', categoria: 'utilidad', preferredAttribute: 'carisma' },
+      { icon: '🔥', name: 'Piel Ardiente', description: 'Sus escamas retienen el calor de la lava — golpearla de cerca, cuerpo a cuerpo, también quema.', categoria: 'ataque', preferredAttribute: 'fuerza', level: 4, effects: ['ATAQUE'] },
+      { icon: '🌋', name: 'Escamas de Escoria', description: 'La coraza de escoria volcánica resiste el calor y buena parte del daño físico directo.', categoria: 'defensa', preferredAttribute: 'fuerza', level: 12, effects: ['AGUANTE'] },
+      { icon: '💨', name: 'Silbido de Vapor', description: 'Hincha la garganta y silba con fuerza antes de cargar — el aviso basta para hacer dudar a cualquiera.', categoria: 'utilidad', preferredAttribute: 'carisma', level: 20, effects: ['INTIMIDACION'] },
     ],
   },
 
@@ -1515,10 +1572,13 @@ export const fauna: NpcInput[] = [
     // "sigiloso... sin ser detectado" en su propia bio) — sirve para que `avistadosFor(30, 2146) =
     // round(30/10) = 3` dé un grupo real sin ser un valor arbitrario alto.
     capturablePct: 30,
+    // Categoría de raza de fauna (2026-09-02) — QUITINOS: "insecto... caparazón quitinoso", igual
+    // que Escorante/Lebude/Imanio — artrópodo acorazado real, aunque cace por emboscada.
+    faunaCategoria: 'QUITINOS',
     habilidadesRaciales: [
-      { icon: '🦴', name: 'Emboscada camuflada', description: 'Ataca desde el camuflaje contra la roca, sin que la presa lo vea venir.', categoria: 'ataque', preferredAttribute: 'destreza' },
-      { icon: '🛡️', name: 'Caparazón de arcilla', description: 'El caparazón absorbe golpes directos casi tan bien como la propia roca a la que imita.', categoria: 'defensa', preferredAttribute: 'constitucion' },
-      { icon: '👁️', name: 'Acecho paciente', description: 'Sigue de lejos a una presa débil sin que lo detecte, esperando el momento.', categoria: 'utilidad', preferredAttribute: 'inteligencia' },
+      { icon: '🦴', name: 'Emboscada camuflada', description: 'Ataca desde el camuflaje contra la roca, sin que la presa lo vea venir.', categoria: 'ataque', preferredAttribute: 'destreza', level: 4, effects: ['ATAQUE'] },
+      { icon: '🛡️', name: 'Caparazón de arcilla', description: 'El caparazón absorbe golpes directos casi tan bien como la propia roca a la que imita.', categoria: 'defensa', preferredAttribute: 'constitucion', level: 12, effects: ['AGUANTE'] },
+      { icon: '👁️', name: 'Acecho paciente', description: 'Sigue de lejos a una presa débil sin que lo detecte, esperando el momento.', categoria: 'utilidad', preferredAttribute: 'inteligencia', level: 20, effects: ['ANALISIS'] },
     ],
   },
 
@@ -1539,10 +1599,15 @@ export const fauna: NpcInput[] = [
     loadout: [],
     ataqueNatural: 'Embiste con el hocico y cierra la sierra de dientes sobre el punto que ha localizado por vibración.',
     temperamento: 'AGRESIVO',
+    // Categoría de raza de fauna (2026-09-02) — MUDOS_SALVAJE: "garras de Yerreo" (mineral/metal
+    // especial, no anatomía reptil normal) y "extremidad desmagnetizada" — imantación real en el
+    // cuerpo de un reptil no es un rasgo natural de ESCAMADOS, encaja con la magia Salvaje
+    // derramada tras el Estallido de Tarkor (genesis.md), mismo criterio que Salamandra de Escoria.
+    faunaCategoria: 'MUDOS_SALVAJE',
     habilidadesRaciales: [
-      { icon: '🌑', name: 'Caza por vibración', description: 'No necesita ver — localiza a su presa por el más mínimo movimiento en la arena.', categoria: 'ataque', preferredAttribute: 'inteligencia' },
-      { icon: '🦷', name: 'Sierra de dientes', description: 'Cierra la mandíbula en sierra sobre el punto débil ya localizado.', categoria: 'ataque', preferredAttribute: 'fuerza' },
-      { icon: '🦴', name: 'Extremidad desmagnetizada', description: 'Se desprende de una pata quitándole la imantación al detectar peligro real — distrae y huye, la regenera en días.', categoria: 'utilidad', preferredAttribute: 'constitucion' },
+      { icon: '🌑', name: 'Caza por vibración', description: 'No necesita ver — localiza a su presa por el más mínimo movimiento en la arena.', categoria: 'ataque', preferredAttribute: 'inteligencia', level: 4, effects: ['ATAQUE'] },
+      { icon: '🦷', name: 'Sierra de dientes', description: 'Cierra la mandíbula en sierra sobre el punto débil ya localizado.', categoria: 'ataque', preferredAttribute: 'fuerza', level: 12, effects: ['ATAQUE'] },
+      { icon: '🦴', name: 'Extremidad desmagnetizada', description: 'Se desprende de una pata quitándole la imantación al detectar peligro real — distrae y huye, la regenera en días.', categoria: 'utilidad', preferredAttribute: 'constitucion', level: 20, effects: ['AGUANTE'] },
     ],
   },
 
@@ -1562,6 +1627,10 @@ export const fauna: NpcInput[] = [
     loadout: [],
     ataqueNatural: 'No ataca.',
     temperamento: 'INOFENSIVO',
+    // Categoría de raza de fauna (2026-09-02) — ESCAMADOS: "reptil serpentiforme", sin
+    // `habilidadesRaciales` propias (totalmente inofensivo, nivel 1 fijo) — igual recibe las 7 de
+    // categoría por completitud del catálogo, aunque rara vez llegue a combate real.
+    faunaCategoria: 'ESCAMADOS',
     habilidadesRaciales: [],
   },
 
@@ -1582,10 +1651,13 @@ export const fauna: NpcInput[] = [
     loadout: [],
     ataqueNatural: 'Zarpazo con las garras curvas, buscando desgarrar antes que morder.',
     temperamento: 'AGRESIVO',
+    // Categoría de raza de fauna (2026-09-02) — GUELISES: "cazadoras y alfas de la manada" (texto
+    // literal de su bio) — estructura de manada real liderada por las hembras.
+    faunaCategoria: 'GUELISES',
     habilidadesRaciales: [
-      { icon: '🐾', name: 'Zarpazo desgarrador', description: 'Ataca con las garras anchas, pensadas para desgarrar tanto carne como corteza de árbol.', categoria: 'ataque', preferredAttribute: 'fuerza' },
-      { icon: '🌿', name: 'Maza de cola', description: 'Solo los machos: aprieta los pelos de la cola en forma de maza y golpea en barrido — puede alcanzar varias extremidades.', categoria: 'ataque', preferredAttribute: 'destreza' },
-      { icon: '💨', name: 'Agilidad esbelta', description: 'Pese al pelaje voluminoso, el cuerpo real es esbelto y muy ágil — esquiva mejor de lo que aparenta.', categoria: 'defensa', preferredAttribute: 'destreza' },
+      { icon: '🐾', name: 'Zarpazo desgarrador', description: 'Ataca con las garras anchas, pensadas para desgarrar tanto carne como corteza de árbol.', categoria: 'ataque', preferredAttribute: 'fuerza', level: 4, effects: ['ATAQUE'] },
+      { icon: '🌿', name: 'Maza de cola', description: 'Solo los machos: aprieta los pelos de la cola en forma de maza y golpea en barrido — puede alcanzar varias extremidades.', categoria: 'ataque', preferredAttribute: 'destreza', level: 12, effects: ['ATAQUE'] },
+      { icon: '💨', name: 'Agilidad esbelta', description: 'Pese al pelaje voluminoso, el cuerpo real es esbelto y muy ágil — esquiva mejor de lo que aparenta.', categoria: 'defensa', preferredAttribute: 'destreza', level: 20, effects: ['AGUANTE'] },
     ],
   },
 
@@ -1609,10 +1681,12 @@ export const fauna: NpcInput[] = [
     domesticablePct: 10,
     // Tameo (2026-08-25) — sapo grande y voluminoso, resiste por pura masa/aguante.
     atributoResistencia: 'constitucion',
+    // Categoría de raza de fauna (2026-09-02) — ESCAMADOS: "sapo", anfibio de charca.
+    faunaCategoria: 'ESCAMADOS',
     habilidadesRaciales: [
-      { icon: '👅', name: 'Lengua trifurcada', description: 'Lanza la lengua dividida en tres puntas para atrapar a un insecto o distraer a un agresor.', categoria: 'ataque', preferredAttribute: 'destreza' },
-      { icon: '💧', name: 'Piel tersa', description: 'La piel, tensa por el agua acumulada, amortigua golpes menores como un colchón.', categoria: 'defensa', preferredAttribute: 'constitucion' },
-      { icon: '😨', name: 'Huida al agua', description: 'Se sumerge en la charca más profunda al primer sobresalto, casi imposible de seguir.', categoria: 'utilidad', preferredAttribute: 'destreza' },
+      { icon: '👅', name: 'Lengua trifurcada', description: 'Lanza la lengua dividida en tres puntas para atrapar a un insecto o distraer a un agresor.', categoria: 'ataque', preferredAttribute: 'destreza', level: 4, effects: ['ATAQUE'] },
+      { icon: '💧', name: 'Piel tersa', description: 'La piel, tensa por el agua acumulada, amortigua golpes menores como un colchón.', categoria: 'defensa', preferredAttribute: 'constitucion', level: 12, effects: ['AGUANTE'] },
+      { icon: '😨', name: 'Huida al agua', description: 'Se sumerge en la charca más profunda al primer sobresalto, casi imposible de seguir.', categoria: 'utilidad', preferredAttribute: 'destreza', level: 20, effects: ['AGUANTE'] },
     ],
   },
 
@@ -1633,10 +1707,19 @@ export const fauna: NpcInput[] = [
     loadout: [],
     ataqueNatural: 'Clava el aguijón cargado de veneno debilitante.',
     temperamento: 'AGRESIVO',
+    // Categoría de raza de fauna (2026-09-02) — QUITINOS: insecto híbrido luciérnaga-avispa.
+    // "Aguijón debilitante" (merma de estadísticas) narrativamente pediría `DEBILIDAD`, PENDIENTE
+    // sin motor real — se queda en ATAQUE, mismo criterio que el resto del catálogo.
+    faunaCategoria: 'QUITINOS',
     habilidadesRaciales: [
-      { icon: '🐝', name: 'Aguijón debilitante', description: 'El veneno no mata, pero merma a fondo las capacidades de quien pica durante un tiempo.', categoria: 'ataque', preferredAttribute: 'destreza' },
-      { icon: '🕸️', name: 'Caza en manada', description: 'Coordina el ataque con el resto de la colmena, rodeando a la presa.', categoria: 'ataque', preferredAttribute: 'inteligencia' },
-      { icon: '💡', name: 'Vuelo errático luminoso', description: 'El vuelo parpadeante y errático dificulta seguirlo o alcanzarlo.', categoria: 'defensa', preferredAttribute: 'destreza' },
+      { icon: '🐝', name: 'Aguijón debilitante', description: 'El veneno no mata, pero merma a fondo las capacidades de quien pica durante un tiempo.', categoria: 'ataque', preferredAttribute: 'destreza', level: 4, effects: ['ATAQUE'] },
+      // Reescrita 2026-09-02 (auditoría "narrativa de jauría/manada en 1v1", petición explícita de
+      // la usuaria — este caso concreto ya existía antes de la sesión de categorías de fauna) —
+      // antes dependía de "coordina el ataque con el resto de la colmena", incoherente en un
+      // combate 1v1 donde no hay compañeros reales en la escena. Ahora describe el mismo instinto
+      // de rodeo propio de la especie, ejecutado en solitario. Mismo effects/categoria/nivel.
+      { icon: '🕸️', name: 'Ataque de enjambre', description: 'Rodea a la presa con el mismo instinto de acoso que usaría junto al resto de la colmena, atacando desde varios ángulos a la vez.', categoria: 'ataque', preferredAttribute: 'inteligencia', level: 12, effects: ['ATAQUE', 'ATURDIMIENTO'] },
+      { icon: '💡', name: 'Vuelo errático luminoso', description: 'El vuelo parpadeante y errático dificulta seguirlo o alcanzarlo.', categoria: 'defensa', preferredAttribute: 'destreza', level: 20, effects: ['AGUANTE'] },
     ],
   },
 
@@ -1657,10 +1740,13 @@ export const fauna: NpcInput[] = [
     loadout: [],
     ataqueNatural: 'Embiste con el cuerno frontal en forma de pala.',
     temperamento: 'CAUTELOSO',
+    // Categoría de raza de fauna (2026-09-02) — QUITINOS: "escarabajo acorazado", mismo perfil que
+    // Lebude/Gesgurio/Imanio.
+    faunaCategoria: 'QUITINOS',
     habilidadesRaciales: [
-      { icon: '🛡️', name: 'Cuerno excavador', description: 'Embiste con el cuerno usado normalmente para cavar — más fuerza que precisión.', categoria: 'ataque', preferredAttribute: 'fuerza' },
-      { icon: '🦠', name: 'Pinchos repelentes', description: 'Los pinchos del caparazón segregan un líquido tan desagradable que disuade a la mayoría de depredadores.', categoria: 'defensa', preferredAttribute: 'constitucion' },
-      { icon: '🕳️', name: 'Enterrarse', description: 'Se entierra en terreno húmedo en segundos, casi invisible una vez oculto.', categoria: 'utilidad', preferredAttribute: 'constitucion' },
+      { icon: '🛡️', name: 'Cuerno excavador', description: 'Embiste con el cuerno usado normalmente para cavar — más fuerza que precisión.', categoria: 'ataque', preferredAttribute: 'fuerza', level: 4, effects: ['ATAQUE'] },
+      { icon: '🦠', name: 'Pinchos repelentes', description: 'Los pinchos del caparazón segregan un líquido tan desagradable que disuade a la mayoría de depredadores.', categoria: 'defensa', preferredAttribute: 'constitucion', level: 12, effects: ['INTIMIDACION'] },
+      { icon: '🕳️', name: 'Enterrarse', description: 'Se entierra en terreno húmedo en segundos, casi invisible una vez oculto.', categoria: 'utilidad', preferredAttribute: 'constitucion', level: 20, effects: ['AGUANTE'] },
     ],
   },
 
@@ -1681,8 +1767,10 @@ export const fauna: NpcInput[] = [
     loadout: [],
     ataqueNatural: 'No ataca, huye.',
     temperamento: 'INOFENSIVO',
+    // Categoría de raza de fauna (2026-09-02) — NADANTES: "pez de las charcas profundas".
+    faunaCategoria: 'NADANTES',
     habilidadesRaciales: [
-      { icon: '💦', name: 'Salto de charca', description: 'Salta entre charcas por el barro cuando su charca se ve amenazada o en sequía.', categoria: 'utilidad', preferredAttribute: 'destreza' },
+      { icon: '💦', name: 'Salto de charca', description: 'Salta entre charcas por el barro cuando su charca se ve amenazada o en sequía.', categoria: 'utilidad', preferredAttribute: 'destreza', level: 4, effects: ['AGUANTE'] },
     ],
   },
 
@@ -1703,10 +1791,17 @@ export const fauna: NpcInput[] = [
     loadout: [],
     ataqueNatural: 'Muerde y rasga con los incisivos multidireccionales.',
     temperamento: 'AGRESIVO',
+    // Categoría de raza de fauna (2026-09-02) — GUELISES: "caza en manada de noche" (texto literal
+    // de su bio, role y personality), coordinación de grupo real pese a ser roedor de base —
+    // comportamiento de caza en jauría prevalece sobre taxonomía (RONDINES no describe manada).
+    faunaCategoria: 'GUELISES',
     habilidadesRaciales: [
-      { icon: '🌙', name: 'Caza nocturna en manada', description: 'Coordina el ataque con el resto de la manada al abrigo de la noche.', categoria: 'ataque', preferredAttribute: 'destreza' },
-      { icon: '🦫', name: 'Incisivos rasgadores', description: 'Los incisivos multidireccionales rasgan escamas y piel con facilidad.', categoria: 'ataque', preferredAttribute: 'fuerza' },
-      { icon: '🕳️', name: 'Madriguera con respiradero', description: 'Puede retirarse a su madriguera bajo el agua, con salida de aire propia, y desaparecer.', categoria: 'defensa', preferredAttribute: 'constitucion' },
+      // Reescrita 2026-09-02 (auditoría "narrativa de jauría/manada en 1v1", caso preexistente a
+      // la sesión de categorías de fauna) — antes dependía de "coordina el ataque con el resto de
+      // la manada". Ahora describe el mismo instinto de caza nocturna, ejecutado en solitario.
+      { icon: '🌙', name: 'Caza al abrigo de la noche', description: 'Ataca al abrigo de la noche con el mismo instinto de caza en manada de siempre, aunque hoy cace sola.', categoria: 'ataque', preferredAttribute: 'destreza', level: 4, effects: ['ATAQUE'] },
+      { icon: '🦫', name: 'Incisivos rasgadores', description: 'Los incisivos multidireccionales rasgan escamas y piel con facilidad.', categoria: 'ataque', preferredAttribute: 'fuerza', level: 12, effects: ['ATAQUE'] },
+      { icon: '🕳️', name: 'Madriguera con respiradero', description: 'Puede retirarse a su madriguera bajo el agua, con salida de aire propia, y desaparecer.', categoria: 'defensa', preferredAttribute: 'constitucion', level: 20, effects: ['AGUANTE'] },
     ],
   },
 
@@ -1727,6 +1822,9 @@ export const fauna: NpcInput[] = [
     loadout: [],
     ataqueNatural: 'No ataca.',
     temperamento: 'INOFENSIVO',
+    // Categoría de raza de fauna (2026-09-02) — NADANTES: "gusano filtrador" de las orillas, vive
+    // en el agua/fango, sin `habilidadesRaciales` propias (totalmente inofensivo, nivel 1 fijo).
+    faunaCategoria: 'NADANTES',
     habilidadesRaciales: [],
   },
 
@@ -1747,9 +1845,12 @@ export const fauna: NpcInput[] = [
     loadout: [],
     ataqueNatural: 'Picotazo rápido con el pico ancho, o zarpazo con la garra retráctil.',
     temperamento: 'CAUTELOSO',
+    // Categoría de raza de fauna (2026-09-02) — ZANCUDOS: "ave sin vuelo... de patas larguísimas",
+    // ave terrestre/de charca, mismo perfil que Corretolvas.
+    faunaCategoria: 'ZANCUDOS',
     habilidadesRaciales: [
-      { icon: '🦶', name: 'Garra retráctil', description: 'Zarpazo con la garra tipo dinosaurio de la pata, retráctil hasta el último momento.', categoria: 'ataque', preferredAttribute: 'destreza' },
-      { icon: '💦', name: 'Salto entre charcas', description: 'Planea o salta brevemente para entrar y salir de las charcas sin mojarse del todo.', categoria: 'utilidad', preferredAttribute: 'destreza' },
+      { icon: '🦶', name: 'Garra retráctil', description: 'Zarpazo con la garra tipo dinosaurio de la pata, retráctil hasta el último momento.', categoria: 'ataque', preferredAttribute: 'destreza', level: 4, effects: ['ATAQUE'] },
+      { icon: '💦', name: 'Salto entre charcas', description: 'Planea o salta brevemente para entrar y salir de las charcas sin mojarse del todo.', categoria: 'utilidad', preferredAttribute: 'destreza', level: 12, effects: ['AGUANTE'] },
     ],
   },
 
@@ -1773,10 +1874,19 @@ export const fauna: NpcInput[] = [
     domesticablePct: 20,
     // Tameo (2026-08-25) — fauna de manada, esquiva/huye antes que plantar cara.
     atributoResistencia: 'destreza',
+    // Categoría de raza de fauna (2026-09-02) — BESTIONES: "gacela de manada", herbívoro grande
+    // de grupo, mismo perfil que Corredor de Cauce/Múrgol/Gargantúa de Ceniza.
+    faunaCategoria: 'BESTIONES',
     habilidadesRaciales: [
-      { icon: '🦌', name: 'Embestida de cuernos', description: 'Carga y embiste con los cuernos — las hembras, más anchos, golpean con más fuerza.', categoria: 'ataque', preferredAttribute: 'fuerza' },
-      { icon: '👑', name: 'Alfa defensora', description: 'La hembra alfa se interpone entre la manada y la amenaza, ganando tiempo para que el resto huya.', categoria: 'defensa', preferredAttribute: 'voluntad' },
-      { icon: '💨', name: 'Estampida de manada', description: 'Toda la manada huye a la vez en estampida, difícil de seguir o aislar a una sola.', categoria: 'utilidad', preferredAttribute: 'destreza' },
+      { icon: '🦌', name: 'Embestida de cuernos', description: 'Carga y embiste con los cuernos — las hembras, más anchos, golpean con más fuerza.', categoria: 'ataque', preferredAttribute: 'fuerza', level: 4, effects: ['ATAQUE'] },
+      // Ambas reescritas 2026-09-02 (auditoría "narrativa de jauría/manada en 1v1", petición
+      // explícita de la usuaria) — "Alfa defensora" antes dependía de "interponerse entre la
+      // manada y la amenaza, para que el resto huya"; "Estampida de manada" antes dependía de que
+      // "toda la manada huya a la vez", incoherente en un combate 1v1 sin compañeros reales en la
+      // escena. Ambas reescritas para describir el mismo instinto de alfa/manada, ejecutado en
+      // solitario. Mismo effects/categoria/nivel en las dos.
+      { icon: '👑', name: 'Instinto de alfa', description: 'Se planta de frente con el porte de una alfa, con el mismo instinto que la lleva a ganar tiempo para el resto de la manada.', categoria: 'defensa', preferredAttribute: 'voluntad', level: 12, effects: ['CONTROL'] },
+      { icon: '💨', name: 'Estampida instintiva', description: 'Rompe a correr en un zigzag errático, el mismo instinto de huida en estampida que usaría junto a la manada, difícil de seguir aunque corra sola.', categoria: 'utilidad', preferredAttribute: 'destreza', level: 20, effects: ['AGUANTE'] },
     ],
   },
 
@@ -1797,9 +1907,13 @@ export const fauna: NpcInput[] = [
     loadout: [],
     ataqueNatural: 'Golpea con el peso de las rocas que lo cubren.',
     temperamento: 'CAUTELOSO',
+    // Categoría de raza de fauna (2026-09-02) — MUDOS_SALVAJE: "atrae rocas imantadas flotantes"
+    // — magnetismo activo real, no anatomía de insecto normal, mismo criterio que Kirelon
+    // Arenoso/Nuente (magnetismo de Las Agujas Imán como huella de la magia Salvaje derramada).
+    faunaCategoria: 'MUDOS_SALVAJE',
     habilidadesRaciales: [
-      { icon: '🪨', name: 'Coraza de piedra', description: 'La armadura de rocas imantadas absorbe la mayor parte de cualquier golpe directo.', categoria: 'defensa', preferredAttribute: 'constitucion' },
-      { icon: '🦵', name: 'Extremidad desmagnetizada', description: 'Se desprende de una parte del cuerpo, quitándole la imantación, para distraer a un depredador y huir — regenera en días.', categoria: 'utilidad', preferredAttribute: 'constitucion' },
+      { icon: '🪨', name: 'Coraza de piedra', description: 'La armadura de rocas imantadas absorbe la mayor parte de cualquier golpe directo.', categoria: 'defensa', preferredAttribute: 'constitucion', level: 4, effects: ['AGUANTE'] },
+      { icon: '🦵', name: 'Extremidad desmagnetizada', description: 'Se desprende de una parte del cuerpo, quitándole la imantación, para distraer a un depredador y huir — regenera en días.', categoria: 'utilidad', preferredAttribute: 'constitucion', level: 12, effects: ['AGUANTE'] },
     ],
   },
 
@@ -1823,10 +1937,14 @@ export const fauna: NpcInput[] = [
     // Efecto pasivo confirmado con la usuaria (2026-08-21): -2 a la tirada de ataque del jugador
     // si usa arma de hierro/metal contra el Nuente — pendiente de enganchar en combatExchange.ts
     // (comprobar tipoArma/material del arma equipada), no hay campo hoy para representarlo aquí.
+    // Categoría de raza de fauna (2026-09-02) — MUDOS_SALVAJE: "mezcla deliberada casi
+    // alienígena" (texto literal de su propia bio) que "ve" el magnetismo en vez de oír — el caso
+    // más explícito de todo el catálogo de algo imposible para un animal normal.
+    faunaCategoria: 'MUDOS_SALVAJE',
     habilidadesRaciales: [
-      { icon: '🩸', name: 'Succión vital', description: 'Sorbe los fluidos de su presa con la boca preparada para ello.', categoria: 'ataque', preferredAttribute: 'destreza' },
-      { icon: '🧲', name: 'Onda Magnética', description: 'Deflecta metal e inmoviliza brevemente a un Imanio con una onda magnética dirigida.', categoria: 'utilidad', preferredAttribute: 'magia' },
-      { icon: '🦉', name: 'Vuelo errático nocturno', description: 'Vuela con total agilidad en la oscuridad total, casi imposible de seguir.', categoria: 'defensa', preferredAttribute: 'destreza' },
+      { icon: '🩸', name: 'Succión vital', description: 'Sorbe los fluidos de su presa con la boca preparada para ello.', categoria: 'ataque', preferredAttribute: 'destreza', level: 4, effects: ['ATAQUE', 'RECUPERACION'] },
+      { icon: '🧲', name: 'Onda Magnética', description: 'Deflecta metal e inmoviliza brevemente a un Imanio con una onda magnética dirigida.', categoria: 'utilidad', preferredAttribute: 'magia', level: 12, effects: ['CONTROL'] },
+      { icon: '🦉', name: 'Vuelo errático nocturno', description: 'Vuela con total agilidad en la oscuridad total, casi imposible de seguir.', categoria: 'defensa', preferredAttribute: 'destreza', level: 20, effects: ['AGUANTE'] },
     ],
   },
 
@@ -1847,10 +1965,13 @@ export const fauna: NpcInput[] = [
     loadout: [],
     ataqueNatural: 'Zarpazo de garras curvas seguido de una mordida de boca extremadamente grande.',
     temperamento: 'AGRESIVO',
+    // Categoría de raza de fauna (2026-09-02) — ACECHANTES: "depredador solitario de emboscada"
+    // (texto literal de su propio `role`), caza al acecho desde cobertura.
+    faunaCategoria: 'ACECHANTES',
     habilidadesRaciales: [
-      { icon: '🐾', name: 'Emboscada del pasto rojo', description: 'Aprovecha el sigilo de la hierba alta del Pasto de Sangre para atacar por sorpresa desde la cobertura.', categoria: 'ataque', preferredAttribute: 'destreza' },
-      { icon: '🦷', name: 'Mordida desgarradora', description: 'Abre su boca enorme casi hasta las orejas para una mordida directa y brutal.', categoria: 'ataque', preferredAttribute: 'fuerza' },
-      { icon: '🧗', name: 'Trepa de garras curvas', description: 'Sus garras curvas le permiten trepar con la misma facilidad con la que desgarran, útil para perseguir o huir.', categoria: 'utilidad', preferredAttribute: 'destreza' },
+      { icon: '🐾', name: 'Emboscada del pasto rojo', description: 'Aprovecha el sigilo de la hierba alta del Pasto de Sangre para atacar por sorpresa desde la cobertura.', categoria: 'ataque', preferredAttribute: 'destreza', level: 4, effects: ['ATAQUE', 'ATURDIMIENTO'] },
+      { icon: '🦷', name: 'Mordida desgarradora', description: 'Abre su boca enorme casi hasta las orejas para una mordida directa y brutal.', categoria: 'ataque', preferredAttribute: 'fuerza', level: 12, effects: ['ATAQUE'] },
+      { icon: '🧗', name: 'Trepa de garras curvas', description: 'Sus garras curvas le permiten trepar con la misma facilidad con la que desgarran, útil para perseguir o huir.', categoria: 'utilidad', preferredAttribute: 'destreza', level: 20, effects: ['AGUANTE'] },
     ],
   },
 
@@ -1875,10 +1996,13 @@ export const fauna: NpcInput[] = [
     // Tameo (2026-08-25) — roedor que ya usa piedras/madera como herramienta, resiste con astucia
     // propia, no fuerza ni velocidad.
     atributoResistencia: 'inteligencia',
+    // Categoría de raza de fauna (2026-09-02) — RONDINES: "roedor constructor de madrigueras"
+    // (texto literal de su `role`), pequeño mamífero de comportamiento defensivo.
+    faunaCategoria: 'RONDINES',
     habilidadesRaciales: [
-      { icon: '🦴', name: 'Cola-maza de escamas', description: 'Golpea con el bulto de escamas duras del final de su cola, capaz de partir roca —resistencia equiparable al hierro.', categoria: 'ataque', preferredAttribute: 'fuerza' },
-      { icon: '🖐️', name: 'Manos hábiles', description: 'Usa piedras y madera como herramientas para levantar y reforzar su madriguera.', categoria: 'utilidad', preferredAttribute: 'inteligencia' },
-      { icon: '🕳️', name: 'Madriguera fortificada', description: 'Se retira a su propia madriguera reforzada con roca, casi imposible de forzar desde fuera.', categoria: 'defensa', preferredAttribute: 'constitucion' },
+      { icon: '🦴', name: 'Cola-maza de escamas', description: 'Golpea con el bulto de escamas duras del final de su cola, capaz de partir roca —resistencia equiparable al hierro.', categoria: 'ataque', preferredAttribute: 'fuerza', level: 4, effects: ['ATAQUE'] },
+      { icon: '🖐️', name: 'Manos hábiles', description: 'Usa piedras y madera como herramientas para levantar y reforzar su madriguera.', categoria: 'utilidad', preferredAttribute: 'inteligencia', level: 12, effects: ['ANALISIS'] },
+      { icon: '🕳️', name: 'Madriguera fortificada', description: 'Se retira a su propia madriguera reforzada con roca, casi imposible de forzar desde fuera.', categoria: 'defensa', preferredAttribute: 'constitucion', level: 20, effects: ['AGUANTE'] },
     ],
   },
 
@@ -1902,6 +2026,8 @@ export const fauna: NpcInput[] = [
     loadout: [],
     ataqueNatural: 'No ataca, huye.',
     temperamento: 'INOFENSIVO',
+    // Categoría de raza de fauna (2026-09-02) — NADANTES: pez de costa.
+    faunaCategoria: 'NADANTES',
     habilidadesRaciales: [],
   },
 
@@ -1922,6 +2048,9 @@ export const fauna: NpcInput[] = [
     loadout: [],
     ataqueNatural: 'No ataca, huye.',
     temperamento: 'INOFENSIVO',
+    // Categoría de raza de fauna (2026-09-02) — NADANTES: pez de costa, variante cromática del
+    // Jashil Verde.
+    faunaCategoria: 'NADANTES',
     habilidadesRaciales: [],
   },
 
@@ -1942,6 +2071,8 @@ export const fauna: NpcInput[] = [
     loadout: [],
     ataqueNatural: 'No ataca.',
     temperamento: 'INOFENSIVO',
+    // Categoría de raza de fauna (2026-09-02) — NADANTES: pez migratorio de gran tamaño.
+    faunaCategoria: 'NADANTES',
     habilidadesRaciales: [],
   },
 
@@ -1962,6 +2093,8 @@ export const fauna: NpcInput[] = [
     loadout: [],
     ataqueNatural: 'No ataca directamente, pero no es fácil de acorralar.',
     temperamento: 'CAUTELOSO',
+    // Categoría de raza de fauna (2026-09-02) — NADANTES: pez carroñero de costa.
+    faunaCategoria: 'NADANTES',
     habilidadesRaciales: [],
   },
 
@@ -1982,6 +2115,9 @@ export const fauna: NpcInput[] = [
     loadout: [],
     ataqueNatural: 'No ataca directamente, pero no es fácil de acorralar.',
     temperamento: 'CAUTELOSO',
+    // Categoría de raza de fauna (2026-09-02) — NADANTES: pez carroñero de costa, variante
+    // cromática del Negueo Turquesa.
+    faunaCategoria: 'NADANTES',
     habilidadesRaciales: [],
   },
 
@@ -2002,6 +2138,10 @@ export const fauna: NpcInput[] = [
     loadout: [],
     ataqueNatural: 'No ataca.',
     temperamento: 'INOFENSIVO',
+    // Categoría de raza de fauna (2026-09-02) — NADANTES: "caracol de mar" — sin categoría propia
+    // de molusco, agrupado con el resto de fauna acuática/marina de la costa (criterio amplio,
+    // mismo bucket que Jashil/Negueo/Toluh).
+    faunaCategoria: 'NADANTES',
     habilidadesRaciales: [],
   },
 
@@ -2025,6 +2165,9 @@ export const fauna: NpcInput[] = [
     // Puramente narrativo/ambiental a propósito (decisión explícita de la usuaria, 2026-09-02): no
     // proporciona ningún material real — no lleva HarvestYield, nunca aparece en ningún modal
     // mecánico (Cazar/Pescar/Buscar), solo lo menciona el Narrador en la escena.
+    // Categoría de raza de fauna (2026-09-02) — RONDINES: "mamífero excavador" terrestre, pequeño,
+    // mismo perfil que Coracelo pese a no ser combatible en la práctica.
+    faunaCategoria: 'RONDINES',
     habilidadesRaciales: [],
   },
 
@@ -2048,6 +2191,9 @@ export const fauna: NpcInput[] = [
     // Puramente narrativo/ambiental a propósito (2026-09-02): depredador natural del Jashil, mismo
     // patrón que Miruina/Tura Jusha en Los Manaderos — un depredador NPC no duplica el recurso de
     // su presa. Sin HarvestYield, no entra en ningún modal mecánico.
+    // Categoría de raza de fauna (2026-09-02) — CORVENES: "ave... pescadora", ave de presa/pesca
+    // pese a no ser combatible en la práctica.
+    faunaCategoria: 'CORVENES',
     habilidadesRaciales: [],
   },
 
@@ -2070,7 +2216,71 @@ export const fauna: NpcInput[] = [
     temperamento: 'INOFENSIVO',
     // Puramente narrativo/ambiental a propósito (2026-09-02): sin ninguna pista de que aporte
     // material real — curiosidad de fauna, no entra en ningún modal mecánico.
+    // Categoría de raza de fauna (2026-09-02) — NADANTES: "mitad lagartija mitad crustáceo" de la
+    // costa, semi-acuática — sin mención de mutación/magia en su bio (a diferencia de Kirelon/
+    // Nuente/Salamandra), se queda en NADANTES por hábitat en vez de MUDOS_SALVAJE.
+    faunaCategoria: 'NADANTES',
     habilidadesRaciales: [],
+  },
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // Los Acantilados Partidos (2026-09-02, sesión "categorías de raza de fauna") — 2 animales
+  // nuevos diseñados en esta misma sesión, ficha cerrada con la usuaria.
+  // ══════════════════════════════════════════════════════════════════════════
+
+  {
+    slug: 'celubia-palida',
+    name: 'Celubia Pálida',
+    kind: 'PLANTILLA',
+    aliases: ['celubia palida', 'celubia'],
+    faction: null,
+    role: 'Ave marina de presa que nidifica en las cornisas de Los Acantilados Partidos',
+    articulo: 'la',
+    level: 2,
+    levelMax: 4,
+    attributes: { fuerza: 7, destreza: 11, constitucion: 6, inteligencia: 3, voluntad: 5, carisma: 2, magia: 0 },
+    bio: 'Ave de 90 cm a 1,20 m de envergadura total (cuerpo de 40 cm, alas largas y estrechas), plumaje blanco que en vuelo deja tras de sí una estela de espuma seca que nunca cae del todo — se disuelve en el aire como si el propio oleaje la hubiera escupido junto al ave. Pico largo y curvo, casi tan largo como la cabeza, adaptado a partir el agua en picados verticales sobre el oleaje violento de la base del acantilado. Nidifica en las cornisas más altas, casi inaccesibles, donde nadie salvo otra Celubia se atrevería a asomarse.',
+    personality: 'Indiferente lejos del nido, ferozmente territorial cerca de él.',
+    homeLocationSlug: 'acantilados-partidos',
+    loadout: [],
+    ataqueNatural: 'Picotazos rápidos en vuelo rasante, buscando los ojos de quien se acerca al nido.',
+    temperamento: 'AGRESIVO',
+    // Categoría de raza de fauna (2026-09-02) — CORVENES: ave marina de presa, picado vertical
+    // desde altura, mismo perfil que Zense Ceniza/Cruzavientos.
+    faunaCategoria: 'CORVENES',
+    habilidadesRaciales: [
+      { icon: '👁️', name: 'Picotazo al ojo', description: 'Busca los ojos de quien se acerca al nido, picoteando en vuelo rasante justo donde más duele.', categoria: 'ataque', preferredAttribute: 'destreza', level: 4, effects: ['ATAQUE', 'ATURDIMIENTO'] },
+      { icon: '🌊', name: 'Estela de espuma', description: 'Deja tras de sí una estela de espuma seca que confunde la trayectoria de cualquier golpe dirigido a ella.', categoria: 'defensa', preferredAttribute: 'destreza', level: 12, effects: ['AGUANTE'] },
+      { icon: '🪺', name: 'Defensa del nido', description: 'Se lanza en picado una y otra vez contra cualquiera que se acerque a la cornisa donde nidifica, sin tregua.', categoria: 'utilidad', preferredAttribute: 'voluntad', level: 20, effects: ['INTIMIDACION'] },
+    ],
+  },
+
+  {
+    slug: 'terkash',
+    name: 'Terkash',
+    kind: 'PLANTILLA',
+    aliases: ['terkash'],
+    faction: null,
+    role: 'Crustáceo de las grietas profundas de Los Acantilados Partidos',
+    articulo: 'el',
+    level: 2,
+    levelMax: 4,
+    attributes: { fuerza: 9, destreza: 5, constitucion: 12, inteligencia: 1, voluntad: 3, carisma: 1, magia: 0 },
+    bio: 'Crustáceo de 50 a 80 cm de largo, caparazón grisáceo veteado del mismo color que la roca partida donde vive, casi imposible de distinguir hasta que se mueve. Dos pinzas desiguales — la mayor, capaz de partir la propia roca de la grieta para ensancharla; la menor, rápida, usada para acorralar y sujetar. Vive encajado en las grietas más profundas del acantilado, donde el oleaje nunca llega del todo pero la humedad se queda atrapada. Sin salida de escape en su propia grieta, ataca sin dudarlo a cualquier presencia que le corte el paso.',
+    personality: 'Territorial y sin miedo dentro de su propia grieta — no tiene adónde huir, así que no lo intenta.',
+    homeLocationSlug: 'acantilados-partidos',
+    loadout: [],
+    ataqueNatural: 'Pinzazo con la pinza mayor, capaz de aplastar hueso; la menor sujeta mientras la mayor golpea.',
+    temperamento: 'AGRESIVO',
+    // Categoría de raza de fauna (2026-09-02) — QUITINOS: crustáceo acorazado (no insecto, pero
+    // sin categoría propia de crustáceo — encaja mejor aquí por caparazón/pinzas que en
+    // cualquier otra categoría con contenido real, decisión explícita dejada "a tu criterio").
+    faunaCategoria: 'QUITINOS',
+    habilidadesRaciales: [
+      { icon: '🦞', name: 'Pinza mayor', description: 'Cierra la pinza capaz de partir roca sobre el punto que ha logrado acorralar con la menor.', categoria: 'ataque', preferredAttribute: 'fuerza', level: 4, effects: ['ATAQUE'] },
+      { icon: '🪨', name: 'Caparazón de grieta', description: 'El caparazón, del mismo tono que la roca partida, absorbe el golpe casi tan bien como la propia grieta.', categoria: 'defensa', preferredAttribute: 'constitucion', level: 12, effects: ['AGUANTE'] },
+      { icon: '✂️', name: 'Sujeción de la pinza menor', description: 'Sujeta con la pinza rápida mientras prepara el golpe final de la mayor, sin soltar presa.', categoria: 'utilidad', preferredAttribute: 'fuerza', level: 20, effects: ['CONTROL'] },
+    ],
   },
 ];
 
@@ -6050,6 +6260,60 @@ export const items: ItemCatalogInput[] = [
     dimensiones: 'Bote de 10 unidades.',
     lugarOrigen: 'Playa de Ceniza Blanca.',
   },
+
+  // --- Los Acantilados Partidos (2026-09-02, sesión "categorías de raza de fauna") ---
+
+  {
+    slug: 'plumas-celubia',
+    name: 'Plumas de Celubia',
+    aliases: ['plumas de celubia'],
+    category: 'pluma',
+    tipo: 'RECURSO',
+    valorGoirnos: 3,
+    description: 'Plumas largas y blancas de Celubia Pálida, con restos secos de la estela de espuma que deja en vuelo.',
+    dimensiones: 'Plumas de 15 a 20 cm.',
+    lugarOrigen: 'Los Acantilados Partidos.',
+    tier: 2,
+  },
+
+  {
+    slug: 'huevo-celubia',
+    name: 'Huevo de Celubia',
+    aliases: ['huevo de celubia'],
+    category: 'alimento',
+    tipo: 'RECURSO',
+    valorGoirnos: 5,
+    description: 'Huevo moteado de Celubia Pálida, robado de una cornisa casi inaccesible — poco comunes, más por lo peligroso de alcanzar el nido que por su escasez real.',
+    dimensiones: 'Huevo de unos 8 cm.',
+    lugarOrigen: 'Los Acantilados Partidos.',
+    tier: 3,
+  },
+
+  {
+    slug: 'carne-terkash',
+    name: 'Carne de Terkash',
+    aliases: ['carne de terkash'],
+    category: 'alimento',
+    tipo: 'RECURSO',
+    valorGoirnos: 3,
+    description: 'Carne blanca de crustáceo, extraída con cuidado del caparazón del Terkash — sabor intenso a mar.',
+    dimensiones: 'Trozos de 200 a 400 g.',
+    lugarOrigen: 'Los Acantilados Partidos.',
+    tier: 1,
+  },
+
+  {
+    slug: 'caparazon-terkash',
+    name: 'Caparazón de Terkash',
+    aliases: ['caparazón de terkash'],
+    category: 'quitina',
+    tipo: 'MATERIAL',
+    valorGoirnos: 8,
+    description: 'Placa de caparazón grisáceo veteado, dura como la roca partida donde vivía el Terkash — material de construcción y de armadura.',
+    dimensiones: 'Placa de 40x25 cm.',
+    lugarOrigen: 'Los Acantilados Partidos.',
+    tier: 3,
+  },
 ];
 
 // ══════════════════════════════════════════════════════════════════════════
@@ -7352,6 +7616,44 @@ export const harvestYields: HarvestYieldInput[] = [
     metodoObtencion: 'BUSQUEDA',
     itemSlug: 'bulco-arena-marisco',
     cantidad: 1,
+  },
+
+  // --- Celubia Pálida / Terkash (Los Acantilados Partidos, 2026-09-02) ---
+
+  {
+    sourceSlug: 'celubia-palida',
+    sourceCategory: 'fauna',
+    metodoObtencion: 'CAZA',
+    itemSlug: 'plumas-celubia',
+    cantidad: 2,
+    condicion: 'plumas largas del plumaje, más abundantes tras un ejemplar adulto',
+  },
+
+  {
+    sourceSlug: 'celubia-palida',
+    sourceCategory: 'fauna',
+    metodoObtencion: 'CAZA',
+    itemSlug: 'huevo-celubia',
+    cantidad: 1,
+    condicion: 'solo si se caza cerca del nido, en la cornisa — raro fuera de la época de cría',
+  },
+
+  {
+    sourceSlug: 'terkash',
+    sourceCategory: 'fauna',
+    metodoObtencion: 'CAZA',
+    itemSlug: 'carne-terkash',
+    cantidad: 2,
+    condicion: 'carne blanca extraída del caparazón',
+  },
+
+  {
+    sourceSlug: 'terkash',
+    sourceCategory: 'fauna',
+    metodoObtencion: 'CAZA',
+    itemSlug: 'caparazon-terkash',
+    cantidad: 1,
+    condicion: 'caparazón entero, útil como material de construcción/armadura',
   },
 ];
 

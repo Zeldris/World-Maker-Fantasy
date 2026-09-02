@@ -326,6 +326,9 @@ function toNpcForCombatAbilities(npc: Npc): NpcForCombatAbilities {
     especializacion: npc.especializacion,
     ataqueNatural: npc.ataqueNatural,
     habilidadesRaciales: (npc.habilidadesRaciales as unknown as NpcHabilidadRacialInScene[]) ?? [],
+    // Sistema de categorías de raza de fauna (2026-09-02) — antes se perdía aquí mismo: un NPC de
+    // fauna real en combate múltiple nunca recibía las 7 habilidades de su `faunaCategoria`.
+    faunaCategoria: npc.faunaCategoria,
   };
 }
 

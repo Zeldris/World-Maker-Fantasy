@@ -72,6 +72,7 @@ function npcInSceneFromCatalog(npc: NpcInput, overrides: Partial<NpcInScene> = {
     especializacion: npc.especializacion ?? null,
     ataqueNatural: npc.ataqueNatural ?? null,
     habilidadesRaciales: npc.habilidadesRaciales ?? [],
+    faunaCategoria: npc.faunaCategoria ?? null,
     temperamento: npc.temperamento ?? 'CAUTELOSO',
     condicionFisica: 'ILESO',
     saqueado: false,

@@ -481,7 +481,7 @@ function npcFixture(overrides: Partial<NpcInScene> = {}): NpcInScene {
       { name: 'Maza orca', cantidad: 1, notas: 'Astillada', description: 'x', equipSlot: 'ARMA_PRINCIPAL', statBonuses: { fuerza: 2 }, catalogSlug: 'maza-orca', effectKey: null, category: 'arma', tipoArma: 'MAZA_1_MANO', tipo: 'EQUIPABLE' },
     ],
     attributes: { fuerza: 11, destreza: 10, constitucion: 9, inteligencia: 4, voluntad: 7, carisma: 2, magia: 2 },
-    raza: 'orcos', clase: 'GUERRERO', especializacion: null, ataqueNatural: null, habilidadesRaciales: [],
+    raza: 'orcos', clase: 'GUERRERO', especializacion: null, ataqueNatural: null, habilidadesRaciales: [], faunaCategoria: null,
     temperamento: 'AGRESIVO', condicionFisica: 'ILESO', saqueado: false, lootedItemNames: [], energia: null, analizado: false,
     capturable: false,
     groupSize: null, groupDefeated: 0, corpsesLooted: 0,

@@ -92,10 +92,31 @@ describe('npcCombatAbilitiesFor', () => {
       raza: null,
       clase: null,
       ataqueNatural: 'Topetazo',
-      habilidadesRaciales: [{ icon: '🧶', name: 'Lana Espesa', description: 'x', categoria: 'defensa', preferredAttribute: 'fuerza' }],
+      habilidadesRaciales: [{ icon: '🧶', name: 'Lana Espesa', description: 'x', categoria: 'defensa', preferredAttribute: 'fuerza', level: 1, effects: ['AGUANTE'] }],
     };
     const abilities = npcCombatAbilitiesFor(npc, []);
     expect(abilities.map((a) => a.name)).toEqual(['Ataque base', 'Lana Espesa', 'Esquivar', 'Defenderse', 'Descansar']);
+  });
+
+  // Sistema de categorías de raza de fauna (2026-09-02) — la habilidad racial específica ahora
+  // lleva `level`/`effects` reales, y se filtra por nivel igual que el resto del roster.
+  it('filtra las habilidades raciales de fauna por nivel (no aparece antes de su `level`)', () => {
+    const npc: NpcForCombatAbilities = {
+      level: 3,
+      attributes: ATTRS,
+      raza: null,
+      clase: null,
+      ataqueNatural: 'Topetazo',
+      habilidadesRaciales: [
+        { icon: '🧶', name: 'Lana Espesa', description: 'x', categoria: 'defensa', preferredAttribute: 'fuerza', level: 1, effects: ['AGUANTE'] },
+        { icon: '💥', name: 'Embestida Tardía', description: 'x', categoria: 'ataque', preferredAttribute: 'fuerza', level: 4, effects: ['ATAQUE'] },
+      ],
+    };
+    const abilities = npcCombatAbilitiesFor(npc, []);
+    expect(abilities.some((a) => a.name === 'Lana Espesa')).toBe(true);
+    expect(abilities.some((a) => a.name === 'Embestida Tardía')).toBe(false);
+    const lanaEspesa = abilities.find((a) => a.name === 'Lana Espesa')!;
+    expect(lanaEspesa.effects).toEqual(['AGUANTE']);
   });
 
   // Bug real jugando en vivo (revisión de partida 2026-08-08): un Múrgol sin arma (fauna, solo

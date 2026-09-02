@@ -6029,7 +6029,13 @@ describe('pendingCombatNpcSlugs no arrastra a un NPC pacífico "de paso" cuando 
     saveId = save.id;
     await prisma.worldState.create({ data: { saveId } });
     const orco = await prisma.npc.findFirstOrThrow({ where: { worldId: world.id, slug: 'orco-enfurecido-hondonada' } });
-    const torgash = await prisma.npc.findFirstOrThrow({ where: { worldId: world.id, slug: 'torgash' } });
+    // Slug corregido 2026-09-02 (dato huérfano encontrado y limpiado en esta misma sesión, ver
+    // memoria "restos huérfanos por renombrado de slug"): `slug: 'torgash'` era una fila
+    // duplicada, ya retirada de worldCatalog.ts, que quedó viva en Postgres desde que el NPC se
+    // renombró a `torgash-ketg` — este test dependía por accidente de ese dato no versionado en
+    // vez del catálogo fuente real. `torgash-ketg` (Torgash Ketg - Kort'ikar Clan Serhu) es el
+    // NPC real y vigente.
+    const torgash = await prisma.npc.findFirstOrThrow({ where: { worldId: world.id, slug: 'torgash-ketg' } });
     orcoId = orco.id;
     torgashId = torgash.id;
     // Mismo atajo que "Slots de compañero" más arriba: NpcState con scope '' hace que
@@ -6060,7 +6066,7 @@ describe('pendingCombatNpcSlugs no arrastra a un NPC pacífico "de paso" cuando 
     // narración real del bug ("Un Canizor Aullador Rojo se acerca...", los dos nombrados a la vez
     // en prosa, sin que el jugador cite a ninguno entre comillas). agresivoSlugsInScene SÍ detecta
     // al Orco Enfurecido (temperamento AGRESIVO real de catálogo).
-    const action = 'Ataco sin dudarlo, con el hacha en alto, mientras el Orco Enfurecido y Torgash me observan.';
+    const action = 'Ataco sin dudarlo, con el hacha en alto, mientras el Orco Enfurecido y Torgash Ketg me observan.';
     const classifyRes = await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action, enCombate: false } });
     const { classification, roll } = classifyRes.json();
     const narrateRes = await app.inject({
@@ -6072,7 +6078,7 @@ describe('pendingCombatNpcSlugs no arrastra a un NPC pacífico "de paso" cuando 
 
     const saveAfter = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
     expect(saveAfter.pendingCombatNpcSlugs).toEqual(['orco-enfurecido-hondonada']);
-    expect(saveAfter.pendingCombatNpcSlugs).not.toContain('torgash');
+    expect(saveAfter.pendingCombatNpcSlugs).not.toContain('torgash-ketg');
   }, 15_000);
 });
 

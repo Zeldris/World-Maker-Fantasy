@@ -696,4 +696,24 @@ export const worldPopulations: WorldPopulationInput[] = [
     poblacionMax: 2500,
     distribucion: { 'Llanuras del Viento Rojo': 1 },
   },
+
+  // --- Los Acantilados Partidos (2026-09-02, sesión "categorías de raza de fauna") — cifras
+  // dadas por la usuaria: Celubia ~400-700 (ave rapaz, población media), Terkash ~200-400 (más
+  // raro, territorial, un ejemplar por grieta).
+  {
+    targetType: 'FAUNA',
+    targetSlug: 'celubia-palida',
+    label: 'Celubia Pálida',
+    poblacion: 400,
+    poblacionMax: 700,
+    distribucion: { 'Llanuras del Viento Rojo': 1 },
+  },
+  {
+    targetType: 'FAUNA',
+    targetSlug: 'terkash',
+    label: 'Terkash',
+    poblacion: 200,
+    poblacionMax: 400,
+    distribucion: { 'Llanuras del Viento Rojo': 1 },
+  },
 ];

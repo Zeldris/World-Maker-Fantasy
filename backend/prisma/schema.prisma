@@ -1808,11 +1808,30 @@ model Npc {
   /// Especialización dentro de `clase`, ver comentario de `Save.especializacion`. Null = sin
   /// especialización asignada (tronco común, o clase sin especializaciones construidas todavía).
   especializacion     Especializacion?
+  /// Categorías de raza de fauna (2026-09-02, sistema paralelo a `Clase` — ver
+  /// `services/faunaAbilities.ts`) — string libre en vez de enum Prisma propio, mismo criterio
+  /// que `raza` (slug de `BERIG_RAZAS`, no un enum): así una categoría nueva no exige migración,
+  /// solo tocar el catálogo TS. Valores reales hoy: los 13 literales de `FaunaCategoria`
+  /// (faunaAbilities.ts) — GUELISES/ACECHANTES/CORVENES/ZANCUDOS/BESTIONES/RONDINES/QUITINOS/
+  /// ESCAMADOS/NADANTES/ORDENADOS/UMBRIAS/MUDOS_SALVAJE/ROKRATS_ESTALLIDO. Solo fauna (sin
+  /// `raza`/`clase`) la lleva — null en NPCs humanoides y en fauna sin categoría asignada
+  /// todavía. Concede las 7 habilidades base de categoría vía
+  /// `faunaCategoriaAbilityUnlocksFor(faunaCategoria, level)`, filtradas por nivel igual que
+  /// `classAbilityUnlocksForClase` — ver `npcCombatAbilitiesFor` (npcCombatAbilities.ts).
+  faunaCategoria      String?
   /// Fauna/monstruos (sin `raza` — cada fila de fauna en worldCatalog.ts YA es una especie
   /// entera, no un individuo, así que su racial vive aquí en vez de en un catálogo aparte):
   /// hasta 6 habilidades raciales propias, `{ icon, name, description, categoria:
-  /// 'ataque'|'defensa'|'utilidad' }` (2 de cada). Vacío en NPCs humanoides (su racial sale de
-  /// `raza` en vez de este campo).
+  /// 'ataque'|'defensa'|'utilidad', preferredAttribute }` (2 de cada, orientativo). Vacío en NPCs
+  /// humanoides (su racial sale de `raza` en vez de este campo).
+  ///
+  /// Sistema de categorías de raza de fauna (2026-09-02) — cada entrada ahora lleva también
+  /// `level` (int) y `effects` (AbilityEffect[]) reales, mismo shape que las habilidades de
+  /// clase: son las 3 habilidades ESPECÍFICAS de este animal individual, encima de las 7 de su
+  /// `faunaCategoria`, filtradas por nivel igual que esas — ver comentario actualizado en
+  /// `NpcCombatAbility.effects` (npcCombatAbilities.ts) sobre el cambio de comportamiento. Sigue
+  /// siendo Json libre (no un modelo/tipo Prisma propio) — mismo criterio que siempre, catálogo
+  /// de seed, no estado de partida.
   habilidadesRaciales Json             @default("[]")
   /// Frase corta del ataque natural (solo fauna, sin arma en su `loadout`) — alimenta el
   /// "Ataque base" calculado (baseAttack.ts) cuando no hay arma que describir. Null en NPCs

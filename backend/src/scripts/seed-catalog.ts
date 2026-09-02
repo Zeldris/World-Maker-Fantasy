@@ -133,6 +133,9 @@ async function main() {
         raza: npcData.raza,
         clase: npcData.clase,
         especializacion: npcData.especializacion,
+        // Sistema de categorías de raza de fauna (2026-09-02) — explícito en el update, igual que
+        // el resto de campos opcionales de este bloque (no depender del spread del `create`).
+        faunaCategoria: npcData.faunaCategoria ?? null,
         ataqueNatural: npcData.ataqueNatural,
         habilidadesRaciales: habilidadesRacialesJson,
         temperamento: npcData.temperamento,
