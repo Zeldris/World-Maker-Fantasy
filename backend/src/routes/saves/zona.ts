@@ -70,6 +70,7 @@ export async function zonaRoutes(app: FastifyInstance) {
       sessionFacts,
       saveId: save.id,
       currentLocationId: locationId,
+      fictionalMinutes,
     });
     const zonePointSlugs = new Set(zonePoints.map((p) => p.targetSlug));
     const dinamicos = npcsInScene

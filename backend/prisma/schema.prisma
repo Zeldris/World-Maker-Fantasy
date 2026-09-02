@@ -2357,6 +2357,18 @@ model WorldPopulation {
   /// fila) — en la práctica solo importa para la partida real de la jugadora.
   lastHarvestedLocationId String?
 
+  /// Cooldown de dispersión tras caza en grupo fallida (2026-09-02, `rollGroupEngagement` puede
+  /// devolver 0 desde el commit d6e8afc: "el grupo se dispersa antes de comprometerse") — CAMPOS
+  /// NUEVOS a propósito, NUNCA reutilizar `lastHarvestedAt`/`lastHarvestedLocationId` de arriba:
+  /// esos son de otro sistema (recolección de RECURSO, reloj de PARED real) con semántica de
+  /// tiempo distinta. Este cooldown es en MINUTOS DE FICCIÓN (mismo patrón exacto que
+  /// `NpcState.condicionFisicaSinceMinutes` + `RECOVERY_CONVALECIENTE_MINUTES`, death.ts), no
+  /// reloj real — cazar.ts compara contra `WorldState.fictionalMinutes` del turno actual, nunca
+  /// contra `Date.now()`. `null`/`null` = nunca se dispersó, o el cooldown ya expiró de sobra (no
+  /// se limpia activamente, `cazar.ts` solo comprueba si ya pasó el tiempo).
+  dispersadoEnLocationId  String?
+  dispersadoDesdeMinutes  Int?
+
   @@unique([worldId, targetType, targetSlug])
 }
 

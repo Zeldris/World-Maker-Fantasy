@@ -13,6 +13,24 @@ import { MAX_COMBATIENTES_POR_BANDO } from '../../services/combateMultiple.js';
 import { rejectIfEnded, lockRowForUpdate } from './shared.js';
 import { advanceFictionalMinutes, formatFictionalDate } from '../../services/worldClock.js';
 
+/// Cooldown de dispersión tras caza en grupo fallida (2026-09-02, sobre el commit d6e8afc: cuando
+/// `rollGroupEngagement` devuelve 0, "el grupo se dispersa antes de comprometerse" — hoy sin
+/// ninguna consecuencia más allá de esa narración). Mismo patrón EXACTO que
+/// `RECOVERY_CONVALECIENTE_MINUTES` (death.ts, `NpcState.condicionFisicaSinceMinutes`): minutos de
+/// FICCIÓN, no reloj de pared — `WorldPopulation.dispersadoDesdeMinutes` guarda el
+/// `fictionalMinutes` del turno en que se dispersó, y se compara contra el `fictionalMinutes`
+/// actual del turno en curso. Por especie (`targetSlug`) + `Location` — el fallo de una especie no
+/// afecta al cooldown de las demás seleccionadas en la misma petición de `/confirmar`.
+const DISPERSION_COOLDOWN_MINUTES = 4 * 60;
+
+/// Puro — mismo criterio que `npcRecoversFromConvaleciente` (death.ts): `null` = nunca se dispersó
+/// (o no en ESTA Location), nunca bloquea. Con dato real, sigue bloqueado mientras no hayan pasado
+/// las 4h de ficción completas desde que se dispersó.
+export function dispersionCooldownActivo(sinceMinutes: number | null, nowMinutes: number): boolean {
+  if (sinceMinutes === null) return false;
+  return nowMinutes - sinceMinutes < DISPERSION_COOLDOWN_MINUTES;
+}
+
 // Checklist consolidado P3.6 (2026-08-27) — "Cazar" limpio no avanzaba el reloj de ficción, mismo
 // hueco ya cerrado en recolectar.ts (Minar/Talar) el 2026-08-14. Cifra fija (no hay cantidad
 // variable que escalar, a diferencia de recolección) — mismo criterio base que
@@ -113,7 +131,14 @@ function toSighted(c: HuntCandidate, playerLevel: number): SightedHuntCandidate 
   };
 }
 
-async function candidateFaunaFor(worldId: string, region: string | null, playerLevel: number, locationSlug: string | null): Promise<HuntCandidate[]> {
+async function candidateFaunaFor(
+  worldId: string,
+  region: string | null,
+  playerLevel: number,
+  locationSlug: string | null,
+  currentLocationId: string | null,
+  fictionalMinutes: number,
+): Promise<HuntCandidate[]> {
   if (!region) return [];
   const populations = await prisma.worldPopulation.findMany({
     where: { worldId, targetType: 'FAUNA', poblacion: { gt: 0 } },
@@ -124,7 +149,14 @@ async function candidateFaunaFor(worldId: string, region: string | null, playerL
     // Filtro por hábitat de la zona (petición explícita, 2026-08-14: "con la de peleteria en caza
     // pues dependiendo del habita de cada fauna") — mismo criterio que candidateSourcesFor
     // (recolectar.ts), ver terrain.ts.
-    return pasaFiltroTerreno(locationSlug ? locationTerrainTags[locationSlug] : undefined, faunaTerrainTag[pop.targetSlug]);
+    if (!pasaFiltroTerreno(locationSlug ? locationTerrainTags[locationSlug] : undefined, faunaTerrainTag[pop.targetSlug])) return false;
+    // Cooldown de dispersión (2026-09-02) — solo bloquea si la dispersión ocurrió en ESTA MISMA
+    // Location (`dispersadoEnLocationId`, no solo la misma región) y el cooldown de ficción sigue
+    // activo. Sin `currentLocationId` (p.ej. sin ubicación resuelta), nunca bloquea.
+    if (currentLocationId && pop.dispersadoEnLocationId === currentLocationId && dispersionCooldownActivo(pop.dispersadoDesdeMinutes, fictionalMinutes)) {
+      return false;
+    }
+    return true;
   });
   if (withRegion.length === 0) return [];
 
@@ -203,10 +235,17 @@ export function rollSightings(candidates: HuntCandidate[], random: () => number 
 
 export async function cazarRoutes(app: FastifyInstance) {
   app.get<{ Params: { id: string } }>('/saves/:id/cazar', async (request, reply) => {
-    const save = await prisma.save.findUnique({ where: { id: request.params.id }, include: { currentLocation: true } });
+    const save = await prisma.save.findUnique({ where: { id: request.params.id }, include: { currentLocation: true, worldState: true } });
     if (!save) return reply.status(404).send({ error: 'Partida no encontrada' });
 
-    const candidates = await candidateFaunaFor(save.worldId, save.currentLocation?.region ?? null, save.level, save.currentLocation?.slug ?? null);
+    const candidates = await candidateFaunaFor(
+      save.worldId,
+      save.currentLocation?.region ?? null,
+      save.level,
+      save.currentLocation?.slug ?? null,
+      save.currentLocation?.id ?? null,
+      save.worldState?.fictionalMinutes ?? 0,
+    );
     if (candidates.length === 0) return { candidates: [], puedeExplorar: false };
 
     const sessionFacts = await loadSessionFacts(save.id);
@@ -223,7 +262,7 @@ export async function cazarRoutes(app: FastifyInstance) {
   // real de qué se encuentra (`rollSightings`): puede no salir nada, igual que explorar en busca de
   // recursos y no dar con ninguno.
   app.post<{ Params: { id: string } }>('/saves/:id/cazar/explorar', async (request, reply) => {
-    const save = await prisma.save.findUnique({ where: { id: request.params.id }, include: { currentLocation: true } });
+    const save = await prisma.save.findUnique({ where: { id: request.params.id }, include: { currentLocation: true, worldState: true } });
     if (!save) return reply.status(404).send({ error: 'Partida no encontrada' });
     // Bug real (auditoría de bugs, 2026-08-21): a diferencia de /turn/classify y /combat/flee
     // (session.ts), ninguna ruta de caza comprobaba `save.endedAt` — con la partida ya terminada
@@ -233,7 +272,14 @@ export async function cazarRoutes(app: FastifyInstance) {
     // propia partida ya da por definitivamente muerto.
     if (rejectIfEnded(save, reply)) return;
 
-    const candidates = await candidateFaunaFor(save.worldId, save.currentLocation?.region ?? null, save.level, save.currentLocation?.slug ?? null);
+    const candidates = await candidateFaunaFor(
+      save.worldId,
+      save.currentLocation?.region ?? null,
+      save.level,
+      save.currentLocation?.slug ?? null,
+      save.currentLocation?.id ?? null,
+      save.worldState?.fictionalMinutes ?? 0,
+    );
     if (candidates.length === 0) return { candidates: [] };
 
     const sighted = rollSightings(candidates);
@@ -275,7 +321,16 @@ export async function cazarRoutes(app: FastifyInstance) {
 
     const region = save.currentLocation?.region ?? null;
     const uniqueSlugs = [...new Set(slugs)];
-    const candidates = await candidateFaunaFor(save.worldId, region, save.level, save.currentLocation?.slug ?? null);
+    const currentLocationIdForCooldown = save.currentLocation?.id ?? null;
+    const fictionalMinutesActuales = save.worldState?.fictionalMinutes ?? 0;
+    const candidates = await candidateFaunaFor(
+      save.worldId,
+      region,
+      save.level,
+      save.currentLocation?.slug ?? null,
+      currentLocationIdForCooldown,
+      fictionalMinutesActuales,
+    );
     const selected = uniqueSlugs
       .map((slug) => candidates.find((c) => c.slug === slug))
       .filter((c): c is HuntCandidate => !!c);
@@ -367,6 +422,13 @@ export async function cazarRoutes(app: FastifyInstance) {
     const conAvistados = selected.map((c) => ({ ...c, avistados: avistadosFor(c.capturablePct, c.poblacion) }));
     const hayGrupoReal = conAvistados.some((c) => c.avistados > 1);
 
+    // Cooldown de dispersión (2026-09-02) — especies cuyo `cantidadReal` acabó en 0 de verdad (tras
+    // el guard de AGRESIVO de abajo, que puede forzarlo de vuelta a 1): esa especie concreta no
+    // debe volver a aparecer como candidata de caza en esta MISMA Location durante
+    // `DISPERSION_COOLDOWN_MINUTES` de ficción. Por `targetSlug`, nunca global — el fallo de una
+    // especie no toca el cooldown de las demás seleccionadas en esta misma petición.
+    const especiesDispersadas: string[] = [];
+
     if (hayGrupoReal) {
       const jugadorAttrs = save.attributes as AttributeBlock;
       const combatientes: (CombatienteInicial & { destreza: number; inteligencia: number })[] = [
@@ -389,6 +451,7 @@ export async function cazarRoutes(app: FastifyInstance) {
           if (cantidadReal === 0 && npc.temperamento === 'AGRESIVO' && save.level <= (npc.levelMax ?? npc.level)) {
             cantidadReal = 1;
           }
+          if (cantidadReal === 0) especiesDispersadas.push(c.slug);
           for (let i = 0; i < cantidadReal; i++) {
             combatientes.push({ bando: 'ENEMIGO', tipo: 'NPC', npcId: npc.id, npcScope: scope, destreza: npcAttrs.destreza, inteligencia: npcAttrs.inteligencia, esGrupo: true });
           }
@@ -430,6 +493,17 @@ export async function cazarRoutes(app: FastifyInstance) {
         for (const fragmento of fragmentosParaCrear.slice(1)) {
           const { encounterId } = await iniciarCombatEncounter(tx, save.id, fragmento, false);
           autonomosIds.push(encounterId);
+        }
+        // Cooldown de dispersión (2026-09-02) — mismo `targetSlug`/ubicación que
+        // `candidateFaunaFor` compara, escrito en la misma transacción que crea el combate real
+        // para no dejar un estado a medias si algo falla después.
+        if (currentLocationId) {
+          for (const slug of especiesDispersadas) {
+            await tx.worldPopulation.update({
+              where: { worldId_targetType_targetSlug: { worldId: save.worldId, targetType: 'FAUNA', targetSlug: slug } },
+              data: { dispersadoEnLocationId: currentLocationId, dispersadoDesdeMinutes: fictionalMinutesActuales },
+            });
+          }
         }
         return { autonomosIds };
       });

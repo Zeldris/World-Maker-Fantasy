@@ -139,8 +139,11 @@ async function resolveClassificationForTurn(params: {
   /// falta tirada" para una esquiva clarísima — el combate se congelaba sin tirar dados mientras
   /// la narración libre igualmente inventaba un cambio de salud sin respaldo mecánico ninguno.
   pendingNpcAttack: PendingNpcAttack | null;
+  /// Fauna diurna/nocturna real (2026-09-02) — ver el mismo campo en `detectNpcsInScene`
+  /// (npcScene.ts).
+  fictionalMinutes: number;
 }): Promise<ClassificationResolution> {
-  const { saveId, action, enCombate, savedActionId, preview, worldId, currentLocationId, level, attributes, sessionFacts, characterSummary, pendingCombatNpcSlugs, pendingNpcAttack } = params;
+  const { saveId, action, enCombate, savedActionId, preview, worldId, currentLocationId, level, attributes, sessionFacts, characterSummary, pendingCombatNpcSlugs, pendingNpcAttack, fictionalMinutes } = params;
 
   // Solapar classify con el tecleo (roadmap de velocidad, 2026-07-19): si un `preview:true`
   // anterior con este MISMO texto exacto ya hizo el trabajo caro, se reutiliza sin repetirlo
@@ -162,7 +165,7 @@ async function resolveClassificationForTurn(params: {
   } else {
     // Se calcula ANTES del viaje (bug real, 2026-07-23, "revisar partida" — ver comentario de
     // abajo): decidir si esto es un viaje necesita saber ya si hay un NPC delante.
-    npcsInScene = await detectNpcsInScene({ action, worldId, sessionFacts, saveId, currentLocationId });
+    npcsInScene = await detectNpcsInScene({ action, worldId, sessionFacts, saveId, currentLocationId, fictionalMinutes });
 
     // Viaje por el grafo de ubicaciones (docs/12-mundo-estructurado.md § 1.4): el modelo nunca
     // elige la ruta — si el matcher determinista resuelve un destino conocido, la banda y la
@@ -504,6 +507,7 @@ export async function turnRoutes(app: FastifyInstance) {
       sessionFacts,
       saveId,
       currentLocationId: save.currentLocationId,
+      fictionalMinutes: blockedFictionalMinutes,
     });
     const absentNpcClaim = await detectsAbsentSceneNpcClaim(
       action,
@@ -588,6 +592,7 @@ export async function turnRoutes(app: FastifyInstance) {
       characterSummary,
       pendingCombatNpcSlugs: (save.pendingCombatNpcSlugs as string[] | null) ?? [],
       pendingNpcAttack: save.pendingNpcAttack as unknown as PendingNpcAttack | null,
+      fictionalMinutes: save.worldState?.fictionalMinutes ?? 480,
     });
 
     // Bug real (auditoría en vivo, 2026-09-01): `computeDuration` decide su `produccion` solo por

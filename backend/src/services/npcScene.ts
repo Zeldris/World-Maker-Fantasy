@@ -6,6 +6,8 @@ import type { Clase } from './classAbilities.js';
 import { npcAttributesForLevel } from './progression.js';
 import { parseActiveEffects, type ActiveEffect } from './activeEffects.js';
 import { effectiveTemperamento } from './reputation.js';
+import { momentoDelDiaFor, type MomentoDelDia } from './worldClock.js';
+import { faunaMomentoDelDia } from '../scripts/worldCatalog.js';
 
 /// Detección determinista de "NPC en escena" (docs/12-mundo-estructurado.md § 2.5) — sin llamada
 /// extra a Ollama: se busca Npc.aliases (normalizados) en el texto de la acción y en los hechos
@@ -417,6 +419,12 @@ export async function detectNpcsInScene(params: {
   sessionFacts: string[];
   saveId: string;
   currentLocationId: string | null;
+  /// Fauna diurna/nocturna real (2026-09-02) — minuto de ficción del turno actual, para bloquear
+  /// que una mención directa ("Nuente") haga aparecer en escena a una especie fuera de su
+  /// `faunaMomentoDelDia` (worldCatalog.ts). Decisión explícita de la usuaria: SÍ bloquear también
+  /// la mención directa, no solo la sugerencia ambiental de `turnResolution.ts` — más estricto que
+  /// el diseño inicial planteado.
+  fictionalMinutes: number;
 }): Promise<NpcInScene[]> {
   const [npcs, currentLocation, activeQuestTargets, encounteredStates, saveRow] = await Promise.all([
     prisma.npc.findMany({
@@ -459,10 +467,20 @@ export async function detectNpcsInScene(params: {
   // verdad apunta a alguien, o ya se le conoció en esta partida, no tiene sentido hacerlo
   // desaparecer). Pero ni "es PRINCIPAL" ni "itinerante sin homeLocationSlug" (los dos casos de
   // Sella Marn a la vez) deben poder saltarse la marca de núcleo — antes sí podían.
+  //
+  // Fauna diurna/nocturna real (2026-09-02) — MISMA prioridad exacta que `nucleoJugable`: quest
+  // activa/"ya establecido antes" (`questTargetIds`/`encounteredIds`) ganan siempre, comprobados
+  // ANTES del filtro de hora, igual que ya ganan sobre `nucleoJugable === false`. El resto de
+  // candidatos (sin quest ni NpcState propio) sí quedan bloqueados si tienen entrada en
+  // `faunaMomentoDelDia` y no coincide con el momento del día real de este turno — un Nuente
+  // mencionado de día no debe poder aparecer en escena.
+  const momentoActual = momentoDelDiaFor(params.fictionalMinutes);
   const candidateNpcs = npcs.filter((npc) => {
     if (questTargetIds.has(npc.id)) return true;
     if (encounteredIds.has(npc.id)) return true;
     if (npc.nucleoJugable === false) return false;
+    const momentoRequerido = faunaMomentoDelDia[npc.slug];
+    if (momentoRequerido && momentoRequerido !== momentoActual) return false;
     if (npc.kind === 'PRINCIPAL') return true;
     if (npc.homeLocationSlug === null) return true;
     if (!currentLocation) return true;
@@ -789,6 +807,23 @@ export interface AmbientEncounterCandidate {
   weight?: number;
 }
 
+/// Fauna diurna/nocturna real (2026-09-02) — puro, extraído del bloque "Sugerencia ambiental de
+/// encuentro" (turnResolution.ts) para poder testearlo aislado del resto de esa función de miles
+/// de líneas, mismo criterio "sin dato = sin filtrar" que `faunaMomentoDelDia` documenta en
+/// worldCatalog.ts: un candidato SIN entrada en el mapa nunca se descarta. Genérico sobre `T`
+/// (cualquier candidato con `slug`) para servir tanto a `AmbientEncounterCandidate` como a
+/// cualquier otro shape que traiga slug de fauna.
+export function filterCandidatesByMomentoDelDia<T extends { slug: string }>(
+  candidates: T[],
+  momentoActual: MomentoDelDia,
+  momentoPorSlug: Record<string, MomentoDelDia>,
+): T[] {
+  return candidates.filter((c) => {
+    const requerido = momentoPorSlug[c.slug];
+    return !requerido || requerido === momentoActual;
+  });
+}
+
 /// Puro: elige un candidato de encuentro ambiental con probabilidad proporcional a `weight`
 /// (checklist 2026-07-21/22, punto 3 — "más NPCs/fauna itinerante para encuentros casuales más
 /// frecuentes"; ponderado por población real desde docs/16-poblacion-dinamica.md). Exportado sin
@@ -940,7 +975,7 @@ export function npcSceneBlockFor(npc: NpcInScene, playerLevel: number, factionsS
     return `PERSONAJE MENCIONADO, YA RESUELTO: ${displayName(npc)} — ${npc.role}${npc.faction ? `, ${npc.faction}` : ''}. Ya está ${estado}${loot}. NO lo narres como una amenaza activa: no ataca, no persigue, no "aparece de la nada" — si la escena lo menciona, es solo un cadáver ya visto, un recuerdo o una referencia al pasado, nunca un encuentro nuevo.${generoHintFor(npc)}`;
   }
   const { label } = difficultyHintFor(npc.level, playerLevel);
-  // Bug real jugando en vivo (2026-08-15, "revisar partida" — el Buitre Cenizo, fauna sin habla,
+  // Bug real jugando en vivo (2026-08-15, "revisar partida" — el Zense Ceniza, fauna sin habla,
   // dio una réplica completa entre comillas y encima llamó "humano" al jugador): el bloque de
   // diálogo (`generateNpcReply`, más arriba en narrador.ts) ya evita esto para el camino de
   // conversación fuera de combate, pero en pleno combate el modelo narra libremente y nada le

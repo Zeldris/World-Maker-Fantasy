@@ -120,7 +120,8 @@ import {
 import { capturaEnInventarioExpiro } from './companionSupervivencia.js';
 import { ownRacialAdvantageFor, rivalRacialDisadvantageAgainst } from './racialPassives.js';
 import { continentForRegion, oppositeContinent } from '../lib/continent.js';
-import { advanceFictionalMinutes, formatFictionalDate, entornoTemporalFor, type EntornoTemporal } from './worldClock.js';
+import { advanceFictionalMinutes, formatFictionalDate, entornoTemporalFor, momentoDelDiaFor, type EntornoTemporal } from './worldClock.js';
+import { faunaMomentoDelDia } from '../scripts/worldCatalog.js';
 import { recalcularZonePointsDeLocation, zonePointsSummaryFor } from './zonePoints.js';
 import { decideOfertaModoDinamico, dynamicModeCandidateNameFor, COOLDOWN_MODO_DINAMICO_MINUTOS } from './dynamicMode.js';
 import { resolverTurnoJugador, resolverTurnosAutonomosHastaJugadora, fijarEleccionRondaJugador, type AccionJugadorCombate } from './combateMultipleOrquestacion.js';
@@ -2568,7 +2569,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     // turno de llegada al DESTINO abría/mantenía un combate fantasma contra un enemigo que ya
     // había quedado atrás, físicamente en otra ubicación. `regionLocationId` (arriba) ya calcula
     // el destino real cuando hay `travel` — reutilizarlo aquí en vez del origen crudo.
-    npcsInScenePrecomputed ? Promise.resolve(npcsInScenePrecomputed) : detectNpcsInScene({ action, worldId, sessionFacts, saveId, currentLocationId: regionLocationId }),
+    npcsInScenePrecomputed ? Promise.resolve(npcsInScenePrecomputed) : detectNpcsInScene({ action, worldId, sessionFacts, saveId, currentLocationId: regionLocationId, fictionalMinutes: fictionalMinutesActuales }),
     travel ? Promise.resolve(null) : detectHarvest({ action, worldId, saveId, currentLocationId }),
     // Distingue fauna (animales, sin habla) de NPCs de verdad dentro de `npcsInScene` — ambos
     // comparten la misma tabla Npc/detección por alias (ver comentario del bloque de diálogo más
@@ -3064,7 +3065,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   // queda nada más al revisar la partida?"): un golpe real (`npcAttackHits`) que solo dejó al
   // rival GRAVE (no CONVALECIENTE/MUERTO, así que `npcFallsUnconsciousThisTurn` sale false y no
   // protege nada aquí) se narró con prosa honesta ("se desploma hacia atrás, dejando una mancha de
-  // sangre en el suelo") pero escribió en `newFacts` "Buitre Cenizo ha sido derrotado y muerto." —
+  // sangre en el suelo") pero escribió en `newFacts` "Zense Ceniza ha sido derrotado y muerto." —
   // un hecho de sesión falso que queda persistido para siempre (`appendSessionFacts`) sin que
   // ningún guard existente lo comprobara (todos estaban gateados por `npcFallsUnconsciousThisTurn`/
   // `npcFallsConvalecienteThisTurn`, que exigen que la muerte SÍ haya pasado este turno — el hueco
@@ -3235,7 +3236,16 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
         where: { worldId, targetType: 'FAUNA', targetSlug: { in: itinerantCandidates.map((c) => c.slug) } },
       });
       const populationBySlug = new Map(populationRows.map((row) => [row.targetSlug, row]));
-      const weightedCandidates = itinerantCandidates
+      // Fauna diurna/nocturna real (2026-09-02) — mismo criterio "sin dato = sin filtrar" que
+      // terreno/estación/clima: un candidato SIN entrada en `faunaMomentoDelDia` nunca se descarta
+      // aquí. Con entrada, solo sigue siendo candidato si el momento del día real del turno
+      // (`momentoDelDiaFor`, worldClock.ts) coincide — un Nuente no se sugiere de día.
+      const momentoActual = momentoDelDiaFor(fictionalMinutesActuales);
+      const itinerantCandidatesDeHora = itinerantCandidates.filter((c) => {
+        const requerido = faunaMomentoDelDia[c.slug];
+        return !requerido || requerido === momentoActual;
+      });
+      const weightedCandidates = itinerantCandidatesDeHora
         .map((c) => {
           const row = populationBySlug.get(c.slug);
           if (!row || row.poblacion <= 0) return null;

@@ -16,6 +16,9 @@ const upsertNpcState = vi.fn();
 // de arriba, que solo vive DENTRO del mock de `$transaction` (caza limpia sin combate).
 const upsertNpcStateDirect = vi.fn();
 const updateManyWorldPopulation = vi.fn();
+// Cooldown de dispersión (2026-09-02) — `tx.worldPopulation.update` (no `updateMany`, distinto del
+// mock de arriba) cuando `rollGroupEngagement` da 0 de verdad para una especie.
+const updateWorldPopulation = vi.fn();
 // P3.6 (checklist consolidado 2026-08-27) — "Cazar" limpio ahora avanza el reloj de ficción
 // (mismo patrón que Minar/Talar), nuevo `tx.worldState.update` dentro de la transacción.
 const updateWorldState = vi.fn();
@@ -76,7 +79,7 @@ vi.mock('../../services/worldFacts.js', () => ({
   appendSessionFacts: (...args: unknown[]) => appendSessionFacts(...args),
 }));
 
-const { cazarRoutes, avistadosFor, rollSightings, rollGroupEngagement, groupVarianceClause } = await import('./cazar.js');
+const { cazarRoutes, avistadosFor, rollSightings, rollGroupEngagement, groupVarianceClause, dispersionCooldownActivo } = await import('./cazar.js');
 
 async function buildApp() {
   const app = Fastify();
@@ -301,6 +304,7 @@ describe('POST /saves/:id/cazar/confirmar', () => {
     upsertNpcState.mockReset();
     upsertNpcStateDirect.mockReset();
     updateManyWorldPopulation.mockReset();
+    updateWorldPopulation.mockReset().mockResolvedValue({});
     updateWorldState.mockReset();
     createLogEntry.mockReset().mockResolvedValue({ id: 'log1', createdAt: new Date('2026-08-08T12:00:00Z') });
     updateSave.mockReset();
@@ -353,7 +357,10 @@ describe('POST /saves/:id/cazar/confirmar', () => {
         // `SAVE_BASE.pendingCombatNpcSlugs`.
         $queryRaw: vi.fn().mockResolvedValue([{ id: 'save1', pendingCombatNpcSlugs: [] }]),
         npcState: { upsert: (...args: unknown[]) => upsertNpcState(...args) },
-        worldPopulation: { updateMany: (...args: unknown[]) => updateManyWorldPopulation(...args) },
+        worldPopulation: {
+          updateMany: (...args: unknown[]) => updateManyWorldPopulation(...args),
+          update: (...args: unknown[]) => updateWorldPopulation(...args),
+        },
         worldState: { update: (...args: unknown[]) => updateWorldState(...args) },
         logEntry: { create: (...args: unknown[]) => createLogEntry(...args) },
         save: { update: (...args: unknown[]) => updateSave(...args), findUniqueOrThrow: vi.fn().mockResolvedValue({ pendingCombatNpcSlugs: [] }) },
@@ -503,5 +510,114 @@ describe('POST /saves/:id/cazar/confirmar', () => {
     const app = await buildApp();
     const res = await app.inject({ method: 'POST', url: '/saves/save1/cazar/confirmar', payload: { slugs: ['murgol'] } });
     expect(res.statusCode).toBe(400);
+  });
+
+  // Cooldown de dispersión (2026-09-02, sobre d6e8afc) — cuando `rollGroupEngagement` da 0 de
+  // verdad para una especie (tras el guard de AGRESIVO), esa especie concreta debe quedar marcada
+  // en `WorldPopulation` con la Location y el minuto de ficción actuales, para que
+  // `candidateFaunaFor` la bloquee mientras el cooldown siga activo (ver describe aparte más abajo
+  // para el filtro en sí). Múrgol no es AGRESIVO en este fixture (`MURGOL_NPC` no define
+  // `temperamento`), así que el guard de la usuaria ("uno agresivo no se dispersa") no interfiere.
+  it('caza en grupo con fallo total para una especie (cantidadElegida=1, peor roll): escribe el cooldown de dispersión en WorldPopulation para ESE targetSlug/Location', async () => {
+    vi.spyOn(Math, 'random').mockReturnValue(0); // roll 1 -> delta -1: con elegido=1, cantidadReal=0
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/saves/save1/cazar/confirmar',
+      payload: { slugs: ['murgol', 'cruzavientos'], cantidades: { murgol: 1 } },
+    });
+    expect(res.statusCode).toBe(200);
+    const body = res.json();
+    expect(body.actionText).toContain('el grupo entero se dispersa antes de que pueda acorralar a ninguno');
+    expect(updateWorldPopulation).toHaveBeenCalledWith({
+      where: { worldId_targetType_targetSlug: { worldId: 'world1', targetType: 'FAUNA', targetSlug: 'murgol' } },
+      data: { dispersadoEnLocationId: 'loc1', dispersadoDesdeMinutes: 480 },
+    });
+    // Cruzavientos (único avistado, sin grupo real) no falló nada — su cooldown nunca se toca: el
+    // fallo de una especie no afecta a las demás seleccionadas en la misma petición.
+    expect(updateWorldPopulation).toHaveBeenCalledTimes(1);
+  });
+
+  // Guard de AGRESIVO (d6e8afc, ya cerrado): con fauna agresiva y el jugador sin superar claramente
+  // su nivel, `cantidadReal` se fuerza de vuelta a 1 — nunca llega a dispersarse, así que tampoco
+  // debe escribirse ningún cooldown.
+  it('caza en grupo con fauna AGRESIVA forzada de vuelta a 1 (guard ya existente): NO escribe cooldown de dispersión', async () => {
+    vi.spyOn(Math, 'random').mockReturnValue(0); // peor roll
+    findManyNpc.mockResolvedValue([{ ...MURGOL_NPC, temperamento: 'AGRESIVO', levelMax: 10 }, CRUZAVIENTOS_NPC]);
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/saves/save1/cazar/confirmar',
+      payload: { slugs: ['murgol', 'cruzavientos'], cantidades: { murgol: 1 } },
+    });
+    expect(res.statusCode).toBe(200);
+    expect(updateWorldPopulation).not.toHaveBeenCalled();
+  });
+});
+
+// Cooldown de dispersión (2026-09-02) — puro, mismo patrón exacto que
+// `npcRecoversFromConvaleciente` (death.ts): minutos de FICCIÓN, no reloj de pared.
+describe('dispersionCooldownActivo', () => {
+  it('sin dispersión previa (null), nunca bloquea', () => {
+    expect(dispersionCooldownActivo(null, 1000)).toBe(false);
+  });
+
+  it('dentro de las 4h de ficción (240 min) desde que se dispersó, sigue bloqueado', () => {
+    expect(dispersionCooldownActivo(480, 480 + 239)).toBe(true);
+  });
+
+  it('justo al cumplirse las 4h de ficción, deja de bloquear', () => {
+    expect(dispersionCooldownActivo(480, 480 + 240)).toBe(false);
+  });
+
+  it('mucho después de las 4h, sigue sin bloquear', () => {
+    expect(dispersionCooldownActivo(480, 480 + 10000)).toBe(false);
+  });
+});
+
+// Filtro de cooldown de dispersión en `candidateFaunaFor` (2026-09-02) — GET /saves/:id/cazar es
+// el camino más simple para probar el filtro sin pasar por toda la maquinaria de /confirmar.
+describe('GET /saves/:id/cazar — cooldown de dispersión', () => {
+  beforeEach(() => {
+    findUniqueSave.mockReset().mockResolvedValue(SAVE_BASE);
+    findManyNpc.mockReset().mockResolvedValue([MURGOL_NPC, CRUZAVIENTOS_NPC]);
+    loadSessionFacts.mockReset().mockResolvedValue(['Gorhorn detecta señales de fauna cerca: 5 Múrgol. Gorhorn detecta señales de fauna cerca: 2 Cruzavientos.']);
+  });
+
+  it('una especie dispersada en ESTA Location, dentro del cooldown, queda fuera de los candidatos', async () => {
+    findManyWorldPopulation.mockReset().mockResolvedValue([
+      { ...MURGOL_POP, dispersadoEnLocationId: 'loc1', dispersadoDesdeMinutes: 480 - 100 }, // hace 100 min de ficción, cooldown activo (240 min)
+      CRUZAVIENTOS_POP,
+    ]);
+    // El mock de `npc.findMany` no simula el `where: { slug: { in: [...] } }` real de Prisma (mismo
+    // motivo documentado en el test de filtro de terreno, más arriba) — solo el NPC que de verdad
+    // pasaría el filtro de cooldown.
+    findManyNpc.mockResolvedValue([CRUZAVIENTOS_NPC]);
+    const app = await buildApp();
+    const res = await app.inject({ method: 'GET', url: '/saves/save1/cazar' });
+    const { candidates } = res.json();
+    expect(candidates.map((c: { slug: string }) => c.slug)).toEqual(['cruzavientos']);
+  });
+
+  it('una especie dispersada en OTRA Location no queda bloqueada aquí', async () => {
+    findManyWorldPopulation.mockReset().mockResolvedValue([
+      { ...MURGOL_POP, dispersadoEnLocationId: 'loc-otra-zona', dispersadoDesdeMinutes: 480 - 100 },
+      CRUZAVIENTOS_POP,
+    ]);
+    const app = await buildApp();
+    const res = await app.inject({ method: 'GET', url: '/saves/save1/cazar' });
+    const { candidates } = res.json();
+    expect(candidates.map((c: { slug: string }) => c.slug).sort()).toEqual(['cruzavientos', 'murgol']);
+  });
+
+  it('una especie dispersada en esta Location, pero con el cooldown ya cumplido, vuelve a estar disponible', async () => {
+    findManyWorldPopulation.mockReset().mockResolvedValue([
+      { ...MURGOL_POP, dispersadoEnLocationId: 'loc1', dispersadoDesdeMinutes: 480 - 240 }, // 4h de ficción ya cumplidas
+      CRUZAVIENTOS_POP,
+    ]);
+    const app = await buildApp();
+    const res = await app.inject({ method: 'GET', url: '/saves/save1/cazar' });
+    const { candidates } = res.json();
+    expect(candidates.map((c: { slug: string }) => c.slug).sort()).toEqual(['cruzavientos', 'murgol']);
   });
 });

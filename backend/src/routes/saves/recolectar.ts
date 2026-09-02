@@ -340,8 +340,9 @@ async function carcassCandidatesFor(
   sessionFacts: string[],
   estacionActual: Estacion,
   climaActual: EstadoClima | null,
+  fictionalMinutes: number,
 ): Promise<SourceCandidate[]> {
-  const npcsInScene = await detectNpcsInScene({ action: '', worldId, sessionFacts, saveId, currentLocationId });
+  const npcsInScene = await detectNpcsInScene({ action: '', worldId, sessionFacts, saveId, currentLocationId, fictionalMinutes });
   const carcasses = npcsInScene.filter(
     (n) => n.ataqueNatural !== null && hasPendingLoot(n) && (n.condicionFisica === 'MUERTO' || !!n.groupDefeated),
   );
@@ -558,7 +559,7 @@ export async function recolectarRoutes(app: FastifyInstance) {
       if (cachedSources) return { sources: groupByCategory(cachedSources), puedeExplorar: false, enCooldown: false };
 
       const sessionFacts = await loadSessionFacts(save.id);
-      const rawCandidates = await carcassCandidatesFor(save.worldId, save.id, save.currentLocationId, sessionFacts, estacionActual, climaActual);
+      const rawCandidates = await carcassCandidatesFor(save.worldId, save.id, save.currentLocationId, sessionFacts, estacionActual, climaActual, save.worldState?.fictionalMinutes ?? 0);
       if (rawCandidates.length === 0) return { sources: [], puedeExplorar: false, enCooldown: false };
       const roll = gatheringRollFor(
         { attributes: save.attributes as AttributeBlock, secondaryAttributesJson: save.secondaryAttributes, inventoryItems: save.inventoryItems, professionProgress: save.professionProgress },

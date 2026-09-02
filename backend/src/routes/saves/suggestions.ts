@@ -30,7 +30,10 @@ function energiaBandFor(energia: number, energiaMax: number): string {
 
 export async function suggestionsRoutes(app: FastifyInstance) {
   app.post<{ Params: { id: string } }>('/saves/:id/suggestions', async (request, reply) => {
-    const save = await prisma.save.findUnique({ where: { id: request.params.id } });
+    const save = await prisma.save.findUnique({
+      where: { id: request.params.id },
+      include: { worldState: { select: { fictionalMinutes: true } } },
+    });
     if (!save) return reply.status(404).send({ error: 'Partida no encontrada' });
 
     const recentEntries = await prisma.logEntry.findMany({
@@ -48,6 +51,7 @@ export async function suggestionsRoutes(app: FastifyInstance) {
       sessionFacts,
       saveId: save.id,
       currentLocationId: save.currentLocationId,
+      fictionalMinutes: save.worldState?.fictionalMinutes ?? 480,
     });
 
     const activeQuests = await prisma.quest.findMany({

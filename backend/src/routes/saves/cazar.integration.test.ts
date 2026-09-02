@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeAll, afterAll } from 'vitest';
 import Fastify from 'fastify';
 import { prisma } from '../../lib/prisma.js';
 import { getDefaultUserId } from '../../lib/defaultUser.js';
-import { cazarRoutes } from './cazar.js';
+import { cazarRoutes, dispersionCooldownActivo } from './cazar.js';
 
 /// Cobertura nueva (auditoría de código 2026-08-25, condición de carrera real): el guard temprano
 /// de `/cazar/confirmar` (mira `CombatEncounter` EN_CURSO) deja una ventana real entre la lectura y
@@ -48,15 +48,15 @@ describe('Cazar: condición de carrera en confirmaciones concurrentes (auditorí
   });
 
   it('dos "salgo a cazar" simultáneos contra el mismo grupo real crean como mucho 1 CombatEncounter', async () => {
-    // 'buitre-cenizo' (mismo bicho del crash real que originó este arreglo, dev-server.log
+    // 'zense-ceniza' (mismo bicho del crash real que originó este arreglo, dev-server.log
     // 2026-08-25): sin `faunaTerrainTag` propio (sin filtro de terreno, pasa en cualquier sitio) y
     // población real de sobra en Las Llanuras del Viento Rojo (capturablePct 50 -> 5 avistados,
     // `avistadosFor`) para disparar `hayGrupoReal` de verdad, sin necesitar seedear WorldPopulation
     // a mano.
     const app = await buildApp();
     const [resA, resB] = await Promise.all([
-      app.inject({ method: 'POST', url: `/saves/${saveId}/cazar/confirmar`, payload: { slugs: ['buitre-cenizo'] } }),
-      app.inject({ method: 'POST', url: `/saves/${saveId}/cazar/confirmar`, payload: { slugs: ['buitre-cenizo'] } }),
+      app.inject({ method: 'POST', url: `/saves/${saveId}/cazar/confirmar`, payload: { slugs: ['zense-ceniza'] } }),
+      app.inject({ method: 'POST', url: `/saves/${saveId}/cazar/confirmar`, payload: { slugs: ['zense-ceniza'] } }),
     ]);
 
     const codes = [resA.statusCode, resB.statusCode].sort();
@@ -75,9 +75,13 @@ describe('Cazar: condición de carrera en confirmaciones concurrentes (auditorí
 /// exacto: `SELECT ... FOR UPDATE` + relectura de `pendingCombatNpcSlugs` antes de escribir.
 describe('Cazar: condición de carrera en caza limpia (presa única, auditoría 2026-09-01)', () => {
   let saveId: string;
-  const randomSpy = vi.spyOn(Math, 'random');
+  // Instalado en `beforeAll`, no a nivel de módulo — ver comentario equivalente en el describe de
+  // "cooldown de dispersión" más abajo (mismo archivo): dos `vi.spyOn(Math, 'random')` a nivel de
+  // módulo se solapan durante la fase de collection de Vitest en vez de envolver `Math.random` real.
+  let randomSpy: ReturnType<typeof vi.spyOn>;
 
   beforeAll(async () => {
+    randomSpy = vi.spyOn(Math, 'random');
     const userId = await getDefaultUserId();
     const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
     const hondonada = await prisma.location.findFirstOrThrow({ where: { worldId: world.id, slug: 'hondonada-del-eco' } });
@@ -89,7 +93,7 @@ describe('Cazar: condición de carrera en caza limpia (presa única, auditoría 
         characterArchetype: 'guerrero',
         characterOrigin: 'Clan Maktor',
         characterMotivation: 'x',
-        // Nivel 10 y destreza alta: 'buitre-cenizo' es nivel 1 (debil = level <= playerLevel-2, ver
+        // Nivel 10 y destreza alta: 'zense-ceniza' es nivel 1 (debil = level <= playerLevel-2, ver
         // NIVEL_DIFERENCIA_PRESA_DEBIL) y la tirada de éxito (capturablePct + destreza, tope 90)
         // queda garantizada con Math.random mockeado a 0 más abajo, sin depender del azar real.
         level: 10,
@@ -112,13 +116,13 @@ describe('Cazar: condición de carrera en caza limpia (presa única, auditoría 
   it('dos "salgo a cazar" simultáneos contra la misma presa única y débil crean como mucho 1 LogEntry y decrementan la población una sola vez', async () => {
     randomSpy.mockReturnValue(0); // garantiza éxito en la tirada de caza limpia (chance siempre > 0)
     const poblacionAntes = (
-      await prisma.worldPopulation.findFirstOrThrow({ where: { worldId: (await prisma.save.findUniqueOrThrow({ where: { id: saveId } })).worldId, targetSlug: 'buitre-cenizo' } })
+      await prisma.worldPopulation.findFirstOrThrow({ where: { worldId: (await prisma.save.findUniqueOrThrow({ where: { id: saveId } })).worldId, targetSlug: 'zense-ceniza' } })
     ).poblacion;
 
     const app = await buildApp();
     const [resA, resB] = await Promise.all([
-      app.inject({ method: 'POST', url: `/saves/${saveId}/cazar/confirmar`, payload: { slugs: ['buitre-cenizo'] } }),
-      app.inject({ method: 'POST', url: `/saves/${saveId}/cazar/confirmar`, payload: { slugs: ['buitre-cenizo'] } }),
+      app.inject({ method: 'POST', url: `/saves/${saveId}/cazar/confirmar`, payload: { slugs: ['zense-ceniza'] } }),
+      app.inject({ method: 'POST', url: `/saves/${saveId}/cazar/confirmar`, payload: { slugs: ['zense-ceniza'] } }),
     ]);
 
     const codes = [resA.statusCode, resB.statusCode].sort();
@@ -126,19 +130,19 @@ describe('Cazar: condición de carrera en caza limpia (presa única, auditoría 
     // slug ya en pendingCombatNpcSlugs); la ganadora termina en 200 — nunca las dos en 200.
     expect(codes).toEqual([200, 409]);
 
-    // 'Buitre Cenizo' renombrado a 'Zense Ceniza' (2026-09-02) — slug sin cambiar.
+    // 'Buitre Cenizo' renombrado a 'Zense Ceniza' (2026-09-02/03), slug incluido.
     const logCount = await prisma.logEntry.count({ where: { saveId, text: { contains: 'Zense Ceniza' } } });
     expect(logCount).toBe(1);
 
     const world = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
-    const poblacionDespues = (await prisma.worldPopulation.findFirstOrThrow({ where: { worldId: world.worldId, targetSlug: 'buitre-cenizo' } })).poblacion;
+    const poblacionDespues = (await prisma.worldPopulation.findFirstOrThrow({ where: { worldId: world.worldId, targetSlug: 'zense-ceniza' } })).poblacion;
     expect(poblacionAntes - poblacionDespues).toBe(1);
   }, 20_000);
 });
 
 /// Cobertura nueva (checklist 2026-09-01, hallazgo real jugando en vivo): `particionarEnSubCombates`/
 /// `MAX_COMBATIENTES_POR_BANDO` (combateMultiple.ts) existían desde 2026-08-28 con 6 tests
-/// unitarios, pero nunca se enganchaban a este flujo real — cazar 5+ del mismo tipo (`buitre-cenizo`,
+/// unitarios, pero nunca se enganchaban a este flujo real — cazar 5+ del mismo tipo (`zense-ceniza`,
 /// capturablePct 50 -> 5 avistados, igual que el test de arriba) creaba un único `CombatEncounter`
 /// con los 6 participantes (1 JUGADOR + 5 ENEMIGO) dentro, sin ningún tope de 4. Confirmado a mano
 /// en Postgres esa misma sesión. Fix: el bando ENEMIGO se parte en fragmentos de
@@ -175,17 +179,17 @@ describe('Cazar: sub-partición >4v4 (checklist 2026-09-01)', () => {
     await prisma.save.delete({ where: { id: saveId } });
   });
 
-  it('cazar 5 Buitre Cenizo a la vez parte el bando ENEMIGO en un CombatEncounter jugable (≤4) y uno autónomo ya RESUELTO', async () => {
+  it('cazar 5 Zense Ceniza a la vez parte el bando ENEMIGO en un CombatEncounter jugable (≤4) y uno autónomo ya RESUELTO', async () => {
     const app = await buildApp();
     // `rollGroupEngagement` (cazar.ts) mete un ±1 real sobre lo pedido — con avistados=5 (tope de
-    // `buitre-cenizo`, capturablePct 50) el resultado real puede caer en 4, que ya no dispara la
+    // `zense-ceniza`, capturablePct 50) el resultado real puede caer en 4, que ya no dispara la
     // sub-partición. Reintenta la petición real (limpiando el CombatEncounter fallido cada vez)
     // hasta que el roll dé los 5 reales — sin mockear `Math.random` para no desacoplar el test del
     // camino HTTP real de punta a punta.
     let res;
     for (let intento = 0; intento < 20; intento++) {
       await prisma.combatEncounter.deleteMany({ where: { saveId } });
-      res = await app.inject({ method: 'POST', url: `/saves/${saveId}/cazar/confirmar`, payload: { slugs: ['buitre-cenizo'], cantidades: { 'buitre-cenizo': 5 } } });
+      res = await app.inject({ method: 'POST', url: `/saves/${saveId}/cazar/confirmar`, payload: { slugs: ['zense-ceniza'], cantidades: { 'zense-ceniza': 5 } } });
       expect(res.statusCode).toBe(200);
       const total = await prisma.combatParticipant.count({ where: { encounter: { saveId }, bando: 'ENEMIGO' } });
       if (total > 4) break;
@@ -207,4 +211,105 @@ describe('Cazar: sub-partición >4v4 (checklist 2026-09-01)', () => {
       expect(enc.estado).toBe('RESUELTO');
     }
   }, 20_000);
+});
+
+/// Cobertura de integración real (2026-09-02) — cooldown de dispersión tras caza en grupo fallida
+/// (commit d6e8afc + esta pieza): con `cantidadElegida=1` y `Math.random` mockeado al peor roll,
+/// `rollGroupEngagement` da 0 de verdad contra Postgres real, confirmando de punta a punta que (1)
+/// la especie desaparece de los candidatos de ESA Location mientras el cooldown de 4h de ficción
+/// sigue activo, y (2) reaparece en cuanto el reloj de ficción avanza lo suficiente.
+describe('Cazar: cooldown de dispersión tras fallo total (2026-09-02)', () => {
+  let saveId: string;
+  let worldId: string;
+  // `vi.spyOn` a nivel de módulo (fuera de `beforeAll`) se instala durante la fase de "collection"
+  // de Vitest — todos los `describe()` del archivo se evalúan de forma síncrona ANTES de que corra
+  // ningún `beforeAll`/`it`. El describe de arriba ("condición de carrera en caza limpia") también
+  // hace `vi.spyOn(Math, 'random')` a ese mismo nivel: con los dos instalados en el mismo instante,
+  // el segundo envuelve al primero en vez de a `Math.random` real, y el `mockRestore()` del primero
+  // (en su propio afterAll) deja el mock de este describe apuntando a un spy ya descartado —
+  // flake real confirmado en vivo (roll alto pese a `mockReturnValue(0)`, ~1/3 de las corridas).
+  // Instalarlo dentro de `beforeAll` en vez de a nivel de módulo evita el solapamiento.
+  let randomSpy: ReturnType<typeof vi.spyOn>;
+
+  beforeAll(async () => {
+    randomSpy = vi.spyOn(Math, 'random');
+    const userId = await getDefaultUserId();
+    const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
+    worldId = world.id;
+    const hondonada = await prisma.location.findFirstOrThrow({ where: { worldId, slug: 'hondonada-del-eco' } });
+    const save = await prisma.save.create({
+      data: {
+        userId,
+        worldId,
+        characterName: 'Gorhorn de prueba (cazar, cooldown de dispersión)',
+        characterArchetype: 'guerrero',
+        characterOrigin: 'Clan Maktor',
+        characterMotivation: 'x',
+        // Zense Ceniza (slug zense-ceniza) es CAUTELOSO, no AGRESIVO — el guard de "fauna
+        // agresiva no se dispersa salvo superioridad clara" (cazar.ts) no debe interferir aquí.
+        attributes: { fuerza: 10, destreza: 10, constitucion: 10, inteligencia: 10, voluntad: 10, carisma: 10, magia: 10 },
+        portraitInitial: 'G',
+        currentLocationId: hondonada.id,
+      },
+    });
+    saveId = save.id;
+    await prisma.worldState.create({ data: { saveId } });
+    // Aislamiento del estado compartido (mismo `targetSlug` que usa el describe anterior, "cazar 5
+    // Zense Ceniza a la vez", cuyos reintentos con roll real sin mock pueden dejar un fallo total
+    // real y escribir este mismo cooldown antes de que empiece este bloque) — sin este reset, un
+    // cooldown ya activo hace que `zense-ceniza` desaparezca de `selected` desde el principio y el
+    // test de abajo nunca llega a crear el combate real que espera.
+    await prisma.worldPopulation.updateMany({
+      where: { worldId, targetType: 'FAUNA', targetSlug: 'zense-ceniza' },
+      data: { dispersadoEnLocationId: null, dispersadoDesdeMinutes: null },
+    });
+  });
+
+  afterAll(async () => {
+    randomSpy.mockRestore();
+    await prisma.combatEncounter.deleteMany({ where: { saveId } });
+    await prisma.npcState.deleteMany({ where: { saveId } });
+    await prisma.worldPopulation.updateMany({
+      where: { worldId, targetType: 'FAUNA', targetSlug: 'zense-ceniza' },
+      data: { dispersadoEnLocationId: null, dispersadoDesdeMinutes: null },
+    });
+    await prisma.save.delete({ where: { id: saveId } });
+  });
+
+  it('cantidadReal=0 escribe el cooldown y la especie desaparece de los candidatos de esa Location', async () => {
+    const app = await buildApp();
+    // roll bajo (0) -> floor(0*6)+1=1 -> delta -1 -> con cantidadElegida=1, cantidadReal = max(0, 1-1) = 0.
+    randomSpy.mockReturnValue(0);
+    const res = await app.inject({
+      method: 'POST',
+      url: `/saves/${saveId}/cazar/confirmar`,
+      payload: { slugs: ['zense-ceniza'], cantidades: { 'zense-ceniza': 1 } },
+    });
+    expect(res.statusCode).toBe(200);
+
+    const pop = await prisma.worldPopulation.findFirstOrThrow({ where: { worldId, targetType: 'FAUNA', targetSlug: 'zense-ceniza' } });
+    const hondonada = await prisma.location.findFirstOrThrow({ where: { worldId, slug: 'hondonada-del-eco' } });
+    expect(pop.dispersadoEnLocationId).toBe(hondonada.id);
+    expect(pop.dispersadoDesdeMinutes).not.toBeNull();
+
+    // Con el cooldown activo, Zense Ceniza ya no debe salir como candidato de caza en esta Location
+    // — via /explorar (candidateFaunaFor real, no /GET que además filtra por sessionFacts ya
+    // "localizados", cosa que este save recién creado nunca tiene). random=0.99 evita el fallo de
+    // `rollSightings` (CAZA_EXPLORAR_CHANCE_FALLO=0.35) sin depender del azar real.
+    randomSpy.mockReturnValue(0.99);
+    const candidatos = await app.inject({ method: 'POST', url: `/saves/${saveId}/cazar/explorar` });
+    expect(candidatos.statusCode).toBe(200);
+    expect(JSON.parse(candidatos.body).candidates.some((c: { slug: string }) => c.slug === 'zense-ceniza')).toBe(false);
+  }, 20_000);
+
+  it('pasadas las 4h de ficción, el cooldown de WorldPopulation deja de estar activo', async () => {
+    // Verifica el estado real en vez del resultado de /explorar (tirada ponderada real: con más de
+    // un candidato posible en la región, `rollSightings` puede elegir cualquiera de ellos, no
+    // necesariamente Zense Ceniza — comprobarlo así habría sido un test frágil). Lo que de verdad
+    // hay que confirmar es que `dispersionCooldownActivo` deja de bloquear pasadas las 4h de
+    // ficción, mismo criterio puro que ya cubre `dispersionCooldownActivo` en el test unitario.
+    const worldState = await prisma.worldState.findUniqueOrThrow({ where: { saveId } });
+    const pop = await prisma.worldPopulation.findFirstOrThrow({ where: { worldId, targetType: 'FAUNA', targetSlug: 'zense-ceniza' } });
+    expect(dispersionCooldownActivo(pop.dispersadoDesdeMinutes, worldState.fictionalMinutes + 241)).toBe(false);
+  });
 });
