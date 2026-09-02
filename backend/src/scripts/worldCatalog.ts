@@ -84,7 +84,7 @@ export const locations: LocationInput[] = [
     region: 'Las Llanuras del Viento Rojo',
     kind: 'interior',
     description:
-      'Dentro de la empalizada de Karot Veku: chozas de techo cónico alrededor de una plaza de tierra apisonada, cada oficio con su propio taller reconocible por el humo o el ruido que sale de él. En el centro, el Karot Vekhad — el Salón del Colmillo Ceniza —, la choza más grande del poblado, donde la Terk\'ikar Ulkha Ketg y el Kort\'ikar Torgash Ketg reciben a quien cruza la entrada.',
+      'Dentro de la empalizada de Karot Veku: tierra apisonada en torno a una plaza central, sendas marcadas por el paso constante entre los distintos puntos del poblado — cada construcción real (Karot Vekhad, talleres de cada oficio) tiene su propia ubicación marcada en el mapa de la zona, sin representarlas ya prefijadas en el fondo. En el centro simbólico, el Karot Vekhad — el Salón del Colmillo Ceniza —, donde la Terk\'ikar Ulkha Ketg y el Kort\'ikar Torgash Ketg reciben a quien cruza la entrada.',
     aliases: ['karot vekhad', 'el salón del colmillo ceniza', 'dentro de karot veku', 'interior del campamento serhu'],
   },
 
