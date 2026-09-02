@@ -19,6 +19,7 @@ import type { TravelResolution } from '../services/travel.js';
 import type { TravelInterruption } from '../services/travelInterruption.js';
 import type { AttributeBlock } from '../services/dice.js';
 import { iniciarCombatEncounter } from '../services/combateMultipleOrquestacion.js';
+import { appendSessionFacts } from '../services/worldFacts.js';
 
 /// Harness de integración de la misión de apertura (2026-07-31, "checklist de mejoras de
 /// narración" — acordado al principio de la sesión de replanteamiento de arquitectura y retomado
@@ -4713,6 +4714,78 @@ describe('el "perseguidor" de Gistera Koh se detecta en escena sin nombrarlo, mi
 
     const { combateIniciado } = lastNdjsonLine(narrateRes.payload) as { combateIniciado: { npcs: { slug: string }[] } | null };
     expect(combateIniciado?.npcs.map((n) => n.slug)).toEqual(['orco-enfurecido-hondonada']);
+  }, 20_000);
+});
+
+// Investigación del hallazgo colateral anotado en checklist-pruebas-juego.md (Prueba 3, sin
+// investigar hasta ahora): "iniciar combate por texto libre normal contra fauna no 'localizada' en
+// sessionFacts no siempre engancha combateIniciado". `detectNpcsInScene` (npcScene.ts) construye su
+// `haystack` como `[action, ...sessionFacts].join('\n')` — en teoría no exige NINGUNA localización
+// previa (a diferencia de `GET /saves/:id/cazar`, que sí filtra por `detectHarvestSourcesInScene`),
+// así que el escenario sospechoso real es: fauna agresiva mencionada SOLO en un `sessionFact` de un
+// turno anterior (nunca en la ACCIÓN de este turno, nunca con NpcState propio, sin quest que la
+// respalde) — justo el caso que ninguno de los tests de arriba cubre (todos nombran al NPC directo
+// en `action`, o son el Orco Enfurecido, que es PRINCIPAL + tiene quest, dos vías de "candidato
+// plausible" que fauna genérica no tiene). Usa Kirelon Arenoso (AGRESIVO, PLANTILLA, sin quest,
+// `faunaMomentoDelDia: 'noche'`) para cubrir ese filtro nuevo (2026-09-02) en el mismo test.
+describe('Combate contra fauna mencionada solo en sessionFacts, nunca en la acción del turno actual (investigación 2026-09-03)', () => {
+  let saveId: string;
+
+  beforeAll(async () => {
+    const userId = await getDefaultUserId();
+    const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
+    const hondonada = await prisma.location.findFirstOrThrow({ where: { worldId: world.id, slug: 'hondonada-del-eco' } });
+    const save = await prisma.save.create({
+      data: {
+        userId,
+        worldId: world.id,
+        characterName: 'Gorhorn de prueba (fauna solo en sessionFacts)',
+        characterArchetype: 'guerrero',
+        characterOrigin: 'Clan Maktor',
+        characterMotivation: 'x',
+        attributes: ATTRS,
+        portraitInitial: 'G',
+        currentLocationId: hondonada.id,
+      },
+    });
+    saveId = save.id;
+    // fictionalMinutes en banda nocturna (22:00 = 22*60) — kirelon-arenoso solo es candidato de
+    // noche (faunaMomentoDelDia, worldCatalog.ts).
+    await prisma.worldState.create({ data: { saveId, fictionalMinutes: 22 * 60 } });
+    // Simula que un turno ANTERIOR ya narró/mencionó al Kirelon (sessionFact real, ventana rodante
+    // de worldFacts.ts) — SIN crear ningún NpcState para él, SIN quest que lo respalde: el único
+    // camino de "candidato plausible" es homeLocationSlug === región actual (detectNpcsInScene).
+    await appendSessionFacts(saveId, [], [
+      'Un Kirelon Arenoso emergió brevemente de la arena antes de volver a enterrarse, vigilante.',
+    ]);
+    classifyAction.mockResolvedValue({
+      requiereTirada: false, atributo: 'destreza', dificultad: 8, razon: 'x', banda: 'instantanea', duracionEstimadaMinutos: 0,
+    });
+  });
+
+  afterAll(async () => {
+    await prisma.save.delete({ where: { id: saveId } });
+  });
+
+  it('atacar sin nombrar al Kirelon por su nombre real, apoyándose solo en el sessionFact previo, SÍ abre combate contra él', async () => {
+    narrateAction.mockResolvedValueOnce({
+      narration: 'Gorhorn se lanza hacia la sombra que vio moverse en la arena, hacha en alto.',
+      newFacts: [],
+    });
+    const app = await buildApp();
+    const action = 'Ataco a la criatura que vi enterrarse en la arena hace un momento.';
+    const classifyRes = await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action, enCombate: false } });
+    const { classification, roll } = classifyRes.json();
+    const narrateRes = await app.inject({
+      method: 'POST',
+      url: '/turn/narrate',
+      payload: { saveId, action, classification, roll, enCombate: false },
+    });
+
+    const { combateIniciado } = lastNdjsonLine(narrateRes.payload) as { combateIniciado: { npcs: { slug: string }[] } | null };
+    expect(combateIniciado?.npcs.map((n) => n.slug)).toEqual(['kirelon-arenoso']);
+    const save = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
+    expect(save.pendingCombatNpcSlugs).toEqual(['kirelon-arenoso']);
   }, 20_000);
 });
 

@@ -443,10 +443,15 @@ el mismo día**:
    backend a propósito para reproducirlo en vivo — no autorizado esa sesión. Candidato para otra
    ronda si se decide forzarlo.
 
-**Hallazgo colateral sin investigar**: iniciar combate por texto libre normal contra fauna no
-"localizada" en `sessionFacts` no siempre engancha `combateIniciado` (el narrador narra el golpe en
-prosa, pero el motor de detección no lo reconoce) — mencionado de pasada durante la Prueba 3, fuera
-de alcance de esa verificación.
+**Hallazgo colateral investigado y descartado (2026-09-03)**: la sospecha era que iniciar combate
+por texto libre contra fauna no "localizada" en `sessionFacts` no siempre engancha `combateIniciado`.
+Investigado a fondo con un test de integración real nuevo (`turn.integration.test.ts`, describe
+"Combate contra fauna mencionada solo en sessionFacts..."): fauna agresiva (Kirelon Arenoso)
+mencionada SOLO en un `sessionFact` de un turno anterior (nunca en la acción del turno actual, sin
+`NpcState` propio, sin quest que la respalde) sí abre `combateIniciado` correctamente — el mecanismo
+real (`detectNpcsInScene`, haystack = acción + sessionFacts) no exige ninguna "localización" previa,
+a diferencia de `GET /saves/:id/cazar` (que sí la exige, y es probablemente el origen de la
+confusión original). **Falso positivo**: no es un bug del motor.
 
 **Lore** (NPCs/facciones/clases por un agente, objetos/recetas/geografía por otro) — 2 hallazgos de
 severidad ALTA, sin aplicar todavía: `docs/rpgtarkor/areas.md` enumera "11 oficios" por nombre con
