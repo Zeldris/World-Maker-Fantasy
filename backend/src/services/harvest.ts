@@ -17,7 +17,11 @@ const VERB_REGEX_BY_METODO: Record<Exclude<MetodoObtencion, 'PASIVO'>, RegExp> =
   // El "cazar" en sí lo resuelve el combate — esto es solo el despiece/desollado posterior.
   CAZA: /despiez|desuell|desoll/,
   TALA: /tal[oae]|talando|hach(e|ea)|cort[oae].*(madera|le[ñn]a|arbol)/,
-  MINERIA: /min[oae]|pic[ao]|extra(e|igo).*(roca|piedra|mena|mineral)/,
+  // Boundary de palabra real (bug real jugando en vivo, 2026-09-03): sin `\b`, "min[oae]" matchea
+  // cualquier substring, incluida "exa-MINO" ("Examino con cuidado...") — un verbo de examinar
+  // sin relación con minar disparaba MINERIA igual que "Mino"/"Mina"/"Mine". Mismo criterio que
+  // `matchNpcAliases` (npcScene.ts, boundary real para evitar colisiones de substring).
+  MINERIA: /\bmin[oae]\b|\bpic[ao]\b|\bextra(e|igo)\b.*(roca|piedra|mena|mineral)/,
   EXTRACCION: /extra(e|igo)|arranc|recolect|cosech|recoj/,
   // Pescador (2026-09-02) — mismo criterio de completitud que el resto del mapa, aunque en la
   // práctica Pescar/Buscar siempre pasan por su propio pop-up determinista (HarvestSelectionModal,
@@ -43,7 +47,14 @@ export function matchesVerbForMetodo(action: string, metodo: MetodoObtencion): b
 // de terreno de uso constante en el juego, no una errata de "fuego". Mismo criterio: excluirla de
 // los candidatos fuzzy en vez de tocar la tolerancia a erratas en general (sigue haciendo falta
 // para erratas reales, ver test "corredr"~"corredor" en harvest.test.ts).
-const HARVEST_ALIAS_FUZZY_EXCLUSIONS = new Set(['suelo']);
+//
+// "acabo" añadido (bug real jugando en vivo, 2026-09-03): "Examino con cuidado el Tótem de clan
+// roto que acabo de encontrar..." (examinar un objeto ya en el inventario, sin mencionar ninguna
+// fuente real) bloqueó el turno entero con "¿trepador ocaso? Aquí no, desde luego..." — "acabo"
+// está a distancia de edición ≤2 de "ocaso" (harvestSourceAliases['trepador-ocaso']). Misma clase
+// de colisión exacta que "suelo"~"fuego": "acabo" es una palabra de uso constante ("acabo de..."),
+// no una errata real de "ocaso".
+const HARVEST_ALIAS_FUZZY_EXCLUSIONS = new Set(['suelo', 'acabo']);
 
 /// Tolerancia a erratas (roadmap 2026-07-20, P0 de Fable — auditoría de los demás detectores tras
 /// el bug real de matchNpcAliases): mismo patrón exacto, distancia de edición ≤2 palabra a palabra

@@ -28,6 +28,15 @@ describe('matchHarvestSource', () => {
     expect(matchHarvestSource(action)).toBe('canizor');
     expect(matchesVerbForMetodo(action, 'CAZA')).toBe(false);
   });
+
+  it('bug real 2026-09-03: "acabo" no colisiona con Trepador Ocaso al examinar un objeto del inventario', () => {
+    // Partida de Gorhorn, Los Restos de Maktor: examinar un objeto YA en el inventario, sin
+    // mencionar ninguna fuente real — antes del fix, "acabo" (de "acabo de encontrar") colaba
+    // 'trepador-ocaso' por tolerancia a erratas (distancia ≤2 de "ocaso"), bloqueando el turno
+    // entero con "¿trepador ocaso? Aquí no, desde luego...".
+    const action = 'Examino con cuidado el Tótem de clan roto que acabo de encontrar, buscando cualquier marca o símbolo que reconozca.';
+    expect(matchHarvestSource(action)).toBeUndefined();
+  });
 });
 
 // Verbo por método (2026-07-29, petición explícita: "para conseguir estos recursos debes cazar...
@@ -49,6 +58,12 @@ describe('matchesVerbForMetodo', () => {
     expect(matchesVerbForMetodo('Pico la roca de Los Pilares Rotos', 'MINERIA')).toBe(true);
     expect(matchesVerbForMetodo('Extraigo mena de la veta', 'MINERIA')).toBe(true);
     expect(matchesVerbForMetodo('Recojo una piedra suelta', 'MINERIA')).toBe(false);
+  });
+
+  it('bug real 2026-09-03: MINERIA no dispara por substring — "Examino" no es "mino"', () => {
+    // Sin boundary de palabra, "min[oae]" matcheaba dentro de "exa-MINO", bloqueando cualquier
+    // turno de examinar algo como si fuera una acción de minería.
+    expect(matchesVerbForMetodo('Examino con cuidado el objeto que acabo de encontrar', 'MINERIA')).toBe(false);
   });
 
   it('EXTRACCION acepta el verbo genérico de recolección deliberada', () => {
