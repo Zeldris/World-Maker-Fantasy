@@ -281,6 +281,40 @@ describe('GET /saves/:id', () => {
     expect(res.statusCode).toBe(200);
     expect(res.json().combateIniciado).toBeNull();
   });
+
+  // BUG REAL CERRADO (2026-09-03, "combate fantasma" — reverificando en vivo con Playwright tras
+  // el fix de reveal ambiental de la misma sesión): un Ruptidar (fauna, `ataqueNatural: "No
+  // ataca."`) golpeado en combate REAL EN CURSO (tirada exitosa, XP concedido, jugando de verdad)
+  // desaparecía de `combateIniciado` igual que si ya estuviera MUERTO — el filtro viejo trataba
+  // `ataqueNatural` (texto, siempre truthy si no está vacío) como un booleano de "ya resuelto", sin
+  // mirar la condición real. Con `NpcState` vacío (`[]`, combate en curso, ningún estado creado
+  // todavía) el combate DEBE seguir apareciendo — es la misma fauna del test de arriba, pero VIVA.
+  it('un Ruptidar (fauna, ataqueNatural real) sin NpcState (combate real en curso, no muerto) SÍ reabre combateIniciado', async () => {
+    findUniqueSave.mockResolvedValue(baseSave({ pendingCombatNpcSlugs: ['ruptidar'] }));
+    findManyNpc.mockResolvedValue([
+      { id: 'npc1', slug: 'ruptidar', name: 'Ruptidar', kind: 'PLANTILLA', ataqueNatural: 'No ataca.', atributoResistencia: 'destreza' },
+    ]);
+    findManyNpcState.mockResolvedValue([]);
+    const app = await buildApp();
+    const res = await app.inject({ method: 'GET', url: '/saves/save1' });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().combateIniciado).toEqual({
+      npcs: [{ slug: 'ruptidar', name: 'Ruptidar', condicionFisica: 'ILESO', saqueado: false, lootedItemNames: [], analizado: false, capturable: true, activeEffects: [] }],
+    });
+  });
+
+  it('un Ruptidar HERIDO (combate real en curso) SÍ reabre combateIniciado', async () => {
+    findUniqueSave.mockResolvedValue(baseSave({ pendingCombatNpcSlugs: ['ruptidar'] }));
+    findManyNpc.mockResolvedValue([
+      { id: 'npc1', slug: 'ruptidar', name: 'Ruptidar', kind: 'PLANTILLA', ataqueNatural: 'No ataca.', atributoResistencia: 'destreza' },
+    ]);
+    findManyNpcState.mockResolvedValue([{ npcId: 'npc1', scope: 'itinerante', condicionFisica: 'HERIDO', saqueado: false, lootedItemNames: [] }]);
+    const app = await buildApp();
+    const res = await app.inject({ method: 'GET', url: '/saves/save1' });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().combateIniciado?.npcs).toHaveLength(1);
+    expect(res.json().combateIniciado?.npcs[0].condicionFisica).toBe('HERIDO');
+  });
 });
 
 // Roadmap de UI de especialización (2026-09-01) — `raza`/`clase`/`especializacion` no viajaban en

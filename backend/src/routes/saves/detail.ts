@@ -141,19 +141,31 @@ export async function detailRoutes(app: FastifyInstance) {
     // creadas antes de esos fixes, por ejemplo), ya no basta para reabrir el aviso de "Combatir".
     //
     // BUG REAL CERRADO (2026-08-29, reverificación en vivo con Playwright): para FAUNA
-    // (`ataqueNatural` truthy, mismo marcador que `carcassCandidatesFor` en recolectar.ts) este
-    // filtro dejaba un candado circular sin salida — un Kirelon Arenoso MUERTO nunca pasa por
-    // "Saquear todo" (ese botón del resumen de combate, `CombatPanel.tsx`, solo cuenta NPCs
-    // presentes en `enciclopedia.npcs`, es decir humanoides; fauna se despieza por Desollar, un
-    // mecanismo aparte). Con `saqueado` siempre `false` para fauna, `combateIniciado` nunca se
+    // (`ataqueNatural` truthy, mismo marcador que `carcassCandidatesFor` en recolectar.ts) YA
+    // MUERTA este filtro dejaba un candado circular sin salida — un Kirelon Arenoso MUERTO nunca
+    // pasa por "Saquear todo" (ese botón del resumen de combate, `CombatPanel.tsx`, solo cuenta
+    // NPCs presentes en `enciclopedia.npcs`, es decir humanoides; fauna se despieza por Desollar,
+    // un mecanismo aparte). Con `saqueado` siempre `false` para fauna, `combateIniciado` nunca se
     // vaciaba, y el aviso pasivo de Desollar (`GameView.tsx`, "Hay presas caídas sin desollar")
     // exige `!combateIniciado` para aparecer — el jugador quedaba entre un botón "Salir" que no
     // limpiaba nada y un botón "Combatir" que solo reabría la misma pantalla de victoria sin
     // ninguna opción de desuello. Fauna MUERTA nunca cuenta como "pendiente de resolver" aquí — su
     // resolución real es Desollar, que vive fuera de `combateIniciado` a propósito.
+    //
+    // BUG REAL CERRADO (2026-09-03, "combate fantasma" — reverificando en vivo con Playwright tras
+    // el fix de reveal ambiental de la Pieza 4 de esta misma sesión): el fix de arriba usaba
+    // `n.ataqueNatural` (un campo de TEXTO descriptivo, ej. Ruptidar: `"No ataca."`) como si fuera
+    // un booleano de "esta fauna ya está resuelta" — cualquier string no vacío es truthy en JS, así
+    // que un combate REAL EN CURSO contra esa fauna (con tirada/golpe conectado/XP concedido de
+    // verdad, `Save.pendingCombatNpcSlugs` activo) quedaba excluido de `combateIniciado` igual que
+    // si ya estuviera muerta — `GET /saves/:id` devolvía `combateIniciado: null` sin ningún botón
+    // "Combatir" visible (0 encontrados jugando), sin ninguna vía de UI para resolverlo. El
+    // criterio correcto es mirar la `condicionFisica` REAL del `NpcState` — solo excluir cuando de
+    // verdad está `MUERTO`, nunca por la mera presencia de texto en `ataqueNatural`.
     const pendingCombatNpcsSinResolver = pendingCombatNpcs.filter((n) => {
-      if (n.ataqueNatural) return false;
-      return !pendingCombatStateByKey.get(`${n.id}|${scopeFor(n.kind, save.currentLocationId)}`)?.saqueado;
+      const state = pendingCombatStateByKey.get(`${n.id}|${scopeFor(n.kind, save.currentLocationId)}`);
+      if (n.ataqueNatural && state?.condicionFisica === 'MUERTO') return false;
+      return !state?.saqueado;
     });
     // `CombatEncounter` de grupo real activo (2026-08-27) — reconstruye `combateIniciado` a partir
     // de sus `CombatParticipant` reales (mismo shape/algoritmo que `turnResolution.ts`, incluido
