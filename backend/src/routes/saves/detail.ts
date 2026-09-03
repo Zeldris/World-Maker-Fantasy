@@ -531,6 +531,11 @@ export async function detailRoutes(app: FastifyInstance) {
       // botón "Interactuar"/"Ignorar" en sí, reconstruido tras recargar en vez de vivir solo en el
       // `characterLog` efímero de React.
       pendingDynamicModeOffer: save.pendingDynamicModeOffer as { tipo: 'NPC' | 'FAUNA'; targetSlug: string; targetName: string } | null,
+      // Oferta de misión SIN aceptar todavía (bug real jugando en vivo, 2026-09-03: "misión de
+      // apertura no sobrevive a un F5") — mismo criterio exacto que `pendingDynamicModeOffer` de
+      // arriba: la tarjeta "MISIÓN PROPUESTA" (botones Aceptar/Cancelar) solo vivía en el
+      // `characterLog` efímero de React.
+      pendingQuestOfferInfo: save.pendingQuestOfferInfo as { title: string; description: string } | null,
       // Ataque enemigo pendiente de defensa en combate 1v1 clásico (bug real 2026-08-28/29,
       // "recargar mientras el enemigo tiene la iniciativa rompe el turno") — mismo criterio que
       // `combateIniciado` arriba: `Save.pendingNpcAttack` ya persistía bien, pero nunca viajaba en

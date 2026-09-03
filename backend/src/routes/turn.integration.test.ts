@@ -1567,6 +1567,108 @@ describe('newQuestOfferInfo + POST /saves/:id/quests/aceptar: oferta de misión 
   }, 20_000);
 });
 
+// Bug real jugando en vivo (2026-09-03, "misión de apertura no sobrevive a un F5") —
+// `pendingQuestOfferInfo` (schema.prisma) persiste la oferta para que GET /saves/:id la reconstruya
+// tras recargar, y se limpia al Aceptar o Cancelar — mismo patrón exacto ya probado para
+// `pendingDynamicModeOffer`.
+describe('pendingQuestOfferInfo: la oferta de misión sobrevive a un F5 (auditoría "sesión de juego" 2026-09-03)', () => {
+  let saveId: string;
+
+  beforeAll(async () => {
+    const userId = await getDefaultUserId();
+    const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
+    const location = await prisma.location.findFirstOrThrow({ where: { worldId: world.id, slug: 'hondonada-del-eco' } });
+    const save = await prisma.save.create({
+      data: {
+        userId,
+        worldId: world.id,
+        characterName: 'Gorhorn de prueba (pendingQuestOfferInfo)',
+        characterArchetype: 'guerrero',
+        characterOrigin: 'Clan Maktor',
+        characterMotivation: 'x',
+        attributes: ATTRS,
+        portraitInitial: 'G',
+        currentLocationId: location.id,
+      },
+    });
+    saveId = save.id;
+    await prisma.worldState.create({ data: { saveId } });
+    // Mismo motivo que el describe hermano de arriba: empezar en playerActionCount=2 evita
+    // disparar el guion completo de Gistera Koh, que también propone una misión determinista.
+    await prisma.logEntry.create({
+      data: { saveId, channel: 'CHARACTER', text: 'relleno', timeLabel: 'Día 1, mañana', isPlayerAction: true },
+    });
+    classifyAction.mockResolvedValue({
+      requiereTirada: false, atributo: 'carisma', dificultad: 8, razon: 'x', banda: 'instantanea', duracionEstimadaMinutos: 0,
+    });
+  });
+
+  afterAll(async () => {
+    vi.restoreAllMocks();
+    await prisma.save.delete({ where: { id: saveId } });
+  });
+
+  it('el turno persiste la oferta, y GET /saves/:id la reconstruye tras "recargar"', async () => {
+    narrateAction.mockResolvedValueOnce({
+      narration: 'El Orco Enfurecido te ofrece una tregua si le traes su maza perdida.',
+      newFacts: [],
+      newQuest: { title: 'Recuperar la maza del Orco Enfurecido (F5)', description: 'El Orco Enfurecido ofrece una tregua a cambio de su maza perdida.' },
+    });
+    await doTurn(saveId, "Me acerco despacio a 'Orco enfurecido' sin decir nada.");
+
+    const saveAfter = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
+    expect(saveAfter.pendingQuestOfferInfo).toEqual({
+      title: 'Recuperar la maza del Orco Enfurecido (F5)',
+      description: 'El Orco Enfurecido ofrece una tregua a cambio de su maza perdida.',
+    });
+
+    const detailApp = await buildApp();
+    await detailApp.register(detailRoutes);
+    const detailRes = await detailApp.inject({ method: 'GET', url: `/saves/${saveId}` });
+    expect(detailRes.statusCode).toBe(200);
+    expect(detailRes.json().pendingQuestOfferInfo).toEqual({
+      title: 'Recuperar la maza del Orco Enfurecido (F5)',
+      description: 'El Orco Enfurecido ofrece una tregua a cambio de su maza perdida.',
+    });
+  }, 20_000);
+
+  it('POST /quests/aceptar limpia pendingQuestOfferInfo — ya no reaparece tras recargar', async () => {
+    const app = await buildApp();
+    await app.register(questsRoutes);
+    const res = await app.inject({
+      method: 'POST',
+      url: `/saves/${saveId}/quests/aceptar`,
+      payload: { title: 'Recuperar la maza del Orco Enfurecido (F5)', description: 'El Orco Enfurecido ofrece una tregua a cambio de su maza perdida.' },
+    });
+    expect(res.statusCode).toBe(200);
+
+    const saveAfter = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
+    expect(saveAfter.pendingQuestOfferInfo).toBeNull();
+  }, 20_000);
+
+  it('POST /quests/cancelar limpia pendingQuestOfferInfo sin crear ninguna Quest', async () => {
+    narrateAction.mockResolvedValueOnce({
+      narration: 'El Orco Enfurecido te ofrece otra tregua si le traes su casco perdido.',
+      newFacts: [],
+      newQuest: { title: 'Recuperar el casco del Orco Enfurecido', description: 'El Orco Enfurecido ofrece una tregua a cambio de su casco perdido.' },
+    });
+    await doTurn(saveId, "Me acerco despacio a 'Orco enfurecido' sin decir nada de nuevo.");
+    const saveWithOffer = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
+    expect(saveWithOffer.pendingQuestOfferInfo).not.toBeNull();
+
+    const app = await buildApp();
+    await app.register(questsRoutes);
+    const res = await app.inject({ method: 'POST', url: `/saves/${saveId}/quests/cancelar` });
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toEqual({ ok: true });
+
+    const saveAfter = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
+    expect(saveAfter.pendingQuestOfferInfo).toBeNull();
+    const quest = await prisma.quest.findFirst({ where: { saveId, title: 'Recuperar el casco del Orco Enfurecido' } });
+    expect(quest).toBeNull();
+  }, 20_000);
+});
+
 // Cobertura (auditoría de deuda técnica AMPLIA 2026-08-04 + guard de catálogo 2026-08-25, Grupo 3
 // § Mundo determinista): `narration.newItem` (objeto narrativo libre propuesto por el LLM) ya no
 // crea un `InventoryItem` sin más — desde 2026-08-25 exige que el nombre coincida con un item REAL

@@ -1,4 +1,5 @@
 import type { FastifyInstance } from 'fastify';
+import { Prisma } from '@prisma/client';
 import { prisma } from '../../lib/prisma.js';
 import { normalizeText, matchDestination } from '../../services/travel.js';
 import { loadSessionFacts, appendSessionFacts } from '../../services/worldFacts.js';
@@ -129,6 +130,10 @@ export async function questsRoutes(app: FastifyInstance) {
         const logEntry = await tx.logEntry.create({
           data: { saveId: save.id, channel: 'CHARACTER', text, timeLabel, fictionalMinutes, isPlayerAction: false },
         });
+        // Limpia la oferta persistida (bug real jugando en vivo, 2026-09-03, ver
+        // `pendingQuestOfferInfo` en schema.prisma) — mismo criterio que `pendingDynamicModeOffer`
+        // al Interactuar: la tarjeta ya se resolvió de verdad, no debe reaparecer tras F5.
+        await tx.save.update({ where: { id: save.id }, data: { pendingQuestOfferInfo: Prisma.JsonNull } });
 
         let questCompletedInfo: { logEntryId: string; text: string; title: string; grantedItems: string[]; rewardXp: number } | null = null;
         if (isOrcoEnfurecido && orcoYaResuelto) {
@@ -162,4 +167,23 @@ export async function questsRoutes(app: FastifyInstance) {
       };
     },
   );
+
+  /// Botón "Cancelar" de la tarjeta "MISIÓN PROPUESTA" (bug real jugando en vivo, 2026-09-03, ver
+  /// `pendingQuestOfferInfo` en schema.prisma) — mismo patrón exacto que
+  /// `/modo-dinamico/ignorar` (dynamicMode.ts): antes "Cancelar" era 100% local en React
+  /// (`questOffer: undefined`, sin llamada a la API) porque nunca se había persistido nada; con la
+  /// oferta ahora persistida al proponerse, cancelar sin llamar aquí dejaría la tarjeta
+  /// reapareciendo tras F5 aunque el jugador ya la hubiera descartado.
+  app.post<{ Params: { id: string } }>('/saves/:id/quests/cancelar', async (request, reply) => {
+    const save = await prisma.save.findUnique({
+      where: { id: request.params.id },
+      select: { id: true, endedAt: true, pendingQuestOfferInfo: true },
+    });
+    if (!save) return reply.status(404).send({ error: 'Partida no encontrada' });
+    if (rejectIfEnded(save, reply)) return;
+    if (save.pendingQuestOfferInfo) {
+      await prisma.save.update({ where: { id: save.id }, data: { pendingQuestOfferInfo: Prisma.JsonNull } });
+    }
+    return { ok: true };
+  });
 }

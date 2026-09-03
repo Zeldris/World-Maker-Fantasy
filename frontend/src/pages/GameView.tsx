@@ -66,6 +66,7 @@ import {
   setActiveCombatAbilities,
   fundarReino,
   aceptarMision,
+  cancelarMision,
   interactuarModoDinamico,
   responderModoDinamico,
   ignorarModoDinamico,
@@ -592,6 +593,18 @@ export function GameView() {
         return prev.map((e, i) => (i === lastIdx ? { ...e, dynamicModeOffer: { ...offer, busy: false } } : e))
       })
     }
+    // Bug real jugando en vivo (2026-09-03, "misión de apertura no sobrevive a un F5") — mismo
+    // criterio exacto que `pendingDynamicModeOffer` justo arriba: la tarjeta "MISIÓN PROPUESTA"
+    // reconstruida colgándola de la última entrada del log, en vez de vivir solo en el
+    // `characterLog` efímero de React.
+    if (save.pendingQuestOfferInfo) {
+      const offer = save.pendingQuestOfferInfo
+      setCharacterLog((prev) => {
+        const lastIdx = prev.length - 1
+        if (lastIdx < 0 || prev[lastIdx].questOffer) return prev
+        return prev.map((e, i) => (i === lastIdx ? { ...e, questOffer: offer } : e))
+      })
+    }
   }
 
   // Grupo 3 § Compañeros y supervivencia (2026-08-25) — resincroniza la partida entera tras una
@@ -722,6 +735,12 @@ export function GameView() {
 
   function handleDismissQuestOffer(entryId: string) {
     setCharacterLog((prev) => prev.map((e) => (e.id === entryId ? { ...e, questOffer: undefined } : e)))
+    // Bug real jugando en vivo (2026-09-03, "misión de apertura no sobrevive a un F5") — la oferta
+    // ahora se persiste en el backend al proponerse (`pendingQuestOfferInfo`); sin esta llamada,
+    // recargar tras Cancelar hacía reaparecer la tarjeta ya descartada. Best-effort (mismo criterio
+    // que el resto de acciones deterministas de este archivo): la tarjeta ya se limpió en pantalla,
+    // un fallo de red aquí no bloquea nada más.
+    if (saveId) cancelarMision(saveId).catch(() => {})
   }
 
   // "Modo dinámico" (2026-08-27) — mismo criterio efímero que questOffer: la tarjeta se limpia solo

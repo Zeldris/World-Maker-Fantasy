@@ -561,6 +561,10 @@ export interface SaveDetail {
   /// recarga") — mismo criterio que `pendingDynamicMode` arriba, un escalón antes: el botón
   /// "Interactuar"/"Ignorar" en sí, reconstruido tras F5 en vez de vivir solo en `characterLog`.
   pendingDynamicModeOffer: { tipo: 'NPC' | 'FAUNA'; targetSlug: string; targetName: string } | null
+  /// Oferta de misión SIN aceptar todavía (bug real jugando en vivo, 2026-09-03, "misión de
+  /// apertura no sobrevive a un F5") — mismo criterio exacto que `pendingDynamicModeOffer`: la
+  /// tarjeta "MISIÓN PROPUESTA" reconstruida tras F5 en vez de vivir solo en `characterLog`.
+  pendingQuestOfferInfo: { title: string; description: string } | null
   /// Ataque enemigo pendiente de defensa en el combate 1v1 clásico (bug real 2026-08-28/29,
   /// "recargar mientras el enemigo tiene la iniciativa rompe el turno"): `Save.pendingNpcAttack`
   /// ya persistía bien en el backend, pero nunca viajaba en `GET /saves/:id` — tras F5,
@@ -1194,6 +1198,14 @@ export async function aceptarMision(
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ title, description }),
   })
+}
+
+/// Botón "Cancelar" de la tarjeta "MISIÓN PROPUESTA" (bug real jugando en vivo, 2026-09-03, "misión
+/// de apertura no sobrevive a un F5") — la oferta ahora se persiste al proponerse
+/// (`pendingQuestOfferInfo`), así que cancelar debe limpiarla de verdad en el backend, no solo
+/// localmente en React, o reaparece tras recargar.
+export async function cancelarMision(saveId: string): Promise<{ ok: boolean }> {
+  return fetchJson(`${API_URL}/saves/${saveId}/quests/cancelar`, { method: 'POST' })
 }
 
 /// "Modo dinámico" (2026-08-27, Pieza 4 de "Dinamismo del mundo") — resultado de una vuelta,

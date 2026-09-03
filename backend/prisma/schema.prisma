@@ -318,6 +318,15 @@ model Save {
   /// un contador que decrece. Null = nunca se ofreció una en esta partida, sin cooldown que aplicar.
   lastDynamicModeOfferAtMinutes Int?
 
+  /// Oferta de misión SIN aceptar todavía (bug real jugando en vivo, 2026-09-03: "misión de
+  /// apertura no sobrevive a un F5" — `newQuestOfferInfo` de turnResolution.ts solo viajaba en la
+  /// respuesta directa del turno; recargar en el momento equivocado la perdía sin ningún aviso).
+  /// Mismo patrón exacto que `pendingDynamicModeOffer`: `{ title, description }` mientras la
+  /// tarjeta "MISIÓN PROPUESTA" sigue visible sin decidir — null si no hay ninguna oferta
+  /// pendiente. Se limpia con `Prisma.JsonNull` al pulsar "Aceptar" (POST /quests/aceptar) o
+  /// "Cancelar" (POST /quests/cancelar, nuevo), igual de laxo que el resto de campos "pending".
+  pendingQuestOfferInfo Json?
+
   /// Viaje truncado por un evento de interrupción (ronda de correcciones 2026-08-28, P3.2 —
   /// hallazgo real: "el viaje se trunca sin recordar el destino, el jugador queda varado en el
   /// punto de interrupción"). `pickTravelInterruption` (turn.ts) ya recorta el tránsito a la

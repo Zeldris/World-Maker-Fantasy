@@ -5581,6 +5581,15 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
       }
     }
 
+    // Bug real jugando en vivo (2026-09-03, "misión de apertura no sobrevive a un F5") — mismo
+    // patrón exacto que `pendingDynamicModeOffer` más abajo: persistir la oferta para que
+    // `GET /saves/:id` (detail.ts) pueda reconstruir la tarjeta "MISIÓN PROPUESTA" tras recargar.
+    // Cubre AMBOS caminos de arriba (genérico y Gistera/Orco Enfurecido) con una sola escritura,
+    // ya resuelto el valor definitivo de `newQuestOfferInfo` para este turno.
+    if (newQuestOfferInfo) {
+      await tx.save.update({ where: { id: saveId }, data: { pendingQuestOfferInfo: newQuestOfferInfo } });
+    }
+
     if (narration.questProgress) {
       const matchingQuests = await tx.quest.findMany({
         where: { saveId, title: narration.questProgress.title, status: 'ACTIVA' },
