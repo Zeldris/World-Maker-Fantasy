@@ -6333,3 +6333,69 @@ describe('recordEntityDiscoveries usa npcAttackTarget de forma determinista (aud
     expect(discovered).not.toBeNull();
   }, 15_000);
 });
+
+// Bug real jugando en vivo (2026-09-03, "atacar resuelto sin combate real"): "Me acerco despacio a
+// la boca de cueva y ataco sin dudarlo a lo que sea que me observa desde dentro" se resolvió con
+// una tirada de Destreza/aproximación genérica — sin NPC/fauna matcheado en escena, el motor no
+// tiene ningún candidato al que abrir combate, y la amenaza desaparecía del relato sin explicación.
+// Fix: cuando hay intención de ataque explícita (`detectsAttackIntent`) sin ningún NPC en escena,
+// la sugerencia ambiental de encuentro (antes 25% de probabilidad, opcional para el modelo) se
+// fuerza siempre y deja de sonar a sugerencia libre — instruye al narrador a revelar el nombre real
+// de un candidato de la región, sin resolver el combate todavía (eso lo hace el turno siguiente,
+// ya con el nombre conocido, por el camino normal de `detectNpcsInScene`).
+describe('Ataque explícito sin objetivo identificado fuerza el reveal narrativo (auditoría "sesión de juego" 2026-09-03)', () => {
+  let saveId: string;
+
+  beforeAll(async () => {
+    vi.spyOn(Math, 'random').mockReturnValue(0); // determinista: siempre el primer candidato ponderado
+    const userId = await getDefaultUserId();
+    const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
+    const location = await prisma.location.findFirstOrThrow({ where: { worldId: world.id, slug: 'hondonada-del-eco' } });
+    const save = await prisma.save.create({
+      data: {
+        userId,
+        worldId: world.id,
+        characterName: 'Gorhorn de prueba (reveal ambiental forzado)',
+        characterArchetype: 'guerrero',
+        characterOrigin: 'Clan Maktor',
+        characterMotivation: 'x',
+        attributes: ATTRS,
+        portraitInitial: 'G',
+        currentLocationId: location.id,
+      },
+    });
+    saveId = save.id;
+    await prisma.worldState.create({ data: { saveId } });
+    classifyAction.mockResolvedValue({
+      requiereTirada: true, atributo: 'destreza', dificultad: 12, razon: 'x', banda: 'instantanea', duracionEstimadaMinutos: 0,
+    });
+    narrateAction.mockClear();
+    narrateAction.mockResolvedValue({ narration: 'Narración de prueba.', newFacts: [] });
+  });
+
+  afterAll(async () => {
+    vi.restoreAllMocks();
+    await prisma.save.delete({ where: { id: saveId } });
+  });
+
+  it('un ataque a algo sin nombre fuerza la sugerencia de reveal (no opcional) con un candidato real de la región', async () => {
+    const app = await buildApp();
+    const action = 'Me acerco despacio a la boca de cueva y ataco sin dudarlo a lo que sea que me observa desde dentro.';
+    const classifyRes = await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action, enCombate: false } });
+    const { classification, roll } = classifyRes.json();
+    const narrateRes = await app.inject({
+      method: 'POST',
+      url: '/turn/narrate',
+      payload: { saveId, action, classification, roll, enCombate: false },
+    });
+    expect(narrateRes.statusCode).toBe(200);
+
+    const narrateCallArgs = narrateAction.mock.calls.at(-1)?.[0] as { worldFacts?: string[] };
+    const hint = narrateCallArgs.worldFacts?.find((f) => f.includes('ACABA DE ATACAR ALGO QUE TODAVÍA NO TIENE NOMBRE'));
+    expect(hint).toBeDefined();
+    expect(hint).toContain('REVELACIÓN');
+    // Múrgol: itinerante real con WorldPopulation > 0 y peso en Las Llanuras del Viento Rojo
+    // (misma región de La Hondonada del Eco) — con Math.random mockeado a 0, candidato determinista.
+    expect(hint).toContain('Múrgol');
+  }, 15_000);
+});

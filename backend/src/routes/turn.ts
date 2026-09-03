@@ -469,21 +469,24 @@ export async function turnRoutes(app: FastifyInstance) {
     const blockedTimeLabel = save.worldState?.fictionalDateLabel ?? 'Día 1, mañana';
     const blockedFictionalMinutes = save.worldState?.fictionalMinutes ?? 480;
     const blockedWorldId = save.worldId;
-    async function resolveBlockedTurn(narrationText: string) {
+    // `discoverEntities` (bug real jugando en vivo, 2026-09-03, "fauna interactuada no se
+    // desbloquea en la Enciclopedia"): a diferencia del flujo normal de turno (turnResolution.ts,
+    // que sí llama a recordEntityDiscoveries al final), este camino corto nunca lo hacía. Pero solo
+    // tiene sentido cuando el guard que bloqueó de verdad menciona una entidad REAL de catálogo
+    // (p.ej. `absentSceneNpcClaim` — "¿Kirelon Arenoso? Aquí no hay nadie con ese nombre..."). Los
+    // guards puramente sintácticos (anacronismo, construcción inventada) están documentados y
+    // testeados como "sin consultas, el chequeo más barato de todos" — llamar aquí siempre habría
+    // roto esa garantía para casos donde no hay ninguna entidad real que descubrir.
+    async function resolveBlockedTurn(narrationText: string, discoverEntities = false) {
       await prisma.logEntry.create({
         data: { saveId, channel: 'CHARACTER', text: action, isPlayerAction: true, timeLabel: blockedTimeLabel, fictionalMinutes: blockedFictionalMinutes },
       });
       await prisma.logEntry.create({
         data: { saveId, channel: 'CHARACTER', text: narrationText, isPlayerAction: false, timeLabel: blockedTimeLabel, fictionalMinutes: blockedFictionalMinutes },
       });
-      // Bug real jugando en vivo (2026-09-03, "fauna interactuada no se desbloquea en la
-      // Enciclopedia"): a diferencia del flujo normal de turno (turnResolution.ts, que sí llama a
-      // recordEntityDiscoveries al final), este camino corto nunca lo hacía — un guard como
-      // `absentSceneNpcClaim` puede mencionar por nombre real a un NPC/fauna de catálogo (p.ej.
-      // "¿Kirelon Arenoso? Aquí no hay nadie con ese nombre...") sin que eso contara nunca como
-      // descubrimiento. Mismo patrón exacto que turnResolution.ts, función aditiva/idempotente que
-      // nunca lanza.
-      await recordEntityDiscoveries({ saveId, worldId: blockedWorldId, mentionedText: narrationText });
+      if (discoverEntities) {
+        await recordEntityDiscoveries({ saveId, worldId: blockedWorldId, mentionedText: narrationText });
+      }
       return { blocked: { narration: narrationText } };
     }
 
@@ -525,7 +528,7 @@ export async function turnRoutes(app: FastifyInstance) {
       npcsInSceneForValidation.map((n) => n.slug),
     );
     if (absentNpcClaim) {
-      return resolveBlockedTurn(absentSceneNpcNarrationFor(absentNpcClaim.name));
+      return resolveBlockedTurn(absentSceneNpcNarrationFor(absentNpcClaim.name), true);
     }
 
     // Fase 3 (acotada a comillas, docs/18-validacion-accion-jugador.md): NPC/fauna nombrado ENTRE

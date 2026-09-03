@@ -3226,7 +3226,17 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   // especie en una zona ahora la hace de verdad más rara de encontrar ahí, y una especie extinta
   // (`poblacion === 0`) deja de sugerirse. Solo cuenta la fauna con fila de `WorldPopulation` real
   // y peso > 0 en la región activa — sin datos reales, no se sugiere nada (nunca se inventa).
-  if (npcsInScene.length === 0 && !enCombate && !lootMode && !harvestMatch && activeRegion && Math.random() < 0.25) {
+  // Bug real jugando en vivo (2026-09-03, "atacar resuelto sin combate real"): un ataque EXPLÍCITO
+  // contra algo sin nombre todavía ("ataco a lo que sea que me observa desde dentro") nunca podía
+  // abrir combate — `detectNpcsInScene` solo resuelve por matching de alias, sin ningún candidato
+  // que atacar el turno se resolvía como una tirada genérica (aquí, Destreza/aproximación), dejando
+  // la amenaza sin identificar para siempre. `attackWithoutIdentifiedTarget` fuerza esta sugerencia
+  // (antes 25% de probabilidad, "opcional para el modelo") a dispararse siempre que haga falta, y
+  // el texto deja de sonar a sugerencia libre — el turno SIGUIENTE, ya con el nombre real
+  // mencionado y matcheable, sí puede abrir combate por el camino normal (mismo criterio que
+  // shouldForceCombat/tabulatedTarget, sin tocarlos: se resuelve un turno antes, en el reveal).
+  const attackWithoutIdentifiedTarget = npcsInScene.length === 0 && !enCombate && !lootMode && !harvestMatch && detectsAttackIntent(action);
+  if (npcsInScene.length === 0 && !enCombate && !lootMode && !harvestMatch && activeRegion && (attackWithoutIdentifiedTarget || Math.random() < 0.25)) {
     const itinerantCandidates = await prisma.npc.findMany({
       where: { worldId, kind: 'PLANTILLA', homeLocationSlug: null },
       select: { slug: true, name: true, role: true, temperamento: true, faction: true },
@@ -3271,7 +3281,9 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
         const t = effectiveTemperamento(fullCandidate.temperamento, fullCandidate.faction, factionsStatus);
         const temperamentoHint = t === 'AGRESIVO' || t === 'ENEMIGO' ? 'es hostil por naturaleza' : 'es pacífico por naturaleza — no lo narres iniciando un ataque';
         contextBlocks.push(
-          `SUGERENCIA OPCIONAL DE ENCUENTRO (úsala solo si encaja de forma natural con la escena, ignórala si no): el personaje podría cruzarse aquí con ${candidate.name} (${candidate.role}), que ${temperamentoHint}. Si decides introducirlo, usa ese nombre exacto para que el motor lo reconozca de verdad.`,
+          attackWithoutIdentifiedTarget
+            ? `EL PERSONAJE ACABA DE ATACAR ALGO QUE TODAVÍA NO TIENE NOMBRE ("${action}") — el motor no puede resolver un combate contra una amenaza sin identificar. Narra este turno la REVELACIÓN de a qué se enfrenta: es ${candidate.name} (${candidate.role}), que ${temperamentoHint}. Usa ese nombre exacto y real en tu narración — no dejes al personaje golpeando algo anónimo, y no resuelvas el desenlace del ataque todavía: el combate en sí se librará en el turno siguiente, una vez el nombre ya es conocido.`
+            : `SUGERENCIA OPCIONAL DE ENCUENTRO (úsala solo si encaja de forma natural con la escena, ignórala si no): el personaje podría cruzarse aquí con ${candidate.name} (${candidate.role}), que ${temperamentoHint}. Si decides introducirlo, usa ese nombre exacto para que el motor lo reconozca de verdad.`,
         );
       }
     }
