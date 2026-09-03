@@ -57,56 +57,106 @@ peinaron ~200 archivos de memoria y los servicios/rutas más grandes del backend
   `docs/checklist-pruebas-juego.md` y `docs/revisar-partida-hallazgos.md` también actualizados en
   los mismos puntos.
 
-### Genuinamente pendiente a día de hoy (consolidado de toda la auditoría)
+### Genuinamente pendiente a día de hoy (verificado DOS veces — auditoría inicial + reverificación
+contra código real con 3 agentes en paralelo, tras encontrar que la primera pasada también tenía
+errores: 6 de los 25 ítems del primer checklist ya estaban cerrados o llevaban matices importantes)
 
-**Diseño/rediseño con alcance ya definido, solo falta implementar:**
-- **Rediseño "Matar" (P3.2 mayor)** — quitar el remate garantizado sin tirada al pulsar Matar sobre
-  un NPC CONVALECIENTE, sustituirlo por un intercambio real con riesgo (malus ya existente,
-  reutilizable). Diseño técnico completo en `tarkor_rediseno_matar_combate_real_2026-08-30`,
-  pospuesto a propósito por su alcance (2 detectores a reescribir, optimistic-update a quitar, ~8
-  tests a reescribir). Distinto del bug operativo homónimo, ya cerrado (Matar ya desbloquea la
-  elección real en vez de ejecutar Ataque Básico solo).
+**Diseño con alcance ya definido, solo falta implementar** (3, no 4 — "Matar" se cayó de esta lista,
+ver abajo):
 - **Balance del primer combate (Orco Enfurecido/misión Gistera)** — tras 8 turnos de intercambio en
   un combate real, ni asegura victoria ni se siente "asequible" para un tutorial de facto de nivel
-  1. Sin tocar todavía (bajar stats/quitar equipo al NPC, valorar si otros orígenes tienen el mismo
-  problema). Ver `docs/checklist-pruebas-juego.md` punto 1.5.
-- **`questSlug` estructurado en `Quest`** — `quests.ts § ORCO_ENFURECIDO_QUEST_TITLE` sigue
-  hardcodeado por título exacto (decisión consciente, arreglarlo de raíz exige migración de
-  schema). Ver `tarkor_auditoria_6_agentes_2026-09-01`.
-- **Sub-combates fragmentados (>4v4) con fallo de servidor a mitad** — riesgo de diseño confirmado
-  por lectura de código (sin cron de recuperación de `CombatEncounter` huérfanos), requiere
-  interrumpir el backend a propósito para reproducirlo, nunca autorizado. Decidir si merece forzarlo.
+  1. Sin tocar desde 2026-08-28 (`git log -G` sobre el bloque del NPC solo muestra el rebalanceo
+  original de 2026-07-29 y el rename cosmético Arcano→Magia). Ver `docs/checklist-pruebas-juego.md`
+  punto 1.5.
+- **`questSlug` estructurado en `Quest`** — `quests.ts:18 § ORCO_ENFURECIDO_QUEST_TITLE` sigue
+  hardcodeado por título exacto, sin ningún campo `questSlug` en `schema.prisma` (decisión
+  consciente, arreglarlo de raíz exige migración). Ver `tarkor_auditoria_6_agentes_2026-09-01`.
+- **Sub-combates fragmentados (>4v4) con fallo de servidor a mitad** — confirmado con precisión:
+  `cazar.ts:493-515` crea TODOS los `CombatEncounter` (incluidos los fragmentos autónomos) dentro de
+  una única transacción, pero `resolverTurnosAutonomosHastaJugadora` (línea 525-529) los resuelve
+  DESPUÉS, fuera de esa transacción — si el proceso muere entre medias, esos `CombatEncounter`
+  quedan huérfanos para siempre. Las únicas 2 consultas que leen por `estado: 'EN_CURSO'`
+  (`detail.ts:118`, `turnResolution.ts:2614`) filtran `jugable: true` a propósito, ignorando los
+  fragmentos. Ningún worker/cron los recupera. Requiere interrumpir el backend a propósito para
+  reproducirlo en vivo, nunca autorizado. Decidir si merece forzarlo o construir la recuperación a
+  ciegas.
 
-**Bugs/huecos menores anotados, sin investigar todavía:**
-- "Cargando partida..." infinito al crear partida nueva (requiere F5 manual).
-- Misión muestra botón "Interactuar" en vez de Aceptar/Cancelar en un caso NO relacionado con
-  Gistera/Orco Enfurecido (posible colisión con el modo dinámico).
-- Tooltip del toggle de barra de habilidades sigue cortado tras un primer intento de fix.
-- Descripciones de habilidad en la Ficha del Rival siguen siendo solo lore/flavor, sin desglose
-  mecánico real.
-- Kirelon Arenoso "sobrerrepresentado" (mismo NPC apareciendo mucho entre combates) — mencionado de
-  pasada, sin archivo dedicado ni investigación.
-- Nombre de NPC "pegado" gramaticalmente como aposición de un lugar en la narración (ruido de
-  coherencia, sin guard candidato, muestra de 1 turno) — `docs/checklist-pruebas-juego.md` § 1.
-- Auto-contradicción de Gistera en `generateNpcReply` (`narrador.ts`) — una réplica de NPC afirma
-  algo y lo niega en la misma frase, `hasMetaInstructionLeak` no lo cazó. Sin guard nuevo.
-- Flake `ANALIZAR RIVAL` (`combateMultipleOrquestacion.integration.test.ts`) — confirmado bug real
-  de condición de carrera DENTRO del test (no contención de Postgres), sin arreglar
-  (`tarkor_flake_analizar_rival_no_es_contencion_2026-09-02`).
+**CERRADO, se cae de la lista de pendientes** (verificación 2026-09-03, tarde — este checklist
+había heredado el error de una memoria desactualizada): **Rediseño "Matar"** — el remate
+determinista SIN tirada ya no existe. Confirmado en `turnResolution.ts:2313-2319` (comentario
+explícito citando el rediseño 2026-08-30) y `postCombatInteraction.ts:9-11` — Matar sobre
+CONVALECIENTE ya fuerza un intercambio real con riesgo (malus de condición), desde el mismo día en
+que se diseñó. `tarkor_rediseno_matar_combate_real_2026-08-30` corregida.
 
-**Aparcado a propósito por decisión de diseño (no bugs, no urgente):**
-- `comerciablePct`/`cortejablePct` sin sistema real detrás (comerciar sigue narrativo libre,
-  cortejo no existe como mecánica) — la usuaria confirmó que se quedan, pendientes de diseño propio.
-- `Npc.levelMax`/`percepcionPasivaFor` — sin consumidor todavía, en cola de diseño.
-- Postura de compañero en combate (Agresivo/Defensivo/Capturador/Clemente) — espera a que exista
-  combate autónomo de compañero sin la jugadora presente.
-- Clemencia de enemigo / duelos de honor — sistema espejo del anterior, sin diseñar.
-- Fase 4 de clases (`RETIRAR`, filas de `AUMENTO`/`DEBILIDAD`/`CURAZION` sin cifra) — espera a que
-  la usuaria rellene números en `clases.md` a su ritmo.
+**Bugs/huecos menores, verificados uno a uno (2026-09-03) — 4 de los 7 originales ya estaban
+cerrados**:
+- ❌ **Sigue pendiente**: "Cargando partida..." infinito al crear partida nueva. Causa raíz
+  encontrada: `createNewSave()` (`GameView.tsx:1144`) retorna en silencio si
+  `selectedWorld`/`selectedCharacter` (estado en memoria, `SessionContext.tsx`, sin persistencia)
+  están vacíos — pasa si se recarga o se navega directo sin pasar por la selección en esa pestaña.
+  Sin guard de ruta que redirija.
+- ✅ **CERRADO** (commit `899003b`, 2026-08-30): misión mostraba "Interactuar" en vez de
+  Aceptar/Cancelar — `turnResolution.ts:6386-6387` ya tiene exclusión mutua explícita entre
+  `dynamicModeOffer` y `newQuestOfferInfo`.
+- ✅ **CERRADO** (commit `899003b`): tooltip del toggle de la barra de habilidades cortado —
+  `TooltipAnchor.tsx` ya usa `createPortal` + alineación dinámica según espacio de viewport.
+- ✅ **CERRADO** (commit `899003b`): descripciones de habilidad en la Ficha del Rival sin desglose
+  mecánico — `CombatPanel.tsx:278-329` ya muestra `attributeBonus`/chips de `effects`/atributo
+  preferido, no solo el texto de lore.
+- ❌ **Sigue pendiente, sin evidencia de bug real**: Kirelon Arenoso "sobrerrepresentado" —
+  verificado el peso de selección real (`pickAmbientEncounterCandidate`, weighted-random correcto
+  sobre `WorldPopulation`): Kirelon tiene población **150**, muy por debajo del resto de fauna de
+  su región (corretolvas 4500, ruptidar 5000...) — sin sesgo estructural encontrado en código.
+  Podría ser percepción de sesión, no bug — dejar anotado pero de baja prioridad.
+- ❌ **Sigue pendiente, matiz importante**: auto-contradicción de Gistera en `generateNpcReply` — el
+  commit `7c19db4` (2026-09-03, HOY) cerró un caso DISTINTO (fuga de meta-pregunta de asistente,
+  `hasMetaInstructionLeak`). El caso original de esta memoria (negación de conocimiento del Clan
+  Serhu autocontradiciéndose) sigue sin guard — `tarkor_bug_autocontradiccion_gistera_generatenpcreply_2026-09-03`
+  corregida para no confundir ambos casos.
+- ⚠️ **No verificable en este entorno**: flake `ANALIZAR RIVAL` — sin Node/vitest disponible para
+  reproducirlo, y sin rastro en `git log` de que se haya diagnosticado o cerrado nunca. El análisis
+  estático del test no muestra el patrón de condición de carrera descrito (narración mockeada
+  síncrona, orden de turno fijado, scopes únicos) — puede que ya no sea reproducible, o que el
+  patrón viva en otro punto no identificado. Reproducir en vivo si vuelve a aparecer.
+- Nombre de NPC "pegado" gramaticalmente como aposición de un lugar en la narración (sin verificar
+  en esta ronda — muestra de 1 turno, `docs/checklist-pruebas-juego.md` § 1).
+
+**Aparcado a propósito por decisión de diseño (no bugs, no urgente)** — verificado, 12/14 exactos,
+2 con matiz menor encontrado:
+- `comerciablePct`/`cortejablePct` — matiz: SÍ se usan ya para avisos narrativos de umbral
+  (`npcScene.ts:976,979`), pero ninguna tirada real de éxito/fracaso los consume todavía. La
+  usuaria confirmó que se quedan, pendientes de diseño propio de la tirada.
+- `Npc.levelMax` — **matiz: YA tiene un consumidor real** (`cazar.ts:457`, gatea si una presa
+  agresiva es cazable según el nivel del jugador) — solo `percepcionPasivaFor` sigue huérfana, sin
+  ningún caller real.
+- Postura de compañero en combate (Agresivo/Defensivo/Capturador/Clemente) — confirmado sin campo
+  ni lógica real, espera a que exista combate autónomo de compañero sin la jugadora presente.
+- Clemencia de enemigo / duelos de honor — el concepto de "duelo de honor" SÍ existe como LORE
+  orco (`berigLore.ts`), pero sin ninguna IA de combate conectada. Sistema espejo del anterior, sin
+  diseñar.
+- Fase 4 de clases (`RETIRAR`, filas de `AUMENTO`/`DEBILIDAD`/`CURAZION` sin cifra) — confirmado sin
+  ninguna habilidad real que use `RETIRAR` todavía. Espera a que la usuaria rellene números en
+  `clases.md` a su ritmo.
 - Báculo tier 7/dagas tier 3/Arco tier 5/Armadura tier 5/receta de Lanza/`vela-cera-lebude` —
-  anotados explícitamente como NO IMPLEMENTADO en `tarkor_pasada_objetos_narrativos_2026-09-02`.
-- `saquito-arena-iman` sin `effectKey` protector ni lógica de pérdida en Las Agujas Imán.
-- `silbato-hueso-caza`/profesión "ganadería" — aparcados a propósito.
+  confirmados los 6 con comentario explícito "PENDIENTE DE IMPLEMENTAR" en `worldCatalog.ts`, sin
+  receta de crafteo real para ninguno.
+- `saquito-arena-iman` — matiz: **el crafteo YA está implementado** (`SAND_POUCH_RECIPE`,
+  `crafting.ts`, confirmado el comentario propio del código lo dice) — lo que sigue faltando es
+  solo el `effectKey` protector y la lógica de pérdida en Las Agujas Imán.
+- `silbato-hueso-caza`/profesión "ganadería" — confirmados aparcados, sin ningún archivo real de esa
+  profesión.
+- Modal propio al pulsar un pin de `ZonaPanel.tsx` — confirmado, hoy solo `<title>` (tooltip
+  nativo), sin `onClick` ni modal.
+- `Save.saveName` para nombrar partidas guardadas — confirmado, el campo no existe en
+  `schema.prisma` ni en ningún sitio del repo.
+- `BERIG_PERSONAJES` (Dessa/Yerin/Riko) sin convertir a NPC de `worldCatalog.ts` — confirmado, solo
+  mencionados en bios de otros NPCs, sin entrada propia de catálogo.
+- `ZonePoint` sin sembrar fuera de Las Llanuras del Viento Rojo — confirmado con el propio
+  comentario del código ("la única zona con ZonePoint sembrado hoy").
+- PNG real de banners de clase/especialización — confirmado, solo se genera el texto del prompt,
+  sin proveedor de imagen conectado para esta categoría.
+- Modo Multijugador — confirmado, `/multijugador` enruta a un placeholder `<ComingSoon />`, sin
+  ningún código de backend relacionado.
 - Modal propio al pulsar un pin de `ZonaPanel.tsx` (hoy solo `<title>`, sin `onClick`) —
   `tarkor_idea_modal_zonepoint_2026-09-02`, solo idea anotada.
 - `Save.saveName` para nombrar partidas guardadas — campo no existe en `schema.prisma`, solo idea.
