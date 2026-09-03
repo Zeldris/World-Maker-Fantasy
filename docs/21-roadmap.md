@@ -58,20 +58,33 @@ peinaron ~200 archivos de memoria y los servicios/rutas más grandes del backend
   `docs/checklist-pruebas-juego.md` y `docs/archivo/revisar-partida-hallazgos-historico.md` también
   actualizados en los mismos puntos.
 
+**Verificación en vivo de la Pieza 5 + `questSlug` estructurado cerrado (2026-09-03, continuación de
+sesión)** — reverificando Gistera Koh en una partida real (aceptando la misión vía el botón, no solo
+texto libre) se encontró un bug real adicional: `POST /saves/:id/quests/aceptar`
+(`routes/saves/quests.ts`) narraba la despedida de Gistera pero nunca aplicaba
+`npcsRetiredForever: { push: 'gistera-koh' } }` — solo el camino de texto libre
+(`gisteraAceptaEsteTurno`, `turnResolution.ts:6002`) lo hacía. Sin síntoma visible (un filtro
+redundante por `Quest` activa ya la excluía de escena), pero el mecanismo GENERAL que consultan
+`detectNpcsInScene`/`filterFarewellFacts` quedaba sin aplicar en el camino recomendado desde
+2026-08-26. Corregido (commit `16eba78`) con test de integración nuevo. En el mismo endpoint se
+aprovechó para cerrar el punto de roadmap `questSlug` estructurado: `Quest.questSlug` nuevo
+(migración `20260903195622_add_quest_slug`), el caso especial de Orco Enfurecido/Gistera ya no se
+persiste ni se busca por título narrativo exacto — el título sigue siendo lo único que ve la
+jugadora, `questSlug: 'orco-enfurecido-hondonada-gistera'` es la clave mecánica real, incluida la
+idempotencia del botón "Aceptar". Backend 2016 tests en verde (1 flake preexistente sin relación,
+ya documentado), `tsc -b` limpio en backend y frontend.
+
 ### Genuinamente pendiente a día de hoy (verificado DOS veces — auditoría inicial + reverificación
 contra código real con 3 agentes en paralelo, tras encontrar que la primera pasada también tenía
 errores: 6 de los 25 ítems del primer checklist ya estaban cerrados o llevaban matices importantes)
 
-**Diseño con alcance ya definido, solo falta implementar** (3, no 4 — "Matar" se cayó de esta lista,
-ver abajo):
+**Diseño con alcance ya definido, solo falta implementar** (2, no 4 — "Matar" ya se cayó de esta
+lista, y `questSlug` se cerró hoy, ver abajo):
 - **Balance del primer combate (Orco Enfurecido/misión Gistera)** — tras 8 turnos de intercambio en
   un combate real, ni asegura victoria ni se siente "asequible" para un tutorial de facto de nivel
   1. Sin tocar desde 2026-08-28 (`git log -G` sobre el bloque del NPC solo muestra el rebalanceo
   original de 2026-07-29 y el rename cosmético Arcano→Magia). Ver `docs/checklist-pruebas-juego.md`
   punto 1.5.
-- **`questSlug` estructurado en `Quest`** — `quests.ts:18 § ORCO_ENFURECIDO_QUEST_TITLE` sigue
-  hardcodeado por título exacto, sin ningún campo `questSlug` en `schema.prisma` (decisión
-  consciente, arreglarlo de raíz exige migración). Ver `tarkor_auditoria_6_agentes_2026-09-01`.
 - **Sub-combates fragmentados (>4v4) con fallo de servidor a mitad** — confirmado con precisión:
   `cazar.ts:493-515` crea TODOS los `CombatEncounter` (incluidos los fragmentos autónomos) dentro de
   una única transacción, pero `resolverTurnosAutonomosHastaJugadora` (línea 525-529) los resuelve

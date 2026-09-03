@@ -1448,6 +1448,14 @@ model Quest {
   id               String      @id @default(cuid())
   saveId           String
   save             Save        @relation(fields: [saveId], references: [id], onDelete: Cascade)
+  /// Identificador estable de misión con lógica especial propia (roadmap 2026-09-03: "questSlug
+  /// estructurado en Quest" — antes solo `ORCO_ENFURECIDO_QUEST_TITLE` en quests.ts comparaba por
+  /// TÍTULO EXACTO, acoplando la mecánica al texto narrativo que se le muestra a la jugadora).
+  /// null para cualquier misión genérica (la inmensa mayoría) — solo se rellena para las pocas con
+  /// caso especial (objetivo/recompensa fija, condición de cierre propia), ver ORCO_ENFURECIDO en
+  /// quests.ts. No es único por partida a propósito: no hay índice único, `findFirst` ya cubre la
+  /// idempotencia real que hace falta (ver comentario de esa ruta).
+  questSlug        String?
   title            String
   description      String
   status           QuestStatus @default(ACTIVA)

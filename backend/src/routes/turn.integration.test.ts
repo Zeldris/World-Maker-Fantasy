@@ -1586,6 +1586,32 @@ describe('newQuestOfferInfo + POST /saves/:id/quests/aceptar: oferta de misión 
     const save = await prisma.save.findUniqueOrThrow({ where: { id: saveId }, select: { npcsRetiredForever: true } });
     expect(save.npcsRetiredForever).toContain('gistera-koh');
   }, 20_000);
+
+  // questSlug estructurado (roadmap 2026-09-03): el caso especial de Orco Enfurecido/Gistera ya no
+  // se reconoce ni se persiste solo por TÍTULO EXACTO (`quests.ts`, antes `ORCO_ENFURECIDO_QUEST_TITLE`
+  // comparado contra `Quest.title`) — ahora la mecánica queda anclada a `Quest.questSlug`, un campo
+  // separado del título narrativo que ve la jugadora.
+  it('la Quest de Orco Enfurecido/Gistera persiste con questSlug, no solo por título', async () => {
+    const app = await buildApp();
+    await app.register(questsRoutes);
+    const res = await app.inject({
+      method: 'POST',
+      url: `/saves/${saveId}/quests/aceptar`,
+      payload: { title: 'Acabar con el Orco Enfurecido', description: 'Gistera Koh pidió ayuda para acabar con el guerrero que la persigue.' },
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().quest.questSlug).toBe('orco-enfurecido-hondonada-gistera');
+
+    // Idempotencia también vía questSlug: pulsar "Aceptar" otra vez no duplica la Quest.
+    const res2 = await app.inject({
+      method: 'POST',
+      url: `/saves/${saveId}/quests/aceptar`,
+      payload: { title: 'Acabar con el Orco Enfurecido', description: 'Gistera Koh pidió ayuda para acabar con el guerrero que la persigue.' },
+    });
+    expect(res2.json().alreadyExisted).toBe(true);
+    const count = await prisma.quest.count({ where: { saveId, questSlug: 'orco-enfurecido-hondonada-gistera' } });
+    expect(count).toBe(1);
+  }, 20_000);
 });
 
 // Bug real jugando en vivo (2026-09-03, "misión de apertura no sobrevive a un F5") —

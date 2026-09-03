@@ -10,12 +10,21 @@ import { rejectIfEnded } from './shared.js';
 
 /// Misión con lógica especial propia, además del anclaje genérico NPC/Location/Item (bug real
 /// 2026-08-28, "misión se salta los botones" — la creaba directamente `turnResolution.ts`, ahora
-/// solo ofrece vía `newQuestOfferInfo` como cualquier otra). Reconocida por TÍTULO EXACTO — si
-/// llega aquí con este título, se aplica su objetivo/recompensa fija y el caso "el jugador ya
-/// había derrotado al Orco Enfurecido por su cuenta antes de aceptar" (bug real 2026-08-04,
-/// hallazgo 9: sin esto la misión quedaba ACTIVA para siempre, sin ningún camino de cierre —
-/// ni ataque nuevo posible, ni saqueo nuevo, ambos ya resueltos).
+/// solo ofrece vía `newQuestOfferInfo` como cualquier otra). Reconocida por su TÍTULO EXACTO
+/// (`narrador.ts` sigue proponiéndolo así, sin conocer `questSlug`) — si llega aquí con este
+/// título, se aplica su objetivo/recompensa fija y el caso "el jugador ya había derrotado al Orco
+/// Enfurecido por su cuenta antes de aceptar" (bug real 2026-08-04, hallazgo 9: sin esto la misión
+/// quedaba ACTIVA para siempre, sin ningún camino de cierre — ni ataque nuevo posible, ni saqueo
+/// nuevo, ambos ya resueltos).
+///
+/// `questSlug` estructurado (roadmap 2026-09-03) — antes esta constante era también la clave de
+/// PERSISTENCIA (se guardaba tal cual en `Quest.title`, y todo el código mecánico comparaba contra
+/// ese título literal). Ahora el título narrativo (lo que ve la jugadora) y el slug mecánico son
+/// dos campos separados: `narrador.ts` puede seguir proponiendo este título tal cual, pero el
+/// reconocimiento y toda la lógica de aquí abajo usan `ORCO_ENFURECIDO_QUEST_SLUG`, guardado en
+/// `Quest.questSlug` — un cambio futuro de texto narrativo no rompería la mecánica.
 const ORCO_ENFURECIDO_QUEST_TITLE = 'Acabar con el Orco Enfurecido';
+const ORCO_ENFURECIDO_QUEST_SLUG = 'orco-enfurecido-hondonada-gistera';
 
 /// Botones "Aceptar"/"Cancelar" cuando un NPC ofrece una misión (2026-08-26, petición explícita:
 /// "en vez de depender de que la jugadora escriba texto libre para aceptar... que 'Aceptar' genere
@@ -44,7 +53,13 @@ export async function questsRoutes(app: FastifyInstance) {
 
       // Idempotente (doble clic, o "Aceptar" pulsado dos veces tras recargar): una misión con el
       // mismo título ya activa/resuelta para esta partida no se duplica, se devuelve tal cual.
-      const existing = await prisma.quest.findFirst({ where: { saveId: save.id, title } });
+      // Para el caso especial de Orco Enfurecido/Gistera, la idempotencia mira `questSlug` (no
+      // `title`) — mismo motivo que el resto de este archivo, ver comentario de
+      // `ORCO_ENFURECIDO_QUEST_SLUG` arriba: el título es solo lo que ve la jugadora.
+      const isOrcoEnfurecidoTitle = title === ORCO_ENFURECIDO_QUEST_TITLE;
+      const existing = await prisma.quest.findFirst({
+        where: isOrcoEnfurecidoTitle ? { saveId: save.id, questSlug: ORCO_ENFURECIDO_QUEST_SLUG } : { saveId: save.id, title },
+      });
       if (existing) {
         return { quest: existing, alreadyExisted: true };
       }
@@ -62,7 +77,6 @@ export async function questsRoutes(app: FastifyInstance) {
 
       const timeLabel = save.worldState?.fictionalDateLabel ?? 'Día 1, mañana';
       const fictionalMinutes = save.worldState?.fictionalMinutes ?? 480;
-      const isOrcoEnfurecidoTitle = title === ORCO_ENFURECIDO_QUEST_TITLE;
       // Narración real de la aceptación (2026-08-30, petición explícita: "esto genera narración de
       // respuesta... según el tono del pj responde y acepta la misión") — antes era texto fijo
       // ("${characterName} acepta la misión: ${title}."), sin pasar por Ollama. La MECÁNICA sigue
@@ -98,10 +112,10 @@ export async function questsRoutes(app: FastifyInstance) {
         : acceptanceText;
 
       const { quest, logEntry, questCompletedInfo } = await prisma.$transaction(async (tx) => {
-        // Caso especial (ver comentario de ORCO_ENFURECIDO_QUEST_TITLE arriba): objetivo/recompensa
+        // Caso especial (ver comentario de ORCO_ENFURECIDO_QUEST_SLUG arriba): objetivo/recompensa
         // fija + posible cierre inmediato si el jugador ya había resuelto al Orco Enfurecido por su
         // cuenta antes de pulsar Aceptar.
-        const isOrcoEnfurecido = title === ORCO_ENFURECIDO_QUEST_TITLE;
+        const isOrcoEnfurecido = isOrcoEnfurecidoTitle;
         const orcoEnfurecido = isOrcoEnfurecido
           ? await tx.npc.findUnique({ where: { worldId_slug: { worldId: save.worldId, slug: 'orco-enfurecido-hondonada' } } })
           : null;
@@ -116,6 +130,7 @@ export async function questsRoutes(app: FastifyInstance) {
         const quest = await tx.quest.create({
           data: {
             saveId: save.id,
+            questSlug: isOrcoEnfurecido ? ORCO_ENFURECIDO_QUEST_SLUG : undefined,
             title,
             description,
             targetNpcId: isOrcoEnfurecido ? (orcoEnfurecido?.id ?? targetNpcId) : targetNpcId,
