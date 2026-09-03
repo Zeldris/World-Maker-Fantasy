@@ -1,3 +1,4 @@
+import { StrictMode } from 'react'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { renderHook, act } from '@testing-library/react'
 import { useReconnectionPolling } from './useReconnectionPolling'
@@ -188,5 +189,37 @@ describe('useReconnectionPolling', () => {
 
     expect(mockGetSave).toHaveBeenCalledTimes(countTrasPrimerIntento)
     expect(setCharacterLog).not.toHaveBeenCalled() // desmontado antes de agotar intentos: sin aviso
+  })
+
+  // Bug real encontrado en vivo (2026-09-03) verificando un fix de reconexión tras F5: en
+  // StrictMode (activo en dev, main.tsx) React monta este mismo hook, lo desmonta y lo vuelve a
+  // montar una vez al arrancar — antes del fix, el cleanup ponía `mountedRef.current = false` pero
+  // nada lo reafirmaba a `true` en el remontaje real que sigue vivo, dejando el guard apagado para
+  // siempre desde el arranque. Resultado: CUALQUIER `pollForResolution` posterior, sin importar
+  // cuánto tiempo después, entraba con `mountedRef.current` ya en `false` y el `for` no ejecutaba
+  // ni una iteración — ni un solo GET, ni mensaje de error, silencio total. `wrapper: StrictMode`
+  // reproduce el ciclo real de React (no dos instancias del hook independientes — la primera
+  // versión de este test usaba `unmount()` + `renderHook()` de nuevo y NO detectaba el bug, porque
+  // cada llamada crea su propio `mountedRef` fresco; StrictMode monta/desmonta/remonta la MISMA
+  // instancia lógica, que es justo el caso real).
+  it('sobrevive al ciclo de montaje doble de StrictMode (mount→unmount→remount) sin quedar sordo para siempre', async () => {
+    const save = fakeSave({ characterLog: [{ id: '1' } as LogEntry, { id: '2' } as LogEntry] })
+    mockGetSave.mockResolvedValueOnce(save)
+    const syncFromSave = vi.fn()
+    const setCharacterLog = vi.fn()
+
+    const { result } = renderHook(() => useReconnectionPolling(), { wrapper: StrictMode })
+    await act(async () => {
+      await result.current.pollForResolution({
+        saveId: 'save-1',
+        logLengthBeforeThisTurn: 0,
+        fictionalDate: 'Día 1',
+        syncFromSave,
+        setCharacterLog,
+      })
+    })
+
+    expect(mockGetSave).toHaveBeenCalledTimes(1)
+    expect(syncFromSave).toHaveBeenCalledWith(save)
   })
 })

@@ -41,8 +41,19 @@ export interface UseReconnectionPollingResult {
 /// `mountedRef` de aquí es justo eso: se pone a `false` al desmontar el componente que use este
 /// hook, y `pollForResolution` lo comprueba antes de cada intento y antes de aplicar el resultado.
 export function useReconnectionPolling(): UseReconnectionPollingResult {
+  // Bug real encontrado depurando el fix de reconexión tras F5 (2026-09-03): en StrictMode (activo
+  // en dev, main.tsx) React monta este efecto, lo desmonta y lo vuelve a montar una única vez al
+  // arrancar — el cleanup de abajo pone `mountedRef.current = false`, pero nada lo devolvía a
+  // `true` en el remontaje real que sigue vivo. Resultado: `mountedRef.current` quedaba en `false`
+  // para siempre desde el arranque, así que CUALQUIER llamada a `pollForResolution` durante toda la
+  // vida del componente entraba con el guard ya apagado y el `for` no ejecutaba ni una iteración —
+  // el mecanismo de reconexión (el catch de un envío con timeout, y el nuevo reenganche al cargar
+  // con un turno pendiente) estaba roto en dev sin ningún error visible. `useRef(true)` seguía
+  // aplicando su valor inicial en el primer render, pero solo el cleanup escribía en la ref
+  // después — hacía falta reafirmar `true` en el propio montaje, no solo apagar en el desmontaje.
   const mountedRef = useRef(true)
   useEffect(() => {
+    mountedRef.current = true
     return () => {
       mountedRef.current = false
     }

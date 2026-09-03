@@ -1183,6 +1183,31 @@ export function GameView() {
         setWorldIdSlug(save.worldSlug)
         setWorldName(save.worldName)
         syncFromSave(save)
+        // Hallazgo de UX jugando en vivo (2026-09-03): un turno puede tardar minutos (cola de
+        // Ollama) — mientras se espera, el composer se deshabilita con el mensaje "Esperando la
+        // narración..." (ver disabledReason más abajo), pero ese estado solo vive en memoria de
+        // React (characterThinking). Si la jugadora recarga durante la espera, characterLog llega
+        // completo desde el backend pero characterThinking vuelve a false: el composer queda
+        // deshabilitado SIN NINGÚN mensaje, indistinguible de una avería. La última entrada real
+        // (isPlayerAction: true) sin ninguna respuesta después es la misma señal que ya usa
+        // pollForResolution para saber cuándo un turno sigue resolviéndose en segundo plano — solo
+        // hacía falta engancharla también aquí, no solo en el catch de un envío en curso.
+        const lastEntry = save.characterLog[save.characterLog.length - 1]
+        if (lastEntry?.isPlayerAction) {
+          setCharacterThinking(true)
+          setTimedThinkingText('Esperando confirmación del narrador...')
+          pollForResolution({
+            saveId: save.id,
+            logLengthBeforeThisTurn: save.characterLog.length - 1,
+            fictionalDate: save.fictionalDateLabel,
+            syncFromSave,
+            setCharacterLog,
+          }).finally(() => {
+            if (cancelled) return
+            setCharacterThinking(false)
+            setTimedThinkingText(null)
+          })
+        }
       } catch {
         if (!cancelled) setNotFound(true)
       }
