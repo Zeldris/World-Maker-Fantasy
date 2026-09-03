@@ -68,13 +68,16 @@ export async function questsRoutes(app: FastifyInstance) {
       // 100% determinista (la Quest ya se crea más abajo pase lo que pase con el texto); si Ollama
       // falla o tarda, se cae al texto fijo de siempre en vez de bloquear la aceptación.
       const sessionFactsForNarration = await loadSessionFacts(save.id);
-      const acceptanceText = await generateQuestResponseNarration({
-        characterName: save.characterName,
-        npcName: targetNpc?.name ?? null,
-        questTitle: title,
-        accepted: true,
-        sessionFacts: sessionFactsForNarration,
-      }).catch(() => `${save.characterName} acepta la misión: ${title}.`);
+      // Fallback también si la llamada resuelve pero el guard `hasMetaInstructionLeak` descarta
+      // el texto (devuelve '') — no solo si Ollama lanza un error.
+      const acceptanceText =
+        (await generateQuestResponseNarration({
+          characterName: save.characterName,
+          npcName: targetNpc?.name ?? null,
+          questTitle: title,
+          accepted: true,
+          sessionFacts: sessionFactsForNarration,
+        }).catch(() => '')) || `${save.characterName} acepta la misión: ${title}.`;
       // Bug real jugando en vivo (2026-08-30, "la narracion deberia continuar con la parte que
       // gistera acepta tu aceptacion y te dice que se va a la cienaga al campamento del clan
       // gosh") — este texto de despedida YA EXISTÍA en turnResolution.ts (`gisteraAceptaEsteTurno`,

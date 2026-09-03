@@ -47,6 +47,7 @@ import {
   buildNarrationPrompt,
   allAttemptsRejectedForSameReason,
   hasSecondPersonLeak,
+  hasMetaInstructionLeak,
 } from './narrador.js';
 
 describe('reinoIntentDetected', () => {
@@ -529,6 +530,27 @@ describe('hasSecondPersonLeak', () => {
     expect(hasSecondPersonLeak('El eco repite tus pisadas por el pasillo.')).toBe(true);
     expect(hasSecondPersonLeak('El viento te empuja hacia atrás.')).toBe(true);
     expect(hasSecondPersonLeak('El orco avanza contigo pisándole los talones.')).toBe(true);
+  });
+});
+
+describe('hasMetaInstructionLeak', () => {
+  // Bug real jugando en vivo (2026-09-03): preguntarle a Gistera Koh cómo estaba devolvió como
+  // su réplica "'Eso que ves ahí — es lo último que me queda', dice ella con voz neutra... '¿Qué
+  // quieres saber sobre Gistera Koh? Ella es quien me pidió ayuda.'" — un registro de asistente
+  // genérico coló en boca del personaje.
+  it('detecta el caso real del bug: pregunta de asistente sobre el propio NPC', () => {
+    expect(hasMetaInstructionLeak('¿Qué quieres saber sobre Gistera Koh? Ella es quien me pidió ayuda.')).toBe(true);
+  });
+
+  it('detecta variantes de registro de asistente', () => {
+    expect(hasMetaInstructionLeak('¿En qué puedo ayudarte hoy?')).toBe(true);
+    expect(hasMetaInstructionLeak('¿Qué te gustaría saber sobre el Clan Serhu?')).toBe(true);
+  });
+
+  it('no dispara con diálogo legítimo de un NPC, incluida una pregunta retórica normal', () => {
+    expect(hasMetaInstructionLeak('"¿Has visto algo? Dime la verdad, o te arrepentirás."')).toBe(false);
+    expect(hasMetaInstructionLeak('"No tengo tiempo para explicarte más — uno de los suyos me pisa los talones."')).toBe(false);
+    expect(hasMetaInstructionLeak('"¿Qué haces aquí? Este no es lugar para forasteros."')).toBe(false);
   });
 });
 

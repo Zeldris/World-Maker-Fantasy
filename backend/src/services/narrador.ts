@@ -897,7 +897,12 @@ Escribe SOLO tu réplica hablada, en primera persona y entre comillas, coherente
     keepAlive: '1h',
     temperature: 0.4,
   });
-  return text.trim();
+  const reply = text.trim();
+  // Sin cascada de reintento en esta llamada (a diferencia de `narrateAction`) — si la réplica
+  // se cuela en registro de asistente, se descarta sin más (mismo criterio que el `catch` de
+  // `turnResolution.ts` al llamar a esta función: perder la réplica es preferible a mostrarla).
+  if (hasMetaInstructionLeak(reply)) return '';
+  return reply;
 }
 
 export interface QuestResponseContext {
@@ -942,7 +947,12 @@ No inventes ningún hecho nuevo (ni objetos, ni lugares, ni personajes) que no e
     keepAlive: '1h',
     temperature: 0.4,
   });
-  return text.trim();
+  const narration = text.trim();
+  // Mismo hueco estructural que `generateNpcReply` (llamada aislada, sin la cascada de guards de
+  // `narrateAction`) — mismo fix, aunque aquí el riesgo real es menor al narrar en 3ª persona
+  // sobre el jugador, no diálogo en 1ª persona de un NPC.
+  if (hasMetaInstructionLeak(narration)) return '';
+  return narration;
 }
 
 /// Grados de éxito (docs/08-acciones-por-tiempo.md § 5, roadmap 2026-07-19): misma tirada de
@@ -1660,6 +1670,22 @@ const SECOND_PERSON_REGEX = /\b(tú|tu|tus|te|contigo)\b/i;
 export function hasSecondPersonLeak(narration: string): boolean {
   const withoutQuotedSpeech = narration.replace(QUOTED_SPEECH_REGEX, ' ');
   return SECOND_PERSON_REGEX.test(withoutQuotedSpeech);
+}
+
+/// Red de seguridad para `generateNpcReply` (bug real jugando en vivo, 2026-09-03: preguntarle a
+/// Gistera Koh cómo estaba devolvió como su réplica "¿Qué quieres saber sobre Gistera Koh? Ella es
+/// quien me pidió ayuda." — un registro de asistente/chatbot genérico, no la voz en primera persona
+/// del personaje que pide el `system` de esa llamada). Mismo criterio que `hasEnglishLeak`/
+/// `hasSecondPersonLeak`: `generateNpcReply` es una llamada Ollama SEPARADA de `narrateAction`
+/// (comentario de cabecera de `generateNpcReply`), así que no hereda ninguno de los guards del
+/// bucle de reintento principal — necesita los suyos propios. Lista curada de patrones de registro
+/// de asistente/meta-pregunta (no un regex genérico sin acotar — un NPC real puede legítimamente
+/// hacer una pregunta retórica, solo se descarta el patrón concreto ya visto de "pregunta qué
+/// quiere saber el jugador sobre sí mismo/otro NPC", que ningún personaje diría de verdad).
+const META_INSTRUCTION_LEAK_REGEX = /¿(qué|en qué) (quieres?|puedo|te gustaría) (saber|ayudar|hacer)/i;
+
+export function hasMetaInstructionLeak(reply: string): boolean {
+  return META_INSTRUCTION_LEAK_REGEX.test(reply);
 }
 
 /// Anti-repetición, red de seguridad determinista (2026-07-31, bug real probando en vivo: dos
