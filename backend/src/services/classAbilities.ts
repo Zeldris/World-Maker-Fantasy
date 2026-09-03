@@ -3091,9 +3091,11 @@ const CLASS_ABILITIES: ClassAbilityUnlock[] = [
 /// clases. `characterName` se mantiene como fallback SOLO para partidas antiguas creadas antes del
 /// flujo de asignación (`clase` todavía `null` en Postgres) — hoy solo Gorhorn es jugable,
 /// `clase: 'CAZADOR'` (`docs/rpgtarkor/clases.md`, "Gorhorn deja de tener doble clase... voy a
-/// probarlo por la rama de domador"). Domador se queda sin ningún hueco real construido esta pasada
-/// (0/8, bloqueada por completo) — sin especialización filtrada todavía (no hay flujo in-game para
-/// elegirla, `especializacion` se decide a nivel 10).
+/// probarlo por la rama de domador"). Domador (la ESPECIALIZACIÓN, `especializacion: 'DOMADOR'`,
+/// distinta del tronco común de Cazador — ver "Compañero cazador" más abajo, sí construida) se
+/// queda sin ningún hueco propio de especialización construido esta pasada (0/8 en sus 8 niveles
+/// dedicados, bloqueada por completo) — sin especialización filtrada todavía (no hay flujo in-game
+/// para elegirla, `especializacion` se decide a nivel 10).
 export function classAbilityUnlocksFor(characterName: string, level: number, clase?: Clase | null): StartingAbility[] {
   const claseReal = clase ?? (characterName === 'Gorhorn' ? 'CAZADOR' : null);
   if (!claseReal) return [];

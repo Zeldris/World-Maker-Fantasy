@@ -1026,8 +1026,10 @@ function resolveCombatExchangePhase(input: CombatExchangePhaseInput): CombatExch
             // CONTROL en 1vs1 (2026-08-26, petición explícita: "si es 1vs1 CONTROL pasa a ser un
             // aturdimiento") — sin un segundo rival real al que redirigir ("controla al rival para
             // que ataque a sus aliados"), se simplifica al mismo gancho que ATURDIMIENTO: roba la
-            // iniciativa un intercambio, en vez de los "2 turnos" reales de la habilidad (solo
-            // aplicables con combate multi-objetivo, sin construir todavía).
+            // iniciativa un intercambio, en vez de los "2 turnos" reales de la habilidad. El
+            // CONTROL real con redirección SÍ está construido desde 2026-08-27, pero solo en
+            // combate múltiple (`combateMultipleOrquestacion.ts`, `CONTROL_RONDAS`) — este camino
+            // 1v1 sigue con la simplificación de arriba a propósito, no por hueco sin cerrar.
             if (abilityEffects.includes('CONTROL')) {
               iniciativaForzadaPorUtilidad = 'jugador';
             }

@@ -7,6 +7,121 @@ mismo criterio que tenía el anterior.
 
 ---
 
+## Estado a fecha 2026-09-03 (orientación rápida para retomar la sesión)
+
+Sesión larga con tres bloques de trabajo: (1) ronda de juego real con Playwright hasta acumular
+hallazgos, (2) cierre del backlog "mundo determinista, el narrador solo narra" (Piezas 5 y 6a-6d),
+(3) auditoría completa de comentarios de código y memoria persistente para no dejar nada
+desactualizado, con esta sección como consolidación final de lo que queda genuinamente pendiente.
+
+**"Mundo determinista, el narrador solo narra" — CERRADO COMPLETO (Piezas 5 + 6a-6d)**, 5 commits:
+- **Pieza 5** (`17f2ee2`): Gistera Koh (y cualquier NPC) dejaba de desaparecer de la escena tras
+  despedirse explícitamente y viajar — `filterFarewellFacts`/`detectsFarewellIntent`
+  (`npcScene.ts`) filtran hechos de despedida del haystack de `detectNpcsInScene`.
+- **Pieza 6a/6b** (`908a18c`): crafteo/construcción por texto libre que menciona verbo+receta real
+  pero no se puede lanzar (sin materiales/ubicación/oficio) ya no cae al narrador libre a inventar
+  un objeto/edificio fabricado nunca persistido — mensaje determinista fijo
+  (`deterministicActionUnavailableNarrationFor`).
+- **Pieza 6c** (`219ef88`): viaje declarado hacia un destino que no existe en el mundo, mismo
+  criterio — `detectsUnknownDestinationClaim`, con exclusiones cuidadosas (movimiento vago,
+  dirección cardinal suelta — decisión explícita: las cardinales son para moverse dentro de
+  zona/interior, no entre ubicaciones del mapa —, intención de ataque/búsqueda hostil).
+- **Pieza 6d** (`9bdb1b7`): la más grande — "Mino Yerreo" por texto libre NO caía al narrador
+  libre, se RESOLVÍA de verdad pero por una vía paralela y más fácil que el modal oficial
+  (`recolectar.ts`): tirada genérica del LLM sin tier/oficio/herramienta, sin depletar
+  `WorldPopulation`. Cortada esa vía para MINERIA/TALA/EXTRACCION/PESCA/BUSQUEDA (CAZA intacta) con
+  mensaje determinista + botón real en el log (`entry.harvestSuggestion`, `OfferCard`) que abre el
+  modal correcto con la fuente citada priorizada arriba de la lista.
+
+Backend 114 archivos/2014 tests en verde, frontend 26 archivos/190 tests en verde, `tsc -b` limpio
+en ambos. **Necesita reinicio manual de backend y frontend** para reflejarse en la partida real (la
+usuaria gestiona sus propios servidores).
+
+**Auditoría de comentarios de código y memoria desactualizada (2026-09-03)** — a petición explícita
+("haz una auditoría para no dejar comentarios sin actualizar, ni .md"), 2 agentes en paralelo
+peinaron ~200 archivos de memoria y los servicios/rutas más grandes del backend. Resultado:
+- **3 comentarios de código corregidos** (afirmaban "sin construir todavía" algo que ya estaba
+  hecho más abajo en el mismo archivo o en otro módulo): `construction.ts` (materiales procesados
+  de Ayuntamiento mediano/grande, ya construidos el mismo día que se anotó el comentario viejo),
+  `turnResolution.ts` (CONTROL real con redirección SÍ está construido, solo no en el camino 1v1
+  independiente), `classAbilities.ts` (aclarada la redacción ambigua "Domador 0/8" — se refiere a
+  la especialización DOMADOR con sus 8 niveles propios, no al tronco común de Cazador, que sí tiene
+  un hueco real).
+- **6 archivos de memoria desactualizados corregidos** (declaraban "pendiente/sin arreglar" algo ya
+  cerrado, algunos el mismo día en que se anotaron): defensa-a-ciegas-tras-recarga e
+  iniciativa-ausente (ambos cerrados, quedaron enterrados sin memoria dedicada o con resumen de
+  índice desactualizado), energía Defenderse/Esquivar (cerrada el mismo día, commit `c5297cc`),
+  misión Orco Enfurecido saltándose botones (cerrada el mismo día), sub-partición de combate >4v4
+  (cerrada horas después el mismo día en que se reabrió, commit `8535c85`, con test de integración
+  real — quedó enterrada dentro de un commit de título ajeno "Renombra el atributo Arcano a Magia").
+  `docs/checklist-pruebas-juego.md` y `docs/revisar-partida-hallazgos.md` también actualizados en
+  los mismos puntos.
+
+### Genuinamente pendiente a día de hoy (consolidado de toda la auditoría)
+
+**Diseño/rediseño con alcance ya definido, solo falta implementar:**
+- **Rediseño "Matar" (P3.2 mayor)** — quitar el remate garantizado sin tirada al pulsar Matar sobre
+  un NPC CONVALECIENTE, sustituirlo por un intercambio real con riesgo (malus ya existente,
+  reutilizable). Diseño técnico completo en `tarkor_rediseno_matar_combate_real_2026-08-30`,
+  pospuesto a propósito por su alcance (2 detectores a reescribir, optimistic-update a quitar, ~8
+  tests a reescribir). Distinto del bug operativo homónimo, ya cerrado (Matar ya desbloquea la
+  elección real en vez de ejecutar Ataque Básico solo).
+- **Balance del primer combate (Orco Enfurecido/misión Gistera)** — tras 8 turnos de intercambio en
+  un combate real, ni asegura victoria ni se siente "asequible" para un tutorial de facto de nivel
+  1. Sin tocar todavía (bajar stats/quitar equipo al NPC, valorar si otros orígenes tienen el mismo
+  problema). Ver `docs/checklist-pruebas-juego.md` punto 1.5.
+- **`questSlug` estructurado en `Quest`** — `quests.ts § ORCO_ENFURECIDO_QUEST_TITLE` sigue
+  hardcodeado por título exacto (decisión consciente, arreglarlo de raíz exige migración de
+  schema). Ver `tarkor_auditoria_6_agentes_2026-09-01`.
+- **Sub-combates fragmentados (>4v4) con fallo de servidor a mitad** — riesgo de diseño confirmado
+  por lectura de código (sin cron de recuperación de `CombatEncounter` huérfanos), requiere
+  interrumpir el backend a propósito para reproducirlo, nunca autorizado. Decidir si merece forzarlo.
+
+**Bugs/huecos menores anotados, sin investigar todavía:**
+- "Cargando partida..." infinito al crear partida nueva (requiere F5 manual).
+- Misión muestra botón "Interactuar" en vez de Aceptar/Cancelar en un caso NO relacionado con
+  Gistera/Orco Enfurecido (posible colisión con el modo dinámico).
+- Tooltip del toggle de barra de habilidades sigue cortado tras un primer intento de fix.
+- Descripciones de habilidad en la Ficha del Rival siguen siendo solo lore/flavor, sin desglose
+  mecánico real.
+- Kirelon Arenoso "sobrerrepresentado" (mismo NPC apareciendo mucho entre combates) — mencionado de
+  pasada, sin archivo dedicado ni investigación.
+- Nombre de NPC "pegado" gramaticalmente como aposición de un lugar en la narración (ruido de
+  coherencia, sin guard candidato, muestra de 1 turno) — `docs/checklist-pruebas-juego.md` § 1.
+- Auto-contradicción de Gistera en `generateNpcReply` (`narrador.ts`) — una réplica de NPC afirma
+  algo y lo niega en la misma frase, `hasMetaInstructionLeak` no lo cazó. Sin guard nuevo.
+- Flake `ANALIZAR RIVAL` (`combateMultipleOrquestacion.integration.test.ts`) — confirmado bug real
+  de condición de carrera DENTRO del test (no contención de Postgres), sin arreglar
+  (`tarkor_flake_analizar_rival_no_es_contencion_2026-09-02`).
+
+**Aparcado a propósito por decisión de diseño (no bugs, no urgente):**
+- `comerciablePct`/`cortejablePct` sin sistema real detrás (comerciar sigue narrativo libre,
+  cortejo no existe como mecánica) — la usuaria confirmó que se quedan, pendientes de diseño propio.
+- `Npc.levelMax`/`percepcionPasivaFor` — sin consumidor todavía, en cola de diseño.
+- Postura de compañero en combate (Agresivo/Defensivo/Capturador/Clemente) — espera a que exista
+  combate autónomo de compañero sin la jugadora presente.
+- Clemencia de enemigo / duelos de honor — sistema espejo del anterior, sin diseñar.
+- Fase 4 de clases (`RETIRAR`, filas de `AUMENTO`/`DEBILIDAD`/`CURAZION` sin cifra) — espera a que
+  la usuaria rellene números en `clases.md` a su ritmo.
+- Báculo tier 7/dagas tier 3/Arco tier 5/Armadura tier 5/receta de Lanza/`vela-cera-lebude` —
+  anotados explícitamente como NO IMPLEMENTADO en `tarkor_pasada_objetos_narrativos_2026-09-02`.
+- `saquito-arena-iman` sin `effectKey` protector ni lógica de pérdida en Las Agujas Imán.
+- `silbato-hueso-caza`/profesión "ganadería" — aparcados a propósito.
+- Modal propio al pulsar un pin de `ZonaPanel.tsx` (hoy solo `<title>`, sin `onClick`) —
+  `tarkor_idea_modal_zonepoint_2026-09-02`, solo idea anotada.
+- `Save.saveName` para nombrar partidas guardadas — campo no existe en `schema.prisma`, solo idea.
+- `BERIG_PERSONAJES` (Dessa/Yerin/Riko) sin convertir a NPC de `worldCatalog.ts` — decisión de
+  alcance pre-alpha ya tomada, sin implementar (`tarkor_decision_alcance_prealpha_y_personajes_2026-09-01`).
+- Sembrado de `ZonePoint` fuera de Las Llanuras del Viento Rojo, y punto del jugador en el mapa —
+  Cristal Helado será la siguiente región a poblar (decisión ya comunicada por la usuaria).
+- PNG real de banners de clase/especialización — solo el texto del prompt se genera, sin proveedor
+  de imagen conectado todavía.
+- Miel Lebude / futura profesión de cocina por raza-región — idea suelta, prioridad muy baja.
+- Modo Multijugador — pausado hasta que el modo en solitario esté maduro.
+- Benchmark de latencia real — medición pendiente, no una feature.
+
+---
+
 ## Estado a fecha 2026-08-27 (orientación rápida para retomar la sesión)
 
 Este documento crece añadiendo secciones nuevas al final de cada bloque cerrado — para no tener que

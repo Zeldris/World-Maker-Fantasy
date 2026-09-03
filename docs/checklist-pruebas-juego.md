@@ -437,11 +437,11 @@ el mismo día**:
    propia fila `Building EN_CONSTRUCCION` de la construcción en curso contra su propio cupo. De
    paso, corregido un problema de staleness relacionado en `catalogBySlug` (snapshot pre-transacción
    sin ampliar con materiales vistos solo en la relectura fresca). `construction.ts`/`turnResolution.ts`.
-6. ⚠️ **Sin confirmar/reproducir** — sub-combates fragmentados (>4v4) con fallo de servidor entre
-   el commit y la resolución fuera de transacción: riesgo de diseño confirmado por lectura de
-   código (sin cron de recuperación de `CombatEncounter` huérfanos), pero requeriría interrumpir el
-   backend a propósito para reproducirlo en vivo — no autorizado esa sesión. Candidato para otra
-   ronda si se decide forzarlo.
+6. ⚠️ **SIGUE SIN CONFIRMAR/REPRODUCIR (único punto abierto de esta ronda)** — sub-combates
+   fragmentados (>4v4) con fallo de servidor entre el commit y la resolución fuera de transacción:
+   riesgo de diseño confirmado por lectura de código (sin cron de recuperación de `CombatEncounter`
+   huérfanos), pero requeriría interrumpir el backend a propósito para reproducirlo en vivo — no
+   autorizado esa sesión ni ninguna posterior. Decidir si merece la pena forzarlo.
 
 **Hallazgo colateral investigado y descartado (2026-09-03)**: la sospecha era que iniciar combate
 por texto libre contra fauna no "localizada" en `sessionFacts` no siempre engancha `combateIniciado`.
@@ -453,15 +453,17 @@ real (`detectNpcsInScene`, haystack = acción + sessionFacts) no exige ninguna "
 a diferencia de `GET /saves/:id/cazar` (que sí la exige, y es probablemente el origen de la
 confusión original). **Falso positivo**: no es un bug del motor.
 
-**Lore** (NPCs/facciones/clases por un agente, objetos/recetas/geografía por otro) — 2 hallazgos de
-severidad ALTA, sin aplicar todavía: `docs/rpgtarkor/areas.md` enumera "11 oficios" por nombre con
-4 desincronizados del catálogo real (minero/talador/constructor documentados y sin Maestro o
-inexistentes; Domador/Sastre reales y omitidos de la lista) — mismo documento que ya se corrigió en
-la sección de Trabajador de Reino de este mismo checklist, pendiente la lista de `areas.md` en sí.
-`docs/rpgtarkor/items.md` afirma que "Ración de carne ahumada"/"Ración de viaje" fueron reasignadas
-al oficio Cocinero — ninguna de las dos lo está en el código real (una es sin oficio a propósito,
-la otra no tiene receta de crafteo en absoluto). Resto del lore de NPCs/facciones/clases confirmado
-sano (sin contradicciones directas de datos encontradas).
+**Lore (NPCs/facciones/clases por un agente, objetos/recetas/geografía por otro) — AMBOS
+HALLAZGOS CERRADOS 2026-09-02** (`tarkor_auditoria_6_agentes_2026-09-01`): `docs/rpgtarkor/areas.md`
+"11 oficios" resincronizado con el catálogo real; `docs/rpgtarkor/items.md` corregido (Ración de
+carne ahumada/Ración de viaje nunca se reasignaron al oficio Cocinero en el motor, solo documentado
+que se planeaba). Esa misma sesión posterior amplió la auditoría en profundidad de objetos/recetas/
+geografía (5 hallazgos más, todos corregidos) y cerró los 5 hallazgos de deuda técnica media/baja de
+esta ronda (refactors de `combateMultipleOrquestacion.ts`/`companeros.ts`/SQL duplicado/tipos/
+mapeos). **Genuinamente pendiente de toda esta ronda de auditoría**: solo el `questSlug`
+estructurado en `Quest` (decisión consciente de dejar fuera de alcance — hardcodeado por título
+exacto en `quests.ts § ORCO_ENFURECIDO_QUEST_TITLE`, arreglarlo exige migración de schema) y el
+punto 6 de arriba (sub-combates >4v4, sin forzar todavía).
 
 ---
 

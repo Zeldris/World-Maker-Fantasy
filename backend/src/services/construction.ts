@@ -288,8 +288,9 @@ export const AYUNTAMIENTO_PEQUENO_RECIPE: ConstructionRecipe = {
   nounRegex: /ayuntamiento/,
   // Rebalanceo (2026-08-24, Grupo 3 § Campamento/Ayuntamiento — ver
   // docs/rpgtarkor/materiales-procesados-construccion.md): antes solo 15 piedra + 10 leña (2
-  // categorías). El pequeño se queda 100% crudo a propósito (mediano/grande pasan a materiales
-  // procesados por oficio regional, sin implementar todavía) — cifras dadas por la usuaria.
+  // categorías). El pequeño se queda 100% crudo a propósito (mediano/grande SÍ pasan a materiales
+  // procesados por oficio regional — ver AYUNTAMIENTO_MEDIANO_RECIPE/AYUNTAMIENTO_GRANDE_RECIPE
+  // más abajo, mismo día) — cifras dadas por la usuaria.
   requirements: [
     { match: { kind: 'category', tipo: 'RECURSO', category: 'piedra' }, cantidad: 14, label: 'piedra' },
     { match: { kind: 'category', tipo: 'RECURSO', category: 'madera' }, cantidad: 6, label: 'leña' },

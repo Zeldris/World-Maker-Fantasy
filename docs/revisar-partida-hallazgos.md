@@ -3619,37 +3619,35 @@ recargar, saqueo optimista sin reconciliar, descanso que no curaba si se interru
 combate, retomar un viaje interrumpido tras resolver el evento con éxito). Ver el checklist para el
 detalle completo — no se repiten aquí.
 
-### 2026-08-30 — tanda de hallazgos reportados jugando en vivo (sin investigar causa raíz todavía, solo anotados a petición explícita)
+### 2026-08-30 — tanda de hallazgos reportados jugando en vivo
 
-Sesión de juego real de la usuaria (partida de Gorhorn). Todos los puntos de abajo están **solo
-anotados** — instrucción explícita: "revisa todo lo que te he puesto, añade todo al checklist del
-roadmap...y anota todo en hallazgos y al acabar nos organizamos". Ninguno se ha investigado ni
-tocado en código todavía.
+Sesión de juego real de la usuaria (partida de Gorhorn). Anotados originalmente a petición
+explícita ("revisa todo lo que te he puesto, añade todo al checklist del roadmap...y anota todo en
+hallazgos y al acabar nos organizamos"). **Revisados uno a uno el 2026-08-31** (la usuaria avisó:
+"yo creo que algunas ya están" — acertó en 15 de 16). Detalle completo del barrido en
+`tarkor_cierre_tanda_hallazgos_2026-08-30_verificada_2026-08-31` (memoria persistente). Estado real
+por punto, actualizado abajo inline — **solo el banner de Kirelon Arenoso sigue sin causa
+encontrada**, el resto de esta sección ya está cerrado (ver anotaciones "FIJADO"/"CERRADO" en cada
+párrafo).
 
-**Rediseño de "Matar" (P3.2, ver `tarkor_rediseno_matar_combate_real_2026-08-30`) incompleto —
-"Matar" no reabre elección real, ejecuta Ataque Básico solo**: tras pulsar MATAR sobre un NPC
-CONVALECIENTE, el combate pasa directo a "RESOLVIENDO COMBATE" con Ataque Básico ya disparado, sin
-dejar al jugador elegir habilidad ni escribir nada — captura confirma `USAS "ATAQUE BÁSICO"` como
-único resultado. La intención del rediseño (según la propia usuaria, mismo turno) era: pulsar MATAR
-debe DESBLOQUEAR el panel de combate normal (elegir habilidad/escribir acción), no ejecutar un
-ataque por su cuenta. Revisar `handleDecapitarSeleccion` (`useCombatFlow.ts`) — hoy dispara
-`submitCombatAction` inmediatamente con la habilidad ya resuelta (Ataque Básico si no hay ninguna
-seleccionada) en vez de solo desbloquear el panel para que el jugador actúe.
+**Rediseño de "Matar" (P3.2, ver `tarkor_rediseno_matar_combate_real_2026-08-30`) — el bug
+operativo descrito aquí (Matar ejecutaba Ataque Básico solo, sin dejar elegir) YA ESTABA CERRADO
+2026-08-30**: confirmado en el código real, `handleDecapitarSeleccion` (`useCombatFlow.ts`) hoy
+solo marca `targetedForKill: true` sobre el NPC — desbloquea el panel de combate normal para que el
+jugador elija habilidad/escriba su acción, no dispara ningún ataque por su cuenta. **Distinto del
+rediseño de diseño MAYOR que sí sigue pendiente de verdad** (quitar el remate garantizado sin
+tirada al pulsar Matar, sustituirlo por un intercambio real con riesgo — diseño técnico completo ya
+escrito en `tarkor_rediseno_matar_combate_real_2026-08-30`, pospuesto a propósito por su alcance:
+2 detectores a reescribir, optimistic-update a quitar, ~8 tests a reescribir).
 
-**Diseño nuevo pedido — reputación de facción al matar**: matar a un NPC o fauna con facción debe
-restar reputación con esa facción. Escala completa confirmada por la usuaria (de peor a mejor):
-Odiado ← Enemigo ← Hostil ← Neutral → Amistoso → Aliado → Honorable. Todo empieza en Neutral salvo
-que se especifique lo contrario explícitamente. Distintas acciones deben poder sumar o restar según
-se defina caso a caso (matar resta, otras acciones podrían sumar). Revisar qué tan cerca está esto
-de lo que `reputation.ts`/`factionsStatus` ya hacen hoy (el sistema de reputación numérico 0-5000 ya
-existe, usado por `regionControlFor`/`zonePointColorFor` — falta confirmar si ya dispara con la
-muerte de un NPC/fauna con facción, o solo se mueve por otras vías).
+**Diseño nuevo pedido — reputación de facción al matar — CERRADO 2026-08-30/31**: la mecánica de
+restar reputación al matar un NPC/fauna con facción ya existía desde 2026-07-19
+(`applyKillSideEffects`); solo faltaba el feedback de UX — `factionRepChange` propagado hasta un
+chip en `LogPanel.tsx`, mismo patrón que `xpDelta` (`tarkor_ux_reputacion_faccion_al_matar_2026-08-30`).
 
-**Aviso Matar/Clemente reaparece en cada turno mientras el NPC siga CONVALECIENTE**: debería salir
-UNA sola vez por enemigo (al quedar convaleciente), no repetirse turno tras turno hasta que se
-resuelva. Revisar de dónde sale la tarjeta persistente (ver el fix del "atasco tras recargar",
-2026-08-29, que la reconstruye desde `combatNpcsDisplay` filtrando `CONVALECIENTE && !dismissed`) —
-puede que el criterio de "ya se mostró una vez" no exista y haya que añadirlo.
+**Aviso Matar/Clemente reaparece en cada turno mientras el NPC siga CONVALECIENTE — CERRADO
+2026-08-28** (antes de que se reportara este hallazgo — comentario explícito en `LogPanel.tsx`
+confirmado por código el 2026-08-31).
 
 **Barra de habilidades generales (fuera de combate) no hace nada al pulsar** — **FIJADO 2026-08-30,
 CONFIRMADO POR CÓDIGO 2026-08-31**: 2 bugs reales encadenados, ambos con comentario explícito en
@@ -3710,26 +3708,15 @@ sin necesitar un bloque de narración de apertura obligatorio aparte — se deja
 pieza específica, el hueco que la motivó ya está cerrado por otra vía.
 
 **Huir dentro de combate debería narrarse como una tirada real, igual que un intercambio de
-ataque/defensa** — con desglose de resultado y explicación de cómo consigue (o no) escapar, igual
-que ya se narra un golpe que conecta o falla. Captura real muestra 3 líneas IDÉNTICAS seguidas
-("Gorhorn intenta huir, pero el rival aprovecha el movimiento para conectar un golpe directo, sin
-darle tiempo a defenderse") — sugiere que el jugador pulsó Huir 3 veces sin que ninguna avanzara el
-combate de forma distinguible, hasta bloquear con "No puedes intentar huir estando convaleciente".
-El diseño P3.2 (2026-08-28, `combat/huir-en-curso`) ya tiene tirada real y 2 resultados posibles
-(éxito narrado / fallo con golpe directo) — lo que falta es que CADA intento se narre de forma única
-(no la misma frase fija repetida) y quede claro en el log que fueron 3 intentos reales distintos, no
-un error repitiendo el mismo texto.
+ataque/defensa — CERRADO 2026-08-30** (`tarkor_diseno_huir_narracion_variada_2026-08-30`): Huir
+(pre-combate y dentro de combate) ya no repite la misma frase fija — 3 variantes por resultado + el
+roll real devuelto y persistido, pintado con `RollBadge` igual que cualquier otra tirada del juego.
 
 **Diseño pedido — muerte permanente de Gorhorn sin punto de guardado propio, y restauración completa
-si SÍ hay punto de guardado**: la usuaria pide diseñar (no implementar todavía) qué pasa si Gorhorn
-muere y no tiene ningún punto de guardado activo: debe aparecer un mensaje de la "entidad
-desconocida" (el narrador meta-consciente ya establecido en el lore/mecánica de muerte) con un botón
-tipo Aceptar en la propia narración — al pulsarlo, la partida se reinicia desde el mismo inicio de
-siempre. Si SÍ hay un punto de guardado, la restauración debe devolver al jugador exactamente al
-estado de ESE punto — equipo, compañeros, todo — un punto de guardado real y completo, no una
-reconstrucción parcial. La propia usuaria marca esta segunda parte como "lo complicado", pidiendo
-mirarlo bien antes de decidir cómo construirlo — sin alcance ni diseño técnico cerrado todavía,
-puramente anotado para retomar.
+si SÍ hay punto de guardado — CERRADO 2026-08-31, INCLUIDA "LA PARTE COMPLICADA"**
+(`tarkor_muerte_permanente_2026-08-31`): botón Aceptar/Reintentar al morir, con/sin punto de
+guardado, fin de tutorial como primer punto de guardado implícito, endpoint nuevo
+`POST /saves/:id/death/resolve`. Verificado con tests de integración reales.
 
 **Diseño pedido — "Agua hervida de liquen" debería ser un objeto crafteable** — **FIJADO 2026-08-30**
 (`BOILED_LICHEN_WATER_RECIPE`, `crafting.ts`, insumo `liquen-del-cauce`).
@@ -3859,13 +3846,10 @@ habilidades (2026-08-30). **Los 4 corregidos**:
    navegando con teclado dentro).
 `tsc -b` limpio, 116/116 tests de frontend en verde.
 
-**Diseño pedido — narración de viaje tramo a tramo**: durante un viaje (captura: "Viajo hacia Paso de
-los Pilares Rotos", ~visible por varios minutos de ficción), la usuaria pide que la narración cubra
-cada zona intermedia por la que se pasa hasta llegar al destino — de dónde se parte, por dónde se ha
-pasado ya, y así sucesivamente durante toda la duración del viaje — en vez de solo narrar la salida y
-la llegada final de un tirón. Relacionado con la Pieza "retomar viaje tras evento" ya anotada
-(`tarkor_diseno_retomar_viaje_tras_evento_2026-08-28`) pero es un punto de diseño distinto (cobertura
-narrativa del trayecto, no qué pasa si el viaje se interrumpe).
+**Diseño pedido — narración de viaje tramo a tramo — CERRADO 2026-08-31**
+(`tarkor_narracion_viaje_tramos_y_espera_real_2026-08-31`): la narración de viaje ya menciona zonas
+intermedias reales (solo prompt, sin llamadas LLM nuevas) + la espera real de viaje se recalcula por
+número de tramos cruzados en vez de minutos de ficción acumulados (tope bajado de 30 a 5 min).
 
 ### 2026-08-30 (runbook completo, 5 fases) — auditoría de la partida real de Gorhorn (`cmteuqm0k0001ri7jqoo86e7q`)
 
