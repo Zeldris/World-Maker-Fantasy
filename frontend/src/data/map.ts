@@ -165,7 +165,7 @@ export const llanurasNodePositions: Record<string, { x: number; y: number }> = {
   // — sin ser estrictamente proporcionales). Topología también replanteada esa misma pasada: la
   // costa pasó de abanico a cadena, y La Grieta Cantora se reenganchó de El Osario de la Manada a
   // El Cruce de las Cenizas.
-  'oasis-de-juncos-rojos': { x: 24.3, y: 14.9 }, // confirmado correcto 2026-08-05
+  'oasis-de-chudos-rojos': { x: 24.3, y: 14.9 }, // confirmado correcto 2026-08-05 (renombrado Junco→Chudo 2026-09-04)
   // Desacoplado de la distancia triangulada real (280 min, que en línea recta caía muy al norte y
   // fuera del polígono real) — mismo criterio que el Cruce de las Cenizas: la posición visual no
   // tiene por qué coincidir con la distancia mecánica, que sigue intacta en `LocationLink`.

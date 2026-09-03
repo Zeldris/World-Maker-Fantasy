@@ -48,14 +48,14 @@ interface RegionBank {
 }
 
 // Única región con núcleo jugable real hoy (Gorhorn) — banca amplia y grounded en el catálogo real
-// (worldCatalog.ts): arena/polvo rojo, juncos rojizos de las charcas estacionales, Cruzavientos,
+// (worldCatalog.ts): arena/polvo rojo, chudos rojizos de las charcas estacionales, Cruzavientos,
 // Corredores de Cauce, Gargantúa de Ceniza, Múrgol.
 const LLANURAS_DEL_VIENTO_ROJO: RegionBank = {
   terreno: [
     'La arena roja se extiende bajo sus pies, con polvo fino levantándose a cada paso.',
     'El viento arrastra volutas bajas de polvo rojo sobre la llanura abierta.',
     'La tierra agrietada por el sol cruje bajo las botas, roja hasta donde alcanza la vista.',
-    'A lo lejos, los juncos rojizos de alguna charca estacional se doblan con el viento.',
+    'A lo lejos, los chudos rojizos de alguna charca estacional se doblan con el viento.',
     'El suelo de arcilla endurecida resuena hueco con cada paso sobre la llanura.',
   ],
   porFranja: {

@@ -1024,19 +1024,20 @@ export const REED_MAT_RECIPE: CraftingRecipe = {
   nounRegex: /estera/,
   location: null,
   ingredients: [
-    { match: { kind: 'exact', catalogSlug: 'juncos-rojizos' }, cantidad: 2, label: 'juncos rojizos' },
+    // Renombrado 2026-09-04 (vocabulario de mundo) — "Junco" → "Chudo", ver worldCatalog.ts.
+    { match: { kind: 'exact', catalogSlug: 'chudos-rojizos' }, cantidad: 2, label: 'chudos rojizos' },
     { match: { kind: 'exact', catalogSlug: 'verdileas-acuaticas' }, cantidad: 2, label: 'verdileas acuáticas' },
     { match: { kind: 'exact', catalogSlug: 'hojas-telda' }, cantidad: 2, label: 'hojas de Telda' },
   ],
-  resultName: 'Estera de junco trenzado',
-  resultCatalogSlug: 'estera-junco-trenzado',
-  resultDescription: 'Juncos rojizos, verdileas acuáticas y hojas de Telda trenzados en una estera para dormir — un descanso de verdad, no solo suelo desnudo.',
+  resultName: 'Estera de Chudo Trenzado',
+  resultCatalogSlug: 'estera-chudo-trenzado',
+  resultDescription: 'Chudos rojizos, verdileas acuáticas y hojas de Telda trenzados en una estera para dormir — un descanso de verdad, no solo suelo desnudo.',
   tier: 1,
   oficio: 'curtidor-orcos-llanuras',
   narrationWant:
-    'El personaje quiere trenzar una estera de junco, pero no puede hacerlo ahora mismo (hacen falta 2 juncos rojizos, 2 verdileas acuáticas y 2 hojas de Telda a la vez) — narra que lo intenta o lo considera, pero no que la termina de verdad.',
+    'El personaje quiere trenzar una estera de chudo, pero no puede hacerlo ahora mismo (hacen falta 2 chudos rojizos, 2 verdileas acuáticas y 2 hojas de Telda a la vez) — narra que lo intenta o lo considera, pero no que la termina de verdad.',
   narrationDo:
-    'El personaje trenza juncos rojizos, verdileas acuáticas y hojas de Telda hasta formar una estera — narra la escena con naturalidad. El objeto ya se gestiona automáticamente por el backend.',
+    'El personaje trenza chudos rojizos, verdileas acuáticas y hojas de Telda hasta formar una estera — narra la escena con naturalidad. El objeto ya se gestiona automáticamente por el backend.',
 };
 
 export const FEATHER_HEADDRESS_RECIPE: CraftingRecipe = {

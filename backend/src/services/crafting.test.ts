@@ -362,7 +362,7 @@ describe('detectsCraftIntent', () => {
   });
 
   it('detecta intención de trenzar estera/tocado', () => {
-    expect(detectsCraftIntent(reedMat, 'Trenzo una estera de junco')).toBe(true);
+    expect(detectsCraftIntent(reedMat, 'Trenzo una estera de chudo')).toBe(true);
     expect(detectsCraftIntent(featherHeaddress, 'Trenzo un tocado de plumas')).toBe(true);
     expect(detectsCraftIntent(reedMat, 'Trenzo un tocado')).toBe(false);
   });
@@ -603,8 +603,8 @@ describe('canCraft — 18 recetas nuevas (2026-08-24, Grupo 3 § 27 recursos/mat
     expect(canCraft(quioClarityFilter, 'hondonada-del-eco', [row('1', 'filtro-quio', 1)], catalogBySlug, attrs, secondary)).toBe(false);
   });
 
-  it('estera de junco / tocado de plumas: exigen herramienta de curtidor, en cualquier sitio', () => {
-    const rowsMat = [row('1', 'juncos-rojizos', 2), row('2', 'verdileas-acuaticas', 2), row('3', 'hojas-telda', 2), row('4', 'cuchillo-hielo-silice')];
+  it('estera de chudo / tocado de plumas: exigen herramienta de curtidor, en cualquier sitio', () => {
+    const rowsMat = [row('1', 'chudos-rojizos', 2), row('2', 'verdileas-acuaticas', 2), row('3', 'hojas-telda', 2), row('4', 'cuchillo-hielo-silice')];
     expect(canCraft(reedMat, 'hondonada-del-eco', rowsMat, catalogBySlug, attrs, secondary)).toBe(true);
     expect(canCraft(reedMat, 'hondonada-del-eco', rowsMat.slice(0, 3), catalogBySlug, attrs, secondary)).toBe(false);
 

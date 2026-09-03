@@ -556,10 +556,10 @@ const FAUNA_CATEGORIA_ABILITIES: FaunaCategoriaAbilityUnlock[] = [
     level: 24,
     categoria: 'ZANCUDOS',
     ability: {
-      name: 'Respiro entre juncos',
+      name: 'Respiro entre chudos',
       icon: '🌾',
-      description: 'Se detiene un instante entre los juncos altos, invisible para quien la persigue, recuperando el aliento.',
-      promptText: 'Me detengo un instante entre los juncos altos, invisible para quien me persigue, recuperando el aliento.',
+      description: 'Se detiene un instante entre los chudos altos, invisible para quien la persigue, recuperando el aliento.',
+      promptText: 'Me detengo un instante entre los chudos altos, invisible para quien me persigue, recuperando el aliento.',
       category: 'combate',
       effects: ['RECUPERACION'],
       rol: 'utilidad',

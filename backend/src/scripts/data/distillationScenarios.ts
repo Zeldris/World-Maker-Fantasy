@@ -307,22 +307,22 @@ const SEEDS: ScenarioSeed[] = [
     id: 'exploracion-oasis',
     category: 'exploracion',
     base: {
-      worldFacts: [locationFact('oasis-de-juncos-rojos', 'Agua en superficie de verdad, disputada entre clanes y fauna.')],
+      worldFacts: [locationFact('oasis-de-chudos-rojos', 'Agua en superficie de verdad, disputada entre clanes y fauna.')],
       characterSummary: GORHORN_SUMMARY,
       npcSlugsInScene: [],
     },
-    actionVariants: ['Reviso el oasis en busca de algo útil.', 'Examino los juncos rojos con cuidado.', 'Busco rastros de quién ha pasado por aquí antes.'],
+    actionVariants: ['Reviso el oasis en busca de algo útil.', 'Examino los chudos rojos con cuidado.', 'Busco rastros de quién ha pasado por aquí antes.'],
     rollVariants: [null, { attribute: 'inteligencia', gradoExito: 'claro' }],
   },
   {
     id: 'exploracion-desembocadura',
     category: 'exploracion',
     base: {
-      worldFacts: [locationFact('desembocadura-callada', 'La corriente subterránea aflora al fin al mar, entre juncos y barro.')],
+      worldFacts: [locationFact('desembocadura-callada', 'La corriente subterránea aflora al fin al mar, entre chudos y barro.')],
       characterSummary: GORHORN_SUMMARY,
       npcSlugsInScene: [],
     },
-    actionVariants: ['Examino la marisma en busca de algo útil.', 'Reviso el barro por si hay restos interesantes.', 'Avanzo con cuidado entre los juncos.'],
+    actionVariants: ['Examino la marisma en busca de algo útil.', 'Reviso el barro por si hay restos interesantes.', 'Avanzo con cuidado entre los chudos.'],
     rollVariants: [null, { attribute: 'destreza', gradoExito: 'con_coste' }],
   },
   {
@@ -778,7 +778,7 @@ const SEEDS: ScenarioSeed[] = [
     id: 'descanso-manaderos',
     category: 'descanso',
     base: {
-      worldFacts: [locationFact('manaderos', 'El agua fresca corre entre los juncos rojizos.')],
+      worldFacts: [locationFact('manaderos', 'El agua fresca corre entre los chudos rojizos.')],
       characterSummary: GORHORN_SUMMARY,
       npcSlugsInScene: [],
     },

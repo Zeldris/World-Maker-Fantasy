@@ -136,7 +136,7 @@ export const locations: LocationInput[] = [
     region: 'Las Llanuras del Viento Rojo',
     kind: 'punto de agua',
     description:
-      'Donde la corriente subterránea aflora en charcas estacionales entre juncos rojizos — otro punto de la misma corriente que alimenta el Pozo de Cauce Viejo, no su origen ni su final. Aquí paren las hembras de Corredor de Cauce; cazar crías ofende la costumbre orca.',
+      'Donde la corriente subterránea aflora en charcas estacionales entre chudos rojizos — otro punto de la misma corriente que alimenta el Pozo de Cauce Viejo, no su origen ni su final. Aquí paren las hembras de Corredor de Cauce; cazar crías ofende la costumbre orca.',
     aliases: ['manaderos', 'los manaderos'],
     x: 18.1,
     y: 2.8,
@@ -247,13 +247,13 @@ export const locations: LocationInput[] = [
   // ni nodo de mapa para La Ciudad Hundida / El Archivo Cegado / El Observatorio Roto: son
   // contenido futuro explícito (tras el terremoto sin fecha fijada), no entran al grafo todavía.
   {
-    slug: 'oasis-de-juncos-rojos',
-    name: 'El Oasis de Juncos Rojos',
+    slug: 'oasis-de-chudos-rojos',
+    name: 'El Oasis de Chudos Rojos',
     region: 'Las Llanuras del Viento Rojo',
     kind: 'punto de agua y vegetacion',
     description:
       'Agua en superficie de verdad, alimentada por la misma corriente subterránea que sigue Los Manaderos — un punto verde real en medio del polvo rojo, disputado entre clanes, fauna y cualquiera que necesite descansar de la travesía.',
-    aliases: ['el oasis de juncos rojos', 'oasis de juncos rojos'],
+    aliases: ['el oasis de chudos rojos', 'oasis de chudos rojos'],
     x: 24.3,
     y: 14.9,
   },
@@ -264,7 +264,7 @@ export const locations: LocationInput[] = [
     region: 'Las Llanuras del Viento Rojo',
     kind: 'costa',
     description:
-      'El punto donde la corriente subterránea que alimenta El Pozo de Cauce Viejo y Los Manaderos aflora por fin al mar, en una marisma salobre de juncos y barro — cierra el recorrido completo del agua de las Llanuras, desde su nacimiento tierra adentro hasta el mar.',
+      'El punto donde la corriente subterránea que alimenta El Pozo de Cauce Viejo y Los Manaderos aflora por fin al mar, en una marisma salobre de chudos y barro — cierra el recorrido completo del agua de las Llanuras, desde su nacimiento tierra adentro hasta el mar.',
     aliases: ['la desembocadura callada', 'desembocadura callada'],
     x: -2,
     y: 42,
@@ -724,7 +724,7 @@ export const locationTerrainTags: Record<string, TerrainTag[]> = {
   // del mismo `kind: 'hito'` que sus vecinas de arriba, que sí tienen tag):
   'cruce-de-las-cenizas': ['arido', 'vegetacion'],
   'osario-de-la-manada': ['arido'],
-  'oasis-de-juncos-rojos': ['humedo', 'vegetacion'],
+  'oasis-de-chudos-rojos': ['humedo', 'vegetacion'],
   'desembocadura-callada': ['humedo','vegetacion','rocoso'],
   'playa-de-ceniza-blanca': ['humedo','arido'],
   'acantilados-partidos': ['rocoso', 'humedo'],
@@ -937,16 +937,16 @@ export const locationLinks: LocationLinkInput[] = [
   // --- Desde Los Manaderos: la cadena del río hacia el mar ---
   {
     fromSlug: 'manaderos',
-    toSlug: 'oasis-de-juncos-rojos',
+    toSlug: 'oasis-de-chudos-rojos',
     minutosBase: 115,
     terreno: 'Siguiendo la corriente subterránea hacia el norte',
     riesgo: 'Espinas del Viento en las hondonadas del cauce',
   },
   {
-    fromSlug: 'oasis-de-juncos-rojos',
+    fromSlug: 'oasis-de-chudos-rojos',
     toSlug: 'desembocadura-callada',
     minutosBase: 280,
-    terreno: 'Marisma y juncos, la corriente ensanchándose hacia el mar',
+    terreno: 'Marisma y chudos, la corriente ensanchándose hacia el mar',
     riesgo: 'Terreno blando, fácil quedarse atascado',
   },
   // Cadena de la costa: reordenada por distancia real (Desembocadura → Pozas → Acantilados →
@@ -4706,14 +4706,14 @@ export const items: ItemCatalogInput[] = [
     curaEnergia: 6,
   },
   {
-    slug: 'estera-junco-trenzado',
-    name: 'Estera de junco trenzado',
-    aliases: ['estera de junco', 'estera'],
+    slug: 'estera-chudo-trenzado',
+    name: 'Estera de Chudo Trenzado',
+    aliases: ['estera de chudo', 'estera'],
     category: 'consumible',
     tipo: 'CONSUMIBLE',
     valorGoirnos: 3,
     equipSlot: 'CONSUMIBLE_1',
-    description: 'Juncos rojizos, verdileas acuáticas y hojas de Telda trenzados en una estera para dormir — un descanso de verdad, no solo suelo desnudo.',
+    description: 'Chudos rojizos, verdileas acuáticas y hojas de Telda trenzados en una estera para dormir — un descanso de verdad, no solo suelo desnudo.',
     dimensiones: 'Estera de 180x60 cm.',
     lugarOrigen: 'Los Manaderos, Llanuras del Viento Rojo.',
     curaEnergia: 6,
@@ -5460,13 +5460,16 @@ export const items: ItemCatalogInput[] = [
   },
 
   {
-    slug: 'juncos-rojizos',
-    name: 'Juncos Rojizos',
-    aliases: ['juncos', 'juncos de los manaderos'],
+    // Renombrado 2026-09-04 (creación del vocabulario de mundo, docs/rpgtarkor/vocabulario.md) —
+    // "Junco" es fauna/flora real de la Tierra, sustituido por "Chudo" en todo el catálogo: mismo
+    // patrón que Telda (especie base con variantes regionales, no "árbol" genérico).
+    slug: 'chudos-rojizos',
+    name: 'Chudos Rojizos',
+    aliases: ['chudos', 'chudos rojizos', 'chudos de los manaderos'],
     category: 'planta',
     tipo: 'RECURSO',
     valorGoirnos: 1,
-    description: 'Juncos rojizos de las charcas de Los Manaderos — material de tejido y techado.',
+    description: 'Chudos rojizos de las charcas de Los Manaderos — material de tejido y techado.',
     dimensiones: 'Tallos de 80 cm a 1,2 m.',
   },
 
@@ -7035,7 +7038,7 @@ export const harvestYields: HarvestYieldInput[] = [
   // Quio SÍ tiene recurso propio (Filtro de Quio, `flora-fauna.md`) — este comentario lo agrupaba
   // aquí por error; su fila real vive más abajo, junto al resto de fauna de Los Manaderos.
 
-  // --- Verdileas Acuáticas, Juncos Rojizos (Los Manaderos) ---
+  // --- Verdileas Acuáticas, Chudos Rojizos (Los Manaderos) ---
 
   {
     sourceSlug: 'verdileas-acuaticas',
@@ -7046,10 +7049,10 @@ export const harvestYields: HarvestYieldInput[] = [
   },
 
   {
-    sourceSlug: 'juncos-rojizos',
+    sourceSlug: 'chudos-rojizos',
     sourceCategory: 'planta',
     metodoObtencion: 'PASIVO',
-    itemSlug: 'juncos-rojizos',
+    itemSlug: 'chudos-rojizos',
     cantidad: 2,
   },
 
@@ -7783,7 +7786,7 @@ export const harvestSourceAliases: Record<string, string[]> = {
   fercaneo: ['fercaneo', 'fercaneos'],
   gradias: ['gradias', 'arbusto gradias', 'arbusto de gradias'],
   'hojas-telda-fuente': ['hojas de telda', 'hoja de telda'],
-  'juncos-rojizos': ['juncos rojizos', 'juncos', 'juncos de los manaderos'],
+  'chudos-rojizos': ['chudos rojizos', 'chudos', 'chudos de los manaderos'],
   // 'resina-lucre-blanco-fuente' antes que 'lucre-blanco' a propósito: 'resina de lucre blanco'
   // contiene literalmente 'lucre blanco' — si 'lucre-blanco' se comprobara primero, cualquier
   // mención de la resina se malinterpretaría como la madera.
@@ -7897,7 +7900,7 @@ export const harvestSourceHomeLocationSlug: Record<string, string> = {
   ferike: 'cruce-de-las-cenizas',
   boungo: 'osario-de-la-manada',
   'verdileas-acuaticas': 'manaderos',
-  'juncos-rojizos': 'manaderos',
+  'chudos-rojizos': 'manaderos',
   'jusha-esmeralda': 'manaderos',
   miruina: 'manaderos',
   'tura-jusha': 'manaderos',
@@ -8003,7 +8006,7 @@ export const harvestSourceRegion: Record<string, string> = {
   ferike: 'Llanuras del Viento Rojo',
   boungo: 'Llanuras del Viento Rojo',
   'verdileas-acuaticas': 'Llanuras del Viento Rojo',
-  'juncos-rojizos': 'Llanuras del Viento Rojo',
+  'chudos-rojizos': 'Llanuras del Viento Rojo',
   'jusha-esmeralda': 'Llanuras del Viento Rojo',
   miruina: 'Llanuras del Viento Rojo',
   'tura-jusha': 'Llanuras del Viento Rojo',
@@ -8093,7 +8096,7 @@ export const harvestSourceDisplayName: Record<string, string> = {
   'flor-salvatura': 'Flor Salvatura',
   gradias: 'Gradias',
   'hojas-telda-fuente': 'Hojas de Telda',
-  'juncos-rojizos': 'Juncos Rojizos',
+  'chudos-rojizos': 'Chudos Rojizos',
   'lucre-blanco': 'Lucre Blanco',
   'junba-verde': 'Junba Verde',
   'junba-verde-resina-fuente': 'Junba Verde',
@@ -8180,8 +8183,8 @@ export const harvestSourceDescriptions: Record<string, string> = {
     'Arbusto de ramas fibrosas y hojas anchas que sueltan toda su agua acumulada al triturarlas.',
   'hojas-telda-fuente':
     'Hojas grandes de los árboles Telda, de 30 a 50 cm — la misma hoja para Telda Común, Telda Ceniza y Telda Atardecer, solo cambian tronco y resina entre variantes.',
-  'juncos-rojizos':
-    'Juncos rojizos de las charcas de Los Manaderos, tallos de 80 cm a 1,2 m — material de tejido y techado.',
+  'chudos-rojizos':
+    'Chudos rojizos de las charcas de Los Manaderos, tallos de 80 cm a 1,2 m — material de tejido y techado.',
   'lucre-blanco':
     'Árbol de tronco claro y madera muy resistente que crece en las cumbres de Los Pilares Rotos.',
   'junba-verde':
@@ -8283,7 +8286,7 @@ export const harvestSourceTerrainTag: Record<string, TerrainTag> = {
   // propósito, ver comentario junto a esa tabla) y 'pasto-solar' (candado quitado a propósito
   // 2026-08-22, ver mismo sitio).
   gradias: 'vegetacion', // Los Pastos de la Deriva, mismo tag que flor-salvatura/cuernahoja
-  'juncos-rojizos': 'humedo', // Los Manaderos
+  'chudos-rojizos': 'humedo', // Los Manaderos
   'musgo-arcilla': 'humedo', // El Pozo de Cauce Viejo, mismo tag que telda-comun/resina-telda-fuente
   'pasto-de-sangre': 'vegetacion', // La Sabana Alta
   'trigo-escarlata': 'vegetacion', // La Sabana Alta
@@ -8318,7 +8321,7 @@ export const harvestSourceFloraCategoria: Record<string, FloraCategoria> = {
   // TRENIAS — fibra para tejido/cordaje (no pasto).
   'enredaderas-llanuras': 'TRENIAS',
   gradias: 'TRENIAS',
-  'juncos-rojizos': 'TRENIAS',
+  'chudos-rojizos': 'TRENIAS',
   // MARELAS — algas de costa/charca.
   temune: 'MARELAS',
   'verdileas-acuaticas': 'MARELAS',
@@ -8514,12 +8517,12 @@ export const zonePoints: ZonePointInput[] = [
   { locationSlug: 'filo-de-las-brasas', x: 620, y: 480, tipo: 'RECURSO', targetSlug: 'fercaneo', label: 'Fercaneo entre cráteres' },
 
   // Los Manaderos — Jusha Esmeralda, Miruina y Quio tienen homeLocationSlug directo (Tura Jusha
-  // queda fuera por cupo, misma charca que Jusha Esmeralda). Juncos Rojizos tiene homeLocationSlug
+  // queda fuera por cupo, misma charca que Jusha Esmeralda). Chudos Rojizos tiene homeLocationSlug
   // directo también.
   { locationSlug: 'manaderos', x: 220, y: 180, tipo: 'FAUNA', targetSlug: 'jusha-esmeralda', label: 'Jusha Esmeralda en charca profunda' },
   { locationSlug: 'manaderos', x: 540, y: 220, tipo: 'FAUNA', targetSlug: 'miruina', label: 'Madriguera de Miruina' },
   { locationSlug: 'manaderos', x: 320, y: 420, tipo: 'FAUNA', targetSlug: 'quio', label: 'Quio filtrando el fango de la orilla' },
-  { locationSlug: 'manaderos', x: 600, y: 460, tipo: 'RECURSO', targetSlug: 'juncos-rojizos', label: 'Juncos Rojizos' },
+  { locationSlug: 'manaderos', x: 600, y: 460, tipo: 'RECURSO', targetSlug: 'chudos-rojizos', label: 'Chudos Rojizos' },
 
   // El Osario de la Manada — hito pequeño, sin fauna viva anclada propia (la Gargantúa que le da
   // nombre lleva muerta décadas). Solo los 2 recursos con homeLocationSlug directo.
@@ -8558,14 +8561,14 @@ export const zonePoints: ZonePointInput[] = [
   // que Restos de Maktor (terreno árido, sin ancla propia en otra Location).
   { locationSlug: 'tumulos-del-honor', x: 240, y: 440, tipo: 'FAUNA', targetSlug: 'ruptidar', label: 'Ruptidar bajo la arena' },
 
-  // El Oasis de Juncos Rojos — sin fauna/recurso propio con homeLocationSlug fijo aquí; match por
+  // El Oasis de Chudos Rojos — sin fauna/recurso propio con homeLocationSlug fijo aquí; match por
   // terreno (humedo/vegetacion) con especies/plantas sin ancla en otra Location. Bulbo del Cauce y
   // Liquen del Cauce comparten la misma corriente subterránea que la propia description del Oasis
   // nombra explícitamente. Múrgol (ganado itinerante, sin homeLocationSlug fijo) encaja con el
   // propio texto: "disputado entre clanes, fauna y cualquiera que necesite descansar".
-  { locationSlug: 'oasis-de-juncos-rojos', x: 260, y: 220, tipo: 'RECURSO', targetSlug: 'bulbo-del-cauce', label: 'Bulbo del Cauce' },
-  { locationSlug: 'oasis-de-juncos-rojos', x: 540, y: 260, tipo: 'RECURSO', targetSlug: 'liquen-del-cauce', label: 'Liquen del Cauce' },
-  { locationSlug: 'oasis-de-juncos-rojos', x: 400, y: 460, tipo: 'FAUNA', targetSlug: 'murgol', label: 'Múrgoles abrevando' },
+  { locationSlug: 'oasis-de-chudos-rojos', x: 260, y: 220, tipo: 'RECURSO', targetSlug: 'bulbo-del-cauce', label: 'Bulbo del Cauce' },
+  { locationSlug: 'oasis-de-chudos-rojos', x: 540, y: 260, tipo: 'RECURSO', targetSlug: 'liquen-del-cauce', label: 'Liquen del Cauce' },
+  { locationSlug: 'oasis-de-chudos-rojos', x: 400, y: 460, tipo: 'FAUNA', targetSlug: 'murgol', label: 'Múrgoles abrevando' },
 
   // La Desembocadura Callada — sin fauna/recurso costero propio catalogado (ninguna especie del
   // catálogo tiene ancla marina/costera real); match por terreno con lo poco disponible: Liquen

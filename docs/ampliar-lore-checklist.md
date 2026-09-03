@@ -1280,14 +1280,23 @@ Enciclopedia (backend `world.ts` + frontend `api.ts`/`enciclopediaTargets.ts`). 
 `tsc -b` limpio en backend y frontend, 191/191 tests frontend, 2015/2016 backend (1 flake
 preexistente sin relación, ya documentado, confirmado en aislamiento).
 
-**Pendiente de código (no cerrado hoy)**:
-- Renombrado completo "Junco" → "Chudo" (ver arriba, confirmado el nombre base pero sin aplicar).
-- Asignar `floraCategoria` a Trepador Ocaso cuando se repase Ciénaga Troncal.
+**Renombrado "Junco" → "Chudo" — CERRADO el mismo día (2026-09-04)**: aplicado en todo el proyecto,
+no solo `worldCatalog.ts` — se encontraron y corrigieron 6 archivos más con el nombre viejo
+enterrado: `crafting.ts` (receta de la Estera, referenciaba `catalogSlug: 'juncos-rojizos'` directo,
+sin pasar por el catálogo — se habría roto en silencio de no corregirse), `crafting.test.ts`
+(fixture del mismo test), `entorno.ts` (banco de frases ambientales de la región), `faunaAbilities.ts`
+(habilidad "Respiro entre juncos" de la categoría ZANCUDOS), `distillationScenarios.ts` (3 escenarios
+del dataset de fine-tuning, con slug de `locationFact` desactualizado), y `frontend/src/data/map.ts`
+(coordenada visual del pin de El Oasis, keyed por slug — se habría desalineado del mapa sin
+corregir). Verificado: `tsc -b` limpio en backend y frontend, 2014/2016 tests backend (2 flakes
+preexistentes sin relación, confirmados en aislamiento), 191/191 frontend.
+
+- Asignar `floraCategoria` a Trepador Ocaso cuando se repase Ciénaga Troncal — sigue pendiente.
 
 **Pendiente de documentación (nuevo, pedido explícito 2026-09-04)**: crear `docs/rpgtarkor/vocabulario.md`
 — registro de traducciones a la lengua del juego (lengua común = castellano adaptado al lore para
-muchos sustantivos, con variantes por raza cuando aplique) cada vez que se "traduce" algo nuevo,
-como "Junco"→"Chudo". Empezar a alimentarlo en cuanto se aplique ese renombrado.
+muchos sustantivos, con variantes por raza cuando aplique) cada vez que se "traduce" algo nuevo. La
+primera entrada real ya existe (Junco→Chudo, cerrado arriba) — sigue sin crearse el archivo en sí.
 
-**Zona 17 sigue pausada** — retomar el Chudo de la Marea (elemento 2) en cuanto se cierre el
-renombrado, antes de seguir con más elementos nuevos de la zona.
+**Zona 17 sigue pausada** — retomar el Chudo de la Marea (elemento 2) ahora que el renombrado ya
+está cerrado, antes de seguir con más elementos nuevos de la zona.
