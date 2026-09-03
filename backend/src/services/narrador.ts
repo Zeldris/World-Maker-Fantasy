@@ -1954,8 +1954,13 @@ export function hasFalseUnconsciousNarration(narration: string, npcFallsConvalec
 // "expira"/"deja de respirar"/"exhala su último aliento" son sinónimos igual de comunes de "muere"
 // que la lista original no cazaba, más los sustantivos "cadáver"/"despojos" (una narración que ya
 // llama "cadáver" a alguien está afirmando su muerte tan claramente como el verbo).
+// Hueco de vocabulario nuevo (bug real jugando en vivo, 2026-09-03, "narración de muerte falsa
+// tras un Fallo"): "emite un ruido lastimero antes de quedarse inmóvil" describe una muerte con
+// pleno detalle sin usar ninguna palabra de la lista original — "queda(rse)/permanece inmóvil"
+// exige el verbo completo (no "inmóvil" suelto, que también describe una pausa momentánea real,
+// ver caso negativo ya cubierto "se desploma... dejando una mancha de sangre").
 const DEATH_CLAIM_LEAK_REGEX =
-  /muri[oó]|muere\b|ha muerto|cae muert[oa]|sin vida|derrotad[oa] y muert[oa]|muerte (instantánea|definitiva)|fallece|expira\b|deja de respirar|exhala su último aliento|cadáver|despojos/i;
+  /muri[oó]|muere\b|ha muerto|cae muert[oa]|sin vida|derrotad[oa] y muert[oa]|muerte (instantánea|definitiva)|fallece|expira\b|deja de respirar|exhala su último aliento|cadáver|despojos|qued(a|arse|ando)\s+inm[oó]vil|permanece\s+inm[oó]vil|no vuelve a (moverse|levantarse|respirar)/i;
 
 export function hasFalseDeathClaim(narration: string, combatNoRealDeathThisTurn?: boolean): boolean {
   if (!combatNoRealDeathThisTurn) return false;

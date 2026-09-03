@@ -864,6 +864,25 @@ describe('hasFalseDeathClaim', () => {
     expect(hasFalseDeathClaim('El orco fallece entre estertores, dejando solo un cadáver tendido en la arena.', true)).toBe(true);
     expect(hasFalseDeathClaim('El orco deja de respirar tras el golpe final.', true)).toBe(true);
   });
+
+  // Bug real jugando en vivo (2026-09-03, partida de Gorhorn, "narración de muerte falsa tras un
+  // Fallo"): la tirada real fue Fallo (🎲3+5=8 vs 15, combatBothMissed) pero la narración describió
+  // un remate mortal completo sin usar ninguna palabra de la lista original ("muere"/"ha muerto"/
+  // "cadáver"...) — hueco de vocabulario real, texto exacto de esa partida.
+  it('bug real jugando en vivo: "emite un ruido lastimero antes de quedarse inmóvil" tras un Fallo total', () => {
+    const narration =
+      'Gorhorn avanza hacia el Quio tendido en el suelo, su hacha relumbra bajo el sol. Con un último esfuerzo, la maza descansa sobre la criatura, que emite un ruido lastimero antes de quedarse inmóvil. La arena se impregna de su sangre arenosa.';
+    expect(hasFalseDeathClaim(narration, true)).toBe(true);
+  });
+
+  it('detecta variantes de "queda(rse) inmóvil"/"no vuelve a moverse", sin disparar con "inmóvil" suelto', () => {
+    expect(hasFalseDeathClaim('El orco queda inmóvil tras el golpe.', true)).toBe(true);
+    expect(hasFalseDeathClaim('El orco permanece inmóvil, sin dar señales de vida.', true)).toBe(true);
+    expect(hasFalseDeathClaim('El orco no vuelve a moverse.', true)).toBe(true);
+    // Caso negativo: "inmóvil" sin el verbo "quedar(se)/permanecer" no debe disparar por sí solo
+    // (mismo criterio que "se desploma"/"cae" a secas, ya cubierto arriba).
+    expect(hasFalseDeathClaim('El orco se queda un instante inmóvil, sopesando su siguiente movimiento.', true)).toBe(false);
+  });
 });
 
 describe('hasFalseItemUse', () => {

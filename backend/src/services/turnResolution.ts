@@ -3071,7 +3071,16 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   // `npcFallsConvalecienteThisTurn`, que exigen que la muerte SÍ haya pasado este turno — el hueco
   // real es el caso contrario, cuando NO ha pasado y el modelo la reclama de todos modos). True en
   // cualquier turno con un golpe real contra el NPC que NO lo deja MUERTO de verdad.
-  const combatNoRealDeathThisTurn = exchangeHappened && !!npcAttackHits && npcTargetNewCondicion !== 'MUERTO';
+  //
+  // Ampliado con `combatBothMissed` (bug real jugando en vivo, 2026-09-03, "narración de muerte
+  // falsa tras un Fallo"): la condición original exigía `npcAttackHits` (el golpe del jugador
+  // conectó de verdad) — un turno con tirada Fallo total (`combatBothMissed`, ningún lado conecta)
+  // quedaba completamente fuera de este guard, así que un remate narrado con pleno detalle
+  // ("emite un ruido lastimero antes de quedarse inmóvil") sobre una tirada real de Fallo (🎲3+5=8
+  // vs 15, NpcState nunca creado) nunca se detectaba. Mismo criterio exacto que ya usa
+  // `hasFalseCombatHit` para este mismo `combatBothMissed` — si nadie conectó, nadie puede haber
+  // muerto de verdad.
+  const combatNoRealDeathThisTurn = exchangeHappened && (!!npcAttackHits || combatBothMissed) && npcTargetNewCondicion !== 'MUERTO';
 
   // Anti-repetición de vocabulario/imágenes (ver comentario de `lastNarration` más arriba).
   if (lastNarration) {
