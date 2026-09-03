@@ -258,6 +258,65 @@ describe('Recarga con un CONVALECIENTE pendiente (bug real 2026-08-28, cerrado 2
   })
 })
 
+// Bug real jugando en vivo (2026-09-03, verificación con Playwright de "Dejar vivir/Capturar en
+// grupo de 2+ del mismo tipo"): el describe de arriba ya cubría que la tarjeta persistente APARECE
+// correctamente sin `openCombat()` — pero nadie ejercitaba pulsar Clemente/Capturar EN ESE MISMO
+// estado (`combatNpcStates` sigue en `[]`, `openCombat()` nunca se llamó en esta sesión de React).
+// `handleCapturarSeleccion`/`handleDejarVivirSeleccion` usaban `prev.map(...)` para marcar
+// `dismissed: true` — un `.map()` no CREA nada nuevo si el `participantId` no existe todavía en el
+// array, así que la actualización se perdía en silencio: el backend marcaba `dismissedGrupo`
+// correctamente (confirmado en Postgres real), pero la tarjeta seguía apareciendo en pantalla
+// porque el estado local nunca reflejaba la resolución. Confirmado en vivo que reproducir el mismo
+// flujo tras pulsar "Combatir" primero (que sí llama a `openCombat()`) no mostraba el bug — el
+// hueco era específico de resolver directo desde la tarjeta del log, sin abrir el panel antes.
+describe('Clemente/Capturar SIN openCombat previo — mismo escenario de "recarga real" (bug real 2026-09-03)', () => {
+  it('Clemente sobre un CONVALECIENTE, con combatNpcStates vacío al empezar, sí marca dismissed y desbloquea combatHasPendingConvalecientes', async () => {
+    const { result } = renderHook(() =>
+      useHarness({ npcs: [npc({ slug: 'zense-ceniza', name: 'Zense Ceniza', condicionFisica: 'CONVALECIENTE', participantId: 'p1' })] }),
+    )
+    expect(result.current.combat.combatOpen).toBe(false) // openCombat() nunca se llamó
+    expect(result.current.combat.combatHasPendingConvalecientes).toBe(true)
+    mockDejarVivir.mockResolvedValueOnce({ npcSlug: 'zense-ceniza', logEntry: { id: 'log-1', text: 'x', timeLabel: 'x', createdAt: 'x' } })
+
+    await act(() => result.current.combat.handleDejarVivirSeleccion(result.current.combat.combatNpcsDisplay[0]))
+
+    expect(result.current.combat.combatNpcsDisplay[0].dismissed).toBe(true)
+    expect(result.current.combat.combatHasPendingConvalecientes).toBe(false)
+  })
+
+  it('Capturar sobre un CONVALECIENTE, con combatNpcStates vacío al empezar, sí marca dismissed y desbloquea combatHasPendingConvalecientes', async () => {
+    const { result } = renderHook(() =>
+      useHarness({ npcs: [npc({ slug: 'zense-ceniza', name: 'Zense Ceniza', condicionFisica: 'CONVALECIENTE', participantId: 'p1' })] }),
+    )
+    expect(result.current.combat.combatOpen).toBe(false)
+    mockPostCapturar.mockResolvedValueOnce({ npcSlug: 'zense-ceniza', tipo: 'FAUNA', inventoryItemId: 'item-1', capturaExpiraAtMinutes: null })
+
+    await act(() => result.current.combat.handleCapturarSeleccion(result.current.combat.combatNpcsDisplay[0]))
+
+    expect(result.current.combat.combatNpcsDisplay[0].dismissed).toBe(true)
+    expect(result.current.combat.combatHasPendingConvalecientes).toBe(false)
+  })
+
+  it('con 2 individuos del mismo tipo y solo uno sembrado en combatNpcStates, Clemente sobre el NO sembrado también lo crea y marca dismissed solo a él', async () => {
+    const { result } = renderHook(() =>
+      useHarness({
+        npcs: [
+          npc({ slug: 'zense-ceniza', name: 'Zense Ceniza', condicionFisica: 'CONVALECIENTE', participantId: 'p1' }),
+          npc({ slug: 'zense-ceniza', name: 'Zense Ceniza', condicionFisica: 'ILESO', participantId: 'p2' }),
+        ],
+      }),
+    )
+    mockDejarVivir.mockResolvedValueOnce({ npcSlug: 'zense-ceniza', logEntry: { id: 'log-1', text: 'x', timeLabel: 'x', createdAt: 'x' } })
+
+    const objetivo = result.current.combat.combatNpcsDisplay.find((n) => n.participantId === 'p1')!
+    await act(() => result.current.combat.handleDejarVivirSeleccion(objetivo))
+
+    const [p1, p2] = result.current.combat.combatNpcsDisplay
+    expect(p1.dismissed).toBe(true)
+    expect(p2.dismissed).not.toBe(true) // el otro individuo del grupo NO se ve afectado
+  })
+})
+
 describe('submitCombatAction — guards', () => {
   it('no llama a la API con acción vacía', async () => {
     const { result } = renderHook(() => useHarness())

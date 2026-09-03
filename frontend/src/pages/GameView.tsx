@@ -79,7 +79,7 @@ import {
   type SaveDetail,
 } from '../lib/api'
 import { characterWaitingFlavor, combatWaitingFlavor, worldWaitingFlavor, useRotatingFlavor } from '../lib/waitingFlavor'
-import { formatCountdown, formatFictionalDuration, applyInventoryDelta } from '../lib/gameViewHelpers'
+import { formatCountdown, formatFictionalDuration, applyInventoryDelta, combatKeyFor } from '../lib/gameViewHelpers'
 import { ESTACION_ICON, CLIMA_ICON } from '../lib/entorno'
 import type {
   ActiveEffect,
@@ -786,19 +786,31 @@ export function GameView() {
   }
 
   // Puente entre la tarjeta Matar/Capturar/Clemente del log (LogPanel.tsx § convalecienteOffers,
-  // 2026-08-26) y los handlers ya construidos en useCombatFlow.ts — la tarjeta solo conoce el
-  // `npcSlug`, aquí se resuelve contra el `CombatNpcDisplay` real (mismo objeto que ya usa
-  // CombatPanel) para reutilizar exactamente la misma lógica que los botones de combate normales.
-  function handleMatarConvaleciente(npcSlug: string) {
-    const npc = combat.combatNpcsDisplay.find((n) => n.slug === npcSlug)
+  // 2026-08-26) y los handlers ya construidos en useCombatFlow.ts — la tarjeta pasa `combatKeyFor`
+  // (participantId cuando existe, slug si no), aquí se resuelve contra el `CombatNpcDisplay` real
+  // (mismo objeto que ya usa CombatPanel) para reutilizar exactamente la misma lógica que los
+  // botones de combate normales.
+  //
+  // Bug real jugando en vivo (2026-09-03, verificación con Playwright de "Dejar vivir/Capturar en
+  // grupo de 2+ del mismo tipo"): resolvía por `n.slug === npcSlug` a secas — con 2+ individuos
+  // del mismo tipo en el mismo `CombatEncounter`, `.find()` siempre cogía el PRIMERO del array,
+  // nunca necesariamente el que corresponde a la tarjeta que la jugadora pulsó. El backend sí
+  // recibía el `participantId` correcto (viaja dentro del `npc` ya resuelto aquí), así que
+  // `dismissedGrupo` quedaba bien marcado en la fila real — pero como el objeto local que
+  // `useCombatFlow.ts` actualizaba después podía ser el equivocado, la tarjeta persistente seguía
+  // mostrándose tras la acción. Mismo hueco exacto que ya se cerró una vez en `useCombatFlow.ts`
+  // directamente (2026-08-29), reaparecido en esta capa (`LogPanel.tsx` pasaba solo `npc.slug`, sin
+  // `participantId`, a estos 3 handlers).
+  function handleMatarConvaleciente(npcKey: string) {
+    const npc = combat.combatNpcsDisplay.find((n) => combatKeyFor(n) === npcKey)
     if (npc) combat.handleDecapitarSeleccion([npc])
   }
-  function handleCapturarConvaleciente(npcSlug: string) {
-    const npc = combat.combatNpcsDisplay.find((n) => n.slug === npcSlug)
+  function handleCapturarConvaleciente(npcKey: string) {
+    const npc = combat.combatNpcsDisplay.find((n) => combatKeyFor(n) === npcKey)
     if (npc) combat.handleCapturarSeleccion(npc)
   }
-  function handleClementeConvaleciente(npcSlug: string) {
-    const npc = combat.combatNpcsDisplay.find((n) => n.slug === npcSlug)
+  function handleClementeConvaleciente(npcKey: string) {
+    const npc = combat.combatNpcsDisplay.find((n) => combatKeyFor(n) === npcKey)
     if (npc) combat.handleDejarVivirSeleccion(npc)
   }
 

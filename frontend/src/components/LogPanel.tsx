@@ -7,6 +7,7 @@ import { PanelRivets } from './Rivet'
 import { EnciclopediaLinkedText } from './EnciclopediaLinkedText'
 import { useEnciclopediaLink } from '../context/useEnciclopediaLink'
 import { OfferCard } from './OfferCard'
+import { combatKeyFor } from '../lib/gameViewHelpers'
 
 interface LogPanelProps {
   title: string
@@ -65,15 +66,21 @@ interface LogPanelProps {
   /// se calcula DIRECTAMENTE de aquí (filtrando CONVALECIENTE sin `dismissed`), sin depender de
   /// ninguna `LogEntry` concreta — `name`/`capturable` hacen falta para poder pintar la tarjeta sin
   /// tener que ir a buscarlos a otro sitio.
-  combatNpcsDisplay?: { slug: string; name: string; condicion: CondicionFisica; dismissed?: boolean; capturable?: boolean; targetedForKill?: boolean }[]
-  onMatarConvaleciente?: (npcSlug: string) => void
+  /// `participantId` (bug real 2026-09-03, mismo hueco que ya se cerró en useCombatFlow.ts pero
+  /// reaparecido aquí en la cadena LogPanel→GameView): con 2+ individuos del mismo tipo en el
+  /// mismo `CombatEncounter`, resolver por `slug` a secas siempre coge el PRIMERO del array, sin
+  /// importar cuál tarjeta pulsó la jugadora — `onMatarConvaleciente`/etc. de abajo deben recibir
+  /// la key real (`combatKeyFor`, participantId cuando existe) para poder actuar sobre el
+  /// individuo correcto.
+  combatNpcsDisplay?: { slug: string; participantId?: string; name: string; condicion: CondicionFisica; dismissed?: boolean; capturable?: boolean; targetedForKill?: boolean }[]
+  onMatarConvaleciente?: (npcKey: string) => void
   /// Atajo a Diario (2026-08-27, auditoría de diseño/UX § 4.3: "no hay ningún atajo desde el log
   /// en vivo hacia el Diario — el jugador tiene que saber por su cuenta que existe esa pestaña
   /// aparte" — este log solo muestra las últimas 24h por diseño, ver comentario de `entries`).
   /// Mismo patrón opcional que `onCollapse`/`onToggleView`: sin este callback, no sale el enlace.
   onViewFullHistory?: () => void
-  onCapturarConvaleciente?: (npcSlug: string) => void
-  onClementeConvaleciente?: (npcSlug: string) => void
+  onCapturarConvaleciente?: (npcKey: string) => void
+  onClementeConvaleciente?: (npcKey: string) => void
 }
 
 const accentClasses = {
@@ -520,9 +527,9 @@ export const LogPanel = memo(function LogPanel({
               icon="⚠️"
               title={`${npc.name} está convaleciente`}
               actions={[
-                { label: 'Matar', tone: 'danger', onClick: () => onMatarConvaleciente?.(npc.slug) },
-                ...(npc.capturable ? [{ label: 'Capturar', tone: 'accent' as const, onClick: () => onCapturarConvaleciente?.(npc.slug) }] : []),
-                { label: 'Clemente', tone: 'neutral', onClick: () => onClementeConvaleciente?.(npc.slug) },
+                { label: 'Matar', tone: 'danger', onClick: () => onMatarConvaleciente?.(combatKeyFor(npc)) },
+                ...(npc.capturable ? [{ label: 'Capturar', tone: 'accent' as const, onClick: () => onCapturarConvaleciente?.(combatKeyFor(npc)) }] : []),
+                { label: 'Clemente', tone: 'neutral', onClick: () => onClementeConvaleciente?.(combatKeyFor(npc)) },
               ]}
             />
           ))}

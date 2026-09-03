@@ -453,7 +453,22 @@ export function useCombatFlow(params: UseCombatFlowParams) {
       // Identificador de combatientes duplicados (mismo criterio que el resto de este archivo,
       // `combatKeyFor` — bug real 2026-08-29: filtrar por `slug` a secas marcaba `dismissed` en
       // TODOS los individuos del mismo tipo a la vez con 2+ del mismo grupo).
-      setCombatNpcStates((prev) => prev.map((n) => (combatKeyFor(n) === combatKeyFor(npc) ? { ...n, dismissed: true } : n)))
+      //
+      // Bug real jugando en vivo (2026-09-03, verificación con Playwright): resolver desde la
+      // tarjeta persistente del log SIN haber abierto el panel de combate antes deja
+      // `combatNpcStates` en `[]` (`openCombat()`, único sitio que lo siembra, nunca se ejecutó) —
+      // el `.map()` de aquí no crea nada nuevo si el `participantId` no existe todavía en el
+      // array, así que `dismissed` nunca se aplicaba y la tarjeta seguía apareciendo pese a que el
+      // backend ya había marcado `dismissedGrupo` correctamente. Mismo patrón `Map` que ya usa
+      // `handleCombatTurnResolved` más abajo: añade la entrada si no existe, en vez de solo
+      // intentar transformar una que puede no estar ahí.
+      setCombatNpcStates((prev) => {
+        const key = combatKeyFor(npc)
+        if (prev.some((n) => combatKeyFor(n) === key)) {
+          return prev.map((n) => (combatKeyFor(n) === key ? { ...n, dismissed: true } : n))
+        }
+        return [...prev, { ...npc, dismissed: true }]
+      })
     } catch {
       // Best-effort (mismo criterio que el resto de acciones deterministas de combate): sin
       // cuerdas o sin jaula libre, el backend ya devuelve el motivo — no hay nada que deshacer
@@ -468,8 +483,15 @@ export function useCombatFlow(params: UseCombatFlowParams) {
   async function handleDejarVivirSeleccion(npc: CombatNpcDisplay) {
     try {
       const { logEntry } = await dejarVivir(saveId!, npc.slug, npc.participantId)
-      // Mismo criterio que `handleCapturarSeleccion` de arriba — `combatKeyFor`, no `slug` a secas.
-      setCombatNpcStates((prev) => prev.map((n) => (combatKeyFor(n) === combatKeyFor(npc) ? { ...n, dismissed: true } : n)))
+      // Mismo criterio que `handleCapturarSeleccion` de arriba — `combatKeyFor`, no `slug` a secas,
+      // y siembra la entrada si `combatNpcStates` todavía no la tiene (ver comentario largo arriba).
+      setCombatNpcStates((prev) => {
+        const key = combatKeyFor(npc)
+        if (prev.some((n) => combatKeyFor(n) === key)) {
+          return prev.map((n) => (combatKeyFor(n) === key ? { ...n, dismissed: true } : n))
+        }
+        return [...prev, { ...npc, dismissed: true }]
+      })
       setCharacterLog((prev) => [
         ...prev,
         { id: logEntry.id, channel: 'character', text: logEntry.text, timeLabel: logEntry.timeLabel, createdAt: logEntry.createdAt, combate: true },
