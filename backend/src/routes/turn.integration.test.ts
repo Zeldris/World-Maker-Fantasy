@@ -1565,6 +1565,27 @@ describe('newQuestOfferInfo + POST /saves/:id/quests/aceptar: oferta de misión 
     const count = await prisma.quest.count({ where: { saveId, title: 'Recuperar la maza del Orco Enfurecido' } });
     expect(count).toBe(1);
   }, 20_000);
+
+  // Bug real encontrado verificando en vivo la Pieza 5 (2026-09-03): aceptar "Acabar con el Orco
+  // Enfurecido" por el botón narraba la despedida de Gistera Koh (texto fijo) pero nunca hacía el
+  // `npcsRetiredForever: { push: 'gistera-koh' } }` equivalente que sí hace `gisteraAceptaEsteTurno`
+  // en turnResolution.ts para el camino de texto libre — el mecanismo GENERAL que otros consumidores
+  // (`detectNpcsInScene`/`filterFarewellFacts`, npcScene.ts y worldFacts.ts) consultan quedaba sin
+  // aplicar en el camino recomendado desde 2026-08-26.
+  it('aceptar "Acabar con el Orco Enfurecido" por el botón retira a Gistera Koh para siempre (npcsRetiredForever)', async () => {
+    const app = await buildApp();
+    await app.register(questsRoutes);
+    const res = await app.inject({
+      method: 'POST',
+      url: `/saves/${saveId}/quests/aceptar`,
+      payload: { title: 'Acabar con el Orco Enfurecido', description: 'Gistera Koh pidió ayuda para acabar con el guerrero que la persigue.' },
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().logEntry.text).toContain('Gistera Koh asiente, aliviada');
+
+    const save = await prisma.save.findUniqueOrThrow({ where: { id: saveId }, select: { npcsRetiredForever: true } });
+    expect(save.npcsRetiredForever).toContain('gistera-koh');
+  }, 20_000);
 });
 
 // Bug real jugando en vivo (2026-09-03, "misión de apertura no sobrevive a un F5") —

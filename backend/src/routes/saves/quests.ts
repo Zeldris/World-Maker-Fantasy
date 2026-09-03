@@ -133,7 +133,21 @@ export async function questsRoutes(app: FastifyInstance) {
         // Limpia la oferta persistida (bug real jugando en vivo, 2026-09-03, ver
         // `pendingQuestOfferInfo` en schema.prisma) — mismo criterio que `pendingDynamicModeOffer`
         // al Interactuar: la tarjeta ya se resolvió de verdad, no debe reaparecer tras F5.
-        await tx.save.update({ where: { id: save.id }, data: { pendingQuestOfferInfo: Prisma.JsonNull } });
+        // Bug real encontrado verificando en vivo (2026-09-03): este endpoint narra la despedida de
+        // Gistera Koh (texto fijo arriba) pero nunca replicaba el efecto mecánico equivalente de
+        // `gisteraAceptaEsteTurno` en turnResolution.ts (línea ~6002) — el turno de texto libre SÍ
+        // hace `npcsRetiredForever: { push: 'gistera-koh' } }`, pero aceptar por el botón (el camino
+        // recomendado desde 2026-08-26) lo dejaba vacío. `gisteraQuestYaExiste` en turnResolution.ts
+        // ya la excluye igualmente por la existencia del Quest, así que no había síntoma visible en
+        // escena — pero `npcsRetiredForever` es el mecanismo GENERAL (`detectNpcsInScene`/
+        // `filterFarewellFacts` en npcScene.ts y worldFacts.ts) que otros caminos sí consultan.
+        await tx.save.update({
+          where: { id: save.id },
+          data: {
+            pendingQuestOfferInfo: Prisma.JsonNull,
+            ...(isOrcoEnfurecido ? { npcsRetiredForever: { push: 'gistera-koh' } } : {}),
+          },
+        });
 
         let questCompletedInfo: { logEntryId: string; text: string; title: string; grantedItems: string[]; rewardXp: number } | null = null;
         if (isOrcoEnfurecido && orcoYaResuelto) {

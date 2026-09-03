@@ -465,6 +465,23 @@ estructurado en `Quest` (decisión consciente de dejar fuera de alcance — hard
 exacto en `quests.ts § ORCO_ENFURECIDO_QUEST_TITLE`, arreglarlo exige migración de schema) y el
 punto 6 de arriba (sub-combates >4v4, sin forzar todavía).
 
+## 14. Mundo determinista — caso 2, "el narrador solo narra" (2026-09-03)
+
+Backlog cerrado esta sesión (Piezas 5 + 6a-6d, 5 commits: `17f2ee2`/`908a18c`/`219ef88`/`9bdb1b7`) —
+cuando el jugador intenta una acción determinista real (crafteo/construcción/viaje/recolección) que
+NO se puede lanzar (sin materiales/destino inexistente/fuera de la habilidad real), el turno ya no
+cae al narrador libre a inventar un resultado — bloquea con mensaje determinista fijo. Verificado
+primero con 2014 tests backend/190 frontend en verde, **reverificado en vivo jugando la misma
+tarde** tras reiniciar backend+frontend con el código nuevo.
+
+| Ítem | Estado | Notas |
+|---|---|---|
+| Crafteo por texto libre sin ingrediente (6a) | ✅ **CONFIRMADO EN VIVO** | "Ato un vendaje con mi manojo de salvia del polvo." (sin tenerlo) → *"se rasca la cabeza. «Buena idea, pero me falta de todo para hacerlo ahora mismo...» Se encoge de hombros y sigue a lo suyo."* — mensaje determinista real, sin objeto fabricado. |
+| Construcción por texto libre sin materiales (6b) | ✅ **CONFIRMADO EN VIVO** | "Construyo un campamento base en este lugar." (sin materiales) → *"...lo deja para más adelante, cuando reúna lo que le falta."* — bloqueado, sin `InventoryItem`/`Building` fantasma. |
+| Viaje por texto libre a destino inexistente (6c) | ✅ **CONFIRMADO EN VIVO** | "Me dirijo hacia la Torre de Cristal, dejando atrás la hondonada." → *"No es un sitio que Gorhorn tenga marcado en su cabeza, ni recuerde haber oído nombrar."* — sin mover `currentLocationId`. |
+| Recolección de terreno por texto libre redirigida al modal real (6d) | ✅ **CONFIRMADO EN VIVO, CICLO COMPLETO** | "Talo el matorral de cuerno..." y "Pico la roca de Los Pilares Rotos..." bloquean con botón real ("TALAR"/"MINAR") en el propio log — pulsado el botón, abre `HarvestSelectionModal` con la fuente citada, "Explorar" dispara la tirada REAL del sistema (`🎲15, Minar · Fuerza`), no la genérica del LLM. Flujo entero (texto libre → bloqueo → botón → modal → tirada real) confirmado de punta a punta. |
+| Gistera Koh deja de aparecer tras aceptar ayudarla / despedirse (Pieza 5) | ✅ **CONFIRMADO EN VIVO, con 1 bug real encontrado y corregido el mismo día** | Gistera se presentó correctamente en el turno 1 real (sessionFact `"sin nombre revelado todavía"` confirmado en Postgres), diálogo funcionó, y tras aceptar la misión ofrecida ("Acabar con el Orco Enfurecido") dejó de aparecer en todos los turnos siguientes — confirmado tanto por narración (turno neutro posterior sin mención nueva) como consultando Postgres directamente (`Quest` creada, `npcsInScene` excluida vía `gisteraQuestYaExiste`). **Bug real encontrado investigando por qué `Save.npcsRetiredForever` seguía vacío pese a la exclusión correcta en escena**: el botón "Aceptar" de la tarjeta de misión llama a `POST /saves/:id/quests/aceptar` (`backend/src/routes/saves/quests.ts`), un endpoint totalmente distinto de `narrateAndPersistTurn` — narraba la despedida de Gistera con el mismo texto fijo, pero nunca replicaba el `npcsRetiredForever: { push: 'gistera-koh' } }` que sí hace `gisteraAceptaEsteTurno` en `turnResolution.ts:6002` para el camino de texto libre. Sin síntoma visible en este caso concreto (la exclusión de escena tiene además un camino redundante vía la existencia del `Quest`), pero `npcsRetiredForever` es el mecanismo GENERAL que consultan `detectNpcsInScene`/`filterFarewellFacts` (`npcScene.ts`, `worldFacts.ts`) — quedaba sin aplicar en el camino de aceptación recomendado desde 2026-08-26. **Corregido y verificado** (test de integración nuevo en verde, fix aplicado retroactivamente en Postgres a la partida de prueba). **Gotcha aparte, ya documentado y no bloqueante**: el guion de Fase 1 de Gistera (`gisteraKoh`, `playerActionCount === 1`) se "quema" si el primer turno de una partida cae en cualquier guard determinista de bloqueo temprano (6a-6c) — acoplamiento frágil preexistente a vigilar si se añaden más guards de este tipo. |
+
 ---
 
 ## Próximos pasos sugeridos (por prioridad)
