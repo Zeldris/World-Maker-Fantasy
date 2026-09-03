@@ -618,6 +618,18 @@ export async function worldRoutes(app: FastifyInstance) {
       const npcRegion = homeLocationSlug ? locationBySlug.get(homeLocationSlug)?.region : null;
       return coreRegionOf(npcRegion) ?? coreRegionOf(lugarOrigenBySource.get(sourceSlug));
     };
+    // Bug real jugando en vivo (2026-09-03, "fauna interactuada no se desbloquea en la
+    // Enciclopedia"): `buildFaunaFloraSection` (más abajo) solo itera `sourceDisplayNameBySlug`
+    // (fuentes con HarvestYield propio) — cualquier fauna real combatible SIN drops de despiece
+    // (Nuente, Ruptidar, Imanio, Benusa Pesquera...) nunca aparecía en la pestaña Fauna, ni
+    // bloqueada ni desbloqueada. `faunaCategoria` (schema.prisma) solo se rellena en fauna real —
+    // confirmado por script real que separa bien a estos candidatos de NPCs humanoides genéricos
+    // (Cazador/a Serhu, Mercader de paso...), que se quedan sin valor y siguen fuera de Fauna.
+    for (const n of npcs) {
+      if (n.faunaCategoria && !sourceDisplayNameBySlug.has(n.slug)) {
+        sourceDisplayNameBySlug.set(n.slug, n.name);
+      }
+    }
     // Hallazgo real de Fable (2026-07-21): worldCatalog.ts siembra la fauna cazable como Npc
     // PLANTILLA (`allNpcs = [...npcs, ...fauna]`) para que el motor de escena la reconozca igual
     // que a una persona — pero eso hacía que la Enciclopedia listara cada animal DOS veces (en

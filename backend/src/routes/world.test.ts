@@ -111,6 +111,57 @@ describe('GET /world/:slug/enciclopedia', () => {
     }
   });
 
+  // Bug real jugando en vivo (2026-09-03, "fauna interactuada no se desbloquea en la
+  // Enciclopedia"): `buildFaunaFloraSection` solo iteraba fuentes con HarvestYield propio —
+  // fauna real combatible SIN drops de despiece (Ruptidar, Nuente...) nunca aparecía en la
+  // pestaña Fauna, ni bloqueada ni desbloqueada. `faunaCategoria` (schema.prisma) solo se
+  // rellena en fauna real, no en NPCs humanoides — criterio real usado en el fix.
+  it('fauna real sin HarvestYield propio (faunaCategoria) SÍ aparece en faunaFlora', async () => {
+    findUniqueWorld.mockResolvedValue({ id: 'world1', slug: 'helek-sirik' });
+    findManyNpc.mockResolvedValue([
+      {
+        id: 'npc-ruptidar',
+        slug: 'ruptidar',
+        name: 'Ruptidar',
+        kind: 'PLANTILLA',
+        role: 'Limpiador de arena',
+        faction: null,
+        level: 1,
+        bio: 'Reptil serpentiforme que filtra materia orgánica bajo la arena.',
+        aliases: ['ruptidar'],
+        attributes: { fuerza: 1, destreza: 4, constitucion: 3, inteligencia: 1, magia: 0, carisma: 1, voluntad: 2 },
+        raza: null,
+        clase: null,
+        ataqueNatural: 'No ataca.',
+        habilidadesRaciales: [],
+        homeLocationSlug: null,
+        faunaCategoria: 'ESCAMADOS',
+        nucleoJugable: true,
+        comerciablePct: 0,
+        reclutablePct: 0,
+        domesticablePct: 0,
+        capturablePct: 0,
+        cortejablePct: 0,
+        atributoResistencia: 'destreza',
+      },
+    ]);
+    findManyDiscoveredEntity.mockResolvedValue([{ entityType: 'npc', entitySlug: 'ruptidar' }]);
+    const app = await buildApp();
+
+    const res = await app.inject({ method: 'GET', url: '/world/helek-sirik/enciclopedia' });
+    const body = res.json();
+
+    const ruptidar = body.faunaFlora.find((e: { sourceSlug: string }) => e.sourceSlug === 'ruptidar');
+    expect(ruptidar).toBeDefined();
+    expect(ruptidar.esFauna).toBe(true);
+    expect(ruptidar.cazable).toBe(true);
+    expect(ruptidar.discovered).toBe(true);
+    expect(ruptidar.yields).toEqual([]);
+    // No debe duplicarse en la pestaña NPCs — mismo criterio ya existente para fauna CON
+    // HarvestYield (comentario histórico de `npcsForEncyclopedia`).
+    expect(body.npcs.find((n: { slug: string }) => n.slug === 'ruptidar')).toBeUndefined();
+  });
+
   it('cada raza con variantes regionales expone su propio sexo cruzado con región', async () => {
     findUniqueWorld.mockResolvedValue({ id: 'world1', slug: 'helek-sirik' });
     const app = await buildApp();
