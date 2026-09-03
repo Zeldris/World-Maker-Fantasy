@@ -49,6 +49,11 @@ interface MapaPanelProps {
   /// jugador ya va a mirar 'dónde estoy y qué hay aquí'... es exactamente donde falta 'qué
   /// estación/clima hay ahora'"). Null solo antes de la primera carga de partida.
   entorno: EntornoTemporalInfo | null
+  /// Abre el modal "Viajar" (bug real jugando en vivo, 2026-09-03): los destinos listados aquí
+  /// abajo ("Desde aquí se puede ir a...") eran texto plano sin ninguna acción — el modal real ya
+  /// existía, abierto solo desde la habilidad "Viajar" en el panel de Habilidades, sin ningún
+  /// enlace desde el propio Mapa que muestra esos mismos destinos.
+  onViajar: () => void
 }
 
 // Clave de efecto especial (petición explícita, 2026-07-23; migrado 2026-08-03 de comparar por
@@ -157,7 +162,7 @@ function useProtagonistaYConstrucciones(worldSlug: string | null) {
   return { protagonistaTarget: target, constructionsByKey }
 }
 
-export function MapaPanel({ worldSlug, saveId, currentLocation, destinations, inventory, quests, buildings, entorno }: MapaPanelProps) {
+export function MapaPanel({ worldSlug, saveId, currentLocation, destinations, inventory, quests, buildings, entorno, onViajar }: MapaPanelProps) {
   // Sub-tabs Zona/Mapa (2026-08-27, petición explícita: "en la misma sección de Mapa el botón, al
   // darle dentro directamente se vea la zona primero y que sean dos tabs" — Zona vuelve a ser una
   // vista de pleno derecho tras la auditoría de diseño/UX que la había quitado como pestaña de
@@ -311,7 +316,15 @@ export function MapaPanel({ worldSlug, saveId, currentLocation, destinations, in
                 </div>
                 {destinations.length > 0 && (
                   <div className="rounded-lg border border-iron-700 bg-wood-950/40 px-3.5 py-2.5 text-sm">
-                    <p className="mb-1.5 text-xs font-medium text-wood-300">Desde aquí se puede ir a:</p>
+                    <div className="mb-1.5 flex items-center justify-between gap-2">
+                      <p className="text-xs font-medium text-wood-300">Desde aquí se puede ir a:</p>
+                      <button type="button"
+                        onClick={onViajar}
+                        className="tactile shrink-0 rounded-lg border border-accent-600/60 px-2.5 py-1 text-2xs text-accent-300 transition-colors hover:bg-accent-500/10"
+                      >
+                        🧭 Viajar
+                      </button>
+                    </div>
                     <ul className="flex flex-col gap-1">
                       {destinations.map((d) => (
                         <li key={d.locationId} className="flex items-center justify-between text-xs text-wood-400">

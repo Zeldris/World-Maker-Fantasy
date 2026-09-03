@@ -1972,7 +1972,20 @@ export function GameView() {
             <ReputacionPanel factionsStatus={factionsStatus} factions={enciclopediaData?.factions ?? []} worldAgenda={worldAgenda} />
           )}
           {activePanel === 'mapa' && (
-            <MapaPanel worldSlug={worldIdSlug} saveId={saveId} currentLocation={currentLocation} destinations={destinations} inventory={inventory} quests={quests} buildings={buildings} entorno={entorno} />
+            <MapaPanel
+              worldSlug={worldIdSlug}
+              saveId={saveId}
+              currentLocation={currentLocation}
+              destinations={destinations}
+              inventory={inventory}
+              quests={quests}
+              buildings={buildings}
+              entorno={entorno}
+              onViajar={() => {
+                setSimpleModal('travel')
+                setActivePanel(null)
+              }}
+            />
           )}
           {activePanel === 'diario' && saveId && <DiarioPanel saveId={saveId} chapters={chapters} />}
           {activePanel === 'inventario' && saveId && (
