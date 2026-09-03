@@ -164,6 +164,51 @@ cuerpo real a las formas de Cambiaformas/Aullador (Druida) que las nombran:
 - **Trigo Escarlata**: espigas rojo intenso, base de harinas, crece salvaje aquí. Los orcos de las Llanuras nunca han logrado cultivarlo de verdad — la presión Goirnte y el terreno que ocupan no les han dejado desarrollar una agricultura propia, una de las razones reales de que el clan nunca se haya expandido como civilización (ver [razas.md](razas.md#orcos--hijos-del-estallido)). El oficio de agricultura para este recurso, cuando exista, no se aprenderá de ningún NPC — quedará ligado a una misión especial del futuro sistema de Reino.
 - **Roca Luclara**: piedra clara, casi blanca, similar al mármol — los Towrgu excavan en ella sus propios nidos. Material de construcción de tier alto (tier 6) para Las Llanuras.
 
+**Fauna y flora — Playa de Ceniza Blanca (añadido 2026-09-02)** — zona 15 del repaso "zona por
+zona". Zona deliberadamente pacífica y de descanso, sin fauna combatible — nace la profesión nueva
+**Pescador** (habilidad Pescar, con caña y cebo, atributo fuerza, para peces; habilidad Buscar, sin
+herramienta, atributo voluntad, para marisco; cooldown propio de 3 usos seguidos y luego 30 min),
+nunca por Cazar.
+
+- **Junba Verde** *(flora, árbol)*: tronco claro como la arena de la playa, 3 m de alto, rematado en
+  una maraña de lianas y hojas de un verde intenso que le da forma de seta (hasta 3,50 m contando el
+  copete). Da Madera Jumba (tier 2) y Resina Jumba Verde (tier 2).
+- **Temune** *(flora, alga)*: algas anchas verde-marrón, arrancadas por la corriente y varadas en la
+  orilla, terminadas en bulbos con semillas. Da Algas Temune (tier 1), ingrediente de cocina.
+- **Jashil Verde** / **Jashil Rojo** *(variante cromática)*: pez de 40-60 cm, cuerpo largo y
+  escuálido tipo pez aguja, varias filas de branquias, cabeza de lucio — colores verdes vívidos o
+  rojos según la variante, muy abundante. Da Carne de Jashil (tier 1).
+- **Negueo Turquesa** / **Negueo Solar** *(variante cromática)*: pez de 10-30 cm, aspecto de sargo
+  con dientes de piraña, carroñero — carne de sabor pobre pero con recetas propias que aprovechan su
+  amargor. Da Carne de Negueo (tier 1).
+- **Toluh**: pez migratorio de 1-1,40 m, gris oscuro, forma circular tipo pez luna con aletas muy
+  desarrolladas, escamas grandes como armadura — solo aparece en las jornadas de otoño, el más
+  codiciado de la costa. Da Carne de Toluh (tier 7) y Escamas de Toluh (tier 7).
+- **Bulco de Arena**: caracol de mar de 5-15 cm, concha rugosa entre rojo oscuro y marrón claro —
+  marisco, se obtiene con la habilidad Buscar. Da Bulco de Arena (marisco, tier 1).
+- **Terinte** *(ambiental, sin recurso)*: mamífero excavador tipo hurón, pelaje claro como la arena,
+  caza marisco con una lengua bífida sin dientes en la boca.
+- **Benusa Pesquera** *(ambiental, sin recurso)*: ave migratoria tipo cigüeña/cormorán, plumas con
+  brillo azul que engaña a los peces haciéndoles creer que son escamas — descansa aquí en verano y
+  primavera, presa favorita el Jashil.
+- **Manesti Azul** *(ambiental, sin recurso)*: híbrido lagartija/crustáceo de 10-15 cm, azul oscuro
+  arriba y blanco en el vientre.
+- **Roca de Llanura Roja** *(mineral, no exclusivo de esta zona)*: la misma piedra genérica de
+  construcción de la región (antes anclada solo a Los Pilares Rotos), generalizada por terreno árido
+  para que aparezca también aquí.
+
+**Fauna — Los Acantilados Partidos (añadido 2026-09-02)** — zona 16 del repaso "zona por zona". Dos
+especies agresivas propias de la pared vertical y sus grietas.
+
+- **Celubia Pálida**: ave marina de presa de 90 cm a 1,20 m de envergadura, plumaje blanco que en
+  vuelo deja una estela de espuma seca que nunca cae del todo, pico largo y curvo adaptado a partir
+  el agua en picados verticales. Nidifica en las cornisas más altas, ferozmente territorial cerca
+  del nido. Nivel 2-4, agresiva. Da Plumas de Celubia y Huevo de Celubia.
+- **Terkash**: crustáceo de 50-80 cm, caparazón grisáceo veteado casi indistinguible de la roca
+  partida donde vive. Pinza mayor capaz de partir roca, pinza menor rápida para acorralar y sujetar
+  — vive encajado en las grietas más profundas, sin salida de escape, así que ataca sin dudarlo a
+  cualquiera que le corte el paso. Nivel 2-4, agresivo. Da Carne de Terkash y Caparazón de Terkash.
+
 ---
 
 **Ver también:** [Cronología mítica](cronologia-mitica.md) · [Cronología](cronologia.md) · [Génesis y Formación](genesis.md) · [Áreas y geografía](areas.md) · [Historia y presente](historia.md) · [Razas](razas.md) · [Items](items.md) · [Personajes](personajes.md) · [NPCs](npcs.md)

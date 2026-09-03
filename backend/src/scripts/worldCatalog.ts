@@ -8,6 +8,7 @@ import type { Attribute, AttributeBlock } from '../services/dice.js';
 import type { Requisitos } from '../services/requisitos.js';
 import type { Estacion, EstadoClima, EquipSlot, ItemTipo, MetodoObtencion, WeaponCategory, Clase, Especializacion, PesoArmadura, AbilityEffect } from '@prisma/client';
 import type { TerrainTag } from '../services/terrain.js';
+import type { FloraCategoria } from '../services/floraCategoria.js';
 import type { FaunaCategoria } from '../services/faunaAbilities.js';
 import type { MomentoDelDia } from '../services/worldClock.js';
 
@@ -8287,6 +8288,60 @@ export const harvestSourceTerrainTag: Record<string, TerrainTag> = {
   'pasto-de-sangre': 'vegetacion', // La Sabana Alta
   'trigo-escarlata': 'vegetacion', // La Sabana Alta
   'verdileas-acuaticas': 'humedo', // Los Manaderos
+};
+
+/// Género de flora (2026-09-04, ver docs/rpgtarkor/genesis.md § Florial/Tarkor y
+/// floraCategoria.ts para el diseño completo) — asignación inicial de las 25 fuentes de flora ya
+/// existentes al cerrar el sistema. Las resinas comparten género con su árbol/planta de origen
+/// (misma especie, dos productos). Solo 2 casos BROTES_SALVAJES por ahora (Raíz de Fuego, Cardo
+/// Brújula) — ambos ya tenían una propiedad físicamente imposible en su bio sin categorizar antes.
+export const harvestSourceFloraCategoria: Record<string, FloraCategoria> = {
+  // VELDRIAS — árboles con madera + resina emparejada.
+  'telda-comun': 'VELDRIAS',
+  'telda-ceniza': 'VELDRIAS',
+  'telda-atardecer': 'VELDRIAS',
+  'resina-telda-fuente': 'VELDRIAS',
+  'resina-telda-atardecer-fuente': 'VELDRIAS',
+  'hojas-telda-fuente': 'VELDRIAS',
+  'lucre-blanco': 'VELDRIAS',
+  'resina-lucre-blanco-fuente': 'VELDRIAS',
+  'junba-verde': 'VELDRIAS',
+  'junba-verde-resina-fuente': 'VELDRIAS',
+  // ZARCOS — arbustos de leña sin resina propia.
+  'matorral-de-cuerno': 'ZARCOS',
+  // HELDRAS — hierbas/pastos base, variantes regionales por mineralización.
+  'pasto-solar': 'HELDRAS',
+  'pasto-de-sangre': 'HELDRAS',
+  // GRANOLES — cereales silvestres.
+  'trigo-escarlata': 'GRANOLES',
+  'espiga-roja': 'GRANOLES',
+  // TRENIAS — fibra para tejido/cordaje (no pasto).
+  'enredaderas-llanuras': 'TRENIAS',
+  gradias: 'TRENIAS',
+  'juncos-rojizos': 'TRENIAS',
+  // MARELAS — algas de costa/charca.
+  temune: 'MARELAS',
+  'verdileas-acuaticas': 'MARELAS',
+  // BULVIAS — raíces/tubérculos de agua.
+  'bulbo-del-cauce': 'BULVIAS',
+  // MUSCARIAS — líquenes/musgos, cobertura de superficie sin tallo propio.
+  'liquen-del-cauce': 'MUSCARIAS',
+  'musgo-arcilla': 'MUSCARIAS',
+  // SALVIRAS — flores/plantas de alquimia y curación de campo.
+  'flor-de-ceniza': 'SALVIRAS',
+  'flor-salvatura': 'SALVIRAS',
+  'salvia-del-polvo': 'SALVIRAS',
+  // FONGARES — setas.
+  boungo: 'FONGARES',
+  // VETRIAS — flora con mineral real incrustado en su propia estructura.
+  'hierba-del-hierro': 'VETRIAS',
+  // BROTES_SALVAJES — flora normal mutada por la magia Salvaje, especie base real reconocible con
+  // algo imposible ya en su bio.
+  'raiz-de-fuego': 'BROTES_SALVAJES', // acumula calor volcánico hasta el punto de inflamarse
+  'cardo-brujula': 'BROTES_SALVAJES', // fibra imantada que siempre señala el mismo rumbo
+  // Trepador Ocaso (Ciénaga Troncal, fuera del núcleo jugable) queda sin asignar todavía — sin
+  // suficiente lore propio para decidir entre VELDRIAS (árbol con resina) y BROTES_SALVAJES (la
+  // resina de vetas doradas podría o no ser mágica) hasta que se repase esa región.
 };
 
 /// Afinidad de hábitat de cada especie cazable (filtro por zona, ver `terrain.ts`) — leída de su

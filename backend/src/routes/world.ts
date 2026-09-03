@@ -6,6 +6,7 @@ import {
   harvestSourceDescriptions,
   harvestSourcesThatAreFaunaWithoutNpc,
   harvestSourceRegion,
+  harvestSourceFloraCategoria,
   sourceDisplayNameFor,
 } from '../scripts/worldCatalog.js';
 import { coreRegionOf } from '../services/discovery.js';
@@ -212,6 +213,13 @@ function buildFaunaFloraSection(ctx: EnciclopediaBuildContext) {
       const faunaNpc = ctx.npcBySlug.get(sourceSlug);
       return faunaNpc ? interaccionFor(faunaNpc) : undefined;
     })(),
+    // Géneros de fauna/flora (2026-09-04, docs/rpgtarkor/genesis.md § Florial/Ferios/Tarkor) —
+    // hasta ahora `faunaCategoria` (schema.prisma) vivía solo en la BD, sin llegar nunca al
+    // frontend/Enciclopedia pese a existir desde 2026-09-02 — mismo hueco que se cierra aquí para
+    // ambos a la vez, junto con `floraCategoria` (worldCatalog.ts, sin tabla propia). Mutuamente
+    // excluyentes según `esFauna` — nunca los dos a la vez para el mismo sourceSlug.
+    faunaCategoria: ctx.npcBySlug.get(sourceSlug)?.faunaCategoria ?? null,
+    floraCategoria: harvestSourceFloraCategoria[sourceSlug] ?? null,
   }));
 }
 

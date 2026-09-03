@@ -99,6 +99,176 @@ diciéndome 1 a 1 las regiones/zonas de X, citando ya los recursos que tiene, y 
    migratorio, tipo de caza o encaje de recursos — ver sección "Propuestas de réplica" en el
    checklist para el formato de esa entrega.
 
+## 1.6. Variante "zona por zona" — elemento por elemento con plantilla equivalente (confirmada
+2026-09-02/03, sesión de la zona 15, Playa de Ceniza Blanca)
+
+Reconstruida releyendo la transcripción real de esa sesión (no solo el commit final) porque la
+primera versión de esta entrada asumía un formato equivocado: **no es Claude proponiendo el bloque
+completo de la zona para aprobación en bloque.** El patrón real, confirmado turno a turno:
+
+1. Tras el recordatorio de zona del paso 2 general (lo que ya es + lo ya anclado), la usuaria
+   dicta el contenido nuevo **elemento por elemento** (un recurso o un animal cada vez, a veces
+   varios mensajes seguidos si el primero se corta) — no toda la zona de golpe. Frase real que fijó
+   este modo: *"desarrolla bien todo añadiendo lo que falte para hacerlo real, me lo vas dando 1 a 1
+   lo reviso y vamos cerrando todo"*.
+2. **Antes de proponer la ficha técnica de cada elemento, buscar un objeto/fuente ya existente en
+   el catálogo que sea equivalente** (mismo tipo: árbol con madera+resina, alga de recolección
+   pasiva de costa, pez inofensivo con receta de cocina...) y usarlo como plantilla de qué campos
+   hacen falta de verdad — no improvisar el molde. Frase real que fijó esto: *"revisa un item que ya
+   tengamos que sea 'equivalente' siempre para asegurarte de que me estás dando toda la información
+   necesaria"*. Ejemplo real: para Junba Verde (árbol con madera+resina) se revisó Lucre Blanco
+   completo (`ItemCatalog` + `HarvestYield` de la fuente) antes de proponer nada.
+3. Proponer la ficha completa de ESE único elemento (nombre, bio, tier, `homeLocationSlug`,
+   `metodoObtencion`, terrain tag, población si aplica) — la usuaria confirma ("perfecto") o corrige
+   antes de pasar al siguiente. No se escribe nada a los `.md`/código todavía en este punto —  se
+   van cerrando fichas "en memoria de la conversación" hasta cerrar toda la zona.
+4. **Mecánica que se sale de "solo catálogo" se aparca explícitamente sin bloquear el resto** (igual
+   que ya decía el § 1.5 general) — aquí surgió a mitad de fauna: la profesión "pescador" (caña+cebo
+   para Pescar, sin herramienta para Buscar marisco, tirada doble en tier alto) no encajaba en
+   ningún `MetodoObtencion` existente. Se ficha el animal en lore igualmente, marcando explícito que
+   su recolección real queda pendiente de esa pieza de diseño.
+5. **Cuando hay un lote con ambigüedad de coherencia repetida** (ej.: de 9 animales, ¿cuáles tienen
+   recurso real y cuáles quedan puramente ambientales/narrativos?), en vez de preguntar uno a uno,
+   **lanzar un agente en background** con el catálogo completo, el criterio ya fijado en la
+   conversación (ej. "solo lo que aporta recurso real entra en un modal") y la lista concreta a
+   auditar — resume los veredictos con su precedente real y se aplican de una vez. Frase real que
+   pidió esto: *"lanza un agente de todo lo que tenemos y esta lista y me digas tú que cuadra sin
+   recurso, que cuadra con... busca completar y dar coherencia"*.
+6. **Solo al cerrar TODA la zona** (todos los elementos ya confirmados uno a uno) se decide si se
+   lleva a código en la misma sesión o se deja para una pasada aparte — no es una decisión de
+   arranque, es una decisión de cierre. En la sesión de la zona 15 se decidió llevarlo a código de
+   una vez ahí mismo, paso a paso con verificación real (compilar + tests) en cada pieza, igual que
+   en la zona 14. Si se hace así, seguir los puntos 1-3 de la variante `## 1.6` original (ahora
+   más abajo, renumerada): `WorldPopulation` real para cada recurso, `tsc -b` + suite en verde,
+   checklist con el conteo real de lo llevado a código.
+7. Riesgo real si el paso 6 (llevar a código) ocurre en una sesión que no pasó por este runbook —
+   visto en vivo con la propia zona 15, cuyo código (`worldCatalog.ts`) avanzó en un tramo de esta
+   misma conversación posterior al que generó la memoria persistente de "ampliamos lore", dejando el
+   checklist desactualizado un tiempo: la próxima sesión de "ampliamos lore" debe comprobar primero
+   si `git log` tiene commits de `worldCatalog.ts` más recientes que la última entrada del
+   checklist, y si los hay, presentar el resumen de lo YA anclado en código como si fuera la
+   propuesta pendiente de aprobar (mismo formato del paso 2 general) — no reescribirlo de cero ni
+   asumir que sigue sin decidir, y no seguir a la zona siguiente hasta cerrar ese hueco documental.
+
+## 1.7. Segunda variante "zona por zona" — Claude propone, la usuaria confirma (confirmada
+2026-09-03, al terminar la zona 15 y arrancar la zona 16, Los Acantilados Partidos)
+
+Modo **inverso** al § 1.6: en vez de que la usuaria dicte el contenido nuevo elemento por elemento
+(§ 1.6 punto 1), aquí **Claude propone la ficha técnica completa de cada elemento y la usuaria
+solo confirma o pide ajustes**. La propia usuaria lo fijó explícitamente al cerrar la zona 15:
+*"sigamos, con el plan de que ahora ya me das tú las recomendaciones completas y soy yo el que
+confirmo"*. Son dos modos reales y confirmados, no uno "correcto" y otro obsoleto — cuál usar en
+cada zona lo decide la usuaria, preguntando si no lo ha dicho ya para esa sesión.
+
+Diferencias sobre el flujo de § 1.6:
+
+1. Tras el recordatorio de zona (paso 2 general), Claude diseña y propone directamente 1 elemento
+   con la ficha técnica COMPLETA — mismos campos que en § 1.6 punto 2/3 (slug, alias, tier,
+   `homeLocationSlug`/región, terrain tag, `metodoObtencion`, bio, población si aplica), buscando
+   igualmente un objeto equivalente real como plantilla antes de proponer (mismo criterio de § 1.6
+   punto 2, no cambia). Formato exacto pedido por la usuaria: *"dame la [ficha] en el formato que me
+   lo dabas antes, poniendo ya todos los campos de slug, alias etc y yo te digo que ajustamos"* —
+   no un resumen narrativo suelto, la ficha con los campos reales visibles.
+2. **Regla de mundo explícita en este modo** (puede aplicar también al § 1.6, pero se remarcó aquí):
+   *"que todo lo creamos sea fantástico en mayor o menor medida y que tenga sentido"* — no animales/
+   plantas 1:1 de la fauna real de la Tierra sin ningún giro propio del mundo. Y, más estricto
+   todavía: **nunca usar el nombre de una especie real reconocible**, ni siquiera como base del
+   nombre propio — error real cometido en la sesión: proponer "Alcatraz de Espuma" (alcatraz es un
+   ave terrestre real) fue señalado de inmediato por la usuaria, que además aprovechó para pedir
+   revisar si había más nombres así colados en el catálogo ya existente (encontró **Buitre
+   Cenizo**, renombrado a Zense Ceniza en la misma sesión, commits `fef3933`/`c8102fe`). Antes de
+   fijar un nombre propio nuevo, contrastar mentalmente si sería el nombre de un animal/planta real
+   de este mundo — si suena a fauna terrestre reconocible, buscar una alternativa.
+3. La usuaria confirma o pide cambios sobre la ficha propuesta (igual que § 1.6 punto 3) antes de
+   pasar al siguiente elemento — el resto del flujo (agente para lotes con ambigüedad, mecánica que
+   se sale de catálogo aparcada aparte, decisión de código en el mismo commit al cerrar toda la
+   zona) es idéntico a § 1.6 puntos 4-7.
+
+## 1.8. Plantilla de campos por tipo de elemento (fijada 2026-09-03, tras dos rondas de "faltan
+campos" en la misma sesión — de referencia obligada antes de proponer o pedir cualquier ficha)
+
+Antes de proponer/pedir la ficha de un elemento nuevo, **buscar siempre un elemento real ya
+existente del mismo tipo como plantilla** (§ 1.6 punto 2) — la lista de campos de abajo es una
+referencia de qué NO olvidar, no un sustituto de mirar el equivalente real (los valores concretos
+de cada campo dependen del animal/planta en cuestión).
+
+**Fauna** (`NpcInput`, `kind: 'PLANTILLA'`) — campos obligatorios:
+- `slug`, `name`, `aliases` (variantes de texto para el matching)
+- `role` (una línea, para listados/Enciclopedia), `articulo` (`'el'`/`'la'`)
+- `level` / `levelMax`
+- `attributes`: los 7 completos — `fuerza, destreza, constitucion, inteligencia, voluntad, carisma, magia`
+- `bio` — descripción larga y detallista, no un resumen de 1-2 frases (regla explícita 2026-09-03:
+  "ser detallista en la descripción. Entornos, Físico, personalidad y comportamiento... explique
+  bien"), con el **aspecto físico como lo más importante de todo**: tamaño exacto en cm/m, forma
+  corporal, textura/color de piel-pelaje-caparazón, rasgos de cabeza/ojos/extremidades, cómo se
+  mueve — y, coherente con el tema real de su `faunaCategoria` (§ "Categorías de raza de fauna" en
+  `faunaAbilities.ts`), nunca calcado de un animal real reconocible (mismo criterio ya fijado en
+  § 1.7 punto 2). Estructura habitual, fundida en prosa corrida, no como lista: dónde vive/entorno →
+  físico detallado → comportamiento/personalidad → cómo interactúa con el jugador si se le
+  encuentra. Ejemplo de referencia del nivel de detalle esperado (Esclipe de Marisma, zona 17,
+  aprobado explícitamente como plantilla de FORMA, no de contenido — no copiar el animal en sí):
+  > "Habita exclusivamente el fango de la marisma salobre, donde la corriente dulce de tierra
+  > adentro se pierde por fin en el mar — nunca se aleja del barro húmedo, ni siquiera para tomar el
+  > sol. Cuerpo de 25 a 35 cm, aplanado y ancho como una hoja de junco caída, con cuatro patas
+  > cortas terminadas en membranas anchas que se abren al pisar el fango y lo sostienen sin
+  > hundirlo. Piel sin escamas, lisa y fría al tacto, casi transparente en los flancos — bajo ella
+  > se adivina el tejido oscuro de las venas, que cambia de tono con la marea: más claro y gris
+  > cuando el agua es dulce, más verdoso y turbio cuando sube la salada. Cabeza pequeña y chata,
+  > hundida entre los hombros, con dos ojos saltones sin párpado visible que sobresalen justo por
+  > encima del nivel del barro cuando se entierra, el resto del cuerpo invisible bajo la superficie.
+  > No tiene voz — ni canto, ni bramido, ni siquiera un chasquido de alarma; se comunica entre
+  > ejemplares moviendo el fango en ondas concéntricas que el resto siente a través de las
+  > membranas de las patas. Solitario y sedentario, pasa la vida entera en el mismo tramo de
+  > marisma, hundiéndose por completo al primer indicio de vibración extraña en el barro."
+- `personality` (una línea de comportamiento, complementa a la `bio` sin repetirla)
+- `homeLocationSlug` (si es específico de una zona) o sin él (si es de región completa, como
+  Ruptidar)
+- `loadout: []` (salvo que lleve equipo)
+- `ataqueNatural` (una línea, se narra en combate)
+- `temperamento` (`INOFENSIVO`/`CAUTELOSO`/`AGRESIVO`/...)
+- `domesticablePct` + `atributoResistencia` SOLO si es tameable (no todos lo son)
+- `faunaCategoria` — una de las 13 reales (`backend/src/services/faunaAbilities.ts`, tipo
+  `FaunaCategoria`): GUELISES, ACECHANTES, CORVENES, ZANCUDOS, BESTIONES, RONDINES, QUITINOS,
+  ESCAMADOS, NADANTES, ORDENADOS, UMBRIAS, MUDOS_SALVAJE, ROKRATS_ESTALLIDO — **nunca inventar una
+  categoría nueva sin comprobar antes** (error real cometido en esta sesión: proponer "ANFICOS"
+  para un anfibio cuando la categoría real ya existente es ESCAMADOS, que cubre reptiles Y
+  anfibios).
+- **`habilidadesRaciales`: 3 entradas SOLO si la fauna está pensada para combatir de verdad —
+  `[]` si es puramente narrativa/ambiental** (corregido 2026-09-03, primera versión de esta regla
+  decía "siempre 3 salvo Ruptidar" y no era el criterio real). El criterio no es "inofensivo o no"
+  por sí solo — es si tiene sentido real que la jugadora la enfrente en combate: fauna diseñada
+  para dar vida a la escena (presas muy pequeñas, animales que huyen sin más, curiosidades
+  ambientales tipo Terinte/Benusa Pesquera/Manesti Azul de Playa de Ceniza Blanca) se queda en
+  `[]` aunque sí lleve `faunaCategoria` asignada (para completitud del catálogo/Enciclopedia) —
+  igual que Ruptidar, que sigue siendo el ejemplo de referencia, no la excepción. Cuando SÍ está
+  pensada para combate real (aunque sea de temperamento CAUTELOSO, no solo AGRESIVO), lleva las 3
+  completas: cada fauna combatible recibe 10 habilidades totales — 7 compartidas por toda su
+  `faunaCategoria` (niveles 1×3/8/16/24/32, viven aparte en `FAUNA_CATEGORIA_ABILITIES`, no se
+  tocan aquí) + estas 3 específicas del propio animal, en los niveles fijos 4/12/20 — por
+  convención 1 ataque + 1 defensa + 1 utilidad, con su propio `preferredAttribute` y `effects`
+  reales (ver la lista de efectos con motor real en el comentario de cabecera de
+  `faunaAbilities.ts` antes de inventar uno). Cada objeto lleva `icon`, `name`, `description`,
+  `categoria`, `preferredAttribute`, `level`, `effects`.
+
+**Flora/recurso** (`HarvestSource` + `ItemCatalog`) — mismo nivel de detalle que fauna, misma regla
+de "detallista, sin calcar nada real" (confirmado 2026-09-03: *"y el formato y los datos igual que
+el anterior?... vamos con flora, recursos y materiales igual, misma idea que con fauna"* — la
+descripción corta de Junba Verde/Temune de la zona 15 NO es el nivel a replicar, era antes de fijar
+esta regla). Campos obligatorios:
+- Fuente: `slug`, `homeLocationSlug`, `harvestSourceRegion`, terrain tag, display name.
+- Descripción de la fuente — igual de larga y detallista que una `bio` de fauna: entorno (dónde
+  crece/se forma, qué necesita para darse ahí), físico detallado (tamaño real, forma, color,
+  textura al tacto, cómo cambia con estación/marea/luz si aplica — lo más importante de todo, igual
+  que en fauna), y algún rasgo de comportamiento si es planta con algo de vida propia (se cierra,
+  sigue la luz, atrae algo) — fundido en prosa, no en lista. Sin calcar ninguna planta/mineral real
+  reconocible, coherente con el resto del mundo.
+- Por cada producto derivado (puede haber más de uno, como madera+resina): `itemSlug` propio,
+  `metodoObtencion` (`TALA`/`EXTRACCION`/`MINERIA`/`PESCA`/`BUSQUEDA`/`CAZA`), `category`, `tipo:
+  'RECURSO'`, `tier`, `valorGoirnos`, `dimensiones`, `description` (esta sí puede ser más corta —
+  describe el material ya extraído, no la fuente viva).
+- `WorldPopulation`: una fila por producto (`targetType: 'RECURSO'`), con la cifra propuesta
+  explícita para que la usuaria la confirme o corrija — nunca inventar sin proponerla en voz alta.
+
 ## 3. Qué NO hacer
 
 - No editar `docs/12-mundo-estructurado.md` como si el pasado se pudiera reescribir — si una

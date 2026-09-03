@@ -9,21 +9,24 @@ tareas de una conversación no sobrevive al cierre de la sesión, este archivo s
 
 ## En curso — repaso "zona por zona" de Las Llanuras del Viento Rojo (empezado 2026-08-21)
 
-Modo de trabajo nuevo, ver `docs/ampliar-lore.md` § 1.5. **14 zonas cubiertas hasta ahora, en este
-orden** (ver "Sesión 2026-08-21 (duodécima pasada)" y "Sesión 2026-08-22 (decimotercera pasada)"
-más abajo para el detalle completo de cada una): 1. La Hondonada del Eco, 2. Los Pilares Rotos,
-3. El Pozo de Cauce Viejo, 4. El Cruce de las Cenizas, 5. Los Restos de Maktor (retirada), 6. El
-Campamento del Clan Serhu, 7. El Osario de la Manada, 8. Las Agujas Imán, 9. Los Manaderos, 10. Los
-Túmulos del Honor (sin cambios), 11. Los Pastos de la Deriva, 12. El Filo de las Brasas, 13. Las
-Fumarolas Negras, 14. La Sabana Alta.
+Modo de trabajo nuevo, ver `docs/ampliar-lore.md` § 1.5-1.7. **16 zonas cubiertas hasta ahora, en
+este orden** (ver "Sesión 2026-08-21 (duodécima pasada)", "Sesión 2026-08-22 (decimotercera
+pasada)" y "Sesión 2026-09-02/03 (decimocuarta pasada)" más abajo para el detalle completo de cada
+una): 1. La Hondonada del Eco, 2. Los Pilares Rotos, 3. El Pozo de Cauce Viejo, 4. El Cruce de las
+Cenizas, 5. Los Restos de Maktor (retirada), 6. El Campamento del Clan Serhu, 7. El Osario de la
+Manada, 8. Las Agujas Imán, 9. Los Manaderos, 10. Los Túmulos del Honor (sin cambios), 11. Los
+Pastos de la Deriva, 12. El Filo de las Brasas, 13. Las Fumarolas Negras, 14. La Sabana Alta,
+15. Playa de Ceniza Blanca, 16. Los Acantilados Partidos.
 
-**Parada aquí — la próxima zona es la 15: Playa de Ceniza Blanca.** Después quedan, en el mismo
-orden que `areas.md`: Los Acantilados Partidos, La Desembocadura Callada, Las Pozas de Marea, El
-Embarcadero de Ceniza, Las Dunas Ahogadas, El Vientre del Engaño, El Laberinto de Cañones, Las
-Fumarolas Negras *(ya cubierta, saltar)*, El Paso de los Huesos, El Vergel de Kegi, El Campo Yermo,
-La Grieta Cantora, El Oasis de Juncos Rojos. Las 3 ruinas Nabierus (Ciudad Hundida/Archivo Cegado/
-Observatorio Roto) siguen fuera del grafo jugable, no entran en este repaso todavía (ver pendiente
-de código de arriba).
+**Parada aquí — la próxima zona es la 17: La Desembocadura Callada.** Después quedan, en el mismo
+orden que `areas.md`: Las Pozas de Marea, El Embarcadero de Ceniza, Las Dunas Ahogadas, El Vientre
+del Engaño, El Laberinto de Cañones, Las Fumarolas Negras *(ya cubierta, saltar)*, El Paso de los
+Huesos, El Vergel de Kegi, El Campo Yermo, La Grieta Cantora, El Oasis de Juncos Rojos. Las 3 ruinas
+Nabierus (Ciudad Hundida/Archivo Cegado/Observatorio Roto) siguen fuera del grafo jugable, no entran
+en este repaso todavía (ver pendiente de código de arriba). **Al cerrar la última zona de la
+región**, la usuaria pidió explícitamente una repasada completa de coherencia — ver si alguna zona
+quedó poco alimentada de lore o si se coló algo que no encaja — antes de dar por cerrada Las
+Llanuras del Viento Rojo.
 
 ## Propuestas de réplica entre zonas (análisis pedido por la usuaria al pausar, 2026-08-21)
 
@@ -1139,4 +1142,152 @@ aprendizaje por misión especial — la propia usuaria lo dejó explícitamente 
 desarrolle el sistema de Reino, mismo criterio que el resto de mecánicas de "trabajador capturado"
 del Campamento del Clan Serhu (ver "Pasada de código de la sesión 2026-08-21" arriba).
 
+---
+
+## Sesión 2026-09-02/03 (decimocuarta pasada) — Playa de Ceniza Blanca + Los Acantilados Partidos,
+profesión Pescador nueva, documentación reconciliada tras avanzar en código sin pasar por este runbook
+
+**Contexto real de esta pasada**: las zonas 15 y 16 se llevaron a código (`worldCatalog.ts`,
+commits `6425566`/`e6573c3` para la 15, comentario "sesión categorías de raza de fauna" para la
+16) en un tramo de conversación que no pasó formalmente por `docs/ampliar-lore.md`, dejando
+`areas.md`/`flora-fauna.md`/`items.md`/este checklist desactualizados varios días. Reconciliado
+2026-09-03 releyendo la transcripción real de esa sesión (no solo el commit) — de paso se
+confirmó y documentó el proceso real seguido, ahora escrito en el runbook como dos variantes
+nuevas: `docs/ampliar-lore.md § 1.6` (la usuaria dicta elemento por elemento, Claude busca un
+objeto equivalente real como plantilla antes de proponer la ficha técnica completa, cierra
+uno a uno) y `§ 1.7` (modo inverso — Claude propone la ficha completa primero, la usuaria
+confirma o ajusta; activado por la propia usuaria al terminar la zona 15: *"sigamos, con el plan
+de que ahora ya me das tú las recomendaciones completas y soy yo el que confirmo"*).
+
+**Decimoquinta zona: Playa de Ceniza Blanca** — zona deliberadamente pacífica/de descanso, sin
+fauna combatible. Flora: Junba Verde (árbol tipo palmera-seta, da Madera Jumba tier 2 + Resina
+Jumba Verde tier 2, población 3000/1500) y Temune (algas de orilla, da Algas Temune tier 1,
+población 2500). Fauna, todas obtenidas por la profesión nueva **Pescador** (nunca Cazar): Jashil
+Verde/Rojo (pez abundante tier 1), Negueo Turquesa/Solar (pez carroñero tier 1), Toluh (pez
+migratorio grande, solo en otoño, tier 7, el más codiciado), Bulco de Arena (marisco tier 1-2 vía
+Buscar), y tres puramente ambientales sin recurso — Terinte, Benusa Pesquera, Manesti Azul. La
+Roca de Llanura Roja (antes "Roca de Los Pilares Rotos", ya renombrada en la sesión anterior de
+auditoría) se generalizó con terrain tag `arido` para aparecer también aquí sin `ZonePoint`
+nuevo. El **Maestro Pescador Serhu** enseña el oficio.
+
+**Pieza mecánica grande de esta sesión, no solo catálogo**: profesión **Pescador**, universal
+(todas las razas, sin variante regional/racial) — dos habilidades: Pescar (peces, requiere caña +
+cebo, atributo fuerza) y Buscar (marisco, sin herramienta, atributo voluntad). Cooldown propio
+("3 usos seguidos, luego 30 min"), distinto del cooldown estándar por fuente del resto de
+oficios. Doble tirada en tier alto (≥6): fuerza→inteligencia en Pescar, voluntad→destreza en
+Buscar — mismo patrón que se aplicó de paso a los otros 4 oficios de recolección (minero, talador,
+desollador, herborista) con sus propios pares de atributos. Nuevos `MetodoObtencion.PESCA`/
+`BUSQUEDA`. De paso se cerraron 2 huecos reales que dejaban la profesión inalcanzable: caña de
+pescar y cebo sin ninguna forma de conseguirse (ahora crafteables, caña con carpintero/cebo con el
+propio pescador) y ningún NPC que enseñara el oficio (de ahí el Maestro Pescador Serhu).
+
+**Decimosexta zona: Los Acantilados Partidos** — pared costera vertical, dos especies agresivas
+propias de la peligrosidad del sitio. Celubia Pálida (ave marina de presa, nidifica en cornisas,
+picados con estela de espuma seca, tier 2-4 loot: Plumas + Huevo) y Terkash (crustáceo de grietas
+profundas, caparazón indistinguible de la roca, pinza mayor capaz de partirla, tier 2-4 loot:
+Carne + Caparazón). Nombre corregido en vivo: la primera propuesta ("Alcatraz de Espuma") usaba
+el nombre de un ave terrestre real — regla de mundo reforzada explícitamente en esta sesión: nunca
+usar nombres de especies reales reconocibles, ni siquiera como base. La misma revisión encontró
+**Buitre Cenizo** como otro caso ya colado en el catálogo — renombrado a Zense Ceniza en la misma
+sesión (commits `fef3933`/`c8102fe`).
+
+**Llevado a código en su momento, ahora reconciliado en `.md`**: `areas.md` (entradas de zona 15 y
+16), `flora-fauna.md` (fichas completas de flora/fauna de ambas zonas), `items.md` (loot nuevo de
+ambas). Verificado en su día: 1917/1917 tests, `tsc -b` limpio (ver commits reales arriba).
+
+**Pendiente de documentación (nuevo, pedido explícito 2026-09-03)**: crear `docs/rpgtarkor/profesiones.md`
+dedicado — hoy las profesiones/oficios (Pescador, Herborista, Minero, Talador, Desollador,
+Cocinero-orco-llanuras, Carpintero, Curtidor, Herrero, Trabajador de Reino, primeros-auxilios...)
+están dispersas inline en `areas.md`/`flora-fauna.md`/`items.md`, sin un documento propio que las
+reúna todas: qué hace cada una, cómo se aprende (NPC maestro / de partida / misión futura),
+variantes por raza+región (`REGION_PROFESSION_TOKEN`), y sus mecánicas propias cuando las tengan
+(cooldowns distintos, tiradas dobles en tier alto). No es solo "mover texto que ya existe" — hace
+falta reunir y organizar contenido que hoy vive repartido entre `.md` y directamente en
+`professions.ts`/`harvestAbilities.ts`/`startingProfessions.ts` sin ningún resumen narrativo único.
+
+**Parada aquí — la próxima zona es la 17: La Desembocadura Callada** (ver puntero actualizado en
+"En curso" al principio de este archivo, y "Sesión 2026-09-04" más abajo — la zona 17 quedó
+PAUSADA a medio elemento 2 cuando surgió el sistema de géneros de flora). Al cerrar la última zona
+de Las Llanuras del Viento Rojo, la usuaria pidió repasar toda la región de nuevo por si alguna
+zona quedó poco alimentada de lore o se coló algo que no encaja — antes de dar el repaso regional
+por cerrado del todo.
+
 **Pendiente de código**: ver entrada nueva en la sección de arriba.
+
+---
+
+## Sesión 2026-09-04 (decimoquinta pasada) — `FloraCategoria`, sistema de géneros de flora
+(paralelo a `FaunaCategoria`), cerrado y llevado a código
+
+**Contexto**: retomando la zona 17 (La Desembocadura Callada) con el modo § 1.7 (Claude propone,
+la usuaria confirma), el primer elemento fichado (Esclipe de Marisma, anfibio ambiental sin
+combate) reveló dos huecos de la plantilla real usada hasta ahora — corregidos en el runbook antes
+de seguir (ver `docs/ampliar-lore.md § 1.8`, plantilla completa por tipo de elemento, con ejemplo
+de `bio` detallada fijado como referencia de forma):
+1. **`faunaCategoria` no era opcional por defecto** — la primera versión de la regla decía "siempre
+   3 `habilidadesRaciales` salvo Ruptidar"; corregido: solo lleva las 3 específicas la fauna
+   pensada para combate real, `[]` si es puramente narrativa/ambiental (mismo criterio que
+   Terinte/Benusa Pesquera/Manesti Azul de la zona 15), aunque sí lleve `faunaCategoria` asignada.
+2. **La `bio` necesitaba mucho más detalle** — la usuaria pidió explícitamente "ser detallista...
+   Entornos, Físico, personalidad y comportamiento", con el aspecto físico como lo más importante,
+   sin calcar fauna/flora real reconocible. El Esclipe de Marisma quedó fijado como ejemplo de
+   FORMA (no de contenido) para toda `bio` futura.
+
+**El elemento 2 de la zona 17** ("Chudo de la Marea", propuesta de flora de orilla) disparó un
+hilo aparte: la usuaria pidió sustituir "Junco" por un nombre propio de mundo — mismo patrón que
+Telda (especie base con variantes regionales: Común/Ceniza/Atardecer). Confirmado el nombre base
+**"Chudo"**, pendiente de aplicar el renombrado completo (`juncos-rojizos`→`chudos-rojizos`,
+`oasis-de-juncos-rojos`→`oasis-de-chudos-rojos`, `estera-junco-trenzado`→`estera-chudo-trenzado`,
+más los textos narrativos que mencionan "juncos") — **NO aplicado todavía**, sigue pendiente,
+ver más abajo.
+
+**De ahí surgió el tema grande de la sesión**: la usuaria observó que la fauna ya tiene géneros
+(`FaunaCategoria`) y pidió lo mismo para la flora, además de un `.md` de vocabulario/traducciones a
+la lengua del juego (también pendiente, ver más abajo) y avisó de generalizar bien el concepto de
+"especie base + variante regional" (Telda no es "árbol", es como "abeto"/"pino" — una familia real
+que se puede reutilizar en otra región con una variedad nueva adaptada, ej. Cristal Helado).
+
+**`FloraCategoria` — diseño cerrado y CONFIRMADO por la usuaria, llevado a código el mismo día**:
+- 11 géneros funcionales bajo la Semilla Florial ("El que Brota", genesis.md): VELDRIAS (árboles
+  madera+resina), ZARCOS (arbustos de leña), HELDRAS (hierbas/pastos base), GRANOLES (cereales),
+  TRENIAS (fibra de tejido/cordaje), MARELAS (algas), BULVIAS (raíces/tubérculos), MUSCARIAS
+  (líquenes/musgos), SALVIRAS (alquimia/curación), FONGARES (setas), VETRIAS (flora con mineral
+  real en su propia estructura).
+- 2 géneros bajo Tarkor (magia Salvaje), paralelo exacto a MUDOS_SALVAJE/ROKRATS_ESTALLIDO de
+  fauna: **BROTES_SALVAJES** (flora normal mutada, especie base real con algo imposible en su bio
+  — asignado a Raíz de Fuego y Cardo Brújula, ambos ya tenían la propiedad mágica sin categorizar)
+  y **ROKTARS_FLORARES** (flora nacida directamente de la magia, sin especie base real — nombre
+  deliberadamente emparentado, "Roktars" es el mismo juego de palabras "Tarkor" al revés que
+  ROKRATS, "Florares" marca la rama de flora; sin ejemplo real todavía, tipo reservado).
+- **Usos reales confirmados** (la usuaria descartó explícitamente un 4º uso — bonus de recolección
+  por profesión afín al género, no se implementa): (1) filtro de terreno derivado — sugiere un
+  `harvestSourceTerrainTag` por defecto coherente con el género, detecta asignaciones sospechosas;
+  (2) filtro de Enciclopedia; (3) pista narrativa de "sabor" compartido para el Narrador.
+- **Hallazgo real al implementar el uso 2**: `faunaCategoria` (el campo que ya existía desde
+  2026-09-02) **nunca había llegado al frontend/Enciclopedia** pese a llevar 2 días en producción —
+  vivía solo en la BD, sin exponerse en `buildFaunaFloraSection` (`world.ts`) ni en el tipo
+  `EnciclopediaFaunaFloraInfo` (`api.ts`). Cerrado para AMBOS a la vez (decisión explícita de la
+  usuaria al preguntarle) — ahora `faunaCategoria`/`floraCategoria` viajan en cada entrada de
+  fauna/flora de la Enciclopedia, antepuestos al tooltip de recursos (`yieldsSummary`,
+  `enciclopediaTargets.ts`).
+
+**Llevado a código el mismo día**: `backend/src/services/floraCategoria.ts` (tipo nuevo, sin tocar
+Prisma — la flora no tiene tabla propia, igual que `TerrainTag`), mapa
+`harvestSourceFloraCategoria` en `worldCatalog.ts` con las 25 fuentes de flora ya existentes
+asignadas (Trepador Ocaso, fuera del núcleo jugable, se dejó sin asignar a propósito — sin
+suficiente lore para decidir entre VELDRIAS y BROTES_SALVAJES todavía), y la exposición a la
+Enciclopedia (backend `world.ts` + frontend `api.ts`/`enciclopediaTargets.ts`). Verificado:
+`tsc -b` limpio en backend y frontend, 191/191 tests frontend, 2015/2016 backend (1 flake
+preexistente sin relación, ya documentado, confirmado en aislamiento).
+
+**Pendiente de código (no cerrado hoy)**:
+- Renombrado completo "Junco" → "Chudo" (ver arriba, confirmado el nombre base pero sin aplicar).
+- Asignar `floraCategoria` a Trepador Ocaso cuando se repase Ciénaga Troncal.
+
+**Pendiente de documentación (nuevo, pedido explícito 2026-09-04)**: crear `docs/rpgtarkor/vocabulario.md`
+— registro de traducciones a la lengua del juego (lengua común = castellano adaptado al lore para
+muchos sustantivos, con variantes por raza cuando aplique) cada vez que se "traduce" algo nuevo,
+como "Junco"→"Chudo". Empezar a alimentarlo en cuanto se aplique ese renombrado.
+
+**Zona 17 sigue pausada** — retomar el Chudo de la Marea (elemento 2) en cuanto se cierre el
+renombrado, antes de seguir con más elementos nuevos de la zona.

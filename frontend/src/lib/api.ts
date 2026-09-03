@@ -1444,6 +1444,12 @@ export interface EnciclopediaFaunaFloraInfo {
   /// Auditoría de Enciclopedia (2026-08-27) — mismo campo que EnciclopediaNpcInfo, solo presente
   /// si `cazable` (hay Npc real detrás) y alguna probabilidad está calibrada.
   interaccion?: EnciclopediaInteraccion
+  /// Géneros de fauna/flora (2026-09-04, docs/rpgtarkor/genesis.md § Florial/Ferios/Tarkor) —
+  /// mutuamente excluyentes según `esFauna`, nunca los dos a la vez. String suelto (no enum
+  /// cerrado en el frontend) porque el backend puede añadir géneros nuevos sin requerir un
+  /// despliegue sincronizado de ambos lados.
+  faunaCategoria: string | null
+  floraCategoria: string | null
 }
 
 // Día/noche/estación (2026-08-27, docs/rpgtarkor/imagenes-prompts.md) — a diferencia de

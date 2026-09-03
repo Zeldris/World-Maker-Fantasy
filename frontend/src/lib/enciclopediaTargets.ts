@@ -138,8 +138,12 @@ export function faunaFloraMeta(entry: EnciclopediaFaunaFloraInfo): string {
 }
 
 export function yieldsSummary(entry: EnciclopediaFaunaFloraInfo): string {
-  if (entry.yields.length === 0) return 'Sin recursos catalogados todavía.'
-  return entry.yields.map((y) => `${y.cantidad} ${y.itemName}${y.condicion ? ` (${y.condicion})` : ''}`).join(', ')
+  // Género de fauna/flora (2026-09-04) — antepuesto al resumen de recursos, mismo tooltip, para no
+  // añadir una fila nueva a la cuadrícula genérica de EntryCardGrid.
+  const categoria = entry.faunaCategoria ?? entry.floraCategoria
+  const generoPrefix = categoria ? `${categoria} — ` : ''
+  if (entry.yields.length === 0) return `${generoPrefix}Sin recursos catalogados todavía.`
+  return generoPrefix + entry.yields.map((y) => `${y.cantidad} ${y.itemName}${y.condicion ? ` (${y.condicion})` : ''}`).join(', ')
 }
 
 const INTERACCION_LABELS: Record<keyof Omit<EnciclopediaInteraccion, 'atributoResistencia'>, string> = {
