@@ -390,6 +390,39 @@ export function hasPendingLoot(
   return state.groupSize ? state.corpsesLooted < state.groupDefeated : !state.saqueado;
 }
 
+// Despedida temporal genérica (2026-09-03, Pieza 5 — "Gistera sigue presente tras despedirse",
+// distinto de `npcsRetiredForever`: eso es un giro de trama concreto y PERMANENTE hardcodeado solo
+// a Gistera Koh aceptando la misión; esto cubre cualquier despedida narrativa normal de cualquier
+// NPC, sin marcarlo como ausente para siempre). Verbos inequívocos de partida real, no cualquier
+// "adiós" suelto en medio de una conversación que sigue en el mismo sitio — mismo criterio de
+// "señal de sobra fuerte, sin enumerar cada preposición" que el resto de detectores de este archivo.
+const FAREWELL_INTENT_REGEX = /me despido de|nos despedimos|me marcho|parto hacia|dejo atras/;
+
+export function detectsFarewellIntent(text: string): boolean {
+  return FAREWELL_INTENT_REGEX.test(normalizeText(text));
+}
+
+/// Filtra de `sessionFacts` cualquier hecho que combine el nombre/alias de un NPC candidato con una
+/// despedida explícita (Pieza 5, 2026-09-03) — un hecho como "Me despido de Gistera Koh por ahora y
+/// me dirijo hacia Los Restos de Maktor" contiene el nombre real, así que sin este filtro
+/// `matchNpcAliases` la reintroduce como presente en la NUEVA ubicación turnos después. Se
+/// conservan los `RECENCY_GUARANTEED`-equivalentes últimos hechos SIN filtrar (mismo criterio que
+/// `worldFacts.ts` § `RECENCY_GUARANTEED`) — el propio turno de la despedida debe seguir viendo al
+/// NPC en el haystack, para que el Narrador pueda cerrar la escena con naturalidad; solo deja de
+/// contar como presente a partir del turno siguiente. Puro y testeable aparte, mismo estilo que
+/// `matchNpcAliases`.
+const FAREWELL_RECENCY_GUARANTEED = 1;
+
+export function filterFarewellFacts(sessionFacts: string[], candidateNpcs: NpcWithAliases[]): string[] {
+  if (candidateNpcs.length === 0) return sessionFacts;
+  const guaranteed = new Set(sessionFacts.slice(sessionFacts.length - FAREWELL_RECENCY_GUARANTEED));
+  return sessionFacts.filter((fact) => {
+    if (guaranteed.has(fact)) return true;
+    if (!detectsFarewellIntent(fact)) return true;
+    return matchNpcAliases(fact, candidateNpcs).length === 0;
+  });
+}
+
 /// Busca NPCs en escena a partir del texto de la acción Y de los hechos ya establecidos de la
 /// sesión (para que un NPC mencionado en un turno anterior "el Kort'ikar Torgash llegó" siga
 /// reconociéndose en turnos siguientes aunque el jugador ya no repita su nombre completo).
@@ -489,7 +522,8 @@ export async function detectNpcsInScene(params: {
   });
   if (candidateNpcs.length === 0) return [];
 
-  const haystack = [params.action, ...params.sessionFacts].join('\n');
+  const relevantFacts = filterFarewellFacts(params.sessionFacts, candidateNpcs);
+  const haystack = [params.action, ...relevantFacts].join('\n');
   const matchedIds = new Set(matchNpcAliases(haystack, candidateNpcs));
   // `npcsRetiredForever` gana SIEMPRE sobre un match por nombre — un sessionFact que menciona al
   // NPC para decir que se fue para siempre no debe reintroducirlo (ver comentario de cabecera).

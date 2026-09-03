@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { matchNpcAliases, contraataqueDifficultyFor, tabulatedAttackAttribute, detectsAttackIntent, detectsHostileSearchIntent, detectsVerbalAcceptanceIntent, detectsLootIntent, detectsExecuteIntent, detectsInventoryReviewIntent, scopeFor, pickAmbientEncounterCandidate, npcSceneBlockFor, buildNpcInScene, type NpcInScene, type NpcWithItems } from './npcScene.js';
+import { matchNpcAliases, contraataqueDifficultyFor, tabulatedAttackAttribute, detectsAttackIntent, detectsHostileSearchIntent, detectsVerbalAcceptanceIntent, detectsLootIntent, detectsExecuteIntent, detectsInventoryReviewIntent, detectsFarewellIntent, filterFarewellFacts, scopeFor, pickAmbientEncounterCandidate, npcSceneBlockFor, buildNpcInScene, type NpcInScene, type NpcWithItems } from './npcScene.js';
 
 const NPCS = [
   { id: 'rezagado', aliases: ['guerrero orco rezagado', 'rezagado', 'orco rezagado', 'un rezagado'] },
@@ -101,6 +101,50 @@ describe('matchNpcAliases', () => {
     expect(matchNpcAliases('Decido bajar por la hondonada', NPCS)).toEqual([]);
     expect(matchNpcAliases('No tengo con qué pagar al mercader', NPCS)).toEqual([]);
     expect(matchNpcAliases('Me niego a negar lo que vi', NPCS)).toEqual([]);
+  });
+});
+
+describe('detectsFarewellIntent', () => {
+  it('detecta una despedida real antes de un viaje', () => {
+    expect(detectsFarewellIntent('Me despido de Gistera Koh por ahora y me dirijo hacia Los Restos de Maktor.')).toBe(true);
+    expect(detectsFarewellIntent('Nos despedimos y parto hacia el norte.')).toBe(true);
+    expect(detectsFarewellIntent('Dejo atras el campamento y a Gistera Koh, en busca de nuevos horizontes.')).toBe(true);
+  });
+
+  it('no dispara con una despedida dentro de una conversación que sigue en el mismo sitio', () => {
+    expect(detectsFarewellIntent('Gistera Koh se despide entre risas antes de seguir hablando junto al fuego.')).toBe(false);
+    expect(detectsFarewellIntent('Hablo con Gistera Koh sobre el clan Serhu.')).toBe(false);
+  });
+});
+
+describe('filterFarewellFacts', () => {
+  const GISTERA = { id: 'gistera', aliases: ['gistera', 'gistera koh'] };
+
+  it('excluye un hecho de despedida antiguo del NPC mencionado', () => {
+    const facts = [
+      'Gistera Koh acompaña a Gorhorn por la Hondonada del Eco.',
+      'Me despido de Gistera Koh por ahora y me dirijo hacia Los Restos de Maktor.',
+      'Gorhorn llega a Los Restos de Maktor tras un largo viaje.',
+    ];
+    expect(filterFarewellFacts(facts, [GISTERA])).toEqual([
+      'Gistera Koh acompaña a Gorhorn por la Hondonada del Eco.',
+      'Gorhorn llega a Los Restos de Maktor tras un largo viaje.',
+    ]);
+  });
+
+  it('conserva el hecho de despedida si es el último (mismo turno en que ocurre)', () => {
+    const facts = ['Gorhorn viaja con Gistera Koh.', 'Me despido de Gistera Koh por ahora.'];
+    expect(filterFarewellFacts(facts, [GISTERA])).toEqual(facts);
+  });
+
+  it('no toca hechos sin despedida, aunque mencionen al NPC', () => {
+    const facts = ['Gistera Koh sigue junto al fuego, atenta.'];
+    expect(filterFarewellFacts(facts, [GISTERA])).toEqual(facts);
+  });
+
+  it('no toca una despedida de un NPC que no está entre los candidatos', () => {
+    const facts = ['Me despido de un mercader cualquiera y sigo mi camino.'];
+    expect(filterFarewellFacts(facts, [GISTERA])).toEqual(facts);
   });
 });
 
@@ -427,6 +471,48 @@ describe('detectNpcsInScene — acotar el candidato por escena', () => {
       fictionalMinutes: 480,
     });
     expect(result.map((n) => n.id)).toEqual(['lurker']);
+  });
+
+  // Pieza 5 (2026-09-03, hallazgo real jugando en vivo): Gistera Koh es `kind: 'PRINCIPAL'`, así
+  // que el filtro geográfico (homeLocationSlug/región) nunca la bloquea — es candidata en
+  // cualquier ubicación del mundo por diseño. Antes de este fix, un sessionFact de despedida
+  // explícita seguía reintroduciéndola como "presente" en la ubicación NUEVA, turnos después de
+  // haberse despedido y viajado. `filterFarewellFacts` es el único filtro real para este caso.
+  it('Gistera Koh (PRINCIPAL) deja de detectarse en la nueva ubicación cuando el único hecho que la menciona es una despedida de un turno anterior', async () => {
+    findManyNpc.mockResolvedValue([baseNpc({ id: 'gistera', slug: 'gistera-koh', name: 'Gistera Koh', kind: 'PRINCIPAL', aliases: ['gistera', 'gistera koh'], homeLocationSlug: null })]);
+    findUniqueLocation.mockResolvedValue({ slug: 'restos-de-maktor', region: 'Llanuras del Viento Rojo' });
+    findManyLocation.mockResolvedValue([]);
+    findManyNpcState.mockResolvedValue([{ npcId: 'gistera' }]);
+
+    const result = await detectNpcsInScene({
+      action: 'Exploro Los Restos de Maktor',
+      worldId: 'w1',
+      sessionFacts: [
+        'Me despido de Gistera Koh por ahora y me dirijo hacia Los Restos de Maktor.',
+        'Gorhorn llega a Los Restos de Maktor tras varias horas de viaje.',
+      ],
+      saveId: 's1',
+      currentLocationId: 'loc-maktor',
+      fictionalMinutes: 480,
+    });
+    expect(result).toEqual([]);
+  });
+
+  it('Gistera Koh (PRINCIPAL) SÍ se sigue detectando en el mismo turno de la despedida (el Narrador puede cerrar la escena)', async () => {
+    findManyNpc.mockResolvedValue([baseNpc({ id: 'gistera', slug: 'gistera-koh', name: 'Gistera Koh', kind: 'PRINCIPAL', aliases: ['gistera', 'gistera koh'], homeLocationSlug: null })]);
+    findUniqueLocation.mockResolvedValue({ slug: 'hondonada-del-eco', region: 'Llanuras del Viento Rojo' });
+    findManyLocation.mockResolvedValue([]);
+    findManyNpcState.mockResolvedValue([{ npcId: 'gistera' }]);
+
+    const result = await detectNpcsInScene({
+      action: 'Me despido de Gistera Koh por ahora y me dirijo hacia Los Restos de Maktor.',
+      worldId: 'w1',
+      sessionFacts: ['Me despido de Gistera Koh por ahora y me dirijo hacia Los Restos de Maktor.'],
+      saveId: 's1',
+      currentLocationId: 'loc-hondonada',
+      fictionalMinutes: 480,
+    });
+    expect(result.map((n) => n.id)).toEqual(['gistera']);
   });
 });
 
