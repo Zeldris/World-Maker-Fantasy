@@ -741,3 +741,61 @@ frágil de siempre), **restricción de armas por clase** (con detalle: sí tiene
 **migraciones de clases** (❓→✅, confirmado indirectamente por la partida real funcionando sin
 errores de schema). Ningún ítem bajó de estado — todos subieron o se precisaron, ninguna sospecha
 nueva de regresión.
+
+## Cuelgue de Ollama reproducido de nuevo (2026-09-03 noche → 2026-09-04, ronda de pruebas continuas
+tras el sembrado de `FloraCategoria`/renombrado Chudo)
+
+**Contexto**: la usuaria pidió pruebas continuas nocturnas tras reiniciar backend y frontend con el
+código nuevo. Se creó una partida de prueba limpia (`cmtm3qi4b0001rirshc899tlc`, Gorhorn/Guerrero),
+se confirmó en vivo que el fix de reconexión de ayer (`useReconnectionPolling`/`mountedRef`,
+`docs/checklist-pruebas-juego.md`/commit `2b2c31a`) sigue funcionando correctamente en producción
+real — tras recargar la página, el composer muestra "Esperando la narración de tu último turno..."
+en vez de quedar deshabilitado sin explicación, y el tooltip de equipo (commit `2b2c31a`) también
+sigue mostrando el nombre completo del objeto correctamente.
+
+**El bug real**: el primer turno de exploración ("Exploro la zona con atención.") NUNCA se resolvió
+— confirmado con espera activa y monitorizada de **más de 15 minutos**, muy por encima del peor
+caso teórico documentado en el propio código (`narrador.ts`: `attempt1` 90s + `attempt2` 240s +
+`attempt3` 90s ≈ 7 min máximo). Diagnóstico:
+- `curl http://localhost:11434/api/ps` devolvió `{"models":[]}` — **ningún modelo cargado en
+  Ollama** durante toda la espera, pese a que los 2 primeros intentos de la cascada usan
+  `keepAlive: '1h'` (deberían mantenerlo cargado mientras generan). Esto descarta que sea una
+  generación real simplemente lenta — la llamada nunca llegó a Ollama, o falló antes en silencio.
+- `curl http://localhost:3001/health` siguió devolviendo `{"status":"ok","database":"ok","ollama":"ok"}`
+  durante todo el cuelgue — ese endpoint solo comprueba conectividad, no detecta este tipo de fallo.
+- **Se creó una SEGUNDA partida independiente** (`cmtm4a83r001urirsx95kob96`, Gorhorn/Cazador) para
+  aislar si el problema era del candado en memoria de la primera partida (`turnLock.ts`,
+  `inFlightClaimSet.ts`, `staleAfterMs: 300_000`, confirmado que es por-`saveId`, no global) — el
+  turno de esta segunda partida ("Observo mi entorno.") **tampoco se resolvió**, con `api/ps`
+  igualmente vacío varios minutos después. Descarta que sea un candado zombie heredado de la sesión
+  de ayer (el combate colgado de `cmtlwx13g0044rik16vto9iqy`) — es un problema sistémico del proceso
+  backend/Ollama en este momento, no de una partida concreta.
+- **No se pudo diagnosticar más a fondo**: sin acceso a los logs del proceso backend real (corre
+  fuera del sandbox de Bash de esta sesión) ni forma de reiniciarlo sin la usuaria. Las 3 partidas
+  con turnos colgados a fecha de este cierre: `cmtlwx13g0044rik16vto9iqy` (combate de ayer, nunca se
+  resolvió tampoco), `cmtm3qi4b0001rirshc899tlc`, `cmtm4a83r001urirsx95kob96` — las 3 se dejan tal
+  cual, sin tocar, como evidencia.
+- **Matiz sobre el mensaje de fallback del frontend, RESUELTO con verificación positiva**: en el
+  primer intento, tras 20+ min de espera con `page.goto()` repetidos, el composer seguía en
+  "Esperando la narración..." sin caer al mensaje de fallback — sospeché un efecto colateral de
+  recargar la página (cada `goto()` reinicia el sondeo `useReconnectionPolling` desde cero). Se
+  verificó con una pestaña ÚNICA sin ninguna recarga, dejada correr 13 minutos ininterrumpidos:
+  **confirmado en vivo que el fix de ayer funciona de extremo a extremo** — a los 12 minutos
+  exactos (72×10s), el mensaje `"La acción quedó registrada, pero la narración sigue sin
+  completarse tras esperar — puede que tengas que reintentarla."` apareció correctamente y el
+  composer dejó el estado "Esperando..." — la sospecha inicial era en efecto solo un artefacto de
+  las recargas repetidas de las pruebas, no un problema real del fix.
+
+**Relación con el fix de la sesión anterior**: `tarkor_fix_ollamaqueue_autorrecuperacion_2026-08-31`
+documentaba 3 fixes (candado sin caducidad + RAG sin timeout + guard de cola mal calibrado)
+pendientes de "verificar en vivo" — este cuelgue de esta noche, si se confirma que persiste tras un
+reinicio limpio de verdad, sería la primera verificación en vivo real de esos fixes, y sugeriría que
+no cubren la causa completa (o que hay una causa nueva/distinta). **No se puede concluir con
+certeza si el reinicio de esta noche fue completo** (proceso backend realmente matado y vuelto a
+lanzar, vs. solo un `restart` que no limpiara todo el estado en memoria) — la usuaria debería
+confirmarlo la próxima vez que revise esto.
+
+**Siguiente paso recomendado**: cuando la usuaria retome la sesión, reiniciar el backend de verdad
+(matar el proceso, no solo recargar) y repetir un turno simple en una partida nueva para confirmar
+si el cuelgue se repite desde cero — si sí, la causa raíz de `ollamaQueue.ts`/`retrieval.ts` sigue
+sin cerrar del todo pese a los fixes de agosto.

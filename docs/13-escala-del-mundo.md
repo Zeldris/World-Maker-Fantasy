@@ -174,8 +174,8 @@ km, origen en Los Pilares Rotos, +x = este, +y = norte.
 
 | Nodo | x (km) | y (km) | Arista | Distancia recta | Minutos base |
 |---|---|---|---|---|---|
-| El Oasis de Juncos Rojos | +24,3 | +14,9 | Los Manaderos | 11,4 km | 115 |
-| La Desembocadura Callada | −2 | +42 | El Oasis de Juncos Rojos | 37,8 km | 280 |
+| El Oasis de Chudos Rojos | +24,3 | +14,9 | Los Manaderos | 11,4 km | 115 |
+| La Desembocadura Callada | −2 | +42 | El Oasis de Chudos Rojos | 37,8 km | 280 |
 | Las Pozas de Marea | −20 | +36 | La Desembocadura Callada | 19,0 km | 180 |
 | Playa de Ceniza Blanca | −20 | +22 | Las Pozas de Marea | 14,0 km | 130 |
 | Los Acantilados Partidos | −21 | +44 | Las Pozas de Marea | 8,1 km | 90 |

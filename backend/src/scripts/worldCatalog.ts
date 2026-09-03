@@ -8106,7 +8106,10 @@ export const harvestSourceDisplayName: Record<string, string> = {
   'pasto-solar': 'Pasto Solar',
   'resina-lucre-blanco-fuente': 'Resina de Lucre Blanco',
   'resina-telda-atardecer-fuente': 'Resina de Telda Atardecer',
-  'resina-telda-fuente': 'Resina de Telda',
+  // Corregido 2026-09-04 (auditoría estática lore↔código, cuelgue de Ollama) — el ItemCatalog real
+  // que da esta fuente se llama "Resina Telda Gris" (worldCatalog.ts, cerca de Telda Común/Ceniza),
+  // no "Resina de Telda" a secas; este display name sí llega al jugador (Enciclopedia, ZonePoint).
+  'resina-telda-fuente': 'Resina Telda Gris',
   'roca-luclara': 'Roca Luclara',
   rovalnica: 'Rovalnica',
   'telda-atardecer': 'Telda Atardecer',
