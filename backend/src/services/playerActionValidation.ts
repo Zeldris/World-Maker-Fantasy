@@ -330,3 +330,26 @@ const UNKNOWN_CONSTRUCTION_LINES: string[] = [
 export function unknownConstructionNarrationFor(): string {
   return pickRandomLine(UNKNOWN_CONSTRUCTION_LINES);
 }
+
+/// "Mundo determinista, el narrador solo narra" (petición explícita de la usuaria, 2026-09-03,
+/// Pieza 6): antes, cuando el texto libre mencionaba verbo+sustantivo de una receta real de
+/// crafteo/construcción pero el precheck determinista (`detectDeterministicCraft`/
+/// `planDeterministicBuild`) fallaba por falta de materiales/ubicación/nivel de oficio, el turno
+/// caía al narrador libre, que podía inventar un objeto/edificio fabricado nunca persistido — el
+/// caso 2 del principio ("no se puede lanzar la acción determinista") se quedaba sin mensaje
+/// determinista propio, a diferencia de `UNKNOWN_CONSTRUCTION_LINES` (que solo cubre "esa receta
+/// no existe en absoluto", no "existe pero no se puede ahora mismo"). Mismo criterio que el resto
+/// del archivo — pool de 5, 1 cómica menos frecuente, sin revelar el motivo técnico exacto (no
+/// hace falta que Gorhorn sepa que le falta tal material concreto, ya lo sabe el jugador mirando
+/// su inventario/las Habilidades > Profesiones).
+const DETERMINISTIC_ACTION_UNAVAILABLE_LINES: string[] = [
+  'Gorhorn lo intenta, pero algo no encaja — no tiene lo necesario para conseguirlo aquí, ahora mismo.',
+  'Sus manos se detienen a medio camino. Le falta algo para poder hacerlo de verdad, y lo sabe sin necesidad de intentarlo más.',
+  'Gorhorn evalúa lo que tiene a mano y sacude la cabeza — así no va a poder ser, no todavía.',
+  'No es el momento ni el lugar para eso. Gorhorn lo deja para más adelante, cuando reúna lo que le falta.',
+  'Gorhorn se rasca la cabeza. «Buena idea, pero me falta de todo para hacerlo ahora mismo...» Se encoge de hombros y sigue a lo suyo.',
+];
+
+export function deterministicActionUnavailableNarrationFor(): string {
+  return pickRandomLine(DETERMINISTIC_ACTION_UNAVAILABLE_LINES);
+}

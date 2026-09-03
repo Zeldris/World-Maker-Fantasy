@@ -20,6 +20,7 @@ const {
   fabricatedNpcNarrationFor,
   detectsFabricatedHarvestSourceClaim,
   fabricatedHarvestSourceNarrationFor,
+  deterministicActionUnavailableNarrationFor,
 } = await import('./playerActionValidation.js');
 
 describe('detectsUnequippedWeaponClaim', () => {
@@ -258,6 +259,14 @@ describe('fabricatedHarvestSourceNarrationFor', () => {
   it('siempre devuelve una frase no vacía', () => {
     for (let i = 0; i < 20; i++) {
       expect(fabricatedHarvestSourceNarrationFor('flor de cristal lunar').length).toBeGreaterThan(0);
+    }
+  });
+});
+
+describe('deterministicActionUnavailableNarrationFor', () => {
+  it('siempre devuelve una frase no vacía', () => {
+    for (let i = 0; i < 20; i++) {
+      expect(deterministicActionUnavailableNarrationFor().length).toBeGreaterThan(0);
     }
   });
 });

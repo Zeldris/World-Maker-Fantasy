@@ -4047,6 +4047,72 @@ describe('Crafteo con espera real (2026-08-20): transit con busyUntil, resoluci�
   });
 });
 
+// Pieza 6 (2026-09-03, "mundo determinista, el narrador solo narra" — petición explícita de la
+// usuaria): fuera de combate, una intención real de crafteo/construcción (verbo+sustantivo de una
+// receta real) que no se puede lanzar (sin materiales) debe devolver un mensaje determinista fijo,
+// nunca caer al narrador libre a inventar un resultado no persistido.
+describe('Mundo determinista (Pieza 6): crafteo/construcción sin materiales, fuera de combate, bloquea con mensaje determinista', () => {
+  let saveId: string;
+  let locationId: string;
+
+  beforeAll(async () => {
+    const userId = await getDefaultUserId();
+    const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
+    const hondonada = await prisma.location.findFirstOrThrow({ where: { worldId: world.id, slug: 'hondonada-del-eco' } });
+    locationId = hondonada.id;
+    const save = await prisma.save.create({
+      data: {
+        userId,
+        worldId: world.id,
+        characterName: 'Gorhorn de prueba (Pieza 6, sin materiales)',
+        characterArchetype: 'guerrero',
+        characterOrigin: 'Clan Maktor',
+        characterMotivation: 'x',
+        attributes: ATTRS,
+        portraitInitial: 'G',
+        currentLocationId: locationId,
+      },
+    });
+    saveId = save.id;
+    await prisma.worldState.create({ data: { saveId } });
+    classifyAction.mockResolvedValue({
+      requiereTirada: false, atributo: 'destreza', dificultad: 8, razon: 'x', banda: 'instantanea', duracionEstimadaMinutos: 0,
+    });
+  });
+
+  afterAll(async () => {
+    await prisma.save.delete({ where: { id: saveId } });
+  });
+
+  it('crafteo sin el ingrediente real: bloquea con mensaje determinista, sin llamar al narrador ni crear CharacterTransit', async () => {
+    narrateAction.mockClear();
+    const app = await buildApp();
+    const action = 'Ato un vendaje con mi manojo de salvia del polvo.';
+    const classifyRes = await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action, enCombate: false } });
+    expect(classifyRes.statusCode).toBe(200);
+    const body = classifyRes.json() as { blocked?: { narration: string } };
+
+    expect(narrateAction).not.toHaveBeenCalled();
+    expect(await prisma.characterTransit.findUnique({ where: { saveId } })).toBeNull();
+    expect(typeof body.blocked?.narration).toBe('string');
+    expect(body.blocked!.narration.length).toBeGreaterThan(0);
+  });
+
+  it('construcción sin materiales: bloquea con mensaje determinista, sin llamar al narrador ni crear Building', async () => {
+    narrateAction.mockClear();
+    const app = await buildApp();
+    const action = 'Construyo un campamento base en este lugar.';
+    const classifyRes = await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action, enCombate: false } });
+    expect(classifyRes.statusCode).toBe(200);
+    const body = classifyRes.json() as { blocked?: { narration: string } };
+
+    expect(narrateAction).not.toHaveBeenCalled();
+    expect(await prisma.building.count({ where: { saveId } })).toBe(0);
+    expect(typeof body.blocked?.narration).toBe('string');
+    expect(body.blocked!.narration.length).toBeGreaterThan(0);
+  });
+});
+
 // Auditoría "revisar partida" (2026-08-30) — primer caso real de `resultCantidad > 1`: fundir
 // Garras de Kirelon Arenoso da 2 Lingotes de Yerreo de un solo crafteo, no 1. Confirma que el
 // InventoryItem resultante lleva el sufijo "(2)" (mismo formato que el resto de apilables),

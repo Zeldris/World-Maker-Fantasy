@@ -48,6 +48,7 @@ import {
   fabricatedNpcNarrationFor,
   detectsFabricatedHarvestSourceClaim,
   fabricatedHarvestSourceNarrationFor,
+  deterministicActionUnavailableNarrationFor,
 } from '../services/playerActionValidation.js';
 import { harvestSourceAliases } from '../scripts/worldCatalog.js';
 import { detectsPostCombatInteraction } from '../services/postCombatInteraction.js';
@@ -716,6 +717,20 @@ export async function turnRoutes(app: FastifyInstance) {
       return { classification, roll, transit: { busyUntil, duracionMinutos: minutos }, travel: null };
     }
 
+    // Mundo determinista, el narrador solo narra (Pieza 6, 2026-09-03): el texto menciona
+    // verbo+sustantivo de una receta de crafteo real (`mightBeCraftAttempt`, señal ya fuerte —
+    // exige ambos, no un verbo suelto), pero `detectDeterministicCraft` no encontró ninguna receta
+    // que se pueda craftear de verdad ahora (sin materiales/ubicación/nivel de oficio/receta
+    // desbloqueada) — antes esto caía sin más al narrador libre, que podía narrar un objeto
+    // fabricado que nunca se persistía. Mensaje determinista fijo en vez de dejarlo inventar.
+    // `!enCombate` (bug real encontrado en la propia suite, "Contraataque..."): en pleno combate,
+    // vocabulario de intercambio ("me preparo para responder") puede matchear por casualidad
+    // verbo+sustantivo de una receta — dentro de combate ninguna acción es un intento real de
+    // craftear, mismo criterio que ya usa el resto de guards de esta ruta (línea ~575).
+    if (!enCombate && mightBeCraftAttempt && !craftAttempt) {
+      return resolveBlockedTurn(deterministicActionUnavailableNarrationFor());
+    }
+
     // Building.status EN_CONSTRUCCION real (2026-08-23, Grupo 3 § Building.status — ver el
     // comentario de cabecera de `planDeterministicBuild`, construction.ts). A diferencia del
     // crafteo de arriba (transit propio, con su propia espera real corta), construcción SIEMPRE
@@ -735,6 +750,16 @@ export async function turnRoutes(app: FastifyInstance) {
           secondaryAttributes,
         })
       : null;
+
+    // Mundo determinista, el narrador solo narra (Pieza 6, 2026-09-03) — mismo criterio que el
+    // guard de crafteo de arriba: el texto menciona verbo+sustantivo de una receta de construcción
+    // real, pero `planDeterministicBuild` no encontró ninguna que se pueda construir de verdad
+    // ahora (sin materiales/ubicación válida/territorio propio). `detectsUnknownConstructionClaim`
+    // (más arriba en este archivo) ya cubre el caso "ese tipo de edificio no existe en absoluto" —
+    // este cubre el caso distinto "existe, pero no se puede aquí/ahora".
+    if (!enCombate && mightBeBuildAttempt && !buildAttempt) {
+      return resolveBlockedTurn(deterministicActionUnavailableNarrationFor());
+    }
 
     if (classification.banda === 'extendida' || classification.banda === 'larga') {
       // Eventos de viaje interactivos (2026-08-05, petición explícita: "que las esperas entre los
