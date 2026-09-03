@@ -1776,9 +1776,18 @@ export function GameView() {
                     // mismo sin importar por qué el composer estaba apagado; orden de prioridad = el
                     // primero que aplique de verdad (characterThinking/busyUntil son los más
                     // frecuentes en la práctica).
+                    // Pista de combate (bug real jugando en vivo, 2026-09-03, "narración lenta e
+                    // indistinguible de un turno atascado" — hallazgo de UX, no arquitectura: el
+                    // combate se resuelve siempre de forma síncrona vía `characterThinking`, sin
+                    // `busyUntil`/countdown, así que un turno de combate/caza más lento que el
+                    // habitual daba el mismo mensaje genérico que uno realmente colgado).
+                    // `combateIniciado` (no `combat.combatOpen`, que exige el panel ya abierto) es
+                    // la señal disponible ANTES de que vuelva la respuesta.
                     disabledReason={
                       characterThinking
-                        ? 'Esperando la narración de tu último turno...'
+                        ? combateIniciado
+                          ? 'Resolviendo el combate — puede tardar más de lo habitual...'
+                          : 'Esperando la narración de tu último turno...'
                         : busyUntil
                           ? 'Ocupado con algo que lleva tiempo — vuelve cuando termine.'
                           : combateIniciado && !combat.combatOpen
