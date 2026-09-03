@@ -4,6 +4,7 @@ import { rollCheck } from '../services/dice.js';
 import type { AttributeBlock, RollResult } from '../services/dice.js';
 import { computeDuration, detectsRestIntent, mentionsExplicitDuration } from '../services/timedActions.js';
 import { narrateAndPersistTurn } from '../services/turnResolution.js';
+import { recordEntityDiscoveries } from '../services/entityDiscovery.js';
 import type { PendingNpcAttack } from '../services/combatExchange.js';
 import { resolveTravel, bandaForMinutos, segundosRealesPorTramos, type TravelResolution } from '../services/travel.js';
 import { pickTravelInterruption } from '../services/travelInterruption.js';
@@ -467,6 +468,7 @@ export async function turnRoutes(app: FastifyInstance) {
     // patrón que ya usa `transit`).
     const blockedTimeLabel = save.worldState?.fictionalDateLabel ?? 'Día 1, mañana';
     const blockedFictionalMinutes = save.worldState?.fictionalMinutes ?? 480;
+    const blockedWorldId = save.worldId;
     async function resolveBlockedTurn(narrationText: string) {
       await prisma.logEntry.create({
         data: { saveId, channel: 'CHARACTER', text: action, isPlayerAction: true, timeLabel: blockedTimeLabel, fictionalMinutes: blockedFictionalMinutes },
@@ -474,6 +476,14 @@ export async function turnRoutes(app: FastifyInstance) {
       await prisma.logEntry.create({
         data: { saveId, channel: 'CHARACTER', text: narrationText, isPlayerAction: false, timeLabel: blockedTimeLabel, fictionalMinutes: blockedFictionalMinutes },
       });
+      // Bug real jugando en vivo (2026-09-03, "fauna interactuada no se desbloquea en la
+      // Enciclopedia"): a diferencia del flujo normal de turno (turnResolution.ts, que sí llama a
+      // recordEntityDiscoveries al final), este camino corto nunca lo hacía — un guard como
+      // `absentSceneNpcClaim` puede mencionar por nombre real a un NPC/fauna de catálogo (p.ej.
+      // "¿Kirelon Arenoso? Aquí no hay nadie con ese nombre...") sin que eso contara nunca como
+      // descubrimiento. Mismo patrón exacto que turnResolution.ts, función aditiva/idempotente que
+      // nunca lanza.
+      await recordEntityDiscoveries({ saveId, worldId: blockedWorldId, mentionedText: narrationText });
       return { blocked: { narration: narrationText } };
     }
 

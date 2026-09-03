@@ -6189,10 +6189,17 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
 
   // Enciclopedia progresiva (sesión de diseño 2026-07-23) — se escanea SOLO lo nuevo de este
   // turno (narración + new_facts); lo de turnos anteriores ya quedó en DiscoveredEntity.
+  // `npcAttackTarget?.name` añadido de forma determinista (bug real jugando en vivo, 2026-09-03):
+  // el motor ya sabe con certeza contra quién se luchó este turno, pero antes el desbloqueo
+  // dependía por completo de que el LLM mencionara el nombre por casualidad en su narración — un
+  // ataque narrado de forma genérica ("la bestia esquiva y retrocede gruñendo") nunca desbloqueaba
+  // nada aunque el objetivo real fuera conocido. A propósito NO se añade toda `npcsInScene` (solo
+  // el objetivo confirmado de un ataque) — mantiene la filosofía original de "descubrimiento
+  // narrativo, no automático por presencia" (ver comentario de cabecera de `recordEntityDiscoveries`).
   await recordEntityDiscoveries({
     saveId,
     worldId,
-    mentionedText: [narration.narration, ...narration.newFacts, ...newQuestObjetivos].join('\n'),
+    mentionedText: [narration.narration, ...narration.newFacts, ...newQuestObjetivos, npcAttackTarget?.name ?? ''].join('\n'),
   });
 
   // Ver comentario de `quests` en NarrateAndPersistResult — se consulta la lista completa ya

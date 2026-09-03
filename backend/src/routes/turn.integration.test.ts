@@ -6216,3 +6216,120 @@ describe('EXPULSAR: el guard de arma no bloquea una acción que nombra "escudo" 
     expect(done.blocked).toBeUndefined();
   }, 15_000);
 });
+
+// Bug real jugando en vivo (2026-09-03, sesión de juego con Playwright): mencionar/atacar a un
+// NPC/fauna real de catálogo que NO está en la escena actual dispara `absentSceneNpcClaim`
+// (`resolveBlockedTurn`, turn.ts) — su mensaje genérico ("¿Ruptidar? Aquí no hay nadie con ese
+// nombre, que yo vea...") menciona el nombre real por catálogo, pero ese camino corto nunca
+// llamaba a `recordEntityDiscoveries`, a diferencia del flujo normal de turno. La fauna con la que
+// el jugador acababa de interactuar directamente se quedaba bloqueada para siempre en la
+// Enciclopedia.
+describe('resolveBlockedTurn registra descubrimientos (auditoría "sesión de juego" 2026-09-03)', () => {
+  let saveId: string;
+
+  beforeAll(async () => {
+    const userId = await getDefaultUserId();
+    const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
+    // Ubicación real SIN Ruptidar sembrado en escena — el guard exige que exista en catálogo pero
+    // no esté presente aquí para disparar.
+    const location = await prisma.location.findFirstOrThrow({ where: { worldId: world.id, slug: 'hondonada-del-eco' } });
+    const save = await prisma.save.create({
+      data: {
+        userId,
+        worldId: world.id,
+        characterName: 'Gorhorn de prueba (blocked discovery)',
+        characterArchetype: 'guerrero',
+        characterOrigin: 'Clan Maktor',
+        characterMotivation: 'x',
+        attributes: ATTRS,
+        portraitInitial: 'G',
+        currentLocationId: location.id,
+      },
+    });
+    saveId = save.id;
+    await prisma.worldState.create({ data: { saveId } });
+    classifyAction.mockResolvedValue({
+      requiereTirada: false, atributo: 'destreza', dificultad: 12, razon: 'x', banda: 'instantanea', duracionEstimadaMinutos: 0,
+    });
+  });
+
+  afterAll(async () => {
+    await prisma.save.delete({ where: { id: saveId } });
+  });
+
+  it('un turno bloqueado por absentSceneNpcClaim SÍ desbloquea la fauna mencionada en la Enciclopedia', async () => {
+    const app = await buildApp();
+    // "Kirelon Arenoso" (`faunaMomentoDelDia['kirelon-arenoso'] === 'noche'`) real de catálogo,
+    // pero excluido de la escena por hora de mundo — con `worldState` recién creado (mañana por
+    // defecto), condición exacta que exige `detectsAbsentSceneNpcClaim`. Mismo caso real de la
+    // sesión de juego que motivó este hallazgo.
+    const action = "Ataco a 'Kirelon Arenoso' con mi hacha, sin darle tiempo a reaccionar.";
+    const classifyRes = await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action, enCombate: false } });
+    expect(classifyRes.statusCode).toBe(200);
+    const body = classifyRes.json();
+    expect(body.blocked?.narration).toContain('Kirelon Arenoso');
+
+    const discovered = await prisma.discoveredEntity.findUnique({
+      where: { saveId_entityType_entitySlug: { saveId, entityType: 'fauna', entitySlug: 'kirelon-arenoso' } },
+    });
+    expect(discovered).not.toBeNull();
+  }, 15_000);
+});
+
+// Bug real jugando en vivo (2026-09-03, mismo hallazgo de arriba): incluso en el flujo NORMAL de
+// turno (sin bloquear), el desbloqueo dependía por completo de que el LLM mencionara el alias real
+// por casualidad en su narración — el motor ya conoce con certeza `npcAttackTarget` ese turno,
+// pero antes esa certeza nunca se usaba para garantizar el descubrimiento.
+describe('recordEntityDiscoveries usa npcAttackTarget de forma determinista (auditoría "sesión de juego" 2026-09-03)', () => {
+  let saveId: string;
+  let ruptidarId: string;
+
+  beforeAll(async () => {
+    const userId = await getDefaultUserId();
+    const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
+    const location = await prisma.location.findFirstOrThrow({ where: { worldId: world.id, slug: 'hondonada-del-eco' } });
+    const ruptidar = await prisma.npc.findFirstOrThrow({ where: { worldId: world.id, slug: 'ruptidar' } });
+    ruptidarId = ruptidar.id;
+    const save = await prisma.save.create({
+      data: {
+        userId,
+        worldId: world.id,
+        characterName: 'Gorhorn de prueba (npcAttackTarget discovery)',
+        characterArchetype: 'guerrero',
+        characterOrigin: 'Clan Maktor',
+        characterMotivation: 'x',
+        attributes: ATTRS,
+        portraitInitial: 'G',
+        currentLocationId: location.id,
+      },
+    });
+    saveId = save.id;
+    await prisma.worldState.create({ data: { saveId } });
+    await prisma.npcState.create({ data: { saveId, npcId: ruptidarId, scope: location.id, condicionFisica: 'ILESO' } });
+    classifyAction.mockResolvedValue({
+      requiereTirada: true, atributo: 'fuerza', dificultad: 12, razon: 'x', banda: 'instantanea', duracionEstimadaMinutos: 0,
+    });
+    // Narración deliberadamente GENÉRICA — sin mencionar "Ruptidar" en ningún sitio del texto, para
+    // aislar que el desbloqueo venga del `npcAttackTarget` determinista, no de un match de texto.
+    narrateAction.mockResolvedValue({ narration: 'La presa esquiva el primer golpe y retrocede, gruñendo bajo, sin dejarse alcanzar.', newFacts: [] });
+  });
+
+  afterAll(async () => {
+    await prisma.save.delete({ where: { id: saveId } });
+  });
+
+  it('atacar a Ruptidar por nombre desbloquea su ficha aunque la narración nunca lo nombre', async () => {
+    const res = await doTurn(saveId, "Ataco a 'Ruptidar' con mi hacha, sin darle tiempo a reaccionar.");
+    expect(res.statusCode).toBe(200);
+    const done = lastNdjsonLine(res.payload);
+    expect(done.blocked).toBeUndefined();
+    expect(done.narration).not.toContain('Ruptidar');
+
+    // 'npc' y no 'fauna' — Ruptidar no tiene ningún HarvestYield propio (no es despiezable), así
+    // que `recordEntityDiscoveries` lo clasifica por su rama genérica de NPC, no por `faunaSlugs`.
+    const discovered = await prisma.discoveredEntity.findUnique({
+      where: { saveId_entityType_entitySlug: { saveId, entityType: 'npc', entitySlug: 'ruptidar' } },
+    });
+    expect(discovered).not.toBeNull();
+  }, 15_000);
+});
