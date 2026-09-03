@@ -10,7 +10,7 @@
 /// Se llama al principio de `POST /turn/classify` (turn.ts), ANTES de la primera llamada a IA
 /// (`classifyAction`, narrador.ts) — si detecta una violación, el turno se resuelve aquí mismo con
 /// una frase determinista en la voz de Gorhorn, sin gastar ni un segundo de generación.
-import { normalizeText } from './travel.js';
+import { normalizeText, detectsTravelIntent, detectsVagueMovementIntent, matchDestination } from './travel.js';
 import { matchNpcAliases, detectsAttackIntent, detectsDialogueIntent, detectsHostileSearchIntent } from './npcScene.js';
 import { ANACHRONISM_REGEX } from './narrador.js';
 import { matchHarvestSource, matchesVerbForMetodo } from './harvest.js';
@@ -352,4 +352,51 @@ const DETERMINISTIC_ACTION_UNAVAILABLE_LINES: string[] = [
 
 export function deterministicActionUnavailableNarrationFor(): string {
   return pickRandomLine(DETERMINISTIC_ACTION_UNAVAILABLE_LINES);
+}
+
+/// Dirección cardinal mencionada en el texto ("camino hacia el norte", "me dirijo al sur") — hoy no
+/// existe ningún sistema de movimiento por dirección cardinal ENTRE ubicaciones del mundo (mundo
+/// determinista, 2026-09-03: `cardinalDirectionBetween`, travel.ts, solo describe la dirección de
+/// un destino YA conocido — no resuelve texto libre). Decisión explícita de la usuaria: las
+/// cardinales son para moverse DENTRO de una zona/interior, no para saltar entre ubicaciones del
+/// mapa — mencionar una no es una reclamación de un lugar inventado, es prosa de rumbo genérico que
+/// debe seguir cayendo al narrador libre como hoy, nunca bloquearse como "destino desconocido".
+const CARDINAL_DIRECTION_REGEX = /\b(norte|noreste|este|sureste|sur|suroeste|oeste|noroeste)\b/;
+
+/// Mundo determinista, el narrador solo narra (Pieza 6c, 2026-09-03): declarar viaje hacia un
+/// destino con un verbo inequívoco (`detectsTravelIntent` — "voy a", "me dirijo", "parto hacia"...)
+/// que no coincide con ningún alias real de ubicación conocida del mundo (`matchDestination` no
+/// resuelve nada) — antes esto caía sin más al narrador libre, que podía narrar la salida/llegada a
+/// un sitio que no existe en el catálogo. Excluido a propósito `detectsVagueMovementIntent`
+/// (`travel.ts`, "sigo/avanzo/continúo por el camino" SIN nombrar destino): ese es un caso
+/// LEGÍTIMO y distinto — `resolveTravel` solo lo resuelve si hay una única salida real conocida, y
+/// con 2+ salidas el turno debe seguir su curso normal para que el jugador elija (comentario de
+/// cabecera de `resolveTravel`) — bloquear ahí sería una regresión real, no un fix. También excluida
+/// cualquier mención de dirección cardinal (`CARDINAL_DIRECTION_REGEX`, bug real encontrado en la
+/// propia suite: "Salgo de la hondonada y camino hacia el norte" no nombra ningún lugar inventado,
+/// solo describe rumbo genérico) — más vale dejar pasar que bloquear con dudas, mismo criterio que
+/// el resto de esta familia de detectores. Y excluida cualquier intención de ataque/búsqueda hostil
+/// (`detectsAttackIntent`/`detectsHostileSearchIntent`, npcScene.ts — bug real encontrado en la
+/// propia suite: "Voy a luchar contra 'Orco enfurecido'" dispara `TRAVEL_INTENT_REGEX` por "voy a",
+/// pero es intención de combate, no de viaje).
+export async function detectsUnknownDestinationClaim(action: string, worldId: string): Promise<boolean> {
+  if (!detectsTravelIntent(action) || detectsVagueMovementIntent(action)) return false;
+  if (detectsAttackIntent(action) || detectsHostileSearchIntent(action)) return false;
+  const normalized = normalizeText(action);
+  if (CARDINAL_DIRECTION_REGEX.test(normalized)) return false;
+  const locations = await prisma.location.findMany({ where: { worldId }, select: { id: true, slug: true, name: true, aliases: true } });
+  return !matchDestination(action, locations);
+}
+
+/// Mismo criterio que el resto — pool de 5, 1 cómica menos frecuente.
+const UNKNOWN_DESTINATION_LINES: string[] = [
+  'Gorhorn se detiene a pensarlo. No sabría ni por dónde tirar hacia allí — no es un lugar que conozca.',
+  'El nombre no le dice nada a Gorhorn. No hay ningún camino que él sepa que lleve hasta ahí.',
+  'Gorhorn mira alrededor, buscando alguna referencia, pero no reconoce el lugar del que habla.',
+  'No es un sitio que Gorhorn tenga marcado en su cabeza, ni recuerde haber oído nombrar.',
+  'Gorhorn se rasca la nuca. «¿Eso? Ni idea de por dónde caerá...» Se encoge de hombros y se queda donde está.',
+];
+
+export function unknownDestinationNarrationFor(): string {
+  return pickRandomLine(UNKNOWN_DESTINATION_LINES);
 }

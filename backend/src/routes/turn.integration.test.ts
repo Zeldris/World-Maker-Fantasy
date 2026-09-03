@@ -4051,7 +4051,7 @@ describe('Crafteo con espera real (2026-08-20): transit con busyUntil, resoluci�
 // usuaria): fuera de combate, una intención real de crafteo/construcción (verbo+sustantivo de una
 // receta real) que no se puede lanzar (sin materiales) debe devolver un mensaje determinista fijo,
 // nunca caer al narrador libre a inventar un resultado no persistido.
-describe('Mundo determinista (Pieza 6): crafteo/construcción sin materiales, fuera de combate, bloquea con mensaje determinista', () => {
+describe('Mundo determinista (Pieza 6): crafteo/construcción/viaje sin poder lanzarse, fuera de combate, bloquea con mensaje determinista', () => {
   let saveId: string;
   let locationId: string;
 
@@ -4110,6 +4110,32 @@ describe('Mundo determinista (Pieza 6): crafteo/construcción sin materiales, fu
     expect(await prisma.building.count({ where: { saveId } })).toBe(0);
     expect(typeof body.blocked?.narration).toBe('string');
     expect(body.blocked!.narration.length).toBeGreaterThan(0);
+  });
+
+  it('viaje declarado hacia un destino inventado: bloquea con mensaje determinista, sin mover Save.currentLocationId', async () => {
+    narrateAction.mockClear();
+    const app = await buildApp();
+    const action = 'Me dirijo hacia la Torre de Cristal, dejando atrás la hondonada.';
+    const classifyRes = await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action, enCombate: false } });
+    expect(classifyRes.statusCode).toBe(200);
+    const body = classifyRes.json() as { blocked?: { narration: string } };
+
+    expect(narrateAction).not.toHaveBeenCalled();
+    expect(typeof body.blocked?.narration).toBe('string');
+    expect(body.blocked!.narration.length).toBeGreaterThan(0);
+    const savedRow = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
+    expect(savedRow.currentLocationId).toBe(locationId);
+  });
+
+  it('viaje declarado con dirección cardinal suelta (sin nombre propio de lugar): NO bloquea — cae al narrador libre como hoy', async () => {
+    narrateAction.mockClear();
+    narrateAction.mockResolvedValueOnce({ narration: 'Gorhorn camina un rato hacia el norte, atento al terreno.', newFacts: [] });
+    const app = await buildApp();
+    const action = 'Camino hacia el norte, atento al terreno.';
+    const classifyRes = await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action, enCombate: false } });
+    expect(classifyRes.statusCode).toBe(200);
+    const body = classifyRes.json() as { blocked?: { narration: string }; classification?: unknown };
+    expect(body.blocked).toBeUndefined();
   });
 });
 

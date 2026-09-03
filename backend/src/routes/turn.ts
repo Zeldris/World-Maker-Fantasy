@@ -49,6 +49,8 @@ import {
   detectsFabricatedHarvestSourceClaim,
   fabricatedHarvestSourceNarrationFor,
   deterministicActionUnavailableNarrationFor,
+  detectsUnknownDestinationClaim,
+  unknownDestinationNarrationFor,
 } from '../services/playerActionValidation.js';
 import { harvestSourceAliases } from '../scripts/worldCatalog.js';
 import { detectsPostCombatInteraction } from '../services/postCombatInteraction.js';
@@ -565,6 +567,17 @@ export async function turnRoutes(app: FastifyInstance) {
     const fabricatedHarvestSourceClaim = detectsFabricatedHarvestSourceClaim(action);
     if (fabricatedHarvestSourceClaim) {
       return resolveBlockedTurn(fabricatedHarvestSourceNarrationFor(fabricatedHarvestSourceClaim.quotedName));
+    }
+
+    // Mundo determinista, el narrador solo narra (Pieza 6c, 2026-09-03): viaje declarado con verbo
+    // inequívoco ("voy a", "me dirijo hacia"...) hacia un destino que no coincide con ningún alias
+    // real de ubicación del mundo — antes caía al narrador libre, que podía narrar una salida/
+    // llegada a un sitio inventado sin que `Save.currentLocationId` cambiara nunca de verdad.
+    // Mismas exclusiones que ya usa `resolveTravel` (turn.ts, más abajo en `resolveClassificationForTurn`):
+    // combate nunca es viaje, y "me acerco a X y le digo..." (diálogo con NPC ya en escena) tampoco
+    // — sin esto, hablar con alguien delante podría bloquearse por casualidad léxica con "acerco a".
+    if (!enCombate && !(detectsDialogueIntent(action) && npcsInSceneForValidation.length > 0) && (await detectsUnknownDestinationClaim(action, save.worldId))) {
+      return resolveBlockedTurn(unknownDestinationNarrationFor());
     }
 
     // Interacción con un NPC/fauna ya convaleciente o muerto, FUERA de combate (docs/19 pieza 2) —

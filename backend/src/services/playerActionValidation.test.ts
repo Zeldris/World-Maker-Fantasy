@@ -1,8 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 const findManyNpc = vi.fn();
+const findManyLocation = vi.fn();
 vi.mock('../lib/prisma.js', () => ({
-  prisma: { npc: { findMany: (...args: unknown[]) => findManyNpc(...args) } },
+  prisma: {
+    npc: { findMany: (...args: unknown[]) => findManyNpc(...args) },
+    location: { findMany: (...args: unknown[]) => findManyLocation(...args) },
+  },
 }));
 
 const {
@@ -21,6 +25,8 @@ const {
   detectsFabricatedHarvestSourceClaim,
   fabricatedHarvestSourceNarrationFor,
   deterministicActionUnavailableNarrationFor,
+  detectsUnknownDestinationClaim,
+  unknownDestinationNarrationFor,
 } = await import('./playerActionValidation.js');
 
 describe('detectsUnequippedWeaponClaim', () => {
@@ -267,6 +273,49 @@ describe('deterministicActionUnavailableNarrationFor', () => {
   it('siempre devuelve una frase no vacía', () => {
     for (let i = 0; i < 20; i++) {
       expect(deterministicActionUnavailableNarrationFor().length).toBeGreaterThan(0);
+    }
+  });
+});
+
+describe('detectsUnknownDestinationClaim', () => {
+  beforeEach(() => {
+    findManyLocation.mockReset();
+    findManyLocation.mockResolvedValue([
+      { id: 'loc-1', slug: 'hondonada-del-eco', name: 'La Hondonada del Eco', aliases: ['la hondonada del eco', 'hondonada'] },
+      { id: 'loc-2', slug: 'restos-de-maktor', name: 'Los Restos de Maktor', aliases: ['los restos de maktor', 'maktor'] },
+    ]);
+  });
+
+  it('detecta un destino declarado con verbo inequívoco que no coincide con ninguna ubicación real', async () => {
+    expect(await detectsUnknownDestinationClaim('Me dirijo hacia la Torre de Cristal.', 'w1')).toBe(true);
+  });
+
+  it('no dispara si el destino SÍ coincide con una ubicación real', async () => {
+    expect(await detectsUnknownDestinationClaim('Voy hacia la Hondonada del Eco.', 'w1')).toBe(false);
+  });
+
+  it('no dispara sin ningún verbo de viaje', async () => {
+    expect(await detectsUnknownDestinationClaim('Miro alrededor con calma.', 'w1')).toBe(false);
+  });
+
+  it('no dispara con movimiento vago sin destino nombrado ("sigo por el camino")', async () => {
+    expect(await detectsUnknownDestinationClaim('Sigo caminando por el camino de tierra.', 'w1')).toBe(false);
+  });
+
+  it('no dispara con una dirección cardinal suelta, sin nombre propio de lugar (decisión de la usuaria: las cardinales son para moverse dentro de una zona, no entre ubicaciones del mapa)', async () => {
+    expect(await detectsUnknownDestinationClaim('Salgo de la hondonada y camino hacia el norte, alejándome del orco.', 'w1')).toBe(false);
+    expect(await detectsUnknownDestinationClaim('Me dirijo al sur en busca de un lugar donde acampar.', 'w1')).toBe(false);
+  });
+
+  it('no dispara con intención de ataque/búsqueda hostil, aunque coincida por casualidad con "voy a" (bug real encontrado en la suite: "Voy a luchar contra...")', async () => {
+    expect(await detectsUnknownDestinationClaim("Voy a luchar contra 'Orco enfurecido'.", 'w1')).toBe(false);
+  });
+});
+
+describe('unknownDestinationNarrationFor', () => {
+  it('siempre devuelve una frase no vacía', () => {
+    for (let i = 0; i < 20; i++) {
+      expect(unknownDestinationNarrationFor().length).toBeGreaterThan(0);
     }
   });
 });
