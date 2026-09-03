@@ -266,11 +266,11 @@ describe('POST /saves/:id/cazar/explorar', () => {
     vi.restoreAllMocks();
   });
 
-  it('nada que explorar si la región no tiene fauna real', async () => {
+  it('nada que explorar si la región no tiene fauna real — vacioReal:true (bug real, 2026-09-03: antes indistinguible del caso "solo falló la tirada")', async () => {
     findManyWorldPopulation.mockResolvedValue([]);
     const app = await buildApp();
     const res = await app.inject({ method: 'POST', url: '/saves/save1/cazar/explorar' });
-    expect(res.json()).toEqual({ candidates: [] });
+    expect(res.json()).toEqual({ candidates: [], vacioReal: true });
     expect(appendSessionFacts).not.toHaveBeenCalled();
   });
 
@@ -285,11 +285,11 @@ describe('POST /saves/:id/cazar/explorar', () => {
     expect(appendSessionFacts).toHaveBeenCalledWith('save1', [], [expect.stringContaining('Múrgol')]);
   });
 
-  it('las 3 tiradas fallan: no encuentra nada, no registra ningún hecho de sesión (como buscar un recurso y no dar con nada)', async () => {
+  it('las 3 tiradas fallan: no encuentra nada, no registra ningún hecho de sesión (como buscar un recurso y no dar con nada) — vacioReal:false, sí hay fauna real (bug real, 2026-09-03)', async () => {
     vi.spyOn(Math, 'random').mockReturnValue(0.1); // por debajo del umbral de fallo (0.35) siempre
     const app = await buildApp();
     const res = await app.inject({ method: 'POST', url: '/saves/save1/cazar/explorar' });
-    expect(res.json()).toEqual({ candidates: [] });
+    expect(res.json()).toEqual({ candidates: [], vacioReal: false });
     expect(appendSessionFacts).not.toHaveBeenCalled();
   });
 });

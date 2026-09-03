@@ -54,6 +54,10 @@ export function HuntSelectionModal({ saveId, onResuelto, onCancel }: HuntSelecti
   const [confirming, setConfirming] = useState(false)
   const [candidates, setCandidates] = useState<HuntCandidate[]>([])
   const [puedeExplorar, setPuedeExplorar] = useState(false)
+  // Bug real jugando en vivo (2026-09-03): tras un "Explorar" sin resultado, `vacioReal` distingue
+  // si la región está de verdad vacía (`true`, sin más reintentos posibles) o si solo falló la
+  // tirada de avistamiento (`false`, invita a reintentar con el mismo botón).
+  const [vacioReal, setVacioReal] = useState(true)
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [cantidades, setCantidades] = useState<Record<string, number>>({})
   const { loading, error, setError } = useAsyncModalData(
@@ -102,6 +106,7 @@ export function HuntSelectionModal({ saveId, onResuelto, onCancel }: HuntSelecti
       const res = await explorarCaza(saveId)
       setCandidates(res.candidates)
       setPuedeExplorar(false)
+      setVacioReal(res.vacioReal)
     } catch {
       setError('No se pudo explorar la zona.')
     } finally {
@@ -167,9 +172,11 @@ export function HuntSelectionModal({ saveId, onResuelto, onCancel }: HuntSelecti
       ) : error && candidates.length === 0 ? (
         <p className="text-xs text-red-400">{error}</p>
       ) : candidates.length === 0 ? (
-        puedeExplorar ? (
+        puedeExplorar || !vacioReal ? (
           <div className="flex flex-col items-start gap-2">
-            <p className="text-xs text-wood-400">No has localizado ninguna presa todavía en esta zona.</p>
+            <p className="text-xs text-wood-400">
+              {puedeExplorar ? 'No has localizado ninguna presa todavía en esta zona.' : 'No se ha visto nada esta vez.'}
+            </p>
             <button type="button"
               onClick={handleExplorar}
               disabled={exploring}

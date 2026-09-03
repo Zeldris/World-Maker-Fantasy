@@ -936,7 +936,10 @@ export async function getZona(saveId: string): Promise<ZonaResponse> {
 
 /// Botón "Explorar" del pop-up de caza — determinista, sin gastar turno, pero con una tirada real
 /// de qué se encuentra: puede no salir nada, igual que explorar en busca de recursos.
-export async function explorarCaza(saveId: string): Promise<{ candidates: HuntCandidate[] }> {
+/// `vacioReal` (bug real jugando en vivo, 2026-09-03) distingue "de verdad no hay fauna aquí ahora
+/// mismo" (`true`) de "solo falló la tirada de avistamiento esta vez" (`false`, invita a
+/// reintentar) — antes ambos casos eran indistinguibles en la respuesta.
+export async function explorarCaza(saveId: string): Promise<{ candidates: HuntCandidate[]; vacioReal: boolean }> {
   return fetchJson(`${API_URL}/saves/${saveId}/cazar/explorar`, { method: 'POST' })
 }
 

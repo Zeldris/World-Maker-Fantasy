@@ -280,10 +280,16 @@ export async function cazarRoutes(app: FastifyInstance) {
       save.currentLocation?.id ?? null,
       save.worldState?.fictionalMinutes ?? 0,
     );
-    if (candidates.length === 0) return { candidates: [] };
+    // Bug real jugando en vivo (2026-09-03, "mensaje de caza ambiguo"): `candidates.length === 0`
+    // (de verdad no hay fauna real en esta región/ubicación ahora mismo) y `sighted.length === 0`
+    // (SÍ hay fauna real, pero falló la tirada de avistamiento — ~4% de fallar los 3 intentos
+    // seguidos) devolvían la misma respuesta `{ candidates: [] }`, sin que el frontend pudiera
+    // distinguir "vacío real, no insistas" de "mala suerte esta vez, reintenta". `vacioReal` marca
+    // el primer caso — el frontend solo cierra la puerta a reintentar cuando es `true`.
+    if (candidates.length === 0) return { candidates: [], vacioReal: true };
 
     const sighted = rollSightings(candidates);
-    if (sighted.length === 0) return { candidates: [] };
+    if (sighted.length === 0) return { candidates: [], vacioReal: false };
 
     const sightedInfo = sighted.map((c) => toSighted(c, save.level));
     const text = `${save.characterName} detecta señales de fauna cerca: ${sightedInfo.map((c) => `${c.avistados} ${c.name}`).join(', ')}.`;
