@@ -195,21 +195,6 @@ export function resolverObjetivoPorTexto(action: string, candidatos: CandidatoOb
   return targetPorNombre?.participantId ?? vivos[0]?.participantId ?? null;
 }
 
-/// Redecide el emparejamiento de TODO un bando de una vez (llamado tras cada baja, §2: "el
-/// emparejamiento se redecide en cada turno individual") — cada atacante vivo de `atacantes`
-/// recibe un objetivo válido de `defensores`, o `null` si ya no queda ninguno.
-export function retargetBando(
-  atacantes: { participantId: string; inteligencia: number }[],
-  defensores: ObjetivoCandidato[],
-  random: () => number = Math.random,
-): Record<string, string | null> {
-  const resultado: Record<string, string | null> = {};
-  for (const atacante of atacantes) {
-    resultado[atacante.participantId] = elegirObjetivo(atacante.inteligencia, defensores, random);
-  }
-  return resultado;
-}
-
 // ═══════════════════════════════════════════════════════════════════════════
 // § 2b — Objetivo individual real: "enganche" por ronda (2026-08-26, diseño cerrado con la
 // usuaria jugando en vivo contra 2 cuervos — "no puedo elegir objetivo... cuando ataco debería

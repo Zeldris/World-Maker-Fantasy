@@ -4,7 +4,6 @@ import {
   elegirObjetivo,
   objetivosValidos,
   bandoSigueEnCombate,
-  retargetBando,
   resolverEnganchesRonda,
   objetivoExtraFor,
   esDueloMutuo,
@@ -152,22 +151,6 @@ describe('objetivoExtraFor', () => {
       { participantId: 'c', condicionFisica: 'MUERTO' },
     ];
     expect(objetivoExtraFor('a', soloElPrincipalYUnMuerto)).toBeNull();
-  });
-});
-
-describe('retargetBando', () => {
-  it('redecide el objetivo de cada atacante vivo de una vez', () => {
-    const atacantes = [
-      { participantId: 'atacante-listo', inteligencia: 20 },
-      { participantId: 'atacante-torpe', inteligencia: 4 },
-    ];
-    const defensores: ObjetivoCandidato[] = [
-      { participantId: 'debil', condicionFisica: 'GRAVE' },
-      { participantId: 'fuerte', condicionFisica: 'ILESO' },
-    ];
-    const resultado = retargetBando(atacantes, defensores, () => 0.9);
-    expect(resultado['atacante-listo']).toBe('debil'); // remata al más herido, sin importar el dado
-    expect(resultado['atacante-torpe']).toBe('fuerte'); // random 0.9 * 2 candidatos -> índice 1
   });
 });
 
