@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { matchHarvestSource, matchesVerbForMetodo, detectHarvestSourcesInScene } from './harvest.js';
+import { matchHarvestSource, matchesVerbForMetodo, matchesAnyHarvestVerb, detectHarvestSourcesInScene } from './harvest.js';
 
 describe('matchHarvestSource', () => {
   it('coincide con un alias exacto', () => {
@@ -73,6 +73,23 @@ describe('matchesVerbForMetodo', () => {
 
   it('PASIVO nunca matchea ningún verbo (solo sale de discovery.ts, nunca de una fuente nombrada)', () => {
     expect(matchesVerbForMetodo('Recojo, talo, pico y despiezo todo a la vez', 'PASIVO')).toBe(false);
+  });
+});
+
+describe('matchesAnyHarvestVerb', () => {
+  it('detecta el verbo aunque no se sepa aún el método real (chequeo barato previo)', () => {
+    expect(matchesAnyHarvestVerb('Talo el matorral de cuerno para sacar leña')).toBe(true);
+    expect(matchesAnyHarvestVerb('Pico la roca de Los Pilares Rotos')).toBe(true);
+    expect(matchesAnyHarvestVerb('Despiezo el cadáver del corredor de cauce')).toBe(true);
+  });
+
+  it('bug real (Pieza 6d, 2026-09-03): sin este filtro previo, "Cargo mi escudo con todo mi peso y golpeo" disparaba una consulta de BD innecesaria por fuzzy matching contra una fuente real', () => {
+    expect(matchesAnyHarvestVerb("Cargo mi escudo con todo mi peso y golpeo, buscando apartar a mi rival del combate.")).toBe(false);
+    expect(matchesAnyHarvestVerb('Ataco al Dragón de Fuego Eterno.')).toBe(false);
+  });
+
+  it('no dispara con una acción sin ningún verbo de recolección', () => {
+    expect(matchesAnyHarvestVerb('Miro alrededor con calma')).toBe(false);
   });
 });
 

@@ -51,6 +51,8 @@ import {
   deterministicActionUnavailableNarrationFor,
   detectsUnknownDestinationClaim,
   unknownDestinationNarrationFor,
+  detectsHarvestSkillMisuseClaim,
+  harvestSkillMisuseNarrationFor,
 } from '../services/playerActionValidation.js';
 import { harvestSourceAliases } from '../scripts/worldCatalog.js';
 import { detectsPostCombatInteraction } from '../services/postCombatInteraction.js';
@@ -480,7 +482,11 @@ export async function turnRoutes(app: FastifyInstance) {
     // guards puramente sintácticos (anacronismo, construcción inventada) están documentados y
     // testeados como "sin consultas, el chequeo más barato de todos" — llamar aquí siempre habría
     // roto esa garantía para casos donde no hay ninguna entidad real que descubrir.
-    async function resolveBlockedTurn(narrationText: string, discoverName?: string) {
+    async function resolveBlockedTurn(
+      narrationText: string,
+      discoverName?: string,
+      harvestSuggestion?: { oficio: string; abilityLabel: string; highlightSourceSlug: string },
+    ) {
       await prisma.logEntry.create({
         data: { saveId, channel: 'CHARACTER', text: action, isPlayerAction: true, timeLabel: blockedTimeLabel, fictionalMinutes: blockedFictionalMinutes },
       });
@@ -496,7 +502,11 @@ export async function turnRoutes(app: FastifyInstance) {
       if (discoverName) {
         await recordEntityDiscoveries({ saveId, worldId: blockedWorldId, mentionedText: discoverName });
       }
-      return { blocked: { narration: narrationText } };
+      // `harvestSuggestion` (Pieza 6d, 2026-09-03): botón real en el log (frontend) que abre el
+      // modal de recolección correcto con la fuente citada priorizada — efímero a propósito, igual
+      // que `questOffer`/`dynamicModeOffer` (nunca se persiste en `LogEntry`, solo viaja en la
+      // respuesta HTTP de este turno).
+      return { blocked: { narration: narrationText, harvestSuggestion } };
     }
 
     // Anacronismo en el propio texto del jugador ("me monto en mi nave espacial") — el chequeo
@@ -567,6 +577,23 @@ export async function turnRoutes(app: FastifyInstance) {
     const fabricatedHarvestSourceClaim = detectsFabricatedHarvestSourceClaim(action);
     if (fabricatedHarvestSourceClaim) {
       return resolveBlockedTurn(fabricatedHarvestSourceNarrationFor(fabricatedHarvestSourceClaim.quotedName));
+    }
+
+    // Mundo determinista, el narrador solo narra (Pieza 6d, 2026-09-03): a diferencia de los guards
+    // de arriba (fuente inexistente/de otra región), aquí la fuente SÍ existe, SÍ está bien de
+    // región, Y el verbo usado es el correcto para su método (MINERIA/TALA/EXTRACCION/PESCA/
+    // BUSQUEDA, nunca CAZA) — el problema es que ese texto libre se resolvía por una vía paralela y
+    // más fácil que el modal real de la habilidad (tirada genérica del LLM, sin herramienta ni
+    // depleción de `WorldPopulation`) — se corta antes y se ofrece un botón real
+    // (`harvestSuggestion`) que abre el modal correcto. `!enCombate` (mismo criterio que crafteo/
+    // construcción, Pieza 6a/6b): dentro de combate ninguna acción es un intento real de recolectar.
+    const harvestSkillMisuseClaim = !enCombate ? await detectsHarvestSkillMisuseClaim(action, save.worldId) : null;
+    if (harvestSkillMisuseClaim) {
+      return resolveBlockedTurn(harvestSkillMisuseNarrationFor(harvestSkillMisuseClaim.sourceName), undefined, {
+        oficio: harvestSkillMisuseClaim.oficio,
+        abilityLabel: harvestSkillMisuseClaim.abilityLabel,
+        highlightSourceSlug: harvestSkillMisuseClaim.sourceSlug,
+      });
     }
 
     // Mundo determinista, el narrador solo narra (Pieza 6c, 2026-09-03): viaje declarado con verbo

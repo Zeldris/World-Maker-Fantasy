@@ -408,6 +408,13 @@ export interface LogEntry {
   /// `npcSlug` contra `combatNpcsDisplay` (useCombatFlow.ts), así que sigue siendo correcto incluso
   /// si la jugadora responde desde una tarjeta de un turno anterior a esta.
   convalecienteOffers?: { npcSlug: string; npcName: string; capturable: boolean }[]
+  /// Recolección por texto libre redirigida al modal real (Pieza 6d, 2026-09-03, "mundo
+  /// determinista, el narrador solo narra") — presente en la LogEntry de bloqueo cuando el
+  /// jugador citó una fuente real de recolección de terreno (MINERIA/TALA/EXTRACCION/PESCA/
+  /// BUSQUEDA) por texto libre en vez de usar la habilidad; el botón abre `HarvestSelectionModal`
+  /// con `highlightSourceSlug` ya priorizado arriba. Mismo criterio efímero que `questOffer`/
+  /// `dynamicModeOffer` — nunca sobrevive a una recarga, la propia narración ya cuenta el rechazo.
+  harvestSuggestion?: { oficio: string; abilityLabel: string; highlightSourceSlug: string }
 }
 
 export type EquipSlot =

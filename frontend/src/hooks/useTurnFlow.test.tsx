@@ -204,15 +204,38 @@ describe('handleSubmit — turno normal exitoso', () => {
 })
 
 describe('handleSubmit — caminos que no llegan a narrar', () => {
-  it('blocked: recarga la partida entera, nunca llama a requestTurnNarrate', async () => {
-    mockClassify.mockResolvedValueOnce(baseClassifyResponse({ blocked: { reason: 'x' } as never }))
-    mockGetSave.mockResolvedValueOnce({} as never)
+  // Pieza 6d (2026-09-03, "mundo determinista, el narrador solo narra"): antes este camino
+  // recargaba la partida entera (getSave + syncFromSave) — ahora construye la LogEntry de
+  // bloqueo en memoria directamente (resolveBlockedTurn, backend, no toca nada más del Save
+  // aparte de los 2 LogEntry ya persistidos), mismo criterio que el bloque narrate normal.
+  it('blocked: añade la narración bloqueada al log en memoria, sin recargar la partida ni llamar a requestTurnNarrate', async () => {
+    mockClassify.mockResolvedValueOnce(baseClassifyResponse({ blocked: { narration: 'No hay nada así por aquí.' } }))
     const { result } = renderHook(() => useHarness())
 
     await act(() => result.current.turn.handleSubmit('Vuelo por el cielo.'))
 
-    expect(mockGetSave).toHaveBeenCalledWith('save-1')
+    expect(mockGetSave).not.toHaveBeenCalled()
     expect(mockNarrate).not.toHaveBeenCalled()
+    const last = result.current.characterLog.at(-1)
+    expect(last?.text).toBe('No hay nada así por aquí.')
+    expect(last?.channel).toBe('character')
+  })
+
+  it('blocked con harvestSuggestion (Pieza 6d): la LogEntry en memoria lleva el dato del botón', async () => {
+    mockClassify.mockResolvedValueOnce(
+      baseClassifyResponse({
+        blocked: {
+          narration: 'Mejor usa la habilidad Talar.',
+          harvestSuggestion: { oficio: 'talador', abilityLabel: 'Talar', highlightSourceSlug: 'matorral-de-cuerno' },
+        },
+      }),
+    )
+    const { result } = renderHook(() => useHarness())
+
+    await act(() => result.current.turn.handleSubmit('Talo el matorral de cuerno.'))
+
+    const last = result.current.characterLog.at(-1)
+    expect(last?.harvestSuggestion).toEqual({ oficio: 'talador', abilityLabel: 'Talar', highlightSourceSlug: 'matorral-de-cuerno' })
   })
 
   it('transit: recarga la partida entera (banda extendida/larga resuelta en diferido)', async () => {

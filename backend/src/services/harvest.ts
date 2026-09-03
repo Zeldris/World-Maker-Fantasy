@@ -38,6 +38,19 @@ export function matchesVerbForMetodo(action: string, metodo: MetodoObtencion): b
   return VERB_REGEX_BY_METODO[metodo].test(normalizeText(action));
 }
 
+/// Chequeo barato previo (Pieza 6d, 2026-09-03, "mundo determinista"): ¿el texto usa ALGÚN verbo
+/// de recolección, de cualquier método? Para `detectsHarvestSkillMisuseClaim`
+/// (playerActionValidation.ts), que necesita filtrar ANTES de pagar la consulta a `HarvestYield`
+/// — sin esto, cualquier mención incidental que matchee `matchHarvestSource` por fuzzy (p.ej.
+/// "fuego" dentro de "Dragón de Fuego Eterno", sin relación con recolectar) dispara una consulta
+/// de BD innecesaria por cada turno. El chequeo real y preciso (`matchesVerbForMetodo` contra el
+/// `metodoObtencion` exacto de la fuente citada) sigue aplicándose después, con el dato ya
+/// cargado — este solo descarta el caso obvio de "no hay ningún verbo de recolección en absoluto".
+export function matchesAnyHarvestVerb(action: string): boolean {
+  const normalized = normalizeText(action);
+  return Object.values(VERB_REGEX_BY_METODO).some((regex) => regex.test(normalized));
+}
+
 // Bug real jugando en vivo (2026-09-01, partida Gorhorn/Hondonada del Eco): "Recojo mi hacha del
 // suelo y sigo el rastro que ha dejado el canizor..." (intención de rastrear/seguir una presa, sin
 // relación alguna con recolección) resolvió como RECOLECTAR Raíz de Fuego — el jugador nunca

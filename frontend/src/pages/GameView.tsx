@@ -930,6 +930,16 @@ export function GameView() {
     Viajar: 'travel',
   }
 
+  // Recolección por texto libre redirigida al modal real (Pieza 6d, 2026-09-03) — el botón de
+  // `entry.harvestSuggestion` en el log llama directamente aquí, sin pasar por ninguna API (el
+  // guard ya bloqueó el turno; esto solo abre el mismo modal que usa el resto de habilidades de
+  // oficio recolector, con la fuente citada por el jugador ya priorizada).
+  function handleOpenHarvestSuggestion(oficio: string, abilityLabel: string, highlightSourceSlug: string) {
+    if (anyModalOpen) return
+    setHarvestModal({ oficio, label: abilityLabel, highlightSourceSlug })
+    setActivePanel(null)
+  }
+
   function handleAttachAbility(ability: SavedActionInfo) {
     // Guard de exclusión mutua (A.2) — con otro modal de acción ya abierto (p. ej. post-combate,
     // modo dinámico), no se apila uno nuevo encima; el chip normal de la habilidad sigue disponible.
@@ -1520,6 +1530,7 @@ export function GameView() {
               onDismissQuestOffer={handleDismissQuestOffer}
               onInteractuarModoDinamico={handleInteractuarModoDinamico}
               onDismissDynamicModeOffer={handleDismissDynamicModeOffer}
+              onOpenHarvestSuggestion={handleOpenHarvestSuggestion}
               combatNpcsDisplay={combat.combatNpcsDisplay}
               onMatarConvaleciente={handleMatarConvaleciente}
               onCapturarConvaleciente={handleCapturarConvaleciente}
@@ -1853,6 +1864,7 @@ export function GameView() {
           saveId={saveId}
           oficio={harvestModal.oficio}
           oficioLabel={harvestModal.label}
+          highlightSourceSlug={harvestModal.highlightSourceSlug}
           inventoryUsed={totalInventoryUnits(inventory)}
           inventoryCapacity={inventoryCapacityFor(
             characterAttributes,

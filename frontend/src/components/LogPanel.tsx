@@ -58,6 +58,10 @@ interface LogPanelProps {
   /// `onAcceptQuestOffer`/`onDismissQuestOffer`.
   onInteractuarModoDinamico?: (entryId: string, tipo: 'NPC' | 'FAUNA', targetSlug: string, targetName: string) => void
   onDismissDynamicModeOffer?: (entryId: string) => void
+  /// Recolección redirigida al modal real (Pieza 6d, 2026-09-03, `entry.harvestSuggestion`) —
+  /// mismo criterio opcional que `onInteractuarModoDinamico`. Sin botón "Ignorar" (a diferencia de
+  /// `dynamicModeOffer`): el mensaje ya narra el rechazo, este botón es pura comodidad.
+  onOpenHarvestSuggestion?: (oficio: string, abilityLabel: string, highlightSourceSlug: string) => void
   /// CONVALECIENTE deja de ser "victoria automática" (2026-08-26) — `combatNpcsDisplay` es el
   /// mismo estado en vivo que ya usa CombatPanel.tsx (useCombatFlow.ts). Antes solo se usaba para
   /// saber si un `entry.convalecienteOffers` concreto ya se había resuelto; desde el fix del
@@ -146,6 +150,7 @@ export const LogPanel = memo(function LogPanel({
   onDismissQuestOffer,
   onInteractuarModoDinamico,
   onDismissDynamicModeOffer,
+  onOpenHarvestSuggestion,
   combatNpcsDisplay,
   onMatarConvaleciente,
   onCapturarConvaleciente,
@@ -403,6 +408,30 @@ export const LogPanel = memo(function LogPanel({
                         ),
                     },
                     { label: 'Ignorar', tone: 'neutral', disabled: entry.dynamicModeOffer.busy, onClick: () => onDismissDynamicModeOffer?.(entry.id) },
+                  ]}
+                />
+              )}
+              {/* Recolección por texto libre redirigida al modal real (Pieza 6d, 2026-09-03,
+                  "mundo determinista, el narrador solo narra") — mismo patrón que `dynamicModeOffer`
+                  pero con un único botón (el mensaje ya narra el rechazo, sin nada más pendiente
+                  que decidir). Abre HarvestSelectionModal con la fuente citada ya priorizada. */}
+              {entry.harvestSuggestion && (
+                <OfferCard
+                  tone="accent2"
+                  icon="⛏️"
+                  title={`Usa la habilidad ${entry.harvestSuggestion.abilityLabel}`}
+                  subtitle="Así se aplica de verdad la tirada, la herramienta y todo lo demás."
+                  actions={[
+                    {
+                      label: entry.harvestSuggestion.abilityLabel,
+                      tone: 'primary',
+                      onClick: () =>
+                        onOpenHarvestSuggestion?.(
+                          entry.harvestSuggestion!.oficio,
+                          entry.harvestSuggestion!.abilityLabel,
+                          entry.harvestSuggestion!.highlightSourceSlug,
+                        ),
+                    },
                   ]}
                 />
               )}

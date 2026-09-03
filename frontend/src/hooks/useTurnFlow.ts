@@ -2,7 +2,7 @@ import type { Dispatch, RefObject, SetStateAction } from 'react'
 import type { ChatComposerHandle } from '../components/ChatComposer'
 import { requestTurnClassify, requestTurnNarrate, getSave, type ClassifyResponse, type SaveDetail } from '../lib/api'
 import { isBusyError, isEndedGameError, isPendingDeathError, isTurnLockedError, applyInventoryDelta, questCompletedLogEntry } from '../lib/gameViewHelpers'
-import { playerActionEntry } from '../lib/simulateAI'
+import { playerActionEntry, nextId } from '../lib/simulateAI'
 import type {
   ActiveEffect,
   BuildingInfo,
@@ -183,10 +183,26 @@ export function useTurnFlow(params: UseTurnFlowParams) {
       if (classifyResult.blocked) {
         // Validador de "grounding" de la acción del jugador (docs/18-validacion-accion-jugador.md)
         // — el backend ya resolvió el turno (persistió acción + respuesta determinista en el log)
-        // sin pasar por /turn/narrate. Recargar la partida basta, mismo patrón que `transit`.
+        // sin pasar por /turn/narrate. `resolveBlockedTurn` (turn.ts) no toca nada más del `Save`
+        // aparte de los 2 `LogEntry` ya persistidos — la propia acción del jugador ya vive en
+        // `characterLog` (entrada optimista de más arriba), así que solo falta añadir la respuesta
+        // bloqueada en memoria, mismo patrón que el bloque narrate normal de más abajo (construir
+        // la LogEntry en vez de recargar la partida entera). `harvestSuggestion` (Pieza 6d,
+        // 2026-09-03) viaja igual de efímero que `questOffer`/`dynamicModeOffer` — nunca sobrevive
+        // a una recarga, coherente con el resto de ofertas de este mismo tipo.
         setCharacterThinking(false)
-        const save = await getSave(saveId)
-        syncFromSave(save)
+        const blocked = classifyResult.blocked
+        setCharacterLog((prev) => [
+          ...prev,
+          {
+            id: nextId('b'),
+            channel: 'character',
+            text: blocked.narration,
+            timeLabel: fictionalDate,
+            createdAt: new Date().toISOString(),
+            harvestSuggestion: blocked.harvestSuggestion,
+          },
+        ])
         return
       }
 

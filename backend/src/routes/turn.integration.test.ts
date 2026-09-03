@@ -4051,7 +4051,7 @@ describe('Crafteo con espera real (2026-08-20): transit con busyUntil, resoluci�
 // usuaria): fuera de combate, una intención real de crafteo/construcción (verbo+sustantivo de una
 // receta real) que no se puede lanzar (sin materiales) debe devolver un mensaje determinista fijo,
 // nunca caer al narrador libre a inventar un resultado no persistido.
-describe('Mundo determinista (Pieza 6): crafteo/construcción/viaje sin poder lanzarse, fuera de combate, bloquea con mensaje determinista', () => {
+describe('Mundo determinista (Pieza 6): crafteo/construcción/viaje/recolección sin poder lanzarse, fuera de combate, bloquea con mensaje determinista', () => {
   let saveId: string;
   let locationId: string;
 
@@ -4135,6 +4135,35 @@ describe('Mundo determinista (Pieza 6): crafteo/construcción/viaje sin poder la
     const classifyRes = await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action, enCombate: false } });
     expect(classifyRes.statusCode).toBe(200);
     const body = classifyRes.json() as { blocked?: { narration: string }; classification?: unknown };
+    expect(body.blocked).toBeUndefined();
+  });
+
+  it('recolección de terreno por texto libre (verbo+fuente real de TALA): bloquea con mensaje determinista + harvestSuggestion (botón "Talar"), sin crear ningún InventoryItem', async () => {
+    narrateAction.mockClear();
+    const app = await buildApp();
+    const action = 'Talo el matorral de cuerno para sacar leña.';
+    const classifyRes = await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action, enCombate: false } });
+    expect(classifyRes.statusCode).toBe(200);
+    const body = classifyRes.json() as {
+      blocked?: { narration: string; harvestSuggestion?: { oficio: string; abilityLabel: string; highlightSourceSlug: string } };
+    };
+
+    expect(narrateAction).not.toHaveBeenCalled();
+    expect(typeof body.blocked?.narration).toBe('string');
+    expect(body.blocked!.narration.length).toBeGreaterThan(0);
+    expect(body.blocked!.harvestSuggestion).toEqual({ oficio: 'talador', abilityLabel: 'Talar', highlightSourceSlug: 'matorral-de-cuerno' });
+    const items = await prisma.inventoryItem.findMany({ where: { saveId } });
+    expect(items).toEqual([]);
+  });
+
+  it('recolección de terreno DENTRO de combate: NO bloquea — mismo criterio que crafteo/construcción, ninguna acción en combate es un intento real de recolectar', async () => {
+    narrateAction.mockClear();
+    narrateAction.mockResolvedValueOnce({ narration: 'Gorhorn talla un golpe con el hacha.', newFacts: [] });
+    const app = await buildApp();
+    const action = 'Talo el matorral de cuerno para sacar leña.';
+    const classifyRes = await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action, enCombate: true } });
+    expect(classifyRes.statusCode).toBe(200);
+    const body = classifyRes.json() as { blocked?: { narration: string } };
     expect(body.blocked).toBeUndefined();
   });
 });

@@ -1,7 +1,7 @@
 import type { LogEntry } from '../types'
 
 let counter = 0
-function nextId(prefix: string) {
+export function nextId(prefix: string) {
   counter += 1
   return `${prefix}-${Date.now()}-${counter}`
 }

@@ -13,6 +13,11 @@ interface HarvestSelectionModalProps {
   inventoryCapacity: number
   onConfirm: (created: InventoryItemInfo[], updated: { id: string; name: string }[], logEntry: { id: string; text: string; timeLabel: string; createdAt: string } | null) => void
   onCancel: () => void
+  /// Recolección por texto libre redirigida al modal real (Pieza 6d, 2026-09-03) — el jugador
+  /// citó esta fuente concreta ("Mino Yerreo") antes de que el guard determinista lo mandara aquí;
+  /// se prioriza arriba de la lista para no perder lo que ya había expresado. `undefined` en el
+  /// resto de aperturas normales (SkillBar, aviso de cadáveres pendientes).
+  highlightSourceSlug?: string
 }
 
 type SelectionKey = string // `${sourceSlug}:${itemSlug}`
@@ -39,7 +44,16 @@ const MIN_CONFIRM_DISPLAY_MS = 1200
 /// gastar turno). Aceptar manda cantidades PARCIALES elegidas, nunca todo-o-nada — topadas tanto
 /// por lo que de verdad queda (`disponible`/`cantidadMaxima`) como por el espacio libre real de
 /// inventario (Parte D).
-export function HarvestSelectionModal({ saveId, oficio, oficioLabel, inventoryUsed, inventoryCapacity, onConfirm, onCancel }: HarvestSelectionModalProps) {
+export function HarvestSelectionModal({
+  saveId,
+  oficio,
+  oficioLabel,
+  inventoryUsed,
+  inventoryCapacity,
+  onConfirm,
+  onCancel,
+  highlightSourceSlug,
+}: HarvestSelectionModalProps) {
   const [exploring, setExploring] = useState(false)
   const [confirming, setConfirming] = useState(false)
   const [sources, setSources] = useState<HarvestSourceCandidate[]>([])
@@ -161,6 +175,16 @@ export function HarvestSelectionModal({ saveId, oficio, oficioLabel, inventoryUs
         )
       ) : (
         (() => {
+          // Fuente citada por texto libre priorizada arriba (Pieza 6d, 2026-09-03) — reordena
+          // tanto las categorías (la que CONTIENE el yield destacado sube primero) como los yields
+          // dentro de ella (el propio destacado sube al principio de su tarjeta), sin alterar nada
+          // más del orden real que ya trae el backend. `sourceSlug` vive dentro de cada yield, no
+          // en la categoría — una tarjeta agrupa yields de varias fuentes distintas.
+          const orderedSources = highlightSourceSlug
+            ? [...sources]
+                .map((s) => ({ ...s, yields: [...s.yields].sort((a, b) => Number(b.sourceSlug === highlightSourceSlug) - Number(a.sourceSlug === highlightSourceSlug)) }))
+                .sort((a, b) => Number(b.yields.some((y) => y.sourceSlug === highlightSourceSlug)) - Number(a.yields.some((y) => y.sourceSlug === highlightSourceSlug)))
+            : sources
           // Índice corrido por TODOS los yields de TODAS las categorías (no por categoría) — el
           // orden de aparición es el mismo en el que ya se pintan, uno tras otro sin resetear el
           // contador entre tarjetas.
@@ -169,7 +193,7 @@ export function HarvestSelectionModal({ saveId, oficio, oficioLabel, inventoryUs
             <div className="space-y-3">
               {roll && <GatheringDiceReveal roll={roll} oficioLabel={oficioLabel} onLanded={() => setRevealed(true)} />}
               {revealed &&
-                sources.map((source) => (
+                orderedSources.map((source) => (
                   <div key={source.sourceCategoryName} className="rounded-lg border border-iron-700 bg-wood-950/40 p-3">
                     <p className="mb-1.5 text-sm font-medium text-wood-100">{source.sourceCategoryName}</p>
                     <div className="space-y-1.5">
@@ -183,6 +207,7 @@ export function HarvestSelectionModal({ saveId, oficio, oficioLabel, inventoryUs
                         const key = `${y.sourceSlug}:${y.itemSlug}`
                         const max = Math.min(y.cantidadMaxima, y.disponible)
                         const value = selections[key] ?? 0
+                        const isHighlighted = y.sourceSlug === highlightSourceSlug
                         // Aparece de uno en uno tras la tirada (petición explícita, 2026-08-22) —
                         // `animate-entry-in` con `fill-mode: both` mantiene el ítem invisible hasta
                         // que le toca su turno, sin timers propios por fila. Sin roll (localizado
@@ -194,7 +219,7 @@ export function HarvestSelectionModal({ saveId, oficio, oficioLabel, inventoryUs
                           <div
                             key={key}
                             style={roll ? { animationDelay: `${delayMs}ms` } : undefined}
-                            className={`flex items-center justify-between gap-2 text-xs text-wood-300 ${roll ? 'animate-entry-in' : ''}`}
+                            className={`flex items-center justify-between gap-2 rounded px-1.5 py-1 text-xs text-wood-300 ${roll ? 'animate-entry-in' : ''} ${isHighlighted ? 'bg-accent-500/10 ring-1 ring-accent-500/40' : ''}`}
                           >
                             <span className="min-w-0 truncate">{y.itemName}</span>
                             <div className="flex shrink-0 items-center gap-2">

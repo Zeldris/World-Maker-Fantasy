@@ -13,9 +13,10 @@
 import { normalizeText, detectsTravelIntent, detectsVagueMovementIntent, matchDestination } from './travel.js';
 import { matchNpcAliases, detectsAttackIntent, detectsDialogueIntent, detectsHostileSearchIntent } from './npcScene.js';
 import { ANACHRONISM_REGEX } from './narrador.js';
-import { matchHarvestSource, matchesVerbForMetodo } from './harvest.js';
+import { matchHarvestSource, matchesVerbForMetodo, matchesAnyHarvestVerb } from './harvest.js';
+import { harvestAbilityForMetodo } from './harvestAbilities.js';
 import { stripRegionArticle } from './population.js';
-import { harvestSourceRegion } from '../scripts/worldCatalog.js';
+import { harvestSourceRegion, harvestSourceAliases } from '../scripts/worldCatalog.js';
 import { CONSTRUCTION_RECIPES } from './construction.js';
 import { prisma } from '../lib/prisma.js';
 
@@ -399,4 +400,60 @@ const UNKNOWN_DESTINATION_LINES: string[] = [
 
 export function unknownDestinationNarrationFor(): string {
   return pickRandomLine(UNKNOWN_DESTINATION_LINES);
+}
+
+export interface HarvestSkillMisuseClaim {
+  sourceSlug: string;
+  sourceName: string;
+  oficio: string;
+  abilityLabel: string;
+}
+
+/// Mundo determinista, el narrador solo narra (Pieza 6d, 2026-09-03): a diferencia de crafteo/
+/// construcción/viaje (6a-6c, donde el hueco era "cae al narrador libre sin mensaje"), aquí el
+/// hueco es más grave — el texto libre "Mino Yerreo" NO caía al narrador libre, se RESOLVÍA de
+/// verdad (`detectHarvest`, harvest.ts) pero por una vía paralela y más fácil que el modal
+/// "oficial" (`recolectar.ts`/`HarvestSelectionModal.tsx`): tirada genérica del LLM (sin conocer
+/// tier del recurso ni nivel de oficio), sin comprobar herramienta requerida, y sin depletar
+/// `WorldPopulation` (no agota nada del mundo). Decisión explícita de la usuaria: cortar esta vía
+/// para MINERIA/TALA/EXTRACCION/PESCA/BUSQUEDA — CAZA (desuello) se deja intacta a propósito,
+/// porque ahí ambos caminos ya comparten el mismo criterio real (`hasPendingLoot`/`saqueado`, sin
+/// la divergencia de tirada de arriba) y el modal de Desollar es solo un aviso pasivo, no una
+/// acción proactiva equivalente.
+///
+/// SÍ exige `matchesVerbForMetodo` (a diferencia del primer intento de este guard, revertido tras
+/// un falso positivo real encontrado por la propia suite: "Cargo mi escudo con todo mi peso y
+/// golpeo..." — sin relación alguna con recolectar — matcheaba `matchHarvestSource` por fuzzy
+/// matching contra 'roca-pilares-rotos' sin más contexto). Mismo criterio de precisión que
+/// `detectHarvest` ya usaba internamente (harvest.ts:140) — exigir el verbo correcto del método
+/// real de esa fuente es lo que distingue "de verdad quiere recolectar esto" de una mención
+/// incidental. El caso "fuente real + verbo equivocado" simplemente no dispara (tampoco lo hacía
+/// `detectHarvest` antes), sin pérdida real de cobertura frente al diseño original.
+export async function detectsHarvestSkillMisuseClaim(action: string, worldId: string): Promise<HarvestSkillMisuseClaim | null> {
+  if (!matchesAnyHarvestVerb(action)) return null;
+  const sourceSlug = matchHarvestSource(action);
+  if (!sourceSlug) return null;
+  const rows = await prisma.harvestYield.findMany({ where: { worldId, sourceSlug }, select: { metodoObtencion: true }, take: 1 });
+  if (rows.length === 0 || rows[0].metodoObtencion === 'CAZA' || rows[0].metodoObtencion === 'PASIVO') return null;
+  if (!matchesVerbForMetodo(action, rows[0].metodoObtencion)) return null;
+  const entry = harvestAbilityForMetodo(rows[0].metodoObtencion);
+  if (!entry) return null;
+  const sourceName = harvestSourceAliases[sourceSlug]?.[0] ?? sourceSlug.replace(/-/g, ' ');
+  return { sourceSlug, sourceName, oficio: entry.oficio, abilityLabel: entry.ability.name };
+}
+
+/// Mismo criterio que el resto — pool de 5, 1 cómica menos frecuente. A diferencia del resto de
+/// esta familia, no insiste en "no existe"/"no está aquí" — la fuente SÍ existe y SÍ está bien de
+/// región, solo que esto se hace con la habilidad real, no al vuelo.
+const HARVEST_SKILL_MISUSE_LINES: ((nombre: string) => string)[] = [
+  (nombre) => `Gorhorn sabe que ${nombre} exige mano experta — mejor usar la habilidad de verdad para hacerlo bien.`,
+  (nombre) => `No es cosa de improvisar con ${nombre}. Gorhorn prefiere hacerlo como se debe, con calma y la técnica adecuada.`,
+  () => `Gorhorn se lo piensa mejor — esto se hace bien o no se hace, y ahora mismo no es el momento de ir deprisa.`,
+  (nombre) => `Con ${nombre} no hay atajos que valgan. Gorhorn necesita ponerse a ello de verdad, con la habilidad adecuada.`,
+  (nombre) => `Gorhorn se detiene. «¿${nombre} así, sin más? No, mejor lo hago bien...» Busca la forma correcta de ponerse a ello.`,
+];
+
+export function harvestSkillMisuseNarrationFor(nombre: string): string {
+  const line = pickRandomLine(HARVEST_SKILL_MISUSE_LINES);
+  return line(nombre);
 }

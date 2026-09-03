@@ -10,7 +10,9 @@ import type { DynamicModeTurno } from '../lib/api'
 /// pop-up, así que este hook agrupa las declaraciones `useState`, no encapsula del todo la
 /// apertura/cierre (eso se queda en `GameView.tsx`, donde ya vivía).
 export function useActionModalsState() {
-  const [harvestModal, setHarvestModal] = useState<{ oficio: string; label: string } | null>(null)
+  // `highlightSourceSlug` (Pieza 6d, 2026-09-03) — botón de "recolección redirigida" del log
+  // (`entry.harvestSuggestion`), abre el modal con la fuente ya citada por texto libre priorizada.
+  const [harvestModal, setHarvestModal] = useState<{ oficio: string; label: string; highlightSourceSlug?: string } | null>(null)
   const [carcassPending, setCarcassPending] = useState<boolean | null>(null)
   /// C.2 (checklist frontend 2026-08-27) — `carcassPending` se escribía con el setter crudo desde
   /// 3+ sitios distintos, cada uno reconstruyendo su propia condición. Dos formas reales de uso:

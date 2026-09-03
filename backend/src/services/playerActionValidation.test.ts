@@ -2,10 +2,12 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 const findManyNpc = vi.fn();
 const findManyLocation = vi.fn();
+const findManyHarvestYield = vi.fn();
 vi.mock('../lib/prisma.js', () => ({
   prisma: {
     npc: { findMany: (...args: unknown[]) => findManyNpc(...args) },
     location: { findMany: (...args: unknown[]) => findManyLocation(...args) },
+    harvestYield: { findMany: (...args: unknown[]) => findManyHarvestYield(...args) },
   },
 }));
 
@@ -27,6 +29,8 @@ const {
   deterministicActionUnavailableNarrationFor,
   detectsUnknownDestinationClaim,
   unknownDestinationNarrationFor,
+  detectsHarvestSkillMisuseClaim,
+  harvestSkillMisuseNarrationFor,
 } = await import('./playerActionValidation.js');
 
 describe('detectsUnequippedWeaponClaim', () => {
@@ -316,6 +320,57 @@ describe('unknownDestinationNarrationFor', () => {
   it('siempre devuelve una frase no vacía', () => {
     for (let i = 0; i < 20; i++) {
       expect(unknownDestinationNarrationFor().length).toBeGreaterThan(0);
+    }
+  });
+});
+
+describe('detectsHarvestSkillMisuseClaim', () => {
+  beforeEach(() => {
+    findManyHarvestYield.mockReset();
+  });
+
+  it('detecta fuente real + verbo correcto de su método (TALA) — debería ir por el modal, no resolverse aquí', async () => {
+    findManyHarvestYield.mockResolvedValue([{ metodoObtencion: 'TALA' }]);
+    const claim = await detectsHarvestSkillMisuseClaim('Talo el matorral de cuerno para sacar leña.', 'w1');
+    expect(claim).toEqual({
+      sourceSlug: 'matorral-de-cuerno',
+      sourceName: 'matorral de cuerno',
+      oficio: 'talador',
+      abilityLabel: 'Talar',
+    });
+  });
+
+  it('no dispara sin ningún verbo de recolección (chequeo barato previo, evita consultar BD)', async () => {
+    expect(await detectsHarvestSkillMisuseClaim('Miro alrededor con calma.', 'w1')).toBeNull();
+    expect(findManyHarvestYield).not.toHaveBeenCalled();
+  });
+
+  it('bug real encontrado en la suite: no dispara con una acción de combate sin relación real con recolectar, aunque matchee una fuente por fuzzy', async () => {
+    const claim = await detectsHarvestSkillMisuseClaim('Cargo mi escudo con todo mi peso y golpeo, buscando apartar a mi rival del combate.', 'w1');
+    expect(claim).toBeNull();
+    expect(findManyHarvestYield).not.toHaveBeenCalled();
+  });
+
+  it('no dispara con el verbo equivocado para el método real de la fuente (mismo criterio que detectHarvest ya usaba)', async () => {
+    findManyHarvestYield.mockResolvedValue([{ metodoObtencion: 'MINERIA' }]);
+    expect(await detectsHarvestSkillMisuseClaim('Recojo una piedra suelta.', 'w1')).toBeNull();
+  });
+
+  it('nunca dispara para CAZA (desuello) — ambos caminos ya comparten el mismo criterio real', async () => {
+    findManyHarvestYield.mockResolvedValue([{ metodoObtencion: 'CAZA' }]);
+    expect(await detectsHarvestSkillMisuseClaim('Despiezo el cadáver del corredor de cauce.', 'w1')).toBeNull();
+  });
+
+  it('no dispara si la fuente no existe en HarvestYield', async () => {
+    findManyHarvestYield.mockResolvedValue([]);
+    expect(await detectsHarvestSkillMisuseClaim('Talo el matorral de cuerno.', 'w1')).toBeNull();
+  });
+});
+
+describe('harvestSkillMisuseNarrationFor', () => {
+  it('siempre devuelve una frase no vacía', () => {
+    for (let i = 0; i < 20; i++) {
+      expect(harvestSkillMisuseNarrationFor('matorral de cuerno').length).toBeGreaterThan(0);
     }
   });
 });

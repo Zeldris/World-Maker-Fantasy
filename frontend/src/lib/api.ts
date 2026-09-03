@@ -100,7 +100,10 @@ export interface ClassifyResponse {
   // presente cuando el backend rechazó la acción de raíz (p. ej. reclamar un arma que no lleva
   // encima) y ya persistió una frase determinista en el log. El turno queda resuelto aquí mismo:
   // no hace falta (ni se debe) llamar a /turn/narrate.
-  blocked?: { narration: string }
+  // `harvestSuggestion` (Pieza 6d, 2026-09-03, "mundo determinista"): presente solo cuando el
+  // bloqueo fue por citar una fuente real de recolección de terreno por texto libre en vez de usar
+  // la habilidad — botón real que abre HarvestSelectionModal con la fuente ya priorizada.
+  blocked?: { narration: string; harvestSuggestion?: { oficio: string; abilityLabel: string; highlightSourceSlug: string } }
   // Interacción con un NPC/fauna ya convaleciente o muerto, fuera de combate (docs/19-post-combate-
   // y-recompensas-mision.md pieza 2) — el turno tampoco llega a /turn/narrate aquí, pero a
   // diferencia de `blocked` no es una violación: el frontend abre el panel mecánico (Saquear/

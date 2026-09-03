@@ -253,7 +253,11 @@ export function professionIdForOficio(oficioParam: string): string {
 /// una única entrada del catálogo (incluido pescador — PESCA y BUSQUEDA son métodos distintos,
 /// nunca ambiguos entre sí, a diferencia de la clave de ruta compartida 'pescador'). `null` para
 /// PASIVO (nunca dispara la segunda tirada, ver comentario de cabecera en recolectar.ts).
-function harvestAbilityForMetodo(metodo: MetodoObtencion): HarvestAbilityUnlock | null {
+/// Exportada (2026-09-03, Pieza 6d "mundo determinista"): también la usa
+/// `detectsHarvestSkillMisuseClaim` (playerActionValidation.ts) para resolver qué botón de
+/// habilidad ofrecer cuando el jugador cita una fuente real de recolección por texto libre en vez
+/// de usar el modal — mismo mapeo `MetodoObtencion → {oficio, ability.name}`, sin duplicarlo.
+export function harvestAbilityForMetodo(metodo: MetodoObtencion): HarvestAbilityUnlock | null {
   return HARVEST_ABILITIES.find((u) => u.metodo === metodo) ?? null;
 }
 
