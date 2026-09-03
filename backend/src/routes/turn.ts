@@ -477,15 +477,21 @@ export async function turnRoutes(app: FastifyInstance) {
     // guards puramente sintácticos (anacronismo, construcción inventada) están documentados y
     // testeados como "sin consultas, el chequeo más barato de todos" — llamar aquí siempre habría
     // roto esa garantía para casos donde no hay ninguna entidad real que descubrir.
-    async function resolveBlockedTurn(narrationText: string, discoverEntities = false) {
+    async function resolveBlockedTurn(narrationText: string, discoverName?: string) {
       await prisma.logEntry.create({
         data: { saveId, channel: 'CHARACTER', text: action, isPlayerAction: true, timeLabel: blockedTimeLabel, fictionalMinutes: blockedFictionalMinutes },
       });
       await prisma.logEntry.create({
         data: { saveId, channel: 'CHARACTER', text: narrationText, isPlayerAction: false, timeLabel: blockedTimeLabel, fictionalMinutes: blockedFictionalMinutes },
       });
-      if (discoverEntities) {
-        await recordEntityDiscoveries({ saveId, worldId: blockedWorldId, mentionedText: narrationText });
+      // `discoverName` (bug real jugando en vivo, 2026-09-03, "fauna interactuada no se
+      // desbloquea en la Enciclopedia" — corregido de nuevo tras un flake real: `ABSENT_NPC_LINES`
+      // es un pool de 5 frases, 2 de las 5 son genéricas y NO mencionan el nombre real, así que
+      // escanear `narrationText` fallaba de forma intermitente ~40% de las veces). Se pasa el
+      // nombre real de forma determinista desde el call-site (`absentNpcClaim.name`), sin depender
+      // de qué frase salió al azar.
+      if (discoverName) {
+        await recordEntityDiscoveries({ saveId, worldId: blockedWorldId, mentionedText: discoverName });
       }
       return { blocked: { narration: narrationText } };
     }
@@ -528,7 +534,7 @@ export async function turnRoutes(app: FastifyInstance) {
       npcsInSceneForValidation.map((n) => n.slug),
     );
     if (absentNpcClaim) {
-      return resolveBlockedTurn(absentSceneNpcNarrationFor(absentNpcClaim.name), true);
+      return resolveBlockedTurn(absentSceneNpcNarrationFor(absentNpcClaim.name), absentNpcClaim.name);
     }
 
     // Fase 3 (acotada a comillas, docs/18-validacion-accion-jugador.md): NPC/fauna nombrado ENTRE

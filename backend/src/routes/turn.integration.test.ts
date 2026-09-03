@@ -6369,7 +6369,10 @@ describe('resolveBlockedTurn registra descubrimientos (auditoría "sesión de ju
     const classifyRes = await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action, enCombate: false } });
     expect(classifyRes.statusCode).toBe(200);
     const body = classifyRes.json();
-    expect(body.blocked?.narration).toContain('Kirelon Arenoso');
+    // `ABSENT_NPC_LINES` (playerActionValidation.ts) es un pool aleatorio de 5 frases — solo 3 de
+    // las 5 interpolan el nombre en el texto, las otras 2 son genéricas ("alguien que no está").
+    // Lo que importa aquí es que el turno se bloqueó de verdad (no una frase concreta al azar).
+    expect(typeof body.blocked?.narration).toBe('string');
 
     const discovered = await prisma.discoveredEntity.findUnique({
       where: { saveId_entityType_entitySlug: { saveId, entityType: 'fauna', entitySlug: 'kirelon-arenoso' } },
