@@ -62,6 +62,7 @@ export function SkillBarEditor({
       title="Editar barra"
       onCancel={onCancel}
       cancelDisabled={saving}
+      disableOverlayClose
       footer={
         <button type="button" onClick={handleGuardar} disabled={saving} className="tactile flex-1 rounded-lg border border-accent-600 bg-gradient-to-b from-accent-400 to-accent-600 px-3.5 py-2 text-xs font-bold uppercase tracking-wide text-wood-950 transition-colors disabled:cursor-not-allowed disabled:border-iron-700 disabled:from-wood-700 disabled:to-wood-700 disabled:text-wood-500">
           {saving ? 'Guardando...' : 'Guardar'}

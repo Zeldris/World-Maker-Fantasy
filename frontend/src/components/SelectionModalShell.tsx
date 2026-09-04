@@ -11,6 +11,11 @@ interface SelectionModalShellProps {
   /// todo en los modales donde cada fila dispara la acción directamente (Volver al campamento,
   /// Viajar), que solo necesitan Cancelar.
   footer?: ReactNode
+  /// Desactiva el cierre al clicar fuera del panel (feedback en vivo, 2026-09-04: editor de barras
+  /// de habilidades — con drag&drop y un input de texto en marcha, un clic fuera accidental no debe
+  /// tirar la edición en curso, solo el botón Cancelar/Guardar explícito). `false` por defecto —
+  /// el resto de modales de solo listado siguen cerrando al clicar fuera, como siempre.
+  disableOverlayClose?: boolean
 }
 
 /// Cascarón visual compartido de los modales de selección (overlay + plank-panel + título +
@@ -18,7 +23,7 @@ interface SelectionModalShellProps {
 /// vivía duplicado byte-a-byte en 11 componentes distintos. El cuerpo (lista de candidatos, estados
 /// de carga/error/vacío) varía demasiado entre modales como para compartirlo también aquí — cada
 /// uno sigue escribiendo el suyo como `children`.
-export function SelectionModalShell({ title, onCancel, cancelDisabled, children, footer }: SelectionModalShellProps) {
+export function SelectionModalShell({ title, onCancel, cancelDisabled, children, footer, disableOverlayClose = false }: SelectionModalShellProps) {
   // Foco al abrirse (2026-08-31, "revisa bien todos los casos del foco/scroll") — cascarón
   // compartido por los 11 modales de selección (Cazar/Recolectar/Curar/Entregar/Saquear/campamento-
   // viaje/etc.), ninguno tenía nada que llevara el foco dentro del modal al abrirse. El contenedor
@@ -31,7 +36,10 @@ export function SelectionModalShell({ title, onCancel, cancelDisabled, children,
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
   return (
-    <div className="animate-overlay-in fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4" onClick={onCancel}>
+    <div
+      className="animate-overlay-in fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4"
+      onClick={disableOverlayClose ? undefined : onCancel}
+    >
       <div
         ref={scrollRef}
         tabIndex={-1}
