@@ -259,6 +259,15 @@ model Save {
   /// (aunque sea un cinturón vacío a propósito) — a partir de ahí se respeta tal cual, para siempre.
   activeCombatAbilityNamesConfigured Boolean  @default(false)
 
+  /// Barras de habilidades múltiples fuera de combate (2026-09-04, v2 de la SkillBar única de
+  /// 2026-08-29 — v1 quedó explícitamente "sin rotar entre varias barras... decisión de alcance"),
+  /// General/Profesión/Reino, hasta 3 cada una — ver modelo `SkillBar` abajo. Combate NO participa
+  /// aquí: sigue con `activeCombatAbilityNames` de arriba, sistema ya maduro y separado.
+  skillBars       SkillBar[]
+  /// Qué barra se ve ahora mismo en el HUD del composer — `null` = texto libre. Igual que
+  /// `activeCombatAbilityNames`, esto es preferencia de UI persistida, no estado de partida.
+  activeSkillBarId String?
+
   /// Bug real (revisión de partida en 5 fases, 2026-08-27, cerrado 2026-08-28) — slugs de Npc que
   /// se despidieron "para siempre" con guion (hoy solo Gistera Koh, al aceptar su misión) —
   /// `detectNpcsInScene` (npcScene.ts) los excluye SIEMPRE de `npcsInScene`, aunque un sessionFact
@@ -1633,6 +1642,26 @@ model AlmacenItem {
 /// o personalizada (creada por la jugadora). Define qué ranuras rellenar con qué tipo de objeto;
 /// el auto-equipo (`autoEquiparDesdeAlmacen`, companionSupervivencia.ts) la usa para decidir qué
 /// coger del Almacén para cada Subject/Companion que la tenga asignada.
+/// Barras de habilidades múltiples fuera de combate (2026-09-04) — hasta 3 por categoría
+/// (General/Profesión/Reino), `slotIndex` fijo 0-2 (no se reordenan barras entre sí, solo su
+/// contenido). `slotIndex: 0` es la barra base de cada categoría, nunca se puede borrar (mismo
+/// criterio que `PlantillaEquipo.personalizada: false`). `abilityNames` identifica por NOMBRE de
+/// `SavedAction`, no por id — mismo motivo que `Save.activeCombatAbilityNames`: habilidades
+/// dinámicas se recrean con id nuevo, un id guardado aquí quedaría huérfano.
+model SkillBar {
+  id           String   @id @default(cuid())
+  saveId       String
+  save         Save     @relation(fields: [saveId], references: [id], onDelete: Cascade)
+  category     String
+  slotIndex    Int
+  name         String   @default("Barra 1")
+  abilityNames String[] @default([])
+  createdAt    DateTime @default(now())
+
+  @@unique([saveId, category, slotIndex])
+  @@index([saveId])
+}
+
 model PlantillaEquipo {
   id            String      @id @default(cuid())
   saveId        String

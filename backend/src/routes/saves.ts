@@ -4,6 +4,7 @@ import { detailRoutes } from './saves/detail.js';
 import { sessionRoutes } from './saves/session.js';
 import { progressionRoutes } from './saves/progression.js';
 import { habilidadesRoutes } from './saves/habilidades.js';
+import { skillBarsRoutes } from './saves/skillBars.js';
 import { inventarioRoutes } from './saves/inventario.js';
 import { logRoutes } from './saves/log.js';
 import { listRoutes } from './saves/list.js';
@@ -34,6 +35,7 @@ export async function savesRoutes(app: FastifyInstance) {
   await app.register(sessionRoutes);
   await app.register(progressionRoutes);
   await app.register(habilidadesRoutes);
+  await app.register(skillBarsRoutes);
   await app.register(inventarioRoutes);
   await app.register(logRoutes);
   await app.register(listRoutes);

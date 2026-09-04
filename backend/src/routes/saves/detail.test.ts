@@ -21,6 +21,11 @@ const findManyLogEntry = vi.fn();
 // test concreto lo sobrescriba — cae al comportamiento viejo (`pendingCombatNpcSlugs`) tal cual.
 const findFirstCombatEncounter = vi.fn();
 const findManyCombatParticipant = vi.fn();
+// Barras de habilidades múltiples (2026-09-04) — `detail.ts` garantiza las 3 barras base en
+// lectura; por defecto ninguna categoría "falta" (baseSave() ya trae las 3), así que `createMany`
+// no debería llamarse en la mayoría de tests salvo que uno concreto lo fuerce.
+const createManySkillBar = vi.fn();
+const findManySkillBar = vi.fn();
 
 vi.mock('../../lib/prisma.js', () => ({
   prisma: {
@@ -33,6 +38,10 @@ vi.mock('../../lib/prisma.js', () => ({
     logEntry: { findMany: (...args: unknown[]) => findManyLogEntry(...args) },
     combatEncounter: { findFirst: (...args: unknown[]) => findFirstCombatEncounter(...args) },
     combatParticipant: { findMany: (...args: unknown[]) => findManyCombatParticipant(...args) },
+    skillBar: {
+      createMany: (...args: unknown[]) => createManySkillBar(...args),
+      findMany: (...args: unknown[]) => findManySkillBar(...args),
+    },
   },
 }));
 
@@ -88,6 +97,12 @@ function baseSave(overrides: Partial<Record<string, unknown>> = {}) {
     endedAt: null,
     quests: [],
     sessionSummaries: [],
+    skillBars: [
+      { id: 'bar-general', category: 'general', slotIndex: 0, name: 'Barra 1', abilityNames: [] },
+      { id: 'bar-profesion', category: 'profesion', slotIndex: 0, name: 'Barra 1', abilityNames: [] },
+      { id: 'bar-reino', category: 'reino', slotIndex: 0, name: 'Barra 1', abilityNames: [] },
+    ],
+    activeSkillBarId: null,
     pendingCombatNpcSlugs: null,
     pendingDynamicMode: null,
     pendingDynamicModeOffer: null,
@@ -109,6 +124,8 @@ describe('GET /saves/:id', () => {
     findManyLogEntry.mockReset().mockResolvedValue([]);
     findFirstCombatEncounter.mockReset().mockResolvedValue(null);
     findManyCombatParticipant.mockReset().mockResolvedValue([]);
+    createManySkillBar.mockReset().mockResolvedValue({ count: 0 });
+    findManySkillBar.mockReset().mockResolvedValue([]);
   });
 
   it('404 si la partida no existe', async () => {
@@ -331,6 +348,8 @@ describe('GET /saves/:id — raza/clase/especialización', () => {
     findManyLogEntry.mockReset().mockResolvedValue([]);
     findFirstCombatEncounter.mockReset().mockResolvedValue(null);
     findManyCombatParticipant.mockReset().mockResolvedValue([]);
+    createManySkillBar.mockReset().mockResolvedValue({ count: 0 });
+    findManySkillBar.mockReset().mockResolvedValue([]);
   });
 
   it('raza/clase/especialización viajan tal cual, null por defecto', async () => {

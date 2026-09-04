@@ -36,6 +36,8 @@ import type {
   RollInfo,
   SavedActionCategory,
   SavedActionInfo,
+  SkillBarCategory,
+  SkillBarInfo,
   SecondaryAttributeBlock,
   SessionSummaryInfo,
   SubjectInfo,
@@ -535,6 +537,11 @@ export interface SaveDetail {
   /// activas" por defecto si nunca se configuró) — solo estas + las 3 genéricas se ofrecen para
   /// pulsar en CombatPanel.tsx durante un enfrentamiento.
   activeCombatAbilityNames: string[]
+  /// Barras de habilidades múltiples fuera de combate (2026-09-04) — siempre al menos la barra
+  /// base (slotIndex 0) de cada categoría, garantizada por el backend en lectura.
+  skillBars: SkillBarInfo[]
+  /// Qué barra se ve ahora mismo en el HUD del composer — null = texto libre.
+  activeSkillBarId: string | null
   professionProgress: ProfessionProgressInfo[]
   kingdomStats: KingdomStatsInfo | null
   currentLocation: CurrentLocationInfo | null
@@ -748,6 +755,36 @@ export async function setActiveCombatAbilities(id: string, names: string[]): Pro
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ names }),
+  })
+}
+
+/// Barras de habilidades múltiples fuera de combate (2026-09-04) — mismo criterio que el
+/// cinturón de combate: el cliente manda el estado final ya decidido, el backend sanea y persiste.
+export async function createSkillBar(id: string, category: SkillBarCategory): Promise<SkillBarInfo> {
+  return fetchJson(`${API_URL}/saves/${id}/skill-bars`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ category }),
+  })
+}
+
+export async function updateSkillBar(id: string, barId: string, params: { name?: string; abilityNames?: string[] }): Promise<SkillBarInfo> {
+  return fetchJson(`${API_URL}/saves/${id}/skill-bars/${barId}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(params),
+  })
+}
+
+export async function deleteSkillBar(id: string, barId: string): Promise<void> {
+  return fetchJson(`${API_URL}/saves/${id}/skill-bars/${barId}`, { method: 'DELETE' })
+}
+
+export async function setActiveSkillBar(id: string, skillBarId: string | null): Promise<{ activeSkillBarId: string | null }> {
+  return fetchJson(`${API_URL}/saves/${id}/active-skill-bar`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ skillBarId }),
   })
 }
 

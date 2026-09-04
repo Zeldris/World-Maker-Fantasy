@@ -5,7 +5,9 @@ import { LogPanel } from '../components/LogPanel'
 import { CollapsedRail } from '../components/CollapsedRail'
 import { ChatComposer, type ChatComposerHandle } from '../components/ChatComposer'
 import { SuggestionBar } from '../components/SuggestionBar'
-import { SkillBar } from '../components/SkillBar'
+import { SkillBarMenu, type SkillHudView } from '../components/SkillBarMenu'
+import { SkillBarHud } from '../components/SkillBarHud'
+import { SkillBarEditor } from '../components/SkillBarEditor'
 import { TooltipAnchor } from '../components/TooltipAnchor'
 import { SideNav } from '../components/SideNav'
 import { characterTabs, worldTabs, type PanelId } from '../components/NavTabs'
@@ -67,6 +69,9 @@ import {
   deleteSavedAction,
   updateSavedAction,
   setActiveCombatAbilities,
+  createSkillBar,
+  updateSkillBar,
+  setActiveSkillBar,
   fundarReino,
   aceptarMision,
   cancelarMision,
@@ -108,6 +113,8 @@ import type {
   SavedActionCategory,
   SavedActionInfo,
   SecondaryAttributeBlock,
+  SkillBarCategory,
+  SkillBarInfo,
 } from '../types'
 
 /// Combina los adjuntos del composer con el texto libre en una única acción (docs/14-combate-y-muerte.md
@@ -251,22 +258,25 @@ export function GameView() {
     }
   }, [saveId, currentLocation])
   const [input, setInput] = useState('')
-  // Barra de habilidades fuera de combate (2026-08-29) — toggle entre el composer de texto libre
-  // de siempre y una fila de botones con las habilidades generales, ver SkillBar.tsx.
-  const [showSkillBar, setShowSkillBar] = useState(false)
+  // Barras de habilidades múltiples fuera de combate (2026-09-04, v2 de la SkillBar única de
+  // 2026-08-29) — máquina de 4 pantallas en vez del booleano showSkillBar de antes: composer de
+  // texto libre, menú de tipo (General/Profesión/Reino/Escribir), menú de barras de un tipo (con
+  // botón Atrás), y la barra activa mostrada en el HUD. Ver SkillBarMenu.tsx.
+  const [skillHudView, setSkillHudView] = useState<SkillHudView>({ screen: 'composer' })
+  const [skillBars, setSkillBars] = useState<SkillBarInfo[]>([])
+  const [editingSkillBar, setEditingSkillBar] = useState<SkillBarInfo | null>(null)
   const composerRef = useRef<ChatComposerHandle>(null)
   // Bug real (2026-08-30, ver handleAttachAbility): con la barra desplegada, `ChatComposer` ni
-  // siquiera está montado — `setShowSkillBar(false)` es asíncrono, así que escribir en
-  // `composerRef` en la MISMA función no llega a tiempo (la ref sigue `null` hasta el próximo
-  // render). Se guarda aquí el texto pendiente y este efecto lo aplica en cuanto el composer se
-  // remonta de verdad.
+  // siquiera está montado — cambiar de vista es asíncrono, así que escribir en `composerRef` en la
+  // MISMA función no llega a tiempo (la ref sigue `null` hasta el próximo render). Se guarda aquí
+  // el texto pendiente y este efecto lo aplica en cuanto el composer se remonta de verdad.
   const pendingComposerTextRef = useRef<string | null>(null)
   useEffect(() => {
-    if (!showSkillBar && pendingComposerTextRef.current !== null) {
+    if (skillHudView.screen === 'composer' && pendingComposerTextRef.current !== null) {
       composerRef.current?.setText(pendingComposerTextRef.current)
       pendingComposerTextRef.current = null
     }
-  }, [showSkillBar])
+  }, [skillHudView])
 
   // Foco de vuelta al composer al cerrar cualquier modal de acción (2026-08-31, "revisa bien todos
   // los casos del foco/scroll... cuando abres un modal") — cancelado o resuelto con éxito, ninguno
@@ -519,6 +529,10 @@ export function GameView() {
     setBusyDuracionMinutos(save.transit?.duracionMinutos ?? null)
     setSavedActions(save.savedActions)
     setActiveCombatAbilityNames(save.activeCombatAbilityNames)
+    setSkillBars(save.skillBars)
+    // Barras de habilidades múltiples (2026-09-04) — recuerda qué barra se veía en el HUD entre
+    // sesiones, mismo criterio que el resto de preferencias de UI persistidas (activeCombatAbilityNames).
+    setSkillHudView(save.activeSkillBarId ? { screen: 'barra-activa', skillBarId: save.activeSkillBarId } : { screen: 'composer' })
     setCombatSlots(save.habilidadSlots)
     setCurrentLocation(save.currentLocation)
     setDestinations(save.destinations)
@@ -1004,16 +1018,42 @@ export function GameView() {
     // `setText` limpia el composer entero antes de escribir, a diferencia de `insertChip`).
     //
     // Segundo bug real, encontrado verificando el fix de arriba con Playwright (2026-08-30): con
-    // `showSkillBar` true, `ChatComposer` NI SIQUIERA está montado (se sustituye entero por
-    // `SkillBar`, ver el JSX de más abajo) — `composerRef.current` era `null` en ese momento, así
-    // que `setText` no hacía NADA en silencio. Coincide exactamente con lo reportado ("al darle a
-    // una no hace nada"). Fix: guardar el texto pendiente y volver a texto libre — el efecto de
-    // `pendingComposerTextRef` de arriba lo aplica en cuanto el composer se remonta de verdad
-    // (`setShowSkillBar(false)` es asíncrono, `composerRef.current` seguiría `null` si se llamara
+    // la barra de habilidades desplegada, `ChatComposer` NI SIQUIERA está montado (se sustituye
+    // entero por `SkillBarHud`, ver el JSX de más abajo) — `composerRef.current` era `null` en ese
+    // momento, así que `setText` no hacía NADA en silencio. Coincide exactamente con lo reportado
+    // ("al darle a una no hace nada"). Fix: guardar el texto pendiente y volver a texto libre — el
+    // efecto de `pendingComposerTextRef` de arriba lo aplica en cuanto el composer se remonta de
+    // verdad (cambiar de vista es asíncrono, `composerRef.current` seguiría `null` si se llamara
     // aquí mismo en la misma función).
     pendingComposerTextRef.current = ability.promptText
-    setShowSkillBar(false)
+    setSkillHudView({ screen: 'composer' })
     setActivePanel(null)
+  }
+
+  // Barras de habilidades múltiples (2026-09-04) — handlers del menú/editor, ver SkillBarMenu.tsx/
+  // SkillBarEditor.tsx. `saveId` siempre existe aquí (los botones que disparan esto solo aparecen
+  // con la partida ya cargada).
+  function handleSelectSkillBar(bar: SkillBarInfo) {
+    setSkillHudView({ screen: 'barra-activa', skillBarId: bar.id })
+    if (saveId) void setActiveSkillBar(saveId, bar.id)
+  }
+
+  function handleBackToComposer() {
+    setSkillHudView({ screen: 'composer' })
+    if (saveId) void setActiveSkillBar(saveId, null)
+  }
+
+  async function handleCreateSkillBar(category: SkillBarCategory) {
+    if (!saveId) return
+    const bar = await createSkillBar(saveId, category)
+    setSkillBars((prev) => [...prev, bar])
+  }
+
+  async function handleSaveSkillBarEdit(params: { name?: string; abilityNames?: string[] }) {
+    if (!saveId || !editingSkillBar) return
+    const updated = await updateSkillBar(saveId, editingSkillBar.id, params)
+    setSkillBars((prev) => prev.map((b) => (b.id === updated.id ? updated : b)))
+    setEditingSkillBar(null)
   }
 
   // Cierre + envío compartidos por los 3 modales de `simpleModal` (auditoría de deuda técnica
@@ -1793,30 +1833,48 @@ export function GameView() {
             const composerDisabled = characterThinking || !!busyUntil || (!!combateIniciado && !combat.combatOpen) || anyModalOpen
             // Toggle a la IZQUIERDA de la propia fila del composer/barra, no encima en su propia
             // línea (2026-08-29, feedback en vivo, segunda vuelta: "no bajaste el botón... a la
-            // izquierda donde te dije") — mismo slot visual que la SkillBar, `leftSlot` de
+            // izquierda donde te dije") — mismo slot visual que la barra, `leftSlot` de
             // `ChatComposer` lo inserta en la MISMA fila flex que el panel de texto, compartiendo
-            // el borde/fondo exterior en vez de duplicarlo con una franja aparte.
-            const skillToggle = !combateIniciado && (
-              <TooltipAnchor text={showSkillBar ? 'Volver a escribir tu acción libremente' : 'Elegir una habilidad por botón en vez de escribir'}>
+            // el borde/fondo exterior en vez de duplicarlo con una franja aparte. Solo se muestra
+            // en la vista `composer` — las otras 3 vistas (menú-tipo/menú-barras/barra-activa) ya
+            // tienen su propia forma de volver (botón Atrás o ⌨️ directo).
+            const skillToggle = !combateIniciado && skillHudView.screen === 'composer' && (
+              <TooltipAnchor text="Elegir una habilidad por botón en vez de escribir">
                 <button
                   type="button"
-                  onClick={() => setShowSkillBar((v) => !v)}
+                  onClick={() => setSkillHudView({ screen: 'menu-tipo' })}
                   disabled={composerDisabled}
-                  aria-label={showSkillBar ? 'Texto libre' : 'Habilidades'}
+                  aria-label="Habilidades"
                   className="skill-slot tactile"
                 >
-                  <span aria-hidden="true">{showSkillBar ? '⌨️' : '✨'}</span>
+                  <span aria-hidden="true">✨</span>
                 </button>
               </TooltipAnchor>
             )
+            const activeBar = skillHudView.screen === 'barra-activa' ? skillBars.find((b) => b.id === skillHudView.skillBarId) : undefined
             return (
               <>
-                {!combateIniciado && showSkillBar ? (
+                {!combateIniciado && (skillHudView.screen === 'menu-tipo' || skillHudView.screen === 'menu-barras') ? (
                   <div className="border-t border-iron-800 bg-wood-950/90 px-4 pb-3 pt-3.5">
-                    <div className="flex items-center gap-2">
-                      {skillToggle}
-                      <SkillBar actions={savedActions} onUse={handleAttachAbility} disabled={composerDisabled} />
-                    </div>
+                    <SkillBarMenu
+                      view={skillHudView}
+                      skillBars={skillBars}
+                      onNavigate={setSkillHudView}
+                      onSelectBar={handleSelectSkillBar}
+                      onCreateBar={handleCreateSkillBar}
+                      onEditBar={setEditingSkillBar}
+                    />
+                  </div>
+                ) : !combateIniciado && skillHudView.screen === 'barra-activa' && activeBar ? (
+                  <div className="border-t border-iron-800 bg-wood-950/90 px-4 pb-3 pt-3.5">
+                    <SkillBarHud
+                      bar={activeBar}
+                      savedActions={savedActions}
+                      onUse={handleAttachAbility}
+                      onBackToComposer={handleBackToComposer}
+                      onEdit={() => setEditingSkillBar(activeBar)}
+                      disabled={composerDisabled}
+                    />
                   </div>
                 ) : (
                   <ChatComposer
@@ -1973,6 +2031,15 @@ export function GameView() {
             handleSubmit(actionText, { hambreSedItemUses, beberAgua })
           }}
           onCancel={() => setHungerThirstModalOpen(false)}
+        />
+      )}
+
+      {editingSkillBar && (
+        <SkillBarEditor
+          bar={editingSkillBar}
+          categoryAbilities={savedActions.filter((a) => a.category === editingSkillBar.category)}
+          onSave={handleSaveSkillBarEdit}
+          onCancel={() => setEditingSkillBar(null)}
         />
       )}
 

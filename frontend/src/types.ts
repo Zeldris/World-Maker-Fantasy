@@ -644,6 +644,22 @@ export interface QuestInfo {
 /// (ver AbilityForm.tsx, solo ofrece 'general').
 export type SavedActionCategory = 'combate' | 'general' | 'profesion' | 'reino'
 
+/// Barras de habilidades múltiples fuera de combate (2026-09-04, v2 de la SkillBar única de
+/// 2026-08-29) — Combate NO participa aquí, sigue con su cinturón propio.
+export type SkillBarCategory = 'general' | 'profesion' | 'reino'
+
+export interface SkillBarInfo {
+  id: string
+  category: SkillBarCategory
+  /// 0-2, fijo dentro de su categoría — la barra base (0) nunca se puede borrar.
+  slotIndex: number
+  name: string
+  /// Nombres de SavedAction en orden (drag-and-drop), ya saneados por el backend contra las
+  /// habilidades reales de esa categoría — resolver icono/descripción cruzando contra
+  /// `savedActions` por `name`, mismo patrón que ya usa CombatAbilityBelt.tsx.
+  abilityNames: string[]
+}
+
 export interface SavedActionInfo {
   id: string
   name: string

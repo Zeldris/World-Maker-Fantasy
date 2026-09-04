@@ -1167,3 +1167,44 @@ una regresión — repetido varias veces con solo el flake de "Múrgol" restante
 completa: 197/197 en verde. Pendiente reverificar en vivo jugando: abrir Diario, confirmar
 pestañas Año/Estación/Día, que el día por defecto es el más reciente con contenido, y que un
 capítulo generado (15+ turnos) aparece intercalado en su día real.
+
+## Barras de habilidades múltiples General/Profesión/Reino, tipo WoW (2026-09-04)
+
+La usuaria notó que "Comer/Beber" no aparecía en la barra de habilidades del composer — investigado,
+no era un bug: la partida se creó antes de que esa habilidad existiera, y las habilidades se
+persisten una sola vez sin reconciliación posterior. Aparcado ese backfill puntual, se retomó una
+idea ya anotada (`tarkor_idea_barra_habilidades_fuera_combate_2026-08-29`): sustituir la barra
+única y fija de siempre (`SkillBar.tsx`, solo `category: 'general'`, sin límite de slots) por un
+sistema de **múltiples barras configurables** tipo hotbar de WoW, en 3 categorías: General,
+Profesión, Reino (Combate sigue con su cinturón propio, sin tocar).
+
+**Diseño acordado**: hasta 3 barras por categoría (1 base + 2 adicionales), nombre editable, 12
+slots por barra, asignación por selección/drag&drop clonando el patrón ya construido de
+`CombatAbilityBelt.tsx`/`CombatAbilityToggleGrid`. Navegación en una sola superficie que se
+sustituye a sí misma (nunca popups anidados): botón del composer → menú de tipo (General/Profesión/
+Reino/Escribir) → elegir tipo sustituye por menú de barras de ese tipo (botón Atrás en la
+cabecera) → elegir barra la muestra en el HUD, con botón ⌨️ directo de vuelta al composer.
+
+**Fijado**: tabla `SkillBar` nueva (Prisma), servicio puro `skillBars.ts` (mismo espíritu que
+`combatAbilities.ts`, sin el concepto "genérica"). Endpoints nuevos en `routes/saves/skillBars.ts`
+(crear/renombrar-reemplazar contenido/borrar/marcar activa). `GET /saves/:id` garantiza en lectura
+que ninguna categoría llegue sin su barra base (partidas viejas como Gorhorn, reconciliación
+idempotente, sin migración de datos que sembrar a mano) y expone `skillBars`/`activeSkillBarId`.
+Frontend: `SkillBarMenu.tsx` (máquina de 4 pantallas sustituyendo el booleano `showSkillBar` de
+antes), `SkillBarHud.tsx` (vista de barra activa, sustituye a `SkillBar.tsx`, ya eliminado),
+`SkillBarEditor.tsx` (modo edición, clon de `CombatAbilityBelt.tsx` + input de renombrar).
+
+**Verificado**: `tsc -b` limpio backend y frontend. Tests unitarios nuevos: `skillBars.test.ts`
+(11 casos: saneado, categorías base faltantes, próximo slot libre). 1 archivo de test de
+integración nuevo (`skillBars.integration.test.ts`, 4 casos: `GET /saves/:id` crea las 3 barras
+base la primera vez e idempotente después, POST hasta el tope de 3, PATCH renombra+sanea, DELETE
+bloquea la barra base y limpia `active-skill-bar` al borrar la activa) — en verde solo y junto a
+otros tests de integración de `saves/`. `detail.test.ts` (unitario, mock de Prisma) actualizado con
+el mock de `skillBar`. Suite completa backend: **1818 unitarios + 233/234 integración en verde**
+(único fallo: el mismo flake preexistente de "Múrgol", confirmado sin relación, reproducido en
+corridas repetidas con contención transitoria bajo carga que desaparece al repetir). Suite frontend
+completa: **197/197 en verde**. Pendiente reverificar en vivo jugando tras reiniciar backend y
+frontend: pulsar el botón de habilidades, navegar General → ver "Barra 1" ya creada sola →
+seleccionarla → editar (arrastrar/activar habilidades) → confirmar que persiste tras F5 → crear
+una segunda barra → renombrarla → confirmar que Atrás vuelve al menú de tipos y ⌨️ vuelve directo
+al composer.

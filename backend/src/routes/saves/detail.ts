@@ -17,6 +17,7 @@ import { entornoTemporalFor } from '../../services/worldClock.js';
 import { parseAgenda } from '../../services/worldAgenda.js';
 import type { PendingDynamicMode } from '../../services/dynamicMode.js';
 import { resolveActiveCombatAbilityNames } from '../../services/combatAbilities.js';
+import { sanitizeSkillBarAbilityNames, missingBaseSkillBarCategories } from '../../services/skillBars.js';
 import { especializacionesConHuecosPara, resumenMecanicoEspecializacion, clasesPermitidasParaRaza, CLASE_DESCRIPTION } from '../../services/classAbilities.js';
 import { NIVEL_MINIMO_ESPECIALIZACION } from './progression.js';
 
@@ -45,6 +46,7 @@ export async function detailRoutes(app: FastifyInstance) {
         subjects: { orderBy: { createdAt: 'asc' } },
         almacenItems: { orderBy: { createdAt: 'asc' } },
         plantillasEquipo: { orderBy: { createdAt: 'asc' } },
+        skillBars: { orderBy: [{ category: 'asc' }, { slotIndex: 'asc' }] },
         characterTransit: true,
         savedActions: { orderBy: { createdAt: 'asc' } },
         currentLocation: true,
@@ -56,6 +58,19 @@ export async function detailRoutes(app: FastifyInstance) {
 
     if (!save) {
       return reply.status(404).send({ error: 'Partida no encontrada' });
+    }
+
+    // Barras de habilidades múltiples (2026-09-04) — reconciliación en lectura, no migración de
+    // datos: partidas creadas antes de este sistema (o cualquier fila borrada por error) nunca
+    // deben ver una categoría sin ninguna barra. `skipDuplicates` hace esto seguro ante llamadas
+    // casi simultáneas (dos pestañas, doble recarga) sin condición de carrera real.
+    const missingCategories = missingBaseSkillBarCategories(save.skillBars);
+    if (missingCategories.length > 0) {
+      await prisma.skillBar.createMany({
+        data: missingCategories.map((category) => ({ saveId: save.id, category, slotIndex: 0, name: 'Barra 1' })),
+        skipDuplicates: true,
+      });
+      save.skillBars = await prisma.skillBar.findMany({ where: { saveId: save.id }, orderBy: [{ category: 'asc' }, { slotIndex: 'asc' }] });
     }
 
     // Log de Reino SIN ventana de 24h (auditoría de código 2026-08-17: `save.logEntries` de arriba
@@ -465,6 +480,21 @@ export async function detailRoutes(app: FastifyInstance) {
         save.savedActions.filter((a) => a.category === 'combate').map((a) => ({ name: a.name, isGeneric: a.isGeneric })),
         save.activeCombatAbilityNamesConfigured,
       ),
+      // Barras de habilidades múltiples (2026-09-04) — `abilityNames` ya saneado contra las
+      // `SavedAction` reales de esa categoría (mismo criterio que `activeCombatAbilityNames`
+      // arriba); solo nombres, el frontend resuelve icono/descripción contra `savedActions`, que
+      // ya viaja completo en esta misma respuesta.
+      skillBars: save.skillBars.map((bar) => ({
+        id: bar.id,
+        category: bar.category,
+        slotIndex: bar.slotIndex,
+        name: bar.name,
+        abilityNames: sanitizeSkillBarAbilityNames(
+          bar.abilityNames,
+          save.savedActions.filter((a) => a.category === bar.category).map((a) => ({ name: a.name })),
+        ),
+      })),
+      activeSkillBarId: save.activeSkillBarId,
       habilidadSlots: maxCombatAbilitiesFor(save.level),
       professionProgress: save.professionProgress.map((p) => ({ professionId: p.professionId, nivel: p.nivel, xp: p.xp })),
       kingdomStats: save.kingdomStats
