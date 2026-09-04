@@ -54,10 +54,12 @@ export function DiceFace({
   side,
   startDelayMs,
   showDifficulty,
+  difficultyTooltip,
 }: {
   label: string
   side: RollInfo | CombatExchangeSideInfo
   startDelayMs: number
+  difficultyTooltip?: string
   showDifficulty: boolean
 }) {
   const [display, setDisplay] = useState<number | null>(null)
@@ -140,7 +142,12 @@ export function DiceFace({
       </span>
       <span className={`text-2xs font-semibold ${attributeColorClasses[side.attribute].text}`}>{attributeLabels[side.attribute]}</span>
       {showDifficulty && (
-        <TooltipAnchor text={`Dificultad fija según tu nivel frente al del rival — no es la tirada del otro lado. Umbral real: ${side.difficulty}.`}>
+        <TooltipAnchor
+          text={
+            difficultyTooltip ??
+            `Dificultad fija según tu nivel frente al del rival — no es la tirada del otro lado. Umbral real: ${side.difficulty}.`
+          }
+        >
           <span className="font-mono text-2xs text-wood-600 underline decoration-dotted decoration-wood-700 underline-offset-2">
             necesitas {difficultyLabelFor(side.difficulty)} ({side.difficulty})
           </span>
@@ -156,7 +163,13 @@ export function DiceFace({
 export function DiceRollSingle({ roll, label, showDifficulty = true }: { roll: RollInfo | CombatExchangeSideInfo; label?: string; showDifficulty?: boolean }) {
   return (
     <div className="animate-entry-in mt-2 flex items-center justify-center rounded-lg border border-dashed border-iron-700 bg-wood-950/30 px-3 py-3">
-      <DiceFace label={label ?? 'Tú'} side={roll} startDelayMs={0} showDifficulty={showDifficulty} />
+      <DiceFace
+        label={label ?? 'Tú'}
+        side={roll}
+        startDelayMs={0}
+        showDifficulty={showDifficulty}
+        difficultyTooltip={`Umbral fijo de la acción, no depende de ningún rival. Umbral real: ${roll.difficulty}.`}
+      />
     </div>
   )
 }
