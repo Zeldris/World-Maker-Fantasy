@@ -270,6 +270,28 @@ turnos donde la respuesta de la nube pasó los mismos filtros de calidad que pro
 Puedes ejecutarlo varias veces según vayas jugando: cada vez añade solo lo nuevo desde la última
 vez, nunca duplica.
 
+### Generar pares adicionales sin jugar (2026-09-04)
+
+Si quieres acumular pares más rápido de lo que da el ritmo natural de juego (`sample_rate=0.3`),
+dentro de `backend/`:
+
+```
+npm run generate-dpo-dataset [-- --category=combate --limit=20]
+```
+
+Reutiliza el mismo banco de escenarios que el pipeline SFT (`distillationScenarios.ts`, ~80
+situaciones reales del catálogo) — para cada uno, pide la narración a la nube (como ya hace
+`generate-distillation-dataset.ts`) Y al modelo local real (`narrateAction`, el mismo código que usa
+producción), y guarda ambas respuestas juntas en `LiveTeacherCapture` (mismo destino que la captura
+en vivo) para que `export-dpo-dataset` las recoja sin distinción. Reanudable: si se corta a mitad
+(cuota agotada, etc.), relanzarlo salta los escenarios ya generados.
+
+**Cuánto acumular antes de intentar entrenar la v2**: con captura en vivo (~250 pares el
+2026-09-04, creciendo con el ritmo de juego real) más este generador sintético, un primer objetivo
+razonable son **500 pares válidos** — el doble de lo que ya había, y el umbral donde DPO empieza a
+dar señal real en un modelo de 7B según la práctica habitual. Menos que eso arriesga sobreajustar a
+pocos patrones repetidos.
+
 ---
 
 ## Paso DPO 1-7 — entrenar con los pares en vivo (Colab, ruta paralela)

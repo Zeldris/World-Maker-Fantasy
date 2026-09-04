@@ -171,16 +171,16 @@ const aulladorInScene = npcInSceneFromCatalog(npcBySlug('aullador-rojo'));
 const gargantuaInScene = npcInSceneFromCatalog(npcBySlug('gargantua-de-ceniza'));
 const rondadorInScene = npcInSceneFromCatalog(npcBySlug('rondador-de-brasas'));
 const salamandraInScene = npcInSceneFromCatalog(npcBySlug('salamandra-de-escoria'));
-const orcoRezagadoInScene = npcInSceneFromCatalog(npcBySlug('orco-rezagado'));
-const orcoRezagadoMuertoInScene = npcInSceneFromCatalog(npcBySlug('orco-rezagado'), { condicionFisica: 'MUERTO', saqueado: true });
+const orcoRezagadoInScene = npcInSceneFromCatalog(npcBySlug('orco-expulsado'));
+const orcoRezagadoMuertoInScene = npcInSceneFromCatalog(npcBySlug('orco-expulsado'), { condicionFisica: 'MUERTO', saqueado: true });
 const soldadoInScene = npcInSceneFromCatalog(npcBySlug('soldado-concordia'));
 const soldadoMuertoInScene = npcInSceneFromCatalog(npcBySlug('soldado-concordia'), { condicionFisica: 'MUERTO', saqueado: true });
-const torgashInScene = npcInSceneFromCatalog(npcBySlug('torgash'));
-const ulkhaInScene = npcInSceneFromCatalog(npcBySlug('ulkha'));
+const torgashInScene = npcInSceneFromCatalog(npcBySlug('torgash-ketg'));
+const ulkhaInScene = npcInSceneFromCatalog(npcBySlug('ulkha-ketg'));
 const mercaderInScene = npcInSceneFromCatalog(npcBySlug('mercader-de-paso'));
 const oficialConcordiaInScene = npcInSceneFromCatalog(npcBySlug('oficial-concordia'));
 const peregrinoInScene = npcInSceneFromCatalog(npcBySlug('peregrino-de-los-tumulos'));
-const cazadorSerhuInScene = npcInSceneFromCatalog(npcBySlug('cazador-serhu'));
+const cazadorSerhuInScene = npcInSceneFromCatalog(npcBySlug('cazadora-serhu'));
 
 // Ampliación (2026-08-07, "barrido completo" tras encontrar que las 3 regresiones de la primera
 // tanda de fine-tuning cayeron justo en las categorías con menos ejemplos — ver
@@ -191,7 +191,7 @@ const cazadorSerhuInScene = npcInSceneFromCatalog(npcBySlug('cazador-serhu'));
 // momento, solo se les hace MENCIONAR a un tercero ya muerto en las semillas de diálogo nuevas).
 const canizorInScene = npcInSceneFromCatalog(npcBySlug('canizor'));
 const cruzavientosInScene = npcInSceneFromCatalog(npcBySlug('cruzavientos'));
-const cazadorSerhuMuertoInScene = npcInSceneFromCatalog(npcBySlug('cazador-serhu'), { condicionFisica: 'MUERTO', saqueado: true });
+const cazadorSerhuMuertoInScene = npcInSceneFromCatalog(npcBySlug('cazadora-serhu'), { condicionFisica: 'MUERTO', saqueado: true });
 const oficialConcordiaMuertoInScene = npcInSceneFromCatalog(npcBySlug('oficial-concordia'), { condicionFisica: 'MUERTO', saqueado: true });
 // Última fauna sin usar en el banco (corredor de cauce, buitre cenizo, múrgol) — INOFENSIVO no
 // significa "sin semilla de combate", corretolvas ya prueba que se caza fauna dócil (caza real,
@@ -485,9 +485,9 @@ const SEEDS: ScenarioSeed[] = [
       worldFacts: [locationFact('tumulos-del-honor'), npcSceneBlockFor(orcoRezagadoInScene, GORHORN_LEVEL)],
       characterSummary: GORHORN_SUMMARY,
       enCombate: true,
-      npcSlugsInScene: ['orco-rezagado'],
+      npcSlugsInScene: ['orco-expulsado'],
     },
-    actionVariants: ['Ataco al guerrero orco rezagado con mi hacha.', 'Golpeo al rezagado antes de que reaccione.', 'Me lanzo contra el guerrero sin clan.'],
+    actionVariants: ['Ataco al guerrero orco expulsado con mi hacha.', 'Golpeo al expulsado antes de que reaccione.', 'Me lanzo contra el guerrero sin clan.'],
     rollVariants: [{ attribute: 'fuerza', gradoExito: 'claro' }, { attribute: 'fuerza', gradoExito: 'fallo' }, { attribute: 'fuerza', gradoExito: 'con_coste' }],
   },
   {
@@ -522,7 +522,7 @@ const SEEDS: ScenarioSeed[] = [
     base: {
       worldFacts: [locationFact('campamento-serhu'), npcSceneBlockFor(torgashInScene, GORHORN_LEVEL)],
       characterSummary: GORHORN_SUMMARY,
-      npcSlugsInScene: ['torgash'],
+      npcSlugsInScene: ['torgash-ketg'],
     },
     actionVariants: ['Le pregunto al Kort\'ikar Torgash: "¿Qué noticias hay del frente?"', 'Le digo a Torgash: "Vengo en son de paz."', 'Le pregunto a Torgash por el paradero de mi clan.'],
     rollVariants: [null, { attribute: 'carisma', gradoExito: 'claro' }],
@@ -533,7 +533,7 @@ const SEEDS: ScenarioSeed[] = [
     base: {
       worldFacts: [locationFact('campamento-serhu'), npcSceneBlockFor(ulkhaInScene, GORHORN_LEVEL)],
       characterSummary: GORHORN_SUMMARY,
-      npcSlugsInScene: ['ulkha'],
+      npcSlugsInScene: ['ulkha-ketg'],
     },
     actionVariants: ['Le pregunto a la Terk\'ikar Ulkha: "¿Puedo quedarme aquí una noche?"', 'Le digo a Ulkha: "Busco noticias de otros clanes."', 'Le pregunto a Ulkha por la guerra.'],
     rollVariants: [null, { attribute: 'carisma', gradoExito: 'con_coste' }],
@@ -577,9 +577,9 @@ const SEEDS: ScenarioSeed[] = [
     base: {
       worldFacts: [locationFact('campamento-serhu'), npcSceneBlockFor(cazadorSerhuInScene, GORHORN_LEVEL)],
       characterSummary: GORHORN_SUMMARY,
-      npcSlugsInScene: ['cazador-serhu'],
+      npcSlugsInScene: ['cazadora-serhu'],
     },
-    actionVariants: ['Le pregunto al joven cazador Serhu por la caza de la zona.', 'Le digo al cazador: "¿Necesitas ayuda con algo?"', 'Le pregunto al cazador por el camino más seguro.'],
+    actionVariants: ['Le pregunto a la joven cazadora Serhu por la caza de la zona.', 'Le digo a la cazadora: "¿Necesitas ayuda con algo?"', 'Le pregunto a la cazadora por el camino más seguro.'],
     rollVariants: [null],
   },
 
@@ -934,8 +934,8 @@ const SEEDS: ScenarioSeed[] = [
     base: {
       worldFacts: [locationFact('tumulos-del-honor'), npcSceneBlockFor(orcoRezagadoMuertoInScene, GORHORN_LEVEL)],
       characterSummary: GORHORN_SUMMARY,
-      npcSlugsInScene: ['orco-rezagado'],
-      possiblyResurrectedNpcNames: ['Guerrero orco rezagado'],
+      npcSlugsInScene: ['orco-expulsado'],
+      possiblyResurrectedNpcNames: ['Guerrero orco expulsado'],
     },
     actionVariants: ['Reviso otra vez la zona del combate.', 'Vuelvo a mirar entre los túmulos, por si hay algo más.', 'Exploro los alrededores en busca de algo que se me haya pasado.'],
     rollVariants: [null],
@@ -958,7 +958,7 @@ const SEEDS: ScenarioSeed[] = [
     base: {
       worldFacts: [locationFact('campamento-serhu'), npcSceneBlockFor(cazadorSerhuMuertoInScene, GORHORN_LEVEL)],
       characterSummary: GORHORN_SUMMARY,
-      npcSlugsInScene: ['cazador-serhu'],
+      npcSlugsInScene: ['cazadora-serhu'],
       possiblyResurrectedNpcNames: ['Cazador/a Serhu'],
     },
     actionVariants: ['Reviso otra vez la zona donde cayó.', 'Vuelvo a mirar por el campamento, por si hay algo más.', 'Exploro los alrededores con cuidado.'],
@@ -1006,16 +1006,16 @@ const SEEDS: ScenarioSeed[] = [
       worldFacts: [
         locationFact('campamento-serhu'),
         npcSceneBlockFor(torgashInScene, GORHORN_LEVEL),
-        'Gorhorn ya se enfrentó y mató al guerrero orco rezagado que rondaba Los Túmulos del Honor.',
+        'Gorhorn ya se enfrentó y mató al guerrero orco expulsado que rondaba Los Túmulos del Honor.',
       ],
       characterSummary: GORHORN_SUMMARY,
-      npcSlugsInScene: ['torgash'],
-      possiblyResurrectedNpcNames: ['Guerrero orco rezagado'],
+      npcSlugsInScene: ['torgash-ketg'],
+      possiblyResurrectedNpcNames: ['Guerrero orco expulsado'],
     },
     actionVariants: [
-      'Le cuento a Torgash lo que pasó con el guerrero rezagado de los túmulos.',
+      'Le cuento a Torgash lo que pasó con el guerrero orco expulsado de los túmulos.',
       'Le pregunto a Torgash si conocía al guerrero sin clan que maté.',
-      'Le digo a Torgash que el rezagado de los túmulos ya no es un problema.',
+      'Le digo a Torgash que el guerrero expulsado de los túmulos ya no es un problema.',
     ],
     rollVariants: [null],
   },
@@ -1049,7 +1049,7 @@ const SEEDS: ScenarioSeed[] = [
     id: 'combate-corredor-cauce',
     category: 'combate',
     base: {
-      worldFacts: [locationFact('sabana-alta'), npcSceneBlockFor(corredorCauceInScene, GORHORN_LEVEL)],
+      worldFacts: [locationFact('sabana-alta-colmillar'), npcSceneBlockFor(corredorCauceInScene, GORHORN_LEVEL)],
       characterSummary: GORHORN_SUMMARY,
       enCombate: true,
       npcSlugsInScene: ['corredor-de-cauce'],
