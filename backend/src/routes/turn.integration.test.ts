@@ -239,10 +239,12 @@ describe('Misión de apertura: combate contra el Orco Enfurecido (integración r
   }, 15_000);
 
   // Cobertura nueva (2026-07-31, petición explícita: "si no saqueas todo el botón sigue para poder
-  // saquear lo que dejaste") — el Orco Enfurecido lleva 2 objetos de catálogo (Maza orca, Amuleto
-  // de hueso — "Mapa de las Llanuras" se quitó del loadout el 2026-08-13, ahora solo se entrega
-  // como recompensa de misión, ver worldCatalog.ts); saquear solo uno dejando el otro NO debe
-  // marcarlo `saqueado`, y una segunda pasada por el resto no debe duplicar el primero.
+  // saquear lo que dejaste") — el Orco Enfurecido lleva 3 objetos de catálogo (Maza orca, Vendaje
+  // improvisado orco de las Llanuras, Ración de carne ahumada — "Mapa de las Llanuras" se quitó
+  // del loadout el 2026-08-13, ahora solo se entrega como recompensa de misión; "Amuleto de
+  // hueso" se quitó el 2026-09-04, rebalanceo del primer combate, sustituido por el vendaje+
+  // ración de arriba, ver worldCatalog.ts); saquear solo uno dejando el resto NO debe marcarlo
+  // `saqueado`, y una segunda pasada por lo que falta no debe duplicar lo ya tomado.
   it('saqueo parcial: dejar objetos sin marcar no marca `saqueado`, y una segunda pasada no duplica lo ya tomado', async () => {
     // A diferencia del ataque tabulado (test de arriba), "registrar el cuerpo" no tiene atajo
     // tabulado propio en /turn/classify — cae a `classifyAction` (mockeada en todo el archivo,
@@ -267,7 +269,7 @@ describe('Misión de apertura: combate contra el Orco Enfurecido (integración r
     });
 
     const afterFirst = await prisma.npcState.findFirst({ where: { saveId, npcId } });
-    expect(afterFirst?.saqueado).toBe(false); // queda 1 objeto sin tomar
+    expect(afterFirst?.saqueado).toBe(false); // quedan 2 objetos sin tomar
     expect(afterFirst?.lootedItemNames).toEqual(['Maza orca']);
     const inventoryAfterFirst = await prisma.inventoryItem.findMany({ where: { saveId } });
     expect(inventoryAfterFirst.map((i) => i.name)).toEqual(['Maza orca']);
@@ -288,8 +290,8 @@ describe('Misión de apertura: combate contra el Orco Enfurecido (integración r
     expect(narrateAction).not.toHaveBeenCalled();
     expect(lastNdjsonLine(narrateRes.payload).narration).toEqual({ narration: expect.stringContaining('Maza orca'), newFacts: [] });
 
-    // Segunda pasada — re-selecciona "Maza orca" (ya tomada) + el que faltaba: no debe duplicar
-    // la maza, y ahora sí debe quedar completamente saqueado.
+    // Segunda pasada — re-selecciona "Maza orca" (ya tomada) + los 2 que faltaban: no debe
+    // duplicar la maza, y ahora sí debe quedar completamente saqueado.
     const classifyRes2 = await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action, enCombate: true } });
     const { classification: classification2, roll: roll2 } = classifyRes2.json();
     await app.inject({
@@ -301,15 +303,19 @@ describe('Misión de apertura: combate contra el Orco Enfurecido (integración r
         classification: classification2,
         roll: roll2,
         enCombate: true,
-        lootItemNames: ['Maza orca', 'Amuleto de hueso'],
+        lootItemNames: ['Maza orca', 'Vendaje improvisado orco de las Llanuras', 'Ración de carne ahumada'],
       },
     });
 
     const afterSecond = await prisma.npcState.findFirst({ where: { saveId, npcId } });
     expect(afterSecond?.saqueado).toBe(true);
-    expect(afterSecond?.lootedItemNames).toEqual(expect.arrayContaining(['Maza orca', 'Amuleto de hueso']));
+    expect(afterSecond?.lootedItemNames).toEqual(
+      expect.arrayContaining(['Maza orca', 'Vendaje improvisado orco de las Llanuras', 'Ración de carne ahumada']),
+    );
     const inventoryAfterSecond = await prisma.inventoryItem.findMany({ where: { saveId } });
-    expect(inventoryAfterSecond.map((i) => i.name).sort()).toEqual(['Amuleto de hueso', 'Maza orca']);
+    expect(inventoryAfterSecond.map((i) => i.name).sort()).toEqual(
+      ['Maza orca', 'Ración de carne ahumada', 'Vendaje improvisado orco de las Llanuras'].sort(),
+    );
     // Ya saqueado del todo — no hay nada pendiente, `pendingCombatNpcSlugs` vuelve a quedar vacío.
     const saveAfterFullLoot = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
     expect(saveAfterFullLoot.pendingCombatNpcSlugs).toEqual([]);
@@ -2383,6 +2389,13 @@ describe('Territory.control/population: felicidad sostenida consolida o rebela (
   // el gancho de sesión de Hondonada del Eco), rompiendo el salto de 7 días de golpe que necesita
   // este test. "Espero aquí" no es una acción de combate — `enCombate: false` es lo correcto Y
   // evita el guard.
+  //
+  // "varios días" en el texto (2026-09-04, hallazgo real generalizando la red de seguridad de
+  // duración sospechosa): turn.ts también topa a 60 min cualquier acción sin duración EXPLÍCITA
+  // del jugador que el clasificador clasifique como banda no-instantánea — el mock de `setUp`
+  // fija `duracionEstimadaMinutos: 7*1440+60` a propósito para simular el salto real de 7 días
+  // del Reino, así que el texto tiene que declarar esa duración con un número/palabra reconocido
+  // por `mentionsExplicitDuration` ("varios días") para que ningún guard lo capture y lo cape.
   async function doPassiveTurn(action: string) {
     const app = await buildApp();
     const classifyRes = await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action, enCombate: false } });
@@ -2398,7 +2411,7 @@ describe('Territory.control/population: felicidad sostenida consolida o rebela (
     // una acción narrada por el LLM de verdad (mockeado) — no hay atajo determinista que la evite,
     // así que aquí no se comprueba si `narrateAction` se llamó o no, solo el resultado mecánico
     // real de Territory/KingdomStats tras el salto de 7 días.
-    const res = await doPassiveTurn('Espero aquí, dejando pasar los días tranquilamente.');
+    const res = await doPassiveTurn('Espero aquí varios días, dejando pasar el tiempo tranquilamente.');
 
     const territory = await prisma.territory.findUniqueOrThrow({ where: { id: territoryId } });
     expect(territory.control).toBe('CONSOLIDADO');
@@ -2412,7 +2425,7 @@ describe('Territory.control/population: felicidad sostenida consolida o rebela (
   it('felicidad ≤20 sostenida 7 días pierde el territorio (población a 0) y abandona sus edificios', async () => {
     await setUp(20);
     narrateAction.mockClear();
-    await doPassiveTurn('Espero aquí, dejando pasar los días tranquilamente.');
+    await doPassiveTurn('Espero aquí varios días, dejando pasar el tiempo tranquilamente.');
 
     const territory = await prisma.territory.findUniqueOrThrow({ where: { id: territoryId } });
     expect(territory.control).toBe('PERDIDO');
@@ -2425,7 +2438,7 @@ describe('Territory.control/population: felicidad sostenida consolida o rebela (
   it('felicidad neutral (50) no consolida ni rebela — el territorio se queda RECLAMADO', async () => {
     await setUp(50);
     narrateAction.mockClear();
-    await doPassiveTurn('Espero aquí, dejando pasar los días tranquilamente.');
+    await doPassiveTurn('Espero aquí varios días, dejando pasar el tiempo tranquilamente.');
 
     const territory = await prisma.territory.findUniqueOrThrow({ where: { id: territoryId } });
     expect(territory.control).toBe('RECLAMADO');
@@ -2974,11 +2987,13 @@ describe('Saqueo: condición de carrera en turnos concurrentes (auditoría 2026-
     const action = "Registro el cuerpo de 'Orco enfurecido'.";
     const [res1, res2] = await Promise.all([doTurn(saveId, action), doTurn(saveId, action)]);
 
-    // 2 objetos de catálogo en el loadout del Orco Enfurecido (Maza orca, Amuleto de hueso — "Mapa
-    // de las Llanuras" se quitó del loadout el 2026-08-13, ahora solo se entrega como recompensa
-    // de misión, ver worldCatalog.ts) — si la carrera duplicara el botín, saldrían 4.
+    // 3 objetos de catálogo en el loadout del Orco Enfurecido (Maza orca, Vendaje improvisado orco
+    // de las Llanuras, Ración de carne ahumada — "Mapa de las Llanuras" se quitó del loadout el
+    // 2026-08-13, ahora solo se entrega como recompensa de misión; "Amuleto de hueso" se quitó el
+    // 2026-09-04, rebalanceo del primer combate, ver worldCatalog.ts) — si la carrera duplicara el
+    // botín, saldrían 6.
     const items = await prisma.inventoryItem.findMany({ where: { saveId } });
-    expect(items).toHaveLength(2);
+    expect(items).toHaveLength(3);
     const state = await prisma.npcState.findUniqueOrThrow({ where: { saveId_npcId_scope: { saveId, npcId, scope: '' } } });
     expect(state.saqueado).toBe(true);
 

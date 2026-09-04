@@ -479,7 +479,7 @@ tarde** tras reiniciar backend+frontend con el código nuevo.
 | Crafteo por texto libre sin ingrediente (6a) | ✅ **CONFIRMADO EN VIVO** | "Ato un vendaje con mi manojo de salvia del polvo." (sin tenerlo) → *"se rasca la cabeza. «Buena idea, pero me falta de todo para hacerlo ahora mismo...» Se encoge de hombros y sigue a lo suyo."* — mensaje determinista real, sin objeto fabricado. |
 | Construcción por texto libre sin materiales (6b) | ✅ **CONFIRMADO EN VIVO** | "Construyo un campamento base en este lugar." (sin materiales) → *"...lo deja para más adelante, cuando reúna lo que le falta."* — bloqueado, sin `InventoryItem`/`Building` fantasma. |
 | Viaje por texto libre a destino inexistente (6c) | ✅ **CONFIRMADO EN VIVO** | "Me dirijo hacia la Torre de Cristal, dejando atrás la hondonada." → *"No es un sitio que Gorhorn tenga marcado en su cabeza, ni recuerde haber oído nombrar."* — sin mover `currentLocationId`. |
-| Recolección de terreno por texto libre redirigida al modal real (6d) | ✅ **CONFIRMADO EN VIVO, CICLO COMPLETO** | "Talo el matorral de cuerno..." y "Pico la roca de Los Pilares Rotos..." bloquean con botón real ("TALAR"/"MINAR") en el propio log — pulsado el botón, abre `HarvestSelectionModal` con la fuente citada, "Explorar" dispara la tirada REAL del sistema (`🎲15, Minar · Fuerza`), no la genérica del LLM. Flujo entero (texto libre → bloqueo → botón → modal → tirada real) confirmado de punta a punta. |
+| Recolección de terreno por texto libre redirigida al modal real (6d) | ✅ **CONFIRMADO EN VIVO, CICLO COMPLETO** | "Talo el matorral de cuerno..." y "Pico la roca de Los Pilares Rotos..." bloquean con botón real ("TALAR"/"MINAR") en el propio log — pulsado el botón, abre `HarvestSelectionModal` con la fuente citada, "Explorar" dispara la tirada REAL del sistema (`🎲15, Minar · Fuerza`), no la genérica del LLM. Flujo entero (texto libre → bloqueo → botón → modal → tirada real) confirmado de punta a punta. **Reverificado con Mena de Yerreo (2026-09-04) — falso positivo investigado y descartado**: bloqueó y abrió el modal correctamente citando "Mena de Yerreo", pero tras "Explorar" el recurso NO aparecía en la lista de "Mineral" pese a tener `WorldPopulation` real, terreno correcto y `homeLocationSlug` correcto — causa real: `tier: 4` (ítem catalogado como "veta rarísima") supera `nivelOficio` (1, sin el oficio de minero aprendido) — `pasaFiltroNivelOficio` (`recolectar.ts:90-92`, Pieza 3 del 2026-09-02, "no tiene sentido que siendo minero nivel 0 me salgan recursos de tier alto") lo excluye correctamente. Comportamiento correcto por diseño, no bug — el modal prefiere no mostrar un candidato inalcanzable en vez de mentir con él en la lista. |
 | Gistera Koh deja de aparecer tras aceptar ayudarla / despedirse (Pieza 5) | ✅ **CONFIRMADO EN VIVO, con 1 bug real encontrado y corregido el mismo día** | Gistera se presentó correctamente en el turno 1 real (sessionFact `"sin nombre revelado todavía"` confirmado en Postgres), diálogo funcionó, y tras aceptar la misión ofrecida ("Acabar con el Orco Enfurecido") dejó de aparecer en todos los turnos siguientes — confirmado tanto por narración (turno neutro posterior sin mención nueva) como consultando Postgres directamente (`Quest` creada, `npcsInScene` excluida vía `gisteraQuestYaExiste`). **Bug real encontrado investigando por qué `Save.npcsRetiredForever` seguía vacío pese a la exclusión correcta en escena**: el botón "Aceptar" de la tarjeta de misión llama a `POST /saves/:id/quests/aceptar` (`backend/src/routes/saves/quests.ts`), un endpoint totalmente distinto de `narrateAndPersistTurn` — narraba la despedida de Gistera con el mismo texto fijo, pero nunca replicaba el `npcsRetiredForever: { push: 'gistera-koh' } }` que sí hace `gisteraAceptaEsteTurno` en `turnResolution.ts:6002` para el camino de texto libre. Sin síntoma visible en este caso concreto (la exclusión de escena tiene además un camino redundante vía la existencia del `Quest`), pero `npcsRetiredForever` es el mecanismo GENERAL que consultan `detectNpcsInScene`/`filterFarewellFacts` (`npcScene.ts`, `worldFacts.ts`) — quedaba sin aplicar en el camino de aceptación recomendado desde 2026-08-26. **Corregido y verificado** (test de integración nuevo en verde, fix aplicado retroactivamente en Postgres a la partida de prueba). **Gotcha aparte, ya documentado y no bloqueante**: el guion de Fase 1 de Gistera (`gisteraKoh`, `playerActionCount === 1`) se "quema" si el primer turno de una partida cae en cualquier guard determinista de bloqueo temprano (6a-6c) — acoplamiento frágil preexistente a vigilar si se añaden más guards de este tipo. |
 
 ---
@@ -917,5 +917,49 @@ del frontend quedaba huérfana sin ningún aviso.
 `request.log.error`, 500 genérico "Error clasificando el turno" al cliente). No arregla la causa de
 fondo (Ollama sigue pudiendo colgarse alguna vez), pero convierte un cuelgue silencioso en un error
 visible e inmediato que permite reintentar sin quedarte con la pantalla congelada sin explicación.
-Pendiente de compilar/verificar tras el próximo reinicio del backend (no se pudo correr `tsc -b`
-desde este sandbox, revisado a mano con cuidado).
+Compilado y verificado tras el reinicio real del backend (2026-09-04): `tsc -b` limpio, 2015/2016
+tests backend en verde.
+
+## Guard genérico de duración sospechosa — cierra la familia de bug de "banda larga inventada"
+(2026-09-04)
+
+Jugando en vivo (ronda de pruebas continuas) se reprodujo por 6ª vez la misma familia de bug: "Entro
+en la cueva con el cuchillo en alto, listo para lo que sea." se clasificó como banda "larga"/4320 min
+(3 días) — el modelo pequeño razonó "generalmente requiere un nivel de destreza alto para atravesar",
+sin ningún anclaje real. Las 5 veces anteriores (búsqueda/descanso 2026-07-20, ataque 2026-07-21,
+diálogo/intención hostil/aceptación verbal 2026-07-23/30) se parchearon enumerando el vocabulario
+concreto que se coló — "entrar" no encajaba en ninguno de esos regex.
+
+**Fix real, distinto de los anteriores**: en vez de otro parche de vocabulario, un guard GENÉRICO al
+final de `resolveClassificationForTurn` (turn.ts:400-427) — cualquier acción que llegue hasta ahí con
+banda no-instantánea y SIN duración explícita del jugador (`mentionsExplicitDuration`) queda topada a
+60 min, sea cual sea el verbo. `travel`/ataque/combate ya deciden su propia duración antes de llegar
+aquí, así que no se ven afectados.
+
+**Dos tensiones reales encontradas escribiendo el guard, ambas resueltas por el camino correcto (no
+por excepciones ad-hoc)**:
+1. Ampliar `REST_REGEX` con "esper" para eximir "Espero aquí..." tuvo un efecto colateral: también
+   activó el guard ORIGINAL (ya existía desde julio), que igualmente capaba a 60 min — revertido.
+2. La solución real: 2 tests de `Territory.control` (Grupo 3) mockeaban `classifyAction` con una
+   duración de 7 días reales para simular el salto de tiempo del Reino, pero el texto de prueba
+   ("Espero aquí, dejando pasar los días tranquilamente.") no mencionaba el número — corregido el
+   TEXTO del test a "Espero aquí **varios días**..." (ya reconocido por `EXPLICIT_DURATION_REGEX`),
+   no el código de producción. Un salto de tiempo deliberadamente largo debe declararse con un
+   número, igual que ya exige el guard original desde julio.
+
+**Regresión colateral encontrada y cerrada de paso** (no relacionada con el guard, causada por el
+rebalanceo del Orco Enfurecido de esta misma sesión, ver más arriba): 2 tests de saqueo del Orco
+Enfurecido (`turn.integration.test.ts`) asumían su loadout viejo de 2 objetos (Maza orca + Amuleto de
+hueso) — actualizados a los 3 objetos reales actuales (Maza orca + Vendaje improvisado + Ración de
+carne ahumada).
+
+**Verificado**: `tsc -b` limpio backend, suite completa **2015/2016 tests en verde** — el único fallo
+restante (`"un ataque a algo sin nombre fuerza la sugerencia de reveal..."`, espera "Múrgol" con
+`Math.random` mockeado a 0 y obtiene "Zense Ceniza") confirmado preexistente vía `git stash`
+(falla exactamente igual sin ninguno de los cambios de hoy). **Hallazgo nuevo sobre este flake
+concreto** (antes solo anotado como "sin causa confirmada" en memoria): no parece un flake de
+aislamiento entre tests — con `Math.random` fijo a 0, "el primer candidato ponderado" de la región ya
+no es Múrgol, sugiere que la lista real de candidatos ambientales cambió de peso/orden por los
+`capturablePct` sembrados en sesiones recientes (Gesgurio 30%, etc.) desde que el test se escribió
+(2026-09-03). Pendiente de investigar la función real de ponderación (`turnResolution.ts`, sugerencia
+ambiental) en otra sesión — no se tocó hoy, fuera de alcance de este guard.

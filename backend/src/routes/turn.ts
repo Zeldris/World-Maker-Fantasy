@@ -397,6 +397,48 @@ async function resolveClassificationForTurn(params: {
           classification.duracionEstimadaMinutos = 0;
         }
 
+        // Bug real jugando en vivo (2026-09-04): "Entro en la cueva con el cuchillo en alto,
+        // listo para lo que sea." (sin mención de destreza, viaje ni duración explícita) se
+        // clasificó como banda "larga"/4320 min ("generalmente requiere un nivel de destreza
+        // alto para atravesar") — mismo patrón EXACTO ya visto y parcheado 5 veces antes en este
+        // mismo bloque (búsqueda/descanso, ataque, diálogo, intención hostil, aceptación verbal,
+        // uso de objeto propio), siempre enumerando el vocabulario concreto que se coló. "Entrar"
+        // no encaja en ninguno de esos regex — el hueco real no es un verbo que falte, es que el
+        // modelo pequeño puede inventarse cualquier duración larga sin ningún anclaje real
+        // siempre que la acción no sea un viaje/ataque/construcción de verdad. Red de seguridad
+        // GENÉRICA, última instancia tras todos los guards específicos de arriba (que ya forzaron
+        // "instantanea" donde aplicaba): cualquier acción que SIGA con banda no-instantánea y sin
+        // duración explícita del jugador queda topada al mismo límite de 60 min que ya usaba el
+        // caso original (búsqueda/descanso) — nunca crea una espera de horas/días por una frase
+        // corta sin anclaje real. `travel` ya decidió su propia duración antes de llegar aquí
+        // (rama `if (travel)` más arriba, este bloque entero es el `else`), así que un viaje real
+        // nunca se ve afectado. Construcción real (con receta detectada,
+        // `mightBeBuildAttemptForDuration`, calculada más abajo en el handler) sigue su propio
+        // criterio aparte — ese cálculo usa `produccion`, no lee `duracionEstimadaMinutos` para
+        // decidir si hay materiales, así que capar aquí no le quita nada.
+        //
+        // Tensión real encontrada escribiendo este guard, resuelta con cuidado: una espera/salto
+        // de tiempo DELIBERADAMENTE largo ("Espero aquí varios días...", saltos de Territory/
+        // Reino) es exactamente el caso legítimo que `mentionsExplicitDuration` existe para
+        // eximir — la solución NO es enseñar a más verbos a "colarse" sin decir cuánto tiempo
+        // pasa (ampliar `REST_REGEX`/similares tiene el efecto colateral de activar TAMBIÉN el
+        // guard original de arriba, que sigue capando a 60 igual), sino que la propia acción
+        // declare el número real ("...7 días...", ya reconocido por `EXPLICIT_DURATION_REGEX`).
+        // Un jugador/test que de verdad quiere saltar días de ficción debe decirlo con un número,
+        // igual que ya lo pide el guard original de búsqueda/descanso desde julio — sin duración
+        // explícita, ninguna acción (ni "esperar", ni "entrar", ni el próximo verbo que aparezca)
+        // debería crear una espera de horas/días por pura inferencia del modelo pequeño.
+        if (
+          classification.banda !== 'instantanea' &&
+          !mentionsExplicitDuration(action) &&
+          classification.duracionEstimadaMinutos > 60
+        ) {
+          console.warn(
+            `[clasificador] duración sospechosa genérica (${classification.duracionEstimadaMinutos} min) para "${action}" sin duración explícita — capada a 60.`,
+          );
+          classification.duracionEstimadaMinutos = 60;
+        }
+
         // Roadmap 2026-07-19 (clamp de banda): la fiabilidad de "banda" del clasificador pequeño
         // seguía sin validarse (docs/11 § 1.4) — en vez de confiar en que el modelo mantenga
         // banda↔duracionEstimadaMinutos coherentes, se deriva de forma determinista con la MISMA
