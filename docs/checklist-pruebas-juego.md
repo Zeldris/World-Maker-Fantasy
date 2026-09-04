@@ -1297,3 +1297,57 @@ animada al abrir combate (con malus visible si no estás ILESO), una acción de 
 tirada anima el dado antes de revelar el resultado, Huir (pre y mid-combate) igual, un intento de
 Tameo anima ambos lados del "vs", y que recargar la página / ver el Diario muestra las tiradas ya
 pasadas sin volver a animar.
+
+## Ronda de fixes tras jugar en vivo: scroll a tiradas, panel adelantado, racial de NPC (2026-09-04)
+
+Tres hallazgos reales jugando la partida de Gorhorn tras las piezas de arriba.
+
+**1. Scroll automático a cada tirada en vivo** (`frontend/src/components/DiceRoll.tsx`) — petición
+explícita: "donde se este ejecutando la tirada de dados el foco y el scroll deben apuntar a ese
+elemento que noto que a veces me lo pierdo... por ejemplo en el de iniciativa en combate".
+Centralizado en `DiceRollSingle`/`DiceRollVs` (se montan de cero en cada tirada nueva, cubre turno
+normal/combate/iniciativa/Tameo a la vez) vía un `useScrollIntoViewOnMount` interno, sin `.focus()`
+(mismo criterio ya documentado en `CombatPanel.tsx`: robar el foco en combate es más intrusivo que
+útil). **Ajuste real tras la primera pasada** (captura real: el bloque de la tirada quedaba
+parcialmente tapado por el header del panel) — `block: 'nearest'` no completaba el ajuste si el
+elemento ya estaba parcialmente visible, y el scroll podía perder la carrera contra el
+`contentScrollRef.current?.scrollTo({top:0})` que `CombatPanel.tsx` ya ejecuta al montarse. Fijado
+con `block: 'center'` + `setTimeout(0)` (empuja el scroll de la tirada al tick siguiente, así gana
+siempre sea cual sea el orden real de los `useEffect` de padre/hijo).
+
+**2. Panel de combate adelantándose a la animación de iniciativa** (`frontend/src/hooks/useCombatFlow.ts`,
+`handleCombatTurnResolved`) — captura real: el título "COMBATE — ATAQUE", el tinte del panel y la
+ficha del rival (condición/vida) ya habían cambiado mientras el dado de iniciativa seguía mostrando
+"?" en el lado enemigo. Causa: `combatAwaitingDefense`/`combatNpcStates` se aplicaban en el mismo
+`setState` síncrono que `lastInitiativeRoll`, sin esperar los `2×ROLL_DURATION_MS` (10s) que tarda
+`DiceRollVs` en animarse. Fijado: con una tirada de iniciativa real que mostrar
+(`nextInitiativeRoll` no nulo), ese bloque de estado visual se retrasa con un `setTimeout` hasta que
+la animación termina; sin tirada (turno forzado sin ella, ej. Aturdimiento) se aplica de inmediato
+como siempre. Guard añadido para `finDePartida` en el mismo turno (caso límite: el `setTimeout`
+tardío no debe reabrir visualmente un combate ya cerrado). 3 tests nuevos en
+`useCombatFlow.test.tsx` con el patrón de fake timers ya validado (`vi.advanceTimersByTimeAsync` +
+`act(async () => {})`, documentado en `tarkor_cobertura_hooks_frontend_2026-09-03`).
+
+**3. "Sangre del Estallido" seguía usándose en combate por NPC** — reportado jugando: "el orco
+enfurecido uso esta habilidad que juraría que la descatalogamos... revisa si hemos agregado la
+clase guerrero para que use esas habilidades y no esa que creo que era racial". Confirmado: el Orco
+Enfurecido ya tiene `clase: GUERRERO`/`especializacion: BERSERKER` real en el catálogo
+(`worldCatalog.ts`), pero `npcCombatAbilitiesFor` (`backend/src/services/npcCombatAbilities.ts`)
+seguía añadiendo incondicionalmente las 2 habilidades raciales activas viejas ("Sangre del
+Estallido"/"Piel de Guerra") a CUALQUIER NPC con `raza`, tenga o no clase — el mismo camino que se
+cerró para el JUGADOR el 2026-09-01 (sustituido por una pasiva única, `racialPassives.ts`) nunca se
+tocó en el lado NPC. Decisión explícita de la usuaria: quitarlo de todo NPC, mismo criterio que el
+jugador (nunca deja a nadie sin nada usable — Ataque base y Esquivar/Defenderse/Descansar son
+incondicionales). `BerigRazaInfo.habilidadesRaciales` (`berigLore.ts`) se deja intacto, sigue siendo
+lore/dato de referencia.
+
+**Verificado**: `tsc -b` limpio backend+frontend. Backend: 1842/1842 unitarios + 233/234 integración
+(único fallo: flake preexistente de Múrgol, sin relación — 1 fallo adicional de contención puntual
+en `combateMultipleOrquestacion.integration.test.ts` en la primera pasada, no reproducido en la
+segunda ni en aislamiento). 2 tests de ese archivo actualizados: el roster real de ataque del
+Chamán/Opresor pasó de 5 a 4 elementos al quitar la racial, secuencia de `Math.random` mockeada
+recalculada contra el orden real del catálogo (confirmado con un script de depuración desechable,
+no adivinado). Frontend: 201/201 (198 + 3 nuevos). Pendiente reverificar en vivo: la tirada de
+iniciativa queda centrada en pantalla sin cortes; el panel espera a que el dado termine antes de
+cambiar de color/título; el Orco Enfurecido (y cualquier NPC orco/humanoide) ya no usa "Sangre del
+Estallido"/"Piel de Guerra" en combate.
