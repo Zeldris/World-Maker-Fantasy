@@ -1378,3 +1378,62 @@ MUERTO sí resta -150 de verdad. Backend: 1842/1842 unitarios + 234/235 integrac
 flake preexistente de Múrgol, sin relación). Frontend: 201/201. Pendiente reverificar en vivo:
 dejar a un enemigo CONVALECIENTE no debe mover el panel de Reputación; Matar/Capturar/Clemente cada
 uno con su propio chip y magnitud en el log.
+
+## Bucle infinito de renders bloqueaba la navegación al salir de la partida (2026-09-04)
+
+Reportado tras añadir el modal de confirmación al salir: "le doy a salir, la URL se actualiza pero
+no vuelve a la selección de partida... si recargo me lleva a las partidas, sino no". Reproducido
+con Playwright, consola con `console.error = ...` interceptado para capturar el stack real:
+`Maximum update depth exceeded` desde el primer instante en que carga `GameView`, no solo al pulsar
+Salir.
+
+**Causa real**: `setCharacterLog` (wrapper de detección "tirada en vivo", pieza anterior de esta
+sesión) era una función NUEVA en cada render — sin `useCallback`. Un `useEffect` en
+`useEntityBanner.ts` la lista como dependencia (`[enciclopediaIndex, setCharacterLog, setWorldLog]`)
+y la llama de vuelta al ejecutarse — sin memoizar, el efecto se disparaba en cada render, y cada
+disparo forzaba otro render → bucle infinito que saturaba React lo suficiente como para que la
+navegación de React Router nunca llegara a completarse visualmente (la URL SÍ cambiaba de verdad,
+confirmado con `[framenavigated]` en Playwright, pero la vista se quedaba en `GameView`).
+
+**Fijado**: `setCharacterLog` envuelto en `useCallback(..., [])`. Confirmado con Playwright
+antes/después: 0 errores de "Maximum update depth" tras el fix, navegación completa hasta "Sus
+partidas" en la misma ejecución.
+
+**Verificado**: `tsc -b` limpio, 201/201 tests frontend en verde. Confirmado en vivo con
+Playwright (no solo en tests) — capturas antes/después adjuntas al hallazgo. Ya no debería
+reproducirse manualmente, pero si vuelve a verse "la URL cambia pero la vista no", revisar primero
+la consola del navegador por "Maximum update depth exceeded" antes de asumir un bug de routing.
+
+## Legend "Tirada de iniciativa" en el log + fix de malus de condición física (2026-09-04)
+
+Dos hallazgos de la misma captura jugando en vivo.
+
+**1. Legend visual**: petición explícita — distinguir en el log de narración cuál tirada es la de
+iniciativa (la que decide quién actúa primero al abrir combate) del resto de tiradas de turno
+normal, que comparten el mismo componente genérico (`DiceRollSingle`/`RollBadge`). Fijado en
+`LogPanel.tsx`: aparece un legend "Tirada de iniciativa" cuando la entrada trae `initiativeRoll`
+(señal real de que este turno, además de resolver la acción, calculó quién actúa primero —
+emboscada real al abrir combate), nunca en un turno normal cualquiera con `roll` a secas.
+
+**2. Bug real de balance, encontrado revisando la misma captura**: el Orco Enfurecido, ya GRAVE,
+seguía mostrando "-2sal" en el malus de condición física de esa tirada de iniciativa — el malus de
+HERIDO, no el de GRAVE (-5, `CONDICION_MALUS` en `death.ts`). Causa: `resolveCombatExchangePhase`
+(`turnResolution.ts`) calculaba la iniciativa del PRÓXIMO intercambio con la condición física de
+los PARÁMETROS DE ENTRADA (la de antes de este mismo golpe), en vez de la ya actualizada por el
+golpe que acaba de resolverse en el propio intercambio. Mismo bug simétrico en el lado del jugador.
+Fijado reutilizando `nextCondicionForAttack` (ya usada para calcular `npcTargetNewCondicion`) para
+derivar la condición real de ambos lados justo antes de `rollInitiative`. El camino de "emboscada
+en el turno de apertura" (sin ningún golpe previo ese mismo turno) no tenía el bug — se dejó igual.
+
+**Verificado**: `tsc -b` limpio backend+frontend. Test de integración nuevo que reproduce el bug
+real (ataca hasta dejar al Orco GRAVE, confirma malus=5 en `initiativeRoll.npc`) — confirmado que
+detecta el bug de verdad revirtiendo el fix temporalmente y viendo el test fallar con `2` en vez de
+`5`, luego restaurado. Backend: 1842/1842 unitarios + 125/126 integración de `turn.integration.test.ts`
+(único fallo: flake preexistente de Múrgol) + flake intermitente ya visto en
+`combateMultipleOrquestacion.integration.test.ts` (aleatoriedad real sin mock, no relacionado con
+este cambio — confirmado reejecutando 3 veces en aislamiento, 1/3 fallos). Frontend: 203/203 (201 +
+2 nuevos del legend) — de paso, `cleanup()` explícito añadido a `LogPanel.test.tsx` (sin
+`globals:true` en vitest.config.ts, dos `render()` en tests distintos se acumulaban en el DOM, dio
+un falso positivo real al escribir el primer test del legend). Pendiente reverificar en vivo: el
+legend aparece solo en la tirada de apertura de combate, y el malus de condición física en esa
+tirada coincide con la condición REAL del NPC en ese momento (GRAVE=-5, no HERIDO=-2).
