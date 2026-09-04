@@ -34,7 +34,7 @@ export function SkillBarHud({
 
       <div className="flex flex-1 flex-wrap items-center justify-center gap-1">
         {abilities.length === 0 ? (
-          <span className="text-2xs text-wood-500">"{bar.name}" está vacía — pulsa ✎ para asignarle habilidades.</span>
+          <span className="text-xs text-wood-500">"{bar.name}" está vacía — pulsa ✎ para asignarle habilidades.</span>
         ) : (
           abilities.map((a) => (
             <TooltipAnchor key={a.id} text={a.name} subtext={a.description}>

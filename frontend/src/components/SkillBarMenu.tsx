@@ -41,24 +41,28 @@ export function SkillBarMenu({
 }) {
   if (view.screen === 'menu-tipo') {
     return (
-      <div className="flex flex-1 flex-wrap items-center justify-center gap-2">
+      <div className="flex flex-1 flex-wrap items-center justify-center gap-3">
         {SKILL_BAR_CATEGORIES.map((category) => (
           <button
             type="button"
             key={category}
             onClick={() => onNavigate({ screen: 'menu-barras', category })}
-            className="tactile flex items-center gap-1.5 rounded-lg border border-iron-700 bg-wood-950/50 px-3 py-2 text-xs text-wood-300 transition-colors hover:border-accent-600/60 hover:text-accent-300"
+            className="tactile flex items-center gap-2 rounded-lg border border-iron-700 bg-wood-950/50 px-4 py-2.5 text-sm text-wood-300 transition-colors hover:border-accent-600/60 hover:text-accent-300"
           >
-            <span aria-hidden="true">{CATEGORY_ICON[category]}</span>
+            <span aria-hidden="true" className="text-lg">
+              {CATEGORY_ICON[category]}
+            </span>
             {CATEGORY_LABEL[category]}
           </button>
         ))}
         <button
           type="button"
           onClick={() => onNavigate({ screen: 'composer' })}
-          className="tactile flex items-center gap-1.5 rounded-lg border border-iron-700 bg-wood-950/50 px-3 py-2 text-xs text-wood-300 transition-colors hover:border-accent-600/60 hover:text-accent-300"
+          className="tactile flex items-center gap-2 rounded-lg border border-iron-700 bg-wood-950/50 px-4 py-2.5 text-sm text-wood-300 transition-colors hover:border-accent-600/60 hover:text-accent-300"
         >
-          <span aria-hidden="true">⌨️</span>
+          <span aria-hidden="true" className="text-lg">
+            ⌨️
+          </span>
           Escribir
         </button>
       </div>
@@ -68,31 +72,34 @@ export function SkillBarMenu({
   const barsOfCategory = skillBars.filter((b) => b.category === view.category).sort((a, b) => a.slotIndex - b.slotIndex)
 
   return (
-    <div className="flex flex-1 flex-col gap-2">
-      <div className="flex items-center gap-2">
+    <div className="flex flex-1 flex-col gap-3">
+      <div className="flex items-center gap-2.5">
         <button
           type="button"
           onClick={() => onNavigate({ screen: 'menu-tipo' })}
           aria-label="Atrás"
-          className="tactile flex h-7 w-7 items-center justify-center rounded-md border border-iron-700 text-wood-300 transition-colors hover:border-accent-600/60 hover:text-accent-300"
+          className="tactile flex h-8 w-8 items-center justify-center rounded-md border border-iron-700 text-base text-wood-300 transition-colors hover:border-accent-600/60 hover:text-accent-300"
         >
           ←
         </button>
-        <span className="text-2xs font-semibold uppercase tracking-[0.14em] text-wood-500">
-          {CATEGORY_ICON[view.category]} {CATEGORY_LABEL[view.category]}
+        <span className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.14em] text-wood-500">
+          <span aria-hidden="true" className="text-base">
+            {CATEGORY_ICON[view.category]}
+          </span>
+          {CATEGORY_LABEL[view.category]}
         </span>
       </div>
-      <div className="flex flex-wrap items-center gap-1.5">
+      <div className="flex flex-wrap items-center gap-2">
         {barsOfCategory.map((bar) => (
-          <div key={bar.id} className="flex items-center gap-1 rounded-lg border border-iron-700 bg-wood-950/50 px-2.5 py-1.5">
-            <button type="button" onClick={() => onSelectBar(bar)} className="tactile text-xs text-wood-200 hover:text-accent-300">
+          <div key={bar.id} className="flex items-center gap-1.5 rounded-lg border border-iron-700 bg-wood-950/50 px-3 py-2">
+            <button type="button" onClick={() => onSelectBar(bar)} className="tactile text-sm text-wood-200 hover:text-accent-300">
               {bar.name} <span className="text-wood-500">({bar.abilityNames.length})</span>
             </button>
             <button
               type="button"
               onClick={() => onEditBar(bar)}
               aria-label={`Editar ${bar.name}`}
-              className="tactile flex h-5 w-5 items-center justify-center rounded-full border border-iron-700 text-2xs text-wood-500 transition-colors hover:border-accent-600/60 hover:text-accent-300"
+              className="tactile flex h-6 w-6 items-center justify-center rounded-full border border-iron-700 text-xs text-wood-500 transition-colors hover:border-accent-600/60 hover:text-accent-300"
             >
               ✎
             </button>
@@ -102,7 +109,7 @@ export function SkillBarMenu({
           <button
             type="button"
             onClick={() => onCreateBar(view.category)}
-            className="tactile rounded-lg border border-dashed border-iron-700 px-2.5 py-1.5 text-xs text-wood-500 transition-colors hover:border-accent-600/60 hover:text-accent-300"
+            className="tactile rounded-lg border border-dashed border-iron-700 px-3 py-2 text-sm text-wood-500 transition-colors hover:border-accent-600/60 hover:text-accent-300"
           >
             + Nueva barra
           </button>
