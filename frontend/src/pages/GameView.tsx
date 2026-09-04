@@ -1872,6 +1872,7 @@ export function GameView() {
                       savedActions={savedActions}
                       onUse={handleAttachAbility}
                       onBackToComposer={handleBackToComposer}
+                      onBackToBars={() => setSkillHudView({ screen: 'menu-barras', category: activeBar.category })}
                       onEdit={() => setEditingSkillBar(activeBar)}
                       disabled={composerDisabled}
                     />

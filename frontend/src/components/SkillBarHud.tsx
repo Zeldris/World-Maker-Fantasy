@@ -6,11 +6,17 @@ import { TooltipAnchor } from './TooltipAnchor'
 /// el contenido de LA barra que el jugador eligió en SkillBarMenu.tsx (cualquiera de las 3
 /// categorías). `onUse` se reutiliza tal cual (handleAttachAbility de GameView.tsx) — mismo
 /// despacho que ya existía (abre modal o inserta chip en el composer), sin reimplementar nada.
+///
+/// Dos formas distintas de "volver" (feedback en vivo, 2026-09-04): ⌨️ vuelve directo al composer
+/// de texto libre; ↩ vuelve al menú de barras de la MISMA categoría (para cambiar de barra o de
+/// categoría sin pasar primero por el composer) — antes solo existía la primera, así que cambiar
+/// de barra exigía reabrir el menú desde cero cada vez.
 export function SkillBarHud({
   bar,
   savedActions,
   onUse,
   onBackToComposer,
+  onBackToBars,
   onEdit,
   disabled = false,
 }: {
@@ -18,6 +24,7 @@ export function SkillBarHud({
   savedActions: SavedActionInfo[]
   onUse: (ability: SavedActionInfo) => void
   onBackToComposer: () => void
+  onBackToBars: () => void
   onEdit: () => void
   disabled?: boolean
 }) {
@@ -29,6 +36,12 @@ export function SkillBarHud({
       <TooltipAnchor text="Volver a escribir tu acción libremente">
         <button type="button" onClick={onBackToComposer} disabled={disabled} aria-label="Texto libre" className="skill-slot tactile">
           <span aria-hidden="true">⌨️</span>
+        </button>
+      </TooltipAnchor>
+
+      <TooltipAnchor text="Volver a elegir otra barra">
+        <button type="button" onClick={onBackToBars} disabled={disabled} aria-label="Cambiar de barra" className="skill-slot tactile">
+          <span aria-hidden="true">↩</span>
         </button>
       </TooltipAnchor>
 
