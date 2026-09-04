@@ -483,6 +483,49 @@ describe('handleCombatTurnResolved — fusión de combateIniciado', () => {
       expect(result.current.combat.combatNpcsDisplay.find((n) => n.slug === 'orco')?.activeEffects).toEqual([])
     })
   })
+
+  // Bug real jugando en vivo (2026-09-04, combate múltiple real contra 4 Zense Ceniza): el botón
+  // "Matar" de la tarjeta efímera del log (LogPanel.tsx § entry.convalecienteOffers) no hacía NADA
+  // en el backend con 2+ individuos del mismo slug — `convalecienteOffers` solo guardaba `npcSlug`
+  // (compartido por TODOS los individuos de la especie en el mismo CombatEncounter), y
+  // `handleMatarConvaleciente` (GameView.tsx) busca por `combatKeyFor(n) === npcKey`, que para un
+  // combate múltiple real siempre es el `participantId` — un slug puro nunca coincide, así que el
+  // `.find()` fallaba en silencio y el clic no llamaba a ningún endpoint. Confirmado en Postgres
+  // real: 3 clics reales en "Matar" sin ningún LogEntry ni dismissedGrupo nuevos. Fix: la oferta
+  // efímera ahora también lleva `combatKey` (participantId cuando existe), igual que ya hacía la
+  // tarjeta PERSISTENTE (combatNpcsDisplay, LogPanel.tsx:559) desde el cierre del bug hermano del
+  // 2026-08-29/2026-09-03.
+  it('con 2+ individuos del mismo slug, el nuevo convaleciente ofrece su combatKey real (participantId), no el slug compartido', async () => {
+    mockClassify.mockResolvedValue({ classification: { atributo: 'fuerza', dificultad: 15, razon: 'x', banda: 'instantanea' }, roll: undefined } as never)
+    mockNarrate.mockResolvedValue(
+      baseNarrateResponse({
+        combateIniciado: {
+          npcs: [
+            npc({ slug: 'zense-ceniza', name: 'Zense Ceniza', condicionFisica: 'ILESO', participantId: 'p1' }),
+            npc({ slug: 'zense-ceniza', name: 'Zense Ceniza', condicionFisica: 'CONVALECIENTE', participantId: 'p2' }),
+          ],
+        },
+      }) as never,
+    )
+    const { result } = renderHook(() => useHarness())
+    act(() =>
+      result.current.setCombateIniciado({
+        npcs: [
+          npc({ slug: 'zense-ceniza', name: 'Zense Ceniza', condicionFisica: 'ILESO', participantId: 'p1' }),
+          npc({ slug: 'zense-ceniza', name: 'Zense Ceniza', condicionFisica: 'ILESO', participantId: 'p2' }),
+        ],
+      }),
+    )
+    act(() => result.current.combat.openCombat())
+
+    await act(() => result.current.combat.submitCombatAction('Ataco a mi enemigo', {}))
+
+    await waitFor(() => {
+      expect(result.current.characterLog[0]?.convalecienteOffers).toEqual([
+        expect.objectContaining({ npcSlug: 'zense-ceniza', combatKey: 'p2' }),
+      ])
+    })
+  })
 })
 
 // REDISEÑADO 2026-08-30 (petición explícita, dos rondas: "matar tiene que abrir el combate de

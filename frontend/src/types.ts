@@ -405,9 +405,20 @@ export interface LogEntry {
   /// combate en que uno o más NPC pasan a CONVALECIENTE por primera vez; LogPanel pinta, por cada
   /// uno, una tarjeta con Matar/Capturar/Clemente (mismo fondo amarillo que `questOffer`). Efímero
   /// tal cual, pero el estado de "ya resuelto" no se limpia aquí — se deriva en vivo comparando
-  /// `npcSlug` contra `combatNpcsDisplay` (useCombatFlow.ts), así que sigue siendo correcto incluso
-  /// si la jugadora responde desde una tarjeta de un turno anterior a esta.
-  convalecienteOffers?: { npcSlug: string; npcName: string; capturable: boolean }[]
+  /// `combatKey` (participantId si existe, si no npcSlug — ver `combatKeyFor`) contra
+  /// `combatNpcsDisplay` (useCombatFlow.ts), así que sigue siendo correcto incluso si la jugadora
+  /// responde desde una tarjeta de un turno anterior a esta.
+  /// `combatKey` (bug real, 2026-09-04, combate múltiple con 2+ individuos del mismo slug —
+  /// "Zense Ceniza #1/#2/#3/#4"): antes solo se guardaba `npcSlug`, compartido por TODOS los
+  /// individuos de la misma especie en el mismo `CombatEncounter` — el "¿ya resuelto?" de
+  /// `LogPanel.tsx` siempre resolvía al PRIMERO de ese slug en `combatNpcsDisplay`, y el propio
+  /// botón "Matar"/"Capturar"/"Clemente" llamaba a `handleMatarConvaleciente` con ese slug puro,
+  /// que nunca coincide con ningún `combatKeyFor` real (siempre un `participantId` cuando hay
+  /// varios) — el clic no hacía NADA en el backend, la tarjeta solo desaparecía por el falso
+  /// positivo del "ya resuelto". Mismo patrón que el bug ya cerrado en `useCombatFlow.ts`
+  /// (2026-08-29) y en la propia `LogPanel.tsx` (2026-09-03), reaparecido aquí porque esta
+  /// oferta efímera nunca llegó a transportar el dato.
+  convalecienteOffers?: { npcSlug: string; combatKey: string; npcName: string; capturable: boolean }[]
   /// Recolección por texto libre redirigida al modal real (Pieza 6d, 2026-09-03, "mundo
   /// determinista, el narrador solo narra") — presente en la LogEntry de bloqueo cuando el
   /// jugador citó una fuente real de recolección de terreno (MINERIA/TALA/EXTRACCION/PESCA/

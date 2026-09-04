@@ -630,7 +630,7 @@ export function useCombatFlow(params: UseCombatFlowParams) {
     // vuelve a ofrecer tarjeta.
     const newlyConvalecientes = (params.combate?.npcs ?? [])
       .filter((n) => n.condicionFisica === 'CONVALECIENTE' && combatNpcsDisplay.find((d) => combatKeyFor(d) === combatKeyFor(n))?.condicion !== 'CONVALECIENTE')
-      .map((n) => ({ npcSlug: n.slug, npcName: n.name, capturable: n.capturable }))
+      .map((n) => ({ npcSlug: n.slug, combatKey: combatKeyFor(n), npcName: n.name, capturable: n.capturable }))
     setCharacterLog((prev) => {
       const next = [
         ...prev,

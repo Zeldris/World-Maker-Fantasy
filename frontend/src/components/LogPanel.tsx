@@ -449,20 +449,20 @@ export const LogPanel = memo(function LogPanel({
                   ninguna recarga ha intervenido (si ya se resolvió, sigue mostrando "Resuelto." como
                   siempre; si sigue pendiente, no repite los mismos 3 botones que ya están abajo). */}
               {entry.convalecienteOffers?.map((offer) => {
-                const npc = combatNpcsDisplay?.find((n) => n.slug === offer.npcSlug)
+                const npc = combatNpcsDisplay?.find((n) => combatKeyFor(n) === offer.combatKey)
                 const resuelto = !npc || npc.condicion === 'MUERTO' || !!npc.dismissed
                 if (!resuelto) return null
                 return (
                   <OfferCard
-                    key={offer.npcSlug}
+                    key={offer.combatKey}
                     tone="danger"
                     icon="⚠️"
                     title={`${offer.npcName} está convaleciente`}
                     resolvedText="Resuelto."
                     actions={[
-                      { label: 'Matar', tone: 'danger', onClick: () => onMatarConvaleciente?.(offer.npcSlug) },
-                      ...(offer.capturable ? [{ label: 'Capturar', tone: 'accent' as const, onClick: () => onCapturarConvaleciente?.(offer.npcSlug) }] : []),
-                      { label: 'Clemente', tone: 'neutral', onClick: () => onClementeConvaleciente?.(offer.npcSlug) },
+                      { label: 'Matar', tone: 'danger', onClick: () => onMatarConvaleciente?.(offer.combatKey) },
+                      ...(offer.capturable ? [{ label: 'Capturar', tone: 'accent' as const, onClick: () => onCapturarConvaleciente?.(offer.combatKey) }] : []),
+                      { label: 'Clemente', tone: 'neutral', onClick: () => onClementeConvaleciente?.(offer.combatKey) },
                     ]}
                   />
                 )
