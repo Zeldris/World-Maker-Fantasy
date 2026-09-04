@@ -79,10 +79,26 @@ describe('npcCombatAbilitiesFor', () => {
     expect(abilities.find((a) => a.name === 'Firmeza Férrea')?.rol).toBe('defensa');
   });
 
-  it('añade la habilidad racial humanoide cuando tiene raza asignada', () => {
+  // Bug real jugando en vivo (2026-09-04: "el Orco Enfurecido usó Sangre del Estallido... juraría
+  // que la descatalogamos") — la racial activa humanoide (Sangre del Estallido/Piel de Guerra) se
+  // quitó del roster de NPC, mismo criterio que ya se aplicó al jugador el 2026-09-01: sustituida
+  // por una pasiva única (racialPassives.ts), nunca una acción de turno. Se quita SIEMPRE, tenga o
+  // no clase asignada (Ataque base + Esquivar/Defenderse/Descansar siguen incondicionales, así que
+  // nadie se queda sin nada usable).
+  it('NUNCA añade la habilidad racial activa humanoide, tenga raza asignada o no (sustituida por pasiva única, mismo criterio que el jugador)', () => {
     const npc: NpcForCombatAbilities = { level: 1, attributes: ATTRS, raza: 'orcos', clase: null, ataqueNatural: null, habilidadesRaciales: [] };
     const abilities = npcCombatAbilitiesFor(npc, []);
-    expect(abilities.some((a) => a.name === 'Sangre del Estallido')).toBe(true);
+    expect(abilities.some((a) => a.name === 'Sangre del Estallido')).toBe(false);
+    expect(abilities.some((a) => a.name === 'Piel de Guerra')).toBe(false);
+    expect(abilities.map((a) => a.name)).toEqual(['Ataque base', 'Esquivar', 'Defenderse', 'Descansar']);
+  });
+
+  it('con raza Y clase asignadas (ej. Orco Enfurecido real, GUERRERO/BERSERKER), usa solo las de clase — nunca la racial activa vieja', () => {
+    const npc: NpcForCombatAbilities = { level: 1, attributes: ATTRS, raza: 'orcos', clase: 'GUERRERO', ataqueNatural: null, habilidadesRaciales: [] };
+    const abilities = npcCombatAbilitiesFor(npc, []);
+    expect(abilities.some((a) => a.name === 'Sangre del Estallido')).toBe(false);
+    expect(abilities.some((a) => a.name === 'Piel de Guerra')).toBe(false);
+    expect(abilities.some((a) => a.name === 'Firmeza Férrea')).toBe(true);
   });
 
   it('añade las habilidades raciales de fauna tal cual vienen (sin duplicar con `raza`)', () => {

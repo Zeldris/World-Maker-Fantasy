@@ -2,7 +2,6 @@ import type { Attribute, AttributeBlock } from './dice.js';
 import type { AbilityEffect, AbilityRol } from '@prisma/client';
 import { baseAttackFor } from './baseAttack.js';
 import { classAbilityUnlocksForClase, type Clase, type Especializacion } from './classAbilities.js';
-import { BERIG_RAZAS } from './berigLore.js';
 import type { NpcHabilidadRacialInScene } from './npcScene.js';
 import { faunaCategoriaAbilitiesForLevel, type FaunaCategoria } from './faunaAbilities.js';
 import { ENERGY_COST_BASICA, ENERGY_COST_ATAQUE_BASICO } from './energy.js';
@@ -119,29 +118,18 @@ export function npcCombatAbilitiesFor(npc: NpcForCombatAbilities, weaponNames: s
     }
   }
 
-  if (npc.raza) {
-    const raza = BERIG_RAZAS.find((r) => r.slug === npc.raza);
-    if (raza) {
-      abilities.push({
-        name: raza.habilidadesRaciales.ataque.name,
-        description: raza.habilidadesRaciales.ataque.description,
-        attribute: raza.habilidadesRaciales.ataque.preferredAttribute,
-        effects: [],
-        rol: 'ataque',
-        energyCost: ENERGY_COST_BASICA,
-        energyRegen: 0,
-      });
-      abilities.push({
-        name: raza.habilidadesRaciales.defensa.name,
-        description: raza.habilidadesRaciales.defensa.description,
-        attribute: raza.habilidadesRaciales.defensa.preferredAttribute,
-        effects: [],
-        rol: 'defensa',
-        energyCost: ENERGY_COST_BASICA,
-        energyRegen: 0,
-      });
-    }
-  }
+  // Bug real jugando en vivo (2026-09-04: "el Orco Enfurecido usó Sangre del Estallido... juraría
+  // que la descatalogamos"): este bloque seguía empujando las 2 habilidades raciales activas
+  // VIEJAS (ataque/defensa, p.ej. "Sangre del Estallido"/"Piel de Guerra") para CUALQUIER NPC con
+  // `raza`, incondicionalmente — incluso el Orco Enfurecido, que ya tiene `clase: GUERRERO` /
+  // `especializacion: BERSERKER` real (worldCatalog.ts) y debería usar solo su kit de clase. El
+  // camino gemelo del JUGADOR se cerró el 2026-09-01 (`dynamicCombatAbilitiesFor`,
+  // dynamicAbilities.ts) cuando el rediseño de pasivas raciales (2026-08-28, `racialPassives.ts`)
+  // las sustituyó por una única pasiva automática — este lado de NPC nunca se tocó en la misma
+  // pasada. Decisión explícita esta vez: quitarlo de TODO NPC, tenga clase o no (nunca deja a
+  // nadie sin nada usable — Ataque base arriba y Esquivar/Defenderse genéricos más abajo son
+  // incondicionales). `BerigRazaInfo.habilidadesRaciales` en `berigLore.ts` se deja intacto —
+  // sigue siendo lore/dato de referencia, solo se quita el punto que lo convertía en acción real.
 
   // Sistema de categorías de raza de fauna (2026-09-02) — las 7 habilidades base de
   // `npc.faunaCategoria`, filtradas por nivel igual que las de clase de arriba. Sistema PARALELO

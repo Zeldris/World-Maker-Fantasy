@@ -639,8 +639,11 @@ describe('combate múltiple: orquestación real contra Postgres', () => {
     // llegar al roll de la tirada, confirmadas con depuración en vivo antes de fijar esta
     // secuencia):
     // 1) `chooseNpcAbility(opresor, 'ataque', ...)` — roster filtrado a rol:'ataque'+CONTROL da
-    //    `[Ataque base, Carga Rúnica, Grillete Rúnico, Opresión Mental, Sangre del Estallido]` (5).
-    //    `Math.floor(0.7*5)=3` → Opresión Mental.
+    //    `[Ataque base, Carga Rúnica, Grillete Rúnico, Opresión Mental]` (4 — la racial activa
+    //    "Sangre del Estallido" se quitó del roster de NPC, 2026-09-04, bug real jugando en vivo:
+    //    "el Orco Enfurecido usó Sangre del Estallido... juraría que la descatalogamos", mismo
+    //    criterio ya aplicado al jugador el 2026-09-01, ver npcCombatAbilities.ts). `Math.floor(0.9*4)=3`
+    //    → Opresión Mental (índice 3, confirmado con debug_roster.mts contra el catálogo real).
     // 2) `chooseNpcAbility(rival, 'defensa', ...)` — primer random decide si prefiere defensiva
     //    (línea `random() < 0.7`); 0.99 (`>=0.7`) fuerza caer al roster COMPLETO (línea
     //    `affordable[...]`, no solo defensivas). Segundo random elige el índice: roster real del
@@ -650,7 +653,7 @@ describe('combate múltiple: orquestación real contra Postgres', () => {
     // 3-4) `rollD20` del atacante y del defensor (combatExchange.ts) — ambos con roll alto
     //    (`Math.floor(0.9*20)+1=19`) para que la tirada del opresor tenga éxito con margen incluso
     //    con `magia:8` (bono +4, resultado 23 vs dificultad fija 15).
-    const secuenciaPorTurno = [0.7, 0.99, 0.1, 0.9, 0.9];
+    const secuenciaPorTurno = [0.9, 0.99, 0.1, 0.9, 0.9];
     const randomSpy = vi.spyOn(Math, 'random');
     try {
       // 1v1 puro NPC vs NPC, sin jugadora (mismo patrón que otros tests de este archivo, MULTIPLE/
