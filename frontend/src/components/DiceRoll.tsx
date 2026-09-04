@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { RollInfo, CombatExchangeSideInfo } from '../types'
 import { attributeLabels, attributeColorClasses } from '../lib/dice'
 import { gradoOf, formatMultiplier, difficultyLabelFor } from './CombatExchangeBadge'
@@ -157,12 +157,35 @@ export function DiceFace({
   )
 }
 
+/// Scroll automático al aparecer una tirada (2026-09-04, petición explícita jugando en vivo: "donde
+/// se este ejecutando la tirada de dados el foco y el scroll deben apuntar a ese elemento que noto
+/// que a veces me lo pierdo... por ejemplo en el de iniciativa en combate"). Centralizado aquí (no
+/// en cada consumidor) porque `DiceRollSingle`/`DiceRollVs` se MONTAN de cero en cada tirada nueva
+/// (nunca premontados cambiando de contenido, ver los `{roll && <.../>}` de LogPanel/CombatPanel/
+/// TameoModal) — un `useEffect` sin dependencias en el propio componente se dispara exactamente una
+/// vez por tirada real, sin tocar los sitios de llamada. `block: 'nearest'` en vez de `'center'`:
+/// si ya está parcialmente visible (caso típico, la tirada suele aparecer al final de un contenedor
+/// que ya se scrollea solo) no salta de más, solo corrige lo justo para que quede a la vista.
+/// Deliberadamente SIN `.focus()` — `CombatPanel.tsx` ya documentó (2026-08-31) que robar el foco
+/// al abrir combate es más intrusivo que útil; mismo criterio aquí, el scroll basta para "no
+/// perdérsela" sin secuestrar el teclado de en medio de lo que el jugador esté haciendo.
+function useScrollIntoViewOnMount<T extends HTMLElement>() {
+  const ref = useRef<T>(null)
+  useEffect(() => {
+    // `scrollIntoView` no existe en jsdom (entorno de test) — comprobación explícita en vez de
+    // solo `?.` en el elemento, que no protege contra un método ausente del todo.
+    ref.current?.scrollIntoView?.({ behavior: 'smooth', block: 'nearest' })
+  }, [])
+  return ref
+}
+
 /// Tirada de un solo lado (turno normal, Huir, o cualquier check simple sin oposición) — sustituye
 /// a `RollBadge.tsx` cuando se quiere el momento de "tirada en vivo" (primera vez que se ve);
 /// `RollBadge` se mantiene como modo histórico/estático para tiradas ya pasadas (Diario, recarga).
 export function DiceRollSingle({ roll, label, showDifficulty = true }: { roll: RollInfo | CombatExchangeSideInfo; label?: string; showDifficulty?: boolean }) {
+  const ref = useScrollIntoViewOnMount<HTMLDivElement>()
   return (
-    <div className="animate-entry-in mt-2 flex items-center justify-center rounded-lg border border-dashed border-iron-700 bg-wood-950/30 px-3 py-3">
+    <div ref={ref} className="animate-entry-in mt-2 flex items-center justify-center rounded-lg border border-dashed border-iron-700 bg-wood-950/30 px-3 py-3">
       <DiceFace
         label={label ?? 'Tú'}
         side={roll}
@@ -194,9 +217,10 @@ export function DiceRollVs({
 }) {
   const leftDelayMs = leftFirst ? 0 : ROLL_DURATION_MS
   const rightDelayMs = leftFirst ? ROLL_DURATION_MS : 0
+  const ref = useScrollIntoViewOnMount<HTMLDivElement>()
 
   return (
-    <div className="animate-entry-in mt-2 flex items-center justify-center gap-14 rounded-lg border border-dashed border-iron-700 bg-wood-950/30 px-3 py-3">
+    <div ref={ref} className="animate-entry-in mt-2 flex items-center justify-center gap-14 rounded-lg border border-dashed border-iron-700 bg-wood-950/30 px-3 py-3">
       <DiceFace label={leftLabel ?? 'Tú'} side={left} startDelayMs={leftDelayMs} showDifficulty={showDifficulty} />
       <span className="text-xs text-wood-600">vs</span>
       <DiceFace label={rightLabel ?? 'el enemigo'} side={right} startDelayMs={rightDelayMs} showDifficulty={showDifficulty} />
