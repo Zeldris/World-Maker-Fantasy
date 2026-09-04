@@ -78,13 +78,25 @@ ya documentado), `tsc -b` limpio en backend y frontend.
 contra código real con 3 agentes en paralelo, tras encontrar que la primera pasada también tenía
 errores: 6 de los 25 ítems del primer checklist ya estaban cerrados o llevaban matices importantes)
 
-**Diseño con alcance ya definido, solo falta implementar** (2, no 4 — "Matar" ya se cayó de esta
-lista, y `questSlug` se cerró hoy, ver abajo):
-- **Balance del primer combate (Orco Enfurecido/misión Gistera)** — tras 8 turnos de intercambio en
-  un combate real, ni asegura victoria ni se siente "asequible" para un tutorial de facto de nivel
-  1. Sin tocar desde 2026-08-28 (`git log -G` sobre el bloque del NPC solo muestra el rebalanceo
-  original de 2026-07-29 y el rename cosmético Arcano→Magia). Ver `docs/checklist-pruebas-juego.md`
-  punto 1.5.
+**Diseño con alcance ya definido, solo falta implementar** (1, no 4 — "Matar" ya se cayó de esta
+lista, `questSlug` se cerró el 2026-09-03, y el balance del primer combate se cerró hoy, ver abajo):
+- ✅ **CERRADO (2026-09-04) — Balance del primer combate (Orco Enfurecido/misión Gistera)**: tras 8
+  turnos de intercambio en un combate real, ni aseguraba victoria ni se sentía "asequible" para un
+  tutorial de facto de nivel 1. Investigado a fondo el motor de combate 1v1: usa tramos puros por
+  golpe conectado (Ileso→Herido→Grave→Convaleciente→Muerto, sin daño variable) sobre un check
+  opuesto d20 con margen amplio de "sin efecto" — con stats parejas, el combate se alarga de forma
+  matemáticamente esperable (no había ningún bug de código, el único mando de diseño real es
+  stats/equipo del NPC). De paso se detectó un efecto colateral no intencionado: la recalibración
+  de `amuleto-hueso` del 2026-09-02 (por motivos de lore, nada que ver con este combate) le dio al
+  orco +1 voluntad efectiva que no tenía cuando se decidió el nerf original de 2026-07-29. **Fix**:
+  `worldCatalog.ts` — fuerza/constitución bajadas -2 cada una (6/5, las que de verdad pesan en su
+  tirada), `amuleto-hueso` retirado del `loadout` y del saqueo (petición explícita: "se supone que
+  la maza y el amuleto se consiguen porque lo vences" — quitarlo de equipo sin quitarlo también del
+  loot habría sido incoherente), sustituido por `vendaje-improvisado-orcos-llanuras` +
+  `racion-carne-ahumada` (curativo + comida, coherente con "guerrero de campaña real", no solo
+  trofeos). Ver la fórmula general de loot de NPC anotada en `docs/ampliar-lore.md` § equipo/loot,
+  aplicada aquí por primera vez. Pendiente de reverificar en vivo el combate completo tras el
+  próximo reinicio.
 - **Sub-combates fragmentados (>4v4) con fallo de servidor a mitad** — confirmado con precisión:
   `cazar.ts:493-515` crea TODOS los `CombatEncounter` (incluidos los fragmentos autónomos) dentro de
   una única transacción, pero `resolverTurnosAutonomosHastaJugadora` (línea 525-529) los resuelve

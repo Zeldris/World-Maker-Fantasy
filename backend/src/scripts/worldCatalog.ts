@@ -2873,8 +2873,18 @@ export const npcs: NpcInput[] = [
     // tan complicado como es ahora" — es el primer combate real del juego): bajado de nivel 2 a
     // nivel 1 (mismo nivel que el personaje recién creado, la banda de dificultad más favorable) y
     // fuerza/voluntad ligeramente reducidas frente a la versión original.
+    //
+    // Segundo rebalanceo (2026-09-04, hallazgo jugando en vivo el 2026-08-28: 8 turnos de
+    // intercambio solo bajaron a ambos combatientes a Grave — el motor de combate 1v1 usa tramos
+    // puros por golpe conectado, sin daño variable, así que con stats parejas el combate se alarga
+    // de forma natural). De paso se detectó un efecto colateral no intencionado: el 2026-09-02 se
+    // recalibró `amuleto-hueso` (por motivos de lore/cosmético, nada que ver con este combate) de
+    // `{carisma:3}` a `{voluntad:1, carisma:2}`, dándole a este NPC +1 voluntad efectiva que no
+    // tenía cuando se decidió el nerf de julio. Fuerza/constitución bajadas -2 cada una (las que de
+    // verdad pesan en la tirada de este NPC — sin magia/inteligencia relevantes en combate cuerpo a
+    // cuerpo) para compensar sin tener que tocar la fórmula de tirada/daño en sí.
     level: 1,
-    attributes: { fuerza: 8, destreza: 4, constitucion: 7, inteligencia: 4, voluntad: 6, carisma: 2, magia: 0 },
+    attributes: { fuerza: 6, destreza: 4, constitucion: 5, inteligencia: 4, voluntad: 6, carisma: 2, magia: 0 },
     bio: "Orco del Clan Serhu, calvo y de complexión corpulenta, piel beige agrietada, sin pintura de clan visible — se la arrancó él mismo, en el mismo arranque de furia que lo trajo hasta aquí. Uno de los tres guerreros pagados en secreto por los Goirntes para asegurar la muerte del artesano Uhuld Koh, cuyo plan amenazaba con exponer la represión de los suyos: fue él quien le aplastó el cráneo con la maza después de que Uhuld, ya herido, lo alcanzara con el hacha. Vio huir esa misma noche a la hija adoptiva de Uhuld y la siguió por su cuenta, sin avisar a sus compañeros — ni él mismo sabe ya si por acabar el encargo o por una obsesión que se le ha ido de las manos. A pocos kilómetros del Karot Veku estuvo a punto de caer en una trampa que ella le tendió; la humillación de haberlo estado a punto de lograr una fugitiva a la que dobla en tamaño terminó de quebrarlo. Duerme y merodea en la Hondonada del Eco, donde el terreno hundido le permite ver llegar a cualquiera antes de que lo vean a él.",
     personality: 'Errático y violento con cualquiera, obsesivo con ella — ataca al primer contacto sin intentar hablar.',
     homeLocationSlug: 'hondonada-del-eco',
@@ -2891,9 +2901,16 @@ export const npcs: NpcInput[] = [
     // inconsciente al orco") — ya no se saquea del cadáver, se entrega solo como recompensa real
     // de la misión "Acabar con el Orco Enfurecido" (Quest.rewardItems, ver
     // completeNpcTargetQuests en questResolution.ts), desacoplado del saqueo.
+    //
+    // `amuleto-hueso` retirado del loadout (2026-09-04, mismo rebalanceo de arriba): quitar de
+    // stats un bonus que solo existía porque el NPC lo llevaba puesto sin quitarlo también del
+    // saqueo habría sido incoherente (petición explícita: "se supone que la maza y el amuleto se
+    // consiguen porque lo vences"). Sustituido por vendaje + ración — loot de un guerrero de
+    // campaña real, no solo trofeos, y le da al jugador algo útil justo tras el primer combate.
     loadout: [
       { itemSlug: 'maza-orca', notas: 'Astillada, con sangre seca' },
-      { itemSlug: 'amuleto-hueso' },
+      { itemSlug: 'vendaje-improvisado-orcos-llanuras', notas: 'A medio usar, manchado' },
+      { itemSlug: 'racion-carne-ahumada' },
     ],
   },
 

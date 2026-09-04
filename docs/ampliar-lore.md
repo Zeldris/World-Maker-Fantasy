@@ -269,6 +269,27 @@ esta regla). Campos obligatorios:
 - `WorldPopulation`: una fila por producto (`targetType: 'RECURSO'`), con la cifra propuesta
   explícita para que la usuaria la confirme o corrija — nunca inventar sin proponerla en voz alta.
 
+**Equipo/loot de un NPC** (`loadout` en `worldCatalog.ts`) — fórmula general confirmada
+2026-09-04 (rebalanceo del Orco Enfurecido, `docs/21-roadmap.md`): salvo que la ficha del NPC pida
+explícitamente lo contrario (fauna pura, un NPC ya despojado a propósito, etc.), un `loadout` de
+NPC humanoide/con inventario real debería incluir, casi siempre:
+- **1 objeto curativo** (`category: 'medicinal'`, p.ej. `vendaje-improvisado-*` o una cataplasma —
+  revisar si ya existe uno tematizado a la cultura/región del NPC antes de crear uno nuevo).
+- **1 objeto de comida** y, si tiene sentido para el personaje/contexto, **agua** (`category:
+  'consumible'`/`'alimento'`, p.ej. `racion-carne-ahumada`, `odre-agua` — revisar equivalentes ya
+  existentes primero).
+- **Lo que lleve equipado de verdad** (arma, armadura, cosméticos) — coherente con lo que la propia
+  bio/rol describe, nunca más de lo que un personaje así llevaría encima.
+- **Materiales/recursos no equipables** si el rol lo justifica (un minero con mena en el bolsillo,
+  un cazador con una piel a medio curtir).
+
+Regla de coherencia (la que motivó esta fórmula): **todo lo que aparece en `loadout` se saquea del
+cadáver** — no hay ningún mecanismo que separe "lo que el NPC lleva puesto" de "lo que suelta al
+morir" salvo la recompensa de misión explícita (`Quest.rewardItems`, ver
+`docs/19-post-combate-y-recompensas-mision.md`). Si se le quita un objeto al `loadout` por
+cualquier motivo (rebalanceo de combate, corrección de lore), hay que decidir a la vez si ese
+objeto desaparece del todo del saqueo o se sustituye por otro coherente — nunca dejarlo a medias.
+
 ## 3. Qué NO hacer
 
 - No editar `docs/12-mundo-estructurado.md` como si el pasado se pudiera reescribir — si una
