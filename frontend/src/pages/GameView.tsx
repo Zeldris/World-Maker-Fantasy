@@ -91,7 +91,6 @@ import type {
   AttributeBlock,
   Clase,
   CombatExchangeInfo,
-  AgendaEntryInfo,
   EntornoTemporalInfo,
   CompanionInfo,
   CondicionFisica,
@@ -230,9 +229,6 @@ export function GameView() {
   // Estación/clima (2026-08-27, auditoría backend↔frontend + diseño/UX) — mismo patrón que
   // fictionalDate: se sincroniza al cargar la partida y se actualiza con cada respuesta de turno.
   const [entorno, setEntorno] = useState<EntornoTemporalInfo | null>(null)
-  // WorldState.agenda (2026-08-27, auditoría backend↔frontend + diseño/UX § 2.3) — solo se
-  // sincroniza al cargar/resincronizar la partida (avanza en el tick de fondo, no turno a turno).
-  const [worldAgenda, setWorldAgenda] = useState<AgendaEntryInfo[]>([])
   const [currentLocation, setCurrentLocation] = useState<CurrentLocationInfo | null>(null)
   // Roster estático de recetas de oficio + estado real de cada receta EN ESTA PARTIDA — ver
   // src/hooks/useRecipesData.ts para la lógica completa (por qué dos fetches independientes, de
@@ -529,7 +525,6 @@ export function GameView() {
     setCondicionFisica(save.condicionFisica)
     setPlayerActiveEffects(save.activeEffects)
     setEntorno(save.entorno)
-    setWorldAgenda(save.worldAgenda)
     setEnergia(save.energia)
     setEnergiaMax(save.energiaMax)
     setHambre(save.hambre)
@@ -2069,7 +2064,7 @@ export function GameView() {
             />
           )}
           {activePanel === 'reputacion' && (
-            <ReputacionPanel factionsStatus={factionsStatus} factions={enciclopediaData?.factions ?? []} worldAgenda={worldAgenda} />
+            <ReputacionPanel factionsStatus={factionsStatus} factions={enciclopediaData?.factions ?? []} />
           )}
           {activePanel === 'mapa' && (
             <MapaPanel

@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
 import { PanelEmptyState } from '../PanelEmptyState'
-import type { AgendaEntryInfo } from '../../types'
 import type { EnciclopediaFaccionInfo } from '../../lib/api'
 import { faccionToDetailTarget } from '../../lib/enciclopediaTargets'
 import { useEnciclopediaLink } from '../../context/useEnciclopediaLink'
@@ -105,30 +104,6 @@ function FactionRow({
   )
 }
 
-/// WorldState.agenda (2026-08-27, auditoría backend↔frontend + diseño/UX § 2.3: "el sitio natural
-/// es ReputacionPanel mismo: una tarjeta fija arriba de la lista de facciones... reutilizar el
-/// lenguaje de barra por etapas que ya existe (nivel de profesión, HabilidadesPanel.tsx) evita
-/// inventar un tercer patrón de 'progreso' en la misma app"). Segmentos discretos (uno por etapa),
-/// no un porcentaje continuo — `maxStage` es un entero pequeño, cada segmento es un hito real
-/// cruzado, no una fracción arbitraria.
-function AgendaCard({ entry }: { entry: AgendaEntryInfo }) {
-  return (
-    <div className="rounded-lg border border-iron-700 bg-wood-950/40 px-3.5 py-2.5">
-      <div className="flex items-center justify-between text-xs">
-        <p className="font-medium text-wood-100">⚔️ {entry.title}</p>
-        <span className="font-mono tabular-nums text-wood-500">
-          Etapa {entry.stage}/{entry.maxStage}
-        </span>
-      </div>
-      <div className="mt-2 flex gap-1">
-        {Array.from({ length: entry.maxStage }).map((_, i) => (
-          <span key={i} className={`h-1.5 flex-1 rounded-full ${i < entry.stage ? 'bg-accent-500' : 'bg-iron-800'}`} />
-        ))}
-      </div>
-    </div>
-  )
-}
-
 interface ReputacionPanelProps {
   factionsStatus: Record<string, number>
   /// Enlace cruzado con Enciclopedia > Facciones (2026-08-27, auditoría de diseño/UX § 1.2:
@@ -136,15 +111,14 @@ interface ReputacionPanelProps {
   /// infraestructura para esto"). Solo se ofrece el enlace si la facción ya está descubierta —
   /// nunca revela una ficha de Enciclopedia todavía bloqueada desde aquí.
   factions: EnciclopediaFaccionInfo[]
-  worldAgenda: AgendaEntryInfo[]
 }
 
-export function ReputacionPanel({ factionsStatus, factions, worldAgenda }: ReputacionPanelProps) {
+export function ReputacionPanel({ factionsStatus, factions }: ReputacionPanelProps) {
   const entries = Object.entries(factionsStatus)
   const { onEntityDetail } = useEnciclopediaLink()
   const factionByName = new Map(factions.filter((f) => f.discovered).map((f) => [f.name, f]))
 
-  if (entries.length === 0 && worldAgenda.length === 0) {
+  if (entries.length === 0) {
     return (
       <PanelEmptyState
         icon="🤝"
@@ -156,9 +130,6 @@ export function ReputacionPanel({ factionsStatus, factions, worldAgenda }: Reput
 
   return (
     <div className="flex flex-col gap-3">
-      {worldAgenda.map((entry) => (
-        <AgendaCard key={entry.id} entry={entry} />
-      ))}
       {entries.map(([faction, value]) => (
         <FactionRow key={faction} faction={faction} value={value} factionEntry={factionByName.get(faction)} onEntityDetail={onEntityDetail} />
       ))}
