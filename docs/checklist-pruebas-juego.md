@@ -853,30 +853,44 @@ acceso a los logs reales del proceso backend, que corre fuera de este sandbox):
 (`cmtlwx13g0044rik16vto9iqy`, `cmtm3qi4b0001rirshc899tlc`, `cmtm4a83r001urirsx95kob96`,
 `cmtmjkmkv0001riduoyequbdn`) — las 4 se dejan sin tocar, como evidencia acumulada del patrón.
 
-## CAUSA RAÍZ REAL ENCONTRADA — no es un bug de Tarkor, es Ollama sin arrancar
+## CAUSA RAÍZ REAL — Ollama SÍ estaba arriba al arrancar, pero se cayó/colgó en algún punto
+posterior sin que nada lo detectara ni relanzara
 
-La usuaria compartió los logs reales de ambos procesos (backend Node y Ollama), zanjando el
-diagnóstico:
+La usuaria compartió los logs reales de ambos procesos (backend Node y Ollama). Primera lectura
+(incorrecta, corregida por la usuaria en el momento: "sí que estaba levantado") — Ollama se
+arranca SIEMPRE primero vía `iniciar-tarkor.sh`, antes que backend y frontend, así que sí estaba
+arriba al empezar la sesión de esta noche. Diagnóstico correcto:
 
 - **Log del backend** (`req-15`, `POST /turn/classify`, 07:44:20): se envía y **nunca recibe
   respuesta** — es la última petición de turno del log, sin ningún `"res":{...}` que la cierre.
-- **Log de Ollama**: el proceso **arranca desde cero a las 07:57:40** ("Listening on
-  127.0.0.1:11434", carga del modelo, warm-up) — **13 minutos después** de que el backend enviara
-  la petición. La generación real, una vez Ollama por fin está vivo, tarda solo 7.5s
-  (`POST /api/generate` → `200 OK` en `7.51603226s`) — el modelo/GPU/llama-server funcionan bien,
-  nunca fue un problema de rendimiento ni de código.
+- **Log de Ollama**: el proceso **vuelve a arrancar/recargar el modelo a las 07:53:42** ("Listening
+  on 127.0.0.1:11434", carga del modelo Qwen2.5 1.5B, warm-up) — esto es el **reinicio manual real
+  que la usuaria hizo** al ver que el turno seguía sin resolver, no un primer arranque — confirma
+  que en algún punto ANTES de las 07:44:20, Ollama dejó de responder de verdad (colgado o caído),
+  pese a haber arrancado bien al principio de la sesión.
+- **`iniciar-tarkor.sh` explica por qué nadie lo detectó**: el script comprueba
+  `curl -s -o /dev/null http://localhost:11434` **una única vez, al arrancar** — si Ollama
+  respondía en ESE momento, lo da por bueno para el resto de la sesión y nunca lo vuelve a
+  comprobar ni relanzar. Si Ollama se cae/cuelga más tarde (crash real, u otro proceso lo mata,
+  o simplemente deja de responder tras la sesión larga de pruebas de anoche con múltiples cuelgues
+  ya vistos), nada en el flujo de arranque lo nota — el backend sigue enviando peticiones a un
+  puerto que ya no tiene un proceso sano detrás.
+- Una vez Ollama reinició de verdad (07:53:42), la generación real tardó solo 7.5s
+  (`POST /api/generate` → `200 OK` en `7.51603226s`) — el modelo/GPU/llama-server funcionan bien
+  una vez el proceso está sano; nunca fue un problema de rendimiento ni de código de Tarkor.
 
-**Conclusión**: Ollama no estaba corriendo en absoluto cuando se envió el turno — ni el puerto
-11434 tenía nada escuchando. El `fetch` del backend hacia un puerto sin proceso real detrás quedó
-colgado de forma anómala (en vez de fallar rápido con `ECONNREFUSED`, como cabría esperar) durante
-los 13 minutos hasta que algo arrancó Ollama de verdad. **"Reiniciar el backend" nunca reinicia
-Ollama — son dos procesos independientes que hay que arrancar los dos.** Todo el trabajo de
-diagnóstico de esta noche sobre `turnLock.ts`/`ollamaQueue.ts`/`entityDiscovery.ts`/
-`playerActionCount` era una pista falsa — el código de Tarkor no tiene ningún bug aquí; el único
-hueco real que vale la pena considerar (no urgente, cosmético) es que un `fetch` contra un puerto
-sin nada escuchando debería fallar rápido en vez de colgarse silenciosamente sin ningún timeout de
-conexión TCP explícito — pero el síntoma real y accionable es simplemente "arrancar Ollama antes de
-jugar", no un cambio de código necesario.
+**Lo que queda genuinamente sin resolver**: por qué Ollama dejó de responder entre el arranque de
+la sesión y las 07:44:20 — no hay logs de Ollama de ESE tramo (el log compartido empieza ya en el
+reinicio de las 07:53:42), así que no se puede saber si crasheó, si algo lo mató, o si quedó en un
+estado colgado sin caerse del todo. Todo el trabajo de diagnóstico de esta noche sobre
+`turnLock.ts`/`ollamaQueue.ts`/`entityDiscovery.ts`/`playerActionCount` sigue siendo una pista
+descartable para ESTE incidente concreto (el código de Tarkor respondió como se esperaba una vez
+Ollama volvió a estar sano), pero el problema de fondo — Ollama puede caerse a mitad de sesión sin
+que nada lo note ni lo recupere — sigue abierto y es real.
+
+**Mejora real a considerar** (no urgente, para otra sesión): un chequeo periódico de salud de
+Ollama (más allá del check único de `iniciar-tarkor.sh` al arrancar) que relance el proceso si deja
+de responder, o al menos un aviso visible en vez de que el síntoma sea "el turno nunca vuelve".
 
 **Las 4 partidas con turnos colgados de esta noche seguirán así para siempre** (sus peticiones ya
 fallaron/expiraron del lado del backend en algún punto tras el timeout interno) — no hace falta
