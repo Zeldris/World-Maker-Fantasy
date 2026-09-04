@@ -4,6 +4,9 @@ import {
   dayForFictionalMinutes,
   formatFictionalDate,
   estacionFor,
+  yearFor,
+  diaRelativoEnEstacionFor,
+  calendarioFor,
   estacionNombreFor,
   climaFor,
   climaSeveridadAlMenos,
@@ -90,6 +93,56 @@ describe('estacionFor', () => {
 
   it('un año y medio después, misma estación que a mitad del primer año', () => {
     expect(estacionFor(1440 * (120 + 60))).toBe('OTONO');
+  });
+});
+
+// Diario en pestañas jerárquicas (2026-09-04) — Año/Día relativo, complemento de estacionFor.
+describe('yearFor', () => {
+  it('todo el primer año (días 1-120) es Año 1', () => {
+    expect(yearFor(0)).toBe(1);
+    expect(yearFor(1440 * 119)).toBe(1); // Día 120, último del Año 1
+  });
+
+  it('el Día 121 cruza a Año 2', () => {
+    expect(yearFor(1440 * 120)).toBe(2);
+    expect(yearFor(1440 * 239)).toBe(2); // Día 240, último del Año 2
+  });
+
+  it('el Día 241 cruza a Año 3', () => {
+    expect(yearFor(1440 * 240)).toBe(3);
+  });
+});
+
+describe('diaRelativoEnEstacionFor', () => {
+  it('Día 1 de partida es Día 1 de su estación', () => {
+    expect(diaRelativoEnEstacionFor(0)).toBe(1);
+  });
+
+  it('Día 30 (último de Primavera) es Día 30 relativo', () => {
+    expect(diaRelativoEnEstacionFor(1440 * 29)).toBe(30);
+  });
+
+  it('Día 31 (primero de Verano) vuelve a ser Día 1 relativo', () => {
+    expect(diaRelativoEnEstacionFor(1440 * 30)).toBe(1);
+  });
+
+  it('Día 120 (último del año, fin de Invierno) es Día 30 relativo', () => {
+    expect(diaRelativoEnEstacionFor(1440 * 119)).toBe(30);
+  });
+
+  it('Día 121 (primero del Año 2) vuelve a ser Día 1 relativo', () => {
+    expect(diaRelativoEnEstacionFor(1440 * 120)).toBe(1);
+  });
+});
+
+describe('calendarioFor', () => {
+  it('agrega year/estacion/diaRelativo/diaAbsoluto de forma coherente', () => {
+    expect(calendarioFor(1440 * 130)).toEqual({
+      year: 2,
+      estacion: 'PRIMAVERA', // Día 131, día 11 del Año 2 (1-30 del año = Primavera)
+      diaRelativo: 11,
+      diaAbsoluto: 131,
+    });
   });
 });
 

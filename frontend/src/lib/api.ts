@@ -16,6 +16,7 @@ import type {
   Dificultad,
   Especializacion,
   EquipSlot,
+  EstacionKey,
   InventoryItemInfo,
   ItemTipo,
   KingdomFoundedInfo,
@@ -558,7 +559,6 @@ export interface SaveDetail {
   /// recargó a mitad de una muerte pendiente de resolver (ver PendingDeathError arriba).
   pendingDeathResolution: boolean
   quests: QuestInfo[]
-  chapters: SessionSummaryInfo[]
   factionsStatus: Record<string, number>
   /// Combate pendiente reconstruido tras cualquier resincronización (bug real, 2026-07-23,
   /// "revisar partida"): antes solo viajaba en la respuesta directa de `/turn/narrate` — si el
@@ -771,7 +771,18 @@ export async function setLogEntryBanner(saveId: string, logEntryId: string, enti
   })
 }
 
-export interface DiarioEntry {
+/// Campos de calendario compartidos por entradas y capítulos (2026-09-04, Diario en pestañas
+/// jerárquicas Año → Estación → Día) — `calendarioFor` (worldClock.ts backend) resuelve los tres
+/// desde `fictionalMinutes`; `diaRelativo` es el día DENTRO de la estación (1-30), distinto del
+/// `day` absoluto de partida.
+interface DiarioCalendario {
+  year: number
+  estacion: EstacionKey
+  diaRelativo: number
+}
+
+export interface DiarioEntry extends DiarioCalendario {
+  kind: 'entry'
   id: string
   channel: LogEntry['channel']
   text: string
@@ -783,17 +794,34 @@ export interface DiarioEntry {
   xpHitoDelta?: number
   xpHitoLabel?: string
   createdAt: string
-  /// Día de ficción real (1-indexado, ver worldClock.ts) — para agrupar el registro completo por
-  /// día en vez de una lista plana (petición explícita, 2026-07-24). Nunca lleva banner de
-  /// entidad: el Diario es solo texto por diseño.
+  /// Día de ficción real (1-indexado, ver worldClock.ts) — absoluto de partida, distinto de
+  /// `diaRelativo`. Nunca lleva banner de entidad: el Diario es solo texto por diseño.
   day: number
+}
+
+/// Capítulo con fecha real ya resuelta (2026-09-04) — antes vivía aparte, sin fecha, en `chapters`
+/// (GET /saves/:id). Ahora se intercala dentro de la pestaña de Día que le corresponde.
+export interface DiarioChapterEntry extends DiarioCalendario {
+  kind: 'chapter'
+  chapterNumber: number
+  summary: string
+  createdAt: string
+}
+
+export type DiarioItem = DiarioEntry | DiarioChapterEntry
+
+export interface DiarioResponse {
+  entries: DiarioItem[]
+  /// Capítulos generados ANTES de que `SessionSummary` guardara `fictionalMinutes` (legado) — sin
+  /// fecha real, no se les inventa una Año/Día falso, se muestran aparte.
+  unplacedChapters: SessionSummaryInfo[]
 }
 
 /// Historial completo de la partida, agrupado por día de ficción (rework 2026-07-24: "el log de
 /// personaje solo muestre 24h... si quieres verlo todo vendrá clasificado por días en el diario").
 /// Fetch aparte y solo bajo demanda (se llama al abrir la pestaña Diario) — GET /saves/:id ya no
 /// carga esto para no sobrecargar la petición que se repite en cada carga de partida.
-export async function getDiario(saveId: string): Promise<DiarioEntry[]> {
+export async function getDiario(saveId: string): Promise<DiarioResponse> {
   return fetchJson(`${API_URL}/saves/${saveId}/diario`)
 }
 

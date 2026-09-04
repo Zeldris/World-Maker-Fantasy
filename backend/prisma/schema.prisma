@@ -2403,6 +2403,11 @@ model SessionSummary {
   chapterNumber Int
   summary       String
   createdAt     DateTime @default(now())
+  /// Minuto de ficción real en que se generó este capítulo (2026-09-04, Diario en pestañas
+  /// Año/Estación/Día) — nullable porque los capítulos ya existentes antes de este campo no lo
+  /// tienen; el Diario los trata como "sin fecha" en vez de inventarles una. Ver `calendarioFor`
+  /// (worldClock.ts) para derivar Año/Estación/Día relativo a partir de este valor.
+  fictionalMinutes Int?
 
   @@index([saveId, chapterNumber])
 }

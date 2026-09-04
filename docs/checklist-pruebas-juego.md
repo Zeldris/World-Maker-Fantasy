@@ -1126,3 +1126,44 @@ integración en verde** (único fallo: el mismo flake preexistente de "Múrgol",
 relación). Suite frontend completa: **197/197 en verde**. Pendiente reverificar en vivo jugando
 tras reiniciar backend y frontend: abrir el modal, comer una ración + beber agua, confirmar que el
 HUD sube Hambre/Sed y el log muestra la narración determinista.
+
+## Diario en pestañas jerárquicas Año → Estación → Día (2026-09-04)
+
+Ya estaba anotado como nota de diseño decidida por la usuaria en la sesión de pruebas jugando en
+vivo del 2026-09-03: el Diario mostraba el registro completo de la partida como una lista larga
+continua, solo agrupada visualmente por "Día N" (headers sticky), sin ningún filtro real. Se pidió
+reorganizarlo en pestañas jerárquicas Año → Estación → Día que de verdad filtren el contenido.
+
+Investigando se encontró que el calendario ficticio del juego ya derivaba Estación desde
+`fictionalMinutes` pero **nunca calculaba Año** (se descartaba el cociente), y que el "Resumen por
+capítulos" (LLM cada 15 turnos) no tenía ninguna fecha asociada — vivía como bloque fijo aparte,
+cargado por separado en `GET /saves/:id` (`chapters`).
+
+**Diseño acordado con la usuaria**: etiquetado "Año 1 / Primavera / Día 3 de esa estación" (cada
+nivel numerado dentro de su padre; el Día de la pestaña es RELATIVO a la estación, 1-30, no el día
+absoluto de partida). Dentro de una Estación, solo pestañas de Día con entradas reales (sin ruido
+de días vacíos). Los capítulos se fechan de verdad (`SessionSummary` gana `fictionalMinutes`) y se
+intercalan dentro de la pestaña de Día que les corresponde, con estilo distintivo — no bloque fijo
+aparte. La carga aparte de `chapters` en `GET /saves/:id` se elimina — el Diario se autoabastece.
+
+**Fijado**: `yearFor`/`diaRelativoEnEstacionFor`/`calendarioFor` nuevas (worldClock.ts), junto a
+`estacionFor` ya existente. `SessionSummary.fictionalMinutes Int?` nuevo (nullable — capítulos
+viejos se quedan "sin fecha", no se les inventa una). `GET /saves/:id/diario` fusiona `LogEntry` y
+`SessionSummary` en una sola respuesta `{ entries: DiarioItem[]; unplacedChapters: [...] }`, cada
+`entries` con `year`/`estacion`/`diaRelativo` ya resueltos y un discriminador `kind: 'entry' |
+'chapter'` para intercalarlos por `createdAt`. `DiarioPanel.tsx` rediseñado con 3 niveles de
+pestañas locales (`useState`, no controladas desde `GameView.tsx`), reutilizando el patrón visual
+de `PersonajePanel.tsx` — selecciona por defecto el Año/Estación/Día más reciente con contenido, y
+cambiar de Año/Estación resetea en cascada el nivel siguiente.
+
+**Verificado**: `tsc -b` limpio backend y frontend. Tests unitarios nuevos en `worldClock.test.ts`
+(`yearFor`/`diaRelativoEnEstacionFor`/`calendarioFor`, casos límite de cruce de año/estación). 1
+archivo de test de integración nuevo (`log.integration.test.ts`, 3 casos: entradas con
+year/estacion/diaRelativo coherentes, capítulo fechado intercalado con `kind: 'chapter'`, capítulo
+sin fecha en `unplacedChapters`) — en verde ejecutado solo y junto a `turn.integration.test.ts`.
+Suite completa backend: unitaria 1807/1807, integración con contención transitoria puntual en
+alguna corrida bajo carga (mismo gotcha ya documentado de Postgres/contención entre archivos, no
+una regresión — repetido varias veces con solo el flake de "Múrgol" restante). Suite frontend
+completa: 197/197 en verde. Pendiente reverificar en vivo jugando: abrir Diario, confirmar
+pestañas Año/Estación/Día, que el día por defecto es el más reciente con contenido, y que un
+capítulo generado (15+ turnos) aparece intercalado en su día real.

@@ -6232,7 +6232,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   // La transacción hizo commit de verdad — ahora sí se dispara la generación lenta de fondo (ver
   // el comentario de `chapterDue` más arriba).
   if (chapterDue) {
-    void scheduleChapterSummaryGeneration(saveId, characterName);
+    void scheduleChapterSummaryGeneration(saveId, characterName, nuevoFictionalMinutes);
   }
   // Captura en vivo para el pipeline DPO (plan "IA local propia", fase 2, 2026-08-11) — nunca
   // bloquea el turno, dispara DESPUÉS del commit, mismo patrón que scheduleChapterSummaryGeneration

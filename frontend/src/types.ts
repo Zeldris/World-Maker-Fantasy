@@ -762,11 +762,15 @@ export interface ActiveEffect {
   sourceAbility: string
 }
 
+/// Clave de estación, alias reutilizable (2026-09-04, Diario en pestañas Año/Estación/Día) — antes
+/// solo vivía inline dentro de `EntornoTemporalInfo.estacion.key`.
+export type EstacionKey = 'PRIMAVERA' | 'VERANO' | 'OTONO' | 'INVIERNO'
+
 /// Estación/clima (2026-08-27, auditoría backend↔frontend + diseño/UX) — `clima` es null fuera de
 /// Las Llanuras del Viento Rojo (única región con clima real diseñado hoy, ver `worldClock.ts`
 /// backend). `nombre` ya viene resuelto por raza (Kektira para orcos, glosa común para el resto).
 export interface EntornoTemporalInfo {
-  estacion: { key: 'PRIMAVERA' | 'VERANO' | 'OTONO' | 'INVIERNO'; nombre: string }
+  estacion: { key: EstacionKey; nombre: string }
   clima: { key: 'CLIMA_LLEVABLE' | 'VIENTO_FUERTE' | 'TORMENTA_GRANDE' | 'TORMENTA_EXTREMA'; nombre: string } | null
 }
 

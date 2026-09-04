@@ -109,7 +109,6 @@ import type {
   SavedActionCategory,
   SavedActionInfo,
   SecondaryAttributeBlock,
-  SessionSummaryInfo,
 } from '../types'
 
 /// Combina los adjuntos del composer con el texto libre en una única acción (docs/14-combate-y-muerte.md
@@ -379,7 +378,6 @@ export function GameView() {
   const COMBAT_DISABLED_WORLD_TABS: PanelId[] = ['mapa', 'diario', 'misiones']
 
   const [quests, setQuests] = useState<QuestInfo[]>([])
-  const [chapters, setChapters] = useState<SessionSummaryInfo[]>([])
 
   // Bloque de combate (deuda técnica 2026-08-21) — ver src/hooks/useCombatFlow.ts para la lógica
   // completa. `combateIniciado`/`lastInitiativeRoll` siguen viviendo aquí (los escribe también
@@ -546,7 +544,6 @@ export function GameView() {
     setPendingEspecializacionChoice(save.pendingEspecializacionChoice)
     setEspecializacionesDisponibles(save.especializacionesDisponibles ?? [])
     setQuests(save.quests)
-    setChapters(save.chapters)
     // Bug real (2026-07-23, "revisar partida"): antes `combateIniciado` solo se fijaba con la
     // respuesta directa de `/turn/narrate` — cualquier resincronización (sondeo de reconexión,
     // recarga de página) perdía el aviso de combate aunque el backend lo hubiera calculado bien.
@@ -2090,7 +2087,7 @@ export function GameView() {
               }}
             />
           )}
-          {activePanel === 'diario' && saveId && <DiarioPanel saveId={saveId} chapters={chapters} />}
+          {activePanel === 'diario' && saveId && <DiarioPanel saveId={saveId} />}
           {activePanel === 'inventario' && saveId && (
             <InventarioPanel
               saveId={saveId}

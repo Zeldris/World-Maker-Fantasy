@@ -49,7 +49,6 @@ export async function detailRoutes(app: FastifyInstance) {
         savedActions: { orderBy: { createdAt: 'asc' } },
         currentLocation: true,
         quests: { orderBy: { createdAt: 'asc' } },
-        sessionSummaries: { orderBy: { chapterNumber: 'asc' } },
         professionProgress: true,
         kingdomStats: true,
       },
@@ -534,7 +533,6 @@ export async function detailRoutes(app: FastifyInstance) {
           targetLocationSlug: fromLocation ?? fromNpc ?? null,
         };
       }),
-      chapters: save.sessionSummaries.map((c) => ({ chapterNumber: c.chapterNumber, summary: c.summary })),
       combateIniciado,
       // "Modo dinámico" (checklist frontend 2026-08-27, A.3) — mismo criterio que `combateIniciado`
       // arriba: reconstruido tras CUALQUIER resincronización (F5, reconexión), no solo devuelto en

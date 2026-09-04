@@ -25,6 +25,35 @@ export function estacionFor(totalMinutes: number): Estacion {
   return ESTACIONES_ORDEN[index];
 }
 
+/// Diario en pestañas jerárquicas (2026-09-04, petición explícita ya anotada en sesión de pruebas
+/// del 2026-09-03) — `estacionFor` ya descartaba el cociente de año al calcular `diaDelAno`; aquí
+/// se recupera. 1-indexado, igual que `dayForFictionalMinutes` (Año 1, no Año 0).
+export function yearFor(totalMinutes: number): number {
+  const dia = dayForFictionalMinutes(totalMinutes);
+  return Math.floor((dia - 1) / DIAS_POR_ANO) + 1;
+}
+
+/// Día relativo DENTRO de la estación actual (1-30), no el día absoluto de partida — distinto de
+/// `dayForFictionalMinutes` (usado en el resto del juego): la pestaña de tercer nivel del Diario
+/// muestra "Día 3 de Primavera", no "Día 63 de partida".
+export function diaRelativoEnEstacionFor(totalMinutes: number): number {
+  const dia = dayForFictionalMinutes(totalMinutes);
+  const diaDelAno = (dia - 1) % DIAS_POR_ANO;
+  return (diaDelAno % DIAS_POR_ESTACION) + 1;
+}
+
+/// Agregador de los tres de arriba (2026-09-04) — evita recalcular `dayForFictionalMinutes` tres
+/// veces por caller y evita que dos callers (log.ts/chapterSummary.ts) diverjan si la fórmula
+/// cambia algún día.
+export function calendarioFor(totalMinutes: number): { year: number; estacion: Estacion; diaRelativo: number; diaAbsoluto: number } {
+  return {
+    year: yearFor(totalMinutes),
+    estacion: estacionFor(totalMinutes),
+    diaRelativo: diaRelativoEnEstacionFor(totalMinutes),
+    diaAbsoluto: dayForFictionalMinutes(totalMinutes),
+  };
+}
+
 /// Nombre Kektira (lengua propia de los clanes orcos, `areas.md`) para el personaje jugable
 /// orco de hoy (Gorhorn, `razaFor` en berigLore.ts); glosa en lengua común como fallback para
 /// cualquier otra raza o `raza` desconocida — mismo patrón que ya usa el motor para nombres de

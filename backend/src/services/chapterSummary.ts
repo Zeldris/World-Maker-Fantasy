@@ -73,9 +73,9 @@ export function releaseChapterClaim(saveId: string): void {
 /// ni un segundo de más por esto. Nunca lanza fuera de sí misma: cualquier fallo solo se registra
 /// y libera el reclamo, listo para reintentarse el turno siguiente (mismo criterio de resiliencia
 /// que ya tenía el try/catch original en turnResolution.ts).
-export async function scheduleChapterSummaryGeneration(saveId: string, characterName: string): Promise<void> {
+export async function scheduleChapterSummaryGeneration(saveId: string, characterName: string, fictionalMinutes: number): Promise<void> {
   try {
-    await generateAndPersistChapterSummary(saveId, characterName);
+    await generateAndPersistChapterSummary(saveId, characterName, fictionalMinutes);
   } catch (err) {
     console.warn(`[capitulo] generación de resumen en segundo plano falló (saveId=${saveId}):`, err);
   } finally {
@@ -83,7 +83,7 @@ export async function scheduleChapterSummaryGeneration(saveId: string, character
   }
 }
 
-async function generateAndPersistChapterSummary(saveId: string, characterName: string): Promise<void> {
+async function generateAndPersistChapterSummary(saveId: string, characterName: string, fictionalMinutes: number): Promise<void> {
   const lastSummary = await prisma.sessionSummary.findFirst({ where: { saveId }, orderBy: { chapterNumber: 'desc' } });
   const since = lastSummary?.createdAt ?? new Date(0);
 
@@ -127,5 +127,5 @@ async function generateAndPersistChapterSummary(saveId: string, characterName: s
   });
 
   const chapterNumber = (lastSummary?.chapterNumber ?? 0) + 1;
-  await prisma.sessionSummary.create({ data: { saveId, chapterNumber, summary: text.trim() } });
+  await prisma.sessionSummary.create({ data: { saveId, chapterNumber, summary: text.trim(), fictionalMinutes } });
 }
