@@ -1351,3 +1351,30 @@ no adivinado). Frontend: 201/201 (198 + 3 nuevos). Pendiente reverificar en vivo
 iniciativa queda centrada en pantalla sin cortes; el panel espera a que el dado termine antes de
 cambiar de color/título; el Orco Enfurecido (y cualquier NPC orco/humanoide) ya no usa "Sangre del
 Estallido"/"Piel de Guerra" en combate.
+
+## Reputación de facción: solo en la decisión final, no al dejar CONVALECIENTE (2026-09-04)
+
+Reportado jugando en vivo, con captura real: el chip "-150 Clan Serhu" aparecía en el turno que
+dejaba al Orco Enfurecido CONVALECIENTE, antes de elegir Matar/Capturar/Clemente. Petición
+explícita: "si elijo matar tiene que esperar a que resuelva el combate antes de restarlo, en el
+turno final".
+
+**Causa real**: `applyKillSideEffects` (`turnResolution.ts`) aplicaba `FACTION_REP_ATTACK_DELTA`
+(-150) con cualquier `esGolpeDeMuerte` — que incluye tanto CONVALECIENTE como MUERTO. Rematar
+después duplicaba el descuento; elegir Clemente nunca lo revertía.
+
+**Fijado**: la reputación solo se resta cuando `nuevaCondicion === 'MUERTO'` (matar directo con
+LETAL, o rematar un CONVALECIENTE — ambos son la misma decisión final). Capturar y Clemente ganan
+su propio delta asimétrico (petición explícita de magnitudes: Matar -150, Capturar -100, Clemente
+-50), aplicado en el endpoint real de cada decisión (`companeros.ts`/`session.ts`), nunca al golpe
+que solo derrota. Capturar además gana su primer `LogEntry` propio (antes era una mutación
+silenciosa, sin ningún rastro en el log) — mismo patrón que Clemente, para que el chip de
+reputación tenga dónde colgarse. Helper compartido nuevo,
+`applyFactionRepDeltaForResolution` (`turnResolution.ts`, exportado), usado por los 3 caminos.
+
+**Verificado**: `tsc -b` limpio backend+frontend. Test de integración existente actualizado (dejar
+CONVALECIENTE ya no resta nada, `factionRepChange: null`) + test nuevo que confirma que rematar a
+MUERTO sí resta -150 de verdad. Backend: 1842/1842 unitarios + 234/235 integración (único fallo:
+flake preexistente de Múrgol, sin relación). Frontend: 201/201. Pendiente reverificar en vivo:
+dejar a un enemigo CONVALECIENTE no debe mover el panel de Reputación; Matar/Capturar/Clemente cada
+uno con su propio chip y magnitud en el log.
