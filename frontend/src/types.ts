@@ -504,6 +504,9 @@ export interface InventoryItemInfo {
   curaHasta?: 'GRAVE' | 'HERIDO' | 'ILESO' | null
   curaUnPaso?: boolean
   curaEnergia?: number | null
+  /// Habilidad "Comer/Beber" (2026-09-04, panel del mismo nombre) — null en objetos que no sacian
+  /// hambre. Sin campo equivalente para Sed: se sacia con la acción fija "Beber agua" del modal.
+  curaHambre?: number | null
   /// Grupo 3 § Compañeros y supervivencia (2026-08-25) — ambos null = equipado en el propio
   /// personaje o sin equipar (comportamiento de siempre); con valor = equipado en ESE compañero/
   /// súbdito, nunca los dos a la vez.

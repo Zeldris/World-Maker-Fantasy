@@ -117,7 +117,7 @@ import {
   npcRecoversFromConvaleciente,
   npcCorpseShouldDespawn,
 } from './death.js';
-import { capturaEnInventarioExpiro } from './companionSupervivencia.js';
+import { capturaEnInventarioExpiro, lastAtMinutesForGanancia, comidaPct, aguaPct, COMIDA_MINUTOS_POR_TRAMO, AGUA_MINUTOS_POR_TRAMO } from './companionSupervivencia.js';
 import { ownRacialAdvantageFor, rivalRacialDisadvantageAgainst } from './racialPassives.js';
 import { continentForRegion, oppositeContinent } from '../lib/continent.js';
 import { advanceFictionalMinutes, formatFictionalDate, entornoTemporalFor, momentoDelDiaFor, type EntornoTemporal } from './worldClock.js';
@@ -226,6 +226,12 @@ interface NarrateAndPersistParams {
   /// Sistema de fatiga (2026-07-29) — valor ACTUAL de energía antes de este turno; el tope real
   /// se deriva de `attributes.constitucion` (energy.ts § energiaMaxFor), nunca viaja aquí.
   energia: number;
+  /// Habilidad "Comer/Beber" (2026-09-04) — timestamps ACTUALES de última comida/bebida
+  /// (`Save.lastAteAtMinutes`/`lastDrankAtMinutes`), mismo criterio que `energia`: el caller ya
+  /// tiene el `Save` cargado, no se vuelve a leer aquí. Ver `comidaPct`/`aguaPct`/
+  /// `lastAtMinutesForGanancia` (companionSupervivencia.ts).
+  lastAteAtMinutes: number | null;
+  lastDrankAtMinutes: number | null;
   /// Fase 2 de efectos de clase (2026-08-26, docs/21-roadmap.md) — AUMENTO/DEBILIDAD activos del
   /// jugador ahora mismo (Save.activeEffects, ya parseado por el caller con `parseActiveEffects`).
   /// `[]` en partidas previas a este campo o sin ningún efecto activo.
@@ -316,6 +322,12 @@ interface NarrateAndPersistParams {
   /// (ver `applySequentialHeals`, death.ts). `undefined`/vacío deja el camino de siempre intacto:
   /// `detectMedicalItemUse` sobre el texto libre de la acción, un único objeto, "mejor match".
   healItemUses?: { itemId: string; quantity: number }[];
+  /// Panel "Comer/Beber" (2026-09-04), mismo patrón exacto que `healItemUses` — lista ORDENADA de
+  /// qué objetos de comida usar (validados contra `curaHambre` real del catálogo) y si además se
+  /// pulsó "Beber agua" (fijo, sin item, repone Sed al 100%). `undefined`/vacío + `false` deja el
+  /// comportamiento de siempre intacto (Hambre/Sed solo derivan del tiempo, nunca suben).
+  hambreSedItemUses?: { itemId: string; quantity: number }[];
+  beberAgua?: boolean;
   /// Bug real jugando en vivo (2026-08-04, "ronda larga de pruebas"): `Save.pendingCombatNpcSlugs`
   /// (a quién sigue enfrentado el jugador de un turno a otro) se escribía siempre pero nunca se
   /// leía aquí — un ataque de seguimiento SIN comillas ("le lanzo otro golpe al orco") caía
@@ -393,6 +405,11 @@ export interface NarrateAndPersistResult {
   /// que recalcularlo por su cuenta.
   energia: number;
   energiaMax: number;
+  /// Habilidad "Comer/Beber" (2026-09-04) — % de Hambre/Sed tras este turno, mismo criterio que
+  /// `energia`/`energiaMax`: para que el frontend pinte las barras sin recalcularlo por su cuenta
+  /// y sin esperar a la siguiente carga de partida.
+  hambre: number;
+  sed: number;
   /// Hora ficticia real tras este turno (worldClock.ts) — ver el comentario en el `return` de
   /// `narrateAndPersistTurn` para el bug que cierra: sin esto, el frontend no tenía forma de saber
   /// que el reloj había avanzado dentro de una sesión en vivo, y seguía sellando cada entrada nueva
@@ -2471,6 +2488,7 @@ const CRAFT_FLAVOR = [
   'Otra pieza más añadida a lo que ya sabe hacer.',
 ] as const;
 const HEAL_FLAVOR = ['El alivio es inmediato.', 'El cuerpo agradece el descanso, aunque sea breve.', 'Un respiro necesario antes de seguir.'] as const;
+const EAT_DRINK_FLAVOR = ['El estómago se calma, al menos por ahora.', 'Las fuerzas vuelven un poco más firmes.', 'Un momento de calma antes de seguir el camino.'] as const;
 
 /// Narra (retrieval + narrateAction) y persiste el resultado de un turno — hechos, XP/nivel,
 /// inventario/compañeros, eventos de Reino, posición/NPCs/despiece (docs/12), condición física
@@ -2514,6 +2532,8 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     npcsInScene: npcsInScenePrecomputed,
     lootItemNames,
     healItemUses,
+    hambreSedItemUses,
+    beberAgua,
     pendingCombatNpcSlugs,
     travelInterruptionNpcId,
     travelInterruptionOriginalDestinationName,
@@ -3498,6 +3518,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
           curaUnPaso: true,
           tipoArma: true,
           curaEnergia: true,
+          curaHambre: true,
           equipSlot: true,
           effectKey: true,
           aliases: true,
@@ -3515,6 +3536,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
         curaUnPaso: c.curaUnPaso,
         tipoArma: c.tipoArma,
         curaEnergia: c.curaEnergia,
+        curaHambre: c.curaHambre,
         equipSlot: c.equipSlot,
         effectKey: c.effectKey,
         aliases: c.aliases,
@@ -3612,6 +3634,23 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     }
   }
   const usingExplicitHealList = healItemUsesValidated.length > 0;
+  // Panel "Comer/Beber" (2026-09-04) — mismo patrón EXACTO que el bloque de Curar de arriba, pero
+  // sin camino de texto libre en paralelo (Hambre/Sed nunca se detectaron por texto libre, solo
+  // derivan del tiempo — ver companionSupervivencia.ts): la única vía de reponerlas es este panel.
+  const hungerItemsInInventory = inventoryRows
+    .map((i) => ({ id: i.id, name: i.name, curaHambre: i.catalogSlug ? (catalogBySlug.get(i.catalogSlug)?.curaHambre ?? null) : null }))
+    .filter((i): i is { id: string; name: string; curaHambre: number } => i.curaHambre !== null);
+  const hambreSedItemUsesValidated: { id: string; name: string; curaHambre: number; quantity: number }[] = [];
+  for (const use of hambreSedItemUses ?? []) {
+    const hungerItem = hungerItemsInInventory.find((i) => i.id === use.itemId);
+    const row = inventoryRows.find((i) => i.id === use.itemId);
+    if (!row || !hungerItem) continue;
+    const quantity = Math.max(0, Math.min(use.quantity, quantityOf(row.name)));
+    if (quantity > 0) {
+      hambreSedItemUsesValidated.push({ id: row.id, name: row.name, curaHambre: hungerItem.curaHambre, quantity });
+    }
+  }
+  const usingExplicitHungerThirstList = hambreSedItemUsesValidated.length > 0 || !!beberAgua;
   // Brújula (2026-08-15, feature de exploración): NO se consume al usarla (es una herramienta
   // equipable, no un consumible) — solo dispara la narración determinista de rumbos más abajo, ver
   // compassNarrationLine. Único objeto con este comportamiento hoy, así que se filtra por su propio
@@ -3979,6 +4018,29 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
       })()
     : null;
 
+  // Habilidad "Comer/Beber" (2026-09-04) — mismo principio EXACTO que `healPreview` justo arriba:
+  // se calcula aquí, de solo lectura, ANTES de narrar. `advanceFictionalMinutes` es pura y barata
+  // — se recalcula aquí en vez de esperar a `nuevoFictionalMinutes` (declarado más abajo, después
+  // de donde `narration` ya se decide) para no invertir el orden del resto del archivo. "Beber
+  // agua" no pasa por la fórmula general de `lastAtMinutesForGanancia` — repone al 100% de un
+  // tirón (`lastDrankAtMinutes` = el minuto de ficción de este turno).
+  const fictionalMinutesParaComerBeber = advanceFictionalMinutes(fictionalMinutesActuales, minutosDeEsteTurno);
+  const hungerGanancia = hambreSedItemUsesValidated.reduce((sum, u) => sum + u.curaHambre * u.quantity, 0);
+  const nuevoLastAteAtMinutes =
+    hungerGanancia > 0
+      ? lastAtMinutesForGanancia(params.lastAteAtMinutes, fictionalMinutesParaComerBeber, COMIDA_MINUTOS_POR_TRAMO, hungerGanancia)
+      : params.lastAteAtMinutes;
+  const nuevoLastDrankAtMinutes = beberAgua ? fictionalMinutesParaComerBeber : params.lastDrankAtMinutes;
+  const hungerThirstPreview = usingExplicitHungerThirstList
+    ? (() => {
+        const itemsTexto = hambreSedItemUsesValidated.map((u) => (u.quantity > 1 ? `${baseNameOf(u.name)} ×${u.quantity}` : baseNameOf(u.name))).join(', ');
+        const partes: string[] = [];
+        if (itemsTexto) partes.push(`come ${itemsTexto}`);
+        if (beberAgua) partes.push('bebe agua');
+        return { narration: `${characterName} ${partes.join(' y ')}. ${pickFlavor(EAT_DRINK_FLAVOR)}` };
+      })()
+    : null;
+
   // Escena de Gistera Koh, fase 2 — solución limpia (auditoría 2026-07-30, "revisar partida",
   // tras encontrarlo fallando EN VIVO por segunda vez: la primera vez inventó "Múrgol" como
   // nombre alternativo — 2026-07-24 —, esta vez "Lyria de la Tormenta Negra", llamándola además
@@ -4249,7 +4311,16 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   // ramas deterministas de abajo (combate múltiple/Gistera guionizada/saqueo/construcción/
   // cosecha/crafteo/curación explícita) nunca llaman a narrateAction, así que no hay ningún
   // prompt/respuesta real que capturar para el profesor cloud.
-  const wasLlmNarrated = !(combatEncounterMode || gisteraSePresentaEsteTurno || lootMode || buildMode || harvestOutcome || craftMode || usingExplicitHealList);
+  const wasLlmNarrated = !(
+    combatEncounterMode ||
+    gisteraSePresentaEsteTurno ||
+    lootMode ||
+    buildMode ||
+    harvestOutcome ||
+    craftMode ||
+    usingExplicitHealList ||
+    usingExplicitHungerThirstList
+  );
 
   // Animación de dados en paralelo (ver comentario de `onExchangeResolved` en
   // NarrateAndPersistParams) — justo antes de narrar, nunca antes: `combatExchangeDisplayFinal` ya
@@ -4275,7 +4346,9 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
             ? { narration: craftNarration!, newFacts: [] }
             : usingExplicitHealList
               ? { narration: healPreview!.narration, newFacts: [] }
-              : await narrateAction(narrationCtx);
+              : usingExplicitHungerThirstList
+                ? { narration: hungerThirstPreview!.narration, newFacts: [] }
+                : await narrateAction(narrationCtx);
   // Streaming (2026-07-30): la rama determinista de arriba nunca llama a `onNarrationChunk` (no
   // hay generación en vivo que transmitir) — se manda de una vez aquí para que el frontend siga
   // viendo el mismo patrón de un "chunk" seguido de "done", en vez de quedarse sin nada hasta el
@@ -4568,6 +4641,12 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     activeEffects: ActiveEffect[];
     energia: number;
     energiaMax: number;
+    /// Habilidad "Comer/Beber" (2026-09-04) — % resultantes de Hambre/Sed tras este turno (vía
+    /// `comidaPct`/`aguaPct` sobre `nuevoLastAteAtMinutes`/`nuevoLastDrankAtMinutes`), mismo
+    /// criterio que `energia`/`energiaMax`: se calculan aquí para viajar en la respuesta HTTP del
+    /// turno, no solo al cargar partida.
+    hambre: number;
+    sed: number;
     finDePartida: boolean;
     pendingDeathResolution: boolean;
     justDied: boolean;
@@ -5071,6 +5150,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
           curaUnPaso: true,
           tipoArma: true,
           curaEnergia: true,
+          curaHambre: true,
           equipSlot: true,
           effectKey: true,
           aliases: true,
@@ -5085,6 +5165,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
           curaUnPaso: c.curaUnPaso,
           tipoArma: c.tipoArma,
           curaEnergia: c.curaEnergia,
+          curaHambre: c.curaHambre,
           equipSlot: c.equipSlot,
           effectKey: c.effectKey,
           aliases: c.aliases,
@@ -5118,6 +5199,25 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     // descuenta la CANTIDAD real usada (`u.quantity`), no solo 1. Nunca se solapa con el bucle de
     // arriba: `usingExplicitHealList` ya evitó que este mismo itemId entrara en `consumedItemIds`.
     for (const u of healItemUsesValidated) {
+      const row = freshInventoryRows.find((r) => r.id === u.id);
+      if (!row) continue;
+      const disponible = quantityOf(row.name);
+      const aConsumir = Math.min(u.quantity, disponible);
+      if (aConsumir <= 0) continue;
+      const restante = disponible - aConsumir;
+      if (restante <= 0) {
+        await tx.inventoryItem.delete({ where: { id: u.id } });
+        removedInventoryItemIds.push(u.id);
+      } else {
+        const newName = `${baseNameOf(row.name)} (${restante})`;
+        await tx.inventoryItem.update({ where: { id: u.id }, data: { name: newName } });
+        updatedInventoryItems.push({ id: u.id, name: newName });
+      }
+    }
+
+    // Panel "Comer/Beber" (2026-09-04) — mismo patrón EXACTO que el bucle de Curar justo arriba.
+    // "Beber agua" no consume nada (sin item real detrás), así que no aparece aquí.
+    for (const u of hambreSedItemUsesValidated) {
       const row = freshInventoryRows.find((r) => r.id === u.id);
       if (!row) continue;
       const disponible = quantityOf(row.name);
@@ -6031,6 +6131,12 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
         condicionFisica: finalCondicion,
         salud: saludForCondicion(finalCondicion),
         energia: finalEnergia,
+        // Habilidad "Comer/Beber" (2026-09-04) — timestamps recalculados por lastAtMinutesForGanancia
+        // (o el minuto de ficción actual, si se pulsó "Beber agua"); sin uso este turno, quedan
+        // igual que antes (`nuevoLastAteAtMinutes`/`nuevoLastDrankAtMinutes` ya devuelven el valor
+        // de entrada sin tocar cuando no hubo ganancia).
+        lastAteAtMinutes: nuevoLastAteAtMinutes,
+        lastDrankAtMinutes: nuevoLastDrankAtMinutes,
         lastRestLocationId: finalLastRestLocationId,
         deathCount: finalDeathCount,
         endedAt: finalEndedAt,
@@ -6061,6 +6167,8 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
       activeEffects: jugadorActiveEffectsFinal,
       energia: finalEnergia,
       energiaMax,
+      hambre: comidaPct(nuevoLastAteAtMinutes, fictionalMinutesParaComerBeber),
+      sed: aguaPct(nuevoLastDrankAtMinutes, fictionalMinutesParaComerBeber),
       finDePartida: finDePartidaResult,
       pendingDeathResolution: finalPendingDeathResolution,
       justDied: proposedCondicion === 'MUERTO',
@@ -6101,6 +6209,8 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     activeEffects,
     energia,
     energiaMax: energiaMaxResult,
+    hambre,
+    sed,
     finDePartida,
     pendingDeathResolution,
     justDied,
@@ -6507,6 +6617,8 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     activeEffects,
     energia,
     energiaMax: energiaMaxResult,
+    hambre,
+    sed,
     // Reloj de ficción (bug real, petición explícita 2026-08-14: "se logea mal la hora" + "un
     // combate... sin narrarlo ni avisarlo" justo después de una acción sin coste de tiempo) — hasta
     // ahora `/turn/narrate` nunca devolvía la hora nueva tras avanzar el reloj (`nuevaFictionalDateLabel`,

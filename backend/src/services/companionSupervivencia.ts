@@ -180,6 +180,22 @@ export function aguaPct(lastWateredAtMinutes: number | null, nowMinutes: number)
   return porcentajeSupervivencia(lastWateredAtMinutes, nowMinutes, AGUA_MINUTOS_POR_TRAMO);
 }
 
+/// Habilidad "Comer/Beber" (2026-09-04) — inversa de `porcentajeSupervivencia`: dado el
+/// `lastAtMinutes` actual y una ganancia en puntos porcentuales (p.ej. `curaHambre` de un objeto
+/// consumido), calcula el NUEVO `lastAtMinutes` a persistir que produce ese pct resultante. El
+/// modelo es "hace cuánto comiste", así que "subir el %" significa mover el timestamp hacia
+/// adelante (más cerca de `nowMinutes`), nunca sumar directamente sobre el pct.
+/// `porcentajeSupervivencia` es escalonada (tramos fijos de 25%) — invertirla exige redondear al
+/// tramo más cercano, no interpolar de forma continua: un objeto que cura +18 pct mueve el
+/// resultado real al tramo de 25 más próximo, igual que ya ocurre al calcular el pct hacia abajo.
+export function lastAtMinutesForGanancia(lastAtMinutes: number | null, nowMinutes: number, minutosPorTramo: number, gananciaPct: number): number {
+  const pctActual = porcentajeSupervivencia(lastAtMinutes, nowMinutes, minutosPorTramo);
+  const pctObjetivo = Math.min(100, pctActual + Math.max(0, gananciaPct));
+  if (pctObjetivo >= 100) return nowMinutes;
+  const tramosRestantes = Math.min(TRAMOS_HASTA_VACIO, Math.max(0, Math.round((100 - pctObjetivo) / 25)));
+  return Math.max(0, nowMinutes - tramosRestantes * minutosPorTramo);
+}
+
 /// § 4 — descuido de compañero: comida O agua por debajo de `UMBRAL_DESCUIDO_PCT` erosiona
 /// Felicidad "muy despacio" — un paso pequeño fijo por barrido de `advanceCompanionSurvival`
 /// (worldTick, no por minuto de ficción: mismo criterio que el resto de sweeps periódicos de

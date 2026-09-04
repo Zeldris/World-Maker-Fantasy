@@ -103,6 +103,10 @@ interface NarrateBody {
   /// en turnResolution.ts. Mismo criterio que `lootItemNames`: lista ORDENADA (el orden en que la
   /// jugadora los seleccionó SÍ cambia el resultado, ver `applySequentialHeals`, death.ts).
   healItemUses?: { itemId: string; quantity: number }[];
+  /// Panel "Comer/Beber" (2026-09-04) — reenviado tal cual a `narrateAndPersistTurn`, ver el
+  /// comentario de `NarrateAndPersistParams.hambreSedItemUses`/`beberAgua` en turnResolution.ts.
+  hambreSedItemUses?: { itemId: string; quantity: number }[];
+  beberAgua?: boolean;
 }
 
 interface ClassificationResolution {
@@ -1044,7 +1048,8 @@ export async function turnRoutes(app: FastifyInstance) {
   });
 
   app.post<{ Body: NarrateBody }>('/turn/narrate', async (request, reply) => {
-    const { saveId, action, classification, roll, travel, enCombate, savedActionId, npcsInScene, lootItemNames, isItemUse, healItemUses } = request.body;
+    const { saveId, action, classification, roll, travel, enCombate, savedActionId, npcsInScene, lootItemNames, isItemUse, healItemUses, hambreSedItemUses, beberAgua } =
+      request.body;
     if (!saveId || !action || !classification) {
       return reply.status(400).send({ error: 'Faltan campos: saveId, action, classification' });
     }
@@ -1156,6 +1161,8 @@ export async function turnRoutes(app: FastifyInstance) {
         activeEffects,
         energia,
         energiaMax,
+        hambre,
+        sed,
         // Renombrado al desestructurar (evita chocar con el `timeLabel` de entrada, calculado
         // justo arriba a partir de `save.worldState` ANTES de este turno) — el nuevo `writeLine`
         // de más abajo manda este otro, el que ya incluye el avance de reloj de ESTE turno.
@@ -1219,6 +1226,8 @@ export async function turnRoutes(app: FastifyInstance) {
         produccion: duration?.produccion,
         condicionFisica: save.condicionFisica,
         energia: save.energia,
+        lastAteAtMinutes: save.lastAteAtMinutes,
+        lastDrankAtMinutes: save.lastDrankAtMinutes,
         activeEffects: parseActiveEffects(save.activeEffects),
         dificultad: save.dificultad,
         deathCount: save.deathCount,
@@ -1236,6 +1245,8 @@ export async function turnRoutes(app: FastifyInstance) {
         pendingCombatNpcSlugs: (save.pendingCombatNpcSlugs as string[] | null) ?? [],
         lootItemNames,
         healItemUses,
+        hambreSedItemUses,
+        beberAgua,
         onNarrationChunk: (delta) => writeLine({ type: 'chunk', text: delta }),
         onNarrationReset: () => writeLine({ type: 'reset' }),
         // Animación de dados en paralelo (2026-08-15) — ver el mismo comentario en
@@ -1252,6 +1263,8 @@ export async function turnRoutes(app: FastifyInstance) {
         activeEffects,
         energia,
         energiaMax,
+        hambre,
+        sed,
         timeLabel: newTimeLabel,
         entorno,
         combateIniciado,

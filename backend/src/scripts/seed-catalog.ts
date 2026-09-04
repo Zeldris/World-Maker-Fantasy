@@ -77,6 +77,7 @@ async function main() {
         curaUnPaso: item.curaUnPaso ?? false,
         tipoArma: item.tipoArma ?? null,
         curaEnergia: item.curaEnergia ?? null,
+        curaHambre: item.curaHambre ?? null,
         effectKey: item.effectKey ?? null,
         effectDescription: item.effectDescription ?? null,
         herramientaParaOficio: item.herramientaParaOficio ?? [],

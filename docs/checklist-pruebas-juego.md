@@ -1083,3 +1083,46 @@ jugando: crafteo/construcción real para ver el chip de XP de profesión, una mi
 para ver el chip verde de reputación, y la misión de Gistera/Orco Enfurecido (aceptación instantánea)
 para ver el chip de recompensa de misión — los 3 casos requieren reiniciar backend y frontend
 primero.
+
+## Habilidad "Comer/Beber": Hambre/Sed reales en el HUD, actualizadas en vivo (2026-09-04)
+
+Petición de la usuaria: mover las barras de Hambre/Sed al HUD principal, junto a Energía.
+Investigando se encontró que el sistema real era más limitado de lo que parecía: Hambre/Sed ya
+existían como pool derivado del tiempo (`comidaPct`/`aguaPct`, desde `Save.lastAteAtMinutes`/
+`lastDrankAtMinutes`), pintado solo en `EstadisticasPanel.tsx` y refrescado solo al cargar
+partida — **nada en el motor actualizaba esos timestamps nunca dentro de una partida real**, y el
+único item de agua del catálogo (Odre de agua) es una herramienta equipable que nunca se consume.
+
+**Diseño acordado con la usuaria**: una única habilidad determinista "Comer/Beber" (no dos
+separadas), clonando la arquitectura exacta de "Curar" — botón siempre visible → modal con dos
+secciones (Comida/Bebida) → vista previa en vivo que bloquea seguir añadiendo al llegar al 100% →
+texto de acción fijo + payload estructurado → turno resuelto sin pasar por el LLM. Comida sale de
+items reales del inventario (`curaHambre` nuevo en `ItemCatalog`, aplicado a 6 consumibles reales:
+raciones de carne/viaje/goirntes, pan de trigo escarlata, carne de Jusha ahumada). Bebida es una
+entrada fija "Beber agua", siempre disponible sin depender de ningún item, que repone sed al 100%
+de un tirón.
+
+**Fijado**: `lastAtMinutesForGanancia` (companionSupervivencia.ts) — inversa de
+`porcentajeSupervivencia`, calcula el nuevo timestamp que produce el pct objetivo tras sumar una
+ganancia. `turnResolution.ts` calcula `hambre`/`sed` resultantes dentro de la transacción del
+turno (mismo patrón que `energia`/`energiaMax`) y los expone en la respuesta HTTP de punta a punta
+(`routes/turn.ts` → `api.ts` → `useTurnFlow.ts`/`useCombatFlow.ts`). Nuevo modal
+`HungerThirstSelectionModal.tsx` (clon de `HealSelectionModal.tsx`) y nuevos `HungerBar`/
+`ThirstBar.tsx` en el HUD junto a `EnergyBar`, coloreados por umbral (rojo <25%, ámbar <50%, verde
+resto) igual que `ResourceBar`.
+
+**Gotcha real encontrado verificando**: tras editar `worldCatalog.ts` con los nuevos `curaHambre`,
+el test de integración fallaba con `lastAteAtMinutes` sin cambiar — la BD real de Postgres no
+recoge cambios de `worldCatalog.ts` hasta correr `npm run seed-catalog` a mano; no es un bug del
+código, es el mismo catálogo desactualizado que cualquier edición de `worldCatalog.ts` exige
+re-seedear antes de que los tests de integración (o la partida real) lo vean.
+
+**Verificado**: `tsc -b` limpio backend y frontend. Tests unitarios nuevos: `lastAtMinutesForGanancia`
+(companionSupervivencia.test.ts, 5 casos) y `applySequentialHunger`/`applySequentialThirst`
+(hungerThirst.test.ts, espejo frontend, 5 casos). 1 test de integración real (turno completo:
+come una ración + bebe agua, confirma `hambre`/`sed` en la respuesta HTTP, timestamps persistidos,
+inventario descontado, narración determinista). Suite completa backend: **1798 unitarios + 226/227
+integración en verde** (único fallo: el mismo flake preexistente de "Múrgol", confirmado sin
+relación). Suite frontend completa: **197/197 en verde**. Pendiente reverificar en vivo jugando
+tras reiniciar backend y frontend: abrir el modal, comer una ración + beber agua, confirmar que el
+HUD sube Hambre/Sed y el log muestra la narración determinista.

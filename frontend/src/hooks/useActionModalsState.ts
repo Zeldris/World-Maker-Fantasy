@@ -28,6 +28,8 @@ export function useActionModalsState() {
   const [simpleModal, setSimpleModal] = useState<'camp' | 'travel' | null>(null)
   const [saquearZonaModalOpen, setSaquearZonaModalOpen] = useState(false)
   const [healModalOpen, setHealModalOpen] = useState(false)
+  /// "Comer/Beber" (2026-09-04) — mismo patrón que healModalOpen.
+  const [hungerThirstModalOpen, setHungerThirstModalOpen] = useState(false)
   /// Entregar un objeto a un NPC (2026-08-31) — mismo patrón que healModalOpen/saquearZonaModalOpen.
   const [entregaModalOpen, setEntregaModalOpen] = useState(false)
   /// Aprender oficio de un Maestro (2026-08-31, "Trabajador de Reino") — mismo patrón.
@@ -54,6 +56,7 @@ export function useActionModalsState() {
       simpleModal ||
       saquearZonaModalOpen ||
       healModalOpen ||
+      hungerThirstModalOpen ||
       entregaModalOpen ||
       aprenderOficioModalOpen ||
       postCombatTarget ||
@@ -74,6 +77,8 @@ export function useActionModalsState() {
     setSaquearZonaModalOpen,
     healModalOpen,
     setHealModalOpen,
+    hungerThirstModalOpen,
+    setHungerThirstModalOpen,
     entregaModalOpen,
     setEntregaModalOpen,
     aprenderOficioModalOpen,

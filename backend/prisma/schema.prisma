@@ -2183,6 +2183,12 @@ model ItemCatalog {
   /// que `curaHasta` pero numérico (la energía es un pool 0..max, no un enum con pasos fijos).
   /// Null = el objeto no restaura energía.
   curaEnergia           Int?
+  /// Puntos porcentuales de Hambre que restaura al usarlo (2026-09-04, habilidad "Comer/Beber") —
+  /// mismo criterio que `curaEnergia` pero sobre el pool derivado de `Save.lastAteAtMinutes` (ver
+  /// `comidaPct`/`lastAtMinutesForGanancia`, companionSupervivencia.ts). Null = el objeto no sacia
+  /// hambre. No existe `curaSed` equivalente: la Sed se sacia con la acción fija "Beber agua" del
+  /// mismo modal, sin depender de ningún item del catálogo.
+  curaHambre            Int?
   /// Clave estable del efecto especial (2026-08-03, `tipo: ESPECIAL`) — un identificador que un
   /// sistema concreto del juego consulta para activar su propio comportamiento (p.ej.
   /// `'reveal-map-llanuras'` para MapaPanel.tsx). Texto libre a propósito, como `sourceSlug` en

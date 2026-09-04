@@ -3389,6 +3389,9 @@ export interface ItemCatalogInput {
   /// Cantidad de energía que restaura al usarlo (2026-07-29, sistema de fatiga) — mismo criterio
   /// que `curaHasta` pero numérico. Omitido = no restaura energía.
   curaEnergia?: number;
+  /// Puntos porcentuales de Hambre que restaura al usarlo (2026-09-04, habilidad "Comer/Beber") —
+  /// mismo criterio que `curaEnergia` pero sobre el pool de Hambre. Omitido = no sacia hambre.
+  curaHambre?: number;
   /// Solo en `tipo: 'ESPECIAL'` (2026-08-03) — clave estable que un sistema concreto consulta
   /// para activar su propio comportamiento (p.ej. `'reveal-map-llanuras'`, MapaPanel.tsx) y texto
   /// explicando el efecto para mostrar en inventario/detalle, aparte de `description`. Ver
@@ -4384,7 +4387,8 @@ export const items: ItemCatalogInput[] = [
     description: 'Ahumada sobre fuego — a diferencia de la carne fresca, aguanta mucho más antes de estropearse.', 
     dimensiones: 'Trozos de 300 a 500 g.',
     curaEnergia: 10,
-    curaHasta: 'GRAVE'
+    curaHasta: 'GRAVE',
+    curaHambre: 14,
   },
 
   {
@@ -4403,6 +4407,7 @@ export const items: ItemCatalogInput[] = [
     // cocinarla, invirtiendo el incentivo. Mismo criterio que `SMOKE_MEAT_RECIPE` (crafting.ts):
     // procesar el ingrediente debe ganar en algún eje real, nunca perder en todos.
     curaEnergia: 8,
+    curaHambre: 10,
   },
 
   {
@@ -4423,6 +4428,7 @@ export const items: ItemCatalogInput[] = [
     // energía" era inalcanzable para una partida nueva, porque su único objeto de comida no
     // restauraba nada (solo lo hacía `racion-carne-ahumada`, que él nunca lleva encima).
     curaEnergia: 20,
+    curaHambre: 28,
   },
 
   {
@@ -4436,6 +4442,7 @@ export const items: ItemCatalogInput[] = [
     dimensiones: 'Bloque de 12x8 cm.',
     lugarOrigen: 'Meseta del Orden.',
     curaEnergia: 15,
+    curaHambre: 20,
   },
 
   {
@@ -4640,6 +4647,7 @@ export const items: ItemCatalogInput[] = [
     dimensiones: 'Ración de 200 g.',
     lugarOrigen: 'Los Manaderos, Llanuras del Viento Rojo.',
     curaEnergia: 14,
+    curaHambre: 18,
   },
   {
     slug: 'pan-trigo-escarlata',
@@ -4653,6 +4661,7 @@ export const items: ItemCatalogInput[] = [
     dimensiones: 'Hogaza de 300 g.',
     lugarOrigen: 'La Sabana Alta, Llanuras del Viento Rojo.',
     curaEnergia: 10,
+    curaHambre: 12,
   },
   {
     slug: 'panal-endulzado',

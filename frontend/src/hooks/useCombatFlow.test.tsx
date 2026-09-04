@@ -116,6 +116,8 @@ function useHarness(initialCombateIniciado: { npcs: NpcInSceneInfo[] } | null = 
     setEntorno: vi.fn(),
     setEnergia: vi.fn(),
     setEnergiaMax: vi.fn(),
+    setHambre: vi.fn(),
+    setSed: vi.fn(),
     setFictionalDate: vi.fn(),
     setEndedAt,
     setDiceReveal: vi.fn(),

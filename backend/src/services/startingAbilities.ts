@@ -138,6 +138,17 @@ const GORHORN_GENERAL_ABILITIES: StartingAbility[] = [
     promptText: 'Reviso el inventario y me curo con ',
     category: 'general',
   },
+  // "Comer/Beber" (2026-09-04) — mismo patrón exacto que Curar: panel de selección
+  // (HungerThirstSelectionModal.tsx) con vista previa acumulada de Hambre/Sed antes de confirmar,
+  // sin pasar por narración libre del LLM. `promptText` no se usa nunca (GameView.tsx intercepta
+  // por nombre antes de llegar al composer), se deja por consistencia con el resto.
+  {
+    name: 'Comer/Beber',
+    icon: '🍖',
+    description: 'Registra el inventario y te permite seleccionar comida y/o beber agua, viendo cuánto subirán Hambre y Sed antes de confirmar.',
+    promptText: 'Como y bebo algo antes de seguir.',
+    category: 'general',
+  },
   // "Recoger" (2026-08-25, retira el descubrimiento de texto libre — ver discovery.ts) — objetos
   // narrativos, no recursos de oficio (criterio explícito de la usuaria: "si son recursos solo se
   // puede recoger con profesiones, si son items entonces con este recoger"). Panel real

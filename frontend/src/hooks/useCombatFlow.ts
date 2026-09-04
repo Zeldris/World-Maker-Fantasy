@@ -57,6 +57,9 @@ interface UseCombatFlowParams {
   setEntorno: Dispatch<SetStateAction<EntornoTemporalInfo | null>>
   setEnergia: Dispatch<SetStateAction<number>>
   setEnergiaMax: Dispatch<SetStateAction<number>>
+  /// Habilidad "Comer/Beber" (2026-09-04) — mismo criterio que setEnergia/setEnergiaMax.
+  setHambre: Dispatch<SetStateAction<number>>
+  setSed: Dispatch<SetStateAction<number>>
   setFictionalDate: Dispatch<SetStateAction<string>>
   setEndedAt: Dispatch<SetStateAction<string | null>>
   setDiceReveal: Dispatch<SetStateAction<{ exchange: CombatExchangeInfo; npcName: string | null } | null>>
@@ -107,6 +110,8 @@ export function useCombatFlow(params: UseCombatFlowParams) {
     setEntorno,
     setEnergia,
     setEnergiaMax,
+    setHambre,
+    setSed,
     setFictionalDate,
     setEndedAt,
     setDiceReveal,
@@ -250,6 +255,8 @@ export function useCombatFlow(params: UseCombatFlowParams) {
         entorno,
         energia,
         energiaMax,
+        hambre,
+        sed,
         timeLabel: newTimeLabel,
         combateIniciado: combate,
         finDePartida,
@@ -304,6 +311,8 @@ export function useCombatFlow(params: UseCombatFlowParams) {
         entorno,
         energia,
         energiaMax,
+        hambre,
+        sed,
         timeLabel: newTimeLabel,
         finDePartida,
         newInventoryItems,
@@ -604,6 +613,8 @@ export function useCombatFlow(params: UseCombatFlowParams) {
     entorno: EntornoTemporalInfo
     energia: number
     energiaMax: number
+    hambre: number
+    sed: number
     timeLabel: string
     finDePartida: boolean
     newInventoryItems: InventoryItemInfo[]
@@ -676,6 +687,8 @@ export function useCombatFlow(params: UseCombatFlowParams) {
     setEntorno(params.entorno)
     setEnergia(params.energia)
     setEnergiaMax(params.energiaMax)
+    setHambre(params.hambre)
+    setSed(params.sed)
     setFictionalDate(params.timeLabel)
     setCombatAwaitingDefense(params.esperandoDefensaJugador)
     setLastInitiativeRoll(params.nextInitiativeRoll)

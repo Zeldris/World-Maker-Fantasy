@@ -321,6 +321,8 @@ export async function detailRoutes(app: FastifyInstance) {
           curaHasta: catalogItem?.curaHasta ?? null,
           curaUnPaso: catalogItem?.curaUnPaso ?? false,
           curaEnergia: catalogItem?.curaEnergia ?? null,
+          // Habilidad "Comer/Beber" (2026-09-04) — mismo criterio que curaHasta/curaEnergia.
+          curaHambre: catalogItem?.curaHambre ?? null,
           // Imagen real de la Enciclopedia (petición explícita de la usuaria, 2026-07-24: "las
           // imágenes no salen" al ver un objeto desde Inventario/Equipo) — `DetailModal.tsx`
           // (kind:'item') nunca recibía esto, así que solo mostraba el emoji genérico aunque la

@@ -199,6 +199,10 @@ export interface NarrateResponse {
   /// Constitución efectiva), listos para actualizar la barra sin recalcular nada en el cliente.
   energia: number
   energiaMax: number
+  /// Habilidad "Comer/Beber" (2026-09-04) — % de Hambre/Sed tras este turno, mismo criterio que
+  /// `energia`/`energiaMax`: listos para actualizar las barras sin recalcular nada en el cliente.
+  hambre: number
+  sed: number
   /// Hora ficticia real tras ESTE turno (bug real, petición explícita 2026-08-14: "se logea mal la
   /// hora" — GameView.tsx antes solo fijaba `fictionalDate` al cargar la partida y sellaba cada
   /// entrada de log nueva con ese valor congelado el resto de la sesión en vivo, aunque el reloj
@@ -358,6 +362,10 @@ export async function requestTurnNarrate(
     /// mismo campo en turnResolution.ts (NarrateAndPersistParams.healItemUses). Lista ORDENADA —
     /// el orden en que se seleccionaron los objetos cambia el resultado real.
     healItemUses?: { itemId: string; quantity: number }[]
+    /// Panel "Comer/Beber" (2026-09-04) — ver el mismo campo en turnResolution.ts
+    /// (NarrateAndPersistParams.hambreSedItemUses/beberAgua).
+    hambreSedItemUses?: { itemId: string; quantity: number }[]
+    beberAgua?: boolean
   },
   handlers?: TurnNarrateHandlers,
 ): Promise<NarrateResponse> {

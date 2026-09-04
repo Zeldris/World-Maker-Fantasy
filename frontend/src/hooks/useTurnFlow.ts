@@ -55,6 +55,8 @@ interface UseTurnFlowParams {
   setEntorno: Dispatch<SetStateAction<EntornoTemporalInfo | null>>
   setEnergia: Dispatch<SetStateAction<number>>
   setEnergiaMax: Dispatch<SetStateAction<number>>
+  setHambre: Dispatch<SetStateAction<number>>
+  setSed: Dispatch<SetStateAction<number>>
   setFictionalDate: Dispatch<SetStateAction<string>>
   setSuggestions: Dispatch<SetStateAction<string[]>>
   setQuests: Dispatch<SetStateAction<QuestInfo[]>>
@@ -121,6 +123,8 @@ export function useTurnFlow(params: UseTurnFlowParams) {
     setEntorno,
     setEnergia,
     setEnergiaMax,
+    setHambre,
+    setSed,
     setFictionalDate,
     setSuggestions,
     setQuests,
@@ -152,7 +156,8 @@ export function useTurnFlow(params: UseTurnFlowParams) {
     action: string,
     // Panel "Curar" con varios objetos/usos a la vez (petición explícita, 2026-08-18) — reenviado
     // tal cual a requestTurnNarrate, mismo criterio que `lootItemNames` en submitCombatAction.
-    extras?: { healItemUses?: { itemId: string; quantity: number }[] },
+    // "Comer/Beber" (2026-09-04) — mismo patrón que healItemUses.
+    extras?: { healItemUses?: { itemId: string; quantity: number }[]; hambreSedItemUses?: { itemId: string; quantity: number }[]; beberAgua?: boolean },
   ) {
     if (!action || !saveId || busyUntil || endedAt || pendingDeathResolution) return
     composerRef.current?.clear()
@@ -240,6 +245,8 @@ export function useTurnFlow(params: UseTurnFlowParams) {
         entorno: newEntorno,
         energia: newEnergia,
         energiaMax: newEnergiaMax,
+        hambre: newHambre,
+        sed: newSed,
         timeLabel: newTimeLabel,
         combateIniciado: combate,
         esperandoDefensaJugador,
@@ -267,7 +274,17 @@ export function useTurnFlow(params: UseTurnFlowParams) {
         professionProgress: updatedProfessionProgress,
         combatEncounterLootSummary,
       } = await requestTurnNarrate(
-        { saveId, action, classification, roll, travel, npcsInScene: classifyResult.npcsInScene, healItemUses: extras?.healItemUses },
+        {
+          saveId,
+          action,
+          classification,
+          roll,
+          travel,
+          npcsInScene: classifyResult.npcsInScene,
+          healItemUses: extras?.healItemUses,
+          hambreSedItemUses: extras?.hambreSedItemUses,
+          beberAgua: extras?.beberAgua,
+        },
         {
           onChunk: (delta) => setStreamingNarration((prev) => (prev ?? '') + delta),
           onReset: () => setStreamingNarration(null),
@@ -280,6 +297,8 @@ export function useTurnFlow(params: UseTurnFlowParams) {
       setEntorno(newEntorno)
       setEnergia(newEnergia)
       setEnergiaMax(newEnergiaMax)
+      setHambre(newHambre)
+      setSed(newSed)
       setFictionalDate(newTimeLabel)
       // Las sugerencias del turno anterior ya no aplican a la escena nueva — se limpian aquí
       // (bajo demanda ahora, ver comentario de `suggestions` más arriba: se piden con su propio

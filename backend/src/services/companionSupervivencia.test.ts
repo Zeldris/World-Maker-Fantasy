@@ -13,6 +13,7 @@ import {
   porcentajeSupervivencia,
   comidaPct,
   aguaPct,
+  lastAtMinutesForGanancia,
   AGUA_MINUTOS_POR_TRAMO,
   COMIDA_MINUTOS_POR_TRAMO,
   UMBRAL_DESCUIDO_PCT,
@@ -124,6 +125,38 @@ describe('porcentajeSupervivencia / comidaPct / aguaPct', () => {
 
   it('el umbral de descuido (§4) es 25%', () => {
     expect(UMBRAL_DESCUIDO_PCT).toBe(25);
+  });
+});
+
+describe('lastAtMinutesForGanancia (habilidad "Comer/Beber")', () => {
+  it('0% + ganancia que llega a 100 → lastAtMinutes = nowMinutes (recién comido/bebido)', () => {
+    const now = 10_000;
+    expect(lastAtMinutesForGanancia(0, now, AGUA_MINUTOS_POR_TRAMO, 100)).toBe(now);
+  });
+
+  it('nunca comió (null) + cualquier ganancia → ya estaba al 100%, se queda en nowMinutes', () => {
+    const now = 5_000;
+    expect(lastAtMinutesForGanancia(null, now, COMIDA_MINUTOS_POR_TRAMO, 20)).toBe(now);
+  });
+
+  it('50% + 30 de ganancia → objetivo 80%, redondea al tramo de 25 más cercano (75%, 1 tramo)', () => {
+    const now = 10_000;
+    const lastAt = now - 2 * AGUA_MINUTOS_POR_TRAMO; // 50%
+    const resultado = lastAtMinutesForGanancia(lastAt, now, AGUA_MINUTOS_POR_TRAMO, 30);
+    expect(aguaPct(resultado, now)).toBe(75);
+  });
+
+  it('ganancia negativa se ignora (nunca empeora), se queda igual que el pct actual', () => {
+    const now = 10_000;
+    const lastAt = now - AGUA_MINUTOS_POR_TRAMO; // 75%
+    const resultado = lastAtMinutesForGanancia(lastAt, now, AGUA_MINUTOS_POR_TRAMO, -10);
+    expect(aguaPct(resultado, now)).toBe(75);
+  });
+
+  it('ganancia grande desde 0% respeta el tope de 4 tramos (nunca antes de minuto 0)', () => {
+    const now = 100;
+    const resultado = lastAtMinutesForGanancia(0, now, AGUA_MINUTOS_POR_TRAMO, 24);
+    expect(resultado).toBeGreaterThanOrEqual(0);
   });
 });
 

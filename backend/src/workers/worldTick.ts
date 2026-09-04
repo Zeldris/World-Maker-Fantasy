@@ -153,6 +153,8 @@ async function resolveClaimedTransit(transit: DueTransit, notBefore?: Date): Pro
       produccion: duration?.produccion,
       condicionFisica: save.condicionFisica,
       energia: save.energia,
+      lastAteAtMinutes: save.lastAteAtMinutes,
+      lastDrankAtMinutes: save.lastDrankAtMinutes,
       activeEffects: parseActiveEffects(save.activeEffects),
       dificultad: save.dificultad,
       deathCount: save.deathCount,

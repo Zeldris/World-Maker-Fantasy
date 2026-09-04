@@ -48,6 +48,9 @@ import { CampSelectionModal } from '../components/CampSelectionModal'
 import { TravelDestinationModal } from '../components/TravelDestinationModal'
 import { SaquearZonaModal } from '../components/SaquearZonaModal'
 import { HealSelectionModal } from '../components/HealSelectionModal'
+import { HungerThirstSelectionModal } from '../components/HungerThirstSelectionModal'
+import { HungerBar } from '../components/HungerBar'
+import { ThirstBar } from '../components/ThirstBar'
 import { EntregaModal } from '../components/EntregaModal'
 import { AprenderOficioModal } from '../components/AprenderOficioModal'
 import { EspecializacionModal } from '../components/EspecializacionModal'
@@ -176,6 +179,8 @@ export function GameView() {
     setSaquearZonaModalOpen,
     healModalOpen,
     setHealModalOpen,
+    hungerThirstModalOpen,
+    setHungerThirstModalOpen,
     entregaModalOpen,
     setEntregaModalOpen,
     aprenderOficioModalOpen,
@@ -410,6 +415,8 @@ export function GameView() {
     setEntorno,
     setEnergia,
     setEnergiaMax,
+    setHambre,
+    setSed,
     setFictionalDate,
     setEndedAt,
     setDiceReveal,
@@ -982,6 +989,11 @@ export function GameView() {
       setActivePanel(null)
       return
     }
+    if (ability.name === 'Comer/Beber') {
+      setHungerThirstModalOpen(true)
+      setActivePanel(null)
+      return
+    }
     if (ability.name === 'Entregar') {
       setEntregaModalOpen(true)
       setActivePanel(null)
@@ -1298,6 +1310,8 @@ export function GameView() {
     setEntorno,
     setEnergia,
     setEnergiaMax,
+    setHambre,
+    setSed,
     setFictionalDate,
     setSuggestions,
     setQuests,
@@ -1487,6 +1501,8 @@ export function GameView() {
           </button>
           <HealthBar condicionFisica={condicionFisica} />
           <EnergyBar energia={energia} energiaMax={energiaMax} />
+          <HungerBar hambre={hambre} />
+          <ThirstBar sed={sed} />
           {dificultad !== 'NOVATO' && (
             // Indicador de muerte permanente (2026-07-19, auditoría de frontend): docs/14 § 4.2
             // ya tiene un límite real de muertes por dificultad, pero el jugador no tenía ninguna
@@ -1952,6 +1968,19 @@ export function GameView() {
             handleSubmit(actionText, { healItemUses })
           }}
           onCancel={() => setHealModalOpen(false)}
+        />
+      )}
+
+      {hungerThirstModalOpen && (
+        <HungerThirstSelectionModal
+          inventory={inventory}
+          hambre={hambre}
+          sed={sed}
+          onConfirm={(actionText, hambreSedItemUses, beberAgua) => {
+            setHungerThirstModalOpen(false)
+            handleSubmit(actionText, { hambreSedItemUses, beberAgua })
+          }}
+          onCancel={() => setHungerThirstModalOpen(false)}
         />
       )}
 

@@ -5934,6 +5934,98 @@ describe('Curar: varios objetos a la vez con healItemUses (2026-08-18)', () => {
   });
 });
 
+// Habilidad "Comer/Beber" (2026-09-04) — mismo patrón EXACTO que "Curar": camino explícito
+// (`hambreSedItemUses`/`beberAgua`), determinista (nunca llama a narrateAction), consume el item
+// real usado y persiste el nuevo lastAteAtMinutes/lastDrankAtMinutes. Antes de esta pieza, nada en
+// el motor actualizaba esos timestamps nunca dentro de una partida — este test cubre justo eso.
+describe('Comer/Beber: consumo real de comida e ítem "Beber agua" (2026-09-04)', () => {
+  let saveId: string;
+
+  beforeAll(async () => {
+    const userId = await getDefaultUserId();
+    const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
+    const hondonada = await prisma.location.findFirstOrThrow({ where: { worldId: world.id, slug: 'hondonada-del-eco' } });
+    const save = await prisma.save.create({
+      data: {
+        userId,
+        worldId: world.id,
+        characterName: 'Gorhorn de prueba (comer)',
+        characterArchetype: 'guerrero',
+        characterOrigin: 'Clan Maktor',
+        characterMotivation: 'x',
+        attributes: ATTRS,
+        portraitInitial: 'G',
+        currentLocationId: hondonada.id,
+        // Muy por debajo de 100% para que la ganancia real sea observable sin llegar al tope.
+        lastAteAtMinutes: 0,
+        lastDrankAtMinutes: 0,
+      },
+    });
+    saveId = save.id;
+    await prisma.worldState.create({ data: { saveId, fictionalMinutes: 1000 } });
+    await giveMaterials(saveId, [{ name: 'Ración de viaje', catalogSlug: 'racion-viaje' }]);
+    // Mismo turno de relleno que el describe de Curar (evita acoplar este test al encuentro
+    // guionizado de Gistera Koh, que se dispara siempre en el primer turno de cualquier partida).
+    await prisma.logEntry.create({
+      data: { saveId, channel: 'CHARACTER', text: 'Gorhorn de prueba (comer) llega a la hondonada.', isPlayerAction: true, timeLabel: 'Día 1, mañana' },
+    });
+  });
+
+  afterAll(async () => {
+    vi.restoreAllMocks();
+    await prisma.save.delete({ where: { id: saveId } });
+  });
+
+  it('come una ración real y bebe agua en el mismo turno: sube Hambre/Sed, consume el item, narración determinista', async () => {
+    classifyAction.mockResolvedValue({
+      requiereTirada: false, atributo: 'voluntad', dificultad: 8, razon: 'x', banda: 'instantanea', duracionEstimadaMinutos: 0,
+    });
+    vi.spyOn(Math, 'random').mockReturnValue(0.99);
+    narrateAction.mockClear();
+    const racion = await prisma.inventoryItem.findFirstOrThrow({ where: { saveId, catalogSlug: 'racion-viaje' } });
+
+    const app = await buildApp();
+    const action = 'Como y bebo algo antes de seguir.';
+    const classifyRes = await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action, enCombate: false } });
+    const { classification, roll } = classifyRes.json();
+    const narrateRes = await app.inject({
+      method: 'POST',
+      url: '/turn/narrate',
+      payload: {
+        saveId,
+        action,
+        classification,
+        roll,
+        enCombate: false,
+        hambreSedItemUses: [{ itemId: racion.id, quantity: 1 }],
+        beberAgua: true,
+      },
+    });
+    expect(narrateRes.statusCode).toBe(200);
+    const body = lastNdjsonLine(narrateRes.payload) as { hambre: number; sed: number };
+    expect(narrateAction).not.toHaveBeenCalled();
+    // Ración de viaje: curaHambre 28, desde 0% (lastAteAtMinutes:0, fictionalMinutes:1000, muy por
+    // encima de 4 tramos de 12h → 0% real de partida) sube por encima de 0 sin llegar a saciar del
+    // todo. "Beber agua" siempre repone al 100%.
+    expect(body.hambre).toBeGreaterThan(0);
+    expect(body.sed).toBe(100);
+
+    const saveAfter = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
+    const worldStateAfter = await prisma.worldState.findUniqueOrThrow({ where: { saveId } });
+    // "Beber agua" repone al 100% de un tirón: el nuevo lastDrankAtMinutes queda exactamente en el
+    // minuto de ficción de ESTE turno (ver lastAtMinutesForGanancia/fictionalMinutesParaComerBeber).
+    expect(saveAfter.lastDrankAtMinutes).toBe(worldStateAfter.fictionalMinutes);
+    expect(saveAfter.lastAteAtMinutes).not.toBe(0);
+
+    // Unidad única (sin sufijo de cantidad) — la fila desaparece del todo.
+    const inventoryAfter = await prisma.inventoryItem.findMany({ where: { saveId } });
+    expect(inventoryAfter).toHaveLength(0);
+
+    const logEntry = await prisma.logEntry.findFirst({ where: { saveId, channel: 'CHARACTER', isPlayerAction: false }, orderBy: { createdAt: 'desc' } });
+    expect(logEntry?.text).toMatch(/^Gorhorn de prueba \(comer\) come Ración de viaje y bebe agua\. /);
+  });
+});
+
 // Petición explícita de la usuaria (2026-08-21, jugando en vivo): "la primera vez que se abre el
 // combate y al recargar la página se está perdiendo el mensaje de la iniciativa y la tirada de los
 // dados" — mismo bug gemelo que `combatExchange`/`npcAbilityUsed` (LogEntry, 2026-08-13/14): la
