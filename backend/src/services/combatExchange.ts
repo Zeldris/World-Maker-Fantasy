@@ -46,27 +46,25 @@ export interface PendingNpcAttack {
 
 /// Rediseño del turno de combate (2026-07-28, petición explícita: "primero se tiran dados y se
 /// ve quien ataca primero... el otro entra en un turno de defensa... con su propia tirada de
-/// dados independiente de la de ataque"). Un solo dado de d20+floor(valor/2), igual que
-/// `rollCheck` (dice.ts) — sin difficultad fija, es un contraste directo entre los dos lados,
-/// gana quien saque más.
-function contestValue(attributes: AttributeBlock, attribute: Attribute): number {
-  return Math.floor(Math.random() * 20) + 1 + Math.floor(attributes[attribute] / 2);
-}
-
+/// dados independiente de la de ataque") — contraste directo entre los dos lados, gana quien saque
+/// más. Enriquecido (2026-09-04, centralización de todas las tiradas del juego — "que el efecto de
+/// los dados suceda de verdad, como en D&D"): antes un solo número plano (`dado + floor(destreza/2)`,
+/// sin malus por condición física ni desglose alguno); ahora reusa `rollAttributeCheck` con
+/// `multiplicador=1` fijo (sin rueda de tipos — no hay un "tipo de ataque" en una tirada de quién
+/// reacciona más rápido, ambos lados siempre tiran con Destreza), así que malus por condición
+/// física y `attributeBonus` de habilidad (si algún día alguna lo diera) SÍ entran en juego, igual
+/// que en cualquier otra tirada de combate — cambio de balance real, no solo de vista, aprobado
+/// explícitamente por la usuaria.
 export interface InitiativeResult {
   ganador: 'jugador' | 'npc';
-  /// Valores YA con destreza sumada (2026-07-29, "quiero que me indique qué salió en los dados
-  /// para saber por qué ataco primero" — antes `rollInitiative` solo devolvía el ganador, tirando
-  /// los números crudos, así que el turno de ataque nunca podía mostrar ninguna cifra real, a
-  /// diferencia del de defensa).
-  jugadorTirada: number;
-  npcTirada: number;
+  jugador: ExchangeSideResult;
+  npc: ExchangeSideResult;
 }
 
-export function rollInitiative(playerAttributes: AttributeBlock, npcAttributes: AttributeBlock): InitiativeResult {
-  const jugadorTirada = contestValue(playerAttributes, 'destreza');
-  const npcTirada = contestValue(npcAttributes, 'destreza');
-  return { ganador: jugadorTirada >= npcTirada ? 'jugador' : 'npc', jugadorTirada, npcTirada };
+export function rollInitiative(jugador: ExchangeParticipant, npc: ExchangeParticipant): InitiativeResult {
+  const jugadorSide = rollAttributeCheck(jugador, 1);
+  const npcSide = rollAttributeCheck(npc, 1);
+  return { ganador: jugadorSide.result >= npcSide.result ? 'jugador' : 'npc', jugador: jugadorSide, npc: npcSide };
 }
 
 export interface ExchangeParticipant {
@@ -210,15 +208,17 @@ export interface CombatExchangeDisplay {
   margen: number;
 }
 
-/// Una sola tirada de un lado del intercambio — extraído (rediseño de combate, 2026-08-09) de lo
-/// que antes vivía duplicado inline dentro de `resolveExchange`, para que `resolveIndependentExchange`
-/// pueda reusar exactamente la misma mecánica (malus por condición, multiplicador de tipo,
-/// d20+bono, grado de éxito) sin decidir todavía cómo se cruza contra el rival.
-function rollSide(self: ExchangeParticipant, opponentAttribute: Attribute, tree: CombatTree): ExchangeSideResult {
+/// Una sola tirada de un atributo — extraído (2026-09-04, centralización de todas las tiradas del
+/// juego) de lo que antes era `rollSide`, parametrizado por el multiplicador YA calculado en vez de
+/// derivarlo internamente: `rollSide` (ataque/defensa) sigue calculando la rueda de tipos y
+/// llamando aquí; `rollInitiative` (más abajo) llama con `multiplicador=1` fijo — la rueda de
+/// debilidades no tiene sentido semántico para "quién reacciona primero" (ambos lados siempre
+/// tiran con Destreza contra Destreza, no hay un "tipo de ataque" en juego), pero malus por
+/// condición física y `attributeBonus` sí aplican igual que en cualquier otra tirada.
+export function rollAttributeCheck(self: ExchangeParticipant, multiplicador: number, random: () => number = Math.random): ExchangeSideResult {
   const valorCrudo = Math.max(1, self.attributes[self.attribute] + (self.attributeBonus ?? 0) - condicionMalus(self.condicionFisica));
-  const multiplicador = typeMultiplierFor(self.attribute, opponentAttribute, tree);
-  const valorEfectivo = effectiveAttributeValue(valorCrudo, self.attribute, opponentAttribute, tree);
-  const { rolls, usedRoll } = rollD20(self.rollMode ?? 'normal');
+  const valorEfectivo = Math.max(1, Math.round(valorCrudo * multiplicador));
+  const { rolls, usedRoll } = rollD20(self.rollMode ?? 'normal', random);
   const result = usedRoll + Math.floor(valorEfectivo / 2) + (self.bonoTirada ?? 0);
   const gradoExito = gradoExitoFor(result, self.difficulty);
   return {
@@ -237,6 +237,15 @@ function rollSide(self: ExchangeParticipant, opponentAttribute: Attribute, tree:
     success: gradoExito !== 'fallo',
     gradoExito,
   };
+}
+
+/// Una sola tirada de un lado del intercambio — extraído (rediseño de combate, 2026-08-09) de lo
+/// que antes vivía duplicado inline dentro de `resolveExchange`, para que `resolveIndependentExchange`
+/// pueda reusar exactamente la misma mecánica (malus por condición, multiplicador de tipo,
+/// d20+bono, grado de éxito) sin decidir todavía cómo se cruza contra el rival.
+function rollSide(self: ExchangeParticipant, opponentAttribute: Attribute, tree: CombatTree): ExchangeSideResult {
+  const multiplicador = typeMultiplierFor(self.attribute, opponentAttribute, tree);
+  return rollAttributeCheck(self, multiplicador);
 }
 
 /// Resuelve un intercambio completo de ataque vs. defensa — dos tiradas independientes (nunca

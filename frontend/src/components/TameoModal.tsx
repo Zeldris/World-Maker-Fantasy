@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import type { Attribute } from '../types'
 import { postIntentarTameo, postConfirmarTameo, postSoltarTameo, type TameoPendiente, type OpposedRollInfo } from '../lib/api'
-import { attributeLabels } from '../lib/dice'
+import { attributeLabels, opposedRollToSides } from '../lib/dice'
+import { DiceRollVs } from './DiceRoll'
 import { SelectionModalShell, confirmButtonClasses } from './SelectionModalShell'
 import { useSubmitError } from '../hooks/useSubmitError'
 
@@ -93,14 +94,16 @@ export function TameoModal({ saveId, pendiente: initial, onConfirmado, onSoltado
         </p>
       )}
 
-      {lastRoll && (
-        <div className={`rounded-lg border p-2.5 text-2xs ${lastRoll.gano ? 'border-emerald-700 bg-emerald-500/10 text-emerald-300' : 'border-red-800 bg-red-500/10 text-red-300'}`}>
-          <p className="font-medium">
-            {lastRoll.playerResult} ({attributeLabels[lastRoll.playerAttribute]}) vs {lastRoll.resistenciaResult} ({attributeLabels[lastRoll.resistenciaAttribute]})
-          </p>
-          <p className="mt-0.5">{lastRoll.gano ? '¡Gana confianza!' : 'No cede esta vez.'}</p>
-        </div>
-      )}
+      {lastRoll &&
+        (() => {
+          const { left, right } = opposedRollToSides(lastRoll)
+          return (
+            <div className={`rounded-lg border p-2.5 text-2xs ${lastRoll.gano ? 'border-emerald-700 bg-emerald-500/10 text-emerald-300' : 'border-red-800 bg-red-500/10 text-red-300'}`}>
+              <p className="mb-0.5 font-medium">{lastRoll.gano ? '¡Gana confianza!' : 'No cede esta vez.'}</p>
+              <DiceRollVs left={left} right={right} leftLabel="Tú" rightLabel="Resistencia" leftFirst showDifficulty={false} />
+            </div>
+          )
+        })()}
 
       {!umbralCompletado && (
         <div>

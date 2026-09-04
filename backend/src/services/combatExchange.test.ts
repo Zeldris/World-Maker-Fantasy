@@ -237,19 +237,54 @@ describe('resolveIndependentExchange', () => {
 });
 
 describe('rollInitiative', () => {
+  // Enriquecida (2026-09-04, centralización de todas las tiradas del juego) — antes un solo número
+  // plano `dado + floor(destreza/2)`, sin desglose ni malus; ahora reusa `rollAttributeCheck` con
+  // multiplicador=1 fijo (sin rueda de tipos — no aplica a "quién reacciona primero"), así que
+  // malus por condición física SÍ entra en juego, igual que en cualquier otra tirada de combate.
+  function participant(condicionFisica: ExchangeParticipant['condicionFisica'] = 'ILESO'): ExchangeParticipant {
+    return { attributes: BASE_ATTRIBUTES, attribute: 'destreza', difficulty: 0, condicionFisica, rol: 'utilidad' };
+  }
+
   it('gana quien saque el resultado más alto en la tirada de destreza', () => {
     mockRolls(R_FOR_ROLL_20, R_FOR_ROLL_5);
-    expect(rollInitiative(BASE_ATTRIBUTES, BASE_ATTRIBUTES)).toEqual({ ganador: 'jugador', jugadorTirada: 25, npcTirada: 10 });
+    const result = rollInitiative(participant(), participant());
+    expect(result.ganador).toBe('jugador');
+    expect(result.jugador.result).toBe(25);
+    expect(result.npc.result).toBe(10);
   });
 
   it('el NPC puede ganar la iniciativa', () => {
     mockRolls(R_FOR_ROLL_5, R_FOR_ROLL_20);
-    expect(rollInitiative(BASE_ATTRIBUTES, BASE_ATTRIBUTES)).toEqual({ ganador: 'npc', jugadorTirada: 10, npcTirada: 25 });
+    const result = rollInitiative(participant(), participant());
+    expect(result.ganador).toBe('npc');
+    expect(result.jugador.result).toBe(10);
+    expect(result.npc.result).toBe(25);
   });
 
   it('un empate favorece al jugador (nunca deja la iniciativa sin decidir)', () => {
     mockRolls(R_FOR_ROLL_10, R_FOR_ROLL_10);
-    expect(rollInitiative(BASE_ATTRIBUTES, BASE_ATTRIBUTES)).toEqual({ ganador: 'jugador', jugadorTirada: 15, npcTirada: 15 });
+    const result = rollInitiative(participant(), participant());
+    expect(result.ganador).toBe('jugador');
+    expect(result.jugador.result).toBe(15);
+    expect(result.npc.result).toBe(15);
+  });
+
+  it('malus por condición física reduce la tirada y puede cambiar el ganador', () => {
+    mockRolls(R_FOR_ROLL_10, R_FOR_ROLL_10);
+    // Mismo dado (10) para los dos, pero el jugador CONVALECIENTE arrastra -10 de malus — el NPC,
+    // ILESO, gana pese a haber sacado el mismo número en el dado.
+    const result = rollInitiative(participant('CONVALECIENTE'), participant('ILESO'));
+    expect(result.ganador).toBe('npc');
+    expect(result.jugador.malus).toBe(10);
+    expect(result.npc.malus).toBe(0);
+    expect(result.jugador.result).toBeLessThan(result.npc.result);
+  });
+
+  it('nunca aplica multiplicador de tipo (sin rueda de debilidades para iniciativa)', () => {
+    mockRolls(R_FOR_ROLL_10, R_FOR_ROLL_10);
+    const result = rollInitiative(participant(), participant());
+    expect(result.jugador.multiplicador).toBe(1);
+    expect(result.npc.multiplicador).toBe(1);
   });
 });
 

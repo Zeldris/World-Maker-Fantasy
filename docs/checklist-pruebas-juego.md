@@ -1238,3 +1238,60 @@ se perdía en el wiring de React).
 combate aplica la iniciativa recibida, no solo los turnos siguientes"). Suite frontend completa:
 **198/198 en verde**. Pendiente reverificar en vivo jugando: iniciar un combate nuevo y confirmar
 que el badge de iniciativa aparece desde el primer intercambio, no solo desde el segundo.
+
+## Sistema unificado de tirada de dados en vivo — todas las tiradas del juego (2026-09-04)
+
+A raíz del bug de iniciativa de arriba, la usuaria aclaró que "tiradas visibles" significaba algo
+más profundo: que el EFECTO de los dados (animación en vivo, "como en D&D... que sucede de
+verdad") se viera en todas las tiradas mecánicas del juego, no solo el resultado final ya puesto en
+un badge estático. Mapeo completo: ataque/defensa (1v1 y múltiple) y recolección ya animaban;
+iniciativa (1v1 y múltiple), turno normal, Huir (pre/mid-combate) y Tameo/captura no.
+
+**Diseño acordado**: combate/recolección ya tienen streaming NDJSON real (el dado gira mientras el
+backend sigue trabajando); turno normal/Huir/Tameo son peticiones HTTP normales de una respuesta —
+**sin añadirles streaming**, se monta el mismo componente de dado justo al recibir la respuesta ya
+completa (indistinguible visualmente del streaming real). Iniciativa (1v1 y múltiple) se enriquece
+en el CÁLCULO real: malus por condición física y `attributeBonus` sí entran en juego, **sin**
+multiplicador de tipo (la rueda de debilidades no tiene sentido semántico cuando ambos lados
+siempre tiran Destreza contra Destreza) — cambio de balance real, aprobado explícitamente.
+
+**Fijado**:
+- `frontend/src/components/DiceRoll.tsx` (nuevo) — núcleo genérico extraído de la lógica antes
+  privada de `DiceRollReveal.tsx`: `DiceFace` (un lado, animación de tick), `DiceRollSingle` (un
+  solo dado, sustituye a `RollBadge` cuando se anima), `DiceRollVs` (dos lados enfrentados, mismo
+  layout que ya tenía combate). `DiceRollReveal.tsx` se reduce a wrapper fino sobre `DiceRollVs`.
+  `GatheringDiceReveal.tsx` (recolección) mantiene su JSX propio, solo reimporta las constantes de
+  cadencia desde el nuevo sitio.
+- `backend/src/services/combatExchange.ts` — extraída `rollAttributeCheck` (la fórmula real de
+  `rollSide`, parametrizada por el multiplicador ya calculado); `rollSide` la llama con la rueda de
+  tipos, `rollInitiative` con `multiplicador=1` fijo. `InitiativeResult` enriquecido:
+  `{ganador, jugador: ExchangeSideResult, npc: ExchangeSideResult}` en vez de dos números planos.
+- `backend/src/services/combateMultiple.ts` — `rollInitiativeMultiple` reusa la misma función;
+  `CombatienteIniciativa` gana `condicionFisica`; `IniciativaEntry` se aplana con los campos de
+  `ExchangeSideResult`.
+- `frontend/src/components/CombatPanel.tsx` — el badge de iniciativa (texto plano) pasa a
+  `DiceRollVs` real, copy explicativo fuera del componente.
+- `frontend/src/components/LogPanel.tsx` — turno normal/Huir: `entry.roll` anima con
+  `DiceRollSingle` la primera vez que se ve en la sesión (`liveEntryIds`), `RollBadge` estático el
+  resto (recarga, Diario, turnos ya vistos antes). `frontend/src/pages/GameView.tsx` —
+  `liveRevealedIdsRef` + wrapper de `setCharacterLog` que detecta automáticamente ids nuevos por
+  comparación de arrays (no hubo que tocar los 15+ call-sites que ya llaman `setCharacterLog`);
+  `syncFromSave` usa el setter crudo (`setCharacterLogRaw`) para que la carga inicial nunca anime.
+- `frontend/src/components/TameoModal.tsx` — bloque estático sustituido por `DiceRollVs`, mapeando
+  `OpposedRollInfo` con el nuevo helper `opposedRollToSides` (`frontend/src/lib/dice.ts`) — sin
+  cambios backend, `OpposedRollInfo` ya exponía los rolls crudos por separado.
+- `RollBadge.tsx` se mantiene explícitamente como modo histórico/estático (Diario, recarga), no se
+  elimina — comentario de cabecera actualizado documentando ese cambio de rol.
+
+**Verificado**: `tsc -b` limpio backend y frontend. Tests backend: `combatExchange.test.ts`
+(`describe('rollInitiative')` reescrito, 5 casos: gana quien saca más, NPC puede ganar, empate
+gana jugador, malus por condición cambia el ganador, nunca aplica multiplicador de tipo).
+`combateMultiple.test.ts` (`describe('rollInitiativeMultiple')`, +1 caso de malus por condición).
+2 tests de `turn.integration.test.ts` actualizados al nuevo shape de `initiativeRoll` (antes
+esperaban `jugadorTirada`/`npcTirada` planos). Suite completa backend: **1821 unitarios + 233/234
+integración en verde** (único fallo: el mismo flake preexistente de "Múrgol", sin relación).
+Suite frontend completa: **198/198 en verde**. Pendiente reverificar en vivo jugando: iniciativa
+animada al abrir combate (con malus visible si no estás ILESO), una acción de texto libre con
+tirada anima el dado antes de revelar el resultado, Huir (pre y mid-combate) igual, un intento de
+Tameo anima ambos lados del "vs", y que recargar la página / ver el Diario muestra las tiradas ya
+pasadas sin volver a animar.

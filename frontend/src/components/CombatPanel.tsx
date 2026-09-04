@@ -10,6 +10,7 @@ import { HealthBar } from './HealthBar'
 import { MediaSlot } from './ImagePromptDisplay'
 import { TooltipAnchor } from './TooltipAnchor'
 import { CombatSelectionModal } from './CombatSelectionModal'
+import { DiceRollVs } from './DiceRoll'
 import type { CombatNpcDisplay } from './CombatComposer'
 import { combatKeyFor, combatDisplayNameFor } from '../lib/gameViewHelpers'
 import type { ActiveEffect, AttributeBlock, CondicionFisica, InitiativeRollInfo, InventoryItemInfo, SavedActionInfo } from '../types'
@@ -601,6 +602,10 @@ export function CombatPanel({
             un vistazo con "de quién es este turno". `lastInitiativeRoll` puede faltar en defensa
             si el enemigo forzó el turno sin tirada real (Aturdimiento/Intimidación) — ahí se cae
             al aviso genérico de siempre. */}
+        {/* Iniciativa animada en vivo (2026-09-04, centralización de todas las tiradas del juego —
+            petición explícita: "como en D&D, que el efecto de los dados suceda de verdad") — antes
+            un badge de texto plano ya resuelto; ahora el mismo `DiceRollVs` que ya usa el
+            intercambio de ataque/defensa, con el copy explicativo fuera del componente. */}
         {awaitingDefense && (
           <div
             className={`rounded-lg border-2 px-3.5 py-2.5 text-sm font-semibold shadow-[0_0_16px_-6px_var(--color-accent-500)] ${
@@ -609,8 +614,15 @@ export function CombatPanel({
           >
             {lastInitiativeRoll ? (
               <>
-                🎲 Iniciativa: tú {lastInitiativeRoll.jugadorTirada} vs {lastInitiativeRoll.npcTirada} del enemigo — un enemigo actúa primero, elige a
-                ciegas cómo defenderte.
+                Un enemigo actúa primero, elige a ciegas cómo defenderte.
+                <DiceRollVs
+                  left={lastInitiativeRoll.jugador}
+                  right={lastInitiativeRoll.npc}
+                  leftLabel="Tú"
+                  rightLabel="el enemigo"
+                  leftFirst={lastInitiativeRoll.ganador === 'jugador'}
+                  showDifficulty={false}
+                />
               </>
             ) : (
               <>⚔️ Un enemigo actúa primero — elige a ciegas cómo defenderte.</>
@@ -620,8 +632,15 @@ export function CombatPanel({
 
         {!awaitingDefense && lastInitiativeRoll && (
           <div className="rounded-lg border-2 border-danger-500/70 bg-danger-500/15 px-3.5 py-2.5 text-sm font-semibold text-danger-200 shadow-[0_0_16px_-6px_var(--color-danger-500)]">
-            🎲 Iniciativa: tú {lastInitiativeRoll.jugadorTirada} vs {lastInitiativeRoll.npcTirada} del enemigo —{' '}
-            {lastInitiativeRoll.ganador === 'jugador' ? 'actúas primero.' : 'el enemigo actuará primero en tu próximo turno.'}
+            {lastInitiativeRoll.ganador === 'jugador' ? 'Actúas primero.' : 'El enemigo actuará primero en tu próximo turno.'}
+            <DiceRollVs
+              left={lastInitiativeRoll.jugador}
+              right={lastInitiativeRoll.npc}
+              leftLabel="Tú"
+              rightLabel="el enemigo"
+              leftFirst={lastInitiativeRoll.ganador === 'jugador'}
+              showDifficulty={false}
+            />
           </div>
         )}
 

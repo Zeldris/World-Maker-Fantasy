@@ -17,6 +17,7 @@ import type {
   Especializacion,
   EquipSlot,
   EstacionKey,
+  InitiativeRollInfo,
   InventoryItemInfo,
   ItemTipo,
   KingdomFoundedInfo,
@@ -300,7 +301,7 @@ export interface NarrateResponse {
   /// ataque... indicándome qué salió en los dados"): tirada real de iniciativa que decidió quién
   /// actúa en el PRÓXIMO intercambio. null si se forzó sin dados (aturdimiento/intimidación) o si
   /// no hubo intercambio de combate este turno.
-  nextInitiativeRoll: { ganador: 'jugador' | 'npc'; jugadorTirada: number; npcTirada: number } | null
+  nextInitiativeRoll: InitiativeRollInfo | null
   /// Bug real (auditoría de deuda técnica 2026-08-04): construir/mejorar/fundar un edificio de
   /// verdad en la DB no se reflejaba en el mapa ni en el panel de Reino hasta recargar la partida
   /// entera — `syncFromSave` (GameView.tsx) solo se llama al cargar/reconectar, nunca tras un turno

@@ -297,10 +297,15 @@ export interface CombatExchangeInfo {
 /// InitiativeResult) — presente solo si hubo intercambio mecánico real este turno. Persistida en
 /// LogEntry.initiativeRoll (2026-08-21, bug real jugando en vivo: "al recargar la página se está
 /// perdiendo el mensaje de la iniciativa y la tirada de los dados").
+/// Enriquecida (2026-09-04, centralización de todas las tiradas del juego) — antes solo
+/// `{ganador, jugadorTirada, npcTirada}` (dos números planos, sin desglose); ahora cada lado es un
+/// `CombatExchangeSideInfo` completo (roll crudo, malus por condición, attributeBonus, sin
+/// multiplicador de tipo — ver comentario del backend en combatExchange.ts § rollInitiative), listo
+/// para alimentar `DiceRollVs` (DiceRoll.tsx) igual que un intercambio de ataque/defensa.
 export interface InitiativeRollInfo {
   ganador: 'jugador' | 'npc'
-  jugadorTirada: number
-  npcTirada: number
+  jugador: CombatExchangeSideInfo
+  npc: CombatExchangeSideInfo
 }
 
 /// Banner de elemento citado bajo la narración (petición explícita de la usuaria, 2026-07-24) —

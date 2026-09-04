@@ -1,6 +1,7 @@
 import { memo, useEffect, useRef, useState } from 'react'
 import type { CombatExchangeInfo, CondicionFisica, LogEntry } from '../types'
 import { RollBadge } from './RollBadge'
+import { DiceRollSingle } from './DiceRoll'
 import { CombatExchangeBadge } from './CombatExchangeBadge'
 import { DiceRollReveal } from './DiceRollReveal'
 import { PanelRivets } from './Rivet'
@@ -86,6 +87,14 @@ interface LogPanelProps {
   onViewFullHistory?: () => void
   onCapturarConvaleciente?: (npcKey: string) => void
   onClementeConvaleciente?: (npcKey: string) => void
+  /// Tirada en vivo vs histórica (2026-09-04, centralización de todas las tiradas del juego) —
+  /// ids de `LogEntry` recién añadidas en ESTA sesión (turno normal/Huir resuelto en vivo, nunca
+  /// tocado por la carga inicial de partida — ver `liveRevealedIdsRef`, GameView.tsx). Si el id de
+  /// la entrada está aquí, su tirada anima con `DiceRollSingle` (primera vez que se ve); si no,
+  /// `RollBadge` estático (recarga, Diario, o simplemente turnos anteriores de esta misma sesión
+  /// que ya se vieron una vez). Ausente = comportamiento siempre estático, mismo criterio opcional
+  /// que el resto de props de este componente.
+  liveEntryIds?: Set<string>
 }
 
 const accentClasses = {
@@ -166,6 +175,7 @@ export const LogPanel = memo(function LogPanel({
   onCapturarConvaleciente,
   onClementeConvaleciente,
   onViewFullHistory,
+  liveEntryIds,
 }: LogPanelProps) {
   const { enciclopediaIndex, onEntityDetail, onEntityQuickInsert } = useEnciclopediaLink()
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -354,7 +364,7 @@ export const LogPanel = memo(function LogPanel({
                   compatibilidad con otros sitios que solo lo leen a él (turnResolution.ts,
                   `combatExchangeRoll ?? roll`) — cuando hay `combatExchange`, ese mismo número ya
                   se muestra ahí (fila "Tú"), con más contexto (el lado del enemigo, quién gana). */}
-              {entry.roll && !entry.combatExchange && <RollBadge roll={entry.roll} />}
+              {entry.roll && !entry.combatExchange && (liveEntryIds?.has(entry.id) ? <DiceRollSingle roll={entry.roll} /> : <RollBadge roll={entry.roll} />)}
               {entry.combatExchange && (
                 <CombatExchangeBadge exchange={entry.combatExchange} playerName={characterName} enemyName={entry.npcAbilityUsed?.npcName} />
               )}

@@ -149,7 +149,32 @@ export function GameView() {
   // falta tocarlo en esos otros sitios donde se actualiza characterAttributes.
   const [characterAttributeBonuses, setCharacterAttributeBonuses] = useState<Partial<AttributeBlock>>({})
   const [secondaryAttributes, setSecondaryAttributes] = useState<SecondaryAttributeBlock | null>(null)
-  const [characterLog, setCharacterLog] = useState<LogEntry[]>([])
+  const [characterLog, setCharacterLogRaw] = useState<LogEntry[]>([])
+  // Tirada en vivo vs histórica (2026-09-04, centralización de todas las tiradas del juego) — ids
+  // de LogEntry vistas por PRIMERA vez en esta sesión — LogPanel.tsx anima con DiceRollSingle solo
+  // estos ids, el resto (recarga, Diario, turnos ya vistos antes en esta misma sesión) se queda con
+  // el RollBadge estático. Mismo criterio implícito que ya usa `diceReveal` para combate: estado
+  // efímero, nunca reconstruido desde `LogEntry` persistida.
+  //
+  // Detección automática por comparación de arrays, no un callback nuevo que cada uno de los 15+
+  // sitios que ya llaman `setCharacterLog` tendría que recordar invocar aparte (`useTurnFlow.ts`/
+  // `useCombatFlow.ts` viven fuera de este archivo, así que un callback explícito exigiría además
+  // enhebrarlo como prop nueva por los dos hooks). `setCharacterLog` sigue siendo la MISMA función
+  // que ya se pasa a todo el árbol — solo se envuelve una vez, aquí, sin tocar ningún call-site.
+  // `syncFromSave` (carga inicial/recarga, sustituye `characterLog` ENTERO de golpe) usa el setter
+  // CRUDO (`setCharacterLogRaw`) en vez de este wrapper — es la única distinción real necesaria:
+  // cualquier id nuevo que aparezca vía el wrapper es, por definición, un turno resuelto EN VIVO.
+  const liveRevealedIdsRef = useRef<Set<string>>(new Set())
+  const setCharacterLog: typeof setCharacterLogRaw = (update) => {
+    setCharacterLogRaw((prev) => {
+      const next = typeof update === 'function' ? update(prev) : update
+      const prevIds = new Set(prev.map((e) => e.id))
+      for (const entry of next) {
+        if (!prevIds.has(entry.id)) liveRevealedIdsRef.current.add(entry.id)
+      }
+      return next
+    })
+  }
   const [worldLog, setWorldLog] = useState<LogEntry[]>([])
   // Log de Reino (2026-08-17) — canal aparte, alternable con el de mundo, nunca los dos a la vez.
   const [kingdomLog, setKingdomLog] = useState<LogEntry[]>([])
@@ -506,7 +531,9 @@ export function GameView() {
     setCharacterAttributeBonuses(save.attributeBonuses)
     setSecondaryAttributes(save.secondaryAttributes)
     setFictionalDate(save.fictionalDateLabel)
-    setCharacterLog(save.characterLog)
+    // Setter CRUDO (no el wrapper `setCharacterLog`) — carga inicial/recarga completa, ninguna de
+    // estas entradas debe animarse como "recién vista" (ver comentario de `liveRevealedIdsRef`).
+    setCharacterLogRaw(save.characterLog)
     setWorldLog(save.worldLog)
     setKingdomLog(save.kingdomLog)
     setInventory(save.inventory)
@@ -1618,6 +1645,7 @@ export function GameView() {
               onMatarConvaleciente={handleMatarConvaleciente}
               onCapturarConvaleciente={handleCapturarConvaleciente}
               onClementeConvaleciente={handleClementeConvaleciente}
+              liveEntryIds={liveRevealedIdsRef.current}
             />
           )}
           {collapsedSide === 'world' ? (

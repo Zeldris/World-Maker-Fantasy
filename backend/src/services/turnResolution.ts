@@ -955,7 +955,10 @@ function resolveCombatExchangePhase(input: CombatExchangePhaseInput): CombatExch
     // usa cualquier otro intercambio, en vez de dejarla implícita y sin narrar.
     const attributesEfectivosAmbush = effectiveAttributesConDuracion(attributes, input.jugadorActiveEffects);
     const npcAttributesEfectivosAmbush = effectiveAttributesConDuracion(npcParaIntercambio.attributes, input.npcActiveEffects);
-    nextInitiativeRoll = rollInitiative(attributesEfectivosAmbush, npcAttributesEfectivosAmbush);
+    nextInitiativeRoll = rollInitiative(
+      { attributes: attributesEfectivosAmbush, attribute: 'destreza', difficulty: 0, condicionFisica: input.condicionFisicaJugador, rol: 'utilidad' },
+      { attributes: npcAttributesEfectivosAmbush, attribute: 'destreza', difficulty: 0, condicionFisica: npcParaIntercambio.condicionFisica, rol: 'utilidad' },
+    );
   }
 
   if (input.combateActivo && npcParaIntercambio) {
@@ -1458,7 +1461,10 @@ function resolveCombatExchangePhase(input: CombatExchangePhaseInput): CombatExch
       if (iniciativaForzadaPorUtilidad) {
         iniciativaSiguiente = iniciativaForzadaPorUtilidad;
       } else {
-        nextInitiativeRoll = rollInitiative(attributesEfectivos, npcAttributesEfectivos);
+        nextInitiativeRoll = rollInitiative(
+          { attributes: attributesEfectivos, attribute: 'destreza', difficulty: 0, condicionFisica: input.condicionFisicaJugador, rol: 'utilidad' },
+          { attributes: npcAttributesEfectivos, attribute: 'destreza', difficulty: 0, condicionFisica: npcParaIntercambio.condicionFisica, rol: 'utilidad' },
+        );
         iniciativaSiguiente = nextInitiativeRoll.ganador;
       }
 

@@ -6,7 +6,9 @@ import {
   exchangeContextBlock,
   independentExchangeContextBlock,
   utilityTriggered,
+  rollAttributeCheck,
   type ExchangeParticipant,
+  type ExchangeSideResult,
   type CombatExchangeDisplay,
 } from './combatExchange.js';
 import { nextCondicionForAttack } from './death.js';
@@ -30,28 +32,40 @@ export interface CombatienteIniciativa {
   participantId: string;
   bando: Bando;
   destreza: number;
+  /// Enriquecido (2026-09-04, centralización de todas las tiradas del juego) — antes ausente,
+  /// `rollInitiativeMultiple` usaba `destreza` cruda sin ningún malus. Ver comentario de la
+  /// función más abajo.
+  condicionFisica: CondicionFisica;
+  attributeBonus?: number;
 }
 
-export interface IniciativaEntry {
+export interface IniciativaEntry extends ExchangeSideResult {
   participantId: string;
   bando: Bando;
-  roll: number;
-  result: number;
 }
 
-/// Cada combatiente tira su propia iniciativa (d20 + mitad de Destreza, misma fórmula que
-/// `contestValue` en combatExchange.ts) — se ordenan todos en una única cola, empate lo gana
+/// Cada combatiente tira su propia iniciativa — se ordenan todos en una única cola, empate lo gana
 /// mayor Destreza cruda, empate total lo gana quien apareciera antes en `combatientes` (orden
-/// estable, nunca aleatorio de más).
+/// estable, nunca aleatorio de más). Enriquecida (2026-09-04, mismo criterio que `rollInitiative`
+/// 1v1, combatExchange.ts): reusa `rollAttributeCheck` con `multiplicador=1` fijo (sin rueda de
+/// tipos, no aplica a "quién reacciona primero") — malus por condición física SÍ entra en juego.
 export function rollInitiativeMultiple(combatientes: CombatienteIniciativa[], random: () => number = Math.random): IniciativaEntry[] {
   const entries = combatientes.map((c) => {
-    const roll = Math.floor(random() * 20) + 1;
-    return { participantId: c.participantId, bando: c.bando, destreza: c.destreza, roll, result: roll + Math.floor(c.destreza / 2) };
+    const participant: ExchangeParticipant = {
+      attributes: { fuerza: 0, destreza: c.destreza, constitucion: 0, inteligencia: 0, voluntad: 0, carisma: 0, magia: 0 },
+      attribute: 'destreza',
+      difficulty: 0,
+      condicionFisica: c.condicionFisica,
+      attributeBonus: c.attributeBonus,
+      rol: 'utilidad',
+    };
+    const side = rollAttributeCheck(participant, 1, random);
+    return { participantId: c.participantId, bando: c.bando, destreza: c.destreza, ...side };
   });
   return entries
     .slice()
     .sort((a, b) => b.result - a.result || b.destreza - a.destreza)
-    .map(({ participantId, bando, roll, result }) => ({ participantId, bando, roll, result }));
+    .map(({ destreza: _destreza, ...entry }) => entry);
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

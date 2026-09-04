@@ -6081,7 +6081,14 @@ describe('LogEntry.initiativeRoll sobrevive a una recarga tras un intercambio de
     expect(state).not.toBeNull();
 
     const logEntry = await prisma.logEntry.findFirst({ where: { saveId, channel: 'CHARACTER', combate: true }, orderBy: { createdAt: 'desc' } });
-    expect(logEntry?.initiativeRoll).toMatchObject({ ganador: expect.stringMatching(/^(jugador|npc)$/), jugadorTirada: expect.any(Number), npcTirada: expect.any(Number) });
+    // Enriquecido (2026-09-04, centralización de todas las tiradas del juego) — antes
+    // {ganador, jugadorTirada, npcTirada} (números planos); ahora cada lado es un
+    // ExchangeSideResult completo (roll/malus/attributeBonus/etc.), ver combatExchange.ts § rollInitiative.
+    expect(logEntry?.initiativeRoll).toMatchObject({
+      ganador: expect.stringMatching(/^(jugador|npc)$/),
+      jugador: { roll: expect.any(Number), result: expect.any(Number) },
+      npc: { roll: expect.any(Number), result: expect.any(Number) },
+    });
   }, 15_000);
 });
 
@@ -6159,8 +6166,8 @@ describe('Emboscada real del turno de apertura: fallo siembra pendingNpcAttack (
     const openingLogEntry = await prisma.logEntry.findFirst({ where: { saveId, channel: 'CHARACTER' }, orderBy: { createdAt: 'desc' } });
     expect(openingLogEntry?.initiativeRoll).toMatchObject({
       ganador: expect.stringMatching(/^(jugador|npc)$/),
-      jugadorTirada: expect.any(Number),
-      npcTirada: expect.any(Number),
+      jugador: { roll: expect.any(Number), result: expect.any(Number) },
+      npc: { roll: expect.any(Number), result: expect.any(Number) },
     });
 
     // Turno B: ya dentro del panel, enCombate:true — cualquier acción del jugador aquí es su

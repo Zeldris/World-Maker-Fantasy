@@ -1,4 +1,5 @@
-import type { Attribute } from '../types'
+import type { Attribute, RollInfo } from '../types'
+import type { OpposedRollInfo } from './api'
 
 export const attributeLabels: Record<Attribute, string> = {
   fuerza: 'Fuerza',
@@ -62,6 +63,35 @@ export function especializacionLabel(especializacion: string): string {
 // los attr base y en más oscuro lo que aumentan lo que llevas equipado") — reutiliza el mismo
 // 400 que ya usaba `text`, ahora también como relleno sólido del tramo base de la barra de dos
 // tonos (AttributeBars.tsx); `dot` (500) pasa a ser el tramo de bonus de equipo, más oscuro.
+/// Tameo/captura (2026-09-04, centralización de todas las tiradas del juego) — `OpposedRollInfo`
+/// (api.ts) ya expone el roll crudo de cada lado por separado del total, así que no hace falta
+/// tocar backend: solo mapear al shape mínimo que `DiceRollVs` (DiceRoll.tsx) espera. Sin
+/// `malus`/`attributeBonus`/`multiplicador` — Tameo nunca tuvo esos conceptos, `DiceFace` degrada
+/// limpio sin ellos. `difficulty: 0`/`showDifficulty: false` — no hay dificultad fija en un check
+/// opuesto, mismo criterio que iniciativa.
+export function opposedRollToSides(roll: OpposedRollInfo): { left: RollInfo; right: RollInfo } {
+  return {
+    left: {
+      attribute: roll.playerAttribute,
+      value: roll.playerValue,
+      roll: roll.playerRoll,
+      result: roll.playerResult,
+      difficulty: 0,
+      success: roll.gano,
+      gradoExito: roll.gano ? 'claro' : 'fallo',
+    },
+    right: {
+      attribute: roll.resistenciaAttribute,
+      value: roll.resistenciaValue,
+      roll: roll.resistenciaRoll,
+      result: roll.resistenciaResult,
+      difficulty: 0,
+      success: !roll.gano,
+      gradoExito: roll.gano ? 'fallo' : 'claro',
+    },
+  }
+}
+
 export const attributeColorClasses: Record<Attribute, { text: string; border: string; bg: string; dot: string; dotLight: string }> = {
   fuerza: { text: 'text-fuerza-400', border: 'border-fuerza-500', bg: 'bg-fuerza-500/15', dot: 'bg-fuerza-500', dotLight: 'bg-fuerza-400' },
   destreza: { text: 'text-destreza-400', border: 'border-destreza-500', bg: 'bg-destreza-500/15', dot: 'bg-destreza-500', dotLight: 'bg-destreza-400' },

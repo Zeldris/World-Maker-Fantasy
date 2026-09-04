@@ -91,7 +91,12 @@ export async function iniciarCombatEncounter(
   );
   const participantes = creados.map((p, i) => ({ participantId: p.id, bando: p.bando, destreza: combatientes[i].destreza, inteligencia: combatientes[i].inteligencia }));
 
-  const orden = rollInitiativeMultiple(participantes.map((p) => ({ participantId: p.participantId, bando: p.bando, destreza: p.destreza })));
+  // Enriquecida (2026-09-04) — condicionFisica: 'ILESO' fijo aquí a propósito, no un descuido: este
+  // es el combate RECIÉN CREADO (ver comentario de arriba, "todos frescos en ILESO"), la iniciativa
+  // de la ronda de apertura nunca puede llevar malus todavía, nadie ha recibido ningún golpe.
+  const orden = rollInitiativeMultiple(
+    participantes.map((p) => ({ participantId: p.participantId, bando: p.bando, destreza: p.destreza, condicionFisica: 'ILESO' as const })),
+  );
 
   // Objetivo individual real (2026-08-26, docs/21-roadmap.md § Fase 3) — primer cálculo de
   // enganche (duelo/golpe gratis) de la ronda 1, sustituye el viejo `retargetBando` (que siempre

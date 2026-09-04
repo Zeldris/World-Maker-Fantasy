@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { GatheringRollInfo } from '../types'
 import { attributeLabels, attributeColorClasses } from '../lib/dice'
-import { ROLL_DURATION_MS, ROLL_TICK_DELAYS_MS } from './DiceRollReveal'
+import { ROLL_DURATION_MS, ROLL_TICK_DELAYS_MS } from './DiceRoll'
 
 /// Tirada visible de Explorar/Desollar (rediseño de recolección, 2026-08-22, petición explícita:
 /// "hay que añadirle una tirada visual con dado... como el combate"). Mismo lenguaje de caída que

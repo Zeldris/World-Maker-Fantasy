@@ -4,6 +4,14 @@ import { attributeLabels } from '../lib/dice'
 // Grados de éxito (2026-07-19): "con coste" es un tercer estado real, no un matiz de "éxito" —
 // se completa la acción pero con un precio narrativo, así que se le da un color propio (ámbar,
 // mismo tono que GRAVE en HealthBar) en vez de mezclarlo con el verde de un éxito limpio.
+//
+// Modo histórico/estático (2026-09-04, centralización de todas las tiradas del juego) — este
+// badge dejó de ser el único modo para un turno normal/Huir: la primera vez que se ve una tirada
+// EN VIVO (esta sesión, turno recién resuelto), `LogPanel.tsx` monta `DiceRollSingle` (DiceRoll.tsx)
+// en su lugar, con el dado rodando de verdad. `RollBadge` se sigue usando siempre para el Diario
+// (histórico por diseño, nunca "en vivo") y para cualquier turno de esta misma sesión que ya se
+// vio animado una vez (ver `liveRevealedIdsRef`, GameView.tsx) — no tiene sentido volver a animar
+// un dado que ya cayó, así que aquí simplemente se pinta el resultado ya puesto.
 const gradoExitoOf = (roll: RollInfo): 'claro' | 'con_coste' | 'fallo' => roll.gradoExito ?? (roll.success ? 'claro' : 'fallo')
 
 const BADGE_STYLES: Record<'claro' | 'con_coste' | 'fallo', string> = {

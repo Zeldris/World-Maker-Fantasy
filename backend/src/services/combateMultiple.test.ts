@@ -30,10 +30,10 @@ function sequence(values: number[]): () => number {
 describe('rollInitiativeMultiple', () => {
   it('ordena N combatientes por resultado descendente, no solo 2 lados', () => {
     const combatientes: CombatienteIniciativa[] = [
-      { participantId: 'jugador', bando: 'JUGADOR', destreza: 10 },
-      { participantId: 'companero', bando: 'JUGADOR', destreza: 14 },
-      { participantId: 'enemigo1', bando: 'ENEMIGO', destreza: 8 },
-      { participantId: 'enemigo2', bando: 'ENEMIGO', destreza: 20 },
+      { participantId: 'jugador', bando: 'JUGADOR', destreza: 10, condicionFisica: 'ILESO' },
+      { participantId: 'companero', bando: 'JUGADOR', destreza: 14, condicionFisica: 'ILESO' },
+      { participantId: 'enemigo1', bando: 'ENEMIGO', destreza: 8, condicionFisica: 'ILESO' },
+      { participantId: 'enemigo2', bando: 'ENEMIGO', destreza: 20, condicionFisica: 'ILESO' },
     ];
     // rolls en el mismo orden que combatientes: 0.5→11, 0.5→11, 0.5→11, 0.9→19
     const orden = rollInitiativeMultiple(combatientes, sequence([0.5, 0.5, 0.5, 0.9]));
@@ -42,11 +42,26 @@ describe('rollInitiativeMultiple', () => {
 
   it('empate en resultado (floor(destreza/2) igual) lo gana mayor Destreza cruda', () => {
     const combatientes: CombatienteIniciativa[] = [
-      { participantId: 'destreza8', bando: 'JUGADOR', destreza: 8 },
-      { participantId: 'destreza9', bando: 'ENEMIGO', destreza: 9 },
+      { participantId: 'destreza8', bando: 'JUGADOR', destreza: 8, condicionFisica: 'ILESO' },
+      { participantId: 'destreza9', bando: 'ENEMIGO', destreza: 9, condicionFisica: 'ILESO' },
     ];
     const orden = rollInitiativeMultiple(combatientes, sequence([0.5, 0.5]));
     expect(orden[0].participantId).toBe('destreza9');
+  });
+
+  // Enriquecida (2026-09-04, centralización de todas las tiradas del juego) — antes destreza
+  // cruda sin ningún malus; ahora reusa rollAttributeCheck, así que la condición física de cada
+  // combatiente SÍ entra en juego, igual que en el resto del combate.
+  it('malus por condición física reduce el resultado y puede cambiar el orden', () => {
+    const combatientes: CombatienteIniciativa[] = [
+      { participantId: 'sano', bando: 'JUGADOR', destreza: 10, condicionFisica: 'ILESO' },
+      { participantId: 'convaleciente', bando: 'ENEMIGO', destreza: 10, condicionFisica: 'CONVALECIENTE' },
+    ];
+    // Mismo dado (11) para los dos — el CONVALECIENTE arrastra -10 de malus, así que pierde pese a
+    // haber tirado exactamente lo mismo.
+    const orden = rollInitiativeMultiple(combatientes, sequence([0.5, 0.5]));
+    expect(orden[0].participantId).toBe('sano');
+    expect(orden[1].malus).toBe(10);
   });
 });
 

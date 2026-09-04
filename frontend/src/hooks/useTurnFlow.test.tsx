@@ -200,18 +200,36 @@ describe('handleSubmit — turno normal exitoso', () => {
   // estado — el badge de iniciativa solo aparecía a partir del SEGUNDO intercambio. Mismo patrón
   // ya cubierto para `esperandoDefensaJugador` (línea ~340), ahora replicado para la iniciativa.
   it('el turno que abre combate aplica la iniciativa recibida, no solo los turnos siguientes', async () => {
+    // Enriquecida (2026-09-04, centralización de todas las tiradas del juego) — cada lado es ahora
+    // un CombatExchangeSideInfo completo, no solo un número plano.
+    const jugadorSide = {
+      attribute: 'destreza' as const,
+      value: 12,
+      valorEfectivo: 12,
+      multiplicador: 1,
+      malus: 0,
+      roll: 10,
+      rolls: [10],
+      rollMode: 'normal' as const,
+      attributeBonus: 0,
+      result: 15,
+      difficulty: 0,
+      success: true,
+      gradoExito: 'claro' as const,
+    }
+    const npcSide = { ...jugadorSide, roll: 3, rolls: [3], result: 8 }
     mockClassify.mockResolvedValueOnce(baseClassifyResponse())
     mockNarrate.mockResolvedValueOnce(
       baseNarrateResponse({
         combateIniciado: { npcs: [{ slug: 'orco', name: 'Orco', condicionFisica: 'ILESO', saqueado: false, lootedItemNames: [], analizado: false, capturable: true, activeEffects: [] }] },
-        nextInitiativeRoll: { ganador: 'jugador', jugadorTirada: 15, npcTirada: 8 },
+        nextInitiativeRoll: { ganador: 'jugador', jugador: jugadorSide, npc: npcSide },
       }),
     )
     const { result } = renderHook(() => useHarness())
 
     await act(() => result.current.turn.handleSubmit('Ataco al Orco.'))
 
-    expect(result.current.lastInitiativeRoll).toEqual({ ganador: 'jugador', jugadorTirada: 15, npcTirada: 8 })
+    expect(result.current.lastInitiativeRoll).toEqual({ ganador: 'jugador', jugador: jugadorSide, npc: npcSide })
   })
 
   it('level up añade una entrada extra de subida de nivel', async () => {
