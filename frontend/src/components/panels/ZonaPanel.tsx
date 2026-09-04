@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { getZona, resolveImageUrl, type ZonaResponse, type ZonePointInfo, type RegionControlInfo } from '../../lib/api'
+import { ZonePointDetailModal } from '../ZonePointDetailModal'
 
 interface ZonaPanelProps {
   saveId: string
@@ -104,6 +105,7 @@ export function ZonaPanel({ saveId }: ZonaPanelProps) {
   const [loading, setLoading] = useState(true)
   const [data, setData] = useState<ZonaResponse | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [selectedPoint, setSelectedPoint] = useState<ZonePointInfo | null>(null)
 
   useEffect(() => {
     setLoading(true)
@@ -142,7 +144,7 @@ export function ZonaPanel({ saveId }: ZonaPanelProps) {
             <svg viewBox="0 0 800 600" className="h-auto w-full">
               {imageUrl && <image href={imageUrl} x={0} y={0} width={800} height={600} preserveAspectRatio="xMidYMid slice" />}
               {data.puntos.map((p) => (
-                <g key={p.id}>
+                <g key={p.id} onClick={() => setSelectedPoint(p)} className="cursor-pointer">
                   <ZonePointShape tipo={p.tipo} x={p.x} y={p.y} color={COLOR_HEX[p.color]} />
                   {/* C.5 (checklist frontend 2026-08-27) — con 2 dígitos, el número centrado
                       dentro del icono podía sobresalir de formas estrechas (rombo/triángulo);
@@ -215,14 +217,18 @@ export function ZonaPanel({ saveId }: ZonaPanelProps) {
         {data.puntos.length > 0 && (
           <div className="flex flex-col gap-1.5">
             {data.puntos.map((p) => (
-              <div key={p.id} className="flex items-center gap-2 rounded-lg border border-iron-700 bg-wood-950/40 px-3 py-1.5 text-xs">
+              <button type="button"
+                key={p.id}
+                onClick={() => setSelectedPoint(p)}
+                className="tactile flex items-center gap-2 rounded-lg border border-iron-700 bg-wood-950/40 px-3 py-1.5 text-left text-xs transition-colors hover:border-accent-600/60"
+              >
                 <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: COLOR_HEX[p.color] }} />
                 <span className="text-wood-100">
                   {p.nombre}
                   {p.cantidad > 1 && <span className="text-wood-500"> ×{p.cantidad}</span>}
                 </span>
                 <span className="ml-auto text-2xs uppercase tracking-wide text-wood-500">{TIPO_LABEL[p.tipo]}</span>
-              </div>
+              </button>
             ))}
           </div>
         )}
@@ -240,6 +246,7 @@ export function ZonaPanel({ saveId }: ZonaPanelProps) {
             ))}
           </div>
         )}
+      {selectedPoint && <ZonePointDetailModal point={selectedPoint} onClose={() => setSelectedPoint(null)} />}
     </div>
   )
 }
