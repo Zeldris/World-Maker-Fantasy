@@ -963,3 +963,49 @@ no es Múrgol, sugiere que la lista real de candidatos ambientales cambió de pe
 `capturablePct` sembrados en sesiones recientes (Gesgurio 30%, etc.) desde que el test se escribió
 (2026-09-03). Pendiente de investigar la función real de ponderación (`turnResolution.ts`, sugerencia
 ambiental) en otra sesión — no se tocó hoy, fuera de alcance de este guard.
+
+## Auditoría del sistema completo de guards de banda/duración (2026-09-04, agente Explore)
+
+Tras cerrar el guard genérico de arriba, se lanzó un agente a auditar el sistema completo de guards
+deterministas de `turn.ts` (orden, colisiones, redundancia, huecos previsibles, estructura para
+futuros guards) — encontró un bug real de límite que el propio guard genérico había generalizado sin
+darse cuenta.
+
+**Bug real encontrado y CERRADO**: `bandaForMinutos` (travel.ts:248-253) usaba `< 60`/`< 1440` — con
+`duracionEstimadaMinutos` capado EXACTAMENTE a 60 (el propio patrón que varios guards usan, "sin
+duración explícita, tope de 60 min"), el clamp final derivaba banda `'extendida'`, no `'corta'`. No
+solo cosmético: `computeDuration` (timedActions.ts:48) solo trata `'instantanea'` como gratis (1 min
+de ficción) — con `'extendida'`/60 min sí se crea un `CharacterTransit` real de 60 min de ficción. El
+guard genérico nuevo, pensado para evitar exactamente eso ("nunca crea una espera... por una frase
+corta"), producía el resultado contrario para "entrar en la cueva" y cualquier acción parecida.
+**Fix**: límites cambiados a `<= 60`/`<= 1440` (límite superior inclusivo). 2 tests actualizados
+(`travel.test.ts`, `panels.test.ts`) que verificaban el comportamiento viejo en el borde exacto.
+
+**Segundo fix relacionado, mismo hallazgo del agente**: el guard genérico solo capaba el NÚMERO a 60,
+dejando que `bandaForMinutos` derivara la banda — para gestos siempre-instantáneos sin verbo
+reconocido ("asomarse", "agacharse", "gritar", no cubiertos por `SEARCH_INTENT_REGEX`/`REST_REGEX`),
+esto seguía creando un `CharacterTransit` real de banda "corta" en vez de instantánea. **Fix**: el
+guard ahora fuerza `banda = 'instantanea'` directamente — pero con una exclusión explícita nueva para
+`detectsSearchIntent`/`detectsRestIntent` (esas acciones SÍ pueden durar de verdad hasta 60 min sin
+ser instantáneas, es intencional desde el guard original de julio; sin la exclusión, el guard
+genérico corría después y pisaba esa decisión legítima, forzándola a instantánea también — colisión
+real entre dos guards de la misma cadena, encontrada revisando el código con cuidado antes de aplicar
+el cambio).
+
+**Resto del informe del agente, sin cambios aplicados (documentado para referencia futura)**:
+- Los guards 5-10 (ataque/diálogo/hostil/aceptación verbal/objeto propio/combate, todos con el mismo
+  patrón "si tal intent y banda≠instantánea → forzar instantánea") NO se recomienda fusionarlos — cada
+  uno documenta un bug real distinto con fecha y contexto; fusionar ahorraría líneas a cambio de perder
+  trazabilidad de qué patrón concreto sigue colándose en producción (el `console.warn` de cada uno es
+  distinto).
+- Los guards de bloqueo total (`playerActionValidation.ts`, enganchados en turn.ts:556-648) ya siguen
+  el orden correcto (regex puro sin BD primero, consultas a Prisma después) y sus solapamientos ya
+  están resueltos y documentados en el propio código (ej. `detectsFabricatedNpcClaim` excluye diálogo
+  para no confundir una réplica citada con un nombre inventado).
+- Para el próximo guard de esta familia (7º verbo que se cuele): no introducir abstracción nueva
+  todavía — el patrón de comentario largo + bloque explícito es una ventaja para este archivo, no
+  deuda. Si se repite mucho más, un helper de una línea (`forceInstantaneous(classification, action,
+  motivo)`) reduciría 2-3 líneas por guard sin perder el comentario explicativo de cada uno.
+
+Verificado: `tsc -b` limpio, suite completa backend **2015/2016 en verde** (mismo único fallo
+preexistente de "Múrgol" de arriba, sin relación).

@@ -407,15 +407,22 @@ async function resolveClassificationForTurn(params: {
         // modelo pequeño puede inventarse cualquier duración larga sin ningún anclaje real
         // siempre que la acción no sea un viaje/ataque/construcción de verdad. Red de seguridad
         // GENÉRICA, última instancia tras todos los guards específicos de arriba (que ya forzaron
-        // "instantanea" donde aplicaba): cualquier acción que SIGA con banda no-instantánea y sin
-        // duración explícita del jugador queda topada al mismo límite de 60 min que ya usaba el
-        // caso original (búsqueda/descanso) — nunca crea una espera de horas/días por una frase
-        // corta sin anclaje real. `travel` ya decidió su propia duración antes de llegar aquí
-        // (rama `if (travel)` más arriba, este bloque entero es el `else`), así que un viaje real
-        // nunca se ve afectado. Construcción real (con receta detectada,
+        // "instantanea" donde aplicaba). `travel` ya decidió su propia duración antes de llegar
+        // aquí (rama `if (travel)` más arriba, este bloque entero es el `else`), así que un viaje
+        // real nunca se ve afectado. Construcción real (con receta detectada,
         // `mightBeBuildAttemptForDuration`, calculada más abajo en el handler) sigue su propio
         // criterio aparte — ese cálculo usa `produccion`, no lee `duracionEstimadaMinutos` para
-        // decidir si hay materiales, así que capar aquí no le quita nada.
+        // decidir si hay materiales, así que este guard no le quita nada.
+        //
+        // Excluye explícitamente búsqueda/descanso (2026-09-04, auditoría de guards con un
+        // agente — colisión real encontrada en la primera versión de este guard): a diferencia
+        // de "entrar"/"asomarse"/"gritar" (gestos SIEMPRE instantáneos, sin caso legítimo de
+        // banda "corta" real), buscar/descansar SÍ pueden durar de verdad hasta 60 min de ficción
+        // sin ser instantáneos (el guard de arriba, líneas 283-292, ya los topa a 60 sin forzar
+        // "instantanea" — es intencional). Sin esta exclusión, este guard corría DESPUÉS y volvía
+        // a tocar la misma `classification`, viendo `banda !== 'instantanea'` (el guard de
+        // búsqueda/descanso nunca toca `banda`, solo el número) y la forzaba a instantánea de
+        // todos modos — pisando esa decisión legítima.
         //
         // Tensión real encontrada escribiendo este guard, resuelta con cuidado: una espera/salto
         // de tiempo DELIBERADAMENTE largo ("Espero aquí varios días...", saltos de Territory/
@@ -426,17 +433,23 @@ async function resolveClassificationForTurn(params: {
         // declare el número real ("...7 días...", ya reconocido por `EXPLICIT_DURATION_REGEX`).
         // Un jugador/test que de verdad quiere saltar días de ficción debe decirlo con un número,
         // igual que ya lo pide el guard original de búsqueda/descanso desde julio — sin duración
-        // explícita, ninguna acción (ni "esperar", ni "entrar", ni el próximo verbo que aparezca)
-        // debería crear una espera de horas/días por pura inferencia del modelo pequeño.
+        // explícita, ninguna acción de este tipo (ni "esperar", ni "entrar", ni el próximo verbo
+        // que aparezca) debería crear una espera de horas/días por pura inferencia del modelo
+        // pequeño. Se fuerza directamente a "instantanea" (no solo se capa el número a 60, como
+        // hacía la primera versión de este guard): `bandaForMinutos(60)` da "corta", no
+        // "instantanea" — con el número solo capado, "entrar en una cueva" seguía creando un
+        // `CharacterTransit` real de 60 min de ficción para un gesto de segundos.
         if (
           classification.banda !== 'instantanea' &&
-          !mentionsExplicitDuration(action) &&
-          classification.duracionEstimadaMinutos > 60
+          !detectsSearchIntent(action) &&
+          !detectsRestIntent(action) &&
+          !mentionsExplicitDuration(action)
         ) {
           console.warn(
-            `[clasificador] duración sospechosa genérica (${classification.duracionEstimadaMinutos} min) para "${action}" sin duración explícita — capada a 60.`,
+            `[clasificador] banda "${classification.banda}"/${classification.duracionEstimadaMinutos}min sospechosa para "${action}" sin duración explícita — forzada a instantánea.`,
           );
-          classification.duracionEstimadaMinutos = 60;
+          classification.banda = 'instantanea';
+          classification.duracionEstimadaMinutos = 0;
         }
 
         // Roadmap 2026-07-19 (clamp de banda): la fiabilidad de "banda" del clasificador pequeño

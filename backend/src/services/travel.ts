@@ -245,9 +245,14 @@ export function minutosConDestreza(baseMinutos: number, attributes: AttributeBlo
 
 /// Banda derivada de los minutos YA calculados con destreza — para viajes por grafo, el dato
 /// determinista manda sobre la estimación del clasificador (§ 1.4 paso 5).
+///
+/// `<= 60`/`<= 1440` (2026-09-04, auditoría de guards en turn.ts): con `< 60` puro, capar
+/// `duracionEstimadaMinutos` a exactamente 60 (patrón ya usado por varios guards de turn.ts, "sin
+/// duración explícita, tope de 60 min") derivaba banda 'extendida', no 'corta' — el límite superior
+/// de una banda debe incluir el propio número tope, no excluirlo.
 export function bandaForMinutos(minutos: number): Banda {
-  if (minutos < 60) return 'corta';
-  if (minutos < 1440) return 'extendida';
+  if (minutos <= 60) return 'corta';
+  if (minutos <= 1440) return 'extendida';
   return 'larga';
 }
 

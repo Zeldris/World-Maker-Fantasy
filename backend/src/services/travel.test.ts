@@ -216,10 +216,12 @@ describe('minutosConDestreza', () => {
 });
 
 describe('bandaForMinutos', () => {
-  it('corta < 60, extendida < 1440, larga >= 1440', () => {
+  it('corta <= 60, extendida <= 1440, larga > 1440', () => {
     expect(bandaForMinutos(30)).toBe('corta');
+    expect(bandaForMinutos(60)).toBe('corta');
     expect(bandaForMinutos(103)).toBe('extendida');
-    expect(bandaForMinutos(1440)).toBe('larga');
+    expect(bandaForMinutos(1440)).toBe('extendida');
+    expect(bandaForMinutos(1441)).toBe('larga');
   });
 });
 

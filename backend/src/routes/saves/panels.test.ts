@@ -153,8 +153,9 @@ describe('GET /saves/:id/destinos-viaje', () => {
 
     const body = JSON.parse(res.body);
     const byId = new Map(body.destinations.map((d: { locationSlug: string; minutos: number | null; banda: string | null }) => [d.locationSlug, d]));
-    // destreza 0 → minutosConDestreza no reduce el tiempo base.
-    expect(byId.get('b')).toMatchObject({ minutos: 60, banda: 'extendida' });
+    // destreza 0 → minutosConDestreza no reduce el tiempo base. bandaForMinutos(60) → 'corta'
+    // (2026-09-04: el límite superior de cada banda es inclusivo, `<=`, no `<`).
+    expect(byId.get('b')).toMatchObject({ minutos: 60, banda: 'corta' });
     // Sin ningún LocationLink que la conecte, se lista igual pero sin tiempo (nunca se oculta).
     expect(byId.get('aislada')).toMatchObject({ minutos: null, banda: null });
   });
