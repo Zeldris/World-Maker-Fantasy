@@ -57,6 +57,7 @@ import { EntregaModal } from '../components/EntregaModal'
 import { AprenderOficioModal } from '../components/AprenderOficioModal'
 import { EspecializacionModal } from '../components/EspecializacionModal'
 import { ClaseModal } from '../components/ClaseModal'
+import { ConfirmModal } from '../components/ConfirmModal'
 import { inventoryCapacityFor, totalInventoryUnits } from '../lib/inventoryCapacity'
 import {
   requestTurnClassify,
@@ -283,6 +284,12 @@ export function GameView() {
     }
   }, [saveId, currentLocation])
   const [input, setInput] = useState('')
+  // Confirmación al salir de la partida (2026-09-04, petición explícita: "que salga un modal para
+  // confirmar la acción, como en borrar o reiniciar") — antes navegaba directo sin aviso, único
+  // riesgo real de perder de vista dónde estabas si se pulsaba sin querer. Mismo `ConfirmModal`
+  // genérico ya usado en CharacterSaves.tsx para borrar/reiniciar, sin estado async que esperar
+  // (es solo navegación, nunca falla).
+  const [confirmingExit, setConfirmingExit] = useState(false)
   // Barras de habilidades múltiples fuera de combate (2026-09-04, v2 de la SkillBar única de
   // 2026-08-29) — máquina de 4 pantallas en vez del booleano showSkillBar de antes: composer de
   // texto libre, menú de tipo (General/Profesión/Reino/Escribir), menú de barras de un tipo (con
@@ -1520,16 +1527,7 @@ export function GameView() {
       <header className="iron-band relative flex flex-wrap items-center justify-between gap-2 px-5 pb-3 pt-2.5">
         <div className="min-w-0">
           <button type="button"
-            onClick={() =>
-              // Bug real (2026-07-24, "al darle a salir de la partida, que me lleve a las
-              // partidas no a seleccionar mundo"): CharacterSaves resuelve el personaje por id
-              // contra `pregeneratedCharacters` o `selectedCharacter` (SessionContext, en memoria,
-              // se pierde al recargar) — tras recargar GameView directamente, ninguna de las dos
-              // vías resuelve nada (aquí nunca se manda un id de personaje real, sino `saveId`),
-              // así que caía al aviso de "elige mundo y personaje". `characterName` va por query,
-              // como respaldo que CharacterSaves ya puede usar sin depender de esa sesión en memoria.
-              navigate(`/solitario/mundo/${worldIdSlug}/personaje/${saveId}?characterName=${encodeURIComponent(characterName ?? '')}`)
-            }
+            onClick={() => setConfirmingExit(true)}
             className="text-xs text-wood-500 transition-colors hover:text-accent-300"
           >
             ← Salir a tus partidas
@@ -1986,6 +1984,26 @@ export function GameView() {
           worldSlug={worldIdSlug}
           onConfirm={handleAssignEspecializacion}
           onOpenEnciclopedia={handleOpenEnciclopediaClasses}
+        />
+      )}
+
+      {confirmingExit && (
+        <ConfirmModal
+          title="Salir a tus partidas"
+          message="¿Seguro que quieres salir? Tu progreso ya está guardado — puedes volver a esta partida cuando quieras."
+          confirmLabel="Salir"
+          tone="accent"
+          onCancel={() => setConfirmingExit(false)}
+          onConfirm={() =>
+            // Bug real (2026-07-24, "al darle a salir de la partida, que me lleve a las partidas
+            // no a seleccionar mundo"): CharacterSaves resuelve el personaje por id contra
+            // `pregeneratedCharacters` o `selectedCharacter` (SessionContext, en memoria, se
+            // pierde al recargar) — tras recargar GameView directamente, ninguna de las dos vías
+            // resuelve nada (aquí nunca se manda un id de personaje real, sino `saveId`), así que
+            // caía al aviso de "elige mundo y personaje". `characterName` va por query, como
+            // respaldo que CharacterSaves ya puede usar sin depender de esa sesión en memoria.
+            navigate(`/solitario/mundo/${worldIdSlug}/personaje/${saveId}?characterName=${encodeURIComponent(characterName ?? '')}`)
+          }
         />
       )}
 
