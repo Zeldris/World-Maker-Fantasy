@@ -1066,7 +1066,17 @@ export async function postCapturar(
   saveId: string,
   npcSlug: string,
   participantId?: string,
-): Promise<{ npcSlug: string; tipo: 'FAUNA' | 'NPC'; inventoryItemId: string; capturaExpiraAtMinutes: number | null }> {
+): Promise<{
+  npcSlug: string
+  tipo: 'FAUNA' | 'NPC'
+  inventoryItemId: string
+  capturaExpiraAtMinutes: number | null
+  /// Punto del jugador en el mapa de Zona no se toca aquí (fuera de alcance) — solo la reputación
+  /// de facción (2026-09-04, decisión final desde CONVALECIENTE, ver FACTION_REP_CAPTURE_DELTA en
+  /// backend) y el LogEntry breve que ahora la acompaña (antes Capturar era silencioso).
+  logEntry: { id: string; text: string; timeLabel: string; createdAt: string }
+  factionRepChange: { faction: string; delta: number; newValue: number } | null
+}> {
   return fetchJson(`${API_URL}/saves/${saveId}/capturar/${npcSlug}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -1136,7 +1146,14 @@ export async function dejarVivir(
   saveId: string,
   npcSlug: string,
   participantId?: string,
-): Promise<{ npcSlug: string; logEntry: { id: string; text: string; timeLabel: string; createdAt: string } }> {
+): Promise<{
+  npcSlug: string
+  logEntry: { id: string; text: string; timeLabel: string; createdAt: string }
+  /// Reputación de facción (2026-09-04, decisión final desde CONVALECIENTE, ver
+  /// FACTION_REP_MERCY_DELTA en backend) — antes solo Matar/Clemente en combate 1v1 clásico
+  /// aplicaban esto de forma indirecta (y demasiado pronto, ver el bug real que motivó esta pieza).
+  factionRepChange: { faction: string; delta: number; newValue: number } | null
+}> {
   return fetchJson(`${API_URL}/saves/${saveId}/combat/dejar-vivir/${npcSlug}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },

@@ -461,7 +461,7 @@ export function useCombatFlow(params: UseCombatFlowParams) {
   // `dismissed: true` lo saca de "pendiente de resolver" para `combatEnded`.
   async function handleCapturarSeleccion(npc: CombatNpcDisplay) {
     try {
-      await postCapturar(saveId!, npc.slug, npc.participantId)
+      const { logEntry, factionRepChange } = await postCapturar(saveId!, npc.slug, npc.participantId)
       // Identificador de combatientes duplicados (mismo criterio que el resto de este archivo,
       // `combatKeyFor` — bug real 2026-08-29: filtrar por `slug` a secas marcaba `dismissed` en
       // TODOS los individuos del mismo tipo a la vez con 2+ del mismo grupo).
@@ -481,6 +481,12 @@ export function useCombatFlow(params: UseCombatFlowParams) {
         }
         return [...prev, { ...npc, dismissed: true }]
       })
+      // Reputación de facción (2026-09-04) — Capturar ganó su propio LogEntry determinista en esta
+      // pieza (antes era una mutación silenciosa), mismo patrón que Clemente justo abajo.
+      setCharacterLog((prev) => [
+        ...prev,
+        { id: logEntry.id, channel: 'character', text: logEntry.text, timeLabel: logEntry.timeLabel, createdAt: logEntry.createdAt, combate: true, factionRepChange: factionRepChange ?? undefined },
+      ])
     } catch {
       // Best-effort (mismo criterio que el resto de acciones deterministas de combate): sin
       // cuerdas o sin jaula libre, el backend ya devuelve el motivo — no hay nada que deshacer
@@ -494,7 +500,7 @@ export function useCombatFlow(params: UseCombatFlowParams) {
   // que `handleFleeAttempt`.
   async function handleDejarVivirSeleccion(npc: CombatNpcDisplay) {
     try {
-      const { logEntry } = await dejarVivir(saveId!, npc.slug, npc.participantId)
+      const { logEntry, factionRepChange } = await dejarVivir(saveId!, npc.slug, npc.participantId)
       // Mismo criterio que `handleCapturarSeleccion` de arriba — `combatKeyFor`, no `slug` a secas,
       // y siembra la entrada si `combatNpcStates` todavía no la tiene (ver comentario largo arriba).
       setCombatNpcStates((prev) => {
@@ -506,7 +512,7 @@ export function useCombatFlow(params: UseCombatFlowParams) {
       })
       setCharacterLog((prev) => [
         ...prev,
-        { id: logEntry.id, channel: 'character', text: logEntry.text, timeLabel: logEntry.timeLabel, createdAt: logEntry.createdAt, combate: true },
+        { id: logEntry.id, channel: 'character', text: logEntry.text, timeLabel: logEntry.timeLabel, createdAt: logEntry.createdAt, combate: true, factionRepChange: factionRepChange ?? undefined },
       ])
     } catch {
       // Best-effort — ver comentario de `handleCapturarSeleccion`.

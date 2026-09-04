@@ -198,12 +198,17 @@ describe('Misión de apertura: combate contra el Orco Enfurecido (integración r
     expect(finalState?.condicionFisica).toBe('CONVALECIENTE');
     expect(finalState?.saqueado).toBe(false); // nunca se saquea solo por incapacitarlo
 
-    // El Orco Enfurecido es Clan Serhu (worldCatalog.ts) — dejarlo CONVALECIENTE dispara
-    // `applyKillSideEffects`, que resta reputación real (FACTION_REP_ATTACK_DELTA) y ahora
-    // devuelve el resultado en la respuesta HTTP para que el frontend lo muestre.
-    expect(narrateBodyOnKill?.factionRepChange).toEqual({ faction: 'Clan Serhu', delta: -150, newValue: 2350 });
+    // El Orco Enfurecido es Clan Serhu (worldCatalog.ts) — dejarlo CONVALECIENTE YA NO resta
+    // reputación (bug real jugando en vivo, 2026-09-04: "me resta la reputación antes de
+    // matarlo... si elijo matar tiene que esperar a que resuelva el combate antes de restarlo, en
+    // el turno final") — `applyKillSideEffects` solo aplica el delta cuando `nuevaCondicion ===
+    // 'MUERTO'`. La decisión real (Matar/Capturar/Clemente) todavía no se ha tomado en este punto.
+    expect(narrateBodyOnKill?.factionRepChange).toBeNull();
+    // Sin ningún delta aplicado, la clave de esa facción ni siquiera llega a crearse en el JSON
+    // (`factionRepFor` solo devuelve 2500 como default cuando la clave falta, no lo persiste) —
+    // `undefined` es la prueba real de que nunca se tocó `factionsStatus`.
     const worldStateAfter = await prisma.worldState.findUniqueOrThrow({ where: { saveId } });
-    expect((worldStateAfter.factionsStatus as Record<string, number>)['Clan Serhu']).toBe(2350);
+    expect((worldStateAfter.factionsStatus as Record<string, number> | null)?.['Clan Serhu']).toBeUndefined();
 
     // `golpes_mutuos` (ambos lados conectan con dados pinchados al máximo) — pero Gorhorn siempre
     // gana la iniciativa con este mock (empate → gana jugador, ver rollInitiative), así que el NPC
@@ -6784,5 +6789,71 @@ describe('Ataque explícito sin objetivo identificado fuerza el reveal narrativo
     // Múrgol: itinerante real con WorldPopulation > 0 y peso en Las Llanuras del Viento Rojo
     // (misma región de La Hondonada del Eco) — con Math.random mockeado a 0, candidato determinista.
     expect(hint).toContain('Múrgol');
+  }, 15_000);
+});
+
+// Bug real jugando en vivo (2026-09-04: "me resta la reputación antes de matarlo... si elijo
+// matar tiene que esperar a que resuelva el combate antes de restarlo, en el turno final") — la
+// reputación se restaba en el golpe que dejaba CONVALECIENTE, no en la decisión final. Ver el test
+// hermano ya actualizado en "Misión de apertura..." (arriba, factionRepChange null al llegar
+// CONVALECIENTE) — este cubre el otro lado: rematar SÍ debe restar de verdad.
+describe('Reputación de facción solo en la decisión final (rematar a MUERTO), no al dejar CONVALECIENTE (bug real 2026-09-04)', () => {
+  let saveId: string;
+  let npcId: string;
+
+  beforeAll(async () => {
+    vi.spyOn(Math, 'random').mockReturnValue(0.99); // golpes claros siempre, mismo criterio que el describe de apertura
+    const userId = await getDefaultUserId();
+    const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
+    const worldId = world.id;
+    const npc = await prisma.npc.findFirstOrThrow({ where: { worldId, slug: 'orco-enfurecido-hondonada' } });
+    npcId = npc.id;
+    const location = await prisma.location.findFirstOrThrow({ where: { worldId, slug: 'hondonada-del-eco' } });
+    const save = await prisma.save.create({
+      data: {
+        userId,
+        worldId,
+        characterName: 'Gorhorn de prueba (remate)',
+        characterArchetype: 'guerrero',
+        characterOrigin: 'Clan Maktor',
+        characterMotivation: 'x',
+        attributes: ATTRS,
+        portraitInitial: 'G',
+        currentLocationId: location.id,
+        pendingCombatNpcSlugs: ['orco-enfurecido-hondonada'],
+      },
+    });
+    saveId = save.id;
+    await prisma.worldState.create({ data: { saveId } });
+    // PRINCIPAL → scope "" (mismo criterio que scopeFor, npcScene.ts) — CONVALECIENTE ya resuelto
+    // a mano, sin pasar por el motor: solo interesa probar el REMATE, no cómo se llega ahí (ya
+    // cubierto por el describe de apertura).
+    await prisma.npcState.create({ data: { saveId, npcId, scope: '', condicionFisica: 'CONVALECIENTE' } });
+  });
+
+  afterAll(async () => {
+    vi.restoreAllMocks();
+    await prisma.save.delete({ where: { id: saveId } });
+  });
+
+  it('rematar un CONVALECIENTE hasta MUERTO SÍ resta reputación de su facción (FACTION_REP_ATTACK_DELTA)', async () => {
+    const app = await buildApp();
+    const action = "Descargo el golpe final sobre 'Orco enfurecido'.";
+    const classifyRes = await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action, enCombate: true } });
+    const { classification, roll } = classifyRes.json();
+    const narrateRes = await app.inject({
+      method: 'POST',
+      url: '/turn/narrate',
+      payload: { saveId, action, classification, roll, enCombate: true },
+    });
+    expect(narrateRes.statusCode).toBe(200);
+
+    const stateAfter = await prisma.npcState.findFirst({ where: { saveId, npcId } });
+    expect(stateAfter?.condicionFisica).toBe('MUERTO');
+
+    const body = lastNdjsonLine(narrateRes.payload) as unknown as { factionRepChange: { faction: string; delta: number; newValue: number } | null };
+    expect(body.factionRepChange).toEqual({ faction: 'Clan Serhu', delta: -150, newValue: 2350 });
+    const worldStateAfter = await prisma.worldState.findUniqueOrThrow({ where: { saveId } });
+    expect((worldStateAfter.factionsStatus as Record<string, number>)['Clan Serhu']).toBe(2350);
   }, 15_000);
 });

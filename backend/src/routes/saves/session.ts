@@ -7,6 +7,8 @@ import { rollCheck } from '../../services/dice.js';
 import type { AttributeBlock } from '../../services/dice.js';
 import { oneStepWorseThan } from '../../services/death.js';
 import { rejectIfEnded, lockRowForUpdate } from './shared.js';
+import { FACTION_REP_MERCY_DELTA } from '../../services/reputation.js';
+import { applyFactionRepDeltaForResolution } from '../../services/turnResolution.js';
 
 /// Control del estado de una partida EN CURSO (deuda técnica 2026-07-30, split de saves.ts):
 /// pausar/reanudar, cancelar una acción por tiempo, y huir antes de que un combate llegue a
@@ -339,16 +341,25 @@ export async function sessionRoutes(app: FastifyInstance) {
         // `SELECT ... FOR UPDATE` sobre la fila del participante (mismo patrón que `Save` en
         // /combat/flee) — sin el lock explícito, dos transacciones concurrentes pueden leer
         // `dismissedGrupo: false` ANTES de que ninguna escriba, dejando pasar a las dos.
-        const logEntry = await prisma.$transaction(async (tx) => {
+        const outcomeGrupo = await prisma.$transaction(async (tx) => {
           const locked = await lockRowForUpdate<{ dismissedGrupo: boolean | null }>(tx, 'CombatParticipant', participantId, ['dismissedGrupo']);
           if (locked.dismissedGrupo) return null;
           await tx.combatParticipant.update({ where: { id: participantId }, data: { dismissedGrupo: true } });
-          return tx.logEntry.create({ data: { saveId: save.id, channel: 'CHARACTER', text, timeLabel } });
+          const created = await tx.logEntry.create({ data: { saveId: save.id, channel: 'CHARACTER', text, timeLabel } });
+          // Reputación de facción (2026-09-04) — mismo criterio que el camino 1v1 clásico de más
+          // abajo, ver su comentario completo.
+          const factionRepChange = await applyFactionRepDeltaForResolution(tx, save.id, npc.faction, FACTION_REP_MERCY_DELTA);
+          return { logEntry: created, factionRepChange };
         });
-        if (!logEntry) {
+        if (!outcomeGrupo) {
           return reply.status(409).send({ error: 'Ya se dejó con vida a este combatiente.' });
         }
-        return { npcSlug: npc.slug, participantId, logEntry: { id: logEntry.id, text, timeLabel, createdAt: logEntry.createdAt.toISOString() } };
+        return {
+          npcSlug: npc.slug,
+          participantId,
+          logEntry: { id: outcomeGrupo.logEntry.id, text, timeLabel, createdAt: outcomeGrupo.logEntry.createdAt.toISOString() },
+          factionRepChange: outcomeGrupo.factionRepChange,
+        };
       }
 
       const scope = scopeFor(npc.kind, save.currentLocation?.id ?? null);
@@ -374,14 +385,24 @@ export async function sessionRoutes(app: FastifyInstance) {
         const freshSlugs = freshBefore.filter((s) => s !== npc.slug);
         await tx.save.update({ where: { id: save.id }, data: { pendingCombatNpcSlugs: freshSlugs } });
         const created = await tx.logEntry.create({ data: { saveId: save.id, channel: 'CHARACTER', text, timeLabel } });
-        return { kind: 'ok' as const, logEntry: created };
+        // Reputación de facción (2026-09-04, bug real jugando en vivo: "me resta la reputación
+        // antes de matarlo... si elijo matar tiene que esperar a que resuelva el combate antes de
+        // restarlo, en el turno final") — Clemente es una de las 3 decisiones finales posibles
+        // desde CONVALECIENTE (junto a Matar/Capturar), cada una con su propio coste asimétrico
+        // (ver FACTION_REP_MERCY_DELTA, reputation.ts) — la más barata, sigues sin matarlo.
+        const factionRepChange = await applyFactionRepDeltaForResolution(tx, save.id, npc.faction, FACTION_REP_MERCY_DELTA);
+        return { kind: 'ok' as const, logEntry: created, factionRepChange };
       });
 
       if (outcome.kind === 'ya-resuelto') {
         return reply.status(409).send({ error: 'Ya se dejó con vida a este NPC.' });
       }
       const logEntry = outcome.logEntry;
-      return { npcSlug: npc.slug, logEntry: { id: logEntry.id, text, timeLabel, createdAt: logEntry.createdAt.toISOString() } };
+      return {
+        npcSlug: npc.slug,
+        logEntry: { id: logEntry.id, text, timeLabel, createdAt: logEntry.createdAt.toISOString() },
+        factionRepChange: outcome.factionRepChange,
+      };
     },
   );
 }

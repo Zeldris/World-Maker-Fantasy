@@ -6,6 +6,8 @@ import { inventoryCapacityFor, totalInventoryUnits } from '../../services/invent
 import type { AttributeBlock, Attribute } from '../../services/dice.js';
 import { companionSlotsForRecipeKey } from '../../services/construction.js';
 import { rejectIfEnded, lockRowForUpdate } from './shared.js';
+import { FACTION_REP_CAPTURE_DELTA } from '../../services/reputation.js';
+import { applyFactionRepDeltaForResolution } from '../../services/turnResolution.js';
 import {
   esDomador,
   felicidadUmbralFor,
@@ -84,7 +86,7 @@ export async function companerosRoutes(app: FastifyInstance) {
   /// la vez en toda la partida — regla nueva. CONVALECIENTE deja de ser "victoria automática"
   /// (2026-08-26) — requiere `cuerdas` (crafteable, se consume al atar).
   app.post<{ Params: { id: string; npcSlug: string }; Body: { participantId?: string } }>('/saves/:id/capturar/:npcSlug', async (request, reply) => {
-    const save = await prisma.save.findUnique({ where: { id: request.params.id }, select: { id: true, worldId: true, currentLocationId: true, endedAt: true, worldState: { select: { fictionalMinutes: true } } } });
+    const save = await prisma.save.findUnique({ where: { id: request.params.id }, select: { id: true, worldId: true, currentLocationId: true, endedAt: true, characterName: true, worldState: { select: { fictionalMinutes: true, fictionalDateLabel: true } } } });
     if (!save) return reply.status(404).send({ error: 'Partida no encontrada' });
     if (rejectIfEnded(save, reply)) return;
     if (!save.currentLocationId) return reply.status(400).send({ error: 'Sin ubicación actual' });
@@ -184,12 +186,14 @@ export async function companerosRoutes(app: FastifyInstance) {
     const nowMinutes = save.worldState?.fictionalMinutes ?? 480;
     const plazoHoras = plazoCapturaHorasForTier(cuerdaCatalog?.tier ?? 1);
     const capturaExpiraAtMinutes = plazoHoras === null ? null : nowMinutes + plazoHoras * 60;
+    const timeLabel = save.worldState?.fictionalDateLabel ?? 'Día 1, mañana';
+    const text = `${save.characterName} ata a ${npc.name}, todavía con vida — la captura queda sin resolver.`;
 
     // Se consume la cuerda y se crea la captura en tránsito en la misma transacción — mismo
     // criterio de siempre (evitar gastarla en un intento que pierde la carrera).
-    const item = await prisma.$transaction(async (tx) => {
+    const { item, logEntry, factionRepChange } = await prisma.$transaction(async (tx) => {
       await tx.inventoryItem.delete({ where: { id: cuerdasItem.id } });
-      return tx.inventoryItem.create({
+      const createdItem = await tx.inventoryItem.create({
         data: {
           saveId: save.id,
           name: `${npc.name} (Capturado) (${slotsNecesarios})`,
@@ -200,9 +204,26 @@ export async function companerosRoutes(app: FastifyInstance) {
           capturaExpiraAtMinutes,
         },
       });
+      // Reputación de facción (2026-09-04, bug real jugando en vivo: "me resta la reputación
+      // antes de matarlo... si elijo matar tiene que esperar a que resuelva el combate antes de
+      // restarlo, en el turno final") — Capturar es una de las 3 decisiones finales posibles
+      // desde GRAVE/CONVALECIENTE (junto a Matar/Clemente), con su propio coste asimétrico (ver
+      // FACTION_REP_CAPTURE_DELTA, reputation.ts). Sin LogEntry propio hasta ahora (mutación
+      // silenciosa) — se añade uno breve para que el chip de reputación tenga dónde colgarse,
+      // mismo patrón que Clemente (session.ts).
+      const createdLog = await tx.logEntry.create({ data: { saveId: save.id, channel: 'CHARACTER', text, timeLabel } });
+      const rep = await applyFactionRepDeltaForResolution(tx, save.id, npc.faction, FACTION_REP_CAPTURE_DELTA);
+      return { item: createdItem, logEntry: createdLog, factionRepChange: rep };
     });
 
-    return { npcSlug: npc.slug, tipo: esFauna ? 'FAUNA' : 'NPC', inventoryItemId: item.id, capturaExpiraAtMinutes };
+    return {
+      npcSlug: npc.slug,
+      tipo: esFauna ? 'FAUNA' : 'NPC',
+      inventoryItemId: item.id,
+      capturaExpiraAtMinutes,
+      logEntry: { id: logEntry.id, text, timeLabel, createdAt: logEntry.createdAt.toISOString() },
+      factionRepChange,
+    };
   });
 
   /// Depositar una captura del inventario en una Jaula con hueco — mismo criterio de tamaño que

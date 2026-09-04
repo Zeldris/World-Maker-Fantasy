@@ -15,12 +15,33 @@ const FACTION_REP_DEFAULT = 2500;
 export const FACTION_REP_ATTACK_DELTA = -150;
 export const FACTION_REP_PEACE_DELTA = 30;
 
+/// Desenlace tras dejar a un NPC CONVALECIENTE (2026-09-04, bug real jugando en vivo: "me resta la
+/// reputación antes de matarlo... si elijo matar tiene que esperar a que resuelva el combate antes
+/// de restarlo, en el turno final") — antes el delta de -150 se aplicaba en el golpe que dejaba
+/// CONVALECIENTE, sin esperar a la decisión real de la jugadora, y podía duplicarse si luego
+/// rematabas. Ahora `FACTION_REP_ATTACK_DELTA` solo se aplica cuando `nuevaCondicion === 'MUERTO'`
+/// (matar directo con LETAL, o rematar un CONVALECIENTE — ambos son la misma decisión final: quitar
+/// la vida), nunca al dejarlo solo CONVALECIENTE. Capturar/Clemente son las otras dos decisiones
+/// finales posibles desde CONVALECIENTE, cada una con su propio coste — asimétricos a propósito
+/// (petición explícita): Matar es lo más caro, Clemente lo más barato, Capturar en medio (sigue sin
+/// matarlo, pero lo priva de su libertad).
+export const FACTION_REP_CAPTURE_DELTA = -100;
+export const FACTION_REP_MERCY_DELTA = -50;
+
 /// Orden de menos a más hostil — mismo orden que el enum `Temperamento` en schema.prisma, el
 /// índice en este array es lo que desplaza `effectiveTemperamento` de abajo.
 const TEMPERAMENTO_ORDER: Temperamento[] = ['AMIGABLE', 'INOFENSIVO', 'CAUTELOSO', 'AGRESIVO', 'ENEMIGO'];
 
 export function factionRepFor(factionsStatus: Record<string, number>, faction: string): number {
   return factionsStatus[faction] ?? FACTION_REP_DEFAULT;
+}
+
+/// `WorldState.factionsStatus` es un `Json` de Prisma (sin esquema propio en BD) — este mismo cast
+/// repetía 6 veces en turnResolution.ts (auditoría de deuda técnica 2026-08-21), centralizado ahí;
+/// exportado aquí (2026-09-04) para que Capturar/Clemente (companeros.ts/session.ts) puedan aplicar
+/// su propio delta de reputación sin duplicar la aserción de tipo en un tercer/cuarto sitio.
+export function parseFactionsStatus(raw: unknown): Record<string, number> {
+  return (raw as Record<string, number> | null) ?? {};
 }
 
 /// Feedback de UX (2026-08-30, "falta que la suma de repu o la pérdida se refleje en la UX...

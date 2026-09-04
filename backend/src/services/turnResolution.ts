@@ -10,6 +10,7 @@ import {
   applyFactionRepDelta,
   effectiveTemperamento,
   resolveFoundingOutcome,
+  parseFactionsStatus,
   FACTION_REP_ATTACK_DELTA,
   FACTION_REP_PEACE_DELTA,
   REGION_OWNING_FACTIONS,
@@ -166,13 +167,6 @@ function minutesLabel(minutos: number): string {
   if (minutos < 60) return `~${minutos} min`;
   const horas = minutos / 60;
   return horas < 24 ? `~${horas.toFixed(1)}h` : `~${(horas / 24).toFixed(1)}d`;
-}
-
-/// `WorldState.factionsStatus` es un `Json` de Prisma (sin esquema propio en BD) — este mismo
-/// cast repetía 6 veces en este archivo (auditoría de deuda técnica 2026-08-21), uno por cada
-/// sitio que lee el campo. Centralizado en un solo helper para no repetir la aserción de tipo.
-function parseFactionsStatus(raw: Prisma.JsonValue | null | undefined): Record<string, number> {
-  return (raw as Record<string, number> | null) ?? {};
 }
 
 interface NarrateAndPersistParams {
@@ -2018,6 +2012,25 @@ async function applyCombatExchangeToNpcState(params: {
   return { questCompletedInfo, factionRepChange };
 }
 
+/// Aplica un delta de reputación de facción y devuelve el resultado ya listo para propagar al
+/// `LogEntry` del turno (2026-09-04, extraído del bloque que antes vivía inline en
+/// `applyKillSideEffects` — ahora también lo usan Capturar/Clemente, `companeros.ts`/`session.ts`,
+/// cada uno con su propio delta y su propio momento de "decisión final" sobre un CONVALECIENTE).
+/// `faction: null` (fauna, NPC independientes) es un no-op explícito, no un error.
+export async function applyFactionRepDeltaForResolution(
+  tx: Prisma.TransactionClient,
+  saveId: string,
+  faction: string | null,
+  delta: number,
+): Promise<FactionRepChangeInfo | null> {
+  if (!faction) return null;
+  const currentWorldState = await tx.worldState.findUnique({ where: { saveId }, select: { factionsStatus: true } });
+  const currentStatus = parseFactionsStatus(currentWorldState?.factionsStatus);
+  const updatedFactionsStatus = applyFactionRepDelta(currentStatus, faction, delta);
+  await tx.worldState.update({ where: { saveId }, data: { factionsStatus: updatedFactionsStatus } });
+  return { faction, delta, newValue: updatedFactionsStatus[faction] };
+}
+
 /// Extraído de `applyCombatExchangeToNpcState` (Combate múltiple, 2026-08-25) — cierre de
 /// misión/reputación de facción/población dinámica al caer un NPC, separado de la ESCRITURA de
 /// `NpcState` (que `applyCombatExchangeToNpcState` sigue haciendo justo antes de llamar a esto).
@@ -2062,14 +2075,12 @@ async function applyKillSideEffects(params: {
   // enterarse abriendo el panel de Reputación por su cuenta, sin ninguna señal de que algo acababa
   // de cambiar. Se devuelve aquí el resultado (facción/delta/valor nuevo) para que
   // `narrateAndPersistTurn` lo propague hasta el LogEntry del turno, mismo patrón que `xpDelta`.
-  let factionRepChange: FactionRepChangeInfo | null = null;
-  if (npc.faction) {
-    const currentWorldState = await tx.worldState.findUnique({ where: { saveId }, select: { factionsStatus: true } });
-    const currentStatus = parseFactionsStatus(currentWorldState?.factionsStatus);
-    const updatedFactionsStatus = applyFactionRepDelta(currentStatus, npc.faction, FACTION_REP_ATTACK_DELTA);
-    await tx.worldState.update({ where: { saveId }, data: { factionsStatus: updatedFactionsStatus } });
-    factionRepChange = { faction: npc.faction, delta: FACTION_REP_ATTACK_DELTA, newValue: updatedFactionsStatus[npc.faction] };
-  }
+  //
+  // Solo con MUERTO (2026-09-04, bug real jugando en vivo, ver comentario de
+  // `FACTION_REP_CAPTURE_DELTA`) — CONVALECIENTE ya no resta nada aquí: la decisión real todavía no
+  // se ha tomado. Capturar/Clemente aplican su propio delta en sus endpoints (`companeros.ts`/
+  // `session.ts`), nunca aquí.
+  const factionRepChange = nuevaCondicion === 'MUERTO' ? await applyFactionRepDeltaForResolution(tx, saveId, npc.faction, FACTION_REP_ATTACK_DELTA) : null;
 
   // Población dinámica (docs/16-poblacion-dinamica.md): solo MUERTO resta población de verdad —
   // CONVALECIENTE es solo derrotado, no una baja real de la especie/raza.
