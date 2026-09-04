@@ -852,3 +852,32 @@ acceso a los logs reales del proceso backend, que corre fuera de este sandbox):
 **Estado al cierre de esta ronda**: 4 partidas de prueba quedan con turnos colgados sin resolver
 (`cmtlwx13g0044rik16vto9iqy`, `cmtm3qi4b0001rirshc899tlc`, `cmtm4a83r001urirsx95kob96`,
 `cmtmjkmkv0001riduoyequbdn`) — las 4 se dejan sin tocar, como evidencia acumulada del patrón.
+
+## CAUSA RAÍZ REAL ENCONTRADA — no es un bug de Tarkor, es Ollama sin arrancar
+
+La usuaria compartió los logs reales de ambos procesos (backend Node y Ollama), zanjando el
+diagnóstico:
+
+- **Log del backend** (`req-15`, `POST /turn/classify`, 07:44:20): se envía y **nunca recibe
+  respuesta** — es la última petición de turno del log, sin ningún `"res":{...}` que la cierre.
+- **Log de Ollama**: el proceso **arranca desde cero a las 07:57:40** ("Listening on
+  127.0.0.1:11434", carga del modelo, warm-up) — **13 minutos después** de que el backend enviara
+  la petición. La generación real, una vez Ollama por fin está vivo, tarda solo 7.5s
+  (`POST /api/generate` → `200 OK` en `7.51603226s`) — el modelo/GPU/llama-server funcionan bien,
+  nunca fue un problema de rendimiento ni de código.
+
+**Conclusión**: Ollama no estaba corriendo en absoluto cuando se envió el turno — ni el puerto
+11434 tenía nada escuchando. El `fetch` del backend hacia un puerto sin proceso real detrás quedó
+colgado de forma anómala (en vez de fallar rápido con `ECONNREFUSED`, como cabría esperar) durante
+los 13 minutos hasta que algo arrancó Ollama de verdad. **"Reiniciar el backend" nunca reinicia
+Ollama — son dos procesos independientes que hay que arrancar los dos.** Todo el trabajo de
+diagnóstico de esta noche sobre `turnLock.ts`/`ollamaQueue.ts`/`entityDiscovery.ts`/
+`playerActionCount` era una pista falsa — el código de Tarkor no tiene ningún bug aquí; el único
+hueco real que vale la pena considerar (no urgente, cosmético) es que un `fetch` contra un puerto
+sin nada escuchando debería fallar rápido en vez de colgarse silenciosamente sin ningún timeout de
+conexión TCP explícito — pero el síntoma real y accionable es simplemente "arrancar Ollama antes de
+jugar", no un cambio de código necesario.
+
+**Las 4 partidas con turnos colgados de esta noche seguirán así para siempre** (sus peticiones ya
+fallaron/expiraron del lado del backend en algún punto tras el timeout interno) — no hace falta
+ninguna acción sobre ellas, son simplemente partidas de prueba desechables.
