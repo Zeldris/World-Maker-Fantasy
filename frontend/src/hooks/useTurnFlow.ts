@@ -12,6 +12,7 @@ import type {
   CurrentLocationInfo,
   DestinationInfo,
   EntornoTemporalInfo,
+  InitiativeRollInfo,
   InventoryItemInfo,
   KingdomFoundedInfo,
   KingdomStatsInfo,
@@ -57,6 +58,11 @@ interface UseTurnFlowParams {
   setEnergiaMax: Dispatch<SetStateAction<number>>
   setHambre: Dispatch<SetStateAction<number>>
   setSed: Dispatch<SetStateAction<number>>
+  /// Bug real jugando en vivo (2026-09-04): el turno que ABRE combate (esta función) nunca leía
+  /// `nextInitiativeRoll` — solo `handleCombatTurnResolved` (useCombatFlow.ts, turnos DENTRO de un
+  /// panel ya abierto) lo hacía, y `openCombat()` la resetea a null al abrir el panel. Mismo
+  /// patrón exacto que el fix ya aplicado para `esperandoDefensaJugador` más abajo.
+  setLastInitiativeRoll: Dispatch<SetStateAction<InitiativeRollInfo | null>>
   setFictionalDate: Dispatch<SetStateAction<string>>
   setSuggestions: Dispatch<SetStateAction<string[]>>
   setQuests: Dispatch<SetStateAction<QuestInfo[]>>
@@ -125,6 +131,7 @@ export function useTurnFlow(params: UseTurnFlowParams) {
     setEnergiaMax,
     setHambre,
     setSed,
+    setLastInitiativeRoll,
     setFictionalDate,
     setSuggestions,
     setQuests,
@@ -250,6 +257,7 @@ export function useTurnFlow(params: UseTurnFlowParams) {
         timeLabel: newTimeLabel,
         combateIniciado: combate,
         esperandoDefensaJugador,
+        nextInitiativeRoll,
         finDePartida,
         pendingDeathResolution: newPendingDeathResolution,
         newInventoryItems,
@@ -335,6 +343,12 @@ export function useTurnFlow(params: UseTurnFlowParams) {
       // ese primer intercambio, el jugador seguía viendo "Ataque" pese a que mecánicamente le tocaba
       // defenderse.
       setCombatAwaitingDefense(esperandoDefensaJugador)
+      // Bug real jugando en vivo (2026-09-04): mismo hueco exacto que el de arriba, pero para la
+      // iniciativa — el turno que ABRE combate calcula/persiste `nextInitiativeRoll` desde siempre
+      // (turnResolution.ts), pero nunca se aplicaba al estado aquí, y `openCombat()`
+      // (useCombatFlow.ts) la resetea a null al abrir el panel — el badge de iniciativa solo
+      // aparecía a partir del SEGUNDO intercambio (o recargando la página, que sí la rehidrata).
+      if (combate && combate.npcs.length > 0) setLastInitiativeRoll(nextInitiativeRoll)
       if (finDePartida) setEndedAt(new Date().toISOString())
       if (newPendingDeathResolution) setPendingDeathResolution(true)
 

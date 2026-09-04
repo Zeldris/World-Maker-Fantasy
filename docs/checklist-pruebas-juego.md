@@ -1208,3 +1208,33 @@ frontend: pulsar el botón de habilidades, navegar General → ver "Barra 1" ya 
 seleccionarla → editar (arrastrar/activar habilidades) → confirmar que persiste tras F5 → crear
 una segunda barra → renombrarla → confirmar que Atrás vuelve al menú de tipos y ⌨️ vuelve directo
 al composer.
+
+## Bug real: iniciativa ausente en el turno que ABRE combate (2026-09-04)
+
+Hallazgo jugando: en el primer turno de un combate (el que lo abre) no se veía el badge de
+iniciativa, aunque sí aparecía a partir del segundo intercambio o recargando la página. Investigado
+a fondo (no confundir con [[tarkor_bug_iniciativa_ausente_reaparece_2026-08-29]], un bug distinto
+ya cerrado el 2026-08-29 — este es nuevo). Backend calcula y persiste `nextInitiativeRoll`
+correctamente desde siempre, incluida la emboscada (`turnResolution.ts`, arreglado 2026-08-28); el
+dato SÍ llega en la respuesta HTTP del turno (`routes/turn.ts`, `NarrateResponse`). El bug era 100%
+de wiring en frontend: `useTurnFlow.ts` (el turno que abre combate) nunca destructuraba ni aplicaba
+`nextInitiativeRoll` al estado — solo `handleCombatTurnResolved` (`useCombatFlow.ts`, turnos DENTRO
+de un panel ya abierto) lo hacía — y `openCombat()` resetea `lastInitiativeRoll` a `null` al abrir
+el panel, sin que nada la repoblara para ese primer turno.
+
+**Fijado**: `useTurnFlow.ts` gana el parámetro `setLastInitiativeRoll` (mismo setter ya usado por
+`useCombatFlow.ts`, ahora compartido entre los dos hooks), destructura `nextInitiativeRoll` de la
+respuesta y lo aplica junto a `setCombateIniciado` — mismo patrón exacto que el fix ya aplicado
+antes para `esperandoDefensaJugador` (mismo hueco, mismo turno de apertura, auditoría 2026-08-23).
+
+Nota aparte, aclarada con la usuaria: la petición "que todas las tiradas sean visibles" ya se
+aplicó — cubre combate múltiple (ver sección "Combate múltiple ya expone el desglose real de
+dados" arriba) y el resto de tiradas normales de ataque/defensa (`DiceRollReveal`/
+`CombatExchangeBadge`). Este bug de iniciativa es un caso aparte no cubierto por esa auditoría
+anterior (que buscaba tiradas SIN NINGÚN dato viajando al frontend; aquí el dato sí viajaba, solo
+se perdía en el wiring de React).
+
+**Verificado**: `tsc -b` limpio. 1 test unitario nuevo en `useTurnFlow.test.tsx` ("el turno que abre
+combate aplica la iniciativa recibida, no solo los turnos siguientes"). Suite frontend completa:
+**198/198 en verde**. Pendiente reverificar en vivo jugando: iniciar un combate nuevo y confirmar
+que el badge de iniciativa aparece desde el primer intercambio, no solo desde el segundo.

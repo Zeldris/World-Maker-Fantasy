@@ -1344,6 +1344,7 @@ export function GameView() {
     setEnergiaMax,
     setHambre,
     setSed,
+    setLastInitiativeRoll,
     setFictionalDate,
     setSuggestions,
     setQuests,

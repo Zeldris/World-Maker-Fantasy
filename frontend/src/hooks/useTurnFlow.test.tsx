@@ -3,7 +3,7 @@ import { useRef, useState } from 'react'
 import { renderHook, act } from '@testing-library/react'
 import { useTurnFlow } from './useTurnFlow'
 import type { ChatComposerHandle } from '../components/ChatComposer'
-import type { CondicionFisica, LogEntry, QuestInfo, TerritoryInfo, BuildingInfo, SubjectInfo } from '../types'
+import type { CondicionFisica, InitiativeRollInfo, LogEntry, QuestInfo, TerritoryInfo, BuildingInfo, SubjectInfo } from '../types'
 import type { BusyError, EndedGameError, TurnLockedError } from '../lib/api'
 
 /// A.1 (checklist frontend 2026-08-27) — handleSubmit extraído de GameView.tsx a useTurnFlow.ts;
@@ -98,6 +98,7 @@ function useHarness() {
   const [xp, setXp] = useState(0)
   const [level, setLevel] = useState(1)
   const [pendingAttributePoints, setPendingAttributePoints] = useState(0)
+  const [lastInitiativeRoll, setLastInitiativeRoll] = useState<InitiativeRollInfo | null>(null)
   const composerRef = useRef<ChatComposerHandle>({ clear: vi.fn(), insertChip: vi.fn(), setTextWithChips: vi.fn() } as never)
 
   const turn = useTurnFlow({
@@ -127,6 +128,7 @@ function useHarness() {
     setEnergiaMax: vi.fn(),
     setHambre: vi.fn(),
     setSed: vi.fn(),
+    setLastInitiativeRoll,
     setFictionalDate: vi.fn(),
     setSuggestions: vi.fn(),
     setQuests: vi.fn(),
@@ -154,7 +156,7 @@ function useHarness() {
     setBusyDuracionMinutos: vi.fn(),
   })
 
-  return { turn, characterLog, condicionFisica, endedAt, pendingDeathResolution, busyUntil, xp, level, pendingAttributePoints }
+  return { turn, characterLog, condicionFisica, endedAt, pendingDeathResolution, busyUntil, xp, level, pendingAttributePoints, lastInitiativeRoll }
 }
 
 beforeEach(() => {
@@ -191,6 +193,25 @@ describe('handleSubmit — turno normal exitoso', () => {
     expect(result.current.condicionFisica).toBe('HERIDO')
     expect(result.current.xp).toBe(5)
     expect(result.current.characterLog.some((e) => e.text === 'La escena continúa.')).toBe(true)
+  })
+
+  // Bug real jugando en vivo (2026-09-04): el turno que ABRE combate calcula/persiste
+  // `nextInitiativeRoll` desde siempre (turnResolution.ts), pero este hook nunca lo aplicaba al
+  // estado — el badge de iniciativa solo aparecía a partir del SEGUNDO intercambio. Mismo patrón
+  // ya cubierto para `esperandoDefensaJugador` (línea ~340), ahora replicado para la iniciativa.
+  it('el turno que abre combate aplica la iniciativa recibida, no solo los turnos siguientes', async () => {
+    mockClassify.mockResolvedValueOnce(baseClassifyResponse())
+    mockNarrate.mockResolvedValueOnce(
+      baseNarrateResponse({
+        combateIniciado: { npcs: [{ slug: 'orco', name: 'Orco', condicionFisica: 'ILESO', saqueado: false, lootedItemNames: [], analizado: false, capturable: true, activeEffects: [] }] },
+        nextInitiativeRoll: { ganador: 'jugador', jugadorTirada: 15, npcTirada: 8 },
+      }),
+    )
+    const { result } = renderHook(() => useHarness())
+
+    await act(() => result.current.turn.handleSubmit('Ataco al Orco.'))
+
+    expect(result.current.lastInitiativeRoll).toEqual({ ganador: 'jugador', jugadorTirada: 15, npcTirada: 8 })
   })
 
   it('level up añade una entrada extra de subida de nivel', async () => {
