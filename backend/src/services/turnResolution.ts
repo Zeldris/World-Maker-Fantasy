@@ -514,6 +514,14 @@ export interface NarrateAndPersistResult {
   /// facción), pero nunca llegaba al jugador. `null` en la inmensa mayoría de turnos (solo se
   /// rellena cuando este turno mató/incapacitó a un NPC con `faction` real).
   factionRepChange: FactionRepChangeInfo | null;
+  /// Feedback de UX (2026-09-04, misma petición que `factionRepChange` de arriba, ver auditoría
+  /// "representar siempre XP/profesión/reputación") — crafteo/construcción exitosos con `oficio`
+  /// asignado ya subían XP/nivel de oficio de verdad, pero ese delta nunca llegaba estructurado al
+  /// frontend, solo en un snapshot silencioso de `professionProgress` completo. `[]` en la
+  /// inmensa mayoría de turnos (solo se rellena cuando este turno craftea/construye algo con
+  /// oficio real de por medio) — un array porque, aunque hoy nunca ocurren dos a la vez, nada
+  /// impide que un turno futuro dispare más de una ganancia (p.ej. una receta compuesta).
+  professionXpGains: { oficio: string; xpDelta: number; newLevel: number; leveledUp: boolean }[];
   /// Notificación de fundación de reino (2026-08-04, "el Ayuntamiento") — solo al construir el
   /// Ayuntamiento tier 1 desde cero, nunca en una mejora. `null` en la inmensa mayoría de turnos.
   newKingdomFounded: KingdomFoundedInfo | null;
@@ -4572,6 +4580,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     newQuestOfferInfo: { title: string; description: string } | null;
     questCompletedInfo: QuestCompletedInfo | null;
     factionRepChange: FactionRepChangeInfo | null;
+    professionXpGains: { oficio: string; xpDelta: number; newLevel: number; leveledUp: boolean }[];
     newKingdomFounded: KingdomFoundedInfo | null;
     companionCreated: { id: string; name: string; role: string; notes: string } | null;
     partiallyLootedSlugs: string[];
@@ -4981,6 +4990,15 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     // igual que el desbloqueo de habilidades de clase) — esta función se invoca demasiado pronto en
     // la transacción para usar ese contador de orden todavía.
     const unlockedProfessionAbilities: { oficio: string; nivel: number; ability: StartingAbility }[] = [];
+    // Bug real (2026-09-04, auditoría "representar siempre XP/profesión/reputación" — misma
+    // petición que ya cerró el desglose de dados de combate múltiple: "quiero que SIEMPRE se
+    // represente"): crafteo/construcción exitosos SÍ suben el XP/nivel de oficio de verdad
+    // (`tx.professionProgress.upsert` de abajo), pero ese delta nunca viajaba estructurado hasta
+    // el frontend — solo un snapshot silencioso de `professionProgress` completo (todas las
+    // profesiones, sin indicar cuál cambió ni cuánto) que actualizaba el estado de React sin
+    // ningún chip/color visible. Mismo criterio que `xpDelta`/`factionRepChange`: el número real
+    // viaja explícito, nunca implícito en un snapshot que hay que comparar a mano.
+    const professionXpGains: { oficio: string; xpDelta: number; newLevel: number; leveledUp: boolean }[] = [];
     async function awardProfessionXp(oficio: string | undefined, tier: number | undefined): Promise<void> {
       if (!oficio) return;
       const xpDelta = xpForCraftSuccess(tier);
@@ -5005,6 +5023,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
       if (newLevel > previousLevel) {
         await tx.professionProgress.update({ where: { saveId_professionId: { saveId, professionId: oficio } }, data: { nivel: newLevel } });
       }
+      professionXpGains.push({ oficio, xpDelta, newLevel, leveledUp: newLevel > previousLevel });
       for (let lvl = previousLevel + 1; lvl <= newLevel; lvl++) {
         for (const ability of professionAbilityUnlocksFor(oficio, lvl)) {
           unlockedProfessionAbilities.push({ oficio, nivel: lvl, ability });
@@ -5657,6 +5676,14 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
               },
             });
             questCompletedInfo = { logEntryId: rewardEntry.id, text: rewardText, title: quest.title, grantedItems, rewardXp: quest.rewardXp ?? 0 };
+            // Bug real (2026-09-04, auditoría "representar siempre XP/profesión/reputación"):
+            // `questRewardNarrationFor` ya narraba "+N XP" en el texto de arriba, pero nada en
+            // este bloque sumaba `quest.rewardXp` a `questRewardXp` (la variable que sí alimenta
+            // `xpTurno`/`applyXp` más abajo) — a diferencia de las 2 ramas de combate
+            // (`combatExchangeResult.questCompletedInfo`/`killSideEffects.questCompletedInfo`,
+            // líneas ~4830/4878), que sí lo hacen. El número que veía el jugador era ficticio:
+            // `Save.xp` real nunca subía para una misión cerrada en paz por el propio modelo.
+            questRewardXp += quest.rewardXp ?? 0;
           }
           if (!quest.targetNpcId) continue;
           const npc = await tx.npc.findUnique({ where: { id: quest.targetNpcId } });
@@ -5678,6 +5705,14 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
             FACTION_REP_PEACE_DELTA,
           );
           await tx.worldState.update({ where: { saveId }, data: { factionsStatus: updatedFactionsStatus } });
+          // Bug real (2026-09-04, auditoría "representar siempre XP/profesión/reputación"): el
+          // delta se calculaba y persistía de verdad, pero `factionRepChange` (la variable que
+          // viaja hasta el LogEntry/return del turno, ver comentario de FactionRepChangeInfo en
+          // reputation.ts) nunca se reasignaba aquí — a diferencia del bloque de combate
+          // (`applyKillSideEffects`, más arriba), que sí lo hace. Es además el ÚNICO camino real
+          // que genera un delta POSITIVO (`FACTION_REP_PEACE_DELTA`) — sin este fix, el chip verde
+          // de LogPanel.tsx nunca se había visto disparar jugando, pese a estar bien programado.
+          factionRepChange = { faction: npc.faction, delta: FACTION_REP_PEACE_DELTA, newValue: updatedFactionsStatus[npc.faction] };
         }
       }
     }
@@ -6038,6 +6073,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
       newQuestOfferInfo,
       questCompletedInfo,
       factionRepChange,
+      professionXpGains,
       newKingdomFounded,
       companionCreated,
       partiallyLootedSlugs,
@@ -6077,6 +6113,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     newQuestOfferInfo,
     questCompletedInfo,
     factionRepChange,
+    professionXpGains,
     newKingdomFounded,
     companionCreated,
     partiallyLootedSlugs,
@@ -6497,6 +6534,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     travelResumed,
     questCompletedInfo,
     factionRepChange,
+    professionXpGains,
     newKingdomFounded,
     companionCreated,
     esperandoDefensaJugador: !!nuevoPendingNpcAttack,

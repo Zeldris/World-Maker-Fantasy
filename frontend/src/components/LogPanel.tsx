@@ -8,6 +8,7 @@ import { EnciclopediaLinkedText } from './EnciclopediaLinkedText'
 import { useEnciclopediaLink } from '../context/useEnciclopediaLink'
 import { OfferCard } from './OfferCard'
 import { combatKeyFor } from '../lib/gameViewHelpers'
+import { professions } from '../data/professions'
 
 interface LogPanelProps {
   title: string
@@ -122,6 +123,15 @@ const accentClasses = {
     controlButton:
       'border-accent2-500/60 bg-accent2-500/20 text-accent2-300 shadow-[0_0_8px_-2px_var(--color-accent2-500)] hover:border-accent2-400 hover:bg-accent2-500/35',
   },
+}
+
+// Nombre visible de un oficio (2026-09-04, auditoría "representar siempre XP/profesión/reputación")
+// — `professionXpGain.oficio` que llega del backend es el slug técnico (`professionId`, ej.
+// "minero-orcos-llanuras"), no un nombre legible; mismo catálogo estático que ya usa
+// HabilidadesPanel.tsx para resolver `profession.name` a partir de `professionId`. Fallback al
+// slug crudo si algún día se sembrara un oficio nuevo sin entrada aquí, en vez de no mostrar nada.
+function professionNameFor(oficio: string): string {
+  return professions.find((p) => p.id === oficio)?.name ?? oficio
 }
 
 // Auditoría de rendimiento 2026-07-28 ("rascar segundos"): memoizado — GameView.tsx monta DOS
@@ -533,6 +543,19 @@ export const LogPanel = memo(function LogPanel({
                   >
                     {entry.factionRepChange.delta > 0 ? '+' : ''}
                     {entry.factionRepChange.delta} {entry.factionRepChange.faction}
+                  </span>
+                )}
+                {/* Feedback de UX (2026-09-04, misma petición que el chip de reputación de arriba:
+                    "quiero que SIEMPRE se represente... indicando cuál es exp de personaje, cuál
+                    de profesión y qué profesión") — mismo tono `accent` que el chip de XP de
+                    personaje (nunca negativo: crafteo/construcción con éxito nunca resta XP de
+                    oficio), pero separado en su propio chip con el nombre del oficio para que
+                    nunca se confunda con la XP de personaje de al lado. "🆙" adicional si el
+                    oficio cruzó de nivel este mismo turno. */}
+                {!!entry.professionXpGain && (
+                  <span className="rounded-full border border-accent-600/50 bg-accent-500/10 px-1.5 py-0.5 font-mono text-2xs text-accent-300">
+                    +{entry.professionXpGain.xpDelta} XP {professionNameFor(entry.professionXpGain.oficio)}
+                    {entry.professionXpGain.leveledUp ? ` (nivel ${entry.professionXpGain.newLevel})` : ''}
                   </span>
                 )}
               </div>

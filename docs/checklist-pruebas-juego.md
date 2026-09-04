@@ -1042,3 +1042,44 @@ real expone `combatExchangeDisplay` no-nulo con roll/atributo/resultado reales).
 backend+frontend (el frontend no necesitó ningún cambio, ya leía el campo). Suite completa backend:
 **2018/2019 en verde** (mismo único fallo preexistente de "Múrgol", sin relación). Pendiente
 reverificar en vivo jugando un combate múltiple real tras el próximo reinicio del backend.
+
+## Auditoría de progresión visual: XP de personaje, XP de profesión y reputación de facción (2026-09-04)
+
+Petición explícita de la usuaria: que SIEMPRE se pinte en el log cuando suba XP de personaje, XP de
+profesión (indicando qué oficio) o reputación de facción (indicando qué facción), con color verde
+para positivo y rojo para negativo. Auditoría con un agente (Explore) mapeó los 3 sistemas —
+`applyXp`/`progression.ts` (personaje), `awardProfessionXp` local en `turnResolution.ts` (profesión),
+`applyFactionRepDelta`/`reputation.ts` (facción, `FACTION_REP_ATTACK_DELTA=-150`/
+`FACTION_REP_PEACE_DELTA=+30`) — y encontró 5 huecos donde el dato se calculaba de verdad en
+backend pero nunca llegaba al frontend, o llegaba y no se pintaba:
+
+1. **XP de recompensa de misión sin sumar al chip**: `questCompletedInfo.rewardXp` se calculaba pero
+   nunca se sumaba a `questRewardXp` antes de construir el `LogEntry` de misión completada.
+2. **Misión que nace ya COMPLETADA (aceptación instantánea) sin aviso en el frontend**: `aceptarMision`
+   (`api.ts`) no devolvía `questCompletedInfo` en su tipo de retorno, así que aunque el backend lo
+   mandara, `GameView.tsx` no podía mostrarlo ni sumar el XP.
+3-4. **XP de profesión invisible siempre**: `awardProfessionXp` calculaba `xpDelta`/`newLevel`/
+   `leveledUp` por oficio pero el resultado se descartaba tras aplicarse a BD — ningún campo lo
+   exponía en la respuesta HTTP del turno.
+5. **Reputación de facción no subía en paz al completar misión**: el bloque de misión completada
+   actualizaba `WorldState.factionsStatus` pero nunca llamaba a construir el `factionRepChange` que
+   el frontend ya sabía pintar (a diferencia del combate, que sí lo hacía).
+
+**Fijado**: nuevo campo `professionXpGains: { oficio, xpDelta, newLevel, leveledUp }[]` propagado
+desde `turnResolution.ts` (transacción Prisma → `NarrateAndPersistResult` → `return` final) hasta
+`turn.ts` (las 2 rutas que devuelven resultado de turno) → `api.ts` (`NarrateResponse`) →
+`useTurnFlow.ts`/`useCombatFlow.ts` (toman `professionXpGains[0]` como `LogEntry.professionXpGain`,
+singular) → `LogPanel.tsx` (chip nuevo `+N XP <nombre de oficio>` vía `professions` catálogo, con
+"(nivel X)" si subió de nivel). `questRewardXp` corregido para sumar `rewardXp` real. `aceptarMision`
+ahora devuelve `questCompletedInfo` y `GameView.tsx` lo consume (log + suma de XP). El bloque de
+misión completada ahora también fija `factionRepChange` con `FACTION_REP_PEACE_DELTA`.
+
+**Verificado**: `tsc -b` limpio backend y frontend. Suite frontend completa: **192/192 en verde**.
+Suite backend unitaria: **1793/1793 en verde**. Suite backend de integración: **225/226 en verde**
+(único fallo: el mismo flake preexistente de "Múrgol" de la sección anterior, confirmado que falla
+igual en aislamiento y que no toca ningún archivo tocado por esta auditoría — ver
+`tarkor_flake_reveal_candidato_murgol_2026-09-04.md` en memoria). Pendiente reverificar en vivo
+jugando: crafteo/construcción real para ver el chip de XP de profesión, una misión resuelta en paz
+para ver el chip verde de reputación, y la misión de Gistera/Orco Enfurecido (aceptación instantánea)
+para ver el chip de recompensa de misión — los 3 casos requieren reiniciar backend y frontend
+primero.

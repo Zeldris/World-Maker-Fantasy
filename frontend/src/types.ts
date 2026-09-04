@@ -336,6 +336,14 @@ export interface LogEntry {
   /// NPC con `faction` real, pero nunca llegaba al jugador salvo abriendo el panel de Reputación a
   /// mano. `undefined` en la inmensa mayoría de turnos.
   factionRepChange?: { faction: string; delta: number; newValue: number }
+  /// Feedback de UX (2026-09-04, misma petición que `factionRepChange` de arriba, ver auditoría
+  /// "representar siempre XP/profesión/reputación") — mismo patrón: el backend ya subía XP/nivel
+  /// de oficio al craftear/construir con éxito, pero nunca llegaba al jugador salvo abriendo el
+  /// panel de Habilidades a mano. `undefined` en la inmensa mayoría de turnos. Un único chip por
+  /// `LogEntry` (a diferencia del array `professionXpGains` del backend) — hoy nunca hay más de
+  /// uno por turno; si algún día lo hubiera, el caller añade un `LogEntry` extra por cada uno,
+  /// mismo criterio que ya usa `questCompletedInfo` para no forzar un array aquí sin necesidad.
+  professionXpGain?: { oficio: string; xpDelta: number; newLevel: number; leveledUp: boolean }
   /// Marca la entrada de "sube a nivel N" (roadmap de animaciones 2026-07-20) para que LogPanel
   /// le dé su propio marco/gema/barrido en vez de tratarla como una narración más.
   isLevelUp?: boolean

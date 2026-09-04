@@ -259,6 +259,11 @@ export interface NarrateResponse {
   /// aplicaba y persistía al matar/dejar convaleciente a un NPC con `faction` real, pero nunca
   /// llegaba al jugador. `null` en la inmensa mayoría de turnos.
   factionRepChange: { faction: string; delta: number; newValue: number } | null
+  /// Feedback de UX (2026-09-04, misma petición que `factionRepChange` de arriba, ver auditoría
+  /// "representar siempre XP/profesión/reputación") — crafteo/construcción exitosos con oficio
+  /// asignado ya subían XP/nivel de oficio de verdad, pero el delta nunca llegaba estructurado al
+  /// frontend. `[]` en la inmensa mayoría de turnos, que no craftean/construyen nada con oficio.
+  professionXpGains: { oficio: string; xpDelta: number; newLevel: number; leveledUp: boolean }[]
   /// Notificación de fundación de reino (2026-08-04, "el Ayuntamiento") — solo al construir el
   /// Ayuntamiento tier 1 desde cero, nunca en una mejora. `null` en la inmensa mayoría de turnos.
   newKingdomFounded: KingdomFoundedInfo | null
@@ -1195,6 +1200,12 @@ export async function aceptarMision(
   quest: { id: string; title: string; objetivo: string | null }
   alreadyExisted: boolean
   logEntry?: { id: string; text: string; timeLabel: string; createdAt: string }
+  // Bug real (2026-09-04, auditoría "representar siempre XP/profesión/reputación"): el backend
+  // (routes/saves/quests.ts) ya concede +100 XP real y devuelve este campo cuando la misión del
+  // Orco Enfurecido nace ya COMPLETADA (NPC ya derrotado antes de aceptar), pero el tipo de este
+  // endpoint ni siquiera lo declaraba — se descartaba en silencio, sin chip ni actualización del
+  // XP visible hasta recargar la partida.
+  questCompletedInfo: { logEntryId: string; text: string; title: string; grantedItems: string[]; rewardXp: number } | null
 }> {
   return fetchJson(`${API_URL}/saves/${saveId}/quests/aceptar`, {
     method: 'POST',

@@ -255,6 +255,7 @@ export function useTurnFlow(params: UseTurnFlowParams) {
         dynamicModeOffer,
         questCompletedInfo,
         factionRepChange,
+        professionXpGains,
         newKingdomFounded,
         companionCreated,
         territories: updatedTerritories,
@@ -355,6 +356,9 @@ export function useTurnFlow(params: UseTurnFlowParams) {
             questOffer: newQuestOfferInfo ?? undefined,
             dynamicModeOffer: dynamicModeOffer ?? undefined,
             factionRepChange: factionRepChange ?? undefined,
+            // Feedback de UX (2026-09-04, misma petición que factionRepChange de arriba) — solo
+            // el primer elemento: hoy nunca hay más de un oficio ganando XP en el mismo turno.
+            professionXpGain: professionXpGains[0] ?? undefined,
           },
         ]
         // Misión completada (2026-08-13) — ver el mismo bloque en handleCombatTurnResolved: fila

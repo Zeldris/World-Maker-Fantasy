@@ -80,7 +80,7 @@ import {
   type SaveDetail,
 } from '../lib/api'
 import { characterWaitingFlavor, combatWaitingFlavor, worldWaitingFlavor, useRotatingFlavor } from '../lib/waitingFlavor'
-import { formatCountdown, formatFictionalDuration, applyInventoryDelta, combatKeyFor } from '../lib/gameViewHelpers'
+import { formatCountdown, formatFictionalDuration, applyInventoryDelta, combatKeyFor, questCompletedLogEntry } from '../lib/gameViewHelpers'
 import { ESTACION_ICON, CLIMA_ICON } from '../lib/entorno'
 import type {
   ActiveEffect,
@@ -703,7 +703,7 @@ export function GameView() {
     // jugadora mandara un turno nuevo por encima de la respuesta todavía pendiente.
     setCharacterThinking(true)
     try {
-      const { quest, logEntry } = await aceptarMision(saveId!, title, description)
+      const { quest, logEntry, questCompletedInfo } = await aceptarMision(saveId!, title, description)
       if (logEntry) {
         setCharacterLog((prev) => [
           ...prev,
@@ -720,6 +720,15 @@ export function GameView() {
             newQuest: { title: quest.title, objetivo: quest.objetivo ?? description },
           },
         ])
+      }
+      // Bug real (2026-09-04, auditoría "representar siempre XP/profesión/reputación"): el
+      // backend ya concedía +100 XP real y devolvía este campo cuando la misión nace ya
+      // COMPLETADA (NPC objetivo ya derrotado antes de aceptar) — se descartaba en silencio, sin
+      // chip 🏆 ni actualización del XP visible hasta la próxima recarga. Mismo LogEntry aparte
+      // que ya usa el camino de combate (questCompletedLogEntry, useCombatFlow.ts/useTurnFlow.ts).
+      if (questCompletedInfo) {
+        setCharacterLog((prev) => [...prev, questCompletedLogEntry(questCompletedInfo, logEntry?.timeLabel ?? '')])
+        setXp((prev) => prev + questCompletedInfo.rewardXp)
       }
       getSave(saveId!)
         .then((save) => setQuests(save.quests))
