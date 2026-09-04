@@ -1469,9 +1469,21 @@ function resolveCombatExchangePhase(input: CombatExchangePhaseInput): CombatExch
       if (iniciativaForzadaPorUtilidad) {
         iniciativaSiguiente = iniciativaForzadaPorUtilidad;
       } else {
+        // Bug real jugando en vivo (2026-09-04, captura real: el Orco Enfurecido ya GRAVE seguía
+        // restando -2sal en la iniciativa, el malus de HERIDO — debería restar -5, el de GRAVE) —
+        // `input.condicionFisicaJugador`/`npcParaIntercambio.condicionFisica` son la condición de
+        // ANTES de este mismo golpe (parámetros de entrada, capturados al empezar el turno). El
+        // malus de condición física de la iniciativa del PRÓXIMO intercambio debe reflejar el
+        // golpe que ACABA de resolverse aquí mismo, no el estado de antes de recibirlo — mismo
+        // criterio ya aplicado a `npcTargetNewCondicion` unas líneas arriba, replicado aquí para
+        // el lado del jugador con la misma función (`nextCondicionForAttack`).
+        const condicionJugadorParaIniciativa = jugadorRecibeGolpe
+          ? nextCondicionForAttack(jugadorGolpeEfectos, input.condicionFisicaJugador)
+          : input.condicionFisicaJugador;
+        const condicionNpcParaIniciativa = npcTargetNewCondicion ?? npcParaIntercambio.condicionFisica;
         nextInitiativeRoll = rollInitiative(
-          { attributes: attributesEfectivos, attribute: 'destreza', difficulty: 0, condicionFisica: input.condicionFisicaJugador, rol: 'utilidad' },
-          { attributes: npcAttributesEfectivos, attribute: 'destreza', difficulty: 0, condicionFisica: npcParaIntercambio.condicionFisica, rol: 'utilidad' },
+          { attributes: attributesEfectivos, attribute: 'destreza', difficulty: 0, condicionFisica: condicionJugadorParaIniciativa, rol: 'utilidad' },
+          { attributes: npcAttributesEfectivos, attribute: 'destreza', difficulty: 0, condicionFisica: condicionNpcParaIniciativa, rol: 'utilidad' },
         );
         iniciativaSiguiente = nextInitiativeRoll.ganador;
       }

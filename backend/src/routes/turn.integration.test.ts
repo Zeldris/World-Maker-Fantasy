@@ -6095,6 +6095,37 @@ describe('LogEntry.initiativeRoll sobrevive a una recarga tras un intercambio de
       npc: { roll: expect.any(Number), result: expect.any(Number) },
     });
   }, 15_000);
+
+  // Bug real jugando en vivo (2026-09-04, captura real: el Orco Enfurecido ya GRAVE seguía
+  // mostrando el malus de HERIDO, -2, en vez del de GRAVE, -5, en la tirada de iniciativa del
+  // siguiente intercambio) — `resolveCombatExchangePhase` (turnResolution.ts) usaba la condición
+  // física de ANTES de este mismo golpe (parámetros de entrada) al calcular
+  // `rollInitiative`/`rollAttributeCheck`, en vez de la condición YA actualizada por el golpe que
+  // acaba de resolverse en este intercambio.
+  it('el malus de condición física en initiativeRoll refleja el golpe de ESTE intercambio, no la condición de antes de recibirlo (bug real 2026-09-04)', async () => {
+    const app = await buildApp();
+    const action = "Descargo un golpe directo con todo el peso de mi arma detrás 'Orco enfurecido'.";
+
+    let npcMalusEnIniciativa: number | undefined;
+    for (let turno = 0; turno < 4; turno++) {
+      const classifyRes = await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action, enCombate: true } });
+      const { classification, roll } = classifyRes.json();
+      const narrateRes = await app.inject({ method: 'POST', url: '/turn/narrate', payload: { saveId, action, classification, roll, enCombate: true } });
+      expect(narrateRes.statusCode).toBe(200);
+
+      const state = await prisma.npcState.findFirst({ where: { saveId, npcId } });
+      if (state?.condicionFisica === 'GRAVE') {
+        const logEntry = await prisma.logEntry.findFirst({ where: { saveId, channel: 'CHARACTER', combate: true }, orderBy: { createdAt: 'desc' } });
+        const initiativeRoll = logEntry?.initiativeRoll as { npc: { malus?: number } } | null;
+        npcMalusEnIniciativa = initiativeRoll?.npc.malus;
+        break;
+      }
+    }
+
+    // GRAVE resta 5 (CONDICION_MALUS, death.ts) — no 2 (el de HERIDO, la condición de ANTES de
+    // este mismo golpe). Si el fix se rompe, este assert vuelve a fallar con `2`.
+    expect(npcMalusEnIniciativa).toBe(5);
+  }, 15_000);
 });
 
 // Petición explícita de la usuaria (2026-08-22, "¿entonces el primer turno siempre empiezo
