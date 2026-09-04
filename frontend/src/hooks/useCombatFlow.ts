@@ -3,6 +3,7 @@ import type { CombatNpcDisplay } from '../components/CombatComposer'
 import { requestTurnClassify, requestTurnNarrate, requestFlee, requestHuirEnCurso, postCapturar, dejarVivir, type EnciclopediaResponse } from '../lib/api'
 import { isTurnLockedError, npcInSceneToCombatDisplay, combatKeyFor, combatDisplayNameFor, applyInventoryDelta, questCompletedLogEntry } from '../lib/gameViewHelpers'
 import { combatDifficultyFor, type CombatDifficulty } from '../lib/combatDifficulty'
+import { ROLL_DURATION_MS } from '../components/DiceRoll'
 import type {
   ActiveEffect,
   CombatExchangeInfo,
@@ -690,45 +691,64 @@ export function useCombatFlow(params: UseCombatFlowParams) {
     setHambre(params.hambre)
     setSed(params.sed)
     setFictionalDate(params.timeLabel)
-    setCombatAwaitingDefense(params.esperandoDefensaJugador)
     setLastInitiativeRoll(params.nextInitiativeRoll)
-    // Bug real (auditoría 2026-07-28): esta función (la que resuelve CADA turno mientras el
-    // combate ya está abierto) nunca aplicaba el `combateIniciado` de la respuesta — un NPC nuevo
-    // añadido a media pelea quedaba invisible en CombatComposer.
-    if (params.combate && params.combate.npcs.length > 0) {
-      setCombateIniciado(params.combate)
-      setCombatNpcStates((prev) => {
-        // Identificador de combatientes duplicados (2026-08-27, bug real jugando: "ataqué a los
-        // dos buitres a la vez") — `combatKeyFor` (participantId cuando existe, slug si no) en vez
-        // de `slug` puro: dos combatientes del mismo Npc de catálogo ya no colapsan al mismo estado.
-        const bySlug = new Map(prev.map((n) => [combatKeyFor(n), n]))
-        for (const n of params.combate!.npcs) {
-          const real: CombatNpcDisplay = npcInSceneToCombatDisplay(n)
-          const key = combatKeyFor(n)
-          const local = bySlug.get(key)
-          if (!local) {
-            bySlug.set(key, real)
-            continue
+    // Estado visual "de quién es el turno" (2026-09-04, bug real jugando en vivo: "el panel según
+    // es turno de ataque o defensa está cambiando antes de color de lo que la tirada tarda en
+    // ejecutarse... debería aparecer cuando acaba la tirada, no antes") — título/color del panel
+    // (`combatAwaitingDefense`) y la ficha del rival (`combatNpcStates`, condición/vida visibles)
+    // saltaban de inmediato con la respuesta ya resuelta del backend, mientras `DiceRollVs` seguía
+    // animando la iniciativa varios segundos más (`ROLL_DURATION_MS` × 2, dos dados secuenciales).
+    // Con una tirada de iniciativa real que mostrar, este bloque se retrasa hasta que termine de
+    // rodar — sin tirada (`nextInitiativeRoll` null, p.ej. Aturdimiento fuerza el turno sin tirada)
+    // se aplica igual que siempre, de inmediato.
+    const applyTurnVisualState = () => {
+      setCombatAwaitingDefense(params.esperandoDefensaJugador)
+      // Bug real (auditoría 2026-07-28): esta función (la que resuelve CADA turno mientras el
+      // combate ya está abierto) nunca aplicaba el `combateIniciado` de la respuesta — un NPC nuevo
+      // añadido a media pelea quedaba invisible en CombatComposer.
+      if (params.combate && params.combate.npcs.length > 0) {
+        setCombateIniciado(params.combate)
+        setCombatNpcStates((prev) => {
+          // Identificador de combatientes duplicados (2026-08-27, bug real jugando: "ataqué a los
+          // dos buitres a la vez") — `combatKeyFor` (participantId cuando existe, slug si no) en vez
+          // de `slug` puro: dos combatientes del mismo Npc de catálogo ya no colapsan al mismo estado.
+          const bySlug = new Map(prev.map((n) => [combatKeyFor(n), n]))
+          for (const n of params.combate!.npcs) {
+            const real: CombatNpcDisplay = npcInSceneToCombatDisplay(n)
+            const key = combatKeyFor(n)
+            const local = bySlug.get(key)
+            if (!local) {
+              bySlug.set(key, real)
+              continue
+            }
+            // El backend manda: solo se sustituye el estado local si el real ha avanzado más (nunca
+            // "resucita" a alguien que el propio jugador ya vio caer más allá).
+            const avanza = CONDICION_ORDER.indexOf(real.condicion) > CONDICION_ORDER.indexOf(local.condicion)
+            if (avanza || (real.yaSaqueado && !local.yaSaqueado) || (real.analizado && !local.analizado)) {
+              bySlug.set(key, real)
+            } else if (real.lootedItemNames.length > local.lootedItemNames.length) {
+              // Saqueo parcial (2026-07-31): `lootedItemNames` solo crece, aunque `condicion`/
+              // `yaSaqueado` no hayan cambiado este turno.
+              bySlug.set(key, { ...local, lootedItemNames: n.lootedItemNames, activeEffects: real.activeEffects })
+            } else {
+              // Fase 2 de efectos de clase (2026-08-27) — a diferencia de `lootedItemNames`
+              // (solo crece), un `activeEffects` puede tanto ganar un efecto nuevo como perder uno
+              // que acaba de expirar en el MISMO turno — el backend manda siempre, sin comparar
+              // longitudes, aunque ninguna otra condición de arriba haya cambiado.
+              bySlug.set(key, { ...local, activeEffects: real.activeEffects })
+            }
           }
-          // El backend manda: solo se sustituye el estado local si el real ha avanzado más (nunca
-          // "resucita" a alguien que el propio jugador ya vio caer más allá).
-          const avanza = CONDICION_ORDER.indexOf(real.condicion) > CONDICION_ORDER.indexOf(local.condicion)
-          if (avanza || (real.yaSaqueado && !local.yaSaqueado) || (real.analizado && !local.analizado)) {
-            bySlug.set(key, real)
-          } else if (real.lootedItemNames.length > local.lootedItemNames.length) {
-            // Saqueo parcial (2026-07-31): `lootedItemNames` solo crece, aunque `condicion`/
-            // `yaSaqueado` no hayan cambiado este turno.
-            bySlug.set(key, { ...local, lootedItemNames: n.lootedItemNames, activeEffects: real.activeEffects })
-          } else {
-            // Fase 2 de efectos de clase (2026-08-27) — a diferencia de `lootedItemNames`
-            // (solo crece), un `activeEffects` puede tanto ganar un efecto nuevo como perder uno
-            // que acaba de expirar en el MISMO turno — el backend manda siempre, sin comparar
-            // longitudes, aunque ninguna otra condición de arriba haya cambiado.
-            bySlug.set(key, { ...local, activeEffects: real.activeEffects })
-          }
-        }
-        return Array.from(bySlug.values())
-      })
+          return Array.from(bySlug.values())
+        })
+      }
+    }
+    // `finDePartida` manda siempre: si el combate termina de verdad este mismo turno, no tiene
+    // sentido retrasar nada (y un `setTimeout` tardío podría reabrir visualmente un combate ya
+    // cerrado, pisando el `setCombatOpen(false)`/`setCombateIniciado(null)` de abajo).
+    if (params.nextInitiativeRoll && !params.finDePartida) {
+      setTimeout(applyTurnVisualState, 2 * ROLL_DURATION_MS)
+    } else {
+      applyTurnVisualState()
     }
     if (params.finDePartida) {
       setEndedAt(new Date().toISOString())

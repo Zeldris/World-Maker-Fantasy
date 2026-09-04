@@ -1,8 +1,8 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { useState } from 'react'
 import { renderHook, act, waitFor } from '@testing-library/react'
 import { useCombatFlow } from './useCombatFlow'
-import type { InventoryItemInfo, LogEntry, NpcInSceneInfo, QuestInfo } from '../types'
+import type { InitiativeRollInfo, InventoryItemInfo, LogEntry, NpcInSceneInfo, QuestInfo } from '../types'
 
 /// Cobertura nueva (auditoría de deuda técnica 2026-08-25): useCombatFlow.ts (585 líneas, el hook
 /// con más lógica de decisión del proyecto) no tenía ningún test — de hecho `hooks/` entera no
@@ -86,6 +86,7 @@ function useHarness(initialCombateIniciado: { npcs: NpcInSceneInfo[] } | null = 
   const [condicionFisica, setCondicionFisica] = useState<'ILESO' | 'HERIDO' | 'GRAVE' | 'CONVALECIENTE' | 'MUERTO'>('ILESO')
   const [endedAt, setEndedAt] = useState<string | null>(null)
   const [carcassPending, setCarcassPending] = useState<boolean | null>(null)
+  const [lastInitiativeRoll, setLastInitiativeRoll] = useState<InitiativeRollInfo | null>(null)
 
   const combat = useCombatFlow({
     saveId: 'save-1',
@@ -98,7 +99,7 @@ function useHarness(initialCombateIniciado: { npcs: NpcInSceneInfo[] } | null = 
     buildEntityBanner: () => undefined,
     combateIniciado,
     setCombateIniciado,
-    setLastInitiativeRoll: vi.fn(),
+    setLastInitiativeRoll,
     activePanel: null,
     setActivePanel: vi.fn(),
     combatDisabledTabs: [],
@@ -124,7 +125,7 @@ function useHarness(initialCombateIniciado: { npcs: NpcInSceneInfo[] } | null = 
     markCarcassPending: () => setCarcassPending(true),
   })
 
-  return { combat, combateIniciado, setCombateIniciado, inventory, characterLog, quests, deathCount, factionsStatus, xp, level, pendingAttributePoints, condicionFisica, endedAt, carcassPending }
+  return { combat, combateIniciado, setCombateIniciado, inventory, characterLog, quests, deathCount, factionsStatus, xp, level, pendingAttributePoints, condicionFisica, endedAt, carcassPending, lastInitiativeRoll }
 }
 
 beforeEach(() => {
@@ -697,5 +698,125 @@ describe('closeCombat / handleCombatHuir', () => {
       expect(result.current.characterLog).toHaveLength(1)
       expect(result.current.characterLog[0].text).toContain('convaleciente')
     })
+  })
+})
+
+// Bug real jugando en vivo (2026-09-04, captura real: título "COMBATE — ATAQUE" y la ficha del
+// rival ya cambiados mientras el dado de iniciativa seguía mostrando "?" en el lado enemigo) — con
+// una tirada de iniciativa real que mostrar, el estado visual "de quién es el turno" (título/color
+// del panel vía `combatAwaitingDefense`, ficha del rival vía `combatNpcStates`) debe esperar a que
+// termine de animarse (`DiceRollVs`, 2 × ROLL_DURATION_MS) antes de aplicarse — nunca antes.
+// Patrón de fake timers documentado en `useSurroundingsPolling.test.tsx`/`useTransitPolling.test.tsx`
+// (auditoría de cobertura de hooks, 2026-09-03): `vi.useFakeTimers()` aislado en este `describe`
+// (mezclarlo con el resto del archivo, que usa `waitFor` real, puede colgar esos otros tests),
+// `vi.advanceTimersByTimeAsync` (no la variante sync, no espera microtasks), `act(async () => {})`
+// tras avanzar el reloj en vez de `waitFor`.
+describe('handleCombatTurnResolved — estado visual retrasado hasta que la iniciativa termina de animar', () => {
+  beforeEach(() => {
+    vi.useFakeTimers()
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  const jugadorSide = {
+    attribute: 'destreza' as const,
+    value: 12,
+    valorEfectivo: 12,
+    multiplicador: 1,
+    malus: 0,
+    roll: 10,
+    rolls: [10],
+    rollMode: 'normal' as const,
+    attributeBonus: 0,
+    result: 15,
+    difficulty: 0,
+    success: true,
+    gradoExito: 'claro' as const,
+  }
+  const npcSide = { ...jugadorSide, roll: 3, rolls: [3], result: 8 }
+
+  it('con nextInitiativeRoll: combatAwaitingDefense/combatNpcStates NO cambian hasta que pasan 2×ROLL_DURATION_MS', async () => {
+    mockClassify.mockResolvedValue({ classification: { atributo: 'fuerza', dificultad: 15, razon: 'x', banda: 'instantanea' }, roll: undefined } as never)
+    mockNarrate.mockResolvedValue(
+      baseNarrateResponse({
+        esperandoDefensaJugador: true,
+        nextInitiativeRoll: { ganador: 'npc', jugador: jugadorSide, npc: npcSide },
+        combateIniciado: { npcs: [npc({ slug: 'orco', name: 'Orco', condicionFisica: 'HERIDO' })] },
+      }) as never,
+    )
+    const { result } = renderHook(() => useHarness())
+    act(() => result.current.setCombateIniciado({ npcs: [npc({ slug: 'orco', name: 'Orco', condicionFisica: 'ILESO' })] }))
+    act(() => result.current.combat.openCombat())
+    expect(result.current.combat.combatNpcsDisplay[0]?.condicion).toBe('ILESO')
+
+    await act(() => result.current.combat.submitCombatAction('Ataco a mi enemigo', {}))
+
+    // La iniciativa ya llegó (se muestra de inmediato, es el propio dado el que anima)...
+    expect(result.current.lastInitiativeRoll).toEqual({ ganador: 'npc', jugador: jugadorSide, npc: npcSide })
+    // ...pero el título/color (combatAwaitingDefense) y la ficha del rival (combatNpcStates)
+    // todavía NO deben haber cambiado — siguen con el valor de ANTES de este turno.
+    expect(result.current.combat.combatAwaitingDefense).toBe(false)
+    expect(result.current.combat.combatNpcsDisplay[0]?.condicion).toBe('ILESO')
+
+    // Avanza justo antes de que termine la animación (10s totales, 2 dados de 5s) — todavía nada.
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(9999)
+    })
+    expect(result.current.combat.combatAwaitingDefense).toBe(false)
+    expect(result.current.combat.combatNpcsDisplay[0]?.condicion).toBe('ILESO')
+
+    // Termina la animación — ahora sí se aplica.
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1)
+    })
+    expect(result.current.combat.combatAwaitingDefense).toBe(true)
+    expect(result.current.combat.combatNpcsDisplay[0]?.condicion).toBe('HERIDO')
+  })
+
+  it('sin nextInitiativeRoll (turno forzado sin tirada, ej. Aturdimiento): se aplica de inmediato como siempre', async () => {
+    mockClassify.mockResolvedValue({ classification: { atributo: 'fuerza', dificultad: 15, razon: 'x', banda: 'instantanea' }, roll: undefined } as never)
+    mockNarrate.mockResolvedValue(
+      baseNarrateResponse({
+        esperandoDefensaJugador: true,
+        nextInitiativeRoll: null,
+        combateIniciado: { npcs: [npc({ slug: 'orco', name: 'Orco', condicionFisica: 'HERIDO' })] },
+      }) as never,
+    )
+    const { result } = renderHook(() => useHarness())
+    act(() => result.current.setCombateIniciado({ npcs: [npc({ slug: 'orco', name: 'Orco', condicionFisica: 'ILESO' })] }))
+    act(() => result.current.combat.openCombat())
+
+    await act(() => result.current.combat.submitCombatAction('Ataco a mi enemigo', {}))
+
+    expect(result.current.combat.combatAwaitingDefense).toBe(true)
+    expect(result.current.combat.combatNpcsDisplay[0]?.condicion).toBe('HERIDO')
+  })
+
+  it('con finDePartida en el mismo turno que nextInitiativeRoll: el retraso NO reabre el combate ya cerrado', async () => {
+    mockClassify.mockResolvedValue({ classification: { atributo: 'fuerza', dificultad: 15, razon: 'x', banda: 'instantanea' }, roll: undefined } as never)
+    mockNarrate.mockResolvedValue(
+      baseNarrateResponse({
+        finDePartida: true,
+        nextInitiativeRoll: { ganador: 'npc', jugador: jugadorSide, npc: npcSide },
+        combateIniciado: { npcs: [npc({ slug: 'orco', name: 'Orco', condicionFisica: 'HERIDO' })] },
+      }) as never,
+    )
+    const { result } = renderHook(() => useHarness())
+    act(() => result.current.setCombateIniciado({ npcs: [npc({ slug: 'orco', name: 'Orco', condicionFisica: 'ILESO' })] }))
+    act(() => result.current.combat.openCombat())
+
+    await act(() => result.current.combat.submitCombatAction('Ataco a mi enemigo', {}))
+
+    expect(result.current.combat.combatOpen).toBe(false)
+    expect(result.current.combateIniciado).toBeNull()
+
+    // Aunque hubiera un `setTimeout` pendiente por `nextInitiativeRoll`, no debe reabrir nada.
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(10000)
+    })
+    expect(result.current.combat.combatOpen).toBe(false)
+    expect(result.current.combateIniciado).toBeNull()
   })
 })

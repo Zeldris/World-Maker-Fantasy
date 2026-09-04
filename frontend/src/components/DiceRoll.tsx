@@ -163,18 +163,29 @@ export function DiceFace({
 /// en cada consumidor) porque `DiceRollSingle`/`DiceRollVs` se MONTAN de cero en cada tirada nueva
 /// (nunca premontados cambiando de contenido, ver los `{roll && <.../>}` de LogPanel/CombatPanel/
 /// TameoModal) — un `useEffect` sin dependencias en el propio componente se dispara exactamente una
-/// vez por tirada real, sin tocar los sitios de llamada. `block: 'nearest'` en vez de `'center'`:
-/// si ya está parcialmente visible (caso típico, la tirada suele aparecer al final de un contenedor
-/// que ya se scrollea solo) no salta de más, solo corrige lo justo para que quede a la vista.
+/// vez por tirada real, sin tocar los sitios de llamada.
+///
+/// `block: 'center'` (bug real, 2026-09-04: con `'nearest'` el bloque quedaba parcialmente tapado
+/// por el header del panel, "se queda a medias de colocarse donde se realiza la tirada" — porque
+/// `CombatPanel.tsx` también hace `contentScrollRef.current?.scrollTo({top:0})` en su propio efecto
+/// de montaje, en el MISMO ciclo en que se abre el panel/llega la primera tirada; sin retraso, ese
+/// scroll a 0 puede ejecutarse después y pisar el `scrollIntoView` de aquí). El `setTimeout(0)`
+/// empuja este scroll al siguiente tick de React, después de cualquier `scrollTo({top:0})` de
+/// montaje que se dispare en el mismo render — así el de la tirada siempre gana, sea cual sea el
+/// orden de los `useEffect` de padre/hijo.
+///
 /// Deliberadamente SIN `.focus()` — `CombatPanel.tsx` ya documentó (2026-08-31) que robar el foco
 /// al abrir combate es más intrusivo que útil; mismo criterio aquí, el scroll basta para "no
 /// perdérsela" sin secuestrar el teclado de en medio de lo que el jugador esté haciendo.
 function useScrollIntoViewOnMount<T extends HTMLElement>() {
   const ref = useRef<T>(null)
   useEffect(() => {
-    // `scrollIntoView` no existe en jsdom (entorno de test) — comprobación explícita en vez de
-    // solo `?.` en el elemento, que no protege contra un método ausente del todo.
-    ref.current?.scrollIntoView?.({ behavior: 'smooth', block: 'nearest' })
+    const timer = setTimeout(() => {
+      // `scrollIntoView` no existe en jsdom (entorno de test) — comprobación explícita en vez de
+      // solo `?.` en el elemento, que no protege contra un método ausente del todo.
+      ref.current?.scrollIntoView?.({ behavior: 'smooth', block: 'center' })
+    }, 0)
+    return () => clearTimeout(timer)
   }, [])
   return ref
 }
