@@ -364,7 +364,20 @@ export const LogPanel = memo(function LogPanel({
                   compatibilidad con otros sitios que solo lo leen a él (turnResolution.ts,
                   `combatExchangeRoll ?? roll`) — cuando hay `combatExchange`, ese mismo número ya
                   se muestra ahí (fila "Tú"), con más contexto (el lado del enemigo, quién gana). */}
-              {entry.roll && !entry.combatExchange && (liveEntryIds?.has(entry.id) ? <DiceRollSingle roll={entry.roll} /> : <RollBadge roll={entry.roll} />)}
+              {entry.roll && !entry.combatExchange && (
+                <>
+                  {/* Legend "Tirada de iniciativa" (2026-09-04, petición explícita jugando en
+                      vivo: poder distinguir esta tirada del resto) — `entry.initiativeRoll`
+                      presente en la MISMA entrada es la señal real de que este turno, además de
+                      resolver la acción (`entry.roll`), decidió quién actúa primero en el
+                      combate que arranca (emboscada real, turnResolution.ts `openingAmbush`) —
+                      no un turno normal cualquiera con tirada. */}
+                  {entry.initiativeRoll && (
+                    <p className="mt-1.5 text-2xs font-semibold uppercase tracking-[0.14em] text-accent-400">Tirada de iniciativa</p>
+                  )}
+                  {liveEntryIds?.has(entry.id) ? <DiceRollSingle roll={entry.roll} /> : <RollBadge roll={entry.roll} />}
+                </>
+              )}
               {entry.combatExchange && (
                 <CombatExchangeBadge exchange={entry.combatExchange} playerName={characterName} enemyName={entry.npcAbilityUsed?.npcName} />
               )}
