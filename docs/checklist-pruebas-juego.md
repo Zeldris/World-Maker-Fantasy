@@ -799,3 +799,56 @@ confirmarlo la próxima vez que revise esto.
 (matar el proceso, no solo recargar) y repetir un turno simple en una partida nueva para confirmar
 si el cuelgue se repite desde cero — si sí, la causa raíz de `ollamaQueue.ts`/`retrieval.ts` sigue
 sin cerrar del todo pese a los fixes de agosto.
+
+**Actualización ~40 min después (23:10-23:15)**: `curl http://localhost:11434/api/ps` empezó a
+mostrar `tarkor-narrador:latest` y `nomic-embed-text:latest` cargados con `expires_at` real —
+Ollama en sí volvió a tener actividad/keepAlive activo, probablemente por alguna llamada que sí
+llegó a completarse (quizás el propio sondeo de reconexión, u otra ruta). **Pero ninguno de los 2
+turnos colgados llegó a resolverse ni con Ollama ya "vivo"** — sigue en 4+4 `LogEntry` sin cambio
+varios minutos después de que los modelos aparecieran cargados. Esto apunta más al candado en
+memoria por-`saveId` (`turnLock.ts`) atascado con la tarea zombie original, que a un Ollama
+realmente caído — coherente con el propio comentario de `inFlightClaimSet.ts`: "la tarea zombie de
+origen sigue corriendo de fondo sin que nada la mate [...] su resultado real, si llega,
+simplemente no tiene ya ningún caller esperándolo" — el candado de estas 2 partidas concretas
+seguiría bloqueado hasta que caduque (5 min desde su claim) o el proceso se reinicie, aunque
+Ollama en sí ya esté respondiendo con normalidad a peticiones nuevas de otras partidas.
+
+---
+
+## Reinicio real confirmado, el cuelgue PERSISTE — hipótesis del candado zombie refutada
+(2026-09-04, madrugada, continuación directa de la sesión anterior)
+
+La usuaria confirmó reinicio real del backend ("ya está reinciado"). Verificación inmediata:
+
+1. Las 3 partidas colgadas de la noche anterior (`cmtlwx13g0044rik16vto9iqy`,
+   `cmtm3qi4b0001rirshc899tlc`, `cmtm4a83r001urirsx95kob96`) siguen exactamente igual tras el
+   reinicio (21/4/4 `LogEntry`, sin cambio) — esperado, un reinicio no revive turnos ya zombie,
+   solo debería liberar el candado en memoria para turnos NUEVOS.
+2. **Se creó una partida completamente nueva** (`cmtmjkmkv0001riduoyequbdn`), se eligió clase y se
+   envió un turno de exploración simple ("Exploro con cuidado."). **El turno sigue sin resolverse
+   tras 14+ minutos**, con `curl http://localhost:11434/api/ps` mostrando `{"models":[]}` durante
+   TODA la espera (a diferencia de la sesión anterior, donde en algún punto sí aparecieron modelos
+   cargados) — esta vez Ollama nunca llegó a cargar nada en absoluto, ni el modelo pequeño de
+   clasificación.
+
+**Esto refuta la hipótesis principal de la sesión anterior** (candado zombie en memoria de
+`turnLock.ts` heredado de un proceso viejo) — un reinicio real mata el proceso y limpia
+`turnClaims`/`inFlightClaimSet` por completo, así que un turno en una partida NUEVA nunca debería
+toparse con ningún candado preexistente. Que se cuelgue igual, y que Ollama ni siquiera llegue a
+cargar un modelo, apunta a que el fallo está en algún punto ANTES de la primera llamada HTTP real
+a Ollama — candidatos revisados sin conclusión definitiva por lectura estática de código (sin
+acceso a los logs reales del proceso backend, que corre fuera de este sandbox):
+- `playerActionCount = await prisma.logEntry.count(...)` (`turnResolution.ts`, justo antes del
+  guion de Gistera Koh) — consulta ORM trivial, sin timeout explícito, pero Postgres respondía con
+  normalidad a consultas directas desde este mismo entorno durante todo el cuelgue.
+- `recordEntityDiscoveries` (`entityDiscovery.ts`) — 5 `findMany` en `Promise.all`, sin ningún
+  timeout, corre al FINAL de cada turno (no bloquearía la narración en sí, pero si el propio
+  `narrateAndPersistTurn` no llega a este punto, tampoco es la causa raíz del cuelgue observado).
+- Ninguna de las dos pistas es concluyente sin logs reales — **se necesita acceso a la salida de
+  consola del proceso backend real** (dónde se queda colgado exactamente) para diagnosticar más
+  allá de este punto. Recomendación: la próxima vez que se reproduzca, capturar/revisar esa salida
+  en vivo mientras el turno está en curso, en vez de solo inferir desde Postgres/Ollama externos.
+
+**Estado al cierre de esta ronda**: 4 partidas de prueba quedan con turnos colgados sin resolver
+(`cmtlwx13g0044rik16vto9iqy`, `cmtm3qi4b0001rirshc899tlc`, `cmtm4a83r001urirsx95kob96`,
+`cmtmjkmkv0001riduoyequbdn`) — las 4 se dejan sin tocar, como evidencia acumulada del patrón.

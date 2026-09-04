@@ -165,8 +165,9 @@ export function CharacterSelect() {
                     ? 'border-red-800 bg-red-500/10 text-red-400'
                     : 'border-iron-700 bg-wood-950/60 text-accent-300'
                 }`}
+                title="Puntos que te quedan por repartir entre los atributos"
               >
-                {remaining} / {POINT_BUDGET} pts
+                {remaining} / {POINT_BUDGET} pts restantes
               </p>
             </div>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
