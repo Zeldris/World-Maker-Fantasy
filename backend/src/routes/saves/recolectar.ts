@@ -20,6 +20,7 @@ import type { GatheringRollResult, AttributeBlock, Attribute, GradoRecurso } fro
 import { Prisma } from '@prisma/client';
 import type { Estacion, EstadoClima, MetodoObtencion } from '@prisma/client';
 import { rejectIfEnded } from './shared.js';
+import { posicionDeObjetivo, moverJugadorA } from '../../services/zonaPosicion.js';
 
 /// Recolección (rediseño de profesiones, 2026-08-07) — lado "recolectora" (minero/talador/
 /// desollador): a diferencia de las de oficio creador (crafting.ts, un solo objeto por texto
@@ -709,6 +710,7 @@ export async function recolectarRoutes(app: FastifyInstance) {
         where: { id: request.params.id },
         include: {
           worldState: true,
+          currentLocation: true,
           // Segunda tirada en tier alto (2026-09-02, Pieza 2) — mismos inputs que `gatheringRollFor`
           // (equipo puesto + nivel de oficio), necesarios aquí porque la segunda tirada ocurre AL
           // CONFIRMAR, no al explorar.
@@ -1049,6 +1051,18 @@ export async function recolectarRoutes(app: FastifyInstance) {
           timeLabel: nuevaFictionalDateLabel,
           fictionalMinutes: nuevoFictionalMinutes,
         });
+
+        // Punto del jugador en el mapa de Zona (2026-09-04) — mueve al jugador al ÚLTIMO
+        // `sourceSlug` de la lista (orden = orden de clic del jugador, razonable que el marcador
+        // acabe junto al último recurso trabajado). Solo si ese recurso tiene `ZonePoint` real —
+        // sin pin curado, no hay a dónde mover (los recursos nunca son "dinámicos" con posición
+        // aleatoria, a diferencia de NPC/fauna, ver zona.ts).
+        const currentLocationIdParaZona = save.currentLocation?.id ?? null;
+        if (currentLocationIdParaZona && selections.length > 0) {
+          const ultimoSourceSlug = selections[selections.length - 1].sourceSlug;
+          const zonaObjetivo = await posicionDeObjetivo(tx, currentLocationIdParaZona, ultimoSourceSlug);
+          if (zonaObjetivo) await moverJugadorA(tx, save.id, zonaObjetivo.x, zonaObjetivo.y);
+        }
 
         return { touched, logEntry };
       });

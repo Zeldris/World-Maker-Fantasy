@@ -169,13 +169,24 @@ export async function sessionRoutes(app: FastifyInstance) {
     // fallaba se persistía SIEMPRE, sin comparar contra el estado fresco, aunque la primera ya
     // hubiera resuelto el mismo intento de huida con éxito. Ahora se compara siempre.
     const outcome = await prisma.$transaction(async (tx) => {
-      const locked = await lockRowForUpdate<{ pendingCombatNpcSlugs: string[] | null }>(tx, 'Save', save.id, ['pendingCombatNpcSlugs']);
+      const locked = await lockRowForUpdate<{ pendingCombatNpcSlugs: string[] | null; zonaPosEntradaX: number | null; zonaPosEntradaY: number | null }>(tx, 'Save', save.id, [
+        'pendingCombatNpcSlugs',
+        'zonaPosEntradaX',
+        'zonaPosEntradaY',
+      ]);
       const freshSlugs = locked.pendingCombatNpcSlugs ?? [];
       const mismoSet = freshSlugs.length === pendingSlugs.length && freshSlugs.every((s) => pendingSlugs.includes(s));
       if (!mismoSet) return { kind: 'cambiado' as const };
 
       await tx.logEntry.create({ data: { saveId: save.id, channel: 'CHARACTER', text, timeLabel, roll: roll as unknown as Prisma.InputJsonValue } });
-      if (roll.success) await tx.save.update({ where: { id: save.id }, data: { pendingCombatNpcSlugs: [] } });
+      if (roll.success) {
+        // Punto del jugador en el mapa de Zona (2026-09-04) — huir con éxito antes de entrar en
+        // combate vuelve al punto de ENTRADA de la zona, no al centro ni junto al enemigo.
+        await tx.save.update({
+          where: { id: save.id },
+          data: { pendingCombatNpcSlugs: [], zonaPosX: locked.zonaPosEntradaX ?? undefined, zonaPosY: locked.zonaPosEntradaY ?? undefined },
+        });
+      }
       return { kind: 'ok' as const };
     });
 
@@ -248,7 +259,11 @@ export async function sessionRoutes(app: FastifyInstance) {
     // completo en /combat/flee) — un turno real de /turn/narrate en paralelo puede estar
     // actualizando `pendingCombatNpcSlugs` justo ahora.
     const outcomeEnCurso = await prisma.$transaction(async (tx) => {
-      const locked = await lockRowForUpdate<{ pendingCombatNpcSlugs: string[] | null }>(tx, 'Save', save.id, ['pendingCombatNpcSlugs']);
+      const locked = await lockRowForUpdate<{ pendingCombatNpcSlugs: string[] | null; zonaPosEntradaX: number | null; zonaPosEntradaY: number | null }>(tx, 'Save', save.id, [
+        'pendingCombatNpcSlugs',
+        'zonaPosEntradaX',
+        'zonaPosEntradaY',
+      ]);
       const freshSlugs = locked.pendingCombatNpcSlugs ?? [];
       const mismoSet = freshSlugs.length === pendingSlugs.length && freshSlugs.every((s) => pendingSlugs.includes(s));
       if (!mismoSet) return { kind: 'cambiado' as const };
@@ -258,7 +273,10 @@ export async function sessionRoutes(app: FastifyInstance) {
         where: { id: save.id },
         data: {
           condicionFisica: nuevaCondicion,
-          ...(roll.success ? { pendingCombatNpcSlugs: [] } : {}),
+          // Punto del jugador en el mapa de Zona (2026-09-04) — solo si consigue huir de verdad
+          // (roll.success): vuelve al punto de ENTRADA. Si falla, el combate sigue y el jugador se
+          // queda donde está, junto al enemigo.
+          ...(roll.success ? { pendingCombatNpcSlugs: [], zonaPosX: locked.zonaPosEntradaX ?? undefined, zonaPosY: locked.zonaPosEntradaY ?? undefined } : {}),
         },
       });
       return { kind: 'ok' as const };

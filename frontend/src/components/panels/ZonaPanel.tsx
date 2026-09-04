@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
-import { getZona, resolveImageUrl, type ZonaResponse, type ZonePointInfo, type RegionControlInfo } from '../../lib/api'
-import { ZonePointDetailModal } from '../ZonePointDetailModal'
+import { getZona, resolveImageUrl, type ZonaResponse, type ZonePointInfo, type ZonaDinamicoInfo, type RegionControlInfo } from '../../lib/api'
+import { ZonePointDetailModal, zonaDinamicoToDetailSource } from '../ZonePointDetailModal'
 
 interface ZonaPanelProps {
   saveId: string
@@ -68,6 +68,27 @@ function ZonePointShape({ tipo, x, y, color }: { tipo: ZonePointInfo['tipo']; x:
   }
 }
 
+/// Punto del jugador en el mapa de Zona (2026-09-04, petición explícita jugando en vivo: "ahora
+/// falto yo en la zona") — estrella de 5 puntas negra, forma nunca usada por las 4 categorías de
+/// `ZonePointShape` (círculo/triángulo/cuadrado/rombo), color propio (negro, confirmado por la
+/// usuaria) distinto de los 4 tonos de reputación. Halo blanco fino + radio algo mayor (11 vs 7-10
+/// del resto) para que nunca quede tapado si el jugador coincide con un pin normal (caso real: justo
+/// tras cazar/recolectar/combatir, el jugador aparece exactamente sobre ese ZonePoint).
+function JugadorMarker({ x, y }: { x: number; y: number }) {
+  const puntos = Array.from({ length: 10 }, (_, i) => {
+    const r = i % 2 === 0 ? 11 : 4.5
+    const angle = (Math.PI / 5) * i - Math.PI / 2
+    return `${x + r * Math.cos(angle)},${y + r * Math.sin(angle)}`
+  }).join(' ')
+  return (
+    <g>
+      <circle cx={x} cy={y} r={14} fill="none" stroke="white" strokeWidth={1.5} opacity={0.8} />
+      <polygon points={puntos} fill="#0a0a0a" stroke="white" strokeWidth={1.5} />
+      <title>Tú estás aquí</title>
+    </g>
+  )
+}
+
 /// C.6/C.7 (checklist frontend 2026-08-27) — antes 3 comparaciones sueltas sin exhaustividad
 /// comprobada por TypeScript (un 4º estado futuro se colaría en silencio) y sin comprobar que
 /// `agresor` viniera informado en `EN_DISPUTA` (opcional en el tipo). Ahora un `switch` exhaustivo
@@ -105,7 +126,9 @@ export function ZonaPanel({ saveId }: ZonaPanelProps) {
   const [loading, setLoading] = useState(true)
   const [data, setData] = useState<ZonaResponse | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [selectedPoint, setSelectedPoint] = useState<ZonePointInfo | null>(null)
+  // Modal de detalle (2026-09-04) — comparte un mismo modal entre ZonePoint reales (`puntos`) y
+  // dinámicos (`dinamicos`, sin ZonePoint sembrado), vía `zonaDinamicoToDetailSource`.
+  const [selectedPoint, setSelectedPoint] = useState<ZonePointInfo | ZonaDinamicoInfo | null>(null)
 
   useEffect(() => {
     setLoading(true)
@@ -139,7 +162,11 @@ export function ZonaPanel({ saveId }: ZonaPanelProps) {
             Karot Veku, recién sembrado y sin imagen todavía). Ahora el `<svg>` se pinta siempre
             que haya `puntos`, con o sin imagen de fondo — el `<image>` es un elemento más dentro,
             no la condición de todo el bloque. */}
-        {data.puntos.length > 0 && (
+        {/* Punto del jugador en el mapa (2026-09-04) — el `<svg>` se pinta también cuando SOLO hay
+            dinámicos o SOLO el jugador (antes solo dependía de `puntos.length`, dejando el mapa
+            invisible en zonas sin ningún ZonePoint sembrado pero con NPC/fauna dinámico o con el
+            propio marcador del jugador). */}
+        {(data.puntos.length > 0 || dinamicos.length > 0 || data.jugador) && (
           <div className="overflow-hidden rounded-lg border border-iron-700 bg-wood-950/60">
             <svg viewBox="0 0 800 600" className="h-auto w-full">
               {imageUrl && <image href={imageUrl} x={0} y={0} width={800} height={600} preserveAspectRatio="xMidYMid slice" />}
@@ -165,6 +192,16 @@ export function ZonaPanel({ saveId }: ZonaPanelProps) {
                   <title>{`${p.nombre}${p.cantidad > 1 ? ` ×${p.cantidad}` : ''} (${TIPO_LABEL[p.tipo]})`}</title>
                 </g>
               ))}
+              {/* NPC/fauna dinámicos (2026-09-04) — ahora también se pintan como pines reales, con
+                  la posición asignada por el backend (`posicionAleatoriaEnLienzo`), reutilizando
+                  `ZonePointShape` tal cual (su `tipo` ya es subconjunto válido). */}
+              {dinamicos.map((d) => (
+                <g key={d.slug} onClick={() => setSelectedPoint(d)} className="cursor-pointer">
+                  <ZonePointShape tipo={d.tipo} x={d.x} y={d.y} color={COLOR_HEX[d.color]} />
+                  <title>{`${d.nombre} (${TIPO_LABEL[d.tipo]})`}</title>
+                </g>
+              ))}
+              {data.jugador && <JugadorMarker x={data.jugador.x} y={data.jugador.y} />}
             </svg>
           </div>
         )}
@@ -176,7 +213,7 @@ export function ZonaPanel({ saveId }: ZonaPanelProps) {
             puede desincronizarse de lo que de verdad se pinta. Formas dibujadas con el mismo
             `ZonePointShape` de los pines reales, a tamaño de leyenda (viewBox propio 20×20), en
             vez de reconstruir cada silueta a mano en CSS. */}
-        {data.puntos.length > 0 && (
+        {(data.puntos.length > 0 || dinamicos.length > 0 || data.jugador) && (
           <details className="group rounded-lg border border-iron-700 bg-wood-950/40 text-2xs text-wood-400">
             <summary className="tactile flex cursor-pointer select-none items-center gap-1.5 px-3 py-1.5 font-semibold uppercase tracking-[0.1em] text-wood-500 marker:content-none">
               <span aria-hidden="true" className="transition-transform group-open:rotate-90">▸</span>
@@ -192,6 +229,12 @@ export function ZonaPanel({ saveId }: ZonaPanelProps) {
                     {TIPO_LABEL[tipo]}
                   </span>
                 ))}
+                <span className="flex items-center gap-1.5">
+                  <svg viewBox="0 0 24 24" width={14} height={14} aria-hidden="true">
+                    <JugadorMarker x={12} y={12} />
+                  </svg>
+                  Tú
+                </span>
               </div>
               <div className="flex flex-wrap gap-x-4 gap-y-1.5">
                 <span className="flex items-center gap-1.5">
@@ -232,21 +275,31 @@ export function ZonaPanel({ saveId }: ZonaPanelProps) {
             ))}
           </div>
         )}
-        {/* NPCs presentados de forma determinista (2026-08-26) — sin posición real, así que nunca
-            como pin: una lista aparte, siempre visible aunque no haya mapa de puntos fijos. */}
+        {/* NPCs presentados de forma determinista (2026-08-26) — desde 2026-09-04 con posición
+            real asignada (ver el SVG de arriba), pero se mantiene también como lista de texto,
+            mismo criterio que `puntos` (lista Y pin a la vez), ahora clicable igual que aquellos. */}
         {dinamicos.length > 0 && (
           <div className="flex flex-col gap-1.5">
             <p className="text-2xs font-semibold uppercase tracking-[0.1em] text-wood-500">Presentes ahora</p>
             {dinamicos.map((d) => (
-              <div key={d.slug} className="flex items-center gap-2 rounded-lg border border-iron-700 bg-wood-950/40 px-3 py-1.5 text-xs">
-                <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-wood-500" />
+              <button type="button"
+                key={d.slug}
+                onClick={() => setSelectedPoint(d)}
+                className="tactile flex items-center gap-2 rounded-lg border border-iron-700 bg-wood-950/40 px-3 py-1.5 text-left text-xs transition-colors hover:border-accent-600/60"
+              >
+                <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: COLOR_HEX[d.color] }} />
                 <span className="text-wood-100">{d.nombre}</span>
                 <span className="ml-auto text-2xs uppercase tracking-wide text-wood-500">{TIPO_LABEL[d.tipo]}</span>
-              </div>
+              </button>
             ))}
           </div>
         )}
-      {selectedPoint && <ZonePointDetailModal point={selectedPoint} onClose={() => setSelectedPoint(null)} />}
+      {selectedPoint &&
+        ('id' in selectedPoint ? (
+          <ZonePointDetailModal point={selectedPoint} onClose={() => setSelectedPoint(null)} />
+        ) : (
+          <ZonePointDetailModal point={zonaDinamicoToDetailSource(selectedPoint)} onClose={() => setSelectedPoint(null)} />
+        ))}
     </div>
   )
 }

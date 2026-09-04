@@ -99,6 +99,15 @@ import {
   type TravelResolution,
 } from './travel.js';
 import { detectsRestIntent, type Produccion } from './timedActions.js';
+import {
+  puntoDeEntradaParaDireccion,
+  direccionDeEntrada,
+  posicionDeObjetivo,
+  minutoDeReaparicion,
+  moverJugadorA,
+  fijarEntradaAZona,
+  volverAEntrada,
+} from './zonaPosicion.js';
 import { claimChapterIfDue, scheduleChapterSummaryGeneration, releaseChapterClaim } from './chapterSummary.js';
 import { captureLiveTeacherExample } from './liveTeacherCapture.js';
 import { recordEntityDiscoveries } from './entityDiscovery.js';
@@ -206,6 +215,11 @@ interface NarrateAndPersistParams {
   /// null (personaje sin raza asignada, partidas previas a este campo).
   raza: string | null;
   currentLocationId: string | null;
+  /// Punto del jugador en el mapa de Zona (2026-09-04) — punto de ENTRADA ya guardado
+  /// (`Save.zonaPosEntradaX/Y`), usado como destino al construir ("ocurre donde ya estás
+  /// plantado"). `null`/`undefined` en partidas previas a esta pieza — el movimiento se omite.
+  jugadorZonaPosEntradaX?: number | null;
+  jugadorZonaPosEntradaY?: number | null;
   /// Presente cuando /turn/classify resolvió un viaje por el grafo de ubicaciones (docs/12 § 1.4)
   /// — el mismo objeto viaja tal cual desde classify (síncrono) o desde CharacterTransit.zoneContext
   /// (diferido, worldTick), para que la llegada se resuelva aquí una sola vez.
@@ -1931,6 +1945,11 @@ async function applyCombatExchangeToNpcState(params: {
   const abilityUsesChanged = abilityUsesReset || abilityNamesToIncrement.length > 0;
   // Fase 2 de efectos de clase (2026-08-26) — mismo reset-on-ILESO que `abilityUsesNext`, arriba.
   const activeEffectsToWrite = condicionAEscribir === 'ILESO' ? [] : npcActiveEffectsNext;
+  // Punto del jugador en el mapa de Zona (2026-09-04) — combate ganado de verdad (golpe de muerte
+  // y, si era un grupo, ya no queda nadie más) marca al NPC ausente 6h de ficción. `grupoContinua`
+  // deja esto fuera a propósito: todavía hay alguien vivo de ese grupo en la zona.
+  const marcarAusente = esGolpeDeMuerte && !grupoContinua;
+  const zonaAusenteData = marcarAusente ? { zonaAusenteHastaMinutes: minutoDeReaparicion(nuevoFictionalMinutes), zonaLocationId: currentLocationId } : {};
   await tx.npcState.upsert({
     where: { saveId_npcId_scope: { saveId, npcId: npcAttackTarget.id, scope } },
     create: {
@@ -1944,6 +1963,7 @@ async function applyCombatExchangeToNpcState(params: {
       ...(analizarRivalExito ? { analizado: true } : {}),
       ...(esGolpeDeMuerte && npcAttackTarget.groupSize ? { groupDefeated: 1, corpsesLooted: 0 } : {}),
       ...(abilityUsesChanged ? { abilityUsesThisEncounter: abilityUsesNext } : {}),
+      ...zonaAusenteData,
       activeEffects: activeEffectsToWrite as unknown as Prisma.InputJsonValue,
     },
     update: {
@@ -1953,9 +1973,25 @@ async function applyCombatExchangeToNpcState(params: {
       ...(npcNuevaEnergia !== null ? { energia: npcNuevaEnergia } : {}),
       ...(analizarRivalExito ? { analizado: true } : {}),
       ...(abilityUsesChanged ? { abilityUsesThisEncounter: abilityUsesNext } : {}),
+      ...zonaAusenteData,
       activeEffects: activeEffectsToWrite as unknown as Prisma.InputJsonValue,
     },
   });
+  // Punto del jugador (2026-09-04) — cualquier intercambio de combate real contra este objetivo
+  // (golpe recibido, energía gastada, tope de habilidad, análisis) lo acerca al jugador: primero
+  // se busca su `ZonePoint` real (catálogo curado), si no existe se cae a la posición ya asignada
+  // como dinámico (`NpcState.zonaPosX/Y` — asignada en la lectura de `GET /saves/:id/zona`, ver
+  // zona.ts; si nunca se ha leído el mapa con este NPC en escena, todavía puede ser null, y
+  // entonces no hay a dónde mover al jugador este turno).
+  const zonaObjetivo = currentLocationId ? await posicionDeObjetivo(tx, currentLocationId, npcAttackTarget.slug) : null;
+  if (zonaObjetivo) {
+    await moverJugadorA(tx, saveId, zonaObjetivo.x, zonaObjetivo.y);
+  } else {
+    const npcStateConPosicion = await tx.npcState.findUnique({ where: { saveId_npcId_scope: { saveId, npcId: npcAttackTarget.id, scope } }, select: { zonaPosX: true, zonaPosY: true } });
+    if (npcStateConPosicion?.zonaPosX != null && npcStateConPosicion?.zonaPosY != null) {
+      await moverJugadorA(tx, saveId, npcStateConPosicion.zonaPosX, npcStateConPosicion.zonaPosY);
+    }
+  }
 
   if (esGolpeDeMuerte) {
     const killSideEffects = await applyKillSideEffects({
@@ -3150,9 +3186,28 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   // Región activa este turno (roadmap 2026-07-20, para el lint post-narración) — la del destino
   // si es un turno de viaje, si no la de la ubicación actual.
   let activeRegion: string | null = null;
+  // Punto del jugador en el mapa de Zona (2026-09-04) — al llegar a una Location nueva, aparece en
+  // el borde del lienzo correspondiente a la dirección por la que se entra (nunca el centro). Se
+  // calcula aquí (fuera de la transacción de escritura, con `destination` ya cargado para el
+  // prompt) y se persiste más abajo en el mismo `tx.save.update` final. `null` = sin coordenadas
+  // reales de mundo en origen/destino (Location.x/y opcional) — fallback al centro del lienzo.
+  let zonaEntradaCoords: { x: number; y: number } | null = null;
   if (travel) {
     const destination = await prisma.location.findUnique({ where: { id: travel.toLocationId } });
     activeRegion = destination?.region ?? null;
+    if (destination?.x != null && destination?.y != null) {
+      const origenLoc = currentLocationId ? await prisma.location.findUnique({ where: { id: currentLocationId }, select: { x: true, y: true } }) : null;
+      const origenX = origenLoc?.x;
+      const origenY = origenLoc?.y;
+      if (origenX != null && origenY != null) {
+        const direccionDeViaje = cardinalDirectionBetween({ x: origenX, y: origenY }, { x: destination.x, y: destination.y });
+        zonaEntradaCoords = puntoDeEntradaParaDireccion(direccionDeEntrada(direccionDeViaje));
+      } else {
+        // Sin origen con coordenadas de mundo (p.ej. primera Location de la partida) — no hay
+        // dirección real que calcular, pero el jugador SÍ necesita un punto: centro del lienzo.
+        zonaEntradaCoords = { x: 400, y: 300 };
+      }
+    }
     const ruta = travel.segments
       .map((s) => `${s.fromName} → ${s.toName} (${s.terreno}${s.riesgo ? `, riesgo conocido: ${s.riesgo}` : ''})`)
       .join('; ');
@@ -4288,6 +4343,30 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
         narraciones.push(...turnoJugadora.narracionesExtra);
         combatEncounterCaidos.push(...turnoJugadora.caidos);
         combatEncounterTerminado = turnoJugadora.encounterTerminado;
+        // Punto del jugador en el mapa de Zona (2026-09-04) — solo el turno DE LA JUGADORA (nunca
+        // los sub-turnos autónomos NPC-vs-NPC de `antes`/`despues`, sin relación con su acción).
+        // Mueve al jugador junto al primer NPC/fauna real que cayó este turno y lo marca ausente 6h
+        // — mismo criterio que el 1v1 clásico, fuera de la transacción principal porque
+        // `resolverTurnoJugador` ya gestiona sus propias transacciones cortas (ver comentario de
+        // cabecera de `ejecutarIntercambioYAvanzar`).
+        const npcCaidoReal = turnoJugadora.caidos.find((c) => c.tipo !== 'JUGADOR' && c.npcId);
+        if (npcCaidoReal?.npcId && currentLocationId) {
+          const npcCaido = await prisma.npc.findUnique({ where: { id: npcCaidoReal.npcId }, select: { slug: true, kind: true } });
+          if (npcCaido) {
+            const scopeCaido = scopeFor(npcCaido.kind, currentLocationId);
+            // `nuevoFictionalMinutes` (la variable de nivel función) todavía no está declarada en
+            // este punto — mismo cálculo local que ya usan otros sitios anteriores a su declaración
+            // oficial (línea ~4712), ver `fictionalMinutesParaComerBeber` unas líneas más abajo.
+            const minutosParaAusencia = advanceFictionalMinutes(fictionalMinutesActuales, minutosDeEsteTurno);
+            await prisma.npcState.upsert({
+              where: { saveId_npcId_scope: { saveId, npcId: npcCaidoReal.npcId, scope: scopeCaido } },
+              create: { saveId, npcId: npcCaidoReal.npcId, scope: scopeCaido, zonaAusenteHastaMinutes: minutoDeReaparicion(minutosParaAusencia), zonaLocationId: currentLocationId },
+              update: { zonaAusenteHastaMinutes: minutoDeReaparicion(minutosParaAusencia), zonaLocationId: currentLocationId },
+            });
+            const zonaObjetivoMultiple = await posicionDeObjetivo(prisma, currentLocationId, npcCaido.slug);
+            if (zonaObjetivoMultiple) await moverJugadorA(prisma, saveId, zonaObjetivoMultiple.x, zonaObjetivoMultiple.y);
+          }
+        }
         // Desglose real de dados (2026-09-04, auditoría "buscar tiradas de dados sin
         // representar") — hallazgo real: combate múltiple SIEMPRE tira con la misma mecánica que
         // el 1v1 (mismo rollD20), pero nunca llegaba a `combatExchangeDisplayFinal` (mismo campo
@@ -5522,6 +5601,12 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     });
 
     if (buildValidNow && buildRecipe) {
+      // Punto del jugador en el mapa de Zona (2026-09-04) — un EDIFICIO nuevo no tiene `ZonePoint`
+      // propio (se crea al construir, fuera del alcance de esta pieza sembrar uno) — "construir
+      // ocurre donde ya estás plantado", así que se mueve al punto de ENTRADA de la zona actual en
+      // vez de inventar una posición nueva. No-op si nunca hubo entrada guardada (partida previa a
+      // esta pieza).
+      await volverAEntrada(tx, saveId, { x: params.jugadorZonaPosEntradaX ?? null, y: params.jugadorZonaPosEntradaY ?? null });
       if (buildRecipe.upgradesRecipeKey) {
         // Mejora de Ayuntamiento (2026-08-04): actualiza el MISMO `Building.id`, nunca crea uno
         // nuevo — "no se acumulan, mejoras el actual" (docs/17-reglas-construcciones-reino.md).
@@ -6126,6 +6211,23 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     // resto de la función pudiera reutilizarlo para la respuesta HTTP).
     const jugadorActiveEffectsFinal = params.condicionFisica !== 'ILESO' && finalCondicion === 'ILESO' ? [] : jugadorActiveEffectsNext;
 
+    // Punto del jugador en el mapa de Zona (2026-09-04) — hablar con un NPC determinista lo acerca
+    // a él, mismo criterio que combate. Nunca en el mismo turno que un viaje real (`zonaEntradaCoords`
+    // ya fija dónde aparece al llegar; hablar y viajar no ocurren en el mismo turno en la práctica,
+    // pero por si acaso el viaje manda).
+    if (dialogueTarget && !zonaEntradaCoords && currentLocationId) {
+      const zonaObjetivoDialogo = await posicionDeObjetivo(tx, currentLocationId, dialogueTarget.slug);
+      if (zonaObjetivoDialogo) {
+        await moverJugadorA(tx, saveId, zonaObjetivoDialogo.x, zonaObjetivoDialogo.y);
+      } else {
+        const scopeDialogo = scopeFor(dialogueTarget.kind, currentLocationId);
+        const npcStateDialogo = await tx.npcState.findUnique({ where: { saveId_npcId_scope: { saveId, npcId: dialogueTarget.id, scope: scopeDialogo } }, select: { zonaPosX: true, zonaPosY: true } });
+        if (npcStateDialogo?.zonaPosX != null && npcStateDialogo?.zonaPosY != null) {
+          await moverJugadorA(tx, saveId, npcStateDialogo.zonaPosX, npcStateDialogo.zonaPosY);
+        }
+      }
+    }
+
     await tx.save.update({
       where: { id: saveId },
       data: {
@@ -6134,6 +6236,14 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
         level: result.newLevel,
         pendingAttributePoints: { increment: result.attributePointsGained },
         currentLocationId: finalCurrentLocationId,
+        // Punto del jugador en el mapa de Zona (2026-09-04) — solo se toca en un turno de viaje
+        // real (`zonaEntradaCoords` calculado arriba); fuera de viaje, `undefined` deja el campo
+        // intacto (Prisma no lo incluye en el UPDATE), así que el resto de enganches deterministas
+        // (cazar/recolectar/combate/hablar, cada uno en su propio punto de escritura) siguen
+        // siendo la única fuente que mueve `zonaPosX/Y` dentro de la misma zona.
+        ...(zonaEntradaCoords
+          ? { zonaPosX: zonaEntradaCoords.x, zonaPosY: zonaEntradaCoords.y, zonaPosEntradaX: zonaEntradaCoords.x, zonaPosEntradaY: zonaEntradaCoords.y }
+          : {}),
         condicionFisica: finalCondicion,
         salud: saludForCondicion(finalCondicion),
         energia: finalEnergia,

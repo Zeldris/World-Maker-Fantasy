@@ -1,4 +1,4 @@
-import type { ZonePointInfo } from '../lib/api'
+import type { ZonePointInfo, ZonaDinamicoInfo } from '../lib/api'
 import { useEnciclopediaLink } from '../context/useEnciclopediaLink'
 import { SelectionModalShell, confirmButtonClasses } from './SelectionModalShell'
 
@@ -14,6 +14,16 @@ const COLOR_LABEL: Record<ZonePointInfo['color'], string> = {
   NEUTRO: 'Neutro',
   ENEMIGO: 'Enemigo',
   SIN_FACCION: 'Sin facción',
+}
+
+/// Punto del jugador en el mapa de Zona (2026-09-04) — este modal ahora también se abre desde un
+/// pin `dinamicos` (NPC/fauna sin `ZonePoint` sembrado, `slug`/`targetSlug` es el mismo concepto
+/// con nombre distinto). Shape mínimo común a ambas fuentes, sin exigir campos que solo tiene una
+/// de las dos (`ZonePointInfo.id`/`cantidad`).
+type ZonePointDetailSource = { targetSlug: string; nombre: string; tipo: ZonePointInfo['tipo']; color: ZonePointInfo['color']; cantidad?: number }
+
+export function zonaDinamicoToDetailSource(d: ZonaDinamicoInfo): ZonePointDetailSource {
+  return { targetSlug: d.slug, nombre: d.nombre, tipo: d.tipo, color: d.color }
 }
 
 /// Modal de detalle de un pin de Zona (2026-09-04, petición explícita jugando en vivo: "teniendo
@@ -32,7 +42,7 @@ const COLOR_LABEL: Record<ZonePointInfo['color'], string> = {
 /// nunca tiene ficha propia (gobernado por `Building`/`construction.ts`, fuera de alcance de la
 /// Enciclopedia) — sin target resuelto, el botón simplemente no aparece, en vez de fingir un enlace
 /// que no lleva a ningún sitio.
-export function ZonePointDetailModal({ point, onClose }: { point: ZonePointInfo; onClose: () => void }) {
+export function ZonePointDetailModal({ point, onClose }: { point: ZonePointDetailSource; onClose: () => void }) {
   const { enciclopediaIndex, onEntityDetail } = useEnciclopediaLink()
   const target = enciclopediaIndex.bySlugKey.get(`fauna:${point.targetSlug}`) ?? enciclopediaIndex.bySlugKey.get(`npc:${point.targetSlug}`)
 
@@ -51,7 +61,7 @@ export function ZonePointDetailModal({ point, onClose }: { point: ZonePointInfo;
       <div className="flex flex-wrap gap-1.5 text-2xs">
         <span className="rounded-full border border-iron-700 bg-wood-950/50 px-2.5 py-1 uppercase tracking-wide text-wood-400">{TIPO_LABEL[point.tipo]}</span>
         <span className="rounded-full border border-iron-700 bg-wood-950/50 px-2.5 py-1 uppercase tracking-wide text-wood-400">{COLOR_LABEL[point.color]}</span>
-        {point.cantidad > 1 && <span className="rounded-full border border-iron-700 bg-wood-950/50 px-2.5 py-1 uppercase tracking-wide text-wood-400">×{point.cantidad}</span>}
+        {!!point.cantidad && point.cantidad > 1 && <span className="rounded-full border border-iron-700 bg-wood-950/50 px-2.5 py-1 uppercase tracking-wide text-wood-400">×{point.cantidad}</span>}
       </div>
       {!target && <p className="text-xs italic text-wood-500">Todavía sin ficha propia en la Enciclopedia.</p>}
     </SelectionModalShell>

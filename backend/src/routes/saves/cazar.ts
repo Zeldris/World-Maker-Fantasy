@@ -12,6 +12,7 @@ import { iniciarCombatEncounter, resolverTurnosAutonomosHastaJugadora, type Comb
 import { MAX_COMBATIENTES_POR_BANDO } from '../../services/combateMultiple.js';
 import { rejectIfEnded, lockRowForUpdate } from './shared.js';
 import { advanceFictionalMinutes, formatFictionalDate } from '../../services/worldClock.js';
+import { posicionDeObjetivo, moverJugadorA, minutoDeReaparicion } from '../../services/zonaPosicion.js';
 
 /// Cooldown de dispersión tras caza en grupo fallida (2026-09-02, sobre el commit d6e8afc: cuando
 /// `rollGroupEngagement` devuelve 0, "el grupo se dispersa antes de comprometerse" — hoy sin
@@ -383,11 +384,31 @@ export async function cazarRoutes(app: FastifyInstance) {
         const freshSave = await lockRowForUpdate<{ pendingCombatNpcSlugs: string[] }>(tx, 'Save', save.id, ['pendingCombatNpcSlugs']);
         if (freshSave.pendingCombatNpcSlugs.includes(npc.slug)) return null;
 
+        // Punto del jugador en el mapa de Zona (2026-09-04) — caza limpia mata de un solo golpe,
+        // sin combate real: mueve al jugador junto a la presa y la marca ausente igual que un
+        // golpe de muerte en combate normal (mismo campo, mismo criterio de 6h de ficción).
         await tx.npcState.upsert({
           where: { saveId_npcId_scope: { saveId: save.id, npcId: npc.id, scope } },
-          create: { saveId: save.id, npcId: npc.id, scope, condicionFisica: 'MUERTO', condicionFisicaSinceMinutes: nuevoFictionalMinutes },
-          update: { condicionFisica: 'MUERTO', condicionFisicaSinceMinutes: nuevoFictionalMinutes },
+          create: {
+            saveId: save.id,
+            npcId: npc.id,
+            scope,
+            condicionFisica: 'MUERTO',
+            condicionFisicaSinceMinutes: nuevoFictionalMinutes,
+            zonaAusenteHastaMinutes: minutoDeReaparicion(nuevoFictionalMinutes),
+            zonaLocationId: currentLocationId,
+          },
+          update: {
+            condicionFisica: 'MUERTO',
+            condicionFisicaSinceMinutes: nuevoFictionalMinutes,
+            zonaAusenteHastaMinutes: minutoDeReaparicion(nuevoFictionalMinutes),
+            zonaLocationId: currentLocationId,
+          },
         });
+        if (currentLocationId) {
+          const zonaObjetivo = await posicionDeObjetivo(tx, currentLocationId, npc.slug);
+          if (zonaObjetivo) await moverJugadorA(tx, save.id, zonaObjetivo.x, zonaObjetivo.y);
+        }
         await decrementPopulationOnDeath(tx, save.worldId, null, npc.slug, region);
         await tx.worldState.update({ where: { saveId: save.id }, data: { fictionalMinutes: nuevoFictionalMinutes, fictionalDateLabel: timeLabel } });
         const created = await tx.logEntry.create({ data: { saveId: save.id, channel: 'CHARACTER', text, timeLabel, fictionalMinutes: nuevoFictionalMinutes, isPlayerAction: false } });

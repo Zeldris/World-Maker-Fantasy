@@ -145,6 +145,8 @@ async function resolveClaimedTransit(transit: DueTransit, notBefore?: Date): Pro
       defensa,
       equippedWeapons,
       equippedItems,
+      jugadorZonaPosEntradaX: save.zonaPosEntradaX,
+      jugadorZonaPosEntradaY: save.zonaPosEntradaY,
       raza: save.raza,
       currentLocationId: save.currentLocationId,
       travel,

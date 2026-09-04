@@ -1217,6 +1217,8 @@ export async function turnRoutes(app: FastifyInstance) {
         defensa,
         equippedWeapons,
         equippedItems,
+        jugadorZonaPosEntradaX: save.zonaPosEntradaX,
+        jugadorZonaPosEntradaY: save.zonaPosEntradaY,
         unlockedRecipeKeys: save.unlockedRecipeKeys,
         raza: save.raza,
         currentLocationId: save.currentLocationId,

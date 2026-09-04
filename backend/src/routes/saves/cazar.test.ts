@@ -357,6 +357,10 @@ describe('POST /saves/:id/cazar/confirmar', () => {
         // `SAVE_BASE.pendingCombatNpcSlugs`.
         $queryRaw: vi.fn().mockResolvedValue([{ id: 'save1', pendingCombatNpcSlugs: [] }]),
         npcState: { upsert: (...args: unknown[]) => upsertNpcState(...args) },
+        // Punto del jugador en el mapa de Zona (2026-09-04) — `posicionDeObjetivo` consulta
+        // `ZonePoint` tras la caza limpia; sin uno sembrado en el fixture, no hay a dónde mover al
+        // jugador (comportamiento correcto, no bloqueante).
+        zonePoint: { findFirst: vi.fn().mockResolvedValue(null) },
         worldPopulation: {
           updateMany: (...args: unknown[]) => updateManyWorldPopulation(...args),
           update: (...args: unknown[]) => updateWorldPopulation(...args),

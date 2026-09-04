@@ -157,6 +157,20 @@ model Save {
   currentLocation   Location?       @relation("CurrentLocation", fields: [currentLocationId], references: [id])
   locationVisits    LocationVisit[]
 
+  /// Punto del jugador en el mapa SVG de Zona (2026-09-04, "punto del jugador") — píxeles del
+  /// lienzo 800×600 de `ZonaPanel.tsx`, misma convención que `ZonePoint.x/y`. Null = partida
+  /// previa a esta pieza, o Location actual sin zona explorable — el frontend no pinta el
+  /// marcador. Se mueve SOLO por acciones deterministas (viajar/cazar/recolectar/combatir/hablar/
+  /// construir/huir), nunca por interpretación de narración libre (services/zonaPosicion.ts).
+  zonaPosX Float?
+  zonaPosY Float?
+  /// Punto de ENTRADA a la Location actual (borde del lienzo por el que se llegó, ver
+  /// `cardinalDirectionBetween`, travel.ts) — al que el jugador vuelve si huye de un combate.
+  /// Se fija UNA vez, en el mismo turno que cambia `currentLocationId`; moverse dentro de la
+  /// misma zona (cazar/recolectar/hablar) actualiza `zonaPosX/Y` pero nunca estos dos.
+  zonaPosEntradaX Float?
+  zonaPosEntradaY Float?
+
   /// Condición física (docs/14-combate-y-muerte.md § 1, decisión de mecánicas 3 nunca
   /// implementada hasta ahora). La narración de combate es la vía principal para cambiarla;
   /// descansar/curar la vía principal para mejorarla — el modelo nunca la baja fuera de combate.
@@ -2097,6 +2111,18 @@ model NpcState {
   /// (recupera a HERIDO a las 6h) o MUERTO (el cadáver desaparece a las 48h) — se rellena siempre
   /// que cambia por simplicidad, aunque para ILESO/HERIDO/GRAVE no se lea nunca.
   condicionFisicaSinceMinutes Int?
+  /// Punto del jugador en el mapa (2026-09-04) — posición asignada a este NPC/fauna DINÁMICO (sin
+  /// `ZonePoint` real sembrado) la primera vez que aparece en escena determinista
+  /// (`detectNpcsInScene`) en una Location dada. Null = todavía sin posición. `zonaLocationId` es
+  /// en qué Location se asignó (para saber si sigue vigente o toca reasignar al reaparecer en otro
+  /// sitio) — redundante con `scope` para PLANTILLA pero explícito y correcto para los 2 `kind`.
+  zonaPosX       Float?
+  zonaPosY       Float?
+  zonaLocationId String?
+  /// Combate ganado por el jugador (2026-09-04) — minuto de ficción (mismo criterio que
+  /// `condicionFisicaSinceMinutes`, nunca tiempo real) hasta el cual este NPC/fauna deja de
+  /// listarse/pintarse en Zona, aunque siga vivo. Null = no está marcado ausente.
+  zonaAusenteHastaMinutes Int?
   /// Caza en grupo (2026-08-13, petición explícita: "el jugador primero debe marcar contra
   /// cuantos quiere combatir... con un calculo determinista puede darse que salgan menos o más
   /// de los que marcaste... y que el narrador no prometa nada que no se realice por acción").

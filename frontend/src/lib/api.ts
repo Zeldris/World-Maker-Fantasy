@@ -990,12 +990,21 @@ export interface ZonePointInfo {
 }
 /// NPCs presentados de forma determinista (2026-08-26, "no aparecen en la zona y sí tienen que
 /// salir") — a diferencia de `ZonePointInfo` (catálogo fijo, con posición real curada), estos
-/// vienen de lo que la propia partida va estableciendo (`detectNpcsInScene`), sin ninguna
-/// posición en el mapa — el panel los lista aparte, nunca como pin.
+/// vienen de lo que la propia partida va estableciendo (`detectNpcsInScene`).
 export interface ZonaDinamicoInfo {
   slug: string
   nombre: string
   tipo: 'NPC' | 'FAUNA'
+  /// Color por reputación con la facción del NPC (2026-09-04) — mismo criterio y mismos 4 valores
+  /// que `ZonePointInfo.color` (`zonePointColorFor`, backend), para que la lista "Presentes ahora"
+  /// deje de usar un punto marrón fijo sin relación con el resto del mapa.
+  color: 'ALIADO' | 'NEUTRO' | 'ENEMIGO' | 'SIN_FACCION'
+  /// Punto del jugador en el mapa de Zona (2026-09-04) — a diferencia de `ZonePointInfo` (posición
+  /// curada a mano), esta se asigna de forma aleatoria/aproximada la primera vez que el NPC/fauna
+  /// aparece en escena (backend, `posicionAleatoriaEnLienzo`) y persiste mientras siga presente —
+  /// ya no es solo texto, se pinta como pin real en el mapa (ver `ZonePointShape` en `ZonaPanel.tsx`).
+  x: number
+  y: number
 }
 /// Control regional (2026-08-27, Pieza 5 de "Dinamismo del mundo") — derivado en caliente de
 /// `WorldState.agenda`, sin logo real todavía (placeholder de texto en el frontend mientras se
@@ -1015,6 +1024,10 @@ export interface ZonaResponse {
   regionControl?: RegionControlInfo | null
   puntos: ZonePointInfo[]
   dinamicos: ZonaDinamicoInfo[]
+  /// Punto del jugador en el mapa de Zona (2026-09-04) — se mueve solo por acciones deterministas
+  /// (viajar/cazar/recolectar/combatir/hablar/construir/huir), nunca interpretando narración
+  /// libre. `null` = partida previa a esta pieza, o sin nada que asignar todavía.
+  jugador: { x: number; y: number } | null
 }
 export async function getZona(saveId: string): Promise<ZonaResponse> {
   return fetchJson(`${API_URL}/saves/${saveId}/zona`)

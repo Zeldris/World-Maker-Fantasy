@@ -1,0 +1,11 @@
+-- AlterTable
+ALTER TABLE "NpcState" ADD COLUMN     "zonaAusenteHastaMinutes" INTEGER,
+ADD COLUMN     "zonaLocationId" TEXT,
+ADD COLUMN     "zonaPosX" DOUBLE PRECISION,
+ADD COLUMN     "zonaPosY" DOUBLE PRECISION;
+
+-- AlterTable
+ALTER TABLE "Save" ADD COLUMN     "zonaPosEntradaX" DOUBLE PRECISION,
+ADD COLUMN     "zonaPosEntradaY" DOUBLE PRECISION,
+ADD COLUMN     "zonaPosX" DOUBLE PRECISION,
+ADD COLUMN     "zonaPosY" DOUBLE PRECISION;
