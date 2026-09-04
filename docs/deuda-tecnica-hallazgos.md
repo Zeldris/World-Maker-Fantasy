@@ -30,6 +30,9 @@ Cada entrada: fecha, zona auditada, hallazgo, y estado.
 **2026-08-26**
 - [combateMultipleOrquestacion.ts creció bastante más al enganchar el objetivo individual real](#2026-08-26-combatemultipleorquestacionts-creció-bastante-más-al-enganchar-el-objetivo-individual-real)
 
+**2026-09-04**
+- [/turn/classify sin try/catch dejaba la petición sin respuesta para siempre si Ollama se colgaba](#2026-09-04-turnclassify-sin-trycatch-dejaba-la-petición-sin-respuesta-para-siempre-si-ollama-se-colgaba)
+
 ---
 
 ## 2026-08-25 — Combate múltiple arma atributos de NPC sin escalar por nivel (npcAttributesForLevel nunca se llama)
@@ -269,3 +272,30 @@ fondo (24 tests unitarios + 3 de integración nuevos solo de esta pasada, ver ro
 la firma de estas funciones a un objeto de opciones es limpieza pura, sin bug detrás. Buen candidato
 para la próxima vez que se toque este archivo por otro motivo (mismo criterio que el resto de esta
 lista: no se refactoriza en frío, solo se señala).
+
+## 2026-09-04 — /turn/classify sin try/catch dejaba la petición sin respuesta para siempre si Ollama se colgaba
+
+**Hallazgo (jugando en vivo, ronda de pruebas continuas nocturna)**: reproducido en la partida
+`cmtmk5wh8001uriduka9v86tp` (turno "Exploro con calma.", 06:13:48 UTC) — cruzando el log del backend
+con el log de Ollama se confirmó que Ollama SÍ generó y devolvió la respuesta con éxito (7.3s,
+`POST /api/generate` → `200`), pero el turno se quedó "colgado" en el frontend para siempre, sin
+narración ni error.
+
+Causa real: `resolveClassificationForTurn` (que engloba la llamada a `classifyAction`/Ollama) se
+invocaba en el handler `/turn/classify` (`backend/src/routes/turn.ts`) sin ningún `try/catch` a su
+alrededor — el único endpoint de turno sin esa protección (`/turn/narrate` sí la tenía). Cuando el
+guard de cola de `ollamaQueue.ts` dispara (mecanismo de autorrecuperación ya documentado el
+2026-08-31: si una tarea de Ollama queda "zombie" más allá de su timeout, la cola avanza igualmente
+para no bloquear turnos siguientes, pero lanza un error hacia el caller), ese error no lo atrapaba
+nada en este handler — la petición HTTP se quedaba sin `reply.send()` para siempre, sin logs de
+error tampoco. El guard de cola SÍ cumplía su función (el resto del backend seguía sano para otras
+partidas), pero esa petición concreta quedaba huérfana y sin ningún aviso al jugador.
+
+**Estado**: FIJADO — `try/catch` añadido alrededor de `resolveClassificationForTurn`
+(`turn.ts:641-673`), mismo patrón que ya usaba `/turn/narrate` (`request.log.error(err)` + 500
+genérico "Error clasificando el turno" al cliente, sin filtrar detalles internos). No corrige la
+causa de fondo (Ollama puede seguir colgándose alguna vez, ver
+`docs/checklist-pruebas-juego.md` § "Cuelgue de Ollama"), pero convierte un cuelgue silencioso e
+indefinido en un error visible e inmediato que permite reintentar. Pendiente de `tsc -b` real tras
+el próximo reinicio del backend (no se pudo compilar desde el sandbox de esta sesión, revisado a
+mano con cuidado: tipos ya importados, patrón idéntico al ya validado en `/turn/narrate`).

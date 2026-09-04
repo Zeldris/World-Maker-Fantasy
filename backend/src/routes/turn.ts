@@ -638,22 +638,39 @@ export async function turnRoutes(app: FastifyInstance) {
       entorno: entornoTemporalFor(save.worldState?.fictionalMinutes ?? 0, currentLocationForSummary?.region ?? null, save.raza),
     });
 
-    const { classification, roll, travel, npcsInScene } = await resolveClassificationForTurn({
-      saveId,
-      action,
-      enCombate,
-      savedActionId,
-      preview,
-      worldId: save.worldId,
-      currentLocationId: save.currentLocationId,
-      level: save.level,
-      attributes,
-      sessionFacts,
-      characterSummary,
-      pendingCombatNpcSlugs: (save.pendingCombatNpcSlugs as string[] | null) ?? [],
-      pendingNpcAttack: save.pendingNpcAttack as unknown as PendingNpcAttack | null,
-      fictionalMinutes: save.worldState?.fictionalMinutes ?? 480,
-    });
+    // Bug real (2026-09-04, cuelgue reproducido en vivo): `classifyAction` (dentro de
+    // `resolveClassificationForTurn`) no tenía NINGÚN try/catch a su alrededor en este handler —
+    // cuando `ollamaQueue` expira su guard de cola (ver comentario en ollamaQueue.ts sobre la
+    // autorrecuperación: la tarea zombie sigue viva de fondo, pero la cola avanza y lanza un error
+    // hacia este caller), esa excepción no la atrapaba nada aquí y la petición HTTP se quedaba sin
+    // `reply.send()` para siempre — ni datos ni error, el frontend esperando indefinidamente pese a
+    // que el backend ya se había autorrecuperado por dentro. Mismo patrón de seguridad que ya usa
+    // `/turn/narrate` (log real del error, mensaje genérico al cliente).
+    let classification: ClassificationResult;
+    let roll: RollResult | undefined;
+    let travel: TravelResolution | null;
+    let npcsInScene: NpcInScene[];
+    try {
+      ({ classification, roll, travel, npcsInScene } = await resolveClassificationForTurn({
+        saveId,
+        action,
+        enCombate,
+        savedActionId,
+        preview,
+        worldId: save.worldId,
+        currentLocationId: save.currentLocationId,
+        level: save.level,
+        attributes,
+        sessionFacts,
+        characterSummary,
+        pendingCombatNpcSlugs: (save.pendingCombatNpcSlugs as string[] | null) ?? [],
+        pendingNpcAttack: save.pendingNpcAttack as unknown as PendingNpcAttack | null,
+        fictionalMinutes: save.worldState?.fictionalMinutes ?? 480,
+      }));
+    } catch (err) {
+      request.log.error(err);
+      return reply.status(500).send({ error: 'Error clasificando el turno' });
+    }
 
     // Bug real (auditoría en vivo, 2026-09-01): `computeDuration` decide su `produccion` solo por
     // palabras sueltas del texto libre (regex de "leña", sin relación con si la acción es una
