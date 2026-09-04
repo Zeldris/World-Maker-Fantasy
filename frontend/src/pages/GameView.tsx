@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useSession } from '../context/useSession'
 import { LogPanel } from '../components/LogPanel'
@@ -166,7 +166,13 @@ export function GameView() {
   // CRUDO (`setCharacterLogRaw`) en vez de este wrapper — es la única distinción real necesaria:
   // cualquier id nuevo que aparezca vía el wrapper es, por definición, un turno resuelto EN VIVO.
   const liveRevealedIdsRef = useRef<Set<string>>(new Set())
-  const setCharacterLog: typeof setCharacterLogRaw = (update) => {
+  // Bug real (2026-09-04, "Maximum update depth exceeded" — la vista se quedaba en GameView sin
+  // navegar de verdad tras salir de la partida): sin `useCallback`, este wrapper era una función
+  // NUEVA en cada render — cualquier `useEffect` que lo listara como dependencia (useEntityBanner.ts,
+  // `[enciclopediaIndex, setCharacterLog, setWorldLog]`) se disparaba en cada render, y como ese
+  // efecto llama a `setCharacterLog` de vuelta, cada disparo forzaba otro render → bucle infinito
+  // que saturaba React y le impedía completar la navegación de React Router a tiempo.
+  const setCharacterLog = useCallback<typeof setCharacterLogRaw>((update) => {
     setCharacterLogRaw((prev) => {
       const next = typeof update === 'function' ? update(prev) : update
       const prevIds = new Set(prev.map((e) => e.id))
@@ -175,7 +181,7 @@ export function GameView() {
       }
       return next
     })
-  }
+  }, [])
   const [worldLog, setWorldLog] = useState<LogEntry[]>([])
   // Log de Reino (2026-08-17) — canal aparte, alternable con el de mundo, nunca los dos a la vez.
   const [kingdomLog, setKingdomLog] = useState<LogEntry[]>([])
