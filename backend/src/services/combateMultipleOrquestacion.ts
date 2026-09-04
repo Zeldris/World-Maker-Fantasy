@@ -1,5 +1,6 @@
 import type { Prisma, PrismaClient, CondicionFisica, Npc, Clase } from '@prisma/client';
 import type { AttributeBlock } from './dice.js';
+import type { CombatExchangeDisplay } from './combatExchange.js';
 import {
   rollInitiativeMultiple,
   objetivosValidos,
@@ -497,6 +498,16 @@ export interface TurnoAutonomoResultado {
   /// normal (nunca cruzó de ronda, o cruzó sin ningún tótem vivo). El caller
   /// (`resolverTurnosAutonomosHastaJugadora`) las añade a `narraciones` en el mismo orden.
   narracionesExtra: string[];
+  /// Desglose real de dados (2026-09-04, auditoría "buscar tiradas de dados sin representar") —
+  /// `resolverIntercambioCompleto.display` propagado tal cual cuando este turno tira de verdad
+  /// (`ejecutarIntercambioYAvanzar`); `null` en los caminos sin tirada real (golpe gratis sin
+  /// oposición, avance sin atacar, tótem invocado — ninguno de esos pasa por
+  /// `resolverIntercambioCompleto`). El caller final (`resolverTurnoJugador`, único punto que le
+  /// importa al frontend — los turnos autónomos de NPC/compañero no se muestran en directo) lo
+  /// propaga hasta `combatExchangeDisplay` en el `return` de `narrateAndPersistTurn`, mismo campo
+  /// que ya usa el 1v1 clásico — mismos componentes de frontend (`DiceRollReveal`/
+  /// `CombatExchangeBadge`) sin ningún cambio en ese lado.
+  combatExchangeDisplay: CombatExchangeDisplay | null;
 }
 
 /// Campos compartidos por `ejecutarIntercambioYAvanzar`/`ejecutarGolpeGratisYAvanzar`/
@@ -556,6 +567,7 @@ async function ejecutarIntercambioYAvanzar(params: EjecutarIntercambioParams): P
     habilidadDefensa,
     15,
     dualWieldBonus,
+    actual.tipo === 'JUGADOR',
   );
 
   const nuevaEnergiaAtacante = nextEnergia({
@@ -790,6 +802,7 @@ async function ejecutarIntercambioYAvanzar(params: EjecutarIntercambioParams): P
     encounterTerminado: avance.terminado || totems.encounterTerminado,
     caidos,
     narracionesExtra: totems.narraciones,
+    combatExchangeDisplay: resultado.display,
   };
 }
 
@@ -881,6 +894,9 @@ async function ejecutarGolpeGratisYAvanzar(params: TurnoAutonomoBaseParams & { d
     encounterTerminado: avance.terminado || totems.encounterTerminado,
     caidos,
     narracionesExtra: totems.narraciones,
+    // Golpe gratis, sin oposición real — nunca pasa por `resolverIntercambioCompleto` (ver
+    // comentario de cabecera de esta función), no hay tirada que mostrar.
+    combatExchangeDisplay: null,
   };
 }
 
@@ -1056,6 +1072,9 @@ async function invocarTotemYAvanzar(
     encounterTerminado: avance.terminado || totems.encounterTerminado,
     caidos: totems.caidos,
     narracionesExtra: totems.narraciones,
+    // Invocar consume el turno entero, sin intercambio real este turno (ver comentario de
+    // cabecera de esta función) — no hay tirada que mostrar.
+    combatExchangeDisplay: null,
   };
 }
 
@@ -1353,6 +1372,7 @@ async function avanzarSinAtacar(
     encounterTerminado: avance.terminado || totems.encounterTerminado,
     caidos: totems.caidos,
     narracionesExtra: totems.narraciones,
+    combatExchangeDisplay: null,
   };
 }
 

@@ -509,6 +509,54 @@ describe('resolverIntercambioCompleto', () => {
     expect(resultado.combatRealHitLanded).toBe(true);
   });
 
+  // Auditoría "buscar tiradas de dados sin representar" (2026-09-04): resolverIntercambioCompleto
+  // SIEMPRE tira con la misma mecánica que el 1v1 (mismo rollD20 vía resolveExchange/
+  // resolveIndependentExchange), pero hasta ahora el objeto estructurado se descartaba entero tras
+  // construir exchangeBlock (solo texto para el Narrador) — el jugador nunca veía el desglose real
+  // de dados en combate múltiple, aunque el frontend (DiceRollReveal/CombatExchangeBadge) ya sabía
+  // pintarlo para el 1v1. `display` es el fix: mismo shape CombatExchangeDisplay, construido aquí.
+  it('display expone el desglose real de dados (camino no independiente, ataque vs defensa)', () => {
+    mockRolls(rFor(15), rFor(1)); // atacante 20 vs defensor 6, margen 14 -> golpe_pleno
+    const resultado = resolverIntercambioCompleto(
+      combatiente({ nombre: 'Gorhorn' }),
+      habilidad({ rol: 'ataque' }),
+      'ataque',
+      13,
+      combatiente({ nombre: 'Lobo' }),
+      habilidad({ rol: 'defensa' }),
+      13,
+      false,
+      true, // atacanteEsJugador
+    );
+    expect(resultado.display.atacanteEsJugador).toBe(true);
+    expect(resultado.display.resultado).toBe('golpe_pleno');
+    expect(resultado.display.margen).toBe(14);
+    expect(resultado.display.atacante.roll).toBeGreaterThan(0);
+    expect(resultado.display.defensor.roll).toBeGreaterThan(0);
+    // Mismo objeto que ya calcula resolveExchange (cobertura numérica exacta ya cubierta en
+    // combatExchange.test.ts) — aquí solo confirma que "display" no es una copia recalculada, sino
+    // el resultado real: el margen coincide con la resta de los dos totales reales.
+    expect(resultado.display.atacante.result - resultado.display.defensor.result).toBe(resultado.display.margen);
+  });
+
+  it('display marca resultado "independiente" en el camino de utilidad, sin comparar totales', () => {
+    mockRolls(rFor(15), rFor(1));
+    const resultado = resolverIntercambioCompleto(
+      combatiente({ nombre: 'Gorhorn' }),
+      habilidad({ rol: 'utilidad', effects: ['ANALISIS'] }),
+      'utilidad',
+      13,
+      combatiente({ nombre: 'Lobo' }),
+      habilidad({ rol: 'defensa' }),
+      13,
+      false,
+      false, // atacanteEsJugador — este NPC ataca, la jugadora es el defensor
+    );
+    expect(resultado.display.atacanteEsJugador).toBe(false);
+    expect(resultado.display.resultado).toBe('independiente');
+    expect(resultado.display.margen).toBe(0);
+  });
+
   it('LETAL mata de un golpe sin importar la condición previa del defensor', () => {
     mockRolls(rFor(15), rFor(1));
     const resultado = resolverIntercambioCompleto(

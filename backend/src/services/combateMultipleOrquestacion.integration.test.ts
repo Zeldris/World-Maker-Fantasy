@@ -126,6 +126,44 @@ describe('combate múltiple: orquestación real contra Postgres', () => {
     expect(algunoFueraDeCombate).toBe(true);
   }, 30_000);
 
+  // Auditoría "buscar tiradas de dados sin representar" (2026-09-04) — hallazgo real: el turno de
+  // la jugadora en combate múltiple SIEMPRE tira con la misma mecánica que el 1v1, pero
+  // `narrateAndPersistTurn` nunca construía `combatExchangeDisplay` para esta rama (variable
+  // inicializada en `null`, nunca reasignada) — el jugador solo veía el texto narrado, sin el
+  // desglose real de dados que sí ve en el 1v1 clásico (DiceRollReveal/CombatExchangeBadge).
+  // Cobertura de integración real contra Postgres — más cerca de producción que el test unitario
+  // de `combateMultiple.test.ts` (que solo verifica `resolverIntercambioCompleto` aislado).
+  it('el turno real de la jugadora en combate múltiple expone combatExchangeDisplay con el desglose de dados', async () => {
+    const enemigo = await prisma.npc.findFirstOrThrow({ where: { worldId, slug: 'aullador-rojo' } });
+    const { encounterId } = await prisma.$transaction((tx) =>
+      iniciarCombatEncounter(tx, saveId, [
+        { bando: 'JUGADOR', tipo: 'JUGADOR', destreza: 1000, inteligencia: 10 },
+        { bando: 'ENEMIGO', tipo: 'NPC', npcId: enemigo.id, npcScope: 'itinerante-jugadora-display', destreza: 10, inteligencia: 6 },
+      ]),
+    );
+    const habilidadBasica: HabilidadParaIntercambio = {
+      name: 'Ataque Básico',
+      description: '',
+      attribute: 'fuerza',
+      effects: [],
+      rol: 'ataque',
+      energyCost: 5,
+      energyRegen: 0,
+    };
+
+    const resultado = await resolverHastaJugadoraActua(saveId, worldId, encounterId, habilidadBasica);
+
+    expect(resultado?.combatExchangeDisplay).not.toBeNull();
+    expect(resultado?.combatExchangeDisplay?.atacanteEsJugador).toBe(true);
+    expect(resultado?.combatExchangeDisplay?.atacante.roll).toBeGreaterThan(0);
+    expect(resultado?.combatExchangeDisplay?.defensor.roll).toBeGreaterThan(0);
+    expect(['golpe_pleno', 'golpe_normal', 'ataque_falla', 'parada_en_seco', 'defensor_contragolpea']).toContain(
+      resultado?.combatExchangeDisplay?.resultado,
+    );
+
+    await prisma.combatEncounter.deleteMany({ where: { id: encounterId } });
+  }, 15_000);
+
   it('con la jugadora en persona en un bando — resolverTurnoJugador ataca, resolverTurnoAutonomo cubre el resto', async () => {
     const enemigo = await prisma.npc.findFirstOrThrow({ where: { worldId, slug: 'aullador-rojo' } });
     // Destreza 1000 (mismo patrón que el test de `activeEffects` más abajo) — garantiza que la

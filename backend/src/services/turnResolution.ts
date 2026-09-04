@@ -2986,6 +2986,15 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     abilityDurationEffectTurns: playerAbilityUsageBlocked ? null : (selectedAbilityData?.durationEffectTurns ?? null),
   });
 
+  // Mutable aparte de `combatExchangeDisplay` (2026-09-04, auditoría "buscar tiradas de dados sin
+  // representar") — `combatExchangeDisplay` viene desestructurado como `const` de
+  // `resolveCombatExchangePhase` (solo cubre el 1v1 clásico); el bloque de combate múltiple de
+  // más abajo (`if (activeCombatEncounter)`) también puede producir un intercambio real con
+  // tirada, y necesita poder fijarlo. Inicializada con el valor del 1v1 para que los 3 usos
+  // posteriores (animación en vivo, persistencia en LogEntry, `return` final) sigan funcionando
+  // igual cuando NO hay combate múltiple de por medio.
+  let combatExchangeDisplayFinal: CombatExchangeDisplay | null = combatExchangeDisplay;
+
   // Bloque de posición (docs/12 § 1.5): en un turno de viaje, la narración recibe la llegada al
   // destino + la ruta recorrida; en cualquier otro turno, recibe siempre dónde está y hacia
   // dónde puede ir — reduce los casos "weaklyGrounded" al dar siempre algo concreto que describir.
@@ -4203,6 +4212,14 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
         narraciones.push(...turnoJugadora.narracionesExtra);
         combatEncounterCaidos.push(...turnoJugadora.caidos);
         combatEncounterTerminado = turnoJugadora.encounterTerminado;
+        // Desglose real de dados (2026-09-04, auditoría "buscar tiradas de dados sin
+        // representar") — hallazgo real: combate múltiple SIEMPRE tira con la misma mecánica que
+        // el 1v1 (mismo rollD20), pero nunca llegaba a `combatExchangeDisplayFinal` (mismo campo
+        // que DiceRollReveal/CombatExchangeBadge ya saben pintar para el 1v1 clásico) — solo
+        // nunca les llegaba nada para el modo CombatEncounter. Solo se rellena cuando el turno de
+        // la jugadora fue un intercambio real con oposición (turnoJugadora.combatExchangeDisplay
+        // es `null` en los caminos sin tirada: golpe gratis, invocación, avance sin atacar).
+        if (turnoJugadora.combatExchangeDisplay) combatExchangeDisplayFinal = turnoJugadora.combatExchangeDisplay;
       }
 
       if (!combatEncounterTerminado) {
@@ -4227,11 +4244,11 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   const wasLlmNarrated = !(combatEncounterMode || gisteraSePresentaEsteTurno || lootMode || buildMode || harvestOutcome || craftMode || usingExplicitHealList);
 
   // Animación de dados en paralelo (ver comentario de `onExchangeResolved` en
-  // NarrateAndPersistParams) — justo antes de narrar, nunca antes: `combatExchangeDisplay` ya
-  // está fijado en este punto para cualquier turno con intercambio real, y esto es lo más cerca
-  // posible del arranque real de `narrateAction` (la parte lenta) sin adelantarse a ningún guard
-  // de arriba que todavía pudiera descartar el turno entero.
-  if (combatExchangeDisplay) onExchangeResolved?.(combatExchangeDisplay, npcAbilityUsed?.npcName ?? null);
+  // NarrateAndPersistParams) — justo antes de narrar, nunca antes: `combatExchangeDisplayFinal` ya
+  // está fijado en este punto para cualquier turno con intercambio real (1v1 o combate múltiple),
+  // y esto es lo más cerca posible del arranque real de `narrateAction` (la parte lenta) sin
+  // adelantarse a ningún guard de arriba que todavía pudiera descartar el turno entero.
+  if (combatExchangeDisplayFinal) onExchangeResolved?.(combatExchangeDisplayFinal, npcAbilityUsed?.npcName ?? null);
 
   const narration: NarrationResult = combatEncounterMode
     ? { narration: combatEncounterNarration, newFacts: [] }
@@ -5788,7 +5805,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
         roll: effectiveRoll ? (effectiveRoll as unknown as Prisma.InputJsonValue) : undefined,
         // Bug real jugando en vivo (2026-08-13): sin persistir esto, recargar la partida perdía
         // el lado "Enemigo" del intercambio — `roll` de arriba solo guarda el lado del jugador.
-        combatExchange: combatExchangeDisplay ? (combatExchangeDisplay as unknown as Prisma.InputJsonValue) : undefined,
+        combatExchange: combatExchangeDisplayFinal ? (combatExchangeDisplayFinal as unknown as Prisma.InputJsonValue) : undefined,
         // Bug gemelo del de arriba (2026-08-14, encontrado al pedir que CombatExchangeBadge
         // mostrara el nombre real del NPC en vez de "el enemigo" — tras recargar, caía al
         // genérico porque esto tampoco se guardaba, solo viajaba en la respuesta HTTP del turno).
@@ -6484,7 +6501,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     companionCreated,
     esperandoDefensaJugador: !!nuevoPendingNpcAttack,
     npcAbilityUsed,
-    combatExchangeDisplay,
+    combatExchangeDisplay: combatExchangeDisplayFinal,
     playerAbilityUsed,
     nextInitiativeRoll,
     territories,

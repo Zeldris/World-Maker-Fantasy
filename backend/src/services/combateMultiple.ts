@@ -1,6 +1,14 @@
 import type { AbilityEffect, CondicionFisica } from '@prisma/client';
 import type { Attribute, AttributeBlock } from './dice.js';
-import { resolveExchange, resolveIndependentExchange, exchangeContextBlock, independentExchangeContextBlock, utilityTriggered, type ExchangeParticipant } from './combatExchange.js';
+import {
+  resolveExchange,
+  resolveIndependentExchange,
+  exchangeContextBlock,
+  independentExchangeContextBlock,
+  utilityTriggered,
+  type ExchangeParticipant,
+  type CombatExchangeDisplay,
+} from './combatExchange.js';
 import { nextCondicionForAttack } from './death.js';
 import { dualWieldAdjustedDifficulty } from './weaponAbilities.js';
 import type { ActiveEffect } from './activeEffects.js';
@@ -476,6 +484,16 @@ export interface ResultadoIntercambioCompleto {
   /// por separado (decisión explícita de la usuaria). El caller marca `expulsadoPorRondas` sobre EL
   /// DEFENSOR (a quien golpea Embate de Escudo), nunca sobre el atacante.
   expulsarTriggered: boolean;
+  /// Desglose real de dados para el frontend (2026-09-04, auditoría "buscar tiradas de dados sin
+  /// representar" — hallazgo real: `resolverIntercambioCompleto` SIEMPRE tira con la misma
+  /// mecánica que el 1v1 clásico (`resolveExchange`/`resolveIndependentExchange`, mismo `rollD20`),
+  /// pero hasta ahora solo se usaba el resultado para construir `exchangeBlock` (texto para el
+  /// Narrador) — el objeto estructurado con los números reales (roll, atributo, dificultad, margen)
+  /// se descartaba entero. Mismo shape `CombatExchangeDisplay` que ya usa `turnResolution.ts` para
+  /// el 1v1 (`DiceRollReveal`/`CombatExchangeBadge` en el frontend ya saben pintarlo) — el caller
+  /// (`combateMultipleOrquestacion.ts`) solo tiene que decidir `atacanteEsJugador` según a quién
+  /// corresponda el rol "atacante" en esta llamada concreta, igual que ya hace turnResolution.ts.
+  display: CombatExchangeDisplay;
 }
 
 /// `INVOCACION` real (Fase 3 § 3d, 2026-08-27) — a diferencia del resto de efectos de
@@ -498,6 +516,11 @@ export function resolverIntercambioCompleto(
   defensorHabilidad: HabilidadParaIntercambio,
   dificultadDefensor: number,
   dualWieldBonus: boolean = false,
+  /// Necesario solo para `ResultadoIntercambioCompleto.display` (2026-09-04, ver su comentario) —
+  /// `CombatienteParaIntercambio` no lleva ningún flag de "es jugador", así que es el caller
+  /// (combateMultipleOrquestacion.ts, que sí conoce qué CombatParticipant es tipo JUGADOR) quien
+  /// decide esto, igual que ya hace turnResolution.ts para el 1v1.
+  atacanteEsJugador: boolean = false,
 ): ResultadoIntercambioCompleto {
   const dificultadAtacanteAjustada = dualWieldAdjustedDifficulty(dificultadAtacante, dualWieldBonus);
   const atacanteExch: ExchangeParticipant = {
@@ -532,6 +555,7 @@ export function resolverIntercambioCompleto(
   let desviarTriggered = false;
   let atacanteOcultacionDisparada = false;
   let defensorOcultacionDisparada = false;
+  let display: CombatExchangeDisplay;
 
   const esIndependiente = atacanteRol !== 'ataque' || defensorHabilidad.rol === 'utilidad';
 
@@ -582,6 +606,7 @@ export function resolverIntercambioCompleto(
       }
     }
     exchangeBlock = independentExchangeContextBlock(independent, atacante.nombre, defensor.nombre);
+    display = { atacanteEsJugador, atacante: independent.atacante, defensor: independent.defensor, resultado: 'independiente', margen: 0 };
   } else {
     const exchange = resolveExchange(atacanteExch, defensorExch);
     const defensorPuedeContragolpear = defensorHabilidad.effects.includes('ATAQUE');
@@ -598,6 +623,7 @@ export function resolverIntercambioCompleto(
     // desenlace) se redirige a un tercero en vez de simplemente fallar — el caller (que sí conoce
     // al resto de combatientes) resuelve el golpe redirigido con las propias `atacanteHabilidad`.
     desviarTriggered = exchange.resultado === 'defensor_contragolpea' && defensorHabilidad.effects.includes('DESVIAR');
+    display = { atacanteEsJugador, atacante: exchange.atacante, defensor: exchange.defensor, resultado: exchange.resultado, margen: exchange.margen };
   }
 
   // AUMENTO/DEBILIDAD real (Fase 3 § 3a, 2026-08-27) — mismo gate que Fase 2 (margen decisivo,
@@ -651,5 +677,6 @@ export function resolverIntercambioCompleto(
     atacanteOcultacionDisparada,
     defensorOcultacionDisparada,
     expulsarTriggered,
+    display,
   };
 }

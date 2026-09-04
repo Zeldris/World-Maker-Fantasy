@@ -1009,3 +1009,36 @@ el cambio).
 
 Verificado: `tsc -b` limpio, suite completa backend **2015/2016 en verde** (mismo único fallo
 preexistente de "Múrgol" de arriba, sin relación).
+
+## Combate múltiple ya expone el desglose real de dados (2026-09-04)
+
+Auditoría con un agente ("buscar todas las tiradas de dados sin representar en el frontend", idea
+explícita de la usuaria: "como si jugaras una partida D&D... cuando tiremos los dados me gustaría
+representar siempre la tirada") encontró que el turno de la jugadora en combate múltiple SIEMPRE
+tira con la misma mecánica que el 1v1 clásico (mismo `rollD20`, mismo cálculo de multiplicador de
+tipo/malus/bono de habilidad vía `resolveExchange`/`resolveIndependentExchange`), pero
+`resolverIntercambioCompleto` (`combateMultiple.ts`) solo usaba ese resultado para construir
+`exchangeBlock` (texto para el Narrador) — el objeto estructurado con los números reales
+(roll/atributo/dificultad/margen) se descartaba entero. El frontend ya sabía pintarlo
+(`DiceRollReveal`/`CombatExchangeBadge`, mismos componentes del 1v1), pero nunca recibía datos para
+mostrar en combate de grupo.
+
+**Fijado**: `resolverIntercambioCompleto` ahora también devuelve `display: CombatExchangeDisplay`
+(mismo shape que ya usa `turnResolution.ts` para el 1v1), construido a partir del `exchange`/
+`independent` real de cada rama — nuevo parámetro `atacanteEsJugador` en la firma para que el
+caller decida ese flag (`combateMultipleOrquestacion.ts`, vía `actual.tipo === 'JUGADOR'`).
+Propagado por `TurnoAutonomoResultado.combatExchangeDisplay` (`null` en los caminos sin tirada real:
+golpe gratis, invocación, avance sin atacar) hasta `narrateAndPersistTurn`, que ahora fija una
+nueva variable `combatExchangeDisplayFinal` (separada de la `combatExchangeDisplay` original —
+esa sigue viniendo `const` del 1v1 clásico vía `resolveCombatExchangePhase`, no se puede
+reasignar) en el bloque `if (activeCombatEncounter)`, usada en los 3 puntos donde antes solo
+importaba el 1v1: animación en vivo (`onExchangeResolved`), persistencia en `LogEntry.combatExchange`,
+y el `return` final del turno.
+
+**Verificado**: 2 tests unitarios nuevos en `combateMultiple.test.ts` (`display` en ambos caminos,
+independiente y no-independiente) + 1 test de integración real contra Postgres en
+`combateMultipleOrquestacion.integration.test.ts` (turno real de la jugadora en un `CombatEncounter`
+real expone `combatExchangeDisplay` no-nulo con roll/atributo/resultado reales). `tsc -b` limpio
+backend+frontend (el frontend no necesitó ningún cambio, ya leía el campo). Suite completa backend:
+**2018/2019 en verde** (mismo único fallo preexistente de "Múrgol", sin relación). Pendiente
+reverificar en vivo jugando un combate múltiple real tras el próximo reinicio del backend.
