@@ -1994,7 +1994,12 @@ export function GameView() {
           confirmLabel="Salir"
           tone="accent"
           onCancel={() => setConfirmingExit(false)}
-          onConfirm={() =>
+          onConfirm={() => {
+            // Bug real (2026-09-04, "la url se actualiza pero no vuelve a la selección de
+            // partida"): `navigate()` sin cerrar el modal antes lo dejaba montado por encima de la
+            // vista nueva (z-50, overlay a pantalla completa) — la ruta cambiaba de verdad, pero
+            // visualmente seguía tapada.
+            setConfirmingExit(false)
             // Bug real (2026-07-24, "al darle a salir de la partida, que me lleve a las partidas
             // no a seleccionar mundo"): CharacterSaves resuelve el personaje por id contra
             // `pregeneratedCharacters` o `selectedCharacter` (SessionContext, en memoria, se
@@ -2003,7 +2008,7 @@ export function GameView() {
             // caía al aviso de "elige mundo y personaje". `characterName` va por query, como
             // respaldo que CharacterSaves ya puede usar sin depender de esa sesión en memoria.
             navigate(`/solitario/mundo/${worldIdSlug}/personaje/${saveId}?characterName=${encodeURIComponent(characterName ?? '')}`)
-          }
+          }}
         />
       )}
 
