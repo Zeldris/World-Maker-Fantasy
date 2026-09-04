@@ -3,6 +3,7 @@ import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { pregeneratedCharacters, worlds } from '../data/mock'
 import { useSession } from '../context/useSession'
 import { Button } from '../components/Button'
+import { ConfirmModal } from '../components/ConfirmModal'
 import { StepDots } from '../components/StepDots'
 import { listSaves, deleteSave, restartSave, type SaveSummary } from '../lib/api'
 import type { Character, Dificultad } from '../types'
@@ -69,42 +70,54 @@ export function CharacterSaves() {
   const [loading, setLoading] = useState(true)
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [restartingId, setRestartingId] = useState<string | null>(null)
+  // Confirmación con modal propio en vez de `window.confirm` (feedback en vivo, 2026-09-04: "que
+  // salga nuestro propio modal en vez de esto") — mismo `saveId` sirve para las dos acciones
+  // irreversibles de esta lista, `kind` decide cuál ejecutar y qué texto mostrar.
+  const [pendingConfirm, setPendingConfirm] = useState<{ kind: 'delete' | 'restart'; saveId: string } | null>(null)
 
-  async function handleDelete(e: React.MouseEvent, saveId: string) {
+  function requestDelete(e: React.MouseEvent, saveId: string) {
     e.stopPropagation()
-    if (!window.confirm('¿Borrar esta partida? No se puede deshacer.')) return
-    setDeletingId(saveId)
-    try {
-      await deleteSave(saveId)
-      setSaves((prev) => prev.filter((s) => s.id !== saveId))
-    } catch {
-      window.alert('No se pudo borrar. ¿Está el backend corriendo en localhost:3001?')
-    } finally {
-      setDeletingId(null)
-    }
+    setPendingConfirm({ kind: 'delete', saveId })
   }
 
-  async function handleRestart(e: React.MouseEvent, saveId: string) {
+  function requestRestart(e: React.MouseEvent, saveId: string) {
     e.stopPropagation()
-    if (!window.confirm('¿Reiniciar esta partida? Volverá a Día 1 y se perderá todo el progreso, pero seguirá en la lista.'))
-      return
-    setRestartingId(saveId)
-    try {
-      // Intro propia por personaje pregenerado (2026-07-28, paridad con la creación de partida
-      // nueva) — este panel ya conoce el personaje de esta lista de partidas (`character`, de
-      // data/mock.ts); si tiene intro propia, se manda para que el reinicio la use también, en
-      // vez de caer siempre a la plantilla genérica del backend.
-      await restartSave(saveId, { introCharacterText: character?.introCharacterText, introWorldText: character?.introWorldText })
-      setSaves((prev) =>
-        prev.map((s) =>
-          s.id === saveId ? { ...s, fictionalDate: 'Día 1, mañana', lastPlayedAt: new Date().toISOString(), endedAt: null } : s,
-        ),
-      )
-    } catch {
-      window.alert('No se pudo reiniciar. ¿Está el backend corriendo en localhost:3001?')
-    } finally {
-      setRestartingId(null)
+    setPendingConfirm({ kind: 'restart', saveId })
+  }
+
+  async function handleConfirmed() {
+    if (!pendingConfirm) return
+    const { kind, saveId } = pendingConfirm
+    if (kind === 'delete') {
+      setDeletingId(saveId)
+      try {
+        await deleteSave(saveId)
+        setSaves((prev) => prev.filter((s) => s.id !== saveId))
+      } catch {
+        window.alert('No se pudo borrar. ¿Está el backend corriendo en localhost:3001?')
+      } finally {
+        setDeletingId(null)
+      }
+    } else {
+      setRestartingId(saveId)
+      try {
+        // Intro propia por personaje pregenerado (2026-07-28, paridad con la creación de partida
+        // nueva) — este panel ya conoce el personaje de esta lista de partidas (`character`, de
+        // data/mock.ts); si tiene intro propia, se manda para que el reinicio la use también, en
+        // vez de caer siempre a la plantilla genérica del backend.
+        await restartSave(saveId, { introCharacterText: character?.introCharacterText, introWorldText: character?.introWorldText })
+        setSaves((prev) =>
+          prev.map((s) =>
+            s.id === saveId ? { ...s, fictionalDate: 'Día 1, mañana', lastPlayedAt: new Date().toISOString(), endedAt: null } : s,
+          ),
+        )
+      } catch {
+        window.alert('No se pudo reiniciar. ¿Está el backend corriendo en localhost:3001?')
+      } finally {
+        setRestartingId(null)
+      }
     }
+    setPendingConfirm(null)
   }
 
   useEffect(() => {
@@ -200,7 +213,7 @@ export function CharacterSaves() {
               <div className="flex shrink-0 items-center gap-3">
                 <span className="text-xs text-wood-500">{relativeTime(save.lastPlayedAt)}</span>
                 <button type="button"
-                  onClick={(e) => handleRestart(e, save.id)}
+                  onClick={(e) => requestRestart(e, save.id)}
                   disabled={restartingId === save.id}
                   title="Reiniciar partida (vuelve a Día 1, sigue en la lista)"
                   className="rounded-lg border border-iron-700 bg-wood-950/50 px-2 py-1 text-xs text-wood-300 transition-colors hover:border-accent-600/60 hover:text-accent-300 disabled:opacity-50"
@@ -208,7 +221,7 @@ export function CharacterSaves() {
                   {restartingId === save.id ? '...' : '↺ Reiniciar'}
                 </button>
                 <button type="button"
-                  onClick={(e) => handleDelete(e, save.id)}
+                  onClick={(e) => requestDelete(e, save.id)}
                   disabled={deletingId === save.id}
                   title="Borrar partida (desaparece de la lista)"
                   className="rounded-lg border border-red-900/60 bg-wood-950/50 px-2 py-1 text-xs text-red-400/80 transition-colors hover:border-red-700 hover:bg-red-500/10 hover:text-red-400 disabled:opacity-50"
@@ -253,6 +266,22 @@ export function CharacterSaves() {
       <div className="flex justify-end">
         <Button onClick={() => navigate('/solitario/partida/nueva')}>+ Nueva partida</Button>
       </div>
+
+      {pendingConfirm && (
+        <ConfirmModal
+          title={pendingConfirm.kind === 'delete' ? 'Borrar partida' : 'Reiniciar partida'}
+          message={
+            pendingConfirm.kind === 'delete'
+              ? '¿Borrar esta partida? No se puede deshacer.'
+              : 'Volverá a Día 1 y se perderá todo el progreso, pero seguirá en la lista. ¿Reiniciar?'
+          }
+          confirmLabel={pendingConfirm.kind === 'delete' ? 'Borrar' : 'Reiniciar'}
+          tone={pendingConfirm.kind === 'delete' ? 'danger' : 'accent'}
+          confirming={pendingConfirm.kind === 'delete' ? deletingId === pendingConfirm.saveId : restartingId === pendingConfirm.saveId}
+          onConfirm={handleConfirmed}
+          onCancel={() => setPendingConfirm(null)}
+        />
+      )}
     </div>
   )
 }
