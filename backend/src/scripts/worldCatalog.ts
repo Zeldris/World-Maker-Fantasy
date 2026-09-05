@@ -859,7 +859,7 @@ export const locationLinks: LocationLinkInput[] = [
     toSlug: 'osario-de-la-manada',
     minutosBase: 160,
     terreno: 'Estepa abierta, sin senda',
-    riesgo: 'Buitres cenizos y carroñeros nocturnos atraídos por los huesos',
+    riesgo: 'Zense Ceniza y carroñeros nocturnos atraídos por los huesos',
   },
 
   {
@@ -1220,7 +1220,7 @@ export const fauna: NpcInput[] = [
   {
     // Renombrado (2026-09-02, decisión explícita de la usuaria: nombres de fauna no deben ser
     // palabras reales de la Tierra — mismo criterio aplicado a la nueva fauna de Los Acantilados
-    // Partidos) — de "Zense Ceniza" a "Zense Ceniza". Slug sin cambiar (zense-ceniza, sin
+    // Partidos) — de "Buitre Cenizo" a "Zense Ceniza". Slug sin cambiar (zense-ceniza, sin
     // referencias a `name` en el resto del código, solo por slug/id). Nota pendiente de la usuaria:
     // todos los nombres actuales de fauna/flora/etc. están en lengua común — en algún momento se
     // añadirán versiones en los idiomas propios de cada raza cuando ella lo indique explícitamente.
@@ -2067,7 +2067,10 @@ export const fauna: NpcInput[] = [
     level: 4,
     levelMax: 6,
     attributes: { fuerza: 8, destreza: 3, constitucion: 14, inteligencia: 2, voluntad: 3, carisma: 1, magia: 0 },
-    bio: 'Pez de 1 a 1,40 m, gris oscuro, ancho y circular como un pez luna pero con aletas muy desarrolladas que le permiten acelerar rápido pese a no ser veloz. Escamas grandes que cubren todo su cuerpo como una armadura. Come principalmente algas, en las zonas más profundas de la costa. Migra por el mar como las ballenas — solo aparece en las jornadas de otoño.',
+    // "pez luna" quitado de la comparación (auditoría de coherencia código↔lore, 2026-09-05) —
+    // "luna" no es una palabra válida en ningún texto de este mundo (Helek Sirik no tiene luna,
+    // genesis.md § "El cielo sin luna"), ni siquiera como comparación de forma.
+    bio: 'Pez de 1 a 1,40 m, gris oscuro, ancho y circular con aletas muy desarrolladas que le permiten acelerar rápido pese a no ser veloz. Escamas grandes que cubren todo su cuerpo como una armadura. Come principalmente algas, en las zonas más profundas de la costa. Migra por el mar como las ballenas — solo aparece en las jornadas de otoño.',
     personality: 'Inofensivo, presa grande y pacífica, nunca ataca.',
     homeLocationSlug: 'playa-de-ceniza-blanca',
     loadout: [],
@@ -6037,11 +6040,16 @@ export const items: ItemCatalogInput[] = [
   },
 
   { slug: 'esquirla-celeste-caida',
-    name: 'Esquirla celeste caída', 
-    aliases: ['esquirla celeste'], 
+    name: 'Esquirla celeste caída',
+    aliases: ['esquirla celeste'],
     category: 'valor',
-    tipo: 'NARRATIVO', 
-    description: 'Fragmento diminuto y frío al tacto, caído del cielo durante una tormenta — nadie en las Llanuras sabe explicar de dónde viene el Origen Azul, solo que a veces deja esto atrás.',
+    tipo: 'NARRATIVO',
+    // "Origen Azul" corregido (auditoría de coherencia código↔lore, 2026-09-05) — es el NOMBRE
+    // DEL PLANETA (genesis.md: "Helek Sirik" = "Origen Azul"), nunca un fenómeno del cielo; la
+    // frase original sonaba a un astro o entidad celeste. El fragmento real es del cinturón de
+    // micro-cristales (genesis.md § "El cielo sin luna") — nadie en las Llanuras conoce su origen
+    // exacto ni el reparto de autoría entre Semillas, solo que a veces cae uno tras una tormenta.
+    description: 'Fragmento diminuto y frío al tacto, caído del cielo durante una tormenta — nadie en las Llanuras sabe explicar de dónde viene el cinturón que brilla de noche, solo que a veces deja esto atrás.',
     dimensiones: 'Fragmento de 2 cm.',
     // tier 9 (Grupo 3 § HarvestYield.condicion, 2026-08-24): el propio HarvestYield lo describe
     // "extremadamente rara — tratar como añadido narrativo ocasional... nunca drop garantizado",

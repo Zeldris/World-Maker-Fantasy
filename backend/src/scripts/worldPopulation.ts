@@ -57,10 +57,11 @@ export const worldPopulations: WorldPopulationInput[] = [
     // dice "Maktor/Serhu". Con el Clan Maktor reducido a Gorhorn en solitario (aniquilado por una
     // incursión Goirnte, ver areas.md § Historia profunda), esta fila es de facto solo el Clan
     // Serhu — se deja el targetSlug genérico `orcos-llanuras` tal cual (no rompe nada que ya
-    // dependa de él), solo se corrige el label. La cifra (800/1.000) no cambia: ya cuadraba con
-    // el ritmo de crecimiento explicado en areas.md § "El cerco social".
+    // dependa de él), solo se corrige el label. La cifra pretendida es 800/1.000 (áreas.md § "El
+    // cerco social": "400 → 800 en más de mil años"), pero quedó tecleada como 600/1.000 —
+    // corregido en la auditoría de coherencia código↔lore (2026-09-05).
     label: 'Orcos del Clan Serhu (Llanuras del Viento Rojo)',
-    poblacion: 600,
+    poblacion: 800,
     poblacionMax: 1000,
     distribucion: { 'Llanuras del Viento Rojo': 1 },
   },

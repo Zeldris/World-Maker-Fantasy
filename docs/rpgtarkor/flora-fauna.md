@@ -81,7 +81,7 @@
 **Fauna y flora — El Cruce de las Cenizas (añadido 2026-08-21)** — punto de frontera entre el núcleo de la llanura y la selva del Margen Silencioso, primera zona con fauna claramente dividida entre "pasajera" (llanura) y "peligro real" (borde de la selva).
 
 - **Telda Ceniza**: misma especie que la Telda Común de El Pozo de Cauce Viejo, pero de un verde más claro, con manchas de arena color ceniza —resto de la arena de la llanura que la humedad de la selva decolora, se seca y queda pegada a las hojas. Mismos recursos y mismos tiers que su hermana de la llanura (Madera de Telda tier 1-2, Resina Telda Gris tier 2-3, Hojas de Telda tier 1). Marca visualmente el límite con la selva; cerca del camino todavía se ve alguna Telda Común.
-- **Del lado de la llanura**: solo fauna de paso, ya existente — Corredores de Cauce cruzando y Buitres Cenizos sobrevolando, nada nuevo.
+- **Del lado de la llanura**: solo fauna de paso, ya existente — Corredores de Cauce cruzando y Zense Ceniza sobrevolando, nada nuevo.
 - **Ferikes** *(del lado de la selva, junto a posibles ataques Faerus)*: bestia de 1,5 a 3 metros, cuatro patas, pelaje espeso —raíz negra, rastas verde oscuro que arrastran por el suelo—, garras curvas y anchas capaces de desgarrar y escalar árboles, ojos violeta oscuro brillantes, dientes tan largos que no le permiten cerrar la boca del todo. Cuerpo musculoso y esbelto, muy ágil pese a que el pelaje la hace parecer más grande de lo que es. Cazan a cualquiera que se adentre en la sombra de la espesura; temen solo a los Faerus. Los machos tienen cola de espigas de pelo negro que pueden "apretar" para usarla como maza —barridos, golpes al suelo, también ritual de cortejo—; las hembras no tienen cola, pero desarrollan dientes y garras más fuertes: son ellas las cazadoras y alfas de la manada. Recursos: Piel de Ferike y Garras Ferike (abalorios tier 6-7), Melena de cola Ferike (tier 7, muy baja probabilidad de loot — objeto especial para el objeto de mayor calidad de ese tier), hueso (reutiliza Hueso ligero) y carne (reutiliza Ración de carne fresca).
 - **Escorantes**: escarabajo de 40 a 60 cm, caparazón oscuro y amarillo con detalles arcillosos/rojos, cuerno frontal en forma de pala para cavar y enterrarse en zonas húmedas. Herbívoro cauteloso, se alimenta del Musgo Arcilla. Diminutos pinchos en el caparazón segregan un líquido de sabor muy desagradable —disuade a los Guchapos, que igualmente lo siguen intentando por hambre sin mucho criterio. Su depredador real son los Lebudes, que cazan en manada, inyectan veneno y lo desorientan para comérselo por dentro desde la parte inferior, dejando solo el caparazón vacío — cazar un Escorante cuesta bajas reales entre los Lebudes, pero es un botín grande para la colmena. Recurso: Quitina Escorante (tier 2-4).
 
@@ -181,9 +181,9 @@ nunca por Cazar.
 - **Negueo Turquesa** / **Negueo Solar** *(variante cromática)*: pez de 10-30 cm, aspecto de sargo
   con dientes de piraña, carroñero — carne de sabor pobre pero con recetas propias que aprovechan su
   amargor. Da Carne de Negueo (tier 1).
-- **Toluh**: pez migratorio de 1-1,40 m, gris oscuro, forma circular tipo pez luna con aletas muy
-  desarrolladas, escamas grandes como armadura — solo aparece en las jornadas de otoño, el más
-  codiciado de la costa. Da Carne de Toluh (tier 7) y Escamas de Toluh (tier 7).
+- **Toluh**: pez migratorio de 1-1,40 m, gris oscuro, cuerpo ancho y circular casi sin cola visible,
+  con aletas muy desarrolladas, escamas grandes como armadura — solo aparece en las jornadas de
+  otoño, el más codiciado de la costa. Da Carne de Toluh (tier 7) y Escamas de Toluh (tier 7).
 - **Bulco de Arena**: caracol de mar de 5-15 cm, concha rugosa entre rojo oscuro y marrón claro —
   marisco, se obtiene con la habilidad Buscar. Da Bulco de Arena (marisco, tier 1).
 - **Terinte** *(ambiental, sin recurso)*: mamífero excavador tipo hurón, pelaje claro como la arena,

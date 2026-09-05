@@ -130,11 +130,18 @@ export const BERIG_RAZAS: RazaInfo[] = [
     description:
       'Nacidos de la magia salvaje de Tarkor, sin Semilla creadora propia. El día a día orco es pastoreo, caza y camino: seguir a los Corredores de Cauce, recolectar Raíz de Fuego con cuidado, migrar cuando la Terk\'ikar pacta con una Gargantúa de Ceniza el transporte del clan entero. Las hembras gobiernan la vida y los machos la guerra — costumbre, no ley. A los recién nacidos se les susurra: "Con ira nos quemaron, con honor nos rebelamos, y aún así nadie domó nuestros caminos" — la misma terquedad explica por qué los orcos no son magos: aunque la magia es poderosa en ellos por su origen, nunca fue el camino que eligieron, así que quien la canaliza (el Chamán) nunca la lanza en crudo, siempre a través de un tótem o una runa. Dos tabúes prácticos: interrumpir un duelo de honor ya aceptado, y tocar el tótem de un clan ajeno sin permiso. Los clanes están divididos ante la guerra — el Clan Maktor, usado como carne de cañón hasta la aniquilación, es el precio más caro que ya se ha pagado. Elige una variante regional abajo para ver cómo cambia el cuerpo orco de clan a clan.',
     habilidadesRaciales: {
+      // Reescrita (auditoría de coherencia código↔lore, 2026-09-05): la versión anterior decía
+      // "la magia salvaje... despierta" — lenguaje de canalización mágica activa que contradice la
+      // regla dura de razas.md/berigLore.ts:131 ("nunca la lanza en crudo, siempre a través de un
+      // tótem o una runa"), sin que esta habilidad (de TODOS los orcos, no solo del Chamán) lleve
+      // ningún foco. Reformulada como efecto FISIOLÓGICO latente heredado del Estallido —
+      // fuerza/resistencia del propio cuerpo, nunca un hechizo lanzado — para que el narrador nunca
+      // tenga que describir magia en crudo saliendo de un orco sin tótem.
       ataque: {
         icon: '🩸',
         name: 'Sangre del Estallido',
-        description: 'La magia salvaje que los engendró despierta un instante bajo el dolor o la ira — un segundo aliento de fuerza bruta que ningún cuerpo debería tener.',
-        promptText: 'La magia salvaje que corre por mi sangre despierta un instante bajo la ira — descargo un segundo aliento de fuerza bruta.',
+        description: 'La herencia del Estallido que corre por su sangre, no magia canalizada, tensa cada músculo un instante bajo el dolor o la ira — un segundo aliento de fuerza bruta que ningún cuerpo debería tener.',
+        promptText: 'Algo de la vieja herencia del Estallido tensa mi cuerpo entero bajo la ira — no es magia, es puro instinto de sangre — y descargo un segundo aliento de fuerza bruta.',
         preferredAttribute: 'fuerza',
       },
       // Nueva (2026-07-29) — generaciones de guerra y trabajo forzado curtieron a los orcos

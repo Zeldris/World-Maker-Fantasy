@@ -66,11 +66,31 @@ export const loreChunks: LoreChunkInput[] = [
     sourceDoc: 'areas.md',
   },
   {
+    // Chunk nuevo (auditoría de coherencia código↔lore, 2026-09-05) — el fenómeno solo se
+    // mencionaba en el chunk de arriba ("no hay luna, cinturón de micro-cristales"), sin el
+    // mecanismo físico completo ni la autoría mítica añadida en genesis.md § "El cielo sin luna".
+    type: 'CULTURA',
+    title: 'El cielo sin luna — por qué no hay luna en Helek Sirik',
+    text: 'Helek Sirik nunca tuvo una luna convencional, obra conjunta de tres Semillas. Liania hizo que el escombro que debía formar un satélite fuera un cristal duro y frágil que se astilla en cada colisión en vez de fundirse — nunca pudo acretar en un cuerpo único, se quedó como polvo. Goirme fijó ese polvo en una órbita estable en la atmósfera alta, ni tan baja que caiga ni tan alta que escape — un cinturón continuo, como los anillos de un planeta. Ese cinturón refleja luz todo el tiempo, de día y de noche, pero de día se pierde contra el brillo del propio cielo (igual que las estrellas); solo de noche —dominio de Kroj— se hace visible, como un brillo difuso y perlado repartido por todo el cielo, nunca un disco nítido de luna. De ahí el nombre popular "brillo de luna" y el nombre de los Kelife.',
+    tags: ['cielo', 'sin-luna', 'brillo-de-luna', 'liania', 'goirme', 'kroj'],
+    sourceDoc: 'genesis.md',
+  },
+  {
     type: 'REGION',
     title: 'Idiomas de Helek Sirik',
     text: 'Nohade es exclusivo de los dioses. Geniha es la lengua común de Vaelira (oficializada por los Kelife). Kerost es la lengua común de Berig (oficializada por los Goirntes). Cada raza conserva además su propia lengua de clan para el ámbito privado y familiar.',
     tags: ['idiomas', 'geniha', 'kerost'],
     sourceDoc: 'areas.md',
+  },
+  {
+    // Chunk nuevo (auditoría de coherencia código↔lore, 2026-09-05) — el Kektira (lengua de clan
+    // orca, ver "Idiomas" arriba) tiene 8 palabras propias que el juego muestra literalmente cada
+    // turno (nombres de estación y de intensidad de tormenta), sin ninguna entrada de lore.
+    type: 'CULTURA',
+    title: 'Kektira — nombres orcos de estaciones y tormentas',
+    text: 'El Kektira es la lengua de clan de los orcos. Nombra las 4 estaciones del año: Ur\'gathek (primavera, "la estación de las crecidas"), Sohkar (verano, "la estación seca"), Vungrat (otoño, "la estación de la cosecha"), Krenoth (invierno, "la estación larga", cuando el Kirelon-arenoso emerge más). También nombra la intensidad de las tormentas de arena magnética de las Llanuras: Ghurmek ("el respiro", clima llevable), Sek\'tar ("el viento cortante", vientos fuertes), Rokthar ("la gran tormenta"), y Rok\'ithek ("la ira del viento", tormenta extrema — misma raíz que Rokthar).',
+    tags: ['kektira', 'idioma-orco', 'estaciones', 'tormentas'],
+    sourceDoc: 'estaciones.md',
   },
   {
     type: 'REGION',
@@ -138,8 +158,17 @@ export const loreChunks: LoreChunkInput[] = [
   {
     type: 'FAUNA',
     title: 'Fauna de Berig y las Llanuras del Viento Rojo',
-    text: 'Gargantúas de Ceniza: reptiles gigantes que las Terk\'ikar guían en migraciones estacionales. Las Sombras de Kroj: criaturas voladoras nocturnas del Margen Silencioso que imitan voces para atraer viajeros a trampas. Cornantes: alimento principal en la Ciénaga Troncal. Corredores de Cauce: manadas veloces de seis patas en las Llanuras del Viento Rojo, cazadas en carreras rituales de valor. Espina del Viento: criaturas venenosas enterradas en la arena roja que atacan durante las tormentas de arena magnética — el peligro cotidiano de viajar solo por las Llanuras.',
-    tags: ['fauna', 'llanuras', 'espina-del-viento', 'corredores-de-cauce', 'gargantuas-de-ceniza'],
+    text: 'Gargantúas de Ceniza: reptiles gigantes que las Terk\'ikar guían en migraciones estacionales. Las Sombras de Kroj: criaturas voladoras nocturnas del Margen Silencioso que imitan voces para atraer viajeros a trampas. Cornantes: alimento principal en la Ciénaga Troncal. Corredores de Cauce: manadas veloces de seis patas en las Llanuras del Viento Rojo, cazadas en carreras rituales de valor. Espina del Viento: criaturas venenosas enterradas en la arena roja que atacan durante las tormentas de arena magnética — el peligro cotidiano de viajar solo por las Llanuras (no tiene ficha propia de combate, solo aparece como riesgo narrativo). Zense Ceniza (antes "Buitre Cenizo", renombrado — nombres de fauna sin palabras reales de la Tierra): ave carroñera de plumaje negro y piel gris ceniza bajo el plumaje, siempre en círculos sobre lo que muere en la llanura. Kirelon-arenoso: reptil ciego de 2-4 metros, depredador nocturno AGRESIVO de La Hondonada del Eco, caza por vibración, pasa el día bajo tierra y solo emerge de noche o con frío a cazar — letal y directo, nunca un candidato de interacción pacífica.',
+    tags: ['fauna', 'llanuras', 'espina-del-viento', 'corredores-de-cauce', 'gargantuas-de-ceniza', 'zense-ceniza', 'kirelon-arenoso'],
+    sourceDoc: 'areas.md',
+  },
+  {
+    // Chunk nuevo (auditoría de coherencia código↔lore, 2026-09-05) — 4 puntos de interés jugables
+    // más el oficio de Pescador, sembrados en worldCatalog.ts sin ninguna entrada de lore.
+    type: 'REGION',
+    title: 'Puntos de interés nuevos de Las Llanuras del Viento Rojo',
+    text: 'Las Agujas Imán: campo de rocas negras imantadas donde las tormentas de arena magnética peinan la arena en crestas; la orientación se pierde entre ellas, y solo el Cardo Brújula (aguja imantada natural) anula la desorientación. La Sabana Alta: praderas de hierba roja alta, refugio y coto de caza de Corredores de Cauce, terreno donde el Aullador Rojo caza mejor por el sigilo que da la hierba. Playa de Ceniza Blanca: franja de arena clara entre roca, el punto de costa más accesible y menos hostil de la región. Los Acantilados Partidos: pared costera vertical con grietas profundas, oleaje violento, nidos de aves marinas en las cornisas — bello y letal. La profesión Pescador (nueva) se aprende con el Maestro Pescador Serhu y trabaja peces y marisco de la costa (Jashil, Negueo, Toluh, Bulco de Arena), nunca por Cazar.',
+    tags: ['agujas-iman', 'sabana-alta', 'playa-de-ceniza', 'acantilados-partidos', 'pescador'],
     sourceDoc: 'areas.md',
   },
   {
@@ -277,7 +306,7 @@ export const loreChunks: LoreChunkInput[] = [
   {
     type: 'PERSONAJE',
     title: 'Gorhorn, guerrero del Clan Maktor (personaje de pruebas)',
-    text: 'Orco de las Llanuras del Viento Rojo, único superviviente conocido del Clan Maktor tras ser usados como carne de cañón por el mando Goirntes. Orgulloso pero no arrogante, sorprendentemente afable para un orco, aunque con poca paciencia una vez la pierde. Fuerza física colosal, instinto de combate a corta distancia, alta resistencia al dolor, y comunión especial con la naturaleza (puede domar criaturas poderosas de su territorio). Mide 1,98m, colmillos medios (uno con prótesis de hielo sílice), pelo negro con trenzas de apliques azules, perilla en dos trenzas con enganches de hueso, tres cicatrices de latigazos en la espalda de sus años de trabajo forzado. Inventario: hacha de guerra rota usada como maza, cuchillo de hielo sílice, raciones para 5 días, arnés de cuero, capa de piel de gargantúa, y un tótem de madera de ciénaga del Clan Maktor — su objeto más importante. Ahora lucha de forma independiente para que la muerte de su clan no sea en vano.',
+    text: 'Orco de las Llanuras del Viento Rojo, único superviviente conocido del Clan Maktor tras ser usados como carne de cañón por el mando Goirntes. Orgulloso pero no arrogante, sorprendentemente afable para un orco, aunque con poca paciencia una vez la pierde. Fuerza física colosal, instinto de combate a corta distancia, alta resistencia al dolor, y comunión especial con la naturaleza (puede domar criaturas poderosas de su territorio). Mide 1,98m, colmillos medios (uno con prótesis de hielo sílice), pelo negro con trenzas de apliques azules, perilla en dos trenzas con enganches de hueso, tres cicatrices de latigazos en la espalda de sus años de trabajo forzado. Inventario: hacha de guerra rota usada como maza, cuchillo de hielo sílice, pico de minero, cataplasma de salvia del polvo, arnés de cuero, pantalones de piel, y un tótem de madera de ciénaga del Clan Maktor — su objeto más importante. Ahora lucha de forma independiente para que la muerte de su clan no sea en vano.',
     tags: ['gorhorn', 'orcos', 'clan-maktor', 'personaje-principal'],
     sourceDoc: 'personajes.md',
   },

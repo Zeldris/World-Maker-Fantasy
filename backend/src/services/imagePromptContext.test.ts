@@ -250,7 +250,7 @@ describe('loreContextFor — location/faction/historia', () => {
     expect(findUniqueLocation).toHaveBeenLastCalledWith({ where: { worldId_slug: { worldId: 'w1', slug: 'los-pilares-rotos' } } });
     expect(result?.loreContext).toBe(
       'Región: Las Llanuras del Viento Rojo. Tipo: punto_de_interes. Ruinas antiguas. ' +
-        'Es de noche: iluminada por luna/estrellas o fuego, sombras profundas, colores apagados y fríos, sin luz solar. ' +
+        'Es de noche: iluminada por un brillo perlado y difuso repartido por todo el cielo (nunca un disco de luna — este mundo no tiene luna), estrellas visibles, o fuego; sombras profundas, colores apagados y fríos, sin luz solar. ' +
         'Es invierno: frío marcado, posible nieve o escarcha si la región lo permite, luz fría y apagada, vegetación reducida o desnuda.',
     );
   });

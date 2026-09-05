@@ -80,7 +80,9 @@ const LLANURAS_DEL_VIENTO_ROJO: RegionBank = {
       'El sol se hunde despacio en el horizonte, dejando el cielo rasgado de rojo y violeta.',
     ],
     noche: [
-      'Las estrellas cubren un cielo despejado, sin ninguna luz que las opaque.',
+      // Helek Sirik no tiene luna (genesis.md § "El cielo sin luna") — el cinturón de
+      // micro-cristales en la atmósfera alta es lo que se ve de noche junto a las estrellas.
+      'Un brillo perlado y difuso cubre el cielo despejado, repartido entre las estrellas.',
       'La noche trae un frío seco muy distinto al calor del día — el silencio pesa sobre la llanura.',
     ],
   },

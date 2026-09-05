@@ -45,7 +45,11 @@ const ESTACIONES: EstacionSlug[] = ['primavera', 'verano', 'otono', 'invierno'];
 
 const MOMENTO_TEXT: Record<MomentoDelDia, string> = {
   dia: 'Es de día: luz solar clara y directa, buena visibilidad de todos los detalles del paisaje.',
-  noche: 'Es de noche: iluminada por luna/estrellas o fuego, sombras profundas, colores apagados y fríos, sin luz solar.',
+  // Helek Sirik NUNCA tiene luna convencional (genesis.md § "El cielo sin luna") — de noche el
+  // cielo muestra un cinturón difuso de micro-cristales que refleja un brillo perlado y suave
+  // (nunca un disco nítido como una luna real), además de estrellas normales. Sin esta corrección
+  // explícita, cualquier prompt de imagen nocturna de Location/Zona podía pedir "luna" sin más.
+  noche: 'Es de noche: iluminada por un brillo perlado y difuso repartido por todo el cielo (nunca un disco de luna — este mundo no tiene luna), estrellas visibles, o fuego; sombras profundas, colores apagados y fríos, sin luz solar.',
 };
 
 const ESTACION_TEXT: Record<EstacionSlug, string> = {

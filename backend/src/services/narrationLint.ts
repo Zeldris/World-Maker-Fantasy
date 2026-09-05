@@ -7,7 +7,21 @@ import { normalizeText } from './travel.js';
 /// llamada completa a Ollama (30-220s) por una incoherencia de prosa no es buen cambio; ver
 /// memoria del proyecto para la decisión completa.
 
-const KNOWN_REGIONS = ['Ciénaga Troncal', 'Cristal Helado', 'La Meseta del Orden', 'El Margen Silencioso', 'Las Llanuras del Viento Rojo'];
+// Ampliado con las 3 regiones de Vaelira (auditoría de coherencia código↔lore, 2026-09-05) — antes
+// solo cubría Berig, así que el error más grave posible de este tipo (teletransportar la escena a
+// otro continente, cruzando la Niebla del Estrecho que areas.md declara infranqueable) pasaba sin
+// detectar. Vaelira no es jugable hoy, pero el lint existe justo para el caso en que el modelo
+// alucine — que es precisamente cuando más probable es que mencione lo lejano.
+const KNOWN_REGIONS = [
+  'Ciénaga Troncal',
+  'Cristal Helado',
+  'La Meseta del Orden',
+  'El Margen Silencioso',
+  'Las Llanuras del Viento Rojo',
+  'La Cicatriz de Cristal',
+  'El Susurro de las Raíces',
+  'La Costa del Azabache',
+];
 
 /// Puro: si el texto menciona una región nombrada DISTINTA a la actual, la devuelve — null si no
 /// hay ninguna mención de otra región. Mismo bug real que ya se arregló en entorno.ts, aquí para
