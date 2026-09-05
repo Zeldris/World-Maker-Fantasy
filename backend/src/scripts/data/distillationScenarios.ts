@@ -91,6 +91,7 @@ function npcInSceneFromCatalog(npc: NpcInput, overrides: Partial<NpcInScene> = {
     domesticablePct: npc.domesticablePct ?? 0,
     cortejablePct: npc.cortejablePct ?? 0,
     capturablePct: npc.capturablePct ?? 0,
+    targetedForKill: false,
     ...overrides,
   };
 }

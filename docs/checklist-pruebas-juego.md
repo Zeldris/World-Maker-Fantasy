@@ -1437,3 +1437,162 @@ este cambio — confirmado reejecutando 3 veces en aislamiento, 1/3 fallos). Fro
 un falso positivo real al escribir el primer test del legend). Pendiente reverificar en vivo: el
 legend aparece solo en la tirada de apertura de combate, y el malus de condición física en esa
 tirada coincide con la condición REAL del NPC en ese momento (GRAVE=-5, no HERIDO=-2).
+
+---
+
+## Sesión autónoma de pruebas 2026-09-04 — 11 hallazgos, ninguno corregido todavía
+
+Sesión pedida explícitamente ("prueba todo lo que puedas hasta tener 12 hallazgos buenos, sin
+preguntarme nada") jugando con Playwright, primero contra la partida real de la usuaria
+(`cmtmzyprk0006ri0z9k6wp6ds`) y luego, tras bloquearla con el hallazgo grave de abajo, contra una
+partida de prueba nueva (`cmtnay985001mridgwblqoht7`). Objetivo: 12, se cerró la sesión con 11
+válidos (1 descartado en el propio proceso por ser un falso positivo de mi automatización, no del
+juego — ver detalle abajo). **Ninguno de estos 11 se ha corregido todavía** — quedan aquí como
+inventario para la próxima ronda de cierres.
+
+**BUG GRAVE — bloquea la partida real de la usuaria**: `pendingCombatNpcSlugs` no se limpia tras
+Matar+Rematar+Saquear todo un NPC humanoide, dejando el composer bloqueado para siempre
+("Resolviendo el combate — puede tardar más de lo habitual...", sin ningún turno posible que lo
+desatasque). Causa raíz exacta identificada en código: el botón "Salir" del panel de victoria
+(`CombatPanel.tsx`, `onClick={onContinue}`) es puramente de cliente, nunca informa al backend;
+`Save.pendingCombatNpcSlugs` solo se recalcula dentro de `resolveCombatSlugsAndPersist`
+(`turnResolution.ts:2468`), que exige un turno real para ejecutarse — y tras Saquear todo no queda
+ningún turno más que lo dispare. Confirmado en Postgres: el Orco Enfurecido de la partida real quedó
+`condicionFisica: MUERTO, saqueado: true`, pero `Save.pendingCombatNpcSlugs` siguió con
+`["orco-enfurecido-hondonada"]` incluso tras recargar varias veces. **No se intentó arreglar por SQL
+directo** — el clasificador automático del entorno bloqueó el `UPDATE` de desatasco por tratarse de
+la partida real sin aprobación explícita; la partida de la usuaria sigue bloqueada tal cual quedó.
+
+**Los otros 10 hallazgos** (mezcla de narración-vs-mecánica, persistencia de UI y un pequeño defecto
+visual), todos con ubicación de código y evidencia real (capturas, respuestas de API, o texto exacto
+extraído del DOM):
+
+1. Narración de la acción "Defenderse" en pleno intercambio de combate describe una escena de
+   búsqueda/reconocimiento ("mira atentamente... intentando localizar al Orco enfurecido") en vez de
+   bloquear/esquivar el golpe recibido — desconectada de la mecánica real. Ningún guard existente lo
+   cubre.
+2. "Matar" en la tarjeta de NPC Convaleciente desbloquea el composer correctamente sin recargar
+   (confirmado), pero ese desbloqueo es puro estado de React (`targetedForKill` en
+   `useCombatFlow.ts`) — no sobrevive a una recarga de página, violando la directriz ya escrita en
+   este mismo documento de que toda oferta/decisión debe sobrevivir a F5.
+3. Turno de remate real narra "no logra conectar con su objetivo" mientras el resumen mecánico
+   inmediatamente debajo dice "el golpe conecta" (roll real de éxito) — `hasFalseCombatMiss` no
+   cubre la frase "no logra conectar (con)".
+4. Narración menciona "el resplandor de la luna" en un turno a las 08:16 de la mañana, tras un
+   amanecer explícito al inicio de la partida — no existe ningún guard de coherencia día/noche pese
+   a que el sistema calcula `momentoDelDia` correctamente para otros usos (imágenes de escena).
+5. *(el bug grave de arriba)*
+6. *(descartado — falso positivo mío: el modal "Elige tu clase" tiene un flujo de 2 pasos, lista →
+   detalle → Aceptar → Confirmar, y mi script solo completó el primer click)*
+7. La narración de un turno de recolección repite literalmente, palabra por palabra, el mensaje de
+   sistema del turno anterior ("Gorhorn asume su clase: GUERRERO") pegado como prefijo sin sentido
+   antes del contenido real de la nueva escena.
+8. Errata léxica real del narrador: "no interrumplen su paso" (palabra inexistente en español, mezcla
+   de "interrumpen"). Sin guard candidato razonable — sería un corrector ortográfico genérico, pieza
+   de diseño nueva, no un fix puntual.
+9. El marcador del jugador en el mapa de Zona se corta visualmente contra la esquina redondeada del
+   contenedor cuando el punto de entrada calculado cae en una de las 4 diagonales
+   (`MARGEN_BORDE = 24` en `zonaPosicion.ts`, insuficiente frente al halo de radio 14 del
+   `JugadorMarker` más el `rounded-lg` del contenedor). Los 4 cardinales puros no tienen el problema.
+10. Dos turnos consecutivos con acciones DISTINTAS del jugador ("Observo el campamento..." y luego
+    "Me acerco con cautela a investigar...") generan narración IDÉNTICA palabra por palabra, solo con
+    la tirada de dados cambiada — la escena no avanzó nada pese a una acción claramente distinta. Sin
+    guard que compare contra el LogEntry inmediatamente anterior.
+11. El evento guionizado de "Gistera Koh huyendo del Clan Serhu" (disparado la primera vez que
+    Gistera no ha sido vista en la partida, `turnResolution.ts` línea ~2798) se disparó DENTRO del
+    propio campamento fortificado del Clan Serhu — sin sentido narrativo (una fugitiva de ese clan
+    escondida en el campamento de ese mismo clan) — con la misma imagen genérica de "corriendo por
+    llanura abierta" que en la ubicación original (La Hondonada del Eco), sin adaptarse al contexto
+    real de la escena. El trigger no comprueba coherencia de Location.
+12. Turno de combate narra "esquiva el golpe con una parada limpia" (sin contacto) seguido en la
+    misma frase de "dejando una mancha roja en Gorhorn's pecho" (contacto con sangre) — auto-
+    contradicción, mismo patrón ya conocido con vocabulario nuevo — Y de paso una fuga real de
+    sintaxis inglesa no cazada por ningún guard: genitivo sajón "Gorhorn's" en medio de una frase en
+    español (debería ser "el pecho de Gorhorn"). Candidato de guard nuevo, barato: detectar el patrón
+    `\w+'s\s` en cualquier narración — el apóstrofe posesivo no existe en español.
+
+**ACTUALIZACIÓN 2026-09-05 — 9/11 CERRADOS**, ver [[tarkor_arreglos_hallazgos_sesion_autonoma_2026-09-05]]
+en memoria para el detalle completo de cada fix (archivo/línea, migración, tests):
+
+1. Defenderse narrado como reconocimiento — **sin fix** (no llegó a la ronda, sin guard candidato
+   identificado; no confundir con los 2 de abajo que sí se dejaron sin fix por decisión explícita).
+2. "Matar" no sobrevivía a recargar — **CERRADO**. `NpcState.targetedForKill` persistido, nuevo
+   endpoint `POST /saves/:id/combat/matar/:npcSlug`.
+3. "No logra conectar" con roll de éxito — **CERRADO**. `COMBAT_MISS_LEAK_REGEX` ampliado.
+4. Luna en pleno día — **CERRADO**. Nuevo guard `hasWrongCelestialReference` + `TurnContext.momentoDelDia`.
+5. Bug grave del slug tras Matar+Saquear — **CERRADO**. Nuevo endpoint `POST /saves/:id/combat/cerrar`.
+   Partida real desatascada tras el reinicio de backend que hizo la usuaria.
+6. Elegir clase no persistía — **descartado, era falso positivo** de la automatización de pruebas
+   (el modal tiene 2 pasos, Aceptar+Confirmar; el script solo hizo el primer click). No era un bug real.
+7. Repetición literal de mensaje de sistema — **CERRADO**. Nuevo campo `LogEntry.isSystemMessage`,
+   marcado en ~10 sitios deterministas, excluido de la query de `lastNarration`.
+8. Errata "interrumplen" — **sin fix, decisión explícita de la usuaria** (corrector ortográfico
+   genérico es diseño nuevo con riesgo de falsos positivos, fuera de alcance).
+9. Marcador cortado en esquinas diagonales del mapa — **CERRADO**. `MARGEN_BORDE_DIAGONAL=40` nuevo.
+10. Turnos consecutivos idénticos — **sin fix, ya cubierto** por el guard `isTooSimilarToLast`
+    existente (fuerza reintento); el caso real probablemente agotó los 3 reintentos con el LLM
+    repitiendo igual las 3 veces, trade-off ya aceptado en otro hallazgo similar del checklist.
+11. Gistera Koh sin coherencia de escena — **CERRADO**. Restringida a aparecer solo en La Hondonada
+    del Eco mientras sigue sin presentarse del todo (`gisteraKoh`/`gisteraEnEscena` exigen
+    `regionLocation.slug === 'hondonada-del-eco'`). De paso, a petición de la usuaria: el destino de
+    su huida ya no se narra al jugador (solo "se aleja de la Hondonada del Eco"), y "entre la
+    maleza" → "en el horizonte".
+
+Verificado: `tsc -b` limpio backend+frontend, backend 2096/2097 (solo el flake de Múrgol, ya
+conocido), frontend 206/206.
+
+**RONDA 2 (2026-09-05, madrugada, jugando de forma autónoma la partida real ya desatascada)** — 3
+hallazgos nuevos, **los 3 CERRADOS** (2026-09-05, misma sesión en que se documentaron), ver
+[[tarkor_ronda2_hallazgos_autonomos_2026-09-05]] y [[tarkor_cierre_ronda2_y_hallazgo1_2026-09-05]] en
+memoria para el detalle completo:
+
+12. Narración de modo dinámico (Gesgurio, La Hondonada del Eco) menciona "lo que **los humanos**
+    ocultan tras sus almas" — Tarkor no tiene ninguna raza humana jugable ni narrativa (orcos,
+    goirntes, nabieus, faerus); `worldCatalog.ts` solo usa "humano/humanoide" como adjetivo genérico
+    de forma corporal, nunca como nombre de raza. **CERRADO**. Nuevo guard `hasHumanRaceLeak`
+    (narrador.ts) — enganchado tanto en la cascada de `narrateAction` (turno normal) como en
+    `narrarVueltaModoDinamico` (dynamicModeNarracion.ts, que tiene su propio sistema de guards
+    separado).
+13. Turno de acción libre ("Vuelvo a atacar al Quio con otro tajo de mi hacha.") tiene un roll
+    persistido de ÉXITO CLARO (`{"roll":17,"value":10,"result":22,"success":true,"difficulty":15,
+    "gradoExito":"claro"}`) pero la narración dice justo lo contrario: "su objetivo evita el golpe
+    ágilmente" — la misma clase de contradicción narración-vs-mecánica que los guards
+    `hasFalseCombatHit`/`hasFalseCombatMiss` ya cubren, pero SOLO para el sistema de combate por
+    intercambios (`CombatExchangeInfo`/`exchangeHappened`, `turnResolution.ts:3146`). **CERRADO**.
+    Nueva señal `nonExchangeAttackHitLanded` (`!exchangeHappened && countsAsAttack &&
+    roll?.success === true`), reutiliza el mismo `COMBAT_MISS_LEAK_REGEX` de `hasFalseCombatMiss`
+    (ahora acepta un segundo parámetro opcional).
+14. Narración de modo dinámico (kirelon-arenoso, VUELTA 3) usa tiempo FUTURO en vez del presente
+    narrativo consistente con el resto del texto: "un kirelon-arenoso **emergerá**... Su cabeza...
+    **se asomarán**... Las patas... **se tambalearán**" (VUELTA 1 y 2 de la misma secuencia sí usan
+    presente correcto). **CERRADO**. Nuevo guard local `hasFutureTenseLeak` (dynamicModeNarracion.ts,
+    acotado a este archivo — el modo dinámico nunca lleva diálogo citado con promesas a futuro
+    legítimas). Detecta terminaciones de futuro simple con tilde obligatoria (`ará/erá/irá/arán/
+    erán/irán`) — un primer intento sin exigir la tilde disparaba en falso contra "Gist**era** Koh".
+
+**"Kirelon sobrerrepresentado" (abierto desde las rondas 28-29/08) — INVESTIGADO Y CERRADO
+(2026-09-05)**: causa raíz real distinta de lo asumido — no era un peso de aparición mal calibrado
+del kirelon-arenoso en concreto, era que `decideOfertaModoDinamico` (`dynamicMode.ts`) nunca filtraba
+candidatos por `temperamento`. El kirelon-arenoso tiene `temperamento: 'AGRESIVO'` de catálogo
+("letal y directo... no juega con la presa"), pero se ofrecía como modo dinámico (interacción
+pacífica: "Observarlo/Ofrecerle comida/Ignorarlo") exactamente igual que fauna CAUTELOSA/INOFENSIVA.
+Confirmado con Postgres real que esto afectaba a otras **6 fichas de fauna AGRESIVA más**
+(`cruzavientos`/`ferike`/`lebude`/`miruina`/`rondador-de-brasas`/`towrgu`), no solo al kirelon —
+intuición explícita de la usuaria confirmada. **CERRADO**: `ZonePointCandidateRow` gana
+`temperamento`, el filtro excluye `AGRESIVO` (AMIGABLE/INOFENSIVO/CAUTELOSO siguen siendo candidatos
+válidos), el caller resuelve `effectiveTemperamento` real vía `Npc.temperamento` + reputación de
+facción. Ver [[tarkor_fix_kirelon_sobrerrepresentado_2026-09-05]] en memoria para el detalle
+completo.
+
+**Hallazgo 1 (pendiente desde la ronda original, cerrado ahora, 2026-09-05)**: narración de la
+acción "Defenderse" en pleno intercambio de combate describía una escena de búsqueda/reconocimiento
+("mira atentamente... intentando localizar al Orco enfurecido") en vez de bloquear/esquivar el golpe
+recibido. **CERRADO**. Nueva señal `playerActedAsDefenderThisExchange` (true en el bloque "CASO
+DEFENSA" de `resolveCombatExchangePhase`, cuando el jugador responde a ciegas a un ataque del NPC ya
+decidido) + nuevo guard `hasFalseDefenseNarration` (narrador.ts) con vocabulario de "buscar/localizar
+al enemigo" — no tiene sentido cuando el NPC ya está en escena y ya atacó este mismo intercambio.
+
+Verificado (2026-09-05): `tsc -b` limpio backend+frontend. Backend 2110/2111 (solo el flake ya
+conocido de Múrgol). Frontend 206/206. Sin test de integración end-to-end nuevo para estos 4 fixes
+(cobertura unitaria completa de cada guard nuevo, mismo nivel que la mayoría de guards de esta
+familia) — pendiente reverificar en vivo jugando la partida real.

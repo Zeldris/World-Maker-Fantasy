@@ -733,6 +733,10 @@ export interface CombatExchangePhaseResult {
   playerAbilityUsed: { name: string; icon: string; description: string; rol: 'ataque' | 'defensa' } | null;
   nextInitiativeRoll: InitiativeResult | null;
   exchangeHappened: boolean;
+  /// Ver `hasFalseDefenseNarration` (narrador.ts) — true cuando este intercambio fue el bloque
+  /// "CASO DEFENSA" (el jugador respondió a ciegas a un ataque del NPC ya decidido). El caller
+  /// reenvía esto tal cual al `TurnContext` del narrador, sin recalcular nada.
+  playerActedAsDefenderThisExchange: boolean;
   npcEnergiaMax: number | null;
   npcNuevaEnergia: number | null;
   /// "Revisar partida" 2026-07-30 (queja explícita: "las habilidades que no son de ataque no
@@ -912,6 +916,11 @@ function resolveCombatExchangePhase(input: CombatExchangePhaseInput): CombatExch
   // Sistema de fatiga (2026-07-29) — hoisted fuera del bloque de abajo: hace falta después, al
   // calcular la energía de este turno, sepa o no haber intercambio real de combate.
   let exchangeHappened = false;
+  // Ver `hasFalseDefenseNarration` (narrador.ts) — true cuando el jugador está en el bloque "CASO
+  // DEFENSA" de más abajo (responde a ciegas a un ataque del NPC ya decidido el intercambio
+  // anterior, `defensorRol === 'defensa'`) — señal para detectar si el modelo narra una escena de
+  // búsqueda/reconocimiento del enemigo en vez de bloquear/esquivar el golpe recibido.
+  let playerActedAsDefenderThisExchange = false;
   // Sistema de fatiga simétrico (2026-07-30, deuda técnica: "los NPC siguen eligiendo habilidad
   // sin restricción de energía") — energía persistida del NPC tras este intercambio, mismas
   // reglas que `nuevaEnergia` del jugador pero mirando el rol que tuvo EL NPC. null si no hubo
@@ -1001,6 +1010,7 @@ function resolveCombatExchangePhase(input: CombatExchangePhaseInput): CombatExch
       // en la práctica siempre es 'ataque' (invariante de `chooseNpcAbility`, ver PendingNpcAttack.rol),
       // pero se comprueba igual por si ese invariante cambiara algún día.
       const defensorRol = abilityRol ?? 'defensa';
+      if (defensorRol === 'defensa') playerActedAsDefenderThisExchange = true;
       const esIndependiente = pendingNpcAttack.rol === 'utilidad' || defensorRol === 'utilidad';
       if (esIndependiente) {
         const npcRacial = racialAdvantageFor(npcParaIntercambio.raza, pendingNpcAttack.rol, pendingNpcAttack.effects, input.classificationAtributo, jugadorRaza, isFirstExchangeOfCombat);
@@ -1538,6 +1548,7 @@ function resolveCombatExchangePhase(input: CombatExchangePhaseInput): CombatExch
     playerAbilityUsed,
     nextInitiativeRoll,
     exchangeHappened,
+    playerActedAsDefenderThisExchange,
     npcEnergiaMax,
     // RECUPERACION (2026-08-17) — sumado aquí mismo (topado al máximo real del NPC), a diferencia
     // del lado jugador cuyo tope solo conoce el caller.
@@ -1951,6 +1962,10 @@ async function applyCombatExchangeToNpcState(params: {
   const abilityUsesChanged = abilityUsesReset || abilityNamesToIncrement.length > 0;
   // Fase 2 de efectos de clase (2026-08-26) — mismo reset-on-ILESO que `abilityUsesNext`, arriba.
   const activeEffectsToWrite = condicionAEscribir === 'ILESO' ? [] : npcActiveEffectsNext;
+  // "Matar" persistido (2026-09-05, bug real: se perdía al recargar) — mismo reset-on-ILESO que
+  // `abilityUsesNext`/`activeEffectsToWrite`: en cuanto el NPC vuelve a ILESO (curación entre
+  // combates) ya no tiene sentido seguir "marcado para matar" del encuentro anterior.
+  const targetedForKillReset = condicionAEscribir === 'ILESO';
   // Punto del jugador en el mapa de Zona (2026-09-04) — combate ganado de verdad (golpe de muerte
   // y, si era un grupo, ya no queda nadie más) marca al NPC ausente 6h de ficción. `grupoContinua`
   // deja esto fuera a propósito: todavía hay alguien vivo de ese grupo en la zona.
@@ -1979,6 +1994,7 @@ async function applyCombatExchangeToNpcState(params: {
       ...(npcNuevaEnergia !== null ? { energia: npcNuevaEnergia } : {}),
       ...(analizarRivalExito ? { analizado: true } : {}),
       ...(abilityUsesChanged ? { abilityUsesThisEncounter: abilityUsesNext } : {}),
+      ...(targetedForKillReset ? { targetedForKill: false } : {}),
       ...zonaAusenteData,
       activeEffects: activeEffectsToWrite as unknown as Prisma.InputJsonValue,
     },
@@ -2502,6 +2518,9 @@ async function resolveCombatSlugsAndPersist(params: {
             // Fase 2 de efectos de clase (2026-08-27) — mismo override que condicionFisica/
             // analizado de arriba: solo el NPC de ESTE intercambio tiene efectos frescos.
             activeEffects: npcAttackTarget && n.id === npcAttackTarget.id ? npcActiveEffectsNext : n.activeEffects,
+            // "Matar" persistido (2026-09-05) — mismo criterio que analizado/condicionFisica de
+            // arriba, se resetea a false por el reset-on-ILESO ya aplicado al escribir NpcState.
+            targetedForKill: n.targetedForKill,
           })),
       }
     : null;
@@ -2650,7 +2669,10 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
           durationEffectMagnitude: number | null;
           durationEffectTurns: number | null;
         } | null>(null),
-    regionLocationId ? prisma.location.findUnique({ where: { id: regionLocationId }, select: { region: true, name: true } }) : Promise.resolve(null),
+    // `slug` añadido (2026-09-05) — ver comentario de `gisteraEnEscena` más abajo: el gancho
+    // guionizado de Gistera Koh necesita saber si la escena de ESTE turno sigue en La Hondonada
+    // del Eco, su `homeLocationSlug` real.
+    regionLocationId ? prisma.location.findUnique({ where: { id: regionLocationId }, select: { region: true, name: true, slug: true } }) : Promise.resolve(null),
     // Auditoría de rendimiento 2026-07-28 ("rascar segundos"): si el caller (turn.ts) ya trae el
     // resultado de /turn/classify para esta misma acción, se reutiliza tal cual en vez de repetir
     // el mismo `detectNpcsInScene` (roster completo del mundo + objetos, contra Supabase remoto)
@@ -2683,8 +2705,14 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     // de turnos anteriores, solo `sessionFacts` (hechos discretos, nunca prosa) — sin eso, no
     // tiene forma de saber que ya usó "sombra" dos veces seguidas hace un momento. Se le pasa el
     // último párrafo narrado tal cual, con instrucción explícita de variar el lenguaje.
+    // `isSystemMessage: false` (bug real, sesión autónoma de pruebas 2026-09-04: "Gorhorn asume su
+    // clase: GUERRERO." — un mensaje de sistema determinista, no narración del LLM — se pasó como
+    // "tu propia narración del turno anterior" y el modelo lo repitió literalmente al inicio del
+    // turno siguiente) — sin este filtro, cualquier LogEntry construido a mano (elegir clase,
+    // subir de nivel, "se pone a ello: ...", recompensa de misión...) podía colarse aquí igual que
+    // una narración real, engañando tanto la instrucción de variar lenguaje como `isTooSimilarToLast`.
     prisma.logEntry.findFirst({
-      where: { saveId, channel: 'CHARACTER', isPlayerAction: false },
+      where: { saveId, channel: 'CHARACTER', isPlayerAction: false, isSystemMessage: false },
       orderBy: { createdAt: 'desc' },
       select: { text: true },
     }),
@@ -3043,6 +3071,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     npcAbilityUsed,
     nextInitiativeRoll,
     exchangeHappened,
+    playerActedAsDefenderThisExchange,
     npcNuevaEnergia,
     abilityEffectHint,
     combatExchangeDisplay,
@@ -3127,6 +3156,15 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   // ramas de arriba (jugador ataca, NPC ataca, o contragolpe) — no hace falta recalcular nada
   // nuevo, solo leer la misma señal desde el otro lado.
   const combatRealHitLanded = exchangeHappened && (npcAttackHits || jugadorRecibeGolpe);
+  // Ver `hasFalseCombatMiss` (narrador.ts) — mismo bug que `combatRealHitLanded`, pero para un
+  // ataque que NUNCA pasó por `resolveCombatExchangePhase` (bug real jugando en vivo, sesión
+  // autónoma 2026-09-05: "Ataco al Quio con otro tajo" contra fauna sin combate formal todavía
+  // abierto — tirada de Destreza genérica, roll 17+5=22 vs 15, `success:true`/`gradoExito:'claro'`,
+  // pero la narración dijo "su objetivo evita el golpe ágilmente"). `exchangeHappened` exige que el
+  // NPC ya esté en un intercambio de combate real — un ataque contra fauna/NPC pasivo antes de que
+  // se abra combate formal se resuelve como tirada de acción libre (`roll` de `classification`),
+  // camino que ningún guard de honestidad narrativa cubría hasta ahora.
+  const nonExchangeAttackHitLanded = !exchangeHappened && countsAsAttack && roll?.success === true;
 
   // Narrar inconsciencia (docs/19-post-combate-y-recompensas-mision.md, pieza 1) — true SOLO en
   // el turno exacto en que el NPC pasa a CONVALECIENTE/MUERTO (no si ya estaba así de antes), para
@@ -3843,8 +3881,16 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   // al crear partida (ver startingQuests.ts) — nace de esta conversación vía "newQuest" normal,
   // en cuanto Gorhorn acepte ayudar a Gistera Koh, igual que cualquier otra misión propuesta en juego.
   const playerActionCount = await prisma.logEntry.count({ where: { saveId, channel: 'CHARACTER', isPlayerAction: true } });
+  // Bug real, sesión autónoma de pruebas con Playwright (2026-09-04): sin esta comprobación de
+  // ubicación, el PRIMER turno de la partida disparaba la fase 1 de Gistera Koh (la sombra
+  // acercándose) sin importar dónde estuviera Gorhorn — en teoría siempre coincide con La
+  // Hondonada del Eco en una partida normal (ubicación inicial de creación), pero nada lo
+  // garantizaba de verdad. Petición explícita de la usuaria: debe aparecer nada más Gorhorn se
+  // mueva por La Hondonada del Eco, no en cualquier otro sitio.
   const gisteraKoh =
-    playerActionCount === 1 ? await prisma.npc.findUnique({ where: { worldId_slug: { worldId, slug: 'gistera-koh' } } }) : null;
+    playerActionCount === 1 && regionLocation?.slug === 'hondonada-del-eco'
+      ? await prisma.npc.findUnique({ where: { worldId_slug: { worldId, slug: 'gistera-koh' } } })
+      : null;
   // Determinismo total (segunda vuelta, 2026-07-23: "revisar partida" volvió a encontrar la
   // escena sin disparar en partida real, con `criticalFactsCount` ya protegiendo el bloque de
   // truncamiento) — pedírselo al modelo vía instrucción no bastaba, lo ignoraba de todos modos.
@@ -3869,8 +3915,20 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   // `gisteraQuestYaExiste`/`gisteraYaPresentada` ya se calcularon arriba, justo tras resolver
   // `npcsInScene` (hacía falta antes de tiempo para poder filtrarla de ahí — ver ese comentario).
   const gisteraSinNombreEnEscena = sessionFacts.some((f) => f.includes('sin nombre revelado todavía'));
+  // Bug real, sesión autónoma de pruebas con Playwright (2026-09-04): Gistera Koh es `PRINCIPAL`
+  // (npcScene.ts § `candidateNpcs`, cualquier PRINCIPAL es candidato en CUALQUIER ubicación del
+  // mundo, sin mirar su `homeLocationSlug` — criterio deliberado y compartido con otros PRINCIPAL
+  // como Sella Marn) — sin ninguna restricción propia, el gancho guionizado de su huida se disparó
+  // dentro de Karot Veku, el campamento fortificado del Clan Serhu del que ella dice estar
+  // escapando, sin sentido narrativo. Petición explícita de la usuaria: debe aparecer nada más
+  // Gorhorn se mueva por La Hondonada del Eco, como de las primeras cosas que ve al empezar el
+  // juego — nunca en otra ubicación mientras siga sin presentarse del todo (antes de aceptar
+  // ayudarla; una vez el Quest existe, `gisteraSeHaMarchado`/`gisteraYaPresentada` ya no dependen
+  // de la ubicación, es historia pasada que puede mencionarse desde cualquier sitio).
+  const enHondonadaDelEco = regionLocation?.slug === 'hondonada-del-eco';
   const gisteraEnEscena =
-    gisteraKoh !== null || gisteraSinNombreEnEscena || gisteraYaPresentada || npcsInScene.some((npc) => npc.slug === 'gistera-koh');
+    gisteraYaPresentada ||
+    (enHondonadaDelEco && (gisteraKoh !== null || gisteraSinNombreEnEscena || npcsInScene.some((npc) => npc.slug === 'gistera-koh')));
   const gisteraSePresentaEsteTurno = gisteraEnEscena && !gisteraYaPresentada && detectsDialogueIntent(action);
   // Petición explícita de la usuaria (2026-08-01): "en cuanto acepto la misión de Gistera que
   // ella se marche dirección Ciénaga [Troncal] y que no vuelva a aparecer" — una vez se ha ido
@@ -4227,6 +4285,8 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     lastNarrationText: lastNarration?.text,
     combatBothMissed,
     combatRealHitLanded,
+    nonExchangeAttackHitLanded,
+    playerActedAsDefenderThisExchange,
     npcFallsUnconsciousThisTurn,
     npcFallsConvalecienteThisTurn,
     combatNoRealDeathThisTurn,
@@ -4250,6 +4310,11 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     // Ver `hasIllegitimateMagicVocabulary` (narrador.ts) — bug real jugando en vivo, 2026-09-01:
     // vocabulario mágico narrando la curación de un personaje sin ninguna clase/habilidad mágica.
     characterClase: clase,
+    // Ver `hasWrongCelestialReference` (narrador.ts) — bug real, sesión autónoma de pruebas
+    // 2026-09-04: "el resplandor de la luna" narrado en pleno día. `fictionalMinutesActuales` (no
+    // `nuevoFictionalMinutes`, que todavía no se calcula aquí) es el momento de ANTES de que este
+    // turno avance el reloj — el momento real de la escena que se está narrando ahora mismo.
+    momentoDelDia: momentoDelDiaFor(fictionalMinutesActuales),
     onNarrationChunk,
     onNarrationReset,
   };
@@ -4578,7 +4643,11 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   // le prohíbe al modelo volver a traerla — esta frase es la única vez que se narra su marcha.
   const gisteraAceptaEsteTurno = gisteraSeHaMarchado && !gisteraQuestYaExiste;
   if (gisteraAceptaEsteTurno) {
-    narration.narration = `${narration.narration} Gistera Koh asiente, aliviada, y sin perder ni un segundo más echa a andar hacia el sur, en dirección a la Ciénaga Troncal, perdiéndose pronto entre la maleza.`;
+    // Destino ocultado de la narración visible (petición explícita de la usuaria, 2026-09-05): la
+    // frase ya no dice hacia dónde se va, solo que abandona la Hondonada del Eco. El destino real
+    // (Ciénaga Troncal) se queda solo en `newFacts` — memoria interna del motor para que el guard
+    // de "no vuelve a aparecer" (`gisteraSeHaMarchado`) siga funcionando, nunca mostrado al jugador.
+    narration.narration = `${narration.narration} Gistera Koh asiente, aliviada, y sin perder ni un segundo más se aleja de la Hondonada del Eco, perdiéndose pronto en el horizonte.`;
     narration.newFacts = [...narration.newFacts, `Gistera Koh se marchó hacia la Ciénaga Troncal en cuanto ${characterName} aceptó ayudarla — ya no está en escena, no volverá a aparecer.`];
   }
 
@@ -5878,6 +5947,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
           const grantedItems = await grantQuestRewardItems(tx, saveId, worldId, quest.rewardItems);
           if (grantedItems.length > 0 || quest.rewardXp) {
             const rewardText = questRewardNarrationFor(quest.title, grantedItems, quest.rewardXp);
+            // isSystemMessage (ver comentario completo en schema.prisma) — texto fijo determinista.
             const rewardEntry = await tx.logEntry.create({
               data: {
                 saveId,
@@ -5886,6 +5956,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
                 isPlayerAction: false,
                 timeLabel: nuevaFictionalDateLabel,
                 fictionalMinutes: nuevoFictionalMinutes,
+                isSystemMessage: true,
                 ...(nextAfterMainLogCreatedAt ? { createdAt: nextAfterMainLogCreatedAt() } : {}),
               },
             });
@@ -6697,10 +6768,26 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
       saveDynamicState?.lastDynamicModeOfferAtMinutes != null &&
       fictionalMinutesActuales - saveDynamicState.lastDynamicModeOfferAtMinutes < COOLDOWN_MODO_DINAMICO_MINUTOS;
     if (!saveDynamicState?.pendingDynamicMode && !enCooldown) {
-      const zonePointsParaOferta = await prisma.zonePoint.findMany({
+      const zonePointsRaw = await prisma.zonePoint.findMany({
         where: { locationId: regionLocationId, tipo: { in: ['NPC', 'FAUNA'] } },
         select: { tipo: true, targetSlug: true, cantidad: true },
       });
+      // Ver `ZonePointCandidateRow.temperamento` (dynamicMode.ts) — bug real, investigación
+      // 2026-09-05 a raíz de "Kirelon sobrerrepresentado": el problema nunca fue un peso de
+      // aparición mal calibrado, es que NINGÚN candidato se filtraba por temperamento, así que
+      // cualquier fauna/NPC AGRESIVO (7 fichas reales ya sembradas: cruzavientos/ferike/
+      // kirelon-arenoso/lebude/miruina/rondador-de-brasas/towrgu) se ofrecía igual que uno
+      // CAUTELOSO/INOFENSIVO. `effectiveTemperamento` (mismo cálculo que usa el resto del motor
+      // para decidir si un NPC fuerza combate) por si la reputación de facción lo desplaza — en la
+      // práctica casi toda la fauna no tiene `faction`, así que se queda en el valor de catálogo.
+      const npcsParaOferta = await prisma.npc.findMany({
+        where: { worldId, slug: { in: zonePointsRaw.map((p) => p.targetSlug) } },
+        select: { slug: true, temperamento: true, faction: true },
+      });
+      const temperamentoPorSlug = new Map(
+        npcsParaOferta.map((n) => [n.slug, effectiveTemperamento(n.temperamento, n.faction, freshFactionsStatus)]),
+      );
+      const zonePointsParaOferta = zonePointsRaw.map((p) => ({ ...p, temperamento: temperamentoPorSlug.get(p.targetSlug) ?? null }));
       const candidato = decideOfertaModoDinamico(zonePointsParaOferta);
       if (candidato) {
         const targetName = await dynamicModeCandidateNameFor(prisma, candidato);

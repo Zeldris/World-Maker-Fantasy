@@ -1,7 +1,7 @@
 import { env } from '../config/env.js';
 import { ollamaGenerate } from '../lib/ollama.js';
 import type { DynamicModeTipo } from './dynamicMode.js';
-import { hasCombatVocabulary, hasSecondPersonLeak } from './narrador.js';
+import { hasCombatVocabulary, hasSecondPersonLeak, hasHumanRaceLeak } from './narrador.js';
 
 /// Narración por LLM de UNA vuelta del "modo dinámico" (2026-08-27, Pieza 4 de "Dinamismo del
 /// mundo") — deliberadamente MÁS SIMPLE que `narrador.ts` § `narrateAction`/`buildNarrationPrompt`
@@ -43,6 +43,47 @@ export interface DynamicModeTurnoOutput {
   narration: string;
   opciones: string[];
   cierra: boolean;
+}
+
+/// Tiempo verbal (bug real, ronda 2 de pruebas autónomas 2026-09-05): una vuelta de modo dinámico
+/// narró en FUTURO ("un kirelon-arenoso emergerá... se asomarán... se tambalearán") en vez del
+/// presente narrativo que usan siempre las demás vueltas de la misma interacción — la escena ya
+/// está ocurriendo, nunca es una promesa a futuro. Acotado a este archivo (no a narrador.ts
+/// general): el modo dinámico nunca incluye diálogo citado con promesas futuras ("iré mañana"),
+/// así que aquí el futuro simple nunca es legítimo — un guard tan amplio sí arriesgaría falsos
+/// positivos en el resto del juego (diálogo de NPC, planes del personaje), por eso queda local.
+/// Cubre las terminaciones inequívocas del futuro simple regular (3ª persona singular/plural, las
+/// únicas que puede usar una narración en 3ª persona): -ará/-erá/-irá, -arán/-erán/-irán. La tilde
+/// en la á NUNCA es opcional — un primer intento con `[aá]` (acento opcional) disparaba en falso
+/// contra "Gist**era** Koh" (sustantivo, sin relación con el futuro) porque "era" sin tilde matchea
+/// igual que "erá"; el futuro simple español siempre lleva tilde en esta sílaba, así que exigirla
+/// elimina el falso positivo sin perder ningún caso real. `\b` tampoco sirve de límite derecho aquí
+/// — en JS, sin soporte nativo de `\w` unicode-aware, no reconoce "á" como carácter de palabra y
+/// falla justo tras la vocal acentuada — de ahí `(?!\p{L})` en su lugar.
+const FUTURE_TENSE_REGEX = /\p{L}+(?:ar|er|ir)á(?:n)?(?!\p{L})/iu;
+
+export function hasFutureTenseLeak(narration: string): boolean {
+  return FUTURE_TENSE_REGEX.test(narration);
+}
+
+/// Capacidad de comunicación (bug real reincidente — visto primero 2026-08-27 con un
+/// kirelon-arenoso "respondiendo" a "Preguntarle...", y de nuevo en la ronda de pruebas de
+/// verificación en vivo 2026-09-05 con un gesgurio ofreciendo "Intentar comunicarte con gesgurio").
+/// El prompt ya le pide explícitamente al modelo que FAUNA nunca hable (`capacidadHint` más abajo),
+/// pero un modelo pequeño la ignora bajo presión narrativa — mismo patrón exacto que ya obligó a
+/// guards deterministas para persona gramatical/fuga de "humanos"/tiempo verbal en este mismo
+/// archivo. `input.tipo` ('NPC' | 'FAUNA') YA es la señal de catálogo que distingue quién puede
+/// comunicarse hablando — este guard solo verifica que el OUTPUT del modelo la respeta de verdad,
+/// tanto en las opciones ofrecidas al jugador como en la propia narración (por si describe a la
+/// fauna "respondiendo" o "diciendo" algo). Acotado a FAUNA — un NPC con nombre propio sí puede
+/// hablar, ese camino nunca dispara este guard.
+const COMMUNICATION_VERBS_REGEX =
+  /\b(habla(r|ndo)?|hablas|dice(ndo)?|dijo|responde(r|ndo)?|contesta(r|ndo)?|pregunta(r(le|se)?|ndo)?|comunica(r(te|le)?|ndo)?|conversa(r|ndo)?|charla(r|ndo)?|dialoga(r|ndo)?)\b/i;
+
+export function hasFalseFaunaCommunication(tipo: DynamicModeTipo, narration: string, opciones: string[]): boolean {
+  if (tipo !== 'FAUNA') return false;
+  if (COMMUNICATION_VERBS_REGEX.test(narration)) return true;
+  return opciones.some((o) => COMMUNICATION_VERBS_REGEX.test(o));
 }
 
 export function buildDynamicModeTurnoPrompt(input: DynamicModeTurnoInput): { prompt: string; format: object } {
@@ -128,6 +169,9 @@ export async function narrarVueltaModoDinamico(input: DynamicModeTurnoInput): Pr
       // necesita su propio guard. Descarta el intento entero (no solo lo marca) y deja que el
       // bucle de reintento pruebe otra vez, mismo criterio que el resto de validadores en cascada.
       if (narration && hasSecondPersonLeak(narration)) continue;
+      if (narration && hasHumanRaceLeak(narration)) continue;
+      if (narration && hasFutureTenseLeak(narration)) continue;
+      if (narration && hasFalseFaunaCommunication(input.tipo, narration, opciones)) continue;
       if (narration && opciones.length >= 2) {
         // "Nunca sustituye un combate" (prompt, arriba) es solo una instrucción — un modelo pequeño
         // puede narrar un golpe real conectando sin marcar "cierra": true por su cuenta (mismo

@@ -8,6 +8,8 @@ import {
   sanitizeSuggestions,
   hasFalseCombatMiss,
   hasFalseCombatAttacker,
+  hasHumanRaceLeak,
+  hasFalseDefenseNarration,
   dropSuggestionsTargetingDownedNpc,
   dropSuggestionsAttackingHelpRequester,
   dropSuggestionsCompressingAcceptance,
@@ -30,6 +32,8 @@ import {
   hasGisteraReencuentroSinNombrar,
   hasFalseGisteraNamedReturn,
   hasFalseKarotVekuAsRiver,
+  hasWrongCelestialReference,
+  hasFalseMoonReference,
   hasFalseMaktorThreatClaim,
   hasFalseTravelClaim,
   hasFalsePhantomTravel,
@@ -465,6 +469,10 @@ describe('hasEnglishLeak', () => {
     expect(hasEnglishLeak('El viento siseante lo accompanies en su búsqueda.')).toBe(true);
   });
 
+  it('detecta "who" — pronombre relativo inglés sustituyendo a "que" (bug real, ronda de pruebas de verificación en vivo, 2026-09-05)', () => {
+    expect(hasEnglishLeak('Gorhorn bloquea el intento de ataque del Orco Enfurecido, who gruñe furiosamente pero evita el golpe sin herirse.')).toBe(true);
+  });
+
   // Reaparecido más grave (checklist 2026-09-01): cláusulas ENTERAS en inglés con vocabulario
   // nuevo cada vez (no palabras sueltas ya listadas) — detectado por densidad de palabras función
   // inglesas inequívocas en una ventana corta, no por listar cada sustantivo/verbo a mano.
@@ -494,6 +502,17 @@ describe('hasEnglishLeak', () => {
 
   it('no dispara con una sola palabra función suelta (menos de 3 en la ventana) — evita falsos positivos de una preposición aislada', () => {
     expect(hasEnglishLeak('Gorhorn cruza el puente con paso firme, decidido a llegar antes del anochecer.')).toBe(false);
+  });
+
+  // Genitivo sajón inglés (bug real, sesión autónoma de pruebas con Playwright, 2026-09-04): un
+  // solo apóstrofe+s pegado a un nombre propio, sin ninguna cláusula inglesa alrededor — ni la
+  // lista de palabras sueltas ni la densidad de cláusula (exige 3+ palabras función) lo cazaban.
+  it('detecta el genitivo sajón "Gorhorn\'s" en medio de una frase en español (bug real 2026-09-04)', () => {
+    expect(hasEnglishLeak('Gorhorn levanta su hacha y la clava, dejando una mancha roja en Gorhorn\'s pecho.')).toBe(true);
+  });
+
+  it('no dispara con comillas simples de cita normales del juego (no confundir apóstrofe de cita con posesivo)', () => {
+    expect(hasEnglishLeak("Gorhorn ataca al 'Orco enfurecido' con todas sus fuerzas.")).toBe(false);
   });
 });
 
@@ -702,6 +721,71 @@ describe('hasFalseCombatMiss', () => {
   it('2º bug real jugando en vivo el mismo día (prueba con Playwright, 2026-08-27, tras aplicar el fix de "bloquea el ataque"): detecta "se desvía" seguido de una mancha roja, cuando el golpe SÍ falló de verdad', () => {
     const narration = 'Gorhorn se desvía con agilidad, notando una mancha roja en su pecho. El golpe falla al último momento.';
     expect(hasFalseCombatMiss(narration, true)).toBe(true);
+  });
+
+  it('bug real jugando en vivo (sesión autónoma de pruebas con Playwright, 2026-09-04): detecta "no logra conectar" cuando el golpe SÍ conectó (turno de remate real)', () => {
+    const narration = 'Gorhorn lanza la Hacha de guerra rota con todas sus fuerzas, pero no logra conectar con su objetivo.';
+    expect(hasFalseCombatMiss(narration, true)).toBe(true);
+  });
+
+  it('bug real jugando en vivo (ronda 2 de pruebas autónomas, 2026-09-05): detecta "evita el golpe ágilmente" en un ataque FUERA del sistema de intercambios, con éxito claro real (nonExchangeAttackHitLanded)', () => {
+    const narration =
+      'Gorhorn lanza la hacha de guerra rota hacia el Quio con una precisión calculada, pero su objetivo evita el golpe ágilmente y comienza a filtrar más fango de las bocas de cueva.';
+    expect(hasFalseCombatMiss(narration, false, true)).toBe(true);
+  });
+
+  it('no dispara fuera del sistema de intercambios si el ataque no tuvo éxito real (nonExchangeAttackHitLanded=false)', () => {
+    const narration = 'Gorhorn lanza la hacha, pero el Quio evita el golpe ágilmente.';
+    expect(hasFalseCombatMiss(narration, false, false)).toBe(false);
+  });
+
+  it('no dispara fuera del sistema de intercambios sin ninguna señal (ambos parámetros ausentes)', () => {
+    expect(hasFalseCombatMiss('El Quio evita el golpe ágilmente.', undefined, undefined)).toBe(false);
+  });
+});
+
+describe('hasHumanRaceLeak', () => {
+  it('bug real jugando en vivo (ronda 2 de pruebas autónomas, 2026-09-05): detecta "los humanos" en un mundo sin raza humana', () => {
+    const narration =
+      'El gesgurio permanece quieto en la pared rocosa, sus ojos vidriosos fijos en ti como si pudieran ver lo que los humanos ocultan tras sus almas.';
+    expect(hasHumanRaceLeak(narration)).toBe(true);
+  });
+
+  it('detecta también singular/femenino ("humano"/"humana")', () => {
+    expect(hasHumanRaceLeak('Se mueve casi como un humano.')).toBe(true);
+    expect(hasHumanRaceLeak('Una figura humana se recorta contra el horizonte.')).toBe(true);
+  });
+
+  it('no dispara con narración normal sin mención de la palabra', () => {
+    const narration = 'Gorhorn camina hacia el sur, atento a cualquier señal de peligro.';
+    expect(hasHumanRaceLeak(narration)).toBe(false);
+  });
+
+  it('no dispara con palabras que solo contienen la subcadena "human" sin ser la palabra completa', () => {
+    expect(hasHumanRaceLeak('humanoide')).toBe(false);
+  });
+});
+
+describe('hasFalseDefenseNarration', () => {
+  it('bug real jugando en vivo (hallazgo 1, sesión autónoma de pruebas 2026-09-04): detecta una narración de búsqueda/reconocimiento durante la defensa a ciegas', () => {
+    const narration = 'Gorhorn mira atentamente a su alrededor, intentando localizar al Orco enfurecido antes de que ataque de nuevo.';
+    expect(hasFalseDefenseNarration(narration, true)).toBe(true);
+  });
+
+  it('detecta variantes de vocabulario de búsqueda (escudriñando, rastreando, tratando de encontrar)', () => {
+    expect(hasFalseDefenseNarration('Gorhorn escudriña las sombras buscando a su atacante.', true)).toBe(true);
+    expect(hasFalseDefenseNarration('El orco rastrea el terreno tratando de encontrar a Gorhorn.', true)).toBe(true);
+  });
+
+  it('no dispara si el jugador no estaba en el bloque de defensa a ciegas este intercambio', () => {
+    const narration = 'Gorhorn busca una abertura en la guardia del orco.';
+    expect(hasFalseDefenseNarration(narration, false)).toBe(false);
+    expect(hasFalseDefenseNarration(narration, undefined)).toBe(false);
+  });
+
+  it('no dispara con una narración de defensa genuina (bloquea/esquiva el golpe ya en marcha)', () => {
+    const narration = 'Gorhorn alza su hacha justo a tiempo, bloqueando el golpe del orco con un choque metálico.';
+    expect(hasFalseDefenseNarration(narration, true)).toBe(false);
   });
 });
 
@@ -1080,6 +1164,65 @@ describe('hasFalseKarotVekuAsRiver', () => {
   it('no dispara con una mención correcta de Karot Veku como campamento/lugar', () => {
     expect(hasFalseKarotVekuAsRiver('Gorhorn se dirige hacia Karot Veku, el campamento del Clan Serhu.')).toBe(false);
     expect(hasFalseKarotVekuAsRiver('A pocos kilómetros del Karot Veku estuvo a punto de caer en una trampa.')).toBe(false);
+  });
+});
+
+describe('hasWrongCelestialReference', () => {
+  it('detecta "estrellas"/"constelación" en pleno día', () => {
+    expect(hasWrongCelestialReference('Alza la vista hacia las estrellas, pensativo.', 'dia')).toBe(true);
+    expect(hasWrongCelestialReference('Reconoce la constelación de su infancia.', 'dia')).toBe(true);
+  });
+
+  it('detecta "sol"/"amanecer" narrado de noche', () => {
+    expect(hasWrongCelestialReference('El sol calienta su piel mientras camina.', 'noche')).toBe(true);
+    expect(hasWrongCelestialReference('Espera a que llegue el amanecer.', 'noche')).toBe(true);
+  });
+
+  it('no dispara si momentoDelDia no se pasa (undefined) — turnos fuera del alcance de este guard', () => {
+    expect(hasWrongCelestialReference('Alza la vista hacia las estrellas.', undefined)).toBe(false);
+  });
+
+  it('no dispara con estrellas de noche, ni sol/amanecer de día — coherentes con el momento real', () => {
+    expect(hasWrongCelestialReference('Las estrellas cubren el cielo despejado.', 'noche')).toBe(false);
+    expect(hasWrongCelestialReference('El sol de mediodía cae con fuerza sobre la llanura.', 'dia')).toBe(false);
+  });
+
+  it('no dispara con ambientación normal de escena sin mención de astros (oscuridad de una cueva, sombras)', () => {
+    expect(hasWrongCelestialReference('La cueva se sume en sombras y oscuridad total.', 'dia')).toBe(false);
+  });
+
+  it('ya no cubre "luna" — movida a hasFalseMoonReference (auditoría código↔lore, 2026-09-05, Helek Sirik no tiene luna en ningún momento del día)', () => {
+    expect(hasWrongCelestialReference('El resplandor de la luna la ilumina.', 'dia')).toBe(false);
+    expect(hasWrongCelestialReference('El resplandor de la luna la ilumina.', 'noche')).toBe(false);
+  });
+});
+
+describe('hasFalseMoonReference', () => {
+  it('bug real, sesión autónoma de pruebas con Playwright (2026-09-04, arreglado solo a medias): detecta "el resplandor de la luna" en CUALQUIER momento del día, no solo de día', () => {
+    const narration = 'Gorhorn asiente firmemente, sus ojos centelleando bajo el resplandor de la luna.';
+    expect(hasFalseMoonReference(narration)).toBe(true);
+  });
+
+  it('bug real de coherencia código↔lore (2026-09-05): el guard original solo cazaba "luna" DE DÍA — de noche pasaba limpio, siendo el caso más frecuente', () => {
+    expect(hasFalseMoonReference('La luna ilumina el camino de vuelta al campamento.')).toBe(true);
+  });
+
+  it('detecta "lunar" igual que "luna"', () => {
+    expect(hasFalseMoonReference('La luz lunar se refleja en el agua quieta.')).toBe(true);
+  });
+
+  it('no dispara con la expresión canónica "brillo de luna" (el nombre popular del cinturón de micro-cristales real, origen del nombre Kelife)', () => {
+    expect(hasFalseMoonReference('Su piel refleja el brillo de luna del cinturón de cristal.')).toBe(false);
+    expect(hasFalseMoonReference('Los Kelife son conocidos por su brillo de luna.')).toBe(false);
+  });
+
+  it('sigue detectando una mención suelta de "luna" aunque la misma narración también use la expresión canónica en otra frase', () => {
+    const narration = 'El brillo de luna baña su piel cristalina, pero al alzar la vista ve la luna llena sobre el horizonte.';
+    expect(hasFalseMoonReference(narration)).toBe(true);
+  });
+
+  it('no dispara con narración normal sin ninguna mención de luna', () => {
+    expect(hasFalseMoonReference('Las estrellas cubren el cielo despejado sobre la llanura.')).toBe(false);
   });
 });
 

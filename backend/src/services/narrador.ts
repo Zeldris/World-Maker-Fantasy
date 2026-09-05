@@ -111,6 +111,11 @@ interface TurnContext {
   /// `hasWrongAggressorName` para comparar directamente contra el campo estructurado
   /// "combateIniciado.npcSlugs" que el propio LLM devuelve, sin depender de parsear texto libre.
   nonHostileNpcSlugsInScene?: string[];
+  /// Ver `hasWrongCelestialReference` más abajo (bug real, sesión autónoma de pruebas 2026-09-04:
+  /// "el resplandor de la luna" narrado a las 08:16 de la mañana) — momento del día YA calculado
+  /// por el motor determinista (`momentoDelDiaFor`, worldClock.ts, mismo dato que usan las imágenes
+  /// de escena y la fauna diurna/nocturna), nunca decidido por el modelo.
+  momentoDelDia?: 'dia' | 'noche';
   /// Streaming (roadmap de velocidad, 2026-07-20, punto 13): si se pasa, el intento principal
   /// (el que de verdad ocurre en la inmensa mayoría de turnos) transmite el texto de "narration"
   /// según se va generando, en vez de esperar a tener el JSON entero. Solo cubre el intento 1 —
@@ -166,6 +171,20 @@ interface TurnContext {
   /// `defensor_contragolpea` cuando de verdad contragolpea) — si la narración describe una esquiva o
   /// bloqueo limpio de todos modos, es una alucinación, no una licencia narrativa — se reintenta.
   combatRealHitLanded?: boolean;
+  /// Ver `hasFalseCombatMiss` más abajo — mismo bug que `combatRealHitLanded`, pero para un ataque
+  /// que nunca pasó por el sistema de combate por intercambios (bug real jugando en vivo, sesión
+  /// autónoma 2026-09-05: atacar a fauna/NPC pasivo ANTES de que se abra combate formal se resuelve
+  /// como tirada de acción libre — roll con `success:true`/`gradoExito:'claro'`, pero la narración
+  /// describió una esquiva limpia). True cuando la acción de este turno era un ataque
+  /// (`countsAsAttack`) resuelto FUERA de un intercambio de combate, con éxito real en la tirada.
+  nonExchangeAttackHitLanded?: boolean;
+  /// Ver `hasFalseDefenseNarration` más abajo — bug real, hallazgo 1 de la sesión autónoma de
+  /// pruebas 2026-09-04 (cerrado el 2026-09-05): true cuando el jugador está en el bloque "CASO
+  /// DEFENSA" de `turnResolution.ts` (responde a ciegas a un ataque del NPC ya decidido el
+  /// intercambio anterior). Si la narración describe una escena de búsqueda/reconocimiento del
+  /// enemigo en vez de bloquear/esquivar el golpe recibido, es una alucinación de tipo de acción,
+  /// no una licencia narrativa — se reintenta.
+  playerActedAsDefenderThisExchange?: boolean;
   /// Ver `hasPrematureCombatResolution` más abajo — true cuando hay un NPC real en escena pero
   /// NINGÚN intercambio de combate se ha resuelto todavía este turno (ni ataque ni "Decapitar"),
   /// típicamente un turno de aceptación/promesa verbal ("Yo me ocupo de tu perseguidor"). Si la
@@ -1363,15 +1382,20 @@ export async function narrateAction(ctx: TurnContext & { roll?: RollResult }): P
         { check: () => hasAnachronism(parsed.narration), reason: 'anacronismo' },
         { check: () => isTooSimilarToLast(parsed.narration, ctx.lastNarrationText), reason: 'repetir casi verbatim el turno anterior' },
         { check: () => hasEnglishLeak(parsed.narration), reason: 'fuga de inglés' },
+        { check: () => hasHumanRaceLeak(parsed.narration), reason: 'mención de "humano/humana" — Helek Sirik no tiene raza humana' },
         { check: () => hasSecondPersonLeak(parsed.narration), reason: 'salto a segunda persona fuera de diálogo citado' },
         { check: () => hasFalseCombatHit(narrationAndFacts, ctx.combatBothMissed), reason: 'narrar (en prosa o en newFacts) un golpe que no conectó (ataque_falla/parada_en_seco)' },
         {
-          check: () => hasFalseCombatMiss(narrationAndFacts, ctx.combatRealHitLanded),
+          check: () => hasFalseCombatMiss(narrationAndFacts, ctx.combatRealHitLanded, ctx.nonExchangeAttackHitLanded),
           reason: 'narrar (en prosa o en newFacts) una esquiva/bloqueo limpio cuando el golpe sí conectó (golpe_normal/golpe_pleno/golpes_mutuos)',
         },
         {
           check: () => hasFalseCombatAttacker(narrationAndFacts, ctx.characterName, ctx.jugadorRecibeGolpeEsteTurno),
           reason: 'narrar (en prosa o en newFacts) al jugador acertando un golpe cuando el golpe real de este intercambio lo dio el NPC contra el jugador',
+        },
+        {
+          check: () => hasFalseDefenseNarration(parsed.narration, ctx.playerActedAsDefenderThisExchange),
+          reason: 'narrar una escena de búsqueda/reconocimiento del enemigo en vez de bloquear/esquivar el golpe recibido en la defensa a ciegas',
         },
         {
           check: () => hasPrematureCombatResolution(narrationAndFacts, ctx.combatNotYetResolved),
@@ -1405,6 +1429,14 @@ export async function narrateAction(ctx: TurnContext & { roll?: RollResult }): P
         {
           check: () => hasFalseKarotVekuAsRiver(narrationAndFacts),
           reason: 'describir Karot Veku como un río — es el nombre nativo del campamento del Clan Serhu, no un accidente geográfico',
+        },
+        {
+          check: () => hasWrongCelestialReference(parsed.narration, ctx.momentoDelDia),
+          reason: 'mencionar estrellas en pleno día, o sol/amanecer/atardecer de noche — el momento del día ya lo decide el motor determinista',
+        },
+        {
+          check: () => hasFalseMoonReference(parsed.narration),
+          reason: 'mencionar la luna — Helek Sirik no tiene luna convencional, en ningún momento del día (excepto la expresión fija "brillo de luna", el cinturón de micro-cristales real)',
         },
         {
           check: () => hasFalseMaktorThreatClaim(narrationAndFacts),
@@ -1614,8 +1646,12 @@ export function hasFalseMaktorThreatClaim(narration: string): boolean {
 /// siseante lo accompanies en su búsqueda" — variante nueva del mismo hueco, pero con un VERBO
 /// conjugado en inglés sustituyendo al verbo español ("acompaña") en mitad de la frase, no un
 /// sustantivo/adjetivo suelto como los casos anteriores.
+///
+/// "who" añadido (ronda de pruebas de verificación en vivo, 2026-09-05): "el Orco Enfurecido, who
+/// gruñe furiosamente" — pronombre relativo inglés sustituyendo a "que" en mitad de una frase por
+/// lo demás en español, mismo patrón exacto que el resto de la lista.
 const ENGLISH_LEAK_REGEX =
-  /\b(own|the|and|was|with|from|small|clearing|several|lullaby|nearby|forest|shadow|whisper|silence|darkness|distant|accompanies)\b/i;
+  /\b(own|the|and|was|with|from|small|clearing|several|lullaby|nearby|forest|shadow|whisper|silence|darkness|distant|accompanies|who)\b/i;
 
 /// Reaparecido más grave (checklist 2026-09-01, sesión de combate en vivo tras varios reinicios de
 /// Ollama/backend): no palabras sueltas, sino CLÁUSULAS ENTERAS en inglés dentro de una frase por
@@ -1647,8 +1683,16 @@ function hasEnglishClauseDensity(narration: string): boolean {
   return false;
 }
 
+/// Genitivo sajón inglés (bug real, sesión autónoma de pruebas con Playwright, 2026-09-04):
+/// "dejando una mancha roja en Gorhorn's pecho" — un solo apóstrofe+s pegado a un nombre no dispara
+/// ni la lista de palabras sueltas ni la densidad de cláusula (`hasEnglishClauseDensity` exige 3+
+/// palabras función en una ventana de 12; aquí es una fuga puntual, no una cláusula completa). El
+/// posesivo con apóstrofe no existe en español — cualquier `\w+'s` seguido de espacio es, en la
+/// práctica, siempre una fuga real, nunca un uso legítimo.
+const ENGLISH_POSSESSIVE_REGEX = /\w+'s\b/;
+
 export function hasEnglishLeak(narration: string): boolean {
-  return ENGLISH_LEAK_REGEX.test(narration) || hasEnglishClauseDensity(narration);
+  return ENGLISH_LEAK_REGEX.test(narration) || hasEnglishClauseDensity(narration) || ENGLISH_POSSESSIVE_REGEX.test(narration);
 }
 
 /// Red de seguridad determinista para la instrucción de persona gramatical fija de
@@ -1840,11 +1884,18 @@ export function hasCombatVocabulary(narration: string): boolean {
 // real en Éxito para Gorhorn (esquiva de verdad) y Fallo para el orco (no conecta). Mismo hueco de
 // vocabulario, verbo distinto — "se aparta a tiempo" ya existía pero exigía "a tiempo" detrás,
 // dejando pasar "se aparta"/"se desvía" sueltos, que son igual de comunes en la prosa real.
+//
+// "no logra conectar (con)" (bug real, sesión autónoma de pruebas con Playwright, 2026-09-04):
+// turno de remate real contra un Orco CONVALECIENTE, roll de Éxito con coste (19 vs 11, el golpe SÍ
+// conecta según el resumen mecánico), pero la narración dijo "Gorhorn lanza la Hacha de guerra rota
+// con todas sus fuerzas, pero NO LOGRA CONECTAR con su objetivo" — negación directa de impacto que
+// ninguna de las frases de arriba cubría (no es "esquiva"/"se aparta", es la negación explícita del
+// verbo "conectar" que el propio resumen mecánico usa para narrar el ÉXITO — "el golpe conecta").
 const COMBAT_MISS_LEAK_REGEX =
-  /\b(esquiv[oa]|esquivando|esquiv[aá]ndol[oa]|elude|eludiendo|evade|evita el golpe|sortea|sorteando|por un pelo|ni siquiera (roza|toca)|sin (rozarlo|rozarla|tocarlo|tocarla)|detiene el golpe en seco|para en seco|se aparta|se desv[ií]a|bloquea por completo|bloquea\s+(el|su|un|tu)\s+(ataque|golpe|zarpazo|tajo|estocada|mandoble))\b/i;
+  /\b(esquiv[oa]|esquivando|esquiv[aá]ndol[oa]|elude|eludiendo|evade|evita el golpe|sortea|sorteando|por un pelo|ni siquiera (roza|toca)|sin (rozarlo|rozarla|tocarlo|tocarla)|detiene el golpe en seco|para en seco|se aparta|se desv[ií]a|bloquea por completo|bloquea\s+(el|su|un|tu)\s+(ataque|golpe|zarpazo|tajo|estocada|mandoble)|no logra conectar|no consigue conectar|no llega a conectar)\b/i;
 
-export function hasFalseCombatMiss(narration: string, combatRealHitLanded?: boolean): boolean {
-  if (!combatRealHitLanded) return false;
+export function hasFalseCombatMiss(narration: string, combatRealHitLanded?: boolean, nonExchangeAttackHitLanded?: boolean): boolean {
+  if (!combatRealHitLanded && !nonExchangeAttackHitLanded) return false;
   return COMBAT_MISS_LEAK_REGEX.test(narration);
 }
 
@@ -2317,6 +2368,78 @@ const KAROT_VEKU_AS_WATER_REGEX = /\b(r[ií]o|lago|laguna|afluente|arroyo|cauce)
 
 export function hasFalseKarotVekuAsRiver(narration: string): boolean {
   return KAROT_VEKU_AS_WATER_REGEX.test(normalizeText(narration));
+}
+
+/// Fuga de vocabulario de fantasía genérica (bug real, ronda 2 de pruebas autónomas 2026-09-05): un
+/// gesgurio en modo dinámico narró "como si pudieran ver lo que los humanos ocultan tras sus almas"
+/// — Helek Sirik no tiene ninguna raza humana, jugable ni narrativa (orcos/goirntes/nabieus/faerus,
+/// ver worldCatalog.ts, donde "humano/humanoide" solo aparece como adjetivo genérico de forma
+/// corporal, nunca como nombre de raza). El modelo arrastró vocabulario por defecto de fantasía
+/// típica sin adaptarlo al lore real de este mundo. Sin contexto adicional — "humano" nunca es
+/// correcto en ningún turno de esta partida, así que no hace falta condicionarlo a nada.
+const HUMAN_RACE_LEAK_REGEX = /\bhumanos?\b|\bhumanas?\b/i;
+
+export function hasHumanRaceLeak(narration: string): boolean {
+  return HUMAN_RACE_LEAK_REGEX.test(normalizeText(narration));
+}
+
+/// Narración-vs-mecánica (bug real jugando en vivo, hallazgo 1 de la sesión autónoma de pruebas
+/// 2026-09-04): el jugador respondía a ciegas a un ataque del NPC ya decidido ("CASO DEFENSA",
+/// `turnResolution.ts`), pero la narración describió a Gorhorn "mirando atentamente... intentando
+/// localizar al Orco enfurecido" — una escena de búsqueda/reconocimiento, como si el enemigo
+/// todavía no estuviera identificado ni atacando, en vez de bloquear/esquivar el golpe ya en
+/// marcha. Vocabulario de "buscar/localizar al enemigo" no tiene sentido cuando el NPC ya está en
+/// escena y ya lanzó su ataque este mismo intercambio — es una alucinación de tipo de acción, no
+/// una licencia narrativa (el personaje podría estar atento/alerta DURANTE la defensa, pero no
+/// "buscando" a quien ya tiene delante y ya le está atacando).
+const SEARCHING_ENEMY_LEAK_REGEX =
+  /\b(buscando|intenta(ndo)?\s+localizar|trata(ndo)?\s+de\s+localizar|intenta(ndo)?\s+encontrar|trata(ndo)?\s+de\s+encontrar|escudri[ñn]a(ndo)?|otea(ndo)?|rastrea(ndo)?)\b/i;
+
+export function hasFalseDefenseNarration(narration: string, playerActedAsDefenderThisExchange?: boolean): boolean {
+  if (!playerActedAsDefenderThisExchange) return false;
+  return SEARCHING_ENEMY_LEAK_REGEX.test(narration);
+}
+
+/// Narración-vs-mundo determinista (bug real, sesión autónoma de pruebas con Playwright, 2026-09-04):
+/// "sus ojos centelleando bajo el resplandor de la luna" narrado en un turno a las 08:16 de la
+/// mañana, con "Amanece sobre Helek Sirik..." como primera línea de la propia partida — el sistema
+/// SÍ calcula correctamente el momento del día (`momentoDelDiaFor`, worldClock.ts — usado para
+/// imágenes de escena y fauna diurna/nocturna), pero ese dato nunca se pasaba al narrador como
+/// restricción de coherencia. Solo dispara con referencias INEQUÍVOCAS al astro contrario (luna/
+/// estrellas de noche estrellada en pleno día; sol/amanecer/atardecer de noche) — deliberadamente
+/// sin incluir "oscuridad"/"sombra"/"claridad" (pueden describir un interior, una cueva, un eclipse
+/// narrativo legítimo) para no disparar en falso con ambientación de escena normal.
+///
+/// "luna"/"lunar" se sacaron de aquí (auditoría de coherencia código↔lore, 2026-09-05) — el guard
+/// original solo los rechazaba DE DÍA, pero Helek Sirik NUNCA tiene luna convencional
+/// (`genesis.md` § "El cielo sin luna"), de día o de noche: el bug real que motivó este guard
+/// ("resplandor de la luna" a las 08:16 de la mañana) se arregló solo para el caso diurno, dejando
+/// pasar el caso de noche, que es justo el más frecuente. Ver `hasFalseMoonReference` más abajo,
+/// que cubre ambos momentos del día a la vez.
+const NIGHT_REF_IN_DAY_REGEX = /\b(estrellas?|noche\s+estrellada|constelaci[oó]n(es)?)\b/i;
+const DAY_REF_IN_NIGHT_REGEX = /\b(sol|solar|amanecer|atardecer|luz\s+del\s+d[ií]a)\b/i;
+
+export function hasWrongCelestialReference(narration: string, momentoDelDia?: 'dia' | 'noche'): boolean {
+  if (!momentoDelDia) return false;
+  const normalized = normalizeText(narration);
+  if (momentoDelDia === 'dia') return NIGHT_REF_IN_DAY_REGEX.test(normalized);
+  return DAY_REF_IN_NIGHT_REGEX.test(normalized);
+}
+
+/// Narración-vs-lore (auditoría de coherencia código↔lore, 2026-09-05): Helek Sirik nunca tuvo una
+/// luna convencional (`genesis.md` § "El cielo sin luna") — lo que hay de noche es un cinturón
+/// difuso de micro-cristales que refleja un brillo perlado, nunca un disco de luna. A diferencia de
+/// `hasWrongCelestialReference` (que compara contra el momento del día), esta regla es absoluta:
+/// "luna"/"lunar" nunca son correctos, en ningún turno, de día o de noche. Única excepción: la
+/// expresión fija "brillo de luna" (el nombre POPULAR y legítimo del fenómeno real, origen del
+/// nombre de los Kelife — `razas.md`/`genesis.md`) — se excluye de la comprobación antes de buscar
+/// el resto de menciones sueltas de luna/lunar.
+const MOON_REFERENCE_REGEX = /\b(luna|lunar)\b/i;
+const CANONICAL_MOONLIGHT_PHRASE_REGEX = /brillo\s+de\s+luna/gi;
+
+export function hasFalseMoonReference(narration: string): boolean {
+  const withoutCanonicalPhrase = narration.replace(CANONICAL_MOONLIGHT_PHRASE_REGEX, '');
+  return MOON_REFERENCE_REGEX.test(normalizeText(withoutCanonicalPhrase));
 }
 
 /// Narración-vs-mecánica, mismo patrón que `hasFalseItemUse`/`hasResurrectedDeadNpc` (bug real
