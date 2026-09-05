@@ -105,6 +105,7 @@ export function npcInSceneToCombatDisplay(npc: NpcInSceneInfo): CombatNpcDisplay
     participantId: npc.participantId,
     instanceNumber: npc.instanceNumber,
     capturable: npc.capturable,
+    targetedForKill: npc.targetedForKill,
   }
 }
 

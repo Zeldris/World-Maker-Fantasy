@@ -168,6 +168,9 @@ export interface NpcInScene {
   domesticablePct: number;
   cortejablePct: number;
   capturablePct: number;
+  /// "Matar" persistido (2026-09-05, bug real: se perdía al recargar) — mismo criterio que
+  /// `analizado`, ver NpcState.targetedForKill en schema.prisma.
+  targetedForKill: boolean;
 }
 
 export interface NpcWithAliases {
@@ -240,6 +243,7 @@ export function buildNpcInScene(npc: NpcWithItems, state: NpcState | undefined):
     domesticablePct: npc.domesticablePct,
     cortejablePct: npc.cortejablePct,
     capturablePct: npc.capturablePct,
+    targetedForKill: state?.targetedForKill ?? false,
   };
 }
 

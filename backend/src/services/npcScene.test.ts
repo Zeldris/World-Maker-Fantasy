@@ -687,6 +687,7 @@ function npcFixture(overrides: Partial<NpcInScene> = {}): NpcInScene {
     domesticablePct: 0,
     cortejablePct: 0,
     capturablePct: 0,
+    targetedForKill: false,
     ...overrides,
   };
 }

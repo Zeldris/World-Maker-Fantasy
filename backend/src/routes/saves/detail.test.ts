@@ -278,7 +278,7 @@ describe('GET /saves/:id', () => {
     const res = await app.inject({ method: 'GET', url: '/saves/save1' });
     expect(res.statusCode).toBe(200);
     expect(res.json().combateIniciado).toEqual({
-      npcs: [{ slug: 'orco-enfurecido-hondonada', name: 'Orco Enfurecido', condicionFisica: 'MUERTO', saqueado: false, lootedItemNames: ['Maza orca'], analizado: false, capturable: true, activeEffects: [] }],
+      npcs: [{ slug: 'orco-enfurecido-hondonada', name: 'Orco Enfurecido', condicionFisica: 'MUERTO', saqueado: false, lootedItemNames: ['Maza orca'], analizado: false, capturable: true, activeEffects: [], targetedForKill: false }],
     });
   });
 
@@ -316,7 +316,7 @@ describe('GET /saves/:id', () => {
     const res = await app.inject({ method: 'GET', url: '/saves/save1' });
     expect(res.statusCode).toBe(200);
     expect(res.json().combateIniciado).toEqual({
-      npcs: [{ slug: 'ruptidar', name: 'Ruptidar', condicionFisica: 'ILESO', saqueado: false, lootedItemNames: [], analizado: false, capturable: true, activeEffects: [] }],
+      npcs: [{ slug: 'ruptidar', name: 'Ruptidar', condicionFisica: 'ILESO', saqueado: false, lootedItemNames: [], analizado: false, capturable: true, activeEffects: [], targetedForKill: false }],
     });
   });
 

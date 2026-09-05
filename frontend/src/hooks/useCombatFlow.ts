@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type Dispatch, type SetStateAction } from 'react'
 import type { CombatNpcDisplay } from '../components/CombatComposer'
-import { requestTurnClassify, requestTurnNarrate, requestFlee, requestHuirEnCurso, postCapturar, dejarVivir, type EnciclopediaResponse } from '../lib/api'
+import { requestTurnClassify, requestTurnNarrate, requestFlee, requestHuirEnCurso, requestCerrarCombate, requestMatar, postCapturar, dejarVivir, type EnciclopediaResponse } from '../lib/api'
 import { isTurnLockedError, npcInSceneToCombatDisplay, combatKeyFor, combatDisplayNameFor, applyInventoryDelta, questCompletedLogEntry } from '../lib/gameViewHelpers'
 import { combatDifficultyFor, type CombatDifficulty } from '../lib/combatDifficulty'
 import { ROLL_DURATION_MS } from '../components/DiceRoll'
@@ -433,14 +433,20 @@ export function useCombatFlow(params: UseCombatFlowParams) {
   // anterior seguía ejecutando un ataque automático (Ataque Básico) en cuanto se pulsaba el botón,
   // sin dejar elegir nada, contradiciendo la intención real del rediseño: "debe abrir el combate de
   // nuevo, no resolverse solo"). Pulsar "Matar" ya NO dispara ningún turno — solo marca
-  // `targetedForKill: true` en `combatNpcStates`, lo que desbloquea el panel/composer
-  // (`combatHasPendingConvalecientes`) y oculta la tarjeta persistente del log para ese NPC
-  // (LogPanel.tsx). El jugador ataca después con el panel de combate NORMAL — habilidad elegida o
-  // texto libre citando al NPC entre comillas simples (`explicitTarget`, backend), exactamente
-  // igual que contra cualquier otro rival — con riesgo real de tirada (el CONVALECIENTE ya lleva el
-  // malus más alto de la tabla, `CONDICION_MALUS`, -10, death.ts). El NPC sigue CONVALECIENTE hasta
-  // que un intercambio real lo mate; el cierre del combate sigue siendo responsabilidad única del
-  // `useEffect` de `combatEnded` de arriba (MUERTO o `dismissed`).
+  // `targetedForKill: true`, lo que desbloquea el panel/composer (`combatHasPendingConvalecientes`)
+  // y oculta la tarjeta persistente del log para ese NPC (LogPanel.tsx). El jugador ataca después
+  // con el panel de combate NORMAL — habilidad elegida o texto libre citando al NPC entre comillas
+  // simples (`explicitTarget`, backend), exactamente igual que contra cualquier otro rival — con
+  // riesgo real de tirada (el CONVALECIENTE ya lleva el malus más alto de la tabla,
+  // `CONDICION_MALUS`, -10, death.ts). El NPC sigue CONVALECIENTE hasta que un intercambio real lo
+  // mate; el cierre del combate sigue siendo responsabilidad única del `useEffect` de `combatEnded`
+  // de arriba (MUERTO o `dismissed`).
+  // Bug real jugando en vivo (2026-09-04/05): `targetedForKill` solo se marcaba en `combatNpcStates`
+  // (React), sin llamar a ningún endpoint — recargar la página perdía la decisión, la tarjeta
+  // MATAR/CLEMENTE reaparecía de cero y el composer volvía a bloquearse. Ahora se persiste en el
+  // backend (`NpcState.targetedForKill`, `POST /saves/:id/combat/matar/:npcSlug`) — el estado
+  // optimista local sigue igual para respuesta inmediata sin esperar la red. Solo combate 1v1
+  // clásico por ahora (sin `participantId`) — combate múltiple sigue usando solo el estado local.
   function handleDecapitarSeleccion(npcs: CombatNpcDisplay[]) {
     if (npcs.length === 0) return
     setCombatNpcStates((prev) => {
@@ -452,6 +458,11 @@ export function useCombatFlow(params: UseCombatFlowParams) {
       }
       return next
     })
+    if (saveId) {
+      for (const npc of npcs) {
+        if (!npc.participantId) requestMatar(saveId, npc.slug).catch(() => {})
+      }
+    }
   }
 
   // Botón "Capturar" (2026-08-26, CONVALECIENTE deja de ser "victoria automática") — reutiliza
@@ -792,10 +803,19 @@ export function useCombatFlow(params: UseCombatFlowParams) {
   // combate ya terminó de verdad (todos los NPCs resueltos, ver `combatEnded` arriba); aquí sí es
   // seguro limpiar `combatAwaitingDefense`, para que el PRÓXIMO combate no herede por error un
   // "toca defender" de este que ya se cerró.
+  // Bug real (2026-09-04/05): esto solo limpiaba el estado LOCAL de React — `Save.pendingCombatNpcSlugs`
+  // seguía sucio en el backend, así que la siguiente recarga reconstruía `combateIniciado` desde
+  // ahí y dejaba el composer bloqueado para siempre (`GameView.tsx`, `composerDisabled`). Ahora se
+  // avisa al backend (`POST /saves/:id/combat/cerrar`) para que lo vacíe de verdad — fire-and-
+  // forget, sin bloquear el cierre visual: si el servidor responde 409 (de verdad queda algo
+  // pendiente, p.ej. un CONVALECIENTE sin resolver que el cliente no debería haber dejado cerrar),
+  // el aviso de combate simplemente reaparecerá en la próxima resincronización, que es exactamente
+  // el comportamiento correcto en ese caso — mejor que dejar el botón "Salir" bloqueado esperando.
   function closeCombat() {
     setCombatOpen(false)
     setCombateIniciado(null)
     setCombatAwaitingDefense(false)
+    if (saveId) requestCerrarCombate(saveId).catch(() => {})
   }
 
   return {

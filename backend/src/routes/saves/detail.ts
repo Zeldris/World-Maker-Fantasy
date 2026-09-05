@@ -261,6 +261,10 @@ export async function detailRoutes(app: FastifyInstance) {
               // el resto de campos de aquí: recargar la partida a mitad de combate no debe perder
               // un AUMENTO/DEBILIDAD ya activo.
               activeEffects: parseActiveEffects(state?.activeEffects),
+              // "Matar" persistido (2026-09-05, bug real: se perdía al recargar) — mismo criterio
+              // que `analizado`: sin esto, recargar tras pulsar Matar volvía a mostrar la tarjeta
+              // MATAR/CLEMENTE y bloqueaba el composer de nuevo.
+              targetedForKill: state?.targetedForKill ?? false,
             };
           }),
         }

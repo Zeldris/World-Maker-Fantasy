@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { Prisma } from '@prisma/client';
 import { prisma } from '../../lib/prisma.js';
-import { contraataqueDifficultyFor, scopeFor } from '../../services/npcScene.js';
+import { contraataqueDifficultyFor, scopeFor, hasPendingLoot } from '../../services/npcScene.js';
 import { effectiveAttributes, effectiveDefense } from '../../services/equipment.js';
 import { rollCheck } from '../../services/dice.js';
 import type { AttributeBlock } from '../../services/dice.js';
@@ -105,8 +105,53 @@ export async function sessionRoutes(app: FastifyInstance) {
         channel: 'CHARACTER',
         text: `${save.characterName} decide no seguir adelante con eso — cambia de idea antes de empezar.`,
         timeLabel: save.worldState?.fictionalDateLabel ?? 'Día 1, mañana',
+        // Ver comentario completo en schema.prisma § isSystemMessage — texto fijo determinista,
+        // nunca generado por el LLM.
+        isSystemMessage: true,
       },
     });
+    return reply.status(204).send();
+  });
+
+  // Cerrar el combate al pulsar "Salir" en la pantalla de victoria/derrota ya resuelta (bug real
+  // jugando en vivo, 2026-09-04/05, sesión autónoma de pruebas: Matar → Rematar → Saquear todo
+  // dejaba `Save.pendingCombatNpcSlugs` con el slug del NPC ya MUERTO Y SAQUEADO — "Salir"
+  // (`CombatPanel.tsx`, `onContinue` → `closeCombat` en `useCombatFlow.ts`) solo limpiaba el
+  // `combateIniciado` LOCAL de React; el backend nunca se enteraba, así que la siguiente
+  // `GET /saves/:id` (recarga, o cualquier resincronización) reconstruía `combateIniciado` desde
+  // el array todavía sucio, y `composerDisabled` de GameView.tsx (`!!combateIniciado &&
+  // !combat.combatOpen`) dejaba el composer bloqueado para siempre — sin ningún turno nuevo capaz
+  // de recalcular el array (esa recalculación solo vive dentro de un turno real,
+  // `resolveCombatSlugsAndPersist` en turnResolution.ts). Validado en servidor (no basta con
+  // confiar en que el cliente solo llama a esto cuando ve la pantalla de "combate terminado"):
+  // ningún slug de `pendingCombatNpcSlugs` puede seguir CONVALECIENTE (Matar/Capturar/Clemente sin
+  // resolver) ni con botín pendiente (`hasPendingLoot`, mismo criterio que `saquear-zona`) — si
+  // alguno lo está, se devuelve 409 y el array se deja intacto, en vez de cerrar un combate real a
+  // medias solo porque el cliente lo pidió.
+  app.post<{ Params: { id: string } }>('/saves/:id/combat/cerrar', async (request, reply) => {
+    const save = await prisma.save.findUnique({
+      where: { id: request.params.id },
+      select: { id: true, currentLocationId: true, pendingCombatNpcSlugs: true },
+    });
+    if (!save) {
+      return reply.status(404).send({ error: 'Partida no encontrada' });
+    }
+    const slugs = (save.pendingCombatNpcSlugs as string[] | null) ?? [];
+    if (slugs.length === 0) {
+      return reply.status(204).send();
+    }
+    const npcs = await prisma.npc.findMany({ where: { slug: { in: slugs } }, select: { id: true, slug: true, kind: true } });
+    const states = await prisma.npcState.findMany({ where: { saveId: save.id, npcId: { in: npcs.map((n) => n.id) } } });
+    const stateFor = (npcId: string, scope: string) => states.find((s) => s.npcId === npcId && s.scope === scope);
+    const stillPending = npcs.some((npc) => {
+      const state = stateFor(npc.id, scopeFor(npc.kind, save.currentLocationId));
+      if (!state) return false;
+      return state.condicionFisica === 'CONVALECIENTE' || hasPendingLoot(state);
+    });
+    if (stillPending) {
+      return reply.status(409).send({ error: 'Todavía queda algo por resolver en este combate' });
+    }
+    await prisma.save.update({ where: { id: save.id }, data: { pendingCombatNpcSlugs: [] } });
     return reply.status(204).send();
   });
 
@@ -180,7 +225,9 @@ export async function sessionRoutes(app: FastifyInstance) {
       const mismoSet = freshSlugs.length === pendingSlugs.length && freshSlugs.every((s) => pendingSlugs.includes(s));
       if (!mismoSet) return { kind: 'cambiado' as const };
 
-      await tx.logEntry.create({ data: { saveId: save.id, channel: 'CHARACTER', text, timeLabel, roll: roll as unknown as Prisma.InputJsonValue } });
+      // isSystemMessage (ver comentario completo en schema.prisma) — `text` viene de una lista
+      // fija por índice de dado, nunca generado por el LLM.
+      await tx.logEntry.create({ data: { saveId: save.id, channel: 'CHARACTER', text, timeLabel, roll: roll as unknown as Prisma.InputJsonValue, isSystemMessage: true } });
       if (roll.success) {
         // Punto del jugador en el mapa de Zona (2026-09-04) — huir con éxito antes de entrar en
         // combate vuelve al punto de ENTRADA de la zona, no al centro ni junto al enemigo.
@@ -270,7 +317,9 @@ export async function sessionRoutes(app: FastifyInstance) {
       const mismoSet = freshSlugs.length === pendingSlugs.length && freshSlugs.every((s) => pendingSlugs.includes(s));
       if (!mismoSet) return { kind: 'cambiado' as const };
 
-      await tx.logEntry.create({ data: { saveId: save.id, channel: 'CHARACTER', text, timeLabel, roll: roll as unknown as Prisma.InputJsonValue } });
+      // isSystemMessage (ver comentario completo en schema.prisma) — `text` viene de una lista
+      // fija por índice de dado, nunca generado por el LLM.
+      await tx.logEntry.create({ data: { saveId: save.id, channel: 'CHARACTER', text, timeLabel, roll: roll as unknown as Prisma.InputJsonValue, isSystemMessage: true } });
       await tx.save.update({
         where: { id: save.id },
         data: {
@@ -288,6 +337,31 @@ export async function sessionRoutes(app: FastifyInstance) {
       return reply.status(409).send({ error: 'El combate cambió mientras intentabas huir — vuelve a intentarlo.' });
     }
     return { escaped: roll.success, text, condicionFisica: nuevaCondicion, roll };
+  });
+
+  // "Matar" un CONVALECIENTE — solo marca la DECISIÓN, no resuelve nada por sí mismo (rediseño
+  // 2026-08-30: el remate real es un intercambio de combate normal, con riesgo real). Bug real
+  // jugando en vivo (2026-09-04/05): esta decisión solo vivía en `combatNpcStates` de React
+  // (`targetedForKill`, `useCombatFlow.ts`) — recargar la página la perdía, la tarjeta MATAR/
+  // CLEMENTE reaparecía de cero y el composer volvía a bloquearse hasta pulsar Matar otra vez. Solo
+  // camino 1v1 clásico (`NpcState`) por ahora — combate múltiple (`CombatParticipant`) usa un
+  // sistema de condición paralelo (`condicionFisicaGrupo`) que queda fuera de esta pieza.
+  app.post<{ Params: { id: string; npcSlug: string } }>('/saves/:id/combat/matar/:npcSlug', async (request, reply) => {
+    const save = await prisma.save.findUnique({ where: { id: request.params.id }, select: { id: true, worldId: true, currentLocationId: true } });
+    if (!save) return reply.status(404).send({ error: 'Partida no encontrada' });
+
+    const npc = await prisma.npc.findUnique({ where: { worldId_slug: { worldId: save.worldId, slug: request.params.npcSlug } } });
+    if (!npc) return reply.status(404).send({ error: 'NPC no encontrado' });
+
+    const scope = scopeFor(npc.kind, save.currentLocationId);
+    const state = await prisma.npcState.findUnique({ where: { saveId_npcId_scope: { saveId: save.id, npcId: npc.id, scope } } });
+    if (!state || state.condicionFisica !== 'CONVALECIENTE') {
+      return reply.status(400).send({ error: 'Solo puedes marcar para matar a un enemigo CONVALECIENTE.' });
+    }
+    if (!state.targetedForKill) {
+      await prisma.npcState.update({ where: { id: state.id }, data: { targetedForKill: true } });
+    }
+    return reply.status(204).send();
   });
 
   // CONVALECIENTE deja de ser "victoria automática" (petición explícita, 2026-08-26): sobre un
@@ -345,7 +419,8 @@ export async function sessionRoutes(app: FastifyInstance) {
           const locked = await lockRowForUpdate<{ dismissedGrupo: boolean | null }>(tx, 'CombatParticipant', participantId, ['dismissedGrupo']);
           if (locked.dismissedGrupo) return null;
           await tx.combatParticipant.update({ where: { id: participantId }, data: { dismissedGrupo: true } });
-          const created = await tx.logEntry.create({ data: { saveId: save.id, channel: 'CHARACTER', text, timeLabel } });
+          // isSystemMessage (ver comentario completo en schema.prisma) — texto fijo determinista.
+          const created = await tx.logEntry.create({ data: { saveId: save.id, channel: 'CHARACTER', text, timeLabel, isSystemMessage: true } });
           // Reputación de facción (2026-09-04) — mismo criterio que el camino 1v1 clásico de más
           // abajo, ver su comentario completo.
           const factionRepChange = await applyFactionRepDeltaForResolution(tx, save.id, npc.faction, FACTION_REP_MERCY_DELTA);
@@ -384,7 +459,8 @@ export async function sessionRoutes(app: FastifyInstance) {
 
         const freshSlugs = freshBefore.filter((s) => s !== npc.slug);
         await tx.save.update({ where: { id: save.id }, data: { pendingCombatNpcSlugs: freshSlugs } });
-        const created = await tx.logEntry.create({ data: { saveId: save.id, channel: 'CHARACTER', text, timeLabel } });
+        // isSystemMessage (ver comentario completo en schema.prisma) — texto fijo determinista.
+        const created = await tx.logEntry.create({ data: { saveId: save.id, channel: 'CHARACTER', text, timeLabel, isSystemMessage: true } });
         // Reputación de facción (2026-09-04, bug real jugando en vivo: "me resta la reputación
         // antes de matarlo... si elijo matar tiene que esperar a que resuelva el combate antes de
         // restarlo, en el turno final") — Clemente es una de las 3 decisiones finales posibles

@@ -834,6 +834,11 @@ export interface NpcInSceneInfo {
   /// (sin `CombatEncounter` de por medio, no hay `CombatParticipant` que exponer).
   participantId?: string
   instanceNumber?: number | null
+  /// "Matar" persistido (2026-09-05, bug real: se perdía al recargar) — mismo criterio que
+  /// `analizado`: llega ya resuelto del backend (`NpcState.targetedForKill`), en vez de vivir solo
+  /// en `combatNpcStates` de React. Solo combate 1v1 clásico por ahora, siempre `false` en combate
+  /// múltiple (no soportado todavía en el backend para ese camino).
+  targetedForKill?: boolean
 }
 
 /// Un enlace de objeto/habilidad estilo World of Warcraft, insertado dentro del propio texto

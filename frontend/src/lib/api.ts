@@ -673,6 +673,14 @@ export async function cancelTransit(id: string): Promise<void> {
   return fetchJson(`${API_URL}/saves/${id}/transit/cancel`, { method: 'POST' })
 }
 
+// Cerrar el combate al pulsar "Salir" en la pantalla de victoria/derrota (bug real 2026-09-04/05):
+// sin esto, `pendingCombatNpcSlugs` seguía sucio en el backend tras Matar+Saquear, bloqueando el
+// composer para siempre en la siguiente recarga. El backend valida que no quede nada pendiente de
+// verdad (409 si sí) antes de vaciar el array — el frontend solo lo llama, no decide.
+export async function requestCerrarCombate(id: string): Promise<void> {
+  await fetchJson(`${API_URL}/saves/${id}/combat/cerrar`, { method: 'POST' })
+}
+
 // Huir antes de entrar al combate (2026-07-24) — una sola tirada determinista en el backend, sin
 // IA: `escaped` decide si el frontend limpia el aviso de "Combatir" o abre el popup igualmente.
 // `roll` (2026-08-30, bug real: 3 intentos seguidos narraban la misma frase fija sin ningún
@@ -1159,6 +1167,14 @@ export async function dejarVivir(
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ participantId }),
   })
+}
+
+/// "Matar" un CONVALECIENTE (2026-09-05, bug real: la decisión solo vivía en React,
+/// `combatNpcStates`/`targetedForKill` — se perdía al recargar) — solo marca la decisión en
+/// `NpcState.targetedForKill`, no resuelve nada por sí mismo (el remate real sigue siendo un
+/// intercambio normal, riesgo real). Solo combate 1v1 clásico por ahora.
+export async function requestMatar(saveId: string, npcSlug: string): Promise<void> {
+  await fetchJson(`${API_URL}/saves/${saveId}/combat/matar/${npcSlug}`, { method: 'POST' })
 }
 
 export interface TameoPendiente {

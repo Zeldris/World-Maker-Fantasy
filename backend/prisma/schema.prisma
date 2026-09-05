@@ -637,6 +637,14 @@ model LogEntry {
   /// RollInfo: { attribute, value, difficulty, result, success } — null si la entrada no es una tirada
   roll              Json?
   isPlayerAction    Boolean    @default(false)
+  /// Mensaje DETERMINISTA de sistema (2026-09-05, bug real: "Gorhorn asume su clase: GUERRERO."
+  /// se guardaba igual que una narración normal del Narrador, isPlayerAction:false — el turno
+  /// SIGUIENTE lo recibía como "TU PROPIA NARRACIÓN DEL TURNO ANTERIOR" y el modelo lo repitió
+  /// literalmente al inicio de la narración nueva, sin ningún sentido). true en cualquier LogEntry
+  /// construido a mano fuera de `narrateAndPersistTurn` (elegir clase, subir de nivel, descubrir
+  /// una ubicación, etc. — texto fijo, nunca generado por el LLM) para excluirlo de
+  /// `lastNarration` (turnResolution.ts) sin depender de reconocer el texto por coincidencia.
+  isSystemMessage   Boolean    @default(false)
   timeLabel         String
   /// XP ganada en esta entrada, si alguna (docs/10-niveles-xp-reino.md § 6) — permite mostrar
   /// "+50 XP" en el Diario y auditar el nivel sumando el log.
@@ -2142,6 +2150,15 @@ model NpcState {
   /// para 1 individuo) cuando `groupSize` no es null. Disponibles para despiece ahora mismo =
   /// `groupDefeated - corpsesLooted`, nunca negativo.
   corpsesLooted               Int             @default(0)
+  /// "Matar" pulsado sobre un CONVALECIENTE (2026-09-05, bug real jugando en vivo: el desbloqueo
+  /// del composer tras pulsar "Matar" solo vivía en `combatNpcStates` de React —
+  /// `useCombatFlow.ts`, `handleDecapitarSeleccion` — y no sobrevivía a una recarga de página: la
+  /// tarjeta MATAR/CLEMENTE reaparecía de cero y el composer volvía a bloquearse hasta pulsar
+  /// Matar de nuevo). Mismo criterio de reset que `analizado`/`saqueado`: se resetea cuando
+  /// `condicionFisica` vuelve a ILESO (curación entre combates), nunca durante el mismo encuentro.
+  /// El propio golpe de gracia sigue siendo un intercambio real (`explicitTarget`/habilidad
+  /// elegida) — esto solo recuerda la DECISIÓN de intentarlo, no resuelve nada por sí mismo.
+  targetedForKill              Boolean         @default(false)
   updatedAt                   DateTime        @updatedAt
 
   @@unique([saveId, npcId, scope])

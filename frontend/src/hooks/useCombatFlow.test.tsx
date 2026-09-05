@@ -21,11 +21,13 @@ vi.mock('../lib/api', () => ({
   requestTurnNarrate: vi.fn(),
   requestFlee: vi.fn(),
   requestHuirEnCurso: vi.fn(),
+  requestCerrarCombate: vi.fn(),
+  requestMatar: vi.fn(),
   postCapturar: vi.fn(),
   dejarVivir: vi.fn(),
 }))
 
-import { requestTurnClassify, requestTurnNarrate, requestFlee, requestHuirEnCurso, postCapturar, dejarVivir } from '../lib/api'
+import { requestTurnClassify, requestTurnNarrate, requestFlee, requestHuirEnCurso, requestCerrarCombate, requestMatar, postCapturar, dejarVivir } from '../lib/api'
 
 const mockClassify = vi.mocked(requestTurnClassify)
 const mockNarrate = vi.mocked(requestTurnNarrate)
@@ -33,6 +35,8 @@ const mockPostCapturar = vi.mocked(postCapturar)
 const mockDejarVivir = vi.mocked(dejarVivir)
 const mockFlee = vi.mocked(requestFlee)
 const mockHuirEnCurso = vi.mocked(requestHuirEnCurso)
+const mockCerrarCombate = vi.mocked(requestCerrarCombate)
+const mockMatar = vi.mocked(requestMatar)
 
 function npc(overrides: Partial<NpcInSceneInfo> & { slug: string; name: string }): NpcInSceneInfo {
   return { condicionFisica: 'ILESO', saqueado: false, lootedItemNames: [], analizado: false, capturable: true, activeEffects: [], ...overrides }
@@ -135,6 +139,8 @@ beforeEach(() => {
   mockHuirEnCurso.mockReset()
   mockPostCapturar.mockReset()
   mockDejarVivir.mockReset()
+  mockCerrarCombate.mockReset().mockResolvedValue(undefined)
+  mockMatar.mockReset().mockResolvedValue(undefined)
 })
 
 describe('openCombat', () => {
@@ -585,6 +591,33 @@ describe('handleDecapitarSeleccion', () => {
     expect(mockClassify).not.toHaveBeenCalled()
     expect(result.current.combat.combatNpcsDisplay.every((n) => n.targetedForKill)).toBe(true)
   })
+
+  // Bug real jugando en vivo (2026-09-04/05): esto solo vivía en `combatNpcStates` de React —
+  // recargar la página perdía la decisión, la tarjeta MATAR/CLEMENTE reaparecía de cero y el
+  // composer se bloqueaba otra vez. Ahora se avisa al backend (`NpcState.targetedForKill`
+  // persistido, `POST /saves/:id/combat/matar/:npcSlug`) para que sobreviva a una recarga real.
+  it('avisa al backend para persistir targetedForKill de verdad (sobrevive a recargar)', () => {
+    const { result } = renderHook(() => useHarness())
+    act(() => result.current.setCombateIniciado({ npcs: [npc({ slug: 'orco', name: 'Orco', condicionFisica: 'CONVALECIENTE' })] }))
+    act(() => result.current.combat.openCombat())
+
+    const target = result.current.combat.combatNpcsDisplay[0]!
+    act(() => result.current.combat.handleDecapitarSeleccion([target]))
+
+    expect(mockMatar).toHaveBeenCalledWith('save-1', 'orco')
+  })
+
+  it('con participantId (combate múltiple) NO llama al backend — ese camino no lo soporta todavía', () => {
+    const { result } = renderHook(() =>
+      useHarness({ npcs: [npc({ slug: 'orco', name: 'Orco', condicionFisica: 'CONVALECIENTE', participantId: 'p1' })] }),
+    )
+    act(() => result.current.combat.openCombat())
+
+    const target = result.current.combat.combatNpcsDisplay[0]!
+    act(() => result.current.combat.handleDecapitarSeleccion([target]))
+
+    expect(mockMatar).not.toHaveBeenCalled()
+  })
 })
 
 describe('handleSaquearSeleccion', () => {
@@ -651,6 +684,18 @@ describe('closeCombat / handleCombatHuir', () => {
     act(() => result.current.combat.closeCombat())
     expect(result.current.combat.combatOpen).toBe(false)
     expect(result.current.combateIniciado).toBeNull()
+  })
+
+  // Bug real jugando en vivo (2026-09-04/05): esto solo limpiaba el estado LOCAL de React —
+  // `Save.pendingCombatNpcSlugs` seguía sucio en el backend tras Matar+Saquear, dejando el
+  // composer bloqueado para siempre en la siguiente recarga (ver `POST /saves/:id/combat/cerrar`
+  // nuevo en session.ts). `closeCombat` ahora avisa al backend para que lo limpie de verdad.
+  it('closeCombat avisa al backend para limpiar pendingCombatNpcSlugs de verdad', () => {
+    const { result } = renderHook(() => useHarness())
+    act(() => result.current.setCombateIniciado({ npcs: [npc({ slug: 'orco', name: 'Orco' })] }))
+    act(() => result.current.combat.openCombat())
+    act(() => result.current.combat.closeCombat())
+    expect(mockCerrarCombate).toHaveBeenCalledWith('save-1')
   })
 
   // Ronda de correcciones 2026-08-28 (P3.2): "Huir DENTRO de combate debe tener riesgo real" — antes
