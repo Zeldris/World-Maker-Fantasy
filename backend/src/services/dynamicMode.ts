@@ -1,4 +1,4 @@
-import type { PrismaClient, ZonePointTipo } from '@prisma/client';
+import type { PrismaClient, Temperamento, ZonePointTipo } from '@prisma/client';
 import { sourceDisplayNameFor } from '../scripts/worldCatalog.js';
 
 /// "Modo dinámico" (2026-08-27, Pieza 4 de "Dinamismo del mundo") — mini-flujo acotado que el
@@ -22,6 +22,18 @@ interface ZonePointCandidateRow {
   tipo: ZonePointTipo;
   targetSlug: string;
   cantidad: number;
+  /// Ver el filtro de `decideOfertaModoDinamico` más abajo (bug real, investigación 2026-09-05 a
+  /// raíz del hallazgo "Kirelon sobrerrepresentado": el kirelon-arenoso NO tiene un peso de
+  /// aparición mal calibrado — tiene `temperamento: 'AGRESIVO'` en el catálogo, y el modo dinámico
+  /// nunca miraba el temperamento de ningún candidato. Confirmado con datos reales en Postgres: 7
+  /// fichas de fauna AGRESIVA (`cruzavientos`/`ferike`/`kirelon-arenoso`/`lebude`/`miruina`/
+  /// `rondador-de-brasas`/`towrgu`) ya sembradas con `ZonePoint` activos estaban igual de expuestas
+  /// — el problema nunca fue específico de un animal, es que el filtro de candidatos no existía).
+  /// El caller (`turnResolution.ts`) resuelve esto contra `Npc.temperamento` real antes de llamar
+  /// aquí — null si no se pudo resolver ningún `Npc` para ese `targetSlug` (nunca debería pasar en
+  /// la práctica, toda fauna/NPC con `ZonePoint` tiene fila `Npc`, pero un `null` se trata como "no
+  /// descartar" para no bloquear la oferta entera por un dato ausente).
+  temperamento: Temperamento | null;
 }
 
 /// Probabilidad de ofrecer el modo dinámico EN CADA TURNO donde hay al menos un candidato —
@@ -45,7 +57,13 @@ export const COOLDOWN_MODO_DINAMICO_MINUTOS = 45;
 /// nombre legible del candidato se resuelve aparte (`dynamicModeCandidateNameFor`, mismo criterio
 /// que `zonePointsSummaryFor` — esta función es pura, sin Prisma).
 export function decideOfertaModoDinamico(zonePoints: ZonePointCandidateRow[], random: () => number = Math.random): DynamicModeCandidato | null {
-  const candidatos = zonePoints.filter((p) => (p.tipo === 'NPC' || p.tipo === 'FAUNA') && p.cantidad > 0);
+  // AGRESIVO excluido a propósito (ver comentario de `ZonePointCandidateRow.temperamento`) — "casi
+  // cualquier interacción deriva en combate" (definición de catálogo, schema.prisma) es justo lo
+  // opuesto al espíritu de este modo ("mini-interacción puntual", nunca sustituye combate): ofrecer
+  // "Observarlo/Ofrecerle comida/Ignorarlo" contra un depredador que ataca casi seguro es
+  // incoherente con su propia ficha. AMIGABLE/INOFENSIVO/CAUTELOSO sí encajan — el resto del rango
+  // de hostilidad todavía admite una interacción pacífica real.
+  const candidatos = zonePoints.filter((p) => (p.tipo === 'NPC' || p.tipo === 'FAUNA') && p.cantidad > 0 && p.temperamento !== 'AGRESIVO');
   if (candidatos.length === 0) return null;
   if (random() >= PROBABILIDAD_OFERTA) return null;
 
