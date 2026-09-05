@@ -209,11 +209,13 @@ export async function restartSaveTransactionBody(
     where: { saveId: save.id },
     data: { fictionalDateLabel, fictionalMinutes: 480, agenda: [], factionsStatus: {} },
   });
+  // isSystemMessage (ver comentario completo en schema.prisma) — ambos textos son deterministas
+  // (awakensText es pura, introWorldText es plantilla fija), nunca pasan por el LLM.
   await tx.logEntry.create({
-    data: { saveId: save.id, channel: 'CHARACTER', text: introCharacterText, timeLabel: fictionalDateLabel },
+    data: { saveId: save.id, channel: 'CHARACTER', text: introCharacterText, timeLabel: fictionalDateLabel, isSystemMessage: true },
   });
   await tx.logEntry.create({
-    data: { saveId: save.id, channel: 'WORLD', text: introWorldText, timeLabel: fictionalDateLabel },
+    data: { saveId: save.id, channel: 'WORLD', text: introWorldText, timeLabel: fictionalDateLabel, isSystemMessage: true },
   });
   await tx.savedAction.createMany({
     data: [

@@ -549,8 +549,10 @@ export async function turnRoutes(app: FastifyInstance) {
       await prisma.logEntry.create({
         data: { saveId, channel: 'CHARACTER', text: action, isPlayerAction: true, timeLabel: blockedTimeLabel, fictionalMinutes: blockedFictionalMinutes },
       });
+      // isSystemMessage (ver comentario completo en schema.prisma) — `narrationText` viene de un
+      // guard determinista (frase fija o de un pool pequeño), nunca generado por el LLM.
       await prisma.logEntry.create({
-        data: { saveId, channel: 'CHARACTER', text: narrationText, isPlayerAction: false, timeLabel: blockedTimeLabel, fictionalMinutes: blockedFictionalMinutes },
+        data: { saveId, channel: 'CHARACTER', text: narrationText, isPlayerAction: false, timeLabel: blockedTimeLabel, fictionalMinutes: blockedFictionalMinutes, isSystemMessage: true },
       });
       // `discoverName` (bug real jugando en vivo, 2026-09-03, "fauna interactuada no se
       // desbloquea en la Enciclopedia" — corregido de nuevo tras un flake real: `ABSENT_NPC_LINES`
@@ -797,6 +799,7 @@ export async function turnRoutes(app: FastifyInstance) {
             createdAt: playerActionAt,
           },
         }),
+        // isSystemMessage (ver comentario completo en schema.prisma) — texto fijo determinista.
         prisma.logEntry.create({
           data: {
             saveId,
@@ -805,6 +808,7 @@ export async function turnRoutes(app: FastifyInstance) {
             timeLabel,
             fictionalMinutes: save.worldState?.fictionalMinutes ?? 480,
             createdAt: startTextAt,
+            isSystemMessage: true,
           },
         }),
         prisma.characterTransit.upsert({
@@ -954,6 +958,7 @@ export async function turnRoutes(app: FastifyInstance) {
             createdAt: playerActionAt,
           },
         });
+        // isSystemMessage (ver comentario completo en schema.prisma) — texto fijo determinista.
         await tx.logEntry.create({
           data: {
             saveId,
@@ -962,6 +967,7 @@ export async function turnRoutes(app: FastifyInstance) {
             timeLabel,
             fictionalMinutes: save.worldState?.fictionalMinutes ?? 480,
             createdAt: startTextAt,
+            isSystemMessage: true,
           },
         });
         // Building.status EN_CONSTRUCCION real (2026-08-23) — la fila se crea YA, dentro de la

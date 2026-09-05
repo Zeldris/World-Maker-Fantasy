@@ -142,6 +142,10 @@ export async function progressionRoutes(app: FastifyInstance) {
           channel: 'CHARACTER',
           text: `${save.characterName} asume su clase: ${clase}.`,
           timeLabel: save.worldState?.fictionalDateLabel ?? 'Día 1, mañana',
+          // Bug real (2026-09-05, ver comentario completo en schema.prisma § isSystemMessage) —
+          // texto fijo determinista, nunca generado por el LLM: sin esto, el turno SIGUIENTE lo
+          // recibía como "tu propia narración del turno anterior" y podía repetirlo literalmente.
+          isSystemMessage: true,
         },
       }),
     ]);
@@ -199,6 +203,7 @@ export async function progressionRoutes(app: FastifyInstance) {
           channel: 'CHARACTER',
           text: `${save.characterName} se especializa: ${especializacion}.`,
           timeLabel: save.worldState?.fictionalDateLabel ?? 'Día 1, mañana',
+          isSystemMessage: true,
         },
       }),
     ]);

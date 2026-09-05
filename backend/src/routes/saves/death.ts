@@ -58,12 +58,15 @@ export async function deathRoutes(app: FastifyInstance) {
             data: { status: 'ACTIVO' },
           });
         }
+        // isSystemMessage (ver comentario completo en schema.prisma) — awakensText es una función
+        // pura, texto fijo determinista, nunca pasa por el LLM.
         await tx.logEntry.create({
           data: {
             saveId: save.id,
             channel: 'CHARACTER',
             text: awakensText(save.characterName, respawnLocation?.name ?? 'un lugar que reconoce', false),
             timeLabel: save.worldState?.fictionalDateLabel ?? 'Día 1, mañana',
+            isSystemMessage: true,
           },
         });
         await tx.save.update({

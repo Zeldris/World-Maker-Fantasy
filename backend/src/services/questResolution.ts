@@ -180,6 +180,8 @@ export async function closeItemQuests(params: {
         parseRewardCompanion(quest.rewardCompanion),
       );
       if (grantedItems.length > 0 || quest.rewardXp || grantedRecipeKeys.length > 0 || grantedCompanionName) {
+        // isSystemMessage (ver comentario completo en schema.prisma) — questRewardNarrationFor es
+        // una función pura, texto fijo determinista, nunca pasa por el LLM.
         await tx.logEntry.create({
           data: {
             saveId,
@@ -188,6 +190,7 @@ export async function closeItemQuests(params: {
             isPlayerAction: false,
             timeLabel,
             fictionalMinutes,
+            isSystemMessage: true,
             ...(createdAt ? { createdAt: createdAt() } : {}),
           },
         });
@@ -229,6 +232,7 @@ export async function completeNpcTargetQuests(
     );
     if (grantedItems.length > 0 || quest.rewardXp || grantedRecipeKeys.length > 0 || grantedCompanionName) {
       const rewardText = questRewardNarrationFor(quest.title, grantedItems, quest.rewardXp, grantedRecipeKeys, grantedCompanionName);
+      // isSystemMessage (ver comentario completo en schema.prisma) — texto fijo determinista.
       const rewardEntry = await tx.logEntry.create({
         data: {
           saveId,
@@ -237,6 +241,7 @@ export async function completeNpcTargetQuests(
           isPlayerAction: false,
           timeLabel,
           fictionalMinutes,
+          isSystemMessage: true,
           ...(createdAt ? { createdAt: createdAt() } : {}),
         },
       });

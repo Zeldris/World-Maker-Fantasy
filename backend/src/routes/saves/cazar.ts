@@ -411,7 +411,8 @@ export async function cazarRoutes(app: FastifyInstance) {
         }
         await decrementPopulationOnDeath(tx, save.worldId, null, npc.slug, region);
         await tx.worldState.update({ where: { saveId: save.id }, data: { fictionalMinutes: nuevoFictionalMinutes, fictionalDateLabel: timeLabel } });
-        const created = await tx.logEntry.create({ data: { saveId: save.id, channel: 'CHARACTER', text, timeLabel, fictionalMinutes: nuevoFictionalMinutes, isPlayerAction: false } });
+        // isSystemMessage (ver comentario completo en schema.prisma) — texto fijo determinista.
+        const created = await tx.logEntry.create({ data: { saveId: save.id, channel: 'CHARACTER', text, timeLabel, fictionalMinutes: nuevoFictionalMinutes, isPlayerAction: false, isSystemMessage: true } });
         await tx.save.update({ where: { id: save.id }, data: { pendingCombatNpcSlugs: [npc.slug] } });
         return created;
       });

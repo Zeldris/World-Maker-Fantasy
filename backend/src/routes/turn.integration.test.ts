@@ -11,6 +11,7 @@ import { detailRoutes } from './saves/detail.js';
 import { deathRoutes } from './saves/death.js';
 import { entregaRoutes } from './saves/entrega.js';
 import { sessionRoutes } from './saves/session.js';
+import { progressionRoutes } from './saves/progression.js';
 import { questsRoutes } from './saves/quests.js';
 import { minutosConDestreza, bandaForMinutos } from '../services/travel.js';
 import type { NarrationResult } from '../services/narrador.js';
@@ -84,6 +85,7 @@ const { turnRoutes } = await import('./turn.js');
 async function buildApp() {
   const app = Fastify();
   await app.register(turnRoutes);
+  await app.register(sessionRoutes);
   return app;
 }
 
@@ -369,6 +371,66 @@ describe('Misión de apertura: combate contra el Orco Enfurecido (integración r
     const saveAfter = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
     expect(saveAfter.pendingCombatNpcSlugs).toEqual([]);
   }, 30_000);
+
+  // Bug real jugando en vivo (2026-09-04/05, sesión autónoma de pruebas con Playwright, partida
+  // real de la usuaria): tras Matar → Rematar → Saquear un NPC, `Save.pendingCombatNpcSlugs` podía
+  // quedar con el slug del NPC ya MUERTO Y SAQUEADO (confirmado en la partida real: el turno de
+  // saqueo persistió su `LogEntry` de acción pero sin `resolveCombatSlugsAndPersist` limpiando el
+  // array — el turno de narración de respuesta nunca llegó a completarse). Sin ninguna vía de
+  // recuperación: `GameView.tsx` (`composerDisabled = !!combateIniciado && !combat.combatOpen`)
+  // bloqueaba el composer para siempre, y "Salir" del panel de combate (`closeCombat`,
+  // `useCombatFlow.ts`) solo limpiaba el estado LOCAL de React, nunca el backend. Fix: nuevo
+  // endpoint `POST /saves/:id/combat/cerrar`, llamado por `closeCombat` — vacía
+  // `pendingCombatNpcSlugs` de verdad, validando en servidor que no quede nada pendiente real
+  // (CONVALECIENTE sin resolver o botín sin saquear) antes de aceptarlo.
+  it('POST /saves/:id/combat/cerrar limpia pendingCombatNpcSlugs cuando el NPC ya está MUERTO y saqueado', async () => {
+    const app = await buildApp();
+    const executeAction = "Remato a Orco enfurecido, asestándole el golpe de gracia final.";
+    const classifyRes = await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action: executeAction, enCombate: true } });
+    const { classification, roll } = classifyRes.json();
+    await app.inject({
+      method: 'POST',
+      url: '/turn/narrate',
+      payload: { saveId, action: executeAction, classification, roll, enCombate: true },
+    });
+    const stateAfterExecute = await prisma.npcState.findFirst({ where: { saveId, npcId } });
+    expect(stateAfterExecute?.condicionFisica).toBe('MUERTO');
+
+    // Se fuerza el escenario roto directamente (en vez de depender de reproducir el camino exacto
+    // que lo dejó así en producción): el array sigue con el slug pese al NPC ya resuelto — este es
+    // justo el estado real encontrado en la partida bloqueada. `saqueado: false` explícito (otro
+    // test anterior de este mismo describe pudo dejarlo ya saqueado) para comprobar de verdad el
+    // camino de rechazo.
+    await prisma.npcState.update({ where: { id: stateAfterExecute!.id }, data: { saqueado: false, lootedItemNames: [] } });
+    await prisma.save.update({ where: { id: saveId }, data: { pendingCombatNpcSlugs: ['orco-enfurecido-hondonada'] } });
+
+    // Sin saquear todavía: el endpoint debe rechazar el cierre (409) — de verdad queda botín.
+    const rejectedRes = await app.inject({ method: 'POST', url: `/saves/${saveId}/combat/cerrar` });
+    expect(rejectedRes.statusCode).toBe(409);
+    const saveStillDirty = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
+    expect(saveStillDirty.pendingCombatNpcSlugs).toEqual(['orco-enfurecido-hondonada']);
+
+    // Saqueado del todo (mismo criterio que hasPendingLoot: sin groupSize, `saqueado: true` basta).
+    await prisma.npcState.update({ where: { id: stateAfterExecute!.id }, data: { saqueado: true } });
+
+    const okRes = await app.inject({ method: 'POST', url: `/saves/${saveId}/combat/cerrar` });
+    expect(okRes.statusCode).toBe(204);
+    const saveClean = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
+    expect(saveClean.pendingCombatNpcSlugs).toEqual([]);
+  }, 30_000);
+
+  it('POST /saves/:id/combat/cerrar rechaza (409) si el NPC sigue CONVALECIENTE sin resolver', async () => {
+    const app = await buildApp();
+    // Reutiliza el estado ya CONVALECIENTE que dejó el primer test de este describe (el Orco no
+    // se remató en este test) — si otro test previo ya lo remató a MUERTO, se fuerza aquí a mano.
+    await prisma.npcState.updateMany({ where: { saveId, npcId }, data: { condicionFisica: 'CONVALECIENTE', saqueado: false } });
+    await prisma.save.update({ where: { id: saveId }, data: { pendingCombatNpcSlugs: ['orco-enfurecido-hondonada'] } });
+
+    const res = await app.inject({ method: 'POST', url: `/saves/${saveId}/combat/cerrar` });
+    expect(res.statusCode).toBe(409);
+    const save = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
+    expect(save.pendingCombatNpcSlugs).toEqual(['orco-enfurecido-hondonada']);
+  }, 15_000);
 });
 
 // "Saquear" general (2026-08-17, petición explícita: "que funcione igual que saquear de un
@@ -4095,7 +4157,6 @@ describe('Crafteo con espera real (2026-08-20): transit con busyUntil, resoluci�
     const vendajesAntes = (await prisma.inventoryItem.findMany({ where: { saveId } })).filter((i) => i.name === 'Vendaje improvisado').length;
 
     const app = await buildApp();
-    await app.register(sessionRoutes);
     const classifyRes = await app.inject({
       method: 'POST',
       url: '/turn/classify',
@@ -6886,5 +6947,173 @@ describe('Reputación de facción solo en la decisión final (rematar a MUERTO),
     expect(body.factionRepChange).toEqual({ faction: 'Clan Serhu', delta: -150, newValue: 2350 });
     const worldStateAfter = await prisma.worldState.findUniqueOrThrow({ where: { saveId } });
     expect((worldStateAfter.factionsStatus as Record<string, number>)['Clan Serhu']).toBe(2350);
+  }, 15_000);
+});
+
+// Bug real, sesión autónoma de pruebas con Playwright (2026-09-04): Gistera Koh es `PRINCIPAL`
+// (npcScene.ts § `candidateNpcs`, cualquier PRINCIPAL es candidato en CUALQUIER ubicación del
+// mundo) — sin restricción propia, su gancho guionizado de huida se disparó dentro de Karot Veku,
+// el campamento fortificado del Clan Serhu del que ella dice estar escapando. Petición explícita
+// de la usuaria: debe aparecer nada más Gorhorn se mueva por La Hondonada del Eco, como de las
+// primeras cosas que ve al empezar el juego — nunca en otra ubicación mientras siga sin
+// presentarse del todo.
+describe('Gistera Koh solo aparece en La Hondonada del Eco mientras sigue sin presentarse (bug real 2026-09-04)', () => {
+  it('en Karot Veku (otra ubicación real), el primer turno NO dispara el gancho de Gistera Koh', async () => {
+    const userId = await getDefaultUserId();
+    const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
+    const karotVeku = await prisma.location.findFirstOrThrow({ where: { worldId: world.id, slug: 'campamento-serhu' } });
+    const save = await prisma.save.create({
+      data: {
+        userId,
+        worldId: world.id,
+        characterName: 'Gorhorn de prueba (Gistera fuera de sitio)',
+        characterArchetype: 'guerrero',
+        characterOrigin: 'Clan Maktor',
+        characterMotivation: 'x',
+        attributes: ATTRS,
+        portraitInitial: 'G',
+        currentLocationId: karotVeku.id,
+      },
+    });
+    try {
+      await prisma.worldState.create({ data: { saveId: save.id } });
+      // `mockClear` (no solo `mockResolvedValue`) — un `mockResolvedValueOnce` sobrante de un test
+      // ANTERIOR de este mismo archivo (que no llegó a consumirse, p.ej. porque ese test falló
+      // antes de llamar a narrateAction) quedaría en cola y respondería a ESTE test con el
+      // resultado de otro test completamente distinto, dando un falso positivo/negativo aquí.
+      narrateAction.mockClear();
+      narrateAction.mockImplementation(async (ctx: { onNarrationChunk?: (d: string) => void }) => {
+        ctx.onNarrationChunk?.('Gorhorn explora la zona con calma.');
+        return { narration: 'Gorhorn explora la zona con calma.', newFacts: [] };
+      });
+      classifyAction.mockResolvedValue({
+        requiereTirada: false, atributo: 'destreza', dificultad: 8, razon: 'x', banda: 'instantanea', duracionEstimadaMinutos: 0,
+      });
+      const app = await buildApp();
+      const action = 'Exploro la zona';
+      const classifyRes = await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId: save.id, action, enCombate: false } });
+      const { classification, roll } = classifyRes.json();
+      const narrateRes = await app.inject({
+        method: 'POST',
+        url: '/turn/narrate',
+        payload: { saveId: save.id, action, classification, roll, enCombate: false },
+      });
+      expect(narrateRes.statusCode).toBe(200);
+
+      const facts = await prisma.sessionFact.findMany({ where: { saveId: save.id } });
+      expect(facts.some((f) => f.text.includes('sin nombre revelado todavía'))).toBe(false);
+      expect(facts.some((f) => f.text.includes('Gistera Koh'))).toBe(false);
+    } finally {
+      narrateAction.mockReset();
+      narrateAction.mockImplementation(async (ctx: { onNarrationChunk?: (d: string) => void }) => {
+        ctx.onNarrationChunk?.('El golpe conecta.');
+        return { narration: 'El golpe conecta.', newFacts: [] };
+      });
+      await prisma.save.delete({ where: { id: save.id } });
+    }
+  }, 15_000);
+
+  it('en La Hondonada del Eco (su ubicación real), el primer turno SÍ dispara el gancho', async () => {
+    const userId = await getDefaultUserId();
+    const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
+    const hondonada = await prisma.location.findFirstOrThrow({ where: { worldId: world.id, slug: 'hondonada-del-eco' } });
+    const save = await prisma.save.create({
+      data: {
+        userId,
+        worldId: world.id,
+        characterName: 'Gorhorn de prueba (Gistera en su sitio)',
+        characterArchetype: 'guerrero',
+        characterOrigin: 'Clan Maktor',
+        characterMotivation: 'x',
+        attributes: ATTRS,
+        portraitInitial: 'G',
+        currentLocationId: hondonada.id,
+      },
+    });
+    try {
+      await prisma.worldState.create({ data: { saveId: save.id } });
+      classifyAction.mockResolvedValue({
+        requiereTirada: false, atributo: 'destreza', dificultad: 8, razon: 'x', banda: 'instantanea', duracionEstimadaMinutos: 0,
+      });
+      const app = await buildApp();
+      const action = 'Exploro la zona';
+      const classifyRes = await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId: save.id, action, enCombate: false } });
+      const { classification, roll } = classifyRes.json();
+      const narrateRes = await app.inject({
+        method: 'POST',
+        url: '/turn/narrate',
+        payload: { saveId: save.id, action, classification, roll, enCombate: false },
+      });
+      expect(narrateRes.statusCode).toBe(200);
+
+      const facts = await prisma.sessionFact.findMany({ where: { saveId: save.id } });
+      expect(facts.some((f) => f.text.includes('sin nombre revelado todavía'))).toBe(true);
+    } finally {
+      await prisma.save.delete({ where: { id: save.id } });
+    }
+  }, 15_000);
+});
+
+// Bug real jugando en vivo (sesión autónoma de pruebas con Playwright, 2026-09-04): "Gorhorn asume
+// su clase: GUERRERO." (LogEntry determinista, isPlayerAction:false) se pasó al turno SIGUIENTE
+// como "TU PROPIA NARRACIÓN DEL TURNO ANTERIOR" — el modelo lo repitió literalmente al inicio de
+// la narración de un turno de recolección completamente distinto. Causa raíz: `lastNarration`
+// (turnResolution.ts) solo filtraba `isPlayerAction: false`, sin distinguir narración real del
+// LLM de un mensaje de sistema construido a mano. Fix: `LogEntry.isSystemMessage` nuevo, marcado
+// en los ~10 sitios que crean mensajes deterministas (elegir clase, especialización, recompensa
+// de misión, "se pone a ello...", huir, dejar vivir, capturar, respawn/reinicio, turno bloqueado),
+// y excluido explícitamente de la query de `lastNarration`.
+describe('lastNarrationText excluye mensajes de sistema deterministas (bug real 2026-09-04)', () => {
+  let saveId: string;
+
+  beforeAll(async () => {
+    const userId = await getDefaultUserId();
+    const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
+    const location = await prisma.location.findFirstOrThrow({ where: { worldId: world.id, slug: 'hondonada-del-eco' } });
+    const save = await prisma.save.create({
+      data: {
+        userId,
+        worldId: world.id,
+        characterName: 'Gorhorn de prueba (isSystemMessage)',
+        characterArchetype: 'guerrero',
+        characterOrigin: 'Clan Maktor',
+        characterMotivation: 'x',
+        attributes: ATTRS,
+        portraitInitial: 'G',
+        currentLocationId: location.id,
+      },
+    });
+    saveId = save.id;
+    await prisma.worldState.create({ data: { saveId } });
+  });
+
+  afterAll(async () => {
+    await prisma.save.delete({ where: { id: saveId } });
+  });
+
+  it('el LogEntry de "asume su clase" se marca isSystemMessage y nunca llega a narrateAction como lastNarrationText', async () => {
+    const app = Fastify();
+    await app.register(turnRoutes);
+    await app.register(progressionRoutes);
+
+    const claseRes = await app.inject({ method: 'PATCH', url: `/saves/${saveId}/clase`, payload: { clase: 'GUERRERO' } });
+    expect(claseRes.statusCode).toBe(200);
+
+    const logEntry = await prisma.logEntry.findFirstOrThrow({ where: { saveId }, orderBy: { createdAt: 'desc' } });
+    expect(logEntry.text).toContain('asume su clase');
+    expect(logEntry.isSystemMessage).toBe(true);
+
+    classifyAction.mockResolvedValue({
+      requiereTirada: false, atributo: 'destreza', dificultad: 8, razon: 'x', banda: 'instantanea', duracionEstimadaMinutos: 0,
+    });
+    narrateAction.mockClear();
+    const action = 'Recojo lo que encuentro por la zona.';
+    const classifyRes = await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action, enCombate: false } });
+    const { classification, roll } = classifyRes.json();
+    await app.inject({ method: 'POST', url: '/turn/narrate', payload: { saveId, action, classification, roll, enCombate: false } });
+
+    expect(narrateAction).toHaveBeenCalledTimes(1);
+    const ctxReal = narrateAction.mock.calls[0][0] as { lastNarrationText?: string };
+    expect(ctxReal.lastNarrationText).toBeUndefined();
   }, 15_000);
 });

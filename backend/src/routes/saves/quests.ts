@@ -107,8 +107,10 @@ export async function questsRoutes(app: FastifyInstance) {
       // mismo bloque de texto corrido, sin ninguna pausa entre "habla Gorhorn" y "reacciona
       // Gistera". Salto de párrafo (línea en blanco) entre ambas, mismo criterio que el resto del
       // juego usa para separar turnos de habla distintos dentro de la misma narración.
+      // Destino ocultado de la narración visible (petición explícita de la usuaria, 2026-09-05) —
+      // mismo texto que turnResolution.ts § `gisteraAceptaEsteTurno`, ver su comentario completo.
       const text = isOrcoEnfurecidoTitle
-        ? `${acceptanceText}\n\nGistera Koh asiente, aliviada, y sin perder ni un segundo más echa a andar hacia el sur, en dirección a la Ciénaga Troncal, perdiéndose pronto entre la maleza.`
+        ? `${acceptanceText}\n\nGistera Koh asiente, aliviada, y sin perder ni un segundo más se aleja de la Hondonada del Eco, perdiéndose pronto en el horizonte.`
         : acceptanceText;
 
       const { quest, logEntry, questCompletedInfo } = await prisma.$transaction(async (tx) => {
@@ -175,8 +177,10 @@ export async function questsRoutes(app: FastifyInstance) {
           await tx.save.update({ where: { id: save.id }, data: { xp: { increment: 100 } } });
           if (grantedItems.length > 0) {
             const rewardText = questRewardNarrationFor(ORCO_ENFURECIDO_QUEST_TITLE, grantedItems, 100);
+            // isSystemMessage (ver comentario completo en schema.prisma) — questRewardNarrationFor
+            // es una función pura, texto fijo determinista, nunca pasa por el LLM.
             const rewardEntry = await tx.logEntry.create({
-              data: { saveId: save.id, channel: 'CHARACTER', text: rewardText, isPlayerAction: false, timeLabel, fictionalMinutes },
+              data: { saveId: save.id, channel: 'CHARACTER', text: rewardText, isPlayerAction: false, timeLabel, fictionalMinutes, isSystemMessage: true },
             });
             questCompletedInfo = { logEntryId: rewardEntry.id, text: rewardText, title: ORCO_ENFURECIDO_QUEST_TITLE, grantedItems, rewardXp: 100 };
           }

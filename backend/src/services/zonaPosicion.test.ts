@@ -27,10 +27,20 @@ describe('puntoDeEntradaParaDireccion', () => {
   });
 
   it('las 4 diagonales usan la esquina correspondiente, no un punto medio', () => {
-    expect(puntoDeEntradaParaDireccion('noreste')).toEqual({ x: 776, y: 24 });
-    expect(puntoDeEntradaParaDireccion('noroeste')).toEqual({ x: 24, y: 24 });
-    expect(puntoDeEntradaParaDireccion('sureste')).toEqual({ x: 776, y: 576 });
-    expect(puntoDeEntradaParaDireccion('suroeste')).toEqual({ x: 24, y: 576 });
+    expect(puntoDeEntradaParaDireccion('noreste')).toEqual({ x: 760, y: 40 });
+    expect(puntoDeEntradaParaDireccion('noroeste')).toEqual({ x: 40, y: 40 });
+    expect(puntoDeEntradaParaDireccion('sureste')).toEqual({ x: 760, y: 560 });
+    expect(puntoDeEntradaParaDireccion('suroeste')).toEqual({ x: 40, y: 560 });
+  });
+
+  // Bug real, sesión autónoma de pruebas con Playwright (2026-09-04): el marcador del jugador
+  // (halo circular de radio 14, ZonaPanel.tsx) quedaba cortado a la mitad contra la esquina
+  // REDONDEADA del contenedor en las 4 diagonales — un margen igual al de los bordes rectos no
+  // basta cuando el marcador toca DOS bordes a la vez. Las diagonales deben usar un margen mayor.
+  it('las 4 diagonales usan un margen mayor que los 4 bordes rectos (evita el corte contra la esquina redondeada del contenedor)', () => {
+    const margenRecto = puntoDeEntradaParaDireccion('norte').y;
+    const margenDiagonal = puntoDeEntradaParaDireccion('noroeste').x;
+    expect(margenDiagonal).toBeGreaterThan(margenRecto);
   });
 
   it('todos los puntos quedan dentro del lienzo 800x600', () => {

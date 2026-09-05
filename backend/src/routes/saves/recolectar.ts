@@ -1033,8 +1033,9 @@ export async function recolectarRoutes(app: FastifyInstance) {
             where: { saveId: save.id },
             data: { fictionalMinutes: nuevoFictionalMinutes, fictionalDateLabel: nuevaFictionalDateLabel },
           });
+          // isSystemMessage (ver comentario completo en schema.prisma) — texto fijo determinista.
           const created = await tx.logEntry.create({
-            data: { saveId: save.id, channel: 'CHARACTER', text, timeLabel: nuevaFictionalDateLabel, fictionalMinutes: nuevoFictionalMinutes, isPlayerAction: false },
+            data: { saveId: save.id, channel: 'CHARACTER', text, timeLabel: nuevaFictionalDateLabel, fictionalMinutes: nuevoFictionalMinutes, isPlayerAction: false, isSystemMessage: true },
           });
           logEntry = { id: created.id, text, timeLabel: nuevaFictionalDateLabel, createdAt: created.createdAt.toISOString(), fictionalMinutes: nuevoFictionalMinutes };
         }

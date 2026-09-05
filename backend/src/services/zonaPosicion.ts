@@ -9,6 +9,13 @@ import type { CardinalDirection } from './travel.js';
 export const LIENZO_ANCHO = 800;
 export const LIENZO_ALTO = 600;
 const MARGEN_BORDE = 24;
+/// Bug real, sesión autónoma de pruebas con Playwright (2026-09-04): el marcador del jugador
+/// (`JugadorMarker`, ZonaPanel.tsx — halo circular de radio 14) quedaba cortado a la mitad en las
+/// 4 esquinas diagonales, contra la esquina REDONDEADA (`rounded-lg`) del contenedor que envuelve
+/// el `<svg>` — `MARGEN_BORDE` (24) es suficiente para los 4 bordes rectos (norte/sur/este/oeste,
+/// donde el marcador solo toca UN borde), pero insuficiente cuando toca DOS bordes a la vez en una
+/// esquina. Margen propio, mayor, solo para las 4 diagonales.
+const MARGEN_BORDE_DIAGONAL = 40;
 
 /// Punto del borde/esquina del lienzo para la dirección por la que el jugador ENTRA a la zona —
 /// convención x=este creciente/y=SUR creciente en el lienzo SVG (pantalla), al revés que
@@ -29,13 +36,13 @@ export function puntoDeEntradaParaDireccion(direction: CardinalDirection): { x: 
     case 'oeste':
       return { x: MARGEN_BORDE, y: cy };
     case 'noreste':
-      return { x: LIENZO_ANCHO - MARGEN_BORDE, y: MARGEN_BORDE };
+      return { x: LIENZO_ANCHO - MARGEN_BORDE_DIAGONAL, y: MARGEN_BORDE_DIAGONAL };
     case 'noroeste':
-      return { x: MARGEN_BORDE, y: MARGEN_BORDE };
+      return { x: MARGEN_BORDE_DIAGONAL, y: MARGEN_BORDE_DIAGONAL };
     case 'sureste':
-      return { x: LIENZO_ANCHO - MARGEN_BORDE, y: LIENZO_ALTO - MARGEN_BORDE };
+      return { x: LIENZO_ANCHO - MARGEN_BORDE_DIAGONAL, y: LIENZO_ALTO - MARGEN_BORDE_DIAGONAL };
     case 'suroeste':
-      return { x: MARGEN_BORDE, y: LIENZO_ALTO - MARGEN_BORDE };
+      return { x: MARGEN_BORDE_DIAGONAL, y: LIENZO_ALTO - MARGEN_BORDE_DIAGONAL };
   }
 }
 

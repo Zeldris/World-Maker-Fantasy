@@ -211,7 +211,8 @@ export async function companerosRoutes(app: FastifyInstance) {
       // FACTION_REP_CAPTURE_DELTA, reputation.ts). Sin LogEntry propio hasta ahora (mutación
       // silenciosa) — se añade uno breve para que el chip de reputación tenga dónde colgarse,
       // mismo patrón que Clemente (session.ts).
-      const createdLog = await tx.logEntry.create({ data: { saveId: save.id, channel: 'CHARACTER', text, timeLabel } });
+      // isSystemMessage (ver comentario completo en schema.prisma) — texto fijo determinista.
+      const createdLog = await tx.logEntry.create({ data: { saveId: save.id, channel: 'CHARACTER', text, timeLabel, isSystemMessage: true } });
       const rep = await applyFactionRepDeltaForResolution(tx, save.id, npc.faction, FACTION_REP_CAPTURE_DELTA);
       return { item: createdItem, logEntry: createdLog, factionRepChange: rep };
     });
