@@ -79,7 +79,7 @@ comentarios de código sin haber llegado nunca a un documento de lore legible.)*
 - **Trepadores Ocaso**: árboles oscuros de resina negra tirando a tonos dorados. Forman la gran parte de la Ciénaga Troncal y son el recurso principal de las tribus orcas de la zona.
 
 **Minerales:**
-- **Hielo Sílice** *(reclasificado 2026-09-06, antes listado por error junto a la Flora — es mineral, no ser vivo)*: cristal que se encuentra en las laderas de las montañas de Cristal Helado, material resistente que se utiliza para la fabricación de herramientas, especialmente cuchillos de deshuello para las duras pieles de la fauna salvaje de la zona. Usado principalmente por las tribus orcas locales.
+- **Hielo Sílice** *(reclasificado 2026-09-06, antes listado por error junto a la Flora — es mineral, no ser vivo)*: el mineral más común y representativo de Cristal Helado, presente en las laderas de sus montañas en cantidad — no un hallazgo raro, es el recurso que define económicamente la zona, igual que el hierro corriente define a Las Llanuras. Cristal resistente, usado para fabricar herramientas, especialmente cuchillos de deshuello para las duras pieles de la fauna salvaje local. Usado principalmente por las tribus orcas de la zona (el Clan Helsig).
 
 **Fauna:**
 - **Gargantúas de Ceniza**: reptiles herbívoros del tamaño de casas, placas óseas volcánicas. Los orcos los respetan profundamente; quien las guía en las migraciones estacionales es el Domador del clan (especialización de Cazador, "controlar bestias, añadir buffs" — ver [clases.md](clases.md)), un oficio aprendido, nunca un don mágico ni un poder propio de la Terk'ikar. Habitan principalmente las Llanuras del Viento Rojo.

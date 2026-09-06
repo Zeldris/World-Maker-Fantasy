@@ -130,7 +130,7 @@ export const loreChunks: LoreChunkInput[] = [
   {
     type: 'REGION',
     title: 'Cristal Helado',
-    text: 'Territorio orco en Berig: zona helada de altas montañas y viento cortante, en gran parte inexplorada. Varias tribus orcas de zonas gélidas viven a los pies de la ladera (Clan Helsig). Condiciones duras, pero con acceso a recursos mineros raros como el hielo sílice, y complicaciones para conseguir comida. Gorhorn trabajó 3 meses en sus minas de joven y allí hizo amistad con un orco llamado Hagar.',
+    text: 'Territorio orco en Berig: zona helada de altas montañas y viento cortante, en gran parte inexplorada. Varias tribus orcas de zonas gélidas viven a los pies de la ladera (Clan Helsig). Condiciones duras, pero con complicaciones para conseguir comida. El Hielo Sílice es su mineral más común y representativo (mineral, no flora) — cristal resistente en cantidad en las laderas, usado para herramientas y cuchillos de deshuello, define económicamente la zona igual que el hierro corriente define a Las Llanuras. Gorhorn trabajó 3 meses en sus minas de joven y allí hizo amistad con un orco llamado Hagar.',
     tags: ['cristal-helado', 'helsig', 'hielo-silice', 'gorhorn', 'hagar'],
     sourceDoc: 'areas.md',
   },
@@ -172,8 +172,8 @@ export const loreChunks: LoreChunkInput[] = [
   {
     type: 'FLORA',
     title: 'Flora de Berig (incluye Llanuras del Viento Rojo)',
-    text: 'Hierba del Hierro (diseñada, Vetria): sus raíces bioacumulan mineral metálico disperso en la piedra gris de la Meseta del Orden, el mismo principio de Liania que da mecanismo a todo lo demás — los Goirntes la procesan para aleaciones. Raíz de Fuego (salvaje, mutada): enredadera de zonas volcánicas orcas que libera gas inflamable, recolectada como explosivo/iniciador de fuego. Hielo Sílice: mineral (no flora) de Cristal Helado usado para herramientas y cuchillos, como el de Gorhorn. Trepadores Ocaso: árboles de la Ciénaga Troncal, cuya resina sella e impermeabiliza la madera contra la humedad de la ciénaga.',
-    tags: ['flora', 'berig', 'raiz-de-fuego', 'hielo-silice', 'hierba-del-hierro'],
+    text: 'Hierba del Hierro (diseñada, Vetria): sus raíces bioacumulan mineral metálico disperso en la piedra gris de la Meseta del Orden, el mismo principio de Liania que da mecanismo a todo lo demás — los Goirntes la procesan para aleaciones. Raíz de Fuego (salvaje, mutada): enredadera de zonas volcánicas orcas que libera gas inflamable, recolectada como explosivo/iniciador de fuego. Trepadores Ocaso: árboles de la Ciénaga Troncal, cuya resina sella e impermeabiliza la madera contra la humedad de la ciénaga. (El Hielo Sílice es mineral, no flora — ver el chunk de Cristal Helado.)',
+    tags: ['flora', 'berig', 'raiz-de-fuego', 'hierba-del-hierro'],
     sourceDoc: 'areas.md',
   },
   {
@@ -204,6 +204,13 @@ export const loreChunks: LoreChunkInput[] = [
     title: 'Cultura y liderazgo de los clanes orcos',
     text: 'En la mayoría de los clanes orcos, la Terk\'ikar (Jefa, casi siempre hembra) gobierna el día a día — asentamientos, disputas, migraciones. El Kort\'ikar (Jefe de Guerra, casi siempre macho) lidera en combate. Es costumbre cultural asentada, no ley escrita. Los asuntos importantes se debaten en una asamblea abierta a todo orco libre (Terk\'ikar, Kort\'ikar, y los 5 Kurig — cargos de justicia, economía, diplomacia, logística y filosofía, que no deciden nada por su cuenta pero filtran qué llega a debatirse), aunque la Terk\'ikar tiene siempre la última palabra. A los 10 años, todo joven orco se mide en la cacería ritual de Corredores de Cauce: quien la supera es reconocido guerrero de adulto.',
     tags: ['clanes', 'terkikar', 'kortikar', 'liderazgo-orco', 'kurig', 'asamblea'],
+    sourceDoc: 'areas.md',
+  },
+  {
+    type: 'CULTURA',
+    title: 'Maestros de oficio y el Trabajador de Reino',
+    text: 'Karot Veku tiene un Maestro por cada uno de sus 12 oficios (herrero, curtidor, peletero, desollador, domador, carpintero, sastre, herborista, primeros auxilios, alquimista, cocinero, pescador) — el único que enseña ese oficio a quien cumpla reputación mínima y una misión propia, protegido, no capturable. Junto a cada Maestro trabaja un orco de plantilla sin nada que enseñar, que puede ser capturado o reclutado para producir ese recurso de forma pasiva para el Reino del propio jugador.',
+    tags: ['maestro-de-oficio', 'trabajador-de-reino', 'karot-veku', 'oficios'],
     sourceDoc: 'areas.md',
   },
   {
@@ -279,9 +286,16 @@ export const loreChunks: LoreChunkInput[] = [
   {
     type: 'REGION',
     title: 'Los Pilares Rotos (Llanuras del Viento Rojo)',
-    text: 'Restos de una formación rocosa antigua, hoy tres columnas erosionadas visibles desde lejos en la llanura abierta. Sirven de punto de referencia para orientarse, y su sombra da algo de resguardo del sol a mediodía. Terreno abierto, no defendible.',
-    tags: ['llanuras', 'punto-de-interes', 'orientacion'],
+    text: 'Tres grandes pilares en una pequeña llanura rodeada de acantilados, cada uno con estandartes en la cima, conectados entre sí y con los acantilados por una red de puentes colgantes de uso orco. No son formación natural: son restos del Reino Nabierus, demasiado grandes y profundos para que el engaño de Madre los derribara del todo — el nombre "Rotos" describe lo que sobrevivió de una estructura mucho mayor, no su forma. Tiene una mena de hierro corriente visible en la roca erosionada, el mismo hierro de mala calidad disperso por toda la llanura (no un yacimiento nabierus).',
+    tags: ['llanuras', 'punto-de-interes', 'reino-nabierus', 'mena-de-hierro'],
     sourceDoc: 'areas.md',
+  },
+  {
+    type: 'REGION',
+    title: 'Los Manaderos (Llanuras del Viento Rojo)',
+    text: 'Ecosistema de charcas estacionales donde una corriente subterránea aflora entre chudos rojizos — otro punto de la misma corriente que alimenta el Pozo de Cauce Viejo. Cadena trófica de cinco especies: Verdileas Acuáticas (base, alga) alimentan a la Jusha Esmeralda (pez), cazada de noche por el Miruina (roedor nadador, otra criatura marcada por Kroj) y de día por la Tura Jusha (ave que caza crías desorientadas). El Quio, gusano filtrador sin dientes, limpia los restos orgánicos de las orillas — no caza ni compite, lo que pasa por su filtro deja de ser resto: la firma de Sezix, no la de un carroñero corriente. Aquí paren las hembras de Corredor de Cauce; cazar crías ofende la costumbre orca.',
+    tags: ['los-manaderos', 'llanuras', 'quio', 'sezix', 'jusha-esmeralda', 'miruina'],
+    sourceDoc: 'flora-fauna.md',
   },
   {
     type: 'REGION',
@@ -295,6 +309,13 @@ export const loreChunks: LoreChunkInput[] = [
     title: 'El Cruce de las Cenizas (Llanuras del Viento Rojo)',
     text: 'Punto donde el camino que viene de la Meseta del Orden se bifurca hacia el interior de las Llanuras del Viento Rojo. Zona de paso habitual de las patrullas de la Concordia de Hierro — no es lugar para quedarse quieto mucho tiempo.',
     tags: ['llanuras', 'concordia', 'camino', 'punto-de-interes'],
+    sourceDoc: 'areas.md',
+  },
+  {
+    type: 'REGION',
+    title: 'El Filo de las Brasas (Llanuras del Viento Rojo)',
+    text: 'Cresta rocosa al noreste de Los Restos de Maktor, donde la estepa cede ante tierra volcánica — el primer punto del núcleo jugable donde los "volcanes activos a lo lejos" se ven de cerca. Territorio real de la Salamandra de Escoria y del Rondador de Brasas. Segunda gran zona de minerales de alto tier de las Llanuras (junto a La Hondonada del Eco/Yerreo): Volcanita y Rovalnica son comunes, el Fercaneo (tier 5) es casi imposible de encontrar, protegido por las propias Salamandras.',
+    tags: ['filo-de-las-brasas', 'llanuras', 'salamandra-de-escoria', 'rondador-de-brasas', 'volcanita', 'fercaneo'],
     sourceDoc: 'areas.md',
   },
   {
@@ -471,6 +492,13 @@ export const loreChunks: LoreChunkInput[] = [
     title: 'Campamento del Clan Serhu (Llanuras del Viento Rojo)',
     text: 'Asentamiento del Clan Serhu, situado cerca del Pozo de Cauce Viejo del que dependen para el agua permanente — un clan que pastorea y caza necesita esa fuente, y explica por qué el Pozo es punto de encuentro entre clanes "para bien o para mal". Hogar de la Terk\'ikar Ulkha y el Kort\'ikar Torgash. Sus vigías vigilan la senda de acceso desde lejos: quien se acerca, se acerca visto.',
     tags: ['campamento-serhu', 'clan-serhu', 'punto-de-interes', 'torgash', 'ulkha'],
+    sourceDoc: 'areas.md',
+  },
+  {
+    type: 'REGION',
+    title: 'Dentro de Karot Veku — el Karot Vekhad',
+    text: 'Cruzada la empalizada de Karot Veku, el poblado se organiza en torno a una plaza central de tierra apisonada, con sendas marcadas por el paso constante entre sus distintos puntos — cada construcción real (forja, curtiduría, cocina común, herboristería, alquimia, corrales del Domador, desolladero) tiene su propia ubicación, sin un trazado prefijado de fondo. En el centro simbólico se alza el Karot Vekhad, el Salón del Colmillo Ceniza, donde la Terk\'ikar Ulkha Ketg y el Kort\'ikar Torgash Ketg reciben a quien cruza la entrada.',
+    tags: ['karot-vekhad', 'campamento-serhu', 'clan-serhu', 'interior', 'ulkha', 'torgash'],
     sourceDoc: 'areas.md',
   },
   {

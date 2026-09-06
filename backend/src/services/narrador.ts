@@ -1455,6 +1455,26 @@ export async function narrateAction(ctx: TurnContext & { roll?: RollResult }): P
           reason: 'negar el cuerpo de un caído (hacerlo desaparecer sin velarlo) en un clan que no es Serhu — ese castigo es exclusivo de la casta de Ketg, ningún otro clan orco lo practica',
         },
         {
+          check: () => hasRawOrcMagicWithoutFocus(parsed.narration),
+          reason: 'un orco lanzando magia en crudo con las manos, sin ningún tótem o runa — Tarkor selló ese canalizador de serie, la única vía real es a través de un foco trabajado',
+        },
+        {
+          check: () => hasMercifulSigneran(parsed.narration),
+          reason: 'un Signeran (duelo de honor orco) resuelto con clemencia — es siempre a muerte, dejar con vida al perdedor es una deshonra y una debilidad para ambos',
+        },
+        {
+          check: () => hasUnpunishedIlvenarFalsify(parsed.narration),
+          reason: 'un Ilvenar falseando un registro sin la consecuencia de dejar de ser considerado Ilvenar por los suyos — es su tabú absoluto, el que define a toda la raza',
+        },
+        {
+          check: () => hasUnpunishedFaerusAbandon(parsed.narration),
+          reason: 'un Faerus abandonando a un herido de la manada sin ninguna consecuencia narrada — es el único tabú que no se perdona en su cultura',
+        },
+        {
+          check: () => hasNieblaCrossingWithoutTech(parsed.narration),
+          reason: 'cruzar la Niebla del Estrecho sin mencionar cristal Kelife o brújula de vacío Nabieus — ningún barco convencional puede cruzarla sin perder el rumbo',
+        },
+        {
           check: () => hasFalseMaktorThreatClaim(narrationAndFacts),
           reason: 'sugerir que quedan otros orcos del Clan Maktor con vida — el clan fue aniquilado, Gorhorn es el único superviviente conocido',
         },
@@ -2520,6 +2540,81 @@ export function hasNonSerhuDenyingFuneralRite(narration: string): boolean {
   const normalized = normalizeText(narration);
   if (!DENIED_BODY_RITE_REGEX.test(normalized)) return false;
   return NON_SERHU_ORC_CLAN_REGEX.test(normalized);
+}
+
+/// Familia "vs. lore", segunda tanda (auditoría de `loreChunks.ts`/guards, 2026-09-06). `razas.md`
+/// § "Los orcos y la Magia": Tarkor selló el canalizador de serie de los orcos — ningún orco lanza
+/// magia en crudo con las manos, siempre a través de tótem o runa. Dispara si un verbo de lanzar
+/// magia aparece junto a "con las manos"/"desde las palmas"/"a mano" sin ningún tótem/runa cerca.
+const RAW_ORC_MAGIC_REGEX =
+  /\b(lanza|conjura|invoca|libera)\w*[^.!?]{0,40}\b(con las manos|desde las palmas|de sus manos|de las manos|a mano)\b/i;
+const MAGIC_FOCUS_NEARBY_REGEX = /\b(t[oó]tem|runa)\w*/i;
+
+export function hasRawOrcMagicWithoutFocus(narration: string): boolean {
+  const normalized = normalizeText(narration);
+  if (!RAW_ORC_MAGIC_REGEX.test(normalized)) return false;
+  return !MAGIC_FOCUS_NEARBY_REGEX.test(normalized);
+}
+
+/// `razas.md` § "El Signeran": el duelo de honor orco es siempre a muerte — "dejar con vida al
+/// perdedor se considera una deshonra y una debilidad... en la práctica casi ningún Signeran
+/// termina de otra forma". Dispara si la narración menciona un Signeran junto a un desenlace de
+/// clemencia (perdonar, dejar con vida, no matar).
+const SIGNERAN_MENTION_REGEX = /\bsignera\w*\b/i;
+const MERCIFUL_OUTCOME_REGEX =
+  /\b(perdona|perdono|perdon[oó])\w*|\bdeja con vida\b|\ble perdona la vida\b|\brespeta su vida\b|\bno lo mata\b|\bdecide no matarlo\b/i;
+
+export function hasMercifulSigneran(narration: string): boolean {
+  const normalized = normalizeText(narration);
+  if (!SIGNERAN_MENTION_REGEX.test(normalized)) return false;
+  return MERCIFUL_OUTCOME_REGEX.test(normalized);
+}
+
+/// `razas.md` § Ilvenar: "su tabú es absoluto y define a la raza entera: falsear un registro. Un
+/// Ilvenar que miente por escrito deja de ser considerado Ilvenar por los suyos". Dispara si un
+/// Ilvenar falsea/altera un registro sin que la narración incluya esa consecuencia de expulsión.
+const ILVENAR_MENTION_REGEX = /\bilvenar\w*\b/i;
+const ILVENAR_FALSIFY_ACT_REGEX =
+  /\b(falsea|falsifica|miente en|altera|manipula)\w*[^.!?]{0,30}\b(registro|archivo|cr[oó]nica)\w*/i;
+const ILVENAR_CONSEQUENCE_NEARBY_REGEX =
+  /\b(deja de ser|expulsa|ya no es considerad\w*|pierde su identidad|castigo)\w*/i;
+
+export function hasUnpunishedIlvenarFalsify(narration: string): boolean {
+  const normalized = normalizeText(narration);
+  if (!ILVENAR_MENTION_REGEX.test(normalized)) return false;
+  if (!ILVENAR_FALSIFY_ACT_REGEX.test(normalized)) return false;
+  return !ILVENAR_CONSEQUENCE_NEARBY_REGEX.test(normalized);
+}
+
+/// `razas.md` § Faerus: "la manada es la única institución Faerus... abandonar a un herido de la
+/// manada es el tabú que no se perdona". Dispara si un Faerus abandona a un herido sin ninguna
+/// palabra de consecuencia/tensión cerca.
+const FAERUS_MENTION_REGEX = /\bfaerus\b/i;
+const FAERUS_ABANDON_ACT_REGEX =
+  /\b(abandona|abandono|deja atras|dejo atras|dej[oó] atr[aá]s)\w*[^.!?]{0,30}\b(herido|herida|malherido|malherida)\w*/i;
+const FAERUS_CONSEQUENCE_NEARBY_REGEX =
+  /\b(tab[uú]|verg[uü]enza|no se perdona|castigo|expulsa|deshonra)\w*/i;
+
+export function hasUnpunishedFaerusAbandon(narration: string): boolean {
+  const normalized = normalizeText(narration);
+  if (!FAERUS_MENTION_REGEX.test(normalized)) return false;
+  if (!FAERUS_ABANDON_ACT_REGEX.test(normalized)) return false;
+  return !FAERUS_CONSEQUENCE_NEARBY_REGEX.test(normalized);
+}
+
+/// `areas.md` § "La Niebla del Estrecho": "ningún barco convencional puede cruzarlo sin perder el
+/// rumbo, salvo que use tecnología de cristal Kelife o brújulas de vacío Nabieus". Dispara si se
+/// narra cruzar la Niebla sin mencionar ninguna de las dos tecnologías cerca. Bajo impacto mientras
+/// la partida transcurra en Berig/Llanuras, lejos del estrecho — guard barato de mantener por si la
+/// trama se traslada a Vaelira.
+const NIEBLA_CROSSING_REGEX =
+  /\bcruza\w*[^.!?]{0,40}\bniebla del estrecho\b|\bniebla del estrecho\w*[^.!?]{0,40}\bcruza\w*/i;
+const NIEBLA_TECH_NEARBY_REGEX = /\b(cristal kelife|br[uú]jula|vac[ií]o)\w*/i;
+
+export function hasNieblaCrossingWithoutTech(narration: string): boolean {
+  const normalized = normalizeText(narration);
+  if (!NIEBLA_CROSSING_REGEX.test(normalized)) return false;
+  return !NIEBLA_TECH_NEARBY_REGEX.test(normalized);
 }
 
 /// Narración-vs-mecánica, mismo patrón que `hasFalseItemUse`/`hasResurrectedDeadNpc` (bug real

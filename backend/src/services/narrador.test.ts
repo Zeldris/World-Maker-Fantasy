@@ -38,6 +38,11 @@ import {
   hasOrcWorshippingTarkor,
   hasUnpunishedOrcTabooBreak,
   hasNonSerhuDenyingFuneralRite,
+  hasRawOrcMagicWithoutFocus,
+  hasMercifulSigneran,
+  hasUnpunishedIlvenarFalsify,
+  hasUnpunishedFaerusAbandon,
+  hasNieblaCrossingWithoutTech,
   hasFalseMaktorThreatClaim,
   hasFalseTravelClaim,
   hasFalsePhantomTravel,
@@ -1310,6 +1315,111 @@ describe('hasNonSerhuDenyingFuneralRite', () => {
 
   it('no dispara con narración normal sin ningún rito funerario', () => {
     expect(hasNonSerhuDenyingFuneralRite('Los Helsig cazan en las minas de Cristal Helado.')).toBe(false);
+  });
+});
+
+describe('hasRawOrcMagicWithoutFocus', () => {
+  it('auditoría de guards vs. lore, segunda tanda (2026-09-06): detecta magia orca lanzada en crudo con las manos, sin tótem ni runa — Tarkor selló ese canalizador de serie (razas.md § "Los orcos y la Magia")', () => {
+    expect(hasRawOrcMagicWithoutFocus('El orco lanza una bola de fuego con las manos.')).toBe(true);
+  });
+
+  it('detecta también "desde las palmas"', () => {
+    expect(hasRawOrcMagicWithoutFocus('Gorhorn conjura una llama desde las palmas de sus manos.')).toBe(true);
+  });
+
+  it('no dispara si hay un tótem o runa cerca en la misma narración', () => {
+    expect(hasRawOrcMagicWithoutFocus('El chamán lanza el hechizo a través de su tótem.')).toBe(false);
+    expect(hasRawOrcMagicWithoutFocus('Gorhorn invoca el poder de su runa grabada.')).toBe(false);
+  });
+
+  it('no dispara con narración normal sin magia en crudo', () => {
+    expect(hasRawOrcMagicWithoutFocus('El orco afila su hacha antes del combate.')).toBe(false);
+  });
+});
+
+describe('hasMercifulSigneran', () => {
+  it('auditoría de guards vs. lore, segunda tanda (2026-09-06): detecta un Signeran resuelto con clemencia — es siempre a muerte (razas.md § "El Signeran")', () => {
+    expect(hasMercifulSigneran('En el Signeran, Gorhorn perdona la vida de su rival vencido.')).toBe(true);
+  });
+
+  it('detecta también "no lo mata"/"deja con vida"', () => {
+    expect(hasMercifulSigneran('Tras el Signeran, decide no matarlo y lo deja con vida.')).toBe(true);
+  });
+
+  it('no dispara si el Signeran termina a muerte, como manda la regla', () => {
+    expect(hasMercifulSigneran('El Signeran termina cuando Gorhorn asesta el golpe final, a muerte.')).toBe(false);
+  });
+
+  it('no dispara con un perdón fuera del contexto de un Signeran', () => {
+    expect(hasMercifulSigneran('Gorhorn perdona a su hermano tras una disputa menor.')).toBe(false);
+  });
+});
+
+describe('hasUnpunishedIlvenarFalsify', () => {
+  it('auditoría de guards vs. lore, segunda tanda (2026-09-06): detecta a un Ilvenar falseando un registro sin la consecuencia de dejar de ser considerado Ilvenar — su tabú absoluto (razas.md § Ilvenar)', () => {
+    expect(hasUnpunishedIlvenarFalsify('La cronista Ilvenar falsea el registro para proteger a su amigo.')).toBe(true);
+  });
+
+  it('detecta también alterar una crónica', () => {
+    expect(hasUnpunishedIlvenarFalsify('El Ilvenar altera la crónica sin que nadie lo note.')).toBe(true);
+  });
+
+  it('no dispara si la narración ya incluye la consecuencia de expulsión', () => {
+    expect(
+      hasUnpunishedIlvenarFalsify('La Ilvenar falsea el registro, y al hacerlo deja de ser considerada Ilvenar por los suyos.'),
+    ).toBe(false);
+  });
+
+  it('no dispara con un Ilvenar registrando fielmente, sin falsear nada', () => {
+    expect(hasUnpunishedIlvenarFalsify('El Ilvenar registra fielmente todo lo que ve.')).toBe(false);
+  });
+});
+
+describe('hasUnpunishedFaerusAbandon', () => {
+  it('auditoría de guards vs. lore, segunda tanda (2026-09-06): detecta a un Faerus abandonando a un herido de la manada sin consecuencia — el único tabú que no se perdona (razas.md § Faerus)', () => {
+    expect(hasUnpunishedFaerusAbandon('El Faerus abandona a su compañero herido en plena huida.')).toBe(true);
+  });
+
+  it('detecta también "deja atrás" a un malherido', () => {
+    expect(hasUnpunishedFaerusAbandon('La manada Faerus deja atrás al malherido sin mirar atrás.')).toBe(true);
+  });
+
+  it('no dispara si la narración ya incluye la consecuencia/tensión del tabú', () => {
+    expect(
+      hasUnpunishedFaerusAbandon('El Faerus abandona a su compañero herido, un tabú que no se perdona jamás.'),
+    ).toBe(false);
+  });
+
+  it('no dispara con un Faerus cuidando de su herido', () => {
+    expect(hasUnpunishedFaerusAbandon('El Faerus carga con su compañero herido hasta ponerlo a salvo.')).toBe(false);
+  });
+});
+
+describe('hasNieblaCrossingWithoutTech', () => {
+  it('auditoría de guards vs. lore, segunda tanda (2026-09-06): detecta cruzar la Niebla del Estrecho sin cristal Kelife ni brújula de vacío Nabieus (areas.md § "La Niebla del Estrecho")', () => {
+    expect(hasNieblaCrossingWithoutTech('El barco cruza la Niebla del Estrecho sin problema alguno.')).toBe(true);
+  });
+
+  it('detecta también cruzarla guiándose solo por las estrellas', () => {
+    expect(
+      hasNieblaCrossingWithoutTech('La tripulación cruza la Niebla del Estrecho a simple vista, guiándose por las estrellas.'),
+    ).toBe(true);
+  });
+
+  it('no dispara si se menciona la brújula de vacío Nabieus', () => {
+    expect(
+      hasNieblaCrossingWithoutTech('El barco cruza la Niebla del Estrecho gracias a su brújula de vacío Nabieus.'),
+    ).toBe(false);
+  });
+
+  it('no dispara si se menciona el cristal Kelife', () => {
+    expect(
+      hasNieblaCrossingWithoutTech('Con el cristal Kelife a bordo, cruzan la Niebla del Estrecho sin perder el rumbo.'),
+    ).toBe(false);
+  });
+
+  it('no dispara con narración normal sin cruzar la Niebla', () => {
+    expect(hasNieblaCrossingWithoutTech('El barco navega tranquilo por aguas abiertas.')).toBe(false);
   });
 });
 
