@@ -743,12 +743,23 @@ export async function worldRoutes(app: FastifyInstance) {
         return reply.status(404).send({ error: 'Entidad no encontrada en este mundo' });
       }
 
-      const { prompt, provider } = await generateImagePrompt(
-        entityType as ImagePromptEntityType,
-        subject.name,
-        subject.loreContext,
-        sizeProfile as ImagePromptSizeProfile,
-      );
+      // Bug real jugando en vivo (2026-09-06, "no está funcionando la generación de prompts" —
+      // el frontend solo mostraba "No se pudo generar", sin distinguir un fallo real de todos los
+      // proveedores de IA de cualquier otro error): sin este try/catch, un fallo aquí llegaba como
+      // 500 genérico de Fastify, sin `body.error` legible que el frontend pudiera mostrar.
+      let prompt: string;
+      let provider: string;
+      try {
+        ({ prompt, provider } = await generateImagePrompt(
+          entityType as ImagePromptEntityType,
+          subject.name,
+          subject.loreContext,
+          sizeProfile as ImagePromptSizeProfile,
+        ));
+      } catch (err) {
+        app.log.error({ err, entityType, entitySlug, sizeProfile }, '[image-prompt] todos los proveedores de IA fallaron');
+        return reply.status(502).send({ error: 'Los proveedores de generación de imágenes no respondieron — inténtalo de nuevo en unos minutos.' });
+      }
       await prisma.imagePrompt.upsert({
         where: { worldId_entityType_entitySlug_sizeProfile: { worldId: world.id, entityType, entitySlug, sizeProfile } },
         create: { worldId: world.id, entityType, entitySlug, sizeProfile, prompt, provider },

@@ -197,8 +197,13 @@ export function ImagePromptSlot({
     try {
       const result = await requestImagePrompt(worldSlug, entityType, entitySlug, sizeProfile, regenerate)
       setPrompt(result.prompt)
-    } catch {
-      setError('No se pudo generar — inténtalo de nuevo.')
+    } catch (err) {
+      // Bug real jugando en vivo (2026-09-06, "no está funcionando la generación de prompts"): el
+      // mensaje genérico ocultaba si era un 4xx de validación, un 404 de entidad, o un fallo real
+      // de los proveedores de IA (rate limit/timeout) — `fetchJson` ya lanza el mensaje real del
+      // backend (`body.error`) o el código HTTP, se muestra tal cual en vez de descartarlo.
+      console.error('[image-prompt] no se pudo generar:', err)
+      setError(err instanceof Error ? err.message : 'No se pudo generar — inténtalo de nuevo.')
     } finally {
       setGenerating(false)
     }
