@@ -3,6 +3,7 @@ import { prisma } from '../../lib/prisma.js';
 import { zoneMapImageUrl } from '../../lib/imageAssets.js';
 import { sourceDisplayNameFor } from '../../scripts/worldCatalog.js';
 import { detectNpcsInScene, scopeFor } from '../../services/npcScene.js';
+import { faunaMomentoDelDia } from '../../scripts/worldCatalog.js';
 import { loadSessionFacts } from '../../services/worldFacts.js';
 import { momentoDelDiaFor, estacionFor } from '../../services/worldClock.js';
 import type { EstacionSlug } from '../../services/imagePromptContext.js';
@@ -107,8 +108,14 @@ export async function zonaRoutes(app: FastifyInstance) {
     const estaAusente = (state: { zonaAusenteHastaMinutes: number | null; zonaLocationId: string | null } | undefined): boolean =>
       !!state && state.zonaAusenteHastaMinutes != null && state.zonaLocationId === locationId && state.zonaAusenteHastaMinutes > fictionalMinutes;
 
+    // Bug real jugando en vivo (2026-09-06, "fauna diurna y nocturna mezclada siendo de día") —
+    // `faunaMomentoDelDia` ya filtraba a los NPC/fauna DINÁMICOS (sin ZonePoint, ver
+    // `detectNpcsInScene`), pero un `ZonePoint` de tipo FAUNA sembrado a mano en el catálogo se
+    // mostraba siempre, de día o de noche, sin pasar por este filtro.
     const zonePoints = zonePointsActivos.filter((p) => {
       if (p.tipo !== 'FAUNA' && p.tipo !== 'NPC') return true;
+      const momentoRequerido = faunaMomentoDelDia[p.targetSlug];
+      if (momentoRequerido && momentoRequerido !== momento) return false;
       const npcId = npcIdBySlugZonePoint.get(p.targetSlug);
       if (!npcId) return true;
       const npc = npcFaunaZonePointIds.find((n) => n.id === npcId)!;

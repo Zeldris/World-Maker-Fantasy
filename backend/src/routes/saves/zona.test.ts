@@ -120,6 +120,10 @@ describe('GET /saves/:id/zona', () => {
           { id: 'zp3', x: 100, y: 100, tipo: 'FAUNA', targetSlug: 'gesgurio', label: 'Etiqueta a mano', activo: true, cantidad: 3, factionSlug: null },
         ],
       },
+      // Kirelon Arenoso es fauna nocturna (`faunaMomentoDelDia`, worldCatalog.ts) — 1320 = 22h,
+      // de noche, para que este test siga cubriendo el caso "sí aparece" tras el fix del
+      // hallazgo 31 (2026-09-06, "fauna diurna y nocturna mezclada siendo de día").
+      worldState: { fictionalMinutes: 1320, factionsStatus: null, agenda: null },
     });
     findManyNpc.mockResolvedValueOnce([
       { slug: 'kirelon-arenoso', name: 'Kirelon Arenoso' },
@@ -143,6 +147,33 @@ describe('GET /saves/:id/zona', () => {
       { id: 'zp3', x: 100, y: 100, tipo: 'FAUNA', targetSlug: 'gesgurio', nombre: 'Etiqueta a mano', cantidad: 3, color: 'SIN_FACCION' }, // label manda sobre el nombre real
     ]);
     expect(body.dinamicos).toEqual([]);
+  });
+
+  it('un ZonePoint de fauna nocturna no se muestra de día (hallazgo 2026-09-06)', async () => {
+    findUniqueSave.mockResolvedValueOnce({
+      id: 's1',
+      worldId: 'w1',
+      currentLocation: {
+        id: 'loc1',
+        slug: 'hondonada-del-eco',
+        name: 'La Hondonada del Eco',
+        zonePoints: [
+          { id: 'zp1', x: 620, y: 180, tipo: 'FAUNA', targetSlug: 'kirelon-arenoso', label: null, activo: true, cantidad: 1, factionSlug: null },
+          { id: 'zp2', x: 400, y: 470, tipo: 'RECURSO', targetSlug: 'yerreo', label: null, activo: true, cantidad: 1, factionSlug: null },
+        ],
+      },
+      // 480 = 8h, de día — kirelon-arenoso es fauna nocturna ('noche' en `faunaMomentoDelDia`).
+      worldState: { fictionalMinutes: 480, factionsStatus: null, agenda: null },
+    });
+    findManyNpc.mockResolvedValueOnce([{ slug: 'kirelon-arenoso', name: 'Kirelon Arenoso' }]);
+    loadSessionFactsMock.mockResolvedValueOnce([]);
+    detectNpcsInSceneMock.mockResolvedValueOnce([]);
+    const app = await buildApp();
+    const res = await app.inject({ method: 'GET', url: '/saves/s1/zona' });
+    const body = res.json();
+    expect(body.puntos).toEqual([
+      { id: 'zp2', x: 400, y: 470, tipo: 'RECURSO', targetSlug: 'yerreo', nombre: expect.any(String), cantidad: 1, color: 'SIN_FACCION' },
+    ]);
   });
 
   it('un NPC dinámico ya cubierto por un ZonePoint fijo no se duplica en dinamicos', async () => {

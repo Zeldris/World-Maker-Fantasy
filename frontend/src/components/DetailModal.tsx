@@ -484,7 +484,13 @@ export function DetailModal({ target, onClose, onUnequip, onEquip, onSaveAbility
                 <MediaSlot
                   icon={target.icon}
                   variant="placeholder"
-                  imageUrl={resolveImageUrl((target.asentamiento ? target.asentamiento.iconoUrl : effective.imageUrls?.banner) ?? null)}
+                  // Bug real jugando en vivo (2026-09-06, "muchas locations en la preview del mapa
+                  // no se ven aunque ya las descubrí y la imagen ya está añadida"): un asentamiento
+                  // exigía únicamente su `iconoUrl` (asset propio, nuevo, mucho menos probable de
+                  // estar generado) e ignoraba el banner ya generado que alimenta el mapa de Zona.
+                  imageUrl={resolveImageUrl(
+                    (target.asentamiento ? target.asentamiento.iconoUrl : null) ?? effective.imageUrls?.banner ?? effective.imageUrls?.thumbnail ?? null,
+                  )}
                 />
                 <div>
                   <h2 className="font-serif text-lg text-wood-100">{effective.name}</h2>

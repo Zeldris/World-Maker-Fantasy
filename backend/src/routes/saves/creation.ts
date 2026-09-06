@@ -148,6 +148,16 @@ export async function creationRoutes(app: FastifyInstance) {
             energia: energiaMaxFor(attributes.constitucion),
             portraitInitial,
             currentLocationId: initialLocation?.id,
+            // Punto del jugador en el mapa de Zona (2026-09-04) — bug real jugando en vivo
+            // (2026-09-06, "la zona no está presentando a Gorhorn"): sin esto, una partida nueva
+            // nunca disparaba el único camino que fija estos campos (`turnResolution.ts`, bloque de
+            // viaje) hasta el primer viaje real — un personaje que arranca y actúa sin viajar aún
+            // se quedaba sin marcador para siempre. Centro del lienzo, mismo fallback que usa
+            // `turnResolution.ts` cuando no hay dirección de llegada real que calcular.
+            zonaPosX: 400,
+            zonaPosY: 300,
+            zonaPosEntradaX: 400,
+            zonaPosEntradaY: 300,
             dificultad: dificultad ?? 'MEDIO',
             raza: razaSlug,
             // Hambre/Sed (Grupo 3 § Compañeros y supervivencia, 2026-08-25) — sembrado al reloj
