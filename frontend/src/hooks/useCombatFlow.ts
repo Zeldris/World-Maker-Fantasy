@@ -131,6 +131,12 @@ export function useCombatFlow(params: UseCombatFlowParams) {
   // que se usaba solo para decidir `combatEnded` y nunca se propagaba más allá.
   const [combatPlayerJustDied, setCombatPlayerJustDied] = useState(false)
   const [combatAwaitingDefense, setCombatAwaitingDefense] = useState(false)
+  // Bug real jugando en vivo (2026-09-06, "todo debe estar bloqueado" mientras rueda la iniciativa):
+  // `combatBusy` volvía a `false` en cuanto la respuesta del turno llegaba, sin esperar a que la
+  // animación de `DiceRollVs` (2 × ROLL_DURATION_MS) terminara — dejaba el composer y los botones de
+  // habilidad operables durante esos ~10s. `true` desde que se programa el `setTimeout` de abajo
+  // hasta que `applyTurnAwaitingDefense` corre de verdad.
+  const [awaitingNextInitiative, setAwaitingNextInitiative] = useState(false)
   const [combatSelectedNpcSlug, setCombatSelectedNpcSlug] = useState<string | null>(null)
   const [combatSelectedAbilityId, setCombatSelectedAbilityId] = useState<string | null>(null)
   const [combatSelectedItemId, setCombatSelectedItemId] = useState<string | null>(null)
@@ -764,11 +770,15 @@ export function useCombatFlow(params: UseCombatFlowParams) {
     // × 2, dos dados secuenciales). Con una tirada de iniciativa real que mostrar, este único
     // campo se retrasa hasta que termine de rodar — sin tirada (`nextInitiativeRoll` null, p.ej.
     // Aturdimiento fuerza el turno sin tirada) se aplica igual que siempre, de inmediato.
-    const applyTurnAwaitingDefense = () => setCombatAwaitingDefense(params.esperandoDefensaJugador)
+    const applyTurnAwaitingDefense = () => {
+      setCombatAwaitingDefense(params.esperandoDefensaJugador)
+      setAwaitingNextInitiative(false)
+    }
     // `finDePartida` manda siempre: si el combate termina de verdad este mismo turno, no tiene
     // sentido retrasar nada (y un `setTimeout` tardío podría reabrir visualmente un combate ya
     // cerrado, pisando el `setCombatOpen(false)`/`setCombateIniciado(null)` de abajo).
     if (params.nextInitiativeRoll && !params.finDePartida) {
+      setAwaitingNextInitiative(true)
       setTimeout(applyTurnAwaitingDefense, 2 * ROLL_DURATION_MS)
     } else {
       applyTurnAwaitingDefense()
@@ -829,6 +839,7 @@ export function useCombatFlow(params: UseCombatFlowParams) {
     combatNpcsDisplay,
     combatDifficulty,
     combatBusy,
+    awaitingNextInitiative,
     combatEnded,
     combatPlayerJustDied,
     combatHasPendingConvalecientes,

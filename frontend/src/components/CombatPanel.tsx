@@ -451,7 +451,10 @@ export function CombatPanel({
   // tiñendo el propio `background-image` de `.plank-panel` — un fondo SIEMPRE pinta detrás de su
   // contenido, así que la imagen del rival nunca se ve afectada, a diferencia del `<div>` overlay
   // del primer intento, que se quedaba fijo tapando lo que se desplazara bajo él al hacer scroll).
-  const defenseBg = !ended && awaitingDefense
+  // Bug real jugando en vivo (2026-09-06): el fondo cambiaba de color en cuanto `awaitingDefense`
+  // pasaba a `true`, antes de que la animación de la tirada de iniciativa (`initiativeRevealed`)
+  // terminara — mientras hay una tirada sin revelar, se mantiene el fondo neutro.
+  const defenseBg = !ended && awaitingDefense && (!lastInitiativeRoll || initiativeRevealed)
 
   return (
     <section className={`plank-panel relative flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl ${defenseBg ? 'plank-panel-defense' : ''}`}>
@@ -626,7 +629,7 @@ export function CombatPanel({
           >
             {lastInitiativeRoll ? (
               <>
-                Un enemigo actúa primero, elige a ciegas cómo defenderte.
+                {initiativeRevealed ? 'Un enemigo actúa primero, elige a ciegas cómo defenderte.' : 'Tirando iniciativa...'}
                 <DiceRollVs
                   left={lastInitiativeRoll.jugador}
                   right={lastInitiativeRoll.npc}
@@ -634,6 +637,7 @@ export function CombatPanel({
                   rightLabel="el enemigo"
                   leftFirst={lastInitiativeRoll.ganador === 'jugador'}
                   showDifficulty={false}
+                  onAllLanded={() => setInitiativeRevealed(true)}
                 />
               </>
             ) : (
