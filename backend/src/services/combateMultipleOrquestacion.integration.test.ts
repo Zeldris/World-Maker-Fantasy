@@ -620,14 +620,16 @@ describe('combate múltiple: orquestación real contra Postgres', () => {
   // la habilidad directamente) y `chooseNpcAbility` ya prueba por separado que SÍ elige una
   // utilidad con CONTROL al atacar — este test confirma el CABLEADO real end-to-end: un NPC
   // Chamán/Opresor real, con su roster real derivado del catálogo (npcCombatAbilitiesFor), ataca
-  // de verdad con Opresión Mental y controla al rival. Ulkha Ketg (CHAMAN/RUNICO real de nivel 6,
-  // único CHAMAN del catálogo con nivel editable de forma segura para pruebas — sin entrelazado de
-  // misión) se fuerza temporalmente a OPRESOR/nivel 16 (mínimo real para desbloquear Opresión
-  // Mental, classAbilities.ts) y se revierte al final.
+  // de verdad con Opresión Mental y controla al rival. Ulkha Ketg (nivel 6 editable de forma
+  // segura para pruebas, sin entrelazado de misión) se fuerza temporalmente a CHAMAN/OPRESOR/nivel
+  // 16 (mínimo real para desbloquear Opresión Mental, classAbilities.ts) y se revierte al final —
+  // Ulkha dejó de ser CHAMAN de base tras la auditoría de lore 2026-09-06 (pasó a CAZADOR/DOMADOR,
+  // el "don de comunión" con las Gargantúas que justificaba su clase se quitó del lore), así que
+  // aquí también hay que forzar `clase`, no solo `especializacion`.
   it('CONTROL real: un NPC Chamán/Opresor ataca con Opresión Mental y marca al rival como controlado', async () => {
     const opresor = await prisma.npc.findFirstOrThrow({ where: { worldId, slug: 'ulkha-ketg' } });
     const rival = await prisma.npc.findFirstOrThrow({ where: { worldId, slug: 'aullador-rojo' } });
-    await prisma.npc.update({ where: { id: opresor.id }, data: { especializacion: 'OPRESOR', level: 16 } });
+    await prisma.npc.update({ where: { id: opresor.id }, data: { clase: 'CHAMAN', especializacion: 'OPRESOR', level: 16 } });
 
     // NPC vs NPC (no NPC vs jugadora): `datosVivosDe` da a la jugadora, cuando defiende, SOLO
     // habilidades rol:'defensa'/'utilidad' (sus propias SavedAction reales o el fallback fijo
@@ -683,7 +685,7 @@ describe('combate múltiple: orquestación real contra Postgres', () => {
       await prisma.combatEncounter.deleteMany({ where: { saveId, id: encounterId } });
     } finally {
       randomSpy.mockRestore();
-      await prisma.npc.update({ where: { id: opresor.id }, data: { especializacion: opresor.especializacion, level: opresor.level } });
+      await prisma.npc.update({ where: { id: opresor.id }, data: { clase: opresor.clase, especializacion: opresor.especializacion, level: opresor.level } });
     }
   }, 30_000);
 

@@ -23,7 +23,7 @@
 
 ### Kelife — "Brillo de luna"
 
-La vida Kelife transcurre dentro del cristal: hogares tallados en los prismas de la Cicatriz, talleres de gremio al pie de los yacimientos, y por la noche la luz perlada del cinturón atmosférico refractada en celestes, rosados y violáceos — el "brillo de luna" que les da nombre. Su piel mineral es una vida legible: gana facetas y vetas con los años, y cambia de tono con la emoción, de modo que entre Kelife casi no existen las mentiras limpias — existen los guantes, las mangas largas y el arte de no mirar. De ahí una cortesía central: **leer abiertamente la piel de otro es una intimidad que no se toma sin permiso**; en negociaciones formales ambas partes se cubren las manos, y descubrirlas ante alguien es un gesto de confianza casi familiar (el pregenerado Sael Vhorn esconde las suyas por costumbre). Tratan a los Jusaly como socios antiguos de comercio, a los Kalisar con un respeto incómodo y reciente, y a los Ilvenar como la memoria contratada de sus cortes.
+La vida Kelife transcurre dentro del cristal: hogares tallados en los prismas de la Cicatriz, talleres de gremio al pie de los yacimientos, y por la noche la luz perlada del cinturón atmosférico refractada en celestes, rosados y violáceos — el "brillo de luna" que les da nombre. Su piel mineral es una vida legible: gana facetas y vetas con los años —el cristal acumula microfracturas reales, igual que cualquier mineral que envejece— y cambia de tono con la emoción, no por telepatía ni magia, sino porque su estructura cristalina, extremadamente fina y regular (obra de Liania, el mismo principio que ya moldea el cristal del cielo sin luna — ver [genesis.md § "Liania: de la fantasía a la ciencia"](genesis.md#liania-de-la-fantasía-a-la-ciencia)), amplifica en refracción visible micro-cambios corporales del todo físicos: temperatura de la piel, tensión muscular, pulso. De modo que entre Kelife casi no existen las mentiras limpias — existen los guantes, las mangas largas y el arte de no mirar. De ahí una cortesía central: **leer abiertamente la piel de otro es una intimidad que no se toma sin permiso**; en negociaciones formales ambas partes se cubren las manos, y descubrirlas ante alguien es un gesto de confianza casi familiar (el pregenerado Sael Vhorn esconde las suyas por costumbre). Tratan a los Jusaly como socios antiguos de comercio, a los Kalisar con un respeto incómodo y reciente, y a los Ilvenar como la memoria contratada de sus cortes.
 - **La guerra, vista desde aquí**: la Rama Blanca es oficialmente una unión — en la práctica, muchas casas la usan para saldar cuentas que arrastran desde el cisma de la Edad Dorada, compitiendo por yacimientos e influencia bajo la bandera común. El Kelife de a pie lo sabe y calla: la piel de sus señores cambia de color cuando hablan de "unidad".
 
 ### Goirntes — Los del Orden
@@ -49,15 +49,28 @@ Los Jusaly viven donde la luz del sol rara vez toca el suelo: aldeas suspendidas
 
 El día a día orco es pastoreo, caza y camino: seguir a los Corredores de Cauce, recolectar Raíz de Fuego con cuidado, migrar cuando la Terk'ikar pacta con una Gargantúa de Ceniza el transporte del clan entero. Las hembras gobiernan la vida y los machos la guerra — costumbre, no ley — y a los recién nacidos se les susurra la frase de cuna que resume todo lo que un orco necesita saber de su propio origen: *"Con ira nos quemaron, con honor nos rebelamos, y aún así nadie domó nuestros caminos"*. Dos tabúes prácticos ordenan sus conflictos: **interrumpir un duelo de honor ya aceptado** (el duelo pertenece a los dos que lo pelean, intervenir deshonra a los tres) y **tocar el tótem de un clan ajeno sin permiso de su Terk'ikar**.
 
-**Los orcos y la Magia — por qué son Chamanes, no Magos (añadido 2026-08-23)**: los orcos no son
-magos — la Magia, aunque poderosa en ellos por su propio origen (nacidos del Estallido de Tarkor,
-de su rama Salvaje), nunca fue el camino que eligieron. Es la misma idea que ya resume la frase de
-cuna de arriba: nadie domó sus caminos, ni siquiera lo que llevan dentro por nacimiento. Por eso
-ningún orco lanza magia en crudo — la canalizan siempre a través de un tótem o una runa, un objeto
-que trabajan y desarrollan con el tiempo y que conecta su magia interior con la magia ambiental del
-mundo que los rodea. Es su equivalente cultural a un Mago, pero la diferencia es de fondo, no solo
-de estilo: elegir no dominar algo que sí podrían dominar, la misma terquedad que define todo lo
-demás en ellos (ver Chamán en [clases.md](clases.md#chamán-exclusiva-de-orcos--repaso-a-fondo)).
+**Los orcos y la Magia — por qué son Chamanes, no Magos (añadido 2026-08-23, mecanismo real
+desarrollado 2026-09-06)**: los orcos no son magos, y esta vez sí fue elección — pero no suya, sino
+de Tarkor. Su magia interior es, por origen, la más poderosa de Helek Sirik: nacen del Estallido
+directamente, sin Semilla creadora de por medio, mientras que toda raza "diseñada" recibe la suya ya
+filtrada por su Semilla. Tarkor, que veía en los orcos honor, fuerza y verdad —todo lo que él mismo
+respetaba— y que había aprendido de Ferios a dejar que una creación evolucione libre en vez de
+remodelarla a mano, quiso ahorrarles el mismo yugo que el poder de las Semillas siempre representó
+para él: les selló el canalizador con el que cualquier otra raza nace de serie, el que permite lanzar
+magia en crudo directamente del propio cuerpo. No selló la magia en sí —sigue ahí, intacta y más
+fuerte que en nadie—, solo la puerta que la deja salir sola.
+
+Lo que Tarkor no previó es que los orcos encontrarían otra puerta. Ciertas piedras, y la madera y el
+hueso de cierta flora, absorbieron durante generaciones la misma magia salvaje del Estallido que
+corre por la sangre orca — la misma frecuencia, por así decirlo. Solo los orcos son capaces de entrar
+en comunión con esos materiales impregnados, porque solo en ellos esa magia responde a algo que ya
+llevan dentro. Tallados con runas o marcas ancestrales, esos materiales se convierten en el
+canalizador sustituto que Tarkor no les dejó de serie: la puerta trasera a su propia magia interior,
+que de paso franquea el acceso a las demás ramas de magia que un orco pueda conjurar. De ahí que
+ningún orco lance magia en crudo con las manos — siempre a través de un tótem o una runa, trabajados
+con el tiempo — y de ahí también que la magia salvaje del entorno tenga, para ellos, un nombre propio
+y un mecanismo real, no solo un color narrativo (ver [clases.md § Chamán](clases.md#chamán-exclusiva-de-orcos--repaso-a-fondo)
+para el detalle completo de runas, tótems y los Hyanios).
 
 **El Signeran — el duelo de honor (añadido/corregido 2026-08-05)**: no cualquier orco puede retar a un duelo de honor en el sentido formal que protege el tabú de arriba. Solo tres vías dan ese derecho: quien la propia tribu elige y autoriza para ello (por decisión de la asamblea), quien desciende directamente de sangre de un jefe de tribu o de guerra, y —al revés de lo que pueda parecer— el propio líder de la tribu, que puede retar a otro cuando su honor exige defensa; a quien reta le queda aceptar o no. Las reglas son sencillas y siempre las mismas: sin armadura, solo un hacha orca simple, y a muerte — dejar con vida al perdedor se considera una deshonra y una debilidad, tanto de quien gana como de quien pierde, así que en la práctica casi ningún Signeran termina de otra forma. El nombre no tiene traducción limpia a la lengua común; lo más parecido es "la oportunidad de un orco". Es, ante todo, el mecanismo real por el que se reta la legitimidad de un liderazgo — no un cauce para cualquier disputa personal.
 
@@ -88,7 +101,7 @@ Dicho esto, y solo **entre los propios clanes orcos**: el trabajo de materiales 
 
 ### Nabieus — "Los que silencian"
 
-Vivir entre Nabieus es aprender otra gramática: en el Margen Silencioso —donde hasta el sonido se apaga de forma antinatural— **los silencios tienen sintaxis**: hay pausas que afirman, pausas que niegan y pausas que advierten, y un forastero que solo escucha las palabras se pierde la mitad de cada conversación. De ahí viene el don del pregenerado Yerin Slaad de leer mentiras en los silencios: no es un poder raro entre los suyos, es alfabetización. Su voz casi inaudible obliga a acercarse, y esa cercanía forzada es para ellos la medida de la confianza; **levantar la voz es su tabú** — gritar es violencia, se grite lo que se grite. Perseguidos durante el Yugo de Hierro por "operar en la sombra sin autorización del orden", fueron parte del corazón de la Purga Silenciosa, y no lo han olvidado. Con los Faerus, vecinos del Margen, mantienen una convivencia distante pero sin desprecio — cosa rara en Berig.
+Vivir entre Nabieus es aprender otra gramática: en el Margen Silencioso —donde hasta el sonido se apaga sin eco ni rebote, el dominio de Kroj sobre el territorio (ver [genesis.md § "El dominio de Kroj"](genesis.md#el-dominio-de-kroj))— **los silencios tienen sintaxis**: hay pausas que afirman, pausas que niegan y pausas que advierten, y un forastero que solo escucha las palabras se pierde la mitad de cada conversación. De ahí viene el don del pregenerado Yerin Slaad de leer mentiras en los silencios: no es un poder raro entre los suyos, es alfabetización. Su voz casi inaudible obliga a acercarse, y esa cercanía forzada es para ellos la medida de la confianza; **levantar la voz es su tabú** — gritar es violencia, se grite lo que se grite. Perseguidos durante el Yugo de Hierro por "operar en la sombra sin autorización del orden", fueron parte del corazón de la Purga Silenciosa, y no lo han olvidado. Con los Faerus, vecinos del Margen, mantienen una convivencia distante pero sin desprecio — cosa rara en Berig.
 
 **El Reino perdido (añadido 2026-08-05)**: el silencio no nació con el Yugo de Hierro — es más viejo que eso. Mucho antes del año 0, un reino Nabierus se alzó en lo que hoy son Las Llanuras del Viento Rojo, hasta que investigar demasiado le costó todo: Madre engañó a sus propias Semillas para enterrarlo bajo la arena roja sin que ellas mismas supieran lo que hacían. Los supervivientes huyeron hacia el Margen y, generaciones después, hacia Ciénaga Troncal — los antepasados directos de todos los Nabieus de hoy. Aprender a callar empezó ahí, no con los Goirntes (ver [areas.md § Antes de los orcos](areas.md#antes-de-los-orcos--el-reino-nabierus-y-el-origen-del-nombre-añadido-2026-08-05)).
 

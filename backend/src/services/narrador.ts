@@ -1439,6 +1439,22 @@ export async function narrateAction(ctx: TurnContext & { roll?: RollResult }): P
           reason: 'mencionar la luna — Helek Sirik no tiene luna convencional, en ningún momento del día (excepto la expresión fija "brillo de luna", el cinturón de micro-cristales real)',
         },
         {
+          check: () => hasMortalSpeakingNohade(parsed.narration),
+          reason: 'un mortal hablando, leyendo o escribiendo nohade — es la lengua exclusivamente divina de las Semillas, ningún mortal la ha hablado jamás',
+        },
+        {
+          check: () => hasOrcWorshippingTarkor(parsed.narration),
+          reason: 'un orco rezando, jurando o invocando a Tarkor — los orcos no adoran a Tarkor ni conocen su existencia, la Magia es para ellos poder salvaje del Estallido sin nombre ni figura divina',
+        },
+        {
+          check: () => hasUnpunishedOrcTabooBreak(parsed.narration),
+          reason: 'interrumpir un duelo de honor o tocar el tótem de un clan ajeno sin ninguna consecuencia narrada — son los dos tabúes prácticos reales de la cultura orca',
+        },
+        {
+          check: () => hasNonSerhuDenyingFuneralRite(parsed.narration),
+          reason: 'negar el cuerpo de un caído (hacerlo desaparecer sin velarlo) en un clan que no es Serhu — ese castigo es exclusivo de la casta de Ketg, ningún otro clan orco lo practica',
+        },
+        {
           check: () => hasFalseMaktorThreatClaim(narrationAndFacts),
           reason: 'sugerir que quedan otros orcos del Clan Maktor con vida — el clan fue aniquilado, Gorhorn es el único superviviente conocido',
         },
@@ -2440,6 +2456,70 @@ const CANONICAL_MOONLIGHT_PHRASE_REGEX = /brillo\s+de\s+luna/gi;
 export function hasFalseMoonReference(narration: string): boolean {
   const withoutCanonicalPhrase = narration.replace(CANONICAL_MOONLIGHT_PHRASE_REGEX, '');
   return MOON_REFERENCE_REGEX.test(normalizeText(withoutCanonicalPhrase));
+}
+
+/// Narración-vs-lore, familia nueva "vs. lore del corpus" (auditoría de coherencia código↔lore,
+/// hallazgo B5, cerrada 2026-09-06): hasta ahora ningún guard verificaba reglas de lore fuera de
+/// mecánica de combate/viaje. `genesis.md` § Nohade: "lengua creada por Berd para que las Semillas
+/// pudieran comunicarse entre sí y con Madre. Es exclusivamente divina: ningún mortal la ha hablado
+/// jamás." Ningún personaje jugable, NPC ni fauna de Helek Sirik puede hablar, escribir o entender
+/// nohade — solo puede mencionarse como concepto ajeno ("grabado en nohade", "nadie puede leerlo").
+// Verbo + hasta ~25 caracteres de por medio ("el pergamino escrito en", "perfectamente, para
+// sorpresa de todos" antes del siguiente "nohade") + "(en) nohade" — no exige que estén pegados.
+const NOHADE_SPOKEN_BY_MORTAL_REGEX =
+  /\b(habla|hablando|hablo|habl[oó]|dice|dijo|pronuncia|pronunci[oó]|escribe|escribi[oó]|lee|ley[oó]|entiende|entendi[oó]|traduce|tradujo)\w*[^.!?]{0,25}?\b(en\s+)?nohade\b/i;
+// Excepción: negar la posibilidad ("nadie/ningún mortal ha hablado nohade jamás") es la frase
+// CORRECTA según el lore, no una violación — sin esto, la propia negación dispararía el guard.
+const NOHADE_NEGATION_NEARBY_REGEX = /\b(nadie|ning[uú]n\w*|ni\s+siquiera|jam[aá]s)\b/i;
+
+export function hasMortalSpeakingNohade(narration: string): boolean {
+  const normalized = normalizeText(narration);
+  if (!NOHADE_SPOKEN_BY_MORTAL_REGEX.test(normalized)) return false;
+  return !NOHADE_NEGATION_NEARBY_REGEX.test(normalized);
+}
+
+/// `razas.md` § Orcos: los orcos no adoran a Tarkor ni conocen su existencia — la Magia es "poder
+/// salvaje del Estallido" para ellos, sin ningún nombre ni figura divina detrás; el arco de Tarkor
+/// es mito reservado a Semillas/eruditos nohade, jamás llegó a la tradición oral orca. Cualquier
+/// personaje (casi siempre un orco por nombre propio — Gorhorn, un NPC orco — nunca "orco" a secas
+/// en prosa real) rezando, jurando o invocando a Tarkor rompe esto — no se exige la palabra "orco"
+/// literal en la frase, el elenco jugable actual es orco casi sin excepción.
+const ORC_WORSHIPPING_TARKOR_REGEX =
+  /\btarkor\b[^.!?]{0,60}\b(reza|invoca|jura|venera|adora)\w*|\b(reza|invoca|jura|venera|adora)\w*[^.!?]{0,60}\btarkor\b|\ben el nombre de\s+tarkor\b/i;
+
+export function hasOrcWorshippingTarkor(narration: string): boolean {
+  return ORC_WORSHIPPING_TARKOR_REGEX.test(normalizeText(narration));
+}
+
+/// `razas.md` § Orcos: dos tabúes prácticos de duelo/tótem — "interrumpir un duelo de honor ya
+/// aceptado" y "tocar el tótem de un clan ajeno sin permiso de su Terk'ikar" — ambos definidos como
+/// transgresiones reales, nunca gestos sin consecuencia. Dispara si la narración describe el propio
+/// acto (interrumpir el duelo / tocar el tótem ajeno) sin ninguna palabra de consecuencia o tensión
+/// cerca — evita falsos positivos cuando el personaje SABE que es tabú y decide no hacerlo, o cuando
+/// ya se narra la reacción/castigo correspondiente en la misma frase.
+const TABOO_ACT_REGEX =
+  /\b(interrumpe|interrumpio|interrumpió|detiene el duelo|para el duelo)\w*\s+el\s+duelo\b|\b(toca|tocando|toco|tocó|agarra|coge)\w*\s+el\s+t[oó]tem\s+(del?\s+)?(otro\s+)?clan\b/i;
+const TABOO_CONSEQUENCE_NEARBY_REGEX =
+  /\b(deshonra|deshonor|tab[uú]|prohibido|castigo|castiga|verg[uü]enza|ofende|ofensa|se enfurece|indignaci[oó]n)\w*/i;
+
+export function hasUnpunishedOrcTabooBreak(narration: string): boolean {
+  const normalized = normalizeText(narration);
+  if (!TABOO_ACT_REGEX.test(normalized)) return false;
+  return !TABOO_CONSEQUENCE_NEARBY_REGEX.test(normalized);
+}
+
+/// `areas.md` § "La casta de Ketg": negar el cuerpo de un caído (hacerlo desaparecer sin velarlo ni
+/// recordarlo, en vez de quemarlo y marcar el lugar con su tótem) es "una práctica que no se ve en
+/// ningún otro clan orco" — castigo exclusivo de la casta de Ketg (Clan Serhu) contra quien la
+/// desafía. Cualquier otro clan (Maktor, Goshg, Helsig) narrando este mismo rito viola la regla.
+const DENIED_BODY_RITE_REGEX =
+  /\bcuerpo\b[^.!?]{0,60}\b(desaparece|hacen desaparecer|niegan|niega|no se vela|sin velar|sin quemar)\w*|\b(niegan|niega)\w*\s+el\s+cuerpo\b/i;
+const NON_SERHU_ORC_CLAN_REGEX = /\b(maktor|goshg|helsig)\b/i;
+
+export function hasNonSerhuDenyingFuneralRite(narration: string): boolean {
+  const normalized = normalizeText(narration);
+  if (!DENIED_BODY_RITE_REGEX.test(normalized)) return false;
+  return NON_SERHU_ORC_CLAN_REGEX.test(normalized);
 }
 
 /// Narración-vs-mecánica, mismo patrón que `hasFalseItemUse`/`hasResurrectedDeadNpc` (bug real

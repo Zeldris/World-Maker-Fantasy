@@ -34,6 +34,10 @@ import {
   hasFalseKarotVekuAsRiver,
   hasWrongCelestialReference,
   hasFalseMoonReference,
+  hasMortalSpeakingNohade,
+  hasOrcWorshippingTarkor,
+  hasUnpunishedOrcTabooBreak,
+  hasNonSerhuDenyingFuneralRite,
   hasFalseMaktorThreatClaim,
   hasFalseTravelClaim,
   hasFalsePhantomTravel,
@@ -1223,6 +1227,89 @@ describe('hasFalseMoonReference', () => {
 
   it('no dispara con narración normal sin ninguna mención de luna', () => {
     expect(hasFalseMoonReference('Las estrellas cubren el cielo despejado sobre la llanura.')).toBe(false);
+  });
+});
+
+describe('hasMortalSpeakingNohade', () => {
+  it('auditoría B5 (2026-09-06): detecta a un mortal hablando nohade — es la lengua exclusivamente divina de las Semillas, ningún mortal la ha hablado jamás (genesis.md § Nohade)', () => {
+    expect(hasMortalSpeakingNohade('Gorhorn habla en nohade con el anciano del poblado.')).toBe(true);
+  });
+
+  it('detecta también leer/escribir/entender nohade', () => {
+    expect(hasMortalSpeakingNohade('El erudito lee el pergamino escrito en nohade sin dificultad.')).toBe(true);
+    expect(hasMortalSpeakingNohade('Ella entiende nohade perfectamente, para sorpresa de todos.')).toBe(true);
+  });
+
+  it('no dispara al mencionar el nohade como concepto ajeno, sin que nadie lo hable', () => {
+    expect(hasMortalSpeakingNohade('El texto está grabado en nohade — nadie puede leerlo.')).toBe(false);
+    expect(hasMortalSpeakingNohade('Ni siquiera un mortal ha hablado nohade jamás, según cuentan los mitos.')).toBe(false);
+  });
+
+  it('no dispara con narración normal sin mención de nohade', () => {
+    expect(hasMortalSpeakingNohade('Gorhorn habla con el anciano del poblado sobre las tormentas.')).toBe(false);
+  });
+});
+
+describe('hasOrcWorshippingTarkor', () => {
+  it('auditoría B5 (2026-09-06): detecta a un orco adorando/invocando a Tarkor — los orcos no adoran a Tarkor ni conocen su existencia (razas.md § Orcos)', () => {
+    expect(hasOrcWorshippingTarkor('El orco reza a Tarkor antes del combate.')).toBe(true);
+  });
+
+  it('detecta también jurar/invocar/venerar en el nombre de Tarkor', () => {
+    expect(hasOrcWorshippingTarkor('Gorhorn jura en el nombre de Tarkor que cumplirá su palabra.')).toBe(true);
+  });
+
+  it('no dispara con la mención neutra de Tarkor sin adoración orca (ej. narrador explicando lore, o un orco mencionándolo sin veneración)', () => {
+    expect(hasOrcWorshippingTarkor('La magia salvaje del Estallido corre por la sangre de todo orco.')).toBe(false);
+  });
+
+  it('no dispara con narración normal sin mención de Tarkor', () => {
+    expect(hasOrcWorshippingTarkor('El orco afila su hacha antes del combate.')).toBe(false);
+  });
+});
+
+describe('hasUnpunishedOrcTabooBreak', () => {
+  it('auditoría B5 (2026-09-06): detecta interrumpir un duelo de honor sin ninguna consecuencia narrada (razas.md: tabú práctico real)', () => {
+    expect(hasUnpunishedOrcTabooBreak('Gorhorn interrumpe el duelo, separando a los dos combatientes.')).toBe(true);
+  });
+
+  it('detecta también tocar el tótem de un clan ajeno sin consecuencia', () => {
+    expect(hasUnpunishedOrcTabooBreak('El forastero toca el tótem del otro clan con curiosidad.')).toBe(true);
+  });
+
+  it('no dispara si la narración ya incluye la reacción/consecuencia del tabú en la misma frase', () => {
+    expect(
+      hasUnpunishedOrcTabooBreak('Gorhorn interrumpe el duelo, y todos lo miran con deshonra por su osadía.'),
+    ).toBe(false);
+    expect(
+      hasUnpunishedOrcTabooBreak('El forastero toca el tótem del otro clan, un tabú que ofende a todo el clan presente.'),
+    ).toBe(false);
+  });
+
+  it('no dispara con narración normal sin ninguno de los dos actos', () => {
+    expect(hasUnpunishedOrcTabooBreak('Gorhorn observa el duelo desde la distancia, respetando la tradición.')).toBe(false);
+  });
+});
+
+describe('hasNonSerhuDenyingFuneralRite', () => {
+  it('auditoría B5 (2026-09-06): detecta el rito de negar el cuerpo del caído en un clan que no es Serhu — castigo exclusivo de la casta de Ketg (areas.md § "La casta de Ketg")', () => {
+    expect(
+      hasNonSerhuDenyingFuneralRite('Los Maktor hacen desaparecer el cuerpo del caído, sin velarlo ni recordarlo.'),
+    ).toBe(true);
+  });
+
+  it('no dispara con el mismo rito narrado en el Clan Serhu (donde sí es canon)', () => {
+    expect(
+      hasNonSerhuDenyingFuneralRite('La casta de Ketg hace desaparecer el cuerpo del traidor, sin velarlo ni recordarlo.'),
+    ).toBe(false);
+  });
+
+  it('no dispara con el rito funerario normal (quemar y marcar con el tótem) en cualquier clan', () => {
+    expect(hasNonSerhuDenyingFuneralRite('Los Goshg queman el cuerpo del caído y marcan el lugar con su tótem.')).toBe(false);
+  });
+
+  it('no dispara con narración normal sin ningún rito funerario', () => {
+    expect(hasNonSerhuDenyingFuneralRite('Los Helsig cazan en las minas de Cristal Helado.')).toBe(false);
   });
 });
 

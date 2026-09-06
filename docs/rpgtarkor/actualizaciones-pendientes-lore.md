@@ -14,7 +14,7 @@ de diseño o trabajo de catálogo extenso) — ver checklist de estado al final.
 
 ## PARTE 1 — Huecos de lore ("QUÉ sin POR QUÉ/CÓMO")
 
-### 1. La arena magnética — **PENDIENTE** (mayor envergadura, no abordado esta sesión)
+### 1. La arena magnética — **CERRADO** (2026-09-06, ver `genesis.md` § "Por qué la arena de las Llanuras es magnética")
 **Archivos**: `areas.md:62`, `:143`, `:162`, `:189`; `flora-fauna.md:56`, `:127-131`;
 `clima-tormentas.md` entero.
 
@@ -39,7 +39,7 @@ del metal, Sezix/el castigo de Madre = el viento que lo pulverizó, Goirme como 
 Cierra ~5 huecos de golpe. **No se aborda hoy porque requiere una decisión de mecanismo físico como
 la que se tomó para la luna — mejor con la usuaria presente.**
 
-### 2. El "don de comunión" de las Terk'ikar — **PENDIENTE** (requiere decisión de diseño)
+### 2. El "don de comunión" de las Terk'ikar — **CERRADO** (2026-09-06, quitado del lore, no explicado)
 **Archivos**: `flora-fauna.md:28`, `npcs.md:19` (Ulkha Ketg), `razas.md:50`, `clases.md:1238` (ya
 marcado ahí como "hueco real sin cubrir hasta ahora").
 
@@ -48,16 +48,59 @@ enseña? Choca con `razas.md:52-60` (los orcos nunca canalizan magia sin tótem/
 Impacto directo: Ulkha Ketg (NPC con ficha completa) y el propio Gorhorn tienen una versión similar
 sin definir. Requiere decidir el mecanismo antes de escribir — no abordado hoy.
 
-### 3. El Margen Silencioso — **PENDIENTE** (depende del hueco #4, Kroj)
-El sonido se apaga "de forma antinatural" sin decir por qué. Atribución obvia y sin usar: Nabieus son
-de Kroj, cuyo dominio es *"la noche cerrada, el silencio, y lo que caza dentro de ambos"*
-(`genesis.md`). Conectar, no inventar — pero depende de cerrar primero el hueco #4.
+### 3. El Margen Silencioso — **CERRADO** (2026-09-06, resuelto junto al #4)
+El sonido se apaga sin eco ni rebote: el dominio de Kroj sobre el territorio, no un misterio sin
+causa (`areas.md`, `razas.md`, remiten a `genesis.md § "El dominio de Kroj"`).
 
-### 4. Kroj — **PENDIENTE** (dominio en blanco pese a tener obras repartidas)
-`genesis.md` — *"Dominio en detalle aún desconocido."* Cuelgan de aquí el #3, la piel Nabieus ("no
-refleja ni absorbe la luz" — físicamente imposible sin mecanismo) y las Sombras de Kroj ("imitan
-susurros de voces mortales" sin decir cómo). Cerrar esto resuelve 3 huecos de un tirón — requiere
-sesión de escritura dedicada, coherente con el patrón usado para el cielo sin luna.
+### 4. Kroj — **CERRADO** (2026-09-06, ver genesis.md § "El dominio de Kroj")
+Nuevo mecanismo unificado: Kroj gobierna la ausencia de señal que escapa de un cuerpo (luz y sonido
+son la misma clase de fenómeno para ella). Resuelve de un tirón: piel Nabieus (atrapa la luz, no la
+refleja ni la absorbe como calor), Margen Silencioso (mismo principio a escala de territorio) y
+Sombras de Kroj (acumulan sonido ajeno y lo devuelven distorsionado, no lo imitan). Además, ampliado
+a petición de la usuaria para darle un papel más activo en la Formación: co-partícipe (no autora) de
+flora y fauna nocturnas allí donde su dominio cruzó la obra de Florial y Ferios — mismo patrón que
+Goirme sobre la Meseta del Orden. Atado retroactivamente a fichas ya existentes sin inventar
+criaturas nuevas: Rondador de Brasas, Nuente y Miruina, además de las propias Sombras de Kroj
+(`flora-fauna.md`).
+
+### 4bis. Las 13 Semillas — **CERRADO** (2026-09-06, ronda completa de ampliación)
+A petición de la usuaria, se dio a las 9 Semillas restantes (fuera de las 4 Perdidas, ya
+desarrolladas) el mismo tratamiento que a Kroj: participación activa en la Formación, no solo un
+dominio abstracto de tabla. Todo en `genesis.md`, con referencias cruzadas desde `areas.md`,
+`razas.md` y `flora-fauna.md` donde aplica:
+- **Liania** — "de la fantasía a la ciencia": es quien convierte la intención de cualquier otra
+  Semilla en mecanismo físico real y consistente (el cristal del cielo sin luna, el metal de la
+  arena magnética, la piel Nabieus). Principio que retroactivamente explica el estilo de todo lo
+  cerrado en esta sesión y la anterior.
+- **Sezix** — dominio unificado (el límite entre algo y su ausencia: muerte y vacío como una sola
+  idea); mecanismo de la Niebla del Estrecho (borra el límite entre "algo" y "nada"); fauna marcada
+  por su firma sin ser carroñera (el Quio, que no caza ni compite — disuelve); explica por fin por
+  qué los Kalisar son afables pese a su origen: Sezix admira la vida precisamente por vivir tan
+  cerca de su fin.
+- **Tharlia y Berd** — diferenciados con precisión (antes se solapaban): Tharlia es memoria cruda sin
+  filtrar, autora también de la inteligencia/memoria/sueños de los seres pensantes; Berd no archiva
+  hechos, los interpreta y produce la doctrina oficial de qué es "correcto". El registro compartido
+  de Tharlia recibe nombre propio: **Ladusa Tabia** ("Conocimiento Eterno"). Introduce el segundo
+  registro secreto de Tharlia (los hechos sin los borrados de Madre) — pieza que **resuelve el
+  mecanismo** (no el contenido) de qué encontró Tarkor en su desaparición: la nota de cabecera de
+  este documento sobre "misterios deliberados" queda desactualizada en ese punto concreto, ver el
+  arco de Tarkor reescrito en `genesis.md`.
+- **Goirme** — revelación mayor: su poder real no es "orden" sino control del tiempo sobre materia y
+  conciencia (puede rebobinar cualquier cosa a un estado anterior, incluida la memoria), algo que ni
+  ella misma reconoce como tal — cree sinceramente estar "restaurando el orden". Es el instrumento
+  con el que Madre borró de las demás Semillas el recuerdo de haber ejecutado el engaño contra el
+  Reino Nabierus. Explica el autoritarismo Goirnte desde la raíz (juzga el mérito ajeno por si encaja
+  en el patrón, no por su valor) y su conflicto de origen con Tarkor.
+- **Lerox** — deja de ser "la que no participó": es quien más veces intervino, analizando el patrón
+  de cada error ajeno y corrigiendo el concepto de partida del siguiente intento (nunca lo ya hecho —
+  diferenciado explícitamente del poder de Goirme, que sí deshace lo existente). En secreto, siente
+  fascinación por el error y el caos que corrige, y archiva cada resultado fallido sin decírselo a
+  nadie — gancho narrativo plantado para un continente futuro, fuera del roadmap actual.
+- **Florial y Ferios** — historia de origen real de su alianza (Ferios prueba una hoja de la flora de
+  Florial, inventa el concepto de herbívoro, reconciliación tras el enfado inicial de Florial).
+  Explica el desequilibrio flora/fauna ya existente en el catálogo (el triple de flora que de fauna:
+  Florial se refugió en su obra tras la caída de Tarkor). Ambas fueron testigos tempranos de las
+  discrepancias del Ladusa Tabia, antes que nadie más.
 
 ### 5. "Magia ambiental" — **PENDIENTE** (vocabulario central de la clase Chamán)
 `razas.md:56-57`, `clases.md` (Chamán). ¿Es la magia salvaje del Estallido dispersa en el terreno?
@@ -66,13 +109,68 @@ yacimientos que "absorbieron magia salvaje") ya sugiere la base sin que nadie un
 Máxima frecuencia de aparición — el narrador lo describe cada vez que Gorhorn usa una habilidad de
 Chamán. No abordado hoy.
 
-### 6-17. Resto de huecos de impacto medio/bajo — **PENDIENTES, sin tocar esta sesión**
-Ver detalle completo en el historial de este documento (recuperable por git) o volver a auditar:
-Hielo sílice (mal clasificado como "Flora"), Hierba del Hierro (aleación sin mecanismo), piel Kelife
-que cambia con la emoción, brújulas de vacío Nabieus, resina de Trepadores Ocaso ("conserva" ambiguo),
-Pilares Rotos sin origen, Imanio (depende de #1), Árboles de Hebra Dorada, Acechadores de la Bruma
-("cazan por miedo"). Los descartados como misterio deliberado (Isla Cambiante, Sello de contención,
-Tundra Negra Refleja, Pico Ocaso Negro) siguen descartados.
+### 5. "Magia ambiental" — **CERRADO** (2026-09-06, ver razas.md § "Los orcos y la Magia" y clases.md § Chamán)
+Mecanismo completo: Tarkor selló en los orcos el canalizador de magia en crudo que toda raza tiene de
+serie —no la magia interior en sí, que sigue siendo la más fuerte de Helek Sirik por nacer sin
+Semilla creadora—, inspirado en el respeto de Ferios por la libertad de su propia creación (mismo
+motivo que su alejamiento de las Semillas fieles, ver `genesis.md § "Florial y Ferios"`). Los orcos
+encontraron un canalizador sustituto: piedras (runas) y madera/hueso (tótems) que absorbieron la
+misma magia salvaje del Estallido — solo ellos entran en comunión con esos materiales. Los tótems
+encierran a los **Hyanios** ("Ancestros"), representación cultural orca de cada elemento, sin
+voluntad propia (magia elemental almacenada, no espíritus). La Flor de Esquirla (`flora-fauna.md:13`)
+queda conectada como el mismo fenómeno sin trabajar ni encauzar.
+
+### 6. Hielo Sílice — **CERRADO** (2026-09-06, reclasificado en flora-fauna.md)
+No era un hueco de mecanismo, era un error de clasificación: es un mineral, listado por error bajo
+"Flora:" del bloque Berig. Movido a una categoría "Minerales:" propia, junto a Hierba del Hierro y
+Trepadores Ocaso (que sí son flora real).
+
+### 7. Hierba del Hierro — **CERRADO** (2026-09-06, ver flora-fauna.md)
+Mecanismo con Liania: no crea metal, bioacumula el mineral ya disperso en la piedra gris de la
+Meseta del Orden en sus propios tejidos, mismo principio de "convertir la fantasía en ciencia" que el
+resto de la sesión — solo que aplicado a una planta en vez de a un fenómeno geológico o climático.
+
+### 8. Piel Kelife que cambia con la emoción — **CERRADO** (2026-09-06, ver razas.md § Kelife)
+Mecanismo con Liania: no es telepatía ni magia — el cristal, de estructura extremadamente fina y
+regular (misma autoría que el cristal del cielo sin luna), amplifica en refracción visible
+micro-cambios corporales reales (temperatura de piel, tensión muscular, pulso). Las facetas/vetas que
+gana con los años son microfracturas reales de envejecimiento del propio mineral.
+
+### 9. Brújulas de vacío Nabieus — **CERRADO** (2026-09-06, ver areas.md § "La Niebla del Estrecho")
+No son magnéticas: miden el gradiente materia/vacío que Sezix borra dentro de la niebla, orientándose
+hacia donde ese gradiente vuelve a ser nítido (tierra firme). Solo los Nabieus tienen la sensibilidad
+artesanal para tallarlas. El origen concreto de la que lleva Brann el Cambista sigue deliberadamente
+sin explicar (ni él mismo lo cuenta) — no es un hueco, es su propio misterio de personaje.
+
+### 10. Resina de Trepadores Ocaso — **CERRADO** (2026-09-06, ver areas.md § Clan Goshg)
+No era un hueco de mecanismo cósmico, solo una frase mal cerrada: "sella y conserva" ahora dice
+explícitamente qué conserva (la madera, impermeabilizándola contra la humedad estancada de la
+ciénaga) — barniz natural corriente, sin necesitar ninguna Semilla.
+
+### 11. Los Pilares Rotos sin origen — **CERRADO** (2026-09-06, ver areas.md § "Los Pilares Rotos")
+Son restos del Reino Nabierus, demasiado grandes para que el engaño de Madre los derribara del todo —
+el nombre "Rotos" describe lo que sobrevivió de algo mayor, no su forma. Estandartes y puentes
+colgantes son obra orca posterior, adaptada sobre lo ya en pie.
+
+### 12. Imanio — **CERRADO por herencia** (verificado 2026-09-06, no requirió trabajo nuevo)
+Dependía del #1 (arena magnética), ya cerrado desde el inicio de esta sesión: el mecanismo de
+`genesis.md` (polaridad opuesta, mismo principio que dos imanes iguales repeliéndose) ya cubre por
+qué el Imanio puede recolectar rocas flotantes como armadura sin necesitar nada adicional.
+
+### 13. Árboles de Hebra Dorada — **CERRADO** (2026-09-06, ver flora-fauna.md § Vaelira)
+Mecanosíntesis en vez de fotosíntesis (no necesitan luz, viven bajo dosel denso): convierten
+vibración de la tierra en energía química, mismo principio que organismos reales sin luz. Raíces
+filtran agua por el mismo mecanismo de bioacumulación que la Hierba del Hierro (limpiando en vez de
+concentrar metal). La savia curativa es subproducto directo del proceso, no un don aparte.
+
+### 14. Acechadores de la Bruma ("cazan por miedo") — **CERRADO** (2026-09-06, ver flora-fauna.md § Vaelira)
+Calor y miedo son una sola cadena: detectan el calor corporal real de una presa asustada y liberan un
+gas alucinógeno propio que sobrecarga su sistema sensorial, amplificando el miedo hasta el pánico —
+más fácil de cazar así. Pelaje semitranslúcido y ojos blancos: efecto colateral de su propia
+resistencia al gas.
+
+**Bloque 6-17 completo.** Los descartados como misterio deliberado (Isla Cambiante, Sello de
+contención, Tundra Negra Refleja, Pico Ocaso Negro) siguen descartados a propósito, no son huecos.
 
 ---
 
@@ -82,15 +180,15 @@ Tundra Negra Refleja, Pico Ocaso Negro) siguen descartados.
 
 | # | Hallazgo | Estado |
 |---|---|---|
-| A1 | Taxonomía completa de fauna/flora (26 categorías: GUELISES, CORVENES, etc.) con reparto cosmológico por Semilla, invisible en el lore. Máximo impacto — base de habilidades de cada animal. | **PENDIENTE** — requiere decidir si son canon narrativo o solo claves internas antes de escribir nada; ~1-2 páginas de trabajo. |
-| A2 | Interior de Karot Veku / Karot Vekhad + 4 construcciones del clan, nodo jugable real sin mención en `areas.md`. | **PENDIENTE** — requiere redactar la sección nueva del campamento. |
-| A3 | Veta de hierro real en Los Pilares Rotos, contradice `razas.md:83` (los Serhu no tienen metal propio). | **PENDIENTE** — requiere decidir cómo encaja con el argumento económico existente. |
+| A1 | Taxonomía completa de fauna/flora (13 categorías de fauna + 13 de flora = 26 en total, no 26 de cada — corregido; `GUELISES`, `CORVENES`, `VELDRIAS`, etc.) con reparto cosmológico por Semilla, invisible en el lore. Máximo impacto — base de habilidades de cada animal. | **CERRADO** (2026-09-06) — decisión: sí es canon narrativo (un cazador/herborista experto la reconocería en la ficción). Sección nueva completa en `flora-fauna.md § "Las 26 familias"`, con las 13+13 familias traducidas a prosa, organizadas por Semilla creadora y enlazadas a los dominios ya desarrollados hoy en `genesis.md` (Ferios/Florial/Goirme/Kroj/Tarkor). Sin tocar código — puro sabor narrativo, confirmado en el propio comentario fuente. |
+| A2 | Interior de Karot Veku / Karot Vekhad, nodo jugable real (`campamento-serhu-interior` en `worldCatalog.ts`) sin mención en `areas.md` — corregido: no son "4 construcciones" como Location propia, es 1 sola Location de interior con los talleres de oficio ubicados en el mapa de Zona (ZonePoint), no en el grafo de viaje. | **CERRADO** (2026-09-06) — descripción ya existente en `worldCatalog.ts` traducida a prosa en `areas.md § Clan Serhu`, sin inventar nada nuevo. |
+| A3 | Veta de hierro real en Los Pilares Rotos — el resumen de este documento decía "los Serhu no tienen metal propio", pero `areas.md` nunca afirmó eso (dice "herrería mediocre y mal orientada", compatible con tener metal malo). | **CERRADO** (2026-09-06) — aclarado en `areas.md § "Los Pilares Rotos"`: es el hierro corriente de toda la llanura, el peor de Helek Sirik, sin relación con las ruinas Nabierus del mismo lugar (cerradas hoy en el punto #11 de la Parte 1) — da un mínimo de equipamiento propio, explica la herrería mediocre sin contradecir nada. Ampliado con jerarquía real de acceso: Yerreo casi en exclusiva para altos rangos/casta Ketg (por el riesgo de conseguirlo); otros metales que los Serhu no saben trabajar se venden en crudo a la Concordia a cambio de equipo mejor, que termina igual concentrado en Kort'ikar/Terk'ikar — el metal como instrumento más del control interno de Ketg. |
 | A4 | Nombres Kektira de estaciones/clima, se muestran en pantalla constantemente, ausentes del lore de idiomas. | **CERRADO** — chunk RAG nuevo añadido y reindexado (`loreChunks.ts`, "Kektira — nombres orcos de estaciones y tormentas") y las 8 palabras añadidas también a `areas.md` § Idiomas, en la entrada del propio Kektira. |
 | A5 | "Origen Azul" (nombre del planeta) usado en la esquirla-celeste-caída como si fuera un fenómeno del cielo. | **CERRADO** — descripción reescrita en `worldCatalog.ts`, conecta con el cinturón de micro-cristales real. |
 | A6 | Pico de minero en el inventario inicial de Gorhorn, ausente de su ficha canónica. | **CERRADO** — resuelto junto con B9 (ver abajo): `personajes.md` actualizado con el inventario real completo (pico + cataplasma incluidos). |
 | A7 | 12 Maestros de oficio reales en catálogo, `areas.md` decía 11 (sin contar Pescador). | **CERRADO** — recuento y lista corregidos en `areas.md`. |
-| A8 | Coordenadas de El Vergel de Kegi / La Grieta Cantora fuera de rango regional. | **PENDIENTE** — bajo impacto, requiere revisar el grafo de coordenadas con cuidado. |
-| A9 | La Espina del Viento (peligro nº1 declarado de la región) no tiene `Npc` combatible — solo genera texto de riesgo. | **PENDIENTE** — decisión de diseño (¿darle ficha de combate o dejarla puramente narrativa y decirlo explícitamente en el lore?). |
+| A8 | Coordenadas de El Vergel de Kegi (y=-175) / La Grieta Cantora (y=-100) muy fuera del rango del resto del núcleo de Las Llanuras (~-42 a 54) — probable error de escala/tecleo. | **CERRADO, verificar en partida** (2026-09-06) — recalculadas en `worldCatalog.ts`: Grieta Cantora → y=-64 (da exactamente los "46 unidades reales" que su propio comentario de `locationLinks` ya afirmaba, coherente con `minutosBase: 320`); Vergel de Kegi → y=-60 (por proporción a su `minutosBase: 300`, sin cifra exacta documentada). La usuaria revisará ambas posiciones jugando en vivo y las ajustará si no encajan del todo. |
+| A9 | La Espina del Viento no tiene `Npc` combatible — solo genera texto de riesgo. | **CERRADO** (2026-09-06) — no era un hueco, era una decisión de diseño ya tomada y documentada desde 2026-07-22 (`harvestSourcesThatAreFaunaWithoutNpc` en `worldCatalog.ts`: "peligro ambiental puro... sin ficha de combate ni Npc propio", deliberado). Confirmado con la usuaria: tampoco es "el mayor peligro" de la región como decía este mismo documento — es una fauna más. `flora-fauna.md` corregido: quitada la hipérbole, añadida la aclaración explícita de que es deliberadamente sin combate. |
 
 ### Dirección B — el lore lo establece, el código no lo respeta
 
@@ -100,7 +198,7 @@ Tundra Negra Refleja, Pico Ocaso Negro) siguen descartados.
 | B2 | El guard `hasWrongCelestialReference` solo rechazaba "luna" DE DÍA, dejándola pasar de noche (el caso más frecuente). | **CERRADO** — nuevo guard `hasFalseMoonReference` (narrador.ts) rechaza "luna/lunar" en CUALQUIER momento, salvo la expresión canónica "brillo de luna". Enganchado a la cascada de `narrateAction`. Tests nuevos + verificación rigurosa (revertido/confirmado que falla sin el fix). |
 | B3 | `entorno.ts` describía la noche de las Llanuras "sin ninguna luz que las opaque" — justo lo contrario del cinturón real. | **CERRADO** — reescrito para mencionar el brillo perlado difuso. Test actualizado. |
 | B4 | La pasiva racial orca "Sangre del Estallido" (TODOS los orcos, no solo Chamán) narraba magia despertando sola, sin tótem/runa — viola la regla dura de `razas.md`. | **CERRADO** — reescrita como efecto fisiológico latente ("herencia del Estallido... no es magia"), nunca canalización mágica. |
-| B5 | Ningún guard de narrador.ts verifica NINGUNA regla de lore del corpus (magia sin foco, tabúes orcos, idioma nohade, etc.) — solo mecánica de combate/viaje. | **PENDIENTE** — hueco estructural, más caro de cerrar (requeriría una familia nueva de guards "vs. lore" en vez de "vs. mecánica"). Candidatos ya identificados: "los orcos no adoran a Tarkor ni saben de su existencia", tabú de tocar tótem ajeno/interrumpir duelo, rito funerario solo entre Serhu, "ningún mortal habla nohade". |
+| B5 | Ningún guard de narrador.ts verifica NINGUNA regla de lore del corpus (magia sin foco, tabúes orcos, idioma nohade, etc.) — solo mecánica de combate/viaje. | **CERRADO** (2026-09-06) — familia nueva de guards "vs. lore" en `narrador.ts`, mismo patrón que `hasFalseMoonReference` (función pura + regex + enganchada en la cascada de reintento), los 4 candidatos ya identificados: `hasMortalSpeakingNohade` (nohade solo divina, con excepción de negación "nadie ha hablado nohade jamás"), `hasOrcWorshippingTarkor` (los orcos no adoran a Tarkor), `hasUnpunishedOrcTabooBreak` (tocar tótem ajeno/interrumpir duelo sin consecuencia narrada), `hasNonSerhuDenyingFuneralRite` (negar el cuerpo del caído fuera de la casta de Ketg). Verificadas a mano las 19 aserciones de test contra las regex reales (equivalente exacto de `normalizeText`: lowercase + NFD + quitar diacríticos) — no se pudo ejecutar `vitest` en este entorno (sin `node` en el PATH de la sesión), pendiente de que la usuaria confirme la suite en verde en su propio entorno. |
 | B6 | `loreChunks.ts` (índice RAG del narrador) desfasado ~2 semanas: 8 zonas jugables y fauna reciente invisibles para el narrador. | **PARCIALMENTE CERRADO** — añadidos y reindexados 3 chunks nuevos (Zense Ceniza + Kirelon-arenoso en el chunk de fauna existente, Kektira, 4 puntos de interés nuevos + Pescador, El cielo sin luna). `npm run reindex-lore` corrido con éxito, confirmado en Postgres. **Sigue pendiente**: Karot Vekhad/interior del campamento, la taxonomía de fauna (A1, si se decide que es canon), la veta de hierro (A3), y cualquier otro contenido de zonas fuera de las Llanuras. |
 | B7 | Población del Clan Serhu: 600 en código vs 800 en el lore (y el propio comentario del código decía 800). | **CERRADO** — corregido a 800 en `worldPopulation.ts`, comentario actualizado. |
 | B8 | "Buitres Cenizos" (nombre obsoleto) vivía en 3 sitios pese al renombrado a "Zense Ceniza". | **CERRADO** — corregido en `worldCatalog.ts` (texto de riesgo + comentario de renombrado roto) y en `areas.md`/`flora-fauna.md`. El alias `worldCatalog.ts:7744` con el nombre viejo se mantiene intacto a propósito (permite que el jugador lo siga nombrando así). |
@@ -121,19 +219,35 @@ Tundra Negra Refleja, Pico Ocaso Negro) siguen descartados.
       restante es el flake de Múrgol ya conocido de sesiones anteriores, sin relación).
 - [x] Reindexado real de `loreChunks.ts` (`npm run reindex-lore`) tras los cambios — confirmado en
       Postgres.
-- [ ] **Segunda auditoría de huecos de lore (agente 2)** — NO lanzada esta sesión. Quedan
-      pendientes de mayor envergadura (arena magnética, Kroj, magia ambiental, don de comunión,
-      taxonomía de fauna A1, Karot Vekhad A2, veta de hierro A3, familia de guards "vs. lore" B5)
-      que requieren decisiones de diseño con la usuaria presente, siguiendo el mismo patrón usado
-      para "El cielo sin luna" (propuesta de mecanismo → confirmación → escritura). Retomar cuando
-      la usuaria quiera continuar esta ronda.
-- [ ] Propagar a chunks/catálogo lo que falta de A1/A2/A3 una vez decididos.
+- [x] **Ronda punto-por-punto completa (2026-09-06)** — Parte 1 (14/14 huecos de lore, incluida la
+      ronda extra de las 13 Semillas pedida a mitad de sesión) y Parte 2 completas: Dirección A
+      9/9 cerrados, Dirección B 11/12 cerrados + 1 descartado (B12, no era desajuste real). Único
+      resto: B6 sigue **PARCIALMENTE CERRADO** (RAG de `loreChunks.ts` desfasado en contenido de
+      zonas fuera de Las Llanuras, fuera del alcance de esta ronda).
+- [x] **`npm run seed-catalog` + `npm run reindex-lore`** ejecutados con éxito (2026-09-06, vía
+      `actualizar-mundo.sh`) — catálogo sembrado (cambio de clase de Ulkha Ketg, coordenadas
+      corregidas de A8) y lore RAG reindexado: 4 chunks nuevos (arena magnética, "El dominio de
+      Kroj", "Por qué los orcos son Chamanes y no Magos", "Las 26 familias de fauna y flora") + 4
+      actualizados ("Las 13 Semillas", "El arco de Tarkor", flora/fauna de Berig) — de 59 a 63
+      fragmentos totales en `loreChunks.ts`.
+- [ ] **Verificar en partida** (la usuaria, jugando en vivo): posición de El Vergel de Kegi/La
+      Grieta Cantora tras el ajuste de A8 (ver nota en esa fila); suite de tests de los 4 guards
+      nuevos de B5 (`hasMortalSpeakingNohade`, `hasOrcWorshippingTarkor`,
+      `hasUnpunishedOrcTabooBreak`, `hasNonSerhuDenyingFuneralRite`) — verificados a mano en esta
+      sesión (sin `node` disponible en el entorno), no ejecutados de verdad con `vitest`.
+- [ ] **Segunda auditoría de huecos de lore (agente 2)** — ahora sí en condiciones de lanzarse: todos
+      los `.md` relevantes están actualizados con las decisiones de esta ronda. Pendiente de que la
+      usuaria decida cuándo lanzarla.
+- [ ] Commit y push de todo el trabajo de esta ronda (Semillas + Parte 1 + Parte 2 + guards B5) —
+      no pedido aún explícitamente para este bloque.
 
 ## Nota para retomar esta lista
 
-El orden de trabajo sugerido original seguía siendo: arena magnética → Kroj → magia ambiental + don
-de comunión → hielo sílice → resto por impacto. Ese orden sigue siendo válido para lo que queda
-pendiente. Cada pieza grande (arena magnética, Kroj, magia ambiental) necesita el mismo proceso que
-"El cielo sin luna": diseñar un mecanismo físicamente plausible, atarlo a la autoría de Semillas
-concretas, confirmarlo con la usuaria ANTES de escribir el texto final en el `.md`, y solo entonces
-propagarlo a `loreChunks.ts` + reindexar.
+Toda la ronda punto-por-punto que dio origen a esta nota está cerrada (2026-09-06). Si aparecen
+huecos nuevos en el futuro (de la segunda auditoría de huecos, o de partidas jugadas), seguir el
+mismo proceso que ya demostró funcionar en toda esta sesión: diseñar un mecanismo físicamente
+plausible, atarlo a la autoría de una o varias Semillas concretas cuando aplique, confirmarlo con la
+usuaria ANTES de escribir el texto final en el `.md`, y solo entonces propagarlo a `loreChunks.ts` +
+reindexar. Para cambios de código (guards, catálogo), verificar siempre con `tsc -b` limpio y la
+suite de tests real en verde — este documento señala en varios puntos de hoy dónde esa verificación
+quedó pendiente por falta de `node` en el entorno de esta sesión.

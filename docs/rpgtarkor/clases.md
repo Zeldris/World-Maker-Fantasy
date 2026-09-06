@@ -671,15 +671,34 @@ sin construir). Es la especialización más cerca de completarse de las 12 revis
 
 ## Chamán (exclusiva de orcos) — repaso a fondo
 
-**Lore real, no solo mecánica** (aclarado en esta sesión, pendiente de anotar en genesis.md/
-razas.md): los orcos no son magos — Magia, aunque poderosa en ellos por su origen (nacidos del
-Estallido de Tarkor, la rama Salvaje), nunca fue su camino elegido; su cultura entera gira en
-torno a no dejarse domar por lo que no eligieron (misma idea que la frase de cuna ya establecida:
-"aún así nadie domó nuestros caminos"). El Chamán es su equivalente a Mago, pero nunca lanza la
-magia directamente — la canaliza siempre a través de un objeto/foco (tótem, runa) que conecta su
-magia interior con la magia ambiental del mundo. Mecánicamente usa el mismo atributo **Magia** que
-Mago; la diferencia es de sabor narrativo (invocar a través de algo vs. lanzarla en crudo), no de
-tirada.
+**Lore real, mecanismo completo (desarrollado 2026-09-06, ver [razas.md § "Los orcos y la
+Magia"](razas.md#orcos--hijos-del-estallido))**:
+los orcos no son magos, y no fue elección suya — fue de Tarkor. Su magia interior es, por origen, la
+más fuerte de Helek Sirik (nacen del Estallido sin Semilla creadora de por medio), pero Tarkor,
+inspirado por el respeto de Ferios hacia la libertad de su propia creación, les selló el canalizador
+de serie que cualquier otra raza tiene para lanzar magia en crudo — quiso ahorrarles el mismo yugo
+que el poder de las Semillas siempre supuso para él. No selló la magia en sí, solo la puerta directa.
+
+Los orcos encontraron una puerta trasera: ciertas piedras y cierta madera/hueso absorbieron durante
+generaciones la misma magia salvaje del Estallido que corre por su sangre — la misma frecuencia. Solo
+ellos entran en comunión con esos materiales, precisamente porque esa magia responde a algo que ya
+llevan dentro. Tallados con runas o marcas ancestrales se convierten en el canalizador sustituto que
+Tarkor no les dio de serie:
+
+- **Runas**: piedras donde la magia salvaje anidó de forma natural, recogidas y grabadas a mano con
+  signos rúnicos orcos. Canalizan directamente la magia interior del propio Chamán combinada con la
+  magia ambiental que la piedra ya absorbió — el equivalente orco a lanzar un hechizo, pero nunca en
+  crudo con las manos.
+- **Tótems**: madera y hueso de flora que también absorbió magia salvaje, trabajados para encerrar en
+  ellos a los **Hyanios** ("Ancestros" en lengua común) — la representación orca de cada elemento, un
+  concepto cultural y religioso, no espíritus con voluntad propia; mecánicamente es magia elemental
+  almacenada, sin más. El tótem añade una capa que la runa no tiene: control remoto — el Chamán
+  invoca al Hyanio correspondiente sobre el tótem ya en la escena y le da capacidades únicas, en vez
+  de canalizar el hechizo directamente sobre sí mismo.
+
+Mecánicamente ambos usan el mismo atributo **Magia** que Mago; la diferencia con Mago es de fondo, no
+solo de sabor narrativo: un orco no elige "invocar en vez de lanzar en crudo" por estilo, es la única
+vía que tiene desde que Tarkor selló la suya.
 
 ### Tronco común (nivel 1-10)
 

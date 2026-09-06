@@ -415,8 +415,13 @@ export const locations: LocationInput[] = [
     description:
       'Coto de caza y comercio de los Faerus de la llanura, más allá de su poblado de Kegi — el punto donde su artesanía en pieles y su relación con los orcos se pone a prueba cara a cara.',
     aliases: ['el vergel de kegi', 'vergel de kegi'],
+    // Coordenada Y corregida 2026-09-06 (auditoría de lore, hallazgo A8): estaba en -175, fuera de
+    // rango del resto del núcleo (~-42 a 54) — probable error de escala/tecleo. Recalculada por
+    // proporción al minutosBase (300 min, frente a los 320 de Grieta Cantora) para dar ~43
+    // unidades de distancia real desde El Cruce de las Cenizas. PENDIENTE: la usuaria revisará su
+    // posición jugando en vivo y podrá ajustarla si no encaja del todo.
     x: -8,
-    y: -175,
+    y: -60,
   },
 
   {
@@ -427,8 +432,14 @@ export const locations: LocationInput[] = [
     description:
       'Formación rocosa donde el viento, al colarse por sus grietas, produce un sonido propio y constante — el contraste exacto con El Margen Silencioso, donde el sonido se apaga: aquí el viento canta.',
     aliases: ['la grieta cantora', 'grieta cantora'],
+    // Coordenada Y corregida 2026-09-06 (auditoría de lore, hallazgo A8): estaba en -100, fuera de
+    // rango del resto del núcleo (~-42 a 54) — probable error de escala/tecleo. Recalculada para
+    // dar exactamente los 46 unidades de distancia real desde El Cruce de las Cenizas que el
+    // propio comentario del locationLink de abajo ya afirmaba ("la arista más larga... 46 unidades
+    // reales"), coherente con minutosBase: 320. PENDIENTE: la usuaria revisará su posición jugando
+    // en vivo y podrá ajustarla si no encaja del todo.
     x: 6,
-    y: -100,
+    y: -64,
   },
 
   {
@@ -3014,16 +3025,19 @@ export const npcs: NpcInput[] = [
     genero: 'F', // Bio explícita en femenino ("Orca del Clan Serhu") — misma auditoría de género, 2026-08-08.
     role: "Terk'ikar del Clan Serhu",
     level: 6,
-    attributes: { fuerza: 9, destreza: 8, constitucion: 9, inteligencia: 14, voluntad: 16, carisma: 15, magia: 8 },
+    attributes: { fuerza: 9, destreza: 8, constitucion: 9, inteligencia: 14, voluntad: 16, carisma: 15, magia: 4 },
     bio: 'Orca del Clan Serhu, de las Llanuras del Viento Rojo — piel beige curtida por décadas de sol y viento, cabello gris casi blanco recogido en un moño alto sujeto con agujas de hueso de gargantúa. Menuda para una orca, su autoridad no se apoya en el físico sino en la voz baja y la mirada que no parpadea. Jefa del Clan Serhu; gobierna asentamiento, pastoreo y migraciones. Decidió no acoger supervivientes Maktor tras la aniquilación — por cálculo de supervivencia, no crueldad: acogerlos habría puesto una diana sobre su clan. Un Gorhorn vivo la enfrenta a esa decisión.',
-    personality: 'Fría en el cálculo y cálida en el trato, en ese orden. Comulga con las Gargantúas en las migraciones.',
+    personality: 'Fría en el cálculo y cálida en el trato, en ese orden. Guía a las Gargantúas en las migraciones — oficio aprendido, no magia.',
     homeLocationSlug: 'campamento-serhu',
     raza: 'orcos',
-    // Chamán / Rúnico (2026-08-24, Grupo 3 § Sistema de clases) — "comulga con las Gargantúas",
-    // liderazgo espiritual/diplomático más que guerrero de primera línea; Rúnico es la rama de
-    // utilidad (buffar/debilitar), no la de invocación (Totémico) ni la de daño (Convocador).
-    clase: 'CHAMAN',
-    especializacion: 'RUNICO',
+    // Cazador / Domador (reasignada de Chamán/Rúnico, auditoría de lore 2026-09-06 — el "don de
+    // comunión" que antes justificaba esta clase se quitó del lore por decisión explícita de la
+    // usuaria: el vínculo con las Gargantúas nunca fue magia de ningún tipo, es la misma
+    // especialización Domador que cualquier Cazador puede tener ("controlar bestias, añadir
+    // buffs", clases.md), aplicada a este animal en concreto — coherente con que Domador es una
+    // especialización de Cazador, no un poder atado al cargo de Terk'ikar ni a la clase Chamán.
+    clase: 'CAZADOR',
+    especializacion: 'DOMADOR',
     temperamento: 'CAUTELOSO',
     comerciablePct: 25,
     reclutablePct: 10,
@@ -3033,7 +3047,7 @@ export const npcs: NpcInput[] = [
     loadout: [
       { itemSlug: 'cuchillo-deshuello' },
       { itemSlug: 'manojo-salvia-polvo', cantidad: 3 },
-      { itemSlug: 'amuleto-hueso', notas: 'Vértebras de gargantúa — símbolo de su comunión' },
+      { itemSlug: 'amuleto-hueso', notas: 'Vértebras de gargantúa — símbolo de su vínculo con la manada' },
       { itemSlug: 'sal-trueque', cantidad: 2 },
       { itemSlug: 'odre-agua' },
       { itemSlug: 'cataplasma-salvia-polvo', cantidad: 2 },

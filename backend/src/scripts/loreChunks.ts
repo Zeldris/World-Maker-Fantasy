@@ -38,15 +38,15 @@ export const loreChunks: LoreChunkInput[] = [
   {
     type: 'CULTURA',
     title: 'Las 13 Semillas',
-    text: 'Madre creó 13 Semillas. 6 Fieles la sirven sin cuestionarla (Liania, transformación de la materia; Sezix, la muerte y el vacío; Tharlia, ordena los designios; Kroj, dominio desconocido; Goirme, el orden; Lerox, misterioso). 3 Neutrales tienen libre albedrío (Florial, "El que Brota", origen de los Jusaly; Ferios, "El que Nace", creador de los Faerus; Berd, la información y la tecnología). 4 Perdidas desaparecieron tras conflictos con Madre: Tarkor (la más notable, ver arco propio), Nemuey (retiene la memoria de la muerte, origen del Mago Nigromante), Biur (afable pero el más destructivo, hace desaparecer la materia, "el barrendero", origen del Mago Vacío), Crout (ignora límites y fronteras, origen del Mago Irruptor).',
-    tags: ['semillas', 'liania', 'sezix', 'tharlia', 'kroj', 'goirme', 'berd'],
+    text: 'Madre creó 13 Semillas. 6 Fieles la sirven sin cuestionarla: Liania convierte la intención de cualquier otra Semilla en mecanismo físico real (es quien resuelve el "cómo" detrás de todo fenómeno del mundo). Sezix domina el límite entre algo y su ausencia (muerte y vacío como una sola idea); vivir tan cerca del vacío la hace, más que a nadie, capaz de admirar lo que sí existe. Tharlia es memoria en bruto sin filtrar, autora de la inteligencia y los sueños de los seres pensantes. Kroj gobierna la ausencia de señal que escapa de un cuerpo (ni luz reflejada ni sonido emitido) y dejó su huella en flora y fauna nocturnas. Goirme aparenta ser solo "el orden", pero su verdadero poder es controlar el tiempo sobre materia y conciencia — ni ella misma lo reconoce como tal. Lerox no crea ni deja firma, pero es quien más veces corrigió en secreto los errores de sus hermanas. 3 Neutrales tienen libre albedrío: Florial ("El que Brota", origen de los Jusaly) y Ferios ("El que Nace", creador de los Faerus) tejieron juntas la flora y fauna salvajes tras una alianza nacida de que Ferios probara una hoja de la flora de Florial; Berd no conserva hechos (eso es Tharlia), conserva sentido: interpreta el registro crudo de su hermana y decide qué cuenta como cierto. 4 Perdidas desaparecieron tras conflictos con Madre: Tarkor (la más notable, ver arco propio), Nemuey (retiene la memoria de la muerte, origen del Mago Nigromante), Biur (afable pero el más destructivo, hace desaparecer la materia, "el barrendero", origen del Mago Vacío), Crout (ignora límites y fronteras, origen del Mago Irruptor).',
+    tags: ['semillas', 'liania', 'sezix', 'tharlia', 'kroj', 'goirme', 'lerox', 'florial', 'ferios', 'berd'],
     sourceDoc: 'genesis.md',
   },
   {
     type: 'CULTURA',
     title: 'El arco de Tarkor (mito remoto, no participa en el presente)',
-    text: 'Tarkor fue la Semilla más sabia y poderosa, la última en crearse y la que más tardó en desarrollarse. Con el tiempo, la Entidad Desconocida (cuya naturaleza ni Madre conoce) le sembró la duda de que Madre ocultaba algo a sus hijas. Tarkor le pidió la verdad; Madre, por miedo, se la negó. Tarkor se marchó, desapareció, y regresó transformado en un ser frío y oscuro cuyo poder dio origen a la magia salvaje y a los Orcos. Este arco pertenece a un pasado remoto, hoy más mito que historia — Tarkor no aparece como personaje activo en el presente narrativo.',
-    tags: ['tarkor', 'magia', 'mito'],
+    text: 'Tarkor fue la Semilla más sabia y poderosa, la última en crearse y la que más tardó en desarrollarse. Con el tiempo, la Entidad Desconocida (cuya naturaleza ni Madre conoce) le sembró la duda de que Madre ocultaba algo a sus hijas, señalándole hechos concretos que ya no aparecían en el Ladusa Tabia ("Conocimiento Eterno", el registro compartido de Tharlia). Tarkor le pidió la verdad a Madre; Madre, por miedo, se la negó. Tarkor se marchó y desapareció — en esa desaparición buscó a Tharlia, se disfrazó con magia del aspecto de otra hermana para engañarla (Tharlia nunca tuvo motivo para desconfiar) y accedió a un segundo registro secreto que Tharlia guardaba sin saberlo nadie más: los hechos sin los borrados de Madre. Esos borrados los ejecutaba Goirme, cuyo verdadero poder —oculto tras la fachada de "solo orden"— es controlar el tiempo sobre materia y conciencia, capaz de borrar un recuerdo sin que quien lo pierde note siquiera que algo falta; así fue como ninguna Semilla supo jamás que ellas mismas habían ejecutado el engaño de Madre contra el Reino Nabierus. Con esa verdad en bruto, Tarkor regresó a Helek Sirik transformado en un ser frío y oscuro cuyo poder dio origen a la magia salvaje y a los Orcos. Qué contenía exactamente esa verdad sigue sin revelarse. Este arco pertenece a un pasado remoto, hoy más mito que historia — Tarkor no aparece como personaje activo en el presente narrativo.',
+    tags: ['tarkor', 'magia', 'mito', 'tharlia', 'goirme', 'ladusa-tabia'],
     sourceDoc: 'genesis.md',
   },
   {
@@ -74,6 +74,27 @@ export const loreChunks: LoreChunkInput[] = [
     text: 'Helek Sirik nunca tuvo una luna convencional, obra conjunta de tres Semillas. Liania hizo que el escombro que debía formar un satélite fuera un cristal duro y frágil que se astilla en cada colisión en vez de fundirse — nunca pudo acretar en un cuerpo único, se quedó como polvo. Goirme fijó ese polvo en una órbita estable en la atmósfera alta, ni tan baja que caiga ni tan alta que escape — un cinturón continuo, como los anillos de un planeta. Ese cinturón refleja luz todo el tiempo, de día y de noche, pero de día se pierde contra el brillo del propio cielo (igual que las estrellas); solo de noche —dominio de Kroj— se hace visible, como un brillo difuso y perlado repartido por todo el cielo, nunca un disco nítido de luna. De ahí el nombre popular "brillo de luna" y el nombre de los Kelife.',
     tags: ['cielo', 'sin-luna', 'brillo-de-luna', 'liania', 'goirme', 'kroj'],
     sourceDoc: 'genesis.md',
+  },
+  {
+    type: 'REGION',
+    title: 'Por qué la arena de las Llanuras es magnética',
+    text: 'El Reino Nabierus excavó un metal propio de sus minas y lo almacenó en cantidades que nadie más ha vuelto a reunir. Cuando Madre engañó a sus Semillas para sepultar el reino, la sequía y el viento no solo enterraron piedra: trituraron ese metal contra sí mismo durante generaciones hasta reducirlo a polvo fino, hoy suspendido en la propia arena roja. El Vientre del Engaño sigue siendo el punto de mayor concentración de ese polvo, de ahí nacen las tormentas de arena magnética. Tres efectos del mismo polvo: las Rocas Imanidas (Arena Imán/Imanio) flotan por repulsión magnética de polaridad opuesta; las tormentas no bajan a La Hondonada del Eco porque el viento mantiene el polvo denso en alto al llegar al borde de la depresión; el Cardo Brújula señala siempre el mismo rumbo porque su aguja reacciona a la masa fija del reino enterrado, no a la nube caótica de cada tormenta.',
+    tags: ['arena-magnetica', 'reino-nabierus', 'imanio', 'cardo-brujula', 'hondonada-del-eco'],
+    sourceDoc: 'genesis.md',
+  },
+  {
+    type: 'CULTURA',
+    title: 'El dominio de Kroj — la ausencia de señal',
+    text: 'Kroj no gobierna oscuridad y silencio como dos cosas distintas: gobierna la ausencia de señal que escapa de un cuerpo (luz reflejada, sonido emitido). La piel Nabieus atrapa la luz en vez de reflejarla o absorberla como calor. El Margen Silencioso absorbe el sonido de forma anómala, sin eco ni rebote — el territorio donde los Nabieus, marcados por Kroj, se refugiaron tras la caída del Reino Nabierus. Las Sombras de Kroj no imitan voces mortales, las devuelven: acumulan sonido ajeno y lo sueltan distorsionado como eco retrasado. Kroj también dejó su huella, sin ser su autora, en flora y fauna nocturnas que Florial y Ferios tejían allí donde su dominio se cruzaba — Rondador de Brasas, Nuente y Miruina llevan algo de esa misma firma.',
+    tags: ['kroj', 'nabieus', 'margen-silencioso', 'sombras-de-kroj', 'noche'],
+    sourceDoc: 'genesis.md',
+  },
+  {
+    type: 'CULTURA',
+    title: 'Por qué los orcos son Chamanes y no Magos',
+    text: 'Los orcos nacen del Estallido sin Semilla creadora, así que su magia interior es la más fuerte de Helek Sirik. Tarkor, inspirado por el respeto de Ferios hacia la libertad de su propia creación, les selló el canalizador de serie que cualquier otra raza tiene para lanzar magia en crudo — no la magia en sí, solo la puerta directa. Los orcos encontraron una puerta trasera: ciertas piedras (runas) y cierta madera/hueso (tótems) absorbieron durante generaciones la misma magia salvaje del Estallido que corre por su sangre, y solo ellos entran en comunión con esos materiales. Los tótems encierran a los Hyanios ("Ancestros"), representación cultural orca de cada elemento, sin voluntad propia — magia elemental almacenada, no espíritus. Por eso ningún orco lanza magia en crudo con las manos, siempre a través de un tótem o runa trabajados.',
+    tags: ['chaman', 'orcos', 'magia', 'totem', 'runa', 'hyanios', 'tarkor'],
+    sourceDoc: 'razas.md',
   },
   {
     type: 'REGION',
@@ -151,16 +172,23 @@ export const loreChunks: LoreChunkInput[] = [
   {
     type: 'FLORA',
     title: 'Flora de Berig (incluye Llanuras del Viento Rojo)',
-    text: 'Hierba del Hierro (diseñada): usada por los Goirntes para extraer aleaciones metálicas. Raíz de Fuego (salvaje, mutada): enredadera de zonas volcánicas orcas que libera gas inflamable, recolectada como explosivo/iniciador de fuego. Hielo Sílice: mineral de Cristal Helado usado para herramientas y cuchillos, como el de Gorhorn. Trepadores Ocaso: árboles de la Ciénaga Troncal.',
-    tags: ['flora', 'berig', 'raiz-de-fuego', 'hielo-silice'],
+    text: 'Hierba del Hierro (diseñada, Vetria): sus raíces bioacumulan mineral metálico disperso en la piedra gris de la Meseta del Orden, el mismo principio de Liania que da mecanismo a todo lo demás — los Goirntes la procesan para aleaciones. Raíz de Fuego (salvaje, mutada): enredadera de zonas volcánicas orcas que libera gas inflamable, recolectada como explosivo/iniciador de fuego. Hielo Sílice: mineral (no flora) de Cristal Helado usado para herramientas y cuchillos, como el de Gorhorn. Trepadores Ocaso: árboles de la Ciénaga Troncal, cuya resina sella e impermeabiliza la madera contra la humedad de la ciénaga.',
+    tags: ['flora', 'berig', 'raiz-de-fuego', 'hielo-silice', 'hierba-del-hierro'],
     sourceDoc: 'areas.md',
   },
   {
     type: 'FAUNA',
     title: 'Fauna de Berig y las Llanuras del Viento Rojo',
-    text: 'Gargantúas de Ceniza: reptiles gigantes que las Terk\'ikar guían en migraciones estacionales. Las Sombras de Kroj: criaturas voladoras nocturnas del Margen Silencioso que imitan voces para atraer viajeros a trampas. Cornantes: alimento principal en la Ciénaga Troncal. Corredores de Cauce: manadas veloces de seis patas en las Llanuras del Viento Rojo, cazadas en carreras rituales de valor. Espina del Viento: criaturas venenosas enterradas en la arena roja que atacan durante las tormentas de arena magnética — el peligro cotidiano de viajar solo por las Llanuras (no tiene ficha propia de combate, solo aparece como riesgo narrativo). Zense Ceniza (antes "Buitre Cenizo", renombrado — nombres de fauna sin palabras reales de la Tierra): ave carroñera de plumaje negro y piel gris ceniza bajo el plumaje, siempre en círculos sobre lo que muere en la llanura. Kirelon-arenoso: reptil ciego de 2-4 metros, depredador nocturno AGRESIVO de La Hondonada del Eco, caza por vibración, pasa el día bajo tierra y solo emerge de noche o con frío a cazar — letal y directo, nunca un candidato de interacción pacífica.',
-    tags: ['fauna', 'llanuras', 'espina-del-viento', 'corredores-de-cauce', 'gargantuas-de-ceniza', 'zense-ceniza', 'kirelon-arenoso'],
+    text: 'Gargantúas de Ceniza: reptiles gigantes que el Domador del clan (especialización de Cazador, oficio aprendido, no magia ni don de la Terk\'ikar) guía en migraciones estacionales. Las Sombras de Kroj: criaturas voladoras nocturnas del Margen Silencioso que no imitan voces, las devuelven distorsionadas (dominio de Kroj). Cornantes: alimento principal en la Ciénaga Troncal. Corredores de Cauce: manadas veloces de seis patas en las Llanuras del Viento Rojo, cazadas en carreras rituales de valor. Espina del Viento: una fauna más de la región (no "el mayor peligro"), criaturas venenosas enterradas en la arena roja que atacan durante las tormentas de arena magnética, nidos concentrados en La Fosa Horadada — deliberadamente sin ficha propia de combate, solo riesgo narrativo y recurso de recolección. Zense Ceniza (antes "Buitre Cenizo", renombrado — nombres de fauna sin palabras reales de la Tierra): ave carroñera de plumaje negro y piel gris ceniza bajo el plumaje, siempre en círculos sobre lo que muere en la llanura. Kirelon-arenoso: reptil ciego de 2-4 metros, depredador nocturno AGRESIVO de La Hondonada del Eco, caza por vibración, pasa el día bajo tierra y solo emerge de noche o con frío a cazar — letal y directo, nunca un candidato de interacción pacífica.',
+    tags: ['fauna', 'llanuras', 'espina-del-viento', 'corredores-de-cauce', 'gargantuas-de-ceniza', 'zense-ceniza', 'kirelon-arenoso', 'domador'],
     sourceDoc: 'areas.md',
+  },
+  {
+    type: 'CULTURA',
+    title: 'Las 26 familias de fauna y flora, por Semilla',
+    text: 'Todo animal o planta de Helek Sirik pertenece a una de 13 familias de fauna o 13 de flora, linaje real de una Semilla concreta — un cazador o herborista experto reconoce la familia por cómo se mueve o crece una criatura, aunque no conozca la especie. Fauna de Ferios (instinto, seis familias): Guelises (jauría), Acechantes (emboscada solitaria), Corvenes (aves de presa/carroñeras), Zancudos (aves de charca), Bestiones (grandes herbívoros), Rondines (pequeños omnívoros). Fauna de Florial (tres familias): Quitinos (insectos acorazados), Escamados (reptiles/anfibios), Nadantes (peces). Fauna de Goirme y Kroj: Ordenados y Umbrias, sin especie real asignada todavía. Fauna de Tarkor: Mudos Salvaje (animal real mutado por magia) y Rokrats Estallido (nacidos directo de la magia, como los orcos). Flora de Florial (once géneros, el grueso de la flora del mundo): Veldrias (árboles con resina), Zarcos, Heldras, Granoles, Trenias, Marelas, Bulvias, Muscarias, Salviras, Fongares, Vetrias (flora con mineral incrustado, como la Hierba del Hierro). Flora de Tarkor: Brotes Salvajes y Roktars Florares.',
+    tags: ['familias', 'taxonomia', 'fauna', 'flora', 'semillas'],
+    sourceDoc: 'flora-fauna.md',
   },
   {
     // Chunk nuevo (auditoría de coherencia código↔lore, 2026-09-05) — 4 puntos de interés jugables
@@ -306,7 +334,7 @@ export const loreChunks: LoreChunkInput[] = [
   {
     type: 'PERSONAJE',
     title: 'Gorhorn, guerrero del Clan Maktor (personaje de pruebas)',
-    text: 'Orco de las Llanuras del Viento Rojo, único superviviente conocido del Clan Maktor tras ser usados como carne de cañón por el mando Goirntes. Orgulloso pero no arrogante, sorprendentemente afable para un orco, aunque con poca paciencia una vez la pierde. Fuerza física colosal, instinto de combate a corta distancia, alta resistencia al dolor, y comunión especial con la naturaleza (puede domar criaturas poderosas de su territorio). Mide 1,98m, colmillos medios (uno con prótesis de hielo sílice), pelo negro con trenzas de apliques azules, perilla en dos trenzas con enganches de hueso, tres cicatrices de latigazos en la espalda de sus años de trabajo forzado. Inventario: hacha de guerra rota usada como maza, cuchillo de hielo sílice, pico de minero, cataplasma de salvia del polvo, arnés de cuero, pantalones de piel, y un tótem de madera de ciénaga del Clan Maktor — su objeto más importante. Ahora lucha de forma independiente para que la muerte de su clan no sea en vano.',
+    text: 'Orco de las Llanuras del Viento Rojo, único superviviente conocido del Clan Maktor tras ser usados como carne de cañón por el mando Goirntes. Orgulloso pero no arrogante, sorprendentemente afable para un orco, aunque con poca paciencia una vez la pierde. Fuerza física colosal, instinto de combate a corta distancia, alta resistencia al dolor. Mide 1,98m, colmillos medios (uno con prótesis de hielo sílice), pelo negro con trenzas de apliques azules, perilla en dos trenzas con enganches de hueso, tres cicatrices de latigazos en la espalda de sus años de trabajo forzado. Inventario: hacha de guerra rota usada como maza, cuchillo de hielo sílice, pico de minero, cataplasma de salvia del polvo, arnés de cuero, pantalones de piel, y un tótem de madera de ciénaga del Clan Maktor — su objeto más importante. Ahora lucha de forma independiente para que la muerte de su clan no sea en vano.',
     tags: ['gorhorn', 'orcos', 'clan-maktor', 'personaje-principal'],
     sourceDoc: 'personajes.md',
   },
@@ -410,7 +438,7 @@ export const loreChunks: LoreChunkInput[] = [
     // ya en worldCatalog.ts (slug ulkha-ketg) y npcs.md #11 desde la auditoría 2026-08-21, sin
     // propagar a este chunk.
     title: "Terk'ikar Ulkha Ketg, del Clan Serhu",
-    text: 'Ulkha Ketg es la Terk\'ikar (Jefa) del Clan Serhu — gobierna el asentamiento, el pastoreo y las migraciones. Fue ella quien decidió no acoger a los supervivientes del Clan Maktor tras su aniquilación: no por crueldad, sino por cálculo de supervivencia — acogerlos habría puesto una diana sobre su propio clan, con la Concordia todavía buscando rezagados. Que Gorhorn siga vivo la enfrenta de nuevo a esa decisión. Es fría en el cálculo y cálida en el trato, en ese orden; comulga con las Gargantúas de Ceniza durante las migraciones, como es costumbre entre las Terk\'ikar. Se le encuentra en el Campamento del Clan Serhu.',
+    text: 'Ulkha Ketg es la Terk\'ikar (Jefa) del Clan Serhu — gobierna el asentamiento, el pastoreo y las migraciones. Fue ella quien decidió no acoger a los supervivientes del Clan Maktor tras su aniquilación: no por crueldad, sino por cálculo de supervivencia — acogerlos habría puesto una diana sobre su propio clan, con la Concordia todavía buscando rezagados. Que Gorhorn siga vivo la enfrenta de nuevo a esa decisión. Es fría en el cálculo y cálida en el trato, en ese orden; guía a las Gargantúas de Ceniza durante las migraciones como Domador (especialización de Cazador, oficio aprendido, no magia). Se le encuentra en el Campamento del Clan Serhu.',
     tags: ['ulkha', 'ulkha-ketg', 'terkikar', 'clan-serhu', 'npc-principal'],
     sourceDoc: 'npcs.md',
   },
