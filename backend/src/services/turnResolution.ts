@@ -4313,6 +4313,10 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     nonExchangeAttackHitLanded,
     playerActedAsDefenderThisExchange,
     npcAttackerIsInoffensive,
+    // Mismo criterio que `gisteraAceptaEsteTurno` (más abajo, tras la llamada al narrador) pero
+    // calculado aquí porque el `ctx` del narrador se construye antes de esa variable — ver
+    // `hasGorhornPronouncingOrcoEnfurecidoName` (narrador.ts).
+    gisteraAcceptanceTurnRisksOrcoName: gisteraSeHaMarchado && !gisteraQuestYaExiste,
     npcFallsUnconsciousThisTurn,
     npcFallsConvalecienteThisTurn,
     combatNoRealDeathThisTurn,

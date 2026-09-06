@@ -11,6 +11,7 @@ import {
   hasHumanRaceLeak,
   hasFalseDefenseNarration,
   hasInoffensiveNpcNarratedAttacking,
+  hasGorhornPronouncingOrcoEnfurecidoName,
   dropSuggestionsTargetingDownedNpc,
   dropSuggestionsAttackingHelpRequester,
   dropSuggestionsCompressingAcceptance,
@@ -820,6 +821,29 @@ describe('hasInoffensiveNpcNarratedAttacking', () => {
   it('no dispara con una narración de mera presencia o huida de un NPC inofensivo (puede aparecer, acercarse o alejarse sin violar su ficha)', () => {
     expect(hasInoffensiveNpcNarratedAttacking('El Quio se retuerce en el fango, huyendo del calor.', true)).toBe(false);
     expect(hasInoffensiveNpcNarratedAttacking('El Bulco de Arena se aleja arrastrándose por la arena.', true)).toBe(false);
+  });
+});
+
+describe('hasGorhornPronouncingOrcoEnfurecidoName', () => {
+  it('bug real jugando en vivo (2026-09-06): la instrucción de prompt no bastó — detecta a Gorhorn pronunciando "Orco Enfurecido" al aceptar ayudar a Gistera Koh, aunque ella nunca dice ese nombre', () => {
+    const narration =
+      'Gorhorn asiente con determinación, cruzando los brazos sobre el pecho. "Entonces, vamos a acabar con ese Orco enfurecido", dice con firmeza.';
+    expect(hasGorhornPronouncingOrcoEnfurecidoName(narration, true)).toBe(true);
+  });
+
+  it('no dispara fuera del turno exacto de aceptación (gisteraAcceptanceTurnRisksOrcoName false/undefined)', () => {
+    const narration = 'Gorhorn dice: "vamos a acabar con ese Orco enfurecido".';
+    expect(hasGorhornPronouncingOrcoEnfurecidoName(narration, false)).toBe(false);
+    expect(hasGorhornPronouncingOrcoEnfurecidoName(narration, undefined)).toBe(false);
+  });
+
+  it('no dispara si Gorhorn responde solo en términos de lo que Gistera le contó, sin nombrar al orco', () => {
+    const narration = 'Gorhorn asiente con firmeza. "Entonces, acabemos con ese perseguidor tuyo", dice con voz grave.';
+    expect(hasGorhornPronouncingOrcoEnfurecidoName(narration, true)).toBe(false);
+  });
+
+  it('no dispara con narración normal sin mención del nombre', () => {
+    expect(hasGorhornPronouncingOrcoEnfurecidoName('Gorhorn se planta frente a la figura y le exige que hable.', true)).toBe(false);
   });
 });
 

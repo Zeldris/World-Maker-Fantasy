@@ -205,6 +205,13 @@ interface TurnContext {
   /// activo en prosa. Si la narración describe al NPC embistiendo/golpeando/atacando, es una
   /// alucinación de comportamiento — el propio catálogo dice que esa criatura no ataca.
   npcAttackerIsInoffensive?: boolean;
+  /// Ver `hasGorhornPronouncingOrcoEnfurecidoName` más abajo — bug real jugando en vivo (2026-09-06):
+  /// pese a la instrucción explícita en el contextBlock de la escena de Gistera Koh ("Gorhorn NUNCA
+  /// ha oído ese nombre"), el modelo igual le hizo decir "vamos a acabar con ese Orco enfurecido" en
+  /// el turno exacto de aceptar ayudarla — una instrucción de prompt reforzada no bastó, hace falta
+  /// un guard real. True solo en ese turno concreto (`gisteraSeHaMarchado` sin `gisteraQuestYaExiste`
+  /// todavía, mismo criterio que ya usa `gisteraAceptaEsteTurno` más abajo en este archivo).
+  gisteraAcceptanceTurnRisksOrcoName?: boolean;
   /// Igual que `npcFallsUnconsciousThisTurn`, pero SOLO cuando el desenlace de este turno es
   /// CONVALECIENTE (nunca MUERTO) — bug real jugando en vivo, 2026-08-22, "he matado a un buitre
   /// pero..." (revisando el log completo: un turno ANTES del remate real, con el rival todavía
@@ -1410,6 +1417,10 @@ export async function narrateAction(ctx: TurnContext & { roll?: RollResult }): P
           reason: 'narrar un ataque activo (embestir/golpear/morder) de un NPC marcado INOFENSIVO o cuyo ataqueNatural dice "No ataca" — el catálogo dice que esa criatura no ataca',
         },
         {
+          check: () => hasGorhornPronouncingOrcoEnfurecidoName(parsed.narration, ctx.gisteraAcceptanceTurnRisksOrcoName),
+          reason: 'Gorhorn pronunciando el nombre "Orco Enfurecido" al aceptar ayudar a Gistera Koh — ella nunca lo dice, es solo el nombre técnico de la misión, Gorhorn no lo conoce todavía',
+        },
+        {
           check: () => hasPrematureCombatResolution(narrationAndFacts, ctx.combatNotYetResolved),
           reason: 'narrar (en prosa o en newFacts) un combate ya resuelto sin ningún intercambio mecánico este turno',
         },
@@ -2464,6 +2475,17 @@ const INOFFENSIVE_NPC_ACTIVE_ATTACK_REGEX =
 export function hasInoffensiveNpcNarratedAttacking(narration: string, npcAttackerIsInoffensive?: boolean): boolean {
   if (!npcAttackerIsInoffensive) return false;
   return INOFFENSIVE_NPC_ACTIVE_ATTACK_REGEX.test(normalizeText(narration));
+}
+
+/// Escena de Gistera Koh, turno de aceptación (bug real jugando en vivo, 2026-09-06): Gistera nunca
+/// pronuncia el nombre "Orco Enfurecido" en la conversación (dice "el que me persigue"), es solo el
+/// nombre técnico del catálogo/misión — Gorhorn no lo ha oído y no debe usarlo en su propia réplica.
+/// La instrucción de prompt reforzada no bastó por sí sola, de ahí este guard con reintento real.
+const ORCO_ENFURECIDO_NAME_REGEX = /orco\s+enfurecido/i;
+
+export function hasGorhornPronouncingOrcoEnfurecidoName(narration: string, gisteraAcceptanceTurnRisksOrcoName?: boolean): boolean {
+  if (!gisteraAcceptanceTurnRisksOrcoName) return false;
+  return ORCO_ENFURECIDO_NAME_REGEX.test(normalizeText(narration));
 }
 
 /// Narración-vs-mundo determinista (bug real, sesión autónoma de pruebas con Playwright, 2026-09-04):
