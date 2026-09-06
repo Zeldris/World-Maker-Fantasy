@@ -62,8 +62,8 @@ fuerte que en nadie—, solo la puerta que la deja salir sola.
 
 Lo que Tarkor no previó es que los orcos encontrarían otra puerta. Ciertas piedras, y la madera y el
 hueso de cierta flora, absorbieron durante generaciones la misma magia salvaje del Estallido que
-corre por la sangre orca — la misma frecuencia, por así decirlo. Solo los orcos son capaces de entrar
-en comunión con esos materiales impregnados, porque solo en ellos esa magia responde a algo que ya
+corre por la sangre orca — la misma frecuencia, por así decirlo. Solo los orcos son capaces de
+resonar con esos materiales impregnados, porque solo en ellos esa magia responde a algo que ya
 llevan dentro. Tallados con runas o marcas ancestrales, esos materiales se convierten en el
 canalizador sustituto que Tarkor no les dejó de serie: la puerta trasera a su propia magia interior,
 que de paso franquea el acceso a las demás ramas de magia que un orco pueda conjurar. De ahí que

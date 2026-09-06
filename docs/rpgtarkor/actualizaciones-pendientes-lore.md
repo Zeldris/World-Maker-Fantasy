@@ -235,9 +235,18 @@ contención, Tundra Negra Refleja, Pico Ocaso Negro) siguen descartados a propó
       nuevos de B5 (`hasMortalSpeakingNohade`, `hasOrcWorshippingTarkor`,
       `hasUnpunishedOrcTabooBreak`, `hasNonSerhuDenyingFuneralRite`) — verificados a mano en esta
       sesión (sin `node` disponible en el entorno), no ejecutados de verdad con `vitest`.
-- [ ] **Segunda auditoría de huecos de lore (agente 2)** — ahora sí en condiciones de lanzarse: todos
-      los `.md` relevantes están actualizados con las decisiones de esta ronda. Pendiente de que la
-      usuaria decida cuándo lanzarla.
+- [x] **Segunda auditoría de huecos de lore (agente 2)** — lanzada y completada (2026-09-06).
+      Confirma que la ronda fue exhaustiva: sin huecos nuevos, sin contradicciones de fondo entre
+      los nuevos dominios de Semillas y el resto del corpus, y los ganchos abiertos a propósito
+      (continente futuro de Lerox, más fauna de la firma de Sezix) correctamente marcados como
+      tales, no como huecos olvidados. Dos hallazgos menores, ambos **CERRADOS**: (1) la tabla
+      histórica de `clases.md` seguía diciendo "comunión con las Gargántuas... hueco real sin
+      cubrir hasta ahora" en la fila de Ulkha Ketg — corregido a nota de obsolescencia explícita;
+      (2) la palabra "comunión" se reutilizaba para el mecanismo nuevo de runas/tótems, mismo
+      término que el "don de comunión" ya eliminado — sustituida por "resonar/vínculo" en
+      `razas.md`, `clases.md`, `loreChunks.ts` y dos residuos sueltos en `personajes.md` (ficha de
+      atributos y razonamiento de stats de Gorhorn) que el propio agente no llegó a señalar pero
+      salieron al verificar el resto de apariciones del término.
 - [ ] Commit y push de todo el trabajo de esta ronda (Semillas + Parte 1 + Parte 2 + guards B5) —
       no pedido aún explícitamente para este bloque.
 

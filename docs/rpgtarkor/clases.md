@@ -681,7 +681,7 @@ que el poder de las Semillas siempre supuso para él. No selló la magia en sí,
 
 Los orcos encontraron una puerta trasera: ciertas piedras y cierta madera/hueso absorbieron durante
 generaciones la misma magia salvaje del Estallido que corre por su sangre — la misma frecuencia. Solo
-ellos entran en comunión con esos materiales, precisamente porque esa magia responde a algo que ya
+ellos resuenan con esos materiales, precisamente porque esa magia responde a algo que ya
 llevan dentro. Tallados con runas o marcas ancestrales se convierten en el canalizador sustituto que
 Tarkor no les dio de serie:
 
@@ -1254,7 +1254,7 @@ donde se indica.
 | Orco enfurecido | orcos | Guerrero | Guerrero (se mantiene) | Berserker | rabia descontrolada, ataca sin hablar |
 | Peregrino de los Túmulos | orcos | — | — | — | no combatiente, `INOFENSIVO` |
 | Soldado de la Concordia | goirntes | Guerrero | **Caballero** | Caballero del Orden | mismo razonamiento que el Oficial |
-| Ulkha Ketg | orcos | — | **Chamán** (nuevo, exclusiva orcos) | Totémico | comunión con las Gargántuas ya establecida en su lore — hueco real sin cubrir hasta ahora |
+| Ulkha Ketg | orcos | — | **Chamán** (nuevo, exclusiva orcos) | Totémico | *(recomendación obsoleta — ver nota de más abajo: el "don de comunión" que la motivaba se eliminó del lore el 2026-09-06, Ulkha pasó a Cazador/Domador, no Chamán/Totémico)* |
 | Yovenne Tal | goirntes | — | — | — | política/legal pura, correcto dejarla sin clase |
 | Vrask Ombra | goirntes | — | **Caballero** (nuevo) | Caballero del Valor | General sin ninguna clase asignada era un hueco real, a diferencia de Yovenne (puramente política) |
 | Kael Dorn | goirntes | — | — | — | roto/escondido, `INOFENSIVO`, no combatiente |
@@ -1262,10 +1262,12 @@ donde se indica.
 | Sella Marn | nabieus | — | *(sin asignar, ver nota)* | — | única Nabieus con stats — Segador (su clase exclusiva) no encaja temáticamente con una traficante de información; se deja sin clase a propósito, revisar si algún día se necesita que combata |
 
 **Resumen de recomendaciones que cambian algo respecto al catálogo real** (todas sin aplicar,
-documentación pura): Oficial/Soldado de la Concordia pasarían de Guerrero a Caballero; Ulkha Ketg y
-Vrask Ombra pasarían de sin clase a Chamán/Caballero respectivamente. El typo `'Cazadora'` de
-Cazadora Serhu es un bug real menor (hoy la deja sin ninguna habilidad de clase en combate) — no
-corregido a propósito, fuera del alcance de "cambiar ya" que solo cubre a Gorhorn.
+documentación pura): Oficial/Soldado de la Concordia pasarían de Guerrero a Caballero; Vrask Ombra
+pasaría de sin clase a Caballero. La recomendación de Ulkha Ketg a Chamán/Totémico queda obsoleta
+(ver nota de la fila): su clase real hoy es Cazador/Domador, fijada el 2026-09-06 al eliminar el
+"don de comunión" del lore. El typo `'Cazadora'` de Cazadora Serhu es un bug real menor (hoy la deja
+sin ninguna habilidad de clase en combate) — no corregido a propósito, fuera del alcance de "cambiar
+ya" que solo cubre a Gorhorn.
 
 **Superado por una pasada posterior (2026-08-24, Grupo 3 § Sistema de clases, "todos los NPC deben
 tener una clase asignada al acabar esta implementación")**: esta tabla es la recomendación previa a
