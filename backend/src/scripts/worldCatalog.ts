@@ -6854,10 +6854,18 @@ export const harvestYields: HarvestYieldInput[] = [
 
   // --- Enredaderas de las Llanuras (La Hondonada del Eco, base de Los Pilares Rotos) ---
 
+  // Bug real jugando en vivo (2026-09-06, hallazgo 8 de la sesión de pruebas: "Recoger vs
+  // Recolectar mezclados") — 10 fuentes de categoría 'planta' llevaban `metodoObtencion: 'PASIVO'`
+  // (recolector-general, habilidad "Recoger") en vez de 'EXTRACCION' (herborista, "Recolectar"),
+  // contradiciendo el propio criterio ya documentado en recolectar.ts § pasivoCandidatesFor: "si
+  // son recursos solo se puede recoger con profesiones, si son ítems entonces con este recoger".
+  // Corregidas aquí y en las 9 fichas siguientes marcadas con este mismo comentario: enredaderas-
+  // llanuras, musgo-arcilla, hojas-telda-fuente, boungo, verdileas-acuaticas, chudos-rojizos,
+  // pasto-solar, gradias, pasto-de-sangre, trigo-escarlata.
   {
     sourceSlug: 'enredaderas-llanuras',
     sourceCategory: 'planta',
-    metodoObtencion: 'PASIVO',
+    metodoObtencion: 'EXTRACCION',
     itemSlug: 'fibra-enredaderas-llanuras',
     cantidad: 2,
   },
@@ -6970,7 +6978,7 @@ export const harvestYields: HarvestYieldInput[] = [
   {
     sourceSlug: 'musgo-arcilla',
     sourceCategory: 'planta',
-    metodoObtencion: 'PASIVO',
+    metodoObtencion: 'EXTRACCION',
     itemSlug: 'musgo-rojo',
     cantidad: 2,
   },
@@ -7004,7 +7012,7 @@ export const harvestYields: HarvestYieldInput[] = [
   {
     sourceSlug: 'hojas-telda-fuente',
     sourceCategory: 'planta',
-    metodoObtencion: 'PASIVO',
+    metodoObtencion: 'EXTRACCION',
     itemSlug: 'hojas-telda',
     cantidad: 3,
   },
@@ -7085,7 +7093,7 @@ export const harvestYields: HarvestYieldInput[] = [
   {
     sourceSlug: 'boungo',
     sourceCategory: 'planta',
-    metodoObtencion: 'PASIVO',
+    metodoObtencion: 'EXTRACCION',
     itemSlug: 'boungo',
     cantidad: 3,
     condicion: 'crece en otoño',
@@ -7106,7 +7114,7 @@ export const harvestYields: HarvestYieldInput[] = [
   {
     sourceSlug: 'verdileas-acuaticas',
     sourceCategory: 'planta',
-    metodoObtencion: 'PASIVO',
+    metodoObtencion: 'EXTRACCION',
     itemSlug: 'verdileas-acuaticas',
     cantidad: 2,
   },
@@ -7114,7 +7122,7 @@ export const harvestYields: HarvestYieldInput[] = [
   {
     sourceSlug: 'chudos-rojizos',
     sourceCategory: 'planta',
-    metodoObtencion: 'PASIVO',
+    metodoObtencion: 'EXTRACCION',
     itemSlug: 'chudos-rojizos',
     cantidad: 2,
   },
@@ -7185,7 +7193,7 @@ export const harvestYields: HarvestYieldInput[] = [
   {
     sourceSlug: 'pasto-solar',
     sourceCategory: 'planta',
-    metodoObtencion: 'PASIVO',
+    metodoObtencion: 'EXTRACCION',
     itemSlug: 'pasto-solar',
     cantidad: 2,
   },
@@ -7193,7 +7201,7 @@ export const harvestYields: HarvestYieldInput[] = [
   {
     sourceSlug: 'gradias',
     sourceCategory: 'planta',
-    metodoObtencion: 'PASIVO',
+    metodoObtencion: 'EXTRACCION',
     itemSlug: 'fibra-gradias',
     cantidad: 2,
   },
@@ -7264,7 +7272,7 @@ export const harvestYields: HarvestYieldInput[] = [
   {
     sourceSlug: 'pasto-de-sangre',
     sourceCategory: 'planta',
-    metodoObtencion: 'PASIVO',
+    metodoObtencion: 'EXTRACCION',
     itemSlug: 'pasto-de-sangre',
     cantidad: 2,
   },
@@ -7288,7 +7296,7 @@ export const harvestYields: HarvestYieldInput[] = [
   {
     sourceSlug: 'trigo-escarlata',
     sourceCategory: 'planta',
-    metodoObtencion: 'PASIVO',
+    metodoObtencion: 'EXTRACCION',
     itemSlug: 'trigo-escarlata',
     cantidad: 2,
   },

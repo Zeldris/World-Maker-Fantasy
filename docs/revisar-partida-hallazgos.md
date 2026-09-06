@@ -73,8 +73,20 @@ PENDIENTES salvo que se indique lo contrario. Organizado por fase del runbook.
    suelo de la zona (incluyendo objetos que el propio jugador tire desde su inventario — falta la
    funcionalidad de "tirar" que los coloque en la Zona/mapa, visible y recogible después);
    "Recolectar" es la habilidad de recursos naturales de herboristería/similar. Hoy hay cosas que
-   salen en Recoger que deberían salir en Recolectar. Depende de construir primero la mecánica de
-   tirar objetos al suelo de la zona. **PENDIENTE — rediseño, depende de nueva mecánica de "tirar".**
+   salen en Recoger que deberían salir en Recolectar.
+   **PARCIALMENTE CERRADO (2026-09-06)** — la mitad de datos ya está arreglada: 10 fichas de
+   `HarvestYield` de categoría `planta` (enredaderas-llanuras, musgo-arcilla, hojas-telda-fuente,
+   boungo, verdileas-acuaticas, chudos-rojizos, pasto-solar, gradias, pasto-de-sangre,
+   trigo-escarlata) llevaban `metodoObtencion: 'PASIVO'` (Recoger) en vez de `'EXTRACCION'`
+   (Recolectar/herborista), contradiciendo el propio criterio ya documentado en
+   `recolectar.ts § pasivoCandidatesFor`. Corregido — ahora solo quedan en Recoger las 2 fuentes que
+   sí encajan (`osario-de-la-manada`, `restos-personales-maktor`, categoría `objeto`). Verificado:
+   `harvestSourceHomeLocationSlug` (candado opcional de Location) sigue funcionando igual para
+   ambos métodos, sin necesitar limpieza. `tsc -b` limpio, 88 tests en verde. **Sigue PENDIENTE la
+   segunda mitad**: la funcionalidad NUEVA de "tirar objetos al suelo de la zona" (mecánica
+   completa, sin precedente — no existe ninguna tabla de "ítem en el suelo de una Location" hoy,
+   `InventoryItem` no tiene posición) — rediseño más grande, pendiente de decidir alcance con la
+   usuaria antes de construir.
 9. **Desollar está marcada como habilidad PASIVA pero se puede añadir a la barra de habilidades**
    — una pasiva no debería poder añadirse a ninguna barra activa. **CERRADO (2026-09-06)**: la lista
    `PASSIVE_ABILITY_NAMES` solo la conocía `HabilidadesPanel.tsx`; movida a
