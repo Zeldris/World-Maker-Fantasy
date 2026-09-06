@@ -9,6 +9,7 @@ import { IconCard } from '../IconCard'
 import { AbilityForm } from '../AbilityForm'
 import { CombatAbilityBelt, CombatAbilityToggleGrid } from '../CombatAbilityBelt'
 import { abilityBonusSuffix } from '../../lib/abilityBonusSuffix'
+import { PASSIVE_ABILITY_NAMES } from '../../lib/passiveAbilities'
 
 interface HabilidadesPanelProps {
   savedActions: SavedActionInfo[]
@@ -61,7 +62,6 @@ function readinessTooltip(description: string, status: RecipeStatusInfo | undefi
 // combate o narrativos) ya avisan solos en la escena (GameView.tsx § carcassPending). Solo esta
 // habilidad concreta, mismo criterio de nombre-fijo que ya usa `HARVEST_ABILITY_OFICIO` en
 // GameView.tsx para el resto de oficios recolectores.
-const PASSIVE_ABILITY_NAMES = new Set(['Desollar'])
 const PASSIVE_TOOLTIP_SUFFIX = ' Pasiva: no se pulsa — los cadáveres pendientes avisan solos en la escena.'
 
 function AbilityGrid({

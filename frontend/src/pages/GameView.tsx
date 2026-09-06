@@ -4,7 +4,9 @@ import { useSession } from '../context/useSession'
 import { LogPanel } from '../components/LogPanel'
 import { CollapsedRail } from '../components/CollapsedRail'
 import { ChatComposer, type ChatComposerHandle } from '../components/ChatComposer'
-import { SuggestionBar } from '../components/SuggestionBar'
+// Sugerencias desactivadas (2026-09-06, ver comentario junto a `suggestions` más abajo) —
+// `SuggestionBar` deja de importarse mientras la entrada visible está oculta.
+// import { SuggestionBar } from '../components/SuggestionBar'
 import { SkillBarMenu, type SkillHudView } from '../components/SkillBarMenu'
 import { SkillBarHud } from '../components/SkillBarHud'
 import { SkillBarEditor } from '../components/SkillBarEditor'
@@ -80,7 +82,8 @@ import {
   responderModoDinamico,
   ignorarModoDinamico,
   setItemSlot,
-  requestSuggestions,
+  // Sugerencias desactivadas (2026-09-06, ver comentario junto a `setSuggestions` más abajo).
+  // requestSuggestions,
   getRecolectarLocalizado,
   resolveImageUrl,
   resolveDeath,
@@ -91,6 +94,7 @@ import {
 import { characterWaitingFlavor, combatWaitingFlavor, worldWaitingFlavor, useRotatingFlavor } from '../lib/waitingFlavor'
 import { formatCountdown, formatFictionalDuration, applyInventoryDelta, combatKeyFor, questCompletedLogEntry } from '../lib/gameViewHelpers'
 import { ESTACION_ICON, CLIMA_ICON } from '../lib/entorno'
+import { PASSIVE_ABILITY_NAMES } from '../lib/passiveAbilities'
 import type {
   ActiveEffect,
   Attribute,
@@ -191,11 +195,14 @@ export function GameView() {
   // TurnNarrateHandlers.onExchangeResolved, api.ts); null en cuanto el turno termina de resolverse
   // del todo (éxito o error), para que nunca sobreviva al siguiente turno sin intercambio.
   const [diceReveal, setDiceReveal] = useState<{ exchange: CombatExchangeInfo; npcName: string | null } | null>(null)
-  // Sugerencias de próxima acción bajo demanda (petición explícita, 2026-08-15) — llamada aparte
-  // disparada por el botón "Sugerir" (ChatComposer.tsx), no dentro del turno normal (ver
-  // comentario de cabecera de `generateSuggestions`, backend narrador.ts); [] = barra oculta.
-  const [suggestions, setSuggestions] = useState<string[]>([])
-  const [suggestionsLoading, setSuggestionsLoading] = useState(false)
+  // Sugerencias de próxima acción bajo demanda (petición explícita, 2026-08-15) — ENTRADA VISIBLE
+  // DESACTIVADA (2026-09-06, decisión explícita de la usuaria: "son malísimas y no aportan casi
+  // ningún valor... por ahora lo descartamos... dejándolo pendiente por si algún día lo
+  // mejoramos"). `setSuggestions` sigue viva (la sigue limpiando `useTurnFlow` en cada turno nuevo,
+  // ver más abajo) para no dejar ese hook a medio adaptar; solo el VALOR leído (`suggestions`) y
+  // `handleRequestSuggestions`/`SuggestionBar` (más abajo) quedan sin usar mientras la barra está
+  // oculta — no se borra nada del backend (`requestSuggestions`/generación de narrador.ts).
+  const [, setSuggestions] = useState<string[]>([])
   const [inventory, setInventory] = useState<InventoryItemInfo[]>([])
   // Estado de los pop-ups de acción (deuda técnica, auditoría 2026-08-25) — ver
   // hooks/useActionModalsState.ts para el detalle de cada uno (pop-up de recolección, desollar
@@ -1192,26 +1199,22 @@ export function GameView() {
     }
   }
 
-  // Sugerencias de próxima acción bajo demanda (petición explícita, 2026-08-15) — llamada aparte
-  // del turno normal, ver comentario de `suggestions` más arriba.
-  async function handleRequestSuggestions() {
-    if (!saveId || suggestionsLoading) return
-    setSuggestionsLoading(true)
-    try {
-      const { suggestions: newSuggestions } = await requestSuggestions(saveId)
-      setSuggestions(newSuggestions)
-    } catch (err) {
-      // Sin sugerencias esta vez — la jugadora sigue pudiendo escribir su acción a mano, mismo
-      // criterio que `handleFleeAttempt` de arriba (fallo de la llamada en sí, no algo que romper
-      // el resto de la UI). `console.error` sí se deja (bug real, 2026-08-20: "le doy a sugerir...
-      // pienso pero no las veo" — antes esto era un `catch {}` totalmente mudo, así que un fallo
-      // real de la llamada y un array vacío legítimo se veían IGUAL en pantalla: nada. Con esto al
-      // menos queda rastro en la consola de si de verdad falló la petición o si volvió vacía.
-      console.error('[sugerencias] no se pudieron obtener:', err)
-    } finally {
-      setSuggestionsLoading(false)
-    }
-  }
+  // Sugerencias de próxima acción bajo demanda (petición explícita, 2026-08-15) — DESACTIVADA
+  // (2026-09-06, ver comentario junto a `setSuggestions` más arriba). Comentada entera en vez de
+  // borrada: ninguna entrada visible la llama mientras tanto, así que quedaría como código muerto
+  // sin usar (`noUnusedLocals`).
+  // async function handleRequestSuggestions() {
+  //   if (!saveId || suggestionsLoading) return
+  //   setSuggestionsLoading(true)
+  //   try {
+  //     const { suggestions: newSuggestions } = await requestSuggestions(saveId)
+  //     setSuggestions(newSuggestions)
+  //   } catch (err) {
+  //     console.error('[sugerencias] no se pudieron obtener:', err)
+  //   } finally {
+  //     setSuggestionsLoading(false)
+  //   }
+  // }
 
   // Bug real jugando en vivo (2026-08-26, reabierto 2026-08-30 — "se queda en 'Cargando
   // partida...', pero recargar sí la muestra creada"): StrictMode monta-desmonta-remonta este
@@ -1850,13 +1853,11 @@ export function GameView() {
               <span>Hay presas caídas sin desollar en esta zona.</span>
             </button>
           )}
-          {!combateIniciado && (
-            <SuggestionBar
-              suggestions={suggestions}
-              onPick={(text) => composerRef.current?.setTextWithChips(text, enciclopediaIndex)}
-              loading={suggestionsLoading}
-            />
-          )}
+          {/* Sugerencias desactivadas (2026-09-06, decisión explícita de la usuaria: "son
+              malísimas y no aportan casi ningún valor... por ahora lo descartamos... dejándolo
+              pendiente por si algún día lo mejoramos") — solo se oculta la entrada visible
+              (SuggestionBar + botón "Sugerir" del composer), sin borrar `handleRequestSuggestions`/
+              `requestSuggestions` ni el endpoint de generación, por si se retoma más adelante. */}
           {(() => {
             // A.4 (checklist frontend 2026-08-27): `anyModalOpen` cubre postCombatTarget/
             // activeDynamicMode/detailTarget/kingdomFoundedInfo — antes el composer seguía editable
@@ -1941,8 +1942,6 @@ export function GameView() {
                               ? 'Resuelve lo que tienes abierto antes de escribir una nueva acción.'
                               : undefined
                     }
-                    onRequestSuggestions={combateIniciado ? undefined : handleRequestSuggestions}
-                    suggestionsLoading={suggestionsLoading}
                   />
                 )}
               </>
@@ -2096,7 +2095,9 @@ export function GameView() {
       {editingSkillBar && (
         <SkillBarEditor
           bar={editingSkillBar}
-          categoryAbilities={savedActions.filter((a) => a.category === editingSkillBar.category)}
+          categoryAbilities={savedActions.filter(
+            (a) => a.category === editingSkillBar.category && !PASSIVE_ABILITY_NAMES.has(a.name),
+          )}
           onSave={handleSaveSkillBarEdit}
           onCancel={() => setEditingSkillBar(null)}
         />
