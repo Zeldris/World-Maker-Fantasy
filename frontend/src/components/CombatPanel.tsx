@@ -384,6 +384,18 @@ export function CombatPanel({
   // resolver, así que ese botón nunca podía dispararse de verdad.
   const [saquearModalOpen, setSaquearModalOpen] = useState(false)
 
+  // Bug real jugando en vivo (2026-09-06): "Actúas primero."/"El enemigo actuará primero..." se
+  // mostraba en cuanto `lastInitiativeRoll` llegaba del backend, con el resultado YA decidido —
+  // pero el dado del lado que tira en segundo lugar seguía mostrando "?" varios segundos, porque
+  // `DiceRollVs` anima la tirada secuencialmente. Reseteado a `false` cada vez que cambia la
+  // tirada (identidad del objeto, no solo su existencia) para que un turno nuevo vuelva a ocultar
+  // la conclusión hasta que su propia animación termine — `onAllLanded` de `DiceRollVs` lo pone en
+  // `true` cuando el segundo dado aterriza de verdad.
+  const [initiativeRevealed, setInitiativeRevealed] = useState(false)
+  useEffect(() => {
+    setInitiativeRevealed(false)
+  }, [lastInitiativeRoll])
+
   // Scroll al inicio al abrirse el panel (2026-08-31, "revisa bien todos los casos del foco/
   // scroll") — el panel se monta de nuevo cada vez que se entra en combate; sin esto, si el
   // contenido quedó scrolleado hacia abajo la vez anterior, no había garantía de arrancar viendo
@@ -632,7 +644,11 @@ export function CombatPanel({
 
         {!awaitingDefense && lastInitiativeRoll && (
           <div className="rounded-lg border-2 border-danger-500/70 bg-danger-500/15 px-3.5 py-2.5 text-sm font-semibold text-danger-200 shadow-[0_0_16px_-6px_var(--color-danger-500)]">
-            {lastInitiativeRoll.ganador === 'jugador' ? 'Actúas primero.' : 'El enemigo actuará primero en tu próximo turno.'}
+            {initiativeRevealed
+              ? lastInitiativeRoll.ganador === 'jugador'
+                ? 'Actúas primero.'
+                : 'El enemigo actuará primero en tu próximo turno.'
+              : 'Tirando iniciativa...'}
             <DiceRollVs
               left={lastInitiativeRoll.jugador}
               right={lastInitiativeRoll.npc}
@@ -640,6 +656,7 @@ export function CombatPanel({
               rightLabel="el enemigo"
               leftFirst={lastInitiativeRoll.ganador === 'jugador'}
               showDifficulty={false}
+              onAllLanded={() => setInitiativeRevealed(true)}
             />
           </div>
         )}

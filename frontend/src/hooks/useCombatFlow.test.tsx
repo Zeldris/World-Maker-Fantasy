@@ -756,7 +756,7 @@ describe('closeCombat / handleCombatHuir', () => {
 // (mezclarlo con el resto del archivo, que usa `waitFor` real, puede colgar esos otros tests),
 // `vi.advanceTimersByTimeAsync` (no la variante sync, no espera microtasks), `act(async () => {})`
 // tras avanzar el reloj en vez de `waitFor`.
-describe('handleCombatTurnResolved — estado visual retrasado hasta que la iniciativa termina de animar', () => {
+describe('handleCombatTurnResolved — solo combatAwaitingDefense se retrasa hasta que la iniciativa termina de animar', () => {
   beforeEach(() => {
     vi.useFakeTimers()
   })
@@ -782,7 +782,12 @@ describe('handleCombatTurnResolved — estado visual retrasado hasta que la inic
   }
   const npcSide = { ...jugadorSide, roll: 3, rolls: [3], result: 8 }
 
-  it('con nextInitiativeRoll: combatAwaitingDefense/combatNpcStates NO cambian hasta que pasan 2×ROLL_DURATION_MS', async () => {
+  it('con nextInitiativeRoll: combatNpcStates se aplica de inmediato (el golpe ya se resolvió), pero combatAwaitingDefense espera a que pasen 2×ROLL_DURATION_MS', async () => {
+    // Bug real jugando en vivo (2026-09-06): la vida/condición del rival vivía atrapada en el
+    // mismo retraso que el título "de quién es el turno" — el jugador veía su propia vida
+    // actualizada al instante pero la del enemigo se quedaba "vieja" varios segundos, saltando de
+    // golpe sin relación real con la animación de iniciativa. Separado: solo `combatAwaitingDefense`
+    // (el turno de ataque/defensa) tiene sentido diferirlo hasta que la animación termine de rodar.
     mockClassify.mockResolvedValue({ classification: { atributo: 'fuerza', dificultad: 15, razon: 'x', banda: 'instantanea' }, roll: undefined } as never)
     mockNarrate.mockResolvedValue(
       baseNarrateResponse({
@@ -800,24 +805,23 @@ describe('handleCombatTurnResolved — estado visual retrasado hasta que la inic
 
     // La iniciativa ya llegó (se muestra de inmediato, es el propio dado el que anima)...
     expect(result.current.lastInitiativeRoll).toEqual({ ganador: 'npc', jugador: jugadorSide, npc: npcSide })
-    // ...pero el título/color (combatAwaitingDefense) y la ficha del rival (combatNpcStates)
-    // todavía NO deben haber cambiado — siguen con el valor de ANTES de este turno.
+    // ...y la ficha del rival (combatNpcStates) ya refleja el golpe de este turno, de inmediato...
+    expect(result.current.combat.combatNpcsDisplay[0]?.condicion).toBe('HERIDO')
+    // ...pero el título/color (combatAwaitingDefense) todavía NO debe haber cambiado — sigue con
+    // el valor de ANTES de este turno hasta que la animación de iniciativa termine de rodar.
     expect(result.current.combat.combatAwaitingDefense).toBe(false)
-    expect(result.current.combat.combatNpcsDisplay[0]?.condicion).toBe('ILESO')
 
     // Avanza justo antes de que termine la animación (10s totales, 2 dados de 5s) — todavía nada.
     await act(async () => {
       await vi.advanceTimersByTimeAsync(9999)
     })
     expect(result.current.combat.combatAwaitingDefense).toBe(false)
-    expect(result.current.combat.combatNpcsDisplay[0]?.condicion).toBe('ILESO')
 
     // Termina la animación — ahora sí se aplica.
     await act(async () => {
       await vi.advanceTimersByTimeAsync(1)
     })
     expect(result.current.combat.combatAwaitingDefense).toBe(true)
-    expect(result.current.combat.combatNpcsDisplay[0]?.condicion).toBe('HERIDO')
   })
 
   it('sin nextInitiativeRoll (turno forzado sin tirada, ej. Aturdimiento): se aplica de inmediato como siempre', async () => {

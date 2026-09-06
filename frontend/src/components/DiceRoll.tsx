@@ -218,6 +218,7 @@ export function DiceRollVs({
   rightLabel,
   leftFirst,
   showDifficulty,
+  onAllLanded,
 }: {
   left: RollInfo | CombatExchangeSideInfo
   right: RollInfo | CombatExchangeSideInfo
@@ -225,10 +226,27 @@ export function DiceRollVs({
   rightLabel?: string
   leftFirst: boolean
   showDifficulty: boolean
+  /// Bug real jugando en vivo (2026-09-06): "Actúas primero." (CombatPanel.tsx) se mostraba en
+  /// cuanto `lastInitiativeRoll` llegaba del backend, con el dato YA resuelto — pero el dado del
+  /// lado que tira en segundo lugar seguía enseñando "?" varios segundos más, porque su animación
+  /// es secuencial (no arranca hasta que el primero aterriza). El texto de conclusión "ganaba la
+  /// carrera" siempre, sin excepción, porque nunca esperaba a nada. Callback opcional, disparado
+  /// una sola vez cuando el SEGUNDO dado (el que tarda más: `leftDelayMs`/`rightDelayMs` +
+  /// `ROLL_DURATION_MS`) termina de aterrizar — el padre lo usa para diferir cualquier conclusión
+  /// textual hasta que ambos números sean visibles de verdad.
+  onAllLanded?: () => void
 }) {
   const leftDelayMs = leftFirst ? 0 : ROLL_DURATION_MS
   const rightDelayMs = leftFirst ? ROLL_DURATION_MS : 0
   const ref = useScrollIntoViewOnMount<HTMLDivElement>()
+
+  useEffect(() => {
+    if (!onAllLanded) return
+    const totalMs = Math.max(leftDelayMs, rightDelayMs) + ROLL_DURATION_MS
+    const timer = setTimeout(onAllLanded, totalMs)
+    return () => clearTimeout(timer)
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- misma disciplina que DiceFace: arranca una sola vez por tirada, `leftDelayMs`/`rightDelayMs`/`onAllLanded` son estables durante su vida
+  }, [])
 
   return (
     <div ref={ref} className="animate-entry-in mt-2 flex items-center justify-center gap-14 rounded-lg border border-dashed border-iron-700 bg-wood-950/30 px-3 py-3">
