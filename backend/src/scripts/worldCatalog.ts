@@ -7725,7 +7725,11 @@ export const harvestSourceAliases: Record<string, string[]> = {
   'murgoles-domados-campamento': ['múrgoles domados', 'murgoles domados', 'recinto de múrgol'],
   'corredor-de-cauce': ['corredor de cauce', 'corredor', 'corredores de cauce'],
   'gargantua-de-ceniza': ['gargantúa', 'gargantua', 'gargantúa de ceniza', 'gargantua de ceniza'],
-  'espina-del-viento': ['espina del viento', 'espina', 'espinas del viento'],
+  // 'espina' (sola) quitada como alias (2026-09-06, bug real: "la espina dorsal" se enlazaba como
+  // esta criatura en la Enciclopedia) — a diferencia de "corredor"/"gargantúa", "espina" es un
+  // sustantivo común de la lengua que aparece en frases normales ("espina dorsal") sin relación
+  // con esta fauna; las formas largas siguen cubriendo toda mención real a la criatura.
+  'espina-del-viento': ['espina del viento', 'espinas del viento'],
   'raiz-de-fuego': ['raíz de fuego', 'raiz de fuego'],
   // 'musgo-arcilla' colocado justo después de 'raiz-de-fuego' a propósito (2026-08-23, auditoría
   // lore↔código) — NO antes: "musgo" está a distancia de edición 2 de "fuego" (m-u-s-g-o vs
@@ -8134,7 +8138,10 @@ export const harvestSourceDisplayName: Record<string, string> = {
   'salvia-del-polvo': 'Salvia del Polvo',
   'sombra-de-kroj': 'Sombra de Kroj',
   'trepador-ocaso': 'Trepador Ocaso',
-  'veta-hierro-pilares-rotos': 'Veta de hierro de Los Pilares Rotos',
+  // Renombrada de "Veta de hierro de Los Pilares Rotos" (2026-09-06, bug real jugando en vivo) —
+  // mismo criterio que 'roca-pilares-rotos' arriba: es hierro corriente de toda la llanura, no
+  // exclusivo de esta Location; slug sin tocar.
+  'veta-hierro-pilares-rotos': 'Veta de Hierro de las Llanuras Rojas',
 
   // Flora/mineral añadida 2026-08-23 (auditoría lore↔código, tabla desactualizada desde
   // 2026-08-03) — nombres reales tomados del `ItemCatalogInput` correspondiente en `items` arriba.
