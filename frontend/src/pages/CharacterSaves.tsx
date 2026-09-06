@@ -5,7 +5,7 @@ import { useSession } from '../context/useSession'
 import { Button } from '../components/Button'
 import { ConfirmModal } from '../components/ConfirmModal'
 import { StepDots } from '../components/StepDots'
-import { listSaves, deleteSave, restartSave, type SaveSummary } from '../lib/api'
+import { listSaves, deleteSave, restartSave, updateSaveName, type SaveSummary } from '../lib/api'
 import type { Character, Dificultad } from '../types'
 
 const DIFICULTAD_OPTIONS: { value: Dificultad; label: string; hint: string }[] = [
@@ -74,6 +74,11 @@ export function CharacterSaves() {
   // salga nuestro propio modal en vez de esto") — mismo `saveId` sirve para las dos acciones
   // irreversibles de esta lista, `kind` decide cuál ejecutar y qué texto mostrar.
   const [pendingConfirm, setPendingConfirm] = useState<{ kind: 'delete' | 'restart'; saveId: string } | null>(null)
+  // Nombre editable de la partida (2026-09-06, "poder nombrar las partidas con nombres custom para
+  // diferenciarlas") — mismo patrón de botón-lápiz que SkillBarHud, pero sin modal aparte: el
+  // título se convierte en un input inline, se guarda al perder foco o pulsar Enter.
+  const [editingSaveId, setEditingSaveId] = useState<string | null>(null)
+  const [editingValue, setEditingValue] = useState('')
 
   function requestDelete(e: React.MouseEvent, saveId: string) {
     e.stopPropagation()
@@ -118,6 +123,30 @@ export function CharacterSaves() {
       }
     }
     setPendingConfirm(null)
+  }
+
+  function startEditingName(e: React.MouseEvent, save: SaveSummary) {
+    e.stopPropagation()
+    setEditingSaveId(save.id)
+    setEditingValue(save.saveName ?? '')
+  }
+
+  async function commitEditingName() {
+    if (!editingSaveId) return
+    const saveId = editingSaveId
+    const nextName = editingValue.trim() || null
+    const save = saves.find((s) => s.id === saveId)
+    setEditingSaveId(null)
+    if (save?.saveName === nextName) return
+    setSaves((prev) => prev.map((s) => (s.id === saveId ? { ...s, saveName: nextName } : s)))
+    try {
+      await updateSaveName(saveId, nextName)
+    } catch {
+      // Sin bloqueo modal para un fallo de renombrado — se revierte en silencio y el usuario puede
+      // reintentarlo, mismo criterio de tolerancia que el resto de esta pantalla no tiene para
+      // borrar/reiniciar (esas sí son irreversibles y avisan con window.alert).
+      setSaves((prev) => prev.map((s) => (s.id === saveId ? { ...s, saveName: save?.saveName ?? null } : s)))
+    }
   }
 
   useEffect(() => {
@@ -193,8 +222,39 @@ export function CharacterSaves() {
               }`}
             >
               <div>
-                <p className="font-serif tracking-wide text-wood-100">
+                <p className="flex items-center gap-1.5 font-serif tracking-wide text-wood-100">
                   {save.characterName} <span className="font-sans text-sm text-wood-500">— {save.worldName}</span>
+                  {editingSaveId === save.id ? (
+                    <input
+                      type="text"
+                      autoFocus
+                      value={editingValue}
+                      onChange={(e) => setEditingValue(e.target.value)}
+                      onClick={(e) => e.stopPropagation()}
+                      onKeyDown={(e) => {
+                        // Bug real jugando en vivo (2026-09-06): la tarjeta contenedora es
+                        // role="button" con su propio onKeyDown que trata Espacio/Enter como
+                        // "activar la tarjeta y navegar a la partida" — sin este stopPropagation,
+                        // escribir un espacio en el nombre (o pulsar Enter para guardar) burbujeaba
+                        // hasta el contenedor y abría la partida a mitad de edición.
+                        e.stopPropagation()
+                        if (e.key === 'Enter') {
+                          e.preventDefault()
+                          e.currentTarget.blur()
+                        }
+                        if (e.key === 'Escape') {
+                          e.preventDefault()
+                          setEditingSaveId(null)
+                        }
+                      }}
+                      onBlur={commitEditingName}
+                      maxLength={60}
+                      placeholder="Nombre para diferenciarla..."
+                      className="rounded border border-accent-600/60 bg-wood-950/60 px-1.5 py-0.5 font-sans text-sm text-wood-100 outline-none placeholder:text-wood-600"
+                    />
+                  ) : (
+                    save.saveName && <span className="font-sans text-sm text-accent-300">· {save.saveName}</span>
+                  )}
                 </p>
                 <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
                   <p className="inline-block rounded border border-iron-700 bg-wood-950/60 px-2 py-0.5 font-serif text-xs tracking-wide text-wood-300">
@@ -212,6 +272,14 @@ export function CharacterSaves() {
               </div>
               <div className="flex shrink-0 items-center gap-3">
                 <span className="text-xs text-wood-500">{relativeTime(save.lastPlayedAt)}</span>
+                <button type="button"
+                  onClick={(e) => startEditingName(e, save)}
+                  title="Renombrar partida"
+                  aria-label="Renombrar partida"
+                  className="rounded-lg border border-iron-700 bg-wood-950/50 px-2 py-1 text-xs text-wood-300 transition-colors hover:border-accent-600/60 hover:text-accent-300"
+                >
+                  ✎
+                </button>
                 <button type="button"
                   onClick={(e) => requestRestart(e, save.id)}
                   disabled={restartingId === save.id}

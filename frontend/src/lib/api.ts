@@ -625,10 +625,21 @@ export interface SaveSummary {
   worldId: string
   worldName: string
   characterName: string
+  /// Nombre editable de la partida (2026-09-06) — null = usa el título por defecto
+  /// "characterName — worldName" en el frontend.
+  saveName: string | null
   fictionalDate: string
   lastPlayedAt: string
   dificultad: Dificultad
   endedAt: string | null
+}
+
+export async function updateSaveName(id: string, saveName: string | null): Promise<{ saveName: string | null }> {
+  return fetchJson(`${API_URL}/saves/${id}/name`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ saveName }),
+  })
 }
 
 export async function restartSave(

@@ -102,6 +102,10 @@ model Save {
   pregeneratedCharacterId String?
 
   characterName       String
+  /// Nombre editable de la partida (2026-09-06, "poder nombrar las partidas con nombres custom
+  /// para diferenciarlas") — null = usa el título por defecto "characterName — worldName" en el
+  /// frontend, nunca se sobrescribe `characterName` en sí (ese sigue siendo el personaje real).
+  saveName            String?
   characterArchetype  String
   characterOrigin     String
   characterMotivation String
