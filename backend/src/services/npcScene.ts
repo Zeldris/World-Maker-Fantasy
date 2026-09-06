@@ -1,6 +1,6 @@
 import { prisma } from '../lib/prisma.js';
 import { normalizeText, fuzzyMatchCandidates, fuzzyMatchesAnyStem, findFuzzyStemMatch, matchesAliasBoundary } from './travel.js';
-import type { NpcKind, CondicionFisica, Temperamento, WeaponCategory, EquipSlot, ItemTipo, Prisma, NpcState, AbilityEffect } from '@prisma/client';
+import type { NpcKind, CondicionFisica, Temperamento, WeaponCategory, EquipSlot, ItemTipo, Prisma, NpcState, AbilityEffect, NpcInteractionType } from '@prisma/client';
 import type { Attribute, AttributeBlock } from './dice.js';
 import type { Clase } from './classAbilities.js';
 import { npcAttributesForLevel } from './progression.js';
@@ -171,6 +171,13 @@ export interface NpcInScene {
   /// "Matar" persistido (2026-09-05, bug real: se perdía al recargar) — mismo criterio que
   /// `analizado`, ver NpcState.targetedForKill en schema.prisma.
   targetedForKill: boolean;
+  /// Menú contextual de interacción (2026-09-06, ver schema.prisma § Npc.interactionTypes) — `[]`
+  /// = sin menú contextual, interacción libre de siempre.
+  interactionTypes: NpcInteractionType[];
+  /// `professionId` que enseña, si es Maestro de oficio (schema.prisma § Npc.teachesProfession) —
+  /// null en el resto. Se proyecta aquí para no repetir la consulta de `aprenderOficio.ts` al
+  /// decidir si ofrecer "Aprender profesión" en el menú contextual.
+  teachesProfession: string | null;
 }
 
 export interface NpcWithAliases {
@@ -244,6 +251,8 @@ export function buildNpcInScene(npc: NpcWithItems, state: NpcState | undefined):
     cortejablePct: npc.cortejablePct,
     capturablePct: npc.capturablePct,
     targetedForKill: state?.targetedForKill ?? false,
+    interactionTypes: npc.interactionTypes,
+    teachesProfession: npc.teachesProfession,
   };
 }
 

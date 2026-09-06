@@ -252,6 +252,10 @@ export interface NarrateResponse {
   /// `newQuestInfo`, la misión NO se ha creado todavía; hace falta `aceptarMision` para eso.
   /// `null` en la inmensa mayoría de turnos.
   newQuestOfferInfo: { title: string; description: string } | null
+  /// Menú contextual de interacción con NPC (2026-09-06) — igual que `newQuestOfferInfo`: solo para
+  /// NPC con `interactionTypes` no vacío en catálogo, al detectarse diálogo con ellos. `null` en la
+  /// inmensa mayoría de turnos.
+  npcInteractionOffer: { npcSlug: string; npcName: string; options: string[] } | null
   /// "Modo dinámico" (2026-08-27, Pieza 4 de "Dinamismo del mundo") — oferta opcional de un botón
   /// "Interactuar" al FINAL de este turno (nunca lo interrumpe). El motor ya decidió determinista
   /// el candidato; la narración de la primera vuelta ocurre al pulsar Interactuar
@@ -589,6 +593,10 @@ export interface SaveDetail {
   /// apertura no sobrevive a un F5") — mismo criterio exacto que `pendingDynamicModeOffer`: la
   /// tarjeta "MISIÓN PROPUESTA" reconstruida tras F5 en vez de vivir solo en `characterLog`.
   pendingQuestOfferInfo: { title: string; description: string } | null
+  /// Menú contextual de interacción con NPC SIN resolver todavía (2026-09-06, "Aprender oficio"
+  /// deja de depender de una habilidad suelta) — mismo criterio exacto que `pendingQuestOfferInfo`:
+  /// tarjeta reconstruida tras F5 en vez de vivir solo en `characterLog`.
+  pendingNpcInteractionOffer: { npcSlug: string; npcName: string; options: string[] } | null
   /// Ataque enemigo pendiente de defensa en el combate 1v1 clásico (bug real 2026-08-28/29,
   /// "recargar mientras el enemigo tiene la iniciativa rompe el turno"): `Save.pendingNpcAttack`
   /// ya persistía bien en el backend, pero nunca viajaba en `GET /saves/:id` — tras F5,
@@ -1383,6 +1391,24 @@ export async function responderModoDinamico(saveId: string, respuesta: string): 
 
 export async function ignorarModoDinamico(saveId: string): Promise<{ ok: boolean }> {
   return fetchJson(`${API_URL}/saves/${saveId}/modo-dinamico/ignorar`, { method: 'POST' })
+}
+
+/// Menú contextual de interacción con NPC (2026-09-06) — `accion` le dice a GameView.tsx qué modal/
+/// flujo abrir a continuación, reutilizando siempre uno ya existente (ninguna mecánica nueva nace
+/// aquí, ver npcInteraction.ts en backend).
+export type NpcInteractionAccion =
+  | { accion: 'ABRIR_APRENDER_OFICIO' }
+  | { accion: 'ABRIR_RECLUTAR' }
+  | { accion: 'FORZAR_COMBATE'; npcSlug: string }
+  | { accion: 'MOSTRAR_OFERTA_MISION' }
+  | { accion: 'CERRAR' }
+
+export async function chooseNpcInteraction(saveId: string, npcSlug: string, opcion: string): Promise<NpcInteractionAccion> {
+  return fetchJson(`${API_URL}/saves/${saveId}/npc-interaction/${npcSlug}/elegir`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ opcion }),
+  })
 }
 
 export async function deleteSave(id: string): Promise<void> {

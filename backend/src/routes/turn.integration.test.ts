@@ -1687,6 +1687,79 @@ describe('newQuestOfferInfo + POST /saves/:id/quests/aceptar: oferta de misión 
   }, 20_000);
 });
 
+// Menú contextual de interacción con NPC (2026-09-06, "Aprender oficio" deja de depender de una
+// habilidad suelta) — `npcInteractionOffer` (turnResolution.ts) solo se ofrece para NPC con
+// `interactionTypes` no vacío en catálogo. `orco-enfurecido-hondonada` no lo tiene sembrado por
+// defecto — se actualiza a mano y se restaura en `afterAll` para no dejar el catálogo real tocado
+// tras el test (compartido con el resto de la suite, sin transacción entre archivos).
+describe('npcInteractionOffer: menú contextual al hablar con un NPC con interactionTypes', () => {
+  let saveId: string;
+
+  beforeAll(async () => {
+    const userId = await getDefaultUserId();
+    const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
+    const location = await prisma.location.findFirstOrThrow({ where: { worldId: world.id, slug: 'hondonada-del-eco' } });
+    await prisma.npc.update({
+      where: { worldId_slug: { worldId: world.id, slug: 'orco-enfurecido-hondonada' } },
+      data: { interactionTypes: ['NPC_LORE'] },
+    });
+    const save = await prisma.save.create({
+      data: {
+        userId,
+        worldId: world.id,
+        characterName: 'Gorhorn de prueba npc-interaction',
+        characterArchetype: 'guerrero',
+        characterOrigin: 'Clan Maktor',
+        characterMotivation: 'x',
+        attributes: ATTRS,
+        portraitInitial: 'G',
+        currentLocationId: location.id,
+      },
+    });
+    saveId = save.id;
+    await prisma.worldState.create({ data: { saveId } });
+    await prisma.logEntry.create({
+      data: { saveId, channel: 'CHARACTER', text: 'relleno', timeLabel: 'Día 1, mañana', isPlayerAction: true },
+    });
+    classifyAction.mockResolvedValue({
+      requiereTirada: false, atributo: 'carisma', dificultad: 8, razon: 'x', banda: 'instantanea', duracionEstimadaMinutos: 0,
+    });
+  });
+
+  afterAll(async () => {
+    vi.restoreAllMocks();
+    await prisma.save.delete({ where: { id: saveId } });
+    const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
+    await prisma.npc.update({
+      where: { worldId_slug: { worldId: world.id, slug: 'orco-enfurecido-hondonada' } },
+      data: { interactionTypes: [] },
+    });
+  });
+
+  it('hablar con un NPC con interactionTypes escribe npcInteractionOffer y lo persiste en Save', async () => {
+    narrateAction.mockResolvedValueOnce({ narration: 'El Orco Enfurecido te mira en silencio.', newFacts: [] });
+    const res = await doTurn(saveId, "Hablo con 'Orco enfurecido'.");
+    const body = lastNdjsonLine(res.payload);
+
+    expect(body.npcInteractionOffer).toEqual({
+      npcSlug: 'orco-enfurecido-hondonada',
+      npcName: expect.any(String),
+      options: ['Charlar', 'Combatir', 'Salir'],
+    });
+    const save = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
+    expect(save.pendingNpcInteractionOffer).toEqual(body.npcInteractionOffer);
+  }, 20_000);
+
+  it('sin intención de diálogo (acción sin señales de habla): npcInteractionOffer es null', async () => {
+    await prisma.save.update({ where: { id: saveId }, data: { pendingNpcInteractionOffer: Prisma.JsonNull } });
+    narrateAction.mockResolvedValueOnce({ narration: 'Gorhorn observa el terreno en silencio.', newFacts: [] });
+    const res = await doTurn(saveId, 'Examino el terreno cercano.');
+    const body = lastNdjsonLine(res.payload);
+
+    expect(body.npcInteractionOffer).toBeNull();
+  }, 20_000);
+});
+
 // Bug real jugando en vivo (2026-09-03, "misión de apertura no sobrevive a un F5") —
 // `pendingQuestOfferInfo` (schema.prisma) persiste la oferta para que GET /saves/:id la reconstruya
 // tras recargar, y se limpia al Aceptar o Cancelar — mismo patrón exacto ya probado para

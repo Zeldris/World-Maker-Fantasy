@@ -81,6 +81,7 @@ import {
   interactuarModoDinamico,
   responderModoDinamico,
   ignorarModoDinamico,
+  chooseNpcInteraction,
   setItemSlot,
   // Sugerencias desactivadas (2026-09-06, ver comentario junto a `setSuggestions` más abajo).
   // requestSuggestions,
@@ -665,6 +666,16 @@ export function GameView() {
         return prev.map((e, i) => (i === lastIdx ? { ...e, questOffer: offer } : e))
       })
     }
+    // Menú contextual de interacción con NPC (2026-09-06) — mismo criterio exacto que
+    // `pendingDynamicModeOffer`/`pendingQuestOfferInfo` de arriba.
+    if (save.pendingNpcInteractionOffer) {
+      const offer = save.pendingNpcInteractionOffer
+      setCharacterLog((prev) => {
+        const lastIdx = prev.length - 1
+        if (lastIdx < 0 || prev[lastIdx].npcInteractionOffer) return prev
+        return prev.map((e, i) => (i === lastIdx ? { ...e, npcInteractionOffer: { ...offer, busy: false } } : e))
+      })
+    }
   }
 
   // Grupo 3 § Compañeros y supervivencia (2026-08-25) — resincroniza la partida entera tras una
@@ -845,6 +856,37 @@ export function GameView() {
     // solo se registra en consola para no perder el rastro por completo si el backend queda con
     // `pendingDynamicMode` huérfano.
     ignorarModoDinamico(saveId!).catch((err) => console.error('ignorarModoDinamico falló', err))
+  }
+
+  // Menú contextual de interacción con NPC (2026-09-06) — mismo criterio de `busy`/`error` que
+  // `handleInteractuarModoDinamico`: la tarjeta sigue visible con el error inline si la petición
+  // falla, en vez de desaparecer sin explicación. Cada opción reutiliza un flujo YA EXISTENTE
+  // (`AprenderOficioModal`, panel de Compañeros, o el turno normal para Combatir) — esta función
+  // solo decide cuál, nunca implementa mecánica nueva.
+  async function handleChooseNpcInteraction(entryId: string, npcSlug: string, opcion: string) {
+    setCharacterLog((prev) =>
+      prev.map((e) => (e.id === entryId ? { ...e, npcInteractionOffer: e.npcInteractionOffer ? { ...e.npcInteractionOffer, busy: true } : e.npcInteractionOffer } : e)),
+    )
+    try {
+      const resultado = await chooseNpcInteraction(saveId!, npcSlug, opcion)
+      setCharacterLog((prev) => prev.map((e) => (e.id === entryId ? { ...e, npcInteractionOffer: undefined } : e)))
+      if (resultado.accion === 'ABRIR_APRENDER_OFICIO') {
+        setAprenderOficioModalOpen(true)
+      } else if (resultado.accion === 'ABRIR_RECLUTAR') {
+        setActivePanel('companeros')
+      } else if (resultado.accion === 'FORZAR_COMBATE') {
+        const npcName = characterLog.find((e) => e.id === entryId)?.npcInteractionOffer?.npcName ?? 'él'
+        handleSubmit(`Ataco a '${npcName}'.`)
+      }
+      // 'MOSTRAR_OFERTA_MISION'/'CERRAR' no necesitan ninguna acción más — la tarjeta ya se limpió
+      // arriba, y la oferta de misión (si la hay) ya vive en su propia tarjeta independiente.
+    } catch {
+      setCharacterLog((prev) =>
+        prev.map((e) =>
+          e.id === entryId && e.npcInteractionOffer ? { ...e, npcInteractionOffer: { ...e.npcInteractionOffer, busy: false, error: 'No se pudo continuar — inténtalo de nuevo.' } } : e,
+        ),
+      )
+    }
   }
 
   async function handleElegirDynamicMode(opcion: string) {
@@ -1647,6 +1689,7 @@ export function GameView() {
               onDismissQuestOffer={handleDismissQuestOffer}
               onInteractuarModoDinamico={handleInteractuarModoDinamico}
               onDismissDynamicModeOffer={handleDismissDynamicModeOffer}
+              onChooseNpcInteraction={handleChooseNpcInteraction}
               onOpenHarvestSuggestion={handleOpenHarvestSuggestion}
               combatNpcsDisplay={combat.combatNpcsDisplay}
               onMatarConvaleciente={handleMatarConvaleciente}

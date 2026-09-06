@@ -18,6 +18,7 @@ import {
   type FactionRepChangeInfo,
 } from './reputation.js';
 import { regionControlFor, parseAgenda } from './worldAgenda.js';
+import { opcionesDisponiblesPara } from './npcInteraction.js';
 import {
   detectNpcsInScene,
   npcSceneBlockFor,
@@ -512,6 +513,11 @@ export interface NarrateAndPersistResult {
   /// para crearla) — la `Quest` no se crea hasta `POST /saves/:id/quests/aceptar`. `null` en la
   /// inmensa mayoría de turnos.
   newQuestOfferInfo: { title: string; description: string } | null;
+  /// Menú contextual de interacción con NPC (2026-09-06, "Aprender oficio" deja de depender de una
+  /// habilidad suelta) — solo para NPC con `Npc.interactionTypes` no vacío en el catálogo, al
+  /// detectarse diálogo con ellos (`detectsDialogueIntent`). Mismo patrón que `newQuestOfferInfo`:
+  /// tarjeta que CONVIVE con el resto de la UI, `null` en la inmensa mayoría de turnos.
+  npcInteractionOffer: { npcSlug: string; npcName: string; options: string[] } | null;
   /// "Modo dinámico" (2026-08-27, Pieza 4 de "Dinamismo del mundo") — oferta opcional de un
   /// botón "Interactuar" al FINAL de este turno (nunca lo interrumpe ni lo sustituye). El motor
   /// ya decidió determinista quién es el candidato (`decideOfertaModoDinamico`, dynamicMode.ts);
@@ -3557,6 +3563,16 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   const explicitDialogueTarget = explicitTarget && !faunaSlugs.has(explicitTarget.slug) ? explicitTarget : null;
   const dialogueTarget = detectsDialogueIntent(action) ? (explicitDialogueTarget ?? dialoguePartners[0] ?? null) : null;
 
+  // Menú contextual de interacción con NPC (2026-09-06, "Aprender oficio" deja de depender de una
+  // habilidad suelta) — solo para NPC con `interactionTypes` sembrado a mano en el catálogo (la
+  // inmensa mayoría de NPC sigue con interacción libre de siempre, sin este menú de por medio).
+  // Deliberadamente excluye a Gistera Koh: su oferta de misión sigue un guion propio de 2 fases con
+  // su propia tarjeta (`newQuestOfferInfo` más abajo) — mezclar ambas tarjetas para el mismo NPC
+  // sería peor UX, no mejor. `hayMisionOfertadaDeEsteNpc` se resuelve más abajo, tras calcular
+  // `newQuestOfferInfo` de este turno (necesita su valor definitivo).
+  const npcInteractionCandidate =
+    dialogueTarget && dialogueTarget.slug !== 'gistera-koh' && dialogueTarget.interactionTypes.length > 0 ? dialogueTarget : null;
+
   // Atribución de armas determinista (roadmap 2026-07-20, mitigación de calidad narrativa,
   // hallazgo real jugando: el modelo puso "la maza orca" —el arma del enemigo— en manos del
   // propio Gorhorn, dos turnos distintos). Solo cuando hay alguien más en escena con quien
@@ -4864,6 +4880,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     newQuestObjetivos: string[];
     newQuestInfo: { title: string; objetivo: string } | null;
     newQuestOfferInfo: { title: string; description: string } | null;
+    npcInteractionOffer: { npcSlug: string; npcName: string; options: string[] } | null;
     questCompletedInfo: QuestCompletedInfo | null;
     factionRepChange: FactionRepChangeInfo | null;
     professionXpGains: { oficio: string; xpDelta: number; newLevel: number; leveledUp: boolean }[];
@@ -4967,6 +4984,9 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     let newQuestInfo: { title: string; objetivo: string } | null = null;
     // Oferta de misión sin aceptar (ver NarrateAndPersistResult.newQuestOfferInfo más arriba).
     let newQuestOfferInfo: { title: string; description: string } | null = null;
+    // Oferta de menú de interacción con NPC (2026-09-06, ver NarrateAndPersistResult.
+    // npcInteractionOffer más arriba) — se rellena más abajo, tras resolver newQuestOfferInfo.
+    let npcInteractionOffer: { npcSlug: string; npcName: string; options: string[] } | null = null;
     // Notificación de misión completada (ver NarrateAndPersistResult.questCompletedInfo más
     // arriba) — se rellena en completeNpcTargetQuests (derrota normal/Decapitar) y en la rama
     // orcoYaResuelto (aceptar la misión con el objetivo ya resuelto de antes), los 3 sitios que
@@ -5953,6 +5973,21 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
       await tx.save.update({ where: { id: saveId }, data: { pendingQuestOfferInfo: newQuestOfferInfo } });
     }
 
+    // Menú contextual de interacción con NPC (2026-09-06) — `npcInteractionCandidate` ya excluye a
+    // Gistera Koh (calculado más arriba, junto a `dialogueTarget`); aquí solo falta saber si ESTE
+    // turno generó una oferta de misión genérica (`newQuestOfferInfo`) para poder ofrecer la opción
+    // 'Misión: <título>' — no hay relación NPC↔Quest en el modelo, así que el criterio es "hubo
+    // diálogo con este NPC Y una oferta nació en este mismo turno" (única señal real disponible sin
+    // ampliar el modelo de datos, coherente con el alcance de esta pieza).
+    if (npcInteractionCandidate) {
+      const opciones = opcionesDisponiblesPara(npcInteractionCandidate, {
+        hayMisionOfertadaDeEsteNpc: !!newQuestOfferInfo,
+        tituloMisionOfertada: newQuestOfferInfo?.title,
+      });
+      npcInteractionOffer = { npcSlug: npcInteractionCandidate.slug, npcName: npcInteractionCandidate.name, options: opciones };
+      await tx.save.update({ where: { id: saveId }, data: { pendingNpcInteractionOffer: npcInteractionOffer } });
+    }
+
     if (narration.questProgress) {
       const matchingQuests = await tx.quest.findMany({
         where: { saveId, title: narration.questProgress.title, status: 'ACTIVA' },
@@ -6422,6 +6457,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
       newQuestObjetivos,
       newQuestInfo,
       newQuestOfferInfo,
+      npcInteractionOffer,
       questCompletedInfo,
       factionRepChange,
       professionXpGains,
@@ -6464,6 +6500,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     newQuestObjetivos,
     newQuestInfo,
     newQuestOfferInfo,
+    npcInteractionOffer,
     questCompletedInfo,
     factionRepChange,
     professionXpGains,
@@ -6901,6 +6938,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     quests,
     newQuestInfo,
     newQuestOfferInfo,
+    npcInteractionOffer,
     dynamicModeOffer,
     travelResumed,
     questCompletedInfo,

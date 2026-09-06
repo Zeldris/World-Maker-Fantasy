@@ -1127,6 +1127,9 @@ export interface NpcInput {
   /// `professionId` que este NPC enseña (2026-08-31, "Trabajador de Reino") — ver comentario del
   /// campo homónimo en schema.prisma.
   teachesProfession?: string;
+  /// Menú contextual de interacción (2026-09-06) — ver comentario completo del enum
+  /// `NpcInteractionType` en schema.prisma. Omitido = `[]`, sin menú contextual.
+  interactionTypes?: ('MAESTRO_OFICIO' | 'NPC_MISION' | 'NPC_LORE')[];
   /// slug de ItemCatalog -> { cantidad, notas }
   loadout: { itemSlug: string; cantidad?: number; notas?: string }[];
   /// Rediseño de la vista de combate (2026-07-28) — solo humanoides ("seres inteligentes que
@@ -2480,6 +2483,7 @@ export const npcs: NpcInput[] = [
     personality: 'Paciente con quien de verdad quiere aprender, cortante con quien solo busca un favor rápido.',
     homeLocationSlug: 'campamento-serhu-interior',
     teachesProfession: 'herrero-orco-llanuras',
+    interactionTypes: ['MAESTRO_OFICIO'],
     raza: 'orcos',
     clase: 'GUERRERO',
     especializacion: 'ESPECIALISTA',
@@ -2505,6 +2509,7 @@ export const npcs: NpcInput[] = [
     personality: 'Directa, poco dada a rodeos — enseña haciendo, no explicando de más.',
     homeLocationSlug: 'campamento-serhu-interior',
     teachesProfession: 'curtidor-orcos-llanuras',
+    interactionTypes: ['MAESTRO_OFICIO'],
     raza: 'orcos',
     clase: 'CAZADOR',
     especializacion: 'SUPERVIVENCIA',
@@ -2530,6 +2535,7 @@ export const npcs: NpcInput[] = [
     personality: 'Bromista con quien colabora, seco con quien desperdicia comida.',
     homeLocationSlug: 'campamento-serhu-interior',
     teachesProfession: 'cocinero-orco-llanuras',
+    interactionTypes: ['MAESTRO_OFICIO'],
     raza: 'orcos',
     clase: 'GUERRERO',
     especializacion: 'ESPECIALISTA',
@@ -2559,6 +2565,7 @@ export const npcs: NpcInput[] = [
     personality: 'Observadora, habla poco y solo de lo que importa — plantas, tierra, clima.',
     homeLocationSlug: 'campamento-serhu-interior',
     teachesProfession: 'herborista-orcos-llanuras',
+    interactionTypes: ['MAESTRO_OFICIO'],
     raza: 'orcos',
     clase: 'CHAMAN',
     especializacion: 'RUNICO',
@@ -2584,6 +2591,7 @@ export const npcs: NpcInput[] = [
     personality: 'Metódico hasta la obsesión con las proporciones, impaciente con quien interrumpe una mezcla a medias.',
     homeLocationSlug: 'campamento-serhu-interior',
     teachesProfession: 'alquimista-orcos-llanuras',
+    interactionTypes: ['MAESTRO_OFICIO'],
     raza: 'orcos',
     clase: 'CHAMAN',
     especializacion: 'RUNICO',
@@ -2609,6 +2617,7 @@ export const npcs: NpcInput[] = [
     personality: 'Paciente hasta límites que exasperan al resto del clan, firme sin levantar nunca la voz.',
     homeLocationSlug: 'campamento-serhu-interior',
     teachesProfession: 'domador-orcos-llanuras',
+    interactionTypes: ['MAESTRO_OFICIO'],
     raza: 'orcos',
     clase: 'CAZADOR',
     especializacion: 'DOMADOR',
@@ -2634,6 +2643,7 @@ export const npcs: NpcInput[] = [
     personality: 'Práctico y sin remilgos, respeta a quien trae presa real más que a quien solo habla de caza.',
     homeLocationSlug: 'campamento-serhu-interior',
     teachesProfession: 'desollador-orcos-llanuras',
+    interactionTypes: ['MAESTRO_OFICIO'],
     raza: 'orcos',
     clase: 'CAZADOR',
     especializacion: 'INSTINTIVO',
@@ -2659,6 +2669,7 @@ export const npcs: NpcInput[] = [
     personality: 'Práctico, orgulloso de su trabajo sin alardear de él, generoso con los aprendices de verdad.',
     homeLocationSlug: 'campamento-serhu-interior',
     teachesProfession: 'peletero-orcos-llanuras',
+    interactionTypes: ['MAESTRO_OFICIO'],
     raza: 'orcos',
     clase: 'CAZADOR',
     especializacion: 'SUPERVIVENCIA',
@@ -2684,6 +2695,7 @@ export const npcs: NpcInput[] = [
     personality: 'Serena bajo presión, seca con quien se queja más de lo herido que está.',
     homeLocationSlug: 'campamento-serhu-interior',
     teachesProfession: 'primeros-auxilios-orcos-llanuras',
+    interactionTypes: ['MAESTRO_OFICIO'],
     raza: 'orcos',
     clase: 'CHAMAN',
     especializacion: 'TOTEMICO',
@@ -2714,6 +2726,7 @@ export const npcs: NpcInput[] = [
     personality: 'Paciente, habla poco y solo cuando el pez no muerde.',
     homeLocationSlug: 'playa-de-ceniza-blanca',
     teachesProfession: 'pescador',
+    interactionTypes: ['MAESTRO_OFICIO'],
     raza: 'orcos',
     clase: 'CAZADOR',
     especializacion: 'SUPERVIVENCIA',
@@ -2739,6 +2752,7 @@ export const npcs: NpcInput[] = [
     personality: 'Meticuloso hasta la exasperación con el veteado de la madera, impaciente con quien no respeta la herramienta.',
     homeLocationSlug: 'campamento-serhu-interior',
     teachesProfession: 'carpintero-orcos-llanuras',
+    interactionTypes: ['MAESTRO_OFICIO'],
     raza: 'orcos',
     clase: 'GUERRERO',
     especializacion: 'ESPECIALISTA',
@@ -2764,6 +2778,7 @@ export const npcs: NpcInput[] = [
     personality: 'Habladora mientras trabaja, exigente con el acabado — no deja salir nada a medio coser.',
     homeLocationSlug: 'campamento-serhu-interior',
     teachesProfession: 'sastre-orcos-llanuras',
+    interactionTypes: ['MAESTRO_OFICIO'],
     raza: 'orcos',
     clase: 'CAZADOR',
     especializacion: 'SUPERVIVENCIA',

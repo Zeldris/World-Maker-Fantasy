@@ -414,6 +414,10 @@ export interface LogEntry {
   /// jugadora se quedaba sin ningún rastro de la oferta ni explicación. Ahora la tarjeta sigue
   /// visible con el error inline y puede reintentar con el mismo botón.
   dynamicModeOffer?: { tipo: 'NPC' | 'FAUNA'; targetSlug: string; targetName: string; busy?: boolean; error?: string }
+  /// Menú contextual de interacción con NPC (2026-09-06) — mismo criterio exacto que
+  /// `dynamicModeOffer`: tarjeta con un botón por opción, `busy`/`error` para no perder la tarjeta
+  /// si la petición falla.
+  npcInteractionOffer?: { npcSlug: string; npcName: string; options: string[]; busy?: boolean; error?: string }
   /// CONVALECIENTE deja de ser "victoria automática" (2026-08-26) — presente en el turno de
   /// combate en que uno o más NPC pasan a CONVALECIENTE por primera vez; LogPanel pinta, por cada
   /// uno, una tarjeta con Matar/Capturar/Clemente (mismo fondo amarillo que `questOffer`). Efímero

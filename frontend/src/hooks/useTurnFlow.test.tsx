@@ -54,6 +54,7 @@ function baseNarrateResponse(overrides: Partial<Awaited<ReturnType<typeof reques
     quests: [] as QuestInfo[],
     newQuestInfo: null,
     newQuestOfferInfo: null,
+    npcInteractionOffer: null,
     dynamicModeOffer: null,
     questCompletedInfo: null,
     factionRepChange: null,

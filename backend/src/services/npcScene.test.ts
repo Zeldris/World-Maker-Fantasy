@@ -688,6 +688,8 @@ function npcFixture(overrides: Partial<NpcInScene> = {}): NpcInScene {
     cortejablePct: 0,
     capturablePct: 0,
     targetedForKill: false,
+    interactionTypes: [],
+    teachesProfession: null,
     ...overrides,
   };
 }

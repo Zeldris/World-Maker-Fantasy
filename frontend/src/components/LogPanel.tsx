@@ -60,6 +60,10 @@ interface LogPanelProps {
   /// `onAcceptQuestOffer`/`onDismissQuestOffer`.
   onInteractuarModoDinamico?: (entryId: string, tipo: 'NPC' | 'FAUNA', targetSlug: string, targetName: string) => void
   onDismissDynamicModeOffer?: (entryId: string) => void
+  /// Menú contextual de interacción con NPC (2026-09-06, `entry.npcInteractionOffer`) — mismo
+  /// criterio opcional que `onInteractuarModoDinamico`, un solo callback para cualquier opción
+  /// (incluida "Salir"), a diferencia de aceptar/cancelar de misión.
+  onChooseNpcInteraction?: (entryId: string, npcSlug: string, opcion: string) => void
   /// Recolección redirigida al modal real (Pieza 6d, 2026-09-03, `entry.harvestSuggestion`) —
   /// mismo criterio opcional que `onInteractuarModoDinamico`. Sin botón "Ignorar" (a diferencia de
   /// `dynamicModeOffer`): el mensaje ya narra el rechazo, este botón es pura comodidad.
@@ -169,6 +173,7 @@ export const LogPanel = memo(function LogPanel({
   onDismissQuestOffer,
   onInteractuarModoDinamico,
   onDismissDynamicModeOffer,
+  onChooseNpcInteraction,
   onOpenHarvestSuggestion,
   combatNpcsDisplay,
   onMatarConvaleciente,
@@ -442,6 +447,25 @@ export const LogPanel = memo(function LogPanel({
                     },
                     { label: 'Ignorar', tone: 'neutral', disabled: entry.dynamicModeOffer.busy, onClick: () => onDismissDynamicModeOffer?.(entry.id) },
                   ]}
+                />
+              )}
+              {/* Menú contextual de interacción con NPC (2026-09-06, "Aprender oficio" deja de
+                  depender de una habilidad suelta) — mismo patrón que `dynamicModeOffer`: un botón
+                  por cada opción real de `npcInteractionOffer.options` (varía según el NPC), en
+                  vez de los 2 fijos de las otras tarjetas. */}
+              {entry.npcInteractionOffer && (
+                <OfferCard
+                  tone="accent2"
+                  icon="🗣️"
+                  title={entry.npcInteractionOffer.npcName}
+                  subtitle="¿Qué quieres hacer?"
+                  error={entry.npcInteractionOffer.error}
+                  actions={entry.npcInteractionOffer.options.map((opcion) => ({
+                    label: opcion,
+                    tone: opcion === 'Salir' ? 'neutral' : opcion === 'Combatir' ? 'danger' : 'primary',
+                    disabled: entry.npcInteractionOffer!.busy,
+                    onClick: () => onChooseNpcInteraction?.(entry.id, entry.npcInteractionOffer!.npcSlug, opcion),
+                  }))}
                 />
               )}
               {/* Recolección por texto libre redirigida al modal real (Pieza 6d, 2026-09-03,

@@ -150,6 +150,9 @@ async function main() {
         // reseed (no depender del default de columna, que solo aplica en `create`) para que
         // quitar la marca `false` de un NPC en worldCatalog.ts también se refleje al resembrar.
         nucleoJugable: npcData.nucleoJugable ?? true,
+        // Menú contextual de interacción (2026-09-06) — mismo criterio que `nucleoJugable`:
+        // explícito en el `update` para que quitar un tipo en worldCatalog.ts también se refleje.
+        interactionTypes: npcData.interactionTypes ?? [],
       },
       create: { worldId, ...npcData, nucleoJugable: npcData.nucleoJugable ?? true, habilidadesRaciales: habilidadesRacialesJson },
     });

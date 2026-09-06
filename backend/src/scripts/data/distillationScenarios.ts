@@ -92,6 +92,8 @@ function npcInSceneFromCatalog(npc: NpcInput, overrides: Partial<NpcInScene> = {
     cortejablePct: npc.cortejablePct ?? 0,
     capturablePct: npc.capturablePct ?? 0,
     targetedForKill: false,
+    interactionTypes: [],
+    teachesProfession: npc.teachesProfession ?? null,
     ...overrides,
   };
 }

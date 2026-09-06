@@ -267,6 +267,7 @@ export function useTurnFlow(params: UseTurnFlowParams) {
         quests: updatedQuests,
         newQuestInfo,
         newQuestOfferInfo,
+        npcInteractionOffer,
         dynamicModeOffer,
         questCompletedInfo,
         factionRepChange,
@@ -387,6 +388,7 @@ export function useTurnFlow(params: UseTurnFlowParams) {
             entityBanner,
             newQuest: newQuestInfo ?? undefined,
             questOffer: newQuestOfferInfo ?? undefined,
+            npcInteractionOffer: npcInteractionOffer ?? undefined,
             dynamicModeOffer: dynamicModeOffer ?? undefined,
             factionRepChange: factionRepChange ?? undefined,
             // Feedback de UX (2026-09-04, misma petición que factionRepChange de arriba) — solo

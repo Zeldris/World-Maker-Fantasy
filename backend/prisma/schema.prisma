@@ -116,7 +116,7 @@ model Save {
   /// las usaba. Nunca se pasan a rollCheck (dice.ts) — solo alimentan comprobaciones de UMBRAL
   /// (requisitos de objetos/construcciones), nunca una tirada nueva. Default "{}" para no romper
   /// partidas ya creadas antes de esta migración; el código trata las claves ausentes como 0.
-  secondaryAttributes Json   @default("{}")
+  secondaryAttributes Json    @default("{}")
   portraitInitial     String
 
   /// Niveles/XP (docs/10-niveles-xp-reino.md, reversión 2026-07-18 de la decisión de mecánicas 4).
@@ -166,8 +166,8 @@ model Save {
   /// previa a esta pieza, o Location actual sin zona explorable — el frontend no pinta el
   /// marcador. Se mueve SOLO por acciones deterministas (viajar/cazar/recolectar/combatir/hablar/
   /// construir/huir), nunca por interpretación de narración libre (services/zonaPosicion.ts).
-  zonaPosX Float?
-  zonaPosY Float?
+  zonaPosX        Float?
+  zonaPosY        Float?
   /// Punto de ENTRADA a la Location actual (borde del lienzo por el que se llegó, ver
   /// `cardinalDirectionBetween`, travel.ts) — al que el jugador vuelve si huye de un combate.
   /// Se fija UNA vez, en el mismo turno que cambia `currentLocationId`; moverse dentro de la
@@ -281,7 +281,7 @@ model Save {
   /// 2026-08-29 — v1 quedó explícitamente "sin rotar entre varias barras... decisión de alcance"),
   /// General/Profesión/Reino, hasta 3 cada una — ver modelo `SkillBar` abajo. Combate NO participa
   /// aquí: sigue con `activeCombatAbilityNames` de arriba, sistema ya maduro y separado.
-  skillBars       SkillBar[]
+  skillBars        SkillBar[]
   /// Qué barra se ve ahora mismo en el HUD del composer — `null` = texto libre. Igual que
   /// `activeCombatAbilityNames`, esto es preferencia de UI persistida, no estado de partida.
   activeSkillBarId String?
@@ -353,6 +353,15 @@ model Save {
   /// pendiente. Se limpia con `Prisma.JsonNull` al pulsar "Aceptar" (POST /quests/aceptar) o
   /// "Cancelar" (POST /quests/cancelar, nuevo), igual de laxo que el resto de campos "pending".
   pendingQuestOfferInfo Json?
+
+  /// Oferta de menú de interacción con NPC SIN resolver todavía (2026-09-06, "Aprender oficio" deja
+  /// de ser una habilidad suelta — al hablar con un NPC con `interactionTypes` no vacío se ofrece un
+  /// menú contextual). Mismo patrón exacto que `pendingDynamicModeOffer`/`pendingQuestOfferInfo`
+  /// (tarjeta que CONVIVE con el resto de la UI, no bloquea el composer — a diferencia de
+  /// `pendingDeathResolution`): `{ npcSlug, npcName, options: string[] }` mientras el menú sigue
+  /// visible sin elegir — null si no hay ninguna oferta pendiente. Se limpia con `Prisma.JsonNull`
+  /// al elegir cualquier opción (incluida "Salir"), igual de laxo que el resto de campos "pending".
+  pendingNpcInteractionOffer Json?
 
   /// Viaje truncado por un evento de interrupción (ronda de correcciones 2026-08-28, P3.2 —
   /// hallazgo real: "el viaje se trunca sin recordar el destino, el jugador queda varado en el
@@ -1715,6 +1724,18 @@ enum NpcKind {
   PLANTILLA // arquetipo instanciable ("guerrero orco rezagado"): statline canónica + rango de nivel
 }
 
+/// Menú contextual de interacción con NPC (2026-09-06, "hay que mirar bien cuándo y cómo lanzamos
+/// el interactuar... en vez de depender de una habilidad suelta") — qué opciones ofrece ESTE NPC al
+/// interactuar con él por diálogo. Ver `Npc.interactionTypes` (multivaluado a propósito, decisión
+/// explícita de la usuaria: un mismo NPC puede ser varios tipos a la vez).
+enum NpcInteractionType {
+  MAESTRO_OFICIO // ofrece "Aprender profesión" si además tiene `teachesProfession`
+  NPC_MISION // ofrece la opción de misión si tiene una oferta real pendiente para esta partida
+  NPC_LORE // solo conversación — no añade ninguna opción mecánica más allá de Charlar
+  // COMERCIANTE deliberadamente NO incluido todavía — sin mecánica real de comercio que lo
+  // consuma; se añade cuando esa pieza se diseñe.
+}
+
 /// Disposición hacia el combate (2026-07-29, "si me encuentro un NPC 'Agresivo' me va a ser
 /// imposible no acabar peleando"): hoy `shouldForceCombat` (turnResolution.ts) solo mira el VERBO
 /// del jugador — un Aullador Rojo y un Corredor de Cauce reaccionan exactamente igual a "me
@@ -1797,9 +1818,9 @@ enum Especializacion {
 /// sigue viviendo en WorldState.facts, igual que hasta ahora). Sembrado desde
 /// worldCatalog.ts; la prosa larga vive en docs/rpgtarkor/npcs.md y en lore chunks SIN números.
 model Npc {
-  id                  String           @id @default(cuid())
+  id                  String               @id @default(cuid())
   worldId             String
-  world               World            @relation(fields: [worldId], references: [id], onDelete: Cascade)
+  world               World                @relation(fields: [worldId], references: [id], onDelete: Cascade)
   kind                NpcKind
   slug                String
   name                String
@@ -1853,6 +1874,12 @@ model Npc {
   /// edificio donde vive — no se valida en BD que ambos coincidan (mismo criterio laxo del resto
   /// del catálogo de mundo), pero deberían mantenerse en sincronía al sembrar.
   teachesProfession   String?
+  /// Menú contextual de interacción (2026-09-06) — qué opciones ofrece este NPC al interactuar
+  /// por diálogo (ver enum `NpcInteractionType` arriba). MULTIVALUADO a propósito (decisión
+  /// explícita de la usuaria: "el campo nuevo de tipo debe poder tener múltiples valores, pudiendo
+  /// ser un npc de varios tipos a la vez"). Vacío = sin menú contextual — interacción libre de
+  /// siempre, sin este menú de por medio (la inmensa mayoría de NPC hoy).
+  interactionTypes    NpcInteractionType[] @default([])
   /// Rediseño de la vista de combate (2026-07-28, petición explícita: "usa habilidades de la
   /// enciclopedia... si vas a añadir nuevas reflejalas con el resto de habilidades bajo su
   /// clase") — las habilidades que se ven en la ficha de un NPC NO son un campo suelto por NPC
@@ -1904,7 +1931,7 @@ model Npc {
   /// `NpcCombatAbility.effects` (npcCombatAbilities.ts) sobre el cambio de comportamiento. Sigue
   /// siendo Json libre (no un modelo/tipo Prisma propio) — mismo criterio que siempre, catálogo
   /// de seed, no estado de partida.
-  habilidadesRaciales Json             @default("[]")
+  habilidadesRaciales Json                 @default("[]")
   /// Frase corta del ataque natural (solo fauna, sin arma en su `loadout`) — alimenta el
   /// "Ataque base" calculado (baseAttack.ts) cuando no hay arma que describir. Null en NPCs
   /// humanoides (su Ataque base describe el arma de su `loadout` en su lugar).
@@ -1912,7 +1939,7 @@ model Npc {
   /// Disposición al combate, ver enum `Temperamento`. Default CAUTELOSO = comportamiento actual
   /// (depende del verbo del jugador), así que sembrar sin asignar esto explícitamente no cambia
   /// nada del comportamiento existente.
-  temperamento        Temperamento     @default(CAUTELOSO)
+  temperamento        Temperamento         @default(CAUTELOSO)
   /// Capacidades de interacción (2026-07-29, "no siempre puedes domesticar a un animal de la misma
   /// raza... quiero que sea dinámico"): % (0-100) de que ESTA especie/individuo tenga la capacidad
   /// en absoluto, no un booleano fijo — un Aullador Rojo hambriento no siempre es domesticable.
@@ -1920,11 +1947,11 @@ model Npc {
   /// instancia de partida, persistida en NpcState, con el mismo rollCheck de dice.ts) se monta
   /// cuando exista una mecánica real de comerciar/reclutar/domesticar/capturar/cortejar que la
   /// consuma — hasta entonces sería estado sin ningún caller.
-  comerciablePct      Int              @default(0)
-  reclutablePct       Int              @default(0)
-  domesticablePct     Int              @default(0)
-  capturablePct       Int              @default(0)
-  cortejablePct       Int              @default(0)
+  comerciablePct      Int                  @default(0)
+  reclutablePct       Int                  @default(0)
+  domesticablePct     Int                  @default(0)
+  capturablePct       Int                  @default(0)
+  cortejablePct       Int                  @default(0)
   /// Atributo de resistencia (Grupo 3 § Compañeros y supervivencia, 2026-08-25, ver
   /// docs/rpgtarkor/companeros-y-supervivencia.md § 2/3) — CUÁL de los 7 atributos propios de este
   /// NPC/fauna (`attributes`, ya sembrado) se usa como resistencia en la tirada opuesta de
@@ -1940,7 +1967,7 @@ model Npc {
   /// ("personajes únicos pueden aparecer en cualquier sitio por guion"); este campo es lo que ese
   /// filtro comprueba ahora para las excepciones. Default `true` — solo se pone `false` en
   /// PRINCIPAL de regiones todavía no jugables (worldCatalog.ts).
-  nucleoJugable       Boolean          @default(true)
+  nucleoJugable       Boolean              @default(true)
 
   items              NpcItem[]
   npcStates          NpcState[]
@@ -2128,13 +2155,13 @@ model NpcState {
   /// (`detectNpcsInScene`) en una Location dada. Null = todavía sin posición. `zonaLocationId` es
   /// en qué Location se asignó (para saber si sigue vigente o toca reasignar al reaparecer en otro
   /// sitio) — redundante con `scope` para PLANTILLA pero explícito y correcto para los 2 `kind`.
-  zonaPosX       Float?
-  zonaPosY       Float?
-  zonaLocationId String?
+  zonaPosX                    Float?
+  zonaPosY                    Float?
+  zonaLocationId              String?
   /// Combate ganado por el jugador (2026-09-04) — minuto de ficción (mismo criterio que
   /// `condicionFisicaSinceMinutes`, nunca tiempo real) hasta el cual este NPC/fauna deja de
   /// listarse/pintarse en Zona, aunque siga vivo. Null = no está marcado ausente.
-  zonaAusenteHastaMinutes Int?
+  zonaAusenteHastaMinutes     Int?
   /// Caza en grupo (2026-08-13, petición explícita: "el jugador primero debe marcar contra
   /// cuantos quiere combatir... con un calculo determinista puede darse que salgan menos o más
   /// de los que marcaste... y que el narrador no prometa nada que no se realice por acción").
@@ -2162,7 +2189,7 @@ model NpcState {
   /// `condicionFisica` vuelve a ILESO (curación entre combates), nunca durante el mismo encuentro.
   /// El propio golpe de gracia sigue siendo un intercambio real (`explicitTarget`/habilidad
   /// elegida) — esto solo recuerda la DECISIÓN de intentarlo, no resuelve nada por sí mismo.
-  targetedForKill              Boolean         @default(false)
+  targetedForKill             Boolean         @default(false)
   updatedAt                   DateTime        @updatedAt
 
   @@unique([saveId, npcId, scope])
@@ -2465,20 +2492,20 @@ model WorldPopulation {
   /// reloj real — cazar.ts compara contra `WorldState.fictionalMinutes` del turno actual, nunca
   /// contra `Date.now()`. `null`/`null` = nunca se dispersó, o el cooldown ya expiró de sobra (no
   /// se limpia activamente, `cazar.ts` solo comprueba si ya pasó el tiempo).
-  dispersadoEnLocationId  String?
-  dispersadoDesdeMinutes  Int?
+  dispersadoEnLocationId String?
+  dispersadoDesdeMinutes Int?
 
   @@unique([worldId, targetType, targetSlug])
 }
 
 /// Resúmenes por capítulos — memoria de partida para no perder coherencia en partidas largas (riesgo 1 del análisis).
 model SessionSummary {
-  id            String   @id @default(cuid())
-  saveId        String
-  save          Save     @relation(fields: [saveId], references: [id], onDelete: Cascade)
-  chapterNumber Int
-  summary       String
-  createdAt     DateTime @default(now())
+  id               String   @id @default(cuid())
+  saveId           String
+  save             Save     @relation(fields: [saveId], references: [id], onDelete: Cascade)
+  chapterNumber    Int
+  summary          String
+  createdAt        DateTime @default(now())
   /// Minuto de ficción real en que se generó este capítulo (2026-09-04, Diario en pestañas
   /// Año/Estación/Día) — nullable porque los capítulos ya existentes antes de este campo no lo
   /// tienen; el Diario los trata como "sin fecha" en vez de inventarles una. Ver `calendarioFor`
