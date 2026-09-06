@@ -10,6 +10,7 @@ import {
   hasFalseCombatAttacker,
   hasHumanRaceLeak,
   hasFalseDefenseNarration,
+  hasInoffensiveNpcNarratedAttacking,
   dropSuggestionsTargetingDownedNpc,
   dropSuggestionsAttackingHelpRequester,
   dropSuggestionsCompressingAcceptance,
@@ -795,6 +796,30 @@ describe('hasFalseDefenseNarration', () => {
   it('no dispara con una narración de defensa genuina (bloquea/esquiva el golpe ya en marcha)', () => {
     const narration = 'Gorhorn alza su hacha justo a tiempo, bloqueando el golpe del orco con un choque metálico.';
     expect(hasFalseDefenseNarration(narration, true)).toBe(false);
+  });
+});
+
+describe('hasInoffensiveNpcNarratedAttacking', () => {
+  it('bug real jugando en vivo (2026-09-06): detecta a un NPC INOFENSIVO/"No ataca" (el Bulco de Arena, un ítem de recolección resuelto por error como objetivo de combate) narrado ejecutando un ataque activo', () => {
+    const narration =
+      'El Bulco de Arena lanza un rugido agudo y su caracola rugosa golpea con fuerza contra el lado del cuerpo de Gorhorn.';
+    expect(hasInoffensiveNpcNarratedAttacking(narration, true)).toBe(true);
+  });
+
+  it('detecta también otros verbos de agresión activa (embestir, morder, arañar, arremeter)', () => {
+    expect(hasInoffensiveNpcNarratedAttacking('El Quio embiste contra la pierna de Gorhorn.', true)).toBe(true);
+    expect(hasInoffensiveNpcNarratedAttacking('La criatura le muerde el brazo con fuerza.', true)).toBe(true);
+  });
+
+  it('no dispara si el NPC objetivo no está marcado como inofensivo', () => {
+    const narration = 'El orco embiste con su hacha de guerra.';
+    expect(hasInoffensiveNpcNarratedAttacking(narration, false)).toBe(false);
+    expect(hasInoffensiveNpcNarratedAttacking(narration, undefined)).toBe(false);
+  });
+
+  it('no dispara con una narración de mera presencia o huida de un NPC inofensivo (puede aparecer, acercarse o alejarse sin violar su ficha)', () => {
+    expect(hasInoffensiveNpcNarratedAttacking('El Quio se retuerce en el fango, huyendo del calor.', true)).toBe(false);
+    expect(hasInoffensiveNpcNarratedAttacking('El Bulco de Arena se aleja arrastrándose por la arena.', true)).toBe(false);
   });
 });
 

@@ -11,16 +11,30 @@ describe('detectsSearchIntent', () => {
     expect(detectsSearchIntent('Busco algo de comer por la zona')).toBe(true);
     expect(detectsSearchIntent('Exploro los alrededores')).toBe(true);
     expect(detectsSearchIntent('Rebusco entre los escombros')).toBe(true);
-    // 'Recojo' (yo recojo) no vale como ejemplo de "recog": el cambio ortográfico g→j de la
-    // conjugación española rompe el stem — mismo tipo de sorpresa de conjugación ya documentado
-    // en otros detectores del proyecto (ver matchNpcAliases). "Recoge"/"recogiendo" sí lo tienen.
     expect(detectsSearchIntent('Recogiendo lo que encuentro útil')).toBe(true);
     expect(detectsSearchIntent('Recolecto materiales de la zona')).toBe(true);
     expect(detectsSearchIntent('Rastreo huellas recientes')).toBe(true);
   });
 
+  it('"Recojo" (yo recojo) ya no rompe el stem — cubierto por la tolerancia de erratas nueva (2026-09-06), no por la regex literal de "recog"', () => {
+    expect(detectsSearchIntent('Recojo lo que encuentro útil')).toBe(true);
+  });
+
+  it('bug real jugando en vivo (2026-09-06, "Bulco de Arena" narrado atacando en vez del Orco Enfurecido): tolera un typo de una letra en "busco" vía Levenshtein ≤2, mismo mecanismo que ya usa detectsAttackIntent', () => {
+    expect(detectsSearchIntent('Bsuco al perseguidor')).toBe(true);
+  });
+
+  it('tolera erratas también en explorar/rastrear', () => {
+    expect(detectsSearchIntent('Exploroo la cueva con cuidado')).toBe(true);
+    expect(detectsSearchIntent('Rastreoo las huellas del animal')).toBe(true);
+  });
+
   it('no detecta intención de búsqueda en una acción no relacionada', () => {
     expect(detectsSearchIntent('Hablo con el mercader sobre el precio')).toBe(false);
+  });
+
+  it('no dispara por error con palabras comunes que no son erratas de ningún stem de búsqueda', () => {
+    expect(detectsSearchIntent('Me acerco despacio hacia el fuego de la hoguera')).toBe(false);
   });
 });
 

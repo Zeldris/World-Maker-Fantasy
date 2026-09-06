@@ -197,6 +197,14 @@ interface TurnContext {
   /// en vez de dejarlo implícito (hoy el panel de victoria puede aparecer sin que la propia
   /// narración del golpe final lo haya descrito).
   npcFallsUnconsciousThisTurn?: boolean;
+  /// Ver `hasInoffensiveNpcNarratedAttacking` más abajo — bug real jugando en vivo (2026-09-06,
+  /// "Bulco de Arena" narrado atacando en combate): true cuando `npcParaIntercambio` de este
+  /// intercambio tiene `temperamento: 'INOFENSIVO'` o `ataqueNatural` empieza por "No ataca" —
+  /// `turnResolution.ts` ya usa este mismo dato para bloquear el daño mecánico
+  /// (`jugadorRecibeGolpe = false`), pero nada impedía que el LLM narrara de todos modos un ataque
+  /// activo en prosa. Si la narración describe al NPC embistiendo/golpeando/atacando, es una
+  /// alucinación de comportamiento — el propio catálogo dice que esa criatura no ataca.
+  npcAttackerIsInoffensive?: boolean;
   /// Igual que `npcFallsUnconsciousThisTurn`, pero SOLO cuando el desenlace de este turno es
   /// CONVALECIENTE (nunca MUERTO) — bug real jugando en vivo, 2026-08-22, "he matado a un buitre
   /// pero..." (revisando el log completo: un turno ANTES del remate real, con el rival todavía
@@ -1398,6 +1406,10 @@ export async function narrateAction(ctx: TurnContext & { roll?: RollResult }): P
           reason: 'narrar una escena de búsqueda/reconocimiento del enemigo en vez de bloquear/esquivar el golpe recibido en la defensa a ciegas',
         },
         {
+          check: () => hasInoffensiveNpcNarratedAttacking(parsed.narration, ctx.npcAttackerIsInoffensive),
+          reason: 'narrar un ataque activo (embestir/golpear/morder) de un NPC marcado INOFENSIVO o cuyo ataqueNatural dice "No ataca" — el catálogo dice que esa criatura no ataca',
+        },
+        {
           check: () => hasPrematureCombatResolution(narrationAndFacts, ctx.combatNotYetResolved),
           reason: 'narrar (en prosa o en newFacts) un combate ya resuelto sin ningún intercambio mecánico este turno',
         },
@@ -2434,6 +2446,24 @@ const SEARCHING_ENEMY_LEAK_REGEX =
 export function hasFalseDefenseNarration(narration: string, playerActedAsDefenderThisExchange?: boolean): boolean {
   if (!playerActedAsDefenderThisExchange) return false;
   return SEARCHING_ENEMY_LEAK_REGEX.test(narration);
+}
+
+/// Narración-vs-mecánica (bug real jugando en vivo, 2026-09-06: "el Bulco de Arena lanza un rugido
+/// agudo y su caracola rugosa golpea con fuerza" — un ítem de recolección/marisco de
+/// `HarvestYield`, `temperamento: INOFENSIVO` y `ataqueNatural: 'No ataca.'` en el catálogo,
+/// narrado ejecutando un ataque activo). `turnResolution.ts` ya usa este mismo dato de catálogo
+/// para bloquear el DAÑO mecánico (`jugadorRecibeGolpe = false` cuando `ataqueNatural` empieza por
+/// "No ataca"), pero nada impedía que la PROSA describiera el ataque igualmente — el LLM recibe al
+/// NPC como `npcParaIntercambio` en su contexto sin ninguna restricción de comportamiento. Vocabulario
+/// deliberadamente de agresión ACTIVA contra el jugador (embestir/golpear/atacar/morder/arañar/
+/// clavar), no de mera presencia o huida — un Quio o un Bulco de Arena puede aparecer, acercarse o
+/// alejarse en prosa sin violar su ficha, solo no puede atacar.
+const INOFFENSIVE_NPC_ACTIVE_ATTACK_REGEX =
+  /\b(embiste|embistio|embisti[oó]|golpea|golpeo|golpe[oó]|ataca|ataco|atac[oó]|arremete|arremetio|arremeti[oó]|carga contra|se abalanza|muerde|mordio|mordi[oó]|ara[ñn]a|ara[ñn]o|ara[ñn][oó]|lanza un mordisco|clava)\w*/i;
+
+export function hasInoffensiveNpcNarratedAttacking(narration: string, npcAttackerIsInoffensive?: boolean): boolean {
+  if (!npcAttackerIsInoffensive) return false;
+  return INOFFENSIVE_NPC_ACTIVE_ATTACK_REGEX.test(normalizeText(narration));
 }
 
 /// Narración-vs-mundo determinista (bug real, sesión autónoma de pruebas con Playwright, 2026-09-04):

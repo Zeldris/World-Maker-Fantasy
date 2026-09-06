@@ -260,3 +260,40 @@ usuaria ANTES de escribir el texto final en el `.md`, y solo entonces propagarlo
 reindexar. Para cambios de código (guards, catálogo), verificar siempre con `tsc -b` limpio y la
 suite de tests real en verde — este documento señala en varios puntos de hoy dónde esa verificación
 quedó pendiente por falta de `node` en el entorno de esta sesión.
+
+## Bug real jugando en vivo — "Bulco de Arena" narrado atacando (2026-09-06)
+
+Jugando en vivo: al aceptar la misión de Gistera Koh ("Acabar con el Orco Enfurecido") y escribir
+"Bsuco al perseguidor" (typo de "Busco"), el narrador combatió contra el **Bulco de Arena** —un ítem
+de `HarvestYield` (marisco de Playa de Ceniza Blanca, ni fauna ni NPC combatible, `ataqueNatural: 'No
+ataca.'`, `temperamento: 'INOFENSIVO'`)— en vez del Orco Enfurecido real de la misión, con prosa de
+ataque activo ("lanza un rugido agudo... golpea con fuerza"). Cadena causal completa investigada por
+agente dedicado: (A) el typo rompía `detectsSearchIntent` (regex literal sin fuzzy-match, a
+diferencia de `detectsAttackIntent`) → el mecanismo que inyecta al Orco Enfurecido en escena
+(`turnResolution.ts` § "Búsqueda del perseguidor de Gistera Koh") nunca se disparaba; (B) con el Orco
+Enfurecido ausente, el fallback de objetivo de combate caía en el único NPC-fauna detectado por
+fuzzy-match de alias, aunque fuera "bulco" (ítem de cocina) enganchado por el mismo typo; (C) aunque
+el daño mecánico real sí se bloqueaba (`ataqueNatural: 'No ataca.'` ya tenía guard desde 2026-08-23),
+ningún guard comprobaba la PROSA generada contra ese mismo dato.
+
+**CERRADO — A y B (2026-09-06)**:
+- `hasInoffensiveNpcNarratedAttacking` (`narrador.ts`), nuevo guard "vs. mecánica": compara la
+  narración contra `npcAttackerIsInoffensive` (mismo criterio exacto que ya bloqueaba el daño —
+  `ataqueNatural` empieza por "No ataca" — deliberadamente NO solo `temperamento: INOFENSIVO`, para
+  no bloquear en falso a NPCs inofensivos con ataque débil real como Gargantúa de Ceniza/Corretolvas/
+  Múrgol). Propagado como campo nuevo en `CombatExchangePhaseResult`/`NarradorContext`.
+- `detectsSearchIntent` (`discovery.ts`) gana tolerancia a erratas vía Levenshtein ≤2 (mismo
+  mecanismo centralizado que ya usa `detectsAttackIntent`) — "Bsuco" ahora sí activa la inyección
+  determinista del Orco Enfurecido. Bonus: también arregla el caso ya documentado de "Recojo" (yo
+  recojo) que antes rompía el stem por el cambio ortográfico g→j de la conjugación española.
+- Verificado con `tsc -b` limpio, 306/306 tests en verde, y verificación rigurosa de ambos fixes
+  (revertido → confirmado que el test falla → restaurado → confirmado que pasa).
+
+**PENDIENTE — causa C, estructural, decidido explícitamente dejar para otra sesión**: el fuzzy-match
+general de `detectNpcsInScene`/`matchNpcAliases` puede enganchar el alias de un ítem de
+`HarvestYield` (no fauna/NPC real) como si fuera un candidato de combate válido, cuando ninguna otra
+entidad mejor está en escena. Con la causa B ya cerrada, el Orco Enfurecido debería entrar en escena
+correctamente la próxima vez que se repita ese typo, así que este bug concreto no debería repetirse
+de inmediato — pero el endurecimiento de fondo (que el fallback de objetivo de combate nunca elija un
+slug que solo existe como ítem de recolección) sigue sin hacerse. Retomar cuando se repita un caso
+similar o se quiera cerrar la familia completa.

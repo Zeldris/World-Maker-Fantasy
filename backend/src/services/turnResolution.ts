@@ -737,6 +737,11 @@ export interface CombatExchangePhaseResult {
   /// "CASO DEFENSA" (el jugador respondió a ciegas a un ataque del NPC ya decidido). El caller
   /// reenvía esto tal cual al `TurnContext` del narrador, sin recalcular nada.
   playerActedAsDefenderThisExchange: boolean;
+  /// Ver `hasInoffensiveNpcNarratedAttacking` (narrador.ts) — true cuando `npcParaIntercambio`
+  /// tiene `ataqueNatural` empezando por "No ataca" (mismo criterio exacto que bloquea el daño
+  /// real más abajo en esta función). El caller reenvía esto tal cual al `TurnContext` del
+  /// narrador, sin recalcular nada.
+  npcAttackerIsInoffensive: boolean;
   npcEnergiaMax: number | null;
   npcNuevaEnergia: number | null;
   /// "Revisar partida" 2026-07-30 (queja explícita: "las habilidades que no son de ataque no
@@ -1529,7 +1534,16 @@ function resolveCombatExchangePhase(input: CombatExchangePhaseInput): CombatExch
   // propio comentario), así que el NPC seguía pudiendo conectar un golpe real contra la jugadora.
   // Único punto de verdad al final de la función, cubre las 6 ramas a la vez (incluida la
   // resolución de un `pendingNpcAttack` sembrado en un turno anterior contra este mismo NPC).
-  if (npcParaIntercambio && /^no ataca\b/i.test(npcParaIntercambio.ataqueNatural ?? '')) {
+  // `npcAttackerIsInoffensive` (guard de narración `hasInoffensiveNpcNarratedAttacking`) — mismo
+  // criterio EXACTO que el chequeo de daño de abajo, a propósito: hay NPCs `temperamento:
+  // 'INOFENSIVO'` con `ataqueNatural` real y débil (Gargantúa de Ceniza "embiste con la cabeza",
+  // Corretolvas "picotea y araña", Múrgol "topetazo torpe" — animales de manada que sí reaccionan
+  // si se les acorrala, aunque su temperamento general sea pacífico), y esos SÍ deben poder
+  // narrarse golpeando — usar solo `temperamento` aquí los habría bloqueado también, un falso
+  // positivo. Solo `ataqueNatural` empezando por "No ataca" (bug real, 2026-08-23/26, Ruptidar)
+  // es señal fiable de que ni el daño ni la prosa de ataque deberían producirse.
+  const npcAttackerIsInoffensive = !!npcParaIntercambio && /^no ataca\b/i.test(npcParaIntercambio.ataqueNatural ?? '');
+  if (npcAttackerIsInoffensive) {
     jugadorRecibeGolpe = false;
     jugadorGolpeEfectos = [];
   }
@@ -1549,6 +1563,7 @@ function resolveCombatExchangePhase(input: CombatExchangePhaseInput): CombatExch
     nextInitiativeRoll,
     exchangeHappened,
     playerActedAsDefenderThisExchange,
+    npcAttackerIsInoffensive,
     npcEnergiaMax,
     // RECUPERACION (2026-08-17) — sumado aquí mismo (topado al máximo real del NPC), a diferencia
     // del lado jugador cuyo tope solo conoce el caller.
@@ -3072,6 +3087,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     nextInitiativeRoll,
     exchangeHappened,
     playerActedAsDefenderThisExchange,
+    npcAttackerIsInoffensive,
     npcNuevaEnergia,
     abilityEffectHint,
     combatExchangeDisplay,
@@ -4287,6 +4303,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     combatRealHitLanded,
     nonExchangeAttackHitLanded,
     playerActedAsDefenderThisExchange,
+    npcAttackerIsInoffensive,
     npcFallsUnconsciousThisTurn,
     npcFallsConvalecienteThisTurn,
     combatNoRealDeathThisTurn,

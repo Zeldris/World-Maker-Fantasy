@@ -1,12 +1,27 @@
-import { normalizeText } from './travel.js';
+import { normalizeText, fuzzyMatchCandidates, fuzzyMatchesAnyStem } from './travel.js';
 
 const SEARCH_INTENT_REGEX = /busc|explor|rebusc|recog|recolect|rastre/;
+
+/// Bug real jugando en vivo (2026-09-06, "Bulco de Arena" narrado atacando en vez del Orco
+/// Enfurecido): "Bsuco al perseguidor" (typo de "Busco") no matchea la subcadena literal "busc" de
+/// arriba, así que `detectsSearchIntent` volvía `false` — y el mecanismo determinista de
+/// `turnResolution.ts` que inyecta al Orco Enfurecido en escena exige justo esta función en `true`
+/// (junto a `detectsAttackIntent`/`detectsHostileSearchIntent`, que tampoco cazan un typo sin verbo
+/// de ataque literal). Mismo patrón ya usado por `detectsAttackIntent` (npcScene.ts): tolerancia de
+/// erratas vía Levenshtein ≤2 sobre palabras de 5+ letras, centralizada en `travel.ts` para no
+/// reimplementar el bucle. Stems con longitud real ≥5 (el propio filtro de `fuzzyMatchCandidates`
+/// descarta palabras más cortas) — "busco"/"busca" ya cubren el resto de conjugaciones cortas por
+/// estar a distancia 1 entre sí.
+const SEARCH_INTENT_FUZZY_STEMS = ['busco', 'busca', 'buscar', 'buscando', 'explora', 'explorar', 'explorando', 'recojo', 'recoger', 'rastreo', 'rastrear', 'rastreando'];
 
 /// Sigue viva tras retirar el panel de descubrimiento (2026-08-25, ver comentario de cabecera más
 /// abajo) — turn.ts la sigue usando como red de seguridad de duración: una acción de
 /// explorar/buscar sin duración explícita no debería durar más de una hora de ficción.
 export function detectsSearchIntent(action: string): boolean {
-  return SEARCH_INTENT_REGEX.test(normalizeText(action));
+  const normalized = normalizeText(action);
+  if (SEARCH_INTENT_REGEX.test(normalized)) return true;
+  const words = fuzzyMatchCandidates(normalized);
+  return words.some((w) => fuzzyMatchesAnyStem(w, SEARCH_INTENT_FUZZY_STEMS));
 }
 
 // Nombres "núcleo" de región (auditoría 2026-07-24, segunda vuelta — probado en vivo contra la
