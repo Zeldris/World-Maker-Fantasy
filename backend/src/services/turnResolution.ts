@@ -5935,8 +5935,11 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
       if (!existingOrcoQuest) {
         newQuestOfferInfo = {
           title: 'Acabar con el Orco Enfurecido',
+          // Bug real jugando en vivo (2026-09-06): la descripción narraba "Gorhorn ha aceptado"
+          // mientras los botones Aceptar/Cancelar seguían visibles — contradicción de estado, la
+          // propuesta no puede narrar la aceptación antes de que ocurra.
           description:
-            'Gistera Koh, expulsada del Clan Serhu, pidió ayuda para acabar con el guerrero que la persigue — Gorhorn ha aceptado. Derrotarlo la pondrá a salvo.',
+            'Gistera Koh, expulsada del Clan Serhu, pide ayuda para acabar con el guerrero que la persigue. Aceptar la pondría a salvo.',
         };
       }
     }

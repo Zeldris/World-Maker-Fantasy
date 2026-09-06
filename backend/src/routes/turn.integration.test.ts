@@ -1517,7 +1517,7 @@ describe('newQuestInfo: notificación de misión aceptada', () => {
     expect(body.newQuestInfo).toBeNull();
     expect(body.newQuestOfferInfo).toEqual({
       title: 'Acabar con el Orco Enfurecido',
-      description: 'Gistera Koh, expulsada del Clan Serhu, pidió ayuda para acabar con el guerrero que la persigue — Gorhorn ha aceptado. Derrotarlo la pondrá a salvo.',
+      description: 'Gistera Koh, expulsada del Clan Serhu, pide ayuda para acabar con el guerrero que la persigue. Aceptar la pondría a salvo.',
     });
     const quest = await prisma.quest.findFirst({ where: { saveId, title: 'Acabar con el Orco Enfurecido' } });
     expect(quest).toBeNull();
