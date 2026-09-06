@@ -2804,6 +2804,15 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   // el sustantivo "perseguidor" y las formas de infinitivo/imperfecto, dejando fuera el verbo en
   // presente casi siempre.
   const PURSUER_REFERENCE_REGEX = /pers[ei]g\w*|pisa(?:n)? los talones/i;
+  // Bug real jugando en vivo (2026-09-06): la regex de arriba solo cazaba vocabulario GENÉRICO de
+  // "perseguidor" — pero tras el primer encuentro (o si la usuaria ya conoce el nombre por otra
+  // vía, p. ej. la propia misión "Acabar con el Orco Enfurecido" ya en pantalla), es igual de
+  // natural escribir el nombre propio directamente ("Busco al Orco enfurecido"). Sin esta segunda
+  // vía, el NPC igual entraba en escena y `shouldForceCombat` igual abría el combate (COMBATIR/
+  // HUIR en pantalla), pero el reveal determinista de más abajo nunca se disparaba — el jugador se
+  // encontraba con un "gruñido en la oscuridad" genérico en vez de la revelación real, mismo tipo
+  // de hueco que el bug original de 2026-08-20 que ya arregló el camino del "perseguidor".
+  const PURSUER_NAME_REFERENCE_REGEX = /orco\s+enfurecido/i;
   // Bandera para el añadido determinista de más abajo (junto a las fases de Gistera Koh) — SIN
   // ella, el modelo recibe a este NPC como "PERSONAJE EN ESCENA" en el contexto (mismo bloque
   // informativo que cualquier otro NPC, `npcSceneBlockFor`) pero nada le dice que ESTE es el turno
@@ -2817,7 +2826,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   let pursuerRevealedThisTurn = false;
   if (
     gisteraQuestYaExiste?.status === 'ACTIVA' &&
-    PURSUER_REFERENCE_REGEX.test(action) &&
+    (PURSUER_REFERENCE_REGEX.test(action) || PURSUER_NAME_REFERENCE_REGEX.test(action)) &&
     (detectsSearchIntent(action) || detectsAttackIntent(action) || detectsHostileSearchIntent(action)) &&
     !npcsInSceneWithInterruption.some((n) => n.slug === 'orco-enfurecido-hondonada')
   ) {
@@ -3971,7 +3980,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
       // inventarle uno; puede referirse a él como entidad sin nombre ("el orco que me persigue",
       // "uno de los suyos") o usar "el Orco Enfurecido" tal cual, pero jamás darle un nombre propio
       // distinto que no existe en ningún sitio.
-      'GISTERA KOH busca convencer a Gorhorn de que la ayude a acabar con el Orco Enfurecido que la persigue — se ha fijado en la marca/tótem del Clan Maktor que lleva Gorhorn y lo usa a su favor (un expulsado hablando con otro sin clan). Gistera NO conoce ningún nombre propio de ese orco — si lo menciona en el diálogo, refiérete a él solo como entidad ("el orco que me persigue", "el que me sigue desde las cuevas") o como "el Orco Enfurecido" tal cual, pero NUNCA le inventes ni le pongas un nombre propio distinto que no exista en ningún sitio (nada de "Hefrik" ni ningún otro). Si en algún turno Gorhorn acepta ayudarla de verdad (no antes, y no lo fuerces si Gorhorn todavía no se ha decidido), crea la misión con "newQuest" mencionando "Orco Enfurecido" en el título o la descripción, para que derrotarlo la cierre sola.',
+      'GISTERA KOH busca convencer a Gorhorn de que la ayude a acabar con el Orco Enfurecido que la persigue — se ha fijado en la marca/tótem del Clan Maktor que lleva Gorhorn y lo usa a su favor (un expulsado hablando con otro sin clan). Gistera NO conoce ningún nombre propio de ese orco — si lo menciona en el diálogo, refiérete a él solo como entidad ("el orco que me persigue", "el que me sigue desde las cuevas") o como "el Orco Enfurecido" tal cual, pero NUNCA le inventes ni le pongas un nombre propio distinto que no exista en ningún sitio (nada de "Hefrik" ni ningún otro). "Orco Enfurecido" es solo el nombre TÉCNICO/canónico que usan la misión y el catálogo del juego — Gorhorn NUNCA ha oído ese nombre y no debe pronunciarlo ni conocerlo en su diálogo o sus pensamientos: si acepta ayudar a Gistera, responde solo en términos de lo que ella le ha contado ("acabemos con ese perseguidor tuyo", "iré a por quien te sigue"), nunca con el nombre "Orco Enfurecido" en su propia boca. Si en algún turno Gorhorn acepta ayudarla de verdad (no antes, y no lo fuerces si Gorhorn todavía no se ha decidido), crea la misión con "newQuest" mencionando "Orco Enfurecido" en el título o la descripción, para que derrotarlo la cierre sola.',
     );
   } else if (gisteraEnEscena && !gisteraYaPresentada) {
     // Bug real jugando en vivo (2026-07-24, "revisa la partida, hubo otro error argumental"): sin
