@@ -45,6 +45,9 @@ describe('Entregar objeto a NPC (2026-08-31)', () => {
     saveId = save.id;
     await prisma.worldState.create({ data: { saveId } });
     await prisma.npcState.create({ data: { saveId, npcId: auladorId, scope: hondonadaId, condicionFisica: 'ILESO' } });
+    // Restringido a solo compañeros de equipo (2026-09-06, hallazgo 7 de la sesión de pruebas) —
+    // sin este Companion real, Aullador Rojo ya no sería candidato.
+    await prisma.companion.create({ data: { saveId, name: 'Aullador Rojo', role: 'compañero de caza', notes: 'x', tipo: 'FAUNA', sourceSlug: auladorSlug } });
 
     const item = await prisma.inventoryItem.create({
       data: { saveId, name: 'Cuchillo de hielo sílice', description: 'x', origin: 'inicial' },
@@ -56,6 +59,7 @@ describe('Entregar objeto a NPC (2026-08-31)', () => {
     await prisma.npcState.deleteMany({ where: { saveId } });
     await prisma.inventoryItem.deleteMany({ where: { saveId } });
     await prisma.logEntry.deleteMany({ where: { saveId } });
+    await prisma.companion.deleteMany({ where: { saveId } });
     await prisma.save.delete({ where: { id: saveId } });
   });
 
@@ -136,6 +140,7 @@ describe('Entregar objeto a NPC: guards (2026-08-31)', () => {
     await prisma.worldState.create({ data: { saveId } });
     // MUERTO — no es un destinatario válido, mismo criterio que Capturar/Saquear.
     await prisma.npcState.create({ data: { saveId, npcId: auladorId, scope: hondonadaId, condicionFisica: 'MUERTO' } });
+    await prisma.companion.create({ data: { saveId, name: 'Aullador Rojo', role: 'compañero de caza', notes: 'x', tipo: 'FAUNA', sourceSlug: auladorSlug } });
 
     const equipped = await prisma.inventoryItem.create({
       data: { saveId, name: 'Hacha equipada', description: 'x', origin: 'inicial', slot: 'ARMA_PRINCIPAL' },
@@ -146,6 +151,7 @@ describe('Entregar objeto a NPC: guards (2026-08-31)', () => {
   afterAll(async () => {
     await prisma.npcState.deleteMany({ where: { saveId } });
     await prisma.inventoryItem.deleteMany({ where: { saveId } });
+    await prisma.companion.deleteMany({ where: { saveId } });
     await prisma.save.delete({ where: { id: saveId } });
   });
 
@@ -170,5 +176,71 @@ describe('Entregar objeto a NPC: guards (2026-08-31)', () => {
     });
     expect(res.statusCode).toBe(400);
     expect(res.json().error).toContain('no está aquí');
+  });
+});
+
+describe('Entregar objeto a NPC: restringido a solo compañeros de equipo (2026-09-06, hallazgo 7)', () => {
+  let saveId: string;
+  let hondonadaId: string;
+  let gisteraId: string;
+  let gisteraSlug: string;
+  let itemId: string;
+
+  beforeAll(async () => {
+    const userId = await getDefaultUserId();
+    const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
+    const hondonada = await prisma.location.findFirstOrThrow({ where: { worldId: world.id, slug: 'hondonada-del-eco' } });
+    // Gistera Koh: NPC interactuable real, SIN Companion — el caso central de este fix ("no a
+    // cualquiera que pase", solo compañeros reales de equipo).
+    const gistera = await prisma.npc.findFirstOrThrow({ where: { worldId: world.id, slug: 'gistera-koh' } });
+    hondonadaId = hondonada.id;
+    gisteraId = gistera.id;
+    gisteraSlug = gistera.slug;
+
+    const save = await prisma.save.create({
+      data: {
+        userId,
+        worldId: world.id,
+        characterName: 'Gorhorn de prueba (entrega, no-compañero)',
+        characterArchetype: 'guerrero',
+        characterOrigin: 'Clan Maktor',
+        characterMotivation: 'x',
+        attributes: { fuerza: 10, destreza: 10, constitucion: 10, inteligencia: 10, voluntad: 10, carisma: 10, magia: 10 },
+        portraitInitial: 'G',
+        currentLocationId: hondonada.id,
+      },
+    });
+    saveId = save.id;
+    await prisma.worldState.create({ data: { saveId } });
+    await prisma.npcState.create({ data: { saveId, npcId: gisteraId, scope: '', condicionFisica: 'ILESO' } });
+
+    const item = await prisma.inventoryItem.create({ data: { saveId, name: 'Objeto suelto', description: 'x' } });
+    itemId = item.id;
+  });
+
+  afterAll(async () => {
+    await prisma.npcState.deleteMany({ where: { saveId } });
+    await prisma.inventoryItem.deleteMany({ where: { saveId } });
+    await prisma.save.delete({ where: { id: saveId } });
+  });
+
+  it('GET /entregables no lista a un NPC interactuable que no es compañero', async () => {
+    const app = await buildApp();
+    const res = await app.inject({ method: 'GET', url: `/saves/${saveId}/entregables` });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().npcs).toEqual([]);
+  });
+
+  it('POST /entregar a un NPC que no es compañero: 400', async () => {
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: `/saves/${saveId}/entregar/${gisteraSlug}`,
+      payload: { itemId },
+    });
+    expect(res.statusCode).toBe(400);
+    expect(res.json().error).toContain('compañeros');
+    const item = await prisma.inventoryItem.findUnique({ where: { id: itemId } });
+    expect(item).not.toBeNull();
   });
 });

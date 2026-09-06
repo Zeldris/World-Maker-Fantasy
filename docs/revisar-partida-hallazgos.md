@@ -58,11 +58,17 @@ PENDIENTES salvo que se indique lo contrario. Organizado por fase del runbook.
    misión, NPC de lore) en un interior debería abrirse un menú contextual de opciones según el tipo
    de NPC: Charlar / Aprender profesión / Comerciar / Reclutar / Misión: <título> / Combatir / Salir
    (lista de ejemplo, no cerrada) — sustituyendo el modelo actual de "todo depende de una
-   habilidad". Cambio de diseño grande, pendiente de decidir alcance real antes de construir.
-   **PENDIENTE — rediseño.**
+   habilidad". **CERRADO (2026-09-06)**: campo nuevo `Npc.interactionTypes` (multivaluado,
+   MAESTRO_OFICIO/NPC_MISION/NPC_LORE), disparado por texto libre (`dialogueTarget`), tarjeta
+   persistente (`pendingNpcInteractionOffer`, mismo patrón que `pendingQuestOfferInfo`). 12 Maestros
+   de oficio ya sembrados. Comerciar y Reclutar pacífico por conversación quedan fuera de alcance
+   (sin mecánica real todavía, anotados para diseño futuro). Ver plan completo en el historial de
+   commits. `tsc -b` limpio, 19 tests nuevos en verde.
 7. **"Entregar" debe ser solo para entregar ítems a compañeros del equipo** — hoy parece permitir
    entregar a cualquiera; debe limitarse a consultar/entregar en el inventario de los compañeros
-   reclutados, no NPCs sueltos. **PENDIENTE.**
+   reclutados, no NPCs sueltos. **CERRADO (2026-09-06)**: `entrega.ts` ahora exige un `Companion`
+   real (`sourceSlug` coincidente) tanto en `GET /entregables` como en el `POST`, en vez de aceptar
+   cualquier NPC interactuable en escena. 2 tests nuevos confirman el rechazo real. `tsc -b` limpio.
 8. **Recoger vs Recolectar mezclados** — "Recoger" debería ser SOLO para ítems sueltos en el
    suelo de la zona (incluyendo objetos que el propio jugador tire desde su inventario — falta la
    funcionalidad de "tirar" que los coloque en la Zona/mapa, visible y recogible después);

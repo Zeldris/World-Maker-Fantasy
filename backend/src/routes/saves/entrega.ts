@@ -14,15 +14,22 @@ import { CONDICIONES_INTERACTUABLE } from '../../services/death.js';
 /// la vez — objeto Y NPC — hacían frágil el matching por comillas simples que usa `explicitTarget`
 /// para un solo objetivo).
 ///
+/// Restringido a solo COMPAÑEROS de equipo (2026-09-06, bug real jugando en vivo — petición
+/// explícita de la usuaria: "la habilidad Entregar sirve para entregar cosas a los inventarios de
+/// los compañeros, no a cualquiera que pase") — antes permitía entregar a cualquier NPC
+/// interactuable en escena, sin relación con el equipo real de la jugadora. Un NPC cuenta como
+/// compañero si existe un `Companion.sourceSlug` real que lo referencia en esta partida (mismo
+/// campo que usa `companeros.ts` al materializar un tameo/persuasión).
+///
 /// El objeto entregado no desaparece sin más: se guarda aplanado en `NpcState.givenItems` (mismo
 /// shape que `NpcItemInScene`) y se suma al loadout del NPC en `buildNpcInScene` — si ese NPC
 /// concreto es derrotado más adelante, el objeto entregado aparece entre lo saqueable, mismo
 /// pipeline que el loot de catálogo, sin lógica paralela (ver comentario del campo en
 /// schema.prisma).
 export async function entregaRoutes(app: FastifyInstance) {
-  /// Candidatos: objetos NO equipados del inventario + NPCs vivos ya conocidos en esta ubicación
-  /// (mismo criterio que Capturar/Saquear-zona: `NpcState` real + `scopeFor` — no depende de que
-  /// la narración de ESTE turno haya vuelto a mencionar al NPC).
+  /// Candidatos: objetos NO equipados del inventario + compañeros de equipo ya presentes en esta
+  /// ubicación (mismo criterio de presencia que Capturar/Saquear-zona: `NpcState` real +
+  /// `scopeFor`, cruzado contra `Companion.sourceSlug` de esta partida).
   app.get<{ Params: { id: string } }>('/saves/:id/entregables', async (request, reply) => {
     const save = await prisma.save.findUnique({
       where: { id: request.params.id },
@@ -31,12 +38,17 @@ export async function entregaRoutes(app: FastifyInstance) {
     if (!save) return reply.status(404).send({ error: 'Partida no encontrada' });
     if (!save.currentLocationId || save.inventoryItems.length === 0) return { items: [], npcs: [] };
 
+    const companionSourceSlugs = new Set(
+      (await prisma.companion.findMany({ where: { saveId: save.id, sourceSlug: { not: null } }, select: { sourceSlug: true } })).map((c) => c.sourceSlug!),
+    );
+    if (companionSourceSlugs.size === 0) return { items: save.inventoryItems, npcs: [] };
+
     const states = await prisma.npcState.findMany({
       where: { saveId: save.id, condicionFisica: { in: CONDICIONES_INTERACTUABLE } },
     });
     if (states.length === 0) return { items: save.inventoryItems, npcs: [] };
 
-    const npcs = await prisma.npc.findMany({ where: { id: { in: states.map((s) => s.npcId) }, worldId: save.worldId } });
+    const npcs = await prisma.npc.findMany({ where: { id: { in: states.map((s) => s.npcId) }, worldId: save.worldId, slug: { in: [...companionSourceSlugs] } } });
     const npcById = new Map(npcs.map((n) => [n.id, n]));
     const candidateNpcs = states
       .map((state) => {
@@ -69,6 +81,8 @@ export async function entregaRoutes(app: FastifyInstance) {
 
       const npc = await prisma.npc.findUnique({ where: { worldId_slug: { worldId: save.worldId, slug: request.params.npcSlug } } });
       if (!npc) return reply.status(404).send({ error: 'NPC no encontrado' });
+      const isCompanion = await prisma.companion.findFirst({ where: { saveId: save.id, sourceSlug: npc.slug } });
+      if (!isCompanion) return reply.status(400).send({ error: 'Solo puedes entregar objetos a compañeros de tu equipo' });
       const scope = scopeFor(npc.kind, save.currentLocationId);
       const state = await prisma.npcState.findUnique({ where: { saveId_npcId_scope: { saveId: save.id, npcId: npc.id, scope } } });
       if (!state || !CONDICIONES_INTERACTUABLE.includes(state.condicionFisica)) {
