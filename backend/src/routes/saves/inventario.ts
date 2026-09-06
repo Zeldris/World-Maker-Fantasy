@@ -3,11 +3,12 @@ import { prisma } from '../../lib/prisma.js';
 import { syncDynamicCombatAbilities, resolveEquippedWeaponSlots } from '../../services/dynamicAbilities.js';
 import { normalizeSecondaryAttributes } from '../../services/secondaryAttributes.js';
 import { checkRequisitos, shortfallLabel, type Requisitos } from '../../services/requisitos.js';
-import { equipSlotFamily, effectiveAttributes, effectiveSecondaryAttributes } from '../../services/equipment.js';
+import { equipSlotFamily, effectiveAttributes, effectiveSecondaryAttributes, effectiveInventorySlotsBonus } from '../../services/equipment.js';
 import { weaponPoolFor, pesoArmaduraPermitidoFor } from '../../services/weaponAbilities.js';
+import { inventoryCapacityFor, totalInventoryUnits } from '../../services/inventoryCapacity.js';
 import type { AttributeBlock } from '../../services/dice.js';
 import { EquipSlot } from '@prisma/client';
-import { rejectIfEnded } from './shared.js';
+import { rejectIfEnded, toFrontendLogEntry } from './shared.js';
 
 /// Asignar/quitar un hueco de equipo (deuda técnica 2026-07-30, split de saves.ts) — decisión
 /// manual de la jugadora, el modelo nunca la toma (mismo criterio narrativo-sin-mecánica que el
@@ -149,4 +150,116 @@ export async function inventarioRoutes(app: FastifyInstance) {
       return { id: item.id, slot };
     },
   );
+
+  /// "Tirar" un objeto al suelo de la Zona actual (2026-09-06, hallazgo 8 de la sesión de pruebas:
+  /// "Recoger" debe ser solo para ítems sueltos, incluidos los que el propio jugador tire).
+  /// Posición fija = `Save.zonaPosX/Y` del jugador en este momento (decisión explícita de la
+  /// usuaria: nunca aleatoria) — mismo patrón de transacción delete+create que `entrega.ts`
+  /// (congelar el objeto fuera del inventario, en vez de narrarlo).
+  app.post<{ Params: { id: string; itemId: string } }>('/saves/:id/inventario/:itemId/tirar', async (request, reply) => {
+    const save = await prisma.save.findUnique({
+      where: { id: request.params.id },
+      select: {
+        id: true,
+        characterName: true,
+        currentLocationId: true,
+        zonaPosX: true,
+        zonaPosY: true,
+        endedAt: true,
+        worldState: { select: { fictionalDateLabel: true, fictionalMinutes: true } },
+      },
+    });
+    if (!save) return reply.status(404).send({ error: 'Partida no encontrada' });
+    if (rejectIfEnded(save, reply)) return;
+    if (!save.currentLocationId) return reply.status(400).send({ error: 'Sin ubicación actual' });
+    if (save.zonaPosX == null || save.zonaPosY == null) {
+      return reply.status(400).send({ error: 'Tu posición en el mapa de la zona todavía no está disponible' });
+    }
+
+    const item = await prisma.inventoryItem.findFirst({ where: { id: request.params.itemId, saveId: save.id } });
+    if (!item) return reply.status(404).send({ error: 'Objeto no encontrado en tu inventario' });
+    if (item.slot !== null) return reply.status(400).send({ error: 'Desequípalo antes de tirarlo' });
+    if (item.capturaNpcId !== null) return reply.status(400).send({ error: 'Eso es una captura en tránsito — suéltala desde ese panel, no desde aquí' });
+
+    const timeLabel = save.worldState?.fictionalDateLabel ?? 'Día 1, mañana';
+    const fictionalMinutes = save.worldState?.fictionalMinutes ?? 480;
+    const logEntry = await prisma.$transaction(async (tx) => {
+      await tx.inventoryItem.delete({ where: { id: item.id } });
+      await tx.droppedItem.create({
+        data: {
+          saveId: save.id,
+          locationId: save.currentLocationId!,
+          x: save.zonaPosX!,
+          y: save.zonaPosY!,
+          name: item.name,
+          description: item.description,
+          catalogSlug: item.catalogSlug,
+          statBonuses: item.statBonuses ?? undefined,
+        },
+      });
+      return tx.logEntry.create({
+        data: { saveId: save.id, channel: 'CHARACTER', text: `${save.characterName} deja caer ${item.name} en el suelo.`, timeLabel, fictionalMinutes, isPlayerAction: true },
+      });
+    });
+
+    return { itemName: item.name, logEntry: toFrontendLogEntry(logEntry) };
+  });
+
+  /// Recoger un objeto tirado en el suelo de la Zona actual — reverso exacto de "Tirar". Solo
+  /// recogible desde la MISMA Location donde se tiró (mismo criterio de presencia física que
+  /// Capturar/Entregar/Saquear).
+  app.post<{ Params: { id: string; droppedItemId: string } }>('/saves/:id/dropped-items/:droppedItemId/recoger', async (request, reply) => {
+    const save = await prisma.save.findUnique({
+      where: { id: request.params.id },
+      select: {
+        id: true,
+        characterName: true,
+        currentLocationId: true,
+        attributes: true,
+        endedAt: true,
+        worldState: { select: { fictionalDateLabel: true, fictionalMinutes: true } },
+      },
+    });
+    if (!save) return reply.status(404).send({ error: 'Partida no encontrada' });
+    if (rejectIfEnded(save, reply)) return;
+
+    const dropped = await prisma.droppedItem.findFirst({ where: { id: request.params.droppedItemId, saveId: save.id } });
+    if (!dropped) return reply.status(404).send({ error: 'Ese objeto ya no está aquí' });
+    if (dropped.locationId !== save.currentLocationId) {
+      return reply.status(400).send({ error: 'Tienes que estar en el mismo sitio para recogerlo' });
+    }
+
+    const [currentItems, equippedItems] = await Promise.all([
+      prisma.inventoryItem.findMany({ where: { saveId: save.id }, select: { name: true } }),
+      prisma.inventoryItem.findMany({ where: { saveId: save.id, slot: { not: null } }, select: { statBonuses: true } }),
+    ]);
+    const capacity = inventoryCapacityFor(
+      (save.attributes as AttributeBlock).fuerza,
+      (save.attributes as AttributeBlock).constitucion,
+      effectiveInventorySlotsBonus(equippedItems),
+    );
+    if (capacity - totalInventoryUnits(currentItems) < 1) {
+      return reply.status(400).send({ error: 'No te cabe en el inventario ahora mismo' });
+    }
+
+    const timeLabel = save.worldState?.fictionalDateLabel ?? 'Día 1, mañana';
+    const fictionalMinutes = save.worldState?.fictionalMinutes ?? 480;
+    const logEntry = await prisma.$transaction(async (tx) => {
+      await tx.droppedItem.delete({ where: { id: dropped.id } });
+      await tx.inventoryItem.create({
+        data: {
+          saveId: save.id,
+          name: dropped.name,
+          description: dropped.description,
+          catalogSlug: dropped.catalogSlug,
+          origin: 'recogido del suelo',
+        },
+      });
+      return tx.logEntry.create({
+        data: { saveId: save.id, channel: 'CHARACTER', text: `${save.characterName} recoge ${dropped.name} del suelo.`, timeLabel, fictionalMinutes, isPlayerAction: true },
+      });
+    });
+
+    return { itemName: dropped.name, logEntry: toFrontendLogEntry(logEntry) };
+  });
 }

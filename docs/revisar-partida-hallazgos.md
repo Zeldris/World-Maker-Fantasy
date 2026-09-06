@@ -74,19 +74,22 @@ PENDIENTES salvo que se indique lo contrario. Organizado por fase del runbook.
    funcionalidad de "tirar" que los coloque en la Zona/mapa, visible y recogible después);
    "Recolectar" es la habilidad de recursos naturales de herboristería/similar. Hoy hay cosas que
    salen en Recoger que deberían salir en Recolectar.
-   **PARCIALMENTE CERRADO (2026-09-06)** — la mitad de datos ya está arreglada: 10 fichas de
-   `HarvestYield` de categoría `planta` (enredaderas-llanuras, musgo-arcilla, hojas-telda-fuente,
-   boungo, verdileas-acuaticas, chudos-rojizos, pasto-solar, gradias, pasto-de-sangre,
-   trigo-escarlata) llevaban `metodoObtencion: 'PASIVO'` (Recoger) en vez de `'EXTRACCION'`
-   (Recolectar/herborista), contradiciendo el propio criterio ya documentado en
-   `recolectar.ts § pasivoCandidatesFor`. Corregido — ahora solo quedan en Recoger las 2 fuentes que
-   sí encajan (`osario-de-la-manada`, `restos-personales-maktor`, categoría `objeto`). Verificado:
-   `harvestSourceHomeLocationSlug` (candado opcional de Location) sigue funcionando igual para
-   ambos métodos, sin necesitar limpieza. `tsc -b` limpio, 88 tests en verde. **Sigue PENDIENTE la
-   segunda mitad**: la funcionalidad NUEVA de "tirar objetos al suelo de la zona" (mecánica
-   completa, sin precedente — no existe ninguna tabla de "ítem en el suelo de una Location" hoy,
-   `InventoryItem` no tiene posición) — rediseño más grande, pendiente de decidir alcance con la
-   usuaria antes de construir.
+   **CERRADO COMPLETO (2026-09-06)**:
+   - **Mitad de datos**: 10 fichas de `HarvestYield` de categoría `planta` (enredaderas-llanuras,
+     musgo-arcilla, hojas-telda-fuente, boungo, verdileas-acuaticas, chudos-rojizos, pasto-solar,
+     gradias, pasto-de-sangre, trigo-escarlata) llevaban `metodoObtencion: 'PASIVO'` (Recoger) en
+     vez de `'EXTRACCION'` (Recolectar/herborista) — corregido, solo quedan en Recoger las 2
+     fuentes que sí encajan (`osario-de-la-manada`, `restos-personales-maktor`, categoría `objeto`).
+   - **Mecánica nueva de "tirar"**: tabla nueva `DroppedItem` (por partida, posición = `Save.zonaPosX/Y`
+     del jugador en el momento de tirar, persiste para siempre hasta recogerlo — ambas decisiones
+     confirmadas con la usuaria). Botón "Tirar" en el detalle de un objeto del Inventario (solo si
+     no está equipado ni es una captura en tránsito); aparece como pin gris nuevo (tipo `OBJETO`) en
+     el mapa de Zona, con botón "Recoger" en su modal de detalle — mismo patrón visual que NPC/fauna
+     dinámicos, sin tocar `ZonePoint` (catálogo fijo). Endpoints
+     `POST /saves/:id/inventario/:itemId/tirar` y `POST /saves/:id/dropped-items/:droppedItemId/recoger`.
+   - Verificado: `tsc -b` limpio backend+frontend, 42 tests nuevos en verde (unitarios + integración
+     real contra Postgres), guards clave verificados rigurosamente (revertir/confirmar fallo/restaurar).
+   - Pendiente reverificar en vivo con Playwright (requiere reiniciar backend por la migración nueva).
 9. **Desollar está marcada como habilidad PASIVA pero se puede añadir a la barra de habilidades**
    — una pasiva no debería poder añadirse a ninguna barra activa. **CERRADO (2026-09-06)**: la lista
    `PASSIVE_ABILITY_NAMES` solo la conocía `HabilidadesPanel.tsx`; movida a

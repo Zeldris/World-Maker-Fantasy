@@ -2,11 +2,14 @@ import type { ZonePointInfo, ZonaDinamicoInfo } from '../lib/api'
 import { useEnciclopediaLink } from '../context/useEnciclopediaLink'
 import { SelectionModalShell, confirmButtonClasses } from './SelectionModalShell'
 
-const TIPO_LABEL: Record<ZonePointInfo['tipo'], string> = {
+const TIPO_LABEL: Record<ZonePointInfo['tipo'] | 'OBJETO', string> = {
   FAUNA: 'Fauna',
   RECURSO: 'Recurso',
   NPC: 'NPC',
   EDIFICIO: 'Edificio',
+  // "Tirar" objetos al suelo de la Zona (2026-09-06, hallazgo 8) — único `tipo` que no viene de
+  // `ZonePointInfo` (catálogo fijo): instancia por partida, `dinamicos` únicamente.
+  OBJETO: 'Objeto en el suelo',
 }
 
 const COLOR_LABEL: Record<ZonePointInfo['color'], string> = {
@@ -20,10 +23,18 @@ const COLOR_LABEL: Record<ZonePointInfo['color'], string> = {
 /// pin `dinamicos` (NPC/fauna sin `ZonePoint` sembrado, `slug`/`targetSlug` es el mismo concepto
 /// con nombre distinto). Shape mínimo común a ambas fuentes, sin exigir campos que solo tiene una
 /// de las dos (`ZonePointInfo.id`/`cantidad`).
-type ZonePointDetailSource = { targetSlug: string; nombre: string; tipo: ZonePointInfo['tipo']; color: ZonePointInfo['color']; cantidad?: number }
+type ZonePointDetailSource = {
+  targetSlug: string
+  nombre: string
+  tipo: ZonePointInfo['tipo'] | 'OBJETO'
+  color: ZonePointInfo['color']
+  cantidad?: number
+  /// "Tirar" objetos al suelo de la Zona (2026-09-06) — solo presente cuando `tipo === 'OBJETO'`.
+  droppedItemId?: string
+}
 
 export function zonaDinamicoToDetailSource(d: ZonaDinamicoInfo): ZonePointDetailSource {
-  return { targetSlug: d.slug, nombre: d.nombre, tipo: d.tipo, color: d.color }
+  return { targetSlug: d.slug, nombre: d.nombre, tipo: d.tipo, color: d.color, droppedItemId: d.droppedItemId }
 }
 
 /// Modal de detalle de un pin de Zona (2026-09-04, petición explícita jugando en vivo: "teniendo
@@ -42,7 +53,17 @@ export function zonaDinamicoToDetailSource(d: ZonaDinamicoInfo): ZonePointDetail
 /// nunca tiene ficha propia (gobernado por `Building`/`construction.ts`, fuera de alcance de la
 /// Enciclopedia) — sin target resuelto, el botón simplemente no aparece, en vez de fingir un enlace
 /// que no lleva a ningún sitio.
-export function ZonePointDetailModal({ point, onClose }: { point: ZonePointDetailSource; onClose: () => void }) {
+export function ZonePointDetailModal({
+  point,
+  onClose,
+  onRecoger,
+}: {
+  point: ZonePointDetailSource
+  onClose: () => void
+  /// "Tirar" objetos al suelo de la Zona (2026-09-06, hallazgo 8) — mismo criterio opcional que el
+  /// resto de callbacks de acción de este proyecto (`onUnequip`/`onEquip` en DetailModal.tsx).
+  onRecoger?: (droppedItemId: string) => Promise<void>
+}) {
   const { enciclopediaIndex, onEntityDetail } = useEnciclopediaLink()
   const target = enciclopediaIndex.bySlugKey.get(`fauna:${point.targetSlug}`) ?? enciclopediaIndex.bySlugKey.get(`npc:${point.targetSlug}`)
 
@@ -51,11 +72,22 @@ export function ZonePointDetailModal({ point, onClose }: { point: ZonePointDetai
       title={point.nombre}
       onCancel={onClose}
       footer={
-        target && (
-          <button type="button" onClick={() => { onEntityDetail?.(target); onClose() }} className={confirmButtonClasses('accent')}>
-            Ver en la Enciclopedia
-          </button>
-        )
+        <>
+          {point.tipo === 'OBJETO' && point.droppedItemId && (
+            <button
+              type="button"
+              onClick={async () => { await onRecoger?.(point.droppedItemId!); onClose() }}
+              className={confirmButtonClasses('accent')}
+            >
+              Recoger
+            </button>
+          )}
+          {target && (
+            <button type="button" onClick={() => { onEntityDetail?.(target); onClose() }} className={confirmButtonClasses('accent')}>
+              Ver en la Enciclopedia
+            </button>
+          )}
+        </>
       }
     >
       <div className="flex flex-wrap gap-1.5 text-2xs">

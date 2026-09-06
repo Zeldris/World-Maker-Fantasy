@@ -401,6 +401,7 @@ model Save {
   characterTransit   CharacterTransit?
   sessionSummaries   SessionSummary[]
   inventoryItems     InventoryItem[]
+  droppedItems       DroppedItem[]
   companions         Companion[]
   territories        Territory[]
   buildings          Building[]
@@ -456,6 +457,7 @@ model Location {
   restingSaves Save[]          @relation("LastRestLocation")
   buildings    Building[]
   zonePoints   ZonePoint[]
+  droppedItems DroppedItem[]
 
   @@unique([worldId, slug])
 }
@@ -526,6 +528,36 @@ enum ZonePointTipo {
   /// representación espacial dentro del lienzo de zona (antes solo existían como fila de BD con
   /// icono en el mapa de MUNDO/macro, invisibles en el mapa de ZONA/micro).
   EDIFICIO
+}
+
+/// "Tirar" objetos al suelo de la Zona (2026-09-06, hallazgo 8 de la sesión de pruebas: "Recoger"
+/// debe ser solo para ítems sueltos, incluidos los que el propio jugador tire — no recursos
+/// naturales, eso es "Recolectar"). A diferencia de `ZonePoint` (catálogo fijo por `Location`,
+/// compartido entre partidas), esto es una INSTANCIA por partida (`saveId`), con posición fija
+/// desde que se creó (= `Save.zonaPosX/Y` del jugador en el momento de tirarlo — nunca aleatoria,
+/// decisión explícita de la usuaria) — persiste para siempre hasta que alguien lo recoja, no
+/// expira ni se dispersa como la fauna dinámica.
+///
+/// Mismo subconjunto de campos que `NpcState.givenItems`/`entrega.ts` ya congela al entregar un
+/// objeto a un NPC (name/description/catalogSlug/statBonuses) — `equipSlot`/`effectKey`/
+/// `category`/`tipoArma`/`tipo` se re-derivan por join a `ItemCatalog` vía `catalogSlug` en el
+/// momento de recoger, no se duplican aquí.
+model DroppedItem {
+  id          String   @id @default(cuid())
+  saveId      String
+  save        Save     @relation(fields: [saveId], references: [id], onDelete: Cascade)
+  locationId  String
+  location    Location @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  /// Mismo lienzo 800×600 que ZonePoint — posición del jugador en el momento de tirarlo, fija.
+  x           Float
+  y           Float
+  name        String
+  description String
+  catalogSlug String?
+  statBonuses Json?
+  createdAt   DateTime @default(now())
+
+  @@index([saveId, locationId])
 }
 
 /// Ruta directa entre dos ubicaciones. Se guarda UNA fila por pareja y el grafo se trata

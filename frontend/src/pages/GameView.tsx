@@ -83,6 +83,7 @@ import {
   ignorarModoDinamico,
   chooseNpcInteraction,
   setItemSlot,
+  tirarItem,
   // Sugerencias desactivadas (2026-09-06, ver comentario junto a `setSuggestions` más abajo).
   // requestSuggestions,
   getRecolectarLocalizado,
@@ -1241,6 +1242,21 @@ export function GameView() {
     }
   }
 
+  // "Tirar" un objeto al suelo de la Zona actual (2026-09-06, hallazgo 8) — mismo criterio de
+  // rollback optimista que handleUnequipItem: se quita del inventario local de inmediato, y si el
+  // backend rechaza la petición (posición en el mapa no disponible, etc.) se restaura.
+  async function handleTirarItem(item: InventoryItemInfo) {
+    if (!saveId) return
+    const previous = inventory
+    setInventory((prev) => prev.filter((i) => i.id !== item.id))
+    try {
+      await tirarItem(saveId, item.id)
+    } catch (err) {
+      setInventory(previous)
+      throw err
+    }
+  }
+
   // Sugerencias de próxima acción bajo demanda (petición explícita, 2026-08-15) — DESACTIVADA
   // (2026-09-06, ver comentario junto a `setSuggestions` más arriba). Comentada entera en vez de
   // borrada: ninguna entrada visible la llama mientras tanto, así que quedaría como código muerto
@@ -2002,6 +2018,7 @@ export function GameView() {
           }}
           onUnequip={handleUnequipItem}
           onEquip={handleEquipItem}
+          onTirar={handleTirarItem}
           onSaveAbility={handleUpdateHabilidad}
           onDeleteAbility={handleDeleteHabilidad}
           onInsert={detailInsertHandler ?? undefined}

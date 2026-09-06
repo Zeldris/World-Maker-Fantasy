@@ -129,7 +129,15 @@ export async function zonaRoutes(app: FastifyInstance) {
     // se calcula de forma independiente en ambos sitios — así ningún NPC mencionado solo por
     // `sessionFacts` (sin que la acción del turno lo toque) se queda sin posición nunca asignada.
     const ocupadas: { x: number; y: number }[] = zonePointsActivos.map((p) => ({ x: p.x, y: p.y }));
-    const dinamicos: { slug: string; nombre: string; tipo: 'NPC' | 'FAUNA'; color: ZonePointColor; x: number; y: number }[] = [];
+    const dinamicos: {
+      slug: string;
+      nombre: string;
+      tipo: 'NPC' | 'FAUNA' | 'OBJETO';
+      color: ZonePointColor;
+      x: number;
+      y: number;
+      droppedItemId?: string;
+    }[] = [];
     for (const n of dinamicosCandidatos) {
       const scope = scopeFor(n.kind, locationId);
       const key = `${n.id}|${scope}`;
@@ -147,6 +155,16 @@ export async function zonaRoutes(app: FastifyInstance) {
       }
       ocupadas.push(pos);
       dinamicos.push({ slug: n.slug, nombre: n.name, tipo: n.kind === 'PRINCIPAL' ? 'NPC' : 'FAUNA', color: zonePointColorFor(n.faction, factionsStatus), x: pos.x, y: pos.y });
+    }
+
+    // "Tirar" objetos al suelo de la Zona (2026-09-06, hallazgo 8) — instancia POR PARTIDA
+    // (`DroppedItem.saveId`), posición fija desde que se tiró (nunca perezosa como NPC/fauna
+    // dinámicos de arriba). `slug`/`droppedItemId` distintos a propósito: el modal de detalle
+    // necesita el id real de la fila para poder recogerla, un objeto tirado no tiene slug de
+    // catálogo estable (puede no tener `catalogSlug` en absoluto, si es narrativo).
+    const droppedItems = await prisma.droppedItem.findMany({ where: { saveId: save.id, locationId } });
+    for (const d of droppedItems) {
+      dinamicos.push({ slug: d.id, nombre: d.name, tipo: 'OBJETO', color: 'SIN_FACCION', x: d.x, y: d.y, droppedItemId: d.id });
     }
 
     if (zonePoints.length === 0) {

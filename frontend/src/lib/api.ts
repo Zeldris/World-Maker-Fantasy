@@ -824,6 +824,17 @@ export async function setItemSlot(id: string, itemId: string, slot: EquipSlot | 
   })
 }
 
+/// "Tirar" un objeto al suelo de la Zona actual (2026-09-06, hallazgo 8) — queda como pin en el
+/// mapa de Zona (`ZonaDinamicoInfo`, tipo 'OBJETO') hasta que alguien lo recoja con
+/// `recogerDroppedItem`.
+export async function tirarItem(id: string, itemId: string): Promise<{ itemName: string; logEntry: { id: string; text: string; timeLabel: string; createdAt: string } }> {
+  return fetchJson(`${API_URL}/saves/${id}/inventario/${itemId}/tirar`, { method: 'POST' })
+}
+
+export async function recogerDroppedItem(id: string, droppedItemId: string): Promise<{ itemName: string; logEntry: { id: string; text: string; timeLabel: string; createdAt: string } }> {
+  return fetchJson(`${API_URL}/saves/${id}/dropped-items/${droppedItemId}/recoger`, { method: 'POST' })
+}
+
 /// Persiste qué entidad se mostró como banner bajo una narración (rework 2026-07-24) — el frontend
 /// ya decidió cuál mostrar (mentionedEntityBanner.ts); esto solo guarda esa decisión para que
 /// sobreviva a una recarga dentro de la ventana de 24h que devuelve GET /saves/:id. Fire-and-forget
@@ -1021,7 +1032,7 @@ export interface ZonePointInfo {
 export interface ZonaDinamicoInfo {
   slug: string
   nombre: string
-  tipo: 'NPC' | 'FAUNA'
+  tipo: 'NPC' | 'FAUNA' | 'OBJETO'
   /// Color por reputación con la facción del NPC (2026-09-04) — mismo criterio y mismos 4 valores
   /// que `ZonePointInfo.color` (`zonePointColorFor`, backend), para que la lista "Presentes ahora"
   /// deje de usar un punto marrón fijo sin relación con el resto del mapa.
@@ -1032,6 +1043,10 @@ export interface ZonaDinamicoInfo {
   /// ya no es solo texto, se pinta como pin real en el mapa (ver `ZonePointShape` en `ZonaPanel.tsx`).
   x: number
   y: number
+  /// "Tirar" objetos al suelo de la Zona (2026-09-06, hallazgo 8) — solo presente cuando
+  /// `tipo === 'OBJETO'`; id real de la fila para poder recogerla (a diferencia de NPC/fauna, un
+  /// objeto tirado no tiene slug de catálogo estable).
+  droppedItemId?: string
 }
 /// Control regional (2026-08-27, Pieza 5 de "Dinamismo del mundo") — derivado en caliente de
 /// `WorldState.agenda`, sin logo real todavía (placeholder de texto en el frontend mientras se

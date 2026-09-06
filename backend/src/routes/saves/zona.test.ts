@@ -11,6 +11,9 @@ const findManyNpc = vi.fn();
 // vez. Vacío por defecto: la mayoría de tests de este archivo no tocan NPC dinámicos con estado.
 const findManyNpcState = vi.fn();
 const upsertNpcState = vi.fn();
+// "Tirar" objetos al suelo de la Zona (2026-09-06) — vacío por defecto: la mayoría de tests de este
+// archivo no tocan objetos tirados.
+const findManyDroppedItem = vi.fn();
 
 vi.mock('../../lib/prisma.js', () => ({
   prisma: {
@@ -20,6 +23,7 @@ vi.mock('../../lib/prisma.js', () => ({
       findMany: (...args: unknown[]) => findManyNpcState(...args),
       upsert: (...args: unknown[]) => upsertNpcState(...args),
     },
+    droppedItem: { findMany: (...args: unknown[]) => findManyDroppedItem(...args) },
   },
 }));
 
@@ -49,6 +53,7 @@ async function buildApp() {
 beforeEach(() => {
   findManyNpcState.mockReset().mockResolvedValue([]);
   upsertNpcState.mockReset().mockResolvedValue({});
+  findManyDroppedItem.mockReset().mockResolvedValue([]);
 });
 
 afterEach(() => {
@@ -174,6 +179,26 @@ describe('GET /saves/:id/zona', () => {
     expect(body.puntos).toEqual([
       { id: 'zp2', x: 400, y: 470, tipo: 'RECURSO', targetSlug: 'yerreo', nombre: expect.any(String), cantidad: 1, color: 'SIN_FACCION' },
     ]);
+  });
+
+  it('un objeto tirado (DroppedItem) de la Location actual aparece en dinamicos con tipo OBJETO y posición fija (hallazgo 2026-09-06)', async () => {
+    findUniqueSave.mockResolvedValueOnce({
+      id: 's1',
+      worldId: 'w1',
+      currentLocation: { id: 'loc1', slug: 'hondonada-del-eco', name: 'La Hondonada del Eco', zonePoints: [] },
+    });
+    loadSessionFactsMock.mockResolvedValueOnce([]);
+    detectNpcsInSceneMock.mockResolvedValueOnce([]);
+    findManyDroppedItem.mockResolvedValueOnce([
+      { id: 'drop1', saveId: 's1', locationId: 'loc1', x: 250, y: 300, name: 'Cuchillo de hielo sílice', description: 'x', catalogSlug: null, statBonuses: null, createdAt: new Date() },
+    ]);
+    const app = await buildApp();
+    const res = await app.inject({ method: 'GET', url: '/saves/s1/zona' });
+    const body = res.json();
+    expect(body.dinamicos).toEqual([
+      { slug: 'drop1', nombre: 'Cuchillo de hielo sílice', tipo: 'OBJETO', color: 'SIN_FACCION', x: 250, y: 300, droppedItemId: 'drop1' },
+    ]);
+    expect(findManyDroppedItem).toHaveBeenCalledWith({ where: { saveId: 's1', locationId: 'loc1' } });
   });
 
   it('un NPC dinámico ya cubierto por un ZonePoint fijo no se duplica en dinamicos', async () => {

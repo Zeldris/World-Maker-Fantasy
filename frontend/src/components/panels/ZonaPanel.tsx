@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { getZona, resolveImageUrl, type ZonaResponse, type ZonePointInfo, type ZonaDinamicoInfo, type RegionControlInfo } from '../../lib/api'
+import { getZona, resolveImageUrl, recogerDroppedItem, type ZonaResponse, type ZonePointInfo, type ZonaDinamicoInfo, type RegionControlInfo } from '../../lib/api'
 import { ZonePointDetailModal, zonaDinamicoToDetailSource } from '../ZonePointDetailModal'
 
 interface ZonaPanelProps {
@@ -21,11 +21,14 @@ interface ZonaPanelProps {
 /// pero DENTRO del mismo botón/sección Mapa de siempre, alternable con un tab "Mapa" al lado, ver
 /// MapaPanel.tsx). Al ser ahora su propia vista (no una subsección silenciosa), si no hay datos de
 /// zona para la ubicación actual SÍ explica por qué está vacía, en vez de `null` como antes.
-const TIPO_LABEL: Record<ZonePointInfo['tipo'], string> = {
+const TIPO_LABEL: Record<ZonePointInfo['tipo'] | 'OBJETO', string> = {
   FAUNA: 'Fauna',
   RECURSO: 'Recurso',
   NPC: 'NPC',
   EDIFICIO: 'Edificio',
+  // "Tirar" objetos al suelo de la Zona (2026-09-06, hallazgo 8) — único tipo exclusivo de
+  // `dinamicos` (instancia por partida, nunca `ZonePoint` de catálogo).
+  OBJETO: 'Objeto en el suelo',
 }
 
 /// Color por reputación con la facción del punto (2026-08-27, Pieza 3 de "Dinamismo del mundo") —
@@ -54,7 +57,7 @@ const COLOR_HEX: Record<ZonePointInfo['color'], string> = {
 /// justo el par que separa "fauna cazable" (círculo) de "recurso recolectable" (rombo). El
 /// alargado vertical (7 horizontal / 10 vertical, antes 9/9) mantiene el área similar pero rompe
 /// la silueta redondeada que lo acercaba al círculo.
-function ZonePointShape({ tipo, x, y, color }: { tipo: ZonePointInfo['tipo']; x: number; y: number; color: string }) {
+function ZonePointShape({ tipo, x, y, color }: { tipo: ZonePointInfo['tipo'] | 'OBJETO'; x: number; y: number; color: string }) {
   const common = { fill: color, stroke: 'white', strokeWidth: 1.5 }
   switch (tipo) {
     case 'NPC':
@@ -65,6 +68,10 @@ function ZonePointShape({ tipo, x, y, color }: { tipo: ZonePointInfo['tipo']; x:
       return <polygon points={`${x},${y - 10} ${x + 7},${y} ${x},${y + 10} ${x - 7},${y}`} {...common} />
     case 'FAUNA':
       return <circle cx={x} cy={y} r={8} {...common} />
+    case 'OBJETO':
+      // "Tirar" objetos al suelo de la Zona (2026-09-06) — mismo rombo que RECURSO pero gris fijo,
+      // para no confundir un objeto tirado por el jugador con un recurso natural sembrado.
+      return <polygon points={`${x},${y - 10} ${x + 7},${y} ${x},${y + 10} ${x - 7},${y}`} fill="#8a8a8a" stroke="white" strokeWidth={1.5} />
   }
 }
 
@@ -137,6 +144,13 @@ export function ZonaPanel({ saveId }: ZonaPanelProps) {
       .catch(() => setError('No se pudo cargar la zona.'))
       .finally(() => setLoading(false))
   }, [saveId])
+
+  // "Tirar" objetos al suelo de la Zona (2026-09-06, hallazgo 8) — tras recoger uno, el pin debe
+  // desaparecer del mapa sin esperar a que el jugador cambie de pestaña y vuelva.
+  async function handleRecoger(droppedItemId: string) {
+    await recogerDroppedItem(saveId, droppedItemId)
+    getZona(saveId).then(setData).catch(() => {})
+  }
 
   if (loading) return <p className="text-sm italic text-wood-500">Cargando zona...</p>
   if (error) return <p className="text-sm italic text-wood-500">{error}</p>
@@ -221,7 +235,7 @@ export function ZonaPanel({ saveId }: ZonaPanelProps) {
             </summary>
             <div className="flex flex-col gap-2 border-t border-iron-800 px-3 py-2">
               <div className="flex flex-wrap gap-x-4 gap-y-1.5">
-                {(Object.keys(TIPO_LABEL) as ZonePointInfo['tipo'][]).map((tipo) => (
+                {(Object.keys(TIPO_LABEL) as (ZonePointInfo['tipo'] | 'OBJETO')[]).map((tipo) => (
                   <span key={tipo} className="flex items-center gap-1.5">
                     <svg viewBox="0 0 24 24" width={14} height={14} aria-hidden="true">
                       <ZonePointShape tipo={tipo} x={12} y={12} color="#8a8578" />
@@ -298,7 +312,7 @@ export function ZonaPanel({ saveId }: ZonaPanelProps) {
         ('id' in selectedPoint ? (
           <ZonePointDetailModal point={selectedPoint} onClose={() => setSelectedPoint(null)} />
         ) : (
-          <ZonePointDetailModal point={zonaDinamicoToDetailSource(selectedPoint)} onClose={() => setSelectedPoint(null)} />
+          <ZonePointDetailModal point={zonaDinamicoToDetailSource(selectedPoint)} onClose={() => setSelectedPoint(null)} onRecoger={handleRecoger} />
         ))}
     </div>
   )

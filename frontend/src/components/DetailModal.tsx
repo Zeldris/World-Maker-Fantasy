@@ -112,6 +112,10 @@ interface DetailModalProps {
   onClose: () => void
   onUnequip?: (item: InventoryItemInfo) => Promise<void>
   onEquip?: (item: InventoryItemInfo, slot: EquipSlot) => Promise<void>
+  /// "Tirar" un objeto al suelo de la Zona actual (2026-09-06, hallazgo 8) — solo tiene sentido
+  /// para objetos NO equipados y que no sean una captura en tránsito (esas tienen su propio flujo
+  /// Soltar/Depositar, panel de Compañeros).
+  onTirar?: (item: InventoryItemInfo) => Promise<void>
   onSaveAbility?: (id: string, params: AbilityFormParams) => Promise<void>
   onDeleteAbility?: (id: string) => void
   /// Solo para `kind: 'info'` (Enciclopedia) — inserta este elemento como chip en el composer.
@@ -126,7 +130,7 @@ interface DetailModalProps {
 // entrada de la Enciclopedia) — centrado en pantalla como CombatModal, no otro PanelDrawer
 // apilado (evita "cajón dentro de cajón"). Misma carcasa (plank-panel + animate-combat-enter) sin
 // la vestidura de combate.
-export function DetailModal({ target, onClose, onUnequip, onEquip, onSaveAbility, onDeleteAbility, onInsert, worldSlug }: DetailModalProps) {
+export function DetailModal({ target, onClose, onUnequip, onEquip, onTirar, onSaveAbility, onDeleteAbility, onInsert, worldSlug }: DetailModalProps) {
   // Texto clicable dentro de la propia ficha (2026-07-22, petición explícita: "descripciones que
   // tengamos") — una bio que menciona a otro NPC/lugar/objeto navega a SU ficha, sustituyendo el
   // contenido de este mismo modal (mismo patrón que un enlace de wiki, no un modal apilado).
@@ -240,15 +244,28 @@ export function DetailModal({ target, onClose, onUnequip, onEquip, onSaveAbility
             </div>
             {!!target.item.origin && <p className="text-2xs uppercase tracking-[0.1em] text-wood-600">{target.item.origin}</p>}
             {actionError && <p className="text-xs text-red-400">{actionError}</p>}
-            {target.item.slot && onUnequip && (
-              <button type="button"
-                onClick={() => runEquipAction(() => onUnequip(target.item))}
-                disabled={busy}
-                className="tactile self-start rounded-lg border border-iron-700 px-3 py-1.5 text-xs text-wood-300 transition-colors hover:border-accent-600/60 hover:text-wood-100 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                Quitar
-              </button>
-            )}
+            <div className="flex flex-wrap gap-2">
+              {target.item.slot && onUnequip && (
+                <button type="button"
+                  onClick={() => runEquipAction(() => onUnequip(target.item))}
+                  disabled={busy}
+                  className="tactile self-start rounded-lg border border-iron-700 px-3 py-1.5 text-xs text-wood-300 transition-colors hover:border-accent-600/60 hover:text-wood-100 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  Quitar
+                </button>
+              )}
+              {/* "Tirar" objetos al suelo de la Zona (2026-09-06, hallazgo 8) — solo objetos en
+                  mochila (no equipados) que no sean una captura en tránsito. */}
+              {!target.item.slot && !target.item.capturaNpcId && onTirar && (
+                <button type="button"
+                  onClick={() => runEquipAction(() => onTirar(target.item))}
+                  disabled={busy}
+                  className="tactile self-start rounded-lg border border-iron-700 px-3 py-1.5 text-xs text-wood-300 transition-colors hover:border-danger-600/60 hover:text-danger-200 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  Tirar
+                </button>
+              )}
+            </div>
           </>
         )}
 
