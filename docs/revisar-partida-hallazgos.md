@@ -737,9 +737,16 @@ la sesión de pruebas encontró MÁS problemas del mismo área que esos fixes no
     + nueva CraftingRecipe + revisar balance de `vendaje-improvisado-orcos-llanuras` y hermanas.**
 42. **Las sugerencias de acción ("💡 Sugerir") se descartan del juego por ahora** — decisión
     explícita de la usuaria: "son malísimas y no aportan casi ningún valor... por ahora lo
-    descartamos... dejándolo pendiente por si algún día lo mejoramos". **ACCIÓN CLARA: quitar el
-    botón/funcionalidad de sugerencias del frontend (sin borrar el código de generación del todo,
-    solo desactivar la entrada visible) — pendiente de ejecutar.**
+    descartamos... dejándolo pendiente por si algún día lo mejoramos". **YA CERRADO ANTES DE ESTA
+    SESIÓN (2026-09-06)** — confirmado al reverificar el 2026-09-07: `GameView.tsx` ya no pasa
+    `onRequestSuggestions` a `ChatComposer.tsx`, así que el botón nunca se monta (renderizado
+    condicional en `onRequestSuggestions && (...)`); `SuggestionBar` ya no se importa ni se
+    renderiza en ningún JSX; `handleRequestSuggestions` está comentado entero, sin ninguna llamada
+    automática de fondo (el diseño original ya era "bajo demanda", solo el clic disparaba la
+    llamada — sin el clic posible, no queda nada que se dispare solo). Backend intacto a propósito
+    (`POST /saves/:id/suggestions`, código de generación conservado sin tocar, tal como pedía el
+    hallazgo) — como el frontend ya no lo llama, el coste de LLM no se incurre. Sin tests rotos
+    (ningún test frontend referenciaba el botón; el test backend del endpoint sigue en verde).
 43. **Revisar cuándo y cómo se lanza "¿Interactuar?" (el aviso de "Gesgurio busca tu atención...")**
     — la usuaria pide anotarlo en el checklist de pruebas vivo (`docs/checklist-pruebas-juego.md`)
     como funcionalidad a probar a fondo y mejorar hasta que aporte valor real, no arreglarlo ya
