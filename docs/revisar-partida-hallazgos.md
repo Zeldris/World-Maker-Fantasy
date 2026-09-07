@@ -450,8 +450,19 @@ la sesión de pruebas encontró MÁS problemas del mismo área que esos fixes no
 25b. **Entre que se resuelve un intercambio de combate y se lanza/muestra la tirada de iniciativa
     siguiente pasa demasiado tiempo** — debería ser casi inmediato. Y durante ESE tramo concreto
     (resultado del combate ya mostrado, iniciativa aún sin lanzar/resolver) todo debería estar
-    BLOQUEADO también. **PENDIENTE — revisar el delay real entre el fin del intercambio y el inicio
-    de la animación de iniciativa siguiente, y si hay algún lock durante ese tramo.**
+    BLOQUEADO también. **CERRADO (2026-09-07)**: investigado en dos partes. (1) Bloqueo — confirmado
+    que `lastInitiativeRoll` se anima y `awaitingNextInitiative` se activa de forma SÍNCRONA en el
+    mismo tick que se resuelve el turno (`useCombatFlow.ts`, `handleCombatTurnResolved`) — no hay
+    ningún `setTimeout`/debounce intermedio ni hueco sin bloquear entre "el intercambio se resuelve"
+    y "el lock se activa"; el fix del hallazgo 25a (cableado de `awaitingNextInitiative` a `busy`,
+    mismo commit) ya cubre este tramo entero de punta a punta, sin cambios adicionales necesarios.
+    (2) La percepción de "demasiado tiempo" en sí: confirmado que NO es un delay muerto añadido —
+    `DiceRollVs` anima los 2 dados de iniciativa SECUENCIALMENTE (uno tras otro, diseño deliberado
+    de una sesión anterior, "como si jugaras una partida D&D de verdad"), ~10s reales totales
+    (2×`ROLL_DURATION_MS`) desde que se resuelve el turno hasta que el segundo dado (el que decide
+    el ganador) aterriza. Decisión explícita de la usuaria: dejar la duración de la animación como
+    está, no es un bug — el hallazgo queda cerrado solo con la parte de bloqueo, ya cubierta por el
+    commit del 25a (`66a2e6a`).
 26. **El estado final del NPC tras una tirada de iniciativa a veces se representa mal en el
     frontend** (sin más detalle de qué "mal" exactamente — revisar con más capturas o reproduciendo
     en vivo). **PENDIENTE — reproducir con más detalle.**
