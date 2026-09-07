@@ -375,10 +375,9 @@ confirmar u otro camino de cierre), `Matar` seguiría aceptando la petición y m
 `targetedForKill: true` en el `NpcState` — un efecto de mutación real sobre una partida que el resto
 del backend ya trata como cerrada en firme.
 
-**Estado**: PENDIENTE. Bug real, no ambiguo: es una inconsistencia entre 3 endpoints gemelos donde 2
-de 3 ya tienen el guard correcto — no hay decisión de diseño que tomar, solo falta añadir la misma
-línea que ya llevan sus 2 hermanos. Se deja registrado sin tocar código de producción (esta
-auditoría es solo de investigación).
+**Estado**: CERRADO (2026-09-07, commit `dbee84e`) — se añadió el mismo `rejectIfEnded` que ya
+llevaban sus 2 hermanos. Test de integración nuevo (`session.matar.integration.test.ts`) con
+verificación rigurosa: confirmado que sin el guard el test falla (400 en vez de 409 esperado).
 
 ## 2026-09-07 — companeros.ts: 9 endpoints de captura/almacén/plantillas sin guard de save.endedAt
 
