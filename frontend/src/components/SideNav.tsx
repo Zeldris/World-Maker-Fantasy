@@ -19,9 +19,13 @@ interface SideNavProps {
   /// Profesiones, Mapa, Diario, Misiones, Compañeros, Reino) se deshabilita visualmente, sin
   /// desaparecer del riel (evita que el nav "salte" al entrar/salir de combate).
   disabledIds?: PanelId[]
+  /// Mismo mecanismo que `disabledIds`, pero para el motivo "hay una muerte pendiente de resolver"
+  /// (2026-09-07) — el tooltip necesita distinguir el motivo real, no decir siempre "en combate"
+  /// cuando en realidad el personaje está muerto esperando a Aceptar/Reintentar.
+  disabledReason?: 'combate' | 'muerte-pendiente'
 }
 
-export function SideNav({ tabs, active, onSelect, align, dimmed, disabledIds }: SideNavProps) {
+export function SideNav({ tabs, active, onSelect, align, dimmed, disabledIds, disabledReason }: SideNavProps) {
   return (
     <nav
       // Material distinto por riel (roadmap de rediseño visual, Fable 2026-07-20, Nivel 2):
@@ -33,8 +37,9 @@ export function SideNav({ tabs, active, onSelect, align, dimmed, disabledIds }: 
     >
       {tabs.map((tab) => {
         const isDisabled = disabledIds?.includes(tab.id) ?? false
+        const disabledSuffix = disabledReason === 'muerte-pendiente' ? '(no disponible con una muerte pendiente de resolver)' : '(no disponible en combate)'
         return (
-          <TooltipAnchor key={tab.id} text={isDisabled ? `${tab.label} (no disponible en combate)` : tab.label} className="block w-full">
+          <TooltipAnchor key={tab.id} text={isDisabled ? `${tab.label} ${disabledSuffix}` : tab.label} className="block w-full">
             <button type="button"
               onClick={() => !isDisabled && onSelect(tab.id)}
               disabled={isDisabled}

@@ -441,6 +441,15 @@ export function GameView() {
   const COMBAT_DISABLED_CHARACTER_TABS: PanelId[] = ['inventario', 'companeros', 'reino']
   const COMBAT_DISABLED_WORLD_TABS: PanelId[] = ['mapa', 'diario', 'misiones']
 
+  // Muerte pendiente de resolver (auditoría de código backend 2026-09-07, decisión confirmada con
+  // la usuaria: "bloquear todo hasta Aceptar") — el composer ya se bloqueaba
+  // (`pendingDeathResolution` más abajo, criterio de `busy`), pero ningún panel de acción lo hacía:
+  // con el personaje MUERTO y el susurro de la Entidad ya narrado, se podía seguir equipando
+  // objetos, gestionando el Almacén/Reino o crafteando una habilidad nueva. Backend ya rechaza estas
+  // mutaciones con 409 (`rejectIfPendingDeath`) — esto es solo el reflejo visual, mismo criterio que
+  // ya usa `COMBAT_DISABLED_CHARACTER_TABS`.
+  const DEATH_PENDING_DISABLED_TABS: PanelId[] = ['inventario', 'companeros', 'reino', 'habilidades']
+
   const [quests, setQuests] = useState<QuestInfo[]>([])
 
   // Bloque de combate (deuda técnica 2026-08-21) — ver src/hooks/useCombatFlow.ts para la lógica
@@ -607,6 +616,13 @@ export function GameView() {
     setDificultad(save.dificultad)
     setEndedAt(save.endedAt)
     setPendingDeathResolution(save.pendingDeathResolution)
+    // Mismo criterio que `openCombat` (useCombatFlow.ts) al entrar en combate: si la muerte deja
+    // pendiente de resolver justo mientras uno de los 4 paneles bloqueados ya estaba abierto, se
+    // cierra — evita dejar sus controles de mutación visibles y con foco tras el susurro de la
+    // Entidad.
+    if (save.pendingDeathResolution && activePanel && DEATH_PENDING_DISABLED_TABS.includes(activePanel)) {
+      setActivePanel(null)
+    }
     setClase(save.clase)
     setPendingClaseChoice(save.pendingClaseChoice)
     setClasesDisponibles(save.clasesDisponibles ?? [])
@@ -1710,7 +1726,8 @@ export function GameView() {
           active={activePanel}
           align="left"
           dimmed={!!activePanel}
-          disabledIds={combat.combatOpen ? COMBAT_DISABLED_CHARACTER_TABS : undefined}
+          disabledIds={pendingDeathResolution ? DEATH_PENDING_DISABLED_TABS : combat.combatOpen ? COMBAT_DISABLED_CHARACTER_TABS : undefined}
+          disabledReason={pendingDeathResolution ? 'muerte-pendiente' : 'combate'}
           onSelect={(id) => setActivePanel((prev) => (prev === id ? null : id))}
         />
         <div
@@ -1945,7 +1962,7 @@ export function GameView() {
             <button
               type="button"
               onClick={() => setHarvestModal({ oficio: 'desollador', label: 'Desollar' })}
-              disabled={anyModalOpen}
+              disabled={anyModalOpen || pendingDeathResolution}
               className="tactile mx-4 mb-2 flex items-center gap-2 rounded-lg border border-accent-700/60 bg-accent-500/10 px-3 py-2 text-left text-sm text-accent-200 hover:bg-accent-500/20 disabled:cursor-not-allowed disabled:opacity-50"
             >
               <span className="text-lg leading-none">🔪</span>
