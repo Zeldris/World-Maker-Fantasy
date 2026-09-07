@@ -490,8 +490,17 @@ la sesión de pruebas encontró MÁS problemas del mismo área que esos fixes no
 28. **La Zona no muestra ni menciona al propio Gorhorn en el mapa** (ver captura de La Hondonada del
     Eco, sin marcador del jugador visible) — relacionado con la pieza "Punto del jugador en el mapa
     de Zona" ya cerrada el 2026-09-04 (commit `48d78f9`, ver memoria) — puede haberse roto o no
-    aplicarse en esta Location/momento concreto. **PENDIENTE — verificar si el marcador del jugador
-    sigue funcionando tras cambios posteriores.**
+    aplicarse en esta Location/momento concreto. **YA CERRADO ANTES DE ESTA SESIÓN (2026-09-06,
+    commit `15fa0cf`)** — confirmado al reverificar el 2026-09-07: era una regresión real, no un
+    caso puntual de esta Location. `48d78f9` implementó `Save.zonaPosX/Y` pero nunca los
+    inicializaba al CREAR una partida — solo se fijaban la primera vez que se resolvía un viaje
+    real. Una partida que actuaba (cazar, recolectar, hablar...) sin haber viajado todavía se
+    quedaba con `zonaPosX/Y = null` para siempre, así que `GET /saves/:id/zona` devolvía
+    `jugador: null` — exactamente el caso de La Hondonada del Eco (Location de inicio del
+    personaje). El commit `15fa0cf` (mismo día, comentario citando textualmente "la zona no está
+    presentando a Gorhorn") inicializa `zonaPosX/Y`/`zonaPosEntradaX/Y` al centro del lienzo
+    (400, 300) en `saves/creation.ts` al crear la partida. Endpoint y frontend confirmados sin
+    ningún otro cambio de fondo desde entonces, mecanismo intacto.
 29. **En el Campamento del Clan Serhu, los puntos del mapa de Zona no están bien colocados** — la
     usuaria debería aparecer más cerca del Pozo de Cauce Viejo (de donde viene) y hay fauna colocada
     DENTRO del recinto amurallado del campamento, lo cual no tiene sentido narrativo (un campamento
