@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type Dispatch, type SetStateAction } from 'react'
+import { useEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction } from 'react'
 import type { CombatNpcDisplay } from '../components/CombatComposer'
 import { requestTurnClassify, requestTurnNarrate, requestFlee, requestHuirEnCurso, requestCerrarCombate, requestMatar, postCapturar, dejarVivir, type EnciclopediaResponse } from '../lib/api'
 import { isTurnLockedError, npcInSceneToCombatDisplay, combatKeyFor, combatDisplayNameFor, applyInventoryDelta, questCompletedLogEntry } from '../lib/gameViewHelpers'
@@ -148,6 +148,14 @@ export function useCombatFlow(params: UseCombatFlowParams) {
   // depende de que `DiceRollReveal` esté de verdad montado/visible en ese instante, mismo criterio
   // de robustez que ya usa la iniciativa.
   const [awaitingExchangeApply, setAwaitingExchangeApply] = useState(false)
+  // Bug real jugando en vivo (2026-09-07, auditoría de deuda técnica): ninguno de los dos
+  // `setTimeout` de más abajo (intercambio/iniciativa) se cancelaba nunca — si la jugadora cerraba
+  // el combate, encadenaba un segundo intercambio rápido, o huía con éxito dentro de esos 10s, el
+  // timer del turno ANTERIOR seguía vivo y pisaba el estado real con su valor ya obsoleto al
+  // disparar. Los ids se guardan en un ref (no en estado — no deben disparar re-render por sí
+  // mismos) y se cancelan explícitamente antes de programar uno nuevo y al cerrar el combate.
+  const exchangeApplyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const awaitingDefenseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [combatSelectedNpcSlug, setCombatSelectedNpcSlug] = useState<string | null>(null)
   const [combatSelectedAbilityId, setCombatSelectedAbilityId] = useState<string | null>(null)
   const [combatSelectedItemId, setCombatSelectedItemId] = useState<string | null>(null)
@@ -795,9 +803,14 @@ export function useCombatFlow(params: UseCombatFlowParams) {
     // `finDePartida` manda siempre (mismo criterio que `applyTurnAwaitingDefense` más abajo): si el
     // combate termina de verdad este turno, no tiene sentido retrasar la condición final del
     // jugador tras un cierre que ya lo resolvió todo.
+    // Cancela cualquier timer de un intercambio ANTERIOR todavía pendiente — sin esto, dos
+    // intercambios rápidos seguidos (o cerrar el combate en medio del retraso) dejaban vivo el
+    // timer viejo, que pisaba el estado ya actualizado por el turno nuevo cuando por fin disparaba.
+    if (exchangeApplyTimerRef.current) clearTimeout(exchangeApplyTimerRef.current)
     if (params.combatExchangeDisplay && !params.finDePartida) {
       setAwaitingExchangeApply(true)
-      setTimeout(() => {
+      exchangeApplyTimerRef.current = setTimeout(() => {
+        exchangeApplyTimerRef.current = null
         applyExchangeResult()
         setAwaitingExchangeApply(false)
         // `DiceRollReveal` (LogPanel.tsx) ya terminó de animarse en este instante — deja de hacer
@@ -805,6 +818,7 @@ export function useCombatFlow(params: UseCombatFlowParams) {
         setDiceReveal(null)
       }, 2 * ROLL_DURATION_MS)
     } else {
+      exchangeApplyTimerRef.current = null
       applyExchangeResult()
       setDiceReveal(null)
     }
@@ -817,15 +831,19 @@ export function useCombatFlow(params: UseCombatFlowParams) {
     // campo se retrasa hasta que termine de rodar — sin tirada (`nextInitiativeRoll` null, p.ej.
     // Aturdimiento fuerza el turno sin tirada) se aplica igual que siempre, de inmediato.
     const applyTurnAwaitingDefense = () => {
+      awaitingDefenseTimerRef.current = null
       setCombatAwaitingDefense(params.esperandoDefensaJugador)
       setAwaitingNextInitiative(false)
     }
+    // Mismo motivo que `exchangeApplyTimerRef` arriba — cancela el timer de un turno ANTERIOR
+    // todavía pendiente antes de programar (o aplicar de inmediato) el de este turno.
+    if (awaitingDefenseTimerRef.current) clearTimeout(awaitingDefenseTimerRef.current)
     // `finDePartida` manda siempre: si el combate termina de verdad este mismo turno, no tiene
     // sentido retrasar nada (y un `setTimeout` tardío podría reabrir visualmente un combate ya
     // cerrado, pisando el `setCombatOpen(false)`/`setCombateIniciado(null)` de abajo).
     if (params.nextInitiativeRoll && !params.finDePartida) {
       setAwaitingNextInitiative(true)
-      setTimeout(applyTurnAwaitingDefense, 2 * ROLL_DURATION_MS)
+      awaitingDefenseTimerRef.current = setTimeout(applyTurnAwaitingDefense, 2 * ROLL_DURATION_MS)
     } else {
       applyTurnAwaitingDefense()
     }
@@ -874,6 +892,12 @@ export function useCombatFlow(params: UseCombatFlowParams) {
   // el aviso de combate simplemente reaparecerá en la próxima resincronización, que es exactamente
   // el comportamiento correcto en ese caso — mejor que dejar el botón "Salir" bloqueado esperando.
   function closeCombat() {
+    // Cierre real de combate — cualquier timer de intercambio/iniciativa que siga vivo de un turno
+    // ya obsoleto no debe disparar después (ver comentario junto a los refs, arriba).
+    if (exchangeApplyTimerRef.current) clearTimeout(exchangeApplyTimerRef.current)
+    if (awaitingDefenseTimerRef.current) clearTimeout(awaitingDefenseTimerRef.current)
+    exchangeApplyTimerRef.current = null
+    awaitingDefenseTimerRef.current = null
     setCombatOpen(false)
     setCombateIniciado(null)
     setCombatAwaitingDefense(false)

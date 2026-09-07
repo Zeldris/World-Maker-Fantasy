@@ -979,6 +979,48 @@ describe('handleCombatTurnResolved — condición/energía/vida del rival se ret
     expect(result.current.combat.awaitingExchangeApply).toBe(false)
   })
 
+  // Bug real jugando en vivo (2026-09-07, auditoría de deuda técnica): el `setTimeout` de arriba
+  // nunca se cancelaba — si la jugadora cerraba el combate (o llegaba un segundo intercambio) antes
+  // de que pasaran los 10s, el timer del turno YA CERRADO seguía vivo y aplicaba su resultado
+  // obsoleto por encima del estado ya reseteado por `closeCombat`. `exchangeApplyTimerRef` debe
+  // cancelarlo.
+  it('cerrar el combate mientras el timer del intercambio sigue pendiente no aplica el resultado obsoleto después', async () => {
+    mockClassify.mockResolvedValue({ classification: { atributo: 'fuerza', dificultad: 15, razon: 'x', banda: 'instantanea' }, roll: undefined } as never)
+    mockNarrate.mockResolvedValue(
+      baseNarrateResponse({
+        condicionFisica: 'HERIDO',
+        energia: 70,
+        combatExchangeDisplay: exchangeDisplay,
+        combateIniciado: { npcs: [npc({ slug: 'ruptidar', name: 'Ruptidar', condicionFisica: 'HERIDO' })] },
+      }) as never,
+    )
+    const { result } = renderHook(() => useHarness())
+    act(() => result.current.setCombateIniciado({ npcs: [npc({ slug: 'ruptidar', name: 'Ruptidar', condicionFisica: 'ILESO' })] }))
+    act(() => result.current.combat.openCombat())
+    expect(result.current.condicionFisica).toBe('ILESO')
+
+    await act(() => result.current.combat.submitCombatAction('Ataco a mi enemigo', {}))
+    expect(result.current.combat.awaitingExchangeApply).toBe(true)
+    // El resultado del intercambio todavía no se aplicó (sigue en el retraso de la animación).
+    expect(result.current.condicionFisica).toBe('ILESO')
+
+    // La jugadora cierra el combate antes de que la animación termine (p.ej. huyó con éxito, o
+    // pulsó "Salir" en el resumen) — el timer del turno anterior sigue vivo en ese instante.
+    act(() => result.current.combat.closeCombat())
+    expect(result.current.combat.combatOpen).toBe(false)
+    expect(result.current.combateIniciado).toBeNull()
+
+    // Sin el `clearTimeout`, este avance dispararía `applyExchangeResult` por encima del estado ya
+    // reseteado por `closeCombat` — `condicionFisica` no debe reflejar el golpe de un combate ya
+    // cerrado.
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(10000)
+    })
+    expect(result.current.condicionFisica).toBe('ILESO')
+    expect(result.current.combat.combatOpen).toBe(false)
+    expect(result.current.combateIniciado).toBeNull()
+  })
+
   // Bug real jugando en vivo (2026-09-07, "la energía que gastas se tiene que restar cuando eliges
   // una habilidad, nada más le das a Actuar") — descuento OPTIMISTA en el cliente, antes incluso de
   // que la respuesta del servidor llegue: el coste ya es conocido de antemano (la ficha de la
