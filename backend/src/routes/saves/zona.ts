@@ -33,7 +33,7 @@ export async function zonaRoutes(app: FastifyInstance) {
         worldId: true,
         zonaPosX: true,
         zonaPosY: true,
-        currentLocation: { select: { id: true, slug: true, name: true, region: true, zonePoints: true } },
+        currentLocation: { select: { id: true, slug: true, name: true, region: true, kind: true, zonePoints: true } },
         worldState: { select: { fictionalMinutes: true, factionsStatus: true, agenda: true } },
       },
     });
@@ -43,10 +43,14 @@ export async function zonaRoutes(app: FastifyInstance) {
     const jugador = save.zonaPosX != null && save.zonaPosY != null ? { x: save.zonaPosX, y: save.zonaPosY } : null;
     if (!save.currentLocation) return { disponible: false, puntos: [], dinamicos: [], jugador };
 
-    const { zonePoints: zonePointsRaw, slug: locationSlug, name: locationName, id: locationId, region } = save.currentLocation;
+    const { zonePoints: zonePointsRaw, slug: locationSlug, name: locationName, id: locationId, region, kind } = save.currentLocation;
     const fictionalMinutes = save.worldState?.fictionalMinutes ?? 480;
     const momento = momentoDelDiaFor(fictionalMinutes);
-    const estacion = ESTACION_A_SLUG[estacionFor(fictionalMinutes)];
+    // Hallazgo 32 (revisar-partida-hallazgos.md 2026-09-07) — los interiores de campamento
+    // (`kind: 'interior'`, ej. Karot Vekhad) no deberían tener variante de estación: bajo techo, el
+    // paso de las estaciones no se nota igual que en el mapa exterior. `zoneMapImageUrl` ya admite
+    // `estacion: null` con fallback en cascada (momento solo → base), así que basta con no calcularla.
+    const estacion = kind === 'interior' ? null : ESTACION_A_SLUG[estacionFor(fictionalMinutes)];
     const factionsStatus = (save.worldState?.factionsStatus as Record<string, number> | null) ?? {};
     // Control regional (2026-08-27, Pieza 5 de "Dinamismo del mundo") — lógica sin logos todavía
     // (placeholder de texto en el frontend), derivada en caliente de `agenda` ya persistida, sin

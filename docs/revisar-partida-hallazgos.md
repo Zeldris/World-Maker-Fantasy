@@ -583,8 +583,21 @@ la sesión de pruebas encontró MÁS problemas del mismo área que esos fixes no
     nunca se aplicaba a los puntos sembrados a mano del catálogo (ej. Kirelon Arenoso, fauna
     nocturna) — corregido en el mismo commit del hallazgo 28.
 32. **Las zonas deben tener variante visual de estación** (igual que ya tienen de día/noche) — salvo
-    los interiores de campamentos, que no deberían tener variante de estación. **PENDIENTE —
-    confirmar si esto ya existe parcialmente o es trabajo nuevo del todo.**
+    los interiores de campamentos, que no deberían tener variante de estación. **CERRADO (2026-09-07,
+    parte de código)**: confirmado que el sistema de variante de estación para Location/Zona ya
+    existe COMPLETO desde el 2026-08-27 (backend YA lee `Estacion` real vía `estacionFor` y hace
+    fallback en cascada en `zoneMapImageUrl`, frontend YA tiene tabs de estación en la Enciclopedia)
+    — el hallazgo estaba redactado sin conocer ese trabajo previo. Lo único que faltaba de verdad:
+    ningún filtro excluía `kind: 'interior'` (hoy solo `campamento-serhu-interior`) del cruce de
+    estación — `zona.ts` le aplicaba `estacionFor` igual que a cualquier Location exterior. Fix:
+    `estacion = kind === 'interior' ? null : ESTACION_A_SLUG[estacionFor(...)]` — `zoneMapImageUrl`
+    ya admitía `estacion: null` con fallback en cascada, sin tocar su firma. Verificado: `tsc -b`
+    limpio, 2 tests nuevos en `zona.test.ts` (interior pide sin estación / exterior sí la pide)
+    verificados rigurosamente (revertir/confirmar fallo/restaurar). Línea base de fallos de
+    infraestructura preexistente sin cambios (3, mismos de siempre). **Pendiente aparte, fuera de
+    alcance de este cambio de código**: generar/subir las imágenes reales de verano/otoño/invierno
+    para las 12 Locations existentes (hoy solo tienen primavera subida, decisión ya conocida y
+    anotada en `docs/rpgtarkor/imagenes-prompts.md`) — trabajo de asset, no de lógica.
 33. **En la vista previa/modal de una Location del mapa, muchas imágenes no se ven aunque ya estén
     descubiertas y la imagen ya esté generada** (ver captura de La Hondonada del Eco, con miniatura
     negra/vacía en el modal pese a "Generar mapa" ya hecho). **YA CERRADO ANTES DE ESTA SESIÓN

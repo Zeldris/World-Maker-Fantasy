@@ -42,6 +42,16 @@ vi.mock('../../services/worldFacts.js', () => ({
   loadSessionFacts: (...args: unknown[]) => loadSessionFactsMock(...args),
 }));
 
+// Hallazgo 32 (revisar-partida-hallazgos.md 2026-09-07) — solo para el describe de estación en
+// interiores: a diferencia del resto del archivo (que deja `imageAssets.js` sin mockear, contra el
+// filesystem real), aquí hace falta inspeccionar CON QUÉ `estacion` se llamó `zoneMapImageUrl`
+// (`null` esperado para interiores), algo que el filesystem real no puede confirmar sin depender
+// de qué imágenes haya subidas en este entorno concreto.
+const zoneMapImageUrlMock = vi.fn().mockReturnValue(null);
+vi.mock('../../lib/imageAssets.js', () => ({
+  zoneMapImageUrl: (...args: unknown[]) => zoneMapImageUrlMock(...args),
+}));
+
 const { zonaRoutes } = await import('./zona.js');
 
 async function buildApp() {
@@ -54,6 +64,7 @@ beforeEach(() => {
   findManyNpcState.mockReset().mockResolvedValue([]);
   upsertNpcState.mockReset().mockResolvedValue({});
   findManyDroppedItem.mockReset().mockResolvedValue([]);
+  zoneMapImageUrlMock.mockReset().mockReturnValue(null);
 });
 
 afterEach(() => {
@@ -381,6 +392,45 @@ describe('GET /saves/:id/zona', () => {
       const body = res.json();
       expect(body.puntos).toEqual([]);
       expect(body.disponible).toBe(true);
+    });
+  });
+
+  // Hallazgo 32 (revisar-partida-hallazgos.md 2026-09-07) — los interiores de campamento
+  // (`kind: 'interior'`) no deben tener variante de estación: bajo techo, el paso de las estaciones
+  // no se nota. `zoneMapImageUrl` mockeada (ver cabecera del archivo) para inspeccionar con qué
+  // `estacion` se llamó de verdad, en vez de depender del filesystem real.
+  describe('Variante de estación (hallazgo 32, 2026-09-07)', () => {
+    it('un interior (kind: "interior") pide la imagen SIN estación, aunque la ficción esté en una estación real', async () => {
+      findUniqueSave.mockResolvedValueOnce({
+        id: 's1',
+        worldId: 'w1',
+        currentLocation: { id: 'loc1', slug: 'campamento-serhu-interior', name: 'Karot Vekhad', kind: 'interior', zonePoints: [] },
+        // 1440*120 días de ficción, muy avanzado — cualquier estación menos PRIMAVERA (Día 1) para
+        // que el test no dependa de coincidir por azar con el valor por defecto.
+        worldState: { fictionalMinutes: 1440 * 120, factionsStatus: null, agenda: null },
+      });
+      loadSessionFactsMock.mockResolvedValueOnce([]);
+      detectNpcsInSceneMock.mockResolvedValueOnce([]);
+      const app = await buildApp();
+      const res = await app.inject({ method: 'GET', url: '/saves/s1/zona' });
+      expect(res.statusCode).toBe(200);
+      expect(zoneMapImageUrlMock).toHaveBeenCalledWith('campamento-serhu-interior', expect.anything(), null);
+    });
+
+    it('una Location exterior (kind distinto de "interior") sí pide la estación real', async () => {
+      findUniqueSave.mockResolvedValueOnce({
+        id: 's1',
+        worldId: 'w1',
+        currentLocation: { id: 'loc1', slug: 'hondonada-del-eco', name: 'La Hondonada del Eco', kind: 'refugio', zonePoints: [] },
+        worldState: { fictionalMinutes: 1440 * 120, factionsStatus: null, agenda: null },
+      });
+      loadSessionFactsMock.mockResolvedValueOnce([]);
+      detectNpcsInSceneMock.mockResolvedValueOnce([]);
+      const app = await buildApp();
+      const res = await app.inject({ method: 'GET', url: '/saves/s1/zona' });
+      expect(res.statusCode).toBe(200);
+      const estacionUsada = zoneMapImageUrlMock.mock.calls[0]?.[2];
+      expect(estacionUsada).not.toBeNull();
     });
   });
 });
