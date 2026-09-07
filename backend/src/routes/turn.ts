@@ -1237,6 +1237,7 @@ export async function turnRoutes(app: FastifyInstance) {
         energia: save.energia,
         lastAteAtMinutes: save.lastAteAtMinutes,
         lastDrankAtMinutes: save.lastDrankAtMinutes,
+        lastRestAtMinutes: save.lastRestAtMinutes,
         activeEffects: parseActiveEffects(save.activeEffects),
         dificultad: save.dificultad,
         deathCount: save.deathCount,

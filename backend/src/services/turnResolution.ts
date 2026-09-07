@@ -55,7 +55,7 @@ import { npcCombatAbilitiesFor, chooseNpcAbility } from './npcCombatAbilities.js
 import { detectHarvest, type HarvestMatch } from './harvest.js';
 import { detectItemReference, detectMedicalItemUse, detectEnergyItemUse, detectsCompassUse, missingItemBlockFor } from './itemReference.js';
 import { compassNarrationText, type CompassLinkInfo } from './compassNarration.js';
-import { energiaMaxFor, nextEnergia } from './energy.js';
+import { energiaMaxFor, nextEnergia, restCooldownActivo } from './energy.js';
 import { WEAPON_ABILITY_LEVEL_AVANZADA, dualWieldAdjustedDifficulty, weaponCategoryForRealAbilityName, type EquippedWeaponSlot } from './weaponAbilities.js';
 import { syncDynamicCombatAbilities } from './dynamicAbilities.js';
 import {
@@ -241,6 +241,10 @@ interface NarrateAndPersistParams {
   /// `lastAtMinutesForGanancia` (companionSupervivencia.ts).
   lastAteAtMinutes: number | null;
   lastDrankAtMinutes: number | null;
+  /// Cooldown de Descansar (2026-09-06, hallazgo 11) — `Save.lastRestAtMinutes` ACTUAL, mismo
+  /// criterio que `lastAteAtMinutes`/`lastDrankAtMinutes`: el caller ya tiene el `Save` cargado.
+  /// Null = nunca ha descansado en esta partida, sin cooldown que aplicar.
+  lastRestAtMinutes: number | null;
   /// Fase 2 de efectos de clase (2026-08-26, docs/21-roadmap.md) — AUMENTO/DEBILIDAD activos del
   /// jugador ahora mismo (Save.activeEffects, ya parseado por el caller con `parseActiveEffects`).
   /// `[]` en partidas previas a este campo o sin ningún efecto activo.
@@ -2582,6 +2586,14 @@ const HARVEST_FLAVOR_YA_DESPIEZADA = [
   'Los restos, ya vacíos, no tienen nada más que ofrecer.',
 ] as const;
 const HARVEST_FLAVOR_FALLO = ['El material se resiste más de lo esperado.', 'Puede que con más calma o mejor herramienta salga distinto.'] as const;
+/// Cooldown de Descansar (2026-09-06, hallazgo 11) — rechazo determinista, nunca decidido por el
+/// LLM: mismo criterio que el resto de ramas de `narration` (LOOT_FLAVOR_*/BUILD_FLAVOR/etc.),
+/// primera frase mecánica fija + una de estas de color, elegida al azar.
+const REST_COOLDOWN_FLAVOR = [
+  'No hace tanto que se detuvo a recuperar fuerzas — todavía no lo necesita de verdad.',
+  'El cuerpo aguanta bien por ahora, sin pedir tregua.',
+  'No hay ganas reales de tumbarse otra vez tan pronto.',
+] as const;
 const HARVEST_FLAVOR_EXITO = [
   'Un trabajo limpio, sin desperdiciar nada aprovechable.',
   'Cada pieza queda bien guardada antes de seguir camino.',
@@ -3800,17 +3812,27 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   // Panel "Comer/Beber" (2026-09-04) — mismo patrón EXACTO que el bloque de Curar de arriba, pero
   // sin camino de texto libre en paralelo (Hambre/Sed nunca se detectaron por texto libre, solo
   // derivan del tiempo — ver companionSupervivencia.ts): la única vía de reponerlas es este panel.
+  // Rediseño 2026-09-06 (hallazgo 11 de la sesión de pruebas, decisión explícita de la usuaria) —
+  // `curaEnergia` (ya poblado en el catálogo para varios ítems de comida, ej. raciones) se ignoraba
+  // por completo aquí, aunque "Curar" (bloque de arriba) sí lo aplicaba. Con Descansar ya sin curar
+  // condición física y con cooldown de 3h, hace falta que comer/beber SÍ pueda completar la energía
+  // que falte — mismo criterio que healItemUsesValidated, sin duplicar catalogBySlug.get() por ítem.
   const hungerItemsInInventory = inventoryRows
-    .map((i) => ({ id: i.id, name: i.name, curaHambre: i.catalogSlug ? (catalogBySlug.get(i.catalogSlug)?.curaHambre ?? null) : null }))
-    .filter((i): i is { id: string; name: string; curaHambre: number } => i.curaHambre !== null);
-  const hambreSedItemUsesValidated: { id: string; name: string; curaHambre: number; quantity: number }[] = [];
+    .map((i) => ({
+      id: i.id,
+      name: i.name,
+      curaHambre: i.catalogSlug ? (catalogBySlug.get(i.catalogSlug)?.curaHambre ?? null) : null,
+      curaEnergia: i.catalogSlug ? (catalogBySlug.get(i.catalogSlug)?.curaEnergia ?? 0) : 0,
+    }))
+    .filter((i): i is { id: string; name: string; curaHambre: number; curaEnergia: number } => i.curaHambre !== null);
+  const hambreSedItemUsesValidated: { id: string; name: string; curaHambre: number; curaEnergia: number; quantity: number }[] = [];
   for (const use of hambreSedItemUses ?? []) {
     const hungerItem = hungerItemsInInventory.find((i) => i.id === use.itemId);
     const row = inventoryRows.find((i) => i.id === use.itemId);
     if (!row || !hungerItem) continue;
     const quantity = Math.max(0, Math.min(use.quantity, quantityOf(row.name)));
     if (quantity > 0) {
-      hambreSedItemUsesValidated.push({ id: row.id, name: row.name, curaHambre: hungerItem.curaHambre, quantity });
+      hambreSedItemUsesValidated.push({ id: row.id, name: row.name, curaHambre: hungerItem.curaHambre, curaEnergia: hungerItem.curaEnergia, quantity });
     }
   }
   const usingExplicitHungerThirstList = hambreSedItemUsesValidated.length > 0 || !!beberAgua;
@@ -4255,17 +4277,22 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   // un cambio de equipo narrado es alucinación siempre. Solo objetos EQUIPABLES (con `equipSlot`
   // real en catálogo) — materia prima/recursos nunca se "visten", ver comentario del campo.
   const equippableItemNames = [...new Set(inventoryRows.filter((i) => i.catalogSlug && catalogBySlug.get(i.catalogSlug)?.equipSlot).map((i) => baseNameOf(i.name)))];
-  // Ver `hasFalseHealingClaim` (narrador.ts) — mismo cálculo que `restAttempted`/`restSucceeds`/
-  // `healCeiling` de más abajo (línea ~3856), duplicado aquí a propósito: sus inputs (roll/travel/
-  // currentLocationRecord/medicalCuraHasta/medicalCuraUnPaso) ya están disponibles en este punto,
-  // pero esas variables en sí se calculan más tarde, después de la llamada a `narrateAction` — no
-  // merece la pena reordenar ~400 líneas de la función solo para compartir 2 líneas de fórmula.
-  const restAttemptedForGuard = !!(!travel && currentLocationRecord && detectsRestIntent(action) && (!roll || roll.success));
-  const restSucceedsForGuard = !!(restAttemptedForGuard && isValidRestLocationKind(currentLocationRecord!.kind));
-  const restHealCeilingBelowIleso =
-    !usingExplicitHealList &&
-    restAttemptedForGuard &&
-    healCeilingFor(params.condicionFisica, restAttemptedForGuard, restSucceedsForGuard, medicalCuraHasta, medicalCuraUnPaso) !== 'ILESO';
+  // Detección de intención de Descansar (2026-09-06, hallazgo 11) — calculada aquí, ANTES del
+  // switch de `narration` de más abajo, para poder usarla tanto en el guard de curación falsa
+  // (`hasFalseHealingClaim`) como en la rama determinista nueva "cooldown activo" del propio
+  // switch y en el bloque real de energía/condición más abajo — una sola fuente de verdad, sin
+  // triplicar la fórmula de `detectsRestIntent`.
+  const restIntentDetected = !!(!travel && currentLocationRecord && detectsRestIntent(action) && (!roll || roll.success));
+  const restBlockedByCooldown = restIntentDetected && restCooldownActivo(params.lastRestAtMinutes, params.fictionalMinutesActuales);
+  // Ver `hasFalseHealingClaim` (narrador.ts) — Descansar ya NO cura condicionFisica (2026-09-06,
+  // hallazgo 11: decisión explícita de la usuaria) — sin objeto médico, el techo real es siempre
+  // `params.condicionFisica` (sin mejora), así que este guard se simplifica a "¿el jugador
+  // narrará un descanso sin objeto médico de por medio, estando ya no-ILESO?" — sigue haciendo
+  // falta para que el LLM nunca prometa curación de un descanso que mecánicamente ya no cura nada.
+  // No se filtra por `restBlockedByCooldown` aquí: aunque el cooldown esté activo, la rama
+  // determinista de rechazo (más abajo) ya se encarga de esos turnos sin pasar por el LLM en
+  // absoluto — este guard solo protege los turnos que SÍ llegan a `narrateAction`.
+  const restHealCeilingBelowIleso = !usingExplicitHealList && restIntentDetected && !medicalCuraHasta && params.condicionFisica !== 'ILESO';
   // Ver `hasFalseNewItemClaim` (narrador.ts) — nombres reales de TODO el catálogo del mundo, no
   // solo lo que el personaje ya lleva (a diferencia de `equippableItemNames`/`catalogBySlug`,
   // acotados al inventario actual): un `newItem` propuesto puede ser cualquier objeto del mundo,
@@ -4538,7 +4565,8 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     harvestOutcome ||
     craftMode ||
     usingExplicitHealList ||
-    usingExplicitHungerThirstList
+    usingExplicitHungerThirstList ||
+    restBlockedByCooldown
   );
 
   // Animación de dados en paralelo (ver comentario de `onExchangeResolved` en
@@ -4567,7 +4595,12 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
               ? { narration: healPreview!.narration, newFacts: [] }
               : usingExplicitHungerThirstList
                 ? { narration: hungerThirstPreview!.narration, newFacts: [] }
-                : await narrateAction(narrationCtx);
+                : restBlockedByCooldown
+                  ? {
+                      narration: `${characterName} no está lo bastante cansado y no quiere volver a descansar todavía. ${pickFlavor(REST_COOLDOWN_FLAVOR)}`,
+                      newFacts: [],
+                    }
+                  : await narrateAction(narrationCtx);
   // Streaming (2026-07-30): la rama determinista de arriba nunca llama a `onNarrationChunk` (no
   // hay generación en vivo que transmitir) — se manda de una vez aquí para que el frontend siga
   // viendo el mismo patrón de un "chunk" seguido de "done", en vez de quedarse sin nada hasta el
@@ -4781,20 +4814,24 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   const condicionPropuestaCombinada = exchangeHappened
     ? (jugadorRecibeGolpe ? nextCondicionForAttack(jugadorGolpeEfectos, params.condicionFisica) : null)
     : narration.condicionFisica;
-  // `restAttempted` (cualquier sitio) vs `restSucceeds` (además, refugio/asentamiento real) —
-  // auditoría 2026-08-11, "la ficha de Descansar promete curar en cualquier sitio pero la
-  // mecánica solo curaba con isValidRestLocationKind". Aclarado con la usuaria: SÍ debe curar en
-  // cualquier sitio (tope GRAVE, un vivac improvisado ayuda poco), pero solo un refugio/
-  // asentamiento real llega a HERIDO — ver el desglose completo en healCeilingFor (death.ts).
-  // `restSucceeds` sigue gating el punto de guardado (más abajo, "Punto de guardado") sin cambios.
-  // Energía (2026-08-13, mismo síntoma otra vez pero para energía: "he descansado y la energía no
-  // se recuperó" en un vivac fuera de refugio/asentamiento) — ahora `restAttempted` TAMBIÉN
-  // restaura energía (hasta la mitad del tope), `restSucceeds` sigue siendo el único que llega al
-  // tope entero, ver energy.ts § nextEnergia.
-  const restAttempted = !!(!travel && currentLocationRecord && detectsRestIntent(action) && (!roll || roll.success));
+  // `restAttempted` (cualquier sitio) vs `restSucceeds` (además, refugio/asentamiento real) — YA
+  // NO curan condicionFisica (2026-09-06, hallazgo 11, decisión explícita de la usuaria) — siguen
+  // vivas solo para dos cosas: (a) energía (reposo fijo `ENERGY_REST_RESTORE`, energy.ts §
+  // nextEnergia — ya no distingue refugio de vivac para energía) y (b) `restSucceeds` sigue
+  // gating el punto de guardado (más abajo, "Punto de guardado"), sin cambios. Cooldown de 3h de
+  // FICCIÓN (`REST_COOLDOWN_MINUTES`, energy.ts) — si sigue activo, ambos se fuerzan a `false`:
+  // el intento "no cuenta" del todo (ni energía ni punto de guardado), coherente con "el
+  // personaje no está cansado y no quiere volver a descansar todavía". `restIntentDetected`/
+  // `restBlockedByCooldown` ya se calcularon más arriba (línea ~4267), reutilizados aquí.
+  const restAttempted = restIntentDetected && !restBlockedByCooldown;
   const restSucceeds = !!(restAttempted && isValidRestLocationKind(currentLocationRecord!.kind));
-  // Reglas de curación (2026-07-29): sin descanso ni objeto médico, el techo es la propia
-  // condición actual — ninguna mejora "porque sí" pasa (ver healCeilingFor/death.ts).
+  // Marca de cooldown (2026-09-06, hallazgo 11) — solo se actualiza cuando el descanso SE APLICÓ
+  // de verdad (`restAttempted`), no en cada intento; un intento bloqueado por el propio cooldown
+  // no reinicia el contador (mismo criterio que `dispersadoDesdeMinutes`, cazar.ts).
+  const nuevoLastRestAtMinutes = restAttempted ? fictionalMinutesActuales : params.lastRestAtMinutes;
+  // Reglas de curación (2026-07-29, ajustado 2026-09-06): sin objeto médico, el techo es la propia
+  // condición actual — ninguna mejora "porque sí" pasa (ver healCeilingFor/death.ts). Descansar ya
+  // no forma parte de esta fórmula en absoluto.
   // Panel "Curar" con varios objetos/usos a la vez (petición explícita, 2026-08-18) —
   // `applySequentialHeals` (death.ts) pliega el mismo `healCeilingFor` de siempre sobre la lista
   // ordenada de usos reales, en vez de una única llamada con un solo objeto. El resto del
@@ -4806,7 +4843,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
           .filter((u): u is typeof u & { curaHasta: CondicionFisica } => u.curaHasta !== null)
           .flatMap((u) => Array.from({ length: u.quantity }, () => ({ curaHasta: u.curaHasta, curaUnPaso: u.curaUnPaso }))),
       )
-    : healCeilingFor(params.condicionFisica, restAttempted, restSucceeds, medicalCuraHasta, medicalCuraUnPaso);
+    : healCeilingFor(params.condicionFisica, medicalCuraHasta, medicalCuraUnPaso);
   // Grupo 3 § Mundo determinista, Capa 4 (2026-08-25) — en modo `CombatEncounter`, la condición
   // real ya la escribió el motor de combate múltiple (ver `combatEncounterFinalCondicion` arriba)
   // — `condicionPropuestaCombinada` de aquí siempre sería "nada pasó" (el 1v1 clásico nunca corrió
@@ -4816,6 +4853,11 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   // orden no importa: cada objeto restaura lo suyo, `nextEnergia` (energy.ts) ya topa el resultado
   // final al máximo real.
   const explicitHealEnergyRestore = usingExplicitHealList ? healItemUsesValidated.reduce((sum, u) => sum + u.curaEnergia * u.quantity, 0) : 0;
+  // Comer/Beber también repone energía (2026-09-06, hallazgo 11) — mismo criterio que Curar arriba,
+  // el orden no importa, cada ítem seleccionado suma su `curaEnergia` real de catálogo.
+  const explicitHungerThirstEnergyRestore = usingExplicitHungerThirstList
+    ? hambreSedItemUsesValidated.reduce((sum, u) => sum + u.curaEnergia * u.quantity, 0)
+    : 0;
   // El texto de narración YA se fijó de forma determinista arriba, en el propio switch de
   // `narration` (`healPreview`, rediseño 2026-08-22) — antes se pisaba aquí, DESPUÉS de haber
   // llamado igualmente a `narrateAction` para nada (ver comentario de `wasLlmNarrated`). Este
@@ -4845,7 +4887,14 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
         exchangeHappened,
         restSucceeds,
         restAttempted,
-        itemRestoreAmount: usingExplicitHealList ? explicitHealEnergyRestore || null : energyItemRestoreAmount,
+        // Prioridad: Curar explícito > Comer/Beber explícito > un solo ítem energético suelto
+        // detectado en texto libre (energyItemRestoreAmount) — mismo criterio de "solo una fuente
+        // manda por turno" que ya existía, ampliado con la nueva vía de Comer/Beber.
+        itemRestoreAmount: usingExplicitHealList
+          ? explicitHealEnergyRestore || null
+          : usingExplicitHungerThirstList
+            ? explicitHungerThirstEnergyRestore || null
+            : energyItemRestoreAmount,
       }) + jugadorRecuperacionExtra,
     );
 
@@ -6415,6 +6464,9 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
         // de entrada sin tocar cuando no hubo ganancia).
         lastAteAtMinutes: nuevoLastAteAtMinutes,
         lastDrankAtMinutes: nuevoLastDrankAtMinutes,
+        // Cooldown de Descansar (2026-09-06, hallazgo 11) — solo cambia cuando `restAttempted`
+        // fue true este turno (ver comentario de `nuevoLastRestAtMinutes` más arriba).
+        lastRestAtMinutes: nuevoLastRestAtMinutes,
         lastRestLocationId: finalLastRestLocationId,
         deathCount: finalDeathCount,
         endedAt: finalEndedAt,

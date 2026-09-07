@@ -123,36 +123,20 @@ describe('nextCondicionFisica', () => {
 });
 
 describe('healCeilingFor', () => {
-  it('sin descanso ni objeto médico, el techo es la condición actual (ninguna mejora posible)', () => {
-    expect(healCeilingFor('GRAVE', false, false, null)).toBe('GRAVE');
+  it('sin objeto médico, el techo es la condición actual (ninguna mejora posible)', () => {
+    expect(healCeilingFor('GRAVE', null)).toBe('GRAVE');
   });
-  it('descansar en un refugio/asentamiento real topa en HERIDO', () => {
-    expect(healCeilingFor('GRAVE', true, true, null)).toBe('HERIDO');
-    expect(healCeilingFor('HERIDO', true, true, null)).toBe('HERIDO');
-  });
-  // Auditoría 2026-08-11 ("Descansar promete curar en cualquier sitio, pero la mecánica solo
-  // curaba en refugio/asentamiento" — aclarado con la usuaria: sí cura en cualquier sitio, pero
-  // tope GRAVE; solo un refugio/asentamiento real llega a HERIDO).
-  it('descansar en CUALQUIER sitio (sin refugio válido) topa en GRAVE, no en HERIDO', () => {
-    expect(healCeilingFor('CONVALECIENTE', true, false, null)).toBe('GRAVE');
-    expect(healCeilingFor('GRAVE', true, false, null)).toBe('GRAVE');
-  });
-  it('un vivac sin refugio válido no hace nada si ya se está mejor que GRAVE (nunca empeora)', () => {
-    expect(healCeilingFor('HERIDO', true, false, null)).toBe('HERIDO');
-    expect(healCeilingFor('ILESO', true, false, null)).toBe('ILESO');
-  });
-  it('descansar en un refugio válido NO llega a HERIDO desde CONVALECIENTE — hace falta objeto médico para eso, pero SÍ mejora a GRAVE (antes no hacía nada en absoluto)', () => {
-    expect(healCeilingFor('CONVALECIENTE', true, true, null)).toBe('GRAVE');
-  });
+  // Descansar YA NO cura condicionFisica (2026-09-06, hallazgo 11 de la sesión de pruebas,
+  // decisión explícita de la usuaria) — las ramas de descanso (refugio→HERIDO, vivac→GRAVE) se
+  // quitaron por completo de esta función; la firma perdió `restAttempted`/`restInValidLocation`.
+  // La única vía de curar condición fuera de combate es "Curar" con objetos médicos (abajo).
   it('un objeto médico manda por encima de todo, incluso desde CONVALECIENTE', () => {
-    expect(healCeilingFor('CONVALECIENTE', false, false, 'HERIDO')).toBe('HERIDO');
-    expect(healCeilingFor('CONVALECIENTE', false, false, 'ILESO')).toBe('ILESO');
-    expect(healCeilingFor('GRAVE', true, true, 'ILESO')).toBe('ILESO');
+    expect(healCeilingFor('CONVALECIENTE', 'HERIDO')).toBe('HERIDO');
+    expect(healCeilingFor('CONVALECIENTE', 'ILESO')).toBe('ILESO');
   });
-  it('el techo nunca es PEOR que la condición actual (bug real, auditoría 2026-07-30: un ILESO descansando con éxito se veía "curado" hasta HERIDO)', () => {
-    expect(healCeilingFor('ILESO', true, true, null)).toBe('ILESO');
-    // objeto médico débil (tope HERIDO) usado por alguien ya ILESO — tampoco debe empeorarlo.
-    expect(healCeilingFor('ILESO', false, false, 'HERIDO')).toBe('ILESO');
+  it('el techo nunca es PEOR que la condición actual (bug real, auditoría 2026-07-30: un ILESO "curándose" se veía empeorado hasta HERIDO)', () => {
+    // objeto médico débil (tope HERIDO) usado por alguien ya ILESO — no debe empeorarlo.
+    expect(healCeilingFor('ILESO', 'HERIDO')).toBe('ILESO');
   });
 
   // Primeros auxilios (2026-08-13, petición explícita: "si es convaleciente solo hay un item que te
@@ -160,31 +144,31 @@ describe('healCeilingFor', () => {
   // ileso" — cada objeto sube COMO MUCHO un escalón, nunca de golpe hasta su curaHasta).
   describe('curaUnPaso (objetos de primeros auxilios, un escalón como mucho)', () => {
     it('objeto tier 1 (tope GRAVE) usado desde CONVALECIENTE sube exactamente a GRAVE', () => {
-      expect(healCeilingFor('CONVALECIENTE', false, false, 'GRAVE', true)).toBe('GRAVE');
+      expect(healCeilingFor('CONVALECIENTE', 'GRAVE', true)).toBe('GRAVE');
     });
     it('objeto tier 1 (tope GRAVE) usado desde GRAVE no hace nada más — es su propio techo', () => {
-      expect(healCeilingFor('GRAVE', false, false, 'GRAVE', true)).toBe('GRAVE');
+      expect(healCeilingFor('GRAVE', 'GRAVE', true)).toBe('GRAVE');
     });
     it('objeto tier 1 (tope GRAVE) usado desde HERIDO/ILESO no hace nada — ya se está mejor que su techo', () => {
-      expect(healCeilingFor('HERIDO', false, false, 'GRAVE', true)).toBe('HERIDO');
-      expect(healCeilingFor('ILESO', false, false, 'GRAVE', true)).toBe('ILESO');
+      expect(healCeilingFor('HERIDO', 'GRAVE', true)).toBe('HERIDO');
+      expect(healCeilingFor('ILESO', 'GRAVE', true)).toBe('ILESO');
     });
     it('objeto tier 2 (tope HERIDO) usado desde GRAVE sube exactamente a HERIDO', () => {
-      expect(healCeilingFor('GRAVE', false, false, 'HERIDO', true)).toBe('HERIDO');
+      expect(healCeilingFor('GRAVE', 'HERIDO', true)).toBe('HERIDO');
     });
     // El caso clave que distingue esto del objeto "de techo" normal: usado desde MÁS de un
     // escalón por debajo de su tope, solo sube UNO — nunca salta directo a su curaHasta.
     it('objeto tier 2 (tope HERIDO) usado desde CONVALECIENTE solo sube UN escalón, a GRAVE — no salta a HERIDO', () => {
-      expect(healCeilingFor('CONVALECIENTE', false, false, 'HERIDO', true)).toBe('GRAVE');
+      expect(healCeilingFor('CONVALECIENTE', 'HERIDO', true)).toBe('GRAVE');
     });
     it('objeto tier 3 (tope ILESO, la receta final) usado desde HERIDO sube exactamente a ILESO', () => {
-      expect(healCeilingFor('HERIDO', false, false, 'ILESO', true)).toBe('ILESO');
+      expect(healCeilingFor('HERIDO', 'ILESO', true)).toBe('ILESO');
     });
     it('objeto tier 3 (tope ILESO) usado desde CONVALECIENTE solo sube UN escalón, a GRAVE — no salta a ILESO', () => {
-      expect(healCeilingFor('CONVALECIENTE', false, false, 'ILESO', true)).toBe('GRAVE');
+      expect(healCeilingFor('CONVALECIENTE', 'ILESO', true)).toBe('GRAVE');
     });
     it('el mismo objeto con curaUnPaso false (comportamiento normal) sí rompe el tope de golpe, para contraste', () => {
-      expect(healCeilingFor('CONVALECIENTE', false, false, 'ILESO', false)).toBe('ILESO');
+      expect(healCeilingFor('CONVALECIENTE', 'ILESO', false)).toBe('ILESO');
     });
   });
 });
@@ -197,7 +181,7 @@ describe('applySequentialHeals', () => {
 
   it('un único uso da el mismo resultado que llamar a healCeilingFor directamente', () => {
     expect(applySequentialHeals('CONVALECIENTE', [{ curaHasta: 'ILESO', curaUnPaso: true }])).toBe(
-      healCeilingFor('CONVALECIENTE', false, false, 'ILESO', true),
+      healCeilingFor('CONVALECIENTE', 'ILESO', true),
     );
   });
 

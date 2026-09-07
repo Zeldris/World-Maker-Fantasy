@@ -117,7 +117,20 @@ PENDIENTES salvo que se indique lo contrario. Organizado por fase del runbook.
     tener cooldown de 3h de tiempo de FICCIÓN** (no tiempo real) — si se intenta usar antes de que
     pasen 3h desde el último uso, debería responder narrativamente que el personaje no está cansado
     y no quiere volver a descansar, forzando a usar comida para completar la energía que falte tras
-    ese tope. **PENDIENTE.**
+    ese tope. **CERRADO (2026-09-06)**: causa raíz real era que Descansar reponía al 100% del tope
+    (refugio) o al 50% (cualquier sitio) — desproporcionado con Constitución alta. Ahora repone
+    `ENERGY_REST_RESTORE = 30` fijo, igual en cualquier sitio. Cooldown de 3h de ficción nuevo
+    (`Save.lastRestAtMinutes`, mismo patrón que `dispersadoDesdeMinutes` de caza) — un intento
+    dentro del cooldown se rechaza con narración determinista fija, sin tocar energía ni reiniciar
+    el propio cooldown. **Decisión ampliada de la usuaria durante el diseño**: Descansar deja de
+    curar condición física por completo (antes curaba hasta HERIDO/GRAVE según el sitio) — la única
+    vía de curar condición fuera de combate pasa a ser "Curar" con objetos médicos (ya existía,
+    intacta). Comer/Beber gana de paso la capacidad de reponer energía (`curaEnergia` de catálogo,
+    antes ignorado por completo, solo aplicaba `curaHambre`) — necesario para que "forzar a usar
+    comida para completar la energía" tenga sentido real. Verificado: `tsc -b` limpio
+    backend+frontend, 2 guards clave verificados rigurosamente, suites en verde (línea base de
+    fallos de infraestructura preexistente sin cambios). Pendiente reverificar en vivo (requiere
+    reiniciar backend por la migración nueva).
 12. **Dificultades de las habilidades de utilidad deben ser Fácil (6) / Medio (12) / Difícil (18)**
     (escala nueva, más baja que la actual) — y la dificultad concreta asignada a cada uso debe variar
     según el nivel/fuerza real del NPC objetivo (ej. Analizar a un enemigo "fácil" debería tirar

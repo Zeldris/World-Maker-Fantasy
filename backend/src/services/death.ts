@@ -80,15 +80,18 @@ export function condicionMalus(condicion: CondicionFisica): number {
 /// (nunca al revés) — es el mismo caller quien garantiza esa relación (turnResolution.ts).
 ///
 /// Bug real (auditoría 2026-07-30): las ramas de abajo devolvían su techo sin comprobar antes si
-/// `current` ya estaba MEJOR que ese techo — un personaje ya ILESO que descansaba con éxito (o
-/// usaba un objeto médico débil, tope HERIDO) se veía "curado" hasta HERIDO por
-/// `nextCondicionFisica` (que solo sabe tomar lo PEOR entre la propuesta y el techo), empeorando
-/// de verdad a alguien que no tenía nada que curar. El techo nunca puede ser peor que la
-/// condición actual — como mucho, igual de bueno.
+/// `current` ya estaba MEJOR que ese techo — un personaje ya ILESO que usaba un objeto médico
+/// débil (tope HERIDO) se veía "curado" hasta HERIDO por `nextCondicionFisica` (que solo sabe
+/// tomar lo PEOR entre la propuesta y el techo), empeorando de verdad a alguien que no tenía nada
+/// que curar. El techo nunca puede ser peor que la condición actual — como mucho, igual de bueno.
+///
+/// Descansar YA NO cura condición física (2026-09-06, hallazgo 11 de la sesión de pruebas,
+/// decisión explícita de la usuaria) — las dos ramas de descanso ("refugio cura hasta HERIDO",
+/// "cualquier sitio cura hasta GRAVE") se quitaron por completo; sin objeto médico, el techo es
+/// siempre `current` (sin mejora). La única vía de curar condición fuera de combate es "Curar" con
+/// objetos médicos reales (`applySequentialHeals` más abajo, siempre con este techo).
 export function healCeilingFor(
   current: CondicionFisica,
-  restAttempted: boolean,
-  restInValidLocation: boolean,
   medicalCuraHasta: CondicionFisica | null,
   // Primeros auxilios (2026-08-13, petición explícita: "quiero unas profesiones... que sea
   // primeros-auxilios que tenga pocas recetas de objetos básicos con los que te puedes curar pero
@@ -113,10 +116,6 @@ export function healCeilingFor(
     } else {
       ceiling = medicalCuraHasta; // el objeto manda, rompe el tope incluso desde CONVALECIENTE
     }
-  } else if (restInValidLocation && current !== 'CONVALECIENTE' && current !== 'MUERTO') {
-    ceiling = 'HERIDO';
-  } else if (restAttempted && current !== 'MUERTO') {
-    ceiling = 'GRAVE';
   }
   const ceilingIdx = CONDICION_ORDER.indexOf(ceiling);
   return CONDICION_ORDER[Math.min(currentIdx, ceilingIdx)];
@@ -133,7 +132,7 @@ export function healCeilingFor(
 export function applySequentialHeals(current: CondicionFisica, uses: { curaHasta: CondicionFisica; curaUnPaso: boolean }[]): CondicionFisica {
   let condicion = current;
   for (const use of uses) {
-    condicion = healCeilingFor(condicion, false, false, use.curaHasta, use.curaUnPaso);
+    condicion = healCeilingFor(condicion, use.curaHasta, use.curaUnPaso);
   }
   return condicion;
 }

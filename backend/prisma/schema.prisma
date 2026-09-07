@@ -203,6 +203,14 @@ model Save {
   lastRestLocationId String?
   lastRestLocation   Location? @relation("LastRestLocation", fields: [lastRestLocationId], references: [id])
 
+  /// Cooldown de Descansar (2026-09-06, hallazgo 11 de la sesión de pruebas: "+30 fijo de energía,
+  /// cooldown de 3h de ficción") — minutos de ficción de la última vez que Descansar SE APLICÓ de
+  /// verdad (no cada intento; solo cuando de verdad repuso energía). Mismo patrón exacto que
+  /// `WorldPopulation.dispersadoDesdeMinutes` (cazar.ts): tiempo de FICCIÓN, nunca reloj real —
+  /// comparado contra `WorldState.fictionalMinutes` del turno actual. Null = nunca ha descansado
+  /// en esta partida, sin cooldown que aplicar.
+  lastRestAtMinutes Int?
+
   /// Muerte permanente (2026-08-31, petición explícita) — true en cuanto el jugador derrota de
   /// verdad (mata) al Orco Enfurecido del tutorial (services/quests.ts, ORCO_ENFURECIDO_QUEST_TITLE),
   /// nunca antes. Sirve de "primer punto de guardado implícito": antes de este hito, morir sin

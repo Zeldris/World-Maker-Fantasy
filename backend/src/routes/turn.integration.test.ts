@@ -2766,7 +2766,7 @@ describe('Punto de guardado: solo construcciones propias', () => {
         characterArchetype: 'guerrero',
         characterOrigin: 'Clan Maktor',
         characterMotivation: 'x',
-        attributes: { ...ATTRS, constitucion: 6 }, // HERIDO real al descansar, para que restSucceeds cuente de verdad
+        attributes: { ...ATTRS, constitucion: 6 }, // para que restSucceeds cuente de verdad (isValidRestLocationKind)
         portraitInitial: 'G',
         currentLocationId: hondonada.id,
         condicionFisica: 'HERIDO',
@@ -2796,7 +2796,10 @@ describe('Punto de guardado: solo construcciones propias', () => {
       { name: 'Piedra (10)', catalogSlug: 'piedra' },
       { name: 'Lana de múrgol (5)', catalogSlug: 'lana-murgol' },
     ]);
-    await prisma.save.update({ where: { id: saveId }, data: { condicionFisica: 'HERIDO' } });
+    // El `it` anterior ya descansó en este mismo `saveId` — sin resetear, el cooldown de 3h de
+    // ficción (hallazgo 11) bloquearía este segundo descanso, y el test dejaría de probar lo que
+    // dice probar (el punto de guardado, no el cooldown en sí — ese tiene su propio describe).
+    await prisma.save.update({ where: { id: saveId }, data: { condicionFisica: 'HERIDO', lastRestAtMinutes: null } });
     classifyAction.mockResolvedValueOnce({
       requiereTirada: false, atributo: 'fuerza', dificultad: 15, razon: 'x', banda: 'larga', duracionEstimadaMinutos: 4320,
     });
@@ -2812,18 +2815,19 @@ describe('Punto de guardado: solo construcciones propias', () => {
   }, 20_000);
 });
 
-// Cobertura nueva (auditoría 2026-08-11, "pruebas por API": la ficha de Descansar prometía curar
-// "sin necesitar volver a un lugar conocido", pero la mecánica real (healCeilingFor/death.ts)
-// solo curaba en refugio/asentamiento — aclarado con la usuaria: SÍ cura en cualquier sitio, pero
-// un vivac improvisado topa en GRAVE; solo un refugio/asentamiento real llega a HERIDO.
-describe('Descansar en cualquier sitio cura, pero topa en GRAVE (solo refugio/asentamiento llega a HERIDO)', () => {
+// Rediseño 2026-09-06 (hallazgo 11 de la sesión de pruebas, decisión explícita de la usuaria):
+// Descansar repone un tramo FIJO de energía (+30), YA NO cura condicionFisica en absoluto, y tiene
+// cooldown de 3h de tiempo de FICCIÓN — un intento dentro del cooldown se rechaza con narración
+// determinista, sin tocar energía ni condición.
+describe('Descansar: +30 de energía fijo, NO cura condición física, cooldown de 3h de ficción', () => {
   let saveId: string;
   let pilaresId: string;
 
   beforeAll(async () => {
     const userId = await getDefaultUserId();
     const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
-    // Los Pilares Rotos: kind 'hito', NUNCA un punto de descanso válido (isValidRestLocationKind).
+    // Los Pilares Rotos: kind 'hito', NUNCA un punto de descanso válido (isValidRestLocationKind)
+    // — a propósito, para confirmar que ya da igual: la energía repone lo mismo en cualquier sitio.
     const pilares = await prisma.location.findFirstOrThrow({ where: { worldId: world.id, slug: 'pilares-rotos' } });
     pilaresId = pilares.id;
     const save = await prisma.save.create({
@@ -2838,6 +2842,7 @@ describe('Descansar en cualquier sitio cura, pero topa en GRAVE (solo refugio/as
         portraitInitial: 'G',
         currentLocationId: pilares.id,
         condicionFisica: 'CONVALECIENTE',
+        energia: 10,
       },
     });
     saveId = save.id;
@@ -2851,49 +2856,23 @@ describe('Descansar en cualquier sitio cura, pero topa en GRAVE (solo refugio/as
     await prisma.save.delete({ where: { id: saveId } });
   });
 
-  it('descansar en un hito (sin refugio válido) mejora CONVALECIENTE hasta GRAVE, nunca hasta HERIDO', async () => {
+  it('descansar en un hito (sin refugio válido) repone +30 de energía fijo y NO cura condición física', async () => {
     await doTurn(saveId, 'Descanso aquí mismo un rato para recuperar fuerzas.');
     const save = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
-    expect(save.condicionFisica).toBe('GRAVE');
+    expect(save.condicionFisica).toBe('CONVALECIENTE'); // sin mejora — Descansar ya no cura
+    expect(save.energia).toBe(40); // 10 + ENERGY_REST_RESTORE (30)
     expect(save.currentLocationId).toBe(pilaresId); // sigue en el mismo sitio, esto no es respawn
+    expect(save.lastRestAtMinutes).not.toBeNull(); // marca de cooldown fijada
   }, 15_000);
 
-  it('un segundo descanso en el mismo hito ya no mejora nada más (el tope de un vivac improvisado es GRAVE)', async () => {
-    await doTurn(saveId, 'Descanso otra vez, esperando recuperarme del todo.');
-    const save = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
-    expect(save.condicionFisica).toBe('GRAVE');
-  }, 15_000);
-
-  // Bug real jugando en vivo (2026-08-13, "he descansado y la energía no se recuperó" en un vivac
-  // fuera de refugio/asentamiento) — hueco de cobertura real: este describe ya probaba el mismo
-  // escenario para condicionFisica, nunca para energía. Save propio con energía baja para que el
-  // ascenso a la mitad del tope sea observable (ver energy.test.ts para el caso puro).
-  it('un vivac en un hito (sin refugio válido) SÍ restaura energía, hasta la mitad del tope', async () => {
-    const userId = await getDefaultUserId();
-    const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
-    const save = await prisma.save.create({
-      data: {
-        userId,
-        worldId: world.id,
-        characterName: 'Gorhorn de prueba 10b',
-        characterArchetype: 'guerrero',
-        characterOrigin: 'Clan Maktor',
-        characterMotivation: 'x',
-        attributes: ATTRS,
-        portraitInitial: 'G',
-        currentLocationId: pilaresId,
-        energia: 5,
-      },
-    });
-    await prisma.worldState.create({ data: { saveId: save.id } });
-    try {
-      await doTurn(save.id, 'Descanso aquí mismo un rato para recuperar fuerzas.');
-      const updated = await prisma.save.findUniqueOrThrow({ where: { id: save.id } });
-      // energiaMaxFor(constitucion=12) = 50 + 12*3 = 86 — mitad = 43.
-      expect(updated.energia).toBe(43);
-    } finally {
-      await prisma.save.delete({ where: { id: save.id } });
-    }
+  it('un segundo descanso dentro de las 3h de ficción se rechaza — narración determinista, sin tocar energía', async () => {
+    const before = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
+    const res = await doTurn(saveId, 'Descanso otra vez, esperando recuperarme del todo.');
+    const body = lastNdjsonLine(res.payload);
+    expect(body.narration).toEqual({ narration: expect.stringContaining('no está lo bastante cansado'), newFacts: [] });
+    const after = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
+    expect(after.energia).toBe(before.energia); // sin cambio, el intento no cuenta
+    expect(after.lastRestAtMinutes).toBe(before.lastRestAtMinutes); // el cooldown no se reinicia
   }, 15_000);
 });
 
@@ -2927,7 +2906,7 @@ describe('Respawn tras morir: vuelve al último campamento, no se queda donde mu
         attributes: { ...ATTRS, fuerza: 15, constitucion: 15 },
         portraitInitial: 'G',
         currentLocationId: hondonada.id,
-        condicionFisica: 'HERIDO', // para que restSucceeds cuente al descansar (§ arriba)
+        condicionFisica: 'HERIDO',
         dificultad: 'NOVATO', // sin límite de muertes, la Entidad siempre responde
       },
     });
@@ -6098,6 +6077,10 @@ describe('Comer/Beber: consumo real de comida e ítem "Beber agua" (2026-09-04)'
         // Muy por debajo de 100% para que la ganancia real sea observable sin llegar al tope.
         lastAteAtMinutes: 0,
         lastDrankAtMinutes: 0,
+        // Rediseño 2026-09-06 (hallazgo 11) — muy por debajo del tope real (energiaMaxFor(12)=86)
+        // para que la ganancia de curaEnergia al comer sea observable sin quedar tapada por el
+        // recorte al máximo.
+        energia: 20,
       },
     });
     saveId = save.id;
@@ -6155,6 +6138,10 @@ describe('Comer/Beber: consumo real de comida e ítem "Beber agua" (2026-09-04)'
     // minuto de ficción de ESTE turno (ver lastAtMinutesForGanancia/fictionalMinutesParaComerBeber).
     expect(saveAfter.lastDrankAtMinutes).toBe(worldStateAfter.fictionalMinutes);
     expect(saveAfter.lastAteAtMinutes).not.toBe(0);
+    // Rediseño 2026-09-06 (hallazgo 11) — Comer/Beber ahora también repone energía real de
+    // catálogo (racion-viaje: curaEnergia 20), no solo Hambre/Sed. Energía inicial 20 + 20 = 40,
+    // muy por debajo del tope real (energiaMaxFor(12)=86) — la ganancia es genuina, no un recorte.
+    expect(saveAfter.energia).toBe(40);
 
     // Unidad única (sin sufijo de cantidad) — la fila desaparece del todo.
     const inventoryAfter = await prisma.inventoryItem.findMany({ where: { saveId } });

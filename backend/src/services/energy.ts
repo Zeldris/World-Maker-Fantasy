@@ -31,6 +31,23 @@ export const ENERGY_COST_EXPERTA = 50;
 /// tramo propio, mucho más barato, acorde a ser la acción base que tiene cualquier personaje.
 export const ENERGY_COST_ATAQUE_BASICO = 5;
 
+/// Descansar — reposo fijo (2026-09-06, hallazgo 11 de la sesión de pruebas) — antes reponía al
+/// tope entero (refugio) o a la mitad del tope (cualquier sitio), desproporcionado con
+/// Constitución alta; ahora un tramo fijo de +30, igual en cualquier sitio válido, sin distinguir
+/// refugio de vivac (la petición no distingue). Curación de condicionFisica al descansar
+/// ELIMINADA por completo (decisión explícita de la usuaria) — ver death.ts § healCeilingFor, la
+/// única vía de curar condición fuera de combate pasa a ser "Curar" con objetos médicos.
+export const ENERGY_REST_RESTORE = 30;
+
+/// Cooldown de Descansar (2026-09-06, hallazgo 11) — 3h de tiempo de FICCIÓN, mismo patrón exacto
+/// que `dispersionCooldownActivo` (cazar.ts): `null` = nunca descansó, sin cooldown que aplicar.
+export const REST_COOLDOWN_MINUTES = 3 * 60;
+
+export function restCooldownActivo(lastRestAtMinutes: number | null, nowMinutes: number): boolean {
+  if (lastRestAtMinutes === null) return false;
+  return nowMinutes - lastRestAtMinutes < REST_COOLDOWN_MINUTES;
+}
+
 export interface EnergyTurnInput {
   current: number;
   max: number;
@@ -45,15 +62,17 @@ export interface EnergyTurnInput {
   /// 0 en cualquier otra, incluido Ataque Básico) — se lee de `SavedAction.energyRegen` (jugador)
   /// o `NpcCombatAbility.energyRegen`/`PendingNpcAttack.energyRegen` (NPC), nunca inferido del rol.
   abilityEnergyRegen: number;
-  /// Descanso en refugio/asentamiento real este turno — restaura al tope entero, igual que un
-  /// descanso válido cura hasta HERIDO en condicionFisica.
+  /// Descanso en refugio/asentamiento real este turno, con el cooldown de `REST_COOLDOWN_MINUTES`
+  /// YA comprobado por el caller (turnResolution.ts) — si el cooldown está activo, el caller debe
+  /// mandar `false` aquí, no dejar que esta función lo sepa. Repone `ENERGY_REST_RESTORE` fijo,
+  /// igual que `restAttempted` (2026-09-06: ya no distingue refugio de vivac para la energía —
+  /// solo seguía distinguiendo para curar condicionFisica, curación eliminada, ver death.ts).
   restSucceeds: boolean;
-  /// Descanso intentado EN CUALQUIER SITIO, con éxito mecánico (mismo `detectsRestIntent` que
-  /// `restAttempted` de `healCeilingFor`, death.ts) — bug real jugando en vivo, 2026-08-13: "he
-  /// descansado [en un vivac fuera de refugio/asentamiento] y la energía no se recuperó", mismo
-  /// síntoma ya arreglado para condicionFisica el 2026-08-11 ("cura en cualquier sitio, pero
-  /// menos"). Un vivac improvisado restaura HASTA la mitad del tope — nunca reduce energía ya por
-  /// encima de eso. `restSucceeds` (arriba) manda si además el sitio es válido.
+  /// Descanso intentado EN CUALQUIER SITIO, con éxito mecánico y cooldown YA comprobado por el
+  /// caller (mismo criterio que `restSucceeds` arriba) — mismo `detectsRestIntent` que
+  /// `healCeilingFor` usaba antes (death.ts, curación ya eliminada). Repone
+  /// `ENERGY_REST_RESTORE` fijo sobre `current`, topado a `max` (nunca reduce si ya estaba por
+  /// encima, mismo criterio de siempre).
   restAttempted: boolean;
   /// Objeto consumido este turno que restaura energía (ItemCatalog.curaEnergia, detectado por
   /// detectEnergyItemUse en itemReference.ts) — null si no se usó ninguno.
@@ -68,10 +87,8 @@ export function nextEnergia(input: EnergyTurnInput): number {
   if (input.exchangeHappened) {
     energia += input.abilityEnergyRegen;
   }
-  if (input.restSucceeds) {
-    energia = input.max;
-  } else if (input.restAttempted) {
-    energia = Math.max(energia, Math.floor(input.max / 2));
+  if (input.restSucceeds || input.restAttempted) {
+    energia += ENERGY_REST_RESTORE;
   }
   if (input.itemRestoreAmount) {
     energia += input.itemRestoreAmount;

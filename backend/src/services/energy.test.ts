@@ -1,5 +1,15 @@
 import { describe, it, expect } from 'vitest';
-import { energiaMaxFor, nextEnergia, ENERGY_COST_BASICA, ENERGY_COST_AVANZADA, ENERGY_COST_ATAQUE_BASICO, type EnergyTurnInput } from './energy.js';
+import {
+  energiaMaxFor,
+  nextEnergia,
+  restCooldownActivo,
+  ENERGY_COST_BASICA,
+  ENERGY_COST_AVANZADA,
+  ENERGY_COST_ATAQUE_BASICO,
+  ENERGY_REST_RESTORE,
+  REST_COOLDOWN_MINUTES,
+  type EnergyTurnInput,
+} from './energy.js';
 
 const BASE: EnergyTurnInput = {
   current: 50,
@@ -53,30 +63,47 @@ describe('nextEnergia', () => {
     expect(nextEnergia({ ...BASE, current: 5, abilityEnergyCost: ENERGY_COST_AVANZADA, exchangeHappened: true })).toBe(0);
   });
 
-  it('un descanso válido restaura al tope entero, por encima de cualquier regen de combate', () => {
-    expect(nextEnergia({ ...BASE, current: 10, restSucceeds: true })).toBe(100);
-  });
-
   it('un objeto consumido suma su restauración, topado al máximo', () => {
     expect(nextEnergia({ ...BASE, current: 90, itemRestoreAmount: 30 })).toBe(100);
     expect(nextEnergia({ ...BASE, current: 10, itemRestoreAmount: 30 })).toBe(40);
   });
 
-  // Bug real jugando en vivo (2026-08-13, "he descansado [fuera de refugio/asentamiento] y la
-  // energía no se recuperó") — mismo criterio ya fijado para condicionFisica el 2026-08-11
-  // (healCeilingFor): un vivac en cualquier sitio SÍ debe restaurar algo, solo un refugio/
-  // asentamiento real llega al tope entero (restSucceeds).
-  describe('restAttempted (vivac en cualquier sitio, mitad del tope)', () => {
-    it('sube hasta la mitad del tope si estaba por debajo', () => {
-      expect(nextEnergia({ ...BASE, current: 10, restAttempted: true })).toBe(50);
+  // Rediseño 2026-09-06 (hallazgo 11 de la sesión de pruebas, decisión explícita de la usuaria):
+  // Descansar repone un tramo FIJO (`ENERGY_REST_RESTORE` = 30), igual en cualquier sitio válido
+  // (ya no distingue refugio de vivac para energía — solo seguía distinguiendo antes para curar
+  // condicionFisica, curación eliminada por completo, ver death.ts § healCeilingFor). El cooldown
+  // de 3h de ficción (`restCooldownActivo`) lo aplica el CALLER (turnResolution.ts) forzando
+  // `restAttempted`/`restSucceeds` a `false` — esta función no sabe de cooldowns.
+  describe('restAttempted/restSucceeds (reposo fijo de Descansar)', () => {
+    it('restAttempted suma el tramo fijo, topado al máximo', () => {
+      expect(nextEnergia({ ...BASE, current: 10, restAttempted: true })).toBe(10 + ENERGY_REST_RESTORE);
+      expect(nextEnergia({ ...BASE, current: 80, restAttempted: true })).toBe(100); // topado a max
     });
 
-    it('no baja la energía si ya estaba por encima de la mitad del tope', () => {
-      expect(nextEnergia({ ...BASE, current: 80, restAttempted: true })).toBe(80);
+    it('restSucceeds suma el mismo tramo fijo que restAttempted — ya no hay distinción para energía', () => {
+      expect(nextEnergia({ ...BASE, current: 10, restSucceeds: true })).toBe(10 + ENERGY_REST_RESTORE);
     });
 
-    it('restSucceeds (refugio/asentamiento real) manda por encima de restAttempted — sigue llegando al tope entero', () => {
-      expect(nextEnergia({ ...BASE, current: 10, restAttempted: true, restSucceeds: true })).toBe(100);
+    it('restAttempted y restSucceeds a la vez no suman el doble', () => {
+      expect(nextEnergia({ ...BASE, current: 10, restAttempted: true, restSucceeds: true })).toBe(10 + ENERGY_REST_RESTORE);
     });
+  });
+});
+
+describe('restCooldownActivo', () => {
+  it('nunca descansó todavía (null) — sin cooldown que aplicar', () => {
+    expect(restCooldownActivo(null, 1000)).toBe(false);
+  });
+
+  it('dentro de las 3h de ficción desde el último descanso — cooldown activo', () => {
+    expect(restCooldownActivo(1000, 1000 + REST_COOLDOWN_MINUTES - 1)).toBe(true);
+  });
+
+  it('justo en el límite de 3h — ya no está activo (comparación estricta)', () => {
+    expect(restCooldownActivo(1000, 1000 + REST_COOLDOWN_MINUTES)).toBe(false);
+  });
+
+  it('pasadas las 3h de ficción — cooldown ya no activo', () => {
+    expect(restCooldownActivo(1000, 1000 + REST_COOLDOWN_MINUTES + 60)).toBe(false);
   });
 });
