@@ -334,7 +334,26 @@ PENDIENTES salvo que se indique lo contrario. Organizado por fase del runbook.
 20. **Los textos de desglose de tiradas (`(11 −2sal + 2hab = 11/2)` etc.) fuerzan salto de línea y
     quedan mal ajustados cuando se acumulan muchos modificadores** (malus + bonus + multiplicador) —
     pide revisar la disposición visual de esos datos (quizás apilar en vez de forzar una sola línea
-    horizontal). **PENDIENTE — ajuste de CSS/layout en `DiceRoll.tsx`/`CombatExchangeBadge.tsx`.**
+    horizontal). **CERRADO (2026-09-07)**: confirmado que el JSX ya segmentaba cada término (malus/
+    bono/multiplicador) en su propio `<span>` con color propio, pero el contenedor de la fracción
+    entera actuaba como un único bloque inline sin puntos de quiebre internos — con los 3
+    modificadores a la vez (`(15 −3sal +4hab = 16 ×1.5 ≈24/2)`) podía desbordar o forzar un salto de
+    línea a mitad de un término, sobre todo en badges estrechas de combate múltiple. Decisión
+    explícita de la usuaria: NO un wrap libre término a término (dejaría cada número en una posición
+    distinta según el ancho, obligando a releer la ecuación cada vez) — quería algo "adaptativo y
+    responsive pero que todo coincida siempre en la misma posición". Fix: nuevo componente compartido
+    `RollBreakdown.tsx` (petición explícita de la usuaria, además de aprovechado para eliminar la
+    duplicación letra por letra que había entre `DiceRoll.tsx`/`CombatExchangeBadge.tsx`) que agrupa
+    los términos en 2 átomos con `whitespace-nowrap` propio (`(valor −malus +bono = cruda` / `×mult
+    ≈efectiva/2)`) dentro de un `inline-flex flex-wrap` — el orden es siempre el mismo, y si no cabe
+    todo en una línea, el corte cae siempre entre los dos grupos completos, nunca a mitad de un
+    número; el grupo del multiplicador (el más largo, el que menos aporta a la lectura rápida del
+    resultado ya mostrado fuera del paréntesis) es el que cae a una segunda línea cuando hace falta.
+    Verificado: `tsc -b` limpio backend+frontend, suite completa de frontend en verde (207 tests, sin
+    tests de renderizado dedicados a estos componentes — cambio puramente visual). Pendiente
+    reverificar en vivo con Playwright: un intercambio de combate con malus+bono+multiplicador a la
+    vez (pasiva racial + condición física degradada + habilidad con bono) y confirmar que el desglose
+    se lee bien en ancho estrecho, sin desbordar ni partirse a mitad de número.
 
 ### FASE 4 — Lore / catálogo
 

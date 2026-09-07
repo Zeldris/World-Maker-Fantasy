@@ -3,6 +3,7 @@ import type { RollInfo, CombatExchangeSideInfo } from '../types'
 import { attributeLabels, attributeColorClasses } from '../lib/dice'
 import { gradoOf, formatMultiplier, difficultyLabelFor } from './CombatExchangeBadge'
 import { TooltipAnchor } from './TooltipAnchor'
+import { RollBreakdown } from './RollBreakdown'
 
 /// Núcleo genérico de "tirada en vivo" (2026-09-04, centralización de todas las tiradas del juego
 /// — petición explícita: "como si jugaras una partida D&D... que el efecto de los dados suceda de
@@ -122,18 +123,7 @@ export function DiceFace({
             }`}
           >
             <span className="text-accent2-400 underline decoration-dotted decoration-wood-700 underline-offset-2">
-              (
-              {side.value}
-              {!!enriched.malus && <span className="text-danger-400"> −{enriched.malus}sal</span>}
-              {!!enriched.attributeBonus && <span className="text-moss-400"> +{enriched.attributeBonus}hab</span>}
-              {enriched.malus || enriched.attributeBonus ? ` = ${valorCrudo}` : ''}
-              {enriched.multiplicador != null && enriched.multiplicador !== 1 && (
-                <>
-                  <span className={enriched.multiplicador > 1 ? 'text-moss-400' : 'text-danger-400'}>×{formatMultiplier(enriched.multiplicador)}</span>
-                  ≈{valorEfectivo}
-                </>
-              )}
-              /2)
+              <RollBreakdown side={enriched} valorCrudo={valorCrudo} valorEfectivo={valorEfectivo} />
             </span>
           </TooltipAnchor>
         </span>

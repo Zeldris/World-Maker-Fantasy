@@ -1,6 +1,7 @@
 import type { CombatExchangeInfo, CombatExchangeOutcome, CombatExchangeSideInfo, RollInfo } from '../types'
 import { attributeLabels, attributeColorClasses } from '../lib/dice'
 import { TooltipAnchor } from './TooltipAnchor'
+import { RollBreakdown } from './RollBreakdown'
 
 // Espejo exacto de `difficultyHintFor` (backend, npcScene.ts) — la MISMA diferencia de nivel que
 // decide la dificultad real de la tirada; aquí ya solo llega el número final, no el nivel de cada
@@ -291,35 +292,19 @@ function SideRow({
               : ` Mitad = tu bono real: +${bono}.`
           }`}
         >
-          <span className="flex items-baseline gap-1.5 underline decoration-dotted decoration-wood-700 underline-offset-2">
+          <span className="flex flex-wrap items-baseline gap-1.5 underline decoration-dotted decoration-wood-700 underline-offset-2">
             <span className="font-bold text-wood-100">+{bono}</span>
+            {/* Desglose inline (petición explícita, 2026-08-29: "mejoralo todo para que se mas claro
+                y se entiendan bien los calculos" — cada término vive DENTRO del paréntesis, en el
+                sitio exacto donde ocurre la suma, mismos colores `danger-400`/`moss-400` que ya
+                usaban los chips que sustituyó). Layout responsive por grupos (hallazgo 20,
+                revisar-partida-hallazgos.md 2026-09-07, ver comentario de RollBreakdown.tsx) — el
+                ×mult se resuelve DENTRO del componente, antes del "/2" (bug real, 2026-08-20: suelto
+                fuera de la fracción se leía como multiplicación pendiente sobre el total ya
+                mostrado). `!= null` evita "(×NaN)" en LogEntry persistidas antes de que
+                `multiplicador` existiera (2026-08-14). */}
             <span className="text-accent2-400">
-              (
-              {/* Desglose inline (petición explícita, 2026-08-29: "mejoralo todo para que se mas
-                  claro y se entiendan bien los calculos, mas incluso que en la vista que ya
-                  dejamos lista" — mismo rediseño que DiceRollReveal.tsx, mismo motivo: antes el
-                  malus/bono de habilidad vivían como chips sueltos en la columna de la derecha,
-                  sin conexión visual con esta fracción que ya los incluía por dentro — se veía
-                  "13/2" sin que se entendiera de dónde salía ese 13. Ahora cada término vive DENTRO
-                  del paréntesis, en el sitio exacto donde ocurre la suma, mismos colores que ya
-                  usaban los chips (`danger-400` resta, `moss-400` suma) para seguir
-                  distinguiéndose del resto de la fórmula. */}
-              {side.value}
-              {!!side.malus && <span className="text-danger-400"> −{side.malus}sal</span>}
-              {!!side.attributeBonus && <span className="text-moss-400"> +{side.attributeBonus}hab</span>}
-              {side.malus || side.attributeBonus ? ` = ${valorCrudo}` : ''}
-              {/* El ×mult se resuelve AQUÍ DENTRO, antes del "/2" — no suelto después del bono
-                  (bug real, 2026-08-20: puesto fuera de la fracción, justo antes del "=resultado"
-                  final, se leía como una multiplicación todavía pendiente sobre el total ya
-                  mostrado). `!= null` evita "(×NaN)" en entradas de LogEntry persistidas antes de
-                  que `multiplicador` existiera en combatExchange.ts (2026-08-14). */}
-              {side.multiplicador != null && side.multiplicador !== 1 && (
-                <>
-                  <span className={side.multiplicador > 1 ? 'text-moss-400' : 'text-danger-400'}>×{formatMultiplier(side.multiplicador)}</span>
-                  ≈{side.valorEfectivo}
-                </>
-              )}
-              /2)
+              <RollBreakdown side={side} valorCrudo={valorCrudo} valorEfectivo={side.valorEfectivo} />
             </span>
           </span>
         </TooltipAnchor>
