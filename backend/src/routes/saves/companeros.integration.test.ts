@@ -584,3 +584,118 @@ describe('POST /saves/:id/capturar/:npcSlug con participantId (combate múltiple
     expect(res.statusCode).toBe(400);
   });
 });
+
+/// Guard de save.endedAt añadido (auditoría de deuda técnica 2026-09-07, decisión confirmada con la
+/// usuaria: "todos igual, mismo guard estándar") a los 9 endpoints de captura/almacén/plantillas que
+/// no lo tenían — 4 endpoints de este mismo archivo ya lo tenían desde antes (capturar, ambos
+/// tameo-pendientes/intentar+confirmar). Los ids de las URLs son inventados a propósito: el guard
+/// debe cortar en 409 ANTES de que la ruta llegue a buscar esas filas, así que no hace falta
+/// sembrar captura/compañero/plantilla reales para probarlo.
+describe('Compañeros: guard de save.endedAt en captura/almacén/plantillas (auditoría de deuda técnica 2026-09-07)', () => {
+  let saveId: string;
+
+  beforeAll(async () => {
+    const userId = await getDefaultUserId();
+    const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
+    const save = await prisma.save.create({
+      data: {
+        userId,
+        worldId: world.id,
+        characterName: 'Gorhorn de prueba (companeros, partida ya terminada)',
+        characterArchetype: 'guerrero',
+        characterOrigin: 'Clan Maktor',
+        characterMotivation: 'x',
+        attributes: { fuerza: 10, destreza: 10, constitucion: 10, inteligencia: 10, voluntad: 10, carisma: 10, magia: 10 },
+        portraitInitial: 'G',
+        endedAt: new Date('2026-09-07T12:00:00Z'),
+      },
+    });
+    saveId = save.id;
+  });
+
+  afterAll(async () => {
+    await prisma.save.delete({ where: { id: saveId } });
+  });
+
+  it('POST /capturas/:itemId/depositar → 409', async () => {
+    const app = await buildApp();
+    const res = await app.inject({ method: 'POST', url: `/saves/${saveId}/capturas/item-inexistente/depositar` });
+    expect(res.statusCode).toBe(409);
+  });
+
+  it('POST /capturas/:itemId/soltar → 409', async () => {
+    const app = await buildApp();
+    const res = await app.inject({ method: 'POST', url: `/saves/${saveId}/capturas/item-inexistente/soltar` });
+    expect(res.statusCode).toBe(409);
+  });
+
+  it('POST /tameo-pendientes/:npcSlug/soltar → 409', async () => {
+    const app = await buildApp();
+    const res = await app.inject({ method: 'POST', url: `/saves/${saveId}/tameo-pendientes/corretolvas/soltar` });
+    expect(res.statusCode).toBe(409);
+  });
+
+  it('PATCH /companeros/:companionId/equipo/:itemId → 409', async () => {
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'PATCH',
+      url: `/saves/${saveId}/companeros/companion-inexistente/equipo/item-inexistente`,
+      payload: { slot: 'ARMA_PRINCIPAL' },
+    });
+    expect(res.statusCode).toBe(409);
+  });
+
+  it('POST /almacen/depositar/:itemId → 409', async () => {
+    const app = await buildApp();
+    const res = await app.inject({ method: 'POST', url: `/saves/${saveId}/almacen/depositar/item-inexistente` });
+    expect(res.statusCode).toBe(409);
+  });
+
+  it('POST /almacen/retirar/:almacenItemId → 409', async () => {
+    const app = await buildApp();
+    const res = await app.inject({ method: 'POST', url: `/saves/${saveId}/almacen/retirar/almacen-item-inexistente` });
+    expect(res.statusCode).toBe(409);
+  });
+
+  it('POST /plantillas → 409', async () => {
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: `/saves/${saveId}/plantillas`,
+      payload: { name: 'x', rol: 'guardia', slots: { ARMA_PRINCIPAL: { category: 'arma' } } },
+    });
+    expect(res.statusCode).toBe(409);
+  });
+
+  it('PATCH /plantillas/:plantillaId → 409', async () => {
+    const app = await buildApp();
+    const res = await app.inject({ method: 'PATCH', url: `/saves/${saveId}/plantillas/plantilla-inexistente`, payload: { prioridad: 1 } });
+    expect(res.statusCode).toBe(409);
+  });
+
+  it('DELETE /plantillas/:plantillaId → 409', async () => {
+    const app = await buildApp();
+    const res = await app.inject({ method: 'DELETE', url: `/saves/${saveId}/plantillas/plantilla-inexistente` });
+    expect(res.statusCode).toBe(409);
+  });
+
+  it('POST /companeros/:companionId/plantilla → 409', async () => {
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: `/saves/${saveId}/companeros/companion-inexistente/plantilla`,
+      payload: { plantillaEquipoId: null },
+    });
+    expect(res.statusCode).toBe(409);
+  });
+
+  it('POST /subjects/:subjectId/plantilla → 409', async () => {
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: `/saves/${saveId}/subjects/subject-inexistente/plantilla`,
+      payload: { plantillaEquipoId: null },
+    });
+    expect(res.statusCode).toBe(409);
+  });
+});

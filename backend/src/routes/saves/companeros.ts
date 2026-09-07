@@ -232,10 +232,12 @@ export async function companerosRoutes(app: FastifyInstance) {
   /// todavía (Celda de Retención, pausada — ver el doc de rediseño) — de momento solo fauna puede
   /// depositarse; un NPC capturado se queda en el inventario hasta soltarlo o (futuro) depositarlo.
   app.post<{ Params: { id: string; itemId: string } }>('/saves/:id/capturas/:itemId/depositar', async (request, reply) => {
+    const save = await prisma.save.findUnique({ where: { id: request.params.id }, select: { worldId: true, endedAt: true } });
+    if (!save) return reply.status(404).send({ error: 'Partida no encontrada' });
+    if (rejectIfEnded(save, reply)) return;
+
     const item = await prisma.inventoryItem.findFirst({ where: { id: request.params.itemId, saveId: request.params.id, capturaNpcId: { not: null } } });
     if (!item) return reply.status(404).send({ error: 'Captura no encontrada en el inventario' });
-
-    const save = await prisma.save.findUnique({ where: { id: request.params.id }, select: { worldId: true } });
     const npc = await prisma.npc.findUnique({ where: { id: item.capturaNpcId! } });
     if (!npc) return reply.status(404).send({ error: 'Objetivo no encontrado' });
     const esFauna = npc.ataqueNatural !== null;
@@ -279,6 +281,10 @@ export async function companerosRoutes(app: FastifyInstance) {
   /// momento (confirmado ronda 3). Libera el slot de "1 captura a la vez" al instante. Distinto del
   /// `/tameo-pendientes/:npcSlug/soltar` de abajo, que suelta una captura YA depositada en Jaula.
   app.post<{ Params: { id: string; itemId: string } }>('/saves/:id/capturas/:itemId/soltar', async (request, reply) => {
+    const save = await prisma.save.findUnique({ where: { id: request.params.id }, select: { endedAt: true } });
+    if (!save) return reply.status(404).send({ error: 'Partida no encontrada' });
+    if (rejectIfEnded(save, reply)) return;
+
     const item = await prisma.inventoryItem.findFirst({ where: { id: request.params.itemId, saveId: request.params.id, capturaNpcId: { not: null } } });
     if (!item) return reply.status(404).send({ error: 'Captura no encontrada en el inventario' });
     await prisma.inventoryItem.delete({ where: { id: item.id } });
@@ -458,8 +464,9 @@ export async function companerosRoutes(app: FastifyInstance) {
   /// Deja `capturado: true` (mismo criterio que `saqueado`: no vuelve a ofrecerse capturar dos
   /// veces al mismo individuo) pero libera la Jaula.
   app.post<{ Params: { id: string; npcSlug: string } }>('/saves/:id/tameo-pendientes/:npcSlug/soltar', async (request, reply) => {
-    const save = await prisma.save.findUnique({ where: { id: request.params.id }, select: { id: true, worldId: true } });
+    const save = await prisma.save.findUnique({ where: { id: request.params.id }, select: { id: true, worldId: true, endedAt: true } });
     if (!save) return reply.status(404).send({ error: 'Partida no encontrada' });
+    if (rejectIfEnded(save, reply)) return;
     const npc = await prisma.npc.findUnique({ where: { worldId_slug: { worldId: save.worldId, slug: request.params.npcSlug } } });
     if (!npc) return reply.status(404).send({ error: 'Objetivo no encontrado' });
     await prisma.npcState.updateMany({ where: { saveId: save.id, npcId: npc.id, capturado: true }, data: { capturaJaulaBuildingId: null } });
@@ -478,6 +485,10 @@ export async function companerosRoutes(app: FastifyInstance) {
       const { slot } = request.body;
       if (slot !== null && !Object.values(EquipSlot).includes(slot)) return reply.status(400).send({ error: `Ranura no válida: "${slot}"` });
 
+      const save = await prisma.save.findUnique({ where: { id: request.params.id }, select: { worldId: true, endedAt: true } });
+      if (!save) return reply.status(404).send({ error: 'Partida no encontrada' });
+      if (rejectIfEnded(save, reply)) return;
+
       const companion = await prisma.companion.findFirst({ where: { id: request.params.companionId, saveId: request.params.id } });
       if (!companion) return reply.status(404).send({ error: 'Compañero no encontrado' });
       const item = await prisma.inventoryItem.findFirst({ where: { id: request.params.itemId, saveId: request.params.id, companionId: null, subjectId: null } });
@@ -487,8 +498,7 @@ export async function companerosRoutes(app: FastifyInstance) {
         return reply.status(400).send({ error: `Esta mascota solo puede llevar: ${FAUNA_EQUIP_SLOTS.join(', ')}.` });
       }
       if (slot && item.catalogSlug) {
-        const save = await prisma.save.findUnique({ where: { id: request.params.id }, select: { worldId: true } });
-        const catalogItem = save ? await prisma.itemCatalog.findFirst({ where: { worldId: save.worldId, slug: item.catalogSlug } }) : null;
+        const catalogItem = await prisma.itemCatalog.findFirst({ where: { worldId: save.worldId, slug: item.catalogSlug } });
         if (catalogItem && (!catalogItem.equipSlot || !equipSlotFamily(catalogItem.equipSlot).includes(slot))) {
           return reply.status(400).send({ error: `"${item.name}" no se puede equipar ahí — va en ${catalogItem.equipSlot}, no en ${slot}.` });
         }
@@ -517,6 +527,10 @@ export async function companerosRoutes(app: FastifyInstance) {
   /// (§7: "cada súbdito con una plantilla asignada se auto-equipa en cuanto haya en el almacén un
   /// objeto que encaje").
   app.post<{ Params: { id: string; itemId: string } }>('/saves/:id/almacen/depositar/:itemId', async (request, reply) => {
+    const save = await prisma.save.findUnique({ where: { id: request.params.id }, select: { endedAt: true } });
+    if (!save) return reply.status(404).send({ error: 'Partida no encontrada' });
+    if (rejectIfEnded(save, reply)) return;
+
     const item = await prisma.inventoryItem.findFirst({ where: { id: request.params.itemId, saveId: request.params.id, slot: null, companionId: null, subjectId: null } });
     if (!item) return reply.status(404).send({ error: 'Objeto no encontrado (o ya equipado)' });
 
@@ -532,6 +546,10 @@ export async function companerosRoutes(app: FastifyInstance) {
 
   /// Retirar un objeto del Almacén de vuelta a la mochila personal, sin equiparlo.
   app.post<{ Params: { id: string; almacenItemId: string } }>('/saves/:id/almacen/retirar/:almacenItemId', async (request, reply) => {
+    const save = await prisma.save.findUnique({ where: { id: request.params.id }, select: { endedAt: true } });
+    if (!save) return reply.status(404).send({ error: 'Partida no encontrada' });
+    if (rejectIfEnded(save, reply)) return;
+
     const item = await prisma.almacenItem.findFirst({ where: { id: request.params.almacenItemId, saveId: request.params.id } });
     if (!item) return reply.status(404).send({ error: 'Objeto no encontrado en el Almacén' });
     await prisma.$transaction([
@@ -546,6 +564,10 @@ export async function companerosRoutes(app: FastifyInstance) {
   app.post<{ Params: { id: string }; Body: { name: string; rol: string; personalizada?: boolean; slots: PlantillaSlots; prioridad?: number } }>(
     '/saves/:id/plantillas',
     async (request, reply) => {
+      const save = await prisma.save.findUnique({ where: { id: request.params.id }, select: { endedAt: true } });
+      if (!save) return reply.status(404).send({ error: 'Partida no encontrada' });
+      if (rejectIfEnded(save, reply)) return;
+
       const { name, rol, personalizada, slots, prioridad } = request.body;
       if (!name || !rol || !slots) return reply.status(400).send({ error: 'Faltan campos: name, rol, slots' });
       const created = await prisma.plantillaEquipo.create({
@@ -558,6 +580,10 @@ export async function companerosRoutes(app: FastifyInstance) {
   app.patch<{ Params: { id: string; plantillaId: string }; Body: { name?: string; rol?: string; slots?: PlantillaSlots; prioridad?: number } }>(
     '/saves/:id/plantillas/:plantillaId',
     async (request, reply) => {
+      const save = await prisma.save.findUnique({ where: { id: request.params.id }, select: { endedAt: true } });
+      if (!save) return reply.status(404).send({ error: 'Partida no encontrada' });
+      if (rejectIfEnded(save, reply)) return;
+
       const plantilla = await prisma.plantillaEquipo.findFirst({ where: { id: request.params.plantillaId, saveId: request.params.id } });
       if (!plantilla) return reply.status(404).send({ error: 'Plantilla no encontrada' });
       if (!plantilla.personalizada) return reply.status(400).send({ error: 'Esta plantilla es básica, no se puede editar' });
@@ -577,6 +603,10 @@ export async function companerosRoutes(app: FastifyInstance) {
   );
 
   app.delete<{ Params: { id: string; plantillaId: string } }>('/saves/:id/plantillas/:plantillaId', async (request, reply) => {
+    const save = await prisma.save.findUnique({ where: { id: request.params.id }, select: { endedAt: true } });
+    if (!save) return reply.status(404).send({ error: 'Partida no encontrada' });
+    if (rejectIfEnded(save, reply)) return;
+
     const plantilla = await prisma.plantillaEquipo.findFirst({ where: { id: request.params.plantillaId, saveId: request.params.id } });
     if (!plantilla) return reply.status(404).send({ error: 'Plantilla no encontrada' });
     if (!plantilla.personalizada) return reply.status(400).send({ error: 'Esta plantilla es básica, no se puede borrar' });
@@ -588,6 +618,10 @@ export async function companerosRoutes(app: FastifyInstance) {
   app.post<{ Params: { id: string; companionId: string }; Body: { plantillaEquipoId: string | null; rolReino?: string } }>(
     '/saves/:id/companeros/:companionId/plantilla',
     async (request, reply) => {
+      const save = await prisma.save.findUnique({ where: { id: request.params.id }, select: { endedAt: true } });
+      if (!save) return reply.status(404).send({ error: 'Partida no encontrada' });
+      if (rejectIfEnded(save, reply)) return;
+
       const companion = await prisma.companion.findFirst({ where: { id: request.params.companionId, saveId: request.params.id } });
       if (!companion) return reply.status(404).send({ error: 'Compañero no encontrado' });
       await prisma.companion.update({
@@ -603,6 +637,10 @@ export async function companerosRoutes(app: FastifyInstance) {
   app.post<{ Params: { id: string; subjectId: string }; Body: { plantillaEquipoId: string | null } }>(
     '/saves/:id/subjects/:subjectId/plantilla',
     async (request, reply) => {
+      const save = await prisma.save.findUnique({ where: { id: request.params.id }, select: { endedAt: true } });
+      if (!save) return reply.status(404).send({ error: 'Partida no encontrada' });
+      if (rejectIfEnded(save, reply)) return;
+
       const subject = await prisma.subject.findFirst({ where: { id: request.params.subjectId, saveId: request.params.id } });
       if (!subject) return reply.status(404).send({ error: 'Súbdito no encontrado' });
       await prisma.subject.update({ where: { id: subject.id }, data: { plantillaEquipoId: request.body.plantillaEquipoId } });
