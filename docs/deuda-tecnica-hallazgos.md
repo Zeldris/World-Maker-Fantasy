@@ -604,10 +604,12 @@ resuelve, o si `withCatalogStatBonuses` no encuentra el `catalogSlug` en el cat�
 `VALID_ATTRIBUTES` (la única fuente de verdad de los 7 atributos válidos, usada por 2 rutas
 distintas de validación) depende de tests ajenos para quedar cubierta.
 
-**Estado**: PENDIENTE, prioridad baja — el riesgo real está mitigado por la cobertura indirecta
-(2 rutas con tests de integración que ejercen el camino feliz), pero un test directo de
-`shared.test.ts` fijaría los casos borde de `restartSaveTransactionBody`/`withCatalogStatBonuses`
-sin depender de montar una partida completa en cada ruta que lo use.
+**Estado**: CERRADO (2026-09-08, commit `08af8b1`) — `shared.test.ts` nuevo, 8 tests contra
+Postgres real: `VALID_ATTRIBUTES` (7 atributos exactos, sin duplicados), `withCatalogStatBonuses`
+(copia del catálogo, no sobreescribe uno propio, item sin `catalogSlug`, `catalogSlug` inexistente,
+lista vacía) y `restartSaveTransactionBody` (camino feliz con Gorhorn + caso borde de
+`initialLocationSlugFor` sin resolver). Verificación rigurosa confirmada en el caso del
+`catalogSlug` inexistente.
 
 ## 2026-09-07 — forcedGradosFor (DiceRoll.tsx) — función pura recién extraída "para ser testeable", sin ningún test
 
