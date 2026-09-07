@@ -558,7 +558,17 @@ interface EjecutarIntercambioParams extends TurnoAutonomoBaseParams {
 async function ejecutarIntercambioYAvanzar(params: EjecutarIntercambioParams): Promise<TurnoAutonomoResultado> {
   const { prisma, worldId, saveId, encounterId, encounter, actual, datosAtacante, habilidadAtaque, atacanteRol, dualWieldBonus, defensor, weaponNamesPorDefecto, narrarFn } = params;
   const datosDefensor = await datosVivosDe(prisma, worldId, saveId, defensor, weaponNamesPorDefecto);
-  if (!datosDefensor || datosDefensor.condicionFisica === 'CONVALECIENTE' || datosDefensor.condicionFisica === 'MUERTO') {
+  // Bug real jugando en vivo (2026-09-07, "combate atascado para siempre"): este guard existía para
+  // no seguir golpeando a alguien ya derrotado, pero CONVALECIENTE deja de ser "victoria automática"
+  // desde 2026-08-26 (ver `resolverTurnoJugador`, la jugadora convaleciente SIGUE atacando, muy
+  // penalizada) — sin la excepción de JUGADOR aquí, en cuanto ella quedaba convaleciente ningún NPC
+  // podía volver a resolver un intercambio real contra ella, y como `dueloYaResueltoPorElOtro` sigue
+  // dando por bueno ese "turno ya resuelto" del lado del NPC, su propio turno también caía en
+  // `avanzarSinAtacar` — combate en bucle infinito de "guardia sin resolver", turnoActual ciclando
+  // sin que nadie llegue a tirar nunca. Solo MUERTO debe sacarla como defensora legítima, mismo
+  // criterio que ya usa `calcularEnganchesRonda` (línea 373) para decidir quién sigue "vivo" en el
+  // combate.
+  if (!datosDefensor || (datosDefensor.condicionFisica === 'CONVALECIENTE' && defensor.tipo !== 'JUGADOR') || datosDefensor.condicionFisica === 'MUERTO') {
     return avanzarSinAtacar(prisma, worldId, saveId, encounterId, encounter, weaponNamesPorDefecto, narrarFn);
   }
   const habilidadDefensa = chooseNpcAbility(datosDefensor.abilities, 'defensa', datosDefensor.energia, Math.random, datosDefensor.usageCounts);
@@ -821,7 +831,9 @@ async function ejecutarIntercambioYAvanzar(params: EjecutarIntercambioParams): P
 async function ejecutarGolpeGratisYAvanzar(params: TurnoAutonomoBaseParams & { defensor: ParticipantRef }): Promise<TurnoAutonomoResultado> {
   const { prisma, worldId, saveId, encounterId, encounter, actual, datosAtacante, habilidadAtaque, defensor, weaponNamesPorDefecto, narrarFn } = params;
   const datosDefensor = await datosVivosDe(prisma, worldId, saveId, defensor, weaponNamesPorDefecto);
-  if (!datosDefensor || datosDefensor.condicionFisica === 'CONVALECIENTE' || datosDefensor.condicionFisica === 'MUERTO') {
+  // Mismo bug/fix que `ejecutarIntercambioYAvanzar` (2026-09-07, ver su comentario completo) — un
+  // golpe gratis contra la jugadora convaleciente caía en el mismo guard, mismo bucle infinito.
+  if (!datosDefensor || (datosDefensor.condicionFisica === 'CONVALECIENTE' && defensor.tipo !== 'JUGADOR') || datosDefensor.condicionFisica === 'MUERTO') {
     return avanzarSinAtacar(prisma, worldId, saveId, encounterId, encounter, weaponNamesPorDefecto, narrarFn);
   }
 

@@ -238,6 +238,73 @@ describe('combate múltiple: orquestación real contra Postgres', () => {
     await prisma.save.update({ where: { id: saveId }, data: { activeEffects: [], condicionFisica: 'ILESO', energia: 100 } });
   }, 30_000);
 
+  // Bug real jugando en vivo (2026-09-07, "combate atascado para siempre, siempre el mismo mensaje
+  // de guardia sin tirada"): a diferencia del test 1v1 de arriba (único enemigo posible, sin
+  // `ordenIniciativa` que le gane la posición), con 2+ ENEMIGOS y la jugadora CONVALECIENTE, el
+  // guard de `ejecutarIntercambioYAvanzar`/`ejecutarGolpeGratisYAvanzar` la trataba igual que a
+  // cualquier NPC derrotado — ningún enemigo podía volver a resolver un intercambio real contra
+  // ella, y como su propio turno también caía en `avanzarSinAtacar` (`dueloYaResueltoPorElOtro` da
+  // por bueno ese "turno ya resuelto" del lado del enemigo con posición anterior), el combate
+  // quedaba ciclando `turnoActual` sin que NADIE llegara a tirar nunca — ambos enemigos ILESO para
+  // siempre. Reproduce el escenario exacto observado jugando: 2 enemigos, la jugadora se vuelve
+  // CONVALECIENTE en algún punto y el combate debe seguir progresando después.
+  it('con la jugadora convaleciente y 2+ enemigos, el combate SIGUE progresando (no se queda en bucle de "guardia sin resolver")', async () => {
+    const [enemigo1, enemigo2] = await Promise.all([
+      prisma.npc.findFirstOrThrow({ where: { worldId, slug: 'aullador-rojo' } }),
+      prisma.npc.findFirstOrThrow({ where: { worldId, slug: 'corredor-de-cauce' } }),
+    ]);
+    // Destreza baja a propósito para la jugadora — queda última en `ordenIniciativa`, el caso real
+    // observado (los dos enemigos actúan ANTES que ella en cada ronda).
+    const { encounterId } = await prisma.$transaction((tx) =>
+      iniciarCombatEncounter(tx, saveId, [
+        { bando: 'JUGADOR', tipo: 'JUGADOR', destreza: 1, inteligencia: 10 },
+        { bando: 'ENEMIGO', tipo: 'NPC', npcId: enemigo1.id, npcScope: 'itinerante-jugadora-convaleciente-1', destreza: 20, inteligencia: 6 },
+        { bando: 'ENEMIGO', tipo: 'NPC', npcId: enemigo2.id, npcScope: 'itinerante-jugadora-convaleciente-2', destreza: 20, inteligencia: 6 },
+      ]),
+    );
+    // Fuerza a la jugadora a CONVALECIENTE de entrada (sin depender de tiradas reales para llegar
+    // ahí) — el propio escenario que dispara el bug, confirmado en partida real.
+    await prisma.save.update({ where: { id: saveId }, data: { condicionFisica: 'CONVALECIENTE' } });
+
+    const habilidadBasica: HabilidadParaIntercambio = {
+      name: 'Ataque Básico',
+      description: '',
+      attribute: 'fuerza',
+      effects: [],
+      rol: 'ataque',
+      energyCost: 5,
+      energyRegen: 0,
+    };
+
+    // Tope de seguridad generoso — con el bug real, `turnoActual` cicla sin fin sin que nadie tire
+    // nunca, así que este test fallaría por timeout/tope antes que por una aserción, igual que el
+    // resto de tests de "bucle infinito" de este archivo.
+    let terminado = false;
+    let algunEnemigoRecibioGolpe = false;
+    for (let i = 0; i < 90 && !terminado; i++) {
+      const encounter = await prisma.combatEncounter.findUniqueOrThrow({ where: { id: encounterId }, include: { participantes: true } });
+      if (encounter.estado === 'RESUELTO') {
+        terminado = true;
+        break;
+      }
+      const actualId = encounter.ordenIniciativa[encounter.turnoActual % encounter.ordenIniciativa.length];
+      const actual = encounter.participantes.find((p) => p.id === actualId)!;
+      const resultado =
+        actual.tipo === 'JUGADOR'
+          ? await resolverTurnoJugador(prisma, worldId, saveId, encounterId, { habilidad: habilidadBasica }, [], dobleNarracionRapida)
+          : await resolverTurnoAutonomo(prisma, worldId, saveId, encounterId, [], dobleNarracionRapida);
+      if (resultado?.encounterTerminado) terminado = true;
+      if (resultado?.combatExchangeDisplay) algunEnemigoRecibioGolpe = true;
+    }
+
+    // La aserción central del hallazgo: al menos UN intercambio real con tirada tuvo que ocurrir —
+    // con el bug, esto se queda en `false` para siempre (90 vueltas de puro "avanzarSinAtacar").
+    expect(algunEnemigoRecibioGolpe).toBe(true);
+
+    await prisma.save.update({ where: { id: saveId }, data: { condicionFisica: 'ILESO', energia: 100 } });
+    await prisma.combatEncounter.deleteMany({ where: { saveId, id: encounterId } });
+  }, 30_000);
+
   // Objetivo individual real (2026-08-26, docs/21-roadmap.md § Fase 3) — cablea `esperandoEleccionJugadora`/
   // `fijarEleccionRondaJugador` de punta a punta contra Postgres real: mientras la ronda está
   // esperando, NINGÚN turno se resuelve (ni el suyo ni los autónomos); en cuanto se fija su
