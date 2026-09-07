@@ -5,20 +5,10 @@ import { ENERGY_COST_ATAQUE_BASICO } from './energy.js';
 const ATTRS = { fuerza: 13, destreza: 10, constitucion: 5, inteligencia: 5, voluntad: 8, carisma: 2, magia: 2 };
 
 describe('npcCombatAbilitiesFor', () => {
-  it('siempre incluye Ataque base + Esquivar/Defenderse/Descansar genéricos, aunque el NPC no tenga clase/raza/racial (p.ej. NPC social)', () => {
+  it('siempre incluye Ataque base + Esquivar/Defenderse genéricos, aunque el NPC no tenga clase/raza/racial (p.ej. NPC social)', () => {
     const npc: NpcForCombatAbilities = { level: 1, attributes: ATTRS, raza: null, clase: null, ataqueNatural: null, habilidadesRaciales: [] };
     const abilities = npcCombatAbilitiesFor(npc, []);
-    expect(abilities.map((a) => a.name)).toEqual(['Ataque base', 'Esquivar', 'Defenderse', 'Descansar']);
-  });
-
-  // Descansar (2026-08-17): tercera opción defensiva genérica — recupera mucha más energía (15)
-  // que Defenderse (5), a cambio de no defender mejor (mismo `attribute:'constitucion'`, sin
-  // ningún divisor especial — la fórmula estándar ya divide el atributo entre 2).
-  it('Descansar genérico: gratis, AGUANTE, constitución, y recupera más energía que Defenderse', () => {
-    const npc: NpcForCombatAbilities = { level: 1, attributes: ATTRS, raza: null, clase: null, ataqueNatural: null, habilidadesRaciales: [] };
-    const abilities = npcCombatAbilitiesFor(npc, []);
-    const descansar = abilities.find((a) => a.name === 'Descansar')!;
-    expect(descansar).toMatchObject({ attribute: 'constitucion', effects: ['AGUANTE'], rol: 'defensa', energyCost: 0, energyRegen: 15 });
+    expect(abilities.map((a) => a.name)).toEqual(['Ataque base', 'Esquivar', 'Defenderse']);
   });
 
   it('Esquivar/Defenderse genéricos son gratis (energyCost 0) y siempre AGUANTE, como el fallback del jugador', () => {
@@ -83,14 +73,14 @@ describe('npcCombatAbilitiesFor', () => {
   // que la descatalogamos") — la racial activa humanoide (Sangre del Estallido/Piel de Guerra) se
   // quitó del roster de NPC, mismo criterio que ya se aplicó al jugador el 2026-09-01: sustituida
   // por una pasiva única (racialPassives.ts), nunca una acción de turno. Se quita SIEMPRE, tenga o
-  // no clase asignada (Ataque base + Esquivar/Defenderse/Descansar siguen incondicionales, así que
-  // nadie se queda sin nada usable).
+  // no clase asignada (Ataque base + Esquivar/Defenderse siguen incondicionales, así que nadie se
+  // queda sin nada usable).
   it('NUNCA añade la habilidad racial activa humanoide, tenga raza asignada o no (sustituida por pasiva única, mismo criterio que el jugador)', () => {
     const npc: NpcForCombatAbilities = { level: 1, attributes: ATTRS, raza: 'orcos', clase: null, ataqueNatural: null, habilidadesRaciales: [] };
     const abilities = npcCombatAbilitiesFor(npc, []);
     expect(abilities.some((a) => a.name === 'Sangre del Estallido')).toBe(false);
     expect(abilities.some((a) => a.name === 'Piel de Guerra')).toBe(false);
-    expect(abilities.map((a) => a.name)).toEqual(['Ataque base', 'Esquivar', 'Defenderse', 'Descansar']);
+    expect(abilities.map((a) => a.name)).toEqual(['Ataque base', 'Esquivar', 'Defenderse']);
   });
 
   it('con raza Y clase asignadas (ej. Orco Enfurecido real, GUERRERO/BERSERKER), usa solo las de clase — nunca la racial activa vieja', () => {
@@ -111,7 +101,7 @@ describe('npcCombatAbilitiesFor', () => {
       habilidadesRaciales: [{ icon: '🧶', name: 'Lana Espesa', description: 'x', categoria: 'defensa', preferredAttribute: 'fuerza', level: 1, effects: ['AGUANTE'] }],
     };
     const abilities = npcCombatAbilitiesFor(npc, []);
-    expect(abilities.map((a) => a.name)).toEqual(['Ataque base', 'Lana Espesa', 'Esquivar', 'Defenderse', 'Descansar']);
+    expect(abilities.map((a) => a.name)).toEqual(['Ataque base', 'Lana Espesa', 'Esquivar', 'Defenderse']);
   });
 
   // Sistema de categorías de raza de fauna (2026-09-02) — la habilidad racial específica ahora
@@ -253,10 +243,10 @@ describe('chooseNpcAbility — sistema de fatiga simétrico (2026-07-30)', () =>
   });
 
   it('descarta las habilidades de coste mayor al disponible, aunque el random las habría elegido', () => {
-    // Defenderse y Descansar son gratis de verdad (2026-08-15/17: Esquivar pasó a costar 5, ya no
-    // 0 — ver npcCombatAbilities.ts). Ataque base tampoco es gratis desde el rediseño 2026-07-31.
+    // Defenderse es gratis de verdad (2026-08-15: Esquivar pasó a costar 5, ya no 0 — ver
+    // npcCombatAbilities.ts). Ataque base tampoco es gratis desde el rediseño 2026-07-31.
     const affordable = abilities.filter((a) => a.energyCost === 0);
-    expect(affordable).toHaveLength(2);
+    expect(affordable).toHaveLength(1);
     const result = chooseNpcAbility(abilities, 'defensa', 10, () => 0.9); // Firmeza Férrea cuesta ENERGY_COST_BASICA (10), no alcanza
     expect(result.energyCost).toBe(0);
   });

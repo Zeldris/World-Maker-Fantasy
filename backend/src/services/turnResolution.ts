@@ -2984,17 +2984,12 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   // persiguiendo/persiguió usan "persig-", no "persegu-") — justo las formas que MÁS se usan en
   // esta escena real ("el que la persigue", "quien me persigue"). `persegu\w*` a secas solo cazaba
   // el sustantivo "perseguidor" y las formas de infinitivo/imperfecto, dejando fuera el verbo en
-  // presente casi siempre.
-  const PURSUER_REFERENCE_REGEX = /pers[ei]g\w*|pisa(?:n)? los talones/i;
-  // Bug real jugando en vivo (2026-09-06): la regex de arriba solo cazaba vocabulario GENÉRICO de
-  // "perseguidor" — pero tras el primer encuentro (o si la usuaria ya conoce el nombre por otra
-  // vía, p. ej. la propia misión "Acabar con el Orco Enfurecido" ya en pantalla), es igual de
-  // natural escribir el nombre propio directamente ("Busco al Orco enfurecido"). Sin esta segunda
-  // vía, el NPC igual entraba en escena y `shouldForceCombat` igual abría el combate (COMBATIR/
-  // HUIR en pantalla), pero el reveal determinista de más abajo nunca se disparaba — el jugador se
-  // encontraba con un "gruñido en la oscuridad" genérico en vez de la revelación real, mismo tipo
-  // de hueco que el bug original de 2026-08-20 que ya arregló el camino del "perseguidor".
-  const PURSUER_NAME_REFERENCE_REGEX = /orco\s+enfurecido/i;
+  // presente casi siempre. Bug real jugando en vivo (2026-09-06): sin una segunda vía por nombre
+  // propio directo ("Busco al Orco enfurecido"), el reveal determinista de más abajo nunca se
+  // disparaba tras el primer encuentro. `PURSUER_REFERENCE_REGEX`/`PURSUER_NAME_REFERENCE_REGEX`
+  // ahora viven en playerActionValidation.ts (2026-09-07) — el validador de `turn.ts`, que corre
+  // ANTES que este bloque, necesita el MISMO vocabulario para no rechazar un turno que este bloque
+  // sí habría resuelto un instante después (ver `isPursuerOrcoInScene`, mismo archivo).
   // Bandera para el añadido determinista de más abajo (junto a las fases de Gistera Koh) — SIN
   // ella, el modelo recibe a este NPC como "PERSONAJE EN ESCENA" en el contexto (mismo bloque
   // informativo que cualquier otro NPC, `npcSceneBlockFor`) pero nada le dice que ESTE es el turno
@@ -6153,7 +6148,10 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
 
     // Misiones (docs/09-panel-personaje.md) — mismo patrón que Reino: el modelo propone, el
     // backend valida y materializa. questProgress solo actúa si matchea una misión ACTIVA real.
-    if (narration.newQuest) {
+    // `title?.trim()` (2026-09-07, "salen misiones como UNDEFINED") — el schema no obliga a que el
+    // modelo rellene `title`; sin este guard, un `newQuest` con el campo vacío/ausente seguía todo
+    // este bloque (incluida la búsqueda de anclaje con "undefined" literal en el texto).
+    if (narration.newQuest?.title?.trim()) {
       // Cierre detectable por backend (roadmap 2026-07-19, mecánicas): si el título/descripción
       // menciona a un NPC ya confirmado en npcsInScene, se guarda como objetivo — en cuanto ese
       // NPC caiga (CONVALECIENTE/MUERTO, ver npcAttackTarget más abajo), la misión se cierra sola,
@@ -6200,8 +6198,14 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
       // verdad nace en `POST /saves/:id/quests/aceptar` (quests.ts), que vuelve a resolver los
       // anclajes por su cuenta contra el título/descripción exactos — nunca contra `npcsInScene`
       // de este turno concreto, que para entonces ya puede haber cambiado.
-      if (targetNpcId || targetLocationId || targetItemName) {
-        newQuestOfferInfo = { title: narration.newQuest.title, description: narration.newQuest.description };
+      // Bug real jugando en vivo (2026-09-07, "salen misiones como UNDEFINED"): el schema JSON del
+      // narrador (`newQuest: { title, description }`) no obliga a que el modelo rellene `title` —
+      // sin este guard, un turno donde el modelo devolvía el objeto con el campo vacío/ausente
+      // llegaba tal cual hasta el frontend, que literalmente interpola `undefined` en el texto del
+      // botón ("Misión propuesta: undefined"). Mismo criterio que el resto de guards de esta
+      // familia: mejor no ofrecer nada que ofrecer una tarjeta rota.
+      if ((targetNpcId || targetLocationId || targetItemName) && narration.newQuest?.title?.trim()) {
+        newQuestOfferInfo = { title: narration.newQuest.title.trim(), description: narration.newQuest.description ?? '' };
       }
     }
 

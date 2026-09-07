@@ -204,20 +204,6 @@ export function npcCombatAbilitiesFor(npc: NpcForCombatAbilities, weaponNames: s
     energyCost: 0,
     energyRegen: 5,
   });
-  // Descansar (2026-08-17) — tercera opción defensiva genérica, junto a Esquivar/Defenderse:
-  // regenera mucho más energía (15 en vez de los 5 de Defenderse) a cambio de no defender mejor
-  // que ella. "Te defiendes con el valor de la constitución /2" ya es exactamente la fórmula
-  // estándar de cualquier tirada (`attributes[attribute] / 2`, ver combatExchange.ts) — no hace
-  // falta ningún divisor especial, `attribute: 'constitucion'` ya lo cubre tal cual.
-  abilities.push({
-    name: 'Descansar',
-    description: 'Se toma un respiro breve en plena pelea, recuperando el aliento a costa de no buscar ninguna ventaja real.',
-    attribute: 'constitucion',
-    effects: ['AGUANTE'],
-    rol: 'defensa',
-    energyCost: 0,
-    energyRegen: 15,
-  });
   return abilities;
 }
 

@@ -7860,6 +7860,20 @@ export const harvestSourceAliases: Record<string, string[]> = {
   // Salvatura se malinterpretaría como Tura Jusha.
   'flor-salvatura': ['flor salvatura', 'flor de salvatura', 'flores de salvatura'],
 
+  // 'orco-rezagado' (bug real jugando en vivo, 2026-09-06/07, reportado por la usuaria: "al darle a
+  // Cazar... salía Ruptidar y Orco rezagado... y luego parpadea, se actualiza y solo queda el
+  // Ruptidar"): faltaba por completo en este mapa, así que `detectHarvestSourcesInScene` (harvest.ts)
+  // nunca reconocía el hecho de sesión que `POST /cazar/explorar` acababa de persistir con su
+  // nombre — el refresco silencioso de 2s (HuntSelectionModal.tsx) releía `sessionFacts` vía el GET
+  // y lo filtraba fuera en cuanto llegaba, aunque el POST inicial sí lo hubiera mostrado. No es una
+  // condición de carrera (`appendSessionFacts` está awaited de verdad antes de responder el POST):
+  // es que el slug nunca tuvo alias con los que matchear, por lo que `harvestSourceAliases[slug] ??
+  // []` devolvía vacío y el `.some(...)` de la línea 114 (harvest.ts) siempre era `false` para esta
+  // especie. Mismo patrón que 'ruptidar'/'canizor' de abajo. NOTA: hay otros ~17 slugs de
+  // `WorldPopulation` FAUNA sin entrada aquí (ver worldPopulation.ts) — no auditados uno a uno en
+  // esta pasada, este fix cubre solo el caso reportado y confirmado.
+  'orco-rezagado': ['orco rezagado', 'guerrero orco rezagado', 'orcos rezagados'],
+
   // Fauna nueva (mismos aliases que los del Npc correspondiente, ver array `fauna` arriba).
   canizor: ['canizor', 'canizores', "makt'orik"],
   gesgurio: ['gesgurio', 'gesgurios'],
