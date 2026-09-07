@@ -631,6 +631,14 @@ export function CombatPanel({
               <>
                 {initiativeRevealed ? 'Un enemigo actúa primero, elige a ciegas cómo defenderte.' : 'Tirando iniciativa...'}
                 <DiceRollVs
+                  // Hallazgo 27 (revisar-partida-hallazgos.md 2026-09-07) — sin `key`, React
+                  // reconcilia la MISMA instancia de `DiceRollVs` turno tras turno (misma posición
+                  // del árbol, `CombatPanel` se monta una única vez por combate): el
+                  // `useEffect(..., [])` interno de `useScrollIntoViewOnMount` (DiceRoll.tsx) solo
+                  // corre en el montaje real, así que el scroll automático a la tirada solo
+                  // funcionaba en la PRIMERA iniciativa del combate, nunca en las siguientes. Los
+                  // rolls crudos de esta tirada bastan como identidad — cambian en cada tirada real.
+                  key={`${lastInitiativeRoll.jugador.roll}-${lastInitiativeRoll.npc.roll}`}
                   left={lastInitiativeRoll.jugador}
                   right={lastInitiativeRoll.npc}
                   leftLabel="Tú"
@@ -654,6 +662,8 @@ export function CombatPanel({
                 : 'El enemigo actuará primero en tu próximo turno.'
               : 'Tirando iniciativa...'}
             <DiceRollVs
+              // Mismo motivo que el bloque `awaitingDefense` de arriba (hallazgo 27).
+              key={`${lastInitiativeRoll.jugador.roll}-${lastInitiativeRoll.npc.roll}`}
               left={lastInitiativeRoll.jugador}
               right={lastInitiativeRoll.npc}
               leftLabel="Tú"

@@ -468,9 +468,23 @@ la sesión de pruebas encontró MÁS problemas del mismo área que esos fixes no
     en vivo). **PENDIENTE — reproducir con más detalle.**
 27. **El scroll/foco automático a la tirada NO se posiciona bien para las tiradas de iniciativa**
     en general (la propia usuaria matiza después que en el caso concreto de turno de defensa sí
-    funciona bien — así que el problema parece acotado a iniciativa fuera de ese caso). **PENDIENTE
-    — acotar exactamente en qué transición de iniciativa falla el `useScrollIntoViewOnMount` de
-    `DiceRoll.tsx`.**
+    funciona bien — así que el problema parece acotado a iniciativa fuera de ese caso). **CERRADO
+    (2026-09-07)**: causa raíz confirmada — `useScrollIntoViewOnMount` (`DiceRoll.tsx`) dispara el
+    `scrollIntoView` dentro de un `useEffect(..., [])`, que solo corre en el MONTAJE real del
+    componente. Los dos `<DiceRollVs>` de iniciativa en `CombatPanel.tsx` (bloques `awaitingDefense`
+    y `!awaitingDefense`) no llevaban ningún `key` — `CombatPanel` se monta una única vez por
+    combate y permanece montado turno tras turno, así que React reconciliaba la MISMA instancia de
+    `DiceRollVs` en cada iniciativa nueva en vez de desmontar/remontar: el scroll solo se disparaba
+    en la primera iniciativa del combate, nunca en las siguientes — coherente con que la usuaria
+    viera bien el caso de defensa (a menudo la primera transición tras abrir el panel) y mal el
+    resto. Fix: `key={`${jugador.roll}-${npc.roll}`}` en ambos `<DiceRollVs>` — los rolls crudos de
+    cada tirada bastan como identidad distinta turno a turno, forzando el remount real (y con él,
+    que el `useEffect` de scroll se dispare de nuevo) en cada iniciativa. Verificado: `tsc -b`
+    limpio, suite completa de frontend en verde (207 tests, sin regresión) — sin test de
+    renderizado dedicado (`CombatPanel.tsx` no tiene test file propio, `scrollIntoView` tampoco
+    existe en jsdom, mismo criterio que el resto de scroll automático del proyecto). Pendiente
+    reverificar en vivo con Playwright: combate con 2+ intercambios y confirmar que la vista hace
+    scroll a la tirada de iniciativa en CADA transición, no solo la primera.
 
 **Interacción con la zona y el mapa**:
 28. **La Zona no muestra ni menciona al propio Gorhorn en el mapa** (ver captura de La Hondonada del
