@@ -424,12 +424,29 @@ la sesión de pruebas encontró MÁS problemas del mismo área que esos fixes no
     primero."/vida del NPC): aquí es el caso `awaitingDefense` (el otro bloque de `CombatPanel.tsx`,
     líneas ~609-630, el que NO se tocó en el fix de hoy) el que necesita el mismo tratamiento
     (`onAllLanded`/estado `initiativeRevealed`) que ya se aplicó al bloque de `!awaitingDefense`.
-    **PENDIENTE — aplicar el mismo patrón del fix de hoy también al bloque `awaitingDefense`.**
+    **YA CERRADO ANTES DE ESTA SESIÓN (2026-09-06, commit `6fe5eba`)** — confirmado al reverificar
+    el 2026-09-07: exactamente el mismo patrón (`initiativeRevealed`/`onAllLanded`) ya se aplicó al
+    bloque `awaitingDefense`, con el fondo gateado por `defenseBg = !ended && awaitingDefense &&
+    (!lastInitiativeRoll || initiativeRevealed)` y el texto por `{initiativeRevealed ? '...' :
+    'Tirando iniciativa...'}`.
 25a. **Mientras se está ejecutando CUALQUIER tirada de iniciativa, todo debería estar bloqueado**
     — la usuaria consiguió lanzar una habilidad antes de que el roll de los dados de iniciativa
     terminara de animarse/resolverse. Reportado como mensaje separado e independiente del 25b.
-    **PENDIENTE — revisar qué bloquea hoy el composer/botones de acción mientras `lastInitiativeRoll`
-    está animándose (`DiceRollVs` en curso).**
+    **CERRADO (2026-09-07)**: el mismo commit `6fe5eba` (ayer) ya había creado el estado
+    `awaitingNextInitiative` en `useCombatFlow.ts` (true desde que se programa el retraso de
+    2×ROLL_DURATION_MS hasta que se aplica de verdad) pero se quedó a medias — el estado existía y
+    se exponía desde el hook, pero ningún consumidor lo leía: `GameView.tsx` seguía pasando solo
+    `busy={combat.combatBusy}` a `CombatPanel`/`CombatComposer`, sin incluirlo en el cálculo. Fix:
+    cableado en los 2 sitios (`busy={combat.combatBusy || combat.awaitingNextInitiative}`) — ahora
+    el composer de texto libre y los botones de habilidad quedan bloqueados también durante la
+    animación de la iniciativa siguiente, no solo mientras se espera la respuesta del turno.
+    Verificado: `tsc -b` limpio, 2 aserciones nuevas en el describe de timing ya existente
+    (`useCombatFlow.test.tsx`, fake timers) confirmando que `awaitingNextInitiative` pasa a `true`
+    en el mismo instante que se programa el retraso y vuelve a `false` cuando se aplica, verificado
+    rigurosamente (revertir/confirmar fallo/restaurar). Suite completa de frontend en verde (207
+    tests). Pendiente reverificar en vivo con Playwright: lanzar una habilidad justo después de que
+    se resuelva un intercambio y confirmar que el composer/botones quedan bloqueados hasta que la
+    animación de la iniciativa siguiente termina.
 25b. **Entre que se resuelve un intercambio de combate y se lanza/muestra la tirada de iniciativa
     siguiente pasa demasiado tiempo** — debería ser casi inmediato. Y durante ESE tramo concreto
     (resultado del combate ya mostrado, iniciativa aún sin lanzar/resolver) todo debería estar

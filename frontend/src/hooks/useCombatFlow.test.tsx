@@ -810,18 +810,24 @@ describe('handleCombatTurnResolved — solo combatAwaitingDefense se retrasa has
     // ...pero el título/color (combatAwaitingDefense) todavía NO debe haber cambiado — sigue con
     // el valor de ANTES de este turno hasta que la animación de iniciativa termine de rodar.
     expect(result.current.combat.combatAwaitingDefense).toBe(false)
+    // Hallazgo 25a (revisar-partida-hallazgos.md 2026-09-07) — mientras rueda la animación de la
+    // iniciativa, todo debe estar bloqueado: `awaitingNextInitiative` pasa a `true` en el mismo
+    // instante que se programa el retraso de arriba, no solo cuando termina.
+    expect(result.current.combat.awaitingNextInitiative).toBe(true)
 
     // Avanza justo antes de que termine la animación (10s totales, 2 dados de 5s) — todavía nada.
     await act(async () => {
       await vi.advanceTimersByTimeAsync(9999)
     })
     expect(result.current.combat.combatAwaitingDefense).toBe(false)
+    expect(result.current.combat.awaitingNextInitiative).toBe(true)
 
-    // Termina la animación — ahora sí se aplica.
+    // Termina la animación — ahora sí se aplica, y el bloqueo se levanta a la vez.
     await act(async () => {
       await vi.advanceTimersByTimeAsync(1)
     })
     expect(result.current.combat.combatAwaitingDefense).toBe(true)
+    expect(result.current.combat.awaitingNextInitiative).toBe(false)
   })
 
   it('sin nextInitiativeRoll (turno forzado sin tirada, ej. Aturdimiento): se aplica de inmediato como siempre', async () => {
@@ -841,6 +847,8 @@ describe('handleCombatTurnResolved — solo combatAwaitingDefense se retrasa has
 
     expect(result.current.combat.combatAwaitingDefense).toBe(true)
     expect(result.current.combat.combatNpcsDisplay[0]?.condicion).toBe('HERIDO')
+    // Sin tirada real que animar, no hay nada que bloquear.
+    expect(result.current.combat.awaitingNextInitiative).toBe(false)
   })
 
   it('con finDePartida en el mismo turno que nextInitiativeRoll: el retraso NO reabre el combate ya cerrado', async () => {

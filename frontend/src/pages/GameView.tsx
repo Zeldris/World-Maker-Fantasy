@@ -1761,7 +1761,12 @@ export function GameView() {
               selectedItemId={combat.combatSelectedItemId}
               onSelectItem={combat.setCombatSelectedItemId}
               playerAttributes={characterAttributes}
-              busy={combat.combatBusy}
+              // `awaitingNextInitiative` (hallazgo 25a, revisar-partida-hallazgos.md 2026-09-07,
+              // useCombatFlow.ts) — `combatBusy` solo cubre la espera de la respuesta del turno,
+              // no la animación posterior de `DiceRollVs` (2×ROLL_DURATION_MS) para la iniciativa
+              // siguiente: sin esto, el jugador podía lanzar una habilidad mientras los dados
+              // todavía están rodando en pantalla.
+              busy={combat.combatBusy || combat.awaitingNextInitiative}
               ended={combat.combatEnded}
               playerJustDied={combat.combatPlayerJustDied}
               pendingDecisions={combat.combatHasPendingConvalecientes}
@@ -1898,7 +1903,7 @@ export function GameView() {
           freeText={combat.combatFreeText}
           onFreeTextChange={combat.setCombatFreeText}
           onSubmit={combat.handleCombatFreeSubmit}
-          busy={combat.combatBusy}
+          busy={combat.combatBusy || combat.awaitingNextInitiative}
           ended={combat.combatEnded}
           pendingDecisions={combat.combatHasPendingConvalecientes}
         />
