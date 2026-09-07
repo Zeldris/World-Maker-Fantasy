@@ -33,6 +33,7 @@ import { useTransitPolling } from '../hooks/useTransitPolling'
 import { useKingdomState } from '../hooks/useKingdomState'
 import { useActionModalsState } from '../hooks/useActionModalsState'
 import { useTurnFlow } from '../hooks/useTurnFlow'
+import { useClaseEspecializacionState } from '../hooks/useClaseEspecializacionState'
 import type { EnciclopediaLinkTarget } from '../lib/enciclopediaIndex'
 import { EnciclopediaLinkProvider } from '../context/EnciclopediaLinkContext'
 import { CompanerosPanel } from '../components/panels/CompanerosPanel'
@@ -91,8 +92,6 @@ import {
   getRecolectarLocalizado,
   resolveImageUrl,
   resolveDeath,
-  assignEspecializacion,
-  assignClase,
   type SaveDetail,
 } from '../lib/api'
 import { characterWaitingFlavor, combatWaitingFlavor, worldWaitingFlavor, useRotatingFlavor } from '../lib/waitingFlavor'
@@ -102,7 +101,6 @@ import type {
   ActiveEffect,
   Attribute,
   AttributeBlock,
-  Clase,
   CombatExchangeInfo,
   EntornoTemporalInfo,
   CompanionInfo,
@@ -110,7 +108,6 @@ import type {
   CurrentLocationInfo,
   DestinationInfo,
   Dificultad,
-  Especializacion,
   EquipSlot,
   InitiativeRollInfo,
   InventoryItemInfo,
@@ -416,15 +413,24 @@ export function GameView() {
   // Muerte permanente, botón Aceptar/Reintentar (2026-08-31) — mismo patrón que `endedAt`.
   const [pendingDeathResolution, setPendingDeathResolution] = useState(false)
   const [resolvingDeath, setResolvingDeath] = useState(false)
-  // Elección obligatoria de clase al empezar a jugar (2026-09-01, fix de bug real: personaje
-  // custom se quedaba sin clase para siempre) — mismo patrón que pendingDeathResolution.
-  const [pendingClaseChoice, setPendingClaseChoice] = useState(false)
-  const [clasesDisponibles, setClasesDisponibles] = useState<{ clase: Clase; resumenMecanico: string; iconoUrl: string | null }[]>([])
-  // Elección obligatoria de especialización a nivel 10 (2026-09-01) — mismo patrón que
-  // pendingDeathResolution: bloquea el composer hasta resolver.
-  const [pendingEspecializacionChoice, setPendingEspecializacionChoice] = useState(false)
-  const [especializacionesDisponibles, setEspecializacionesDisponibles] = useState<{ especializacion: Especializacion; resumenMecanico: string; iconoUrl: string | null }[]>([])
-  const [clase, setClase] = useState<Clase | null>(null)
+  // Estado de Clase/Especialización (deuda técnica, auditoría 2026-09) — ver
+  // hooks/useClaseEspecializacionState.ts: a diferencia de Reino/modales, aquí SOLO
+  // `syncFromSave` (más abajo) escribe estos 5 useState, así que el hook también encapsula los
+  // dos handlers de asignación completos, no solo agrupa la declaración.
+  const {
+    pendingClaseChoice,
+    setPendingClaseChoice,
+    clasesDisponibles,
+    setClasesDisponibles,
+    pendingEspecializacionChoice,
+    setPendingEspecializacionChoice,
+    especializacionesDisponibles,
+    setEspecializacionesDisponibles,
+    clase,
+    setClase,
+    handleAssignClase,
+    handleAssignEspecializacion,
+  } = useClaseEspecializacionState(saveId, syncFromSave)
   const [combateIniciado, setCombateIniciado] = useState<{ npcs: NpcInSceneInfo[] } | null>(null)
   // Rediseño del turno de combate (2026-07-29, "quiero que sea más claro cuando es turno de
   // ataque... indicándome qué salió en los dados") — tirada real de iniciativa del último turno
@@ -1560,25 +1566,7 @@ export function GameView() {
     }
   }
 
-  // Elección obligatoria de clase al empezar a jugar (2026-09-01, fix de bug real) — mismo
-  // criterio que handleAssignEspecializacion: recarga la partida entera para reflejar el tronco
-  // común de habilidades concedido por el backend.
-  async function handleAssignClase(clase: Clase) {
-    if (!saveId) return
-    await assignClase(saveId, clase)
-    const save = await getSave(saveId)
-    syncFromSave(save)
-  }
-
-  // Elección obligatoria de especialización a nivel 10 (2026-09-01) — mismo criterio que
-  // handleResolveDeath: recarga la partida entera para reflejar las habilidades nuevas concedidas
-  // por el backend, en vez de reconstruir el estado a mano.
-  async function handleAssignEspecializacion(especializacion: Especializacion) {
-    if (!saveId) return
-    await assignEspecializacion(saveId, especializacion)
-    const save = await getSave(saveId)
-    syncFromSave(save)
-  }
+  // handleAssignClase/handleAssignEspecializacion ahora viven en useClaseEspecializacionState.ts.
 
   function handleOpenEnciclopediaClasses() {
     setEnciclopediaInitialCategory('classes')
