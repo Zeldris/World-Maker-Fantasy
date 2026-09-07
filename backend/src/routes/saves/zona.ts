@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { prisma } from '../../lib/prisma.js';
 import { zoneMapImageUrl } from '../../lib/imageAssets.js';
-import { sourceDisplayNameFor } from '../../scripts/worldCatalog.js';
+import { sourceDisplayNameFor, harvestSourcesThatAreFaunaWithoutNpc } from '../../scripts/worldCatalog.js';
 import { detectNpcsInScene, scopeFor } from '../../services/npcScene.js';
 import { faunaMomentoDelDia } from '../../scripts/worldCatalog.js';
 import { loadSessionFacts } from '../../services/worldFacts.js';
@@ -65,6 +65,36 @@ export async function zonaRoutes(app: FastifyInstance) {
     // real en cada turno, aquí solo se lee lo que ya está persistido.
     const zonePointsActivos = zonePointsRaw.filter((p) => p.activo);
 
+    // Hallazgo 34 (revisar-partida-hallazgos.md 2026-09-07) — un `ZonePoint`/dinámico revelaba su
+    // nombre real y su botón de Enciclopedia sin mirar si la partida ya lo descubrió, filtrando
+    // información de cosas que el jugador aún no ha encontrado en la ficción. Mismo criterio real
+    // ya usado en la Enciclopedia (`world.ts` § `isDiscovered`), replicado aquí — sin la excepción
+    // de `nucleoJugable===false` (esos NPC nunca aparecen en escena/mapa real, ver
+    // `entityDiscovery.ts`, así que no hace falta duplicarla). `entityType` no es 1:1 con
+    // `ZonePoint.tipo`: NPC/FAUNA pueden resolver a `'npc'` o `'fauna'` según `Npc.kind`
+    // ('PRINCIPAL' → npc, el resto → fauna, mismo criterio que la línea de `dinamicos` más abajo),
+    // y RECURSO puede resolver a `'fauna'` (fuente sin ficha Npc propia, ver hallazgo 22,
+    // `harvestSourcesThatAreFaunaWithoutNpc`) o `'flora'` — mismo mapeo que ya usa
+    // `imageEntityTypeFor` en world.ts, sin poder reutilizarlo directo (función local no
+    // exportada). EDIFICIO nunca tiene ficha en la Enciclopedia (gobernado por `Building`/
+    // `construction.ts`) — siempre "descubierto" (nada que ocultar). OBJETO (dinámico "Tirar",
+    // hallazgo 8) resuelve contra `entityType: 'item'`.
+    const discoveredEntities = await prisma.discoveredEntity.findMany({ where: { saveId: save.id } });
+    const isDiscoveredEntity = (entityType: string, entitySlug: string): boolean =>
+      discoveredEntities.some((d) => d.entityType === entityType && d.entitySlug === entitySlug);
+    const npcKindBySlug = new Map<string, string>();
+    const descubierto = (tipo: 'FAUNA' | 'RECURSO' | 'NPC' | 'EDIFICIO' | 'OBJETO', targetSlug: string): boolean => {
+      // EDIFICIO: nunca tiene ficha en la Enciclopedia. OBJETO: instancia real ya visible en el
+      // suelo de ESTA partida (el propio jugador lo tiró, o ya estaba ahí) — tautológicamente "ya
+      // visto" por estar en el mapa, nunca un secreto de catálogo que ocultar.
+      if (tipo === 'EDIFICIO' || tipo === 'OBJETO') return true;
+      if (tipo === 'RECURSO') return isDiscoveredEntity(harvestSourcesThatAreFaunaWithoutNpc.has(targetSlug) ? 'fauna' : 'flora', targetSlug);
+      // FAUNA/NPC: 'PRINCIPAL' → npc, el resto → fauna — mismo criterio que la línea de `dinamicos`
+      // más abajo (`n.kind === 'PRINCIPAL' ? 'NPC' : 'FAUNA'`).
+      const kind = npcKindBySlug.get(targetSlug);
+      return isDiscoveredEntity(kind === 'PRINCIPAL' ? 'npc' : 'fauna', targetSlug);
+    };
+
     // NPCs presentados en escena de forma determinista (2026-08-26, bug/hueco real señalado
     // jugando: "no aparecen en la zona y sí tienen que salir" — Gistera Koh como perseguidora, o
     // un NPC de interrupción de la Capa 2/3, nunca tenían marcador aquí porque `ZonePoint` es solo
@@ -95,6 +125,8 @@ export async function zonaRoutes(app: FastifyInstance) {
         : [];
     const npcIdBySlugZonePoint = new Map(npcFaunaZonePointIds.map((n) => [n.slug, n.id]));
     const npcNameBySlugZonePoint = new Map(npcFaunaZonePointIds.map((n) => [n.slug, n.name]));
+    for (const n of npcFaunaZonePointIds) npcKindBySlug.set(n.slug, n.kind);
+    for (const n of dinamicosCandidatos) npcKindBySlug.set(n.slug, n.kind);
     const npcStateKeys = [
       ...dinamicosCandidatos.map((n) => ({ npcId: n.id, scope: scopeFor(n.kind, locationId) })),
       ...npcFaunaZonePointIds.map((n) => ({ npcId: n.id, scope: scopeFor(n.kind, locationId) })),
@@ -141,6 +173,7 @@ export async function zonaRoutes(app: FastifyInstance) {
       x: number;
       y: number;
       droppedItemId?: string;
+      descubierto: boolean;
     }[] = [];
     for (const n of dinamicosCandidatos) {
       const scope = scopeFor(n.kind, locationId);
@@ -158,7 +191,17 @@ export async function zonaRoutes(app: FastifyInstance) {
         });
       }
       ocupadas.push(pos);
-      dinamicos.push({ slug: n.slug, nombre: n.name, tipo: n.kind === 'PRINCIPAL' ? 'NPC' : 'FAUNA', color: zonePointColorFor(n.faction, factionsStatus), x: pos.x, y: pos.y });
+      const tipoDinamico = n.kind === 'PRINCIPAL' ? 'NPC' : 'FAUNA';
+      const yaDescubierto = descubierto(tipoDinamico, n.slug);
+      dinamicos.push({
+        slug: n.slug,
+        nombre: yaDescubierto ? n.name : '???',
+        tipo: tipoDinamico,
+        color: zonePointColorFor(n.faction, factionsStatus),
+        x: pos.x,
+        y: pos.y,
+        descubierto: yaDescubierto,
+      });
     }
 
     // "Tirar" objetos al suelo de la Zona (2026-09-06, hallazgo 8) — instancia POR PARTIDA
@@ -168,7 +211,7 @@ export async function zonaRoutes(app: FastifyInstance) {
     // catálogo estable (puede no tener `catalogSlug` en absoluto, si es narrativo).
     const droppedItems = await prisma.droppedItem.findMany({ where: { saveId: save.id, locationId } });
     for (const d of droppedItems) {
-      dinamicos.push({ slug: d.id, nombre: d.name, tipo: 'OBJETO', color: 'SIN_FACCION', x: d.x, y: d.y, droppedItemId: d.id });
+      dinamicos.push({ slug: d.id, nombre: d.name, tipo: 'OBJETO', color: 'SIN_FACCION', x: d.x, y: d.y, droppedItemId: d.id, descubierto: true });
     }
 
     if (zonePoints.length === 0) {
@@ -200,22 +243,29 @@ export async function zonaRoutes(app: FastifyInstance) {
       locationName,
       imageUrl: zoneMapImageUrl(locationSlug, momento, estacion),
       regionControl,
-      puntos: zonePoints.map((p) => ({
-        id: p.id,
-        x: p.x,
-        y: p.y,
-        tipo: p.tipo,
-        targetSlug: p.targetSlug,
-        nombre:
+      puntos: zonePoints.map((p) => {
+        const yaDescubierto = descubierto(p.tipo, p.targetSlug);
+        const nombreReal =
           p.label ??
           (p.tipo === 'RECURSO'
             ? sourceDisplayNameFor(p.targetSlug)
             : p.tipo === 'EDIFICIO'
               ? p.targetSlug
-              : (npcNameBySlugZonePoint.get(p.targetSlug) ?? p.targetSlug)),
-        cantidad: p.cantidad,
-        color: zonePointColorFor(p.factionSlug, factionsStatus),
-      })),
+              : (npcNameBySlugZonePoint.get(p.targetSlug) ?? p.targetSlug));
+        return {
+          id: p.id,
+          x: p.x,
+          y: p.y,
+          tipo: p.tipo,
+          targetSlug: p.targetSlug,
+          // Hallazgo 34 — nombre real solo si la partida ya lo descubrió; `'???'` cubre también un
+          // `label` puesto a mano (un alias custom seguiría filtrando información real).
+          nombre: yaDescubierto ? nombreReal : '???',
+          cantidad: p.cantidad,
+          color: zonePointColorFor(p.factionSlug, factionsStatus),
+          descubierto: yaDescubierto,
+        };
+      }),
       dinamicos,
       jugador,
     };

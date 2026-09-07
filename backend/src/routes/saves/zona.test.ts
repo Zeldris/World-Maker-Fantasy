@@ -14,6 +14,18 @@ const upsertNpcState = vi.fn();
 // "Tirar" objetos al suelo de la Zona (2026-09-06) — vacío por defecto: la mayoría de tests de este
 // archivo no tocan objetos tirados.
 const findManyDroppedItem = vi.fn();
+// Hallazgo 34 (revisar-partida-hallazgos.md 2026-09-07) — por defecto, los 4 slugs de
+// entidad-en-mapa que ya usaban los tests preexistentes de este archivo (gesgurio/kirelon-arenoso/
+// yerreo/gistera-koh) se simulan YA descubiertos, para no tener que tocar sus aserciones de
+// `nombre` una a una — solo el describe nuevo de este hallazgo sobreescribe esto explícitamente
+// para simular el caso "todavía sin descubrir".
+const findManyDiscoveredEntity = vi.fn();
+const DISCOVERED_BY_DEFAULT = [
+  { entityType: 'fauna', entitySlug: 'kirelon-arenoso' },
+  { entityType: 'fauna', entitySlug: 'gesgurio' },
+  { entityType: 'flora', entitySlug: 'yerreo' },
+  { entityType: 'npc', entitySlug: 'gistera-koh' },
+];
 
 vi.mock('../../lib/prisma.js', () => ({
   prisma: {
@@ -24,6 +36,7 @@ vi.mock('../../lib/prisma.js', () => ({
       upsert: (...args: unknown[]) => upsertNpcState(...args),
     },
     droppedItem: { findMany: (...args: unknown[]) => findManyDroppedItem(...args) },
+    discoveredEntity: { findMany: (...args: unknown[]) => findManyDiscoveredEntity(...args) },
   },
 }));
 
@@ -65,6 +78,7 @@ beforeEach(() => {
   upsertNpcState.mockReset().mockResolvedValue({});
   findManyDroppedItem.mockReset().mockResolvedValue([]);
   zoneMapImageUrlMock.mockReset().mockReturnValue(null);
+  findManyDiscoveredEntity.mockReset().mockResolvedValue(DISCOVERED_BY_DEFAULT);
 });
 
 afterEach(() => {
@@ -116,7 +130,7 @@ describe('GET /saves/:id/zona', () => {
     expect(body.disponible).toBe(true);
     expect(body.puntos).toEqual([]);
     expect(body.dinamicos).toEqual([
-      { slug: 'gistera-koh', nombre: 'Gistera Koh', tipo: 'NPC', color: 'SIN_FACCION', x: expect.any(Number), y: expect.any(Number) },
+      { slug: 'gistera-koh', nombre: 'Gistera Koh', tipo: 'NPC', color: 'SIN_FACCION', x: expect.any(Number), y: expect.any(Number), descubierto: true },
     ]);
     // Asignación perezosa (2026-09-04) — primera vez que se ve, se persiste su posición nueva.
     expect(upsertNpcState).toHaveBeenCalledWith(expect.objectContaining({ where: { saveId_npcId_scope: { saveId: 's1', npcId: 'npc-gistera', scope: '' } } }));
@@ -158,9 +172,9 @@ describe('GET /saves/:id/zona', () => {
     // Comprobamos el patrón esperado en vez de un valor fijo, sea cual sea el estado del archivo.
     expect(body.imageUrl === null || body.imageUrl === '/images/zona/hondonada-del-eco-mapa.png').toBe(true);
     expect(body.puntos).toEqual([
-      { id: 'zp1', x: 620, y: 180, tipo: 'FAUNA', targetSlug: 'kirelon-arenoso', nombre: 'Kirelon Arenoso', cantidad: 1, color: 'SIN_FACCION' },
-      { id: 'zp2', x: 400, y: 470, tipo: 'RECURSO', targetSlug: 'yerreo', nombre: expect.any(String), cantidad: 1, color: 'SIN_FACCION' },
-      { id: 'zp3', x: 100, y: 100, tipo: 'FAUNA', targetSlug: 'gesgurio', nombre: 'Etiqueta a mano', cantidad: 3, color: 'SIN_FACCION' }, // label manda sobre el nombre real
+      { id: 'zp1', x: 620, y: 180, tipo: 'FAUNA', targetSlug: 'kirelon-arenoso', nombre: 'Kirelon Arenoso', cantidad: 1, color: 'SIN_FACCION', descubierto: true },
+      { id: 'zp2', x: 400, y: 470, tipo: 'RECURSO', targetSlug: 'yerreo', nombre: expect.any(String), cantidad: 1, color: 'SIN_FACCION', descubierto: true },
+      { id: 'zp3', x: 100, y: 100, tipo: 'FAUNA', targetSlug: 'gesgurio', nombre: 'Etiqueta a mano', cantidad: 3, color: 'SIN_FACCION', descubierto: true }, // label manda sobre el nombre real
     ]);
     expect(body.dinamicos).toEqual([]);
   });
@@ -188,7 +202,7 @@ describe('GET /saves/:id/zona', () => {
     const res = await app.inject({ method: 'GET', url: '/saves/s1/zona' });
     const body = res.json();
     expect(body.puntos).toEqual([
-      { id: 'zp2', x: 400, y: 470, tipo: 'RECURSO', targetSlug: 'yerreo', nombre: expect.any(String), cantidad: 1, color: 'SIN_FACCION' },
+      { id: 'zp2', x: 400, y: 470, tipo: 'RECURSO', targetSlug: 'yerreo', nombre: expect.any(String), cantidad: 1, color: 'SIN_FACCION', descubierto: true },
     ]);
   });
 
@@ -207,7 +221,7 @@ describe('GET /saves/:id/zona', () => {
     const res = await app.inject({ method: 'GET', url: '/saves/s1/zona' });
     const body = res.json();
     expect(body.dinamicos).toEqual([
-      { slug: 'drop1', nombre: 'Cuchillo de hielo sílice', tipo: 'OBJETO', color: 'SIN_FACCION', x: 250, y: 300, droppedItemId: 'drop1' },
+      { slug: 'drop1', nombre: 'Cuchillo de hielo sílice', tipo: 'OBJETO', color: 'SIN_FACCION', x: 250, y: 300, droppedItemId: 'drop1', descubierto: true },
     ]);
     expect(findManyDroppedItem).toHaveBeenCalledWith({ where: { saveId: 's1', locationId: 'loc1' } });
   });
@@ -232,7 +246,7 @@ describe('GET /saves/:id/zona', () => {
     const app = await buildApp();
     const res = await app.inject({ method: 'GET', url: '/saves/s1/zona' });
     const body = res.json();
-    expect(body.dinamicos).toEqual([{ slug: 'gistera-koh', nombre: 'Gistera Koh', tipo: 'NPC', color: 'SIN_FACCION', x: expect.any(Number), y: expect.any(Number) }]);
+    expect(body.dinamicos).toEqual([{ slug: 'gistera-koh', nombre: 'Gistera Koh', tipo: 'NPC', color: 'SIN_FACCION', x: expect.any(Number), y: expect.any(Number), descubierto: true }]);
   });
 
   it('control regional (2026-08-27, Pieza 5): región con dueño de lore expone regionControl, región desconocida da null', async () => {
@@ -311,7 +325,7 @@ describe('GET /saves/:id/zona', () => {
       const app = await buildApp();
       const res = await app.inject({ method: 'GET', url: '/saves/s1/zona' });
       const body = res.json();
-      expect(body.dinamicos).toEqual([{ slug: 'gistera-koh', nombre: 'Gistera Koh', tipo: 'NPC', color: 'SIN_FACCION', x: 200, y: 300 }]);
+      expect(body.dinamicos).toEqual([{ slug: 'gistera-koh', nombre: 'Gistera Koh', tipo: 'NPC', color: 'SIN_FACCION', x: 200, y: 300, descubierto: true }]);
       expect(upsertNpcState).not.toHaveBeenCalled();
     });
 
@@ -349,7 +363,7 @@ describe('GET /saves/:id/zona', () => {
       const app = await buildApp();
       const res = await app.inject({ method: 'GET', url: '/saves/s1/zona' });
       const body = res.json();
-      expect(body.dinamicos).toEqual([{ slug: 'gistera-koh', nombre: 'Gistera Koh', tipo: 'NPC', color: 'SIN_FACCION', x: 200, y: 300 }]);
+      expect(body.dinamicos).toEqual([{ slug: 'gistera-koh', nombre: 'Gistera Koh', tipo: 'NPC', color: 'SIN_FACCION', x: 200, y: 300, descubierto: true }]);
     });
 
     it('ausente pero en OTRA Location (zonaLocationId distinto): no aplica el filtro, se reasigna posición', async () => {
@@ -431,6 +445,106 @@ describe('GET /saves/:id/zona', () => {
       expect(res.statusCode).toBe(200);
       const estacionUsada = zoneMapImageUrlMock.mock.calls[0]?.[2];
       expect(estacionUsada).not.toBeNull();
+    });
+  });
+
+  // Hallazgo 34 (revisar-partida-hallazgos.md 2026-09-07) — un ZonePoint/dinámico revelaba su
+  // nombre real y su botón de Enciclopedia sin mirar si la partida ya lo descubrió en la ficción.
+  describe('Descubrimiento (hallazgo 34, 2026-09-07)', () => {
+    it('un ZonePoint FAUNA aún no descubierto sale con nombre "???" y descubierto:false', async () => {
+      findManyDiscoveredEntity.mockReset().mockResolvedValue([]); // nada descubierto todavía
+      findUniqueSave.mockResolvedValueOnce({
+        id: 's1',
+        worldId: 'w1',
+        currentLocation: {
+          id: 'loc1',
+          slug: 'hondonada-del-eco',
+          name: 'La Hondonada del Eco',
+          zonePoints: [{ id: 'zp1', x: 620, y: 180, tipo: 'FAUNA', targetSlug: 'kirelon-arenoso', label: null, activo: true, cantidad: 1, factionSlug: null }],
+        },
+        // kirelon-arenoso es fauna nocturna (faunaMomentoDelDia) — 1320 = 22h, de noche.
+        worldState: { fictionalMinutes: 1320, factionsStatus: null, agenda: null },
+      });
+      findManyNpc.mockResolvedValueOnce([{ slug: 'kirelon-arenoso', name: 'Kirelon Arenoso' }]);
+      loadSessionFactsMock.mockResolvedValueOnce([]);
+      detectNpcsInSceneMock.mockResolvedValueOnce([]);
+      const app = await buildApp();
+      const res = await app.inject({ method: 'GET', url: '/saves/s1/zona' });
+      const body = res.json();
+      expect(body.puntos).toEqual([
+        { id: 'zp1', x: 620, y: 180, tipo: 'FAUNA', targetSlug: 'kirelon-arenoso', nombre: '???', cantidad: 1, color: 'SIN_FACCION', descubierto: false },
+      ]);
+    });
+
+    it('un ZonePoint RECURSO aún no descubierto sale con nombre "???", pero uno ya descubierto sale con su nombre real', async () => {
+      findManyDiscoveredEntity.mockReset().mockResolvedValue([{ entityType: 'flora', entitySlug: 'yerreo' }]); // solo yerreo descubierto
+      findUniqueSave.mockResolvedValueOnce({
+        id: 's1',
+        worldId: 'w1',
+        currentLocation: {
+          id: 'loc1',
+          slug: 'hondonada-del-eco',
+          name: 'La Hondonada del Eco',
+          zonePoints: [
+            { id: 'zp1', x: 620, y: 180, tipo: 'FAUNA', targetSlug: 'kirelon-arenoso', label: null, activo: true, cantidad: 1, factionSlug: null },
+            { id: 'zp2', x: 400, y: 470, tipo: 'RECURSO', targetSlug: 'yerreo', label: null, activo: true, cantidad: 1, factionSlug: null },
+          ],
+        },
+        // kirelon-arenoso es fauna nocturna (faunaMomentoDelDia) — 1320 = 22h, de noche.
+        worldState: { fictionalMinutes: 1320, factionsStatus: null, agenda: null },
+      });
+      findManyNpc.mockResolvedValueOnce([{ slug: 'kirelon-arenoso', name: 'Kirelon Arenoso' }]);
+      loadSessionFactsMock.mockResolvedValueOnce([]);
+      detectNpcsInSceneMock.mockResolvedValueOnce([]);
+      const app = await buildApp();
+      const res = await app.inject({ method: 'GET', url: '/saves/s1/zona' });
+      const body = res.json();
+      const zp1 = body.puntos.find((p: { id: string }) => p.id === 'zp1');
+      const zp2 = body.puntos.find((p: { id: string }) => p.id === 'zp2');
+      expect(zp1.nombre).toBe('???');
+      expect(zp1.descubierto).toBe(false);
+      expect(zp2.nombre).not.toBe('???');
+      expect(zp2.descubierto).toBe(true);
+    });
+
+    it('un ZonePoint EDIFICIO siempre sale descubierto, aunque no haya ninguna DiscoveredEntity', async () => {
+      findManyDiscoveredEntity.mockReset().mockResolvedValue([]);
+      findUniqueSave.mockResolvedValueOnce({
+        id: 's1',
+        worldId: 'w1',
+        currentLocation: {
+          id: 'loc1',
+          slug: 'campamento-serhu',
+          name: 'Campamento del Clan Serhu',
+          zonePoints: [{ id: 'zp1', x: 400, y: 300, tipo: 'EDIFICIO', targetSlug: 'karot-vekhad', label: null, activo: true, cantidad: 1, factionSlug: null }],
+        },
+      });
+      loadSessionFactsMock.mockResolvedValueOnce([]);
+      detectNpcsInSceneMock.mockResolvedValueOnce([]);
+      const app = await buildApp();
+      const res = await app.inject({ method: 'GET', url: '/saves/s1/zona' });
+      const body = res.json();
+      expect(body.puntos[0].descubierto).toBe(true);
+      expect(body.puntos[0].nombre).not.toBe('???');
+    });
+
+    it('un objeto tirado (dinámico OBJETO) siempre sale descubierto, es una instancia real ya en el suelo', async () => {
+      findManyDiscoveredEntity.mockReset().mockResolvedValue([]);
+      findUniqueSave.mockResolvedValueOnce({
+        id: 's1',
+        worldId: 'w1',
+        currentLocation: { id: 'loc1', slug: 'hondonada-del-eco', name: 'La Hondonada del Eco', zonePoints: [] },
+      });
+      loadSessionFactsMock.mockResolvedValueOnce([]);
+      detectNpcsInSceneMock.mockResolvedValueOnce([]);
+      findManyDroppedItem.mockResolvedValueOnce([
+        { id: 'drop1', saveId: 's1', locationId: 'loc1', x: 250, y: 300, name: 'Cuchillo de hielo sílice', description: 'x', catalogSlug: null, statBonuses: null, createdAt: new Date() },
+      ]);
+      const app = await buildApp();
+      const res = await app.inject({ method: 'GET', url: '/saves/s1/zona' });
+      const body = res.json();
+      expect(body.dinamicos[0].descubierto).toBe(true);
+      expect(body.dinamicos[0].nombre).toBe('Cuchillo de hielo sílice');
     });
   });
 });

@@ -31,10 +31,13 @@ type ZonePointDetailSource = {
   cantidad?: number
   /// "Tirar" objetos al suelo de la Zona (2026-09-06) — solo presente cuando `tipo === 'OBJETO'`.
   droppedItemId?: string
+  /// Hallazgo 34 (revisar-partida-hallazgos.md 2026-09-07) — false si la partida todavía no
+  /// descubrió esto en la ficción; oculta "Ver en la Enciclopedia" aunque exista ficha real.
+  descubierto: boolean
 }
 
 export function zonaDinamicoToDetailSource(d: ZonaDinamicoInfo): ZonePointDetailSource {
-  return { targetSlug: d.slug, nombre: d.nombre, tipo: d.tipo, color: d.color, droppedItemId: d.droppedItemId }
+  return { targetSlug: d.slug, nombre: d.nombre, tipo: d.tipo, color: d.color, droppedItemId: d.droppedItemId, descubierto: d.descubierto }
 }
 
 /// Modal de detalle de un pin de Zona (2026-09-04, petición explícita jugando en vivo: "teniendo
@@ -82,7 +85,10 @@ export function ZonePointDetailModal({
               Recoger
             </button>
           )}
-          {target && (
+          {/* Hallazgo 34 — el botón exige `target` (ficha real) Y `descubierto` (la partida ya lo
+              encontró en la ficción); sin esto último, ofrecer el link filtraría información de
+              algo que el jugador aún no ha descubierto, solo por verlo marcado en el mapa. */}
+          {target && point.descubierto && (
             <button type="button" onClick={() => { onEntityDetail?.(target); onClose() }} className={confirmButtonClasses('accent')}>
               Ver en la Enciclopedia
             </button>
@@ -95,7 +101,11 @@ export function ZonePointDetailModal({
         <span className="rounded-full border border-iron-700 bg-wood-950/50 px-2.5 py-1 uppercase tracking-wide text-wood-400">{COLOR_LABEL[point.color]}</span>
         {!!point.cantidad && point.cantidad > 1 && <span className="rounded-full border border-iron-700 bg-wood-950/50 px-2.5 py-1 uppercase tracking-wide text-wood-400">×{point.cantidad}</span>}
       </div>
-      {!target && <p className="text-xs italic text-wood-500">Todavía sin ficha propia en la Enciclopedia.</p>}
+      {!point.descubierto ? (
+        <p className="text-xs italic text-wood-500">Todavía no lo has descubierto en la partida.</p>
+      ) : (
+        !target && <p className="text-xs italic text-wood-500">Todavía sin ficha propia en la Enciclopedia.</p>
+      )}
     </SelectionModalShell>
   )
 }

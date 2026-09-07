@@ -1015,12 +1015,18 @@ export interface ZonePointInfo {
   y: number
   tipo: 'FAUNA' | 'RECURSO' | 'NPC' | 'EDIFICIO'
   targetSlug: string
+  /// Hallazgo 34 (revisar-partida-hallazgos.md 2026-09-07) — `'???'` en vez del nombre real cuando
+  /// `!descubierto` (backend ya lo resuelve, cruzando `DiscoveredEntity`).
   nombre: string
   /// Instancia viva (2026-08-27, Pieza 3 de "Dinamismo del mundo") — cuántos individuos reales
   /// representa este punto (agrupación por población regional real vía `WorldPopulation`), y su
   /// color por reputación con `factionSlug` (verde/amarillo/rojo; sin facción = naranja).
   cantidad: number
   color: 'ALIADO' | 'NEUTRO' | 'ENEMIGO' | 'SIN_FACCION'
+  /// Hallazgo 34 (2026-09-07) — false si la partida todavía no lo ha descubierto en la ficción
+  /// (`DiscoveredEntity`); el modal de detalle debe ocultar "Ver en la Enciclopedia" en ese caso,
+  /// aunque exista ficha real. `EDIFICIO` siempre `true` (nunca tiene ficha que ocultar).
+  descubierto: boolean
 }
 /// NPCs presentados de forma determinista (2026-08-26, "no aparecen en la zona y sí tienen que
 /// salir") — a diferencia de `ZonePointInfo` (catálogo fijo, con posición real curada), estos
@@ -1043,6 +1049,9 @@ export interface ZonaDinamicoInfo {
   /// `tipo === 'OBJETO'`; id real de la fila para poder recogerla (a diferencia de NPC/fauna, un
   /// objeto tirado no tiene slug de catálogo estable).
   droppedItemId?: string
+  /// Hallazgo 34 (2026-09-07) — mismo criterio que `ZonePointInfo.descubierto`. `OBJETO` siempre
+  /// `true` (instancia real ya visible en el suelo de esta partida, nunca un secreto de catálogo).
+  descubierto: boolean
 }
 /// Control regional (2026-08-27, Pieza 5 de "Dinamismo del mundo") — derivado en caliente de
 /// `WorldState.agenda`, sin logo real todavía (placeholder de texto en el frontend mientras se

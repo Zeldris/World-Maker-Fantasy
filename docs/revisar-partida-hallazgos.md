@@ -611,15 +611,27 @@ la sesión de pruebas encontró MÁS problemas del mismo área que esos fixes no
     en la partida real** — clicando un punto del mapa de Zona que el jugador no ha descubierto
     todavía en la ficción, hoy se puede acceder a su información completa. Se pide que, en ese caso,
     el nombre en el punto de la Zona se muestre con interrogantes y que el modal NO ofrezca el botón
-    "Ver en la Enciclopedia", para no filtrar información de algo no descubierto. **DIAGNOSTICADO,
-    PENDIENTE DE APLICAR** — confirmado que `GET /saves/:id/zona` no cruza contra `DiscoveredEntity`
-    (el modelo real de "¿está descubierto?" en este proyecto, ya usado en `world.ts`), así que todo
-    `ZonePoint` revela su nombre real y su botón de Enciclopedia sin mirar si la partida ya lo
-    descubrió. Fix identificado: `zona.ts` anota cada punto con un booleano `descubierto` (cruzando
-    `DiscoveredEntity` por `targetSlug`+tipo), `ZonePointDetailModal.tsx` usa `'???'` en vez del
-    nombre real y oculta el botón cuando `!descubierto`. No aplicado todavía en esta ronda — toca el
-    contrato de la respuesta de Zona, mejor con más tiempo dedicado que el resto de fixes puntuales
-    de hoy.
+    "Ver en la Enciclopedia", para no filtrar información de algo no descubierto. **CERRADO
+    (2026-09-07)**: diagnóstico previo confirmado y aplicado. `zona.ts` ahora cruza cada `ZonePoint`/
+    dinámico contra `DiscoveredEntity` (mismo criterio real ya usado en `world.ts` § `isDiscovered`,
+    sin la excepción de `nucleoJugable===false`: esos NPC nunca aparecen en escena/mapa real). La
+    traducción `ZonePoint.tipo → entityType` no es 1:1 (matiz no anticipado en el diagnóstico
+    original): FAUNA/NPC resuelven a `'npc'` o `'fauna'` según `Npc.kind` (`'PRINCIPAL'` → npc, el
+    resto → fauna), RECURSO resuelve a `'fauna'` (fuente sin ficha Npc propia, ver hallazgo 22) o
+    `'flora'` — mismo mapeo que `imageEntityTypeFor` en `world.ts`, sin poder reutilizarlo directo
+    (función local no exportada). EDIFICIO siempre "descubierto" (nunca tiene ficha). OBJETO
+    (dinámico "Tirar", hallazgo 8, posterior al diagnóstico original) también siempre "descubierto"
+    a propósito: es una instancia real ya visible en el suelo de esa partida, no un secreto de
+    catálogo. Backend devuelve `nombre: '???'` directamente cuando no está descubierto (cubre el
+    mapa entero de una vez, sin tocar cada renderizado del frontend) más un campo `descubierto`
+    nuevo; `ZonePointDetailModal.tsx` oculta "Ver en la Enciclopedia" cuando `!descubierto`, aunque
+    exista ficha real, y muestra un texto distinto ("Todavía no lo has descubierto en la partida").
+    Verificado: `tsc -b` limpio backend+frontend, 4 tests nuevos en `zona.test.ts` (FAUNA/RECURSO no
+    descubiertos → `'???'`, EDIFICIO/OBJETO siempre descubiertos), 19 tests preexistentes del mismo
+    archivo ajustados (mock de `discoveredEntity` nuevo, con los 4 slugs ya usados simulados como
+    ya descubiertos para no tocar sus aserciones de nombre), verificado rigurosamente (revertir/
+    confirmar fallo/restaurar). Suite completa backend (2253 tests) y frontend (207 tests) en verde.
+    Línea base de fallos de infraestructura preexistente sin cambios (3, mismos de siempre).
 
 **Enciclopedia y generación de imágenes**:
 35. **El Ruptidar no aparece como descubierto en la Enciclopedia** pese a haberlo encontrado/
