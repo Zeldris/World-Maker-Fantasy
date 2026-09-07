@@ -621,6 +621,7 @@ export async function turnRoutes(app: FastifyInstance) {
     const absentNpcClaim = await detectsAbsentSceneNpcClaim(
       action,
       save.worldId,
+      saveId,
       npcsInSceneForValidation.map((n) => n.slug),
     );
     if (absentNpcClaim) {

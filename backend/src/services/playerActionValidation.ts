@@ -12,6 +12,7 @@
 /// una frase determinista en la voz de Gorhorn, sin gastar ni un segundo de generación.
 import { normalizeText, detectsTravelIntent, detectsVagueMovementIntent, matchDestination } from './travel.js';
 import { matchNpcAliases, detectsAttackIntent, detectsDialogueIntent, detectsHostileSearchIntent } from './npcScene.js';
+import { detectsSearchIntent } from './discovery.js';
 import { ANACHRONISM_REGEX } from './narrador.js';
 import { matchHarvestSource, matchesVerbForMetodo, matchesAnyHarvestVerb } from './harvest.js';
 import { harvestAbilityForMetodo } from './harvestAbilities.js';
@@ -137,12 +138,61 @@ export interface AbsentSceneNpcClaim {
 /// Solo dispara con intención real de interacción (mismos detectores que ya usa `turn.ts` para
 /// decidir diálogo/ataque/búsqueda hostil) — una mención de pasada sin intención de interactuar
 /// no es una reclamación de presencia.
-export async function detectsAbsentSceneNpcClaim(action: string, worldId: string, npcsInSceneSlugs: string[]): Promise<AbsentSceneNpcClaim | null> {
+/// Mismo vocabulario EXACTO que la inyección determinista del perseguidor de Gistera Koh en
+/// `turnResolution.ts` (bloque junto a `PURSUER_REFERENCE_REGEX`/`PURSUER_NAME_REFERENCE_REGEX`) —
+/// exportadas aquí para que ambos puntos del pipeline compartan una sola fuente de verdad del
+/// vocabulario, en vez de dos copias de los mismos regex que podrían desincronizarse.
+export const PURSUER_REFERENCE_REGEX = /pers[ei]g\w*|pisa(?:n)? los talones/i;
+export const PURSUER_NAME_REFERENCE_REGEX = /orco\s+enfurecido/i;
+
+/// Bug real jugando en vivo (2026-09-07, "Ataco al 'Orco enfurecido' que persigue a 'Gistera
+/// Koh'." rechazado con "No hay ningún Gistera Koh al que dirigirse aquí"): el validador de
+/// `turn.ts` corre ANTES que la inyección determinista del perseguidor en `turnResolution.ts` —
+/// construye su propia lista de "quién está en escena" (`detectNpcsInScene`) sin conocer esa
+/// inyección ad-hoc, así que el Orco Enfurecido (el objetivo REAL del ataque) nunca contaba como
+/// presente para el validador, aunque sí lo estuviera un instante después en la fase de
+/// narración. El propio Orco no citaba ningún alias de catálogo salvo su nombre exacto, así que el
+/// guard "existe pero no está aquí" nunca disparaba sobre él — pero el SEGUNDO nombre citado en la
+/// misma frase (Gistera Koh, mencionada solo como contexto: "que persigue a Y") sí, y `.find()`
+/// (más abajo) devolvía ese antes, bloqueando el turno entero con un mensaje que no menciona en
+/// absoluto al objetivo real. Misma consulta (`prisma.quest.findFirst({ title: { contains: 'Orco
+/// Enfurecido' } } })`) y mismo criterio `status === 'ACTIVA'` que `gisteraQuestYaExiste` en
+/// turnResolution.ts — este validador corre antes en el pipeline y no tiene acceso a esa variable
+/// ya cargada, así que paga su propia consulta (barata, sin narración de por medio).
+export async function isPursuerOrcoInScene(action: string, saveId: string): Promise<boolean> {
+  if (!PURSUER_REFERENCE_REGEX.test(action) && !PURSUER_NAME_REFERENCE_REGEX.test(action)) return false;
+  if (!detectsSearchIntent(action) && !detectsAttackIntent(action) && !detectsHostileSearchIntent(action)) return false;
+  const gisteraQuest = await prisma.quest.findFirst({ where: { saveId, title: { contains: 'Orco Enfurecido' } } });
+  return gisteraQuest?.status === 'ACTIVA';
+}
+
+/// Primer nombre citado entre comillas simples ("Ataco al 'X' que hace algo a 'Y'.") — mismo
+/// patrón/regex que ya usa `resolverObjetivoPorTexto` (combateMultiple.ts) para decidir a quién
+/// apunta de verdad un ataque citado entre varios candidatos: la convención del resto del motor es
+/// que el PRIMER nombre citado tras el verbo de intención es el objetivo real de la frase — el
+/// resto de nombres citados (cláusulas subordinadas: "que persigue a...", "que viene de...") son
+/// contexto, no el destinatario de la acción.
+const QUOTED_NAME_MATCH_REGEX = /'([^']+)'/;
+
+export async function detectsAbsentSceneNpcClaim(action: string, worldId: string, saveId: string, npcsInSceneSlugs: string[]): Promise<AbsentSceneNpcClaim | null> {
   if (!detectsAttackIntent(action) && !detectsDialogueIntent(action) && !detectsHostileSearchIntent(action)) return null;
   const allNpcs = await prisma.npc.findMany({ where: { worldId }, select: { slug: true, name: true, aliases: true } });
   const matchable = allNpcs.map((n) => ({ id: n.slug, aliases: [n.name, ...n.aliases] }));
   const matchedSlugs = new Set(matchNpcAliases(action, matchable));
-  const absent = allNpcs.find((n) => matchedSlugs.has(n.slug) && !npcsInSceneSlugs.includes(n.slug));
+  const effectiveSceneSlugs = (await isPursuerOrcoInScene(action, saveId))
+    ? [...npcsInSceneSlugs, 'orco-enfurecido-hondonada']
+    : npcsInSceneSlugs;
+  // Bug real jugando en vivo (2026-09-07, ver comentario largo de `isPursuerOrcoInScene`): con
+  // MÁS de un nombre citado en la misma frase, si el PRIMERO (el objetivo real de la acción) sí
+  // está disponible, el turno no debe bloquearse solo porque un nombre secundario (mención de
+  // contexto en una cláusula subordinada) esté ausente — el jugador nunca pretendió dirigirse a
+  // ese segundo nombre.
+  const quotedMatch = action.match(QUOTED_NAME_MATCH_REGEX);
+  if (quotedMatch) {
+    const quotedNpc = allNpcs.find((n) => matchNpcAliases(`'${quotedMatch[1]}'`, [{ id: n.slug, aliases: [n.name, ...n.aliases] }]).includes(n.slug));
+    if (quotedNpc && effectiveSceneSlugs.includes(quotedNpc.slug)) return null;
+  }
+  const absent = allNpcs.find((n) => matchedSlugs.has(n.slug) && !effectiveSceneSlugs.includes(n.slug));
   return absent ? { name: absent.name } : null;
 }
 

@@ -3,11 +3,13 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 const findManyNpc = vi.fn();
 const findManyLocation = vi.fn();
 const findManyHarvestYield = vi.fn();
+const findFirstQuest = vi.fn();
 vi.mock('../lib/prisma.js', () => ({
   prisma: {
     npc: { findMany: (...args: unknown[]) => findManyNpc(...args) },
     location: { findMany: (...args: unknown[]) => findManyLocation(...args) },
     harvestYield: { findMany: (...args: unknown[]) => findManyHarvestYield(...args) },
+    quest: { findFirst: (...args: unknown[]) => findFirstQuest(...args) },
   },
 }));
 
@@ -85,27 +87,58 @@ describe('detectsAbsentSceneNpcClaim', () => {
     findManyNpc.mockReset().mockResolvedValue([
       { slug: 'torgash', name: 'Torgash', aliases: ["kort'ikar torgash"] },
       { slug: 'orco-enfurecido-hondonada', name: 'Orco enfurecido', aliases: ['orco enfurecido'] },
+      { slug: 'gistera-koh', name: 'Gistera Koh', aliases: [] },
     ]);
+    // Sin misión activa por defecto — la mayoría de los tests de este describe no la necesitan;
+    // el describe siguiente (isPursuerOrcoInScene) la sobreescribe caso a caso.
+    findFirstQuest.mockReset().mockResolvedValue(null);
   });
 
   it('detecta interactuar con un NPC real de catálogo que no está en la escena actual', async () => {
-    const result = await detectsAbsentSceneNpcClaim("Le pregunto a Torgash por su clan.", 'world1', []);
+    const result = await detectsAbsentSceneNpcClaim("Le pregunto a Torgash por su clan.", 'world1', 'save1', []);
     expect(result).toEqual({ name: 'Torgash' });
   });
 
   it('no dispara si el NPC mencionado SÍ está en la lista de escena', async () => {
-    const result = await detectsAbsentSceneNpcClaim('Le pregunto a Torgash por su clan.', 'world1', ['torgash']);
+    const result = await detectsAbsentSceneNpcClaim('Le pregunto a Torgash por su clan.', 'world1', 'save1', ['torgash']);
     expect(result).toBeNull();
   });
 
   it('no dispara sin intención real de interacción (mención de pasada)', async () => {
-    const result = await detectsAbsentSceneNpcClaim('Pienso en lo que me dijo Torgash hace días.', 'world1', []);
+    const result = await detectsAbsentSceneNpcClaim('Pienso en lo que me dijo Torgash hace días.', 'world1', 'save1', []);
     expect(result).toBeNull();
   });
 
   it('no dispara si el texto no nombra a ningún NPC real del catálogo', async () => {
-    const result = await detectsAbsentSceneNpcClaim('Ataco a un desconocido cualquiera.', 'world1', []);
+    const result = await detectsAbsentSceneNpcClaim('Ataco a un desconocido cualquiera.', 'world1', 'save1', []);
     expect(result).toBeNull();
+  });
+
+  // Bug real jugando en vivo (2026-09-07): "Ataco al 'Orco enfurecido' que persigue a 'Gistera
+  // Koh'." se rechazaba con "No hay ningún Gistera Koh al que dirigirse aquí" — el objetivo REAL
+  // del ataque (el Orco) sí estaba disponible vía la inyección determinista del perseguidor
+  // (`isPursuerOrcoInScene`), pero el validador no lo sabía y bloqueaba el turno citando el
+  // SEGUNDO nombre (mencionado solo como contexto), nunca el primero.
+  it('con la misión del Orco ACTIVA y vocabulario de perseguidor: el Orco cuenta como presente, y el turno no se bloquea aunque cite a Gistera (ya ausente) de paso', async () => {
+    findFirstQuest.mockResolvedValueOnce({ status: 'ACTIVA' });
+    const result = await detectsAbsentSceneNpcClaim(
+      "Ataco al 'Orco enfurecido' que persigue a 'Gistera Koh'.",
+      'world1',
+      'save1',
+      [],
+    );
+    expect(result).toBeNull();
+  });
+
+  it('sin la misión del Orco ACTIVA: el mismo texto SÍ se bloquea (el Orco no está disponible sin la quest)', async () => {
+    findFirstQuest.mockResolvedValueOnce(null);
+    const result = await detectsAbsentSceneNpcClaim(
+      "Ataco al 'Orco enfurecido' que persigue a 'Gistera Koh'.",
+      'world1',
+      'save1',
+      [],
+    );
+    expect(result).not.toBeNull();
   });
 });
 

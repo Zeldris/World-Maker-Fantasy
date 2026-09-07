@@ -116,6 +116,7 @@ import { claimChapterIfDue, scheduleChapterSummaryGeneration, releaseChapterClai
 import { captureLiveTeacherExample } from './liveTeacherCapture.js';
 import { recordEntityDiscoveries } from './entityDiscovery.js';
 import { detectsSearchIntent } from './discovery.js';
+import { PURSUER_REFERENCE_REGEX, PURSUER_NAME_REFERENCE_REGEX } from './playerActionValidation.js';
 import {
   nextCondicionFisica,
   resolveDeathOutcome,
