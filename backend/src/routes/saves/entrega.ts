@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { prisma } from '../../lib/prisma.js';
 import { scopeFor, type NpcItemInScene } from '../../services/npcScene.js';
-import { rejectIfEnded, toFrontendLogEntry } from './shared.js';
+import { rejectIfEnded, rejectIfPendingDeath, toFrontendLogEntry } from './shared.js';
 import { CONDICIONES_INTERACTUABLE } from '../../services/death.js';
 
 /// Entregar un objeto a un NPC (2026-08-31, mecánica real — antes solo existía la mitigación de
@@ -66,10 +66,11 @@ export async function entregaRoutes(app: FastifyInstance) {
     async (request, reply) => {
       const save = await prisma.save.findUnique({
         where: { id: request.params.id },
-        select: { id: true, worldId: true, currentLocationId: true, endedAt: true, characterName: true, worldState: { select: { fictionalDateLabel: true, fictionalMinutes: true } } },
+        select: { id: true, worldId: true, currentLocationId: true, endedAt: true, pendingDeathResolution: true, characterName: true, worldState: { select: { fictionalDateLabel: true, fictionalMinutes: true } } },
       });
       if (!save) return reply.status(404).send({ error: 'Partida no encontrada' });
       if (rejectIfEnded(save, reply)) return;
+      if (rejectIfPendingDeath(save, reply)) return;
       if (!save.currentLocationId) return reply.status(400).send({ error: 'Sin ubicación actual' });
 
       const { itemId } = request.body;

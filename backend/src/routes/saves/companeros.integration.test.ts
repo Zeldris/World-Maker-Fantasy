@@ -699,3 +699,55 @@ describe('Compañeros: guard de save.endedAt en captura/almacén/plantillas (aud
     expect(res.statusCode).toBe(409);
   });
 });
+
+describe('Compañeros: guard de save.pendingDeathResolution en captura/almacén/plantillas (auditoría de código backend 2026-09-07)', () => {
+  let saveId: string;
+
+  beforeAll(async () => {
+    const userId = await getDefaultUserId();
+    const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
+    const save = await prisma.save.create({
+      data: {
+        userId,
+        worldId: world.id,
+        characterName: 'Gorhorn de prueba (companeros, muerte pendiente)',
+        characterArchetype: 'guerrero',
+        characterOrigin: 'Clan Maktor',
+        characterMotivation: 'x',
+        attributes: { fuerza: 10, destreza: 10, constitucion: 10, inteligencia: 10, voluntad: 10, carisma: 10, magia: 10 },
+        portraitInitial: 'G',
+        pendingDeathResolution: true,
+      },
+    });
+    saveId = save.id;
+  });
+
+  afterAll(async () => {
+    await prisma.save.delete({ where: { id: saveId } });
+  });
+
+  it('POST /capturas/:itemId/soltar → 409', async () => {
+    const app = await buildApp();
+    const res = await app.inject({ method: 'POST', url: `/saves/${saveId}/capturas/item-inexistente/soltar` });
+    expect(res.statusCode).toBe(409);
+    expect(JSON.parse(res.body).pendingDeathResolution).toBe(true);
+  });
+
+  it('POST /almacen/depositar/:itemId → 409', async () => {
+    const app = await buildApp();
+    const res = await app.inject({ method: 'POST', url: `/saves/${saveId}/almacen/depositar/item-inexistente` });
+    expect(res.statusCode).toBe(409);
+    expect(JSON.parse(res.body).pendingDeathResolution).toBe(true);
+  });
+
+  it('POST /plantillas → 409', async () => {
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: `/saves/${saveId}/plantillas`,
+      payload: { name: 'x', rol: 'guardia', slots: { ARMA_PRINCIPAL: { category: 'arma' } } },
+    });
+    expect(res.statusCode).toBe(409);
+    expect(JSON.parse(res.body).pendingDeathResolution).toBe(true);
+  });
+});

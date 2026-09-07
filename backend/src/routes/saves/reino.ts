@@ -2,7 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import { Prisma } from '@prisma/client';
 import { prisma } from '../../lib/prisma.js';
 import { slugify } from '../../lib/slugify.js';
-import { rejectIfEnded } from './shared.js';
+import { rejectIfEnded, rejectIfPendingDeath } from './shared.js';
 
 /// Fundación de reino (2026-08-04, docs/17-reglas-construcciones-reino.md) — el popup que se abre
 /// al terminar de construir el Ayuntamiento (tier 1) manda aquí el formulario. Decisión manual de
@@ -44,6 +44,7 @@ export async function reinoRoutes(app: FastifyInstance) {
       // Reino sigue accesible y permitía fundar un reino nuevo para un personaje que la propia
       // partida ya da por definitivamente muerto.
       if (rejectIfEnded(save, reply)) return;
+      if (rejectIfPendingDeath(save, reply)) return;
 
       const ayuntamiento = await prisma.building.findFirst({ where: { saveId: save.id, recipeKey: 'ayuntamiento' } });
       if (!ayuntamiento) {

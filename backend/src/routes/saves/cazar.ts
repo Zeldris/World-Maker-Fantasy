@@ -11,7 +11,7 @@ import { recordEntityDiscoveries } from '../../services/entityDiscovery.js';
 import type { AttributeBlock } from '../../services/dice.js';
 import { iniciarCombatEncounter, resolverTurnosAutonomosHastaJugadora, type CombatienteInicial } from '../../services/combateMultipleOrquestacion.js';
 import { MAX_COMBATIENTES_POR_BANDO } from '../../services/combateMultiple.js';
-import { rejectIfEnded, lockRowForUpdate } from './shared.js';
+import { rejectIfEnded, rejectIfPendingDeath, lockRowForUpdate } from './shared.js';
 import { advanceFictionalMinutes, formatFictionalDate } from '../../services/worldClock.js';
 import { posicionDeObjetivo, moverJugadorA, minutoDeReaparicion } from '../../services/zonaPosicion.js';
 
@@ -278,6 +278,7 @@ export async function cazarRoutes(app: FastifyInstance) {
     // seguir cazando (mutando `WorldPopulation`/`NpcState` de verdad) para un personaje que la
     // propia partida ya da por definitivamente muerto.
     if (rejectIfEnded(save, reply)) return;
+    if (rejectIfPendingDeath(save, reply)) return;
 
     const candidates = await candidateFaunaFor(
       save.worldId,
@@ -316,6 +317,7 @@ export async function cazarRoutes(app: FastifyInstance) {
     if (!save) return reply.status(404).send({ error: 'Partida no encontrada' });
     // Bug real (auditoría de bugs, 2026-08-21) — ver comentario de /cazar/explorar arriba.
     if (rejectIfEnded(save, reply)) return;
+    if (rejectIfPendingDeath(save, reply)) return;
     if (Array.isArray(save.pendingCombatNpcSlugs) && save.pendingCombatNpcSlugs.length > 0) {
       return reply.status(400).send({ error: 'Ya hay un combate en curso — resuélvelo antes de salir a cazar.' });
     }

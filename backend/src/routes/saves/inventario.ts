@@ -8,7 +8,7 @@ import { weaponPoolFor, pesoArmaduraPermitidoFor } from '../../services/weaponAb
 import { inventoryCapacityFor, totalInventoryUnits } from '../../services/inventoryCapacity.js';
 import type { AttributeBlock } from '../../services/dice.js';
 import { EquipSlot } from '@prisma/client';
-import { rejectIfEnded, toFrontendLogEntry } from './shared.js';
+import { rejectIfEnded, rejectIfPendingDeath, toFrontendLogEntry } from './shared.js';
 
 /// Asignar/quitar un hueco de equipo (deuda técnica 2026-07-30, split de saves.ts) — decisión
 /// manual de la jugadora, el modelo nunca la toma (mismo criterio narrativo-sin-mecánica que el
@@ -49,6 +49,7 @@ export async function inventarioRoutes(app: FastifyInstance) {
       // terminada por muerte definitiva no debería permitir seguir ajustando el equipo del
       // personaje, aunque no toque ningún recurso compartido del mundo.
       if (rejectIfEnded(save, reply)) return;
+      if (rejectIfPendingDeath(save, reply)) return;
 
       // Requisitos de equipar (sesión de diseño 2026-07-23) + ranura compatible (2026-07-30,
       // petición explícita: "categorizarlos por ranura para que no pueda poner un casco en los
@@ -166,11 +167,13 @@ export async function inventarioRoutes(app: FastifyInstance) {
         zonaPosX: true,
         zonaPosY: true,
         endedAt: true,
+        pendingDeathResolution: true,
         worldState: { select: { fictionalDateLabel: true, fictionalMinutes: true } },
       },
     });
     if (!save) return reply.status(404).send({ error: 'Partida no encontrada' });
     if (rejectIfEnded(save, reply)) return;
+    if (rejectIfPendingDeath(save, reply)) return;
     if (!save.currentLocationId) return reply.status(400).send({ error: 'Sin ubicación actual' });
     if (save.zonaPosX == null || save.zonaPosY == null) {
       return reply.status(400).send({ error: 'Tu posición en el mapa de la zona todavía no está disponible' });
@@ -217,11 +220,13 @@ export async function inventarioRoutes(app: FastifyInstance) {
         currentLocationId: true,
         attributes: true,
         endedAt: true,
+        pendingDeathResolution: true,
         worldState: { select: { fictionalDateLabel: true, fictionalMinutes: true } },
       },
     });
     if (!save) return reply.status(404).send({ error: 'Partida no encontrada' });
     if (rejectIfEnded(save, reply)) return;
+    if (rejectIfPendingDeath(save, reply)) return;
 
     const dropped = await prisma.droppedItem.findFirst({ where: { id: request.params.droppedItemId, saveId: save.id } });
     if (!dropped) return reply.status(404).send({ error: 'Ese objeto ya no está aquí' });

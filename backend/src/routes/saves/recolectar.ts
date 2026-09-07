@@ -20,7 +20,7 @@ import { rollGathering, dificultadForTier, gradoForRecurso, cantidadForGrado } f
 import type { GatheringRollResult, AttributeBlock, Attribute, GradoRecurso } from '../../services/dice.js';
 import { Prisma } from '@prisma/client';
 import type { Estacion, EstadoClima, MetodoObtencion } from '@prisma/client';
-import { rejectIfEnded } from './shared.js';
+import { rejectIfEnded, rejectIfPendingDeath } from './shared.js';
 import { posicionDeObjetivo, moverJugadorA } from '../../services/zonaPosicion.js';
 
 /// Recolección (rediseño de profesiones, 2026-08-07) — lado "recolectora" (minero/talador/
@@ -641,6 +641,7 @@ export async function recolectarRoutes(app: FastifyInstance) {
     // (mutando `WorldPopulation`/inventario de verdad) para un personaje que la propia partida ya
     // da por definitivamente muerto.
     if (rejectIfEnded(save, reply)) return;
+    if (rejectIfPendingDeath(save, reply)) return;
 
     // Cooldown de pescador (2026-09-02, Pieza 1) — mismo criterio que el GET de arriba: "3 usos,
     // luego 30 min" por JUGADOR, comprobado antes de gastar nada en candidatos/tirada.
@@ -729,6 +730,7 @@ export async function recolectarRoutes(app: FastifyInstance) {
       if (!save) return reply.status(404).send({ error: 'Partida no encontrada' });
       // Bug real (auditoría de bugs, 2026-08-21) — ver comentario de /recolectar/:oficio/explorar arriba.
       if (rejectIfEnded(save, reply)) return;
+      if (rejectIfPendingDeath(save, reply)) return;
 
       interface TouchedStack {
         id: string;

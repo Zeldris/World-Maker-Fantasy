@@ -6,7 +6,7 @@ import { loadSessionFacts, appendSessionFacts } from '../../services/worldFacts.
 import { recordEntityDiscoveries } from '../../services/entityDiscovery.js';
 import { grantQuestRewardItems, questRewardNarrationFor } from '../../services/questResolution.js';
 import { generateQuestResponseNarration } from '../../services/narrador.js';
-import { rejectIfEnded } from './shared.js';
+import { rejectIfEnded, rejectIfPendingDeath } from './shared.js';
 
 /// Misión con lógica especial propia, además del anclaje genérico NPC/Location/Item (bug real
 /// 2026-08-28, "misión se salta los botones" — la creaba directamente `turnResolution.ts`, ahora
@@ -50,6 +50,7 @@ export async function questsRoutes(app: FastifyInstance) {
       const save = await prisma.save.findUnique({ where: { id: request.params.id }, include: { worldState: true } });
       if (!save) return reply.status(404).send({ error: 'Partida no encontrada' });
       if (rejectIfEnded(save, reply)) return;
+      if (rejectIfPendingDeath(save, reply)) return;
 
       // Idempotente (doble clic, o "Aceptar" pulsado dos veces tras recargar): una misión con el
       // mismo título ya activa/resuelta para esta partida no se duplica, se devuelve tal cual.
@@ -210,10 +211,11 @@ export async function questsRoutes(app: FastifyInstance) {
   app.post<{ Params: { id: string } }>('/saves/:id/quests/cancelar', async (request, reply) => {
     const save = await prisma.save.findUnique({
       where: { id: request.params.id },
-      select: { id: true, endedAt: true, pendingQuestOfferInfo: true },
+      select: { id: true, endedAt: true, pendingDeathResolution: true, pendingQuestOfferInfo: true },
     });
     if (!save) return reply.status(404).send({ error: 'Partida no encontrada' });
     if (rejectIfEnded(save, reply)) return;
+    if (rejectIfPendingDeath(save, reply)) return;
     if (save.pendingQuestOfferInfo) {
       await prisma.save.update({ where: { id: save.id }, data: { pendingQuestOfferInfo: Prisma.JsonNull } });
     }

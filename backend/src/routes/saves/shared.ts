@@ -38,6 +38,23 @@ export function rejectIfEnded(save: { endedAt: Date | null }, reply: FastifyRepl
   return false;
 }
 
+/// Guard de `save.pendingDeathResolution` (auditoría de código backend 2026-09-07, decisión
+/// confirmada con la usuaria: bloquear TODO menos el propio `POST /death/resolve` mientras hay una
+/// muerte pendiente de resolver, mismo espíritu que `rejectIfEnded` pero para este estado
+/// transitorio). Antes solo se comprobaba a mano en `routes/turn.ts` (`/turn/classify` y
+/// `/turn/narrate`) — mismo mensaje/forma de respuesta que ya usaban esos dos, ahora reutilizable
+/// desde cualquier ruta mutante de `routes/saves/`. Igual que `rejectIfEnded`: no sustituye el
+/// `prisma.save.findUnique` de cada ruta, solo el guard en sí una vez que la ruta ya tiene el `save`
+/// en la mano. Devuelve `true` si ya respondió el 409 (el caller debe hacer
+/// `if (rejectIfPendingDeath(save, reply)) return;`).
+export function rejectIfPendingDeath(save: { pendingDeathResolution: boolean }, reply: FastifyReply): boolean {
+  if (save.pendingDeathResolution) {
+    reply.status(409).send({ error: 'Tienes una muerte pendiente de resolver', pendingDeathResolution: true });
+    return true;
+  }
+  return false;
+}
+
 /// Bloquea una fila con `SELECT ... FOR UPDATE` y relee las columnas pedidas dentro de la misma
 /// transacción — deuda técnica cerrada (auditoría 2026-09-01): el mismo `$queryRaw` con `FOR
 /// UPDATE` estaba copiado 7 veces entre `progression.ts`, `session.ts`, `cazar.ts` y

@@ -2,7 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import { prisma } from '../../lib/prisma.js';
 import { scopeFor } from '../../services/npcScene.js';
 import { checkAprenderOficio, nextGoirnosTrasCobro, COSTE_GOIRNOS_APRENDER_OFICIO } from '../../services/learnProfession.js';
-import { rejectIfEnded, toFrontendLogEntry } from './shared.js';
+import { rejectIfEnded, rejectIfPendingDeath, toFrontendLogEntry } from './shared.js';
 import { CONDICIONES_INTERACTUABLE } from '../../services/death.js';
 
 const MOTIVO_MENSAJE: Record<string, string> = {
@@ -74,6 +74,7 @@ export async function aprenderOficioRoutes(app: FastifyInstance) {
           worldId: true,
           currentLocationId: true,
           endedAt: true,
+          pendingDeathResolution: true,
           characterName: true,
           goirnos: true,
           worldState: { select: { fictionalDateLabel: true, fictionalMinutes: true, factionsStatus: true } },
@@ -81,6 +82,7 @@ export async function aprenderOficioRoutes(app: FastifyInstance) {
       });
       if (!save) return reply.status(404).send({ error: 'Partida no encontrada' });
       if (rejectIfEnded(save, reply)) return;
+      if (rejectIfPendingDeath(save, reply)) return;
       if (!save.currentLocationId) return reply.status(400).send({ error: 'Sin ubicación actual' });
 
       const npc = await prisma.npc.findUnique({ where: { worldId_slug: { worldId: save.worldId, slug: request.params.npcSlug } } });

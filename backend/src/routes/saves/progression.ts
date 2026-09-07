@@ -2,7 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import { prisma } from '../../lib/prisma.js';
 import { attributeCapForLevel } from '../../services/progression.js';
 import type { AttributeBlock, Attribute } from '../../services/dice.js';
-import { VALID_ATTRIBUTES, rejectIfEnded, lockRowForUpdate } from './shared.js';
+import { VALID_ATTRIBUTES, rejectIfEnded, rejectIfPendingDeath, lockRowForUpdate } from './shared.js';
 import {
   classAbilityUnlocksFor,
   especializacionAbilityUnlocksFor,
@@ -49,6 +49,7 @@ export async function progressionRoutes(app: FastifyInstance) {
       // puntos de atributo tras una muerte definitiva no debería seguir permitido, aunque no
       // toque ningún recurso compartido del mundo.
       if (rejectIfEnded(save, reply)) return;
+      if (rejectIfPendingDeath(save, reply)) return;
 
       // Bug real (auditoría 2026-08-06): `Save.attributes` es un único Json — sin bloquear la fila,
       // dos POST casi simultáneos (doble clic, dos pestañas) leían el mismo `attributes` desde
@@ -114,6 +115,7 @@ export async function progressionRoutes(app: FastifyInstance) {
       return reply.status(404).send({ error: 'Partida no encontrada' });
     }
     if (rejectIfEnded(save, reply)) return;
+    if (rejectIfPendingDeath(save, reply)) return;
     if (save.clase) {
       return reply.status(409).send({ error: `Esta partida ya tiene clase asignada: ${save.clase}` });
     }
@@ -171,6 +173,7 @@ export async function progressionRoutes(app: FastifyInstance) {
       return reply.status(404).send({ error: 'Partida no encontrada' });
     }
     if (rejectIfEnded(save, reply)) return;
+    if (rejectIfPendingDeath(save, reply)) return;
     if (!save.clase) {
       return reply.status(409).send({ error: 'Esta partida todavía no tiene clase asignada — hay que elegir clase antes que especialización' });
     }

@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { Prisma } from '@prisma/client';
 import { prisma } from '../../lib/prisma.js';
-import { rejectIfEnded } from './shared.js';
+import { rejectIfEnded, rejectIfPendingDeath } from './shared.js';
 import { characterSummaryFor } from '../../services/characterSummary.js';
 import { advanceFictionalMinutes, formatFictionalDate } from '../../services/worldClock.js';
 import { MAX_VUELTAS_MODO_DINAMICO, MINUTOS_POR_VUELTA_MODO_DINAMICO, type PendingDynamicMode, type DynamicModeTipo } from '../../services/dynamicMode.js';
@@ -27,6 +27,7 @@ export async function dynamicModeRoutes(app: FastifyInstance) {
       const save = await prisma.save.findUnique({ where: { id: request.params.id }, include: { worldState: true } });
       if (!save) return reply.status(404).send({ error: 'Partida no encontrada' });
       if (rejectIfEnded(save, reply)) return;
+      if (rejectIfPendingDeath(save, reply)) return;
       if (save.pendingDynamicMode) {
         return reply.status(409).send({ error: 'Ya hay un modo dinámico en curso' });
       }
@@ -102,6 +103,7 @@ export async function dynamicModeRoutes(app: FastifyInstance) {
     const save = await prisma.save.findUnique({ where: { id: request.params.id }, include: { worldState: true } });
     if (!save) return reply.status(404).send({ error: 'Partida no encontrada' });
     if (rejectIfEnded(save, reply)) return;
+    if (rejectIfPendingDeath(save, reply)) return;
 
     const pending = save.pendingDynamicMode as unknown as PendingDynamicMode | null;
     if (!pending) {
@@ -155,10 +157,11 @@ export async function dynamicModeRoutes(app: FastifyInstance) {
   app.post<{ Params: { id: string } }>('/saves/:id/modo-dinamico/ignorar', async (request, reply) => {
     const save = await prisma.save.findUnique({
       where: { id: request.params.id },
-      select: { id: true, endedAt: true, pendingDynamicMode: true, pendingDynamicModeOffer: true },
+      select: { id: true, endedAt: true, pendingDeathResolution: true, pendingDynamicMode: true, pendingDynamicModeOffer: true },
     });
     if (!save) return reply.status(404).send({ error: 'Partida no encontrada' });
     if (rejectIfEnded(save, reply)) return;
+    if (rejectIfPendingDeath(save, reply)) return;
     if (save.pendingDynamicMode || save.pendingDynamicModeOffer) {
       await prisma.save.update({
         where: { id: save.id },
