@@ -1,4 +1,4 @@
-import { useEffect, useRef, type ReactNode } from 'react'
+import { useEffect, useRef, type KeyboardEvent, type ReactNode } from 'react'
 
 interface SelectionModalShellProps {
   title: string
@@ -18,6 +18,13 @@ interface SelectionModalShellProps {
   disableOverlayClose?: boolean
 }
 
+/// Selector de elementos enfocables reales dentro del panel — mismo criterio mínimo de siempre para
+/// atrapar el foco a mano (sin librería): todo lo que normalmente recibe Tab, excluyendo lo
+/// deshabilitado (`disabled`) o sacado explícitamente del tab order (`tabIndex="-1"`, como el propio
+/// contenedor scrollable de abajo).
+const FOCUSABLE_SELECTOR =
+  'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])'
+
 /// Cascarón visual compartido de los modales de selección (overlay + plank-panel + título +
 /// Cancelar) — extraído (auditoría de deuda técnica 2026-08-18) tras confirmarse que este bloque
 /// vivía duplicado byte-a-byte en 11 componentes distintos. El cuerpo (lista de candidatos, estados
@@ -35,6 +42,40 @@ export function SelectionModalShell({ title, onCancel, cancelDisabled, children,
     scrollRef.current?.focus()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  // Accesibilidad básica de modal (auditoría de frontend 2026-09-07, decisión confirmada con la
+  // usuaria: empezar por este cascarón — cubre 11 de los ~18 modales del proyecto). Antes ningún
+  // modal anunciaba su rol a un lector de pantalla, no cerraba con Escape, y Tab podía "escapar"
+  // hacia botones de la página de detrás, tapados visualmente por el overlay pero todavía
+  // interactivos. Un único `onKeyDown` en el panel cubre ambos: Escape llama a `onCancel` (salvo
+  // `cancelDisabled`, mismo criterio que ya respeta el propio botón Cancelar); Tab/Shift+Tab en el
+  // primer/último elemento enfocable envuelve al otro extremo, sin salir nunca del panel.
+  const handleKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
+    if (e.key === 'Escape') {
+      if (cancelDisabled) return
+      e.stopPropagation()
+      onCancel()
+      return
+    }
+    if (e.key !== 'Tab') return
+    const panel = e.currentTarget
+    // `offsetParent !== null` (el criterio habitual de "visible") no sirve aquí: jsdom no calcula
+    // layout real y lo deja siempre en null, así que el atrapado de foco no se podría probar nunca
+    // con @testing-library/react. Ningún modal de este cascarón oculta dinámicamente elementos
+    // enfocables dentro del panel, así que basta con excluir lo marcado `hidden` explícitamente.
+    const focusable = Array.from(panel.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)).filter((el) => !el.closest('[hidden]'))
+    if (focusable.length === 0) return
+    const first = focusable[0]
+    const last = focusable[focusable.length - 1]
+    if (e.shiftKey && document.activeElement === first) {
+      e.preventDefault()
+      last.focus()
+    } else if (!e.shiftKey && document.activeElement === last) {
+      e.preventDefault()
+      first.focus()
+    }
+  }
+
   return (
     <div
       className="animate-overlay-in fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4"
@@ -43,6 +84,10 @@ export function SelectionModalShell({ title, onCancel, cancelDisabled, children,
       <div
         ref={scrollRef}
         tabIndex={-1}
+        role="dialog"
+        aria-modal="true"
+        aria-label={title}
+        onKeyDown={handleKeyDown}
         className="plank-panel animate-combat-enter relative flex max-h-[85vh] w-full max-w-md flex-col gap-4 overflow-y-auto rounded-xl p-5 outline-none"
         onClick={(e) => e.stopPropagation()}
       >
