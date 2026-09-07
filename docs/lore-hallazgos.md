@@ -14,6 +14,10 @@ Cada entrada: fecha, zona auditada, hallazgo, y estado.
 
 ## Índice
 
+**2026-09-07 — auditoría de lore post-2026-08-25 (frente paralelo de la ronda de 4 agentes)**
+- [clases.md: tabla-resumen y secciones detalladas de Guerrero/Cazador/Chamán/Arquero vuelven a desactualizarse tras la siembra de 22 habilidades del 2026-08-31](#2026-09-07-clasesmd-tabla-resumen-y-secciones-detalladas-de-guerrerocazadorchamánarquero-vuelven-a-desactualizarse-tras-la-siembra-de-22-habilidades-del-2026-08-31)
+- [Confirmado sin discrepancias — mundo determinista/agenda, Faction.description estática, banners, actualizaciones-pendientes-lore.md ya cubrió fauna/flora/vocabulario](#2026-09-07-confirmado-sin-discrepancias--mundo-determinista-agenda-factiondescription-estática-banners-actualizaciones-pendientes-loremd-ya-cubrió-faunaf-loravocabulario)
+
 **2026-08-25 — primera auditoría de lore centrada en sistemas nuevos post-2026-08-23 (3 agentes en paralelo)**
 - [combate-multiple.md sigue con el banner "nada implementado" pese a estar construido e integrado](#2026-08-25-combate-multiplemd-sigue-con-el-banner-nada-implementado-pese-a-estar-construido-e-integrado)
 - [combate-multiple.md dice que NpcState.groupSize/groupDefeated se retiran — el código los mantiene a propósito](#2026-08-25-combate-multiplemd-dice-que-npcstategroupsizegroupdefeated-se-retiran--el-código-los-mantiene-a-propósito)
@@ -192,3 +196,94 @@ Faction), estaciones (nombres Kektira, calendario 120 días, `estacionRequerida`
 clima (`climaRequerido` solo en arena-imán/esquirla, ciclo 40/40/40 confirmado matemáticamente).
 
 **Estado**: NO ES BUG / cosmético, sin acción necesaria.
+
+## 2026-09-07 — clases.md: tabla-resumen y secciones detalladas de Guerrero/Cazador/Chamán/Arquero vuelven a desactualizarse tras la siembra de 22 habilidades del 2026-08-31
+
+**Contexto**: esta auditoría (frente de lore de una ronda de 4 agentes en paralelo, backend/
+frontend/deuda técnica/lore) parte de la última entrada real de este archivo (2026-08-25). En el
+intervalo hubo una ronda de auditoría de lore muy exhaustiva el 2026-09-05/06 (ver
+`docs/rpgtarkor/actualizaciones-pendientes-lore.md`, 14/14 huecos de diseño + 9/9 + 11/12 hallazgos
+código↔doc cerrados) que cubrió a fondo mecanismos físicos, fauna/flora, geografía y vocabulario —
+pero no volvió a re-auditar el conteo de habilidades de clase, porque su foco fue otro. Este
+hallazgo llena ese hueco concreto.
+
+**Hallazgo (staleness, no contradicción de diseño — mismo patrón ya corregido el 2026-08-25)**: la
+misma tabla-resumen de `clases.md` (§ "Las 9 clases, resumen final de bloqueo") que ya se corrigió
+el 2026-08-25 (commit `f1bf8bb`) volvió a desincronizarse, porque el código avanzó después de esa
+corrección y el `.md` nunca se volvió a tocar. Concretamente:
+- **Auditoría 2026-08-31** (`classAbilities.ts`, comentario de cabecera): sembró 22 habilidades de
+  golpe en Guerrero/Cazador/Chamán ("el bloqueo real que quedaba en la mayoría de ellas era una
+  asunción incorrecta — AUMENTO/DEBILIDAD solo funcionan en ataque — no falta de infraestructura").
+  Esa auditoría corrigió su propio recuento en el comentario del código, pero nunca se propagó de
+  vuelta a `clases.md`: la tabla-resumen y las secciones detalladas de Berserker/Guardián/Lancero/
+  Especialista/Domador/Supervivencia/Tirador/Instintivo/Totémico/Rúnico/Convocador/Opresor seguían
+  marcando como "⚠️ bloqueada... sin sembrar" o "sembrable YA" filas que el código real ya tenía
+  sembradas desde esa misma pasada — 19 filas en total corregidas en esta auditoría, verificadas una
+  a una contra `classAbilities.ts` (no solo contra el comentario del propio código, que también
+  tenía un pequeño desfase: contaba Domador en 1/8 cuando el recuento real es 2/8).
+- **Maestro Arquero/Maestro Ballestero — el caso más grave, previo incluso al 2026-08-25**: la
+  sección de Arquero llevaba "7 de 8 listas — la especialización menos bloqueada de toda la sesión"
+  desde antes del 2026-08-24, pese a que el propio `classAbilities.ts` documenta en un comentario
+  fechado ese mismo día: *"Corrección frente al doc (2026-08-24): clases.md marcaba Maestro Arquero/
+  Maestro Ballestero como '7/8 listas'... pero 12/24/28 usan DEBILIDAD, 19 usa CONTRA, 24 también
+  AUMENTO y 32 usa MULTIPLE — ninguno implementado. Solo el nivel 16 es real hoy en cada rama."* Es
+  decir: el código ya sabía, documentado en su propio comentario, que el `.md` estaba mal — y nadie
+  volvió a corregir el `.md` en las 2 semanas siguientes, ni en la auditoría del 2026-08-25 (que sí
+  corrigió Guerrero/Cazador/Rúnico/Convocador/Opresor pero no llegó a Arquero) ni en la del
+  2026-09-06.
+
+Recuento real verificado contra `classAbilities.ts` (grep de `especializacion:` por clase), antes/
+después de esta corrección:
+
+| Especialización | `.md` decía | Real (código) |
+|---|---|---|
+| Berserker | 1/8 | 3/8 |
+| Guardián | 1/8 | 4/8 |
+| Lancero | 2/8 | 6/8 |
+| Especialista | 4/8 | 5/8 |
+| Domador | 0/8 | 1/8 |
+| Supervivencia | 1/8 | 7/8 |
+| Tirador | 5/8 | 6/8 |
+| Instintivo | 4/8 | 6/8 |
+| Totémico | 3/8 | 1/8 *(el `.md` sobre-contaba: la fila 12 sembrada real es distinta de las 3 que el doc daba por hechas)* |
+| Rúnico | 2/8 | 6/8 |
+| Convocador | 1/8 | 6/8 |
+| Opresor | 2/8 | 4/8 |
+| Maestro Arquero | 7/8 | 1/8 |
+| Maestro Ballestero | 7/8 | 1/8 |
+
+Caballero/Segador/Asesino/Druida se verificaron también fila a fila y coinciden exactamente con el
+`.md` — sin discrepancia, no tocados.
+
+**Estado**: FIJADO en esta misma sesión (2026-09-07) — corregido directamente por ser un HUECO de
+staleness, mismo criterio que la corrección del 2026-08-25 (commit `f1bf8bb`): tabla-resumen final
+reescrita con los 14 valores reales, más las ~19 filas individuales de estado (⚠️→✅) corregidas en
+las secciones detalladas de Berserker, Guardián, Lancero, Especialista, Supervivencia, Tirador,
+Instintivo, Totémico, Rúnico, Convocador, Opresor, Maestro Arquero y Maestro Ballestero, cada una
+con nota explícita de cuándo se sembró de verdad. Sin tocar código — solo documentación.
+
+## 2026-09-07 — Confirmado sin discrepancias — mundo determinista/agenda, Faction.description estática, banners, actualizaciones-pendientes-lore.md ya cubrió fauna/flora/vocabulario
+
+**Verificado, sin hallazgos nuevos**:
+- `mundo-determinista.md`: banner ya corregido a "APLICADO al motor" (no es el mismo desfase que
+  `combate-multiple.md`/`companeros-y-supervivencia.md`, ya lo arregló la propia auditoría del
+  2026-08-25 el mismo día que se escribió el documento).
+- `worldAgenda.ts` no ha cambiado desde 2026-08-27; `Faction.description` de Clan Helsig/Clan Goshg
+  (`worldCatalog.ts:6403`) sigue textualmente igual a como se verificó el 2026-08-25 — la decisión
+  "foto fija, a propósito" sigue vigente, no había que volver a preguntarla.
+- Ningún `.md` de `docs/rpgtarkor/` conserva un banner "nada implementado todavía"/"documentación
+  pura" que contradiga código real ya construido — los 2 patrones históricos de este tipo
+  (`combate-multiple.md`, `companeros-y-supervivencia.md`) siguen corregidos, y las menciones
+  restantes de "documentación pura"/"sin aplicar" en `clases.md` (tabla de reasignación de clase a
+  NPCs, líneas ~1264-1270) están correctamente marcadas como recomendación sin aplicar, no como
+  desfase real.
+- Fichas de fauna/flora/NPC y vocabulario: la ronda de auditoría del 2026-09-05/06 (documentada en
+  `docs/rpgtarkor/actualizaciones-pendientes-lore.md`) ya cubrió esta área de forma extremadamente
+  exhaustiva — 14/14 huecos de mecanismo físico, 9/9 hallazgos "código→lore" y 11/12 "lore→código"
+  cerrados, incluida una segunda auditoría de verificación (2026-09-06) que confirmó no quedaban
+  huecos nuevos. No se encontró ningún caso adicional no cubierto por esa ronda al revisar
+  `worldCatalog.ts` contra `areas.md`/`flora-fauna.md`/`razas.md`/`npcs.md`.
+
+**Estado**: NO ES BUG, sin acción necesaria — confirma que la ronda del 2026-09-05/06 sigue vigente
+y no dejó huecos nuevos en estas áreas; el único hallazgo real de esta sesión fue el de clases.md
+de arriba.
