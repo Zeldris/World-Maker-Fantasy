@@ -1715,17 +1715,21 @@ model AlmacenItem {
 /// criterio que `PlantillaEquipo.personalizada: false`). `abilityNames` identifica por NOMBRE de
 /// `SavedAction`, no por id — mismo motivo que `Save.activeCombatAbilityNames`: habilidades
 /// dinámicas se recrean con id nuevo, un id guardado aquí quedaría huérfano.
+/// Rediseño (2026-09-06, hallazgo 10 de la sesión de pruebas) — antes 3 barras POR CADA categoría
+/// (`general`/`profesion`/`reino`, 12 slots), ahora 3 barras EN GENERAL sin distinguir tipo (20
+/// slots) — la categoría solo sigue existiendo como filtro de `SavedAction` para los 3 tabs del
+/// editor (`SavedActionCategory`), ya no describe la barra en sí. Sin migración de datos desde el
+/// esquema viejo (decisión explícita de la usuaria: "empezar de cero").
 model SkillBar {
   id           String   @id @default(cuid())
   saveId       String
   save         Save     @relation(fields: [saveId], references: [id], onDelete: Cascade)
-  category     String
   slotIndex    Int
   name         String   @default("Barra 1")
   abilityNames String[] @default([])
   createdAt    DateTime @default(now())
 
-  @@unique([saveId, category, slotIndex])
+  @@unique([saveId, slotIndex])
   @@index([saveId])
 }
 

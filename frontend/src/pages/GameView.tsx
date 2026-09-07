@@ -74,6 +74,7 @@ import {
   setActiveCombatAbilities,
   createSkillBar,
   updateSkillBar,
+  deleteSkillBar,
   setActiveSkillBar,
   fundarReino,
   aceptarMision,
@@ -96,7 +97,6 @@ import {
 import { characterWaitingFlavor, combatWaitingFlavor, worldWaitingFlavor, useRotatingFlavor } from '../lib/waitingFlavor'
 import { formatCountdown, formatFictionalDuration, applyInventoryDelta, combatKeyFor, questCompletedLogEntry } from '../lib/gameViewHelpers'
 import { ESTACION_ICON, CLIMA_ICON } from '../lib/entorno'
-import { PASSIVE_ABILITY_NAMES } from '../lib/passiveAbilities'
 import type {
   ActiveEffect,
   Attribute,
@@ -120,7 +120,6 @@ import type {
   SavedActionCategory,
   SavedActionInfo,
   SecondaryAttributeBlock,
-  SkillBarCategory,
   SkillBarInfo,
 } from '../types'
 
@@ -1133,9 +1132,9 @@ export function GameView() {
     if (saveId) void setActiveSkillBar(saveId, null)
   }
 
-  async function handleCreateSkillBar(category: SkillBarCategory) {
+  async function handleCreateSkillBar() {
     if (!saveId) return
-    const bar = await createSkillBar(saveId, category)
+    const bar = await createSkillBar(saveId)
     setSkillBars((prev) => [...prev, bar])
   }
 
@@ -1144,6 +1143,18 @@ export function GameView() {
     const updated = await updateSkillBar(saveId, editingSkillBar.id, params)
     setSkillBars((prev) => prev.map((b) => (b.id === updated.id ? updated : b)))
     setEditingSkillBar(null)
+  }
+
+  // Borrar una barra 2ª/3ª (2026-09-06, hallazgo 10) — nunca la base (`slotIndex: 0`), mismo guard
+  // ya aplicado por el backend y por SkillBarMenu.tsx (que ni siquiera ofrece el botón para ella).
+  // Si la barra borrada era la que se estaba viendo en el HUD, vuelve al listado de barras.
+  async function handleDeleteSkillBar(bar: SkillBarInfo) {
+    if (!saveId) return
+    await deleteSkillBar(saveId, bar.id)
+    setSkillBars((prev) => prev.filter((b) => b.id !== bar.id))
+    if (skillHudView.screen === 'barra-activa' && skillHudView.skillBarId === bar.id) {
+      setSkillHudView({ screen: 'menu-barras' })
+    }
   }
 
   // Cierre + envío compartidos por los 3 modales de `simpleModal` (auditoría de deuda técnica
@@ -1929,13 +1940,13 @@ export function GameView() {
             // izquierda donde te dije") — mismo slot visual que la barra, `leftSlot` de
             // `ChatComposer` lo inserta en la MISMA fila flex que el panel de texto, compartiendo
             // el borde/fondo exterior en vez de duplicarlo con una franja aparte. Solo se muestra
-            // en la vista `composer` — las otras 3 vistas (menú-tipo/menú-barras/barra-activa) ya
-            // tienen su propia forma de volver (botón Atrás o ⌨️ directo).
+            // en la vista `composer` — las otras 2 vistas (menú-barras/barra-activa) ya tienen su
+            // propia forma de volver (botón Atrás o ⌨️ directo).
             const skillToggle = !combateIniciado && skillHudView.screen === 'composer' && (
               <TooltipAnchor text="Elegir una habilidad por botón en vez de escribir">
                 <button
                   type="button"
-                  onClick={() => setSkillHudView({ screen: 'menu-tipo' })}
+                  onClick={() => setSkillHudView({ screen: 'menu-barras' })}
                   disabled={composerDisabled}
                   aria-label="Habilidades"
                   className="skill-slot tactile"
@@ -1947,15 +1958,15 @@ export function GameView() {
             const activeBar = skillHudView.screen === 'barra-activa' ? skillBars.find((b) => b.id === skillHudView.skillBarId) : undefined
             return (
               <>
-                {!combateIniciado && (skillHudView.screen === 'menu-tipo' || skillHudView.screen === 'menu-barras') ? (
+                {!combateIniciado && skillHudView.screen === 'menu-barras' ? (
                   <div className="border-t border-iron-800 bg-wood-950/90 px-4 pb-3 pt-3.5">
                     <SkillBarMenu
-                      view={skillHudView}
                       skillBars={skillBars}
                       onNavigate={setSkillHudView}
                       onSelectBar={handleSelectSkillBar}
                       onCreateBar={handleCreateSkillBar}
                       onEditBar={setEditingSkillBar}
+                      onDeleteBar={handleDeleteSkillBar}
                     />
                   </div>
                 ) : !combateIniciado && skillHudView.screen === 'barra-activa' && activeBar ? (
@@ -1965,7 +1976,7 @@ export function GameView() {
                       savedActions={savedActions}
                       onUse={handleAttachAbility}
                       onBackToComposer={handleBackToComposer}
-                      onBackToBars={() => setSkillHudView({ screen: 'menu-barras', category: activeBar.category })}
+                      onBackToBars={() => setSkillHudView({ screen: 'menu-barras' })}
                       onEdit={() => setEditingSkillBar(activeBar)}
                       disabled={composerDisabled}
                     />
@@ -2155,9 +2166,7 @@ export function GameView() {
       {editingSkillBar && (
         <SkillBarEditor
           bar={editingSkillBar}
-          categoryAbilities={savedActions.filter(
-            (a) => a.category === editingSkillBar.category && !PASSIVE_ABILITY_NAMES.has(a.name),
-          )}
+          savedActions={savedActions}
           onSave={handleSaveSkillBarEdit}
           onCancel={() => setEditingSkillBar(null)}
         />

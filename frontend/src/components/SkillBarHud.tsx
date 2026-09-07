@@ -1,16 +1,18 @@
 import type { SavedActionInfo, SkillBarInfo } from '../types'
 import { TooltipAnchor } from './TooltipAnchor'
 
-/// Vista "barra activa" del HUD (2026-09-04, v2 de la SkillBar única de 2026-08-29) — sustituye a
-/// SkillBar.tsx en el composer: en vez de una única lista fija de habilidades `general`, muestra
-/// el contenido de LA barra que el jugador eligió en SkillBarMenu.tsx (cualquiera de las 3
-/// categorías). `onUse` se reutiliza tal cual (handleAttachAbility de GameView.tsx) — mismo
-/// despacho que ya existía (abre modal o inserta chip en el composer), sin reimplementar nada.
+/// Vista "barra activa" del HUD (2026-09-04, v2 de la SkillBar única de 2026-08-29; rediseñado
+/// 2026-09-06, hallazgo 10: la barra ya no pertenece a ninguna categoría, puede mezclar
+/// habilidades de General/Profesión/Reino) — sustituye a SkillBar.tsx en el composer: en vez de
+/// una única lista fija de habilidades `general`, muestra el contenido de LA barra que el jugador
+/// eligió en SkillBarMenu.tsx. `onUse` se reutiliza tal cual (handleAttachAbility de GameView.tsx)
+/// — mismo despacho que ya existía (abre modal o inserta chip en el composer), sin reimplementar
+/// nada.
 ///
 /// Dos formas distintas de "volver" (feedback en vivo, 2026-09-04): ⌨️ vuelve directo al composer
-/// de texto libre; ↩ vuelve al menú de barras de la MISMA categoría (para cambiar de barra o de
-/// categoría sin pasar primero por el composer) — antes solo existía la primera, así que cambiar
-/// de barra exigía reabrir el menú desde cero cada vez.
+/// de texto libre; ↩ vuelve al menú de barras (para cambiar de barra sin pasar primero por el
+/// composer) — antes solo existía la primera, así que cambiar de barra exigía reabrir el menú
+/// desde cero cada vez.
 export function SkillBarHud({
   bar,
   savedActions,

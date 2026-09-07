@@ -102,8 +102,17 @@ PENDIENTES salvo que se indique lo contrario. Organizado por fase del runbook.
     otras 2 opcionales. Al editar una barra, 3 tabs dentro del modal (General/Profesión/Reino) para
     elegir qué habilidades meter, sin importar de qué tab salieron una vez están en la barra. Al
     pulsar el botón de Habilidades en juego, se listan directamente las barras que ya tienes (sin el
-    paso intermedio de "qué tipo de barra quieres" que hay hoy). **PENDIENTE — rediseño grande,
-    sustituye trabajo ya hecho el 2026-09-04.**
+    paso intermedio de "qué tipo de barra quieres" que hay hoy).
+    **CERRADO (2026-09-06)**: `SkillBar` pierde el campo `category` (tope de slots 12→20, tope de
+    barras pasa a ser del save entero, no por categoría); `SkillBarMenu.tsx` fusiona las 2 pantallas
+    viejas en una sola (lista directa de barras); `SkillBarEditor.tsx` gana 3 tabs
+    General/Profesión/Reino. Añadido de paso: botón para borrar una barra 2ª/3ª (el endpoint ya
+    existía sin ningún botón que lo usara). **Sin migración de datos** (decisión explícita de la
+    usuaria, "empezar de cero") — las 4 filas de `SkillBar` que había en la única partida real
+    existente se perdieron con la migración. Verificado: `tsc -b` limpio backend+frontend, 40 tests
+    backend en verde (12 unitarios + 4 integración + 24 de `detail.test.ts` actualizado), guard
+    clave verificado rigurosamente. Pendiente reverificar en vivo con Playwright (requiere reiniciar
+    backend por la migración).
 11. **Descansar debe reponer solo +30 de energía** (hoy repone más, sin cifra exacta dada) **y
     tener cooldown de 3h de tiempo de FICCIÓN** (no tiempo real) — si se intenta usar antes de que
     pasen 3h desde el último uso, debería responder narrativamente que el personaje no está cansado

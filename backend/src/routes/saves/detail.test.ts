@@ -97,11 +97,8 @@ function baseSave(overrides: Partial<Record<string, unknown>> = {}) {
     endedAt: null,
     quests: [],
     sessionSummaries: [],
-    skillBars: [
-      { id: 'bar-general', category: 'general', slotIndex: 0, name: 'Barra 1', abilityNames: [] },
-      { id: 'bar-profesion', category: 'profesion', slotIndex: 0, name: 'Barra 1', abilityNames: [] },
-      { id: 'bar-reino', category: 'reino', slotIndex: 0, name: 'Barra 1', abilityNames: [] },
-    ],
+    // Rediseño (2026-09-06, hallazgo 10) — una sola barra base por save, sin categoría propia.
+    skillBars: [{ id: 'bar-base', slotIndex: 0, name: 'Barra 1', abilityNames: [] }],
     activeSkillBarId: null,
     pendingCombatNpcSlugs: null,
     pendingDynamicMode: null,

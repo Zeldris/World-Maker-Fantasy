@@ -1,9 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import {
   SKILL_BAR_SLOTS,
-  SKILL_BARS_PER_CATEGORY_MAX,
+  SKILL_BARS_MAX,
   sanitizeSkillBarAbilityNames,
-  missingBaseSkillBarCategories,
+  hasBaseSkillBar,
   nextFreeSkillBarSlot,
   type SkillBarAbilityLike,
 } from './skillBars.js';
@@ -20,7 +20,7 @@ describe('sanitizeSkillBarAbilityNames', () => {
   });
 
   it(`trunca al tope (${SKILL_BAR_SLOTS}) respetando el orden propuesto`, () => {
-    const available = Array.from({ length: 15 }, (_, i) => ability(`Habilidad ${i}`));
+    const available = Array.from({ length: 25 }, (_, i) => ability(`Habilidad ${i}`));
     const proposed = available.map((a) => a.name);
     const result = sanitizeSkillBarAbilityNames(proposed, available);
     expect(result).toHaveLength(SKILL_BAR_SLOTS);
@@ -32,30 +32,31 @@ describe('sanitizeSkillBarAbilityNames', () => {
     const result = sanitizeSkillBarAbilityNames(['Viajar', 'Curar', 'Viajar'], available);
     expect(result).toEqual(['Viajar', 'Curar']);
   });
+
+  it('rediseño (2026-09-06): admite mezclar habilidades de varias categorías en la misma barra', () => {
+    // "disponibles" ya representa las 3 categorías juntas (General/Profesión/Reino) — la función
+    // en sí es agnóstica de categoría, el filtro por categoría vive en el caller.
+    const available = [ability('Curar'), ability('Minar'), ability('Levantar Campamento')];
+    const result = sanitizeSkillBarAbilityNames(['Curar', 'Minar', 'Levantar Campamento'], available);
+    expect(result).toEqual(['Curar', 'Minar', 'Levantar Campamento']);
+  });
 });
 
-describe('missingBaseSkillBarCategories', () => {
-  it('sin ninguna barra existente, faltan las 3 categorías', () => {
-    expect(missingBaseSkillBarCategories([])).toEqual(['general', 'profesion', 'reino']);
+describe('hasBaseSkillBar', () => {
+  it('sin ninguna barra existente, no hay base', () => {
+    expect(hasBaseSkillBar([])).toBe(false);
   });
 
-  it('con la base de general ya creada, solo faltan profesion y reino', () => {
-    const existing = [{ category: 'general', slotIndex: 0 }];
-    expect(missingBaseSkillBarCategories(existing)).toEqual(['profesion', 'reino']);
+  it('con una barra slotIndex 0, sí hay base', () => {
+    expect(hasBaseSkillBar([{ slotIndex: 0 }])).toBe(true);
   });
 
-  it('una barra adicional (slotIndex distinto de 0) no cuenta como base', () => {
-    const existing = [{ category: 'general', slotIndex: 1 }];
-    expect(missingBaseSkillBarCategories(existing)).toEqual(['general', 'profesion', 'reino']);
+  it('solo con barras adicionales (slotIndex distinto de 0), no hay base', () => {
+    expect(hasBaseSkillBar([{ slotIndex: 1 }, { slotIndex: 2 }])).toBe(false);
   });
 
-  it('con las 3 bases ya creadas, no falta ninguna', () => {
-    const existing = [
-      { category: 'general', slotIndex: 0 },
-      { category: 'profesion', slotIndex: 0 },
-      { category: 'reino', slotIndex: 0 },
-    ];
-    expect(missingBaseSkillBarCategories(existing)).toEqual([]);
+  it('con varias barras incluyendo la base, sí hay base', () => {
+    expect(hasBaseSkillBar([{ slotIndex: 1 }, { slotIndex: 0 }])).toBe(true);
   });
 });
 
@@ -68,7 +69,7 @@ describe('nextFreeSkillBarSlot', () => {
     expect(nextFreeSkillBarSlot([0])).toBe(1);
   });
 
-  it(`con las ${SKILL_BARS_PER_CATEGORY_MAX} barras ocupadas, no queda ninguna libre`, () => {
+  it(`con las ${SKILL_BARS_MAX} barras ocupadas, no queda ninguna libre`, () => {
     expect(nextFreeSkillBarSlot([0, 1, 2])).toBeNull();
   });
 

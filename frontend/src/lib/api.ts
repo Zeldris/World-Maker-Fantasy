@@ -37,7 +37,6 @@ import type {
   RollInfo,
   SavedActionCategory,
   SavedActionInfo,
-  SkillBarCategory,
   SkillBarInfo,
   SecondaryAttributeBlock,
   SessionSummaryInfo,
@@ -786,14 +785,11 @@ export async function setActiveCombatAbilities(id: string, names: string[]): Pro
   })
 }
 
-/// Barras de habilidades múltiples fuera de combate (2026-09-04) — mismo criterio que el
-/// cinturón de combate: el cliente manda el estado final ya decidido, el backend sanea y persiste.
-export async function createSkillBar(id: string, category: SkillBarCategory): Promise<SkillBarInfo> {
-  return fetchJson(`${API_URL}/saves/${id}/skill-bars`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ category }),
-  })
+/// Barras de habilidades múltiples fuera de combate (2026-09-04, rediseñado 2026-09-06 — hallazgo
+/// 10: sin categoría propia, ver SkillBarInfo) — mismo criterio que el cinturón de combate: el
+/// cliente manda el estado final ya decidido, el backend sanea y persiste.
+export async function createSkillBar(id: string): Promise<SkillBarInfo> {
+  return fetchJson(`${API_URL}/saves/${id}/skill-bars`, { method: 'POST' })
 }
 
 export async function updateSkillBar(id: string, barId: string, params: { name?: string; abilityNames?: string[] }): Promise<SkillBarInfo> {

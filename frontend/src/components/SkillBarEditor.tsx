@@ -1,23 +1,33 @@
 import { useState } from 'react'
-import type { SavedActionInfo, SkillBarInfo } from '../types'
+import type { SavedActionInfo, SkillBarInfo, SkillBarCategory } from '../types'
 import { SelectionModalShell } from './SelectionModalShell'
+import { PASSIVE_ABILITY_NAMES } from '../lib/passiveAbilities'
 
-const SKILL_BAR_SLOTS = 12
+export const SKILL_BAR_SLOTS = 20
 
-/// Modo edición de una barra de habilidades múltiple (2026-09-04) — clon directo de
-/// CombatAbilityBelt.tsx/CombatAbilityToggleGrid, parametrizado por categoría y por la barra
-/// concreta en vez de fijo a combate: mismo drag&drop HTML5 nativo, mismo `moveSlot`/`removeAt`
-/// controlado por el padre vía `onChange`. Incluye renombrar la barra (no existía en combate,
-/// donde el cinturón es único y sin nombre).
+const TAB_LABEL: Record<SkillBarCategory, string> = {
+  general: 'General',
+  profesion: 'Profesión',
+  reino: 'Reino',
+}
+
+/// Modo edición de una barra de habilidades múltiple (2026-09-04, v2; rediseñado 2026-09-06,
+/// hallazgo 10 de la sesión de pruebas: la barra ya no pertenece a ninguna categoría — 3 tabs
+/// General/Profesión/Reino dentro del propio editor para elegir qué meter, sin importar de qué tab
+/// salió cada habilidad una vez está dentro de la barra) — clon directo de CombatAbilityBelt.tsx/
+/// CombatAbilityToggleGrid, parametrizado por la barra concreta en vez de fijo a combate: mismo
+/// drag&drop HTML5 nativo, mismo `moveSlot`/`removeAt` controlado por el padre vía `onChange`.
+/// Incluye renombrar la barra (no existía en combate, donde el cinturón es único y sin nombre).
 export function SkillBarEditor({
   bar,
-  categoryAbilities,
+  savedActions,
   onSave,
   onCancel,
 }: {
   bar: SkillBarInfo
-  /// Todas las SavedAction de la MISMA categoría que la barra (de donde se eligen/quitan slots).
-  categoryAbilities: SavedActionInfo[]
+  /// Todas las SavedAction del save (las 3 categorías admitidas — Combate queda fuera, sigue con
+  /// su propio cinturón) — este componente filtra internamente por el tab activo.
+  savedActions: SavedActionInfo[]
   onSave: (params: { name?: string; abilityNames?: string[] }) => void
   onCancel: () => void
 }) {
@@ -25,8 +35,12 @@ export function SkillBarEditor({
   const [activeNames, setActiveNames] = useState<string[]>(bar.abilityNames)
   const [dragIndex, setDragIndex] = useState<number | null>(null)
   const [saving, setSaving] = useState(false)
+  const [tab, setTab] = useState<SkillBarCategory>('general')
 
-  const byName = new Map(categoryAbilities.map((a) => [a.name, a]))
+  // Todas las categorías admitidas juntas (para resolver icono/descripción de un slot ya lleno,
+  // sin importar de qué tab salió) — el filtro por tab solo se aplica a la cuadrícula de abajo.
+  const byName = new Map(savedActions.map((a) => [a.name, a]))
+  const tabAbilities = savedActions.filter((a) => a.category === tab && !PASSIVE_ABILITY_NAMES.has(a.name))
   const slots: (SavedActionInfo | null)[] = Array.from({ length: SKILL_BAR_SLOTS }, (_, i) => {
     const abilityName = activeNames[i]
     return abilityName ? (byName.get(abilityName) ?? null) : null
@@ -113,11 +127,29 @@ export function SkillBarEditor({
         </div>
       </div>
 
-      {categoryAbilities.length === 0 ? (
-        <p className="text-xs text-wood-500">No tienes ninguna habilidad de esta categoría todavía.</p>
+      {/* Rediseño 2026-09-06 (hallazgo 10) — 3 tabs para elegir qué meter, mismo patrón visual de
+          pestañas que ya usa HabilidadesPanel.tsx. Cambiar de tab NO afecta a lo ya metido en la
+          barra (slots de arriba) — solo cambia qué cuadrícula de "disponibles" se muestra debajo. */}
+      <div className="flex gap-2 border-b border-iron-700">
+        {(Object.keys(TAB_LABEL) as SkillBarCategory[]).map((c) => (
+          <button
+            type="button"
+            key={c}
+            onClick={() => setTab(c)}
+            className={`border-b-2 px-3 py-2 text-sm transition-colors ${
+              tab === c ? 'border-accent-500 font-medium text-accent-300' : 'border-transparent text-wood-400 hover:text-wood-200'
+            }`}
+          >
+            {TAB_LABEL[c]}
+          </button>
+        ))}
+      </div>
+
+      {tabAbilities.length === 0 ? (
+        <p className="text-xs text-wood-500">No tienes ninguna habilidad de {TAB_LABEL[tab].toLowerCase()} todavía.</p>
       ) : (
         <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
-          {categoryAbilities.map((a) => {
+          {tabAbilities.map((a) => {
             const active = activeNames.includes(a.name)
             const blocked = !active && atMax
             return (
