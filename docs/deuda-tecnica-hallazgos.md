@@ -50,6 +50,7 @@ Cada entrada: fecha, zona auditada, hallazgo, y estado.
 - [useCombatFlow.ts sigue creciendo: 585→859 líneas (+47%) en 12 días, un único hook sin descomponer](#2026-09-07-usecombatflowts-sigue-creciendo-585859-líneas-47-en-12-días-un-único-hook-sin-descomponer)
 - [Seguimiento de tamaño: turnResolution.ts (6922) y GameView.tsx (2277) siguen creciendo](#2026-09-07-seguimiento-de-tamaño-turnresolutionts-6922-y-gameviewtsx-2277-siguen-creciendo)
 - [Confirmado sin hallazgo: patrón try/catch de routes/saves/ es consistente (catch-all global en server.ts), no repetir el caso de /turn/classify](#2026-09-07-confirmado-sin-hallazgo-patrón-trycatch-de-routessaves-es-consistente-catch-all-global-en-serverts-no-repetir-el-caso-de-turnclassify)
+- [Confirmado sin hallazgo: POST /reino/fundar ya rechaza limpio un segundo intento sobre un reino ya fundado](#2026-09-07-confirmado-sin-hallazgo-post-reinofundar-ya-rechaza-limpio-un-segundo-intento-sobre-un-reino-ya-fundado)
 
 ---
 
@@ -453,13 +454,17 @@ Es el mismo tipo de problema de fondo que ya motivó el fix de hoy en `DiceRoll.
 punto nuevo no cubierto por ese fix: aquí el riesgo no es la animación en sí, sino el propio
 `setTimeout` sin `clearTimeout` ni guard de "sigo siendo el turno vigente" al disparar.
 
-**Estado**: PENDIENTE — no reproducido en vivo (la ventana de 10s exige acciones rápidas
-encadenadas), pero el código confirma el hueco: cualquier `setTimeout` que escribe estado de React
-sin un `clearTimeout` de contrapartida (en un `useEffect` con cleanup, o comprobando una bandera de
-"sigo vigente" al disparar) es una fuente clásica de estado fantasma. Requiere decisión de diseño
-menor (guardar el id del timer en un ref y cancelarlo en `openCombat`/`closeCombat`/al iniciar un
-nuevo `submitCombatAction`) antes de tocar el archivo — no se ha tocado código de producción en esta
-auditoría.
+**Estado**: CERRADO (2026-09-07, commit `dba1ada`) — decisión confirmada con la usuaria: arreglarlo
+ahora. `exchangeApplyTimerRef`/`awaitingDefenseTimerRef` (dos `useRef`, no `useState`, para no
+disparar re-render) guardan el id de cada `setTimeout` (intercambio e iniciativa); cada uno se
+cancela con `clearTimeout` antes de programar uno nuevo, y ambos se cancelan también en
+`closeCombat`. `openCombat` NO se toca — ya resetea `combatAwaitingDefense` a propósito
+(comentario existente, auditoría 2026-07-30) para no perder un turno de defensa real pendiente tras
+una huida fallida; cancelar el timer ahí rompería ese fix. Test nuevo con verificación rigurosa
+(`useCombatFlow.test.tsx`, "cerrar el combate mientras el timer del intercambio sigue pendiente..."):
+confirmado que sin el `clearTimeout` el test falla reproduciendo el bug exacto (estado obsoleto
+aplicado tras `closeCombat`), y pasa con el fix restaurado. Suite completa del frontend sin
+regresiones (28 archivos, 219 tests).
 
 ## 2026-09-07 — Ningún modal de la app usa role="dialog"/aria-modal ni cierra con Escape ni atrapa el foco
 
@@ -655,3 +660,18 @@ errores concretos (p.ej. `P2025` de Prisma en `list.ts`/`progression.ts`/`recole
 
 **Estado**: Sin hallazgo — investigado a fondo, descartado explícitamente para no repetir la
 pregunta en la próxima auditoría.
+
+## 2026-09-07 — Confirmado sin hallazgo: POST /reino/fundar ya rechaza limpio un segundo intento sobre un reino ya fundado
+
+**Investigado y descartado** (repaso de las dudas abiertas del punto 2 de la ronda de auditorías
+del 2026-09-06/07): `backend/src/routes/saves/reino.ts:56-58` ya tiene un guard explícito por
+`save.kingdomName` que devuelve 400 "Ya has fundado tu reino" en cuanto el campo no está vacío —
+comentario propio documentando el motivo (auditoría 2026-08-21: fundar dos veces crearía dos filas
+de `Faction` con el mismo slug determinista, chocando contra `@@unique([worldId, slug])`).
+Además, un `catch` dedicado (líneas 102-113, auditoría 2026-08-07) atrapa la condición de carrera
+del doble clic simultáneo (`Prisma.PrismaClientKnownRequestError` código `P2002`) y devuelve el
+mismo 400 claro en vez de un 500 genérico. Test explícito ya existente
+(`reino.test.ts:250-253`) cubre justo el caso "segundo intento sobre reino ya fundado → 400". No
+hace falta tocar ni backend ni frontend.
+
+**Estado**: Sin hallazgo — idempotencia ya cerrada desde 2026-08-07/21, confirmada de nuevo hoy.
