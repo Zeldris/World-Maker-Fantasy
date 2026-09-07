@@ -738,7 +738,19 @@ la sesión de pruebas encontró MÁS problemas del mismo área que esos fixes no
     crafteo y confirmar que el composer muestra un chip corto, no el texto completo de la acción.
 40. **Las habilidades/recetas de crafteo deberían mostrar en el hover si el jugador tiene los
     recursos necesarios o no** — o, alternativamente, mostrarse habilitadas/deshabilitadas (con
-    sombreado) según si se puede craftear ya mismo o no. **PENDIENTE.**
+    sombreado) según si se puede craftear ya mismo o no. **YA CERRADO ANTES DE ESTA SESIÓN
+    (2026-08-13)** — confirmado al reverificar el 2026-09-07: implementado en su totalidad desde
+    hace casi un mes, ambas variantes pedidas a la vez. `GET /saves/:id/recipes-status`
+    (`backend/src/routes/saves/recipesStatus.ts`) cruza cada receta contra el inventario real, los
+    atributos efectivos (equipo incluido), la ubicación actual y las reglas de reino, reutilizando
+    literalmente `checkIngredients()`/`checkRequisitos()` — las mismas funciones que ya validan un
+    crafteo real al confirmarlo, "nunca se duplica el criterio de qué hace falta, solo se expone en
+    modo consulta" (comentario propio del archivo). Frontend: `AbilityGrid`/`IconCard`
+    (`HabilidadesPanel.tsx`) deshabilita la tarjeta con sombreado real (`disabled={!status.met}`) Y
+    muestra tooltip con el detalle exacto ("Necesita: Cuero 5/10, Fibra 2/3.", más requisitos de
+    atributo/ubicación faltantes) — `useRecipesData.ts` recarga el estado con cada cambio de
+    inventario/atributos/ubicación. Pendiente reverificar en vivo con Playwright: abrir la pestaña
+    Profesiones con recursos insuficientes para alguna receta y confirmar el sombreado + tooltip.
 41. **"Infusión de Pétalos de Flor de Ceniza" aparece como RECOLECTABLE cuando debería ser
     CRAFTEABLE** (una infusión no se recolecta directamente de la naturaleza, se prepara). **NO ES
     UN BUG DE CLASIFICACIÓN — es una decisión de balance ya tomada (2026-08-13, sistema de
