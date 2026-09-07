@@ -6085,11 +6085,14 @@ describe('Curar: varios objetos a la vez con healItemUses (2026-08-18)', () => {
   });
 });
 
-// Habilidad "Comer/Beber" (2026-09-04) — mismo patrón EXACTO que "Curar": camino explícito
-// (`hambreSedItemUses`/`beberAgua`), determinista (nunca llama a narrateAction), consume el item
-// real usado y persiste el nuevo lastAteAtMinutes/lastDrankAtMinutes. Antes de esta pieza, nada en
-// el motor actualizaba esos timestamps nunca dentro de una partida — este test cubre justo eso.
-describe('Comer/Beber: consumo real de comida e ítem "Beber agua" (2026-09-04)', () => {
+// Habilidad "Comer/Beber" (2026-09-04, rediseñada por el hallazgo 13, revisar-partida-hallazgos.md
+// 2026-09-06, "el consumo de agua pasa a depender de un ítem odre") — mismo patrón EXACTO que
+// "Curar": camino explícito (`hambreSedItemUses`), determinista (nunca llama a narrateAction),
+// consume el item real usado y persiste el nuevo lastAteAtMinutes/lastDrankAtMinutes. El viejo
+// booleano `beberAgua` (fijo, sin ítem, repone Sed al 100% en cualquier sitio) se retiró — ahora
+// Sed sube por `curaAgua` de ítems reales, igual que Hambre por `curaHambre`, y el odre de agua
+// lleno (`curaAgua: 100`) es el único que repone al 100% de un tirón.
+describe('Comer/Beber: consumo real de comida y bebida por ítem (hallazgo 13, 2026-09-06)', () => {
   let saveId: string;
 
   beforeAll(async () => {
@@ -6118,7 +6121,10 @@ describe('Comer/Beber: consumo real de comida e ítem "Beber agua" (2026-09-04)'
     });
     saveId = save.id;
     await prisma.worldState.create({ data: { saveId, fictionalMinutes: 1000 } });
-    await giveMaterials(saveId, [{ name: 'Ración de viaje', catalogSlug: 'racion-viaje' }]);
+    await giveMaterials(saveId, [
+      { name: 'Ración de viaje', catalogSlug: 'racion-viaje' },
+      { name: 'Odre de agua lleno', catalogSlug: 'odre-agua-lleno' },
+    ]);
     // Mismo turno de relleno que el describe de Curar (evita acoplar este test al encuentro
     // guionizado de Gistera Koh, que se dispara siempre en el primer turno de cualquier partida).
     await prisma.logEntry.create({
@@ -6131,13 +6137,14 @@ describe('Comer/Beber: consumo real de comida e ítem "Beber agua" (2026-09-04)'
     await prisma.save.delete({ where: { id: saveId } });
   });
 
-  it('come una ración real y bebe agua en el mismo turno: sube Hambre/Sed, consume el item, narración determinista', async () => {
+  it('come una ración real y bebe del odre lleno en el mismo turno: sube Hambre/Sed, consume/devuelve items reales, narración determinista', async () => {
     classifyAction.mockResolvedValue({
       requiereTirada: false, atributo: 'voluntad', dificultad: 8, razon: 'x', banda: 'instantanea', duracionEstimadaMinutos: 0,
     });
     vi.spyOn(Math, 'random').mockReturnValue(0.99);
     narrateAction.mockClear();
     const racion = await prisma.inventoryItem.findFirstOrThrow({ where: { saveId, catalogSlug: 'racion-viaje' } });
+    const odreLleno = await prisma.inventoryItem.findFirstOrThrow({ where: { saveId, catalogSlug: 'odre-agua-lleno' } });
 
     const app = await buildApp();
     const action = 'Como y bebo algo antes de seguir.';
@@ -6152,8 +6159,10 @@ describe('Comer/Beber: consumo real de comida e ítem "Beber agua" (2026-09-04)'
         classification,
         roll,
         enCombate: false,
-        hambreSedItemUses: [{ itemId: racion.id, quantity: 1 }],
-        beberAgua: true,
+        hambreSedItemUses: [
+          { itemId: racion.id, quantity: 1 },
+          { itemId: odreLleno.id, quantity: 1 },
+        ],
       },
     });
     expect(narrateRes.statusCode).toBe(200);
@@ -6161,14 +6170,14 @@ describe('Comer/Beber: consumo real de comida e ítem "Beber agua" (2026-09-04)'
     expect(narrateAction).not.toHaveBeenCalled();
     // Ración de viaje: curaHambre 28, desde 0% (lastAteAtMinutes:0, fictionalMinutes:1000, muy por
     // encima de 4 tramos de 12h → 0% real de partida) sube por encima de 0 sin llegar a saciar del
-    // todo. "Beber agua" siempre repone al 100%.
+    // todo. Odre lleno: curaAgua 100, repone al 100% de un tirón.
     expect(body.hambre).toBeGreaterThan(0);
     expect(body.sed).toBe(100);
 
     const saveAfter = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
     const worldStateAfter = await prisma.worldState.findUniqueOrThrow({ where: { saveId } });
-    // "Beber agua" repone al 100% de un tirón: el nuevo lastDrankAtMinutes queda exactamente en el
-    // minuto de ficción de ESTE turno (ver lastAtMinutesForGanancia/fictionalMinutesParaComerBeber).
+    // El odre lleno repone al 100% de un tirón: el nuevo lastDrankAtMinutes queda exactamente en
+    // el minuto de ficción de ESTE turno (ver lastAtMinutesForGanancia/fictionalMinutesParaComerBeber).
     expect(saveAfter.lastDrankAtMinutes).toBe(worldStateAfter.fictionalMinutes);
     expect(saveAfter.lastAteAtMinutes).not.toBe(0);
     // Rediseño 2026-09-06 (hallazgo 11) — Comer/Beber ahora también repone energía real de
@@ -6176,12 +6185,15 @@ describe('Comer/Beber: consumo real de comida e ítem "Beber agua" (2026-09-04)'
     // muy por debajo del tope real (energiaMaxFor(12)=86) — la ganancia es genuina, no un recorte.
     expect(saveAfter.energia).toBe(40);
 
-    // Unidad única (sin sufijo de cantidad) — la fila desaparece del todo.
+    // Hallazgo 13 — la ración (unidad única) desaparece del todo, pero el odre lleno se sustituye
+    // por el odre VACÍO (emptyContainerCatalogSlug), no desaparece sin más.
     const inventoryAfter = await prisma.inventoryItem.findMany({ where: { saveId } });
-    expect(inventoryAfter).toHaveLength(0);
+    expect(inventoryAfter).toHaveLength(1);
+    expect(inventoryAfter[0].catalogSlug).toBe('odre-agua');
+    expect(inventoryAfter[0].name).toBe('Odre de agua');
 
     const logEntry = await prisma.logEntry.findFirst({ where: { saveId, channel: 'CHARACTER', isPlayerAction: false }, orderBy: { createdAt: 'desc' } });
-    expect(logEntry?.text).toMatch(/^Gorhorn de prueba \(comer\) come Ración de viaje y bebe agua\. /);
+    expect(logEntry?.text).toMatch(/^Gorhorn de prueba \(comer\) usa Ración de viaje, Odre de agua lleno\. /);
   });
 });
 

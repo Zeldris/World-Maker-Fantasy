@@ -11,6 +11,7 @@ export function applySequentialHunger(current: number, gananciaTotal: number): n
   return Math.min(100, Math.max(0, current + Math.max(0, gananciaTotal)))
 }
 
-export function applySequentialThirst(current: number, beberAgua: boolean): number {
-  return beberAgua ? 100 : current
-}
+/// Hallazgo 13 (revisar-partida-hallazgos.md 2026-09-06) — Sed ya no es un booleano fijo "Beber
+/// agua", sube igual que Hambre por ganancia acumulada de ítems reales (`curaAgua`). Reutiliza
+/// exactamente la misma fórmula que `applySequentialHunger`.
+export const applySequentialThirst = applySequentialHunger

@@ -43,7 +43,8 @@ function readinessTooltip(description: string, status: RecipeStatusInfo | undefi
     parts.push(`Falta: ${status.missingRequisitos.join(', ')}.`)
   }
   if (!status.locationOk && status.requiredLocationName) {
-    parts.push(`Debes estar en ${status.requiredLocationName}.`)
+    const lugares = Array.isArray(status.requiredLocationName) ? status.requiredLocationName.join(', ') : status.requiredLocationName
+    parts.push(`Debes estar en ${lugares}.`)
   }
   // Reglas de reino (auditoría 2026-08-13) — Ayuntamiento/región/distancia/cupo, ver recipesStatus.ts.
   if (status.blockedReason) {

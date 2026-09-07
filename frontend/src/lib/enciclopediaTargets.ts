@@ -344,7 +344,10 @@ function extraLinesFor(
   if (nivel) parts.push(nivel)
   if (status) {
     if (status.missingRequisitos.length > 0) parts.push(`Falta: ${status.missingRequisitos.join(', ')}.`)
-    if (!status.locationOk && status.requiredLocationName) parts.push(`Debes estar en ${status.requiredLocationName}.`)
+    if (!status.locationOk && status.requiredLocationName) {
+      const lugares = Array.isArray(status.requiredLocationName) ? status.requiredLocationName.join(', ') : status.requiredLocationName
+      parts.push(`Debes estar en ${lugares}.`)
+    }
     // Reglas de reino (auditoría 2026-08-13) — Ayuntamiento/región/distancia/cupo, ver recipesStatus.ts.
     if (status.blockedReason) parts.push(`${status.blockedReason[0].toUpperCase()}${status.blockedReason.slice(1)}.`)
   }

@@ -3424,6 +3424,14 @@ export interface ItemCatalogInput {
   /// Puntos porcentuales de Hambre que restaura al usarlo (2026-09-04, habilidad "Comer/Beber") —
   /// mismo criterio que `curaEnergia` pero sobre el pool de Hambre. Omitido = no sacia hambre.
   curaHambre?: number;
+  /// Puntos porcentuales de Sed que restaura al usarlo (hallazgo 13, revisar-partida-hallazgos.md
+  /// 2026-09-06) — mismo criterio que `curaHambre` pero sobre el pool de Sed. Omitido = no sacia
+  /// sed.
+  curaAgua?: number;
+  /// Slug de ItemCatalog que se inserta en el inventario al consumir este ítem (hallazgo 13) —
+  /// caso único hoy: el odre de agua lleno devuelve el odre vacío al beberse. Omitido = el ítem
+  /// se borra/reduce sin más al consumirse, sin dejar nada a cambio.
+  emptyContainerCatalogSlug?: string;
   /// Solo en `tipo: 'ESPECIAL'` (2026-08-03) — clave estable que un sistema concreto consulta
   /// para activar su propio comportamiento (p.ej. `'reveal-map-llanuras'`, MapaPanel.tsx) y texto
   /// explicando el efecto para mostrar en inventario/detalle, aparte de `description`. Ver
@@ -3802,17 +3810,6 @@ export const items: ItemCatalogInput[] = [
     equipSlot: 'ACCESORIO',
     description: 'Agujas de hueso fino y cordel enrollado en un retal de cuero — reparar ropa y pieles en ruta.',
     dimensiones: 'Estuche de 15x8 cm.',
-  },
-
-  {
-    slug: 'odre-agua',
-    name: 'Odre de agua',
-    category: 'herramienta',
-    tipo: 'EQUIPABLE',
-    valorGoirnos: 5,
-    equipSlot: 'ACCESORIO',
-    description: 'Odre de cuero curtido cosido a mano, correa larga para llevar al hombro — imprescindible en la estepa.',
-    dimensiones: 'Capacidad de 2 litros, correa de 70 cm.',
   },
 
   {
@@ -4331,11 +4328,14 @@ export const items: ItemCatalogInput[] = [
     tipo: 'CONSUMIBLE', 
     valorGoirnos: 18,
     equipSlot: 'CONSUMIBLE_1', 
-    description: 'Liquen húmedo del cauce hervido sobre fuego — más segura de beber que masticarlo en crudo.', 
+    description: 'Liquen húmedo del cauce hervido sobre fuego — más segura de beber que masticarlo en crudo.',
     dimensiones: 'Cantimplora de 500 ml.',
     curaEnergia: 30,
     curaHasta: 'HERIDO',
     curaUnPaso: true,
+    // Hallazgo 13 (revisar-partida-hallazgos.md 2026-09-06) — "Agua hervida" por nombre propio,
+    // candidato claro a saciar sed de forma proporcional (no el 100% fijo del odre lleno).
+    curaAgua: 30,
   },
 
   { 
@@ -4349,6 +4349,40 @@ export const items: ItemCatalogInput[] = [
     dimensiones: 'Tubérculo de 8 cm.',
     curaEnergia: 15,
     curaHasta: 'GRAVE',
+    // Hallazgo 13 — "un trago de agua" explícito en la descripción.
+    curaAgua: 15,
+  },
+
+  // Hallazgo 13 (revisar-partida-hallazgos.md 2026-09-06) — "el consumo de agua pasa a depender
+  // de un ítem odre; se craftea con peletería T1... una acción narrativa de 'recoger agua' lo
+  // convierte en 'odre con agua'; beber de él sube el agua al 100%". Dos filas de catálogo (no un
+  // campo de estado en InventoryItem, decisión explícita): `odre-agua` es el vacío — ya existía en
+  // el catálogo como accesorio decorativo de loadout de NPC (`tipo: 'EQUIPABLE'`), reubicado aquí
+  // y pasado a `'CONSUMIBLE'` sin equipar (decisión explícita: vive en mochila, no ocupa
+  // ACCESORIO) — y `odre-agua-lleno` es el nuevo, con `curaAgua: 100` (repone del todo, como el
+  // viejo botón fijo "Beber agua", ahora retirado) y `emptyContainerCatalogSlug: 'odre-agua'`
+  // (al beberlo, devuelve el vacío al inventario en vez de desaparecer del todo).
+  {
+    slug: 'odre-agua',
+    name: 'Odre de agua',
+    category: 'consumible',
+    tipo: 'CONSUMIBLE',
+    valorGoirnos: 5,
+    description: 'Odre de cuero curtido cosido a mano, correa larga para llevar al hombro — imprescindible en la estepa, vacío hasta que se llena en una fuente real.',
+    dimensiones: 'Capacidad de 2 litros, correa de 70 cm.',
+  },
+
+  {
+    slug: 'odre-agua-lleno',
+    name: 'Odre de agua lleno',
+    category: 'consumible',
+    tipo: 'CONSUMIBLE',
+    valorGoirnos: 6,
+    equipSlot: 'CONSUMIBLE_1',
+    description: 'El mismo odre de cuero curtido, lleno hasta el tapón — listo para beber.',
+    dimensiones: 'Capacidad de 2 litros, correa de 70 cm.',
+    curaAgua: 100,
+    emptyContainerCatalogSlug: 'odre-agua',
   },
 
   { 
@@ -4388,10 +4422,12 @@ export const items: ItemCatalogInput[] = [
     tipo: 'CONSUMIBLE', 
     valorGoirnos: 9,
     equipSlot: 'CONSUMIBLE_1', 
-    description: 'Masticado calma la sed; donde crece, cavar un par de codos da agua.', 
+    description: 'Masticado calma la sed; donde crece, cavar un par de codos da agua.',
     dimensiones: 'Puñado de unos 10 cm.',
     curaEnergia: 10,
     curaHasta: 'GRAVE',
+    // Hallazgo 13 — "calma la sed" explícito, el candidato más claro de todos.
+    curaAgua: 10,
   },
 
   {
@@ -4589,11 +4625,14 @@ export const items: ItemCatalogInput[] = [
     tipo: 'CONSUMIBLE', 
     valorGoirnos: 9,
     equipSlot: 'CONSUMIBLE_1', 
-    description: 'Infusión que adormece el dolor y deja dormir a un herido.', 
+    description: 'Infusión que adormece el dolor y deja dormir a un herido.',
     dimensiones: 'Puñado de pétalos de 3 a 4 cm.',
     curaHasta: 'GRAVE',
     curaEnergia: 10,
     curaUnPaso: true,
+    // Hallazgo 13 — infusión (preparada con agua) sin mención explícita de sed en su descripción,
+    // incluida igualmente por criterio de la usuaria ("toda infusión hidrata").
+    curaAgua: 10,
   },
 
   // Primeros auxilios (2026-08-13, petición explícita: "una profesión que sea primeros-auxilios
@@ -4662,6 +4701,8 @@ export const items: ItemCatalogInput[] = [
     dimensiones: 'Cuenco de 250 ml.',
     lugarOrigen: 'Llanuras del Viento Rojo.',
     curaEnergia: 40,
+    // Hallazgo 13 — infusión preparada "en agua hirviendo", candidato claro.
+    curaAgua: 25,
   },
 
   // 8 consumibles nuevos (2026-08-24, Grupo 3 § 27 recursos/materiales sin receta) — mismo

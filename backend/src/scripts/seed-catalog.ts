@@ -78,6 +78,8 @@ async function main() {
         tipoArma: item.tipoArma ?? null,
         curaEnergia: item.curaEnergia ?? null,
         curaHambre: item.curaHambre ?? null,
+        curaAgua: item.curaAgua ?? null,
+        emptyContainerCatalogSlug: item.emptyContainerCatalogSlug ?? null,
         effectKey: item.effectKey ?? null,
         effectDescription: item.effectDescription ?? null,
         herramientaParaOficio: item.herramientaParaOficio ?? [],

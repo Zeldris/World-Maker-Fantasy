@@ -105,9 +105,10 @@ interface NarrateBody {
   /// jugadora los seleccionó SÍ cambia el resultado, ver `applySequentialHeals`, death.ts).
   healItemUses?: { itemId: string; quantity: number }[];
   /// Panel "Comer/Beber" (2026-09-04) — reenviado tal cual a `narrateAndPersistTurn`, ver el
-  /// comentario de `NarrateAndPersistParams.hambreSedItemUses`/`beberAgua` en turnResolution.ts.
+  /// comentario de `NarrateAndPersistParams.hambreSedItemUses` en turnResolution.ts. El viejo
+  /// `beberAgua` (fijo, sin ítem) se retiró con el hallazgo 13 (revisar-partida-hallazgos.md
+  /// 2026-09-06) — Sed ahora sube solo por ítems con `curaAgua` real (el odre lleno, etc.).
   hambreSedItemUses?: { itemId: string; quantity: number }[];
-  beberAgua?: boolean;
 }
 
 interface ClassificationResolution {
@@ -1069,8 +1070,7 @@ export async function turnRoutes(app: FastifyInstance) {
   });
 
   app.post<{ Body: NarrateBody }>('/turn/narrate', async (request, reply) => {
-    const { saveId, action, classification, roll, travel, enCombate, savedActionId, npcsInScene, lootItemNames, isItemUse, healItemUses, hambreSedItemUses, beberAgua } =
-      request.body;
+    const { saveId, action, classification, roll, travel, enCombate, savedActionId, npcsInScene, lootItemNames, isItemUse, healItemUses, hambreSedItemUses } = request.body;
     if (!saveId || !action || !classification) {
       return reply.status(400).send({ error: 'Faltan campos: saveId, action, classification' });
     }
@@ -1271,7 +1271,6 @@ export async function turnRoutes(app: FastifyInstance) {
         lootItemNames,
         healItemUses,
         hambreSedItemUses,
-        beberAgua,
         onNarrationChunk: (delta) => writeLine({ type: 'chunk', text: delta }),
         onNarrationReset: () => writeLine({ type: 'reset' }),
         // Animación de dados en paralelo (2026-08-15) — ver el mismo comentario en

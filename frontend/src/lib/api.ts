@@ -370,9 +370,9 @@ export async function requestTurnNarrate(
     /// el orden en que se seleccionaron los objetos cambia el resultado real.
     healItemUses?: { itemId: string; quantity: number }[]
     /// Panel "Comer/Beber" (2026-09-04) — ver el mismo campo en turnResolution.ts
-    /// (NarrateAndPersistParams.hambreSedItemUses/beberAgua).
+    /// (NarrateAndPersistParams.hambreSedItemUses). El viejo `beberAgua` se retiró con el
+    /// hallazgo 13 (revisar-partida-hallazgos.md 2026-09-06).
     hambreSedItemUses?: { itemId: string; quantity: number }[]
-    beberAgua?: boolean
   },
   handlers?: TurnNarrateHandlers,
 ): Promise<NarrateResponse> {

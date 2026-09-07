@@ -16,7 +16,10 @@ interface RecipeStatus {
   ingredients: IngredientStatus[];
   missingRequisitos: string[];
   locationOk: boolean;
-  requiredLocationName: string | null;
+  /// Array añadido con el hallazgo 13 (revisar-partida-hallazgos.md 2026-09-06) — una receta
+  /// puede exigir cualquiera de VARIAS ubicaciones válidas (p.ej. "recoger agua", 3 puntos de agua
+  /// distintos), no solo una.
+  requiredLocationName: string | string[] | null;
   /// Reglas de reino (auditoría 2026-08-13: cupo de Ayuntamiento, misma región, distancia,
   /// nivel-anterior-correcto al mejorar, un solo Ayuntamiento) — solo se comprueban cuando
   /// materiales/atributos YA se cumplen, mismo criterio que turnResolution.ts (si faltan
@@ -56,7 +59,7 @@ export async function recipesStatusRoutes(app: FastifyInstance) {
     const oficioNivelById = new Map(save.professionProgress.map((p) => [p.professionId, p.nivel]));
     const alivioFor = (oficio: string | null | undefined) => (oficio ? alivioForLevel(oficioNivelById.get(oficio) ?? 1) : 0);
 
-    const locationSlugs = [...new Set(CRAFTING_RECIPES.map((r) => r.location).filter((s): s is string => Boolean(s)))];
+    const locationSlugs = [...new Set(CRAFTING_RECIPES.flatMap((r) => (Array.isArray(r.location) ? r.location : r.location ? [r.location] : [])))];
     const locationRows = locationSlugs.length
       ? await prisma.location.findMany({ where: { worldId: save.worldId, slug: { in: locationSlugs } }, select: { slug: true, name: true } })
       : [];
@@ -65,7 +68,12 @@ export async function recipesStatusRoutes(app: FastifyInstance) {
     const crafting: RecipeStatus[] = CRAFTING_RECIPES.map((recipe) => {
       const ingredients = checkIngredients(recipe.ingredients, inventoryRows, catalogBySlug);
       const missingRequisitos = checkRequisitos(recipe.requisitos, attributes, secondaryAttributes, alivioFor(recipe.oficio)).map(shortfallLabel);
-      const locationOk = !recipe.location || save.currentLocation?.slug === recipe.location;
+      const locationOk = !recipe.location || (Array.isArray(recipe.location) ? recipe.location.includes(save.currentLocation?.slug ?? '') : save.currentLocation?.slug === recipe.location);
+      const requiredLocationName = !recipe.location
+        ? null
+        : Array.isArray(recipe.location)
+          ? recipe.location.map((slug) => locationNameBySlug.get(slug) ?? slug)
+          : (locationNameBySlug.get(recipe.location) ?? recipe.location);
       return {
         recipeKey: recipe.key,
         recipeCategory: 'crafteo',
@@ -73,7 +81,7 @@ export async function recipesStatusRoutes(app: FastifyInstance) {
         ingredients,
         missingRequisitos,
         locationOk,
-        requiredLocationName: recipe.location ? (locationNameBySlug.get(recipe.location) ?? recipe.location) : null,
+        requiredLocationName,
         blockedReason: null,
       };
     });

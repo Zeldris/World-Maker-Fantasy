@@ -166,8 +166,29 @@ PENDIENTES salvo que se indique lo contrario. Organizado por fase del runbook.
     zona con agua, una acción narrativa de "recoger agua" lo convierte en "odre con agua"; beber de
     él sube el agua del personaje al 100%. Revisar también qué recursos/comida ya existentes deberían
     subir agua al consumirse (comida cocinada u otros) — estos suben un % proporcional al agua que
-    contengan, no el 100% fijo del odre. **PENDIENTE — sistema nuevo, cambia la mecánica actual de
-    agua.**
+    contengan, no el 100% fijo del odre. **CERRADO (2026-09-07)**: el viejo botón fijo "Beber agua"
+    (sin ítem, repone 100% en cualquier sitio, `Save.beberAgua`) se retiró del todo — Sed ahora sube
+    por `ItemCatalog.curaAgua` de ítems reales, mismo mecanismo exacto que `curaHambre`
+    (`lastAtMinutesForGanancia`). Modelo de dos ítems (decisión explícita, no un campo de estado en
+    `InventoryItem`): `odre-agua` (el accesorio decorativo que ya existía en el catálogo, reubicado
+    a `tipo: 'CONSUMIBLE'` sin equipar) es el vacío; `odre-agua-lleno` (nuevo, `curaAgua: 100`) es el
+    lleno. Se craftea vacío con peletería (`curtidor-orcos-llanuras`, T1, mismo patrón que
+    `SAND_POUCH_RECIPE`) en cualquier sitio; "recoger agua" lo llena SOLO en una de 3 Locations reales
+    con agua (Los Manaderos/El Pozo de Cauce Viejo/El Oasis de Chudos Rojos — `CraftingRecipe.location`
+    ganó soporte de array de slugs, `location: string | string[] | null`, sin romper las 51 recetas
+    existentes con slug único). Al beberlo, un campo nuevo `emptyContainerCatalogSlug` en
+    `ItemCatalog` devuelve el odre vacío al inventario en vez de que desaparezca del todo (mecanismo
+    genuinamente nuevo, primer caso de "objeto con dos estados" del proyecto). 5 ítems narrativos ya
+    existentes ganan `curaAgua` proporcional tras revisar el catálogo completo (31 consumibles reales
+    comprobados, no solo los 2 candidatos obvios): `agua-hervida-liquen`, `bulbo-cauce`,
+    `liquen-humedo`, `infusion-espiga-roja`, `infusion-petalos-flor-ceniza` — `aguardiente-goirntes`
+    quedó fuera a propósito (alcohol, no hidrata). Verificado: `tsc -b` limpio backend+frontend, 8
+    tests unitarios nuevos en `crafting.ts` (gate multi-slug + las 2 recetas) verificados
+    rigurosamente, test de integración de Comer/Beber reescrito por completo para el nuevo mecanismo
+    (confirmando ración+odre en el mismo turno, el odre vacío vuelve al inventario, no desaparece).
+    Línea base de fallos de infraestructura preexistente sin cambios (33, mismos 3 archivos de
+    siempre). Pendiente reverificar en vivo con Playwright (requiere reiniciar backend + reseed del
+    catálogo, ya aplicado en este entorno).
 14. **La primera tirada de iniciativa de un combate debe ser "tirada del jugador vs tirada del
     enemigo"**, no una comparación contra una dificultad fija como aparentemente ocurre hoy.
     **PENDIENTE — confirmar el cálculo real de la primera iniciativa en `turnResolution.ts`.**

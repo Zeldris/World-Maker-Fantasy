@@ -164,7 +164,7 @@ export function useTurnFlow(params: UseTurnFlowParams) {
     // Panel "Curar" con varios objetos/usos a la vez (petición explícita, 2026-08-18) — reenviado
     // tal cual a requestTurnNarrate, mismo criterio que `lootItemNames` en submitCombatAction.
     // "Comer/Beber" (2026-09-04) — mismo patrón que healItemUses.
-    extras?: { healItemUses?: { itemId: string; quantity: number }[]; hambreSedItemUses?: { itemId: string; quantity: number }[]; beberAgua?: boolean },
+    extras?: { healItemUses?: { itemId: string; quantity: number }[]; hambreSedItemUses?: { itemId: string; quantity: number }[] },
   ) {
     if (!action || !saveId || busyUntil || endedAt || pendingDeathResolution) return
     composerRef.current?.clear()
@@ -292,7 +292,6 @@ export function useTurnFlow(params: UseTurnFlowParams) {
           npcsInScene: classifyResult.npcsInScene,
           healItemUses: extras?.healItemUses,
           hambreSedItemUses: extras?.hambreSedItemUses,
-          beberAgua: extras?.beberAgua,
         },
         {
           onChunk: (delta) => setStreamingNarration((prev) => (prev ?? '') + delta),

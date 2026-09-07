@@ -25,8 +25,11 @@ export interface CraftingRecipe {
   key: string;
   verbRegex: RegExp;
   nounRegex: RegExp;
-  /// Slug de ubicación requerido, o null si se puede craftear en cualquier sitio.
-  location: string | null;
+  /// Slug de ubicación requerido, varios slugs válidos, o null si se puede craftear en cualquier
+  /// sitio. Array añadido con el hallazgo 13 (revisar-partida-hallazgos.md 2026-09-06, "recoger
+  /// agua" solo en una zona con agua — 3 Locations distintas, no una sola) — el string único
+  /// original se queda intacto para las 51 recetas ya existentes.
+  location: string | string[] | null;
   ingredients: IngredientRequirement[];
   resultName: string;
   resultDescription: string;
@@ -357,6 +360,51 @@ export const SAND_POUCH_RECIPE: CraftingRecipe = {
     'El personaje quiere coser un saquito de arena imán, pero no puede hacerlo ahora mismo (hace falta estar en el Campamento del Clan Serhu y llevar una piel curtida y 2 puñados de arena imán encima) — narra que lo intenta o lo considera, pero no que lo cose de verdad.',
   narrationDo:
     'El personaje cose el saquito de cuero curtido y lo rellena con su arena imán aquí mismo, en el Campamento del Clan Serhu — narra la escena con naturalidad. El objeto ya se gestiona automáticamente por el backend.',
+};
+
+// Odre de agua (hallazgo 13, revisar-partida-hallazgos.md 2026-09-06, "se craftea con peletería
+// T1") — mismo oficio/tier/requisito de destreza que SAND_POUCH_RECIPE (misma familia de trabajo
+// con cuero), sin gate de ubicación: el odre VACÍO se cose en cualquier sitio, la condición de
+// zona con agua solo aplica a llenarlo (RECOGER_AGUA_RECIPE, justo abajo).
+export const ODRE_AGUA_RECIPE: CraftingRecipe = {
+  key: 'odreAgua',
+  verbRegex: /cos[eo]|confeccion|fabric|prepar|crear|creo/,
+  nounRegex: /odre/,
+  location: null,
+  ingredients: [{ match: { kind: 'category', tipo: 'RECURSO', category: 'piel' }, cantidad: 1, label: 'piel curtida' }],
+  resultName: 'Odre de agua',
+  resultCatalogSlug: 'odre-agua',
+  resultDescription: 'Odre de cuero curtido cosido a mano, correa larga para llevar al hombro — imprescindible en la estepa, vacío hasta que se llena en una fuente real.',
+  tier: 1,
+  requisitos: { destreza: 6 },
+  oficio: 'curtidor-orcos-llanuras',
+  narrationWant:
+    'El personaje quiere coser un odre de agua, pero no puede hacerlo ahora mismo (hace falta llevar una piel curtida encima) — narra que lo intenta o lo considera, pero no que lo cose de verdad.',
+  narrationDo:
+    'El personaje cose el odre de cuero curtido a mano, dejándolo listo pero vacío — narra la escena con naturalidad. El objeto ya se gestiona automáticamente por el backend.',
+};
+
+// Recoger agua (hallazgo 13) — llena un odre vacío ya craftado, SOLO en una zona con agua real de
+// verdad (los 3 puntos de agua permanentes/estacionales del catálogo, worldCatalog.ts: Los
+// Manaderos, El Pozo de Cauce Viejo, El Oasis de Chudos Rojos — `Location.kind` incluye 'punto de
+// agua' en los 3, pero se lista por slug explícito en vez de leer ese campo en vivo, decisión
+// explícita de la usuaria). Sin `oficio`/`tier`/`requisitos`: no es un oficio, es una acción
+// simple de recoger algo que ya está ahí — cae al fallback de duración `CRAFT_TIER_DURATION_SECONDS[1]`
+// = 5 segundos reales, la espera mínima ya existente del sistema (ver craftDurationSecondsFor más
+// abajo), suficiente para sustituir al viejo botón fijo "Beber agua" sin inventar un camino nuevo.
+export const RECOGER_AGUA_RECIPE: CraftingRecipe = {
+  key: 'recogerAgua',
+  verbRegex: /recoj|recog|llen|lleve/,
+  nounRegex: /agua/,
+  location: ['manaderos', 'pozo-cauce-viejo', 'oasis-de-chudos-rojos'],
+  ingredients: [{ match: { kind: 'exact', catalogSlug: 'odre-agua' }, cantidad: 1, label: 'odre de agua vacío' }],
+  resultName: 'Odre de agua lleno',
+  resultCatalogSlug: 'odre-agua-lleno',
+  resultDescription: 'El mismo odre de cuero curtido, lleno hasta el tapón — listo para beber.',
+  narrationWant:
+    'El personaje quiere recoger agua, pero no puede hacerlo ahora mismo (hace falta estar en una fuente de agua real y llevar un odre vacío encima) — narra que lo intenta o lo considera, pero no que lo llena de verdad.',
+  narrationDo:
+    'El personaje se agacha junto al agua y llena el odre hasta el tapón — narra la escena con naturalidad. El objeto ya se gestiona automáticamente por el backend.',
 };
 
 // Receta de refinado nueva (2026-07-29, petición explícita, ejemplo dado por la usuaria:
@@ -1162,6 +1210,8 @@ export const CRAFTING_RECIPES: CraftingRecipe[] = [
   MAGNETIZED_IRON_INGOT_RECIPE,
   COMPASS_NEEDLE_RECIPE,
   SAND_POUCH_RECIPE,
+  ODRE_AGUA_RECIPE,
+  RECOGER_AGUA_RECIPE,
   STONE_BLOCK_RECIPE,
   WOOD_BEAM_RECIPE,
   BONE_COLUMN_RECIPE,
@@ -1324,6 +1374,15 @@ export function hasToolForOficio(oficio: string, rows: InventoryRowLike[], catal
   });
 }
 
+/// Puro: ¿la ubicación actual cumple lo que exige `recipe.location`? Soporta tanto el slug único
+/// original como el array nuevo (hallazgo 13) sin que el resto de `canCraft` tenga que distinguir
+/// los dos casos.
+function locationMatches(recipe: CraftingRecipe, currentLocationSlug: string | null): boolean {
+  if (!recipe.location) return true;
+  if (Array.isArray(recipe.location)) return currentLocationSlug !== null && recipe.location.includes(currentLocationSlug);
+  return currentLocationSlug === recipe.location;
+}
+
 /// Puro: dado el slug de la ubicación actual, las filas de inventario disponibles y los
 /// atributos del PJ, decide si la receta puede materializarse ahora mismo. `alivio` (nivel de
 /// oficio si la receta lo tiene, ver professionProgress.ts) resta a los requisitos exigidos.
@@ -1340,7 +1399,7 @@ export function canCraft(
   // siquiera hace falta pasarlo salvo que de verdad se use.
   unlockedRecipeKeys: string[] = [],
 ): boolean {
-  if (recipe.location && currentLocationSlug !== recipe.location) return false;
+  if (!locationMatches(recipe, currentLocationSlug)) return false;
   if (recipe.requiresUnlock && !unlockedRecipeKeys.includes(recipe.key)) return false;
   const hasIngredients = recipe.ingredients.every((ing) => totalQuantity(rows, ing, catalogBySlug) >= ing.cantidad);
   if (!hasIngredients) return false;

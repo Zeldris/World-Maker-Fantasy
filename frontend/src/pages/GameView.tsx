@@ -2155,9 +2155,9 @@ export function GameView() {
           inventory={inventory}
           hambre={hambre}
           sed={sed}
-          onConfirm={(actionText, hambreSedItemUses, beberAgua) => {
+          onConfirm={(actionText, hambreSedItemUses) => {
             setHungerThirstModalOpen(false)
-            handleSubmit(actionText, { hambreSedItemUses, beberAgua })
+            handleSubmit(actionText, { hambreSedItemUses })
           }}
           onCancel={() => setHungerThirstModalOpen(false)}
         />

@@ -26,6 +26,8 @@ const ironIngot = recipe('ironIngot');
 const magnetizedIronIngot = recipe('magnetizedIronIngot');
 const compassNeedle = recipe('compassNeedle');
 const sandPouch = recipe('sandPouch');
+const odreAgua = recipe('odreAgua');
+const recogerAgua = recipe('recogerAgua');
 const stoneBlock = recipe('stoneBlock');
 const boiledLichenWater = recipe('boiledLichenWater');
 const firstAidBandage = recipe('firstAidBandage');
@@ -76,7 +78,9 @@ const catalogBySlug = new Map<string, CatalogLookup>([
   ['resina-trepador-ocaso', { tipo: 'RECURSO', category: 'resina' }],
   ['mena-hierro-llanuras', { tipo: 'RECURSO', category: 'mena' }],
   ['piedra', { tipo: 'RECURSO', category: 'piedra' }],
-  ['odre-agua', { tipo: 'EQUIPABLE', category: 'herramienta' }],
+  // Hallazgo 13 (revisar-partida-hallazgos.md 2026-09-06) — 'odre-agua' pasó de EQUIPABLE/
+  // herramienta (decorativo) a CONSUMIBLE/consumible (ingrediente de RECOGER_AGUA_RECIPE).
+  ['odre-agua', { tipo: 'CONSUMIBLE', category: 'consumible' }],
   ['grano-espiga-roja', { tipo: 'CONSUMIBLE', category: 'consumible' }],
   ['piel-gargantua', { tipo: 'RECURSO', category: 'piel' }],
   ['punado-arena-iman', { tipo: 'RECURSO', category: 'piedra' }],
@@ -97,7 +101,7 @@ function row(id: string, catalogSlug: string, cantidad?: number): InventoryRowLi
 }
 
 describe('CRAFTING_RECIPES', () => {
-  it('tiene las 50 recetas esperadas, cada una con una clave única', () => {
+  it('tiene las 52 recetas esperadas, cada una con una clave única', () => {
     expect(CRAFTING_RECIPES.map((r) => r.key)).toEqual([
       'axeRepair',
       'smokeMeat',
@@ -108,6 +112,10 @@ describe('CRAFTING_RECIPES', () => {
       'magnetizedIronIngot',
       'compassNeedle',
       'sandPouch',
+      // Hallazgo 13 (revisar-partida-hallazgos.md 2026-09-06) — odre de agua (curtidor T1) +
+      // recoger agua (llenarlo solo en una zona con agua real).
+      'odreAgua',
+      'recogerAgua',
       'stoneBlock',
       // 3 nuevas (2026-08-24, Grupo 3 § materiales procesados de construcción) — consumidas por
       // primera vez por el Ayuntamiento mediano/grande (construction.ts).
@@ -541,6 +549,31 @@ describe('canCraft — lingote de hierro imantado, aguja de cardo brújula y saq
     expect(canCraft(sandPouch, 'campamento-serhu', rows, catalogBySlug, attrs, secondary)).toBe(true);
     expect(canCraft(sandPouch, 'hondonada-del-eco', rows, catalogBySlug, attrs, secondary)).toBe(false);
     expect(canCraft(sandPouch, 'campamento-serhu', [row('1', 'piel-gargantua'), row('2', 'punado-arena-iman', 1)], catalogBySlug, attrs, secondary)).toBe(false);
+  });
+});
+
+// Hallazgo 13 (revisar-partida-hallazgos.md 2026-09-06) — odre de agua (curtidor T1, sin gate de
+// ubicación: se cose en cualquier sitio) y recoger agua (llena un odre vacío, SOLO en una de las
+// 3 Locations con agua real — location: string[], el caso nuevo de gate multi-slug).
+describe('canCraft — odre de agua y recoger agua (hallazgo 13, 2026-09-06)', () => {
+  it('odre de agua: 1 piel (cualquiera, por categoría) + herramienta de curtidor, en CUALQUIER sitio', () => {
+    const rows = [row('1', 'piel-gargantua'), row('2', 'cuchillo-hielo-silice')];
+    expect(canCraft(odreAgua, 'campamento-serhu', rows, catalogBySlug, attrs, secondary)).toBe(true);
+    expect(canCraft(odreAgua, 'hondonada-del-eco', rows, catalogBySlug, attrs, secondary)).toBe(true);
+    expect(canCraft(odreAgua, 'campamento-serhu', [row('1', 'cuchillo-hielo-silice')], catalogBySlug, attrs, secondary)).toBe(false);
+  });
+
+  it('recoger agua: 1 odre vacío, SOLO en una de las 3 Locations con agua', () => {
+    const rows = [row('1', 'odre-agua')];
+    expect(canCraft(recogerAgua, 'manaderos', rows, catalogBySlug, attrs, secondary)).toBe(true);
+    expect(canCraft(recogerAgua, 'pozo-cauce-viejo', rows, catalogBySlug, attrs, secondary)).toBe(true);
+    expect(canCraft(recogerAgua, 'oasis-de-chudos-rojos', rows, catalogBySlug, attrs, secondary)).toBe(true);
+    expect(canCraft(recogerAgua, 'campamento-serhu', rows, catalogBySlug, attrs, secondary)).toBe(false);
+    expect(canCraft(recogerAgua, null, rows, catalogBySlug, attrs, secondary)).toBe(false);
+  });
+
+  it('recoger agua: sin odre vacío en el inventario, aunque estés en zona con agua', () => {
+    expect(canCraft(recogerAgua, 'manaderos', [], catalogBySlug, attrs, secondary)).toBe(false);
   });
 });
 

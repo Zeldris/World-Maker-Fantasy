@@ -338,11 +338,13 @@ interface NarrateAndPersistParams {
   /// `detectMedicalItemUse` sobre el texto libre de la acción, un único objeto, "mejor match".
   healItemUses?: { itemId: string; quantity: number }[];
   /// Panel "Comer/Beber" (2026-09-04), mismo patrón exacto que `healItemUses` — lista ORDENADA de
-  /// qué objetos de comida usar (validados contra `curaHambre` real del catálogo) y si además se
-  /// pulsó "Beber agua" (fijo, sin item, repone Sed al 100%). `undefined`/vacío + `false` deja el
-  /// comportamiento de siempre intacto (Hambre/Sed solo derivan del tiempo, nunca suben).
+  /// qué objetos de comida/bebida usar, validados contra `curaHambre`/`curaAgua` real del
+  /// catálogo. `undefined`/vacío deja el comportamiento de siempre intacto (Hambre/Sed solo
+  /// derivan del tiempo, nunca suben). El viejo booleano `beberAgua` (fijo, sin ítem, repone Sed
+  /// al 100% en cualquier sitio) se retira con el hallazgo 13 (revisar-partida-hallazgos.md
+  /// 2026-09-06, "el consumo de agua pasa a depender de un ítem odre") — reponer sed ahora exige
+  /// de verdad un ítem con `curaAgua` (el odre lleno da 100, igual que el botón fijo daba antes).
   hambreSedItemUses?: { itemId: string; quantity: number }[];
-  beberAgua?: boolean;
   /// Bug real jugando en vivo (2026-08-04, "ronda larga de pruebas"): `Save.pendingCombatNpcSlugs`
   /// (a quién sigue enfrentado el jugador de un turno a otro) se escribía siempre pero nunca se
   /// leía aquí — un ataque de seguimiento SIN comillas ("le lanzo otro golpe al orco") caía
@@ -2708,7 +2710,6 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     lootItemNames,
     healItemUses,
     hambreSedItemUses,
-    beberAgua,
     pendingCombatNpcSlugs,
     travelInterruptionNpcId,
     travelInterruptionOriginalDestinationName,
@@ -3752,6 +3753,8 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
           tipoArma: true,
           curaEnergia: true,
           curaHambre: true,
+          curaAgua: true,
+          emptyContainerCatalogSlug: true,
           equipSlot: true,
           effectKey: true,
           aliases: true,
@@ -3770,6 +3773,8 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
         tipoArma: c.tipoArma,
         curaEnergia: c.curaEnergia,
         curaHambre: c.curaHambre,
+        curaAgua: c.curaAgua,
+        emptyContainerCatalogSlug: c.emptyContainerCatalogSlug,
         equipSlot: c.equipSlot,
         effectKey: c.effectKey,
         aliases: c.aliases,
@@ -3875,25 +3880,49 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   // por completo aquí, aunque "Curar" (bloque de arriba) sí lo aplicaba. Con Descansar ya sin curar
   // condición física y con cooldown de 3h, hace falta que comer/beber SÍ pueda completar la energía
   // que falte — mismo criterio que healItemUsesValidated, sin duplicar catalogBySlug.get() por ítem.
+  // `curaAgua` (hallazgo 13) amplía el filtro — antes solo entraban ítems que curan HAMBRE
+  // (`curaHambre !== null`), dejando fuera cualquier cosa que solo repusiera Sed (el odre lleno,
+  // sin `curaHambre`). Ahora entra cualquier ítem con `curaHambre` O `curaAgua`.
   const hungerItemsInInventory = inventoryRows
     .map((i) => ({
       id: i.id,
       name: i.name,
       curaHambre: i.catalogSlug ? (catalogBySlug.get(i.catalogSlug)?.curaHambre ?? null) : null,
+      curaAgua: i.catalogSlug ? (catalogBySlug.get(i.catalogSlug)?.curaAgua ?? null) : null,
       curaEnergia: i.catalogSlug ? (catalogBySlug.get(i.catalogSlug)?.curaEnergia ?? 0) : 0,
+      emptyContainerCatalogSlug: i.catalogSlug ? (catalogBySlug.get(i.catalogSlug)?.emptyContainerCatalogSlug ?? null) : null,
     }))
-    .filter((i): i is { id: string; name: string; curaHambre: number; curaEnergia: number } => i.curaHambre !== null);
-  const hambreSedItemUsesValidated: { id: string; name: string; curaHambre: number; curaEnergia: number; quantity: number }[] = [];
+    .filter(
+      (i): i is { id: string; name: string; curaHambre: number | null; curaAgua: number | null; curaEnergia: number; emptyContainerCatalogSlug: string | null } =>
+        i.curaHambre !== null || i.curaAgua !== null,
+    );
+  const hambreSedItemUsesValidated: {
+    id: string;
+    name: string;
+    curaHambre: number;
+    curaAgua: number;
+    curaEnergia: number;
+    emptyContainerCatalogSlug: string | null;
+    quantity: number;
+  }[] = [];
   for (const use of hambreSedItemUses ?? []) {
     const hungerItem = hungerItemsInInventory.find((i) => i.id === use.itemId);
     const row = inventoryRows.find((i) => i.id === use.itemId);
     if (!row || !hungerItem) continue;
     const quantity = Math.max(0, Math.min(use.quantity, quantityOf(row.name)));
     if (quantity > 0) {
-      hambreSedItemUsesValidated.push({ id: row.id, name: row.name, curaHambre: hungerItem.curaHambre, curaEnergia: hungerItem.curaEnergia, quantity });
+      hambreSedItemUsesValidated.push({
+        id: row.id,
+        name: row.name,
+        curaHambre: hungerItem.curaHambre ?? 0,
+        curaAgua: hungerItem.curaAgua ?? 0,
+        curaEnergia: hungerItem.curaEnergia,
+        emptyContainerCatalogSlug: hungerItem.emptyContainerCatalogSlug,
+        quantity,
+      });
     }
   }
-  const usingExplicitHungerThirstList = hambreSedItemUsesValidated.length > 0 || !!beberAgua;
+  const usingExplicitHungerThirstList = hambreSedItemUsesValidated.length > 0;
   // Brújula (2026-08-15, feature de exploración): NO se consume al usarla (es una herramienta
   // equipable, no un consumible) — solo dispara la narración determinista de rumbos más abajo, ver
   // compassNarrationLine. Único objeto con este comportamiento hoy, así que se filtra por su propio
@@ -4284,23 +4313,28 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   // Habilidad "Comer/Beber" (2026-09-04) — mismo principio EXACTO que `healPreview` justo arriba:
   // se calcula aquí, de solo lectura, ANTES de narrar. `advanceFictionalMinutes` es pura y barata
   // — se recalcula aquí en vez de esperar a `nuevoFictionalMinutes` (declarado más abajo, después
-  // de donde `narration` ya se decide) para no invertir el orden del resto del archivo. "Beber
-  // agua" no pasa por la fórmula general de `lastAtMinutesForGanancia` — repone al 100% de un
-  // tirón (`lastDrankAtMinutes` = el minuto de ficción de este turno).
+  // de donde `narration` ya se decide) para no invertir el orden del resto del archivo.
+  //
+  // Hallazgo 13 (revisar-partida-hallazgos.md 2026-09-06) — el viejo booleano `beberAgua` (fijo,
+  // sin ítem, repone Sed al 100% de un tirón en cualquier sitio) se retira: Sed ahora sube por
+  // `curaAgua` de los ítems usados, mismo patrón EXACTO que `hungerGanancia`/`curaHambre` de
+  // abajo. El odre de agua lleno (`curaAgua: 100`) replica el "100% de un tirón" de siempre sin
+  // necesitar un camino aparte.
   const fictionalMinutesParaComerBeber = advanceFictionalMinutes(fictionalMinutesActuales, minutosDeEsteTurno);
   const hungerGanancia = hambreSedItemUsesValidated.reduce((sum, u) => sum + u.curaHambre * u.quantity, 0);
   const nuevoLastAteAtMinutes =
     hungerGanancia > 0
       ? lastAtMinutesForGanancia(params.lastAteAtMinutes, fictionalMinutesParaComerBeber, COMIDA_MINUTOS_POR_TRAMO, hungerGanancia)
       : params.lastAteAtMinutes;
-  const nuevoLastDrankAtMinutes = beberAgua ? fictionalMinutesParaComerBeber : params.lastDrankAtMinutes;
+  const aguaGanancia = hambreSedItemUsesValidated.reduce((sum, u) => sum + u.curaAgua * u.quantity, 0);
+  const nuevoLastDrankAtMinutes =
+    aguaGanancia > 0
+      ? lastAtMinutesForGanancia(params.lastDrankAtMinutes, fictionalMinutesParaComerBeber, AGUA_MINUTOS_POR_TRAMO, aguaGanancia)
+      : params.lastDrankAtMinutes;
   const hungerThirstPreview = usingExplicitHungerThirstList
     ? (() => {
         const itemsTexto = hambreSedItemUsesValidated.map((u) => (u.quantity > 1 ? `${baseNameOf(u.name)} ×${u.quantity}` : baseNameOf(u.name))).join(', ');
-        const partes: string[] = [];
-        if (itemsTexto) partes.push(`come ${itemsTexto}`);
-        if (beberAgua) partes.push('bebe agua');
-        return { narration: `${characterName} ${partes.join(' y ')}. ${pickFlavor(EAT_DRINK_FLAVOR)}` };
+        return { narration: `${characterName} usa ${itemsTexto}. ${pickFlavor(EAT_DRINK_FLAVOR)}` };
       })()
     : null;
 
@@ -5485,6 +5519,8 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
           tipoArma: true,
           curaEnergia: true,
           curaHambre: true,
+          curaAgua: true,
+          emptyContainerCatalogSlug: true,
           equipSlot: true,
           effectKey: true,
           aliases: true,
@@ -5500,6 +5536,8 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
           tipoArma: c.tipoArma,
           curaEnergia: c.curaEnergia,
           curaHambre: c.curaHambre,
+          curaAgua: c.curaAgua,
+          emptyContainerCatalogSlug: c.emptyContainerCatalogSlug,
           equipSlot: c.equipSlot,
           effectKey: c.effectKey,
           aliases: c.aliases,
@@ -5550,7 +5588,21 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     }
 
     // Panel "Comer/Beber" (2026-09-04) — mismo patrón EXACTO que el bucle de Curar justo arriba.
-    // "Beber agua" no consume nada (sin item real detrás), así que no aparece aquí.
+    //
+    // `emptyContainerCatalogSlug` (hallazgo 13, revisar-partida-hallazgos.md 2026-09-06) — caso
+    // nuevo: el odre de agua lleno, al beberse, no desaparece del todo — devuelve el odre vacío al
+    // inventario. Memoizado por si el mismo turno consumiera más de un ítem con contenedor (hoy
+    // solo el odre, pero sin asumirlo).
+    const emptyContainerRowCache = new Map<string, { name: string; description: string; equipSlot: string | null; effectKey: string | null; tipo: string | null } | null>();
+    async function emptyContainerRowFor(slug: string) {
+      if (emptyContainerRowCache.has(slug)) return emptyContainerRowCache.get(slug)!;
+      const row = await tx.itemCatalog.findUnique({
+        where: { worldId_slug: { worldId, slug } },
+        select: { name: true, description: true, equipSlot: true, effectKey: true, tipo: true },
+      });
+      emptyContainerRowCache.set(slug, row);
+      return row;
+    }
     for (const u of hambreSedItemUsesValidated) {
       const row = freshInventoryRows.find((r) => r.id === u.id);
       if (!row) continue;
@@ -5565,6 +5617,17 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
         const newName = `${baseNameOf(row.name)} (${restante})`;
         await tx.inventoryItem.update({ where: { id: u.id }, data: { name: newName } });
         updatedInventoryItems.push({ id: u.id, name: newName });
+      }
+      if (u.emptyContainerCatalogSlug) {
+        const emptyRow = await emptyContainerRowFor(u.emptyContainerCatalogSlug);
+        if (emptyRow) {
+          const nameConCantidad = aConsumir > 1 ? `${emptyRow.name} (${aConsumir})` : emptyRow.name;
+          const created = await tx.inventoryItem.create({
+            data: { saveId, name: nameConCantidad, description: emptyRow.description, origin: 'consumo', catalogSlug: u.emptyContainerCatalogSlug },
+          });
+          newInventoryItems.push({ ...created, slot: null, equipSlot: emptyRow.equipSlot, effectKey: emptyRow.effectKey, tipo: emptyRow.tipo });
+          createdItemNames.push(created.name);
+        }
       }
     }
 

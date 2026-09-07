@@ -149,7 +149,9 @@ export interface RecipeStatusInfo {
   ingredients: IngredientStatusInfo[]
   missingRequisitos: string[]
   locationOk: boolean
-  requiredLocationName: string | null
+  /// Array (hallazgo 13, 2026-09-06) — una receta puede exigir cualquiera de varias ubicaciones
+  /// válidas (p.ej. "recoger agua", varios puntos de agua distintos), no solo una.
+  requiredLocationName: string | string[] | null
   /// Reglas de reino (auditoría 2026-08-13: cupo de Ayuntamiento, misma región, distancia,
   /// nivel-anterior-correcto al mejorar, un solo Ayuntamiento) — solo viene relleno cuando
   /// materiales/atributos YA se cumplen (mismo criterio que el backend). null = no aplica o no
@@ -514,8 +516,11 @@ export interface InventoryItemInfo {
   curaUnPaso?: boolean
   curaEnergia?: number | null
   /// Habilidad "Comer/Beber" (2026-09-04, panel del mismo nombre) — null en objetos que no sacian
-  /// hambre. Sin campo equivalente para Sed: se sacia con la acción fija "Beber agua" del modal.
+  /// hambre.
   curaHambre?: number | null
+  /// Puntos porcentuales de Sed que restaura al usarlo (hallazgo 13, revisar-partida-hallazgos.md
+  /// 2026-09-06) — mismo criterio que `curaHambre`. Sustituye al viejo botón fijo "Beber agua".
+  curaAgua?: number | null
   /// Grupo 3 § Compañeros y supervivencia (2026-08-25) — ambos null = equipado en el propio
   /// personaje o sin equipar (comportamiento de siempre); con valor = equipado en ESE compañero/
   /// súbdito, nunca los dos a la vez.

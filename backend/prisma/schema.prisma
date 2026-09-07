@@ -2333,9 +2333,21 @@ model ItemCatalog {
   /// Puntos porcentuales de Hambre que restaura al usarlo (2026-09-04, habilidad "Comer/Beber") —
   /// mismo criterio que `curaEnergia` pero sobre el pool derivado de `Save.lastAteAtMinutes` (ver
   /// `comidaPct`/`lastAtMinutesForGanancia`, companionSupervivencia.ts). Null = el objeto no sacia
-  /// hambre. No existe `curaSed` equivalente: la Sed se sacia con la acción fija "Beber agua" del
-  /// mismo modal, sin depender de ningún item del catálogo.
+  /// hambre.
   curaHambre            Int?
+  /// Puntos porcentuales de Sed que restaura al usarlo (hallazgo 13, revisar-partida-hallazgos.md
+  /// 2026-09-06, "el consumo de agua pasa a depender de un ítem odre") — mismo criterio que
+  /// `curaHambre` pero sobre el pool derivado de `Save.lastDrankAtMinutes` (ver
+  /// `aguaPct`/`lastAtMinutesForGanancia`, companionSupervivencia.ts). Null = el objeto no sacia
+  /// sed. Sustituye al viejo botón fijo "Beber agua" (sin ítem, repone 100% en cualquier sitio,
+  /// retirado con este hallazgo) — el odre de agua lleno usa 100 (repone del todo), el resto de
+  /// ítems narrativos de agua usan un valor proporcional.
+  curaAgua              Int?
+  /// Slug de ItemCatalog que se inserta en el inventario al consumir ESTE ítem (hallazgo 13) —
+  /// caso único hoy: el odre de agua lleno, al beberse, devuelve el odre vacío (`odre-agua`) en
+  /// vez de desaparecer del todo, como cualquier otro consumible. Null = comportamiento de
+  /// siempre (el ítem se borra/reduce sin más al consumirse, sin dejar nada a cambio).
+  emptyContainerCatalogSlug String?
   /// Clave estable del efecto especial (2026-08-03, `tipo: ESPECIAL`) — un identificador que un
   /// sistema concreto del juego consulta para activar su propio comportamiento (p.ej.
   /// `'reveal-map-llanuras'` para MapaPanel.tsx). Texto libre a propósito, como `sourceSlug` en

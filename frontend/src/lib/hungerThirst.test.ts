@@ -16,12 +16,19 @@ describe('applySequentialHunger (vista previa del modal "Comer/Beber")', () => {
   })
 })
 
+// Hallazgo 13 (revisar-partida-hallazgos.md 2026-09-06) — Sed ya no es un booleano fijo "Beber
+// agua", sube por ganancia acumulada de ítems reales (curaAgua), mismo criterio que Hambre.
 describe('applySequentialThirst (vista previa del modal "Comer/Beber")', () => {
-  it('sin "Beber agua", se queda igual', () => {
-    expect(applySequentialThirst(30, false)).toBe(30)
+  it('sin ganancia, se queda igual', () => {
+    expect(applySequentialThirst(30, 0)).toBe(30)
   })
 
-  it('con "Beber agua", repone al 100% de un tirón', () => {
-    expect(applySequentialThirst(30, true)).toBe(100)
+  it('suma la ganancia sin pasar de 100 — el odre lleno (curaAgua: 100) repone de un tirón', () => {
+    expect(applySequentialThirst(30, 20)).toBe(50)
+    expect(applySequentialThirst(30, 100)).toBe(100)
+  })
+
+  it('ganancia negativa se ignora, nunca empeora', () => {
+    expect(applySequentialThirst(30, -20)).toBe(30)
   })
 })
