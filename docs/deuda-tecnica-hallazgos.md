@@ -646,9 +646,15 @@ commit relevante), así que no es un hueco de cobertura — es un candidato a ex
 responsabilidades mezcladas, igual que ya se hizo con `useKingdomState`/`useActionModalsState`
 desde `GameView.tsx`.
 
-**Estado**: PENDIENTE, prioridad baja consciente — mismo criterio que
-`combateMultipleOrquestacion.ts` (2026-08-26): el archivo funciona y está bien probado, no hay bug
-detrás, es limpieza de tamaño para la próxima vez que se toque por otro motivo.
+**Estado**: EVALUADO Y DEJADO INTACTO (2026-09-08, decisión de la usuaria: cierre total, incluyendo
+evaluar este punto) — leído el archivo completo (944 líneas a fecha de hoy): el timing de
+animaciones (`awaitingExchangeApply`/`awaitingNextInitiative`, los `useRef` de timers cerrados en
+`f717171`/`dba1ada`) vive dentro de `handleCombatTurnResolved` cerrando sobre casi todos los
+setters del hook — separarlo no reduce acoplamiento real y arriesga el orden de aplicación que 3
+bugs reales recientes (2026-09-06/07) acaban de fijar con precisión. Saqueo y XP/reputación están
+igual de entrelazados con `submitCombatAction`. Ninguna extracción segura identificada — se deja
+como deuda consciente de largo plazo, mismo criterio que `combateMultipleOrquestacion.ts`
+(2026-08-26): el archivo funciona y está bien probado, no hay bug detrás.
 
 ## 2026-09-07 — Seguimiento de tamaño: turnResolution.ts (6922) y GameView.tsx (2277) siguen creciendo
 
@@ -661,6 +667,22 @@ múltiples y el Diario en pestañas — ninguno de estos 3 días concretos lo to
 patrón de duplicación nuevo detectado en el crecimiento reciente de `turnResolution.ts`: son
 funciones `has*` nuevas del mismo patrón ya establecido en `narrador.ts` (una responsabilidad cada
 una, todas con test), no bloques repetidos.
+
+**Estado (actualización 2026-09-08, evaluación real solicitada por la usuaria)**: `turnResolution.ts`
+(7257 líneas a fecha de hoy) — EVALUADO Y DEJADO INTACTO. Los guards `has*` mencionados en la
+ronda anterior en realidad viven en otros archivos (`narrador.ts`, `crafting.ts`,
+`dynamicModeNarracion.ts`, `npcScene.ts`, `skillBars.ts`), no aquí — este archivo es en un 95% la
+función `narrateAndPersistTurn` (~4477 líneas), y ya pasó por una ronda de extracción de
+sub-bloques autocontenidos el 2026-08-13 (`applyLootMode`, `applyCombatExchangeToNpcState`,
+`applyHarvest`, `applyKillSideEffects`, `resolveCombatSlugsAndPersist`, `applyCondicionTimeouts`,
+`applyCapturaEnInventarioTimeouts`). Lo que queda es orquestación secuencial de un único turno de
+juego con variables que fluyen en cascada de principio a fin — partirlo en módulos por dominio
+exigiría funciones con 15-20 parámetros cruzados, sin reducir acoplamiento real, solo trasladar
+líneas con alto riesgo. `GameView.tsx` (2410 líneas antes de tocarlo) — PARCIALMENTE CERRADO,
+commit `0f9913d`: extraído `useClaseEspecializacionState` (5 `useState` + 2 handlers completos,
+único de los 3 candidatos evaluados —junto a barras de habilidades y viaje/tránsito, descartados
+por mezclar estado compartido con otros hooks— que cumplía el criterio "¿quién más escribe este
+estado?" con margen de seguridad). 2410→2398 líneas, `tsc -b` limpio, 224/224 tests sin regresión.
 
 **Estado**: Sin acción — solo registro de la trayectoria de tamaño para la próxima auditoría, sin
 hallazgo nuevo de fondo que motive tocarlos ahora.
