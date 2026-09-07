@@ -717,9 +717,26 @@ export function GameView() {
 
   async function handleFundarReino(name: string, description?: string) {
     if (!saveId) return
-    const result = await fundarReino(saveId, name, description)
-    setKingdomName(result.kingdomName)
-    setKingdomFoundedInfo(null)
+    try {
+      const result = await fundarReino(saveId, name, description)
+      setKingdomName(result.kingdomName)
+      setKingdomFoundedInfo(null)
+    } catch (err) {
+      // Hueco de reintento (auditoría de frontend 2026-09-07, decisión confirmada con la usuaria:
+      // arreglarlo): si el POST original SÍ tuvo éxito en el backend pero la respuesta se perdió en
+      // tránsito (timeout del lado del cliente tras un 200 real), un reintento choca aquí contra el
+      // guard de "reino ya fundado" (`reino.ts`, mensaje exacto "Ya has fundado tu reino") — sin
+      // este catch, el modal mostraba ese error tal cual y dejaba a la jugadora sin forma clara de
+      // seguir. En vez de reventar, se refresca el estado real (el reino SÍ existe) y se reabre el
+      // mismo popup ya reconstruido desde lo persistido (`handleReabrirFundacionReino`, fix de
+      // 2026-08-04 para el mismo problema de fondo: "recuperar la oportunidad de nombrar perdida").
+      if (err instanceof Error && err.message === 'Ya has fundado tu reino') {
+        await refreshSave()
+        handleReabrirFundacionReino()
+        return
+      }
+      throw err
+    }
   }
 
   // Bug real (auditoría de deuda técnica 2026-08-04): cancelar el popup de fundación (o recargar

@@ -568,10 +568,15 @@ ante este fallo"), aunque ese comentario está pensado para el caso de error de 
 de "la petición ni siquiera llegó a salir" que es más probable en `beforeunload` que en un `catch`
 normal.
 
-**Estado**: PENDIENTE, prioridad baja — candidato sencillo a `navigator.sendBeacon` o
-`fetch(..., { keepalive: true })` si se decide que de verdad importa que la pausa llegue siempre;
-requiere confirmar primero si el worldTick trata una partida "sin pausar por error" de forma
-distinta a una realmente activa, antes de decidir si merece la pena el cambio.
+**Estado**: DESCARTADO (2026-09-08) — FALSO POSITIVO, confirmado leyendo `pauseSave` en
+`frontend/src/lib/api.ts:684-691` (no solo el `useEffect` de `GameView.tsx` citado arriba, que en
+efecto solo llama a `pauseSave(saveId)` sin más contexto): la propia función ya usa
+`navigator.sendBeacon` cuando está disponible, con fallback a `fetch(..., { keepalive: true })` —
+exactamente el candidato de fix que este hallazgo proponía. Confirmado con `git log -S
+"sendBeacon"` que ya existía desde el commit `a0375a3` (2026-07-24), muy anterior a esta auditoría.
+Decisión "arreglarlo ahora" de la usuaria ya estaba satisfecha antes de preguntar — no hacía falta
+tocar código.
+
 ## 2026-09-07 — shared.ts (routes/saves) sin ningún test propio pese a contener restartSaveTransactionBody, el borrado+reconstrucción completo de "volver a Día 1"
 
 **Hallazgo (auditoría de deuda técnica, ronda de seguimiento sobre los ~14 commits desde
