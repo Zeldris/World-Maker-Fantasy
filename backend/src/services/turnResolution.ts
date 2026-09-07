@@ -963,7 +963,18 @@ function resolveCombatExchangePhase(input: CombatExchangePhaseInput): CombatExch
   // de este resultado se toca (`exchangeHappened` se queda en false, `npcAttackHits`/
   // `npcTargetNewCondicion` en sus valores por defecto): no hay ningún golpe ni cambio de
   // condición este turno, solo se decide QUIÉN actuará primero en el próximo intercambio real.
-  if (!input.combateActivo && input.openingAmbush && input.rollGradoExito === 'fallo' && npcParaIntercambio) {
+  //
+  // Hallazgo 17 (revisar-partida-hallazgos.md 2026-09-07) — un ataque de apertura fallido contra
+  // fauna no agresiva (INOFENSIVO/CAUTELOSO) no debe sembrar `pendingNpcAttack` tampoco: la presa
+  // escapa de verdad, no tiene sentido dejar al jugador "esperando defender" contra un NPC que ni
+  // siquiera abrió combate (`resolveCombatSlugsAndPersist` ya no abre el panel en este caso) y que
+  // además nunca ataca de verdad (`ataqueNatural: 'No ataca.'`, ya protegido aparte por
+  // `npcAttackerIsInoffensive`). Temperamento de catálogo puro (sin reputación de facción, a
+  // diferencia de `attackMissedNonAggressiveTarget` en `resolveCombatSlugsAndPersist`) — esta
+  // función no recibe `factionsStatus`, y la fauna real afectada (Ruptidar y similares) no tiene
+  // facción de todas formas.
+  const npcTemperamentoNoAgresivo = npcParaIntercambio?.temperamento === 'INOFENSIVO' || npcParaIntercambio?.temperamento === 'CAUTELOSO';
+  if (!input.combateActivo && input.openingAmbush && input.rollGradoExito === 'fallo' && npcParaIntercambio && !npcTemperamentoNoAgresivo) {
     const npcWeaponNames = npcParaIntercambio.items.filter((i) => i.category === 'arma').map((i) => i.name);
     const npcAbilities = npcCombatAbilitiesFor(npcParaIntercambio, npcWeaponNames);
     const npcEnergiaMaxAmbush = energiaMaxFor(npcParaIntercambio.attributes.constitucion);
@@ -2377,6 +2388,13 @@ async function resolveCombatSlugsAndPersist(params: {
   /// región de la ubicación ACTUAL del jugador este turno (`regionLocation.region` del caller,
   /// null si no se pudo resolver). Ver `npcCanForceCombat` más abajo para el porqué.
   regionActual: string | null;
+  /// Hallazgo 17 (revisar-partida-hallazgos.md 2026-09-07) — resultado real de la tirada de
+  /// ataque de ESTE turno (`roll?.gradoExito` del caller), y el NPC real al que apunta la acción
+  /// (`candidateAttackTarget`, ya resuelto por el caller) — ambos necesarios para decidir si un
+  /// ataque de APERTURA que falla contra fauna no agresiva debe abrir combate igualmente o no
+  /// (ver `attackMissedNonAggressiveTarget` más abajo). `null` fuera de ese escenario concreto.
+  attackerRollGradoExito: GradoExito | null;
+  attackTarget: NpcInScene | null;
 }): Promise<{ combatSlugs: string[]; combateIniciado: NonNullable<NarrateAndPersistResult['combateIniciado']> | null }> {
   const {
     saveId,
@@ -2397,6 +2415,8 @@ async function resolveCombatSlugsAndPersist(params: {
     analizarRivalExito,
     justDied,
     regionActual,
+    attackerRollGradoExito,
+    attackTarget,
   } = params;
 
   // Combate "fantasma" (bug real confirmado 2 veces en vivo, causa raíz aislada 2026-08-29,
@@ -2515,20 +2535,39 @@ async function resolveCombatSlugsAndPersist(params: {
       const t = effectiveTemperamento(n.temperamento, n.faction, factionsStatus);
       return t === 'AMIGABLE' || t === 'INOFENSIVO' || t === 'CAUTELOSO';
     });
+  // Hallazgo 17 (revisar-partida-hallazgos.md 2026-09-07, "la narración indica que Gorhorn huye
+  // del combate, pero el combate se abre igualmente" — el Ruptidar, INOFENSIVO, "se gira... apenas
+  // rozan las escamas... dejando a Gorhorn solo"): un ataque de APERTURA (`!enCombate`, antes de
+  // que exista ningún intercambio mecánico real, ver `openingAmbush`) que FALLA
+  // (`attackerRollGradoExito === 'fallo'`) contra fauna no agresiva no debe abrir combate — la
+  // presa escapa de verdad, coherente con que este temperamento "nunca inicia combate" (comentario
+  // del enum `Temperamento`, más arriba) ya se protege como AGRESOR (`agresivoSlugsInScene`) pero
+  // no como VÍCTIMA de un ataque fallido, que es justo el hueco real. Si el ataque ACIERTA, sigue
+  // abriendo combate con normalidad (fauna inofensiva sí es cazable si el golpe conecta) — solo se
+  // toca la rama `detectsAttackIntent` de `shouldForceCombat`, ninguna de las otras 3.
+  const attackMissedNonAggressiveTarget =
+    !enCombate &&
+    attackerRollGradoExito === 'fallo' &&
+    attackTarget !== null &&
+    (() => {
+      const t = effectiveTemperamento(attackTarget.temperamento, attackTarget.faction, factionsStatus);
+      return t === 'INOFENSIVO' || t === 'CAUTELOSO';
+    })();
   // Bug real jugando en vivo (2026-07-24, decisión explícita de la usuaria: "aceptar ayudar solo
   // crea la misión, nunca abre combate"): "Cuenta conmigo. Acabaré con el que te persigue."
   // (aceptando ayudar a Gistera Koh) comparte vocabulario con `detectsHostileSearchIntent`
   // ("acabar(e)? con") — necesario para que el clasificador la trate como instantánea, pero forzaba
   // combate igual contra TODOS los NPCs en escena (Gistera Koh, la propia aliada que pidió ayuda, Y
   // un Múrgol de paso sin relación ninguna) — una promesa a futuro no es un ataque ahora mismo.
-  // Nunca suprime `detectsAttackIntent` (un ataque real de verdad sigue abriendo combate).
+  // Nunca suprime `detectsAttackIntent` (un ataque real de verdad sigue abriendo combate) salvo el
+  // caso concreto del hallazgo 17 de arriba (`attackMissedNonAggressiveTarget`).
   const shouldForceCombat =
     !enCombate &&
     combatSlugsFromModel.length === 0 &&
     npcsInSceneVivos.length > 0 &&
     (agresivoSlugsInScene.length > 0 ||
       (isCondicionDowngrade(condicionFisicaJugador, narration.condicionFisica) && !allNpcsInSceneArePacificos) ||
-      detectsAttackIntent(action) ||
+      (detectsAttackIntent(action) && !attackMissedNonAggressiveTarget) ||
       (detectsHostileSearchIntent(action) && !detectsVerbalAcceptanceIntent(action)));
   // Bug real (auditoría 2026-07-23, "ha metido un murgol que no pinta nada"): la red de seguridad
   // metía a TODOS los NPCs detectados en escena como participantes de combate (aliados, fauna de
@@ -6851,6 +6890,8 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
         // cerrarse del todo en el turno exacto de la muerte sobrevivible.
         justDied: proposedCondicion === 'MUERTO',
         regionActual: regionLocation?.region ?? null,
+        attackerRollGradoExito: roll?.gradoExito ?? null,
+        attackTarget: candidateAttackTarget,
       })).combateIniciado;
 
   // Log de diagnóstico por turno (roadmap 2026-07-20, prioridad P0 de Fable): una línea

@@ -6524,6 +6524,119 @@ describe('Apertura con éxito: el NPC puede ganar la iniciativa real (hallazgo 1
   }, 20_000);
 });
 
+// Hallazgo 17 (revisar-partida-hallazgos.md 2026-09-07, "la narración indica que Gorhorn huye del
+// combate, pero el combate se abre igualmente" — caso real del Ruptidar, INOFENSIVO): un ataque de
+// APERTURA que FALLA contra fauna no agresiva (INOFENSIVO/CAUTELOSO) no debe abrir el panel de
+// combate — la presa escapa de verdad. Si el ataque ACIERTA, sigue abriendo combate con normalidad.
+describe('Ataque de apertura fallido contra fauna no agresiva no abre combate (hallazgo 17, 2026-09-07)', () => {
+  let saveId: string;
+  let ruptidarId: string;
+
+  beforeAll(async () => {
+    const userId = await getDefaultUserId();
+    const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
+    const ruptidar = await prisma.npc.findFirstOrThrow({ where: { worldId: world.id, slug: 'ruptidar' } });
+    ruptidarId = ruptidar.id;
+    expect(ruptidar.temperamento).toBe('INOFENSIVO');
+    const hondonada = await prisma.location.findFirstOrThrow({ where: { worldId: world.id, slug: 'hondonada-del-eco' } });
+    const save = await prisma.save.create({
+      data: {
+        userId,
+        worldId: world.id,
+        characterName: 'Gorhorn de prueba (hallazgo 17)',
+        characterArchetype: 'guerrero',
+        characterOrigin: 'Clan Maktor',
+        characterMotivation: 'x',
+        attributes: ATTRS,
+        portraitInitial: 'G',
+        currentLocationId: hondonada.id,
+      },
+    });
+    saveId = save.id;
+    await prisma.worldState.create({ data: { saveId } });
+  });
+
+  afterAll(async () => {
+    vi.restoreAllMocks();
+    await prisma.save.delete({ where: { id: saveId } });
+  });
+
+  it('ataque de apertura que FALLA contra el Ruptidar (INOFENSIVO) no abre combate — la presa escapa', async () => {
+    await prisma.npcState.deleteMany({ where: { saveId, npcId: ruptidarId } });
+    const worldId = (await prisma.save.findUniqueOrThrow({ where: { id: saveId } })).worldId;
+    const hondonadaId = (await prisma.location.findFirstOrThrow({ where: { worldId, slug: 'hondonada-del-eco' } })).id;
+    await prisma.npcState.create({ data: { saveId, npcId: ruptidarId, scope: hondonadaId, condicionFisica: 'ILESO' } });
+    // `detectsAttackIntent` (ataque directo) no tiene atajo tabulado fuera de combate en
+    // turn.ts (ese solo cubre detectsHostileSearchIntent) — cae a classifyAction, mockeada aquí
+    // para simular lo que el LLM real haría ante un ataque directo. `dificultad` propuesta aquí
+    // se SOBREESCRIBE por `utilityDifficultyFor` (hallazgo 12, turn.ts) al haber un NPC en
+    // escena — con el Ruptidar (suma de atributos muy baja) sale igualmente muy baja (6, Fácil).
+    // `atributo:'magia'` (ATTRS del jugador de prueba: magia 4, la más baja) fuerza que incluso
+    // esa dificultad mínima falle con la peor tirada posible: result = roll(1) + floor(4/2) = 3 < 6.
+    // `mockReset` + `mockResolvedValueOnce` — `classifyAction` es un `vi.fn()` de módulo
+    // (`vi.restoreAllMocks()` no lo resetea) que puede llegar con implementaciones/colas
+    // residuales de describes anteriores del mismo archivo; se limpia explícitamente aquí para
+    // no depender del orden global de ejecución de la suite.
+    classifyAction.mockReset();
+    classifyAction.mockResolvedValueOnce({
+      requiereTirada: true, atributo: 'magia', dificultad: 15, razon: 'x', banda: 'instantanea', duracionEstimadaMinutos: 0,
+    });
+    // Peor tirada posible (roll=1) — garantiza gradoExito:'fallo' vía rollCheck (turn.ts).
+    vi.spyOn(Math, 'random').mockReturnValue(0);
+    const app = await buildApp();
+
+    const openingAction = "Golpeo con mi hacha a 'Ruptidar'.";
+    const classifyOpen = await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action: openingAction, enCombate: false } });
+    const { classification: classificationOpen, roll: rollOpen } = classifyOpen.json();
+    expect(rollOpen.gradoExito).toBe('fallo');
+
+    const narrateOpen = await app.inject({
+      method: 'POST',
+      url: '/turn/narrate',
+      payload: { saveId, action: openingAction, classification: classificationOpen, roll: rollOpen, enCombate: false },
+    });
+    expect(narrateOpen.statusCode).toBe(200);
+    // Ni combateIniciado ni esperandoDefensaJugador — la presa escapa, sin panel de combate.
+    const body = lastNdjsonLine(narrateOpen.payload) as { combateIniciado: { npcs: { slug: string }[] } | null; esperandoDefensaJugador: boolean };
+    expect(body.combateIniciado).toBeNull();
+    expect(body.esperandoDefensaJugador).toBe(false);
+
+    const saveAfterOpening = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
+    expect(saveAfterOpening.pendingNpcAttack).toBeNull();
+    expect((saveAfterOpening.pendingCombatNpcSlugs as string[] | null) ?? []).not.toContain('ruptidar');
+  }, 20_000);
+
+  it('ataque de apertura que ACIERTA contra el Ruptidar (INOFENSIVO) SÍ abre combate con normalidad', async () => {
+    await prisma.npcState.deleteMany({ where: { saveId, npcId: ruptidarId } });
+    const worldId = (await prisma.save.findUniqueOrThrow({ where: { id: saveId } })).worldId;
+    const hondonadaId = (await prisma.location.findFirstOrThrow({ where: { worldId, slug: 'hondonada-del-eco' } })).id;
+    await prisma.npcState.create({ data: { saveId, npcId: ruptidarId, scope: hondonadaId, condicionFisica: 'ILESO' } });
+    await prisma.save.update({ where: { id: saveId }, data: { pendingCombatNpcSlugs: [] } });
+    classifyAction.mockReset();
+    classifyAction.mockResolvedValueOnce({
+      requiereTirada: true, atributo: 'fuerza', dificultad: 15, razon: 'x', banda: 'instantanea', duracionEstimadaMinutos: 0,
+    });
+    // Mejor tirada posible (roll=20) — garantiza gradoExito distinto de 'fallo'.
+    vi.spyOn(Math, 'random').mockReturnValue(0.99);
+    const app = await buildApp();
+
+    const openingAction = "Golpeo con mi hacha a 'Ruptidar'.";
+    const classifyOpen = await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action: openingAction, enCombate: false } });
+    const { classification: classificationOpen, roll: rollOpen } = classifyOpen.json();
+    expect(rollOpen.gradoExito).not.toBe('fallo');
+
+    const narrateOpen = await app.inject({
+      method: 'POST',
+      url: '/turn/narrate',
+      payload: { saveId, action: openingAction, classification: classificationOpen, roll: rollOpen, enCombate: false },
+    });
+    expect(narrateOpen.statusCode).toBe(200);
+    // Fauna inofensiva SÍ es cazable si el ataque conecta — combate se abre con normalidad.
+    const body = lastNdjsonLine(narrateOpen.payload) as { combateIniciado: { npcs: { slug: string }[] } | null };
+    expect(body.combateIniciado?.npcs?.some((n) => n.slug === 'ruptidar')).toBe(true);
+  }, 20_000);
+});
+
 // Bug real jugando en vivo (2026-08-28/29): recargar la página mientras el enemigo tiene la
 // iniciativa ("elige a ciegas cómo defenderte") rompía la resolución del turno — el jugador veía
 // el panel de ATAQUE en vez de DEFENSA tras F5, elegía con el catálogo equivocado (atributo de

@@ -257,10 +257,27 @@ PENDIENTES salvo que se indique lo contrario. Organizado por fase del runbook.
     captura del Ruptidar: "el Ruptidar se gira... Gorhorn lanza su hacha... apenas rozan las
     escamas... dejando a Gorhorn solo en el vacío eco de la hondonada" seguido de COMBATIR/HUIR en
     pantalla) — la narración describe una escapada/fallo sin combate trabado, pero el motor abre el
-    panel de combate de todos modos. Puede ser el mismo tipo de guard de "narración-vs-mecánica" que
-    ya existe para otros casos (`hasFalseDefenseNarration` y similares) pero sin cubrir este patrón
-    concreto ("intento fallido de ataque a distancia, la presa escapa" ≠ "combate trabado").
-    **PENDIENTE — revisar guards de apertura de combate.**
+    panel de combate de todos modos. **CERRADO (2026-09-07)**: NO era un guard narración-vs-mecánica
+    (tipo `hasFalseDefenseNarration`) — esos comparan la prosa contra un hecho YA calculado; aquí no
+    existía ningún hecho calculado de "ataque a distancia fallido, la presa escapa". La apertura de
+    combate (`shouldForceCombat`, dentro de `resolveCombatSlugsAndPersist`) decidía mirando solo
+    `detectsAttackIntent(action)` sobre el texto del jugador, sin mirar el resultado real de la
+    tirada ni el temperamento del objetivo — el Ruptidar ya tenía `temperamento: 'INOFENSIVO'`
+    (comentario del enum: "nunca inicia combate"), pero esa protección solo cubría que fuera el
+    AGRESOR, no que fuera la VÍCTIMA de un ataque fallido. Decisión de diseño confirmada: si el
+    ataque de apertura FALLA contra fauna INOFENSIVO/CAUTELOSO, no se abre combate (la presa escapa
+    de verdad); si ACIERTA, se abre con normalidad (fauna inofensiva sigue siendo cazable). Dos
+    puntos tocados en `turnResolution.ts`: (1) la rama `detectsAttackIntent` de `shouldForceCombat`
+    ahora se condiciona a `!attackMissedNonAggressiveTarget` (nuevo, con reputación de facción vía
+    `effectiveTemperamento`); (2) el bloque de apertura que siembra `pendingNpcAttack` en caso de
+    fallo tampoco lo hace ya contra fauna no agresiva (`npcTemperamentoNoAgresivo`, temperamento de
+    catálogo puro) — sin esto, `esperandoDefensaJugador` seguía quedando `true` pese a no abrirse
+    combate, dejando al jugador "defendiéndose" de un NPC que ni ataca ni tiene panel abierto.
+    Verificado: `tsc -b` limpio backend+frontend, 2 tests de integración nuevos (Ruptidar real del
+    catálogo, apertura con fallo/éxito) verificados rigurosamente en ambos puntos del fix por
+    separado. Línea base de fallos de infraestructura preexistente sin cambios (3, mismos tests de
+    siempre). Pendiente reverificar en vivo con Playwright: atacar a fauna inofensiva (Ruptidar u
+    otra) y confirmar que un fallo no abre el panel de combate, solo narra la escapada.
 18. **Rematar a un enemigo ya CONVALECIENTE con un ataque no debería narrarse como un golpe de
     combate normal** — debería narrarse explícitamente como el remate/golpe final que acaba con su
     vida, y ese remate debe describirse a través de la habilidad concreta que se decidió usar para
