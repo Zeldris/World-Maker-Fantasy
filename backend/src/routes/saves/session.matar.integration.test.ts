@@ -112,3 +112,42 @@ describe('POST /saves/:id/combat/matar/:npcSlug', () => {
     expect(npc?.targetedForKill).toBe(true);
   });
 });
+
+/// Guard de save.endedAt añadido (auditoría de código backend 2026-09-07): Matar era el único de
+/// los 3 desenlaces posibles desde CONVALECIENTE (junto a Capturar y Dejar-vivir, que ya lo tenían)
+/// sin este guard — con la partida ya terminada, seguía marcando targetedForKill igualmente.
+describe('POST /saves/:id/combat/matar/:npcSlug — guard de save.endedAt (auditoría 2026-09-07)', () => {
+  let saveId: string;
+  const npcSlug = 'orco-enfurecido-hondonada';
+
+  beforeAll(async () => {
+    const userId = await getDefaultUserId();
+    const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
+    const location = await prisma.location.findFirstOrThrow({ where: { worldId: world.id, slug: 'hondonada-del-eco' } });
+    const save = await prisma.save.create({
+      data: {
+        userId,
+        worldId: world.id,
+        characterName: 'Gorhorn de prueba (matar, partida ya terminada)',
+        characterArchetype: 'guerrero',
+        characterOrigin: 'Clan Maktor',
+        characterMotivation: 'x',
+        attributes: { fuerza: 10, destreza: 10, constitucion: 10, inteligencia: 10, voluntad: 10, carisma: 10, magia: 10 },
+        portraitInitial: 'G',
+        currentLocationId: location.id,
+        endedAt: new Date('2026-09-07T12:00:00Z'),
+      },
+    });
+    saveId = save.id;
+  });
+
+  afterAll(async () => {
+    await prisma.save.delete({ where: { id: saveId } });
+  });
+
+  it('409 en vez de marcar targetedForKill', async () => {
+    const app = await buildApp();
+    const res = await app.inject({ method: 'POST', url: `/saves/${saveId}/combat/matar/${npcSlug}` });
+    expect(res.statusCode).toBe(409);
+  });
+});

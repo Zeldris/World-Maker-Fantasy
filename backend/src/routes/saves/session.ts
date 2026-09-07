@@ -347,8 +347,9 @@ export async function sessionRoutes(app: FastifyInstance) {
   // camino 1v1 clásico (`NpcState`) por ahora — combate múltiple (`CombatParticipant`) usa un
   // sistema de condición paralelo (`condicionFisicaGrupo`) que queda fuera de esta pieza.
   app.post<{ Params: { id: string; npcSlug: string } }>('/saves/:id/combat/matar/:npcSlug', async (request, reply) => {
-    const save = await prisma.save.findUnique({ where: { id: request.params.id }, select: { id: true, worldId: true, currentLocationId: true } });
+    const save = await prisma.save.findUnique({ where: { id: request.params.id }, select: { id: true, worldId: true, currentLocationId: true, endedAt: true } });
     if (!save) return reply.status(404).send({ error: 'Partida no encontrada' });
+    if (rejectIfEnded(save, reply)) return;
 
     const npc = await prisma.npc.findUnique({ where: { worldId_slug: { worldId: save.worldId, slug: request.params.npcSlug } } });
     if (!npc) return reply.status(404).send({ error: 'NPC no encontrado' });
