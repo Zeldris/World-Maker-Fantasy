@@ -750,6 +750,8 @@ la sesión de pruebas encontró MÁS problemas del mismo área que esos fixes no
 43. **Revisar cuándo y cómo se lanza "¿Interactuar?" (el aviso de "Gesgurio busca tu atención...")**
     — la usuaria pide anotarlo en el checklist de pruebas vivo (`docs/checklist-pruebas-juego.md`)
     como funcionalidad a probar a fondo y mejorar hasta que aporte valor real, no arreglarlo ya
-    mismo. **ACCIÓN CLARA: añadir entrada al checklist de pruebas vivo, sin tocar código todavía.**
+    mismo. **CERRADO (2026-09-07)**: confirmado que ya estaba anotado en el checklist vivo
+    (§ 6 "Modo dinámico", fila "Revisión de diseño de '¿Interactuar?'", `❌ sin probar a fondo,
+    pendiente de mejorar`, citando ya este mismo hallazgo 43) — no hacía falta ninguna acción nueva.
 
 ---
