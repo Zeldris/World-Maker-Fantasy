@@ -645,13 +645,21 @@ la sesión de pruebas encontró MÁS problemas del mismo área que esos fixes no
 35b. **Algunas imágenes no se ven en fichas de la Enciclopedia** (mensaje separado del 33, que es
     sobre el modal del mapa de Zona — este es sobre la navegación de la Enciclopedia en sí) — la
     usuaria sospecha que puede ser un desajuste entre el nombre real del archivo de imagen ya subido
-    y el nombre/slug que la ficha busca. **DIAGNOSTICADO** — confirmado: `imageAssets.ts` hace match
-    EXACTO de string (`${entitySlug}-${sizeProfile}.${ext}`) sin ninguna normalización, así que
-    cualquier archivo subido a mano cuyo nombre no coincida carácter a carácter con el slug real del
-    catálogo queda invisible sin ningún error visible (falla silenciosa, `imageUrls` vuelve `null`).
-    Es una dependencia frágil de nomenclatura manual, no un bug de lógica — **PENDIENTE decidir con
-    la usuaria si se construye un script de auditoría que liste `uploads/images/**` contra los slugs
-    reales del catálogo y señale huérfanos**, antes de perseguir fichas una a una.
+    y el nombre/slug que la ficha busca. **CERRADO (2026-09-07)**: script de auditoría nuevo
+    (`backend/src/scripts/auditImages.ts`, `npm run audit-images`) — solo lectura, compara
+    `uploads/images/<entityType>/*` contra los slugs reales del catálogo (fauna/flora/npc/item/
+    location/faction, más zona por el mismo slug que location) y lista huérfanos (archivo sin slug
+    real que lo reclame) y slugs sin imagen. Match por PREFIJO, no igualdad exacta — necesario tras
+    descubrir en la primera corrida que tanto `location` (sufijos de momento/estación, hallazgo 32)
+    como `fauna` (sufijo de sexo `-macho`/`-hembra`) ya usan nombres reales con variante que un
+    match exacto habría marcado como 16+ falsos huérfanos. Corrida real sobre el estado actual del
+    proyecto: encontró 3 huérfanos reales — `buitre-cenizo-macho-banner.png` (nombre viejo, el slug
+    real es `zense-ceniza` tras un renombrado de sesión anterior), `clan-serhu-banner2.png` (sufijo
+    `banner2` en vez de `banner`), `campamento-serhu-interior-dia-primavera.png` (sin sufijo `-mapa`
+    esperado) — y decenas de "sin imagen" reales (esperado, la mayoría del catálogo nunca tuvo
+    imagen subida). Verificado: `tsc -b` limpio, corrida real confirmada contra el filesystem del
+    proyecto. Sin test dedicado (mismo criterio que el resto de `scripts/`, ninguno lo tiene — solo
+    I/O de filesystem/catálogo estático, sin lógica de producción).
 36. **La generación de prompts/imágenes (miniatura, banner, mapa) está fallando con "No se pudo
     generar — inténtalo de nuevo"** en varias entidades — a investigar si es un problema puntual de
     la sesión (límite de API/rate limit) o un bug real. La usuaria plantea, aparte, la idea de
