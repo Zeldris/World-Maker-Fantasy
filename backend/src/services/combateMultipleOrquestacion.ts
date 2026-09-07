@@ -203,6 +203,17 @@ const TOTEM_DE_GUERRA_RONDAS = 2;
 /// bando se queda sin nadie más vivo" (decisión explícita de la usuaria).
 const EXPULSAR_RONDAS = 2;
 
+/// Deuda técnica cerrada (auditoría de deuda técnica 2026-08-25, "dificultad de combate 15 como
+/// literal duplicado dos veces en la misma llamada, sin constante nombrada"). `resolverIntercambioCompleto`
+/// es un check opuesto real (ambos lados se comparan entre sí, no contra un umbral) — igual que
+/// `difficulty: 0` en iniciativa/Tameo (`DiceRoll.tsx § forcedGradosFor`), este valor es puro
+/// relleno para satisfacer el shape de `ExchangeParticipant`: nunca decide quién gana el
+/// intercambio, solo participa en el cálculo de `gradoExito` que el frontend YA corrige
+/// visualmente. El valor en sí (`15`, no `0` como en iniciativa) no tiene ningún significado de
+/// diseño propio — se mantiene igual que estaba para no alterar ningún test/comportamiento
+/// existente, solo se nombra para dejar claro que es el mismo relleno en ambos lados.
+const CHECK_OPUESTO_DIFICULTAD_RELLENO = 15;
+
 async function datosVivosDe(
   tx: Prisma.TransactionClient,
   worldId: string,
@@ -577,10 +588,10 @@ async function ejecutarIntercambioYAvanzar(params: EjecutarIntercambioParams): P
     { nombre: datosAtacante.nombre, attributes: datosAtacante.attributes, condicionFisica: datosAtacante.condicionFisica },
     habilidadAtaque,
     atacanteRol,
-    15,
+    CHECK_OPUESTO_DIFICULTAD_RELLENO,
     { nombre: datosDefensor.nombre, attributes: datosDefensor.attributes, condicionFisica: datosDefensor.condicionFisica },
     habilidadDefensa,
-    15,
+    CHECK_OPUESTO_DIFICULTAD_RELLENO,
     dualWieldBonus,
     actual.tipo === 'JUGADOR',
   );
