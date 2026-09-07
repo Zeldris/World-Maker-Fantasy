@@ -282,15 +282,18 @@ con el enganche por ronda añadido hoy, el patrón se repite y se agrava:
   repetida.
 - `calcularEnganchesRonda` (nueva) y `ejecutarGolpeGratisYAvanzar` (nueva) sostienen el mismo patrón
   de 6-7 parámetros posicionales que ya tenían las funciones vecinas.
-- `retargetBando` (`combateMultiple.ts`) queda sin ningún caller real en `combateMultipleOrquestacion.ts`
-  (sustituido por `resolverEnganchesRonda`) — sigue exportada y con su propia cobertura de test, pero
-  es candidata a "código que ya no se usa en producción, solo en tests" si nadie la retoma.
+- ~~`retargetBando` (`combateMultiple.ts`) queda sin ningún caller real...~~ YA ELIMINADO (confirmado
+  con la usuaria, 2026-09-03) — código muerto retirado, solo quedan menciones en comentarios
+  históricos explicando por qué se sustituyó. Este punto concreto es un falso positivo por
+  antigüedad si vuelve a aparecer en otra auditoría.
 
-**Estado**: PENDIENTE, prioridad baja consciente — el archivo entero ya funciona y está probado a
-fondo (24 tests unitarios + 3 de integración nuevos solo de esta pasada, ver roadmap), refactorizar
-la firma de estas funciones a un objeto de opciones es limpieza pura, sin bug detrás. Buen candidato
-para la próxima vez que se toque este archivo por otro motivo (mismo criterio que el resto de esta
-lista: no se refactoriza en frío, solo se señala).
+**Estado**: los parámetros posicionales de `avanzarSinAtacar`/`calcularEnganchesRonda`/
+`ejecutarGolpeGratisYAvanzar` siguen PENDIENTE, prioridad baja consciente — el archivo entero ya
+funciona y está probado a fondo (24 tests unitarios + 3 de integración nuevos solo de esta pasada,
+ver roadmap), refactorizar la firma de estas funciones a un objeto de opciones es limpieza pura,
+sin bug detrás. Buen candidato para la próxima vez que se toque este archivo por otro motivo (mismo
+criterio que el resto de esta lista: no se refactoriza en frío salvo que se decida expresamente,
+como aquí — ver ronda de cierre 2026-09-08).
 
 ## 2026-09-04 — /turn/classify sin try/catch dejaba la petición sin respuesta para siempre si Ollama se colgaba
 
@@ -611,8 +614,11 @@ real y no trivial (el caso de empate es fácil de invertir por error, y ya hubo 
 misma familia — "el número aterrizaba siempre en verde" — documentado en el propio comentario de
 `DiceFace.forcedGrado` un poco más arriba en el mismo archivo).
 
-**Estado**: PENDIENTE, prioridad baja — función pequeña y ya extraída con la intención explícita de
-ser testeada; falta dar el último paso.
+**Estado**: DESCARTADO (2026-09-08) — FALSO POSITIVO por antigüedad: `DiceRoll.test.tsx` ya existe
+con 4 tests cubriendo `forcedGradosFor` (showDifficulty true/false, empate exacto a favor del
+defensor, caso real reproducido) desde el mismo día que se extrajo la función (2026-09-06). El
+agente de auditoría de deuda técnica corrió en un worktree con checkout anterior a ese commit —
+no vio el archivo. Confirmado con `grep` en esta ronda de cierre que el archivo existe de verdad.
 
 ## 2026-09-07 — useCombatFlow.ts sigue creciendo: 585→859 líneas (+47%) en 12 días, un único hook sin descomponer
 
