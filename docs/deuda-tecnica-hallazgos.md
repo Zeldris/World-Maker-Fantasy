@@ -526,12 +526,12 @@ pero solo se llama manualmente desde ReinoPanel — no se dispara automáticamen
 error deja el nombre real ya fijado por el primer intento exitoso, con el modal proponiendo
 nombrarlo de nuevo.
 
-**Estado**: PENDIENTE — requiere decisión de la usuaria (bajo riesgo real: la ventana exacta es
-"éxito en backend + fallo de red en la respuesta al cliente", no muy frecuente, y el peor caso
-observable es un segundo POST a `/reino/fundar` que el backend debería rechazar por reino ya
-existente — no se ha comprobado si esa ruta ya es idempotente/devuelve 409 limpio en ese caso o si
-duplica algo. No es una contradicción de diseño clara, más bien un hueco de manejo de reintento no
-cubierto).
+**Estado**: CERRADO (2026-09-08, commit `8cedc4d`) — decisión confirmada con la usuaria: arreglarlo
+ahora. Ya se había confirmado por separado que `/reino/fundar` rechaza limpio (409, "Ya has fundado
+tu reino") un segundo intento — `handleFundarReino` ahora atrapa exactamente ese mensaje: en vez de
+dejar que el modal muestre el error, refresca el estado real (`refreshSave`) y reabre el mismo popup
+ya reconstruido desde lo persistido (`handleReabrirFundacionReino`, mismo mecanismo que el fix de
+2026-08-04).
 
 ## 2026-09-07 — beforeunload dispara pauseSave sin esperar respuesta — puede perder la pausa si el navegador cierra la pestaña primero (hueco, no bug)
 
